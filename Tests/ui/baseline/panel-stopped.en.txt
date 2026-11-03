@@ -75,12 +75,12 @@ html [data-theme="dark" lang="en"]
                   span "2 of 5"
                   svg.i #u1ag9u
           div.k-colour.pn-row
-            label.pn-label [title="Button colour" for="pn-6f1c2e9a-colour"] "Button colour"
+            label.pn-label [title="Button color" for="pn-6f1c2e9a-colour"] "Button color"
             span.pn-ctl
               span.pn-ctl-in
                 i.pn-swatch [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(34, 197, 94);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"]
                 span.pn-hex "#22c55e"
-                button.btn.sm [id="pn-6f1c2e9a-colour" type="button" aria-label="Pick: Button colour"] "Pick"
+                button.btn.sm [id="pn-6f1c2e9a-colour" type="button" aria-label="Pick: Button color"] "Pick"
           h4.pn-head [title="Advanced"] "Advanced"
           div.k-number.pn-row
             label.pn-label [title="Clicks per reel" for="pn-6f1c2e9a-clicks"] "Clicks per reel"

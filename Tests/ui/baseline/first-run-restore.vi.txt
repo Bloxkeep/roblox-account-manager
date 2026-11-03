@@ -26,7 +26,7 @@ html [data-theme="dark" lang="vi"]
 #toasts
   div.ok.toast [role="status"]
     svg.i #14iobj
-    span "Backup restored. Unlock it with the master password it was saved with."
+    span "Đã khôi phục bản sao lưu. Mở khóa bằng mật khẩu chủ đã dùng khi sao lưu."
 -- commands
   getState {}
   monitorArea {"hidden":true}

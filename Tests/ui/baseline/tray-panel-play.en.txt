@@ -6,7 +6,8 @@ html [data-theme="dark" lang="en"]
       img.tray-logo [alt="" src="logo.svg"]
       div.tray-name
         b "Bloxkeep"
-        span "2 Roblox windows · 2.8 GB RAM"
+        span
+          span.tray-status [title="2 Roblox windows · 2.8 GB RAM"] "2 Roblox windows · 2.8 GB RAM"
       button.tray-icon [type="button" title="Mini window" aria-label="Mini window" aria-pressed="false"]
         svg.i #1e3syqr
       button.tray-icon [type="button" title="Open Bloxkeep" aria-label="Open Bloxkeep"]
@@ -58,8 +59,8 @@ html [data-theme="dark" lang="en"]
           b "Test"
 -- commands
   ready {}
-  size {"h":361,"opened":1,"w":344}
-  size {"h":361,"opened":1,"w":344}
-  size {"h":465,"opened":1,"w":344}
+  size {"h":368,"opened":1,"w":344}
+  size {"h":368,"opened":1,"w":344}
+  size {"h":464,"opened":1,"w":344}
   size {"h":472,"opened":1,"w":344}
   size {"h":472,"opened":1,"w":344}

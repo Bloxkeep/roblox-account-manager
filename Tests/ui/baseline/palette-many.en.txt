@@ -54,11 +54,11 @@ html [data-theme="dark" lang="en"]
             span "Close all"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+            button.multi-open [title="Multi-Roblox: On: several Roblox windows can be open"]
               span.led
               div
                 b "Multi-Roblox"
-                small "On — several windows allowed"
+                small "On"
             label.switch [title="Turn off Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
@@ -98,7 +98,7 @@ html [data-theme="dark" lang="en"]
               button.btn.primary [title="Other ways to add" aria-haspopup="menu"]
                 svg.i #u1ag9u
         div.bar
-          div.chips.fade-r [id="chips"]
+          div.chips [id="chips"]
             button.chip.on [aria-pressed="true"] "All"
               em "40"
             button.chip [aria-pressed="false"] "Needs sign-in"
@@ -113,11 +113,7 @@ html [data-theme="dark" lang="en"]
             button.chip [aria-pressed="false"] "Online"
               i.dot [style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:"]
               em "24"
-            button.chip [aria-pressed="false"] "Offline"
-              i.dot [style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:"]
-              em "16"
-            button.chip [aria-pressed="false"] "On this PC"
-              em "12"
+            button.chip.more [title="More filters" aria-haspopup="menu"] "+2"
           div.seg [id="layout-seg"]
             button.on [title="Cards" aria-label="Cards" aria-pressed="true"]
               svg.i #19k0rtd
@@ -154,9 +150,9 @@ html [data-theme="dark" lang="en"]
                 div.card-actions
                   button.pill-btn.play [tabindex="0"] "Play"
                     svg.i #1ewcuky
-                  button.icon-btn [title="Edit (F2)" tabindex="0"]
+                  button.icon-btn [title="Edit (F2)" tabindex="0" aria-label="Edit (F2)"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" tabindex="0" aria-haspopup="menu"]
+                  button.icon-btn [title="More" tabindex="0" aria-haspopup="menu" aria-label="More"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Alt 11" aria-selected="false"]
                 span.check
@@ -180,9 +176,9 @@ html [data-theme="dark" lang="en"]
                 div.card-actions
                   button.pill-btn.play [tabindex="-1"] "Play"
                     svg.i #1ewcuky
-                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                  button.icon-btn [title="Edit (F2)" tabindex="-1" aria-label="Edit (F2)"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu" aria-label="More"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Alt 18" aria-selected="false"]
                 span.check
@@ -206,9 +202,9 @@ html [data-theme="dark" lang="en"]
                 div.card-actions
                   button.pill-btn.play [tabindex="-1"] "Play"
                     svg.i #1ewcuky
-                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                  button.icon-btn [title="Edit (F2)" tabindex="-1" aria-label="Edit (F2)"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu" aria-label="More"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Alt 25" aria-selected="false"]
                 span.check
@@ -232,9 +228,9 @@ html [data-theme="dark" lang="en"]
                 div.card-actions
                   button.pill-btn.play [tabindex="-1"] "Play"
                     svg.i #1ewcuky
-                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                  button.icon-btn [title="Edit (F2)" tabindex="-1" aria-label="Edit (F2)"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu" aria-label="More"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Alt 32" aria-selected="false"]
                 span.check
@@ -258,9 +254,9 @@ html [data-theme="dark" lang="en"]
                 div.card-actions
                   button.pill-btn.play [tabindex="-1"] "Play"
                     svg.i #1ewcuky
-                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                  button.icon-btn [title="Edit (F2)" tabindex="-1" aria-label="Edit (F2)"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu" aria-label="More"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Alt 39" aria-selected="false"]
                 span.check
@@ -284,9 +280,9 @@ html [data-theme="dark" lang="en"]
                 div.card-actions
                   button.pill-btn.play [tabindex="-1"] "Play"
                     svg.i #1ewcuky
-                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                  button.icon-btn [title="Edit (F2)" tabindex="-1" aria-label="Edit (F2)"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu" aria-label="More"]
                     svg.i #1e3omv2
               article.card.local [role="option" tabindex="-1" aria-label="Farm 1" aria-selected="false"]
                 span.check
@@ -317,9 +313,9 @@ html [data-theme="dark" lang="en"]
                 div.card-actions
                   button.pill-btn.stop [tabindex="-1"] "Close"
                     svg.i #16z0s1r
-                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                  button.icon-btn [title="Edit (F2)" tabindex="-1" aria-label="Edit (F2)"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu" aria-label="More"]
                     svg.i #1e3omv2
               article.card.local [role="option" tabindex="-1" aria-label="Farm 1 8" aria-selected="false"]
                 span.check
@@ -350,9 +346,9 @@ html [data-theme="dark" lang="en"]
                 div.card-actions
                   button.pill-btn.stop [tabindex="-1"] "Close"
                     svg.i #16z0s1r
-                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                  button.icon-btn [title="Edit (F2)" tabindex="-1" aria-label="Edit (F2)"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu" aria-label="More"]
                     svg.i #1e3omv2
               article.card.local [role="option" tabindex="-1" aria-label="Farm 1 15" aria-selected="false"]
                 span.check
@@ -383,9 +379,9 @@ html [data-theme="dark" lang="en"]
                 div.card-actions
                   button.pill-btn.stop [tabindex="-1"] "Close"
                     svg.i #16z0s1r
-                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                  button.icon-btn [title="Edit (F2)" tabindex="-1" aria-label="Edit (F2)"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu" aria-label="More"]
                     svg.i #1e3omv2
               article.card.local [role="option" tabindex="-1" aria-label="Farm 1 22" aria-selected="false"]
                 span.check
@@ -416,9 +412,9 @@ html [data-theme="dark" lang="en"]
                 div.card-actions
                   button.pill-btn.stop [tabindex="-1"] "Close"
                     svg.i #16z0s1r
-                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                  button.icon-btn [title="Edit (F2)" tabindex="-1" aria-label="Edit (F2)"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu" aria-label="More"]
                     svg.i #1e3omv2
               article.card.local [role="option" tabindex="-1" aria-label="Farm 1 29" aria-selected="false"]
                 span.check
@@ -449,9 +445,9 @@ html [data-theme="dark" lang="en"]
                 div.card-actions
                   button.pill-btn.stop [tabindex="-1"] "Close"
                     svg.i #16z0s1r
-                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                  button.icon-btn [title="Edit (F2)" tabindex="-1" aria-label="Edit (F2)"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu" aria-label="More"]
                     svg.i #1e3omv2
               article.card.local [role="option" tabindex="-1" aria-label="Farm 1 36" aria-selected="false"]
                 span.check
@@ -482,9 +478,9 @@ html [data-theme="dark" lang="en"]
                 div.card-actions
                   button.pill-btn.stop [tabindex="-1"] "Close"
                     svg.i #16z0s1r
-                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                  button.icon-btn [title="Edit (F2)" tabindex="-1" aria-label="Edit (F2)"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu" aria-label="More"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Farm 2" aria-selected="false"]
                 span.check
@@ -505,13 +501,13 @@ html [data-theme="dark" lang="en"]
                   span.ago [title="Last launched from this app"]
                     svg.i #n87usa
                     span "Opened 9 days ago"
-                div.note [title="Expired last week"] "Expired last week"
+                div.acc-note [title="Expired last week"] "Expired last week"
                 div.card-actions
                   button.pill-btn.relogin [title="This account was signed out. Sign in again (with your phone or a browser) to keep using it." tabindex="-1"] "Sign in"
                     svg.i #kqqqno
-                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                  button.icon-btn [title="Edit (F2)" tabindex="-1" aria-label="Edit (F2)"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu" aria-label="More"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Farm 2 9" aria-selected="false"]
                 span.check
@@ -532,13 +528,13 @@ html [data-theme="dark" lang="en"]
                   span.ago [title="Last launched from this app"]
                     svg.i #n87usa
                     span "Opened 9 days ago"
-                div.note [title="Expired last week"] "Expired last week"
+                div.acc-note [title="Expired last week"] "Expired last week"
                 div.card-actions
                   button.pill-btn.relogin [title="This account was signed out. Sign in again (with your phone or a browser) to keep using it." tabindex="-1"] "Sign in"
                     svg.i #kqqqno
-                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                  button.icon-btn [title="Edit (F2)" tabindex="-1" aria-label="Edit (F2)"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu" aria-label="More"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Farm 2 16" aria-selected="false"]
                 span.check
@@ -559,13 +555,13 @@ html [data-theme="dark" lang="en"]
                   span.ago [title="Last launched from this app"]
                     svg.i #n87usa
                     span "Opened 9 days ago"
-                div.note [title="Expired last week"] "Expired last week"
+                div.acc-note [title="Expired last week"] "Expired last week"
                 div.card-actions
                   button.pill-btn.relogin [title="This account was signed out. Sign in again (with your phone or a browser) to keep using it." tabindex="-1"] "Sign in"
                     svg.i #kqqqno
-                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                  button.icon-btn [title="Edit (F2)" tabindex="-1" aria-label="Edit (F2)"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu" aria-label="More"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Farm 2 23" aria-selected="false"]
                 span.check
@@ -586,13 +582,13 @@ html [data-theme="dark" lang="en"]
                   span.ago [title="Last launched from this app"]
                     svg.i #n87usa
                     span "Opened 9 days ago"
-                div.note [title="Expired last week"] "Expired last week"
+                div.acc-note [title="Expired last week"] "Expired last week"
                 div.card-actions
                   button.pill-btn.relogin [title="This account was signed out. Sign in again (with your phone or a browser) to keep using it." tabindex="-1"] "Sign in"
                     svg.i #kqqqno
-                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                  button.icon-btn [title="Edit (F2)" tabindex="-1" aria-label="Edit (F2)"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu" aria-label="More"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Farm 2 30" aria-selected="false"]
                 span.check
@@ -613,13 +609,13 @@ html [data-theme="dark" lang="en"]
                   span.ago [title="Last launched from this app"]
                     svg.i #n87usa
                     span "Opened 9 days ago"
-                div.note [title="Expired last week"] "Expired last week"
+                div.acc-note [title="Expired last week"] "Expired last week"
                 div.card-actions
                   button.pill-btn.relogin [title="This account was signed out. Sign in again (with your phone or a browser) to keep using it." tabindex="-1"] "Sign in"
                     svg.i #kqqqno
-                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                  button.icon-btn [title="Edit (F2)" tabindex="-1" aria-label="Edit (F2)"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu" aria-label="More"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Farm 2 37" aria-selected="false"]
                 span.check
@@ -640,13 +636,13 @@ html [data-theme="dark" lang="en"]
                   span.ago [title="Last launched from this app"]
                     svg.i #n87usa
                     span "Opened 9 days ago"
-                div.note [title="Expired last week"] "Expired last week"
+                div.acc-note [title="Expired last week"] "Expired last week"
                 div.card-actions
                   button.pill-btn.relogin [title="This account was signed out. Sign in again (with your phone or a browser) to keep using it." tabindex="-1"] "Sign in"
                     svg.i #kqqqno
-                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                  button.icon-btn [title="Edit (F2)" tabindex="-1" aria-label="Edit (F2)"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu" aria-label="More"]
                     svg.i #1e3omv2
               article.card.local [role="option" tabindex="-1" aria-label="Main" aria-selected="false"]
                 span.check
@@ -676,13 +672,13 @@ html [data-theme="dark" lang="en"]
                   span.tag [title="Main"] "Main"
                   span.rejoin [title="Auto-rejoin is on"]
                     svg.i #1ap9cll
-                div.note [title="My main account, don't farm on it"] "My main account, don't farm on it"
+                div.acc-note [title="My main account, don't farm on it"] "My main account, don't farm on it"
                 div.card-actions
                   button.pill-btn.stop [tabindex="-1"] "Close"
                     svg.i #16z0s1r
-                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                  button.icon-btn [title="Edit (F2)" tabindex="-1" aria-label="Edit (F2)"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu" aria-label="More"]
                     svg.i #1e3omv2
               article.card.local [role="option" tabindex="-1" aria-label="Main 7" aria-selected="false"]
                 span.check
@@ -712,13 +708,13 @@ html [data-theme="dark" lang="en"]
                   span.tag [title="Main"] "Main"
                   span.rejoin [title="Auto-rejoin is on"]
                     svg.i #1ap9cll
-                div.note [title="My main account, don't farm on it"] "My main account, don't farm on it"
+                div.acc-note [title="My main account, don't farm on it"] "My main account, don't farm on it"
                 div.card-actions
                   button.pill-btn.stop [tabindex="-1"] "Close"
                     svg.i #16z0s1r
-                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                  button.icon-btn [title="Edit (F2)" tabindex="-1" aria-label="Edit (F2)"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu" aria-label="More"]
                     svg.i #1e3omv2
               article.card.local [role="option" tabindex="-1" aria-label="Main 14" aria-selected="false"]
                 span.check
@@ -748,13 +744,13 @@ html [data-theme="dark" lang="en"]
                   span.tag [title="Main"] "Main"
                   span.rejoin [title="Auto-rejoin is on"]
                     svg.i #1ap9cll
-                div.note [title="My main account, don't farm on it"] "My main account, don't farm on it"
+                div.acc-note [title="My main account, don't farm on it"] "My main account, don't farm on it"
                 div.card-actions
                   button.pill-btn.stop [tabindex="-1"] "Close"
                     svg.i #16z0s1r
-                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                  button.icon-btn [title="Edit (F2)" tabindex="-1" aria-label="Edit (F2)"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu" aria-label="More"]
                     svg.i #1e3omv2
               article.card.local [role="option" tabindex="-1" aria-label="Main 21" aria-selected="false"]
                 span.check
@@ -784,13 +780,13 @@ html [data-theme="dark" lang="en"]
                   span.tag [title="Main"] "Main"
                   span.rejoin [title="Auto-rejoin is on"]
                     svg.i #1ap9cll
-                div.note [title="My main account, don't farm on it"] "My main account, don't farm on it"
+                div.acc-note [title="My main account, don't farm on it"] "My main account, don't farm on it"
                 div.card-actions
                   button.pill-btn.stop [tabindex="-1"] "Close"
                     svg.i #16z0s1r
-                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                  button.icon-btn [title="Edit (F2)" tabindex="-1" aria-label="Edit (F2)"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu" aria-label="More"]
                     svg.i #1e3omv2
               article.card.local [role="option" tabindex="-1" aria-label="Main 28" aria-selected="false"]
                 span.check
@@ -820,13 +816,13 @@ html [data-theme="dark" lang="en"]
                   span.tag [title="Main"] "Main"
                   span.rejoin [title="Auto-rejoin is on"]
                     svg.i #1ap9cll
-                div.note [title="My main account, don't farm on it"] "My main account, don't farm on it"
+                div.acc-note [title="My main account, don't farm on it"] "My main account, don't farm on it"
                 div.card-actions
                   button.pill-btn.stop [tabindex="-1"] "Close"
                     svg.i #16z0s1r
-                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                  button.icon-btn [title="Edit (F2)" tabindex="-1" aria-label="Edit (F2)"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu" aria-label="More"]
                     svg.i #1e3omv2
               article.card.local [role="option" tabindex="-1" aria-label="Main 35" aria-selected="false"]
                 span.check
@@ -856,13 +852,13 @@ html [data-theme="dark" lang="en"]
                   span.tag [title="Main"] "Main"
                   span.rejoin [title="Auto-rejoin is on"]
                     svg.i #1ap9cll
-                div.note [title="My main account, don't farm on it"] "My main account, don't farm on it"
+                div.acc-note [title="My main account, don't farm on it"] "My main account, don't farm on it"
                 div.card-actions
                   button.pill-btn.stop [tabindex="-1"] "Close"
                     svg.i #16z0s1r
-                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                  button.icon-btn [title="Edit (F2)" tabindex="-1" aria-label="Edit (F2)"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu" aria-label="More"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Night Owl" aria-selected="false"]
                 span.check
@@ -888,9 +884,9 @@ html [data-theme="dark" lang="en"]
                 div.card-actions
                   button.pill-btn.play [tabindex="-1"] "Play"
                     svg.i #1ewcuky
-                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                  button.icon-btn [title="Edit (F2)" tabindex="-1" aria-label="Edit (F2)"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu" aria-label="More"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Night Owl 10" aria-selected="false"]
                 span.check
@@ -916,9 +912,9 @@ html [data-theme="dark" lang="en"]
                 div.card-actions
                   button.pill-btn.play [tabindex="-1"] "Play"
                     svg.i #1ewcuky
-                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                  button.icon-btn [title="Edit (F2)" tabindex="-1" aria-label="Edit (F2)"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu" aria-label="More"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Night Owl 17" aria-selected="false"]
                 span.check
@@ -944,9 +940,9 @@ html [data-theme="dark" lang="en"]
                 div.card-actions
                   button.pill-btn.play [tabindex="-1"] "Play"
                     svg.i #1ewcuky
-                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                  button.icon-btn [title="Edit (F2)" tabindex="-1" aria-label="Edit (F2)"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu" aria-label="More"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Night Owl 24" aria-selected="false"]
                 span.check
@@ -972,9 +968,9 @@ html [data-theme="dark" lang="en"]
                 div.card-actions
                   button.pill-btn.play [tabindex="-1"] "Play"
                     svg.i #1ewcuky
-                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                  button.icon-btn [title="Edit (F2)" tabindex="-1" aria-label="Edit (F2)"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu" aria-label="More"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Night Owl 31" aria-selected="false"]
                 span.check
@@ -1000,9 +996,9 @@ html [data-theme="dark" lang="en"]
                 div.card-actions
                   button.pill-btn.play [tabindex="-1"] "Play"
                     svg.i #1ewcuky
-                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                  button.icon-btn [title="Edit (F2)" tabindex="-1" aria-label="Edit (F2)"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu" aria-label="More"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Night Owl 38" aria-selected="false"]
                 span.check
@@ -1028,9 +1024,9 @@ html [data-theme="dark" lang="en"]
                 div.card-actions
                   button.pill-btn.play [tabindex="-1"] "Play"
                     svg.i #1ewcuky
-                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                  button.icon-btn [title="Edit (F2)" tabindex="-1" aria-label="Edit (F2)"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu" aria-label="More"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Testing" aria-selected="false"]
                 span.check
@@ -1047,14 +1043,12 @@ html [data-theme="dark" lang="en"]
                     div.k [title="Opening Roblox…"] "Opening Roblox…"
                     div.v [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
                 div.meta
-                  span.ago [title="Last launched from this app"] "Never opened"
-                    svg.i #n87usa
                 div.card-actions
                   button.pill-btn.stop [tabindex="-1"] "Close"
                     svg.i #16z0s1r
-                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                  button.icon-btn [title="Edit (F2)" tabindex="-1" aria-label="Edit (F2)"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu" aria-label="More"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Testing 13" aria-selected="false"]
                 span.check
@@ -1071,14 +1065,12 @@ html [data-theme="dark" lang="en"]
                     div.k [title="Opening Roblox…"] "Opening Roblox…"
                     div.v [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
                 div.meta
-                  span.ago [title="Last launched from this app"] "Never opened"
-                    svg.i #n87usa
                 div.card-actions
                   button.pill-btn.stop [tabindex="-1"] "Close"
                     svg.i #16z0s1r
-                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                  button.icon-btn [title="Edit (F2)" tabindex="-1" aria-label="Edit (F2)"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu" aria-label="More"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Testing 20" aria-selected="false"]
                 span.check
@@ -1095,14 +1087,12 @@ html [data-theme="dark" lang="en"]
                     div.k [title="Opening Roblox…"] "Opening Roblox…"
                     div.v [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
                 div.meta
-                  span.ago [title="Last launched from this app"] "Never opened"
-                    svg.i #n87usa
                 div.card-actions
                   button.pill-btn.stop [tabindex="-1"] "Close"
                     svg.i #16z0s1r
-                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                  button.icon-btn [title="Edit (F2)" tabindex="-1" aria-label="Edit (F2)"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu" aria-label="More"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Testing 27" aria-selected="false"]
                 span.check
@@ -1119,14 +1109,12 @@ html [data-theme="dark" lang="en"]
                     div.k [title="Opening Roblox…"] "Opening Roblox…"
                     div.v [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
                 div.meta
-                  span.ago [title="Last launched from this app"] "Never opened"
-                    svg.i #n87usa
                 div.card-actions
                   button.pill-btn.stop [tabindex="-1"] "Close"
                     svg.i #16z0s1r
-                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                  button.icon-btn [title="Edit (F2)" tabindex="-1" aria-label="Edit (F2)"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu" aria-label="More"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Testing 34" aria-selected="false"]
                 span.check
@@ -1143,14 +1131,12 @@ html [data-theme="dark" lang="en"]
                     div.k [title="Opening Roblox…"] "Opening Roblox…"
                     div.v [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
                 div.meta
-                  span.ago [title="Last launched from this app"] "Never opened"
-                    svg.i #n87usa
                 div.card-actions
                   button.pill-btn.stop [tabindex="-1"] "Close"
                     svg.i #16z0s1r
-                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                  button.icon-btn [title="Edit (F2)" tabindex="-1" aria-label="Edit (F2)"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu" aria-label="More"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Trade" aria-selected="false"]
                 span.check
@@ -1164,20 +1150,20 @@ html [data-theme="dark" lang="en"]
                   span.gicon
                     svg.i #v9c4u6
                   div.txt
-                    div.k [title="Status unknown"] "Status unknown"
+                    div.k [title="Offline"] "Offline"
                     div.v [title="Updating…"] "Updating…"
                 div.meta
                   span.bad.badge [title="Roblox reports this account as banned. Play skips it."] "Banned"
                   span.ago [title="Last launched from this app"]
                     svg.i #n87usa
                     span "Opened 2 days ago"
-                div.note [title="Trading only"] "Trading only"
+                div.acc-note [title="Trading only"] "Trading only"
                 div.card-actions
                   button.pill-btn.play [tabindex="-1"] "Play"
                     svg.i #1ewcuky
-                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                  button.icon-btn [title="Edit (F2)" tabindex="-1" aria-label="Edit (F2)"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu" aria-label="More"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Trade 12" aria-selected="false"]
                 span.check
@@ -1191,20 +1177,20 @@ html [data-theme="dark" lang="en"]
                   span.gicon
                     svg.i #v9c4u6
                   div.txt
-                    div.k [title="Status unknown"] "Status unknown"
+                    div.k [title="Offline"] "Offline"
                     div.v [title="Updating…"] "Updating…"
                 div.meta
                   span.bad.badge [title="Roblox reports this account as banned. Play skips it."] "Banned"
                   span.ago [title="Last launched from this app"]
                     svg.i #n87usa
                     span "Opened 2 days ago"
-                div.note [title="Trading only"] "Trading only"
+                div.acc-note [title="Trading only"] "Trading only"
                 div.card-actions
                   button.pill-btn.play [tabindex="-1"] "Play"
                     svg.i #1ewcuky
-                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                  button.icon-btn [title="Edit (F2)" tabindex="-1" aria-label="Edit (F2)"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu" aria-label="More"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Trade 19" aria-selected="false"]
                 span.check
@@ -1218,20 +1204,20 @@ html [data-theme="dark" lang="en"]
                   span.gicon
                     svg.i #v9c4u6
                   div.txt
-                    div.k [title="Status unknown"] "Status unknown"
+                    div.k [title="Offline"] "Offline"
                     div.v [title="Updating…"] "Updating…"
                 div.meta
                   span.bad.badge [title="Roblox reports this account as banned. Play skips it."] "Banned"
                   span.ago [title="Last launched from this app"]
                     svg.i #n87usa
                     span "Opened 2 days ago"
-                div.note [title="Trading only"] "Trading only"
+                div.acc-note [title="Trading only"] "Trading only"
                 div.card-actions
                   button.pill-btn.play [tabindex="-1"] "Play"
                     svg.i #1ewcuky
-                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                  button.icon-btn [title="Edit (F2)" tabindex="-1" aria-label="Edit (F2)"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu" aria-label="More"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Trade 26" aria-selected="false"]
                 span.check
@@ -1245,20 +1231,20 @@ html [data-theme="dark" lang="en"]
                   span.gicon
                     svg.i #v9c4u6
                   div.txt
-                    div.k [title="Status unknown"] "Status unknown"
+                    div.k [title="Offline"] "Offline"
                     div.v [title="Updating…"] "Updating…"
                 div.meta
                   span.bad.badge [title="Roblox reports this account as banned. Play skips it."] "Banned"
                   span.ago [title="Last launched from this app"]
                     svg.i #n87usa
                     span "Opened 2 days ago"
-                div.note [title="Trading only"] "Trading only"
+                div.acc-note [title="Trading only"] "Trading only"
                 div.card-actions
                   button.pill-btn.play [tabindex="-1"] "Play"
                     svg.i #1ewcuky
-                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                  button.icon-btn [title="Edit (F2)" tabindex="-1" aria-label="Edit (F2)"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu" aria-label="More"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Trade 33" aria-selected="false"]
                 span.check
@@ -1272,20 +1258,20 @@ html [data-theme="dark" lang="en"]
                   span.gicon
                     svg.i #v9c4u6
                   div.txt
-                    div.k [title="Status unknown"] "Status unknown"
+                    div.k [title="Offline"] "Offline"
                     div.v [title="Updating…"] "Updating…"
                 div.meta
                   span.bad.badge [title="Roblox reports this account as banned. Play skips it."] "Banned"
                   span.ago [title="Last launched from this app"]
                     svg.i #n87usa
                     span "Opened 2 days ago"
-                div.note [title="Trading only"] "Trading only"
+                div.acc-note [title="Trading only"] "Trading only"
                 div.card-actions
                   button.pill-btn.play [tabindex="-1"] "Play"
                     svg.i #1ewcuky
-                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                  button.icon-btn [title="Edit (F2)" tabindex="-1" aria-label="Edit (F2)"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu" aria-label="More"]
                     svg.i #1e3omv2
         div.dock
           div.dock-game.dock-step
@@ -1304,6 +1290,7 @@ html [data-theme="dark" lang="en"]
                 div.recent [title="[🎃] Adopt Me!"]
                   button.recent-pick
                     i.ph
+                      svg.i #sy1lqp
                     span "[🎃] Adopt Me!"
                   button.rm [title="Remove from recent" aria-label="Remove from recent"]
                     svg.i #1tyq039
@@ -1316,27 +1303,27 @@ html [data-theme="dark" lang="en"]
               svg.i #ej9lod
               input [id="job" placeholder="Job ID" maxlength="60" aria-label="Job ID" value=""]
             div.dock-sub
-              button.sub-btn [title="Pick one of this game’s servers: by players, by ping, or where your friends are"]
+              button.sub-btn [title="Pick one of this game’s servers: by players, by ping, or where your friends are" aria-label="Browse servers"]
                 svg.i #uj30io
                 span "Browse servers"
-              button.sub-btn [title="Join a player: the selected accounts open into the server someone is in"]
+              button.sub-btn [title="Join a player: the selected accounts open into the server someone is in" aria-label="Follow a player…"]
                 svg.i #145pp0l
-                span "Join a player…"
+                span "Follow a player…"
           div.dock-go.dock-step [id="dock-actions"]
             div.step-cap
               b "3"
-              span "Play"
-            button.play-btn [disabled]
+              span "Go"
+            button.play-btn [title="Select accounts first" aria-disabled="true"]
               svg.i #1ewcuky
-              span "Select accounts first"
+              span "Play"
             div.dock-sub
-              button.sub-btn [title="Presets" aria-haspopup="menu"]
+              button.sub-btn [title="Presets" aria-haspopup="menu" aria-label="Presets"]
                 svg.i #1pvni8o
                 span "Presets"
-              button.sub-btn [title="Close Roblox for the selected accounts" disabled]
+              button.sub-btn [title="No selected account is open" aria-disabled="true" aria-label="Close"]
                 svg.i #16z0s1r
                 span "Close"
-              button.sub-btn [title="Open Roblox only, or arrange the windows" aria-haspopup="menu"]
+              button.sub-btn [title="Open Roblox only, or arrange the windows" aria-haspopup="menu" aria-label="Windows"]
                 svg.i #1e3syqr
                 span "Windows"
 #layer
@@ -1348,399 +1335,342 @@ html [data-theme="dark" lang="en"]
             svg.i #1u22jvi
             input.pal-input [role="combobox" type="text" placeholder="Search accounts, presets, games, settings and actions…" autocomplete="off" maxlength="100" aria-activedescendant="pal-0" aria-autocomplete="list" aria-controls="pal-list" aria-expanded="true" aria-label="Quick search" value="" FOCUSED]
           div.pal-list [id="pal-list" role="listbox" aria-label="Quick search"]
+            div.pal-head [role="presentation"] "Action"
             div.on.pal-row [id="pal-0" role="option" aria-selected="true"]
               span.pal-ic
                 svg.i #145pp0l
               span.pal-txt
-                b "Join a player…"
-              em.pal-cat "Action"
+                b "Follow a player…"
             div.pal-row [id="pal-1" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #puf41w
               span.pal-txt
                 b "Add account"
-              em.pal-cat "Action"
             div.pal-row [id="pal-2" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #1hx0pz5
               span.pal-txt
                 b "Check sign-in of all accounts"
-              em.pal-cat "Action"
             div.pal-row [id="pal-3" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #e464bo
               span.pal-txt
                 b "Refresh online status"
-              em.pal-cat "Action"
             div.pal-row [id="pal-4" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #1e3syqr
               span.pal-txt
                 b "Arrange Roblox windows"
-              em.pal-cat "Action"
             div.pal-row [id="pal-5" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #16z0s1r
               span.pal-txt
                 b "Close all Roblox"
-              em.pal-cat "Action"
             div.pal-row [id="pal-6" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #1y8kmj1
               span.pal-txt
                 b "Mini window"
-              em.pal-cat "Action"
             div.pal-row [id="pal-7" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #14iobj
               span.pal-txt
                 b "Select all"
-              em.pal-cat "Action"
             div.pal-row [id="pal-8" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #1ui218d
               span.pal-txt
                 b "Launch order…"
-              em.pal-cat "Action"
             div.pal-row [id="pal-9" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #1pvni8o
               span.pal-txt
                 b "Save as preset…"
-              em.pal-cat "Action"
             div.pal-row [id="pal-10" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #kx2qfl
               span.pal-txt
                 b "New macro"
-              em.pal-cat "Action"
             div.pal-row [id="pal-11" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #gsei2o
               span.pal-txt
                 b "Back up now"
-              em.pal-cat "Action"
             div.pal-row [id="pal-12" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #1uvtx1
               span.pal-txt
                 b "Check for Bloxkeep updates"
-              em.pal-cat "Action"
             div.pal-row [id="pal-13" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #13a5dgx
               span.pal-txt
                 b "Send feedback"
-              em.pal-cat "Action"
             div.pal-row [id="pal-14" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #4hphjr
               span.pal-txt
                 b "User guide"
-              em.pal-cat "Action"
             div.pal-row [id="pal-15" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #19cjsv1
               span.pal-txt
                 b "Star Bloxkeep on GitHub"
-              em.pal-cat "Action"
             div.pal-row [id="pal-16" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #1crx2f1
               span.pal-txt
                 b "Bloxkeep on Discord"
-              em.pal-cat "Action"
             div.pal-row [id="pal-17" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #n87usa
               span.pal-txt
                 b "Export the activity log (CSV)"
-              em.pal-cat "Action"
             div.pal-row [id="pal-18" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #na2zgr
               span.pal-txt
                 b "Chuyển sang tiếng Việt"
-              em.pal-cat "Action"
             div.pal-row [id="pal-19" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #21scx0
               span.pal-txt
                 b "Lock app"
-              em.pal-cat "Action"
+            div.pal-head [role="presentation"] "Page"
             div.pal-row [id="pal-20" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #v823bm
               span.pal-txt
                 b "Accounts"
-              em.pal-cat "Go to"
             div.pal-row [id="pal-21" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #1pvni8o
               span.pal-txt
                 b "Presets"
-              em.pal-cat "Go to"
             div.pal-row [id="pal-22" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #kx2qfl
               span.pal-txt
                 b "Macros"
-              em.pal-cat "Go to"
             div.pal-row [id="pal-23" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #1e3syqr
               span.pal-txt
                 b "Game monitor"
-              em.pal-cat "Go to"
             div.pal-row [id="pal-24" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #ktpp14
               span.pal-txt
                 b "Statistics"
-              em.pal-cat "Go to"
             div.pal-row [id="pal-25" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #tbghvg
               span.pal-txt
                 b "Settings"
-              em.pal-cat "Go to"
             div.pal-row [id="pal-26" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #n87usa
               span.pal-txt
                 b "Activity"
-              em.pal-cat "Go to"
+            div.pal-head [role="presentation"] "Preset"
             div.pal-row [id="pal-27" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #1pvni8o
               span.pal-txt
                 b "Farm Blox Fruits"
                 small "Blox Fruits · 3 accounts · Lowest ping · Next: Today 8:00 PM"
-              em.pal-cat "Preset"
             div.pal-row [id="pal-28" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #1pvni8o
               span.pal-txt
                 b "Adopt Me trade"
                 small "[🎃] Adopt Me! · 1 account"
-              em.pal-cat "Preset"
             div.pal-row [id="pal-29" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #1pvni8o
               span.pal-txt
                 b "Morning check-in"
                 small "Roblox home · 6 accounts"
-              em.pal-cat "Preset"
             div.pal-row [id="pal-30" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #1pvni8o
               span.pal-txt
                 b "Farm group 4"
                 small "Blox Fruits · 2 accounts · Next: Tomorrow 6:00 AM"
-              em.pal-cat "Preset"
             div.pal-row [id="pal-31" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #1pvni8o
               span.pal-txt
                 b "Farm group 5"
                 small "[🎃] Adopt Me! · 2 accounts · Most players"
-              em.pal-cat "Preset"
             div.pal-row [id="pal-32" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #1pvni8o
               span.pal-txt
                 b "Farm group 6"
                 small "Brookhaven 🏡RP · 2 accounts · Fewest players"
-              em.pal-cat "Preset"
             div.pal-row [id="pal-33" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #1pvni8o
               span.pal-txt
                 b "Farm group 7"
                 small "Blox Fruits · 2 accounts · Lowest ping"
-              em.pal-cat "Preset"
             div.pal-row [id="pal-34" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #1pvni8o
               span.pal-txt
                 b "Farm group 8"
                 small "[🎃] Adopt Me! · 2 accounts · Random"
-              em.pal-cat "Preset"
             div.pal-row [id="pal-35" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #1pvni8o
               span.pal-txt
                 b "A preset name that is as long as the app allows, sixty chars"
                 small "Brookhaven 🏡RP · 2 accounts"
-              em.pal-cat "Preset"
             div.pal-row [id="pal-36" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #1pvni8o
               span.pal-txt
                 b "Farm group 10"
                 small "Blox Fruits · 2 accounts · Most players · Next: Tomorrow 12:00 PM"
-              em.pal-cat "Preset"
             div.pal-row [id="pal-37" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #1pvni8o
               span.pal-txt
                 b "Farm group 11"
                 small "[🎃] Adopt Me! · 2 accounts · Fewest players"
-              em.pal-cat "Preset"
             div.pal-row [id="pal-38" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #1pvni8o
               span.pal-txt
                 b "Farm group 12"
                 small "Brookhaven 🏡RP · 2 accounts · Lowest ping"
-              em.pal-cat "Preset"
             div.pal-row [id="pal-39" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #1pvni8o
               span.pal-txt
                 b "Farm group 13"
                 small "Blox Fruits · 2 accounts · Random"
-              em.pal-cat "Preset"
             div.pal-row [id="pal-40" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #1pvni8o
               span.pal-txt
                 b "Farm group 14"
                 small "[🎃] Adopt Me! · 2 accounts"
-              em.pal-cat "Preset"
             div.pal-row [id="pal-41" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #1pvni8o
               span.pal-txt
                 b "Farm group 15"
                 small "Brookhaven 🏡RP · 2 accounts · Most players"
-              em.pal-cat "Preset"
             div.pal-row [id="pal-42" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #1pvni8o
               span.pal-txt
                 b "Farm group 16"
                 small "Blox Fruits · 2 accounts · Fewest players · Next: Today 6:00 PM"
-              em.pal-cat "Preset"
             div.pal-row [id="pal-43" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #1pvni8o
               span.pal-txt
                 b "Farm group 17"
                 small "[🎃] Adopt Me! · 2 accounts · Lowest ping"
-              em.pal-cat "Preset"
             div.pal-row [id="pal-44" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #1pvni8o
               span.pal-txt
                 b "Farm group 18"
                 small "Brookhaven 🏡RP · 2 accounts · Random"
-              em.pal-cat "Preset"
             div.pal-row [id="pal-45" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #1pvni8o
               span.pal-txt
                 b "Farm group 19"
                 small "Blox Fruits · 2 accounts"
-              em.pal-cat "Preset"
             div.pal-row [id="pal-46" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #1pvni8o
               span.pal-txt
                 b "Farm group 20"
                 small "[🎃] Adopt Me! · 2 accounts · Most players"
-              em.pal-cat "Preset"
             div.pal-row [id="pal-47" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #1pvni8o
               span.pal-txt
                 b "Farm group 21"
                 small "Brookhaven 🏡RP · 2 accounts · Fewest players"
-              em.pal-cat "Preset"
             div.pal-row [id="pal-48" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #1pvni8o
               span.pal-txt
                 b "Farm group 22"
                 small "Blox Fruits · 2 accounts · Lowest ping · Next: Tomorrow 8:00 AM"
-              em.pal-cat "Preset"
             div.pal-row [id="pal-49" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #1pvni8o
               span.pal-txt
                 b "Farm group 23"
                 small "[🎃] Adopt Me! · 2 accounts · Random"
-              em.pal-cat "Preset"
             div.pal-row [id="pal-50" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #1pvni8o
               span.pal-txt
                 b "Farm group 24"
                 small "Brookhaven 🏡RP · 2 accounts"
-              em.pal-cat "Preset"
             div.pal-row [id="pal-51" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #1pvni8o
               span.pal-txt
                 b "Farm group 25"
                 small "Blox Fruits · 2 accounts · Most players"
-              em.pal-cat "Preset"
             div.pal-row [id="pal-52" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #1pvni8o
               span.pal-txt
                 b "Farm group 26"
                 small "[🎃] Adopt Me! · 2 accounts · Fewest players"
-              em.pal-cat "Preset"
             div.pal-row [id="pal-53" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #1pvni8o
               span.pal-txt
                 b "Farm group 27"
                 small "Brookhaven 🏡RP · 2 accounts · Lowest ping"
-              em.pal-cat "Preset"
             div.pal-row [id="pal-54" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #1pvni8o
               span.pal-txt
                 b "Farm group 28"
                 small "Blox Fruits · 2 accounts · Random · Next: Today 2:00 PM"
-              em.pal-cat "Preset"
             div.pal-row [id="pal-55" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #1pvni8o
               span.pal-txt
                 b "Farm group 29"
                 small "[🎃] Adopt Me! · 2 accounts"
-              em.pal-cat "Preset"
             div.pal-row [id="pal-56" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #1pvni8o
               span.pal-txt
                 b "Farm group 30"
                 small "Brookhaven 🏡RP · 2 accounts · Most players"
-              em.pal-cat "Preset"
             div.pal-row [id="pal-57" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #1pvni8o
               span.pal-txt
                 b "Farm group 31"
                 small "Blox Fruits · 2 accounts · Fewest players"
-              em.pal-cat "Preset"
             div.pal-row [id="pal-58" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #1pvni8o
               span.pal-txt
                 b "Farm group 32"
                 small "[🎃] Adopt Me! · 2 accounts · Lowest ping"
-              em.pal-cat "Preset"
             div.pal-row [id="pal-59" role="option" aria-selected="false"]
               span.pal-ic
                 svg.i #1pvni8o
               span.pal-txt
                 b "Farm group 33"
                 small "Brookhaven 🏡RP · 2 accounts · Random"
-              em.pal-cat "Preset"
             div.pal-more "73 more match. Type more to narrow the list."
           div.pal-foot [aria-hidden="true"]
             span "move"

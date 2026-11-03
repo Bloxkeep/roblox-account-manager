@@ -54,18 +54,18 @@ html [data-theme="dark" lang="vi"]
             span "Đóng tất cả"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: Đang bật, mở được nhiều cửa sổ"]
+            button.multi-open [title="Multi-Roblox: Đang bật: mở được nhiều cửa sổ Roblox"]
               span.led
               div
                 b "Multi-Roblox"
-                small "Đang bật, mở được nhiều cửa sổ"
+                small "Đang bật"
             label.switch [title="Tắt Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
         div.side-foot
           div [id="update-slot"]
           div.side-lock
-            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
+            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, Preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
               svg.i #21scx0
               span "Khóa app"
             button.btn.ghost.side-sq.vault-btn [title="Đổi vault (Vault 1)" aria-label="Đổi vault (Vault 1)"]
@@ -89,7 +89,7 @@ html [data-theme="dark" lang="vi"]
               span "Phiên bản Roblox"
             button.set-nav-item [type="button"]
               svg.i #1l5qw3q
-              span "Treo game"
+              span "Treo máy"
             button.set-nav-item [type="button"]
               svg.i #1hupb3o
               span "Thông báo"
@@ -106,7 +106,7 @@ html [data-theme="dark" lang="vi"]
               svg.i #gsei2o
               span "Sao lưu & dữ liệu"
             button.set-nav-item [type="button" aria-current="page"]
-              svg.i #1uvtx1
+              img.set-nav-logo [alt="" src="logo.svg"]
               span "Bloxkeep"
           div.scroll.set-scroll
             div.settings
@@ -153,18 +153,31 @@ html [data-theme="dark" lang="vi"]
                     div.set-row
                       div
                         div.t "Phím tắt"
-                        div.d "Dùng trong mọi app, Ctrl+Alt cộng: H ẩn hoặc hiện tất cả, M thu nhỏ hoặc mở lại tất cả, N cửa sổ kế tiếp, A xếp cửa sổ, B mở Bloxkeep."
+                        div.d
+                          span.hk-list
+                            span.hk "++ Ẩn tất cả"
+                              kbd "Ctrl"
+                              kbd "Alt"
+                              kbd "H"
+                            span.hk "Thu nhỏ tất cả"
+                              kbd "M"
+                            span.hk "Cửa sổ kế"
+                              kbd "N"
+                            span.hk "Xếp cửa sổ"
+                              kbd "A"
+                            span.hk "Mở Bloxkeep"
+                              kbd "B"
                       div.ctl
                         label.switch
                           input [id="s-hotkeys" type="checkbox" aria-label="Phím tắt" checked=true]
                           span
                     div.set-row
                       div
-                        div.t "Tăng tốc phần cứng"
-                        div.d "Tắt để đỡ tốn RAM. Tự tắt nếu driver card đồ họa bị lỗi."
+                        div.t "Tăng tốc phần cứng cho Bloxkeep"
+                        div.d "Tắt thì tốn ít RAM hơn. Không ảnh hưởng Roblox."
                       div.ctl
                         label.switch
-                          input [id="s-gpu" type="checkbox" aria-label="Tăng tốc phần cứng" checked=true]
+                          input [id="s-gpu" type="checkbox" aria-label="Tăng tốc phần cứng cho Bloxkeep" checked=true]
                           span
                 div.set-grp [id="sec-feedback"]
                   h3.set-grp-title "Hướng dẫn & góp ý"
@@ -226,7 +239,7 @@ html [data-theme="dark" lang="vi"]
               img [alt="" style="width:556px" src="whatsnew/1.0.16-macros.vi.webp"]
             div.wn-feat-text
               h3 "Macro (Beta)"
-              p "Viết các bước thành câu dễ hiểu: bấm phím, bấm chuột, chờ hình, màu hoặc chữ, lặp lại, Nếu. Ghi lại thao tác hoặc bắt đầu từ mẫu, chạy thử, rồi kéo điểm và vùng ngay trên game."
+              p "Viết bước thành câu dễ hiểu, ghi lại hoặc dùng mẫu, rồi chạy thử trên game."
               button.wn-go [type="button" FOCUSED] "Tạo macro"
                 svg.i #1g7f83q
           article.wn-feat
@@ -234,7 +247,7 @@ html [data-theme="dark" lang="vi"]
               img [alt="" style="width:505px" src="whatsnew/1.0.16-panel.vi.webp"]
             div.wn-feat-text
               h3 "Bảng cạnh game"
-              p "Mỗi macro có cửa sổ nhỏ với nút Chạy và những cài đặt người chơi được đổi: tab, công tắc, lựa chọn, danh sách tích chọn, điểm đặt ngay trên game. Bảng có thể tự hiện khi tài khoản vào game bạn chọn."
+              p "Cửa sổ nhỏ có nút Chạy và cài đặt của macro, tự hiện khi tài khoản vào game."
               button.wn-go [type="button"] "Mở Macro"
                 svg.i #1g7f83q
           article.wn-feat
@@ -242,8 +255,8 @@ html [data-theme="dark" lang="vi"]
               img [alt="" style="width:577px" src="whatsnew/1.0.16-stats.vi.webp"]
             div.wn-feat-text
               h3 "Thống kê mới"
-              p "Giờ chơi so với những ngày trước, dòng thời gian của từng tài khoản, vì sao rớt và mất bao lâu, kèm nút bật đúng thứ giúp được."
-              button.wn-go [type="button"] "Xem thống kê"
+              p "Giờ chơi so với ngày trước, dòng thời gian từng tài khoản, và vì sao văng."
+              button.wn-go [type="button"] "Xem Thống kê"
                 svg.i #1g7f83q
         section.improved.wn-group
           h4.wn-kind "Cải thiện"
@@ -251,7 +264,7 @@ html [data-theme="dark" lang="vi"]
             li "Macro không thấy gì trong vài phút sẽ chạy các bước \"Khi bị kẹt\" rồi làm lại từ đầu; cũng có thể chọn vào lại game hoặc gửi cảnh báo Discord kèm ảnh cửa sổ."
             li "Macro đọc được chữ nào người chơi tích trong danh sách (đọc sai một chữ cái vẫn nhận) và bấm từng chấm màu một lần khi nó hiện."
             li "Ctrl+Alt+1 đến 9 chạy macro, Ctrl+Alt+0 dừng mọi macro. Menu khay và Ctrl+K hiện hoặc ẩn bảng."
-            li "Fast Flags (trời xám, không cỏ, đồ họa thấp nhất) có công tắc riêng trong Cài đặt › Treo game, mặc định tắt: bật lên để giữ trời xám của Treo máy nhẹ."
+            li "Fast Flags (trời xám, không cỏ, đồ họa thấp nhất) có công tắc riêng trong Cài đặt › Treo máy, mặc định tắt: bật lên để giữ trời xám như trước."
             li "Theo dõi game có nút thu nhỏ trên từng cửa sổ, ảnh đổi theo kích thước ngay."
             li "Ctrl+Alt+A xếp cửa sổ trên màn hình đang có chuột."
         section.fixed.wn-group

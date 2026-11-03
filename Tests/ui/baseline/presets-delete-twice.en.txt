@@ -54,11 +54,11 @@ html [data-theme="dark" lang="en"]
             span "Close all"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+            button.multi-open [title="Multi-Roblox: On: several Roblox windows can be open"]
               span.led
               div
                 b "Multi-Roblox"
-                small "On — several windows allowed"
+                small "On"
             label.switch [title="Turn off Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
@@ -93,8 +93,9 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Morning check-in"] "Morning check-in"
                 small [title="Roblox home"] "Roblox home"
-                span.pv-sum [title="No wait between accounts · Schedule off · Thu, 12/24 7:30 AM"] "No wait between accounts · Schedule off · Thu, 12/24 7:30 AM"
-                span.pv-next
+                span.pv-sum [title="No wait between accounts"] "No wait between accounts"
+                span.pv-next "·"
+                  span "Schedule off · Thu, 12/24 7:30 AM"
                   span "Last run 1 day ago"
               div.pv-accs [title="6 accounts\nMain\nFarm 1\nNight Owl\nAlt\nTrade\nTesting" aria-label="6 accounts"]
                 span.avatar.sm

@@ -54,11 +54,11 @@ html [data-theme="dark" lang="en"]
             span "Close all"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+            button.multi-open [title="Multi-Roblox: On: several Roblox windows can be open"]
               span.led
               div
                 b "Multi-Roblox"
-                small "On — several windows allowed"
+                small "On"
             label.switch [title="Turn off Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
@@ -81,10 +81,6 @@ html [data-theme="dark" lang="en"]
             div.seg [id="stats-tabs" role="tablist" aria-label="Statistics"]
               button.on [role="tab" type="button" aria-selected="true"] "Statistics"
               button [role="tab" type="button" aria-selected="false"] "Activity"
-            div.chips [id="stats-period" role="group" aria-label="Statistics"]
-              button.chip [aria-pressed="false"] "Today"
-              button.chip.on [aria-pressed="true"] "7 days"
-              button.chip [aria-pressed="false"] "30 days"
         div.scroll
           div.stats
             div.stats-in [id="stats-body"]

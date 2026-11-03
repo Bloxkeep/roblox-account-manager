@@ -54,18 +54,18 @@ html [data-theme="dark" lang="vi"]
             span "Đóng tất cả"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: Đang bật, mở được nhiều cửa sổ"]
+            button.multi-open [title="Multi-Roblox: Đang bật: mở được nhiều cửa sổ Roblox"]
               span.led
               div
                 b "Multi-Roblox"
-                small "Đang bật, mở được nhiều cửa sổ"
+                small "Đang bật"
             label.switch [title="Tắt Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
         div.side-foot
           div [id="update-slot"]
           div.side-lock
-            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
+            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, Preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
               svg.i #21scx0
               span "Khóa app"
             button.btn.ghost.side-sq.vault-btn [title="Đổi vault (Vault 1)" aria-label="Đổi vault (Vault 1)"]
@@ -76,7 +76,7 @@ html [data-theme="dark" lang="vi"]
         header.top
           div.top-title
             h1 "Preset"
-            p [id="pv-sub"] "preset preset hẹn giờđã đạt mức tối đa"
+            p [id="pv-sub"] "Preset Preset hẹn giờđã tới giới hạn"
               b "50"
               span.sep "·"
               b "9"
@@ -84,10 +84,10 @@ html [data-theme="dark" lang="vi"]
           div.top-tools [id="pv-tools"]
             label.search
               svg.i #1u22jvi
-              input [id="pv-q" placeholder="Tìm preset hoặc game" maxlength="100" aria-label="Tìm preset hoặc game" value=""]
-            button.btn.primary [FOCUSED]
+              input [id="pv-q" placeholder="Tìm Preset hoặc game" maxlength="100" aria-label="Tìm Preset hoặc game" value=""]
+            button.btn.primary [title="Lưu được tối đa 50 Preset." aria-disabled="true" FOCUSED]
               svg.i #u7ty99
-              span "Thêm preset"
+              span "Thêm Preset"
         div.scroll
           div.pv-list [id="pv-list" role="list"]
             div.pv-item [role="listitem"]
@@ -98,9 +98,10 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Farm Blox Fruits"] "Farm Blox Fruits"
                 small [title="Blox Fruits"] "Blox Fruits"
-                span.pv-sum [title="Ping thấp nhất · Chờ 12 giây giữa các tài khoản · Thứ 2–Thứ 6 20:00 · Bật chống AFK · Treo máy nhẹ · Mở lại mỗi 4 giờ · Xếp cửa sổ · Kênh Discord riêng"] "Ping thấp nhất · Chờ 12 giây giữa các tài khoản · Thứ 2–Thứ 6 20:00 · Bật chống AFK · Treo máy nhẹ · Mở lại mỗi 4 giờ · Xếp cửa sổ · Kênh Discord riêng"
-                span.pv-next "· Lần tới: Hôm nay 20:00"
+                span.pv-sum [title="Ping thấp nhất · Chờ 12 giây giữa các tài khoản · Bật chống AFK · Treo máy nhẹ · Mở lại mỗi 4 giờ · Xếp cửa sổ · Kênh Discord riêng"] "Ping thấp nhất · Chờ 12 giây giữa các tài khoản · Bật chống AFK · Treo máy nhẹ · Mở lại mỗi 4 giờ · Xếp cửa sổ · Kênh Discord riêng"
+                span.pv-next "· · Lần tới: Hôm nay 20:00"
                   span.pv-live "Đang mở 3 cửa sổ"
+                  span "T2–T6 20:00"
               div.pv-accs [title="3 tài khoản\nFarm 1\nFarm 2\nNight Owl" aria-label="3 tài khoản"]
                 span.avatar.sm
                   img [alt="" style="--h:243" src=#uinvo6]
@@ -113,7 +114,7 @@ html [data-theme="dark" lang="vi"]
                 label.switch [title="Tắt hẹn giờ"]
                   input [type="checkbox" aria-label="Hẹn giờ: Farm Blox Fruits" checked=true]
                   span
-              button.btn.pv-close.pv-run.sm [title="Đóng 3 cửa sổ do preset này mở." aria-label="Đóng: Farm Blox Fruits"]
+              button.btn.pv-close.pv-run.sm [title="Đóng 3 cửa sổ do Preset này mở." aria-label="Đóng: Farm Blox Fruits"]
                 svg.i #16z0s1r
                 span "Đóng"
               span.pv-acts
@@ -136,7 +137,7 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Adopt Me trade"] "Adopt Me trade"
                 small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
-                span.pv-sum [title="Bất kỳ (Roblox tự chọn) · Chờ mặc định (8 giây) · Không hẹn giờ · Tắt tự vào lại"] "Bất kỳ (Roblox tự chọn) · Chờ mặc định (8 giây) · Không hẹn giờ · Tắt tự vào lại"
+                span.pv-sum [title="Bất kỳ (Roblox tự chọn) · Chờ mặc định (8 giây) · Tắt tự vào lại"] "Bất kỳ (Roblox tự chọn) · Chờ mặc định (8 giây) · Tắt tự vào lại"
                 span.pv-next
                   span "Chạy lần cuối 1 giờ trước"
               div.pv-accs [title="1 tài khoản\nTrade" aria-label="1 tài khoản"]
@@ -166,8 +167,9 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Morning check-in"] "Morning check-in"
                 small [title="Màn hình chính Roblox"] "Màn hình chính Roblox"
-                span.pv-sum [title="Mở cùng lúc, không chờ · Hẹn giờ đang tắt · Thứ 5, 24/12 07:30"] "Mở cùng lúc, không chờ · Hẹn giờ đang tắt · Thứ 5, 24/12 07:30"
-                span.pv-next
+                span.pv-sum [title="Mở cùng lúc, không chờ"] "Mở cùng lúc, không chờ"
+                span.pv-next "·"
+                  span "Hẹn giờ đang tắt · T5, 24/12 07:30"
                   span "Chạy lần cuối 1 ngày trước"
               div.pv-accs [title="6 tài khoản\nTài khoản chính\nFarm 1\nNight Owl\nTài khoản phụ\nTrade\nThử nghiệm" aria-label="6 tài khoản"]
                 span.avatar.sm
@@ -207,8 +209,9 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Farm group 4"] "Farm group 4"
                 small [title="Blox Fruits"] "Blox Fruits"
-                span.pv-sum [title="Bất kỳ (Roblox tự chọn) · Chờ mặc định (8 giây) · Mỗi ngày 06:00"] "Bất kỳ (Roblox tự chọn) · Chờ mặc định (8 giây) · Mỗi ngày 06:00"
-                span.pv-next "Lần tới: Ngày mai 06:00"
+                span.pv-sum [title="Bất kỳ (Roblox tự chọn) · Chờ mặc định (8 giây)"] "Bất kỳ (Roblox tự chọn) · Chờ mặc định (8 giây)"
+                span.pv-next "· Lần tới: Ngày mai 06:00"
+                  span "Mỗi ngày 06:00"
               div.pv-accs [title="2 tài khoản\nTài khoản chính\nNight Owl" aria-label="2 tài khoản"]
                 span.avatar.sm
                   img [alt="" style="--h:204" src=#1qk25wb]
@@ -242,7 +245,7 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Farm group 5"] "Farm group 5"
                 small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
-                span.pv-sum [title="Đông nhất · Chờ 6 giây giữa các tài khoản · Không hẹn giờ"] "Đông nhất · Chờ 6 giây giữa các tài khoản · Không hẹn giờ"
+                span.pv-sum [title="Đông nhất · Chờ 6 giây giữa các tài khoản"] "Đông nhất · Chờ 6 giây giữa các tài khoản"
               div.pv-accs [title="2 tài khoản\nFarm 1\nTài khoản phụ" aria-label="2 tài khoản"]
                 span.avatar.sm
                   img [alt="" style="--h:243" src=#uinvo6]
@@ -272,7 +275,7 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Farm group 6"] "Farm group 6"
                 small [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
-                span.pv-sum [title="Vắng nhất · Chờ 7 giây giữa các tài khoản · Không hẹn giờ"] "Vắng nhất · Chờ 7 giây giữa các tài khoản · Không hẹn giờ"
+                span.pv-sum [title="Vắng nhất · Chờ 7 giây giữa các tài khoản"] "Vắng nhất · Chờ 7 giây giữa các tài khoản"
               div.pv-accs [title="2 tài khoản\nFarm 2\nTrade" aria-label="2 tài khoản"]
                 span.avatar.sm
                   img [alt="" style="--h:244" src=#n0d7cr]
@@ -302,7 +305,9 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Farm group 7"] "Farm group 7"
                 small [title="Blox Fruits"] "Blox Fruits"
-                span.pv-sum [title="Ping thấp nhất · Chờ 8 giây giữa các tài khoản · Hẹn giờ đang tắt · Thứ 7, CN 09:00"] "Ping thấp nhất · Chờ 8 giây giữa các tài khoản · Hẹn giờ đang tắt · Thứ 7, CN 09:00"
+                span.pv-sum [title="Ping thấp nhất · Chờ 8 giây giữa các tài khoản"] "Ping thấp nhất · Chờ 8 giây giữa các tài khoản"
+                span.pv-next
+                  span "Hẹn giờ đang tắt · T7, CN 09:00"
               div.pv-accs [title="2 tài khoản\nNight Owl\nThử nghiệm" aria-label="2 tài khoản"]
                 span.avatar.sm
                   img [alt="" style="--h:297" src=#1u67et1]
@@ -336,7 +341,7 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Farm group 8"] "Farm group 8"
                 small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
-                span.pv-sum [title="Ngẫu nhiên · Chờ mặc định (8 giây) · Không hẹn giờ"] "Ngẫu nhiên · Chờ mặc định (8 giây) · Không hẹn giờ"
+                span.pv-sum [title="Ngẫu nhiên · Chờ mặc định (8 giây)"] "Ngẫu nhiên · Chờ mặc định (8 giây)"
               div.pv-accs [title="2 tài khoản\nTài khoản phụ\nTài khoản chính" aria-label="2 tài khoản"]
                 span.avatar.sm
                   img [alt="" style="--h:83" src=#c108i9]
@@ -366,7 +371,7 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="A preset name that is as long as the app allows, sixty chars"] "A preset name that is as long as the app allows, sixty chars"
                 small [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
-                span.pv-sum [title="Bất kỳ (Roblox tự chọn) · Chờ 10 giây giữa các tài khoản · Không hẹn giờ"] "Bất kỳ (Roblox tự chọn) · Chờ 10 giây giữa các tài khoản · Không hẹn giờ"
+                span.pv-sum [title="Bất kỳ (Roblox tự chọn) · Chờ 10 giây giữa các tài khoản"] "Bất kỳ (Roblox tự chọn) · Chờ 10 giây giữa các tài khoản"
               div.pv-accs [title="2 tài khoản\nTrade\nFarm 1" aria-label="2 tài khoản"]
                 span.avatar.sm
                   img [alt="" style="--h:218" src=#kgijcs]
@@ -396,8 +401,9 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Farm group 10"] "Farm group 10"
                 small [title="Blox Fruits"] "Blox Fruits"
-                span.pv-sum [title="Đông nhất · Chờ 11 giây giữa các tài khoản · Thứ 7, CN 12:00"] "Đông nhất · Chờ 11 giây giữa các tài khoản · Thứ 7, CN 12:00"
-                span.pv-next "Lần tới: Ngày mai 12:00"
+                span.pv-sum [title="Đông nhất · Chờ 11 giây giữa các tài khoản"] "Đông nhất · Chờ 11 giây giữa các tài khoản"
+                span.pv-next "· Lần tới: Ngày mai 12:00"
+                  span "T7, CN 12:00"
               div.pv-accs [title="2 tài khoản\nThử nghiệm\nFarm 2" aria-label="2 tài khoản"]
                 span.avatar.sm
                   span.initials [style="--h:217"] "TH"
@@ -431,7 +437,7 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Farm group 11"] "Farm group 11"
                 small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
-                span.pv-sum [title="Vắng nhất · Chờ 12 giây giữa các tài khoản · Không hẹn giờ"] "Vắng nhất · Chờ 12 giây giữa các tài khoản · Không hẹn giờ"
+                span.pv-sum [title="Vắng nhất · Chờ 12 giây giữa các tài khoản"] "Vắng nhất · Chờ 12 giây giữa các tài khoản"
               div.pv-accs [title="2 tài khoản\nTài khoản chính\nNight Owl" aria-label="2 tài khoản"]
                 span.avatar.sm
                   img [alt="" style="--h:204" src=#1qk25wb]
@@ -461,7 +467,7 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Farm group 12"] "Farm group 12"
                 small [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
-                span.pv-sum [title="Ping thấp nhất · Chờ mặc định (8 giây) · Không hẹn giờ"] "Ping thấp nhất · Chờ mặc định (8 giây) · Không hẹn giờ"
+                span.pv-sum [title="Ping thấp nhất · Chờ mặc định (8 giây)"] "Ping thấp nhất · Chờ mặc định (8 giây)"
               div.pv-accs [title="2 tài khoản\nFarm 1\nTài khoản phụ" aria-label="2 tài khoản"]
                 span.avatar.sm
                   img [alt="" style="--h:243" src=#uinvo6]
@@ -491,7 +497,9 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Farm group 13"] "Farm group 13"
                 small [title="Blox Fruits"] "Blox Fruits"
-                span.pv-sum [title="Ngẫu nhiên · Chờ 5 giây giữa các tài khoản · Hẹn giờ đang tắt · Thứ 7, CN 15:00"] "Ngẫu nhiên · Chờ 5 giây giữa các tài khoản · Hẹn giờ đang tắt · Thứ 7, CN 15:00"
+                span.pv-sum [title="Ngẫu nhiên · Chờ 5 giây giữa các tài khoản"] "Ngẫu nhiên · Chờ 5 giây giữa các tài khoản"
+                span.pv-next
+                  span "Hẹn giờ đang tắt · T7, CN 15:00"
               div.pv-accs [title="2 tài khoản\nFarm 2\nTrade" aria-label="2 tài khoản"]
                 span.avatar.sm
                   img [alt="" style="--h:244" src=#n0d7cr]
@@ -525,7 +533,7 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Farm group 14"] "Farm group 14"
                 small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
-                span.pv-sum [title="Bất kỳ (Roblox tự chọn) · Chờ 6 giây giữa các tài khoản · Không hẹn giờ"] "Bất kỳ (Roblox tự chọn) · Chờ 6 giây giữa các tài khoản · Không hẹn giờ"
+                span.pv-sum [title="Bất kỳ (Roblox tự chọn) · Chờ 6 giây giữa các tài khoản"] "Bất kỳ (Roblox tự chọn) · Chờ 6 giây giữa các tài khoản"
               div.pv-accs [title="2 tài khoản\nNight Owl\nThử nghiệm" aria-label="2 tài khoản"]
                 span.avatar.sm
                   img [alt="" style="--h:297" src=#1u67et1]
@@ -555,7 +563,7 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Farm group 15"] "Farm group 15"
                 small [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
-                span.pv-sum [title="Đông nhất · Chờ 7 giây giữa các tài khoản · Không hẹn giờ"] "Đông nhất · Chờ 7 giây giữa các tài khoản · Không hẹn giờ"
+                span.pv-sum [title="Đông nhất · Chờ 7 giây giữa các tài khoản"] "Đông nhất · Chờ 7 giây giữa các tài khoản"
               div.pv-accs [title="2 tài khoản\nTài khoản phụ\nTài khoản chính" aria-label="2 tài khoản"]
                 span.avatar.sm
                   img [alt="" style="--h:83" src=#c108i9]
@@ -585,8 +593,9 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Farm group 16"] "Farm group 16"
                 small [title="Blox Fruits"] "Blox Fruits"
-                span.pv-sum [title="Vắng nhất · Chờ mặc định (8 giây) · Mỗi ngày 18:00"] "Vắng nhất · Chờ mặc định (8 giây) · Mỗi ngày 18:00"
-                span.pv-next "Lần tới: Hôm nay 18:00"
+                span.pv-sum [title="Vắng nhất · Chờ mặc định (8 giây)"] "Vắng nhất · Chờ mặc định (8 giây)"
+                span.pv-next "· Lần tới: Hôm nay 18:00"
+                  span "Mỗi ngày 18:00"
               div.pv-accs [title="2 tài khoản\nTrade\nFarm 1" aria-label="2 tài khoản"]
                 span.avatar.sm
                   img [alt="" style="--h:218" src=#kgijcs]
@@ -620,7 +629,7 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Farm group 17"] "Farm group 17"
                 small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
-                span.pv-sum [title="Ping thấp nhất · Chờ 9 giây giữa các tài khoản · Không hẹn giờ"] "Ping thấp nhất · Chờ 9 giây giữa các tài khoản · Không hẹn giờ"
+                span.pv-sum [title="Ping thấp nhất · Chờ 9 giây giữa các tài khoản"] "Ping thấp nhất · Chờ 9 giây giữa các tài khoản"
               div.pv-accs [title="2 tài khoản\nThử nghiệm\nFarm 2" aria-label="2 tài khoản"]
                 span.avatar.sm
                   span.initials [style="--h:217"] "TH"
@@ -650,7 +659,7 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Farm group 18"] "Farm group 18"
                 small [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
-                span.pv-sum [title="Ngẫu nhiên · Chờ 10 giây giữa các tài khoản · Không hẹn giờ"] "Ngẫu nhiên · Chờ 10 giây giữa các tài khoản · Không hẹn giờ"
+                span.pv-sum [title="Ngẫu nhiên · Chờ 10 giây giữa các tài khoản"] "Ngẫu nhiên · Chờ 10 giây giữa các tài khoản"
               div.pv-accs [title="2 tài khoản\nTài khoản chính\nNight Owl" aria-label="2 tài khoản"]
                 span.avatar.sm
                   img [alt="" style="--h:204" src=#1qk25wb]
@@ -680,7 +689,9 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Farm group 19"] "Farm group 19"
                 small [title="Blox Fruits"] "Blox Fruits"
-                span.pv-sum [title="Bất kỳ (Roblox tự chọn) · Chờ 11 giây giữa các tài khoản · Hẹn giờ đang tắt · Thứ 7, CN 21:00"] "Bất kỳ (Roblox tự chọn) · Chờ 11 giây giữa các tài khoản · Hẹn giờ đang tắt · Thứ 7, CN 21:00"
+                span.pv-sum [title="Bất kỳ (Roblox tự chọn) · Chờ 11 giây giữa các tài khoản"] "Bất kỳ (Roblox tự chọn) · Chờ 11 giây giữa các tài khoản"
+                span.pv-next
+                  span "Hẹn giờ đang tắt · T7, CN 21:00"
               div.pv-accs [title="2 tài khoản\nFarm 1\nTài khoản phụ" aria-label="2 tài khoản"]
                 span.avatar.sm
                   img [alt="" style="--h:243" src=#uinvo6]
@@ -714,7 +725,7 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Farm group 20"] "Farm group 20"
                 small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
-                span.pv-sum [title="Đông nhất · Chờ mặc định (8 giây) · Không hẹn giờ"] "Đông nhất · Chờ mặc định (8 giây) · Không hẹn giờ"
+                span.pv-sum [title="Đông nhất · Chờ mặc định (8 giây)"] "Đông nhất · Chờ mặc định (8 giây)"
               div.pv-accs [title="2 tài khoản\nFarm 2\nTrade" aria-label="2 tài khoản"]
                 span.avatar.sm
                   img [alt="" style="--h:244" src=#n0d7cr]
@@ -744,7 +755,7 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Farm group 21"] "Farm group 21"
                 small [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
-                span.pv-sum [title="Vắng nhất · Chờ 13 giây giữa các tài khoản · Không hẹn giờ"] "Vắng nhất · Chờ 13 giây giữa các tài khoản · Không hẹn giờ"
+                span.pv-sum [title="Vắng nhất · Chờ 13 giây giữa các tài khoản"] "Vắng nhất · Chờ 13 giây giữa các tài khoản"
               div.pv-accs [title="2 tài khoản\nNight Owl\nThử nghiệm" aria-label="2 tài khoản"]
                 span.avatar.sm
                   img [alt="" style="--h:297" src=#1u67et1]
@@ -774,8 +785,9 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Farm group 22"] "Farm group 22"
                 small [title="Blox Fruits"] "Blox Fruits"
-                span.pv-sum [title="Ping thấp nhất · Chờ 5 giây giữa các tài khoản · Thứ 7, CN 08:00"] "Ping thấp nhất · Chờ 5 giây giữa các tài khoản · Thứ 7, CN 08:00"
-                span.pv-next "Lần tới: Ngày mai 08:00"
+                span.pv-sum [title="Ping thấp nhất · Chờ 5 giây giữa các tài khoản"] "Ping thấp nhất · Chờ 5 giây giữa các tài khoản"
+                span.pv-next "· Lần tới: Ngày mai 08:00"
+                  span "T7, CN 08:00"
               div.pv-accs [title="2 tài khoản\nTài khoản phụ\nTài khoản chính" aria-label="2 tài khoản"]
                 span.avatar.sm
                   img [alt="" style="--h:83" src=#c108i9]
@@ -809,7 +821,7 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Farm group 23"] "Farm group 23"
                 small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
-                span.pv-sum [title="Ngẫu nhiên · Chờ 6 giây giữa các tài khoản · Không hẹn giờ"] "Ngẫu nhiên · Chờ 6 giây giữa các tài khoản · Không hẹn giờ"
+                span.pv-sum [title="Ngẫu nhiên · Chờ 6 giây giữa các tài khoản"] "Ngẫu nhiên · Chờ 6 giây giữa các tài khoản"
               div.pv-accs [title="2 tài khoản\nTrade\nFarm 1" aria-label="2 tài khoản"]
                 span.avatar.sm
                   img [alt="" style="--h:218" src=#kgijcs]
@@ -839,7 +851,7 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Farm group 24"] "Farm group 24"
                 small [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
-                span.pv-sum [title="Bất kỳ (Roblox tự chọn) · Chờ mặc định (8 giây) · Không hẹn giờ"] "Bất kỳ (Roblox tự chọn) · Chờ mặc định (8 giây) · Không hẹn giờ"
+                span.pv-sum [title="Bất kỳ (Roblox tự chọn) · Chờ mặc định (8 giây)"] "Bất kỳ (Roblox tự chọn) · Chờ mặc định (8 giây)"
               div.pv-accs [title="2 tài khoản\nThử nghiệm\nFarm 2" aria-label="2 tài khoản"]
                 span.avatar.sm
                   span.initials [style="--h:217"] "TH"
@@ -869,7 +881,9 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Farm group 25"] "Farm group 25"
                 small [title="Blox Fruits"] "Blox Fruits"
-                span.pv-sum [title="Đông nhất · Chờ 8 giây giữa các tài khoản · Hẹn giờ đang tắt · Thứ 7, CN 11:00"] "Đông nhất · Chờ 8 giây giữa các tài khoản · Hẹn giờ đang tắt · Thứ 7, CN 11:00"
+                span.pv-sum [title="Đông nhất · Chờ 8 giây giữa các tài khoản"] "Đông nhất · Chờ 8 giây giữa các tài khoản"
+                span.pv-next
+                  span "Hẹn giờ đang tắt · T7, CN 11:00"
               div.pv-accs [title="2 tài khoản\nTài khoản chính\nNight Owl" aria-label="2 tài khoản"]
                 span.avatar.sm
                   img [alt="" style="--h:204" src=#1qk25wb]
@@ -903,7 +917,7 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Farm group 26"] "Farm group 26"
                 small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
-                span.pv-sum [title="Vắng nhất · Chờ 9 giây giữa các tài khoản · Không hẹn giờ"] "Vắng nhất · Chờ 9 giây giữa các tài khoản · Không hẹn giờ"
+                span.pv-sum [title="Vắng nhất · Chờ 9 giây giữa các tài khoản"] "Vắng nhất · Chờ 9 giây giữa các tài khoản"
               div.pv-accs [title="2 tài khoản\nFarm 1\nTài khoản phụ" aria-label="2 tài khoản"]
                 span.avatar.sm
                   img [alt="" style="--h:243" src=#uinvo6]
@@ -933,7 +947,7 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Farm group 27"] "Farm group 27"
                 small [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
-                span.pv-sum [title="Ping thấp nhất · Chờ 10 giây giữa các tài khoản · Không hẹn giờ"] "Ping thấp nhất · Chờ 10 giây giữa các tài khoản · Không hẹn giờ"
+                span.pv-sum [title="Ping thấp nhất · Chờ 10 giây giữa các tài khoản"] "Ping thấp nhất · Chờ 10 giây giữa các tài khoản"
               div.pv-accs [title="2 tài khoản\nFarm 2\nTrade" aria-label="2 tài khoản"]
                 span.avatar.sm
                   img [alt="" style="--h:244" src=#n0d7cr]
@@ -963,8 +977,9 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Farm group 28"] "Farm group 28"
                 small [title="Blox Fruits"] "Blox Fruits"
-                span.pv-sum [title="Ngẫu nhiên · Chờ mặc định (8 giây) · Mỗi ngày 14:00"] "Ngẫu nhiên · Chờ mặc định (8 giây) · Mỗi ngày 14:00"
-                span.pv-next "Lần tới: Hôm nay 14:00"
+                span.pv-sum [title="Ngẫu nhiên · Chờ mặc định (8 giây)"] "Ngẫu nhiên · Chờ mặc định (8 giây)"
+                span.pv-next "· Lần tới: Hôm nay 14:00"
+                  span "Mỗi ngày 14:00"
               div.pv-accs [title="2 tài khoản\nNight Owl\nThử nghiệm" aria-label="2 tài khoản"]
                 span.avatar.sm
                   img [alt="" style="--h:297" src=#1u67et1]
@@ -998,7 +1013,7 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Farm group 29"] "Farm group 29"
                 small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
-                span.pv-sum [title="Bất kỳ (Roblox tự chọn) · Chờ 12 giây giữa các tài khoản · Không hẹn giờ"] "Bất kỳ (Roblox tự chọn) · Chờ 12 giây giữa các tài khoản · Không hẹn giờ"
+                span.pv-sum [title="Bất kỳ (Roblox tự chọn) · Chờ 12 giây giữa các tài khoản"] "Bất kỳ (Roblox tự chọn) · Chờ 12 giây giữa các tài khoản"
               div.pv-accs [title="2 tài khoản\nTài khoản phụ\nTài khoản chính" aria-label="2 tài khoản"]
                 span.avatar.sm
                   img [alt="" style="--h:83" src=#c108i9]
@@ -1028,7 +1043,7 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Farm group 30"] "Farm group 30"
                 small [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
-                span.pv-sum [title="Đông nhất · Chờ 13 giây giữa các tài khoản · Không hẹn giờ"] "Đông nhất · Chờ 13 giây giữa các tài khoản · Không hẹn giờ"
+                span.pv-sum [title="Đông nhất · Chờ 13 giây giữa các tài khoản"] "Đông nhất · Chờ 13 giây giữa các tài khoản"
               div.pv-accs [title="2 tài khoản\nTrade\nFarm 1" aria-label="2 tài khoản"]
                 span.avatar.sm
                   img [alt="" style="--h:218" src=#kgijcs]
@@ -1058,7 +1073,9 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Farm group 31"] "Farm group 31"
                 small [title="Blox Fruits"] "Blox Fruits"
-                span.pv-sum [title="Vắng nhất · Chờ 5 giây giữa các tài khoản · Hẹn giờ đang tắt · Thứ 7, CN 17:00"] "Vắng nhất · Chờ 5 giây giữa các tài khoản · Hẹn giờ đang tắt · Thứ 7, CN 17:00"
+                span.pv-sum [title="Vắng nhất · Chờ 5 giây giữa các tài khoản"] "Vắng nhất · Chờ 5 giây giữa các tài khoản"
+                span.pv-next
+                  span "Hẹn giờ đang tắt · T7, CN 17:00"
               div.pv-accs [title="2 tài khoản\nThử nghiệm\nFarm 2" aria-label="2 tài khoản"]
                 span.avatar.sm
                   span.initials [style="--h:217"] "TH"
@@ -1092,7 +1109,7 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Farm group 32"] "Farm group 32"
                 small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
-                span.pv-sum [title="Ping thấp nhất · Chờ mặc định (8 giây) · Không hẹn giờ"] "Ping thấp nhất · Chờ mặc định (8 giây) · Không hẹn giờ"
+                span.pv-sum [title="Ping thấp nhất · Chờ mặc định (8 giây)"] "Ping thấp nhất · Chờ mặc định (8 giây)"
               div.pv-accs [title="2 tài khoản\nTài khoản chính\nNight Owl" aria-label="2 tài khoản"]
                 span.avatar.sm
                   img [alt="" style="--h:204" src=#1qk25wb]
@@ -1122,7 +1139,7 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Farm group 33"] "Farm group 33"
                 small [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
-                span.pv-sum [title="Ngẫu nhiên · Chờ 7 giây giữa các tài khoản · Không hẹn giờ"] "Ngẫu nhiên · Chờ 7 giây giữa các tài khoản · Không hẹn giờ"
+                span.pv-sum [title="Ngẫu nhiên · Chờ 7 giây giữa các tài khoản"] "Ngẫu nhiên · Chờ 7 giây giữa các tài khoản"
               div.pv-accs [title="2 tài khoản\nFarm 1\nTài khoản phụ" aria-label="2 tài khoản"]
                 span.avatar.sm
                   img [alt="" style="--h:243" src=#uinvo6]
@@ -1152,8 +1169,9 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Farm group 34"] "Farm group 34"
                 small [title="Blox Fruits"] "Blox Fruits"
-                span.pv-sum [title="Bất kỳ (Roblox tự chọn) · Chờ 8 giây giữa các tài khoản · Thứ 7, CN 20:00"] "Bất kỳ (Roblox tự chọn) · Chờ 8 giây giữa các tài khoản · Thứ 7, CN 20:00"
-                span.pv-next "Lần tới: Ngày mai 20:00"
+                span.pv-sum [title="Bất kỳ (Roblox tự chọn) · Chờ 8 giây giữa các tài khoản"] "Bất kỳ (Roblox tự chọn) · Chờ 8 giây giữa các tài khoản"
+                span.pv-next "· Lần tới: Ngày mai 20:00"
+                  span "T7, CN 20:00"
               div.pv-accs [title="2 tài khoản\nFarm 2\nTrade" aria-label="2 tài khoản"]
                 span.avatar.sm
                   img [alt="" style="--h:244" src=#n0d7cr]
@@ -1187,7 +1205,7 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Farm group 35"] "Farm group 35"
                 small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
-                span.pv-sum [title="Đông nhất · Chờ 9 giây giữa các tài khoản · Không hẹn giờ"] "Đông nhất · Chờ 9 giây giữa các tài khoản · Không hẹn giờ"
+                span.pv-sum [title="Đông nhất · Chờ 9 giây giữa các tài khoản"] "Đông nhất · Chờ 9 giây giữa các tài khoản"
               div.pv-accs [title="2 tài khoản\nNight Owl\nThử nghiệm" aria-label="2 tài khoản"]
                 span.avatar.sm
                   img [alt="" style="--h:297" src=#1u67et1]
@@ -1217,7 +1235,7 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Farm group 36"] "Farm group 36"
                 small [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
-                span.pv-sum [title="Vắng nhất · Chờ mặc định (8 giây) · Không hẹn giờ"] "Vắng nhất · Chờ mặc định (8 giây) · Không hẹn giờ"
+                span.pv-sum [title="Vắng nhất · Chờ mặc định (8 giây)"] "Vắng nhất · Chờ mặc định (8 giây)"
               div.pv-accs [title="2 tài khoản\nTài khoản phụ\nTài khoản chính" aria-label="2 tài khoản"]
                 span.avatar.sm
                   img [alt="" style="--h:83" src=#c108i9]
@@ -1247,7 +1265,9 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Farm group 37"] "Farm group 37"
                 small [title="Blox Fruits"] "Blox Fruits"
-                span.pv-sum [title="Ping thấp nhất · Chờ 11 giây giữa các tài khoản · Hẹn giờ đang tắt · Thứ 7, CN 07:00"] "Ping thấp nhất · Chờ 11 giây giữa các tài khoản · Hẹn giờ đang tắt · Thứ 7, CN 07:00"
+                span.pv-sum [title="Ping thấp nhất · Chờ 11 giây giữa các tài khoản"] "Ping thấp nhất · Chờ 11 giây giữa các tài khoản"
+                span.pv-next
+                  span "Hẹn giờ đang tắt · T7, CN 07:00"
               div.pv-accs [title="2 tài khoản\nTrade\nFarm 1" aria-label="2 tài khoản"]
                 span.avatar.sm
                   img [alt="" style="--h:218" src=#kgijcs]
@@ -1281,7 +1301,7 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Farm group 38"] "Farm group 38"
                 small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
-                span.pv-sum [title="Ngẫu nhiên · Chờ 12 giây giữa các tài khoản · Không hẹn giờ"] "Ngẫu nhiên · Chờ 12 giây giữa các tài khoản · Không hẹn giờ"
+                span.pv-sum [title="Ngẫu nhiên · Chờ 12 giây giữa các tài khoản"] "Ngẫu nhiên · Chờ 12 giây giữa các tài khoản"
               div.pv-accs [title="2 tài khoản\nThử nghiệm\nFarm 2" aria-label="2 tài khoản"]
                 span.avatar.sm
                   span.initials [style="--h:217"] "TH"
@@ -1311,7 +1331,7 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Farm group 39"] "Farm group 39"
                 small [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
-                span.pv-sum [title="Bất kỳ (Roblox tự chọn) · Chờ 13 giây giữa các tài khoản · Không hẹn giờ"] "Bất kỳ (Roblox tự chọn) · Chờ 13 giây giữa các tài khoản · Không hẹn giờ"
+                span.pv-sum [title="Bất kỳ (Roblox tự chọn) · Chờ 13 giây giữa các tài khoản"] "Bất kỳ (Roblox tự chọn) · Chờ 13 giây giữa các tài khoản"
               div.pv-accs [title="2 tài khoản\nTài khoản chính\nNight Owl" aria-label="2 tài khoản"]
                 span.avatar.sm
                   img [alt="" style="--h:204" src=#1qk25wb]
@@ -1341,8 +1361,9 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Farm group 40"] "Farm group 40"
                 small [title="Blox Fruits"] "Blox Fruits"
-                span.pv-sum [title="Đông nhất · Chờ mặc định (8 giây) · Mỗi ngày 10:00"] "Đông nhất · Chờ mặc định (8 giây) · Mỗi ngày 10:00"
-                span.pv-next "Lần tới: Ngày mai 10:00"
+                span.pv-sum [title="Đông nhất · Chờ mặc định (8 giây)"] "Đông nhất · Chờ mặc định (8 giây)"
+                span.pv-next "· Lần tới: Ngày mai 10:00"
+                  span "Mỗi ngày 10:00"
               div.pv-accs [title="2 tài khoản\nFarm 1\nTài khoản phụ" aria-label="2 tài khoản"]
                 span.avatar.sm
                   img [alt="" style="--h:243" src=#uinvo6]
@@ -1376,7 +1397,7 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Farm group 41"] "Farm group 41"
                 small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
-                span.pv-sum [title="Vắng nhất · Chờ 6 giây giữa các tài khoản · Không hẹn giờ"] "Vắng nhất · Chờ 6 giây giữa các tài khoản · Không hẹn giờ"
+                span.pv-sum [title="Vắng nhất · Chờ 6 giây giữa các tài khoản"] "Vắng nhất · Chờ 6 giây giữa các tài khoản"
               div.pv-accs [title="2 tài khoản\nFarm 2\nTrade" aria-label="2 tài khoản"]
                 span.avatar.sm
                   img [alt="" style="--h:244" src=#n0d7cr]
@@ -1406,7 +1427,7 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Farm group 42"] "Farm group 42"
                 small [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
-                span.pv-sum [title="Ping thấp nhất · Chờ 7 giây giữa các tài khoản · Không hẹn giờ"] "Ping thấp nhất · Chờ 7 giây giữa các tài khoản · Không hẹn giờ"
+                span.pv-sum [title="Ping thấp nhất · Chờ 7 giây giữa các tài khoản"] "Ping thấp nhất · Chờ 7 giây giữa các tài khoản"
               div.pv-accs [title="2 tài khoản\nNight Owl\nThử nghiệm" aria-label="2 tài khoản"]
                 span.avatar.sm
                   img [alt="" style="--h:297" src=#1u67et1]
@@ -1436,7 +1457,9 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Farm group 43"] "Farm group 43"
                 small [title="Blox Fruits"] "Blox Fruits"
-                span.pv-sum [title="Ngẫu nhiên · Chờ 8 giây giữa các tài khoản · Hẹn giờ đang tắt · Thứ 7, CN 13:00"] "Ngẫu nhiên · Chờ 8 giây giữa các tài khoản · Hẹn giờ đang tắt · Thứ 7, CN 13:00"
+                span.pv-sum [title="Ngẫu nhiên · Chờ 8 giây giữa các tài khoản"] "Ngẫu nhiên · Chờ 8 giây giữa các tài khoản"
+                span.pv-next
+                  span "Hẹn giờ đang tắt · T7, CN 13:00"
               div.pv-accs [title="2 tài khoản\nTài khoản phụ\nTài khoản chính" aria-label="2 tài khoản"]
                 span.avatar.sm
                   img [alt="" style="--h:83" src=#c108i9]
@@ -1470,7 +1493,7 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Farm group 44"] "Farm group 44"
                 small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
-                span.pv-sum [title="Bất kỳ (Roblox tự chọn) · Chờ mặc định (8 giây) · Không hẹn giờ"] "Bất kỳ (Roblox tự chọn) · Chờ mặc định (8 giây) · Không hẹn giờ"
+                span.pv-sum [title="Bất kỳ (Roblox tự chọn) · Chờ mặc định (8 giây)"] "Bất kỳ (Roblox tự chọn) · Chờ mặc định (8 giây)"
               div.pv-accs [title="2 tài khoản\nTrade\nFarm 1" aria-label="2 tài khoản"]
                 span.avatar.sm
                   img [alt="" style="--h:218" src=#kgijcs]
@@ -1500,7 +1523,7 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Farm group 45"] "Farm group 45"
                 small [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
-                span.pv-sum [title="Đông nhất · Chờ 10 giây giữa các tài khoản · Không hẹn giờ"] "Đông nhất · Chờ 10 giây giữa các tài khoản · Không hẹn giờ"
+                span.pv-sum [title="Đông nhất · Chờ 10 giây giữa các tài khoản"] "Đông nhất · Chờ 10 giây giữa các tài khoản"
               div.pv-accs [title="2 tài khoản\nThử nghiệm\nFarm 2" aria-label="2 tài khoản"]
                 span.avatar.sm
                   span.initials [style="--h:217"] "TH"
@@ -1530,8 +1553,9 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Farm group 46"] "Farm group 46"
                 small [title="Blox Fruits"] "Blox Fruits"
-                span.pv-sum [title="Vắng nhất · Chờ 11 giây giữa các tài khoản · Thứ 7, CN 16:00"] "Vắng nhất · Chờ 11 giây giữa các tài khoản · Thứ 7, CN 16:00"
-                span.pv-next "Lần tới: Ngày mai 16:00"
+                span.pv-sum [title="Vắng nhất · Chờ 11 giây giữa các tài khoản"] "Vắng nhất · Chờ 11 giây giữa các tài khoản"
+                span.pv-next "· Lần tới: Ngày mai 16:00"
+                  span "T7, CN 16:00"
               div.pv-accs [title="2 tài khoản\nTài khoản chính\nNight Owl" aria-label="2 tài khoản"]
                 span.avatar.sm
                   img [alt="" style="--h:204" src=#1qk25wb]
@@ -1565,7 +1589,7 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Farm group 47"] "Farm group 47"
                 small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
-                span.pv-sum [title="Ping thấp nhất · Chờ 12 giây giữa các tài khoản · Không hẹn giờ"] "Ping thấp nhất · Chờ 12 giây giữa các tài khoản · Không hẹn giờ"
+                span.pv-sum [title="Ping thấp nhất · Chờ 12 giây giữa các tài khoản"] "Ping thấp nhất · Chờ 12 giây giữa các tài khoản"
               div.pv-accs [title="2 tài khoản\nFarm 1\nTài khoản phụ" aria-label="2 tài khoản"]
                 span.avatar.sm
                   img [alt="" style="--h:243" src=#uinvo6]
@@ -1595,7 +1619,7 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Farm group 48"] "Farm group 48"
                 small [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
-                span.pv-sum [title="Ngẫu nhiên · Chờ mặc định (8 giây) · Không hẹn giờ"] "Ngẫu nhiên · Chờ mặc định (8 giây) · Không hẹn giờ"
+                span.pv-sum [title="Ngẫu nhiên · Chờ mặc định (8 giây)"] "Ngẫu nhiên · Chờ mặc định (8 giây)"
               div.pv-accs [title="2 tài khoản\nFarm 2\nTrade" aria-label="2 tài khoản"]
                 span.avatar.sm
                   img [alt="" style="--h:244" src=#n0d7cr]
@@ -1625,7 +1649,9 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Farm group 49"] "Farm group 49"
                 small [title="Blox Fruits"] "Blox Fruits"
-                span.pv-sum [title="Bất kỳ (Roblox tự chọn) · Chờ 5 giây giữa các tài khoản · Hẹn giờ đang tắt · Thứ 7, CN 19:00"] "Bất kỳ (Roblox tự chọn) · Chờ 5 giây giữa các tài khoản · Hẹn giờ đang tắt · Thứ 7, CN 19:00"
+                span.pv-sum [title="Bất kỳ (Roblox tự chọn) · Chờ 5 giây giữa các tài khoản"] "Bất kỳ (Roblox tự chọn) · Chờ 5 giây giữa các tài khoản"
+                span.pv-next
+                  span "Hẹn giờ đang tắt · T7, CN 19:00"
               div.pv-accs [title="2 tài khoản\nNight Owl\nThử nghiệm" aria-label="2 tài khoản"]
                 span.avatar.sm
                   img [alt="" style="--h:297" src=#1u67et1]
@@ -1659,7 +1685,7 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Farm group 50"] "Farm group 50"
                 small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
-                span.pv-sum [title="Đông nhất · Chờ 6 giây giữa các tài khoản · Không hẹn giờ"] "Đông nhất · Chờ 6 giây giữa các tài khoản · Không hẹn giờ"
+                span.pv-sum [title="Đông nhất · Chờ 6 giây giữa các tài khoản"] "Đông nhất · Chờ 6 giây giữa các tài khoản"
               div.pv-accs [title="2 tài khoản\nTài khoản phụ\nTài khoản chính" aria-label="2 tài khoản"]
                 span.avatar.sm
                   img [alt="" style="--h:83" src=#c108i9]
@@ -1685,7 +1711,7 @@ html [data-theme="dark" lang="vi"]
 #toasts
   div.toast.warn [role="status"]
     svg.i #42lb9l
-    span "Lưu được tối đa 50 preset."
+    span "Lưu được tối đa 50 Preset."
 -- commands
   getState {}
   monitorArea {"hidden":true}

@@ -50,11 +50,11 @@ html [data-theme="dark" lang="vi"]
             span "Cửa sổ nhỏ"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: Đang bật, mở được nhiều cửa sổ"]
+            button.multi-open [title="Multi-Roblox: Đang bật: mở được nhiều cửa sổ Roblox"]
               span.led
               div
                 b "Multi-Roblox"
-                small "Đang bật, mở được nhiều cửa sổ"
+                small "Đang bật"
             label.switch [title="Tắt Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
@@ -74,8 +74,11 @@ html [data-theme="dark" lang="vi"]
             h1 "Theo dõi game"
             p
               b [id="mon-count"] "0 cửa sổ Roblox"
-        div.mon-area.mon-empty [id="mon-area"]
-          p "Mở game, cửa sổ sẽ hiện ở đây."
+        div.mon-area.none [id="mon-area"]
+          div.mon-empty
+            span.pv-empty-icon
+              svg.i #1e3syqr
+            p "Mở game, cửa sổ sẽ hiện ở đây."
 #layer
 #toasts
 -- commands

@@ -49,8 +49,8 @@ html [data-theme="dark" lang="en"]
           b "Test"
 -- commands
   ready {}
-  size {"h":366,"opened":1,"w":292}
-  size {"h":376,"opened":1,"w":292}
-  size {"h":376,"opened":1,"w":292}
+  size {"h":365,"opened":1,"w":292}
+  size {"h":375,"opened":1,"w":292}
+  size {"h":375,"opened":1,"w":292}
   size {"h":379,"opened":1,"w":292}
   size {"h":379,"opened":1,"w":292}

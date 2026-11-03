@@ -10,18 +10,18 @@ html [data-theme="dark" lang="vi"]
     form.lock-card [id="lock-form" autocomplete="off"]
       img.logo-img [alt="" src="logo.svg"]
       h2 "Đặt mật khẩu chủ"
-      p "Dùng để mở khóa Bloxkeep. Quên là ."
-        b "không lấy lại được"
+      p "Dùng để mở khóa Bloxkeep. Quên mật khẩu là ."
+        b "không khôi phục được"
       div.stack
         div.pw
-          input.field [id="pw1" type="password" placeholder="Mật khẩu chủ" maxlength="256" aria-label="Mật khẩu chủ" value=""]
+          input.field [id="pw1" type="password" placeholder="Mật khẩu chủ (ít nhất 6 ký tự)" maxlength="256" aria-label="Mật khẩu chủ" value=""]
           button.icon-btn [id="pw-eye" type="button" title="Hiện mật khẩu" aria-label="Hiện mật khẩu" aria-pressed="false"]
             svg.i #1pcfgz
         input.field [id="pw2" type="password" placeholder="Nhập lại mật khẩu chủ" maxlength="256" aria-label="Nhập lại mật khẩu chủ" value=""]
         div.strength-row
           div.strength
             i [id="pw-meter"]
-          span [id="pw-strength" aria-live="polite"]
+          span.pw-strength [id="pw-strength" aria-live="polite"]
       div.lock-error [id="lock-error" role="alert"]
       button.big.btn.primary.w [id="lock-btn" type="submit"] "Bắt đầu"
       div.lock-alt
@@ -57,18 +57,18 @@ html [data-theme="dark" lang="vi"]
     form.lock-card [id="lock-form" autocomplete="off"]
       img.logo-img [alt="" src="logo.svg"]
       h2 "Đặt mật khẩu chủ"
-      p "Dùng để mở khóa Bloxkeep. Quên là ."
-        b "không lấy lại được"
+      p "Dùng để mở khóa Bloxkeep. Quên mật khẩu là ."
+        b "không khôi phục được"
       div.stack
         div.pw
-          input.field [id="pw1" type="password" placeholder="Mật khẩu chủ" maxlength="256" aria-label="Mật khẩu chủ" value=""]
+          input.field [id="pw1" type="password" placeholder="Mật khẩu chủ (ít nhất 6 ký tự)" maxlength="256" aria-label="Mật khẩu chủ" value=""]
           button.icon-btn [id="pw-eye" type="button" title="Hiện mật khẩu" aria-label="Hiện mật khẩu" aria-pressed="false"]
             svg.i #1pcfgz
         input.field [id="pw2" type="password" placeholder="Nhập lại mật khẩu chủ" maxlength="256" aria-label="Nhập lại mật khẩu chủ" value=""]
         div.strength-row
           div.strength
             i [id="pw-meter"]
-          span [id="pw-strength" aria-live="polite"]
+          span.pw-strength [id="pw-strength" aria-live="polite"]
       div.lock-error [id="lock-error" role="alert"]
       button.big.btn.primary.w [id="lock-btn" type="submit"] "Bắt đầu"
       div.lock-alt
@@ -76,6 +76,7 @@ html [data-theme="dark" lang="vi"]
       div.lock-alt.lock-multi
         span [id="lock-multi-on"] "Multi-Roblox đang bật: các cửa sổ Roblox mở từ roblox.com trên trình duyệt sẽ chạy song song."
         button.link [type="button" FOCUSED] "Tắt"
+        button.btn.ghost.lock-close [type="button"] "Đóng cửa sổ"
 #layer
 #toasts
   div.ok.toast [role="status"]
@@ -95,18 +96,18 @@ html [data-theme="dark" lang="vi"]
     form.lock-card [id="lock-form" autocomplete="off"]
       img.logo-img [alt="" src="logo.svg"]
       h2 "Đặt mật khẩu chủ"
-      p "Dùng để mở khóa Bloxkeep. Quên là ."
-        b "không lấy lại được"
+      p "Dùng để mở khóa Bloxkeep. Quên mật khẩu là ."
+        b "không khôi phục được"
       div.stack
         div.pw
-          input.field [id="pw1" type="password" placeholder="Mật khẩu chủ" maxlength="256" aria-label="Mật khẩu chủ" value=""]
+          input.field [id="pw1" type="password" placeholder="Mật khẩu chủ (ít nhất 6 ký tự)" maxlength="256" aria-label="Mật khẩu chủ" value=""]
           button.icon-btn [id="pw-eye" type="button" title="Hiện mật khẩu" aria-label="Hiện mật khẩu" aria-pressed="false"]
             svg.i #1pcfgz
         input.field [id="pw2" type="password" placeholder="Nhập lại mật khẩu chủ" maxlength="256" aria-label="Nhập lại mật khẩu chủ" value=""]
         div.strength-row
           div.strength
             i [id="pw-meter"]
-          span [id="pw-strength" aria-live="polite"]
+          span.pw-strength [id="pw-strength" aria-live="polite"]
       div.lock-error [id="lock-error" role="alert"]
       button.big.btn.primary.w [id="lock-btn" type="submit"] "Bắt đầu"
       div.lock-alt

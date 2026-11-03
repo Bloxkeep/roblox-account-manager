@@ -54,18 +54,18 @@ html [data-theme="dark" lang="vi"]
             span "Đóng tất cả"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: Đang bật, mở được nhiều cửa sổ"]
+            button.multi-open [title="Multi-Roblox: Đang bật: mở được nhiều cửa sổ Roblox"]
               span.led
               div
                 b "Multi-Roblox"
-                small "Đang bật, mở được nhiều cửa sổ"
+                small "Đang bật"
             label.switch [title="Tắt Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
         div.side-foot
           div [id="update-slot"]
           div.side-lock
-            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
+            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, Preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
               svg.i #21scx0
               span "Khóa app"
             button.btn.ghost.side-sq.vault-btn [title="Đổi vault (Vault 1)" aria-label="Đổi vault (Vault 1)"]
@@ -76,15 +76,15 @@ html [data-theme="dark" lang="vi"]
         header.top
           div.top-title
             h1 "Preset"
-            p [id="pv-sub"] "preset"
+            p [id="pv-sub"] "Preset"
               b "1"
           div.top-tools [id="pv-tools"]
             label.search
               svg.i #1u22jvi
-              input [id="pv-q" placeholder="Tìm preset hoặc game" maxlength="100" aria-label="Tìm preset hoặc game" value=""]
+              input [id="pv-q" placeholder="Tìm Preset hoặc game" maxlength="100" aria-label="Tìm Preset hoặc game" value=""]
             button.btn.primary
               svg.i #u7ty99
-              span "Thêm preset"
+              span "Thêm Preset"
         div.scroll
           div.pv-list [id="pv-list" role="list"]
             div.pv-item [role="listitem"]
@@ -93,8 +93,9 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Morning check-in"] "Morning check-in"
                 small [title="Màn hình chính Roblox"] "Màn hình chính Roblox"
-                span.pv-sum [title="Mở cùng lúc, không chờ · Hẹn giờ đang tắt · Thứ 5, 24/12 07:30"] "Mở cùng lúc, không chờ · Hẹn giờ đang tắt · Thứ 5, 24/12 07:30"
-                span.pv-next
+                span.pv-sum [title="Mở cùng lúc, không chờ"] "Mở cùng lúc, không chờ"
+                span.pv-next "·"
+                  span "Hẹn giờ đang tắt · T5, 24/12 07:30"
                   span "Chạy lần cuối 1 ngày trước"
               div.pv-accs [title="6 tài khoản\nTài khoản chính\nFarm 1\nNight Owl\nTài khoản phụ\nTrade\nThử nghiệm" aria-label="6 tài khoản"]
                 span.avatar.sm
@@ -125,7 +126,7 @@ html [data-theme="dark" lang="vi"]
 #toasts
   div.again.ok.toast [role="status"]
     svg.i #14iobj
-    span "Đã xóa preset."
+    span "Đã xóa Preset."
 -- commands
   deletePreset {"id":"p1"}
   deletePreset {"id":"p2"}

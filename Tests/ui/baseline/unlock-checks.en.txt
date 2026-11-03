@@ -13,7 +13,7 @@ html [data-theme="dark" lang="en"]
       p "Enter your master password to unlock."
       div.stack
         div.pw
-          input.field [id="pw1" type="password" placeholder="Master password" maxlength="256" aria-label="Master password" value="" FOCUSED]
+          input.field [id="pw1" type="password" placeholder="Master password" maxlength="256" aria-invalid="true" aria-label="Master password" value="" FOCUSED]
           button.icon-btn [id="pw-eye" type="button" title="Show password" aria-label="Show password" aria-pressed="false"]
             svg.i #1pcfgz
       div.lock-error [id="lock-error" role="alert"] "Enter your master password."

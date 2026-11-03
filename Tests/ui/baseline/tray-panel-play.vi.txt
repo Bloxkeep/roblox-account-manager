@@ -6,7 +6,8 @@ html [data-theme="dark" lang="vi"]
       img.tray-logo [alt="" src="logo.svg"]
       div.tray-name
         b "Bloxkeep"
-        span "2 cửa sổ Roblox · 2.8 GB RAM"
+        span
+          span.tray-status [title="2 cửa sổ Roblox · 2.8 GB RAM"] "2 cửa sổ Roblox · 2.8 GB RAM"
       button.tray-icon [type="button" title="Cửa sổ nhỏ" aria-label="Cửa sổ nhỏ" aria-pressed="false"]
         svg.i #1e3syqr
       button.tray-icon [type="button" title="Mở Bloxkeep" aria-label="Mở Bloxkeep"]
@@ -58,8 +59,8 @@ html [data-theme="dark" lang="vi"]
           b "Test"
 -- commands
   ready {}
-  size {"h":361,"opened":1,"w":344}
-  size {"h":361,"opened":1,"w":344}
-  size {"h":465,"opened":1,"w":344}
+  size {"h":368,"opened":1,"w":344}
+  size {"h":368,"opened":1,"w":344}
+  size {"h":464,"opened":1,"w":344}
   size {"h":472,"opened":1,"w":344}
   size {"h":472,"opened":1,"w":344}

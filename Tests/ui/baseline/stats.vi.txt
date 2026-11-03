@@ -54,18 +54,18 @@ html [data-theme="dark" lang="vi"]
             span "Đóng tất cả"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: Đang bật, mở được nhiều cửa sổ"]
+            button.multi-open [title="Multi-Roblox: Đang bật: mở được nhiều cửa sổ Roblox"]
               span.led
               div
                 b "Multi-Roblox"
-                small "Đang bật, mở được nhiều cửa sổ"
+                small "Đang bật"
             label.switch [title="Tắt Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
         div.side-foot
           div [id="update-slot"]
           div.side-lock
-            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
+            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, Preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
               svg.i #21scx0
               span "Khóa app"
             button.btn.ghost.side-sq.vault-btn [title="Đổi vault (Vault 1)" aria-label="Đổi vault (Vault 1)"]
@@ -90,16 +90,16 @@ html [data-theme="dark" lang="vi"]
             div.stats-in [id="stats-body"]
               div.stat-tiles
                 div.stat
-                  small "Thời gian chơi"
+                  small "Giờ chơi"
                   b [title="16 giờ 24 phút"] "16 giờ 24 phút"
                   span.good.stat-delta "↑ 20 %"
                     span "so với 7 ngày trước"
                 div.stat
                   small "Tài khoản đã chơi"
-                  b [title="4/7"] "4"
+                  b [title="3/7"] "3"
                     span.of "/7"
                 div.stat
-                  small "Mất kết nối"
+                  small "Lần văng"
                   b [title="3"] "3"
                   span.good.stat-delta "↓ 40 %"
                     span "so với 7 ngày trước"
@@ -109,49 +109,57 @@ html [data-theme="dark" lang="vi"]
                   span.stat-sub "Tài khoản chính · Blox Fruits"
               div.stat-card [id="stats-days"]
                 h3 "Giờ chơi mỗi ngày"
+                  span.days-avg "Trung bình 2 giờ 20 phút mỗi ngày"
                 div.days
-                  div.day [title="Thứ Bảy, 10/10 · 1 giờ 20 phút"]
+                  div.day.lab
                     span.day-bar
-                      i [style="height:34.7%"]
+                      b "1h21"
+                      i [style="height:calc(34.7% - 6.246px)"]
                     small "Thứ 7"
-                  div.day [title="Chủ Nhật, 11/10 · 4 phút"]
+                  div.day.lab
                     span.day-bar
-                      i [style="height:3%"]
+                      b "0h04"
+                      i [style="height:calc(1.9% - 0.342px)"]
                     small "CN"
-                  div.day [title="Thứ Hai, 12/10 · 3 giờ 8 phút"]
+                  div.day.lab
                     span.day-bar
-                      i [style="height:81.1%"]
+                      b "3h08"
+                      i [style="height:calc(81.1% - 14.598px)"]
                     small "Thứ 2"
-                  div.day [title="Thứ Ba, 13/10 · 3 giờ 52 phút"]
+                  div.day.lab
                     span.day-bar
-                      i [style="height:100%"]
+                      b "3h52"
+                      i [style="height:calc(100% - 18px)"]
                     small "Thứ 3"
-                  div.day [title="Thứ Tư, 14/10 · 2 giờ 35 phút"]
+                  div.day.lab
                     span.day-bar
-                      i [style="height:67.2%"]
+                      b "2h36"
+                      i [style="height:calc(67.2% - 12.096px)"]
                     small "Thứ 4"
-                  div.day [title="Thứ Năm, 15/10 · 2 giờ 19 phút"]
+                  div.day.lab
                     span.day-bar
-                      i [style="height:60.2%"]
+                      b "2h20"
+                      i [style="height:calc(60.2% - 10.836px)"]
                     small "Thứ 5"
-                  div.day [title="Thứ Sáu, 16/10 · 3 giờ 3 phút"]
+                  div.day.lab.today
                     span.day-bar
-                      i [style="height:79.1%"]
+                      b "3h03"
+                      i [style="height:calc(79.1% - 14.238px)"]
                     small "Hôm nay"
               div.stat-card [id="stats-drops"]
-                h3 "Vì sao rớt"
-                  span.sd-lost [title="Tính từ lúc rớt đến lượt chơi kế tiếp, tối đa 12 giờ mỗi lần."] "Mất 3 giờ 6 phút"
+                h3 "Vì sao văng"
+                  span.sd-lost [title="Tính từ lúc văng đến lượt chơi kế tiếp, tối đa 12 giờ mỗi lần."] "≈ mất 3 giờ 6 phút"
                 div.sd-row
                   div.sd-text
-                    b "Bị kick vì treo máy"
+                    b "Bị kick vì AFK"
                     small [title="Tài khoản chính, Farm 1"] "2 lần · Tài khoản chính, Farm 1"
-                  span.sd-time [title="Tính từ lúc rớt đến lượt chơi kế tiếp, tối đa 12 giờ mỗi lần."] "Mất 2 giờ 17 phút"
+                  span.sd-time [title="Tính từ lúc văng đến lượt chơi kế tiếp, tối đa 12 giờ mỗi lần."] "≈ mất 2 giờ 17 phút"
                   button.btn.sm "Bật Chống AFK"
                 div.sd-row
                   div.sd-text
-                    b "Mất kết nối"
+                    b "Rớt mạng"
                     small [title="Farm 1"] "1 lần · Farm 1"
-                  span.sd-time [title="Tính từ lúc rớt đến lượt chơi kế tiếp, tối đa 12 giờ mỗi lần."] "Mất 49 phút"
+                  span.sd-time [title="Tính từ lúc văng đến lượt chơi kế tiếp, tối đa 12 giờ mỗi lần."] "≈ mất 49 phút"
               div.stat-cols
                 div.stat-card
                   h3 "Theo tài khoản"
@@ -164,9 +172,9 @@ html [data-theme="dark" lang="vi"]
                     thead
                       tr
                         th "Tài khoản"
-                        th "Thời gian chơi"
+                        th "Giờ chơi"
                         th "Chơi nhiều nhất"
-                        th.n [title="Mất kết nối"] "Rớt"
+                        th.n [title="Lần văng"] "Văng"
                     tbody
                       tr.opens [title="Xem đã chơi gì" aria-expanded="false"]
                         td
@@ -214,8 +222,8 @@ html [data-theme="dark" lang="vi"]
                         td
                           div.sacc
                             svg.i.sacc-open #1g7f83q
-                            span.avatar.sm
-                              span.initials [style="--h:148"] "TÀ"
+                            span.avatar.gone.sm [aria-hidden="true"]
+                              svg.i #45lggc
                             b [title="Tài khoản đã xóa"] "Tài khoản đã xóa"
                         td.st-time "19 phút"
                         td.st-game
@@ -234,9 +242,7 @@ html [data-theme="dark" lang="vi"]
                           svg.i #sy1lqp
                         div.gtxt
                           b [title="Blox Fruits"] "Blox Fruits"
-                          small "13 lượt"
-                          div.sg-meter
-                            i [style="transform:scaleX(1)"]
+                          small "13 lượt · 55 %"
                         span.sg-time "9 giờ 1 phút"
                       div.sgame
                         em "2"
@@ -244,9 +250,7 @@ html [data-theme="dark" lang="vi"]
                           svg.i #sy1lqp
                         div.gtxt
                           b [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
-                          small "7 lượt"
-                          div.sg-meter
-                            i [style="transform:scaleX(0.545)"]
+                          small "7 lượt · 30 %"
                         span.sg-time "4 giờ 55 phút"
                       div.sgame
                         em "3"
@@ -254,39 +258,31 @@ html [data-theme="dark" lang="vi"]
                           svg.i #sy1lqp
                         div.gtxt
                           b [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
-                          small "4 lượt"
-                          div.sg-meter
-                            i [style="transform:scaleX(0.273)"]
+                          small "4 lượt · 15 %"
                         span.sg-time "2 giờ 27 phút"
                   div.stat-card
-                    h3 "Theo preset"
+                    h3 "Theo Preset"
                     div.sgames
                       div.sgame
                         span.gph
                           svg.i #sy1lqp
                         div.gtxt
                           b [title="Farm Blox Fruits"] "Farm Blox Fruits"
-                          small "3 tài khoản · mất kết nối 1 lần"
-                          div.sg-meter
-                            i [style="transform:scaleX(1)"]
+                          small "3 tài khoản · văng 1 lần · 62 %"
                         span.sg-time "10 giờ 10 phút"
                       div.sgame
                         span.gph
                           svg.i #sy1lqp
                         div.gtxt
                           b [title="Adopt Me trade"] "Adopt Me trade"
-                          small "1 tài khoản"
-                          div.sg-meter
-                            i [style="transform:scaleX(0.403)"]
+                          small "1 tài khoản · 25 %"
                         span.sg-time "4 giờ 6 phút"
                       div.sgame
                         span.gph
                           svg.i #45lggc
                         div.gtxt
-                          b [title="Mở thủ công, hoặc chơi trước bản Bloxkeep 1.0.5 (khi chưa ghi preset)."] "Không qua preset"
-                          small "2 tài khoản"
-                          div.sg-meter
-                            i [style="transform:scaleX(0.21)"]
+                          b [title="Mở thủ công, hoặc chơi trước bản Bloxkeep 1.0.5 (khi chưa ghi Preset)."] "Không qua Preset"
+                          small "2 tài khoản · 13 %"
                         span.sg-time "2 giờ 7 phút"
 #layer
 #toasts

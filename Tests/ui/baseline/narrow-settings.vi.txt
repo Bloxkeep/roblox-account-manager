@@ -8,6 +8,7 @@ html [data-theme="dark" lang="vi"]
       div.side-nav
         button.nav [title="Tài khoản"]
           svg.i #v823bm
+          em [id="nav-count"] "7"
         button.nav [title="Preset"]
           svg.i #1pvni8o
         button.nav [title="Macro (Beta)"]
@@ -24,12 +25,12 @@ html [data-theme="dark" lang="vi"]
         div [id="side-warn"]
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: Đang bật, mở được nhiều cửa sổ"]
+            button.multi-open [title="Multi-Roblox: Đang bật: mở được nhiều cửa sổ Roblox"]
               span.led
         div.side-foot
           div [id="update-slot"]
           div.side-lock
-            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
+            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, Preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
               svg.i #21scx0
             button.btn.ghost.side-sq.vault-btn [title="Đổi vault (Vault 1)" aria-label="Đổi vault (Vault 1)"]
               span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(22, 163, 74);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
@@ -52,7 +53,7 @@ html [data-theme="dark" lang="vi"]
               span "Phiên bản Roblox"
             button.set-nav-item [type="button" aria-current="page"]
               svg.i #1l5qw3q
-              span "Treo game"
+              span "Treo máy"
             button.set-nav-item [type="button"]
               svg.i #1hupb3o
               span "Thông báo"
@@ -69,41 +70,37 @@ html [data-theme="dark" lang="vi"]
               svg.i #gsei2o
               span "Sao lưu & dữ liệu"
             button.set-nav-item [type="button"]
-              svg.i #1uvtx1
+              img.set-nav-logo [alt="" src="logo.svg"]
               span "Bloxkeep"
           div.scroll.set-scroll
             div.settings
               section.set-page [id="set-page-perf" aria-labelledby="set-page-perf-h"]
-                h2.set-page-title [id="set-page-perf-h"] "Treo game"
+                h2.set-page-title [id="set-page-perf-h"] "Treo máy"
                 div.set-grp [id="sec-rc"]
                   h3.set-grp-title "Cấu hình Roblox"
                   div.set-card
                     div.rc-modes [id="s-rc-levels" role="group" aria-label="Chế độ"]
                       button.rc-mode [type="button" aria-pressed="false"]
-                        span.rc-load [data-n="1"]
-                          i
-                          i
-                          i
                         b "Treo máy"
-                        small "20 FPS · Đồ họa 1 · Tắt tiếng · Tự giới hạn RAM"
+                        small
+                          span "20 FPS"
+                          span "Đồ họa 1"
+                          span "Tắt tiếng"
+                          span "Tự giới hạn RAM"
                       button.rc-mode [type="button" aria-pressed="false"]
-                        span.rc-load [data-n="2"]
-                          i
-                          i
-                          i
                         b "Vừa treo vừa chơi"
-                        small "45 FPS · Đồ họa 3 · Giữ âm lượng"
+                        small
+                          span "45 FPS"
+                          span "Đồ họa 3"
+                          span "Giữ âm lượng"
                       button.on.rc-mode [type="button" aria-pressed="true"]
-                        span.rc-load [data-n="3"]
-                          i
-                          i
-                          i
                         b "Roblox gốc"
-                        small "Bloxkeep không đổi gì"
+                        small
+                          span "Bloxkeep không đổi gì"
                       button.rc-mode [type="button" aria-pressed="false"]
-                        span.rc-load
                         b "Tự chỉnh"
-                        small "Chọn từng mục bên dưới"
+                        small
+                          span "Chọn từng mục bên dưới"
                     p.rc-note [id="s-rc-reopen"] "Có hiệu lực từ lần mở tài khoản sau."
                     div.set-row
                       div
@@ -121,10 +118,10 @@ html [data-theme="dark" lang="vi"]
                         div.t "Tự vào lại"
                         div.d "Cho mọi tài khoản. Chỉnh riêng trong menu ⋯ hoặc Preset."
                       div.ctl
-                        select.select [id="s-rejoin" aria-label="Tự vào lại" value="some"]
-                          option [value="on"] "Bật cho mọi tài khoản"
-                          option [value="off"] "Tắt cho mọi tài khoản"
-                          option [value="some" disabled hidden] "Bật cho 1/7 tài khoản"
+                        span.set-count [id="s-rejoin-n"] "1/7 tài khoản"
+                        label.switch
+                          input [id="s-rejoin" type="checkbox" aria-label="Tự vào lại" checked=false]
+                          span
                     div.set-row
                       div
                         div.t "Chống AFK"
@@ -136,7 +133,7 @@ html [data-theme="dark" lang="vi"]
                     div.set-row
                       div
                         div.t "Rời server đông"
-                        div.d "Cửa sổ ở server công khai có nhiều người hơn số này (không tính tài khoản của bạn) sẽ chuyển sang server vắng hơn. Kiểm tra 2 phút một lần."
+                        div.d "Chuyển sang server vắng hơn khi server công khai quá đông (không tính tài khoản của bạn)."
                       div.ctl
                         select.select [id="s-hop" aria-label="Rời server đông" value="0"]
                           option [value="0"] "Tắt"
@@ -163,6 +160,7 @@ html [data-theme="dark" lang="vi"]
                     div.set-row
                       div
                         div.t "Báo khi sắp hết RAM"
+                        div.d "Hỏi trước khi mở thêm cửa sổ mà RAM không đủ."
                       div.ctl
                         label.switch
                           input [id="s-memwarn" type="checkbox" aria-label="Báo khi sắp hết RAM" checked=true]

@@ -54,11 +54,11 @@ html [data-theme="dark" lang="en"]
             span "Close all"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+            button.multi-open [title="Multi-Roblox: On: several Roblox windows can be open"]
               span.led
               div
                 b "Multi-Roblox"
-                small "On — several windows allowed"
+                small "On"
             label.switch [title="Turn off Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
@@ -106,7 +106,7 @@ html [data-theme="dark" lang="en"]
               svg.i #gsei2o
               span "Backup & data"
             button.set-nav-item [type="button"]
-              svg.i #1uvtx1
+              img.set-nav-logo [alt="" src="logo.svg"]
               span "Bloxkeep"
           div.scroll.set-scroll
             div.settings
@@ -153,7 +153,7 @@ html [data-theme="dark" lang="en"]
                         button.btn.sm "Restore…"
                     div.set-row
                       div
-                        div.t "Import accounts from a vault file"
+                        div.t "Import accounts from a Bloxkeep file"
                         div.d "From a backup or another PC’s Bloxkeep. Your accounts here stay as they are."
                       div.ctl
                         button.btn.sm "Import…"
@@ -170,7 +170,7 @@ html [data-theme="dark" lang="en"]
                           svg.i #3wh3ok
                     div.set-row
                       div
-                        div.t "Open vault file"
+                        div.t "Bloxkeep file in use"
                         div.d
                           span.path [id="s-vault-path"] "C:\\Users\\Admin\\AppData\\Local\\Bloxkeep\\vault.rmv"
                       div.ctl
@@ -258,11 +258,11 @@ html [data-theme="dark" lang="en"]
             span "Close all"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+            button.multi-open [title="Multi-Roblox: On: several Roblox windows can be open"]
               span.led
               div
                 b "Multi-Roblox"
-                small "On — several windows allowed"
+                small "On"
             label.switch [title="Turn off Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
@@ -310,7 +310,7 @@ html [data-theme="dark" lang="en"]
               svg.i #gsei2o
               span "Backup & data"
             button.set-nav-item [type="button"]
-              svg.i #1uvtx1
+              img.set-nav-logo [alt="" src="logo.svg"]
               span "Bloxkeep"
           div.scroll.set-scroll
             div.settings
@@ -357,7 +357,7 @@ html [data-theme="dark" lang="en"]
                         button.btn.sm "Restore…"
                     div.set-row
                       div
-                        div.t "Import accounts from a vault file"
+                        div.t "Import accounts from a Bloxkeep file"
                         div.d "From a backup or another PC’s Bloxkeep. Your accounts here stay as they are."
                       div.ctl
                         button.btn.sm "Import…"
@@ -374,7 +374,7 @@ html [data-theme="dark" lang="en"]
                           svg.i #3wh3ok
                     div.set-row
                       div
-                        div.t "Open vault file"
+                        div.t "Bloxkeep file in use"
                         div.d
                           span.path [id="s-vault-path"] "C:\\Users\\Admin\\AppData\\Local\\Bloxkeep\\vault.rmv"
                       div.ctl

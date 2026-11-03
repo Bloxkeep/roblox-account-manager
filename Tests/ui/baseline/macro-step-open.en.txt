@@ -54,11 +54,11 @@ html [data-theme="dark" lang="en"]
             span "Close all"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+            button.multi-open [title="Multi-Roblox: On: several Roblox windows can be open"]
               span.led
               div
                 b "Multi-Roblox"
-                small "On — several windows allowed"
+                small "On"
             label.switch [title="Turn off Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
@@ -76,10 +76,9 @@ html [data-theme="dark" lang="en"]
         header.top
           div.top-title
             h1 "Macros"
-              span.mc-beta.state-pill.warn [title="New: it may not work the same on every PC. Tell us what goes wrong under Help & feedback."] "Beta"
-            p [id="mc-sub"] "macrosMacros take each Roblox window to the front for a moment, one at a time."
+              span.mc-beta.state-pill.warn [title="New: it may not work the same on every PC. Tell us what goes wrong under Help & feedback. Macros take each Roblox window to the front for a moment, one at a time."] "Beta"
+            p [id="mc-sub"] "macros"
               b "4"
-              span.sep "·"
           div.top-tools
             button.btn.mc-stop-all [title="Stops every macro and recording, and lets go of every key (Ctrl+Alt+0 does it from any app)" disabled]
               svg.i #t57b2k
@@ -151,7 +150,7 @@ html [data-theme="dark" lang="en"]
               button.btn.mc-panel.sm [type="button" title="Show its panel beside the game" aria-label="Panel: Cast and reel" aria-pressed="false"]
                 svg.i #1e3syqr
                 span "Panel"
-              button.btn.pv-run.sm [title="Select accounts in the Accounts tab first." aria-label="Run: Cast and reel" disabled]
+              button.btn.pv-run.sm [aria-label="Run: Cast and reel"]
                 svg.i #1ewcuky
                 span "Run"
               button.icon-btn [type="button" title="More" aria-haspopup="menu" aria-label="More: Cast and reel"]
@@ -185,14 +184,19 @@ html [data-theme="dark" lang="en"]
                   button.btn.sm [id="mc-record" type="button" title="Records what you do in the chosen window; F8 stops"]
                     svg.i #1mr8rx5
                     span "Record"
-                  button.btn.primary.sm [id="mc-add" type="button" aria-haspopup="menu"]
+                  button.btn.sm [id="mc-add" type="button" aria-expanded="false" aria-haspopup="dialog"]
                     svg.i #u7ty99
                     span "Add step"
                 div.mc-steps [role="list" aria-labelledby="mc-steps-h"]
-                  div.mc-step [role="listitem" aria-label="Step 1: Repeat until stopped" style="--d:0"]
+                  div.mc-opener.mc-step [role="listitem" aria-label="Step 1: Repeat until stopped" style="--d:0"]
+                    button.mc-ins [type="button" title="Add a step here" tabindex="-1" aria-haspopup="dialog" aria-label="Add a step here"]
+                      span.mc-ins-dot
+                        svg.i #u7ty99
                     span.ord-grip [title="Drag to reorder"]
                       svg.i #top79o
                     span.mc-step-n [aria-hidden="true"] "1"
+                    button.icon-btn.mc-fold [type="button" title="Fold" aria-expanded="true" aria-label="Fold: Step 1"]
+                      svg.i #18mpr3r
                     button.k-loop.mc-step-head [type="button" aria-expanded="false"]
                       svg.i #1ap9cll
                       span.mc-say "Repeat until stopped"
@@ -200,13 +204,15 @@ html [data-theme="dark" lang="en"]
                     span.mc-step-acts
                       button.icon-btn [type="button" title="Move up" aria-label="Move up: Step 1" disabled]
                         svg.i #ilfy0l
-                      button.icon-btn [type="button" title="Move down" aria-label="Move down: Step 1"]
+                      button.icon-btn [type="button" title="Move down" aria-label="Move down: Step 1" disabled]
                         svg.i #u1ag9u
-                      button.icon-btn [type="button" title="Duplicate step" aria-label="Duplicate step: Step 1"]
-                        svg.i #2s24cy
-                      button.icon-btn [type="button" title="Delete step" aria-label="Delete step: Step 1"]
-                        svg.i #1w1g8zc
+                      button.icon-btn [type="button" title="More" aria-haspopup="menu" aria-label="More: Step 1"]
+                        svg.i #1e3omv2
                   div.mc-step.open [role="listitem" aria-label="Step 2: Hold the left button for 0.6 s at point 2" style="--d:1"]
+                    span.mc-rail [aria-hidden="true" style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:;left:-14px"]
+                    button.mc-ins [type="button" title="Add a step here" tabindex="-1" aria-haspopup="dialog" aria-label="Add a step here"]
+                      span.mc-ins-dot
+                        svg.i #u7ty99
                     span.ord-grip [title="Drag to reorder"]
                       svg.i #top79o
                     span.mc-step-n [aria-hidden="true"] "2"
@@ -219,10 +225,8 @@ html [data-theme="dark" lang="en"]
                         svg.i #ilfy0l
                       button.icon-btn [type="button" title="Move down" aria-label="Move down: Step 2"]
                         svg.i #u1ag9u
-                      button.icon-btn [type="button" title="Duplicate step" aria-label="Duplicate step: Step 2"]
-                        svg.i #2s24cy
-                      button.icon-btn [type="button" title="Delete step" aria-label="Delete step: Step 2"]
-                        svg.i #1w1g8zc
+                      button.icon-btn [type="button" title="More" aria-haspopup="menu" aria-label="More: Step 2"]
+                        svg.i #1e3omv2
                     div.mc-step-fields
                       p.mc-sent
                         select.select.sm [id="mc-s2-how" aria-label="How to click" value="hold"]
@@ -250,24 +254,30 @@ html [data-theme="dark" lang="en"]
                         label.mc-check
                           input [id="mc-s2-tick-holdMs" type="checkbox" checked=true]
                           span "Hold time"
-                  div.mc-step [role="listitem" aria-label="Step 3: Wait until the colour shows in Fish area" style="--d:1"]
+                  div.mc-step [role="listitem" aria-label="Step 3: Wait until the color shows in Fish area" style="--d:1"]
+                    span.mc-rail [aria-hidden="true" style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:;left:-14px"]
+                    button.mc-ins [type="button" title="Add a step here" tabindex="-1" aria-haspopup="dialog" aria-label="Add a step here"]
+                      span.mc-ins-dot
+                        svg.i #u7ty99
                     span.ord-grip [title="Drag to reorder"]
                       svg.i #top79o
                     span.mc-step-n [aria-hidden="true"] "3"
                     button.k-waitColour.mc-step-head [type="button" aria-expanded="false"]
                       svg.i #d2zp05
-                      span.mc-say "Wait until the colour shows in Fish area"
+                      span.mc-say "Wait until the color shows in Fish area"
                       svg.i #u1ag9u
                     span.mc-step-acts
                       button.icon-btn [type="button" title="Move up" aria-label="Move up: Step 3"]
                         svg.i #ilfy0l
                       button.icon-btn [type="button" title="Move down" aria-label="Move down: Step 3"]
                         svg.i #u1ag9u
-                      button.icon-btn [type="button" title="Duplicate step" aria-label="Duplicate step: Step 3"]
-                        svg.i #2s24cy
-                      button.icon-btn [type="button" title="Delete step" aria-label="Delete step: Step 3"]
-                        svg.i #1w1g8zc
+                      button.icon-btn [type="button" title="More" aria-haspopup="menu" aria-label="More: Step 3"]
+                        svg.i #1e3omv2
                   div.mc-step [role="listitem" aria-label="Step 4: Keep the bar on the target in Fish area" style="--d:1"]
+                    span.mc-rail [aria-hidden="true" style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:;left:-14px"]
+                    button.mc-ins [type="button" title="Add a step here" tabindex="-1" aria-haspopup="dialog" aria-label="Add a step here"]
+                      span.mc-ins-dot
+                        svg.i #u7ty99
                     span.ord-grip [title="Drag to reorder"]
                       svg.i #top79o
                     span.mc-step-n [aria-hidden="true"] "4"
@@ -280,11 +290,13 @@ html [data-theme="dark" lang="en"]
                         svg.i #ilfy0l
                       button.icon-btn [type="button" title="Move down" aria-label="Move down: Step 4"]
                         svg.i #u1ag9u
-                      button.icon-btn [type="button" title="Duplicate step" aria-label="Duplicate step: Step 4"]
-                        svg.i #2s24cy
-                      button.icon-btn [type="button" title="Delete step" aria-label="Delete step: Step 4"]
-                        svg.i #1w1g8zc
+                      button.icon-btn [type="button" title="More" aria-haspopup="menu" aria-label="More: Step 4"]
+                        svg.i #1e3omv2
                   div.mc-step [role="listitem" aria-label="Step 5: Add 1 to counter fish" style="--d:1"]
+                    span.mc-rail [aria-hidden="true" style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:;left:-14px"]
+                    button.mc-ins [type="button" title="Add a step here" tabindex="-1" aria-haspopup="dialog" aria-label="Add a step here"]
+                      span.mc-ins-dot
+                        svg.i #u7ty99
                     span.ord-grip [title="Drag to reorder"]
                       svg.i #top79o
                     span.mc-step-n [aria-hidden="true"] "5"
@@ -297,26 +309,16 @@ html [data-theme="dark" lang="en"]
                         svg.i #ilfy0l
                       button.icon-btn [type="button" title="Move down" aria-label="Move down: Step 5"]
                         svg.i #u1ag9u
-                      button.icon-btn [type="button" title="Duplicate step" aria-label="Duplicate step: Step 5"]
-                        svg.i #2s24cy
-                      button.icon-btn [type="button" title="Delete step" aria-label="Delete step: Step 5"]
-                        svg.i #1w1g8zc
-                  div.mc-step [role="listitem" aria-label="Step 6: End repeat" style="--d:0"]
-                    span.ord-grip [title="Drag to reorder"]
-                      svg.i #top79o
+                      button.icon-btn [type="button" title="More" aria-haspopup="menu" aria-label="More: Step 5"]
+                        svg.i #1e3omv2
+                  div.mc-end.mc-step [role="listitem" aria-label="Step 6: end repeat" style="--d:0"]
+                    button.mc-ins [type="button" title="Add a step here" tabindex="-1" aria-haspopup="dialog" aria-label="Add a step here"]
+                      span.mc-ins-dot
+                        svg.i #u7ty99
                     span.mc-step-n [aria-hidden="true"] "6"
-                    span.k-endLoop.mc-step-head
-                      svg.i #10tf97k
-                      span.mc-say "End repeat"
-                    span.mc-step-acts
-                      button.icon-btn [type="button" title="Move up" aria-label="Move up: Step 6"]
-                        svg.i #ilfy0l
-                      button.icon-btn [type="button" title="Move down" aria-label="Move down: Step 6" disabled]
-                        svg.i #u1ag9u
-                      button.icon-btn [type="button" title="Duplicate step" aria-label="Duplicate step: Step 6"]
-                        svg.i #2s24cy
-                      button.icon-btn [type="button" title="Delete step" aria-label="Delete step: Step 6"]
-                        svg.i #1w1g8zc
+                    span.mc-step-head
+                      svg.i #5fto4c
+                      span.mc-say "end repeat"
               section.mc-sees [aria-labelledby="mc-sees-h"]
                 div.mc-sees-head
                   b [id="mc-sees-h"] "Player sees"
@@ -335,7 +337,7 @@ html [data-theme="dark" lang="en"]
                     svg.i #1ewcuky
                     span "Run"
                     kbd "Ctrl+Alt+3"
-                  p.mp-status "Not running · fish: 0"
+                  p.mp-status "Ready · fish: 0"
                   ul.mp-opts
                     li
                       input.mp-label [title="What the player reads next to it" maxlength="30" aria-label="Name of item 1" value="Hold time"]
@@ -351,16 +353,16 @@ html [data-theme="dark" lang="en"]
                         button.icon-btn [type="button" title="Player can’t change it" aria-label="Player can’t change it: Hold time"]
                           svg.i #1tyq039
                     li
-                      input.mp-label [title="What the player reads next to it" maxlength="30" aria-label="Name of item 2" value="Bar colour"]
+                      input.mp-label [title="What the player reads next to it" maxlength="30" aria-label="Name of item 2" value="Bar color"]
                       span.mp-val
                         i.mp-swatch [style="background-attachment:initial;background-clip:initial;background-color:rgb(34, 197, 94);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"]
                         span.mp-mini "Pick"
                       span.mp-acts
-                        button.icon-btn [type="button" title="Move up" aria-label="Move up: Bar colour"]
+                        button.icon-btn [type="button" title="Move up" aria-label="Move up: Bar color"]
                           svg.i #ilfy0l
-                        button.icon-btn [type="button" title="Move down" aria-label="Move down: Bar colour" disabled]
+                        button.icon-btn [type="button" title="Move down" aria-label="Move down: Bar color" disabled]
                           svg.i #u1ag9u
-                        button.icon-btn [type="button" title="Player can’t change it" aria-label="Player can’t change it: Bar colour"]
+                        button.icon-btn [type="button" title="Player can’t change it" aria-label="Player can’t change it: Bar color"]
                           svg.i #1tyq039
                   div.mp-foot
                     span.mp-btn "Edit areas"
@@ -371,10 +373,10 @@ html [data-theme="dark" lang="en"]
                     span
                   span
                     b "Show the panel by itself"
-                    small "While an account is in this game (empty: any game)."
+                    small "While an account is in this game. Leave the game empty for any game."
                 div.mc-panel-game
                   label "Game"
-                    input.field [id="ps-place" role="combobox" placeholder="Search a game, or paste a link / Place ID…" autocomplete="off" maxlength="500" aria-autocomplete="list" aria-expanded="false" aria-haspopup="listbox" value="https://www.roblox.com/games/2753915549"]
+                    input.field [id="ps-place" role="combobox" placeholder="Search a game, or paste a link / Place ID. Empty just opens Roblox" autocomplete="off" maxlength="500" aria-autocomplete="list" aria-expanded="false" aria-haspopup="listbox" value="https://www.roblox.com/games/2753915549"]
                   div.ps-game [id="ps-game"]
                     span.gph
                       svg.i #sy1lqp
@@ -386,16 +388,17 @@ html [data-theme="dark" lang="en"]
                   select.select.sm [id="mc-pic-acc" aria-label="Whose window" value="00000000-0000-4000-8000-000000000001"]
                     option [value="00000000-0000-4000-8000-000000000001"] "Main"
                     option [value="00000000-0000-4000-8000-000000000002"] "Farm 1"
-                  button.btn.primary.sm [id="mc-ongame" type="button" aria-pressed="false"]
+                  button.btn.sm [id="mc-ongame" type="button" aria-pressed="false"]
                     svg.i #1e3syqr
                     span "Edit on game"
                 p.mc-game-say [role="status"] "Shows each step’s dot and each area’s box on Main’s window, to drag into place."
                 div.blank.mc-pic-frame [role="group" tabindex="-1" aria-label="The game window: numbered dots are where steps click, boxes are areas. Arrow keys move the one in focus." style="aspect-ratio:1.77778 / 1"]
-                  span.mc-pic-blank "Take a picture to see the game here"
-                  span.mc-pic-area [role="button" title="Fish area: drag to move, drag the corner to resize" tabindex="0" aria-label="Fish area: drag to move, drag the corner to resize" style="border-bottom-color:rgb(34, 197, 94);border-left-color:rgb(34, 197, 94);border-right-color:rgb(34, 197, 94);border-top-color:rgb(34, 197, 94);height:10%;left:30%;top:74%;width:40%"]
+                  span.mc-pic-blank
+                    span "Take a picture to see the game here"
+                  span.mc-pic-area [role="button" title="Fish area: drag to move, drag the corner to resize" tabindex="-1" aria-label="Fish area: drag to move, drag the corner to resize" style="border-bottom-color:rgb(34, 197, 94);border-left-color:rgb(34, 197, 94);border-right-color:rgb(34, 197, 94);border-top-color:rgb(34, 197, 94);height:10%;left:30%;top:74%;width:40%"]
                     i [style="background-attachment:initial;background-clip:initial;background-color:rgb(34, 197, 94);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "Fish area"
                     b.mc-pic-handle [style="background-attachment:initial;background-clip:initial;background-color:rgb(34, 197, 94);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"]
-                  span.mc-pic-dot [role="button" title="Point 2: drag to move" tabindex="0" aria-label="Point 2: drag to move" style="left:50%;top:60%"] "2"
+                  span.mc-pic-dot [role="button" title="Point 2: drag to move" tabindex="-1" aria-label="Point 2: drag to move" style="left:50%;top:60%"] "2"
                 div.mc-pic-acts
                   button.btn.sm [id="mc-pic-take" type="button"]
                     svg.i #16jqtkh
@@ -409,14 +412,15 @@ html [data-theme="dark" lang="en"]
                       span "New area"
                   ul
                     li
-                      i [aria-hidden="true" style="border-bottom-color:rgb(34, 197, 94);border-left-color:rgb(34, 197, 94);border-right-color:rgb(34, 197, 94);border-top-color:rgb(34, 197, 94)"]
-                      input.field.sm [maxlength="30" aria-label="Area name" value="Fish area"]
-                      button.icon-btn [type="button" title="Delete area" aria-label="Delete area: Fish area"]
-                        svg.i #1w1g8zc
+                      div.mc-area-row
+                        i [aria-hidden="true" style="border-bottom-color:rgb(34, 197, 94);border-left-color:rgb(34, 197, 94);border-right-color:rgb(34, 197, 94);border-top-color:rgb(34, 197, 94)"]
+                        input.field.sm [id="mc-area-a1" maxlength="30" aria-label="Area name" value="Fish area"]
+                        button.icon-btn [type="button" title="Delete area" aria-label="Delete area: Fish area"]
+                          svg.i #1w1g8zc
       div.modal-foot
         button.btn.danger.push "Delete"
         button.btn "Cancel"
-        button.btn.primary "Save"
+        button.btn.primary [aria-disabled="false"] "Save"
 #toasts
 -- commands
   getState {}
@@ -482,11 +486,11 @@ html [data-theme="dark" lang="en"]
             span "Close all"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+            button.multi-open [title="Multi-Roblox: On: several Roblox windows can be open"]
               span.led
               div
                 b "Multi-Roblox"
-                small "On — several windows allowed"
+                small "On"
             label.switch [title="Turn off Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
@@ -504,10 +508,9 @@ html [data-theme="dark" lang="en"]
         header.top
           div.top-title
             h1 "Macros"
-              span.mc-beta.state-pill.warn [title="New: it may not work the same on every PC. Tell us what goes wrong under Help & feedback."] "Beta"
-            p [id="mc-sub"] "macrosMacros take each Roblox window to the front for a moment, one at a time."
+              span.mc-beta.state-pill.warn [title="New: it may not work the same on every PC. Tell us what goes wrong under Help & feedback. Macros take each Roblox window to the front for a moment, one at a time."] "Beta"
+            p [id="mc-sub"] "macros"
               b "4"
-              span.sep "·"
           div.top-tools
             button.btn.mc-stop-all [title="Stops every macro and recording, and lets go of every key (Ctrl+Alt+0 does it from any app)" disabled]
               svg.i #t57b2k
@@ -579,7 +582,7 @@ html [data-theme="dark" lang="en"]
               button.btn.mc-panel.sm [type="button" title="Show its panel beside the game" aria-label="Panel: Cast and reel" aria-pressed="false"]
                 svg.i #1e3syqr
                 span "Panel"
-              button.btn.pv-run.sm [title="Select accounts in the Accounts tab first." aria-label="Run: Cast and reel" disabled]
+              button.btn.pv-run.sm [aria-label="Run: Cast and reel"]
                 svg.i #1ewcuky
                 span "Run"
               button.icon-btn [type="button" title="More" aria-haspopup="menu" aria-label="More: Cast and reel"]
@@ -613,14 +616,19 @@ html [data-theme="dark" lang="en"]
                   button.btn.sm [id="mc-record" type="button" title="Records what you do in the chosen window; F8 stops"]
                     svg.i #1mr8rx5
                     span "Record"
-                  button.btn.primary.sm [id="mc-add" type="button" aria-haspopup="menu"]
+                  button.btn.sm [id="mc-add" type="button" aria-expanded="false" aria-haspopup="dialog"]
                     svg.i #u7ty99
                     span "Add step"
                 div.mc-steps [role="list" aria-labelledby="mc-steps-h"]
-                  div.mc-step [role="listitem" aria-label="Step 1: Repeat until stopped" style="--d:0"]
+                  div.mc-opener.mc-step [role="listitem" aria-label="Step 1: Repeat until stopped" style="--d:0"]
+                    button.mc-ins [type="button" title="Add a step here" tabindex="-1" aria-haspopup="dialog" aria-label="Add a step here"]
+                      span.mc-ins-dot
+                        svg.i #u7ty99
                     span.ord-grip [title="Drag to reorder"]
                       svg.i #top79o
                     span.mc-step-n [aria-hidden="true"] "1"
+                    button.icon-btn.mc-fold [type="button" title="Fold" aria-expanded="true" aria-label="Fold: Step 1"]
+                      svg.i #18mpr3r
                     button.k-loop.mc-step-head [type="button" aria-expanded="false"]
                       svg.i #1ap9cll
                       span.mc-say "Repeat until stopped"
@@ -628,13 +636,15 @@ html [data-theme="dark" lang="en"]
                     span.mc-step-acts
                       button.icon-btn [type="button" title="Move up" aria-label="Move up: Step 1" disabled]
                         svg.i #ilfy0l
-                      button.icon-btn [type="button" title="Move down" aria-label="Move down: Step 1"]
+                      button.icon-btn [type="button" title="Move down" aria-label="Move down: Step 1" disabled]
                         svg.i #u1ag9u
-                      button.icon-btn [type="button" title="Duplicate step" aria-label="Duplicate step: Step 1"]
-                        svg.i #2s24cy
-                      button.icon-btn [type="button" title="Delete step" aria-label="Delete step: Step 1"]
-                        svg.i #1w1g8zc
+                      button.icon-btn [type="button" title="More" aria-haspopup="menu" aria-label="More: Step 1"]
+                        svg.i #1e3omv2
                   div.mc-step.open [role="listitem" aria-label="Step 2: Hold the left button for 0.6 s at point 2" style="--d:1"]
+                    span.mc-rail [aria-hidden="true" style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:;left:-14px"]
+                    button.mc-ins [type="button" title="Add a step here" tabindex="-1" aria-haspopup="dialog" aria-label="Add a step here"]
+                      span.mc-ins-dot
+                        svg.i #u7ty99
                     span.ord-grip [title="Drag to reorder"]
                       svg.i #top79o
                     span.mc-step-n [aria-hidden="true"] "2"
@@ -647,10 +657,8 @@ html [data-theme="dark" lang="en"]
                         svg.i #ilfy0l
                       button.icon-btn [type="button" title="Move down" aria-label="Move down: Step 2"]
                         svg.i #u1ag9u
-                      button.icon-btn [type="button" title="Duplicate step" aria-label="Duplicate step: Step 2"]
-                        svg.i #2s24cy
-                      button.icon-btn [type="button" title="Delete step" aria-label="Delete step: Step 2"]
-                        svg.i #1w1g8zc
+                      button.icon-btn [type="button" title="More" aria-haspopup="menu" aria-label="More: Step 2"]
+                        svg.i #1e3omv2
                     div.mc-step-fields
                       p.mc-sent
                         select.select.sm [id="mc-s2-how" aria-label="How to click" value="hold"]
@@ -678,24 +686,30 @@ html [data-theme="dark" lang="en"]
                         label.mc-check
                           input [id="mc-s2-tick-holdMs" type="checkbox" checked=true]
                           span "Hold time"
-                  div.mc-step [role="listitem" aria-label="Step 3: Wait until the colour shows in Fish area" style="--d:1"]
+                  div.mc-step [role="listitem" aria-label="Step 3: Wait until the color shows in Fish area" style="--d:1"]
+                    span.mc-rail [aria-hidden="true" style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:;left:-14px"]
+                    button.mc-ins [type="button" title="Add a step here" tabindex="-1" aria-haspopup="dialog" aria-label="Add a step here"]
+                      span.mc-ins-dot
+                        svg.i #u7ty99
                     span.ord-grip [title="Drag to reorder"]
                       svg.i #top79o
                     span.mc-step-n [aria-hidden="true"] "3"
                     button.k-waitColour.mc-step-head [type="button" aria-expanded="false"]
                       svg.i #d2zp05
-                      span.mc-say "Wait until the colour shows in Fish area"
+                      span.mc-say "Wait until the color shows in Fish area"
                       svg.i #u1ag9u
                     span.mc-step-acts
                       button.icon-btn [type="button" title="Move up" aria-label="Move up: Step 3"]
                         svg.i #ilfy0l
                       button.icon-btn [type="button" title="Move down" aria-label="Move down: Step 3"]
                         svg.i #u1ag9u
-                      button.icon-btn [type="button" title="Duplicate step" aria-label="Duplicate step: Step 3"]
-                        svg.i #2s24cy
-                      button.icon-btn [type="button" title="Delete step" aria-label="Delete step: Step 3"]
-                        svg.i #1w1g8zc
+                      button.icon-btn [type="button" title="More" aria-haspopup="menu" aria-label="More: Step 3"]
+                        svg.i #1e3omv2
                   div.mc-step [role="listitem" aria-label="Step 4: Keep the bar on the target in Fish area" style="--d:1"]
+                    span.mc-rail [aria-hidden="true" style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:;left:-14px"]
+                    button.mc-ins [type="button" title="Add a step here" tabindex="-1" aria-haspopup="dialog" aria-label="Add a step here"]
+                      span.mc-ins-dot
+                        svg.i #u7ty99
                     span.ord-grip [title="Drag to reorder"]
                       svg.i #top79o
                     span.mc-step-n [aria-hidden="true"] "4"
@@ -708,11 +722,13 @@ html [data-theme="dark" lang="en"]
                         svg.i #ilfy0l
                       button.icon-btn [type="button" title="Move down" aria-label="Move down: Step 4"]
                         svg.i #u1ag9u
-                      button.icon-btn [type="button" title="Duplicate step" aria-label="Duplicate step: Step 4"]
-                        svg.i #2s24cy
-                      button.icon-btn [type="button" title="Delete step" aria-label="Delete step: Step 4"]
-                        svg.i #1w1g8zc
+                      button.icon-btn [type="button" title="More" aria-haspopup="menu" aria-label="More: Step 4"]
+                        svg.i #1e3omv2
                   div.mc-step [role="listitem" aria-label="Step 5: Add 1 to counter fish" style="--d:1"]
+                    span.mc-rail [aria-hidden="true" style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:;left:-14px"]
+                    button.mc-ins [type="button" title="Add a step here" tabindex="-1" aria-haspopup="dialog" aria-label="Add a step here"]
+                      span.mc-ins-dot
+                        svg.i #u7ty99
                     span.ord-grip [title="Drag to reorder"]
                       svg.i #top79o
                     span.mc-step-n [aria-hidden="true"] "5"
@@ -725,26 +741,16 @@ html [data-theme="dark" lang="en"]
                         svg.i #ilfy0l
                       button.icon-btn [type="button" title="Move down" aria-label="Move down: Step 5"]
                         svg.i #u1ag9u
-                      button.icon-btn [type="button" title="Duplicate step" aria-label="Duplicate step: Step 5"]
-                        svg.i #2s24cy
-                      button.icon-btn [type="button" title="Delete step" aria-label="Delete step: Step 5"]
-                        svg.i #1w1g8zc
-                  div.mc-step [role="listitem" aria-label="Step 6: End repeat" style="--d:0"]
-                    span.ord-grip [title="Drag to reorder"]
-                      svg.i #top79o
+                      button.icon-btn [type="button" title="More" aria-haspopup="menu" aria-label="More: Step 5"]
+                        svg.i #1e3omv2
+                  div.mc-end.mc-step [role="listitem" aria-label="Step 6: end repeat" style="--d:0"]
+                    button.mc-ins [type="button" title="Add a step here" tabindex="-1" aria-haspopup="dialog" aria-label="Add a step here"]
+                      span.mc-ins-dot
+                        svg.i #u7ty99
                     span.mc-step-n [aria-hidden="true"] "6"
-                    span.k-endLoop.mc-step-head
-                      svg.i #10tf97k
-                      span.mc-say "End repeat"
-                    span.mc-step-acts
-                      button.icon-btn [type="button" title="Move up" aria-label="Move up: Step 6"]
-                        svg.i #ilfy0l
-                      button.icon-btn [type="button" title="Move down" aria-label="Move down: Step 6" disabled]
-                        svg.i #u1ag9u
-                      button.icon-btn [type="button" title="Duplicate step" aria-label="Duplicate step: Step 6"]
-                        svg.i #2s24cy
-                      button.icon-btn [type="button" title="Delete step" aria-label="Delete step: Step 6"]
-                        svg.i #1w1g8zc
+                    span.mc-step-head
+                      svg.i #5fto4c
+                      span.mc-say "end repeat"
               section.mc-sees [aria-labelledby="mc-sees-h"]
                 div.mc-sees-head
                   b [id="mc-sees-h"] "Player sees"
@@ -763,7 +769,7 @@ html [data-theme="dark" lang="en"]
                     svg.i #1ewcuky
                     span "Run"
                     kbd "Ctrl+Alt+3"
-                  p.mp-status "Not running · fish: 0"
+                  p.mp-status "Ready · fish: 0"
                   ul.mp-opts
                     li
                       input.mp-label [title="What the player reads next to it" maxlength="30" aria-label="Name of item 1" value="Hold time"]
@@ -779,16 +785,16 @@ html [data-theme="dark" lang="en"]
                         button.icon-btn [type="button" title="Player can’t change it" aria-label="Player can’t change it: Hold time"]
                           svg.i #1tyq039
                     li
-                      input.mp-label [title="What the player reads next to it" maxlength="30" aria-label="Name of item 2" value="Bar colour"]
+                      input.mp-label [title="What the player reads next to it" maxlength="30" aria-label="Name of item 2" value="Bar color"]
                       span.mp-val
                         i.mp-swatch [style="background-attachment:initial;background-clip:initial;background-color:rgb(34, 197, 94);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"]
                         span.mp-mini "Pick"
                       span.mp-acts
-                        button.icon-btn [type="button" title="Move up" aria-label="Move up: Bar colour"]
+                        button.icon-btn [type="button" title="Move up" aria-label="Move up: Bar color"]
                           svg.i #ilfy0l
-                        button.icon-btn [type="button" title="Move down" aria-label="Move down: Bar colour"]
+                        button.icon-btn [type="button" title="Move down" aria-label="Move down: Bar color"]
                           svg.i #u1ag9u
-                        button.icon-btn [type="button" title="Player can’t change it" aria-label="Player can’t change it: Bar colour"]
+                        button.icon-btn [type="button" title="Player can’t change it" aria-label="Player can’t change it: Bar color"]
                           svg.i #1tyq039
                     li
                       input.mp-label [title="What the player reads next to it" maxlength="30" aria-label="Name of item 3" value="Point"]
@@ -811,10 +817,10 @@ html [data-theme="dark" lang="en"]
                     span
                   span
                     b "Show the panel by itself"
-                    small "While an account is in this game (empty: any game)."
+                    small "While an account is in this game. Leave the game empty for any game."
                 div.mc-panel-game
                   label "Game"
-                    input.field [id="ps-place" role="combobox" placeholder="Search a game, or paste a link / Place ID…" autocomplete="off" maxlength="500" aria-autocomplete="list" aria-expanded="false" aria-haspopup="listbox" value="https://www.roblox.com/games/2753915549"]
+                    input.field [id="ps-place" role="combobox" placeholder="Search a game, or paste a link / Place ID. Empty just opens Roblox" autocomplete="off" maxlength="500" aria-autocomplete="list" aria-expanded="false" aria-haspopup="listbox" value="https://www.roblox.com/games/2753915549"]
                   div.ps-game [id="ps-game"]
                     span.gph
                       svg.i #sy1lqp
@@ -826,16 +832,17 @@ html [data-theme="dark" lang="en"]
                   select.select.sm [id="mc-pic-acc" aria-label="Whose window" value="00000000-0000-4000-8000-000000000001"]
                     option [value="00000000-0000-4000-8000-000000000001"] "Main"
                     option [value="00000000-0000-4000-8000-000000000002"] "Farm 1"
-                  button.btn.primary.sm [id="mc-ongame" type="button" aria-pressed="false"]
+                  button.btn.sm [id="mc-ongame" type="button" aria-pressed="false"]
                     svg.i #1e3syqr
                     span "Edit on game"
                 p.mc-game-say [role="status"] "Shows each step’s dot and each area’s box on Main’s window, to drag into place."
                 div.blank.mc-pic-frame [role="group" tabindex="-1" aria-label="The game window: numbered dots are where steps click, boxes are areas. Arrow keys move the one in focus." style="aspect-ratio:1.77778 / 1"]
-                  span.mc-pic-blank "Take a picture to see the game here"
-                  span.mc-pic-area [role="button" title="Fish area: drag to move, drag the corner to resize" tabindex="0" aria-label="Fish area: drag to move, drag the corner to resize" style="border-bottom-color:rgb(34, 197, 94);border-left-color:rgb(34, 197, 94);border-right-color:rgb(34, 197, 94);border-top-color:rgb(34, 197, 94);height:10%;left:30%;top:74%;width:40%"]
+                  span.mc-pic-blank
+                    span "Take a picture to see the game here"
+                  span.mc-pic-area [role="button" title="Fish area: drag to move, drag the corner to resize" tabindex="-1" aria-label="Fish area: drag to move, drag the corner to resize" style="border-bottom-color:rgb(34, 197, 94);border-left-color:rgb(34, 197, 94);border-right-color:rgb(34, 197, 94);border-top-color:rgb(34, 197, 94);height:10%;left:30%;top:74%;width:40%"]
                     i [style="background-attachment:initial;background-clip:initial;background-color:rgb(34, 197, 94);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "Fish area"
                     b.mc-pic-handle [style="background-attachment:initial;background-clip:initial;background-color:rgb(34, 197, 94);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"]
-                  span.mc-pic-dot [role="button" title="Point 2: drag to move" tabindex="0" aria-label="Point 2: drag to move" style="left:50%;top:60%"] "2"
+                  span.mc-pic-dot [role="button" title="Point 2: drag to move" tabindex="-1" aria-label="Point 2: drag to move" style="left:50%;top:60%"] "2"
                 div.mc-pic-acts
                   button.btn.sm [id="mc-pic-take" type="button"]
                     svg.i #16jqtkh
@@ -849,14 +856,15 @@ html [data-theme="dark" lang="en"]
                       span "New area"
                   ul
                     li
-                      i [aria-hidden="true" style="border-bottom-color:rgb(34, 197, 94);border-left-color:rgb(34, 197, 94);border-right-color:rgb(34, 197, 94);border-top-color:rgb(34, 197, 94)"]
-                      input.field.sm [maxlength="30" aria-label="Area name" value="Fish area"]
-                      button.icon-btn [type="button" title="Delete area" aria-label="Delete area: Fish area"]
-                        svg.i #1w1g8zc
+                      div.mc-area-row
+                        i [aria-hidden="true" style="border-bottom-color:rgb(34, 197, 94);border-left-color:rgb(34, 197, 94);border-right-color:rgb(34, 197, 94);border-top-color:rgb(34, 197, 94)"]
+                        input.field.sm [id="mc-area-a1" maxlength="30" aria-label="Area name" value="Fish area"]
+                        button.icon-btn [type="button" title="Delete area" aria-label="Delete area: Fish area"]
+                          svg.i #1w1g8zc
       div.modal-foot
         button.btn.danger.push "Delete"
         button.btn "Cancel"
-        button.btn.primary "Save"
+        button.btn.primary [aria-disabled="false"] "Save"
 #toasts
 -- commands
   (none)

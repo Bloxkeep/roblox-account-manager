@@ -54,11 +54,11 @@ html [data-theme="dark" lang="en"]
             span "Close all"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+            button.multi-open [title="Multi-Roblox: On: several Roblox windows can be open"]
               span.led
               div
                 b "Multi-Roblox"
-                small "On — several windows allowed"
+                small "On"
             label.switch [title="Turn off Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
@@ -106,7 +106,7 @@ html [data-theme="dark" lang="en"]
               svg.i #gsei2o
               span "Backup & data"
             button.set-nav-item [type="button" aria-current="page"]
-              svg.i #1uvtx1
+              img.set-nav-logo [alt="" src="logo.svg"]
               span "Bloxkeep"
           div.scroll.set-scroll
             div.settings
@@ -153,18 +153,31 @@ html [data-theme="dark" lang="en"]
                     div.set-row
                       div
                         div.t "Hotkeys"
-                        div.d "In any app, Ctrl+Alt plus: H hide or show all, M minimize or open all, N next window, A arrange, B open Bloxkeep."
+                        div.d
+                          span.hk-list
+                            span.hk "++ Hide all"
+                              kbd "Ctrl"
+                              kbd "Alt"
+                              kbd "H"
+                            span.hk "Minimize all"
+                              kbd "M"
+                            span.hk "Next"
+                              kbd "N"
+                            span.hk "Arrange"
+                              kbd "A"
+                            span.hk "Open Bloxkeep"
+                              kbd "B"
                       div.ctl
                         label.switch
                           input [id="s-hotkeys" type="checkbox" aria-label="Hotkeys" checked=true]
                           span
                     div.set-row
                       div
-                        div.t "Hardware acceleration"
-                        div.d "Off uses less RAM. Turns off automatically if your graphics driver acts up."
+                        div.t "Hardware acceleration for Bloxkeep"
+                        div.d "Off uses less RAM. Roblox isn’t affected."
                       div.ctl
                         label.switch
-                          input [id="s-gpu" type="checkbox" aria-label="Hardware acceleration" checked=true]
+                          input [id="s-gpu" type="checkbox" aria-label="Hardware acceleration for Bloxkeep" checked=true]
                           span
                 div.set-grp [id="sec-feedback"]
                   h3.set-grp-title "Help & feedback"
@@ -172,7 +185,7 @@ html [data-theme="dark" lang="en"]
                     div.set-row
                       div
                         div.t "User guide"
-                        div.d "Every feature explained: where to find it, what it does, and why an option may be greyed out."
+                        div.d "Every feature explained: where to find it, what it does, and why an option may be grayed out."
                       div.ctl
                         button.btn.sm "Open"
                           svg.i #4hphjr
@@ -226,7 +239,7 @@ html [data-theme="dark" lang="en"]
               img [alt="" style="width:556px" src="whatsnew/1.0.16-macros.en.webp"]
             div.wn-feat-text
               h3 "Macros (Beta)"
-              p "Write steps as plain sentences: press keys, click, wait for a picture, a colour or text, repeat, If. Record one or start from a template, try it, then drag its points and areas right on the game."
+              p "Write steps as plain sentences, record one or start from a template, then try it on the game."
               button.wn-go [type="button" FOCUSED] "Make a macro"
                 svg.i #1g7f83q
           article.wn-feat
@@ -234,7 +247,7 @@ html [data-theme="dark" lang="en"]
               img [alt="" style="width:505px" src="whatsnew/1.0.16-panel.en.webp"]
             div.wn-feat-text
               h3 "A panel beside the game"
-              p "Each macro gets a small window with Run and the settings the player may change: tabs, switches, choices, lists to tick, points set on the game. It can open by itself when an account joins your game."
+              p "A small window with Run and the macro's settings; it can open when an account joins."
               button.wn-go [type="button"] "Open Macros"
                 svg.i #1g7f83q
           article.wn-feat
@@ -242,17 +255,17 @@ html [data-theme="dark" lang="en"]
               img [alt="" style="width:577px" src="whatsnew/1.0.16-stats.en.webp"]
             div.wn-feat-text
               h3 "New Statistics"
-              p "Play time compared with the days before, a timeline of each account, and why accounts dropped with the time it cost, plus a button to turn on what would have helped."
-              button.wn-go [type="button"] "See Statistics"
+              p "Play time against the days before, a timeline per account, and why accounts dropped."
+              button.wn-go [type="button"] "Open Statistics"
                 svg.i #1g7f83q
         section.improved.wn-group
           h4.wn-kind "Improved"
           ul.wn-notes
             li "A macro that finds nothing for a few minutes runs your \"If stuck\" steps, then starts over; you can also have it rejoin or send a Discord alert with a picture of the window."
-            li "A macro can read any word the player ticks in a list (a letter read wrong is forgiven) and click each spot of a colour once, as it shows."
+            li "A macro can read any word the player ticks in a list (a letter read wrong is forgiven) and click each spot of a color once, as it shows."
             li "Ctrl+Alt+1 to 9 run a macro, Ctrl+Alt+0 stops them all. The tray menu and Ctrl+K show and hide the panels."
-            li "Fast Flags (grey sky, no grass, lowest graphics) now have their own switch in Settings › Staying in game, off at first: turn it on to keep Light AFK's grey sky."
-            li "The Game monitor has a minimise button on each window, and its pictures follow a resize at once."
+            li "Fast Flags (gray sky, no grass, lowest graphics) now have their own switch in Settings › Staying in game, off at first: turn it on to keep AFK farming's gray sky."
+            li "The Game monitor has a minimize button on each window, and its pictures follow a resize at once."
             li "Ctrl+Alt+A arranges the windows on the screen your mouse is on."
         section.fixed.wn-group
           h4.wn-kind "Fixed"

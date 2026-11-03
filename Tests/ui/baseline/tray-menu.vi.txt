@@ -6,8 +6,9 @@ html [data-theme="dark" lang="vi"]
       img.tray-logo [alt="" src="logo.svg"]
       div.tray-name
         b "Bloxkeep"
-        span "Multi-Roblox đang bật · 2 cửa sổ Roblox"
+        span
           i.ready.tray-dot
+          span.tray-status [title="Đang bật · 2 cửa sổ Roblox"] "Đang bật · 2 cửa sổ Roblox"
     div.tray-sep
     button.strong.tray-item [role="menuitem" type="button"]
       svg.i #1a4qrux
@@ -28,10 +29,9 @@ html [data-theme="dark" lang="vi"]
       svg.i #puf41w
       span.tray-item-text "Mở Roblox mới để đăng nhập"
     button.tray-item [role="menuitem" type="button"]
-      svg.i #1pvni8o
+      svg.i #2s24cy
       span.tray-item-text "Multi-Roblox"
-      span.tray-value "Bật"
-      svg.i.tray-sub #1g7f83q
+      svg.i.tray-check #14iobj
     div.tray-sep
     button.tray-item [role="menuitem" type="button"]
       svg.i #1tyq039

@@ -54,18 +54,18 @@ html [data-theme="dark" lang="vi"]
             span "Đóng tất cả"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: Đang bật, mở được nhiều cửa sổ"]
+            button.multi-open [title="Multi-Roblox: Đang bật: mở được nhiều cửa sổ Roblox"]
               span.led
               div
                 b "Multi-Roblox"
-                small "Đang bật, mở được nhiều cửa sổ"
+                small "Đang bật"
             label.switch [title="Tắt Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
         div.side-foot
           div [id="update-slot"]
           div.side-lock
-            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
+            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, Preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
               svg.i #21scx0
               span "Khóa app"
             button.btn.ghost.side-sq.vault-btn [title="Đổi vault (Vault 1)" aria-label="Đổi vault (Vault 1)"]
@@ -89,7 +89,7 @@ html [data-theme="dark" lang="vi"]
               span "Phiên bản Roblox"
             button.set-nav-item [type="button"]
               svg.i #1l5qw3q
-              span "Treo game"
+              span "Treo máy"
             button.set-nav-item [type="button"]
               svg.i #1hupb3o
               span "Thông báo"
@@ -106,7 +106,7 @@ html [data-theme="dark" lang="vi"]
               svg.i #gsei2o
               span "Sao lưu & dữ liệu"
             button.set-nav-item [type="button"]
-              svg.i #1uvtx1
+              img.set-nav-logo [alt="" src="logo.svg"]
               span "Bloxkeep"
           div.scroll.set-scroll
             div.settings
@@ -121,13 +121,14 @@ html [data-theme="dark" lang="vi"]
                         div.d "Chọn thư mục Google Drive hoặc OneDrive để không mất tài khoản khi máy hỏng."
                       div.ctl
                         label.switch
-                          input [id="s-bk-on" type="checkbox" aria-label="Sao lưu vào thư mục" checked=true]
+                          input [id="s-bk-on" type="checkbox" aria-label="Sao lưu vào thư mục" checked=false]
                           span
                     div.set-row
                       div
                         div.t "Thư mục"
                         div.d
                           span.path [id="s-bk-path"] "Chưa chọn thư mục"
+                          span.bk-hint "Chọn thư mục để bắt đầu sao lưu."
                           div.bk-suggest [id="s-bk-suggest"]
                             button.btn.ghost.sm [title="G:\\My Drive\\Bloxkeep"] "Dùng Google Drive"
                             button.btn.ghost.sm [title="C:\\Users\\Admin\\OneDrive\\Bloxkeep"] "Dùng OneDrive"
@@ -139,7 +140,7 @@ html [data-theme="dark" lang="vi"]
                         div
                           div.t "Chưa có bản sao lưu"
                         div.ctl
-                          button.btn.sm [disabled] "Sao lưu ngay"
+                          button.btn.sm [title="Chọn thư mục trước" disabled] "Sao lưu ngay"
                 div.set-grp [id="sec-restore"]
                   h3.set-grp-title "Khôi phục & nhập"
                   div.set-card
@@ -151,7 +152,7 @@ html [data-theme="dark" lang="vi"]
                         button.btn.sm "Khôi phục…"
                     div.set-row
                       div
-                        div.t "Nhập tài khoản từ file dữ liệu Bloxkeep"
+                        div.t "Nhập tài khoản từ file Bloxkeep"
                         div.d "Từ bản sao lưu hoặc Bloxkeep trên máy khác. Tài khoản đang có ở đây vẫn giữ nguyên."
                       div.ctl
                         button.btn.sm "Nhập…"
@@ -168,7 +169,7 @@ html [data-theme="dark" lang="vi"]
                           svg.i #3wh3ok
                     div.set-row
                       div
-                        div.t "File vault đang mở"
+                        div.t "File Bloxkeep đang dùng"
                         div.d
                           span.path [id="s-vault-path"] "C:\\Users\\Admin\\AppData\\Local\\Bloxkeep\\vault.rmv"
                       div.ctl
@@ -194,11 +195,12 @@ html [data-theme="dark" lang="vi"]
   div.at-top.overlay
     div.modal [role="dialog" aria-labelledby="mdl-1" aria-modal="true"]
       div.modal-head
-        h3 [id="mdl-1"] "Nhập từ file dữ liệu Bloxkeep"
+        h3 [id="mdl-1"] "Nhập từ file Bloxkeep"
         button.icon-btn [title="Đóng"]
           svg.i #1tyq039
       div.modal-body
         div [id="iv-body"]
+          p.iv-step "Bước 2/3"
           div.iv-file
             svg.i #3wh3ok
             b [title="Bloxkeep-backup-3f2a91c0-20261012-221500.rmv"] "Bloxkeep-backup-3f2a91c0-20261012-221500.rmv"
@@ -206,7 +208,7 @@ html [data-theme="dark" lang="vi"]
           div.form
             label "Mật khẩu chủ của file này"
               span.pw
-                input.field [id="iv-pw" type="password" autocomplete="off" maxlength="256" value=""]
+                input.field [id="iv-pw" type="password" autocomplete="off" maxlength="256" aria-invalid="true" value=""]
                 button.icon-btn [id="iv-eye" type="button" title="Hiện mật khẩu" aria-label="Hiện mật khẩu" aria-pressed="false"]
                   svg.i #1pcfgz
           p.fine
@@ -282,18 +284,18 @@ html [data-theme="dark" lang="vi"]
             span "Đóng tất cả"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: Đang bật, mở được nhiều cửa sổ"]
+            button.multi-open [title="Multi-Roblox: Đang bật: mở được nhiều cửa sổ Roblox"]
               span.led
               div
                 b "Multi-Roblox"
-                small "Đang bật, mở được nhiều cửa sổ"
+                small "Đang bật"
             label.switch [title="Tắt Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
         div.side-foot
           div [id="update-slot"]
           div.side-lock
-            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
+            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, Preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
               svg.i #21scx0
               span "Khóa app"
             button.btn.ghost.side-sq.vault-btn [title="Đổi vault (Vault 1)" aria-label="Đổi vault (Vault 1)"]
@@ -317,7 +319,7 @@ html [data-theme="dark" lang="vi"]
               span "Phiên bản Roblox"
             button.set-nav-item [type="button"]
               svg.i #1l5qw3q
-              span "Treo game"
+              span "Treo máy"
             button.set-nav-item [type="button"]
               svg.i #1hupb3o
               span "Thông báo"
@@ -334,7 +336,7 @@ html [data-theme="dark" lang="vi"]
               svg.i #gsei2o
               span "Sao lưu & dữ liệu"
             button.set-nav-item [type="button"]
-              svg.i #1uvtx1
+              img.set-nav-logo [alt="" src="logo.svg"]
               span "Bloxkeep"
           div.scroll.set-scroll
             div.settings
@@ -349,13 +351,14 @@ html [data-theme="dark" lang="vi"]
                         div.d "Chọn thư mục Google Drive hoặc OneDrive để không mất tài khoản khi máy hỏng."
                       div.ctl
                         label.switch
-                          input [id="s-bk-on" type="checkbox" aria-label="Sao lưu vào thư mục" checked=true]
+                          input [id="s-bk-on" type="checkbox" aria-label="Sao lưu vào thư mục" checked=false]
                           span
                     div.set-row
                       div
                         div.t "Thư mục"
                         div.d
                           span.path [id="s-bk-path"] "Chưa chọn thư mục"
+                          span.bk-hint "Chọn thư mục để bắt đầu sao lưu."
                           div.bk-suggest [id="s-bk-suggest"]
                             button.btn.ghost.sm [title="G:\\My Drive\\Bloxkeep"] "Dùng Google Drive"
                             button.btn.ghost.sm [title="C:\\Users\\Admin\\OneDrive\\Bloxkeep"] "Dùng OneDrive"
@@ -367,7 +370,7 @@ html [data-theme="dark" lang="vi"]
                         div
                           div.t "Chưa có bản sao lưu"
                         div.ctl
-                          button.btn.sm [disabled] "Sao lưu ngay"
+                          button.btn.sm [title="Chọn thư mục trước" disabled] "Sao lưu ngay"
                 div.set-grp [id="sec-restore"]
                   h3.set-grp-title "Khôi phục & nhập"
                   div.set-card
@@ -379,7 +382,7 @@ html [data-theme="dark" lang="vi"]
                         button.btn.sm "Khôi phục…"
                     div.set-row
                       div
-                        div.t "Nhập tài khoản từ file dữ liệu Bloxkeep"
+                        div.t "Nhập tài khoản từ file Bloxkeep"
                         div.d "Từ bản sao lưu hoặc Bloxkeep trên máy khác. Tài khoản đang có ở đây vẫn giữ nguyên."
                       div.ctl
                         button.btn.sm "Nhập…"
@@ -396,7 +399,7 @@ html [data-theme="dark" lang="vi"]
                           svg.i #3wh3ok
                     div.set-row
                       div
-                        div.t "File vault đang mở"
+                        div.t "File Bloxkeep đang dùng"
                         div.d
                           span.path [id="s-vault-path"] "C:\\Users\\Admin\\AppData\\Local\\Bloxkeep\\vault.rmv"
                       div.ctl
@@ -422,11 +425,12 @@ html [data-theme="dark" lang="vi"]
   div.at-top.overlay
     div.modal [role="dialog" aria-labelledby="mdl-1" aria-modal="true"]
       div.modal-head
-        h3 [id="mdl-1"] "Nhập từ file dữ liệu Bloxkeep"
+        h3 [id="mdl-1"] "Nhập từ file Bloxkeep"
         button.icon-btn [title="Đóng"]
           svg.i #1tyq039
       div.modal-body
         div [id="iv-body"]
+          p.iv-step "Bước 2/3"
           div.iv-file
             svg.i #3wh3ok
             b [title="Bloxkeep-backup-3f2a91c0-20261012-221500.rmv"] "Bloxkeep-backup-3f2a91c0-20261012-221500.rmv"
@@ -440,7 +444,6 @@ html [data-theme="dark" lang="vi"]
           p.fine
             svg.i #1boeybj
             span "File gốc vẫn giữ nguyên. Tài khoản lấy sang sẽ khóa bằng mật khẩu chủ của Bloxkeep trên máy này."
-          div.form-error [id="iv-err" role="alert"] "Bạn chưa nhập mật khẩu chủ của file này."
       div.modal-foot
         button.btn "Hủy"
         button.btn.primary "Mở"
@@ -503,18 +506,18 @@ html [data-theme="dark" lang="vi"]
             span "Đóng tất cả"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: Đang bật, mở được nhiều cửa sổ"]
+            button.multi-open [title="Multi-Roblox: Đang bật: mở được nhiều cửa sổ Roblox"]
               span.led
               div
                 b "Multi-Roblox"
-                small "Đang bật, mở được nhiều cửa sổ"
+                small "Đang bật"
             label.switch [title="Tắt Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
         div.side-foot
           div [id="update-slot"]
           div.side-lock
-            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
+            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, Preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
               svg.i #21scx0
               span "Khóa app"
             button.btn.ghost.side-sq.vault-btn [title="Đổi vault (Vault 1)" aria-label="Đổi vault (Vault 1)"]
@@ -538,7 +541,7 @@ html [data-theme="dark" lang="vi"]
               span "Phiên bản Roblox"
             button.set-nav-item [type="button"]
               svg.i #1l5qw3q
-              span "Treo game"
+              span "Treo máy"
             button.set-nav-item [type="button"]
               svg.i #1hupb3o
               span "Thông báo"
@@ -555,7 +558,7 @@ html [data-theme="dark" lang="vi"]
               svg.i #gsei2o
               span "Sao lưu & dữ liệu"
             button.set-nav-item [type="button"]
-              svg.i #1uvtx1
+              img.set-nav-logo [alt="" src="logo.svg"]
               span "Bloxkeep"
           div.scroll.set-scroll
             div.settings
@@ -570,13 +573,14 @@ html [data-theme="dark" lang="vi"]
                         div.d "Chọn thư mục Google Drive hoặc OneDrive để không mất tài khoản khi máy hỏng."
                       div.ctl
                         label.switch
-                          input [id="s-bk-on" type="checkbox" aria-label="Sao lưu vào thư mục" checked=true]
+                          input [id="s-bk-on" type="checkbox" aria-label="Sao lưu vào thư mục" checked=false]
                           span
                     div.set-row
                       div
                         div.t "Thư mục"
                         div.d
                           span.path [id="s-bk-path"] "Chưa chọn thư mục"
+                          span.bk-hint "Chọn thư mục để bắt đầu sao lưu."
                           div.bk-suggest [id="s-bk-suggest"]
                             button.btn.ghost.sm [title="G:\\My Drive\\Bloxkeep"] "Dùng Google Drive"
                             button.btn.ghost.sm [title="C:\\Users\\Admin\\OneDrive\\Bloxkeep"] "Dùng OneDrive"
@@ -588,7 +592,7 @@ html [data-theme="dark" lang="vi"]
                         div
                           div.t "Chưa có bản sao lưu"
                         div.ctl
-                          button.btn.sm [disabled] "Sao lưu ngay"
+                          button.btn.sm [title="Chọn thư mục trước" disabled] "Sao lưu ngay"
                 div.set-grp [id="sec-restore"]
                   h3.set-grp-title "Khôi phục & nhập"
                   div.set-card
@@ -600,7 +604,7 @@ html [data-theme="dark" lang="vi"]
                         button.btn.sm "Khôi phục…"
                     div.set-row
                       div
-                        div.t "Nhập tài khoản từ file dữ liệu Bloxkeep"
+                        div.t "Nhập tài khoản từ file Bloxkeep"
                         div.d "Từ bản sao lưu hoặc Bloxkeep trên máy khác. Tài khoản đang có ở đây vẫn giữ nguyên."
                       div.ctl
                         button.btn.sm "Nhập…"
@@ -617,7 +621,7 @@ html [data-theme="dark" lang="vi"]
                           svg.i #3wh3ok
                     div.set-row
                       div
-                        div.t "File vault đang mở"
+                        div.t "File Bloxkeep đang dùng"
                         div.d
                           span.path [id="s-vault-path"] "C:\\Users\\Admin\\AppData\\Local\\Bloxkeep\\vault.rmv"
                       div.ctl
@@ -643,11 +647,12 @@ html [data-theme="dark" lang="vi"]
   div.at-top.overlay
     div.modal [role="dialog" aria-labelledby="mdl-1" aria-modal="true"]
       div.modal-head
-        h3 [id="mdl-1"] "Nhập từ file dữ liệu Bloxkeep"
+        h3 [id="mdl-1"] "Nhập từ file Bloxkeep"
         button.icon-btn [title="Đóng"]
           svg.i #1tyq039
       div.modal-body
         div [id="iv-body"]
+          p.iv-step "Bước 2/3"
           div.iv-file
             svg.i #3wh3ok
             b [title="Bloxkeep-backup-3f2a91c0-20261012-221500.rmv"] "Bloxkeep-backup-3f2a91c0-20261012-221500.rmv"
@@ -661,7 +666,6 @@ html [data-theme="dark" lang="vi"]
           p.fine
             svg.i #1boeybj
             span "File gốc vẫn giữ nguyên. Tài khoản lấy sang sẽ khóa bằng mật khẩu chủ của Bloxkeep trên máy này."
-          div.form-error [id="iv-err" role="alert"] "Bạn chưa nhập mật khẩu chủ của file này."
       div.modal-foot
         button.btn "Hủy"
         button.btn.primary "Mở"

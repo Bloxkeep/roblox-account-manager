@@ -54,18 +54,18 @@ html [data-theme="dark" lang="vi"]
             span "Đóng tất cả"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: Đang bật, mở được nhiều cửa sổ"]
+            button.multi-open [title="Multi-Roblox: Đang bật: mở được nhiều cửa sổ Roblox"]
               span.led
               div
                 b "Multi-Roblox"
-                small "Đang bật, mở được nhiều cửa sổ"
+                small "Đang bật"
             label.switch [title="Tắt Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
         div.side-foot
           div [id="update-slot"]
           div.side-lock
-            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
+            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, Preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
               svg.i #21scx0
               span "Khóa app"
             button.btn.ghost.side-sq.vault-btn [title="Đổi vault (Vault 1)" aria-label="Đổi vault (Vault 1)"]
@@ -81,10 +81,6 @@ html [data-theme="dark" lang="vi"]
             div.seg [id="stats-tabs" role="tablist" aria-label="Thống kê"]
               button.on [role="tab" type="button" aria-selected="true"] "Thống kê"
               button [role="tab" type="button" aria-selected="false"] "Hoạt động"
-            div.chips [id="stats-period" role="group" aria-label="Thống kê"]
-              button.chip [aria-pressed="false"] "Hôm nay"
-              button.chip.on [aria-pressed="true"] "7 ngày"
-              button.chip [aria-pressed="false"] "30 ngày"
         div.scroll
           div.stats
             div.stats-in [id="stats-body"]

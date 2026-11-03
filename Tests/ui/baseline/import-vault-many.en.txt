@@ -54,11 +54,11 @@ html [data-theme="dark" lang="en"]
             span "Close all"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+            button.multi-open [title="Multi-Roblox: On: several Roblox windows can be open"]
               span.led
               div
                 b "Multi-Roblox"
-                small "On — several windows allowed"
+                small "On"
             label.switch [title="Turn off Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
@@ -106,7 +106,7 @@ html [data-theme="dark" lang="en"]
               svg.i #gsei2o
               span "Backup & data"
             button.set-nav-item [type="button"]
-              svg.i #1uvtx1
+              img.set-nav-logo [alt="" src="logo.svg"]
               span "Bloxkeep"
           div.scroll.set-scroll
             div.settings
@@ -121,13 +121,14 @@ html [data-theme="dark" lang="en"]
                         div.d "Pick a Google Drive or OneDrive folder so your accounts survive a dead PC."
                       div.ctl
                         label.switch
-                          input [id="s-bk-on" type="checkbox" aria-label="Back up to a folder" checked=true]
+                          input [id="s-bk-on" type="checkbox" aria-label="Back up to a folder" checked=false]
                           span
                     div.set-row
                       div
                         div.t "Folder"
                         div.d
                           span.path [id="s-bk-path"] "No folder chosen"
+                          span.bk-hint "Backups start once you choose a folder."
                           div.bk-suggest [id="s-bk-suggest"]
                             button.btn.ghost.sm [title="G:\\My Drive\\Bloxkeep"] "Use Google Drive"
                             button.btn.ghost.sm [title="C:\\Users\\Admin\\OneDrive\\Bloxkeep"] "Use OneDrive"
@@ -139,7 +140,7 @@ html [data-theme="dark" lang="en"]
                         div
                           div.t "No backups yet"
                         div.ctl
-                          button.btn.sm [disabled] "Back up now"
+                          button.btn.sm [title="Choose a folder first" disabled] "Back up now"
                 div.set-grp [id="sec-restore"]
                   h3.set-grp-title "Restore & import"
                   div.set-card
@@ -550,11 +551,11 @@ html [data-theme="dark" lang="en"]
             span "Close all"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+            button.multi-open [title="Multi-Roblox: On: several Roblox windows can be open"]
               span.led
               div
                 b "Multi-Roblox"
-                small "On — several windows allowed"
+                small "On"
             label.switch [title="Turn off Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
@@ -602,7 +603,7 @@ html [data-theme="dark" lang="en"]
               svg.i #gsei2o
               span "Backup & data"
             button.set-nav-item [type="button"]
-              svg.i #1uvtx1
+              img.set-nav-logo [alt="" src="logo.svg"]
               span "Bloxkeep"
           div.scroll.set-scroll
             div.settings
@@ -617,13 +618,14 @@ html [data-theme="dark" lang="en"]
                         div.d "Pick a Google Drive or OneDrive folder so your accounts survive a dead PC."
                       div.ctl
                         label.switch
-                          input [id="s-bk-on" type="checkbox" aria-label="Back up to a folder" checked=true]
+                          input [id="s-bk-on" type="checkbox" aria-label="Back up to a folder" checked=false]
                           span
                     div.set-row
                       div
                         div.t "Folder"
                         div.d
                           span.path [id="s-bk-path"] "No folder chosen"
+                          span.bk-hint "Backups start once you choose a folder."
                           div.bk-suggest [id="s-bk-suggest"]
                             button.btn.ghost.sm [title="G:\\My Drive\\Bloxkeep"] "Use Google Drive"
                             button.btn.ghost.sm [title="C:\\Users\\Admin\\OneDrive\\Bloxkeep"] "Use OneDrive"
@@ -635,7 +637,7 @@ html [data-theme="dark" lang="en"]
                         div
                           div.t "No backups yet"
                         div.ctl
-                          button.btn.sm [disabled] "Back up now"
+                          button.btn.sm [title="Choose a folder first" disabled] "Back up now"
                 div.set-grp [id="sec-restore"]
                   h3.set-grp-title "Restore & import"
                   div.set-card
@@ -875,11 +877,11 @@ html [data-theme="dark" lang="en"]
             span "Close all"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+            button.multi-open [title="Multi-Roblox: On: several Roblox windows can be open"]
               span.led
               div
                 b "Multi-Roblox"
-                small "On — several windows allowed"
+                small "On"
             label.switch [title="Turn off Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
@@ -927,7 +929,7 @@ html [data-theme="dark" lang="en"]
               svg.i #gsei2o
               span "Backup & data"
             button.set-nav-item [type="button"]
-              svg.i #1uvtx1
+              img.set-nav-logo [alt="" src="logo.svg"]
               span "Bloxkeep"
           div.scroll.set-scroll
             div.settings
@@ -942,13 +944,14 @@ html [data-theme="dark" lang="en"]
                         div.d "Pick a Google Drive or OneDrive folder so your accounts survive a dead PC."
                       div.ctl
                         label.switch
-                          input [id="s-bk-on" type="checkbox" aria-label="Back up to a folder" checked=true]
+                          input [id="s-bk-on" type="checkbox" aria-label="Back up to a folder" checked=false]
                           span
                     div.set-row
                       div
                         div.t "Folder"
                         div.d
                           span.path [id="s-bk-path"] "No folder chosen"
+                          span.bk-hint "Backups start once you choose a folder."
                           div.bk-suggest [id="s-bk-suggest"]
                             button.btn.ghost.sm [title="G:\\My Drive\\Bloxkeep"] "Use Google Drive"
                             button.btn.ghost.sm [title="C:\\Users\\Admin\\OneDrive\\Bloxkeep"] "Use OneDrive"
@@ -960,7 +963,7 @@ html [data-theme="dark" lang="en"]
                         div
                           div.t "No backups yet"
                         div.ctl
-                          button.btn.sm [disabled] "Back up now"
+                          button.btn.sm [title="Choose a folder first" disabled] "Back up now"
                 div.set-grp [id="sec-restore"]
                   h3.set-grp-title "Restore & import"
                   div.set-card
@@ -1200,11 +1203,11 @@ html [data-theme="dark" lang="en"]
             span "Close all"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+            button.multi-open [title="Multi-Roblox: On: several Roblox windows can be open"]
               span.led
               div
                 b "Multi-Roblox"
-                small "On — several windows allowed"
+                small "On"
             label.switch [title="Turn off Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
@@ -1252,7 +1255,7 @@ html [data-theme="dark" lang="en"]
               svg.i #gsei2o
               span "Backup & data"
             button.set-nav-item [type="button"]
-              svg.i #1uvtx1
+              img.set-nav-logo [alt="" src="logo.svg"]
               span "Bloxkeep"
           div.scroll.set-scroll
             div.settings
@@ -1267,13 +1270,14 @@ html [data-theme="dark" lang="en"]
                         div.d "Pick a Google Drive or OneDrive folder so your accounts survive a dead PC."
                       div.ctl
                         label.switch
-                          input [id="s-bk-on" type="checkbox" aria-label="Back up to a folder" checked=true]
+                          input [id="s-bk-on" type="checkbox" aria-label="Back up to a folder" checked=false]
                           span
                     div.set-row
                       div
                         div.t "Folder"
                         div.d
                           span.path [id="s-bk-path"] "No folder chosen"
+                          span.bk-hint "Backups start once you choose a folder."
                           div.bk-suggest [id="s-bk-suggest"]
                             button.btn.ghost.sm [title="G:\\My Drive\\Bloxkeep"] "Use Google Drive"
                             button.btn.ghost.sm [title="C:\\Users\\Admin\\OneDrive\\Bloxkeep"] "Use OneDrive"
@@ -1285,7 +1289,7 @@ html [data-theme="dark" lang="en"]
                         div
                           div.t "No backups yet"
                         div.ctl
-                          button.btn.sm [disabled] "Back up now"
+                          button.btn.sm [title="Choose a folder first" disabled] "Back up now"
                 div.set-grp [id="sec-restore"]
                   h3.set-grp-title "Restore & import"
                   div.set-card

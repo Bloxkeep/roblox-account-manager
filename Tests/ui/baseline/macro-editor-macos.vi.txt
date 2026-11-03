@@ -58,11 +58,11 @@ html [data-theme="macos" lang="vi"]
             span "Đóng tất cả"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: Đang bật, mở được nhiều cửa sổ"]
+            button.multi-open [title="Multi-Roblox: Đang bật: mở được nhiều cửa sổ Roblox"]
               span.led
               div
                 b "Multi-Roblox"
-                small "Đang bật, mở được nhiều cửa sổ"
+                small "Đang bật"
             label.switch [title="Tắt Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
@@ -385,7 +385,7 @@ html [data-theme="macos" lang="vi"]
                     small "Khi có tài khoản trong game này. Để trống: game nào cũng được."
                 div.mc-panel-game
                   label "Game"
-                    input.field [id="ps-place" role="combobox" placeholder="Tìm game, hoặc dán link / Place ID…" autocomplete="off" maxlength="500" aria-autocomplete="list" aria-expanded="false" aria-haspopup="listbox" value="https://www.roblox.com/games/2753915549"]
+                    input.field [id="ps-place" role="combobox" placeholder="Tìm game, hoặc dán link / Place ID. Để trống thì chỉ mở Roblox" autocomplete="off" maxlength="500" aria-autocomplete="list" aria-expanded="false" aria-haspopup="listbox" value="https://www.roblox.com/games/2753915549"]
                   div.ps-game [id="ps-game"]
                     span.gph
                       svg.i #sy1lqp
@@ -433,6 +433,7 @@ html [data-theme="macos" lang="vi"]
 #toasts
 -- commands
   getState {}
+  macroTemplates {}
   monitorArea {"hidden":true}
   pageBusy {"busy":true}
   pageShown {}

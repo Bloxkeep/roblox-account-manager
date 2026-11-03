@@ -54,18 +54,18 @@ html [data-theme="dark" lang="vi"]
             span "Đóng tất cả"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: Đang bật, mở được nhiều cửa sổ"]
+            button.multi-open [title="Multi-Roblox: Đang bật: mở được nhiều cửa sổ Roblox"]
               span.led
               div
                 b "Multi-Roblox"
-                small "Đang bật, mở được nhiều cửa sổ"
+                small "Đang bật"
             label.switch [title="Tắt Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
         div.side-foot
           div [id="update-slot"]
           div.side-lock
-            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
+            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, Preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
               svg.i #21scx0
               span "Khóa app"
             button.btn.ghost.side-sq.vault-btn [title="Đổi vault (Vault 1)" aria-label="Đổi vault (Vault 1)"]
@@ -76,17 +76,17 @@ html [data-theme="dark" lang="vi"]
         header.top
           div.top-title
             h1 "Preset"
-            p [id="pv-sub"] "preset preset hẹn giờ"
+            p [id="pv-sub"] "Preset Preset hẹn giờ"
               b "3"
               span.sep "·"
               b "1"
           div.top-tools [id="pv-tools"]
             label.search
               svg.i #1u22jvi
-              input [id="pv-q" placeholder="Tìm preset hoặc game" maxlength="100" aria-label="Tìm preset hoặc game" value=""]
+              input [id="pv-q" placeholder="Tìm Preset hoặc game" maxlength="100" aria-label="Tìm Preset hoặc game" value=""]
             button.btn.primary
               svg.i #u7ty99
-              span "Thêm preset"
+              span "Thêm Preset"
         div.scroll
           div.pv-list [id="pv-list" role="list"]
             div.pv-item [role="listitem"]
@@ -97,9 +97,10 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Farm Blox Fruits"] "Farm Blox Fruits"
                 small [title="Blox Fruits"] "Blox Fruits"
-                span.pv-sum [title="Ping thấp nhất · Chờ 12 giây giữa các tài khoản · Thứ 2–Thứ 6 20:00 · Bật chống AFK · Treo máy nhẹ · Mở lại mỗi 4 giờ · Xếp cửa sổ · Kênh Discord riêng"] "Ping thấp nhất · Chờ 12 giây giữa các tài khoản · Thứ 2–Thứ 6 20:00 · Bật chống AFK · Treo máy nhẹ · Mở lại mỗi 4 giờ · Xếp cửa sổ · Kênh Discord riêng"
-                span.pv-next "· Lần tới: Hôm nay 20:00"
+                span.pv-sum [title="Ping thấp nhất · Chờ 12 giây giữa các tài khoản · Bật chống AFK · Treo máy nhẹ · Mở lại mỗi 4 giờ · Xếp cửa sổ · Kênh Discord riêng"] "Ping thấp nhất · Chờ 12 giây giữa các tài khoản · Bật chống AFK · Treo máy nhẹ · Mở lại mỗi 4 giờ · Xếp cửa sổ · Kênh Discord riêng"
+                span.pv-next "· · Lần tới: Hôm nay 20:00"
                   span.pv-live "Đang mở 3 cửa sổ"
+                  span "T2–T6 20:00"
               div.pv-accs [title="3 tài khoản\nFarm 1\nFarm 2\nNight Owl" aria-label="3 tài khoản"]
                 span.avatar.sm
                   img [alt="" style="--h:243" src=#uinvo6]
@@ -112,7 +113,7 @@ html [data-theme="dark" lang="vi"]
                 label.switch [title="Tắt hẹn giờ"]
                   input [type="checkbox" aria-label="Hẹn giờ: Farm Blox Fruits" checked=true]
                   span
-              button.btn.pv-close.pv-run.sm [title="Đóng 3 cửa sổ do preset này mở." aria-label="Đóng: Farm Blox Fruits"]
+              button.btn.pv-close.pv-run.sm [title="Đóng 3 cửa sổ do Preset này mở." aria-label="Đóng: Farm Blox Fruits"]
                 svg.i #16z0s1r
                 span "Đóng"
               span.pv-acts
@@ -135,7 +136,7 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Adopt Me trade"] "Adopt Me trade"
                 small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
-                span.pv-sum [title="Bất kỳ (Roblox tự chọn) · Chờ mặc định (8 giây) · Không hẹn giờ · Tắt tự vào lại"] "Bất kỳ (Roblox tự chọn) · Chờ mặc định (8 giây) · Không hẹn giờ · Tắt tự vào lại"
+                span.pv-sum [title="Bất kỳ (Roblox tự chọn) · Chờ mặc định (8 giây) · Tắt tự vào lại"] "Bất kỳ (Roblox tự chọn) · Chờ mặc định (8 giây) · Tắt tự vào lại"
                 span.pv-next
                   span "Chạy lần cuối 1 giờ trước"
               div.pv-accs [title="1 tài khoản\nTrade" aria-label="1 tài khoản"]
@@ -165,8 +166,9 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Morning check-in"] "Morning check-in"
                 small [title="Màn hình chính Roblox"] "Màn hình chính Roblox"
-                span.pv-sum [title="Mở cùng lúc, không chờ · Hẹn giờ đang tắt · Thứ 5, 24/12 07:30"] "Mở cùng lúc, không chờ · Hẹn giờ đang tắt · Thứ 5, 24/12 07:30"
-                span.pv-next
+                span.pv-sum [title="Mở cùng lúc, không chờ"] "Mở cùng lúc, không chờ"
+                span.pv-next "·"
+                  span "Hẹn giờ đang tắt · T5, 24/12 07:30"
                   span "Chạy lần cuối 1 ngày trước"
               div.pv-accs [title="6 tài khoản\nTài khoản chính\nFarm 1\nNight Owl\nTài khoản phụ\nTrade\nThử nghiệm" aria-label="6 tài khoản"]
                 span.avatar.sm
@@ -202,7 +204,7 @@ html [data-theme="dark" lang="vi"]
   div.at-top.overlay
     div.modal [role="dialog" aria-labelledby="mdl-1" aria-modal="true"]
       div.modal-head
-        h3 [id="mdl-1"] "Sửa preset"
+        h3 [id="mdl-1"] "Sửa Preset"
         button.icon-btn [title="Đóng"]
           svg.i #1tyq039
       div.modal-body
@@ -210,7 +212,7 @@ html [data-theme="dark" lang="vi"]
           label "Tên"
             input.field [id="ps-name" placeholder="VD: Farm Blox Fruits" maxlength="60" value="Farm Blox Fruits"]
           label "Game"
-            input.field [id="ps-place" role="combobox" placeholder="Tìm game, hoặc dán link / Place ID…" autocomplete="off" maxlength="500" aria-autocomplete="list" aria-expanded="true" aria-haspopup="listbox" value="adopt" FOCUSED]
+            input.field [id="ps-place" role="combobox" placeholder="Tìm game, hoặc dán link / Place ID. Để trống thì chỉ mở Roblox" autocomplete="off" maxlength="500" aria-autocomplete="list" aria-expanded="true" aria-haspopup="listbox" value="adopt" FOCUSED]
           div.ps-pick [id="ps-pick"]
             div.ps-pick-list [role="listbox"]
               div.game-row [id="psg-0" role="option" aria-selected="false"]
@@ -227,15 +229,15 @@ html [data-theme="dark" lang="vi"]
                 option [value="fewest"] "Vắng nhất"
                 option [value="ping"] "Ping thấp nhất"
                 option [value="random"] "Ngẫu nhiên"
-                option [value="eachFewest"] "Mỗi tài khoản một server, vắng nhất"
-                option [value="eachMost"] "Mỗi tài khoản một server, đông nhất"
-                option [value="eachRandom"] "Mỗi tài khoản một server, ngẫu nhiên"
                 option [value="job"] "Server cố định (mã server)"
                 option [value="follow"] "Server của một người chơi"
+                option [value="eachFewest"] "Mỗi tài khoản: Vắng nhất"
+                option [value="eachMost"] "Mỗi tài khoản: Đông nhất"
+                option [value="eachRandom"] "Mỗi tài khoản: Ngẫu nhiên"
             label "Chờ giữa các tài khoản"
               select.select [id="ps-delay" value="12"]
                 option [value=""] "Theo Cài đặt (8 giây)"
-                option [value="0"] "0 giây"
+                option [value="0"] "Không chờ"
                 option [value="5"] "5 giây"
                 option [value="10"] "10 giây"
                 option [value="12"] "12 giây"
@@ -250,7 +252,7 @@ html [data-theme="dark" lang="vi"]
             small "Tài khoản đã đánh dấu sẽ mở theo thứ tự này. Kéo thả hoặc bấm mũi tên để đổi thứ tự."
           p.ps-gone
             svg.i #v9c4u6
-            span "1 tài khoản trong preset này đã bị xóa và sẽ bị bỏ ra khi bạn lưu."
+            span "1 tài khoản trong Preset này đã bị xóa và sẽ bị bỏ ra khi bạn lưu."
         div.ord-list [role="list"]
           div.ord-item [role="listitem"]
             span.ord-grip [title="Kéo để đổi chỗ"]
@@ -262,7 +264,7 @@ html [data-theme="dark" lang="vi"]
               b [title="Farm 1"] "Farm 1"
               small "@pixelfarmer01"
             span.ord-btns
-              button.icon-btn [type="button" title="Chuyển lên" aria-label="Chuyển lên"]
+              button.icon-btn [type="button" title="Chuyển lên" aria-label="Chuyển lên" disabled]
                 svg.i #ilfy0l
               button.icon-btn [type="button" title="Chuyển xuống" aria-label="Chuyển xuống"]
                 svg.i #u1ag9u
@@ -348,12 +350,13 @@ html [data-theme="dark" lang="vi"]
             span.ord-btns
               button.icon-btn [type="button" title="Chuyển lên" aria-label="Chuyển lên"]
                 svg.i #ilfy0l
-              button.icon-btn [type="button" title="Chuyển xuống" aria-label="Chuyển xuống"]
+              button.icon-btn [type="button" title="Chuyển xuống" aria-label="Chuyển xuống" disabled]
                 svg.i #u1ag9u
         div.form.preset-form
-          div.ps-opts [role="group" aria-labelledby="ps-opts-title"]
-            div.ps-opts-head
-              b [id="ps-opts-title"] "Áp dụng cho cửa sổ Roblox"
+          details.ps-fold.ps-note.ps-opts [id="ps-opts" open=""]
+            summary.ps-opts-head
+              b [id="ps-opts-title"] "Cửa sổ Roblox"
+              svg.i #u1ag9u
             div.ps-opts-grid
               label "Chống AFK"
                 select.select [id="ps-afk" value="on"]
@@ -365,13 +368,13 @@ html [data-theme="dark" lang="vi"]
                   option [value=""] "Theo từng tài khoản"
                   option [value="on"] "Bật"
                   option [value="off"] "Tắt"
-              label "Server khi vào lại"
+              label "Vào lại server"
                 select.select [id="ps-rejoin-with" value=""]
-                  option [value=""] "Bất kỳ"
-                  option [value="any"] "Cùng tài khoản khác"
-                  option [value="00000000-0000-4000-8000-000000000002"] "Cùng Farm 1"
-                  option [value="00000000-0000-4000-8000-000000000003"] "Cùng Farm 2"
-                  option [value="00000000-0000-4000-8000-000000000004"] "Cùng Night Owl"
+                  option [value=""] "Server bất kỳ"
+                  option [value="any"] "Cùng server với tài khoản khác"
+                  option [value="00000000-0000-4000-8000-000000000002"] "Cùng server với Farm 1"
+                  option [value="00000000-0000-4000-8000-000000000003"] "Cùng server với Farm 2"
+                  option [value="00000000-0000-4000-8000-000000000004"] "Cùng server với Night Owl"
               label "Hiệu năng"
                 select.select [id="ps-profile" value="afk"]
                   option [value=""] "Bình thường"
@@ -389,17 +392,18 @@ html [data-theme="dark" lang="vi"]
                   option [value="on"] "Bật"
                   option [value="off"] "Tắt"
             p.ps-opts-note [id="ps-opts-note"] "Treo máy nhẹ: đồ họa thấp nhất, tắt hiệu ứng, 30 FPS, tắt tiếng, thu nhỏ khi đã vào game. Mở lại: sau số giờ đó, lần lượt đóng từng cửa sổ rồi mở lại vào đúng game cũ."
-          div.ps-opts [role="group" aria-labelledby="ps-dc-title"]
-            div.ps-opts-head
+          details.ps-fold.ps-note.ps-opts [id="ps-dc" open=""]
+            summary.ps-opts-head
               b [id="ps-dc-title"] "Discord"
-            label.ps-dc-mode "Gửi tin của preset này vào"
+              svg.i #u1ag9u
+            label.ps-dc-mode "Gửi tin của Preset này vào"
               select.select [id="ps-dc-mode" value="own"]
                 option [value=""] "Kênh trong Cài đặt"
-                option [value="own"] "Webhook riêng"
+                option [value="own"] "Kênh Discord riêng"
             div.ps-dc-own [id="ps-dc-own"]
-              input.field [id="ps-dc-link" type="text" placeholder="discord.com/api/webhooks/…5678/••••••" autocomplete="off" maxlength="300" aria-label="Link webhook của preset này" value=""]
+              input.field [id="ps-dc-link" type="text" placeholder="discord.com/api/webhooks/…5678/••••••" autocomplete="off" maxlength="300" aria-label="Link webhook của Preset này" value=""]
               button.btn [id="ps-dc-test" type="button"] "Gửi thử"
-            p.ps-opts-note "Đã lưu link (đang ẩn). Dán link khác để thay. Gồm tin hẹn giờ, tổng kết và cảnh báo cửa sổ của Preset. Tin khác vẫn vào kênh trong Cài đặt. Gửi lên Discord đang tắt ở Cài đặt › Discord. Bật lên thì tin mới được gửi đi."
+            p.ps-opts-note "Đã lưu link (đang ẩn). Dán link khác để thay. Nhận lịch chạy, tóm tắt và cảnh báo cửa sổ của Preset này. Còn lại gửi về kênh trong Cài đặt. Gửi lên Discord đang tắt ở Cài đặt › Discord. Bật lên thì tin mới được gửi đi."
           div.ps-sched
             div.ps-sched-head
               label.switch
@@ -407,12 +411,12 @@ html [data-theme="dark" lang="vi"]
                 span
               div
                 b "Hẹn giờ"
-                small "Tự chạy preset này vào giờ đã đặt"
+                small "Tự chạy Preset này vào giờ đã đặt"
             div.ps-sched-body [id="ps-sch-body"]
               div.preset-row
                 label "Giờ bắt đầu"
                   span.field.tf
-                    input.tf-box [id="ps-sch-time" type="time" value="20:00"]
+                    input.tf-box [id="ps-sch-time" type="text" placeholder="20:00" autocomplete="off" value="20:00"]
                     button.tf-btn [type="button" title="Chọn giờ" aria-expanded="false" aria-haspopup="dialog" aria-label="Chọn giờ"]
                       svg.i #ktpp14
                 label "Lặp lại"
@@ -508,18 +512,18 @@ html [data-theme="dark" lang="vi"]
             span "Đóng tất cả"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: Đang bật, mở được nhiều cửa sổ"]
+            button.multi-open [title="Multi-Roblox: Đang bật: mở được nhiều cửa sổ Roblox"]
               span.led
               div
                 b "Multi-Roblox"
-                small "Đang bật, mở được nhiều cửa sổ"
+                small "Đang bật"
             label.switch [title="Tắt Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
         div.side-foot
           div [id="update-slot"]
           div.side-lock
-            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
+            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, Preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
               svg.i #21scx0
               span "Khóa app"
             button.btn.ghost.side-sq.vault-btn [title="Đổi vault (Vault 1)" aria-label="Đổi vault (Vault 1)"]
@@ -530,17 +534,17 @@ html [data-theme="dark" lang="vi"]
         header.top
           div.top-title
             h1 "Preset"
-            p [id="pv-sub"] "preset preset hẹn giờ"
+            p [id="pv-sub"] "Preset Preset hẹn giờ"
               b "3"
               span.sep "·"
               b "1"
           div.top-tools [id="pv-tools"]
             label.search
               svg.i #1u22jvi
-              input [id="pv-q" placeholder="Tìm preset hoặc game" maxlength="100" aria-label="Tìm preset hoặc game" value=""]
+              input [id="pv-q" placeholder="Tìm Preset hoặc game" maxlength="100" aria-label="Tìm Preset hoặc game" value=""]
             button.btn.primary
               svg.i #u7ty99
-              span "Thêm preset"
+              span "Thêm Preset"
         div.scroll
           div.pv-list [id="pv-list" role="list"]
             div.pv-item [role="listitem"]
@@ -551,9 +555,10 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Farm Blox Fruits"] "Farm Blox Fruits"
                 small [title="Blox Fruits"] "Blox Fruits"
-                span.pv-sum [title="Ping thấp nhất · Chờ 12 giây giữa các tài khoản · Thứ 2–Thứ 6 20:00 · Bật chống AFK · Treo máy nhẹ · Mở lại mỗi 4 giờ · Xếp cửa sổ · Kênh Discord riêng"] "Ping thấp nhất · Chờ 12 giây giữa các tài khoản · Thứ 2–Thứ 6 20:00 · Bật chống AFK · Treo máy nhẹ · Mở lại mỗi 4 giờ · Xếp cửa sổ · Kênh Discord riêng"
-                span.pv-next "· Lần tới: Hôm nay 20:00"
+                span.pv-sum [title="Ping thấp nhất · Chờ 12 giây giữa các tài khoản · Bật chống AFK · Treo máy nhẹ · Mở lại mỗi 4 giờ · Xếp cửa sổ · Kênh Discord riêng"] "Ping thấp nhất · Chờ 12 giây giữa các tài khoản · Bật chống AFK · Treo máy nhẹ · Mở lại mỗi 4 giờ · Xếp cửa sổ · Kênh Discord riêng"
+                span.pv-next "· · Lần tới: Hôm nay 20:00"
                   span.pv-live "Đang mở 3 cửa sổ"
+                  span "T2–T6 20:00"
               div.pv-accs [title="3 tài khoản\nFarm 1\nFarm 2\nNight Owl" aria-label="3 tài khoản"]
                 span.avatar.sm
                   img [alt="" style="--h:243" src=#uinvo6]
@@ -566,7 +571,7 @@ html [data-theme="dark" lang="vi"]
                 label.switch [title="Tắt hẹn giờ"]
                   input [type="checkbox" aria-label="Hẹn giờ: Farm Blox Fruits" checked=true]
                   span
-              button.btn.pv-close.pv-run.sm [title="Đóng 3 cửa sổ do preset này mở." aria-label="Đóng: Farm Blox Fruits"]
+              button.btn.pv-close.pv-run.sm [title="Đóng 3 cửa sổ do Preset này mở." aria-label="Đóng: Farm Blox Fruits"]
                 svg.i #16z0s1r
                 span "Đóng"
               span.pv-acts
@@ -589,7 +594,7 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Adopt Me trade"] "Adopt Me trade"
                 small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
-                span.pv-sum [title="Bất kỳ (Roblox tự chọn) · Chờ mặc định (8 giây) · Không hẹn giờ · Tắt tự vào lại"] "Bất kỳ (Roblox tự chọn) · Chờ mặc định (8 giây) · Không hẹn giờ · Tắt tự vào lại"
+                span.pv-sum [title="Bất kỳ (Roblox tự chọn) · Chờ mặc định (8 giây) · Tắt tự vào lại"] "Bất kỳ (Roblox tự chọn) · Chờ mặc định (8 giây) · Tắt tự vào lại"
                 span.pv-next
                   span "Chạy lần cuối 1 giờ trước"
               div.pv-accs [title="1 tài khoản\nTrade" aria-label="1 tài khoản"]
@@ -619,8 +624,9 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Morning check-in"] "Morning check-in"
                 small [title="Màn hình chính Roblox"] "Màn hình chính Roblox"
-                span.pv-sum [title="Mở cùng lúc, không chờ · Hẹn giờ đang tắt · Thứ 5, 24/12 07:30"] "Mở cùng lúc, không chờ · Hẹn giờ đang tắt · Thứ 5, 24/12 07:30"
-                span.pv-next
+                span.pv-sum [title="Mở cùng lúc, không chờ"] "Mở cùng lúc, không chờ"
+                span.pv-next "·"
+                  span "Hẹn giờ đang tắt · T5, 24/12 07:30"
                   span "Chạy lần cuối 1 ngày trước"
               div.pv-accs [title="6 tài khoản\nTài khoản chính\nFarm 1\nNight Owl\nTài khoản phụ\nTrade\nThử nghiệm" aria-label="6 tài khoản"]
                 span.avatar.sm
@@ -656,7 +662,7 @@ html [data-theme="dark" lang="vi"]
   div.at-top.overlay
     div.modal [role="dialog" aria-labelledby="mdl-1" aria-modal="true"]
       div.modal-head
-        h3 [id="mdl-1"] "Sửa preset"
+        h3 [id="mdl-1"] "Sửa Preset"
         button.icon-btn [title="Đóng"]
           svg.i #1tyq039
       div.modal-body
@@ -664,7 +670,7 @@ html [data-theme="dark" lang="vi"]
           label "Tên"
             input.field [id="ps-name" placeholder="VD: Farm Blox Fruits" maxlength="60" value="Farm Blox Fruits"]
           label "Game"
-            input.field [id="ps-place" role="combobox" placeholder="Tìm game, hoặc dán link / Place ID…" autocomplete="off" maxlength="500" aria-autocomplete="list" aria-expanded="false" aria-haspopup="listbox" value="https://www.roblox.com/games/920587237" FOCUSED]
+            input.field [id="ps-place" role="combobox" placeholder="Tìm game, hoặc dán link / Place ID. Để trống thì chỉ mở Roblox" autocomplete="off" maxlength="500" aria-autocomplete="list" aria-expanded="false" aria-haspopup="listbox" value="https://www.roblox.com/games/920587237" FOCUSED]
           div.ps-game [id="ps-game"]
             span.gph
               svg.i #sy1lqp
@@ -677,15 +683,15 @@ html [data-theme="dark" lang="vi"]
                 option [value="fewest"] "Vắng nhất"
                 option [value="ping"] "Ping thấp nhất"
                 option [value="random"] "Ngẫu nhiên"
-                option [value="eachFewest"] "Mỗi tài khoản một server, vắng nhất"
-                option [value="eachMost"] "Mỗi tài khoản một server, đông nhất"
-                option [value="eachRandom"] "Mỗi tài khoản một server, ngẫu nhiên"
                 option [value="job"] "Server cố định (mã server)"
                 option [value="follow"] "Server của một người chơi"
+                option [value="eachFewest"] "Mỗi tài khoản: Vắng nhất"
+                option [value="eachMost"] "Mỗi tài khoản: Đông nhất"
+                option [value="eachRandom"] "Mỗi tài khoản: Ngẫu nhiên"
             label "Chờ giữa các tài khoản"
               select.select [id="ps-delay" value="12"]
                 option [value=""] "Theo Cài đặt (8 giây)"
-                option [value="0"] "0 giây"
+                option [value="0"] "Không chờ"
                 option [value="5"] "5 giây"
                 option [value="10"] "10 giây"
                 option [value="12"] "12 giây"
@@ -700,7 +706,7 @@ html [data-theme="dark" lang="vi"]
             small "Tài khoản đã đánh dấu sẽ mở theo thứ tự này. Kéo thả hoặc bấm mũi tên để đổi thứ tự."
           p.ps-gone
             svg.i #v9c4u6
-            span "1 tài khoản trong preset này đã bị xóa và sẽ bị bỏ ra khi bạn lưu."
+            span "1 tài khoản trong Preset này đã bị xóa và sẽ bị bỏ ra khi bạn lưu."
         div.ord-list [role="list"]
           div.ord-item [role="listitem"]
             span.ord-grip [title="Kéo để đổi chỗ"]
@@ -712,7 +718,7 @@ html [data-theme="dark" lang="vi"]
               b [title="Farm 1"] "Farm 1"
               small "@pixelfarmer01"
             span.ord-btns
-              button.icon-btn [type="button" title="Chuyển lên" aria-label="Chuyển lên"]
+              button.icon-btn [type="button" title="Chuyển lên" aria-label="Chuyển lên" disabled]
                 svg.i #ilfy0l
               button.icon-btn [type="button" title="Chuyển xuống" aria-label="Chuyển xuống"]
                 svg.i #u1ag9u
@@ -798,12 +804,13 @@ html [data-theme="dark" lang="vi"]
             span.ord-btns
               button.icon-btn [type="button" title="Chuyển lên" aria-label="Chuyển lên"]
                 svg.i #ilfy0l
-              button.icon-btn [type="button" title="Chuyển xuống" aria-label="Chuyển xuống"]
+              button.icon-btn [type="button" title="Chuyển xuống" aria-label="Chuyển xuống" disabled]
                 svg.i #u1ag9u
         div.form.preset-form
-          div.ps-opts [role="group" aria-labelledby="ps-opts-title"]
-            div.ps-opts-head
-              b [id="ps-opts-title"] "Áp dụng cho cửa sổ Roblox"
+          details.ps-fold.ps-note.ps-opts [id="ps-opts" open=""]
+            summary.ps-opts-head
+              b [id="ps-opts-title"] "Cửa sổ Roblox"
+              svg.i #u1ag9u
             div.ps-opts-grid
               label "Chống AFK"
                 select.select [id="ps-afk" value="on"]
@@ -815,13 +822,13 @@ html [data-theme="dark" lang="vi"]
                   option [value=""] "Theo từng tài khoản"
                   option [value="on"] "Bật"
                   option [value="off"] "Tắt"
-              label "Server khi vào lại"
+              label "Vào lại server"
                 select.select [id="ps-rejoin-with" value=""]
-                  option [value=""] "Bất kỳ"
-                  option [value="any"] "Cùng tài khoản khác"
-                  option [value="00000000-0000-4000-8000-000000000002"] "Cùng Farm 1"
-                  option [value="00000000-0000-4000-8000-000000000003"] "Cùng Farm 2"
-                  option [value="00000000-0000-4000-8000-000000000004"] "Cùng Night Owl"
+                  option [value=""] "Server bất kỳ"
+                  option [value="any"] "Cùng server với tài khoản khác"
+                  option [value="00000000-0000-4000-8000-000000000002"] "Cùng server với Farm 1"
+                  option [value="00000000-0000-4000-8000-000000000003"] "Cùng server với Farm 2"
+                  option [value="00000000-0000-4000-8000-000000000004"] "Cùng server với Night Owl"
               label "Hiệu năng"
                 select.select [id="ps-profile" value="afk"]
                   option [value=""] "Bình thường"
@@ -839,17 +846,18 @@ html [data-theme="dark" lang="vi"]
                   option [value="on"] "Bật"
                   option [value="off"] "Tắt"
             p.ps-opts-note [id="ps-opts-note"] "Treo máy nhẹ: đồ họa thấp nhất, tắt hiệu ứng, 30 FPS, tắt tiếng, thu nhỏ khi đã vào game. Mở lại: sau số giờ đó, lần lượt đóng từng cửa sổ rồi mở lại vào đúng game cũ."
-          div.ps-opts [role="group" aria-labelledby="ps-dc-title"]
-            div.ps-opts-head
+          details.ps-fold.ps-note.ps-opts [id="ps-dc" open=""]
+            summary.ps-opts-head
               b [id="ps-dc-title"] "Discord"
-            label.ps-dc-mode "Gửi tin của preset này vào"
+              svg.i #u1ag9u
+            label.ps-dc-mode "Gửi tin của Preset này vào"
               select.select [id="ps-dc-mode" value="own"]
                 option [value=""] "Kênh trong Cài đặt"
-                option [value="own"] "Webhook riêng"
+                option [value="own"] "Kênh Discord riêng"
             div.ps-dc-own [id="ps-dc-own"]
-              input.field [id="ps-dc-link" type="text" placeholder="discord.com/api/webhooks/…5678/••••••" autocomplete="off" maxlength="300" aria-label="Link webhook của preset này" value=""]
+              input.field [id="ps-dc-link" type="text" placeholder="discord.com/api/webhooks/…5678/••••••" autocomplete="off" maxlength="300" aria-label="Link webhook của Preset này" value=""]
               button.btn [id="ps-dc-test" type="button"] "Gửi thử"
-            p.ps-opts-note "Đã lưu link (đang ẩn). Dán link khác để thay. Gồm tin hẹn giờ, tổng kết và cảnh báo cửa sổ của Preset. Tin khác vẫn vào kênh trong Cài đặt. Gửi lên Discord đang tắt ở Cài đặt › Discord. Bật lên thì tin mới được gửi đi."
+            p.ps-opts-note "Đã lưu link (đang ẩn). Dán link khác để thay. Nhận lịch chạy, tóm tắt và cảnh báo cửa sổ của Preset này. Còn lại gửi về kênh trong Cài đặt. Gửi lên Discord đang tắt ở Cài đặt › Discord. Bật lên thì tin mới được gửi đi."
           div.ps-sched
             div.ps-sched-head
               label.switch
@@ -857,12 +865,12 @@ html [data-theme="dark" lang="vi"]
                 span
               div
                 b "Hẹn giờ"
-                small "Tự chạy preset này vào giờ đã đặt"
+                small "Tự chạy Preset này vào giờ đã đặt"
             div.ps-sched-body [id="ps-sch-body"]
               div.preset-row
                 label "Giờ bắt đầu"
                   span.field.tf
-                    input.tf-box [id="ps-sch-time" type="time" value="20:00"]
+                    input.tf-box [id="ps-sch-time" type="text" placeholder="20:00" autocomplete="off" value="20:00"]
                     button.tf-btn [type="button" title="Chọn giờ" aria-expanded="false" aria-haspopup="dialog" aria-label="Chọn giờ"]
                       svg.i #ktpp14
                 label "Lặp lại"

@@ -54,11 +54,11 @@ html [data-theme="dark" lang="en"]
             span "Close all"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+            button.multi-open [title="Multi-Roblox: On: several Roblox windows can be open"]
               span.led
               div
                 b "Multi-Roblox"
-                small "On — several windows allowed"
+                small "On"
             label.switch [title="Turn off Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
@@ -106,7 +106,7 @@ html [data-theme="dark" lang="en"]
               svg.i #gsei2o
               span "Backup & data"
             button.set-nav-item [type="button" aria-current="page"]
-              svg.i #1uvtx1
+              img.set-nav-logo [alt="" src="logo.svg"]
               span "Bloxkeep"
           div.scroll.set-scroll
             div.settings
@@ -153,18 +153,31 @@ html [data-theme="dark" lang="en"]
                     div.set-row
                       div
                         div.t "Hotkeys"
-                        div.d "In any app, Ctrl+Alt plus: H hide or show all, M minimize or open all, N next window, A arrange, B open Bloxkeep."
+                        div.d
+                          span.hk-list
+                            span.hk "++ Hide all"
+                              kbd "Ctrl"
+                              kbd "Alt"
+                              kbd "H"
+                            span.hk "Minimize all"
+                              kbd "M"
+                            span.hk "Next"
+                              kbd "N"
+                            span.hk "Arrange"
+                              kbd "A"
+                            span.hk "Open Bloxkeep"
+                              kbd "B"
                       div.ctl
                         label.switch
                           input [id="s-hotkeys" type="checkbox" aria-label="Hotkeys" checked=true]
                           span
                     div.set-row
                       div
-                        div.t "Hardware acceleration"
-                        div.d "Off uses less RAM. Turns off automatically if your graphics driver acts up."
+                        div.t "Hardware acceleration for Bloxkeep"
+                        div.d "Off uses less RAM. Roblox isn’t affected."
                       div.ctl
                         label.switch
-                          input [id="s-gpu" type="checkbox" aria-label="Hardware acceleration" checked=true]
+                          input [id="s-gpu" type="checkbox" aria-label="Hardware acceleration for Bloxkeep" checked=true]
                           span
                 div.set-grp [id="sec-feedback"]
                   h3.set-grp-title "Help & feedback"
@@ -172,7 +185,7 @@ html [data-theme="dark" lang="en"]
                     div.set-row
                       div
                         div.t "User guide"
-                        div.d "Every feature explained: where to find it, what it does, and why an option may be greyed out."
+                        div.d "Every feature explained: where to find it, what it does, and why an option may be grayed out."
                       div.ctl
                         button.btn.sm "Open"
                           svg.i #4hphjr

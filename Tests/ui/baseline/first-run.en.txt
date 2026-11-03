@@ -14,14 +14,14 @@ html [data-theme="dark" lang="en"]
         b "can’t be recovered"
       div.stack
         div.pw
-          input.field [id="pw1" type="password" placeholder="Master password" maxlength="256" aria-label="Master password" value="" FOCUSED]
+          input.field [id="pw1" type="password" placeholder="Master password (6+ characters)" maxlength="256" aria-label="Master password" value="" FOCUSED]
           button.icon-btn [id="pw-eye" type="button" title="Show password" aria-label="Show password" aria-pressed="false"]
             svg.i #1pcfgz
         input.field [id="pw2" type="password" placeholder="Confirm master password" maxlength="256" aria-label="Confirm master password" value=""]
         div.strength-row
           div.strength
             i [id="pw-meter"]
-          span [id="pw-strength" aria-live="polite"]
+          span.pw-strength [id="pw-strength" aria-live="polite"]
       div.lock-error [id="lock-error" role="alert"]
       button.big.btn.primary.w [id="lock-btn" type="submit"] "Get started"
       div.lock-alt

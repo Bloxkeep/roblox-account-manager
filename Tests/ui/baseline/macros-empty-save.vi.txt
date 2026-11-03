@@ -54,18 +54,18 @@ html [data-theme="dark" lang="vi"]
             span "Đóng tất cả"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: Đang bật, mở được nhiều cửa sổ"]
+            button.multi-open [title="Multi-Roblox: Đang bật: mở được nhiều cửa sổ Roblox"]
               span.led
               div
                 b "Multi-Roblox"
-                small "Đang bật, mở được nhiều cửa sổ"
+                small "Đang bật"
             label.switch [title="Tắt Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
         div.side-foot
           div [id="update-slot"]
           div.side-lock
-            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
+            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, Preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
               svg.i #21scx0
               span "Khóa app"
             button.btn.ghost.side-sq.vault-btn [title="Đổi vault (Vault 1)" aria-label="Đổi vault (Vault 1)"]
@@ -76,8 +76,8 @@ html [data-theme="dark" lang="vi"]
         header.top
           div.top-title
             h1 "Macro"
-              span.mc-beta.state-pill.warn [title="Tính năng mới: có thể chạy khác nhau trên mỗi máy. Gặp lỗi hãy báo ở mục Hướng dẫn & góp ý."] "Beta"
-            p [id="mc-sub"] "Macro lần lượt đưa từng cửa sổ Roblox lên trước trong giây lát."
+              span.mc-beta.state-pill.warn [title="Tính năng mới: có thể chạy khác nhau trên mỗi máy. Gặp lỗi hãy báo ở mục Hướng dẫn & góp ý. Macro lần lượt đưa từng cửa sổ Roblox lên trước trong giây lát."] "Beta"
+            p [id="mc-sub"]
           div.top-tools
             button.btn.mc-stop-all [title="Dừng mọi macro và bản ghi, thả mọi phím đang giữ (Ctrl+Alt+0 dùng được ở mọi app)" disabled]
               svg.i #t57b2k
@@ -100,7 +100,7 @@ html [data-theme="dark" lang="vi"]
                   svg.i #1mr8rx5
                   b "Ghi thao tác…"
                   small "Chơi một lần, macro làm theo"
-                button.mc-tile [type="button" aria-haspopup="menu"]
+                button.mc-tile [type="button" aria-expanded="false" aria-haspopup="dialog"]
                   svg.i #1pvni8o
                   b "Từ mẫu có sẵn"
                   small "Làm sẵn, chỉnh cho game của bạn"
@@ -123,10 +123,14 @@ html [data-theme="dark" lang="vi"]
               div.form.mc-top
                 div.mc-name-row
                   label "Tên"
-                    input.field [id="mc-name" placeholder="Ví dụ: Farm quái" maxlength="60" value="" FOCUSED]
+                    input.field [id="mc-name" placeholder="Ví dụ: Farm quái" maxlength="60" aria-describedby="mc-name-err" aria-invalid="true" value="" FOCUSED]
                   button.btn.mc-try-it [id="mc-try" type="button" title="Chạy một lần trên cửa sổ của Tài khoản chính và cho biết thấy gì" aria-pressed="false"]
                     svg.i #1ewcuky
                     span "Chạy thử"
+                ul.mc-ferr [id="mc-name-err" role="status"]
+                  li
+                    svg.i #42lb9l
+                    span "Hãy đặt tên cho macro."
                 details.mc-when
                   summary [id="mc-when"]
                     span "Khi bạn bấm Chạy · Tài khoản đang chọn · Không có phím tắt"
@@ -138,15 +142,14 @@ html [data-theme="dark" lang="vi"]
                   button.btn.sm [id="mc-record" type="button" title="Ghi lại thao tác của bạn trên cửa sổ đã chọn; F8 để dừng"]
                     svg.i #1mr8rx5
                     span "Ghi thao tác"
-                  button.btn.primary.sm [id="mc-add" type="button" aria-haspopup="menu"]
+                  button.btn.sm [id="mc-add" type="button" aria-expanded="false" aria-haspopup="dialog"]
                     svg.i #u7ty99
                     span "Thêm bước"
                 p.mc-steps-none "Chưa có bước nào. Thêm bước hoặc ghi thao tác."
-                div.mc-problems [role="status" aria-live="polite"]
-                  b "Cần sửa để lưu"
-                  ul
-                    li "Hãy đặt tên cho macro."
-                    li "Hãy thêm ít nhất một bước."
+                ul.mc-ferr [role="status"]
+                  li
+                    svg.i #42lb9l
+                    span "Hãy thêm ít nhất một bước."
               section.mc-sees [aria-labelledby="mc-sees-h"]
                 div.mc-sees-head
                   b [id="mc-sees-h"] "Người chơi thấy"
@@ -164,7 +167,7 @@ html [data-theme="dark" lang="vi"]
                   div.mp-run
                     svg.i #1ewcuky
                     span "Chạy"
-                  p.mp-status "Chưa chạy"
+                  p.mp-status "Sẵn sàng"
                   p.mp-none "Tích “Người chơi được đổi” ở một bước để đưa giá trị vào đây."
                   div.mp-foot
                 label.mc-switch-row
@@ -173,7 +176,7 @@ html [data-theme="dark" lang="vi"]
                     span
                   span
                     b "Tự hiện bảng"
-                    small "Khi có tài khoản trong game này (để trống: game nào cũng được)."
+                    small "Khi có tài khoản trong game này. Để trống: game nào cũng được."
             aside.mc-side
               section.mc-game [aria-labelledby="mc-game-h"]
                 div.mc-pic-head
@@ -181,12 +184,13 @@ html [data-theme="dark" lang="vi"]
                   select.select.sm [id="mc-pic-acc" aria-label="Cửa sổ của" value="00000000-0000-4000-8000-000000000001"]
                     option [value="00000000-0000-4000-8000-000000000001"] "Tài khoản chính"
                     option [value="00000000-0000-4000-8000-000000000002"] "Farm 1"
-                  button.btn.primary.sm [id="mc-ongame" type="button" aria-pressed="false"]
+                  button.btn.sm [id="mc-ongame" type="button" aria-pressed="false"]
                     svg.i #1e3syqr
                     span "Sửa trên game"
                 p.mc-game-say [role="status"] "Hiện chấm của từng bước và khung của từng vùng trên cửa sổ của Tài khoản chính để kéo vào chỗ."
                 div.blank.mc-pic-frame [role="group" tabindex="-1" aria-label="Cửa sổ game: chấm có số là chỗ bước bấm, khung là vùng. Phím mũi tên dời thứ đang chọn." style="aspect-ratio:1.77778 / 1"]
-                  span.mc-pic-blank "Chụp ảnh để xem game ở đây"
+                  span.mc-pic-blank
+                    span "Chụp ảnh để xem game ở đây"
                 div.mc-pic-acts
                   button.btn.sm [id="mc-pic-take" type="button"]
                     svg.i #16jqtkh
@@ -199,10 +203,12 @@ html [data-theme="dark" lang="vi"]
                       svg.i #u7ty99
                       span "Vùng mới"
                   p.mc-pic-none "Chưa có vùng. Vùng là khung trên game, nơi một bước tìm kiếm."
-      div.form-error.ps-err [role="alert"] "Hãy đặt tên cho macro."
       div.modal-foot
         button.btn "Hủy"
-        button.btn.primary "Lưu"
+        button.btn.primary [title="Hãy đặt tên cho macro." aria-disabled="true"] "Lưu"
+        button.mc-probs-badge [type="button" title="Hãy đặt tên cho macro."]
+          svg.i #42lb9l
+          span "2 lỗi"
 #toasts
 -- commands
   getState {}

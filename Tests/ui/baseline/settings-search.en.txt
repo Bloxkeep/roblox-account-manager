@@ -54,11 +54,11 @@ html [data-theme="dark" lang="en"]
             span "Close all"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+            button.multi-open [title="Multi-Roblox: On: several Roblox windows can be open"]
               span.led
               div
                 b "Multi-Roblox"
-                small "On — several windows allowed"
+                small "On"
             label.switch [title="Turn off Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
@@ -106,7 +106,7 @@ html [data-theme="dark" lang="en"]
               svg.i #gsei2o
               span "Backup & data"
             button.set-nav-item [type="button"]
-              svg.i #1uvtx1
+              img.set-nav-logo [alt="" src="logo.svg"]
               span "Bloxkeep"
           div.scroll.set-scroll
             div.settings
@@ -118,12 +118,12 @@ html [data-theme="dark" lang="en"]
                     div.set-row
                       div
                         div.t "Auto-rejoin"
-                        div.d "For every account. An account’s ⋯ menu or a preset can differ."
+                        div.d "For all accounts. Change one in its ⋯ menu or a preset."
                       div.ctl
-                        select.select [id="s-rejoin" aria-label="Auto-rejoin" value="some"]
-                          option [value="on"] "On for all accounts"
-                          option [value="off"] "Off for all accounts"
-                          option [value="some" disabled hidden] "On for 1 of 7"
+                        span.set-count [id="s-rejoin-n"] "1/7 accounts"
+                        label.switch
+                          input [id="s-rejoin" type="checkbox" aria-label="Auto-rejoin" checked=false]
+                          span
               section.set-page [id="set-page-notify" aria-labelledby="set-page-notify-h"]
                 h2.set-page-title [id="set-page-notify-h"] "Notifications"
                 div.set-grp [id="sec-notify-kinds"]

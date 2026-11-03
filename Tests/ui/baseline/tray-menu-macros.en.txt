@@ -5,12 +5,12 @@ html [data-theme="dark" lang="en"]
     button.tray-back [type="button"] "Macros"
       svg.i #10tf97k
     div.tray-list
-      button.tray-item [role="menuitem" type="button" title="Hide panel"]
-        svg.i #kx2qfl
+      button.tray-item.tray-macro [role="menuitem" type="button" title="Hide panel"]
+        i.running.tray-dot [aria-hidden="true"]
         span.tray-item-text "Cast and reel"
-        svg.i.tray-check #14iobj
-      button.tray-item [role="menuitem" type="button" title="Show panel"]
-        svg.i #kx2qfl
+        span.tray-value "Shown"
+      button.tray-item.tray-macro [role="menuitem" type="button" title="Show panel"]
+        i.stopped.tray-dot [aria-hidden="true"]
         span.tray-item-text "Claim daily chest"
 -- commands
   ready {}

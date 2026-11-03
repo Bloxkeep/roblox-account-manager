@@ -54,11 +54,11 @@ html [data-theme="custom" data-tone="light" lang="en"] style="--accent:#f59e0b;-
             span "Close all"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+            button.multi-open [title="Multi-Roblox: On: several Roblox windows can be open"]
               span.led
               div
                 b "Multi-Roblox"
-                small "On — several windows allowed"
+                small "On"
             label.switch [title="Turn off Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
@@ -106,7 +106,7 @@ html [data-theme="custom" data-tone="light" lang="en"] style="--accent:#f59e0b;-
               svg.i #gsei2o
               span "Backup & data"
             button.set-nav-item [type="button"]
-              svg.i #1uvtx1
+              img.set-nav-logo [alt="" src="logo.svg"]
               span "Bloxkeep"
           div.scroll.set-scroll
             div.settings
@@ -123,7 +123,7 @@ html [data-theme="custom" data-tone="light" lang="en"] style="--accent:#f59e0b;-
                     div.tg-tabs [id="s-theme-groups"]
                       button.chip [type="button" aria-pressed="false"] "Basic"
                       button.chip [type="button" aria-pressed="false"] "Scenery"
-                      button.chip [type="button" aria-pressed="false"] "Colourful"
+                      button.chip [type="button" aria-pressed="false"] "Colorful"
                       button.chip [type="button" aria-pressed="false"] "Styles"
                       button.chip [type="button" aria-pressed="false"] "Seasonal"
                       button.chip [type="button" aria-pressed="false"] "Animated"
@@ -159,7 +159,7 @@ html [data-theme="custom" data-tone="light" lang="en"] style="--accent:#f59e0b;-
                       div.set-row
                         div
                           div.t "Save this theme"
-                          div.d "Keep it under a name to pick it again later or share it. The same name saves over it."
+                          div.d "Name it to reuse or share. Saving with the same name replaces it."
                         div.ctl
                           input.ct-name.field.sm [id="s-ct-name" placeholder="Theme name" maxlength="40" aria-label="Theme name" value=""]
                           button.btn.sm [id="s-ct-save" disabled] "Save"

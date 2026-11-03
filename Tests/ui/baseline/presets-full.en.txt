@@ -54,11 +54,11 @@ html [data-theme="dark" lang="en"]
             span "Close all"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+            button.multi-open [title="Multi-Roblox: On: several Roblox windows can be open"]
               span.led
               div
                 b "Multi-Roblox"
-                small "On — several windows allowed"
+                small "On"
             label.switch [title="Turn off Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
@@ -76,7 +76,7 @@ html [data-theme="dark" lang="en"]
         header.top
           div.top-title
             h1 "Presets"
-            p [id="pv-sub"] "presets scheduledthe most you can keep"
+            p [id="pv-sub"] "presets scheduledlimit reached"
               b "50"
               span.sep "·"
               b "9"
@@ -85,7 +85,7 @@ html [data-theme="dark" lang="en"]
             label.search
               svg.i #1u22jvi
               input [id="pv-q" placeholder="Search presets or games" maxlength="100" aria-label="Search presets or games" value=""]
-            button.btn.primary [FOCUSED]
+            button.btn.primary [title="You can save up to 50 presets." aria-disabled="true" FOCUSED]
               svg.i #u7ty99
               span "New preset"
         div.scroll
@@ -98,9 +98,10 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Farm Blox Fruits"] "Farm Blox Fruits"
                 small [title="Blox Fruits"] "Blox Fruits"
-                span.pv-sum [title="Lowest ping · 12 s between accounts · Mon–Fri 8:00 PM · Anti-AFK on · Light AFK · Restarts every 4 h · Arranges windows · Own Discord channel"] "Lowest ping · 12 s between accounts · Mon–Fri 8:00 PM · Anti-AFK on · Light AFK · Restarts every 4 h · Arranges windows · Own Discord channel"
-                span.pv-next "· Next: Today 8:00 PM"
+                span.pv-sum [title="Lowest ping · 12 s between accounts · Anti-AFK on · Light AFK · Restarts every 4 h · Arranges windows · Own Discord channel"] "Lowest ping · 12 s between accounts · Anti-AFK on · Light AFK · Restarts every 4 h · Arranges windows · Own Discord channel"
+                span.pv-next "· · Next: Today 8:00 PM"
                   span.pv-live "3 windows open"
+                  span "Mon–Fri 8:00 PM"
               div.pv-accs [title="3 accounts\nFarm 1\nFarm 2\nNight Owl" aria-label="3 accounts"]
                 span.avatar.sm
                   img [alt="" style="--h:243" src=#uinvo6]
@@ -136,7 +137,7 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Adopt Me trade"] "Adopt Me trade"
                 small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
-                span.pv-sum [title="Any (Roblox picks) · Default wait (8 s) · No schedule · Auto-rejoin off"] "Any (Roblox picks) · Default wait (8 s) · No schedule · Auto-rejoin off"
+                span.pv-sum [title="Any (Roblox picks) · Default wait (8 s) · Auto-rejoin off"] "Any (Roblox picks) · Default wait (8 s) · Auto-rejoin off"
                 span.pv-next
                   span "Last run 1 h ago"
               div.pv-accs [title="1 account\nTrade" aria-label="1 account"]
@@ -166,8 +167,9 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Morning check-in"] "Morning check-in"
                 small [title="Roblox home"] "Roblox home"
-                span.pv-sum [title="No wait between accounts · Schedule off · Thu, 12/24 7:30 AM"] "No wait between accounts · Schedule off · Thu, 12/24 7:30 AM"
-                span.pv-next
+                span.pv-sum [title="No wait between accounts"] "No wait between accounts"
+                span.pv-next "·"
+                  span "Schedule off · Thu, 12/24 7:30 AM"
                   span "Last run 1 day ago"
               div.pv-accs [title="6 accounts\nMain\nFarm 1\nNight Owl\nAlt\nTrade\nTesting" aria-label="6 accounts"]
                 span.avatar.sm
@@ -207,8 +209,9 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Farm group 4"] "Farm group 4"
                 small [title="Blox Fruits"] "Blox Fruits"
-                span.pv-sum [title="Any (Roblox picks) · Default wait (8 s) · Every day 6:00 AM"] "Any (Roblox picks) · Default wait (8 s) · Every day 6:00 AM"
-                span.pv-next "Next: Tomorrow 6:00 AM"
+                span.pv-sum [title="Any (Roblox picks) · Default wait (8 s)"] "Any (Roblox picks) · Default wait (8 s)"
+                span.pv-next "· Next: Tomorrow 6:00 AM"
+                  span "Every day 6:00 AM"
               div.pv-accs [title="2 accounts\nMain\nNight Owl" aria-label="2 accounts"]
                 span.avatar.sm
                   img [alt="" style="--h:204" src=#1qk25wb]
@@ -242,7 +245,7 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Farm group 5"] "Farm group 5"
                 small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
-                span.pv-sum [title="Most players · 6 s between accounts · No schedule"] "Most players · 6 s between accounts · No schedule"
+                span.pv-sum [title="Most players · 6 s between accounts"] "Most players · 6 s between accounts"
               div.pv-accs [title="2 accounts\nFarm 1\nAlt" aria-label="2 accounts"]
                 span.avatar.sm
                   img [alt="" style="--h:243" src=#uinvo6]
@@ -272,7 +275,7 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Farm group 6"] "Farm group 6"
                 small [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
-                span.pv-sum [title="Fewest players · 7 s between accounts · No schedule"] "Fewest players · 7 s between accounts · No schedule"
+                span.pv-sum [title="Fewest players · 7 s between accounts"] "Fewest players · 7 s between accounts"
               div.pv-accs [title="2 accounts\nFarm 2\nTrade" aria-label="2 accounts"]
                 span.avatar.sm
                   img [alt="" style="--h:244" src=#n0d7cr]
@@ -302,7 +305,9 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Farm group 7"] "Farm group 7"
                 small [title="Blox Fruits"] "Blox Fruits"
-                span.pv-sum [title="Lowest ping · 8 s between accounts · Schedule off · Sat, Sun 9:00 AM"] "Lowest ping · 8 s between accounts · Schedule off · Sat, Sun 9:00 AM"
+                span.pv-sum [title="Lowest ping · 8 s between accounts"] "Lowest ping · 8 s between accounts"
+                span.pv-next
+                  span "Schedule off · Sat, Sun 9:00 AM"
               div.pv-accs [title="2 accounts\nNight Owl\nTesting" aria-label="2 accounts"]
                 span.avatar.sm
                   img [alt="" style="--h:297" src=#1u67et1]
@@ -336,7 +341,7 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Farm group 8"] "Farm group 8"
                 small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
-                span.pv-sum [title="Random · Default wait (8 s) · No schedule"] "Random · Default wait (8 s) · No schedule"
+                span.pv-sum [title="Random · Default wait (8 s)"] "Random · Default wait (8 s)"
               div.pv-accs [title="2 accounts\nAlt\nMain" aria-label="2 accounts"]
                 span.avatar.sm
                   img [alt="" style="--h:83" src=#c108i9]
@@ -366,7 +371,7 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="A preset name that is as long as the app allows, sixty chars"] "A preset name that is as long as the app allows, sixty chars"
                 small [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
-                span.pv-sum [title="Any (Roblox picks) · 10 s between accounts · No schedule"] "Any (Roblox picks) · 10 s between accounts · No schedule"
+                span.pv-sum [title="Any (Roblox picks) · 10 s between accounts"] "Any (Roblox picks) · 10 s between accounts"
               div.pv-accs [title="2 accounts\nTrade\nFarm 1" aria-label="2 accounts"]
                 span.avatar.sm
                   img [alt="" style="--h:218" src=#kgijcs]
@@ -396,8 +401,9 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Farm group 10"] "Farm group 10"
                 small [title="Blox Fruits"] "Blox Fruits"
-                span.pv-sum [title="Most players · 11 s between accounts · Sat, Sun 12:00 PM"] "Most players · 11 s between accounts · Sat, Sun 12:00 PM"
-                span.pv-next "Next: Tomorrow 12:00 PM"
+                span.pv-sum [title="Most players · 11 s between accounts"] "Most players · 11 s between accounts"
+                span.pv-next "· Next: Tomorrow 12:00 PM"
+                  span "Sat, Sun 12:00 PM"
               div.pv-accs [title="2 accounts\nTesting\nFarm 2" aria-label="2 accounts"]
                 span.avatar.sm
                   span.initials [style="--h:217"] "TE"
@@ -431,7 +437,7 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Farm group 11"] "Farm group 11"
                 small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
-                span.pv-sum [title="Fewest players · 12 s between accounts · No schedule"] "Fewest players · 12 s between accounts · No schedule"
+                span.pv-sum [title="Fewest players · 12 s between accounts"] "Fewest players · 12 s between accounts"
               div.pv-accs [title="2 accounts\nMain\nNight Owl" aria-label="2 accounts"]
                 span.avatar.sm
                   img [alt="" style="--h:204" src=#1qk25wb]
@@ -461,7 +467,7 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Farm group 12"] "Farm group 12"
                 small [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
-                span.pv-sum [title="Lowest ping · Default wait (8 s) · No schedule"] "Lowest ping · Default wait (8 s) · No schedule"
+                span.pv-sum [title="Lowest ping · Default wait (8 s)"] "Lowest ping · Default wait (8 s)"
               div.pv-accs [title="2 accounts\nFarm 1\nAlt" aria-label="2 accounts"]
                 span.avatar.sm
                   img [alt="" style="--h:243" src=#uinvo6]
@@ -491,7 +497,9 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Farm group 13"] "Farm group 13"
                 small [title="Blox Fruits"] "Blox Fruits"
-                span.pv-sum [title="Random · 5 s between accounts · Schedule off · Sat, Sun 3:00 PM"] "Random · 5 s between accounts · Schedule off · Sat, Sun 3:00 PM"
+                span.pv-sum [title="Random · 5 s between accounts"] "Random · 5 s between accounts"
+                span.pv-next
+                  span "Schedule off · Sat, Sun 3:00 PM"
               div.pv-accs [title="2 accounts\nFarm 2\nTrade" aria-label="2 accounts"]
                 span.avatar.sm
                   img [alt="" style="--h:244" src=#n0d7cr]
@@ -525,7 +533,7 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Farm group 14"] "Farm group 14"
                 small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
-                span.pv-sum [title="Any (Roblox picks) · 6 s between accounts · No schedule"] "Any (Roblox picks) · 6 s between accounts · No schedule"
+                span.pv-sum [title="Any (Roblox picks) · 6 s between accounts"] "Any (Roblox picks) · 6 s between accounts"
               div.pv-accs [title="2 accounts\nNight Owl\nTesting" aria-label="2 accounts"]
                 span.avatar.sm
                   img [alt="" style="--h:297" src=#1u67et1]
@@ -555,7 +563,7 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Farm group 15"] "Farm group 15"
                 small [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
-                span.pv-sum [title="Most players · 7 s between accounts · No schedule"] "Most players · 7 s between accounts · No schedule"
+                span.pv-sum [title="Most players · 7 s between accounts"] "Most players · 7 s between accounts"
               div.pv-accs [title="2 accounts\nAlt\nMain" aria-label="2 accounts"]
                 span.avatar.sm
                   img [alt="" style="--h:83" src=#c108i9]
@@ -585,8 +593,9 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Farm group 16"] "Farm group 16"
                 small [title="Blox Fruits"] "Blox Fruits"
-                span.pv-sum [title="Fewest players · Default wait (8 s) · Every day 6:00 PM"] "Fewest players · Default wait (8 s) · Every day 6:00 PM"
-                span.pv-next "Next: Today 6:00 PM"
+                span.pv-sum [title="Fewest players · Default wait (8 s)"] "Fewest players · Default wait (8 s)"
+                span.pv-next "· Next: Today 6:00 PM"
+                  span "Every day 6:00 PM"
               div.pv-accs [title="2 accounts\nTrade\nFarm 1" aria-label="2 accounts"]
                 span.avatar.sm
                   img [alt="" style="--h:218" src=#kgijcs]
@@ -620,7 +629,7 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Farm group 17"] "Farm group 17"
                 small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
-                span.pv-sum [title="Lowest ping · 9 s between accounts · No schedule"] "Lowest ping · 9 s between accounts · No schedule"
+                span.pv-sum [title="Lowest ping · 9 s between accounts"] "Lowest ping · 9 s between accounts"
               div.pv-accs [title="2 accounts\nTesting\nFarm 2" aria-label="2 accounts"]
                 span.avatar.sm
                   span.initials [style="--h:217"] "TE"
@@ -650,7 +659,7 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Farm group 18"] "Farm group 18"
                 small [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
-                span.pv-sum [title="Random · 10 s between accounts · No schedule"] "Random · 10 s between accounts · No schedule"
+                span.pv-sum [title="Random · 10 s between accounts"] "Random · 10 s between accounts"
               div.pv-accs [title="2 accounts\nMain\nNight Owl" aria-label="2 accounts"]
                 span.avatar.sm
                   img [alt="" style="--h:204" src=#1qk25wb]
@@ -680,7 +689,9 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Farm group 19"] "Farm group 19"
                 small [title="Blox Fruits"] "Blox Fruits"
-                span.pv-sum [title="Any (Roblox picks) · 11 s between accounts · Schedule off · Sat, Sun 9:00 PM"] "Any (Roblox picks) · 11 s between accounts · Schedule off · Sat, Sun 9:00 PM"
+                span.pv-sum [title="Any (Roblox picks) · 11 s between accounts"] "Any (Roblox picks) · 11 s between accounts"
+                span.pv-next
+                  span "Schedule off · Sat, Sun 9:00 PM"
               div.pv-accs [title="2 accounts\nFarm 1\nAlt" aria-label="2 accounts"]
                 span.avatar.sm
                   img [alt="" style="--h:243" src=#uinvo6]
@@ -714,7 +725,7 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Farm group 20"] "Farm group 20"
                 small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
-                span.pv-sum [title="Most players · Default wait (8 s) · No schedule"] "Most players · Default wait (8 s) · No schedule"
+                span.pv-sum [title="Most players · Default wait (8 s)"] "Most players · Default wait (8 s)"
               div.pv-accs [title="2 accounts\nFarm 2\nTrade" aria-label="2 accounts"]
                 span.avatar.sm
                   img [alt="" style="--h:244" src=#n0d7cr]
@@ -744,7 +755,7 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Farm group 21"] "Farm group 21"
                 small [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
-                span.pv-sum [title="Fewest players · 13 s between accounts · No schedule"] "Fewest players · 13 s between accounts · No schedule"
+                span.pv-sum [title="Fewest players · 13 s between accounts"] "Fewest players · 13 s between accounts"
               div.pv-accs [title="2 accounts\nNight Owl\nTesting" aria-label="2 accounts"]
                 span.avatar.sm
                   img [alt="" style="--h:297" src=#1u67et1]
@@ -774,8 +785,9 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Farm group 22"] "Farm group 22"
                 small [title="Blox Fruits"] "Blox Fruits"
-                span.pv-sum [title="Lowest ping · 5 s between accounts · Sat, Sun 8:00 AM"] "Lowest ping · 5 s between accounts · Sat, Sun 8:00 AM"
-                span.pv-next "Next: Tomorrow 8:00 AM"
+                span.pv-sum [title="Lowest ping · 5 s between accounts"] "Lowest ping · 5 s between accounts"
+                span.pv-next "· Next: Tomorrow 8:00 AM"
+                  span "Sat, Sun 8:00 AM"
               div.pv-accs [title="2 accounts\nAlt\nMain" aria-label="2 accounts"]
                 span.avatar.sm
                   img [alt="" style="--h:83" src=#c108i9]
@@ -809,7 +821,7 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Farm group 23"] "Farm group 23"
                 small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
-                span.pv-sum [title="Random · 6 s between accounts · No schedule"] "Random · 6 s between accounts · No schedule"
+                span.pv-sum [title="Random · 6 s between accounts"] "Random · 6 s between accounts"
               div.pv-accs [title="2 accounts\nTrade\nFarm 1" aria-label="2 accounts"]
                 span.avatar.sm
                   img [alt="" style="--h:218" src=#kgijcs]
@@ -839,7 +851,7 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Farm group 24"] "Farm group 24"
                 small [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
-                span.pv-sum [title="Any (Roblox picks) · Default wait (8 s) · No schedule"] "Any (Roblox picks) · Default wait (8 s) · No schedule"
+                span.pv-sum [title="Any (Roblox picks) · Default wait (8 s)"] "Any (Roblox picks) · Default wait (8 s)"
               div.pv-accs [title="2 accounts\nTesting\nFarm 2" aria-label="2 accounts"]
                 span.avatar.sm
                   span.initials [style="--h:217"] "TE"
@@ -869,7 +881,9 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Farm group 25"] "Farm group 25"
                 small [title="Blox Fruits"] "Blox Fruits"
-                span.pv-sum [title="Most players · 8 s between accounts · Schedule off · Sat, Sun 11:00 AM"] "Most players · 8 s between accounts · Schedule off · Sat, Sun 11:00 AM"
+                span.pv-sum [title="Most players · 8 s between accounts"] "Most players · 8 s between accounts"
+                span.pv-next
+                  span "Schedule off · Sat, Sun 11:00 AM"
               div.pv-accs [title="2 accounts\nMain\nNight Owl" aria-label="2 accounts"]
                 span.avatar.sm
                   img [alt="" style="--h:204" src=#1qk25wb]
@@ -903,7 +917,7 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Farm group 26"] "Farm group 26"
                 small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
-                span.pv-sum [title="Fewest players · 9 s between accounts · No schedule"] "Fewest players · 9 s between accounts · No schedule"
+                span.pv-sum [title="Fewest players · 9 s between accounts"] "Fewest players · 9 s between accounts"
               div.pv-accs [title="2 accounts\nFarm 1\nAlt" aria-label="2 accounts"]
                 span.avatar.sm
                   img [alt="" style="--h:243" src=#uinvo6]
@@ -933,7 +947,7 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Farm group 27"] "Farm group 27"
                 small [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
-                span.pv-sum [title="Lowest ping · 10 s between accounts · No schedule"] "Lowest ping · 10 s between accounts · No schedule"
+                span.pv-sum [title="Lowest ping · 10 s between accounts"] "Lowest ping · 10 s between accounts"
               div.pv-accs [title="2 accounts\nFarm 2\nTrade" aria-label="2 accounts"]
                 span.avatar.sm
                   img [alt="" style="--h:244" src=#n0d7cr]
@@ -963,8 +977,9 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Farm group 28"] "Farm group 28"
                 small [title="Blox Fruits"] "Blox Fruits"
-                span.pv-sum [title="Random · Default wait (8 s) · Every day 2:00 PM"] "Random · Default wait (8 s) · Every day 2:00 PM"
-                span.pv-next "Next: Today 2:00 PM"
+                span.pv-sum [title="Random · Default wait (8 s)"] "Random · Default wait (8 s)"
+                span.pv-next "· Next: Today 2:00 PM"
+                  span "Every day 2:00 PM"
               div.pv-accs [title="2 accounts\nNight Owl\nTesting" aria-label="2 accounts"]
                 span.avatar.sm
                   img [alt="" style="--h:297" src=#1u67et1]
@@ -998,7 +1013,7 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Farm group 29"] "Farm group 29"
                 small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
-                span.pv-sum [title="Any (Roblox picks) · 12 s between accounts · No schedule"] "Any (Roblox picks) · 12 s between accounts · No schedule"
+                span.pv-sum [title="Any (Roblox picks) · 12 s between accounts"] "Any (Roblox picks) · 12 s between accounts"
               div.pv-accs [title="2 accounts\nAlt\nMain" aria-label="2 accounts"]
                 span.avatar.sm
                   img [alt="" style="--h:83" src=#c108i9]
@@ -1028,7 +1043,7 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Farm group 30"] "Farm group 30"
                 small [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
-                span.pv-sum [title="Most players · 13 s between accounts · No schedule"] "Most players · 13 s between accounts · No schedule"
+                span.pv-sum [title="Most players · 13 s between accounts"] "Most players · 13 s between accounts"
               div.pv-accs [title="2 accounts\nTrade\nFarm 1" aria-label="2 accounts"]
                 span.avatar.sm
                   img [alt="" style="--h:218" src=#kgijcs]
@@ -1058,7 +1073,9 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Farm group 31"] "Farm group 31"
                 small [title="Blox Fruits"] "Blox Fruits"
-                span.pv-sum [title="Fewest players · 5 s between accounts · Schedule off · Sat, Sun 5:00 PM"] "Fewest players · 5 s between accounts · Schedule off · Sat, Sun 5:00 PM"
+                span.pv-sum [title="Fewest players · 5 s between accounts"] "Fewest players · 5 s between accounts"
+                span.pv-next
+                  span "Schedule off · Sat, Sun 5:00 PM"
               div.pv-accs [title="2 accounts\nTesting\nFarm 2" aria-label="2 accounts"]
                 span.avatar.sm
                   span.initials [style="--h:217"] "TE"
@@ -1092,7 +1109,7 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Farm group 32"] "Farm group 32"
                 small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
-                span.pv-sum [title="Lowest ping · Default wait (8 s) · No schedule"] "Lowest ping · Default wait (8 s) · No schedule"
+                span.pv-sum [title="Lowest ping · Default wait (8 s)"] "Lowest ping · Default wait (8 s)"
               div.pv-accs [title="2 accounts\nMain\nNight Owl" aria-label="2 accounts"]
                 span.avatar.sm
                   img [alt="" style="--h:204" src=#1qk25wb]
@@ -1122,7 +1139,7 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Farm group 33"] "Farm group 33"
                 small [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
-                span.pv-sum [title="Random · 7 s between accounts · No schedule"] "Random · 7 s between accounts · No schedule"
+                span.pv-sum [title="Random · 7 s between accounts"] "Random · 7 s between accounts"
               div.pv-accs [title="2 accounts\nFarm 1\nAlt" aria-label="2 accounts"]
                 span.avatar.sm
                   img [alt="" style="--h:243" src=#uinvo6]
@@ -1152,8 +1169,9 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Farm group 34"] "Farm group 34"
                 small [title="Blox Fruits"] "Blox Fruits"
-                span.pv-sum [title="Any (Roblox picks) · 8 s between accounts · Sat, Sun 8:00 PM"] "Any (Roblox picks) · 8 s between accounts · Sat, Sun 8:00 PM"
-                span.pv-next "Next: Tomorrow 8:00 PM"
+                span.pv-sum [title="Any (Roblox picks) · 8 s between accounts"] "Any (Roblox picks) · 8 s between accounts"
+                span.pv-next "· Next: Tomorrow 8:00 PM"
+                  span "Sat, Sun 8:00 PM"
               div.pv-accs [title="2 accounts\nFarm 2\nTrade" aria-label="2 accounts"]
                 span.avatar.sm
                   img [alt="" style="--h:244" src=#n0d7cr]
@@ -1187,7 +1205,7 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Farm group 35"] "Farm group 35"
                 small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
-                span.pv-sum [title="Most players · 9 s between accounts · No schedule"] "Most players · 9 s between accounts · No schedule"
+                span.pv-sum [title="Most players · 9 s between accounts"] "Most players · 9 s between accounts"
               div.pv-accs [title="2 accounts\nNight Owl\nTesting" aria-label="2 accounts"]
                 span.avatar.sm
                   img [alt="" style="--h:297" src=#1u67et1]
@@ -1217,7 +1235,7 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Farm group 36"] "Farm group 36"
                 small [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
-                span.pv-sum [title="Fewest players · Default wait (8 s) · No schedule"] "Fewest players · Default wait (8 s) · No schedule"
+                span.pv-sum [title="Fewest players · Default wait (8 s)"] "Fewest players · Default wait (8 s)"
               div.pv-accs [title="2 accounts\nAlt\nMain" aria-label="2 accounts"]
                 span.avatar.sm
                   img [alt="" style="--h:83" src=#c108i9]
@@ -1247,7 +1265,9 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Farm group 37"] "Farm group 37"
                 small [title="Blox Fruits"] "Blox Fruits"
-                span.pv-sum [title="Lowest ping · 11 s between accounts · Schedule off · Sat, Sun 7:00 AM"] "Lowest ping · 11 s between accounts · Schedule off · Sat, Sun 7:00 AM"
+                span.pv-sum [title="Lowest ping · 11 s between accounts"] "Lowest ping · 11 s between accounts"
+                span.pv-next
+                  span "Schedule off · Sat, Sun 7:00 AM"
               div.pv-accs [title="2 accounts\nTrade\nFarm 1" aria-label="2 accounts"]
                 span.avatar.sm
                   img [alt="" style="--h:218" src=#kgijcs]
@@ -1281,7 +1301,7 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Farm group 38"] "Farm group 38"
                 small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
-                span.pv-sum [title="Random · 12 s between accounts · No schedule"] "Random · 12 s between accounts · No schedule"
+                span.pv-sum [title="Random · 12 s between accounts"] "Random · 12 s between accounts"
               div.pv-accs [title="2 accounts\nTesting\nFarm 2" aria-label="2 accounts"]
                 span.avatar.sm
                   span.initials [style="--h:217"] "TE"
@@ -1311,7 +1331,7 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Farm group 39"] "Farm group 39"
                 small [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
-                span.pv-sum [title="Any (Roblox picks) · 13 s between accounts · No schedule"] "Any (Roblox picks) · 13 s between accounts · No schedule"
+                span.pv-sum [title="Any (Roblox picks) · 13 s between accounts"] "Any (Roblox picks) · 13 s between accounts"
               div.pv-accs [title="2 accounts\nMain\nNight Owl" aria-label="2 accounts"]
                 span.avatar.sm
                   img [alt="" style="--h:204" src=#1qk25wb]
@@ -1341,8 +1361,9 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Farm group 40"] "Farm group 40"
                 small [title="Blox Fruits"] "Blox Fruits"
-                span.pv-sum [title="Most players · Default wait (8 s) · Every day 10:00 AM"] "Most players · Default wait (8 s) · Every day 10:00 AM"
-                span.pv-next "Next: Tomorrow 10:00 AM"
+                span.pv-sum [title="Most players · Default wait (8 s)"] "Most players · Default wait (8 s)"
+                span.pv-next "· Next: Tomorrow 10:00 AM"
+                  span "Every day 10:00 AM"
               div.pv-accs [title="2 accounts\nFarm 1\nAlt" aria-label="2 accounts"]
                 span.avatar.sm
                   img [alt="" style="--h:243" src=#uinvo6]
@@ -1376,7 +1397,7 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Farm group 41"] "Farm group 41"
                 small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
-                span.pv-sum [title="Fewest players · 6 s between accounts · No schedule"] "Fewest players · 6 s between accounts · No schedule"
+                span.pv-sum [title="Fewest players · 6 s between accounts"] "Fewest players · 6 s between accounts"
               div.pv-accs [title="2 accounts\nFarm 2\nTrade" aria-label="2 accounts"]
                 span.avatar.sm
                   img [alt="" style="--h:244" src=#n0d7cr]
@@ -1406,7 +1427,7 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Farm group 42"] "Farm group 42"
                 small [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
-                span.pv-sum [title="Lowest ping · 7 s between accounts · No schedule"] "Lowest ping · 7 s between accounts · No schedule"
+                span.pv-sum [title="Lowest ping · 7 s between accounts"] "Lowest ping · 7 s between accounts"
               div.pv-accs [title="2 accounts\nNight Owl\nTesting" aria-label="2 accounts"]
                 span.avatar.sm
                   img [alt="" style="--h:297" src=#1u67et1]
@@ -1436,7 +1457,9 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Farm group 43"] "Farm group 43"
                 small [title="Blox Fruits"] "Blox Fruits"
-                span.pv-sum [title="Random · 8 s between accounts · Schedule off · Sat, Sun 1:00 PM"] "Random · 8 s between accounts · Schedule off · Sat, Sun 1:00 PM"
+                span.pv-sum [title="Random · 8 s between accounts"] "Random · 8 s between accounts"
+                span.pv-next
+                  span "Schedule off · Sat, Sun 1:00 PM"
               div.pv-accs [title="2 accounts\nAlt\nMain" aria-label="2 accounts"]
                 span.avatar.sm
                   img [alt="" style="--h:83" src=#c108i9]
@@ -1470,7 +1493,7 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Farm group 44"] "Farm group 44"
                 small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
-                span.pv-sum [title="Any (Roblox picks) · Default wait (8 s) · No schedule"] "Any (Roblox picks) · Default wait (8 s) · No schedule"
+                span.pv-sum [title="Any (Roblox picks) · Default wait (8 s)"] "Any (Roblox picks) · Default wait (8 s)"
               div.pv-accs [title="2 accounts\nTrade\nFarm 1" aria-label="2 accounts"]
                 span.avatar.sm
                   img [alt="" style="--h:218" src=#kgijcs]
@@ -1500,7 +1523,7 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Farm group 45"] "Farm group 45"
                 small [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
-                span.pv-sum [title="Most players · 10 s between accounts · No schedule"] "Most players · 10 s between accounts · No schedule"
+                span.pv-sum [title="Most players · 10 s between accounts"] "Most players · 10 s between accounts"
               div.pv-accs [title="2 accounts\nTesting\nFarm 2" aria-label="2 accounts"]
                 span.avatar.sm
                   span.initials [style="--h:217"] "TE"
@@ -1530,8 +1553,9 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Farm group 46"] "Farm group 46"
                 small [title="Blox Fruits"] "Blox Fruits"
-                span.pv-sum [title="Fewest players · 11 s between accounts · Sat, Sun 4:00 PM"] "Fewest players · 11 s between accounts · Sat, Sun 4:00 PM"
-                span.pv-next "Next: Tomorrow 4:00 PM"
+                span.pv-sum [title="Fewest players · 11 s between accounts"] "Fewest players · 11 s between accounts"
+                span.pv-next "· Next: Tomorrow 4:00 PM"
+                  span "Sat, Sun 4:00 PM"
               div.pv-accs [title="2 accounts\nMain\nNight Owl" aria-label="2 accounts"]
                 span.avatar.sm
                   img [alt="" style="--h:204" src=#1qk25wb]
@@ -1565,7 +1589,7 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Farm group 47"] "Farm group 47"
                 small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
-                span.pv-sum [title="Lowest ping · 12 s between accounts · No schedule"] "Lowest ping · 12 s between accounts · No schedule"
+                span.pv-sum [title="Lowest ping · 12 s between accounts"] "Lowest ping · 12 s between accounts"
               div.pv-accs [title="2 accounts\nFarm 1\nAlt" aria-label="2 accounts"]
                 span.avatar.sm
                   img [alt="" style="--h:243" src=#uinvo6]
@@ -1595,7 +1619,7 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Farm group 48"] "Farm group 48"
                 small [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
-                span.pv-sum [title="Random · Default wait (8 s) · No schedule"] "Random · Default wait (8 s) · No schedule"
+                span.pv-sum [title="Random · Default wait (8 s)"] "Random · Default wait (8 s)"
               div.pv-accs [title="2 accounts\nFarm 2\nTrade" aria-label="2 accounts"]
                 span.avatar.sm
                   img [alt="" style="--h:244" src=#n0d7cr]
@@ -1625,7 +1649,9 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Farm group 49"] "Farm group 49"
                 small [title="Blox Fruits"] "Blox Fruits"
-                span.pv-sum [title="Any (Roblox picks) · 5 s between accounts · Schedule off · Sat, Sun 7:00 PM"] "Any (Roblox picks) · 5 s between accounts · Schedule off · Sat, Sun 7:00 PM"
+                span.pv-sum [title="Any (Roblox picks) · 5 s between accounts"] "Any (Roblox picks) · 5 s between accounts"
+                span.pv-next
+                  span "Schedule off · Sat, Sun 7:00 PM"
               div.pv-accs [title="2 accounts\nNight Owl\nTesting" aria-label="2 accounts"]
                 span.avatar.sm
                   img [alt="" style="--h:297" src=#1u67et1]
@@ -1659,7 +1685,7 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Farm group 50"] "Farm group 50"
                 small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
-                span.pv-sum [title="Most players · 6 s between accounts · No schedule"] "Most players · 6 s between accounts · No schedule"
+                span.pv-sum [title="Most players · 6 s between accounts"] "Most players · 6 s between accounts"
               div.pv-accs [title="2 accounts\nAlt\nMain" aria-label="2 accounts"]
                 span.avatar.sm
                   img [alt="" style="--h:83" src=#c108i9]

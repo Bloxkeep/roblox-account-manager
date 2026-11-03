@@ -54,18 +54,18 @@ html [data-theme="dark" lang="vi"]
             span "Đóng tất cả"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: Đang bật, mở được nhiều cửa sổ"]
+            button.multi-open [title="Multi-Roblox: Đang bật: mở được nhiều cửa sổ Roblox"]
               span.led
               div
                 b "Multi-Roblox"
-                small "Đang bật, mở được nhiều cửa sổ"
+                small "Đang bật"
             label.switch [title="Tắt Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
         div.side-foot
           div [id="update-slot"]
           div.side-lock
-            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
+            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, Preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
               svg.i #21scx0
               span "Khóa app"
             button.btn.ghost.side-sq.vault-btn [title="Đổi vault (Vault 1)" aria-label="Đổi vault (Vault 1)"]
@@ -76,17 +76,17 @@ html [data-theme="dark" lang="vi"]
         header.top
           div.top-title
             h1 "Preset"
-            p [id="pv-sub"] "preset preset hẹn giờ"
+            p [id="pv-sub"] "Preset Preset hẹn giờ"
               b "3"
               span.sep "·"
               b "1"
           div.top-tools [id="pv-tools"]
             label.search
               svg.i #1u22jvi
-              input [id="pv-q" placeholder="Tìm preset hoặc game" maxlength="100" aria-label="Tìm preset hoặc game" value=""]
+              input [id="pv-q" placeholder="Tìm Preset hoặc game" maxlength="100" aria-label="Tìm Preset hoặc game" value=""]
             button.btn.primary
               svg.i #u7ty99
-              span "Thêm preset"
+              span "Thêm Preset"
         div.scroll
           div.pv-list [id="pv-list" role="list"]
             div.pv-item [role="listitem"]
@@ -97,8 +97,9 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Morning check-in"] "Morning check-in"
                 small [title="Màn hình chính Roblox"] "Màn hình chính Roblox"
-                span.pv-sum [title="Mở cùng lúc, không chờ · Hẹn giờ đang tắt · Thứ 5, 24/12 07:30"] "Mở cùng lúc, không chờ · Hẹn giờ đang tắt · Thứ 5, 24/12 07:30"
-                span.pv-next
+                span.pv-sum [title="Mở cùng lúc, không chờ"] "Mở cùng lúc, không chờ"
+                span.pv-next "·"
+                  span "Hẹn giờ đang tắt · T5, 24/12 07:30"
                   span "Chạy lần cuối 1 ngày trước"
               div.pv-accs [title="6 tài khoản\nTài khoản chính\nFarm 1\nNight Owl\nTài khoản phụ\nTrade\nThử nghiệm" aria-label="6 tài khoản"]
                 span.avatar.sm
@@ -138,9 +139,10 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Farm Blox Fruits"] "Farm Blox Fruits"
                 small [title="Blox Fruits"] "Blox Fruits"
-                span.pv-sum [title="Ping thấp nhất · Chờ 12 giây giữa các tài khoản · Thứ 2–Thứ 6 20:00 · Bật chống AFK · Treo máy nhẹ · Mở lại mỗi 4 giờ · Xếp cửa sổ · Kênh Discord riêng"] "Ping thấp nhất · Chờ 12 giây giữa các tài khoản · Thứ 2–Thứ 6 20:00 · Bật chống AFK · Treo máy nhẹ · Mở lại mỗi 4 giờ · Xếp cửa sổ · Kênh Discord riêng"
-                span.pv-next "· Lần tới: Hôm nay 20:00"
+                span.pv-sum [title="Ping thấp nhất · Chờ 12 giây giữa các tài khoản · Bật chống AFK · Treo máy nhẹ · Mở lại mỗi 4 giờ · Xếp cửa sổ · Kênh Discord riêng"] "Ping thấp nhất · Chờ 12 giây giữa các tài khoản · Bật chống AFK · Treo máy nhẹ · Mở lại mỗi 4 giờ · Xếp cửa sổ · Kênh Discord riêng"
+                span.pv-next "· · Lần tới: Hôm nay 20:00"
                   span.pv-live "Đang mở 3 cửa sổ"
+                  span "T2–T6 20:00"
               div.pv-accs [title="3 tài khoản\nFarm 1\nFarm 2\nNight Owl" aria-label="3 tài khoản"]
                 span.avatar.sm
                   img [alt="" style="--h:243" src=#uinvo6]
@@ -153,7 +155,7 @@ html [data-theme="dark" lang="vi"]
                 label.switch [title="Tắt hẹn giờ"]
                   input [type="checkbox" aria-label="Hẹn giờ: Farm Blox Fruits" checked=true]
                   span
-              button.btn.pv-close.pv-run.sm [title="Đóng 3 cửa sổ do preset này mở." aria-label="Đóng: Farm Blox Fruits"]
+              button.btn.pv-close.pv-run.sm [title="Đóng 3 cửa sổ do Preset này mở." aria-label="Đóng: Farm Blox Fruits"]
                 svg.i #16z0s1r
                 span "Đóng"
               span.pv-acts
@@ -176,7 +178,7 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Adopt Me trade"] "Adopt Me trade"
                 small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
-                span.pv-sum [title="Bất kỳ (Roblox tự chọn) · Chờ mặc định (8 giây) · Không hẹn giờ · Tắt tự vào lại"] "Bất kỳ (Roblox tự chọn) · Chờ mặc định (8 giây) · Không hẹn giờ · Tắt tự vào lại"
+                span.pv-sum [title="Bất kỳ (Roblox tự chọn) · Chờ mặc định (8 giây) · Tắt tự vào lại"] "Bất kỳ (Roblox tự chọn) · Chờ mặc định (8 giây) · Tắt tự vào lại"
                 span.pv-next
                   span "Chạy lần cuối 1 giờ trước"
               div.pv-accs [title="1 tài khoản\nTrade" aria-label="1 tài khoản"]
@@ -262,18 +264,18 @@ html [data-theme="dark" lang="vi"]
             span "Đóng tất cả"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: Đang bật, mở được nhiều cửa sổ"]
+            button.multi-open [title="Multi-Roblox: Đang bật: mở được nhiều cửa sổ Roblox"]
               span.led
               div
                 b "Multi-Roblox"
-                small "Đang bật, mở được nhiều cửa sổ"
+                small "Đang bật"
             label.switch [title="Tắt Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
         div.side-foot
           div [id="update-slot"]
           div.side-lock
-            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
+            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, Preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
               svg.i #21scx0
               span "Khóa app"
             button.btn.ghost.side-sq.vault-btn [title="Đổi vault (Vault 1)" aria-label="Đổi vault (Vault 1)"]
@@ -284,17 +286,17 @@ html [data-theme="dark" lang="vi"]
         header.top
           div.top-title
             h1 "Preset"
-            p [id="pv-sub"] "preset preset hẹn giờ"
+            p [id="pv-sub"] "Preset Preset hẹn giờ"
               b "3"
               span.sep "·"
               b "1"
           div.top-tools [id="pv-tools"]
             label.search
               svg.i #1u22jvi
-              input [id="pv-q" placeholder="Tìm preset hoặc game" maxlength="100" aria-label="Tìm preset hoặc game" value=""]
+              input [id="pv-q" placeholder="Tìm Preset hoặc game" maxlength="100" aria-label="Tìm Preset hoặc game" value=""]
             button.btn.primary
               svg.i #u7ty99
-              span "Thêm preset"
+              span "Thêm Preset"
         div.scroll
           div.pv-list [id="pv-list" role="list"]
             div.pv-item [role="listitem"]
@@ -305,9 +307,10 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Farm Blox Fruits"] "Farm Blox Fruits"
                 small [title="Blox Fruits"] "Blox Fruits"
-                span.pv-sum [title="Ping thấp nhất · Chờ 12 giây giữa các tài khoản · Thứ 2–Thứ 6 20:00 · Bật chống AFK · Treo máy nhẹ · Mở lại mỗi 4 giờ · Xếp cửa sổ · Kênh Discord riêng"] "Ping thấp nhất · Chờ 12 giây giữa các tài khoản · Thứ 2–Thứ 6 20:00 · Bật chống AFK · Treo máy nhẹ · Mở lại mỗi 4 giờ · Xếp cửa sổ · Kênh Discord riêng"
-                span.pv-next "· Lần tới: Hôm nay 20:00"
+                span.pv-sum [title="Ping thấp nhất · Chờ 12 giây giữa các tài khoản · Bật chống AFK · Treo máy nhẹ · Mở lại mỗi 4 giờ · Xếp cửa sổ · Kênh Discord riêng"] "Ping thấp nhất · Chờ 12 giây giữa các tài khoản · Bật chống AFK · Treo máy nhẹ · Mở lại mỗi 4 giờ · Xếp cửa sổ · Kênh Discord riêng"
+                span.pv-next "· · Lần tới: Hôm nay 20:00"
                   span.pv-live "Đang mở 3 cửa sổ"
+                  span "T2–T6 20:00"
               div.pv-accs [title="3 tài khoản\nFarm 1\nFarm 2\nNight Owl" aria-label="3 tài khoản"]
                 span.avatar.sm
                   img [alt="" style="--h:243" src=#uinvo6]
@@ -320,7 +323,7 @@ html [data-theme="dark" lang="vi"]
                 label.switch [title="Tắt hẹn giờ"]
                   input [type="checkbox" aria-label="Hẹn giờ: Farm Blox Fruits" checked=true]
                   span
-              button.btn.pv-close.pv-run.sm [title="Đóng 3 cửa sổ do preset này mở." aria-label="Đóng: Farm Blox Fruits"]
+              button.btn.pv-close.pv-run.sm [title="Đóng 3 cửa sổ do Preset này mở." aria-label="Đóng: Farm Blox Fruits"]
                 svg.i #16z0s1r
                 span "Đóng"
               span.pv-acts
@@ -343,7 +346,7 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Adopt Me trade"] "Adopt Me trade"
                 small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
-                span.pv-sum [title="Bất kỳ (Roblox tự chọn) · Chờ mặc định (8 giây) · Không hẹn giờ · Tắt tự vào lại"] "Bất kỳ (Roblox tự chọn) · Chờ mặc định (8 giây) · Không hẹn giờ · Tắt tự vào lại"
+                span.pv-sum [title="Bất kỳ (Roblox tự chọn) · Chờ mặc định (8 giây) · Tắt tự vào lại"] "Bất kỳ (Roblox tự chọn) · Chờ mặc định (8 giây) · Tắt tự vào lại"
                 span.pv-next
                   span "Chạy lần cuối 1 giờ trước"
               div.pv-accs [title="1 tài khoản\nTrade" aria-label="1 tài khoản"]
@@ -373,8 +376,9 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Morning check-in"] "Morning check-in"
                 small [title="Màn hình chính Roblox"] "Màn hình chính Roblox"
-                span.pv-sum [title="Mở cùng lúc, không chờ · Hẹn giờ đang tắt · Thứ 5, 24/12 07:30"] "Mở cùng lúc, không chờ · Hẹn giờ đang tắt · Thứ 5, 24/12 07:30"
-                span.pv-next
+                span.pv-sum [title="Mở cùng lúc, không chờ"] "Mở cùng lúc, không chờ"
+                span.pv-next "·"
+                  span "Hẹn giờ đang tắt · T5, 24/12 07:30"
                   span "Chạy lần cuối 1 ngày trước"
               div.pv-accs [title="6 tài khoản\nTài khoản chính\nFarm 1\nNight Owl\nTài khoản phụ\nTrade\nThử nghiệm" aria-label="6 tài khoản"]
                 span.avatar.sm

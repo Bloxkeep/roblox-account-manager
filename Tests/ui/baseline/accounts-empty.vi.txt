@@ -50,18 +50,18 @@ html [data-theme="dark" lang="vi"]
             span "Cửa sổ nhỏ"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: Đang bật, mở được nhiều cửa sổ"]
+            button.multi-open [title="Multi-Roblox: Đang bật: mở được nhiều cửa sổ Roblox"]
               span.led
               div
                 b "Multi-Roblox"
-                small "Đang bật, mở được nhiều cửa sổ"
+                small "Đang bật"
             label.switch [title="Tắt Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
         div.side-foot
           div [id="update-slot"]
           div.side-lock
-            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
+            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, Preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
               svg.i #21scx0
               span "Khóa app"
             button.btn.ghost.side-sq.vault-btn [title="Đổi vault (Vault 1)" aria-label="Đổi vault (Vault 1)"]
@@ -71,16 +71,7 @@ html [data-theme="dark" lang="vi"]
         header.top
           div.top-title
             h1 "Tài khoản"
-            p [id="acc-sub"] "tài khoản đang chơi online"
-              b "0"
-              span.sep "·"
-              b "0"
-              span.sep "·"
-              b "0"
           div.top-tools
-            label.search
-              svg.i #1u22jvi
-              input [id="q" placeholder="Tìm tài khoản, nhóm, ghi chú…" maxlength="100" aria-label="Tìm tài khoản, nhóm, ghi chú…" value=""]
             button.icon-btn [title="Làm mới trạng thái online"]
               svg.i #e464bo
             button.icon-btn [title="Tùy chọn khác" aria-haspopup="menu"]
@@ -92,7 +83,6 @@ html [data-theme="dark" lang="vi"]
               button.btn.primary [title="Cách thêm khác" aria-haspopup="menu"]
                 svg.i #u1ag9u
         div.bar
-          div.chips [id="chips"]
         div.scroll [id="scroll"]
           div [id="grid"]
             div.empty
@@ -104,7 +94,7 @@ html [data-theme="dark" lang="vi"]
                   span "Thêm tài khoản"
                 li.ss-step
                   i "2"
-                  span "Chọn game ở thanh bên dưới"
+                  span "Chọn game"
                 li.ss-step
                   i "3"
                   span "Chọn tài khoản rồi bấm Vào game"

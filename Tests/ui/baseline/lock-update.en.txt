@@ -15,7 +15,7 @@ html [data-theme="dark" lang="en"]
         i [style="transform:scaleX(0.4)"]
       div.lock-update-step [id="lock-update-step" aria-live="polite"] "Downloading… 40%"
       div.lock-alt
-        button.link [id="lock-update-later" type="button" title="The update then waits until you’re not using Bloxkeep."] "Unlock now, update later"
+        button.btn.ghost [id="lock-update-later" type="button" title="The update then waits until you’re not using Bloxkeep."] "Unlock now, update later"
 #layer
 #toasts
 -- commands

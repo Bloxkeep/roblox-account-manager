@@ -54,18 +54,18 @@ html [data-theme="dark" lang="vi"]
             span "Đóng tất cả"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: Đang bật, mở được nhiều cửa sổ"]
+            button.multi-open [title="Multi-Roblox: Đang bật: mở được nhiều cửa sổ Roblox"]
               span.led
               div
                 b "Multi-Roblox"
-                small "Đang bật, mở được nhiều cửa sổ"
+                small "Đang bật"
             label.switch [title="Tắt Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
         div.side-foot
           div [id="update-slot"]
           div.side-lock
-            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
+            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, Preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
               svg.i #21scx0
               span "Khóa app"
             button.btn.ghost.side-sq.vault-btn [title="Đổi vault (Vault 1)" aria-label="Đổi vault (Vault 1)"]
@@ -98,10 +98,10 @@ html [data-theme="dark" lang="vi"]
               button.btn.primary [title="Cách thêm khác" aria-haspopup="menu"]
                 svg.i #u1ag9u
         div.bar
-          div.chips.fade-r [id="chips"]
+          div.chips [id="chips"]
             button.chip.on [aria-pressed="true"] "Tất cả"
               em "7"
-            button.chip [aria-pressed="false"] "Cần đăng nhập lại"
+            button.chip [aria-pressed="false"] "Cần đăng nhập"
               i.dot [style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:"]
               em "1"
             button.chip [aria-pressed="false"] "Bị ban"
@@ -113,11 +113,7 @@ html [data-theme="dark" lang="vi"]
             button.chip [aria-pressed="false"] "Online"
               i.dot [style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:"]
               em "4"
-            button.chip [aria-pressed="false"] "Offline"
-              i.dot [style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:"]
-              em "3"
-            button.chip [aria-pressed="false"] "Trên máy này"
-              em "2"
+            button.chip.more [title="Bộ lọc khác" aria-haspopup="menu"] "+2"
           div.seg [id="layout-seg"]
             button.on [title="Dạng thẻ" aria-label="Dạng thẻ" aria-pressed="true"]
               svg.i #19k0rtd
@@ -161,9 +157,9 @@ html [data-theme="dark" lang="vi"]
                 div.card-actions
                   button.pill-btn.stop [tabindex="0"] "Đóng"
                     svg.i #16z0s1r
-                  button.icon-btn [title="Sửa (F2)" tabindex="0"]
+                  button.icon-btn [title="Sửa (F2)" tabindex="0" aria-label="Sửa (F2)"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="Tùy chọn khác" tabindex="0" aria-haspopup="menu"]
+                  button.icon-btn [title="Tùy chọn khác" tabindex="0" aria-haspopup="menu" aria-label="Tùy chọn khác"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Farm 2" aria-selected="false"]
                 span.check
@@ -177,20 +173,20 @@ html [data-theme="dark" lang="vi"]
                   span.gicon
                     svg.i #kqqqno
                   div.txt
-                    div.k [title="Cần đăng nhập lại"] "Cần đăng nhập lại"
+                    div.k [title="Cần đăng nhập"] "Cần đăng nhập"
                     div.v [title="Đăng nhập lại để dùng tiếp"] "Đăng nhập lại để dùng tiếp"
                 div.meta
                   span.tag [title="Farm"] "Farm"
                   span.ago [title="Lần cuối mở từ Bloxkeep"]
                     svg.i #n87usa
                     span "Mở 9 ngày trước"
-                div.note [title="Hết hạn tuần trước"] "Hết hạn tuần trước"
+                div.acc-note [title="Hết hạn tuần trước"] "Hết hạn tuần trước"
                 div.card-actions
                   button.pill-btn.relogin [title="Tài khoản này đã bị đăng xuất. Đăng nhập lại (bằng điện thoại hoặc trình duyệt) để dùng tiếp." tabindex="-1"] "Đăng nhập"
                     svg.i #kqqqno
-                  button.icon-btn [title="Sửa (F2)" tabindex="-1"]
+                  button.icon-btn [title="Sửa (F2)" tabindex="-1" aria-label="Sửa (F2)"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
+                  button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu" aria-label="Tùy chọn khác"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Night Owl" aria-selected="false"]
                 span.check
@@ -216,9 +212,9 @@ html [data-theme="dark" lang="vi"]
                 div.card-actions
                   button.pill-btn.play [tabindex="-1"] "Vào game"
                     svg.i #1ewcuky
-                  button.icon-btn [title="Sửa (F2)" tabindex="-1"]
+                  button.icon-btn [title="Sửa (F2)" tabindex="-1" aria-label="Sửa (F2)"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
+                  button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu" aria-label="Tùy chọn khác"]
                     svg.i #1e3omv2
               article.card.local [role="option" tabindex="-1" aria-label="Tài khoản chính" aria-selected="false"]
                 span.check
@@ -248,13 +244,13 @@ html [data-theme="dark" lang="vi"]
                   span.tag [title="Main"] "Main"
                   span.rejoin [title="Đang bật Tự vào lại"]
                     svg.i #1ap9cll
-                div.note [title="Tài khoản chơi chính, đừng dùng farm"] "Tài khoản chơi chính, đừng dùng farm"
+                div.acc-note [title="Tài khoản chơi chính, đừng dùng farm"] "Tài khoản chơi chính, đừng dùng farm"
                 div.card-actions
                   button.pill-btn.stop [tabindex="-1"] "Đóng"
                     svg.i #16z0s1r
-                  button.icon-btn [title="Sửa (F2)" tabindex="-1"]
+                  button.icon-btn [title="Sửa (F2)" tabindex="-1" aria-label="Sửa (F2)"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
+                  button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu" aria-label="Tùy chọn khác"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Tài khoản phụ" aria-selected="false"]
                 span.check
@@ -278,9 +274,9 @@ html [data-theme="dark" lang="vi"]
                 div.card-actions
                   button.pill-btn.play [tabindex="-1"] "Vào game"
                     svg.i #1ewcuky
-                  button.icon-btn [title="Sửa (F2)" tabindex="-1"]
+                  button.icon-btn [title="Sửa (F2)" tabindex="-1" aria-label="Sửa (F2)"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
+                  button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu" aria-label="Tùy chọn khác"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Thử nghiệm" aria-selected="false"]
                 span.check
@@ -297,14 +293,12 @@ html [data-theme="dark" lang="vi"]
                     div.k [title="Đang mở Roblox…"] "Đang mở Roblox…"
                     div.v [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
                 div.meta
-                  span.ago [title="Lần cuối mở từ Bloxkeep"] "Chưa mở lần nào"
-                    svg.i #n87usa
                 div.card-actions
                   button.pill-btn.stop [tabindex="-1"] "Đóng"
                     svg.i #16z0s1r
-                  button.icon-btn [title="Sửa (F2)" tabindex="-1"]
+                  button.icon-btn [title="Sửa (F2)" tabindex="-1" aria-label="Sửa (F2)"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
+                  button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu" aria-label="Tùy chọn khác"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Trade" aria-selected="false"]
                 span.check
@@ -318,20 +312,20 @@ html [data-theme="dark" lang="vi"]
                   span.gicon
                     svg.i #v9c4u6
                   div.txt
-                    div.k [title="Chưa rõ trạng thái"] "Chưa rõ trạng thái"
+                    div.k [title="Offline"] "Offline"
                     div.v [title="Đang cập nhật…"] "Đang cập nhật…"
                 div.meta
                   span.bad.badge [title="Roblox báo tài khoản này bị ban. Bấm Vào game sẽ bỏ qua."] "Bị ban"
                   span.ago [title="Lần cuối mở từ Bloxkeep"]
                     svg.i #n87usa
                     span "Mở 2 ngày trước"
-                div.note [title="Chỉ dùng trade"] "Chỉ dùng trade"
+                div.acc-note [title="Chỉ dùng trade"] "Chỉ dùng trade"
                 div.card-actions
                   button.pill-btn.play [tabindex="-1"] "Vào game"
                     svg.i #1ewcuky
-                  button.icon-btn [title="Sửa (F2)" tabindex="-1"]
+                  button.icon-btn [title="Sửa (F2)" tabindex="-1" aria-label="Sửa (F2)"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
+                  button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu" aria-label="Tùy chọn khác"]
                     svg.i #1e3omv2
         div.dock
           div.dock-game.dock-step
@@ -344,12 +338,13 @@ html [data-theme="dark" lang="vi"]
             div.dock-info [id="dock-info" aria-live="polite"]
               span.gname.gname-link [role="button" title="Mở trang của game này" tabindex="0"] "Blox Fruits"
               span.players "412.873 đang chơi"
-              button.srv-open.srv-save [title="Lưu link server riêng hoặc code game yêu cầu để vào lại từ tab Đã lưu." aria-label="Lưu server"]
+              button.srv-open.srv-save [title="Lưu link hoặc mã server riêng để vào lại từ tab Đã lưu." aria-label="Lưu server"]
                 svg.i #1c3gvph
               div.recents
                 div.recent [title="[🎃] Adopt Me!"]
                   button.recent-pick
                     i.ph
+                      svg.i #sy1lqp
                     span "[🎃] Adopt Me!"
                   button.rm [title="Xóa khỏi Gần đây" aria-label="Xóa khỏi Gần đây"]
                     svg.i #1tyq039
@@ -362,27 +357,27 @@ html [data-theme="dark" lang="vi"]
               svg.i #ej9lod
               input [id="job" placeholder="Mã server (Job ID)" maxlength="60" aria-label="Mã server (Job ID)" value=""]
             div.dock-sub
-              button.sub-btn [title="Chọn server của game này theo số người chơi, ping, hoặc nơi bạn bè đang chơi"]
+              button.sub-btn [title="Chọn server của game này theo số người chơi, ping, hoặc nơi bạn bè đang chơi" aria-label="Chọn server"]
                 svg.i #uj30io
                 span "Chọn server"
-              button.sub-btn [title="Vào cùng người chơi: đưa các tài khoản đã chọn vào server người đó đang chơi"]
+              button.sub-btn [title="Vào cùng người chơi: đưa các tài khoản đã chọn vào server người đó đang chơi" aria-label="Theo người chơi…"]
                 svg.i #145pp0l
-                span "Vào cùng người chơi…"
+                span "Theo người chơi…"
           div.dock-go.dock-step [id="dock-actions"]
             div.step-cap
               b "3"
-              span "Vào game"
-            button.play-btn [disabled]
+              span "Vào"
+            button.play-btn [title="Chọn tài khoản trước" aria-disabled="true"]
               svg.i #1ewcuky
-              span "Chọn tài khoản trước"
+              span "Vào game"
             div.dock-sub
-              button.sub-btn [title="Preset" aria-haspopup="menu"]
+              button.sub-btn [title="Preset" aria-haspopup="menu" aria-label="Preset"]
                 svg.i #1pvni8o
                 span "Preset"
-              button.sub-btn [title="Đóng Roblox của các tài khoản đã chọn" disabled]
+              button.sub-btn [title="Chưa mở tài khoản nào" aria-disabled="true" aria-label="Đóng"]
                 svg.i #16z0s1r
                 span "Đóng"
-              button.sub-btn [title="Chỉ mở Roblox, hoặc xếp cửa sổ" aria-haspopup="menu"]
+              button.sub-btn [title="Chỉ mở Roblox, hoặc xếp cửa sổ" aria-haspopup="menu" aria-label="Cửa sổ"]
                 svg.i #1e3syqr
                 span "Cửa sổ"
 #layer
@@ -405,7 +400,7 @@ html [data-theme="dark" lang="vi"]
               b [title="Night Owl"] "Night Owl"
               small "@night_owl_rb"
             span.ord-btns
-              button.icon-btn [type="button" title="Chuyển lên" aria-label="Chuyển lên"]
+              button.icon-btn [type="button" title="Chuyển lên" aria-label="Chuyển lên" disabled]
                 svg.i #ilfy0l
               button.icon-btn [type="button" title="Chuyển xuống" aria-label="Chuyển xuống"]
                 svg.i #u1ag9u
@@ -491,7 +486,7 @@ html [data-theme="dark" lang="vi"]
             span.ord-btns
               button.icon-btn [type="button" title="Chuyển lên" aria-label="Chuyển lên"]
                 svg.i #ilfy0l
-              button.icon-btn [type="button" title="Chuyển xuống" aria-label="Chuyển xuống"]
+              button.icon-btn [type="button" title="Chuyển xuống" aria-label="Chuyển xuống" disabled]
                 svg.i #u1ag9u
       div.modal-foot
         button.btn "Hủy"
@@ -558,18 +553,18 @@ html [data-theme="dark" lang="vi"]
             span "Đóng tất cả"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: Đang bật, mở được nhiều cửa sổ"]
+            button.multi-open [title="Multi-Roblox: Đang bật: mở được nhiều cửa sổ Roblox"]
               span.led
               div
                 b "Multi-Roblox"
-                small "Đang bật, mở được nhiều cửa sổ"
+                small "Đang bật"
             label.switch [title="Tắt Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
         div.side-foot
           div [id="update-slot"]
           div.side-lock
-            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
+            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, Preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
               svg.i #21scx0
               span "Khóa app"
             button.btn.ghost.side-sq.vault-btn [title="Đổi vault (Vault 1)" aria-label="Đổi vault (Vault 1)"]
@@ -602,10 +597,10 @@ html [data-theme="dark" lang="vi"]
               button.btn.primary [title="Cách thêm khác" aria-haspopup="menu"]
                 svg.i #u1ag9u
         div.bar
-          div.chips.fade-r [id="chips"]
+          div.chips [id="chips"]
             button.chip.on [aria-pressed="true"] "Tất cả"
               em "7"
-            button.chip [aria-pressed="false"] "Cần đăng nhập lại"
+            button.chip [aria-pressed="false"] "Cần đăng nhập"
               i.dot [style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:"]
               em "1"
             button.chip [aria-pressed="false"] "Bị ban"
@@ -617,11 +612,7 @@ html [data-theme="dark" lang="vi"]
             button.chip [aria-pressed="false"] "Online"
               i.dot [style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:"]
               em "4"
-            button.chip [aria-pressed="false"] "Offline"
-              i.dot [style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:"]
-              em "3"
-            button.chip [aria-pressed="false"] "Trên máy này"
-              em "2"
+            button.chip.more [title="Bộ lọc khác" aria-haspopup="menu"] "+2"
           div.seg [id="layout-seg"]
             button.on [title="Dạng thẻ" aria-label="Dạng thẻ" aria-pressed="true"]
               svg.i #19k0rtd
@@ -665,9 +656,9 @@ html [data-theme="dark" lang="vi"]
                 div.card-actions
                   button.pill-btn.stop [tabindex="0"] "Đóng"
                     svg.i #16z0s1r
-                  button.icon-btn [title="Sửa (F2)" tabindex="0"]
+                  button.icon-btn [title="Sửa (F2)" tabindex="0" aria-label="Sửa (F2)"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="Tùy chọn khác" tabindex="0" aria-haspopup="menu"]
+                  button.icon-btn [title="Tùy chọn khác" tabindex="0" aria-haspopup="menu" aria-label="Tùy chọn khác"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Farm 2" aria-selected="false"]
                 span.check
@@ -681,20 +672,20 @@ html [data-theme="dark" lang="vi"]
                   span.gicon
                     svg.i #kqqqno
                   div.txt
-                    div.k [title="Cần đăng nhập lại"] "Cần đăng nhập lại"
+                    div.k [title="Cần đăng nhập"] "Cần đăng nhập"
                     div.v [title="Đăng nhập lại để dùng tiếp"] "Đăng nhập lại để dùng tiếp"
                 div.meta
                   span.tag [title="Farm"] "Farm"
                   span.ago [title="Lần cuối mở từ Bloxkeep"]
                     svg.i #n87usa
                     span "Mở 9 ngày trước"
-                div.note [title="Hết hạn tuần trước"] "Hết hạn tuần trước"
+                div.acc-note [title="Hết hạn tuần trước"] "Hết hạn tuần trước"
                 div.card-actions
                   button.pill-btn.relogin [title="Tài khoản này đã bị đăng xuất. Đăng nhập lại (bằng điện thoại hoặc trình duyệt) để dùng tiếp." tabindex="-1"] "Đăng nhập"
                     svg.i #kqqqno
-                  button.icon-btn [title="Sửa (F2)" tabindex="-1"]
+                  button.icon-btn [title="Sửa (F2)" tabindex="-1" aria-label="Sửa (F2)"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
+                  button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu" aria-label="Tùy chọn khác"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Night Owl" aria-selected="false"]
                 span.check
@@ -720,9 +711,9 @@ html [data-theme="dark" lang="vi"]
                 div.card-actions
                   button.pill-btn.play [tabindex="-1"] "Vào game"
                     svg.i #1ewcuky
-                  button.icon-btn [title="Sửa (F2)" tabindex="-1"]
+                  button.icon-btn [title="Sửa (F2)" tabindex="-1" aria-label="Sửa (F2)"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
+                  button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu" aria-label="Tùy chọn khác"]
                     svg.i #1e3omv2
               article.card.local [role="option" tabindex="-1" aria-label="Tài khoản chính" aria-selected="false"]
                 span.check
@@ -752,13 +743,13 @@ html [data-theme="dark" lang="vi"]
                   span.tag [title="Main"] "Main"
                   span.rejoin [title="Đang bật Tự vào lại"]
                     svg.i #1ap9cll
-                div.note [title="Tài khoản chơi chính, đừng dùng farm"] "Tài khoản chơi chính, đừng dùng farm"
+                div.acc-note [title="Tài khoản chơi chính, đừng dùng farm"] "Tài khoản chơi chính, đừng dùng farm"
                 div.card-actions
                   button.pill-btn.stop [tabindex="-1"] "Đóng"
                     svg.i #16z0s1r
-                  button.icon-btn [title="Sửa (F2)" tabindex="-1"]
+                  button.icon-btn [title="Sửa (F2)" tabindex="-1" aria-label="Sửa (F2)"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
+                  button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu" aria-label="Tùy chọn khác"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Tài khoản phụ" aria-selected="false"]
                 span.check
@@ -782,9 +773,9 @@ html [data-theme="dark" lang="vi"]
                 div.card-actions
                   button.pill-btn.play [tabindex="-1"] "Vào game"
                     svg.i #1ewcuky
-                  button.icon-btn [title="Sửa (F2)" tabindex="-1"]
+                  button.icon-btn [title="Sửa (F2)" tabindex="-1" aria-label="Sửa (F2)"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
+                  button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu" aria-label="Tùy chọn khác"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Thử nghiệm" aria-selected="false"]
                 span.check
@@ -801,14 +792,12 @@ html [data-theme="dark" lang="vi"]
                     div.k [title="Đang mở Roblox…"] "Đang mở Roblox…"
                     div.v [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
                 div.meta
-                  span.ago [title="Lần cuối mở từ Bloxkeep"] "Chưa mở lần nào"
-                    svg.i #n87usa
                 div.card-actions
                   button.pill-btn.stop [tabindex="-1"] "Đóng"
                     svg.i #16z0s1r
-                  button.icon-btn [title="Sửa (F2)" tabindex="-1"]
+                  button.icon-btn [title="Sửa (F2)" tabindex="-1" aria-label="Sửa (F2)"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
+                  button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu" aria-label="Tùy chọn khác"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Trade" aria-selected="false"]
                 span.check
@@ -822,20 +811,20 @@ html [data-theme="dark" lang="vi"]
                   span.gicon
                     svg.i #v9c4u6
                   div.txt
-                    div.k [title="Chưa rõ trạng thái"] "Chưa rõ trạng thái"
+                    div.k [title="Offline"] "Offline"
                     div.v [title="Đang cập nhật…"] "Đang cập nhật…"
                 div.meta
                   span.bad.badge [title="Roblox báo tài khoản này bị ban. Bấm Vào game sẽ bỏ qua."] "Bị ban"
                   span.ago [title="Lần cuối mở từ Bloxkeep"]
                     svg.i #n87usa
                     span "Mở 2 ngày trước"
-                div.note [title="Chỉ dùng trade"] "Chỉ dùng trade"
+                div.acc-note [title="Chỉ dùng trade"] "Chỉ dùng trade"
                 div.card-actions
                   button.pill-btn.play [tabindex="-1"] "Vào game"
                     svg.i #1ewcuky
-                  button.icon-btn [title="Sửa (F2)" tabindex="-1"]
+                  button.icon-btn [title="Sửa (F2)" tabindex="-1" aria-label="Sửa (F2)"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu"]
+                  button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu" aria-label="Tùy chọn khác"]
                     svg.i #1e3omv2
         div.dock
           div.dock-game.dock-step
@@ -848,12 +837,13 @@ html [data-theme="dark" lang="vi"]
             div.dock-info [id="dock-info" aria-live="polite"]
               span.gname.gname-link [role="button" title="Mở trang của game này" tabindex="0"] "Blox Fruits"
               span.players "412.873 đang chơi"
-              button.srv-open.srv-save [title="Lưu link server riêng hoặc code game yêu cầu để vào lại từ tab Đã lưu." aria-label="Lưu server"]
+              button.srv-open.srv-save [title="Lưu link hoặc mã server riêng để vào lại từ tab Đã lưu." aria-label="Lưu server"]
                 svg.i #1c3gvph
               div.recents
                 div.recent [title="[🎃] Adopt Me!"]
                   button.recent-pick
                     i.ph
+                      svg.i #sy1lqp
                     span "[🎃] Adopt Me!"
                   button.rm [title="Xóa khỏi Gần đây" aria-label="Xóa khỏi Gần đây"]
                     svg.i #1tyq039
@@ -866,27 +856,27 @@ html [data-theme="dark" lang="vi"]
               svg.i #ej9lod
               input [id="job" placeholder="Mã server (Job ID)" maxlength="60" aria-label="Mã server (Job ID)" value=""]
             div.dock-sub
-              button.sub-btn [title="Chọn server của game này theo số người chơi, ping, hoặc nơi bạn bè đang chơi"]
+              button.sub-btn [title="Chọn server của game này theo số người chơi, ping, hoặc nơi bạn bè đang chơi" aria-label="Chọn server"]
                 svg.i #uj30io
                 span "Chọn server"
-              button.sub-btn [title="Vào cùng người chơi: đưa các tài khoản đã chọn vào server người đó đang chơi"]
+              button.sub-btn [title="Vào cùng người chơi: đưa các tài khoản đã chọn vào server người đó đang chơi" aria-label="Theo người chơi…"]
                 svg.i #145pp0l
-                span "Vào cùng người chơi…"
+                span "Theo người chơi…"
           div.dock-go.dock-step [id="dock-actions"]
             div.step-cap
               b "3"
-              span "Vào game"
-            button.play-btn [disabled]
+              span "Vào"
+            button.play-btn [title="Chọn tài khoản trước" aria-disabled="true"]
               svg.i #1ewcuky
-              span "Chọn tài khoản trước"
+              span "Vào game"
             div.dock-sub
-              button.sub-btn [title="Preset" aria-haspopup="menu"]
+              button.sub-btn [title="Preset" aria-haspopup="menu" aria-label="Preset"]
                 svg.i #1pvni8o
                 span "Preset"
-              button.sub-btn [title="Đóng Roblox của các tài khoản đã chọn" disabled]
+              button.sub-btn [title="Chưa mở tài khoản nào" aria-disabled="true" aria-label="Đóng"]
                 svg.i #16z0s1r
                 span "Đóng"
-              button.sub-btn [title="Chỉ mở Roblox, hoặc xếp cửa sổ" aria-haspopup="menu"]
+              button.sub-btn [title="Chỉ mở Roblox, hoặc xếp cửa sổ" aria-haspopup="menu" aria-label="Cửa sổ"]
                 svg.i #1e3syqr
                 span "Cửa sổ"
 #layer

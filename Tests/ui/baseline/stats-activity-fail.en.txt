@@ -54,11 +54,11 @@ html [data-theme="dark" lang="en"]
             span "Close all"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+            button.multi-open [title="Multi-Roblox: On: several Roblox windows can be open"]
               span.led
               div
                 b "Multi-Roblox"
-                small "On — several windows allowed"
+                small "On"
             label.switch [title="Turn off Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
@@ -83,16 +83,15 @@ html [data-theme="dark" lang="en"]
               button.on [role="tab" type="button" aria-selected="true"] "Activity"
         div.scroll
           div.stats
-            section.alog.stat-card [id="alog-sec" aria-labelledby="alog-h"]
+            section.alog.stat-card [id="alog-sec" aria-label="Activity"]
               div.alog-head
-                h3 [id="alog-h"] "Activity"
                 div.alog-tools
                   select.select.sm [id="alog-account" aria-label="Account" value=""]
                     option [value=""] "All accounts"
                   select.select.sm [id="alog-group" aria-label="Kind of event" value=""]
                     option [value=""] "All events"
                     option [value="play"] "Games"
-                    option [value="drops"] "Disconnects and problems"
+                    option [value="drops"] "Drops and errors"
                     option [value="schedule"] "Schedules"
                     option [value="signin"] "Sign-in"
                     option [value="updates"] "Updates"

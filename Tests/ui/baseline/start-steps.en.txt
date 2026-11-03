@@ -50,11 +50,11 @@ html [data-theme="dark" lang="en"]
             span "Mini window"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+            button.multi-open [title="Multi-Roblox: On: several Roblox windows can be open"]
               span.led
               div
                 b "Multi-Roblox"
-                small "On — several windows allowed"
+                small "On"
             label.switch [title="Turn off Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
@@ -134,7 +134,7 @@ html [data-theme="dark" lang="en"]
               li.done.ss-step
                 i
                   svg.i #14iobj
-                span "Pick a game in the bar below"
+                span "Pick a game"
               li.now.ss-step
                 i "3"
                 span "Select accounts, then press Play"
@@ -161,9 +161,9 @@ html [data-theme="dark" lang="en"]
                 div.card-actions
                   button.pill-btn.play [tabindex="0"] "Play"
                     svg.i #1ewcuky
-                  button.icon-btn [title="Edit (F2)" tabindex="0"]
+                  button.icon-btn [title="Edit (F2)" tabindex="0" aria-label="Edit (F2)"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" tabindex="0" aria-haspopup="menu"]
+                  button.icon-btn [title="More" tabindex="0" aria-haspopup="menu" aria-label="More"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Farm 1" aria-selected="false"]
                 span.check
@@ -188,9 +188,9 @@ html [data-theme="dark" lang="en"]
                 div.card-actions
                   button.pill-btn.play [tabindex="-1"] "Play"
                     svg.i #1ewcuky
-                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                  button.icon-btn [title="Edit (F2)" tabindex="-1" aria-label="Edit (F2)"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu" aria-label="More"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Farm 2" aria-selected="false"]
                 span.check
@@ -210,13 +210,13 @@ html [data-theme="dark" lang="en"]
                   span.tag [title="Farm"] "Farm"
                   span.ago [title="Last launched from this app"] "Never opened"
                     svg.i #n87usa
-                div.note [title="Expired last week"] "Expired last week"
+                div.acc-note [title="Expired last week"] "Expired last week"
                 div.card-actions
                   button.pill-btn.relogin [title="This account was signed out. Sign in again (with your phone or a browser) to keep using it." tabindex="-1"] "Sign in"
                     svg.i #kqqqno
-                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                  button.icon-btn [title="Edit (F2)" tabindex="-1" aria-label="Edit (F2)"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu" aria-label="More"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Main" aria-selected="false"]
                 span.check
@@ -240,13 +240,13 @@ html [data-theme="dark" lang="en"]
                     svg.i #1ap9cll
                   span.ago [title="Last launched from this app"] "Never opened"
                     svg.i #n87usa
-                div.note [title="My main account, don't farm on it"] "My main account, don't farm on it"
+                div.acc-note [title="My main account, don't farm on it"] "My main account, don't farm on it"
                 div.card-actions
                   button.pill-btn.play [tabindex="-1"] "Play"
                     svg.i #1ewcuky
-                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                  button.icon-btn [title="Edit (F2)" tabindex="-1" aria-label="Edit (F2)"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu" aria-label="More"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Night Owl" aria-selected="false"]
                 span.check
@@ -271,9 +271,9 @@ html [data-theme="dark" lang="en"]
                 div.card-actions
                   button.pill-btn.play [tabindex="-1"] "Play"
                     svg.i #1ewcuky
-                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                  button.icon-btn [title="Edit (F2)" tabindex="-1" aria-label="Edit (F2)"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu" aria-label="More"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Testing" aria-selected="false"]
                 span.check
@@ -295,9 +295,9 @@ html [data-theme="dark" lang="en"]
                 div.card-actions
                   button.pill-btn.play [tabindex="-1"] "Play"
                     svg.i #1ewcuky
-                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                  button.icon-btn [title="Edit (F2)" tabindex="-1" aria-label="Edit (F2)"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu" aria-label="More"]
                     svg.i #1e3omv2
               article.card [role="option" tabindex="-1" aria-label="Trade" aria-selected="false"]
                 span.check
@@ -311,19 +311,19 @@ html [data-theme="dark" lang="en"]
                   span.gicon
                     svg.i #v9c4u6
                   div.txt
-                    div.k [title="Status unknown"] "Status unknown"
+                    div.k [title="Offline"] "Offline"
                     div.v [title="Updating…"] "Updating…"
                 div.meta
                   span.bad.badge [title="Roblox reports this account as banned. Play skips it."] "Banned"
                   span.ago [title="Last launched from this app"] "Never opened"
                     svg.i #n87usa
-                div.note [title="Trading only"] "Trading only"
+                div.acc-note [title="Trading only"] "Trading only"
                 div.card-actions
                   button.pill-btn.play [tabindex="-1"] "Play"
                     svg.i #1ewcuky
-                  button.icon-btn [title="Edit (F2)" tabindex="-1"]
+                  button.icon-btn [title="Edit (F2)" tabindex="-1" aria-label="Edit (F2)"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu"]
+                  button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu" aria-label="More"]
                     svg.i #1e3omv2
         div.dock
           div.dock-game.dock-step
@@ -342,6 +342,7 @@ html [data-theme="dark" lang="en"]
                 div.recent [title="[🎃] Adopt Me!"]
                   button.recent-pick
                     i.ph
+                      svg.i #sy1lqp
                     span "[🎃] Adopt Me!"
                   button.rm [title="Remove from recent" aria-label="Remove from recent"]
                     svg.i #1tyq039
@@ -354,27 +355,27 @@ html [data-theme="dark" lang="en"]
               svg.i #ej9lod
               input [id="job" placeholder="Job ID" maxlength="60" aria-label="Job ID" value=""]
             div.dock-sub
-              button.sub-btn [title="Pick one of this game’s servers: by players, by ping, or where your friends are"]
+              button.sub-btn [title="Pick one of this game’s servers: by players, by ping, or where your friends are" aria-label="Browse servers"]
                 svg.i #uj30io
                 span "Browse servers"
-              button.sub-btn [title="Join a player: the selected accounts open into the server someone is in"]
+              button.sub-btn [title="Join a player: the selected accounts open into the server someone is in" aria-label="Follow a player…"]
                 svg.i #145pp0l
-                span "Join a player…"
+                span "Follow a player…"
           div.dock-go.dock-step [id="dock-actions"]
             div.step-cap
               b "3"
-              span "Play"
-            button.play-btn [disabled]
+              span "Go"
+            button.play-btn [title="Select accounts first" aria-disabled="true"]
               svg.i #1ewcuky
-              span "Select accounts first"
+              span "Play"
             div.dock-sub
-              button.sub-btn [title="Presets" aria-haspopup="menu"]
+              button.sub-btn [title="Presets" aria-haspopup="menu" aria-label="Presets"]
                 svg.i #1pvni8o
                 span "Presets"
-              button.sub-btn [title="Close Roblox for the selected accounts" disabled]
+              button.sub-btn [title="No selected account is open" aria-disabled="true" aria-label="Close"]
                 svg.i #16z0s1r
                 span "Close"
-              button.sub-btn [title="Open Roblox only, or arrange the windows" aria-haspopup="menu"]
+              button.sub-btn [title="Open Roblox only, or arrange the windows" aria-haspopup="menu" aria-label="Windows"]
                 svg.i #1e3syqr
                 span "Windows"
 #layer

@@ -54,11 +54,11 @@ html [data-theme="dark" lang="en"]
             span "Close all"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+            button.multi-open [title="Multi-Roblox: On: several Roblox windows can be open"]
               span.led
               div
                 b "Multi-Roblox"
-                small "On — several windows allowed"
+                small "On"
             label.switch [title="Turn off Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
@@ -97,9 +97,10 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Farm Blox Fruits"] "Farm Blox Fruits"
                 small [title="Blox Fruits"] "Blox Fruits"
-                span.pv-sum [title="Lowest ping · 12 s between accounts · Mon–Fri 8:00 PM · Anti-AFK on · Light AFK · Restarts every 4 h · Arranges windows · Own Discord channel"] "Lowest ping · 12 s between accounts · Mon–Fri 8:00 PM · Anti-AFK on · Light AFK · Restarts every 4 h · Arranges windows · Own Discord channel"
-                span.pv-next "· Next: Today 8:00 PM"
+                span.pv-sum [title="Lowest ping · 12 s between accounts · Anti-AFK on · Light AFK · Restarts every 4 h · Arranges windows · Own Discord channel"] "Lowest ping · 12 s between accounts · Anti-AFK on · Light AFK · Restarts every 4 h · Arranges windows · Own Discord channel"
+                span.pv-next "· · Next: Today 8:00 PM"
                   span.pv-live "3 windows open"
+                  span "Mon–Fri 8:00 PM"
               div.pv-accs [title="3 accounts\nFarm 1\nFarm 2\nNight Owl" aria-label="3 accounts"]
                 span.avatar.sm
                   img [alt="" style="--h:243" src=#uinvo6]
@@ -135,7 +136,7 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Adopt Me trade"] "Adopt Me trade"
                 small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
-                span.pv-sum [title="Any (Roblox picks) · Default wait (8 s) · No schedule · Auto-rejoin off"] "Any (Roblox picks) · Default wait (8 s) · No schedule · Auto-rejoin off"
+                span.pv-sum [title="Any (Roblox picks) · Default wait (8 s) · Auto-rejoin off"] "Any (Roblox picks) · Default wait (8 s) · Auto-rejoin off"
                 span.pv-next
                   span "Last run 1 h ago"
               div.pv-accs [title="1 account\nTrade" aria-label="1 account"]
@@ -165,8 +166,9 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Morning check-in"] "Morning check-in"
                 small [title="Roblox home"] "Roblox home"
-                span.pv-sum [title="No wait between accounts · Schedule off · Thu, 12/24 7:30 AM"] "No wait between accounts · Schedule off · Thu, 12/24 7:30 AM"
-                span.pv-next
+                span.pv-sum [title="No wait between accounts"] "No wait between accounts"
+                span.pv-next "·"
+                  span "Schedule off · Thu, 12/24 7:30 AM"
                   span "Last run 1 day ago"
               div.pv-accs [title="6 accounts\nMain\nFarm 1\nNight Owl\nAlt\nTrade\nTesting" aria-label="6 accounts"]
                 span.avatar.sm
@@ -275,11 +277,11 @@ html [data-theme="dark" lang="en"]
             span "Close all"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+            button.multi-open [title="Multi-Roblox: On: several Roblox windows can be open"]
               span.led
               div
                 b "Multi-Roblox"
-                small "On — several windows allowed"
+                small "On"
             label.switch [title="Turn off Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
@@ -318,9 +320,10 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Farm Blox Fruits"] "Farm Blox Fruits"
                 small [title="Blox Fruits"] "Blox Fruits"
-                span.pv-sum [title="Lowest ping · 12 s between accounts · Mon–Fri 8:00 PM · Anti-AFK on · Light AFK · Restarts every 4 h · Arranges windows · Own Discord channel"] "Lowest ping · 12 s between accounts · Mon–Fri 8:00 PM · Anti-AFK on · Light AFK · Restarts every 4 h · Arranges windows · Own Discord channel"
-                span.pv-next "· Next: Today 8:00 PM"
+                span.pv-sum [title="Lowest ping · 12 s between accounts · Anti-AFK on · Light AFK · Restarts every 4 h · Arranges windows · Own Discord channel"] "Lowest ping · 12 s between accounts · Anti-AFK on · Light AFK · Restarts every 4 h · Arranges windows · Own Discord channel"
+                span.pv-next "· · Next: Today 8:00 PM"
                   span.pv-live "3 windows open"
+                  span "Mon–Fri 8:00 PM"
               div.pv-accs [title="3 accounts\nFarm 1\nFarm 2\nNight Owl" aria-label="3 accounts"]
                 span.avatar.sm
                   img [alt="" style="--h:243" src=#uinvo6]
@@ -356,8 +359,9 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Morning check-in"] "Morning check-in"
                 small [title="Roblox home"] "Roblox home"
-                span.pv-sum [title="No wait between accounts · Schedule off · Thu, 12/24 7:30 AM"] "No wait between accounts · Schedule off · Thu, 12/24 7:30 AM"
-                span.pv-next
+                span.pv-sum [title="No wait between accounts"] "No wait between accounts"
+                span.pv-next "·"
+                  span "Schedule off · Thu, 12/24 7:30 AM"
                   span "Last run 1 day ago"
               div.pv-accs [title="6 accounts\nMain\nFarm 1\nNight Owl\nAlt\nTrade\nTesting" aria-label="6 accounts"]
                 span.avatar.sm

@@ -50,11 +50,11 @@ html [data-theme="dark" lang="en"]
             span "Mini window"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+            button.multi-open [title="Multi-Roblox: On: several Roblox windows can be open"]
               span.led
               div
                 b "Multi-Roblox"
-                small "On — several windows allowed"
+                small "On"
             label.switch [title="Turn off Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
@@ -71,16 +71,7 @@ html [data-theme="dark" lang="en"]
         header.top
           div.top-title
             h1 "Accounts"
-            p [id="acc-sub"] "accounts playing online"
-              b "0"
-              span.sep "·"
-              b "0"
-              span.sep "·"
-              b "0"
           div.top-tools
-            label.search
-              svg.i #1u22jvi
-              input [id="q" placeholder="Search accounts, groups, notes…" maxlength="100" aria-label="Search accounts, groups, notes…" value=""]
             button.icon-btn [title="Refresh online status"]
               svg.i #e464bo
             button.icon-btn [title="More" aria-haspopup="menu"]
@@ -92,7 +83,6 @@ html [data-theme="dark" lang="en"]
               button.btn.primary [title="Other ways to add" aria-haspopup="menu"]
                 svg.i #u1ag9u
         div.bar
-          div.chips [id="chips"]
         div.scroll [id="scroll"]
           div [id="grid"]
             div.empty
@@ -104,7 +94,7 @@ html [data-theme="dark" lang="en"]
                   span "Add an account"
                 li.ss-step
                   i "2"
-                  span "Pick a game in the bar below"
+                  span "Pick a game"
                 li.ss-step
                   i "3"
                   span "Select accounts, then press Play"

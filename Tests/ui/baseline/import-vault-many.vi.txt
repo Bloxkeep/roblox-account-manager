@@ -54,11 +54,11 @@ html [data-theme="dark" lang="vi"]
             span "Đóng tất cả"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: Đang bật, mở được nhiều cửa sổ"]
+            button.multi-open [title="Multi-Roblox: Đang bật: mở được nhiều cửa sổ Roblox"]
               span.led
               div
                 b "Multi-Roblox"
-                small "Đang bật, mở được nhiều cửa sổ"
+                small "Đang bật"
             label.switch [title="Tắt Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
@@ -106,7 +106,7 @@ html [data-theme="dark" lang="vi"]
               svg.i #gsei2o
               span "Sao lưu & dữ liệu"
             button.set-nav-item [type="button"]
-              svg.i #1uvtx1
+              img.set-nav-logo [alt="" src="logo.svg"]
               span "Bloxkeep"
           div.scroll.set-scroll
             div.settings
@@ -121,13 +121,14 @@ html [data-theme="dark" lang="vi"]
                         div.d "Chọn thư mục Google Drive hoặc OneDrive để không mất tài khoản khi máy hỏng."
                       div.ctl
                         label.switch
-                          input [id="s-bk-on" type="checkbox" aria-label="Sao lưu vào thư mục" checked=true]
+                          input [id="s-bk-on" type="checkbox" aria-label="Sao lưu vào thư mục" checked=false]
                           span
                     div.set-row
                       div
                         div.t "Thư mục"
                         div.d
                           span.path [id="s-bk-path"] "Chưa chọn thư mục"
+                          span.bk-hint "Chọn thư mục để bắt đầu sao lưu."
                           div.bk-suggest [id="s-bk-suggest"]
                             button.btn.ghost.sm [title="G:\\My Drive\\Bloxkeep"] "Dùng Google Drive"
                             button.btn.ghost.sm [title="C:\\Users\\Admin\\OneDrive\\Bloxkeep"] "Dùng OneDrive"
@@ -139,7 +140,7 @@ html [data-theme="dark" lang="vi"]
                         div
                           div.t "Chưa có bản sao lưu"
                         div.ctl
-                          button.btn.sm [disabled] "Sao lưu ngay"
+                          button.btn.sm [title="Chọn thư mục trước" disabled] "Sao lưu ngay"
                 div.set-grp [id="sec-restore"]
                   h3.set-grp-title "Khôi phục & nhập"
                   div.set-card
@@ -550,11 +551,11 @@ html [data-theme="dark" lang="vi"]
             span "Đóng tất cả"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: Đang bật, mở được nhiều cửa sổ"]
+            button.multi-open [title="Multi-Roblox: Đang bật: mở được nhiều cửa sổ Roblox"]
               span.led
               div
                 b "Multi-Roblox"
-                small "Đang bật, mở được nhiều cửa sổ"
+                small "Đang bật"
             label.switch [title="Tắt Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
@@ -602,7 +603,7 @@ html [data-theme="dark" lang="vi"]
               svg.i #gsei2o
               span "Sao lưu & dữ liệu"
             button.set-nav-item [type="button"]
-              svg.i #1uvtx1
+              img.set-nav-logo [alt="" src="logo.svg"]
               span "Bloxkeep"
           div.scroll.set-scroll
             div.settings
@@ -617,13 +618,14 @@ html [data-theme="dark" lang="vi"]
                         div.d "Chọn thư mục Google Drive hoặc OneDrive để không mất tài khoản khi máy hỏng."
                       div.ctl
                         label.switch
-                          input [id="s-bk-on" type="checkbox" aria-label="Sao lưu vào thư mục" checked=true]
+                          input [id="s-bk-on" type="checkbox" aria-label="Sao lưu vào thư mục" checked=false]
                           span
                     div.set-row
                       div
                         div.t "Thư mục"
                         div.d
                           span.path [id="s-bk-path"] "Chưa chọn thư mục"
+                          span.bk-hint "Chọn thư mục để bắt đầu sao lưu."
                           div.bk-suggest [id="s-bk-suggest"]
                             button.btn.ghost.sm [title="G:\\My Drive\\Bloxkeep"] "Dùng Google Drive"
                             button.btn.ghost.sm [title="C:\\Users\\Admin\\OneDrive\\Bloxkeep"] "Dùng OneDrive"
@@ -635,7 +637,7 @@ html [data-theme="dark" lang="vi"]
                         div
                           div.t "Chưa có bản sao lưu"
                         div.ctl
-                          button.btn.sm [disabled] "Sao lưu ngay"
+                          button.btn.sm [title="Chọn thư mục trước" disabled] "Sao lưu ngay"
                 div.set-grp [id="sec-restore"]
                   h3.set-grp-title "Khôi phục & nhập"
                   div.set-card
@@ -875,11 +877,11 @@ html [data-theme="dark" lang="vi"]
             span "Đóng tất cả"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: Đang bật, mở được nhiều cửa sổ"]
+            button.multi-open [title="Multi-Roblox: Đang bật: mở được nhiều cửa sổ Roblox"]
               span.led
               div
                 b "Multi-Roblox"
-                small "Đang bật, mở được nhiều cửa sổ"
+                small "Đang bật"
             label.switch [title="Tắt Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
@@ -927,7 +929,7 @@ html [data-theme="dark" lang="vi"]
               svg.i #gsei2o
               span "Sao lưu & dữ liệu"
             button.set-nav-item [type="button"]
-              svg.i #1uvtx1
+              img.set-nav-logo [alt="" src="logo.svg"]
               span "Bloxkeep"
           div.scroll.set-scroll
             div.settings
@@ -942,13 +944,14 @@ html [data-theme="dark" lang="vi"]
                         div.d "Chọn thư mục Google Drive hoặc OneDrive để không mất tài khoản khi máy hỏng."
                       div.ctl
                         label.switch
-                          input [id="s-bk-on" type="checkbox" aria-label="Sao lưu vào thư mục" checked=true]
+                          input [id="s-bk-on" type="checkbox" aria-label="Sao lưu vào thư mục" checked=false]
                           span
                     div.set-row
                       div
                         div.t "Thư mục"
                         div.d
                           span.path [id="s-bk-path"] "Chưa chọn thư mục"
+                          span.bk-hint "Chọn thư mục để bắt đầu sao lưu."
                           div.bk-suggest [id="s-bk-suggest"]
                             button.btn.ghost.sm [title="G:\\My Drive\\Bloxkeep"] "Dùng Google Drive"
                             button.btn.ghost.sm [title="C:\\Users\\Admin\\OneDrive\\Bloxkeep"] "Dùng OneDrive"
@@ -960,7 +963,7 @@ html [data-theme="dark" lang="vi"]
                         div
                           div.t "Chưa có bản sao lưu"
                         div.ctl
-                          button.btn.sm [disabled] "Sao lưu ngay"
+                          button.btn.sm [title="Chọn thư mục trước" disabled] "Sao lưu ngay"
                 div.set-grp [id="sec-restore"]
                   h3.set-grp-title "Khôi phục & nhập"
                   div.set-card
@@ -1200,11 +1203,11 @@ html [data-theme="dark" lang="vi"]
             span "Đóng tất cả"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: Đang bật, mở được nhiều cửa sổ"]
+            button.multi-open [title="Multi-Roblox: Đang bật: mở được nhiều cửa sổ Roblox"]
               span.led
               div
                 b "Multi-Roblox"
-                small "Đang bật, mở được nhiều cửa sổ"
+                small "Đang bật"
             label.switch [title="Tắt Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
@@ -1252,7 +1255,7 @@ html [data-theme="dark" lang="vi"]
               svg.i #gsei2o
               span "Sao lưu & dữ liệu"
             button.set-nav-item [type="button"]
-              svg.i #1uvtx1
+              img.set-nav-logo [alt="" src="logo.svg"]
               span "Bloxkeep"
           div.scroll.set-scroll
             div.settings
@@ -1267,13 +1270,14 @@ html [data-theme="dark" lang="vi"]
                         div.d "Chọn thư mục Google Drive hoặc OneDrive để không mất tài khoản khi máy hỏng."
                       div.ctl
                         label.switch
-                          input [id="s-bk-on" type="checkbox" aria-label="Sao lưu vào thư mục" checked=true]
+                          input [id="s-bk-on" type="checkbox" aria-label="Sao lưu vào thư mục" checked=false]
                           span
                     div.set-row
                       div
                         div.t "Thư mục"
                         div.d
                           span.path [id="s-bk-path"] "Chưa chọn thư mục"
+                          span.bk-hint "Chọn thư mục để bắt đầu sao lưu."
                           div.bk-suggest [id="s-bk-suggest"]
                             button.btn.ghost.sm [title="G:\\My Drive\\Bloxkeep"] "Dùng Google Drive"
                             button.btn.ghost.sm [title="C:\\Users\\Admin\\OneDrive\\Bloxkeep"] "Dùng OneDrive"
@@ -1285,7 +1289,7 @@ html [data-theme="dark" lang="vi"]
                         div
                           div.t "Chưa có bản sao lưu"
                         div.ctl
-                          button.btn.sm [disabled] "Sao lưu ngay"
+                          button.btn.sm [title="Chọn thư mục trước" disabled] "Sao lưu ngay"
                 div.set-grp [id="sec-restore"]
                   h3.set-grp-title "Khôi phục & nhập"
                   div.set-card

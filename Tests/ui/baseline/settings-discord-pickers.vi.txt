@@ -54,18 +54,18 @@ html [data-theme="dark" lang="vi"]
             span "Đóng tất cả"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: Đang bật, mở được nhiều cửa sổ"]
+            button.multi-open [title="Multi-Roblox: Đang bật: mở được nhiều cửa sổ Roblox"]
               span.led
               div
                 b "Multi-Roblox"
-                small "Đang bật, mở được nhiều cửa sổ"
+                small "Đang bật"
             label.switch [title="Tắt Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
         div.side-foot
           div [id="update-slot"]
           div.side-lock
-            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
+            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, Preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
               svg.i #21scx0
               span "Khóa app"
             button.btn.ghost.side-sq.vault-btn [title="Đổi vault (Vault 1)" aria-label="Đổi vault (Vault 1)"]
@@ -89,7 +89,7 @@ html [data-theme="dark" lang="vi"]
               span "Phiên bản Roblox"
             button.set-nav-item [type="button"]
               svg.i #1l5qw3q
-              span "Treo game"
+              span "Treo máy"
             button.set-nav-item [type="button"]
               svg.i #1hupb3o
               span "Thông báo"
@@ -106,18 +106,48 @@ html [data-theme="dark" lang="vi"]
               svg.i #gsei2o
               span "Sao lưu & dữ liệu"
             button.set-nav-item [type="button"]
-              svg.i #1uvtx1
+              img.set-nav-logo [alt="" src="logo.svg"]
               span "Bloxkeep"
           div.scroll.set-scroll
             div.settings
               section.set-page [id="set-page-discord" aria-labelledby="set-page-discord-h"]
                 h2.set-page-title [id="set-page-discord-h"] "Discord"
+                div.set-grp [id="sec-discord"]
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Gửi lên Discord"
+                        div.d "Gửi tổng kết, trạng thái và cảnh báo vào kênh của bạn qua webhook."
+                      div.ctl
+                        label.switch [title=""]
+                          input [id="s-dc-on" type="checkbox" aria-label="Gửi lên Discord" checked=true]
+                          span
+                    div [id="s-dc-note"]
+                    div.set-row
+                      div
+                        div.t "Link webhook"
+                        div.d
+                          span.path [id="s-dc-hook"] "discord.com/api/webhooks/…5678/••••••"
+                          div "Trong Discord: Cài đặt kênh › Tích hợp › Webhook › Webhook mới › Sao chép URL webhook. Link được mã hóa."
+                      div.ctl
+                        button.btn.sm [id="s-dc-paste"] "Đổi link…"
+                        button.btn.ghost.sm [id="s-dc-reveal" aria-pressed="false"] "Hiện"
+                          svg.i #1pcfgz
+                        button.btn.ghost.sm [id="s-dc-remove"] "Gỡ"
+                    div [id="s-dc-status"]
+                      div.set-row
+                        div
+                          div.t
+                            span "Gửi lần cuối: 4 phút trước"
+                        div.ctl
+                          button.btn.sm "Gửi thử"
                 div.set-grp [id="sec-dc-preview"]
                   h3.set-grp-title "Xem trước"
                   div.set-card
-                    div.tg-tabs [id="s-dc-preview-kinds"]
-                      button.chip.on [type="button" aria-pressed="true"] "Cảnh báo"
-                      button.chip [type="button" aria-pressed="false"] "Tin trạng thái"
+                    div.dcv-kinds
+                      div.seg [id="s-dc-preview-kinds" role="tablist" aria-label="Xem trước"]
+                        button.on [role="tab" type="button" aria-selected="true"] "Cảnh báo"
+                        button [role="tab" type="button" aria-selected="false"] "Tin trạng thái"
                     div.dcv [id="s-dc-preview"]
                       img.dcv-pic [alt="" src="logo.svg"]
                       div.dcv-body
@@ -139,58 +169,9 @@ html [data-theme="dark" lang="vi"]
                               div "1 giờ 24 phút"
                             div
                               b "Lý do"
-                              div "Mất kết nối"
+                              div "Rớt mạng"
                           small.dcv-foot "Bloxkeep · Thông báo"
                     p.set-hint "Tin mẫu với tài khoản giả. Tin gửi thật dùng tài khoản của bạn."
-                div.set-grp [id="sec-dc-profile"]
-                  div.set-card
-                    div.set-row
-                      div
-                        div.t "Hiện trên hồ sơ Discord"
-                        div.d "Hiện game và số cửa sổ, không hiện tên tài khoản. Cần mở app Discord."
-                      div.ctl
-                        label.switch
-                          input [id="s-dc-presence" type="checkbox" aria-label="Hiện trên hồ sơ Discord" checked=false]
-                          span
-                div.set-grp [id="sec-dc-remote"]
-                  div.set-card
-                    div.set-row
-                      div
-                        div.t "Điều khiển từ Discord"
-                        div.d "Gõ /pc trong Discord để điều khiển máy này từ xa."
-                      div.ctl
-                        label.switch
-                          input [id="s-dc-remote" type="checkbox" aria-label="Điều khiển từ Discord" checked=false]
-                          span
-                div.set-grp [id="sec-discord"]
-                  div.set-card
-                    div.set-row
-                      div
-                        div.t "Gửi lên Discord"
-                        div.d "Gửi tổng kết, trạng thái và cảnh báo vào kênh của bạn qua webhook."
-                      div.ctl
-                        label.switch [title=""]
-                          input [id="s-dc-on" type="checkbox" aria-label="Gửi lên Discord" checked=true]
-                          span
-                    div [id="s-dc-note"]
-                    div.set-row
-                      div
-                        div.t "Link webhook"
-                        div.d
-                          span.path [id="s-dc-hook"] "discord.com/api/webhooks/…5678/••••••"
-                          div "Trong Discord: Cài đặt kênh › Tích hợp › Webhook › Webhook mới › Sao chép URL webhook. Link được mã hóa."
-                      div.ctl
-                        button.btn.sm [id="s-dc-paste"] "Thay…"
-                        button.btn.ghost.sm [id="s-dc-reveal" aria-pressed="false"] "Hiện"
-                          svg.i #1pcfgz
-                        button.btn.ghost.sm [id="s-dc-remove"] "Gỡ"
-                    div [id="s-dc-status"]
-                      div.set-row
-                        div
-                          div.t
-                            span "Gửi lần cuối: 4 phút trước"
-                        div.ctl
-                          button.btn.sm "Gửi thử"
                 div.set-grp [id="sec-dc-summary"]
                   h3.set-grp-title "Tổng kết thời gian chơi"
                   div.set-card
@@ -209,7 +190,7 @@ html [data-theme="dark" lang="vi"]
                           div.t "Hằng ngày lúc"
                         div.ctl
                           span.field.sm.tf.time
-                            input.tf-box [id="s-dc-daily-time" type="time" aria-label="Hằng ngày lúc" value="22:00"]
+                            input.tf-box [id="s-dc-daily-time" type="text" placeholder="20:00" autocomplete="off" aria-label="Hằng ngày lúc" value="22:00"]
                             button.tf-btn [type="button" title="Chọn giờ" aria-expanded="false" aria-haspopup="dialog" aria-label="Chọn giờ"]
                               svg.i #ktpp14
                     div.set-row
@@ -308,12 +289,12 @@ html [data-theme="dark" lang="vi"]
                         div.d "Vẫn gửi tin nhưng không tag ai."
                       div.ctl
                         span.field.sm.tf.time
-                          input.tf-box [id="s-dc-quiet-from" type="time" aria-label="Từ" value="23:00"]
+                          input.tf-box [id="s-dc-quiet-from" type="text" placeholder="20:00" autocomplete="off" aria-label="Từ" value="23:00"]
                           button.tf-btn [type="button" title="Chọn giờ" aria-expanded="false" aria-haspopup="dialog" aria-label="Chọn giờ"]
                             svg.i #ktpp14
                         span.dc-dash "–"
                         span.field.sm.tf.time
-                          input.tf-box [id="s-dc-quiet-to" type="time" aria-label="Đến" value="07:00"]
+                          input.tf-box [id="s-dc-quiet-to" type="text" placeholder="20:00" autocomplete="off" aria-label="Đến" value="07:00"]
                           button.tf-btn [type="button" title="Chọn giờ" aria-expanded="false" aria-haspopup="dialog" aria-label="Chọn giờ"]
                             svg.i #ktpp14
                         label.switch
@@ -324,6 +305,26 @@ html [data-theme="dark" lang="vi"]
                     details.set-more [id="s-dc-look"]
                       summary "Tùy chỉnh tin nhắn"
                         svg.i #u1ag9u
+                div.set-grp [id="sec-dc-profile"]
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Hiện trên hồ sơ Discord"
+                        div.d "Hiện game và số cửa sổ, không hiện tên tài khoản. Cần mở app Discord."
+                      div.ctl
+                        label.switch
+                          input [id="s-dc-presence" type="checkbox" aria-label="Hiện trên hồ sơ Discord" checked=false]
+                          span
+                div.set-grp [id="sec-dc-remote"]
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Điều khiển từ Discord"
+                        div.d "Gõ /pc trong Discord để điều khiển máy này từ xa."
+                      div.ctl
+                        label.switch
+                          input [id="s-dc-remote" type="checkbox" aria-label="Điều khiển từ Discord" checked=false]
+                          span
 #layer
   div.overlay
     div.modal [role="dialog" aria-labelledby="mdl-1" aria-modal="true"]
@@ -450,18 +451,18 @@ html [data-theme="dark" lang="vi"]
             span "Đóng tất cả"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: Đang bật, mở được nhiều cửa sổ"]
+            button.multi-open [title="Multi-Roblox: Đang bật: mở được nhiều cửa sổ Roblox"]
               span.led
               div
                 b "Multi-Roblox"
-                small "Đang bật, mở được nhiều cửa sổ"
+                small "Đang bật"
             label.switch [title="Tắt Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
         div.side-foot
           div [id="update-slot"]
           div.side-lock
-            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
+            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, Preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
               svg.i #21scx0
               span "Khóa app"
             button.btn.ghost.side-sq.vault-btn [title="Đổi vault (Vault 1)" aria-label="Đổi vault (Vault 1)"]
@@ -485,7 +486,7 @@ html [data-theme="dark" lang="vi"]
               span "Phiên bản Roblox"
             button.set-nav-item [type="button"]
               svg.i #1l5qw3q
-              span "Treo game"
+              span "Treo máy"
             button.set-nav-item [type="button"]
               svg.i #1hupb3o
               span "Thông báo"
@@ -502,18 +503,48 @@ html [data-theme="dark" lang="vi"]
               svg.i #gsei2o
               span "Sao lưu & dữ liệu"
             button.set-nav-item [type="button"]
-              svg.i #1uvtx1
+              img.set-nav-logo [alt="" src="logo.svg"]
               span "Bloxkeep"
           div.scroll.set-scroll
             div.settings
               section.set-page [id="set-page-discord" aria-labelledby="set-page-discord-h"]
                 h2.set-page-title [id="set-page-discord-h"] "Discord"
+                div.set-grp [id="sec-discord"]
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Gửi lên Discord"
+                        div.d "Gửi tổng kết, trạng thái và cảnh báo vào kênh của bạn qua webhook."
+                      div.ctl
+                        label.switch [title=""]
+                          input [id="s-dc-on" type="checkbox" aria-label="Gửi lên Discord" checked=true]
+                          span
+                    div [id="s-dc-note"]
+                    div.set-row
+                      div
+                        div.t "Link webhook"
+                        div.d
+                          span.path [id="s-dc-hook"] "discord.com/api/webhooks/…5678/••••••"
+                          div "Trong Discord: Cài đặt kênh › Tích hợp › Webhook › Webhook mới › Sao chép URL webhook. Link được mã hóa."
+                      div.ctl
+                        button.btn.sm [id="s-dc-paste"] "Đổi link…"
+                        button.btn.ghost.sm [id="s-dc-reveal" aria-pressed="false"] "Hiện"
+                          svg.i #1pcfgz
+                        button.btn.ghost.sm [id="s-dc-remove"] "Gỡ"
+                    div [id="s-dc-status"]
+                      div.set-row
+                        div
+                          div.t
+                            span "Gửi lần cuối: 4 phút trước"
+                        div.ctl
+                          button.btn.sm "Gửi thử"
                 div.set-grp [id="sec-dc-preview"]
                   h3.set-grp-title "Xem trước"
                   div.set-card
-                    div.tg-tabs [id="s-dc-preview-kinds"]
-                      button.chip.on [type="button" aria-pressed="true"] "Cảnh báo"
-                      button.chip [type="button" aria-pressed="false"] "Tin trạng thái"
+                    div.dcv-kinds
+                      div.seg [id="s-dc-preview-kinds" role="tablist" aria-label="Xem trước"]
+                        button.on [role="tab" type="button" aria-selected="true"] "Cảnh báo"
+                        button [role="tab" type="button" aria-selected="false"] "Tin trạng thái"
                     div.dcv [id="s-dc-preview"]
                       img.dcv-pic [alt="" src="logo.svg"]
                       div.dcv-body
@@ -535,58 +566,9 @@ html [data-theme="dark" lang="vi"]
                               div "1 giờ 24 phút"
                             div
                               b "Lý do"
-                              div "Mất kết nối"
+                              div "Rớt mạng"
                           small.dcv-foot "Bloxkeep · Thông báo"
                     p.set-hint "Tin mẫu với tài khoản giả. Tin gửi thật dùng tài khoản của bạn."
-                div.set-grp [id="sec-dc-profile"]
-                  div.set-card
-                    div.set-row
-                      div
-                        div.t "Hiện trên hồ sơ Discord"
-                        div.d "Hiện game và số cửa sổ, không hiện tên tài khoản. Cần mở app Discord."
-                      div.ctl
-                        label.switch
-                          input [id="s-dc-presence" type="checkbox" aria-label="Hiện trên hồ sơ Discord" checked=false]
-                          span
-                div.set-grp [id="sec-dc-remote"]
-                  div.set-card
-                    div.set-row
-                      div
-                        div.t "Điều khiển từ Discord"
-                        div.d "Gõ /pc trong Discord để điều khiển máy này từ xa."
-                      div.ctl
-                        label.switch
-                          input [id="s-dc-remote" type="checkbox" aria-label="Điều khiển từ Discord" checked=false]
-                          span
-                div.set-grp [id="sec-discord"]
-                  div.set-card
-                    div.set-row
-                      div
-                        div.t "Gửi lên Discord"
-                        div.d "Gửi tổng kết, trạng thái và cảnh báo vào kênh của bạn qua webhook."
-                      div.ctl
-                        label.switch [title=""]
-                          input [id="s-dc-on" type="checkbox" aria-label="Gửi lên Discord" checked=true]
-                          span
-                    div [id="s-dc-note"]
-                    div.set-row
-                      div
-                        div.t "Link webhook"
-                        div.d
-                          span.path [id="s-dc-hook"] "discord.com/api/webhooks/…5678/••••••"
-                          div "Trong Discord: Cài đặt kênh › Tích hợp › Webhook › Webhook mới › Sao chép URL webhook. Link được mã hóa."
-                      div.ctl
-                        button.btn.sm [id="s-dc-paste"] "Thay…"
-                        button.btn.ghost.sm [id="s-dc-reveal" aria-pressed="false"] "Hiện"
-                          svg.i #1pcfgz
-                        button.btn.ghost.sm [id="s-dc-remove"] "Gỡ"
-                    div [id="s-dc-status"]
-                      div.set-row
-                        div
-                          div.t
-                            span "Gửi lần cuối: 4 phút trước"
-                        div.ctl
-                          button.btn.sm "Gửi thử"
                 div.set-grp [id="sec-dc-summary"]
                   h3.set-grp-title "Tổng kết thời gian chơi"
                   div.set-card
@@ -605,7 +587,7 @@ html [data-theme="dark" lang="vi"]
                           div.t "Hằng ngày lúc"
                         div.ctl
                           span.field.sm.tf.time
-                            input.tf-box [id="s-dc-daily-time" type="time" aria-label="Hằng ngày lúc" value="22:00"]
+                            input.tf-box [id="s-dc-daily-time" type="text" placeholder="20:00" autocomplete="off" aria-label="Hằng ngày lúc" value="22:00"]
                             button.tf-btn [type="button" title="Chọn giờ" aria-expanded="false" aria-haspopup="dialog" aria-label="Chọn giờ"]
                               svg.i #ktpp14
                     div.set-row
@@ -704,12 +686,12 @@ html [data-theme="dark" lang="vi"]
                         div.d "Vẫn gửi tin nhưng không tag ai."
                       div.ctl
                         span.field.sm.tf.time
-                          input.tf-box [id="s-dc-quiet-from" type="time" aria-label="Từ" value="23:00"]
+                          input.tf-box [id="s-dc-quiet-from" type="text" placeholder="20:00" autocomplete="off" aria-label="Từ" value="23:00"]
                           button.tf-btn [type="button" title="Chọn giờ" aria-expanded="false" aria-haspopup="dialog" aria-label="Chọn giờ"]
                             svg.i #ktpp14
                         span.dc-dash "–"
                         span.field.sm.tf.time
-                          input.tf-box [id="s-dc-quiet-to" type="time" aria-label="Đến" value="07:00"]
+                          input.tf-box [id="s-dc-quiet-to" type="text" placeholder="20:00" autocomplete="off" aria-label="Đến" value="07:00"]
                           button.tf-btn [type="button" title="Chọn giờ" aria-expanded="false" aria-haspopup="dialog" aria-label="Chọn giờ"]
                             svg.i #ktpp14
                         label.switch
@@ -720,6 +702,26 @@ html [data-theme="dark" lang="vi"]
                     details.set-more [id="s-dc-look"]
                       summary "Tùy chỉnh tin nhắn"
                         svg.i #u1ag9u
+                div.set-grp [id="sec-dc-profile"]
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Hiện trên hồ sơ Discord"
+                        div.d "Hiện game và số cửa sổ, không hiện tên tài khoản. Cần mở app Discord."
+                      div.ctl
+                        label.switch
+                          input [id="s-dc-presence" type="checkbox" aria-label="Hiện trên hồ sơ Discord" checked=false]
+                          span
+                div.set-grp [id="sec-dc-remote"]
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Điều khiển từ Discord"
+                        div.d "Gõ /pc trong Discord để điều khiển máy này từ xa."
+                      div.ctl
+                        label.switch
+                          input [id="s-dc-remote" type="checkbox" aria-label="Điều khiển từ Discord" checked=false]
+                          span
 #layer
   div.overlay
     div.modal [role="dialog" aria-labelledby="mdl-2" aria-modal="true"]
@@ -749,7 +751,7 @@ html [data-theme="dark" lang="vi"]
           label.rc-item
             input [type="checkbox" checked=true]
             span
-              b "Số lần mất kết nối"
+              b "Lần văng"
       div.modal-foot
         button.btn "Hủy"
         button.btn.primary "Xong"

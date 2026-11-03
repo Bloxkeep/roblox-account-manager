@@ -54,11 +54,11 @@ html [data-theme="dark" lang="en"]
             span "Close all"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+            button.multi-open [title="Multi-Roblox: On: several Roblox windows can be open"]
               span.led
               div
                 b "Multi-Roblox"
-                small "On — several windows allowed"
+                small "On"
             label.switch [title="Turn off Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
@@ -97,9 +97,10 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Farm Blox Fruits"] "Farm Blox Fruits"
                 small [title="Blox Fruits"] "Blox Fruits"
-                span.pv-sum [title="Lowest ping · 12 s between accounts · Mon–Fri 8:00 PM · Anti-AFK on · Light AFK · Restarts every 4 h · Arranges windows · Own Discord channel"] "Lowest ping · 12 s between accounts · Mon–Fri 8:00 PM · Anti-AFK on · Light AFK · Restarts every 4 h · Arranges windows · Own Discord channel"
-                span.pv-next "· Next: Today 8:00 PM"
+                span.pv-sum [title="Lowest ping · 12 s between accounts · Anti-AFK on · Light AFK · Restarts every 4 h · Arranges windows · Own Discord channel"] "Lowest ping · 12 s between accounts · Anti-AFK on · Light AFK · Restarts every 4 h · Arranges windows · Own Discord channel"
+                span.pv-next "· · Next: Today 8:00 PM"
                   span.pv-live "3 windows open"
+                  span "Mon–Fri 8:00 PM"
               div.pv-accs [title="3 accounts\nFarm 1\nFarm 2\nNight Owl" aria-label="3 accounts"]
                 span.avatar.sm
                   img [alt="" style="--h:243" src=#uinvo6]
@@ -135,7 +136,7 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Adopt Me trade"] "Adopt Me trade"
                 small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
-                span.pv-sum [title="Any (Roblox picks) · Default wait (8 s) · No schedule · Auto-rejoin off"] "Any (Roblox picks) · Default wait (8 s) · No schedule · Auto-rejoin off"
+                span.pv-sum [title="Any (Roblox picks) · Default wait (8 s) · Auto-rejoin off"] "Any (Roblox picks) · Default wait (8 s) · Auto-rejoin off"
                 span.pv-next
                   span "Last run 1 h ago"
               div.pv-accs [title="1 account\nTrade" aria-label="1 account"]
@@ -165,8 +166,9 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Morning check-in"] "Morning check-in"
                 small [title="Roblox home"] "Roblox home"
-                span.pv-sum [title="No wait between accounts · Schedule off · Thu, 12/24 7:30 AM"] "No wait between accounts · Schedule off · Thu, 12/24 7:30 AM"
-                span.pv-next
+                span.pv-sum [title="No wait between accounts"] "No wait between accounts"
+                span.pv-next "·"
+                  span "Schedule off · Thu, 12/24 7:30 AM"
                   span "Last run 1 day ago"
               div.pv-accs [title="6 accounts\nMain\nFarm 1\nNight Owl\nAlt\nTrade\nTesting" aria-label="6 accounts"]
                 span.avatar.sm
@@ -210,7 +212,7 @@ html [data-theme="dark" lang="en"]
           label "Name"
             input.field [id="ps-name" placeholder="e.g. Blox Fruits farm" maxlength="60" value="Blox Fruits"]
           label "Game"
-            input.field [id="ps-place" role="combobox" placeholder="Search a game, or paste a link / Place ID…" autocomplete="off" maxlength="500" aria-autocomplete="list" aria-expanded="false" aria-haspopup="listbox" value="https://www.roblox.com/games/2753915549/Blox-Fruits"]
+            input.field [id="ps-place" role="combobox" placeholder="Search a game, or paste a link / Place ID. Empty just opens Roblox" autocomplete="off" maxlength="500" aria-autocomplete="list" aria-expanded="false" aria-haspopup="listbox" value="https://www.roblox.com/games/2753915549/Blox-Fruits"]
           div.ps-game [id="ps-game"]
             span.gph
               svg.i #sy1lqp
@@ -223,15 +225,15 @@ html [data-theme="dark" lang="en"]
                 option [value="fewest"] "Fewest players"
                 option [value="ping"] "Lowest ping"
                 option [value="random"] "Random"
-                option [value="eachFewest"] "Own server each, fewest players"
-                option [value="eachMost"] "Own server each, most players"
-                option [value="eachRandom"] "Own server each, random"
                 option [value="job"] "Fixed server (Job ID)"
                 option [value="follow"] "A player’s server"
+                option [value="eachFewest"] "Each account: Fewest players"
+                option [value="eachMost"] "Each account: Most players"
+                option [value="eachRandom"] "Each account: Random"
             label "Wait between accounts"
               select.select [id="ps-delay" value=""]
                 option [value=""] "Follow Settings (8 s)"
-                option [value="0"] "0 s"
+                option [value="0"] "None"
                 option [value="5"] "5 s"
                 option [value="10"] "10 s"
                 option [value="15"] "15 s"
@@ -254,7 +256,7 @@ html [data-theme="dark" lang="en"]
               b [title="Main"] "Main"
               small "@sunny_builds"
             span.ord-btns
-              button.icon-btn [type="button" title="Move up" aria-label="Move up"]
+              button.icon-btn [type="button" title="Move up" aria-label="Move up" disabled]
                 svg.i #ilfy0l
               button.icon-btn [type="button" title="Move down" aria-label="Move down"]
                 svg.i #u1ag9u
@@ -340,54 +342,25 @@ html [data-theme="dark" lang="en"]
             span.ord-btns
               button.icon-btn [type="button" title="Move up" aria-label="Move up"]
                 svg.i #ilfy0l
-              button.icon-btn [type="button" title="Move down" aria-label="Move down"]
+              button.icon-btn [type="button" title="Move down" aria-label="Move down" disabled]
                 svg.i #u1ag9u
         div.form.preset-form
-          div.ps-opts [role="group" aria-labelledby="ps-opts-title"]
-            div.ps-opts-head
-              b [id="ps-opts-title"] "For the Roblox windows"
-            div.ps-opts-grid
-              label "Anti-AFK"
-                select.select [id="ps-afk" value=""]
-                  option [value=""] "Follow Settings (off)"
-                  option [value="on"] "On"
-                  option [value="off"] "Off"
-              label "Auto-rejoin"
-                select.select [id="ps-rejoin" value=""]
-                  option [value=""] "Follow each account"
-                  option [value="on"] "On"
-                  option [value="off"] "Off"
-              label "Rejoin server"
-                select.select [id="ps-rejoin-with" value=""]
-                  option [value=""] "Any"
-                  option [value="any"] "With another account"
-              label "Performance"
-                select.select [id="ps-profile" value=""]
-                  option [value=""] "Normal"
-                  option [value="afk"] "Light AFK"
-              label "Restart Roblox"
-                select.select [id="ps-restart" value="0"]
-                  option [value="0"] "Never"
-                  option [value="2"] "Every 2 hours"
-                  option [value="4"] "Every 4 hours"
-                  option [value="6"] "Every 6 hours"
-                  option [value="12"] "Every 12 hours"
-              label "Arrange windows"
-                select.select [id="ps-arrange" value=""]
-                  option [value=""] "Follow Settings (off)"
-                  option [value="on"] "On"
-                  option [value="off"] "Off"
-          div.ps-opts [role="group" aria-labelledby="ps-dc-title"]
-            div.ps-opts-head
+          details.ps-fold.ps-note.ps-opts [id="ps-opts"]
+            summary.ps-opts-head
+              b [id="ps-opts-title"] "Roblox windows"
+              svg.i #u1ag9u
+          details.ps-fold.ps-note.ps-opts [id="ps-dc" open=""]
+            summary.ps-opts-head
               b [id="ps-dc-title"] "Discord"
+              svg.i #u1ag9u
             label.ps-dc-mode "Send this preset’s messages to"
               select.select [id="ps-dc-mode" value="own"]
                 option [value=""] "The channel in Settings"
-                option [value="own"] "A webhook of its own"
+                option [value="own"] "Its own Discord channel"
             div.ps-dc-own [id="ps-dc-own"]
               input.field [id="ps-dc-link" type="text" placeholder="https://discord.com/api/webhooks/…" autocomplete="off" maxlength="300" aria-label="Webhook link for this preset" value="" FOCUSED]
               button.btn [id="ps-dc-test" type="button"] "Send test"
-            p.ps-opts-note "Its schedule messages, summary and window alerts. Everything else goes to the channel in Settings. Sending to Discord is off in Settings › Discord: nothing goes out until it is on."
+            p.ps-opts-note "It gets this preset’s schedule messages, summary and window alerts. Everything else goes to the channel in Settings. Sending to Discord is off in Settings › Discord: nothing goes out until it is on."
           div.ps-sched
             div.ps-sched-head
               label.switch
@@ -463,11 +436,11 @@ html [data-theme="dark" lang="en"]
             span "Close all"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+            button.multi-open [title="Multi-Roblox: On: several Roblox windows can be open"]
               span.led
               div
                 b "Multi-Roblox"
-                small "On — several windows allowed"
+                small "On"
             label.switch [title="Turn off Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
@@ -506,9 +479,10 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Farm Blox Fruits"] "Farm Blox Fruits"
                 small [title="Blox Fruits"] "Blox Fruits"
-                span.pv-sum [title="Lowest ping · 12 s between accounts · Mon–Fri 8:00 PM · Anti-AFK on · Light AFK · Restarts every 4 h · Arranges windows · Own Discord channel"] "Lowest ping · 12 s between accounts · Mon–Fri 8:00 PM · Anti-AFK on · Light AFK · Restarts every 4 h · Arranges windows · Own Discord channel"
-                span.pv-next "· Next: Today 8:00 PM"
+                span.pv-sum [title="Lowest ping · 12 s between accounts · Anti-AFK on · Light AFK · Restarts every 4 h · Arranges windows · Own Discord channel"] "Lowest ping · 12 s between accounts · Anti-AFK on · Light AFK · Restarts every 4 h · Arranges windows · Own Discord channel"
+                span.pv-next "· · Next: Today 8:00 PM"
                   span.pv-live "3 windows open"
+                  span "Mon–Fri 8:00 PM"
               div.pv-accs [title="3 accounts\nFarm 1\nFarm 2\nNight Owl" aria-label="3 accounts"]
                 span.avatar.sm
                   img [alt="" style="--h:243" src=#uinvo6]
@@ -544,7 +518,7 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Adopt Me trade"] "Adopt Me trade"
                 small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
-                span.pv-sum [title="Any (Roblox picks) · Default wait (8 s) · No schedule · Auto-rejoin off"] "Any (Roblox picks) · Default wait (8 s) · No schedule · Auto-rejoin off"
+                span.pv-sum [title="Any (Roblox picks) · Default wait (8 s) · Auto-rejoin off"] "Any (Roblox picks) · Default wait (8 s) · Auto-rejoin off"
                 span.pv-next
                   span "Last run 1 h ago"
               div.pv-accs [title="1 account\nTrade" aria-label="1 account"]
@@ -574,8 +548,9 @@ html [data-theme="dark" lang="en"]
               div.pv-main
                 b [title="Morning check-in"] "Morning check-in"
                 small [title="Roblox home"] "Roblox home"
-                span.pv-sum [title="No wait between accounts · Schedule off · Thu, 12/24 7:30 AM"] "No wait between accounts · Schedule off · Thu, 12/24 7:30 AM"
-                span.pv-next
+                span.pv-sum [title="No wait between accounts"] "No wait between accounts"
+                span.pv-next "·"
+                  span "Schedule off · Thu, 12/24 7:30 AM"
                   span "Last run 1 day ago"
               div.pv-accs [title="6 accounts\nMain\nFarm 1\nNight Owl\nAlt\nTrade\nTesting" aria-label="6 accounts"]
                 span.avatar.sm
@@ -619,7 +594,7 @@ html [data-theme="dark" lang="en"]
           label "Name"
             input.field [id="ps-name" placeholder="e.g. Blox Fruits farm" maxlength="60" value="Blox Fruits"]
           label "Game"
-            input.field [id="ps-place" role="combobox" placeholder="Search a game, or paste a link / Place ID…" autocomplete="off" maxlength="500" aria-autocomplete="list" aria-expanded="false" aria-haspopup="listbox" value="https://www.roblox.com/games/2753915549/Blox-Fruits"]
+            input.field [id="ps-place" role="combobox" placeholder="Search a game, or paste a link / Place ID. Empty just opens Roblox" autocomplete="off" maxlength="500" aria-autocomplete="list" aria-expanded="false" aria-haspopup="listbox" value="https://www.roblox.com/games/2753915549/Blox-Fruits"]
           div.ps-game [id="ps-game"]
             span.gph
               svg.i #sy1lqp
@@ -632,15 +607,15 @@ html [data-theme="dark" lang="en"]
                 option [value="fewest"] "Fewest players"
                 option [value="ping"] "Lowest ping"
                 option [value="random"] "Random"
-                option [value="eachFewest"] "Own server each, fewest players"
-                option [value="eachMost"] "Own server each, most players"
-                option [value="eachRandom"] "Own server each, random"
                 option [value="job"] "Fixed server (Job ID)"
                 option [value="follow"] "A player’s server"
+                option [value="eachFewest"] "Each account: Fewest players"
+                option [value="eachMost"] "Each account: Most players"
+                option [value="eachRandom"] "Each account: Random"
             label "Wait between accounts"
               select.select [id="ps-delay" value=""]
                 option [value=""] "Follow Settings (8 s)"
-                option [value="0"] "0 s"
+                option [value="0"] "None"
                 option [value="5"] "5 s"
                 option [value="10"] "10 s"
                 option [value="15"] "15 s"
@@ -663,7 +638,7 @@ html [data-theme="dark" lang="en"]
               b [title="Main"] "Main"
               small "@sunny_builds"
             span.ord-btns
-              button.icon-btn [type="button" title="Move up" aria-label="Move up"]
+              button.icon-btn [type="button" title="Move up" aria-label="Move up" disabled]
                 svg.i #ilfy0l
               button.icon-btn [type="button" title="Move down" aria-label="Move down"]
                 svg.i #u1ag9u
@@ -749,54 +724,25 @@ html [data-theme="dark" lang="en"]
             span.ord-btns
               button.icon-btn [type="button" title="Move up" aria-label="Move up"]
                 svg.i #ilfy0l
-              button.icon-btn [type="button" title="Move down" aria-label="Move down"]
+              button.icon-btn [type="button" title="Move down" aria-label="Move down" disabled]
                 svg.i #u1ag9u
         div.form.preset-form
-          div.ps-opts [role="group" aria-labelledby="ps-opts-title"]
-            div.ps-opts-head
-              b [id="ps-opts-title"] "For the Roblox windows"
-            div.ps-opts-grid
-              label "Anti-AFK"
-                select.select [id="ps-afk" value=""]
-                  option [value=""] "Follow Settings (off)"
-                  option [value="on"] "On"
-                  option [value="off"] "Off"
-              label "Auto-rejoin"
-                select.select [id="ps-rejoin" value=""]
-                  option [value=""] "Follow each account"
-                  option [value="on"] "On"
-                  option [value="off"] "Off"
-              label "Rejoin server"
-                select.select [id="ps-rejoin-with" value=""]
-                  option [value=""] "Any"
-                  option [value="any"] "With another account"
-              label "Performance"
-                select.select [id="ps-profile" value=""]
-                  option [value=""] "Normal"
-                  option [value="afk"] "Light AFK"
-              label "Restart Roblox"
-                select.select [id="ps-restart" value="0"]
-                  option [value="0"] "Never"
-                  option [value="2"] "Every 2 hours"
-                  option [value="4"] "Every 4 hours"
-                  option [value="6"] "Every 6 hours"
-                  option [value="12"] "Every 12 hours"
-              label "Arrange windows"
-                select.select [id="ps-arrange" value=""]
-                  option [value=""] "Follow Settings (off)"
-                  option [value="on"] "On"
-                  option [value="off"] "Off"
-          div.ps-opts [role="group" aria-labelledby="ps-dc-title"]
-            div.ps-opts-head
+          details.ps-fold.ps-note.ps-opts [id="ps-opts"]
+            summary.ps-opts-head
+              b [id="ps-opts-title"] "Roblox windows"
+              svg.i #u1ag9u
+          details.ps-fold.ps-note.ps-opts [id="ps-dc" open=""]
+            summary.ps-opts-head
               b [id="ps-dc-title"] "Discord"
+              svg.i #u1ag9u
             label.ps-dc-mode "Send this preset’s messages to"
               select.select [id="ps-dc-mode" value="own"]
                 option [value=""] "The channel in Settings"
-                option [value="own"] "A webhook of its own"
+                option [value="own"] "Its own Discord channel"
             div.ps-dc-own [id="ps-dc-own"]
               input.field [id="ps-dc-link" type="text" placeholder="https://discord.com/api/webhooks/…" autocomplete="off" maxlength="300" aria-label="Webhook link for this preset" value="" FOCUSED]
               button.btn [id="ps-dc-test" type="button"] "Send test"
-            p.ps-opts-note "Its schedule messages, summary and window alerts. Everything else goes to the channel in Settings. Sending to Discord is off in Settings › Discord: nothing goes out until it is on."
+            p.ps-opts-note "It gets this preset’s schedule messages, summary and window alerts. Everything else goes to the channel in Settings. Sending to Discord is off in Settings › Discord: nothing goes out until it is on."
           div.ps-sched
             div.ps-sched-head
               label.switch

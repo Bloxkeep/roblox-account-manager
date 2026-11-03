@@ -54,11 +54,11 @@ html [data-theme="dark" lang="en"]
             span "Close all"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+            button.multi-open [title="Multi-Roblox: On: several Roblox windows can be open"]
               span.led
               div
                 b "Multi-Roblox"
-                small "On — several windows allowed"
+                small "On"
             label.switch [title="Turn off Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
@@ -106,7 +106,7 @@ html [data-theme="dark" lang="en"]
               svg.i #gsei2o
               span "Backup & data"
             button.set-nav-item [type="button"]
-              svg.i #1uvtx1
+              img.set-nav-logo [alt="" src="logo.svg"]
               span "Bloxkeep"
           div.scroll.set-scroll
             div.settings
@@ -157,36 +157,36 @@ html [data-theme="dark" lang="en"]
                       div.ctl
                         select.select [id="s-openas" aria-label="When a Roblox window opens" value="roblox"]
                           option [value="roblox"] "As Roblox sizes it"
-                          option [value="maximize"] "Maximise it"
-                          option [value="tile"] "Tile them side by side"
+                          option [value="maximize"] "Maximize it"
+                          option [value="tile"] "Tile windows side by side"
                     div.set-row
                       div
                         div.t "Arranging windows"
-                        div.d "Auto fills the screen. A grid can leave 2 windows small."
+                        div.d "Auto: windows share the screen evenly."
                       div.ctl
                     div.snap-row [id="s-winlayout"]
                       div.snap [role="group" aria-label="Arrange Roblox windows"]
                         div.snap-opts
-                          button.current.snap-opt [role="menuitemradio" type="button" title="Auto" aria-checked="true"]
+                          button.current.snap-opt [role="menuitemradio" type="button" title="Auto" aria-checked="true" data-layout="fill"]
                             span.snap-screen
                               span.snap-grid [style="grid-template-columns:repeat(2, 1fr);grid-template-rows:repeat(1, 1fr)"]
                                 span
                                 span
                             span.snap-name "Auto"
-                          button.snap-opt [role="menuitemradio" type="button" title="2 × 1" aria-checked="false"]
+                          button.snap-opt [role="menuitemradio" type="button" title="2 × 1" aria-checked="false" data-layout="2x1"]
                             span.snap-screen
                               span.snap-grid [style="grid-template-columns:repeat(2, 1fr);grid-template-rows:repeat(1, 1fr)"]
                                 span
                                 span
                             span.snap-name "2 × 1"
-                          button.snap-opt [role="menuitemradio" type="button" title="3 × 1" aria-checked="false"]
+                          button.snap-opt [role="menuitemradio" type="button" title="3 × 1" aria-checked="false" data-layout="3x1"]
                             span.snap-screen
                               span.snap-grid [style="grid-template-columns:repeat(3, 1fr);grid-template-rows:repeat(1, 1fr)"]
                                 span
                                 span
                                 span
                             span.snap-name "3 × 1"
-                          button.snap-opt [role="menuitemradio" type="button" title="2 × 2" aria-checked="false"]
+                          button.snap-opt [role="menuitemradio" type="button" title="2 × 2" aria-checked="false" data-layout="2x2"]
                             span.snap-screen
                               span.snap-grid [style="grid-template-columns:repeat(2, 1fr);grid-template-rows:repeat(2, 1fr)"]
                                 span
@@ -194,7 +194,7 @@ html [data-theme="dark" lang="en"]
                                 span
                                 span
                             span.snap-name "2 × 2"
-                          button.snap-opt [role="menuitemradio" type="button" title="3 × 2" aria-checked="false"]
+                          button.snap-opt [role="menuitemradio" type="button" title="3 × 2" aria-checked="false" data-layout="3x2"]
                             span.snap-screen
                               span.snap-grid [style="grid-template-columns:repeat(3, 1fr);grid-template-rows:repeat(2, 1fr)"]
                                 span
@@ -204,7 +204,7 @@ html [data-theme="dark" lang="en"]
                                 span
                                 span
                             span.snap-name "3 × 2"
-                          button.snap-opt [role="menuitemradio" type="button" title="3 × 3" aria-checked="false"]
+                          button.snap-opt [role="menuitemradio" type="button" title="3 × 3" aria-checked="false" data-layout="3x3"]
                             span.snap-screen
                               span.snap-grid [style="grid-template-columns:repeat(3, 1fr);grid-template-rows:repeat(3, 1fr)"]
                                 span
@@ -217,7 +217,7 @@ html [data-theme="dark" lang="en"]
                                 span
                                 span
                             span.snap-name "3 × 3"
-                          button.snap-opt [role="menuitemradio" type="button" title="4 × 3" aria-checked="false"]
+                          button.snap-opt [role="menuitemradio" type="button" title="4 × 3" aria-checked="false" data-layout="4x3"]
                             span.snap-screen
                               span.snap-grid [style="grid-template-columns:repeat(4, 1fr);grid-template-rows:repeat(3, 1fr)"]
                                 span
@@ -233,7 +233,7 @@ html [data-theme="dark" lang="en"]
                                 span
                                 span
                             span.snap-name "4 × 3"
-                          button.snap-opt [role="menuitemradio" type="button" title="4 × 4" aria-checked="false"]
+                          button.snap-opt [role="menuitemradio" type="button" title="4 × 4" aria-checked="false" data-layout="4x4"]
                             span.snap-screen
                               span.snap-grid [style="grid-template-columns:repeat(4, 1fr);grid-template-rows:repeat(4, 1fr)"]
                                 span
@@ -253,7 +253,7 @@ html [data-theme="dark" lang="en"]
                                 span
                                 span
                             span.snap-name "4 × 4"
-                          button.snap-opt [role="menuitemradio" type="button" title="Custom · 640 × 480" aria-checked="false"]
+                          button.snap-opt [role="menuitemradio" type="button" title="Custom · 640 × 480" aria-checked="false" data-layout="custom"]
                             span.snap-screen
                               span.snap-own [style="height:44.4444%;width:33.3333%"]
                             span.snap-name "Custom"
@@ -271,10 +271,10 @@ html [data-theme="dark" lang="en"]
                           option [value="fishstrap" disabled] "Fishstrap — not installed"
                           option [value="other:Voidstrap"] "Voidstrap"
                           option [value="roblox" disabled] "Roblox (official) — not installed"
-                          option [value="direct"] "RobloxPlayerBeta directly (skip launchers)"
+                          option [value="direct"] "Roblox directly (no launcher)"
                           option [value="store"] "Roblox (Microsoft Store) — being tested"
                           option [value="vng" disabled] "Roblox VNG — not installed"
-                        button.btn.sm [title="Choose another launcher…"] "Choose…"
+                        button.btn.sm [title="Choose another launcher…"] "Other launcher…"
                     div [id="s-store"]
                       div.set-note
                         svg.i #v9c4u6
@@ -352,11 +352,11 @@ html [data-theme="dark" lang="en"]
             span "Close all"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+            button.multi-open [title="Multi-Roblox: On: several Roblox windows can be open"]
               span.led
               div
                 b "Multi-Roblox"
-                small "On — several windows allowed"
+                small "On"
             label.switch [title="Turn off Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
@@ -404,7 +404,7 @@ html [data-theme="dark" lang="en"]
               svg.i #gsei2o
               span "Backup & data"
             button.set-nav-item [type="button"]
-              svg.i #1uvtx1
+              img.set-nav-logo [alt="" src="logo.svg"]
               span "Bloxkeep"
           div.scroll.set-scroll
             div.settings
@@ -455,36 +455,36 @@ html [data-theme="dark" lang="en"]
                       div.ctl
                         select.select [id="s-openas" aria-label="When a Roblox window opens" value="roblox"]
                           option [value="roblox"] "As Roblox sizes it"
-                          option [value="maximize"] "Maximise it"
-                          option [value="tile"] "Tile them side by side"
+                          option [value="maximize"] "Maximize it"
+                          option [value="tile"] "Tile windows side by side"
                     div.set-row
                       div
                         div.t "Arranging windows"
-                        div.d "Auto fills the screen. A grid can leave 2 windows small."
+                        div.d "Auto: windows share the screen evenly."
                       div.ctl
                     div.snap-row [id="s-winlayout"]
                       div.snap [role="group" aria-label="Arrange Roblox windows"]
                         div.snap-opts
-                          button.current.snap-opt [role="menuitemradio" type="button" title="Auto" aria-checked="true"]
+                          button.current.snap-opt [role="menuitemradio" type="button" title="Auto" aria-checked="true" data-layout="fill"]
                             span.snap-screen
                               span.snap-grid [style="grid-template-columns:repeat(2, 1fr);grid-template-rows:repeat(1, 1fr)"]
                                 span
                                 span
                             span.snap-name "Auto"
-                          button.snap-opt [role="menuitemradio" type="button" title="2 × 1" aria-checked="false"]
+                          button.snap-opt [role="menuitemradio" type="button" title="2 × 1" aria-checked="false" data-layout="2x1"]
                             span.snap-screen
                               span.snap-grid [style="grid-template-columns:repeat(2, 1fr);grid-template-rows:repeat(1, 1fr)"]
                                 span
                                 span
                             span.snap-name "2 × 1"
-                          button.snap-opt [role="menuitemradio" type="button" title="3 × 1" aria-checked="false"]
+                          button.snap-opt [role="menuitemradio" type="button" title="3 × 1" aria-checked="false" data-layout="3x1"]
                             span.snap-screen
                               span.snap-grid [style="grid-template-columns:repeat(3, 1fr);grid-template-rows:repeat(1, 1fr)"]
                                 span
                                 span
                                 span
                             span.snap-name "3 × 1"
-                          button.snap-opt [role="menuitemradio" type="button" title="2 × 2" aria-checked="false"]
+                          button.snap-opt [role="menuitemradio" type="button" title="2 × 2" aria-checked="false" data-layout="2x2"]
                             span.snap-screen
                               span.snap-grid [style="grid-template-columns:repeat(2, 1fr);grid-template-rows:repeat(2, 1fr)"]
                                 span
@@ -492,7 +492,7 @@ html [data-theme="dark" lang="en"]
                                 span
                                 span
                             span.snap-name "2 × 2"
-                          button.snap-opt [role="menuitemradio" type="button" title="3 × 2" aria-checked="false"]
+                          button.snap-opt [role="menuitemradio" type="button" title="3 × 2" aria-checked="false" data-layout="3x2"]
                             span.snap-screen
                               span.snap-grid [style="grid-template-columns:repeat(3, 1fr);grid-template-rows:repeat(2, 1fr)"]
                                 span
@@ -502,7 +502,7 @@ html [data-theme="dark" lang="en"]
                                 span
                                 span
                             span.snap-name "3 × 2"
-                          button.snap-opt [role="menuitemradio" type="button" title="3 × 3" aria-checked="false"]
+                          button.snap-opt [role="menuitemradio" type="button" title="3 × 3" aria-checked="false" data-layout="3x3"]
                             span.snap-screen
                               span.snap-grid [style="grid-template-columns:repeat(3, 1fr);grid-template-rows:repeat(3, 1fr)"]
                                 span
@@ -515,7 +515,7 @@ html [data-theme="dark" lang="en"]
                                 span
                                 span
                             span.snap-name "3 × 3"
-                          button.snap-opt [role="menuitemradio" type="button" title="4 × 3" aria-checked="false"]
+                          button.snap-opt [role="menuitemradio" type="button" title="4 × 3" aria-checked="false" data-layout="4x3"]
                             span.snap-screen
                               span.snap-grid [style="grid-template-columns:repeat(4, 1fr);grid-template-rows:repeat(3, 1fr)"]
                                 span
@@ -531,7 +531,7 @@ html [data-theme="dark" lang="en"]
                                 span
                                 span
                             span.snap-name "4 × 3"
-                          button.snap-opt [role="menuitemradio" type="button" title="4 × 4" aria-checked="false"]
+                          button.snap-opt [role="menuitemradio" type="button" title="4 × 4" aria-checked="false" data-layout="4x4"]
                             span.snap-screen
                               span.snap-grid [style="grid-template-columns:repeat(4, 1fr);grid-template-rows:repeat(4, 1fr)"]
                                 span
@@ -551,7 +551,7 @@ html [data-theme="dark" lang="en"]
                                 span
                                 span
                             span.snap-name "4 × 4"
-                          button.snap-opt [role="menuitemradio" type="button" title="Custom · 640 × 480" aria-checked="false"]
+                          button.snap-opt [role="menuitemradio" type="button" title="Custom · 640 × 480" aria-checked="false" data-layout="custom"]
                             span.snap-screen
                               span.snap-own [style="height:44.4444%;width:33.3333%"]
                             span.snap-name "Custom"
@@ -569,10 +569,10 @@ html [data-theme="dark" lang="en"]
                           option [value="fishstrap" disabled] "Fishstrap — not installed"
                           option [value="other:Voidstrap"] "Voidstrap"
                           option [value="roblox" disabled] "Roblox (official) — not installed"
-                          option [value="direct"] "RobloxPlayerBeta directly (skip launchers)"
+                          option [value="direct"] "Roblox directly (no launcher)"
                           option [value="store"] "Roblox (Microsoft Store) — being tested"
                           option [value="vng" disabled] "Roblox VNG — not installed"
-                        button.btn.sm [title="Choose another launcher…"] "Choose…"
+                        button.btn.sm [title="Choose another launcher…"] "Other launcher…"
                     div [id="s-store"]
                     div.set-row
                       div

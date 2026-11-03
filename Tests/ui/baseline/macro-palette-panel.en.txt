@@ -54,11 +54,11 @@ html [data-theme="dark" lang="en"]
             span "Close all"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+            button.multi-open [title="Multi-Roblox: On: several Roblox windows can be open"]
               span.led
               div
                 b "Multi-Roblox"
-                small "On — several windows allowed"
+                small "On"
             label.switch [title="Turn off Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
@@ -76,12 +76,11 @@ html [data-theme="dark" lang="en"]
         header.top
           div.top-title
             h1 "Macros"
-              span.mc-beta.state-pill.warn [title="New: it may not work the same on every PC. Tell us what goes wrong under Help & feedback."] "Beta"
-            p [id="mc-sub"] "macros runningMacros take each Roblox window to the front for a moment, one at a time."
+              span.mc-beta.state-pill.warn [title="New: it may not work the same on every PC. Tell us what goes wrong under Help & feedback. Macros take each Roblox window to the front for a moment, one at a time."] "Beta"
+            p [id="mc-sub"] "macros running"
               b "4"
               span.sep "·"
               b "2"
-              span.sep "·"
           div.top-tools
             button.btn.mc-stop-all [title="Stops every macro and recording, and lets go of every key (Ctrl+Alt+0 does it from any app)"]
               svg.i #t57b2k
@@ -101,7 +100,11 @@ html [data-theme="dark" lang="en"]
                 svg.i #1ap9cll
               div.pv-main
                 b [title="Anti-AFK jump"] "Anti-AFK jump"
-                span.live.mc-line [title="Main: running · Farm 1: paused (you’re using the PC)"] "Main: running · Farm 1: paused (you’re using the PC)"
+                span.mc-line.on [title="Main: running · Farm 1: paused (you’re using the PC)"]
+                  span.mc-acc.s-running "Main: running"
+                    i [aria-hidden="true"]
+                  span.mc-acc.s-paused "Farm 1: paused (you’re using the PC)"
+                    i [aria-hidden="true"]
               button.btn.mc-panel.sm [type="button" title="Show its panel beside the game" aria-label="Panel: Anti-AFK jump" aria-pressed="false"]
                 svg.i #1e3syqr
                 span "Panel"
@@ -115,12 +118,14 @@ html [data-theme="dark" lang="en"]
                 svg.i #top79o
               span.mc-icon.on.pv-icon
                 svg.i #kx2qfl
+                i.mc-icon-bad [title="The last run stopped" aria-hidden="true"]
               div.pv-main
                 b [title="Claim daily chest"] "Claim daily chest"
-                span.bad.mc-line [title="Main: paused (Vietnamese typing is on) · Farm 1: stopped (didn’t see what it looks for)"] "Main: paused (Vietnamese typing is on) · Farm 1: stopped (didn’t see what it looks for)"
-              button.btn.mc-fix.sm [type="button" aria-label="Fix: Claim daily chest"]
-                svg.i #yqrnd9
-                span "Fix"
+                span.bad.mc-line [title="Main: paused (Vietnamese typing is on) · Farm 1: stopped (didn’t see what it looks for)"]
+                  span.mc-acc.s-paused "Main: paused (Vietnamese typing is on)"
+                    i [aria-hidden="true"]
+                  span.mc-acc.s-failed "Farm 1: stopped (didn’t see what it looks for)"
+                    i [aria-hidden="true"]
               button.btn.mc-panel.sm [type="button" title="Show its panel beside the game" aria-label="Panel: Claim daily chest" aria-pressed="false"]
                 svg.i #1e3syqr
                 span "Panel"
@@ -136,7 +141,9 @@ html [data-theme="dark" lang="en"]
                 svg.i #1ap9cll
               div.pv-main
                 b [title="Farm route"] "Farm route"
-                span.mc-line [title="Main: done"] "Main: done"
+                span.mc-line [title="Main: done"]
+                  span.mc-acc.s-done "Main: done"
+                    i [aria-hidden="true"]
               button.btn.mc-panel.sm [type="button" title="Show its panel beside the game" aria-label="Panel: Farm route" aria-pressed="false"]
                 svg.i #1e3syqr
                 span "Panel"
@@ -154,9 +161,9 @@ html [data-theme="dark" lang="en"]
                 b [title="Cast and reel"] "Cast and reel"
                 span.mc-line [title="When you press Run · Selected accounts · Ctrl+Alt+3"] "When you press Run · Selected accounts · Ctrl+Alt+3"
               button.btn.mc-panel.on.sm [type="button" title="Hide its panel" aria-label="Panel: Cast and reel" aria-pressed="true"]
-                svg.i #1e3syqr
+                i.mc-panel-dot [aria-hidden="true"]
                 span "Panel"
-              button.btn.pv-run.sm [title="Select accounts in the Accounts tab first." aria-label="Run: Cast and reel" disabled]
+              button.btn.pv-run.sm [aria-label="Run: Cast and reel"]
                 svg.i #1ewcuky
                 span "Run"
               button.icon-btn [type="button" title="More" aria-haspopup="menu" aria-label="More: Cast and reel"]

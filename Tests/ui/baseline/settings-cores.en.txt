@@ -54,11 +54,11 @@ html [data-theme="dark" lang="en"]
             span "Close all"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+            button.multi-open [title="Multi-Roblox: On: several Roblox windows can be open"]
               span.led
               div
                 b "Multi-Roblox"
-                small "On — several windows allowed"
+                small "On"
             label.switch [title="Turn off Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
@@ -106,7 +106,7 @@ html [data-theme="dark" lang="en"]
               svg.i #gsei2o
               span "Backup & data"
             button.set-nav-item [type="button"]
-              svg.i #1uvtx1
+              img.set-nav-logo [alt="" src="logo.svg"]
               span "Bloxkeep"
           div.scroll.set-scroll
             div.settings
@@ -117,35 +117,31 @@ html [data-theme="dark" lang="en"]
                   div.set-card
                     div.rc-modes [id="s-rc-levels" role="group" aria-label="Mode"]
                       button.rc-mode [type="button" aria-pressed="false"]
-                        span.rc-load [data-n="1"]
-                          i
-                          i
-                          i
                         b "AFK farming"
-                        small "20 FPS · Graphics 1 · Muted · Auto RAM limit"
+                        small
+                          span "20 FPS"
+                          span "Graphics 1"
+                          span "Muted"
+                          span "Auto RAM limit"
                       button.rc-mode [type="button" aria-pressed="false"]
-                        span.rc-load [data-n="2"]
-                          i
-                          i
-                          i
                         b "Play and farm"
-                        small "45 FPS · Graphics 3 · Keeps volume"
+                        small
+                          span "45 FPS"
+                          span "Graphics 3"
+                          span "Keeps volume"
                       button.rc-mode [type="button" aria-pressed="false"]
-                        span.rc-load [data-n="3"]
-                          i
-                          i
-                          i
                         b "Roblox as is"
-                        small "Bloxkeep changes nothing"
+                        small
+                          span "Bloxkeep changes nothing"
                       button.on.rc-mode [type="button" aria-pressed="true"]
-                        span.rc-load
                         b "Custom"
-                        small "Set each one below"
+                        small
+                          span "Set each one below"
                     p.rc-note [id="s-rc-reopen"] "Takes effect when an account is next opened."
                     div.set-row
                       div
                         div.t "Fast Flags"
-                        div.d "Grey sky, no grass, lowest graphics. Saves a little RAM."
+                        div.d "Gray sky, no grass, lowest graphics. Saves a little RAM."
                       div.ctl
                         label.switch
                           input [id="s-rc-flags" type="checkbox" aria-label="Fast Flags" checked=false]
@@ -166,12 +162,12 @@ html [data-theme="dark" lang="en"]
                     div.set-row
                       div
                         div.t "Auto-rejoin"
-                        div.d "For every account. An account’s ⋯ menu or a preset can differ."
+                        div.d "For all accounts. Change one in its ⋯ menu or a preset."
                       div.ctl
-                        select.select [id="s-rejoin" aria-label="Auto-rejoin" value="some"]
-                          option [value="on"] "On for all accounts"
-                          option [value="off"] "Off for all accounts"
-                          option [value="some" disabled hidden] "On for 1 of 7"
+                        span.set-count [id="s-rejoin-n"] "1/7 accounts"
+                        label.switch
+                          input [id="s-rejoin" type="checkbox" aria-label="Auto-rejoin" checked=false]
+                          span
                     div.set-row
                       div
                         div.t "Anti-AFK"
@@ -183,7 +179,7 @@ html [data-theme="dark" lang="en"]
                     div.set-row
                       div
                         div.t "Leave crowded servers"
-                        div.d "A window in a public server with more players than this, your accounts not counted, moves to a quieter server. Checked every 2 minutes."
+                        div.d "Moves a window out of a full public server. Your accounts aren’t counted."
                       div.ctl
                         select.select [id="s-hop" aria-label="Leave crowded servers" value="0"]
                           option [value="0"] "Off"
@@ -210,6 +206,7 @@ html [data-theme="dark" lang="en"]
                     div.set-row
                       div
                         div.t "Low RAM warning"
+                        div.d "Asks first when opening more windows would run out of RAM."
                       div.ctl
                         label.switch
                           input [id="s-memwarn" type="checkbox" aria-label="Low RAM warning" checked=true]
@@ -237,11 +234,11 @@ html [data-theme="dark" lang="en"]
                           option [value="2048"] "2 GB"
                     div.set-row
                       div
-                        div.t "Put the window you play first"
+                        div.t "Prioritize the window you play"
                         div.d "Background windows slow down so it runs smoother."
                       div.ctl
                         label.switch
-                          input [id="s-cores" type="checkbox" aria-label="Put the window you play first" checked=true FOCUSED]
+                          input [id="s-cores" type="checkbox" aria-label="Prioritize the window you play" checked=true FOCUSED]
                           span
 #layer
 #toasts

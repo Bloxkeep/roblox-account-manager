@@ -5,12 +5,12 @@ html [data-theme="dark" lang="vi"]
     button.tray-back [type="button"] "Macro"
       svg.i #10tf97k
     div.tray-list
-      button.tray-item [role="menuitem" type="button" title="Ẩn bảng"]
-        svg.i #kx2qfl
+      button.tray-item.tray-macro [role="menuitem" type="button" title="Ẩn bảng"]
+        i.running.tray-dot [aria-hidden="true"]
         span.tray-item-text "Cast and reel"
-        svg.i.tray-check #14iobj
-      button.tray-item [role="menuitem" type="button" title="Hiện bảng"]
-        svg.i #kx2qfl
+        span.tray-value "Đang hiện"
+      button.tray-item.tray-macro [role="menuitem" type="button" title="Hiện bảng"]
+        i.stopped.tray-dot [aria-hidden="true"]
         span.tray-item-text "Claim daily chest"
 -- commands
   ready {}

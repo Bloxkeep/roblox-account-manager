@@ -6,13 +6,14 @@ html [data-theme="dark" lang="vi"]
       img.tray-logo [alt="" src="logo.svg"]
       div.tray-name
         b "Bloxkeep"
-        span "2 cửa sổ Roblox · 2.8 GB RAM"
+        span
+          span.tray-status [title="2 cửa sổ Roblox · 2.8 GB RAM"] "2 cửa sổ Roblox · 2.8 GB RAM"
       button.tray-icon [type="button" title="Cửa sổ nhỏ" aria-label="Cửa sổ nhỏ" aria-pressed="false"]
         svg.i #1e3syqr
       button.tray-icon [type="button" title="Mở Bloxkeep" aria-label="Mở Bloxkeep"]
         svg.i #1a4qrux
     button.ready.tray-multi [role="switch" type="button" aria-checked="true"]
-      svg.i #1pvni8o
+      svg.i #2s24cy
       span.tray-multi-text
         b "Multi-Roblox"
         span "Đang bật"
@@ -21,7 +22,7 @@ html [data-theme="dark" lang="vi"]
     section.tray-running
       div.tray-label
         span "Đang chạy"
-        button.confirm.danger.tray-link [type="button" FOCUSED] "Đóng 2 cửa sổ?"
+        button.btn.confirm.danger.ghost.sm.tray-link [type="button" FOCUSED] "Đóng 2 cửa sổ?"
       div.tray-list
         div.client.tray-row [title="PID 4320"]
           button.tray-row-main [type="button"]
@@ -56,13 +57,13 @@ html [data-theme="dark" lang="vi"]
         span "Preset"
       button.tray-tile [type="button" title="Mỗi cửa sổ đăng nhập riêng. Giữ Bloxkeep mở, đóng cửa sổ là mất đăng nhập."]
         svg.i #puf41w
-        span "Roblox mới"
+        span "Cửa sổ đăng nhập"
 -- commands
   ready {}
-  size {"h":361,"opened":1,"w":344}
-  size {"h":361,"opened":1,"w":344}
-  size {"h":361,"opened":1,"w":344}
-  size {"h":361,"opened":1,"w":344}
+  size {"h":368,"opened":1,"w":344}
+  size {"h":368,"opened":1,"w":344}
+  size {"h":368,"opened":1,"w":344}
+  size {"h":368,"opened":1,"w":344}
 == end
 html [data-theme="dark" lang="vi"]
 #tray
@@ -71,13 +72,14 @@ html [data-theme="dark" lang="vi"]
       img.tray-logo [alt="" src="logo.svg"]
       div.tray-name
         b "Bloxkeep"
-        span "Chưa mở cửa sổ Roblox nào"
+        span
+          span.tray-status [title="Chưa mở cửa sổ Roblox nào"] "Chưa mở cửa sổ Roblox nào"
       button.tray-icon [type="button" title="Cửa sổ nhỏ" aria-label="Cửa sổ nhỏ" aria-pressed="false"]
         svg.i #1e3syqr
       button.tray-icon [type="button" title="Mở Bloxkeep" aria-label="Mở Bloxkeep"]
         svg.i #1a4qrux
     button.ready.tray-multi [role="switch" type="button" aria-checked="true"]
-      svg.i #1pvni8o
+      svg.i #2s24cy
       span.tray-multi-text
         b "Multi-Roblox"
         span "Đang bật"
@@ -96,11 +98,11 @@ html [data-theme="dark" lang="vi"]
         span "Preset"
       button.tray-tile [type="button" title="Mỗi cửa sổ đăng nhập riêng. Giữ Bloxkeep mở, đóng cửa sổ là mất đăng nhập."]
         svg.i #puf41w
-        span "Roblox mới"
+        span "Cửa sổ đăng nhập"
 -- commands
   act {"what":"closeAll"}
   size {"h":273,"opened":1,"w":344}
   size {"h":273,"opened":1,"w":344}
   size {"h":297,"opened":1,"w":344}
-  size {"h":361,"opened":1,"w":344}
-  size {"h":361,"opened":1,"w":344}
+  size {"h":368,"opened":1,"w":344}
+  size {"h":368,"opened":1,"w":344}

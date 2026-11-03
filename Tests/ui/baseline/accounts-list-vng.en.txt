@@ -54,11 +54,11 @@ html [data-theme="dark" lang="en"]
             span "Close all"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+            button.multi-open [title="Multi-Roblox: On: several Roblox windows can be open"]
               span.led
               div
                 b "Multi-Roblox"
-                small "On — several windows allowed"
+                small "On"
             label.switch [title="Turn off Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
@@ -98,7 +98,7 @@ html [data-theme="dark" lang="en"]
               button.btn.primary [title="Other ways to add" aria-haspopup="menu"]
                 svg.i #u1ag9u
         div.bar
-          div.chips.fade-r [id="chips"]
+          div.chips [id="chips"]
             button.chip.on [aria-pressed="true"] "All"
               em "7"
             button.chip [aria-pressed="false"] "Needs sign-in"
@@ -113,11 +113,7 @@ html [data-theme="dark" lang="en"]
             button.chip [aria-pressed="false"] "Online"
               i.dot [style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:"]
               em "4"
-            button.chip [aria-pressed="false"] "Offline"
-              i.dot [style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:"]
-              em "3"
-            button.chip [aria-pressed="false"] "On this PC"
-              em "2"
+            button.chip.more [title="More filters" aria-haspopup="menu"] "+2"
           div.seg [id="layout-seg"]
             button [title="Cards" aria-label="Cards" aria-pressed="false"]
               svg.i #19k0rtd
@@ -143,14 +139,13 @@ html [data-theme="dark" lang="en"]
                   small [title="@lananh_2010"] "@lananh_2010"
                 div.row-status.studio [title="Roblox Studio"] "Roblox Studio"
                 div.row-meta
-                  span.cell
                   span.cell.end
                     span.robux [title="Robux on this account, checked every 30 minutes"] "1,300"
                       svg.i #hpg3hu
                   span.cell
                   span.cell
                 div.row-live
-                  span.cell.end
+                  span.cell.end.pid-cell
                   span.cell.end
                 div.row-actions
                   span.cell.row-act-cell
@@ -174,7 +169,6 @@ html [data-theme="dark" lang="en"]
                     svg.i #ktpp14
                     b.up "1 min"
                 div.row-meta
-                  span.cell
                   span.cell.end
                     span.robux [title="Robux on this account, checked every 30 minutes"] "80"
                       svg.i #hpg3hu
@@ -182,8 +176,7 @@ html [data-theme="dark" lang="en"]
                     span.tag [title="Farm"] "Farm"
                   span.cell
                 div.row-live
-                  span.cell.end
-                    button.pid [title="Roblox process ID (PID) — click to copy" tabindex="-1"] "PID 2222"
+                  span.cell.end.pid-cell
                   span.cell.end
                     span.row-ram [title="RAM in use"]
                       b.ram "935 MB"
@@ -206,13 +199,12 @@ html [data-theme="dark" lang="en"]
                 div.row-status.signedout [title=""]
                   span.bad.badge "Needs sign-in"
                 div.row-meta
-                  span.cell
                   span.cell.end
                   span.cell
                     span.tag [title="Farm"] "Farm"
                   span.cell
                 div.row-live
-                  span.cell.end
+                  span.cell.end.pid-cell
                   span.cell.end
                 div.row-actions
                   span.cell.row-act-cell
@@ -236,7 +228,6 @@ html [data-theme="dark" lang="en"]
                     svg.i #ktpp14
                     b.up "47 min"
                 div.row-meta
-                  span.cell
                   span.cell.end
                     span.robux [title="Robux on this account, checked every 30 minutes"] "12,450"
                       svg.i #hpg3hu
@@ -246,8 +237,7 @@ html [data-theme="dark" lang="en"]
                     span.rejoin [title="Auto-rejoin is on"]
                       svg.i #1ap9cll
                 div.row-live
-                  span.cell.end
-                    button.pid [title="Roblox process ID (PID) — click to copy" tabindex="-1"] "PID 1111"
+                  span.cell.end.pid-cell
                   span.cell.end
                     span.row-ram [title="RAM in use"]
                       b.ram "795 MB"
@@ -269,7 +259,6 @@ html [data-theme="dark" lang="en"]
                   small [title="@night_owl_rb"] "@night_owl_rb"
                 div.ingame.row-status [title="Playing · another device · [🎃] Adopt Me!"] "Playing · another device · [🎃] Adopt Me!"
                 div.row-meta
-                  span.cell
                   span.cell.end
                     span.robux [title="Robux on this account, checked every 30 minutes"] "0"
                       svg.i #hpg3hu
@@ -277,7 +266,7 @@ html [data-theme="dark" lang="en"]
                     span.tag [title="Farm"] "Farm"
                   span.cell
                 div.row-live
-                  span.cell.end
+                  span.cell.end.pid-cell
                   span.cell.end
                 div.row-actions
                   span.cell.row-act-cell
@@ -297,12 +286,11 @@ html [data-theme="dark" lang="en"]
                   small [title="@noavatar_user"] "@noavatar_user"
                 div.launching.row-status [title="Opening Roblox…"] "Opening Roblox…"
                 div.row-meta
-                  span.cell
                   span.cell.end
                   span.cell
                   span.cell
                 div.row-live
-                  span.cell.end
+                  span.cell.end.pid-cell
                   span.cell.end
                 div.row-actions
                   span.cell.row-act-cell
@@ -322,14 +310,13 @@ html [data-theme="dark" lang="en"]
                   small [title="@tradepost_vn"] "@tradepost_vn"
                 div.row-status.unknown [title="Offline"] "Offline"
                   span.bad.badge [title="Roblox reports this account as banned. Play skips it."] "Banned"
+                  span.tag.vng [title="Roblox VNG account (Vietnam)"] "VNG"
                 div.row-meta
-                  span.cell
-                    span.tag.vng [title="Roblox VNG account (Vietnam)"] "VNG"
                   span.cell.end
                   span.cell
                   span.cell
                 div.row-live
-                  span.cell.end
+                  span.cell.end.pid-cell
                   span.cell.end
                 div.row-actions
                   span.cell.row-act-cell
@@ -355,6 +342,7 @@ html [data-theme="dark" lang="en"]
                 div.recent [title="[🎃] Adopt Me!"]
                   button.recent-pick
                     i.ph
+                      svg.i #sy1lqp
                     span "[🎃] Adopt Me!"
                   button.rm [title="Remove from recent" aria-label="Remove from recent"]
                     svg.i #1tyq039
@@ -367,27 +355,27 @@ html [data-theme="dark" lang="en"]
               svg.i #ej9lod
               input [id="job" placeholder="Job ID" maxlength="60" aria-label="Job ID" value=""]
             div.dock-sub
-              button.sub-btn [title="Pick one of this game’s servers: by players, by ping, or where your friends are"]
+              button.sub-btn [title="Pick one of this game’s servers: by players, by ping, or where your friends are" aria-label="Browse servers"]
                 svg.i #uj30io
                 span "Browse servers"
-              button.sub-btn [title="Join a player: the selected accounts open into the server someone is in"]
+              button.sub-btn [title="Join a player: the selected accounts open into the server someone is in" aria-label="Follow a player…"]
                 svg.i #145pp0l
-                span "Join a player…"
+                span "Follow a player…"
           div.dock-go.dock-step [id="dock-actions"]
             div.step-cap
               b "3"
-              span "Play"
-            button.play-btn [disabled]
+              span "Go"
+            button.play-btn [title="Select accounts first" aria-disabled="true"]
               svg.i #1ewcuky
-              span "Select accounts first"
+              span "Play"
             div.dock-sub
-              button.sub-btn [title="Presets" aria-haspopup="menu"]
+              button.sub-btn [title="Presets" aria-haspopup="menu" aria-label="Presets"]
                 svg.i #1pvni8o
                 span "Presets"
-              button.sub-btn [title="Close Roblox for the selected accounts" disabled]
+              button.sub-btn [title="No selected account is open" aria-disabled="true" aria-label="Close"]
                 svg.i #16z0s1r
                 span "Close"
-              button.sub-btn [title="Open Roblox only, or arrange the windows" aria-haspopup="menu"]
+              button.sub-btn [title="Open Roblox only, or arrange the windows" aria-haspopup="menu" aria-label="Windows"]
                 svg.i #1e3syqr
                 span "Windows"
 #layer

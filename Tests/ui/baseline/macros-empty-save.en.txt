@@ -54,11 +54,11 @@ html [data-theme="dark" lang="en"]
             span "Close all"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+            button.multi-open [title="Multi-Roblox: On: several Roblox windows can be open"]
               span.led
               div
                 b "Multi-Roblox"
-                small "On — several windows allowed"
+                small "On"
             label.switch [title="Turn off Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
@@ -76,8 +76,8 @@ html [data-theme="dark" lang="en"]
         header.top
           div.top-title
             h1 "Macros"
-              span.mc-beta.state-pill.warn [title="New: it may not work the same on every PC. Tell us what goes wrong under Help & feedback."] "Beta"
-            p [id="mc-sub"] "Macros take each Roblox window to the front for a moment, one at a time."
+              span.mc-beta.state-pill.warn [title="New: it may not work the same on every PC. Tell us what goes wrong under Help & feedback. Macros take each Roblox window to the front for a moment, one at a time."] "Beta"
+            p [id="mc-sub"]
           div.top-tools
             button.btn.mc-stop-all [title="Stops every macro and recording, and lets go of every key (Ctrl+Alt+0 does it from any app)" disabled]
               svg.i #t57b2k
@@ -100,7 +100,7 @@ html [data-theme="dark" lang="en"]
                   svg.i #1mr8rx5
                   b "Record…"
                   small "Play once, it copies you"
-                button.mc-tile [type="button" aria-haspopup="menu"]
+                button.mc-tile [type="button" aria-expanded="false" aria-haspopup="dialog"]
                   svg.i #1pvni8o
                   b "From a template"
                   small "Ready-made, set it for your game"
@@ -123,10 +123,14 @@ html [data-theme="dark" lang="en"]
               div.form.mc-top
                 div.mc-name-row
                   label "Name"
-                    input.field [id="mc-name" placeholder="Farm loop" maxlength="60" value="" FOCUSED]
+                    input.field [id="mc-name" placeholder="Farm loop" maxlength="60" aria-describedby="mc-name-err" aria-invalid="true" value="" FOCUSED]
                   button.btn.mc-try-it [id="mc-try" type="button" title="Runs it once on Main’s window and says what it saw" aria-pressed="false"]
                     svg.i #1ewcuky
                     span "Try it"
+                ul.mc-ferr [id="mc-name-err" role="status"]
+                  li
+                    svg.i #42lb9l
+                    span "Give the macro a name."
                 details.mc-when
                   summary [id="mc-when"]
                     span "When you press Run · Selected accounts · No hotkey"
@@ -138,15 +142,14 @@ html [data-theme="dark" lang="en"]
                   button.btn.sm [id="mc-record" type="button" title="Records what you do in the chosen window; F8 stops"]
                     svg.i #1mr8rx5
                     span "Record"
-                  button.btn.primary.sm [id="mc-add" type="button" aria-haspopup="menu"]
+                  button.btn.sm [id="mc-add" type="button" aria-expanded="false" aria-haspopup="dialog"]
                     svg.i #u7ty99
                     span "Add step"
                 p.mc-steps-none "No steps yet. Add one, or record what you do."
-                div.mc-problems [role="status" aria-live="polite"]
-                  b "Fix these to save"
-                  ul
-                    li "Give the macro a name."
-                    li "Add at least one step."
+                ul.mc-ferr [role="status"]
+                  li
+                    svg.i #42lb9l
+                    span "Add at least one step."
               section.mc-sees [aria-labelledby="mc-sees-h"]
                 div.mc-sees-head
                   b [id="mc-sees-h"] "Player sees"
@@ -164,7 +167,7 @@ html [data-theme="dark" lang="en"]
                   div.mp-run
                     svg.i #1ewcuky
                     span "Run"
-                  p.mp-status "Not running"
+                  p.mp-status "Ready"
                   p.mp-none "Tick “Player can change” on a step to put its value here."
                   div.mp-foot
                 label.mc-switch-row
@@ -173,7 +176,7 @@ html [data-theme="dark" lang="en"]
                     span
                   span
                     b "Show the panel by itself"
-                    small "While an account is in this game (empty: any game)."
+                    small "While an account is in this game. Leave the game empty for any game."
             aside.mc-side
               section.mc-game [aria-labelledby="mc-game-h"]
                 div.mc-pic-head
@@ -181,12 +184,13 @@ html [data-theme="dark" lang="en"]
                   select.select.sm [id="mc-pic-acc" aria-label="Whose window" value="00000000-0000-4000-8000-000000000001"]
                     option [value="00000000-0000-4000-8000-000000000001"] "Main"
                     option [value="00000000-0000-4000-8000-000000000002"] "Farm 1"
-                  button.btn.primary.sm [id="mc-ongame" type="button" aria-pressed="false"]
+                  button.btn.sm [id="mc-ongame" type="button" aria-pressed="false"]
                     svg.i #1e3syqr
                     span "Edit on game"
                 p.mc-game-say [role="status"] "Shows each step’s dot and each area’s box on Main’s window, to drag into place."
                 div.blank.mc-pic-frame [role="group" tabindex="-1" aria-label="The game window: numbered dots are where steps click, boxes are areas. Arrow keys move the one in focus." style="aspect-ratio:1.77778 / 1"]
-                  span.mc-pic-blank "Take a picture to see the game here"
+                  span.mc-pic-blank
+                    span "Take a picture to see the game here"
                 div.mc-pic-acts
                   button.btn.sm [id="mc-pic-take" type="button"]
                     svg.i #16jqtkh
@@ -199,10 +203,12 @@ html [data-theme="dark" lang="en"]
                       svg.i #u7ty99
                       span "New area"
                   p.mc-pic-none "No areas yet. An area is a box on the game where a step looks."
-      div.form-error.ps-err [role="alert"] "Give the macro a name."
       div.modal-foot
         button.btn "Cancel"
-        button.btn.primary "Save"
+        button.btn.primary [title="Give the macro a name." aria-disabled="true"] "Save"
+        button.mc-probs-badge [type="button" title="Give the macro a name."]
+          svg.i #42lb9l
+          span "2 problems"
 #toasts
 -- commands
   getState {}

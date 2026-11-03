@@ -12,7 +12,7 @@ html [data-theme="dark" lang="vi"]
         button.on [title="Tiếng Việt" aria-pressed="true"] "VI"
     div.vp [id="vault-picker"]
       img.logo-img [alt="" src="logo.svg"]
-      h2 "Ai đang dùng Bloxkeep?"
+      h2 "Chọn vault"
       ul.vp-tiles
         li.vp-item
           button.last.vp-tile [title="Main"]

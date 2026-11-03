@@ -54,11 +54,11 @@ html [data-theme="dark" lang="en"]
             span "Close all"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+            button.multi-open [title="Multi-Roblox: On: several Roblox windows can be open"]
               span.led
               div
                 b "Multi-Roblox"
-                small "On — several windows allowed"
+                small "On"
             label.switch [title="Turn off Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
@@ -106,62 +106,12 @@ html [data-theme="dark" lang="en"]
               svg.i #gsei2o
               span "Backup & data"
             button.set-nav-item [type="button"]
-              svg.i #1uvtx1
+              img.set-nav-logo [alt="" src="logo.svg"]
               span "Bloxkeep"
           div.scroll.set-scroll
             div.settings
               section.set-page [id="set-page-discord" aria-labelledby="set-page-discord-h"]
                 h2.set-page-title [id="set-page-discord-h"] "Discord"
-                div.set-grp [id="sec-dc-preview"]
-                  h3.set-grp-title "Preview"
-                  div.set-card
-                    div.tg-tabs [id="s-dc-preview-kinds"]
-                      button.chip.on [type="button" aria-pressed="true"] "Alerts"
-                      button.chip [type="button" aria-pressed="false"] "Status message"
-                    div.dcv [id="s-dc-preview"]
-                      img.dcv-pic [alt="" src="logo.svg"]
-                      div.dcv-body
-                        div.dcv-head
-                          b "Bloxkeep"
-                          span.dcv-app "APP"
-                          time "14:30"
-                        div
-                          span.dcv-at "@user"
-                        div.dcv-embed.yellow
-                          div.dcv-author "Player_01"
-                          div.dcv-title "Disconnected, rejoining"
-                          div.dcv-fields
-                            div
-                              b "Game"
-                              div.dcv-link "Obby"
-                            div
-                              b "Played"
-                              div "1 h 24 min"
-                            div
-                              b "Reason"
-                              div "Disconnected"
-                          small.dcv-foot "Bloxkeep · Alerts"
-                    p.set-hint "A sample with made-up accounts. Sent messages use your real ones."
-                div.set-grp [id="sec-dc-profile"]
-                  div.set-card
-                    div.set-row
-                      div
-                        div.t "Show on my Discord profile"
-                        div.d "Shows the game and window count, never account names. Needs the Discord app."
-                      div.ctl
-                        label.switch
-                          input [id="s-dc-presence" type="checkbox" aria-label="Show on my Discord profile" checked=false]
-                          span
-                div.set-grp [id="sec-dc-remote"]
-                  div.set-card
-                    div.set-row
-                      div
-                        div.t "Control from Discord"
-                        div.d "Type /pc in Discord to control this PC from anywhere."
-                      div.ctl
-                        label.switch
-                          input [id="s-dc-remote" type="checkbox" aria-label="Control from Discord" checked=false]
-                          span
                 div.set-grp [id="sec-discord"]
                   div.set-card
                     div.set-row
@@ -180,7 +130,7 @@ html [data-theme="dark" lang="en"]
                           span.path [id="s-dc-hook"] "discord.com/api/webhooks/…5678/••••••"
                           div "In Discord: Channel settings › Integrations › Webhooks › New Webhook › Copy Webhook URL. Kept encrypted."
                       div.ctl
-                        button.btn.sm [id="s-dc-paste"] "Replace…"
+                        button.btn.sm [id="s-dc-paste"] "Change link…"
                         button.btn.ghost.sm [id="s-dc-reveal" aria-pressed="false"] "Show"
                           svg.i #1pcfgz
                         button.btn.ghost.sm [id="s-dc-remove"] "Remove"
@@ -191,6 +141,37 @@ html [data-theme="dark" lang="en"]
                             span "Last sent: 4 min ago"
                         div.ctl
                           button.btn.sm [FOCUSED] "Send test"
+                div.set-grp [id="sec-dc-preview"]
+                  h3.set-grp-title "Preview"
+                  div.set-card
+                    div.dcv-kinds
+                      div.seg [id="s-dc-preview-kinds" role="tablist" aria-label="Preview"]
+                        button.on [role="tab" type="button" aria-selected="true"] "Alerts"
+                        button [role="tab" type="button" aria-selected="false"] "Status message"
+                    div.dcv [id="s-dc-preview"]
+                      img.dcv-pic [alt="" src="logo.svg"]
+                      div.dcv-body
+                        div.dcv-head
+                          b "Bloxkeep"
+                          span.dcv-app "APP"
+                          time "2:30 PM"
+                        div
+                          span.dcv-at "@user"
+                        div.dcv-embed.yellow
+                          div.dcv-author "Player_01"
+                          div.dcv-title "Dropped, rejoining"
+                          div.dcv-fields
+                            div
+                              b "Game"
+                              div.dcv-link "Obby"
+                            div
+                              b "Played"
+                              div "1 h 24 min"
+                            div
+                              b "Reason"
+                              div "Lost connection"
+                          small.dcv-foot "Bloxkeep · Alerts"
+                    p.set-hint "A sample with made-up accounts. Sent messages use your real ones."
                 div.set-grp [id="sec-dc-summary"]
                   h3.set-grp-title "Play time summary"
                   div.set-card
@@ -209,7 +190,7 @@ html [data-theme="dark" lang="en"]
                           div.t "Every day at"
                         div.ctl
                           span.field.sm.tf.time
-                            input.tf-box [id="s-dc-daily-time" type="time" aria-label="Every day at" value="22:00"]
+                            input.tf-box [id="s-dc-daily-time" type="text" placeholder="08:00 PM" autocomplete="off" aria-label="Every day at" value="10:00 PM"]
                             button.tf-btn [type="button" title="Choose a time" aria-expanded="false" aria-haspopup="dialog" aria-label="Choose a time"]
                               svg.i #ktpp14
                     div.set-row
@@ -308,12 +289,12 @@ html [data-theme="dark" lang="en"]
                         div.d "Messages still arrive, without pings."
                       div.ctl
                         span.field.sm.tf.time
-                          input.tf-box [id="s-dc-quiet-from" type="time" aria-label="From" value="23:00"]
+                          input.tf-box [id="s-dc-quiet-from" type="text" placeholder="08:00 PM" autocomplete="off" aria-label="From" value="11:00 PM"]
                           button.tf-btn [type="button" title="Choose a time" aria-expanded="false" aria-haspopup="dialog" aria-label="Choose a time"]
                             svg.i #ktpp14
                         span.dc-dash "–"
                         span.field.sm.tf.time
-                          input.tf-box [id="s-dc-quiet-to" type="time" aria-label="To" value="07:00"]
+                          input.tf-box [id="s-dc-quiet-to" type="text" placeholder="08:00 PM" autocomplete="off" aria-label="To" value="07:00 AM"]
                           button.tf-btn [type="button" title="Choose a time" aria-expanded="false" aria-haspopup="dialog" aria-label="Choose a time"]
                             svg.i #ktpp14
                         label.switch
@@ -322,10 +303,33 @@ html [data-theme="dark" lang="en"]
                 div.set-grp [id="sec-dc-look"]
                   div.set-card
                     details.set-more [id="s-dc-look"]
-                      summary "Customise messages"
+                      summary "Customize messages"
                         svg.i #u1ag9u
+                div.set-grp [id="sec-dc-profile"]
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Show on my Discord profile"
+                        div.d "Shows the game and window count, never account names. Needs the Discord app."
+                      div.ctl
+                        label.switch
+                          input [id="s-dc-presence" type="checkbox" aria-label="Show on my Discord profile" checked=false]
+                          span
+                div.set-grp [id="sec-dc-remote"]
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Control from Discord"
+                        div.d "Type /pc in Discord to control this PC from anywhere."
+                      div.ctl
+                        label.switch
+                          input [id="s-dc-remote" type="checkbox" aria-label="Control from Discord" checked=false]
+                          span
 #layer
 #toasts
+  div.error.toast [role="alert"]
+    svg.i #42lb9l
+    span "Couldn't reach Discord: No such host is known. (discord.com:443)"
 -- commands
   backupSuggestions {}
   backupSuggestions {}

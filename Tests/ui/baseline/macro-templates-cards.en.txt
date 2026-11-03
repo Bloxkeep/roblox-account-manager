@@ -54,11 +54,11 @@ html [data-theme="dark" lang="en"]
             span "Close all"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+            button.multi-open [title="Multi-Roblox: On: several Roblox windows can be open"]
               span.led
               div
                 b "Multi-Roblox"
-                small "On — several windows allowed"
+                small "On"
             label.switch [title="Turn off Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
@@ -113,6 +113,7 @@ html [data-theme="dark" lang="en"]
 #toasts
 -- commands
   getState {}
+  macroTemplates {}
   monitorArea {"hidden":true}
   pageShown {}
   resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
@@ -172,11 +173,11 @@ html [data-theme="dark" lang="en"]
             span "Close all"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+            button.multi-open [title="Multi-Roblox: On: several Roblox windows can be open"]
               span.led
               div
                 b "Multi-Roblox"
-                small "On — several windows allowed"
+                small "On"
             label.switch [title="Turn off Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
@@ -405,16 +406,16 @@ html [data-theme="dark" lang="en"]
                   p.mp-status "Ready · clicks: 0"
                   ul.mp-opts
                     li
-                      input.mp-label [title="What the player reads next to it" maxlength="30" aria-label="Name of item 1" value="Button colour"]
+                      input.mp-label [title="What the player reads next to it" maxlength="30" aria-label="Name of item 1" value="Button color"]
                       span.mp-val
                         i.mp-swatch [style="background-attachment:initial;background-clip:initial;background-color:rgb(34, 197, 94);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"]
                         span.mp-mini "Pick"
                       span.mp-acts
-                        button.icon-btn [type="button" title="Move up" aria-label="Move up: Button colour" disabled]
+                        button.icon-btn [type="button" title="Move up" aria-label="Move up: Button color" disabled]
                           svg.i #ilfy0l
-                        button.icon-btn [type="button" title="Move down" aria-label="Move down: Button colour"]
+                        button.icon-btn [type="button" title="Move down" aria-label="Move down: Button color"]
                           svg.i #u1ag9u
-                        button.icon-btn [type="button" title="Player can’t change it" aria-label="Player can’t change it: Button colour"]
+                        button.icon-btn [type="button" title="Player can’t change it" aria-label="Player can’t change it: Button color"]
                           svg.i #1tyq039
                     li
                       input.mp-label [title="What the player reads next to it" maxlength="30" aria-label="Name of item 2" value="Then wait"]

@@ -54,18 +54,18 @@ html [data-theme="dark" lang="vi"]
             span "Đóng tất cả"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: Đang bật, mở được nhiều cửa sổ"]
+            button.multi-open [title="Multi-Roblox: Đang bật: mở được nhiều cửa sổ Roblox"]
               span.led
               div
                 b "Multi-Roblox"
-                small "Đang bật, mở được nhiều cửa sổ"
+                small "Đang bật"
             label.switch [title="Tắt Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
         div.side-foot
           div [id="update-slot"]
           div.side-lock
-            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
+            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, Preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
               svg.i #21scx0
               span "Khóa app"
             button.btn.ghost.side-sq.vault-btn [title="Đổi vault (Vault 1)" aria-label="Đổi vault (Vault 1)"]
@@ -89,7 +89,7 @@ html [data-theme="dark" lang="vi"]
               span "Phiên bản Roblox"
             button.set-nav-item [type="button"]
               svg.i #1l5qw3q
-              span "Treo game"
+              span "Treo máy"
             button.set-nav-item [type="button"]
               svg.i #1hupb3o
               span "Thông báo"
@@ -106,11 +106,75 @@ html [data-theme="dark" lang="vi"]
               svg.i #gsei2o
               span "Sao lưu & dữ liệu"
             button.set-nav-item [type="button"]
-              svg.i #1uvtx1
+              img.set-nav-logo [alt="" src="logo.svg"]
               span "Bloxkeep"
           div.scroll.set-scroll
             div.settings
-              p.set-empty [id="set-empty"] "Không có cài đặt nào khớp."
+              section.set-page [id="set-page-perf" aria-labelledby="set-page-perf-h"]
+                h2.set-page-title [id="set-page-perf-h"] "Treo máy"
+                div.set-grp [id="sec-perf"]
+                  h3.set-grp-title "Giữ tài khoản trong game"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Tự vào lại"
+                        div.d "Cho mọi tài khoản. Chỉnh riêng trong menu ⋯ hoặc Preset."
+                      div.ctl
+                        span.set-count [id="s-rejoin-n"] "1/7 tài khoản"
+                        label.switch
+                          input [id="s-rejoin" type="checkbox" aria-label="Tự vào lại" checked=false]
+                          span
+              section.set-page [id="set-page-notify" aria-labelledby="set-page-notify-h"]
+                h2.set-page-title [id="set-page-notify-h"] "Thông báo"
+                div.set-grp [id="sec-notify-kinds"]
+                  h3.set-grp-title "Loại sự kiện"
+                  div.set-card
+                    div.set-sub [id="s-notify-kinds"]
+                      div.set-row
+                        div
+                          div.t "Tài khoản bị văng hoặc tự vào lại"
+                        div.ctl
+                          label.switch
+                            input [id="s-notify-drop" type="checkbox" aria-label="Tài khoản bị văng hoặc tự vào lại" checked=true]
+                            span
+              section.set-page [id="set-page-discord" aria-labelledby="set-page-discord-h"]
+                h2.set-page-title [id="set-page-discord-h"] "Discord"
+                div.set-grp [id="sec-dc-events"]
+                  h3.set-grp-title "Cảnh báo"
+                  div.set-card
+                    details.set-more [id="s-dc-kinds" open=""]
+                      summary "Chọn loại cảnh báo"
+                        svg.i #u1ag9u
+                      div.set-sub
+                        div.set-row
+                          div
+                            div.t "Tài khoản bị văng hoặc tự vào lại"
+                          div.ctl
+                            div.dc-ping
+                              select.select.sm [aria-label="Tag" value="user"]
+                                option [value="none"] "Không ai"
+                                option [value="here"] "@here"
+                                option [value="everyone"] "@everyone"
+                                option [value="user"] "Một người…"
+                                option [value="role"] "Một vai trò…"
+                              input.dc-id.field.sm [placeholder="ID (17–20 chữ số)" autocomplete="off" maxlength="20" aria-label="ID (17–20 chữ số)" value="123456789012345678"]
+                            label.switch
+                              input [id="s-dc-ev-drop" type="checkbox" aria-label="Tài khoản bị văng hoặc tự vào lại" checked=true]
+                              span
+                    p.set-hint "Muốn tag một người hay vai trò thì cần ID: trong Discord bật Cài đặt › Nâng cao › Chế độ nhà phát triển, rồi bấm chuột phải vào người hoặc vai trò › Sao chép ID."
+              section.set-page [id="set-page-updates" aria-labelledby="set-page-updates-h"]
+                h2.set-page-title [id="set-page-updates-h"] "Bloxkeep"
+                div.set-grp [id="sec-app"]
+                  h3.set-grp-title "Ứng dụng"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Chạy ẩn dưới khay hệ thống khi đóng"
+                        div.d "Tự vào lại và Multi-Roblox vẫn chạy. Muốn thoát hẳn, chuột phải vào biểu tượng dưới khay."
+                      div.ctl
+                        label.switch
+                          input [id="s-tray" type="checkbox" aria-label="Chạy ẩn dưới khay hệ thống khi đóng" checked=true]
+                          span
 #layer
 #toasts
 -- commands

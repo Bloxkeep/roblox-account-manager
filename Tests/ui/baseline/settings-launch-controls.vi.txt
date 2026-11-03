@@ -54,18 +54,18 @@ html [data-theme="dark" lang="vi"]
             span "Đóng tất cả"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: Đang bật, mở được nhiều cửa sổ"]
+            button.multi-open [title="Multi-Roblox: Đang bật: mở được nhiều cửa sổ Roblox"]
               span.led
               div
                 b "Multi-Roblox"
-                small "Đang bật, mở được nhiều cửa sổ"
+                small "Đang bật"
             label.switch [title="Tắt Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
         div.side-foot
           div [id="update-slot"]
           div.side-lock
-            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
+            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, Preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
               svg.i #21scx0
               span "Khóa app"
             button.btn.ghost.side-sq.vault-btn [title="Đổi vault (Vault 1)" aria-label="Đổi vault (Vault 1)"]
@@ -89,7 +89,7 @@ html [data-theme="dark" lang="vi"]
               span "Phiên bản Roblox"
             button.set-nav-item [type="button"]
               svg.i #1l5qw3q
-              span "Treo game"
+              span "Treo máy"
             button.set-nav-item [type="button"]
               svg.i #1hupb3o
               span "Thông báo"
@@ -106,7 +106,7 @@ html [data-theme="dark" lang="vi"]
               svg.i #gsei2o
               span "Sao lưu & dữ liệu"
             button.set-nav-item [type="button"]
-              svg.i #1uvtx1
+              img.set-nav-logo [alt="" src="logo.svg"]
               span "Bloxkeep"
           div.scroll.set-scroll
             div.settings
@@ -149,7 +149,7 @@ html [data-theme="dark" lang="vi"]
                         select.select [id="s-taskbar" aria-label="Nút trên thanh tác vụ" value="roblox"]
                           option [value="roblox"] "Gộp chung một nút"
                           option [value="account"] "Mỗi tài khoản một nút"
-                          option [value="preset"] "Mỗi preset một nhóm"
+                          option [value="preset"] "Mỗi Preset một nhóm"
                     div.set-row
                       div
                         div.t "Khi cửa sổ Roblox mở ra"
@@ -158,35 +158,35 @@ html [data-theme="dark" lang="vi"]
                         select.select [id="s-openas" aria-label="Khi cửa sổ Roblox mở ra" value="tile"]
                           option [value="roblox"] "Để Roblox tự chọn"
                           option [value="maximize"] "Phóng to"
-                          option [value="tile"] "Xếp cạnh nhau"
+                          option [value="tile"] "Xếp cửa sổ cạnh nhau"
                     div.set-row
                       div
                         div.t "Kiểu xếp cửa sổ"
-                        div.d "Tự vừa chia đều màn hình. Kiểu lưới có thể làm 2 cửa sổ nhỏ."
+                        div.d "Tự động: các cửa sổ chia đều màn hình."
                       div.ctl
                     div.snap-row [id="s-winlayout"]
                       div.snap [role="group" aria-label="Xếp cửa sổ Roblox"]
                         div.snap-opts
-                          button.snap-opt [role="menuitemradio" type="button" title="Tự vừa" aria-checked="false"]
+                          button.snap-opt [role="menuitemradio" type="button" title="Tự động" aria-checked="false" data-layout="fill"]
                             span.snap-screen
                               span.snap-grid [style="grid-template-columns:repeat(2, 1fr);grid-template-rows:repeat(1, 1fr)"]
                                 span
                                 span
-                            span.snap-name "Tự vừa"
-                          button.snap-opt [role="menuitemradio" type="button" title="2 × 1" aria-checked="false"]
+                            span.snap-name "Tự động"
+                          button.snap-opt [role="menuitemradio" type="button" title="2 × 1" aria-checked="false" data-layout="2x1"]
                             span.snap-screen
                               span.snap-grid [style="grid-template-columns:repeat(2, 1fr);grid-template-rows:repeat(1, 1fr)"]
                                 span
                                 span
                             span.snap-name "2 × 1"
-                          button.snap-opt [role="menuitemradio" type="button" title="3 × 1" aria-checked="false"]
+                          button.snap-opt [role="menuitemradio" type="button" title="3 × 1" aria-checked="false" data-layout="3x1"]
                             span.snap-screen
                               span.snap-grid [style="grid-template-columns:repeat(3, 1fr);grid-template-rows:repeat(1, 1fr)"]
                                 span
                                 span
                                 span
                             span.snap-name "3 × 1"
-                          button.snap-opt [role="menuitemradio" type="button" title="2 × 2" aria-checked="false"]
+                          button.snap-opt [role="menuitemradio" type="button" title="2 × 2" aria-checked="false" data-layout="2x2"]
                             span.snap-screen
                               span.snap-grid [style="grid-template-columns:repeat(2, 1fr);grid-template-rows:repeat(2, 1fr)"]
                                 span
@@ -194,7 +194,7 @@ html [data-theme="dark" lang="vi"]
                                 span
                                 span
                             span.snap-name "2 × 2"
-                          button.snap-opt [role="menuitemradio" type="button" title="3 × 2" aria-checked="false"]
+                          button.snap-opt [role="menuitemradio" type="button" title="3 × 2" aria-checked="false" data-layout="3x2"]
                             span.snap-screen
                               span.snap-grid [style="grid-template-columns:repeat(3, 1fr);grid-template-rows:repeat(2, 1fr)"]
                                 span
@@ -204,7 +204,7 @@ html [data-theme="dark" lang="vi"]
                                 span
                                 span
                             span.snap-name "3 × 2"
-                          button.current.snap-opt [role="menuitemradio" type="button" title="3 × 3" aria-checked="true" FOCUSED]
+                          button.current.snap-opt [role="menuitemradio" type="button" title="3 × 3" aria-checked="true" data-layout="3x3" FOCUSED]
                             span.snap-screen
                               span.snap-grid [style="grid-template-columns:repeat(3, 1fr);grid-template-rows:repeat(3, 1fr)"]
                                 span.on
@@ -217,7 +217,7 @@ html [data-theme="dark" lang="vi"]
                                 span
                                 span
                             span.snap-name "3 × 3"
-                          button.snap-opt [role="menuitemradio" type="button" title="4 × 3" aria-checked="false"]
+                          button.snap-opt [role="menuitemradio" type="button" title="4 × 3" aria-checked="false" data-layout="4x3"]
                             span.snap-screen
                               span.snap-grid [style="grid-template-columns:repeat(4, 1fr);grid-template-rows:repeat(3, 1fr)"]
                                 span
@@ -233,7 +233,7 @@ html [data-theme="dark" lang="vi"]
                                 span
                                 span
                             span.snap-name "4 × 3"
-                          button.snap-opt [role="menuitemradio" type="button" title="4 × 4" aria-checked="false"]
+                          button.snap-opt [role="menuitemradio" type="button" title="4 × 4" aria-checked="false" data-layout="4x4"]
                             span.snap-screen
                               span.snap-grid [style="grid-template-columns:repeat(4, 1fr);grid-template-rows:repeat(4, 1fr)"]
                                 span
@@ -253,7 +253,7 @@ html [data-theme="dark" lang="vi"]
                                 span
                                 span
                             span.snap-name "4 × 4"
-                          button.snap-opt [role="menuitemradio" type="button" title="Tự chọn · 640 × 480" aria-checked="false"]
+                          button.snap-opt [role="menuitemradio" type="button" title="Tự chọn · 640 × 480" aria-checked="false" data-layout="custom"]
                             span.snap-screen
                               span.snap-own [style="height:44.4444%;width:33.3333%"]
                             span.snap-name "Tự chọn"
@@ -270,9 +270,9 @@ html [data-theme="dark" lang="vi"]
                           option [value="bloxstrap"] "Bloxstrap"
                           option [value="fishstrap" disabled] "Fishstrap (chưa cài)"
                           option [value="roblox" disabled] "Roblox (chính thức) (chưa cài)"
-                          option [value="direct"] "Mở thẳng Roblox (không qua launcher)"
+                          option [value="direct"] "Roblox trực tiếp (không qua launcher)"
                           option [value="vng" disabled] "Roblox VNG (chưa cài)"
-                        button.btn.sm [title="Chọn launcher khác…"] "Chọn…"
+                        button.btn.sm [title="Chọn launcher khác…"] "Launcher khác…"
                     div [id="s-store"]
                     div.set-row
                       div
@@ -349,18 +349,18 @@ html [data-theme="dark" lang="vi"]
             span "Đóng tất cả"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: Đang bật, mở được nhiều cửa sổ"]
+            button.multi-open [title="Multi-Roblox: Đang bật: mở được nhiều cửa sổ Roblox"]
               span.led
               div
                 b "Multi-Roblox"
-                small "Đang bật, mở được nhiều cửa sổ"
+                small "Đang bật"
             label.switch [title="Tắt Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
         div.side-foot
           div [id="update-slot"]
           div.side-lock
-            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
+            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, Preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
               svg.i #21scx0
               span "Khóa app"
             button.btn.ghost.side-sq.vault-btn [title="Đổi vault (Vault 1)" aria-label="Đổi vault (Vault 1)"]
@@ -384,7 +384,7 @@ html [data-theme="dark" lang="vi"]
               span "Phiên bản Roblox"
             button.set-nav-item [type="button"]
               svg.i #1l5qw3q
-              span "Treo game"
+              span "Treo máy"
             button.set-nav-item [type="button"]
               svg.i #1hupb3o
               span "Thông báo"
@@ -401,7 +401,7 @@ html [data-theme="dark" lang="vi"]
               svg.i #gsei2o
               span "Sao lưu & dữ liệu"
             button.set-nav-item [type="button"]
-              svg.i #1uvtx1
+              img.set-nav-logo [alt="" src="logo.svg"]
               span "Bloxkeep"
           div.scroll.set-scroll
             div.settings
@@ -444,7 +444,7 @@ html [data-theme="dark" lang="vi"]
                         select.select [id="s-taskbar" aria-label="Nút trên thanh tác vụ" value="roblox"]
                           option [value="roblox"] "Gộp chung một nút"
                           option [value="account"] "Mỗi tài khoản một nút"
-                          option [value="preset"] "Mỗi preset một nhóm"
+                          option [value="preset"] "Mỗi Preset một nhóm"
                     div.set-row
                       div
                         div.t "Khi cửa sổ Roblox mở ra"
@@ -453,35 +453,35 @@ html [data-theme="dark" lang="vi"]
                         select.select [id="s-openas" aria-label="Khi cửa sổ Roblox mở ra" value="tile"]
                           option [value="roblox"] "Để Roblox tự chọn"
                           option [value="maximize"] "Phóng to"
-                          option [value="tile"] "Xếp cạnh nhau"
+                          option [value="tile"] "Xếp cửa sổ cạnh nhau"
                     div.set-row
                       div
                         div.t "Kiểu xếp cửa sổ"
-                        div.d "Tự vừa chia đều màn hình. Kiểu lưới có thể làm 2 cửa sổ nhỏ."
+                        div.d "Tự động: các cửa sổ chia đều màn hình."
                       div.ctl
                     div.snap-row [id="s-winlayout"]
                       div.snap [role="group" aria-label="Xếp cửa sổ Roblox"]
                         div.snap-opts
-                          button.snap-opt [role="menuitemradio" type="button" title="Tự vừa" aria-checked="false"]
+                          button.snap-opt [role="menuitemradio" type="button" title="Tự động" aria-checked="false" data-layout="fill"]
                             span.snap-screen
                               span.snap-grid [style="grid-template-columns:repeat(2, 1fr);grid-template-rows:repeat(1, 1fr)"]
                                 span
                                 span
-                            span.snap-name "Tự vừa"
-                          button.snap-opt [role="menuitemradio" type="button" title="2 × 1" aria-checked="false"]
+                            span.snap-name "Tự động"
+                          button.snap-opt [role="menuitemradio" type="button" title="2 × 1" aria-checked="false" data-layout="2x1"]
                             span.snap-screen
                               span.snap-grid [style="grid-template-columns:repeat(2, 1fr);grid-template-rows:repeat(1, 1fr)"]
                                 span
                                 span
                             span.snap-name "2 × 1"
-                          button.snap-opt [role="menuitemradio" type="button" title="3 × 1" aria-checked="false"]
+                          button.snap-opt [role="menuitemradio" type="button" title="3 × 1" aria-checked="false" data-layout="3x1"]
                             span.snap-screen
                               span.snap-grid [style="grid-template-columns:repeat(3, 1fr);grid-template-rows:repeat(1, 1fr)"]
                                 span
                                 span
                                 span
                             span.snap-name "3 × 1"
-                          button.snap-opt [role="menuitemradio" type="button" title="2 × 2" aria-checked="false"]
+                          button.snap-opt [role="menuitemradio" type="button" title="2 × 2" aria-checked="false" data-layout="2x2"]
                             span.snap-screen
                               span.snap-grid [style="grid-template-columns:repeat(2, 1fr);grid-template-rows:repeat(2, 1fr)"]
                                 span
@@ -489,7 +489,7 @@ html [data-theme="dark" lang="vi"]
                                 span
                                 span
                             span.snap-name "2 × 2"
-                          button.snap-opt [role="menuitemradio" type="button" title="3 × 2" aria-checked="false"]
+                          button.snap-opt [role="menuitemradio" type="button" title="3 × 2" aria-checked="false" data-layout="3x2"]
                             span.snap-screen
                               span.snap-grid [style="grid-template-columns:repeat(3, 1fr);grid-template-rows:repeat(2, 1fr)"]
                                 span
@@ -499,7 +499,7 @@ html [data-theme="dark" lang="vi"]
                                 span
                                 span
                             span.snap-name "3 × 2"
-                          button.snap-opt [role="menuitemradio" type="button" title="3 × 3" aria-checked="false"]
+                          button.snap-opt [role="menuitemradio" type="button" title="3 × 3" aria-checked="false" data-layout="3x3"]
                             span.snap-screen
                               span.snap-grid [style="grid-template-columns:repeat(3, 1fr);grid-template-rows:repeat(3, 1fr)"]
                                 span
@@ -512,7 +512,7 @@ html [data-theme="dark" lang="vi"]
                                 span
                                 span
                             span.snap-name "3 × 3"
-                          button.snap-opt [role="menuitemradio" type="button" title="4 × 3" aria-checked="false"]
+                          button.snap-opt [role="menuitemradio" type="button" title="4 × 3" aria-checked="false" data-layout="4x3"]
                             span.snap-screen
                               span.snap-grid [style="grid-template-columns:repeat(4, 1fr);grid-template-rows:repeat(3, 1fr)"]
                                 span
@@ -528,7 +528,7 @@ html [data-theme="dark" lang="vi"]
                                 span
                                 span
                             span.snap-name "4 × 3"
-                          button.snap-opt [role="menuitemradio" type="button" title="4 × 4" aria-checked="false"]
+                          button.snap-opt [role="menuitemradio" type="button" title="4 × 4" aria-checked="false" data-layout="4x4"]
                             span.snap-screen
                               span.snap-grid [style="grid-template-columns:repeat(4, 1fr);grid-template-rows:repeat(4, 1fr)"]
                                 span
@@ -548,7 +548,7 @@ html [data-theme="dark" lang="vi"]
                                 span
                                 span
                             span.snap-name "4 × 4"
-                          button.current.snap-opt [role="menuitemradio" type="button" title="Tự chọn · 320 × 240" aria-checked="true"]
+                          button.current.snap-opt [role="menuitemradio" type="button" title="Tự chọn · 320 × 240" aria-checked="true" data-layout="custom"]
                             span.snap-screen
                               span.snap-own [style="height:22.2222%;width:16.6667%"]
                             span.snap-name "Tự chọn"
@@ -571,10 +571,10 @@ html [data-theme="dark" lang="vi"]
                           option [value="400x300"] "400 × 300"
                           option [value="320x240"] "320 × 240"
                         label "Rộng"
-                          input.input [id="s-winw" type="number" min="160" max="7680" step="10" value="320" FOCUSED]
+                          input.field.sm [id="s-winw" type="number" min="160" max="7680" step="10" value="320" FOCUSED]
                         span [aria-hidden="true"] "×"
                         label "Cao"
-                          input.input [id="s-winh" type="number" min="120" max="4320" step="10" value="240"]
+                          input.field.sm [id="s-winh" type="number" min="120" max="4320" step="10" value="240"]
                         span.muted "px"
                         button.btn.sm
                           svg.i #1e3syqr
@@ -592,9 +592,9 @@ html [data-theme="dark" lang="vi"]
                           option [value="bloxstrap"] "Bloxstrap"
                           option [value="fishstrap" disabled] "Fishstrap (chưa cài)"
                           option [value="roblox" disabled] "Roblox (chính thức) (chưa cài)"
-                          option [value="direct"] "Mở thẳng Roblox (không qua launcher)"
+                          option [value="direct"] "Roblox trực tiếp (không qua launcher)"
                           option [value="vng" disabled] "Roblox VNG (chưa cài)"
-                        button.btn.sm [title="Chọn launcher khác…"] "Chọn…"
+                        button.btn.sm [title="Chọn launcher khác…"] "Launcher khác…"
                     div [id="s-store"]
                     div.set-row
                       div
@@ -665,18 +665,18 @@ html [data-theme="dark" lang="vi"]
             span "Đóng tất cả"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: Đang bật, mở được nhiều cửa sổ"]
+            button.multi-open [title="Multi-Roblox: Đang bật: mở được nhiều cửa sổ Roblox"]
               span.led
               div
                 b "Multi-Roblox"
-                small "Đang bật, mở được nhiều cửa sổ"
+                small "Đang bật"
             label.switch [title="Tắt Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
         div.side-foot
           div [id="update-slot"]
           div.side-lock
-            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
+            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, Preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
               svg.i #21scx0
               span "Khóa app"
             button.btn.ghost.side-sq.vault-btn [title="Đổi vault (Vault 1)" aria-label="Đổi vault (Vault 1)"]
@@ -700,7 +700,7 @@ html [data-theme="dark" lang="vi"]
               span "Phiên bản Roblox"
             button.set-nav-item [type="button"]
               svg.i #1l5qw3q
-              span "Treo game"
+              span "Treo máy"
             button.set-nav-item [type="button"]
               svg.i #1hupb3o
               span "Thông báo"
@@ -717,7 +717,7 @@ html [data-theme="dark" lang="vi"]
               svg.i #gsei2o
               span "Sao lưu & dữ liệu"
             button.set-nav-item [type="button"]
-              svg.i #1uvtx1
+              img.set-nav-logo [alt="" src="logo.svg"]
               span "Bloxkeep"
           div.scroll.set-scroll
             div.settings
@@ -760,7 +760,7 @@ html [data-theme="dark" lang="vi"]
                         select.select [id="s-taskbar" aria-label="Nút trên thanh tác vụ" value="roblox"]
                           option [value="roblox"] "Gộp chung một nút"
                           option [value="account"] "Mỗi tài khoản một nút"
-                          option [value="preset"] "Mỗi preset một nhóm"
+                          option [value="preset"] "Mỗi Preset một nhóm"
                     div.set-row
                       div
                         div.t "Khi cửa sổ Roblox mở ra"
@@ -769,35 +769,35 @@ html [data-theme="dark" lang="vi"]
                         select.select [id="s-openas" aria-label="Khi cửa sổ Roblox mở ra" value="tile"]
                           option [value="roblox"] "Để Roblox tự chọn"
                           option [value="maximize"] "Phóng to"
-                          option [value="tile"] "Xếp cạnh nhau"
+                          option [value="tile"] "Xếp cửa sổ cạnh nhau"
                     div.set-row
                       div
                         div.t "Kiểu xếp cửa sổ"
-                        div.d "Tự vừa chia đều màn hình. Kiểu lưới có thể làm 2 cửa sổ nhỏ."
+                        div.d "Tự động: các cửa sổ chia đều màn hình."
                       div.ctl
                     div.snap-row [id="s-winlayout"]
                       div.snap [role="group" aria-label="Xếp cửa sổ Roblox"]
                         div.snap-opts
-                          button.snap-opt [role="menuitemradio" type="button" title="Tự vừa" aria-checked="false"]
+                          button.snap-opt [role="menuitemradio" type="button" title="Tự động" aria-checked="false" data-layout="fill"]
                             span.snap-screen
                               span.snap-grid [style="grid-template-columns:repeat(2, 1fr);grid-template-rows:repeat(1, 1fr)"]
                                 span
                                 span
-                            span.snap-name "Tự vừa"
-                          button.snap-opt [role="menuitemradio" type="button" title="2 × 1" aria-checked="false"]
+                            span.snap-name "Tự động"
+                          button.snap-opt [role="menuitemradio" type="button" title="2 × 1" aria-checked="false" data-layout="2x1"]
                             span.snap-screen
                               span.snap-grid [style="grid-template-columns:repeat(2, 1fr);grid-template-rows:repeat(1, 1fr)"]
                                 span
                                 span
                             span.snap-name "2 × 1"
-                          button.snap-opt [role="menuitemradio" type="button" title="3 × 1" aria-checked="false"]
+                          button.snap-opt [role="menuitemradio" type="button" title="3 × 1" aria-checked="false" data-layout="3x1"]
                             span.snap-screen
                               span.snap-grid [style="grid-template-columns:repeat(3, 1fr);grid-template-rows:repeat(1, 1fr)"]
                                 span
                                 span
                                 span
                             span.snap-name "3 × 1"
-                          button.snap-opt [role="menuitemradio" type="button" title="2 × 2" aria-checked="false"]
+                          button.snap-opt [role="menuitemradio" type="button" title="2 × 2" aria-checked="false" data-layout="2x2"]
                             span.snap-screen
                               span.snap-grid [style="grid-template-columns:repeat(2, 1fr);grid-template-rows:repeat(2, 1fr)"]
                                 span
@@ -805,7 +805,7 @@ html [data-theme="dark" lang="vi"]
                                 span
                                 span
                             span.snap-name "2 × 2"
-                          button.snap-opt [role="menuitemradio" type="button" title="3 × 2" aria-checked="false"]
+                          button.snap-opt [role="menuitemradio" type="button" title="3 × 2" aria-checked="false" data-layout="3x2"]
                             span.snap-screen
                               span.snap-grid [style="grid-template-columns:repeat(3, 1fr);grid-template-rows:repeat(2, 1fr)"]
                                 span
@@ -815,7 +815,7 @@ html [data-theme="dark" lang="vi"]
                                 span
                                 span
                             span.snap-name "3 × 2"
-                          button.snap-opt [role="menuitemradio" type="button" title="3 × 3" aria-checked="false"]
+                          button.snap-opt [role="menuitemradio" type="button" title="3 × 3" aria-checked="false" data-layout="3x3"]
                             span.snap-screen
                               span.snap-grid [style="grid-template-columns:repeat(3, 1fr);grid-template-rows:repeat(3, 1fr)"]
                                 span
@@ -828,7 +828,7 @@ html [data-theme="dark" lang="vi"]
                                 span
                                 span
                             span.snap-name "3 × 3"
-                          button.snap-opt [role="menuitemradio" type="button" title="4 × 3" aria-checked="false"]
+                          button.snap-opt [role="menuitemradio" type="button" title="4 × 3" aria-checked="false" data-layout="4x3"]
                             span.snap-screen
                               span.snap-grid [style="grid-template-columns:repeat(4, 1fr);grid-template-rows:repeat(3, 1fr)"]
                                 span
@@ -844,7 +844,7 @@ html [data-theme="dark" lang="vi"]
                                 span
                                 span
                             span.snap-name "4 × 3"
-                          button.snap-opt [role="menuitemradio" type="button" title="4 × 4" aria-checked="false"]
+                          button.snap-opt [role="menuitemradio" type="button" title="4 × 4" aria-checked="false" data-layout="4x4"]
                             span.snap-screen
                               span.snap-grid [style="grid-template-columns:repeat(4, 1fr);grid-template-rows:repeat(4, 1fr)"]
                                 span
@@ -864,7 +864,7 @@ html [data-theme="dark" lang="vi"]
                                 span
                                 span
                             span.snap-name "4 × 4"
-                          button.current.snap-opt [role="menuitemradio" type="button" title="Tự chọn · 1280 × 720" aria-checked="true"]
+                          button.current.snap-opt [role="menuitemradio" type="button" title="Tự chọn · 1280 × 720" aria-checked="true" data-layout="custom"]
                             span.snap-screen
                               span.snap-own [style="height:66.6667%;width:66.6667%"]
                             span.snap-name "Tự chọn"
@@ -887,10 +887,10 @@ html [data-theme="dark" lang="vi"]
                           option [value="400x300"] "400 × 300"
                           option [value="320x240"] "320 × 240"
                         label "Rộng"
-                          input.input [id="s-winw" type="number" min="160" max="7680" step="10" value="1280"]
+                          input.field.sm [id="s-winw" type="number" min="160" max="7680" step="10" value="1280"]
                         span [aria-hidden="true"] "×"
                         label "Cao"
-                          input.input [id="s-winh" type="number" min="120" max="4320" step="10" value="720"]
+                          input.field.sm [id="s-winh" type="number" min="120" max="4320" step="10" value="720"]
                         span.muted "px"
                         button.btn.sm
                           svg.i #1e3syqr
@@ -908,9 +908,9 @@ html [data-theme="dark" lang="vi"]
                           option [value="bloxstrap"] "Bloxstrap"
                           option [value="fishstrap" disabled] "Fishstrap (chưa cài)"
                           option [value="roblox" disabled] "Roblox (chính thức) (chưa cài)"
-                          option [value="direct"] "Mở thẳng Roblox (không qua launcher)"
+                          option [value="direct"] "Roblox trực tiếp (không qua launcher)"
                           option [value="vng" disabled] "Roblox VNG (chưa cài)"
-                        button.btn.sm [title="Chọn launcher khác…"] "Chọn…"
+                        button.btn.sm [title="Chọn launcher khác…"] "Launcher khác…"
                     div [id="s-store"]
                     div.set-row
                       div

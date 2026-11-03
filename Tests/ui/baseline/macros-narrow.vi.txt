@@ -8,6 +8,7 @@ html [data-theme="dark" lang="vi"]
       div.side-nav
         button.nav [title="Tài khoản"]
           svg.i #v823bm
+          em [id="nav-count"] "7"
         button.nav [title="Preset"]
           svg.i #1pvni8o
         button.nav.on [title="Macro (Beta)"]
@@ -24,12 +25,12 @@ html [data-theme="dark" lang="vi"]
         div [id="side-warn"]
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: Đang bật, mở được nhiều cửa sổ"]
+            button.multi-open [title="Multi-Roblox: Đang bật: mở được nhiều cửa sổ Roblox"]
               span.led
         div.side-foot
           div [id="update-slot"]
           div.side-lock
-            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
+            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, Preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
               svg.i #21scx0
             button.btn.ghost.side-sq.vault-btn [title="Đổi vault (Vault 1)" aria-label="Đổi vault (Vault 1)"]
               span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(22, 163, 74);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
@@ -39,12 +40,11 @@ html [data-theme="dark" lang="vi"]
         header.top
           div.top-title
             h1 "Macro"
-              span.mc-beta.state-pill.warn [title="Tính năng mới: có thể chạy khác nhau trên mỗi máy. Gặp lỗi hãy báo ở mục Hướng dẫn & góp ý."] "Beta"
-            p [id="mc-sub"] "macro đang chạyMacro lần lượt đưa từng cửa sổ Roblox lên trước trong giây lát."
+              span.mc-beta.state-pill.warn [title="Tính năng mới: có thể chạy khác nhau trên mỗi máy. Gặp lỗi hãy báo ở mục Hướng dẫn & góp ý. Macro lần lượt đưa từng cửa sổ Roblox lên trước trong giây lát."] "Beta"
+            p [id="mc-sub"] "macro đang chạy"
               b "4"
               span.sep "·"
               b "2"
-              span.sep "·"
           div.top-tools
             button.btn.mc-stop-all [title="Dừng mọi macro và bản ghi, thả mọi phím đang giữ (Ctrl+Alt+0 dùng được ở mọi app)"]
               svg.i #t57b2k
@@ -64,10 +64,14 @@ html [data-theme="dark" lang="vi"]
                 svg.i #1ap9cll
               div.pv-main
                 b [title="Nhảy chống AFK"] "Nhảy chống AFK"
-                span.live.mc-line [title="Tài khoản chính: đang chạy · Farm 1: tạm dừng (bạn đang dùng máy)"] "Tài khoản chính: đang chạy · Farm 1: tạm dừng (bạn đang dùng máy)"
-              button.btn.mc-panel.sm [type="button" title="Hiện bảng cạnh game" aria-label="Bảng: Nhảy chống AFK" aria-pressed="false"]
+                span.mc-line.on [title="Tài khoản chính: đang chạy · Farm 1: tạm dừng (bạn đang dùng máy)"]
+                  span.mc-acc.s-running "Tài khoản chính: đang chạy"
+                    i [aria-hidden="true"]
+                  span.mc-acc.s-paused "Farm 1: tạm dừng (bạn đang dùng máy)"
+                    i [aria-hidden="true"]
+              button.btn.mc-panel.sm [type="button" title="Hiện bảng cạnh game" aria-label="Bảng điều khiển: Nhảy chống AFK" aria-pressed="false"]
                 svg.i #1e3syqr
-                span "Bảng"
+                span "Bảng điều khiển"
               button.btn.mc-stop.pv-run.sm [aria-label="Dừng: Nhảy chống AFK"]
                 svg.i #t57b2k
                 span "Dừng"
@@ -78,15 +82,17 @@ html [data-theme="dark" lang="vi"]
                 svg.i #top79o
               span.mc-icon.on.pv-icon
                 svg.i #kx2qfl
+                i.mc-icon-bad [title="Lần chạy trước bị dừng" aria-hidden="true"]
               div.pv-main
                 b [title="Nhận rương hằng ngày"] "Nhận rương hằng ngày"
-                span.bad.mc-line [title="Tài khoản chính: tạm dừng (đang bật gõ tiếng Việt) · Farm 1: đã dừng (không thấy thứ cần tìm)"] "Tài khoản chính: tạm dừng (đang bật gõ tiếng Việt) · Farm 1: đã dừng (không thấy thứ cần tìm)"
-              button.btn.mc-fix.sm [type="button" aria-label="Sửa lỗi: Nhận rương hằng ngày"]
-                svg.i #yqrnd9
-                span "Sửa lỗi"
-              button.btn.mc-panel.sm [type="button" title="Hiện bảng cạnh game" aria-label="Bảng: Nhận rương hằng ngày" aria-pressed="false"]
+                span.bad.mc-line [title="Tài khoản chính: tạm dừng (đang bật gõ tiếng Việt) · Farm 1: đã dừng (không thấy thứ cần tìm)"]
+                  span.mc-acc.s-paused "Tài khoản chính: tạm dừng (đang bật gõ tiếng Việt)"
+                    i [aria-hidden="true"]
+                  span.mc-acc.s-failed "Farm 1: đã dừng (không thấy thứ cần tìm)"
+                    i [aria-hidden="true"]
+              button.btn.mc-panel.sm [type="button" title="Hiện bảng cạnh game" aria-label="Bảng điều khiển: Nhận rương hằng ngày" aria-pressed="false"]
                 svg.i #1e3syqr
-                span "Bảng"
+                span "Bảng điều khiển"
               button.btn.mc-stop.pv-run.sm [aria-label="Dừng: Nhận rương hằng ngày"]
                 svg.i #t57b2k
                 span "Dừng"
@@ -99,10 +105,12 @@ html [data-theme="dark" lang="vi"]
                 svg.i #1ap9cll
               div.pv-main
                 b [title="Đường farm"] "Đường farm"
-                span.mc-line [title="Tài khoản chính: xong"] "Tài khoản chính: xong"
-              button.btn.mc-panel.sm [type="button" title="Hiện bảng cạnh game" aria-label="Bảng: Đường farm" aria-pressed="false"]
+                span.mc-line [title="Tài khoản chính: xong"]
+                  span.mc-acc.s-done "Tài khoản chính: xong"
+                    i [aria-hidden="true"]
+              button.btn.mc-panel.sm [type="button" title="Hiện bảng cạnh game" aria-label="Bảng điều khiển: Đường farm" aria-pressed="false"]
                 svg.i #1e3syqr
-                span "Bảng"
+                span "Bảng điều khiển"
               button.btn.pv-run.sm [aria-label="Chạy: Đường farm"]
                 svg.i #1ewcuky
                 span "Chạy"
@@ -116,10 +124,10 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Quăng và kéo cần"] "Quăng và kéo cần"
                 span.mc-line [title="Khi bạn bấm Chạy · Tài khoản đang chọn · Ctrl+Alt+3"] "Khi bạn bấm Chạy · Tài khoản đang chọn · Ctrl+Alt+3"
-              button.btn.mc-panel.on.sm [type="button" title="Ẩn bảng" aria-label="Bảng: Quăng và kéo cần" aria-pressed="true"]
-                svg.i #1e3syqr
-                span "Bảng"
-              button.btn.pv-run.sm [title="Hãy chọn tài khoản ở tab Tài khoản trước." aria-label="Chạy: Quăng và kéo cần" disabled]
+              button.btn.mc-panel.on.sm [type="button" title="Ẩn bảng" aria-label="Bảng điều khiển: Quăng và kéo cần" aria-pressed="true"]
+                i.mc-panel-dot [aria-hidden="true"]
+                span "Bảng điều khiển"
+              button.btn.pv-run.sm [aria-label="Chạy: Quăng và kéo cần"]
                 svg.i #1ewcuky
                 span "Chạy"
               button.icon-btn [type="button" title="Thêm" aria-haspopup="menu" aria-label="Thêm: Quăng và kéo cần"]

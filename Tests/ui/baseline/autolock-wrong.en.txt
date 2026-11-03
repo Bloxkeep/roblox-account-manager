@@ -14,7 +14,7 @@ html [data-theme="dark" lang="en"]
       p.lock-paused "Locked after 15 minutes without use. Roblox, auto-rejoin, scheduled presets and Discord kept running."
       div.stack
         div.pw
-          input.field [id="pw1" type="password" placeholder="Master password" maxlength="256" aria-label="Master password" value="•••" FOCUSED]
+          input.field [id="pw1" type="password" placeholder="Master password" maxlength="256" aria-invalid="true" aria-label="Master password" value="•••" FOCUSED]
           button.icon-btn [id="pw-eye" type="button" title="Show password" aria-label="Show password" aria-pressed="false"]
             svg.i #1pcfgz
       div.lock-error [id="lock-error" role="alert"] "Wrong master password."

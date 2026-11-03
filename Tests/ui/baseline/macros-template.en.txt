@@ -54,11 +54,11 @@ html [data-theme="dark" lang="en"]
             span "Close all"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+            button.multi-open [title="Multi-Roblox: On: several Roblox windows can be open"]
               span.led
               div
                 b "Multi-Roblox"
-                small "On — several windows allowed"
+                small "On"
             label.switch [title="Turn off Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
@@ -76,8 +76,8 @@ html [data-theme="dark" lang="en"]
         header.top
           div.top-title
             h1 "Macros"
-              span.mc-beta.state-pill.warn [title="New: it may not work the same on every PC. Tell us what goes wrong under Help & feedback."] "Beta"
-            p [id="mc-sub"] "Macros take each Roblox window to the front for a moment, one at a time."
+              span.mc-beta.state-pill.warn [title="New: it may not work the same on every PC. Tell us what goes wrong under Help & feedback. Macros take each Roblox window to the front for a moment, one at a time."] "Beta"
+            p [id="mc-sub"]
           div.top-tools
             button.btn.mc-stop-all [title="Stops every macro and recording, and lets go of every key (Ctrl+Alt+0 does it from any app)" disabled]
               svg.i #t57b2k
@@ -100,7 +100,7 @@ html [data-theme="dark" lang="en"]
                   svg.i #1mr8rx5
                   b "Record…"
                   small "Play once, it copies you"
-                button.mc-tile [type="button" aria-expanded="true" aria-haspopup="menu" FOCUSED]
+                button.mc-tile [type="button" aria-expanded="true" aria-haspopup="dialog"]
                   svg.i #1pvni8o
                   b "From a template"
                   small "Ready-made, set it for your game"
@@ -110,16 +110,6 @@ html [data-theme="dark" lang="en"]
                   small "Add the steps yourself"
               button.link [type="button"] "Or import a macro file"
 #layer
-  div.menu [role="menu" style="left:660.656px;top:423.016px"]
-    button [role="menuitem"]
-      svg.i #kx2qfl
-      span [title="Presses a key every few seconds."] "Press keys on repeat"
-    button [role="menuitem"]
-      svg.i #16jqtkh
-      span [title="Waits for a button, clicks it, again and again."] "Click a button when it shows up"
-    button [role="menuitem"]
-      svg.i #1l5qw3q
-      span [title="For bar minigames: hold, wait for the bar, follow the target."] "Hold to cast, then keep the bar on the target"
 #toasts
 -- commands
   getState {}
@@ -183,11 +173,11 @@ html [data-theme="dark" lang="en"]
             span "Close all"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+            button.multi-open [title="Multi-Roblox: On: several Roblox windows can be open"]
               span.led
               div
                 b "Multi-Roblox"
-                small "On — several windows allowed"
+                small "On"
             label.switch [title="Turn off Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
@@ -205,8 +195,8 @@ html [data-theme="dark" lang="en"]
         header.top
           div.top-title
             h1 "Macros"
-              span.mc-beta.state-pill.warn [title="New: it may not work the same on every PC. Tell us what goes wrong under Help & feedback."] "Beta"
-            p [id="mc-sub"] "Macros take each Roblox window to the front for a moment, one at a time."
+              span.mc-beta.state-pill.warn [title="New: it may not work the same on every PC. Tell us what goes wrong under Help & feedback. Macros take each Roblox window to the front for a moment, one at a time."] "Beta"
+            p [id="mc-sub"]
           div.top-tools
             button.btn.mc-stop-all [title="Stops every macro and recording, and lets go of every key (Ctrl+Alt+0 does it from any app)" disabled]
               svg.i #t57b2k
@@ -229,7 +219,7 @@ html [data-theme="dark" lang="en"]
                   svg.i #1mr8rx5
                   b "Record…"
                   small "Play once, it copies you"
-                button.mc-tile [type="button" aria-expanded="false" aria-haspopup="menu"]
+                button.mc-tile [type="button" aria-expanded="false" aria-haspopup="dialog"]
                   svg.i #1pvni8o
                   b "From a template"
                   small "Ready-made, set it for your game"
@@ -252,42 +242,95 @@ html [data-theme="dark" lang="en"]
               div.form.mc-top
                 div.mc-name-row
                   label "Name"
-                    input.field [id="mc-name" placeholder="Farm loop" maxlength="60" value="Press keys on repeat" FOCUSED]
+                    input.field [id="mc-name" placeholder="Farm loop" maxlength="60" value="Press a key every few minutes" FOCUSED]
                   button.btn.mc-try-it [id="mc-try" type="button" title="Runs it once on Main’s window and says what it saw" aria-pressed="false"]
                     svg.i #1ewcuky
                     span "Try it"
                 details.mc-when
                   summary [id="mc-when"]
-                    span "Every 10 s · Selected accounts · No hotkey"
+                    span "When you press Run · Selected accounts · No hotkey"
                     svg.i #u1ag9u
               section.mc-steps-sec [aria-labelledby="mc-steps-h"]
                 div.mc-steps-head
                   b [id="mc-steps-h"] "Steps"
-                    span.muted "(1)"
+                    span.muted "(4)"
                   button.btn.sm [id="mc-record" type="button" title="Records what you do in the chosen window; F8 stops"]
                     svg.i #1mr8rx5
                     span "Record"
-                  button.btn.primary.sm [id="mc-add" type="button" aria-haspopup="menu"]
+                  button.btn.sm [id="mc-add" type="button" aria-expanded="false" aria-haspopup="dialog"]
                     svg.i #u7ty99
                     span "Add step"
                 div.mc-steps [role="list" aria-labelledby="mc-steps-h"]
-                  div.mc-step [role="listitem" aria-label="Step 1: Press E" style="--d:0"]
+                  div.mc-opener.mc-step [role="listitem" aria-label="Step 1: Repeat until stopped" style="--d:0"]
+                    button.mc-ins [type="button" title="Add a step here" tabindex="-1" aria-haspopup="dialog" aria-label="Add a step here"]
+                      span.mc-ins-dot
+                        svg.i #u7ty99
                     span.ord-grip [title="Drag to reorder"]
                       svg.i #top79o
                     span.mc-step-n [aria-hidden="true"] "1"
-                    button.k-key.mc-step-head [type="button" aria-expanded="false"]
-                      svg.i #kx2qfl
-                      span.mc-say "Press E"
+                    button.icon-btn.mc-fold [type="button" title="Fold" aria-expanded="true" aria-label="Fold: Step 1"]
+                      svg.i #18mpr3r
+                    button.k-loop.mc-step-head [type="button" aria-expanded="false"]
+                      svg.i #1ap9cll
+                      span.mc-say "Repeat until stopped"
                       svg.i #u1ag9u
                     span.mc-step-acts
                       button.icon-btn [type="button" title="Move up" aria-label="Move up: Step 1" disabled]
                         svg.i #ilfy0l
                       button.icon-btn [type="button" title="Move down" aria-label="Move down: Step 1" disabled]
                         svg.i #u1ag9u
-                      button.icon-btn [type="button" title="Duplicate step" aria-label="Duplicate step: Step 1"]
-                        svg.i #2s24cy
-                      button.icon-btn [type="button" title="Delete step" aria-label="Delete step: Step 1"]
-                        svg.i #1w1g8zc
+                      button.icon-btn [type="button" title="More" aria-haspopup="menu" aria-label="More: Step 1"]
+                        svg.i #1e3omv2
+                  div.mc-step [role="listitem" aria-label="Step 2: Press Space" style="--d:1"]
+                    span.mc-rail [aria-hidden="true" style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:;left:-14px"]
+                    button.mc-ins [type="button" title="Add a step here" tabindex="-1" aria-haspopup="dialog" aria-label="Add a step here"]
+                      span.mc-ins-dot
+                        svg.i #u7ty99
+                    span.ord-grip [title="Drag to reorder"]
+                      svg.i #top79o
+                    span.mc-step-n [aria-hidden="true"] "2"
+                    button.k-key.mc-step-head [type="button" aria-expanded="false"]
+                      svg.i #kx2qfl
+                      span.mc-say "Press Space"
+                      svg.i #u1ag9u
+                    span.mc-step-acts
+                      button.icon-btn [type="button" title="Move up" aria-label="Move up: Step 2"]
+                        svg.i #ilfy0l
+                      button.icon-btn [type="button" title="Move down" aria-label="Move down: Step 2"]
+                        svg.i #u1ag9u
+                      button.icon-btn [type="button" title="More" aria-haspopup="menu" aria-label="More: Step 2"]
+                        svg.i #1e3omv2
+                    p.mc-step-note
+                      button.link [type="button" title="Edit note"] "Roblox kicks idle players after 20 minutes; this presses a key before that."
+                  div.mc-step [role="listitem" aria-label="Step 3: Wait 5 min" style="--d:1"]
+                    span.mc-rail [aria-hidden="true" style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:;left:-14px"]
+                    button.mc-ins [type="button" title="Add a step here" tabindex="-1" aria-haspopup="dialog" aria-label="Add a step here"]
+                      span.mc-ins-dot
+                        svg.i #u7ty99
+                    span.ord-grip [title="Drag to reorder"]
+                      svg.i #top79o
+                    span.mc-step-n [aria-hidden="true"] "3"
+                    button.k-wait.mc-step-head [type="button" aria-expanded="false"]
+                      svg.i #ktpp14
+                      span.mc-say "Wait 5 min"
+                      svg.i #u1ag9u
+                    span.mc-step-acts
+                      button.icon-btn [type="button" title="Move up" aria-label="Move up: Step 3"]
+                        svg.i #ilfy0l
+                      button.icon-btn [type="button" title="Move down" aria-label="Move down: Step 3"]
+                        svg.i #u1ag9u
+                      button.icon-btn [type="button" title="More" aria-haspopup="menu" aria-label="More: Step 3"]
+                        svg.i #1e3omv2
+                    p.mc-step-note
+                      button.link [type="button" title="Edit note"] "The player can change how long on the panel"
+                  div.mc-end.mc-step [role="listitem" aria-label="Step 4: end repeat" style="--d:0"]
+                    button.mc-ins [type="button" title="Add a step here" tabindex="-1" aria-haspopup="dialog" aria-label="Add a step here"]
+                      span.mc-ins-dot
+                        svg.i #u7ty99
+                    span.mc-step-n [aria-hidden="true"] "4"
+                    span.mc-step-head
+                      svg.i #5fto4c
+                      span.mc-say "end repeat"
               section.mc-sees [aria-labelledby="mc-sees-h"]
                 div.mc-sees-head
                   b [id="mc-sees-h"] "Player sees"
@@ -297,7 +340,7 @@ html [data-theme="dark" lang="en"]
                     span "Add"
                 div.mp-win [aria-label="Panel preview"]
                   div.mp-title
-                    b "Press keys on repeat"
+                    b "Press a key every few minutes"
                     em "Beta"
                     span.mp-x [aria-hidden="true"] "–"
                     span.mp-x [aria-hidden="true"]
@@ -305,15 +348,28 @@ html [data-theme="dark" lang="en"]
                   div.mp-run
                     svg.i #1ewcuky
                     span "Run"
-                  p.mp-status "Not running"
+                  p.mp-status "Ready"
                   ul.mp-opts
                     li
-                      input.mp-label [title="What the player reads next to it" maxlength="30" aria-label="Name of item 1" value="Key"]
+                      input.mp-label [title="What the player reads next to it" maxlength="30" aria-label="Name of item 1" value="Every"]
                       span.mp-val
-                        kbd "E"
+                        span.mp-mini "−"
+                        span.mp-field.num "5 min"
+                        span.mp-mini "+"
+                      span.mp-acts
+                        button.icon-btn [type="button" title="Move up" aria-label="Move up: Every" disabled]
+                          svg.i #ilfy0l
+                        button.icon-btn [type="button" title="Move down" aria-label="Move down: Every"]
+                          svg.i #u1ag9u
+                        button.icon-btn [type="button" title="Player can’t change it" aria-label="Player can’t change it: Every"]
+                          svg.i #1tyq039
+                    li
+                      input.mp-label [title="What the player reads next to it" maxlength="30" aria-label="Name of item 2" value="Key"]
+                      span.mp-val
+                        kbd "Space"
                         span.mp-mini "Change"
                       span.mp-acts
-                        button.icon-btn [type="button" title="Move up" aria-label="Move up: Key" disabled]
+                        button.icon-btn [type="button" title="Move up" aria-label="Move up: Key"]
                           svg.i #ilfy0l
                         button.icon-btn [type="button" title="Move down" aria-label="Move down: Key" disabled]
                           svg.i #u1ag9u
@@ -327,7 +383,7 @@ html [data-theme="dark" lang="en"]
                     span
                   span
                     b "Show the panel by itself"
-                    small "While an account is in this game (empty: any game)."
+                    small "While an account is in this game. Leave the game empty for any game."
             aside.mc-side
               section.mc-game [aria-labelledby="mc-game-h"]
                 div.mc-pic-head
@@ -335,12 +391,13 @@ html [data-theme="dark" lang="en"]
                   select.select.sm [id="mc-pic-acc" aria-label="Whose window" value="00000000-0000-4000-8000-000000000001"]
                     option [value="00000000-0000-4000-8000-000000000001"] "Main"
                     option [value="00000000-0000-4000-8000-000000000002"] "Farm 1"
-                  button.btn.primary.sm [id="mc-ongame" type="button" aria-pressed="false"]
+                  button.btn.sm [id="mc-ongame" type="button" aria-pressed="false"]
                     svg.i #1e3syqr
                     span "Edit on game"
                 p.mc-game-say [role="status"] "Shows each step’s dot and each area’s box on Main’s window, to drag into place."
                 div.blank.mc-pic-frame [role="group" tabindex="-1" aria-label="The game window: numbered dots are where steps click, boxes are areas. Arrow keys move the one in focus." style="aspect-ratio:1.77778 / 1"]
-                  span.mc-pic-blank "Take a picture to see the game here"
+                  span.mc-pic-blank
+                    span "Take a picture to see the game here"
                 div.mc-pic-acts
                   button.btn.sm [id="mc-pic-take" type="button"]
                     svg.i #16jqtkh
@@ -355,7 +412,7 @@ html [data-theme="dark" lang="en"]
                   p.mc-pic-none "No areas yet. An area is a box on the game where a step looks."
       div.modal-foot
         button.btn "Cancel"
-        button.btn.primary "Save"
+        button.btn.primary [aria-disabled="false"] "Save"
 #toasts
 -- commands
   pageBusy {"busy":true}
@@ -415,11 +472,11 @@ html [data-theme="dark" lang="en"]
             span "Close all"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+            button.multi-open [title="Multi-Roblox: On: several Roblox windows can be open"]
               span.led
               div
                 b "Multi-Roblox"
-                small "On — several windows allowed"
+                small "On"
             label.switch [title="Turn off Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
@@ -437,10 +494,9 @@ html [data-theme="dark" lang="en"]
         header.top
           div.top-title
             h1 "Macros"
-              span.mc-beta.state-pill.warn [title="New: it may not work the same on every PC. Tell us what goes wrong under Help & feedback."] "Beta"
-            p [id="mc-sub"] "macroMacros take each Roblox window to the front for a moment, one at a time."
+              span.mc-beta.state-pill.warn [title="New: it may not work the same on every PC. Tell us what goes wrong under Help & feedback. Macros take each Roblox window to the front for a moment, one at a time."] "Beta"
+            p [id="mc-sub"] "macro"
               b "1"
-              span.sep "·"
           div.top-tools
             button.btn.mc-stop-all [title="Stops every macro and recording, and lets go of every key (Ctrl+Alt+0 does it from any app)" disabled]
               svg.i #t57b2k
@@ -453,22 +509,22 @@ html [data-theme="dark" lang="en"]
         p.mc-live [role="status" aria-live="polite"]
         div.scroll
           div.mc-list.pv-list [id="mc-list" role="list"]
-            div.mc-item.pv-item [role="listitem" aria-label="Press keys on repeat"]
+            div.mc-item.pv-item [role="listitem" aria-label="Press a key every few minutes"]
               span.mc-icon.pv-icon
-                svg.i #1ap9cll
+                svg.i #kx2qfl
               div.pv-main
-                b [title="Press keys on repeat"] "Press keys on repeat"
-                span.mc-line [title="Every 10 s · Selected accounts"] "Every 10 s · Selected accounts"
-              button.btn.mc-panel.sm [type="button" title="Show its panel beside the game" aria-label="Panel: Press keys on repeat" aria-pressed="false"]
+                b [title="Press a key every few minutes"] "Press a key every few minutes"
+                span.mc-line [title="When you press Run · Selected accounts"] "When you press Run · Selected accounts"
+              button.btn.mc-panel.sm [type="button" title="Show its panel beside the game" aria-label="Panel: Press a key every few minutes" aria-pressed="false"]
                 svg.i #1e3syqr
                 span "Panel"
-              button.btn.pv-run.sm [title="Select accounts in the Accounts tab first." aria-label="Run: Press keys on repeat" disabled]
+              button.btn.pv-run.sm [title="Select accounts in the Accounts tab first." aria-label="Run: Press a key every few minutes" disabled]
                 svg.i #1ewcuky
                 span "Run"
-              button.icon-btn [type="button" title="More" aria-haspopup="menu" aria-label="More: Press keys on repeat"]
+              button.icon-btn [type="button" title="More" aria-haspopup="menu" aria-label="More: Press a key every few minutes"]
                 svg.i #1e3omv2
 #layer
 #toasts
 -- commands
   pageBusy {"busy":false}
-  saveMacro {"macro":{"accountIds":[],"areas":[],"enabled":true,"hotkey":null,"id":"","jitterMs":40,"jitterPx":3,"maxMinutes":60,"name":"Press keys on repeat","onFail":"stop","options":[{"default":"E","kind":"key","label":"Key","name":"o1","value":"E"}],"panel":{"autoShow":false,"placeId":null},"steps":[{"key":"$o1","kind":"key","ms":60}],"stuckMinutes":5,"targets":"selected","trigger":{"everySeconds":10,"kind":"interval"}}}
+  saveMacro {"macro":{"accountIds":[],"areas":[],"enabled":true,"hotkey":null,"id":"","jitterMs":40,"jitterPx":3,"maxMinutes":240,"name":"Press a key every few minutes","onFail":"stop","options":[{"default":300000,"kind":"number","label":"Every","max":1080000,"min":1000,"name":"o1","unit":"s","value":300000},{"default":"Space","kind":"key","label":"Key","name":"o2","value":"Space"}],"panel":{"autoShow":false,"placeId":null},"steps":[{"kind":"loop","times":0},{"key":"$o2","kind":"key","ms":60,"note":"Roblox kicks idle players after 20 minutes; this presses a key before that."},{"kind":"wait","ms":"$o1","note":"The player can change how long on the panel"},{"kind":"endLoop"}],"stuckMinutes":5,"targets":"selected","trigger":{"kind":"manual"}}}

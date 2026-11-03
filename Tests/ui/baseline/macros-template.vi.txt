@@ -54,18 +54,18 @@ html [data-theme="dark" lang="vi"]
             span "Đóng tất cả"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: Đang bật, mở được nhiều cửa sổ"]
+            button.multi-open [title="Multi-Roblox: Đang bật: mở được nhiều cửa sổ Roblox"]
               span.led
               div
                 b "Multi-Roblox"
-                small "Đang bật, mở được nhiều cửa sổ"
+                small "Đang bật"
             label.switch [title="Tắt Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
         div.side-foot
           div [id="update-slot"]
           div.side-lock
-            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
+            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, Preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
               svg.i #21scx0
               span "Khóa app"
             button.btn.ghost.side-sq.vault-btn [title="Đổi vault (Vault 1)" aria-label="Đổi vault (Vault 1)"]
@@ -76,8 +76,8 @@ html [data-theme="dark" lang="vi"]
         header.top
           div.top-title
             h1 "Macro"
-              span.mc-beta.state-pill.warn [title="Tính năng mới: có thể chạy khác nhau trên mỗi máy. Gặp lỗi hãy báo ở mục Hướng dẫn & góp ý."] "Beta"
-            p [id="mc-sub"] "Macro lần lượt đưa từng cửa sổ Roblox lên trước trong giây lát."
+              span.mc-beta.state-pill.warn [title="Tính năng mới: có thể chạy khác nhau trên mỗi máy. Gặp lỗi hãy báo ở mục Hướng dẫn & góp ý. Macro lần lượt đưa từng cửa sổ Roblox lên trước trong giây lát."] "Beta"
+            p [id="mc-sub"]
           div.top-tools
             button.btn.mc-stop-all [title="Dừng mọi macro và bản ghi, thả mọi phím đang giữ (Ctrl+Alt+0 dùng được ở mọi app)" disabled]
               svg.i #t57b2k
@@ -100,7 +100,7 @@ html [data-theme="dark" lang="vi"]
                   svg.i #1mr8rx5
                   b "Ghi thao tác…"
                   small "Chơi một lần, macro làm theo"
-                button.mc-tile [type="button" aria-expanded="true" aria-haspopup="menu" FOCUSED]
+                button.mc-tile [type="button" aria-expanded="true" aria-haspopup="dialog"]
                   svg.i #1pvni8o
                   b "Từ mẫu có sẵn"
                   small "Làm sẵn, chỉnh cho game của bạn"
@@ -110,16 +110,6 @@ html [data-theme="dark" lang="vi"]
                   small "Tự thêm từng bước"
               button.link [type="button"] "Hoặc nhập file macro"
 #layer
-  div.menu [role="menu" style="left:660.656px;top:423.016px"]
-    button [role="menuitem"]
-      svg.i #kx2qfl
-      span [title="Bấm một phím sau mỗi vài giây."] "Bấm phím lặp lại"
-    button [role="menuitem"]
-      svg.i #16jqtkh
-      span [title="Chờ nút hiện ra rồi bấm, lặp lại."] "Bấm nút khi nó hiện"
-    button [role="menuitem"]
-      svg.i #1l5qw3q
-      span [title="Cho minigame thanh: giữ, chờ thanh, bám mục tiêu."] "Giữ để quăng, rồi giữ thanh trên mục tiêu"
 #toasts
 -- commands
   getState {}
@@ -183,18 +173,18 @@ html [data-theme="dark" lang="vi"]
             span "Đóng tất cả"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: Đang bật, mở được nhiều cửa sổ"]
+            button.multi-open [title="Multi-Roblox: Đang bật: mở được nhiều cửa sổ Roblox"]
               span.led
               div
                 b "Multi-Roblox"
-                small "Đang bật, mở được nhiều cửa sổ"
+                small "Đang bật"
             label.switch [title="Tắt Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
         div.side-foot
           div [id="update-slot"]
           div.side-lock
-            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
+            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, Preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
               svg.i #21scx0
               span "Khóa app"
             button.btn.ghost.side-sq.vault-btn [title="Đổi vault (Vault 1)" aria-label="Đổi vault (Vault 1)"]
@@ -205,8 +195,8 @@ html [data-theme="dark" lang="vi"]
         header.top
           div.top-title
             h1 "Macro"
-              span.mc-beta.state-pill.warn [title="Tính năng mới: có thể chạy khác nhau trên mỗi máy. Gặp lỗi hãy báo ở mục Hướng dẫn & góp ý."] "Beta"
-            p [id="mc-sub"] "Macro lần lượt đưa từng cửa sổ Roblox lên trước trong giây lát."
+              span.mc-beta.state-pill.warn [title="Tính năng mới: có thể chạy khác nhau trên mỗi máy. Gặp lỗi hãy báo ở mục Hướng dẫn & góp ý. Macro lần lượt đưa từng cửa sổ Roblox lên trước trong giây lát."] "Beta"
+            p [id="mc-sub"]
           div.top-tools
             button.btn.mc-stop-all [title="Dừng mọi macro và bản ghi, thả mọi phím đang giữ (Ctrl+Alt+0 dùng được ở mọi app)" disabled]
               svg.i #t57b2k
@@ -229,7 +219,7 @@ html [data-theme="dark" lang="vi"]
                   svg.i #1mr8rx5
                   b "Ghi thao tác…"
                   small "Chơi một lần, macro làm theo"
-                button.mc-tile [type="button" aria-expanded="false" aria-haspopup="menu"]
+                button.mc-tile [type="button" aria-expanded="false" aria-haspopup="dialog"]
                   svg.i #1pvni8o
                   b "Từ mẫu có sẵn"
                   small "Làm sẵn, chỉnh cho game của bạn"
@@ -252,42 +242,95 @@ html [data-theme="dark" lang="vi"]
               div.form.mc-top
                 div.mc-name-row
                   label "Tên"
-                    input.field [id="mc-name" placeholder="Ví dụ: Farm quái" maxlength="60" value="Bấm phím lặp lại" FOCUSED]
+                    input.field [id="mc-name" placeholder="Ví dụ: Farm quái" maxlength="60" value="Bấm phím định kỳ" FOCUSED]
                   button.btn.mc-try-it [id="mc-try" type="button" title="Chạy một lần trên cửa sổ của Tài khoản chính và cho biết thấy gì" aria-pressed="false"]
                     svg.i #1ewcuky
                     span "Chạy thử"
                 details.mc-when
                   summary [id="mc-when"]
-                    span "Mỗi 10 giây · Tài khoản đang chọn · Không có phím tắt"
+                    span "Khi bạn bấm Chạy · Tài khoản đang chọn · Không có phím tắt"
                     svg.i #u1ag9u
               section.mc-steps-sec [aria-labelledby="mc-steps-h"]
                 div.mc-steps-head
                   b [id="mc-steps-h"] "Các bước"
-                    span.muted "(1)"
+                    span.muted "(4)"
                   button.btn.sm [id="mc-record" type="button" title="Ghi lại thao tác của bạn trên cửa sổ đã chọn; F8 để dừng"]
                     svg.i #1mr8rx5
                     span "Ghi thao tác"
-                  button.btn.primary.sm [id="mc-add" type="button" aria-haspopup="menu"]
+                  button.btn.sm [id="mc-add" type="button" aria-expanded="false" aria-haspopup="dialog"]
                     svg.i #u7ty99
                     span "Thêm bước"
                 div.mc-steps [role="list" aria-labelledby="mc-steps-h"]
-                  div.mc-step [role="listitem" aria-label="Bước 1: Bấm E" style="--d:0"]
+                  div.mc-opener.mc-step [role="listitem" aria-label="Bước 1: Lặp đến khi dừng" style="--d:0"]
+                    button.mc-ins [type="button" title="Thêm bước vào đây" tabindex="-1" aria-haspopup="dialog" aria-label="Thêm bước vào đây"]
+                      span.mc-ins-dot
+                        svg.i #u7ty99
                     span.ord-grip [title="Kéo để đổi chỗ"]
                       svg.i #top79o
                     span.mc-step-n [aria-hidden="true"] "1"
-                    button.k-key.mc-step-head [type="button" aria-expanded="false"]
-                      svg.i #kx2qfl
-                      span.mc-say "Bấm E"
+                    button.icon-btn.mc-fold [type="button" title="Thu gọn" aria-expanded="true" aria-label="Thu gọn: Bước 1"]
+                      svg.i #18mpr3r
+                    button.k-loop.mc-step-head [type="button" aria-expanded="false"]
+                      svg.i #1ap9cll
+                      span.mc-say "Lặp đến khi dừng"
                       svg.i #u1ag9u
                     span.mc-step-acts
                       button.icon-btn [type="button" title="Chuyển lên" aria-label="Chuyển lên: Bước 1" disabled]
                         svg.i #ilfy0l
                       button.icon-btn [type="button" title="Chuyển xuống" aria-label="Chuyển xuống: Bước 1" disabled]
                         svg.i #u1ag9u
-                      button.icon-btn [type="button" title="Nhân bản bước" aria-label="Nhân bản bước: Bước 1"]
-                        svg.i #2s24cy
-                      button.icon-btn [type="button" title="Xóa bước" aria-label="Xóa bước: Bước 1"]
-                        svg.i #1w1g8zc
+                      button.icon-btn [type="button" title="Thêm" aria-haspopup="menu" aria-label="Thêm: Bước 1"]
+                        svg.i #1e3omv2
+                  div.mc-step [role="listitem" aria-label="Bước 2: Bấm Space" style="--d:1"]
+                    span.mc-rail [aria-hidden="true" style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:;left:-14px"]
+                    button.mc-ins [type="button" title="Thêm bước vào đây" tabindex="-1" aria-haspopup="dialog" aria-label="Thêm bước vào đây"]
+                      span.mc-ins-dot
+                        svg.i #u7ty99
+                    span.ord-grip [title="Kéo để đổi chỗ"]
+                      svg.i #top79o
+                    span.mc-step-n [aria-hidden="true"] "2"
+                    button.k-key.mc-step-head [type="button" aria-expanded="false"]
+                      svg.i #kx2qfl
+                      span.mc-say "Bấm Space"
+                      svg.i #u1ag9u
+                    span.mc-step-acts
+                      button.icon-btn [type="button" title="Chuyển lên" aria-label="Chuyển lên: Bước 2"]
+                        svg.i #ilfy0l
+                      button.icon-btn [type="button" title="Chuyển xuống" aria-label="Chuyển xuống: Bước 2"]
+                        svg.i #u1ag9u
+                      button.icon-btn [type="button" title="Thêm" aria-haspopup="menu" aria-label="Thêm: Bước 2"]
+                        svg.i #1e3omv2
+                    p.mc-step-note
+                      button.link [type="button" title="Sửa ghi chú"] "Roblox đá người chơi đứng yên sau 20 phút; bước này bấm phím trước lúc đó."
+                  div.mc-step [role="listitem" aria-label="Bước 3: Chờ 5 phút" style="--d:1"]
+                    span.mc-rail [aria-hidden="true" style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:;left:-14px"]
+                    button.mc-ins [type="button" title="Thêm bước vào đây" tabindex="-1" aria-haspopup="dialog" aria-label="Thêm bước vào đây"]
+                      span.mc-ins-dot
+                        svg.i #u7ty99
+                    span.ord-grip [title="Kéo để đổi chỗ"]
+                      svg.i #top79o
+                    span.mc-step-n [aria-hidden="true"] "3"
+                    button.k-wait.mc-step-head [type="button" aria-expanded="false"]
+                      svg.i #ktpp14
+                      span.mc-say "Chờ 5 phút"
+                      svg.i #u1ag9u
+                    span.mc-step-acts
+                      button.icon-btn [type="button" title="Chuyển lên" aria-label="Chuyển lên: Bước 3"]
+                        svg.i #ilfy0l
+                      button.icon-btn [type="button" title="Chuyển xuống" aria-label="Chuyển xuống: Bước 3"]
+                        svg.i #u1ag9u
+                      button.icon-btn [type="button" title="Thêm" aria-haspopup="menu" aria-label="Thêm: Bước 3"]
+                        svg.i #1e3omv2
+                    p.mc-step-note
+                      button.link [type="button" title="Sửa ghi chú"] "Người chơi đổi thời gian này trên bảng"
+                  div.mc-end.mc-step [role="listitem" aria-label="Bước 4: hết lặp" style="--d:0"]
+                    button.mc-ins [type="button" title="Thêm bước vào đây" tabindex="-1" aria-haspopup="dialog" aria-label="Thêm bước vào đây"]
+                      span.mc-ins-dot
+                        svg.i #u7ty99
+                    span.mc-step-n [aria-hidden="true"] "4"
+                    span.mc-step-head
+                      svg.i #5fto4c
+                      span.mc-say "hết lặp"
               section.mc-sees [aria-labelledby="mc-sees-h"]
                 div.mc-sees-head
                   b [id="mc-sees-h"] "Người chơi thấy"
@@ -297,7 +340,7 @@ html [data-theme="dark" lang="vi"]
                     span "Thêm"
                 div.mp-win [aria-label="Xem trước bảng"]
                   div.mp-title
-                    b "Bấm phím lặp lại"
+                    b "Bấm phím định kỳ"
                     em "Beta"
                     span.mp-x [aria-hidden="true"] "–"
                     span.mp-x [aria-hidden="true"]
@@ -305,15 +348,28 @@ html [data-theme="dark" lang="vi"]
                   div.mp-run
                     svg.i #1ewcuky
                     span "Chạy"
-                  p.mp-status "Chưa chạy"
+                  p.mp-status "Sẵn sàng"
                   ul.mp-opts
                     li
-                      input.mp-label [title="Tên người chơi thấy" maxlength="30" aria-label="Tên mục 1" value="Phím"]
+                      input.mp-label [title="Tên người chơi thấy" maxlength="30" aria-label="Tên mục 1" value="Mỗi"]
                       span.mp-val
-                        kbd "E"
+                        span.mp-mini "−"
+                        span.mp-field.num "5 phút"
+                        span.mp-mini "+"
+                      span.mp-acts
+                        button.icon-btn [type="button" title="Chuyển lên" aria-label="Chuyển lên: Mỗi" disabled]
+                          svg.i #ilfy0l
+                        button.icon-btn [type="button" title="Chuyển xuống" aria-label="Chuyển xuống: Mỗi"]
+                          svg.i #u1ag9u
+                        button.icon-btn [type="button" title="Không cho đổi" aria-label="Không cho đổi: Mỗi"]
+                          svg.i #1tyq039
+                    li
+                      input.mp-label [title="Tên người chơi thấy" maxlength="30" aria-label="Tên mục 2" value="Phím"]
+                      span.mp-val
+                        kbd "Space"
                         span.mp-mini "Đổi"
                       span.mp-acts
-                        button.icon-btn [type="button" title="Chuyển lên" aria-label="Chuyển lên: Phím" disabled]
+                        button.icon-btn [type="button" title="Chuyển lên" aria-label="Chuyển lên: Phím"]
                           svg.i #ilfy0l
                         button.icon-btn [type="button" title="Chuyển xuống" aria-label="Chuyển xuống: Phím" disabled]
                           svg.i #u1ag9u
@@ -327,7 +383,7 @@ html [data-theme="dark" lang="vi"]
                     span
                   span
                     b "Tự hiện bảng"
-                    small "Khi có tài khoản trong game này (để trống: game nào cũng được)."
+                    small "Khi có tài khoản trong game này. Để trống: game nào cũng được."
             aside.mc-side
               section.mc-game [aria-labelledby="mc-game-h"]
                 div.mc-pic-head
@@ -335,12 +391,13 @@ html [data-theme="dark" lang="vi"]
                   select.select.sm [id="mc-pic-acc" aria-label="Cửa sổ của" value="00000000-0000-4000-8000-000000000001"]
                     option [value="00000000-0000-4000-8000-000000000001"] "Tài khoản chính"
                     option [value="00000000-0000-4000-8000-000000000002"] "Farm 1"
-                  button.btn.primary.sm [id="mc-ongame" type="button" aria-pressed="false"]
+                  button.btn.sm [id="mc-ongame" type="button" aria-pressed="false"]
                     svg.i #1e3syqr
                     span "Sửa trên game"
                 p.mc-game-say [role="status"] "Hiện chấm của từng bước và khung của từng vùng trên cửa sổ của Tài khoản chính để kéo vào chỗ."
                 div.blank.mc-pic-frame [role="group" tabindex="-1" aria-label="Cửa sổ game: chấm có số là chỗ bước bấm, khung là vùng. Phím mũi tên dời thứ đang chọn." style="aspect-ratio:1.77778 / 1"]
-                  span.mc-pic-blank "Chụp ảnh để xem game ở đây"
+                  span.mc-pic-blank
+                    span "Chụp ảnh để xem game ở đây"
                 div.mc-pic-acts
                   button.btn.sm [id="mc-pic-take" type="button"]
                     svg.i #16jqtkh
@@ -355,7 +412,7 @@ html [data-theme="dark" lang="vi"]
                   p.mc-pic-none "Chưa có vùng. Vùng là khung trên game, nơi một bước tìm kiếm."
       div.modal-foot
         button.btn "Hủy"
-        button.btn.primary "Lưu"
+        button.btn.primary [aria-disabled="false"] "Lưu"
 #toasts
 -- commands
   pageBusy {"busy":true}
@@ -415,18 +472,18 @@ html [data-theme="dark" lang="vi"]
             span "Đóng tất cả"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: Đang bật, mở được nhiều cửa sổ"]
+            button.multi-open [title="Multi-Roblox: Đang bật: mở được nhiều cửa sổ Roblox"]
               span.led
               div
                 b "Multi-Roblox"
-                small "Đang bật, mở được nhiều cửa sổ"
+                small "Đang bật"
             label.switch [title="Tắt Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
         div.side-foot
           div [id="update-slot"]
           div.side-lock
-            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
+            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, Preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
               svg.i #21scx0
               span "Khóa app"
             button.btn.ghost.side-sq.vault-btn [title="Đổi vault (Vault 1)" aria-label="Đổi vault (Vault 1)"]
@@ -437,10 +494,9 @@ html [data-theme="dark" lang="vi"]
         header.top
           div.top-title
             h1 "Macro"
-              span.mc-beta.state-pill.warn [title="Tính năng mới: có thể chạy khác nhau trên mỗi máy. Gặp lỗi hãy báo ở mục Hướng dẫn & góp ý."] "Beta"
-            p [id="mc-sub"] "macroMacro lần lượt đưa từng cửa sổ Roblox lên trước trong giây lát."
+              span.mc-beta.state-pill.warn [title="Tính năng mới: có thể chạy khác nhau trên mỗi máy. Gặp lỗi hãy báo ở mục Hướng dẫn & góp ý. Macro lần lượt đưa từng cửa sổ Roblox lên trước trong giây lát."] "Beta"
+            p [id="mc-sub"] "macro"
               b "1"
-              span.sep "·"
           div.top-tools
             button.btn.mc-stop-all [title="Dừng mọi macro và bản ghi, thả mọi phím đang giữ (Ctrl+Alt+0 dùng được ở mọi app)" disabled]
               svg.i #t57b2k
@@ -453,22 +509,22 @@ html [data-theme="dark" lang="vi"]
         p.mc-live [role="status" aria-live="polite"]
         div.scroll
           div.mc-list.pv-list [id="mc-list" role="list"]
-            div.mc-item.pv-item [role="listitem" aria-label="Bấm phím lặp lại"]
+            div.mc-item.pv-item [role="listitem" aria-label="Bấm phím định kỳ"]
               span.mc-icon.pv-icon
-                svg.i #1ap9cll
+                svg.i #kx2qfl
               div.pv-main
-                b [title="Bấm phím lặp lại"] "Bấm phím lặp lại"
-                span.mc-line [title="Mỗi 10 giây · Tài khoản đang chọn"] "Mỗi 10 giây · Tài khoản đang chọn"
-              button.btn.mc-panel.sm [type="button" title="Hiện bảng cạnh game" aria-label="Bảng: Bấm phím lặp lại" aria-pressed="false"]
+                b [title="Bấm phím định kỳ"] "Bấm phím định kỳ"
+                span.mc-line [title="Khi bạn bấm Chạy · Tài khoản đang chọn"] "Khi bạn bấm Chạy · Tài khoản đang chọn"
+              button.btn.mc-panel.sm [type="button" title="Hiện bảng cạnh game" aria-label="Bảng điều khiển: Bấm phím định kỳ" aria-pressed="false"]
                 svg.i #1e3syqr
-                span "Bảng"
-              button.btn.pv-run.sm [title="Hãy chọn tài khoản ở tab Tài khoản trước." aria-label="Chạy: Bấm phím lặp lại" disabled]
+                span "Bảng điều khiển"
+              button.btn.pv-run.sm [title="Hãy chọn tài khoản ở tab Tài khoản trước." aria-label="Chạy: Bấm phím định kỳ" disabled]
                 svg.i #1ewcuky
                 span "Chạy"
-              button.icon-btn [type="button" title="Thêm" aria-haspopup="menu" aria-label="Thêm: Bấm phím lặp lại"]
+              button.icon-btn [type="button" title="Thêm" aria-haspopup="menu" aria-label="Thêm: Bấm phím định kỳ"]
                 svg.i #1e3omv2
 #layer
 #toasts
 -- commands
   pageBusy {"busy":false}
-  saveMacro {"macro":{"accountIds":[],"areas":[],"enabled":true,"hotkey":null,"id":"","jitterMs":40,"jitterPx":3,"maxMinutes":60,"name":"Bấm phím lặp lại","onFail":"stop","options":[{"default":"E","kind":"key","label":"Phím","name":"o1","value":"E"}],"panel":{"autoShow":false,"placeId":null},"steps":[{"key":"$o1","kind":"key","ms":60}],"stuckMinutes":5,"targets":"selected","trigger":{"everySeconds":10,"kind":"interval"}}}
+  saveMacro {"macro":{"accountIds":[],"areas":[],"enabled":true,"hotkey":null,"id":"","jitterMs":40,"jitterPx":3,"maxMinutes":240,"name":"Bấm phím định kỳ","onFail":"stop","options":[{"default":300000,"kind":"number","label":"Mỗi","max":1080000,"min":1000,"name":"o1","unit":"s","value":300000},{"default":"Space","kind":"key","label":"Phím","name":"o2","value":"Space"}],"panel":{"autoShow":false,"placeId":null},"steps":[{"kind":"loop","times":0},{"key":"$o2","kind":"key","ms":60,"note":"Roblox đá người chơi đứng yên sau 20 phút; bước này bấm phím trước lúc đó."},{"kind":"wait","ms":"$o1","note":"Người chơi đổi thời gian này trên bảng"},{"kind":"endLoop"}],"stuckMinutes":5,"targets":"selected","trigger":{"kind":"manual"}}}

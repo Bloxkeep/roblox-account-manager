@@ -58,14 +58,14 @@ html [data-theme="dark" lang="vi"]
               span.led
               div
                 b "Multi-Roblox"
-                small "Roblox đã đóng cửa sổ, bấm để xem"
+                small "Roblox đã đóng cửa sổ"
             label.switch [title="Tắt Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
         div.side-foot
           div [id="update-slot"]
           div.side-lock
-            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
+            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, Preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
               svg.i #21scx0
               span "Khóa app"
             button.btn.ghost.side-sq.vault-btn [title="Đổi vault (Vault 1)" aria-label="Đổi vault (Vault 1)"]
@@ -90,7 +90,7 @@ html [data-theme="dark" lang="vi"]
               i.set-nav-dot [title="Cần xem lại"]
             button.set-nav-item [type="button"]
               svg.i #1l5qw3q
-              span "Treo game"
+              span "Treo máy"
             button.set-nav-item [type="button"]
               svg.i #1hupb3o
               span "Thông báo"
@@ -107,27 +107,27 @@ html [data-theme="dark" lang="vi"]
               svg.i #gsei2o
               span "Sao lưu & dữ liệu"
             button.set-nav-item [type="button"]
-              svg.i #1uvtx1
+              img.set-nav-logo [alt="" src="logo.svg"]
               span "Bloxkeep"
           div.scroll.set-scroll
             div.settings
               section.set-page [id="set-page-roblox" aria-labelledby="set-page-roblox-h"]
                 h2.set-page-title [id="set-page-roblox-h"] "Phiên bản Roblox"
                 div.set-grp [id="sec-rbxupd"]
-                  h3.set-grp-title "Cập nhật Roblox"
                   div.set-card
                     div [id="s-rbxclosed"]
-                      div.set-note
+                      div.note.warn
                         svg.i #42lb9l
-                        span "Roblox đã đóng 3 cửa sổ khi mở thêm cửa sổ khác (11:48 16 thg 10, 2026). Có thể Roblox đã chặn chạy nhiều cửa sổ và Multi-Roblox cần cập nhật. Roblox đã cập nhật lúc 16:00 15 thg 10, 2026."
+                        span "Roblox đã đóng 3 cửa sổ khi mở thêm cửa sổ khác (16/10/2026, 11:48). Có thể Roblox đã chặn chạy nhiều cửa sổ và Multi-Roblox cần cập nhật. Roblox đã cập nhật lúc 15/10/2026, 16:00. Cập nhật Bloxkeep, vì bản mới có thể đã sửa lỗi này. Trước mắt hãy chơi từng tài khoản một. ·"
+                          button.link [type="button"] "Kiểm tra cập nhật Bloxkeep"
                           button.link [type="button"] "Ẩn"
                     div [id="s-rbxver"]
                       div.set-row
                         div
-                          div.t "Phiên bản Roblox"
-                          div.d "Đã là bản mới nhất"
+                          div.t "Đang cài"
+                          div.d "Đã là bản mới nhất · Từ Bloxstrap"
                         div.ctl
-                          span.ok.state-pill "0.742.0.7421053"
+                          span.ok.state-pill [title="mã cec3ad58"] "0.742.0.7421053"
                       div.set-row
                         div
                           div.t "Tự cập nhật"
@@ -139,27 +139,17 @@ html [data-theme="dark" lang="vi"]
                     div [id="s-rbxupd"]
                       div.set-row
                         div
-                          div.t "Bản đang cài"
-                          div.d "Từ Bloxstrap"
-                        div.ctl
-                          span.ru-build [title="version-cec3ad5889b447cf"] "mã cec3ad58"
-                      div.set-row
-                        div
                           div.t "Kiểm tra Multi-Roblox"
                           div.d "Bloxkeep kiểm tra mỗi bản Roblox mới xem có làm Multi-Roblox ngừng chạy không."
                             button.link [type="button"] "Cách hoạt động"
                         div.ctl
-                          span.ok.state-pill [title="Roblox 0.742.0.7421053"] "Không có thay đổi"
+                          span.off.state-pill [title="Roblox 0.742.0.7421053"] "Không có thay đổi"
                       div.set-row
                         div
-                          div.t "Bản Roblox sắp ra"
+                          div.t "Sắp ra (chưa phát hành)"
                           div.d "0.743.0.7431134, đã kiểm tra trước khi Roblox phát hành"
                         div.ctl
-                          span.ok.state-pill "Không có thay đổi"
-                      div.set-note
-                        svg.i #v9c4u6
-                        span "Cập nhật Bloxkeep, vì bản mới có thể đã sửa lỗi này. Trước mắt hãy chơi từng tài khoản một."
-                          button.link [type="button"] "Kiểm tra cập nhật Bloxkeep"
+                          span.off.state-pill "Không có thay đổi"
                       div.ru-head "Lịch sử cập nhật"
                       ul.ru-list
                         li.ru-item
@@ -168,24 +158,21 @@ html [data-theme="dark" lang="vi"]
                               b "0.742.0.7421053"
                               span.ru-note "bản mới, cùng số phiên bản"
                               span.ok.ru-note "Multi-Roblox không đổi"
-                            div.ru-sub "16:00 15 thg 10, 2026 · · Bloxstrap"
-                              span [title="version-cec3ad5889b447cf"] "mã cec3ad58"
+                            div.ru-sub [title="mã cec3ad58"] "15/10/2026, 16:00 · Bloxstrap"
                           button.link.ru-link [type="button" title="Ghi chú phát hành của Roblox — Viết cho người làm game, ít nói về app Roblox." aria-label="Ghi chú phát hành của Roblox 0.742.0.7421053"] "Ghi chú"
                         li.ru-item
                           div.ru-text
                             div.ru-main
                               b "0.742.0.7421053"
                               span.ok.ru-note "Multi-Roblox chạy tốt ở máy này"
-                            div.ru-sub "10:00 14 thg 10, 2026 · · Bloxstrap"
-                              span [title="version-5b1e07d2a6c84f13"] "mã 5b1e07d2"
+                            div.ru-sub [title="mã 5b1e07d2"] "14/10/2026, 10:00 · Bloxstrap"
                           button.link.ru-link [type="button" title="Ghi chú phát hành của Roblox — Viết cho người làm game, ít nói về app Roblox." aria-label="Ghi chú phát hành của Roblox 0.742.0.7421053"] "Ghi chú"
                         li.ru-item
                           div.ru-text
                             div.ru-main
                               b "0.741.0.7410829"
                               span.ru-note "đã có từ trước"
-                            div.ru-sub "12:00 7 thg 10, 2026 · · Bloxstrap"
-                              span [title="version-91f0c3ab72d14e6e"] "mã 91f0c3ab"
+                            div.ru-sub [title="mã 91f0c3ab"] "07/10/2026, 12:00 · Bloxstrap"
                           button.link.ru-link [type="button" title="Ghi chú phát hành của Roblox — Viết cho người làm game, ít nói về app Roblox." aria-label="Ghi chú phát hành của Roblox 0.741.0.7410829"] "Ghi chú"
 #layer
 #toasts
@@ -252,18 +239,18 @@ html [data-theme="dark" lang="vi"]
             span "Đóng tất cả"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: Đang bật, mở được nhiều cửa sổ"]
+            button.multi-open [title="Multi-Roblox: Đang bật: mở được nhiều cửa sổ Roblox"]
               span.led
               div
                 b "Multi-Roblox"
-                small "Đang bật, mở được nhiều cửa sổ"
+                small "Đang bật"
             label.switch [title="Tắt Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
         div.side-foot
           div [id="update-slot"]
           div.side-lock
-            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
+            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, Preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
               svg.i #21scx0
               span "Khóa app"
             button.btn.ghost.side-sq.vault-btn [title="Đổi vault (Vault 1)" aria-label="Đổi vault (Vault 1)"]
@@ -287,7 +274,7 @@ html [data-theme="dark" lang="vi"]
               span "Phiên bản Roblox"
             button.set-nav-item [type="button"]
               svg.i #1l5qw3q
-              span "Treo game"
+              span "Treo máy"
             button.set-nav-item [type="button"]
               svg.i #1hupb3o
               span "Thông báo"
@@ -304,23 +291,22 @@ html [data-theme="dark" lang="vi"]
               svg.i #gsei2o
               span "Sao lưu & dữ liệu"
             button.set-nav-item [type="button"]
-              svg.i #1uvtx1
+              img.set-nav-logo [alt="" src="logo.svg"]
               span "Bloxkeep"
           div.scroll.set-scroll
             div.settings
               section.set-page [id="set-page-roblox" aria-labelledby="set-page-roblox-h"]
                 h2.set-page-title [id="set-page-roblox-h"] "Phiên bản Roblox"
                 div.set-grp [id="sec-rbxupd"]
-                  h3.set-grp-title "Cập nhật Roblox"
                   div.set-card
                     div [id="s-rbxclosed"]
                     div [id="s-rbxver"]
                       div.set-row
                         div
-                          div.t "Phiên bản Roblox"
-                          div.d "Đã là bản mới nhất"
+                          div.t "Đang cài"
+                          div.d "Đã là bản mới nhất · Từ Bloxstrap"
                         div.ctl
-                          span.ok.state-pill "0.742.0.7421053"
+                          span.ok.state-pill [title="mã cec3ad58"] "0.742.0.7421053"
                       div.set-row
                         div
                           div.t "Tự cập nhật"
@@ -332,12 +318,6 @@ html [data-theme="dark" lang="vi"]
                     div [id="s-rbxupd"]
                       div.set-row
                         div
-                          div.t "Bản đang cài"
-                          div.d "Từ Bloxstrap"
-                        div.ctl
-                          span.ru-build [title="version-cec3ad5889b447cf"] "mã cec3ad58"
-                      div.set-row
-                        div
                           div.t "Kiểm tra Multi-Roblox"
                           div.d "Bloxkeep kiểm tra mỗi bản Roblox mới xem có làm Multi-Roblox ngừng chạy không."
                             button.link [type="button"] "Cách hoạt động"
@@ -345,7 +325,7 @@ html [data-theme="dark" lang="vi"]
                           span.ok.state-pill [title="Roblox 0.742.0.7421053"] "Không có thay đổi"
                       div.set-row
                         div
-                          div.t "Bản Roblox sắp ra"
+                          div.t "Sắp ra (chưa phát hành)"
                           div.d "0.743.0.7431134, đã kiểm tra trước khi Roblox phát hành"
                         div.ctl
                           span.ok.state-pill "Không có thay đổi"
@@ -357,24 +337,21 @@ html [data-theme="dark" lang="vi"]
                               b "0.742.0.7421053"
                               span.ru-note "bản mới, cùng số phiên bản"
                               span.ok.ru-note "Multi-Roblox không đổi"
-                            div.ru-sub "16:00 15 thg 10, 2026 · · Bloxstrap"
-                              span [title="version-cec3ad5889b447cf"] "mã cec3ad58"
+                            div.ru-sub [title="mã cec3ad58"] "15/10/2026, 16:00 · Bloxstrap"
                           button.link.ru-link [type="button" title="Ghi chú phát hành của Roblox — Viết cho người làm game, ít nói về app Roblox." aria-label="Ghi chú phát hành của Roblox 0.742.0.7421053"] "Ghi chú"
                         li.ru-item
                           div.ru-text
                             div.ru-main
                               b "0.742.0.7421053"
                               span.ok.ru-note "Multi-Roblox chạy tốt ở máy này"
-                            div.ru-sub "10:00 14 thg 10, 2026 · · Bloxstrap"
-                              span [title="version-5b1e07d2a6c84f13"] "mã 5b1e07d2"
+                            div.ru-sub [title="mã 5b1e07d2"] "14/10/2026, 10:00 · Bloxstrap"
                           button.link.ru-link [type="button" title="Ghi chú phát hành của Roblox — Viết cho người làm game, ít nói về app Roblox." aria-label="Ghi chú phát hành của Roblox 0.742.0.7421053"] "Ghi chú"
                         li.ru-item
                           div.ru-text
                             div.ru-main
                               b "0.741.0.7410829"
                               span.ru-note "đã có từ trước"
-                            div.ru-sub "12:00 7 thg 10, 2026 · · Bloxstrap"
-                              span [title="version-91f0c3ab72d14e6e"] "mã 91f0c3ab"
+                            div.ru-sub [title="mã 91f0c3ab"] "07/10/2026, 12:00 · Bloxstrap"
                           button.link.ru-link [type="button" title="Ghi chú phát hành của Roblox — Viết cho người làm game, ít nói về app Roblox." aria-label="Ghi chú phát hành của Roblox 0.741.0.7410829"] "Ghi chú"
 #layer
 #toasts

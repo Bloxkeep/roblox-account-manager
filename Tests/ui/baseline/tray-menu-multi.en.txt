@@ -2,14 +2,50 @@
 html [data-theme="dark" lang="en"]
 #tray
   div.tray.tray-menu [role="menu" tabindex="-1" aria-label="Bloxkeep"]
-    button.tray-back [type="button"] "Multi-Roblox"
-      svg.i #10tf97k
+    div.tray-head
+      img.tray-logo [alt="" src="logo.svg"]
+      div.tray-name
+        b "Bloxkeep"
+        span
+          i.off.tray-dot
+          span.tray-status [title="Multi-Roblox off · 2 Roblox windows"] "Multi-Roblox off · 2 Roblox windows"
+    div.tray-sep
+    button.strong.tray-item [role="menuitem" type="button"]
+      svg.i #1a4qrux
+      span.tray-item-text "Open Bloxkeep"
+    button.tray-item [role="menuitem" type="button"]
+      svg.i #1e3syqr
+      span.tray-item-text "Mini window"
+    div.tray-sep
+    button.tray-item [role="menuitem" type="button"]
+      svg.i #1ewcuky
+      span.tray-item-text "Play as"
+      svg.i.tray-sub #1g7f83q
+    button.tray-item [role="menuitem" type="button"]
+      svg.i #1pvni8o
+      span.tray-item-text "Run preset"
+      svg.i.tray-sub #1g7f83q
+    button.tray-item [role="menuitem" type="button" title="Sign in separately in each new window. Keep Bloxkeep running; sign-ins are not saved when these windows close."]
+      svg.i #puf41w
+      span.tray-item-text "New Roblox window to sign in"
+    button.tray-item [role="menuitem" type="button" FOCUSED]
+      svg.i #2s24cy
+      span.tray-item-text "Multi-Roblox"
+      span.tray-value "Off"
+      svg.i.tray-sub #1g7f83q
+    div.tray-sep
+    button.tray-item [role="menuitem" type="button"]
+      svg.i #1tyq039
+      span.tray-item-text "Close all Roblox"
+      span.tray-value "2"
+      svg.i.tray-sub #1g7f83q
     button.tray-item [role="menuitem" type="button"]
       svg.i #16z0s1r
-      span.tray-item-text "Turn off Multi-Roblox"
+      span.tray-item-text "Quit Bloxkeep"
 -- commands
+  act {"on":true,"what":"multi"}
   ready {}
   size {"h":379,"opened":1,"w":292}
   size {"h":379,"opened":1,"w":292}
-  size {"h":82,"opened":1,"w":292}
-  size {"h":82,"opened":1,"w":292}
+  size {"h":379,"opened":1,"w":292}
+  size {"h":379,"opened":1,"w":292}

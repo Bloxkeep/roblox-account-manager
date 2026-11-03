@@ -54,18 +54,18 @@ html [data-theme="dark" lang="vi"]
             span "Đóng tất cả"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: Đang bật, mở được nhiều cửa sổ"]
+            button.multi-open [title="Multi-Roblox: Đang bật: mở được nhiều cửa sổ Roblox"]
               span.led
               div
                 b "Multi-Roblox"
-                small "Đang bật, mở được nhiều cửa sổ"
+                small "Đang bật"
             label.switch [title="Tắt Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
         div.side-foot
           div [id="update-slot"]
           div.side-lock
-            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
+            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, Preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
               svg.i #21scx0
               span "Khóa app"
             button.btn.ghost.side-sq.vault-btn [title="Đổi vault (Vault 1)" aria-label="Đổi vault (Vault 1)"]
@@ -76,10 +76,9 @@ html [data-theme="dark" lang="vi"]
         header.top
           div.top-title
             h1 "Macro"
-              span.mc-beta.state-pill.warn [title="Tính năng mới: có thể chạy khác nhau trên mỗi máy. Gặp lỗi hãy báo ở mục Hướng dẫn & góp ý."] "Beta"
-            p [id="mc-sub"] "macroMacro lần lượt đưa từng cửa sổ Roblox lên trước trong giây lát."
+              span.mc-beta.state-pill.warn [title="Tính năng mới: có thể chạy khác nhau trên mỗi máy. Gặp lỗi hãy báo ở mục Hướng dẫn & góp ý. Macro lần lượt đưa từng cửa sổ Roblox lên trước trong giây lát."] "Beta"
+            p [id="mc-sub"] "macro"
               b "4"
-              span.sep "·"
           div.top-tools
             button.btn.mc-stop-all [title="Dừng mọi macro và bản ghi, thả mọi phím đang giữ (Ctrl+Alt+0 dùng được ở mọi app)" disabled]
               svg.i #t57b2k
@@ -100,9 +99,9 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Nhảy chống AFK"] "Nhảy chống AFK"
                 span.mc-line [title="Mỗi 5 phút · 2 tài khoản · Ctrl+Alt+1"] "Mỗi 5 phút · 2 tài khoản · Ctrl+Alt+1"
-              button.btn.mc-panel.sm [type="button" title="Hiện bảng cạnh game" aria-label="Bảng: Nhảy chống AFK" aria-pressed="false"]
+              button.btn.mc-panel.sm [type="button" title="Hiện bảng cạnh game" aria-label="Bảng điều khiển: Nhảy chống AFK" aria-pressed="false"]
                 svg.i #1e3syqr
-                span "Bảng"
+                span "Bảng điều khiển"
               button.btn.pv-run.sm [aria-label="Chạy: Nhảy chống AFK"]
                 svg.i #1ewcuky
                 span "Chạy"
@@ -116,9 +115,9 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Nhận rương hằng ngày"] "Nhận rương hằng ngày"
                 span.mc-line [title="Khi bạn bấm Chạy · Tài khoản đang chọn · Ctrl+Alt+2"] "Khi bạn bấm Chạy · Tài khoản đang chọn · Ctrl+Alt+2"
-              button.btn.mc-panel.sm [type="button" title="Hiện bảng cạnh game" aria-label="Bảng: Nhận rương hằng ngày" aria-pressed="false"]
+              button.btn.mc-panel.sm [type="button" title="Hiện bảng cạnh game" aria-label="Bảng điều khiển: Nhận rương hằng ngày" aria-pressed="false"]
                 svg.i #1e3syqr
-                span "Bảng"
+                span "Bảng điều khiển"
               button.btn.pv-run.sm [title="Hãy chọn tài khoản ở tab Tài khoản trước." aria-label="Chạy: Nhận rương hằng ngày" disabled]
                 svg.i #1ewcuky
                 span "Chạy"
@@ -132,9 +131,9 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Đường farm"] "Đường farm"
                 span.mc-line [title="Sau khi vào game · Mọi tài khoản · tự chạy đang tắt"] "Sau khi vào game · Mọi tài khoản · tự chạy đang tắt"
-              button.btn.mc-panel.sm [type="button" title="Hiện bảng cạnh game" aria-label="Bảng: Đường farm" aria-pressed="false"]
+              button.btn.mc-panel.sm [type="button" title="Hiện bảng cạnh game" aria-label="Bảng điều khiển: Đường farm" aria-pressed="false"]
                 svg.i #1e3syqr
-                span "Bảng"
+                span "Bảng điều khiển"
               button.btn.pv-run.sm [aria-label="Chạy: Đường farm"]
                 svg.i #1ewcuky
                 span "Chạy"
@@ -148,10 +147,10 @@ html [data-theme="dark" lang="vi"]
               div.pv-main
                 b [title="Quăng và kéo cần"] "Quăng và kéo cần"
                 span.mc-line [title="Khi bạn bấm Chạy · Tài khoản đang chọn · Ctrl+Alt+3"] "Khi bạn bấm Chạy · Tài khoản đang chọn · Ctrl+Alt+3"
-              button.btn.mc-panel.sm [type="button" title="Hiện bảng cạnh game" aria-label="Bảng: Quăng và kéo cần" aria-pressed="false"]
+              button.btn.mc-panel.sm [type="button" title="Hiện bảng cạnh game" aria-label="Bảng điều khiển: Quăng và kéo cần" aria-pressed="false"]
                 svg.i #1e3syqr
-                span "Bảng"
-              button.btn.pv-run.sm [title="Hãy chọn tài khoản ở tab Tài khoản trước." aria-label="Chạy: Quăng và kéo cần" disabled]
+                span "Bảng điều khiển"
+              button.btn.pv-run.sm [aria-label="Chạy: Quăng và kéo cần"]
                 svg.i #1ewcuky
                 span "Chạy"
               button.icon-btn [type="button" title="Thêm" aria-haspopup="menu" aria-label="Thêm: Quăng và kéo cần"]
@@ -185,14 +184,19 @@ html [data-theme="dark" lang="vi"]
                   button.btn.sm [id="mc-record" type="button" title="Ghi lại thao tác của bạn trên cửa sổ đã chọn; F8 để dừng"]
                     svg.i #1mr8rx5
                     span "Ghi thao tác"
-                  button.btn.primary.sm [id="mc-add" type="button" aria-haspopup="menu"]
+                  button.btn.sm [id="mc-add" type="button" aria-expanded="false" aria-haspopup="dialog"]
                     svg.i #u7ty99
                     span "Thêm bước"
                 div.mc-steps [role="list" aria-labelledby="mc-steps-h"]
-                  div.mc-step [role="listitem" aria-label="Bước 1: Lặp đến khi dừng" style="--d:0"]
+                  div.mc-opener.mc-step [role="listitem" aria-label="Bước 1: Lặp đến khi dừng" style="--d:0"]
+                    button.mc-ins [type="button" title="Thêm bước vào đây" tabindex="-1" aria-haspopup="dialog" aria-label="Thêm bước vào đây"]
+                      span.mc-ins-dot
+                        svg.i #u7ty99
                     span.ord-grip [title="Kéo để đổi chỗ"]
                       svg.i #top79o
                     span.mc-step-n [aria-hidden="true"] "1"
+                    button.icon-btn.mc-fold [type="button" title="Thu gọn" aria-expanded="true" aria-label="Thu gọn: Bước 1"]
+                      svg.i #18mpr3r
                     button.k-loop.mc-step-head [type="button" aria-expanded="false"]
                       svg.i #1ap9cll
                       span.mc-say "Lặp đến khi dừng"
@@ -200,13 +204,15 @@ html [data-theme="dark" lang="vi"]
                     span.mc-step-acts
                       button.icon-btn [type="button" title="Chuyển lên" aria-label="Chuyển lên: Bước 1" disabled]
                         svg.i #ilfy0l
-                      button.icon-btn [type="button" title="Chuyển xuống" aria-label="Chuyển xuống: Bước 1"]
+                      button.icon-btn [type="button" title="Chuyển xuống" aria-label="Chuyển xuống: Bước 1" disabled]
                         svg.i #u1ag9u
-                      button.icon-btn [type="button" title="Nhân bản bước" aria-label="Nhân bản bước: Bước 1"]
-                        svg.i #2s24cy
-                      button.icon-btn [type="button" title="Xóa bước" aria-label="Xóa bước: Bước 1"]
-                        svg.i #1w1g8zc
+                      button.icon-btn [type="button" title="Thêm" aria-haspopup="menu" aria-label="Thêm: Bước 1"]
+                        svg.i #1e3omv2
                   div.mc-step [role="listitem" aria-label="Bước 2: Giữ chuột trái 0.6 giây tại điểm 2" style="--d:1"]
+                    span.mc-rail [aria-hidden="true" style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:;left:-14px"]
+                    button.mc-ins [type="button" title="Thêm bước vào đây" tabindex="-1" aria-haspopup="dialog" aria-label="Thêm bước vào đây"]
+                      span.mc-ins-dot
+                        svg.i #u7ty99
                     span.ord-grip [title="Kéo để đổi chỗ"]
                       svg.i #top79o
                     span.mc-step-n [aria-hidden="true"] "2"
@@ -219,11 +225,13 @@ html [data-theme="dark" lang="vi"]
                         svg.i #ilfy0l
                       button.icon-btn [type="button" title="Chuyển xuống" aria-label="Chuyển xuống: Bước 2"]
                         svg.i #u1ag9u
-                      button.icon-btn [type="button" title="Nhân bản bước" aria-label="Nhân bản bước: Bước 2"]
-                        svg.i #2s24cy
-                      button.icon-btn [type="button" title="Xóa bước" aria-label="Xóa bước: Bước 2"]
-                        svg.i #1w1g8zc
+                      button.icon-btn [type="button" title="Thêm" aria-haspopup="menu" aria-label="Thêm: Bước 2"]
+                        svg.i #1e3omv2
                   div.mc-step [role="listitem" aria-label="Bước 3: Chờ đến khi màu hiện trong Vùng cá" style="--d:1"]
+                    span.mc-rail [aria-hidden="true" style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:;left:-14px"]
+                    button.mc-ins [type="button" title="Thêm bước vào đây" tabindex="-1" aria-haspopup="dialog" aria-label="Thêm bước vào đây"]
+                      span.mc-ins-dot
+                        svg.i #u7ty99
                     span.ord-grip [title="Kéo để đổi chỗ"]
                       svg.i #top79o
                     span.mc-step-n [aria-hidden="true"] "3"
@@ -236,11 +244,13 @@ html [data-theme="dark" lang="vi"]
                         svg.i #ilfy0l
                       button.icon-btn [type="button" title="Chuyển xuống" aria-label="Chuyển xuống: Bước 3"]
                         svg.i #u1ag9u
-                      button.icon-btn [type="button" title="Nhân bản bước" aria-label="Nhân bản bước: Bước 3"]
-                        svg.i #2s24cy
-                      button.icon-btn [type="button" title="Xóa bước" aria-label="Xóa bước: Bước 3"]
-                        svg.i #1w1g8zc
+                      button.icon-btn [type="button" title="Thêm" aria-haspopup="menu" aria-label="Thêm: Bước 3"]
+                        svg.i #1e3omv2
                   div.mc-step [role="listitem" aria-label="Bước 4: Giữ thanh trúng đích trong Vùng cá" style="--d:1"]
+                    span.mc-rail [aria-hidden="true" style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:;left:-14px"]
+                    button.mc-ins [type="button" title="Thêm bước vào đây" tabindex="-1" aria-haspopup="dialog" aria-label="Thêm bước vào đây"]
+                      span.mc-ins-dot
+                        svg.i #u7ty99
                     span.ord-grip [title="Kéo để đổi chỗ"]
                       svg.i #top79o
                     span.mc-step-n [aria-hidden="true"] "4"
@@ -253,11 +263,13 @@ html [data-theme="dark" lang="vi"]
                         svg.i #ilfy0l
                       button.icon-btn [type="button" title="Chuyển xuống" aria-label="Chuyển xuống: Bước 4"]
                         svg.i #u1ag9u
-                      button.icon-btn [type="button" title="Nhân bản bước" aria-label="Nhân bản bước: Bước 4"]
-                        svg.i #2s24cy
-                      button.icon-btn [type="button" title="Xóa bước" aria-label="Xóa bước: Bước 4"]
-                        svg.i #1w1g8zc
+                      button.icon-btn [type="button" title="Thêm" aria-haspopup="menu" aria-label="Thêm: Bước 4"]
+                        svg.i #1e3omv2
                   div.mc-step [role="listitem" aria-label="Bước 5: Cộng 1 vào bộ đếm fish" style="--d:1"]
+                    span.mc-rail [aria-hidden="true" style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:;left:-14px"]
+                    button.mc-ins [type="button" title="Thêm bước vào đây" tabindex="-1" aria-haspopup="dialog" aria-label="Thêm bước vào đây"]
+                      span.mc-ins-dot
+                        svg.i #u7ty99
                     span.ord-grip [title="Kéo để đổi chỗ"]
                       svg.i #top79o
                     span.mc-step-n [aria-hidden="true"] "5"
@@ -270,26 +282,16 @@ html [data-theme="dark" lang="vi"]
                         svg.i #ilfy0l
                       button.icon-btn [type="button" title="Chuyển xuống" aria-label="Chuyển xuống: Bước 5"]
                         svg.i #u1ag9u
-                      button.icon-btn [type="button" title="Nhân bản bước" aria-label="Nhân bản bước: Bước 5"]
-                        svg.i #2s24cy
-                      button.icon-btn [type="button" title="Xóa bước" aria-label="Xóa bước: Bước 5"]
-                        svg.i #1w1g8zc
-                  div.mc-step [role="listitem" aria-label="Bước 6: Hết lặp" style="--d:0"]
-                    span.ord-grip [title="Kéo để đổi chỗ"]
-                      svg.i #top79o
+                      button.icon-btn [type="button" title="Thêm" aria-haspopup="menu" aria-label="Thêm: Bước 5"]
+                        svg.i #1e3omv2
+                  div.mc-end.mc-step [role="listitem" aria-label="Bước 6: hết lặp" style="--d:0"]
+                    button.mc-ins [type="button" title="Thêm bước vào đây" tabindex="-1" aria-haspopup="dialog" aria-label="Thêm bước vào đây"]
+                      span.mc-ins-dot
+                        svg.i #u7ty99
                     span.mc-step-n [aria-hidden="true"] "6"
-                    span.k-endLoop.mc-step-head
-                      svg.i #10tf97k
-                      span.mc-say "Hết lặp"
-                    span.mc-step-acts
-                      button.icon-btn [type="button" title="Chuyển lên" aria-label="Chuyển lên: Bước 6"]
-                        svg.i #ilfy0l
-                      button.icon-btn [type="button" title="Chuyển xuống" aria-label="Chuyển xuống: Bước 6" disabled]
-                        svg.i #u1ag9u
-                      button.icon-btn [type="button" title="Nhân bản bước" aria-label="Nhân bản bước: Bước 6"]
-                        svg.i #2s24cy
-                      button.icon-btn [type="button" title="Xóa bước" aria-label="Xóa bước: Bước 6"]
-                        svg.i #1w1g8zc
+                    span.mc-step-head
+                      svg.i #5fto4c
+                      span.mc-say "hết lặp"
               section.mc-sees [aria-labelledby="mc-sees-h"]
                 div.mc-sees-head
                   b [id="mc-sees-h"] "Người chơi thấy"
@@ -308,7 +310,7 @@ html [data-theme="dark" lang="vi"]
                     svg.i #1ewcuky
                     span "Chạy"
                     kbd "Ctrl+Alt+3"
-                  p.mp-status "Chưa chạy · fish: 0"
+                  p.mp-status "Sẵn sàng · fish: 0"
                   ul.mp-opts
                     li
                       input.mp-label [title="Tên người chơi thấy" maxlength="30" aria-label="Tên mục 1" value="Thời gian giữ"]
@@ -344,10 +346,10 @@ html [data-theme="dark" lang="vi"]
                     span
                   span
                     b "Tự hiện bảng"
-                    small "Khi có tài khoản trong game này (để trống: game nào cũng được)."
+                    small "Khi có tài khoản trong game này. Để trống: game nào cũng được."
                 div.mc-panel-game
                   label "Game"
-                    input.field [id="ps-place" role="combobox" placeholder="Tìm game, hoặc dán link / Place ID…" autocomplete="off" maxlength="500" aria-autocomplete="list" aria-expanded="false" aria-haspopup="listbox" value="https://www.roblox.com/games/2753915549"]
+                    input.field [id="ps-place" role="combobox" placeholder="Tìm game, hoặc dán link / Place ID. Để trống thì chỉ mở Roblox" autocomplete="off" maxlength="500" aria-autocomplete="list" aria-expanded="false" aria-haspopup="listbox" value="https://www.roblox.com/games/2753915549"]
                   div.ps-game [id="ps-game"]
                     span.gph
                       svg.i #sy1lqp
@@ -359,16 +361,17 @@ html [data-theme="dark" lang="vi"]
                   select.select.sm [id="mc-pic-acc" aria-label="Cửa sổ của" value="00000000-0000-4000-8000-000000000001"]
                     option [value="00000000-0000-4000-8000-000000000001"] "Tài khoản chính"
                     option [value="00000000-0000-4000-8000-000000000002"] "Farm 1"
-                  button.btn.primary.sm [id="mc-ongame" type="button" aria-pressed="false"]
+                  button.btn.sm [id="mc-ongame" type="button" aria-pressed="false"]
                     svg.i #1e3syqr
                     span "Sửa trên game"
                 p.mc-game-say [role="status"] "Hiện chấm của từng bước và khung của từng vùng trên cửa sổ của Tài khoản chính để kéo vào chỗ."
                 div.blank.mc-pic-frame [role="group" tabindex="-1" aria-label="Cửa sổ game: chấm có số là chỗ bước bấm, khung là vùng. Phím mũi tên dời thứ đang chọn." style="aspect-ratio:1.77778 / 1"]
-                  span.mc-pic-blank "Chụp ảnh để xem game ở đây"
-                  span.mc-pic-area [role="button" title="Vùng cá: kéo để dời, kéo góc để đổi cỡ" tabindex="0" aria-label="Vùng cá: kéo để dời, kéo góc để đổi cỡ" style="border-bottom-color:rgb(34, 197, 94);border-left-color:rgb(34, 197, 94);border-right-color:rgb(34, 197, 94);border-top-color:rgb(34, 197, 94);height:10%;left:30%;top:74%;width:40%"]
+                  span.mc-pic-blank
+                    span "Chụp ảnh để xem game ở đây"
+                  span.mc-pic-area [role="button" title="Vùng cá: kéo để dời, kéo góc để đổi cỡ" tabindex="-1" aria-label="Vùng cá: kéo để dời, kéo góc để đổi cỡ" style="border-bottom-color:rgb(34, 197, 94);border-left-color:rgb(34, 197, 94);border-right-color:rgb(34, 197, 94);border-top-color:rgb(34, 197, 94);height:10%;left:30%;top:74%;width:40%"]
                     i [style="background-attachment:initial;background-clip:initial;background-color:rgb(34, 197, 94);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "Vùng cá"
                     b.mc-pic-handle [style="background-attachment:initial;background-clip:initial;background-color:rgb(34, 197, 94);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"]
-                  span.mc-pic-dot [role="button" title="Điểm 2: kéo để dời" tabindex="0" aria-label="Điểm 2: kéo để dời" style="left:50%;top:60%"] "2"
+                  span.mc-pic-dot [role="button" title="Điểm 2: kéo để dời" tabindex="-1" aria-label="Điểm 2: kéo để dời" style="left:50%;top:60%"] "2"
                 div.mc-pic-acts
                   button.btn.sm [id="mc-pic-take" type="button"]
                     svg.i #16jqtkh
@@ -382,14 +385,15 @@ html [data-theme="dark" lang="vi"]
                       span "Vùng mới"
                   ul
                     li
-                      i [aria-hidden="true" style="border-bottom-color:rgb(34, 197, 94);border-left-color:rgb(34, 197, 94);border-right-color:rgb(34, 197, 94);border-top-color:rgb(34, 197, 94)"]
-                      input.field.sm [maxlength="30" aria-label="Tên vùng" value="Vùng cá"]
-                      button.icon-btn [type="button" title="Xóa vùng" aria-label="Xóa vùng: Vùng cá"]
-                        svg.i #1w1g8zc
+                      div.mc-area-row
+                        i [aria-hidden="true" style="border-bottom-color:rgb(34, 197, 94);border-left-color:rgb(34, 197, 94);border-right-color:rgb(34, 197, 94);border-top-color:rgb(34, 197, 94)"]
+                        input.field.sm [id="mc-area-a1" maxlength="30" aria-label="Tên vùng" value="Vùng cá"]
+                        button.icon-btn [type="button" title="Xóa vùng" aria-label="Xóa vùng: Vùng cá"]
+                          svg.i #1w1g8zc
       div.modal-foot
         button.btn.danger.push "Xóa"
         button.btn "Hủy"
-        button.btn.primary "Lưu"
+        button.btn.primary [aria-disabled="false"] "Lưu"
 #toasts
 -- commands
   getState {}

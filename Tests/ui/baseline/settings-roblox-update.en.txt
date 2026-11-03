@@ -54,11 +54,11 @@ html [data-theme="dark" lang="en"]
             span "Close all"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+            button.multi-open [title="Multi-Roblox: On: several Roblox windows can be open"]
               span.led
               div
                 b "Multi-Roblox"
-                small "On — several windows allowed"
+                small "On"
             label.switch [title="Turn off Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
@@ -106,23 +106,22 @@ html [data-theme="dark" lang="en"]
               svg.i #gsei2o
               span "Backup & data"
             button.set-nav-item [type="button"]
-              svg.i #1uvtx1
+              img.set-nav-logo [alt="" src="logo.svg"]
               span "Bloxkeep"
           div.scroll.set-scroll
             div.settings
               section.set-page [id="set-page-roblox" aria-labelledby="set-page-roblox-h"]
                 h2.set-page-title [id="set-page-roblox-h"] "Roblox version"
                 div.set-grp [id="sec-rbxupd"]
-                  h3.set-grp-title "Roblox updates"
                   div.set-card
                     div [id="s-rbxclosed"]
                     div [id="s-rbxver"]
                       div.set-row
                         div
-                          div.t "Roblox version"
-                          div.d "Roblox 0.743.0.7430112 is out. Update now has Bloxstrap install it without opening Roblox; otherwise it updates the next time it opens."
+                          div.t "Installed"
+                          div.d "Roblox 0.743.0.7430112 is out. Update now has Bloxstrap install it without opening Roblox; otherwise it updates the next time it opens. · From Bloxstrap"
                         div.ctl
-                          span.state-pill.warn "0.742.0.7421053"
+                          span.state-pill.warn [title="build cec3ad58"] "0.742.0.7421053"
                           button.btn.sm [type="button"] "Update now"
                       div.set-row
                         div
@@ -133,12 +132,6 @@ html [data-theme="dark" lang="en"]
                             input [id="s-rbx-auto" type="checkbox" aria-label="Update automatically" checked=true]
                             span
                     div [id="s-rbxupd"]
-                      div.set-row
-                        div
-                          div.t "Installed build"
-                          div.d "From Bloxstrap"
-                        div.ctl
-                          span.ru-build [title="version-cec3ad5889b447cf"] "build cec3ad58"
                       div.set-row
                         div
                           div.t "Newest from Roblox"
@@ -153,7 +146,7 @@ html [data-theme="dark" lang="en"]
                           span.ok.state-pill [title="Roblox 0.742.0.7421053"] "No change found"
                       div.set-row
                         div
-                          div.t "Next Roblox build"
+                          div.t "Coming next (not out yet)"
                           div.d "0.743.0.7431134, checked before Roblox releases it"
                         div.ctl
                           span.ok.state-pill "No change found"
@@ -165,24 +158,21 @@ html [data-theme="dark" lang="en"]
                               b "0.742.0.7421053"
                               span.ru-note "new build, same version"
                               span.ok.ru-note "Multi-Roblox: no change"
-                            div.ru-sub "Oct 15, 2026, 4:00 PM · · Bloxstrap"
-                              span [title="version-cec3ad5889b447cf"] "build cec3ad58"
+                            div.ru-sub [title="build cec3ad58"] "Oct 15, 2026, 4:00 PM · Bloxstrap"
                           button.link.ru-link [type="button" title="Roblox release notes — Written for game creators; they rarely cover the Roblox app itself." aria-label="Roblox release notes 0.742.0.7421053"] "Notes"
                         li.ru-item
                           div.ru-text
                             div.ru-main
                               b "0.742.0.7421053"
                               span.ok.ru-note "Multi-Roblox worked here"
-                            div.ru-sub "Oct 14, 2026, 10:00 AM · · Bloxstrap"
-                              span [title="version-5b1e07d2a6c84f13"] "build 5b1e07d2"
+                            div.ru-sub [title="build 5b1e07d2"] "Oct 14, 2026, 10:00 AM · Bloxstrap"
                           button.link.ru-link [type="button" title="Roblox release notes — Written for game creators; they rarely cover the Roblox app itself." aria-label="Roblox release notes 0.742.0.7421053"] "Notes"
                         li.ru-item
                           div.ru-text
                             div.ru-main
                               b "0.741.0.7410829"
-                              span.ru-note "first seen"
-                            div.ru-sub "Oct 7, 2026, 12:00 PM · · Bloxstrap"
-                              span [title="version-91f0c3ab72d14e6e"] "build 91f0c3ab"
+                              span.ru-note "already installed"
+                            div.ru-sub [title="build 91f0c3ab"] "Oct 7, 2026, 12:00 PM · Bloxstrap"
                           button.link.ru-link [type="button" title="Roblox release notes — Written for game creators; they rarely cover the Roblox app itself." aria-label="Roblox release notes 0.741.0.7410829"] "Notes"
 #layer
   div.overlay
@@ -192,7 +182,7 @@ html [data-theme="dark" lang="en"]
         button.icon-btn [title="Close"]
           svg.i #1tyq039
       div.modal-body
-        p.modal-text.pre "2 Roblox windows are open. Bloxstrap updates in the background if it can; if not, it closes them all first."
+        p.modal-text.pre "2 Roblox windows are open. Bloxstrap will try to update in the background; otherwise it closes them first."
       div.modal-foot
         button.btn "Cancel"
         button.btn.primary [FOCUSED] "Update"
@@ -260,11 +250,11 @@ html [data-theme="dark" lang="en"]
             span "Close all"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+            button.multi-open [title="Multi-Roblox: On: several Roblox windows can be open"]
               span.led
               div
                 b "Multi-Roblox"
-                small "On — several windows allowed"
+                small "On"
             label.switch [title="Turn off Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
@@ -312,23 +302,22 @@ html [data-theme="dark" lang="en"]
               svg.i #gsei2o
               span "Backup & data"
             button.set-nav-item [type="button"]
-              svg.i #1uvtx1
+              img.set-nav-logo [alt="" src="logo.svg"]
               span "Bloxkeep"
           div.scroll.set-scroll
             div.settings
               section.set-page [id="set-page-roblox" aria-labelledby="set-page-roblox-h"]
                 h2.set-page-title [id="set-page-roblox-h"] "Roblox version"
                 div.set-grp [id="sec-rbxupd"]
-                  h3.set-grp-title "Roblox updates"
                   div.set-card
                     div [id="s-rbxclosed"]
                     div [id="s-rbxver"]
                       div.set-row
                         div
-                          div.t "Roblox version"
-                          div.d "Roblox 0.743.0.7430112 is out. Update now has Bloxstrap install it without opening Roblox; otherwise it updates the next time it opens."
+                          div.t "Installed"
+                          div.d "Bloxstrap is updating Roblox… · From Bloxstrap"
                         div.ctl
-                          span.state-pill.warn "0.742.0.7421053"
+                          span.state-pill.warn [title="build cec3ad58"] "0.742.0.7421053"
                           button.btn.sm [type="button" disabled] "Updating…"
                       div.set-row
                         div
@@ -339,12 +328,6 @@ html [data-theme="dark" lang="en"]
                             input [id="s-rbx-auto" type="checkbox" aria-label="Update automatically" checked=true]
                             span
                     div [id="s-rbxupd"]
-                      div.set-row
-                        div
-                          div.t "Installed build"
-                          div.d "From Bloxstrap"
-                        div.ctl
-                          span.ru-build [title="version-cec3ad5889b447cf"] "build cec3ad58"
                       div.set-row
                         div
                           div.t "Newest from Roblox"
@@ -359,7 +342,7 @@ html [data-theme="dark" lang="en"]
                           span.ok.state-pill [title="Roblox 0.742.0.7421053"] "No change found"
                       div.set-row
                         div
-                          div.t "Next Roblox build"
+                          div.t "Coming next (not out yet)"
                           div.d "0.743.0.7431134, checked before Roblox releases it"
                         div.ctl
                           span.ok.state-pill "No change found"
@@ -371,24 +354,21 @@ html [data-theme="dark" lang="en"]
                               b "0.742.0.7421053"
                               span.ru-note "new build, same version"
                               span.ok.ru-note "Multi-Roblox: no change"
-                            div.ru-sub "Oct 15, 2026, 4:00 PM · · Bloxstrap"
-                              span [title="version-cec3ad5889b447cf"] "build cec3ad58"
+                            div.ru-sub [title="build cec3ad58"] "Oct 15, 2026, 4:00 PM · Bloxstrap"
                           button.link.ru-link [type="button" title="Roblox release notes — Written for game creators; they rarely cover the Roblox app itself." aria-label="Roblox release notes 0.742.0.7421053"] "Notes"
                         li.ru-item
                           div.ru-text
                             div.ru-main
                               b "0.742.0.7421053"
                               span.ok.ru-note "Multi-Roblox worked here"
-                            div.ru-sub "Oct 14, 2026, 10:00 AM · · Bloxstrap"
-                              span [title="version-5b1e07d2a6c84f13"] "build 5b1e07d2"
+                            div.ru-sub [title="build 5b1e07d2"] "Oct 14, 2026, 10:00 AM · Bloxstrap"
                           button.link.ru-link [type="button" title="Roblox release notes — Written for game creators; they rarely cover the Roblox app itself." aria-label="Roblox release notes 0.742.0.7421053"] "Notes"
                         li.ru-item
                           div.ru-text
                             div.ru-main
                               b "0.741.0.7410829"
-                              span.ru-note "first seen"
-                            div.ru-sub "Oct 7, 2026, 12:00 PM · · Bloxstrap"
-                              span [title="version-91f0c3ab72d14e6e"] "build 91f0c3ab"
+                              span.ru-note "already installed"
+                            div.ru-sub [title="build 91f0c3ab"] "Oct 7, 2026, 12:00 PM · Bloxstrap"
                           button.link.ru-link [type="button" title="Roblox release notes — Written for game creators; they rarely cover the Roblox app itself." aria-label="Roblox release notes 0.741.0.7410829"] "Notes"
 #layer
 #toasts

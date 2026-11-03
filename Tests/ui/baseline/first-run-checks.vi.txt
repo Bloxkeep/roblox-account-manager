@@ -10,18 +10,18 @@ html [data-theme="dark" lang="vi"]
     form.lock-card.shake [id="lock-form" autocomplete="off"]
       img.logo-img [alt="" src="logo.svg"]
       h2 "Đặt mật khẩu chủ"
-      p "Dùng để mở khóa Bloxkeep. Quên là ."
-        b "không lấy lại được"
+      p "Dùng để mở khóa Bloxkeep. Quên mật khẩu là ."
+        b "không khôi phục được"
       div.stack
         div.pw
-          input.field [id="pw1" type="password" placeholder="Mật khẩu chủ" maxlength="256" aria-label="Mật khẩu chủ" value="" FOCUSED]
+          input.field [id="pw1" type="password" placeholder="Mật khẩu chủ (ít nhất 6 ký tự)" maxlength="256" aria-invalid="true" aria-label="Mật khẩu chủ" value="" FOCUSED]
           button.icon-btn [id="pw-eye" type="button" title="Hiện mật khẩu" aria-label="Hiện mật khẩu" aria-pressed="false"]
             svg.i #1pcfgz
         input.field [id="pw2" type="password" placeholder="Nhập lại mật khẩu chủ" maxlength="256" aria-label="Nhập lại mật khẩu chủ" value=""]
         div.strength-row
           div.strength
             i [id="pw-meter"]
-          span [id="pw-strength" aria-live="polite"]
+          span.pw-strength [id="pw-strength" aria-live="polite"]
       div.lock-error [id="lock-error" role="alert"] "Mật khẩu chủ cần ít nhất 6 ký tự."
       button.big.btn.primary.w [id="lock-btn" type="submit"] "Bắt đầu"
       div.lock-alt
@@ -46,11 +46,11 @@ html [data-theme="dark" lang="vi"]
     form.lock-card.shake [id="lock-form" autocomplete="off"]
       img.logo-img [alt="" src="logo.svg"]
       h2 "Đặt mật khẩu chủ"
-      p "Dùng để mở khóa Bloxkeep. Quên là ."
-        b "không lấy lại được"
+      p "Dùng để mở khóa Bloxkeep. Quên mật khẩu là ."
+        b "không khôi phục được"
       div.stack
         div.pw
-          input.field [id="pw1" type="password" placeholder="Mật khẩu chủ" maxlength="256" aria-label="Mật khẩu chủ" value="•••"]
+          input.field [id="pw1" type="password" placeholder="Mật khẩu chủ (ít nhất 6 ký tự)" maxlength="256" aria-invalid="true" aria-label="Mật khẩu chủ" value="•••"]
           button.icon-btn [id="pw-eye" type="button" title="Hiện mật khẩu" aria-label="Hiện mật khẩu" aria-pressed="false"]
             svg.i #1pcfgz
         input.field [id="pw2" type="password" placeholder="Nhập lại mật khẩu chủ" maxlength="256" aria-label="Nhập lại mật khẩu chủ" value="•••" FOCUSED]
@@ -80,14 +80,14 @@ html [data-theme="dark" lang="vi"]
     form.lock-card.shake [id="lock-form" autocomplete="off"]
       img.logo-img [alt="" src="logo.svg"]
       h2 "Đặt mật khẩu chủ"
-      p "Dùng để mở khóa Bloxkeep. Quên là ."
-        b "không lấy lại được"
+      p "Dùng để mở khóa Bloxkeep. Quên mật khẩu là ."
+        b "không khôi phục được"
       div.stack
         div.pw
-          input.field [id="pw1" type="password" placeholder="Mật khẩu chủ" maxlength="256" aria-label="Mật khẩu chủ" value="•••"]
+          input.field [id="pw1" type="password" placeholder="Mật khẩu chủ (ít nhất 6 ký tự)" maxlength="256" aria-label="Mật khẩu chủ" value="•••"]
           button.icon-btn [id="pw-eye" type="button" title="Hiện mật khẩu" aria-label="Hiện mật khẩu" aria-pressed="false"]
             svg.i #1pcfgz
-        input.field [id="pw2" type="password" placeholder="Nhập lại mật khẩu chủ" maxlength="256" aria-label="Nhập lại mật khẩu chủ" value="•••" FOCUSED]
+        input.field [id="pw2" type="password" placeholder="Nhập lại mật khẩu chủ" maxlength="256" aria-invalid="true" aria-label="Nhập lại mật khẩu chủ" value="•••" FOCUSED]
         div.strength-row
           div.strength
             i [id="pw-meter" style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:;width:60%"]
@@ -114,14 +114,14 @@ html [data-theme="dark" lang="vi"]
     form.lock-card.shake [id="lock-form" autocomplete="off"]
       img.logo-img [alt="" src="logo.svg"]
       h2 "Đặt mật khẩu chủ"
-      p "Dùng để mở khóa Bloxkeep. Quên là ."
-        b "không lấy lại được"
+      p "Dùng để mở khóa Bloxkeep. Quên mật khẩu là ."
+        b "không khôi phục được"
       div.stack
         div.pw
-          input.field [id="pw1" type="text" placeholder="Mật khẩu chủ" maxlength="256" aria-label="Mật khẩu chủ" value="Abcdef12"]
+          input.field [id="pw1" type="text" placeholder="Mật khẩu chủ (ít nhất 6 ký tự)" maxlength="256" aria-label="Mật khẩu chủ" value="Abcdef12"]
           button.icon-btn [id="pw-eye" type="button" title="Ẩn mật khẩu" aria-label="Ẩn mật khẩu" aria-pressed="true" FOCUSED]
             svg.i #1xzadie
-        input.field [id="pw2" type="text" placeholder="Nhập lại mật khẩu chủ" maxlength="256" aria-label="Nhập lại mật khẩu chủ" value="Abcdef13"]
+        input.field [id="pw2" type="text" placeholder="Nhập lại mật khẩu chủ" maxlength="256" aria-invalid="true" aria-label="Nhập lại mật khẩu chủ" value="Abcdef13"]
         div.strength-row
           div.strength
             i [id="pw-meter" style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:;width:60%"]
@@ -148,11 +148,11 @@ html [data-theme="dark" lang="vi"]
     form.lock-card.shake [id="lock-form" autocomplete="off"]
       img.logo-img [alt="" src="logo.svg"]
       h2 "Đặt mật khẩu chủ"
-      p "Dùng để mở khóa Bloxkeep. Quên là ."
-        b "không lấy lại được"
+      p "Dùng để mở khóa Bloxkeep. Quên mật khẩu là ."
+        b "không khôi phục được"
       div.stack
         div.pw
-          input.field [id="pw1" type="text" placeholder="Mật khẩu chủ" maxlength="256" aria-label="Mật khẩu chủ" value="" FOCUSED]
+          input.field [id="pw1" type="text" placeholder="Mật khẩu chủ (ít nhất 6 ký tự)" maxlength="256" aria-label="Mật khẩu chủ" value="" FOCUSED]
           button.icon-btn [id="pw-eye" type="button" title="Ẩn mật khẩu" aria-label="Ẩn mật khẩu" aria-pressed="true"]
             svg.i #1xzadie
         input.field [id="pw2" type="text" placeholder="Nhập lại mật khẩu chủ" maxlength="256" aria-label="Nhập lại mật khẩu chủ" value="Abcdef13"]

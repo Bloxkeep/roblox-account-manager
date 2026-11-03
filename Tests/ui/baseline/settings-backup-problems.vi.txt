@@ -54,18 +54,18 @@ html [data-theme="dark" lang="vi"]
             span "Đóng tất cả"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: Đang bật, mở được nhiều cửa sổ"]
+            button.multi-open [title="Multi-Roblox: Đang bật: mở được nhiều cửa sổ Roblox"]
               span.led
               div
                 b "Multi-Roblox"
-                small "Đang bật, mở được nhiều cửa sổ"
+                small "Đang bật"
             label.switch [title="Tắt Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
         div.side-foot
           div [id="update-slot"]
           div.side-lock
-            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
+            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, Preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
               svg.i #21scx0
               span "Khóa app"
             button.btn.ghost.side-sq.vault-btn [title="Đổi vault (Vault 1)" aria-label="Đổi vault (Vault 1)"]
@@ -89,7 +89,7 @@ html [data-theme="dark" lang="vi"]
               span "Phiên bản Roblox"
             button.set-nav-item [type="button"]
               svg.i #1l5qw3q
-              span "Treo game"
+              span "Treo máy"
             button.set-nav-item [type="button"]
               svg.i #1hupb3o
               span "Thông báo"
@@ -106,7 +106,7 @@ html [data-theme="dark" lang="vi"]
               svg.i #gsei2o
               span "Sao lưu & dữ liệu"
             button.set-nav-item [type="button"]
-              svg.i #1uvtx1
+              img.set-nav-logo [alt="" src="logo.svg"]
               span "Bloxkeep"
           div.scroll.set-scroll
             div.settings
@@ -143,7 +143,7 @@ html [data-theme="dark" lang="vi"]
                         div
                           div.t
                             span "Sao lưu gần nhất: 5 phút trước"
-                          div.d.err "Access to the path is denied."
+                          div.d.err "Không ghi được vào thư mục này."
                         div.ctl
                           button.btn.sm [FOCUSED] "Sao lưu ngay"
                 div.set-grp [id="sec-restore"]
@@ -157,7 +157,7 @@ html [data-theme="dark" lang="vi"]
                         button.btn.sm "Khôi phục…"
                     div.set-row
                       div
-                        div.t "Nhập tài khoản từ file dữ liệu Bloxkeep"
+                        div.t "Nhập tài khoản từ file Bloxkeep"
                         div.d "Từ bản sao lưu hoặc Bloxkeep trên máy khác. Tài khoản đang có ở đây vẫn giữ nguyên."
                       div.ctl
                         button.btn.sm "Nhập…"
@@ -174,7 +174,7 @@ html [data-theme="dark" lang="vi"]
                           svg.i #3wh3ok
                     div.set-row
                       div
-                        div.t "File vault đang mở"
+                        div.t "File Bloxkeep đang dùng"
                         div.d
                           span.path [id="s-vault-path"] "C:\\Users\\Admin\\AppData\\Local\\Bloxkeep\\vault.rmv"
                       div.ctl
@@ -200,7 +200,7 @@ html [data-theme="dark" lang="vi"]
 #toasts
   div.error.toast [role="alert"]
     svg.i #42lb9l
-    span "Couldn't back up: Access to the path is denied."
+    span "Không sao lưu được: Không ghi được vào thư mục này."
 -- commands
   backupNow {}
   backupSuggestions {}

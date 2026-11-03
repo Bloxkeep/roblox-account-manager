@@ -6,8 +6,9 @@ html [data-theme="dark" lang="en"]
       img.tray-logo [alt="" src="logo.svg"]
       div.tray-name
         b "Bloxkeep"
-        span "Multi-Roblox on · 2 Roblox windows"
+        span
           i.ready.tray-dot
+          span.tray-status [title="Multi-Roblox on · 2 Roblox windows"] "Multi-Roblox on · 2 Roblox windows"
     div.tray-sep
     button.strong.tray-item [role="menuitem" type="button"]
       svg.i #1a4qrux
@@ -28,10 +29,9 @@ html [data-theme="dark" lang="en"]
       svg.i #puf41w
       span.tray-item-text "New Roblox window to sign in"
     button.tray-item [role="menuitem" type="button"]
-      svg.i #1pvni8o
+      svg.i #2s24cy
       span.tray-item-text "Multi-Roblox"
-      span.tray-value "On"
-      svg.i.tray-sub #1g7f83q
+      svg.i.tray-check #14iobj
     div.tray-sep
     button.tray-item [role="menuitem" type="button"]
       svg.i #1tyq039

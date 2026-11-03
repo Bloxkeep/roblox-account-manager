@@ -54,18 +54,18 @@ html [data-theme="custom" data-tone="dark" lang="vi"] style="--accent:#f59e0b;--
             span "Đóng tất cả"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: Đang bật, mở được nhiều cửa sổ"]
+            button.multi-open [title="Multi-Roblox: Đang bật: mở được nhiều cửa sổ Roblox"]
               span.led
               div
                 b "Multi-Roblox"
-                small "Đang bật, mở được nhiều cửa sổ"
+                small "Đang bật"
             label.switch [title="Tắt Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
         div.side-foot
           div [id="update-slot"]
           div.side-lock
-            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
+            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, Preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
               svg.i #21scx0
               span "Khóa app"
             button.btn.ghost.side-sq.vault-btn [title="Đổi vault (Vault 1)" aria-label="Đổi vault (Vault 1)"]
@@ -89,7 +89,7 @@ html [data-theme="custom" data-tone="dark" lang="vi"] style="--accent:#f59e0b;--
               span "Phiên bản Roblox"
             button.set-nav-item [type="button"]
               svg.i #1l5qw3q
-              span "Treo game"
+              span "Treo máy"
             button.set-nav-item [type="button"]
               svg.i #1hupb3o
               span "Thông báo"
@@ -106,7 +106,7 @@ html [data-theme="custom" data-tone="dark" lang="vi"] style="--accent:#f59e0b;--
               svg.i #gsei2o
               span "Sao lưu & dữ liệu"
             button.set-nav-item [type="button"]
-              svg.i #1uvtx1
+              img.set-nav-logo [alt="" src="logo.svg"]
               span "Bloxkeep"
           div.scroll.set-scroll
             div.settings
@@ -163,31 +163,31 @@ html [data-theme="custom" data-tone="dark" lang="vi"] style="--accent:#f59e0b;--
                           div.d "Phủ càng đậm, chữ càng dễ đọc trên ảnh rối mắt."
                         div.ctl
                           input [id="s-ct-fade" type="range" min="0" max="90" step="5" aria-label="Phủ màu nền lên ảnh" value="45"]
-                          span.range-v "45%"
+                          span.range-v "45 %"
                       div.set-row
                         div
                           div.t "Làm mờ nền"
                           div.d "Nền mờ thì chữ nổi rõ hơn."
                         div.ctl
                           input [id="s-ct-blur" type="range" min="0" max="30" step="1" aria-label="Làm mờ nền" value="8"]
-                          span.range-v "8"
+                          span.range-v "8 px"
                       div.set-row
                         div
-                          div.t "Lưu theme này"
-                          div.d "Đặt tên để lần sau chọn lại hoặc chia sẻ. Trùng tên thì lưu đè."
+                          div.t "Lưu chủ đề này"
+                          div.d "Đặt tên để dùng lại hoặc chia sẻ. Trùng tên sẽ ghi đè."
                         div.ctl
-                          input.ct-name.field.sm [id="s-ct-name" placeholder="Ha Long" maxlength="40" aria-label="Tên theme" value=""]
+                          input.ct-name.field.sm [id="s-ct-name" placeholder="Ha Long" maxlength="40" aria-label="Tên chủ đề" value=""]
                           button.btn.sm [id="s-ct-save"] "Lưu"
                     div.set-row
                       div
-                        div.t "Theme của bạn"
-                        div.d "Bấm vào một theme để dùng. Có thể lưu thành file để gửi cho người khác."
+                        div.t "Chủ đề của bạn"
+                        div.d "Bấm vào một chủ đề để dùng. Có thể lưu thành file để gửi cho người khác."
                       div.ctl
                         button.btn.sm [id="s-ct-import"] "Thêm từ file…"
                           svg.i #3wh3ok
                     div.ct-saved [id="s-saved-themes" role="list"]
                       div.ct-theme [role="listitem"]
-                        button.ct-use [title="Dùng theme này" aria-pressed="false"]
+                        button.ct-use [title="Dùng chủ đề" aria-pressed="false"]
                           span.ct-dot [style="--inv:#22c55e;background-attachment:initial;background-clip:initial;background-color:rgb(20, 26, 38);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"]
                           span.ct-tname "Night drive"
                         button.icon-btn.sm [title="Lưu thành file" aria-label="Lưu thành file: Night drive"]
@@ -195,7 +195,7 @@ html [data-theme="custom" data-tone="dark" lang="vi"] style="--accent:#f59e0b;--
                         button.ct-del.icon-btn.sm [title="Xóa" aria-label="Xóa: Night drive"]
                           svg.i #1w1g8zc
                       div.ct-theme.on [role="listitem"]
-                        button.ct-use [title="Dùng theme này" aria-pressed="true"]
+                        button.ct-use [title="Dùng chủ đề" aria-pressed="true"]
                           span.ct-dot [style="--inv:#f59e0b;background-attachment:initial, initial;background-clip:initial, initial;background-color:rgb(27, 42, 58);background-image:url(\"scene-halong.svg\"), initial;background-origin:initial, initial;background-position-x:center, initial;background-position-y:center, initial;background-repeat:no-repeat, initial;background-size:cover, initial"]
                           span.ct-tname "Ha Long"
                         button.icon-btn.sm [title="Lưu thành file" aria-label="Lưu thành file: Ha Long"]
@@ -203,7 +203,7 @@ html [data-theme="custom" data-tone="dark" lang="vi"] style="--accent:#f59e0b;--
                         button.ct-del.icon-btn.sm [title="Xóa" aria-label="Xóa: Ha Long"]
                           svg.i #1w1g8zc
                       div.ct-theme [role="listitem"]
-                        button.ct-use [title="Dùng theme này" aria-pressed="false"]
+                        button.ct-use [title="Dùng chủ đề" aria-pressed="false"]
                           span.ct-dot [style="--inv:#60a5fa;background-attachment:initial;background-clip:initial;background-color:rgb(26, 43, 58);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"]
                           span.ct-tname "Rain loop"
                           span.ct-kind "Video"

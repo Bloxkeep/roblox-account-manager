@@ -54,11 +54,11 @@ html [data-theme="dark" lang="en"]
             span "Close all"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+            button.multi-open [title="Multi-Roblox: On: several Roblox windows can be open"]
               span.led
               div
                 b "Multi-Roblox"
-                small "On — several windows allowed"
+                small "On"
             label.switch [title="Turn off Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
@@ -106,7 +106,7 @@ html [data-theme="dark" lang="en"]
               svg.i #gsei2o
               span "Backup & data"
             button.set-nav-item [type="button"]
-              svg.i #1uvtx1
+              img.set-nav-logo [alt="" src="logo.svg"]
               span "Bloxkeep"
           div.scroll.set-scroll
             div.settings
@@ -123,7 +123,7 @@ html [data-theme="dark" lang="en"]
                     div.tg-tabs [id="s-theme-groups"]
                       button.chip [type="button" aria-pressed="false"] "Basic"
                       button.chip [type="button" aria-pressed="false"] "Scenery"
-                      button.chip [type="button" aria-pressed="false"] "Colourful"
+                      button.chip [type="button" aria-pressed="false"] "Colorful"
                       button.chip [type="button" aria-pressed="false"] "Styles"
                       button.chip [type="button" aria-pressed="false"] "Seasonal"
                       button.chip [type="button" aria-pressed="false"] "Animated"
@@ -146,21 +146,14 @@ html [data-theme="dark" lang="en"]
                         span [data-theme="cubism"]
                           em
                         b "Cubism"
-                      button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Colour blocks"]
+                      button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Color blocks"]
                         span [data-theme="blocksart"]
                           em
-                        b "Colour blocks"
+                        b "Color blocks"
                       button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Gold leaf"]
                         span [data-theme="goldleaf"]
                           em
                         b "Gold leaf"
-                    div.set-row
-                      div
-                        div.t "Your themes"
-                        div.d "Themes you save, or add from a file someone shared, show here."
-                      div.ctl
-                        button.btn.sm [id="s-ct-import"] "Add from file…"
-                          svg.i #3wh3ok
                     div.set-row
                       div
                         div.t "Language"
@@ -241,11 +234,11 @@ html [data-theme="starrynight" lang="en"]
             span "Close all"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+            button.multi-open [title="Multi-Roblox: On: several Roblox windows can be open"]
               span.led
               div
                 b "Multi-Roblox"
-                small "On — several windows allowed"
+                small "On"
             label.switch [title="Turn off Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
@@ -293,7 +286,7 @@ html [data-theme="starrynight" lang="en"]
               svg.i #gsei2o
               span "Backup & data"
             button.set-nav-item [type="button"]
-              svg.i #1uvtx1
+              img.set-nav-logo [alt="" src="logo.svg"]
               span "Bloxkeep"
           div.scroll.set-scroll
             div.settings
@@ -310,7 +303,7 @@ html [data-theme="starrynight" lang="en"]
                     div.tg-tabs [id="s-theme-groups"]
                       button.chip [type="button" aria-pressed="false"] "Basic"
                       button.chip [type="button" aria-pressed="false"] "Scenery"
-                      button.chip [type="button" aria-pressed="false"] "Colourful"
+                      button.chip [type="button" aria-pressed="false"] "Colorful"
                       button.chip [type="button" aria-pressed="false"] "Styles"
                       button.chip [type="button" aria-pressed="false"] "Seasonal"
                       button.chip [type="button" aria-pressed="false"] "Animated"
@@ -333,21 +326,14 @@ html [data-theme="starrynight" lang="en"]
                         span [data-theme="cubism"]
                           em
                         b "Cubism"
-                      button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Colour blocks"]
+                      button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Color blocks"]
                         span [data-theme="blocksart"]
                           em
-                        b "Colour blocks"
+                        b "Color blocks"
                       button.swatch [role="radio" tabindex="-1" aria-checked="false" aria-label="Gold leaf"]
                         span [data-theme="goldleaf"]
                           em
                         b "Gold leaf"
-                    div.set-row
-                      div
-                        div.t "Your themes"
-                        div.d "Themes you save, or add from a file someone shared, show here."
-                      div.ctl
-                        button.btn.sm [id="s-ct-import"] "Add from file…"
-                          svg.i #3wh3ok
                     div.set-row
                       div
                         div.t "Language"

@@ -54,11 +54,11 @@ html [data-theme="dark" lang="en"]
             span "Close all"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+            button.multi-open [title="Multi-Roblox: On: several Roblox windows can be open"]
               span.led
               div
                 b "Multi-Roblox"
-                small "On — several windows allowed"
+                small "On"
             label.switch [title="Turn off Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
@@ -96,10 +96,10 @@ html [data-theme="dark" lang="en"]
                     span "vs yesterday"
                 div.stat
                   small "Accounts played"
-                  b [title="4/7"] "4"
+                  b [title="3/7"] "3"
                     span.of "/7"
                 div.stat
-                  small "Disconnects"
+                  small "Drops"
                   b [title="1"] "1"
                   span.good.stat-delta "↓ 67 %"
                     span "vs yesterday"
@@ -116,7 +116,7 @@ html [data-theme="dark" lang="en"]
                         img [alt="" style="--h:204" src=#1qk25wb]
                       b [title="Main"] "Main"
                     div.tl-track
-                      i.drop.tl-seg [title="Blox Fruits · 12:00 AM – 4:04 AM · 4 h 4 min · Kicked for being idle" style="left:0%;width:34%"]
+                      i.drop.tl-seg [title="Blox Fruits · 12:00 AM – 4:04 AM · 4 h 4 min · Kicked for AFK" style="left:0%;width:34%"]
                         span "Blox Fruits"
                       i.tl-seg [title="Blox Fruits · 4:33 AM – 8:38 AM · 4 h 4 min" style="left:38%;width:34%"]
                         span "Blox Fruits"
@@ -130,7 +130,7 @@ html [data-theme="dark" lang="en"]
                     div.tl-track
                       i.drop.tl-seg [title="Blox Fruits · 12:36 AM – 3:36 AM · 3 h · Lost connection" style="left:5%;width:25%"]
                         span "Blox Fruits"
-                      i.drop.tl-seg [title="[🎃] Adopt Me! · 5:16 AM – 7:26 AM · 2 h 9 min · Kicked for being idle" style="left:44%;width:18%"]
+                      i.drop.tl-seg [title="[🎃] Adopt Me! · 5:16 AM – 7:26 AM · 2 h 9 min · Kicked for AFK" style="left:44%;width:18%"]
                         span "[🎃] Adopt Me!"
                       i.tl-seg [title="Blox Fruits · 8:09 AM – 11:09 AM · 3 h" style="left:68%;width:25%"]
                         span "Blox Fruits"
@@ -146,8 +146,8 @@ html [data-theme="dark" lang="en"]
                         span "Blox Fruits"
                   div.tl-row
                     div.sacc
-                      span.avatar.sm
-                        span.initials [style="--h:148"] "DE"
+                      span.avatar.gone.sm [aria-hidden="true"]
+                        svg.i #45lggc
                       b [title="Deleted account"] "Deleted account"
                     div.tl-track
                       i.tl-seg [title="[🎃] Adopt Me! · 1:12 AM – 1:33 AM · 21 min" style="left:10%;width:3%"]
@@ -160,22 +160,22 @@ html [data-theme="dark" lang="en"]
                   span [style="left:83.33%"] "10 AM"
                 div.tl-keys
                   span
-                    i.drop.tl-seg
-                    em "Disconnects"
+                    i.tl-key-drop
+                    em "Drops"
               div.stat-card [id="stats-drops"]
                 h3 "Why they dropped"
-                  span.sd-lost [title="From each drop to the account’s next session, 12 h at most."] "1 h 8 min lost"
+                  span.sd-lost [title="From each drop to the account’s next session, 12 h at most."] "≈ 1 h 8 min lost"
                 div.sd-row
                   div.sd-text
-                    b "Kicked for being idle"
+                    b "Kicked for AFK"
                     small [title="Main, Farm 1"] "2 times · Main, Farm 1"
-                  span.sd-time [title="From each drop to the account’s next session, 12 h at most."] "50 min lost"
+                  span.sd-time [title="From each drop to the account’s next session, 12 h at most."] "≈ 50 min lost"
                   button.btn.sm "Turn on Anti-AFK"
                 div.sd-row
                   div.sd-text
                     b "Lost connection"
                     small [title="Farm 1"] "Once · Farm 1"
-                  span.sd-time [title="From each drop to the account’s next session, 12 h at most."] "17 min lost"
+                  span.sd-time [title="From each drop to the account’s next session, 12 h at most."] "≈ 17 min lost"
               div.stat-cols
                 div.stat-card
                   h3 "By account"
@@ -190,7 +190,7 @@ html [data-theme="dark" lang="en"]
                         th "Account"
                         th "Play time"
                         th "Most played"
-                        th.n [title="Disconnects"] "Drops"
+                        th.n [title="Drops"] "Drops"
                     tbody
                       tr
                         td
@@ -234,8 +234,8 @@ html [data-theme="dark" lang="en"]
                       tr
                         td
                           div.sacc
-                            span.avatar.sm
-                              span.initials [style="--h:148"] "DE"
+                            span.avatar.gone.sm [aria-hidden="true"]
+                              svg.i #45lggc
                             b [title="Deleted account"] "Deleted account"
                         td.st-time "7 min"
                         td.st-game
@@ -254,9 +254,7 @@ html [data-theme="dark" lang="en"]
                           svg.i #sy1lqp
                         div.gtxt
                           b [title="Blox Fruits"] "Blox Fruits"
-                          small "6 sessions"
-                          div.sg-meter
-                            i [style="transform:scaleX(1)"]
+                          small "6 sessions · 55 %"
                         span.sg-time "3 h 16 min"
                       div.sgame
                         em "2"
@@ -264,9 +262,7 @@ html [data-theme="dark" lang="en"]
                           svg.i #sy1lqp
                         div.gtxt
                           b [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
-                          small "3 sessions"
-                          div.sg-meter
-                            i [style="transform:scaleX(0.545)"]
+                          small "3 sessions · 30 %"
                         span.sg-time "1 h 47 min"
                       div.sgame
                         em "3"
@@ -274,9 +270,7 @@ html [data-theme="dark" lang="en"]
                           svg.i #sy1lqp
                         div.gtxt
                           b [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
-                          small "2 sessions"
-                          div.sg-meter
-                            i [style="transform:scaleX(0.273)"]
+                          small "2 sessions · 15 %"
                         span.sg-time "53 min"
                   div.stat-card
                     h3 "By preset"
@@ -286,27 +280,21 @@ html [data-theme="dark" lang="en"]
                           svg.i #sy1lqp
                         div.gtxt
                           b [title="Farm Blox Fruits"] "Farm Blox Fruits"
-                          small "3 accounts · 1 disconnect"
-                          div.sg-meter
-                            i [style="transform:scaleX(1)"]
+                          small "3 accounts · 1 drop · 62 %"
                         span.sg-time "3 h 41 min"
                       div.sgame
                         span.gph
                           svg.i #sy1lqp
                         div.gtxt
                           b [title="Adopt Me trade"] "Adopt Me trade"
-                          small "1 account"
-                          div.sg-meter
-                            i [style="transform:scaleX(0.403)"]
+                          small "1 account · 25 %"
                         span.sg-time "1 h 29 min"
                       div.sgame
                         span.gph
                           svg.i #45lggc
                         div.gtxt
                           b [title="Opened by hand, or before Bloxkeep 1.0.5 noted presets."] "Not from a preset"
-                          small "2 accounts"
-                          div.sg-meter
-                            i [style="transform:scaleX(0.21)"]
+                          small "2 accounts · 13 %"
                         span.sg-time "46 min"
 #layer
 #toasts

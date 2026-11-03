@@ -58,11 +58,11 @@ html [data-theme="macos" lang="en"]
             span "Close all"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+            button.multi-open [title="Multi-Roblox: On: several Roblox windows can be open"]
               span.led
               div
                 b "Multi-Roblox"
-                small "On — several windows allowed"
+                small "On"
             label.switch [title="Turn off Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
@@ -281,7 +281,7 @@ html [data-theme="macos" lang="en"]
                         span "Player can change:"
                         label.mc-check
                           input [id="mc-s3-tick-colour" type="checkbox" checked=true]
-                          span "Bar colour"
+                          span "Bar color"
                   div.mc-step [role="listitem" aria-label="Step 4: Keep the bar on the target in Fish area" style="--d:1"]
                     span.mc-rail [aria-hidden="true" style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:;left:-14px"]
                     button.mc-ins [type="button" title="Add a step here" tabindex="-1" aria-haspopup="dialog" aria-label="Add a step here"]
@@ -362,16 +362,16 @@ html [data-theme="macos" lang="en"]
                         button.icon-btn [type="button" title="Player can’t change it" aria-label="Player can’t change it: Hold time"]
                           svg.i #1tyq039
                     li
-                      input.mp-label [title="What the player reads next to it" maxlength="30" aria-label="Name of item 2" value="Bar colour"]
+                      input.mp-label [title="What the player reads next to it" maxlength="30" aria-label="Name of item 2" value="Bar color"]
                       span.mp-val
                         i.mp-swatch [style="background-attachment:initial;background-clip:initial;background-color:rgb(34, 197, 94);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"]
                         span.mp-mini "Pick"
                       span.mp-acts
-                        button.icon-btn [type="button" title="Move up" aria-label="Move up: Bar colour"]
+                        button.icon-btn [type="button" title="Move up" aria-label="Move up: Bar color"]
                           svg.i #ilfy0l
-                        button.icon-btn [type="button" title="Move down" aria-label="Move down: Bar colour" disabled]
+                        button.icon-btn [type="button" title="Move down" aria-label="Move down: Bar color" disabled]
                           svg.i #u1ag9u
-                        button.icon-btn [type="button" title="Player can’t change it" aria-label="Player can’t change it: Bar colour"]
+                        button.icon-btn [type="button" title="Player can’t change it" aria-label="Player can’t change it: Bar color"]
                           svg.i #1tyq039
                   div.mp-foot
                     span.mp-btn "Edit areas"
@@ -385,7 +385,7 @@ html [data-theme="macos" lang="en"]
                     small "While an account is in this game. Leave the game empty for any game."
                 div.mc-panel-game
                   label "Game"
-                    input.field [id="ps-place" role="combobox" placeholder="Search a game, or paste a link / Place ID…" autocomplete="off" maxlength="500" aria-autocomplete="list" aria-expanded="false" aria-haspopup="listbox" value="https://www.roblox.com/games/2753915549"]
+                    input.field [id="ps-place" role="combobox" placeholder="Search a game, or paste a link / Place ID. Empty just opens Roblox" autocomplete="off" maxlength="500" aria-autocomplete="list" aria-expanded="false" aria-haspopup="listbox" value="https://www.roblox.com/games/2753915549"]
                   div.ps-game [id="ps-game"]
                     span.gph
                       svg.i #sy1lqp
@@ -433,6 +433,7 @@ html [data-theme="macos" lang="en"]
 #toasts
 -- commands
   getState {}
+  macroTemplates {}
   monitorArea {"hidden":true}
   pageBusy {"busy":true}
   pageShown {}

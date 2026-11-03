@@ -6,22 +6,23 @@ html [data-theme="dark" lang="vi"]
       img.tray-logo [alt="" src="logo.svg"]
       div.tray-name
         b "Bloxkeep"
-        span "8 cửa sổ Roblox · 11.3 GB RAM"
+        span
+          span.tray-status [title="8 cửa sổ Roblox · 11.3 GB RAM"] "8 cửa sổ Roblox · 11.3 GB RAM"
       button.tray-icon [type="button" title="Cửa sổ nhỏ" aria-label="Cửa sổ nhỏ" aria-pressed="false"]
         svg.i #1e3syqr
       button.tray-icon [type="button" title="Mở Bloxkeep" aria-label="Mở Bloxkeep"]
         svg.i #1a4qrux
     button.notReady.tray-multi [role="switch" type="button" aria-checked="true"]
-      svg.i #1pvni8o
+      svg.i #2s24cy
       span.tray-multi-text
         b "Multi-Roblox"
-        span "Chưa chạy được, mở Bloxkeep để sửa"
-      span.on.tray-switch [aria-hidden="true"]
+        span "Chưa chạy được"
+      span.on.tray-switch.warn [aria-hidden="true"]
         i
     section.tray-running
       div.tray-label
         span "Đang chạy"
-        button.danger.tray-link [type="button"] "Đóng tất cả"
+        button.btn.danger.ghost.sm.tray-link [type="button"] "Đóng tất cả"
       div.tray-list
         div.client.tray-row [title="PID 4320"]
           button.tray-row-main [type="button"]
@@ -83,7 +84,7 @@ html [data-theme="dark" lang="vi"]
               svg.i #1pcfgz
             button.danger.sm.tray-icon [type="button" title="Đóng" aria-label="Đóng"]
               svg.i #1tyq039
-        button.tray-more [type="button"] "+3 tài khoản khác"
+        button.tray-more [type="button"] "+3 cửa sổ khác"
     div.tray-tiles
       button.primary.tray-tile [type="button"]
         svg.i #1ewcuky
@@ -93,8 +94,8 @@ html [data-theme="dark" lang="vi"]
         span "Preset"
       button.tray-tile [type="button" title="Mỗi cửa sổ đăng nhập riêng. Giữ Bloxkeep mở, đóng cửa sổ là mất đăng nhập."]
         svg.i #puf41w
-        span "Roblox mới"
+        span "Cửa sổ đăng nhập"
 -- commands
   ready {}
-  size {"h":550,"opened":1,"w":344}
-  size {"h":550,"opened":1,"w":344}
+  size {"h":557,"opened":1,"w":344}
+  size {"h":557,"opened":1,"w":344}

@@ -50,11 +50,11 @@ html [data-theme="dark" lang="en"]
             span "Mini window"
         div [id="multi-card"]
           div.multi.ok
-            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+            button.multi-open [title="Multi-Roblox: On: several Roblox windows can be open"]
               span.led
               div
                 b "Multi-Roblox"
-                small "On — several windows allowed"
+                small "On"
             label.switch [title="Turn off Multi-Roblox"]
               input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
               span
@@ -74,8 +74,11 @@ html [data-theme="dark" lang="en"]
             h1 "Game monitor"
             p
               b [id="mon-count"] "0 Roblox windows"
-        div.mon-area.mon-empty [id="mon-area"]
-          p "Open a game and its window shows here."
+        div.mon-area.none [id="mon-area"]
+          div.mon-empty
+            span.pv-empty-icon
+              svg.i #1e3syqr
+            p "Open a game and its window shows here."
 #layer
 #toasts
 -- commands
