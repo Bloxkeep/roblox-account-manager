@@ -321,7 +321,7 @@ window.I18N = {
     'tray.windows': '{n} Roblox windows', 'tray.windows1': '1 Roblox window', 'tray.on': 'On', 'tray.notReady': 'Not ready', 'tray.off': 'Off',
     'tray.fix': 'Open Bloxkeep to fix it', 'tray.turnOff': 'Turn off Multi-Roblox', 'tray.turnOn': 'Turn on Multi-Roblox', 'tray.openToTurnOn': 'Open Bloxkeep to turn it on',
     'tray.closeAllRoblox': 'Close all Roblox', 'tray.closeN': 'Close {n} Roblox windows', 'tray.closeN1': 'Close 1 Roblox window',
-    'vault.back': 'Back', 'vault.who': 'Who’s using Bloxkeep?', 'vault.add': 'Add a vault', 'vault.new': 'Create a new vault',
+    'vault.back': 'Back', 'vault.who': 'Choose a vault', 'vault.add': 'Add a vault', 'vault.new': 'Create a new vault',
     'vault.ask': 'Ask which vault to use each time Bloxkeep starts', 'vault.switch': 'Switch vault', 'vault.switchTip': 'Switch vault ({name})',
     'vault.remove': 'Remove from this PC', 'vault.removeTitle': 'Remove “{name}” from this PC?', 'vault.removeOk': 'Remove',
     'vault.removeText': 'It leaves the list, but its file stays. Restore from a backup brings it back.',
@@ -806,6 +806,9 @@ window.I18N = {
     'pw.needCode6': 'Enter all 6 digits.',
     'pw.waitMsg': 'Too many tries. Try again in {s} seconds.',
     'pw.captchaClosed': 'The puzzle window was closed. Press Solve the puzzle to open it again.',
+    'lock.pw6': 'Master password (6+ characters)',
+    'lock.forgot': 'Forgot it? Restore a backup or create a new vault below.',
+    'lock.closeWin': 'Close window',
     // ── end P5 ──
 
     // ── P6 settings ──
@@ -824,7 +827,7 @@ window.I18N = {
     'common.unknownError': 'Lỗi không xác định', 'common.noBridge': 'Không kết nối được với Bloxkeep.',
 
     'lock.createTitle': 'Đặt mật khẩu chủ', 'lock.unlockTitle': 'Chào mừng trở lại',
-    'lock.createText': 'Dùng để mở khóa Bloxkeep. Quên là <b>không lấy lại được</b>.',
+    'lock.createText': 'Dùng để mở khóa Bloxkeep. Quên mật khẩu là <b>không khôi phục được</b>.',
     'lock.unlockText': 'Nhập mật khẩu chủ để mở khóa.',
     'lock.pw': 'Mật khẩu chủ', 'lock.pw2': 'Nhập lại mật khẩu chủ', 'lock.showPw': 'Hiện mật khẩu',
     'lock.create': 'Bắt đầu', 'lock.unlock': 'Mở khóa',
@@ -1121,7 +1124,7 @@ window.I18N = {
     'lock.upd.title': 'Đang cập nhật Bloxkeep', 'lock.upd.titleV': 'Đang cập nhật lên {v}',
     'lock.upd.note': 'Lát nữa Bloxkeep sẽ tự mở lại ngay tại đây.',
     'lock.upd.get': 'Đang tải… {p}%', 'lock.upd.install': 'Đang cài đặt…',
-    'lock.upd.later': 'Để sau', 'lock.upd.laterTip': 'Bloxkeep sẽ cập nhật lúc bạn không dùng.',
+    'lock.upd.later': 'Mở khóa trước, cập nhật sau', 'lock.upd.laterTip': 'Bloxkeep sẽ cập nhật lúc bạn không dùng.',
     'tray.locked': 'Đang khóa', 'tray.status': '{n} cửa sổ Roblox · {ram} RAM', 'tray.none': 'Chưa mở cửa sổ Roblox nào',
     'tray.mini': 'Cửa sổ nhỏ', 'tray.open': 'Mở Bloxkeep', 'tray.unlockToChange': 'Mở khóa để thay đổi',
     'tray.multiReady': 'Đang bật', 'tray.multiNotReady': 'Chưa chạy được, mở Bloxkeep để sửa', 'tray.multiOff': 'Đang tắt',
@@ -1135,7 +1138,7 @@ window.I18N = {
     'tray.windows': '{n} cửa sổ Roblox', 'tray.on': 'Bật', 'tray.notReady': 'Chưa sẵn sàng', 'tray.off': 'Tắt',
     'tray.fix': 'Mở Bloxkeep để sửa', 'tray.turnOff': 'Tắt Multi-Roblox', 'tray.turnOn': 'Bật Multi-Roblox', 'tray.openToTurnOn': 'Mở Bloxkeep để bật',
     'tray.closeAllRoblox': 'Đóng tất cả Roblox', 'tray.closeN': 'Đóng {n} cửa sổ Roblox',
-    'vault.back': 'Quay lại', 'vault.who': 'Ai đang dùng Bloxkeep?', 'vault.add': 'Thêm vault', 'vault.new': 'Tạo vault mới',
+    'vault.back': 'Quay lại', 'vault.who': 'Chọn vault', 'vault.add': 'Thêm vault', 'vault.new': 'Tạo vault mới',
     'vault.ask': 'Hỏi chọn vault mỗi lần mở Bloxkeep', 'vault.switch': 'Đổi vault', 'vault.switchTip': 'Đổi vault ({name})',
     'vault.remove': 'Gỡ khỏi máy này', 'vault.removeTitle': 'Gỡ vault “{name}” khỏi máy này?', 'vault.removeOk': 'Gỡ',
     'vault.removeText': 'Vault bị bỏ khỏi danh sách, file vẫn còn. Dùng Khôi phục từ bản sao lưu để mở lại.',
@@ -1611,6 +1614,9 @@ window.I18N = {
     'pw.needCode6': 'Nhập đủ 6 số.',
     'pw.waitMsg': 'Nhập sai nhiều lần. Thử lại sau {s} giây.',
     'pw.captchaClosed': 'Đã đóng cửa sổ câu đố. Bấm Giải câu đố để mở lại.',
+    'lock.pw6': 'Mật khẩu chủ (ít nhất 6 ký tự)',
+    'lock.forgot': 'Quên mật khẩu? Khôi phục bản sao lưu hoặc tạo vault mới.',
+    'lock.closeWin': 'Đóng cửa sổ',
     // ── end P5 ──
 
     // ── P6 settings ──

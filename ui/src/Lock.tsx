@@ -35,8 +35,24 @@ export function Lock({ mode, notice, kept, opened }: {
   const nameBox = useRef<HTMLInputElement>(null);
   const btn = useRef<HTMLButtonElement>(null), meter = useRef<HTMLElement>(null), label = useRef<HTMLSpanElement>(null);
   const [error, setError] = useState('');
+  // The box a problem is about (aria-invalid until it is typed in again) and how many times the password was refused.
+  const [invalid, setInvalid] = useState<'' | 'pw1' | 'pw2'>('');
+  const [refused, setRefused] = useState(0);
   const [shown, setShown] = useState(false);
   const [caps, setCaps] = useState(false);
+  // Caps Lock as the last key or mouse event saw it (a focus event can't say): read when a password box is focused.
+  const capsNow = useRef(false);
+  useEffect(() => {
+    const read = (e: KeyboardEvent | MouseEvent) => {
+      const on = !!e.getModifierState?.('CapsLock');
+      if (on === capsNow.current) return;
+      capsNow.current = on;
+      if ([pw1.current, pw2.current].includes(document.activeElement as HTMLInputElement)) setCaps(on);
+    };
+    const events = ['keydown', 'keyup', 'mousemove', 'mousedown'] as const;
+    events.forEach(n => document.addEventListener(n, read as EventListener, true));
+    return () => events.forEach(n => document.removeEventListener(n, read as EventListener, true));
+  }, []);
   // An update found before the unlock (AppController.UpdateOffersAtLock) takes the screen while it installs, and Bloxkeep
   // reopens here on it. Not once something was typed (they're on their way in); it then waits until Bloxkeep isn't in use.
   // Decided once per update offered; the app keeps the answer, so a redraw in another language keeps it.
@@ -77,10 +93,11 @@ export function Lock({ mode, notice, kept, opened }: {
     return () => clearTimeout(timer);
   }, []);
 
-  const fail = (msg: string) => {
+  const fail = (msg: string, box: 'pw1' | 'pw2' = 'pw1') => {
     const f = form.current;
     if (!f) return; // drawn again meanwhile (another language): this screen is gone
     setError(msg);
+    setInvalid(box);
     f.classList.remove('shake');
     void f.offsetWidth; // starts the shake again
     f.classList.add('shake');
@@ -91,17 +108,19 @@ export function Lock({ mode, notice, kept, opened }: {
     if (create) {
       if (a.value.length < 6) return fail(t('lock.short'));
       if (!a.value.trim()) return fail(t('lock.blank'));
-      if (a.value !== b!.value) return fail(t('lock.mismatch'));
+      if (a.value !== b!.value) return fail(t('lock.mismatch'), 'pw2');
     } else if (!a.value) {
       return fail(t('lock.empty'));
     }
     setError('');
+    setInvalid('');
     let state: AppState | undefined;
     await busy(btn.current!, async () => {
       try {
         state = await ask(create ? 'createVault' : 'unlock', create ? { password: a.value, name: nameBox.current?.value || '' } : { password: a.value }) as AppState;
       } catch (ex) {
         fail((ex as Error).message);
+        setRefused(n => n + 1);
         a.select();
       }
     });
@@ -112,7 +131,8 @@ export function Lock({ mode, notice, kept, opened }: {
     }
   };
   // An old error goes once the password is being typed again; Caps Lock is pointed out while it is on.
-  const typing = { onInput: () => setError(''), onKeyDown: (e: React.KeyboardEvent) => setCaps(!!e.getModifierState?.('CapsLock')), onKeyUp: (e: React.KeyboardEvent) => setCaps(!!e.getModifierState?.('CapsLock')) };
+  const readCaps = (e: React.KeyboardEvent) => { capsNow.current = !!e.getModifierState?.('CapsLock'); setCaps(capsNow.current); };
+  const typing = { onInput: () => { setError(''); setInvalid(''); }, onKeyDown: readCaps, onKeyUp: readCaps, onFocus: () => setCaps(capsNow.current) };
   const eye = t(shown ? 'lock.hidePw' : 'lock.showPw');
 
   // Back: to the open vault (the picker is over it), or to the password of the vault the lock screen offers.
@@ -139,42 +159,46 @@ export function Lock({ mode, notice, kept, opened }: {
         <div className="boot-bar" role="progressbar" aria-label={title} aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent}>
           <i style={{ transform: `scaleX(${(percent / 100).toFixed(3)})` }} /></div>
         <div className="lock-update-step" id="lock-update-step" aria-live="polite">{ready ? t('lock.upd.install') : t('lock.upd.get', { p: percent })}</div>
-        <div className="lock-alt"><button type="button" className="link" id="lock-update-later" title={t('lock.upd.laterTip')} onClick={later}>{t('lock.upd.later')}</button></div>
+        {ready ? null : <div className="lock-alt"><button type="button" className="btn ghost" id="lock-update-later" title={t('lock.upd.laterTip')} onClick={later}>{t('lock.upd.later')}</button></div>}
       </div>
     </div>;
   }
 
   return <div className="lock">
     <div className="dots" />
+    {adding ? <button type="button" className="btn ghost vp-back" data-act="vault-cancel-add"><Icon name="chevronLeft" /><span>{t('vault.back')}</span></button> : null}
     <div className="lock-lang"><LangSwitch /></div>
     <form className="lock-card" id="lock-form" autoComplete="off" data-mode={mode} ref={form} onSubmit={submit}>
       <img className="logo-img" src={logo} alt="" />
       {vault ? <div className="lock-vault"><VaultFace vault={vault} className="sm" /><b title={vault.name}>{vault.name}</b>
-        {adding ? <button type="button" className="link" data-act="vault-cancel-add">{t('common.cancel')}</button>
-          : screenLock ? null : <button type="button" className="link" data-act="vault-pick">{t('vault.switch')}</button>}</div> : null}
+        {adding || screenLock ? null : <button type="button" className="link" data-act="vault-pick">{t('vault.switch')}</button>}</div> : null}
       <h2>{t(adding ? 'vault.newTitle' : create ? 'lock.createTitle' : 'lock.unlockTitle')}</h2>
       <p><Rich k={adding ? 'vault.newText' : create ? 'lock.createText' : 'lock.unlockText'} /></p>
       {notice ? <p className="lock-paused">{notice}</p> : null}
       <div className="stack">
-        {adding ? <input className="field" id="vault-name" ref={nameBox} defaultValue={vault?.name || ''} maxLength={40} placeholder={t('vault.name')}
-          aria-label={t('vault.name')} spellCheck={false} /> : null}
-        <div className="pw"><input className="field" type={shown ? 'text' : 'password'} id="pw1" ref={pw1} placeholder={t('lock.pw')} maxLength={256} aria-label={t('lock.pw')}
-          {...typing} onInput={() => { setError(''); if (create) showStrength(pw1.current!.value); }} />
+        {adding ? <label className="lock-label"><span>{t('vault.name')}</span><input className="field" id="vault-name" ref={nameBox} defaultValue={vault?.name || ''} maxLength={40}
+          spellCheck={false} /></label> : null}
+        <div className="pw"><input className="field" type={shown ? 'text' : 'password'} id="pw1" ref={pw1} placeholder={t(create ? 'lock.pw6' : 'lock.pw')} maxLength={256} aria-label={t('lock.pw')}
+          aria-invalid={invalid === 'pw1' || undefined} {...typing} onInput={() => { setError(''); setInvalid(''); if (create) showStrength(pw1.current!.value); }} />
           <button type="button" className="icon-btn" id="pw-eye" title={eye} aria-label={eye} aria-pressed={shown} onClick={() => setShown(!shown)}><Icon name={shown ? 'eyeOff' : 'eye'} /></button></div>
         {create ? <>
-          <input className="field" type={shown ? 'text' : 'password'} id="pw2" ref={pw2} placeholder={t('lock.pw2')} maxLength={256} aria-label={t('lock.pw2')} {...typing} />
-          <div className="strength-row"><div className="strength"><i id="pw-meter" ref={meter} /></div><span id="pw-strength" ref={label} aria-live="polite" /></div>
+          <input className="field" type={shown ? 'text' : 'password'} id="pw2" ref={pw2} placeholder={t('lock.pw2')} maxLength={256} aria-label={t('lock.pw2')}
+            aria-invalid={invalid === 'pw2' || undefined} {...typing} />
+          <div className="strength-row"><div className="strength"><i id="pw-meter" ref={meter} /></div><span id="pw-strength" className="pw-strength" ref={label} aria-live="polite" /></div>
         </> : null}
       </div>
       <div className="lock-caps" id="lock-caps" hidden={!caps}><Icon name="alert" />{t('lock.caps')}</div>
       <div className="lock-error" id="lock-error" role="alert">{error}</div>
+      {/* From the second refused password: the way on (the two links below it; not offered when it locked by itself). */}
+      {refused >= 2 && !create && !screenLock ? <p className="lock-forgot" id="lock-forgot">{t('lock.forgot')}</p> : null}
       <button className="btn primary big w" type="submit" id="lock-btn" ref={btn}>{t(create ? 'lock.create' : 'lock.unlock')}</button>
       {/* Set up: a backup instead. Unlock: a backup (a forgotten master password can't be recovered) or another vault. */}
-      {screenLock ? null : <div className="lock-alt"><button type="button" className="link" data-act="restore-backup">{t('lock.restore')}</button>
+      {screenLock || adding ? null : <div className="lock-alt"><button type="button" className="link" data-act="restore-backup">{t('lock.restore')}</button>
         {create ? null : <><span className="sep">·</span><button type="button" className="link" data-act="vault-add">{t('vault.new')}</button></>}</div>}
       {/* For someone who signs in to Roblox only in their own browser: Multi-Roblox without a vault or accounts. */}
       {create && !adding ? <div className="lock-alt lock-multi">{multiOnly
-        ? <><span id="lock-multi-on">{t('lock.multiOnlyOn')}</span> <button type="button" className="link" data-act="multi-only-off">{t('lock.multiOnlyOff')}</button></>
+        ? <><span id="lock-multi-on">{t('lock.multiOnlyOn')}</span> <button type="button" className="link" data-act="multi-only-off">{t('lock.multiOnlyOff')}</button>
+          {app.closeToTray ? <button type="button" className="btn ghost lock-close" data-act="win-close">{t('lock.closeWin')}</button> : null}</>
         : <button type="button" className="link" data-act="multi-only">{t('lock.multiOnly')}</button>}</div> : null}
     </form>
   </div>;

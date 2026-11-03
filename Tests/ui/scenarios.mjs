@@ -1567,6 +1567,31 @@ export default [
   // ── end P4 ──
 
   // ── P5 sign-in ──
+  // The second refused master password says where to go next; the lock screen on a light and on a picture theme.
+  S('lock-forgot', 'locked=1', async s => {
+    await s.fill(key('lock.pw'), 'wrong-one');
+    await s.key('Enter');
+    await s.wait(800);
+    await s.snap('first try');
+    await s.fill(key('lock.pw'), 'wrong-two');
+    await s.key('Enter');
+    await s.wait(800);
+  }),
+  S('lock-theme-light', 'locked=1&theme=light', async s => { await s.fill(key('lock.pw'), 'wrong-one'); await s.key('Enter'); await s.wait(800); }),
+  S('lock-theme-scene', 'locked=1&theme=halong', async s => { await s.fill(key('lock.pw'), 'wrong-one'); await s.key('Enter'); await s.wait(800); }),
+  S('first-run-theme-light', 'new=1&theme=light', async s => { await s.fill(key('lock.pw'), 'Abcdef12'); await s.fill(key('lock.pw2'), 'Abcdef13'); await s.key('Enter'); await s.wait(300); }),
+  S('first-run-theme-scene', 'new=1&theme=halong', async s => { await s.fill(key('lock.pw'), 'Abcdef12'); await s.fill(key('lock.pw2'), 'Abcdef13'); await s.key('Enter'); await s.wait(300); }),
+  S('vault-picker-light', 'locked=1&vaults=1&vaultpick=1&theme=light'),
+  // The sign-in: only the name typed (the password box is marked and takes the focus); the puzzle window closed unsolved;
+  // Done after an account came in.
+  S('pw-empty-password', '', async s => { await s.click(key('acc.add')); await s.fill({ css: '#pw-user' }, 'someone'); await s.click({ css: '#pw-go' }); }),
+  S('pw-captcha-closed', '', async s => { await signIn(s, 'captchaclosed'); await s.click({ css: '#pw-solve' }); await s.wait(600); }),
+  S('pw-added-done', '', async s => {
+    await signIn(s, 'firstfarm');
+    await s.snap('added');
+    await s.click({ css: '[data-x2=done]' });
+    await s.wait(400);
+  }),
   // ── end P5 ──
 
   // ── P6 settings ──

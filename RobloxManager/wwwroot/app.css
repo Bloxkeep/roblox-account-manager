@@ -1401,7 +1401,7 @@ kbd { font: 500 var(--fs-1) var(--font); padding: 1px 6px; border-radius: var(--
   position: relative; width: min(420px, 92vw); padding: 38px 36px 28px; text-align: center;
   background: var(--surface);
   border: 1px solid var(--line-2); border-radius: 26px; box-shadow: 0 30px 80px var(--shadow);
-  animation: rise .45s cubic-bezier(.2, .9, .3, 1.2);
+  animation: rise .45s cubic-bezier(.2, .9, .3, 1);
   /* A very short window (a small laptop at 200 %): the card scrolls rather than losing its last link. */
   max-height: calc(100vh - 16px); overflow-y: auto; scrollbar-width: thin;
 }
@@ -1414,7 +1414,7 @@ kbd { font: 500 var(--fs-1) var(--font); padding: 1px 6px; border-radius: var(--
 .lock-card .lock-paused { font-size: var(--fs-3); line-height: 1.45; }
 .lock-card .field { width: 100%; height: 46px; font-size: var(--fs-5); }
 .lock-card .stack { display: grid; gap: 10px; text-align: left; }
-.lock-error { min-height: 20px; margin: 10px 0 8px; color: var(--bad-ink); font-size: var(--fs-3); overflow-wrap: anywhere; }
+.lock-error { min-height: 18px; margin: 6px 0 4px; color: var(--bad-ink); font-size: var(--fs-3); overflow-wrap: anywhere; }
 /* An update found before the unlock takes the card's place (Lock.tsx): the boot screen's bar, the step under it. */
 .lock-update .logo-img { animation: breathe 1.6s ease-in-out infinite; }
 .lock-update .boot-bar { width: 100%; margin: 0; }
@@ -1428,7 +1428,7 @@ kbd { font: 500 var(--fs-1) var(--font); padding: 1px 6px; border-radius: var(--
 .vault-face img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .vault-face.sm { width: 40px; height: 40px; border-radius: var(--r-md); font-size: var(--fs-6); flex: none; }
 .vault-face.xs { width: 22px; height: 22px; border-radius: 6px; font-size: var(--fs-2); flex: none; }
-.lock-vault { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 2px 0 12px; min-width: 0; }
+.lock-vault { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 12px 0 4px; min-width: 0; }
 .lock-vault b { font-size: 16px; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lock-vault .link { font-size: var(--fs-3); color: var(--text-2); }
 .vp { position: relative; display: flex; flex-direction: column; align-items: center; gap: 24px; padding: 24px; max-width: 920px; }
@@ -1442,8 +1442,10 @@ kbd { font: 500 var(--fs-1) var(--font); padding: 1px 6px; border-radius: var(--
 .vp-add { display: grid; place-items: center; background: transparent; border-style: dashed; color: var(--text-2); }
 .vp-add .i { width: 44px; height: 44px; }
 .vp-name { max-width: 132px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-2); font-weight: 600; }
-.vp-remove { position: absolute; top: -9px; right: -9px; width: 28px; height: 28px; border: 1px solid var(--line-3); border-radius: 50%; background: var(--raised); opacity: 0; transition: opacity .15s; }
-.vp-item:hover .vp-remove, .vp-remove:focus-visible { opacity: 1; }
+.vp-remove { position: absolute; top: -9px; right: -9px; width: 28px; height: 28px; border: 1px solid var(--line-3); border-radius: 50%; background: var(--raised); opacity: .5; transition: opacity .15s; }
+.vp-item:hover .vp-remove, .vp-item:focus-within .vp-remove, .vp-remove:focus-visible { opacity: 1; }
+/* The vault used last. */
+.vp-tile.last { border-color: var(--text-2); }
 .vp-ask { display: flex; align-items: center; gap: 12px; color: var(--text-2); font-size: var(--fs-4); cursor: pointer; }
 .vp-back { position: absolute; top: 18px; left: 18px; z-index: 1; }
 /* Over the open vault (Switch vault, a new vault's form): the lock screen's look, above the page, under its dialogs. */
@@ -1460,9 +1462,9 @@ kbd { font: 500 var(--fs-1) var(--font); padding: 1px 6px; border-radius: var(--
 @keyframes shake { 20%, 60% { transform: translateX(-8px); } 40%, 80% { transform: translateX(8px); } }
 .strength { height: 4px; border-radius: var(--r-xs); background: var(--line-2); overflow: hidden; }
 .strength i { display: block; height: 100%; width: 0; border-radius: var(--r-xs); transition: width .25s, background .25s; }
-.strength-row { display: flex; align-items: center; gap: 10px; }
+.strength-row { display: flex; align-items: center; gap: 10px; min-height: 16px; }
 .strength-row .strength { flex: 1; }
-.pw-strength { min-width: 58px; font-size: var(--fs-2); font-weight: 600; text-align: right; color: var(--muted); }
+.pw-strength { min-width: 58px; min-height: 16px; font-size: var(--fs-2); font-weight: 600; text-align: right; color: var(--muted); }
 .pw-strength.weak { color: var(--bad-ink); }
 .pw-strength.ok { color: var(--warn-ink); }
 .pw-strength.strong { color: var(--ok-ink); }
@@ -5711,6 +5713,14 @@ button.mc-step-head:focus-visible { outline: 2px solid var(--focus); outline-off
 /* ───────── P5 sign-in ───────── */
 /* The realm switch is the sign-in's .seg.wide; the code row keeps a gap under it. */
 .seg.wide + .ql { margin-top: 14px; }
+/* The lock screen and the dialogs' short texts break evenly instead of leaving one word alone on the last line. */
+.lock-card p, .start-opt small, .modal-text { text-wrap: balance; }
+/* The add-vault form's label over the name box; the hint from the second refused password; Close window after Multi-Roblox only. */
+.lock-label { display: grid; gap: 6px; font-size: var(--fs-3); font-weight: 650; color: var(--text-2); }
+.lock-label .field { font-weight: 400; }
+.lock-card p.lock-forgot { margin: 0 0 10px; font-size: var(--fs-3); line-height: 1.45; }
+.lock-multi .lock-close { display: flex; margin: 12px auto 0; }
+.vp-tile.last:hover, .vp-tile.last:focus-visible { border-color: var(--text); }
 /* ───────── end P5 ───────── */
 
 /* ───────── P6 settings ───────── */
