@@ -237,6 +237,27 @@ public abstract class WebToolWindow : Form
         {
             _release.Interval = (int)Math.Max(1000, KeepBrowser.TotalMilliseconds);
             _release.Start();
+            _ = SleepAsync();
+        }
+    }
+
+    /// <summary>A hidden page that is kept a while sleeps meanwhile (TrySuspend: its timers and drawing stop), as the main
+    /// page does. Showing it wakes it; so does an event sent to it (<see cref="SendEvent"/>), and it then sleeps again.</summary>
+    async Task SleepAsync()
+    {
+        if (KeepBrowser < TimeSpan.FromSeconds(2))
+            return; // let go almost at once anyway
+        // The browser hears it is hidden on a later turn of the message loop; asked to sleep before that, it refuses.
+        await Task.Delay(300);
+        if (Visible || IsDisposed || _web?.CoreWebView2 is not { } core || core.IsSuspended)
+            return;
+        try
+        {
+            await core.TrySuspendAsync();
+        }
+        catch (Exception ex) when (ex is COMException or InvalidOperationException or ObjectDisposedException)
+        {
+            // Shown again meanwhile, or the browser went: nothing to put to sleep.
         }
     }
 
@@ -266,6 +287,12 @@ public abstract class WebToolWindow : Form
             return;
         try
         {
+            if (core.IsSuspended)
+            {
+                core.Resume();
+                if (!Visible)
+                    _ = SleepAsync();
+            }
             core.PostWebMessageAsJson(JsonSerializer.Serialize(new { type = "event", name, data }));
         }
         catch (Exception ex) when (ex is COMException or InvalidOperationException or ObjectDisposedException)
