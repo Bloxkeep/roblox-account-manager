@@ -244,6 +244,8 @@ public sealed partial class AppController
         part = Stopwatch.GetTimestamp();
         changed |= _logs.Poll(pids.ToList()) && _running.Count > 0;
         Took("Roblox logs", part);
+        if (scan)
+            changed |= AdoptWindowsOpenedElsewhere(players);
         var unnamed = _running.Values.Select(r => _logs.StateOf(r.Pid)?.PlaceId ?? 0)
             .Where(id => id > 0 && !HasGame(id, false) && !(_gameFetchedAt.TryGetValue(id, out var asked) && now - asked < GameRetry))
             .Distinct().ToList();
@@ -349,6 +351,7 @@ public sealed partial class AppController
         Step(() => TickUpdateReopen(now));
         Step(() => RunDueRejoin(now));
         Step(() => RestartDueClients(now));
+        Step(() => HopCrowdedClients(now));
         Step(() => RunSignInCheckIfDue(now));
         Step(() => NoteGameHoursIfDue(now));
         Step(SaveRenewedSignIns); // a cookie Roblox renewed in an answer goes to its account
@@ -861,5 +864,33 @@ public sealed partial class AppController
             _ = LimitRamInTurn(pid, null);
         _ramLimited.Clear();
         _ramLimitTurn.Wait(TimeSpan.FromSeconds(5)); // one asked just before mustn't land after Bloxkeep is gone
+    }
+
+    /// <summary>
+    /// A window opened outside Bloxkeep (from Roblox's own app, a browser's Play) that joined a game signed in as one of the
+    /// vault's accounts becomes that account's, as if Bloxkeep had opened it: its card shows it, and macros, Edit on game,
+    /// the panel, closing and auto-rejoin can use it. Not while a launch could still claim it, never a second window for an
+    /// account that has one.
+    /// </summary>
+    bool AdoptWindowsOpenedElsewhere(IReadOnlyList<RobloxProcesses.PlayerProcess> players)
+    {
+        if (_vault is null || _launchCts is not null || _pending.Count > 0 || _rejoining)
+            return false;
+        bool adopted = false;
+        foreach (var p in players)
+        {
+            if (_logs.UserIdOf(p.Pid) is not { } user || _running.Values.Any(r => r.Pid == p.Pid))
+                continue;
+            var account = _vault.Data.Accounts.FirstOrDefault(a => a.UserId == user);
+            if (account is null || _running.ContainsKey(account.Id))
+                continue;
+            var place = _logs.StateOf(p.Pid)?.PlaceId;
+            var since = p.Created > 0 ? DateTime.FromFileTimeUtc(p.Created) : DateTime.UtcNow;
+            _running[account.Id] = (p.Pid, new PendingLaunch(account.Id, [], since, place is > 0 ? new GameTarget(place.Value) : null));
+            adopted = true;
+        }
+        if (adopted)
+            Persist();
+        return adopted;
     }
 }

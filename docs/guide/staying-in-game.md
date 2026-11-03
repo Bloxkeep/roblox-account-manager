@@ -65,6 +65,15 @@ When an account's Roblox disconnects, gets kicked or loses the connection, Bloxk
 
 If an account is kicked anyway, Bloxkeep says why: the PC was in use, it was locked, a full-screen app was in front, or Windows kept the window in the background.
 
+## Leave crowded servers
+
+**Settings › Staying in game › Leave crowded servers**, off by default. Pick a number: a window in a public server with more players than that (your own accounts not counted) closes and opens again in a server with that many or fewer, apart from your other accounts.
+
+- Bloxkeep counts every 2 minutes from Roblox's server list, the same list as **Servers**. Roblox's numbers can be a few seconds behind the game.
+- A window that just joined is left alone for 90 seconds.
+- Private servers, share links and **A player's server** stay where they are.
+- When no server is quiet enough, Bloxkeep says so and looks again later.
+
 ## Fast Flags
 
 Off by default. On: the windows Bloxkeep opens get a grey sky, no grass and the lowest graphics, for a little less RAM. Your own Roblox settings come back once they've opened. With Bloxstrap or Fishstrap, the launcher's own flags win.

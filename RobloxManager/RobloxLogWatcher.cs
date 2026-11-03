@@ -54,6 +54,8 @@ public sealed class RobloxLogWatcher
         /// <summary>Roblox's updater was told to install in the background: this client goes on (see <see cref="UpdateThreadMark"/>).</summary>
         public bool BackgroundUpdate;
         public DateTime? UpdateHandOff;
+        /// <summary>The signed-in account, from the join report (see <see cref="JoinReportMark"/>).</summary>
+        public long? UserId;
     }
 
     /// <summary>
@@ -161,6 +163,11 @@ public sealed class RobloxLogWatcher
     // and the updater opens nothing; without that line it quits a second or two later and the updater opens the updated
     // client with the same link about 8-10 s on (the owner's logs of 2026-10-30, 0.744 -> 0.745: four of each).
     const string UpdateThreadMark = "[FLog::UpdateController] Update thread: start", BackgroundUpdateMark = "[FLog::UpdateController] Update mode is chosen as BACKGROUND";
+    // Every game join reports who joined (0.745, 2026-11-03): "[FLog::GameJoinLoadTime] Report game_join_loadtime: placeid:…,
+    // join_time:…, universeid:…, referral_page:Home, sid:…, clienttime:…, userid:12345,". A window opened outside Bloxkeep
+    // (from Roblox's own app) is matched to its account by it.
+    const string JoinReportMark = "game_join_loadtime";
+    static readonly Regex JoinReportUser = new(@"userid:(\d{1,19})", RegexOptions.Compiled | RegexOptions.CultureInvariant);
     const long MaxRead = 4 * 1024 * 1024;
 
     readonly Dictionary<int, Tail> _tails = new();
@@ -201,6 +208,9 @@ public sealed class RobloxLogWatcher
 
     /// <summary>Its log is found and followed, so what it said (or didn't) can be read.</summary>
     public bool Follows(int pid) => _tails.ContainsKey(pid);
+
+    /// <summary>The account signed in to this window, once it has joined a game; null before or when not logged.</summary>
+    public long? UserIdOf(int pid) => _tails.GetValueOrDefault(pid)?.UserId;
 
     /// <summary>
     /// For a client that has just quit, with its final lines (a leave, a disconnect): the next <see cref="Poll"/> drops
@@ -417,6 +427,9 @@ public sealed class RobloxLogWatcher
 
     static void Apply(Tail tail, string line)
     {
+        if (line.Contains(JoinReportMark, StringComparison.Ordinal) && JoinReportUser.Match(line) is { Success: true } who
+            && long.TryParse(who.Groups[1].Value, NumberStyles.None, CultureInfo.InvariantCulture, out long user) && user > 0)
+            tail.UserId = user;
         // A number too big for its type reads as no place, never as an error that would stop the process check.
         if (line.Contains("! Joining game", StringComparison.Ordinal) && JoiningLine.Match(line) is { Success: true } join)
         {

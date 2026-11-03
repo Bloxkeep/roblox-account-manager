@@ -1,4 +1,4 @@
-// Settings › Staying in game: the Roblox settings; auto-rejoin for every account, Anti-AFK, the daily sign-in check; then RAM and CPU (the low-RAM
+// Settings › Staying in game: the Roblox settings; auto-rejoin for every account, Anti-AFK, leaving crowded servers, the daily sign-in check; then RAM and CPU (the low-RAM
 // warning, saving RAM on background windows, the RAM limit for resting ones, fast cores for the played window). Tray and GPU drawing: Settings › Bloxkeep.
 import { useAppState, useHost } from '../host';
 import { Group, Page, Row, Switch, useLocal } from './parts';
@@ -15,6 +15,7 @@ export function PerfPage({ title }: { title: string }) {
   const rejoinNow = !accounts.length ? 'off' : on === accounts.length ? 'on' : on === 0 ? 'off' : 'some';
   const [rejoin, setRejoin] = useLocal(rejoinNow);
   const [antiAfk, setAntiAfk] = useLocal(!!st.antiAfk);
+  const [hop, setHop] = useLocal(String(st.hopAbovePlayers || 0));
   const [daily, setDaily] = useLocal(app.dailySignInCheck !== false);
   const [memWarn, setMemWarn] = useLocal(!!st.memoryWarnings);
   const [trim, setTrim] = useLocal(!!st.trimBackground);
@@ -50,6 +51,15 @@ export function PerfPage({ title }: { title: string }) {
         </select>
       </Row>
       <Row title={t('set.antiAfk')} desc={t('set.antiAfkDesc')}><Switch id="s-antiafk" label={t('set.antiAfk')} checked={antiAfk} onChange={setting('antiAfk', setAntiAfk)} /></Row>
+      <Row title={t('set.hop')} desc={t('set.hopDesc')}>
+        <select className="select" id="s-hop" aria-label={t('set.hop')} value={hop} onChange={e => {
+          setHop(e.target.value);
+          call('setSettings', { hopAbovePlayers: Number(e.target.value) });
+        }}>
+          <option value="0">{t('set.hopOff')}</option>
+          {[1, 2, 3, 5, 8, 10, 15, 20].map(n => <option key={n} value={n}>{n === 1 ? t('set.hopN1') : t('set.hopN', { n })}</option>)}
+        </select>
+      </Row>
       <Row title={t('set.daily')} desc={<>{t('set.dailyDesc')} <span id="s-daily-when">{dailyWhen}</span></>}>
         <Switch id="s-daily" label={t('set.daily')} checked={daily} onChange={v => { setDaily(v); call('setDailySignInCheck', { enabled: v }); }} />
       </Row>

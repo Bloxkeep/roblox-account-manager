@@ -778,6 +778,12 @@ public static class L
         ["Only accounts playing in a public server can switch to another one."] = "Chỉ tài khoản đang chơi ở server công khai mới đổi sang server khác được.",
         ["Roblox won't give the server list right now. Try again in a minute."] = "Roblox tạm chưa cho tải danh sách server. Thử lại sau một phút.",
         ["No other server of {0} has room right now."] = "Hiện không còn server nào khác của {0} đủ chỗ.",
+        ["Not enough servers with room were found for every account to have its own: Roblox picks for the rest."] =
+            "Không đủ server còn chỗ để mỗi tài khoản một server: Roblox tự chọn cho các tài khoản còn lại.",
+        ["No server of {0} has {1} or fewer players right now. Bloxkeep looks again in a few minutes."] =
+            "Hiện không có server nào của {0} từ {1} người trở xuống. Vài phút nữa Bloxkeep tìm lại.",
+        ["{0} account's server got crowded, so it moves to a quieter one…"] = "Server của {0} tài khoản đã đông, đang chuyển sang server vắng hơn…",
+        ["{0} accounts' servers got crowded, so they move to quieter ones…"] = "Server của {0} tài khoản đã đông, đang chuyển sang server vắng hơn…",
         ["this game"] = "game này",
         ["{0} is moving to another server…"] = "{0} đang sang server khác…",
         ["{0} accounts are moving to another server…"] = "{0} tài khoản đang sang server khác…",

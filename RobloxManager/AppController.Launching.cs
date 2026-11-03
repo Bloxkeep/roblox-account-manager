@@ -48,8 +48,10 @@ public sealed partial class AppController
     /// something looks wrong (Multi-Roblox, RAM, bans, playability).
     /// </summary>
     /// <param name="pickServer">Chooses the server once the launch has started, so Stop works meanwhile; gets how many accounts will open.</param>
+    /// <param name="eachServer">Instead, a server for each account as it opens (every account in one of its own).</param>
     async Task<LaunchResult> LaunchAccountsAsync(Vault vault, List<Account> accounts, GameTarget? target, bool force, int delaySeconds,
-        Func<GameTarget, int, CancellationToken, Task<GameTarget>>? pickServer = null, Guid? presetId = null)
+        Func<GameTarget, int, CancellationToken, Task<GameTarget>>? pickServer = null, Guid? presetId = null,
+        Func<GameTarget, CancellationToken, Task<GameTarget>>? eachServer = null)
     {
         // Banned accounts aren't opened: their window would only show the ban. Roblox VNG accounts open like the
         // others, with a ticket from Roblox VNG's sign-in (tried from 2026-10-19).
@@ -182,7 +184,7 @@ public sealed partial class AppController
                 target = await pickServer(target, party, ct);
             // Several accounts sent to one server: the first shows whether it takes anyone before the rest follow; an
             // ended or full one is swapped for another with room for them all.
-            bool checkServer = party > 1;
+            bool checkServer = party > 1 && eachServer is null;
             var closedServers = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
             for (int i = 0; i < accounts.Count && _vault == vault; i++)
@@ -231,7 +233,8 @@ public sealed partial class AppController
                 bool opened = false;
                 try
                 {
-                    await StartSessionAsync(account, target, s.LaunchVia, ct, presetId: presetId);
+                    var join = eachServer is not null && target is not null ? await eachServer(target, ct) : target;
+                    await StartSessionAsync(account, join, s.LaunchVia, ct, presetId: presetId);
                     launched++;
                     opened = true;
                 }

@@ -65,6 +65,15 @@ Khi Roblox của một tài khoản bị văng, bị kick hoặc mất kết n�
 
 Nếu tài khoản vẫn bị kick, Bloxkeep nói rõ lý do: bạn dùng máy liên tục, máy đang khóa, có ứng dụng toàn màn hình phía trước, hoặc Windows không cho đưa cửa sổ lên trước.
 
+## Rời server đông
+
+**Cài đặt › Treo game › Rời server đông**, mặc định tắt. Chọn một con số: cửa sổ ở server công khai có nhiều người hơn số đó (không tính tài khoản của bạn) sẽ đóng rồi mở lại vào server có từ số đó trở xuống, không trùng server với tài khoản khác của bạn.
+
+- Bloxkeep đếm 2 phút một lần theo danh sách server của Roblox, giống danh sách trong **Server**. Số của Roblox có thể chậm vài giây so với trong game.
+- Cửa sổ vừa vào game được để yên 90 giây.
+- Server riêng, link chia sẻ và **Server của một người chơi** giữ nguyên.
+- Không có server nào đủ vắng thì Bloxkeep báo và tìm lại sau.
+
 ## Fast Flags
 
 Mặc định tắt. Bật lên, cửa sổ Bloxkeep mở sẽ có trời xám, không cỏ và đồ họa thấp nhất, bớt được chút RAM. Mở xong thì cài đặt Roblox của bạn trở lại như cũ. Nếu mở bằng Bloxstrap hay Fishstrap thì cờ của launcher được ưu tiên.

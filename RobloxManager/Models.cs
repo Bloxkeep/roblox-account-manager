@@ -98,6 +98,9 @@ public sealed class AppSettings
     public bool SplitCores { get; set; }
     /// <summary>Off until the user opts in: it briefly brings Roblox windows to the front while the PC is idle.</summary>
     public bool AntiAfk { get; set; }
+    /// <summary>A window in a public server with more than this many other players moves to a quieter one; 0 = never.
+    /// See AppController.ServerHop.cs.</summary>
+    public int HopAbovePlayers { get; set; }
     public RobloxConfig RobloxConfig { get; set; } = new();
     public List<RecentGame> RecentGames { get; set; } = new();
     public List<RecentGame> PinnedGames { get; set; } = new();

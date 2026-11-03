@@ -58,6 +58,8 @@ public sealed partial class AppController
             s.AutoUpdateRoblox = autoUpdate;
         if (OptBool(a, "fastFlags") is { } fastFlags)
             s.FastFlags = fastFlags;
+        if (Has(a, "hopAbovePlayers", JsonValueKind.Number) && HopAboveChoices.Contains((int)Long(a, "hopAbovePlayers")))
+            s.HopAbovePlayers = (int)Long(a, "hopAbovePlayers");
         if (Has(a, "ramLimitMb", JsonValueKind.Number) && RamLimitChoices.Contains((int)Long(a, "ramLimitMb")))
             s.RamLimitMb = (int)Long(a, "ramLimitMb");
         if (OptBool(a, "splitCores") is { } split)

@@ -7,7 +7,7 @@ import { OrderList, type OrderAccount, type OrderListApi } from './OrderList';
 import { DateInput, TimeInput } from './TimeField';
 import { SuggestInput } from './Suggest';
 
-const PRESET_SERVERS = ['any', 'most', 'fewest', 'ping', 'random', 'job', 'follow'];
+const PRESET_SERVERS = ['any', 'most', 'fewest', 'ping', 'random', 'eachFewest', 'eachMost', 'eachRandom', 'job', 'follow'];
 const RESTART_HOURS = [0, 2, 4, 6, 12]; // the app's own choices (RestartChoices)
 // The wait between accounts, in seconds (the app keeps 0 to 120); a preset saved with another number keeps it too.
 const DELAYS = [0, 5, 10, 15, 30, 45, 60, 90, 120];

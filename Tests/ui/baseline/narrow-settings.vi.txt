@@ -135,6 +135,21 @@ html [data-theme="dark" lang="vi"]
                           span
                     div.set-row
                       div
+                        div.t "Rời server đông"
+                        div.d "Cửa sổ ở server công khai có nhiều người hơn số này (không tính tài khoản của bạn) sẽ chuyển sang server vắng hơn. Kiểm tra 2 phút một lần."
+                      div.ctl
+                        select.select [id="s-hop" aria-label="Rời server đông" value="0"]
+                          option [value="0"] "Tắt"
+                          option [value="1"] "Hơn 1 người khác"
+                          option [value="2"] "Hơn 2 người khác"
+                          option [value="3"] "Hơn 3 người khác"
+                          option [value="5"] "Hơn 5 người khác"
+                          option [value="8"] "Hơn 8 người khác"
+                          option [value="10"] "Hơn 10 người khác"
+                          option [value="15"] "Hơn 15 người khác"
+                          option [value="20"] "Hơn 20 người khác"
+                    div.set-row
+                      div
                         div.t "Kiểm tra đăng nhập mỗi ngày"
                         div.d "Báo tài khoản nào bị Roblox đăng xuất."
                           span [id="s-daily-when"] "Kiểm tra lần cuối: 7:00."

@@ -25,7 +25,7 @@ A preset keeps the accounts (in order), the game, how to pick the server, the wa
 |---|---|
 | **Name** | Required. |
 | **Game** | Same box as the game bar. Empty just opens Roblox. |
-| **Server** | **Any (Roblox picks)**, **Most players**, **Fewest players**, **Lowest ping**, **Random**, **Fixed server (Job ID)**, or **A player's server**. |
+| **Server** | **Any (Roblox picks)**, **Most players**, **Fewest players**, **Lowest ping**, **Random**, **Fixed server (Job ID)**, or **A player's server**. These put all the accounts in one server. **Own server each** (fewest players, most players or random) puts every account in a public server of its own, none shared. |
 | **Job ID** | Only for **Fixed server**. |
 | **Player** | Only for **A player's server**: their username or user ID. The accounts join the server that player is in (no game needed), and each rejoin looks them up again. If the player can't be joined when the preset runs (offline, not in a game, a hidden server), it doesn't run and says why. |
 | **Wait between accounts** | **Follow Settings** (the default) or 0 to 120 seconds. |

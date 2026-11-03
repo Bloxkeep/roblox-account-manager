@@ -279,17 +279,23 @@ function Figures({ data: d, failed, retry }: { data: Stats | null; failed: boole
   </>;
 }
 
-/** 7 and 30 days: one bar per day, its height the day's play time (the exact time on hover). */
+/** 7 and 30 days: one bar per day, its play time written on top (for 30 days on hover only), today in full colour, the
+ * day's average beside the title. */
 function Days({ d, fmtSecs }: { d: Stats; fmtSecs: (s: number) => string }) {
   const { t, locale } = useHost();
   const most = Math.max(1, ...d.buckets.map(b => b.seconds));
-  const every = d.buckets.length > 10 ? 5 : 1;
-  return <div className="stat-card" id="stats-days"><h3>{t('stats.byDay')}</h3>
-    <div className="days">{d.buckets.map((b, i) => {
+  const many = d.buckets.length > 10, every = many ? 5 : 1;
+  // On top of a bar: minutes under an hour, else hours with one decimal (5.2 h), so 7 narrow columns still fit.
+  const short = (s: number) => s < 3600 ? t('dur.min', { m: Math.max(1, Math.round(s / 60)) })
+    : t('dur.hours', { h: (s / 3600).toLocaleString(locale, { maximumFractionDigits: s >= 36000 ? 0 : 1 }) });
+  const avg = d.totalSeconds / Math.max(1, d.buckets.length);
+  return <div className="stat-card" id="stats-days"><h3>{t('stats.byDay')}{avg ? <span className="days-avg">{t('stats.avgDay', { t: fmtSecs(avg) })}</span> : null}</h3>
+    <div className={`days${many ? ' many' : ''}`}>{d.buckets.map((b, i) => {
       const day = new Date(b.start), last = i === d.buckets.length - 1;
-      const label = every > 1 ? day.toLocaleDateString(locale, { day: 'numeric', month: 'numeric' }) : day.toLocaleDateString(locale, { weekday: 'short' });
-      return <div key={i} className="day" title={`${day.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'numeric' })} · ${fmtSecs(b.seconds)}`}>
-        <span className="day-bar"><i style={{ height: `${Math.max(b.seconds ? 3 : 0, b.seconds / most * 100).toFixed(1)}%` }} /></span>
+      const label = many ? day.toLocaleDateString(locale, { day: 'numeric', month: 'numeric' }) : day.toLocaleDateString(locale, { weekday: 'short' });
+      return <div key={i} className={`day${last ? ' today' : ''}${b.seconds ? '' : ' none'}`}
+        title={`${day.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'numeric' })} · ${fmtSecs(b.seconds)}`}>
+        <span className="day-bar"><b>{b.seconds ? short(b.seconds) : ''}</b><i style={{ height: `calc((100% - 18px) * ${(b.seconds / most).toFixed(3)})` }} /></span>
         <small>{last ? t('alog.today') : (d.buckets.length - 1 - i) % every === 0 ? label : ''}</small>
       </div>;
     })}</div>

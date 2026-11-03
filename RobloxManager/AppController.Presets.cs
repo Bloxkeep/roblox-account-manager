@@ -15,7 +15,8 @@ public sealed partial class AppController
 
     const int MaxPresets = 50;
     const int MaxPresetName = 60;
-    static readonly string[] PresetServers = ["any", "most", "fewest", "ping", "random", "job", "follow"];
+    /// <summary>"each…": every account to a public server of its own, emptiest, fullest or any first (see AppController.ServerHop.cs).</summary>
+    static readonly string[] PresetServers = ["any", "most", "fewest", "ping", "random", "eachFewest", "eachMost", "eachRandom", "job", "follow"];
     /// <summary><see cref="LaunchPreset.Profile"/> for the light AFK setup (<see cref="RobloxGameSettings.LightAfk"/>).</summary>
     const string AfkProfile = "afk";
     /// <summary>The choices the form offers for <see cref="LaunchPreset.RestartHours"/> (0 = never).</summary>
@@ -326,6 +327,7 @@ public sealed partial class AppController
         string server = preset.Server;
         bool pick = target is { JobId: null, LinkCode: null, ShareCode: null, AccessCode: null } && server is "most" or "fewest" or "ping" or "random";
         string? notice = null;
+        bool apart = target is { JobId: null, LinkCode: null, ShareCode: null, AccessCode: null } && server.StartsWith("each", StringComparison.Ordinal);
         var result = await LaunchAccountsAsync(vault, accounts, target, force, preset.DelaySeconds ?? vault.Data.Settings.LaunchDelaySeconds,
             pick
                 ? async (t, party, ct) =>
@@ -335,7 +337,7 @@ public sealed partial class AppController
                     return picked;
                 }
                 : null,
-            preset.Id);
+            preset.Id, apart ? ServersApart(server[4..].ToLowerInvariant()) : null);
         // Shown on the Presets tab; a run that opened nothing (all already open, or all failed) doesn't count.
         if (result.Launched > 0 && _vault == vault)
         {

@@ -145,6 +145,60 @@ static class ServerHopSuite
             var games = await RobloxApi.GetGamesAsync([77], "x1");
             c.Check("a game's player count answer garbled: its name still comes back", games.GetValueOrDefault(77)?.Name == "Hop Game",
                 string.Join(",", games.Values.Select(g => g.Name)));
+
+            // ── each account in a server of its own (a preset's "Own server each") ──
+            // a1 and a2 play in old-server and a3 in the private one: the accounts that open go elsewhere, one each.
+            Window(a1, 821, new GameTarget(Place), "ingame", "old-server");
+            Window(a2, 822, new GameTarget(Place), "ingame", "old-server");
+            list = """{"data":[{"id":"old-server","playing":5,"maxPlayers":20},{"id":"full","playing":20,"maxPlayers":20},{"id":"one-left","playing":19,"maxPlayers":20},{"id":"roomy","playing":3,"maxPlayers":20}],"nextPageCursor":null}""";
+            var each = (Func<GameTarget, CancellationToken, Task<GameTarget>>)Harness.Invoke(app, "ServersApart", "fewest")!;
+            var first = await each(new GameTarget(Place), default);
+            var second = await each(new GameTarget(Place), default);
+            var third = await each(new GameTarget(Place), default);
+            c.Check("own server each: the first with room, then the next, never where the accounts already are",
+                first.JobId == "one-left" && second.JobId == "roomy", $"{first.JobId} {second.JobId}");
+            c.Check("…none left: Roblox picks for the rest", third.JobId is null, third.JobId);
+
+            // ── leaving a crowded server ──
+            // a1 alone in old-server (5 there, 4 others), a2 in roomy with 2 others: with "more than 3", only a1 moves, to a
+            // server with 3 or fewer that none of them is in; with "more than 1", a1 has nowhere to go.
+            closed.Clear();
+            restarts.Clear();
+            var onTheirWay = Harness.Get<System.Collections.IDictionary>(app, "_hopping");
+            onTheirWay.Clear();
+            void Joined(Account account, int pid, string job, DateTime at)
+            {
+                Window(account, pid, new GameTarget(Place), "ingame", job);
+                tailType.GetField("State")!.SetValue(tails[pid], new RobloxLogWatcher.ClientState("ingame", Place, job, null, at));
+            }
+            running.Remove(a3.Id);
+            Joined(a1, 831, "old-server", DateTime.UtcNow.AddMinutes(-5));
+            Joined(a2, 832, "roomy", DateTime.UtcNow.AddMinutes(-5));
+            list = """{"data":[{"id":"quiet","playing":2,"maxPlayers":20},{"id":"roomy","playing":3,"maxPlayers":20},{"id":"old-server","playing":5,"maxPlayers":20}],"nextPageCursor":null}""";
+            var settings = Harness.Get<Vault>(app, "_vault").Data.Settings;
+            async Task CountServers(int above)
+            {
+                settings.HopAbovePlayers = above;
+                Harness.Set(app, "_nextCrowdCheck", DateTime.MinValue);
+                Harness.Invoke(app, "HopCrowdedClients", DateTime.UtcNow);
+                for (int i = 0; i < 100 && Harness.Get<bool>(app, "_crowdBusy"); i++)
+                    await Task.Delay(20);
+            }
+            await CountServers(0);
+            c.Check("leave crowded servers off: nothing closed", closed.Count == 0);
+            await CountServers(1);
+            c.Check("no server quiet enough: nothing closed", closed.Count == 0, string.Join(",", closed));
+            await CountServers(3);
+            c.Check("a crowded server: its window moves to a quiet one, the others stay", closed.SequenceEqual([831]) && Going(a1)?.JobId == "quiet",
+                $"{string.Join(",", closed)} {Going(a1)?.JobId}");
+            closed.Clear();
+            await CountServers(3);
+            c.Check("…not counted again while one is on its way", closed.Count == 0);
+            onTheirWay.Clear();
+            restarts.Clear();
+            Joined(a1, 833, "old-server", DateTime.UtcNow);
+            await CountServers(3);
+            c.Check("a window just in is left alone", closed.Count == 0, string.Join(",", closed));
         }
         finally
         {

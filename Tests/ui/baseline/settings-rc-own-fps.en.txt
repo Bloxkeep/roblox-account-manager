@@ -173,6 +173,21 @@ html [data-theme="dark" lang="en"]
                           span
                     div.set-row
                       div
+                        div.t "Leave crowded servers"
+                        div.d "A window in a public server with more players than this, your accounts not counted, moves to a quieter server. Checked every 2 minutes."
+                      div.ctl
+                        select.select [id="s-hop" aria-label="Leave crowded servers" value="0"]
+                          option [value="0"] "Off"
+                          option [value="1"] "Over 1 other player"
+                          option [value="2"] "Over 2 other players"
+                          option [value="3"] "Over 3 other players"
+                          option [value="5"] "Over 5 other players"
+                          option [value="8"] "Over 8 other players"
+                          option [value="10"] "Over 10 other players"
+                          option [value="15"] "Over 15 other players"
+                          option [value="20"] "Over 20 other players"
+                    div.set-row
+                      div
                         div.t "Check sign-ins every day"
                         div.d "Tells you which accounts Roblox signed out."
                           span [id="s-daily-when"] "Last check: 7:00 AM."
