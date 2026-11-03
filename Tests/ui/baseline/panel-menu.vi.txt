@@ -1,0 +1,116 @@
+== end
+html [data-theme="dark" lang="vi"]
+#app
+  div [id="panel"]
+    div.pn.s-ready
+      div.pn-title
+        i.pn-dot.s-ready [aria-hidden="true"]
+        b.pn-name [title="Farm route"] "Farm route"
+        span.pn-beta [title="Tính năng mới: có thể chạy khác nhau trên mỗi máy. Gặp lỗi hãy báo ở mục Hướng dẫn & góp ý."] "Beta"
+        button.pn-icon [type="button" title="Thu gọn" aria-label="Thu gọn"]
+          svg.i #ilfy0l
+        button.pn-icon [type="button" title="Ẩn" aria-label="Ẩn"]
+          svg.i #1tyq039
+      div.pn-top
+        button.btn.go.pn-run [type="button"]
+          svg.i #1ewcuky
+          span "Chạy"
+          kbd "Ctrl+Alt+3"
+        p.pn-status [aria-live="polite"]
+          span.pn-say [title="Sẵn sàng"] "Sẵn sàng"
+      div.pn-rows
+        div.pn-rows-in
+          div.k-number.pn-row
+            label.pn-label [title="Hold to cast" for="pn-6f1c2e9a-hold"] "Hold to cast"
+            span.pn-ctl
+              span.pn-ctl-in
+                span.pn-stepper [title="0,1 đến 30 giây"]
+                  button.pn-step [type="button" tabindex="-1" aria-label="− Hold to cast"]
+                    svg.i #11g1zzz
+                  input.pn-num [id="pn-6f1c2e9a-hold" title="0,1 đến 30 giây" autocomplete="off" aria-label="Hold to cast" value="0,8 giây"]
+                  button.pn-step [type="button" tabindex="-1" aria-label="+ Hold to cast"]
+                    svg.i #u7ty99
+          div.k-key.pn-row
+            label.pn-label [title="Cast key" for="pn-6f1c2e9a-key"] "Cast key"
+            span.pn-ctl
+              span.pn-ctl-in
+                kbd.pn-key [aria-live="polite"] "E"
+                button.btn.sm [id="pn-6f1c2e9a-key" type="button" aria-label="Đổi: Cast key" aria-pressed="false"] "Đổi"
+          div.k-point.pn-row.stack
+            label.pn-label [title="Cast spot" for="pn-6f1c2e9a-spot"] "Cast spot"
+            span.pn-ctl
+              span.pn-ctl-in
+                span.pn-map [aria-hidden="true"]
+                  i [style="left:52%;top:48%"]
+                span.pn-hex "52 %, 48 %"
+                button.btn.sm [id="pn-6f1c2e9a-spot" type="button" aria-label="Chọn điểm: Cast spot"] "Chọn điểm"
+          div.k-check.pn-row
+            label.pn-label [title="Jump when stuck" for="pn-6f1c2e9a-jump"] "Jump when stuck"
+            span.pn-ctl
+              span.pn-ctl-in
+                label.switch
+                  input [id="pn-6f1c2e9a-jump" type="checkbox" aria-label="Jump when stuck" checked=true]
+                  span
+          div.k-choice.pn-row
+            label.pn-label [title="Bait" for="pn-6f1c2e9a-bait"] "Bait"
+            span.flex.pn-ctl
+              span.pn-ctl-in
+                button.pn-select [id="pn-6f1c2e9a-bait" type="button" title="Worm" aria-expanded="false" aria-haspopup="listbox"]
+                  span "Worm"
+                  svg.i #u1ag9u
+          div.k-list.pn-row
+            label.pn-label [title="Fish to keep" for="pn-6f1c2e9a-keep"] "Fish to keep"
+            span.flex.pn-ctl
+              span.pn-ctl-in
+                button.pn-select [id="pn-6f1c2e9a-keep" type="button" title="Salmon, Tuna" aria-expanded="false" aria-haspopup="listbox"]
+                  span "2/5"
+                  svg.i #u1ag9u
+          div.k-colour.pn-row
+            label.pn-label [title="Button colour" for="pn-6f1c2e9a-colour"] "Button colour"
+            span.pn-ctl
+              span.pn-ctl-in
+                i.pn-swatch [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(34, 197, 94);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"]
+                span.pn-hex "#22c55e"
+                button.btn.sm [id="pn-6f1c2e9a-colour" type="button" aria-label="Chọn: Button colour"] "Chọn"
+          h4.pn-head [title="Advanced"] "Advanced"
+          div.k-number.pn-row
+            label.pn-label [title="Clicks per reel" for="pn-6f1c2e9a-clicks"] "Clicks per reel"
+            span.pn-ctl
+              span.pn-ctl-in
+                span.pn-stepper [title="1 đến 50"]
+                  button.pn-step [type="button" tabindex="-1" aria-label="− Clicks per reel"]
+                    svg.i #11g1zzz
+                  input.pn-num [id="pn-6f1c2e9a-clicks" title="1 đến 50" autocomplete="off" aria-label="Clicks per reel" value="12"]
+                  button.pn-step [type="button" tabindex="-1" aria-label="+ Clicks per reel"]
+                    svg.i #u7ty99
+          div.k-number.pn-row
+            label.pn-label [title="Sell when bag is" for="pn-6f1c2e9a-sellAt"] "Sell when bag is"
+            span.pn-ctl
+              span.pn-ctl-in
+                span.pn-stepper [title="10 đến 100%"]
+                  button.pn-step [type="button" tabindex="-1" aria-label="− Sell when bag is"]
+                    svg.i #11g1zzz
+                  input.pn-num [id="pn-6f1c2e9a-sellAt" title="10 đến 100%" autocomplete="off" aria-label="Sell when bag is" value="90%"]
+                  button.pn-step [type="button" tabindex="-1" aria-label="+ Sell when bag is"]
+                    svg.i #u7ty99
+      div.pn-foot
+        button.btn.sm [type="button"] "Chỉnh vùng trên game"
+        button.btn.ghost.pn-reset.sm [type="button" title="Chưa đổi gì" aria-disabled="true"] "Đặt lại hết"
+  div.menu.pn-menu.pn-pop [role="menu" aria-label="Sửa macro" style="left:120px;max-height:110px;max-width:288px;min-width:150px;top:38px"]
+    div.pn-list [tabindex="-1"]
+      button.on [role="menuitem" type="button" tabindex="-1"]
+        svg.i #1e3syqr
+        span "Kéo về cạnh game"
+      button [role="menuitem" type="button" tabindex="-1"]
+        svg.i #1hrhc9o
+        span "Sửa macro"
+      button [role="menuitem" type="button" tabindex="-1"]
+        svg.i #1xzadie
+        span "Ẩn"
+-- commands
+  ready {}
+  size {"h":545,"pill":false,"w":300}
+  size {"h":545,"pill":false,"w":300}
+  size {"h":568,"pill":false,"w":300}
+  size {"h":568,"pill":false,"w":300}
+  size {"h":568,"pill":false,"w":300}

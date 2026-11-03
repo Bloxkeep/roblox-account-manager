@@ -43,6 +43,7 @@ public sealed partial class AppController
             if (_disposed)
                 return;
             Step(() => FrontMemory(RobloxProcesses.ForegroundPid()));
+            Step(PanelsFollowForeground);
             if (!_splitCoresOn || _corePids.Count == 0)
                 return;
             _coreCheck.Stop();

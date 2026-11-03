@@ -788,6 +788,18 @@ window.I18N = {
     'macro.e.fpsL': 'Checks per second',
 
     // ── P1a panel ──
+    'panel.ready': 'Ready', 'panel.noGame': 'Open Roblox first',
+    'panel.openGame': 'Open the game in an account first', 'panel.runs': '{name} runs', 'panel.more': '+{n} more',
+    'panel.paused': '{name} paused: {reason}', 'panel.waits': '{name} waits its turn',
+    'panel.unstuck': '{name} gets unstuck', 'panel.stopped': 'Stopped: {reason}',
+    'panel.recording': 'Recording in {account}…', 'panel.recordingWait': 'Runs wait while recording',
+    'panel.editing': 'Move the boxes on the game · Esc ends', 'panel.editingStop': 'Stop editing', 'panel.fix': 'Fix',
+    'panel.reset': 'Reset all', 'panel.resetNone': 'Nothing changed', 'panel.resetDone': 'Settings reset',
+    'panel.undo': 'Undo', 'panel.pick': 'Pick', 'panel.pickSpot': 'Pick spot', 'panel.change': 'Change',
+    'panel.pressKey': 'Press a key…', 'panel.badKey': "Can't use this key", 'panel.all': 'All', 'panel.none': 'None',
+    'panel.of': '{n} of {all}', 'panel.areas': 'Move areas on game', 'panel.snap': 'Snap to game',
+    'panel.editMacro': 'Edit macro', 'panel.hide': 'Hide', 'panel.fold': 'Fold', 'panel.unfold': 'Unfold',
+    'panel.beta': 'Beta', 'panel.range': '{min} to {max}',
     // ── end P1a ──
 
     // ── P1b panel design ──
@@ -1590,6 +1602,17 @@ window.I18N = {
     'macro.e.fpsL': 'Số lần mỗi giây',
 
     // ── P1a panel ──
+    'panel.ready': 'Sẵn sàng', 'panel.noGame': 'Mở Roblox trước', 'panel.openGame': 'Mở game ở một tài khoản trước',
+    'panel.runs': '{name} đang chạy', 'panel.more': '+{n} nữa', 'panel.paused': '{name} tạm dừng: {reason}',
+    'panel.waits': '{name} chờ đến lượt', 'panel.unstuck': '{name} đang gỡ kẹt', 'panel.stopped': 'Đã dừng: {reason}',
+    'panel.recording': 'Đang ghi ở {account}…', 'panel.recordingWait': 'Đang ghi, macro chờ',
+    'panel.editing': 'Kéo các vùng trên game · Esc để xong', 'panel.editingStop': 'Xong', 'panel.fix': 'Sửa lỗi',
+    'panel.reset': 'Đặt lại hết', 'panel.resetNone': 'Chưa đổi gì', 'panel.resetDone': 'Đã đặt lại',
+    'panel.undo': 'Hoàn tác', 'panel.pick': 'Chọn', 'panel.pickSpot': 'Chọn điểm', 'panel.change': 'Đổi',
+    'panel.pressKey': 'Bấm phím…', 'panel.badKey': 'Không dùng được phím này', 'panel.all': 'Tất cả',
+    'panel.none': 'Không chọn', 'panel.of': '{n}/{all}', 'panel.areas': 'Chỉnh vùng trên game',
+    'panel.snap': 'Kéo về cạnh game', 'panel.editMacro': 'Sửa macro', 'panel.hide': 'Ẩn', 'panel.fold': 'Thu gọn',
+    'panel.unfold': 'Mở rộng', 'panel.beta': 'Beta', 'panel.range': '{min} đến {max}',
     // ── end P1a ──
 
     // ── P1b panel design ──

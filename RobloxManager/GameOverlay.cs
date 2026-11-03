@@ -427,9 +427,13 @@ sealed class ScreenPicker : Form
     /// <summary>The owner steps aside while the screen is pictured, then comes back.</summary>
     public static async void Pick(Form owner, Action<string> picked)
     {
+        // A panel stepping aside is not shown again by the panels' tick meanwhile (nor its page let go).
+        var panel = owner as PanelWindow;
         try
         {
             bool wasShown = owner.Visible;
+            if (panel is not null)
+                panel.Suspended = true;
             owner.Hide();
             await Task.Delay(200); // the panel gone from the picture
             var screen = SystemInformation.VirtualScreen;
@@ -439,6 +443,8 @@ sealed class ScreenPicker : Form
             var form = new ScreenPicker(shot, screen, picked);
             form.FormClosed += (_, _) =>
             {
+                if (panel is not null)
+                    panel.Suspended = false;
                 if (wasShown && !owner.IsDisposed)
                     owner.Show();
                 form.Dispose();
@@ -449,6 +455,8 @@ sealed class ScreenPicker : Form
         catch (Exception ex)
         {
             Log.Write(ex);
+            if (panel is not null)
+                panel.Suspended = false;
             if (!owner.IsDisposed)
                 owner.Show();
         }

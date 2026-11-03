@@ -1,0 +1,84 @@
+== end
+html [data-theme="dark" lang="vi"]
+#app
+  div [id="panel"]
+    div.pn.s-ready
+      div.pn-title
+        i.pn-dot.s-ready [aria-hidden="true"]
+        b.pn-name [title="Farm route"] "Farm route"
+        span.pn-beta [title="Tính năng mới: có thể chạy khác nhau trên mỗi máy. Gặp lỗi hãy báo ở mục Hướng dẫn & góp ý."] "Beta"
+        button.pn-icon [type="button" title="Thu gọn" aria-label="Thu gọn"]
+          svg.i #ilfy0l
+        button.pn-icon [type="button" title="Ẩn" aria-label="Ẩn"]
+          svg.i #1tyq039
+      div.pn-top
+        button.btn.go.pn-run [type="button"]
+          svg.i #1ewcuky
+          span "Chạy"
+          kbd "Ctrl+Alt+3"
+        p.pn-status [aria-live="polite"]
+          span.pn-say [title="Sẵn sàng"] "Sẵn sàng"
+        div.pn-tabs.seg [role="tablist"]
+          button [role="tab" type="button" title="Main" tabindex="-1" aria-selected="false"] "Main"
+          button.on [role="tab" type="button" title="Fishing" tabindex="0" aria-selected="true"] "Fishing"
+          button [role="tab" type="button" title="Sell" tabindex="-1" aria-selected="false"] "Sell"
+      div.pn-rows
+        div.pn-rows-in
+          div.k-choice.pn-row
+            label.pn-label [title="Bait" for="pn-6f1c2e9a-bait"] "Bait"
+            span.flex.pn-ctl
+              span.pn-ctl-in
+                button.open.pn-select [id="pn-6f1c2e9a-bait" type="button" title="Worm" aria-expanded="true" aria-haspopup="listbox" FOCUSED]
+                  span "Worm"
+                  svg.i #u1ag9u
+          div.k-list.pn-row
+            label.pn-label [title="Fish to keep" for="pn-6f1c2e9a-keep"] "Fish to keep"
+            span.flex.pn-ctl
+              span.pn-ctl-in
+                button.pn-select [id="pn-6f1c2e9a-keep" type="button" title="Salmon, Tuna" aria-expanded="false" aria-haspopup="listbox"]
+                  span "2/5"
+                  svg.i #u1ag9u
+          div.k-colour.pn-row
+            label.pn-label [title="Button colour" for="pn-6f1c2e9a-colour"] "Button colour"
+            span.pn-ctl
+              span.pn-ctl-in
+                i.pn-swatch [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(34, 197, 94);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"]
+                span.pn-hex "#22c55e"
+                button.btn.sm [id="pn-6f1c2e9a-colour" type="button" aria-label="Chọn: Button colour"] "Chọn"
+      div.pn-foot
+        button.btn.sm [type="button"] "Chỉnh vùng trên game"
+        button.btn.ghost.pn-reset.sm [type="button" title="Chưa đổi gì" aria-disabled="true"] "Đặt lại hết"
+  div.menu.pn-pop [role="listbox" aria-label="Bait" style="left:160px;max-height:156px;max-width:288px;min-width:150px;top:22px"]
+    div.pn-list [tabindex="-1" aria-activedescendant="pn-o-0"]
+      button.checked.on [id="pn-o-0" role="option" type="button" tabindex="-1" aria-selected="true"]
+        span [title="Worm"] "Worm"
+        svg.i #14iobj
+      button [id="pn-o-1" role="option" type="button" tabindex="-1" aria-selected="false"]
+        span [title="Shrimp"] "Shrimp"
+      button [id="pn-o-2" role="option" type="button" tabindex="-1" aria-selected="false"]
+        span [title="Golden worm"] "Golden worm"
+      button [id="pn-o-3" role="option" type="button" tabindex="-1" aria-selected="false"]
+        span [title="Squid"] "Squid"
+      button [id="pn-o-4" role="option" type="button" tabindex="-1" aria-selected="false"]
+        span [title="Glow bait"] "Glow bait"
+      button [id="pn-o-5" role="option" type="button" tabindex="-1" aria-selected="false"]
+        span [title="Magnet"] "Magnet"
+      button [id="pn-o-6" role="option" type="button" tabindex="-1" aria-selected="false"]
+        span [title="Leech"] "Leech"
+      button [id="pn-o-7" role="option" type="button" tabindex="-1" aria-selected="false"]
+        span [title="Minnow"] "Minnow"
+      button [id="pn-o-8" role="option" type="button" tabindex="-1" aria-selected="false"]
+        span [title="Crab"] "Crab"
+      button [id="pn-o-9" role="option" type="button" tabindex="-1" aria-selected="false"]
+        span [title="Sardine"] "Sardine"
+      button [id="pn-o-10" role="option" type="button" tabindex="-1" aria-selected="false"]
+        span [title="Bagel"] "Bagel"
+      button [id="pn-o-11" role="option" type="button" tabindex="-1" aria-selected="false"]
+        span [title="Insect"] "Insect"
+-- commands
+  ready {}
+  size {"h":329,"pill":false,"w":300}
+  size {"h":329,"pill":false,"w":300}
+  size {"h":365,"pill":false,"w":300}
+  size {"h":365,"pill":false,"w":300}
+  size {"h":388,"pill":false,"w":300}

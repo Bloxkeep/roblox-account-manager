@@ -1,0 +1,67 @@
+== end
+html [data-theme="dark" lang="vi"]
+#app
+  div [id="panel"]
+    div.pn.s-running
+      div.pn-title
+        i.pn-dot.s-running [aria-hidden="true"]
+        b.pn-name [title="Farm route"] "Farm route"
+        span.pn-beta [title="Tính năng mới: có thể chạy khác nhau trên mỗi máy. Gặp lỗi hãy báo ở mục Hướng dẫn & góp ý."] "Beta"
+        button.pn-icon [type="button" title="Thu gọn" aria-label="Thu gọn"]
+          svg.i #ilfy0l
+        button.pn-icon [type="button" title="Ẩn" aria-label="Ẩn"]
+          svg.i #1tyq039
+      div.pn-top
+        button.btn.danger.pn-run [type="button"]
+          svg.i #t57b2k
+          span "Dừng"
+          kbd "Ctrl+Alt+3"
+        p.pn-status [aria-live="polite"]
+          span.pn-say [title="Main đang chạy"] "Main đang chạy"
+        p.pn-chips
+          span.pn-chip
+            span "fish"
+            b "37"
+          span.pn-chip
+            span "sold"
+            b "4"
+          span.clock.pn-chip
+            svg.i #ktpp14
+            b "0:12:44"
+        div.pn-tabs.seg [role="tablist"]
+          button [role="tab" type="button" title="Main" tabindex="-1" aria-selected="false"] "Main"
+          button [role="tab" type="button" title="Fishing" tabindex="-1" aria-selected="false"] "Fishing"
+          button.on [role="tab" type="button" title="Sell" tabindex="0" aria-selected="true" FOCUSED] "Sell"
+      div.pn-rows
+        div.pn-rows-in
+          h4.pn-head [title="Advanced"] "Advanced"
+          div.k-number.pn-row
+            label.pn-label [title="Clicks per reel" for="pn-6f1c2e9a-clicks"] "Clicks per reel"
+            span.pn-ctl
+              span.pn-ctl-in
+                span.pn-stepper [title="1 đến 50"]
+                  button.pn-step [type="button" tabindex="-1" aria-label="− Clicks per reel"]
+                    svg.i #11g1zzz
+                  input.pn-num [id="pn-6f1c2e9a-clicks" title="1 đến 50" autocomplete="off" aria-label="Clicks per reel" value="12"]
+                  button.pn-step [type="button" tabindex="-1" aria-label="+ Clicks per reel"]
+                    svg.i #u7ty99
+          div.k-number.pn-row
+            label.pn-label [title="Sell when bag is" for="pn-6f1c2e9a-sellAt"] "Sell when bag is"
+            span.pn-ctl
+              span.pn-ctl-in
+                span.pn-stepper [title="10 đến 100%"]
+                  button.pn-step [type="button" tabindex="-1" aria-label="− Sell when bag is"]
+                    svg.i #11g1zzz
+                  input.pn-num [id="pn-6f1c2e9a-sellAt" title="10 đến 100%" autocomplete="off" aria-label="Sell when bag is" value="90%"]
+                  button.pn-step [type="button" tabindex="-1" aria-label="+ Sell when bag is"]
+                    svg.i #u7ty99
+      div.pn-foot
+        button.btn.sm [type="button"] "Chỉnh vùng trên game"
+        button.btn.ghost.pn-reset.sm [type="button" title="Chưa đổi gì" aria-disabled="true"] "Đặt lại hết"
+-- commands
+  ready {}
+  size {"h":346,"pill":false,"w":300}
+  size {"h":346,"pill":false,"w":300}
+  size {"h":395,"pill":false,"w":300}
+  size {"h":395,"pill":false,"w":300}
+  size {"h":418,"pill":false,"w":300}

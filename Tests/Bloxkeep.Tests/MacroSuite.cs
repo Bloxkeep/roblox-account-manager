@@ -805,6 +805,15 @@ static class MacroSuite
         var part = new MacroOption { Kind = "number", Min = 0.5, Max = 1, Unit = "%" };
         c.Check("a part of 1 shown as percent", MacroOptions.Show(part, J(0.9)) == "90%" && MacroOptions.Typed(part, "80%")?.GetDouble() == 0.8);
         c.Check("a switch shows On or Off", MacroOptions.Show(o[2], J(1)) == L.T("On") && MacroOptions.Show(o[2], J(0)) == L.T("Off"));
+        var language = Prefs.Language;
+        try
+        {
+            Prefs.Language = "vi";
+            c.Check("in Vietnamese a number has a comma and its unit in words, and is typed either way",
+                MacroOptions.Show(hold, J(1500)) == "1,5 giây" && MacroOptions.Typed(hold, "2,5 giây")?.GetDouble() == 2500
+                && MacroOptions.Typed(hold, "0.8")?.GetDouble() == 800, MacroOptions.Show(hold, J(1500)));
+        }
+        finally { Prefs.Language = language; }
         c.Check("a setting changed from the panel or the page is kept to its kind", MacroOptions.Normalize(o[4], J("WOOD"))?.GetString() == "Wood"
             && MacroOptions.Normalize(o[4], J("Iron")) is null && MacroOptions.Normalize(o[2], J(false))?.GetDouble() == 0 && MacroOptions.Normalize(o[1], J("red")) is null);
         var counted = Read("""[{"kind":"setVar","name":"fish","value":0},{"kind":"addVar","name":"fish","value":1},{"kind":"addVar","name":"coins","value":5}]""");
@@ -873,6 +882,17 @@ static class MacroSuite
         Tick();
         var t5 = Tick(123);
         c.Check("and shows again next time the game is played", t5.Show.SequenceEqual([fish.Id]));
+
+        // "Any game" (no place): only a macro with a window in the game played, and never more than three at once.
+        var anyGames = Enumerable.Range(0, 5).Select(i => new Macro { Id = Guid.NewGuid(), Name = $"a{i}", Panel = new MacroPanel { AutoShow = true, PlaceId = null } }).ToList();
+        var mine = anyGames.Take(4).Select(m => m.Id).ToHashSet();
+        var auto2 = new HashSet<Guid>();
+        var none = MacroOptions.AutoShow(anyGames, new HashSet<long>(), auto2, new HashSet<Guid>(), _ => false, m => mine.Contains(m.Id), 3);
+        var some = MacroOptions.AutoShow(anyGames, new HashSet<long> { 99 }, auto2, new HashSet<Guid>(), _ => false, m => mine.Contains(m.Id), 3);
+        c.Check("a panel for any game shows only while a game is played in one of its accounts, three at most",
+            none.Show.Count == 0 && some.Show.Count == 3 && some.Show.All(mine.Contains) && !some.Show.Contains(anyGames[4].Id), string.Join(",", some.Show));
+        var gone = MacroOptions.AutoShow(anyGames, new HashSet<long>(), auto2, new HashSet<Guid>(), _ => true, m => mine.Contains(m.Id), 3);
+        c.Check("and they hide as the games end", gone.Hide.Count == 3 && auto2.Count == 0);
     }
 
     // ───────────────────────── templates and "What it sees" ─────────────────────────
