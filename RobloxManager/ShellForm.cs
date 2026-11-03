@@ -363,6 +363,7 @@ public sealed class ShellForm : Form
         if (_web is { IsDisposed: false } web)
             web.DefaultBackgroundColor = theme.Background;
         _mini?.ApplyTheme();
+        _app.ApplyThemeToPanels();
         _monitor.ApplyTheme();
         _tray.Visible = Prefs.CloseToTray || BalloonShowing;
     }

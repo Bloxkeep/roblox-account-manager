@@ -5,7 +5,7 @@ using System.Text.RegularExpressions;
 
 namespace RobloxManager;
 
-// Macros (Beta): what the player may change on a macro's panel (PanelForm.cs) and the boxes it looks in on the game.
+// Macros (Beta): what the player may change on a macro's panel (PanelWindow.cs) and the boxes it looks in on the game.
 // The maker ticks "Player can change" on a step's value: the value becomes an option ("$o1" in the step), shown on the
 // panel; an area is a named box ("@a1" in the step), moved and sized on the game itself (GameOverlay.cs). Kept in the
 // macro; the shape is the page's and the core's shared contract (macro-contract.md, "REWORK").
@@ -266,7 +266,27 @@ static class MacroOptions
     /// <summary>Seconds shown in seconds; a part (0..1) in percent shown as percent.</summary>
     static double Shown(MacroOption o) => o.Unit == "s" ? 1000 : o.Unit == "%" && o.Max is <= 1 ? 0.01 : 1;
 
-    /// <summary>A number as the panel shows it, with its unit ("0.5 s", "120 px").</summary>
+    /// <summary>What a kept number is divided by to show it (1000 for seconds kept in ms, 0.01 for a part shown in percent).</summary>
+    public static double ShownScale(MacroOption o) => Shown(o);
+
+    /// <summary>A number's unit as written after it in the app's language (" s" / " giây", "%", " px").</summary>
+    public static string Suffix(MacroOption o) => o.Unit switch
+    {
+        "s" => " " + L.T("s"),
+        "%" => "%",
+        { Length: > 0 } u => " " + u,
+        _ => "",
+    };
+
+    /// <summary>A number in the app language's way (Vietnamese: a decimal comma). By hand: the app runs with invariant
+    /// globalization, where asking for vi-VN throws.</summary>
+    static string Number(double d, string format)
+    {
+        string text = d.ToString(format, CultureInfo.InvariantCulture);
+        return L.Language == "vi" ? text.Replace('.', ',') : text;
+    }
+
+    /// <summary>A number as the panel shows it, with its unit ("0.5 s", "120 px"; "0,5 giây" in Vietnamese).</summary>
     public static string Show(MacroOption o, JsonElement v)
     {
         switch (o.Kind)
@@ -274,8 +294,7 @@ static class MacroOptions
             case "number":
             {
                 double d = v.ValueKind == JsonValueKind.Number ? v.GetDouble() / Shown(o) : 0;
-                string unit = o.Unit is { Length: > 0 } u ? (u == "%" ? "%" : " " + u) : "";
-                return d.ToString("0.##", CultureInfo.InvariantCulture) + unit;
+                return Number(d, "0.##") + Suffix(o);
             }
             case "check":
                 return v.ValueKind == JsonValueKind.Number && v.GetDouble() != 0 ? L.T("On") : L.T("Off");
@@ -291,12 +310,16 @@ static class MacroOptions
     }
 
     /// <summary>The number typed on the panel (in seconds for seconds), as the option keeps it; null when it isn't one.</summary>
-    public static JsonElement? Typed(MacroOption o, string text)
+    public static JsonElement? Typed(MacroOption o, string text) => TypedNumber(o, text) is { } d ? Normalize(o, Num(d)) : null;
+
+    /// <summary>The number typed (in seconds for seconds, a decimal comma or point, its unit or none) as the option keeps
+    /// it, before it is kept in its range; null when it isn't one.</summary>
+    public static double? TypedNumber(MacroOption o, string text)
     {
-        string t = Regex.Replace(text.Trim(), @"\s*(ms|px|s|%)$", "", RegexOptions.IgnoreCase).Replace(',', '.');
+        string t = Regex.Replace(text.Trim(), @"\s*(ms|px|s|giây|%)$", "", RegexOptions.IgnoreCase).Replace(',', '.');
         if (!double.TryParse(t, NumberStyles.Float, CultureInfo.InvariantCulture, out double d) || !double.IsFinite(d))
             return null;
-        return Normalize(o, Num(Math.Round(d * Shown(o), 6)));
+        return Math.Round(d * Shown(o), 6);
     }
 
     /// <summary>What − and + add on the panel: a tenth of a second, 10 ms, 1 % or a small step for a small range.</summary>
@@ -330,23 +353,27 @@ static class MacroOptions
     /// not closed by the person meanwhile) and those to hide (shown by themselves, their game no longer played). A panel
     /// the person closed stays closed until nobody plays its game. <paramref name="auto"/> and <paramref name="closed"/>
     /// are kept up to date.
+    /// <para>A panel with no game set shows on any game, but only while one of the accounts it runs on plays one
+    /// (<paramref name="anyGame"/>), and at most <paramref name="max"/> panels are shown by themselves at once: macros
+    /// saved long ago with autoShow on and no game would otherwise all pop up at the first start.</para>
     /// </summary>
     public static (List<Guid> Show, List<Guid> Hide) AutoShow(IEnumerable<Macro> macros, IReadOnlySet<long> played, ISet<Guid> auto,
-        ISet<Guid> closed, Func<Guid, bool> shown)
+        ISet<Guid> closed, Func<Guid, bool> shown, Func<Macro, bool>? anyGame = null, int max = int.MaxValue)
     {
         var show = new List<Guid>();
         var hide = new List<Guid>();
         foreach (var macro in macros)
         {
-            if (macro.Panel is not { AutoShow: true, PlaceId: { } place })
+            if (macro.Panel is not { AutoShow: true } panel)
                 continue;
-            if (!played.Contains(place))
+            bool inGame = panel.PlaceId is { } place ? played.Contains(place) : played.Count > 0 && anyGame?.Invoke(macro) == true;
+            if (!inGame)
             {
                 closed.Remove(macro.Id);
                 if (auto.Remove(macro.Id))
                     hide.Add(macro.Id);
             }
-            else if (!closed.Contains(macro.Id) && !shown(macro.Id))
+            else if (!closed.Contains(macro.Id) && !shown(macro.Id) && auto.Count < max)
             {
                 auto.Add(macro.Id);
                 show.Add(macro.Id);

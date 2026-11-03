@@ -306,7 +306,7 @@ public sealed class TrayWindow : Form
             open = s.Open, multi = s.Multi, multiOnly = s.MultiOnly, robloxCount = s.RobloxCount, ramMb = s.RamMb, miniOpen = MiniOpen?.Invoke() == true,
             presets = s.Presets.Select(p => new { id = p.Id, name = p.Name }),
             accounts = (s.Accounts ?? []).Select(x => new { id = x.Id, name = x.Name, running = x.Running, avatar = PictureOf?.Invoke(x.Id) }),
-            macros = (s.Macros ?? []).Select(m => new { id = m.Id, name = m.Name, shown = m.Shown }),
+            macros = (s.Macros ?? []).Select(m => new { id = m.Id, name = m.Name, shown = m.Shown, state = m.State }),
             clients = (s.Clients ?? []).Select(x => new { id = x.Id, name = x.Name, game = x.Game, pid = x.Pid, ramMb = x.RamMb, avatar = PictureOf?.Invoke(x.Id) }),
         };
         return new

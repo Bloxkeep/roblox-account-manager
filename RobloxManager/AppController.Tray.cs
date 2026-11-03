@@ -16,7 +16,7 @@ public sealed partial class AppController
     /// <param name="RamMb">What every Roblox window on this PC holds in RAM together.</param>
     public sealed record TrayInfo(bool Open, string Multi, int RobloxCount, List<(Guid Id, string Name)> Presets,
         List<(Guid Id, string Name, bool Running)>? Accounts = null, bool MultiOnly = false, List<TrayClient>? Clients = null,
-        long RamMb = 0, List<(Guid Id, string Name, bool Shown)>? Macros = null);
+        long RamMb = 0, List<(Guid Id, string Name, bool Shown, string State)>? Macros = null);
 
     public sealed record TrayClient(Guid Id, string Name, string Game, int Pid, long RamMb);
 

@@ -83,7 +83,7 @@ public sealed partial class AppController
             || _signInCheckRunning || _discordSending || _saveFailed || PageBusy || Ui.ModalsOpen > 0)
             return false;
         // Another window of the app (the sign-in browser, a captcha) means someone is in the middle of it.
-        if (Application.OpenForms.Cast<Form>().Any(f => f != _owner && f is not MiniForm && f.Visible))
+        if (Application.OpenForms.Cast<Form>().Any(f => f != _owner && f is not MiniForm && !(f is PanelWindow p && p.AutoShown) && f.Visible))
             return false;
         if (atLock)
             return true;

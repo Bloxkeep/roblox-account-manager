@@ -1,29 +1,43 @@
 using System.Drawing;
 using System.Drawing.Imaging;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 
 namespace RobloxManager;
 
 /// <summary>
-/// Macros (Beta): each macro's panel (PanelForm.cs), shown by itself while an account plays its game; the settings the
-/// player changes there ("$o1"); the on-game overlay (GameOverlay.cs) that edits the macro's points and areas on the
-/// Roblox window itself and picks a place or colour there; trying a macro not saved yet; "What it sees" (MacroWatch.cs).
+/// Macros (Beta): each macro's panel (PanelWindow.cs, a page beside the game), shown by itself while an account plays its
+/// game; the settings the player changes there ("$o1"); the on-game overlay (GameOverlay.cs) that edits the macro's
+/// points and areas on the Roblox window itself and picks a place or colour there; trying a macro not saved yet; "What it
+/// sees" (MacroWatch.cs).
 /// </summary>
 public sealed partial class AppController
 {
-    readonly Dictionary<Guid, PanelForm> _panelForms = new();
+    readonly Dictionary<Guid, PanelWindow> _panels = new();
     /// <summary>Panels shown by themselves (their game is played), and those the person closed meanwhile (left closed until no account plays it).</summary>
     readonly HashSet<Guid> _panelsAuto = new(), _panelsClosed = new();
+    /// <summary>Each macro's last run that ended with an error, and when the panel first saw it ended ("Stopped: …" for 10 minutes).</summary>
+    readonly Dictionary<Guid, (MacroRun Run, DateTime SeenAt)> _lastRun = new();
+    /// <summary>The values before "Reset all", for its Undo (6 s).</summary>
+    readonly Dictionary<Guid, (Dictionary<string, JsonElement?> Values, DateTime Until)> _undoValues = new();
+    /// <summary>The last window in front that wasn't a panel: where the keyboard goes back to.</summary>
+    IntPtr _lastForeground;
+    System.Windows.Forms.Timer? _panelStatePush, _panelFollowLater;
     GameOverlay? _overlay;
     /// <summary>What the overlay is on: the macro (empty for a pick), the account, and whether the page asked for it.</summary>
     (Guid Macro, Guid Account, bool Page)? _overlayFor;
     /// <summary>The editor's "Try it" going on: its run's macro id and account.</summary>
     (Guid Macro, Guid Account)? _tryRun;
 
+    const int MaxAutoPanels = 3;
+    static readonly TimeSpan StoppedShown = TimeSpan.FromMinutes(10), UndoFor = TimeSpan.FromSeconds(6);
+
     /// <summary>The vault open now, for the panels.</summary>
     internal Vault? OpenVault => Open;
 
     Macro? OpenMacro(Guid id) => Open?.Data.Settings.Macros.FirstOrDefault(m => m.Id == id);
+
+    PanelWindow? ShownPanel(Guid id) => _panels.TryGetValue(id, out var p) && !p.IsDisposed && p.Visible ? p : null;
 
     // ───────────────────────── commands ─────────────────────────
 
@@ -42,7 +56,8 @@ public sealed partial class AppController
     }
 
     /// <summary>A setting's value from the page or the panel, saved at once; runs going on read it from their next step.</summary>
-    internal object? SetOption(Guid id, string name, JsonElement value)
+    /// <param name="fromPanel">From the panel beside the game: saved and told to the main page a moment later, once for a burst.</param>
+    internal object? SetOption(Guid id, string name, JsonElement value, bool fromPanel = false)
     {
         var macro = MacroById(id);
         var option = macro.Options.FirstOrDefault(o => o.Name == name) ?? throw new UserError(L.T("That setting isn't there any more."));
@@ -52,16 +67,41 @@ public sealed partial class AppController
             if (copy.Options.FirstOrDefault(o => o.Name == name) is { } o)
                 o.Value = option.Value;
         });
-        Persist();
-        RefreshPanel(id);
-        PushState();
+        OptionsChanged(id, fromPanel);
         return null;
     }
 
-    /// <summary>"Reset": every setting back to how the macro was made.</summary>
-    internal void ResetOptions(Guid id)
+    /// <summary>Saved and shown: at once from the page; from the panel, saved within seconds (on lock and exit at the latest) and
+    /// the main page told once a quarter second, so holding + doesn't write the vault and redraw the page forty times a second.</summary>
+    void OptionsChanged(Guid id, bool fromPanel)
+    {
+        RefreshPanel(id);
+        if (!fromPanel)
+        {
+            Persist();
+            PushState();
+            return;
+        }
+        PersistSoon();
+        if (_panelStatePush is null)
+        {
+            _panelStatePush = new System.Windows.Forms.Timer { Interval = 250 };
+            _panelStatePush.Tick += (_, _) =>
+            {
+                _panelStatePush.Stop();
+                PushState();
+            };
+        }
+        if (!_panelStatePush.Enabled)
+            _panelStatePush.Start();
+    }
+
+    /// <summary>"Reset all": every setting back to how the macro was made (the values before kept 6 s for Undo).</summary>
+    internal void ResetOptions(Guid id, bool fromPanel = false)
     {
         var macro = MacroById(id);
+        if (fromPanel)
+            _undoValues[id] = (macro.Options.ToDictionary(o => o.Name, o => o.Value), DateTime.UtcNow + UndoFor);
         foreach (var o in macro.Options)
             o.Value = o.Default;
         Live(id, copy =>
@@ -69,12 +109,28 @@ public sealed partial class AppController
             foreach (var o in copy.Options)
                 o.Value = o.Default;
         });
-        Persist();
-        RefreshPanel(id);
-        PushState();
+        OptionsChanged(id, fromPanel);
     }
 
-    /// <summary>An area moved on the game from the panel ("Edit areas"), saved at once.</summary>
+    /// <summary>"Undo" after "Reset all": the values as they were, if it is still within its 6 s.</summary>
+    void UndoReset(Guid id)
+    {
+        if (!_undoValues.Remove(id, out var undo) || DateTime.UtcNow > undo.Until || OpenMacro(id) is not { } macro)
+            return;
+        foreach (var o in macro.Options)
+        {
+            if (undo.Values.TryGetValue(o.Name, out var v))
+                o.Value = v is { } was && MacroOptions.Normalize(o, was) is { } fits ? fits : o.Default;
+        }
+        Live(id, copy =>
+        {
+            foreach (var o in copy.Options)
+                o.Value = macro.Options.FirstOrDefault(x => x.Name == o.Name)?.Value ?? o.Value;
+        });
+        OptionsChanged(id, fromPanel: true);
+    }
+
+    /// <summary>An area moved on the game from the panel ("Move areas on game"), saved at once.</summary>
     internal void SetArea(Guid id, string name, MacroRect rect)
     {
         var macro = MacroById(id);
@@ -86,7 +142,7 @@ public sealed partial class AppController
             if (copy.Areas.FirstOrDefault(a => a.Name == name) is { } c)
                 c.Rect = fits;
         });
-        Persist();
+        PersistSoon();
         PushState();
     }
 
@@ -102,7 +158,7 @@ public sealed partial class AppController
     // ───────────────────────── running from a panel ─────────────────────────
 
     /// <summary>The accounts a panel's Run plays on: the macro's own, or for the selected accounts those in its panel's
-    /// game, else the window in front, else those it last ran on.</summary>
+    /// game, else the Roblox window that was in front before the panel, else those it last ran on, else the one window open.</summary>
     List<Guid> PanelAccounts(Macro macro)
     {
         if (macro.Targets == "accounts")
@@ -114,14 +170,28 @@ public sealed partial class AppController
         if (inGame.Count > 0)
             return inGame;
         int front = RobloxProcesses.ForegroundPid();
+        if (_panels.Values.Any(p => !p.IsDisposed && p.IsHandleCreated && p.Handle == PanelNative.GetForegroundWindow()))
+            front = PanelNative.PidOf(_lastForeground); // the panel is in front: the game before it
         var inFront = _running.Where(r => r.Value.Pid == front).Select(r => r.Key).ToList();
         if (inFront.Count > 0)
             return inFront;
-        return (_macroLastAccounts.GetValueOrDefault(macro.Id) ?? []).Where(_running.ContainsKey).ToList();
+        var last = (_macroLastAccounts.GetValueOrDefault(macro.Id) ?? []).Where(_running.ContainsKey).ToList();
+        if (last.Count > 0)
+            return last;
+        return _running.Count == 1 ? _running.Keys.ToList() : [];
     }
 
     /// <summary>The account the panel works on the game with (pick, edit areas): its first, else any window open.</summary>
     Guid PanelAccount(Macro macro) => PanelAccounts(macro).Concat(_running.Keys).FirstOrDefault();
+
+    /// <summary>A panel's message for its row (a setting's name) or its status line (null); a toast when no panel shows.</summary>
+    void PanelError(Guid id, string? name, string text)
+    {
+        if (ShownPanel(id) is { } panel)
+            panel.Error(name, text);
+        else
+            Toast(text, "warn");
+    }
 
     /// <summary>The panel's Run: plays the macro, or stops it when it runs.</summary>
     internal void PanelRun(Guid id)
@@ -132,59 +202,131 @@ public sealed partial class AppController
         {
             _macroPlayer.Stop(id, "byUser");
             PushState();
-            RefreshPanel(id, rebuild: false);
+            RefreshPanel(id);
+            return;
+        }
+        if (_recorder is not null)
+        {
+            PanelError(id, null, L.T("Runs wait while recording."));
             return;
         }
         var accounts = PanelAccounts(macro);
         if (accounts.Count == 0)
         {
-            Toast(L.F("{0}: no Roblox window to run it in.", macro.Name), "warn");
+            PanelError(id, null, L.F("{0}: no Roblox window to run it in.", macro.Name));
             return;
         }
+        _lastRun.Remove(id);
         QueueMacro(macro, accounts);
-        RefreshPanel(id, rebuild: false);
+        RefreshPanel(id);
     }
 
-    /// <summary>What a panel shows: its status line (who runs or waits, the counters, the run time), and whether it runs.</summary>
-    internal sealed record PanelNow(string Line, bool Running);
-
-    internal PanelNow? PanelStatus(Guid id)
+    /// <summary>What the panel shows now (the page puts it in words): its state, who runs, the counters, since when, the
+    /// last error, and what can be done.</summary>
+    (string State, object Dto) PanelNow(Macro macro)
     {
-        if (OpenMacro(id) is not { } macro)
-            return null;
+        var id = macro.Id;
         var runs = _macroPlayer?.Runs.Where(r => !r.Finished && !r.Trial && r.Macro.Id == id).ToList() ?? [];
-        var parts = new List<string>();
-        if (_recorder is not null)
-            parts.Add(L.T("Recording…"));
-        else if (runs.Count == 0)
-            parts.Add(L.T("Idle"));
-        else
-        {
-            foreach (var run in runs.Take(3))
-            {
-                string name = FindAccount(run.AccountId) is { } acc ? NameText(acc) : "?";
-                parts.Add(run.Status switch
-                {
-                    "running" => run.Reason == "recovering" ? L.F("{0} gets unstuck", name) : L.F("{0} runs", name),
-                    "paused" => L.F("{0} paused: {1}", name, ReasonText(run.Reason)),
-                    _ => L.F("{0} waits its turn", name),
-                });
-            }
-            if (runs.Count > 3)
-                parts.Add(L.F("{0} more", runs.Count - 3));
-        }
-        var vars = _macroPlayer?.Vars ?? new();
-        foreach (var counter in MacroOptions.Counters(macro))
-        {
-            double sum = vars.Values.Sum(d => d.GetValueOrDefault(counter));
-            parts.Add($"{counter} {sum.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)}");
-        }
+        // The last run that stopped on an error, until the next run or 10 minutes.
+        var ended = _macroPlayer?.Runs.Where(r => r.Finished && !r.Trial && r.Macro.Id == id).LastOrDefault();
+        if (ended is { Status: "failed" } && (!_lastRun.TryGetValue(id, out var seen) || seen.Run != ended))
+            _lastRun[id] = (ended, DateTime.UtcNow);
+        else if (ended is { Status: not "failed" } && _lastRun.TryGetValue(id, out var was) && was.Run != ended)
+            _lastRun.Remove(id);
         if (runs.Count > 0)
+            _lastRun.Remove(id);
+        var failed = _lastRun.TryGetValue(id, out var last) && DateTime.UtcNow - last.SeenAt < StoppedShown ? last.Run : null;
+        bool hasGame = PanelAccounts(macro).Count > 0;
+        string state = _recorder is not null ? "recording"
+            : runs.Count > 0 ? (runs.Any(r => r.Status == "running") || runs.All(r => r.Status == "waiting") ? "running" : "paused")
+            : failed is not null ? "stopped"
+            : hasGame ? "ready" : "noGame";
+        var vars = _macroPlayer?.Vars ?? new();
+        var counters = MacroOptions.Counters(macro).ToDictionary(c => c, c => vars.Values.Sum(d => d.GetValueOrDefault(c)));
+        string Name(Guid account) => FindAccount(account) is { } acc ? NameText(acc) : "?";
+        bool changed = macro.Options.Any(o => o.Kind != "heading" && !SameValue(o.Value, o.Default));
+        return (state, new
         {
-            var t = DateTime.UtcNow - runs.Min(r => r.StartedAt);
-            parts.Add($"{(int)t.TotalHours}:{t.Minutes:00}:{t.Seconds:00}");
-        }
-        return new PanelNow(string.Join(" · ", parts), runs.Count > 0);
+            state,
+            runs = runs.Select(r => new
+            {
+                name = Name(r.AccountId),
+                status = r.Status == "running" && r.Reason == "recovering" ? "recovering" : r.Status,
+                reason = r.Status == "paused" ? ReasonText(r.Reason) : null,
+            }),
+            counters,
+            startedAt = runs.Count > 0 ? runs.Min(r => r.StartedAt) : (DateTime?)null,
+            lastError = failed is null ? null : new { text = FailText(failed.Reason), step = failed.Pc },
+            editingAreas = EditingAreasOf(id),
+            hotkeysOn = Prefs.GlobalHotkeys,
+            hasGame,
+            hasWindow = _running.Count > 0,
+            recording = _recorder is { } rec ? new { account = Name(rec.AccountId) } : null,
+            undoable = _undoValues.TryGetValue(id, out var undo) && DateTime.UtcNow < undo.Until,
+            changed,
+        });
+    }
+
+    static bool SameValue(JsonElement? a, JsonElement? b) => (a, b) switch
+    {
+        (null, null) => true,
+        ({ } x, { } y) => x.GetRawText() == y.GetRawText(),
+        _ => false,
+    };
+
+    /// <summary>A counter's name as the panel shows it: the maker's label when there is one (panel.counterLabels).</summary>
+    static string CounterLabel(Macro macro, string name) =>
+        macro.Panel.Extra is { } extra && extra.TryGetValue("counterLabels", out var labels) && labels.ValueKind == JsonValueKind.Object
+        && labels.TryGetProperty(name, out var label) && label.ValueKind == JsonValueKind.String && label.GetString() is { Length: > 0 } text ? text : name;
+
+    /// <summary>The page of a macro's panel: the macro (its settings with their values as shown), what it does now, the
+    /// theme and the language.</summary>
+    internal object PanelMessage(Guid id, bool pill)
+    {
+        var macro = OpenMacro(id);
+        object? dto = macro is null ? null : new
+        {
+            id = macro.Id,
+            name = macro.Name,
+            hotkey = macro.Hotkey,
+            tabs = macro.Panel.Tabs,
+            areasCount = macro.Areas.Count,
+            counters = MacroOptions.Counters(macro).Select(c => new { name = c, label = CounterLabel(macro, c) }),
+            options = macro.Options.Select(o => PanelOption(o)),
+        };
+        return new
+        {
+            macro = dto,
+            now = macro is null ? null : PanelNow(macro).Dto,
+            theme = Themes.Current.Id,
+            customTheme = CustomThemeDto(),
+            language = L.Language,
+            pill,
+        };
+    }
+
+    static object PanelOption(MacroOption o)
+    {
+        var value = o.Kind == "heading" ? (JsonElement?)null : MacroOptions.ValueOf(o);
+        bool number = o.Kind == "number";
+        return new
+        {
+            name = o.Name,
+            label = o.Label,
+            kind = o.Kind,
+            tab = o.Tab,
+            value,
+            choices = o.Choices,
+            shown = value is { } v ? MacroOptions.Show(o, v) : "",
+            // A number: its range, step and unit as the page shows them while − and + are held (the host's text replaces it after).
+            min = number ? o.Min : null,
+            max = number ? o.Max : null,
+            step = number ? MacroOptions.Step(o) : (double?)null,
+            scale = number ? MacroOptions.ShownScale(o) : (double?)null,
+            suffix = number ? MacroOptions.Suffix(o) : null,
+            minShown = number && o.Min is { } min ? MacroOptions.Show(o, JsonSerializer.SerializeToElement(min)) : null,
+            maxShown = number && o.Max is { } max ? MacroOptions.Show(o, JsonSerializer.SerializeToElement(max)) : null,
+        };
     }
 
     /// <summary>A run's reason as the panel says it (the page has its own wording for these).</summary>
@@ -193,14 +335,103 @@ public sealed partial class AppController
         "personActive" => L.T("you're using the PC"),
         "locked" => L.T("the PC is locked"),
         "fullscreen" => L.T("a full-screen app is in front"),
-        "focusRefused" => L.T("Windows wouldn't bring the game forward"),
+        "focusRefused" => L.T("couldn't bring the window forward"),
         "notInGame" => L.T("not in a game"),
-        "covered" => L.T("another window is over the game"),
+        "covered" => L.T("another window covers the game"),
         "busy" => L.T("another window's turn"),
         "recording" => L.T("recording"),
-        "imeOn" => L.T("a Vietnamese keyboard is on"),
+        "imeOn" => L.T("Vietnamese typing is on"),
         _ => L.T("waiting"),
     };
+
+    // ───────────────────────── what the panel's page does ─────────────────────────
+
+    /// <summary>Something clicked on a panel (PanelWindow's page).</summary>
+    internal void PanelAct(PanelWindow panel, string what, JsonElement a)
+    {
+        var id = panel.MacroId;
+        string name = Str(a, "name");
+        try
+        {
+            switch (what)
+            {
+                case "run" or "stop":
+                    PanelRun(id);
+                    HandBack(panel);
+                    break;
+                case "set" when a.TryGetProperty("value", out var value):
+                    SetOption(id, name, value.Clone(), fromPanel: true);
+                    break;
+                case "set" when a.TryGetProperty("key", out var key):
+                    if (OpenMacro(id)?.Options.FirstOrDefault(o => o.Name == name) is { } ko && MacroOptions.Normalize(ko, key) is null)
+                        PanelError(id, name, L.T("Can't use this key"));
+                    else
+                        SetOption(id, name, key.Clone(), fromPanel: true);
+                    break;
+                case "nudge" when OpenMacro(id)?.Options.FirstOrDefault(o => o.Name == name && o.Kind == "number") is { } o:
+                {
+                    int by = a.TryGetProperty("by", out var b) && b.ValueKind == JsonValueKind.Number ? (int)Math.Clamp(b.GetDouble(), -100000, 100000) : 0;
+                    if (by != 0)
+                        SetOption(id, name, MacroOptions.Nudge(o, by), fromPanel: true);
+                    else
+                        RefreshPanel(id);
+                    break;
+                }
+                case "typed" when OpenMacro(id)?.Options.FirstOrDefault(o => o.Name == name && o.Kind == "number") is { } o:
+                {
+                    string text = Str(a, "text");
+                    if (MacroOptions.TypedNumber(o, text) is not { } raw)
+                    {
+                        RefreshPanel(id);
+                        PanelError(id, name, L.T("That isn't a number."));
+                        break;
+                    }
+                    SetOption(id, name, JsonSerializer.SerializeToElement(raw), fromPanel: true);
+                    // Kept in its range: said why it isn't what was typed.
+                    if (o.Max is { } max && raw > max)
+                        PanelError(id, name, L.F("Max is {0}", MacroOptions.Show(o, JsonSerializer.SerializeToElement(max))));
+                    else if (o.Min is { } min && raw < min)
+                        PanelError(id, name, L.F("Min is {0}", MacroOptions.Show(o, JsonSerializer.SerializeToElement(min))));
+                    break;
+                }
+                case "reset":
+                    ResetOptions(id, fromPanel: true);
+                    break;
+                case "undoReset":
+                    UndoReset(id);
+                    break;
+                case "pickColour":
+                    PanelPickColour(id, name, panel);
+                    break;
+                case "pickPoint":
+                    PanelPickPoint(id, name);
+                    break;
+                case "areas":
+                    ToggleAreasOnGame(id);
+                    break;
+                case "hide":
+                    panel.Dismiss();
+                    break;
+                case "snap":
+                    panel.Snap();
+                    break;
+                case "away":
+                    HandBack(panel);
+                    break;
+                case "edit":
+                    int? step = a.TryGetProperty("step", out var s) && s.ValueKind == JsonValueKind.Number ? s.GetInt32() : null;
+                    if (_owner is ShellForm shell)
+                        shell.BringToFront();
+                    Emit("editMacro", new { id, step });
+                    break;
+            }
+        }
+        catch (UserError ex)
+        {
+            RefreshPanel(id);
+            PanelError(id, string.IsNullOrEmpty(name) ? null : name, ex.Message);
+        }
+    }
 
     // ───────────────────────── panel windows ─────────────────────────
 
@@ -208,26 +439,30 @@ public sealed partial class AppController
     {
         if (_disposed || Open is null)
             return;
-        if (!_panelForms.TryGetValue(macro.Id, out var form) || form.IsDisposed)
+        if (!_panels.TryGetValue(macro.Id, out var panel) || panel.IsDisposed)
         {
             var id = macro.Id;
-            form = new PanelForm(this, id);
-            form.Dismissed += () =>
+            panel = new PanelWindow(this, id);
+            panel.Dismissed += () =>
             {
                 _panelsAuto.Remove(id);
                 if (OpenMacro(id) is { Panel.AutoShow: true })
                     _panelsClosed.Add(id);
+                if (_overlayFor is { Page: false } f && f.Macro == id)
+                    CloseOverlay();
                 PushState();
             };
-            _panelForms[id] = form;
+            _panels[id] = panel;
         }
-        form.Open(activate);
+        // Shown by hand counts as by hand from then on (an update waits for it).
+        panel.AutoShown = !activate && (panel.AutoShown || !panel.Visible);
+        panel.Open(activate);
     }
 
     void HidePanelWindow(Guid id, bool byPerson)
     {
-        if (_panelForms.TryGetValue(id, out var form) && !form.IsDisposed && form.Visible)
-            form.HideQuietly();
+        if (ShownPanel(id) is { } panel)
+            panel.HideQuietly();
         _panelsAuto.Remove(id);
         if (byPerson && OpenMacro(id) is { Panel.AutoShow: true })
             _panelsClosed.Add(id);
@@ -235,59 +470,209 @@ public sealed partial class AppController
             CloseOverlay();
     }
 
-    /// <summary>The macro deleted: its panel goes, with its place.</summary>
+    /// <summary>The macro deleted: its panel goes (disposed: a Close would only hide it and keep its browser), with its place.</summary>
     void ClosePanelWindow(Guid id)
     {
-        if (_panelForms.Remove(id, out var form) && !form.IsDisposed)
-            form.Close();
+        if (_panels.Remove(id, out var panel) && !panel.IsDisposed)
+            panel.Dispose();
         _panelsAuto.Remove(id);
         _panelsClosed.Remove(id);
+        _lastRun.Remove(id);
+        _undoValues.Remove(id);
         if (_overlayFor is { Page: false } f && f.Macro == id)
             CloseOverlay();
         if (Prefs.PanelWindows.Remove(id.ToString()))
             Prefs.Save();
     }
 
-    void RefreshPanel(Guid id, bool rebuild = true)
+    /// <summary>The panel shows what is true now (values patched on its page, never drawn anew).</summary>
+    void RefreshPanel(Guid id)
     {
-        if (_panelForms.TryGetValue(id, out var form) && !form.IsDisposed && form.Visible)
-            form.Reload(rebuild);
+        if (ShownPanel(id) is { } panel)
+            panel.Push();
     }
 
-    object PanelsShownDto() => Open is null ? Array.Empty<Guid>() : _panelForms.Where(f => !f.Value.IsDisposed && f.Value.Visible).Select(f => f.Key).ToArray();
+    object PanelsShownDto() => Open is null ? Array.Empty<Guid>() : _panels.Where(f => !f.Value.IsDisposed && f.Value.Visible).Select(f => f.Key).ToArray();
 
-    /// <summary>Every process tick: panels shown and hidden by their game, their status lines.</summary>
+    /// <summary>The game window a panel goes beside: its account's, in screen pixels.</summary>
+    internal Rectangle? PanelGameRect(Guid id)
+    {
+        if (OpenMacro(id) is not { } macro || PanelAccount(macro) is var account && account == Guid.Empty)
+            return null;
+        return MacroDeskNow.Window(account) is { } window && window.Client.Width > 0 ? window.Client : null;
+    }
+
+    /// <summary>The other panels showing, where they are (a new one goes below them).</summary>
+    internal IReadOnlyList<Rectangle> PanelsShownBesides(PanelWindow self) =>
+        _panels.Values.Where(p => p != self && !p.IsDisposed && p.Visible).Select(p => p.Bounds).ToList();
+
+    /// <summary>A panel just showed: on top as the window in front says; shown by itself, the keyboard stays where it was.</summary>
+    internal void PanelShown(PanelWindow panel)
+    {
+        PanelsFollowForeground();
+        if (panel.AutoShown)
+        {
+            // The browser starting can take the activation with it (TrayWindow saw it): given straight back.
+            GiveBackIfTaken(panel);
+            var later = new System.Windows.Forms.Timer { Interval = 400 };
+            later.Tick += (_, _) =>
+            {
+                later.Dispose();
+                if (!panel.IsDisposed)
+                    GiveBackIfTaken(panel);
+            };
+            later.Start();
+        }
+        PushState();
+    }
+
+    void GiveBackIfTaken(PanelWindow panel)
+    {
+        if (panel.Before == IntPtr.Zero && _lastForeground != IntPtr.Zero)
+            panel.Before = _lastForeground;
+        HandBack(panel);
+    }
+
+    /// <summary>A panel took the keyboard: which window had it before (lParam is another program's only within this one).</summary>
+    internal void PanelActivated(PanelWindow panel, IntPtr previous)
+    {
+        var before = previous != IntPtr.Zero && !IsPanel(previous) ? previous : _lastForeground;
+        if (before != IntPtr.Zero && !IsPanel(before))
+            panel.Before = before;
+    }
+
+    bool IsPanel(IntPtr hwnd) => hwnd != IntPtr.Zero && _panels.Values.Any(p => !p.IsDisposed && p.IsHandleCreated && p.Handle == hwnd);
+
+    /// <summary>A Roblox window of an account Bloxkeep runs, shown and not minimised.</summary>
+    bool IsRunningGame(IntPtr hwnd)
+    {
+        if (hwnd == IntPtr.Zero || !PanelNative.IsWindow(hwnd))
+            return false;
+        int pid = PanelNative.PidOf(hwnd);
+        return pid != 0 && _running.Values.Any(r => r.Pid == pid);
+    }
+
+    /// <summary>
+    /// The keyboard back to the game after Run or Stop, or once the pointer left the panel after a change: only while the
+    /// panel is still in front, only to the running account's Roblox window that was in front before it, never unhiding or
+    /// restoring it, and only between a macro's turns (a turn busy: nothing, never queued). Typing a number and "Press a
+    /// key…" keep it (the page doesn't ask then).
+    /// </summary>
+    void HandBack(PanelWindow panel)
+    {
+        if (panel.IsDisposed || !panel.IsHandleCreated || PanelNative.GetForegroundWindow() != panel.Handle)
+            return;
+        var target = panel.Before;
+        if (!IsRunningGame(target) || !PanelNative.IsWindowVisible(target) || PanelNative.IsIconic(target) || RobloxProcesses.IsHidden(target))
+            return;
+        using var turn = InputTurn.TryEnter("focus");
+        if (turn is null)
+            return;
+        AntiAfk.GiveBack(target);
+    }
+
+    /// <summary>
+    /// The panels stay on top while the window in front is a running account's Roblox, Bloxkeep's own (the main window,
+    /// the overlay, a panel); when another program comes forward they go just below it, never to the bottom. Called by
+    /// the foreground hook (AppController.Cores.cs); a window brought forward for a moment by a macro's turn waits 0.7 s.
+    /// </summary>
+    void PanelsFollowForeground()
+    {
+        var front = PanelNative.GetForegroundWindow();
+        if (front != IntPtr.Zero && !IsPanel(front))
+            _lastForeground = front;
+        if (!_panels.Values.Any(p => !p.IsDisposed && p.Visible))
+            return;
+        if (WindowsInTurn)
+        {
+            if (_panelFollowLater is null)
+            {
+                _panelFollowLater = new System.Windows.Forms.Timer { Interval = 700 };
+                _panelFollowLater.Tick += (_, _) =>
+                {
+                    _panelFollowLater.Stop();
+                    PanelsFollowForeground();
+                };
+            }
+            _panelFollowLater.Stop();
+            _panelFollowLater.Start();
+            return;
+        }
+        bool onTop = front == IntPtr.Zero || IsPanel(front) || PanelNative.PidOf(front) == Environment.ProcessId || IsRunningGame(front);
+        foreach (var panel in _panels.Values.Where(p => !p.IsDisposed && p.Visible))
+            panel.Layer(onTop, front);
+    }
+
+    /// <summary>Every process tick: panels shown and hidden by their game, and what they show.</summary>
     void TickPanels()
     {
         if (Open is not { } vault)
             return;
-        var places = _running.Values.Select(r => _logs.StateOf(r.Pid)).Where(st => st is { Status: "ingame", PlaceId: > 0 }).Select(st => st!.PlaceId!.Value).ToHashSet();
+        var inGame = _running.Where(r => _logs.StateOf(r.Value.Pid) is { Status: "ingame", PlaceId: > 0 }).ToList();
+        var places = inGame.Select(r => _logs.StateOf(r.Value.Pid)!.PlaceId!.Value).ToHashSet();
+        var playing = inGame.Select(r => r.Key).ToHashSet();
         var (show, hide) = MacroOptions.AutoShow(vault.Data.Settings.Macros, places, _panelsAuto, _panelsClosed,
-            id => _panelForms.TryGetValue(id, out var f) && !f.IsDisposed && f.Visible);
+            id => ShownPanel(id) is not null, m => PanelAccounts(m).Any(playing.Contains), MaxAutoPanels);
         foreach (var id in hide)
             HidePanelWindow(id, byPerson: false);
         foreach (var id in show)
         {
-            if (OpenMacro(id) is { } macro)
+            if (OpenMacro(id) is { } macro && !(_panels.TryGetValue(id, out var p) && p.Suspended))
                 ShowPanelWindow(macro, activate: false);
         }
         if (show.Count > 0 || hide.Count > 0)
             PushState();
-        foreach (var form in _panelForms.Values.Where(f => !f.IsDisposed && f.Visible))
-            form.Tick();
+        foreach (var panel in _panels.Values.Where(p => !p.IsDisposed && p.Visible))
+            panel.Push();
     }
 
-    /// <summary>The vault locked: every panel goes, with the overlay, the try and the watch.</summary>
+    /// <summary>Settings › Appearance changed: every panel in the new theme at once.</summary>
+    internal void ApplyThemeToPanels()
+    {
+        foreach (var panel in _panels.Values.Where(p => !p.IsDisposed))
+            panel.Push();
+    }
+
+    /// <summary>The vault locked: every panel goes (disposed, with its browser), with the overlay, the try and the watch.</summary>
     void ClosePanelsForLock()
     {
-        foreach (var form in _panelForms.Values.Where(f => !f.IsDisposed).ToList())
-            form.Close();
-        _panelForms.Clear();
+        foreach (var panel in _panels.Values.Where(p => !p.IsDisposed).ToList())
+            panel.Dispose();
+        _panels.Clear();
         _panelsAuto.Clear();
         _panelsClosed.Clear();
+        _lastRun.Clear();
+        _undoValues.Clear();
+        _panelStatePush?.Stop();
         _tryRun = null;
         CloseOverlay(tellPage: false);
         StopWatch();
+    }
+
+    static class PanelNative
+    {
+        [DllImport("user32.dll")]
+        public static extern IntPtr GetForegroundWindow();
+
+        [DllImport("user32.dll")]
+        static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint pid);
+
+        [DllImport("user32.dll")]
+        public static extern bool IsWindow(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        public static extern bool IsWindowVisible(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        public static extern bool IsIconic(IntPtr hWnd);
+
+        public static int PidOf(IntPtr hWnd)
+        {
+            if (hWnd == IntPtr.Zero)
+                return 0;
+            GetWindowThreadProcessId(hWnd, out uint pid);
+            return (int)pid;
+        }
     }
 
     // ───────────────────────── on the game ─────────────────────────
@@ -386,21 +771,21 @@ public sealed partial class AppController
                 {
                     try
                     {
-                        SetOption(id, name, JsonSerializer.SerializeToElement(colour));
+                        SetOption(id, name, JsonSerializer.SerializeToElement(colour), fromPanel: true);
                     }
                     catch (UserError ex)
                     {
-                        Toast(ex.Message, "warn");
+                        PanelError(id, name, ex.Message);
                     }
                 });
                 return;
             }
             if (await PickOnGameAsync(account) is { } p)
-                SetOption(id, name, JsonSerializer.SerializeToElement(p.Colour));
+                SetOption(id, name, JsonSerializer.SerializeToElement(p.Colour), fromPanel: true);
         }
         catch (UserError ex)
         {
-            Toast(ex.Message, "warn");
+            PanelError(id, name, ex.Message);
         }
         catch (Exception ex)
         {
@@ -408,7 +793,7 @@ public sealed partial class AppController
         }
     }
 
-    /// <summary>A panel's point "Set": a click on the game of its account (a picture of it held still meanwhile).</summary>
+    /// <summary>A panel's "Pick spot": a click on the game of its account (a picture of it held still meanwhile).</summary>
     internal async void PanelPickPoint(Guid id, string name)
     {
         try
@@ -418,15 +803,15 @@ public sealed partial class AppController
             var account = PanelAccount(macro);
             if (account == Guid.Empty || MacroDeskNow.Window(account) is null)
             {
-                Toast(L.T("Open the game in an account first: the point is set on its window."), "warn");
+                PanelError(id, name, L.T("Open the game in an account first"));
                 return;
             }
             if (await PickOnGameAsync(account) is { } p)
-                SetOption(id, name, MacroOptions.Point(p.X, p.Y));
+                SetOption(id, name, MacroOptions.Point(p.X, p.Y), fromPanel: true);
         }
         catch (UserError ex)
         {
-            Toast(ex.Message, "warn");
+            PanelError(id, name, ex.Message);
         }
         catch (Exception ex)
         {
@@ -436,7 +821,7 @@ public sealed partial class AppController
 
     internal bool EditingAreasOf(Guid id) => _overlay is { IsDisposed: false, Kind: GameOverlay.Mode.Areas } && _overlayFor is { } f && f.Macro == id;
 
-    /// <summary>The panel's "Edit areas": the macro's areas over its account's window to move and size (saved as they
+    /// <summary>The panel's "Move areas on game": the macro's areas over its account's window to move and size (saved as they
     /// change); again, Done or Esc ends it.</summary>
     internal void ToggleAreasOnGame(Guid id)
     {
@@ -451,7 +836,7 @@ public sealed partial class AppController
         var account = PanelAccount(macro);
         if (account == Guid.Empty || MacroDeskNow.Window(account) is not { } window)
         {
-            Toast(L.T("Open the game in an account first: the areas are moved on its window."), "warn");
+            PanelError(id, null, L.T("Open the game in an account first"));
             return;
         }
         CloseOverlay();
@@ -700,17 +1085,15 @@ public sealed partial class AppController
         }
     }
 
-    // ───────────────────────── tray ─────────────────────────
-
-    public List<(Guid Id, string Name, bool Shown)> TrayMacros() => Open is null || _screenLocked ? []
-        : Open.Data.Settings.Macros.Select(m => (m.Id, m.Name, _panelForms.TryGetValue(m.Id, out var f) && !f.IsDisposed && f.Visible)).ToList();
+    public List<(Guid Id, string Name, bool Shown, string State)> TrayMacros() => Open is null || _screenLocked ? []
+        : Open.Data.Settings.Macros.Select(m => (m.Id, m.Name, ShownPanel(m.Id) is not null, PanelNow(m).State)).ToList();
 
     /// <summary>"Macros ›": a macro's panel shown or hidden.</summary>
     public void TrayTogglePanel(Guid id)
     {
         if (OpenMacro(id) is not { } macro)
             return;
-        if (_panelForms.TryGetValue(id, out var f) && !f.IsDisposed && f.Visible)
+        if (ShownPanel(id) is not null)
             HidePanelWindow(id, byPerson: true);
         else
         {
