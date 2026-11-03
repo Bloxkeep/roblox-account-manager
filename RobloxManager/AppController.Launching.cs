@@ -574,7 +574,7 @@ public sealed partial class AppController
                 _pending.Remove(launch);
                 _handedOver.Remove(launch);
                 if (_closeWhenClaimed.Remove(launch))
-                    RobloxProcesses.Close(pid);
+                    _closeClient(pid, false);
                 else
                 {
                     _running[launch.AccountId] = (pid, launch);
@@ -621,7 +621,7 @@ public sealed partial class AppController
             claimed.Add(pid);
             _late.Remove(launch);
             if (_closeWhenClaimed.Remove(launch))
-                RobloxProcesses.Close(pid);
+                _closeClient(pid, false);
             else
             {
                 _running[launch.AccountId] = (pid, launch);
@@ -742,6 +742,9 @@ public sealed partial class AppController
         }
     }
 
+    /// <summary>A field, so the checks can see what Close and a launch to close once claimed end, without ending anything.</summary>
+    Action<int, bool> _closeClient = RobloxProcesses.Close;
+
     object? CancelLaunch()
     {
         _launchCts?.Cancel();
@@ -768,7 +771,7 @@ public sealed partial class AppController
             if (!_running.TryGetValue(id, out var info))
                 continue;
             _userClosed.Add(id);
-            RobloxProcesses.Close(info.Pid, force || InGameNow(info.Pid));
+            _closeClient(info.Pid, force || InGameNow(info.Pid));
             closed++;
         }
         return closed;
