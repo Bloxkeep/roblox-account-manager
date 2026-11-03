@@ -17,6 +17,9 @@ public sealed class PanelWindow : WebToolWindow
 
     readonly AppController _app;
     bool _showing, _pill, _placed;
+    /// <summary>What the page was last sent, and the theme its frame was last drawn in: pushed again only when changed.</summary>
+    string? _sent;
+    Themes.Theme? _framed;
 
     public Guid MacroId { get; }
 
@@ -100,13 +103,23 @@ public sealed class PanelWindow : WebToolWindow
         Dismissed?.Invoke();
     }
 
-    /// <summary>What the page draws now, from the app.</summary>
+    /// <summary>What the page draws now, from the app: every tick, but only sent when it changed (or while it opens: the page
+    /// answers each one with its size, and the window shows then).</summary>
     public void Push()
     {
         if (IsDisposed || !BrowserReady || (!Visible && !_showing))
             return;
-        Frame();
-        SendEvent("panel", _app.PanelMessage(MacroId, _pill));
+        if (Themes.Current is var theme && theme != _framed)
+        {
+            _framed = theme;
+            Frame();
+        }
+        var message = _app.PanelMessage(MacroId, _pill);
+        string json = JsonSerializer.Serialize(message);
+        if (json == _sent && Visible && !_showing)
+            return;
+        _sent = json;
+        SendEvent("panel", message);
     }
 
     /// <summary>A change refused or a Run that couldn't start: said under its row (name) or in the status line (null).</summary>
@@ -114,6 +127,7 @@ public sealed class PanelWindow : WebToolWindow
 
     protected override void OnPageReady()
     {
+        _sent = null; // a new page: it has nothing yet
         if (Visible || _showing)
             Push();
     }

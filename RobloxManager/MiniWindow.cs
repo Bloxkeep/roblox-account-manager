@@ -19,6 +19,8 @@ sealed class MiniWindow : WebToolWindow
     readonly Action _openApp;
     readonly System.Windows.Forms.Timer _timer = new() { Interval = 2000 };
     bool _showing, _failed, _placed;
+    /// <summary>What the page was last sent: the two-second refresh sends only a change.</summary>
+    string? _sent;
     /// <summary>Its height in CSS pixels, as the person left it.</summary>
     int _height = DefaultHeight;
 
@@ -108,16 +110,23 @@ sealed class MiniWindow : WebToolWindow
         }
     }
 
-    /// <summary>What the page draws now: every two seconds while shown, and after each click.</summary>
+    /// <summary>What the page draws now: every two seconds while shown, and after each click; sent only when it changed,
+    /// except while it opens (the page answers with its size, and the window shows then).</summary>
     void Push()
     {
         if (IsDisposed || !BrowserReady || (!Visible && !_showing))
             return;
-        SendEvent("mini", _app.MiniMessage());
+        var message = _app.MiniMessage();
+        string json = JsonSerializer.Serialize(message);
+        if (json == _sent && Visible && !_showing)
+            return;
+        _sent = json;
+        SendEvent("mini", message);
     }
 
     protected override void OnPageReady()
     {
+        _sent = null; // a new page: it has nothing yet
         if (Visible || _showing)
             Push();
     }
