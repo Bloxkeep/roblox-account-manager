@@ -31,6 +31,10 @@ export function GamePage({ game }: { game: GameDetails }) {
   const time = (iso: string) => new Date(iso).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
   const hours = game.hours && game.hours.filter(h => h != null).length >= 12 ? game.hours : null;
   const peak = hours ? Math.max(...hours.map(h => h ?? 0)) : 0;
+  // The hours with the fewest and the most players seen (-1 when there are none).
+  const seen = hours ? hours.map((h, i) => [h, i] as const).filter(([h]) => h != null) as [number, number][] : [];
+  const low = seen.length ? seen.reduce((a, b) => (b[0] < a[0] ? b : a))[1] : -1;
+  const high = seen.length ? seen.reduce((a, b) => (b[0] > a[0] ? b : a))[1] : -1;
   const quiet = hours ? quietestSpan(hours) : null;
 
   return <div className="gp">
@@ -45,7 +49,7 @@ export function GamePage({ game }: { game: GameDetails }) {
         onClick={() => call('openGamePage', { placeId: game.placeId })}><Icon name="external" /></button>
     </div>
 
-    {fresh && updated ? <div className="gp-news"><Icon name="refresh" />
+    {fresh && updated ? <div className="gp-news note warn"><Icon name="refresh" />
       <span>{t('gp.fresh', { time: time(game.updated!), ago: ago(game.updated!) })}</span></div> : null}
 
     <div className="gp-stats">
@@ -62,14 +66,20 @@ export function GamePage({ game }: { game: GameDetails }) {
         <span role="columnheader">{t('gp.account')}</span><span role="columnheader">{t('gp.played')}</span>
         <span role="columnheader">{t('gp.kicks')}</span><span role="columnheader">{t('gp.drops')}</span><span role="columnheader">{t('gp.now')}</span>
       </div>
-      {game.accounts.map(a => <div className="gp-row" role="row" key={a.id}>
-        <span role="cell" className="gp-name">{a.name}</span>
-        <span role="cell">{a.minutes >= 60 ? t('gp.hours', { n: Math.round(a.minutes / 60) }) : t('gp.minutes', { n: a.minutes })}</span>
-        <span role="cell">{a.kicks ? `${a.kicks}${a.kickWhy ? ` · ${a.kickWhy}` : ''}` : '0'}</span>
-        <span role="cell">{a.drops}</span>
-        <span role="cell" className={`gp-now ${a.now}`}>{a.now === 'ingame' ? t('gp.inGame') : a.now === 'banned' ? t('gp.banned')
-          : a.lastPlayed ? ago(a.lastPlayed) : '–'}</span>
-      </div>)}
+      {game.accounts.map(a => {
+        // Each cell ends in "…" when it runs out of room; the whole of it on hover.
+        const cells = [
+          a.minutes >= 60 ? t('gp.hours', { n: Math.round(a.minutes / 60) }) : t('gp.minutes', { n: a.minutes }),
+          a.kicks ? `${a.kicks}${a.kickWhy ? ` · ${a.kickWhy}` : ''}` : '0',
+          String(a.drops),
+        ];
+        const now = a.now === 'ingame' ? t('gp.inGame') : a.now === 'banned' ? t('gp.banned') : a.lastPlayed ? ago(a.lastPlayed) : '–';
+        return <div className="gp-row" role="row" key={a.id}>
+          <span role="cell" className="gp-name" title={a.name}>{a.name}</span>
+          {cells.map((c, i) => <span key={i} role="cell" title={c}>{c}</span>)}
+          <span role="cell" className={`gp-now ${a.now}`} title={now}>{now}</span>
+        </div>;
+      })}
     </div> : <p className="gp-empty">{t('gp.noneYet')}</p>}
 
     <h4 className="gp-h">{t('gp.quiet')}<small>{t('gp.quietFrom')}</small></h4>
@@ -78,6 +88,10 @@ export function GamePage({ game }: { game: GameDetails }) {
         {hours.map((h, i) => <span key={i} title={`${i}h: ${h == null ? '–' : fmtNum(h)}`}
           style={{ opacity: h == null ? .08 : .18 + .82 * (h / (peak || 1)) }} />)}
       </div>
+      {/* The quietest and the busiest hour, each with its count, under its own bar. */}
+      <div className="gp-marks">{([[low, 'gp.quietEnd'], [high, 'gp.busyEnd']] as const).map(([i, k]) => i < 0 ? null
+        : <span key={k} className={i < 3 ? 'start' : i > 20 ? 'end' : ''} style={{ left: `${((i + .5) / 24 * 100).toFixed(2)}%` }}>
+          <b>{t(k)}</b>{` ${fmtNum(hours[i] ?? 0)}`}</span>)}</div>
       <div className="gp-axis"><span>0h</span><span>6h</span><span>12h</span><span>18h</span><span>23h</span></div>
       {quiet ? <p className="gp-note">{t('gp.quietSpan', { from: quiet[0], to: quiet[1] })}</p> : null}
     </> : <p className="gp-empty">{t('gp.quietNotYet')}</p>}

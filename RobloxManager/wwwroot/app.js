@@ -1448,14 +1448,16 @@
       onRemoved: () => unmount?.(),
     });
     const body = api.el.querySelector('.modal-body');
+    // With accounts already selected, Play is the one step left: said so.
+    const chosen = () => toast(t(S.selected.size ? 'srv.chosenSel' : 'srv.chosen'), 'ok');
     unmount = window.BloxkeepUI.servers(body, uiHost(), g.placeId, [...S.selected], (placeId, jobId) => {
       useServer(placeId, jobId);
       api.close();
-      toast(t('srv.chosen'), 'ok');
+      chosen();
     }, (placeId, accessCode) => {
       usePrivateServer(placeId, accessCode);
       api.close();
-      toast(t('srv.chosen'), 'ok');
+      chosen();
     });
   }
 
@@ -1550,6 +1552,23 @@
       inFlight.delete('launch');
     }
     return launchDone(r, force => launch(ids, appOnly, force));
+  }
+
+  /** A kicked or dropped window back into the game it was in (a new server: its own is gone); without one known, the
+   * game in the dock's box, as Play does. The window still open is closed first by the launch (it left the game). */
+  async function rejoinOne(id, force = false) {
+    const a = byId(id);
+    if (!a || inFlight.has('launch')) return;
+    const placeId = a.session?.jobPlaceId || a.session?.game?.placeId || (a.presence?.type === 'ingame' ? a.presence.placeId : 0);
+    if (!placeId) return launch([id], false, force);
+    inFlight.add('launch');
+    let r;
+    try {
+      r = await call('launch', { ids: [id], appOnly: false, force, placeInput: `https://www.roblox.com/games/${placeId}`, jobId: '' });
+    } finally {
+      inFlight.delete('launch');
+    }
+    return launchDone(r, again => rejoinOne(id, again));
   }
 
   // Locking keeps the Roblox windows open but pauses auto-rejoin, scheduled presets and Discord until unlocked
@@ -2043,7 +2062,11 @@
   }
 
   async function closeAll(force = false) {
-    if (!await confirmBox(t(force ? 't.killAllQ' : 't.closeAllQ'), { ok: t(force ? 't.killAllOk' : 't.closeAllOk'), danger: true, remember: force ? 'killAll' : 'closeAll' })) return;
+    // Close all: the question is the title, the body how many windows go (Roblox's tray copy too: the app's own line).
+    const open = S.metrics?.robloxCount || 0;
+    const ask = force ? { text: t('t.killAllQ'), title: t('common.confirm') }
+      : { text: open ? tn('t.closeAllN', open) : t('t.closeAllQ'), title: t('t.closeAllTitle') };
+    if (!await confirmBox(ask.text, { title: ask.title, ok: t(force ? 't.killAllOk' : 't.closeAllOk'), danger: true, remember: force ? 'killAll' : 'closeAll' })) return;
     const n = await call('closeAll', { force });
     if (n !== undefined) toast(n ? tn(force ? 't.killing' : 't.closingAll', n) : t('t.noRoblox'), 'ok');
   }
@@ -2215,47 +2238,60 @@
     // On a selected account the menu acts on the whole selection; on any other, on that account alone, ticks left as they are.
     const ids = S.selected.has(id) ? [...S.selected] : [id];
     const many = ids.length > 1;
+    const anyLocal = ids.some(i => isLocal(byId(i) || {}));
+    const rejoins = ids.filter(i => byId(i) && rejoinOn(byId(i))).length;
+    // In groups: the window, its server, the account, Copy (a second menu), then what closes or deletes. With several
+    // accounts, what is about one account only (Edit, its profile, Copy…) isn't offered; what can't apply isn't either.
     openMenu([
       { icon: 'play', text: many ? t('m.playN', { n: ids.length }) : t('m.play'), hint: 'Enter', run: () => launch(ids, false) },
       { icon: 'monitor', text: t('m.openApp'), run: () => launch(ids, true) },
-      { icon: 'power', text: t('m.close'), disabled: !ids.some(i => isLocal(byId(i) || {})), run: () => closeIds(ids) },
-      { icon: 'x', text: t('m.kill'), danger: true, disabled: !ids.some(i => isLocal(byId(i) || {})), run: () => closeIds(ids, true) },
-      '-',
-      { icon: 'edit', text: t('m.edit'), hint: 'F2', disabled: many, run: () => editAccount(id) },
-      { icon: 'refresh', text: t('m.check'), run: () => checkAccounts(ids) },
-      // Roblox holds its join for a bot check: solved in Bloxkeep's own window, then the window opens again.
-      ...(!many && a.session?.phase === 'challenged' ? [{ icon: 'shield', text: t('m.botCheck'), run: () => call('solveBotCheck', { id }) }] : []),
-      { icon: 'server', text: t('m.follow'), disabled: many || !serverOf(a), run: () => { const s = serverOf(a); useServer(s.placeId, s.jobId); toast(t('srv.followed', { name: a.label }), 'ok'); } },
       // The window goes (and its taskbar button), the game runs on; shown again from here, the Windows button or a hotkey.
       ...(ids.some(i => isLocal(byId(i) || {}) && !byId(i).session?.hidden)
         ? [{ icon: 'eyeOff', text: t('m.hideWindow'), run: () => call('hideWindows', { ids }) }] : []),
       ...(ids.some(i => byId(i)?.session?.hidden)
         ? [{ icon: 'eye', text: t('m.showWindow'), run: () => call('showWindows', { ids }) }] : []),
-      // The window closes and opens again into another server of its game (those of the same game together).
-      { icon: 'shuffle', text: t('m.switchServer'), disabled: !ids.some(i => isLocal(byId(i) || {}) && serverOf(byId(i))), run: () => call('switchServer', { ids }) },
       // A macro on these windows only (Macros, Beta): picked from a second small menu where this one was.
-      { icon: 'keyboard', text: t('macro.runOn'), disabled: !ids.some(i => isLocal(byId(i) || {})), title: ids.some(i => isLocal(byId(i) || {})) ? '' : t('macro.runOnNoWindow'),
-        run: () => macroRunMenu(ids, x, y) },
-      // Ticked as the card shows it (a running window's preset may decide), and says so when it does.
-      { icon: 'repeat', text: t('m.autoRejoin'), checked: ids.every(i => byId(i) && rejoinOn(byId(i))), run: () => toggleRejoin(ids),
+      { icon: 'keyboard', text: t('macro.runOn'), disabled: !anyLocal, title: anyLocal ? '' : t('macro.runOnNoWindow'), run: () => macroRunMenu(ids, x, y) },
+      '-',
+      ...(!many && serverOf(a)
+        ? [{ icon: 'server', text: t('m.follow'), run: () => { const s = serverOf(a); useServer(s.placeId, s.jobId); toast(t('srv.followed', { name: a.label }), 'ok'); } }] : []),
+      // The window closes and opens again into another server of its game (those of the same game together).
+      ...(ids.some(i => isLocal(byId(i) || {}) && serverOf(byId(i))) ? [{ icon: 'shuffle', text: t('m.switchServer'), run: () => call('switchServer', { ids }) }] : []),
+      // Ticked as the card shows it (a running window's preset may decide), and says so when it does; some on and some
+      // off shows a bar, and a click turns it on for all.
+      { icon: 'repeat', text: t('m.autoRejoin'), checked: rejoins === ids.length, mixed: rejoins > 0 && rejoins < ids.length, run: () => toggleRejoin(ids),
         title: ids.some(i => { const x = byId(i); return x?.session && x.session.autoRejoin !== undefined && x.session.autoRejoin !== x.autoRejoin; }) ? t('m.rejoinPreset') : '' },
+      '-',
+      ...(many ? [] : [{ icon: 'edit', text: t('m.edit'), hint: 'F2', run: () => editAccount(id) }]),
+      { icon: 'refresh', text: t('m.check'), run: () => checkAccounts(ids) },
+      // Roblox holds its join for a bot check: solved in Bloxkeep's own window, then the window opens again.
+      ...(!many && a.session?.phase === 'challenged' ? [{ icon: 'shield', text: t('m.botCheck'), run: () => call('solveBotCheck', { id }) }] : []),
       ...(S.app.settings?.robloxConfig?.mode === 'marked'
         ? [{ icon: 'sliders', text: t('m.robloxConfig'), checked: ids.every(i => byId(i)?.useRobloxConfig), run: () => toggleRobloxConfig(ids) }] : []),
       { icon: 'sliders', text: t('m.fps'), hint: !many && a.fpsCap ? `${a.fpsCap} FPS` : '', run: () => fpsMenu(ids, x, y) },
-      { icon: 'external', text: t('m.profile'), disabled: many || !a.userId, run: () => call('openProfile', { userId: a.userId }) },
-      // roblox.com signed in as this account, in a window of Bloxkeep's own (one per account, several side by side).
-      { icon: 'globe', text: t('m.website'), disabled: many || a.realm === 'vng', title: a.realm === 'vng' ? t('card.vngNoWebsite') : '',
-        run: () => call('openWebsite', { id }) },
+      ...(many ? [] : [
+        ...(a.userId ? [{ icon: 'external', text: t('m.profile'), run: () => call('openProfile', { userId: a.userId }) }] : []),
+        // roblox.com signed in as this account, in a window of Bloxkeep's own (one per account, several side by side).
+        { icon: 'globe', text: t('m.website'), disabled: a.realm === 'vng', title: a.realm === 'vng' ? t('card.vngNoWebsite') : '', run: () => call('openWebsite', { id }) },
+        '-',
+        { icon: 'copy', text: t('m.copy'), run: () => copyMenu(a, x, y) },
+      ]),
       '-',
-      { icon: 'copy', text: t('m.copyUser'), disabled: many, run: () => copy(id, 'username') },
-      // Nothing saved to copy: picking it says why (a sign-in never keeps the password) instead of a dimmed line.
-      { icon: 'key', text: t('m.copyPw'), disabled: many, title: a.hasPassword ? '' : t('m.noPw'),
-        run: () => a.hasPassword ? copy(id, 'password') : toast(t('m.noPw'), 'info') },
-      { icon: 'shieldCheck', text: t('m.copyCode'), disabled: many, title: a.hasAuthenticator ? '' : t('m.noCode'),
-        run: () => a.hasAuthenticator ? copy(id, 'totp') : toast(t('m.noCode'), 'info') },
-      '-',
+      ...(anyLocal ? [
+        { icon: 'power', text: t('m.close'), run: () => closeIds(ids) },
+        { icon: 'x', text: t('m.kill'), danger: true, run: () => closeIds(ids, true) },
+      ] : []),
       { icon: 'trash', text: many ? t('m.deleteN', { n: ids.length }) : t('m.delete'), hint: 'Del', danger: true, run: () => removeIds(ids) },
     ], x, y, opts);
+  }
+  /** The account menu's Copy: a second small menu where the first was. */
+  function copyMenu(a, x, y) {
+    openMenu([
+      { text: t('m.copyUser'), run: () => copy(a.id, 'username') },
+      // Nothing saved to copy: picking it says why (a sign-in never keeps the password) instead of a dimmed line.
+      { text: t('m.copyPw'), title: a.hasPassword ? '' : t('m.noPw'), run: () => a.hasPassword ? copy(a.id, 'password') : toast(t('m.noPw'), 'info') },
+      { text: t('m.copyCode'), title: a.hasAuthenticator ? '' : t('m.noCode'), run: () => a.hasAuthenticator ? copy(a.id, 'totp') : toast(t('m.noCode'), 'info') },
+    ], x, y);
   }
 
   /** The Multi-Roblox dialog while it is open: it follows the state (Roblox closed meanwhile, turned on or off from the tray). */
@@ -2445,7 +2481,8 @@
     scheduleSaveInputs();
   }
 
-  /** Selects an account and brings its card into view; a search or filter that hides it is cleared first. */
+  /** Brings an account's card into view and flashes it (the selection stays as it was); a search or filter that hides it
+   * is cleared first. */
   function revealAccount(id) {
     setView('accounts');
     if (!visible().some(a => a.id === id)) {
@@ -2455,12 +2492,15 @@
       S.group = '';
       pageChanged();
     }
-    selectOnly(id);
     const card = $(`#grid .card[data-id="${CSS.escape(id)}"]`);
     if (!card) return;
     setTabStop(card.parentElement, card);
     card.scrollIntoView({ block: 'nearest', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
     card.focus({ preventScroll: true });
+    card.classList.remove('flash');
+    void card.offsetWidth; // the flash starts again when the same card is asked for twice
+    card.classList.add('flash');
+    setTimeout(() => card.classList.remove('flash'), 1300);
   }
 
   function paletteEntries() {
@@ -2515,8 +2555,11 @@
       // The real names find an account while names are hidden too, as the search box does.
       keywords: [a.real?.label, a.real?.username, a.real?.displayName, a.username, a.displayName, a.group, a.userId ? String(a.userId) : ''],
       run: () => revealAccount(a.id),
+      // Play for an account not open here; one open here is closed, or its hidden window shown.
       alts: [
-        { text: t('m.play'), run: () => { revealAccount(a.id); launch([a.id], false); } },
+        a.session?.hidden ? { text: t('m.showWindow'), run: () => call('showWindows', { ids: [a.id] }) }
+          : isLocal(a) || a.state === 'launching' ? { text: t('m.close'), run: () => closeIds([a.id]) }
+          : { text: t('m.play'), run: () => { revealAccount(a.id); launch([a.id], false); } },
         { text: t('pal.edit'), run: () => editAccount(a.id) },
       ],
     }));
@@ -2686,7 +2729,7 @@
         return;
       case 'sort-menu':
         return menuAt(el, ['name', 'status', 'recent', 'order'].map(k => ({
-          icon: 'sort', text: t(`sort.${k}`), checked: S.sort === k,
+          text: t(`sort.${k}`), checked: S.sort === k,
           run: () => {
             S.sort = k;
             call('setSettings', { sort: k }, { silent: true });
@@ -2701,11 +2744,25 @@
           $('#scroll').scrollTop = 0;
         };
         return menuAt(el, [
-          { icon: 'tag', text: t('chip.all'), checked: !S.group, run: pick('') },
+          { text: t('chip.all'), checked: !S.group, run: pick('') },
           '-',
-          ...accountGroups().map(g => ({ icon: 'tag', text: g, checked: S.group === g, run: pick(g) })),
+          ...accountGroups().map(g => ({ text: g, checked: S.group === g, run: pick(g) })),
         ], 240);
       }
+      // The status chips that didn't fit on the bar's line (Accounts.tsx AccountsBar hides them): picked from a menu.
+      case 'chip-more':
+        return menuAt(el, [...document.querySelectorAll('#chips .chip[data-f][hidden]')].map(c => ({
+          text: [...c.childNodes].filter(n => n.nodeType === Node.TEXT_NODE).map(n => n.textContent).join('').trim(),
+          hint: c.querySelector('em')?.textContent || '',
+          checked: S.filter === c.dataset.f,
+          run: () => {
+            S.filter = c.dataset.f;
+            pageChanged();
+            $('#scroll').scrollTop = 0;
+          },
+        })), 220);
+      // A window out of its game (kicked, dropped): back into the game it was in (its server is gone), as Play does.
+      case 'rejoin': return rejoinOne(id);
       case 'refresh-presence':
         // refreshPresence replies null on success, { skipped } when one was already running; call() yields undefined after showing an error.
         return busy(el, () => call('refreshPresence')).then(r => {
@@ -2725,11 +2782,13 @@
       case 'dock-more': {
         const st = S.app.settings || {};
         return menuAt(el, [
-          { icon: 'monitor', text: t('dock.openAppTip'), disabled: !S.selected.size, run: () => launch([...S.selected], true) },
-          // Every Roblox window of this PC hidden (their games run on), or shown again.
-          { icon: 'eyeOff', text: t('m.hideAll'), disabled: !accounts().some(a => isLocal(a) && !a.session?.hidden), run: () => call('hideWindows', {}) },
-          { icon: 'eye', text: t('m.showAll'), disabled: !accounts().some(a => a.session?.hidden), run: () => call('showWindows', {}) },
+          // Off with nothing selected, and says so on hover.
+          { icon: 'monitor', text: t('dock.openAppTip'), disabled: !S.selected.size, title: S.selected.size ? '' : t('dock.pick'), run: () => launch([...S.selected], true) },
+          // Every Roblox window of this PC hidden (their games run on), or shown again: only the one that can apply.
+          ...(accounts().some(a => isLocal(a) && !a.session?.hidden) ? [{ icon: 'eyeOff', text: t('m.hideAll'), run: () => call('hideWindows', {}) }] : []),
+          ...(accounts().some(a => a.session?.hidden) ? [{ icon: 'eye', text: t('m.showAll'), run: () => call('showWindows', {}) }] : []),
           '-',
+          // The Custom picture is the size of one's own (Settings › Launching sets it): no second line for it.
           {
             text: t('m.arrange'), snap: { value: st.windowLayout || 'fill', width: st.windowWidth || 640, height: st.windowHeight || 480 },
             run: async layout => {
@@ -2737,10 +2796,10 @@
               arrange($('[data-act=dock-more]'));
             },
           },
-          { icon: 'sliders', text: t('snap.edit'), run: () => openSettings('launch') },
         ], 340, { cls: 'menu-snap' });
       }
-      case 'close-sel': return closeIds([...S.selected]);
+      // Off (no selected account is open here): a click says why rather than doing nothing.
+      case 'close-sel': return el.getAttribute('aria-disabled') ? toast(t('dock.closeNone'), 'info') : closeIds([...S.selected]);
       case 'close-all': return closeAll();
       // A double click would open the window and close it again: the second click is dropped.
       case 'mini': return busy(el, () => call('toggleMini'));
@@ -2858,9 +2917,21 @@
         const s = pickerRows()[+el.dataset.i];
         return s && call('copyServerCode', { id: s.id }).then(r => { if (r) toast(t('sv.codeCopiedShort'), 'ok'); });
       }
+      // A saved server's ✕ asks first: "Delete?" in its place for a few seconds (3.5 s); that second click deletes.
+      case 'arm-delete-server': {
+        e.stopPropagation();
+        const s = pickerRows()[+el.dataset.i];
+        if (!s) return;
+        P.arming = s.id;
+        clearTimeout(P.armTimer);
+        P.armTimer = setTimeout(() => { P.arming = null; pageChanged(); }, 3500);
+        return pageChanged();
+      }
       case 'delete-server': {
         e.stopPropagation();
         const s = pickerRows()[+el.dataset.i];
+        P.arming = null;
+        clearTimeout(P.armTimer);
         return s && call('deleteServer', { id: s.id }).then(() => { P.index = -1; pageChanged(); });
       }
     }

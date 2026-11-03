@@ -70,14 +70,15 @@ function SysCard({ mini }: { mini: string }) {
   const short = (v?: string) => (v || '').split('.').slice(0, 2).join('.');
   return <div className={`side-card ${usedPct >= 90 ? 'hot' : ''}`} id="sys-card">
     <h4>{t('sys.title')}</h4>
-    <div className="sys-row"><span title={pids.join('\n')}><b id="sys-count">{m.robloxCount}</b> <span id="sys-count-label">{t(m.robloxCount === 1 ? 'sys.window1' : 'sys.windows')}</span></span><span id="sys-ram">{fmtMb(m.totalMb)}</span></div>
+    {/* Roblox not installed: no windows to count and no version (the warning above says it). */}
+    <div className="sys-row"><span title={pids.join('\n')} hidden={!app.robloxInstalled}><b id="sys-count">{m.robloxCount}</b> <span id="sys-count-label">{t(m.robloxCount === 1 ? 'sys.window1' : 'sys.windows')}</span></span><span id="sys-ram">{fmtMb(m.totalMb)}</span></div>
     <div className="meter" id="sys-meter"><i className="roblox" style={{ transform: `scaleX(${(robloxPct / 100).toFixed(3)})` }} />
       <i className="other" style={{ transform: `translateX(${robloxPct.toFixed(1)}%) scaleX(${((usedPct - robloxPct) / 100).toFixed(3)})` }} /></div>
     <div className="sys-foot" id="sys-foot">{m.systemMb ? t('sys.used', { pct: Math.round(usedPct), free: fmtMb(m.availableMb || 0) }) : ''}</div>
     {m.robloxCount && (m.cpuPct != null || m.gpuPct != null)
       ? <div className="sys-foot" id="sys-usage" title={t('sys.usageTip')}>{[m.cpuPct != null ? `CPU ${m.cpuPct}%` : '', m.gpuPct != null ? `GPU ${m.gpuPct}%` : ''].filter(Boolean).join(' · ')}</div>
       : null}
-    <div className="sys-ver" id="sys-ver">{rv.installed
+    <div className="sys-ver" id="sys-ver" hidden={!app.robloxInstalled}>{rv.installed
       ? rv.upToDate === false
         // Out of date: Settings › Roblox version says how to update (and has Update now when a launcher here can).
         ? <button type="button" className="link" data-act="ru-open" title={`Roblox ${rv.installed}`}><i className="dot warn" />{`Roblox ${short(rv.installed)} · ${
@@ -101,7 +102,9 @@ function MultiCard() {
   const watched = m.enabled && m.armed && !closed && watchWarns(app);
   const cls = !m.enabled ? 'off' : m.armed && !closed && !watched ? 'ok' : 'warn';
   const text = t(!m.enabled ? 'multi.off' : closed ? 'multi.closed' : watched ? 'multi.watchWarn' : m.armed ? 'multi.ready' : 'multi.notReady');
-  const tip = closed ? t('multi.closedTip', { page: t('set.p.roblox') }) : watched ? t('multi.watchTip', { page: t('set.p.roblox') }) : text;
+  // The card's words are short (On, Off…); what they mean is on hover.
+  const tip = closed ? t('multi.closedTip', { page: t('set.p.roblox') }) : watched ? t('multi.watchTip', { page: t('set.p.roblox') })
+    : t(!m.enabled ? 'multi.offTip' : m.armed ? 'multi.readyTip' : 'multi.notReadyTip');
   return <div className={`multi ${cls}`}>
     <button className="multi-open" data-act={closed || watched ? 'ru-open' : 'multi-help'} title={`${t('multi.title')}: ${tip}`}><span className="led" /><div><b>{t('multi.title')}</b><small>{text}</small></div></button>
     <label className="switch" title={t(m.enabled ? 'multi.turnOff' : 'multi.turnOn')}><input type="checkbox" id="side-multi" checked={on} aria-label={t('multi.title')}

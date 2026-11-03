@@ -1,7 +1,7 @@
 // Quick search (Ctrl+K): one box, ranked by a small fuzzy match; app.js builds the entries (paletteEntries) each time it
 // opens. Enter runs the highlighted entry; an account's other actions (Play, Edit) are on Ctrl+Enter and Shift+Enter,
 // and on the highlighted row.
-import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
+import { Fragment, useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { Icon, useHost } from './host';
 import { fold } from './text';
 import { Avatar } from './Avatar';
@@ -62,7 +62,13 @@ export function Palette({ entries, close }: { entries: PaletteEntry[]; close: ()
   const { t } = useHost();
   const [query, setQuery] = useState('');
   const [index, setIndex] = useState(0);
-  const { rows, more } = rank(entries, query);
+  const ranked = rank(entries, query);
+  const more = ranked.more;
+  // Several kinds (accounts, games, actions…): grouped under one heading each, the group with the best match first and
+  // the best first within each.
+  const kinds = [...new Set(ranked.rows.map(e => e.kind))];
+  const mixed = kinds.length > 1;
+  const rows = mixed ? kinds.flatMap(k => ranked.rows.filter(e => e.kind === k)) : ranked.rows;
   const input = useRef<HTMLInputElement>(null), list = useRef<HTMLDivElement>(null);
   const pointer = useRef({ x: -1, y: -1 });
   useEffect(() => { list.current?.querySelector('.pal-row.on')?.scrollIntoView({ block: 'nearest' }); }, [index, query]);
@@ -93,8 +99,6 @@ export function Palette({ entries, close }: { entries: PaletteEntry[]; close: ()
       close();
     }
   };
-  const mixed = new Set(rows.map(e => e.kind)).size > 1;
-
   return <div className="pal">
     <label className="inwrap pal-search"><Icon name="search" /><input className="pal-input" ref={input} type="text" autoComplete="off" spellCheck={false} maxLength={100}
       placeholder={t('pal.placeholder')} aria-label={t('pal.title')} role="combobox" aria-expanded="true" aria-autocomplete="list" aria-controls="pal-list"
@@ -111,16 +115,18 @@ export function Palette({ entries, close }: { entries: PaletteEntry[]; close: ()
       {!rows.length ? <div className="pal-empty">{t('pal.none', { q: query.trim() })}</div> : <>
         {rows.map((e, i) => {
           const on = i === index;
-          return <div key={`${e.id}|${i}`} className={`pal-row ${on ? 'on' : ''}`} role="option" id={`pal-${i}`} aria-selected={on} data-pi={i}
-            onClick={ev => {
-              const alt = (ev.target as HTMLElement).closest<HTMLElement>('.pal-alt');
-              runEntry(e, alt ? +alt.dataset.alt! : -1);
-            }}>
-            <Lead e={e} />
-            <span className="pal-txt"><b>{e.text}</b>{e.hint ? <small>{e.hint}</small> : null}</span>
-            {on && e.alts ? e.alts.map((x, j) => <button key={j} type="button" className="pal-alt" data-alt={j} tabIndex={-1}>{x.text}<kbd>{PAL_ALT_KEYS[j]}</kbd></button>) : null}
-            {mixed ? <em className="pal-cat">{t(`pal.cat.${e.kind}`)}</em> : null}
-          </div>;
+          return <Fragment key={`${e.id}|${i}`}>
+            {mixed && (i === 0 || rows[i - 1].kind !== e.kind) ? <div className="pal-head" role="presentation">{t(`pal.cat.${e.kind}`)}</div> : null}
+            <div className={`pal-row ${on ? 'on' : ''}`} role="option" id={`pal-${i}`} aria-selected={on} data-pi={i}
+              onClick={ev => {
+                const alt = (ev.target as HTMLElement).closest<HTMLElement>('.pal-alt');
+                runEntry(e, alt ? +alt.dataset.alt! : -1);
+              }}>
+              <Lead e={e} />
+              <span className="pal-txt"><b>{e.text}</b>{e.hint ? <small>{e.hint}</small> : null}</span>
+              {on && e.alts ? e.alts.map((x, j) => <button key={j} type="button" className="pal-alt" data-alt={j} tabIndex={-1}>{x.text}<kbd>{PAL_ALT_KEYS[j]}</kbd></button>) : null}
+            </div>
+          </Fragment>;
         })}
         {more ? <div className="pal-more">{t('pal.more', { n: more })}</div> : null}
       </>}

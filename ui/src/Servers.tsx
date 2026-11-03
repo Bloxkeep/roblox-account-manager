@@ -20,6 +20,8 @@ export function Servers({ placeId, ids, chosen, chosenPrivate }: { placeId: numb
   const [items, setItems] = useState<Server[]>([]);
   const [next, setNext] = useState<string | null>(null);
   const [loading, setLoading] = useState(true); // the first list is asked for as the dialog opens: no "none" before it
+  // The last list asked for didn't come (Roblox or the network failed): said in place of the list, with Try again.
+  const [failed, setFailed] = useState(false);
   // busy: Roblox said to wait for the list (until waitUntil); moreUntil: for the next page.
   const [busy, setBusy] = useState(false);
   const [waitUntil, setWaitUntil] = useState(0);
@@ -53,9 +55,11 @@ export function Servers({ placeId, ids, chosen, chosenPrivate }: { placeId: numb
     setLoading(true);
     if (!more) setBusy(false);
     // Ping and FPS are sorted here, so start from the fullest servers (the ones people actually play on).
-    const r = await call('servers', { placeId, fewest: st.current.sort === 'fewest', cursor: more ? st.current.next : null }) as Reply | undefined;
+    // Silent: a failure is said in the dialog, where the list would be (not in a toast behind it).
+    const r = await call('servers', { placeId, fewest: st.current.sort === 'fewest', cursor: more ? st.current.next : null }, { silent: true }) as Reply | undefined;
     if (seq !== st.current.seq || !st.current.alive) return;
     setLoading(false);
+    setFailed(!r && !more);
     st.current.left = r?.left ?? -1;
     if (r?.busy) {
       // Roblox said how long: ask again by itself then (the rows loaded so far stay for a next page).
@@ -125,7 +129,7 @@ export function Servers({ placeId, ids, chosen, chosenPrivate }: { placeId: numb
           return <div key={i} className="srv-friend srv-private">
             <span className="ph"><Icon name="lock" /></span>
             <div className="gtxt"><b title={name}>{name}</b><small className={left ? 'warn' : ''} title={who}>{who}</small></div>
-            <button className="btn sm" data-private={i} disabled={full} title={full ? t('srv.full') : t('srv.privatePickTip')} onClick={() => chosenPrivate(placeId, s.accessCode)}>{t('srv.joinFriend')}</button>
+            <button className="btn sm" data-private={i} disabled={full} title={full ? t('srv.full') : `${name} · ${t('srv.privatePickTip')}`} onClick={() => chosenPrivate(placeId, s.accessCode)}>{t('srv.pick')}</button>
           </div>;
         })}
     </div>
@@ -136,20 +140,22 @@ export function Servers({ placeId, ids, chosen, chosenPrivate }: { placeId: numb
         : friends.map((f, i) => {
           const name = f.displayName || f.name || `#${f.userId}`;
           return <div key={i} className="srv-friend">
-            {f.avatarUrl ? <img src={f.avatarUrl} alt="" /> : <span className="ph" />}
+            {f.avatarUrl ? <img src={f.avatarUrl} alt="" /> : <span className="ph"><Icon name="user" /></span>}
             <div className="gtxt"><b title={name}>{name}</b><small>{f.name ? `@${f.name} · ` : ''}{t('srv.friendOf', { acc: f.via })}</small></div>
-            <button className="btn sm" data-friend={i} title={t('srv.pickTip')} onClick={() => chosen(f.placeId || placeId, f.jobId)}>{t('srv.joinFriend')}</button>
+            <button className="btn sm" data-friend={i} title={t('srv.useFriendTip', { name })} onClick={() => chosen(f.placeId || placeId, f.jobId)}>{t('srv.pick')}</button>
           </div>;
         })}
     </div>
     <div className="srv-head">{t('srv.publicTitle')}</div>
-    <div className="srv-sort">{SORTS.map(k => <button key={k} className={`chip ${k === sort ? 'on' : ''}`} data-sort={k} aria-pressed={k === sort} onClick={() => pickSort(k)}>{t(`srv.sort.${k}`)}</button>)}</div>
-    <div className="srv-tools">
-      {party > 1 ? <button className={`chip ${room ? 'on' : ''}`} data-room aria-pressed={room} onClick={() => setRoom(!room)}><Icon name="users" />{t('srv.room', { n: party })}</button> : null}
-      <button className="btn sm" data-random disabled={!view.some(s => !isFull(s))} onClick={() => {
-        const open = view.filter(s => !isFull(s));
-        if (open.length) { const s = open[Math.floor(Math.random() * open.length)]; chosen(placeId, s.jobId); }
-      }}><Icon name="repeat" />{t('srv.random')}</button>
+    {/* The orders, then (together, at the end of the line or on the next) "room for all" and a random server. */}
+    <div className="srv-sort">{SORTS.map(k => <button key={k} className={`chip ${k === sort ? 'on' : ''}`} data-sort={k} aria-pressed={k === sort} onClick={() => pickSort(k)}>{t(`srv.sort.${k}`)}</button>)}
+      <div className="srv-tools">
+        {party > 1 ? <button className={`btn sm ${room ? 'on' : ''}`} data-room aria-pressed={room} title={t('srv.roomTip', { n: party })} onClick={() => setRoom(!room)}><Icon name="users" />{t('srv.room', { n: party })}</button> : null}
+        <button className="btn sm" data-random disabled={!view.some(s => !isFull(s))} onClick={() => {
+          const open = view.filter(s => !isFull(s));
+          if (open.length) { const s = open[Math.floor(Math.random() * open.length)]; chosen(placeId, s.jobId); }
+        }}><Icon name="shuffle" />{t('srv.random')}</button>
+      </div>
     </div>
     <div className={`srv-list${rowsShown && loading ? ' stale' : ''}${!rowsShown ? ' note' : ''}`} id="srv-list">
       {busy ? <div className="picker-empty">{t('srv.wait', { n: secondsTo(waitUntil) })}</div>
@@ -157,10 +163,12 @@ export function Servers({ placeId, ids, chosen, chosenPrivate }: { placeId: numb
           <div className="srv-fill" title={t('srv.players', { n: s.playing, max: s.maxPlayers })}><i style={{ transform: `scaleX(${s.maxPlayers ? (s.playing / s.maxPlayers).toFixed(3) : 0})` }} /></div>
           <b>{t('srv.players', { n: s.playing, max: s.maxPlayers })}{friendsIn(s.jobId) ? <>{' '}<span className="srv-friend-tag" title={t('srv.friendsHere')}><Icon name="users" />{friendsIn(s.jobId)}</span></> : null}</b>
           <span className="srv-ping" title={t('srv.pingTip')}>{s.ping ? t('srv.ping', { ms: s.ping }) : ''}</span>
-          <span className="srv-ping">{s.fps ? t('srv.fpsVal', { fps: Math.round(s.fps) }) : ''}</span>
+          <span className="srv-ping" title={t('srv.fpsTip')}>{s.fps ? t('srv.fpsVal', { fps: Math.round(s.fps) }) : ''}</span>
           <button className="btn sm" disabled={isFull(s)} title={isFull(s) ? t('srv.full') : t('srv.pickTip')} onClick={() => chosen(placeId, s.jobId)}>{t('srv.pick')}</button>
         </div>)}{more}</>
-        : loading ? <div className="picker-empty"><span className="spin" /></div>
+        : loading ? [0, 1, 2, 3].map(i => <div key={i} className="skel-row" />)
+        : failed ? <div className="note bad srv-failed" role="alert"><Icon name="alert" /><span>{t('srv.loadError')}</span>
+          <button className="btn sm" onClick={() => load(false)}>{t('srv.retry')}</button></div>
         : items.length ? <><div className="picker-empty">{t('srv.noneRoom', { n: party })}</div>{more}</>
         : <div className="picker-empty">{t('srv.none')}</div>}
     </div>

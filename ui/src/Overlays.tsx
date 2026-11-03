@@ -76,7 +76,7 @@ export function WhatsNewTitle({ sub }: { sub: string }) {
 
 /* ───────────── menus ───────────── */
 
-export type MenuItem = '-' | { icon?: string; text: string; title?: string; hint?: string; danger?: boolean; checked?: boolean; disabled?: boolean; run?: (arg?: string) => void;
+export type MenuItem = '-' | { icon?: string; text: string; title?: string; hint?: string; danger?: boolean; checked?: boolean; mixed?: boolean; disabled?: boolean; run?: (arg?: string) => void;
   /** A group's name over its items (Add step's Keys, Mouse…): words only, the arrows pass over it. */
   head?: boolean;
   /** Arrange windows' layouts as pictures (Snap.tsx) in place of a button: run gets the one picked. */
@@ -88,8 +88,9 @@ export type MenuItem = '-' | { icon?: string; text: string; title?: string; hint
  * is checked every row keeps the check's room so the words line up.
  */
 export function MenuItems({ items, pick, split, icons = false }: { items: MenuItem[]; pick: (i: number, byKeyboard: boolean, arg?: string) => void; split: boolean; icons?: boolean }) {
-  const checks = items.some(it => it !== '-' && it.checked);
-  const mark = (it: Exclude<MenuItem, '-'>) => it.checked ? <Icon name="check" />
+  const checks = items.some(it => it !== '-' && (it.checked || it.mixed));
+  // mixed: on for some of the accounts it acts on, off for others (a bar, as a checkbox shows it).
+  const mark = (it: Exclude<MenuItem, '-'>) => it.checked ? <Icon name="check" /> : it.mixed ? <span className="i mi-mixed" aria-hidden="true" />
     : icons ? <Icon name={it.icon || ''} /> : checks ? <Icon name="" /> : null;
   const draw = (it: MenuItem, i: number) => it === '-' ? <hr key={i} />
     : it.head ? <div key={i} className="menu-head" role="presentation">{it.text}</div>
