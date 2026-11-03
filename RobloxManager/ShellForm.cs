@@ -909,6 +909,8 @@ public sealed class ShellForm : Form
             Prefs.SafeRendering = true;
             Prefs.Save();
         }
+        if (!Prefs.SafeRendering)
+            DeleteSafeProfile();
         ShowStartCover(); // before the slowest step, making the browser environment
 
         bool offeredInstall = false;
@@ -955,6 +957,21 @@ public sealed class ShellForm : Form
                 Quit();
                 return;
             }
+        }
+    }
+
+    /// <summary>CPU drawing's browser profile, left from a switch back to the GPU (about 11 MB): gone at the next start, made
+    /// again if CPU drawing comes back. Best effort; what is held is tried next start.</summary>
+    static void DeleteSafeProfile()
+    {
+        string dir = Path.Combine(Vault.CacheDir, "webview-safe");
+        try
+        {
+            if (Directory.Exists(dir))
+                Directory.Delete(dir, recursive: true);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
         }
     }
 
