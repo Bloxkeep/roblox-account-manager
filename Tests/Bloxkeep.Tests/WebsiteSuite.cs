@@ -141,7 +141,14 @@ static class WebsiteSuite
 
         // Closing: A after another stopped sign-out (the person chose "Close tab"), B when the vault locks.
         closeOnAsk = true;
-        await coreA.ExecuteScriptAsync("fetch('https://auth.roblox.com/v2/logout',{method:'POST',credentials:'include'}).catch(()=>{})");
+        try
+        {
+            await coreA.ExecuteScriptAsync("fetch('https://auth.roblox.com/v2/logout',{method:'POST',credentials:'include'}).catch(()=>{})");
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or System.Runtime.InteropServices.COMException)
+        {
+            // The tab closes in answer to this very call, and the browser can be gone before the call reports back (1 run in 20).
+        }
         c.Check("\"Close tab\" closes that tab only", await Until(() => tabA.IsClosed, 10) && !window.IsDisposed && window.Tabs.SequenceEqual([tabB]) && window.SelectedTab == tabB);
         c.Check("the app lets go of a closed tab", !tabs.ContainsKey(a.Id));
         await Harness.Call(app, "lock", new { });
