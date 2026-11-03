@@ -679,7 +679,7 @@ static class MacroRules
     static void NeedColour(string? colour)
     {
         if (colour is null || !Colour.IsMatch(colour))
-            throw new UserError(L.T("Choose a colour."));
+            throw new UserError(L.T("Choose a color."));
     }
 
     static void NeedImage(string? image)
