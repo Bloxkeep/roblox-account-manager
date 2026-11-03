@@ -264,15 +264,31 @@ sealed class MacroDesk(Func<Guid, (int Pid, int Fps, bool InGame)?> client, Func
 
         public void Send(params INPUT[] inputs)
         {
+            if (_done)
+                return; // given back (or Bloxkeep closing): nothing more goes out
             SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<INPUT>());
             _sent = true;
             _lastSent = (uint)Environment.TickCount;
         }
 
-        public void Key(MacroKey key, bool up) =>
-            Send(Keyboard(key.Vk, key.Scan, KEYEVENTF_SCANCODE | (key.Extended ? KEYEVENTF_EXTENDEDKEY : 0) | (up ? KEYEVENTF_KEYUP : 0)));
+        /// <summary>What this turn pressed and has not let go yet, with the input that lets it go.</summary>
+        readonly HeldInputs<INPUT> _down = new();
 
-        public void Char(char c, bool up) => Send(Keyboard(0, c, KEYEVENTF_UNICODE | (up ? KEYEVENTF_KEYUP : 0)));
+        public void Key(MacroKey key, bool up)
+        {
+            var input = Keyboard(key.Vk, key.Scan, KEYEVENTF_SCANCODE | (key.Extended ? KEYEVENTF_EXTENDEDKEY : 0) | (up ? KEYEVENTF_KEYUP : 0));
+            Send(input);
+            input.u.ki.dwFlags |= KEYEVENTF_KEYUP;
+            _down.Note($"key {key.Scan}:{key.Extended}", up, input);
+        }
+
+        public void Char(char c, bool up)
+        {
+            var input = Keyboard(0, c, KEYEVENTF_UNICODE | (up ? KEYEVENTF_KEYUP : 0));
+            Send(input);
+            input.u.ki.dwFlags |= KEYEVENTF_KEYUP;
+            _down.Note($"char {(int)c}", up, input);
+        }
 
         public void MoveTo(Point screen)
         {
@@ -282,12 +298,17 @@ sealed class MacroDesk(Func<Guid, (int Pid, int Fps, bool InGame)?> client, Func
 
         public void MoveBy(int dx, int dy) => Send(Mouse(dx, dy, MOUSEEVENTF_MOVE));
 
-        public void Button(string button, bool up) => Send(Mouse(0, 0, button switch
+        public void Button(string button, bool up)
         {
-            "right" => up ? MOUSEEVENTF_RIGHTUP : MOUSEEVENTF_RIGHTDOWN,
-            "middle" => up ? MOUSEEVENTF_MIDDLEUP : MOUSEEVENTF_MIDDLEDOWN,
-            _ => up ? MOUSEEVENTF_LEFTUP : MOUSEEVENTF_LEFTDOWN,
-        }));
+            uint flag(bool released) => button switch
+            {
+                "right" => released ? MOUSEEVENTF_RIGHTUP : MOUSEEVENTF_RIGHTDOWN,
+                "middle" => released ? MOUSEEVENTF_MIDDLEUP : MOUSEEVENTF_MIDDLEDOWN,
+                _ => released ? MOUSEEVENTF_LEFTUP : MOUSEEVENTF_LEFTDOWN,
+            };
+            Send(Mouse(0, 0, flag(up)));
+            _down.Note($"button {flag(true)}", up, Mouse(0, 0, flag(true)));
+        }
 
         public void Wheel(int notches) => Send(Mouse(0, 0, MOUSEEVENTF_WHEEL, unchecked((uint)(notches * 120))));
 
@@ -322,6 +343,41 @@ sealed class MacroDesk(Func<Guid, (int Pid, int Fps, bool InGame)?> client, Func
         {
             if (_done)
                 return;
+            if (PutBack(Before) && Before is { } before)
+            {
+                for (int i = 0; i < 10 && Hiding(); i++)
+                    await Task.Delay(50);
+                AntiAfk.Show(before);
+            }
+            if (_sent)
+            {
+                await Task.Delay(30); // our last input reaches GetLastInputInfo
+                AntiAfk.NoteOwnInput(person);
+            }
+        }
+
+        /// <summary>Bloxkeep closing: what is still down let go and the PC given back before this returns.</summary>
+        public void Abort()
+        {
+            if (_done)
+                return;
+            var ups = _down.Ups();
+            if (ups.Length > 0)
+                SendInput((uint)ups.Length, ups, Marshal.SizeOf<INPUT>());
+            if (PutBack(Before) && Before is { } before)
+            {
+                for (int i = 0; i < 10 && Hiding(); i++)
+                    Thread.Sleep(30);
+                AntiAfk.Show(before);
+            }
+        }
+
+        bool Hiding() => IsWindow(hWnd) && (Minimized && !IsIconic(hWnd) || Unshown && IsWindowVisible(hWnd));
+
+        /// <summary>Our windows, the pointer, your window and the Roblox window's place back; nothing is sent after it.
+        /// True when the window is being minimised or hidden again and is shown once it is.</summary>
+        bool PutBack(AntiAfk.Before? before)
+        {
             _done = true;
             foreach (var (window, style) in _through)
             {
@@ -331,23 +387,14 @@ sealed class MacroDesk(Func<Guid, (int Pid, int Fps, bool InGame)?> client, Func
             _through.Clear();
             SetCursorPos(Cursor.X, Cursor.Y);
             AntiAfk.GiveBack(previous);
-            if (Before is { } before)
-            {
-                AntiAfk.PutBack(before);
-                if (Minimized)
-                    ShowWindowAsync(hWnd, SW_SHOWMINNOACTIVE);
-                if (Unshown)
-                    ShowWindowAsync(hWnd, SW_HIDE);
-                for (int i = 0; i < 10 && IsWindow(hWnd) && (Minimized && !IsIconic(hWnd) || Unshown && IsWindowVisible(hWnd)); i++)
-                    await Task.Delay(50);
-                if (Minimized || Unshown)
-                    AntiAfk.Show(before);
-            }
-            if (_sent)
-            {
-                await Task.Delay(30); // our last input reaches GetLastInputInfo
-                AntiAfk.NoteOwnInput(person);
-            }
+            if (before is null)
+                return false;
+            AntiAfk.PutBack(before);
+            if (Minimized)
+                ShowWindowAsync(hWnd, SW_SHOWMINNOACTIVE);
+            if (Unshown)
+                ShowWindowAsync(hWnd, SW_HIDE);
+            return Minimized || Unshown;
         }
     }
 
@@ -435,4 +482,26 @@ sealed class MacroDesk(Func<Guid, (int Pid, int Fps, bool InGame)?> client, Func
     [DllImport("advapi32.dll", SetLastError = true)] static extern bool GetTokenInformation(IntPtr token, int infoClass, IntPtr info, int length, out int returned);
     [DllImport("advapi32.dll")] static extern IntPtr GetSidSubAuthorityCount(IntPtr sid);
     [DllImport("advapi32.dll")] static extern IntPtr GetSidSubAuthority(IntPtr sid, uint index);
+}
+
+/// <summary>What a turn pressed and has not let go yet, each with the input that lets it go, oldest first.</summary>
+sealed class HeldInputs<T>
+{
+    readonly List<(string What, T Up)> _held = new();
+
+    /// <summary>A press notes what it pressed; letting it go forgets it.</summary>
+    public void Note(string what, bool up, T release)
+    {
+        _held.RemoveAll(h => h.What == what);
+        if (!up)
+            _held.Add((what, release));
+    }
+
+    /// <summary>Every let-go still owed, newest first; forgotten once taken.</summary>
+    public T[] Ups()
+    {
+        var ups = _held.Select(h => h.Up).Reverse().ToArray();
+        _held.Clear();
+        return ups;
+    }
 }

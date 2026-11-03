@@ -59,6 +59,9 @@ interface IMacroTurn : IAsyncDisposable
     bool Clear(Point screen);
     /// <summary>Where the pointer is now, on the screen.</summary>
     Point CursorAt();
+    /// <summary>Bloxkeep closing: every key and button this turn pressed and still holds let go, the pointer and the
+    /// windows put back, now, with no wait (nothing after the closing would run). Nothing is sent after it.</summary>
+    void Abort();
 }
 
 /// <summary>Another app's window is over the place a step would click.</summary>
@@ -238,8 +241,16 @@ sealed class MacroPlayer(IMacroDesk desk)
         return stopped;
     }
 
-    /// <summary>Bloxkeep closing: every run stopped.</summary>
-    public void ReleaseAll(string why) => Stop(null, why);
+    /// <summary>
+    /// Bloxkeep closing: what the turn going on holds (keys and buttons held, a press or click halfway) let go and the PC
+    /// given back before this returns, then every run stopped. The usual endings run in the turn's awaits, which never
+    /// come back once the app closes: keys stayed down until the person pressed them.
+    /// </summary>
+    public void ReleaseAll(string why)
+    {
+        _turn?.Abort();
+        Stop(null, why);
+    }
 
     /// <summary>The vault went: runs stopped, variables forgotten, finished runs too.</summary>
     public void Clear(string reason)
@@ -594,6 +605,22 @@ sealed class MacroPlayer(IMacroDesk desk)
             }
             run.Held.Clear();
             run.HeldAs.Clear();
+        }
+
+        /// <summary>Everything let go and the PC given back now, with no wait (<see cref="ReleaseAll"/>).</summary>
+        public void Abort()
+        {
+            if (Input is not { } input)
+                return;
+            try
+            {
+                LetGo();
+            }
+            finally
+            {
+                Input = null;
+                input.Abort(); // a press halfway, the pointer, the windows
+            }
         }
 
         public async Task EndAsync()

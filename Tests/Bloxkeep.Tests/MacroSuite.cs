@@ -461,7 +461,8 @@ static class MacroSuite
         InputTurn.RunWhenFree("hotkey", () => ran = true);
         c.Check("a hotkey waits while anti-AFK has a window", !ran);
         held.Dispose();
-        for (int i = 0; i < 100 && !ran; i++)
+        // Ran on the pool: the turn is handed back just after the action, not with it.
+        for (int i = 0; i < 100 && !(ran && !InputTurn.Busy); i++)
             await Task.Delay(10);
         c.Check("and runs once it is free", ran && !InputTurn.Busy);
 
@@ -967,6 +968,18 @@ static class MacroSuite
                 && desk.Log.Any(l => l.Contains("key E up")) && desk.Log.Any(l => l.StartsWith("abort")) && player.Runs[0] is { Status: "stopped", Reason: "closing" },
                 $"{State(player.Runs[0])} | {string.Join(" | ", desk.Log)}");
             InputTurn.Reset();
+        }
+        {
+            // The real turn's own list of what is down: let go, forgotten; still down, owed at the close, newest first.
+            var held = new HeldInputs<string>();
+            held.Note("key W", up: false, "W up");
+            held.Note("button left", up: false, "left up");
+            held.Note("key E", up: false, "E up");
+            held.Note("key E", up: true, "E up");
+            held.Note("key W", up: false, "W up");
+            var ups = held.Ups();
+            c.Check("closing: the real turn lets go of what is still down, once each", string.Join(",", ups) == "W up,left up" && held.Ups().Length == 0,
+                string.Join(",", ups));
         }
         {
             // Without working raw input, a turn still notices the person (input Windows got well after our own).
