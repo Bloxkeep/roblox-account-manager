@@ -1612,6 +1612,14 @@ export default [
   }, { langs: ['en'] }),
   // A part of the page that fails to draw shows a short note with Try again (the sidebar, here).
   S('guard-failed', 'guardfail=1', async s => { await s.wait(300); }),
+  // The dialogs on a light and a picture theme: the success banner with Done, a dimmed Quick Login code, the vault picker.
+  S('pw-added-light', 'theme=light', async s => { await signIn(s, 'firstfarm'); }),
+  S('ql-dead-scene', 'theme=halong&ql=cancelled,waiting', async s => {
+    await s.click(key('acc.add'));
+    await s.click({ key: 'start.phone', partial: true });
+    await s.wait(3500);
+  }),
+  S('vault-picker-scene', 'locked=1&vaults=1&vaultpick=1&theme=halong'),
   // ── end P5 ──
 
   // ── P6 settings ──

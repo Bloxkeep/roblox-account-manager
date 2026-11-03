@@ -1,0 +1,1471 @@
+== long list
+html [data-theme="dark" lang="en"]
+#app
+  div.shell
+    aside.side
+      div.brand
+        img [alt="" src="logo.svg"]
+        div.brand-text
+          div.brand-name "Bloxkeep"
+          div.brand-sub "Roblox account manager"
+      div.side-nav
+        button.nav [title="Accounts"]
+          svg.i #v823bm
+          span "Accounts"
+          em [id="nav-count"] "7"
+        button.nav [title="Presets"]
+          svg.i #1pvni8o
+          span "Presets"
+        button.nav [title="Macros (Beta)"]
+          svg.i #kx2qfl
+          span "Macros"
+          em.nav-beta "Beta"
+        button.nav [title="Game monitor"]
+          svg.i #1e3syqr
+          span "Game monitor"
+        button.nav [title="Statistics"]
+          svg.i #ktpp14
+          span "Statistics"
+        button.nav.on [title="Settings"]
+          svg.i #tbghvg
+          span "Settings"
+      div.side-bottom
+        div [id="side-warn"]
+        div.side-card [id="sys-card"]
+          h4 "Roblox on this PC"
+          div.sys-row
+            span [title="Main · PID 1111\nFarm 1 · PID 2222"]
+              b [id="sys-count"] "2"
+              span [id="sys-count-label"] "windows"
+            span [id="sys-ram"] "1.7 GB"
+          div.meter [id="sys-meter"]
+            i.roblox [style="transform:scaleX(0.054)"]
+            i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
+          div.sys-foot [id="sys-foot"] "PC RAM 63% used · 12 GB free"
+          div.sys-foot [id="sys-usage" title="Roblox windows only, not the whole PC"] "CPU 12% · GPU 34%"
+          div.sys-ver [id="sys-ver"]
+            span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
+              i.dot.ok
+          button.btn.sm.sys-mini.w [id="sys-mini" aria-pressed="false"]
+            svg.i #1y8kmj1
+            span "Mini window"
+          button.btn.sm.sys-close.w [id="sys-close"]
+            svg.i #16z0s1r
+            span "Close all"
+        div [id="multi-card"]
+          div.multi.ok
+            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+              span.led
+              div
+                b "Multi-Roblox"
+                small "On — several windows allowed"
+            label.switch [title="Turn off Multi-Roblox"]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
+              span
+        div.side-foot
+          div [id="update-slot"]
+          div.side-lock
+            button.btn.ghost.w [title="Lock Bloxkeep with the master password. Roblox windows stay open; auto-rejoin, scheduled presets and Discord pause until you unlock."]
+              svg.i #21scx0
+              span "Lock app"
+            button.btn.ghost.side-sq.vault-btn [title="Switch vault (Vault 1)" aria-label="Switch vault (Vault 1)"]
+              span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(22, 163, 74);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
+    main.main
+      section.seen.view [id="view-accounts"]
+      section.seen.view [id="view-settings"]
+        header.top
+          div.top-title
+            h1 "Settings"
+        div.set-layout
+          nav.set-nav [aria-label="Settings"]
+            label.search.set-search
+              svg.i #1u22jvi
+              input [id="set-q" type="search" placeholder="Search settings" autocomplete="off" maxlength="60" aria-label="Search settings" value=""]
+            button.set-nav-item [type="button"]
+              svg.i #1ewcuky
+              span "Launching"
+            button.set-nav-item [type="button"]
+              svg.i #sy1lqp
+              span "Roblox version"
+            button.set-nav-item [type="button"]
+              svg.i #1l5qw3q
+              span "Staying in game"
+            button.set-nav-item [type="button"]
+              svg.i #1hupb3o
+              span "Notifications"
+            button.set-nav-item [type="button"]
+              svg.i #13a5dgx
+              span "Discord"
+            button.set-nav-item [type="button"]
+              svg.i #d2zp05
+              span "Appearance"
+            button.set-nav-item [type="button"]
+              svg.i #fevui6
+              span "Vault & security"
+            button.set-nav-item [type="button" aria-current="page"]
+              svg.i #gsei2o
+              span "Backup & data"
+            button.set-nav-item [type="button"]
+              svg.i #1uvtx1
+              span "Bloxkeep"
+          div.scroll.set-scroll
+            div.settings
+              section.set-page [id="set-page-backup" aria-labelledby="set-page-backup-h"]
+                h2.set-page-title [id="set-page-backup-h"] "Backup & data"
+                div.set-grp [id="sec-backup"]
+                  h3.set-grp-title "Backup"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Back up to a folder"
+                        div.d "Pick a Google Drive or OneDrive folder so your accounts survive a dead PC."
+                      div.ctl
+                        label.switch
+                          input [id="s-bk-on" type="checkbox" aria-label="Back up to a folder" checked=true]
+                          span
+                    div.set-row
+                      div
+                        div.t "Folder"
+                        div.d
+                          span.path [id="s-bk-path"] "No folder chosen"
+                          div.bk-suggest [id="s-bk-suggest"]
+                            button.btn.ghost.sm [title="G:\\My Drive\\Bloxkeep"] "Use Google Drive"
+                            button.btn.ghost.sm [title="C:\\Users\\Admin\\OneDrive\\Bloxkeep"] "Use OneDrive"
+                      div.ctl
+                        button.btn.sm "Choose…"
+                    div [id="s-bk-note"]
+                    div [id="s-bk-status"]
+                      div.set-row
+                        div
+                          div.t "No backups yet"
+                        div.ctl
+                          button.btn.sm [disabled] "Back up now"
+                div.set-grp [id="sec-restore"]
+                  h3.set-grp-title "Restore & import"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Restore"
+                        div.d "Older backups open with the password they were saved with."
+                      div.ctl
+                        button.btn.sm "Restore…"
+                    div.set-row
+                      div
+                        div.t "Import accounts from a Bloxkeep file"
+                        div.d "From a backup or another PC’s Bloxkeep. Your accounts here stay as they are."
+                      div.ctl
+                        button.btn.sm "Import…"
+                div.set-grp [id="sec-data"]
+                  h3.set-grp-title "Data"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Data location"
+                        div.d
+                          span.path [id="s-path"] "C:\\Users\\Admin\\AppData\\Local\\Bloxkeep"
+                      div.ctl
+                        button.btn.sm "Open folder"
+                          svg.i #3wh3ok
+                    div.set-row
+                      div
+                        div.t "Bloxkeep file in use"
+                        div.d
+                          span.path [id="s-vault-path"] "C:\\Users\\Admin\\AppData\\Local\\Bloxkeep\\vault.rmv"
+                      div.ctl
+                        button.btn.sm "Show file"
+                          svg.i #3wh3ok
+                    div.set-row
+                      div
+                        div.t "Error log"
+                        div.d
+                          span.path [id="s-log-path"] "C:\\Users\\Admin\\AppData\\Local\\Bloxkeep\\error.log"
+                      div.ctl
+                        button.btn.sm "Show file"
+                          svg.i #3wh3ok
+                    div.set-row
+                      div
+                        div.t "Program folder"
+                        div.d
+                          span.path [id="s-app-path"] "C:\\Users\\Admin\\AppData\\Local\\BloxkeepApp\\current"
+                      div.ctl
+                        button.btn.sm "Open folder"
+                          svg.i #3wh3ok
+#layer
+  div.at-top.overlay
+    div.modal [role="dialog" aria-labelledby="mdl-1" aria-modal="true"]
+      div.modal-head
+        h3 [id="mdl-1"] "Import from a Bloxkeep file"
+        button.icon-btn [title="Close"]
+          svg.i #1tyq039
+      div.modal-body
+        div [id="iv-body"]
+          p.iv-step "Step 3/3"
+          div.iv-file
+            svg.i #3wh3ok
+            b [title="Bloxkeep-backup-3f2a91c0-20261012-221500.rmv"] "Bloxkeep-backup-3f2a91c0-20261012-221500.rmv"
+            button.link [id="iv-other" type="button"] "Choose another file"
+          input.field.iv-search.sm [id="iv-search" type="text" placeholder="Search accounts, groups, notes…" autocomplete="off" maxlength="60" aria-label="Search accounts, groups, notes…" value=""]
+          div.iv-bar
+            span [id="iv-count"] "27 of 29 selected"
+            button.link [id="iv-all" type="button"] "All new"
+            button.link [id="iv-none" type="button"] "None"
+          div.iv-list.rc-list
+            label.iv-item.rc-item
+              input [type="checkbox" checked=true]
+              div.avatar.sm
+                img [alt="" style="--h:245" src=#1oebnc6]
+              span.iv-name
+                b [title="Farm 3"] "Farm 3"
+                small "@pixelfarmer03 · Farm · · password saved"
+                  span.iv-ck.ok "signed in"
+              span.ok.state-pill "New"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=true]
+              div.avatar.sm
+                span.initials [style="--h:302"] "ST"
+              span.iv-name
+                b [title="Storage"] "Storage"
+                small "@khodo_vng ·"
+                  span.iv-ck "not checked"
+              span.tag.vng [title="Roblox VNG account (Vietnam)"] "VNG"
+              span.ok.state-pill "New"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=false]
+              div.avatar.sm
+                img [alt="" style="--h:244" src=#n0d7cr]
+              span.iv-name
+                b [title="Farm 2"] "Farm 2"
+                small "@pixelfarmer02 · Farm · · password saved"
+                  span.iv-ck.ok "signed in"
+              span.off.state-pill "Already here"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=false]
+              div.avatar.sm
+                img [alt="" style="--h:204" src=#1qk25wb]
+              span.iv-name
+                b [title="Main"] "Main"
+                small "@sunny_builds · · password saved"
+                  span.iv-ck.ok "signed in"
+              span.off.state-pill "Already here"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=true]
+              div.avatar.sm
+                img [alt="" style="--h:253" src=#ym4i8b]
+              span.iv-name
+                b [title="Event runner"] "Event runner"
+                small "@event_runner_2026 · Event ·"
+                  span.bad.iv-ck "needs sign-in"
+              span.ok.state-pill "New"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=true]
+              div.avatar.sm
+                span.initials [style="--h:2"] "AL"
+              span.iv-name
+                b [title="Alt 1"] "Alt 1"
+                small "@alt_account_1 · Farm · · password saved"
+                  span.bad.iv-ck "needs sign-in"
+              span.ok.state-pill "New"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=true]
+              div.avatar.sm
+                span.initials [style="--h:3"] "AL"
+              span.iv-name
+                b [title="Alt 2"] "Alt 2"
+                small "@alt_account_2 ·"
+                  span.iv-ck.ok "signed in"
+              span.ok.state-pill "New"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=true]
+              div.avatar.sm
+                span.initials [style="--h:4"] "AL"
+              span.iv-name
+                b [title="Alt 3"] "Alt 3"
+                small "@alt_account_3 · · password saved"
+                  span.iv-ck.ok "signed in"
+              span.ok.state-pill "New"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=true]
+              div.avatar.sm
+                span.initials [style="--h:5"] "AL"
+              span.iv-name
+                b [title="Alt 4"] "Alt 4"
+                small "@alt_account_4 · Farm ·"
+                  span.iv-ck.ok "signed in"
+              span.ok.state-pill "New"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=true]
+              div.avatar.sm
+                span.initials [style="--h:6"] "AL"
+              span.iv-name
+                b [title="Alt 5"] "Alt 5"
+                small "@alt_account_5 · · password saved"
+                  span.bad.iv-ck "needs sign-in"
+              span.ok.state-pill "New"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=true]
+              div.avatar.sm
+                span.initials [style="--h:7"] "AL"
+              span.iv-name
+                b [title="Alt 6"] "Alt 6"
+                small "@alt_account_6 ·"
+                  span.iv-ck.ok "signed in"
+              span.ok.state-pill "New"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=true]
+              div.avatar.sm
+                span.initials [style="--h:8"] "AL"
+              span.iv-name
+                b [title="Alt 7"] "Alt 7"
+                small "@alt_account_7 · Farm · · password saved"
+                  span.iv-ck.ok "signed in"
+              span.ok.state-pill "New"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=true]
+              div.avatar.sm
+                span.initials [style="--h:9"] "AL"
+              span.iv-name
+                b [title="Alt 8"] "Alt 8"
+                small "@alt_account_8 ·"
+                  span.iv-ck.ok "signed in"
+              span.ok.state-pill "New"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=true]
+              div.avatar.sm
+                span.initials [style="--h:10"] "AL"
+              span.iv-name
+                b [title="Alt 9"] "Alt 9"
+                small "@alt_account_9 · · password saved"
+                  span.bad.iv-ck "needs sign-in"
+              span.ok.state-pill "New"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=true]
+              div.avatar.sm
+                span.initials [style="--h:230"] "AL"
+              span.iv-name
+                b [title="Alt 10"] "Alt 10"
+                small "@alt_account_10 · Farm ·"
+                  span.iv-ck.ok "signed in"
+              span.ok.state-pill "New"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=true]
+              div.avatar.sm
+                span.initials [style="--h:231"] "AL"
+              span.iv-name
+                b [title="Alt 11"] "Alt 11"
+                small "@alt_account_11 · · password saved"
+                  span.iv-ck.ok "signed in"
+              span.ok.state-pill "New"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=true]
+              div.avatar.sm
+                span.initials [style="--h:232"] "AL"
+              span.iv-name
+                b [title="Alt 12"] "Alt 12"
+                small "@alt_account_12 ·"
+                  span.iv-ck.ok "signed in"
+              span.ok.state-pill "New"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=true]
+              div.avatar.sm
+                span.initials [style="--h:233"] "AL"
+              span.iv-name
+                b [title="Alt 13"] "Alt 13"
+                small "@alt_account_13 · Farm · · password saved"
+                  span.bad.iv-ck "needs sign-in"
+              span.ok.state-pill "New"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=true]
+              div.avatar.sm
+                span.initials [style="--h:234"] "AL"
+              span.iv-name
+                b [title="Alt 14"] "Alt 14"
+                small "@alt_account_14 ·"
+                  span.iv-ck.ok "signed in"
+              span.ok.state-pill "New"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=true]
+              div.avatar.sm
+                span.initials [style="--h:235"] "AL"
+              span.iv-name
+                b [title="Alt 15"] "Alt 15"
+                small "@alt_account_15 · · password saved"
+                  span.iv-ck.ok "signed in"
+              span.ok.state-pill "New"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=true]
+              div.avatar.sm
+                span.initials [style="--h:236"] "AL"
+              span.iv-name
+                b [title="Alt 16"] "Alt 16"
+                small "@alt_account_16 · Farm ·"
+                  span.iv-ck.ok "signed in"
+              span.ok.state-pill "New"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=true]
+              div.avatar.sm
+                span.initials [style="--h:237"] "AL"
+              span.iv-name
+                b [title="Alt 17"] "Alt 17"
+                small "@alt_account_17 · · password saved"
+                  span.bad.iv-ck "needs sign-in"
+              span.ok.state-pill "New"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=true]
+              div.avatar.sm
+                span.initials [style="--h:238"] "AL"
+              span.iv-name
+                b [title="Alt 18"] "Alt 18"
+                small "@alt_account_18 ·"
+                  span.iv-ck.ok "signed in"
+              span.ok.state-pill "New"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=true]
+              div.avatar.sm
+                span.initials [style="--h:239"] "AL"
+              span.iv-name
+                b [title="Alt 19"] "Alt 19"
+                small "@alt_account_19 · Farm · · password saved"
+                  span.iv-ck.ok "signed in"
+              span.ok.state-pill "New"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=true]
+              div.avatar.sm
+                span.initials [style="--h:261"] "AL"
+              span.iv-name
+                b [title="Alt 20"] "Alt 20"
+                small "@alt_account_20 ·"
+                  span.iv-ck.ok "signed in"
+              span.ok.state-pill "New"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=true]
+              div.avatar.sm
+                span.initials [style="--h:262"] "AL"
+              span.iv-name
+                b [title="Alt 21"] "Alt 21"
+                small "@alt_account_21 · · password saved"
+                  span.bad.iv-ck "needs sign-in"
+              span.ok.state-pill "New"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=true]
+              div.avatar.sm
+                span.initials [style="--h:263"] "AL"
+              span.iv-name
+                b [title="Alt 22"] "Alt 22"
+                small "@alt_account_22 · Farm ·"
+                  span.iv-ck.ok "signed in"
+              span.ok.state-pill "New"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=true]
+              div.avatar.sm
+                span.initials [style="--h:264"] "AL"
+              span.iv-name
+                b [title="Alt 23"] "Alt 23"
+                small "@alt_account_23 · · password saved"
+                  span.iv-ck.ok "signed in"
+              span.ok.state-pill "New"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=true]
+              div.avatar.sm
+                span.initials [style="--h:265"] "AL"
+              span.iv-name
+                b [title="Alt 24"] "Alt 24"
+                small "@alt_account_24 ·"
+                  span.iv-ck.ok "signed in"
+              span.ok.state-pill "New"
+          label.iv-presets
+            input [id="iv-presets" type="checkbox" checked=false]
+            span
+              b "Also import presets (2)"
+              small "Their schedules come over switched off. Accounts that aren’t here are left out of them."
+          p.fine
+            svg.i #v9c4u6
+            span "Accounts already here keep their names, groups and notes. Only a sign-in that stopped working is replaced."
+      div.modal-foot
+        button.btn "Cancel"
+        button.btn.primary [FOCUSED] "Import"
+#toasts
+-- commands
+  backupSuggestions {}
+  backupSuggestions {}
+  getState {}
+  monitorArea {"hidden":true}
+  pageBusy {"busy":true}
+  pageShown {}
+  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
+  vaultImportOpen {"password":"demo"}
+  vaultImportPick {}
+== searched
+html [data-theme="dark" lang="en"]
+#app
+  div.shell
+    aside.side
+      div.brand
+        img [alt="" src="logo.svg"]
+        div.brand-text
+          div.brand-name "Bloxkeep"
+          div.brand-sub "Roblox account manager"
+      div.side-nav
+        button.nav [title="Accounts"]
+          svg.i #v823bm
+          span "Accounts"
+          em [id="nav-count"] "7"
+        button.nav [title="Presets"]
+          svg.i #1pvni8o
+          span "Presets"
+        button.nav [title="Macros (Beta)"]
+          svg.i #kx2qfl
+          span "Macros"
+          em.nav-beta "Beta"
+        button.nav [title="Game monitor"]
+          svg.i #1e3syqr
+          span "Game monitor"
+        button.nav [title="Statistics"]
+          svg.i #ktpp14
+          span "Statistics"
+        button.nav.on [title="Settings"]
+          svg.i #tbghvg
+          span "Settings"
+      div.side-bottom
+        div [id="side-warn"]
+        div.side-card [id="sys-card"]
+          h4 "Roblox on this PC"
+          div.sys-row
+            span [title="Main · PID 1111\nFarm 1 · PID 2222"]
+              b [id="sys-count"] "2"
+              span [id="sys-count-label"] "windows"
+            span [id="sys-ram"] "1.7 GB"
+          div.meter [id="sys-meter"]
+            i.roblox [style="transform:scaleX(0.054)"]
+            i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
+          div.sys-foot [id="sys-foot"] "PC RAM 63% used · 12 GB free"
+          div.sys-foot [id="sys-usage" title="Roblox windows only, not the whole PC"] "CPU 12% · GPU 34%"
+          div.sys-ver [id="sys-ver"]
+            span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
+              i.dot.ok
+          button.btn.sm.sys-mini.w [id="sys-mini" aria-pressed="false"]
+            svg.i #1y8kmj1
+            span "Mini window"
+          button.btn.sm.sys-close.w [id="sys-close"]
+            svg.i #16z0s1r
+            span "Close all"
+        div [id="multi-card"]
+          div.multi.ok
+            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+              span.led
+              div
+                b "Multi-Roblox"
+                small "On — several windows allowed"
+            label.switch [title="Turn off Multi-Roblox"]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
+              span
+        div.side-foot
+          div [id="update-slot"]
+          div.side-lock
+            button.btn.ghost.w [title="Lock Bloxkeep with the master password. Roblox windows stay open; auto-rejoin, scheduled presets and Discord pause until you unlock."]
+              svg.i #21scx0
+              span "Lock app"
+            button.btn.ghost.side-sq.vault-btn [title="Switch vault (Vault 1)" aria-label="Switch vault (Vault 1)"]
+              span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(22, 163, 74);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
+    main.main
+      section.seen.view [id="view-accounts"]
+      section.seen.view [id="view-settings"]
+        header.top
+          div.top-title
+            h1 "Settings"
+        div.set-layout
+          nav.set-nav [aria-label="Settings"]
+            label.search.set-search
+              svg.i #1u22jvi
+              input [id="set-q" type="search" placeholder="Search settings" autocomplete="off" maxlength="60" aria-label="Search settings" value=""]
+            button.set-nav-item [type="button"]
+              svg.i #1ewcuky
+              span "Launching"
+            button.set-nav-item [type="button"]
+              svg.i #sy1lqp
+              span "Roblox version"
+            button.set-nav-item [type="button"]
+              svg.i #1l5qw3q
+              span "Staying in game"
+            button.set-nav-item [type="button"]
+              svg.i #1hupb3o
+              span "Notifications"
+            button.set-nav-item [type="button"]
+              svg.i #13a5dgx
+              span "Discord"
+            button.set-nav-item [type="button"]
+              svg.i #d2zp05
+              span "Appearance"
+            button.set-nav-item [type="button"]
+              svg.i #fevui6
+              span "Vault & security"
+            button.set-nav-item [type="button" aria-current="page"]
+              svg.i #gsei2o
+              span "Backup & data"
+            button.set-nav-item [type="button"]
+              svg.i #1uvtx1
+              span "Bloxkeep"
+          div.scroll.set-scroll
+            div.settings
+              section.set-page [id="set-page-backup" aria-labelledby="set-page-backup-h"]
+                h2.set-page-title [id="set-page-backup-h"] "Backup & data"
+                div.set-grp [id="sec-backup"]
+                  h3.set-grp-title "Backup"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Back up to a folder"
+                        div.d "Pick a Google Drive or OneDrive folder so your accounts survive a dead PC."
+                      div.ctl
+                        label.switch
+                          input [id="s-bk-on" type="checkbox" aria-label="Back up to a folder" checked=true]
+                          span
+                    div.set-row
+                      div
+                        div.t "Folder"
+                        div.d
+                          span.path [id="s-bk-path"] "No folder chosen"
+                          div.bk-suggest [id="s-bk-suggest"]
+                            button.btn.ghost.sm [title="G:\\My Drive\\Bloxkeep"] "Use Google Drive"
+                            button.btn.ghost.sm [title="C:\\Users\\Admin\\OneDrive\\Bloxkeep"] "Use OneDrive"
+                      div.ctl
+                        button.btn.sm "Choose…"
+                    div [id="s-bk-note"]
+                    div [id="s-bk-status"]
+                      div.set-row
+                        div
+                          div.t "No backups yet"
+                        div.ctl
+                          button.btn.sm [disabled] "Back up now"
+                div.set-grp [id="sec-restore"]
+                  h3.set-grp-title "Restore & import"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Restore"
+                        div.d "Older backups open with the password they were saved with."
+                      div.ctl
+                        button.btn.sm "Restore…"
+                    div.set-row
+                      div
+                        div.t "Import accounts from a Bloxkeep file"
+                        div.d "From a backup or another PC’s Bloxkeep. Your accounts here stay as they are."
+                      div.ctl
+                        button.btn.sm "Import…"
+                div.set-grp [id="sec-data"]
+                  h3.set-grp-title "Data"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Data location"
+                        div.d
+                          span.path [id="s-path"] "C:\\Users\\Admin\\AppData\\Local\\Bloxkeep"
+                      div.ctl
+                        button.btn.sm "Open folder"
+                          svg.i #3wh3ok
+                    div.set-row
+                      div
+                        div.t "Bloxkeep file in use"
+                        div.d
+                          span.path [id="s-vault-path"] "C:\\Users\\Admin\\AppData\\Local\\Bloxkeep\\vault.rmv"
+                      div.ctl
+                        button.btn.sm "Show file"
+                          svg.i #3wh3ok
+                    div.set-row
+                      div
+                        div.t "Error log"
+                        div.d
+                          span.path [id="s-log-path"] "C:\\Users\\Admin\\AppData\\Local\\Bloxkeep\\error.log"
+                      div.ctl
+                        button.btn.sm "Show file"
+                          svg.i #3wh3ok
+                    div.set-row
+                      div
+                        div.t "Program folder"
+                        div.d
+                          span.path [id="s-app-path"] "C:\\Users\\Admin\\AppData\\Local\\BloxkeepApp\\current"
+                      div.ctl
+                        button.btn.sm "Open folder"
+                          svg.i #3wh3ok
+#layer
+  div.at-top.overlay
+    div.modal [role="dialog" aria-labelledby="mdl-1" aria-modal="true"]
+      div.modal-head
+        h3 [id="mdl-1"] "Import from a Bloxkeep file"
+        button.icon-btn [title="Close"]
+          svg.i #1tyq039
+      div.modal-body
+        div [id="iv-body"]
+          p.iv-step "Step 3/3"
+          div.iv-file
+            svg.i #3wh3ok
+            b [title="Bloxkeep-backup-3f2a91c0-20261012-221500.rmv"] "Bloxkeep-backup-3f2a91c0-20261012-221500.rmv"
+            button.link [id="iv-other" type="button"] "Choose another file"
+          input.field.iv-search.sm [id="iv-search" type="text" placeholder="Search accounts, groups, notes…" autocomplete="off" maxlength="60" aria-label="Search accounts, groups, notes…" value="alt_account_1" FOCUSED]
+          div.iv-bar
+            span [id="iv-count"] "27 of 29 selected"
+            button.link [id="iv-all" type="button"] "All new"
+            button.link [id="iv-none" type="button"] "None"
+          div.iv-list.rc-list
+            label.iv-item.rc-item
+              input [type="checkbox" checked=true]
+              div.avatar.sm
+                span.initials [style="--h:2"] "AL"
+              span.iv-name
+                b [title="Alt 1"] "Alt 1"
+                small "@alt_account_1 · Farm · · password saved"
+                  span.bad.iv-ck "needs sign-in"
+              span.ok.state-pill "New"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=true]
+              div.avatar.sm
+                span.initials [style="--h:230"] "AL"
+              span.iv-name
+                b [title="Alt 10"] "Alt 10"
+                small "@alt_account_10 · Farm ·"
+                  span.iv-ck.ok "signed in"
+              span.ok.state-pill "New"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=true]
+              div.avatar.sm
+                span.initials [style="--h:231"] "AL"
+              span.iv-name
+                b [title="Alt 11"] "Alt 11"
+                small "@alt_account_11 · · password saved"
+                  span.iv-ck.ok "signed in"
+              span.ok.state-pill "New"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=true]
+              div.avatar.sm
+                span.initials [style="--h:232"] "AL"
+              span.iv-name
+                b [title="Alt 12"] "Alt 12"
+                small "@alt_account_12 ·"
+                  span.iv-ck.ok "signed in"
+              span.ok.state-pill "New"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=true]
+              div.avatar.sm
+                span.initials [style="--h:233"] "AL"
+              span.iv-name
+                b [title="Alt 13"] "Alt 13"
+                small "@alt_account_13 · Farm · · password saved"
+                  span.bad.iv-ck "needs sign-in"
+              span.ok.state-pill "New"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=true]
+              div.avatar.sm
+                span.initials [style="--h:234"] "AL"
+              span.iv-name
+                b [title="Alt 14"] "Alt 14"
+                small "@alt_account_14 ·"
+                  span.iv-ck.ok "signed in"
+              span.ok.state-pill "New"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=true]
+              div.avatar.sm
+                span.initials [style="--h:235"] "AL"
+              span.iv-name
+                b [title="Alt 15"] "Alt 15"
+                small "@alt_account_15 · · password saved"
+                  span.iv-ck.ok "signed in"
+              span.ok.state-pill "New"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=true]
+              div.avatar.sm
+                span.initials [style="--h:236"] "AL"
+              span.iv-name
+                b [title="Alt 16"] "Alt 16"
+                small "@alt_account_16 · Farm ·"
+                  span.iv-ck.ok "signed in"
+              span.ok.state-pill "New"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=true]
+              div.avatar.sm
+                span.initials [style="--h:237"] "AL"
+              span.iv-name
+                b [title="Alt 17"] "Alt 17"
+                small "@alt_account_17 · · password saved"
+                  span.bad.iv-ck "needs sign-in"
+              span.ok.state-pill "New"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=true]
+              div.avatar.sm
+                span.initials [style="--h:238"] "AL"
+              span.iv-name
+                b [title="Alt 18"] "Alt 18"
+                small "@alt_account_18 ·"
+                  span.iv-ck.ok "signed in"
+              span.ok.state-pill "New"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=true]
+              div.avatar.sm
+                span.initials [style="--h:239"] "AL"
+              span.iv-name
+                b [title="Alt 19"] "Alt 19"
+                small "@alt_account_19 · Farm · · password saved"
+                  span.iv-ck.ok "signed in"
+              span.ok.state-pill "New"
+          label.iv-presets
+            input [id="iv-presets" type="checkbox" checked=false]
+            span
+              b "Also import presets (2)"
+              small "Their schedules come over switched off. Accounts that aren’t here are left out of them."
+          p.fine
+            svg.i #v9c4u6
+            span "Accounts already here keep their names, groups and notes. Only a sign-in that stopped working is replaced."
+      div.modal-foot
+        button.btn "Cancel"
+        button.btn.primary "Import"
+#toasts
+-- commands
+  (none)
+== none of those
+html [data-theme="dark" lang="en"]
+#app
+  div.shell
+    aside.side
+      div.brand
+        img [alt="" src="logo.svg"]
+        div.brand-text
+          div.brand-name "Bloxkeep"
+          div.brand-sub "Roblox account manager"
+      div.side-nav
+        button.nav [title="Accounts"]
+          svg.i #v823bm
+          span "Accounts"
+          em [id="nav-count"] "7"
+        button.nav [title="Presets"]
+          svg.i #1pvni8o
+          span "Presets"
+        button.nav [title="Macros (Beta)"]
+          svg.i #kx2qfl
+          span "Macros"
+          em.nav-beta "Beta"
+        button.nav [title="Game monitor"]
+          svg.i #1e3syqr
+          span "Game monitor"
+        button.nav [title="Statistics"]
+          svg.i #ktpp14
+          span "Statistics"
+        button.nav.on [title="Settings"]
+          svg.i #tbghvg
+          span "Settings"
+      div.side-bottom
+        div [id="side-warn"]
+        div.side-card [id="sys-card"]
+          h4 "Roblox on this PC"
+          div.sys-row
+            span [title="Main · PID 1111\nFarm 1 · PID 2222"]
+              b [id="sys-count"] "2"
+              span [id="sys-count-label"] "windows"
+            span [id="sys-ram"] "1.7 GB"
+          div.meter [id="sys-meter"]
+            i.roblox [style="transform:scaleX(0.054)"]
+            i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
+          div.sys-foot [id="sys-foot"] "PC RAM 63% used · 12 GB free"
+          div.sys-foot [id="sys-usage" title="Roblox windows only, not the whole PC"] "CPU 12% · GPU 34%"
+          div.sys-ver [id="sys-ver"]
+            span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
+              i.dot.ok
+          button.btn.sm.sys-mini.w [id="sys-mini" aria-pressed="false"]
+            svg.i #1y8kmj1
+            span "Mini window"
+          button.btn.sm.sys-close.w [id="sys-close"]
+            svg.i #16z0s1r
+            span "Close all"
+        div [id="multi-card"]
+          div.multi.ok
+            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+              span.led
+              div
+                b "Multi-Roblox"
+                small "On — several windows allowed"
+            label.switch [title="Turn off Multi-Roblox"]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
+              span
+        div.side-foot
+          div [id="update-slot"]
+          div.side-lock
+            button.btn.ghost.w [title="Lock Bloxkeep with the master password. Roblox windows stay open; auto-rejoin, scheduled presets and Discord pause until you unlock."]
+              svg.i #21scx0
+              span "Lock app"
+            button.btn.ghost.side-sq.vault-btn [title="Switch vault (Vault 1)" aria-label="Switch vault (Vault 1)"]
+              span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(22, 163, 74);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
+    main.main
+      section.seen.view [id="view-accounts"]
+      section.seen.view [id="view-settings"]
+        header.top
+          div.top-title
+            h1 "Settings"
+        div.set-layout
+          nav.set-nav [aria-label="Settings"]
+            label.search.set-search
+              svg.i #1u22jvi
+              input [id="set-q" type="search" placeholder="Search settings" autocomplete="off" maxlength="60" aria-label="Search settings" value=""]
+            button.set-nav-item [type="button"]
+              svg.i #1ewcuky
+              span "Launching"
+            button.set-nav-item [type="button"]
+              svg.i #sy1lqp
+              span "Roblox version"
+            button.set-nav-item [type="button"]
+              svg.i #1l5qw3q
+              span "Staying in game"
+            button.set-nav-item [type="button"]
+              svg.i #1hupb3o
+              span "Notifications"
+            button.set-nav-item [type="button"]
+              svg.i #13a5dgx
+              span "Discord"
+            button.set-nav-item [type="button"]
+              svg.i #d2zp05
+              span "Appearance"
+            button.set-nav-item [type="button"]
+              svg.i #fevui6
+              span "Vault & security"
+            button.set-nav-item [type="button" aria-current="page"]
+              svg.i #gsei2o
+              span "Backup & data"
+            button.set-nav-item [type="button"]
+              svg.i #1uvtx1
+              span "Bloxkeep"
+          div.scroll.set-scroll
+            div.settings
+              section.set-page [id="set-page-backup" aria-labelledby="set-page-backup-h"]
+                h2.set-page-title [id="set-page-backup-h"] "Backup & data"
+                div.set-grp [id="sec-backup"]
+                  h3.set-grp-title "Backup"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Back up to a folder"
+                        div.d "Pick a Google Drive or OneDrive folder so your accounts survive a dead PC."
+                      div.ctl
+                        label.switch
+                          input [id="s-bk-on" type="checkbox" aria-label="Back up to a folder" checked=true]
+                          span
+                    div.set-row
+                      div
+                        div.t "Folder"
+                        div.d
+                          span.path [id="s-bk-path"] "No folder chosen"
+                          div.bk-suggest [id="s-bk-suggest"]
+                            button.btn.ghost.sm [title="G:\\My Drive\\Bloxkeep"] "Use Google Drive"
+                            button.btn.ghost.sm [title="C:\\Users\\Admin\\OneDrive\\Bloxkeep"] "Use OneDrive"
+                      div.ctl
+                        button.btn.sm "Choose…"
+                    div [id="s-bk-note"]
+                    div [id="s-bk-status"]
+                      div.set-row
+                        div
+                          div.t "No backups yet"
+                        div.ctl
+                          button.btn.sm [disabled] "Back up now"
+                div.set-grp [id="sec-restore"]
+                  h3.set-grp-title "Restore & import"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Restore"
+                        div.d "Older backups open with the password they were saved with."
+                      div.ctl
+                        button.btn.sm "Restore…"
+                    div.set-row
+                      div
+                        div.t "Import accounts from a Bloxkeep file"
+                        div.d "From a backup or another PC’s Bloxkeep. Your accounts here stay as they are."
+                      div.ctl
+                        button.btn.sm "Import…"
+                div.set-grp [id="sec-data"]
+                  h3.set-grp-title "Data"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Data location"
+                        div.d
+                          span.path [id="s-path"] "C:\\Users\\Admin\\AppData\\Local\\Bloxkeep"
+                      div.ctl
+                        button.btn.sm "Open folder"
+                          svg.i #3wh3ok
+                    div.set-row
+                      div
+                        div.t "Bloxkeep file in use"
+                        div.d
+                          span.path [id="s-vault-path"] "C:\\Users\\Admin\\AppData\\Local\\Bloxkeep\\vault.rmv"
+                      div.ctl
+                        button.btn.sm "Show file"
+                          svg.i #3wh3ok
+                    div.set-row
+                      div
+                        div.t "Error log"
+                        div.d
+                          span.path [id="s-log-path"] "C:\\Users\\Admin\\AppData\\Local\\Bloxkeep\\error.log"
+                      div.ctl
+                        button.btn.sm "Show file"
+                          svg.i #3wh3ok
+                    div.set-row
+                      div
+                        div.t "Program folder"
+                        div.d
+                          span.path [id="s-app-path"] "C:\\Users\\Admin\\AppData\\Local\\BloxkeepApp\\current"
+                      div.ctl
+                        button.btn.sm "Open folder"
+                          svg.i #3wh3ok
+#layer
+  div.at-top.overlay
+    div.modal [role="dialog" aria-labelledby="mdl-1" aria-modal="true"]
+      div.modal-head
+        h3 [id="mdl-1"] "Import from a Bloxkeep file"
+        button.icon-btn [title="Close"]
+          svg.i #1tyq039
+      div.modal-body
+        div [id="iv-body"]
+          p.iv-step "Step 3/3"
+          div.iv-file
+            svg.i #3wh3ok
+            b [title="Bloxkeep-backup-3f2a91c0-20261012-221500.rmv"] "Bloxkeep-backup-3f2a91c0-20261012-221500.rmv"
+            button.link [id="iv-other" type="button"] "Choose another file"
+          input.field.iv-search.sm [id="iv-search" type="text" placeholder="Search accounts, groups, notes…" autocomplete="off" maxlength="60" aria-label="Search accounts, groups, notes…" value="alt_account_1"]
+          div.iv-bar
+            span [id="iv-count"] "16 of 29 selected"
+            button.link [id="iv-all" type="button"] "All new"
+            button.link [id="iv-none" type="button" FOCUSED] "None"
+          div.iv-list.rc-list
+            label.iv-item.rc-item
+              input [type="checkbox" checked=false]
+              div.avatar.sm
+                span.initials [style="--h:2"] "AL"
+              span.iv-name
+                b [title="Alt 1"] "Alt 1"
+                small "@alt_account_1 · Farm · · password saved"
+                  span.bad.iv-ck "needs sign-in"
+              span.ok.state-pill "New"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=false]
+              div.avatar.sm
+                span.initials [style="--h:230"] "AL"
+              span.iv-name
+                b [title="Alt 10"] "Alt 10"
+                small "@alt_account_10 · Farm ·"
+                  span.iv-ck.ok "signed in"
+              span.ok.state-pill "New"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=false]
+              div.avatar.sm
+                span.initials [style="--h:231"] "AL"
+              span.iv-name
+                b [title="Alt 11"] "Alt 11"
+                small "@alt_account_11 · · password saved"
+                  span.iv-ck.ok "signed in"
+              span.ok.state-pill "New"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=false]
+              div.avatar.sm
+                span.initials [style="--h:232"] "AL"
+              span.iv-name
+                b [title="Alt 12"] "Alt 12"
+                small "@alt_account_12 ·"
+                  span.iv-ck.ok "signed in"
+              span.ok.state-pill "New"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=false]
+              div.avatar.sm
+                span.initials [style="--h:233"] "AL"
+              span.iv-name
+                b [title="Alt 13"] "Alt 13"
+                small "@alt_account_13 · Farm · · password saved"
+                  span.bad.iv-ck "needs sign-in"
+              span.ok.state-pill "New"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=false]
+              div.avatar.sm
+                span.initials [style="--h:234"] "AL"
+              span.iv-name
+                b [title="Alt 14"] "Alt 14"
+                small "@alt_account_14 ·"
+                  span.iv-ck.ok "signed in"
+              span.ok.state-pill "New"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=false]
+              div.avatar.sm
+                span.initials [style="--h:235"] "AL"
+              span.iv-name
+                b [title="Alt 15"] "Alt 15"
+                small "@alt_account_15 · · password saved"
+                  span.iv-ck.ok "signed in"
+              span.ok.state-pill "New"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=false]
+              div.avatar.sm
+                span.initials [style="--h:236"] "AL"
+              span.iv-name
+                b [title="Alt 16"] "Alt 16"
+                small "@alt_account_16 · Farm ·"
+                  span.iv-ck.ok "signed in"
+              span.ok.state-pill "New"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=false]
+              div.avatar.sm
+                span.initials [style="--h:237"] "AL"
+              span.iv-name
+                b [title="Alt 17"] "Alt 17"
+                small "@alt_account_17 · · password saved"
+                  span.bad.iv-ck "needs sign-in"
+              span.ok.state-pill "New"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=false]
+              div.avatar.sm
+                span.initials [style="--h:238"] "AL"
+              span.iv-name
+                b [title="Alt 18"] "Alt 18"
+                small "@alt_account_18 ·"
+                  span.iv-ck.ok "signed in"
+              span.ok.state-pill "New"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=false]
+              div.avatar.sm
+                span.initials [style="--h:239"] "AL"
+              span.iv-name
+                b [title="Alt 19"] "Alt 19"
+                small "@alt_account_19 · Farm · · password saved"
+                  span.iv-ck.ok "signed in"
+              span.ok.state-pill "New"
+          label.iv-presets
+            input [id="iv-presets" type="checkbox" checked=false]
+            span
+              b "Also import presets (2)"
+              small "Their schedules come over switched off. Accounts that aren’t here are left out of them."
+          p.fine
+            svg.i #v9c4u6
+            span "Accounts already here keep their names, groups and notes. Only a sign-in that stopped working is replaced."
+      div.modal-foot
+        button.btn "Cancel"
+        button.btn.primary "Import"
+#toasts
+-- commands
+  (none)
+== end
+html [data-theme="dark" lang="en"]
+#app
+  div.shell
+    aside.side
+      div.brand
+        img [alt="" src="logo.svg"]
+        div.brand-text
+          div.brand-name "Bloxkeep"
+          div.brand-sub "Roblox account manager"
+      div.side-nav
+        button.nav [title="Accounts"]
+          svg.i #v823bm
+          span "Accounts"
+          em [id="nav-count"] "7"
+        button.nav [title="Presets"]
+          svg.i #1pvni8o
+          span "Presets"
+        button.nav [title="Macros (Beta)"]
+          svg.i #kx2qfl
+          span "Macros"
+          em.nav-beta "Beta"
+        button.nav [title="Game monitor"]
+          svg.i #1e3syqr
+          span "Game monitor"
+        button.nav [title="Statistics"]
+          svg.i #ktpp14
+          span "Statistics"
+        button.nav.on [title="Settings"]
+          svg.i #tbghvg
+          span "Settings"
+      div.side-bottom
+        div [id="side-warn"]
+        div.side-card [id="sys-card"]
+          h4 "Roblox on this PC"
+          div.sys-row
+            span [title="Main · PID 1111\nFarm 1 · PID 2222"]
+              b [id="sys-count"] "2"
+              span [id="sys-count-label"] "windows"
+            span [id="sys-ram"] "1.7 GB"
+          div.meter [id="sys-meter"]
+            i.roblox [style="transform:scaleX(0.054)"]
+            i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
+          div.sys-foot [id="sys-foot"] "PC RAM 63% used · 12 GB free"
+          div.sys-foot [id="sys-usage" title="Roblox windows only, not the whole PC"] "CPU 12% · GPU 34%"
+          div.sys-ver [id="sys-ver"]
+            span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
+              i.dot.ok
+          button.btn.sm.sys-mini.w [id="sys-mini" aria-pressed="false"]
+            svg.i #1y8kmj1
+            span "Mini window"
+          button.btn.sm.sys-close.w [id="sys-close"]
+            svg.i #16z0s1r
+            span "Close all"
+        div [id="multi-card"]
+          div.multi.ok
+            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+              span.led
+              div
+                b "Multi-Roblox"
+                small "On — several windows allowed"
+            label.switch [title="Turn off Multi-Roblox"]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
+              span
+        div.side-foot
+          div [id="update-slot"]
+          div.side-lock
+            button.btn.ghost.w [title="Lock Bloxkeep with the master password. Roblox windows stay open; auto-rejoin, scheduled presets and Discord pause until you unlock."]
+              svg.i #21scx0
+              span "Lock app"
+            button.btn.ghost.side-sq.vault-btn [title="Switch vault (Vault 1)" aria-label="Switch vault (Vault 1)"]
+              span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(22, 163, 74);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
+    main.main
+      section.seen.view [id="view-accounts"]
+      section.seen.view [id="view-settings"]
+        header.top
+          div.top-title
+            h1 "Settings"
+        div.set-layout
+          nav.set-nav [aria-label="Settings"]
+            label.search.set-search
+              svg.i #1u22jvi
+              input [id="set-q" type="search" placeholder="Search settings" autocomplete="off" maxlength="60" aria-label="Search settings" value=""]
+            button.set-nav-item [type="button"]
+              svg.i #1ewcuky
+              span "Launching"
+            button.set-nav-item [type="button"]
+              svg.i #sy1lqp
+              span "Roblox version"
+            button.set-nav-item [type="button"]
+              svg.i #1l5qw3q
+              span "Staying in game"
+            button.set-nav-item [type="button"]
+              svg.i #1hupb3o
+              span "Notifications"
+            button.set-nav-item [type="button"]
+              svg.i #13a5dgx
+              span "Discord"
+            button.set-nav-item [type="button"]
+              svg.i #d2zp05
+              span "Appearance"
+            button.set-nav-item [type="button"]
+              svg.i #fevui6
+              span "Vault & security"
+            button.set-nav-item [type="button" aria-current="page"]
+              svg.i #gsei2o
+              span "Backup & data"
+            button.set-nav-item [type="button"]
+              svg.i #1uvtx1
+              span "Bloxkeep"
+          div.scroll.set-scroll
+            div.settings
+              section.set-page [id="set-page-backup" aria-labelledby="set-page-backup-h"]
+                h2.set-page-title [id="set-page-backup-h"] "Backup & data"
+                div.set-grp [id="sec-backup"]
+                  h3.set-grp-title "Backup"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Back up to a folder"
+                        div.d "Pick a Google Drive or OneDrive folder so your accounts survive a dead PC."
+                      div.ctl
+                        label.switch
+                          input [id="s-bk-on" type="checkbox" aria-label="Back up to a folder" checked=true]
+                          span
+                    div.set-row
+                      div
+                        div.t "Folder"
+                        div.d
+                          span.path [id="s-bk-path"] "No folder chosen"
+                          div.bk-suggest [id="s-bk-suggest"]
+                            button.btn.ghost.sm [title="G:\\My Drive\\Bloxkeep"] "Use Google Drive"
+                            button.btn.ghost.sm [title="C:\\Users\\Admin\\OneDrive\\Bloxkeep"] "Use OneDrive"
+                      div.ctl
+                        button.btn.sm "Choose…"
+                    div [id="s-bk-note"]
+                    div [id="s-bk-status"]
+                      div.set-row
+                        div
+                          div.t "No backups yet"
+                        div.ctl
+                          button.btn.sm [disabled] "Back up now"
+                div.set-grp [id="sec-restore"]
+                  h3.set-grp-title "Restore & import"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Restore"
+                        div.d "Older backups open with the password they were saved with."
+                      div.ctl
+                        button.btn.sm "Restore…"
+                    div.set-row
+                      div
+                        div.t "Import accounts from a Bloxkeep file"
+                        div.d "From a backup or another PC’s Bloxkeep. Your accounts here stay as they are."
+                      div.ctl
+                        button.btn.sm "Import…"
+                div.set-grp [id="sec-data"]
+                  h3.set-grp-title "Data"
+                  div.set-card
+                    div.set-row
+                      div
+                        div.t "Data location"
+                        div.d
+                          span.path [id="s-path"] "C:\\Users\\Admin\\AppData\\Local\\Bloxkeep"
+                      div.ctl
+                        button.btn.sm "Open folder"
+                          svg.i #3wh3ok
+                    div.set-row
+                      div
+                        div.t "Bloxkeep file in use"
+                        div.d
+                          span.path [id="s-vault-path"] "C:\\Users\\Admin\\AppData\\Local\\Bloxkeep\\vault.rmv"
+                      div.ctl
+                        button.btn.sm "Show file"
+                          svg.i #3wh3ok
+                    div.set-row
+                      div
+                        div.t "Error log"
+                        div.d
+                          span.path [id="s-log-path"] "C:\\Users\\Admin\\AppData\\Local\\Bloxkeep\\error.log"
+                      div.ctl
+                        button.btn.sm "Show file"
+                          svg.i #3wh3ok
+                    div.set-row
+                      div
+                        div.t "Program folder"
+                        div.d
+                          span.path [id="s-app-path"] "C:\\Users\\Admin\\AppData\\Local\\BloxkeepApp\\current"
+                      div.ctl
+                        button.btn.sm "Open folder"
+                          svg.i #3wh3ok
+#layer
+  div.at-top.overlay
+    div.modal [role="dialog" aria-labelledby="mdl-1" aria-modal="true"]
+      div.modal-head
+        h3 [id="mdl-1"] "Import from a Bloxkeep file"
+        button.icon-btn [title="Close"]
+          svg.i #1tyq039
+      div.modal-body
+        div [id="iv-body"]
+          p.iv-step "Step 3/3"
+          div.iv-file
+            svg.i #3wh3ok
+            b [title="Bloxkeep-backup-3f2a91c0-20261012-221500.rmv"] "Bloxkeep-backup-3f2a91c0-20261012-221500.rmv"
+            button.link [id="iv-other" type="button"] "Choose another file"
+          input.field.iv-search.sm [id="iv-search" type="text" placeholder="Search accounts, groups, notes…" autocomplete="off" maxlength="60" aria-label="Search accounts, groups, notes…" value="alt_account_1"]
+          div.iv-bar
+            span [id="iv-count"] "27 of 29 selected"
+            button.link [id="iv-all" type="button" FOCUSED] "All new"
+            button.link [id="iv-none" type="button"] "None"
+          div.iv-list.rc-list
+            label.iv-item.rc-item
+              input [type="checkbox" checked=true]
+              div.avatar.sm
+                span.initials [style="--h:2"] "AL"
+              span.iv-name
+                b [title="Alt 1"] "Alt 1"
+                small "@alt_account_1 · Farm · · password saved"
+                  span.bad.iv-ck "needs sign-in"
+              span.ok.state-pill "New"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=true]
+              div.avatar.sm
+                span.initials [style="--h:230"] "AL"
+              span.iv-name
+                b [title="Alt 10"] "Alt 10"
+                small "@alt_account_10 · Farm ·"
+                  span.iv-ck.ok "signed in"
+              span.ok.state-pill "New"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=true]
+              div.avatar.sm
+                span.initials [style="--h:231"] "AL"
+              span.iv-name
+                b [title="Alt 11"] "Alt 11"
+                small "@alt_account_11 · · password saved"
+                  span.iv-ck.ok "signed in"
+              span.ok.state-pill "New"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=true]
+              div.avatar.sm
+                span.initials [style="--h:232"] "AL"
+              span.iv-name
+                b [title="Alt 12"] "Alt 12"
+                small "@alt_account_12 ·"
+                  span.iv-ck.ok "signed in"
+              span.ok.state-pill "New"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=true]
+              div.avatar.sm
+                span.initials [style="--h:233"] "AL"
+              span.iv-name
+                b [title="Alt 13"] "Alt 13"
+                small "@alt_account_13 · Farm · · password saved"
+                  span.bad.iv-ck "needs sign-in"
+              span.ok.state-pill "New"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=true]
+              div.avatar.sm
+                span.initials [style="--h:234"] "AL"
+              span.iv-name
+                b [title="Alt 14"] "Alt 14"
+                small "@alt_account_14 ·"
+                  span.iv-ck.ok "signed in"
+              span.ok.state-pill "New"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=true]
+              div.avatar.sm
+                span.initials [style="--h:235"] "AL"
+              span.iv-name
+                b [title="Alt 15"] "Alt 15"
+                small "@alt_account_15 · · password saved"
+                  span.iv-ck.ok "signed in"
+              span.ok.state-pill "New"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=true]
+              div.avatar.sm
+                span.initials [style="--h:236"] "AL"
+              span.iv-name
+                b [title="Alt 16"] "Alt 16"
+                small "@alt_account_16 · Farm ·"
+                  span.iv-ck.ok "signed in"
+              span.ok.state-pill "New"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=true]
+              div.avatar.sm
+                span.initials [style="--h:237"] "AL"
+              span.iv-name
+                b [title="Alt 17"] "Alt 17"
+                small "@alt_account_17 · · password saved"
+                  span.bad.iv-ck "needs sign-in"
+              span.ok.state-pill "New"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=true]
+              div.avatar.sm
+                span.initials [style="--h:238"] "AL"
+              span.iv-name
+                b [title="Alt 18"] "Alt 18"
+                small "@alt_account_18 ·"
+                  span.iv-ck.ok "signed in"
+              span.ok.state-pill "New"
+            label.iv-item.rc-item
+              input [type="checkbox" checked=true]
+              div.avatar.sm
+                span.initials [style="--h:239"] "AL"
+              span.iv-name
+                b [title="Alt 19"] "Alt 19"
+                small "@alt_account_19 · Farm · · password saved"
+                  span.iv-ck.ok "signed in"
+              span.ok.state-pill "New"
+          label.iv-presets
+            input [id="iv-presets" type="checkbox" checked=false]
+            span
+              b "Also import presets (2)"
+              small "Their schedules come over switched off. Accounts that aren’t here are left out of them."
+          p.fine
+            svg.i #v9c4u6
+            span "Accounts already here keep their names, groups and notes. Only a sign-in that stopped working is replaced."
+      div.modal-foot
+        button.btn "Cancel"
+        button.btn.primary "Import"
+#toasts
+-- commands
+  (none)

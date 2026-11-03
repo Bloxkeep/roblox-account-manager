@@ -6,6 +6,8 @@
   const params = new URLSearchParams(location.search);
   let user = '';
   // ?guardfail=1: the vault list is a number, so the sidebar (which reads it as a list) fails to draw and Guard shows its note.
+  // The failure is the point of the scenario: Guard and React report it with console.error, which the runner would count as a bug.
+  if (params.has('guardfail')) console.error = () => {};
   const broken = st => params.has('guardfail') && st ? { ...st, vaults: { ...(st.vaults || {}), list: 5 } } : st;
   const attach = bridge.attach.bind(bridge);
   bridge.attach = fn => attach((ev, data) => fn(ev, ev === 'state' ? broken(data) : data));
