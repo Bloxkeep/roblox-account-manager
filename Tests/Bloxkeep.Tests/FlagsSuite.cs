@@ -60,6 +60,41 @@ static class FlagsSuite
         c.Check("…and put back then", File.ReadAllText(mine) == own && !RobloxFlags.Pending);
 
         c.Check("no client: nothing written", !RobloxFlags.Apply(null));
+
+        // A restore that can't write (the file held, a build without the rights) keeps the person's own for the next try.
+        string exe = Path.Combine(a, "RobloxPlayerBeta.exe"), state = Path.Combine(dir, "roblox-flags.json");
+        RobloxFlags.Apply(exe);
+        File.SetAttributes(mine, FileAttributes.ReadOnly);
+        File.SetAttributes(made, FileAttributes.ReadOnly);
+        RobloxFlags.Restore();
+        c.Check("a file that can't be put back stays pending", RobloxFlags.Pending && Flags(mine)["FFlagDebugSkyGray"] is not null && File.Exists(made));
+        File.SetAttributes(mine, FileAttributes.Normal);
+        File.SetAttributes(made, FileAttributes.Normal);
+        RobloxFlags.Restore();
+        c.Check("…and goes back as it was at the next try", File.ReadAllText(mine) == own && !File.Exists(made) && !RobloxFlags.Pending,
+            $"{RobloxFlags.Pending} {File.ReadAllText(mine)}");
+
+        // The note of what to put back can't be kept: nothing is written, so nothing is left that can't be put back.
+        Directory.CreateDirectory(state + ".tmp");
+        bool unsaved = RobloxFlags.Apply(exe);
+        c.Check("no note of the person's own, no flags written", !unsaved && File.ReadAllText(mine) == own && !File.Exists(made), File.ReadAllText(mine));
+        Directory.Delete(state + ".tmp");
+
+        // The note can't be read for a moment: the files aren't touched, and the person's own isn't replaced in it.
+        RobloxFlags.Apply(exe);
+        using (new FileStream(state, FileMode.Open, FileAccess.Write, FileShare.Write | FileShare.Delete))
+            c.Check("a note that can't be read: nothing written", !RobloxFlags.Apply(exe));
+        RobloxFlags.Restore();
+        c.Check("…and the person's own still goes back after", File.ReadAllText(mine) == own && !File.Exists(made) && !RobloxFlags.Pending, File.ReadAllText(mine));
+
+        // A damaged note: set aside, never overwritten, and a file already holding the flags is never taken for the person's own.
+        RobloxFlags.Apply(exe);
+        File.WriteAllText(state, "{ damaged");
+        RobloxFlags.Apply(exe);
+        var aside = Directory.GetFiles(dir, "roblox-flags.json.damaged-*");
+        c.Check("a damaged note is set aside as it was", aside.Length == 1 && File.ReadAllText(aside[0]) == "{ damaged", string.Join(", ", aside));
+        c.Check("…and a flagged file isn't noted as the person's own", !File.Exists(state) || !File.ReadAllText(state).Contains("FFlagDebugSkyGray"),
+            File.Exists(state) ? File.ReadAllText(state) : "");
         return Task.CompletedTask;
     }
 }
