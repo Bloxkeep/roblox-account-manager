@@ -5690,6 +5690,128 @@ button.mc-step-head:focus-visible { outline: 2px solid var(--focus); outline-off
 .mp-btn { height: 26px; padding: 0 10px; border-radius: 6px; background: #232a38; color: #c7cede; font-size: var(--fs-2); font-weight: 650; line-height: 26px; }
 
 /* ───────── P1a panel ───────── */
+/* A macro's panel beside the game (ui/src/panel/PanelView.tsx, page panel.html, window PanelWindow.cs). A solid card 300
+   px wide: a picture theme's see-through surface is laid over its raised colour, so the game never shows through. In its
+   window Windows draws the rounded corners and the hairline (ThemedMenu.RoundCorners); in a browser the card draws them. */
+body.panel-page { background: linear-gradient(var(--surface), var(--surface)), linear-gradient(var(--raised), var(--raised)), Canvas; overflow: hidden; }
+.pn {
+  --pn-fill: linear-gradient(var(--surface), var(--surface)), linear-gradient(var(--raised), var(--raised)), Canvas;
+  width: 300px; max-height: 100vh; box-sizing: border-box; display: flex; flex-direction: column; overflow: hidden;
+  background: var(--pn-fill); color: var(--text); font-size: var(--fs-3);
+}
+html:not(.in-window) .pn { border: 1px solid var(--line-2); border-radius: var(--r-lg); box-shadow: 0 14px 40px var(--shadow); max-height: calc(100vh - 32px); }
+html:not(.in-window) body.panel-page { background: var(--backdrop); padding: 16px; box-sizing: border-box; }
+.pn .i { width: 16px; height: 16px; }
+:where(.pn) :where(button) { font: inherit; }
+
+/* The title row: the state's dot, the name, Beta, fold and close. Dragged, it moves the window. */
+.pn-title { display: flex; align-items: center; gap: 8px; height: 36px; flex: none; padding: 0 4px 0 12px; border-bottom: 1px solid var(--line); }
+.pn-dot { width: 8px; height: 8px; flex: none; border-radius: 50%; background: var(--dim); }
+.pn-dot.s-ready { background: var(--ok); }
+.pn-dot.s-running { background: var(--ok); animation: pulse 1.2s ease-in-out infinite; }
+.pn-dot.s-paused { background: var(--warn); }
+.pn-dot.s-stopped, .pn-dot.s-recording { background: var(--bad); }
+.pn-dot.s-recording { animation: pulse 1.2s ease-in-out infinite; }
+.pn-dot.s-editing { background: var(--accent); }
+.pn-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 650 var(--fs-4)/1.2 var(--font-display, var(--font)); }
+.pn-beta { flex: none; padding: 1px 6px; border-radius: var(--r-xs); background: var(--warn-soft); color: var(--warn-ink); font-size: var(--fs-1); font-weight: 600; }
+.pn-icon { width: 28px; height: 28px; flex: none; display: grid; place-items: center; padding: 0; border: 0; border-radius: var(--r-sm); background: transparent; color: var(--text-2); cursor: pointer; transition: background .12s, color .12s; }
+.pn-icon:hover { background: var(--hover); color: var(--text); }
+
+/* Run or Stop, the status line, the counters, the tabs. */
+.pn-top { display: grid; gap: 8px; flex: none; padding: 12px 12px 6px; }
+.pn-run { width: 100%; height: 40px; justify-content: flex-start; padding: 0 12px; }
+.pn-run > span { flex: 1; text-align: left; }
+.pn-run kbd { border: 0; background: color-mix(in srgb, currentColor 14%, transparent); color: inherit; font-weight: 600; font-variant-numeric: tabular-nums; }
+.pn-status { display: flex; align-items: baseline; min-width: 0; min-height: 18px; margin: 0; font-size: var(--fs-2); line-height: 18px; color: var(--text-2); white-space: nowrap; }
+.pn-status > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.pn-status.bad { color: var(--bad-ink); }
+.pn-sep { flex: none; padding: 0 5px; font-style: normal; color: var(--muted); }
+.pn-link { flex: none; padding: 0; border: 0; background: none; color: var(--text); font-size: inherit; font-weight: 600; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.pn-link:hover { color: var(--accent); }
+.pn-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; }
+.pn-chip { display: inline-flex; align-items: center; gap: 6px; height: 22px; max-width: 100%; box-sizing: border-box; padding: 0 8px; border-radius: var(--r-pill); background: var(--surface-2); border: 1px solid var(--line); font-size: var(--fs-2); color: var(--text-2); }
+.pn-chip > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pn-chip b { color: var(--text); font-weight: 650; font-variant-numeric: tabular-nums; }
+.pn-chip .i { width: 13px; height: 13px; }
+.seg.pn-tabs { display: flex; width: 100%; height: 32px; box-sizing: border-box; overflow-x: auto; scrollbar-width: none; }
+.seg.pn-tabs button { width: auto; flex: none; max-width: 132px; padding: 0 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; line-height: 28px; font-size: var(--fs-2); font-weight: 600; color: var(--text-2); }
+.seg.pn-tabs button:hover:not(.on) { color: var(--text); }
+.seg.pn-tabs button.on { color: var(--text); }
+.seg.pn-tabs button:focus-visible { outline-offset: -2px; }
+
+/* The settings: label left (cut with … and whole in its title), control right; a wide control goes under its label. */
+.pn-rows { flex: 0 1 auto; min-height: 0; overflow-y: auto; scrollbar-width: thin; }
+.pn-rows-in { padding: 2px 12px 8px; }
+.pn-rows-in:empty { display: none; }
+.pn-row { display: flex; flex-wrap: wrap; align-items: center; column-gap: 8px; min-height: 36px; }
+.pn-label { flex: 0 0 45%; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
+.pn-ctl { flex: 1; min-width: 0; display: flex; justify-content: flex-end; }
+.pn-ctl-in { display: inline-flex; align-items: center; gap: 6px; flex: none; }
+.pn-ctl.flex .pn-ctl-in { flex: 1; min-width: 0; }
+.pn-row.stack { padding: 4px 0; row-gap: 4px; }
+.pn-row.stack .pn-label { flex-basis: 100%; }
+.pn-row.stack .pn-ctl { flex-basis: 100%; justify-content: flex-start; }
+.pn-hint { flex-basis: 100%; margin: 0 0 6px; font-size: var(--fs-2); color: var(--bad-ink); }
+.pn-head { margin: 10px 0 2px; padding-top: 10px; border-top: 1px solid var(--line); font-size: var(--fs-2); font-weight: 700; color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pn-rows-in > .pn-head:first-child { margin-top: 4px; padding-top: 0; border-top: 0; }
+
+/* A number: [−][ value ][+] in one field. */
+.pn-stepper { display: inline-flex; align-items: stretch; height: 30px; box-sizing: border-box; border: 1px solid var(--line-field); border-radius: var(--r-sm); background: var(--field); overflow: hidden; }
+.pn-stepper:focus-within { border-color: var(--focus-line); }
+.pn-step { width: 28px; flex: none; display: grid; place-items: center; padding: 0; border: 0; background: transparent; color: var(--text-2); cursor: pointer; }
+.pn-step:hover:not(:disabled) { background: var(--hover); color: var(--text); }
+.pn-step:disabled { opacity: .35; }
+.pn-step .i { width: 14px; height: 14px; }
+.pn-num { width: 74px; min-width: 0; box-sizing: border-box; padding: 0 4px; border: 0; border-inline: 1px solid var(--line); background: transparent; color: var(--text); text-align: center; font-size: var(--fs-3); font-variant-numeric: tabular-nums; outline: none; }
+.pn-num:focus { background: var(--surface); }
+
+/* Pick one, pick several: a field-looking button with its chevron. */
+.pn-select { display: flex; align-items: center; gap: 6px; width: 100%; min-width: 0; height: 30px; box-sizing: border-box; padding: 0 8px 0 10px; border: 1px solid var(--line-field); border-radius: var(--r-sm); background: var(--field); color: var(--text); font-size: var(--fs-3); text-align: left; cursor: pointer; }
+.pn-select > span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pn-select .i { width: 14px; height: 14px; color: var(--muted); transition: transform .12s; }
+.pn-select:hover { border-color: var(--line-3); }
+.pn-select.open { border-color: var(--focus-line); }
+.pn-select.open .i { transform: rotate(180deg); }
+
+/* The page's own list over the panel, inside its window. */
+.menu.pn-pop { min-width: 0; padding: 4px; box-sizing: border-box; max-width: calc(100vw - 12px); }
+.pn-list { display: grid; outline: none; }
+.pn-pop .pn-list button { height: 32px; gap: 8px; color: var(--text); }
+.pn-pop .pn-list button.on { background: var(--hover); }
+.pn-pop .pn-list button.checked { font-weight: 600; }
+.pn-pop .pn-list button .i { width: 15px; height: 15px; color: var(--accent); }
+.pn-pop .pn-list .pn-all { color: var(--text-2); }
+.pn-pop.pn-menu .pn-list button { height: 34px; color: var(--text-2); }
+.pn-pop.pn-menu .pn-list button.on { color: var(--text); }
+.pn-pop.pn-menu .pn-list button .i { color: inherit; }
+.pn-list-row hr { margin: 4px 4px; }
+.pn-list-row input[type=checkbox] { flex: none; margin: 0; pointer-events: none; }
+
+/* A key, a colour, a spot. */
+.pn-key { display: inline-grid; place-items: center; min-width: 30px; height: 24px; box-sizing: border-box; padding: 0 8px; font-size: var(--fs-2); font-weight: 600; white-space: nowrap; }
+.pn-key.wait { border-style: dashed; color: var(--text-2); font-weight: 500; }
+.pn-swatch { width: 18px; height: 18px; flex: none; box-sizing: border-box; border-radius: var(--r-xs); border: 1px solid var(--line-2); }
+.pn-hex { font: var(--fs-2) "Cascadia Mono", Consolas, monospace; color: var(--text-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.k-point .pn-hex { font-family: var(--font); }
+.pn-map { position: relative; width: 24px; height: 16px; flex: none; box-sizing: border-box; border: 1px solid var(--line-2); border-radius: 3px; background: var(--field); }
+.pn-map i { position: absolute; width: 4px; height: 4px; border-radius: 50%; background: var(--accent); transform: translate(-50%, -50%); }
+.pn .btn.sm { height: 28px; padding: 0 10px; }
+
+/* Move areas, Reset all. An off button still says why in its title, so it keeps the pointer (no hover look). */
+.pn-foot { display: flex; align-items: center; gap: 8px; flex: none; padding: 8px 12px 12px; border-top: 1px solid var(--line); }
+.pn-reset { margin-left: auto; }
+.pn .btn[aria-disabled="true"] { pointer-events: auto; cursor: default; }
+.pn .btn[aria-disabled="true"]:hover { background: var(--surface-2); border-color: var(--line-2); }
+.pn .btn.ghost[aria-disabled="true"]:hover { background: transparent; }
+.pn .btn.go[aria-disabled="true"]:hover { background: var(--accent); }
+.pn .btn[aria-disabled="true"]:active { transform: none; }
+
+/* Folded: one line, 40 px. */
+.pn.pn-pill { flex-direction: row; align-items: center; gap: 8px; height: 40px; padding: 0 4px 0 12px; }
+html:not(.in-window) .pn.pn-pill { height: 42px; }
+.pn-pill .btn.sm { flex: none; gap: 6px; }
+.pn-pill .btn.sm .i { width: 13px; height: 13px; }
 /* ───────── end P1a ───────── */
 
 /* ───────── P1b panel design ───────── */

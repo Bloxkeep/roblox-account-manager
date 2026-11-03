@@ -12,6 +12,8 @@ import { Boot, Lock, type BootApi, type LockMode } from './Lock';
 import { MultiHelp } from './MultiHelp';
 import { LaunchOrder, type OrderAccount, type OrderListApi } from './OrderList';
 import { Palette, type PaletteEntry } from './Palette';
+import { PanelRoot } from './panel/PanelView';
+import type { PanelOn, PanelViewApi } from './panel/panelHost';
 import { PasswordLogin, type PasswordLoginApi } from './PasswordLogin';
 import { PickList, type PickItem, type PickListApi } from './PickList';
 import { PresetForm, type PresetBase, type PresetFormApi } from './PresetForm';
@@ -182,6 +184,12 @@ const BloxkeepUI = {
     const view = createRef<TrayViewApi>();
     const unmount = mount(el, host, <TrayView api={api} handle={view} />, false);
     return { unmount, show: view.current!.show };
+  },
+  /** A macro's panel beside the game into its own window's page (panel.js): show draws each "panel" event, error a refused change. */
+  panel(el: HTMLElement, host: Host, on: PanelOn) {
+    const view = createRef<PanelViewApi>();
+    const unmount = mount(el, host, <PanelRoot on={on} handle={view} />, false);
+    return { unmount, show: view.current!.show, error: view.current!.error };
   },
   /** A list to tick into a picker's body; the footer's buttons read list.values(). */
   pickList(el: HTMLElement, host: Host, text: string, items: PickItem[]) {
