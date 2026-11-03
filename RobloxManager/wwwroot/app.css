@@ -2836,8 +2836,11 @@ input[type=range].cf-hue { width: 100%; background: linear-gradient(90deg, #f00,
 .auth .form-error { margin: 0; }
 .auth-note { display: flex; gap: 9px; margin: 16px -28px 0; padding: 14px 28px 0; border-top: 1px solid var(--line); font-size: var(--fs-2); line-height: 1.5; color: var(--muted); }
 .auth-note .i { width: 14px; height: 14px; flex: none; margin-top: 2px; }
-.auth-added { display: flex; align-items: flex-start; gap: 9px; margin-top: 14px; padding: 10px 12px; border-radius: var(--r-md); border: 1px solid var(--ok-line); background: color-mix(in srgb, var(--ok) 8%, transparent); color: var(--ok-ink); font-size: var(--fs-3); line-height: 1.45; }
-.auth-added .i { width: 15px; height: 15px; flex: none; margin-top: 1px; color: var(--ok); }
+/* After an account came in (a .note.ok): its Done sits at the right, so the dialog stays short enough for the next sign-in. */
+.auth-added { align-items: center; margin-top: 14px; }
+.auth-added > span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.auth-added .btn { flex: none; }
+.auth-added .i { color: var(--ok); margin-top: 0; }
 .auth-step { display: grid; justify-items: center; gap: 6px; padding: 4px 0 18px; text-align: center; }
 .auth-badge { display: grid; place-items: center; width: 52px; height: 52px; margin-bottom: 8px; border-radius: var(--r-lg); background: var(--surface-3); color: var(--text); }
 .auth-badge .i { width: 24px; height: 24px; }
@@ -2847,9 +2850,8 @@ input[type=range].cf-hue { width: 100%; background: linear-gradient(90deg, #f00,
 .auth-step p b { color: var(--text); font-weight: 600; }
 .auth .field.auth-code { height: 52px; text-align: center; font: 600 24px/1 "Cascadia Mono", Consolas, ui-monospace, monospace; letter-spacing: .5em; text-indent: .5em; }
 .auth .field.auth-code::placeholder { color: var(--surface-3); }
+.auth .field.auth-code:placeholder-shown { caret-color: transparent; } /* no caret in the middle of the 000000 */
 .auth-acts { display: grid; gap: 10px; }
-.auth-back { justify-self: center; padding: 4px 8px; border: 0; background: none; color: var(--muted); font: inherit; font-size: var(--fs-3); cursor: pointer; }
-.auth-back:hover { color: var(--text); }
 
 /* Ways to add an account (empty list and the Add account chooser). */
 .start-opts { display: grid; gap: 10px; width: min(460px, 100%); margin: 0 auto; text-align: left; }
@@ -2909,8 +2911,10 @@ input[type=range].cf-hue { width: 100%; background: linear-gradient(90deg, #f00,
 .ql-qr img { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
 .ql-code { margin-bottom: 14px; font: 700 var(--fs-7)/1 "Cascadia Mono", Consolas, ui-monospace, monospace; letter-spacing: .16em; color: var(--text); user-select: text; }
 .ql-steps { display: grid; gap: 5px; margin: 0; padding-left: 18px; font-size: var(--fs-3); color: var(--text-2); }
-.ql-status { display: flex; align-items: center; gap: 9px; min-height: 40px; margin-top: 16px; padding: 6px 8px 6px 12px; border-radius: var(--r-md); border: 1px solid var(--line); background: var(--well); font-size: var(--fs-3); color: var(--text-2); }
-.ql-status.bad { color: var(--bad-ink); }
+.ql-status { display: flex; align-items: center; gap: 9px; height: 44px; margin-top: 16px; padding: 6px 8px 6px 12px; border-radius: var(--r-md); border: 1px solid var(--line); background: var(--well); font-size: var(--fs-3); color: var(--text-2); }
+.ql-status.bad { color: var(--bad-ink); background: var(--bad-soft); border-color: var(--bad-line); }
+.ql.dead .ql-qr, .ql.dead .ql-code { opacity: .3; }
+.ql.dead .ql-steps { display: none; }
 .ql-status .btn { margin-left: auto; }
 .ql-pic { width: 24px; height: 24px; border-radius: 50%; flex: none; }
 .ql-added { margin-top: 8px; font-size: var(--fs-3); color: var(--ok-ink); }
@@ -5705,6 +5709,8 @@ button.mc-step-head:focus-visible { outline: 2px solid var(--focus); outline-off
 /* ───────── end P4 ───────── */
 
 /* ───────── P5 sign-in ───────── */
+/* The realm switch is the sign-in's .seg.wide; the code row keeps a gap under it. */
+.seg.wide + .ql { margin-top: 14px; }
 /* ───────── end P5 ───────── */
 
 /* ───────── P6 settings ───────── */

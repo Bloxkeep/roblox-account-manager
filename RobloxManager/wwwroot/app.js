@@ -1979,10 +1979,11 @@
     // The screens are React's (ui/src/PasswordLogin.tsx); a way picked there closes this and opens that way.
     ui = window.BloxkeepUI.passwordLogin(m.el.querySelector('.modal-body'), uiHost(), forRealm ?? null, (way, realm) => {
       m.close();
+      // 'done' (the banner's Done after an account came in) only closes; Cancel in the file import comes back to this sign-in.
       if (way === 'browser') addBrowser(null);
       else if (way === 'phone') quickLogin(realm);
       else if (way === 'cookie') accountModal(null);
-      else if (way === 'vault') importVault();
+      else if (way === 'vault') importVault(() => passwordLogin(realm));
     });
   }
 
@@ -2082,7 +2083,8 @@
   // Accounts from another vault file: pick it, type that file's own master password, tick what to bring over. The app
   // keeps the opened file; this page sees only names and states, never cookies or passwords. Closing (or locking) makes
   // the app forget it.
-  function importVault() {
+  /** @param back opened from the sign-in dialog: its Cancel returns there. */
+  function importVault(back = null) {
     let done = false, ui = null;
     const m = modal({
       title: t('iv.title'),
@@ -2092,7 +2094,7 @@
       enterSubmits: true,
       body: '',
       actions: [
-        { text: t('common.cancel'), onClick: ({ close }) => close() },
+        { text: t('common.cancel'), onClick: ({ close }) => { close(); back?.(); } },
         { text: t('iv.choose'), kind: 'primary', onClick: ({ btn }) => ui?.api.next(btn) },
       ],
       onClose: () => {
@@ -2663,7 +2665,7 @@
           { icon: 'globe', text: t('m.addBrowser'), run: () => addBrowser(null) },
           { icon: 'cookie', text: t('m.addCookie'), run: () => accountModal(null) },
           '-',
-          { icon: 'folder', text: t('m.importVault'), run: importVault },
+          { icon: 'folder', text: t('m.importVault'), run: () => importVault() },
           '-',
           { icon: 'external', text: t('m.openWeb'), title: t('start.webTip'), run: () => call('openWebsiteBlank') },
         ], 320);

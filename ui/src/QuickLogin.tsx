@@ -128,7 +128,7 @@ export function QuickLogin({ forName, forRealm, api, browserButton }: {
   return <>
     {/* Signing a signed-out account in again: its name at the top, in bold. */}
     {forName ? <p className="ql-for">{t('ql.for', { name: '\u0000' }).split('\u0000').map((part, n) => <Fragment key={n}>{n ? <b>{forName}</b> : null}{part}</Fragment>)}</p> : null}
-    <div className="ql-realm" role="tablist">
+    <div className="seg wide" role="tablist">
       {[['', 'Roblox'], ['vng', 'Roblox VNG']].map(([r, words]) =>
         <button key={r} role="tab" data-realm={r} className={realm === r ? 'on' : ''} aria-selected={realm === r} onClick={() => {
           if (r === realm) return;
@@ -139,7 +139,8 @@ export function QuickLogin({ forName, forRealm, api, browserButton }: {
           start(r);
         }}>{words}</button>)}
     </div>
-    <div className="ql">
+    {/* A code that is gone (declined, expired, an error): its picture, letters and steps go dim or away, so nobody scans or types it. */}
+    <div className={`ql${phase === 'cancelled' || phase === 'expired' || phase === 'error' ? ' dead' : ''}`}>
       <div className="ql-qr" id="ql-qr">{qr ? <img src={qr} alt="QR" /> : null}</div>
       <div className="ql-side">
         <div className="ql-code" id="ql-code">{code || '······'}</div>

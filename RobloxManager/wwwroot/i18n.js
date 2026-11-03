@@ -152,7 +152,7 @@ window.I18N = {
     'pw.pass': 'Password', 'pw.go': 'Sign in', 'pw.need': 'Enter the username and password.',
     'pw.note': 'The password goes only to Roblox to sign in. Bloxkeep never stores or sends it anywhere else.',
     'pw.twoTitle': '2-step verification', 'pw.twoLead': 'Enter the 6-digit code for {name}.', 'pw.back': 'Back',
-    'pw.addedList': 'Added {names}. Sign in to another account or close this window.', 'pw.auth': 'Authenticator app', 'pw.email': 'Email',
+    'pw.addedList': 'Added {names}.', 'pw.auth': 'Authenticator app', 'pw.email': 'Email',
     'pw.code': 'Verification code', 'pw.verify': 'Verify', 'pw.needCode': 'Enter the verification code.', 'pw.sms': 'Text message',
     'pw.send': 'Send a code', 'pw.resend': 'Resend code', 'pw.resendIn': 'Resend in {s} s',
     'pw.sentEmail': 'Roblox sent a code to your email.', 'pw.sentSms': 'Roblox sent a code to your phone.', 'pw.sent': 'Code sent. It can take a minute to arrive.',
@@ -160,7 +160,7 @@ window.I18N = {
     'pw.captcha': 'Roblox wants to make sure you’re not a bot. Solve a short puzzle to finish signing in.',
     'pw.captchaAgain': 'Roblox wants another puzzle. Solve it to go on.', 'pw.verifyIn': 'Verify in {s} s',
     'pw.finishTitle': 'Almost done', 'pw.finish': 'Roblox let you in, but Bloxkeep couldn’t load the account yet. Try again: the password isn’t sent again.', 'pw.retry': 'Try again',
-    'pw.solve': 'Solve the puzzle', 'pw.orPw': 'or with username and password', 'pw.extra': 'Roblox may ask for a puzzle or a code before it lets you in.', 'pw.withBrowser': 'Browser', 'pw.cookie': 'Paste a cookie', 
+    'pw.solve': 'Solve the puzzle', 'pw.orPw': 'or with username and password', 'pw.extra': 'Roblox may ask for a puzzle or a code before it lets you in.', 'pw.withBrowser': 'With browser', 'pw.cookie': 'Paste a cookie', 
     'start.more': 'Other ways:', 'start.cookie': 'Paste a cookie', 
     'nores.title': 'No matching accounts', 'nores.text': 'Try another search or the “All” filter.',
 
@@ -394,13 +394,13 @@ window.I18N = {
     'm.noCode': 'No authenticator key is saved for this account. Add it under Edit (F2) to copy its 2-step codes here.',
     'm.delete': 'Delete', 'm.deleteN': 'Delete {n} accounts',
     'm.addCode': 'Sign in with your phone', 'm.addBrowser': 'Sign in with a browser', 'm.addCookie': 'Paste a cookie',
-    'ql.title': 'Sign in with your phone', 'ql.step1': 'Open the Roblox app on your phone and sign in to the account',
+    'ql.title': 'Sign in with your phone', 'ql.step1': 'Open the Roblox app on your phone and sign in to the account you want to add',
     'ql.step2': 'Go to Settings → Quick Log In', 'ql.step3': 'Enter the code or scan the QR, then confirm',
     'ql.getting': 'Getting a code…', 'ql.waiting': 'Waiting for you to confirm · expires in {time}',
     'ql.linked': '{name} entered the code. Confirm on that device.', 'ql.adding': 'Signing in…',
     'ql.addedList': 'Added: {names}. Use the new code for the next account.',
     'ql.cancelled': 'Declined on the device.', 'ql.expired': 'The code expired.', 'ql.newCode': 'New code',
-    'ql.browser': 'Sign in with a browser', 'ql.step1Vng': 'Open the Roblox VNG app on your phone and sign in to the account',
+    'ql.browser': 'Sign in with a browser', 'ql.step1Vng': 'Open the Roblox VNG app on your phone and sign in to the account you want to add',
     'card.vngTip': 'Roblox VNG account (Vietnam)',
     'card.vngNoWebsite': 'Roblox VNG’s website can’t be opened from here yet.',
     'card.robuxTip': 'Robux on this account, checked every 30 minutes',
@@ -575,7 +575,7 @@ window.I18N = {
     'nores.clear': 'Clear the search', 'nores.all': 'Show all accounts', 'dur.hours': '{h} h', 'stats.error': 'Couldn’t load the statistics.', 'wn.none': 'No release notes for this version.',
     't.copiedUser': 'Username copied.', 't.copiedPid': 'PID copied.', 'srv.pickTip': 'Puts this server in the Job ID box. Then select accounts and press Play.', 'srv.full': 'This server is full',
     'ql.for': 'Signing in again to {name}.',
-    'pw.vault': 'Bloxkeep file', 'start.vault': 'Bloxkeep file', 'start.vaultTip': 'Bring accounts over from Bloxkeep on another PC, or from a backup (a .rmv file)',
+    'pw.vault': 'With a Bloxkeep file', 'start.vault': 'Bloxkeep file', 'start.vaultTip': 'Bring accounts over from Bloxkeep on another PC, or from a backup (a .rmv file)',
     'm.importVault': 'Import from another Bloxkeep file…',
     'iv.title': 'Import from a Bloxkeep file', 'iv.choose': 'Choose file…', 'iv.otherFile': 'Choose another file', 'iv.open': 'Open', 'iv.wait': 'Wait {n} s',
     'iv.intro': 'Bring accounts from another Bloxkeep file (.rmv), like <b>vault.rmv</b> or a <b>Bloxkeep-backup</b>. You’ll need its master password.',
@@ -803,6 +803,9 @@ window.I18N = {
     // ── end P4 ──
 
     // ── P5 sign-in ──
+    'pw.needCode6': 'Enter all 6 digits.',
+    'pw.waitMsg': 'Too many tries. Try again in {s} seconds.',
+    'pw.captchaClosed': 'The puzzle window was closed. Press Solve the puzzle to open it again.',
     // ── end P5 ──
 
     // ── P6 settings ──
@@ -963,8 +966,8 @@ window.I18N = {
     'pw.title': 'Đăng nhập Roblox', 'pw.user': 'Tên đăng nhập',
     'pw.pass': 'Mật khẩu', 'pw.go': 'Đăng nhập', 'pw.need': 'Nhập đủ tên đăng nhập và mật khẩu.',
     'pw.note': 'Mật khẩu chỉ gửi tới Roblox để đăng nhập. Bloxkeep không lưu và không gửi đi đâu khác.',
-    'pw.twoTitle': 'Xác minh 2 bước', 'pw.twoLead': 'Nhập mã 6 số của {name}.', 'pw.back': 'Quay lại',
-    'pw.addedList': 'Đã thêm {names}. Đăng nhập tiếp tài khoản khác hoặc đóng cửa sổ này.', 'pw.auth': 'App xác thực', 'pw.email': 'Email',
+    'pw.twoTitle': 'Xác minh 2 bước', 'pw.twoLead': 'Nhập mã 6 số cho {name}.', 'pw.back': 'Quay lại',
+    'pw.addedList': 'Đã thêm {names}.', 'pw.auth': 'App xác thực', 'pw.email': 'Email',
     'pw.code': 'Mã xác minh', 'pw.verify': 'Xác minh', 'pw.needCode': 'Bạn chưa nhập mã xác minh.', 'pw.sms': 'Tin nhắn SMS',
     'pw.send': 'Gửi mã', 'pw.resend': 'Gửi lại mã', 'pw.resendIn': 'Gửi lại sau {s} giây',
     'pw.sentEmail': 'Roblox đã gửi mã tới email của bạn.', 'pw.sentSms': 'Roblox đã gửi mã tới điện thoại của bạn.', 'pw.sent': 'Đã gửi mã, có thể mất khoảng một phút.',
@@ -972,7 +975,7 @@ window.I18N = {
     'pw.captcha': 'Roblox cần xác nhận bạn không phải bot. Giải một câu đố ngắn để đăng nhập.',
     'pw.captchaAgain': 'Roblox yêu cầu giải thêm một câu đố. Giải xong để tiếp tục.', 'pw.verifyIn': 'Xác minh sau {s} giây',
     'pw.finishTitle': 'Sắp xong', 'pw.finish': 'Roblox đã cho đăng nhập nhưng Bloxkeep chưa tải được tài khoản. Bấm Thử lại (không gửi lại mật khẩu).', 'pw.retry': 'Thử lại',
-    'pw.solve': 'Giải câu đố', 'pw.orPw': 'hoặc bằng tên đăng nhập và mật khẩu', 'pw.extra': 'Roblox có thể bắt giải đố hoặc nhập mã trước khi cho đăng nhập.', 'pw.withBrowser': 'Trình duyệt', 'pw.cookie': 'Dán cookie', 
+    'pw.solve': 'Giải câu đố', 'pw.orPw': 'hoặc bằng tên đăng nhập và mật khẩu', 'pw.extra': 'Roblox có thể bắt giải đố hoặc nhập mã trước khi cho đăng nhập.', 'pw.withBrowser': 'Bằng trình duyệt', 'pw.cookie': 'Dán cookie', 
     'start.more': 'Cách khác:', 'start.cookie': 'Dán cookie', 
     'nores.title': 'Không có tài khoản phù hợp', 'nores.text': 'Thử từ khóa khác hoặc chọn bộ lọc “Tất cả”.',
 
@@ -1205,13 +1208,13 @@ window.I18N = {
     'm.noCode': 'Tài khoản này chưa lưu khóa của app xác thực. Thêm ở mục Sửa (F2) để sao chép mã 2 bước tại đây.',
     'm.delete': 'Xóa', 'm.deleteN': 'Xóa {n} tài khoản',
     'm.addCode': 'Đăng nhập bằng điện thoại', 'm.addBrowser': 'Đăng nhập bằng trình duyệt', 'm.addCookie': 'Dán cookie',
-    'ql.title': 'Đăng nhập bằng điện thoại', 'ql.step1': 'Mở app Roblox trên điện thoại, đăng nhập tài khoản cần thêm',
+    'ql.title': 'Đăng nhập bằng điện thoại', 'ql.step1': 'Mở app Roblox trên điện thoại, đăng nhập tài khoản muốn thêm',
     'ql.step2': 'Vào Cài đặt → Đăng nhập nhanh', 'ql.step3': 'Nhập mã hoặc quét QR, rồi xác nhận',
     'ql.getting': 'Đang lấy mã…', 'ql.waiting': 'Đang chờ xác nhận · hết hạn sau {time}',
     'ql.linked': '{name} đã nhập mã. Hãy xác nhận trên thiết bị đó.', 'ql.adding': 'Đang đăng nhập…',
     'ql.addedList': 'Đã thêm: {names}. Dùng mã mới cho tài khoản tiếp theo.',
     'ql.cancelled': 'Đã từ chối trên thiết bị.', 'ql.expired': 'Mã đã hết hạn.', 'ql.newCode': 'Lấy mã mới',
-    'ql.browser': 'Đăng nhập bằng trình duyệt', 'ql.step1Vng': 'Mở app Roblox VNG trên điện thoại, đăng nhập tài khoản cần thêm',
+    'ql.browser': 'Đăng nhập bằng trình duyệt', 'ql.step1Vng': 'Mở app Roblox VNG trên điện thoại, đăng nhập tài khoản muốn thêm',
     'card.vngTip': 'Tài khoản Roblox VNG (Việt Nam)',
     'card.vngNoWebsite': 'Bloxkeep chưa mở được trang web Roblox VNG.',
     'card.robuxTip': 'Số Robux của tài khoản, cập nhật 30 phút một lần',
@@ -1378,7 +1381,7 @@ window.I18N = {
     'nores.clear': 'Xóa tìm kiếm', 'nores.all': 'Hiện mọi tài khoản', 'dur.hours': '{h} giờ', 'stats.error': 'Không tải được thống kê.', 'wn.none': 'Chưa có ghi chú cho phiên bản này.',
     't.copiedUser': 'Đã sao chép tên đăng nhập.', 't.copiedPid': 'Đã sao chép PID.', 'srv.pickTip': 'Điền server này vào ô Mã server. Sau đó chọn tài khoản rồi bấm Vào game.', 'srv.full': 'Server này đã đầy',
     'ql.for': 'Đang đăng nhập lại {name}.',
-    'pw.vault': 'File Bloxkeep', 'start.vault': 'File Bloxkeep', 'start.vaultTip': 'Lấy tài khoản từ Bloxkeep trên máy khác, hoặc từ bản sao lưu (file .rmv)',
+    'pw.vault': 'Từ file Bloxkeep', 'start.vault': 'File Bloxkeep', 'start.vaultTip': 'Lấy tài khoản từ Bloxkeep trên máy khác, hoặc từ bản sao lưu (file .rmv)',
     'm.importVault': 'Nhập từ file Bloxkeep khác…',
     'iv.title': 'Nhập từ file Bloxkeep', 'iv.choose': 'Chọn file…', 'iv.otherFile': 'Chọn file khác', 'iv.open': 'Mở', 'iv.wait': 'Chờ {n} giây',
     'iv.intro': 'Lấy tài khoản từ file Bloxkeep khác (.rmv), như <b>vault.rmv</b> hoặc <b>Bloxkeep-backup</b>. Cần mật khẩu chủ của file đó.',
@@ -1605,6 +1608,9 @@ window.I18N = {
     // ── end P4 ──
 
     // ── P5 sign-in ──
+    'pw.needCode6': 'Nhập đủ 6 số.',
+    'pw.waitMsg': 'Nhập sai nhiều lần. Thử lại sau {s} giây.',
+    'pw.captchaClosed': 'Đã đóng cửa sổ câu đố. Bấm Giải câu đố để mở lại.',
     // ── end P5 ──
 
     // ── P6 settings ──
