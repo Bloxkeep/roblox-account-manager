@@ -983,13 +983,13 @@ html [data-theme="dark" lang="en"]
                 div.sd-row
                   div.sd-text
                     b "Kicked for AFK"
-                    small [title=""] "2 times ·"
+                    small [title=""] "2 times"
                   span.sd-time [title="From each drop to the account’s next session, 12 h at most."] "≈ 8 h 48 min lost"
                   button.btn.sm "Turn on Anti-AFK"
                 div.sd-row
                   div.sd-text
                     b "Lost connection"
-                    small [title=""] "Once ·"
+                    small [title=""] "Once"
                   span.sd-time [title="From each drop to the account’s next session, 12 h at most."] "≈ 3 h 8 min lost"
               div.stat-card [id="stats-games"]
                 h3 "Top games"
@@ -998,17 +998,14 @@ html [data-theme="dark" lang="en"]
                     svg.i #1tyq039
                 div.gm [style="height:236px"]
                   button.big.gm-box [type="button" title="Blox Fruits · 34 h 35 min · 55 %" aria-pressed="false" style="--h:261;height:232px;left:2px;top:2px;width:478.9px"]
-                    img [alt="" src="https://tr.rbxcdn.com/180DAY-774ec14539b264f85fdb6e8a34dfa344/150/150/Image/Png/noFilter"]
                     span.gm-txt
                       b "Blox Fruits"
                       small "34 h 35 min · 55 %"
                   button.big.gm-box.on [type="button" title="[🎃] Adopt Me! · 18 h 51 min · 30 %" aria-pressed="true" style="--h:156;height:232px;left:484.9px;top:2px;width:259.4px" FOCUSED]
-                    img [alt="" src="https://tr.rbxcdn.com/180DAY-fd05afa91e29a7895178342064489a36/150/150/Image/Png/noFilter"]
                     span.gm-txt
                       b "[🎃] Adopt Me!"
                       small "18 h 51 min · 30 %"
                   button.big.gm-box [type="button" title="Brookhaven 🏡RP · 9 h 25 min · 15 %" aria-pressed="false" style="--h:149;height:232px;left:748.3px;top:2px;width:127.7px"]
-                    img [alt="" src="https://tr.rbxcdn.com/180DAY-01fa54388131d629ec74c042784454c5/150/150/Image/Png/noFilter"]
                     span.gm-txt
                       b "Brookhaven 🏡RP"
                       small "9 h 25 min · 15 %"

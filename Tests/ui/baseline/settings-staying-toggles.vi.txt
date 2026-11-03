@@ -255,3 +255,4 @@ html [data-theme="dark" lang="vi"]
   setSettings {"antiAfk":true}
   setSettings {"ramLimitMb":1024}
   setSettings {"trimBackground":true}
+  todayStrips {}

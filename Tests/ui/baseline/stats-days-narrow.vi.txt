@@ -321,17 +321,14 @@ html [data-theme="dark" lang="vi"]
                 h3 "Game chơi nhiều"
                 div.gm [style="height:236px"]
                   button.big.gm-box [type="button" title="Blox Fruits · 9 giờ 1 phút · 55 %" aria-pressed="false" style="--h:261;height:232px;left:2px;top:2px;width:445.9px"]
-                    img [alt="" src="https://tr.rbxcdn.com/180DAY-774ec14539b264f85fdb6e8a34dfa344/150/150/Image/Png/noFilter"]
                     span.gm-txt
                       b "Blox Fruits"
                       small "9 giờ 1 phút · 55 %"
                   button.big.gm-box [type="button" title="[🎃] Adopt Me! · 4 giờ 55 phút · 30 %" aria-pressed="false" style="--h:156;height:232px;left:451.9px;top:2px;width:241.4px"]
-                    img [alt="" src="https://tr.rbxcdn.com/180DAY-fd05afa91e29a7895178342064489a36/150/150/Image/Png/noFilter"]
                     span.gm-txt
                       b "[🎃] Adopt Me!"
                       small "4 giờ 55 phút · 30 %"
                   button.big.gm-box [type="button" title="Brookhaven 🏡RP · 2 giờ 27 phút · 15 %" aria-pressed="false" style="--h:149;height:232px;left:697.3px;top:2px;width:118.7px"]
-                    img [alt="" src="https://tr.rbxcdn.com/180DAY-01fa54388131d629ec74c042784454c5/150/150/Image/Png/noFilter"]
                     span.gm-txt
                       b "Brookhaven 🏡RP"
                       small "2 giờ 27 phút · 15 %"
@@ -1407,17 +1404,14 @@ html [data-theme="dark" lang="vi"]
                 h3 "Game chơi nhiều"
                 div.gm [style="height:236px"]
                   button.big.gm-box [type="button" title="Blox Fruits · 34 giờ 35 phút · 55 %" aria-pressed="false" style="--h:261;height:232px;left:2px;top:2px;width:445.9px"]
-                    img [alt="" src="https://tr.rbxcdn.com/180DAY-774ec14539b264f85fdb6e8a34dfa344/150/150/Image/Png/noFilter"]
                     span.gm-txt
                       b "Blox Fruits"
                       small "34 giờ 35 phút · 55 %"
                   button.big.gm-box [type="button" title="[🎃] Adopt Me! · 18 giờ 51 phút · 30 %" aria-pressed="false" style="--h:156;height:232px;left:451.9px;top:2px;width:241.4px"]
-                    img [alt="" src="https://tr.rbxcdn.com/180DAY-fd05afa91e29a7895178342064489a36/150/150/Image/Png/noFilter"]
                     span.gm-txt
                       b "[🎃] Adopt Me!"
                       small "18 giờ 51 phút · 30 %"
                   button.big.gm-box [type="button" title="Brookhaven 🏡RP · 9 giờ 25 phút · 15 %" aria-pressed="false" style="--h:149;height:232px;left:697.3px;top:2px;width:118.7px"]
-                    img [alt="" src="https://tr.rbxcdn.com/180DAY-01fa54388131d629ec74c042784454c5/150/150/Image/Png/noFilter"]
                     span.gm-txt
                       b "Brookhaven 🏡RP"
                       small "9 giờ 25 phút · 15 %"

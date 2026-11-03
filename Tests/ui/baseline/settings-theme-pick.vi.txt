@@ -195,6 +195,7 @@ html [data-theme="paper" lang="vi"]
   pageShown {}
   resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
   setTheme {"theme":"paper"}
+  todayStrips {}
 == end
 html [data-theme="gray" lang="vi"]
 #app

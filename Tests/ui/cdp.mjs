@@ -34,7 +34,10 @@ export async function launch({ width = 1280, height = 800, scale = 1, locale = '
     credentials_enable_service: false, profile: { password_manager_enabled: false }, autofill: { enabled: false, profile_enabled: false, credit_card_enabled: false },
   }));
   // Port 0: Edge picks a free one and writes it into the profile (DevToolsActivePort), so several can run side by side.
+  // Roblox's pictures never load: the page swaps a failed game icon for its own sign, and whether rbxcdn answers
+  // differs by network (blocked from Vietnam), so the snapshots would too.
   const proc = spawn(findEdge(), ['--headless=new', '--remote-debugging-port=0', `--user-data-dir=${profile}`,
+    '--host-resolver-rules=MAP *.rbxcdn.com ~NOTFOUND',
     '--hide-scrollbars', '--no-first-run', '--no-default-browser-check', '--disable-extensions', '--font-render-hinting=none',
     '--disable-features=msEdgeSidebarV2,msUndersideButton', '--disable-background-timer-throttling',
     `--window-size=${width},${height}`, `--lang=${locale}`, 'about:blank'], { stdio: 'ignore' });

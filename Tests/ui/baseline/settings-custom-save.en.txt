@@ -232,3 +232,4 @@ html [data-theme="custom" data-tone="dark" lang="en"] style="--accent:#f59e0b;--
   pageShown {}
   resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
   saveTheme {"name":"Ocean"}
+  todayStrips {}

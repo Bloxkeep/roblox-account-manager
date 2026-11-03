@@ -663,7 +663,7 @@ function DockInfo({ page, recentGames, face }: { page: PageState; recentGames: {
           onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>{g.name || t('dock.placeN', { id: g.placeId })}</span>
       : <span className="gname" title={g.name}>{g.name || t('dock.placeN', { id: g.placeId })}</span>}
     {face ? null : g.kind === 'private' ? <span className="kind">{t('dock.private')}</span> : g.kind === 'server' ? <span className="kind">{t('dock.server')}</span> : null}
-    {g.creator ? <span className="creator">{t('dock.by', { c: g.creator })}</span> : null}
+    {g.creator ? <span className="creator" title={t('dock.by', { c: g.creator })}>{t('dock.by', { c: g.creator })}</span> : null}
     {g.playing ? <span className="players">{t('dock.playing', { n: fmtNum(g.playing) })}</span> : null}
     {/* Only its icon (its name on hover): with words it took the room of the recent games beside it. */}
     {g.placeId ? <button className="srv-open srv-save" data-act="save-server" title={t('sv.saveTip')} aria-label={t('sv.save')}><Icon name="bookmark" /></button> : null}

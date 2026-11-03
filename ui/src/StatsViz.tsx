@@ -73,7 +73,7 @@ export function Clock<A extends VizAccount>({ since, rows, accounts, icons, tota
                 <path className="clk-arc" d={arc(r, a0, a1)} strokeWidth={stroke} style={hued(s.game)}>
                   <title>{[s.name, `${clock(from)} – ${clock(to)}`, s.reason ? t(`stats.why.${s.reason}`) : ''].filter(Boolean).join(' · ')}</title>
                 </path>
-                {icon && size >= 9 && a1 - a0 > .05 ? <image href={icon} x={ix - size / 2} y={iy - size / 2} width={size} height={size} className="clk-icon" /> : null}
+                {icon && size >= 9 && a1 - a0 > .05 ? <image href={icon} x={ix - size / 2} y={iy - size / 2} width={size} height={size} className="clk-icon" onError={e => e.currentTarget.setAttribute('visibility', 'hidden')} /> : null}
                 {s.reason ? <line className="clk-drop" {...radial(r - stroke / 2 - 2, r + stroke / 2 + 2, a1)} /> : null}
               </g>;
             })}
@@ -166,7 +166,7 @@ export function GameMap({ games, total, picked, pick, fmtSecs }: {
       return <button key={g.key} type="button" className={`gm-box${picked === g.key ? ' on' : ''}${big ? ' big' : mid ? '' : ' tiny'}`} style={{ ...hued(g.key),
         left: b.x + MAP_GAP / 2, top: b.y + MAP_GAP / 2, width: Math.max(0, b.w - MAP_GAP), height: Math.max(0, b.h - MAP_GAP) }}
         title={`${g.name} · ${fmtSecs(g.seconds)} · ${fmtNum(share)} %`} aria-pressed={picked === g.key} onClick={() => pick(picked === g.key ? null : g.key)}>
-        {g.iconUrl && mid ? <img src={g.iconUrl} alt="" /> : null}
+        {g.iconUrl && mid ? <img src={g.iconUrl} alt="" onError={e => { e.currentTarget.hidden = true; }} /> : null}
         {mid ? <span className="gm-txt"><b>{g.name}</b><small>{fmtSecs(g.seconds)} · {fmtNum(share)} %</small></span> : null}
       </button>;
     })}</div>

@@ -407,6 +407,7 @@ html [data-theme="dark" lang="en"]
   resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
   setDiscord {"event":{"enabled":false,"kind":"drop"}}
   setDiscord {"ping":{"kind":"drop","value":"everyone"}}
+  todayStrips {}
 == all off
 html [data-theme="dark" lang="en"]
 #app

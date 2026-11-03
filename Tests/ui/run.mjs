@@ -5,7 +5,7 @@
 // built (such as moving it to React) shows every place where the interface came out different.
 //
 //   node Tests/ui/run.mjs                  every scenario, English and Vietnamese
-//   node Tests/ui/run.mjs --only menu,edit scenarios whose name contains one of these
+//   node Tests/ui/run.mjs --only menu,edit scenarios whose name contains one of these (=stats: that one alone)
 //   node Tests/ui/run.mjs --lang en        one language
 //   node Tests/ui/run.mjs --update         save what the page shows now as the expected copy
 //   node Tests/ui/run.mjs --shots          also screenshots, in Tests/ui/out/shots, to look at
@@ -60,7 +60,8 @@ const POPUPS = flag('--popups'), LINT = flag('--lint'), THEME = opt('--theme');
 const SIZE = (opt('--size') ?? '1280x800').split('x').map(Number);
 const popups = [], lints = [];
 const lintCheck = fs.readFileSync(path.join(HERE, 'lint.js'), 'utf8');
-const OUT = path.join(HERE, 'out');
+// UI_OUT: another folder for what a run writes, so two runs side by side don't write over each other.
+const OUT = process.env.UI_OUT ? path.resolve(process.env.UI_OUT) : path.join(HERE, 'out');
 const BASE_DIR = LAYOUT ? path.join(OUT, 'layout') : path.join(HERE, 'baseline');
 const dirs = { actual: path.join(OUT, 'actual'), shots: path.join(OUT, 'shots'), pixels: path.join(OUT, 'pixels'), pixelDiff: path.join(OUT, 'pixel-diff') };
 for (const d of [BASE_DIR, dirs.actual, ...(SHOTS ? [dirs.shots] : []), ...(PIXELS ? [dirs.pixels, dirs.pixelDiff] : [])]) fs.mkdirSync(d, { recursive: true });
@@ -84,7 +85,7 @@ const stable = v => JSON.stringify(v, (k, x) => (x && typeof x === 'object' && !
 let failed = 0;
 const started = Date.now();
 const jank = [];
-const list = scenarios.filter(s => !ONLY || ONLY.some(o => s.name.includes(o)));
+const list = scenarios.filter(s => !ONLY || ONLY.some(o => o.startsWith('=') ? s.name === o.slice(1) : s.name.includes(o)));
 const runs = list.flatMap(sc => LANGS.filter(l => !sc.langs || sc.langs.includes(l)).map(lang => ({ sc, lang })));
 // Each Edge takes the next run as it finishes one; what each run says is printed in the runs' order.
 const said = new Array(runs.length);

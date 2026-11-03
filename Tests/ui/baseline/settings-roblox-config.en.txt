@@ -294,6 +294,7 @@ html [data-theme="dark" lang="en"]
   setSettings {"robloxConfig":{"graphics":5}}
   setSettings {"robloxConfig":{"mode":"all"}}
   setSettings {"robloxConfig":{"volume":0}}
+  todayStrips {}
 == end
 html [data-theme="dark" lang="en"]
 #app

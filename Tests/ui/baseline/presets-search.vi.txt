@@ -96,7 +96,7 @@ html [data-theme="dark" lang="vi"]
                 b [title="Adopt Me trade"] "Adopt Me trade"
                 small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
                 span.pv-sum [title="Bất kỳ (Roblox tự chọn) · Chờ mặc định (8 giây) · Tắt tự vào lại"] "Bất kỳ (Roblox tự chọn) · Chờ mặc định (8 giây) · Tắt tự vào lại"
-                span.pv-next
+                span.pv-next [title="Chạy lần cuối 1 giờ trước"]
                   span "Chạy lần cuối 1 giờ trước"
               div.pv-accs [title="1 tài khoản\nTrade" aria-label="1 tài khoản"]
                 span.avatar.sm

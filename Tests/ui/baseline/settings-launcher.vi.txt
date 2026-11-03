@@ -292,3 +292,4 @@ html [data-theme="dark" lang="vi"]
   pageShown {}
   pickLauncher {}
   resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
+  todayStrips {}

@@ -293,6 +293,7 @@ html [data-theme="dark" lang="vi"]
   setSettings {"multiTile":true}
   setSettings {"renameWindows":false}
   setSettings {"windowLayout":"3x3"}
+  todayStrips {}
 == own size
 html [data-theme="dark" lang="vi"]
 #app

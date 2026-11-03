@@ -2143,7 +2143,8 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 @supports (appearance: base-select) {
   .select, .select::picker(select) { appearance: base-select; }
   /* One line: a long choice in a narrow box (Activity's "Disconnects and problems") wrapped onto two in 34 px. */
-  .select { display: inline-flex; align-items: center; line-height: normal; white-space: nowrap; overflow: hidden; }
+  /* A choice too long for its box stops at the padding, where the chevron is drawn, not under it. */
+  .select { display: inline-flex; align-items: center; line-height: normal; white-space: nowrap; overflow: clip; overflow-clip-margin: content-box; }
   .select::picker-icon { display: none; }
   .select::picker(select) { min-width: anchor-size(width); max-height: min(360px, 45vh); margin: 6px 0; padding: 6px; border-radius: var(--r-lg);
     border: 1px solid var(--line-2); background: var(--raised); color: var(--text-2); box-shadow: 0 18px 50px var(--shadow); scrollbar-width: thin; }
@@ -2430,7 +2431,8 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 /* The pill sits on the middle of the title's capitals, not of its line (which is 1px higher at this font): the nudge is in
    the title's em, worked out where the title's size is known (a small window shrinks it). */
 .top h1:has(.mc-beta) { display: flex; align-items: center; gap: 10px; --cap-nudge: .042em; }
-.mc-beta { flex: none; font-family: var(--font); line-height: 1.4; letter-spacing: 0; translate: 0 var(--cap-nudge); }
+/* The word sits low in its own line box: a little less room above it than below, the pill's height unchanged. */
+.mc-beta { flex: none; padding-block: calc(2px - .03em) calc(2px + .03em); font-family: var(--font); line-height: 1.4; letter-spacing: 0; translate: 0 var(--cap-nudge); }
 .mc-stop-all kbd { font: var(--fs-1) var(--font); color: var(--muted); margin-left: 2px; }
 .mc-stop-all:disabled kbd { color: inherit; }
 .mc-live { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
@@ -6129,9 +6131,10 @@ html:not(.in-window) .pn.pn-pill { height: 42px; }
 /* ───────── end P5 ───────── */
 
 /* ───────── P6 settings ───────── */
-/* Picture themes (the veil over Settings sets --pic-theme): the page list sits on a panel of its own. */
+/* Picture themes (the veil over Settings sets --pic-theme): the page list sits on a panel of its own, as tall as the
+   list, not the window (scrolls past the window's height). */
 @container style(--pic-theme: 1) {
-  .set-nav { margin: 0 8px 8px 22px; padding: 8px; border-radius: var(--r-lg); background: var(--surface); }
+  .set-nav { align-self: start; max-height: calc(100% - 8px); margin: 0 8px 8px 22px; padding: 8px; border-radius: var(--r-lg); background: var(--surface); }
   @media (max-width: 920px) { .set-nav { margin: 0 22px 12px; padding: 6px; } }
 }
 /* A mode's settings, one part a line. */

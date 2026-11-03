@@ -94,7 +94,7 @@ html [data-theme="dark" lang="en"]
                 b [title="Morning check-in"] "Morning check-in"
                 small [title="Roblox home"] "Roblox home"
                 span.pv-sum [title="No wait between accounts"] "No wait between accounts"
-                span.pv-next "·"
+                span.pv-next [title="Schedule off · Thu, 12/24 7:30 AM · Last run 1 day ago"] "·"
                   span "Schedule off · Thu, 12/24 7:30 AM"
                   span "Last run 1 day ago"
               div.pv-accs [title="6 accounts\nMain\nFarm 1\nNight Owl\nAlt\nTrade\nTesting" aria-label="6 accounts"]

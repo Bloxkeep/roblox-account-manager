@@ -96,7 +96,7 @@ html [data-theme="dark" lang="en"]
                 b [title="Adopt Me trade"] "Adopt Me trade"
                 small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
                 span.pv-sum [title="Any (Roblox picks) · Default wait (8 s) · Auto-rejoin off"] "Any (Roblox picks) · Default wait (8 s) · Auto-rejoin off"
-                span.pv-next
+                span.pv-next [title="Last run 1 h ago"]
                   span "Last run 1 h ago"
               div.pv-accs [title="1 account\nTrade" aria-label="1 account"]
                 span.avatar.sm

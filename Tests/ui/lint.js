@@ -7,6 +7,7 @@
 //   overlap two boxes side by side in the page's flow lying over each other
 //   scroll  the page itself scrolling sideways
 //   trunc   text cut with an ellipsis and no title to read it whole
+//   slack   a panel stretched by its row or column far past its content (a big empty part of the panel)
 (() => {
   const out = [];
   const W = innerWidth, H = innerHeight;
@@ -23,6 +24,8 @@
   // Seen and meant: { selector, kind, why }.
   const meant = [
     { sel: '.day > small', kind: 'spill', why: "a day's label is wider than its bar and centred under it" },
+    { sel: '#mon-area', kind: 'slack', why: 'with no live pictures yet the whole area is the dashed place they will show in' },
+    { sel: '.mon-pic', kind: 'slack', why: "a minimised window's tile keeps a picture's size so the grid doesn't jump" },
   ];
   const say = (kind, el, what) => { if (!meant.some(m => m.kind === kind && el.matches?.(m.sel))) out.push(`${kind.padEnd(7)} ${name(el)}: ${what}`); };
   const shown = el => {
@@ -214,6 +217,43 @@
     const a = svg.getBoundingClientRect(), b = box.getBoundingClientRect();
     const dy = (a.top + a.bottom) / 2 - (b.top + b.bottom) / 2, dx = (a.left + a.right) / 2 - (b.left + b.right) / 2;
     if (Math.abs(dy) > TOL || Math.abs(dx) > TOL) say('center', svg, `icon off its box's middle by ${dx.toFixed(1)}, ${dy.toFixed(1)}px (${box.getAttribute('aria-label') || box.title || box.className})`);
+  }
+
+  // ── slack: a panel stretched by its row or column far past what it holds (Settings' page list on a picture theme
+  // once ran down the whole window, mostly empty). A panel is a box with rounded corners, a border or a shadow: a plain
+  // fill without them is a region of the page (a view's background) and is meant to reach the window's edge. Cards in a
+  // row all as tall as the fullest one are meant too. ──
+  const stretched = (el, cs, p) => {
+    const pcs = getComputedStyle(p);
+    const self = cs.alignSelf === 'auto' ? pcs.alignItems : cs.alignSelf;
+    if (/grid/.test(pcs.display)) return /^(normal|stretch)$/.test(self);
+    if (!/flex/.test(pcs.display)) return false;
+    return /column/.test(pcs.flexDirection) ? parseFloat(cs.flexGrow) > 0 : /^(normal|stretch)$/.test(self);
+  };
+  const filledTo = el => {
+    let bottom = -Infinity;
+    for (const n of el.childNodes) {
+      // Laid out counts, on screen or not: a panel's rows scrolled past the window's bottom still fill it.
+      if (n.nodeType === 1 && n.checkVisibility({ checkVisibilityCSS: true }) && n.getBoundingClientRect().height > 0 && !/^(absolute|fixed)$/.test(getComputedStyle(n).position)) bottom = Math.max(bottom, n.getBoundingClientRect().bottom + Math.max(0, parseFloat(getComputedStyle(n).marginBottom) || 0));
+      else if (n.nodeType === 3 && n.textContent.trim()) { const rg = document.createRange(); rg.selectNodeContents(n); bottom = Math.max(bottom, rg.getBoundingClientRect().bottom); }
+    }
+    return bottom;
+  };
+  const slackOf = el => {
+    const cs = getComputedStyle(el), r = el.getBoundingClientRect(), to = filledTo(el);
+    return to === -Infinity ? 0 : r.bottom - parseFloat(cs.borderBottomWidth) - parseFloat(cs.paddingBottom) - to;
+  };
+  const panel = cs => painted(cs) && (parseFloat(cs.borderTopLeftRadius) > 0 || cs.boxShadow !== 'none' || parseFloat(cs.borderTopWidth) > 0);
+  for (const el of document.querySelectorAll('body *')) {
+    const p = el.parentElement;
+    if (!(el instanceof HTMLElement) || !p || !shown(el) || !inView(el)) continue;
+    const cs = getComputedStyle(el);
+    if (!panel(cs) || !stretched(el, cs, p) || el.scrollHeight > el.clientHeight + 1) continue;
+    const r = el.getBoundingClientRect(), slack = slackOf(el);
+    if (slack <= Math.max(48, r.height * 0.25) || parseFloat(cs.minHeight) >= r.height - 1) continue;
+    const row = [...p.children].filter(s => s !== el && shown(s) && Math.abs(s.getBoundingClientRect().top - r.top) < 2 && panel(getComputedStyle(s)));
+    if (row.some(s => slackOf(s) < 16)) continue;
+    say('slack', el, `panel ${Math.round(r.height)}px tall, its content ends ${Math.round(slack)}px above its bottom (stretched by ${name(p)})`);
   }
 
   // ── scroll: the page itself ──

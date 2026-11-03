@@ -303,6 +303,7 @@ html [data-theme="dark" lang="en"]
   pageShown {}
   resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
   setRemote {"enabled":true}
+  todayStrips {}
 == end
 html [data-theme="dark" lang="en"]
 #app

@@ -195,6 +195,7 @@ html [data-theme="contrastlight" lang="vi"]
   pageShown {}
   resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
   setTheme {"theme":"contrastlight"}
+  todayStrips {}
 == wrapped
 html [data-theme="contrastlight" lang="vi"]
 #app

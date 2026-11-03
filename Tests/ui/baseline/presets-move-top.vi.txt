@@ -97,7 +97,7 @@ html [data-theme="dark" lang="vi"]
               small.pvr-hour [style="left:50%"] "12:00"
               small.pvr-hour [style="left:75%"] "18:00"
               button.pvr-run [type="button" title="Farm Blox Fruits · 20:00" aria-label="Farm Blox Fruits, 20:00" style="left:83.33%"]
-                img [alt="" src="https://tr.rbxcdn.com/180DAY-774ec14539b264f85fdb6e8a34dfa344/150/150/Image/Png/noFilter"]
+                svg.i #1pvni8o
               span.pvr-now [style="left:50%"]
                 small "12:00"
           div.pv-list [id="pv-list" role="list"]
@@ -110,7 +110,7 @@ html [data-theme="dark" lang="vi"]
                 b [title="Adopt Me trade"] "Adopt Me trade"
                 small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
                 span.pv-sum [title="Bất kỳ (Roblox tự chọn) · Chờ mặc định (8 giây) · Tắt tự vào lại"] "Bất kỳ (Roblox tự chọn) · Chờ mặc định (8 giây) · Tắt tự vào lại"
-                span.pv-next
+                span.pv-next [title="Chạy lần cuối 1 giờ trước"]
                   span "Chạy lần cuối 1 giờ trước"
               div.pv-accs [title="1 tài khoản\nTrade" aria-label="1 tài khoản"]
                 span.avatar.sm
@@ -140,7 +140,7 @@ html [data-theme="dark" lang="vi"]
                 b [title="Farm Blox Fruits"] "Farm Blox Fruits"
                 small [title="Blox Fruits"] "Blox Fruits"
                 span.pv-sum [title="Ping thấp nhất · Chờ 12 giây giữa các tài khoản · Bật chống AFK · Treo máy nhẹ · Mở lại mỗi 4 giờ · Xếp cửa sổ · Kênh Discord riêng"] "Ping thấp nhất · Chờ 12 giây giữa các tài khoản · Bật chống AFK · Treo máy nhẹ · Mở lại mỗi 4 giờ · Xếp cửa sổ · Kênh Discord riêng"
-                span.pv-next "· · Lần tới: Hôm nay 20:00"
+                span.pv-next [title="Đang mở 3 cửa sổ · T2–T6 20:00 · Lần tới: Hôm nay 20:00"] "· · Lần tới: Hôm nay 20:00"
                   span.pv-live "Đang mở 3 cửa sổ"
                   span "T2–T6 20:00"
               div.pv-accs [title="3 tài khoản\nFarm 1\nFarm 2\nNight Owl" aria-label="3 tài khoản"]
@@ -179,7 +179,7 @@ html [data-theme="dark" lang="vi"]
                 b [title="Morning check-in"] "Morning check-in"
                 small [title="Màn hình chính Roblox"] "Màn hình chính Roblox"
                 span.pv-sum [title="Mở cùng lúc, không chờ"] "Mở cùng lúc, không chờ"
-                span.pv-next "·"
+                span.pv-next [title="Hẹn giờ đang tắt · T5, 24/12 07:30 · Chạy lần cuối 1 ngày trước"] "·"
                   span "Hẹn giờ đang tắt · T5, 24/12 07:30"
                   span "Chạy lần cuối 1 ngày trước"
               div.pv-accs [title="6 tài khoản\nTài khoản chính\nFarm 1\nNight Owl\nTài khoản phụ\nTrade\nThử nghiệm" aria-label="6 tài khoản"]

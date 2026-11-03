@@ -94,7 +94,7 @@ html [data-theme="dark" lang="vi"]
                 b [title="Morning check-in"] "Morning check-in"
                 small [title="Màn hình chính Roblox"] "Màn hình chính Roblox"
                 span.pv-sum [title="Mở cùng lúc, không chờ"] "Mở cùng lúc, không chờ"
-                span.pv-next "·"
+                span.pv-next [title="Hẹn giờ đang tắt · T5, 24/12 07:30 · Chạy lần cuối 1 ngày trước"] "·"
                   span "Hẹn giờ đang tắt · T5, 24/12 07:30"
                   span "Chạy lần cuối 1 ngày trước"
               div.pv-accs [title="6 tài khoản\nTài khoản chính\nFarm 1\nNight Owl\nTài khoản phụ\nTrade\nThử nghiệm" aria-label="6 tài khoản"]

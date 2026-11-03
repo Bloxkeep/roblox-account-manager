@@ -521,9 +521,9 @@ html [data-theme="dark" lang="vi"]
                   svg.i #1ap9cll
                   b "∞"
                 span.mc-sh
-                  b "$o2"
+                  b "Space"
                 span.mc-sh
-                  svg.i #ktpp14
+                  b "300s"
                 i.mc-sh-end
               button.btn.mc-panel.sm [type="button" title="Hiện bảng cạnh game" aria-label="Bảng điều khiển: Bấm phím định kỳ" aria-pressed="false"]
                 svg.i #1e3syqr

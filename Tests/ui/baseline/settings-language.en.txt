@@ -196,3 +196,5 @@ html [data-theme="dark" lang="vi"]
   resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
   resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
   setLanguage {"language":"vi"}
+  todayStrips {}
+  todayStrips {}

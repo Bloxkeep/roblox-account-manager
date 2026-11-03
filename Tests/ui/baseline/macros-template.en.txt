@@ -521,9 +521,9 @@ html [data-theme="dark" lang="en"]
                   svg.i #1ap9cll
                   b "∞"
                 span.mc-sh
-                  b "$o2"
+                  b "Space"
                 span.mc-sh
-                  svg.i #ktpp14
+                  b "300s"
                 i.mc-sh-end
               button.btn.mc-panel.sm [type="button" title="Show its panel beside the game" aria-label="Panel: Press a key every few minutes" aria-pressed="false"]
                 svg.i #1e3syqr

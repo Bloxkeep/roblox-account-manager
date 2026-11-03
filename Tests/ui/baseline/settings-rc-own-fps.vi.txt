@@ -244,3 +244,4 @@ html [data-theme="dark" lang="vi"]
   pageShown {}
   resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
   setFpsCap {"fps":20,"ids":["00000000-0000-4000-8000-000000000002"]}
+  todayStrips {}

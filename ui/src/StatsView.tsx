@@ -388,7 +388,7 @@ function Drops({ d, nameOf, fmtSecs }: { d: Stats; nameOf: (a: StatAccount) => s
       const names = l.accounts.map(id => d.accounts.find(a => a.id === id)).filter((a): a is StatAccount => !!a).map(nameOf).join(', ');
       const action = fix(l);
       return <div key={l.kind} className="sd-row" data-kind={l.kind}>
-        <div className="sd-text"><b>{t(`stats.why.${l.kind}`)}</b><small title={names}>{tn('stats.timesN', l.times, { n: fmtNum(l.times) })} · {names}</small></div>
+        <div className="sd-text"><b>{t(`stats.why.${l.kind}`)}</b><small title={names}>{[tn('stats.timesN', l.times, { n: fmtNum(l.times) }), names].filter(Boolean).join(' · ')}</small></div>
         <span className="sd-time" title={t('stats.lostTip')}>{t('stats.lost', { t: fmtSecs(l.seconds) })}</span>
         {action ? <button className="btn sm" onClick={() => go('settings:perf')}>{t(action)}</button> : null}
       </div>;

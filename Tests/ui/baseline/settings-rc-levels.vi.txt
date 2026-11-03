@@ -240,6 +240,7 @@ html [data-theme="dark" lang="vi"]
   pageShown {}
   resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
   setSettings {"ramLimitMb":-1,"robloxConfig":{"fps":20,"graphics":1,"mode":"all","volume":0},"splitCores":true,"trimBackground":true}
+  todayStrips {}
 == medium
 html [data-theme="dark" lang="vi"]
 #app

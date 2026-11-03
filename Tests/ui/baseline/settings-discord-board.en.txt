@@ -340,6 +340,7 @@ html [data-theme="dark" lang="en"]
   setDiscord {"boardMinutes":15}
   setDiscord {"quiet":false}
   setDiscord {"quietFrom":"07:00"}
+  todayStrips {}
 == end
 html [data-theme="dark" lang="en"]
 #app

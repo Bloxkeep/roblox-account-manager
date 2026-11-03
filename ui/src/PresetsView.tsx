@@ -193,6 +193,9 @@ function PresetRow({ p, i, count, ordered, accounts, accCount, launching, delayD
     sc?.enabled && p.nextRun && !sc.date ? host.nextRunText(p) : null,
     p.lastRun ? <Ago key="last" iso={p.lastRun} tpl="pv.lastRun" /> : null,
   ].filter(Boolean);
+  // The same line as words, to read it whole when a narrow window cuts it.
+  const nextTitle = [p.running ? tn('pv.running', p.running) : '', when, sc?.enabled && p.nextRun && !sc.date ? host.nextRunText(p) : '',
+    p.lastRun ? t('pv.lastRun', { t: host.ago(p.lastRun) }) : ''].filter(Boolean).join(' · ');
   const accTitle = [accCount(accounts.length), ...accounts.map(a => a.label)].join('\n');
 
   // The schedule switch: off while the app answers; refused (a one-off whose date has passed), it goes back.
@@ -213,7 +216,7 @@ function PresetRow({ p, i, count, ordered, accounts, accCount, launching, delayD
       <b title={p.name}>{p.name}</b>
       <small title={game}>{game}</small>
       <span className="pv-sum" title={summary}>{summary}</span>
-      <span className="pv-next">{next.map((x, k) => <Fragment key={k}>{k ? ' · ' : null}{x}</Fragment>)}</span>
+      <span className="pv-next" title={nextTitle}>{next.map((x, k) => <Fragment key={k}>{k ? ' · ' : null}{x}</Fragment>)}</span>
     </div>
     {accounts.length
       ? <div className="pv-accs" title={accTitle} aria-label={accCount(accounts.length)}>
@@ -265,6 +268,13 @@ function runToday(p: Preset, day: Date): number | null {
   return h * 60 + m;
 }
 
+/** A run's game icon on the ruler; the preset sign when it has none or it won't load (Roblox's pictures blocked). */
+function RunIcon({ src }: { src?: string | null }) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [src]);
+  return src && !failed ? <img src={src} alt="" onError={() => setFailed(true)} /> : <Icon name="layers" />;
+}
+
 /** Today on one ruler, midnight to midnight: each preset that runs today as its game's icon at its time (those gone by
  * faded), and now. A click on one brings its row into sight. Hidden on a day nothing is scheduled. */
 function DayRuler({ presets, pick }: { presets: Preset[]; pick: (id: string) => void }) {
@@ -294,7 +304,7 @@ function DayRuler({ presets, pick }: { presets: Preset[]; pick: (id: string) => 
       {[0, 6, 12, 18].map(h => <small key={h} className="pvr-hour" style={{ left: pct(h * 60) }}>{hourMark(h)}</small>)}
       {placed.map(({ p, at, lift }) => <button key={p.id} type="button" className={`pvr-run${at < minutes ? ' gone' : ''}${lift ? ' lift' : ''}`}
         style={{ left: pct(at) }} title={`${p.name} · ${clock(at)}`} aria-label={`${p.name}, ${clock(at)}`} onClick={() => pick(p.id)}>
-        {p.iconUrl ? <img src={p.iconUrl} alt="" /> : <Icon name="layers" />}</button>)}
+        <RunIcon src={p.iconUrl} /></button>)}
       <span className="pvr-now" style={{ left: pct(minutes) }}><small>{clock(minutes)}</small></span>
     </div>
   </section>;

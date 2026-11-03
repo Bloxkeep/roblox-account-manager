@@ -202,6 +202,7 @@ html [data-theme="dark" lang="en"]
   pageShown {}
   resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
   setBackup {"folder":"G:\\My Drive\\Bloxkeep"}
+  todayStrips {}
 == end
 html [data-theme="dark" lang="en"]
 #app
