@@ -948,12 +948,13 @@ static class MacroSuite
             var m = M("""[{"kind":"wait","ms":5000}]""");
             var hold = InputTurn.TryEnter("afk")!;
             player.Queue(m, accounts, trial: true);
+            var tried = player.Runs[0];
             int queued = player.Queue(m, accounts);
             hold.Dispose();
             await Done(player);
             var real = player.Runs.FirstOrDefault(r => !r.Trial);
             c.Check("Run while Try it plays the macro there: the saved macro runs, Try it stops", queued == 1 && real?.Status == "done"
-                && player.Runs.First(r => r.Trial).Status == "stopped", $"{queued} {real?.Status}");
+                && tried.Status == "stopped" && player.Runs.Count(r => r.Macro.Id == m.Id) == 1, $"{queued} {real?.Status} {tried.Status}");
             InputTurn.Reset();
         }
         {

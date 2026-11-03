@@ -176,15 +176,25 @@ sealed class MacroPlayer(IMacroDesk desk)
     /// <summary>For the checks: random timing and offsets.</summary>
     public Random Random { get; set; } = Random.Shared;
 
-    /// <summary>Queues the macro on these accounts; one already running there is left alone. Returns how many were queued.</summary>
+    /// <summary>Queues the macro on these accounts; one already running there is left alone, except the editor's Try it
+    /// of it, which the saved macro takes over from (Run, its hotkey or trigger did nothing, with no word, before). Returns
+    /// how many were queued.</summary>
     public int Queue(Macro macro, IEnumerable<Guid> accounts, bool trial = false)
     {
         var jumps = MacroRules.Jumps(macro.Steps);
         int queued = 0;
         var now = desk.Now;
+        var takenOver = new List<MacroRun>();
         foreach (var account in accounts.Distinct())
         {
-            if (_runs.Any(r => !r.Finished && r.Macro.Id == macro.Id && r.AccountId == account))
+            var going = _runs.FirstOrDefault(r => !r.Finished && r.Macro.Id == macro.Id && r.AccountId == account);
+            if (going is { Trial: true } && !trial)
+            {
+                // One run of a macro per account in the list (the page shows that one): Try it's goes.
+                _runs.Remove(going);
+                takenOver.Add(going);
+            }
+            else if (going is not null)
                 continue;
             _runs.RemoveAll(r => r.Finished && r.Macro.Id == macro.Id && r.AccountId == account);
             _runs.Add(new MacroRun
@@ -195,6 +205,9 @@ sealed class MacroPlayer(IMacroDesk desk)
             });
             queued++;
         }
+        // Stopped once the list is as it will be: what the try holds is let go as its turn ends.
+        foreach (var run in takenOver)
+            Finish(run, "stopped", "byUser");
         while (_runs.Count > MaxKept && _runs.FindIndex(r => r.Finished) is >= 0 and var old)
             _runs.RemoveAt(old);
         if (queued > 0)
@@ -368,6 +381,9 @@ sealed class MacroPlayer(IMacroDesk desk)
             run.ResumeAt = desk.Now.AddSeconds(2);
             return;
         }
+        if (run.Pid != 0 && run.Pid != window.Pid)
+            StartOver(run);
+        run.Pid = window.Pid;
         var ct = run.Cancel.Token;
         IDisposable? lease = InputTurn.TryEnter("macro");
         if (lease is null)
@@ -494,6 +510,26 @@ sealed class MacroPlayer(IMacroDesk desk)
         if (desk.Now - turn.Started >= AfkBudget && InputTurn.Waits("afk"))
             return EndNow(run); // the nudge goes, then this run carries on where it was
         return null;
+    }
+
+    /// <summary>
+    /// Its window was replaced since its last turn (a rejoin, a crash: another process): a new server is a new start, so
+    /// it plays from the top, holding nothing (what it held went with the old window, let go as that turn ended).
+    /// </summary>
+    static void StartOver(MacroRun run)
+    {
+        run.Held.Clear();
+        run.HeldAs.Clear();
+        run.Pc = 0;
+        run.Passes.Clear();
+        run.Again = -1;
+        run.WaitLeft = null;
+        run.Deadline = null;
+        run.LastFrame = null;
+        run.StillSince = null;
+        run.MissSince = null;
+        run.Recovering = false;
+        run.Restarts = 0;
     }
 
     bool Ime(MacroRun run) =>
