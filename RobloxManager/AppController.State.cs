@@ -298,7 +298,8 @@ public sealed partial class AppController
             }
             : null,
         // A rejoin waiting its turn (auto-rejoin's wait, or a preset's restart): the card counts down and can call it off.
-        rejoin = _rejoinQueue.FirstOrDefault(r => r.AccountId == a.Id) is { } queued
+        // Also one under way (out of the queue, its window not asked for yet): "Rejoining…", and Cancel and Close still stop it.
+        rejoin = (_rejoinQueue.FirstOrDefault(r => r.AccountId == a.Id) ?? (_rejoinInFlight?.AccountId == a.Id ? _rejoinInFlight : null)) is { } queued
             ? new { at = queued.Due, queued.Restart, game = GameDto(queued.Target.PlaceId) }
             : null,
     };
