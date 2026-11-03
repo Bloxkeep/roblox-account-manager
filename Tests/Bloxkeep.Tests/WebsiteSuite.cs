@@ -92,6 +92,9 @@ static class WebsiteSuite
         var coreB = webB.CoreWebView2;
         var screen = Screen.FromControl(host).WorkingArea;
         c.Check("the window opens on screen", screen.Contains(window.Bounds), $"{screen} {window.Bounds}");
+        // The names reach the tabs and the window a moment after the browsers start (review, 2026-11-03: read at once, one run in
+        // five saw the page's own title still there). This runs on the window's thread, where they are set.
+        await Until(() => tabA.Title == "webA" && tabB.Title == "webB" && window.Text == "webA — Roblox");
         c.Check("the tabs and the window say which account", tabA.Title == "webA" && tabB.Title == "webB" && window.Text == "webA — Roblox",
             $"{tabA.Title} | {tabB.Title} | {window.Text}");
         c.Check("each tab is InPrivate", coreA.Profile.IsInPrivateModeEnabled && coreB.Profile.IsInPrivateModeEnabled);
