@@ -296,37 +296,31 @@ public sealed partial class AppController
                     presetsSkipped++;
                     continue;
                 }
-                var s = p.Schedule;
-                presets.Add(new LaunchPreset
+                // Everything it has (a followed player too), checked as saving a preset checks it.
+                var copy = p.Clone();
+                copy.Id = Guid.NewGuid();
+                copy.Name = ImportedPresetName(presets, p.Name);
+                copy.AccountIds = ids;
+                copy.Server = PresetServers.Contains(p.Server) ? p.Server : "any";
+                copy.DelaySeconds = p.DelaySeconds is int delay ? Math.Clamp(delay, 0, 120) : null;
+                copy.Profile = p.Profile == AfkProfile ? AfkProfile : "";
+                copy.RestartHours = (p.PlaceInput.Length > 0 || copy.Server == "follow") && RestartChoices.Contains(p.RestartHours) ? p.RestartHours : 0;
+                // "Rejoin into" one of its accounts: that account as it is here.
+                copy.RejoinWith = p.PlaceInput.Length == 0 || copy.Server == "follow" ? ""
+                    : p.RejoinWith == "any" ? "any"
+                    : Guid.TryParse(p.RejoinWith, out var with) && localIds.TryGetValue(with, out var mine) && ids.Contains(mine) ? mine.ToString()
+                    : "";
+                // Not its own Discord channel: a file from someone else would send this PC's alerts about these
+                // accounts (names, games, status) to that person's channel. Set it again here if it's yours.
+                copy.DiscordWebhook = "";
+                copy.LastRunAt = null;
+                // Off, so the two PCs don't start the same accounts at the same minute.
+                if (copy.Schedule is { } s)
                 {
-                    Name = ImportedPresetName(presets, p.Name),
-                    AccountIds = ids,
-                    PlaceInput = p.PlaceInput,
-                    GameName = p.GameName,
-                    Server = PresetServers.Contains(p.Server) ? p.Server : "any",
-                    JobId = p.JobId,
-                    DelaySeconds = p.DelaySeconds is int delay ? Math.Clamp(delay, 0, 120) : null,
-                    AntiAfk = p.AntiAfk,
-                    AutoRejoin = p.AutoRejoin,
-                    Profile = p.Profile == AfkProfile ? AfkProfile : "",
-                    RestartHours = p.PlaceInput.Length > 0 && RestartChoices.Contains(p.RestartHours) ? p.RestartHours : 0,
-                    Arrange = p.Arrange,
-                    // Not its own Discord channel: a file from someone else would send this PC's alerts about these
-                    // accounts (names, games, status) to that person's channel. Set it again here if it's yours.
-                    DiscordWebhook = "",
-                    // Off, so the two PCs don't start the same accounts at the same minute.
-                    Schedule = s is null ? null : new PresetSchedule
-                    {
-                        Enabled = false,
-                        Time = s.Time,
-                        Days = s.Days.ToList(),
-                        Date = s.Date,
-                        Stop = s.Stop,
-                        StopHours = s.StopHours,
-                        StopTime = s.StopTime,
-                    },
-                    Extra = p.Extra?.ToDictionary(x => x.Key, x => x.Value.Clone()),
-                });
+                    s.Enabled = false;
+                    s.LastRun = "";
+                }
+                presets.Add(copy);
                 presetsAdded++;
             }
         }

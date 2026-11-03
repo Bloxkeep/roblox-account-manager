@@ -267,7 +267,7 @@ static class FollowSuite
             // ── a preset that follows a player ──
             var preset = new LaunchPreset { Name = "With Friend", AccountIds = [account.Id], Server = "follow", FollowPlayer = "Friend", FollowUserId = Friend };
             Task<GameTarget> PresetTarget() => (Task<GameTarget>)t.GetMethod("PresetFollowTargetAsync", Harness.F)!
-                .Invoke(app, [vault, preset, new List<Account> { account }])!;
+                .Invoke(app, [vault, preset, new List<Account> { account }, CancellationToken.None])!;
             seen["cookie-a"] = InServer(Place, Server);
             var presetTarget = await PresetTarget();
             c.Check("a preset that follows a player: opens into their server, its windows following them",

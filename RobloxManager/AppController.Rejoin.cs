@@ -116,7 +116,8 @@ public sealed partial class AppController
     object? CancelRejoin(Guid id)
     {
         _rejoinsInARow.Remove(id);
-        if (_rejoinQueue.RemoveAll(r => r.AccountId == id) > 0)
+        bool underWay = CancelRejoinUnderWay(id);
+        if (_rejoinQueue.RemoveAll(r => r.AccountId == id) > 0 || underWay)
             ForgetScheduledOpen(id); // closed for good now
         PushState();
         return null;
@@ -504,6 +505,20 @@ public sealed partial class AppController
     readonly HashSet<Guid> _hideWhenIn = new();
     readonly HashSet<Guid> _ranOutOfMemory = new();
 
+    /// <summary>The rejoin <see cref="RejoinAsync"/> is doing now: out of the queue, its window not asked for yet.</summary>
+    RejoinRequest? _rejoinInFlight;
+
+    /// <summary>Calls off the account's rejoin under way, so Close (an account, a preset, a scheduled stop) wins over it: it
+    /// opens nothing and doesn't go back in the queue. Before, only Close all and the lock could stop it.</summary>
+    /// <returns>Whether one was under way.</returns>
+    bool CancelRejoinUnderWay(Guid accountId)
+    {
+        if (_rejoinInFlight?.AccountId != accountId || _rejoinCts is not { IsCancellationRequested: false } cts)
+            return false;
+        cts.Cancel();
+        return true;
+    }
+
     async Task RejoinAsync(RejoinRequest request)
     {
         var vault = _vault;
@@ -517,7 +532,14 @@ public sealed partial class AppController
             || _running.ContainsKey(account.Id) || _pending.Any(p => p.AccountId == account.Id))
             return;
         _rejoining = true;
+        _rejoinInFlight = request;
         var cts = _rejoinCts = new CancellationTokenSource();
+        // Back in the queue to try again later, unless it was called off meanwhile.
+        void Again(RejoinRequest next)
+        {
+            if (!cts.IsCancellationRequested)
+                _rejoinQueue.Add(next);
+        }
         try
         {
             // Where a followed player is now. Not found (offline, hidden or full server): waits and looks again.
@@ -563,9 +585,9 @@ public sealed partial class AppController
             Persist();
             PushState();
         }
-        catch (OperationCanceledException) when (cts.IsCancellationRequested)
+        catch (Exception) when (cts.IsCancellationRequested)
         {
-            // Close all.
+            // Close all, or Close of this account: whatever it ran into meanwhile, nothing to say.
         }
         catch (UserError)
         {
@@ -577,7 +599,7 @@ public sealed partial class AppController
             // No connection (often right after sleep) or Roblox busy: try again, each time later; not counted as a
             // rejoin. A refusal is reported below instead: silent retries wouldn't change it.
             var delay = TimeSpan.FromTicks(Math.Min(NetworkRetryDelay.Ticks * (request.NetworkRetries + 1), MaxRetryDelay.Ticks));
-            _rejoinQueue.Add(request with { Due = DateTime.UtcNow + delay, NetworkRetries = request.NetworkRetries + 1 });
+            Again(request with { Due = DateTime.UtcNow + delay, NetworkRetries = request.NetworkRetries + 1 });
         }
         catch (Exception ex) when (ex is Win32Exception or FileNotFoundException && request.OpenRetries < MaxOpenRetries)
         {
@@ -586,7 +608,7 @@ public sealed partial class AppController
             // drop in game is rejoined (review, 2026-10-30).
             Log.Note($"A rejoin's Roblox didn't start, tried again later: {StartErrorLog(ex)}");
             var delay = TimeSpan.FromTicks(Math.Min(NetworkRetryDelay.Ticks * (request.OpenRetries + 1), MaxRetryDelay.Ticks));
-            _rejoinQueue.Add(request with { Due = DateTime.UtcNow + delay, OpenRetries = request.OpenRetries + 1 });
+            Again(request with { Due = DateTime.UtcNow + delay, OpenRetries = request.OpenRetries + 1 });
         }
         catch (Exception ex) when (RobloxApi.IsExpectedError(ex) || ex is Win32Exception or FileNotFoundException)
         {
@@ -600,7 +622,7 @@ public sealed partial class AppController
                     if (request.NetworkRetries < MaxTicketRetries)
                     {
                         var delay = TimeSpan.FromTicks(Math.Min(NetworkRetryDelay.Ticks * (request.NetworkRetries + 1), MaxRetryDelay.Ticks));
-                        _rejoinQueue.Add(request with { Due = DateTime.UtcNow + delay, NetworkRetries = request.NetworkRetries + 1 });
+                        Again(request with { Due = DateTime.UtcNow + delay, NetworkRetries = request.NetworkRetries + 1 });
                         return;
                     }
                     why = RefusedText;
@@ -625,6 +647,8 @@ public sealed partial class AppController
         finally
         {
             _rejoining = false;
+            if (ReferenceEquals(_rejoinInFlight, request))
+                _rejoinInFlight = null;
             if (_rejoinCts == cts)
                 _rejoinCts = null;
             cts.Dispose();

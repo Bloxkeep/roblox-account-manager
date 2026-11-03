@@ -49,9 +49,10 @@ public sealed partial class AppController
     /// </summary>
     /// <param name="pickServer">Chooses the server once the launch has started, so Stop works meanwhile; gets how many accounts will open.</param>
     /// <param name="eachServer">Instead, a server for each account as it opens (every account in one of its own).</param>
+    /// <param name="reserved">The launch taken already (<see cref="_launchCts"/>) by a caller that had to look something up first.</param>
     async Task<LaunchResult> LaunchAccountsAsync(Vault vault, List<Account> accounts, GameTarget? target, bool force, int delaySeconds,
         Func<GameTarget, int, CancellationToken, Task<GameTarget>>? pickServer = null, Guid? presetId = null,
-        Func<GameTarget, CancellationToken, Task<GameTarget>>? eachServer = null)
+        Func<GameTarget, CancellationToken, Task<GameTarget>>? eachServer = null, CancellationTokenSource? reserved = null)
     {
         // Banned accounts aren't opened: their window would only show the ban. Roblox VNG accounts open like the
         // others, with a ticket from Roblox VNG's sign-in (tried from 2026-10-19).
@@ -65,7 +66,7 @@ public sealed partial class AppController
         }
         // Taken before the first await: a second Play meanwhile would pass CheckCanLaunch, and its "switching" list
         // could close the client this one had just opened.
-        var cts = _launchCts = new CancellationTokenSource();
+        var cts = _launchCts = reserved ?? new CancellationTokenSource();
         var ct = cts.Token;
         void Release()
         {
@@ -600,7 +601,8 @@ public sealed partial class AppController
                 }
             }
         }
-        // Late launches, oldest first, take a window named for them, else only one no pending launch could be taking.
+        // Late launches, oldest first, take a window named for them, else only one no pending launch could be taking and that
+        // isn't signed in as someone else: with none pending, any window opened by hand would do (Start menu, no tracker id).
         foreach (var launch in _late.OrderBy(l => l.StartedAt).ToList())
         {
             if (now - launch.StartedAt > PendingTimeout + LateTimeout || _running.ContainsKey(launch.AccountId))
@@ -612,7 +614,8 @@ public sealed partial class AppController
                 continue;
             }
             int pid = pids.Where(p => !launch.Before.Contains(p) && !claimed.Contains(p) && hasWindow(p) && MayBeLaunchOf(trackerOf(p), launch)
-                    && (IsLaunchOf(trackerOf(p), launch) || _pending.All(l => l.Before.Contains(p))))
+                    && (IsLaunchOf(trackerOf(p), launch)
+                        || _pending.All(l => l.Before.Contains(p)) && (FindAccount(launch.AccountId) is not { } owner || ClaimUserMatches(p, owner))))
                 .OrderByDescending(p => IsLaunchOf(trackerOf(p), launch))
                 .ThenBy(p => p)
                 .FirstOrDefault();
@@ -695,6 +698,8 @@ public sealed partial class AppController
             RobloxFlags.Restore();
             _robloxFlagsPending = false;
         }
+        // Stopped meanwhile (Stop, Close, a scheduled stop): nothing is opened.
+        ct.ThrowIfCancellationRequested();
         string tracker = RobloxLauncher.Launch(ticket, target, launchVia, _vault?.Data.Settings.CustomLauncher ?? "");
         _lastSessionStart = DateTime.UtcNow;
         _userClosed.Remove(account.Id);
@@ -759,8 +764,15 @@ public sealed partial class AppController
         {
             _rejoinQueue.RemoveAll(r => r.AccountId == id);
             _rejoinsInARow.Remove(id); // closed by the person: a client opened later counts its drops from one
-            // Still opening: its client is closed as soon as it shows up, rather than staying open untracked.
-            foreach (var launch in _pending.Where(p => p.AccountId == id))
+            // A rejoin under way (looking for its player, getting its ticket, waiting for Roblox's update): called off.
+            if (CancelRejoinUnderWay(id))
+            {
+                closed++;
+                PushState();
+            }
+            // Still opening, or late (its window may still come): its client is closed as soon as it shows up, rather than
+            // staying open untracked or, late, becoming the account's again.
+            foreach (var launch in _pending.Concat(_late).Where(p => p.AccountId == id))
             {
                 if (_closeWhenClaimed.Add(launch))
                 {

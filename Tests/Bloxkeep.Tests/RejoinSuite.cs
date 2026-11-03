@@ -699,7 +699,7 @@ static class RejoinSuite
             account.GameBans = [new GameBan { PlaceId = Gpo, At = DateTime.UtcNow }];
             async Task<object?> Open(Guid? preset)
             {
-                var task = (Task)launchAccounts.Invoke(app, [vault, new List<Account> { account }, new GameTarget(Gpo), false, 0, null, preset, null])!;
+                var task = (Task)launchAccounts.Invoke(app, [vault, new List<Account> { account }, new GameTarget(Gpo), false, 0, null, preset, null, null])!;
                 await task;
                 return task.GetType().GetProperty("Result")!.GetValue(task);
             }
@@ -955,7 +955,7 @@ static class RejoinSuite
                 account.GameBans = [new GameBan { PlaceId = Gated, At = DateTime.UtcNow }];
                 try
                 {
-                    var playTask = (Task)launchAccounts.Invoke(app, [vault, new List<Account> { account }, new GameTarget(Gated), false, 0, null, null, null])!;
+                    var playTask = (Task)launchAccounts.Invoke(app, [vault, new List<Account> { account }, new GameTarget(Gated), false, 0, null, null, null, null])!;
                     await playTask;
                     var played = playTask.GetType().GetProperty("Result")!.GetValue(playTask);
                     var playAsks = played?.GetType().GetProperty("Asks")!.GetValue(played) as List<string>;

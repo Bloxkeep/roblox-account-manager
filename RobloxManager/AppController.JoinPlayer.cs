@@ -266,6 +266,9 @@ public sealed partial class AppController
 
         GameTarget? Wait(string reason, string text)
         {
+            // Called off meanwhile (Close, a scheduled stop): it doesn't wait to look again.
+            if (ct.IsCancellationRequested)
+                return null;
             _rejoinQueue.RemoveAll(r => r.AccountId == account.Id);
             _rejoinQueue.Add(request with { Due = DateTime.UtcNow + FollowRecheck });
             if (!_followWaitTold.TryGetValue(account.Id, out string? told) || told != reason)

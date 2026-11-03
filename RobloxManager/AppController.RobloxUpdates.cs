@@ -206,6 +206,9 @@ public sealed partial class AppController
     {
         if (_vault is null || _robloxUpdating || _updateReopenSince is not null)
             return null;
+        // A launch or rejoin under way would keep opening windows, and the update would give up: "Some Roblox windows didn't close".
+        if (OpeningRoblox)
+            throw new UserError(L.T("Wait until Bloxkeep finishes opening Roblox."));
         var tracked = new HashSet<int>();
         foreach (var (id, run) in _running.ToList())
         {
