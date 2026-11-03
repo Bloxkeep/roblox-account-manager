@@ -5,6 +5,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type Ref } from 'react';
 import { Ago, Icon, useAppState, useHost } from '../host';
 import { NOTIFY_KINDS } from './NotifyPage';
 import { Group, More, Page, Row, Switch, TextBox, useLocal } from './parts';
+import { parseTime } from '../TimeField';
 
 const DC_ID = /^\d{17,20}$/;
 const PING_MODES = ['none', 'here', 'everyone', 'user', 'role'];
@@ -58,7 +59,9 @@ export function DiscordPage({ title }: { title: string }) {
   // From and To the same never applies: said so when it happens.
   const quietTime = (key: string) => (v: string) => {
     time(key)(v);
-    if (quietFrom.current!.value === quietTo.current!.value) toast(t('dc.quietSame'), 'warn');
+    // Compared as times: with AM/PM one box may still hold "07:00" while the other shows "07:00 AM".
+    const from = parseTime(quietFrom.current!.value);
+    if (from && from === parseTime(quietTo.current!.value)) toast(t('dc.quietSame'), 'warn');
   };
 
   // A ping for "alerts" is the same ping for every kind of alert; it shows "Varies by alert" while they differ.
