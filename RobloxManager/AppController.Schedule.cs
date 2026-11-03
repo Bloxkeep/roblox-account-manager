@@ -44,7 +44,7 @@ public sealed partial class AppController
     /// <summary>Preset and minute of each run reported as missed while locked, so the unlock doesn't report it again.</summary>
     readonly HashSet<(Guid, string)> _missedReported = new();
     /// <summary>Since when runs could have been missed: the app's start, then each lock.</summary>
-    DateTime _lockedSince = DateTime.Now;
+    DateTime _lockedSince = Clock.Now();
     /// <summary>Accounts a scheduled stop is closing right now: a start in the same minute waits for them to go.</summary>
     readonly HashSet<Guid> _stopClosing = new();
     static readonly TimeSpan ScheduleLaunchWait = TimeSpan.FromMinutes(5);
@@ -116,7 +116,7 @@ public sealed partial class AppController
     {
         if (s is not { Enabled: true } || !TryTime(s.Time, out var time))
             return null;
-        var now = DateTime.Now;
+        var now = Clock.Now();
         var thisMinute = new DateTime(now.Year, now.Month, now.Day, now.Hour, now.Minute, 0, DateTimeKind.Local);
         if (s.Date.Length > 0)
         {
@@ -150,9 +150,9 @@ public sealed partial class AppController
     /// <summary>Every process-timer tick: stops that are due, then (once per wall-clock minute) starts that are due.</summary>
     void CheckSchedules()
     {
-        var local = DateTime.Now;
+        var local = Clock.Now();
         string minute = MinuteKey(local);
-        long tick = Environment.TickCount64;
+        long tick = Clock.Tick();
         // A stop whose minute passed while the PC slept still happens, late rather than never.
         foreach (var run in _scheduledRuns.Where(r => r.StopAtTick is { } at ? tick >= at : string.CompareOrdinal(minute, r.StopAtMinute) >= 0).ToList())
             StopScheduledRun(run);
@@ -234,12 +234,12 @@ public sealed partial class AppController
     {
         var vault = _vault;
         string name = preset.Name;
-        var startedAt = DateTime.Now; // the scheduled minute, give or take: a stop "at" counts from here, not from when the launch ends
+        var startedAt = Clock.Now(); // the scheduled minute, give or take: a stop "at" counts from here, not from when the launch ends
         // A manual launch under way would refuse this one ("already launching"): it is waited for, within reason.
-        for (var until = DateTime.UtcNow + ScheduleLaunchWait; _launchCts is not null && DateTime.UtcNow < until && _vault == vault;)
+        for (var until = Clock.UtcNow() + ScheduleLaunchWait; _launchCts is not null && Clock.UtcNow() < until && _vault == vault;)
             await Task.Delay(1000);
         // This preset's stop firing this same minute is still closing its clients: wait, so the start reopens rather than skips them.
-        for (var until = DateTime.UtcNow + ScheduleStopWait; preset.AccountIds.Any(id => _stopClosing.Contains(id) && _running.ContainsKey(id)) && DateTime.UtcNow < until && _vault == vault;)
+        for (var until = Clock.UtcNow() + ScheduleStopWait; preset.AccountIds.Any(id => _stopClosing.Contains(id) && _running.ContainsKey(id)) && Clock.UtcNow() < until && _vault == vault;)
             await Task.Delay(500);
         _stopClosing.ExceptWith(preset.AccountIds);
         if (_vault != vault)
@@ -304,7 +304,7 @@ public sealed partial class AppController
             return;
         var run = new ScheduledRun { PresetId = preset.Id, Vault = vault.FilePath, Name = preset.Name, Opened = opened };
         if (s.Stop == "after")
-            run.StopAtTick = Environment.TickCount64 + (long)(s.StopHours * 3_600_000);
+            run.StopAtTick = Clock.Tick() + (long)(s.StopHours * 3_600_000);
         else if (s.Stop == "at" && TryTime(s.StopTime, out var time))
         {
             var at = startedAt.Date.Add(time);
@@ -357,8 +357,8 @@ public sealed partial class AppController
     {
         if (_vault is not { } vault)
             return false;
-        long tick = Environment.TickCount64;
-        var now = DateTime.UtcNow;
+        long tick = Clock.Tick();
+        var now = Clock.UtcNow();
         var runs = _scheduledRuns.Where(r => OfVault(r, vault)).Select(r => new ScheduledRunState
         {
             PresetId = r.PresetId,
@@ -382,8 +382,8 @@ public sealed partial class AppController
     /// the app started or the vault locked are reported once.</summary>
     void ResumeSchedules(Vault vault)
     {
-        long tick = Environment.TickCount64;
-        var now = DateTime.UtcNow;
+        long tick = Clock.Tick();
+        var now = Clock.UtcNow();
         foreach (var saved in vault.Data.ScheduledRuns)
         {
             if (_scheduledRuns.Any(r => r.PresetId == saved.PresetId && OfVault(r, vault)) || _stoppedWhileLocked.Contains(saved.PresetId))
@@ -436,7 +436,7 @@ public sealed partial class AppController
     /// <summary>Runs due between the app's start (or the lock) and now that didn't happen, each said once.</summary>
     void ReportMissedSchedules(Vault vault)
     {
-        var now = DateTime.Now;
+        var now = Clock.Now();
         var thisMinute = new DateTime(now.Year, now.Month, now.Day, now.Hour, now.Minute, 0, DateTimeKind.Local);
         foreach (var preset in vault.Data.Settings.Presets)
         {
@@ -460,7 +460,7 @@ public sealed partial class AppController
     /// <summary>Before the vault locks: the runs due next, so each can be reported as missed while it stays locked.</summary>
     void RememberSchedulesForLock()
     {
-        _lockedSince = DateTime.Now;
+        _lockedSince = Clock.Now();
         _lockedSchedules = _vault?.Data.Settings.Presets
             .Select(p => (p.Id, p.Name, Next: NextRun(p.Schedule)))
             .Where(x => x.Next is not null)
