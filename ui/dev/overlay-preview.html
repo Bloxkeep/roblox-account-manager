@@ -5,7 +5,7 @@
 <!-- Design preview only (not shipped): the overlay's page over a stand-in game, with a fake app (overlay-mock.js). Serve the repo root and open /ui/dev/overlay-preview.html -->
 <base href="/RobloxManager/wwwroot/">
 <title>Bloxkeep — overlay preview</title>
-<link rel="stylesheet" href="app.css">
+<link rel="stylesheet" href="ui-overlay.css">
 <style>.ov-standin { position: fixed; inset: 0; width: 100%; height: 100%; object-fit: fill; }</style>
 </head>
 <body class="ov-page">
@@ -13,9 +13,6 @@
 <!-- #app: the interface checks (Tests/ui/page-hooks.js) write down what is inside it. -->
 <div id="app"><div id="overlay"></div></div>
 <script src="/ui/dev/overlay-mock.js"></script>
-<script src="shared.js"></script>
-<script src="i18n.js"></script>
-<script src="ui.js"></script>
-<script src="overlay.js"></script>
+<script src="ui-overlay.js"></script>
 </body>
 </html>

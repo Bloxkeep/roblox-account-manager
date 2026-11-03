@@ -1,6 +1,6 @@
 'use strict';
-// What the app's page (app.js) and the tray's page (tray.js) both draw with: the icons (by name, an SVG's insides), the
-// logo, and Settings › Appearance › Custom's colours worked out from the person's two colours.
+// What the app's page (app.js) and the small pages (ui/src/pages/page.tsx imports it) both draw with: the icons (by name,
+// an SVG's insides), the logo, and Settings › Appearance › Custom's colours worked out from the person's two colours.
 (() => {
   const ICONS = {
     plus: '<path d="M12 5v14M5 12h14"/>',

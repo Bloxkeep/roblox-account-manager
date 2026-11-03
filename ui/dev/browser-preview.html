@@ -6,7 +6,7 @@
      stand-in for the roblox.com page. Serve the repo root and open /ui/dev/browser-preview.html?many=1 -->
 <base href="/RobloxManager/wwwroot/">
 <title>Bloxkeep — browser preview</title>
-<link rel="stylesheet" href="app.css">
+<link rel="stylesheet" href="ui-browser.css">
 <style>
   body.browser-page { overflow: auto; }
   .site-stand-in { height: 320px; background: #ececef; }
@@ -17,9 +17,6 @@
 <div id="app"><div id="root"></div></div>
 <div class="site-stand-in" aria-hidden="true"></div>
 <script src="/ui/dev/browser-mock.js"></script>
-<script src="shared.js"></script>
-<script src="i18n.js"></script>
-<script src="ui.js"></script>
-<script src="toolpage.js"></script>
+<script src="ui-browser.js"></script>
 </body>
 </html>
