@@ -812,6 +812,7 @@ window.I18N = {
     'iv.step': 'Step {n}/3',
     'iv.tooMany': 'Too many wrong tries. Try again in {n} seconds.',
     'err.draw': 'Something didn’t draw.',
+    'set.pwLabelCur': 'Current', 'set.pwLabelNew': 'New', 'set.pwLabelNew2': 'Confirm',
     // ── end P5 ──
 
     // ── P6 settings ──
@@ -1623,6 +1624,7 @@ window.I18N = {
     'iv.step': 'Bước {n}/3',
     'iv.tooMany': 'Nhập sai nhiều lần. Thử lại sau {n} giây.',
     'err.draw': 'Có lỗi khi hiển thị.',
+    'set.pwLabelCur': 'Hiện tại', 'set.pwLabelNew': 'Mới', 'set.pwLabelNew2': 'Nhập lại',
     // ── end P5 ──
 
     // ── P6 settings ──

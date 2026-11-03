@@ -2147,7 +2147,10 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .set-note { display: flex; gap: 10px; margin: 0 0 14px; padding: 10px 12px; border-radius: var(--r-md); background: color-mix(in srgb, var(--warn) 8%, transparent); border: 1px solid var(--warn-line); color: var(--warn-ink); font-size: var(--fs-3); }
 .set-note .i { width: 16px; height: 16px; flex: none; margin-top: 1px; }
 /* Two boxes a row at every width: four in a row cut "New password (6+ characters)", the only label its box has. */
-.pw-form { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 8px 0 18px; }
+.pw-form { display: grid; grid-template-columns: minmax(0, 360px); gap: 10px; padding: 8px 0 18px; }
+.pw-form .btn { justify-self: start; }
+.pw-field { display: grid; gap: 6px; font-size: var(--fs-3); font-weight: 650; color: var(--text-2); }
+.pw-field .field { font-weight: 400; }
 .pw-msg { grid-column: 1 / -1; margin: 0; min-height: 0; font-size: var(--fs-3); }
 .pw-msg:empty { display: none; }
 .pw-msg.err { color: var(--bad-ink); }
@@ -3086,7 +3089,7 @@ body:has(.lock) #toasts { bottom: 24px; }
   .top-tools { width: 100%; }
   .search { flex: 1; width: auto; }
   .dock { column-gap: 14px; }
-  .pw-form { grid-template-columns: 1fr 1fr; }
+  .pw-form { grid-template-columns: minmax(0, 360px); }
 }
 /* Narrow: the small buttons keep their icons (their names on hover), so all three steps stay on one row and the cards keep their height. */
 @media (max-width: 900px) {
