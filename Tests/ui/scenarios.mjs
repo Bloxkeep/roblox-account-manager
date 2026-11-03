@@ -1620,6 +1620,22 @@ export default [
     { page: 'mini-preview.html', size: [340, 420] }),
   S('mini-light', 'theme=light', null, { page: 'mini-preview.html', size: [340, 420] }),
   S('mini-retro', 'theme=retro', async s => { await s.click({ css: '.mini-foot .btn.danger' }); }, { page: 'mini-preview.html', size: [340, 420], langs: ['en'] }),
+  // The game monitor's tiles (ui/src/monitor), stand-in pictures where the app lays the live ones (ui/dev/mock-p7.js).
+  S('monitor-tiles', 'monitor=1&tiles=3', async s => { await s.point({ css: '.mon-tile' }); }),
+  S('monitor-one', 'monitor=1&tiles=1', async s => { await s.point({ css: '.mon-tile' }); }),
+  S('monitor-many', 'monitor=1&tiles=9&long=1', async s => { await s.point({ css: '.mon-tile' }); }),
+  S('monitor-names-hidden', 'monitor=1&tiles=3&hide=1&others=1', async s => { await s.point({ css: '.mon-tile' }); }),
+  S('monitor-minimized', 'monitor=1&tiles=3', async s => { await s.click({ css: '.mon-tile:nth-child(2) .mon-min' }); await s.wait(300); }),
+  // The menu withdraws only the picture it lies over: the other two keep theirs.
+  S('monitor-menu', 'monitor=1&tiles=3', async s => {
+    await s.click({ css: '.mon-tile:first-child .mon-pic' }, { button: 'right' });
+    await s.wait(200);
+    const left = await s.eval('window.__monitorArea?.pictures?.map(p => p.id).join(",")');
+    if (!(await s.eval('!!document.querySelector(".menu")')) || left.split(',').length !== 2) throw new Error(`pictures left with the menu open: ${left}`);
+  }),
+  S('monitor-none', 'monitor=1&tiles=0', async s => { await s.point({ css: '.mon-empty' }); }),
+  S('monitor-light', 'monitor=1&tiles=3&theme=light', async s => { await s.point({ css: '.mon-tile' }); }),
+  S('monitor-retro', 'monitor=1&tiles=4&mintile=1&theme=retro', async s => { await s.point({ css: '.mon-tile' }); }, { langs: ['en'] }),
   // ── end P7 ──
 
   // ── P8 ──

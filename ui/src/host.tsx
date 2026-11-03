@@ -74,8 +74,8 @@ export interface Host {
   /** fn runs on each app.js signal: hideDiscordLink (Settings, its page or the window left), clearPassword (Settings
    * left), presetQuery (its search put back), presetsShown, statsShown / statsHidden, settled (after an unlock or for a
    * new page: tabs not open yet get ready), macrosShown, macroRecorded (a recording's steps, as the app sent them: { steps,
-   * w, h }). Returns how to stop. */
-  on(signal: 'hideDiscordLink' | 'clearPassword' | 'presetQuery' | 'presetsShown' | 'statsShown' | 'statsHidden' | 'settled' | 'macrosShown' | 'macroRecorded' | 'macroSeen' | 'onGameEdit',
+   * w, h }), monitor (the game monitor's windows, as the app sent them). Returns how to stop. */
+  on(signal: 'hideDiscordLink' | 'clearPassword' | 'presetQuery' | 'presetsShown' | 'statsShown' | 'statsHidden' | 'settled' | 'macrosShown' | 'macroRecorded' | 'macroSeen' | 'onGameEdit' | 'monitor',
     fn: (data?: any) => void): () => void;
   /** The Presets tab's search, as app.js keeps it (a page restarted comes back with it), and a new one typed. */
   presetQuery(): string;
@@ -99,6 +99,12 @@ export interface Host {
   runMacro(id: string, accountIds?: string[]): Promise<unknown>;
   /** A menu under a button (app.js openMenu): the same menus as the page's own, with their keys; a second click closes it. */
   menu(button: HTMLElement, items: MenuItem[], opts?: { icons?: boolean }): void;
+  /** The same menu at a point (a right-click), kept inside the window. */
+  menuAt(x: number, y: number, items: MenuItem[], opts?: { icons?: boolean }): void;
+  /** The game monitor's windows as the app last sent them (null before the first), and: its picture boxes may have
+   * moved, so the app is told where they are now (app.js syncMonitor). */
+  monitor(): { tiles: any[] } | null;
+  monitorMoved(): void;
   /** The browser's own storage for this page's small choices (app.js store; never fails: the fallback instead). */
   store: { get(key: string, fallback: string): string; set(key: string, value: string): void };
   /** Short weekday names from the browser's own calendar (0 = Sunday, like the app; app.js weekdayName). */

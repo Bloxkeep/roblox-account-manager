@@ -826,7 +826,6 @@ window.I18N = {
     'mini.resize': 'Drag to resize',
     'mon.none': 'Open a game and its window shows here.', 'mon.minimized': 'Minimized: no live picture',
     'mon.minimize': 'Minimize', 'mon.restore': 'Open again', 'mon.show': 'Show', 'mon.close': 'Close Roblox', 'mon.copyPid': 'Copy PID',
-    'mon.closeQ': 'Close this Roblox window?', 'mon.closeOk': 'Close',
     'ov.editing': 'Editing {name}', 'ov.newMacro': 'New macro', 'ov.areas': 'Areas of {name}', 'ov.dragHint': 'Drag the dots and boxes',
     'ov.pick': 'Click the place on the game', 'ov.screen': 'Click the color you want', 'ov.done': 'Done', 'ov.cancel': 'Cancel (Esc)',
     // ── end P7 ──
@@ -1647,7 +1646,6 @@ window.I18N = {
     'mini.resize': 'Kéo để đổi cỡ',
     'mon.none': 'Mở game, cửa sổ sẽ hiện ở đây.', 'mon.minimized': 'Đang thu nhỏ, không có hình',
     'mon.minimize': 'Thu nhỏ', 'mon.restore': 'Mở lại', 'mon.show': 'Hiện', 'mon.close': 'Đóng Roblox', 'mon.copyPid': 'Sao chép PID',
-    'mon.closeQ': 'Đóng cửa sổ Roblox này?', 'mon.closeOk': 'Đóng',
     'ov.editing': 'Đang sửa {name}', 'ov.newMacro': 'Macro mới', 'ov.areas': 'Vùng của {name}', 'ov.dragHint': 'Kéo các điểm và vùng',
     'ov.pick': 'Bấm vào chỗ cần chọn trên game', 'ov.screen': 'Bấm vào màu cần lấy', 'ov.done': 'Xong', 'ov.cancel': 'Hủy (Esc)',
     // ── end P7 ──

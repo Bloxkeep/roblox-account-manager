@@ -5,6 +5,7 @@ import { AccountGrid, AccountsBar, AccountsHead, Dock } from './Accounts';
 import { Guarded } from './Guard';
 import { Icon, useHost } from './host';
 import { MacrosView } from './MacrosView';
+import { MonitorView } from './monitor/MonitorView';
 import { PresetsView } from './PresetsView';
 import { MonitorHead, Sidebar } from './Sidebar';
 import { AppearancePage } from './settings/AppearancePage';
@@ -47,8 +48,7 @@ export function Shell({ pages, page, preview, stats }: { pages: SettingsPageInfo
       <section className="view" id="view-stats" hidden><Guarded name="Statistics"><StatsView api={stats} /></Guarded></section>
       <section className="view" id="view-monitor" hidden>
         <header className="top"><div className="top-title"><h1>{t('mon.title')}</h1><Guarded name="the game monitor's heading"><MonitorHead /></Guarded></div></header>
-        {/* In the browser preview there is no app to draw the pictures: it says what goes here. */}
-        <div className={`mon-area ${preview ? 'preview' : ''}`} id="mon-area">{preview ? <p>{t('mon.preview')}</p> : null}</div>
+        <Guarded name="the game monitor"><MonitorView preview={preview} /></Guarded>
       </section>
       <section className="view" id="view-settings" hidden><Settings pages={pages} page={page} /></section>
     </main>

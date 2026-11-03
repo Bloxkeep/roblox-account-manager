@@ -52,16 +52,12 @@ static class MonitorSuite
         source.Resize += (_, _) => source.Invalidate();
         using var host = new Form { Text = "Bloxkeep monitor host", FormBorderStyle = FormBorderStyle.None, StartPosition = FormStartPosition.Manual, Left = 0, Top = 0, Width = 480, Height = 360, ShowInTaskbar = false, TopMost = true };
         var type = typeof(RobloxProcesses).Assembly.GetType("RobloxManager.WindowThumbnails")!;
-        var itemType = type.GetNestedType("Item", Harness.F)!;
-        using var tiles = (Control)Activator.CreateInstance(type, true)!;
-        tiles.Dock = DockStyle.Fill;
-        host.Controls.Add(tiles);
+        using var pictures = (IDisposable)Activator.CreateInstance(type, Harness.F, null, [host], null)!;
         source.Show();
         host.Show();
-        type.GetProperty("Live", Harness.F)!.SetValue(tiles, true);
-        var items = (System.Collections.IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(itemType))!;
-        items.Add(Activator.CreateInstance(itemType, source.Handle, "Check", "", "", ""));
-        type.GetMethod("SetItems", Harness.F)!.Invoke(tiles, [items]);
+        // Where the page would say the tile's picture goes: all of the host but a 10 px edge.
+        var box = new Rectangle(10, 10, host.ClientSize.Width - 20, host.ClientSize.Height - 20);
+        type.GetMethod("Place", Harness.F)!.Invoke(pictures, [new Dictionary<IntPtr, Rectangle> { [source.Handle] = box }, new Rectangle(Point.Empty, host.ClientSize)]);
         Pump(500);
 
         int Orange()

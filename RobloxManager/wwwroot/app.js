@@ -1050,6 +1050,9 @@
     menu(btn, items, opts) {
       menuAt(btn, items, 0, opts);
     },
+    menuAt: (x, y, items, opts) => openMenu(items, x, y, { icons: !!opts?.icons }),
+    monitor: () => MON.last,
+    monitorMoved: () => syncMonitor(),
     weekdayName, fmtNum, looksLikeTarget, store, copyField: copy,
     gameListsCached: () => P.lists,
     async loadGameLists() {
@@ -2372,24 +2375,28 @@
   let statsUi = null;
 
   /* ───────────────────────── game monitor ─────────────────────────
-     A page can't show other programs' windows: the app lays live pictures of the Roblox windows over this tab's empty area.
-     The page reports that area (CSS pixels and pixel ratio) whenever it may move, and { hidden } whenever something of the
-     page must show there (another tab, a dialog or menu, the lock screen): Windows draws the pictures above the whole page. */
-  const MON = { sent: null, frame: 0, dpr: null };
+     The tab's tiles are React's (ui/src/monitor/MonitorView.tsx), from the windows the app sends ("monitor"). A page
+     can't show other programs' windows: the app lays each live picture on its tile's box ([data-pic]). The page reports
+     the area (CSS pixels and pixel ratio) and the boxes whenever they may move, and { hidden } whenever something of the
+     page must show over the whole area (another tab, a dialog, the lock screen): Windows draws the pictures above the
+     whole page. A box a menu or a toast lies over is left out, so that picture alone makes room. */
+  const MON = { sent: null, frame: 0, dpr: null, last: null };
+  const overlaps = (a, b) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
   function monitorArea() {
     const area = $('#mon-area');
-    if (!S.shell || S.view !== 'monitor' || !area || document.hidden || openModals > 0 || menuEl) return { hidden: true };
+    if (!S.shell || S.view !== 'monitor' || !area || document.hidden || openModals > 0) return { hidden: true };
     const r = area.getBoundingClientRect();
-    let w = r.width, h = r.height;
-    // While toasts overlap the area, the pictures make room on whichever side keeps more of them (usually the right).
-    const toasts = $('#toasts');
-    const tr = toasts?.children.length ? toasts.getBoundingClientRect() : null;
-    if (tr && tr.width && tr.left < r.right && tr.right > r.left && tr.top < r.bottom && tr.bottom > r.top) {
-      const keepW = Math.max(0, tr.left - 10 - r.left), keepH = Math.max(0, tr.top - 10 - r.top);
-      if (keepW * r.height >= keepH * r.width) w = keepW; else h = keepH;
+    if (r.width < 1 || r.height < 1) return { hidden: true };
+    // What of the page lies over the tab: the open menu and each toast.
+    const over = [...(menuEl ? [menuEl] : []), ...($('#toasts')?.children || [])].map(el => el.getBoundingClientRect()).filter(o => o.width && o.height);
+    const pictures = [];
+    for (const box of area.querySelectorAll('[data-pic]')) {
+      const p = box.getBoundingClientRect();
+      if (p.width < 1 || p.height < 1 || !overlaps(p, r) || over.some(o => overlaps(o, p))) continue;
+      pictures.push({ id: box.dataset.pic, x: p.left, y: p.top, w: p.width, h: p.height });
     }
-    if (w < 1 || h < 1) return { hidden: true };
-    return { x: r.left, y: r.top, w, h, scale: devicePixelRatio };
+    // No boxes (no window open, or all under a menu): no pictures, said by leaving them out.
+    return { x: r.left, y: r.top, w: r.width, h: r.height, scale: devicePixelRatio, ...pictures.length ? { pictures } : {} };
   }
   /** One report per frame at most, and none that repeats the last; a hidden page says so at once (it gets no frames). */
   function syncMonitor() {
@@ -3177,6 +3184,7 @@
   bridge.on('saveView', () => saveView(true));
   // The app has settled (after an unlock, or for a new page): the tabs not opened yet get their figures and icons ready.
   bridge.on('settled', () => uiSignal('settled'));
+  bridge.on('monitor', d => { MON.last = d; uiSignal('monitor', d); });
   // A macro recording ended (F8, Stop, Ctrl+Alt+0): its steps go to whoever started it (the Macros tab or the macro form).
   bridge.on('macroRecorded', d => uiSignal('macroRecorded', d));
   bridge.on('macroSeen', d => uiSignal('macroSeen', d));

@@ -5867,6 +5867,27 @@ html:not(.in-window) .pn.mini { height: calc(100vh - 32px); max-height: none; }
 .mini-ask p { margin: 0; font-size: var(--fs-3); line-height: 1.45; color: var(--text); }
 .mini-remember { display: flex; align-items: center; gap: 8px; font-size: var(--fs-2); color: var(--text-2); cursor: pointer; }
 .mini-ask-btns { display: flex; justify-content: flex-end; gap: 8px; }
+/* The game monitor's tiles (ui/src/monitor): the app lays each window's live picture on its .mon-pic box, above the page.
+   The area's 4px padding keeps the focus ring inside it; its margins line the tiles up with the header. */
+.mon-area.mon-tiles { overflow: hidden auto; scrollbar-gutter: stable; margin: 0 26px 16px; }
+.mon-grid { display: grid; gap: 12px; padding: 4px; }
+.mon-tile { display: flex; flex-direction: column; min-width: 0; padding: 0 6px 6px; border-radius: var(--r-lg); border: 1px solid var(--line); background: var(--card); cursor: pointer; transition: border-color .15s, background .15s; }
+.mon-tile:hover { border-color: var(--line-3); background: var(--card-hover); }
+.mon-cap { display: flex; align-items: center; gap: 6px; flex: none; height: 50px; padding-left: 6px; }
+.mon-lines { flex: 1; min-width: 0; display: grid; gap: 3px; }
+.mon-line { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.mon-name, .mon-game { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mon-name { font-size: var(--fs-4); font-weight: 600; color: var(--text); }
+.mon-game { font-size: var(--fs-2); color: var(--text-2); }
+.mon-tag { flex: none; font-size: var(--fs-1); color: var(--muted); font-variant-numeric: tabular-nums; }
+.mon-min { flex: none; width: 30px; height: 30px; }
+.mon-pic { flex: 1; min-height: 0; display: grid; place-items: center; border-radius: var(--r-xs); background: var(--bg); overflow: hidden; }
+.mon-pic img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.mon-pic p { margin: 0; padding: 0 12px; text-align: center; font-size: var(--fs-2); color: var(--muted); }
+.mon-tile.min .mon-pic { border: 1px dashed var(--line-2); background: transparent; }
+.mon-area.mon-empty { display: grid; place-items: center; padding: 20px; }
+.mon-empty p { margin: 0; max-width: 360px; text-align: center; font-size: var(--fs-3); color: var(--muted); }
+@media (max-width: 1180px) { .mon-area.mon-tiles { margin: 0 18px 12px; } }
 /* ───────── end P7 ───────── */
 
 /* ───────── P8 ───────── */

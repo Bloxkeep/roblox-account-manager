@@ -70,29 +70,97 @@ public sealed partial class AppController
             RobloxProcesses.Close(client.Pid, InGameNow(client.Pid));
     }
 
-    /// <summary>The monitor tab's content area in CSS pixels, and the page's pixel ratio.</summary>
-    public readonly record struct MonitorArea(double X, double Y, double Width, double Height, double Scale);
+    /// <summary>A window's id on the page: its handle as a number.</summary>
+    static string MonitorId(IntPtr hwnd) => hwnd.ToInt64().ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+    /// <summary>The monitor tab's windows to the page ("monitor"): name (Hide names holds), game, RAM, PID, minimised.</summary>
+    internal void EmitMonitor(List<MonitorClient> clients, Func<IntPtr, bool> minimized)
+    {
+        if (Open is null)
+            return;
+        Emit("monitor", new
+        {
+            tiles = clients.Select(c => new
+            {
+                id = MonitorId(c.Hwnd), pid = c.Pid, name = c.Label, game = c.Game, ramMb = c.RamMb, ours = c.AccountId is not null, minimized = minimized(c.Hwnd),
+            }),
+        });
+    }
+
+    /// <summary>The window asks its monitor tab for the windows again (after a click changed one).</summary>
+    public Action? MonitorRefresh { get; init; }
+
+    /// <summary>A tile's click, key or menu item: show, minimize, restore, close {id}; copyPid returns the PID copied.</summary>
+    object? MonitorActCommand(JsonElement a)
+    {
+        RequireVault();
+        string id = Str(a, "id");
+        if (MonitorClients().FirstOrDefault(c => MonitorId(c.Hwnd) == id) is not { } client)
+            return null; // gone meanwhile: every action survives that
+        switch (Str(a, "what"))
+        {
+            case "show":
+                RobloxProcesses.FocusInTurn(client.Pid);
+                break;
+            case "minimize":
+                RobloxProcesses.Minimise(client.Hwnd);
+                break;
+            case "restore":
+                RobloxProcesses.RestoreQuietly(client.Hwnd);
+                break;
+            case "close":
+                CloseMonitorClient(client);
+                break;
+            case "copyPid":
+                Ui.CopyToClipboard(client.Pid.ToString(System.Globalization.CultureInfo.InvariantCulture), secret: false);
+                return client.Pid;
+        }
+        MonitorRefresh?.Invoke();
+        return null;
+    }
+
+    /// <summary>The monitor tab's area in CSS pixels, the page's pixel ratio, and where each tile's picture goes in it.</summary>
+    public sealed record MonitorArea(double X, double Y, double Width, double Height, double Scale, IReadOnlyList<MonitorPicture> Pictures);
+
+    /// <summary>A tile's picture: its window and its rectangle in CSS pixels (relative to the page, as the area is).</summary>
+    public readonly record struct MonitorPicture(IntPtr Hwnd, double X, double Y, double Width, double Height);
 
     /// <summary>The window lays the live pictures over the page's monitor tab (see <see cref="MonitorTab"/>), or takes them away (null).</summary>
     public Action<MonitorArea?>? SetMonitorArea { get; init; }
 
-    /// <summary>The monitor tab moved, or must not be covered ({ hidden: true }: another tab, a dialog or menu, the
-    /// window hidden). Locked: no tiles, the page shows the lock screen.</summary>
+    /// <summary>The monitor tab moved, or must not be covered ({ hidden: true }: another tab, a dialog, the window
+    /// hidden). Locked: no tiles, the page shows the lock screen.</summary>
     object? MonitorAreaCommand(JsonElement a)
     {
         SetMonitorArea?.Invoke(Open is null || Bool(a, "hidden") ? null : ParseMonitorArea(a));
         return null;
     }
 
-    /// <summary>Nothing absurd or missing from the page reaches the window's layout.</summary>
+    const double MonitorMax = 100_000;
+
+    /// <summary>Written so that NaN (a value missing) fails every test.</summary>
+    static bool Sane(double x, double y, double w, double h) =>
+        w >= 1 && h >= 1 && w < MonitorMax && h < MonitorMax && Math.Abs(x) < MonitorMax && Math.Abs(y) < MonitorMax;
+
+    /// <summary>Nothing absurd or missing from the page reaches the window's layout; a picture that is, is left out.</summary>
     static MonitorArea? ParseMonitorArea(JsonElement a)
     {
         double x = Num(a, "x"), y = Num(a, "y"), w = Num(a, "w"), h = Num(a, "h"), scale = Num(a, "scale");
-        const double Max = 100_000;
-        // Written so that NaN (a value missing) fails every test.
-        if (!(w >= 1 && h >= 1 && w < Max && h < Max && Math.Abs(x) < Max && Math.Abs(y) < Max && scale >= .25 && scale <= 8))
+        if (!Sane(x, y, w, h) || !(scale >= .25 && scale <= 8))
             return null;
-        return new MonitorArea(x, y, w, h, scale);
+        var pictures = new List<MonitorPicture>();
+        if (Has(a, "pictures", JsonValueKind.Array))
+        {
+            foreach (var p in a.GetProperty("pictures").EnumerateArray().Take(200))
+            {
+                if (p.ValueKind != JsonValueKind.Object || !long.TryParse(Str(p, "id"), System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out long hwnd) || hwnd == 0)
+                    continue;
+                double px = Num(p, "x"), py = Num(p, "y"), pw = Num(p, "w"), ph = Num(p, "h");
+                if (Sane(px, py, pw, ph))
+                    pictures.Add(new MonitorPicture(new IntPtr(hwnd), px, py, pw, ph));
+            }
+        }
+        return new MonitorArea(x, y, w, h, scale, pictures);
     }
 
     static double Num(JsonElement a, string name) =>

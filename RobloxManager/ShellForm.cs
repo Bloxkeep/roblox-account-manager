@@ -87,6 +87,7 @@ public sealed class ShellForm : Form
             PageShown = RemoveCover,
             SetMiniOpen = open => SetMiniOpen(open),
             SetMonitorArea = area => _monitor?.SetArea(area),
+            MonitorRefresh = () => _monitor?.Refresh(),
             QuitForUpdate = Quit,
             // After the command's answer has gone back to the page: closing to the tray takes a picture of it first.
             WindowControl = action => BeginInvoke(() =>
@@ -364,7 +365,6 @@ public sealed class ShellForm : Form
             web.DefaultBackgroundColor = theme.Background;
         _mini?.ApplyTheme();
         _app.ApplyThemeToPanels();
-        _monitor.ApplyTheme();
         _tray.Visible = Prefs.CloseToTray || BalloonShowing;
     }
 
