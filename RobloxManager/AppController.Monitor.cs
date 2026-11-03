@@ -108,12 +108,22 @@ public sealed partial class AppController
             case "show":
                 RobloxProcesses.FocusInTurn(client.Pid);
                 break;
+            // After a nudge, a picture or a macro's turn under way (as Show): the turn would put the window back as it
+            // found it, undoing the change.
             case "minimize":
-                RobloxProcesses.Minimise(client.Hwnd);
-                break;
+                InputTurn.RunWhenFree("monitor", () =>
+                {
+                    RobloxProcesses.Minimise(client.Hwnd);
+                    MonitorRefresh?.Invoke();
+                });
+                return null;
             case "restore":
-                RobloxProcesses.RestoreQuietly(client.Hwnd);
-                break;
+                InputTurn.RunWhenFree("monitor", () =>
+                {
+                    RobloxProcesses.RestoreQuietly(client.Hwnd);
+                    MonitorRefresh?.Invoke();
+                });
+                return null;
             case "close":
                 CloseMonitorClient(client);
                 break;
