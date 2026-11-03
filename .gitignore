@@ -42,6 +42,7 @@ __pycache__/
 # Node: the React parts' packages (ui/package-lock.json says which), and what ui/build.mjs builds from ui/src
 node_modules/
 RobloxManager/wwwroot/ui.js
+RobloxManager/wwwroot/ui-*.js
 
 # Claude Code: local settings, launch configurations and worktrees
 .claude/

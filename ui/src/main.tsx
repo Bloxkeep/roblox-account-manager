@@ -1,21 +1,17 @@
 // The parts drawn with React, for app.js to put where it wants: each draws into an element app.js made and returns how
-// to take it down. app.js reaches them as window.BloxkeepUI (ui.js loads before it).
-import { StrictMode, createRef, type ReactNode } from 'react';
+// to take it down. app.js reaches them as window.BloxkeepUI (ui.js loads before it). The small pages (the tray's, a
+// macro's panel, the mini window, the overlay, the message box, the browser's top) have bundles of their own: pages/*.
+import { createRef } from 'react';
 import { flushSync } from 'react-dom';
-import { createRoot } from 'react-dom/client';
 import { AccountForm, type AccountFormApi } from './AccountForm';
 import { Feedback, type FeedbackApi } from './Feedback';
-import { HostContext, type Host } from './host';
+import type { Host } from './host';
 import { ImportVault, type ImportResult, type ImportVaultApi } from './ImportVault';
 import { JoinPlayer, type JoinPlayerApi } from './JoinPlayer';
 import { Boot, Lock, type BootApi, type LockMode } from './Lock';
 import { MultiHelp } from './MultiHelp';
 import { LaunchOrder, type OrderAccount, type OrderListApi } from './OrderList';
 import { Palette, type PaletteEntry } from './Palette';
-import { MiniRoot, type MiniOn, type MiniViewApi } from './mini/MiniView';
-import { OverlayRoot, type OverlayOn, type OverlayViewApi } from './overlay/OverlayView';
-import { PanelRoot } from './panel/PanelView';
-import type { PanelOn, PanelViewApi } from './panel/panelHost';
 import { PasswordLogin, type PasswordLoginApi } from './PasswordLogin';
 import { PickList, type PickItem, type PickListApi } from './PickList';
 import { PresetForm, type PresetBase, type PresetFormApi } from './PresetForm';
@@ -26,51 +22,9 @@ import { Servers } from './Servers';
 import { AskBody, DiscordLinkBody, ErrorsBody, MenuItems, ModalFrame, SaveServerBody, Toasts, WhatsNewTitle, type MenuItem, type ModalOpts, type ToastsApi } from './Overlays';
 import { Shell, type SettingsPageInfo } from './Shell';
 import { type StatsApi } from './StatsView';
-import { TrayView, type TrayApi, type TrayViewApi } from './Tray';
 import { WhatsNew, type Release } from './WhatsNew';
+import { mount } from './pages/mount';
 import { GamePage, type GameDetails } from './GamePage';
-import { DialogRoot, type DialogOn, type DialogViewApi } from './dialog/DialogView';
-import { BrowserRoot, type BrowserChromeApi, type BrowserOn } from './browser/BrowserChrome';
-
-/** Draws into el now (app.js focuses the first control right after, so it must be there). keep: keepFocus on redraws;
- * a frame drawn once (a dialog's, a menu) needs none. */
-function mount(el: HTMLElement, host: Host, node: ReactNode, keep = true): () => void {
-  // Marked as React's: the page-wide fallback for broken game pictures (app.js) leaves its elements alone.
-  el.dataset.react = '';
-  const root = createRoot(el);
-  flushSync(() => root.render(<StrictMode><HostContext.Provider value={host}>{node}</HostContext.Provider></StrictMode>));
-  const stop = keep ? keepFocus(el, host) : () => {};
-  // The element may be the page's own (#app, the lock screen's): what app.js draws there next isn't React's.
-  return () => { stop(); root.unmount(); delete el.dataset.react; };
-}
-
-// A control with the focus that React draws away (a list redrawn, a row moved: Edge drops a moved element's focus too)
-// hands it back: to itself if still there, else to the same control drawn anew or the one in its place, as app.js's
-// setHtml does. Only a loss the redraw itself caused is undone; focus the person moved elsewhere stays.
-function keepFocus(el: HTMLElement, host: Host): () => void {
-  let last: Element | null = null, key: unknown = null, lost: Element | null = null;
-  const focused = (e: FocusEvent) => { last = e.target as Element; key = host.focusKey(last, el); };
-  // A redraw that takes the element out tells the observer in a microtask; a loss nothing redrew is forgotten after.
-  const left = (e: FocusEvent) => {
-    if (e.target !== last || e.relatedTarget) return;
-    lost = last;
-    setTimeout(() => { if (lost === e.target) lost = null; });
-  };
-  const watch = new MutationObserver(records => {
-    const was = lost;
-    const from = was && records.find(r => [...r.removedNodes].some(n => n === was || n.contains(was)));
-    if (!was || !from) return;
-    lost = null;
-    const active = document.activeElement;
-    if (active && active !== document.body) return;
-    if (was.isConnected && !(was as HTMLButtonElement).disabled) return (was as HTMLElement).focus({ preventScroll: true });
-    host.refocus(from.target.isConnected ? from.target as Element : el, key);
-  });
-  el.addEventListener('focusin', focused);
-  el.addEventListener('focusout', left);
-  watch.observe(el, { childList: true, subtree: true });
-  return () => { el.removeEventListener('focusin', focused); el.removeEventListener('focusout', left); watch.disconnect(); };
-}
 
 const BloxkeepUI = {
   /** A dialog's frame into its overlay (app.js's modal); its body a part drawn here, or empty for one put in later. */
@@ -183,47 +137,11 @@ const BloxkeepUI = {
     const unmount = mount(el, host, <Boot api={api} />);
     return { unmount, api: api.current! };
   },
-  /** The tray icon's quick panel or menu into its own window's page (tray.js), drawn again by show with each state. */
-  tray(el: HTMLElement, host: Host, api: TrayApi) {
-    const view = createRef<TrayViewApi>();
-    const unmount = mount(el, host, <TrayView api={api} handle={view} />, false);
-    return { unmount, show: view.current!.show };
-  },
-  /** A macro's panel beside the game into its own window's page (panel.js): show draws each "panel" event, error a refused change. */
-  panel(el: HTMLElement, host: Host, on: PanelOn) {
-    const view = createRef<PanelViewApi>();
-    const unmount = mount(el, host, <PanelRoot on={on} handle={view} />, false);
-    return { unmount, show: view.current!.show, error: view.current!.error };
-  },
-  /** The mini window's list of running accounts into its own window's page (mini.js): show draws each "mini" event. */
-  mini(el: HTMLElement, host: Host, on: MiniOn) {
-    const view = createRef<MiniViewApi>();
-    const unmount = mount(el, host, <MiniRoot on={on} handle={view} />, false);
-    return { unmount, show: view.current!.show };
-  },
-  /** The overlay over a game, or the colour picker over a monitor, into its own window's page (overlay.js): show draws each "overlay" event. */
-  overlay(el: HTMLElement, host: Host, on: OverlayOn) {
-    const view = createRef<OverlayViewApi>();
-    const unmount = mount(el, host, <OverlayRoot on={on} handle={view} />, false);
-    return { unmount, show: view.current!.show };
-  },
   /** A list to tick into a picker's body; the footer's buttons read list.values(). */
   pickList(el: HTMLElement, host: Host, text: string, items: PickItem[]) {
     const list = createRef<PickListApi>();
     const unmount = mount(el, host, <PickList text={text} items={items} api={list} />);
     return { unmount, list: list.current! };
-  },
-  /** The app's message box into its own window's page (toolpage.js, Forms/Dialog.cs): show draws each "dialog" event. */
-  dialog(el: HTMLElement, host: Host, on: DialogOn) {
-    const view = createRef<DialogViewApi>();
-    const unmount = mount(el, host, <DialogRoot on={on} handle={view} />, false);
-    return { unmount, show: view.current!.show };
-  },
-  /** The top of Bloxkeep's browser windows into its own page (toolpage.js, Forms/WebsiteForm.cs, BrowserLoginForm.cs). */
-  browser(el: HTMLElement, host: Host, on: BrowserOn) {
-    const view = createRef<BrowserChromeApi>();
-    const unmount = mount(el, host, <BrowserRoot on={on} handle={view} />, false);
-    return { unmount, show: view.current!.show };
   },
 };
 
