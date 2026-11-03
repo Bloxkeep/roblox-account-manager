@@ -2809,7 +2809,7 @@ input[type=range].cf-hue { width: 100%; background: linear-gradient(90deg, #f00,
 .modal-body { padding: 12px 24px 12px; overflow-y: auto; }
 .modal-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 16px 24px 22px; border-top: 1px solid var(--line); }
 .form { display: grid; gap: 14px; }
-.form label { display: grid; gap: 6px; font-size: var(--fs-3); font-weight: 650; color: var(--text-2); }
+.form label { display: grid; gap: 8px; font-size: var(--fs-3); font-weight: 650; color: var(--text-2); }
 .form label .muted { font-weight: 400; }
 .form .field, .form .select { font-weight: 400; font-size: var(--fs-4); }
 .form-error { margin-top: 10px; padding: 9px 12px; border-radius: var(--r-md); background: var(--bad-soft); border: 1px solid var(--bad-line); color: var(--bad-ink); font-size: var(--fs-3); overflow-wrap: anywhere; }
@@ -6159,7 +6159,7 @@ html:not(.in-window) .pn.pn-pill { height: 42px; }
 /* The lock screen and the dialogs' short texts break evenly instead of leaving one word alone on the last line. */
 .lock-card p, .start-opt small, .modal-text { text-wrap: balance; }
 /* The add-vault form's label over the name box; the hint from the second refused password; Close window after Multi-Roblox only. */
-.lock-label { display: grid; gap: 6px; font-size: var(--fs-3); font-weight: 650; color: var(--text-2); }
+.lock-label { display: grid; gap: 8px; font-size: var(--fs-3); font-weight: 650; color: var(--text-2); }
 .lock-label .field { font-weight: 400; }
 .lock-card p.lock-forgot { margin: 0 0 10px; font-size: var(--fs-3); line-height: 1.45; }
 .lock-multi .lock-close { display: flex; margin: 12px auto 0; }
