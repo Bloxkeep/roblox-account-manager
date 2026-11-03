@@ -19,11 +19,18 @@ Bloxkeep brings each Roblox window to the front for a moment, sends the keys and
 ## Make one
 
 1. Open the **Macros** tab and press **New macro**: **Record**, **From a template**, **Blank** or **Import file**.
-2. Steps read as sentences. Click one to open it and change its values in place. **Add step** lists the common steps first, the rest are under **More steps**.
+2. Steps read as sentences. Click one to open it and change its values in place. **Add step** opens a list you can search (type "wait"), with your **Recent** steps on top. Point between two steps and press **+** to add one there.
 3. Press **Try it**: the macro runs once on one window and says what happened, step by step.
 4. Press **Save**, then **Run** on its row. The row's line says what each account is doing.
 
-A template starts with a short **To do before it runs** list, for example "Place Bar area with Edit on game".
+Each template says what it needs from the game, and starts with a short **To do before it runs** list, for example "Place Bar area with Edit on game". Its steps carry notes that explain them.
+
+## Reading the steps
+
+- Steps inside a **Repeat** or an **If** sit on a coloured line down to its end. Press the arrow on the Repeat or If to fold them away.
+- A step that can't run says why under it, with a button that fixes it (for example **Add End repeat** or **Pick on game**). The bottom of the window counts what is left before **Save**.
+- **⋯** on a step adds a note, a few words for whoever reads the macro next.
+- While a macro runs, its step is marked **running**. If a run stops on a step, **Fix** in the row's **⋯** menu opens the macro on that step and says why it stopped.
 
 ## Points and areas
 
@@ -53,7 +60,7 @@ A pop-up or a missed bite can leave a macro waiting for something that never com
 
 - Open the line under the name. Set **If something doesn't show in time or it gets stuck** to **Start again from the top**.
 - **Counts as stuck** says how long it may find nothing (for example 5 min) before that happens.
-- Under **More steps**, add **If stuck…**. It goes last; put the steps that clear the way after it, such as closing a pop-up. They run before the macro starts again.
+- With **Add step**, add **If stuck…**. It goes last; put the steps that clear the way after it, such as closing a pop-up. They run before the macro starts again.
 
 After 5 tries in a row that find nothing, the macro stops on that window.
 

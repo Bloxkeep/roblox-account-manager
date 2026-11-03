@@ -167,10 +167,20 @@ export function useHost(): Host {
   return host;
 }
 
+/** Icons the React parts draw that app.js's set (shared.js ICONS) doesn't have: the macro steps' If, end of a block,
+ * Leave the repeat, a camera turn, and Pause. Same 24 × 24 outline as the rest. */
+const MORE_ICONS: Record<string, string> = {
+  branch: '<path d="M6 3v12"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/>',
+  cornerUpLeft: '<path d="M9 14 4 9l5-5"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/>',
+  logOut: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5M21 12H9"/>',
+  rotate: '<path d="M16.5 7.5C15.6 4.2 14 2 12 2 9.2 2 7 6.5 7 12s2.2 10 5 10c.3 0 .7-.1 1-.2"/><path d="m15.2 13.7 3.8 1.9-1.9 3.8"/><path d="M19 15.6c-1.8.9-4.3 1.4-7 1.4-5.5 0-10-2.2-10-5s4.5-5 10-5c4.8 0 8.9 1.7 9.8 4"/>',
+  pause: '<rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/>',
+};
+
 /** One of the page's icons, drawn the way app.js draws them (<svg class="i …">), so the stylesheet treats it the same. */
 export function Icon({ name, className = '' }: { name: string; className?: string }) {
   const { iconPaths } = useHost();
-  return <svg className={`i ${className}`} viewBox="0 0 24 24" aria-hidden="true" dangerouslySetInnerHTML={{ __html: iconPaths(name) }} />;
+  return <svg className={`i ${className}`} viewBox="0 0 24 24" aria-hidden="true" dangerouslySetInnerHTML={{ __html: iconPaths(name) || MORE_ICONS[name] || '' }} />;
 }
 
 /** How long ago a time was, kept fresh while shown; tpl's {t} places it in a sentence ("Last backup: {t}").

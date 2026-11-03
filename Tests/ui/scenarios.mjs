@@ -126,8 +126,12 @@ export default [
   }, { langs: ['en'] }),
   S('macros-panel', 'macros=1', async s => { await s.click({ css: '.mc-item[data-id="m1"] [data-mc=panel]' }); await s.wait(200); }, { langs: ['en'] }),
   S('macros-recording', 'macros=1&macrorec=1'),
-  // A failed run says so on its line, with Fix beside it (the form).
-  S('macros-fix', 'macros=1', async s => { await s.click({ css: '.mc-fix[data-fix=edit]' }); await s.wait(500); }, { langs: ['en'] }),
+  // A failed run says so on its line and marks its icon; Fix, first in its menu, opens the form on the step that stopped.
+  S('macros-fix', 'macros=1', async s => {
+    await s.click({ css: '.mc-item[data-id="m2"] [data-mc=more]' });
+    await s.click({ key: 'macro.fix', within: '.menu' });
+    await s.wait(500);
+  }, { langs: ['en'] }),
   // The editor: the steps as sentences with their blocks indented, the game with the dots and boxes, the picture's
   // aspect note (recorded on 800×600), and "Player sees".
   S('macro-editor', 'macroedit=m3&macropic=1', async s => { await s.wait(700); }),
@@ -138,17 +142,16 @@ export default [
     await s.snap('menu');
     await s.click({ key: 'macro.kind.if', within: '.menu' });
   }),
-  // Steps read as sentences; the common kinds first, the rest one click away.
+  // Add step: a search box over every kind (in its group); words find a kind by what it does ("delay" finds Wait).
   S('macro-more-steps', 'macroedit=m1', async s => {
     await s.click({ css: '#mc-add' });
-    await s.click({ key: 'macro.moreSteps', within: '.menu' });
+    await s.type('delay');
   }, { langs: ['en'] }),
   // If stuck: added last, it turns on starting again (through it) and the stuck watch.
   S('macro-if-stuck', 'macroedit=m4', async s => {
     await s.wait(500);
     await s.click({ css: '#mc-when' });
     await s.click({ css: '#mc-add' });
-    await s.click({ key: 'macro.moreSteps', within: '.menu' });
     await s.click({ key: 'macro.kind.recover', within: '.menu' });
   }),
   // The panel's own settings: a tab, a heading, a switch and a choice added there (an If can read the switch).
@@ -168,13 +171,11 @@ export default [
       Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(el, ${JSON.stringify(value)} || el.options[1].value);
       el.dispatchEvent(new Event('change', { bubbles: true })); })()`);
     await s.click({ css: '#mc-add' });
-    await s.click({ key: 'macro.moreSteps', within: '.menu' });
     await s.click({ key: 'macro.kind.waitText', within: '.menu' });
     await pick('-words', '');
     await s.wait(200);
     await s.snap('reads a list');
     await s.click({ css: '#mc-add' });
-    await s.click({ key: 'macro.moreSteps', within: '.menu' });
     await s.click({ key: 'macro.kind.clickColour', within: '.menu' });
     await pick('-each', 'each');
     await s.wait(200);
@@ -1595,6 +1596,70 @@ export default [
   // ── end P1b ──
 
   // ── P2 macro editor ──
+  // The step list as blocks: a Repeat folded to one line (its steps counted), unfolded again by its chevron.
+  S('macro-block-collapse', 'macroedit=m4', async s => {
+    await s.wait(500);
+    await s.click({ css: '.mc-step[data-i="0"] .mc-fold' });
+    await s.snap('folded');
+    await s.click({ css: '.mc-step[data-i="0"] .mc-fold' });
+  }),
+  // The "+" between two rows: Add step's list for that place, searched ("cho" finds Wait in both languages), Enter adds it.
+  S('macro-insert-between', 'macroedit=m4', async s => {
+    await s.wait(500);
+    await s.hover({ css: '.mc-step[data-i="3"]' });
+    await s.click({ css: '.mc-step[data-i="3"] .mc-ins' });
+    await s.snap('list');
+    await s.type('cho');
+    await s.snap('found');
+    await s.key('Enter');
+  }),
+  // What stops a save, on its own row with its fix: an If with no end (Add End if), a click with no point (Pick on game);
+  // the foot counts them. One click on the fix ends the If.
+  S('macro-problem-fix', 'macroedit=m5&p2broken=1', async s => {
+    await s.wait(500);
+    await s.snap('problems');
+    await s.click({ css: '.mc-step[data-i="1"] .mc-step-probs .btn' });
+    await s.wait(200);
+  }),
+  // A note on a step: why it is there, under its sentence.
+  S('macro-note', 'macroedit=m4', async s => {
+    await s.wait(500);
+    await s.click({ css: '.mc-step[data-i="1"] [data-st=more]' });
+    await s.click({ key: 'macro.note.add', within: '.menu' });
+    await s.type('Hold long enough to cast far');
+    await s.key('Enter');
+  }),
+  // From a template: cards saying what each does and what it needs from the game; one opens with its notes.
+  S('macro-templates-cards', 'nomacros=1', async s => {
+    await s.click({ css: '.mc-tile[data-start=template]' });
+    await s.snap('cards');
+    await s.click({ css: '.mc-tpl-pop > button:nth-of-type(2)' });
+    await s.wait(300);
+  }),
+  // A counter by the name the panel shows: New counter… in the step's list, a name and what the panel calls it.
+  S('macro-counter-label', 'macroedit=m4', async s => {
+    await s.wait(500);
+    await s.click({ css: '.mc-step[data-i="4"] .mc-step-head' });
+    await s.eval(`(() => { const el = document.querySelector('.mc-step.open select[id$="-name"]');
+      Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(el, '\\u0000new');
+      el.dispatchEvent(new Event('change', { bubbles: true })); })()`);
+    await s.wait(100);
+    await s.type('gold');
+    await s.key('Tab');
+    await s.type(s.lang === 'vi' ? 'Vàng' : 'Gold coins');
+    await s.snap('naming');
+    await s.key('Enter');
+  }),
+  // What a step still uses can't go: an area a step looks in says so, with links to those steps.
+  S('macro-area-in-use', 'macroedit=m4', async s => {
+    await s.wait(500);
+    await s.click({ css: '.mc-areas li button.icon-btn' });
+  }, { langs: ['en'] }),
+  // The editor in a light theme and another (macOS): blocks, rails, notes, problems.
+  S('macro-editor-light', 'macroedit=m5&p2broken=1&theme=light', async s => { await s.wait(500); }),
+  S('macro-editor-macos', 'macroedit=m4&theme=macos', async s => { await s.wait(500); await s.click({ css: '.mc-step[data-i="2"] .mc-step-head' }); }),
+  // With no Roblox window: the picture says where to open one, with the way there.
+  S('macro-editor-nowindow', 'macroedit=m4&nowindows=1', async s => { await s.wait(500); }),
   // ── end P2 ──
 
   // ── P3 accounts ──

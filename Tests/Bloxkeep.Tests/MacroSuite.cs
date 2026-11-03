@@ -178,7 +178,7 @@ static class MacroSuite
         c.Check("a macro needs a name", Refused(() => MacroRules.Check(new Macro { Steps = [new MacroStep { Kind = "wait", Ms = 1 }] }, new List<Guid>(), [])) is not null);
         c.Check("a macro needs a step", CheckOf("[]") is not null);
         c.Check("an unknown step is refused", CheckOf("""[{"kind":"jump"}]""") is not null);
-        c.Check("a loop without its end is refused", CheckOf("""[{"kind":"loop","times":2},{"kind":"key","key":"A"}]""")?.Contains("End loop") == true);
+        c.Check("a loop without its end is refused", CheckOf("""[{"kind":"loop","times":2},{"kind":"key","key":"A"}]""")?.Contains("End repeat") == true);
         c.Check("a key held and never released is refused", CheckOf("""[{"kind":"down","key":"W"}]""") is not null);
         var key = Read("""[{"kind":"key","key":"E"}]""");
         MacroRules.Check(key, new List<Guid>(), []);
@@ -900,9 +900,9 @@ static class MacroSuite
     static void Templates(Checks c)
     {
         var all = MacroTemplates.Build();
-        c.Check("four templates: keys, click, cast, blank", string.Join(",", all.Select(t => t.Id)) == "keys,click,cast,blank");
-        c.Check("a blank template has no steps", all[3].Macro.Steps.Count == 0);
-        foreach (var t in all.Take(3))
+        c.Check("five templates: keys, click, cast, rejoin, blank", string.Join(",", all.Select(t => t.Id)) == "keys,click,cast,rejoin,blank");
+        c.Check("a blank template has no steps", all[4].Macro.Steps.Count == 0);
+        foreach (var t in all.Take(4))
         {
             var m = MacroRules.Copy(t.Macro);
             string? error = Refused(() => MacroRules.Check(m, new List<Guid>(), []));
@@ -914,7 +914,7 @@ static class MacroSuite
         using var doc = JsonDocument.Parse(json);
         var page = doc.RootElement;
         c.Check("macroTemplates: { macros: Macro & {about, icon} } and nothing else",
-            page.EnumerateObject().Select(p => p.Name).SequenceEqual(["macros"]) && page.GetProperty("macros").GetArrayLength() == 4
+            page.EnumerateObject().Select(p => p.Name).SequenceEqual(["macros"]) && page.GetProperty("macros").GetArrayLength() == 5
             && page.GetProperty("macros")[0].GetProperty("about").GetString()!.Length > 0 && page.GetProperty("macros")[0].GetProperty("icon").GetString() == "keyboard"
             && page.GetProperty("macros")[0].GetProperty("id").GetString() == "", json[..Math.Min(400, json.Length)]);
         c.Check("each comes with its settings and areas", page.GetProperty("macros")[2].GetProperty("options").GetArrayLength() == 5
@@ -922,7 +922,7 @@ static class MacroSuite
             && page.GetProperty("macros")[1].GetProperty("steps")[1].GetProperty("region").GetString() == "@a1");
         // As the page uses one: read back from the page and saved.
         string? flow = null;
-        foreach (var t in page.GetProperty("macros").EnumerateArray().Take(3))
+        foreach (var t in page.GetProperty("macros").EnumerateArray().Take(4))
         {
             var m = MacroRules.Read(t);
             flow ??= Refused(() => MacroRules.Check(m, new List<Guid>(), []));
@@ -933,6 +933,23 @@ static class MacroSuite
         c.Check("a step's to-do comes with it and stays once saved", cast.Id == Guid.Empty
             && JsonSerializer.Serialize(cast, MacroRules.PageJson).Contains("\"todo\":["), JsonSerializer.Serialize(cast.Steps[2], MacroRules.PageJson));
         c.Check("its point to set on the game is a dot (step 2)", AreaGeometry.Dots(cast).Select(d => d.Step).SequenceEqual([1]));
+        // What to set is named by field (the editor's checklist says it in words); each step says why it is there.
+        c.Check("a to-do names fields, not sentences", JsonSerializer.Serialize(cast.Steps[2], MacroRules.PageJson).Contains("\"todo\":[\"region\",\"target\",\"marker\"]"),
+            JsonSerializer.Serialize(cast.Steps[2], MacroRules.PageJson));
+        c.Check("a template's steps carry their notes, kept once saved", JsonSerializer.Serialize(cast.Steps[1], MacroRules.PageJson).Contains("\"note\":"));
+        var rejoin = MacroRules.Read(page.GetProperty("macros")[3]);
+        MacroRules.Check(rejoin, new List<Guid>(), []);
+        c.Check("the rejoin template starts by itself after a rejoin, on all accounts", rejoin.Trigger.Kind == "rejoin" && rejoin.Targets == "all");
+        // A note: plain text up to 80, trimmed; anything else goes.
+        var noted = MacroRules.Read(JsonDocument.Parse($$"""{"name":"n","steps":[{"kind":"wait","ms":10,"note":"  {{new string('a', 90)}} "},{"kind":"wait","ms":10,"note":5},{"kind":"wait","ms":10,"note":"  "}]}""").RootElement);
+        MacroRules.Check(noted, new List<Guid>(), []);
+        string notes = JsonSerializer.Serialize(noted.Steps, MacroRules.PageJson);
+        c.Check("a note is cut to 80 and dropped when it isn't text", notes.Contains("\"note\":\"" + new string('a', 80) + "\"") && notes.Split("\"note\"").Length == 2, notes);
+        // The panel's names for counters: a counter's name to its label, nothing else.
+        var labelled = MacroRules.Read(JsonDocument.Parse("""{"name":"n","steps":[{"kind":"addVar","name":"fish","value":1}],"panel":{"autoShow":false,"placeId":null,"counterLabels":{"fish":" Fish caught ","9bad":"x","empty":"","n":3}}}""").RootElement);
+        MacroRules.Check(labelled, new List<Guid>(), []);
+        string panel = JsonSerializer.Serialize(labelled.Panel, MacroRules.PageJson);
+        c.Check("counter labels keep only a counter's name with its text", panel.Contains("\"counterLabels\":{\"fish\":\"Fish caught\"}"), panel);
         c.Check("no game's name in them", !System.Text.RegularExpressions.Regex.IsMatch(json, "Fisch|Blox Fruits|Pet Simulator|Adopt Me", System.Text.RegularExpressions.RegexOptions.IgnoreCase));
     }
 
