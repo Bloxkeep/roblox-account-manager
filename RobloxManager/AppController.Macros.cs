@@ -31,7 +31,7 @@ public sealed partial class AppController
     DateTime _macroPushedAt;
     bool _macroPushWaiting;
 
-    MacroDesk MacroDeskNow => _macroDesk ??= new MacroDesk(MacroClient, () => _robloxInput?.PersonAt);
+    MacroDesk MacroDeskNow => _macroDesk ??= new MacroDesk(MacroClient, () => _robloxInput?.PersonAt, () => _robloxInput is { Working: true });
 
     MacroPlayer MacroPlayerNow
     {
@@ -308,13 +308,29 @@ public sealed partial class AppController
         return new { image = "data:image/png;base64," + Convert.ToBase64String(png.ToArray()), w = picture.Width, h = picture.Height };
     }
 
+    /// <summary>How long the editor's picture waits for the turn.</summary>
+    static readonly TimeSpan PictureWait = TimeSpan.FromSeconds(15);
+
     /// <summary>The window's client area, taken in its turn (a minimised or hidden one is shown unseen for it).</summary>
     async Task<Bitmap> MacroPictureOfAsync(Guid accountId)
     {
         if (MacroDeskNow.Window(accountId) is not { } window)
             throw new UserError(L.T("This account's Roblox isn't open."));
         Bitmap? picture;
-        using (await InputTurn.EnterAsync("picture"))
+        // A macro's turn can last minutes: the editor says so rather than look hung.
+        IDisposable turn;
+        using (var wait = new CancellationTokenSource(PictureWait))
+        {
+            try
+            {
+                turn = await InputTurn.EnterAsync("picture", wait.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                throw new UserError(L.T("A macro is using the window. Try again in a moment."));
+            }
+        }
+        using (turn)
             picture = await WindowShot.ClientAsync(window.Handle, shown: false);
         return picture ?? throw new UserError(L.T("Couldn't take a picture of this window. Try again."));
     }
@@ -393,8 +409,9 @@ public sealed partial class AppController
         if (window.Elevated)
             throw new UserError(L.T("This Roblox runs as administrator, so Bloxkeep can't record or play into it."));
         // Runs wait while recording: their input would be recorded too, and would fight the person's.
-        _macroPlayer?.Stop(null, "recording");
+        // The recorder first: when Windows refuses it, the runs go on.
         var recorder = new MacroRecorder(accountId, window.Pid, window.Handle, _robloxInput);
+        _macroPlayer?.Stop(null, "recording");
         _recorder = recorder;
         recorder.StopAsked = () => _ = StopRecordingAsync();
         recorder.Changed = MacrosChanged;

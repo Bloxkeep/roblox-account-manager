@@ -26,6 +26,7 @@ static class MacroSuite
         FollowMaths(c);
         await Turns(c);
         await Player(c);
+        await Bounds(c);
         Panels(c);
         Templates(c);
         Watch(c);
@@ -107,12 +108,21 @@ static class MacroSuite
         public Func<Point, bool> ClearAt = _ => true;
         public Func<Bitmap?> Picture = () => null;
         public Func<Rectangle, Bitmap?>? Area;
+        /// <summary>When the person last touched the PC (ms on this clock); null: not since the start.</summary>
+        public Func<int?> PersonAt = () => null;
+        /// <summary>A wait asked while this is true never ends: the app stopped with a run halfway (Bloxkeep quitting).</summary>
+        public Func<bool>? SuspendWhen;
+        public readonly TaskCompletionSource Never = new();
+        /// <summary>Giving the window back fails (a turn's end throwing).</summary>
+        public bool ThrowOnEnd;
         public int Ms => (int)(Clock - Start).TotalMilliseconds;
 
         public DateTime Now => Clock;
 
         public Task Delay(int ms, CancellationToken ct)
         {
+            if (SuspendWhen?.Invoke() == true)
+                return Never.Task;
             Clock = Clock.AddMilliseconds(Math.Max(0, ms));
             OnDelay?.Invoke();
             ct.ThrowIfCancellationRequested();
@@ -138,10 +148,17 @@ static class MacroSuite
     sealed class FakeTurn(FakeDesk desk, MacroWindow w) : IMacroTurn
     {
         Point _at;
+        readonly int _started = desk.Ms;
+        /// <summary>What is down now, as the real turn keeps it to let go of all at once.</summary>
+        readonly List<(string Name, bool Key)> _down = new();
         public Rectangle Client => w.Client;
         public bool StillFront() => true;
-        public bool PersonInput() => false;
-        public void Key(MacroKey key, bool up) => desk.Log.Add($"{w.Pid} key {key.Name} {(up ? "up" : "down")} @{desk.Ms}");
+        public bool PersonInput() => desk.PersonAt() is { } at && at > _started && at <= desk.Ms;
+        public void Key(MacroKey key, bool up)
+        {
+            Note(key.Name, true, up);
+            desk.Log.Add($"{w.Pid} key {key.Name} {(up ? "up" : "down")} @{desk.Ms}");
+        }
         public void Char(char c, bool up) => desk.Log.Add($"{w.Pid} char {c} {(up ? "up" : "down")}");
         public void MoveTo(Point screen)
         {
@@ -149,12 +166,35 @@ static class MacroSuite
             desk.Log.Add($"{w.Pid} move {screen.X},{screen.Y}");
         }
         public void MoveBy(int dx, int dy) => desk.Log.Add($"{w.Pid} by {dx},{dy}");
-        public void Button(string button, bool up) => desk.Log.Add($"{w.Pid} {button} {(up ? "up" : "down")} @{desk.Ms}");
+        public void Button(string button, bool up)
+        {
+            Note(button, false, up);
+            desk.Log.Add($"{w.Pid} {button} {(up ? "up" : "down")} @{desk.Ms}");
+        }
         public void Wheel(int notches) => desk.Log.Add($"{w.Pid} wheel {notches}");
         public bool Clear(Point screen) => desk.ClearAt(screen);
         public Point CursorAt() => _at;
+
+        void Note(string name, bool key, bool up)
+        {
+            _down.Remove((name, key));
+            if (!up)
+                _down.Add((name, key));
+        }
+
+        /// <summary>Everything let go and the PC given back at once, with no wait (Bloxkeep closing).</summary>
+        public void Abort()
+        {
+            foreach (var (name, key) in _down.ToList())
+                desk.Log.Add(key ? $"{w.Pid} key {name} up @{desk.Ms}" : $"{w.Pid} {name} up @{desk.Ms}");
+            _down.Clear();
+            desk.Log.Add($"abort {w.Pid}");
+        }
+
         public ValueTask DisposeAsync()
         {
+            if (desk.ThrowOnEnd)
+                throw new InvalidOperationException("The window couldn't be given back.");
             desk.Log.Add($"end {w.Pid}");
             return ValueTask.CompletedTask;
         }
@@ -421,7 +461,8 @@ static class MacroSuite
         InputTurn.RunWhenFree("hotkey", () => ran = true);
         c.Check("a hotkey waits while anti-AFK has a window", !ran);
         held.Dispose();
-        for (int i = 0; i < 100 && !ran; i++)
+        // Ran on the pool: the turn is handed back just after the action, not with it.
+        for (int i = 0; i < 100 && !(ran && !InputTurn.Busy); i++)
             await Task.Delay(10);
         c.Check("and runs once it is free", ran && !InputTurn.Busy);
 
@@ -722,6 +763,234 @@ static class MacroSuite
             await Done(player);
             c.Check("a run ends at its longest time (maxTime)", player.Runs[0] is { Status: "stopped", Reason: "maxTime" } && desk.Ms >= 60_000 && desk.Ms < 70_000, desk.Ms);
         }
+    }
+
+    // ───────────────────────── how long a turn keeps the PC ─────────────────────────
+
+    /// <summary>The time on the desk's clock a log line has ("… @1234").</summary>
+    static int At(string line) => int.Parse(line.Split('@')[1]);
+
+    static string State(MacroRun run) => $"{run.Status}/{run.Reason}";
+
+    /// <summary>
+    /// A turn holds InputTurn, and anti-AFK for every other window waits behind it: no step may keep it past the run's
+    /// longest time, while the person uses the PC, or long after anti-AFK asked. Each case has a guard far past where it
+    /// should end, so a regression fails instead of running forever.
+    /// </summary>
+    static async Task Bounds(Checks c)
+    {
+        InputTurn.Reset();
+        {
+            // A colour that never goes (it also matches a permanent button): clicked again and again.
+            var (player, desk, accounts) = Setup();
+            desk.Picture = () => Patches(200, 150, new Rectangle(100, 75, 10, 10));
+            desk.OnDelay = () => { if (desk.Ms > 300_000) player.Stop(null, "guard"); };
+            player.Queue(M("""[{"kind":"clickColour","colour":"#00ff00","region":{"x":0,"y":0,"w":1,"h":1},"repeatUntilGoneMs":300}]""", ""","maxMinutes":1"""), accounts);
+            await Done(player);
+            c.Check("a repeating clickColour whose colour never goes ends at the run's longest time, the turn given back",
+                player.Runs[0] is { Status: "stopped", Reason: "maxTime" } && desk.Ms < 70_000 && !InputTurn.Busy, $"{State(player.Runs[0])} {desk.Ms} busy={InputTurn.Busy}");
+        }
+        {
+            // Within a long longest time: the step itself gives up after 10 minutes (its timeout if longer): the macro's onFail.
+            var (player, desk, accounts) = Setup();
+            desk.Picture = () => Patches(40, 30, new Rectangle(20, 15, 6, 6));
+            desk.OnDelay = () => { if (desk.Ms > 1_500_000) player.Stop(null, "guard"); };
+            player.Queue(M("""[{"kind":"clickColour","colour":"#00ff00","region":{"x":0,"y":0,"w":1,"h":1},"repeatUntilGoneMs":300}]""", ""","maxMinutes":60"""), accounts);
+            await Done(player);
+            c.Check("…and within a longer one, the step gives up after 10 minutes (the macro's onFail)",
+                player.Runs[0] is { Status: "failed", Reason: "timeout" } && desk.Ms is >= 600_000 and < 620_000 && !InputTurn.Busy, $"{State(player.Runs[0])} {desk.Ms}");
+        }
+        {
+            // Click each patch: a patch somewhere new every look, so "nothing new for a while" never comes.
+            var (player, desk, accounts) = Setup();
+            int look = 0;
+            desk.Picture = () => { int k = look++ / 4; return Patches(200, 150, new Rectangle(k * 37 % 180, k * 23 % 130, 8, 8)); };
+            desk.OnDelay = () => { if (desk.Ms > 300_000) player.Stop(null, "guard"); };
+            player.Queue(M("""[{"kind":"clickColour","colour":"#00ff00","region":{"x":0,"y":0,"w":1,"h":1},"eachAfterMs":50,"repeatUntilGoneMs":1000}]""", ""","maxMinutes":1"""), accounts);
+            await Done(player);
+            c.Check("click each patch with patches that keep coming ends at the run's longest time",
+                player.Runs[0] is { Status: "stopped", Reason: "maxTime" } && desk.Ms < 70_000 && !InputTurn.Busy, $"{State(player.Runs[0])} {desk.Ms}");
+        }
+        {
+            // follow on a bar that never goes, with a 10-minute timeout.
+            var (player, desk, accounts) = Setup();
+            desk.Area = area => Bars(area.Width, area.Height, (area.Width / 2, 3, Color.Lime), (2, 3, Color.White));
+            desk.OnDelay = () => { if (desk.Ms > 300_000) player.Stop(null, "guard"); };
+            player.Queue(M("""[{"kind":"follow","region":{"x":0,"y":0.5,"w":0.1,"h":0.1},"target":"#00ff00","marker":"#ffffff","timeoutMs":600000}]""", ""","maxMinutes":1"""), accounts);
+            await Done(player);
+            c.Check("follow ends at the run's longest time too, everything let go",
+                player.Runs[0] is { Status: "stopped", Reason: "maxTime" } && desk.Ms < 70_000 && !InputTurn.Busy
+                && desk.Log.Count(l => l.Contains("left down")) == desk.Log.Count(l => l.Contains("left up")), $"{State(player.Runs[0])} {desk.Ms}");
+        }
+        {
+            // Anti-AFK asks for the PC while a follow waits on its bar for minutes.
+            var (player, desk, accounts) = Setup();
+            desk.Area = area => Bars(area.Width, area.Height, (area.Width / 2, 3, Color.Lime), (2, 3, Color.White));
+            Task<IDisposable>? afk = null;
+            int grantedAt = -1;
+            desk.OnDelay = () =>
+            {
+                if (afk is null && desk.Ms >= 5000)
+                    afk = InputTurn.EnterAsync("afk");
+                if (grantedAt < 0 && afk is { IsCompletedSuccessfully: true })
+                {
+                    grantedAt = desk.Ms;
+                    afk.Result.Dispose(); // the nudge done
+                }
+                if (desk.Ms > 300_000)
+                    player.Stop(null, "guard");
+            };
+            player.Queue(M("""[{"kind":"follow","region":{"x":0,"y":0.5,"w":0.1,"h":0.1},"target":"#00ff00","marker":"#ffffff","timeoutMs":120000}]""", ""","maxMinutes":30"""), accounts);
+            await Done(player);
+            c.Check("anti-AFK asking during a long follow gets the PC within the turn's budget (30 s)", grantedAt is >= 5000 and < 40_000, grantedAt);
+            InputTurn.Reset();
+        }
+        {
+            // A key held for a minute (walking), and the person touches the PC a second in.
+            var (player, desk, accounts) = Setup();
+            desk.PersonAt = () => desk.Ms >= 1000 ? 1000 : null;
+            desk.HoldNow = () => desk.Ms is >= 1000 and < 6000 ? "personActive" : null;
+            var seen = new List<string>();
+            bool busyWhilePaused = false;
+            player.Changed = () => seen.Add(State(player.Runs[0]));
+            desk.OnDelay = () =>
+            {
+                busyWhilePaused |= desk.Ms is > 2500 and < 5500 && InputTurn.Busy;
+                if (desk.Ms > 4_000_000) player.Stop(null, "guard");
+            };
+            player.Queue(M("""[{"kind":"down","key":"W"},{"kind":"wait","ms":60000},{"kind":"up","key":"W"}]""", ""","maxMinutes":5"""), accounts);
+            await Done(player);
+            var downs = desk.Log.Where(l => l.Contains("key W down")).Select(At).ToList();
+            var ups = desk.Log.Where(l => l.Contains("key W up")).Select(At).ToList();
+            c.Check("a person touching the PC during a held wait: the key let go at once, the run paused, the PC free",
+                ups.Count > 0 && ups[0] < 2000 && seen.Contains("paused/personActive") && !busyWhilePaused, $"{string.Join(" ", seen.Distinct())} busy={busyWhilePaused} | {string.Join(" | ", desk.Log)}");
+            c.Check("…once they stop, the key is held again for the rest of the wait only",
+                downs.Count == 2 && downs[1] >= 6000 && ups.Count == 2 && ups[1] - downs[1] is >= 58_000 and < 62_000 && player.Runs[0].Status == "done",
+                $"{State(player.Runs[0])} | {string.Join(" | ", desk.Log)}");
+        }
+        {
+            // A held wait at its longest time: an hour's wait in a 1-minute run.
+            var (player, desk, accounts) = Setup();
+            desk.OnDelay = () => { if (desk.Ms > 4_000_000) player.Stop(null, "guard"); };
+            player.Queue(M("""[{"kind":"down","key":"W"},{"kind":"wait","ms":3600000},{"kind":"up","key":"W"}]""", ""","maxMinutes":1"""), accounts);
+            await Done(player);
+            var up = desk.Log.FirstOrDefault(l => l.Contains("key W up"));
+            c.Check("a held wait stops at the run's longest time, the key let go then", player.Runs[0] is { Status: "stopped", Reason: "maxTime" }
+                && up is not null && At(up) < 61_000 && !InputTurn.Busy, $"{State(player.Runs[0])} {up}");
+        }
+        {
+            // Paused between holding a key and the wait: the next turn holds it again before the wait counts.
+            var (player, desk, accounts) = Setup();
+            desk.PersonAt = () => desk.Ms >= 10 ? 10 : null;
+            desk.HoldNow = () => desk.Ms is >= 10 and < 5010 ? "personActive" : null;
+            desk.OnDelay = () => { if (desk.Ms > 4_000_000) player.Stop(null, "guard"); };
+            player.Queue(M("""[{"kind":"down","key":"W"},{"kind":"wait","ms":3000},{"kind":"up","key":"W"}]""", ""","maxMinutes":5"""), accounts);
+            await Done(player);
+            var downs = desk.Log.Where(l => l.Contains("key W down")).Select(At).ToList();
+            var ups = desk.Log.Where(l => l.Contains("key W up")).Select(At).ToList();
+            c.Check("paused right after a key is held: it is held again when the run goes on, for the whole wait",
+                downs.Count == 2 && downs[1] >= 5010 && ups.Count == 2 && ups[1] - downs[1] >= 3000 && player.Runs[0].Status == "done", string.Join(" | ", desk.Log));
+        }
+        {
+            // The key setting changed on the panel while its key is held.
+            var (player, desk, accounts) = Setup();
+            bool changed = false;
+            desk.OnDelay = () =>
+            {
+                if (!changed && desk.Log.Any(l => l.Contains("key W down")))
+                {
+                    changed = true;
+                    player.Runs[0].Macro.Options[0].Value = J("E");
+                }
+            };
+            player.Queue(M("""[{"kind":"down","key":"$o1"},{"kind":"wait","ms":100},{"kind":"up","key":"$o1"},{"kind":"wait","ms":5000},{"kind":"key","key":"Q"}]""",
+                ""","options":[{"name":"o1","label":"Key","kind":"key","value":"W"}]"""), accounts);
+            await Done(player);
+            int wUp = desk.Log.FindIndex(l => l.Contains("key W up")), q = desk.Log.FindIndex(l => l.Contains("key Q down"));
+            c.Check("a key setting changed while its key is held: Release lets go of the key its Hold pressed", wUp >= 0 && wUp < q
+                && !desk.Log.Any(l => l.Contains("key E")) && player.Runs[0].Status == "done", string.Join(" | ", desk.Log));
+            c.Check("Hold one setting's key and Release another's is refused", CheckOf("""[{"kind":"down","key":"$o1"},{"kind":"up","key":"$o2"}]""",
+                ""","options":[{"name":"o1","label":"A","kind":"key","value":"W"},{"name":"o2","label":"B","kind":"key","value":"W"}]""") is not null);
+            c.Check("…the same setting's key held and let go passes", CheckOf("""[{"kind":"down","key":"$o1"},{"kind":"up","key":"$o1"}]""",
+                ""","options":[{"name":"o1","label":"A","kind":"key","value":"W"}]""") is null);
+        }
+        {
+            // A Press step whose key setting holds a mouse button.
+            var (player, desk, accounts) = Setup();
+            player.Queue(M("""[{"kind":"key","key":"$o1"}]""", ""","options":[{"name":"o1","label":"Key","kind":"key","value":"MouseLeft"}]"""), accounts);
+            await Done(player);
+            c.Check("a Press step given a mouse button stops with a reason (missingValue)", player.Runs[0] is { Status: "failed", Reason: "missingValue" }, State(player.Runs[0]));
+        }
+        {
+            // Giving the window back fails: the PC's turn is handed on all the same.
+            var (player, desk, accounts) = Setup();
+            desk.ThrowOnEnd = true;
+            player.Queue(M("""[{"kind":"key","key":"E"}]"""), accounts);
+            await Done(player);
+            c.Check("a turn whose end fails still hands the PC on", !InputTurn.Busy && player.Runs[0].Finished, $"{State(player.Runs[0])} holder={InputTurn.Holder}");
+            InputTurn.Reset();
+        }
+        {
+            // The account's window replaced (a rejoin, a crash) between two turns.
+            var (player, desk, accounts) = Setup();
+            desk.OnDelay = () =>
+            {
+                if (desk.Ms > 1000 && desk.Windows[accounts[0]].Pid == 1)
+                    desk.Windows[accounts[0]] = desk.Windows[accounts[0]] with { Pid = 7 };
+            };
+            player.Queue(M("""[{"kind":"key","key":"A"},{"kind":"wait","ms":3000},{"kind":"key","key":"B"}]"""), accounts);
+            await Done(player);
+            c.Check("a run whose window was replaced starts over from the top in the new one", desk.Log.Any(l => l.StartsWith("7 key A down"))
+                && player.Runs[0].Status == "done", string.Join(" | ", desk.Log));
+        }
+        {
+            // Run (the saved macro) while the editor's Try it plays it on the same account.
+            var (player, desk, accounts) = Setup();
+            var m = M("""[{"kind":"wait","ms":5000}]""");
+            var hold = InputTurn.TryEnter("afk")!;
+            player.Queue(m, accounts, trial: true);
+            var tried = player.Runs[0];
+            int queued = player.Queue(m, accounts);
+            hold.Dispose();
+            await Done(player);
+            var real = player.Runs.FirstOrDefault(r => !r.Trial);
+            c.Check("Run while Try it plays the macro there: the saved macro runs, Try it stops", queued == 1 && real?.Status == "done"
+                && tried.Status == "stopped" && player.Runs.Count(r => r.Macro.Id == m.Id) == 1, $"{queued} {real?.Status} {tried.Status}");
+            InputTurn.Reset();
+        }
+        {
+            // Bloxkeep closing while a key is held and another pressed: nothing will run again on this thread.
+            var (player, desk, accounts) = Setup();
+            desk.SuspendWhen = () => desk.Log.Any(l => l.Contains("key E down"));
+            player.Queue(M("""[{"kind":"down","key":"W"},{"kind":"wait","ms":500},{"kind":"key","key":"E","ms":5000},{"kind":"up","key":"W"}]"""), accounts);
+            player.ReleaseAll("closing");
+            c.Check("closing mid-turn: every key held or pressed is let go at once, the PC given back", desk.Log.Any(l => l.Contains("key W up"))
+                && desk.Log.Any(l => l.Contains("key E up")) && desk.Log.Any(l => l.StartsWith("abort")) && player.Runs[0] is { Status: "stopped", Reason: "closing" },
+                $"{State(player.Runs[0])} | {string.Join(" | ", desk.Log)}");
+            InputTurn.Reset();
+        }
+        {
+            // The real turn's own list of what is down: let go, forgotten; still down, owed at the close, newest first.
+            var held = new HeldInputs<string>();
+            held.Note("key W", up: false, "W up");
+            held.Note("button left", up: false, "left up");
+            held.Note("key E", up: false, "E up");
+            held.Note("key E", up: true, "E up");
+            held.Note("key W", up: false, "W up");
+            var ups = held.Ups();
+            c.Check("closing: the real turn lets go of what is still down, once each", string.Join(",", ups) == "W up,left up" && held.Ups().Length == 0,
+                string.Join(",", ups));
+        }
+        {
+            // Without working raw input, a turn still notices the person (input Windows got well after our own).
+            var t0 = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            c.Check("raw input not working: a person's input is seen from Windows' last input",
+                MacroDesk.PersonSince(t0, () => null, () => false, lastInputTick: 10_000, lastSent: 5_000)
+                && !MacroDesk.PersonSince(t0, () => null, () => false, lastInputTick: 5_050, lastSent: 5_000));
+            c.Check("raw input working: only a device's input counts", !MacroDesk.PersonSince(t0, () => null, () => true, 10_000, 5_000)
+                && MacroDesk.PersonSince(t0, () => t0.AddSeconds(1), () => true, 5_000, 5_000) && !MacroDesk.PersonSince(t0, () => t0.AddSeconds(-1), () => true, 5_000, 5_000));
+        }
+        InputTurn.Reset();
     }
 
     // ───────────────────────── the panel: settings, areas, on the game ─────────────────────────

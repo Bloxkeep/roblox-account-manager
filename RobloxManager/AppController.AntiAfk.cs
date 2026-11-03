@@ -140,7 +140,18 @@ public sealed partial class AppController
         {
             // In turn with macros and /pc screenshot (InputTurn.cs). A window a macro played into meanwhile has had its input.
             var asked = DateTime.UtcNow;
+            // A macro's turn holds them back: an idle kick meanwhile is told as the macro's doing.
+            if (InputTurn.Holder == "macro")
+            {
+                foreach (var (pid, _) in clients)
+                    _afkHeld[pid] = AfkHeld.MacroBusy;
+            }
             turn = await InputTurn.EnterAsync("afk");
+            foreach (var (pid, _) in clients.Where(c => _lastInput.GetValueOrDefault(c.Pid, DateTime.MinValue) >= asked))
+            {
+                if (_afkHeld.GetValueOrDefault(pid) == AfkHeld.MacroBusy)
+                    _afkHeld.Remove(pid);
+            }
             clients = clients.Where(c => _lastInput.GetValueOrDefault(c.Pid, DateTime.MinValue) < asked).ToList();
             if (clients.Count == 0)
                 return;
@@ -194,6 +205,7 @@ public sealed partial class AppController
                 AfkHeld.FullScreen => L.F("{0} was kicked for being AFK: a full-screen app was in front, and anti-AFK doesn't interrupt one.", Name(account)),
                 AfkHeld.Locked => L.F("{0} was kicked for being AFK: the PC was locked, and anti-AFK can't reach Roblox then.", Name(account)),
                 AfkHeld.Refused => L.F("{0} was kicked for being AFK: Windows didn't let Bloxkeep bring its window to the front.", Name(account)),
+                AfkHeld.MacroBusy => L.F("{0} was kicked for being AFK: a macro kept the PC, so anti-AFK had to wait.", Name(account)),
                 _ => L.F("{0} was kicked for being AFK.", Name(account)),
             }, "warn", "afk", account.Id);
         }

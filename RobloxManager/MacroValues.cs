@@ -334,9 +334,9 @@ static class MacroValues
     static string? Colour(JsonElement v) =>
         v.ValueKind == JsonValueKind.String && v.GetString() is { } c && ColourText.IsMatch(c) ? c : null;
 
-    /// <summary>A key a step presses (a mouse button too, for Hold and Release), as the keys list spells it.</summary>
-    static string? Key(JsonElement v) => v.ValueKind == JsonValueKind.String && v.GetString() is { } k
-        ? MacroKeys.All.Keys.Concat(MacroRules.MouseKeys.Keys).FirstOrDefault(name => name.Equals(k, StringComparison.OrdinalIgnoreCase)) : null;
+    /// <summary>A key a step presses (a mouse button too, for Hold and Release only), as the keys list spells it.</summary>
+    static string? Key(JsonElement v, bool mouse) => v.ValueKind == JsonValueKind.String && v.GetString() is { } k
+        ? MacroKeys.All.Keys.Concat(mouse ? MacroRules.MouseKeys.Keys : []).FirstOrDefault(name => name.Equals(k, StringComparison.OrdinalIgnoreCase)) : null;
 
     /// <summary>A list's words (a list setting's ticked ones; none ticked: an empty list, so nothing is ever read).</summary>
     static List<string>? Words(JsonElement v) => v.ValueKind == JsonValueKind.Array
@@ -371,7 +371,8 @@ static class MacroValues
             case "colour": return (s.Colour = Colour(v)) is not null;
             case "target": return (s.Target = Colour(v)) is not null;
             case "region": return (s.Region = Region(v, clamp)) is not null;
-            case "key": return (s.Key = Key(v)) is not null;
+            // A Press step or follow's key can't be a mouse button (a setting of the key kind may hold one): missingValue.
+            case "key": return (s.Key = Key(v, mouse: s.Kind is "down" or "up")) is not null;
             default: return false;
         }
     }

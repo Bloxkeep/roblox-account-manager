@@ -36,7 +36,11 @@ public sealed partial class AppController
         _coreCheck.Tick += (_, _) =>
         {
             _coreCheck.Stop();
-            Step(() => SplitCores(_corePids));
+            // Still in a turn (a long macro, a nudge): later, or the cores flip while the window is only lent.
+            if (WindowsInTurn)
+                _coreCheck.Start();
+            else
+                Step(() => SplitCores(_corePids));
         };
         _foregroundProc = (_, _, _, _, _, _, _) =>
         {

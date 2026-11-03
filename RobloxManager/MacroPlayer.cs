@@ -59,6 +59,9 @@ interface IMacroTurn : IAsyncDisposable
     bool Clear(Point screen);
     /// <summary>Where the pointer is now, on the screen.</summary>
     Point CursorAt();
+    /// <summary>Bloxkeep closing: every key and button this turn pressed and still holds let go, the pointer and the
+    /// windows put back, now, with no wait (nothing after the closing would run). Nothing is sent after it.</summary>
+    void Abort();
 }
 
 /// <summary>Another app's window is over the place a step would click.</summary>
@@ -94,6 +97,13 @@ sealed class MacroRun
     public int Again { get; set; } = -1;
     /// <summary>Keys and buttons this run holds down (pressed again when its window's next turn begins).</summary>
     public HashSet<string> Held { get; } = new();
+    /// <summary>The key each Hold step pressed, by the key as the step names it ("W", or "$o1" for a setting): its Release
+    /// lets go of that one, even when the setting was changed on the panel meanwhile.</summary>
+    public Dictionary<string, string> HeldAs { get; } = new();
+    /// <summary>What is left of a wait cut short (the person, the window leaving the front, anti-AFK's turn), in ms.</summary>
+    public int? WaitLeft { get; set; }
+    /// <summary>The process of the window its last turn played into; 0 before its first.</summary>
+    public int Pid { get; set; }
     public int FocusMisses { get; set; }
     /// <summary>Its "recover" step (-1: none): the macro's own steps end there, the If stuck part follows.</summary>
     public int RecoverAt { get; init; } = -1;
@@ -131,6 +141,15 @@ sealed class MacroPlayer(IMacroDesk desk)
     static readonly TimeSpan FullScreenWait = TimeSpan.FromMinutes(5);
     /// <summary>Steps one turn runs at most (a loop of variables only would never end it otherwise).</summary>
     const int TurnSteps = 2000;
+    /// <summary>A turn this old hands the PC on as soon as anti-AFK asks for it, held keys or not: every other window's
+    /// nudge waits behind it, and Roblox kicks a window idle for 20 minutes.</summary>
+    internal static readonly TimeSpan AfkBudget = TimeSpan.FromSeconds(30);
+    /// <summary>A real-time step (clickColour again and again, or each patch) gives up after this (or its timeout if
+    /// longer): a colour that never goes (it also matches something always there) would keep the window for good.</summary>
+    internal static readonly TimeSpan RealTimeCap = TimeSpan.FromMinutes(10);
+    /// <summary>A wait in front is waited in pieces this long, so the person, the window leaving the front, the run's
+    /// longest time and anti-AFK's turn each end it at once.</summary>
+    const int WaitSlice = 250;
     const int MaxKept = 200;
     /// <summary>Restarts in a row, nothing seen in between, before a stuck run gives up.</summary>
     internal const int MaxRestarts = 5;
@@ -138,6 +157,8 @@ sealed class MacroPlayer(IMacroDesk desk)
     readonly List<MacroRun> _runs = new();
     int _next;
     Task? _loop;
+    /// <summary>The turn going on now (one at a time: InputTurn), for <see cref="ReleaseAll"/>.</summary>
+    Turn? _turn;
     DateTime? _fullScreenSince;
 
     /// <summary>Each account's variables (setVar, addVar), in memory only.</summary>
@@ -158,15 +179,25 @@ sealed class MacroPlayer(IMacroDesk desk)
     /// <summary>For the checks: random timing and offsets.</summary>
     public Random Random { get; set; } = Random.Shared;
 
-    /// <summary>Queues the macro on these accounts; one already running there is left alone. Returns how many were queued.</summary>
+    /// <summary>Queues the macro on these accounts; one already running there is left alone, except the editor's Try it
+    /// of it, which the saved macro takes over from (Run, its hotkey or trigger did nothing, with no word, before). Returns
+    /// how many were queued.</summary>
     public int Queue(Macro macro, IEnumerable<Guid> accounts, bool trial = false)
     {
         var jumps = MacroRules.Jumps(macro.Steps);
         int queued = 0;
         var now = desk.Now;
+        var takenOver = new List<MacroRun>();
         foreach (var account in accounts.Distinct())
         {
-            if (_runs.Any(r => !r.Finished && r.Macro.Id == macro.Id && r.AccountId == account))
+            var going = _runs.FirstOrDefault(r => !r.Finished && r.Macro.Id == macro.Id && r.AccountId == account);
+            if (going is { Trial: true } && !trial)
+            {
+                // One run of a macro per account in the list (the page shows that one): Try it's goes.
+                _runs.Remove(going);
+                takenOver.Add(going);
+            }
+            else if (going is not null)
                 continue;
             _runs.RemoveAll(r => r.Finished && r.Macro.Id == macro.Id && r.AccountId == account);
             _runs.Add(new MacroRun
@@ -177,6 +208,9 @@ sealed class MacroPlayer(IMacroDesk desk)
             });
             queued++;
         }
+        // Stopped once the list is as it will be: what the try holds is let go as its turn ends.
+        foreach (var run in takenOver)
+            Finish(run, "stopped", "byUser");
         while (_runs.Count > MaxKept && _runs.FindIndex(r => r.Finished) is >= 0 and var old)
             _runs.RemoveAt(old);
         if (queued > 0)
@@ -205,6 +239,19 @@ sealed class MacroPlayer(IMacroDesk desk)
         if (stopped > 0)
             Changed?.Invoke();
         return stopped;
+    }
+
+    /// <summary>
+    /// Bloxkeep closing: what the turn going on holds (keys and buttons held, a press or click halfway) let go and the PC
+    /// given back before this returns, then every run stopped. The usual endings run in the turn's awaits, which never
+    /// come back once the app closes: keys stayed down until the person pressed them.
+    /// </summary>
+    public void ReleaseAll(string why)
+    {
+        var turn = _turn;
+        // Stopped first: the turn, if it goes on a moment, never brings a window forward again.
+        Stop(null, why);
+        turn?.Abort();
     }
 
     /// <summary>The vault went: runs stopped, variables forgotten, finished runs too.</summary>
@@ -347,6 +394,9 @@ sealed class MacroPlayer(IMacroDesk desk)
             run.ResumeAt = desk.Now.AddSeconds(2);
             return;
         }
+        if (run.Pid != 0 && run.Pid != window.Pid)
+            StartOver(run);
+        run.Pid = window.Pid;
         var ct = run.Cancel.Token;
         IDisposable? lease = InputTurn.TryEnter("macro");
         if (lease is null)
@@ -355,9 +405,14 @@ sealed class MacroPlayer(IMacroDesk desk)
             lease = await InputTurn.EnterAsync("macro", ct);
         }
         var turn = new Turn(this, run, window);
+        _turn = turn;
         try
         {
             Set(run, "running", run.Recovering ? "recovering" : Ime(run) ? "imeOn" : null);
+            // Keys it held when its last turn ended (let go then) are held again before anything counts: a wait with W
+            // held is a walk, not standing still.
+            if (run.Held.Count > 0 && await turn.FrontAsync(ct) is null)
+                return;
             var started = desk.Now;
             for (int steps = 0; ; steps++)
             {
@@ -380,20 +435,8 @@ sealed class MacroPlayer(IMacroDesk desk)
                     Finish(run, "done");
                     return;
                 }
-                if (turn.Input is { } input)
-                {
-                    if (input.PersonInput())
-                    {
-                        Set(run, "paused", "personActive");
-                        return;
-                    }
-                    if (!input.StillFront())
-                    {
-                        Set(run, "paused", "focusRefused");
-                        run.ResumeAt = desk.Now.AddSeconds(2);
-                        return;
-                    }
-                }
+                if (Interrupted(turn) is not null)
+                    return;
                 MacroStep step;
                 try
                 {
@@ -435,9 +478,71 @@ sealed class MacroPlayer(IMacroDesk desk)
         }
         finally
         {
-            await turn.EndAsync();
-            lease.Dispose();
+            try
+            {
+                await turn.EndAsync();
+            }
+            finally
+            {
+                // Handed on even when giving the window back failed: every nudge, picture and hotkey waits for it.
+                lease.Dispose();
+                if (_turn == turn)
+                    _turn = null;
+            }
         }
+    }
+
+    /// <summary>
+    /// Why the turn can't go on now: the run's longest time is up (<see cref="Then.Over"/>), the person touched the PC, the
+    /// window left the front, or anti-AFK has waited for the PC while this turn ran past <see cref="AfkBudget"/>
+    /// (<see cref="Then.EndTurn"/>: what it holds is let go as the turn ends, and held again next turn); null: it goes on.
+    /// Asked before every step and inside every step that keeps the window a while.
+    /// </summary>
+    Then? Interrupted(Turn turn)
+    {
+        var run = turn.Run;
+        if (run.EndsAt <= desk.Now)
+        {
+            Finish(run, "stopped", "maxTime");
+            return Then.Over;
+        }
+        if (turn.Input is { } input)
+        {
+            if (input.PersonInput())
+            {
+                Set(run, "paused", "personActive");
+                return Then.EndTurn;
+            }
+            if (!input.StillFront())
+            {
+                Set(run, "paused", "focusRefused");
+                run.ResumeAt = desk.Now.AddSeconds(2);
+                return Then.EndTurn;
+            }
+        }
+        if (desk.Now - turn.Started >= AfkBudget && InputTurn.Waits("afk"))
+            return EndNow(run); // the nudge goes, then this run carries on where it was
+        return null;
+    }
+
+    /// <summary>
+    /// Its window was replaced since its last turn (a rejoin, a crash: another process): a new server is a new start, so
+    /// it plays from the top, holding nothing (what it held went with the old window, let go as that turn ended).
+    /// </summary>
+    static void StartOver(MacroRun run)
+    {
+        run.Held.Clear();
+        run.HeldAs.Clear();
+        run.Pc = 0;
+        run.Passes.Clear();
+        run.Again = -1;
+        run.WaitLeft = null;
+        run.Deadline = null;
+        run.LastFrame = null;
+        run.StillSince = null;
+        run.MissSince = null;
+        run.Recovering = false;
+        run.Restarts = 0;
     }
 
     bool Ime(MacroRun run) =>
@@ -458,6 +563,7 @@ sealed class MacroPlayer(IMacroDesk desk)
         {
             if (Input is not null)
                 return Input;
+            ct.ThrowIfCancellationRequested(); // stopped (Bloxkeep closing): no window comes forward
             var input = await player.Desk.BeginTurnAsync(window, ct);
             if (input is null)
             {
@@ -501,6 +607,23 @@ sealed class MacroPlayer(IMacroDesk desk)
                 }
             }
             run.Held.Clear();
+            run.HeldAs.Clear();
+        }
+
+        /// <summary>Everything let go and the PC given back now, with no wait (<see cref="ReleaseAll"/>).</summary>
+        public void Abort()
+        {
+            if (Input is not { } input)
+                return;
+            try
+            {
+                LetGo();
+            }
+            finally
+            {
+                Input = null;
+                input.Abort(); // a press halfway, the pointer, the windows
+            }
         }
 
         public async Task EndAsync()
@@ -521,7 +644,10 @@ sealed class MacroPlayer(IMacroDesk desk)
                         input.Button(MacroRules.MouseKeys.GetValueOrDefault(held, held), up: true);
                 }
                 if (run.Finished)
+                {
                     run.Held.Clear();
+                    run.HeldAs.Clear();
+                }
             }
             finally
             {
@@ -571,16 +697,22 @@ sealed class MacroPlayer(IMacroDesk desk)
                 if (await turn.FrontAsync(ct) is not { } input)
                     return Then.EndTurn;
                 bool up = s.Kind == "up";
-                if (MacroRules.MouseKeys.TryGetValue(s.Key!, out string? mouse))
+                // Release lets go of what its Hold pressed: a setting changed on the panel meanwhile names another key.
+                string named = MacroRules.KeyNamed(run.Macro.Steps[run.Pc]), key = s.Key!;
+                if (up && run.HeldAs.Remove(named, out var pressed))
+                    key = pressed;
+                if (MacroRules.MouseKeys.TryGetValue(key, out string? mouse))
                 {
                     // A mouse button held where the pointer is: it must be the game's window there.
                     if (!up && !input.Clear(input.CursorAt()))
                         throw new MacroCovered();
-                    if (up ? run.Held.Remove(s.Key!) : run.Held.Add(s.Key!))
+                    if (up ? run.Held.Remove(key) : run.Held.Add(key))
                         input.Button(mouse, up);
                 }
-                else if (up ? run.Held.Remove(s.Key!) : run.Held.Add(s.Key!))
-                    input.Key(MacroKeys.All[s.Key!], up);
+                else if (up ? run.Held.Remove(key) : run.Held.Add(key))
+                    input.Key(MacroKeys.All[key], up);
+                if (!up)
+                    run.HeldAs[named] = key;
                 await desk.Delay(frame, ct);
                 break;
             }
@@ -641,16 +773,31 @@ sealed class MacroPlayer(IMacroDesk desk)
             }
             case "wait":
             {
-                int ms = Jitter(s.Ms ?? 0, m.JitterMs);
-                run.Pc++;
+                // What is left of one cut short, else the whole of it.
+                int ms = run.WaitLeft ?? Jitter(s.Ms ?? 0, m.JitterMs);
+                run.WaitLeft = null;
                 // A long wait gives the window back, unless keys are held (walking for ten seconds stays in front).
                 if (ms > LongWait.TotalMilliseconds && run.Held.Count == 0)
                 {
+                    run.Pc++;
                     run.ResumeAt = desk.Now.AddMilliseconds(ms);
                     Set(run, "waiting", null);
                     return Then.EndTurn;
                 }
-                await desk.Delay(ms, ct);
+                // In front: in pieces, each asking whether the turn may go on. Cut short, the rest is waited next turn,
+                // with the keys held again first.
+                var until = desk.Now.AddMilliseconds(ms);
+                while (desk.Now < until)
+                {
+                    if (Interrupted(turn) is { } then)
+                    {
+                        if (then != Then.Over)
+                            run.WaitLeft = (int)Math.Ceiling((until - desk.Now).TotalMilliseconds);
+                        return then;
+                    }
+                    await desk.Delay((int)Math.Min(WaitSlice, Math.Ceiling((until - desk.Now).TotalMilliseconds)), ct);
+                }
+                run.Pc++;
                 return Then.Next;
             }
             case "waitImage":
@@ -884,6 +1031,7 @@ sealed class MacroPlayer(IMacroDesk desk)
         turn.LetGo();
         run.Passes.Clear();
         run.Again = -1;
+        run.WaitLeft = null;
         run.Deadline = null;
         run.LastFrame = null;
         run.StillSince = null;
@@ -1025,11 +1173,19 @@ sealed class MacroPlayer(IMacroDesk desk)
         bool repeat = s.RepeatUntilGoneMs is > 0;
         bool clicked = false;
         DateTime lastSeen = desk.Now;
+        var gaveUpAt = GiveUpAt(s);
         if (repeat)
             OthersWait(run);
         while (true)
         {
             ct.ThrowIfCancellationRequested();
+            if (Interrupted(turn) is { } stop)
+                return stop;
+            if (desk.Now >= gaveUpAt)
+            {
+                run.Deadline = null;
+                return await FailedAsync(turn, "timeout");
+            }
             Rectangle? hit = null;
             int w = 0, h = 0;
             if (await turn.PictureAsync() is { } picture)
@@ -1064,8 +1220,6 @@ sealed class MacroPlayer(IMacroDesk desk)
                     return await FailedAsync(turn, Stuck(run) ? "stuck" : "notFound");
                 }
             }
-            if (turn.Input is { } i && (i.PersonInput() || !i.StillFront()))
-                return Then.EndTurn; // the turn loop says why
             await desk.Delay(every, ct);
         }
         run.Deadline = null;
@@ -1073,6 +1227,10 @@ sealed class MacroPlayer(IMacroDesk desk)
         run.Pc++;
         return Then.Next;
     }
+
+    /// <summary>When a real-time step that clicks as things come gives up: <see cref="RealTimeCap"/> after it began, or its
+    /// timeout when that is longer.</summary>
+    DateTime GiveUpAt(MacroStep s) => desk.Now + TimeSpan.FromMilliseconds(Math.Max(s.TimeoutMs ?? 10_000, RealTimeCap.TotalMilliseconds));
 
     /// <summary>A patch being watched: where its middle is (picture pixels), since when, and whether it was clicked.</summary>
     sealed record Spot(PointF Centre, float Size, DateTime Since, bool Clicked);
@@ -1090,10 +1248,18 @@ sealed class MacroPlayer(IMacroDesk desk)
         var spots = new List<Spot>();
         bool clicked = false;
         DateTime lastNew = desk.Now;
+        var gaveUpAt = GiveUpAt(s);
         OthersWait(run);
         while (true)
         {
             ct.ThrowIfCancellationRequested();
+            if (Interrupted(turn) is { } stop)
+                return stop;
+            if (desk.Now >= gaveUpAt)
+            {
+                run.Deadline = null;
+                return await FailedAsync(turn, "timeout");
+            }
             if (await turn.PictureAsync() is { } picture)
             {
                 int w = picture.Width, h = picture.Height;
@@ -1134,8 +1300,6 @@ sealed class MacroPlayer(IMacroDesk desk)
                 run.Deadline = null;
                 return await FailedAsync(turn, Stuck(run) ? "stuck" : "notFound");
             }
-            if (turn.Input is { } i && (i.PersonInput() || !i.StillFront()))
-                return Then.EndTurn; // the turn loop says why
             await desk.Delay(every, ct);
         }
         run.Deadline = null;
@@ -1188,8 +1352,9 @@ sealed class MacroPlayer(IMacroDesk desk)
             {
                 ct.ThrowIfCancellationRequested();
                 int pulsed = 0;
-                if (input.PersonInput() || !input.StillFront())
-                    return Then.EndTurn; // the turn loop says why; the step starts over next turn
+                // The person, the window leaving the front, anti-AFK's turn: the step starts over next turn. Its longest time: over.
+                if (Interrupted(turn) is { } stop)
+                    return stop;
                 var client = input.Client;
                 var area = MacroVision.Area(s.Region, client.Width, client.Height);
                 using var shot = await desk.AreaAsync(turn.Window, input, area);

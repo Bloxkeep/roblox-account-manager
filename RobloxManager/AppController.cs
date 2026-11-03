@@ -139,7 +139,7 @@ public sealed partial class AppController : IDisposable
     /// <summary>Nudges in a row each window missed: the wait before the next one doubles.</summary>
     readonly Dictionary<int, int> _nudgeMisses = new();
 
-    enum AfkHeld { InUse, FullScreen, Locked, Refused }
+    enum AfkHeld { InUse, FullScreen, Locked, Refused, MacroBusy }
 
     /// <summary>Anti-AFK has seen the windows that were already open when Bloxkeep started (or was unlocked).</summary>
     bool _afkAdopted;

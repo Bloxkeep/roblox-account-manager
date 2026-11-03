@@ -11,7 +11,8 @@ static class InputTurn
 {
     static readonly object Gate = new();
     static readonly Queue<(string Who, TaskCompletionSource<IDisposable> Ready)> Waiting = new();
-    static string? _holder;
+    /// <summary>The lease of the one holding the turn: only that lease hands it on (one from before <see cref="Reset"/> can't).</summary>
+    static Lease? _holder;
 
     /// <summary>A window is someone's right now (or someone waits for one).</summary>
     public static bool Busy
@@ -29,8 +30,15 @@ static class InputTurn
         get
         {
             lock (Gate)
-                return _holder;
+                return _holder?.Who;
         }
+    }
+
+    /// <summary>Someone of this name waits for the turn (anti-AFK's "afk": a long turn hands the PC on).</summary>
+    public static bool Waits(string who)
+    {
+        lock (Gate)
+            return Waiting.Any(w => w.Who == who && !w.Ready.Task.IsCompleted);
     }
 
     /// <summary>The turn at once, or null when someone has it.</summary>
@@ -40,8 +48,7 @@ static class InputTurn
         {
             if (_holder is not null)
                 return null;
-            _holder = who;
-            return new Lease(who);
+            return _holder = new Lease(who);
         }
     }
 
@@ -52,16 +59,17 @@ static class InputTurn
         lock (Gate)
         {
             if (_holder is null)
-            {
-                _holder = who;
-                return Task.FromResult<IDisposable>(new Lease(who));
-            }
+                return Task.FromResult<IDisposable>(_holder = new Lease(who));
             // Continued on the asker's own context, never inside the Dispose that hands the turn on.
             ready = new TaskCompletionSource<IDisposable>(TaskCreationOptions.RunContinuationsAsynchronously);
             Waiting.Enqueue((who, ready));
         }
         if (ct.CanBeCanceled)
-            ct.Register(() => ready.TrySetCanceled(ct));
+        {
+            // Let go of once answered: a long run's token would otherwise gather one for every turn it waited for.
+            var registration = ct.Register(() => ready.TrySetCanceled(ct));
+            ready.Task.ContinueWith(_ => registration.Dispose(), CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+        }
         return ready.Task;
     }
 
@@ -79,11 +87,11 @@ static class InputTurn
         }
     }
 
-    static void Leave(string who)
+    static void Leave(Lease lease)
     {
         lock (Gate)
         {
-            if (_holder != who)
+            if (_holder != lease)
                 return;
             _holder = null;
             while (Waiting.TryDequeue(out var next))
@@ -91,8 +99,8 @@ static class InputTurn
                 // One that gave up (cancelled) is passed over.
                 if (next.Ready.Task.IsCompleted)
                     continue;
-                _holder = next.Who;
-                if (next.Ready.TrySetResult(new Lease(next.Who)))
+                _holder = new Lease(next.Who);
+                if (next.Ready.TrySetResult(_holder))
                     return;
                 _holder = null;
             }
@@ -112,11 +120,12 @@ static class InputTurn
     sealed class Lease(string who) : IDisposable
     {
         int _done;
+        public string Who => who;
 
         public void Dispose()
         {
             if (Interlocked.Exchange(ref _done, 1) == 0)
-                Leave(who);
+                Leave(this);
         }
     }
 }
