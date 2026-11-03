@@ -1401,7 +1401,7 @@ kbd { font: 500 var(--fs-1) var(--font); padding: 1px 6px; border-radius: var(--
   position: relative; width: min(420px, 92vw); padding: 38px 36px 28px; text-align: center;
   background: var(--surface);
   border: 1px solid var(--line-2); border-radius: 26px; box-shadow: 0 30px 80px var(--shadow);
-  animation: rise .45s cubic-bezier(.2, .9, .3, 1.2);
+  animation: rise .45s cubic-bezier(.2, .9, .3, 1);
   /* A very short window (a small laptop at 200 %): the card scrolls rather than losing its last link. */
   max-height: calc(100vh - 16px); overflow-y: auto; scrollbar-width: thin;
 }
@@ -1414,7 +1414,7 @@ kbd { font: 500 var(--fs-1) var(--font); padding: 1px 6px; border-radius: var(--
 .lock-card .lock-paused { font-size: var(--fs-3); line-height: 1.45; }
 .lock-card .field { width: 100%; height: 46px; font-size: var(--fs-5); }
 .lock-card .stack { display: grid; gap: 10px; text-align: left; }
-.lock-error { min-height: 20px; margin: 10px 0 8px; color: var(--bad-ink); font-size: var(--fs-3); overflow-wrap: anywhere; }
+.lock-error { min-height: 18px; margin: 6px 0 4px; color: var(--bad-ink); font-size: var(--fs-3); overflow-wrap: anywhere; }
 /* An update found before the unlock takes the card's place (Lock.tsx): the boot screen's bar, the step under it. */
 .lock-update .logo-img { animation: breathe 1.6s ease-in-out infinite; }
 .lock-update .boot-bar { width: 100%; margin: 0; }
@@ -1428,7 +1428,7 @@ kbd { font: 500 var(--fs-1) var(--font); padding: 1px 6px; border-radius: var(--
 .vault-face img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .vault-face.sm { width: 40px; height: 40px; border-radius: var(--r-md); font-size: var(--fs-6); flex: none; }
 .vault-face.xs { width: 22px; height: 22px; border-radius: 6px; font-size: var(--fs-2); flex: none; }
-.lock-vault { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 2px 0 12px; min-width: 0; }
+.lock-vault { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 12px 0 4px; min-width: 0; }
 .lock-vault b { font-size: 16px; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lock-vault .link { font-size: var(--fs-3); color: var(--text-2); }
 .vp { position: relative; display: flex; flex-direction: column; align-items: center; gap: 24px; padding: 24px; max-width: 920px; }
@@ -1442,8 +1442,10 @@ kbd { font: 500 var(--fs-1) var(--font); padding: 1px 6px; border-radius: var(--
 .vp-add { display: grid; place-items: center; background: transparent; border-style: dashed; color: var(--text-2); }
 .vp-add .i { width: 44px; height: 44px; }
 .vp-name { max-width: 132px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-2); font-weight: 600; }
-.vp-remove { position: absolute; top: -9px; right: -9px; width: 28px; height: 28px; border: 1px solid var(--line-3); border-radius: 50%; background: var(--raised); opacity: 0; transition: opacity .15s; }
-.vp-item:hover .vp-remove, .vp-remove:focus-visible { opacity: 1; }
+.vp-remove { position: absolute; top: -9px; right: -9px; width: 28px; height: 28px; border: 1px solid var(--line-3); border-radius: 50%; background: var(--raised); opacity: .5; transition: opacity .15s; }
+.vp-item:hover .vp-remove, .vp-item:focus-within .vp-remove, .vp-remove:focus-visible { opacity: 1; }
+/* The vault used last. */
+.vp-tile.last { border-color: var(--text-2); }
 .vp-ask { display: flex; align-items: center; gap: 12px; color: var(--text-2); font-size: var(--fs-4); cursor: pointer; }
 .vp-back { position: absolute; top: 18px; left: 18px; z-index: 1; }
 /* Over the open vault (Switch vault, a new vault's form): the lock screen's look, above the page, under its dialogs. */
@@ -1460,9 +1462,9 @@ kbd { font: 500 var(--fs-1) var(--font); padding: 1px 6px; border-radius: var(--
 @keyframes shake { 20%, 60% { transform: translateX(-8px); } 40%, 80% { transform: translateX(8px); } }
 .strength { height: 4px; border-radius: var(--r-xs); background: var(--line-2); overflow: hidden; }
 .strength i { display: block; height: 100%; width: 0; border-radius: var(--r-xs); transition: width .25s, background .25s; }
-.strength-row { display: flex; align-items: center; gap: 10px; }
+.strength-row { display: flex; align-items: center; gap: 10px; min-height: 16px; }
 .strength-row .strength { flex: 1; }
-.pw-strength { min-width: 58px; font-size: var(--fs-2); font-weight: 600; text-align: right; color: var(--muted); }
+.pw-strength { min-width: 58px; min-height: 16px; font-size: var(--fs-2); font-weight: 600; text-align: right; color: var(--muted); }
 .pw-strength.weak { color: var(--bad-ink); }
 .pw-strength.ok { color: var(--warn-ink); }
 .pw-strength.strong { color: var(--ok-ink); }
@@ -2145,7 +2147,10 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .set-note { display: flex; gap: 10px; margin: 0 0 14px; padding: 10px 12px; border-radius: var(--r-md); background: color-mix(in srgb, var(--warn) 8%, transparent); border: 1px solid var(--warn-line); color: var(--warn-ink); font-size: var(--fs-3); }
 .set-note .i { width: 16px; height: 16px; flex: none; margin-top: 1px; }
 /* Two boxes a row at every width: four in a row cut "New password (6+ characters)", the only label its box has. */
-.pw-form { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 8px 0 18px; }
+.pw-form { display: grid; grid-template-columns: minmax(0, 360px); gap: 10px; padding: 8px 0 18px; }
+.pw-form .btn { justify-self: start; }
+.pw-field { display: grid; gap: 6px; font-size: var(--fs-3); font-weight: 650; color: var(--text-2); }
+.pw-field .field { font-weight: 400; }
 .pw-msg { grid-column: 1 / -1; margin: 0; min-height: 0; font-size: var(--fs-3); }
 .pw-msg:empty { display: none; }
 .pw-msg.err { color: var(--bad-ink); }
@@ -2846,8 +2851,11 @@ input[type=range].cf-hue { width: 100%; background: linear-gradient(90deg, #f00,
 .auth .form-error { margin: 0; }
 .auth-note { display: flex; gap: 9px; margin: 16px -28px 0; padding: 14px 28px 0; border-top: 1px solid var(--line); font-size: var(--fs-2); line-height: 1.5; color: var(--muted); }
 .auth-note .i { width: 14px; height: 14px; flex: none; margin-top: 2px; }
-.auth-added { display: flex; align-items: flex-start; gap: 9px; margin-top: 14px; padding: 10px 12px; border-radius: var(--r-md); border: 1px solid var(--ok-line); background: color-mix(in srgb, var(--ok) 8%, transparent); color: var(--ok-ink); font-size: var(--fs-3); line-height: 1.45; }
-.auth-added .i { width: 15px; height: 15px; flex: none; margin-top: 1px; color: var(--ok); }
+/* After an account came in (a .note.ok): its Done sits at the right, so the dialog stays short enough for the next sign-in. */
+.auth-added { align-items: center; margin-top: 14px; }
+.auth-added > span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.auth-added .btn { flex: none; }
+.auth-added .i { color: var(--ok); margin-top: 0; }
 .auth-step { display: grid; justify-items: center; gap: 6px; padding: 4px 0 18px; text-align: center; }
 .auth-badge { display: grid; place-items: center; width: 52px; height: 52px; margin-bottom: 8px; border-radius: var(--r-lg); background: var(--surface-3); color: var(--text); }
 .auth-badge .i { width: 24px; height: 24px; }
@@ -2857,9 +2865,8 @@ input[type=range].cf-hue { width: 100%; background: linear-gradient(90deg, #f00,
 .auth-step p b { color: var(--text); font-weight: 600; }
 .auth .field.auth-code { height: 52px; text-align: center; font: 600 24px/1 "Cascadia Mono", Consolas, ui-monospace, monospace; letter-spacing: .5em; text-indent: .5em; }
 .auth .field.auth-code::placeholder { color: var(--surface-3); }
+.auth .field.auth-code:placeholder-shown { caret-color: transparent; } /* no caret in the middle of the 000000 */
 .auth-acts { display: grid; gap: 10px; }
-.auth-back { justify-self: center; padding: 4px 8px; border: 0; background: none; color: var(--muted); font: inherit; font-size: var(--fs-3); cursor: pointer; }
-.auth-back:hover { color: var(--text); }
 
 /* Ways to add an account (empty list and the Add account chooser). */
 .start-opts { display: grid; gap: 10px; width: min(460px, 100%); margin: 0 auto; text-align: left; }
@@ -2919,8 +2926,10 @@ input[type=range].cf-hue { width: 100%; background: linear-gradient(90deg, #f00,
 .ql-qr img { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
 .ql-code { margin-bottom: 14px; font: 700 var(--fs-7)/1 "Cascadia Mono", Consolas, ui-monospace, monospace; letter-spacing: .16em; color: var(--text); user-select: text; }
 .ql-steps { display: grid; gap: 5px; margin: 0; padding-left: 18px; font-size: var(--fs-3); color: var(--text-2); }
-.ql-status { display: flex; align-items: center; gap: 9px; min-height: 40px; margin-top: 16px; padding: 6px 8px 6px 12px; border-radius: var(--r-md); border: 1px solid var(--line); background: var(--well); font-size: var(--fs-3); color: var(--text-2); }
-.ql-status.bad { color: var(--bad-ink); }
+.ql-status { display: flex; align-items: center; gap: 9px; height: 44px; margin-top: 16px; padding: 6px 8px 6px 12px; border-radius: var(--r-md); border: 1px solid var(--line); background: var(--well); font-size: var(--fs-3); color: var(--text-2); }
+.ql-status.bad { color: var(--bad-ink); background: var(--bad-soft); border-color: var(--bad-line); }
+.ql.dead .ql-qr, .ql.dead .ql-code { opacity: .3; }
+.ql.dead .ql-steps { display: none; }
 .ql-status .btn { margin-left: auto; }
 .ql-pic { width: 24px; height: 24px; border-radius: 50%; flex: none; }
 .ql-added { margin-top: 8px; font-size: var(--fs-3); color: var(--ok-ink); }
@@ -3090,7 +3099,7 @@ body:has(.lock) #toasts { bottom: 24px; }
   .top-tools { width: 100%; }
   .search { flex: 1; width: auto; }
   .dock { column-gap: 14px; }
-  .pw-form { grid-template-columns: 1fr 1fr; }
+  .pw-form { grid-template-columns: minmax(0, 360px); }
 }
 /* Narrow: the small buttons keep their icons (their names on hover), so all three steps stay on one row and the cards keep their height. */
 @media (max-width: 900px) {
@@ -5866,6 +5875,22 @@ html:not(.in-window) .pn.pn-pill { height: 42px; }
 /* ───────── end P4 ───────── */
 
 /* ───────── P5 sign-in ───────── */
+/* The realm switch is the sign-in's .seg.wide; the code row keeps a gap under it. */
+.seg.wide + .ql { margin-top: 14px; }
+/* The lock screen and the dialogs' short texts break evenly instead of leaving one word alone on the last line. */
+.lock-card p, .start-opt small, .modal-text { text-wrap: balance; }
+/* The add-vault form's label over the name box; the hint from the second refused password; Close window after Multi-Roblox only. */
+.lock-label { display: grid; gap: 6px; font-size: var(--fs-3); font-weight: 650; color: var(--text-2); }
+.lock-label .field { font-weight: 400; }
+.lock-card p.lock-forgot { margin: 0 0 10px; font-size: var(--fs-3); line-height: 1.45; }
+.lock-multi .lock-close { display: flex; margin: 12px auto 0; }
+.vp-tile.last:hover, .vp-tile.last:focus-visible { border-color: var(--text); }
+/* Import: the step under the title, a search over a long list, a file name in the intro that doesn't break. */
+.iv-step { margin: 0 0 10px; font-size: var(--fs-2); font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
+.iv-search { width: 100%; margin: 0 0 8px; }
+.modal-text b { white-space: nowrap; }
+/* A part of the page that failed to draw (Guard.tsx): the note and its button, wrapping in a narrow place. */
+.guard-note { flex: none; flex-wrap: wrap; align-items: center; align-content: flex-start; align-self: start; justify-content: space-between; height: fit-content; margin: 8px; }
 /* ───────── end P5 ───────── */
 
 /* ───────── P6 settings ───────── */

@@ -27,9 +27,11 @@ export function SecurityPage({ title }: { title: string }) {
     setMsg({ text: '', kind: '' });
   }), [on]);
 
-  const box = (id: string, key: string, auto: string, ref: typeof cur, onInput: (value: string) => void) =>
-    <input className="field" type="password" id={id} placeholder={t(key)} aria-label={t(key)} maxLength={256} autoComplete={auto} ref={ref}
-      onInput={e => onInput(e.currentTarget.value)} />;
+  // Each box has its name over it that stays once the box is typed in (the placeholder goes).
+  const box = (id: string, key: string, label: string, auto: string, ref: typeof cur, onInput: (value: string) => void) =>
+    <label className="pw-field"><span>{t(label)}</span>
+      <input className="field" type="password" id={id} placeholder={t(key)} aria-label={t(key)} maxLength={256} autoComplete={auto} ref={ref}
+        onInput={e => onInput(e.currentTarget.value)} /></label>;
   const dropError = () => { if (msg.text && msg.kind === 'err') pwMsg(''); };
 
   const vaults = app.vaults || {};
@@ -84,9 +86,9 @@ export function SecurityPage({ title }: { title: string }) {
           toast(t('set.pwDone'), 'ok');
         }
       }}>
-        {box('pw-cur', 'set.pwCur', 'current-password', cur, dropError)}
-        {box('pw-new', 'set.pwNew', 'new-password', next, v => pwMsg(v ? t('set.pwStrength', { s: t(`lock.strength.${strength(v)}`) }) : '', 'hint'))}
-        {box('pw-new2', 'set.pwNew2', 'new-password', next2, dropError)}
+        {box('pw-cur', 'set.pwCur', 'set.pwLabelCur', 'current-password', cur, dropError)}
+        {box('pw-new', 'set.pwNew', 'set.pwLabelNew', 'new-password', next, v => pwMsg(v ? t('set.pwStrength', { s: t(`lock.strength.${strength(v)}`) }) : '', 'hint'))}
+        {box('pw-new2', 'set.pwNew2', 'set.pwLabelNew2', 'new-password', next2, dropError)}
         <button className="btn primary" type="submit" id="pw-btn" ref={btn}>{t('set.pwBtn')}</button>
         <p className={`pw-msg ${msg.text ? msg.kind : ''}`} id="pw-msg" role="alert">{msg.text}</p>
       </form>

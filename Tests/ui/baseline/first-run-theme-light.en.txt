@@ -1,0 +1,36 @@
+== end
+html [data-theme="light" lang="en"]
+#app
+  div.lock
+    div.dots
+    div.lock-lang
+      div.lang [role="group" aria-label="Language"]
+        button.on [title="English" aria-pressed="true"] "EN"
+        button [title="Tiếng Việt" aria-pressed="false"] "VI"
+    form.lock-card.shake [id="lock-form" autocomplete="off"]
+      img.logo-img [alt="" src="logo.svg"]
+      h2 "Set a master password"
+      p "You’ll use it to unlock Bloxkeep. It if you forget it."
+        b "can’t be recovered"
+      div.stack
+        div.pw
+          input.field [id="pw1" type="password" placeholder="Master password (6+ characters)" maxlength="256" aria-label="Master password" value="•••"]
+          button.icon-btn [id="pw-eye" type="button" title="Show password" aria-label="Show password" aria-pressed="false"]
+            svg.i #1pcfgz
+        input.field [id="pw2" type="password" placeholder="Confirm master password" maxlength="256" aria-invalid="true" aria-label="Confirm master password" value="•••" FOCUSED]
+        div.strength-row
+          div.strength
+            i [id="pw-meter" style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:;width:60%"]
+          span.ok.pw-strength [id="pw-strength" aria-live="polite"] "OK"
+      div.lock-error [id="lock-error" role="alert"] "The two passwords don't match."
+      button.big.btn.primary.w [id="lock-btn" type="submit"] "Get started"
+      div.lock-alt
+        button.link [type="button"] "Restore from a backup"
+      div.lock-alt.lock-multi
+        button.link [type="button"] "Just use Multi-Roblox, without accounts"
+#layer
+#toasts
+-- commands
+  getState {}
+  monitorArea {"hidden":true}
+  pageShown {}

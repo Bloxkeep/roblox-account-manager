@@ -398,7 +398,7 @@ public sealed partial class AppController
     {
         var left = _twoStepWaitUntil - DateTime.UtcNow;
         if (left > TimeSpan.Zero)
-            throw new UserError(L.F("Too many tries. Wait {0} s, then try again.", (int)Math.Ceiling(left.TotalSeconds)));
+            throw new UserError(L.F("Too many tries. Try again in {0} seconds.", (int)Math.Ceiling(left.TotalSeconds)));
     }
 
     /// <summary>Offline, a timeout or Roblox down: the request may never have been answered, so it's worth repeating.</summary>

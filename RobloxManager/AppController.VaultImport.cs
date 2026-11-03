@@ -89,7 +89,7 @@ public sealed partial class AppController
         if (_vaultImportOpening)
             throw new UserError(L.T("Still opening the file — please wait."));
         if (ImportWaitSeconds(path) is int wait and > 0)
-            return new { status = "wrong", wait, error = L.F("Too many wrong tries. Wait {0} seconds, then try again.", wait) };
+            return new { status = "wrong", wait, error = L.F("Too many wrong tries. Try again in {0} seconds.", wait) };
         CheckImportFile(path, vault); // it may have been replaced since it was picked
         DropVaultImport(keepPath: true);
         _vaultImportOpening = true;

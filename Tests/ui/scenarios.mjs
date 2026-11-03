@@ -1655,6 +1655,59 @@ export default [
   // ── end P4 ──
 
   // ── P5 sign-in ──
+  // The second refused master password says where to go next; the lock screen on a light and on a picture theme.
+  S('lock-forgot', 'locked=1', async s => {
+    await s.fill(key('lock.pw'), 'wrong-one');
+    await s.key('Enter');
+    await s.wait(800);
+    await s.snap('first try');
+    await s.fill(key('lock.pw'), 'wrong-two');
+    await s.key('Enter');
+    await s.wait(800);
+  }),
+  S('lock-theme-light', 'locked=1&theme=light', async s => { await s.fill(key('lock.pw'), 'wrong-one'); await s.key('Enter'); await s.wait(800); }),
+  S('lock-theme-scene', 'locked=1&theme=halong', async s => { await s.fill(key('lock.pw'), 'wrong-one'); await s.key('Enter'); await s.wait(800); }),
+  S('first-run-theme-light', 'new=1&theme=light', async s => { await s.fill(key('lock.pw'), 'Abcdef12'); await s.fill(key('lock.pw2'), 'Abcdef13'); await s.key('Enter'); await s.wait(300); }),
+  S('first-run-theme-scene', 'new=1&theme=halong', async s => { await s.fill(key('lock.pw'), 'Abcdef12'); await s.fill(key('lock.pw2'), 'Abcdef13'); await s.key('Enter'); await s.wait(300); }),
+  S('vault-picker-light', 'locked=1&vaults=1&vaultpick=1&theme=light'),
+  // The sign-in: only the name typed (the password box is marked and takes the focus); the puzzle window closed unsolved;
+  // Done after an account came in.
+  S('pw-empty-password', '', async s => { await s.click(key('acc.add')); await s.fill({ css: '#pw-user' }, 'someone'); await s.click({ css: '#pw-go' }); }),
+  S('pw-captcha-closed', '', async s => { await signIn(s, 'captchaclosed'); await s.click({ css: '#pw-solve' }); await s.wait(600); }),
+  S('pw-added-done', '', async s => {
+    await signIn(s, 'firstfarm');
+    await s.snap('added');
+    await s.click({ css: '[data-x2=done]' });
+    await s.wait(400);
+  }),
+  // Import: a long list gets a search (All new and None act on what it shows); Cancel after Bloxkeep file in the sign-in
+  // comes back to the sign-in.
+  S('import-vault-many', 'vimport=preview&ivmany=1', async s => {
+    await s.wait(1500);
+    await s.snap('long list');
+    await s.fill({ css: '#iv-search' }, 'alt_account_1');
+    await s.snap('searched');
+    await s.click({ css: '#iv-none' });
+    await s.snap('none of those');
+    await s.click({ css: '#iv-all' });
+  }),
+  S('import-vault-cancel-back', '', async s => {
+    await s.click(key('acc.add'));
+    await s.click({ css: '.overlay [data-x2=vault]' });
+    await s.wait(500);
+    await s.click({ key: 'common.cancel', within: '.overlay' });
+    await s.wait(500);
+  }, { langs: ['en'] }),
+  // A part of the page that fails to draw shows a short note with Try again (the sidebar, here).
+  S('guard-failed', 'guardfail=1', async s => { await s.wait(300); }),
+  // The dialogs on a light and a picture theme: the success banner with Done, a dimmed Quick Login code, the vault picker.
+  S('pw-added-light', 'theme=light', async s => { await signIn(s, 'firstfarm'); }),
+  S('ql-dead-scene', 'theme=halong&ql=cancelled,waiting', async s => {
+    await s.click(key('acc.add'));
+    await s.click({ key: 'start.phone', partial: true });
+    await s.wait(3500);
+  }),
+  S('vault-picker-scene', 'locked=1&vaults=1&vaultpick=1&theme=halong'),
   // ── end P5 ──
 
   // ── P6 settings ──

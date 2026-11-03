@@ -2,6 +2,7 @@
 // no phone and no roblox.com: the values go only to Roblox's (or VNG's) official sign-in host, over HTTPS. Handles a
 // 2-step code (authenticator, email, SMS; or filled from a key saved here), a captcha (own window), and "Try again" when
 // Roblox signed in but the account couldn't be looked up. app.js's dialog keeps the frame and what closing does.
+import { flushSync } from 'react-dom';
 import { Fragment, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type FormEvent, type ReactNode, type Ref } from 'react';
 import { Icon, useHost } from './host';
 
@@ -30,6 +31,8 @@ export function PasswordLogin({ forRealm, api, way }: {
   const [err, setErr] = useState('');
   const [user, setUser] = useState('');
   const [pass, setPass] = useState('');
+  // The boxes Sign in or Verify found empty (aria-invalid until typed in again).
+  const [bad, setBad] = useState({ user: false, pass: false, code: false });
   const [shown, setShown] = useState(false);
   const [code, setCode] = useState('');
   const [filledNote, setFilledNote] = useState(false);
@@ -64,6 +67,8 @@ export function PasswordLogin({ forRealm, api, way }: {
   const now = Date.now();
   const verifyWait = Math.ceil((s.current.verifyAt - now) / 1000);
   const resendWait = Math.ceil(((s.current.resendAt[method] || 0) - now) / 1000);
+  // "Too many tries": the wait is said in Bloxkeep's words (Roblox's own reply says minutes), counting down with Verify.
+  const waitErr = step === 'twostep' && verifyWait > 0 ? t('pw.waitMsg', { s: verifyWait }) : '';
   const counting = step === 'twostep' && (verifyWait > 0 || (s.current.sent.has(method) && resendWait > 0));
   useEffect(() => {
     if (!counting) return;
@@ -82,7 +87,7 @@ export function PasswordLogin({ forRealm, api, way }: {
     return () => clearTimeout(timer);
   }, [drawn]);
   // Back on the first screen the password goes with the attempt that used it (the username stays).
-  const draw = (next: Step, error = '') => { setStep(next); setErr(error); if (next === 'login') setPass(''); setDrawn(n => n + 1); };
+  const draw = (next: Step, error = '') => { setStep(next); setErr(error); setBad({ user: false, pass: false, code: false }); if (next === 'login') setPass(''); setDrawn(n => n + 1); };
 
   // Buttons busy() also toggles get their state put on after every drawing: React skips an unchanged disabled prop after
   // busy() had turned the button back on ("Resend in 30 s" clickable).
@@ -148,7 +153,7 @@ export function PasswordLogin({ forRealm, api, way }: {
     if (r.status === 'wait') {
       s.current.verifyAt = Date.now() + (r.seconds || 60) * 1000;
       const hadFocus = box.current.verify === document.activeElement;
-      setErr(r.error || '');
+      setErr('');
       tick(n => n + 1);
       // Verify turns itself off while it has the focus: the code box takes it, ready for the next code.
       const dialog = box.current.verify?.closest('.overlay');
@@ -177,12 +182,12 @@ export function PasswordLogin({ forRealm, api, way }: {
     if (r.status === 'added') {
       const a = r.added!;
       s.current.added = [...s.current.added, a];
-      setAdded(s.current.added);
-      toast(t(a.merged ? 't.merged' : 't.added', { name: a.label }), 'ok');
       resetTwoStep();
       setUser('');
       setPass('');
-      draw('login');
+      // The green banner says it: drawn first, so the toast (same words) is dropped while it is up.
+      flushSync(() => { setAdded(s.current.added); draw('login'); });
+      toast(t(a.merged ? 't.merged' : 't.added', { name: a.label }), 'ok', null, { quietWhile: '.modal.auth .note.ok' });
     }
   };
 
@@ -190,7 +195,12 @@ export function PasswordLogin({ forRealm, api, way }: {
     e.preventDefault();
     const name = user.trim();
     setUser(name);
-    if (!name || !pass) return setErr(t('pw.need'));
+    if (!name || !pass) {
+      setBad({ user: !name, pass: !pass, code: false });
+      setErr(t('pw.need'));
+      (name ? box.current.pass : box.current.user)?.focus();
+      return;
+    }
     setErr('');
     let r: Reply | undefined;
     try { r = await request(box.current.go, 'loginPassword', { username: name, password: pass, realm }); } catch (ex) {
@@ -206,7 +216,12 @@ export function PasswordLogin({ forRealm, api, way }: {
   const submitTwoStep = async (e: FormEvent) => {
     e.preventDefault();
     const typed = code.trim();
-    if (!typed) return setErr(t('pw.needCode'));
+    if (typed.length < 6) {
+      setBad({ user: false, pass: false, code: true });
+      setErr(t(typed ? 'pw.needCode6' : 'pw.needCode'));
+      box.current.otp?.focus();
+      return;
+    }
     setErr('');
     let r: Reply | undefined;
     try { r = await request(box.current.verify, 'loginTwoStep', { method, code: typed }); } catch (ex) { return setErr((ex as Error).message); }
@@ -229,13 +244,14 @@ export function PasswordLogin({ forRealm, api, way }: {
     let r: Reply | undefined;
     try { r = await request(btn, cmd, {}); } catch (ex) { return setErr((ex as Error).message); }
     // The puzzle window was closed: "Solve" asks for a fresh one. Any other answer moves on (or is a new puzzle).
-    if (r?.status === 'captcha' && r.closed) return;
+    if (r?.status === 'captcha' && r.closed) return setErr(t('pw.captchaClosed'));
     handle(r);
   };
 
-  const errorLine = <div className="form-error" id="pw-err" hidden={!err}>{err}</div>;
+  const shownErr = err || waitErr;
+  const errorLine = <div className="form-error" id="pw-err" hidden={!shownErr}>{shownErr}</div>;
   // Back ends this attempt in the app too: the password goes, and a reply still on its way is dropped.
-  const back = <button type="button" className="auth-back" data-back onClick={() => { call('loginCancel', {}, { silent: true }); resetTwoStep(); draw('login'); }}>{t('pw.back')}</button>;
+  const back = <button type="button" className="btn ghost w" data-back onClick={() => { call('loginCancel', {}, { silent: true }); resetTwoStep(); draw('login'); }}>{t('pw.back')}</button>;
   const wayButton = (name: string, words: string, extra: { className?: string; title?: string } = {}) =>
     <button type="button" className={extra.className ?? 'btn sm ghost'} data-x2={name} title={extra.title} onClick={() => way(name, realm)}>{words}</button>;
   let screen: ReactNode;
@@ -250,7 +266,7 @@ export function PasswordLogin({ forRealm, api, way }: {
       </div>
       <div className="auth-acts">
         {errorLine}
-        <button type="button" className="btn go w" id={captcha ? 'pw-solve' : 'pw-finish'} ref={ref(captcha ? 'solve' : 'finish')}
+        <button type="button" className="btn primary w" id={captcha ? 'pw-solve' : 'pw-finish'} ref={ref(captcha ? 'solve' : 'finish')}
           onClick={e => solveOrFinish(e.currentTarget, captcha ? 'loginCaptcha' : 'loginFinish')}>{t(captcha ? 'pw.solve' : 'pw.retry')}</button>
         {back}
       </div>
@@ -264,6 +280,7 @@ export function PasswordLogin({ forRealm, api, way }: {
       </div>
       {methods.length > 1 ? <div className="seg wide" role="tablist">
         {methods.map(x => <button key={x} type="button" role="tab" data-m={x} className={method === x ? 'on' : ''} aria-selected={method === x} onClick={() => {
+          setErr('');
           setMethod(x);
           s.current.method = x;
           // Email and SMS codes go out on their own, as on roblox.com: another way gets one sent when it's picked.
@@ -275,9 +292,11 @@ export function PasswordLogin({ forRealm, api, way }: {
         }}>{t(METHOD_LABEL[x])}</button>)}
       </div> : null}
       <form id="pw-two" className="auth-form" autoComplete="off" onSubmit={submitTwoStep}>
-        <input className="field auth-code" id="pw-otp" ref={ref('otp')} inputMode="numeric" maxLength={40} autoComplete="one-time-code" placeholder="000000" aria-label={t('pw.code')}
+        <input className="field auth-code" id="pw-otp" ref={ref('otp')} aria-invalid={bad.code || undefined} inputMode="numeric" maxLength={40} autoComplete="one-time-code" placeholder="000000" aria-label={t('pw.code')}
           value={code} onChange={e => {
             const digits = e.target.value.replace(/\D/g, '').slice(0, 6);
+            setErr('');
+            setBad(b => ({ ...b, code: false }));
             setCode(digits);
             s.current.code = digits;
             if (digits !== s.current.filled) setFilledNote(false);
@@ -289,7 +308,7 @@ export function PasswordLogin({ forRealm, api, way }: {
             {!wasSent ? t('pw.send') : resendWait > 0 ? t('pw.resendIn', { s: resendWait }) : t('pw.resend')}</button>
         </div>
         {errorLine}
-        <button className="btn go w" type="submit" id="pw-verify" ref={ref('verify')}>
+        <button className="btn primary w" type="submit" id="pw-verify" ref={ref('verify')}>
           {verifyWait > 0 ? t('pw.verifyIn', { s: verifyWait }) : t('pw.verify')}</button>
         {back}
       </form>
@@ -302,13 +321,15 @@ export function PasswordLogin({ forRealm, api, way }: {
         {[['', 'Roblox'], ['vng', 'Roblox VNG']].map(([r, words]) => <button key={r} type="button" role="tab" data-realm={r} className={realm === r ? 'on' : ''}
           aria-selected={realm === r} onClick={() => {
             if (pending || r === realm) return; // the answer on its way is for the realm it was sent to
+            setErr('');
             setRealm(r);
             store.set('rm.qlRealm', r);
             setShown(false); // what was typed stays, hidden again
             setDrawn(n => n + 1);
           }}>{words}</button>)}
       </div>
-      {added.length ? <div className="auth-added"><Icon name="check" /><span>{t('pw.addedList', { names: added.map(x => x.label).join(', ') })}</span></div> : null}
+      {added.length ? <div className="note ok auth-added" role="status"><Icon name="check" /><span>{t('pw.addedList', { names: added.map(x => x.label).join(', ') })}</span>
+        <button type="button" className="btn sm primary" data-x2="done" onClick={() => way('done', realm)}>{t('common.done')}</button></div> : null}
       <div className="auth-phone">
         <button type="button" className="start-opt rec" data-x2="phone" onClick={() => way('phone', realm)}><Icon name="qr" />
           <span><b>{t('start.phone')}<em className="rec-tag">{t('start.rec')}</em></b><small>{t('start.phoneSub')}</small></span><Icon name="chevronRight" /></button>
@@ -317,14 +338,14 @@ export function PasswordLogin({ forRealm, api, way }: {
       <form id="pw-login" className="auth-form tight" autoComplete="off" onSubmit={submitLogin}>
         <label className="auth-label">{t('pw.user')}
           <span className="lead-ic"><Icon name="user" /><input className="field" id="pw-user" ref={ref('user')} maxLength={60} autoComplete="off" spellCheck={false}
-            value={user} onChange={e => setUser(e.target.value)} /></span></label>
+            value={user} aria-invalid={bad.user || undefined} onChange={e => { setErr(''); setBad(b => ({ ...b, user: false })); setUser(e.target.value); }} /></span></label>
         <label className="auth-label">{t('pw.pass')}
           <span className="pw lead-ic"><Icon name="lock" /><input className="field" type={shown ? 'text' : 'password'} id="pw-pass" ref={ref('pass')} maxLength={200} autoComplete="off"
-            value={pass} onChange={e => setPass(e.target.value)} />
+            value={pass} aria-invalid={bad.pass || undefined} onChange={e => { setErr(''); setBad(b => ({ ...b, pass: false })); setPass(e.target.value); }} />
             <button type="button" className="icon-btn" id="pw-eye" title={t(shown ? 'lock.hidePw' : 'lock.showPw')} aria-label={t(shown ? 'lock.hidePw' : 'lock.showPw')}
               aria-pressed={shown} onClick={() => setShown(!shown)}><Icon name={shown ? 'eyeOff' : 'eye'} /></button></span></label>
         {errorLine}
-        <button className="btn w" type="submit" id="pw-go" ref={ref('go')}>{t('pw.go')}</button>
+        <button className="btn primary w" type="submit" id="pw-go" ref={ref('go')}>{t('pw.go')}</button>
         <p className="auth-hint">{t('pw.extra')}</p>
       </form>
       <div className="auth-more">

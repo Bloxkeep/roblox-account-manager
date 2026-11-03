@@ -226,7 +226,7 @@ public static class L
             "Roblox cần xác minh thêm cho lần đăng nhập này. Hãy đăng nhập bằng tên đăng nhập và mật khẩu.",
         ["Roblox keeps asking for a new puzzle. Sign in with your phone instead, or try again later."] =
             "Roblox cứ đòi giải câu đố mới. Đăng nhập bằng điện thoại, hoặc thử lại sau.",
-        ["Too many tries. Wait {0} s, then try again."] = "Thử quá nhiều lần. Chờ {0} giây rồi thử lại.",
+        ["Too many tries. Try again in {0} seconds."] = "Nhập sai nhiều lần. Thử lại sau {0} giây.",
         ["Paste the .ROBLOSECURITY cookie."] = "Bạn chưa dán cookie .ROBLOSECURITY.",
         ["The cookie is invalid or has expired."] = "Cookie không hợp lệ hoặc đã hết hạn.",
         ["The new cookie is invalid or has expired."] = "Cookie mới không hợp lệ hoặc đã hết hạn.",
@@ -299,7 +299,7 @@ public static class L
         ["Choose the file first."] = "Hãy chọn file trước.",
         ["Enter the master password of that file."] = "Nhập mật khẩu chủ của file đó.",
         ["Still opening the file — please wait."] = "Đang mở file, chờ một chút.",
-        ["Too many wrong tries. Wait {0} seconds, then try again."] = "Nhập sai quá nhiều lần. Chờ {0} giây rồi thử lại.",
+        ["Too many wrong tries. Try again in {0} seconds."] = "Nhập sai nhiều lần. Thử lại sau {0} giây.",
         ["Wrong master password for this file."] = "Sai mật khẩu chủ của file này.",
         ["The file was closed because it was open too long. Open it again."] = "File đã tự đóng vì mở quá lâu. Hãy mở lại.",
         ["Imported preset"] = "Preset đã nhập",
