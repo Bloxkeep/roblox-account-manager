@@ -22,11 +22,13 @@ const clamp = (v: number, lo = 0, hi = 1) => Math.max(lo, Math.min(hi, v));
 const pct = (v: number) => `${(v * 100).toFixed(2)}%`;
 const MIN = 0.02;
 
-export function GameFrame({ picture, size, dots, boxes, found, cutting, cancelCut, onDot, onBox, onCut }: {
+export function GameFrame({ picture, size, dots, boxes, found, cutting, cancelCut, onDot, onBox, onCut, goAccounts }: {
   picture: Picture | null; size?: { w: number; h: number }; dots: Dot[]; boxes: Area[]; found: (Rect & { label?: string })[]; cutting: boolean;
   cancelCut: () => void; onDot: (i: number, x: number, y: number) => void; onBox: (name: string, r: Rect) => void;
   /** A drag around something while cutting: the picture cut from it (base64 PNG), and whether it was cut down to the largest size. */
   onCut: (r: Rect, image: string, cutDown: boolean) => void;
+  /** With no Roblox window: the blank picture's way to Accounts, where one is opened. */
+  goAccounts?: () => void;
 }) {
   const { t } = useHost();
   const frame = useRef<HTMLDivElement>(null);
@@ -70,7 +72,8 @@ export function GameFrame({ picture, size, dots, boxes, found, cutting, cancelCu
     return { ...o, w: clamp(o.w + dx, MIN, 1 - o.x), h: clamp(o.h + dy, MIN, 1 - o.y) };
   };
   const begin = (e: PointerEvent, d: Omit<Drag, 'from' | 'to'>) => {
-    if (e.button !== 0) return;
+    // Dots and boxes are moved on a picture of the game; the blank frame has nothing to place them against.
+    if (e.button !== 0 || !picture) return;
     e.stopPropagation();
     e.preventDefault();
     frame.current!.setPointerCapture(e.pointerId);
@@ -116,11 +119,11 @@ export function GameFrame({ picture, size, dots, boxes, found, cutting, cancelCu
       onPointerMove={e => { if (drag) setDrag({ ...drag, to: at(e) }); }} onPointerUp={end} onPointerCancel={() => setDrag(null)}
       onKeyDown={e => { if (e.key === 'Escape' && cutting) { e.stopPropagation(); cancelCut(); } }}>
       {picture ? <img ref={img} src={picture.image} alt="" draggable={false} onLoad={() => { canvas.current = null; }} />
-        : <span className="mc-pic-blank">{t('macro.pic.blank')}</span>}
+        : <span className="mc-pic-blank"><span>{t('macro.pic.blank')}</span>{goAccounts ? <button type="button" className="btn sm" onClick={goAccounts}>{t('macro.goAccounts')}</button> : null}</span>}
       {boxes.map(a => {
         const r = live && drag?.key === a.name ? live as Rect : a.rect;
         return <span key={a.name} className="mc-pic-area" style={{ left: pct(r.x), top: pct(r.y), width: pct(r.w), height: pct(r.h), borderColor: a.colour }}
-          tabIndex={0} role="button" aria-label={t('macro.pic.boxTip', { area: a.label })} title={t('macro.pic.boxTip', { area: a.label })}
+          tabIndex={picture ? 0 : -1} role="button" aria-label={t('macro.pic.boxTip', { area: a.label })} title={t('macro.pic.boxTip', { area: a.label })}
           onPointerDown={e => begin(e, { kind: 'move', key: a.name, orig: a.rect })} onKeyDown={e => keys(e, { box: a })}>
           <i style={{ background: a.colour }}>{a.label}</i>
           <b className="mc-pic-handle" style={{ background: a.colour }} onPointerDown={e => begin(e, { kind: 'size', key: a.name, orig: a.rect })} />
@@ -129,7 +132,7 @@ export function GameFrame({ picture, size, dots, boxes, found, cutting, cancelCu
       {found.map((f, k) => <span key={`f${k}`} className="mc-pic-found" style={{ left: pct(f.x), top: pct(f.y), width: pct(f.w), height: pct(f.h) }}>{f.label ? <i>{f.label}</i> : null}</span>)}
       {dots.map(d => {
         const p = live && drag?.key === d.i ? live as Point : d;
-        return <span key={d.i} className="mc-pic-dot" style={{ left: pct(p.x), top: pct(p.y) }} tabIndex={0} role="button"
+        return <span key={d.i} className="mc-pic-dot" style={{ left: pct(p.x), top: pct(p.y) }} tabIndex={picture ? 0 : -1} role="button"
           aria-label={t('macro.pic.dotTip', { n: d.n })} title={t('macro.pic.dotTip', { n: d.n })}
           onPointerDown={e => begin(e, { kind: 'dot', key: d.i, orig: { x: d.x, y: d.y } })} onKeyDown={e => keys(e, { dot: d })}>{d.n}</span>;
       })}

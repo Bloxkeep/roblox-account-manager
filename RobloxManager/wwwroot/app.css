@@ -5524,7 +5524,7 @@ button.mc-step-head:focus-visible { outline: 2px solid var(--focus); outline-off
 .mc-todo li .btn { margin-left: auto; }
 /* The macro list: a line per macro saying what it does or when it runs; Panel, Run or Stop, and ⋮. */
 .mc-line { font-size: var(--fs-3); color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.mc-line.live { color: var(--ok-ink); }
+.mc-line.on { color: var(--ok-ink); }
 .mc-line.bad { color: var(--bad-ink); }
 .mc-icon.on { color: var(--ok); }
 .mc-item > .btn.sm { flex: none; height: 34px; padding: 0 12px; }
@@ -5696,6 +5696,124 @@ button.mc-step-head:focus-visible { outline: 2px solid var(--focus); outline-off
 /* ───────── end P1b ───────── */
 
 /* ───────── P2 macro editor ───────── */
+/* The steps as blocks: an If's or a repeat's steps indented on its rail (4px, the info colour for If, a quiet accent for
+   repeat), Otherwise one level out as a divider, a slim "end if" line closing it. The "+" between rows adds a step there. */
+.mc-step { position: relative; margin-left: calc(var(--d, 0) * 22px); }
+.mc-rail { position: absolute; top: -6px; bottom: -6px; width: 4px; border-radius: var(--r-pill); pointer-events: none; }
+.mc-step.mc-else { background: transparent; border-style: dashed; }
+.mc-step.mc-end { align-items: center; min-height: 28px; padding: 0 4px 0 24px; border-color: transparent; background: transparent; }
+.mc-end .mc-step-n { height: 26px; line-height: 26px; }
+.mc-end .mc-step-head { height: 26px; font-size: var(--fs-2); color: var(--muted); }
+.mc-end .mc-step-head > .i { width: 14px; height: 14px; color: var(--muted); }
+.mc-fold.icon-btn { width: 24px; height: 32px; flex: none; margin-right: -6px; }
+.mc-fold .i { width: 15px; height: 15px; }
+.mc-say small { font-size: var(--fs-2); color: var(--muted); }
+.mc-bad-count { flex: none; min-width: 18px; height: 18px; padding: 0 5px; border-radius: var(--r-pill); background: var(--bad); color: #fff; font: 700 var(--fs-1)/18px var(--font); font-style: normal; text-align: center; }
+.mc-ins { position: absolute; z-index: 1; top: -12px; left: 34px; display: grid; place-items: center; width: 20px; height: 20px; padding: 0; border: 1px solid var(--line-3); border-radius: var(--r-pill); background: var(--raised); color: var(--text-2); cursor: pointer; opacity: 0; transition: opacity .1s; }
+.mc-ins .i { width: 12px; height: 12px; }
+.mc-step:hover > .mc-ins, .mc-ins:focus-visible, .mc-ins[aria-expanded="true"] { opacity: 1; }
+.mc-ins:hover { border-color: var(--accent); color: var(--accent); }
+.mc-step:first-child > .mc-ins { top: -10px; }
+
+/* What a row says under its sentence: its note, where a run stopped, and what stops a save (each with its fix). */
+.mc-step > .mc-step-note, .mc-step > .mc-stop-line { order: 1; flex-basis: 100%; margin: -4px 0 0; padding: 0 8px 2px 60px; font-size: var(--fs-2); }
+.mc-step > .mc-step-probs { order: 1; }
+.mc-step-note .link { padding: 0; border: 0; background: none; font: inherit; color: var(--muted); text-align: left; cursor: pointer; }
+.mc-step-note .link:hover { color: var(--text-2); text-decoration: underline; }
+.mc-step-note.editing { margin-top: 0; padding-bottom: 4px; }
+.mc-step-note.editing .field.sm { width: min(100%, 420px); height: 30px; font-size: var(--fs-2); }
+.mc-stop-line { display: flex; align-items: center; gap: 5px; color: var(--bad-ink); font-weight: 600; }
+.mc-stop-line .i { width: 13px; height: 13px; flex: none; }
+.mc-step-probs li > span { min-width: 0; }
+.mc-step-probs li .btn.sm { flex: none; height: 26px; margin-left: 4px; padding: 0 9px; font-size: var(--fs-2); }
+
+/* Try it on a row: the step running (an accent edge and "running"), or the one it stopped at (the bad colour). */
+.mc-step.running::before, .mc-step.stopped::before { content: ''; position: absolute; top: -1px; bottom: -1px; left: -1px; width: 4px; border-radius: var(--r-md) 0 0 var(--r-md); background: var(--accent); }
+.mc-step.stopped::before { background: var(--bad); }
+.mc-step.stopped { border-color: var(--bad-line); }
+.mc-chip { flex: none; height: 20px; padding: 0 8px; border-radius: var(--r-pill); font: 600 var(--fs-1)/20px var(--font); font-style: normal; }
+.mc-chip.run { background: var(--accent); color: var(--accent-ink, #fff); }
+
+/* Problems that belong to the form (its name, when it runs, the panel's labels) under their fields. */
+.mc-ferr { display: grid; gap: 2px; margin: 6px 0 0; padding: 0; list-style: none; font-size: var(--fs-2); color: var(--bad-ink); }
+.mc-ferr li, .mc-ferr-line { display: flex; align-items: center; gap: 5px; }
+.mc-ferr li.warn { color: var(--warn-ink); }
+.mc-ferr .i, .mc-ferr-line .i { width: 13px; height: 13px; flex: none; }
+.mc-ferr-line { margin: 4px 0 0 22px; font-size: var(--fs-2); color: var(--bad-ink); }
+.mc-name-row + .mc-ferr { margin-top: 4px; }
+.mc-dot-bad { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--bad); }
+.mc-inuse { display: flex; align-items: center; gap: 6px; margin: 6px 0 0; padding: 4px 4px 4px 10px; border: 1px solid var(--line-2); border-radius: var(--r-md); background: var(--surface); font-size: var(--fs-2); color: var(--text-2); }
+.mc-inuse > .i { width: 14px; height: 14px; flex: none; color: var(--muted); }
+.mc-inuse > span { flex: 1; min-width: 0; }
+.mc-inuse .link { padding: 0; border: 0; background: none; font: inherit; font-weight: 650; color: var(--accent); text-decoration: underline; cursor: pointer; }
+.mc-inuse .icon-btn { width: 26px; height: 26px; flex: none; }
+.mc-inuse .icon-btn .i { width: 13px; height: 13px; }
+/* The dialog's foot: how many problems stop Save (a click goes to the first); Save looks not ready while there are any. */
+.mc-probs-badge { order: -1; display: inline-flex; align-items: center; gap: 6px; height: 34px; margin-right: 8px; padding: 0 10px; border: 0; border-radius: var(--r-md); background: transparent; color: var(--bad-ink); font: 600 var(--fs-3) var(--font); cursor: pointer; }
+.mc-probs-badge:hover { background: var(--bad-soft); }
+.mc-probs-badge:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.mc-probs-badge .i { width: 15px; height: 15px; }
+.modal-foot:not(:has(.push)) > .mc-probs-badge { margin-right: auto; }
+.mc-modal .modal-foot .btn.primary[aria-disabled="true"] { opacity: .55; pointer-events: auto; }
+
+/* Small popovers under a button: Add step's search and list, a block's "delete it all?", New counter, the template cards. */
+.mc-pop { position: fixed; z-index: 60; max-width: min(420px, calc(100vw - 16px)); padding: 10px; border-radius: var(--r-lg); border: 1px solid var(--line-2); background: var(--raised); box-shadow: 0 18px 50px var(--shadow); animation: fade .1s ease; }
+.mc-pop.menu { padding: 6px; }
+.mc-add-pop { width: 300px; overflow: hidden; display: grid; }
+.mc-add-search { display: flex; align-items: center; gap: 6px; padding: 2px 4px 6px 8px; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
+.mc-add-search > .i { width: 15px; height: 15px; flex: none; color: var(--muted); }
+.mc-add-search .field.sm { flex: 1; min-width: 0; height: 32px; padding: 0 8px; font-size: var(--fs-3); }
+.mc-add-list { max-height: min(380px, calc(100vh - 140px)); overflow-y: auto; scrollbar-width: thin; }
+.mc-add-none { margin: 0; padding: 10px; font-size: var(--fs-3); color: var(--muted); }
+.mc-ask { width: 280px; }
+.mc-ask p { margin: 0; font-size: var(--fs-3); line-height: 1.45; color: var(--text); }
+.mc-pop-acts { display: flex; justify-content: flex-end; gap: 6px; margin-top: 10px; }
+.mc-counter-pop { width: 280px; }
+.mc-counter-pop .form { display: grid; gap: 6px; }
+.mc-counter-pop .field.sm { height: 32px; font-size: var(--fs-3); }
+.mc-counter-pop small { margin-top: -2px; font-size: var(--fs-2); color: var(--muted); }
+.mc-counter-pop small.bad { color: var(--bad-ink); }
+.mc-pop .btn[aria-disabled="true"] { opacity: .55; pointer-events: auto; }
+.mc-tpl-pop { width: 380px; }
+.menu .mc-tpl { align-items: flex-start; height: auto; padding: 10px; gap: 12px; }
+.menu .mc-tpl > .i { width: 18px; height: 18px; margin-top: 1px; color: var(--accent); }
+.menu .mc-tpl > span { display: grid; gap: 3px; white-space: normal; overflow: visible; }
+.mc-tpl b { font-size: var(--fs-3); font-weight: 650; color: var(--text); }
+.mc-tpl small { font-size: var(--fs-2); line-height: 1.4; color: var(--text-2); }
+.mc-tpl em { font-size: var(--fs-2); font-style: normal; color: var(--muted); }
+
+/* The open step's finer values: units beside their numbers, how close a color must be, at most so many rounds. */
+.mc-tune > summary { display: inline-flex; align-items: center; gap: 4px; list-style: none; }
+.mc-tune > summary::-webkit-details-marker { display: none; }
+.mc-tune > summary .i { width: 13px; height: 13px; color: var(--muted); transition: transform .15s; }
+.mc-tune[open] > summary .i { transform: rotate(180deg); }
+.mc-close .mc-range { display: inline-flex; align-items: center; gap: 6px; }
+.mc-close .mc-range small { font-size: var(--fs-2); color: var(--muted); }
+.mc-close input[type="range"] { width: 140px; accent-color: var(--accent); }
+.mc-close output { min-width: 44px; font-size: var(--fs-3); font-variant-numeric: tabular-nums; color: var(--text-2); }
+.mc-most { display: flex; flex-wrap: wrap; align-items: center; gap: 0 14px; }
+.mc-every { display: flex; gap: 6px; }
+.mc-every > .field { flex: 1; min-width: 0; }
+.mc-every > .select { flex: none; width: auto; min-width: 84px; }
+.mc-unit.wide { display: flex; }
+.mc-unit.wide > .field { flex: 1; min-width: 0; }
+
+/* The game: the note under Edit on game keeps two lines, so the picture doesn't jump; the blank picture says why low down. */
+.mc-game-say { min-height: 2lh; }
+.mc-pic-frame.blank { position: relative; }
+.mc-pic-frame.blank .mc-pic-blank { position: absolute; left: 0; right: 0; bottom: 10px; display: grid; justify-items: center; gap: 8px; }
+
+/* The Macros list: each account's run with a dot in its colour; a failed run marks the row's icon; the panel shown. */
+.mc-acc { display: inline-flex; align-items: center; gap: 5px; }
+.mc-acc + .mc-acc { margin-left: 12px; }
+.mc-acc > i { width: 7px; height: 7px; flex: none; border-radius: 50%; background: var(--muted); }
+.mc-acc.s-running > i { background: var(--ok); }
+.mc-acc.s-waiting > i { background: var(--warn); }
+.mc-acc.s-failed > i { background: var(--bad); }
+.mc-icon { position: relative; }
+.mc-icon-bad { position: absolute; top: 4px; right: 4px; width: 9px; height: 9px; border-radius: 50%; border: 2px solid var(--surface); background: var(--bad); }
+.mc-panel-dot { width: 8px; height: 8px; margin: 0 3px; flex: none; border-radius: 50%; background: var(--ok); }
+.mc-add-q::-webkit-search-cancel-button { display: none; }
 /* ───────── end P2 ───────── */
 
 /* ───────── P3 accounts ───────── */

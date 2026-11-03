@@ -1846,8 +1846,9 @@
     macroModal({ ...BLANK_MACRO }, true);
   }
 
-  /** The macro form: a saved macro, or a new one (blank, a template's, recorded or imported, not saved yet). */
-  function macroModal(base, isNew) {
+  /** The macro form: a saved macro, or a new one (blank, a template's, recorded or imported, not saved yet). opts.step:
+     the Macros list's Fix, that step open and marked where the last run stopped (opts.reason, why). */
+  function macroModal(base, isNew, opts = {}) {
     let ui = null;
     modal({
       title: t(isNew ? 'macro.newTitle' : 'macro.editTitle'),
@@ -1865,7 +1866,8 @@
         {
           text: t('macro.save'), kind: 'primary', onClick: async ({ el, close, btn, hold }) => {
             if (btn.disabled) return;
-            // What stops it is said in the form (a toast sits behind the dialog); the box or step to fix is shown and focused.
+            // What stops it is said in the form, on its row or under its field (and counted by the foot); the box or step
+            // to fix is shown and focused. What the app refuses is said here (a toast sits behind the dialog).
             const errBox = el.querySelector('.ps-err');
             errBox.hidden = true;
             const fail = (msg, box) => {
@@ -1875,7 +1877,11 @@
               box?.focus();
             };
             const r = ui.form.collect();
-            if (r.error) return fail(r.error, r.box);
+            if (r.error) {
+              r.box?.scrollIntoView({ block: 'center' });
+              r.box?.focus({ preventScroll: true });
+              return;
+            }
             let refused = null;
             await busy(btn, () => hold(() => bridge.call('saveMacro', { macro: r.macro })).catch(e => { refused = e; }));
             if (refused) return fail(refused.message || t('common.unknownError'));
@@ -1883,8 +1889,15 @@
           },
         },
       ],
-      onMount: ({ el }) => {
-        ui = window.BloxkeepUI.macroEditor(el.querySelector('.modal-body'), uiHost(), { base, isNew, accounts: accounts(), macros: macros() });
+      onMount: ({ el, close }) => {
+        // The blank picture's Go to Accounts: asks first when something changed, then closes and shows Accounts.
+        const goAccounts = async () => {
+          if (ui?.form.dirty() && !await confirmBox(t('common.discardQ'), { title: t('common.discardTitle'), ok: t('common.discard'), danger: true, remember: 'discard' })) return;
+          close();
+          setView('accounts');
+        };
+        ui = window.BloxkeepUI.macroEditor(el.querySelector('.modal-body'), uiHost(), { base, isNew, accounts: accounts(), macros: macros(),
+          openStep: opts.step, stoppedReason: opts.reason, goAccounts });
         setTimeout(() => el.querySelector('#mc-name')?.focus(), 30);
       },
       onRemoved: () => ui?.unmount(),

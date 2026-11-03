@@ -1,13 +1,18 @@
 // The macro form (new, from a template, recorded, imported, or edit). On top: its name, one folded line for when and
-// where it runs, and Try it. Left: the steps as numbered sentences; the open one shows its few values in the sentence
+// where it runs, and Try it. Left: the steps as numbered sentences; If and Repeat are blocks (their steps indented on a
+// rail, folded by the opener's chevron, ended by a slim "end if" line); the open one shows its few values in the sentence
 // itself, each with a "Player can change" tick that puts it on the panel (an option: its label from the sentence, its
-// range and unit from the value, never asked). Areas are picked by name. Under the steps, what the player sees: the
-// panel, its labels editable in place. Right: Edit on game (the dots and boxes drawn on the Roblox window, dragged
-// there), the same dots and boxes on a picture of the window, and Try it's results as plain lines. app.js's dialog keeps
-// the title and buttons; it asks this form what to save (collect) and whether anything changed (dirty).
-import { Fragment, useEffect, useImperativeHandle, useRef, useState, type ReactNode, type Ref } from 'react';
-import { flushSync } from 'react-dom';
+// range and unit from the value, never asked). A step may carry a note (why it is there). Areas are picked by name.
+// Add step and the "+" between rows open one searchable list. What stops a save is said on its own row, with the fix
+// one click away; the dialog's foot counts them. Under the steps, what the player sees: the panel, its labels editable
+// in place. Right: Edit on game (the dots and boxes drawn on the Roblox window, dragged there), the same dots and boxes
+// on a picture of the window, and Try it's results as plain lines (the step running, or where it stopped, marked on its
+// row too). app.js's dialog keeps the title and buttons; it asks this form what to save (collect) and whether anything
+// changed (dirty).
+import { Fragment, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type ReactNode, type Ref } from 'react';
+import { createPortal, flushSync } from 'react-dom';
 import { Icon, useAppState, useHost } from './host';
+import { Pop } from './MacroPop';
 import { Avatar } from './Avatar';
 import { ColorInput } from './ColorField';
 import { GameBox } from './PresetForm';
@@ -15,9 +20,10 @@ import { GameFrame, TryLines, type Picture, type Seen } from './MacroPicture';
 import { PlayerSees } from './MacroPanel';
 import { hasWindow, useCountdown } from './MacrosView';
 import {
-  AREA_COLOURS, COMMON_STEPS, FREE, asPoint, KEYS, LOOK_STEPS, MAX_AREAS, MAX_OPTIONS, MAX_TABS, MOUSE_KEYS, STEP_GROUPS, STEP_ICON, camDir, counters, depths, durText, freeName, isArea, isOpt,
-  isLive, keyCap, keyFromEvent, keyName, newTest, pointOf, problems, recording, stepText, stepsToAdd, withAreas,
-  type Area, type Macro, type MacroRun, type Option, type Rect, type Step, type Test,
+  AREA_COLOURS, FREE, MAX_NOTE, OPENERS, asPoint, KEYS, LOOK_STEPS, MAX_AREAS, MAX_OPTIONS, MAX_TABS, MOUSE_KEYS, STEP_GROUPS, STEP_ICON, SYNONYMS,
+  blockEnd, camDir, counterName, counters, durText, endOf, freeName, isArea, isOpt, isLive, keyCap, keyFromEvent, keyName, kindsAt, newStep, newTest,
+  pointOf, problems, recording, stepText, stepsToAdd, withAreas,
+  type Area, type Macro, type MacroRun, type Option, type Problem, type Rect, type Step, type Test,
 } from './macros';
 
 type Account = { id: string; label: string; username?: string; avatarUrl?: string | null; state?: string; session?: { pid?: number } | null };
@@ -37,6 +43,10 @@ const setAt = <S extends Step>(s: S, path: string, v: unknown): S => {
   const [a, b] = path.split('.');
   return (b ? { ...s, [a]: { ...s[a], [b]: v } } : { ...s, [a]: v }) as S;
 };
+/** Words compared without case or Vietnamese marks ("cho" finds "Chờ"). */
+const plain = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase();
+/** A counter's name (its key on the panel and in the run): letters, digits and _, not starting with a digit. */
+const COUNTER_NAME = /^[A-Za-z_][A-Za-z0-9_]{0,31}$/;
 
 /** The values a maker may hand to the player, by step kind and field: what the option is, its range and unit, and the
  * label it starts with (the player sees it on the panel; the maker can rename it there). */
@@ -45,7 +55,7 @@ const META: Record<string, Meta> = {
   'key.key': { kind: 'key', label: 'macro.opt.key' },
   'click.point': { kind: 'point', label: 'macro.opt.point' },
   'move.point': { kind: 'point', label: 'macro.opt.point' },
-  'click.holdMs': { kind: 'number', min: 0, max: 10000, unit: 's', label: 'macro.opt.hold' },
+  'click.holdMs': { kind: 'number', min: 30, max: 10000, unit: 's', label: 'macro.opt.hold' },
   'clickColour.eachAfterMs': { kind: 'number', min: 0, max: 10000, unit: 's', label: 'macro.opt.after' },
   'wait.ms': { kind: 'number', min: 0, max: 3_600_000, unit: 's', label: 'macro.opt.wait' },
   'waitColour.colour': { kind: 'colour', label: 'macro.opt.colour' },
@@ -62,19 +72,52 @@ const OPS = ['>=', '<=', '=', '>', '<', '!='];
 /** Steps that look for something on the window: Try it says it found it once they're passed. */
 const LOOKS = new Set(['waitImage', 'clickImage', 'waitColour', 'clickColour', 'waitText', 'if', 'loopUntil', 'follow']);
 const BLOCKS = new Set(['loop', 'endLoop', 'else', 'endIf', 'break']);
+/** A block's rail: an If's in the info colour, a repeat's in a quiet accent. */
+const RAIL: Record<string, string> = { if: 'var(--online)', loop: 'color-mix(in srgb, var(--accent) 40%, var(--surface))' };
+const railOf = (kind: string) => RAIL[kind === 'if' ? 'if' : 'loop'];
+/** How many kinds Add step remembers as used lately. */
+const RECENT = 5;
 
-/** The form, with what its steps' sentences need: values, writing them, the ticks, the areas. */
+/** Each row of the list as drawn: how deep it sits, the blocks around it (outermost first), and for an opener where its
+ * block ends and how many steps it holds; an end row's opener; the folded block hiding it, if any. */
+type Shape = { depth: number; rails: string[]; end: number; opener: number; inner: number; hidden: boolean; around: number[] };
+function shapes(steps: Held[], folded: Set<number>): Shape[] {
+  const open: { at: number; kind: string }[] = [];
+  return steps.map((s, i) => {
+    const k = s.kind;
+    let opener = -1;
+    if ((k === 'endIf' && open.at(-1)?.kind === 'if') || (k === 'endLoop' && open.length && open.at(-1)!.kind !== 'if')) opener = open.pop()!.at;
+    const around = open.map(o => o.at);
+    const hidden = around.some(a => folded.has(steps[a]._k)) || (opener >= 0 && folded.has(steps[opener]._k));
+    const shape: Shape = { depth: open.length, rails: open.map(o => o.kind), end: -1, opener, inner: 0, hidden, around };
+    if (OPENERS.has(k)) {
+      shape.end = blockEnd(steps, i);
+      const last = shape.end >= 0 ? shape.end : steps.length;
+      shape.inner = steps.slice(i + 1, last).filter(x => !['else', 'endIf', 'endLoop'].includes(x.kind)).length;
+      open.push({ at: i, kind: k });
+    }
+    return shape;
+  });
+}
+
+/** The form, with what its steps' sentences need: values, writing them, the ticks, the areas, the counters. */
 type Ed = {
   val: (i: number, path: string) => any; put: (i: number, path: string, v: unknown) => void; set: (i: number, p: Partial<Step>) => void;
   ticked: (i: number, path: string) => boolean; tick: (i: number, path: string, on: boolean) => void;
   areas: Area[]; newArea: () => string | null; pick: (i: number, what: 'point' | 'colour' | 'target' | 'marker', path?: string) => void; cut: (i: number) => void;
   canPick: boolean; capture: number | null; setCapture: (k: number | null) => void;
-  /** The counters (Set and Add steps' names) and the settings an If can read. */
-  counters: string[]; readable: Option[];
+  /** The counters (Set and Add steps' names), what each is called, and the settings an If can read. */
+  counters: string[]; label: (name: string) => string; readable: Option[];
+  /** "New counter…": its small dialog, under the list it was picked in; done gets the name. */
+  newCounter: (anchor: HTMLElement, done: (name: string) => void) => void;
 };
 
-export function MacroEditor({ base, accounts, macros, api }: {
+export function MacroEditor({ base, accounts, macros, api, openStep, stoppedReason, goAccounts }: {
   base: Macro; isNew?: boolean; accounts: Account[]; macros: Macro[]; api: Ref<MacroEditorApi>;
+  /** The Macros list's Fix: this step open and in sight, marked where its last run stopped (and why). */
+  openStep?: number; stoppedReason?: string;
+  /** The empty picture's "Go to Accounts": closes the form (asking first when something changed) and shows Accounts. */
+  goAccounts?: () => void;
 }) {
   const host = useHost();
   const { t, tn, call, busy, toast, on } = host;
@@ -89,9 +132,20 @@ export function MacroEditor({ base, accounts, macros, api }: {
   const [tried, setTried] = useState(false);
   const [pending, setPending] = useState<{ steps: Step[]; w: number; h: number } | null>(null);
   const [capture, setCapture] = useState<number | null>(null); // the step whose "Press a key" box is listening
-  const [openKey, setOpenKey] = useState<number | null>(null);
+  const [openKey, setOpenKey] = useState<number | null>(() => openStep != null && steps[openStep] ? steps[openStep]._k : null);
   const [note, setNote] = useState('');
   const [whenOpen, setWhenOpen] = useState(false);
+  const [folded, setFolded] = useState<Set<number>>(() => new Set());
+  const [noteFor, setNoteFor] = useState<number | null>(null); // the step whose note is being written
+  // The small things that open under a button: Add step's list, a block's "delete it all?", New counter.
+  const [adding, setAdding] = useState<{ anchor: HTMLElement; at: number } | null>(null);
+  const [asking, setAsking] = useState<{ anchor: HTMLElement; i: number } | null>(null);
+  const [naming, setNaming] = useState<{ anchor: HTMLElement; done: (name: string) => void } | null>(null);
+  // What can't be taken away while steps still use it: an area, or a switch or list an If or a text step reads.
+  const [inUse, setInUse] = useState<{ what: string; label: string; steps: number[] } | null>(null);
+  // Where Try it (or the run the list's Fix came from) stopped, on that step's row.
+  const [stopped, setStopped] = useState<{ k: number; reason: string } | null>(() =>
+    openStep != null && steps[openStep] && stoppedReason ? { k: steps[openStep]._k, reason: stoppedReason } : null);
   const opts = m.options || [];
   const areas = m.areas || [];
 
@@ -106,7 +160,7 @@ export function MacroEditor({ base, accounts, macros, api }: {
 
   const form = useRef<HTMLDivElement>(null);
   const nameBox = useRef<HTMLInputElement>(null);
-  const rowEl = (i: number) => form.current?.querySelectorAll<HTMLElement>('.mc-step')[i] || null;
+  const rowEl = (i: number) => form.current?.querySelector<HTMLElement>(`.mc-step[data-i="${i}"]`) || null;
 
   /* ── options (what the player may change) ── */
   const optOf = (v: unknown) => isOpt(v) ? opts.find(o => '$' + o.name === v) : undefined;
@@ -168,6 +222,7 @@ export function MacroEditor({ base, accounts, macros, api }: {
       ...(kind === 'choice' || kind === 'list' ? { choices } : {}) };
     patch({ options: [...shownOpts, o] });
   };
+  // The panel's own fields changed one at a time, so a change to one (its game, showing by itself) keeps the others (its tabs).
   const setPanel = (p: Partial<NonNullable<Macro['panel']>>) => setM(x => ({ ...x, panel: { autoShow: false, placeId: null, ...x.panel, ...p } }));
   const addTab = () => {
     if (tabs.length >= MAX_TABS) return toast(t('macro.tab.full', { n: MAX_TABS }), 'warn');
@@ -191,6 +246,17 @@ export function MacroEditor({ base, accounts, macros, api }: {
       }) }));
     if (curTab === name) setTabSel(null);
   };
+  /** The steps (their numbers, from 1) that read a switch, a choice or a list made on the panel. */
+  const readers = (name: string) => steps.flatMap((s, i) => {
+    const t2 = s.test as Test | undefined;
+    const reads = (t2?.kind === 'var' && t2.name === name) || s.words === '$' + name || (t2?.kind === 'text' && t2.words === '$' + name);
+    return reads ? [i] : [];
+  });
+
+  /* ── counters (Set and Add steps' names; what the panel calls each) ── */
+  const counterList = counters({ steps });
+  const labelOf = (name: string) => counterName(m, name);
+  const setCounterLabel = (name: string, label: string) => setPanel({ counterLabels: { ...(m.panel?.counterLabels || {}), [name]: label } });
 
   /* ── areas (named boxes on the game) ── */
   const newArea = () => {
@@ -203,10 +269,12 @@ export function MacroEditor({ base, accounts, macros, api }: {
     return '@' + name;
   };
   const setArea = (name: string, p: Partial<Area>) => setM(x => ({ ...x, areas: (x.areas || []).map(a => a.name === name ? { ...a, ...p } : a) }));
+  // An area a step still looks in stays: said under it, with links to those steps.
   const delArea = (name: string) => {
+    const by = steps.flatMap((s, i) => s.region === '@' + name || s.test?.region === '@' + name ? [i] : []);
+    if (by.length) return setInUse({ what: 'area:' + name, label: areas.find(a => a.name === name)?.label || '', steps: by });
+    setInUse(null);
     patch({ areas: areas.filter(a => a.name !== name) });
-    const off = (v: unknown) => v === '@' + name ? undefined : v;
-    setSteps(list => list.map(s => ({ ...s, ...(s.region !== undefined ? { region: off(s.region) } : {}), ...(s.test?.region !== undefined ? { test: { ...s.test, region: off(s.test.region) } } : {}) })));
   };
 
   // A template's "to do": the fields it marked on its steps, each done once changed from what the template had (an
@@ -221,12 +289,20 @@ export function MacroEditor({ base, accounts, macros, api }: {
   };
   const full = (): Macro => {
     const refs = used(steps);
-    return { ...m, name: m.name.trim(), options: opts.filter(keeps(refs)), steps: steps.map(st => {
-      const { todo: _t, ...rest } = strip(st);
-      void _t;
-      const still = todos.current.filter(x => x.k === st._k && !todoDone(x)).map(x => x.field);
-      return still.length ? { ...rest, todo: still } : rest;
-    }) };
+    const names = new Set(counters({ steps }));
+    // Labels of counters no step keeps any more go; the panel keeps only its own.
+    const labels = Object.fromEntries(Object.entries(m.panel?.counterLabels || {}).filter(([k, v]) => names.has(k) && v.trim()));
+    const { counterLabels: _l, ...panel } = m.panel || { autoShow: false, placeId: null };
+    void _l;
+    return { ...m, name: m.name.trim(), options: opts.filter(keeps(refs)),
+      panel: Object.keys(labels).length ? { ...panel, counterLabels: labels } : panel,
+      steps: steps.map(st => {
+        const { todo: _t, note: n0, ...rest } = strip(st);
+        void _t;
+        const n1 = String(n0 || '').trim().slice(0, MAX_NOTE);
+        const still = todos.current.filter(x => x.k === st._k && !todoDone(x)).map(x => x.field);
+        return { ...rest, ...(n1 ? { note: n1 } : {}), ...(still.length ? { todo: still } : {}) };
+      }) };
   };
   const snapshot = () => JSON.stringify(full());
   const initial = useRef('');
@@ -240,14 +316,39 @@ export function MacroEditor({ base, accounts, macros, api }: {
     setTried(true);
     const first = errors[0];
     if (!first) return { macro: full() };
-    if (first.step !== null) flushSync(() => setOpenKey(steps[first.step!]._k));
-    const box = first.field === 'name' ? nameBox.current
-      : first.field === 'accounts' || first.field === 'every' ? (flushSync(() => setWhenOpen(true)), form.current?.querySelector<HTMLElement>(first.field === 'every' ? '#mc-every' : '#mc-accs input') || null)
-      : first.field === 'options' ? form.current?.querySelector<HTMLElement>('.mp-label') || null
-      : first.step !== null ? rowEl(first.step)?.querySelector<HTMLElement>('.mc-sent :is(input, button)') || rowEl(first.step) : null;
-    return { error: first.text, box };
+    return { error: first.text, box: show(first) };
   };
   useImperativeHandle(api, () => ({ collect: () => latest.current.collect(), dirty: () => latest.current.snapshot() !== initial.current }), []);
+
+  /** The place a problem is about, brought into sight: its step open (its block unfolded), the When line or the panel's
+   * tab opened; the box to focus. */
+  const show = (p: Problem): HTMLElement | null => {
+    if (p.step !== null) {
+      unfoldTo(p.step);
+      flushSync(() => setOpenKey(steps[p.step!]._k));
+      const row = rowEl(p.step);
+      return row?.querySelector<HTMLElement>('[aria-invalid="true"], .mc-sent :is(input, select, button)') || row;
+    }
+    if (p.field === 'name') return nameBox.current;
+    if (p.field === 'accounts' || p.field === 'every') {
+      flushSync(() => setWhenOpen(true));
+      return form.current?.querySelector<HTMLElement>(p.field === 'every' ? '#mc-every' : '#mc-accs input') || null;
+    }
+    if (p.field === 'options') {
+      // A setting with no name may be on another tab: that tab first.
+      const o = opts.find(x => !x.label.trim());
+      if (o && tabs.length) flushSync(() => setTabSel(o.tab && tabs.includes(o.tab) ? o.tab : tabs[0]));
+      return [...(form.current?.querySelectorAll<HTMLInputElement>('.mp-label') || [])].find(x => !x.value.trim()) || null;
+    }
+    if (p.field?.startsWith('area:')) return form.current?.querySelector<HTMLElement>(`#mc-area-${p.field.slice(5)}`) || null;
+    return form.current?.querySelector<HTMLElement>('#mc-add') || null;
+  };
+  const goTo = (p: Problem) => {
+    setTried(true);
+    const box = show(p);
+    box?.scrollIntoView({ block: 'center' });
+    box?.focus({ preventScroll: true });
+  };
 
   // A recording this form started: its steps come in here (added to the end or in place of the steps there, as chosen).
   const stepsNow = useRef(steps);
@@ -263,57 +364,95 @@ export function MacroEditor({ base, accounts, macros, api }: {
   const rec = app.macroRecording || null;
 
   /* ── steps ── */
-  const focusRow = async (i: number) => {
-    if (steps[i]) setOpenKey(steps[i]._k);
+  const folds = shapes(steps, folded);
+  /** Unfolds every block around step i, so its row is drawn. */
+  const unfoldTo = (i: number) => {
+    const around = shapes(steps, new Set()).at(i)?.around || [];
+    const keys = around.map(a => steps[a]._k);
+    if (keys.some(k => folded.has(k))) flushSync(() => setFolded(f => new Set([...f].filter(k => !keys.includes(k)))));
+  };
+  const focusRow = async (i: number, open = true) => {
+    unfoldTo(i);
+    if (open && steps[i]) setOpenKey(steps[i]._k);
     await new Promise(r => setTimeout(r));
     const row = rowEl(i);
-    const el = row?.querySelector<HTMLElement>('.mc-sent :is(input, select, button)');
-    if (el) el.focus(); else if (row) { row.tabIndex = -1; row.focus(); }
+    const el = row?.querySelector<HTMLElement>('.mc-sent :is(input, select, button)') || row?.querySelector<HTMLElement>('.mc-step-head');
+    if (el) el.focus({ preventScroll: true }); else if (row) { row.tabIndex = -1; row.focus({ preventScroll: true }); }
     row?.scrollIntoView({ block: 'nearest' });
   };
-  const add = (kind: string) => {
+  /** The steps a step brings with it when moved, copied or deleted: an If or a repeat its whole block. */
+  const span = (list: Step[], i: number): [number, number] => {
+    const end = OPENERS.has(list[i]?.kind) ? blockEnd(list, i) : -1;
+    return [i, end >= 0 ? end : i];
+  };
+  const remember = (kind: string) => {
+    const was = host.store.get('macro.recentKinds', '').split(',').filter(Boolean);
+    host.store.set('macro.recentKinds', [kind, ...was.filter(k => k !== kind)].slice(0, RECENT).join(','));
+  };
+  const add = (kind: string, where?: number) => {
+    setAdding(null);
+    remember(kind);
     // If stuck ends the macro's own steps: it goes last, and turns on starting again and the stuck watch.
-    const at = kind !== 'recover' && cursor >= 0 && cursor < steps.length ? cursor + 1 : steps.length;
+    const at = kind === 'recover' ? steps.length : where ?? (cursor >= 0 && cursor < steps.length ? cursor + 1 : steps.length);
     if (kind === 'recover') patch({ onFail: 'restart', stuckMinutes: m.stuckMinutes || 5 });
     const added = stepsToAdd(kind).map(hold);
-    setSteps(list => [...list.slice(0, at), ...added, ...list.slice(at)]);
+    flushSync(() => setSteps(list => [...list.slice(0, at), ...added, ...list.slice(at)]));
     setCursor(at);
-    setOpenKey(added[0]._k);
-    focusRow(at);
+    setOpenKey(['else', 'break', 'stop', 'rejoin', 'recover'].includes(kind) ? null : added[0]._k);
+    focusRow(at, false); // opened above (this closure's steps are from before the insert)
   };
-  // The common kinds first; the rest one click away under More steps, in their groups.
-  const addMenu = (btn: HTMLElement) => host.menu(btn, [
-    ...COMMON_STEPS.map(k => ({ icon: STEP_ICON[k], text: t(`macro.kind.${k}`), run: () => add(k) })),
-    '-', { icon: 'more', text: t('macro.moreSteps'), run: () => setTimeout(() => moreMenu(btn)) },
-  ]);
-  const moreMenu = (btn: HTMLElement) => host.menu(btn, STEP_GROUPS.flatMap(([g, kinds], gi) => {
-    const rest = kinds.filter(k => !COMMON_STEPS.includes(k) && !(k === 'recover' && steps.some(s => s.kind === 'recover')));
-    return rest.length ? [...(gi ? ['-' as const] : []), { head: true, text: t(`macro.grp.${g}`) },
-      ...rest.map(k => ({ icon: STEP_ICON[k], text: t(`macro.kind.${k}`), run: () => add(k) }))] : [];
-  }));
+  const openAdd = (anchor: HTMLElement, at?: number) => {
+    const where = at ?? (cursor >= 0 && cursor < steps.length ? cursor + 1 : steps.length);
+    setAdding(a => a && a.anchor === anchor ? null : { anchor, at: where });
+  };
   const moveStep = (i: number, dir: number, btn: HTMLElement) => {
-    const j = i + dir;
-    if (j < 0 || j >= steps.length) return;
+    const [a, b] = span(steps, i);
+    if (dir < 0 ? a === 0 : b >= steps.length - 1) return;
     const next = [...steps];
-    [next[i], next[j]] = [next[j], next[i]];
+    // The step past the block's edge goes round it: the block moves one place.
+    if (dir < 0) { const [x] = next.splice(a - 1, 1); next.splice(b, 0, x); }
+    else { const [x] = next.splice(b + 1, 1); next.splice(a, 0, x); }
+    const to = a + dir;
     flushSync(() => setSteps(next));
-    setCursor(j);
-    const same = rowEl(j)?.querySelector<HTMLElement>(`[data-move="${dir}"]:not(:disabled)`);
+    setCursor(to);
+    const same = rowEl(to)?.querySelector<HTMLElement>(`[data-move="${dir}"]:not(:disabled)`);
     (same || btn).focus();
-    rowEl(j)?.scrollIntoView({ block: 'nearest' });
+    rowEl(to)?.scrollIntoView({ block: 'nearest' });
   };
   const dupStep = (i: number) => {
-    flushSync(() => setSteps(list => [...list.slice(0, i + 1), hold(strip(list[i])), ...list.slice(i + 1)]));
-    setCursor(i + 1);
-    rowEl(i + 1)?.querySelector<HTMLElement>('[data-st="dup"]')?.focus();
+    const [a, b] = span(steps, i);
+    flushSync(() => setSteps(list => [...list.slice(0, b + 1), ...list.slice(a, b + 1).map(s => hold(strip(s))), ...list.slice(b + 1)]));
+    setCursor(b + 1);
+    rowEl(b + 1)?.querySelector<HTMLElement>('[data-st="more"]')?.focus();
   };
-  const delStep = (i: number) => {
-    flushSync(() => setSteps(list => list.filter((_, k) => k !== i)));
-    if (cutFor === i) setCutFor(null);
-    const next = rowEl(Math.min(i, steps.length - 2));
-    (next?.querySelector<HTMLElement>('[data-st="del"]') || form.current?.querySelector<HTMLElement>('#mc-add'))?.focus();
+  const delStep = (i: number, anchor?: HTMLElement, sure = false) => {
+    const [a, b] = span(steps, i);
+    // An If or a repeat with steps in it: asked first, under its menu.
+    if (!sure && b > a && folds[i]?.inner && anchor) return setAsking({ anchor, i });
+    setAsking(null);
+    flushSync(() => setSteps(list => list.filter((_, k) => k < a || k > b)));
+    if (cutFor !== null && cutFor >= a && cutFor <= b) setCutFor(null);
+    const next = rowEl(Math.min(a, steps.length - (b - a) - 2));
+    (next?.querySelector<HTMLElement>('[data-st="more"]') || form.current?.querySelector<HTMLElement>('#mc-add'))?.focus();
   };
-  const [dragging, setDragging] = useState<number | null>(null);
+  const toggleFold = (k: number) => setFolded(f => { const n = new Set(f); if (n.has(k)) n.delete(k); else n.add(k); return n; });
+  const setNoteOf = (i: number, text: string) => setSteps(list => list.map((s, k) => {
+    if (k !== i) return s;
+    const { note: _n, ...rest } = s;
+    void _n;
+    return (text.trim() ? { ...rest, note: text.slice(0, MAX_NOTE) } : rest) as Held;
+  }));
+  // Dragging by the handle: a step, or an If or repeat with its whole block, shown in its new place as it goes.
+  const [dragging, setDragging] = useState<{ from: number; len: number } | null>(null);
+  const dragOver = (j: number) => {
+    if (!dragging || (j >= dragging.from && j < dragging.from + dragging.len)) return;
+    const next = [...steps];
+    const moved = next.splice(dragging.from, dragging.len);
+    const to = j < dragging.from ? j : j - dragging.len + 1;
+    next.splice(to, 0, ...moved);
+    setSteps(next);
+    setDragging({ from: to, len: dragging.len });
+  };
 
   /* ── the game: a picture of it, Edit on game, picking on it ── */
   const take = (btn: HTMLElement) => busy(btn, async () => {
@@ -327,7 +466,7 @@ export function MacroEditor({ base, accounts, macros, api }: {
   });
   // A point or colour picked by clicking on the game itself (the click doesn't reach Roblox; Esc gives up).
   const pick = async (i: number, what: 'point' | 'colour' | 'target' | 'marker', path?: string) => {
-    if (!windowId) return toast(t('macro.needWindow'), 'info');
+    if (!windowId) return toast(t('macro.need.game'), 'info');
     setNote(t('macro.pickNow', { name: windowName }));
     const r = await call('pickOnGame', { accountId: windowId }) as { x: number; y: number; colour: string } | null | undefined;
     setNote('');
@@ -345,10 +484,10 @@ export function MacroEditor({ base, accounts, macros, api }: {
     focusRow(i);
   };
   const cut = (i: number) => {
+    if (!windowId && !picture) return toast(t('macro.need.game'), 'info');
     setCutFor(i);
     if (!picture && windowId) take(form.current!.querySelector<HTMLElement>('#mc-pic-take')!);
     setTimeout(() => form.current?.querySelector<HTMLElement>('.mc-pic-frame')?.focus({ preventScroll: true }), 0);
-    form.current?.querySelector('.mc-game')?.scrollIntoView({ block: 'nearest' });
   };
   const cutDone = (r: Rect, image: string, cutDown: boolean) => {
     void r;
@@ -391,11 +530,12 @@ export function MacroEditor({ base, accounts, macros, api }: {
     if (d.step != null && d.x != null && d.y != null) moveDot(d.step, d.x, d.y);
     if (d.area && d.rect) moveBox(d.area, d.rect);
   }), [on]);
-  const editOnGame = () => { if (!windowId) return toast(t('macro.needWindow'), 'info'); setOnGame(x => !x); };
+  const editOnGame = () => { if (!windowId) return toast(t('macro.need.game'), 'info'); setOnGame(x => !x); };
 
   // Try it: the macro as it is in the form, once, on the window chosen (macroTryRun). Its run (trial) shows here, not in
-  // the list: each step it gets past is a line ("found" for those that look for something), and how it ended. Meanwhile
-  // the app sends what it sees on that window (macroSeen: the picture, what it found, a note).
+  // the list: each step it gets past is a line ("found" for those that look for something), and how it ended; the step
+  // running is marked on its row, and where it stopped. Meanwhile the app sends what it sees on that window (macroSeen:
+  // the picture, what it found, a note).
   const [seen, setSeen] = useState<Seen | null>(null);
   const [lines, setLines] = useState<Seen[] | null>(null);
   const [trial, setTrial] = useState<{ id: string; accountId: string; since: number } | null>(null);
@@ -417,47 +557,114 @@ export function MacroEditor({ base, accounts, macros, api }: {
         line({ w: 0, h: 0, step: lastStep.current, outcome: run.reason === 'missingValue' ? 'missingValue' : 'notFound' });
       else if (run.status === 'done') passed(lastStep.current);
     } else if (lastStep.current !== null && at !== null && at !== lastStep.current) passed(lastStep.current);
-    lastStep.current = at;
     if (!isLive(run)) {
+      // Where it stopped, on its row: the app says (lastStep), else the last step seen running.
+      const where = run.lastStep ?? lastStep.current;
+      if (run.status === 'failed' && where !== null && steps[where]) {
+        setStopped({ k: steps[where]._k, reason: run.reason || '' });
+        unfoldTo(where);
+        setTimeout(() => rowEl(where)?.scrollIntoView({ block: 'nearest' }));
+      }
       line({ w: 0, h: 0, outcome: run.status === 'done' ? 'done' : 'stopped' });
       setTrial(null);
     }
+    lastStep.current = at;
   }, [run?.step, run?.status]);
-  // Its results are at the foot of the form, far below the button: kept in sight as it starts and as lines come.
-  useEffect(() => {
-    if (trial || lines?.length) form.current?.closest('.modal-body')?.querySelector('.mc-tries')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-  }, [trial?.since, lines?.length]);
+  const runningAt = trial && run && isLive(run) && run.step != null ? run.step : null;
+  useEffect(() => { if (runningAt !== null) unfoldTo(runningAt); }, [runningAt]);
   const tryIt = (btn: HTMLElement) => busy(btn, async () => {
     if (trial) { setTrial(null); return call('stopMacros', { id: trial.id, accountId: trial.accountId, trial: true }); }
-    if (!windowId) return toast(t('macro.needWindow'), 'info');
-    if (errors.length) { setTried(true); return toast(t('macro.tryFix'), 'warn'); }
+    if (!windowId) return toast(t('macro.need.try'), 'info');
+    if (errors.length) { setTried(true); goTo(errors[0]); return toast(t('macro.tryFix'), 'warn'); }
     setLines([]);
+    setStopped(null);
     lastStep.current = null;
     const r = await call('macroTryRun', { macro: full(), accountId: windowId }) as { queued: number; macroId: string } | undefined;
     if (r?.macroId) setTrial({ id: r.macroId, accountId: windowId, since: Date.now() - 2000 });
   });
 
   const record = (btn: HTMLElement) => busy(btn, async () => {
-    if (!windowId) return toast(t('macro.needWindow'), 'info');
+    if (!windowId) return toast(t('macro.need.record'), 'info');
     recording.for = 'editor';
     if (await call('recordMacro', { accountId: windowId }) === undefined) recording.for = null;
   });
 
+  // The list's Fix: the step that stopped, open and in sight.
+  useEffect(() => {
+    if (openStep == null || !steps[openStep]) return;
+    unfoldTo(openStep);
+    setTimeout(() => rowEl(openStep)?.scrollIntoView({ block: 'center' }), 60);
+  }, []);
+
+  // The dialog's foot: how many problems stop Save (a click goes to the first), and Save marked as not ready yet.
+  const [foot, setFoot] = useState<HTMLElement | null>(null);
+  useLayoutEffect(() => { setFoot(form.current?.closest('.modal')?.querySelector<HTMLElement>('.modal-foot') || null); }, []);
+  useEffect(() => {
+    const save = foot?.querySelector<HTMLElement>('.btn.primary');
+    if (!save) return;
+    save.setAttribute('aria-disabled', errors.length ? 'true' : 'false');
+    if (errors.length) save.title = errors[0].text; else save.removeAttribute('title');
+  });
+
   /* ── the form ── */
-  const d = depths(steps);
   const taken = new Map(macros.filter(o => o.id !== m.id && o.hotkey).map(o => [o.hotkey!, o.name]));
   const accTicked = new Set(m.accountIds);
-  const shown = (p: { step: number | null; field?: string }) => tried || p.step !== null;
-  const listed = all.filter(shown);
+  const shown = (p: { step: number | null }) => tried || p.step !== null;
   const stepProblems = (i: number) => all.filter(p => p.step === i && shown(p));
+  const formProblems = (field: string) => all.filter(p => p.step === null && p.field === field && shown(p));
   const who = m.targets === 'accounts' ? tn('macro.tg.n', m.accountIds.length) : t(`macro.tg.${m.targets}`);
   const when = m.trigger.kind === 'interval' ? t('macro.trig.every', { d: durText(t, m.trigger.everySeconds || 60) }) : t(`macro.when.${m.trigger.kind}`);
   const ed: Ed = { val, put, set: setStep, ticked, tick, areas, newArea, pick, cut, canPick: !!windowId, capture, setCapture,
-    counters: counters({ steps }), readable: shownOpts.filter(o => o.kind === 'check' || o.kind === 'choice' || o.kind === 'number') };
+    counters: counterList, label: labelOf, readable: shownOpts.filter(o => o.kind === 'check' || o.kind === 'choice' || o.kind === 'number'),
+    newCounter: (anchor, done) => setNaming(n => n?.anchor === anchor ? null : { anchor, done }) };
   const place = m.panel?.placeId ? `https://www.roblox.com/games/${m.panel.placeId}` : '';
   const [placeText, setPlaceText] = useState(place);
+  // "Every": a number and its unit (seconds or minutes), kept in seconds.
+  const every = m.trigger.everySeconds;
+  const [unit, setUnit] = useState<'s' | 'min'>(() => every && every >= 60 && every % 60 === 0 ? 'min' : 's');
+  const everyShown = typeof every === 'number' && Number.isFinite(every) ? +(unit === 'min' ? every / 60 : every).toFixed(2) : '';
+  /** The fix a problem offers on its row, as a button. */
+  const fixOf = (p: Problem): { label: string; run: () => void; off?: string } | null => {
+    const i = p.step;
+    switch (p.fix) {
+      case 'addEnd': {
+        if (i === null) return null;
+        const kind = steps[i].kind;
+        return { label: t(kind === 'if' ? 'macro.fix.addEndIf' : 'macro.fix.addEndLoop'), run: () => {
+          // The block takes what follows it in its own level: it ends where the level does.
+          const close = shapes(steps, new Set());
+          let at = steps.length;
+          for (let j = i + 1; j < steps.length; j++) if (close[j].depth < close[i].depth + 1 && close[j].opener !== i) { at = j; break; }
+          const added = hold(newStep(endOf(kind)));
+          flushSync(() => setSteps(list => [...list.slice(0, at), added, ...list.slice(at)]));
+          focusRow(i, false);
+        } };
+      }
+      case 'pick': return i === null ? null : { label: t('macro.fix.pick'), off: windowId ? undefined : t('macro.need.game'), run: () => pick(i, 'point') };
+      case 'area': return i === null ? null : { label: t('macro.fix.area'), run: () => {
+        const s = steps[i];
+        const isTest = s.kind === 'if' || s.kind === 'loopUntil';
+        if (!areas.length) {
+          const r = newArea();
+          if (r) setStep(i, isTest ? { test: { ...s.test, region: r } } : { region: r });
+          return focusRow(i);
+        }
+        unfoldTo(i);
+        flushSync(() => setOpenKey(s._k));
+        const box = rowEl(i)?.querySelector<HTMLElement>('select.mc-where');
+        box?.focus();
+        box?.scrollIntoView({ block: 'nearest' });
+      } };
+      case 'name': return { label: t('macro.fix.name'), run: () => { const box = show(p); box?.focus(); box?.scrollIntoView({ block: 'nearest' }); } };
+    }
+    return null;
+  };
 
   const todoList = todos.current;
+  const nameErr = formProblems('name');
+  const whenErr = [...formProblems('accounts'), ...formProblems('every')];
+  const stepsErr = all.filter(p => p.step === null && !p.field && shown(p));
+  const optsErr = formProblems('options');
   return <div className="mc-form" ref={form}>
     {todoList.length ? <div className="mc-todo" role="group" aria-labelledby="mc-todo-h">
       <b id="mc-todo-h">{todoList.every(todoDone) ? t('macro.todo.allDone') : t('macro.todo.title')}</b>
@@ -477,21 +684,32 @@ export function MacroEditor({ base, accounts, macros, api }: {
         <div className="form mc-top">
           <div className="mc-name-row">
             <label>{t('macro.name')}<input className="field" id="mc-name" ref={nameBox} maxLength={60} placeholder={t('macro.namePh')} value={m.name}
+              aria-invalid={nameErr.some(p => !p.warn) || undefined} aria-describedby={nameErr.length ? 'mc-name-err' : undefined}
               onChange={e => patch({ name: e.target.value })} /></label>
             <button type="button" className={`btn mc-try-it${trying ? ' on' : ''}`} id="mc-try" aria-pressed={trying} disabled={!windowId}
-              title={windowId ? t('macro.tryItTip', { name: windowName }) : t('macro.needWindow')} onClick={e => tryIt(e.currentTarget)}>
+              title={windowId ? t('macro.tryItTip', { name: windowName }) : t('macro.need.try')} onClick={e => tryIt(e.currentTarget)}>
               <Icon name={trying ? 'stop' : 'play'} /><span>{t(trying ? 'macro.tryStop' : 'macro.tryIt')}</span></button>
           </div>
+          {nameErr.length ? <FieldErr id="mc-name-err" list={nameErr} /> : null}
           <details className="mc-when" open={whenOpen} onToggle={e => setWhenOpen((e.target as HTMLDetailsElement).open)}>
-            <summary id="mc-when"><span>{[when, who, m.hotkey ? `Ctrl+Alt+${m.hotkey}` : t('macro.hk.noneLine')].join(' · ')}</span><Icon name="chevronDown" /></summary>
+            <summary id="mc-when"><span>{[when, who, m.hotkey ? `Ctrl+Alt+${m.hotkey}` : t('macro.hk.noneLine')].join(' · ')}</span>
+              {whenErr.some(p => !p.warn) && !whenOpen ? <i className="mc-dot-bad" aria-hidden="true" /> : null}<Icon name="chevronDown" /></summary>
             <div className="mc-when-body">
               <div className="mc-grid">
                 <label>{t('macro.trigger')}<select className="select" id="mc-trigger" value={m.trigger.kind} onChange={e => {
                   const kind = e.target.value as Macro['trigger']['kind'];
                   patch({ trigger: kind === 'interval' ? { kind, everySeconds: m.trigger.everySeconds || 300 } : { kind } });
+                  if (kind === 'interval' && !m.trigger.everySeconds) setUnit('min');
                 }}>{['manual', 'interval', 'join', 'rejoin'].map(k => <option key={k} value={k}>{t(`macro.trigOpt.${k}`)}</option>)}</select></label>
-                {m.trigger.kind === 'interval' ? <label>{t('macro.everyMin')}<input className="field num" id="mc-every" type="number" min={1} max={1440}
-                  value={Math.round((m.trigger.everySeconds || 300) / 60)} onChange={e => patch({ trigger: { kind: 'interval', everySeconds: e.target.value === '' ? NaN : Math.round(+e.target.value * 60) } })} /></label> : <span />}
+                {m.trigger.kind === 'interval' ? <label>{t('macro.everyMin')}<span className="mc-every">
+                  <input className="field num" id="mc-every" type="number" min={unit === 'min' ? 1 : 10} max={unit === 'min' ? 1440 : 86400}
+                    aria-invalid={whenErr.some(p => p.field === 'every') || undefined}
+                    value={everyShown} onChange={e => patch({ trigger: { kind: 'interval', everySeconds: e.target.value === '' ? NaN : Math.round(+e.target.value * (unit === 'min' ? 60 : 1)) } })} />
+                  <select className="select" id="mc-every-unit" aria-label={t('macro.every.unit')} value={unit} onChange={e => {
+                    const u = e.target.value as 's' | 'min';
+                    setUnit(u);
+                    if (typeof everyShown === 'number') patch({ trigger: { kind: 'interval', everySeconds: Math.round(everyShown * (u === 'min' ? 60 : 1)) } });
+                  }}><option value="s">{t('macro.every.s')}</option><option value="min">{t('macro.every.min')}</option></select></span></label> : <span />}
                 <label>{t('macro.targets')}<select className="select" id="mc-targets" value={m.targets} onChange={e => patch({ targets: e.target.value as Macro['targets'] })}>
                   {['selected', 'all', 'accounts'].map(k => <option key={k} value={k}>{t(`macro.tg.${k}`)}</option>)}</select></label>
                 <label>{t('macro.hotkey')}<select className="select" id="mc-hotkey" value={m.hotkey ? String(m.hotkey) : ''} onChange={e => patch({ hotkey: e.target.value ? +e.target.value : null })}>
@@ -499,6 +717,7 @@ export function MacroEditor({ base, accounts, macros, api }: {
                   {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => <option key={n} value={String(n)} disabled={taken.has(n)}>
                     {taken.has(n) ? t('macro.hk.taken', { k: `Ctrl+Alt+${n}`, name: taken.get(n)! }) : `Ctrl+Alt+${n}`}</option>)}</select></label>
               </div>
+              {whenErr.length ? <FieldErr list={whenErr} /> : null}
               {m.hotkey && app.hotkeys && !app.hotkeys.on ? <p className="mc-note"><Icon name="info" /><span>{t('macro.hk.off')}</span></p> : null}
               {m.targets === 'accounts' ? <div className="rc-list mc-accs" id="mc-accs" role="group" aria-label={t('macro.targets')}>{accounts.map(a =>
                 <label key={a.id} className="rc-item"><input type="checkbox" checked={accTicked.has(a.id)} aria-label={a.label} onChange={e =>
@@ -518,8 +737,11 @@ export function MacroEditor({ base, accounts, macros, api }: {
               </div>
               <div className="mc-grid mc-when-nums">
                 <label>{t('macro.e.stopAfterL')}<NumField id="mc-max" value={m.maxMinutes} min={1} max={240} onChange={v => patch({ maxMinutes: v })} /></label>
-                <label>{t('macro.e.randomMs')}<NumField id="mc-jms" value={m.jitterMs} min={0} max={500} onChange={v => patch({ jitterMs: v })} /></label>
-                <label>{t('macro.e.randomPx')}<NumField id="mc-jpx" value={m.jitterPx} min={0} max={20} onChange={v => patch({ jitterPx: v })} /></label>
+                <label>{t('macro.e.randomMs')}<span className="mc-unit wide"><input className="field num" id="mc-jms" type="number" min={0} max={0.5} step="0.01"
+                  value={Number.isFinite(m.jitterMs) ? +(m.jitterMs / 1000).toFixed(3) : ''}
+                  onChange={e => patch({ jitterMs: e.target.value === '' ? NaN : Math.round(+e.target.value * 1000) })} /><span aria-hidden="true">{t('macro.unit.s')}</span></span></label>
+                <label>{t('macro.e.randomPx')}<span className="mc-unit wide"><NumField id="mc-jpx" value={m.jitterPx} min={0} max={20} onChange={v => patch({ jitterPx: v })} />
+                  <span aria-hidden="true">px</span></span></label>
               </div>
             </div>
           </details>
@@ -528,10 +750,10 @@ export function MacroEditor({ base, accounts, macros, api }: {
         <section className="mc-steps-sec" aria-labelledby="mc-steps-h">
           <div className="mc-steps-head">
             <b id="mc-steps-h">{t('macro.steps')} <span className="muted">({steps.length})</span></b>
-            <button type="button" className="btn sm" id="mc-record" disabled={!windowId || !!rec} title={windowId ? t('macro.rec.tip') : t('macro.needWindow')}
+            <button type="button" className="btn sm" id="mc-record" disabled={!windowId || !!rec} title={windowId ? t('macro.rec.tip') : t('macro.need.record')}
               onClick={e => record(e.currentTarget)}><Icon name="record" /><span>{t('macro.recordBtn')}</span></button>
-            <button type="button" className="btn sm primary" id="mc-add" aria-haspopup="menu" onClick={e => addMenu(e.currentTarget)}>
-              <Icon name="plus" /><span>{t('macro.addStep')}</span></button>
+            <button type="button" className="btn sm" id="mc-add" aria-haspopup="dialog" aria-expanded={adding?.anchor.id === 'mc-add'}
+              onClick={e => openAdd(e.currentTarget)}><Icon name="plus" /><span>{t('macro.addStep')}</span></button>
           </div>
           {rec ? <EditorRecording startsAt={rec.startsAt} count={rec.steps} /> : null}
           {pending ? <div className="mc-pending" role="group" aria-label={t('macro.rec.done', { n: pending.steps.length })}>
@@ -541,34 +763,33 @@ export function MacroEditor({ base, accounts, macros, api }: {
             <button type="button" className="btn sm ghost" onClick={() => setPending(null)}>{t('macro.rec.discard')}</button>
           </div> : null}
           {!steps.length ? <p className="mc-steps-none">{t('macro.noSteps')}</p> : null}
+          {stepsErr.length ? <FieldErr list={stepsErr} /> : null}
           <div className="mc-steps" role="list" aria-labelledby="mc-steps-h"
             onDragOver={e => {
-              if (dragging === null) return;
+              if (!dragging) return;
               e.preventDefault();
               e.dataTransfer.dropEffect = 'move';
               const over = (e.target as HTMLElement).closest<HTMLElement>('.mc-step');
-              const j = over ? [...over.parentElement!.children].indexOf(over) : -1;
-              if (j < 0 || j === dragging) return;
-              const next = [...steps];
-              const [s] = next.splice(dragging, 1);
-              next.splice(j, 0, s);
-              setSteps(next);
-              setDragging(j);
+              if (over?.dataset.i) dragOver(+over.dataset.i);
             }}
             onDrop={e => e.preventDefault()} onDragEnd={() => setDragging(null)}>
-            {steps.map((s, i) => <StepRow key={s._k} s={s} i={i} m={m} count={steps.length} depth={d[i]} problems={stepProblems(i)} dragging={dragging === i}
-              open={openKey === s._k} toggle={() => { setOpenKey(openKey === s._k ? null : s._k); setCursor(i); }} ed={ed}
-              focus={() => setCursor(i)} move={(dir, btn) => moveStep(i, dir, btn)} dup={() => dupStep(i)} del={() => delStep(i)} cutting={cutFor === i}
-              dragStart={() => setDragging(i)} />)}
+            {steps.map((s, i) => {
+              const sh = folds[i];
+              if (sh.hidden) return null;
+              const inside = sh.end >= 0 && folded.has(s._k) ? all.filter(p => !p.warn && p.step !== null && p.step > i && p.step <= sh.end).length : 0;
+              return <StepRow key={s._k} s={s} i={i} m={m} count={steps.length} shape={sh} problems={stepProblems(i)} fixOf={fixOf}
+                dragging={!!dragging && i >= dragging.from && i < dragging.from + dragging.len}
+                open={openKey === s._k} toggle={() => { setOpenKey(openKey === s._k ? null : s._k); setCursor(i); }} ed={ed}
+                folded={folded.has(s._k)} fold={() => toggleFold(s._k)} hiddenBad={inside}
+                running={runningAt === i} stopped={stopped?.k === s._k ? stopped.reason : null}
+                noting={noteFor === s._k} setNoting={on => setNoteFor(on ? s._k : null)} setNote={text => setNoteOf(i, text)}
+                focus={() => setCursor(i)} move={(dir, btn) => moveStep(i, dir, btn)} dup={() => dupStep(i)} del={btn => delStep(i, btn)} cutting={cutFor === i}
+                insert={(btn, at) => openAdd(btn, at)} dragStart={() => { const [a, b] = span(steps, i); setDragging({ from: a, len: b - a + 1 }); }} />;
+            })}
           </div>
-          {listed.length ? <div className="mc-problems" role="status" aria-live="polite">
-            <b>{t(errors.some(shown) ? 'macro.err.title' : 'macro.warn.title')}</b>
-            <ul>{listed.map((p, k) => <li key={k} className={p.warn ? 'warn' : ''}>
-              {p.step !== null ? <button type="button" className="link" onClick={() => focusRow(p.step!)}>{p.text}</button> : p.text}</li>)}</ul>
-          </div> : null}
         </section>
 
-        <PlayerSees m={m} options={shownOpts} counts={counters({ steps })} areas={areas.length}
+        <PlayerSees m={m} options={shownOpts} counts={counterList.map(labelOf)} areas={areas.length}
           tabs={tabs} tab={curTab} setTab={setTabSel} addTab={addTab} renameTab={renameTab} removeTab={removeTab}
           moveTo={(name, tab) => setM(x => ({ ...x, options: (x.options || []).map(o => {
             if (o.name !== name) return o;
@@ -598,21 +819,29 @@ export function MacroEditor({ base, accounts, macros, api }: {
           remove={name => {
             const o = opts.find(x => x.name === name);
             if (!o) return;
-            if (FREE.has(o.kind)) return patch({ options: shownOpts.filter(x => x.name !== name) });
+            if (FREE.has(o.kind)) {
+              // A switch or list a step still reads stays: said here, with links to those steps.
+              const by = readers(name);
+              if (by.length) return setInUse({ what: 'opt:' + name, label: o.label, steps: by });
+              setInUse(null);
+              return patch({ options: shownOpts.filter(x => x.name !== name) });
+            }
             // A ticked value: the steps get it back as their own.
             const back = (k: string, v: unknown) => v !== '$' + name ? v : o.kind === 'point' ? asPoint(o.value)?.[k as 'x' | 'y'] : o.value;
             setSteps(list => list.map(s => ({ ...Object.fromEntries(Object.entries(s).map(([k, v]) => [k, back(k, v)])),
               ...(s.test ? { test: Object.fromEntries(Object.entries(s.test).map(([k, v]) => [k, back(k, v)])) } : {}) } as Held)));
           }}>
+          {optsErr.length ? <FieldErr list={optsErr} /> : null}
+          {inUse?.what.startsWith('opt:') ? <InUse label={inUse.label} steps={inUse.steps} go={i => focusRow(i)} close={() => setInUse(null)} /> : null}
           <label className="mc-switch-row">
             <span className="switch"><input type="checkbox" id="mc-panel-auto" checked={!!m.panel?.autoShow}
-              onChange={e => patch({ panel: { autoShow: e.target.checked, placeId: m.panel?.placeId ?? null } })} /><span /></span>
+              onChange={e => setPanel({ autoShow: e.target.checked })} /><span /></span>
             <span><b>{t('macro.panel.auto')}</b><small>{t('macro.panel.autoDesc')}</small></span></label>
           {m.panel?.autoShow ? <div className="mc-panel-game"><GameBox place={placeText} setPlace={v => {
             setPlaceText(v);
             const id = /(?:games\/|^)(\d{3,})/.exec(v.trim())?.[1];
-            patch({ panel: { autoShow: true, placeId: id ? +id : null } });
-          }} chose={g => patch({ panel: { autoShow: true, placeId: g.placeId } })} /></div> : null}
+            setPanel({ placeId: id ? +id : null });
+          }} chose={g => setPanel({ placeId: g.placeId })} /></div> : null}
         </PlayerSees>
       </div>
 
@@ -622,39 +851,85 @@ export function MacroEditor({ base, accounts, macros, api }: {
             <b id="mc-game-h">{t('macro.game.title')}</b>
             {live.length > 1 ? <select className="select sm" id="mc-pic-acc" value={windowId} aria-label={t('macro.pic.account')} onChange={e => setAccountId(e.target.value)}>
               {live.map(a => <option key={a.id} value={a.id}>{a.label}</option>)}</select> : null}
-            <button type="button" className={`btn sm${onGame ? ' on' : ' primary'}`} id="mc-ongame" aria-pressed={onGame} disabled={!windowId} onClick={editOnGame}>
+            <button type="button" className={`btn sm${onGame ? ' on' : ''}`} id="mc-ongame" aria-pressed={onGame} disabled={!windowId}
+              title={windowId ? undefined : t('macro.need.game')} onClick={editOnGame}>
               <Icon name={onGame ? 'check' : 'screens'} /><span>{t(onGame ? 'macro.game.done' : 'macro.game.edit')}</span></button>
           </div>
           <p className={`mc-game-say${onGame ? ' on' : ''}`} role="status">{!windowId ? t('macro.game.noWindow')
             : onGame ? t('macro.game.editing', { name: windowName }) : t('macro.game.how', { name: windowName })}</p>
           <GameFrame picture={seen?.image ? { image: seen.image.startsWith('data:') ? seen.image : `data:image/png;base64,${seen.image}`, w: seen.w, h: seen.h } : picture}
             size={m.recordedSize} dots={dots} boxes={areas} found={seen?.boxes || []} cutting={cutFor !== null}
-            cancelCut={() => setCutFor(null)} onDot={moveDot} onBox={moveBox} onCut={cutDone} />
+            cancelCut={() => setCutFor(null)} onDot={moveDot} onBox={moveBox} onCut={cutDone} goAccounts={!windowId ? goAccounts : undefined} />
           <div className="mc-pic-acts">
-            <button type="button" className="btn sm" id="mc-pic-take" disabled={!windowId || taking} onClick={e => take(e.currentTarget)}>
-              <Icon name="image" /><span>{t(picture ? 'macro.pic.again' : 'macro.pic.take')}</span></button>
+            <button type="button" className="btn sm" id="mc-pic-take" disabled={!windowId || taking} title={windowId ? undefined : t('macro.need.game')}
+              onClick={e => take(e.currentTarget)}><Icon name="image" /><span>{t(picture ? 'macro.pic.again' : 'macro.pic.take')}</span></button>
             <small>{picture ? t('macro.pic.size', { w: picture.w, h: picture.h }) : t('macro.pic.why')}</small>
           </div>
           {note ? <p className="mc-note" role="status"><Icon name="info" /><span>{note}</span></p> : null}
-          <AreaList areas={areas} set={setArea} del={delArea} add={() => newArea()} />
+          <AreaList areas={areas} set={setArea} del={delArea} add={() => newArea()} problems={all.filter(p => p.field?.startsWith('area:'))}
+            inUse={inUse?.what.startsWith('area:') ? inUse : null} go={i => focusRow(i)} closeInUse={() => setInUse(null)} />
         </section>
         {lines ? <TryLines lines={lines} trying={trying} steps={steps} m={m} name={windowName} note={seen?.note} /> : null}
       </aside>
     </div>
+    {adding ? <AddList anchor={adding.anchor} at={adding.at} steps={steps} add={add} close={() => setAdding(null)} /> : null}
+    {asking ? <Pop anchor={asking.anchor} close={() => setAsking(null)} label={t('macro.delStep')} className="mc-ask">
+      <p>{tn('macro.block.deleteAsk', folds[asking.i]?.inner || 0, { what: t(steps[asking.i]?.kind === 'if' ? 'macro.block.if' : 'macro.block.loop') })}</p>
+      <div className="mc-pop-acts">
+        <button type="button" className="btn sm ghost" onClick={() => setAsking(null)}>{t('common.cancel')}</button>
+        <button type="button" className="btn sm danger" autoFocus onClick={() => delStep(asking.i, undefined, true)}>{t('macro.delete')}</button>
+      </div>
+    </Pop> : null}
+    {naming ? <NewCounter anchor={naming.anchor} taken={counterList} close={() => setNaming(null)} done={(name, label) => {
+      if (label.trim() && label.trim() !== name) setCounterLabel(name, label.trim());
+      naming.done(name);
+      setNaming(null);
+    }} /> : null}
+    {foot && errors.length ? createPortal(<button type="button" className="mc-probs-badge" onClick={() => goTo(errors[0])} title={errors[0].text}>
+      <Icon name="alert" /><span>{tn('macro.problemsN', errors.length)}</span></button>, foot) : null}
   </div>;
 }
 
+/** Problems that belong to the form rather than a step (its name, when it runs, the panel), under their fields. */
+function FieldErr({ list, id }: { list: Problem[]; id?: string }) {
+  return <ul className="mc-ferr" id={id} role="status">{list.map((p, k) => <li key={k} className={p.warn ? 'warn' : ''}><Icon name="alert" /><span>{p.text}</span></li>)}</ul>;
+}
+
+/** "Used by steps 3 and 4": what can't go yet, each step a link to it. */
+function InUse({ label, steps, go, close }: { label: string; steps: number[]; go: (i: number) => void; close: () => void }) {
+  const { t, tn, locale } = useHost();
+  const MARK = '\u0001';
+  const nums = steps.map(i => String(i + 1));
+  const list = new Intl.ListFormat(locale, { style: 'long', type: 'conjunction' }).formatToParts(nums.map((_, k) => `${MARK}${k}${MARK}`))
+    .map(p => p.value).join('');
+  const text = tn('macro.ref.used', steps.length, { list, name: label });
+  return <p className="mc-inuse" role="status"><Icon name="info" /><span>{text.split(MARK).map((b, k) => k % 2
+    ? <button key={k} type="button" className="link" onClick={() => go(steps[+b])}>{nums[+b]}</button> : b ? <Fragment key={k}>{b}</Fragment> : null)}</span>
+    <button type="button" className="icon-btn" title={t('common.close')} aria-label={t('common.close')} onClick={close}><Icon name="x" /></button></p>;
+}
+
 /** The macro's areas: each one's colour on the game, its name (what the steps say: "in Fish area"), and removing it. */
-function AreaList({ areas, set, del, add }: { areas: Area[]; set: (name: string, p: Partial<Area>) => void; del: (name: string) => void; add: () => void }) {
+function AreaList({ areas, set, del, add, problems: probs, inUse, go, closeInUse }: {
+  areas: Area[]; set: (name: string, p: Partial<Area>) => void; del: (name: string) => void; add: () => void; problems: Problem[];
+  inUse: { what: string; label: string; steps: number[] } | null; go: (i: number) => void; closeInUse: () => void;
+}) {
   const { t } = useHost();
   return <div className="mc-areas" role="group" aria-labelledby="mc-areas-h">
     <div className="mc-areas-head"><b id="mc-areas-h">{t('macro.area.title')}</b>
       <button type="button" className="btn sm" id="mc-area-add" onClick={add}><Icon name="plus" /><span>{t('macro.area.new')}</span></button></div>
-    {!areas.length ? <p className="mc-pic-none">{t('macro.area.none')}</p> : <ul>{areas.map(a => <li key={a.name}>
-      <i style={{ borderColor: a.colour }} aria-hidden="true" />
-      <input className="field sm" value={a.label} maxLength={30} aria-label={t('macro.area.name')} onChange={e => set(a.name, { label: e.target.value })} />
-      <button type="button" className="icon-btn" title={t('macro.area.del')} aria-label={`${t('macro.area.del')}: ${a.label}`} onClick={() => del(a.name)}><Icon name="trash" /></button>
-    </li>)}</ul>}
+    {!areas.length ? <p className="mc-pic-none">{t('macro.area.none')}</p> : <ul>{areas.map(a => {
+      const bad = probs.find(p => p.field === `area:${a.name}`);
+      return <li key={a.name}>
+        <div className="mc-area-row">
+          <i style={{ borderColor: a.colour }} aria-hidden="true" />
+          <input className="field sm" id={`mc-area-${a.name}`} value={a.label} maxLength={30} aria-label={t('macro.area.name')} aria-invalid={!!bad || undefined}
+            onChange={e => set(a.name, { label: e.target.value })} />
+          <button type="button" className="icon-btn" title={t('macro.area.del')} aria-label={`${t('macro.area.del')}: ${a.label}`} onClick={() => del(a.name)}><Icon name="trash" /></button>
+        </div>
+        {bad ? <p className="mc-ferr-line"><Icon name="alert" /><span>{bad.text}</span></p> : null}
+        {inUse?.what === 'area:' + a.name ? <InUse label={a.label} steps={inUse.steps} go={go} close={closeInUse} /> : null}
+      </li>;
+    })}</ul>}
   </div>;
 }
 
@@ -670,39 +945,163 @@ function EditorRecording({ startsAt, count }: { startsAt: string; count: number 
   </div>;
 }
 
-function StepRow({ s, i, m, count, depth, problems, dragging, ed, focus, move, dup, del, cutting, dragStart, open, toggle }: {
-  s: Held; i: number; m: Macro; count: number; depth: number; problems: { text: string; warn?: boolean }[]; dragging: boolean; open: boolean; toggle: () => void;
-  ed: Ed; focus: () => void; move: (dir: number, btn: HTMLElement) => void; dup: () => void; del: () => void; cutting: boolean; dragStart: () => void;
-}) {
+/* ── small popovers under a button: Add step's list, a block's "delete it all?", New counter ── */
+
+/** Add step: a search box, the kinds used lately, then every kind in its group; only those that fit where it goes
+ * (Otherwise straight inside an If, Leave the repeat inside a repeat, one If stuck). Enter adds the first match. */
+function AddList({ anchor, at, steps, add, close }: { anchor: HTMLElement; at: number; steps: Step[]; add: (kind: string, at: number) => void; close: () => void }) {
+  const { t, store } = useHost();
+  const [q, setQ] = useState('');
+  const list = useRef<HTMLDivElement>(null);
+  const fits = new Set(kindsAt(steps, at));
+  const name = (k: string) => t(`macro.kind.${k}`);
+  const words = plain(q.trim()).split(/\s+/).filter(Boolean);
+  const hay = (k: string, g: string) => plain([name(k), t(`macro.grp.${g}`), ...(SYNONYMS[k] || [])].join(' '));
+  const matches = words.length ? STEP_GROUPS.flatMap(([g, kinds]) => kinds.filter(k => fits.has(k) && words.every(w => hay(k, g).includes(w))))
+    .sort((a, b) => Number(!plain(name(a)).startsWith(words[0])) - Number(!plain(name(b)).startsWith(words[0]))) : [];
+  const recent = store.get('macro.recentKinds', '').split(',').filter(k => fits.has(k));
+  const item = (k: string, key = k) => <button key={key} type="button" role="menuitem" data-kind={k} onClick={() => add(k, at)}>
+    <Icon name={STEP_ICON[k] || 'info'} /><span>{name(k)}</span></button>;
+  // The arrows go through the list; from the box, Down goes in.
+  const keys = (e: React.KeyboardEvent) => {
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+    const items = [...(list.current?.querySelectorAll<HTMLElement>('button') || [])];
+    if (!items.length) return;
+    e.preventDefault();
+    const i = items.indexOf(document.activeElement as HTMLElement);
+    const next = e.key === 'ArrowDown' ? (i < 0 ? 0 : Math.min(items.length - 1, i + 1)) : i <= 0 ? -1 : i - 1;
+    (next < 0 ? anchor.closest('.overlay')?.querySelector<HTMLElement>('.mc-add-q') : items[next])?.focus();
+  };
+  return <Pop anchor={anchor} close={close} label={t('macro.addStep')} className="menu mc-add-pop">
+    <div onKeyDown={keys}>
+      <div className="mc-add-search"><Icon name="search" />
+        <input className="field sm mc-add-q" type="search" value={q} placeholder={t('macro.search')} aria-label={t('macro.search')} spellCheck={false}
+          onChange={e => setQ(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && matches[0]) { e.preventDefault(); add(matches[0], at); } }} /></div>
+      <div className="mc-add-list" ref={list} role="menu" aria-label={t('macro.addStep')}>
+        {words.length ? (matches.length ? matches.map(k => item(k)) : <p className="mc-add-none">{t('macro.search.none')}</p>)
+          : <>{recent.length ? <><div className="menu-head">{t('macro.recent')}</div>{recent.map(k => item(k, 'r-' + k))}<hr /></> : null}
+            {STEP_GROUPS.map(([g, kinds], gi) => {
+              const here = kinds.filter(k => fits.has(k));
+              return here.length ? <Fragment key={g}>{gi ? <hr /> : null}<div className="menu-head">{t(`macro.grp.${g}`)}</div>{here.map(k => item(k))}</Fragment> : null;
+            })}</>}
+      </div>
+    </div>
+  </Pop>;
+}
+
+/** New counter…: its name (what steps and an If use) and what the panel calls it. */
+function NewCounter({ anchor, taken, close, done }: { anchor: HTMLElement; taken: string[]; close: () => void; done: (name: string, label: string) => void }) {
   const { t } = useHost();
+  const [name, setName] = useState('');
+  const [label, setLabel] = useState('');
+  const bad = name !== '' && !COUNTER_NAME.test(name);
+  const dup = taken.includes(name);
+  const ok = name !== '' && !bad && !dup;
+  return <Pop anchor={anchor} close={close} label={t('macro.counter.new')} className="mc-counter-pop">
+    <form className="form" onSubmit={e => { e.preventDefault(); if (ok) done(name, label); }}>
+      <label>{t('macro.e.counterL')}<input className="field sm" value={name} maxLength={32} spellCheck={false} autoComplete="off"
+        aria-invalid={bad || dup || undefined} aria-describedby="mc-counter-hint" onChange={e => setName(e.target.value.replace(/\s/g, '_'))} /></label>
+      <small id="mc-counter-hint" className={bad || dup ? 'bad' : ''}>{dup ? t('macro.counter.taken') : t('macro.counter.nameHint')}</small>
+      <label>{t('macro.counter.label')}<input className="field sm" value={label} maxLength={30} placeholder={name || undefined} onChange={e => setLabel(e.target.value)} /></label>
+      <div className="mc-pop-acts">
+        <button type="button" className="btn sm ghost" onClick={close}>{t('common.cancel')}</button>
+        <button type="submit" className="btn sm primary" aria-disabled={!ok} title={ok ? undefined : t('macro.counter.nameHint')}>{t('macro.opt.add')}</button>
+      </div>
+    </form>
+  </Pop>;
+}
+
+/* ── a step's row ── */
+
+function StepRow({ s, i, m, count, shape, problems: probs, fixOf, dragging, ed, focus, move, dup, del, cutting, dragStart, open, toggle, folded, fold, hiddenBad,
+  running, stopped, noting, setNoting, setNote, insert }: {
+  s: Held; i: number; m: Macro; count: number; shape: Shape; problems: Problem[]; fixOf: (p: Problem) => { label: string; run: () => void; off?: string } | null;
+  dragging: boolean; open: boolean; toggle: () => void; folded: boolean; fold: () => void; hiddenBad: number; running: boolean; stopped: string | null;
+  noting: boolean; setNoting: (on: boolean) => void; setNote: (text: string) => void; insert: (btn: HTMLElement, at: number) => void;
+  ed: Ed; focus: () => void; move: (dir: number, btn: HTMLElement) => void; dup: () => void; del: (btn: HTMLElement) => void; cutting: boolean; dragStart: () => void;
+}) {
+  const host = useHost();
+  const { t, tn } = host;
   const n = i + 1;
   const [armed, setArmed] = useState(false);
-  const body = open ? <StepBody s={s} i={i} m={m} ed={ed} cutting={cutting} /> : null;
-  const plain = ['else', 'endIf', 'endLoop', 'break', 'stop', 'rejoin', 'recover'].includes(s.kind);
-  const bad = problems.some(p => !p.warn);
+  const isEnd = s.kind === 'endIf' || s.kind === 'endLoop';
+  const opener = OPENERS.has(s.kind) && shape.end >= 0;
+  const body = open ? <StepBody s={s} i={i} m={m} ed={ed} cutting={cutting} invalid={new Set(probs.filter(p => !p.warn && p.field).map(p => p.field!))} /> : null;
+  const plainRow = ['else', 'break', 'stop', 'rejoin', 'recover'].includes(s.kind);
+  const bad = probs.some(p => !p.warn);
   const say = stepText(t, s, m, n);
-  return <div className={`mc-step${dragging ? ' dragging' : ''}${bad ? ' bad' : ''}${open ? ' open' : ''}`} role="listitem" aria-label={`${t('macro.stepN', { n })}: ${say}`}
-    style={{ '--d': depth } as React.CSSProperties} draggable={armed} onFocus={focus}
+  // Where the row sits: Otherwise one level out (a divider in its If), the rest at their depth. Each block around it draws its rail.
+  const at = s.kind === 'else' && shape.depth ? shape.depth - 1 : shape.depth;
+  const rails = shape.rails.map((k, L) => <span key={L} className="mc-rail" aria-hidden="true" style={{ left: `${8 + (L - at) * 22}px`, background: railOf(k) }} />);
+  const ins = <button type="button" className="mc-ins" tabIndex={-1} title={t('macro.insHere')} aria-label={t('macro.insHere')}
+    onClick={e => insert(e.currentTarget, i)}><Icon name="plus" /></button>;
+  const common = { 'data-i': i, style: { '--d': at } as React.CSSProperties };
+  const ctrlEnter = (e: React.KeyboardEvent<HTMLElement>) => {
+    if (e.key === 'Enter' && e.ctrlKey) { e.preventDefault(); insert(e.currentTarget.querySelector<HTMLElement>('.mc-step-head') || e.currentTarget, i + 1); }
+  };
+
+  // The end of a block: a slim line under it, not moved or deleted by itself (its opener takes it along).
+  if (isEnd && shape.opener >= 0) return <div className={`mc-step mc-end${dragging ? ' dragging' : ''}`} role="listitem" {...common} onKeyDown={ctrlEnter}
+    aria-label={`${t('macro.stepN', { n })}: ${t(s.kind === 'endIf' ? 'macro.block.endIf' : 'macro.block.endLoop')}`}>
+    {rails}{ins}
+    <span className="mc-step-n" aria-hidden="true">{n}</span>
+    <span className="mc-step-head"><Icon name={STEP_ICON[s.kind]} /><span className="mc-say">{t(s.kind === 'endIf' ? 'macro.block.endIf' : 'macro.block.endLoop')}</span></span>
+  </div>;
+
+  const menu = (btn: HTMLElement) => host.menu(btn, [
+    { icon: 'edit', text: t(s.note ? 'macro.note.edit' : 'macro.note.add'), run: () => setNoting(true) },
+    { icon: 'copy', text: t('macro.dupStep'), run: dup },
+    '-', { icon: 'trash', text: t('macro.delStep'), danger: true, run: () => del(btn) },
+  ], { icons: true });
+  const chip = running ? <em className="mc-chip run">{t('macro.run.here')}</em> : null;
+  const stopText = stopped !== null ? (stopped === 'notFound' || stopped === 'timeout' || !stopped ? t('macro.stop.here') : t('macro.stop.hereWhy', { why: t(`macro.why.${stopped}`) })) : '';
+  return <div className={`mc-step${dragging ? ' dragging' : ''}${bad ? ' bad' : ''}${open ? ' open' : ''}${s.kind === 'else' ? ' mc-else' : ''}${opener ? ' mc-opener' : ''}${running ? ' running' : ''}${stopped !== null ? ' stopped' : ''}`}
+    role="listitem" aria-label={`${t('macro.stepN', { n })}: ${say}`} {...common} draggable={armed} onFocus={focus} onKeyDown={ctrlEnter}
     onDragStart={e => { if (!armed) return; dragStart(); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', String(s._k)); }}
     onDragEnd={() => setArmed(false)} onPointerUp={() => setArmed(false)}>
+    {rails}{ins}
     <span className="ord-grip" title={t('lo.drag')} onPointerDown={() => setArmed(true)}><Icon name="grip" /></span>
     <span className="mc-step-n" aria-hidden="true">{n}</span>
-    {plain ? <span className={`mc-step-head k-${s.kind}`}><Icon name={STEP_ICON[s.kind] || 'info'} /><span className="mc-say">{say}</span></span>
+    {opener ? <button type="button" className="icon-btn mc-fold" aria-expanded={!folded} title={t(folded ? 'macro.block.unfold' : 'macro.block.fold')}
+      aria-label={`${t(folded ? 'macro.block.unfold' : 'macro.block.fold')}: ${t('macro.stepN', { n })}`} onClick={fold}><Icon name={folded ? 'chevronRight' : 'chevronDown'} /></button> : null}
+    {plainRow ? <span className={`mc-step-head k-${s.kind}`}><Icon name={STEP_ICON[s.kind] || 'info'} /><span className="mc-say">{say}</span>{chip}</span>
       : <button type="button" className={`mc-step-head k-${s.kind}`} aria-expanded={open} onClick={toggle}>
-        <Icon name={STEP_ICON[s.kind] || 'info'} /><span className="mc-say">{say}</span><Icon name={open ? 'chevronUp' : 'chevronDown'} /></button>}
+        <Icon name={STEP_ICON[s.kind] || 'info'} /><span className="mc-say">{say}{folded ? <small> {tn('macro.block.steps', shape.inner)}</small> : null}</span>
+        {hiddenBad ? <em className="mc-bad-count" title={tn('macro.block.probs', hiddenBad)}>{hiddenBad}</em> : null}{chip}
+        <Icon name={open ? 'chevronUp' : 'chevronDown'} /></button>}
     <span className="mc-step-acts">
       <button type="button" className="icon-btn" data-move="-1" title={t('lo.up')} aria-label={`${t('lo.up')}: ${t('macro.stepN', { n })}`} disabled={i === 0} onClick={e => move(-1, e.currentTarget)}><Icon name="chevronUp" /></button>
-      <button type="button" className="icon-btn" data-move="1" title={t('lo.down')} aria-label={`${t('lo.down')}: ${t('macro.stepN', { n })}`} disabled={i >= count - 1} onClick={e => move(1, e.currentTarget)}><Icon name="chevronDown" /></button>
-      <button type="button" className="icon-btn" data-st="dup" title={t('macro.dupStep')} aria-label={`${t('macro.dupStep')}: ${t('macro.stepN', { n })}`} onClick={dup}><Icon name="copy" /></button>
-      <button type="button" className="icon-btn" data-st="del" title={t('macro.delStep')} aria-label={`${t('macro.delStep')}: ${t('macro.stepN', { n })}`} onClick={del}><Icon name="trash" /></button>
+      <button type="button" className="icon-btn" data-move="1" title={t('lo.down')} aria-label={`${t('lo.down')}: ${t('macro.stepN', { n })}`} disabled={(opener ? shape.end : i) >= count - 1} onClick={e => move(1, e.currentTarget)}><Icon name="chevronDown" /></button>
+      <button type="button" className="icon-btn" data-st="more" aria-haspopup="menu" title={t('macro.moreActs')} aria-label={`${t('macro.moreActs')}: ${t('macro.stepN', { n })}`} onClick={e => menu(e.currentTarget)}><Icon name="more" /></button>
     </span>
+    {noting ? <NoteBox value={s.note || ''} done={text => { setNote(text); setNoting(false); }} />
+      : s.note ? <p className="mc-step-note"><button type="button" className="link" title={t('macro.note.edit')} onClick={() => setNoting(true)}>{s.note}</button></p> : null}
+    {stopText ? <p className="mc-stop-line" role="status"><Icon name="alert" /><span>{stopText}</span></p> : null}
+    {probs.length ? <ul className="mc-step-probs">{probs.map((p, k) => {
+      const fix = p.warn ? null : fixOf(p);
+      return <li key={k} className={p.warn ? 'warn' : ''}><Icon name="alert" /><span>{p.bare}</span>
+        {fix ? <button type="button" className="btn sm" disabled={!!fix.off} title={fix.off} onClick={fix.run}>{fix.label}</button> : null}</li>;
+    })}</ul> : null}
     {body ? <div className="mc-step-fields">{body}</div> : null}
-    {problems.length ? <ul className="mc-step-probs">{problems.map((p, k) => <li key={k} className={p.warn ? 'warn' : ''}><Icon name="alert" />{p.text}</li>)}</ul> : null}
   </div>;
 }
 
+/** A step's note being written: Enter or leaving the box keeps it, Escape leaves it as it was; empty takes it off. */
+function NoteBox({ value, done }: { value: string; done: (text: string) => void }) {
+  const { t } = useHost();
+  const [text, setText] = useState(value);
+  const box = useRef<HTMLInputElement>(null);
+  useEffect(() => { box.current?.focus(); }, []);
+  return <p className="mc-step-note editing"><input ref={box} className="field sm" value={text} maxLength={MAX_NOTE} placeholder={t('macro.note.ph')} aria-label={t('macro.note.label')}
+    onChange={e => setText(e.target.value)} onBlur={() => done(text)}
+    onKeyDown={e => {
+      if (e.key === 'Enter') { e.preventDefault(); done(text); }
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); done(value); }
+    }} /></p>;
+}
+
 /** The open step: its sentence again, with its values in place; under it the ticks that hand values to the player. */
-function StepBody({ s, i, m, ed, cutting }: { s: Held; i: number; m: Macro; ed: Ed; cutting: boolean }) {
+function StepBody({ s, i, m, ed, cutting, invalid }: { s: Held; i: number; m: Macro; ed: Ed; cutting: boolean; invalid: Set<string> }) {
   const { t } = useHost();
   const n = i + 1;
   const id = (f: string) => `mc-s${s._k}-${f}`;
@@ -711,20 +1110,21 @@ function StepBody({ s, i, m, ed, cutting }: { s: Held; i: number; m: Macro; ed: 
   const test = s.test as Test | undefined;
   const isTest = s.kind === 'if' || s.kind === 'loopUntil';
   const pre = isTest ? 'test.' : '';
+  const bad = (field: string) => invalid.has(field) || invalid.has(field.replace(/^test\./, ''));
 
   const btnSel = (path: string, kinds: string[]) => <Pick id={id('b')} label={t('macro.e.buttonL')} value={String(v(path) || 'left')}
     options={kinds.map(b => [b, t(`macro.s.b.${b}`)])} onChange={put(path)} />;
-  const secs = (path: string, label: string) => <Secs id={id(path.replace('.', '-'))} label={label} ms={v(path)} onChange={put(path)} />;
-  const point = <button type="button" className="mc-pt" title={t('macro.e.pickPoint')} disabled={!ed.canPick} onClick={() => ed.pick(i, 'point')}>
-    <span aria-hidden="true">{n}</span><span className="mc-vh">{t('macro.e.pickPoint')}</span></button>;
+  const secs = (path: string, label: string) => <Secs id={id(path.replace('.', '-'))} label={label} ms={v(path)} onChange={put(path)} invalid={bad(path)} />;
+  const point = <button type="button" className="mc-pt" title={ed.canPick ? t('macro.e.pickPoint') : t('macro.need.game')} disabled={!ed.canPick} aria-invalid={bad('x') || undefined}
+    onClick={() => ed.pick(i, 'point')}><span aria-hidden="true">{n}</span><span className="mc-vh">{t('macro.e.pickPoint')}</span></button>;
   const colour = (path: string, what: 'colour' | 'target' | 'marker', label: string) => <span className="mc-colourf">
     <ColorInput id={id(path.replace('.', '-'))} value={/^#[0-9a-f]{6}$/i.test(String(v(path))) ? String(v(path)) : '#ffffff'} label={label} onChange={put(path)} />
-    <button type="button" className="btn sm mc-pick" disabled={!ed.canPick} title={ed.canPick ? t('macro.e.pickTip') : t('macro.needWindow')}
+    <button type="button" className="btn sm mc-pick" disabled={!ed.canPick} title={ed.canPick ? t('macro.e.pickTip') : t('macro.need.game')}
       onClick={() => ed.pick(i, what, path)}><Icon name="mouse" /><span>{t('macro.e.pick')}</span></button></span>;
   const where = (path: string, withPoint: boolean) => {
     const raw = getAt(s, path);
     const cur = isArea(raw) ? raw : withPoint ? 'point' : 'anywhere';
-    return <Pick id={id('where')} label={t('macro.e.whereL')} value={cur} className="mc-where"
+    return <Pick id={id('where')} label={t('macro.e.whereL')} value={cur} className="mc-where" invalid={bad('region')}
       options={[withPoint ? ['point', t('macro.s.atPoint', { n })] : ['anywhere', t('macro.s.anywhere')],
         ...ed.areas.map(a => ['@' + a.name, t('macro.s.inArea', { area: a.label })]),
         ...(isArea(raw) && !ed.areas.some(a => '@' + a.name === raw) ? [[raw, t('macro.s.inArea', { area: t('macro.s.gone') })]] : []),
@@ -739,10 +1139,11 @@ function StepBody({ s, i, m, ed, cutting }: { s: Held; i: number; m: Macro; ed: 
     options={[['shows', t('macro.e.shows')], ['gone', t('macro.e.gone')]]} onChange={x => ed.set(i, path === 'test.not' ? { test: { ...s.test, not: x === 'gone' } } : { gone: x === 'gone' })} />;
   const pic = (img: string) => <span className="mc-imgf">
     {img ? <img className="mc-thumb" src={`data:image/png;base64,${img}`} alt={t('macro.e.thePic')} /> : <span className="mc-thumb none" aria-hidden="true"><Icon name="image" /></span>}
-    <button type="button" className={`btn sm mc-cut${cutting ? ' on' : ''}`} aria-pressed={cutting} onClick={() => ed.cut(i)}><Icon name="image" />
+    <button type="button" className={`btn sm mc-cut${cutting ? ' on' : ''}`} aria-pressed={cutting} aria-invalid={bad('image') || undefined} onClick={() => ed.cut(i)}><Icon name="image" />
       <span>{t(cutting ? 'macro.e.cutting' : img ? 'macro.e.recut' : 'macro.e.cut')}</span></button></span>;
   const until = (path = 'timeoutMs') => <Say k="macro.e.giveUp" parts={{ d: secs(path, t('macro.e.giveUpL')) }} />;
-  const textIn = (path: string, max: number, label: string, wide = false) => <TextIn id={id(path.replace('.', '-'))} label={label} value={String(v(path) ?? '')} max={max} wide={wide} onChange={put(path)} />;
+  const textIn = (path: string, max: number, label: string, wide = false) => <TextIn id={id(path.replace('.', '-'))} label={label} value={String(v(path) ?? '')} max={max} wide={wide}
+    invalid={bad(path)} onChange={put(path)} />;
   // A text to read, or any word the player ticks in a list setting (once the panel has one).
   const lists = (m.options || []).filter(o => o.kind === 'list');
   const textOrWords = (at: '' | 'test.') => {
@@ -755,11 +1156,34 @@ function StepBody({ s, i, m, ed, cutting }: { s: Held; i: number; m: Macro; ed: 
       onChange={x => ed.set(i, at ? { test: { ...s.test, words: x || undefined } } : { words: x || undefined })} />;
     return words ? pick : <>{pick}{box}</>;
   };
-  const num = (path: string, label: string, min: number, max: number) => <Count id={id(path.replace('.', '-'))} label={label} value={v(path)} min={min} max={max} onChange={put(path)} />;
-  const tune = (kids: ReactNode) => <details className="mc-tune"><summary>{t('macro.e.tune')}</summary><div>{kids}</div></details>;
-  const closeness = (path: string) => <Say k="macro.e.closeness" parts={{ n: num(path, t('macro.e.closenessL'), 0, 255) }} />;
+  const num = (path: string, label: string, min: number, max: number) => <Count id={id(path.replace('.', '-'))} label={label} value={v(path)} min={min} max={max} invalid={bad(path)} onChange={put(path)} />;
+  const tune = (kids: ReactNode) => <details className="mc-tune"><summary><span>{t('macro.e.tune')}</span><Icon name="chevronDown" /></summary><div>{kids}</div></details>;
+  // How close a colour must be: a share from exact to loose (the app keeps 0–255).
+  const closeness = (path: string) => {
+    const tol = Number(v(path));
+    const pct = Number.isFinite(tol) ? Math.round(tol / 2.55) : 9;
+    return <p className="mc-sent mc-close"><span>{t('macro.tune.close')}</span>
+      <span className="mc-range"><small aria-hidden="true">{t('macro.tune.exact')}</small>
+        <input type="range" id={id('close')} min={0} max={100} step={1} value={pct} aria-label={t('macro.tune.close')} aria-valuetext={`${pct} %`}
+          onChange={e => ed.put(i, path, Math.round(+e.target.value * 2.55))} />
+        <small aria-hidden="true">{t('macro.tune.loose')}</small></span><output htmlFor={id('close')}>{pct} %</output></p>;
+  };
   const match = (path: string) => <Say k="macro.e.match" parts={{ n: <Count id={id('th')} label={t('macro.e.matchL')} value={Math.round((Number(v(path)) || 0.9) * 100)}
     min={50} max={100} onChange={x => ed.put(i, path, x / 100)} /> }} />;
+  // A counter by what the panel calls it, or a new one (its own small dialog); for an If, the panel's settings too.
+  const counterPick = (path: string, withSettings: boolean, onPick: (name: string) => void) => {
+    const name = String(getAt(s, path) ?? '');
+    const options = [...ed.counters.map(c => [c, ed.label(c)]), ...(withSettings ? ed.readable.map(x => [x.name, x.label]) : [])];
+    if (name && !options.some(([k]) => k === name)) options.unshift([name, ed.label(name)]);
+    const pid = id(path.replace('.', '-'));
+    return <Pick id={pid} label={t('macro.e.counterL')} value={name} invalid={bad('name')}
+      options={[...(name ? [] : [['', '—']]), ...options, ['\u0000new', t('macro.counter.new')]]}
+      onChange={x => {
+        if (x !== '\u0000new') return onPick(x);
+        const el = document.getElementById(pid);
+        if (el) ed.newCounter(el, onPick);
+      }} />;
+  };
 
   let lines: ReactNode = null;
   switch (s.kind) {
@@ -825,14 +1249,11 @@ function StepBody({ s, i, m, ed, cutting }: { s: Held; i: number; m: Macro; ed: 
       const varTest = () => {
         const name = String(test?.kind === 'var' ? test.name : '');
         const o = ed.readable.find(x => x.name === name);
-        const names = [...ed.counters.map(c => [c, c]), ...ed.readable.map(x => [x.name, x.label])];
-        if (name && !names.some(([k]) => k === name)) names.push([name, name]);
-        const nameIn = ed.readable.length ? <Pick id={id('test-name')} label={t('macro.e.counterL')} value={name} options={names}
-          onChange={x => {
-            const to = ed.readable.find(y => y.name === x);
-            ed.set(i, { test: { kind: 'var', name: x, op: to?.kind === 'check' || to?.kind === 'choice' ? '=' : String(test && 'op' in test ? test.op : '>='),
-              value: to?.kind === 'check' ? 1 : to?.kind === 'choice' ? to.choices?.[0] ?? '' : 1 } });
-          }} /> : textIn('test.name', 30, t('macro.e.counterL'));
+        const nameIn = counterPick('test.name', true, x => {
+          const to = ed.readable.find(y => y.name === x);
+          ed.set(i, { test: { kind: 'var', name: x, op: to?.kind === 'check' || to?.kind === 'choice' ? '=' : String(test && 'op' in test ? test.op : '>='),
+            value: to?.kind === 'check' ? 1 : to?.kind === 'choice' ? to.choices?.[0] ?? '' : (test?.kind === 'var' && typeof test.value === 'number' ? test.value : 1) } });
+        });
         if (o?.kind === 'check') return <Say k="macro.e.testSwitch" vars={{ lead: head }} parts={{ what: lead, name: nameIn,
           v: <Pick id={id('v')} label={t('macro.e.valueL')} value={test?.kind === 'var' && test.value ? '1' : '0'}
             options={[['1', t('macro.e.switchOn')], ['0', t('macro.e.switchOff')]]} onChange={x => ed.put(i, 'test.value', +x)} /> }} />;
@@ -849,7 +1270,12 @@ function StepBody({ s, i, m, ed, cutting }: { s: Held; i: number; m: Macro; ed: 
         : kind === 'text' ? <Say k="macro.e.testText" vars={{ lead: head }} parts={{ what: lead, text: textOrWords('test.'), shows: shows('test.not', !!(test && 'not' in test && test.not)), where: where('test.region', false) }} />
         : kind === 'colour' ? <Say k="macro.e.testColour" vars={{ lead: head }} parts={{ what: lead, c: colour(`${pre}colour`, 'colour', t('macro.e.colourL')), shows: shows('test.not', !!(test && 'not' in test && test.not)), where: where('test.region', true) }} />
         : varTest();
-      lines = <>{rest}{s.kind === 'loopUntil' ? <Say k="macro.e.atMost" parts={{ n: num('max', t('macro.e.atMostL'), 0, 100000) }} /> : null}</>;
+      // At most so many rounds, or no limit (0).
+      const most = Number(v('max')) || 0;
+      lines = <>{rest}{s.kind === 'loopUntil' ? <div className="mc-most">
+        <Say k="macro.e.atMost" parts={{ n: most ? num('max', t('macro.e.atMostL'), 1, 100000)
+          : <input className="field sm num mc-count" type="number" disabled aria-label={t('macro.e.atMostL')} value="" /> }} />
+        <Check id={id('nolimit')} label={t('macro.tune.noLimit')} checked={!most} onChange={x => ed.put(i, 'max', x ? 0 : 10)} /></div> : null}</>;
       break;
     }
     case 'loop': {
@@ -860,8 +1286,8 @@ function StepBody({ s, i, m, ed, cutting }: { s: Held; i: number; m: Macro; ed: 
         n: num('times', t('macro.e.timesL'), 1, 100000) }} />;
       break;
     }
-    case 'setVar': lines = <Say k="macro.e.setVar" parts={{ name: textIn('name', 30, t('macro.e.counterL')), v: num('value', t('macro.e.valueL'), -1e9, 1e9) }} />; break;
-    case 'addVar': lines = <Say k="macro.e.addVar" parts={{ name: textIn('name', 30, t('macro.e.counterL')), v: num('value', t('macro.e.valueL'), -1e9, 1e9) }} />; break;
+    case 'setVar': lines = <Say k="macro.e.setVar" parts={{ name: counterPick('name', false, x => ed.set(i, { name: x })), v: num('value', t('macro.e.valueL'), -1e9, 1e9) }} />; break;
+    case 'addVar': lines = <Say k="macro.e.addVar" parts={{ name: counterPick('name', false, x => ed.set(i, { name: x })), v: num('value', t('macro.e.valueL'), -1e9, 1e9) }} />; break;
     case 'alert': lines = <>
       <Say k="macro.e.alert" parts={{ text: textIn('text', 200, t('macro.e.alertL'), true) }} />
       <Check id={id('pic')} label={t('macro.e.alertPic')} checked={!!s.picture} onChange={x => ed.set(i, { picture: x })} />
@@ -917,16 +1343,16 @@ export function Say({ k, parts, vars }: { k: string; parts: Record<string, React
   return <p className="mc-sent">{raw.split(MARK).map((b, i) => i % 2 ? <Fragment key={i}>{parts[b]}</Fragment> : b ? <span key={i}>{b}</span> : null)}</p>;
 }
 
-function Pick({ id, label, value, options, onChange, className }: { id: string; label: string; value: string; options: string[][]; onChange: (v: string) => void; className?: string }) {
-  return <select className={`select sm${className ? ' ' + className : ''}`} id={id} aria-label={label} value={value} onChange={e => onChange(e.target.value)}>
+function Pick({ id, label, value, options, onChange, className, invalid }: { id: string; label: string; value: string; options: string[][]; onChange: (v: string) => void; className?: string; invalid?: boolean }) {
+  return <select className={`select sm${className ? ' ' + className : ''}`} id={id} aria-label={label} value={value} aria-invalid={invalid || undefined} onChange={e => onChange(e.target.value)}>
     {options.map(([v, text]) => <option key={v} value={v}>{text}</option>)}</select>;
 }
 
 /** A time in seconds (kept in milliseconds): "0.5 s". */
-function Secs({ id, label, ms, onChange }: { id: string; label: string; ms: unknown; onChange: (v: number) => void }) {
+function Secs({ id, label, ms, onChange, invalid }: { id: string; label: string; ms: unknown; onChange: (v: number) => void; invalid?: boolean }) {
   const { t } = useHost();
   const n = typeof ms === 'number' && Number.isFinite(ms) ? +(ms / 1000).toFixed(3) : '';
-  return <span className="mc-unit"><input className="field sm num" id={id} type="number" min={0} step="0.1" aria-label={label} value={n}
+  return <span className="mc-unit"><input className="field sm num" id={id} type="number" min={0} step="0.1" aria-label={label} value={n} aria-invalid={invalid || undefined}
     onChange={e => onChange(e.target.value === '' ? NaN : Math.round(+e.target.value * 1000))} /><span aria-hidden="true">{t('macro.unit.s')}</span></span>;
 }
 
@@ -936,13 +1362,13 @@ function NumField({ id, value, min, max, onChange }: { id: string; value: unknow
     value={typeof value === 'number' && Number.isFinite(value) ? value : ''} onChange={e => onChange(e.target.value === '' ? NaN : +e.target.value)} />;
 }
 
-function Count({ id, label, value, min, max, onChange }: { id: string; label: string; value: unknown; min: number; max: number; onChange: (v: number) => void }) {
-  return <input className="field sm num mc-count" id={id} type="number" min={min} max={max} aria-label={label}
+function Count({ id, label, value, min, max, onChange, invalid }: { id: string; label: string; value: unknown; min: number; max: number; onChange: (v: number) => void; invalid?: boolean }) {
+  return <input className="field sm num mc-count" id={id} type="number" min={min} max={max} aria-label={label} aria-invalid={invalid || undefined}
     value={typeof value === 'number' && Number.isFinite(value) ? value : ''} onChange={e => onChange(e.target.value === '' ? NaN : +e.target.value)} />;
 }
 
-function TextIn({ id, label, value, max, wide, onChange }: { id: string; label: string; value: string; max: number; wide?: boolean; onChange: (v: string) => void }) {
-  return <input className={`field sm mc-text${wide ? ' wide' : ''}`} id={id} maxLength={max} spellCheck={false} aria-label={label} value={value}
+function TextIn({ id, label, value, max, wide, onChange, invalid }: { id: string; label: string; value: string; max: number; wide?: boolean; onChange: (v: string) => void; invalid?: boolean }) {
+  return <input className={`field sm mc-text${wide ? ' wide' : ''}`} id={id} maxLength={max} spellCheck={false} aria-label={label} value={value} aria-invalid={invalid || undefined}
     placeholder={label} onChange={e => onChange(e.target.value)} />;
 }
 
@@ -977,4 +1403,3 @@ function KeyBox({ id, value, onChange, k, ed, mouse }: { id: string; value: stri
         setCapture(false);
       }}><Icon name="keyboard" /><span>{t(capture ? 'macro.f.pressing' : 'macro.f.press')}</span></button></span>;
 }
-

@@ -1,9 +1,11 @@
 // The Macros tab (Beta): a row a macro (its name and one line saying what it is doing, in words), its panel shown or
 // not, Run or Stop, and a menu (Edit, Duplicate, Export, move, Delete); the order by dragging the handle. New macro:
-// Record, From a template, Blank, Import file (the same three as large tiles while there is none). Stop all, and the
-// recording under way. The form is MacroEditor.tsx, in app.js's dialog (host.editMacro).
+// Record, From a template (its cards: what each does and what it needs), Blank, Import file (the same three as large tiles
+// while there is none). Stop all, and the recording under way. A failed run's Fix is in its menu: the form opens on the
+// step that stopped. The form is MacroEditor.tsx, in app.js's dialog (host.editMacro).
 import { Fragment, useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
-import { Icon, useAppState, useHost, usePage } from './host';
+import { Icon, useAppState, useHost, usePage, type Host } from './host';
+import { Pop } from './MacroPop';
 import { richNodes } from './rich';
 import { MAX_MACROS, blankMacro, durText, isLive, recording, type Macro, type MacroRun, type MacroTemplate, type Recording, type Templates } from './macros';
 
@@ -11,6 +13,9 @@ const NONE: Macro[] = [];
 const NO_RUNS: MacroRun[] = [];
 type Account = { id: string; label: string; username?: string; avatarUrl?: string | null; state?: string; session?: { pid?: number } | null };
 type T = (k: string, v?: Record<string, string | number>) => string;
+/** The form, opened on a step (the list's Fix: where the last run stopped, and why). */
+const editAt = (host: Host, m: Macro, at?: { step?: number; reason?: string }) =>
+  (host.editMacro as (macro: object, isNew: boolean, opts?: { step?: number; reason?: string }) => void)(m, false, at);
 
 /** An account with a Roblox window open here: one a macro can run on, record or take a picture of. */
 export const hasWindow = (a: Account) => a.state === 'running' && (a.session?.pid || 0) > 0;
@@ -57,6 +62,8 @@ export function MacrosView() {
   const panels = new Set<string>(app.panelsShown || []);
   const byId = new Map(accounts.map(a => [a.id, a]));
   const selected = usePage(p => p.selected);
+  // Macros on the selected accounts that still have somewhere to run with none selected (the game's, or the front window).
+  const canRun = new Set<string>(app.macroCanRun || []);
   const list = useRef<HTMLDivElement>(null);
 
   // New macro › Record finished: the steps open in a new macro's form.
@@ -88,9 +95,9 @@ export function MacrosView() {
     void _a; void _i;
     startNew({ ...blankMacro(), ...macro, id: '', steps: macro.steps.map(x => ({ ...x })) });
   };
-  const templateMenu = (btn: HTMLElement) => host.menu(btn, tpls.length
-    ? tpls.map(tp => ({ icon: tp.icon || 'keyboard', text: tp.name, title: tp.about, run: () => fromTemplate(tp) }))
-    : [{ icon: 'info', text: t('macro.noTemplates'), disabled: true }]);
+  // The templates as cards under the button: what each does and what it needs from the game. Its button again closes them.
+  const [cards, setCards] = useState<HTMLElement | null>(null);
+  const templateCards = (btn: HTMLElement) => setCards(was => was === btn ? null : btn);
   // Recording follows one window: the only one open, or the one picked from a list of those open.
   const record = (anchor: HTMLElement) => {
     if (full()) return;
@@ -99,7 +106,7 @@ export function MacrosView() {
       recording.for = 'new';
       if (await call('recordMacro', { accountId }) === undefined) recording.for = null;
     };
-    if (!windows.length) return toast(t('macro.needWindow'), 'info');
+    if (!windows.length) return toast(t('macro.need.record'), 'info');
     if (windows.length === 1) return start(windows[0].id);
     host.menu(anchor, [{ head: true, text: t('macro.recordWhich') }, ...windows.map(a => ({ icon: 'user', text: a.label, run: () => start(a.id) }))]);
   };
@@ -110,7 +117,7 @@ export function MacrosView() {
   };
   const newMenu = (btn: HTMLElement) => host.menu(btn, [
     { icon: 'record', text: t('macro.record'), hint: 'F8', run: () => record(btn) },
-    { icon: 'layers', text: t('macro.fromTemplate'), run: () => setTimeout(() => templateMenu(btn)) },
+    { icon: 'layers', text: t('macro.fromTemplate'), run: () => setTimeout(() => templateCards(btn)) },
     { icon: 'plus', text: t('macro.empty'), run: () => startNew(blankMacro()) },
     { icon: 'folder', text: t('macro.import'), run: () => importFile() },
   ]);
@@ -155,13 +162,13 @@ export function MacrosView() {
   return <>
     <header className="top">
       <div className="top-title">
-        <h1>{t('macro.title')}<span className="state-pill warn mc-beta" title={t('macro.betaTip')}>{t('macro.beta')}</span></h1>
-        <p id="mc-sub">{sub.map((s, i) => <Fragment key={i}>{richNodes(s)}<span className="sep">·</span></Fragment>)}{t('macro.honest')}</p>
+        <h1>{t('macro.title')}<span className="state-pill warn mc-beta" title={`${t('macro.betaTip')} ${t('macro.honest')}`}>{t('macro.beta')}</span></h1>
+        <p id="mc-sub">{sub.map((s, i) => <Fragment key={i}>{i ? <span className="sep">·</span> : null}{richNodes(s)}</Fragment>)}</p>
       </div>
       <div className="top-tools">
         <button className="btn mc-stop-all" disabled={!anyLive && !rec} title={t('macro.stopAllTip')} onClick={e => stopAll(e.currentTarget)}>
           <Icon name="stop" /><span>{t('macro.stopAll')}</span><kbd>Ctrl+Alt+0</kbd></button>
-        <button className="btn primary" id="mc-new" aria-haspopup="menu" onClick={e => newMenu(e.currentTarget)}>
+        <button className="btn primary" id="mc-new" aria-haspopup="menu" onClick={e => { if (cards === e.currentTarget) return setCards(null); newMenu(e.currentTarget); }}>
           <Icon name="plus" /><span>{t('macro.new')}</span><Icon name="chevronDown" /></button>
       </div>
     </header>
@@ -175,7 +182,7 @@ export function MacrosView() {
           <div className="mc-tiles">
             <button type="button" className="mc-tile" data-start="record" onClick={e => record(e.currentTarget)}><Icon name="record" />
               <b>{t('macro.record')}</b><small>{t('macro.tile.record')}</small></button>
-            <button type="button" className="mc-tile" data-start="template" aria-haspopup="menu" onClick={e => templateMenu(e.currentTarget)}><Icon name="layers" />
+            <button type="button" className="mc-tile" data-start="template" aria-haspopup="dialog" aria-expanded={!!cards && cards.dataset.start === 'template'} onClick={e => templateCards(e.currentTarget)}><Icon name="layers" />
               <b>{t('macro.fromTemplate')}</b><small>{t('macro.tile.template')}</small></button>
             <button type="button" className="mc-tile" data-start="blank" onClick={() => startNew(blankMacro())}><Icon name="plus" />
               <b>{t('macro.empty')}</b><small>{t('macro.tile.blank')}</small></button>
@@ -183,7 +190,7 @@ export function MacrosView() {
           <button type="button" className="link" onClick={() => importFile()}>{t('macro.importLink')}</button>
         </div>
           : rows.map((m, i) => <MacroRow key={m.id} m={m} i={i} count={rows.length} runs={runs.filter(r => r.macroId === m.id)} byId={byId}
-            shown={panels.has(m.id)} noneSelected={!selected.size} dragging={drag?.id === m.id && !drag.done} draggable={armed === m.id} arm={() => setArmed(m.id)} move={move}
+            shown={panels.has(m.id)} selected={selected} canRun={canRun.has(m.id)} dragging={drag?.id === m.id && !drag.done} draggable={armed === m.id} arm={() => setArmed(m.id)} move={move}
             dragStart={e => {
               if (armed !== m.id) return;
               setDrag({ id: m.id, order: rows.map(x => x.id) });
@@ -192,7 +199,25 @@ export function MacrosView() {
             }} />)}
       </div>
     </div>
+    {cards ? <Pop anchor={cards} close={() => setCards(null)} label={t('macro.fromTemplate')} className="menu mc-tpl-pop">
+      {tpls.length ? tpls.map(tp => <button key={tp.name} type="button" className="mc-tpl" onClick={() => { setCards(null); fromTemplate(tp); }}>
+        <Icon name={TPL_ICON[tp.icon || ''] || tp.icon || 'keyboard'} /><span><b>{tp.name}</b>{tp.about ? <small>{tp.about}</small> : null}
+          {tp.steps.length ? <em>{needsText(t, host.locale, tp)}</em> : null}</span></button>)
+        : <p className="mc-add-none">{t('macro.noTemplates')}</p>}
+    </Pop> : null}
   </>;
+}
+
+/** The templates' icon words (MacroTemplates.cs) as the page's icons. */
+const TPL_ICON: Record<string, string> = { pointer: 'mouse', bar: 'gauge', rejoin: 'refresh', blank: 'plus' };
+
+/** What a template needs from the game before it works (a picture of the button, an area on it), or that it is ready as it is. */
+function needsText(t: T, locale: string, tp: MacroTemplate): string {
+  const todo = new Set(tp.steps.flatMap(s => (s.todo as string[] | undefined) || []));
+  const pic = todo.has('image') || tp.steps.some(s => (s.kind === 'clickImage' || s.kind === 'waitImage') && !s.image);
+  const area = todo.has('region') || !!tp.areas?.length;
+  const what = [pic ? t('macro.tpl.needs.pic') : '', area ? t('macro.tpl.needs.area') : ''].filter(Boolean);
+  return what.length ? t('macro.tpl.needs', { what: new Intl.ListFormat(locale, { type: 'conjunction' }).format(what) }) : t('macro.tpl.needs.none');
 }
 
 /** The recording under way: its countdown, then how many steps so far; F8 or Stop ends it. */
@@ -219,28 +244,32 @@ export function useCountdown(iso: string): number {
   return left;
 }
 
-function MacroRow({ m, i, count, runs, byId, shown, noneSelected, dragging, draggable, arm, dragStart, move }: {
-  m: Macro; i: number; count: number; runs: MacroRun[]; byId: Map<string, Account>; shown: boolean; noneSelected: boolean; dragging: boolean; draggable: boolean;
-  arm: () => void; dragStart: (e: DragEvent<HTMLDivElement>) => void; move: (id: string, dir: number) => void;
+function MacroRow({ m, i, count, runs, byId, shown, selected, canRun, dragging, draggable, arm, dragStart, move }: {
+  m: Macro; i: number; count: number; runs: MacroRun[]; byId: Map<string, Account>; shown: boolean; selected: Set<string>; canRun: boolean; dragging: boolean;
+  draggable: boolean; arm: () => void; dragStart: (e: DragEvent<HTMLDivElement>) => void; move: (id: string, dir: number) => void;
 }) {
   const host = useHost();
   const { t, call, busy, toast } = host;
   const auto = m.trigger.kind !== 'manual';
   const liveRuns = runs.filter(isLive);
   const accs = m.targets === 'accounts' ? m.accountIds.filter(id => byId.has(id)) : [];
-  // Run on the selected accounts with none selected would only be refused: said on the button instead.
-  const cantRun = (m.targets === 'selected' && noneSelected) || (m.targets === 'accounts' && !accs.length);
-  // One line: what each account is doing, or (none running) when it runs and on whom.
+  // On the selected accounts: those selected, else where the app would run it (the game's, the front window); with
+  // neither it would only be refused, so the button says why instead.
+  const sel = [...selected].filter(id => byId.has(id));
+  const cantRun = (m.targets === 'selected' && !sel.length && !canRun) || (m.targets === 'accounts' && !accs.length);
+  // One line: what each account is doing (a dot in its colour each), or (none running) when it runs and on whom.
   const failed = runs.find(r => r.status === 'failed');
-  const line = runs.length ? runs.map(r => runText(t, r, byId.get(r.accountId)?.label || '?')).join(' · ')
-    : [whenText(t, m), auto && !m.enabled ? t('macro.autoOff') : ''].filter(Boolean).join(' · ');
+  const said = runs.map(r => runText(t, r, byId.get(r.accountId)?.label || '?'));
+  const line = runs.length ? said.join(' · ') : [whenText(t, m), auto && !m.enabled ? t('macro.autoOff') : ''].filter(Boolean).join(' · ');
+  const fix = () => editAt(host, m, failed ? { step: failed.lastStep ?? failed.step, reason: failed.reason } : undefined);
 
   const panel = (btn: HTMLElement) => busy(btn, () => call(shown ? 'hidePanel' : 'showPanel', { id: m.id }));
   const menu = (btn: HTMLElement) => host.menu(btn, [
+    ...(failed ? [{ icon: 'wrench', text: t('macro.fix'), run: fix }] : []),
     { icon: 'edit', text: t('macro.edit'), run: () => host.editMacro(m, false) },
     { icon: 'copy', text: t('macro.duplicate'), run: async () => { if (await call('duplicateMacro', { id: m.id }) !== undefined) toast(t('macro.duplicated'), 'ok'); } },
     { icon: 'download', text: t('macro.export'), run: async () => { if (await call('exportMacro', { id: m.id })) toast(t('macro.exported'), 'ok'); } },
-    ...(auto ? [{ icon: m.enabled ? 'stop' : 'play', text: t(m.enabled ? 'macro.autoPause' : 'macro.autoResume'), run: () => { call('saveMacro', { macro: { ...m, enabled: !m.enabled } }); } }] : []),
+    ...(auto ? [{ icon: m.enabled ? 'pause' : 'play', text: t(m.enabled ? 'macro.autoPause' : 'macro.autoResume'), run: () => { call('saveMacro', { macro: { ...m, enabled: !m.enabled } }); } }] : []),
     ...(count > 1 ? ['-' as const,
       { icon: 'chevronUp', text: t('lo.up'), disabled: i === 0, run: () => move(m.id, -1) },
       { icon: 'chevronDown', text: t('lo.down'), disabled: i >= count - 1, run: () => move(m.id, 1) }] : []),
@@ -249,15 +278,16 @@ function MacroRow({ m, i, count, runs, byId, shown, noneSelected, dragging, drag
 
   return <div className={`pv-item mc-item${dragging ? ' dragging' : ''}`} role="listitem" data-id={m.id} draggable={draggable} onDragStart={dragStart} aria-label={m.name}>
     {count > 1 ? <span className="ord-grip pv-grip" title={t('lo.drag')} onPointerDown={arm}><Icon name="grip" /></span> : null}
-    <span className={`pv-icon mc-icon${liveRuns.length ? ' on' : ''}`}><Icon name={auto ? 'repeat' : 'keyboard'} /></span>
+    <span className={`pv-icon mc-icon${liveRuns.length ? ' on' : ''}`}><Icon name={auto ? 'repeat' : 'keyboard'} />
+      {failed ? <i className="mc-icon-bad" title={t('macro.fixTip')} aria-hidden="true" /> : null}</span>
     <div className="pv-main">
       <b title={m.name}>{m.name}</b>
-      <span className={`mc-line${failed ? ' bad' : liveRuns.length ? ' live' : ''}`} title={line}>{line}</span>
+      <span className={`mc-line${failed ? ' bad' : liveRuns.length ? ' on' : ''}`} title={line}>{runs.length
+        ? runs.map((r, k) => <span key={r.accountId} className={`mc-acc s-${r.status}`}><i aria-hidden="true" />{said[k]}</span>) : line}</span>
     </div>
-    {failed ? <button type="button" className="btn sm mc-fix" data-fix="edit" aria-label={`${t('macro.fix')}: ${m.name}`} onClick={() => host.editMacro(m, false)}>
-      <Icon name="wrench" /><span>{t('macro.fix')}</span></button> : null}
     <button type="button" className={`btn sm mc-panel${shown ? ' on' : ''}`} data-mc="panel" aria-pressed={shown} title={t(shown ? 'macro.panelHide' : 'macro.panelShow')}
-      aria-label={`${t('macro.panel')}: ${m.name}`} onClick={e => panel(e.currentTarget)}><Icon name="screens" /><span>{t('macro.panel')}</span></button>
+      aria-label={`${t('macro.panel')}: ${m.name}`} onClick={e => panel(e.currentTarget)}>{shown ? <i className="mc-panel-dot" aria-hidden="true" /> : <Icon name="screens" />}
+      <span>{t('macro.panel')}</span></button>
     {/* Run and Stop are two buttons (keyed), as Presets' Run and Close: Enter on Stop doesn't start it again. */}
     {liveRuns.length
       ? <button key="stop" className="btn sm pv-run mc-stop" data-mc="stop" aria-label={`${t('macro.stop')}: ${m.name}`}
@@ -265,7 +295,7 @@ function MacroRow({ m, i, count, runs, byId, shown, noneSelected, dragging, drag
         <Icon name="stop" /><span>{t('macro.stop')}</span></button>
       : <button key="run" className="btn sm pv-run" data-mc="run" aria-label={`${t('macro.run')}: ${m.name}`} disabled={cantRun}
         title={cantRun ? t(m.targets === 'selected' ? 'macro.needSelect' : 'macro.noAccountsLeft') : undefined}
-        onClick={e => busy(e.currentTarget, () => host.runMacro(m.id))}><Icon name="play" /><span>{t('macro.run')}</span></button>}
+        onClick={e => busy(e.currentTarget, () => host.runMacro(m.id, m.targets === 'selected' && sel.length ? sel : undefined))}><Icon name="play" /><span>{t('macro.run')}</span></button>}
     <button type="button" className="icon-btn" data-mc="more" aria-haspopup="menu" title={t('macro.moreActs')} aria-label={`${t('macro.moreActs')}: ${m.name}`}
       onClick={e => menu(e.currentTarget)}><Icon name="more" /></button>
   </div>;
