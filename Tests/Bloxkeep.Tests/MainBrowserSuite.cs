@@ -270,13 +270,8 @@ static class MainBrowserSuite
                 $"started {ready}, shown {probe.Visible}, ready {probe.Ready}");
             if (probe.Ready)
             {
-                try
-                {
-                    await probe.Web!.CoreWebView2.CallDevToolsProtocolMethodAsync("Page.crash", "{}");
-                }
-                catch (Exception ex) when (ex is System.Runtime.InteropServices.COMException or InvalidOperationException)
-                {
-                }
+                // Never answered: its renderer is gone.
+                _ = probe.Web!.CoreWebView2.CallDevToolsProtocolMethodAsync("Page.crash", "{}").ContinueWith(t => t.Exception, TaskScheduler.Default);
                 await Until(() => !probe.Visible, 5000);
                 c.Check("…its page's renderer crashed: hidden, the page let go (started again on its next show)", !probe.Visible && probe.Web is null,
                     $"shown {probe.Visible}, browser {probe.Web is not null}");
