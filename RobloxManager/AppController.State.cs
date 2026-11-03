@@ -130,6 +130,7 @@ public sealed partial class AppController
         macroRecording = MacroRecordingDto(),
         macroVars = MacroVarsDto(),
         macroSweep = MacroSweepDto(),
+        macroCanRun = MacroCanRunDto(),
         panelsShown = PanelsShownDto(),
     };
 

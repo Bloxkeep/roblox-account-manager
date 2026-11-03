@@ -258,8 +258,11 @@ public sealed partial class AppController
     object? RunMacro(Guid id, Guid[]? accountIds)
     {
         var macro = MacroById(id);
-        // Accounts sent, but none (nothing selected): not the macro's own instead.
+        // Accounts sent, but none (nothing selected): not the macro's own instead. On the selected accounts with none sent
+        // (the Macros page with nothing selected): where its panel works, the accounts in its game or the window in front.
         var accounts = accountIds is { Length: 0 } ? [] : MacroAccounts(macro, accountIds);
+        if (accounts.Count == 0 && accountIds is null && macro.Targets == "selected")
+            accounts = PanelAccounts(macro);
         if (accounts.Count == 0)
             throw new UserError(accountIds is { Length: 0 } || (macro.Targets == "selected" && accountIds is null)
                 ? L.T("Select the accounts to run the macro on.")
@@ -616,11 +619,18 @@ public sealed partial class AppController
         status = r.Status,
         reason = r.Reason,
         step = r.Finished ? (int?)null : r.Pc,
+        // Where an ended run was: the editor marks the step a failed run stopped at.
+        lastStep = r.Finished ? r.Pc : (int?)null,
         trial = r.Trial ? true : (bool?)null,
         loops = r.Loops > 0 ? r.Loops : (int?)null,
         startedAt = r.StartedAt,
         endsAt = r.EndsAt,
     }).ToArray();
+
+    /// <summary>The macros on the selected accounts that Run still has somewhere to go with none selected: the accounts in
+    /// their game, the Roblox window in front, or those it last ran on (as their panel works on).</summary>
+    object MacroCanRunDto() => Open is null ? Array.Empty<Guid>()
+        : MacroList().Where(m => m.Targets == "selected" && PanelAccounts(m).Count > 0).Select(m => m.Id).ToArray();
 
     object? MacroRecordingDto() => Open is not null && _recorder is { } r ? new { accountId = r.AccountId, startsAt = r.StartsAt, steps = r.Steps } : null;
 
