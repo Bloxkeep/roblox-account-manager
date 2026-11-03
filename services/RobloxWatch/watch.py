@@ -20,8 +20,13 @@ CDN = 'https://setup.rbxcdn.com'
 UA = 'Bloxkeep-RobloxWatch (+https://github.com/Bloxkeep/roblox-account-manager)'
 # The name Bloxkeep takes so Roblox can't set up its single-window check (RobloxManager/MultiInstance.cs).
 HELD = 'ROBLOX_singletonEvent'
-LOCK_NAME = re.compile(rb'ROBLOX_[A-Za-z0-9_]{3,64}')
-LOCK_NAME_WIDE = re.compile(rb'R\x00O\x00B\x00L\x00O\x00X\x00_\x00(?:[A-Za-z0-9_]\x00){3,64}')
+LOCK_NAME = re.compile(rb'(?<![A-Za-z0-9_])ROBLOX_[A-Za-z0-9_]{3,64}')
+# A lock name counts only beside the single-window code's log lines; the same prefix elsewhere is other code (0.746
+# added ROBLOX_DEFAULT, a text chat value, and "May be blocked" went out for it). Such names are kept apart, so one
+# that only moved away from that code isn't taken as a lock gone.
+CHECK = re.compile(rb'WndProcessCheck')
+NEAR = 8 * 1024
+LOCK_NAME_WIDE = re.compile(rb'(?<![A-Za-z0-9_]\x00)R\x00O\x00B\x00L\x00O\x00X\x00_\x00(?:[A-Za-z0-9_]\x00){3,64}')
 # Roblox's single-window code: its source file, log category, telemetry and the flags that tune it.
 RELATED = re.compile(rb'(?<![A-Za-z0-9_:])[A-Za-z0-9_:]*(?:SingleInstance|AppReload|WndProcessCheck|EventWaitResult|MutexWaitResult)[A-Za-z0-9_:]*')
 FLAG = re.compile(r'SingleInstance|AppReload|WndProcessCheck|Singleton(?:Event|Mutex)|MultipleInstance')
@@ -47,10 +52,14 @@ def version_key(v):
 
 
 def fingerprint(exe):
-    locks = {m.group().decode() for m in LOCK_NAME.finditer(exe)}
-    locks |= {m.group().decode('utf-16le') for m in LOCK_NAME_WIDE.finditer(exe)}
+    checks = [m.start() for m in CHECK.finditer(exe)]
+    names = [(m.start(), m.group().decode()) for m in LOCK_NAME.finditer(exe)]
+    names += [(m.start(), m.group().decode('utf-16le')) for m in LOCK_NAME_WIDE.finditer(exe)]
+    locks = {n for at, n in names if any(abs(at - c) <= NEAR for c in checks)}
     related = {m.group().decode() for m in RELATED.finditer(exe)}
-    return {'locks': sorted(locks), 'related': sorted(related)}
+    # Inside a longer name too (RBX_ERROR_ROBLOX_MAINTENANCE, an error code an older status took for a lock).
+    elsewhere = {m.group().decode() for m in re.finditer(rb'ROBLOX_[A-Za-z0-9_]{3,64}', exe)} - locks
+    return {'locks': sorted(locks), 'related': sorted(related), 'elsewhere': sorted(elsewhere)}
 
 
 def download_player(build):
@@ -110,7 +119,8 @@ def judge(fp, before):
     if before is None:
         return ('first' if hold else 'gone'), hold, [], []
     added = sorted(set(fp['locks'] + fp['related']) - set(before['locks'] + before['related']))
-    removed = sorted(set(before['locks'] + before['related']) - set(fp['locks'] + fp['related']))
+    # Still in the build, away from the single-window code (an older status counted such names as locks): not gone.
+    removed = sorted(set(before['locks'] + before['related']) - set(fp['locks'] + fp['related'] + fp.get('elsewhere', [])))
     if not hold:
         return 'gone', hold, added, removed
     if hold != (before.get('hold') or [HELD]):
@@ -232,7 +242,7 @@ def inspect(status, version, build, channel):
     before = next((b for b in reversed(status['builds']) if b['hash'] != build), None)
     verdict, hold, added, removed = judge(fp, before)
     entry = {'version': version, 'hash': build, 'channel': channel, 'seenAt': now(), 'verdict': verdict, 'hold': hold,
-             **fp, 'added': added, 'removed': removed}
+             'locks': fp['locks'], 'related': fp['related'], 'added': added, 'removed': removed}
     if channel == 'live':
         entry['liveAt'] = entry['seenAt']
     status['builds'] = ([b for b in status['builds'] if b['hash'] != build] + [entry])[-MAX_BUILDS:]
