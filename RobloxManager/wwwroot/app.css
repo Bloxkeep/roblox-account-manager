@@ -5835,5 +5835,87 @@ html:not(.in-window) .pn.pn-pill { height: 42px; }
 /* ───────── P7 native ───────── */
 /* ───────── end P7 ───────── */
 
+/* ───────── P7b browser ───────── */
+/* The app's message box (ui/src/dialog/DialogView.tsx, page dialog.html, window Forms/Dialog.cs) and the top of
+   Bloxkeep's browser windows (ui/src/browser/BrowserChrome.tsx, page browser.html, Forms/WebsiteForm.cs and
+   BrowserLoginForm.cs). Solid: a picture theme's see-through colours are laid over its raised one, so nothing shows
+   through. In its window Windows draws the box's rounded corners and hairline; in a browser preview the box draws them. */
+body.tool-page { margin: 0; overflow: hidden; color: var(--text); font-size: var(--fs-3); }
+:where(.dlg, .bw) :where(button) { font: inherit; }
+
+/* The message box: the app's .modal filling its window. */
+body.dialog-page { background: linear-gradient(var(--surface), var(--surface)), linear-gradient(var(--raised), var(--raised)), Canvas; }
+html:not(.in-window) body.dialog-page { min-height: 100vh; padding: 24px; box-sizing: border-box; display: grid; place-items: start center; overflow: auto; background: var(--backdrop); }
+.modal.dlg { width: 460px; animation: none; }
+html.in-window .modal.dlg { width: 100vw; height: 100vh; max-height: 100vh; border: 0; border-radius: 0; box-shadow: none; }
+.dlg .modal-head { flex: none; user-select: none; }
+.dlg .modal-head h3 { min-width: 0; overflow-wrap: anywhere; }
+.dlg .modal-head .dlg-app { display: flex; align-items: center; gap: 10px; font: 650 var(--fs-4) var(--font); }
+.dlg-app img { width: 22px; height: 22px; border-radius: var(--r-xs); }
+.dlg .modal-body { flex: 1 1 auto; min-height: 0; padding: 18px 24px 16px; scrollbar-width: thin; }
+.dlg.listed .modal-body { padding-bottom: 22px; }
+.dlg .modal-foot { flex: none; align-items: center; }
+.dlg-msg { display: flex; align-items: flex-start; gap: 14px; }
+.dlg-mark { display: grid; place-items: center; width: 32px; height: 32px; flex: none; border-radius: 50%; }
+.dlg-mark .i { width: 18px; height: 18px; }
+.dlg-mark.k-info { background: var(--online-soft); color: var(--online); }
+.dlg-mark.k-warning { background: var(--warn-soft); color: var(--warn); }
+.dlg-mark.k-error { background: var(--bad-soft); color: var(--bad); }
+.dlg-text { flex: 1; min-width: 0; margin: 6px 0 0; color: var(--text-2); line-height: 1.5; overflow-wrap: anywhere; user-select: text; }
+.dlg-text.strong { color: var(--text); }
+.dlg-remember { margin: 14px 0 0 46px; }
+.dlg-choices { display: grid; gap: 8px; margin: 16px 0 0 46px; }
+.dlg-choice { display: grid; gap: 2px; padding: 10px 14px; border: 1px solid var(--line-2); border-radius: var(--r-md); background: var(--surface-2); color: var(--text); text-align: left; cursor: pointer; }
+.dlg-choice:hover { border-color: var(--line-3); background: var(--surface-3); }
+.dlg-choice:active { transform: translateY(1px); }
+.dlg-choice b { font-weight: 600; font-size: var(--fs-4); line-height: 1.35; }
+.dlg-choice span { color: var(--text-2); font-size: var(--fs-2); line-height: 1.4; overflow-wrap: anywhere; }
+.dlg-choice.danger { border-color: var(--bad-line); background: var(--bad-soft); }
+.dlg-choice.danger:hover { background: color-mix(in srgb, var(--bad) 20%, transparent); }
+.dlg-choice.danger b { color: var(--bad-ink); }
+.dlg-note { margin: 14px 0 0 46px; color: var(--muted); font-size: var(--fs-2); line-height: 1.4; }
+.modal-foot .dlg-note { flex: 1; min-width: 0; margin: 0; }
+
+/* The browser's top: the tab strip on the window's own colour, the chosen tab running into the bar below it. */
+body.browser-page { background: linear-gradient(var(--bg), var(--bg)), linear-gradient(var(--raised), var(--raised)), Canvas; user-select: none; }
+.bw { --bw-bar: linear-gradient(var(--surface), var(--surface)), linear-gradient(var(--raised), var(--raised)), Canvas; display: flex; flex-direction: column; }
+.bw .i { width: 16px; height: 16px; flex: none; }
+.bw-tabs { display: flex; align-items: flex-end; gap: 4px; height: 40px; padding: 0 8px; box-sizing: border-box; box-shadow: inset 0 -1px 0 var(--line-2); }
+/* The tabs scroll sideways once even narrow ones don't fit; + stays in sight. */
+.bw-list { display: flex; align-items: flex-end; gap: 4px; flex: 0 1 auto; min-width: 0; height: 100%; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+.bw-tab { position: relative; display: flex; align-items: center; flex: 0 1 auto; width: 220px; min-width: 48px; height: 34px; border-radius: var(--r-sm) var(--r-sm) 0 0; color: var(--text-2); container: bw-tab / inline-size; }
+.bw-tab:hover { background: var(--hover); color: var(--text); }
+.bw-tab.on { flex-shrink: 0; min-width: 132px; background: var(--bw-bar); color: var(--text); box-shadow: inset 1px 1px 0 var(--line-2), inset -1px 0 0 var(--line-2); }
+.bw-pick { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; height: 100%; padding: 0 30px 0 10px; border: 0; border-radius: inherit; background: none; color: inherit; text-align: left; cursor: default; }
+.bw-av { display: grid; place-items: center; width: 20px; height: 20px; flex: none; overflow: hidden; border-radius: 50%; background: var(--surface-3); color: var(--muted); }
+.bw-av img { width: 100%; height: 100%; object-fit: cover; }
+.bw-av .i { width: 13px; height: 13px; }
+.bw-name { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.bw-tab.on .bw-name { font-weight: 600; }
+.bw-x { position: absolute; right: 6px; top: 50%; display: none; place-items: center; width: 22px; height: 22px; margin-top: -11px; padding: 0; border: 0; border-radius: var(--r-xs); background: none; color: var(--muted); }
+.bw-x .i { width: 13px; height: 13px; }
+.bw-x:hover { background: var(--hover); color: var(--text); }
+.bw-tab:is(.on, :hover) .bw-x { display: grid; }
+/* Many tabs: a narrow one shows its avatar only (its name is its tooltip). */
+@container bw-tab (width < 96px) {
+  .bw-name { display: none; }
+  .bw-pick { justify-content: center; padding: 0 6px; }
+  .bw-x { display: none !important; }
+}
+.bw-new { width: 32px; height: 32px; flex: none; margin-bottom: 2px; }
+.bw-bar { display: flex; align-items: center; gap: 4px; height: 44px; padding: 0 10px 0 6px; box-sizing: border-box; background: var(--bw-bar); border-bottom: 1px solid var(--line-2); }
+.bw-bar .icon-btn { width: 32px; height: 32px; flex: none; }
+.bw-site { display: inline-flex; align-items: center; gap: 6px; flex: none; max-width: 40%; height: 28px; margin-left: 6px; padding: 0 10px; box-sizing: border-box; border: 1px solid var(--line-2); border-radius: var(--r-pill); background: var(--field); color: var(--text-2); font-size: var(--fs-2); }
+.bw-site span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.bw-site .i { width: 13px; height: 13px; color: var(--muted); }
+.bw-msg { flex: 1; min-width: 0; margin: 0 6px 0 8px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: var(--text-2); }
+.bw-msg.ok { color: var(--ok-ink); }
+.bw-msg.bad { color: var(--bad-ink); }
+.bw-bar .btn { flex: none; }
+/* The sign-in window: one bar, taller, with Done. */
+.bw.login .bw-bar { height: 52px; padding: 0 12px 0 8px; gap: 8px; }
+.bw.login .bw-site { margin-left: 0; }
+/* ───────── end P7b ───────── */
+
 /* ───────── P8 ───────── */
 /* ───────── end P8 ───────── */
