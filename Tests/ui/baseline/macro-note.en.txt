@@ -1,0 +1,400 @@
+== end
+html [data-theme="dark" lang="en"]
+#app
+  div.shell
+    aside.side
+      div.brand
+        img [alt="" src="logo.svg"]
+        div.brand-text
+          div.brand-name "Bloxkeep"
+          div.brand-sub "Roblox account manager"
+      div.side-nav
+        button.nav [title="Accounts"]
+          svg.i #v823bm
+          span "Accounts"
+          em [id="nav-count"] "7"
+        button.nav [title="Presets"]
+          svg.i #1pvni8o
+          span "Presets"
+        button.nav.on [title="Macros (Beta)"]
+          svg.i #kx2qfl
+          span "Macros"
+          em.nav-beta "Beta"
+        button.nav [title="Game monitor"]
+          svg.i #1e3syqr
+          span "Game monitor"
+        button.nav [title="Statistics"]
+          svg.i #ktpp14
+          span "Statistics"
+        button.nav [title="Settings"]
+          svg.i #tbghvg
+          span "Settings"
+      div.side-bottom
+        div [id="side-warn"]
+        div.side-card [id="sys-card"]
+          h4 "Roblox on this PC"
+          div.sys-row
+            span [title="Main · PID 1111\nFarm 1 · PID 2222"]
+              b [id="sys-count"] "2"
+              span [id="sys-count-label"] "windows"
+            span [id="sys-ram"] "1.7 GB"
+          div.meter [id="sys-meter"]
+            i.roblox [style="transform:scaleX(0.054)"]
+            i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
+          div.sys-foot [id="sys-foot"] "PC RAM 63% used · 12 GB free"
+          div.sys-foot [id="sys-usage" title="Roblox windows only, not the whole PC"] "CPU 12% · GPU 34%"
+          div.sys-ver [id="sys-ver"]
+            span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
+              i.dot.ok
+          button.btn.sm.sys-mini.w [id="sys-mini" aria-pressed="false"]
+            svg.i #1y8kmj1
+            span "Mini window"
+          button.btn.sm.sys-close.w [id="sys-close"]
+            svg.i #16z0s1r
+            span "Close all"
+        div [id="multi-card"]
+          div.multi.ok
+            button.multi-open [title="Multi-Roblox: On — several windows allowed"]
+              span.led
+              div
+                b "Multi-Roblox"
+                small "On — several windows allowed"
+            label.switch [title="Turn off Multi-Roblox"]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
+              span
+        div.side-foot
+          div [id="update-slot"]
+          div.side-lock
+            button.btn.ghost.w [title="Lock Bloxkeep with the master password. Roblox windows stay open; auto-rejoin, scheduled presets and Discord pause until you unlock."]
+              svg.i #21scx0
+              span "Lock app"
+            button.btn.ghost.side-sq.vault-btn [title="Switch vault (Vault 1)" aria-label="Switch vault (Vault 1)"]
+              span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(22, 163, 74);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
+    main.main
+      section.seen.view [id="view-accounts"]
+      section.seen.view [id="view-macros"]
+        header.top
+          div.top-title
+            h1 "Macros"
+              span.mc-beta.state-pill.warn [title="New: it may not work the same on every PC. Tell us what goes wrong under Help & feedback. Macros take each Roblox window to the front for a moment, one at a time."] "Beta"
+            p [id="mc-sub"] "macros"
+              b "4"
+          div.top-tools
+            button.btn.mc-stop-all [title="Stops every macro and recording, and lets go of every key (Ctrl+Alt+0 does it from any app)" disabled]
+              svg.i #t57b2k
+              span "Stop all"
+              kbd "Ctrl+Alt+0"
+            button.btn.primary [id="mc-new" aria-haspopup="menu"]
+              svg.i #u7ty99
+              span "New macro"
+              svg.i #u1ag9u
+        p.mc-live [role="status" aria-live="polite"]
+        div.scroll
+          div.mc-list.pv-list [id="mc-list" role="list"]
+            div.mc-item.pv-item [role="listitem" aria-label="Anti-AFK jump"]
+              span.ord-grip.pv-grip [title="Drag to reorder"]
+                svg.i #top79o
+              span.mc-icon.pv-icon
+                svg.i #1ap9cll
+              div.pv-main
+                b [title="Anti-AFK jump"] "Anti-AFK jump"
+                span.mc-line [title="Every 5 min · 2 accounts · Ctrl+Alt+1"] "Every 5 min · 2 accounts · Ctrl+Alt+1"
+              button.btn.mc-panel.sm [type="button" title="Show its panel beside the game" aria-label="Panel: Anti-AFK jump" aria-pressed="false"]
+                svg.i #1e3syqr
+                span "Panel"
+              button.btn.pv-run.sm [aria-label="Run: Anti-AFK jump"]
+                svg.i #1ewcuky
+                span "Run"
+              button.icon-btn [type="button" title="More" aria-haspopup="menu" aria-label="More: Anti-AFK jump"]
+                svg.i #1e3omv2
+            div.mc-item.pv-item [role="listitem" aria-label="Claim daily chest"]
+              span.ord-grip.pv-grip [title="Drag to reorder"]
+                svg.i #top79o
+              span.mc-icon.pv-icon
+                svg.i #kx2qfl
+              div.pv-main
+                b [title="Claim daily chest"] "Claim daily chest"
+                span.mc-line [title="When you press Run · Selected accounts · Ctrl+Alt+2"] "When you press Run · Selected accounts · Ctrl+Alt+2"
+              button.btn.mc-panel.sm [type="button" title="Show its panel beside the game" aria-label="Panel: Claim daily chest" aria-pressed="false"]
+                svg.i #1e3syqr
+                span "Panel"
+              button.btn.pv-run.sm [title="Select accounts in the Accounts tab first." aria-label="Run: Claim daily chest" disabled]
+                svg.i #1ewcuky
+                span "Run"
+              button.icon-btn [type="button" title="More" aria-haspopup="menu" aria-label="More: Claim daily chest"]
+                svg.i #1e3omv2
+            div.mc-item.pv-item [role="listitem" aria-label="Farm route"]
+              span.ord-grip.pv-grip [title="Drag to reorder"]
+                svg.i #top79o
+              span.mc-icon.pv-icon
+                svg.i #1ap9cll
+              div.pv-main
+                b [title="Farm route"] "Farm route"
+                span.mc-line [title="After joining a game · All accounts · automatic runs paused"] "After joining a game · All accounts · automatic runs paused"
+              button.btn.mc-panel.sm [type="button" title="Show its panel beside the game" aria-label="Panel: Farm route" aria-pressed="false"]
+                svg.i #1e3syqr
+                span "Panel"
+              button.btn.pv-run.sm [aria-label="Run: Farm route"]
+                svg.i #1ewcuky
+                span "Run"
+              button.icon-btn [type="button" title="More" aria-haspopup="menu" aria-label="More: Farm route"]
+                svg.i #1e3omv2
+            div.mc-item.pv-item [role="listitem" aria-label="Cast and reel"]
+              span.ord-grip.pv-grip [title="Drag to reorder"]
+                svg.i #top79o
+              span.mc-icon.pv-icon
+                svg.i #kx2qfl
+              div.pv-main
+                b [title="Cast and reel"] "Cast and reel"
+                span.mc-line [title="When you press Run · Selected accounts · Ctrl+Alt+3"] "When you press Run · Selected accounts · Ctrl+Alt+3"
+              button.btn.mc-panel.sm [type="button" title="Show its panel beside the game" aria-label="Panel: Cast and reel" aria-pressed="false"]
+                svg.i #1e3syqr
+                span "Panel"
+              button.btn.pv-run.sm [aria-label="Run: Cast and reel"]
+                svg.i #1ewcuky
+                span "Run"
+              button.icon-btn [type="button" title="More" aria-haspopup="menu" aria-label="More: Cast and reel"]
+                svg.i #1e3omv2
+#layer
+  div.at-top.overlay
+    div.mc-modal.modal [role="dialog" aria-labelledby="mdl-1" aria-modal="true"]
+      div.modal-head
+        h3 [id="mdl-1"] "Edit macro"
+        button.icon-btn [title="Close"]
+          svg.i #1tyq039
+      div.modal-body
+        div.mc-form
+          div.mc-cols
+            div.mc-main
+              div.form.mc-top
+                div.mc-name-row
+                  label "Name"
+                    input.field [id="mc-name" placeholder="Farm loop" maxlength="60" value="Cast and reel"]
+                  button.btn.mc-try-it [id="mc-try" type="button" title="Runs it once on Main’s window and says what it saw" aria-pressed="false"]
+                    svg.i #1ewcuky
+                    span "Try it"
+                details.mc-when
+                  summary [id="mc-when"]
+                    span "When you press Run · Selected accounts · Ctrl+Alt+3"
+                    svg.i #u1ag9u
+              section.mc-steps-sec [aria-labelledby="mc-steps-h"]
+                div.mc-steps-head
+                  b [id="mc-steps-h"] "Steps"
+                    span.muted "(6)"
+                  button.btn.sm [id="mc-record" type="button" title="Records what you do in the chosen window; F8 stops"]
+                    svg.i #1mr8rx5
+                    span "Record"
+                  button.btn.sm [id="mc-add" type="button" aria-expanded="false" aria-haspopup="dialog"]
+                    svg.i #u7ty99
+                    span "Add step"
+                div.mc-steps [role="list" aria-labelledby="mc-steps-h"]
+                  div.mc-opener.mc-step [role="listitem" aria-label="Step 1: Repeat until stopped" style="--d:0"]
+                    button.mc-ins [type="button" title="Add a step here" tabindex="-1" aria-label="Add a step here"]
+                      svg.i #u7ty99
+                    span.ord-grip [title="Drag to reorder"]
+                      svg.i #top79o
+                    span.mc-step-n [aria-hidden="true"] "1"
+                    button.icon-btn.mc-fold [type="button" title="Fold" aria-expanded="true" aria-label="Fold: Step 1"]
+                      svg.i #u1ag9u
+                    button.k-loop.mc-step-head [type="button" aria-expanded="false"]
+                      svg.i #1ap9cll
+                      span.mc-say "Repeat until stopped"
+                      svg.i #u1ag9u
+                    span.mc-step-acts
+                      button.icon-btn [type="button" title="Move up" aria-label="Move up: Step 1" disabled]
+                        svg.i #ilfy0l
+                      button.icon-btn [type="button" title="Move down" aria-label="Move down: Step 1" disabled]
+                        svg.i #u1ag9u
+                      button.icon-btn [type="button" title="More" aria-haspopup="menu" aria-label="More: Step 1"]
+                        svg.i #1e3omv2
+                  div.mc-step [role="listitem" aria-label="Step 2: Hold the left button for 0.6 s at point 2" style="--d:1"]
+                    span.mc-rail [aria-hidden="true" style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:;left:-14px"]
+                    button.mc-ins [type="button" title="Add a step here" tabindex="-1" aria-label="Add a step here"]
+                      svg.i #u7ty99
+                    span.ord-grip [title="Drag to reorder"]
+                      svg.i #top79o
+                    span.mc-step-n [aria-hidden="true"] "2"
+                    button.k-click.mc-step-head [type="button" aria-expanded="false"]
+                      svg.i #115g1gb
+                      span.mc-say "Hold the left button for 0.6 s at point 2"
+                      svg.i #u1ag9u
+                    span.mc-step-acts
+                      button.icon-btn [type="button" title="Move up" aria-label="Move up: Step 2"]
+                        svg.i #ilfy0l
+                      button.icon-btn [type="button" title="Move down" aria-label="Move down: Step 2"]
+                        svg.i #u1ag9u
+                      button.icon-btn [type="button" title="More" aria-expanded="false" aria-haspopup="menu" aria-label="More: Step 2"]
+                        svg.i #1e3omv2
+                    p.mc-step-note
+                      button.link [type="button" title="Edit note" FOCUSED] "Hold long enough to cast far"
+                  div.mc-step [role="listitem" aria-label="Step 3: Wait until the color shows in Fish area" style="--d:1"]
+                    span.mc-rail [aria-hidden="true" style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:;left:-14px"]
+                    button.mc-ins [type="button" title="Add a step here" tabindex="-1" aria-label="Add a step here"]
+                      svg.i #u7ty99
+                    span.ord-grip [title="Drag to reorder"]
+                      svg.i #top79o
+                    span.mc-step-n [aria-hidden="true"] "3"
+                    button.k-waitColour.mc-step-head [type="button" aria-expanded="false"]
+                      svg.i #d2zp05
+                      span.mc-say "Wait until the color shows in Fish area"
+                      svg.i #u1ag9u
+                    span.mc-step-acts
+                      button.icon-btn [type="button" title="Move up" aria-label="Move up: Step 3"]
+                        svg.i #ilfy0l
+                      button.icon-btn [type="button" title="Move down" aria-label="Move down: Step 3"]
+                        svg.i #u1ag9u
+                      button.icon-btn [type="button" title="More" aria-haspopup="menu" aria-label="More: Step 3"]
+                        svg.i #1e3omv2
+                  div.mc-step [role="listitem" aria-label="Step 4: Keep the bar on the target in Fish area" style="--d:1"]
+                    span.mc-rail [aria-hidden="true" style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:;left:-14px"]
+                    button.mc-ins [type="button" title="Add a step here" tabindex="-1" aria-label="Add a step here"]
+                      svg.i #u7ty99
+                    span.ord-grip [title="Drag to reorder"]
+                      svg.i #top79o
+                    span.mc-step-n [aria-hidden="true"] "4"
+                    button.k-follow.mc-step-head [type="button" aria-expanded="false"]
+                      svg.i #1l5qw3q
+                      span.mc-say "Keep the bar on the target in Fish area"
+                      svg.i #u1ag9u
+                    span.mc-step-acts
+                      button.icon-btn [type="button" title="Move up" aria-label="Move up: Step 4"]
+                        svg.i #ilfy0l
+                      button.icon-btn [type="button" title="Move down" aria-label="Move down: Step 4"]
+                        svg.i #u1ag9u
+                      button.icon-btn [type="button" title="More" aria-haspopup="menu" aria-label="More: Step 4"]
+                        svg.i #1e3omv2
+                  div.mc-step [role="listitem" aria-label="Step 5: Add 1 to counter fish" style="--d:1"]
+                    span.mc-rail [aria-hidden="true" style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:;left:-14px"]
+                    button.mc-ins [type="button" title="Add a step here" tabindex="-1" aria-label="Add a step here"]
+                      svg.i #u7ty99
+                    span.ord-grip [title="Drag to reorder"]
+                      svg.i #top79o
+                    span.mc-step-n [aria-hidden="true"] "5"
+                    button.k-addVar.mc-step-head [type="button" aria-expanded="false"]
+                      svg.i #1mp3g6t
+                      span.mc-say "Add 1 to counter fish"
+                      svg.i #u1ag9u
+                    span.mc-step-acts
+                      button.icon-btn [type="button" title="Move up" aria-label="Move up: Step 5"]
+                        svg.i #ilfy0l
+                      button.icon-btn [type="button" title="Move down" aria-label="Move down: Step 5"]
+                        svg.i #u1ag9u
+                      button.icon-btn [type="button" title="More" aria-haspopup="menu" aria-label="More: Step 5"]
+                        svg.i #1e3omv2
+                  div.mc-end.mc-step [role="listitem" aria-label="Step 6: end repeat" style="--d:0"]
+                    button.mc-ins [type="button" title="Add a step here" tabindex="-1" aria-label="Add a step here"]
+                      svg.i #u7ty99
+                    span.mc-step-n [aria-hidden="true"] "6"
+                    span.mc-step-head
+                      svg.i #5fto4c
+                      span.mc-say "end repeat"
+              section.mc-sees [aria-labelledby="mc-sees-h"]
+                div.mc-sees-head
+                  b [id="mc-sees-h"] "Player sees"
+                  small "The small window beside the game. Click a name to rename it."
+                  button.btn.sm [id="mc-sees-add" type="button"]
+                    svg.i #u7ty99
+                    span "Add"
+                div.mp-win [aria-label="Panel preview"]
+                  div.mp-title
+                    b "Cast and reel"
+                    em "Beta"
+                    span.mp-x [aria-hidden="true"] "–"
+                    span.mp-x [aria-hidden="true"]
+                      svg.i #1tyq039
+                  div.mp-run
+                    svg.i #1ewcuky
+                    span "Run"
+                    kbd "Ctrl+Alt+3"
+                  p.mp-status "Ready · fish: 0"
+                  ul.mp-opts
+                    li
+                      input.mp-label [title="What the player reads next to it" maxlength="30" aria-label="Name of item 1" value="Hold time"]
+                      span.mp-val
+                        span.mp-mini "−"
+                        span.mp-field.num "0.6 s"
+                        span.mp-mini "+"
+                      span.mp-acts
+                        button.icon-btn [type="button" title="Move up" aria-label="Move up: Hold time" disabled]
+                          svg.i #ilfy0l
+                        button.icon-btn [type="button" title="Move down" aria-label="Move down: Hold time"]
+                          svg.i #u1ag9u
+                        button.icon-btn [type="button" title="Player can’t change it" aria-label="Player can’t change it: Hold time"]
+                          svg.i #1tyq039
+                    li
+                      input.mp-label [title="What the player reads next to it" maxlength="30" aria-label="Name of item 2" value="Bar colour"]
+                      span.mp-val
+                        i.mp-swatch [style="background-attachment:initial;background-clip:initial;background-color:rgb(34, 197, 94);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"]
+                        span.mp-mini "Pick"
+                      span.mp-acts
+                        button.icon-btn [type="button" title="Move up" aria-label="Move up: Bar colour"]
+                          svg.i #ilfy0l
+                        button.icon-btn [type="button" title="Move down" aria-label="Move down: Bar colour" disabled]
+                          svg.i #u1ag9u
+                        button.icon-btn [type="button" title="Player can’t change it" aria-label="Player can’t change it: Bar colour"]
+                          svg.i #1tyq039
+                  div.mp-foot
+                    span.mp-btn "Edit areas"
+                    span.mp-btn "Reset"
+                label.mc-switch-row
+                  span.switch
+                    input [id="mc-panel-auto" type="checkbox" checked=true]
+                    span
+                  span
+                    b "Show the panel by itself"
+                    small "While an account is in this game. Leave the game empty for any game."
+                div.mc-panel-game
+                  label "Game"
+                    input.field [id="ps-place" role="combobox" placeholder="Search a game, or paste a link / Place ID…" autocomplete="off" maxlength="500" aria-autocomplete="list" aria-expanded="false" aria-haspopup="listbox" value="https://www.roblox.com/games/2753915549"]
+                  div.ps-game [id="ps-game"]
+                    span.gph
+                      svg.i #sy1lqp
+                    b "Blox Fruits"
+            aside.mc-side
+              section.mc-game [aria-labelledby="mc-game-h"]
+                div.mc-pic-head
+                  b [id="mc-game-h"] "On the game"
+                  select.select.sm [id="mc-pic-acc" aria-label="Whose window" value="00000000-0000-4000-8000-000000000001"]
+                    option [value="00000000-0000-4000-8000-000000000001"] "Main"
+                    option [value="00000000-0000-4000-8000-000000000002"] "Farm 1"
+                  button.btn.sm [id="mc-ongame" type="button" aria-pressed="false"]
+                    svg.i #1e3syqr
+                    span "Edit on game"
+                p.mc-game-say [role="status"] "Shows each step’s dot and each area’s box on Main’s window, to drag into place."
+                div.blank.mc-pic-frame [role="group" tabindex="-1" aria-label="The game window: numbered dots are where steps click, boxes are areas. Arrow keys move the one in focus." style="aspect-ratio:1.77778 / 1"]
+                  span.mc-pic-blank
+                    span "Take a picture to see the game here"
+                  span.mc-pic-area [role="button" title="Fish area: drag to move, drag the corner to resize" tabindex="-1" aria-label="Fish area: drag to move, drag the corner to resize" style="border-bottom-color:rgb(34, 197, 94);border-left-color:rgb(34, 197, 94);border-right-color:rgb(34, 197, 94);border-top-color:rgb(34, 197, 94);height:10%;left:30%;top:74%;width:40%"]
+                    i [style="background-attachment:initial;background-clip:initial;background-color:rgb(34, 197, 94);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "Fish area"
+                    b.mc-pic-handle [style="background-attachment:initial;background-clip:initial;background-color:rgb(34, 197, 94);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"]
+                  span.mc-pic-dot [role="button" title="Point 2: drag to move" tabindex="-1" aria-label="Point 2: drag to move" style="left:50%;top:60%"] "2"
+                div.mc-pic-acts
+                  button.btn.sm [id="mc-pic-take" type="button"]
+                    svg.i #16jqtkh
+                    span "Take picture"
+                  small "With a picture you can drag the dots and boxes here too, and cut pictures for steps."
+                div.mc-areas [role="group" aria-labelledby="mc-areas-h"]
+                  div.mc-areas-head
+                    b [id="mc-areas-h"] "Areas"
+                    button.btn.sm [id="mc-area-add" type="button"]
+                      svg.i #u7ty99
+                      span "New area"
+                  ul
+                    li
+                      div.mc-area-row
+                        i [aria-hidden="true" style="border-bottom-color:rgb(34, 197, 94);border-left-color:rgb(34, 197, 94);border-right-color:rgb(34, 197, 94);border-top-color:rgb(34, 197, 94)"]
+                        input.field.sm [id="mc-area-a1" maxlength="30" aria-label="Area name" value="Fish area"]
+                        button.icon-btn [type="button" title="Delete area" aria-label="Delete area: Fish area"]
+                          svg.i #1w1g8zc
+      div.modal-foot
+        button.btn.danger.push "Delete"
+        button.btn "Cancel"
+        button.btn.primary [aria-disabled="false"] "Save"
+#toasts
+-- commands
+  getState {}
+  monitorArea {"hidden":true}
+  pageBusy {"busy":true}
+  pageShown {}
+  resolveGame {"input":"https://www.roblox.com/games/2753915549"}
+  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
