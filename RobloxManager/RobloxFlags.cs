@@ -62,7 +62,7 @@ public static class RobloxFlags
             if (had is null && File.Exists(file))
                 continue; // there but can't be read just now: never written over without knowing what it held
             // Still ours from an earlier window: what it held before that is what goes back.
-            bool ours = state.Written.TryGetValue(file, out var written) && written == had;
+            bool ours = state.Written.TryGetValue(file, out var written) && written == had && state.Before.ContainsKey(file);
             // The flags already in it with no note of what it held before (the note lost or damaged): that isn't the
             // person's own, so it is never noted as theirs (it would be "put back" with the flags for good).
             if (!ours && had is not null && HoldsLightAfk(had))
