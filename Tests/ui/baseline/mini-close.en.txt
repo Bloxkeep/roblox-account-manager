@@ -43,5 +43,3 @@ html [data-theme="dark" lang="en"]
   size {"h":386,"w":300}
   size {"h":386,"w":300}
   size {"h":386,"w":300}
-  size {"h":386,"w":300}
-  size {"h":386,"w":300}

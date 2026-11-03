@@ -87,7 +87,5 @@ html [data-theme="retro" lang="en"]
 -- commands
   ready {}
   size {"h":359,"pill":false,"w":300}
-  size {"h":359,"pill":false,"w":300}
-  size {"h":395,"pill":false,"w":300}
   size {"h":395,"pill":false,"w":300}
   size {"h":418,"pill":false,"w":300}

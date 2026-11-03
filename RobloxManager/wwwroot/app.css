@@ -1734,7 +1734,7 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .led { width: 10px; height: 10px; border-radius: 50%; background: var(--dim); flex: none; }
 .multi.ok .led { background: var(--ok); box-shadow: 0 0 0 4px var(--ok-soft); }
 .multi.ok small { color: var(--ok-ink); }
-.multi.warn .led { background: var(--warn); animation: blink 1.4s ease-in-out infinite; }
+.multi.warn .led { background: var(--warn); animation: blink 1.4s ease-in-out 3; }
 .multi.warn small { color: var(--warn-ink); }
 @keyframes blink { 50% { opacity: .35; } }
 .side-foot { display: grid; gap: 10px; margin-top: 8px; }
@@ -5746,10 +5746,11 @@ html:not(.in-window) body.panel-page { background: var(--backdrop); padding: 16p
 .pn-title { display: flex; align-items: center; gap: 8px; height: 36px; flex: none; padding: 0 4px 0 12px; border-bottom: 1px solid var(--line); }
 .pn-dot { width: 8px; height: 8px; flex: none; border-radius: 50%; background: var(--dim); }
 .pn-dot.s-ready { background: var(--ok); }
-.pn-dot.s-running { background: var(--ok); animation: pulse 1.2s ease-in-out infinite; }
+/* A few pulses when the state starts, then steady: an endless one kept the small window drawing every frame (audit D1). */
+.pn-dot.s-running { background: var(--ok); animation: pulse 1.2s ease-in-out 3; }
 .pn-dot.s-paused { background: var(--warn); }
 .pn-dot.s-stopped, .pn-dot.s-recording { background: var(--bad); }
-.pn-dot.s-recording { animation: pulse 1.2s ease-in-out infinite; }
+.pn-dot.s-recording { animation: pulse 1.2s ease-in-out 3; }
 .pn-dot.s-editing { background: var(--accent); }
 .pn-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 650 var(--fs-4)/1.2 var(--font-display, var(--font)); }
 .pn-beta { flex: none; padding: 1px 6px; border-radius: var(--r-xs); background: var(--warn-soft); color: var(--warn-ink); font-size: var(--fs-1); font-weight: 600; }

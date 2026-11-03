@@ -59,7 +59,6 @@ html [data-theme="dark" lang="vi"]
 -- commands
   ready {}
   size {"h":386,"w":300}
-  size {"h":386,"w":300}
 == end
 html [data-theme="dark" lang="vi"]
 #app
@@ -81,5 +80,4 @@ html [data-theme="dark" lang="vi"]
         i
 -- commands
   act {"remember":false,"what":"closeAll"}
-  size {"h":386,"w":300}
   size {"h":386,"w":300}

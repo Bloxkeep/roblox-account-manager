@@ -63,11 +63,17 @@ export function MiniView({ data, on }: { data: MiniData; on: MiniOn }) {
     if (!was || was.index !== index) places.current.set(c.id, { index, since: now });
   });
   const settled = (id: string) => performance.now() - (places.current.get(id)?.since ?? 0) >= SETTLE_MS;
+  /** The size last said, and for which "mini" from the app. */
+  const sent = useRef<{ data: MiniData | null; key: string }>({ data: null, key: '' });
 
-  // The window shows once the page has drawn; it says its size after every drawing.
+  // The window shows once the page has drawn: it says its size once after each "mini" from the app, and when it changed.
   useLayoutEffect(() => {
     const el = root.current;
-    if (el) on.size(Math.ceil(el.offsetWidth), Math.ceil(el.scrollHeight));
+    if (!el) return;
+    const w = Math.ceil(el.offsetWidth), h = Math.ceil(el.scrollHeight), key = `${w}x${h}`;
+    if (sent.current.key === key && sent.current.data === data) return;
+    sent.current = { data, key };
+    on.size(w, h);
   });
 
   // A close that didn't take (Roblox asked something, or hung): its buttons come back after a while.

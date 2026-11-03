@@ -130,7 +130,6 @@ html [data-theme="dark" lang="en"]
 -- commands
   ready {}
   size {"h":545,"pill":false,"w":300}
-  size {"h":545,"pill":false,"w":300}
   size {"h":568,"pill":false,"w":300}
 == end
 html [data-theme="dark" lang="en"]
@@ -232,5 +231,4 @@ html [data-theme="dark" lang="en"]
         button.btn.ghost.pn-reset.sm [type="button"] "Reset all"
 -- commands
   act {"name":"keep","value":["Salmon","Tuna","Carp"],"what":"set"}
-  size {"h":568,"pill":false,"w":300}
   size {"h":568,"pill":false,"w":300}

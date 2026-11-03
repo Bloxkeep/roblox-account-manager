@@ -103,11 +103,6 @@ html [data-theme="dark" lang="vi"]
   act {"name":"hold","text":"99","what":"typed"}
   ready {}
   size {"h":545,"pill":false,"w":300}
-  size {"h":545,"pill":false,"w":300}
   size {"h":568,"pill":false,"w":300}
   size {"h":568,"pill":false,"w":300}
-  size {"h":568,"pill":false,"w":300}
-  size {"h":568,"pill":false,"w":300}
-  size {"h":568,"pill":false,"w":300}
-  size {"h":586,"pill":false,"w":300}
   size {"h":586,"pill":false,"w":300}

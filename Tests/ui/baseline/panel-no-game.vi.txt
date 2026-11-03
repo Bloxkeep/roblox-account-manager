@@ -99,5 +99,4 @@ html [data-theme="dark" lang="vi"]
 -- commands
   ready {}
   size {"h":545,"pill":false,"w":300}
-  size {"h":545,"pill":false,"w":300}
   size {"h":568,"pill":false,"w":300}

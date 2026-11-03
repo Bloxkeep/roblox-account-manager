@@ -401,15 +401,26 @@ public sealed class TrayWindow : Form
         };
     }
 
+    /// <summary>What the page draws now: on open, after a click and on the refresh; sent only when it changed, except while
+    /// it opens (the page answers with its size, and the window shows then). The frame is drawn again on a theme change.</summary>
     void Push()
     {
         if (_web?.CoreWebView2 is not { } core || (!Visible && !_showing))
             return;
         try
         {
-            BackColor = Themes.Current.Surface;
-            Frame();
-            core.PostWebMessageAsJson(JsonSerializer.Serialize(Message()));
+            if (Themes.Current is var theme && theme != _framed)
+            {
+                _framed = theme;
+                BackColor = theme.Surface;
+                Frame();
+            }
+            string json = JsonSerializer.Serialize(Message());
+            if (json == _sent && core == _sentTo && Visible && !_showing)
+                return;
+            core.PostWebMessageAsJson(json);
+            _sent = json;
+            _sentTo = core;
         }
         catch (Exception ex) when (ex is COMException or InvalidOperationException or ObjectDisposedException)
         {
@@ -537,6 +548,11 @@ public sealed class TrayWindow : Form
     }
 
     /// <summary>Windows 11's rounded corners and a border in the theme's line colour.</summary>
+    /// <summary>What the page was last sent (and to which browser), and the theme the window was last drawn in.</summary>
+    string? _sent;
+    CoreWebView2? _sentTo;
+    Themes.Theme? _framed;
+
     void Frame()
     {
         if (IsHandleCreated)
