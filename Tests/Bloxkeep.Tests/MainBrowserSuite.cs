@@ -317,7 +317,7 @@ static class MainBrowserSuite
         game.Show();
         var deskType = typeof(Prefs).Assembly.GetType("RobloxManager.MacroDesk")!;
         Func<Guid, (int Pid, int Fps, bool InGame)?> client = _ => (Environment.ProcessId, 60, true);
-        Harness.Set(app, "_macroDesk", Activator.CreateInstance(deskType, Harness.F, null, [client, null], null));
+        Harness.Set(app, "_macroDesk", Activator.CreateInstance(deskType, Harness.F, null, [client, null, null], null));
         InputTurn.Reset();
         var held = InputTurn.TryEnter("macro")!;
         var pick = (Task<(double X, double Y, string Colour)?>)Harness.Invoke(app, "PickOnGameAsync", Guid.NewGuid())!;
