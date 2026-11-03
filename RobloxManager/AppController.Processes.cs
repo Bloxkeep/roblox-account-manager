@@ -55,6 +55,10 @@ public sealed partial class AppController
         catch (Exception ex)
         {
             LogTickError(ex);
+            // Only the first half (the process list, clients matched to launches) is left to fail the whole check: the save
+            // still goes, but no rejoin, which would open windows nothing then matches. Already saved: nothing to do.
+            if (_vault is not null)
+                Step(() => PersistIfDue(DateTime.UtcNow));
         }
         finally
         {
@@ -224,56 +228,64 @@ public sealed partial class AppController
         }
 
         _closingForRejoin.RemoveWhere(pid => !pids.Contains(pid));
+        // From here on each job on its own (Step): one that throws (bad data in one session or macro) would otherwise
+        // stop the save, auto-rejoin, schedules and auto-lock for as long as it kept throwing (audit R1).
         // Once a client has started (its window is up), the file goes back to the person's own settings.
         if (_robloxSettingsPending && _launchCts is null && _pending.Count == 0 && !_rejoining
             && now - _robloxSettingsWrittenAt > TimeSpan.FromSeconds(10))
         {
-            bool final = pids.Count == 0;
-            RobloxGameSettings.Restore(final);
-            if (final)
-                _robloxSettingsPending = false;
+            Step(() =>
+            {
+                bool final = pids.Count == 0;
+                RobloxGameSettings.Restore(final);
+                if (final)
+                    _robloxSettingsPending = false;
+            }, "RobloxGameSettings.Restore(final)");
         }
         // Light AFK's flags: read by the windows they were for, so the file is the person's own again.
         if (_robloxFlagsPending && _launchCts is null && _pending.Count == 0 && !_rejoining
             && now - _robloxSettingsWrittenAt > TimeSpan.FromSeconds(10))
         {
-            RobloxFlags.Restore();
-            _robloxFlagsPending = false;
+            Step(() =>
+            {
+                RobloxFlags.Restore();
+                _robloxFlagsPending = false;
+            }, "RobloxFlags.Restore()");
         }
         // Every client's log: the ones Bloxkeep opened for their status, all of them for anti-AFK.
-        part = Stopwatch.GetTimestamp();
-        changed |= _logs.Poll(pids.ToList()) && _running.Count > 0;
-        Took("Roblox logs", part);
+        Step(() => changed |= _logs.Poll(pids.ToList()) && _running.Count > 0, "Roblox logs");
         if (scan)
-            changed |= AdoptWindowsOpenedElsewhere(players);
-        var unnamed = _running.Values.Select(r => _logs.StateOf(r.Pid)?.PlaceId ?? 0)
-            .Where(id => id > 0 && !HasGame(id, false) && !(_gameFetchedAt.TryGetValue(id, out var asked) && now - asked < GameRetry))
-            .Distinct().ToList();
-        if (unnamed.Count > 0)
-            _ = NameLoggedPlacesAsync(unnamed);
-        part = Stopwatch.GetTimestamp();
-        RejoinFromLogs();
-        ForgetLiftedGameBans();
-        ForgetSettledRejoins(now);
-        TrackPlay(now);
-        RunAntiAfk(now, windows);
-        MinimiseAfkWindows(windows);
-        MaximiseNewWindows(now, windows);
-        KeepWindowSizes(now, windows);
-        TickMacros(now);
-        TickPanels();
-        Took("rejoins, play time, anti-AFK and window states", part);
+            Step(() => changed |= AdoptWindowsOpenedElsewhere(players));
+        Step(() =>
+        {
+            var unnamed = _running.Values.Select(r => _logs.StateOf(r.Pid)?.PlaceId ?? 0)
+                .Where(id => id > 0 && !HasGame(id, false) && !(_gameFetchedAt.TryGetValue(id, out var asked) && now - asked < GameRetry))
+                .Distinct().ToList();
+            if (unnamed.Count > 0)
+                _ = NameLoggedPlacesAsync(unnamed);
+        }, "NameLoggedPlacesAsync(unnamed)");
+        Step(RejoinFromLogs);
+        Step(ForgetLiftedGameBans);
+        Step(() => ForgetSettledRejoins(now));
+        Step(() => TrackPlay(now));
+        Step(() => RunAntiAfk(now, windows));
+        Step(() => MinimiseAfkWindows(windows));
+        Step(() => MaximiseNewWindows(now, windows));
+        Step(() => KeepWindowSizes(now, windows));
+        Step(() => TickMacros(now));
+        Step(() => TickPanels());
 
         if (_vault is { Data.Settings.RenameWindows: true })
         {
-            part = Stopwatch.GetTimestamp();
-            foreach (var (id, info) in _running)
+            Step(() =>
             {
-                // With its process id, so a window can be matched to Task Manager and to its Roblox log.
-                if (FindAccount(id) is { } account && windows.TryGetValue(info.Pid, out var list))
-                    RobloxProcesses.SetWindowTitle(list, $"Roblox - {NameText(account)} (PID {info.Pid})");
-            }
-            Took("window titles", part);
+                foreach (var (id, info) in _running)
+                {
+                    // With its process id, so a window can be matched to Task Manager and to its Roblox log.
+                    if (FindAccount(id) is { } account && windows.TryGetValue(info.Pid, out var list))
+                        RobloxProcesses.SetWindowTitle(list, $"Roblox - {NameText(account)} (PID {info.Pid})");
+                }
+            }, "window titles");
         }
         if (scan)
         {
@@ -283,9 +295,12 @@ public sealed partial class AppController
 
         if (_vault is { Data.Settings.MultiInstance: true } && scan && pids.Count == 0)
         {
-            ApplyWatchNames();
-            if (!MultiInstance.Armed || MultiInstance.Stale)
-                MultiInstance.Enable();
+            Step(() =>
+            {
+                ApplyWatchNames();
+                if (!MultiInstance.Armed || MultiInstance.Stale)
+                    MultiInstance.Enable();
+            }, "MultiInstance.Enable()");
         }
         if (MultiInstance.Armed != _lastArmed)
         {
@@ -293,7 +308,7 @@ public sealed partial class AppController
             changed = true;
         }
         if (changed)
-            PushStateIfChanged();
+            Step(PushStateIfChanged);
 
         bool active = pids.Count > 0 || _pending.Count > 0 || _rejoinQueue.Count > 0 || now < _sweepBackgroundUntil;
         int interval = _background ? 5000 : active ? 1500 : 4000;
