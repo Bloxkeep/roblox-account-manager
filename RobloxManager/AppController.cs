@@ -107,9 +107,6 @@ public sealed partial class AppController : IDisposable
     /// <summary>Accounts whose last presence came from their own cookie (or showed them in a game): trustworthy.</summary>
     readonly HashSet<long> _presenceReliable = new();
     readonly RobloxLogWatcher _logs = new();
-    readonly HashSet<int> _lowMemoryPriority = new();
-    /// <summary>Every Roblox window open at the first look has had its RAM priority set (see GuardResources).</summary>
-    bool _memoryPriorityAdopted;
     /// <summary>The Roblox settings file holds values Bloxkeep wrote; the person's own come back when Roblox is closed.</summary>
     bool _robloxSettingsPending = RobloxGameSettings.HasBaseline;
     /// <summary>Light AFK's Fast Flags are in a client's file (or were, when Bloxkeep closed before putting it back).</summary>
