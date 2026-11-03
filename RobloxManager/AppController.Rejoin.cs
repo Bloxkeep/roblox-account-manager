@@ -715,4 +715,28 @@ public sealed partial class AppController
             RobloxProcesses.Close(info.Pid);
         }
     }
+
+    /// <summary>Clients already being closed for a kick in their log (so it happens once).</summary>
+    readonly HashSet<int> _closingForRejoin = new();
+    /// <summary>Roblox's code for "the same account joined from another device": never fight that with a rejoin.</summary>
+    const int SameAccountElsewhere = 273;
+    /// <summary>Roblox's DisconnectRejoin (276): same message as <see cref="SameAccountElsewhere"/>, so taken the same way.</summary>
+    static bool SignedInElsewhere(int? code) => code is SameAccountElsewhere or 276;
+    /// <summary>
+    /// Codes whose Roblox error box has no Reconnect button (reconnectDisabledList in Connection.lua, client 0.744): a rejoin
+    /// would only be refused again. Bloxkeep skips them too, except a game's kick (267), which games often ask to rejoin after.
+    /// </summary>
+    static readonly HashSet<int> NoReconnect =
+    [
+        5, 6, 7, 8, 9, 257, 258, 259, 263, 264, 265, 268, 270, 272, 280, 281, 282, 284, 286, 294, 295, 304, 305, 306, 307,
+        317, 318, 320, 321, 522, 523, 524, 525, 526, 527, 533, 541, 542, 543, 544, 600, 601,
+    ];
+    static bool RobloxWontReconnect(int? code) => code is int c && NoReconnect.Contains(c);
+    /// <summary>Roblox's ServerShutdown: the game's server closed (an update, the developer's shutdown).</summary>
+    const int ServerShutdown = 288;
+    /// <summary>Codes Roblox's own error screen reconnects by itself (autoReconnectAllowedList in Connection.lua). Only these
+    /// are said as a lost connection; a disconnect without a code is said as one with an unknown reason.</summary>
+    static bool LostConnection(int code) => code is 260 or 261 or 262 or 266 or 269 or 277 or 279 or 290 or 296 or 297 or 298;
+    /// <summary>Roblox's code for "kicked for being idle 20 minutes".</summary>
+    const int IdleKick = 278;
 }

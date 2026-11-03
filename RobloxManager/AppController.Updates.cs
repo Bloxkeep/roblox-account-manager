@@ -415,4 +415,13 @@ public sealed partial class AppController
         }
         return true;
     }
+
+    readonly AppUpdater _updater = new();
+    /// <summary>Due at the first tick: an update found before the vault is opened installs at the lock screen
+    /// (see <see cref="UpdateOffersAtLock"/>), so the sooner it is known the better.</summary>
+    DateTime _nextUpdateCheck = DateTime.UtcNow;
+    DateTime _nextRobloxVersionCheck;
+    RobloxInstalls.ClientVersion? _latestRoblox;
+    /// <summary>The version that ran before an update, until the page has shown what's new since then.</summary>
+    string? _updatedFrom;
 }

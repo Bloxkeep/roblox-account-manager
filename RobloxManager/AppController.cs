@@ -107,45 +107,6 @@ public sealed partial class AppController : IDisposable
     /// <summary>Accounts whose last presence came from their own cookie (or showed them in a game): trustworthy.</summary>
     readonly HashSet<long> _presenceReliable = new();
     readonly RobloxLogWatcher _logs = new();
-    /// <summary>Clients already being closed for a kick in their log (so it happens once).</summary>
-    readonly HashSet<int> _closingForRejoin = new();
-    /// <summary>Roblox's code for "the same account joined from another device": never fight that with a rejoin.</summary>
-    const int SameAccountElsewhere = 273;
-    /// <summary>Roblox's DisconnectRejoin (276): same message as <see cref="SameAccountElsewhere"/>, so taken the same way.</summary>
-    static bool SignedInElsewhere(int? code) => code is SameAccountElsewhere or 276;
-    /// <summary>
-    /// Codes whose Roblox error box has no Reconnect button (reconnectDisabledList in Connection.lua, client 0.744): a rejoin
-    /// would only be refused again. Bloxkeep skips them too, except a game's kick (267), which games often ask to rejoin after.
-    /// </summary>
-    static readonly HashSet<int> NoReconnect =
-    [
-        5, 6, 7, 8, 9, 257, 258, 259, 263, 264, 265, 268, 270, 272, 280, 281, 282, 284, 286, 294, 295, 304, 305, 306, 307,
-        317, 318, 320, 321, 522, 523, 524, 525, 526, 527, 533, 541, 542, 543, 544, 600, 601,
-    ];
-    static bool RobloxWontReconnect(int? code) => code is int c && NoReconnect.Contains(c);
-    /// <summary>Roblox's ServerShutdown: the game's server closed (an update, the developer's shutdown).</summary>
-    const int ServerShutdown = 288;
-    /// <summary>Codes Roblox's own error screen reconnects by itself (autoReconnectAllowedList in Connection.lua). Only these
-    /// are said as a lost connection; a disconnect without a code is said as one with an unknown reason.</summary>
-    static bool LostConnection(int code) => code is 260 or 261 or 262 or 266 or 269 or 277 or 279 or 290 or 296 or 297 or 298;
-    /// <summary>Roblox's code for "kicked for being idle 20 minutes".</summary>
-    const int IdleKick = 278;
-    /// <summary>Last time each client (by process id) got input: from the person playing it or from anti-AFK.</summary>
-    readonly Dictionary<int, DateTime> _lastInput = new();
-    readonly HashSet<int> _idleKickReported = new();
-    /// <summary>Windows a nudge couldn't reach (focus refused, PC locked): not tried again before this.</summary>
-    readonly Dictionary<int, DateTime> _nudgeRetryAt = new();
-    static readonly TimeSpan NudgeRetry = TimeSpan.FromMinutes(1), MaxNudgeRetry = TimeSpan.FromMinutes(15);
-    /// <summary>Nudges in a row each window missed: the wait before the next one doubles.</summary>
-    readonly Dictionary<int, int> _nudgeMisses = new();
-
-    enum AfkHeld { InUse, FullScreen, Locked, Refused, MacroBusy }
-
-    /// <summary>Anti-AFK has seen the windows that were already open when Bloxkeep started (or was unlocked).</summary>
-    bool _afkAdopted;
-
-    /// <summary>Why anti-AFK last held back from a due window: said if Roblox kicks it for idling anyway.</summary>
-    readonly Dictionary<int, AfkHeld> _afkHeld = new();
     readonly HashSet<int> _lowMemoryPriority = new();
     /// <summary>Every Roblox window open at the first look has had its RAM priority set (see GuardResources).</summary>
     bool _memoryPriorityAdopted;
@@ -160,14 +121,6 @@ public sealed partial class AppController : IDisposable
     /// <summary>Rejoins of each account since its client last stayed in a game a while (see <see cref="KeepsDropping"/>).</summary>
     readonly Dictionary<Guid, int> _rejoinsInARow = new();
     readonly Dictionary<Guid, int> _offlineStrikes = new();
-    readonly AppUpdater _updater = new();
-    /// <summary>Due at the first tick: an update found before the vault is opened installs at the lock screen
-    /// (see <see cref="UpdateOffersAtLock"/>), so the sooner it is known the better.</summary>
-    DateTime _nextUpdateCheck = DateTime.UtcNow;
-    DateTime _nextRobloxVersionCheck;
-    RobloxInstalls.ClientVersion? _latestRoblox;
-    /// <summary>The version that ran before an update, until the page has shown what's new since then.</summary>
-    string? _updatedFrom;
     Vault? _vault;
     CancellationTokenSource? _launchCts, _rejoinCts;
     /// <summary>While a multi-account launch waits between two: the accounts still to open (rejoins of the others go
