@@ -14,7 +14,6 @@ namespace RobloxManager;
 /// </summary>
 public sealed class ShellForm : Form
 {
-    internal const string Origin = "https://bloxkeep.local/";
     const int MaxAutomaticRestarts = 3;
     /// <summary>Failure counts reset after this long: crashes days apart (a GPU reset after sleep, an antivirus) aren't a broken driver.</summary>
     static readonly TimeSpan BrowserHealthyAfter = TimeSpan.FromMinutes(30);
@@ -879,7 +878,7 @@ public sealed class ShellForm : Form
         try
         {
             _app.ResumingPage = true;
-            await AttachWebViewAsync(await CreateEnvironmentAsync());
+            await AttachWebViewAsync(await AppPages.CreateEnvironmentAsync());
         }
         catch (Exception ex) when (ex is COMException or InvalidOperationException or ArgumentException or WebView2RuntimeNotFoundException)
         {
@@ -921,7 +920,7 @@ public sealed class ShellForm : Form
                 CoreWebView2Environment env;
                 try
                 {
-                    env = await CreateEnvironmentAsync();
+                    env = await AppPages.CreateEnvironmentAsync();
                 }
                 // Missing runtime: offer Microsoft's installer once, then try again.
                 catch (WebView2RuntimeNotFoundException) when (!offeredInstall)
@@ -932,7 +931,7 @@ public sealed class ShellForm : Form
                         Quit();
                         return;
                     }
-                    env = await CreateEnvironmentAsync();
+                    env = await AppPages.CreateEnvironmentAsync();
                 }
                 await AttachWebViewAsync(env, firstStart: true);
                 return;
@@ -959,13 +958,6 @@ public sealed class ShellForm : Form
         }
     }
 
-    internal static Task<CoreWebView2Environment> CreateEnvironmentAsync()
-    {
-        // Separate profile folders, because a running browser can't be reopened with different switches.
-        return CoreWebView2Environment.CreateAsync(null, Vault.CacheFolder(Prefs.SafeRendering ? "webview-safe" : "webview"),
-            WebView2Setup.MainWindowOptions());
-    }
-
     /// <param name="firstStart">The app's own start, which the marker file watches. Not for a browser recreated later: a
     /// quit meanwhile would leave the marker and wrongly switch to CPU drawing.</param>
     async Task AttachWebViewAsync(CoreWebView2Environment env, bool firstStart = false)
@@ -979,7 +971,7 @@ public sealed class ShellForm : Form
         if (firstStart)
             TryMarkStarting(true);
         Configure(web.CoreWebView2, env);
-        web.CoreWebView2.Navigate(Origin + "index.html");
+        web.CoreWebView2.Navigate(AppPages.Origin + "index.html");
         ApplyBackgroundToBrowser(); // made while minimised: hidden and trimmed from the start
         // The previous browser took the keyboard focus with it; typing (the password on the lock screen) must reach
         // the new one without a click first. Only while this window is the active one, so no other program loses it.
@@ -999,16 +991,7 @@ public sealed class ShellForm : Form
 
     void Configure(CoreWebView2 core, CoreWebView2Environment env)
     {
-        var settings = core.Settings;
-        settings.AreDevToolsEnabled = false;
-        settings.IsStatusBarEnabled = false;
-        settings.IsZoomControlEnabled = false;
-        settings.AreBrowserAcceleratorKeysEnabled = false;
-        settings.IsPasswordAutosaveEnabled = false;
-        settings.IsGeneralAutofillEnabled = false;
-        settings.IsSwipeNavigationEnabled = false;
-        // Only our own embedded page is ever shown, so SmartScreen lookups are wasted work.
-        settings.IsReputationCheckingRequired = false;
+        AppPages.Settings(core.Settings);
 
         // Only offer cut/copy/paste, and only inside text fields.
         core.ContextMenuRequested += (_, e) =>
@@ -1025,11 +1008,11 @@ public sealed class ShellForm : Form
                     e.MenuItems.Remove(item);
             }
         };
-        core.AddWebResourceRequestedFilter(Origin + "*", CoreWebView2WebResourceContext.All);
-        core.WebResourceRequested += (_, e) => ServeAsset(env, e);
+        core.AddWebResourceRequestedFilter(AppPages.Origin + "*", CoreWebView2WebResourceContext.All);
+        core.WebResourceRequested += (_, e) => AppPages.ServeAsset(env, e);
         core.NavigationStarting += (_, e) =>
         {
-            if (!e.Uri.StartsWith(Origin, StringComparison.OrdinalIgnoreCase))
+            if (!e.Uri.StartsWith(AppPages.Origin, StringComparison.OrdinalIgnoreCase))
                 e.Cancel = true;
             else if (_web?.CoreWebView2 == core)
                 _monitor.SetArea(null); // a reload (the renderer crashed): the new page starts on the lock or loading screen
@@ -1067,7 +1050,7 @@ public sealed class ShellForm : Form
                 BeginInvoke(() =>
                 {
                     if (_web?.CoreWebView2 == core)
-                        core.Navigate(Origin + "index.html");
+                        core.Navigate(AppPages.Origin + "index.html");
                 });
                 break;
             // A second crash points at the graphics driver.
@@ -1113,7 +1096,7 @@ public sealed class ShellForm : Form
             _app.PageGone();
             DropWebView();
             _app.ResumingPage = true;
-            await AttachWebViewAsync(await CreateEnvironmentAsync());
+            await AttachWebViewAsync(await AppPages.CreateEnvironmentAsync());
         }
         catch (Exception ex) when (ex is COMException or InvalidOperationException or ArgumentException or WebView2RuntimeNotFoundException)
         {
@@ -1143,61 +1126,6 @@ public sealed class ShellForm : Form
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
         }
-    }
-
-    internal static void ServeAsset(CoreWebView2Environment env, CoreWebView2WebResourceRequestedEventArgs e)
-    {
-        string path = new Uri(e.Request.Uri).AbsolutePath.TrimStart('/');
-        // The custom theme's picture: only a file of that name, read whole so no handle stays open (a new picture deletes the old one).
-        string? picture = path.StartsWith("user/", StringComparison.Ordinal) && Themes.IsPictureName(path[5..]) ? Path.Combine(Vault.PicturesDir, path[5..]) : null;
-        // One Vault.Tidy couldn't move yet is still at the top.
-        if (picture is not null && !File.Exists(picture))
-            picture = Path.Combine(Vault.DataDir, path[5..]);
-        Stream? stream;
-        try
-        {
-            stream = path.StartsWith("user/", StringComparison.Ordinal)
-                ? picture is not null && File.Exists(picture) ? new MemoryStream(File.ReadAllBytes(picture)) : null
-                : typeof(ShellForm).Assembly.GetManifestResourceStream("wwwroot/" + path);
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-            stream = null; // the picture went away meanwhile: the theme's colour shows instead
-        }
-        if (stream is null)
-        {
-            e.Response = env.CreateWebResourceResponse(null, 404, "Not Found", "");
-            return;
-        }
-        if (path == "index.html")
-            stream = WithTheme(stream);
-        string type = Path.GetExtension(path) switch
-        {
-            ".html" => "text/html; charset=utf-8",
-            ".css" => "text/css; charset=utf-8",
-            ".js" => "text/javascript; charset=utf-8",
-            ".svg" => "image/svg+xml",
-            ".png" => "image/png",
-            ".jpg" or ".jpeg" => "image/jpeg",
-            ".webp" => "image/webp",
-            ".gif" => "image/gif",
-            ".bmp" => "image/bmp",
-            ".mp4" => "video/mp4",
-            ".webm" => "video/webm",
-            _ => "application/octet-stream",
-        };
-        e.Response = env.CreateWebResourceResponse(stream, 200, "OK", $"Content-Type: {type}\r\nCache-Control: no-store");
-    }
-
-    /// <summary>The page starts in the right theme, before its first state arrives, so it never flashes dark.</summary>
-    static Stream WithTheme(Stream page)
-    {
-        using var reader = new StreamReader(page);
-        var theme = Themes.Current;
-        // A light custom theme takes Light's words and lines (app.css): from the first frame, not once its colours come.
-        string tone = theme is { Id: Themes.Custom, Dark: false } ? " data-tone=\"light\"" : "";
-        string html = reader.ReadToEnd().Replace("<html ", $"<html data-theme=\"{theme.Id}\"{tone} ");
-        return new MemoryStream(Encoding.UTF8.GetBytes(html));
     }
 
     protected override void OnFormClosed(FormClosedEventArgs e)

@@ -8,7 +8,7 @@ namespace RobloxManager;
 // Macros (Beta): what the player may change on a macro's panel (PanelWindow.cs) and the boxes it looks in on the game.
 // The maker ticks "Player can change" on a step's value: the value becomes an option ("$o1" in the step), shown on the
 // panel; an area is a named box ("@a1" in the step), moved and sized on the game itself (OverlayWindow.cs). Kept in the
-// macro; the shape is the page's and the core's shared contract (macro-contract.md, "REWORK").
+// macro; the page reads and writes the same shape (ui/src/macros.ts).
 
 /// <summary>A value the player may change on the macro's panel.</summary>
 public sealed class MacroOption
@@ -109,10 +109,6 @@ static class MacroOptions
         foreach (var o in m.Options)
             o.Tab = m.Panel.Tabs.FirstOrDefault(t => t.Equals(o.Tab?.Trim(), StringComparison.OrdinalIgnoreCase));
     }
-
-    /// <summary>The settings on a tab of the panel, in order (all of them when it has no tabs).</summary>
-    public static List<MacroOption> OnTab(Macro m, string? tab) => m.Panel.Tabs.Count < 2 ? m.Options
-        : m.Options.Where(o => (o.Tab ?? m.Panel.Tabs[0]) == (tab ?? m.Panel.Tabs[0])).ToList();
 
     static void CheckOption(MacroOption o)
     {
@@ -308,9 +304,6 @@ static class MacroOptions
                 return v.ValueKind == JsonValueKind.String ? v.GetString()! : "";
         }
     }
-
-    /// <summary>The number typed on the panel (in seconds for seconds), as the option keeps it; null when it isn't one.</summary>
-    public static JsonElement? Typed(MacroOption o, string text) => TypedNumber(o, text) is { } d ? Normalize(o, Num(d)) : null;
 
     /// <summary>The number typed (in seconds for seconds, a decimal comma or point, its unit or none) as the option keeps
     /// it, before it is kept in its range; null when it isn't one.</summary>

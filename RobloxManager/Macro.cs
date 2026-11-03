@@ -70,7 +70,7 @@ public sealed class MacroRect
     public double H { get; set; }
 }
 
-/// <summary>One step; which fields it has depends on <see cref="Kind"/> (see the contract, macro-contract.md).</summary>
+/// <summary>One step; which fields it has depends on <see cref="Kind"/>.</summary>
 public sealed class MacroStep
 {
     public string Kind { get; set; } = "";

@@ -6,7 +6,7 @@ namespace RobloxManager;
 /// <summary>
 /// Settings › Appearance › Custom (<see cref="Prefs.Custom"/>): the person's background colour, accent and optional
 /// picture or video (MP4, WebM) behind glass; the page works out the other colours (app.js customVars). The picture is
-/// copied into the data folder and served from there (ShellForm.ServeAsset, "user/…"), so the original can go. Kept by
+/// copied into the data folder and served from there (AppPages.ServeAsset, "user/…"), so the original can go. Kept by
 /// name (<see cref="Prefs.SavedThemes"/>) and shared as a .bloxkeeptheme file: a ZIP of theme.json and its picture.
 /// </summary>
 public sealed partial class AppController

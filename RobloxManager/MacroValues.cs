@@ -123,8 +123,6 @@ static class MacroValues
         }
     }
 
-    public static bool HasRefs(MacroStep s) => Refs(s.Extra, StepFields).Any() || s.Test is { } t && (Refs(t.Extra, TestFields).Any() || t.Kind == "var");
-
     /// <summary>Every option ("o1") and area ("@a1") the macro names, for the checks.</summary>
     public static IEnumerable<string> Names(Macro m) =>
         m.Steps.SelectMany(s => Refs(s.Extra, StepFields).Select(r => r.Name)

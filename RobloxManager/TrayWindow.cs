@@ -217,7 +217,7 @@ public sealed class TrayWindow : Form
     /// <param name="cancel">Cancelled when the tray lets this start go (<see cref="ReleaseBrowser"/>, Dispose).</param>
     async Task StartBrowserAsync(CancellationToken cancel)
     {
-        var env = await ShellForm.CreateEnvironmentAsync().WaitAsync(cancel);
+        var env = await AppPages.CreateEnvironmentAsync().WaitAsync(cancel);
         ObjectDisposedException.ThrowIf(IsDisposed, this);
         var web = new WebView2 { Dock = DockStyle.Fill, DefaultBackgroundColor = Themes.Current.Surface };
         Controls.Add(web);
@@ -229,20 +229,7 @@ public sealed class TrayWindow : Form
         // Disposed or let go while the browser started: nothing of this start is used.
         if (IsDisposed || web.IsDisposed || _web != web || web.CoreWebView2 is not { } core)
             throw new ObjectDisposedException(nameof(TrayWindow));
-        var settings = core.Settings;
-        settings.AreDevToolsEnabled = false;
-        settings.IsStatusBarEnabled = false;
-        settings.IsZoomControlEnabled = false;
-        settings.AreBrowserAcceleratorKeysEnabled = false;
-        settings.IsPasswordAutosaveEnabled = false;
-        settings.IsGeneralAutofillEnabled = false;
-        settings.IsSwipeNavigationEnabled = false;
-        settings.IsReputationCheckingRequired = false;
-        settings.AreDefaultContextMenusEnabled = false;
-        core.AddWebResourceRequestedFilter(ShellForm.Origin + "*", CoreWebView2WebResourceContext.All);
-        core.WebResourceRequested += (_, e) => ShellForm.ServeAsset(env, e);
-        core.NavigationStarting += (_, e) => e.Cancel = !e.Uri.StartsWith(ShellForm.Origin, StringComparison.OrdinalIgnoreCase);
-        core.NewWindowRequested += (_, e) => e.Handled = true;
+        AppPages.Configure(core, env);
         // Loaded: its first "ready" can come before the page is listened to, so the load itself counts as ready too.
         core.NavigationCompleted += (_, e) =>
         {
@@ -268,7 +255,7 @@ public sealed class TrayWindow : Form
             BeginInvoke(() => OnMessage(json));
         };
         var ready = _ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        core.Navigate(ShellForm.Origin + "tray.html");
+        core.Navigate(AppPages.Origin + "tray.html");
         await ready.Task.WaitAsync(TimeSpan.FromSeconds(15), cancel);
     }
 
@@ -455,7 +442,7 @@ public sealed class TrayWindow : Form
     void Place()
     {
         var screen = Screen.FromPoint(_anchor);
-        float scale = DpiAt(_anchor) / 96f;
+        float scale = WebToolWindow.DpiAt(_anchor) / 96f;
         var size = new Size((int)Math.Ceiling(_content.Width * scale), (int)Math.Ceiling(_content.Height * scale));
         var r = PlaceBy(_anchor, size, screen.WorkingArea, screen.Bounds, Taskbar(), (int)(12 * scale));
         // The place first, then the size: set together while the window is on a screen at another scale, Windows' scale
@@ -527,25 +514,6 @@ public sealed class TrayWindow : Form
 
     [DllImport("user32.dll")]
     static extern bool SetForegroundWindow(IntPtr hWnd);
-
-    [DllImport("user32.dll")]
-    static extern IntPtr MonitorFromPoint(Point pt, uint flags);
-
-    [DllImport("shcore.dll")]
-    static extern int GetDpiForMonitor(IntPtr monitor, int type, out uint dpiX, out uint dpiY);
-
-    static uint DpiAt(Point p)
-    {
-        const uint MONITOR_DEFAULTTONEAREST = 2;
-        try
-        {
-            return GetDpiForMonitor(MonitorFromPoint(p, MONITOR_DEFAULTTONEAREST), 0, out uint dpi, out _) == 0 && dpi > 0 ? dpi : 96;
-        }
-        catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException)
-        {
-            return 96;
-        }
-    }
 
     /// <summary>Windows 11's rounded corners and a border in the theme's line colour.</summary>
     /// <summary>What the page was last sent (and to which browser), and the theme the window was last drawn in.</summary>
