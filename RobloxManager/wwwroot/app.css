@@ -2198,21 +2198,25 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .tf { display: inline-flex; align-items: center; gap: 2px; padding-right: 4px; }
 .tf:focus-within { border-color: var(--focus-line); box-shadow: 0 0 0 3px var(--focus-ring); }
 .tf-box { flex: 1; min-width: 0; height: 100%; padding: 0; border: 0; background: none; color: inherit; font: inherit; outline: none; }
-.tf-box::-webkit-calendar-picker-indicator { display: none; }
-.tf-box::-webkit-datetime-edit-fields-wrapper { padding: 0; }
 .tf-btn { flex: none; display: grid; place-items: center; width: 28px; height: 28px; border: 0; border-radius: var(--r-sm); background: none; color: var(--muted); }
 .tf-btn:hover:not(:disabled), .tf-btn[aria-expanded="true"] { background: var(--hover); color: var(--text); }
 .tf-btn .i { width: 16px; height: 16px; }
 .tf-pop { position: fixed; z-index: 65; padding: 6px; border-radius: var(--r-lg); border: 1px solid var(--line-2); background: var(--raised);
   box-shadow: 0 18px 50px var(--shadow); animation: fade .1s ease; }
 .tf-time { display: flex; gap: 4px; height: 236px; }
-.tf-col { display: flex; flex-direction: column; gap: 2px; width: 52px; overflow-y: auto; scrollbar-width: none; }
-.tf-col button, .tf-cal-grid button { flex: none; height: 32px; border: 0; border-radius: var(--r-sm); background: none; color: var(--text-2); font-size: var(--fs-3); font-variant-numeric: tabular-nums; }
-.tf-col button:hover, .tf-cal-grid button:hover { background: var(--hover); color: var(--text); }
-.tf-col button.on, .tf-cal-grid button.on { background: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.tf-time-box { min-width: 164px; } /* room for the quarter-hour row under two columns too */
+.tf-col { display: flex; flex-direction: column; gap: 2px; flex: 1 0 52px; overflow-y: auto; scrollbar-width: none; }
+.tf-col[data-col="m"] { scrollbar-width: thin; } /* sixty minutes: the column shows it scrolls */
+.tf-col button, .tf-cal-grid button, .tf-quick button { flex: none; height: 32px; border: 0; border-radius: var(--r-sm); background: none; color: var(--text-2); font-size: var(--fs-3); font-variant-numeric: tabular-nums; }
+.tf-col button:hover, .tf-cal-grid button:hover:not(:disabled), .tf-quick button:hover { background: var(--hover); color: var(--text); }
+.tf-col button.on, .tf-cal-grid button.on, .tf-quick button.on { background: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.tf-cal-grid button:disabled { color: var(--dim); opacity: .5; cursor: default; }
+/* The quarter hours under the columns, as wide as they are. */
+.tf-quick { display: flex; gap: 2px; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line); }
+.tf-quick button { flex: 1; }
 .tf-cal { width: 260px; }
 .tf-cal-head { display: flex; align-items: center; justify-content: space-between; padding: 0 0 6px; }
-.tf-cal-head b { font-size: var(--fs-3); text-transform: capitalize; }
+.tf-cal-head b { font-size: var(--fs-3); }
 .tf-cal-head .icon-btn { width: 30px; height: 30px; }
 .tf-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
 .tf-wd { display: grid; place-items: center; height: 26px; color: var(--muted); font-size: var(--fs-2); }
@@ -2294,13 +2298,15 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .preset-menu .pm-list { flex: 0 1 auto; min-height: 0; overflow-y: auto; scrollbar-width: thin; }
 .preset-menu > hr, .preset-menu > button { flex: none; }
 .preset-menu button span { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.preset-row { display: grid; grid-template-columns: minmax(0, 1fr) 176px; gap: 10px; align-items: end; } /* room for "Wait between accounts (s)" */
+.preset-row { display: grid; grid-template-columns: minmax(0, 1fr) 196px; gap: 10px; align-items: end; } /* room for "Wait between accounts" and "Chờ giữa các tài khoản" */
 .preset-form .select { width: 100%; min-width: 0; max-width: none; height: 40px; }
 .preset-form label[hidden] { display: none; }
 .preset-accs { margin-top: 2px; font-size: var(--fs-3); font-weight: 650; color: var(--text-2); }
 .preset-accs .muted { font-weight: 400; }
 .preset-accs small { display: block; margin-top: 2px; font-size: var(--fs-2); font-weight: 400; color: var(--muted); }
 .preset-form + .rc-list, .preset-form + .ord-list { margin-top: 6px; }
+/* In the form the dialog scrolls, not the list: a scroll inside a scroll hid the accounts under the options. */
+.preset-form + .ord-list { max-height: none; overflow: visible; }
 .ord-list + .preset-form { margin-top: 14px; } /* the options and schedule cards come after the accounts */
 /* Schedule: a switch heading, then the fields; the day chips reuse the filter chips. */
 .ps-sched { border: 1px solid var(--line-2); border-radius: var(--r-md); padding: 10px 12px; }
@@ -2370,14 +2376,17 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .pv-main { flex: 1; min-width: 0; display: grid; gap: 1px; }
 .pv-main b { font-size: var(--fs-4); font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pv-main small { font-size: var(--fs-3); color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-/* What it does in one plain line (two at most when narrow), then when it runs next / ran last, quieter. No icons. */
+/* What it does in plain words (two lines at most, all of it in its tooltip), then its schedule, when it runs next and
+   when it ran last on a line of their own, quieter. No icons. */
 .pv-sum { margin-top: 3px; font-size: var(--fs-2); color: var(--text-2); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
-.pv-sum { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } /* one line; all of it in its tooltip */
+/* The up and down arrows take no room in the row (a row that changed shape when pointed at moved its buttons from under
+   the pointer): they sit over its right edge, above and below Delete, and show while it is pointed at or has the focus. */
+.pv-item { position: relative; }
 .pv-item:not(:hover, :focus-within) .ord-btns { opacity: 0; }
 .pv-next { font-size: var(--fs-2); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pv-next:empty { display: none; }
 /* Avatars overlap a little, like a stack; the column has one width so the buttons line up row under row. */
-.pv-accs { display: flex; align-items: center; width: 132px; flex: none; }
+.pv-accs { display: flex; align-items: center; width: 112px; flex: none; }
 .pv-accs .avatar.sm { margin-left: -8px; }
 .pv-accs .avatar.sm:first-child { margin-left: 0; }
 .pv-accs .avatar.sm img, .pv-accs .avatar.sm .initials { border-color: var(--surface); }
@@ -2393,8 +2402,9 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .pv-acts { display: flex; flex: none; }
 .pv-acts .icon-btn { width: 32px; height: 32px; }
 .pv-acts .i { width: 17px; height: 17px; }
-.pv-item .ord-btns { flex-direction: column; }
-.pv-item .ord-btns .icon-btn { width: 26px; height: 24px; border-radius: var(--r-sm); }
+.pv-item .ord-btns { position: absolute; right: 10px; top: 2px; bottom: 2px; flex-direction: column; justify-content: space-between; pointer-events: none; }
+.pv-item .ord-btns .icon-btn { width: 28px; height: 20px; border-radius: var(--r-sm); pointer-events: auto; }
+.pv-item .ord-btns .i { width: 14px; height: 14px; }
 .pv-empty-icon { display: grid; place-items: center; width: 60px; height: 60px; margin-bottom: 16px; border-radius: var(--r-lg); background: var(--surface-3); color: var(--text-2); }
 .pv-empty-icon .i { width: 28px; height: 28px; }
 @media (max-width: 1180px) { .pv-list { padding: 4px 22px 24px; } }
@@ -5702,6 +5712,35 @@ button.mc-step-head:focus-visible { outline: 2px solid var(--focus); outline-off
 /* ───────── end P3 ───────── */
 
 /* ───────── P4 presets ───────── */
+/* A time or date text that isn't one (ui/src/TimeField.tsx): the frame turns red; the words under it only where a box
+   has room for them (a form's label), the rest of the page has the red frame and the words for a screen reader. */
+.tf:has(.tf-box[aria-invalid="true"]) { border-color: var(--bad-line); }
+.tf-err { display: none; margin-top: 0; }
+.form .tf-err { display: block; font-weight: 400; }
+/* The server's note (one server for each account, or why the choice is off) sits under its row, close to it. */
+.ps-hint { margin: -6px 0 0; font-size: var(--fs-2); line-height: 1.45; color: var(--muted); }
+/* Roblox windows and Discord: a card that stays folded until it has something set; the heading with its chevron. */
+.ps-fold { display: block; padding: 0 12px; }
+.ps-fold[open] { padding-bottom: 12px; }
+.ps-fold > summary { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 42px; cursor: pointer; list-style: none; border-radius: var(--r-sm); }
+.ps-fold > summary::-webkit-details-marker { display: none; }
+.ps-fold > summary b { display: block; font: 700 var(--fs-5) var(--font-display); color: var(--text); }
+.ps-fold > summary .i { width: 16px; height: 16px; flex: none; color: var(--muted); transition: transform .15s; }
+.ps-fold > summary:hover .i { color: var(--text); }
+.ps-fold[open] > summary .i { transform: rotate(180deg); }
+.ps-fold > summary ~ :not([hidden]) { margin-top: 10px; }
+/* The server list: its two groups apart. The box shows the choice with its group in front ("Each account: Most players");
+   in the list the heading says it, so the front is left out there. */
+@supports (appearance: base-select) {
+  #ps-server > button { all: unset; display: flex; align-items: center; flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; cursor: pointer; }
+  #ps-server option .ps-in { display: none; }
+  #ps-server optgroup + optgroup { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line); }
+}
+/* At the limit "New preset" reads as off but still takes the pointer: its tooltip says why, and a click gets the toast. */
+.top-tools .btn[aria-disabled="true"] { pointer-events: auto; cursor: not-allowed; }
+/* Save server: the line for a refusal takes no room until there is one. */
+#sv-err { min-height: 0; }
+#sv-err:empty { margin: 0; }
 /* ───────── end P4 ───────── */
 
 /* ───────── P5 sign-in ───────── */

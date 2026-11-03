@@ -80,7 +80,7 @@ export interface Host {
   /** The Presets tab's search, as app.js keeps it (a page restarted comes back with it), and a new one typed. */
   presetQuery(): string;
   setPresetQuery(q: string): void;
-  /** "Mon–Fri 20:00", "Every day 20:00" or a one-off's date (app.js scheduleText). */
+  /** "Mon–Fri 20:00" ("T2–T6 20:00" in Vietnamese, "CN" for Sunday), "Every day 20:00" or a one-off's date (app.js scheduleText). */
   scheduleText(schedule: { time: string; date?: string; days?: number[] }): string;
   nextRunText(preset: { nextRun?: string }): string;
   /** The options a preset sets differently from the usual settings, in one line (app.js presetOptionsText). */

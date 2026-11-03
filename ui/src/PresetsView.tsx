@@ -116,6 +116,7 @@ export function PresetsView() {
   const scheduled = all.filter(p => p.schedule?.enabled).length;
   const sub = all.length ? [t(all.length === 1 ? 'pv.count1' : 'pv.countN', { n: all.length }),
     scheduled ? t('pv.scheduled', { n: scheduled }) : '', all.length >= MAX_PRESETS ? t('pv.atMax') : ''].filter(Boolean) : [];
+  const full = all.length >= MAX_PRESETS;
   const ordered = !q && all.length > 1;
 
   return <>
@@ -124,7 +125,8 @@ export function PresetsView() {
       <div className="top-tools" id="pv-tools" hidden={!all.length}>
         <label className="search"><Icon name="search" /><input id="pv-q" placeholder={t('pv.search')} maxLength={100} aria-label={t('pv.search')} value={query}
           onChange={e => { setQuery(e.target.value); host.setPresetQuery(e.target.value); }} /></label>
-        <button className="btn primary" data-act="pv-new"><Icon name="plus" /><span>{t('ps.new')}</span></button>
+        {/* At the limit it still answers a click (app.js says why in a toast) but reads as off, and says so on hover. */}
+        <button className="btn primary" data-act="pv-new" aria-disabled={full || undefined} title={full ? t('pv.full', { n: MAX_PRESETS }) : undefined}><Icon name="plus" /><span>{t('ps.new')}</span></button>
       </div>
     </header>
     <div className="scroll">
@@ -132,7 +134,13 @@ export function PresetsView() {
         onDrop={e => e.preventDefault()} onDragEnd={dragEnd}>
         {!all.length ? <div className="empty"><span className="pv-empty-icon"><Icon name="layers" /></span><h2>{t('pv.emptyTitle')}</h2><p>{t('pv.emptyText')}</p>
           <div className="row"><button className="btn primary" data-act="pv-new"><Icon name="plus" /><span>{t('ps.new')}</span></button></div></div>
-          : !rows.length ? <div className="empty"><p>{t('pv.noMatch', { q: shownQuery.trim() })}</p></div>
+          : !rows.length ? <div className="empty"><p>{t('pv.noMatch', { q: shownQuery.trim() })}</p>
+            <div className="row"><button className="btn" data-pv="clear-search" onClick={() => {
+              setQuery('');
+              setShownQuery('');
+              host.setPresetQuery('');
+              document.getElementById('pv-q')?.focus();
+            }}>{t('pv.clearSearch')}</button></div></div>
           : rows.map((p, i) => <PresetRow key={p.id} p={p} i={i} count={rows.length} ordered={ordered} accounts={accountsOf(p)} accCount={accCount}
             launching={!!app.launching} delayDefault={app.settings?.launchDelaySeconds ?? 8} dragging={drag?.id === p.id && !drag.done}
             draggable={armed === p.id} arm={() => setArmed(p.id)} move={move} duplicate={duplicate}
@@ -164,12 +172,14 @@ function PresetRow({ p, i, count, ordered, accounts, accCount, launching, delayD
   const summary = [
     p.placeInput && p.server !== 'follow' ? t(`ps.srv.${p.server}`) : '',
     delay === null ? t('pv.delayDefault', { n: delayDefault }) : delay === 0 ? t('pv.delay0') : t('pv.delayN', { n: delay }),
-    !sc?.time ? t('pv.noSchedule') : !sc.enabled ? `${t('pv.schOff')} · ${host.scheduleText(sc)}` : host.scheduleText(sc),
     host.presetOptionsText(p),
   ].filter(Boolean).join(' · ');
-  // Then, quieter: when it runs next (a one-off's date is already above) and when it ran last.
+  // Then, quieter and on a line of its own: what is running, when it is set to run (a preset with none says nothing),
+  // when it runs next (a one-off's date is already in that) and when it ran last.
+  const when = !sc?.time ? '' : !sc.enabled ? `${t('pv.schOff')} · ${host.scheduleText(sc)}` : host.scheduleText(sc);
   const next = [
     p.running ? <span className="pv-live" key="live">{tn('pv.running', p.running)}</span> : null,
+    when ? <span key="when">{when}</span> : null,
     sc?.enabled && p.nextRun && !sc.date ? host.nextRunText(p) : null,
     p.lastRun ? <Ago key="last" iso={p.lastRun} tpl="pv.lastRun" /> : null,
   ].filter(Boolean);

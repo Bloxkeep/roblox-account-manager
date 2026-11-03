@@ -1,13 +1,17 @@
 // The preset form (new or edit): name, game, kind of server, wait between accounts, Job ID, the ticked accounts in launch
 // order, options for its windows, its own Discord channel, the schedule. app.js's dialog keeps the title and buttons; it
 // asks this form what to save (collect), which box a refusal is about (refusedBox) and whether anything changed (dirty).
-import { useEffect, useImperativeHandle, useRef, useState, type KeyboardEvent, type Ref } from 'react';
+import { createElement, useEffect, useImperativeHandle, useRef, useState, type KeyboardEvent, type Ref } from 'react';
 import { Icon, useAppState, useHost } from './host';
 import { OrderList, type OrderAccount, type OrderListApi } from './OrderList';
-import { DateInput, TimeInput } from './TimeField';
+import { DateInput, TimeInput, readBox, exampleOf } from './TimeField';
 import { SuggestInput } from './Suggest';
 
-const PRESET_SERVERS = ['any', 'most', 'fewest', 'ping', 'random', 'eachFewest', 'eachMost', 'eachRandom', 'job', 'follow'];
+// The server choices in two groups: one server for every account, or each account in its own (keys of app.js's list).
+const SERVERS_ALL = ['any', 'most', 'fewest', 'ping', 'random', 'job', 'follow'];
+const SERVERS_EACH = [['eachFewest', 'fewest'], ['eachMost', 'most'], ['eachRandom', 'random']];
+/** Without a game these are no use (the app keeps "any"); following a player needs none, their game is used. */
+const NEEDS_GAME = (k: string) => k !== 'any' && k !== 'follow';
 const RESTART_HOURS = [0, 2, 4, 6, 12]; // the app's own choices (RestartChoices)
 // The wait between accounts, in seconds (the app keeps 0 to 120); a preset saved with another number keeps it too.
 const DELAYS = [0, 5, 10, 15, 30, 45, 60, 90, 120];
@@ -69,13 +73,23 @@ export function PresetForm({ base, isNew, accounts, ticked, gone, api }: {
   const [stop, setStop] = useState(sc.stop || 'never');
   const [hours, setHours] = useState(String(sc.stopHours && sc.stopHours > 0 ? sc.stopHours : 2));
   const [stopTime, setStopTime] = useState(sc.stopTime || '');
+  // Without a game the choices that need one are off and "any" is shown (the app keeps "any" then); the state keeps the
+  // choice for when a game is typed again.
+  const placeSet = !!place.trim();
+  const serverShown = placeSet || server === 'follow' ? server : 'any';
+  const srvNote = !placeSet && serverShown !== 'follow' ? t('ps.srvNeedGame') : serverShown.startsWith('each') ? t('ps.srvEachNote') : '';
 
   const boxes = useRef<Record<string, HTMLElement | null>>({});
   const box = (key: string) => (el: HTMLElement | null) => { boxes.current[key] = el; };
   const form = useRef<HTMLDivElement>(null);
 
+  // A time or date box still being typed in isn't in the state yet (its owner hears a text once it is finished): read from the box.
+  const boxed = (key: string, kept: string) => {
+    const r = readBox(boxes.current[key] as HTMLInputElement | null);
+    return r ? { value: r.value, bad: r.bad, text: r.bad ? r.text : r.value } : { value: kept, bad: false, text: kept };
+  };
   const snapshot = () => JSON.stringify([name, place, server, delay, job, follow, order.current?.ids(), order.current?.ticked(), afk, rejoin, rejoinWith, profile,
-    restart, arrange, dcMode, dcLink, schOn, time, mode, [...days].sort(), date, stop, hours, stopTime]);
+    restart, arrange, dcMode, dcLink, schOn, boxed('time', time).text, mode, [...days].sort(), boxed('date', date).text, stop, hours, boxed('stopTime', stopTime).text]);
   const initial = useRef('');
   useEffect(() => { initial.current = snapshot(); }, []); // once, as it opened
 
@@ -84,6 +98,13 @@ export function PresetForm({ base, isNew, accounts, ticked, gone, api }: {
   latest.current.collect = () => {
     // Checked here rather than clamped quietly by the app: 1000 hours or a quarter hour would save as something else.
     const h = +hours.trim();
+    const tm = boxed('time', time), dt = boxed('date', date), st = boxed('stopTime', stopTime);
+    // A text that isn't a time or a date: said under its own box too (as leaving the box would).
+    for (const [key, r, kind, shown] of [['time', tm, 'time', schOn], ['date', dt, 'date', schOn && mode === 'once'], ['stopTime', st, 'time', schOn && stop === 'at']] as const) {
+      if (!shown || !r.bad) continue;
+      boxes.current[key]?.dispatchEvent(new Event('change'));
+      return { error: t(kind === 'time' ? 'tf.badTime' : 'tf.badDate', { example: exampleOf(kind, host.locale) }), box: boxes.current[key] };
+    }
     if (schOn && stop === 'after' && !(h >= 0.5 && h <= 168 && Number.isInteger(h * 2))) return { error: t('ps.schHoursBad'), box: boxes.current.hours };
     // Its own Discord channel: undefined keeps the saved link, '' goes back to Settings' channel, a link replaces it.
     let discordWebhook: string | undefined;
@@ -93,15 +114,15 @@ export function PresetForm({ base, isNew, accounts, ticked, gone, api }: {
     const d = delay.trim();
     return {
       args: {
-        id: base.id || '', name: name.trim(), placeInput: place.trim(), server, jobId: job.trim(), followPlayer: follow.trim(),
+        id: base.id || '', name: name.trim(), placeInput: place.trim(), server: serverShown, jobId: job.trim(), followPlayer: follow.trim(),
         ids: order.current!.ticked(), // ticked order = launch order
         delaySeconds: d === '' ? null : Math.min(120, Math.max(0, Math.round(+d) || 0)),
         antiAfk: fromTri(afk), autoRejoin: fromTri(rejoin), rejoinWith: withOn ? withShown : '', profile, restartHours: +restart || 0, arrange: fromTri(arrange),
         discordWebhook,
         // A schedule never set up (off, no start time) is saved as none: no "Schedule off" row with a switch that can't turn on.
-        schedule: !schOn && !time.trim() ? null : {
-          enabled: schOn, time: time.trim(), days: mode === 'once' ? [] : WEEK.filter(x => days.includes(x)),
-          date: mode === 'once' ? date.trim() : '', stop, stopHours: +hours.trim() || 0, stopTime: stopTime.trim(),
+        schedule: !schOn && !tm.value ? null : {
+          enabled: schOn, time: tm.value, days: mode === 'once' ? [] : WEEK.filter(x => days.includes(x)),
+          date: mode === 'once' ? dt.value : '', stop, stopHours: +hours.trim() || 0, stopTime: st.value,
         },
       },
     };
@@ -111,11 +132,11 @@ export function PresetForm({ base, isNew, accounts, ticked, gone, api }: {
     const firstDay = boxes.current.days?.querySelector<HTMLElement>('.chip') || null;
     return !name.trim() ? boxes.current.name
       : !order.current!.ticked().length ? firstTick
-      : server === 'job' && !job.trim() ? boxes.current.job
-      : server === 'follow' && !follow.trim() ? boxes.current.follow
-      : schOn && !time.trim() ? boxes.current.time
+      : serverShown === 'job' && !job.trim() ? boxes.current.job
+      : serverShown === 'follow' && !follow.trim() ? boxes.current.follow
+      : schOn && !boxed('time', time).value ? boxes.current.time
       : schOn && mode !== 'once' && !days.length ? firstDay
-      : schOn && mode === 'once' && !date.trim() ? boxes.current.date : null;
+      : schOn && mode === 'once' && !boxed('date', date).value ? boxes.current.date : null;
   };
   useImperativeHandle(api, () => ({
     collect: () => latest.current.collect(),
@@ -126,10 +147,13 @@ export function PresetForm({ base, isNew, accounts, ticked, gone, api }: {
   // Which server a dropped window rejoins: any, another account's, or a ticked account's. Only with a game, not when
   // following a player (its rejoins follow them) nor with auto-rejoin off; an account unticked since falls back to any.
   const tickedIds = order.current?.ticked() ?? ticked;
-  const withOn = !!place.trim() && server !== 'follow' && rejoin !== 'off';
+  const withOn = !!place.trim() && serverShown !== 'follow' && rejoin !== 'off';
   const withShown = rejoinWith === '' || rejoinWith === 'any' || tickedIds.includes(rejoinWith) ? rejoinWith : '';
-  const optNote = [withOn && withShown ? t('ps.opt.withNote') : '', profile === 'afk' ? t('ps.opt.lightNote') : '', +restart ? t(place.trim() || server === 'follow' ? 'ps.opt.restartNote' : 'ps.opt.restartNoGame') : '']
+  const optNote = [withOn && withShown ? t('ps.opt.withNote') : '', profile === 'afk' ? t('ps.opt.lightNote') : '', +restart ? t(place.trim() || serverShown === 'follow' ? 'ps.opt.restartNote' : 'ps.opt.restartNoGame') : '']
     .filter(Boolean).join('\n');
+  // Open as it opens only when something in it is set; the rest stay folded.
+  const [optsOpen] = useState(() => !!(base.antiAfk != null || base.autoRejoin != null || base.rejoinWith || base.profile || base.restartHours || base.arrange != null));
+  const [dcOpen] = useState(() => !!base.discord);
   const followSet = (on: boolean | number) => t('ps.opt.followSet',
     { state: typeof on === 'number' ? t('set.seconds', { n: on }) : t(on ? 'ps.opt.stOn' : 'ps.opt.stOff') });
   const triSelect = (id: string, value: string, set: (v: string) => void, follow: string) =>
@@ -148,16 +172,24 @@ export function PresetForm({ base, isNew, accounts, ticked, gone, api }: {
         }
       }} />
       <div className="preset-row">
-        <label>{t('ps.server')}<select className="select" id="ps-server" value={server} onChange={e => setServer(e.target.value)}>
-          {PRESET_SERVERS.map(k => <option key={k} value={k}>{t(`ps.srv.${k}`)}</option>)}</select></label>
+        <label>{t('ps.server')}<select className="select" id="ps-server" value={serverShown} onChange={e => setServer(e.target.value)} aria-describedby={srvNote ? 'ps-srv-note' : undefined}>
+          {/* The box itself says "Each account: Most players" (the list has the heading above, so there the choice is short). */}
+          <button type="button" className="ps-sel">{createElement('selectedcontent')}</button>
+          <optgroup label={t('ps.grp.all')}>
+            {SERVERS_ALL.map(k => <option key={k} value={k} disabled={!placeSet && NEEDS_GAME(k)}>{t(`ps.srv.${k}`)}</option>)}
+          </optgroup>
+          <optgroup label={t('ps.grp.each')}>
+            {SERVERS_EACH.map(([k, short]) => <option key={k} value={k} disabled={!placeSet}><span className="ps-in">{t('ps.srvEachIn')}</span>{t(`ps.srvEach.${short}`)}</option>)}
+          </optgroup></select></label>
         <label>{t('ps.delay')}<select className="select" id="ps-delay" value={delay} onChange={e => setDelay(e.target.value)}>
           <option value="">{followSet(app.settings?.launchDelaySeconds ?? 8)}</option>
           {[...new Set([...DELAYS, ...(delay === '' ? [] : [+delay])])].sort((a, b) => a - b)
-            .map(n => <option key={n} value={String(n)}>{t('set.seconds', { n })}</option>)}</select></label>
+            .map(n => <option key={n} value={String(n)}>{n === 0 ? t('ps.delayNone') : t('set.seconds', { n })}</option>)}</select></label>
       </div>
-      <label id="ps-job-row" hidden={server !== 'job'}>{t('ps.job')}<input className="field" id="ps-job" ref={box('job')} maxLength={60} spellCheck={false}
+      {srvNote ? <p className="ps-hint" id="ps-srv-note">{srvNote}</p> : null}
+      <label id="ps-job-row" hidden={serverShown !== 'job'}>{t('ps.job')}<input className="field" id="ps-job" ref={box('job')} maxLength={60} spellCheck={false}
         placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" value={job} onChange={e => setJob(e.target.value)} /></label>
-      <label id="ps-follow-row" hidden={server !== 'follow'}>{t('ps.follow')}<SuggestInput className="field" id="ps-follow" ref={box('follow')} maxLength={100}
+      <label id="ps-follow-row" hidden={serverShown !== 'follow'}>{t('ps.follow')}<SuggestInput className="field" id="ps-follow" ref={box('follow')} maxLength={100}
         spellCheck={false} placeholder={t('jp.placeholder')} value={follow} setValue={setFollow} options={app.settings?.recentPlayers || []} label={t('ps.follow')} />
         <small className="muted">{t('ps.followNote')}</small></label>
       <div className="preset-accs">{t('ps.accounts')} <span className="muted" id="ps-count">({count})</span><small>{t('ps.order')}</small></div>
@@ -166,8 +198,9 @@ export function PresetForm({ base, isNew, accounts, ticked, gone, api }: {
     </div>
     <OrderList accounts={accounts} ticked={ticked} api={order} onChange={() => setCount(order.current!.ticked().length)} />
     <div className="form preset-form">
-      <div className="ps-opts" role="group" aria-labelledby="ps-opts-title">
-        <div className="ps-opts-head"><b id="ps-opts-title">{t('ps.opts')}</b></div>
+      {/* Folded unless something in it is set: most presets use the usual settings and never need these two. */}
+      <details className="ps-opts ps-note ps-fold" id="ps-opts" open={optsOpen}>
+        <summary className="ps-opts-head"><b id="ps-opts-title">{t('ps.opts')}</b><Icon name="chevronDown" /></summary>
         <div className="ps-opts-grid">
           <label>{t('ps.opt.afk')}{triSelect('ps-afk', afk, setAfk, followSet(!!app.settings?.antiAfk))}</label>
           <label>{t('ps.opt.rejoin')}{triSelect('ps-rejoin', rejoin, setRejoin, t('ps.opt.followAcc'))}</label>
@@ -183,11 +216,11 @@ export function PresetForm({ base, isNew, accounts, ticked, gone, api }: {
           <label>{t('ps.opt.arrange')}{triSelect('ps-arrange', arrange, setArrange, followSet(!!(app.multi?.enabled && app.multi?.tile)))}</label>
         </div>
         <p className="ps-opts-note" id="ps-opts-note" hidden={!optNote}>{optNote}</p>
-      </div>
+      </details>
       {/* Its own Discord channel: its schedule messages, its summary after a scheduled stop and the alerts of the windows
           it opened go there. The page never holds a saved link, only its masked form. */}
-      <div className="ps-opts" role="group" aria-labelledby="ps-dc-title">
-        <div className="ps-opts-head"><b id="ps-dc-title">Discord</b></div>
+      <details className="ps-opts ps-note ps-fold" id="ps-dc" open={dcOpen}>
+        <summary className="ps-opts-head"><b id="ps-dc-title">Discord</b><Icon name="chevronDown" /></summary>
         <label className="ps-dc-mode">{t('ps.dc.where')}<select className="select" id="ps-dc-mode" value={dcMode} onChange={e => {
           setDcMode(e.target.value);
           if (e.target.value === 'own' && !base.discord) setTimeout(() => boxes.current.dcLink?.focus());
@@ -200,7 +233,7 @@ export function PresetForm({ base, isNew, accounts, ticked, gone, api }: {
           })}>{t('dc.test')}</button>
         </div>
         <p className="ps-opts-note">{base.discord ? `${t('ps.dc.saved')}\n` : ''}{t('ps.dc.note')}{dcOn ? '' : `\n${t('ps.dc.off')}`}</p>
-      </div>
+      </details>
       <div className="ps-sched">
         <div className="ps-sched-head">
           <label className="switch"><input type="checkbox" id="ps-sch-on" checked={schOn} aria-label={t('ps.sch')} onChange={e => setSchOn(e.target.checked)} /><span /></label>
@@ -216,13 +249,13 @@ export function PresetForm({ base, isNew, accounts, ticked, gone, api }: {
             {WEEK.map(d => <button key={d} type="button" className={`chip ${days.includes(d) ? 'on' : ''}`} data-day={d} aria-pressed={days.includes(d)}
               onClick={() => setDays(days.includes(d) ? days.filter(x => x !== d) : [...days, d])}>{host.weekdayName(d)}</button>)}
           </div>
-          <label id="ps-sch-date-row" hidden={mode !== 'once'}>{t('ps.schDate')}<DateInput className="field" id="ps-sch-date" ref={box('date')} value={date} onChange={e => setDate(e.target.value)} /></label>
+          <label id="ps-sch-date-row" hidden={mode !== 'once'}>{t('ps.schDate')}<DateInput className="field" id="ps-sch-date" ref={box('date')} value={date} pastDisabled onChange={e => setDate(e.target.value)} /></label>
           <div className="preset-row">
             <label>{t('ps.schStop')}<select className="select" id="ps-sch-stop" value={stop} onChange={e => setStop(e.target.value)}>
               {['never', 'after', 'at'].map(k => <option key={k} value={k}>{t(`ps.schStop.${k}`)}</option>)}</select></label>
             <label id="ps-sch-hours-row" hidden={stop !== 'after'}>{t('ps.schHours')}<input className="field" id="ps-sch-hours" ref={box('hours')} type="number" min="0.5" max="168" step="0.5"
               value={hours} onChange={e => setHours(e.target.value)} /></label>
-            <label id="ps-sch-stoptime-row" hidden={stop !== 'at'}>{t('ps.schStopTime')}<TimeInput className="field" id="ps-sch-stoptime" value={stopTime} onChange={e => setStopTime(e.target.value)} /></label>
+            <label id="ps-sch-stoptime-row" hidden={stop !== 'at'}>{t('ps.schStopTime')}<TimeInput className="field" id="ps-sch-stoptime" ref={box('stopTime')} value={stopTime} onChange={e => setStopTime(e.target.value)} /></label>
           </div>
           <details className="ps-note"><summary><Icon name="info" />{t('ps.schNoteTitle')}</summary><p className="ps-sched-note">{t('ps.schNote')}</p></details>
         </div>
@@ -327,7 +360,7 @@ export function GameBox({ place, setPlace, chose }: { place: string; setPlace: (
   useEffect(() => { list.current?.querySelector('.game-row.on')?.scrollIntoView({ block: 'nearest' }); }, [index]);
 
   return <>
-    <label>{t('ps.game')}<input className="field" id="ps-place" maxLength={500} spellCheck={false} autoComplete="off" placeholder={t('dock.place')}
+    <label>{t('ps.game')}<input className="field" id="ps-place" maxLength={500} spellCheck={false} autoComplete="off" placeholder={t('ps.gamePh')}
       role="combobox" aria-haspopup="listbox" aria-autocomplete="list" aria-expanded={open} aria-activedescendant={open && index >= 0 ? `psg-${index}` : undefined}
       value={place} onChange={e => typed(e.target.value)} onKeyDown={keys}
       onFocus={() => { if (!place.trim()) show('browse'); }}
