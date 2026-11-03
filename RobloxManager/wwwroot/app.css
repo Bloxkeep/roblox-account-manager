@@ -5888,6 +5888,38 @@ html:not(.in-window) .pn.mini { height: calc(100vh - 32px); max-height: none; }
 .mon-area.mon-empty { display: grid; place-items: center; padding: 20px; }
 .mon-empty p { margin: 0; max-width: 360px; text-align: center; font-size: var(--fs-3); color: var(--muted); }
 @media (max-width: 1180px) { .mon-area.mon-tiles { margin: 0 18px 12px; } }
+/* The overlay over a game and the colour picker (overlay.html, ui/src/overlay). Editing, the window itself is see-through
+   (62 %) over black, which dims the game; the colours here are the game's markings, the same on every theme. */
+body.ov-page { margin: 0; overflow: hidden; background: #000; user-select: none; }
+.ov { position: fixed; inset: 0; outline: none; touch-action: none; }
+/* A browser preview has no see-through window: the same dimming drawn over the stand-in game. */
+html:not(.in-window) body.ov-page.ov-dim { background: transparent; }
+html:not(.in-window) body.ov-dim #overlay { position: fixed; inset: 0; background: #000; opacity: .62; }
+.ov-picture { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill; pointer-events: none; }
+.ov-area { position: absolute; box-sizing: border-box; border: 2px solid var(--c); background: color-mix(in srgb, var(--c) 27%, transparent); }
+.ov-area.held { background: color-mix(in srgb, var(--c) 47%, transparent); }
+.ov-tag { position: absolute; left: -2px; bottom: 100%; max-width: calc(100% + 4px); padding: 2px 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: var(--fs-2); font-weight: 700; line-height: 16px; background: var(--c); pointer-events: none; }
+.ov-grip { position: absolute; display: grid; place-items: center; }
+.ov-grip::after { content: ""; width: 8px; height: 8px; background: #fff; box-shadow: 0 0 0 1px rgb(0 0 0 / .45); }
+.ov-grip.tl { left: 0; top: 0; } .ov-grip.tr { right: 0; top: 0; } .ov-grip.bl { left: 0; bottom: 0; } .ov-grip.br { right: 0; bottom: 0; }
+.ov-dot { position: absolute; display: grid; place-items: center; box-sizing: border-box; translate: -50% -50%; border-radius: 50%; border: 2px solid #fff;
+  background: #2563eb; color: #fff; font-size: var(--fs-1); font-weight: 700; font-variant-numeric: tabular-nums; }
+/* A little reach past its ring, as the WinForms overlay took it. */
+.ov-dot::before { content: ""; position: absolute; inset: -5px; border-radius: 50%; }
+.ov-dot.held { background: #ffc400; color: #000; }
+/* What it is for, at the top; the bar is the app's own (its theme), above the markings. */
+.ov-bar { position: absolute; left: 50%; top: 8px; translate: -50% 0; z-index: 2; display: flex; align-items: center; gap: 10px; max-width: calc(100% - 16px);
+  padding: 5px 5px 5px 14px; border: 1px solid var(--line-2); border-radius: var(--r-md); background: var(--surface); color: var(--text); cursor: default; }
+.ov-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-3); font-weight: 600; }
+.ov-hint { flex: none; font-size: var(--fs-2); color: var(--text-2); white-space: nowrap; }
+.ov-bar .btn { flex: none; }
+/* The magnifier: the pixels around the pointer, the one under it outlined, its colour under them. */
+.ov-lens { position: absolute; z-index: 3; box-sizing: content-box; width: 108px; border: 1px solid #000; background: #000; pointer-events: none; box-shadow: 0 6px 18px rgb(0 0 0 / .4); }
+.ov-lens canvas { display: block; width: 108px; height: 108px; image-rendering: pixelated; }
+.ov-lens-mark { position: absolute; box-sizing: border-box; border: 1px solid #fff; box-shadow: 0 0 0 1px #000; }
+.ov-lens-hex { display: block; height: 28px; line-height: 28px; text-align: center; font: 600 var(--fs-2) / 28px ui-monospace, Consolas, monospace; }
+@media (max-width: 520px) { .ov-hint { display: none; } }
 /* ───────── end P7 ───────── */
 
 /* ───────── P8 ───────── */

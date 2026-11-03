@@ -213,6 +213,13 @@ public abstract class WebToolWindow : Form
         }
     }
 
+    /// <summary>The page takes the keyboard (the window was activated: its keys go to the page, not the window).</summary>
+    protected void FocusPage()
+    {
+        if (_web is { IsDisposed: false } web && !web.Focused)
+            web.Focus();
+    }
+
     // ───────────────────────── messages ─────────────────────────
 
     /// <summary>An event to the page, as the app's page gets them: { type: "event", name, data }.</summary>

@@ -7,7 +7,7 @@ namespace RobloxManager;
 
 /// <summary>
 /// Macros (Beta): each macro's panel (PanelWindow.cs, a page beside the game), shown by itself while an account plays its
-/// game; the settings the player changes there ("$o1"); the on-game overlay (GameOverlay.cs) that edits the macro's
+/// game; the settings the player changes there ("$o1"); the on-game overlay (OverlayWindow.cs) that edits the macro's
 /// points and areas on the Roblox window itself and picks a place or colour there; trying a macro not saved yet; "What it
 /// sees" (MacroWatch.cs).
 /// </summary>
@@ -23,7 +23,7 @@ public sealed partial class AppController
     /// <summary>The last window in front that wasn't a panel: where the keyboard goes back to.</summary>
     IntPtr _lastForeground;
     System.Windows.Forms.Timer? _panelStatePush, _panelFollowLater;
-    GameOverlay? _overlay;
+    OverlayWindow? _overlay;
     /// <summary>What the overlay is on: the macro (empty for a pick), the account, and whether the page asked for it.</summary>
     (Guid Macro, Guid Account, bool Page)? _overlayFor;
     /// <summary>The editor's "Try it" going on: its run's macro id and account.</summary>
@@ -677,7 +677,7 @@ public sealed partial class AppController
 
     // ───────────────────────── on the game ─────────────────────────
 
-    static List<GameOverlay.Area> OverlayAreas(Macro m) => (m.Areas ?? new()).Where(a => a is not null).Select(a => new GameOverlay.Area(a.Name, a.Label is { Length: > 0 } label ? label : a.Name,
+    static List<OverlayWindow.Area> OverlayAreas(Macro m) => (m.Areas ?? new()).Where(a => a is not null).Select(a => new OverlayWindow.Area(a.Name, a.Label is { Length: > 0 } label ? label : a.Name,
         ColorTranslator.FromHtml(a.Colour is { Length: 7 } c && c[0] == '#' && c[1..].All(Uri.IsHexDigit) ? c : MacroOptions.AreaColour),
         MacroOptions.Rect(a.Rect) ?? new MacroRect { X = 0.25, Y = 0.25, W = 0.5, H = 0.5 })).ToList();
 
@@ -702,16 +702,16 @@ public sealed partial class AppController
             draft = MacroById(Id(a));
         if (MacroDeskNow.Window(account) is not { } window)
             throw new UserError(L.T("This account's Roblox isn't open."));
-        string title = L.F("Editing {0}", draft.Name is { Length: > 0 } name ? name : L.T("New macro"));
+        string title = draft.Name ?? ""; // the page says "Editing …" (or "New macro")
         var dots = AreaGeometry.Dots(draft);
         var areas = OverlayAreas(draft);
-        if (_overlay is { IsDisposed: false, Kind: GameOverlay.Mode.Edit } open && _overlayFor is { Page: true } on && on.Account == account)
+        if (_overlay is { IsDisposed: false, Kind: OverlayWindow.Mode.Edit } open && _overlayFor is { Page: true } on && on.Account == account)
         {
             open.Set(dots, areas, title);
             return null;
         }
         CloseOverlay();
-        var overlay = new GameOverlay(window.Handle, GameOverlay.Mode.Edit, title);
+        var overlay = new OverlayWindow(window.Handle, OverlayWindow.Mode.Edit, title) { CustomTheme = CustomThemeDto() };
         overlay.Set(dots, areas);
         overlay.DotMoved += (step, x, y) => Emit("onGameEdit", new { step, x, y });
         overlay.AreaChanged += (area, rect) => Emit("onGameEdit", new { area, rect });
@@ -744,7 +744,7 @@ public sealed partial class AppController
         var picture = await MacroPictureOfAsync(account);
         CloseOverlay();
         var picked = new TaskCompletionSource<(double, double, string)?>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var overlay = new GameOverlay(window.Handle, GameOverlay.Mode.Pick, L.T("Click the place on the game. Esc cancels."), picture);
+        var overlay = new OverlayWindow(window.Handle, OverlayWindow.Mode.Pick, "", picture) { CustomTheme = CustomThemeDto() };
         overlay.Picked += (x, y, colour) => picked.TrySetResult((x, y, colour));
         overlay.FormClosed += (_, _) =>
         {
@@ -777,7 +777,7 @@ public sealed partial class AppController
                     {
                         PanelError(id, name, ex.Message);
                     }
-                });
+                }, CustomThemeDto());
                 return;
             }
             if (await PickOnGameAsync(account) is { } p)
@@ -819,7 +819,7 @@ public sealed partial class AppController
         }
     }
 
-    internal bool EditingAreasOf(Guid id) => _overlay is { IsDisposed: false, Kind: GameOverlay.Mode.Areas } && _overlayFor is { } f && f.Macro == id;
+    internal bool EditingAreasOf(Guid id) => _overlay is { IsDisposed: false, Kind: OverlayWindow.Mode.Areas } && _overlayFor is { } f && f.Macro == id;
 
     /// <summary>The panel's "Move areas on game": the macro's areas over its account's window to move and size (saved as they
     /// change); again, Done or Esc ends it.</summary>
@@ -840,7 +840,7 @@ public sealed partial class AppController
             return;
         }
         CloseOverlay();
-        var overlay = new GameOverlay(window.Handle, GameOverlay.Mode.Areas, L.F("Areas of {0}", macro.Name));
+        var overlay = new OverlayWindow(window.Handle, OverlayWindow.Mode.Areas, macro.Name) { CustomTheme = CustomThemeDto() };
         overlay.Set([], OverlayAreas(macro));
         overlay.AreaChanged += (area, rect) => SetArea(id, area, rect);
         overlay.Done += () =>
@@ -854,9 +854,9 @@ public sealed partial class AppController
         RefreshPanel(id);
     }
 
-    /// <summary>The game brought forward in its turn (between a macro's turns), then the overlay over it, taking the
-    /// keyboard so Esc and Enter are its own, not the game's.</summary>
-    static async void ShowOverlay(GameOverlay overlay, int pid)
+    /// <summary>The game brought forward in its turn (between a macro's turns), then the overlay over it once its page
+    /// has started, taking the keyboard so Esc and Enter are its own, not the game's.</summary>
+    static async void ShowOverlay(OverlayWindow overlay, int pid)
     {
         try
         {
@@ -864,8 +864,7 @@ public sealed partial class AppController
                 RobloxProcesses.Focus(pid);
             if (overlay.IsDisposed)
                 return;
-            overlay.Show();
-            overlay.Activate();
+            await overlay.OpenAsync();
         }
         catch (Exception ex)
         {

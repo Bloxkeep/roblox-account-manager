@@ -13,6 +13,7 @@ import { MultiHelp } from './MultiHelp';
 import { LaunchOrder, type OrderAccount, type OrderListApi } from './OrderList';
 import { Palette, type PaletteEntry } from './Palette';
 import { MiniRoot, type MiniOn, type MiniViewApi } from './mini/MiniView';
+import { OverlayRoot, type OverlayOn, type OverlayViewApi } from './overlay/OverlayView';
 import { PanelRoot } from './panel/PanelView';
 import type { PanelOn, PanelViewApi } from './panel/panelHost';
 import { PasswordLogin, type PasswordLoginApi } from './PasswordLogin';
@@ -196,6 +197,12 @@ const BloxkeepUI = {
   mini(el: HTMLElement, host: Host, on: MiniOn) {
     const view = createRef<MiniViewApi>();
     const unmount = mount(el, host, <MiniRoot on={on} handle={view} />, false);
+    return { unmount, show: view.current!.show };
+  },
+  /** The overlay over a game, or the colour picker over a monitor, into its own window's page (overlay.js): show draws each "overlay" event. */
+  overlay(el: HTMLElement, host: Host, on: OverlayOn) {
+    const view = createRef<OverlayViewApi>();
+    const unmount = mount(el, host, <OverlayRoot on={on} handle={view} />, false);
     return { unmount, show: view.current!.show };
   },
   /** A list to tick into a picker's body; the footer's buttons read list.values(). */

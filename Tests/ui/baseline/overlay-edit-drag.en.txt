@@ -1,0 +1,29 @@
+== end
+html [data-theme="dark" lang="en"]
+#app
+  div [id="overlay"]
+    div.ov.ov-edit [tabindex="-1" style="cursor:crosshair" FOCUSED]
+      div.ov-area [style="--c:#22c55e;height:16%;left:74%;top:74%;width:22%"]
+        span.ov-tag [style="color:rgb(255, 255, 255)"] "Claim button"
+        i.ov-grip.tl [style="height:16px;margin-bottom:-8px;margin-left:-8px;margin-right:-8px;margin-top:-8px;width:16px"]
+        i.ov-grip.tr [style="height:16px;margin-bottom:-8px;margin-left:-8px;margin-right:-8px;margin-top:-8px;width:16px"]
+        i.bl.ov-grip [style="height:16px;margin-bottom:-8px;margin-left:-8px;margin-right:-8px;margin-top:-8px;width:16px"]
+        i.br.ov-grip [style="height:16px;margin-bottom:-8px;margin-left:-8px;margin-right:-8px;margin-top:-8px;width:16px"]
+      div.ov-area [style="--c:#f59e0b;height:17.41%;left:4%;top:20%;width:38.33%"]
+        span.ov-tag [style="color:rgb(255, 255, 255)"] "Health bar"
+        i.ov-grip.tl [style="height:16px;margin-bottom:-8px;margin-left:-8px;margin-right:-8px;margin-top:-8px;width:16px"]
+        i.ov-grip.tr [style="height:16px;margin-bottom:-8px;margin-left:-8px;margin-right:-8px;margin-top:-8px;width:16px"]
+        i.bl.ov-grip [style="height:16px;margin-bottom:-8px;margin-left:-8px;margin-right:-8px;margin-top:-8px;width:16px"]
+        i.br.ov-grip [style="height:16px;margin-bottom:-8px;margin-left:-8px;margin-right:-8px;margin-top:-8px;width:16px"]
+      div.ov-dot [style="height:22px;left:42.5%;top:50.89%;width:22px"] "1"
+      div.ov-dot [style="height:22px;left:86%;top:82%;width:22px"] "3"
+      div.ov-dot [style="height:22px;left:50%;top:45%;width:22px"] "5"
+      div.ov-bar [role="toolbar" aria-label="Editing Claim daily chest"]
+        b.ov-title "Editing Claim daily chest"
+        span.ov-hint "Drag the dots and boxes"
+        button.btn.primary.sm [type="button"] "Done"
+-- commands
+  act {"h":0.1741,"name":"a2","w":0.3833,"what":"area","x":0.04,"y":0.2}
+  act {"step":0,"what":"dot","x":0.425,"y":0.5089}
+  act {"what":"done"}
+  ready {}

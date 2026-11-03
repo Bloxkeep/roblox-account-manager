@@ -1636,6 +1636,52 @@ export default [
   S('monitor-none', 'monitor=1&tiles=0', async s => { await s.point({ css: '.mon-empty' }); }),
   S('monitor-light', 'monitor=1&tiles=3&theme=light', async s => { await s.point({ css: '.mon-tile' }); }),
   S('monitor-retro', 'monitor=1&tiles=4&mintile=1&theme=retro', async s => { await s.point({ css: '.mon-tile' }); }, { langs: ['en'] }),
+  // The overlay over a game and the colour picker (overlay.html, ui/src/overlay), over a stand-in game (ui/dev/overlay-mock.js).
+  ...(() => {
+    const OV = { page: 'overlay-preview.html', size: [960, 540] };
+    /** A press on an element's centre, moved by dx, dy and let go, as pointer events (the page's own drags). */
+    const press = (s, sel, dx, dy) => s.eval(`(async () => {
+      const el = document.querySelector(${JSON.stringify(sel)}), r = el.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;
+      const o = (cx, cy, buttons) => ({ bubbles: true, pointerId: 1, isPrimary: true, button: 0, buttons, clientX: cx, clientY: cy });
+      const frame = () => new Promise(f => requestAnimationFrame(() => f()));
+      el.dispatchEvent(new PointerEvent('pointerdown', o(x, y, 1))); await frame();
+      el.dispatchEvent(new PointerEvent('pointermove', o(x + ${dx} / 2, y + ${dy} / 2, 1))); await frame();
+      el.dispatchEvent(new PointerEvent('pointermove', o(x + ${dx}, y + ${dy}, 1))); await frame();
+      el.dispatchEvent(new PointerEvent('pointerup', o(x + ${dx}, y + ${dy}, 0))); await frame();
+    })()`);
+    const sent = async (s, what) => {
+      const acts = await s.eval('JSON.stringify(window.__acts)');
+      if (!JSON.parse(acts).some(a => a.what === what)) throw new Error(`no "${what}" sent: ${acts}`);
+    };
+    return [
+      S('overlay-edit', '', async s => { await s.point({ css: '.ov-dot' }); }, OV),
+      // A dot and a box's corner dragged: the app hears where they went, in parts of the game.
+      S('overlay-edit-drag', '', async s => {
+        await s.point({ css: '.ov-dot' });
+        await press(s, '.ov-dot[data-dot="0"]', 120, -60);
+        await press(s, '.ov-area[data-area="1"] .ov-grip.br', 80, 40);
+        await s.wait(100);
+        await sent(s, 'dot');
+        await sent(s, 'area');
+        await s.key('Escape');
+        await sent(s, 'done');
+      }, OV),
+      S('overlay-new-long', 'new=1&long=1', async s => { await s.point({ css: '.ov-dot' }); }, OV),
+      S('overlay-areas', 'mode=areas', async s => { await s.point({ css: '.ov-area' }); }, OV),
+      S('overlay-pick', 'mode=pick', async s => {
+        await s.point({ css: '.ov-picture' });
+        await s.hover({ css: '.ov' });
+        await s.wait(150);
+        await s.snap('magnifier');
+        await s.click({ css: '.ov' });
+        await sent(s, 'pick');
+      }, OV),
+      S('overlay-screen', 'mode=screen', async s => { await s.hover({ css: '.ov' }); await s.wait(150); await s.key('Escape'); await sent(s, 'cancel'); }, OV),
+      S('overlay-light', 'theme=light', async s => { await s.point({ css: '.ov-dot' }); }, OV),
+      S('overlay-retro', 'mode=areas&theme=retro', async s => { await s.point({ css: '.ov-area' }); }, { ...OV, langs: ['en'] }),
+      S('overlay-small', 'mode=edit', async s => { await s.point({ css: '.ov-dot' }); }, { ...OV, size: [480, 300] }),
+    ];
+  })(),
   // ── end P7 ──
 
   // ── P8 ──
