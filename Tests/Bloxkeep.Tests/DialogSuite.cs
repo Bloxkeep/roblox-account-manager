@@ -82,7 +82,7 @@ static class DialogSuite
         var (yes, remember) = Dialog.ConfirmRemember(null, "Close ALL Roblox running on this PC (including Roblox in the system tray)?", "Close all", "Cancel", danger: true);
         c.Check("a click on the page answers, with Don't ask again", yes && remember, $"{yes} {remember}");
         var work = Screen.FromRectangle(seen).WorkingArea;
-        c.Check("sized to its page (460 CSS px wide) and centred on the screen", Math.Abs(seen.Width - 460 * scale) <= 2 && seen.Height > 120 * scale
+        c.Check("sized to its page (460 CSS px wide, as tall as its text) and centred on the screen", Math.Abs(seen.Width - 460 * scale) <= 2 && seen.Height > 120 * scale && seen.Height < 400 * scale
             && Math.Abs(seen.Left + seen.Width / 2 - (work.Left + work.Width / 2)) <= 2, seen);
 
         WhenShown(box =>

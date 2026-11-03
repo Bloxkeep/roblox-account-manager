@@ -1,0 +1,15 @@
+== end
+html [data-theme="dark" lang="en"]
+#app
+  div [id="root"]
+    div.bw.login
+      div.bw-bar
+        span.bw-site [title="www.roblox.com"]
+          svg.i #21scx0
+          span "www.roblox.com"
+        span.bw-msg [role="status" title="Sign in to each account in turn. Press Done when finished."] "Sign in to each account in turn. Press Done when finished."
+        button.btn.primary.sm [type="button"] "Done"
+-- commands
+  ready {}
+  size {"h":52,"w":1000}
+  size {"h":52,"w":1000}

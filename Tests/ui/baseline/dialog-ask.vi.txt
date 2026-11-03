@@ -1,0 +1,25 @@
+== end
+html [data-theme="dark" lang="vi"]
+#app
+  div [id="root"]
+    div.dlg.modal [role="alertdialog" aria-describedby="dlg-text" aria-labelledby="dlg-title" aria-modal="true"]
+      div.modal-head
+        h3.dlg-app [id="dlg-title"] "Bloxkeep"
+          img [alt="" src="logo.svg"]
+        button.icon-btn [type="button" title="Đóng" aria-label="Đóng"]
+          svg.i #1tyq039
+      div.modal-body
+        div.dlg-msg
+          span.dlg-mark.k-warning
+            svg.i #42lb9l
+          p.dlg-text.pre.strong [id="dlg-text"] "Đóng TẤT CẢ Roblox đang chạy trên máy (kể cả Roblox chạy ngầm ở khay hệ thống)?"
+        label.dlg-remember.dont-ask
+          input [type="checkbox" checked=false]
+          span "Không hỏi lại"
+      div.modal-foot
+        button.btn [type="button" FOCUSED] "Hủy"
+        button.btn.danger [type="button"] "Đóng tất cả"
+-- commands
+  ready {}
+  size {"h":255,"w":460}
+  size {"h":255,"w":460}

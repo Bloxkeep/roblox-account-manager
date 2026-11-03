@@ -1,0 +1,15 @@
+== end
+html [data-theme="dark" lang="vi"]
+#app
+  div [id="root"]
+    div.bw.login
+      div.bw-bar
+        span.bw-site [title="www.roblox.com"]
+          svg.i #21scx0
+          span "www.roblox.com"
+        span.bw-msg [role="status" title="Đăng nhập lần lượt từng tài khoản. Xong hết thì bấm Xong."] "Đăng nhập lần lượt từng tài khoản. Xong hết thì bấm Xong."
+        button.btn.primary.sm [type="button"] "Xong"
+-- commands
+  ready {}
+  size {"h":52,"w":1000}
+  size {"h":52,"w":1000}

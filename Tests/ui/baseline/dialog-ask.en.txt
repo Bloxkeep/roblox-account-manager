@@ -1,0 +1,25 @@
+== end
+html [data-theme="dark" lang="en"]
+#app
+  div [id="root"]
+    div.dlg.modal [role="alertdialog" aria-describedby="dlg-text" aria-labelledby="dlg-title" aria-modal="true"]
+      div.modal-head
+        h3.dlg-app [id="dlg-title"] "Bloxkeep"
+          img [alt="" src="logo.svg"]
+        button.icon-btn [type="button" title="Close" aria-label="Close"]
+          svg.i #1tyq039
+      div.modal-body
+        div.dlg-msg
+          span.dlg-mark.k-warning
+            svg.i #42lb9l
+          p.dlg-text.pre.strong [id="dlg-text"] "Close ALL Roblox running on this PC (including Roblox in the system tray)?"
+        label.dlg-remember.dont-ask
+          input [type="checkbox" checked=false]
+          span "Don't ask again"
+      div.modal-foot
+        button.btn [type="button" FOCUSED] "Cancel"
+        button.btn.danger [type="button"] "Close all"
+-- commands
+  ready {}
+  size {"h":255,"w":460}
+  size {"h":255,"w":460}

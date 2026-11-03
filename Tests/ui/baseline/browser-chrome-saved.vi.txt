@@ -1,0 +1,47 @@
+== end
+html [data-theme="dark" lang="vi"]
+#app
+  div [id="root"]
+    div.bw
+      div.bw-tabs
+        div.bw-list [role="tablist" aria-label="Các tab"]
+          div.bw-tab
+            button.bw-pick [role="tab" type="button" title="Main" tabindex="-1" aria-selected="false"]
+              span.bw-av
+                img [alt="" src=#oxspc5]
+              span.bw-name "Main"
+          div.bw-tab
+            button.bw-pick [role="tab" type="button" title="Farm 1" tabindex="-1" aria-selected="false"]
+              span.bw-av
+                img [alt="" src=#161eh4p]
+              span.bw-name "Farm 1"
+          div.bw-tab
+            button.bw-pick [role="tab" type="button" title="Farm 2" tabindex="-1" aria-selected="false"]
+              span.bw-av
+                img [alt="" src=#1uf25dn]
+              span.bw-name "Farm 2"
+          div.bw-tab.on
+            button.bw-pick [role="tab" type="button" title="Newbie" tabindex="0" aria-selected="true"]
+              span.bw-av
+                svg.i #45lggc
+              span.bw-name "Newbie"
+            button.bw-x [type="button" title="Đóng tab (Ctrl+W)" tabindex="-1" aria-label="Đóng tab (Ctrl+W)"]
+              svg.i #1tyq039
+        button.bw-new.icon-btn [type="button" title="Tab mới để đăng nhập trên roblox.com (Ctrl+T)" aria-label="Tab mới"]
+          svg.i #u7ty99
+      div.bw-bar
+        button.icon-btn [type="button" title="Quay lại" aria-label="Quay lại"]
+          svg.i #10tf97k
+        button.icon-btn [type="button" title="Tiến" aria-label="Tiến" disabled]
+          svg.i #1g7f83q
+        button.icon-btn [type="button" title="Tải lại" aria-label="Tải lại"]
+          svg.i #e464bo
+        span.bw-site [title="www.roblox.com"]
+          svg.i #21scx0
+          span "www.roblox.com"
+        span.bw-msg.ok [role="status" title="Đã lưu Newbie."] "Đã lưu Newbie."
+-- commands
+  act {"what":"save"}
+  ready {}
+  size {"h":84,"w":1100}
+  size {"h":84,"w":1100}

@@ -1,0 +1,21 @@
+== end
+html [data-theme="dark" lang="en"]
+#app
+  div [id="root"]
+    div.dlg.modal [role="alertdialog" aria-describedby="dlg-text" aria-labelledby="dlg-title" aria-modal="true"]
+      div.modal-head
+        h3 [id="dlg-title"] "Sign-out stopped"
+        button.icon-btn [type="button" title="Close" aria-label="Close"]
+          svg.i #1tyq039
+      div.modal-body
+        div.dlg-msg
+          span.dlg-mark.k-info
+            svg.i #v9c4u6
+          p.dlg-text.pre [id="dlg-text"] "Signing out here would also sign this account out of Bloxkeep, and you'd have to add it again. When you're done, just close this tab."
+      div.modal-foot
+        button.btn [type="button"] "Keep browsing"
+        button.btn.primary [type="button" FOCUSED] "Close tab"
+-- commands
+  ready {}
+  size {"h":239,"w":460}
+  size {"h":239,"w":460}
