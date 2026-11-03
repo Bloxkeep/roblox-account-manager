@@ -9,9 +9,13 @@
   /* ───────────────────────── language ───────────────────────── */
   const DICT = window.I18N;
   let lang = 'en';
-  /** Translates a key; {name} placeholders are replaced with already-escaped values. */
+  /**
+   * Translates a key; {name} placeholders are replaced with already-escaped values. A "1" key the language lacks
+   * (Vietnamese has no plural) is its plural key in that language, never the English sentence.
+   */
   function t(key, vars) {
-    let s = (DICT[lang] && DICT[lang][key]) ?? DICT.en[key] ?? key;
+    const own = DICT[lang] || {};
+    let s = own[key] ?? (lang !== 'en' && key.endsWith('1') ? own[key.slice(0, -1)] : undefined) ?? DICT.en[key] ?? key;
     if (vars) s = s.replace(/\{(\w+)\}/g, (m, k) => (k in vars ? vars[k] : m));
     return s;
   }

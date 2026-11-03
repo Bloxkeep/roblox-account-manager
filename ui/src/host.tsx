@@ -36,7 +36,7 @@ export interface PageState {
 export interface Host {
   /** The interface's words for an i18n key (wwwroot/i18n.js), {placeholders} filled from vars. */
   t(key: string, vars?: Record<string, string | number>): string;
-  /** The same, the "1" form when n is 1 (key1). */
+  /** The same, the "1" form when n is 1 (key1); a language without it (Vietnamese) uses its plural key, never English. */
   tn(key: string, n: number, vars?: Record<string, string | number>): string;
   /** The words for a key in a given language, whichever is chosen (each language's own name in the switch). */
   tIn(lang: 'en' | 'vi', key: string): string;
