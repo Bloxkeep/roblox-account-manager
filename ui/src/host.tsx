@@ -1,5 +1,6 @@
 // What the React parts use of the page around them (app.js uiHost()): words, icons, commands to the app, link targets.
 import { createContext, useContext, useEffect, useState, useSyncExternalStore } from 'react';
+import type { Command } from './bridge';
 import type { MenuItem } from './Overlays';
 
 /** What the app last pushed (its state event: accounts, settings…), as app.js keeps it in S.app. */
@@ -47,9 +48,9 @@ export interface Host {
   iconPaths(name: string): string;
   logo: string;
   /** A command to the app (the bridge); failures show a toast there and resolve to undefined. */
-  call(cmd: string, args?: Record<string, unknown>, opts?: { silent?: boolean }): Promise<unknown>;
+  call(cmd: Command, args?: Record<string, unknown>, opts?: { silent?: boolean }): Promise<unknown>;
   /** The same command, its failure left to the caller: rejects with the app's words (no toast). */
-  ask(cmd: string, args?: Record<string, unknown>): Promise<unknown>;
+  ask(cmd: Command, args?: Record<string, unknown>): Promise<unknown>;
   /** Keeps the page as it is for the app to bring back (app.js saveView), before something that reloads it. */
   saveView(restart?: boolean): void;
   /** Multi-Roblox on (after the risk warning) or off (app.js setMulti); whether it was done. */

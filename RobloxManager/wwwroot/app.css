@@ -2476,11 +2476,8 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .mc-step-probs li { display: flex; align-items: center; gap: 5px; }
 .mc-step-probs li.warn { color: var(--warn-ink); }
 .mc-step-probs .i { width: 13px; height: 13px; flex: none; }
-.mc-f { display: grid; gap: 3px; font-size: var(--fs-2); font-weight: 600; color: var(--text-2); }
-.mc-f.wide { flex: 1 1 240px; }
 .mc-step .field.sm { width: 140px; height: 32px; padding: 0 9px; border-radius: var(--r-sm); font-size: var(--fs-3); }
 .mc-step .field.sm.num { width: 78px; }
-.mc-f.wide .field.sm { width: 100%; }
 .mc-step .select.sm { min-width: 0; max-width: 190px; height: 32px; font-size: var(--fs-3); }
 .mc-check { display: inline-flex; align-items: center; gap: 6px; height: 32px; font-size: var(--fs-3); color: var(--text-2); cursor: pointer; }
 .mc-check input { width: 15px; height: 15px; margin: 0; accent-color: var(--accent); }
@@ -2492,14 +2489,8 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .mc-f-note { align-self: center; font-size: var(--fs-2); color: var(--muted); }
 .mc-pending { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 8px 10px; border-radius: var(--r-md); background: var(--well); border: 1px solid var(--line); font-size: var(--fs-3); }
 .mc-pending > span { margin-right: auto; font-weight: 600; }
-.mc-problems { padding: 10px 12px; border-radius: var(--r-md); border: 1px solid var(--line-2); background: var(--well); font-size: var(--fs-3); }
-.mc-problems > b { display: block; margin-bottom: 4px; font-weight: 650; }
-.mc-problems ul { display: grid; gap: 3px; margin: 0; padding-left: 18px; color: var(--bad-ink); }
-.mc-problems li.warn { color: var(--warn-ink); }
-.mc-problems .link { color: inherit; text-align: left; }
 
 /* The window picture: the dry run's points (numbered by step), areas dashed, what Try found outlined. */
-.mc-pic { display: grid; gap: 8px; padding: 10px; border-radius: var(--r-lg); border: 1px solid var(--line-2); background: var(--well); }
 .mc-pic-head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .mc-pic-head > b { flex: 1; font-size: var(--fs-3); font-weight: 650; }
 .mc-pic-head .select.sm { min-width: 0; max-width: 150px; height: 30px; font-size: var(--fs-3); }
@@ -5567,8 +5558,7 @@ button.mc-step-head:focus-visible { outline: 2px solid var(--focus); outline-off
 .mc-icon.on { color: var(--ok); }
 .mc-item > .btn.sm { flex: none; height: 34px; padding: 0 12px; }
 .mc-item > .icon-btn { flex: none; width: 34px; height: 34px; }
-.mc-fix .i { color: var(--bad-ink); }
-@media (max-width: 760px) { .mc-item > .mc-panel span, .mc-item > .mc-fix span { display: none; } }
+@media (max-width: 760px) { .mc-item > .mc-panel span { display: none; } }
 /* No macros yet: the three ways to start, as large tiles. */
 .mc-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; width: min(640px, 100%); margin: 6px auto 12px; }
 .mc-tile { display: grid; justify-items: center; gap: 4px; padding: 18px 12px 16px; border: 1px solid var(--line-2); border-radius: var(--r-lg); background: var(--surface); color: var(--text); font: inherit; text-align: center; cursor: pointer; }

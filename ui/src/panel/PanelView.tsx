@@ -9,7 +9,7 @@ import { elapsed, type PanelData, type PanelError, type PanelMacro, type PanelNo
 
 const ERROR_FOR = 5000, RESET_FOR = 6000, AWAY_AFTER = 400, DRAG_FROM = 3;
 
-/** What panel.js holds: the app's latest "panel" event drawn, a refused change said. */
+/** What the panel page (ui-panel.js, pages/panel.tsx) holds: the app's latest "panel" event drawn, a refused change said. */
 export function PanelRoot({ on, handle }: { on: PanelOn; handle: Ref<PanelViewApi> }) {
   const [data, setData] = useState<PanelData | null>(null);
   const [error, setError] = useState<{ e: PanelError; n: number } | null>(null);

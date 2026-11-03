@@ -107,8 +107,6 @@ export const STEP_GROUPS: [string, string[]][] = [
   ['flow', ['loop', 'loopUntil', 'break', 'stop', 'recover']],
   ['other', ['setVar', 'addVar', 'rejoin', 'alert']],
 ];
-/** The kinds most macros are made of: first in the Add step menu; the others are under More steps. */
-export const COMMON_STEPS = ['key', 'click', 'wait', 'clickImage', 'waitImage', 'waitColour', 'loop', 'if'];
 /** Each kind's icon (the page's own icon set). */
 export const STEP_ICON: Record<string, string> = {
   key: 'keyboard', down: 'keyboard', up: 'keyboard', type: 'message', click: 'mouse', clickImage: 'image', move: 'mouse', camera: 'rotate', scroll: 'sort',
@@ -258,14 +256,6 @@ export function durText(t: T, seconds: number): string {
 /** A time in words, kept in milliseconds, said in seconds ("0.6 s", "2 min"). */
 export const msText = (t: T, ms: number) => ms < 60000 && ms % 1000 ? t('macro.dur.s', { n: +(ms / 1000).toFixed(2) }) : durText(t, ms / 1000);
 
-/** When it runs, in plain words: "Every 5 min", "After joining", "Ctrl+Alt+3". */
-export function triggerParts(t: T, m: Macro): string[] {
-  const tr = m.trigger || { kind: 'manual' };
-  const when = tr.kind === 'interval' ? t('macro.trig.every', { d: durText(t, tr.everySeconds || 60) })
-    : tr.kind === 'join' ? t('macro.trig.join') : tr.kind === 'rejoin' ? t('macro.trig.rejoin') : m.hotkey ? '' : t('macro.trig.manual');
-  return [when, m.hotkey ? `Ctrl+Alt+${m.hotkey}` : ''].filter(Boolean);
-}
-
 /** What a step's sentence needs of its macro: the values of its options and the labels of its areas. */
 export type Ctx = Pick<Macro, 'options' | 'areas'> & { panel?: Macro['panel'] };
 /** A counter as the panel and the editor call it: its label, else its name. */
@@ -328,17 +318,6 @@ export function stepText(t: T, s: Step, m?: Ctx, n = 0): string {
     case 'recover': return t('macro.s.recover');
     default: return t(`macro.kind.${s.kind}`);
   }
-}
-
-/** How deep each step sits in if and loop blocks (its own end at its opener's depth). */
-export function depths(steps: Step[]): number[] {
-  let d = 0;
-  return steps.map(s => {
-    if (s.kind === 'endIf' || s.kind === 'endLoop') d = Math.max(0, d - 1);
-    const mine = s.kind === 'else' ? Math.max(0, d - 1) : d;
-    if (s.kind === 'if' || s.kind === 'loop' || s.kind === 'loopUntil') d++;
-    return mine;
-  });
 }
 
 /** What stops a save (or a warning), tied to its step and field. bare: the words without "Step n:" (said on the step's
@@ -451,15 +430,6 @@ export function problems(t: T, m: Macro, macros: Macro[]): Problem[] {
 
 /** The label of the list a text step reads ("$o1"). */
 const listName = (ref: string, m?: Ctx) => m?.options?.find(o => '$' + o.name === ref)?.label || '…';
-
-/** A step's or test's picture check as the Try button sends it (macroTest's test). */
-export function testOf(s: Step): Test | null {
-  if (s.kind === 'if' || s.kind === 'loopUntil') return s.test as Test;
-  if (s.kind === 'clickImage' || s.kind === 'waitImage') return { kind: 'image', image: s.image, region: s.region, threshold: s.threshold };
-  if (s.kind === 'waitText') return { kind: 'text', text: s.text, region: s.region };
-  if (s.kind === 'waitColour') return { kind: 'colour', x: s.x, y: s.y, colour: s.colour, tolerance: s.tolerance, ...(s.region ? { region: s.region } : {}) } as Test;
-  return null;
-}
 
 /** A run still going (it holds its window's turn, or waits for one). */
 export const isLive = (r: MacroRun) => r.status === 'waiting' || r.status === 'running' || r.status === 'paused';

@@ -4,6 +4,7 @@
 // Roblox signed in but the account couldn't be looked up. app.js's dialog keeps the frame and what closing does.
 import { flushSync } from 'react-dom';
 import { Fragment, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type FormEvent, type ReactNode, type Ref } from 'react';
+import type { Command } from './bridge';
 import { Icon, useHost } from './host';
 
 const METHOD_LABEL: Record<string, string> = { authenticator: 'pw.auth', email: 'pw.email', sms: 'pw.sms' };
@@ -133,7 +134,7 @@ export function PasswordLogin({ forRealm, api, way }: {
     s.current.fillTimer = window.setTimeout(fillCode, Math.max(1, r.seconds) * 1000 + 300);
   };
 
-  const request = async (btn: HTMLElement | null, cmd: string, args: Record<string, unknown>) => {
+  const request = async (btn: HTMLElement | null, cmd: Command, args: Record<string, unknown>) => {
     if (s.current.pending) return undefined;
     try {
       return await busy(btn!, () => { s.current.pending = true; setPending(true); return ask(cmd, args); }) as Reply | undefined;
@@ -239,7 +240,7 @@ export function PasswordLogin({ forRealm, api, way }: {
     s.current.resendAt[via] = Date.now() + RESEND_WAIT;
     tick(n => n + 1);
   };
-  const solveOrFinish = async (btn: HTMLElement, cmd: string) => {
+  const solveOrFinish = async (btn: HTMLElement, cmd: Command) => {
     setErr('');
     let r: Reply | undefined;
     try { r = await request(btn, cmd, {}); } catch (ex) { return setErr((ex as Error).message); }

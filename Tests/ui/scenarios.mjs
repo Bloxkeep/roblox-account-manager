@@ -800,7 +800,7 @@ export default [
     await s.click(key('dock.servers'));
     await s.wait(600);
     await s.snap('list');
-    await s.click(key('srv.fewest'));
+    await s.click(key('srv.sort.fewest'));
     await s.snap('fewest');
     await s.click(key('srv.more'));
     await s.wait(600);

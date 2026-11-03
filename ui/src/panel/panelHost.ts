@@ -1,6 +1,6 @@
 // The macro panel's protocol with the app (PanelWindow.cs and AppController.Panels.cs): what the app sends the panel's
 // page (the "panel" event: the macro, what it does now, the theme and the language; "panelError": a change refused), and
-// what the page sends back ("ready", "size", "drag", "act"). panel.js passes them through; the parts here draw them.
+// what the page sends back ("ready", "size", "drag", "act"). The page's glue (ui-panel.js, pages/panel.tsx) passes them through; the parts here draw them.
 
 /** A setting the player may change, as the app sends it: its value, and the value in words as the app shows it. */
 export interface PanelOption {
@@ -87,7 +87,7 @@ export interface PanelOn {
   drag(): void;
 }
 
-/** What panel.js holds: show draws the app's latest "panel" event, error a refused change. */
+/** What the panel page (ui-panel.js) holds: show draws the app's latest "panel" event, error a refused change. */
 export interface PanelViewApi {
   show(data: PanelData): void;
   error(e: PanelError): void;
