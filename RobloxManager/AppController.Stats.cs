@@ -20,8 +20,9 @@ public sealed partial class AppController
     readonly Dictionary<Guid, PlaySession> _playing = new();
     /// <summary>Clients that quit while Bloxkeep was locked: how their stay ended, applied at the next unlock.</summary>
     readonly Dictionary<Guid, (string Reason, int? Code, DateTime At)> _endedWhileLocked = new();
-    /// <summary>Open stays are written this often, so a crash of Bloxkeep (or of the PC) loses minutes, not hours.</summary>
-    static readonly TimeSpan PlaySaveInterval = TimeSpan.FromMinutes(5);
+    /// <summary>Open stays are written this often, so a crash of Bloxkeep (or of the PC) loses minutes, not hours. Each
+    /// write is the whole vault (about 400 KB): 15 minutes, not 5, cuts those writes to a third (owner, 2026-11-03).</summary>
+    static readonly TimeSpan PlaySaveInterval = TimeSpan.FromMinutes(15);
     long _lastPlaySaveTick;
     /// <summary>Process checks come every few seconds; a gap this long means the PC was asleep in between.</summary>
     static readonly TimeSpan SleepGap = TimeSpan.FromSeconds(30);
