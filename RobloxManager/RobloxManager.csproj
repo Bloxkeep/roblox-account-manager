@@ -62,7 +62,7 @@
     without running any of their scripts (..\ui\.npmrc). Skipped when nothing they're built from changed since.
   -->
   <ItemGroup>
-    <UiSource Include="..\ui\src\**\*;..\ui\build.mjs;..\ui\package-lock.json;..\ui\tsconfig.json;wwwroot\shared.js" />
+    <UiSource Include="..\ui\src\**\*;..\ui\build.mjs;..\ui\package-lock.json;..\ui\tsconfig.json;wwwroot\shared.js;wwwroot\i18n.js" />
     <UiOutput Include="wwwroot\ui.js;wwwroot\ui-tray.js;wwwroot\ui-panel.js;wwwroot\ui-mini.js;wwwroot\ui-overlay.js;wwwroot\ui-dialog.js;wwwroot\ui-browser.js" />
   </ItemGroup>
   <Target Name="BuildUi" Inputs="@(UiSource)" Outputs="@(UiOutput)">

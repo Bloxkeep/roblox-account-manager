@@ -56,12 +56,24 @@ export interface PageOptions<D> {
 export function startPage<D extends { language?: string; theme?: string; customTheme?: unknown }>(o: PageOptions<D>) {
   const w = window as unknown as PageWindow;
   const { ICONS, LOGO, customVars } = w.BloxkeepShared;
-  const DICT = window.I18N as Dict;
+  // The page's bundle carries only the words its code asks for (ui/build.mjs puts them in window.I18N). A key it lacks
+  // (made some way the build can't see) brings in all of i18n.js, and the page is drawn again with them.
+  let DICT = window.I18N as Dict, whole = false, last: D | null = null;
+  function missing(key: string) {
+    if (whole) return;
+    whole = true;
+    console.error(`Bloxkeep: "${key}" is not among this page's words (ui/build.mjs); loading i18n.js`);
+    const all = document.createElement('script');
+    all.src = 'i18n.js';
+    all.onload = () => { DICT = window.I18N as Dict; if (last) show({ ...last }); };
+    document.head.append(all);
+  }
   let lang = 'en';
   // A "1" key the language lacks (Vietnamese has no plural) is its plural key in that language, never English.
   function t(key: string, vars?: Record<string, string | number>): string {
     const own = DICT[lang] || {};
-    let s = own[key] ?? (lang !== 'en' && key.endsWith('1') ? own[key.slice(0, -1)] : undefined) ?? DICT.en[key] ?? key;
+    let s = own[key] ?? (lang !== 'en' && key.endsWith('1') ? own[key.slice(0, -1)] : undefined) ?? DICT.en[key];
+    if (s === undefined) { missing(key); s = key; }
     if (vars) s = s.replace(/\{(\w+)\}/g, (m, k) => (k in vars ? String(vars[k]) : m));
     return s;
   }
@@ -101,6 +113,7 @@ export function startPage<D extends { language?: string; theme?: string; customT
   let shownTheme: string | null = null;
   function show(d: D) {
     if (!d) return;
+    last = d;
     if (d.language && DICT[d.language]) lang = d.language;
     document.documentElement.lang = lang;
     const look = JSON.stringify([d.theme, d.customTheme]);
