@@ -3274,6 +3274,13 @@
   bridge.on('macroSeen', d => uiSignal('macroSeen', d));
   // Edit on game: a dot or box dragged on the Roblox window (or Done there) goes to the macro form.
   bridge.on('onGameEdit', d => uiSignal('onGameEdit', d));
+  // The panel's "Edit macro" (or its Fix): the Macros tab with that macro's form open, at the step when there is one.
+  bridge.on('editMacro', d => {
+    const m = macros().find(x => x.id === d?.id);
+    if (!m) return;
+    setView('macros');
+    macroModal(m, false, d.step != null ? { step: d.step } : {});
+  });
 
   toastUi = window.BloxkeepUI.toasts($('#toasts'), uiHost());
   bridge.call('getState').then(first => {
