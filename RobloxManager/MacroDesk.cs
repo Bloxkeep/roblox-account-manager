@@ -10,7 +10,7 @@ namespace RobloxManager;
 /// thread's input shared, your window given back after), and input sent with SendInput as scan codes (games read
 /// those). Nothing here reads or writes Roblox's memory, hooks it, or posts messages to it.
 /// </summary>
-sealed class MacroDesk(Func<Guid, (int Pid, int Fps, bool InGame)?> client, Func<DateTime?>? personAt) : IMacroDesk
+sealed class MacroDesk(Func<Guid, (int Pid, int Fps, bool InGame)?> client, Func<DateTime?>? personAt, Func<bool>? rawWorks = null) : IMacroDesk
 {
     /// <summary>A person's input this recent holds every run back.</summary>
     public static readonly TimeSpan PersonQuiet = TimeSpan.FromSeconds(5);
@@ -196,7 +196,7 @@ sealed class MacroDesk(Func<Guid, (int Pid, int Fps, bool InGame)?> client, Func
         if (!IsWindow(hWnd) || IsHungAppWindow(hWnd))
             return null;
         uint person = AntiAfk.PersonTick();
-        var turn = new Turn(hWnd, GetForegroundWindow(), person, personAt);
+        var turn = new Turn(hWnd, GetForegroundWindow(), person, personAt, rawWorks);
         GetCursorPos(out turn.Cursor);
         bool minimized = IsIconic(hWnd), unshown = !IsWindowVisible(hWnd);
         var place = AntiAfk.Place(hWnd);
@@ -240,13 +240,14 @@ sealed class MacroDesk(Func<Guid, (int Pid, int Fps, bool InGame)?> client, Func
     /// without it, input Windows processed long after our last send.</summary>
     internal static bool PersonSince(DateTime started, Func<DateTime?>? personAt, Func<bool>? rawWorks, uint lastInputTick, uint lastSent)
     {
-        if (personAt is not null)
+        // Raw input not working (registration refused, no device seen) never names the person: Windows' last input does.
+        if (personAt is not null && (rawWorks?.Invoke() ?? true))
             return personAt() is { } at && at > started;
         return unchecked((int)(lastInputTick - lastSent)) > 150;
     }
 
     /// <summary>A window in front for a macro's input.</summary>
-    sealed class Turn(IntPtr hWnd, IntPtr previous, uint person, Func<DateTime?>? personAt) : IMacroTurn
+    sealed class Turn(IntPtr hWnd, IntPtr previous, uint person, Func<DateTime?>? personAt, Func<bool>? rawWorks) : IMacroTurn
     {
         public POINT Cursor;
         public AntiAfk.Before? Before;
@@ -260,7 +261,7 @@ sealed class MacroDesk(Func<Guid, (int Pid, int Fps, bool InGame)?> client, Func
 
         public bool StillFront() => GetForegroundWindow() == hWnd && IsWindow(hWnd);
 
-        public bool PersonInput() => PersonSince(_started, personAt, null, AntiAfk.LastInputTick(), _lastSent);
+        public bool PersonInput() => PersonSince(_started, personAt, rawWorks, AntiAfk.LastInputTick(), _lastSent);
 
         public void Send(params INPUT[] inputs)
         {

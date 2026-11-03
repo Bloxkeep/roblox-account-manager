@@ -31,7 +31,7 @@ public sealed partial class AppController
     DateTime _macroPushedAt;
     bool _macroPushWaiting;
 
-    MacroDesk MacroDeskNow => _macroDesk ??= new MacroDesk(MacroClient, () => _robloxInput?.PersonAt);
+    MacroDesk MacroDeskNow => _macroDesk ??= new MacroDesk(MacroClient, () => _robloxInput?.PersonAt, () => _robloxInput is { Working: true });
 
     MacroPlayer MacroPlayerNow
     {
