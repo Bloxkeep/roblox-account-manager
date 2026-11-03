@@ -98,7 +98,7 @@ export interface Host {
   /** Runs a macro on its accounts, or on these (the account menu's Run macro…); a toast says on how many windows. */
   runMacro(id: string, accountIds?: string[]): Promise<unknown>;
   /** A menu under a button (app.js openMenu): the same menus as the page's own, with their keys; a second click closes it. */
-  menu(button: HTMLElement, items: MenuItem[]): void;
+  menu(button: HTMLElement, items: MenuItem[], opts?: { icons?: boolean }): void;
   /** The browser's own storage for this page's small choices (app.js store; never fails: the fallback instead). */
   store: { get(key: string, fallback: string): string; set(key: string, value: string): void };
   /** Short weekday names from the browser's own calendar (0 = Sunday, like the app; app.js weekdayName). */
@@ -119,7 +119,8 @@ export interface Host {
   go(target: string): void;
   /** Runs fn with the button turned off and its spinner showing (app.js busy), its answer when done. */
   busy(button: HTMLElement, fn: () => Promise<unknown>): Promise<unknown>;
-  toast(text: string, kind?: 'info' | 'ok' | 'warn' | 'error'): void;
+  /** quietWhile: dropped while something on the page matches this selector (a dialog already showing the result). */
+  toast(text: string, kind?: 'info' | 'ok' | 'warn' | 'error', action?: { label: string; run: () => void } | null, opts?: { quietWhile?: string }): void;
   /** The app's state now, and a way to hear when a new one comes (returns how to stop listening). */
   state(): AppState;
   subscribe(listener: () => void): () => void;

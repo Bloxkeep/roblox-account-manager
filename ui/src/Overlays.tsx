@@ -82,13 +82,20 @@ export type MenuItem = '-' | { icon?: string; text: string; title?: string; hint
   /** Arrange windows' layouts as pictures (Snap.tsx) in place of a button: run gets the one picked. */
   snap?: { value: string; width: number; height: number } };
 
-/** A menu's items (app.js makes, places and closes the menu). split: the dock's presets scroll, Save and Edit stay at its foot. */
-export function MenuItems({ items, pick, split }: { items: MenuItem[]; pick: (i: number, byKeyboard: boolean, arg?: string) => void; split: boolean }) {
+/**
+ * A menu's items (app.js makes, places and closes the menu). split: the dock's presets scroll, Save and Edit stay at its
+ * foot. icons: the items' own icons are drawn (off by default); a checked item always shows its check, and a menu with
+ * checks keeps the check's room on every row so the words line up.
+ */
+export function MenuItems({ items, pick, split, icons = false }: { items: MenuItem[]; pick: (i: number, byKeyboard: boolean, arg?: string) => void; split: boolean; icons?: boolean }) {
+  const checks = items.some(it => it !== '-' && it.checked !== undefined);
+  const mark = (it: Exclude<MenuItem, '-'>) => it.checked ? <Icon name="check" />
+    : icons ? <Icon name={it.icon || ''} /> : checks ? <Icon name="" /> : null;
   const draw = (it: MenuItem, i: number) => it === '-' ? <hr key={i} />
     : it.head ? <div key={i} className="menu-head" role="presentation">{it.text}</div>
     : it.snap ? <SnapPicker key={i} {...it.snap} label={it.text} onPick={l => pick(i, false, l)} />
     : <button key={i} role="menuitem" data-mi={i} className={`${it.danger ? 'danger' : ''} ${it.checked ? 'checked' : ''}`} disabled={it.disabled}
-      onClick={e => pick(i, e.detail === 0)}><Icon name={it.checked ? 'check' : it.icon || ''} /><span title={it.title || undefined}>{it.text}</span>{it.hint ? <kbd>{it.hint}</kbd> : null}</button>;
+      onClick={e => pick(i, e.detail === 0)}>{mark(it)}<span title={it.title || undefined}>{it.text}</span>{it.hint ? <kbd>{it.hint}</kbd> : null}</button>;
   const foot = items.indexOf('-');
   if (!split || foot < 0) return <>{items.map(draw)}</>;
   return <><div className="pm-list">{items.slice(0, foot).map(draw)}</div>{items.slice(foot).map((it, k) => draw(it, foot + k))}</>;
@@ -98,8 +105,12 @@ export function MenuItems({ items, pick, split }: { items: MenuItem[]; pick: (i:
 
 export type ToastKind = 'info' | 'ok' | 'warn' | 'error';
 type Toast = { id: number; text: string; kind: ToastKind; action: { label: string; run: () => void } | null; out: boolean; again: number };
+export interface ToastOpts {
+  /** Dropped while something on the page matches this selector (a dialog already showing the result). */
+  quietWhile?: string | null;
+}
 export interface ToastsApi {
-  show(text: string, kind: ToastKind, action: Toast['action']): void;
+  show(text: string, kind: ToastKind, action: Toast['action'], opts?: ToastOpts): void;
   /** Every message goes at once (the vault locked: they may name accounts). */
   clear(): void;
 }
@@ -126,7 +137,8 @@ export function Toasts({ api }: { api: Ref<ToastsApi> }) {
     timers.current.set(id, window.setTimeout(() => dismiss(id), ms));
   };
   useImperativeHandle(api, () => ({
-    show(text, kind, action) {
+    show(text, kind, action, opts) {
+      if (opts?.quietWhile && document.querySelector(opts.quietWhile)) return;
       const life = Math.min(Math.max(kind === 'error' ? 6500 : action ? 9000 : 3800, text.length * 60), 15000);
       const same = !action && items.current.find(x => !x.out && x.text === text && x.kind === kind);
       if (same) {
@@ -142,8 +154,10 @@ export function Toasts({ api }: { api: Ref<ToastsApi> }) {
         return;
       }
       const id = ++seq.current;
-      const l = items.current;
-      set([...l.slice(Math.max(0, l.length - 2)), { id, text, kind, action, out: false, again: 0 }]);
+      // Three at most: the oldest leaves (its timer with it).
+      const l = items.current, keep = l.slice(Math.max(0, l.length - 2));
+      l.filter(x => !keep.includes(x)).forEach(x => clearTimeout(timers.current.get(x.id)));
+      set([...keep, { id, text, kind, action, out: false, again: 0 }]);
       arm(id, life);
     },
     clear() {

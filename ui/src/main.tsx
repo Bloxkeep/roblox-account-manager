@@ -78,8 +78,8 @@ const BloxkeepUI = {
   saveServer: (game: string, hasLink: boolean) => <SaveServerBody game={game} hasLink={hasLink} />,
   whatsNewTitle: (sub: string) => <WhatsNewTitle sub={sub} />,
   /** A menu's items into the menu app.js made; pick(i, byKeyboard) when one is chosen. */
-  menu(el: HTMLElement, host: Host, items: MenuItem[], pick: (i: number, byKeyboard: boolean, arg?: string) => void, split: boolean) {
-    return mount(el, host, <MenuItems items={items} pick={pick} split={split} />, false);
+  menu(el: HTMLElement, host: Host, items: MenuItem[], pick: (i: number, byKeyboard: boolean, arg?: string) => void, split: boolean, icons = false) {
+    return mount(el, host, <MenuItems items={items} pick={pick} split={split} icons={icons} />, false);
   },
   /** The messages in the corner into #toasts (once, for the page's life). */
   toasts(el: HTMLElement, host: Host) {

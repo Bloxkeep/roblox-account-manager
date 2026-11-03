@@ -160,12 +160,17 @@
   const fmtMb = mb => mb >= 1024 ? `${intl('n', { maximumFractionDigits: 1 }).format(mb / 1024)} GB` : `${Math.round(mb)} MB`;
 
   /* ───────────────────────── toasts ───────────────────────── */
-  /** A message in the corner; action { label, run } adds a button and keeps it longer. Drawn by ui/src/Overlays.tsx Toasts. */
+  /**
+   * A message in the corner; action { label, run } adds a button and keeps it longer. Drawn by ui/src/Overlays.tsx
+   * Toasts (three at most: the oldest leaves). quietWhile: a selector; while something on the page matches it (an open
+   * dialog already saying the same, e.g. '.modal.auth .note.ok'), the message is dropped.
+   */
   let toastUi = null;
-  function toast(text, kind = 'info', action = null) {
+  function toast(text, kind = 'info', action = null, { quietWhile = null } = {}) {
     // Not over the lock screen that came up by itself: an answer still on its way could name an account.
     if (!text || S.app?.screenLock) return;
-    toastUi?.api.show(text, kind, action);
+    if (quietWhile && document.querySelector(quietWhile)) return;
+    toastUi?.api.show(text, kind, action, { quietWhile });
   }
   /** While a dialog or menu is up, toasts sit behind it (still readable through the backdrop) rather than over its edge. */
   function syncToastLayer() {
@@ -348,8 +353,10 @@
    * Items: { icon, text, title, hint, danger, checked, disabled, run } or '-' for a line; text as it reads (not HTML).
    * split: items before the first line scroll on their own (the dock's presets). above: the menu's bottom when it
    * doesn't fit under y, so it opens upwards, not over its button. button: a second click on it closes the menu.
+   * right: the opener's right edge; the menu lines up with it instead of x only when it would run off the window.
+   * icons: draw the items' icons (off by default: a menu marks only the current choice, with a check).
    */
-  function openMenu(items, x, y, { cls = '', split = false, above = null, button = null } = {}) {
+  function openMenu(items, x, y, { cls = '', split = false, above = null, button = null, right = null, icons = false } = {}) {
     closeMenu();
     menuButton = button;
     menuOpener = document.activeElement !== document.body ? document.activeElement : null;
@@ -362,11 +369,13 @@
     menuUnmount = window.BloxkeepUI.menu(el, uiHost(), items, (i, kb, arg) => {
       closeMenu(kb); // picked with the keyboard: the focus goes back to the button first
       items[i].run(arg);
-    }, split);
+    }, split, icons);
     menuEl = el;
     syncToastLayer();
     const r = el.getBoundingClientRect();
-    let left = Math.max(8, Math.min(x, innerWidth - r.width - 8));
+    // From the opener's left edge; lined up with its right edge only when it would run past the window.
+    let left = right !== null && x + r.width > innerWidth - 8 ? right - r.width : x;
+    left = Math.max(8, Math.min(left, innerWidth - r.width - 8));
     // Upwards only when the whole menu then fits in the window (a button scrolled out of view would put it partly off).
     const up = above !== null && y + r.height > innerHeight - 8 && above - r.height >= 8 && above <= innerHeight - 8;
     const top = up ? above - r.height : Math.max(8, Math.min(y, innerHeight - r.height - 8));
@@ -378,9 +387,14 @@
     el.style.top = `${top}px`;
     if (byKeyboard) el.querySelector('button:not(:disabled)')?.focus();
   }
+  /**
+   * A menu under its button, from the button's left edge. A second click on the button closes it (its press closed the
+   * menu: this click isn't a new ask). width: no longer used (the menu measures itself and flips only when it must).
+   */
   const menuAt = (btn, items, width, opts) => {
+    if (closedByButton === btn) { closedByButton = null; return; }
     const r = btn.getBoundingClientRect();
-    openMenu(items, width ? r.right - width : r.left, r.bottom + 6, { above: r.top - 6, button: btn, ...opts });
+    openMenu(items, r.left, r.bottom + 6, { above: r.top - 6, button: btn, right: r.right, ...opts });
   };
   document.addEventListener('mousedown', e => {
     closedByButton = null;
@@ -1028,10 +1042,9 @@
     presetQuery: () => PV.query, setPresetQuery: q => { PV.query = q; },
     scheduleText, nextRunText, presetOptionsText, runPreset, deletePreset, editPreset: presetModal,
     editMacro: macroModal, deleteMacro, runMacro,
-    // A second click on the button that opened it closes it (its press closed the menu: this click isn't a new ask).
-    menu(btn, items) {
-      if (closedByButton === btn) { closedByButton = null; return; }
-      menuAt(btn, items);
+    // A second click on the button that opened it closes it (menuAt).
+    menu(btn, items, opts) {
+      menuAt(btn, items, 0, opts);
     },
     weekdayName, fmtNum, looksLikeTarget, store, copyField: copy,
     gameListsCached: () => P.lists,
