@@ -129,15 +129,7 @@ public sealed partial class AppController : IDisposable
     DateTime _nextPresence, _lastFullPresence, _lastMemoryWarning, _installsReadAt, _sweepBackgroundUntil, _resumedAt, _lastSessionStart, _lastTick;
     string? _lastMetrics, _lastState, _pageView;
     readonly RobloxUsage _robloxUsage = new();
-    InstallsInfo? _installs;
-    /// <summary>The launcher that can update the client the launch option starts (<see cref="RobloxInstalls.UpdaterFor"/>).</summary>
-    string? _updaterExe;
     bool _robloxUpdating;
-    DateTime? _saveDue;
-    bool _saveFailed;
-    /// <summary>Saves in a row that failed: the next try waits longer (see Persist).</summary>
-    int _saveFailures;
-    static readonly TimeSpan MaxSaveRetry = TimeSpan.FromMinutes(5);
     (bool Protocol, bool TrayAutostart)? _registry;
     DateTime _registryReadAt;
 

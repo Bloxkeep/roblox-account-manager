@@ -272,4 +272,46 @@ public sealed partial class AppController
         Safe(() => _vault?.Dispose());
         _vault = null;
     }
+
+    object? SetLanguage(string language)
+    {
+        L.Set(language);
+        PushState();
+        return null;
+    }
+
+    object? SetTheme(string theme)
+    {
+        Prefs.Theme = Themes.Normalize(theme);
+        Prefs.Save();
+        AppearanceChanged?.Invoke();
+        PushState();
+        return null;
+    }
+
+    object? ControlWindow(string action)
+    {
+        if (action is not ("close" or "minimize" or "zoom"))
+            throw new UserError(L.T("Unknown window action."));
+        WindowControl?.Invoke(action);
+        return null;
+    }
+
+    object? SetHotkeys(bool enabled)
+    {
+        Prefs.GlobalHotkeys = enabled;
+        Prefs.Save();
+        HotkeysChanged?.Invoke();
+        PushState();
+        return null;
+    }
+
+    object? SetCloseToTray(bool enabled)
+    {
+        Prefs.CloseToTray = enabled;
+        Prefs.Save();
+        AppearanceChanged?.Invoke();
+        PushState();
+        return null;
+    }
 }
