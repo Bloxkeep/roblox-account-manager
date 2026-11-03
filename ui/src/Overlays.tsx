@@ -84,11 +84,11 @@ export type MenuItem = '-' | { icon?: string; text: string; title?: string; hint
 
 /**
  * A menu's items (app.js makes, places and closes the menu). split: the dock's presets scroll, Save and Edit stay at its
- * foot. icons: the items' own icons are drawn (off by default); a checked item always shows its check, and a menu with
- * checks keeps the check's room on every row so the words line up.
+ * foot. icons: the items' own icons are drawn (off by default); a checked item always shows its check, and while one
+ * is checked every row keeps the check's room so the words line up.
  */
 export function MenuItems({ items, pick, split, icons = false }: { items: MenuItem[]; pick: (i: number, byKeyboard: boolean, arg?: string) => void; split: boolean; icons?: boolean }) {
-  const checks = items.some(it => it !== '-' && it.checked !== undefined);
+  const checks = items.some(it => it !== '-' && it.checked);
   const mark = (it: Exclude<MenuItem, '-'>) => it.checked ? <Icon name="check" />
     : icons ? <Icon name={it.icon || ''} /> : checks ? <Icon name="" /> : null;
   const draw = (it: MenuItem, i: number) => it === '-' ? <hr key={i} />
