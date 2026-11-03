@@ -39,8 +39,11 @@ static class ShutdownSuite
         // A step that fails on the way: Discord's presence gone (any helper that throws).
         Harness.Set(app, "_discordPresence", null);
 
-        // TODO(Q1): a macro holding W while quitting is released (MacroPlayer.ReleaseAll("closing") in Dispose). Enabled by
-        // the lead once Q1's ReleaseAll and its input sink are merged; until then this part of F#5 doesn't run.
+        // A macro holding W when quitting (on the made-up desktop: nothing is sent).
+        var (player, desk, accounts) = MacroSuite.Setup();
+        desk.SuspendWhen = () => desk.Log.Any(l => l.Contains("key W down"));
+        player.Queue(MacroSuite.M("""[{"kind":"down","key":"W"},{"kind":"wait","ms":20000},{"kind":"up","key":"W"}]"""), accounts);
+        Harness.Set(app, "_macroPlayer", player);
 
         var clock = Stopwatch.StartNew();
         Exception? thrown = null;
@@ -64,6 +67,9 @@ static class ShutdownSuite
         c.Check("…the last change is in the vault on disk", Alias() == "changed before quitting", Alias());
         c.Check("…the vault is closed", Harness.Get<Vault?>(app, "_vault") is null);
         c.Check("a Light AFK file that couldn't be put back is kept for the next start", RobloxFlags.Pending);
+        c.Check("a macro holding a key when quitting lets it go, its run stopped", desk.Log.Any(l => l.Contains("key W up"))
+            && player.Runs[0] is { Status: "stopped", Reason: "closing" }, string.Join(" | ", desk.Log));
+        InputTurn.Reset();
 
         var again = Stopwatch.StartNew();
         thrown = null;

@@ -226,8 +226,9 @@ public sealed partial class AppController
             Safe(() => RobloxGameSettings.Restore(final: RobloxProcesses.GetPlayerPids().Length == 0));
         Safe(StopWatchingDrags);
         Safe(GiveIconsBack);
-        // TODO(Q1, lead): once MacroPlayer.ReleaseAll lands, release a macro's held keys/buttons here, before the windows go
-        // back (B5): Safe(() => _macroPlayer?.ReleaseAll("closing"));
+        // A macro's held keys and buttons let go now, before the windows go back: its own endings never run once this
+        // thread closes, and W stayed down until the person pressed it (B5).
+        Safe(() => _macroPlayer?.ReleaseAll("closing"));
         // Quitting during a nudge or a /pc screenshot left that window see-through and click-through until Bloxkeep ran
         // again (review 2026-10-30). Not waited for: both go on on this thread, which is closing; one still running
         // stops at its next window (_disposed) and puts back only what it changed.

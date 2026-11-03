@@ -55,7 +55,7 @@ static class MacroSuite
     }
 
     /// <summary>A checked macro with an id, ready to queue.</summary>
-    static Macro M(string steps, string extra = "")
+    internal static Macro M(string steps, string extra = "")
     {
         var m = Read(steps, extra);
         MacroRules.Check(m, new List<Guid>(), []);
@@ -97,7 +97,7 @@ static class MacroSuite
 
     // ───────────────────────── a made-up desktop ─────────────────────────
 
-    sealed class FakeDesk : IMacroDesk
+    internal sealed class FakeDesk : IMacroDesk
     {
         public DateTime Clock = new(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
         public readonly DateTime Start = new(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
@@ -200,7 +200,7 @@ static class MacroSuite
         }
     }
 
-    static (MacroPlayer Player, FakeDesk Desk, Guid[] Accounts) Setup(int accounts = 1)
+    internal static (MacroPlayer Player, FakeDesk Desk, Guid[] Accounts) Setup(int accounts = 1)
     {
         var desk = new FakeDesk();
         var ids = Enumerable.Range(0, accounts).Select(_ => Guid.NewGuid()).ToArray();
