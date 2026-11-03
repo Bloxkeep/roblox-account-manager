@@ -1094,6 +1094,7 @@ public static class L
         // ── end P5 ──
 
         // ── P6 settings ──
+        ["Can't write to this folder."] = "Không ghi được vào thư mục này.",
         // ── end P6 ──
 
         // ── P7 native ──

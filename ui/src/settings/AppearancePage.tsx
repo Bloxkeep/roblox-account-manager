@@ -57,8 +57,9 @@ export function AppearancePage({ title }: { title: string }) {
           </button>;
         })}
       </div>
-      {/* Custom chosen: its two colours (shown as they are dragged, saved once they rest) and a picture behind the page. */}
-      {current === 'custom' && custom ? <div className="ct" id="s-custom">
+      {/* Under "Your own" only: Custom chosen, its two colours (shown as they are dragged, saved once they rest) and a
+          picture behind the page; then the themes kept by name. */}
+      {group === 'custom' && current === 'custom' && custom ? <div className="ct" id="s-custom">
         <Row title={t('ct.background')} desc={t('ct.backgroundDesc')}>
           <ColorInput id="s-ct-bg" value={custom.background} label={t('ct.background')} onChange={v => previewCustom({ background: v })} />
         </Row>
@@ -72,12 +73,12 @@ export function AppearancePage({ title }: { title: string }) {
         {custom.picture ? <Row title={t('ct.fade')} desc={t('ct.fadeDesc')}>
           <input type="range" id="s-ct-fade" min={0} max={90} step={5} value={custom.fade} aria-label={t('ct.fade')}
             onChange={e => previewCustom({ fade: +e.target.value })} />
-          <span className="range-v">{custom.fade}%</span>
+          <span className="range-v">{custom.fade} %</span>
         </Row> : null}
         {custom.picture ? <Row title={t('ct.blur')} desc={t('ct.blurDesc')}>
           <input type="range" id="s-ct-blur" min={0} max={30} step={1} value={custom.blur || 0} aria-label={t('ct.blur')}
             onChange={e => previewCustom({ blur: +e.target.value })} />
-          <span className="range-v">{custom.blur || 0}</span>
+          <span className="range-v">{custom.blur || 0} px</span>
         </Row> : null}
         <Row title={t('ct.save')} desc={t('ct.saveDesc')}>
           <input className="field sm ct-name" id="s-ct-name" maxLength={40} placeholder={inUse?.name || t('ct.namePh')} aria-label={t('ct.namePh')}
@@ -93,11 +94,11 @@ export function AppearancePage({ title }: { title: string }) {
             })}>{t('ct.saveBtn')}</button>
         </Row>
       </div> : null}
-      <Row title={t('ct.yours')} desc={t(saved.length ? 'ct.yoursDesc' : 'ct.yoursNone')}>
+      {group === 'custom' ? <Row title={t('ct.yours')} desc={t(saved.length ? 'ct.yoursDesc' : 'ct.yoursNone')}>
         <button className="btn sm" id="s-ct-import" onClick={e => busy(e.currentTarget, () => call('importTheme'))}>
           <Icon name="folder" />{t('ct.import')}</button>
-      </Row>
-      {saved.length ? <div className="ct-saved" id="s-saved-themes" role="list">
+      </Row> : null}
+      {group === 'custom' && saved.length ? <div className="ct-saved" id="s-saved-themes" role="list">
         {saved.map(s => {
           const look = customVars(s.look), on = s.id === inUse?.id;
           return <div className={`ct-theme${on ? ' on' : ''}`} role="listitem" key={s.id} data-id={s.id}>

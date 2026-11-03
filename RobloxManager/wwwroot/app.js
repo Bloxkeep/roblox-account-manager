@@ -1162,6 +1162,7 @@
 
   // Rows of every page whose title or description matches (all of a group or page whose heading does), under their page's
   // title; empty, the chosen page again. A part that isn't a row (the theme picker, a note) goes with the row before it.
+  // In Vietnamese a row's or group's English words match too (data-en, from ui/src/settings/index.ts).
   function searchSettings(text) {
     const q = fold(text.trim());
     const root = $('#view-settings');
@@ -1173,12 +1174,13 @@
         pageEl.hidden = pageEl.dataset.page !== setPage;
         continue;
       }
-      const pageHit = fold(pageEl.querySelector('.set-page-title').textContent).includes(q);
+      const pageTitle = pageEl.querySelector('.set-page-title');
+      const pageHit = fold(`${pageTitle.textContent} ${pageTitle.dataset.en || ''}`).includes(q);
       let pageShown = false;
       for (const grp of pageEl.querySelectorAll('.set-grp')) {
-        const grpHit = pageHit || fold(grp.querySelector('.set-grp-title')?.textContent).includes(q);
+        const grpHit = pageHit || fold(`${grp.querySelector('.set-grp-title')?.textContent} ${grp.dataset.en || ''}`).includes(q);
         // A row in a closed part (Discord's message look, the alert kinds) is found by that part's name too.
-        const rowHit = r => grpHit || fold(`${r.querySelector('.t')?.textContent} ${r.querySelector('.d')?.textContent} ${r.closest('.set-more')?.querySelector('summary')?.textContent || ''}`).includes(q);
+        const rowHit = r => grpHit || fold(`${r.querySelector('.t')?.textContent} ${r.querySelector('.d')?.textContent} ${r.dataset.en || ''} ${r.closest('.set-more')?.querySelector('summary')?.textContent || ''}`).includes(q);
         let grpShown = false, lastShown = false;
         for (const child of grp.querySelector('.set-card').children) {
           const rows = child.matches('.set-row') ? [child] : [...child.querySelectorAll('.set-row')];

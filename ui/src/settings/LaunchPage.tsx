@@ -108,10 +108,10 @@ export function LaunchPage({ title }: { title: string }) {
               {list.map(([w, h]) => <option key={`${w}x${h}`} value={`${w}x${h}`}>{`${w} × ${h}`}</option>)}
             </optgroup>)}
           </select>
-          <label>{t('snap.width')} <input type="number" className="input" id="s-winw" min="160" max="7680" step="10" value={winW}
+          <label>{t('snap.width')} <input type="number" className="field sm" id="s-winw" min="160" max="7680" step="10" value={winW}
             onChange={e => setWinW(e.target.value)} onBlur={() => saveSize()} onKeyDown={e => { if (e.key === 'Enter') saveSize(); }} /></label>
           <span aria-hidden="true">×</span>
-          <label>{t('snap.height')} <input type="number" className="input" id="s-winh" min="120" max="4320" step="10" value={winH}
+          <label>{t('snap.height')} <input type="number" className="field sm" id="s-winh" min="120" max="4320" step="10" value={winH}
             onChange={e => setWinH(e.target.value)} onBlur={() => saveSize()} onKeyDown={e => { if (e.key === 'Enter') saveSize(); }} /></label>
           <span className="muted">px</span>
           <button className="btn sm" data-act="arrange"><Icon name="screens" /><span>{t('m.arrange')}</span></button>

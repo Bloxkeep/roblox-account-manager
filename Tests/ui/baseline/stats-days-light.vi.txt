@@ -1,0 +1,648 @@
+== 7 days
+html [data-theme="light" lang="vi"]
+#app
+  div.shell
+    aside.side
+      div.brand
+        img [alt="" src="logo.svg"]
+        div.brand-text
+          div.brand-name "Bloxkeep"
+          div.brand-sub "Quản lý tài khoản Roblox"
+      div.side-nav
+        button.nav [title="Tài khoản"]
+          svg.i #v823bm
+          span "Tài khoản"
+          em [id="nav-count"] "7"
+        button.nav [title="Preset"]
+          svg.i #1pvni8o
+          span "Preset"
+        button.nav [title="Macro (Beta)"]
+          svg.i #kx2qfl
+          span "Macro"
+          em.nav-beta "Beta"
+        button.nav [title="Theo dõi game"]
+          svg.i #1e3syqr
+          span "Theo dõi game"
+        button.nav.on [title="Thống kê"]
+          svg.i #ktpp14
+          span "Thống kê"
+        button.nav [title="Cài đặt"]
+          svg.i #tbghvg
+          span "Cài đặt"
+      div.side-bottom
+        div [id="side-warn"]
+        div.side-card [id="sys-card"]
+          h4 "Roblox trên máy này"
+          div.sys-row
+            span [title="Tài khoản chính · PID 1111\nFarm 1 · PID 2222"]
+              b [id="sys-count"] "2"
+              span [id="sys-count-label"] "cửa sổ"
+            span [id="sys-ram"] "1,7 GB"
+          div.meter [id="sys-meter"]
+            i.roblox [style="transform:scaleX(0.054)"]
+            i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
+          div.sys-foot [id="sys-foot"] "RAM đã dùng 63% · trống 12 GB"
+          div.sys-foot [id="sys-usage" title="Chỉ tính cửa sổ Roblox, không tính cả máy"] "CPU 12% · GPU 34%"
+          div.sys-ver [id="sys-ver"]
+            span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · mới nhất"
+              i.dot.ok
+          button.btn.sm.sys-mini.w [id="sys-mini" aria-pressed="false"]
+            svg.i #1y8kmj1
+            span "Cửa sổ nhỏ"
+          button.btn.sm.sys-close.w [id="sys-close"]
+            svg.i #16z0s1r
+            span "Đóng tất cả"
+        div [id="multi-card"]
+          div.multi.ok
+            button.multi-open [title="Multi-Roblox: Đang bật, mở được nhiều cửa sổ"]
+              span.led
+              div
+                b "Multi-Roblox"
+                small "Đang bật, mở được nhiều cửa sổ"
+            label.switch [title="Tắt Multi-Roblox"]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
+              span
+        div.side-foot
+          div [id="update-slot"]
+          div.side-lock
+            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, Preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
+              svg.i #21scx0
+              span "Khóa app"
+            button.btn.ghost.side-sq.vault-btn [title="Đổi vault (Vault 1)" aria-label="Đổi vault (Vault 1)"]
+              span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(22, 163, 74);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
+    main.main
+      section.seen.view [id="view-accounts"]
+      section.seen.view [id="view-stats"]
+        header.top
+          div.top-title
+            h1 "Thống kê"
+            p [id="stats-sub"] "Chỉ tính các game mở bằng Bloxkeep."
+          div.top-tools
+            div.seg [id="stats-tabs" role="tablist" aria-label="Thống kê"]
+              button.on [role="tab" type="button" aria-selected="true"] "Thống kê"
+              button [role="tab" type="button" aria-selected="false"] "Hoạt động"
+            div.chips [id="stats-period" role="group" aria-label="Thống kê"]
+              button.chip [aria-pressed="false"] "Hôm nay"
+              button.chip.on [aria-pressed="true" FOCUSED] "7 ngày"
+              button.chip [aria-pressed="false"] "30 ngày"
+        div.scroll
+          div.stats
+            div.stats-in [id="stats-body"]
+              div.stat-tiles
+                div.stat
+                  small "Giờ chơi"
+                  b [title="16 giờ 24 phút"] "16 giờ 24 phút"
+                  span.good.stat-delta "↑ 20 %"
+                    span "so với 7 ngày trước"
+                div.stat
+                  small "Tài khoản đã chơi"
+                  b [title="3/7"] "3"
+                    span.of "/7"
+                div.stat
+                  small "Lần văng"
+                  b [title="3"] "3"
+                  span.good.stat-delta "↓ 40 %"
+                    span "so với 7 ngày trước"
+                div.stat
+                  small "Lượt dài nhất"
+                  b [title="4 giờ 55 phút"] "4 giờ 55 phút"
+                  span.stat-sub "Tài khoản chính · Blox Fruits"
+              div.stat-card [id="stats-days"]
+                h3 "Giờ chơi mỗi ngày"
+                  span.days-avg "Trung bình 2 giờ 20 phút mỗi ngày"
+                div.days
+                  div.day.lab
+                    span.day-bar
+                      b "1h21"
+                      i [style="height:calc(34.7% - 6.246px)"]
+                    small "Thứ 7"
+                  div.day.lab
+                    span.day-bar
+                      b "0h04"
+                      i [style="height:calc(1.9% - 0.342px)"]
+                    small "CN"
+                  div.day.lab
+                    span.day-bar
+                      b "3h08"
+                      i [style="height:calc(81.1% - 14.598px)"]
+                    small "Thứ 2"
+                  div.day.lab
+                    span.day-bar
+                      b "3h52"
+                      i [style="height:calc(100% - 18px)"]
+                    small "Thứ 3"
+                  div.day.lab
+                    span.day-bar
+                      b "2h36"
+                      i [style="height:calc(67.2% - 12.096px)"]
+                    small "Thứ 4"
+                  div.day.lab
+                    span.day-bar
+                      b "2h20"
+                      i [style="height:calc(60.2% - 10.836px)"]
+                    small "Thứ 5"
+                  div.day.lab.today
+                    span.day-bar
+                      b "3h03"
+                      i [style="height:calc(79.1% - 14.238px)"]
+                    small "Hôm nay"
+              div.stat-card [id="stats-drops"]
+                h3 "Vì sao văng"
+                  span.sd-lost [title="Tính từ lúc văng đến lượt chơi kế tiếp, tối đa 12 giờ mỗi lần."] "≈ mất 3 giờ 6 phút"
+                div.sd-row
+                  div.sd-text
+                    b "Bị kick vì AFK"
+                    small [title="Tài khoản chính, Farm 1"] "2 lần · Tài khoản chính, Farm 1"
+                  span.sd-time [title="Tính từ lúc văng đến lượt chơi kế tiếp, tối đa 12 giờ mỗi lần."] "≈ mất 2 giờ 17 phút"
+                  button.btn.sm "Bật Chống AFK"
+                div.sd-row
+                  div.sd-text
+                    b "Rớt mạng"
+                    small [title="Farm 1"] "1 lần · Farm 1"
+                  span.sd-time [title="Tính từ lúc văng đến lượt chơi kế tiếp, tối đa 12 giờ mỗi lần."] "≈ mất 49 phút"
+              div.stat-cols
+                div.stat-card
+                  h3 "Theo tài khoản"
+                  table.by-account.stat-table
+                    colgroup
+                      col.c-acc
+                      col.c-time
+                      col.c-game
+                      col.c-n
+                    thead
+                      tr
+                        th "Tài khoản"
+                        th "Giờ chơi"
+                        th "Chơi nhiều nhất"
+                        th.n [title="Lần văng"] "Văng"
+                    tbody
+                      tr.opens [title="Xem đã chơi gì" aria-expanded="false"]
+                        td
+                          div.sacc
+                            svg.i.sacc-open #1g7f83q
+                            span.avatar.sm
+                              img [alt="" style="--h:204" src=#1qk25wb]
+                            b [title="Tài khoản chính"] "Tài khoản chính"
+                        td.st-time "7 giờ 22 phút"
+                        td.st-game
+                          span [title="Blox Fruits"]
+                            span.gph
+                              svg.i #sy1lqp
+                            em "Blox Fruits"
+                        td.n "1"
+                      tr.opens [title="Xem đã chơi gì" aria-expanded="false"]
+                        td
+                          div.sacc
+                            svg.i.sacc-open #1g7f83q
+                            span.avatar.sm
+                              img [alt="" style="--h:243" src=#uinvo6]
+                            b [title="Farm 1"] "Farm 1"
+                        td.st-time "5 giờ 24 phút"
+                        td.st-game
+                          span [title="Blox Fruits"]
+                            span.gph
+                              svg.i #sy1lqp
+                            em "Blox Fruits"
+                        td.n "2"
+                      tr.opens [title="Xem đã chơi gì" aria-expanded="false"]
+                        td
+                          div.sacc
+                            svg.i.sacc-open #1g7f83q
+                            span.avatar.sm
+                              img [alt="" style="--h:297" src=#1u67et1]
+                            b [title="Night Owl"] "Night Owl"
+                        td.st-time "3 giờ 16 phút"
+                        td.st-game
+                          span [title="Brookhaven 🏡RP"]
+                            span.gph
+                              svg.i #sy1lqp
+                            em "Brookhaven 🏡RP"
+                        td.n "0"
+                      tr.opens [title="Xem đã chơi gì" aria-expanded="false"]
+                        td
+                          div.sacc
+                            svg.i.sacc-open #1g7f83q
+                            span.avatar.gone.sm [aria-hidden="true"]
+                              svg.i #45lggc
+                            b [title="Tài khoản đã xóa"] "Tài khoản đã xóa"
+                        td.st-time "19 phút"
+                        td.st-game
+                          span [title="[🎃] Adopt Me!"]
+                            span.gph
+                              svg.i #sy1lqp
+                            em "[🎃] Adopt Me!"
+                        td.n "0"
+                div.stat-side
+                  div.stat-card
+                    h3 "Game chơi nhiều"
+                    div.sgames
+                      div.sgame
+                        em "1"
+                        span.gph
+                          svg.i #sy1lqp
+                        div.gtxt
+                          b [title="Blox Fruits"] "Blox Fruits"
+                          small "13 lượt · 55 %"
+                        span.sg-time "9 giờ 1 phút"
+                      div.sgame
+                        em "2"
+                        span.gph
+                          svg.i #sy1lqp
+                        div.gtxt
+                          b [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
+                          small "7 lượt · 30 %"
+                        span.sg-time "4 giờ 55 phút"
+                      div.sgame
+                        em "3"
+                        span.gph
+                          svg.i #sy1lqp
+                        div.gtxt
+                          b [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
+                          small "4 lượt · 15 %"
+                        span.sg-time "2 giờ 27 phút"
+                  div.stat-card
+                    h3 "Theo Preset"
+                    div.sgames
+                      div.sgame
+                        span.gph
+                          svg.i #sy1lqp
+                        div.gtxt
+                          b [title="Farm Blox Fruits"] "Farm Blox Fruits"
+                          small "3 tài khoản · văng 1 lần · 62 %"
+                        span.sg-time "10 giờ 10 phút"
+                      div.sgame
+                        span.gph
+                          svg.i #sy1lqp
+                        div.gtxt
+                          b [title="Adopt Me trade"] "Adopt Me trade"
+                          small "1 tài khoản · 25 %"
+                        span.sg-time "4 giờ 6 phút"
+                      div.sgame
+                        span.gph
+                          svg.i #45lggc
+                        div.gtxt
+                          b [title="Mở thủ công, hoặc chơi trước bản Bloxkeep 1.0.5 (khi chưa ghi Preset)."] "Không qua Preset"
+                          small "2 tài khoản · 13 %"
+                        span.sg-time "2 giờ 7 phút"
+#layer
+#toasts
+-- commands
+  activity {"account":null,"group":null,"limit":100}
+  getState {}
+  monitorArea {"hidden":true}
+  pageShown {}
+  playStats {"days":7}
+  resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
+== end
+html [data-theme="light" lang="vi"]
+#app
+  div.shell
+    aside.side
+      div.brand
+        img [alt="" src="logo.svg"]
+        div.brand-text
+          div.brand-name "Bloxkeep"
+          div.brand-sub "Quản lý tài khoản Roblox"
+      div.side-nav
+        button.nav [title="Tài khoản"]
+          svg.i #v823bm
+          span "Tài khoản"
+          em [id="nav-count"] "7"
+        button.nav [title="Preset"]
+          svg.i #1pvni8o
+          span "Preset"
+        button.nav [title="Macro (Beta)"]
+          svg.i #kx2qfl
+          span "Macro"
+          em.nav-beta "Beta"
+        button.nav [title="Theo dõi game"]
+          svg.i #1e3syqr
+          span "Theo dõi game"
+        button.nav.on [title="Thống kê"]
+          svg.i #ktpp14
+          span "Thống kê"
+        button.nav [title="Cài đặt"]
+          svg.i #tbghvg
+          span "Cài đặt"
+      div.side-bottom
+        div [id="side-warn"]
+        div.side-card [id="sys-card"]
+          h4 "Roblox trên máy này"
+          div.sys-row
+            span [title="Tài khoản chính · PID 1111\nFarm 1 · PID 2222"]
+              b [id="sys-count"] "2"
+              span [id="sys-count-label"] "cửa sổ"
+            span [id="sys-ram"] "1,7 GB"
+          div.meter [id="sys-meter"]
+            i.roblox [style="transform:scaleX(0.054)"]
+            i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
+          div.sys-foot [id="sys-foot"] "RAM đã dùng 63% · trống 12 GB"
+          div.sys-foot [id="sys-usage" title="Chỉ tính cửa sổ Roblox, không tính cả máy"] "CPU 12% · GPU 34%"
+          div.sys-ver [id="sys-ver"]
+            span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · mới nhất"
+              i.dot.ok
+          button.btn.sm.sys-mini.w [id="sys-mini" aria-pressed="false"]
+            svg.i #1y8kmj1
+            span "Cửa sổ nhỏ"
+          button.btn.sm.sys-close.w [id="sys-close"]
+            svg.i #16z0s1r
+            span "Đóng tất cả"
+        div [id="multi-card"]
+          div.multi.ok
+            button.multi-open [title="Multi-Roblox: Đang bật, mở được nhiều cửa sổ"]
+              span.led
+              div
+                b "Multi-Roblox"
+                small "Đang bật, mở được nhiều cửa sổ"
+            label.switch [title="Tắt Multi-Roblox"]
+              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
+              span
+        div.side-foot
+          div [id="update-slot"]
+          div.side-lock
+            button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, Preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
+              svg.i #21scx0
+              span "Khóa app"
+            button.btn.ghost.side-sq.vault-btn [title="Đổi vault (Vault 1)" aria-label="Đổi vault (Vault 1)"]
+              span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(22, 163, 74);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
+    main.main
+      section.seen.view [id="view-accounts"]
+      section.seen.view [id="view-stats"]
+        header.top
+          div.top-title
+            h1 "Thống kê"
+            p [id="stats-sub"] "Chỉ tính các game mở bằng Bloxkeep."
+          div.top-tools
+            div.seg [id="stats-tabs" role="tablist" aria-label="Thống kê"]
+              button.on [role="tab" type="button" aria-selected="true"] "Thống kê"
+              button [role="tab" type="button" aria-selected="false"] "Hoạt động"
+            div.chips [id="stats-period" role="group" aria-label="Thống kê"]
+              button.chip [aria-pressed="false"] "Hôm nay"
+              button.chip [aria-pressed="false"] "7 ngày"
+              button.chip.on [aria-pressed="true" FOCUSED] "30 ngày"
+        div.scroll
+          div.stats
+            div.stats-in [id="stats-body"]
+              div.stat-tiles
+                div.stat
+                  small "Giờ chơi"
+                  b [title="62 giờ 53 phút"] "62 giờ 53 phút"
+                  span.good.stat-delta "↑ 20 %"
+                    span "so với 30 ngày trước"
+                div.stat
+                  small "Tài khoản đã chơi"
+                  b [title="3/7"] "3"
+                    span.of "/7"
+                div.stat
+                  small "Lần văng"
+                  b [title="11"] "11"
+                  span.good.stat-delta "↓ 15 %"
+                    span "so với 30 ngày trước"
+                div.stat
+                  small "Lượt dài nhất"
+                  b [title="18 giờ 51 phút"] "18 giờ 51 phút"
+                  span.stat-sub "Tài khoản chính · Blox Fruits"
+              div.stat-card [id="stats-days"]
+                h3 "Giờ chơi mỗi ngày"
+                  span.days-avg "Trung bình 2 giờ 5 phút mỗi ngày"
+                div.days.many
+                  div.day
+                    span.day-bar
+                      i [style="height:calc(95.4% - 17.172px)"]
+                  div.day
+                    span.day-bar
+                      i [style="height:calc(64.4% - 11.592px)"]
+                  div.day
+                    span.day-bar
+                      i [style="height:calc(57.7% - 10.386px)"]
+                  div.day
+                    span.day-bar
+                      i [style="height:calc(75.6% - 13.608px)"]
+                  div.day.lab
+                    span.day-bar
+                      i [style="height:calc(44.5% - 8.01px)"]
+                    small "21/9"
+                  div.day
+                    span.day-bar
+                      i [style="height:calc(37.9% - 6.822px)"]
+                  div.day
+                    span.day-bar
+                      i [style="height:calc(55.8% - 10.044px)"]
+                  div.day
+                    span.day-bar
+                      i [style="height:calc(24.7% - 4.446px)"]
+                  div.day
+                    span.day-bar
+                      i [style="height:calc(18.1% - 3.258px)"]
+                  div.day.lab
+                    span.day-bar
+                      i [style="height:calc(36% - 6.48px)"]
+                    small "26/9"
+                  div.day
+                    span.day-bar
+                      i [style="height:calc(4.9% - 0.882px)"]
+                  div.day
+                    span.day-bar
+                      i [style="height:calc(79.9% - 14.382px)"]
+                  div.day
+                    span.day-bar
+                      i [style="height:calc(97.7% - 17.586px)"]
+                  div.day
+                    span.day-bar
+                      i [style="height:calc(66.6% - 11.988px)"]
+                  div.day.lab
+                    span.day-bar
+                      i [style="height:calc(60% - 10.8px)"]
+                    small "1/10"
+                  div.day
+                    span.day-bar
+                      i [style="height:calc(77.9% - 14.022px)"]
+                  div.day
+                    span.day-bar
+                      i [style="height:calc(46.8% - 8.424px)"]
+                  div.day
+                    span.day-bar
+                      i [style="height:calc(40.2% - 7.236px)"]
+                  div.day
+                    span.day-bar
+                      i [style="height:calc(58.1% - 10.458px)"]
+                  div.day.lab
+                    span.day-bar
+                      i [style="height:calc(27% - 4.86px)"]
+                    small "6/10"
+                  div.day
+                    span.day-bar
+                      i [style="height:calc(20.4% - 3.672px)"]
+                  div.day
+                    span.day-bar
+                      i [style="height:calc(38.3% - 6.894px)"]
+                  div.day
+                    span.day-bar
+                      i [style="height:calc(7.2% - 1.296px)"]
+                  div.day
+                    span.day-bar
+                      i [style="height:calc(0.6% - 0.108px)"]
+                  div.day.lab.peak
+                    span.day-bar
+                      b "4h05"
+                      i [style="height:calc(100% - 18px)"]
+                    small "11/10"
+                  div.day
+                    span.day-bar
+                      i [style="height:calc(68.9% - 12.402px)"]
+                  div.day
+                    span.day-bar
+                      i [style="height:calc(62.3% - 11.214px)"]
+                  div.day
+                    span.day-bar
+                      i [style="height:calc(80.2% - 14.436px)"]
+                  div.day
+                    span.day-bar
+                      i [style="height:calc(49.1% - 8.838px)"]
+                  div.day.lab.today
+                    span.day-bar
+                      b "1h44"
+                      i [style="height:calc(42.5% - 7.65px)"]
+                    small "Hôm nay"
+              div.stat-card [id="stats-drops"]
+                h3 "Vì sao văng"
+                  span.sd-lost [title="Tính từ lúc văng đến lượt chơi kế tiếp, tối đa 12 giờ mỗi lần."] "≈ mất 11 giờ 56 phút"
+                div.sd-row
+                  div.sd-text
+                    b "Bị kick vì AFK"
+                    small [title="Tài khoản chính, Farm 1"] "2 lần · Tài khoản chính, Farm 1"
+                  span.sd-time [title="Tính từ lúc văng đến lượt chơi kế tiếp, tối đa 12 giờ mỗi lần."] "≈ mất 8 giờ 48 phút"
+                  button.btn.sm "Bật Chống AFK"
+                div.sd-row
+                  div.sd-text
+                    b "Rớt mạng"
+                    small [title="Farm 1"] "1 lần · Farm 1"
+                  span.sd-time [title="Tính từ lúc văng đến lượt chơi kế tiếp, tối đa 12 giờ mỗi lần."] "≈ mất 3 giờ 8 phút"
+              div.stat-cols
+                div.stat-card
+                  h3 "Theo tài khoản"
+                  table.by-account.stat-table
+                    colgroup
+                      col.c-acc
+                      col.c-time
+                      col.c-game
+                      col.c-n
+                    thead
+                      tr
+                        th "Tài khoản"
+                        th "Giờ chơi"
+                        th "Chơi nhiều nhất"
+                        th.n [title="Lần văng"] "Văng"
+                    tbody
+                      tr.opens [title="Xem đã chơi gì" aria-expanded="false"]
+                        td
+                          div.sacc
+                            svg.i.sacc-open #1g7f83q
+                            span.avatar.sm
+                              img [alt="" style="--h:204" src=#1qk25wb]
+                            b [title="Tài khoản chính"] "Tài khoản chính"
+                        td.st-time "28 giờ 17 phút"
+                        td.st-game
+                          span [title="Blox Fruits"]
+                            span.gph
+                              svg.i #sy1lqp
+                            em "Blox Fruits"
+                        td.n "1"
+                      tr.opens [title="Xem đã chơi gì" aria-expanded="false"]
+                        td
+                          div.sacc
+                            svg.i.sacc-open #1g7f83q
+                            span.avatar.sm
+                              img [alt="" style="--h:243" src=#uinvo6]
+                            b [title="Farm 1"] "Farm 1"
+                        td.st-time "20 giờ 45 phút"
+                        td.st-game
+                          span [title="Blox Fruits"]
+                            span.gph
+                              svg.i #sy1lqp
+                            em "Blox Fruits"
+                        td.n "2"
+                      tr.opens [title="Xem đã chơi gì" aria-expanded="false"]
+                        td
+                          div.sacc
+                            svg.i.sacc-open #1g7f83q
+                            span.avatar.sm
+                              img [alt="" style="--h:297" src=#1u67et1]
+                            b [title="Night Owl"] "Night Owl"
+                        td.st-time "12 giờ 34 phút"
+                        td.st-game
+                          span [title="Brookhaven 🏡RP"]
+                            span.gph
+                              svg.i #sy1lqp
+                            em "Brookhaven 🏡RP"
+                        td.n "0"
+                      tr.opens [title="Xem đã chơi gì" aria-expanded="false"]
+                        td
+                          div.sacc
+                            svg.i.sacc-open #1g7f83q
+                            span.avatar.gone.sm [aria-hidden="true"]
+                              svg.i #45lggc
+                            b [title="Tài khoản đã xóa"] "Tài khoản đã xóa"
+                        td.st-time "1 giờ 15 phút"
+                        td.st-game
+                          span [title="[🎃] Adopt Me!"]
+                            span.gph
+                              svg.i #sy1lqp
+                            em "[🎃] Adopt Me!"
+                        td.n "0"
+                div.stat-side
+                  div.stat-card
+                    h3 "Game chơi nhiều"
+                    div.sgames
+                      div.sgame
+                        em "1"
+                        span.gph
+                          svg.i #sy1lqp
+                        div.gtxt
+                          b [title="Blox Fruits"] "Blox Fruits"
+                          small "47 lượt · 55 %"
+                        span.sg-time "34 giờ 35 phút"
+                      div.sgame
+                        em "2"
+                        span.gph
+                          svg.i #sy1lqp
+                        div.gtxt
+                          b [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
+                          small "26 lượt · 30 %"
+                        span.sg-time "18 giờ 51 phút"
+                      div.sgame
+                        em "3"
+                        span.gph
+                          svg.i #sy1lqp
+                        div.gtxt
+                          b [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
+                          small "13 lượt · 15 %"
+                        span.sg-time "9 giờ 25 phút"
+                  div.stat-card
+                    h3 "Theo Preset"
+                    div.sgames
+                      div.sgame
+                        span.gph
+                          svg.i #sy1lqp
+                        div.gtxt
+                          b [title="Farm Blox Fruits"] "Farm Blox Fruits"
+                          small "3 tài khoản · văng 1 lần · 62 %"
+                        span.sg-time "38 giờ 59 phút"
+                      div.sgame
+                        span.gph
+                          svg.i #sy1lqp
+                        div.gtxt
+                          b [title="Adopt Me trade"] "Adopt Me trade"
+                          small "1 tài khoản · 25 %"
+                        span.sg-time "15 giờ 43 phút"
+                      div.sgame
+                        span.gph
+                          svg.i #45lggc
+                        div.gtxt
+                          b [title="Mở thủ công, hoặc chơi trước bản Bloxkeep 1.0.5 (khi chưa ghi Preset)."] "Không qua Preset"
+                          small "2 tài khoản · 13 %"
+                        span.sg-time "8 giờ 10 phút"
+#layer
+#toasts
+-- commands
+  playStats {"days":30}

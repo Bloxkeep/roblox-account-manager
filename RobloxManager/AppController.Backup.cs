@@ -238,7 +238,15 @@ public sealed partial class AppController
     /// <summary>The reason is shown under Settings › Backup and the copy tried again later.</summary>
     void BackupFailed(Exception ex)
     {
-        _backupError = ErrorText(ex); // the details go to the log
+        // A folder Windows won't let Bloxkeep write to (no permission, a drive gone, a file held open) is said as that,
+        // not as a file error; the details go to the log either way.
+        if (ex is UnauthorizedAccessException or IOException)
+        {
+            Log.Write(ex);
+            _backupError = L.T("Can't write to this folder.");
+        }
+        else
+            _backupError = ErrorText(ex);
         ScheduleBackup(BackupInterval);
     }
 

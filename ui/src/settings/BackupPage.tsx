@@ -14,10 +14,16 @@ export function BackupPage({ title }: { title: string }) {
   return <Page id="backup" title={title}>
     <Group id="backup" title={t('bk.title')}>
       <Row title={t('bk.on')} desc={t('bk.onDesc')}>
-        <Switch id="s-bk-on" label={t('bk.on')} checked={on} onChange={v => { setOn(v); call('setBackup', { enabled: v }); }} />
+        {/* On only with a folder to copy to; turned on without one, the folder window opens (a folder picked turns it on). */}
+        <Switch id="s-bk-on" label={t('bk.on')} checked={on && !!b.folder} onChange={v => {
+          if (v && !b.folder) return void call('pickBackupFolder');
+          setOn(v);
+          call('setBackup', { enabled: v });
+        }} />
       </Row>
       <Row title={t('bk.folder')} desc={<>
         <span className="path" id="s-bk-path">{b.folder || t('bk.noFolder')}</span>
+        {b.folder ? null : <span className="bk-hint">{t('bk.needFolderDesc')}</span>}
         <div className="bk-suggest" id="s-bk-suggest">
           {suggested.map(s => <button key={s.path} className="btn sm ghost" data-act="bk-use" data-path={s.path} title={s.path}>{t('bk.use', { name: s.name })}</button>)}
         </div>
@@ -32,7 +38,7 @@ export function BackupPage({ title }: { title: string }) {
             <div className="t">{b.lastBackup ? <Ago iso={b.lastBackup} tpl="bk.last" /> : t('bk.never')}</div>
             {b.error ? <div className="d err">{b.error}</div> : null}
           </div>
-          <div className="ctl"><button className="btn sm" data-act="bk-now" disabled={!b.folder}>{t('bk.now')}</button></div>
+          <div className="ctl"><button className="btn sm" data-act="bk-now" disabled={!b.folder} title={b.folder ? undefined : t('bk.needFolder')}>{t('bk.now')}</button></div>
         </div>
       </div>
     </Group>

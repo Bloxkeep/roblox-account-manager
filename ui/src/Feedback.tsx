@@ -42,14 +42,18 @@ export function Feedback({ locked, api }: { locked: boolean; api: Ref<FeedbackAp
 
   return <>
     <div className="form">
-      <label>{t('fb.kind')}<select className="select" name="kind" value={kind} onChange={e => {
-        const k = e.target.value as 'bug' | 'idea';
-        edited(setKind)(k);
-        // An idea rarely needs the log; a bug report usually does.
-        if (!locked) setLog(k === 'bug');
-      }}>
-        <option value="bug">{t('fb.bug')}</option><option value="idea">{t('fb.idea')}</option>
-      </select></label>
+      {/* Two answers: a segmented pair, not a list to open. */}
+      <div className="fb-kind"><span id="fb-kind-l">{t('fb.kind')}</span>
+        <div className="seg wide" role="radiogroup" aria-labelledby="fb-kind-l">
+          {(['bug', 'idea'] as const).map(k => <button type="button" key={k} role="radio" name="kind" value={k} aria-checked={kind === k} className={kind === k ? 'on' : ''}
+            onClick={() => {
+              if (k === kind) return;
+              edited(setKind)(k);
+              // An idea rarely needs the log; a bug report usually does.
+              if (!locked) setLog(k === 'bug');
+            }}>{t(`fb.${k}`)}</button>)}
+        </div>
+      </div>
       <label>{t('fb.text')}<textarea ref={textBox} className="field" name="text" maxLength={2000} rows={6} placeholder={t('fb.textPh')}
         value={text} onChange={e => edited(setText)(e.target.value)} /></label>
       <label><span>{t('fb.contact')} <span className="muted">{t('fb.optional')}</span></span><input className="field" name="contact" maxLength={100}

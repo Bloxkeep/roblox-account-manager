@@ -1,5 +1,6 @@
-// Settings › Discord: sending and the webhook link, the play-time summary, alerts, the status message, quiet hours, how
-// messages look. The link itself never comes to the page unless the person asks to see it (Show); masked otherwise.
+// Settings › Discord: sending and the webhook link first, how messages will look (once there is a link), the play-time
+// summary, alerts, the status message, quiet hours, how messages look; then "Playing Bloxkeep" on the profile and control
+// from Discord. The link itself never comes to the page unless the person asks to see it (Show); masked otherwise.
 import { useEffect, useLayoutEffect, useRef, useState, type Ref } from 'react';
 import { Ago, Icon, useAppState, useHost } from '../host';
 import { NOTIFY_KINDS } from './NotifyPage';
@@ -76,17 +77,6 @@ export function DiscordPage({ title }: { title: string }) {
   const picked = (s.accounts || []).length;
 
   return <Page id="discord" title={title}>
-    <DiscordPreview name={d.username} avatar={d.avatarUrl} plain={style === 'plain'} language={lang} hide={hideNames} ping={d.pings?.drop} minutes={+minutes || 5} />
-    {/* "Playing Bloxkeep" on the person's profile (the Discord app on this PC), once Bloxkeep's Discord application exists. */}
-    {d.presenceReady ? <Group id="dc-profile">
-      <Row title={t('dc.presence')} desc={t('dc.presenceDesc')}>
-        <Switch id="s-dc-presence" label={t('dc.presence')} checked={presence} onChange={async v => {
-          setPresence(v);
-          if (await call('setDiscordPresence', { enabled: v }) === undefined) putBack();
-        }} />
-      </Row>
-    </Group> : null}
-    <RemoteGroup />
     <Group id="discord">
       <Row title={t('dc.on')} desc={t('dc.onDesc')}>
         {/* No link yet: the switch asks for one, and turns on once it is saved. */}
@@ -118,6 +108,8 @@ export function DiscordPage({ title }: { title: string }) {
         <div className="ctl"><button className="btn sm" data-dc="test">{t('dc.test')}</button></div>
       </div> : null}</div>
     </Group>
+    {/* How messages will look, once there is a link to send them to. */}
+    {d.hasWebhook ? <DiscordPreview name={d.username} avatar={d.avatarUrl} plain={style === 'plain'} language={lang} hide={hideNames} ping={d.pings?.drop} minutes={+minutes || 5} /> : null}
     <Group id="dc-summary" title={t('dc.summary')}>
       <Row title={t('dc.sendAuto')}>
         <select className="select sm" id="s-dc-when" aria-label={t('dc.sendAuto')} value={when} onChange={e => {
@@ -232,6 +224,16 @@ export function DiscordPage({ title }: { title: string }) {
         </Row>
       </More>
     </Group>
+    {/* "Playing Bloxkeep" on the person's profile (the Discord app on this PC), once Bloxkeep's Discord application exists. */}
+    {d.presenceReady ? <Group id="dc-profile">
+      <Row title={t('dc.presence')} desc={t('dc.presenceDesc')}>
+        <Switch id="s-dc-presence" label={t('dc.presence')} checked={presence} onChange={async v => {
+          setPresence(v);
+          if (await call('setDiscordPresence', { enabled: v }) === undefined) putBack();
+        }} />
+      </Row>
+    </Group> : null}
+    <RemoteGroup />
   </Page>;
 }
 
@@ -240,7 +242,7 @@ export function DiscordPage({ title }: { title: string }) {
 function DiscordPreview({ name, avatar, plain, language, hide, ping, minutes }: {
   name?: string; avatar?: string; plain: boolean; language: string; hide: boolean; ping?: string; minutes: number;
 }) {
-  const { t, tIn, lang: appLang, logo } = useHost();
+  const { t, tIn, lang: appLang, locale, logo } = useHost();
   const [kind, setKind] = useState<'alert' | 'board'>('alert');
   const [failed, setFailed] = useState('');
   const w = (key: string) => tIn(language === 'en' || language === 'vi' ? language : appLang, `dcv.${key}`);
@@ -254,23 +256,25 @@ function DiscordPreview({ name, avatar, plain, language, hide, ping, minutes }: 
     : {
       author: '', title: w('boardTitle'), color: 'blue', text: [`1 ${w('boardOff')}`],
       fields: [
-        { name: who(1), lines: ['Obby', `${w('inGame')} · ${w('long')}`, 'PID 1234 · 1228 MB'], link: true },
-        { name: who(2), lines: ['Obby', `${w('off')} · ${w('short')}`, 'PID 5678 · 1229 MB'], link: true },
+        { name: who(1), lines: ['Obby', `${w('inGame')} · ${w('long')}`, '1228 MB'], link: true },
+        { name: who(2), lines: ['Obby', `${w('off')} · ${w('short')}`, '1229 MB'], link: true },
       ],
       small: w('ram'), footer: w('boardFoot').replace('{n}', String(minutes)),
     };
   const [mode] = (kind === 'alert' && ping || 'none').split(':');
   const mention = { here: '@here', everyone: '@everyone', user: '@user', role: '@role' }[mode];
   const picture = avatar && failed !== avatar ? avatar : logo;
+  // The sample's time of day, as this PC writes it (2:30 PM, 14:30).
+  const at = new Date(2026, 9, 16, 14, 30).toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit', ...(appLang === 'vi' ? { hourCycle: 'h23' as const } : {}) });
   return <Group id="dc-preview" title={w('title')}>
-    <div className="tg-tabs" id="s-dc-preview-kinds">
-      {([['alert', 'dc.events'], ['board', 'dc.board']] as const).map(([k, label]) => <button type="button" key={k} className={`chip ${k === kind ? 'on' : ''}`} data-kind={k} aria-pressed={k === kind}
-        onClick={() => setKind(k)}>{t(label)}</button>)}
-    </div>
+    <div className="dcv-kinds"><div className="seg" id="s-dc-preview-kinds" role="tablist" aria-label={w('title')}>
+      {([['alert', 'dc.events'], ['board', 'dc.board']] as const).map(([k, label]) => <button type="button" key={k} role="tab" className={k === kind ? 'on' : ''} data-kind={k}
+        aria-selected={k === kind} onClick={() => setKind(k)}>{t(label)}</button>)}
+    </div></div>
     <div className="dcv" id="s-dc-preview" inert>
       <img className="dcv-pic" src={picture} alt="" onError={() => setFailed(avatar || '')} />
       <div className="dcv-body">
-        <div className="dcv-head"><b>{name || 'Bloxkeep'}</b><span className="dcv-app">APP</span><time>14:30</time></div>
+        <div className="dcv-head"><b>{name || 'Bloxkeep'}</b><span className="dcv-app">APP</span><time>{at}</time></div>
         {mention ? <div><span className="dcv-at">{mention}</span></div> : null}
         {plain
           ? <div className="dcv-plain">

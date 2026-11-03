@@ -25,9 +25,13 @@ export function RobloxPage({ title }: { title: string }) {
   const app = useAppState();
   const ru = app.robloxUpdates || {}, rv = app.robloxVersion || {};
 
-  /** A date and time in the app's language ("Oct 13, 2026, 8:25 PM"; 24-hour in Vietnamese). */
-  const fmtWhen = (iso: string) => new Date(iso).toLocaleString(locale, lang === 'vi'
-    ? { dateStyle: 'medium', timeStyle: 'short', hourCycle: 'h23' } : { dateStyle: 'medium', timeStyle: 'short' });
+  /** A date and time in the app's language ("Oct 13, 2026, 8:25 PM"; "13/10/2026, 20:25" in Vietnamese). */
+  const fmtWhen = (iso: string) => {
+    const d = new Date(iso);
+    return lang === 'vi'
+      ? `${d.toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric' })}, ${d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })}`
+      : d.toLocaleString(locale, { dateStyle: 'medium', timeStyle: 'short' });
+  };
   /** The watch's verdict on a build as [tone, words]; two windows having played together on it here outweigh it; null if unchecked. */
   const watchWord = (check: string | null, worked?: boolean, where = 'rw'): [string, string] | null => {
     const key = worked ? 'worked' : check === 'same' || check === 'first' ? 'same' : ['changed', 'renamed', 'gone'].includes(check || '') ? check : null;
@@ -46,7 +50,7 @@ export function RobloxPage({ title }: { title: string }) {
   const hist: any[] = ru.history || [];
   // Out of date: the launcher that keeps this copy of Roblox can install the new one now (Update now), when there is one.
   const canUpdate = rv.upToDate === false && !!rv.updater;
-  const rvText = !rv.installed ? t('rbx.notInstalled')
+  const rvText = rv.updating && rv.updater ? t('rbx.updateStarted', { l: rv.updater }) : !rv.installed ? t('rbx.notInstalled')
     : canUpdate ? t('rbx.outdatedUpdate', { v: rv.latest, l: rv.updater })
     : rv.upToDate === false ? t(rv.store ? 'rbx.outdatedStore' : rv.direct ? 'rbx.outdatedDirect' : 'rbx.outdated', { v: rv.latest })
     : rv.upToDate ? t('rbx.latest') : t('rbx.unknown');
@@ -64,34 +68,38 @@ export function RobloxPage({ title }: { title: string }) {
     (next || document.querySelector<HTMLElement>(`#view-settings [data-set-page="${page.dataset.page}"]`))?.focus();
   });
 
+  // Roblox closed windows: one warning says it and what to do; the checks below are greyed meanwhile (their word is moot).
+  const pill = (word: [string, string]): [string, string] => (c ? ['off', word[1]] : word);
   return <Page id="roblox" title={title}>
-    <Group id="rbxupd" title={t('ru.title')}>
+    {/* The page's title names it already: no group title. */}
+    <Group id="rbxupd">
       <div id="s-rbxclosed" ref={closedBox}>
-        {c ? <div className="set-note"><Icon name="alert" /><span>
+        {c ? <div className="note warn"><Icon name="alert" /><span>
           {tn('ru.closed', c.count, { t: fmtWhen(c.at) })}{c.updatedAt ? ` ${t('ru.closedUpdate', { t: fmtWhen(c.updatedAt) })}` : ''}
-          {' '}<button type="button" className="link" data-act="ru-hide">{t('ru.hide')}</button>
+          {' '}{t('rw.todoClosed')}{' '}<button type="button" className="link" data-act="rw-check">{t('rw.checkBloxkeep')}</button>
+          {' · '}<button type="button" className="link" data-act="ru-hide">{t('ru.hide')}</button>
         </span></div> : null}
       </div>
       <div id="s-rbxver">
-        <Row title={t('rbx.title')} desc={rvText}><Pill tone={rv.upToDate === false ? 'warn' : rv.upToDate ? 'ok' : 'off'}>{rv.installed || '—'}</Pill>
+        {/* One row for what is installed: its version, whether it is the newest, where it came from; Roblox's build id
+            is for the curious only (on hover). */}
+        <Row title={t('ru.installed')} desc={[rvText, inst?.source ? t('ru.via', { s: inst.source }) : ''].filter(Boolean).join(' · ')}>
+          <Pill tone={rv.upToDate === false ? 'warn' : rv.upToDate ? 'ok' : 'off'} title={inst?.build ? t('ru.build', { b: shortBuild(inst.build) }) : undefined}>{rv.installed || '—'}</Pill>
           {canUpdate ? <button type="button" className="btn sm" data-act="rbx-update" disabled={!!rv.updating}>{t(rv.updating ? 'rbx.updating' : 'rbx.update')}</button> : null}</Row>
         {rv.oldWindows ? <Row title={tn('rbx.oldWindows', rv.oldWindows)} desc={t('rbx.oldWindowsDesc')}>
           <button type="button" className="btn sm" data-act="rbx-reopen" disabled={!!rv.updating}>{t('rbx.reopen')}</button></Row> : null}
         <Row title={t('rbx.auto')} desc={t('rbx.autoDesc')}><Switch id="s-rbx-auto" label={t('rbx.auto')} checked={autoUpdate} onChange={setting('autoUpdateRoblox', setAutoUpdate)} /></Row>
       </div>
       <div id="s-rbxupd">
-        <Row title={t('ru.installed')} desc={inst?.source ? t('ru.via', { s: inst.source }) : ''}>
-          {inst ? <span className="ru-build" title={inst.build}>{t('ru.build', { b: shortBuild(inst.build) })}</span> : '—'}
-        </Row>
         {/* The newest version only when it isn't the one installed (the row above already shows that number). */}
         {rv.latest && rv.latest === rv.installed ? null
           : <Row title={t('ru.newest')}><Pill tone={rv.latest ? 'off' : 'warn'}>{rv.latest || t('rbx.unknown')}</Pill></Row>}
         <Row title={t('rw.title')} desc={<>{watchDesc} <button type="button" className="link" data-act="rw-how">{t('rw.how')}</button></>}>
-          <Pill tone={word[0]} title={w.version ? `Roblox ${w.version}` : undefined}>{word[1]}</Pill>
+          <Pill tone={pill(word)[0]} title={w.version ? `Roblox ${w.version}` : undefined}>{word[1]}</Pill>
         </Row>
-        {nextWord ? <Row title={t('rw.next')} desc={t('rw.nextDesc', { v: w.next.version })}><Pill tone={nextWord[0]}>{nextWord[1]}</Pill></Row> : null}
-        {watchWarns || c ? <div className="set-note"><Icon name="info" /><span>
-          {t(c ? 'rw.todoClosed' : 'rw.todo')} <button type="button" className="link" data-act="rw-check">{t('rw.checkBloxkeep')}</button>
+        {nextWord ? <Row title={t('rw.next')} desc={t('rw.nextDesc', { v: w.next.version })}><Pill tone={pill(nextWord)[0]}>{nextWord[1]}</Pill></Row> : null}
+        {watchWarns && !c ? <div className="note info"><Icon name="info" /><span>
+          {t('rw.todo')} <button type="button" className="link" data-act="rw-check">{t('rw.checkBloxkeep')}</button>
         </span></div> : null}
         <div className="ru-head">{t('ru.history')}</div>
         {hist.length ? <ul className="ru-list">{hist.map((h, i) => {
@@ -101,7 +109,7 @@ export function RobloxPage({ title }: { title: string }) {
           return <li className="ru-item" key={`${h.build}-${h.at}`}>
             <div className="ru-text">
               <div className="ru-main"><b>{h.version}</b>{note ? <span className="ru-note">{note}</span> : null}{check ? <span className={`ru-note ${check[0]}`}>{check[1]}</span> : null}</div>
-              <div className="ru-sub">{fmtWhen(h.at)} · <span title={h.build}>{t('ru.build', { b: shortBuild(h.build) })}</span>{h.source ? ` · ${h.source}` : ''}</div>
+              <div className="ru-sub" title={t('ru.build', { b: shortBuild(h.build) })}>{fmtWhen(h.at)}{h.source ? ` · ${h.source}` : ''}</div>
             </div>
             <button type="button" className="link ru-link" data-act="ru-notes" data-v={h.version} title={`${t('ru.notes')} — ${t('ru.notesHint')}`}
               aria-label={`${t('ru.notes')} ${h.version}`}>{t('ru.notesShort')}</button>
@@ -112,11 +120,11 @@ export function RobloxPage({ title }: { title: string }) {
   </Page>;
 }
 
-/** What each mode sets, and how hard it works the PC. One shows as picked while the settings all say the same. */
+/** What each mode sets. One shows as picked while the settings all say the same. */
 const LEVELS = [
-  { id: 'light', load: 1, rc: { mode: 'all', graphics: 1, fps: 20, volume: 0 }, ramLimitMb: -1, trimBackground: true, splitCores: true },
-  { id: 'medium', load: 2, rc: { mode: 'all', graphics: 3, fps: 45, volume: -1 }, ramLimitMb: 0, trimBackground: true, splitCores: true },
-  { id: 'off', load: 3, rc: { mode: 'off', graphics: 0, fps: 0, volume: -1 }, ramLimitMb: 0, trimBackground: false, splitCores: false, fastFlags: false },
+  { id: 'light', rc: { mode: 'all', graphics: 1, fps: 20, volume: 0 }, ramLimitMb: -1, trimBackground: true, splitCores: true },
+  { id: 'medium', rc: { mode: 'all', graphics: 3, fps: 45, volume: -1 }, ramLimitMb: 0, trimBackground: true, splitCores: true },
+  { id: 'off', rc: { mode: 'off', graphics: 0, fps: 0, volume: -1 }, ramLimitMb: 0, trimBackground: false, splitCores: false, fastFlags: false },
 ];
 
 export function RobloxConfig() {
@@ -134,11 +142,11 @@ export function RobloxConfig() {
   const shown = custom || !level ? 'own' : level;
   return <Group id="rc" title={t('rc.title')}>
     <div className="rc-modes" id="s-rc-levels" role="group" aria-label={t('rc.level')}>
-      {LEVELS.map(({ id, load, rc: values, ...others }) => <button type="button" key={id} className={`rc-mode${id === shown ? ' on' : ''}`} aria-pressed={id === shown}
+      {LEVELS.map(({ id, rc: values, ...others }) => <button type="button" key={id} className={`rc-mode${id === shown ? ' on' : ''}`} aria-pressed={id === shown}
         data-level={id} onClick={() => { setCustom(false); if (id !== level) call('setSettings', { robloxConfig: values, ...others }); }}>
-        <span className="rc-load" data-n={load}><i /><i /><i /></span><b>{t(`rc.level.${id}`)}</b><small>{t(`rc.level.${id}.says`)}</small></button>)}
+        <b>{t(`rc.level.${id}`)}</b><Says text={t(`rc.level.${id}.says`)} /></button>)}
       <button type="button" className={`rc-mode${shown === 'own' ? ' on' : ''}`} aria-pressed={shown === 'own'} data-level="own" onClick={() => setCustom(true)}>
-        <span className="rc-load" /><b>{t('rc.level.own')}</b><small>{t('rc.level.own.says')}</small></button>
+        <b>{t('rc.level.own')}</b><Says text={t('rc.level.own.says')} /></button>
     </div>
     <p className="rc-note" id="s-rc-reopen">{t('rc.reopen')}</p>
     {ownFps ? <p className="rc-note" id="s-rc-own-fps">{tn('rc.ownFps', ownFps)}</p> : null}
@@ -158,6 +166,9 @@ export function RobloxConfig() {
     </>}
   </Group>;
 }
+
+/** What a mode sets, one part a line ("20 FPS · Graphics 1 · Muted" reads as three lines). */
+const Says = ({ text }: { text: string }) => <small>{text.split(' · ').map(part => <span key={part}>{part}</span>)}</small>;
 
 /** A Roblox setting: a value its list doesn't offer shows the first choice ("leave as is"). */
 function RcSelect({ name, rc }: { name: string; rc: Record<string, string | number> }) {

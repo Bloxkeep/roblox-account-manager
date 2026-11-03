@@ -16,9 +16,12 @@ export interface TrayState {
   presets: { id: string; name: string }[];
   accounts: { id: string; name: string; running: boolean; avatar: string | null }[];
   clients: { id: string; name: string; game: string; pid: number; ramMb: number; avatar: string | null }[];
-  /** The macros, and whether each one's panel is showing. */
-  macros?: { id: string; name: string; shown: boolean }[];
+  /** The macros, whether each one's panel is showing, and (from the panel window on) what its panel says it is doing. */
+  macros?: { id: string; name: string; shown: boolean; state?: MacroState }[];
 }
+/** A macro panel's state (the panel's own words for it: ready, open Roblox first, running, paused, stopped, recording). */
+export type MacroState = 'ready' | 'noGame' | 'running' | 'paused' | 'stopped' | 'recording';
+
 export interface TrayApi {
   /** A command: open, mini, multi ({ on }), account / preset / panel ({ id }: shows or hides that macro's panel), newRoblox, closeAll, show ({ pid }), closeClient ({ id }), quit, hide. */
   act(what: string, args?: Record<string, unknown>): void;
@@ -91,11 +94,11 @@ export function Tray({ mode, state, opened, api }: { mode: 'panel' | 'menu'; sta
 /** Bloxkeep's logo and name, with what is going on under it (the menu's own line, with Multi-Roblox's light). */
 function Head({ s, children, line, dot }: { s: TrayState; children?: React.ReactNode; line?: string; dot?: boolean }) {
   const { t, tn, logo } = useHost();
-  const status = line ?? (!s.open && !s.multiOnly ? t('tray.locked')
-    : s.robloxCount > 0 ? tn('tray.status', s.robloxCount, { ram: ram(s.ramMb) }) : t('tray.none'));
+  // Locked: the panel's own row says so (with Unlock), so the head says what is running, as it does unlocked.
+  const status = line ?? (s.robloxCount > 0 ? tn('tray.status', s.robloxCount, { ram: ram(s.ramMb) }) : t('tray.none'));
   return <div className="tray-head">
     <img className="tray-logo" src={logo} alt="" />
-    <div className="tray-name"><b>Bloxkeep</b><span>{dot ? <i className={`tray-dot ${s.multi}`} /> : null}{status}</span></div>
+    <div className="tray-name"><b>Bloxkeep</b><span>{dot ? <i className={`tray-dot ${s.multi}`} /> : null}<span className="tray-status" title={status}>{status}</span></span></div>
     {children}
   </div>;
 }
@@ -148,16 +151,16 @@ function Panel({ s, page, go, api, confirmUntil, setConfirmUntil }: {
     {/* Switched here when it can be; otherwise Bloxkeep opens: its switch asks first, its card fixes "not ready". */}
     <button type="button" className={`tray-multi ${s.multi}`} role="switch" aria-checked={on}
       onClick={() => switchable ? api.act('multi', { on }) : api.act('open')}>
-      <Icon name="layers" />
+      <Icon name="copy" />
       <span className="tray-multi-text"><b>Multi-Roblox</b><span>{sub}</span></span>
-      <span className={`tray-switch${on ? ' on' : ''}`} aria-hidden="true"><i /></span>
+      <span className={`tray-switch${on ? ' on' : ''}${s.multi === 'notReady' ? ' warn' : ''}`} aria-hidden="true"><i /></span>
     </button>
     {locked
       ? <div className="tray-locked"><Icon name="lock" /><span>{t('tray.isLocked')}</span>
         <button type="button" className="tray-btn" onClick={() => api.act('open')}>{t('tray.unlock')}</button></div>
       : <section className="tray-running">
         <div className="tray-label"><span>{t('tray.running')}</span>
-          {canClose ? <button type="button" className={`tray-link danger${confirming ? ' confirm' : ''}`}
+          {canClose ? <button type="button" className={`btn sm ghost tray-link danger${confirming ? ' confirm' : ''}`}
             onClick={() => { if (confirming) { setConfirmUntil(0); api.act('closeAll'); } else setConfirmUntil(Date.now() + 4000); }}>
             {confirming ? tn('tray.closeAsk', s.robloxCount) : t('tray.closeAll')}</button> : null}
         </div>
@@ -208,8 +211,13 @@ function Menu({ s, page, go, api }: { s: TrayState; page: string; go: (p: string
     </button>)}</div></>;
   if (page === 'presets') return <>{back(t('tray.runPreset'))}
     <div className="tray-list">{s.presets.map(p => item('layers', p.name, () => api.act('preset', { id: p.id })))}</div></>;
+  // Each macro: its panel's state as a dot, its name, "Shown" while its panel is; a click shows or hides the panel.
   if (page === 'macros') return <>{back(t('tray.macros'))}
-    <div className="tray-list">{(s.macros ?? []).map(m => item('keyboard', m.name, () => api.act('panel', { id: m.id }), { checked: m.shown, title: t(m.shown ? 'tray.panelHide' : 'tray.panelShow') }))}</div></>;
+    <div className="tray-list">{(s.macros ?? []).map(m => <button key={m.id} type="button" role="menuitem" className="tray-item tray-macro"
+      title={t(m.shown ? 'tray.panelHide' : 'tray.panelShow')} onClick={() => api.act('panel', { id: m.id })}>
+      <i className={`tray-dot ${m.state ?? (m.shown ? 'ready' : 'off')}`} aria-hidden="true" /><span className="tray-item-text">{m.name}</span>
+      {m.shown ? <span className="tray-value">{t('tray.shown')}</span> : null}
+    </button>)}</div></>;
   if (page === 'multi') return <>{back('Multi-Roblox')}
     {s.multi === 'notReady' && s.open && !s.multiOnly ? item('wrench', t('tray.fix'), () => api.act('open')) : null}
     {canSwitch(s, on) ? item('power', t(on ? 'tray.turnOff' : 'tray.turnOn'), () => api.act('multi', { on }))
@@ -230,7 +238,10 @@ function Menu({ s, page, go, api }: { s: TrayState; page: string; go: (p: string
     {s.open && s.presets.length ? item('layers', t('tray.runPreset'), () => go('presets'), { sub: true }) : null}
     {s.open && s.macros?.length ? item('keyboard', t('tray.macros'), () => go('macros'), { sub: true }) : null}
     {item('userPlus', t('tray.newWindow'), () => api.act('newRoblox'), { title: t('tray.newTip') })}
-    {item('layers', 'Multi-Roblox', () => go('multi'), { sub: true, id: 'multi', value: t(s.multi === 'ready' ? 'tray.on' : s.multi === 'notReady' ? 'tray.notReady' : 'tray.off') })}
+    {/* Switched right here when it can be (a tick while on); otherwise, or to fix it, its own page. */}
+    {canSwitch(s, on) && !(s.multi === 'notReady' && s.open && !s.multiOnly)
+      ? item('copy', 'Multi-Roblox', () => api.act('multi', { on }), { id: 'multi', checked: on, value: s.multi === 'notReady' ? t('tray.notReady') : undefined })
+      : item('copy', 'Multi-Roblox', () => go('multi'), { sub: true, id: 'multi', value: t(s.multi === 'ready' ? 'tray.on' : s.multi === 'notReady' ? 'tray.notReady' : 'tray.off') })}
     <div className="tray-sep" />
     {canClose ? item('x', t('tray.closeAllRoblox'), () => go('close'), { sub: true, value: String(s.robloxCount) }) : null}
     {item('power', t('tray.quit'), () => api.act('quit'))}

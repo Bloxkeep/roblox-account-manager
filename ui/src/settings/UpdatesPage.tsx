@@ -4,6 +4,14 @@ import { useEffect, useState } from 'react';
 import { Icon, useAppState, useHost } from '../host';
 import { Group, Page, Row, Switch, useLocal } from './parts';
 
+/** Ctrl+Alt and each key with what it does, as key chips. */
+const HOTKEYS = [['H', 'set.hk.hide'], ['M', 'set.hk.min'], ['N', 'set.hk.next'], ['A', 'set.hk.arrange'], ['B', 'set.hk.open']];
+function HotkeyChips() {
+  const { t } = useHost();
+  return <span className="hk-list">{HOTKEYS.map(([k, key], i) =>
+    <span key={k} className="hk">{i === 0 ? <><kbd>Ctrl</kbd>+<kbd>Alt</kbd>+</> : null}<kbd>{k}</kbd> {t(key)}</span>)}</span>;
+}
+
 export function UpdatesPage({ title }: { title: string }) {
   const { t, lang, locale, call, saveView } = useHost();
   const app = useAppState();
@@ -47,10 +55,10 @@ export function UpdatesPage({ title }: { title: string }) {
         </div>
       </div></div>
       <Row title={t('upd.auto')}>
-        <Switch id="s-autoupd" checked={auto} disabled={!u.supported} onChange={on => { setAuto(on); call('setAutoUpdate', { enabled: on }); }} />
+        <Switch id="s-autoupd" label={t('upd.auto')} checked={auto} disabled={!u.supported} onChange={on => { setAuto(on); call('setAutoUpdate', { enabled: on }); }} />
       </Row>
       <Row title={t('upd.beta')} desc={t('upd.betaDesc')}>
-        <Switch id="s-betaupd" checked={beta} disabled={!u.supported} onChange={on => { setBeta(on); call('setBetaUpdates', { enabled: on }); }} />
+        <Switch id="s-betaupd" label={t('upd.beta')} checked={beta} disabled={!u.supported} onChange={on => { setBeta(on); call('setBetaUpdates', { enabled: on }); }} />
       </Row>
     </Group>
     <Group id="app" title={t('set.g.app')}>
@@ -58,7 +66,7 @@ export function UpdatesPage({ title }: { title: string }) {
         <Switch id="s-tray" label={t('set.tray')} checked={tray} onChange={v => { setTray(v); call('setCloseToTray', { enabled: v }); }} />
       </Row>
       {/* Hotkeys from any app; one another app already holds is said, not taken from it. */}
-      <Row title={t('set.hotkeys')} desc={<>{t('set.hotkeysDesc')}{hotkeys && keys.taken?.length ? <><br /><span className="warn-text">{t('set.hotkeysTaken', { keys: keys.taken.join(', ') })}</span></> : null}</>}>
+      <Row title={t('set.hotkeys')} desc={<><HotkeyChips />{hotkeys && keys.taken?.length ? <><br /><span className="warn-text">{t('set.hotkeysTaken', { keys: keys.taken.join(', ') })}</span></> : null}</>}>
         <Switch id="s-hotkeys" label={t('set.hotkeys')} checked={hotkeys} onChange={v => { setHotkeys(v); call('setHotkeys', { enabled: v }); }} />
       </Row>
       <Row title={t('set.gpu')} desc={t('set.gpuDesc')}>
@@ -74,7 +82,7 @@ export function UpdatesPage({ title }: { title: string }) {
     </Group>
     <Group id="privacy" title={t('onl.group')}>
       <Row title={t('onl.title')} desc={t('onl.desc')}>
-        <Switch id="s-online" checked={online} onChange={on => { setOnline(on); call('setCountOnline', { enabled: on }); }} />
+        <Switch id="s-online" label={t('onl.title')} checked={online} onChange={on => { setOnline(on); call('setCountOnline', { enabled: on }); }} />
       </Row>
     </Group>
   </Page>;
