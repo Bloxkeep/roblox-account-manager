@@ -1080,7 +1080,7 @@
     introShown() { S.introShown = true; },
     go(target) {
       if (target.startsWith('settings:')) openSettings(target.slice(9));
-      else if (target === 'macros' || target === 'stats') setView(target);
+      else if (['macros', 'stats', 'monitor'].includes(target)) setView(target);
       else if (target === 'guide') call('openGuide');
       else if (target === 'web') call('openWebsiteBlank');
       else if (target === 'feedback') feedbackModal();

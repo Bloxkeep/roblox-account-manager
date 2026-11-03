@@ -229,48 +229,49 @@ html [data-theme="dark" lang="en"]
           span.wn-title
             img [alt="" src="logo.svg"]
             span "What’s new"
-              small "Bloxkeep 1.0.16 · November 3, 2026"
+              small "Bloxkeep 1.0.17 · November 4, 2026"
         button.icon-btn [title="Close"]
           svg.i #1tyq039
       div.modal-body
         div.wn-feats
-          article.wn-feat
-            div.wn-shot
-              img [alt="" style="width:556px" src="whatsnew/1.0.16-macros.en.webp"]
+          article.plain.wn-feat
             div.wn-feat-text
-              h3 "Macros (Beta)"
-              p "Write steps as plain sentences, record one or start from a template, then try it on the game."
-              button.wn-go [type="button" FOCUSED] "Make a macro"
+              h3 "Game monitor by game"
+              p "Windows are grouped by game, each group with its health. Fold a game, show only one, or close all of its windows."
+              button.wn-go [type="button" FOCUSED] "Open Game monitor"
                 svg.i #1g7f83q
-          article.wn-feat
-            div.wn-shot
-              img [alt="" style="width:505px" src="whatsnew/1.0.16-panel.en.webp"]
+          article.plain.wn-feat
             div.wn-feat-text
-              h3 "A panel beside the game"
-              p "A small window with Run and the macro's settings; it can open when an account joins."
-              button.wn-go [type="button"] "Open Macros"
-                svg.i #1g7f83q
-          article.wn-feat
-            div.wn-shot
-              img [alt="" style="width:577px" src="whatsnew/1.0.16-stats.en.webp"]
-            div.wn-feat-text
-              h3 "New Statistics"
-              p "Play time against the days before, a timeline per account, and why accounts dropped."
+              h3 "Statistics, redrawn"
+              p "Today as a 24-hour clock, the busiest hours, a map of your games that filters the page, and a card per account."
               button.wn-go [type="button"] "Open Statistics"
+                svg.i #1g7f83q
+          article.plain.wn-feat
+            div.wn-feat-text
+              h3 "A server for each account"
+              p "A preset can put every account in its own server (fewest players, most or random). Leave crowded servers moves a window to a quieter one."
+              button.wn-go [type="button"] "Open Settings"
                 svg.i #1g7f83q
         section.improved.wn-group
           h4.wn-kind "Improved"
           ul.wn-notes
-            li "A macro that finds nothing for a few minutes runs your \"If stuck\" steps, then starts over; you can also have it rejoin or send a Discord alert with a picture of the window."
-            li "A macro can read any word the player ticks in a list (a letter read wrong is forgiven) and click each spot of a color once, as it shows."
-            li "Ctrl+Alt+1 to 9 run a macro, Ctrl+Alt+0 stops them all. The tray menu and Ctrl+K show and hide the panels."
-            li "Fast Flags (gray sky, no grass, lowest graphics) now have their own switch in Settings › Staying in game, off at first: turn it on to keep AFK farming's gray sky."
-            li "The Game monitor has a minimize button on each window, and its pictures follow a resize at once."
-            li "Ctrl+Alt+A arranges the windows on the screen your mouse is on."
+            li "It closes every Roblox window first, then updates."
+              b "Update automatically can now go right away"
+            li "Account cards show today's play, presets show today's runs on a ruler, and macro cards show the shape of their steps."
+            li "The macro editor folds blocks, finds a step by search, adds one between rows and shows a problem under its step with a fix. Five templates explain their steps."
+            li "Message boxes, the mini window, the sign-in window and the game overlay now follow your theme."
+            li "The accounts page, presets, schedules, sign-in, the lock screen and import are cleaner, with the same words everywhere."
+            li "Text is easier to read in every theme, and picture themes keep their picture."
+            li "A Roblox window opened outside Bloxkeep (Roblox's app, a browser's Play) with a saved account becomes that account's: its card, macros and auto-rejoin use it."
+            li "A card says Rejoining while a rejoin is under way."
+            li "Bloxkeep uses less memory and CPU while it waits in the background."
         section.fixed.wn-group
           h4.wn-kind "Fixed"
           ul.wn-notes
-            li "Clicking an arranged Roblox window no longer leaves it bigger than its tile."
+            li "Close now wins over a window still opening or a rejoin under way."
+            li "Quitting Bloxkeep lets go of keys a macro was holding and puts back your Roblox files."
+            li "A backup folder Bloxkeep can't write to now says so."
+            li "Game icons show a sign when Roblox's pictures don't load."
         details.wn-older
           summary "Also in the 2 versions before"
             svg.i #1g7f83q
@@ -288,4 +289,5 @@ html [data-theme="dark" lang="en"]
   monitorArea {"hidden":true}
   pageShown {}
   resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
+  todayStrips {}
   whatsNew {}

@@ -1,5 +1,91 @@
 [
   {
+    "version": "1.0.17",
+    "date": "2026-11-04",
+    "highlights": [
+      {
+        "icon": "grid",
+        "go": "monitor",
+        "en": [
+          "Game monitor by game",
+          "Windows are grouped by game, each group with its health. Fold a game, show only one, or close all of its windows.",
+          "Open Game monitor"
+        ],
+        "vi": [
+          "Theo dõi game theo từng game",
+          "Cửa sổ được gom theo game, mỗi nhóm có tình trạng riêng. Thu gọn, chỉ xem một game, hoặc đóng hết cửa sổ của game đó.",
+          "Mở Theo dõi game"
+        ]
+      },
+      {
+        "icon": "gauge",
+        "go": "stats",
+        "en": [
+          "Statistics, redrawn",
+          "Today as a 24-hour clock, the busiest hours, a map of your games that filters the page, and a card per account.",
+          "Open Statistics"
+        ],
+        "vi": [
+          "Thống kê làm lại",
+          "Hôm nay dạng đồng hồ 24 giờ, giờ chơi nhiều nhất, bản đồ game để lọc trang, và thẻ riêng cho từng tài khoản.",
+          "Xem Thống kê"
+        ]
+      },
+      {
+        "icon": "users",
+        "go": "settings:perf",
+        "en": [
+          "A server for each account",
+          "A preset can put every account in its own server (fewest players, most or random). Leave crowded servers moves a window to a quieter one.",
+          "Open Settings"
+        ],
+        "vi": [
+          "Mỗi tài khoản một server",
+          "Preset có thể cho mỗi tài khoản vào một server riêng (vắng nhất, đông nhất hoặc ngẫu nhiên). Rời server đông sẽ chuyển cửa sổ sang server vắng hơn.",
+          "Mở Cài đặt"
+        ]
+      }
+    ],
+    "improved": {
+      "en": [
+        "Update automatically can now go right away: it closes every Roblox window first, then updates.",
+        "Account cards show today's play, presets show today's runs on a ruler, and macro cards show the shape of their steps.",
+        "The macro editor folds blocks, finds a step by search, adds one between rows and shows a problem under its step with a fix. Five templates explain their steps.",
+        "Message boxes, the mini window, the sign-in window and the game overlay now follow your theme.",
+        "The accounts page, presets, schedules, sign-in, the lock screen and import are cleaner, with the same words everywhere.",
+        "Text is easier to read in every theme, and picture themes keep their picture.",
+        "A Roblox window opened outside Bloxkeep (Roblox's app, a browser's Play) with a saved account becomes that account's: its card, macros and auto-rejoin use it.",
+        "A card says Rejoining while a rejoin is under way.",
+        "Bloxkeep uses less memory and CPU while it waits in the background."
+      ],
+      "vi": [
+        "Tự cập nhật giờ có thể chạy ngay: đóng hết cửa sổ Roblox trước rồi cập nhật.",
+        "Thẻ tài khoản hiện giờ chơi hôm nay, preset hiện các lần chạy hôm nay trên thước, thẻ macro hiện hình các bước.",
+        "Trình sửa macro thu gọn được khối, tìm bước bằng ô tìm kiếm, thêm bước giữa hai dòng và báo lỗi ngay dưới bước kèm cách sửa. Có 5 mẫu giải thích từng bước.",
+        "Hộp thông báo, cửa sổ mini, cửa sổ đăng nhập và lớp phủ trên game giờ theo theme của bạn.",
+        "Trang tài khoản, preset, lịch, đăng nhập, màn hình khóa và nhập vault gọn hơn, cách gọi thống nhất.",
+        "Chữ dễ đọc hơn ở mọi theme, theme ảnh nền vẫn giữ ảnh.",
+        "Cửa sổ Roblox mở ngoài Bloxkeep (app Roblox, nút Play trên web) bằng tài khoản đã lưu giờ thuộc về tài khoản đó: thẻ, macro và tự vào lại đều dùng được.",
+        "Thẻ hiện Đang vào lại khi đang vào lại game.",
+        "Bloxkeep tốn ít RAM và CPU hơn khi chạy nền."
+      ]
+    },
+    "fixed": {
+      "en": [
+        "Close now wins over a window still opening or a rejoin under way.",
+        "Quitting Bloxkeep lets go of keys a macro was holding and puts back your Roblox files.",
+        "A backup folder Bloxkeep can't write to now says so.",
+        "Game icons show a sign when Roblox's pictures don't load."
+      ],
+      "vi": [
+        "Đóng giờ thắng cả cửa sổ đang mở dở lẫn lần vào lại đang chạy.",
+        "Thoát Bloxkeep sẽ nhả phím macro đang giữ và trả lại file Roblox của bạn.",
+        "Thư mục sao lưu không ghi được giờ có báo.",
+        "Ảnh game không tải được thì hiện biểu tượng thay thế."
+      ]
+    }
+  },
+  {
     "version": "1.0.16",
     "date": "2026-11-03",
     "highlights": [

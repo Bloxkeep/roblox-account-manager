@@ -229,48 +229,49 @@ html [data-theme="dark" lang="vi"]
           span.wn-title
             img [alt="" src="logo.svg"]
             span "Có gì mới"
-              small "Bloxkeep 1.0.16 · 3 tháng 11, 2026"
+              small "Bloxkeep 1.0.17 · 4 tháng 11, 2026"
         button.icon-btn [title="Đóng"]
           svg.i #1tyq039
       div.modal-body
         div.wn-feats
-          article.wn-feat
-            div.wn-shot
-              img [alt="" style="width:556px" src="whatsnew/1.0.16-macros.vi.webp"]
+          article.plain.wn-feat
             div.wn-feat-text
-              h3 "Macro (Beta)"
-              p "Viết bước thành câu dễ hiểu, ghi lại hoặc dùng mẫu, rồi chạy thử trên game."
-              button.wn-go [type="button" FOCUSED] "Tạo macro"
+              h3 "Theo dõi game theo từng game"
+              p "Cửa sổ được gom theo game, mỗi nhóm có tình trạng riêng. Thu gọn, chỉ xem một game, hoặc đóng hết cửa sổ của game đó."
+              button.wn-go [type="button" FOCUSED] "Mở Theo dõi game"
                 svg.i #1g7f83q
-          article.wn-feat
-            div.wn-shot
-              img [alt="" style="width:505px" src="whatsnew/1.0.16-panel.vi.webp"]
+          article.plain.wn-feat
             div.wn-feat-text
-              h3 "Bảng cạnh game"
-              p "Cửa sổ nhỏ có nút Chạy và cài đặt của macro, tự hiện khi tài khoản vào game."
-              button.wn-go [type="button"] "Mở Macro"
-                svg.i #1g7f83q
-          article.wn-feat
-            div.wn-shot
-              img [alt="" style="width:577px" src="whatsnew/1.0.16-stats.vi.webp"]
-            div.wn-feat-text
-              h3 "Thống kê mới"
-              p "Giờ chơi so với ngày trước, dòng thời gian từng tài khoản, và vì sao văng."
+              h3 "Thống kê làm lại"
+              p "Hôm nay dạng đồng hồ 24 giờ, giờ chơi nhiều nhất, bản đồ game để lọc trang, và thẻ riêng cho từng tài khoản."
               button.wn-go [type="button"] "Xem Thống kê"
+                svg.i #1g7f83q
+          article.plain.wn-feat
+            div.wn-feat-text
+              h3 "Mỗi tài khoản một server"
+              p "Preset có thể cho mỗi tài khoản vào một server riêng (vắng nhất, đông nhất hoặc ngẫu nhiên). Rời server đông sẽ chuyển cửa sổ sang server vắng hơn."
+              button.wn-go [type="button"] "Mở Cài đặt"
                 svg.i #1g7f83q
         section.improved.wn-group
           h4.wn-kind "Cải thiện"
           ul.wn-notes
-            li "Macro không thấy gì trong vài phút sẽ chạy các bước \"Khi bị kẹt\" rồi làm lại từ đầu; cũng có thể chọn vào lại game hoặc gửi cảnh báo Discord kèm ảnh cửa sổ."
-            li "Macro đọc được chữ nào người chơi tích trong danh sách (đọc sai một chữ cái vẫn nhận) và bấm từng chấm màu một lần khi nó hiện."
-            li "Ctrl+Alt+1 đến 9 chạy macro, Ctrl+Alt+0 dừng mọi macro. Menu khay và Ctrl+K hiện hoặc ẩn bảng."
-            li "Fast Flags (trời xám, không cỏ, đồ họa thấp nhất) có công tắc riêng trong Cài đặt › Treo máy, mặc định tắt: bật lên để giữ trời xám như trước."
-            li "Theo dõi game có nút thu nhỏ trên từng cửa sổ, ảnh đổi theo kích thước ngay."
-            li "Ctrl+Alt+A xếp cửa sổ trên màn hình đang có chuột."
+            li "Đóng hết cửa sổ Roblox trước rồi cập nhật."
+              b "Tự cập nhật giờ có thể chạy ngay"
+            li "Thẻ tài khoản hiện giờ chơi hôm nay, preset hiện các lần chạy hôm nay trên thước, thẻ macro hiện hình các bước."
+            li "Trình sửa macro thu gọn được khối, tìm bước bằng ô tìm kiếm, thêm bước giữa hai dòng và báo lỗi ngay dưới bước kèm cách sửa. Có 5 mẫu giải thích từng bước."
+            li "Hộp thông báo, cửa sổ mini, cửa sổ đăng nhập và lớp phủ trên game giờ theo theme của bạn."
+            li "Trang tài khoản, preset, lịch, đăng nhập, màn hình khóa và nhập vault gọn hơn, cách gọi thống nhất."
+            li "Chữ dễ đọc hơn ở mọi theme, theme ảnh nền vẫn giữ ảnh."
+            li "Cửa sổ Roblox mở ngoài Bloxkeep (app Roblox, nút Play trên web) bằng tài khoản đã lưu giờ thuộc về tài khoản đó: thẻ, macro và tự vào lại đều dùng được."
+            li "Thẻ hiện Đang vào lại khi đang vào lại game."
+            li "Bloxkeep tốn ít RAM và CPU hơn khi chạy nền."
         section.fixed.wn-group
           h4.wn-kind "Đã sửa"
           ul.wn-notes
-            li "Bấm vào cửa sổ Roblox đã xếp không còn làm nó to hơn ô của nó."
+            li "Đóng giờ thắng cả cửa sổ đang mở dở lẫn lần vào lại đang chạy."
+            li "Thoát Bloxkeep sẽ nhả phím macro đang giữ và trả lại file Roblox của bạn."
+            li "Thư mục sao lưu không ghi được giờ có báo."
+            li "Ảnh game không tải được thì hiện biểu tượng thay thế."
         details.wn-older
           summary "Và 2 phiên bản trước đó"
             svg.i #1g7f83q
@@ -288,4 +289,5 @@ html [data-theme="dark" lang="vi"]
   monitorArea {"hidden":true}
   pageShown {}
   resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
+  todayStrips {}
   whatsNew {}
