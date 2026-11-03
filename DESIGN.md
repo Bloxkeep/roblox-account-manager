@@ -198,8 +198,9 @@ readable on every theme.
 **The One Green Rule.** Accent green appears on at most one control per view (Play, Run, the switch that is on), on live
 status dots and on live chart bars. Headings, borders, tabs and selected rows never use it.
 
-**The Status Dot Rule.** A status colour is shown as a 7 px dot or a 4 px left rail plus a word, never as a coloured
-background behind text and never as a coloured border around a card. A bot check is `warn`, not `ok`.
+**The Status Dot Rule.** A status colour is shown as a 7 px dot or a 4 px left rail plus a word (rails are always 4 px:
+the local card, the running and the stopped macro step, If/Repeat blocks), never as a coloured background behind text
+and never as a coloured border or tint around a card. A bot check is `warn`, not `ok`.
 
 **The Solid Rule.** No `linear-gradient`, no `box-shadow` glow, no `filter: blur` on UI. The only shadows are the three
 elevation shadows below.
@@ -302,8 +303,8 @@ Nothing is clipped diagonally; no outlined-only icons next to filled ones (one i
 
 ### Cards / Containers
 - **Corner Style:** lg (14 px). **Background:** `--card`, hover `--card-hover`. **Border:** 1 px `--line`; a card that
-  is selected gets `--line-3` plus the checkbox, never an accent border; a local (this PC) card gets a 6 % ok tint via
-  `color-mix`, no gradient. **Padding:** 16 px. **Shadow:** none.
+  is selected gets `--line-3` plus the checkbox, never an accent border; a card playing on this PC gets a 4 px `--ok`
+  left rail (no ring, no tint, no gradient). **Padding:** 16 px. **Shadow:** none.
 - **Settings group:** a `--surface` box with lg radius holding rows separated by `--line`; the group title sits above
   the box at Title size.
 
@@ -317,12 +318,14 @@ Nothing is clipped diagonally; no outlined-only icons next to filled ones (one i
 - **Number:** Chromium spin buttons hidden everywhere (`::-webkit-inner-spin-button { appearance: none }`). Where a
   number is changed often (macro panel, hours) it is a **stepper**: `[−] [ value unit ] [+]`, 34 px, the value typeable,
   hold-to-repeat on the buttons (400 ms then every 40 ms; Shift × 10), disabled at min and max.
-- **Checkbox:** custom, 16 px, 5 px radius, `--field` fill, `--line-3` border; checked `--accent` fill with an
-  `--accent-ink` tick; focus ring as buttons. No native checkbox anywhere.
+- **Checkbox:** custom (`input[type=checkbox]:not(.switch > input)`: the switch's hidden full-size checkbox is left
+  alone), 16 px, 5 px radius, `--field` fill, `--line-3` border; checked `--accent` fill with an `--accent-ink` tick;
+  `:indeterminate` an 8 × 2 bar for a mixed state; focus ring as buttons. No native checkbox anywhere.
 - **Switch** (`.switch`): 42 × 24, `--surface-3` track, `--knob` knob; on: `--accent` track, `--accent-ink` knob. A
   switch is for a setting that takes effect at once; a checkbox is for an option inside a form or a list to tick.
-- **Select:** the app's styled select (`.select`, chevron from `--chev`, `appearance: base-select` where Chromium has
-  it) with the popup drawn by the page; `<optgroup>` for grouped choices. Never the OS popup.
+- **Select:** the app's styled select (`.select`, chevron from `--chev`, `appearance: base-select`) with the popup drawn
+  by the page; `<optgroup>` for grouped choices. This covers every `<select>`: hours, units (s / min), server choices,
+  counters. Never the OS popup.
 - **Key field:** a kbd box plus "Change" → the box reads "Press a key…"; Esc cancels; a refused key says "Can't use this
   key" under the row for 3 s.
 - **Colour field** (`ColorField`): swatch + hex + Pick; the swatch is not a button. **Time / date** (`TimeField`):
@@ -335,8 +338,9 @@ One component, three colours: `.note` 13 px, 10 px 12 px padding, md radius, a 1
 a bordered box with a different padding elsewhere.
 
 ### Dialogs
-- `.modal`: xl radius, `--surface`, 1 px `--line-2`, dialog shadow; width per Layout; `max-height: calc(100vh - 40px)`;
-  `display: flex; flex-direction: column`.
+- `.modal`: xl radius, 1 px `--line-2`, dialog shadow; width per Layout; `max-height: calc(100vh - 40px)`;
+  `display: flex; flex-direction: column`. Its background stays the `linear-gradient(var(--surface), var(--surface)),
+  var(--bg)` form: not decoration, it is what keeps dialogs opaque on the ~16 themes whose `--surface` is translucent.
 - **Head:** title (Headline) left-aligned always, close ✕ right, hairline under it. **Body:** scrolls, 8 px 24 px.
   **Foot:** hairline above, right-aligned actions, 16 px 24 px 22 px; destructive secondary at the left.
 - Content never slides under the foot: the hairline plus body padding-bottom 8 px make the cut edge honest.
@@ -350,9 +354,10 @@ rectangle, flipped only when it would overflow; a second click on the opener clo
 hidden, not greyed, unless the greyed item carries a `title` saying why.
 
 ### Toasts
-Bottom-right, 16 px from the edges, above the dock on the Accounts view (`bottom: var(--dock-h) + 16px`), at most three
-stacked, 4 s (6 s for errors), one line of Body text with a 16 px status icon, optional one action ("Undo"). A toast is
-never shown for a result the open dialog already shows.
+Bottom-right, 16 px from the edges, above the dock on the Accounts view (`bottom: var(--dock-clear)`, measured by the
+Dock), at most three stacked, 4 s (6 s for errors), one line of Body text with a 16 px status icon, optional one action
+("Undo"); a repeat nudges the existing toast. A toast is never shown for a result the open dialog already shows
+(`quietWhile`).
 
 ### Empty, loading and error states
 - **Empty:** a 72–88 px art, Headline title, one Body sentence, one primary action. Period chips, search boxes and
@@ -367,10 +372,12 @@ at rest, accent for today, 70 % on hover), one continuous baseline, and the aver
 number beside it is removed.
 
 ### Signature component: the macro panel
-A 300 px floating window beside the game, drawn by the same React component the editor shows as "Player sees", in the
-app's theme. Title row (name · Beta tag · fold · close) · the Go button Run with its hotkey · a status line with a dot
-· tabs (segmented) · setting rows (label left, control right) · foot (Edit areas · Reset all). Folded, it is a 300 ×
-40 pill: dot, name, Run/Stop, unfold. Full spec in the redesign plan, package P1.
+A 300 px floating window beside the game (never over it), drawn by the same React component the editor shows as
+"Player sees", in the app's theme. Title row (name · Beta tag · fold · close) · the Go button Run with its hotkey · a
+status line with a dot · tabs (segmented) · setting rows (label left, control right) · foot (Move areas on game · Reset
+all). Folded, it is a 300 × 40 pill: dot, name, Run/Stop, unfold. In the editor's design mode a row's ⋯ menu offers
+"Remove from panel" (lock icon) for a value ticked on a step and "Delete" (trash) for a switch, list or heading added on
+the panel. Full spec in the redesign plan, packages P1a and P1b.
 
 ## Do's and Don'ts
 
@@ -406,7 +413,9 @@ Rules for every string in `i18n.js`, `L.cs` and the native windows:
    "When I run it"). No scolding ("Đừng tắt…" → "Giữ Bloxkeep mở khi chơi.").
 3. **No jargon in user text.** No PID, build ids, ms, px, "variable", "tolerance", "launcher name" in a sentence. Units
    are words or symbols the player knows: "0.6 s" / "0,6 giây", "%", "px" only where a pixel is the thing.
-4. **US spelling in English** (color, minimize, customize). Code identifiers keep whatever they have.
+4. **US spelling in user-facing English** (color, minimize, customize). Identifiers, i18n keys, JSON fields, step
+   kinds and CSS tokens keep whatever they have (`colour`, `waitColour`, `--…`); L.cs keys change only together with
+   their call sites.
 5. **Vietnamese:** no "acc"; "tài khoản"; "Preset" capitalised as a product word; numbers "1,7 GB", "3,1 giờ"; time
    "20:00"; dates "16/10/2026"; weekdays "T2–T6", "CN" in summaries ("Thứ 5, 24/12" in headings); calendar head
    "Tháng 10, 2026".
@@ -461,6 +470,8 @@ Rules for every string in `i18n.js`, `L.cs` and the native windows:
 | Record | Record | Ghi | |
 | Fix (open the failing step) | Fix | Sửa lỗi | |
 | Reset all panel settings | Reset all | Đặt lại hết | |
+| take a ticked value off the panel | Remove from panel | Bỏ khỏi bảng | lock icon; the value goes back to its step |
+| recording state on the panel | Recording in {account}… | Đang ghi ở {account}… | shown on every panel; runs wait |
 | Edit areas on the game | Move areas on game / Stop editing | Chỉnh vùng trên game / Xong | |
 | Save / Cancel / Done / Close | Save / Cancel / Done / Close | Lưu / Hủy / Xong / Đóng | |
 | discard edits dialog | Keep editing / Discard changes | Sửa tiếp / Bỏ thay đổi | |
