@@ -43,6 +43,7 @@ __pycache__/
 node_modules/
 RobloxManager/wwwroot/ui.js
 RobloxManager/wwwroot/ui-*.js
+RobloxManager/wwwroot/ui-*.css
 
 # Claude Code: local settings, launch configurations and worktrees
 .claude/

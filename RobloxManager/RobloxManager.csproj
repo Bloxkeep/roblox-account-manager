@@ -47,8 +47,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- ui.js and the small pages' ui-*.js are built (BuildUi below), so they're added once they exist rather than by this list. -->
-    <EmbeddedResource Include="wwwroot\*" Exclude="wwwroot\ui.js;wwwroot\ui-*.js" LogicalName="wwwroot/%(Filename)%(Extension)" />
+    <!-- ui.js, the small pages' ui-*.js and ui-*.css, and app.css as served (obj\ui\app.css) are built (BuildUi below), so
+         they're added once they exist rather than by this list. -->
+    <EmbeddedResource Include="wwwroot\*" Exclude="wwwroot\ui.js;wwwroot\ui-*.js;wwwroot\ui-*.css;wwwroot\app.css" LogicalName="wwwroot/%(Filename)%(Extension)" />
     <!-- What's new's pictures of the headline features (whatsnew.json "image"); ".en"/".vi" in their names is not a culture. -->
     <EmbeddedResource Include="wwwroot\whatsnew\*" LogicalName="wwwroot/whatsnew/%(Filename)%(Extension)" WithCulture="false" />
     <EmbeddedResource Include="app.ico" LogicalName="app.ico" />
@@ -57,15 +58,18 @@
 
   <!--
     The parts of the interface written in React (..\ui\src) built before every build into wwwroot\ui.js (the app's page)
-    and wwwroot\ui-*.js (one per small page: the tray's, a macro's panel, mini, overlay, the message box, the browser's
-    top): Node.js is needed to build Bloxkeep (not to run it). The packages come from ..\ui\package-lock.json, installed
-    without running any of their scripts (..\ui\.npmrc). Skipped when nothing they're built from changed since.
+    and wwwroot\ui-*.js and ui-*.css (one each per small page: the tray's, a macro's panel, mini, overlay, the message
+    box, the browser's top; their stylesheet is app.css's rules they can match), and app.css without comments for the
+    app's page (obj\ui\app.css, served as app.css): Node.js is needed to build Bloxkeep (not to run it). The packages come
+    from ..\ui\package-lock.json, installed without running any of their scripts (..\ui\.npmrc). Skipped when nothing
+    they're built from changed since (the C# too: a class can come from a value the app sends).
   -->
   <ItemGroup>
-    <UiSource Include="..\ui\src\**\*;..\ui\build.mjs;..\ui\package-lock.json;..\ui\tsconfig.json;wwwroot\shared.js;wwwroot\i18n.js" />
+    <UiSource Include="..\ui\src\**\*;..\ui\build.mjs;..\ui\package-lock.json;..\ui\tsconfig.json;wwwroot\shared.js;wwwroot\i18n.js;wwwroot\app.css;wwwroot\*.html" />
     <UiOutput Include="wwwroot\ui.js;wwwroot\ui-tray.js;wwwroot\ui-panel.js;wwwroot\ui-mini.js;wwwroot\ui-overlay.js;wwwroot\ui-dialog.js;wwwroot\ui-browser.js" />
+    <UiOutput Include="wwwroot\ui-tray.css;wwwroot\ui-panel.css;wwwroot\ui-mini.css;wwwroot\ui-overlay.css;wwwroot\ui-dialog.css;wwwroot\ui-browser.css;obj\ui\app.css" />
   </ItemGroup>
-  <Target Name="BuildUi" Inputs="@(UiSource)" Outputs="@(UiOutput)">
+  <Target Name="BuildUi" Inputs="@(UiSource);@(Compile)" Outputs="@(UiOutput)">
     <Exec Command="npm ci" WorkingDirectory="..\ui" Condition="!Exists('..\ui\node_modules\.package-lock.json')" />
     <Exec Command="node build.mjs" WorkingDirectory="..\ui" />
   </Target>
