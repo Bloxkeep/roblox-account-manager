@@ -97,7 +97,50 @@ static class DataFolderSuite
         EveryWriterIsCovered(c, data);
         LogRotates(c, data);
         PrefsSaveFailure(c, data);
+        UninstallGuards(c);
         return Task.CompletedTask;
+    }
+
+    /// <summary>Another Bloxkeep started as administrator owns the named handles: a normal start and the uninstall step can't open
+    /// them (UnauthorizedAccessException), and go on without instead of ending with an error.</summary>
+    static void UninstallGuards(Checks c)
+    {
+        c.Check("a handle that can be had is returned", RobloxManager.Program.Guarded(() => "mine") == "mine");
+        c.Check("one another user's Bloxkeep owns (no access) is null, not an exception",
+            RobloxManager.Program.Guarded<string>(() => throw new UnauthorizedAccessException()) is null);
+        bool other = false;
+        try
+        {
+            RobloxManager.Program.Guarded<string>(() => throw new InvalidOperationException());
+        }
+        catch (InvalidOperationException)
+        {
+            other = true;
+        }
+        c.Check("any other failure still shows", other);
+
+        bool ended = false;
+        try
+        {
+            RobloxManager.Program.CloseRunningApp(() => throw new UnauthorizedAccessException(), () => throw new UnauthorizedAccessException());
+            ended = true;
+        }
+        catch (UnauthorizedAccessException)
+        {
+        }
+        c.Check("uninstall: a running Bloxkeep it has no access to is skipped, the hook goes on to delete", ended);
+        const string Name = @"Local\Bloxkeep.Tests.Quit";
+        using var quit = new EventWaitHandle(false, EventResetMode.ManualReset, Name);
+        ended = false;
+        try
+        {
+            RobloxManager.Program.CloseRunningApp(() => EventWaitHandle.OpenExisting(Name), () => throw new UnauthorizedAccessException());
+            ended = true;
+        }
+        catch (UnauthorizedAccessException)
+        {
+        }
+        c.Check("…asked to quit when it can be reached, and the hook goes on if the rest can't be", ended && quit.WaitOne(0));
     }
 
     /// <summary>The names every writer gives its file in the data folder, read out of the program's own source.</summary>
@@ -172,6 +215,12 @@ static class DataFolderSuite
             && !File.ReadAllText(log + ".1").Contains("line0 "));
         File.Delete(log);
         File.Delete(log + ".1"); // (a missing file is no error to Delete)
+
+        // A session cookie or a webhook link inside a message never reaches the file.
+        Log.Note("request failed for _|WARNING:-DO-NOT-SHARE-THIS.--Sharing-this-will-allow-someone-to-log-in-as-you.|_ABC123 at https://discord.com/api/webhooks/123/abcDEF done");
+        string written = File.ReadAllText(log);
+        c.Check("a cookie or a webhook link in a logged message is taken out", !written.Contains("ABC123") && !written.Contains("abcDEF") && written.Contains("request failed for") && written.Contains("done"), written);
+        File.Delete(log);
     }
 
     /// <summary>prefs.json held by another program (an antivirus, a sync client) for a moment: Save tries again, says so once,

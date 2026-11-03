@@ -27,6 +27,8 @@ public sealed partial class AppController
     static readonly Regex LongToken = new(@"[A-Za-z0-9+/=_-]{60,}", RegexOptions.CultureInvariant);
 
     DateTime _feedbackSentAt = DateTime.MinValue;
+    /// <summary>A send is on its way: the minute's gap counts only a finished one, so a second press meanwhile would send it twice.</summary>
+    bool _feedbackSending;
 
     sealed record Feedback(string Kind, string Text, string Contact, string App, string Windows, string Language, string? Log);
 
@@ -62,9 +64,23 @@ public sealed partial class AppController
         try
         {
             string path = Path.Combine(Vault.DataDir, "error.log");
-            if (!File.Exists(path))
+            text = File.Exists(path) ? File.ReadAllText(path) : "";
+            // A log that has just started over (error.log.1 holds the one before) would send next to nothing: the end of the
+            // earlier one fills the rest.
+            if (text.Length < FeedbackLogMax && File.Exists(path + ".1"))
+            {
+                string before = File.ReadAllText(path + ".1");
+                if (before.Length > FeedbackLogMax - text.Length)
+                {
+                    // Whole lines only.
+                    before = before[^(FeedbackLogMax - text.Length)..];
+                    int lineEnd = before.IndexOf('\n');
+                    before = lineEnd >= 0 ? before[(lineEnd + 1)..] : "";
+                }
+                text = before + text;
+            }
+            if (text.Length == 0)
                 return null;
-            text = File.ReadAllText(path);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -133,8 +149,22 @@ public sealed partial class AppController
         var f = ReadFeedback(a);
         if (f.Text.Length < 3)
             throw new UserError(L.T("Write a few words first."));
-        if (DateTime.UtcNow - _feedbackSentAt < FeedbackGap)
+        if (_feedbackSending || DateTime.UtcNow - _feedbackSentAt < FeedbackGap)
             throw new UserError(L.T("Feedback was just sent. Wait a minute before sending more."));
+        _feedbackSending = true;
+        try
+        {
+            await PostFeedbackAsync(f);
+        }
+        finally
+        {
+            _feedbackSending = false;
+        }
+        return new { sent = true };
+    }
+
+    async Task PostFeedbackAsync(Feedback f)
+    {
         string url = Environment.GetEnvironmentVariable("BLOXKEEP_FEEDBACK_URL") is { Length: > 0 } other ? other : FeedbackUrl;
         string body = JsonSerializer.Serialize(new { kind = f.Kind, text = f.Text, contact = f.Contact, app = f.App, windows = f.Windows, language = f.Language, log = f.Log });
         using var content = new StringContent(body, Encoding.UTF8, "application/json");
@@ -155,6 +185,5 @@ public sealed partial class AppController
                 throw new UserError(L.F("Couldn't send it: the feedback service answered {0}. Try again later.", (int)res.StatusCode));
         }
         _feedbackSentAt = DateTime.UtcNow;
-        return new { sent = true };
     }
 }

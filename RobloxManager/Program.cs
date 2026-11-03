@@ -42,7 +42,6 @@ static class Program
                 // answered by 22 s, which leaves time to delete the data (2026-10-30 review: 50 s were planned).
                 var deadline = DateTime.UtcNow.AddSeconds(22);
                 CloseRunningApp();
-                Vault.DeleteCaches();
                 // Sign-in and captcha browser profiles in %TEMP%, normally removed at the next start that never comes.
                 BrowserLoginForm.CleanupLeftoverProfiles();
                 CaptchaForm.CleanupLeftoverProfiles();
@@ -55,8 +54,12 @@ static class Program
                     "keep" => false,
                     _ => AskToDeleteData(deadline),
                 };
+                // The caches go once, after the answer (DeleteAllData clears them itself): before the question, held files could
+                // take up to 24 s of the 30 that Velopack allows, and the question's own page makes the webview cache again.
                 if (delete)
                     Vault.DeleteAllData();
+                else
+                    Vault.DeleteCaches();
             })
             .Run();
 
@@ -78,9 +81,23 @@ static class Program
             WaitForUpdateRun(UpdateRunWait);
 
         // A second launch just brings the running window to the front.
-        using var activate = new EventWaitHandle(false, EventResetMode.AutoReset, ActivateEvent);
-        using var quit = new EventWaitHandle(false, EventResetMode.ManualReset, QuitEvent);
-        using var single = new Mutex(true, SingleInstanceMutex, out bool first);
+        // One started as administrator owns these names, and a normal start can't open them: it says so rather than crash.
+        var activate = Guarded(() => new EventWaitHandle(false, EventResetMode.AutoReset, ActivateEvent));
+        var quit = Guarded(() => new EventWaitHandle(false, EventResetMode.ManualReset, QuitEvent));
+        bool first = false;
+        var single = Guarded(() => new Mutex(true, SingleInstanceMutex, out first));
+        if (activate is null || quit is null || single is null)
+        {
+            activate?.Dispose();
+            quit?.Dispose();
+            single?.Dispose();
+            Log.Note("Another Bloxkeep, started as administrator, owns the single-instance handles; this start gave way.");
+            Ui.Error(null, L.T("Bloxkeep is already running as administrator. Close it, then start Bloxkeep again."));
+            return;
+        }
+        using var activateHandle = activate;
+        using var quitHandle = quit;
+        using var singleHandle = single;
         if (!first)
         {
             // This process was just started by the person, so it may pass its right to come to the front on to the
@@ -181,15 +198,35 @@ static class Program
         }
     }
 
-    /// <summary>Before uninstalling: asks a running Bloxkeep to close and waits up to 10 s (of the hook's 30). Velopack 1.2
-    /// already ends processes in the program folder; this covers one it couldn't see (running elevated).</summary>
-    static void CloseRunningApp()
+    /// <summary>A named handle the way <paramref name="open"/> gets it; null when another Bloxkeep started as administrator owns it
+    /// and this process has no right to it (opening or creating it throws UnauthorizedAccessException, which would end a start
+    /// with an error box, or the uninstall before it deleted anything).</summary>
+    internal static T? Guarded<T>(Func<T?> open) where T : class
     {
-        if (!EventWaitHandle.TryOpenExisting(QuitEvent, out var quit))
+        try
+        {
+            return open();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Before uninstalling: asks a running Bloxkeep to close and waits up to 10 s (of the hook's 30). Velopack 1.2
+    /// already ends processes in the program folder; this covers one it couldn't see (running elevated): that one can't be asked
+    /// either (no access), and the uninstall goes on without it.</summary>
+    static void CloseRunningApp() => CloseRunningApp(
+        () => EventWaitHandle.TryOpenExisting(QuitEvent, out var quit) ? quit : null,
+        () => Mutex.TryOpenExisting(SingleInstanceMutex, out var single) ? single : null);
+
+    internal static void CloseRunningApp(Func<EventWaitHandle?> openQuit, Func<Mutex?> openSingle)
+    {
+        if (Guarded(openQuit) is not { } quit)
             return;
         using (quit)
             quit.Set();
-        if (!Mutex.TryOpenExisting(SingleInstanceMutex, out var single))
+        if (Guarded(openSingle) is not { } single)
             return;
         using (single)
         {

@@ -236,6 +236,7 @@ sealed class Dialog : WebToolWindow
         if (!WebView2Installed())
             return Plain(owner, text, heading, kind, choices, defaultIndex, cancelIndex, footnote, timeout, remember);
 
+        var asked = System.Diagnostics.Stopwatch.StartNew();
         CoreWebView2Environment? env;
         (int, bool) answer;
         bool failed;
@@ -261,11 +262,20 @@ sealed class Dialog : WebToolWindow
         if (failed)
         {
             Log.Note("Message box: its page didn't start; Windows' dialog asked instead.");
-            return Plain(owner, text, heading, kind, choices, defaultIndex, cancelIndex, footnote, timeout, remember);
+            return Plain(owner, text, heading, kind, choices, defaultIndex, cancelIndex, footnote, Remaining(timeout, asked.Elapsed), remember);
         }
         WaitForBrowserExit(env);
         return answer;
     }
+
+    /// <summary>The least the fallback dialog is left up, whatever the first wait used.</summary>
+    static readonly TimeSpan FallbackLeast = TimeSpan.FromSeconds(3);
+
+    /// <summary>What is left of <paramref name="timeout"/> after the page's failed attempt took <paramref name="elapsed"/>: the
+    /// fallback dialog gets that, not the whole timeout again (the uninstall question must be answered within the seconds
+    /// Velopack allows the step; unanswered, it keeps the data). null stays null: no timeout.</summary>
+    internal static TimeSpan? Remaining(TimeSpan? timeout, TimeSpan elapsed) =>
+        timeout is { } total ? TimeSpan.FromTicks(Math.Max((total - elapsed).Ticks, FallbackLeast.Ticks)) : null;
 
     static bool _hasWebView2;
 

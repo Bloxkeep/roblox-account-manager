@@ -40,7 +40,8 @@ public sealed partial class AppController
         NotifyDiscord(text, type, account);
         if (toast)
             Toast(text, kind);
-        if (_disposed || !Prefs.Notifications || ShowNotification is null)
+        // None behind the lock screen: it would show the text (an account's name) on the desktop, which the page withholds too.
+        if (_disposed || _screenLocked || !Prefs.Notifications || ShowNotification is null)
             return;
         if (NotifyKind(type) is { } off && Prefs.NotifyOff.Contains(off))
             return;

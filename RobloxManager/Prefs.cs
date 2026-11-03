@@ -465,14 +465,18 @@ public static class Prefs
         }
     }
 
-    /// <summary>The last Save couldn't write prefs.json.</summary>
+    /// <summary>The last Save couldn't write prefs.json (until one does).</summary>
     public static bool SaveFailed { get; private set; }
 
     /// <summary>Written to a temp file first, so a crash mid-write never leaves an empty prefs.json (and defaults).</summary>
+    /// <returns>false when it couldn't be written (<see cref="SaveFailed"/>); what was set still applies for this session.</returns>
     public static bool Save()
     {
         if (_unreadable)
-            return true;
+        {
+            SaveFailed = true; // logged when it was found; nothing is written over a file that couldn't be read
+            return false;
+        }
         try
         {
             Directory.CreateDirectory(Vault.DataDir);
@@ -510,13 +514,42 @@ public static class Prefs
                 values.TryAdd(key, value);
             // Flushed to disk before it replaces the old file: a power cut can't leave it empty (language, theme and
             // the backup folder would quietly reset, and backups stop).
-            DurableFile.WriteText(PrefsPath, JsonSerializer.Serialize(values));
-            return true;
+            string text = JsonSerializer.Serialize(values);
+            // An antivirus or sync program holding the file lets go within a moment, as for the vault: tried a few times.
+            for (int attempt = 1; ; attempt++)
+            {
+                try
+                {
+                    DurableFile.WriteText(PrefsPath, text);
+                    SaveFailed = false;
+                    return true;
+                }
+                catch (Exception ex) when (attempt < SaveTries && ex is IOException or UnauthorizedAccessException)
+                {
+                    Thread.Sleep(SaveRetryWait);
+                }
+            }
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            // The choice still applies for this session.
-            return true;
+            // The choice still applies for this session, and the next Save that works writes it all.
+            return Failed($"prefs.json couldn't be saved ({ex.GetType().Name}); tried {SaveTries} times. The settings apply until Bloxkeep closes, and are kept by the next save that works.");
         }
+    }
+
+    const int SaveTries = 3;
+    const int SaveRetryWait = 150;
+    static bool _saveFailureLogged;
+
+    /// <summary>A failed Save: the flag the app shows a notice for (AppController.AutoLock.cs), and one line in the log per session.</summary>
+    static bool Failed(string note)
+    {
+        SaveFailed = true;
+        if (!_saveFailureLogged)
+        {
+            _saveFailureLogged = true;
+            Log.Note(note);
+        }
+        return false;
     }
 }

@@ -68,6 +68,13 @@ static class DialogSuite
 
     static void Body(Checks c)
     {
+        // The uninstall question's fallback (Windows' own dialog, after the page failed to draw in 6 s) gets what is left of the
+        // wait, not all of it again: Velopack allows the step 30 s in all.
+        var six = TimeSpan.FromSeconds(6);
+        c.Check("the fallback gets the timeout less the time the page took", Dialog.Remaining(TimeSpan.FromSeconds(20), six) == TimeSpan.FromSeconds(14));
+        c.Check("…at least a few seconds, however long that took", Dialog.Remaining(TimeSpan.FromSeconds(5), six) == TimeSpan.FromSeconds(3));
+        c.Check("…and no timeout stays none", Dialog.Remaining(null, six) is null);
+
         Rectangle seen = default;
         float scale = 1;
         WhenShown(box =>
