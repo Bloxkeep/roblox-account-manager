@@ -13,6 +13,9 @@
 //   node Tests/ui/run.mjs --popups --size 980x620   instead of comparing: dialogs, menus, toasts and pickers that
 //                                          spill off the window, are cut off by a box around them, or lie over the dock
 //                                          or a button (Tests/ui/out/popups.txt); --size: the window, 1280x800 by default
+//   node Tests/ui/run.mjs --lint           instead of comparing: things on a line that don't line up, text cut off or out
+//                                          of its box, boxes over each other, a page that scrolls sideways (lint.js;
+//                                          Tests/ui/out/lint.txt); with --theme light (any theme id) and --size
 //   node Tests/ui/run.mjs --layout         also each element's position and size, against a copy kept on this PC only
 //                                          (Tests/ui/out/layout: positions differ a little between PCs)
 //   node Tests/ui/run.mjs --pixels         also every screenshot pixel by pixel, against copies kept on this PC only
@@ -53,9 +56,10 @@ const UPDATE = flag('--update'), SHOTS = flag('--shots'), LAYOUT = flag('--layou
 const ONLY = opt('--only')?.split(',');
 const JOBS = COVERAGE || JANK ? 1 : Math.max(1, Number(opt('--jobs')) || Math.min(8, Math.floor(os.cpus().length / 2)));
 const LANGS = opt('--lang')?.split(',') || ['en', 'vi'];
-const POPUPS = flag('--popups');
+const POPUPS = flag('--popups'), LINT = flag('--lint'), THEME = opt('--theme');
 const SIZE = (opt('--size') ?? '1280x800').split('x').map(Number);
-const popups = [];
+const popups = [], lints = [];
+const lintCheck = fs.readFileSync(path.join(HERE, 'lint.js'), 'utf8');
 const OUT = path.join(HERE, 'out');
 const BASE_DIR = LAYOUT ? path.join(OUT, 'layout') : path.join(HERE, 'baseline');
 const dirs = { actual: path.join(OUT, 'actual'), shots: path.join(OUT, 'shots'), pixels: path.join(OUT, 'pixels'), pixelDiff: path.join(OUT, 'pixel-diff') };
@@ -113,6 +117,12 @@ if (JANK) {
   const lines = jank.map(j => [`${j.score.toFixed(3)}  ${j.id}`, ...j.late.slice(0, 6).map(x => `         ${x.at} ms  ${x.value.toFixed(3)}  ${x.sources.map(s => `${s.node} y${s.from[0]}→${s.to[0]} h${s.from[1]}→${s.to[1]}`).join(', ')}`)].join('\n'));
   fs.writeFileSync(path.join(OUT, 'jank.txt'), lines.join('\n') + '\n');
   console.log(`\n${jank.length} scenario(s) where something jumps after loading (Tests/ui/out/jank.txt):\n${lines.slice(0, 15).join('\n')}`);
+  process.exit(0);
+}
+if (LINT) {
+  lints.sort();
+  fs.writeFileSync(path.join(OUT, 'lint.txt'), lints.join('\n') + '\n');
+  console.log(`\n${lints.length} layout flaw(s) at ${SIZE.join('x')}${THEME ? ', theme ' + THEME : ''} (Tests/ui/out/lint.txt)`);
   process.exit(0);
 }
 if (POPUPS) {
@@ -174,6 +184,7 @@ async function runOne(b, { sc, lang }) {
     const settled = await b.eval('__ui.settle()');
     const snap = await b.eval(`__ui.snap(${JSON.stringify({ layout: LAYOUT })})`);
     if (POPUPS) for (const p of await b.eval(`(${popupCheck})()`)) popups.push(`${id}${label === 'end' ? '' : ' @' + label}: ${p}`);
+    if (LINT) for (const p of await b.eval(lintCheck)) lints.push(`${id}${label === 'end' ? '' : ' @' + label}: ${p}`);
     const calls = await b.eval('__ui.calls');
     // Sorted: commands sent together (the page asking for several things as it opens) arrive in any order.
     const fresh = calls.slice(callsSeen).map(c => `  ${c.cmd} ${stable(c.args)}`).sort();
@@ -259,7 +270,8 @@ async function runOne(b, { sc, lang }) {
     await b.send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: Number(process.env.UI_SCALE) || 1, mobile: false });
     await b.send('Storage.clearDataForOrigin', { origin: base, storageTypes: 'all' });
     // The app's page, or another of ui/dev's previews (the tray's: page: 'tray-preview.html').
-    await b.goto(`${base}/ui/dev/${sc.page || 'preview.html'}?lang=${lang}${sc.query ? '&' + sc.query : ''}`);
+    const themed = THEME && !/(^|&)theme=/.test(sc.query || '') ? `&theme=${THEME}` : '';
+    await b.goto(`${base}/ui/dev/${sc.page || 'preview.html'}?lang=${lang}${sc.query ? '&' + sc.query : ''}${themed}`);
     await b.eval(`__ui.lang = ${JSON.stringify(lang)}`);
     await sleep(900); // the mock's own scripted views (?settings=…, ?menu=1…) start 600 ms after load
     await b.eval('__ui.settle()');
