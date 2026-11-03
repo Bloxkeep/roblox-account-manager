@@ -165,6 +165,8 @@ public sealed class Vault : IDisposable
         // Every vault (vault.rmv, vault-<id>.rmv) with its spare, unfinished and damaged copies.
         || System.Text.RegularExpressions.Regex.IsMatch(name, @"^vault(-[0-9a-f]{8})?\.rmv(\.bak|\.tmp|\.damaged-.*|\.spare-.*)?$", System.Text.RegularExpressions.RegexOptions.IgnoreCase)
         || name.StartsWith("prefs.json.damaged-", StringComparison.OrdinalIgnoreCase)
+        || name.StartsWith("roblox-flags.json.damaged-", StringComparison.OrdinalIgnoreCase)
+        || name.StartsWith("roblox-settings.json.damaged-", StringComparison.OrdinalIgnoreCase)
         || IsOldVault(name)
         || Themes.IsPictureName(name); // the custom theme's picture, the vaults' pictures
 

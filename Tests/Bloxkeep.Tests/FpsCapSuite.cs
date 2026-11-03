@@ -55,6 +55,40 @@ static class FpsCapSuite
         RobloxGameSettings.Restore(final: true);
         c.Check("a value the person chose in Roblox is kept", Fps() == "144" && !RobloxGameSettings.HasBaseline);
 
+        // A last put-back that can't write (the file held, read-only): the person's own are kept for the next try.
+        string copy = Path.Combine(dir, "roblox-settings.json");
+        File.WriteAllText(file, xml);
+        RobloxGameSettings.PrepareFor(alone, true, false);
+        File.SetAttributes(file, FileAttributes.ReadOnly);
+        RobloxGameSettings.Restore(final: true);
+        c.Check("a last put-back that can't write keeps the person's own", RobloxGameSettings.HasBaseline && Fps() == "45");
+        File.SetAttributes(file, FileAttributes.Normal);
+        RobloxGameSettings.Restore(final: true);
+        c.Check("…and puts them back at the next try", File.ReadAllText(file) == xml && !RobloxGameSettings.HasBaseline, Fps());
+
+        // The copy can't be read for a moment: the file isn't touched, and the copy isn't replaced by Bloxkeep's values.
+        File.WriteAllText(file, xml);
+        RobloxGameSettings.PrepareFor(alone, true, false);
+        using (new FileStream(copy, FileMode.Open, FileAccess.Write, FileShare.Write | FileShare.Delete))
+            c.Check("a copy that can't be read: nothing written", !RobloxGameSettings.PrepareFor(usesBoth, true, false) && Fps() == "45", Fps());
+        c.Check("…and the person's own still come back after", RobloxGameSettings.PrepareFor(shared, false, false) && Fps() == "240", Fps());
+        RobloxGameSettings.Restore(final: true);
+
+        // A damaged copy: set aside as it was, and Light AFK's values in the file are never taken for the person's own.
+        File.WriteAllText(file, xml);
+        RobloxGameSettings.PrepareFor(RobloxGameSettings.LightAfk, true, false);
+        File.WriteAllText(copy, "{ damaged");
+        bool rebased = RobloxGameSettings.PrepareFor(alone, true, false);
+        var aside = Directory.GetFiles(dir, "roblox-settings.json.damaged-*");
+        c.Check("a damaged copy is set aside as it was", aside.Length == 1 && File.ReadAllText(aside[0]) == "{ damaged", string.Join(", ", aside));
+        c.Check("…and Light AFK's values aren't taken for the person's own", !rebased && !RobloxGameSettings.HasBaseline && Fps() == "30",
+            $"{rebased} {Fps()}");
+        File.WriteAllText(file, xml); // the person sets their own again in Roblox
+        c.Check("…once the file holds the person's own, it works as before",
+            RobloxGameSettings.PrepareFor(alone, true, false) && Fps() == "45" && RobloxGameSettings.HasBaseline);
+        RobloxGameSettings.Restore(final: true);
+        c.Check("…and puts them back", File.ReadAllText(file) == xml && !RobloxGameSettings.HasBaseline);
+
         using (var seed = Vault.Create(Harness.Password))
             seed.Save();
         using var app = new AppController(new Form(), _ => { });

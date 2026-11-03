@@ -105,16 +105,23 @@ public static class RobloxGameSettings
         string? file = SettingsFile();
         if (file is null)
             return false;
-        var baseline = LoadBaseline();
+        // The copy can't be read just now: nothing written, so the person's own in it is never replaced.
+        if (!TryLoadBaseline(out var baseline))
+            return false;
         if (!useConfig && !windowed && baseline is null)
             return false; // nothing of ours was ever written: leave the file alone
-        string text = Read(file);
-        if (text.Length == 0)
+        if (Read(file) is not { Length: > 0 } text)
             return false;
         if (baseline is null)
         {
+            // A copy found damaged, the file holding Light AFK's values: those are Bloxkeep's, never taken for the person's
+            // own (they'd be "put back" for good). The file is left as it is until the person's own are in it again.
+            if (HoldsLightAfk(Current(text)) && HadDamagedCopy())
+                return false;
             baseline = new Baseline { Values = Current(text), Written = new() };
-            SaveBaseline(baseline);
+            // No copy on disk, no change: one made without it could never be put back.
+            if (!SaveBaseline(baseline))
+                return false;
         }
         else
         {
@@ -151,16 +158,26 @@ public static class RobloxGameSettings
         }
         if (updated == text)
             return true;
-        // Not written (the file held by another program): nothing of Bloxkeep's is in it, so nothing is noted as written.
-        if (!Write(file, updated))
-            return false;
-        _lastSeen = default;
+        // What is written noted first: a value of Bloxkeep's left in the file without the note would pass for the person's.
+        var writtenBefore = new Dictionary<string, string>(baseline.Written);
         if (ours.Count > 0)
         {
             foreach (var (name, value) in ours)
                 baseline.Written[name] = value;
-            SaveBaseline(baseline);
+            if (!SaveBaseline(baseline))
+                return false;
         }
+        // Not written (the file held by another program): nothing new of Bloxkeep's is in it, so the note goes back as it was.
+        if (!Write(file, updated))
+        {
+            if (ours.Count > 0)
+            {
+                baseline.Written = writtenBefore;
+                SaveBaseline(baseline);
+            }
+            return false;
+        }
+        _lastSeen = default;
         return true;
     }
 
@@ -168,17 +185,21 @@ public static class RobloxGameSettings
 
     /// <summary>Puts the person's values back once a client has read Bloxkeep's, and again whenever one saves them (Roblox
     /// saves as it joins a game). A value no longer equal to what Bloxkeep wrote is the person's and is kept.
-    /// <paramref name="final"/>: Roblox is closed, forget the copy.</summary>
+    /// <paramref name="final"/>: Roblox is closed, forget the copy (kept when the file couldn't be put back, for the next try
+    /// and the next start: the person's own are never forgotten).</summary>
     public static void Restore(bool final)
     {
         string? file = SettingsFile(cached: !final);
         // Nothing changed since the last look: skip reading anything (this runs every couple of seconds).
         if (!final && file is not null && new FileInfo(file) is { Exists: true } info && _lastSeen == (file, info.LastWriteTimeUtc, info.Length))
             return;
-        var baseline = LoadBaseline();
-        if (baseline is null)
+        if (!TryLoadBaseline(out var baseline) || baseline is null)
             return;
-        if (file is not null && Read(file) is { Length: > 0 } text)
+        bool back = true;
+        string? text = file is null ? "" : Read(file);
+        if (text is null)
+            back = false; // can't be read just now
+        else if (file is not null && text.Length > 0)
         {
             var now = Current(text);
             string updated = text;
@@ -189,11 +210,11 @@ public static class RobloxGameSettings
                     updated = Element(type, name).Replace(updated, m => m.Groups[1].Value + mine + m.Groups[3].Value, 1);
             }
             if (updated != text)
-                _ = Write(file, updated); // not written: tried again when the file changes, and at the final restore
+                back = Write(file, updated); // not written: tried again when the file changes, and at the final restore
             if (new FileInfo(file) is { Exists: true } written)
                 _lastSeen = (file, written.LastWriteTimeUtc, written.Length);
         }
-        if (!final)
+        if (!final || !back)
             return;
         try
         {
@@ -217,32 +238,84 @@ public static class RobloxGameSettings
         public Dictionary<string, string> Written { get; set; } = new();
     }
 
-    static Baseline? LoadBaseline()
+    /// <summary>The copy on disk (null: none). False when it is there but can't be read just now (held for a moment): the
+    /// caller then changes nothing. A damaged one is set aside as roblox-settings.json.damaged-&lt;time&gt;, never written
+    /// over, and taken as none.</summary>
+    static bool TryLoadBaseline(out Baseline? baseline)
     {
+        baseline = null;
+        string text;
         try
         {
-            return File.Exists(BaselinePath) ? JsonSerializer.Deserialize<Baseline>(File.ReadAllText(BaselinePath)) : null;
+            if (!File.Exists(BaselinePath))
+                return true;
+            text = File.ReadAllText(BaselinePath);
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            return null;
+            return false;
+        }
+        try
+        {
+            baseline = JsonSerializer.Deserialize<Baseline>(text);
+        }
+        catch (JsonException)
+        {
+        }
+        if (baseline is { Values: not null, Written: not null })
+            return true;
+        baseline = null;
+        try
+        {
+            File.Move(BaselinePath, $"{BaselinePath}.damaged-{DateTime.Now:yyyyMMdd-HHmmss}");
+            Log.Note("roblox-settings.json couldn't be read; it was set aside beside it, and Light AFK's values in Roblox's file are left as they are.");
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return false; // not set aside: never written over
         }
     }
 
-    static void SaveBaseline(Baseline baseline)
+    /// <summary>A copy was once found damaged (set aside beside it).</summary>
+    static bool HadDamagedCopy()
+    {
+        try
+        {
+            return Directory.EnumerateFiles(Vault.DataDir, "roblox-settings.json.damaged-*").Any();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>The values as a light-AFK preset leaves them: lowest graphics, no sound, its FPS limit or a lower one.</summary>
+    static bool HoldsLightAfk(Dictionary<string, string> now)
+    {
+        static double? Number(string? s) => double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out double d) ? d : null;
+        return Wanted(LightAfk).All(kv => (Number(now.GetValueOrDefault(kv.Key)), Number(kv.Value)) is ({ } have, { } afk)
+            && (kv.Key == "FramerateCap" ? have > 0 && have <= afk : have == afk));
+    }
+
+    /// <returns>false when it couldn't be written.</returns>
+    static bool SaveBaseline(Baseline baseline)
     {
         try
         {
             Directory.CreateDirectory(Vault.DataDir);
             // In one piece or not at all: a half-written copy of the person's own settings would never be put back.
             DurableFile.WriteText(BaselinePath, JsonSerializer.Serialize(baseline));
+            return true;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
+            return false;
         }
     }
 
-    static string Read(string file)
+    /// <returns>null when it can't be read (gone, or held).</returns>
+    static string? Read(string file)
     {
         try
         {
@@ -252,7 +325,7 @@ public static class RobloxGameSettings
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            return "";
+            return null;
         }
     }
 

@@ -50,14 +50,23 @@ public static class RobloxFlags
     {
         if (client is null || Path.GetDirectoryName(Path.GetDirectoryName(client)) is not { } versions)
             return false;
-        var state = Load() ?? new State();
-        bool any = false;
+        // The note can't be read just now: nothing written, so the person's own in it is never replaced.
+        if (!TryLoad(out var loaded))
+            return false;
+        var state = loaded ?? new State();
+        var planned = new List<(string File, string Text, bool Ours, string? WrittenBefore)>();
         foreach (string build in Builds(versions))
         {
             string file = Path.Combine(build, "ClientSettings", "ClientAppSettings.json");
             string? had = Read(file);
+            if (had is null && File.Exists(file))
+                continue; // there but can't be read just now: never written over without knowing what it held
             // Still ours from an earlier window: what it held before that is what goes back.
-            bool ours = state.Written.TryGetValue(file, out var written) && written == had;
+            bool ours = state.Written.TryGetValue(file, out var written) && written == had && state.Before.ContainsKey(file);
+            // The flags already in it with no note of what it held before (the note lost or damaged): that isn't the
+            // person's own, so it is never noted as theirs (it would be "put back" with the flags for good).
+            if (!ours && had is not null && HoldsLightAfk(had))
+                continue;
             JsonObject flags;
             try
             {
@@ -72,48 +81,100 @@ public static class RobloxFlags
             string text = flags.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
             if (!ours)
                 state.Before[file] = had;
+            state.Written[file] = text;
+            planned.Add((file, text, ours, written));
+        }
+        // The note first: a file is never changed without a note on disk of what it held (one written without it could
+        // never be put back).
+        if (planned.Count == 0 || !Save(state))
+            return false;
+        bool any = false, undone = false;
+        foreach (var (file, text, ours, writtenBefore) in planned)
+        {
             if (Write(file, text))
             {
-                state.Written[file] = text;
                 any = true;
+                continue;
             }
-            else if (!ours)
+            undone = true;
+            if (ours)
+                state.Written[file] = writtenBefore!; // still holds what was written for the earlier window
+            else
+            {
                 state.Before.Remove(file);
+                state.Written.Remove(file);
+            }
         }
-        if (any)
-            Save(state);
+        if (undone)
+            Keep(state);
         return any;
     }
 
     /// <summary>
     /// Every file written put back as it was: a window not of a light-AFK preset is about to open, or those that were
-    /// have started. One changed since (Roblox updated, the person edited it) is left as it is now.
+    /// have started. One changed since (Roblox updated, the person edited it) is left as it is now. One that can't be put
+    /// back just now (held, read-only, a build without the rights) stays in the note, tried again next time and at the
+    /// next start: the person's own is never forgotten.
     /// </summary>
     public static void Restore()
     {
-        if (Load() is not { } state)
+        if (!TryLoad(out var state) || state is null)
             return;
-        foreach (var (file, before) in state.Before)
+        foreach (var (file, before) in state.Before.ToList())
         {
-            if (!state.Written.TryGetValue(file, out var written) || Read(file) != written)
-                continue;
-            if (before is null)
+            string? now = Read(file);
+            if (now is null && File.Exists(file))
+                continue; // can't be read just now: kept for the next try
+            bool back = true;
+            if (state.Written.TryGetValue(file, out var written) && now == written)
             {
-                Delete(file);
-                // The folder too, when Bloxkeep made it and it's empty again.
-                try
+                if (before is null)
                 {
-                    if (Path.GetDirectoryName(file) is { } dir && Directory.Exists(dir) && !Directory.EnumerateFileSystemEntries(dir).Any())
-                        Directory.Delete(dir);
+                    Delete(file);
+                    back = !File.Exists(file);
+                    // The folder too, when Bloxkeep made it and it's empty again.
+                    try
+                    {
+                        if (back && Path.GetDirectoryName(file) is { } dir && Directory.Exists(dir) && !Directory.EnumerateFileSystemEntries(dir).Any())
+                            Directory.Delete(dir);
+                    }
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                    {
+                    }
                 }
-                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-                {
-                }
+                else
+                    back = Write(file, before);
             }
-            else
-                Write(file, before);
+            if (back)
+            {
+                state.Before.Remove(file);
+                state.Written.Remove(file);
+            }
         }
-        Delete(StatePath);
+        Keep(state);
+    }
+
+    /// <summary>The note as it now stands: gone once nothing is left to put back.</summary>
+    static void Keep(State state)
+    {
+        if (state.Before.Count == 0)
+            Delete(StatePath);
+        else
+            Save(state);
+    }
+
+    /// <summary>Every Light AFK flag in it, at its value.</summary>
+    static bool HoldsLightAfk(string text)
+    {
+        try
+        {
+            return JsonNode.Parse(text) is JsonObject flags
+                && LightAfk.All(f => flags[f.Name] is { } value && value.ToJsonString() == f.Value.ToJsonString());
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
     }
 
     static IEnumerable<string> Builds(string versions)
@@ -128,28 +189,58 @@ public static class RobloxFlags
         }
     }
 
-    static State? Load()
+    /// <summary>The note on disk (null: none). False when it is there but can't be read just now (held for a moment): the
+    /// caller then changes nothing. A damaged one is set aside as roblox-flags.json.damaged-&lt;time&gt;, never written over,
+    /// and taken as none.</summary>
+    static bool TryLoad(out State? state)
     {
+        state = null;
+        string text;
         try
         {
-            return File.Exists(StatePath) ? JsonSerializer.Deserialize<State>(File.ReadAllText(StatePath)) : null;
+            if (!File.Exists(StatePath))
+                return true;
+            text = File.ReadAllText(StatePath);
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            return null;
+            return false;
+        }
+        try
+        {
+            state = JsonSerializer.Deserialize<State>(text);
+        }
+        catch (JsonException)
+        {
+        }
+        if (state is { Before: not null, Written: not null })
+            return true;
+        state = null;
+        try
+        {
+            File.Move(StatePath, $"{StatePath}.damaged-{DateTime.Now:yyyyMMdd-HHmmss}");
+            Log.Note("roblox-flags.json couldn't be read; it was set aside beside it, and files holding Light AFK's flags are left as they are.");
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return false; // not set aside: never written over
         }
     }
 
-    static void Save(State state)
+    /// <returns>false when it couldn't be written.</returns>
+    static bool Save(State state)
     {
         try
         {
             Directory.CreateDirectory(Vault.DataDir);
             // In one piece or not at all: a half-written copy of the person's own file would never be put back.
             DurableFile.WriteText(StatePath, JsonSerializer.Serialize(state));
+            return true;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
+            return false;
         }
     }
 

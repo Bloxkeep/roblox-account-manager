@@ -169,7 +169,7 @@ static class DataFolderSuite
             written.Count >= 8 && written.Contains("game-hours.json") && written.Contains("roblox-flags.json") && written.Contains("hidden-windows.txt")
             && written.Contains("window-icons.txt"), string.Join(", ", written));
         var made = new List<string>();
-        foreach (string name in written.Concat(["error.log.1", "prefs.json.damaged-20261101-120000", "vault-a1b2c3d4.rmv", "vault-a1b2c3d4.rmv.bak"]))
+        foreach (string name in written.Concat(["error.log.1", "prefs.json.damaged-20261101-120000", "roblox-flags.json.damaged-20261101-120000", "roblox-settings.json.damaged-20261101-120000", "vault-a1b2c3d4.rmv", "vault-a1b2c3d4.rmv.bak"]))
         {
             File.WriteAllText(Path.Combine(data, name), "x");
             made.Add(name);

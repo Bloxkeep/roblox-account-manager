@@ -198,53 +198,77 @@ public sealed partial class AppController
         if (_disposed)
             return;
         _disposed = true;
-        GiveCoresBack();
-        LiftRamLimits();
-        GiveMemoryPriorityBack(); // no Roblox window stays at low RAM priority without Bloxkeep to raise it again
-        if (_robloxFlagsPending)
-            RobloxFlags.Restore(); // a launch cut short: the next Roblox opened by hand gets the person's own file
+        // Each step on its own: one that throws is logged and the rest still run, so the save, the update's install and
+        // the vault's closing never depend on the others (review 2026-11-03). The save comes first for the same reason.
+        static void Safe(Action step)
+        {
+            try
+            {
+                step();
+            }
+            catch (Exception ex)
+            {
+                Log.Write(ex);
+            }
+        }
+        Safe(() => SaveBeforeClosing()); // normally done already, before the window agreed to close
+        Safe(GiveCoresBack);
+        Safe(LiftRamLimits);
+        Safe(GiveMemoryPriorityBack); // no Roblox window stays at low RAM priority without Bloxkeep to raise it again
+        // A launch cut short: the next Roblox opened by hand gets the person's own file. Also one that couldn't be put
+        // back earlier (held, read-only): still noted, tried once more.
+        if (_robloxFlagsPending || RobloxFlags.Pending)
+            Safe(RobloxFlags.Restore);
         // Quit within seconds of a launch (or during one): the process check never put the person's own in-game settings
         // back, so their next Roblox would start windowed, muted, at Light AFK's FPS (2026-10-30 review). With Roblox
-        // still open the copy is kept, for the next start to finish the job.
-        if (_robloxSettingsPending)
-            RobloxGameSettings.Restore(final: RobloxProcesses.GetPlayerPids().Length == 0);
-        StopWatchingDrags();
-        GiveIconsBack();
+        // still open the copy is kept, for the next start to finish the job. Also one that couldn't be written earlier.
+        if (_robloxSettingsPending || RobloxGameSettings.HasBaseline)
+            Safe(() => RobloxGameSettings.Restore(final: RobloxProcesses.GetPlayerPids().Length == 0));
+        Safe(StopWatchingDrags);
+        Safe(GiveIconsBack);
+        // TODO(Q1, lead): once MacroPlayer.ReleaseAll lands, release a macro's held keys/buttons here, before the windows go
+        // back (B5): Safe(() => _macroPlayer?.ReleaseAll("closing"));
         // Quitting during a nudge or a /pc screenshot left that window see-through and click-through until Bloxkeep ran
         // again (review 2026-10-30). Not waited for: both go on on this thread, which is closing; one still running
         // stops at its next window (_disposed) and puts back only what it changed.
-        AntiAfk.Recover(RobloxProcesses.VisibleWindows(RobloxProcesses.GetPlayerPids()).Values.SelectMany(w => w));
-        SystemEvents.PowerModeChanged -= OnPowerModeChanged;
-        SystemEvents.TimeChanged -= OnTimeChanged;
-        NetworkChange.NetworkAvailabilityChanged -= OnNetworkAvailabilityChanged;
-        _updater.Changed -= OnUpdaterChanged;
-        _discordPresence.Dispose(); // the profile stops showing Bloxkeep
-        _robloxInput?.Dispose();
-        SayOfflineOnExit(); // no longer counted as open (not for an update in the background, back within seconds)
-        StopRemote(); // Discord says the PC isn't connected
-        _procTimer.Dispose();
-        _homeSession?.Dispose();
+        Safe(() => AntiAfk.Recover(RobloxProcesses.VisibleWindows(RobloxProcesses.GetPlayerPids()).Values.SelectMany(w => w)));
+        Safe(() =>
+        {
+            SystemEvents.PowerModeChanged -= OnPowerModeChanged;
+            SystemEvents.TimeChanged -= OnTimeChanged;
+            NetworkChange.NetworkAvailabilityChanged -= OnNetworkAvailabilityChanged;
+            _updater.Changed -= OnUpdaterChanged;
+        });
+        Safe(() => _discordPresence.Dispose()); // the profile stops showing Bloxkeep
+        Safe(() => _robloxInput?.Dispose());
+        Safe(SayOfflineOnExit); // no longer counted as open (not for an update in the background, back within seconds)
+        Safe(StopRemote); // Discord says the PC isn't connected
+        Safe(() => _procTimer.Dispose());
+        Safe(() => _homeSession?.Dispose());
         _homeSession = null;
-        SaveBeforeClosing(); // normally done already, before the window agreed to close
-        _backupTimer?.Dispose();
-        DropVaultImport();
-        CloseWebsites();
+        Safe(() => SaveBeforeClosing()); // anything the steps above changed
+        Safe(() => _backupTimer?.Dispose());
+        Safe(() => DropVaultImport());
+        Safe(() => CloseWebsites());
         // A downloaded update installs once the app has closed (started again at once when this quit is the background update).
-        _updater.ApplyOnExit(_relaunchArgs);
-        Ui.ClearSecretClipboard();
-        _launchCts?.Cancel();
-        _rejoinCts?.Cancel();
+        Safe(() => _updater.ApplyOnExit(_relaunchArgs));
+        Safe(Ui.ClearSecretClipboard);
+        Safe(() => _launchCts?.Cancel());
+        Safe(() => _rejoinCts?.Cancel());
         // The Discord status message says Bloxkeep closed (if Discord answers quickly), unless this quit is a background update.
-        try
+        Safe(() =>
         {
-            if (_relaunchArgs is null)
-                FinalDiscordBoard(closing: true)?.Wait(TimeSpan.FromSeconds(2));
-        }
-        catch (AggregateException)
-        {
-            // Best effort.
-        }
-        _vault?.Dispose();
+            try
+            {
+                if (_relaunchArgs is null)
+                    FinalDiscordBoard(closing: true)?.Wait(TimeSpan.FromSeconds(2));
+            }
+            catch (AggregateException)
+            {
+                // Best effort.
+            }
+        });
+        Safe(() => _vault?.Dispose());
         _vault = null;
     }
 }
