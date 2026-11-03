@@ -85,13 +85,13 @@ static class InputTurnSuite
         fresh.Dispose();
         c.Check("its own lease hands it on", !InputTurn.Busy);
         var held = InputTurn.TryEnter("macro")!;
-        c.Check("anti-AFK waiting is seen by the one holding the turn", !InputTurn.Waits("afk"));
+        c.Check("nobody asking: anti-AFK isn't seen waiting", !InputTurn.Waits("afk"));
         using var cts = new CancellationTokenSource();
         var afk = InputTurn.EnterAsync("afk", cts.Token);
         bool waits = InputTurn.Waits("afk");
         cts.Cancel();
         bool gaveUp = !InputTurn.Waits("afk");
         held.Dispose();
-        c.Check("…while it waits, not once it gave up", waits && gaveUp && afk.IsCanceled && !InputTurn.Busy, $"{waits} {gaveUp} {afk.Status}");
+        c.Check("anti-AFK asking is seen by the one holding the turn while it waits, not once it gave up", waits && gaveUp && afk.IsCanceled && !InputTurn.Busy, $"{waits} {gaveUp} {afk.Status}");
     }
 }
