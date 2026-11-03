@@ -1561,6 +1561,33 @@ export default [
   // ── end P2 ──
 
   // ── P3 accounts ──
+  // The list in the light theme, and the servers dialog in another (Paper).
+  S('p3-light-list', 'theme=light&winhidden=1', async s => { await s.click(key('layout.list')); }, { size: [1440, 800] }),
+  S('p3-paper-servers', 'theme=paper&select=1', async s => { await s.click(key('dock.servers')); await s.wait(900); }, { langs: ['en'] }),
+  // The server list didn't come: said where it would be, with Try again.
+  S('p3-servers-fail', 'srvfail=1', async s => { await s.click(key('dock.servers')); await s.wait(900); }),
+  // One account's menu: Copy opens its own small menu.
+  S('p3-card-menu-copy', '', async s => {
+    await s.click({ css: '.card[data-id$="2"] [data-act=card-menu]' });
+    await s.snap('menu');
+    await s.click(key('m.copy'));
+  }),
+  // A saved server's ✕ asks "Delete?" in its place first.
+  S('p3-saved-server-delete', '', async s => {
+    await s.click(key('dock.place'));
+    await s.wait(600);
+    await s.click({ key: 'picker.saved', within: '#picker' });
+    await s.click({ css: '.game-row.saved[data-i="0"] [data-act="arm-delete-server"]' });
+  }),
+  // A narrow window: the filters that don't fit are in "+n", whose menu lists them.
+  S('p3-chips-more', '', async s => { await s.click({ css: '[data-act="chip-more"]' }); }, { size: [860, 640] }),
+  // A private server picked from Servers: the game box shows its game and "Private server".
+  S('p3-private-face', 'select=1', async s => {
+    await s.click(key('dock.servers'));
+    await s.wait(900);
+    await s.click({ css: '[data-private="0"]' });
+    await s.wait(700);
+  }),
   // ── end P3 ──
 
   // ── P4 presets ──
