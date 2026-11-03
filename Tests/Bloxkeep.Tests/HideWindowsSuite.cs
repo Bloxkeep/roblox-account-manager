@@ -168,6 +168,7 @@ static class HideWindowsSuite
         visible();
         if (unshown)
             ShowWindowAsync(hWnd, SW_HIDE);
+        Settle(() => !IsWindowVisible(hWnd));
         turn.Dispose();
         Settle(() => IsWindowVisible(hWnd));
         c.Check("Show from the page during a turn: shown once the turn ends, not left unseen while counted as shown",
@@ -185,6 +186,7 @@ static class HideWindowsSuite
         visible();
         if (!wasMinimised)
             ShowWindowAsync(hWnd, SW_RESTORE);
+        Settle(() => !IsIconic(hWnd));
         turn.Dispose();
         Settle(() => IsIconic(hWnd));
         c.Check("Minimise on the Monitor tab during a turn: minimised once the turn ends, not undone by it", IsIconic(hWnd),
@@ -201,6 +203,7 @@ static class HideWindowsSuite
         visible();
         if (wasMinimised)
             ShowWindowAsync(hWnd, 7); // SW_SHOWMINNOACTIVE
+        Settle(() => IsIconic(hWnd)); // as a turn waits for its window to be minimised again
         turn.Dispose();
         Settle(() => !IsIconic(hWnd));
         c.Check("Restore on the Monitor tab during a turn: open once the turn ends, not minimised again by it", wasMinimised && !IsIconic(hWnd),
