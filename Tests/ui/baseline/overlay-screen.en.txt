@@ -1,0 +1,16 @@
+== end
+html [data-theme="dark" lang="en"]
+#app
+  div [id="overlay"]
+    div.ov.ov-screen [tabindex="-1" style="cursor:crosshair" FOCUSED]
+      img.ov-picture [alt="" src=#97mcpx]
+      div.ov-bar [role="toolbar" aria-label="Click the color you want"]
+        b.ov-title "Click the color you want"
+        button.btn.ghost.sm [type="button"] "Cancel (Esc)"
+      div.ov-lens [style="left:504px;top:294px"]
+        canvas
+        i.ov-lens-mark [style="height:12px;left:48px;top:48px;width:12px"]
+        span.ov-lens-hex [style="background-attachment:initial;background-clip:initial;background-color:rgb(242, 201, 76);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial;color:rgb(0, 0, 0)"] "#f2c94c"
+-- commands
+  act {"what":"cancel"}
+  ready {}

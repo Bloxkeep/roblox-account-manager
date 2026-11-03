@@ -1,0 +1,22 @@
+== end
+html [data-theme="dark" lang="vi"]
+#app
+  div [id="mini"]
+    div.mini.pn
+      div.pn-title
+        img.mini-logo [alt="" src="logo.svg"]
+        b.pn-name "Bloxkeep"
+        button.pn-icon [type="button" title="Ẩn" aria-label="Ẩn"]
+          svg.i #1tyq039
+      div.mini-list [role="list"]
+        div.mini-empty
+          svg.i #21scx0
+          p "Mở khóa Bloxkeep để xem tài khoản."
+      div.mini-foot.pn-foot
+        button.btn.danger.ghost.sm [type="button" title="Mở khóa Bloxkeep để xem tài khoản." aria-disabled="true"] "Đóng tất cả"
+        button.btn.mini-open.sm [type="button"] "Mở Bloxkeep"
+      div.mini-grip [title="Kéo để đổi cỡ"]
+        i
+-- commands
+  ready {}
+  size {"h":386,"w":300}

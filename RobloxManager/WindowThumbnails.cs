@@ -1,27 +1,18 @@
-using System.ComponentModel;
-using System.Drawing.Drawing2D;
 using System.Runtime.InteropServices;
 
 namespace RobloxManager;
 
 /// <summary>
-/// A grid of captioned tiles of other programs' windows, live as DWM thumbnails (what the taskbar shows on hover):
-/// Windows draws each frame straight into this control's top-level window, so nothing is copied or polled. A minimised
-/// window has no live frame, so its tile shows a note. Knows nothing of the app; the layout is pure arithmetic
-/// (<see cref="TileRects"/>) so it can be checked without a window.
+/// Live pictures of other programs' windows as DWM thumbnails (what the taskbar shows on hover), each laid exactly in a
+/// rectangle of a window of ours: Windows draws every frame straight into that window, above its page, so nothing is
+/// copied or polled. The game monitor's page draws everything else (frames, names, buttons, menus) and says where each
+/// picture goes (<see cref="Place"/>); this draws nothing itself. A minimised window has no live frame: its picture is
+/// hidden, and <see cref="Changed"/> tells so the page can say it.
 /// </summary>
-/// <remarks>A thumbnail exists only while this control has a handle, <see cref="Live"/> is on and its window is in the
-/// item list; every other path unregisters it, so none leaks or points at a dead window.</remarks>
-sealed class WindowThumbnails : ScrollableControl
+/// <remarks>A thumbnail exists only while its window has a rectangle from the last <see cref="Place"/>; every other path
+/// unregisters it, so none leaks or points at a dead window.</remarks>
+sealed class WindowThumbnails : IDisposable
 {
-    /// <summary>A window to show: its handle, the caption's two lines, and a short tag at the right of each line.</summary>
-    public sealed record Item(IntPtr Hwnd, string Title, string Subtitle, string Tag, string Tag2);
-
-    /// <summary>Tile spacing and the smallest tile, in logical pixels (scaled by the dpi in <see cref="TileRects"/>).</summary>
-    public const int TilePad = 10, MinTileWidth = 200, MinTileHeight = 150;
-    const int Inset = 6, Radius = 10;
-    const TextFormatFlags LineFlags = TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine | TextFormatFlags.NoPadding;
-
     const uint DWM_TNP_RECTDESTINATION = 0x1, DWM_TNP_RECTSOURCE = 0x2, DWM_TNP_OPACITY = 0x4, DWM_TNP_VISIBLE = 0x8, DWM_TNP_SOURCECLIENTAREAONLY = 0x10;
 
     [StructLayout(LayoutKind.Sequential)]
@@ -70,136 +61,73 @@ sealed class WindowThumbnails : ScrollableControl
     [DllImport("user32.dll")]
     static extern bool IsWindowVisible(IntPtr hWnd);
 
-    /// <summary>One window's tile. Thumb is zero while no thumbnail is registered for it.</summary>
-    sealed class Tile(Item item)
+    /// <summary>One window's picture. Thumb is zero while no thumbnail is registered for it.</summary>
+    sealed class Picture
     {
-        public Item Item = item;
         public IntPtr Thumb;
-        public Rectangle Bounds, Picture, Button;
+        /// <summary>Where the page wants it, in the destination window's client pixels.</summary>
+        public Rectangle Box;
         public bool Minimized;
         /// <summary>The window's size when its picture was last placed (empty while unknown).</summary>
         public Size Shown;
     }
 
-    readonly List<Tile> _tiles = new();
-    Font _titleFont, _smallFont;
-    Themes.Theme _theme = Themes.Current;
-    bool _live;
-    int _hover = -1;
-    bool _hoverButton;
-    readonly ToolTip _tip = new();
+    readonly Form _host;
+    readonly Dictionary<IntPtr, Picture> _pictures = new();
+    /// <summary>The part of the host the pictures may show in (the page's monitor area: a picture scrolled half out is cut).</summary>
+    Rectangle _clip;
 
     /// <summary>
     /// A picture shows the part of its window that had the window's size when placed: a window that grew (Arrange, brought
-    /// to the front) showed its top-left corner zoomed in until the next refresh, 1.5 s later (owner, 2026-11-02). So each
-    /// window's size and minimising are looked at this often, and the pictures placed again at once.
+    /// to the front) showed its top-left corner zoomed in until the next refresh (owner, 2026-11-02). So each window's
+    /// size and minimising are looked at this often, and the pictures placed again at once.
     /// </summary>
     readonly System.Windows.Forms.Timer _watch = new() { Interval = 50 };
 
-    /// <summary>A tile was clicked with this button (right for a menu); the item as last given to <see cref="SetItems"/>.</summary>
-    public event Action<Item, MouseButtons>? TileClicked;
+    /// <summary>A window was minimised or opened again: the page says so in its tile.</summary>
+    public event Action? Changed;
 
-    /// <summary>A tile's own button at its top right: minimise its window, or open it again (owner, 2026-11-02).</summary>
-    public event Action<Item>? ButtonClicked;
-
-    /// <summary>The button's tooltip while the window shows, and while it is minimised.</summary>
-    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-    public string MinimizeText { get; set; } = "";
-
-    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-    public string RestoreText { get; set; } = "";
-
-    /// <summary>Shown in a tile instead of the picture while its window is minimised.</summary>
-    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-    public string MinimizedText { get; set; } = "";
-
-    /// <summary>Shown in the middle when there are no items.</summary>
-    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-    public string EmptyText { get; set; } = "";
-
-    public WindowThumbnails()
+    public WindowThumbnails(Form host)
     {
-        SetStyle(ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.ResizeRedraw, true);
-        AutoScroll = true;
-        (_titleFont, _smallFont) = MakeFonts();
-        _watch.Tick += (_, _) => FollowWindows();
+        _host = host;
+        _watch.Tick += (_, _) => Follow();
     }
 
-    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-    public Themes.Theme Theme
+    /// <summary>A window has no live picture now (minimised or hidden), as of the last look.</summary>
+    public bool IsMinimized(IntPtr hwnd) => _pictures.TryGetValue(hwnd, out var p) ? p.Minimized : IsIconic(hwnd) || !IsWindowVisible(hwnd);
+
+    /// <summary>
+    /// Each window's picture in its rectangle (the host's client pixels), cut to <paramref name="clip"/>; a window not
+    /// given loses its picture (scrolled away, under a menu, closed).
+    /// </summary>
+    public void Place(IReadOnlyDictionary<IntPtr, Rectangle> boxes, Rectangle clip)
     {
-        get => _theme;
-        set
+        _clip = clip;
+        foreach (var gone in _pictures.Keys.Where(h => !boxes.ContainsKey(h)).ToList())
         {
-            _theme = value;
-            BackColor = value.Background;
-            Invalidate();
+            Unregister(_pictures[gone]);
+            _pictures.Remove(gone);
         }
-    }
-
-    /// <summary>Off (the default, and while the owner is hidden or minimised) every thumbnail is unregistered so Windows
-    /// composes nothing; the items are kept and registered again when it goes on.</summary>
-    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-    public bool Live
-    {
-        get => _live;
-        set
+        foreach (var (hwnd, box) in boxes)
         {
-            if (_live == value)
-                return;
-            _live = value;
-            if (value)
-                RegisterAll();
-            else
-                UnregisterAll();
-            _watch.Enabled = value;
-            Relayout();
+            if (!_pictures.TryGetValue(hwnd, out var p))
+                _pictures[hwnd] = p = new Picture { Minimized = IsIconic(hwnd) || !IsWindowVisible(hwnd) };
+            p.Box = box;
         }
+        Update();
+        _watch.Enabled = _pictures.Count > 0;
     }
 
-    // ───────────────────────────── layout ─────────────────────────────
-
-    static int Scale(int logical, int dpi) => (int)Math.Round(logical * dpi / 96.0);
-
-    /// <summary>The columns that show the biggest 16:9 picture in the tab as it is now (two windows in a tall tab stack, so
-    /// they aren't banded by empty space, 2026-11-01); none narrower than <see cref="MinTileWidth"/>.</summary>
-    public static int Columns(int count, Size client, int dpi)
+    /// <summary>Every picture taken away (the page shows something else there).</summary>
+    public void Clear()
     {
-        int pad = Scale(TilePad, dpi), minW = Scale(MinTileWidth, dpi), minH = Scale(MinTileHeight, dpi);
-        int best = 1, bestWidth = 0;
-        for (int cols = 1; cols <= count; cols++)
-        {
-            int width = (client.Width - pad * (cols + 1)) / cols;
-            if (cols > 1 && width < minW)
-                break;
-            int rows = (count + cols - 1) / cols;
-            int height = Math.Max(minH, (client.Height - pad * (rows + 1)) / rows);
-            int picture = Math.Min(width, height * 16 / 9);
-            if (picture > bestWidth)
-                (best, bestWidth) = (cols, picture);
-        }
-        return best;
+        _watch.Stop();
+        foreach (var p in _pictures.Values)
+            Unregister(p);
+        _pictures.Clear();
     }
 
-    /// <summary>The tiles' rectangles in device pixels. Rows share the height; tiles never go below
-    /// <see cref="MinTileHeight"/>, and then <paramref name="contentHeight"/> exceeds the client (the owner scrolls).</summary>
-    public static Rectangle[] TileRects(int count, Size client, int dpi, out int contentHeight)
-    {
-        contentHeight = 0;
-        if (count <= 0)
-            return [];
-        int pad = Scale(TilePad, dpi), minW = Scale(MinTileWidth, dpi), minH = Scale(MinTileHeight, dpi);
-        int cols = Columns(count, client, dpi), rows = (count + cols - 1) / cols;
-        int tileW = Math.Max(minW, (client.Width - pad * (cols + 1)) / cols);
-        int tileH = Math.Max(minH, (client.Height - pad * (rows + 1)) / rows);
-        contentHeight = pad + rows * (tileH + pad);
-        var rects = new Rectangle[count];
-        for (int i = 0; i < count; i++)
-            rects[i] = new Rectangle(pad + i % cols * (tileW + pad), pad + i / cols * (tileH + pad), tileW, tileH);
-        return rects;
-    }
-
-    /// <summary>The largest rectangle of the source's shape inside <paramref name="box"/>, centred (a 16:9 game in a square tile is letterboxed).</summary>
+    /// <summary>The largest rectangle of the source's shape inside <paramref name="box"/>, centred (a 16:9 game in a square box is letterboxed).</summary>
     public static Rectangle Fit(Size source, Rectangle box)
     {
         if (source.Width <= 0 || source.Height <= 0 || box.Width <= 0 || box.Height <= 0)
@@ -209,137 +137,45 @@ sealed class WindowThumbnails : ScrollableControl
         return new Rectangle(box.X + (box.Width - w) / 2, box.Y + (box.Height - h) / 2, w, h);
     }
 
-    static int ButtonSize(int dpi) => Scale(28, dpi);
-
-    int CaptionHeight() =>
-        TextRenderer.MeasureText("Ag", _titleFont).Height + TextRenderer.MeasureText("Ag", Font).Height + Scale(Inset, DeviceDpi) * 2 + Scale(2, DeviceDpi);
-
-    /// <summary>Places the tiles for the current size and scroll position and moves every thumbnail with them.</summary>
-    public void Relayout()
+    void Register(IntPtr hwnd, Picture p)
     {
-        int dpi = DeviceDpi, inset = Scale(Inset, dpi);
-        var rects = TileRects(_tiles.Count, ClientSize, dpi, out int contentHeight);
-        // The scrollbar first (it narrows the client); the resize that follows lays out again for the new width.
-        var minSize = new Size(0, contentHeight > ClientSize.Height ? contentHeight : 0);
-        if (AutoScrollMinSize != minSize)
-        {
-            AutoScrollMinSize = minSize;
-            rects = TileRects(_tiles.Count, ClientSize, dpi, out _);
-        }
-        int captionH = CaptionHeight(), scrollY = AutoScrollPosition.Y, button = ButtonSize(dpi);
-        for (int i = 0; i < _tiles.Count; i++)
-        {
-            var tile = _tiles[i];
-            var r = rects[i];
-            r.Offset(0, scrollY);
-            tile.Bounds = r;
-            tile.Picture = new Rectangle(r.X + inset, r.Y + captionH, r.Width - inset * 2, r.Height - captionH - inset);
-            // Beside both caption lines, in the middle of their height.
-            tile.Button = new Rectangle(r.Right - inset - button, r.Y + (captionH - button) / 2, button, button);
-        }
-        UpdateThumbnails();
-        Invalidate();
-    }
-
-    // ───────────────────────────── thumbnails ─────────────────────────────
-
-    /// <summary>The top-level window the thumbnails are drawn into (DWM accepts no child window as destination).</summary>
-    IntPtr Destination => FindForm() is { IsHandleCreated: true } form ? form.Handle : IntPtr.Zero;
-
-    /// <summary>The windows to show, in tile order; existing tiles keep their thumbnail. Call every second or two: it also
-    /// follows minimising and windows that have gone.</summary>
-    public void SetItems(IReadOnlyList<Item> items)
-    {
-        var keep = new Dictionary<IntPtr, Tile>();
-        foreach (var tile in _tiles)
-            keep.TryAdd(tile.Item.Hwnd, tile);
-        var next = new List<Tile>(items.Count);
-        foreach (var item in items)
-        {
-            if (item.Hwnd == IntPtr.Zero || next.Any(t => t.Item.Hwnd == item.Hwnd))
-                continue;
-            if (keep.Remove(item.Hwnd, out var tile))
-                tile.Item = item;
-            else
-            {
-                tile = new Tile(item);
-                if (_live)
-                    Register(tile);
-            }
-            next.Add(tile);
-        }
-        foreach (var gone in keep.Values)
-            Unregister(gone);
-        _tiles.Clear();
-        _tiles.AddRange(next);
-        if (_hover >= _tiles.Count)
-            _hover = -1;
-        Relayout();
-    }
-
-    void Register(Tile tile)
-    {
-        if (tile.Thumb != IntPtr.Zero || !IsHandleCreated)
+        if (p.Thumb != IntPtr.Zero || !_host.IsHandleCreated || !IsWindow(hwnd))
             return;
-        IntPtr destination = Destination;
-        if (destination == IntPtr.Zero || !IsWindow(tile.Item.Hwnd))
+        // Fails for a window that just closed or one of another desktop session: its tile then shows no picture.
+        if (DwmRegisterThumbnail(_host.Handle, hwnd, out var thumb) != 0 || thumb == IntPtr.Zero)
             return;
-        // Fails for a window that just closed or one of another desktop session: the tile then shows its caption only.
-        if (DwmRegisterThumbnail(destination, tile.Item.Hwnd, out var thumb) != 0 || thumb == IntPtr.Zero)
-        {
-            tile.Thumb = IntPtr.Zero;
-            return;
-        }
-        tile.Thumb = thumb;
+        p.Thumb = thumb;
         // Until this is set the source size answers for the whole frame (title bar and borders), and the first
-        // layout would fit the picture to the wrong shape.
+        // placing would fit the picture to the wrong shape.
         var props = new DWM_THUMBNAIL_PROPERTIES { dwFlags = DWM_TNP_SOURCECLIENTAREAONLY, fSourceClientAreaOnly = 1 };
         DwmUpdateThumbnailProperties(thumb, ref props);
     }
 
-    static void Unregister(Tile tile)
+    static void Unregister(Picture p)
     {
-        if (tile.Thumb == IntPtr.Zero)
+        if (p.Thumb == IntPtr.Zero)
             return;
         // Fails harmlessly once the destination window is gone: Windows dropped the thumbnail with it.
-        DwmUnregisterThumbnail(tile.Thumb);
-        tile.Thumb = IntPtr.Zero;
+        DwmUnregisterThumbnail(p.Thumb);
+        p.Thumb = IntPtr.Zero;
     }
 
-    void RegisterAll()
+    /// <summary>Fits every picture into its box, hidden while its window is minimised or the box is out of the clip.</summary>
+    void Update()
     {
-        foreach (var tile in _tiles)
-            Register(tile);
-    }
-
-    void UnregisterAll()
-    {
-        foreach (var tile in _tiles)
-            Unregister(tile);
-    }
-
-    /// <summary>Fits every thumbnail into its tile's picture area, hidden while its window is minimised or the tile is scrolled out of view.</summary>
-    void UpdateThumbnails()
-    {
-        if (!_live || !IsHandleCreated)
-            return;
-        var client = ClientRectangle;
-        // Thumbnail rectangles are relative to the destination window's client area, not to this control.
-        var origin = FindForm() is { IsHandleCreated: true } form ? form.PointToClient(PointToScreen(Point.Empty)) : Point.Empty;
-        foreach (var tile in _tiles)
+        foreach (var (hwnd, p) in _pictures)
         {
-            if (!IsWindow(tile.Item.Hwnd))
+            if (!IsWindow(hwnd))
             {
-                // Gone since the last list: the next SetItems drops the tile; never keep a thumbnail of a dead window.
-                Unregister(tile);
-                tile.Minimized = false;
+                // Gone since the page's last report: never keep a thumbnail of a dead window.
+                Unregister(p);
                 continue;
             }
             // A hidden window has no live frame either (Windows shows a grey placeholder for it).
-            tile.Minimized = IsIconic(tile.Item.Hwnd) || !IsWindowVisible(tile.Item.Hwnd);
-            if (tile.Thumb == IntPtr.Zero)
-                Register(tile);
-            if (tile.Thumb == IntPtr.Zero)
+            p.Minimized = IsIconic(hwnd) || !IsWindowVisible(hwnd);
+            if (p.Thumb == IntPtr.Zero)
+                Register(hwnd, p);
+            if (p.Thumb == IntPtr.Zero)
                 continue;
             var props = new DWM_THUMBNAIL_PROPERTIES
             {
@@ -347,297 +183,68 @@ sealed class WindowThumbnails : ScrollableControl
                 opacity = 255,
                 fSourceClientAreaOnly = 1,
             };
-            bool sized = DwmQueryThumbnailSourceSize(tile.Thumb, out var size) == 0 && size.cx > 0 && size.cy > 0;
+            bool sized = DwmQueryThumbnailSourceSize(p.Thumb, out var size) == 0 && size.cx > 0 && size.cy > 0;
             var source = sized ? new Size(size.cx, size.cy) : new Size(16, 9);
-            tile.Shown = sized ? source : Size.Empty;
-            var picture = Fit(source, tile.Picture);
-            var visible = Rectangle.Intersect(picture, client);
-            if (tile.Minimized || tile.Picture.Width < 24 || tile.Picture.Height < 24 || visible.IsEmpty)
+            p.Shown = sized ? source : Size.Empty;
+            var picture = Fit(source, p.Box);
+            var visible = Rectangle.Intersect(picture, _clip);
+            if (p.Minimized || p.Box.Width < 24 || p.Box.Height < 24 || visible.IsEmpty)
             {
                 // Hidden, but still given a real rectangle: an empty one is refused as an argument.
                 props.fVisible = 0;
-                props.rcDestination = new RECT(new Rectangle(origin.X + tile.Bounds.X, origin.Y + tile.Bounds.Y, 1, 1));
+                props.rcDestination = new RECT(new Rectangle(p.Box.X, p.Box.Y, 1, 1));
             }
             else
             {
                 props.fVisible = 1;
-                var cut = visible;
-                visible.Offset(origin);
                 props.rcDestination = new RECT(visible);
-                // The part of the window shown, given every time since Windows keeps the last one: a tile half scrolled
+                // The part of the window shown, given every time since Windows keeps the last one: a picture half scrolled
                 // out shows the matching half, not a squashed whole. (Counted from the client area, as the picture is.)
                 if (sized)
                 {
                     props.dwFlags |= DWM_TNP_RECTSOURCE;
                     double sx = (double)source.Width / picture.Width, sy = (double)source.Height / picture.Height;
-                    props.rcSource = cut.Size == picture.Size
+                    props.rcSource = visible.Size == picture.Size
                         ? new RECT(new Rectangle(0, 0, source.Width, source.Height))
                         : new RECT(new Rectangle(
-                            (int)((cut.X - picture.X) * sx), (int)((cut.Y - picture.Y) * sy),
-                            Math.Max(1, (int)(cut.Width * sx)), Math.Max(1, (int)(cut.Height * sy))));
+                            (int)((visible.X - picture.X) * sx), (int)((visible.Y - picture.Y) * sy),
+                            Math.Max(1, (int)(visible.Width * sx)), Math.Max(1, (int)(visible.Height * sy))));
                 }
             }
-            if (DwmUpdateThumbnailProperties(tile.Thumb, ref props) != 0)
-                Unregister(tile); // the window went away between the two calls; registered again next time if not
+            if (DwmUpdateThumbnailProperties(p.Thumb, ref props) != 0)
+                Unregister(p); // the window went away between the two calls; registered again next time if not
         }
     }
 
     /// <summary>A window resized, minimised or opened again since its picture was placed: placed again now.</summary>
-    void FollowWindows()
+    void Follow()
     {
-        if (!_live || !IsHandleCreated)
-            return;
-        foreach (var tile in _tiles)
+        bool moved = false, minimized = false;
+        foreach (var (hwnd, p) in _pictures)
         {
-            if (tile.Thumb == IntPtr.Zero || !IsWindow(tile.Item.Hwnd))
+            if (!IsWindow(hwnd))
                 continue;
-            bool minimized = IsIconic(tile.Item.Hwnd) || !IsWindowVisible(tile.Item.Hwnd);
-            var size = DwmQueryThumbnailSourceSize(tile.Thumb, out var s) == 0 && s.cx > 0 && s.cy > 0 ? new Size(s.cx, s.cy) : Size.Empty;
-            if (minimized == tile.Minimized && (minimized || size == tile.Shown))
-                continue;
-            UpdateThumbnails();
-            Invalidate(); // a minimised tile's text, or the picture's new shape
-            return;
-        }
-    }
-
-    protected override void OnHandleCreated(EventArgs e)
-    {
-        base.OnHandleCreated(e);
-        if (_live)
-        {
-            RegisterAll();
-            Relayout();
-        }
-    }
-
-    protected override void OnHandleDestroyed(EventArgs e)
-    {
-        // The thumbnails belong to this handle's top-level window; a recreated handle registers them again.
-        UnregisterAll();
-        base.OnHandleDestroyed(e);
-    }
-
-    protected override void OnResize(EventArgs e)
-    {
-        base.OnResize(e);
-        if (IsHandleCreated)
-            Relayout();
-    }
-
-    protected override void OnLocationChanged(EventArgs e)
-    {
-        base.OnLocationChanged(e);
-        // Moved without a resize: the pictures are placed in the window's pixels, not this control's, so move them too.
-        if (IsHandleCreated)
-            Relayout();
-    }
-
-    protected override void OnScroll(ScrollEventArgs se)
-    {
-        base.OnScroll(se);
-        Relayout();
-    }
-
-    protected override void OnMouseWheel(MouseEventArgs e)
-    {
-        base.OnMouseWheel(e);
-        Relayout(); // the wheel scrolls without OnScroll; the pictures must follow all the same
-    }
-
-    /// <summary>Sized in pixels for this control's own dpi: the form's font follows a screen change by itself, these must be made again.</summary>
-    (Font Title, Font Small) MakeFonts() =>
-        (new Font("Segoe UI Semibold", 9.5f * DeviceDpi / 72f, GraphicsUnit.Pixel), new Font("Segoe UI", 8.5f * DeviceDpi / 72f, GraphicsUnit.Pixel));
-
-    protected override void OnDpiChangedAfterParent(EventArgs e)
-    {
-        base.OnDpiChangedAfterParent(e);
-        var old = (_titleFont, _smallFont);
-        (_titleFont, _smallFont) = MakeFonts();
-        old._titleFont.Dispose();
-        old._smallFont.Dispose();
-        Relayout();
-    }
-
-    // ───────────────────────────── mouse ─────────────────────────────
-
-    int TileAt(Point p)
-    {
-        for (int i = 0; i < _tiles.Count; i++)
-        {
-            if (_tiles[i].Bounds.Contains(p))
-                return i;
-        }
-        return -1;
-    }
-
-    protected override void OnMouseMove(MouseEventArgs e)
-    {
-        base.OnMouseMove(e);
-        int i = TileAt(e.Location);
-        SetHover(i, i >= 0 && _tiles[i].Button.Contains(e.Location));
-    }
-
-    protected override void OnMouseLeave(EventArgs e)
-    {
-        base.OnMouseLeave(e);
-        SetHover(-1, false);
-    }
-
-    void SetHover(int index, bool button)
-    {
-        if (index == _hover && button == _hoverButton)
-            return;
-        if (button && index >= 0)
-            _tip.Show(_tiles[index].Minimized ? RestoreText : MinimizeText, this,
-                _tiles[index].Button.Left, _tiles[index].Button.Bottom + Scale(4, DeviceDpi), 2000);
-        else
-            _tip.Hide(this);
-        _hoverButton = button;
-        if (index == _hover)
-        {
-            Invalidate(_tiles[index].Button);
-            return;
-        }
-        // Only the two tiles whose border changes are redrawn (the pictures are Windows' own, untouched either way).
-        if (_hover >= 0 && _hover < _tiles.Count)
-            Invalidate(_tiles[_hover].Bounds);
-        _hover = index;
-        if (_hover >= 0)
-            Invalidate(_tiles[_hover].Bounds);
-        Cursor = _hover >= 0 ? Cursors.Hand : Cursors.Default;
-    }
-
-    protected override void OnMouseDown(MouseEventArgs e)
-    {
-        base.OnMouseDown(e);
-        Focus(); // so the wheel scrolls the grid, not whatever had the keyboard
-    }
-
-    protected override void OnMouseClick(MouseEventArgs e)
-    {
-        base.OnMouseClick(e);
-        int i = TileAt(e.Location);
-        if (i >= 0 && e.Button == MouseButtons.Left && _tiles[i].Button.Contains(e.Location))
-            ButtonClicked?.Invoke(_tiles[i].Item);
-        else if (i >= 0 && (e.Button == MouseButtons.Left || e.Button == MouseButtons.Right))
-            TileClicked?.Invoke(_tiles[i].Item, e.Button);
-    }
-
-    // ───────────────────────────── paint ─────────────────────────────
-
-    static Color Mix(Color a, Color b, float amount) => Color.FromArgb(
-        (int)(a.R + (b.R - a.R) * amount), (int)(a.G + (b.G - a.G) * amount), (int)(a.B + (b.B - a.B) * amount));
-
-    static GraphicsPath Rounded(Rectangle r, int radius)
-    {
-        var path = new GraphicsPath();
-        int d = radius * 2;
-        path.AddArc(r.X, r.Y, d, d, 180, 90);
-        path.AddArc(r.Right - d, r.Y, d, d, 270, 90);
-        path.AddArc(r.Right - d, r.Bottom - d, d, d, 0, 90);
-        path.AddArc(r.X, r.Bottom - d, d, d, 90, 90);
-        path.CloseFigure();
-        return path;
-    }
-
-    protected override void OnPaint(PaintEventArgs e)
-    {
-        var g = e.Graphics;
-        g.Clear(_theme.Background);
-        if (_tiles.Count == 0)
-        {
-            TextRenderer.DrawText(g, EmptyText, Font, ClientRectangle, _theme.Text2,
-                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.WordBreak | TextFormatFlags.NoPrefix);
-            return;
-        }
-        int dpi = DeviceDpi, inset = Scale(Inset, dpi), radius = Scale(Radius, dpi), gap = Scale(8, dpi);
-        using var surface = new SolidBrush(_theme.Surface);
-        using var picture = new SolidBrush(_theme.Background);
-        using var line = new Pen(_theme.Line);
-        using var hot = new Pen(Mix(_theme.Line, _theme.Text, .35f));
-        for (int i = 0; i < _tiles.Count; i++)
-        {
-            var tile = _tiles[i];
-            var r = tile.Bounds;
-            if (!r.IntersectsWith(e.ClipRectangle))
-                continue;
-            g.SmoothingMode = SmoothingMode.AntiAlias;
-            var frame = new Rectangle(r.X, r.Y, r.Width - 1, r.Height - 1);
-            using (var path = Rounded(frame, radius))
+            bool min = IsIconic(hwnd) || !IsWindowVisible(hwnd);
+            if (min != p.Minimized)
             {
-                g.FillPath(surface, path);
-                g.DrawPath(i == _hover ? hot : line, path);
+                minimized = true;
+                continue;
             }
-            g.SmoothingMode = SmoothingMode.None;
-            // The picture area in the page colour: the live picture covers it, or is letterboxed on it.
-            if (tile.Picture.Width > 0 && tile.Picture.Height > 0)
-                g.FillRectangle(picture, tile.Picture);
-
-            DrawButton(g, tile, i == _hover && _hoverButton, dpi);
-            var item = tile.Item;
-            int y = r.Y + inset, left = r.X + inset, width = tile.Button.Left - gap - left;
-            Caption(g, item.Title, _titleFont, _theme.Text, item.Tag, left, y, width, gap);
-            y += TextRenderer.MeasureText(g, "Ag", _titleFont).Height + Scale(2, dpi);
-            Caption(g, item.Subtitle, Font, _theme.Text2, item.Tag2, left, y, width, gap);
-
-            if (tile.Minimized || tile.Thumb == IntPtr.Zero)
-            {
-                // No live frame: minimised (worth a note), or it couldn't be registered (an empty tile).
-                if (tile.Minimized && tile.Picture.Height > 0)
-                    TextRenderer.DrawText(g, MinimizedText, Font, tile.Picture, _theme.Text2,
-                        TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.WordBreak | TextFormatFlags.NoPrefix);
-            }
+            if (min || p.Thumb == IntPtr.Zero)
+                continue;
+            var size = DwmQueryThumbnailSourceSize(p.Thumb, out var s) == 0 && s.cx > 0 && s.cy > 0 ? new Size(s.cx, s.cy) : Size.Empty;
+            if (size != p.Shown)
+                moved = true;
         }
+        if (moved || minimized)
+            Update();
+        if (minimized)
+            Changed?.Invoke();
     }
 
-    /// <summary>The minimise button: a dash, or while the window is minimised a square (open it again).</summary>
-    void DrawButton(Graphics g, Tile tile, bool hot, int dpi)
+    public void Dispose()
     {
-        var b = tile.Button;
-        g.SmoothingMode = SmoothingMode.AntiAlias;
-        if (hot)
-        {
-            using var fill = new SolidBrush(Mix(_theme.Surface, _theme.Text, .12f));
-            using var path = Rounded(new Rectangle(b.X, b.Y, b.Width - 1, b.Height - 1), Scale(7, dpi));
-            g.FillPath(fill, path);
-        }
-        using var pen = new Pen(hot ? _theme.Text : _theme.Text2, Math.Max(1f, Scale(14, dpi) / 10f));
-        int m = b.Width * 32 / 100;
-        if (tile.Minimized)
-            g.DrawRectangle(pen, b.X + m, b.Y + m, b.Width - m * 2, b.Height - m * 2);
-        else
-            g.DrawLine(pen, b.X + m, b.Y + b.Height / 2, b.Right - m, b.Y + b.Height / 2);
-        g.SmoothingMode = SmoothingMode.None;
-    }
-
-    /// <summary>One caption line: text at the left, ending in "…" before the tag at the right.</summary>
-    void Caption(Graphics g, string text, Font font, Color color, string tag, int x, int y, int width, int gap)
-    {
-        int h = TextRenderer.MeasureText(g, "Ag", font).Height;
-        // Measured without the ellipsis flag: with it, an unbounded measure comes back a few pixels wide ("9…" for "900 MB").
-        int tagW = string.IsNullOrEmpty(tag) ? 0 : TextRenderer.MeasureText(g, tag, _smallFont, Size.Empty, LineFlags & ~TextFormatFlags.EndEllipsis).Width;
-        if (tagW > 0)
-        {
-            int tagH = TextRenderer.MeasureText(g, "Ag", _smallFont).Height;
-            TextRenderer.DrawText(g, tag, _smallFont, new Rectangle(x + width - tagW, y + (h - tagH) / 2, tagW, tagH), _theme.Text2, LineFlags | TextFormatFlags.Right);
-            width -= tagW + gap;
-        }
-        if (width > 0)
-            TextRenderer.DrawText(g, text, font, new Rectangle(x, y, width, h), color, LineFlags | TextFormatFlags.Left);
-    }
-
-    protected override void Dispose(bool disposing)
-    {
-        if (disposing)
-        {
-            _watch.Dispose();
-            UnregisterAll();
-            _tiles.Clear();
-            _tip.Dispose();
-            _titleFont.Dispose();
-            _smallFont.Dispose();
-        }
-        base.Dispose(disposing);
+        _watch.Dispose();
+        Clear();
     }
 }

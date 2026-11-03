@@ -38,7 +38,7 @@ public sealed class ShellForm : Form
     DateTime _balloonUntil;
     WebView2? _web;
     /// <summary>The small always-on-top window, made the first time it is opened and kept (hidden) from then on.</summary>
-    MiniForm? _mini;
+    MiniWindow? _mini;
     readonly MonitorTab _monitor;
     string _themeId;
     int _gpuCrashes, _automaticRestarts;
@@ -87,6 +87,7 @@ public sealed class ShellForm : Form
             PageShown = RemoveCover,
             SetMiniOpen = open => SetMiniOpen(open),
             SetMonitorArea = area => _monitor?.SetArea(area),
+            MonitorRefresh = () => _monitor?.Refresh(),
             QuitForUpdate = Quit,
             // After the command's answer has gone back to the page: closing to the tray takes a picture of it first.
             WindowControl = action => BeginInvoke(() =>
@@ -222,7 +223,7 @@ public sealed class ShellForm : Form
         {
             if (_mini is null)
             {
-                _mini = new MiniForm(_app, BringToFront);
+                _mini = new MiniWindow(_app, BringToFront);
                 _mini.Dismissed += _app.PushState;
             }
             _mini.Open(activate);
@@ -364,7 +365,6 @@ public sealed class ShellForm : Form
             web.DefaultBackgroundColor = theme.Background;
         _mini?.ApplyTheme();
         _app.ApplyThemeToPanels();
-        _monitor.ApplyTheme();
         _tray.Visible = Prefs.CloseToTray || BalloonShowing;
     }
 

@@ -6175,6 +6175,91 @@ html:not(.in-window) .pn.pn-pill { height: 42px; }
 /* ───────── end P6 ───────── */
 
 /* ───────── P7 native ───────── */
+/* The mini window (ui/src/mini/MiniView.tsx, page mini.html, window MiniWindow.cs): a macro panel's card and title row,
+   as tall as the window (the person sizes it by its bottom edge); the running accounts scroll between title and foot. */
+.pn.mini { position: relative; height: 100vh; max-height: none; }
+html:not(.in-window) .pn.mini { height: calc(100vh - 32px); max-height: none; }
+.mini-logo { width: 18px; height: 18px; flex: none; }
+.mini-count { flex: none; min-width: 20px; height: 20px; box-sizing: border-box; padding: 0 6px; display: grid; place-items: center; border-radius: var(--r-pill); background: var(--surface-3); color: var(--text-2); font-size: var(--fs-1); font-weight: 600; font-variant-numeric: tabular-nums; }
+.mini-list { flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: thin; padding: 4px 0; }
+.mini-row { display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 6px 10px 6px 12px; box-sizing: border-box; }
+.mini-row + .mini-row { border-top: 1px solid var(--line); }
+.mini-row .pn-dot { align-self: flex-start; margin-top: 6px; }
+.pn-dot.s-idle { background: var(--online); }
+.mini-text { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.mini-text b { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mini-text > span { display: flex; min-width: 0; font-size: var(--fs-2); color: var(--text-2); white-space: nowrap; }
+.mini-game { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.mini-ram { flex: none; font-variant-numeric: tabular-nums; }
+.mini-text .pn-sep { padding: 0 4px; }
+.mini-acts { display: flex; gap: 4px; flex: none; }
+.pn.mini .mini-acts .btn.sm { height: 26px; padding: 0 8px; }
+.mini-empty { display: grid; justify-items: center; gap: 6px; padding: 32px 20px; text-align: center; color: var(--text-2); }
+.mini-empty .i { width: 22px; height: 22px; color: var(--muted); }
+.mini-empty p { margin: 0; font-size: var(--fs-3); }
+.mini-empty span { font-size: var(--fs-2); color: var(--muted); }
+.mini-foot { justify-content: space-between; padding-bottom: 10px; }
+/* The bottom edge: dragged, the window grows or shrinks (the hairline in its middle shows where to take it). */
+.mini-grip { position: absolute; left: 0; right: 0; bottom: 0; height: 6px; display: grid; place-items: center; cursor: ns-resize; }
+.mini-grip i { width: 28px; height: 2px; border-radius: 1px; background: var(--line-3); }
+.mini-grip:hover i { background: var(--text-2); }
+/* "Close all" asked first: a sheet over the foot, as the main page's question asks it. */
+.mini-ask { position: absolute; left: 8px; right: 8px; bottom: 8px; display: grid; gap: 10px; padding: 14px; border: 1px solid var(--line-2); border-radius: var(--r-lg);
+  background: linear-gradient(var(--raised), var(--raised)), linear-gradient(var(--surface), var(--surface)), Canvas; box-shadow: 0 14px 40px var(--shadow); }
+.mini-ask p { margin: 0; font-size: var(--fs-3); line-height: 1.45; color: var(--text); }
+.mini-remember { display: flex; align-items: center; gap: 8px; font-size: var(--fs-2); color: var(--text-2); cursor: pointer; }
+.mini-ask-btns { display: flex; justify-content: flex-end; gap: 8px; }
+/* The game monitor's tiles (ui/src/monitor): the app lays each window's live picture on its .mon-pic box, above the page.
+   The area's 4px padding keeps the focus ring inside it; its margins line the tiles up with the header. */
+.mon-area.mon-tiles { overflow: hidden auto; scrollbar-gutter: stable; margin: 0 26px 16px; }
+.mon-grid { display: grid; gap: 12px; padding: 4px; }
+.mon-tile { display: flex; flex-direction: column; min-width: 0; padding: 0 6px 6px; border-radius: var(--r-lg); border: 1px solid var(--line); background: var(--card); cursor: pointer; transition: border-color .15s, background .15s; }
+.mon-tile:hover { border-color: var(--line-3); background: var(--card-hover); }
+.mon-cap { display: flex; align-items: center; gap: 6px; flex: none; height: 50px; padding-left: 6px; }
+.mon-lines { flex: 1; min-width: 0; display: grid; gap: 3px; }
+.mon-line { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.mon-name, .mon-game { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mon-name { font-size: var(--fs-4); font-weight: 600; color: var(--text); }
+.mon-game { font-size: var(--fs-2); color: var(--text-2); }
+.mon-tag { flex: none; font-size: var(--fs-1); color: var(--muted); font-variant-numeric: tabular-nums; }
+.mon-min { flex: none; width: 30px; height: 30px; }
+.mon-pic { flex: 1; min-height: 0; display: grid; place-items: center; border-radius: var(--r-xs); background: var(--bg); overflow: hidden; }
+.mon-pic img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.mon-pic p { margin: 0; padding: 0 12px; text-align: center; font-size: var(--fs-2); color: var(--muted); }
+.mon-tile.min .mon-pic { border: 1px dashed var(--line-2); background: transparent; }
+@media (max-width: 1180px) { .mon-area.mon-tiles { margin: 0 18px 12px; } }
+/* The overlay over a game and the colour picker (overlay.html, ui/src/overlay). Editing, the window itself is see-through
+   (62 %) over black, which dims the game; the colours here are the game's markings, the same on every theme. */
+body.ov-page { margin: 0; overflow: hidden; background: #000; user-select: none; }
+.ov { position: fixed; inset: 0; outline: none; touch-action: none; }
+/* A browser preview has no see-through window: the same dimming drawn over the stand-in game. */
+html:not(.in-window) body.ov-page.ov-dim { background: transparent; }
+html:not(.in-window) body.ov-dim #overlay { position: fixed; inset: 0; background: #000; opacity: .62; }
+.ov-picture { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill; pointer-events: none; }
+.ov-area { position: absolute; box-sizing: border-box; border: 2px solid var(--c); background: color-mix(in srgb, var(--c) 27%, transparent); }
+.ov-area.held { background: color-mix(in srgb, var(--c) 47%, transparent); }
+.ov-tag { position: absolute; left: -2px; bottom: 100%; max-width: calc(100% + 4px); padding: 2px 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: var(--fs-2); font-weight: 700; line-height: 16px; background: var(--c); pointer-events: none; }
+.ov-grip { position: absolute; display: grid; place-items: center; }
+.ov-grip::after { content: ""; width: 8px; height: 8px; background: #fff; box-shadow: 0 0 0 1px rgb(0 0 0 / .45); }
+.ov-grip.tl { left: 0; top: 0; } .ov-grip.tr { right: 0; top: 0; } .ov-grip.bl { left: 0; bottom: 0; } .ov-grip.br { right: 0; bottom: 0; }
+.ov-dot { position: absolute; display: grid; place-items: center; box-sizing: border-box; translate: -50% -50%; border-radius: 50%; border: 2px solid #fff;
+  background: #2563eb; color: #fff; font-size: var(--fs-1); font-weight: 700; font-variant-numeric: tabular-nums; }
+/* A little reach past its ring, as the WinForms overlay took it. */
+.ov-dot::before { content: ""; position: absolute; inset: -5px; border-radius: 50%; }
+.ov-dot.held { background: #ffc400; color: #000; }
+/* What it is for, at the top; the bar is the app's own (its theme), above the markings. */
+.ov-bar { position: absolute; left: 50%; top: 8px; translate: -50% 0; z-index: 2; display: flex; align-items: center; gap: 10px; max-width: calc(100% - 16px);
+  padding: 5px 5px 5px 14px; border: 1px solid var(--line-2); border-radius: var(--r-md); background: var(--surface); color: var(--text); cursor: default; }
+.ov-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-3); font-weight: 600; }
+.ov-hint { flex: none; font-size: var(--fs-2); color: var(--text-2); white-space: nowrap; }
+.ov-bar .btn { flex: none; }
+/* The magnifier: the pixels around the pointer, the one under it outlined, its colour under them. */
+.ov-lens { position: absolute; z-index: 3; box-sizing: content-box; width: 108px; border: 1px solid #000; background: #000; pointer-events: none; box-shadow: 0 6px 18px rgb(0 0 0 / .4); }
+.ov-lens canvas { display: block; width: 108px; height: 108px; image-rendering: pixelated; }
+.ov-lens-mark { position: absolute; box-sizing: border-box; border: 1px solid #fff; box-shadow: 0 0 0 1px #000; }
+.ov-lens-hex { display: block; height: 28px; line-height: 28px; text-align: center; font: 600 var(--fs-2) / 28px ui-monospace, Consolas, monospace; }
+@media (max-width: 520px) { .ov-hint { display: none; } }
 /* ───────── end P7 ───────── */
 
 /* ───────── P7b browser ───────── */

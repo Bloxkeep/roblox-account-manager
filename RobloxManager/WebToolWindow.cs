@@ -8,18 +8,19 @@ namespace RobloxManager;
 /// <summary>
 /// A small borderless window whose whole face is one of the app's pages (wwwroot/&lt;page&gt;.html, drawing
 /// <c>window.BloxkeepUI.&lt;page&gt;(...)</c> from the one ui.js bundle): the macro panel beside the game today, the mini
-/// window, the game overlay and the dialogs next (the owner's rule of 2026-11-03: nothing the user sees drawn in
-/// WinForms). WinForms is only the host: a tool window (not in Alt+Tab), Windows 11's rounded corners in the theme's
+/// window (MiniWindow), the game overlay and colour picker (OverlayWindow), the dialogs next (the owner's rule of
+/// 2026-11-03: nothing the user sees drawn in WinForms). WinForms is only the host: a tool window (not in Alt+Tab), Windows 11's rounded corners in the theme's
 /// line colour, the browser of the main window's profile (one shared environment, so one browser and GPU process while
 /// the main window's is alive) started on first show and let go a while after the window hides.
 /// <para>The page and the host talk in the app page's own messages: the page posts <c>{ cmd, args }</c> ("ready",
-/// "size" with its size in CSS pixels, "act" with what was clicked, "drag" to move the window); the host posts
+/// "size" with its size in CSS pixels, "act" with what was clicked, "drag" to move the window, "resize" to make it
+/// taller or shorter by its bottom edge); the host posts
 /// <c>{ type: "event", name, data }</c>. The window takes the page's size times its monitor's scale.</para>
 /// </summary>
 public abstract class WebToolWindow : Form
 {
     const int WS_EX_TOOLWINDOW = 0x80, WS_EX_TOPMOST = 0x8, CS_DROPSHADOW = 0x20000;
-    const int WM_NCLBUTTONDOWN = 0xA1, HTCAPTION = 2;
+    const int WM_NCLBUTTONDOWN = 0xA1, HTCAPTION = 2, HTBOTTOM = 15;
 
     readonly System.Windows.Forms.Timer _release = new();
     WebView2? _web;
@@ -38,7 +39,7 @@ public abstract class WebToolWindow : Form
         AutoScaleMode = AutoScaleMode.None;
         Text = Ui.Title;
         Icon = Ui.AppIcon;
-        BackColor = Themes.Current.Surface;
+        BackColor = Backdrop;
         _release.Tick += (_, _) => ReleaseBrowser();
     }
 
@@ -54,6 +55,18 @@ public abstract class WebToolWindow : Form
     /// <summary>While true the browser is kept even though the window is hidden.</summary>
     protected virtual bool HoldBrowser => false;
 
+    /// <summary>Windows 11's rounded corners and the hairline in the theme's line colour (not over a game: the overlay is square).</summary>
+    protected virtual bool Rounded => true;
+
+    /// <summary>Windows' shadow under the window.</summary>
+    protected virtual bool Shadow => true;
+
+    /// <summary>The colour shown before the page draws, and under a page that is see-through.</summary>
+    protected virtual Color Backdrop => Themes.Current.Surface;
+
+    /// <summary>A click on the page takes the keyboard (it needs it for typing, keys and Esc).</summary>
+    protected virtual bool ActivateOnClick => true;
+
     /// <summary>The page's last size in CSS pixels (empty until it has said).</summary>
     protected Size PageSize => _page;
 
@@ -68,7 +81,8 @@ public abstract class WebToolWindow : Form
             p.ExStyle |= WS_EX_TOOLWINDOW; // not in Alt+Tab
             if (StartsTopMost)
                 p.ExStyle |= WS_EX_TOPMOST;
-            p.ClassStyle |= CS_DROPSHADOW;
+            if (Shadow)
+                p.ClassStyle |= CS_DROPSHADOW;
             return p;
         }
     }
@@ -114,7 +128,7 @@ public abstract class WebToolWindow : Form
     async Task StartBrowserAsync()
     {
         var env = await ShellForm.CreateEnvironmentAsync();
-        var web = new WebView2 { Dock = DockStyle.Fill, DefaultBackgroundColor = Themes.Current.Surface };
+        var web = new WebView2 { Dock = DockStyle.Fill, DefaultBackgroundColor = Backdrop };
         Controls.Add(web);
         _web = web;
         // The browser starts once its control has a window, and a hidden form's controls get none by themselves.
@@ -199,6 +213,13 @@ public abstract class WebToolWindow : Form
         }
     }
 
+    /// <summary>The page takes the keyboard (the window was activated: its keys go to the page, not the window).</summary>
+    protected void FocusPage()
+    {
+        if (_web is { IsDisposed: false } web && !web.Focused)
+            web.Focus();
+    }
+
     // ───────────────────────── messages ─────────────────────────
 
     /// <summary>An event to the page, as the app's page gets them: { type: "event", name, data }.</summary>
@@ -243,6 +264,9 @@ public abstract class WebToolWindow : Form
                     break;
                 case "drag":
                     BeginDrag();
+                    break;
+                case "resize":
+                    BeginResize();
                     break;
                 case "act" when args.ValueKind == JsonValueKind.Object:
                     OnAct(Str(args, "what"), args);
@@ -298,6 +322,24 @@ public abstract class WebToolWindow : Form
     {
     }
 
+    /// <summary>
+    /// The page's bottom grip pressed: Windows sizes the window by its bottom edge with the pointer, as by a sizing border
+    /// (the window has none: its page fills it). The window's minimum and maximum size hold meanwhile.
+    /// </summary>
+    void BeginResize()
+    {
+        if (!Visible || (MouseButtons & MouseButtons.Left) == 0)
+            return;
+        ReleaseCapture();
+        SendMessage(Handle, WM_NCLBUTTONDOWN, HTBOTTOM, IntPtr.Zero);
+        OnResized();
+    }
+
+    /// <summary>The person sized the window by its page (the sizing has ended).</summary>
+    protected virtual void OnResized()
+    {
+    }
+
     /// <summary>A size in CSS pixels as screen pixels on a monitor of this scale.</summary>
     protected static Size Scaled(Size css, float scale) => new((int)Math.Ceiling(css.Width * scale), (int)Math.Ceiling(css.Height * scale));
 
@@ -343,11 +385,20 @@ public abstract class WebToolWindow : Form
     /// <summary>Windows 11's rounded corners and a border in the theme's line colour; the colour shown before the page draws.</summary>
     protected void Frame()
     {
-        BackColor = Themes.Current.Surface;
+        BackColor = Backdrop;
         if (_web is { IsDisposed: false } web)
-            web.DefaultBackgroundColor = Themes.Current.Surface;
-        if (IsHandleCreated)
-            ThemedMenu.RoundCorners(Handle, Themes.Current);
+            web.DefaultBackgroundColor = Backdrop;
+        if (IsHandleCreated && Rounded)
+            Ui.RoundCorners(Handle, Themes.Current);
+    }
+
+    const int WM_MOUSEACTIVATE = 0x0021, MA_ACTIVATE = 1;
+
+    protected override void WndProc(ref Message m)
+    {
+        base.WndProc(ref m);
+        if (m.Msg == WM_MOUSEACTIVATE && ActivateOnClick)
+            m.Result = MA_ACTIVATE;
     }
 
     protected override void OnHandleCreated(EventArgs e)

@@ -54,6 +54,19 @@ static class Ui
     [DllImport("dwmapi.dll")]
     static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
 
+    /// <summary>Windows 11 rounds a borderless window and draws its hairline in the theme's line colour; false on older
+    /// Windows, where it stays square.</summary>
+    public static bool RoundCorners(IntPtr hwnd, Themes.Theme theme)
+    {
+        const int DWMWA_WINDOW_CORNER_PREFERENCE = 33, DWMWA_BORDER_COLOR = 34, DWMWCP_ROUND = 2;
+        int round = DWMWCP_ROUND;
+        if (DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, ref round, sizeof(int)) != 0)
+            return false;
+        int border = ColorTranslator.ToWin32(theme.Line);
+        DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, ref border, sizeof(int));
+        return true;
+    }
+
     /// <summary>Title bar in the theme's colours (caption and text colours are ignored before Windows 11).</summary>
     public static void UseThemedTitleBar(Form form, Themes.Theme theme)
     {
@@ -85,10 +98,11 @@ static class Ui
     public static T Modal<T>(Func<T> show)
     {
         _onTop.RemoveAll(f => f.IsDisposed);
-        // Not from another thread: the box then opens as before, which is better than a cross-thread error.
-        var lowered = _onTop.Where(f => f.Visible && f.TopMost && !f.InvokeRequired).ToList();
+        // Not from another thread: the box then opens as before, which is better than a cross-thread error. A page's
+        // window (WebToolWindow) is on top by its style, not by TopMost (setting that would take the keyboard).
+        var lowered = _onTop.Where(f => f.Visible && !f.InvokeRequired && f.IsHandleCreated && OnTop(f)).ToList();
         foreach (var form in lowered)
-            form.TopMost = false;
+            SetOnTop(form, false);
         Interlocked.Increment(ref _modalsOpen);
         try
         {
@@ -97,9 +111,28 @@ static class Ui
         finally
         {
             Interlocked.Decrement(ref _modalsOpen);
-            foreach (var form in lowered.Where(f => !f.IsDisposed))
-                form.TopMost = true;
+            foreach (var form in lowered.Where(f => !f.IsDisposed && f.IsHandleCreated))
+                SetOnTop(form, true);
         }
+    }
+
+    [DllImport("user32.dll")]
+    static extern int GetWindowLong(IntPtr hWnd, int index);
+
+    [DllImport("user32.dll")]
+    static extern bool SetWindowPos(IntPtr hWnd, IntPtr after, int x, int y, int cx, int cy, uint flags);
+
+    static bool OnTop(Form form)
+    {
+        const int GWL_EXSTYLE = -20, WS_EX_TOPMOST = 0x8;
+        return (GetWindowLong(form.Handle, GWL_EXSTYLE) & WS_EX_TOPMOST) != 0;
+    }
+
+    /// <summary>On top of every window or not, without taking the keyboard.</summary>
+    static void SetOnTop(Form form, bool on)
+    {
+        const uint SWP_NOSIZE = 0x1, SWP_NOMOVE = 0x2, SWP_NOACTIVATE = 0x10;
+        SetWindowPos(form.Handle, new IntPtr(on ? -1 : -2), 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE);
     }
 
     static string? _clipboardSecret;

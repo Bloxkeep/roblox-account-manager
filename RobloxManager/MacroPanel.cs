@@ -7,7 +7,7 @@ namespace RobloxManager;
 
 // Macros (Beta): what the player may change on a macro's panel (PanelWindow.cs) and the boxes it looks in on the game.
 // The maker ticks "Player can change" on a step's value: the value becomes an option ("$o1" in the step), shown on the
-// panel; an area is a named box ("@a1" in the step), moved and sized on the game itself (GameOverlay.cs). Kept in the
+// panel; an area is a named box ("@a1" in the step), moved and sized on the game itself (OverlayWindow.cs). Kept in the
 // macro; the shape is the page's and the core's shared contract (macro-contract.md, "REWORK").
 
 /// <summary>A value the player may change on the macro's panel.</summary>

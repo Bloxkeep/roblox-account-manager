@@ -1836,6 +1836,79 @@ export default [
   // ── end P6 ──
 
   // ── P7 native ──
+  // The mini window (mini.html, ui/src/mini): the running accounts, empty, locked, names hidden, long words, Close all asked.
+  S('mini', '', null, { page: 'mini-preview.html', size: [340, 420] }),
+  S('mini-empty', 'empty=1&others=2', null, { page: 'mini-preview.html', size: [340, 420] }),
+  S('mini-locked', 'locked=1', null, { page: 'mini-preview.html', size: [340, 420] }),
+  S('mini-names-hidden', 'hidden=1', null, { page: 'mini-preview.html', size: [340, 420] }),
+  S('mini-long', 'long=1&many=1', null, { page: 'mini-preview.html', size: [340, 420] }),
+  S('mini-close', '', async s => { await s.click({ css: '.mini-row:first-child .btn.ghost' }); }, { page: 'mini-preview.html', size: [340, 420] }),
+  S('mini-close-all', '', async s => { await s.click({ css: '.mini-foot .btn.danger' }); await s.snap('asked'); await s.click({ css: '.mini-ask .btn.danger' }); },
+    { page: 'mini-preview.html', size: [340, 420] }),
+  S('mini-light', 'theme=light', null, { page: 'mini-preview.html', size: [340, 420] }),
+  S('mini-retro', 'theme=retro', async s => { await s.click({ css: '.mini-foot .btn.danger' }); }, { page: 'mini-preview.html', size: [340, 420], langs: ['en'] }),
+  // The game monitor's tiles (ui/src/monitor), stand-in pictures where the app lays the live ones (ui/dev/mock-p7.js).
+  S('monitor-tiles', 'monitor=1&tiles=3', async s => { await s.point({ css: '.mon-tile' }); }),
+  S('monitor-one', 'monitor=1&tiles=1', async s => { await s.point({ css: '.mon-tile' }); }),
+  S('monitor-many', 'monitor=1&tiles=9&long=1', async s => { await s.point({ css: '.mon-tile' }); }),
+  S('monitor-names-hidden', 'monitor=1&tiles=3&hide=1&others=1', async s => { await s.point({ css: '.mon-tile' }); }),
+  S('monitor-minimized', 'monitor=1&tiles=3', async s => { await s.click({ css: '.mon-tile:nth-child(2) .mon-min' }); await s.wait(300); }),
+  // The menu withdraws only the picture it lies over: the other two keep theirs.
+  S('monitor-menu', 'monitor=1&tiles=3', async s => {
+    await s.click({ css: '.mon-tile:first-child .mon-pic' }, { button: 'right' });
+    await s.wait(200);
+    const left = await s.eval('window.__monitorArea?.pictures?.map(p => p.id).join(",")');
+    if (!(await s.eval('!!document.querySelector(".menu")')) || left.split(',').length !== 2) throw new Error(`pictures left with the menu open: ${left}`);
+  }),
+  S('monitor-none', 'monitor=1&tiles=0', async s => { await s.point({ css: '.mon-empty' }); }),
+  S('monitor-light', 'monitor=1&tiles=3&theme=light', async s => { await s.point({ css: '.mon-tile' }); }),
+  S('monitor-retro', 'monitor=1&tiles=4&mintile=1&theme=retro', async s => { await s.point({ css: '.mon-tile' }); }, { langs: ['en'] }),
+  // The overlay over a game and the colour picker (overlay.html, ui/src/overlay), over a stand-in game (ui/dev/overlay-mock.js).
+  ...(() => {
+    const OV = { page: 'overlay-preview.html', size: [960, 540] };
+    /** A press on an element's centre, moved by dx, dy and let go, as pointer events (the page's own drags). */
+    const press = (s, sel, dx, dy) => s.eval(`(async () => {
+      const el = document.querySelector(${JSON.stringify(sel)}), r = el.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;
+      const o = (cx, cy, buttons) => ({ bubbles: true, pointerId: 1, isPrimary: true, button: 0, buttons, clientX: cx, clientY: cy });
+      const frame = () => new Promise(f => requestAnimationFrame(() => f()));
+      el.dispatchEvent(new PointerEvent('pointerdown', o(x, y, 1))); await frame();
+      el.dispatchEvent(new PointerEvent('pointermove', o(x + ${dx} / 2, y + ${dy} / 2, 1))); await frame();
+      el.dispatchEvent(new PointerEvent('pointermove', o(x + ${dx}, y + ${dy}, 1))); await frame();
+      el.dispatchEvent(new PointerEvent('pointerup', o(x + ${dx}, y + ${dy}, 0))); await frame();
+    })()`);
+    const sent = async (s, what) => {
+      const acts = await s.eval('JSON.stringify(window.__acts)');
+      if (!JSON.parse(acts).some(a => a.what === what)) throw new Error(`no "${what}" sent: ${acts}`);
+    };
+    return [
+      S('overlay-edit', '', async s => { await s.point({ css: '.ov-dot' }); }, OV),
+      // A dot and a box's corner dragged: the app hears where they went, in parts of the game.
+      S('overlay-edit-drag', '', async s => {
+        await s.point({ css: '.ov-dot' });
+        await press(s, '.ov-dot[data-dot="0"]', 120, -60);
+        await press(s, '.ov-area[data-area="1"] .ov-grip.br', 80, 40);
+        await s.wait(100);
+        await sent(s, 'dot');
+        await sent(s, 'area');
+        await s.key('Escape');
+        await sent(s, 'done');
+      }, OV),
+      S('overlay-new-long', 'new=1&long=1', async s => { await s.point({ css: '.ov-dot' }); }, OV),
+      S('overlay-areas', 'mode=areas', async s => { await s.point({ css: '.ov-area' }); }, OV),
+      S('overlay-pick', 'mode=pick', async s => {
+        await s.point({ css: '.ov-picture' });
+        await s.hover({ css: '.ov' });
+        await s.wait(150);
+        await s.snap('magnifier');
+        await s.click({ css: '.ov' });
+        await sent(s, 'pick');
+      }, OV),
+      S('overlay-screen', 'mode=screen', async s => { await s.hover({ css: '.ov' }); await s.wait(150); await s.key('Escape'); await sent(s, 'cancel'); }, OV),
+      S('overlay-light', 'theme=light', async s => { await s.point({ css: '.ov-dot' }); }, OV),
+      S('overlay-retro', 'mode=areas&theme=retro', async s => { await s.point({ css: '.ov-area' }); }, { ...OV, langs: ['en'] }),
+      S('overlay-small', 'mode=edit', async s => { await s.point({ css: '.ov-dot' }); }, { ...OV, size: [480, 300] }),
+    ];
+  })(),
   // ── end P7 ──
 
   // ── P7b browser ──

@@ -1,10 +1,12 @@
 namespace RobloxManager;
 
 /// <summary>
-/// The "Game monitor" tab's live pictures: a web page can't show other windows, so a <see cref="WindowThumbnails"/>
-/// lies over the tab's area, which the page reports (<see cref="SetArea"/>) and withdraws (null) whenever the page must
-/// show there instead (another tab, a dialog or menu, the lock screen). Windows draws the pictures above every child
-/// window, the browser included, so nothing of the page can show through them.
+/// The "Game monitor" tab's live pictures. The page draws the tab (ui/src/monitor/MonitorView.tsx: tile frames, names,
+/// buttons, menus) from the windows this sends it (the "monitor" event, every 1.5 s while the tab shows and at once when
+/// a window is minimised or opened again), and reports where each tile's picture goes; a page can't show other windows,
+/// so <see cref="WindowThumbnails"/> lays each one there. The page withdraws a picture its menu would lie under, and all
+/// of them ({ hidden }) whenever the page must show there instead (another tab, a dialog, the lock screen): Windows draws
+/// the pictures above the whole page.
 /// </summary>
 sealed class MonitorTab : IDisposable
 {
@@ -12,26 +14,24 @@ sealed class MonitorTab : IDisposable
     readonly AppController _app;
     /// <summary>The browser control the page's pixels are counted in; null while it is released.</summary>
     readonly Func<Control?> _page;
-    readonly WindowThumbnails _tiles = new() { Visible = false, TabStop = false };
+    readonly WindowThumbnails _pictures;
     readonly System.Windows.Forms.Timer _timer = new() { Interval = 1500 };
-    readonly TileMenu _menu = new();
-    List<AppController.MonitorClient> _clients = new();
     AppController.MonitorArea? _area;
-    bool _failed;
+    /// <summary>The windows the page was last sent: only theirs are pictured, whatever handle a report names.</summary>
+    HashSet<IntPtr> _known = new();
+    bool _shown, _failed;
 
     public MonitorTab(Form host, AppController app, Func<Control?> page)
     {
         _host = host;
         _app = app;
         _page = page;
-        _tiles.Theme = Themes.Current;
-        _tiles.TileClicked += OnTileClicked;
-        _tiles.ButtonClicked += item => ToggleMinimised(item.Hwnd);
-        _timer.Tick += (_, _) => Tick();
-        host.Controls.Add(_tiles);
+        _pictures = new WindowThumbnails(host);
+        _pictures.Changed += Refresh;
+        _timer.Tick += (_, _) => Refresh();
     }
 
-    /// <summary>The page's monitor tab is here (CSS pixels and its pixel ratio), or must not be covered (null).</summary>
+    /// <summary>The page's monitor tab and its pictures are here (CSS pixels and its pixel ratio), or must not be covered (null).</summary>
     public void SetArea(AppController.MonitorArea? area)
     {
         _area = area;
@@ -42,64 +42,54 @@ sealed class MonitorTab : IDisposable
     /// hidden or back (before the page says so).</summary>
     public void Place()
     {
-        if (Bounds() is not { } bounds)
+        if (_area is not { } a || _host.IsDisposed || !_host.Visible || _host.WindowState == FormWindowState.Minimized
+            || _page() is not { IsDisposed: false, Visible: true, IsHandleCreated: true } page)
         {
             Withdraw();
             return;
         }
-        _tiles.Bounds = bounds;
-        if (_tiles.Visible)
-            return; // a move or resize: the pictures follow the control by themselves
-        ApplyTheme();
-        // Shown before going live: a picture is placed from the control's own place and size on the window.
-        _tiles.Visible = true;
-        _tiles.BringToFront();
-        _tiles.Live = true;
-        RefreshTiles();
-        _timer.Start();
-    }
-
-    /// <summary>The tab's area in the window's client pixels, or null when nothing should be shown.</summary>
-    Rectangle? Bounds()
-    {
-        if (_area is not { } a || _host.IsDisposed || !_host.Visible || _host.WindowState == FormWindowState.Minimized
-            || _page() is not { IsDisposed: false, Visible: true, IsHandleCreated: true } page)
-            return null;
-        // CSS pixels times the page's pixel ratio are the browser's device pixels, from its top-left corner. Edges
-        // are rounded (halves up, as the browser snaps them: 90 px at 125 % starts at 113, not 112), not the size.
+        // CSS pixels times the page's pixel ratio are the browser's device pixels, from its top-left corner. Edges are
+        // rounded (halves up, as the browser snaps them: 90 px at 125 % starts at 113, not 112), not the size.
         static int Px(double css, double scale) => (int)Math.Round(css * scale, MidpointRounding.AwayFromZero);
-        var r = Rectangle.FromLTRB(Px(a.X, a.Scale), Px(a.Y, a.Scale), Px(a.X + a.Width, a.Scale), Px(a.Y + a.Height, a.Scale));
         var origin = _host.PointToClient(page.PointToScreen(Point.Empty));
-        r.Offset(origin);
+        Rectangle ToHost(double x, double y, double w, double h)
+        {
+            var r = Rectangle.FromLTRB(Px(x, a.Scale), Px(y, a.Scale), Px(x + w, a.Scale), Px(y + h, a.Scale));
+            r.Offset(origin);
+            return r;
+        }
         // Never past the browser: a report from before a resize may be larger than the page is now.
-        r.Intersect(new Rectangle(origin, page.ClientSize));
-        return r.Width > 0 && r.Height > 0 ? r : null;
+        var clip = Rectangle.Intersect(ToHost(a.X, a.Y, a.Width, a.Height), new Rectangle(origin, page.ClientSize));
+        if (!_shown)
+        {
+            _shown = true;
+            Refresh();
+            _timer.Start();
+        }
+        var boxes = new Dictionary<IntPtr, Rectangle>();
+        foreach (var p in a.Pictures.Where(p => _known.Contains(p.Hwnd)))
+            boxes[p.Hwnd] = ToHost(p.X, p.Y, p.Width, p.Height);
+        _pictures.Place(boxes, clip);
     }
 
-    /// <summary>Unregistered before hidden: the pictures are Windows' own and would stay on screen without the control.</summary>
+    /// <summary>Unregistered before hidden: the pictures are Windows' own and would stay on screen without the page.</summary>
     void Withdraw()
     {
         _timer.Stop();
-        // A click on a tile focuses it; hidden while focused, the keys (the lock screen's password, Esc) would go nowhere.
-        if (_tiles.ContainsFocus && _page() is { IsDisposed: false, Visible: true, CanFocus: true } page)
-            page.Focus();
-        _tiles.Live = false;
-        _tiles.Visible = false;
+        _shown = false;
+        _pictures.Clear();
     }
 
-    /// <summary>A new theme from Settings, or Windows switching between light and dark (also noticed at the next refresh).</summary>
-    public void ApplyTheme()
+    /// <summary>The windows open now, to the page (a refresh that fails is logged once, not shown: the next tick tries again).</summary>
+    public void Refresh()
     {
-        if (_tiles.Theme.Id != Themes.Current.Id)
-            _tiles.Theme = Themes.Current;
-    }
-
-    /// <summary>A refresh that fails is logged (the first of a run of failures), not shown: a box every 1.5 s would pile up, and the next tick tries again.</summary>
-    void Tick()
-    {
+        if (!_shown)
+            return;
         try
         {
-            RefreshTiles();
+            var clients = _app.MonitorClients();
+            _known = clients.Select(c => c.Hwnd).ToHashSet();
+            _app.EmitMonitor(clients, _pictures.IsMinimized);
             _failed = false;
         }
         catch (Exception ex)
@@ -110,96 +100,10 @@ sealed class MonitorTab : IDisposable
         }
     }
 
-    /// <summary>Every 1.5 s while shown: the tiles are matched to the windows open now, texts taken fresh (the language and theme can change).</summary>
-    void RefreshTiles()
-    {
-        if (!_tiles.Visible || _tiles.IsDisposed)
-            return;
-        ApplyTheme();
-        _tiles.MinimizedText = L.T("Minimised — no live picture");
-        _tiles.EmptyText = L.T("No Roblox window is open.");
-        _tiles.MinimizeText = L.T("Minimise");
-        _tiles.RestoreText = L.T("Open again");
-        _clients = _app.MonitorClients();
-        _tiles.SetItems(_clients.Select(c => new WindowThumbnails.Item(c.Hwnd, c.Label, c.Game, Ram(c.RamMb), $"PID {c.Pid}")).ToList());
-    }
-
-    static string Ram(long mb) => mb <= 0 ? "" : mb >= 1024 ? $"{mb / 1024.0:0.0} GB" : $"{mb} MB";
-
-    void OnTileClicked(WindowThumbnails.Item item, MouseButtons button)
-    {
-        // The client as of the last refresh; its window may have closed meanwhile, which every action survives.
-        if (_clients.FirstOrDefault(c => c.Hwnd == item.Hwnd) is not { } client)
-            return;
-        if (button == MouseButtons.Left)
-        {
-            RobloxProcesses.FocusInTurn(client.Pid);
-            return;
-        }
-        _menu.Show(
-            (L.T("Show"), () => RobloxProcesses.FocusInTurn(client.Pid)),
-            (L.T(RobloxProcesses.IsMinimised(client.Hwnd) ? "Open again" : "Minimise"), () => ToggleMinimised(client.Hwnd)),
-            (L.T("Close Roblox"), () => _app.CloseMonitorClient(client)),
-            (L.T("Copy PID"), () => Ui.CopyToClipboard(client.Pid.ToString(), secret: false)));
-    }
-
-    /// <summary>Minimised without bringing anything to the front, or opened again where it was; the tile follows at once.</summary>
-    void ToggleMinimised(IntPtr hWnd)
-    {
-        if (RobloxProcesses.IsMinimised(hWnd))
-            RobloxProcesses.RestoreQuietly(hWnd);
-        else
-            RobloxProcesses.Minimise(hWnd);
-        Tick();
-    }
-
     public void Dispose()
     {
         Withdraw();
         _timer.Dispose();
-        _menu.Dispose();
-        _tiles.Dispose();
-    }
-
-    /// <summary>A tile's right-click menu, drawn like the tray menu; its items are made again each time it opens.</summary>
-    sealed class TileMenu : ContextMenuStrip
-    {
-        public TileMenu()
-        {
-            ShowImageMargin = false;
-            ShowCheckMargin = false;
-            DropShadowEnabled = true;
-            Font = new Font("Segoe UI", 9.75f);
-            Padding = new Padding(4, 5, 4, 5);
-        }
-
-        public void Show(params (string Text, Action Run)[] items)
-        {
-            var old = Items.Cast<ToolStripItem>().ToList();
-            Items.Clear();
-            foreach (var item in old)
-                item.Dispose(); // Clear only unhooks them
-            foreach (var (text, run) in items)
-            {
-                var item = new ToolStripMenuItem(text) { Padding = new Padding(10, 6, 24, 6) };
-                item.Click += (_, _) => run();
-                Items.Add(item);
-            }
-            Show(Cursor.Position);
-        }
-
-        protected override void OnOpening(System.ComponentModel.CancelEventArgs e)
-        {
-            var theme = Themes.Current;
-            Renderer = new ThemedMenu.Renderer(theme, ThemedMenu.RoundCorners(Handle, theme));
-            base.OnOpening(e);
-        }
-
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing)
-                Font.Dispose();
-            base.Dispose(disposing);
-        }
+        _pictures.Dispose();
     }
 }

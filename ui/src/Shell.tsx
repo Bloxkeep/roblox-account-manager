@@ -3,8 +3,9 @@
 import { type Ref } from 'react';
 import { AccountGrid, AccountsBar, AccountsHead, Dock } from './Accounts';
 import { Guarded } from './Guard';
-import { Icon, useHost, useMetrics } from './host';
+import { Icon, useHost } from './host';
 import { MacrosView } from './MacrosView';
+import { MonitorView } from './monitor/MonitorView';
 import { PresetsView } from './PresetsView';
 import { MonitorHead, Sidebar } from './Sidebar';
 import { AppearancePage } from './settings/AppearancePage';
@@ -47,7 +48,7 @@ export function Shell({ pages, page, preview, stats }: { pages: SettingsPageInfo
       <section className="view" id="view-stats" hidden><Guarded name="Statistics"><StatsView api={stats} /></Guarded></section>
       <section className="view" id="view-monitor" hidden>
         <header className="top"><div className="top-title"><h1>{t('mon.title')}</h1><Guarded name="the game monitor's heading"><MonitorHead /></Guarded></div></header>
-        <Guarded name="the game monitor"><MonitorArea preview={preview} /></Guarded>
+        <Guarded name="the game monitor"><MonitorView preview={preview} /></Guarded>
       </section>
       <section className="view" id="view-settings" hidden><Settings pages={pages} page={page} /></section>
     </main>
@@ -56,16 +57,6 @@ export function Shell({ pages, page, preview, stats }: { pages: SettingsPageInfo
 
 /** Where the app lays the windows' live pictures. No window: it says how one gets there. In the browser preview there is
  * no app to draw the pictures: it says what goes here. */
-function MonitorArea({ preview }: { preview: boolean }) {
-  const { t } = useHost();
-  const m = useMetrics();
-  const tiles = m.monitorCount ?? m.robloxCount;
-  return <div className={`mon-area${!tiles ? ' none' : preview ? ' preview' : ''}`} id="mon-area">
-    {!tiles ? <div className="mon-empty"><span className="pv-empty-icon"><Icon name="screens" /></span><p>{t('mon.empty')}</p></div>
-      : preview ? <p>{t('mon.preview')}</p> : null}
-  </div>;
-}
-
 /** Settings: the pages listed on the left (a search over all), the chosen one on the right; app.js opens and searches them. */
 function Settings({ pages, page }: { pages: SettingsPageInfo[]; page: string }) {
   const { t, logo } = useHost();

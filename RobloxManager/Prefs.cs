@@ -188,7 +188,7 @@ public static class Prefs
 
     public static DateTime? LastSignInCheck { get; set; }
 
-    /// <summary>The mini window (<see cref="MiniForm"/>) was open when the app last ran, so it comes back at start.</summary>
+    /// <summary>The mini window (<see cref="MiniWindow"/>) was open when the app last ran, so it comes back at start.</summary>
     public static bool MiniOpen { get; set; }
 
     /// <summary>The mini window's last place and size, "x,y,w,h" in screen pixels; null until it was moved.</summary>
