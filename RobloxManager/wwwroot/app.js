@@ -503,7 +503,7 @@
     S.lockedInUse = false;
     // Dialogs stay open with their old language: a language change mustn't throw away a form being typed in.
     takeDownUiParts();
-    // The page is React's (ui/src/Shell.tsx); parts it marks data-vanilla are still drawn here (update).
+    // The page is React's (ui/src/Shell.tsx); this file keeps the state and what clicks do.
     $('#app').innerHTML = '';
     const shell = window.BloxkeepUI.shell($('#app'), uiHost(), {
       pages: SET_PAGES.map(([id, ic]) => ({ id, icon: ic, title: setPageTitle(id) })), page: setPage, preview: !(window.chrome && window.chrome.webview),

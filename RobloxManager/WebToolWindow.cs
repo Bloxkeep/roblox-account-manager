@@ -7,7 +7,7 @@ namespace RobloxManager;
 
 /// <summary>
 /// A small borderless window whose whole face is one of the app's pages (wwwroot/&lt;page&gt;.html, drawing
-/// <c>window.BloxkeepUI.&lt;page&gt;(...)</c> from the one ui.js bundle): the macro panel beside the game today, the mini
+/// <c>window.BloxkeepUI.&lt;page&gt;(...)</c> from its own ui-&lt;page&gt;.js bundle, ui/build.mjs): the macro panel beside the game today, the mini
 /// window (MiniWindow), the game overlay and colour picker (OverlayWindow), the dialogs (Dialog); TrayWindow still has its own copy of this host (the owner's rule of
 /// 2026-11-03: nothing the user sees drawn in WinForms). WinForms is only the host: a tool window (not in Alt+Tab), Windows 11's rounded corners in the theme's
 /// line colour, the browser of the main window's profile (one shared environment, so one browser and GPU process while

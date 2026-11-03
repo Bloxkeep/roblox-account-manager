@@ -29,7 +29,7 @@ export interface TrayApi {
   size(width: number, height: number, opened: number): void;
 }
 
-/** What tray.js holds: show draws the given part with the given state (opened: a new count each time it opens). */
+/** What the tray page (ui-tray.js, pages/tray.tsx) holds: show draws the given part with the given state (opened: a new count each time it opens). */
 export interface TrayViewApi { show(mode: 'panel' | 'menu', state: TrayState, opened: number): void }
 
 export function TrayView({ api, handle }: { api: TrayApi; handle: Ref<TrayViewApi> }) {
