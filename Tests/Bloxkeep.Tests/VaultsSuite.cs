@@ -186,6 +186,12 @@ static class VaultsSuite
         c.Check("…a set-up that failed, then Cancel: the vault from before is offered again", Vaults.Current == thirdVault && Vault.ActiveFile == thirdVault!.File,
             Vault.ActiveFile);
 
+        if (thirdVault is null)
+        {
+            c.Check("the checks after this need the third vault on the list", false); // a failed check, not a NullReferenceException
+            return;
+        }
+
         // A backup cut short (review, 2026-10-30): one only the size of a header isn't taken as a vault to restore; one that
         // got through and won't open says where the vault it replaced is kept.
         string thirdPath = Path.Combine(data, thirdVault.File), cut = Path.Combine(dir, "cut-short.rmv");
