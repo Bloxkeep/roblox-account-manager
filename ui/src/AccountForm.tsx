@@ -24,7 +24,7 @@ export function AccountForm({ account: a, api, browser }: { account: Account | n
   const app = useAppState();
   const isNew = !a;
   const hide = !!app.hideNames;
-  const groups = [...new Set<string>((app.accounts || []).map((x: Account) => x.group).filter(Boolean))];
+  const groups = [...new Set<string>((app.accounts || []).map((x: Account) => x.group).filter(Boolean))].sort(host.compareText);
   // While names are hidden the alias can't be shown, so it can't be edited either: it isn't sent, and stays as it is.
   const aliasHidden = !isNew && hide;
   const hasKey = !isNew && !!a.hasAuthenticator;
@@ -65,7 +65,11 @@ export function AccountForm({ account: a, api, browser }: { account: Account | n
     }
     const r = await call(saved ? 'totpCode' : 'totpCheck', saved ? { id: a!.id } : { key: k }, { silent: true }) as { ok: boolean; error?: string; code: string; seconds: number } | undefined;
     if (mine !== seq.current || !alive.current || !r) return;
-    if (!r.ok) return setMsg({ node: r.error, kind: 'err' });
+    if (!r.ok) {
+      // An error naming the character that can't be in a key: the key shows, so it can be found.
+      if (!saved && /["“][^"”]+["”]/.test(r.error || '')) setShown(s => ({ ...s, authenticator: true }));
+      return setMsg({ node: r.error, kind: 'err' });
+    }
     const until = Date.now() + r.seconds * 1000;
     if (saved) { setCode(split(r.code)); setMsg({ node: '', kind: '' }); }
     else setMsg({ node: t('am.totpNow', { code: split(r.code) }), kind: 'ok' });
@@ -101,16 +105,20 @@ export function AccountForm({ account: a, api, browser }: { account: Account | n
   };
 
   const reveal = async (name: string, value: string, set: (v: string) => void) => {
-    if (shown[name]) return setShown({ ...shown, [name]: false });
+    if (shown[name]) return setShown(s => ({ ...s, [name]: false }));
     // Only the saved password can be shown from the app: an authenticator key never comes back to the page.
     if (!isNew && name === 'password' && !typed.current.has(name) && !value) {
       const v = await call('reveal', { id: a!.id, field: name });
       if (typeof v === 'string') set(v);
     }
-    setShown({ ...shown, [name]: true });
+    setShown(s => ({ ...s, [name]: true }));
   };
-  const eye = (name: string, value: string, set: (v: string) => void) =>
-    <button type="button" className="icon-btn" data-reveal={name} title={t('common.show')} onClick={() => reveal(name, value, set)}><Icon name={shown[name] ? 'eyeOff' : 'eye'} /></button>;
+  // Says what a click does now: show, or hide again.
+  const eye = (name: string, value: string, set: (v: string) => void) => {
+    const label = t(shown[name] ? 'am.hide' : 'common.show');
+    return <button type="button" className="icon-btn" data-reveal={name} title={label} aria-label={label} aria-pressed={!!shown[name]}
+      onClick={() => reveal(name, value, set)}><Icon name={shown[name] ? 'eyeOff' : 'eye'} /></button>;
+  };
 
   const values = () => JSON.stringify([isNew ? (typed.current.has('cookie') ? cookie : '') : null, alias, group,
     typed.current.has('password') ? password : '', key, note, removeKey]);
@@ -168,7 +176,7 @@ export function AccountForm({ account: a, api, browser }: { account: Account | n
         <div className="totp-live" id="am-totp-live" ref={live} hidden={!liveShown}>
           <b className="totp-code" id="am-totp-code">{code || '··· ···'}</b><span className="totp-left" id="am-totp-left">{left}</span>
           <button type="button" className="btn sm" data-totp="copy" onClick={() => host.copyField(a.id, 'totp')}><Icon name="copy" />{t('am.totpCopy')}</button>
-          <button type="button" className="btn sm ghost" data-totp="remove" onClick={remove}>{t('am.totpRemove')}</button>
+          <button type="button" className="btn sm ghost" data-totp="remove" onClick={remove}><Icon name="trash" />{t('am.totpRemove')}</button>
         </div>
         <div className="pw" id="am-totp-box" hidden={liveShown}><input className="field mono" type={shown.authenticator ? 'text' : 'password'} name="authenticator" ref={box} maxLength={512}
           placeholder={t('am.totpPh')} spellCheck={false} autoComplete="off" aria-label={t('am.totp')} aria-describedby="am-totp-msg" value={key} onChange={e => {
@@ -183,7 +191,8 @@ export function AccountForm({ account: a, api, browser }: { account: Account | n
       </div>}
       <label>{t('am.note')}<textarea className="field" name="note" maxLength={500} rows={2} value={note} onChange={e => setNote(e.target.value)} /></label>
     </div>
-    <p className="fine"><Icon name="shield" /><span>{t('am.fine')}</span></p>
+    {/* About the cookie: only while one is being pasted (adding by cookie). */}
+    {isNew ? <p className="fine"><Icon name="shield" /><span>{t('am.fine')}</span></p> : null}
     <div className="form-error" role="alert" hidden={!error} ref={errorLine}>{error}</div>
   </>;
 }

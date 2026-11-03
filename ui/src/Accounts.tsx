@@ -9,6 +9,8 @@ import { Avatar } from './Avatar';
 type Account = Record<string, any>;
 
 const isLocal = (a: Account) => a.state === 'running';
+/** Its window here lost the game (kicked, dropped, banned by the game): still open, but nothing is being played. */
+const isKicked = (a: Account) => isLocal(a) && (a.session?.connection === 'disconnected' || !!a.session?.bannedByGame);
 /** Auto-rejoin for the account's client: a preset that opened it may turn it on or off for that client. */
 const rejoinOn = (a: Account) => a.session?.autoRejoin ?? a.autoRejoin;
 const isStranded = (a: Account) => isLocal(a) && ['disconnected', 'menu', 'signedout'].includes(a.session?.connection);
@@ -20,10 +22,20 @@ const KICK: Record<number, string> = { 278: 'kick.idle', 267: 'kick.game', 273: 
   // The other codes of a connection that failed on the way (LostConnection in AppController.cs).
   260: 'kick.network', 261: 'kick.network', 262: 'kick.network', 266: 'kick.network', 269: 'kick.network', 290: 'kick.network', 296: 'kick.network', 297: 'kick.network', 298: 'kick.network' };
 /** The colour of the avatar ring and dot: a client here in the Roblox menu is online, not in a game. */
-const presenceType = (a: Account) => !isLocal(a) ? a.presence?.type || ''
-  : a.session?.connection === 'disconnected' ? 'kicked' : a.session?.connection === 'menu' ? 'online'
+const presenceType = (a: Account) => !isLocal(a) ? (closing(a) ? '' : a.presence?.type || '')
+  : a.session?.connection === 'disconnected' || held(a) ? 'kicked' : a.session?.connection === 'menu' ? 'online'
   : a.session?.connection === 'signedout' ? 'offline' : 'ingame';
-const ringOf = (a: Account) => { const p = presenceType(a); return a.cookieValid === false || a.banned ? 'invalid' : ['ingame', 'online', 'kicked'].includes(p) ? p : ''; };
+const ringOf = (a: Account) => {
+  const p = presenceType(a);
+  // Roblox's bot check: the amber dot and the words say it; no ring around the picture.
+  if (held(a)) return '';
+  return a.cookieValid === false || a.banned ? 'invalid' : ['ingame', 'online', 'kicked'].includes(p) ? p : '';
+};
+/** When each account's window here last closed, and its game: Roblox's web status lags behind for a while (it still
+ * says "in a game"), so for a minute the card says "Closing…" instead (AccountGrid notes it). */
+const closedAt = new Map<string, { at: number; game: string }>();
+const CLOSING_MS = 60_000;
+const closing = (a: Account) => !isLocal(a) && a.state !== 'launching' && !a.rejoin && (closedAt.get(a.id)?.at ?? 0) > Date.now() - CLOSING_MS;
 function GameIcon({ url, className, holder }: { url?: string | null; className?: string; holder: () => ReactNode }) {
   const [failed, setFailed] = useState('');
   return url && failed !== url ? <img className={className} src={url} alt="" loading={className ? 'lazy' : undefined} decoding={className ? 'async' : undefined} onError={() => setFailed(url)} /> : <>{holder()}</>;
@@ -49,7 +61,7 @@ export function AccountsHead() {
 }
 
 // The bar: status chips (counted within the group; those needing something done right after All), layout, group, sort.
-// The chip row scrolls sideways with the wheel, edges fading where there is more; a chip chosen under the fade slides in.
+// The chips stay on one line: those past the row's end go into a "+2" chip whose menu lists them (app.js chip-more).
 export function AccountsBar() {
   const { t, compareText } = useHost();
   const app = useAppState();
@@ -64,48 +76,49 @@ export function AccountsBar() {
     { f: 'ingame', text: t('chip.ingame'), n: inGroup.filter(inGame).length, dot: 'var(--ok)' },
     { f: 'online', text: t('chip.online'), n: inGroup.filter(isOnline).length, dot: 'var(--online)' },
     { f: 'offline', text: t('chip.offline'), n: inGroup.filter(a => !isOnline(a)).length, dot: 'var(--dim)' },
-    { f: 'local', text: t('chip.local'), n: inGroup.filter(isLocal).length, hide: !list.some(isLocal) },
-  ].filter(c => !c.hide);
+    { f: 'local', text: t('chip.local'), n: inGroup.filter(isLocal).length, dot: 'var(--ok)', hide: !list.some(isLocal) },
+    // Inside a group, a filter with nothing in it is left out (All and the chosen one stay).
+  ].filter(c => !c.hide && !(group && !c.n && c.f !== 'all' && c.f !== filter));
   const row = useRef<HTMLDivElement>(null);
-  const shownFilter = useRef('all');
-  const fade = () => {
+  const [over, setOver] = useState(0);
+  // Every chip is put back, then those that don't fit are hidden from the end (the chosen one always stays): measured
+  // before the page is painted, after every drawing and when the row's size changes.
+  const fit = () => {
     const el = row.current;
     if (!el) return;
-    const max = el.scrollWidth - el.clientWidth;
-    el.classList.toggle('fade-l', max > 1 && el.scrollLeft > 1);
-    el.classList.toggle('fade-r', max > 1 && el.scrollLeft < max - 1);
-  };
-  useEffect(() => {
-    const el = row.current!;
-    const wheel = (e: WheelEvent) => {
-      if (el.scrollWidth <= el.clientWidth || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
-      e.preventDefault();
-      el.scrollLeft += e.deltaY;
-    };
-    el.addEventListener('wheel', wheel, { passive: false });
-    el.addEventListener('scroll', fade, { passive: true });
-    const watch = new ResizeObserver(fade);
-    watch.observe(el);
-    return () => { el.removeEventListener('wheel', wheel); el.removeEventListener('scroll', fade); watch.disconnect(); };
-  }, []);
-  // Measured once at the start of the next frame, after every change: one layout, not one per change.
-  useEffect(() => {
-    const frame = requestAnimationFrame(() => {
-      const el = row.current, on = el?.querySelector('.chip.on');
-      if (el && on && filter !== shownFilter.current) {
-        shownFilter.current = filter;
-        const r = on.getBoundingClientRect(), box = el.getBoundingClientRect(), edge = 40;
-        if (r.left < box.left + edge) el.scrollLeft -= box.left + edge - r.left;
-        else if (r.right > box.right - edge) el.scrollLeft += r.right - (box.right - edge);
+    const all = [...el.querySelectorAll<HTMLElement>('.chip[data-f]')];
+    const more = el.querySelector<HTMLElement>('.chip.more');
+    all.forEach(c => { c.hidden = false; });
+    if (more) more.hidden = true;
+    let hidden = 0;
+    if (more && el.scrollWidth > el.clientWidth + 1) {
+      more.hidden = false;
+      const gap = parseFloat(getComputedStyle(el).columnGap) || 0;
+      const room = el.clientWidth - more.offsetWidth - gap;
+      const on = all.find(c => c.classList.contains('on'));
+      let used = on ? on.offsetWidth + gap : 0;
+      const keep = new Set<HTMLElement>(on ? [on] : []);
+      for (const c of all) {
+        if (c === on) continue;
+        if (used + c.offsetWidth > room) break;
+        keep.add(c);
+        used += c.offsetWidth + gap;
       }
-      fade();
-    });
-    return () => cancelAnimationFrame(frame);
-  });
+      for (const c of all) if (!keep.has(c)) { c.hidden = true; hidden++; }
+    }
+    setOver(hidden);
+  };
+  useLayoutEffect(fit);
+  useEffect(() => {
+    const watch = new ResizeObserver(() => fit());
+    if (row.current) watch.observe(row.current);
+    return () => watch.disconnect();
+  }, []);
   return <div className="bar">
-    <div className="chips" id="chips" ref={row}>{list.length ? chips.map(c =>
+    <div className="chips" id="chips" ref={row}>{list.length ? <>{chips.map(c =>
       <button key={c.f} className={`chip ${filter === c.f ? 'on' : ''}`} data-act="filter" data-f={c.f} aria-pressed={filter === c.f}>
-        {c.dot ? <i className="dot" style={{ background: c.dot }} /> : null}{c.text}<em>{c.n}</em></button>) : null}</div>
+        {c.dot ? <i className="dot" style={{ background: c.dot }} /> : null}{c.text}<em>{c.n}</em></button>)}
+      <button className="chip more" data-act="chip-more" aria-haspopup="menu" title={t('chip.moreTip')} hidden>{`+${over || 1}`}</button></> : null}</div>
     <div className="seg" id="layout-seg">{list.length ? (['cards', 'list'] as const).map(l =>
       <button key={l} className={layout === l ? 'on' : ''} data-act="layout" data-l={l} title={t(`layout.${l}`)} aria-label={t(`layout.${l}`)} aria-pressed={layout === l}>
         <Icon name={l === 'cards' ? 'grid' : 'rows'} /></button>) : null}</div>
@@ -175,6 +188,22 @@ export function AccountGrid() {
     document.addEventListener('visibilitychange', again);
     return () => { clearInterval(timer); document.removeEventListener('visibilitychange', again); };
   }, []);
+  // A window here that just closed: noted (closing), and drawn again once Roblox's own status counts again.
+  const wasLocal = useRef(new Map<string, string>());
+  const now = Date.now();
+  let closedNow = false;
+  for (const a of all) {
+    const game = wasLocal.current.get(a.id);
+    if (game !== undefined && !isLocal(a) && a.state !== 'launching') { closedAt.set(a.id, { at: now, game }); closedNow = true; }
+  }
+  wasLocal.current = new Map(all.filter(isLocal).map(a => [a.id, (a.presence?.type === 'ingame' && a.presence.game) || a.session?.game?.name || '']));
+  const expiry = useRef(0);
+  useEffect(() => {
+    if (!closedNow) return;
+    clearTimeout(expiry.current);
+    expiry.current = window.setTimeout(() => tick(n => n + 1), CLOSING_MS + 500);
+  });
+  useEffect(() => () => clearTimeout(expiry.current), []);
   const grid = useRef<HTMLDivElement>(null);
   // Where the focus was as this drawing started: a card drawn anew or moved gets it back (see the layout effect).
   const before = useRef<{ id: string; act: string } | null>(null);
@@ -214,13 +243,12 @@ export function AccountGrid() {
 
 // The list's columns after the status, as the longest value among the rows shown ("" or false: no column). Strings, so
 // the rows are drawn again only when it changes.
-type Cols = { vng: boolean; robux: string; oldBuild: boolean; group: string; rejoin: boolean; pid: string; live: boolean };
+// (Roblox VNG and an old Roblox are badges in front of the status, not columns: see AccountRow.)
+type Cols = { robux: string; group: string; rejoin: boolean; pid: string; live: boolean };
 function listColumns(shown: Account[], fmtNum: (n: number) => string): string {
   const longest = (list: string[]) => list.reduce((a, b) => (b.length > a.length ? b : a), '');
   const cols: Cols = {
-    vng: shown.some(a => a.realm === 'vng'),
     robux: longest(shown.map(a => typeof a.robux === 'number' ? fmtNum(a.robux) : a.robuxWait ? '…' : '')),
-    oldBuild: shown.some(a => a.session?.oldBuild),
     group: longest(shown.map(a => a.group || '')),
     rejoin: shown.some(rejoinOn),
     pid: longest(shown.filter(isLocal).map(a => a.session?.pid > 0 ? `PID ${a.session.pid}` : '')),
@@ -280,6 +308,8 @@ function Activity({ a }: { a: Account }) {
   // Auto-rejoin waiting its turn (longer after several drops in a row), or a preset's restart about to open it again.
   if (a.rejoin && !isLocal(a)) return box('launching', iconBox(a.rejoin.restart ? 'refresh' : 'repeat'), t(a.rejoin.restart ? 'rj.kRestart' : 'rj.k'),
     <><span>{until(a.rejoin.at, 'rj.inMin', 'rj.soon')}</span>{a.rejoin.game?.name ? ` · ${a.rejoin.game.name}` : ''}</>, null);
+  // Just closed here: Roblox's web status still says it plays for a while, which isn't so.
+  if (closing(a)) return box('offline', iconBox('power'), t('card.closing'), closedAt.get(a.id)?.game || t('act.offline'));
   if (isLocal(a)) {
     const game = p?.type === 'ingame' && p.game ? { name: p.game, iconUrl: p.iconUrl } : a.session?.game;
     const c = a.session?.connection;
@@ -318,9 +348,10 @@ function Activity({ a }: { a: Account }) {
       if (p.lastOnline) { const v = ago(p.lastOnline, 'act.lastOnline'); return box('offline', iconBox('moon'), t('act.offline'), <span>{v}</span>, v); }
       return box('offline', iconBox('moon'), t('act.offline'), t('act.inactive'));
     default:
+      // Not known yet: the same words as the list's status ("Offline" for a banned account).
       return a.cookieValid === false
         ? box('signedout', iconBox('logIn'), t('act.signedOut'), t('act.signInAgain'))
-        : box('unknown', iconBox('info'), t('act.unknown'), t('act.updating'));
+        : box('unknown', iconBox('info'), statusLine(t, a).text || t('act.unknown'), t('act.updating'));
   }
 }
 
@@ -329,38 +360,40 @@ function Live({ a, row }: { a: Account; row?: boolean }) {
   const m = useMetrics();
   const mb = m.accounts.find(x => x.id === a.id)?.ramMb;
   const ram = mb ? fmtMb(mb) : '…';
-  const up = a.session ? duration(a.session.since) : '';
+  // Out of the game (kicked): the play time stops counting, so it isn't shown.
+  const up = a.session && !isKicked(a) ? duration(a.session.since) : '';
   return row
     ? <span className="row-ram" title={a.session?.fpsLimit > 0 ? `${t('card.ramTip')} · ${a.session.fpsLimit} FPS. ${t('card.fpsTip')}` : t('card.ramTip')}><b className="ram">{ram}</b></span>
-    : <div className="live"><span title={t('card.ramTip')}><Icon name="chip" /><b className="ram">{ram}</b></span><span title={t('card.upTip')}><Icon name="clock" /><b className="up">{up}</b></span><Pid a={a} /></div>;
+    : <div className="live"><span title={t('card.ramTip')}><Icon name="chip" /><b className="ram">{ram}</b></span>
+      {up ? <span title={t('card.upTip')}><Icon name="clock" /><b className="up">{up}</b></span> : null}<Pid a={a} /></div>;
 }
 /** The client's process id, for tools that pick a Roblox window by it; a click copies it. Nothing until the window is there. */
 function Pid({ a }: { a: Account }) {
   const { t } = useHost();
   if (!(a.session?.pid > 0)) return null;
   const pid = <button className="pid" data-act="copy-pid" title={t('card.pidTip')}>{`PID ${a.session.pid}`}</button>;
-  // Its window hidden by Bloxkeep while the game runs: said, and a click shows it again.
+  // Its window hidden by Bloxkeep while the game runs: said in a word, and the eye shows it again.
   return a.session.hidden
-    ? <><button className="pid hidden-win" data-act="show-window" title={`${t('card.hidden')} · ${t('m.showWindow')}`} aria-label={t('m.showWindow')}><Icon name="eyeOff" /></button>{pid}</>
+    ? <span className="pid-group"><span className="tag hidden-tag">{t('card.hidden')}</span>
+      <button className="pid hidden-win" data-act="show-window" title={t('card.showWindow')} aria-label={t('card.showWindow')}><Icon name="eye" /></button>{pid}</span>
     : pid;
 }
 /** A list row's columns after the status: each column the list has, in every row, as wide as its longest (Sizer). */
 function RowColumns({ a, c, local }: { a: Account; c: Cols; local: boolean }) {
   const { t, fmtNum, fmtMb } = useHost();
-  const cell = (on: unknown, shown: ReactNode, longest: ReactNode, end = false) =>
-    on ? <span className={`cell${end ? ' end' : ''}`}>{shown}<Sizer>{longest}</Sizer></span> : null;
+  const cell = (on: unknown, shown: ReactNode, longest: ReactNode, end = false, cls = '') =>
+    on ? <span className={`cell${end ? ' end' : ''}${cls ? ` ${cls}` : ''}`}>{shown}<Sizer>{longest}</Sizer></span> : null;
   return <>
     <div className="row-meta">
-      {cell(c.vng, a.realm === 'vng' ? <span className="tag vng" title={t('card.vngTip')}>VNG</span> : null, <span className="tag vng">VNG</span>)}
       {cell(c.robux, typeof a.robux === 'number' ? <span className="robux" title={t('card.robuxTip')}><Icon name="robux" />{fmtNum(a.robux)}</span>
         : a.robuxWait ? <span className="robux wait" title={t('card.robuxTip')}><Icon name="robux" />…</span> : null,
         <span className="robux"><Icon name="robux" />{c.robux}</span>, true)}
-      {cell(c.oldBuild, a.session?.oldBuild ? <OldBuild a={a} /> : null, <span className="tag old">{t('card.old')}</span>)}
       {cell(c.group, a.group ? <span className="tag" title={a.group}>{a.group}</span> : null, <span className="tag">{c.group}</span>)}
       {cell(c.rejoin, rejoinOn(a) ? <span className="rejoin" title={t('card.rejoinTip')}><Icon name="repeat" /></span> : null, <span className="rejoin"><Icon name="repeat" /></span>)}
     </div>
     <div className="row-live">
-      {cell(c.live && c.pid, local ? <Pid a={a} /> : null, <span className="pid">{c.pid}</span>, true)}
+      {/* The PID's column goes first in a narrow window (app.css), a hidden window's Show button with it. */}
+      {cell(c.live && c.pid, local ? <Pid a={a} /> : null, <span className="pid">{c.pid}</span>, true, 'pid-cell')}
       {cell(c.live, local ? <Live a={a} row /> : null, <b className="ram">{fmtMb(1023)}</b>, true)}
     </div>
   </>;
@@ -387,34 +420,41 @@ function Meta({ a }: { a: Account }) {
 function AccountCard({ a, sel }: { a: Account; sel: boolean }) {
   const { t } = useHost();
   const ago = useAgo();
-  const local = isLocal(a), pType = presenceType(a);
-  // Only what no other line says: the status line already tells running, opening and signed out.
-  const badge = !local && a.state !== 'launching' && a.banned ? <span className="badge bad" title={t('card.bannedTip')}>{t('card.banned')}</span> : null;
+  const local = isLocal(a), pType = presenceType(a), kicked = isKicked(a);
+  // Only what no other line says: the status line already tells running and opening, and a lost sign-in (its status
+  // line and Sign in button); a ban stays in sight as a red pill.
+  const badge = local || a.state === 'launching' || !a.banned ? null
+    : <span className="badge bad" title={t('card.bannedTip')}>{t('card.banned')}</span>;
   const sub = [a.username ? `@${a.username}` : '', a.displayName && a.displayName !== a.username && a.displayName !== a.label ? a.displayName : ''].filter(Boolean).join(' · ');
-  // A new button, not the old one changed (the focus then goes to the card). Held on Roblox's bot check: Verify, in Bloxkeep's own window.
+  // A new button, not the old one changed (the focus then goes to the card). Held on Roblox's bot check: Verify, in
+  // Bloxkeep's own window. Out of the game (kicked, dropped): back in, as the main button.
   const action = held(a)
     ? <button key="bot-check" className="pill-btn relogin" data-act="bot-check" title={t('m.botCheck')}><Icon name="shield" />{t('card.botCheck')}</button>
+    : kicked
+    ? <button key="rejoin" className="pill-btn relogin" data-act="rejoin" title={t('card.rejoinNowTip')}><Icon name="repeat" />{t('card.rejoinNow')}</button>
     : local || a.state === 'launching'
     ? <button key="close-one" className="pill-btn stop" data-act="close-one"><Icon name="power" />{t('card.close')}</button>
     : a.rejoin
       ? <button key="cancel-rejoin" className="pill-btn stop" data-act="cancel-rejoin" title={t('rj.cancelTip')}><Icon name="x" />{t('rj.cancel')}</button>
     : a.cookieValid === false
       ? <button key="relogin" className="pill-btn relogin" data-act="relogin" title={t('card.reloginTip')}><Icon name="logIn" />{t('card.relogin')}</button>
-      : <button key="play-one" className="pill-btn play" data-act="play-one" disabled={a.state === 'launching'}><Icon name="play" />{t('card.play')}</button>;
-  return <article className={`card ${local ? 'local' : ''}${sel ? ' sel' : ''}`} data-id={a.id} data-act="card" role="option" tabIndex={-1} aria-selected={sel} aria-label={a.label}>
+      : <button key="play-one" className="pill-btn play" data-act="play-one"><Icon name="play" />{t('card.play')}</button>;
+  // "Opened 8 h ago" only while the account isn't open or opening here (a running card shows its play time instead).
+  const opened = local || a.state === 'launching' ? null
+    : <span className="ago" title={t('card.lastTip')}><Icon name="history" />{a.lastUsed ? <span>{ago(a.lastUsed, 'card.opened')}</span> : t('card.never')}</span>;
+  return <article className={`card ${local && !kicked ? 'local' : ''}${sel ? ' sel' : ''}`} data-id={a.id} data-act="card" role="option" tabIndex={-1} aria-selected={sel} aria-label={a.label}>
     <span className="check"><Icon name="check" /></span>
     <div className={`avatar ${ringOf(a)}`}><Avatar a={a} /><i className={`pdot ${pType}`} /></div>
     <div className="name" title={a.label}>{a.label}</div>
     <div className="sub" title={sub}>{sub}</div>
     <Activity a={a} />
     {local ? <Live a={a} /> : null}
-    {/* "Opened 8 h ago" only while the account isn't running here (a running card shows its play time instead). */}
-    <div className="meta">{badge}<Meta a={a} />{local ? null : <span className="ago" title={t('card.lastTip')}><Icon name="history" />{a.lastUsed ? <span>{ago(a.lastUsed, 'card.opened')}</span> : t('card.never')}</span>}</div>
+    <div className="meta">{badge}<Meta a={a} />{opened}</div>
     {a.note ? <div className="acc-note" title={a.note}>{a.note}</div> : null}
     <div className="card-actions">
       {action}
-      <button className="icon-btn" data-act="edit" title={t('card.editTip')}><Icon name="edit" /></button>
-      <button className="icon-btn" data-act="card-menu" title={t('card.moreTip')} aria-haspopup="menu"><Icon name="more" /></button>
+      <button className="icon-btn" data-act="edit" title={t('card.editTip')} aria-label={t('card.editTip')}><Icon name="edit" /></button>
+      <button className="icon-btn" data-act="card-menu" title={t('card.moreTip')} aria-label={t('card.moreTip')} aria-haspopup="menu"><Icon name="more" /></button>
     </div>
   </article>;
 }
@@ -432,6 +472,7 @@ function statusLine(t: (k: string, v?: Record<string, string | number>) => strin
   const p = a.presence;
   if (a.state === 'launching') return { cls: 'launching', text: t('act.opening') };
   if (a.rejoin && !isLocal(a)) return { cls: 'launching', text: t(a.rejoin.restart ? 'rj.rowRestart' : 'rj.k'), until: a.rejoin.restart ? null : a.rejoin.at };
+  if (closing(a)) return { cls: 'offline', text: t('card.closing') };
   if (isLocal(a)) {
     const c = a.session?.connection;
     const game = (p?.type === 'ingame' && p.game) || a.session?.game?.name || '';
@@ -465,7 +506,7 @@ function statusLine(t: (k: string, v?: Record<string, string | number>) => strin
 function RowAction({ children }: { children: ReactNode }) {
   const { t } = useHost();
   return <span className="cell row-act-cell">{children}
-    {([['power', 'card.close'], ['x', 'rj.cancel'], ['logIn', 'card.relogin'], ['play', 'card.play'], ['shield', 'card.botCheck']] as const).map(([icon, k]) =>
+    {([['power', 'card.close'], ['x', 'rj.cancel'], ['logIn', 'card.relogin'], ['play', 'card.play'], ['shield', 'card.botCheck'], ['repeat', 'card.rejoinNow']] as const).map(([icon, k]) =>
       <Sizer key={k}><span className="row-act"><Icon name={icon} /><span>{t(k)}</span></span></Sizer>)}</span>;
 }
 
@@ -480,22 +521,28 @@ function AccountRow({ a, sel, cols }: { a: Account; sel: boolean; cols: string }
   const up = local && st.cls === 'ingame' && a.session ? duration(a.session.since) : '';
   // The card's main button with its words (a bare icon read as a mystery), as wide as the widest of the four (RowAction).
   const action = held(a) ? <button key="bot-check" className="row-act relogin" data-act="bot-check" title={t('m.botCheck')}><Icon name="shield" /><span>{t('card.botCheck')}</span></button>
+    : isKicked(a) ? <button key="rejoin" className="row-act relogin" data-act="rejoin" title={t('card.rejoinNowTip')}><Icon name="repeat" /><span>{t('card.rejoinNow')}</span></button>
     : local || a.state === 'launching' ? <button key="close-one" className="row-act stop" data-act="close-one"><Icon name="power" /><span>{t('card.close')}</span></button>
     : a.rejoin ? <button key="cancel-rejoin" className="row-act stop" data-act="cancel-rejoin" title={t('rj.cancelTip')}><Icon name="x" /><span>{t('rj.cancel')}</span></button>
     : a.cookieValid === false ? <button key="relogin" className="row-act relogin" data-act="relogin" title={t('card.reloginTip')}><Icon name="logIn" /><span>{t('card.relogin')}</span></button>
-    : <button key="play-one" className="row-act play" data-act="play-one" disabled={a.state === 'launching'}><Icon name="play" /><span>{t('card.play')}</span></button>;
-  // The card's red pill in a list row too (banned, or signed out), in front of the status words.
-  const badge = local || a.state === 'launching' ? null
-    : a.banned ? <span className="badge bad" title={t('card.bannedTip')}>{t('card.banned')}</span>
-    : a.cookieValid === false ? <span className="badge bad">{t('card.expired')}</span> : null;
+    : <button key="play-one" className="row-act play" data-act="play-one"><Icon name="play" /><span>{t('card.play')}</span></button>;
+  // The card's red pill in a list row too (banned, or signed out), then Roblox VNG and an old Roblox, in front of the
+  // status words: in their own columns they took the status's room.
+  const badge = <>
+    {local || a.state === 'launching' ? null
+      : a.banned ? <span className="badge bad" title={t('card.bannedTip')}>{t('card.banned')}</span>
+      : a.cookieValid === false ? <span className="badge bad">{t('card.expired')}</span> : null}
+    {a.realm === 'vng' ? <span className="tag vng" title={t('card.vngTip')}>VNG</span> : null}
+    {a.session?.oldBuild ? <OldBuild a={a} /> : null}
+  </>;
   const at = a.username ? `@${a.username}` : '';
-  return <article className={`card row ${local ? 'local' : ''}${sel ? ' sel' : ''}`} data-id={a.id} data-act="card" role="option" tabIndex={-1} aria-selected={sel} aria-label={a.label}>
+  return <article className={`card row ${local && !isKicked(a) ? 'local' : ''}${sel ? ' sel' : ''}`} data-id={a.id} data-act="card" role="option" tabIndex={-1} aria-selected={sel} aria-label={a.label}>
     <span className="check"><Icon name="check" /></span>
     <div className={`avatar sm ${ringOf(a)}`}><Avatar a={a} /><i className={`pdot ${pType}`} /></div>
     <div className="row-name"><b title={a.label}>{a.label}</b>{a.username ? <small title={at}>{at}</small> : null}</div>
     {up
       // Playing here: how long, right after the game (as on the card), never cut off by a long game name.
-      ? <div className={`row-status timed ${st.cls}`} title={st.text}><span className="row-st">{st.text}</span>
+      ? <div className={`row-status timed ${st.cls}`} title={st.text}>{badge}<span className="row-st">{st.text}</span>
         <span className="row-up" title={t('card.upTip')}><Icon name="clock" /><b className="up">{up}</b></span></div>
       : <div className={`row-status ${st.cls}`} title={st.text}>{badge}{st.until ? <span>{until(st.until, 'rj.rowMin', 'rj.rowSoon')}</span> : st.text}</div>}
     <RowColumns a={a} c={JSON.parse(cols)} local={local} />
@@ -516,6 +563,9 @@ export function Dock() {
   const g = page.game;
   // A public game found in the box: its servers can be listed (a private server's link goes straight to its server).
   const canList = !page.progress && !!g && !g.loading && g.ok && !!g.placeId && g.kind !== 'private' && g.kind !== 'share';
+  // A private server picked from its list goes in the box as a roblox:// address: the box shows the game and "Private
+  // server" over it until it is clicked into (the address stays its value, for Play and for editing).
+  const face = !!g && !g.loading && g.ok && g.kind === 'private' && /^roblox:/i.test((document.getElementById('place') as HTMLInputElement | null)?.value || '');
   // Toasts sit just above the dock however tall it is now: a fixed gap left the dock's top edge under them.
   const dock = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
@@ -541,18 +591,19 @@ export function Dock() {
     <div className="picker" id="picker" hidden={!P.open}>{P.open ? <Picker P={P} /> : null}</div>
     <div className="dock-step dock-game">
       <StepCap n={1} text={t('dock.stepGame')} />
-      <label className="inwrap" title={t('dock.placeTip')}><Icon name="search" /><input id="place" autoComplete="off" placeholder={t('dock.place')} maxLength={500} spellCheck={false}
+      <label className={`inwrap${face ? ' has-face' : ''}`} title={t('dock.placeTip')}><Icon name="search" /><input id="place" autoComplete="off" placeholder={t('dock.place')} maxLength={500} spellCheck={false}
         aria-label={t('dock.place')} role="combobox" aria-haspopup="listbox" aria-autocomplete="list" aria-controls="picker-list" aria-expanded={P.open}
-        aria-activedescendant={P.open && P.index >= 0 ? `pk-${P.index}` : undefined} /></label>
-      <DockInfo page={page} recentGames={app.settings?.recentGames || []} />
+        aria-activedescendant={P.open && P.index >= 0 ? `pk-${P.index}` : undefined} />
+        {face ? <span className="place-face" aria-hidden="true"><b>{g!.name || t('dock.placeN', { id: g!.placeId })}</b><span className="kind">{t('dock.private')}</span></span> : null}</label>
+      <DockInfo page={page} recentGames={app.settings?.recentGames || []} face={face} />
     </div>
     <div className="dock-step dock-server">
       <StepCap n={2} text={t('dock.stepServer')} note={t('dock.optional')} />
       <label className="inwrap job" title={t('dock.jobTip')}><Icon name="server" /><input id="job" placeholder={t('dock.job')} maxLength={60} spellCheck={false} aria-label={t('dock.job')} /></label>
       <div className="dock-sub">
-        <button className="sub-btn" data-act="servers" disabled={!canList} title={t(canList ? 'dock.serversTip' : 'dock.serversNeedGame')}><Icon name="rows" /><span>{t('dock.servers')}</span></button>
+        <button className="sub-btn" data-act="servers" disabled={!canList} title={t(canList ? 'dock.serversTip' : 'dock.serversNeedGame')} aria-label={t('dock.servers')}><Icon name="rows" /><span>{t('dock.servers')}</span></button>
         {/* With nothing selected it says to select accounts first (app.js), rather than sitting greyed out unexplained. */}
-        <button className="sub-btn" data-act="join-player" title={t('jp.buttonTip')}><Icon name="userGo" /><span>{t('jp.button')}</span></button>
+        <button className="sub-btn" data-act="join-player" title={t('jp.buttonTip')} aria-label={t('jp.button')}><Icon name="userGo" /><span>{t('jp.button')}</span></button>
       </div>
     </div>
     <div className="dock-step dock-go" id="dock-actions">
@@ -572,20 +623,22 @@ function DockButtons({ page, accounts }: { page: PageState; accounts: Account[] 
   const { t } = useHost();
   const n = page.selected.size;
   const anyLocal = accounts.some(a => page.selected.has(a.id) && isLocal(a));
-  // Nothing selected: the main button says so. No game in the box: Roblox's home screen, one window per account.
+  // Its label stays the verb; nothing selected, it is off and says why on hover (a click says so too). No game in the
+  // box: Roblox's home screen, one window per account.
   return <>
-    <button className="play-btn" data-act="launch" disabled={!n}><Icon name={!n || page.hasGame ? 'play' : 'monitor'} /><span>{t(!n ? 'dock.pick' : page.hasGame ? 'dock.play' : 'dock.openHome')}</span>{n ? <em>{n}</em> : null}</button>
+    <button className="play-btn" data-act="launch" aria-disabled={!n || undefined} title={!n ? t('dock.pick') : undefined}>
+      <Icon name={page.hasGame ? 'play' : 'monitor'} /><span>{t(page.hasGame ? 'dock.play' : 'dock.openHome')}</span>{n ? <em>{n}</em> : null}</button>
     <div className="dock-sub">
-      <button className="sub-btn" data-act="preset-menu" title={t('ps.tip')} aria-haspopup="menu"><Icon name="layers" /><span>{t('ps.tip')}</span></button>
-      <button className="sub-btn" data-act="close-sel" disabled={!anyLocal} title={t('dock.closeTip')}><Icon name="power" /><span>{t('card.close')}</span></button>
-      <button className="sub-btn" data-act="dock-more" title={t('dock.moreTip')} aria-haspopup="menu"><Icon name="screens" /><span>{t('dock.more')}</span></button>
+      <button className="sub-btn" data-act="preset-menu" title={t('ps.tip')} aria-label={t('ps.tip')} aria-haspopup="menu"><Icon name="layers" /><span>{t('ps.tip')}</span></button>
+      <button className="sub-btn" data-act="close-sel" aria-disabled={!anyLocal || undefined} title={t(anyLocal ? 'dock.closeTip' : 'dock.closeNone')} aria-label={t('card.close')}><Icon name="power" /><span>{t('card.close')}</span></button>
+      <button className="sub-btn" data-act="dock-more" title={t('dock.moreTip')} aria-label={t('dock.more')} aria-haspopup="menu"><Icon name="screens" /><span>{t('dock.more')}</span></button>
     </div>
   </>;
 }
 
 // What the game box holds, and recent games to pick again. The recents are a shortcut (the picker has them too), the
 // name is not: they go from the end, then the whole row, until the name can be read.
-function DockInfo({ page, recentGames }: { page: PageState; recentGames: { placeId: number; name: string; iconUrl?: string }[] }) {
+function DockInfo({ page, recentGames, face }: { page: PageState; recentGames: { placeId: number; name: string; iconUrl?: string }[]; face: boolean }) {
   const { t, fmtNum } = useHost();
   const box = useRef<HTMLDivElement>(null);
   const g = page.game;
@@ -599,11 +652,12 @@ function DockInfo({ page, recentGames }: { page: PageState; recentGames: { place
   else info = <>
     {/* A public game's name opens its page. A span acting as a button, not a <button>: a button measures a few px wider,
         and the bar then dropped a recent game to make room for it (wide-1600, 2026-10-29). */}
-    {g.placeId && g.kind !== 'private' && g.kind !== 'server'
+    {/* The box already shows the game and "Private server" (face): not said twice. */}
+    {face ? null : g.placeId && g.kind !== 'private' && g.kind !== 'server'
       ? <span className="gname gname-link" role="button" tabIndex={0} data-act="game-page" title={t('gp.open')}
           onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>{g.name || t('dock.placeN', { id: g.placeId })}</span>
       : <span className="gname" title={g.name}>{g.name || t('dock.placeN', { id: g.placeId })}</span>}
-    {g.kind === 'private' ? <span className="kind">{t('dock.private')}</span> : g.kind === 'server' ? <span className="kind">{t('dock.server')}</span> : null}
+    {face ? null : g.kind === 'private' ? <span className="kind">{t('dock.private')}</span> : g.kind === 'server' ? <span className="kind">{t('dock.server')}</span> : null}
     {g.creator ? <span className="creator">{t('dock.by', { c: g.creator })}</span> : null}
     {g.playing ? <span className="players">{t('dock.playing', { n: fmtNum(g.playing) })}</span> : null}
     {/* Only its icon (its name on hover): with words it took the room of the recent games beside it. */}
@@ -619,7 +673,7 @@ function DockInfo({ page, recentGames }: { page: PageState; recentGames: { place
     const name = el.querySelector('.gname'), err = el.querySelector('.err');
     const cramped = () => el.scrollWidth > el.clientWidth + 1
       || (name && name.scrollWidth > name.clientWidth && name.clientWidth < 240) // 1 px over already ends it in "…"
-      || (err && err.scrollHeight > err.clientHeight + 1); // a reason cut short: the chips make room for it first
+      || (err && err.scrollWidth > err.clientWidth + 1); // a reason cut short ("…"): the chips make room for it first
     for (let i = chips.length - 1; i >= 0 && cramped(); i--) chips[i].hidden = true;
     if (chips.every(c => c.hidden)) row.hidden = true;
   };
@@ -636,7 +690,7 @@ function DockInfo({ page, recentGames }: { page: PageState; recentGames: { place
   }, []);
   return <div className="dock-info" id="dock-info" aria-live="polite" ref={box}>{info}{recents.length ? <div className="recents">{recents.map(r =>
     <div key={r.placeId} className="recent" title={r.name}><button className="recent-pick" data-act="recent" data-place={r.placeId}>
-      <GameIcon url={r.iconUrl} holder={() => <i className="ph" />} /><span>{r.name}</span></button>
+      <GameIcon url={r.iconUrl} holder={() => <i className="ph"><Icon name="gamepad" /></i>} /><span>{r.name}</span></button>
       <button className="rm" data-act="recent-remove" data-place={r.placeId} title={t('dock.recentRemove')} aria-label={t('dock.recentRemove')}><Icon name="x" /></button></div>)}</div> : null}</div>;
 }
 
@@ -654,25 +708,31 @@ function Picker({ P }: { P: PageState['picker'] }) {
   // The row chosen with the keys comes into view when the list changes, not with every state the app pushes.
   useLayoutEffect(() => { list.current?.querySelector('.game-row.on')?.scrollIntoView({ block: 'nearest' }); },
     [P.index, P.mode, P.tab, P.query, P.loading, P.refreshing, rows]);
-  const skeleton = <div className="game-row skel"><span className="gph" /><div className="gtxt"><b /><small /></div></div>;
+  // A saved server's ✕ asks first: "Delete?" in its place for a few seconds, a second click deletes (app.js arm-delete-server,
+  // delete-server).
+  const arming = (P as { arming?: string | null }).arming ?? null;
+  const skeleton = <div className="skel-row" />;
   return <>
     {P.mode === 'browse'
       ? <div className="picker-tabs" role="tablist">{TABS.filter(k => k !== 'popular' || P.lists?.popular?.length).map(k =>
         <button key={k} className={`ptab ${P.tab === k ? 'on' : ''}`} role="tab" tabIndex={-1} data-act="picker-tab" data-tab={k}>{t(`picker.${k}`)}</button>)}</div>
       : <div className="picker-head">{t('picker.results', { q: P.query })}</div>}
     <div className={`picker-list ${P.refreshing ? 'refreshing' : ''}`} role="listbox" id="picker-list" ref={list}>{P.loading
-      ? [0, 1, 2, 3, 4].map(i => <Fragment key={i}>{skeleton}</Fragment>)
+      ? [0, 1, 2, 3].map(i => <Fragment key={i}>{skeleton}</Fragment>)
       : !rows.length ? <div className="picker-empty">{t(P.mode === 'search' ? 'picker.noResults' : `picker.empty.${P.tab}`)}</div>
       : saved ? rows.map((s, i) => <div key={s.id} className={`game-row saved ${i === P.index ? 'on' : ''}`} role="option" id={`pk-${i}`} aria-selected={i === P.index} data-act="pick-game" data-i={i}>
         <GameIcon key={s.iconUrl || ''} url={s.iconUrl} holder={() => <span className="gph"><Icon name="bookmark" /></span>} />
         <div className="gtxt"><b title={s.name}>{s.name}</b><small>{[s.gameName || (s.placeId ? t('dock.placeN', { id: s.placeId }) : ''), s.link ? t('sv.kindLink') : '', s.code ? t('sv.kindCode', { code: s.code }) : ''].filter(Boolean).join(' · ')}</small></div>
         {s.code ? <button className="icon-btn" tabIndex={-1} data-act="copy-server-code" data-i={i} title={t('sv.copyCode')} aria-label={t('sv.copyCode')}><Icon name="copy" /></button> : null}
-        <button className="icon-btn" tabIndex={-1} data-act="delete-server" data-i={i} title={t('sv.delete')} aria-label={t('sv.delete')}><Icon name="x" /></button>
+        {arming === s.id
+          ? <button className="btn sm danger sv-del" tabIndex={-1} data-act="delete-server" data-i={i}>{t('sv.deleteQ')}</button>
+          : <button className="icon-btn" tabIndex={-1} data-act="arm-delete-server" data-i={i} title={t('sv.delete')} aria-label={t('sv.delete')}><Icon name="x" /></button>}
       </div>)
       : rows.map((g, i) => <div key={`${g.placeId}-${i}`} className={`game-row ${i === P.index ? 'on' : ''}`} role="option" id={`pk-${i}`} aria-selected={i === P.index} data-act="pick-game" data-i={i}>
         <GameIcon key={g.iconUrl || ''} url={g.iconUrl} holder={() => <span className="gph"><Icon name="gamepad" /></span>} />
         <div className="gtxt"><b title={g.name}>{g.name}</b><small>{g.playing ? t('dock.playing', { n: fmtNum(g.playing) }) : t('dock.placeN', { id: g.placeId })}</small></div>
-        <button className={`icon-btn pin ${g.pinned ? 'on' : ''}`} tabIndex={-1} data-act="pin-game" data-i={i} title={t(g.pinned ? 'picker.unpin' : 'picker.pin')}><Icon name={g.pinned ? 'starFill' : 'star'} /></button>
+        <button className={`icon-btn pin ${g.pinned ? 'on' : ''}`} tabIndex={-1} data-act="pin-game" data-i={i} title={t(g.pinned ? 'picker.unpin' : 'picker.pin')}
+          aria-label={t(g.pinned ? 'picker.unpin' : 'picker.pin')} aria-pressed={!!g.pinned}><Icon name={g.pinned ? 'starFill' : 'star'} /></button>
       </div>)}</div>
   </>;
 }

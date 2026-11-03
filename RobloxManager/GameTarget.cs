@@ -95,7 +95,7 @@ public sealed record GameTarget(long PlaceId, string? JobId = null, string? Link
 
             if (placeId <= 0 && shareCode is null)
             {
-                error = L.T("Couldn't find a Place ID in this link.");
+                error = L.T("This link has no Place ID.");
                 return false;
             }
         }

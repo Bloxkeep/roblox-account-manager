@@ -153,7 +153,6 @@ public static class L
         ["Enter a Place ID or paste a Roblox game link."] = "Nhập Place ID hoặc dán link game Roblox.",
         ["Only private-server share links (type=Server) are supported. For a regular game, paste a roblox.com/games/… link."] =
             "Chỉ hỗ trợ link chia sẻ server riêng (type=Server). Game thường thì dán link roblox.com/games/…",
-        ["Couldn't find a Place ID in this link."] = "Không tìm thấy Place ID trong link này.",
         ["Pick the game from the search list, or paste a game link or Place ID."] = "Chọn game trong kết quả tìm kiếm, hoặc dán link game hay Place ID.",
         ["Invalid Place ID."] = "Place ID không hợp lệ.",
         ["Invalid Job ID (expected xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)."] = "Job ID không hợp lệ (phải có dạng xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx).",
@@ -1085,6 +1084,7 @@ public static class L
         // ── end P2 ──
 
         // ── P3 accounts ──
+        ["This link has no Place ID."] = "Link không có Place ID.",
         // ── end P3 ──
 
         // ── P4 presets ──

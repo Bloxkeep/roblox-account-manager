@@ -1515,16 +1515,16 @@ kbd { font: 500 var(--fs-1) var(--font); padding: 1px 6px; border-radius: var(--
 .srv-tools { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
 .srv-tools .btn { margin-left: auto; }
 .srv-tools .i, .srv-friend-tag .i { width: 14px; height: 14px; }
-.srv-head { margin: 4px 0 8px; font-size: var(--fs-1); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
-/* Two friends' rows high whatever it shows (looking, none, the friends), so the server list under it doesn't move when
-   the friends come in. */
-.srv-friends { display: grid; align-content: center; gap: 6px; margin-bottom: 16px; height: 112px; overflow-y: auto; }
+.srv-head { margin: 4px 0 8px; font-size: var(--fs-2); font-weight: 650; color: var(--muted); }
+/* Three friends' rows high whatever it shows (looking, none, the friends), so the server list under it doesn't move when
+   the friends come in; a short window takes from it first. */
+.srv-friends { display: grid; align-content: start; gap: 6px; margin-bottom: 16px; height: 150px; overflow-y: auto; }
 .srv-friends.list { align-content: start; }
 .srv-friends-note { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: var(--r-md); background: var(--well); border: 1px solid var(--line); font-size: var(--fs-3); color: var(--muted); }
 .srv-friend { display: flex; align-items: center; gap: 10px; padding: 6px 10px 6px 6px; border-radius: var(--r-md); background: var(--well); border: 1px solid var(--line); }
 .srv-friend img, .srv-friend .ph { width: 32px; height: 32px; flex: none; border-radius: 50%; background: var(--surface-3); }
 /* Your private servers: as tall as what they hold (a note is one line), up to the friends' height, then scrolling. */
-#srv-private { height: auto; max-height: 112px; }
+#srv-private { height: auto; max-height: 150px; }
 .srv-private .ph { display: grid; place-items: center; border-radius: var(--r-sm); color: var(--muted); }
 .srv-private .ph .i { width: 15px; height: 15px; }
 .srv-private small.warn { color: var(--warn-ink); }
@@ -1532,9 +1532,11 @@ kbd { font: 500 var(--fs-1) var(--font); padding: 1px 6px; border-radius: var(--
 .srv-list { display: grid; align-content: start; gap: 6px; max-height: min(420px, 55vh); overflow-y: auto; padding-bottom: 2px; }
 /* The server picker: only the server list scrolls; friends and the filters stay put above it (no box in a box). */
 /* (A class set by openServers, not :has(): that made every change anywhere re-style the whole page.) */
-.modal-body.srv-body { display: flex; flex-direction: column; min-height: 0; overflow-y: auto; }
+.modal-body.srv-body { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
 .modal-body.srv-body > * { flex: none; }
-.modal-body.srv-body > .srv-list { flex: none; height: min(420px, 55vh); min-height: 120px; }
+.modal-body.srv-body > .srv-friends { flex: 0 1 150px; min-height: 52px; }
+.modal-body.srv-body > #srv-private { flex: none; height: auto; }
+.modal-body.srv-body > .srv-list { flex: 1 1 420px; height: auto; max-height: none; min-height: 120px; }
 /* While another order loads, the rows so far stay, dimmed; a note (loading, waiting for Roblox) sits in the middle. */
 .srv-list.stale { opacity: .45; pointer-events: none; transition: opacity .15s; }
 /* (Its class "note" predates the .note component: the list keeps its own look.) */
@@ -1732,7 +1734,6 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .led { width: 10px; height: 10px; border-radius: 50%; background: var(--dim); flex: none; }
 .multi.ok .led { background: var(--ok); box-shadow: 0 0 0 4px var(--ok-soft); }
 .multi.ok small { color: var(--ok-ink); }
-.multi.warn { background: color-mix(in srgb, var(--warn) 8%, transparent); border-radius: var(--r-md); }
 .multi.warn .led { background: var(--warn); animation: blink 1.4s ease-in-out infinite; }
 .multi.warn small { color: var(--warn-ink); }
 @keyframes blink { 50% { opacity: .35; } }
@@ -1768,14 +1769,10 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 
 .bar { display: flex; align-items: flex-start; gap: 12px; padding: 0 30px 14px; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; flex: 1; min-width: 0; }
-/* The account filters stay on one line however many groups there are: the row scrolls sideways (wheel, Tab, drag on
-   touch) and the edge with more chips behind it fades out. */
-#chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding: 2px; margin: -2px; scroll-padding-inline: 24px; }
-#chips::-webkit-scrollbar { display: none; }
-/* Wide enough that a chip half past the edge fades out whole: a narrow fade left its coloured dot standing alone. */
-#chips.fade-r { mask-image: linear-gradient(to right, #000 calc(100% - 72px), transparent); }
-#chips.fade-l { mask-image: linear-gradient(to left, #000 calc(100% - 72px), transparent); }
-#chips.fade-l.fade-r { mask-image: linear-gradient(to right, transparent, #000 72px, #000 calc(100% - 72px), transparent); }
+/* The account filters stay on one line however many groups there are: the chips past the row's end go into its "+2"
+   chip (AccountsBar), nothing scrolls or fades. */
+#chips { flex-wrap: nowrap; overflow: hidden; padding: 2px; margin: -2px; }
+#chips .chip[hidden] { display: none; }
 .sort-btn { display: inline-flex; align-items: center; gap: 7px; height: 30px; padding: 0 10px; flex: none; border-radius: var(--r-sm); border: 0; background: transparent; color: var(--text-2); font-size: var(--fs-3); font-weight: 600; white-space: nowrap; }
 .sort-btn:hover { background: var(--hover); color: var(--text); }
 .sort-btn .i { width: 15px; height: 15px; flex: none; }
@@ -1924,7 +1921,14 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 /* Gives way first on a narrow card (a six-digit PID next to "12 giờ 5 phút"): the RAM and time chips keep their text. */
 .pid { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; height: 20px; margin-left: auto; padding: 0 4px; border: 0; border-radius: 6px; background: transparent; font: 600 var(--fs-2) var(--font); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; cursor: copy; }
 .pid:hover { color: var(--text); background: var(--hover); }
-.pid.hidden-win { flex: none; display: inline-grid; place-items: center; padding: 0 6px; margin-right: 6px; cursor: pointer; color: var(--accent); }
+.pid.hidden-win { flex: none; display: inline-grid; place-items: center; padding: 0 6px; cursor: pointer; color: var(--text-2); }
+.pid.hidden-win .i { width: 14px; height: 14px; }
+/* A hidden window: the word, its Show button, then the PID. */
+.pid-group { flex: 0 1 auto; min-width: 0; display: inline-flex; align-items: center; gap: 4px; margin-left: auto; }
+.pid-group .pid { margin-left: 0; }
+.tag.hidden-tag { flex: none; max-width: none; padding: 1px 8px; color: var(--text-2); background: var(--active); }
+/* On a card there is room for the word and the button, not the PID as well (the list keeps it in a wide window). */
+.card:not(.row) .pid-group > .pid:not(.hidden-win) { display: none; }
 .row-live { display: flex; align-items: center; justify-content: flex-end; gap: 6px; width: auto; min-width: 0; }
 .row-live .pid { height: 24px; padding: 0 7px; }
 /* Playing here: how long, after the game's name, which gives way first when the row is short of room. */
@@ -2006,9 +2010,8 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 /* Play fills its step, as wide as the buttons under it. */
 .dock-go .play-btn { width: 100%; height: 40px; justify-content: center; padding: 0 18px; border-radius: var(--r-md); }
 .picker {
-  /* A fixed height, not as tall as its rows: it hangs from the game bar, so a list that loads shorter (or longer)
-     than the placeholder rows would move its top edge. */
-  position: absolute; left: 16px; bottom: calc(100% + 10px); z-index: 20; width: min(560px, calc(100% - 32px)); height: min(470px, 62vh);
+  /* As tall as its rows, between a floor and a ceiling; it hangs from the game bar, lined up with the dock's padding. */
+  position: absolute; left: 30px; bottom: calc(100% + 10px); z-index: 20; width: min(560px, calc(100% - 60px)); height: auto; min-height: 200px; max-height: min(470px, 62vh);
   display: flex; flex-direction: column; overflow: hidden; border-radius: 18px; border: 1px solid var(--line-2); background: var(--raised);
   box-shadow: 0 -18px 50px var(--shadow); animation: fade .12s ease;
 }
@@ -2047,9 +2050,9 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .dock-info .players::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--ok); }
 .dock-info .kind { padding: 1px 8px; border-radius: var(--r-xl); background: var(--active); color: var(--text-2); font-size: var(--fs-2); font-weight: 700; white-space: nowrap; }
 .dock-info .err { color: var(--warn-ink); }
-/* A long reason wraps (two lines at most, the rest in its tooltip), a long progress line ends in "…": neither runs
-   under the buttons beside them. */
-.dock-info > .err { min-width: 0; white-space: normal; line-height: 1.3; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+/* A long reason or progress line ends in "…" (the whole of it in its tooltip): neither wraps nor runs under the
+   buttons beside them. */
+.dock-info > .err { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .dock-info > .progress { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 /* Whole chips are dropped (fitRecents) rather than squeezed to an icon, so the game's name keeps its room. */
 .recents { display: flex; gap: 6px; margin-left: auto; min-width: 0; flex: none; }
@@ -2897,7 +2900,7 @@ input[type=range].cf-hue { width: 100%; background: linear-gradient(90deg, #f00,
 /* The recommended way (the phone): an accent border and tag, nothing more. */
 .start-opt.rec { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
 .start-opt.rec > .i:first-child { color: var(--accent); }
-.start-opt.rec b { flex-wrap: wrap; row-gap: 4px; }
+.start-opt.rec b { flex-wrap: nowrap; }
 .rec-tag { padding: 1px 8px; border-radius: var(--r-xl); background: var(--accent); color: var(--accent-ink); font-size: var(--fs-1); font-weight: 650; line-height: 1.6; font-style: normal; white-space: nowrap; }
 .auth-phone { margin-top: 18px; }
 .auth-phone .start-opt { width: 100%; }
@@ -2961,7 +2964,7 @@ input[type=range].cf-hue { width: 100%; background: linear-gradient(90deg, #f00,
 .menu .snap-opt, .snap-opt { display: flex; flex-direction: column; align-items: stretch; gap: 5px; width: 100%; height: auto; padding: 6px;
   border: 1px solid transparent; border-radius: var(--r-md); background: transparent; color: var(--text-2); font-size: var(--fs-2); text-align: center; cursor: pointer; }
 .menu .snap-opt:hover, .snap-opt:hover, .snap-opt:focus-visible { background: var(--hover); color: var(--text); }
-.menu .snap-opt.current, .snap-opt.current { border-color: var(--accent); color: var(--text); }
+.menu .snap-opt.current, .snap-opt.current { border-color: var(--line-3); background: var(--active); color: var(--text); }
 .menu .snap-opt span, .snap-opt span { flex: none; min-width: 0; }
 .snap-screen { display: block; aspect-ratio: 16 / 10; padding: 3px; border: 1px solid var(--line-2); border-radius: 6px; background: var(--bg); }
 .snap-grid { display: grid; gap: 2px; width: 100%; height: 100%; }
@@ -2996,7 +2999,9 @@ input[type=range].cf-hue { width: 100%; background: linear-gradient(90deg, #f00,
 .pal-txt { flex: 1; min-width: 0; display: grid; }
 .pal-txt b { font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pal-txt small { font-size: var(--fs-2); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pal-cat { flex: none; font-style: normal; font-size: var(--fs-2); color: var(--muted); }
+/* A kind's heading over its rows (accounts, games, actions…), when the list holds more than one kind. */
+.pal-head { padding: 10px 10px 4px; font-size: var(--fs-2); font-weight: 650; color: var(--muted); }
+.pal-head:first-child { padding-top: 4px; }
 .pal-alt { flex: none; display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 8px; border-radius: var(--r-sm); border: 1px solid var(--line-2); background: var(--surface-2); color: var(--text); font-size: var(--fs-2); font-weight: 600; }
 .pal-alt:hover { background: var(--surface-3); }
 .pal-alt kbd, .pal-foot kbd { font: var(--fs-1) var(--font); color: var(--muted); }
@@ -5854,6 +5859,114 @@ html:not(.in-window) .pn.pn-pill { height: 42px; }
 /* ───────── end P2 ───────── */
 
 /* ───────── P3 accounts ───────── */
+/* The heading on one row: the title's line gives way ("…", the whole of it on hover is the list itself), the tools keep
+   theirs; a narrow window shortens the search box rather than putting the tools on a row of their own. */
+#view-accounts > .top { flex-wrap: nowrap; }
+#view-accounts .top-title { flex: 1 1 0; min-width: 180px; }
+#view-accounts .top-title h1, #acc-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#view-accounts .top-tools { flex: 0 1 auto; min-width: 0; }
+@media (max-width: 1080px) {
+  #view-accounts .top-tools { width: auto; }
+  #view-accounts .search { flex: 0 1 290px; width: auto; min-width: 150px; }
+}
+/* The "+2" chip: the filters that didn't fit, in a menu. */
+.chip.more { color: var(--text-2); font-variant-numeric: tabular-nums; box-shadow: inset 0 0 0 1px var(--line-2); }
+.chip.more[aria-expanded="true"] { background: var(--active); color: var(--text); }
+
+/* List rows: the name a steady width, the status the rest, the buttons at the end. */
+.row-name { flex: 0 1 220px; min-width: 140px; }
+.row-status { flex: 1 1 0; min-width: 0; }
+.row-actions { margin-left: auto; flex: none; }
+.row-meta .robux { min-width: 64px; justify-content: flex-end; font-variant-numeric: tabular-nums; }
+/* VNG and an old Roblox build: small badges in front of the status, not columns of their own. */
+.row-status .tag.vng, .row-status .tag.old { flex: none; max-width: none; margin-right: 8px; padding: 1px 7px; font-size: var(--fs-1); vertical-align: 1px; }
+.row-status.timed .tag { margin-right: 0; }
+@media (max-width: 1400px) {
+  .row-live .pid-cell .pid:not(.hidden-win) { display: none; }
+}
+
+/* Cards: the name clear of the corner's menu button. */
+.card:not(.row) > .name { margin-right: 40px; }
+/* Asked for from the quick search: the card is shown for a moment, without selecting it. */
+.card.flash { animation: card-flash 1.2s ease-out; }
+@keyframes card-flash { 0%, 40% { outline: 2px solid var(--focus); outline-offset: 2px; } 100% { outline: 2px solid transparent; outline-offset: 2px; } }
+
+/* The dock. Play off (nothing selected) looks off but still answers a click with why. */
+.dock-go .play-btn[aria-disabled="true"] { background: var(--surface-3); box-shadow: none; color: var(--muted); cursor: default; }
+.dock-go .play-btn[aria-disabled="true"]:hover { background: var(--surface-3); }
+.sub-btn[aria-disabled="true"] { opacity: .45; cursor: default; }
+.sub-btn[aria-disabled="true"]:hover { background: transparent; color: var(--text-2); }
+/* The line under the game box keeps its height whatever it says, and its own gap from the box. */
+.dock-info { min-height: 34px; }
+.recent .ph { display: grid; place-items: center; color: var(--muted); }
+.recent .ph .i { width: 13px; height: 13px; }
+/* A private server picked: the box shows the game's name and "Private server" over the roblox:// link (which is what
+   it holds); a click in the box shows the link to edit. */
+.place-face { position: absolute; inset: 0 12px 0 36px; display: flex; align-items: center; gap: 8px; min-width: 0; pointer-events: none; font-size: var(--fs-4); }
+.place-face b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; color: var(--text); }
+.place-face .kind { flex: none; padding: 1px 8px; border-radius: var(--r-xl); background: var(--active); color: var(--text-2); font-size: var(--fs-2); font-weight: 700; white-space: nowrap; }
+.inwrap.has-face input:not(:focus) { color: transparent; }
+.inwrap.has-face:focus-within .place-face { display: none; }
+/* Narrow: the small buttons keep their names and go onto a second line when they must. */
+@media (max-width: 900px) {
+  .sub-btn span { display: inline; }
+  .dock-sub { flex-wrap: wrap; row-gap: 4px; }
+}
+
+/* The game picker. */
+@media (min-width: 1440px) { .picker { left: 38px; width: min(560px, calc(100% - 76px)); } }
+.game-row .pin .i { width: 16px; height: 16px; }
+.picker-list > .skel-row { margin: 4px 2px; }
+.sv-del { flex: none; height: 28px; }
+
+/* Servers. */
+.srv-sort { align-items: center; }
+.srv-sort .srv-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 0 auto; }
+.srv-sort .srv-tools .btn { margin-left: 0; }
+/* "Room for all" on: a step up, no green (Play's colour) and no ring. */
+.srv-sort .srv-tools .btn.sm.on { border-color: var(--line-3); background: var(--surface-3); color: var(--text); box-shadow: none; }
+/* The friends keep most of their three rows in a short window: the server list gives way first. */
+.modal-body.srv-body > .srv-friends { flex-shrink: .15; }
+.srv-friend .ph { display: grid; place-items: center; color: var(--muted); }
+.srv-friend .ph .i { width: 16px; height: 16px; }
+.srv-list > .skel-row { height: 46px; }
+.srv-failed { align-items: center; }
+.srv-failed > span { flex: 1; min-width: 0; }
+.srv-failed .btn { flex: none; }
+
+/* Follow a player. */
+.form label.dont-ask { display: inline-flex; align-items: center; gap: 9px; font-size: var(--fs-3); font-weight: 400; margin-top: 0; }
+
+/* The game's page. */
+.gp-row > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gp-desc p { overflow-wrap: anywhere; }
+.gp-news.note { border: 0; }
+/* The quietest and the busiest hour, under their bars. */
+.gp-marks { position: relative; height: 18px; margin-top: -6px; font-size: var(--fs-2); color: var(--muted); font-variant-numeric: tabular-nums; }
+.gp-marks span { position: absolute; top: 0; transform: translateX(-50%); white-space: nowrap; }
+.gp-marks span.start { transform: translateX(-8px); }
+.gp-marks span.end { transform: translateX(calc(-100% + 8px)); }
+.gp-marks b { font-weight: 650; color: var(--text-2); }
+
+/* Add and Edit: the option cards' titles on one line, their text balanced. */
+.start-opt small { text-wrap: pretty; }
+
+/* Arrange windows: Auto (whatever fits) drawn dashed, not as a grid of its own. */
+.snap-opt[data-layout="fill"] .snap-grid > span { background: transparent; border: 1px dashed var(--line-3); }
+.snap-opt[data-layout="fill"] .snap-grid > span.on { border-color: var(--accent); }
+
+/* The sidebar. */
+#side-warn:not(:empty) { margin-top: 12px; }
+#sys-ram { margin-left: auto; }
+@media (max-width: 1180px) {
+  .side-nav .nav { position: relative; }
+  /* The tabs are icons only: the accounts' count stays, small, on its icon's corner. */
+  #nav-count { display: block; position: absolute; top: 1px; right: 1px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: var(--r-pill); background: var(--active); color: var(--text-2); font-size: var(--fs-1); font-weight: 700; line-height: 16px; text-align: center; font-variant-numeric: tabular-nums; }
+}
+
+/* Menus: on for some of the accounts, off for others. */
+.menu .mi-mixed { display: inline-grid; place-items: center; flex: none; }
+.menu .mi-mixed::before { content: ""; width: 8px; height: 2px; background: var(--text-2); }
 /* ───────── end P3 ───────── */
 
 /* ───────── P4 presets ───────── */
