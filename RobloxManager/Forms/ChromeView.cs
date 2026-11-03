@@ -61,25 +61,11 @@ sealed class ChromeView
     {
         try
         {
-            var env = await ShellForm.CreateEnvironmentAsync();
+            var env = await AppPages.CreateEnvironmentAsync();
             await _web.EnsureCoreWebView2Async(env);
             if (_web.IsDisposed || _form.IsDisposed || _web.CoreWebView2 is not { } core)
                 return false;
-            var settings = core.Settings;
-            settings.AreDevToolsEnabled = false;
-            settings.IsStatusBarEnabled = false;
-            settings.IsZoomControlEnabled = false;
-            settings.AreBrowserAcceleratorKeysEnabled = false;
-            settings.IsPasswordAutosaveEnabled = false;
-            settings.IsGeneralAutofillEnabled = false;
-            settings.IsSwipeNavigationEnabled = false;
-            settings.IsReputationCheckingRequired = false;
-            settings.AreDefaultContextMenusEnabled = false;
-            core.AddWebResourceRequestedFilter(ShellForm.Origin + "*", CoreWebView2WebResourceContext.All);
-            core.WebResourceRequested += (_, e) => ShellForm.ServeAsset(env, e);
-            // Only the app's own page, ever.
-            core.NavigationStarting += (_, e) => e.Cancel = !e.Uri.StartsWith(ShellForm.Origin, StringComparison.OrdinalIgnoreCase);
-            core.NewWindowRequested += (_, e) => e.Handled = true;
+            AppPages.Configure(core, env);
             core.WebMessageReceived += (_, e) =>
             {
                 string json = e.WebMessageAsJson;
@@ -101,10 +87,10 @@ sealed class ChromeView
                     if (failure == BrowserFailure.BrowserGone)
                         _form.Close();
                     else if (_web.CoreWebView2 is { } c)
-                        c.Navigate(ShellForm.Origin + "browser.html");
+                        c.Navigate(AppPages.Origin + "browser.html");
                 });
             };
-            core.Navigate(ShellForm.Origin + "browser.html");
+            core.Navigate(AppPages.Origin + "browser.html");
             return true;
         }
         catch (Exception ex) when (ex is COMException or InvalidOperationException or ArgumentException or WebView2RuntimeNotFoundException or ObjectDisposedException or UnauthorizedAccessException)

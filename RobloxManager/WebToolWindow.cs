@@ -8,7 +8,7 @@ namespace RobloxManager;
 /// <summary>
 /// A small borderless window whose whole face is one of the app's pages (wwwroot/&lt;page&gt;.html, drawing
 /// <c>window.BloxkeepUI.&lt;page&gt;(...)</c> from the one ui.js bundle): the macro panel beside the game today, the mini
-/// window (MiniWindow), the game overlay and colour picker (OverlayWindow), the dialogs next (the owner's rule of
+/// window (MiniWindow), the game overlay and colour picker (OverlayWindow), the dialogs (Dialog); TrayWindow still has its own copy of this host (the owner's rule of
 /// 2026-11-03: nothing the user sees drawn in WinForms). WinForms is only the host: a tool window (not in Alt+Tab), Windows 11's rounded corners in the theme's
 /// line colour, the browser of the main window's profile (one shared environment, so one browser and GPU process while
 /// the main window's is alive) started on first show and let go a while after the window hides.
@@ -88,7 +88,7 @@ public abstract class WebToolWindow : Form
         }
     }
 
-    /// <summary>Shown without taking the keyboard when <see cref="ShowQuietly"/> asked so (a game keeps it).</summary>
+    /// <summary>Shown without taking the keyboard when <see cref="ActivateOnShow"/> says so (a game keeps it).</summary>
     protected override bool ShowWithoutActivation => !_activate;
 
     /// <summary>Whether the next show takes the keyboard.</summary>
@@ -148,7 +148,7 @@ public abstract class WebToolWindow : Form
     /// <param name="cancel">Cancelled when the window lets this start go (<see cref="ReleaseBrowser"/>, Dispose).</param>
     async Task StartBrowserAsync(CancellationToken cancel)
     {
-        var env = await ShellForm.CreateEnvironmentAsync().WaitAsync(cancel);
+        var env = await AppPages.CreateEnvironmentAsync().WaitAsync(cancel);
         ObjectDisposedException.ThrowIf(IsDisposed, this);
         var web = new WebView2 { Dock = DockStyle.Fill, DefaultBackgroundColor = Backdrop };
         Controls.Add(web);
@@ -160,20 +160,7 @@ public abstract class WebToolWindow : Form
         // Disposed or let go while the browser started: nothing of this start is used.
         if (IsDisposed || web.IsDisposed || _web != web || web.CoreWebView2 is not { } core)
             throw new ObjectDisposedException(GetType().Name);
-        var settings = core.Settings;
-        settings.AreDevToolsEnabled = false;
-        settings.IsStatusBarEnabled = false;
-        settings.IsZoomControlEnabled = false;
-        settings.AreBrowserAcceleratorKeysEnabled = false;
-        settings.IsPasswordAutosaveEnabled = false;
-        settings.IsGeneralAutofillEnabled = false;
-        settings.IsSwipeNavigationEnabled = false;
-        settings.IsReputationCheckingRequired = false;
-        settings.AreDefaultContextMenusEnabled = false;
-        core.AddWebResourceRequestedFilter(ShellForm.Origin + "*", CoreWebView2WebResourceContext.All);
-        core.WebResourceRequested += (_, e) => ShellForm.ServeAsset(env, e);
-        core.NavigationStarting += (_, e) => e.Cancel = !e.Uri.StartsWith(ShellForm.Origin, StringComparison.OrdinalIgnoreCase);
-        core.NewWindowRequested += (_, e) => e.Handled = true;
+        AppPages.Configure(core, env);
         // Loaded: its first "ready" can come before the page is listened to, so the load itself counts as ready too.
         core.NavigationCompleted += (_, e) =>
         {
@@ -197,7 +184,7 @@ public abstract class WebToolWindow : Form
             BeginInvoke(() => OnMessage(json));
         };
         var ready = _ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        core.Navigate(ShellForm.Origin + PageFile);
+        core.Navigate(AppPages.Origin + PageFile);
         await ready.Task.WaitAsync(TimeSpan.FromSeconds(15), cancel);
     }
 
