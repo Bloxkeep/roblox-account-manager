@@ -1361,6 +1361,15 @@ b, strong { font-weight: 650; }
 ::-webkit-scrollbar-thumb { background: rgba(var(--tint), .1); border-radius: var(--r-md); border: 2px solid transparent; background-clip: padding-box; }
 ::-webkit-scrollbar-thumb:hover { background-color: rgba(var(--tint), .2); }
 :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+/* One focus ring for everything that takes the focus, over any rule that turned the outline off. */
+:is(button, a, [tabindex], input, select, textarea):focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+/* Boxes that draw their own ring around the field they hold (TimeField) or mark the focused row themselves (palette). */
+.tf-box:focus-visible, .pal-row:focus-visible { outline: none; }
+/* No browser spinner on numbers, no browser triangle on a fold: the app draws its own. */
+input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+details > summary::-webkit-details-marker, details > summary::marker { display: none; }
+details > summary { list-style: none; }
+kbd { font: 500 var(--fs-1) var(--font); padding: 1px 6px; border-radius: var(--r-xs); border: 1px solid var(--line-2); background: var(--surface-2); }
 
 .i { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .muted { color: var(--muted); }
@@ -1465,6 +1474,8 @@ b, strong { font-weight: 650; }
 .btn:hover:not(:disabled) { background: var(--surface-3); border-color: var(--line-3); }
 .btn:active:not(:disabled) { transform: translateY(1px); }
 .btn:disabled { opacity: .45; }
+/* Off but still focusable and still able to say why in its title (DESIGN.md: a disabled control says why). */
+.btn[aria-disabled="true"] { opacity: .45; pointer-events: none; }
 .btn.primary { border: 0; background: var(--inv); color: var(--inv-ink); }
 .btn.primary:hover:not(:disabled) { background: var(--inv-hover); }
 .btn.primary.busy::after { border-color: color-mix(in srgb, var(--inv-ink) 25%, transparent); border-top-color: var(--inv-ink); }
@@ -1472,7 +1483,9 @@ b, strong { font-weight: 650; }
 .btn.danger:hover:not(:disabled) { background: color-mix(in srgb, var(--bad) 20%, transparent); }
 .btn.ghost { background: transparent; }
 .btn.big { height: 48px; font-size: var(--fs-5); border-radius: var(--r-lg); }
-.btn.sm { height: 30px; padding: 0 10px; font-size: var(--fs-3); border-radius: var(--r-sm); }
+.btn.sm { height: 30px; padding: 0 10px; font-size: var(--fs-2); border-radius: var(--r-sm); }
+/* A small toggle button that is on: one step up, no ring (the focus ring is the only ring). */
+.btn.sm.on { border-color: var(--line-3); background: var(--surface-3); box-shadow: none; }
 .btn.w { width: 100%; }
 /* "Restart to update" in the sidebar: the version sits under the label. */
 .sys-ver { margin-top: 8px; font-size: var(--fs-2); color: var(--text-2); }
@@ -1520,7 +1533,8 @@ b, strong { font-weight: 650; }
 .modal-body.srv-body > .srv-list { flex: none; height: min(420px, 55vh); min-height: 120px; }
 /* While another order loads, the rows so far stay, dimmed; a note (loading, waiting for Roblox) sits in the middle. */
 .srv-list.stale { opacity: .45; pointer-events: none; transition: opacity .15s; }
-.srv-list.note { align-content: center; }
+/* (Its class "note" predates the .note component: the list keeps its own look.) */
+.srv-list.note { align-content: center; display: grid; gap: 6px; padding: 0 0 2px; border-radius: 0; background: none; color: inherit; font-size: inherit; align-items: normal; }
 .srv-row { display: grid; grid-template-columns: 1fr minmax(150px, auto) auto auto auto; align-items: center; gap: 12px; padding: 8px 10px; border-radius: var(--r-md); background: var(--well); border: 1px solid var(--line); }
 .srv-fill { height: 6px; border-radius: var(--r-xs); background: var(--surface-3); overflow: hidden; }
 .srv-fill i { display: block; height: 100%; background: var(--ok); transform-origin: left; }
@@ -1594,9 +1608,16 @@ b, strong { font-weight: 650; }
   width: 100%; height: 40px; padding: 0 12px; border-radius: var(--r-md); border: 1px solid var(--line-field);
   background: var(--field); color: var(--text); outline: none; transition: border-color .15s, box-shadow .15s;
 }
-textarea.field { height: auto; padding: 10px 12px; resize: vertical; min-height: 64px; }
-.field::placeholder { color: var(--muted); }
-.field:focus { border-color: var(--focus-line); box-shadow: 0 0 0 3px var(--focus-ring); }
+.field.sm { height: 34px; border-radius: var(--r-sm); }
+/* No grip: it grows with what is typed, up to about 9 lines, then scrolls. */
+textarea.field { height: auto; padding: 10px 12px; resize: none; field-sizing: content; min-height: 64px; max-height: 9lh; }
+.field::placeholder { color: var(--muted); font-family: var(--font); }
+/* The border changes; the focus ring (outline) is the one ring. */
+.field:focus { border-color: var(--focus-line); }
+.field[aria-invalid="true"], .field.bad { border-color: var(--bad-line); }
+.field:disabled { opacity: .55; background: var(--bg-2); cursor: not-allowed; }
+/* A field's own error, under it; .form-error is for a dialog-level one. */
+.field-err { margin-top: 6px; font-size: var(--fs-3); color: var(--bad-ink); }
 /* Edge adds its own "show password" eye while a password box has focus; the app already has one. */
 input::-ms-reveal, input::-ms-clear { display: none; }
 .pw { position: relative; }
@@ -1614,11 +1635,24 @@ input::-ms-reveal, input::-ms-clear { display: none; }
 .switch span::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--knob); box-shadow: 0 1px 2px rgba(0, 0, 0, .18); transition: transform .2s, background .2s; }
 .switch input:checked + span { background: var(--accent); border-color: transparent; }
 .switch input:checked + span::after { transform: translateX(18px); background: var(--accent-ink); }
+/* On but not working (the tray's Multi-Roblox when Roblox was open first): amber, not green. */
+.switch.warn input:checked + span { background: var(--warn); }
 .switch input:focus-visible + span { outline: 2px solid var(--focus); outline-offset: 2px; }
 /* Off controls look off: dimmed, no hand cursor. */
 .switch input:disabled { cursor: default; }
 .switch input:disabled + span { opacity: .5; }
-.select:disabled, .field:disabled { opacity: .5; cursor: default; }
+.select:disabled { opacity: .5; cursor: default; }
+
+/* The app's checkbox (the switch's hidden full-size one left alone): a 16 px box, an accent fill and tick when on. */
+input[type=checkbox]:not(.switch > input) {
+  appearance: none; width: 16px; height: 16px; border: 1.5px solid var(--line-3); border-radius: 5px; background: var(--field);
+  display: inline-grid; place-content: center; margin: 0; cursor: pointer; flex: none;
+}
+input[type=checkbox]:not(.switch > input):checked { background: var(--accent); border-color: var(--accent); }
+input[type=checkbox]:not(.switch > input):checked::after { content: ""; width: 9px; height: 5px; border: 2px solid var(--accent-ink); border-top: 0; border-right: 0; transform: rotate(-45deg) translate(1px, -1px); }
+input[type=checkbox]:not(.switch > input):indeterminate { background: var(--accent); border-color: var(--accent); }
+input[type=checkbox]:not(.switch > input):indeterminate::after { content: ""; width: 8px; height: 2px; background: var(--accent-ink); }
+input[type=checkbox]:not(.switch > input):disabled { opacity: .5; cursor: default; }
 
 input[type=range] { -webkit-appearance: none; appearance: none; width: 180px; height: 6px; border-radius: 6px; background: var(--surface-3); outline: none; }
 input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--inv); box-shadow: 0 0 0 4px var(--active); cursor: pointer; }
@@ -1626,6 +1660,18 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 
 .spin { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--line-3); border-top-color: var(--text); animation: spin .7s linear infinite; display: inline-block; flex: none; }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* A note: one component for info, a warning, an error and a success (a soft fill in its colour, a 16 px icon). */
+.note { display: flex; gap: 8px; align-items: flex-start; padding: 10px 12px; border-radius: var(--r-md); font-size: var(--fs-3); color: var(--text-2); background: var(--surface-2); }
+.note .i { flex: none; width: 16px; height: 16px; margin-top: 1px; }
+.note.info { background: color-mix(in srgb, var(--online) 10%, transparent); color: var(--online-ink); }
+.note.warn { background: var(--warn-soft); color: var(--warn-ink); }
+.note.bad { background: var(--bad-soft); color: var(--bad-ink); }
+.note.ok { background: var(--ok-soft); color: var(--ok-ink); }
+
+/* A list still loading: rows in its shape. */
+.skel-row { height: 44px; border-radius: var(--r-sm); background: var(--surface-2); animation: pulse 1.2s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .5; } }
 
 /* ───────── shell ───────── */
 .shell { display: grid; grid-template-columns: 248px minmax(0, 1fr); height: 100vh; }
@@ -1711,7 +1757,7 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .search .i { position: absolute; left: 12px; color: var(--muted); pointer-events: none; }
 .search input { width: 100%; height: 38px; padding: 0 12px 0 38px; border-radius: var(--r-md); border: 1px solid var(--line-field); background: var(--field); outline: none; transition: border-color .15s, box-shadow .15s; }
 .search input::placeholder { color: var(--muted); }
-.search input:focus { border-color: var(--focus-line); box-shadow: 0 0 0 3px var(--focus-ring); }
+.search input:focus { border-color: var(--focus-line); }
 .split { display: inline-flex; }
 .split .btn:first-child { border-radius: var(--r-md) 0 0 var(--r-md); }
 .split .btn:last-child { border-radius: 0 var(--r-md) var(--r-md) 0; padding: 0 9px; margin-left: 1px; }
@@ -1760,7 +1806,6 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .card.row { flex-direction: row; align-items: center; gap: 12px; padding: 5px 10px 5px 12px; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; contain-intrinsic-size: auto 42px; }
 .card.row:last-child { border-bottom: 0; }
 .card.row:hover { transform: none; background: var(--hover); }
-.card.row.local { background: color-mix(in srgb, var(--ok) 5%, transparent); }
 .card.row.sel { background: var(--active); box-shadow: inset 3px 0 0 var(--inv); border-color: var(--line); }
 .avatar.sm { width: 30px; height: 30px; margin: 0; padding: 1px; flex: none; border-radius: var(--r-sm); }
 .avatar.sm img, .avatar.sm .initials { border-width: 1.5px; border-radius: var(--r-sm); }
@@ -1815,7 +1860,8 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 @keyframes pop { from { opacity: 0; transform: translateY(6px); } }
 .card:hover { border-color: var(--line-3); background: var(--card-hover); }
 .card.sel { border-color: color-mix(in srgb, var(--inv) 80%, transparent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--inv) 45%, transparent); }
-.card.local { background: linear-gradient(color-mix(in srgb, var(--ok) 6%, transparent), color-mix(in srgb, var(--ok) 6%, transparent)), var(--card); border-color: var(--ok-line); }
+/* Playing on this PC: a 4 px rail on the left (no ring, no tint). */
+.card.local::before { content: ""; position: absolute; left: 0; top: 12px; bottom: 12px; width: 4px; border-radius: 2px; background: var(--ok); }
 /* The tick stands in the corner; the card says the rest in its own lines. */
 .check { position: absolute; top: 12px; right: 12px; z-index: 1; width: 21px; height: 21px; display: grid; place-items: center; border-radius: var(--r-sm); border: 1.5px solid var(--line-3); color: var(--text); opacity: .45; transition: opacity .15s, background .15s; }
 .tag.old { border: 0; color: var(--warn-ink); background: color-mix(in srgb, var(--warn-ink) 14%, transparent); font: inherit; font-size: var(--fs-2); font-weight: 700; cursor: pointer; }
@@ -1889,7 +1935,7 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .rejoin .i { width: 14px; height: 14px; }
 .ago { display: inline-flex; align-items: center; gap: 5px; margin-left: auto; white-space: nowrap; }
 .ago .i { width: 13px; height: 13px; }
-.note { margin-top: 8px; font-size: var(--fs-2); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.acc-note { margin-top: 8px; font-size: var(--fs-2); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .card-actions { display: flex; gap: 4px; margin-top: auto; padding-top: 12px; }
 .pill-btn { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: inline-flex; align-items: center; justify-content: center; gap: 7px; height: 34px; border-radius: var(--r-md); border: 1px solid var(--line-2); background: var(--surface-2); font-weight: 650; font-size: var(--fs-3); transition: all .15s; }
@@ -1922,6 +1968,7 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .empty .ss-title { display: none; }
 /* No accounts yet: no dock (nothing to play, and it would cover the sign-in choices in a small window). */
 #view-accounts.no-accounts .dock { display: none; }
+#view-accounts.no-accounts :is(.search, .chips, #acc-sub) { display: none; }
 
 /* ───────── launch dock ───────── */
 .dock {
@@ -1989,7 +2036,7 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .inwrap { position: relative; display: flex; align-items: center; }
 .inwrap .i { position: absolute; left: 12px; color: var(--muted); width: 16px; height: 16px; pointer-events: none; }
 .inwrap input { width: 100%; height: 40px; padding: 0 12px 0 36px; border-radius: var(--r-md); border: 1px solid var(--line-field); background: var(--field); outline: none; transition: border-color .15s, box-shadow .15s; }
-.inwrap input:focus { border-color: var(--focus-line); box-shadow: 0 0 0 3px var(--focus-ring); }
+.inwrap input:focus { border-color: var(--focus-line); }
 .inwrap input::placeholder { color: var(--muted); }
 .dock-info { display: flex; align-items: center; gap: 10px; min-height: 28px; font-size: var(--fs-3); color: var(--muted); min-width: 0; }
 .dock-info > span { white-space: nowrap; }
@@ -2281,7 +2328,7 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .fb-preview { margin: 10px 0 0; max-height: 220px; overflow: auto; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--r-md);
   background: var(--hover); color: var(--text-2); font: var(--fs-2)/1.5 ui-monospace, "Cascadia Mono", Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
 .dont-ask { display: inline-flex; align-items: center; gap: 9px; margin-top: 14px; font-size: var(--fs-3); color: var(--text-2); cursor: pointer; user-select: none; }
-.dont-ask input { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); cursor: pointer; }
+.dont-ask input { width: 16px; height: 16px; margin: 0; cursor: pointer; }
 .ps-dc-mode { display: grid; gap: 6px; font-size: var(--fs-3); font-weight: 600; color: var(--text-2); }
 .ps-dc-own { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
 .ps-dc-own[hidden] { display: none; }
@@ -2371,7 +2418,7 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .avatar.xs { width: 18px; height: 18px; margin: 0; padding: 0; flex: none; border-radius: 50%; background: none; }
 .avatar.xs img, .avatar.xs .initials { border: 0; border-radius: 50%; font-size: var(--fs-1); }
 .mc-empty { padding-top: 40px; }
-.menu .menu-head { padding: 6px 10px 3px; font-size: var(--fs-1); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.menu .menu-head { padding: 6px 10px 3px; font-size: var(--fs-2); font-weight: 700; letter-spacing: 0; text-transform: none; color: var(--muted); }
 
 /* The form: wide, the picture beside the steps (under them in a narrow window). */
 .modal.mc-modal { width: min(1120px, 100%); }
@@ -2720,15 +2767,16 @@ input[type=range].cf-hue { width: 100%; background: linear-gradient(90deg, #f00,
 @keyframes fade { from { opacity: 0; } }
 /* Over the opaque page colour: in a glass theme the cards behind a window no longer show through its words. */
 .modal { width: min(520px, 100%); max-height: calc(100vh - 40px); display: flex; flex-direction: column; border-radius: var(--r-xl); border: 1px solid var(--line-2); background: linear-gradient(var(--surface), var(--surface)), var(--bg); box-shadow: 0 30px 90px var(--shadow); animation: rise .25s cubic-bezier(.2, .9, .3, 1.15); }
-.modal-head { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px 6px 24px; }
-.modal-head h3 { margin: 0; font: 650 var(--fs-6) var(--font-display); }
-.modal-body { padding: 8px 24px 6px; overflow-y: auto; }
-.modal-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 16px 24px 22px; }
+/* Head and foot stay put and are cut off from the body by a hairline; only the body scrolls. */
+.modal-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px 12px 24px; border-bottom: 1px solid var(--line); }
+.modal-head h3 { margin: 0; font: 650 var(--fs-6) var(--font-display); text-align: left; }
+.modal-body { padding: 12px 24px 12px; overflow-y: auto; }
+.modal-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 16px 24px 22px; border-top: 1px solid var(--line); }
 .form { display: grid; gap: 14px; }
 .form label { display: grid; gap: 6px; font-size: var(--fs-3); font-weight: 650; color: var(--text-2); }
 .form label .muted { font-weight: 400; }
 .form .field, .form .select { font-weight: 400; font-size: var(--fs-4); }
-.form-error { margin-top: 12px; padding: 10px 12px; border-radius: var(--r-md); background: var(--bad-soft); border: 1px solid var(--bad-line); color: var(--bad-ink); font-size: var(--fs-3); overflow-wrap: anywhere; }
+.form-error { margin-top: 10px; padding: 9px 12px; border-radius: var(--r-md); background: var(--bad-soft); border: 1px solid var(--bad-line); color: var(--bad-ink); font-size: var(--fs-3); overflow-wrap: anywhere; }
 .modal > .ps-err { flex: none; margin: 10px 24px 0; } /* the preset form's refused save, between its fields and its buttons */
 .callout { display: flex; gap: 12px; padding: 12px 14px; margin-bottom: 16px; border-radius: var(--r-md); background: rgba(var(--tint), .04); border: 1px solid var(--line-2); font-size: var(--fs-3); color: var(--text-2); }
 .callout .i { color: var(--text-2); margin-top: 1px; }
@@ -2760,7 +2808,7 @@ input[type=range].cf-hue { width: 100%; background: linear-gradient(90deg, #f00,
 
 /* Username + password sign-in. */
 .modal.auth { position: relative; width: min(420px, 100%); }
-.modal.auth .modal-head { position: absolute; top: 10px; right: 10px; z-index: 1; padding: 0; }
+.modal.auth .modal-head { position: absolute; top: 10px; right: 10px; z-index: 1; padding: 0; border-bottom: 0; }
 .modal.auth .modal-body { padding: 26px 28px 22px; }
 .auth-head { display: grid; justify-items: center; gap: 12px; margin-bottom: 20px; text-align: center; }
 .auth-head img { width: 48px; height: 48px; }
@@ -2845,9 +2893,6 @@ input[type=range].cf-hue { width: 100%; background: linear-gradient(90deg, #f00,
 
 /* Quick Login: the QR keeps a white margin so phones can read it. */
 .ql-for { margin: 0 0 12px; color: var(--text-2); font-size: var(--fs-3); }
-.ql-realm { display: inline-flex; gap: 2px; padding: 2px; margin: 0 0 16px; border-radius: var(--r-xl); border: 1px solid var(--line-2); }
-.ql-realm button { height: 28px; padding: 0 14px; border-radius: var(--r-lg); border: 0; background: transparent; color: var(--muted); font: inherit; font-size: var(--fs-3); font-weight: 650; cursor: pointer; }
-.ql-realm button.on { background: var(--surface-3); color: var(--text); }
 .tag.vng { flex: none; color: var(--warn-ink); background: var(--warn-soft); }
 .meta .robux, .row-meta .robux { flex: none; display: inline-flex; align-items: center; gap: 4px; color: var(--text-2); font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .robux .i { width: 14px; height: 14px; stroke-width: 2.2; }
@@ -3065,7 +3110,7 @@ body:has(.lock) #toasts { bottom: 24px; }
   .card:not(.row) { padding: 8px 12px 8px; }
   .card:not(.row) .activity { min-height: 42px; padding-top: 7px; }
   .card:not(.row) .meta { margin-top: 5px; }
-  .card:not(.row) .note { display: none; }
+  .card:not(.row) .acc-note { display: none; }
   .card:not(.row) .card-actions { padding-top: 8px; }
 }
 /* Monospace themes set wider letters: the card's status and the chips step down a size so they still fit. */

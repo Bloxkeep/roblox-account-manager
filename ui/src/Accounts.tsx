@@ -410,7 +410,7 @@ function AccountCard({ a, sel }: { a: Account; sel: boolean }) {
     {local ? <Live a={a} /> : null}
     {/* "Opened 8 h ago" only while the account isn't running here (a running card shows its play time instead). */}
     <div className="meta">{badge}<Meta a={a} />{local ? null : <span className="ago" title={t('card.lastTip')}><Icon name="history" />{a.lastUsed ? <span>{ago(a.lastUsed, 'card.opened')}</span> : t('card.never')}</span>}</div>
-    {a.note ? <div className="note" title={a.note}>{a.note}</div> : null}
+    {a.note ? <div className="acc-note" title={a.note}>{a.note}</div> : null}
     <div className="card-actions">
       {action}
       <button className="icon-btn" data-act="edit" title={t('card.editTip')}><Icon name="edit" /></button>
