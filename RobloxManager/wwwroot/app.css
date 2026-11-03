@@ -5688,3 +5688,30 @@ button.mc-step-head:focus-visible { outline: 2px solid var(--focus); outline-off
 .mp-none { margin: 10px 10px 0; padding: 10px; border: 1px dashed #2f3747; border-radius: var(--r-sm); color: #8892a6; font-size: var(--fs-2); text-align: center; }
 .mp-foot { display: flex; gap: 6px; padding: 10px; }
 .mp-btn { height: 26px; padding: 0 10px; border-radius: 6px; background: #232a38; color: #c7cede; font-size: var(--fs-2); font-weight: 650; line-height: 26px; }
+
+/* ───────── P1a panel ───────── */
+/* ───────── end P1a ───────── */
+
+/* ───────── P1b panel design ───────── */
+/* ───────── end P1b ───────── */
+
+/* ───────── P2 macro editor ───────── */
+/* ───────── end P2 ───────── */
+
+/* ───────── P3 accounts ───────── */
+/* ───────── end P3 ───────── */
+
+/* ───────── P4 presets ───────── */
+/* ───────── end P4 ───────── */
+
+/* ───────── P5 sign-in ───────── */
+/* ───────── end P5 ───────── */
+
+/* ───────── P6 settings ───────── */
+/* ───────── end P6 ───────── */
+
+/* ───────── P7 native ───────── */
+/* ───────── end P7 ───────── */
+
+/* ───────── P8 ───────── */
+/* ───────── end P8 ───────── */

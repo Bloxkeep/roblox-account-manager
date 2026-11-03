@@ -12,6 +12,9 @@
 <div id="layer"></div>
 <div id="toasts"></div>
 <script src="/ui/dev/mock.js"></script>
+<!-- Each package's mock additions (ui/dev/mock-p<n>.js), after mock.js; a missing one is skipped. -->
+<script>for (const p of ['p1a', 'p1b', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8'])
+  document.write(`<script src="/ui/dev/mock-${p}.js" onerror="void 0"><\/script>`);</script>
 <script src="shared.js"></script>
 <script src="i18n.js"></script>
 <script src="ui.js"></script>

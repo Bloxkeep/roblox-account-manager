@@ -1094,5 +1094,32 @@ public static class L
         ["Drag dot 2 to where you cast"] = "Kéo chấm 2 tới chỗ quăng",
         ["Move the bar area on the game"] = "Chỉnh vùng thanh trên game",
         ["{0} isn't a setting of the macro."] = "{0} không phải cài đặt của macro.",
+
+        // ── P1a panel ──
+        // ── end P1a ──
+
+        // ── P1b panel design ──
+        // ── end P1b ──
+
+        // ── P2 macro editor ──
+        // ── end P2 ──
+
+        // ── P3 accounts ──
+        // ── end P3 ──
+
+        // ── P4 presets ──
+        // ── end P4 ──
+
+        // ── P5 sign-in ──
+        // ── end P5 ──
+
+        // ── P6 settings ──
+        // ── end P6 ──
+
+        // ── P7 native ──
+        // ── end P7 ──
+
+        // ── P8 ──
+        // ── end P8 ──
     };
 }

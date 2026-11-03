@@ -786,6 +786,33 @@ window.I18N = {
     'macro.e.moves': 'Press it {how}.', 'macro.e.movesL': 'How to press', 'macro.e.modeOnOff': 'held or let go',
     'macro.e.modeSmooth': 'in short taps (smoother)', 'macro.e.predict': 'Aim ahead of a moving target', 'macro.e.fps': 'Check {n} times a second.',
     'macro.e.fpsL': 'Checks per second',
+
+    // ── P1a panel ──
+    // ── end P1a ──
+
+    // ── P1b panel design ──
+    // ── end P1b ──
+
+    // ── P2 macro editor ──
+    // ── end P2 ──
+
+    // ── P3 accounts ──
+    // ── end P3 ──
+
+    // ── P4 presets ──
+    // ── end P4 ──
+
+    // ── P5 sign-in ──
+    // ── end P5 ──
+
+    // ── P6 settings ──
+    // ── end P6 ──
+
+    // ── P7 native ──
+    // ── end P7 ──
+
+    // ── P8 ──
+    // ── end P8 ──
   },
 
   vi: {
@@ -1561,5 +1588,32 @@ window.I18N = {
     'macro.e.moves': 'Bấm {how}.', 'macro.e.movesL': 'Cách bấm', 'macro.e.modeOnOff': 'giữ hoặc thả',
     'macro.e.modeSmooth': 'nhấp ngắn (mượt hơn)', 'macro.e.predict': 'Đón trước đích đang chạy', 'macro.e.fps': 'Kiểm tra {n} lần mỗi giây.',
     'macro.e.fpsL': 'Số lần mỗi giây',
+
+    // ── P1a panel ──
+    // ── end P1a ──
+
+    // ── P1b panel design ──
+    // ── end P1b ──
+
+    // ── P2 macro editor ──
+    // ── end P2 ──
+
+    // ── P3 accounts ──
+    // ── end P3 ──
+
+    // ── P4 presets ──
+    // ── end P4 ──
+
+    // ── P5 sign-in ──
+    // ── end P5 ──
+
+    // ── P6 settings ──
+    // ── end P6 ──
+
+    // ── P7 native ──
+    // ── end P7 ──
+
+    // ── P8 ──
+    // ── end P8 ──
   },
 };

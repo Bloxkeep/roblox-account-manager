@@ -1550,4 +1550,31 @@ export default [
   S('settings-backup-now', 'settings=backup&backup=1', async s => { await s.click(key('bk.now')); await s.wait(500); }),
   S('settings-backup-restore', 'settings=backup&backup=1', async s => { await s.click(key('bk.restoreBtn')); }),
   S('settings-check-updates', 'settings=updates', async s => { await s.click({ css: '[data-act=check-updates]' }); await s.wait(800); }),
+
+  // ── P1a panel ──
+  // ── end P1a ──
+
+  // ── P1b panel design ──
+  // ── end P1b ──
+
+  // ── P2 macro editor ──
+  // ── end P2 ──
+
+  // ── P3 accounts ──
+  // ── end P3 ──
+
+  // ── P4 presets ──
+  // ── end P4 ──
+
+  // ── P5 sign-in ──
+  // ── end P5 ──
+
+  // ── P6 settings ──
+  // ── end P6 ──
+
+  // ── P7 native ──
+  // ── end P7 ──
+
+  // ── P8 ──
+  // ── end P8 ──
 ];
