@@ -404,7 +404,7 @@
   --backdrop: url("scene-christmas.svg") center / cover no-repeat, #13253f;
   --blur: blur(18px) saturate(130%);
   --bg: rgba(8, 16, 30, .32);
-  --bg-2: rgba(8, 16, 30, .72);
+  --bg-2: rgba(8, 16, 30, .78);
   --surface: rgba(14, 28, 48, .78);
   --surface-2: rgba(225, 235, 250, .08);
   --surface-3: rgba(225, 235, 250, .15);
@@ -965,10 +965,10 @@
   --text-2: #2e4d5e;
   --muted: #38566a;
   --dim: #64808f;
-  --inv: #d9472b;
+  --inv: #d24228;
   --inv-hover: #bf3b22;
   --inv-ink: #fff;
-  --accent: #d9472b;
+  --accent: #d24228;
   --accent-hover: #bf3b22;
   --accent-ink: #fff;
   --meter: #2e4d5e;
@@ -1617,6 +1617,8 @@ kbd { font: 500 var(--fs-1) var(--font); padding: 1px 6px; border-radius: var(--
 :where(svg.i:not(:only-child):not(:is(.icon-btn, .pv-icon) > svg), .wn-go > svg.i) { translate: 0 .055em; }
 /* Boxes beside a label (a count pill, a map, a tag): the same, in the label's em (worked out on the row: --cap-nudge). */
 @property --cap-nudge { syntax: "<length>"; inherits: true; initial-value: 0px; }
+/* The capitals' height, set as 1cap where the text is and passed down in px: for centring a box on capitals in any font. */
+@property --cap-h { syntax: "<length>"; inherits: true; initial-value: 0px; }
 :is(.play-btn, .pn-ctl-in, .pid-group, .row-status) { --cap-nudge: .055em; }
 :is(.play-btn > em, .pn-ctl-in > .pn-map, .pn-ctl-in > [id$="-spot"], .pid-group > .tag, .row-status > .tag) { translate: 0 var(--cap-nudge); }
 .icon-btn { display: inline-grid; place-items: center; padding: 0; width: 34px; height: 34px; border-radius: var(--r-md); border: 0; background: transparent; color: var(--muted); transition: background .15s, color .15s; }
@@ -1892,7 +1894,7 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .card.local::before { content: ""; position: absolute; left: 0; top: 12px; bottom: 12px; width: 4px; border-radius: 2px; background: var(--ok); }
 /* The tick stands in the corner; the card says the rest in its own lines. Its box is --muted at rest, not a faded
    hairline: the box is a control and has to be seen against the card (3:1) before the pointer gets there. */
-.check { position: absolute; top: 12px; right: 12px; z-index: 1; width: 21px; height: 21px; display: grid; place-items: center; border-radius: var(--r-sm); border: 1.5px solid var(--muted); color: var(--text); transition: border-color .15s, background .15s; }
+.check { position: absolute; top: 12px; right: 12px; z-index: 1; width: 21px; height: 21px; display: grid; place-items: center; border-radius: var(--r-sm); border: 2px solid var(--muted); color: var(--text); transition: border-color .15s, background .15s; }
 .tag.old { border: 0; color: var(--warn-ink); background: color-mix(in srgb, var(--warn-ink) 14%, transparent); font: inherit; font-size: var(--fs-2); font-weight: 700; cursor: pointer; }
 .ver { font-size: var(--fs-2); color: var(--muted); font-variant-numeric: tabular-nums; }
 .card.row .check { position: static; flex: none; } /* a list row's comes first: in the corner it covered the row's ⋮ */
@@ -2447,11 +2449,11 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 /* ── Macros (Beta): the tab (rows like Presets', each window's run as a chip with a word and an icon, not colour alone),
    the recording bar, the templates, and the macro form: settings and steps on the left, the window picture on the right. ── */
 .nav em.nav-beta { color: var(--warn-ink); background: var(--warn-soft); font-size: var(--fs-1); font-weight: 700; }
-/* The pill sits on the middle of the title's capitals, not of its line (which is 1px higher at this font): the nudge is in
-   the title's em, worked out where the title's size is known (a small window shrinks it). */
-.top h1:has(.mc-beta) { display: flex; align-items: center; gap: 10px; --cap-nudge: .042em; }
+/* The pill sits on the middle of the title's capitals in every theme's title font (a fixed nudge only fit one): its bottom
+   on the title's baseline, then up by half its height less half the capitals' (1cap, worked out in the title's font). */
+.top h1:has(.mc-beta) { --cap-h: 1cap; white-space: nowrap; }
 /* The word sits low in its own line box: a little less room above it than below, the pill's height unchanged. */
-.mc-beta { flex: none; padding-block: calc(2px - .03em) calc(2px + .03em); font-family: var(--font); line-height: 1.4; letter-spacing: 0; translate: 0 var(--cap-nudge); }
+.mc-beta { display: inline-block; overflow: hidden; margin-left: 10px; padding-block: calc(2px - .03em) calc(2px + .03em); font-family: var(--font); line-height: 1.4; letter-spacing: 0; translate: 0 calc(50% - var(--cap-h) / 2); }
 .mc-stop-all kbd { font: var(--fs-1) var(--font); color: var(--muted); margin-left: 2px; }
 .mc-stop-all:disabled kbd { color: inherit; }
 .mc-live { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
@@ -3571,10 +3573,10 @@ body:has(.lock) #toasts { bottom: 24px; }
   --text-2: #5a3a30;
   --muted: #634238;
   --dim: #8a6a60;
-  --inv: #d8402e;
+  --inv: #d43d2b;
   --inv-hover: #bf3524;
   --inv-ink: #fff;
-  --accent: #d8402e;
+  --accent: #d43d2b;
   --accent-hover: #bf3524;
   --accent-ink: #fff;
   --meter: #5a3a30;
@@ -4255,6 +4257,8 @@ body:has(.lock) #toasts { bottom: 24px; }
   --line: rgba(var(--tint), .1);
   --line-2: rgba(var(--tint), .16);
   --line-3: rgba(var(--tint), .28);
+  /* The pale hills behind the Play bar's boxes: the usual field line fell just short of 3:1 there. */
+  --line-field: color-mix(in srgb, var(--text) 62%, transparent);
   --meter-2: rgba(var(--tint), .18);
   --scrim: rgba(20, 25, 35, .3);
   --shadow: rgba(20, 30, 50, .18);
@@ -4518,10 +4522,10 @@ body:has(.lock) #toasts { bottom: 24px; }
   --text-2: #2f4a36;
   --muted: #3f5a46;
   --dim: #65806c;
-  --inv: #2f8a3c;
+  --inv: #2c8439;
   --inv-hover: #267232;
   --inv-ink: #fff;
-  --accent: #2f8a3c;
+  --accent: #2c8439;
   --accent-hover: #267232;
   --accent-ink: #fff;
   --meter: #2f4a36;
@@ -5992,9 +5996,10 @@ html:not(.in-window) .pn.pn-pill { height: 42px; }
 .mc-pic-frame.blank .mc-pic-blank { position: absolute; left: 0; right: 0; bottom: 10px; display: grid; justify-items: center; gap: 8px; }
 
 /* The Macros list: each account's run with a dot in its colour; a failed run marks the row's icon; the panel shown. */
-.mc-acc { display: inline-flex; align-items: center; gap: 5px; }
+/* The dot on the middle of the capitals in any theme's font: its bottom on the baseline, then up by half (dot - capitals). */
+.mc-acc { display: inline-flex; align-items: baseline; gap: 5px; --cap-h: 1cap; }
 .mc-acc + .mc-acc { margin-left: 12px; }
-.mc-acc > i { width: 7px; height: 7px; flex: none; border-radius: 50%; background: var(--muted); }
+.mc-acc > i { width: 7px; height: 7px; flex: none; border-radius: 50%; background: var(--muted); translate: 0 calc(50% - var(--cap-h) / 2); }
 .mc-acc.s-running > i { background: var(--ok); }
 .mc-acc.s-waiting > i { background: var(--warn); }
 .mc-acc.s-failed > i { background: var(--bad); }
