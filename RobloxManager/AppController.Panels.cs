@@ -598,6 +598,14 @@ public sealed partial class AppController
             _panelFollowLater.Start();
             return;
         }
+        // A message box of Bloxkeep's open: the panels stay lowered under it (Ui.Modal), never raised over it again.
+        if (Ui.ModalsOpen > 0)
+        {
+            if (front != IntPtr.Zero && !IsPanel(front))
+                foreach (var panel in _panels.Values.Where(p => !p.IsDisposed && p.Visible))
+                    panel.Layer(false, front);
+            return;
+        }
         bool onTop = front == IntPtr.Zero || IsPanel(front) || PanelNative.PidOf(front) == Environment.ProcessId || IsRunningGame(front);
         foreach (var panel in _panels.Values.Where(p => !p.IsDisposed && p.Visible))
             panel.Layer(onTop, front);
@@ -746,12 +754,16 @@ public sealed partial class AppController
         var picked = new TaskCompletionSource<(double, double, string)?>(TaskCreationOptions.RunContinuationsAsynchronously);
         var overlay = new OverlayWindow(window.Handle, OverlayWindow.Mode.Pick, "", picture) { CustomTheme = CustomThemeDto() };
         overlay.Picked += (x, y, colour) => picked.TrySetResult((x, y, colour));
-        overlay.FormClosed += (_, _) =>
+        void Gone()
         {
             if (_overlay == overlay)
                 (_overlay, _overlayFor) = (null, null);
             picked.TrySetResult(null);
-        };
+        }
+        overlay.FormClosed += (_, _) => Gone();
+        // Ended before it had a window (waiting for a macro's turn, picked again, the vault locked): WinForms then
+        // disposes it without FormClosed, and the pick would never answer.
+        overlay.Disposed += (_, _) => Gone();
         (_overlay, _overlayFor) = (overlay, (Guid.Empty, account, false));
         ShowOverlay(overlay, window.Pid);
         return await picked.Task;

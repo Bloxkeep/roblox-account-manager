@@ -27,9 +27,21 @@ public sealed class PanelWindow : WebToolWindow
     [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
     public bool AutoShown { get; set; }
 
-    /// <summary>Stepped aside for a moment (the screen colour picker): not shown again by the panels' tick meanwhile.</summary>
+    /// <summary>Stepped aside for a moment (the screen colour picker): not shown again by the panels' tick meanwhile, and its
+    /// page kept. Back and still hidden, the page goes after the keep time as usual.</summary>
     [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
-    public bool Suspended { get; set; }
+    public bool Suspended
+    {
+        get => _suspended;
+        set
+        {
+            _suspended = value;
+            if (!value)
+                ReleaseLater();
+        }
+    }
+
+    bool _suspended;
 
     /// <summary>The window in front before this one took the keyboard (a Roblox window the focus may go back to).</summary>
     [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
@@ -39,13 +51,18 @@ public sealed class PanelWindow : WebToolWindow
     {
         _app = app;
         MacroId = macroId;
+        // Lowered while a message box shows, so the box opens in front of it (as the mini window and the overlay).
+        Ui.NoteOnTop(this);
     }
 
     protected override string PageFile => "panel.html";
     protected override bool StartsTopMost => true;
     protected override TimeSpan KeepBrowser => TimeSpan.FromSeconds(60);
-    /// <summary>A folded panel keeps its page: unfolded, it is there at once.</summary>
-    protected override bool HoldBrowser => _pill || Suspended;
+    /// <summary>
+    /// A panel stepped aside keeps its page. A folded one no longer does once hidden (its game ended): it held its page
+    /// for the whole session (audit B13). Shown, folded or not, the page stays anyway (ReleaseBrowser).
+    /// </summary>
+    protected override bool HoldBrowser => Suspended;
 
     public bool Pill => _pill;
 
@@ -105,10 +122,7 @@ public sealed class PanelWindow : WebToolWindow
     {
         if (!Visible && !_showing)
             return;
-        bool wasPill = _pill;
         _pill = args.TryGetProperty("pill", out var p) && p.ValueKind == JsonValueKind.True;
-        if (wasPill && !_pill)
-            ReleaseLater();
         float scale = Visible ? ScaleNow : ScaleAt(PlaceFor(Scaled(css, 1)).Location);
         var size = Scaled(css, scale);
         // Never taller than the screen it is on (the rows scroll inside).

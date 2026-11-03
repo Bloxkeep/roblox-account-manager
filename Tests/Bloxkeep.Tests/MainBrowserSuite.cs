@@ -164,5 +164,175 @@ static class MainBrowserSuite
         string safe = Options().AdditionalBrowserArguments;
         Prefs.SafeRendering = was;
         c.Check("drawing on the CPU (safe rendering) keeps them, with its own switches", safe.Contains("--disable-gpu") && safe.Contains("--disable-background-networking"), safe);
+
+        await ToolWindows(c);
+    }
+
+    /// <summary>A page's own window (WebToolWindow), as the tests start and let go of its browser.</summary>
+    sealed class Probe : WebToolWindow
+    {
+        protected override string PageFile => "panel.html";
+        protected override void OnAct(string what, System.Text.Json.JsonElement args) { }
+        public Task<bool> Start() => EnsureBrowserAsync();
+        public void Release(bool force) => ReleaseBrowser(force);
+        public bool Ready => BrowserReady;
+        public WebView2? Web => (WebView2?)typeof(WebToolWindow).GetField("_web", Harness.F)!.GetValue(this);
+    }
+
+    /// <summary>The start's answer, or the exception it ended with (one an <c>async void</c> Open would turn into the
+    /// app's "Unexpected error" box).</summary>
+    static async Task<string> Outcome(Task<bool> start)
+    {
+        try
+        {
+            return (await start.WaitAsync(TimeSpan.FromSeconds(40))).ToString();
+        }
+        catch (Exception ex)
+        {
+            return ex.GetType().Name;
+        }
+    }
+
+    static async Task Until(Func<bool> done, int ms)
+    {
+        for (var w = System.Diagnostics.Stopwatch.StartNew(); w.ElapsedMilliseconds < ms && !done();)
+            await Task.Delay(20);
+    }
+
+    /// <summary>
+    /// The small windows drawn by a page (macro panel, mini window, overlay, message box): their browser started, let go
+    /// and failing (audit F#15). A window disposed while its browser starts ends that start quietly (R5); a start let go
+    /// meanwhile never takes a newer one down with it (U10); a folded panel, hidden, lets its browser go (B13); a GPU
+    /// process restart leaves them alone while a renderer crash still starts the page again (R4); "Pick on game" ended
+    /// before its overlay had a window still answers (R6); a panel is lowered under a message box (R26).
+    /// </summary>
+    static async Task ToolWindows(Checks c)
+    {
+        using (var warm = new Probe())
+            c.Check("a page's window starts its browser", await Outcome(warm.Start()) == "True");
+
+        // Each point of a start: before its browser control, while the browser starts in it, while its page loads.
+        string[] points = ["at once", "its browser starting", "its page loading"];
+        async Task Reach(Probe probe, string at)
+        {
+            if (at == "its browser starting")
+                await Until(() => probe.Web is not null, 5000);
+            else if (at == "its page loading")
+                await Until(() => probe.Web?.CoreWebView2 is not null, 10000);
+        }
+
+        // Disposed meanwhile: the vault locked (ClosePanelsForLock), a message box's start limit.
+        foreach (string at in points)
+        {
+            var probe = new Probe();
+            var start = probe.Start();
+            await Reach(probe, at);
+            bool midway = !start.IsCompleted;
+            probe.Dispose();
+            string outcome = await Outcome(start);
+            c.Check($"disposed while starting ({at}): the start ends quietly, nothing thrown", midway && outcome == "False", $"midway {midway}, {outcome}");
+        }
+
+        // Let go meanwhile (its page failed: OnBrowserFailed), then started again, as a shown panel does.
+        foreach (string at in points)
+        {
+            using var probe = new Probe();
+            var first = probe.Start();
+            await Reach(probe, at);
+            bool midway = !first.IsCompleted;
+            probe.Release(force: true);
+            var second = probe.Start();
+            string a = await Outcome(first), b = await Outcome(second);
+            await Task.Delay(500);
+            c.Check($"let go while starting ({at}), then started again: the new start's page stays",
+                midway && a is "True" or "False" && b == "True" && probe.Ready && probe.Controls.OfType<WebView2>().Count() == 1,
+                $"midway {midway}, first {a}, second {b}, ready {probe.Ready}, browsers {probe.Controls.OfType<WebView2>().Count()}");
+        }
+
+        // A GPU process restart (Chromium starts it again by itself) and a renderer crash, on a shown window.
+        using (var probe = new Probe { Location = new Point(-2600, -2600), Size = new Size(200, 120) })
+        {
+            typeof(WebToolWindow).GetProperty("ActivateOnShow", Harness.F)!.SetValue(probe, false);
+            bool ready = await Outcome(probe.Start()) == "True";
+            probe.Show();
+            if (ready)
+            {
+                try
+                {
+                    await probe.Web!.CoreWebView2.CallDevToolsProtocolMethodAsync("Browser.crashGpuProcess", "{}");
+                }
+                catch (Exception ex) when (ex is System.Runtime.InteropServices.COMException or InvalidOperationException)
+                {
+                }
+            }
+            await Task.Delay(2000);
+            c.Check("its GPU process restarted: the window stays shown with its page", ready && probe.Visible && probe.Ready,
+                $"started {ready}, shown {probe.Visible}, ready {probe.Ready}");
+            if (probe.Ready)
+            {
+                // Never answered: its renderer is gone.
+                _ = probe.Web!.CoreWebView2.CallDevToolsProtocolMethodAsync("Page.crash", "{}").ContinueWith(t => t.Exception, TaskScheduler.Default);
+                await Until(() => !probe.Visible, 5000);
+                c.Check("…its page's renderer crashed: hidden, the page let go (started again on its next show)", !probe.Visible && probe.Web is null,
+                    $"shown {probe.Visible}, browser {probe.Web is not null}");
+            }
+        }
+
+        var failureOf = typeof(ShellForm).GetMethod("FailureOf", Harness.F);
+        string Failure(CoreWebView2ProcessFailedKind kind) => failureOf?.Invoke(null, [kind])?.ToString() ?? "missing";
+        var table = Enum.GetValues<CoreWebView2ProcessFailedKind>().ToDictionary(k => k, Failure);
+        c.Check("one rule for every page's window: a renderer gone or hung reloads the page, the browser gone starts again, a GPU restart and the rest are left alone",
+            table.All(t => t.Value == t.Key switch
+            {
+                CoreWebView2ProcessFailedKind.RenderProcessExited or CoreWebView2ProcessFailedKind.RenderProcessUnresponsive => "ReloadPage",
+                CoreWebView2ProcessFailedKind.GpuProcessExited => "GpuRestarted",
+                CoreWebView2ProcessFailedKind.BrowserProcessExited => "BrowserGone",
+                _ => "None",
+            }), string.Join(", ", table.Select(t => $"{t.Key}: {t.Value}")));
+
+        using var owner = new Form();
+        using var app = new AppController(owner, _ => { });
+
+        // A folded panel whose game ended: hidden, and its browser goes once the keep time is up.
+        using (var panel = new PanelWindow(app, Guid.NewGuid()) { Location = new Point(-2600, -2600) })
+        {
+            var onTop = (List<Form>)typeof(Ui).GetField("_onTop", Harness.F)!.GetValue(null)!;
+            c.Check("a macro panel is lowered while a message box shows, as the mini window and the overlay are", onTop.Contains(panel));
+            typeof(WebToolWindow).GetProperty("ActivateOnShow", Harness.F)!.SetValue(panel, false);
+            bool started = await (Task<bool>)typeof(WebToolWindow).GetMethod("EnsureBrowserAsync", Harness.F)!.Invoke(panel, null)!;
+            panel.Show();
+            await Task.Delay(200);
+            typeof(PanelWindow).GetField("_pill", Harness.F)!.SetValue(panel, true);
+            panel.HideQuietly();
+            var release = (System.Windows.Forms.Timer)typeof(WebToolWindow).GetField("_release", Harness.F)!.GetValue(panel)!;
+            bool armed = release.Enabled;
+            typeof(WebToolWindow).GetMethod("ReleaseBrowser", Harness.F)!.Invoke(panel, [false]); // the keep time is up
+            bool gone = typeof(WebToolWindow).GetField("_web", Harness.F)!.GetValue(panel) is null;
+            c.Check("a folded panel hidden by its game ending lets its browser go after the keep time", started && armed && gone,
+                $"started {started}, timer {armed}, let go {gone}");
+        }
+
+        // "Pick on game" while a macro has the window: the overlay waits for the turn, and is ended before it had a window.
+        using var game = new Form { Text = "Roblox pick check", FormBorderStyle = FormBorderStyle.FixedToolWindow, StartPosition = FormStartPosition.Manual, Location = new Point(-2400, -2400), Size = new Size(320, 240) };
+        game.Show();
+        var deskType = typeof(Prefs).Assembly.GetType("RobloxManager.MacroDesk")!;
+        Func<Guid, (int Pid, int Fps, bool InGame)?> client = _ => (Environment.ProcessId, 60, true);
+        Harness.Set(app, "_macroDesk", Activator.CreateInstance(deskType, Harness.F, null, [client, null], null));
+        InputTurn.Reset();
+        var held = InputTurn.TryEnter("macro")!;
+        var pick = (Task<(double X, double Y, string Colour)?>)Harness.Invoke(app, "PickOnGameAsync", Guid.NewGuid())!;
+        var blocker = InputTurn.EnterAsync("blocker");
+        held.Dispose();
+        OverlayWindow? overlay = null;
+        await Until(() => (overlay = Harness.Get<OverlayWindow?>(app, "_overlay")) is not null || pick.IsCompleted, 10000);
+        bool noWindow = overlay is { IsHandleCreated: false };
+        Harness.Invoke(app, "CloseOverlay", true);
+        bool answered = await Task.WhenAny(pick, Task.Delay(1000)) == pick;
+        (await blocker).Dispose();
+        await Until(() => pick.IsCompleted, 2000);
+        c.Check("\"Pick on game\" ended before its overlay had a window still answers (nothing picked)",
+            noWindow && answered && pick.IsCompletedSuccessfully && pick.Result is null,
+            $"overlay {(overlay is null ? "none" : overlay.IsHandleCreated ? "with a window" : "no window")}, answered {answered}, {pick.Status} {(pick.IsFaulted ? pick.Exception!.InnerException!.Message : "")}");
+        InputTurn.Reset();
     }
 }

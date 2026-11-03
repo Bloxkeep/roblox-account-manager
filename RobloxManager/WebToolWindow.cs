@@ -25,6 +25,7 @@ public abstract class WebToolWindow : Form
     readonly System.Windows.Forms.Timer _release = new();
     WebView2? _web;
     Task? _starting;
+    CancellationTokenSource? _startCancel;
     TaskCompletionSource? _ready;
     bool _activate = true;
     /// <summary>The page's size in its own (CSS) pixels, as it last said.</summary>
@@ -100,42 +101,65 @@ public abstract class WebToolWindow : Form
 
     // ───────────────────────── the browser ─────────────────────────
 
-    /// <summary>Starts the page (once); false when it couldn't (logged; the window stays hidden).</summary>
+    /// <summary>Starts the page (once); false when it couldn't (logged; the window stays hidden) or the window went meanwhile.</summary>
     protected async Task<bool> EnsureBrowserAsync()
     {
         _release.Stop();
-        if (BrowserReady)
-            return true;
-        _starting ??= StartBrowserAsync();
-        try
+        while (!BrowserReady)
         {
-            await _starting;
-            return BrowserReady;
-        }
-        catch (Exception ex) when (ex is COMException or InvalidOperationException or ArgumentException or WebView2RuntimeNotFoundException or TimeoutException or ObjectDisposedException)
-        {
-            Log.Write(ex);
-            ReleaseBrowser(force: true);
-            return false;
-        }
-        finally
-        {
+            if (IsDisposed)
+                return false;
+            if (_starting is null)
+            {
+                _startCancel = new CancellationTokenSource();
+                _starting = StartBrowserAsync(_startCancel.Token);
+            }
+            var starting = _starting;
+            try
+            {
+                await starting;
+            }
+            catch (Exception ex) when (ex is COMException or InvalidOperationException or ArgumentException or WebView2RuntimeNotFoundException or TimeoutException or ObjectDisposedException or OperationCanceledException)
+            {
+                if (_starting == starting)
+                {
+                    Log.Write(ex);
+                    ReleaseBrowser(force: true);
+                    return false;
+                }
+            }
+            // Let go while it started (the window disposed, its page failed): the start that came after, if any, is the
+            // one that counts. Never this one's failure taking that one's browser down with it.
+            if (_starting != starting)
+            {
+                if (_starting is null)
+                    return false;
+                continue;
+            }
             if (!BrowserReady)
+            {
                 _starting = null;
+                return false;
+            }
         }
+        return true;
     }
 
-    async Task StartBrowserAsync()
+    /// <param name="cancel">Cancelled when the window lets this start go (<see cref="ReleaseBrowser"/>, Dispose).</param>
+    async Task StartBrowserAsync(CancellationToken cancel)
     {
-        var env = await ShellForm.CreateEnvironmentAsync();
+        var env = await ShellForm.CreateEnvironmentAsync().WaitAsync(cancel);
+        ObjectDisposedException.ThrowIf(IsDisposed, this);
         var web = new WebView2 { Dock = DockStyle.Fill, DefaultBackgroundColor = Backdrop };
         Controls.Add(web);
         _web = web;
         // The browser starts once its control has a window, and a hidden form's controls get none by themselves.
         _ = Handle;
         _ = web.Handle;
-        await web.EnsureCoreWebView2Async(env);
-        var core = web.CoreWebView2;
+        await web.EnsureCoreWebView2Async(env).WaitAsync(cancel);
+        // Disposed or let go while the browser started: nothing of this start is used.
+        if (IsDisposed || web.IsDisposed || _web != web || web.CoreWebView2 is not { } core)
+            throw new ObjectDisposedException(GetType().Name);
         var settings = core.Settings;
         settings.AreDevToolsEnabled = false;
         settings.IsStatusBarEnabled = false;
@@ -156,16 +180,25 @@ public abstract class WebToolWindow : Form
             if (e.IsSuccess)
                 _ready?.TrySetResult();
         };
-        // Its page gone (the renderer crashed): the next show starts it again.
-        core.ProcessFailed += (_, _) => BeginInvoke(OnBrowserFailed);
+        // Its page gone (the renderer crashed or hung, the browser gone): the next show starts it again. Not for a GPU
+        // process restart, which the page lives through (ShellForm.FailureOf).
+        core.ProcessFailed += (_, e) =>
+        {
+            if (ShellForm.FailureOf(e.ProcessFailedKind) is BrowserFailure.ReloadPage or BrowserFailure.BrowserGone && IsHandleCreated && !IsDisposed)
+                BeginInvoke(() =>
+                {
+                    if (_web == web)
+                        OnBrowserFailed();
+                });
+        };
         core.WebMessageReceived += (_, e) =>
         {
             string json = e.WebMessageAsJson;
             BeginInvoke(() => OnMessage(json));
         };
-        _ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var ready = _ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         core.Navigate(ShellForm.Origin + PageFile);
-        await _ready.Task.WaitAsync(TimeSpan.FromSeconds(15));
+        await ready.Task.WaitAsync(TimeSpan.FromSeconds(15), cancel);
     }
 
     /// <summary>The page crashed: hidden, and started again on the next show.</summary>
@@ -175,7 +208,8 @@ public abstract class WebToolWindow : Form
         ReleaseBrowser(force: true);
     }
 
-    /// <summary>The browser goes (its memory with it) unless the window is shown or holds it; the next show starts it again.</summary>
+    /// <summary>The browser goes (its memory with it) unless the window is shown or holds it; the next show starts it again.
+    /// A start under way is let go too.</summary>
     protected void ReleaseBrowser(bool force = false)
     {
         _release.Stop();
@@ -183,12 +217,15 @@ public abstract class WebToolWindow : Form
             return;
         _ready = null;
         _starting = null;
+        var cancel = _startCancel;
+        _startCancel = null;
         if (_web is { } web)
         {
             _web = null;
             Controls.Remove(web);
             web.Dispose();
         }
+        cancel?.Cancel();
     }
 
     protected override void OnVisibleChanged(EventArgs e)
@@ -414,6 +451,9 @@ public abstract class WebToolWindow : Form
             _release.Dispose();
             _web?.Dispose();
             _web = null;
+            _starting = null;
+            _startCancel?.Cancel();
+            _startCancel = null;
         }
         base.Dispose(disposing);
     }

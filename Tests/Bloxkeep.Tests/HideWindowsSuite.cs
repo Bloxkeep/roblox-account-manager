@@ -119,5 +119,95 @@ static class HideWindowsSuite
         RobloxProcesses.Focus(me);
         c.Check("Show on a hidden window shows it, no longer hidden", Visible() && !RobloxProcesses.HasHidden(me) && !File.Exists(file),
             $"visible {IsWindowVisible(hWnd)}, hidden {RobloxProcesses.HasHidden(me)}");
+
+        InTurns(c, form, Visible);
+    }
+
+    /// <summary>
+    /// The page's Show and the Monitor tab's Minimise and Restore while a nudge, a picture or a macro has the window
+    /// (InputTurn): they wait for the turn to end. Done during it, the turn put the window back as it found it at its
+    /// start, so a window shown from the page went invisible again while Bloxkeep counted it as shown (B10).
+    /// </summary>
+    static void InTurns(Checks c, Form form, Func<bool> visible)
+    {
+        const int SW_HIDE = 0, SW_SHOWNOACTIVATE = 4, SW_RESTORE = 9;
+        int me = Environment.ProcessId;
+        IntPtr hWnd = form.Handle;
+        void Settle(Func<bool> until)
+        {
+            for (var w = System.Diagnostics.Stopwatch.StartNew(); w.ElapsedMilliseconds < 2000 && !until();)
+            {
+                Application.DoEvents();
+                Thread.Sleep(20);
+            }
+            Application.DoEvents();
+        }
+
+        Vault.Create(Harness.Password).Dispose();
+        using var owner = new Form();
+        using var app = new AppController(owner, _ => { });
+        var unlock = Harness.Unlock(app);
+        for (var w = System.Diagnostics.Stopwatch.StartNew(); !unlock.IsCompleted && w.ElapsedMilliseconds < 30000;)
+        {
+            Application.DoEvents();
+            Thread.Sleep(20);
+        }
+        c.Check("the vault unlocked for the turn checks", unlock.IsCompletedSuccessfully, unlock.Status);
+        if (!unlock.IsCompletedSuccessfully)
+            return;
+        InputTurn.Reset();
+
+        // Hidden; a turn shows it unseen for its key and hides it again at its end, as it found it (AntiAfk.NudgeAsync).
+        RobloxProcesses.HideWindows([me]);
+        visible();
+        var turn = InputTurn.TryEnter("macro")!;
+        bool unshown = !IsWindowVisible(hWnd);
+        ShowWindowAsync(hWnd, SW_SHOWNOACTIVATE);
+        visible();
+        var show = Harness.Call(app, "showWindows", new { ids = Array.Empty<string>() });
+        visible();
+        if (unshown)
+            ShowWindowAsync(hWnd, SW_HIDE);
+        Settle(() => !IsWindowVisible(hWnd));
+        turn.Dispose();
+        Settle(() => IsWindowVisible(hWnd));
+        c.Check("Show from the page during a turn: shown once the turn ends, not left unseen while counted as shown",
+            show.IsCompletedSuccessfully && IsWindowVisible(hWnd) && !RobloxProcesses.IsHidden(hWnd),
+            $"answered {show.Status}, visible {IsWindowVisible(hWnd)}, hidden {RobloxProcesses.IsHidden(hWnd)}");
+        RobloxProcesses.ShowWindows([me]);
+        visible();
+
+        // Shown; a turn brings it forward, and puts it back as it found it (not minimised) at its end.
+        var client = new AppController.MonitorClient(hWnd, me, null, "Bloxkeep hide check", "", 0);
+        object? Act(string what) => Harness.Invoke(app, "MonitorAct", client, what);
+        turn = InputTurn.TryEnter("macro")!;
+        bool wasMinimised = IsIconic(hWnd);
+        Act("minimize");
+        visible();
+        if (!wasMinimised)
+            ShowWindowAsync(hWnd, SW_RESTORE);
+        Settle(() => !IsIconic(hWnd));
+        turn.Dispose();
+        Settle(() => IsIconic(hWnd));
+        c.Check("Minimise on the Monitor tab during a turn: minimised once the turn ends, not undone by it", IsIconic(hWnd),
+            $"iconic {IsIconic(hWnd)}");
+
+        // Minimised; a turn restores it for its key and minimises it again at its end.
+        ShowWindowAsync(hWnd, 7); // SW_SHOWMINNOACTIVE
+        Settle(() => IsIconic(hWnd));
+        turn = InputTurn.TryEnter("macro")!;
+        wasMinimised = IsIconic(hWnd);
+        ShowWindowAsync(hWnd, SW_RESTORE);
+        visible();
+        Act("restore");
+        visible();
+        if (wasMinimised)
+            ShowWindowAsync(hWnd, 7); // SW_SHOWMINNOACTIVE
+        Settle(() => IsIconic(hWnd)); // as a turn waits for its window to be minimised again
+        turn.Dispose();
+        Settle(() => !IsIconic(hWnd));
+        c.Check("Restore on the Monitor tab during a turn: open once the turn ends, not minimised again by it", wasMinimised && !IsIconic(hWnd),
+            $"minimised before {wasMinimised}, iconic {IsIconic(hWnd)}");
+        InputTurn.Reset();
     }
 }

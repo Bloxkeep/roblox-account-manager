@@ -97,17 +97,33 @@ public sealed partial class AppController
         string id = Str(a, "id");
         if (MonitorClients().FirstOrDefault(c => MonitorId(c.Hwnd) == id) is not { } client)
             return null; // gone meanwhile: every action survives that
-        switch (Str(a, "what"))
+        return MonitorAct(client, Str(a, "what"));
+    }
+
+    /// <summary>A tile's action on its window.</summary>
+    object? MonitorAct(MonitorClient client, string what)
+    {
+        switch (what)
         {
             case "show":
                 RobloxProcesses.FocusInTurn(client.Pid);
                 break;
+            // After a nudge, a picture or a macro's turn under way (as Show): the turn would put the window back as it
+            // found it, undoing the change.
             case "minimize":
-                RobloxProcesses.Minimise(client.Hwnd);
-                break;
+                InputTurn.RunWhenFree("monitor", () =>
+                {
+                    RobloxProcesses.Minimise(client.Hwnd);
+                    MonitorRefresh?.Invoke();
+                });
+                return null;
             case "restore":
-                RobloxProcesses.RestoreQuietly(client.Hwnd);
-                break;
+                InputTurn.RunWhenFree("monitor", () =>
+                {
+                    RobloxProcesses.RestoreQuietly(client.Hwnd);
+                    MonitorRefresh?.Invoke();
+                });
+                return null;
             case "close":
                 CloseMonitorClient(client);
                 break;

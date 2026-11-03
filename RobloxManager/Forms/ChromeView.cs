@@ -63,9 +63,8 @@ sealed class ChromeView
         {
             var env = await ShellForm.CreateEnvironmentAsync();
             await _web.EnsureCoreWebView2Async(env);
-            if (_web.IsDisposed)
+            if (_web.IsDisposed || _form.IsDisposed || _web.CoreWebView2 is not { } core)
                 return false;
-            var core = _web.CoreWebView2;
             var settings = core.Settings;
             settings.AreDevToolsEnabled = false;
             settings.IsStatusBarEnabled = false;
@@ -86,13 +85,25 @@ sealed class ChromeView
                 string json = e.WebMessageAsJson;
                 _form.BeginInvoke(() => OnMessage(json));
             };
-            // Its page gone (the renderer crashed): loaded again.
-            core.ProcessFailed += (_, _) => _form.BeginInvoke(() =>
+            // Its page gone (the renderer crashed or hung): loaded again. The browser gone: nothing is left to load it in,
+            // and the window's buttons are this page, so the window closes. A GPU process restart: the page goes on
+            // (ShellForm.FailureOf).
+            core.ProcessFailed += (_, e) =>
             {
-                _ready = false;
-                if (!_web.IsDisposed && _web.CoreWebView2 is { } c)
-                    c.Navigate(ShellForm.Origin + "browser.html");
-            });
+                var failure = ShellForm.FailureOf(e.ProcessFailedKind);
+                if (failure is not (BrowserFailure.ReloadPage or BrowserFailure.BrowserGone) || _form.IsDisposed || !_form.IsHandleCreated)
+                    return;
+                _form.BeginInvoke(() =>
+                {
+                    _ready = false;
+                    if (_form.IsDisposed || _web.IsDisposed)
+                        return;
+                    if (failure == BrowserFailure.BrowserGone)
+                        _form.Close();
+                    else if (_web.CoreWebView2 is { } c)
+                        c.Navigate(ShellForm.Origin + "browser.html");
+                });
+            };
             core.Navigate(ShellForm.Origin + "browser.html");
             return true;
         }
