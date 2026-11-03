@@ -980,6 +980,7 @@ public static class L
         ["This account's Roblox isn't open."] = "Roblox của tài khoản này chưa mở.",
         ["None of these accounts has Roblox open."] = "Chưa tài khoản nào đang mở Roblox.",
         ["Couldn't take a picture of this window. Try again."] = "Không chụp được cửa sổ này. Thử lại nhé.",
+        ["A macro is using the window. Try again in a moment."] = "Macro đang dùng cửa sổ này. Thử lại sau giây lát.",
         ["Windows can't read text on this PC: add a language with text recognition in Settings › Time & language."] = "Windows trên máy này chưa đọc được chữ: thêm ngôn ngữ có nhận dạng chữ ở Cài đặt › Thời gian & ngôn ngữ.",
         ["A recording is already going on."] = "Đang ghi rồi.",
         ["This Roblox runs as administrator, so Bloxkeep can't record or play into it."] = "Roblox này chạy bằng quyền admin nên Bloxkeep không ghi hay phát vào được.",
