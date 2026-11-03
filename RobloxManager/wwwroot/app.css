@@ -2637,19 +2637,27 @@ input[type=range].cf-hue { width: 100%; background: linear-gradient(90deg, #f00,
 .tl.one .tl-row { grid-template-columns: minmax(0, 1fr); }
 .tl-axis.one { margin-left: 0; }
 .days-avg { margin-left: auto; font-size: var(--fs-3); font-weight: 500; color: var(--muted); }
-.days { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 6px; height: 170px; padding-top: 4px; }
+.days { position: relative; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 6px; height: 170px; padding-top: 4px; }
+/* One baseline under every bar, along the top of the date row. */
+.days::after { content: ""; position: absolute; left: 0; right: 0; bottom: 22px; height: 1px; background: var(--line-2); pointer-events: none; }
 .day { display: grid; grid-template-rows: minmax(0, 1fr) 22px; min-width: 0; }
-/* The bar's height is a share of the space under its label. */
-.day-bar { display: flex; flex-direction: column; justify-content: flex-end; align-items: center; min-height: 0; border-bottom: 1px solid var(--line-2); }
+/* The bar's height is a share of the space under its value. */
+.day-bar { display: flex; flex-direction: column; justify-content: flex-end; align-items: center; min-width: 0; min-height: 0; }
 .day-bar b { flex: none; height: 18px; font-size: var(--fs-2); font-weight: 600; line-height: 18px; color: var(--text-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
-.day-bar i { display: block; flex: none; width: min(40px, 70%); border-radius: var(--r-xs) var(--r-xs) 0 0; background: var(--accent); opacity: .55; transition: opacity .12s; }
-.day.today .day-bar i, .day:hover .day-bar i { opacity: 1; }
+.day-bar i { display: block; flex: none; width: min(40px, 70%); border-radius: var(--r-xs) var(--r-xs) 0 0; background: color-mix(in srgb, var(--accent) 45%, var(--surface)); transition: background .12s; }
+.day:hover .day-bar i { background: color-mix(in srgb, var(--accent) 70%, var(--surface)); }
+.day.today .day-bar i { background: var(--accent); }
+.day.none .day-bar b { font-weight: 500; color: var(--dim); }
 .day.today small { color: var(--text); font-weight: 650; }
+.day small { display: flex; justify-content: center; padding-top: 4px; overflow: visible; font-size: var(--fs-2); line-height: 18px; color: var(--muted); text-align: center; white-space: nowrap; }
+/* 30 days: today's and the longest day's time, a date every 5th day; the bar under the pointer alone shows its own. */
 .days.many { gap: 3px; }
-.days.many .day-bar i { width: 100%; border-radius: var(--r-xs) var(--r-xs) 0 0; }
-.days.many .day-bar b { visibility: hidden; }
-.days.many .day:hover .day-bar b { visibility: visible; }
-.day small { padding-top: 4px; overflow: visible; font-size: var(--fs-2); line-height: 18px; color: var(--muted); text-align: center; white-space: nowrap; }
+.days.many .day-bar i { width: 100%; }
+.days.many .day:not(.today, .peak) .day-bar b, .days.many .day:not(.lab) small { visibility: hidden; }
+.days.many:has(.day:hover) .day :is(.day-bar b, small) { visibility: hidden; }
+.days.many:has(.day:hover) .day:hover :is(.day-bar b, small) { visibility: visible; }
+/* "Today" under the last, narrow bar ends with it rather than past the card's edge. */
+.days.many .day.today small { justify-content: flex-end; }
 .stat-delta { display: block; margin-top: 3px; font-size: var(--fs-2); font-weight: 600; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .stat-delta span { font-weight: 400; color: var(--muted); }
 .stat-delta.good { color: var(--ok-ink, var(--ok)); }
@@ -2660,14 +2668,14 @@ input[type=range].cf-hue { width: 100%; background: linear-gradient(90deg, #f00,
 .tl-keys { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 8px; font-size: var(--fs-2); color: var(--text-2); }
 .tl-keys span { display: inline-flex; align-items: center; gap: 6px; min-width: 0; max-width: 220px; }
 .tl-keys em { overflow: hidden; font-style: normal; white-space: nowrap; text-overflow: ellipsis; }
-.tl-keys .tl-seg { position: static; flex: none; width: 10px; min-width: 10px; height: 10px; padding: 0; border-radius: var(--r-xs); }
-.tl-keys .tl-seg.drop { border-radius: 50%; background: var(--bad); }
+/* The red end a drop leaves on a stay, as it looks there. */
+.tl-keys .tl-key-drop { flex: none; width: 4px; height: 12px; border-radius: 1px; background: var(--bad); }
 .stat-table tr.opens { cursor: pointer; }
 .stat-table tr.opens:hover td { background: var(--surface-2); }
 .stat-table .sacc-open { width: 14px; height: 14px; flex: none; color: var(--muted); }
 .stat-table td.st-time { white-space: nowrap; font-variant-numeric: tabular-nums; font-weight: 600; }
 .stat-table.by-account { table-layout: fixed; }
-.by-account .c-acc { width: 36%; } .by-account .c-time { width: 24%; } .by-account .c-game { width: 30%; } .by-account .c-n { width: 10%; }
+.by-account .c-acc { width: 32%; } .by-account .c-time { width: 24%; } .by-account .c-game { width: 30%; } .by-account .c-n { width: 14%; }
 .by-account th, .by-account td { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .by-account th:first-child, .by-account td:first-child { width: auto; max-width: none; }
 .tl-seg img[hidden] { display: none; }
@@ -2676,7 +2684,6 @@ input[type=range].cf-hue { width: 100%; background: linear-gradient(90deg, #f00,
 .st-game .gph .i { width: 14px; height: 14px; }
 .st-game em { overflow: hidden; font-style: normal; white-space: nowrap; text-overflow: ellipsis; color: var(--text-2); }
 .stat-table tr.st-open td { padding: 4px 8px 12px; background: var(--surface-2); }
-.tl-keys .tl-seg.drop::after { content: none; }
 .stat-card h3 .sd-lost { margin-left: auto; font-size: var(--fs-6); color: var(--bad-ink); }
 .sd-row { display: flex; align-items: center; gap: 12px; padding: 9px 0; border-top: 1px solid var(--line); }
 .sd-text { flex: 1; min-width: 0; }
@@ -2699,8 +2706,9 @@ input[type=range].cf-hue { width: 100%; background: linear-gradient(90deg, #f00,
 .sgame em { width: 18px; flex: none; font-style: normal; font-size: var(--fs-2); font-weight: 700; color: var(--muted); text-align: center; }
 .sgame img, .sgame .gph { width: 38px; height: 38px; flex: none; border-radius: var(--r-sm); object-fit: cover; background: var(--surface-3); display: grid; place-items: center; color: var(--dim); }
 .sgame .gph .i { width: 18px; height: 18px; }
-.sg-meter { height: 4px; margin-top: 6px; border-radius: var(--r-xs); background: var(--surface-3); overflow: hidden; }
-.sg-meter i { display: block; height: 100%; background: var(--meter); transform-origin: left; }
+/* A deleted account: a plain figure instead of a picture that may be someone else's now. */
+.avatar.gone { display: grid; place-items: center; background: var(--surface-3); color: var(--dim); }
+.avatar.gone .i { width: 60%; height: 60%; }
 .sg-time { flex: none; font-size: var(--fs-3); font-weight: 600; color: var(--text-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
 @media (max-width: 1180px) { .stats { padding: 4px 22px 26px; } }
 /* A wide window: the page takes the room (up to 1700 px) with two more figures and the preset table as a third column. */
@@ -2724,7 +2732,6 @@ input[type=range].cf-hue { width: 100%; background: linear-gradient(90deg, #f00,
 /* ───────── activity log (Statistics) ─────────
    One line per event: a dot in the event's tone, the time, the account and what happened, grouped by day. */
 .alog-head { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 16px; margin-bottom: 2px; }
-.alog-head h3 { flex: 1; margin: 0; }
 .alog-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .alog-tools .select.sm { max-width: 260px; }
 .alog-tools .btn.sm .i { width: 15px; height: 15px; }

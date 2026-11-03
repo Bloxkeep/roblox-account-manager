@@ -1570,6 +1570,10 @@ export default [
   // ── end P5 ──
 
   // ── P6 settings ──
+  // Play time by day: 30 days on the dark base, 7 and 30 on light, and a 30-day bar under the pointer (its time and date only).
+  S('stats-days-30', 'stats=1', async s => { await s.click(key('stats.period.30')); await s.wait(300); }),
+  S('stats-days-light', 'stats=1&theme=light', async s => { await s.click(key('stats.period.7')); await s.wait(300); await s.snap('7 days'); await s.click(key('stats.period.30')); await s.wait(300); }),
+  S('stats-days-hover', 'stats=1', async s => { await s.click(key('stats.period.30')); await s.wait(300); await s.hover({ css: '#stats-days .day:nth-child(20)' }); await s.wait(200); }),
   // ── end P6 ──
 
   // ── P7 native ──
