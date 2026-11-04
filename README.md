@@ -10,9 +10,10 @@
   <img src="https://img.shields.io/badge/Windows-10%20%7C%2011%20(64--bit)-0078D4" alt="Windows 10 or 11, 64-bit">
   <img src="https://img.shields.io/badge/.NET-10-512BD4" alt="Built with .NET 10">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="MIT license"></a>
+  <a href="https://bloxkeep-bot.bloxkeep-app.workers.dev/discord"><img src="https://img.shields.io/badge/Discord-join_the_server-5865F2" alt="Join Bloxkeep's Discord server"></a>
 </p>
 <p align="center"><a href="https://github.com/Bloxkeep/roblox-account-manager/releases/latest/download/Bloxkeep-Setup.exe"><img src="https://img.shields.io/badge/Download_for_Windows-Bloxkeep--Setup.exe-2ea44f?style=for-the-badge" height="36" alt="Download Bloxkeep for Windows (Bloxkeep-Setup.exe, the newest version)"></a></p>
-<p align="center"><a href="#download-and-install">Download</a> · <a href="#getting-started">Getting started</a> · <a href="docs/guide.md">User guide</a> · <a href="https://bloxkeep.github.io/roblox-account-manager/">Website</a> · <a href="#data-and-security">Security</a> · <a href="#faq">FAQ</a> · <a href="PRIVACY.md">Privacy</a></p>
+<p align="center"><a href="#download-and-install">Download</a> · <a href="#getting-started">Getting started</a> · <a href="docs/guide.md">User guide</a> · <a href="https://bloxkeep.github.io/roblox-account-manager/">Website</a> · <a href="#data-and-security">Security</a> · <a href="#faq">FAQ</a> · <a href="https://bloxkeep-bot.bloxkeep-app.workers.dev/discord">Discord</a> · <a href="PRIVACY.md">Privacy</a></p>
 
 <p align="center"><img src="docs/screenshots/multi-roblox-real.jpg" width="860" alt="A real screenshot of one Windows PC: six Roblox windows open at once, tiled side by side by Bloxkeep, all in the same game, titled Roblox - Account 1 to Roblox - Account 7"></p>
 <p align="center"><sub>A real screenshot from one PC: six Roblox accounts open at once with Bloxkeep, tiled side by side. Account names are hidden.</sub></p>
