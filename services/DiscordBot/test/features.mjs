@@ -417,6 +417,13 @@ try {
     && o.today.people === 5, JSON.stringify(o.today));
   check('…shown in /online too', textsOf({ body: (await interact(asDeveloper)).json?.data }).join('\n').includes('**Today** 1 new install · had it a day 1, a week 0, longer 1 · removed 2 (too hard 1)'));
   check('…and no ids among them', !JSON.stringify(o).includes(D) && !JSON.stringify(o).includes(E));
+  // After "It didn't work", what didn't: its own reason (an unknown one is no reason).
+  const F = 'f'.repeat(32), G = '9'.repeat(32);
+  await beat({ id: F, gone: true, removed: true, why: 'antivirus' });
+  await beat({ id: G, gone: true, removed: true, why: 'made-up' });
+  o = await numbers();
+  check("what didn't work counted by its own reason", o.today.removed === 4 && o.today.why.antivirus === 1 && o.today.why.none === 2, JSON.stringify(o.today));
+  check('…and named in /online', textsOf({ body: (await interact(asDeveloper)).json?.data }).join('\n').includes('antivirus 1'));
 
   // A build on Roblox's test channel, checked by the watch: "coming", to both news channels, pinging r1 in g1.
   const base = () => ({ c1: posts('c1').length, c3: posts('c3').length, patches: patches().length });

@@ -1110,6 +1110,8 @@ namespace BloxkeepSetup
         bool _deleteData, _openApp = true;
         /// <summary>Whether this PC counts online (read before uninstalling); whether the removal was told already.</summary>
         bool _countsOnline, _removalTold;
+        /// <summary>"broken" once "It didn't work" was picked, so closing before saying what still counts it.</summary>
+        string _why;
         Bar _bar;
         Label _status, _sub;
         /// <summary>The web installer's Cancel, while it downloads.</summary>
@@ -1725,18 +1727,49 @@ namespace BloxkeepSetup
                     "Tài khoản và cài đặt vẫn còn trong {0}, cài lại Bloxkeep là dùng tiếp như cũ."), Ops.DataDir)
                 : _deleteData ? T.S("Your accounts and settings were deleted too.", "Tài khoản và cài đặt cũng đã được xóa.")
                 : T.S("Thanks for using Bloxkeep.", "Cảm ơn bạn đã dùng Bloxkeep."), S(112), Theme.Text);
-            Button(T.S("Close", "Đóng"), true, delegate { TellRemoved(null); Result = 0; Close(); });
+            Button(T.S("Close", "Đóng"), true, delegate { TellRemoved(_why); Result = 0; Close(); });
             // Why, if they like (only asked of someone who counts online): one click, then the window closes.
             if (!_countsOnline && !_shooting)
                 return;
-            Para(T.S("Why did you remove it? (optional)", "Vì sao bạn gỡ Bloxkeep? (không bắt buộc)"), S(184), Theme.Muted);
-            string[][] reasons =
+            Label ask = Para(T.S("Why did you remove it? (optional)", "Vì sao bạn gỡ Bloxkeep? (không bắt buộc)"), S(184), Theme.Muted);
+            List<Control> first = null;
+            first = Reasons(new[]
             {
                 new[] { "broken", T.S("It didn't work for me", "Không dùng được") },
                 new[] { "unneeded", T.S("I don't need it any more", "Không cần nữa") },
                 new[] { "hard", T.S("Too hard to use", "Khó dùng quá") },
                 new[] { "other", T.S("Something else", "Lý do khác") },
-            };
+            }, delegate(string why)
+            {
+                if (why != "broken")
+                {
+                    TellRemoved(why);
+                    Result = 0;
+                    Close();
+                    return;
+                }
+                // "It didn't work": what didn't, in one more click ("Something else" stays plain "broken").
+                _why = "broken";
+                foreach (Control c in first)
+                {
+                    _body.Controls.Remove(c);
+                    c.Dispose();
+                }
+                ask.Text = T.S("What didn't work?", "Phần nào không dùng được?");
+                Reasons(new[]
+                {
+                    new[] { "signin", T.S("Couldn't sign in", "Không đăng nhập được") },
+                    new[] { "launch", T.S("Roblox didn't open or join", "Roblox không mở, không vào game") },
+                    new[] { "antivirus", T.S("Antivirus blocked or deleted it", "Bị diệt virus chặn hoặc xoá") },
+                    new[] { "broken", T.S("Something else", "Lỗi khác") },
+                }, delegate(string what) { TellRemoved(what); Result = 0; Close(); });
+            });
+        }
+
+        /// <summary>A row of reasons under the question, wrapped to the window: a click picks one.</summary>
+        List<Control> Reasons(string[][] reasons, Action<string> pick)
+        {
+            var made = new List<Control>();
             int x = S(32), y = S(212);
             foreach (string[] reason in reasons)
             {
@@ -1749,10 +1782,12 @@ namespace BloxkeepSetup
                     y += S(40);
                 }
                 b.Location = new Point(x, y);
-                b.Click += delegate { TellRemoved(why); Result = 0; Close(); };
+                b.Click += delegate { pick(why); };
                 Add(b);
+                made.Add(b);
                 x += b.Width + S(8);
             }
+            return made;
         }
 
         /// <summary>The removal told once, with its reason if one was picked (the window closing without one: none).</summary>

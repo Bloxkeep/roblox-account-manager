@@ -34,8 +34,9 @@ export async function scramble(key, id) {
 
 /** How long a PC has had Bloxkeep, as the app says it (its data folder's age): a day, a week, longer. */
 export const AGES = ['new', 'week', 'old'];
-/** Why someone removed Bloxkeep, as its uninstaller's buttons say it. */
-export const WHY = ['broken', 'unneeded', 'hard', 'other'];
+/** Why someone removed Bloxkeep, as its uninstaller's buttons say it: after "It didn't work", what didn't (signin,
+ * launch, antivirus; "Something else" there, or an uninstaller before 1.0.18, says broken). */
+export const WHY = ['broken', 'signin', 'launch', 'antivirus', 'unneeded', 'hard', 'other'];
 
 /** What the app sent, checked: { id, app, lang, first, age } or { id, gone: true, removed, why }; null for anything else.
  * first: a new install's first beat; removed: its uninstaller saying so. */
@@ -61,7 +62,7 @@ export async function dashboardKey(token) {
 }
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const WHY_WORDS = { broken: "didn't work", unneeded: 'not needed', hard: 'too hard', other: 'other' };
+const WHY_WORDS = { broken: "didn't work", signin: "couldn't sign in", launch: "Roblox didn't open", antivirus: 'antivirus', unneeded: 'not needed', hard: 'too hard', other: 'other' };
 
 // The last 7 days as a bar chart drawn by QuickChart (quickchart.io, Chart.js) from those numbers alone: each day's peak
 // (darker bars) and its people (different PCs, brighter), each number over its bar, on Discord's dark grey.
@@ -220,14 +221,14 @@ const vi = (navigator.language || '').toLowerCase().startsWith('vi');
 const T = vi ? {
   now: 'Đang online', peak: 'Cao nhất hôm nay', people: 'Người dùng hôm nay', peopleSub: 'Số máy khác nhau đã mở Bloxkeep', most: 'Cao nhất cùng lúc', peopleDay: 'Người dùng trong ngày', days: 'Số người online mỗi ngày', table: 'Xem dạng bảng', byApp: 'Đang online, theo phiên bản',
   installs: 'Cài mới hôm nay', installsSub: 'Máy mở Bloxkeep lần đầu', ages: 'Hôm nay, đã dùng', agesSub: '1 ngày / 1 tuần / lâu hơn', removed: 'Gỡ hôm nay',
-  why: { broken: 'không dùng được', unneeded: 'không cần nữa', hard: 'khó dùng', other: 'lý do khác', none: 'không nói' }, installsDay: 'Cài mới', removedDay: 'Gỡ',
+  why: { broken: 'không dùng được', signin: 'không đăng nhập được', launch: 'Roblox không mở', antivirus: 'bị diệt virus chặn', unneeded: 'không cần nữa', hard: 'khó dùng', other: 'lý do khác', none: 'không nói' }, installsDay: 'Cài mới', removedDay: 'Gỡ',
   byLang: 'Đang online, theo ngôn ngữ', nobody: 'Chưa có ai', at: t => 'lúc ' + t, none: 'Chưa có ai trong hôm nay', day: 'Ngày',
   foot: m => 'Tính các app Bloxkeep đã báo đang mở trong ' + m + ' phút qua. Tự cập nhật mỗi 30 giây.', error: 'Không tải được số liệu. Thử lại sau ít phút.',
   langs: { vi: 'Tiếng Việt', en: 'Tiếng Anh' }, updated: t => 'Cập nhật lúc ' + t,
 } : {
   now: 'Online now', peak: 'Peak today', people: 'People today', peopleSub: 'Different PCs that opened Bloxkeep', most: 'Most at once', peopleDay: 'People that day', days: 'Online, day by day', table: 'As a table', byApp: 'Online now, by version',
   installs: 'New installs today', installsSub: 'PCs that opened Bloxkeep for the first time', ages: "Today, they've had it", agesSub: 'a day / a week / longer', removed: 'Removed today',
-  why: { broken: "didn't work", unneeded: 'not needed', hard: 'too hard', other: 'other', none: 'no reason' }, installsDay: 'New installs', removedDay: 'Removed',
+  why: { broken: "didn't work", signin: "couldn't sign in", launch: "Roblox didn't open", antivirus: 'antivirus', unneeded: 'not needed', hard: 'too hard', other: 'other', none: 'no reason' }, installsDay: 'New installs', removedDay: 'Removed',
   byLang: 'Online now, by language', nobody: 'Nobody', at: t => 'at ' + t, none: 'Nobody today yet', day: 'Day',
   foot: m => "Counts the Bloxkeep apps that said they're open in the last " + m + ' minutes. Updates every 30 seconds.',
   error: "Couldn't load the numbers. Try again in a few minutes.", langs: { vi: 'Vietnamese', en: 'English' }, updated: t => 'Updated ' + t,
