@@ -161,7 +161,7 @@ static class MacroWatch
     /// <summary>The words the macro waits for or checks, with their areas.</summary>
     public static IEnumerable<(string Text, MacroRect? Region)> TextSteps(Macro macro)
     {
-        foreach (var s in macro.Steps)
+        foreach (var s in MacroRules.AllSteps(macro))
         {
             if (s.Kind == "waitText" && s.Text is { Length: > 0 } text)
                 yield return (text, s.Region);

@@ -264,7 +264,32 @@ public sealed partial class AppController
             recording = _recorder is { } rec ? new { account = Name(rec.AccountId) } : null,
             undoable = _undoValues.TryGetValue(id, out var undo) && DateTime.UtcNow < undo.Until,
             changed,
+            features = FeaturesNow(macro, runs),
         });
+    }
+
+    /// <summary>
+    /// While it runs: each feature switched on, by its switch, as the panel says it under the switch: playing (at its
+    /// step), due at this safe point, stopped last time (why), its next time (it plays every so often), or at the end of a
+    /// round. The run playing it is the one shown, else the first.
+    /// </summary>
+    Dictionary<string, object>? FeaturesNow(Macro macro, List<MacroRun> runs)
+    {
+        if (runs.Count == 0 || _macroPlayer is not { } player || macro.Features.Count == 0)
+            return null;
+        var now = new Dictionary<string, object>();
+        foreach (var f in macro.Features.Where(f => MacroPlayer.SwitchOn(macro, f)))
+        {
+            var run = runs.FirstOrDefault(r => r.Section == f.Id) ?? runs.FirstOrDefault(r => r.Due.Contains(f.Id)) ?? runs[0];
+            var record = player.Features.GetValueOrDefault((macro.Id, run.AccountId, f.Id));
+            now[f.Option] = run.Section == f.Id ? new { state = "playing", step = run.Pc + 1, of = f.Steps.Count }
+                : run.Due.Contains(f.Id) ? new { state = "due" }
+                : record?.Failed is { } failed ? new { state = "failed", why = FailText(failed) }
+                : f.EveryMs is { } every && record?.LastRan is { } last && DateTime.UtcNow - last < TimeSpan.FromMilliseconds(every)
+                    ? new { state = "next", at = last + TimeSpan.FromMilliseconds(every) }
+                : (object)new { state = "round" };
+        }
+        return now;
     }
 
     static bool SameValue(JsonElement? a, JsonElement? b) => (a, b) switch
@@ -958,6 +983,8 @@ public sealed partial class AppController
             _macroPlayer?.Stop(previous.Macro, "byUser", previous.Account, trialOnly: true);
         if (_macroPlayer?.Runs.Any(r => !r.Finished && !r.Trial && r.Macro.Id == draft.Id && r.AccountId == account) == true)
             throw new UserError(L.T("It's running on this account already. Stop it first."));
+        if (_macroPlayer?.BusyWith(account, draft.Id) is { } other)
+            throw new UserError(L.F("{0} is running on this account. Stop it first.", other.Name));
         int queued = MacroPlayerNow.Queue(draft, [account], trial: true);
         _tryRun = (draft.Id, account);
         _watchMacro = draft;

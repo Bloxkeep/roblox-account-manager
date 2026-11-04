@@ -26,6 +26,7 @@ static class MacroSuite
         FollowMaths(c);
         await Turns(c);
         await Player(c);
+        await Features(c);
         await Bounds(c);
         Panels(c);
         Templates(c);
@@ -777,6 +778,118 @@ static class MacroSuite
     /// longest time, while the person uses the PC, or long after anti-AFK asked. Each case has a guard far past where it
     /// should end, so a regression fails instead of running forever.
     /// </summary>
+    // ───────────────────────── features (a switch with its own steps) ─────────────────────────
+
+    /// <summary>A macro with two features, Sell (presses S) and Eat (presses E), both switched on unless told; extra
+    /// replaces their steps or adds fields.</summary>
+    static string Feats(string sell = """[{"kind":"key","key":"S"}]""", string eat = """[{"kind":"key","key":"E"}]""", string sellMore = "", int sellOn = 1, int eatOn = 1) =>
+        $$""","options":[{"name":"o1","label":"Sell","kind":"check","value":{{sellOn}}},{"name":"o2","label":"Eat","kind":"check","value":{{eatOn}}},{"name":"o3","label":"Key","kind":"key","value":"K"}],"features":[{"id":"f1","option":"o1"{{sellMore}},"steps":{{sell}}},{"id":"f2","option":"o2","steps":{{eat}}}]""";
+
+    /// <summary>The keys pressed, in order (one letter each).</summary>
+    static string Keys(FakeDesk desk) => string.Concat(desk.Log.Where(l => l.Contains(" key ") && l.Contains(" down")).Select(l => l.Split(' ')[2]));
+
+    static async Task Features(Checks c)
+    {
+        c.Check("a feature is taken with its own steps", CheckOf("""[{"kind":"key","key":"A"}]""", Feats()) is null, CheckOf("""[{"kind":"key","key":"A"}]""", Feats()));
+        c.Check("a feature whose switch is gone is refused",
+            CheckOf("""[{"kind":"key","key":"A"}]""", Feats().Replace("\"option\":\"o2\"", "\"option\":\"o9\"")) is not null);
+        c.Check("a feature on a setting that isn't a switch is refused",
+            CheckOf("""[{"kind":"key","key":"A"}]""", Feats().Replace("\"option\":\"o2\"", "\"option\":\"o3\"")) is not null);
+        c.Check("a repeat never ended in a feature is refused, naming it",
+            CheckOf("""[{"kind":"key","key":"A"}]""", Feats(sell: """[{"kind":"loop","times":2}]"""))?.StartsWith("Sell:") == true);
+        c.Check("a key a feature holds and never lets go is refused",
+            CheckOf("""[{"kind":"key","key":"A"}]""", Feats(sell: """[{"kind":"down","key":"W"}]""")) is not null);
+        c.Check("If stuck in a feature is refused", CheckOf("""[{"kind":"key","key":"A"}]""", Feats(sell: """[{"kind":"recover"}]""")) is not null);
+        c.Check("the steps of the macro and its features count together (500)",
+            CheckOf("[" + string.Join(",", Enumerable.Repeat("""{"kind":"key","key":"A"}""", 499)) + "]", Feats()) is not null);
+        c.Check("the main steps' safe points: the end of each pass of a repeat inside no other block",
+            string.Join(",", MacroPlayer.SafeEnds(Read("""[{"kind":"loop","times":0},{"kind":"if","test":{"kind":"var","name":"n","op":"=","value":1}},{"kind":"loop","times":2},{"kind":"endLoop"},{"kind":"endIf"},{"kind":"endLoop"},{"kind":"loop","times":2},{"kind":"endLoop"}]""").Steps)) == "5,7");
+        {
+            // Two features due at every pass: each plays whole, in the list's order, then the repeat goes on (its passes kept).
+            var (player, desk, accounts) = Setup();
+            player.Queue(M("""[{"kind":"loop","times":3},{"kind":"key","key":"A"},{"kind":"endLoop"}]""", Feats()), accounts);
+            await Done(player);
+            c.Check("features play at each pass's end and the end, in order, never inside other steps", Keys(desk) == "ASEASEASESE" && player.Runs[0].Status == "done",
+                Keys(desk));
+        }
+        {
+            var (player, desk, accounts) = Setup();
+            player.Queue(M("""[{"kind":"loop","times":2},{"kind":"key","key":"A"},{"kind":"endLoop"}]""", Feats(eatOn: 0)), accounts);
+            await Done(player);
+            c.Check("a feature switched off doesn't play", Keys(desk) == "ASASS", Keys(desk));
+        }
+        {
+            // Sell every 10 s over a minute of a 1 s round: about six times, the first at the first safe point.
+            var (player, desk, accounts) = Setup();
+            player.Queue(M("""[{"kind":"loop","times":0},{"kind":"key","key":"A"},{"kind":"wait","ms":1000},{"kind":"endLoop"}]""",
+                ""","maxMinutes":1""" + Feats(sellMore: ""","everyMs":10000""", eatOn: 0)), accounts);
+            await Done(player);
+            string keys = Keys(desk);
+            int sells = keys.Count(k => k == 'S');
+            c.Check("a feature every 10 s plays every 10 s, not every round", sells is >= 5 and <= 7 && keys.StartsWith("AS") && keys.Count(k => k == 'A') > 50,
+                $"{sells} {keys}");
+        }
+        {
+            // Switched off on the panel while it plays: it stops at its next step, the main steps go on.
+            var (player, desk, accounts) = Setup();
+            var m = M("""[{"kind":"loop","times":2},{"kind":"key","key":"A"},{"kind":"endLoop"}]""",
+                Feats(sell: """[{"kind":"key","key":"S"},{"kind":"wait","ms":1000},{"kind":"key","key":"T"}]""", eatOn: 0));
+            desk.OnDelay = () =>
+            {
+                if (desk.Log.Any(l => l.Contains("key S down")))
+                    m.Options[0].Value = J(0);
+            };
+            player.Queue(m, accounts);
+            await Done(player);
+            c.Check("a feature switched off while it plays stops there; the rest goes on", Keys(desk) == "ASA" && player.Runs[0].Status == "done", Keys(desk));
+        }
+        {
+            // W held through the repeat: no feature at its passes (they'd play with W down); at the end, once let go.
+            var (player, desk, accounts) = Setup();
+            player.Queue(M("""[{"kind":"down","key":"W"},{"kind":"loop","times":2},{"kind":"key","key":"A"},{"kind":"endLoop"},{"kind":"up","key":"W"}]""", Feats(eatOn: 0)), accounts);
+            await Done(player);
+            int up = desk.Log.FindIndex(l => l.Contains("key W up")), sell = desk.Log.FindIndex(l => l.Contains("key S down"));
+            c.Check("no feature plays while a key is held", Keys(desk) == "WAAS" && sell > up, Keys(desk));
+        }
+        {
+            // Its picture never shows: skipped this time (said on the panel), the main steps go on, the run isn't failed.
+            var (player, desk, accounts) = Setup();
+            desk.Picture = () => new Bitmap(10, 10);
+            player.Queue(M("""[{"kind":"key","key":"A"}]""",
+                Feats(sell: """[{"kind":"waitColour","x":0.5,"y":0.5,"colour":"#ff0000","timeoutMs":500},{"kind":"key","key":"T"}]""")), accounts);
+            await Done(player);
+            var record = player.Features.GetValueOrDefault((player.Runs[0].Macro.Id, accounts[0], "f1"));
+            c.Check("a feature that finds nothing is skipped, the next plays, the run goes on", Keys(desk) == "AE" && player.Runs[0].Status == "done"
+                && record is { Failed: "timeout", FailedStep: 0 }, $"{Keys(desk)} {player.Runs[0].Status} {record?.Failed}");
+        }
+        {
+            var (player, desk, accounts) = Setup();
+            player.Queue(M("""[{"kind":"key","key":"A"}]""", Feats(sell: """[{"kind":"key","key":"$o3"}]""", eatOn: 0)), accounts);
+            await Done(player);
+            c.Check("a feature's step reads the panel's settings", Keys(desk) == "AK", Keys(desk));
+        }
+        {
+            // One macro on a window at a time.
+            var (player, desk, accounts) = Setup();
+            var first = M("""[{"kind":"wait","ms":3000}]""");
+            int two = -1;
+            Macro? busy = null;
+            desk.OnDelay = () =>
+            {
+                // Queued while the first plays (the made-up desk plays a queue through at once).
+                if (two < 0 && desk.Ms > 1000)
+                {
+                    two = player.Queue(M("""[{"kind":"key","key":"A"}]"""), accounts);
+                    busy = player.BusyWith(accounts[0], Guid.NewGuid());
+                }
+            };
+            int one = player.Queue(first, accounts);
+            await Done(player);
+            c.Check("a second macro on a window running one isn't queued, and which is running there is said", one == 1 && two == 0
+                && !Keys(desk).Contains('A') && busy == first, $"{one} {two}");
+        }
+    }
+
     static async Task Bounds(Checks c)
     {
         InputTurn.Reset();

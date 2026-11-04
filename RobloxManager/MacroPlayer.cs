@@ -114,8 +114,34 @@ sealed class MacroRun
     public DateTime? PausedAt { get; set; }
     /// <summary>Restarts in a row with nothing seen in between.</summary>
     public int Restarts { get; set; }
+    /// <summary>The feature playing now (its id); null: the main steps.</summary>
+    public string? Section { get; set; }
+    /// <summary>Each feature's jumps, by its id.</summary>
+    public Dictionary<string, int[]> FeatureJumps { get; init; } = new();
+    /// <summary>The main steps' "End repeat"s of repeats inside no other block: each pass's end is a safe point.</summary>
+    public HashSet<int> SafeEnds { get; init; } = new();
+    /// <summary>Features still to play at this safe point, after the one playing.</summary>
+    public Queue<string> Due { get; } = new();
+    /// <summary>Where the main steps go on once the features have played, and their repeats' passes meanwhile.</summary>
+    public int ReturnTo { get; set; }
+    public Dictionary<int, int>? MainPasses { get; set; }
+    /// <summary>Back from the features at a safe point: that step plays on without looking for them again.</summary>
+    public bool Resumed { get; set; }
+    /// <summary>The steps playing now: the feature's, or the main ones.</summary>
+    public List<MacroStep> Steps => Feature?.Steps ?? Macro.Steps;
+    public int[] JumpsNow => Section is { } id && FeatureJumps.TryGetValue(id, out var jumps) ? jumps : Jumps;
+    public MacroFeature? Feature => Section is { } id ? Macro.Features.FirstOrDefault(f => f.Id == id) : null;
     public CancellationTokenSource Cancel { get; } = new();
     public bool Finished => Status is "done" or "failed" or "stopped";
+}
+
+/// <summary>A feature on one account: when it last played, and why it didn't play through last time (null: it did).</summary>
+sealed class FeatureRecord
+{
+    public DateTime? LastRan { get; set; }
+    public string? Failed { get; set; }
+    /// <summary>The step (0-based) it stopped at when it failed.</summary>
+    public int FailedStep { get; set; }
 }
 
 /// <summary>
@@ -163,6 +189,8 @@ sealed class MacroPlayer(IMacroDesk desk)
 
     /// <summary>Each account's variables (setVar, addVar), in memory only.</summary>
     public Dictionary<Guid, Dictionary<string, double>> Vars { get; } = new();
+    /// <summary>Each feature's record on each account, kept across runs (a rejoin doesn't make one play again at once).</summary>
+    public Dictionary<(Guid Macro, Guid Account, string Feature), FeatureRecord> Features { get; } = new();
     /// <summary>Runs, finished ones too (the last of each macro and account), in the order queued.</summary>
     public IReadOnlyList<MacroRun> Runs => _runs;
     public bool Active => _runs.Any(r => !r.Finished);
@@ -188,8 +216,13 @@ sealed class MacroPlayer(IMacroDesk desk)
         int queued = 0;
         var now = desk.Now;
         var takenOver = new List<MacroRun>();
+        var featureJumps = macro.Features.ToDictionary(f => f.Id, f => MacroRules.Jumps(f.Steps));
+        var safeEnds = SafeEnds(macro.Steps);
         foreach (var account in accounts.Distinct())
         {
+            // One macro on a window at a time: two would take turns on it, one's clicks in the middle of the other's.
+            if (BusyWith(account, macro.Id) is not null)
+                continue;
             var going = _runs.FirstOrDefault(r => !r.Finished && r.Macro.Id == macro.Id && r.AccountId == account);
             if (going is { Trial: true } && !trial)
             {
@@ -203,6 +236,7 @@ sealed class MacroPlayer(IMacroDesk desk)
             _runs.Add(new MacroRun
             {
                 Macro = macro, AccountId = account, Jumps = jumps, StartedAt = now, ResumeAt = now, Trial = trial,
+                FeatureJumps = featureJumps, SafeEnds = safeEnds,
                 RecoverAt = macro.Steps.FindIndex(st => st.Kind == "recover"),
                 EndsAt = now + TimeSpan.FromMinutes(macro.MaxMinutes),
             });
@@ -220,6 +254,35 @@ sealed class MacroPlayer(IMacroDesk desk)
                 _loop = LoopAsync();
         }
         return queued;
+    }
+
+    /// <summary>Another macro going on (or waiting) on the account; null when none.</summary>
+    public Macro? BusyWith(Guid account, Guid macroId) =>
+        _runs.FirstOrDefault(r => !r.Finished && r.AccountId == account && r.Macro.Id != macroId)?.Macro;
+
+    /// <summary>The "End repeat"s of the main steps' repeats inside no other block, before the If stuck part.</summary>
+    internal static HashSet<int> SafeEnds(List<MacroStep> steps)
+    {
+        var ends = new HashSet<int>();
+        int depth = 0;
+        for (int i = 0; i < steps.Count && steps[i].Kind != "recover"; i++)
+        {
+            switch (steps[i].Kind)
+            {
+                case "if" or "loop" or "loopUntil":
+                    depth++;
+                    break;
+                case "endIf":
+                    depth--;
+                    break;
+                case "endLoop":
+                    // Inside no other block: nothing else was open.
+                    if (depth-- == 1)
+                        ends.Add(i);
+                    break;
+            }
+        }
+        return ends;
     }
 
     /// <summary>The loop running the queue, for the checks to wait on.</summary>
@@ -259,6 +322,7 @@ sealed class MacroPlayer(IMacroDesk desk)
     {
         Stop(null, reason);
         Vars.Clear();
+        Features.Clear();
         _runs.Clear();
         Changed?.Invoke();
     }
@@ -422,6 +486,11 @@ sealed class MacroPlayer(IMacroDesk desk)
                     Finish(run, "stopped", "maxTime"); // its longest time, even in the middle of a turn
                     return;
                 }
+                if (run.Section is not null && run.Pc >= run.Steps.Count)
+                {
+                    FeatureEnded(run, null);
+                    continue;
+                }
                 if (run.Pc >= (run.Recovering || run.RecoverAt < 0 ? run.Macro.Steps.Count : run.RecoverAt))
                 {
                     if (run.Recovering)
@@ -432,15 +501,25 @@ sealed class MacroPlayer(IMacroDesk desk)
                         Set(run, "running", null);
                         continue;
                     }
+                    // The end of the main steps: the features on play first.
+                    if (SafePoint(run))
+                        continue;
                     Finish(run, "done");
                     return;
                 }
                 if (Interrupted(turn) is not null)
                     return;
+                // A feature switched off on the panel: it stops here, letting go of what it holds.
+                if (run.Feature is { } feature && !SwitchOn(run.Macro, feature))
+                {
+                    turn.LetGo();
+                    FeatureEnded(run, null);
+                    continue;
+                }
                 MacroStep step;
                 try
                 {
-                    step = MacroValues.Resolve(run.Macro.Steps[run.Pc], name => Value(run, name));
+                    step = MacroValues.Resolve(run.Steps[run.Pc], name => Value(run, name));
                 }
                 catch (MacroValueMissing)
                 {
@@ -531,6 +610,7 @@ sealed class MacroPlayer(IMacroDesk desk)
     /// </summary>
     static void StartOver(MacroRun run)
     {
+        LeaveFeatures(run);
         run.Held.Clear();
         run.HeldAs.Clear();
         run.Pc = 0;
@@ -545,8 +625,97 @@ sealed class MacroPlayer(IMacroDesk desk)
         run.Restarts = 0;
     }
 
+    /// <summary>Back to the main steps, with no feature due (a restart, a new window).</summary>
+    static void LeaveFeatures(MacroRun run)
+    {
+        run.Section = null;
+        run.Due.Clear();
+        run.Resumed = false;
+        run.MainPasses = null;
+    }
+
+    internal static bool SwitchOn(Macro m, MacroFeature f) =>
+        m.Options.FirstOrDefault(o => o.Name == f.Option) is { } o && MacroOptions.ValueOf(o) is { ValueKind: JsonValueKind.Number } v && v.GetDouble() != 0;
+
+    FeatureRecord RecordOf(MacroRun run, string feature)
+    {
+        var key = (run.Macro.Id, run.AccountId, feature);
+        return Features.TryGetValue(key, out var record) ? record : Features[key] = new();
+    }
+
+    /// <summary>A feature due now: switched on, and not played within its <see cref="MacroFeature.EveryMs"/>.</summary>
+    bool Due(MacroRun run, MacroFeature f) => SwitchOn(run.Macro, f)
+        && (f.EveryMs is not { } every || RecordOf(run, f.Id).LastRan is not { } last || desk.Now - last >= TimeSpan.FromMilliseconds(every));
+
+    /// <summary>
+    /// A safe point of the main steps (their end, or the end of a pass of a repeat inside no other block): the features
+    /// due play now, whole, in the list's order, then the main steps go on from here. Not while a key is held (they would
+    /// play with it down), nor in the If stuck part. True when one starts.
+    /// </summary>
+    bool SafePoint(MacroRun run)
+    {
+        if (run.Resumed)
+        {
+            run.Resumed = false; // back from them: this step plays on
+            return false;
+        }
+        if (run.Recovering || run.Held.Count > 0 || run.Macro.Features.Count == 0)
+            return false;
+        foreach (var f in run.Macro.Features.Where(f => Due(run, f)))
+            run.Due.Enqueue(f.Id);
+        if (!run.Due.TryDequeue(out var first))
+            return false;
+        run.ReturnTo = run.Pc;
+        run.MainPasses = new(run.Passes);
+        StartFeature(run, first);
+        return true;
+    }
+
+    void StartFeature(MacroRun run, string id)
+    {
+        run.Section = id;
+        run.Pc = 0;
+        run.Passes.Clear();
+        run.Again = -1;
+        ClearWait(run);
+        Changed?.Invoke();
+    }
+
+    /// <summary>A feature played through, switched off, or skipped (<paramref name="failed"/>: why, at the step it
+    /// stopped): the next one due plays, else the main steps go on where they were.</summary>
+    void FeatureEnded(MacroRun run, string? failed)
+    {
+        var record = RecordOf(run, run.Section!);
+        record.LastRan = desk.Now;
+        record.Failed = failed;
+        record.FailedStep = failed is null ? 0 : run.Pc;
+        if (run.Due.TryDequeue(out var next))
+        {
+            StartFeature(run, next);
+            return;
+        }
+        run.Section = null;
+        run.Pc = run.ReturnTo;
+        run.Passes.Clear();
+        foreach (var (at, passes) in run.MainPasses ?? [])
+            run.Passes[at] = passes;
+        run.MainPasses = null;
+        run.Again = -1;
+        ClearWait(run);
+        run.Resumed = true;
+        Changed?.Invoke();
+    }
+
+    static void ClearWait(MacroRun run)
+    {
+        run.WaitLeft = null;
+        run.Deadline = null;
+        run.LastFrame = null;
+        run.StillSince = null;
+    }
+
     bool Ime(MacroRun run) =>
-        run.Macro.Steps.Any(s => s.Kind == "type" || s.Kind is "key" or "down" && MacroKeys.TelexRewrites(s.Key ?? "")) && desk.ImeOn();
+        MacroRules.AllSteps(run.Macro).Any(s => s.Kind == "type" || s.Kind is "key" or "down" && MacroKeys.TelexRewrites(s.Key ?? "")) && desk.ImeOn();
 
     /// <summary>A window's turn: brought forward only once there is input for it.</summary>
     sealed class Turn(MacroPlayer player, MacroRun run, MacroWindow window)
@@ -698,7 +867,7 @@ sealed class MacroPlayer(IMacroDesk desk)
                     return Then.EndTurn;
                 bool up = s.Kind == "up";
                 // Release lets go of what its Hold pressed: a setting changed on the panel meanwhile names another key.
-                string named = MacroRules.KeyNamed(run.Macro.Steps[run.Pc]), key = s.Key!;
+                string named = MacroRules.KeyNamed(run.Steps[run.Pc]), key = s.Key!;
                 if (up && run.HeldAs.Remove(named, out var pressed))
                     key = pressed;
                 if (MacroRules.MouseKeys.TryGetValue(key, out string? mouse))
@@ -853,12 +1022,12 @@ sealed class MacroPlayer(IMacroDesk desk)
                 if (Stuck(run))
                     return await FailedAsync(turn, "stuck");
                 // No: to the step after its else (or its end).
-                run.Pc = yes ? run.Pc + 1 : run.Jumps[run.Pc] + 1;
+                run.Pc = yes ? run.Pc + 1 : run.JumpsNow[run.Pc] + 1;
                 return Then.Next;
             }
             case "else":
                 // The if's own steps are done: past its end.
-                run.Pc = run.Jumps[run.Pc] + 1;
+                run.Pc = run.JumpsNow[run.Pc] + 1;
                 return Then.Next;
             case "loop":
             {
@@ -869,7 +1038,7 @@ sealed class MacroPlayer(IMacroDesk desk)
                 if (s.Times is > 0 and var times && run.Passes[start] >= times)
                 {
                     run.Passes.Remove(start);
-                    run.Pc = run.Jumps[start] + 1;
+                    run.Pc = run.JumpsNow[start] + 1;
                     return Then.Next;
                 }
                 break;
@@ -886,14 +1055,17 @@ sealed class MacroPlayer(IMacroDesk desk)
                 if (met)
                 {
                     run.Passes.Remove(start);
-                    run.Pc = run.Jumps[start] + 1;
+                    run.Pc = run.JumpsNow[start] + 1;
                     return Then.Next;
                 }
                 break;
             }
             case "endLoop":
             {
-                int start = run.Jumps[run.Pc];
+                // The end of a pass of a repeat inside no other block: the features on play first.
+                if (run.Section is null && run.SafeEnds.Contains(run.Pc) && SafePoint(run))
+                    return Then.Next;
+                int start = run.JumpsNow[run.Pc];
                 run.Passes[start] = run.Passes.GetValueOrDefault(start) + 1;
                 run.Loops++;
                 run.Again = start;
@@ -904,8 +1076,8 @@ sealed class MacroPlayer(IMacroDesk desk)
             }
             case "break":
             {
-                int end = run.Jumps[run.Pc];
-                run.Passes.Remove(run.Jumps[end]);
+                int end = run.JumpsNow[run.Pc];
+                run.Passes.Remove(run.JumpsNow[end]);
                 run.Pc = end + 1;
                 return Then.Next;
             }
@@ -995,6 +1167,13 @@ sealed class MacroPlayer(IMacroDesk desk)
             run.Pc++;
             return Then.Next;
         }
+        // A feature that skips: not this time, back to the main steps (it plays again when it is due).
+        if (run.Feature is { OnFail: "skip" } && reason != "stuck")
+        {
+            turn.LetGo();
+            FeatureEnded(run, reason);
+            return Then.Next;
+        }
         switch (m.OnFail)
         {
             case "skip" when reason != "stuck":
@@ -1029,6 +1208,7 @@ sealed class MacroPlayer(IMacroDesk desk)
             return Then.Over;
         }
         turn.LetGo();
+        LeaveFeatures(run);
         run.Passes.Clear();
         run.Again = -1;
         run.WaitLeft = null;
@@ -1101,7 +1281,7 @@ sealed class MacroPlayer(IMacroDesk desk)
         return null;
     }
 
-    static bool SetsVar(Macro m, string name) => m.Steps.Any(s => s.Kind is "setVar" or "addVar" && s.Name == name);
+    static bool SetsVar(Macro m, string name) => MacroRules.AllSteps(m).Any(s => s.Kind is "setVar" or "addVar" && s.Name == name);
 
     /// <summary>An if's or loopUntil's question, on the window's picture now or the account's variables.</summary>
     async Task<bool> TestAsync(Turn turn, MacroTest t)

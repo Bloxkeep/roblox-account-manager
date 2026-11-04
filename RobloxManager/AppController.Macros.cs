@@ -270,6 +270,10 @@ public sealed partial class AppController
         var open = accounts.Where(_running.ContainsKey).ToList();
         if (open.Count == 0)
             throw new UserError(accounts.Count == 1 ? L.T("This account's Roblox isn't open.") : L.T("None of these accounts has Roblox open."));
+        // One macro on a window at a time: said when it is another's on every one of them.
+        if (open.Select(a => MacroPlayerNow.BusyWith(a, macro.Id)).ToList() is var busy && busy.All(o => o is not null))
+            throw new UserError(open.Count == 1 ? L.F("{0} is running on this account. Stop it first.", busy[0]!.Name)
+                : L.T("Another macro is running on these accounts. Stop it first."));
         return new { queued = QueueMacro(macro, open) };
     }
 
@@ -636,6 +640,8 @@ public sealed partial class AppController
         status = r.Status,
         reason = r.Reason,
         step = r.Finished ? (int?)null : r.Pc,
+        // The feature playing (or where an ended run was): its id; none for the main steps.
+        section = r.Section,
         // Where an ended run was: the editor marks the step a failed run stopped at.
         lastStep = r.Finished ? r.Pc : (int?)null,
         trial = r.Trial ? true : (bool?)null,

@@ -41,6 +41,29 @@ public sealed class Macro
     /// <summary>Named boxes on the game; a step's area holds "@a1".</summary>
     public List<MacroArea> Areas { get; set; } = new();
     public MacroPanel Panel { get; set; } = new();
+    /// <summary>Switches on the panel with steps of their own, played at the main steps' safe points while on (MacroPlayer.cs).</summary>
+    public List<MacroFeature> Features { get; set; } = new();
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? Extra { get; set; }
+}
+
+/// <summary>
+/// A feature: a switch on the panel (<see cref="Option"/>, a "check" option) and the steps it plays while on. They play
+/// whole, one feature after another in the order of the list, where the main steps reach a safe point (their end, or the
+/// end of a pass of a repeat that isn't inside another block) with no key held; never in the middle of other steps.
+/// </summary>
+public sealed class MacroFeature
+{
+    /// <summary>Made by the page ("f1", "f2"…), never shown.</summary>
+    public string Id { get; set; } = "";
+    /// <summary>Its switch: the option's name ("o3").</summary>
+    public string Option { get; set; } = "";
+    /// <summary>Not again sooner than this after it last played (per account); null: at every safe point.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public int? EveryMs { get; set; }
+    /// <summary>A wait that times out or a picture not found in its steps: "skip" (this time, back to the main steps) or
+    /// "macro" (the macro's own <see cref="Macro.OnFail"/>).</summary>
+    public string OnFail { get; set; } = "skip";
+    public List<MacroStep> Steps { get; set; } = new();
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? Extra { get; set; }
 }
@@ -342,10 +365,26 @@ static class MacroRules
             throw new UserError(L.T("Stuck after 1 to 60 minutes."));
         if (m.RecordedSize is { } size && (size.W is < 16 or > 16384 || size.H is < 16 or > 16384))
             m.RecordedSize = null;
+        long images = CheckSteps(m.Steps);
+        MacroOptions.Check(m);
+        images += CheckFeatures(m);
+        CounterLabels(m);
+        if (images > MaxImagesBase64)
+            throw new UserError(L.T("The macro's pictures are too big together. Use smaller ones."));
+        Pairs(m.Steps);
+        Jumps(m.Steps);
+    }
+
+    public const int MaxFeatures = 10;
+    static readonly string[] FeatureFails = ["skip", "macro"];
+
+    /// <summary>Each step checked and its note kept tidy; returns the size of their pictures.</summary>
+    static long CheckSteps(List<MacroStep> steps)
+    {
         long images = 0;
-        for (int i = 0; i < m.Steps.Count; i++)
+        for (int i = 0; i < steps.Count; i++)
         {
-            var step = m.Steps[i] ?? throw new UserError(L.F("Step {0} is empty.", i + 1));
+            var step = steps[i] ?? throw new UserError(L.F("Step {0} is empty.", i + 1));
             try
             {
                 CheckStep(step);
@@ -357,13 +396,52 @@ static class MacroRules
             images += (step.Image?.Length ?? 0) + (step.Test?.Image?.Length ?? 0);
             Note(step);
         }
-        CounterLabels(m);
-        if (images > MaxImagesBase64)
-            throw new UserError(L.T("The macro's pictures are too big together. Use smaller ones."));
-        MacroOptions.Check(m);
-        Pairs(m.Steps);
-        Jumps(m.Steps);
+        return images;
     }
+
+    /// <summary>The features: each its own switch, its blocks closed and keys let go within its own steps (it plays whole,
+    /// between the main steps), no If stuck part. Refusals name the feature by its switch's label. Returns the size of
+    /// their pictures.</summary>
+    static long CheckFeatures(Macro m)
+    {
+        m.Features ??= new();
+        if (m.Features.Count > MaxFeatures)
+            throw new UserError(L.F("A macro can have up to {0} features.", MaxFeatures));
+        if (m.Steps.Count + m.Features.Sum(f => f?.Steps?.Count ?? 0) > MaxSteps)
+            throw new UserError(L.F("A macro can have up to {0} steps.", MaxSteps));
+        long images = 0;
+        var ids = new HashSet<string>(StringComparer.Ordinal);
+        var switches = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var f in m.Features)
+        {
+            if (f is null || f.Id is null || !MacroValues.Name.IsMatch(f.Id) || !ids.Add(f.Id))
+                throw new UserError(L.T("A feature has no name."));
+            var option = m.Options.FirstOrDefault(o => o.Name == f.Option && o.Kind == "check");
+            if (option is null || !switches.Add(f.Option))
+                throw new UserError(L.T("A feature has lost its switch."));
+            if (f.EveryMs is not null and not (>= 1000 and <= 86_400_000))
+                throw new UserError(L.F("{0}: play it every 1 second to 24 hours.", option.Label));
+            if (!FeatureFails.Contains(f.OnFail))
+                f.OnFail = "skip";
+            f.Steps ??= new();
+            try
+            {
+                images += CheckSteps(f.Steps);
+                if (f.Steps.FindIndex(s => s.Kind == "recover") is >= 0 and var at)
+                    throw new UserError(L.F("Step {0}: “If stuck…” goes in the main steps only.", at + 1));
+                Pairs(f.Steps);
+                Jumps(f.Steps);
+            }
+            catch (UserError e)
+            {
+                throw new UserError(L.F("{0}: {1}", option.Label, e.Message));
+            }
+        }
+        return images;
+    }
+
+    /// <summary>The main steps and every feature's.</summary>
+    public static IEnumerable<MacroStep> AllSteps(Macro m) => m.Steps.Concat((m.Features ?? []).SelectMany(f => f.Steps ?? []));
 
     /// <summary>The longest note a step carries (why it is there, shown under it in the editor).</summary>
     public const int MaxNote = 80;

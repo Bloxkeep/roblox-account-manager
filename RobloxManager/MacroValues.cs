@@ -48,26 +48,43 @@ static class MacroValues
             throw new UserError(L.T("That isn't a macro."));
         var root = JsonNode.Parse(json.GetRawText(), new JsonNodeOptions { PropertyNameCaseInsensitive = true })!.AsObject();
         DropEmpty(root, "id"); // a new macro comes with an empty id
+        var main = TakeSteps(root["steps"]);
+        // Each feature's steps the same way, by the feature's place in the list.
+        var features = root["features"] is JsonArray list ? list.Select(f => TakeSteps(f is JsonObject o ? o["steps"] : null)).ToList() : [];
+        var macro = root.Deserialize<Macro>(MacroRules.PageJson) ?? throw new UserError(L.T("That isn't a macro."));
+        PutBack(macro.Steps, main);
+        for (int f = 0; f < features.Count && f < (macro.Features?.Count ?? 0); f++)
+            PutBack(macro.Features![f]?.Steps, features[f]);
+        return macro;
+    }
+
+    /// <summary>A list of steps' "$o1" and "@a1" fields, taken out of the JSON (by step, test or not).</summary>
+    static List<(int Step, bool Test, string Field, JsonElement Value)> TakeSteps(JsonNode? node)
+    {
         var set = new List<(int Step, bool Test, string Field, JsonElement Value)>();
-        if (root["steps"] is JsonArray steps)
+        if (node is not JsonArray steps)
+            return set;
+        for (int i = 0; i < steps.Count; i++)
         {
-            for (int i = 0; i < steps.Count; i++)
+            if (steps[i] is not JsonObject step)
+                continue;
+            foreach (var (field, value) in Take(step, StepFields, test: false))
+                set.Add((i, false, field, value));
+            if (step["test"] is JsonObject test)
             {
-                if (steps[i] is not JsonObject step)
-                    continue;
-                foreach (var (field, value) in Take(step, StepFields, test: false))
-                    set.Add((i, false, field, value));
-                if (step["test"] is JsonObject test)
-                {
-                    foreach (var (field, value) in Take(test, TestFields, test: true))
-                        set.Add((i, true, field, value));
-                }
+                foreach (var (field, value) in Take(test, TestFields, test: true))
+                    set.Add((i, true, field, value));
             }
         }
-        var macro = root.Deserialize<Macro>(MacroRules.PageJson) ?? throw new UserError(L.T("That isn't a macro."));
+        return set;
+    }
+
+    /// <summary>The fields <see cref="TakeSteps"/> took, kept as text in the typed steps.</summary>
+    static void PutBack(List<MacroStep>? steps, List<(int Step, bool Test, string Field, JsonElement Value)> set)
+    {
         foreach (var (i, test, field, value) in set)
         {
-            if (i >= macro.Steps.Count || macro.Steps[i] is not { } step)
+            if (steps is null || i >= steps.Count || steps[i] is not { } step)
                 continue;
             if (test)
             {
@@ -77,7 +94,6 @@ static class MacroValues
             else
                 (step.Extra ??= new())[field] = value;
         }
-        return macro;
     }
 
     /// <summary>Text where a number, colour, key or area goes: "$o1" anywhere, "@a1" for an area, and a var check's word
@@ -125,7 +141,7 @@ static class MacroValues
 
     /// <summary>Every option ("o1") and area ("@a1") the macro names, for the checks.</summary>
     public static IEnumerable<string> Names(Macro m) =>
-        m.Steps.SelectMany(s => Refs(s.Extra, StepFields).Select(r => r.Name)
+        MacroRules.AllSteps(m).SelectMany(s => Refs(s.Extra, StepFields).Select(r => r.Name)
             .Concat(s.Test is { } t ? Refs(t.Extra, TestFields).Select(r => r.Name) : [])).Distinct();
 
     // ───────────────────────── checking ─────────────────────────
