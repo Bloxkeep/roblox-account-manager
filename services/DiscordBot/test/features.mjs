@@ -547,6 +547,21 @@ try {
     && pictureOf(ready) === 'update-same.png' && linksOf(ready).includes('https://create.roblox.com/docs/release-notes/release-notes-746'), JSON.stringify(textsOf(ready)));
   await minute();
   check('…and never edited', noteEdits().length === 4, noteEdits().length);
+  // A fix within the release that changes Multi-Roblox: posted; a newer one that doesn't: not; then GitHub's raw file
+  // answering from its older copy for a while (the build before read again): not posted a second time.
+  const fix = build('0.746.0.7460003', 'h7463', 'changed', 'beta'), after = build('0.746.0.7460004', 'h7464', 'same', 'beta');
+  watch = { ...watch, builds: [...watch.builds, fix], beta: { version: fix.version, hash: fix.hash } };
+  before = base();
+  await minute();
+  check('a fix within a release that changes Multi-Roblox: posted', posts('c3').length === before.c3 + 1, posts('c3').length - before.c3);
+  const newerWatch = { ...watch, builds: [...watch.builds, after], beta: { version: after.version, hash: after.hash } }, olderWatch = watch;
+  watch = newerWatch;
+  await minute();
+  watch = olderWatch;
+  await minute();
+  watch = newerWatch;
+  await minute();
+  check('…a newer one that changes nothing: not; and the older one read again (a stale copy): not posted twice', posts('c3').length === before.c3 + 1, posts('c3').length - before.c3);
 
   // Game feeds (feeds.js): /feed for Bloxkeep's developers only; a hidden channel per source under Feeds; what arrives
   // there kept as it came (the last 20, edits too), nothing from other channels; Message Content asked for, and the bot

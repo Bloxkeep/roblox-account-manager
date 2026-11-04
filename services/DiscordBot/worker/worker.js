@@ -1145,7 +1145,10 @@ export class Gateway extends DurableObject {
         const notes = await readNotes(this.env, release(build.version)).catch(() => null);
         posts.push({ kind: 'roblox', make: l => buildMessage(l, kind, build, { notes, liveAt: now }), waiting: !notes && { kind, build } });
       };
-      if (watch.next?.verdict && a.coming !== watch.next.version && (!a.live || newer(watch.next.version, a.live))) {
+      // Only forward: GitHub's raw files can answer from an older copy for a few minutes after the watch writes a newer
+      // one, and an older build read again must not be announced again (0.746 was posted twice on 2026-11-04).
+      if (watch.next?.verdict && a.coming !== watch.next.version && (!a.live || newer(watch.next.version, a.live))
+        && (!a.coming || newer(watch.next.version, a.coming))) {
         if (prev && worth(watch.next, a.coming ?? a.live))
           await update('coming', watch.next);
         a.coming = watch.next.version;
