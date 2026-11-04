@@ -91,8 +91,9 @@ export function weekChart(days, today) {
   return `https://quickchart.io/chart?v=4&w=640&h=240&devicePixelRatio=2&bkg=${encodeURIComponent('#2b2d31')}&c=${encodeURIComponent(JSON.stringify(chart))}`;
 }
 
-/** /online's card: online now with today's peak, the last 7 days' peaks as a chart, the versions in use, how far the bot reaches, the dashboard link. */
-export function onlineMessage(o, link, bot) {
+/** /online's card: online now with today's peak and the last 7 days' peaks as a chart; for Bloxkeep's developers (full)
+ * also today's installs and removals with their reasons, the versions in use, how far the bot reaches, the dashboard link. */
+export function onlineMessage(o, link, bot, full = true) {
   const time = at => `<t:${Math.floor(at / 1000)}:t>`;
   const text = content => ({ type: 10, content });
   const peak = o.today.peak ? `Peak today **${o.today.peak}**, at ${time(o.today.at)} · **${o.today.people ?? 0}** ${o.today.people === 1 ? 'person' : 'people'} today`
@@ -113,7 +114,7 @@ export function onlineMessage(o, link, bot) {
         // No chart of seven empty days.
         ...(o.days.slice(-7).some(d => d.peak)
           ? [{ type: 12, items: [{ media: { url: weekChart(o.days, o.today.day) }, description: "Each day's most at once and its people, the last 7 days" }] }] : []),
-        text([stay, ...(versions ? [`**Versions** ${versions}`] : []), ...(reach ? [reach] : []),
+        text([...(full ? [stay, ...(versions ? [`**Versions** ${versions}`] : []), ...(reach ? [reach] : [])] : []),
           `-# The chart: each day's most at once and how many different PCs had Bloxkeep open, the last 7 days. An app counts while it said it's open within ${o.forMinutes} minutes.`].join('\n')),
         ...(link ? [{ type: 1, components: [{ type: 2, style: 5, label: 'Dashboard', url: link }] }] : []),
       ],

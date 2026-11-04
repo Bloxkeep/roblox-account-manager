@@ -687,9 +687,9 @@ export class Gateway extends DurableObject {
         return reply({ embeds: [multiEmbed(l, snap.watch)] });
       case 'robloxstatus':
         return reply({ embeds: [statusEmbed(l, snap.status ?? { code: 100, parts: [], incident: null })] });
-      case 'online': { // Bloxkeep's developers only, wherever they ask; seen only by them
+      case 'online': { // anyone, in the channel; Bloxkeep's developers get it all, seen only by them
         if (!await this.isDeveloper(i.member?.user?.id ?? i.user?.id))
-          return reply({ content: "Only Bloxkeep's developers can see this." }, true);
+          return reply(onlineMessage(this.onlineNow(), null, null, false));
         const key = await dashboardKey(this.env.DISCORD_TOKEN);
         return reply(onlineMessage(this.onlineNow(), key ? `${this.env.PUBLIC_URL || PUBLIC_URL}/online?key=${key}` : null, await this.botReach()), true);
       }

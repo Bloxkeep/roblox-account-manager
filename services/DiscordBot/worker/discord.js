@@ -84,9 +84,10 @@ export const COMMANDS = [
     default_member_permissions: String(1 << 3), contexts: [0],
   },
   {
-    // Seen by server admins (and in a DM with the bot), and refused unless Bloxkeep's developers ask (worker.js).
-    name: 'online', description: "How many people have Bloxkeep open right now (Bloxkeep's developers only)",
-    default_member_permissions: String(1 << 3), contexts: [0, 1],
+    // Anyone: how many use Bloxkeep now and the last 7 days. Bloxkeep's developers also see who installed and removed it,
+    // the versions, the bot's reach and the dashboard (worker.js).
+    name: 'online', description: 'How many people are using Bloxkeep right now',
+    description_localizations: vi('Bao nhiêu người đang dùng Bloxkeep lúc này'), contexts: [0, 1],
   },
   {
     name: 'board', description: 'A message that keeps itself up to date: Roblox, Multi-Roblox, outages, Bloxkeep',

@@ -4,7 +4,7 @@
 // (a Roblox update as a card, Roblox's notes edited in once they're out), and /verify's captcha (a PNG only that person
 // sees, the code typed into a form, the role given once it's right), /discord (the app's Discord button: an invite that
 // never expires, made again once it stops working), and how many people have Bloxkeep open now (the apps' beats,
-// /online and its dashboard for Bloxkeep's developers only, the line in the bot's status).
+// /online for anyone, in full with its dashboard for Bloxkeep's developers, the line in the bot's status).
 // No Discord account or token needed. In this folder: npm install, then node features.mjs (about a minute).
 import { spawn, execSync } from 'node:child_process';
 import crypto from 'node:crypto';
@@ -349,8 +349,10 @@ try {
   const asDeveloper = command('online', { guild: null, locale: 'en-US' });
   const asSomeoneElse = { ...command('online', { locale: 'en-US', perms: '8' }), member: { permissions: '8', user: { id: 'u2' } } };
   r = await interact(asSomeoneElse);
-  check('/online from someone who is not one of Bloxkeep\'s developers (a server admin): refused, seen only by them',
-    r.json?.data.flags === 64 && /developers/.test(r.json.data.content ?? '') && !r.json.data.embeds, JSON.stringify(r.json));
+  const short = { body: r.json?.data }, shortSaid = textsOf(short).join('\n');
+  check('/online from someone who is not one of Bloxkeep\'s developers: the card in the channel, how many now, today\'s peak and the chart only',
+    r.json?.data.flags === 1 << 15 && headingOf(short)?.startsWith('2 using Bloxkeep now') && /Peak today \*\*2\*\*/.test(shortSaid)
+    && parts(short).some(c => c.type === 12) && !/Versions|removed|install|\*\*Bot\*\*/.test(shortSaid) && !JSON.stringify(r.json).includes('Dashboard'), JSON.stringify(r.json));
   r = await interact(asDeveloper);
   const card = { body: r.json?.data }, said = textsOf(card).join('\n');
   check('/online from a developer, in a DM with the bot: a card saying 2 use Bloxkeep now, seen only by them',
