@@ -230,6 +230,9 @@ html [data-theme="dark" lang="en"]
                   button.btn.sm [id="mc-add" type="button" aria-expanded="true" aria-haspopup="dialog"]
                     svg.i #u7ty99
                     span "Add step"
+                  button.btn.ghost.sm [id="mc-feat-add" type="button" title="A switch on the panel with steps of its own"]
+                    svg.i #1pvni8o
+                    span "Feature"
                 div.mc-steps [role="list" aria-labelledby="mc-steps-h"]
                   div.mc-step [role="listitem" aria-label="Step 1: Press Space" style="--d:0"]
                     button.mc-ins [type="button" title="Add a step here" tabindex="-1" aria-haspopup="dialog" aria-label="Add a step here"]
@@ -307,7 +310,7 @@ html [data-theme="dark" lang="en"]
         button.btn.danger.push "Delete"
         button.btn "Cancel"
         button.btn.primary [aria-disabled="false"] "Save"
-    div.mc-add-pop.mc-pop.menu [role="dialog" aria-label="Add step" style="left:678.062px;top:330.844px"]
+    div.mc-add-pop.mc-pop.menu [role="dialog" aria-label="Add step" style="left:581.234px;top:332.844px"]
       div
         div.mc-add-search
           svg.i #1u22jvi
@@ -640,6 +643,9 @@ html [data-theme="dark" lang="en"]
                   button.btn.sm [id="mc-add" type="button" aria-expanded="false" aria-haspopup="dialog"]
                     svg.i #u7ty99
                     span "Add step"
+                  button.btn.ghost.sm [id="mc-feat-add" type="button" title="A switch on the panel with steps of its own"]
+                    svg.i #1pvni8o
+                    span "Feature"
                 div.mc-steps [role="list" aria-labelledby="mc-steps-h"]
                   div.mc-step [role="listitem" aria-label="Step 1: Press Space" style="--d:0"]
                     button.mc-ins [type="button" title="Add a step here" tabindex="-1" aria-haspopup="dialog" aria-label="Add a step here"]

@@ -256,7 +256,7 @@ public sealed partial class AppController
             }),
             counters,
             startedAt = runs.Count > 0 ? runs.Min(r => r.StartedAt) : (DateTime?)null,
-            lastError = failed is null ? null : new { text = FailText(failed.Reason), step = failed.Pc },
+            lastError = failed is null ? null : new { text = FailText(failed.Reason), step = failed.Pc, section = failed.Section },
             editingAreas = EditingAreasOf(id),
             hotkeysOn = Prefs.GlobalHotkeys,
             hasGame,
@@ -445,9 +445,11 @@ public sealed partial class AppController
                     break;
                 case "edit":
                     int? step = a.TryGetProperty("step", out var s) && s.ValueKind == JsonValueKind.Number ? s.GetInt32() : null;
+                    // The feature whose steps it is (none: the main steps).
+                    string? section = a.TryGetProperty("section", out var sc) && sc.ValueKind == JsonValueKind.String ? sc.GetString() : null;
                     if (_owner is ShellForm shell)
                         shell.BringToFront();
-                    Emit("editMacro", new { id, step });
+                    Emit("editMacro", new { id, step, section });
                     break;
             }
         }

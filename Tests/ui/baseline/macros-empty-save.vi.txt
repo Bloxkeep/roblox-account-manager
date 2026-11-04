@@ -145,6 +145,9 @@ html [data-theme="dark" lang="vi"]
                   button.btn.sm [id="mc-add" type="button" aria-expanded="false" aria-haspopup="dialog"]
                     svg.i #u7ty99
                     span "Thêm bước"
+                  button.btn.ghost.sm [id="mc-feat-add" type="button" title="Công tắc trên bảng, có các bước riêng"]
+                    svg.i #1pvni8o
+                    span "Chức năng"
                 p.mc-steps-none "Chưa có bước nào. Thêm bước hoặc ghi thao tác."
                 ul.mc-ferr [role="status"]
                   li

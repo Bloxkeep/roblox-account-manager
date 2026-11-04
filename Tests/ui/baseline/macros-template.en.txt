@@ -261,6 +261,9 @@ html [data-theme="dark" lang="en"]
                   button.btn.sm [id="mc-add" type="button" aria-expanded="false" aria-haspopup="dialog"]
                     svg.i #u7ty99
                     span "Add step"
+                  button.btn.ghost.sm [id="mc-feat-add" type="button" title="A switch on the panel with steps of its own"]
+                    svg.i #1pvni8o
+                    span "Feature"
                 div.mc-steps [role="list" aria-labelledby="mc-steps-h"]
                   div.mc-opener.mc-step [role="listitem" aria-label="Step 1: Repeat until stopped" style="--d:0"]
                     button.mc-ins [type="button" title="Add a step here" tabindex="-1" aria-haspopup="dialog" aria-label="Add a step here"]
@@ -537,4 +540,4 @@ html [data-theme="dark" lang="en"]
 #toasts
 -- commands
   pageBusy {"busy":false}
-  saveMacro {"macro":{"accountIds":[],"areas":[],"enabled":true,"hotkey":null,"id":"","jitterMs":40,"jitterPx":3,"maxMinutes":240,"name":"Press a key every few minutes","onFail":"stop","options":[{"default":300000,"kind":"number","label":"Every","max":1080000,"min":1000,"name":"o1","unit":"s","value":300000},{"default":"Space","kind":"key","label":"Key","name":"o2","value":"Space"}],"panel":{"autoShow":false,"placeId":null},"steps":[{"kind":"loop","times":0},{"key":"$o2","kind":"key","ms":60,"note":"Roblox kicks idle players after 20 minutes; this presses a key before that."},{"kind":"wait","ms":"$o1","note":"The player can change how long on the panel"},{"kind":"endLoop"}],"stuckMinutes":5,"targets":"selected","trigger":{"kind":"manual"}}}
+  saveMacro {"macro":{"accountIds":[],"areas":[],"enabled":true,"features":[],"hotkey":null,"id":"","jitterMs":40,"jitterPx":3,"maxMinutes":240,"name":"Press a key every few minutes","onFail":"stop","options":[{"default":300000,"kind":"number","label":"Every","max":1080000,"min":1000,"name":"o1","unit":"s","value":300000},{"default":"Space","kind":"key","label":"Key","name":"o2","value":"Space"}],"panel":{"autoShow":false,"placeId":null},"steps":[{"kind":"loop","times":0},{"key":"$o2","kind":"key","ms":60,"note":"Roblox kicks idle players after 20 minutes; this presses a key before that."},{"kind":"wait","ms":"$o1","note":"The player can change how long on the panel"},{"kind":"endLoop"}],"stuckMinutes":5,"targets":"selected","trigger":{"kind":"manual"}}}

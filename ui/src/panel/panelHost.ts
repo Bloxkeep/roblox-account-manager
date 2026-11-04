@@ -45,7 +45,7 @@ export interface PanelNow {
   /** Since when the first run goes on (the page ticks the clock). */
   startedAt: string | null;
   /** The last run's error, until the next run or 10 minutes: its reason in words and the step it stopped at (0-based). */
-  lastError: { text: string; step: number } | null;
+  lastError: { text: string; step: number; section?: string | null } | null;
   /** Its areas are being moved on the game now. */
   editingAreas: boolean;
   /** Bloxkeep's hotkeys are on (Ctrl+Alt+<digit> is shown only then). */
@@ -60,7 +60,18 @@ export interface PanelNow {
   undoable: boolean;
   /** Some value differs from how the macro was made. */
   changed: boolean;
+  /** While it runs, each feature switched on, by its switch's name: what it does now (none while nothing runs). */
+  features?: Record<string, FeatureNow> | null;
 }
+
+/** A feature as its switch's row says it: playing (step of steps), due now, stopped last time (why), next time at
+ * (it plays every so often), or at the end of the round. */
+export type FeatureNow =
+  | { state: 'playing'; step: number; of: number }
+  | { state: 'due' }
+  | { state: 'failed'; why: string }
+  | { state: 'next'; at: string }
+  | { state: 'round' };
 
 /** The app's "panel" event. */
 export interface PanelData {

@@ -29,7 +29,25 @@ export type Macro = {
   /** tabs: the panel's tabs, in order (fewer than two: none). */
   /** counterLabels: what the panel and the editor call a counter (its name stays its key). */
   panel?: { autoShow: boolean; placeId: number | null; tabs?: string[]; counterLabels?: Record<string, string> };
+  /** Switches on the panel with steps of their own (10 at most), played whole where the main steps reach a safe point. */
+  features?: Feature[];
 };
+/** A feature: its switch (a "check" option), how often it may play (none: at every safe point), what a wait that runs
+ * out does in it (skip: not this time; macro: the macro's own onFail), and its steps. */
+export type Feature = { id: string; option: string; everyMs?: number | null; onFail: 'skip' | 'macro'; steps: Step[] };
+export const MAX_FEATURES = 10;
+/** The main steps' safe points: the "End repeat" of each repeat inside no other block (before If stuck), and their end. */
+export function safeEnds(steps: Step[]): number[] {
+  const out: number[] = [];
+  let depth = 0;
+  for (let i = 0; i < steps.length && steps[i].kind !== 'recover'; i++) {
+    const k = steps[i].kind;
+    if (OPENERS.has(k)) depth++;
+    else if (k === 'endIf') depth--;
+    else if (k === 'endLoop' && depth-- === 1) out.push(i);
+  }
+  return out;
+}
 /** A setting the player may change on the panel. The page makes it from a step's value the maker ticked: its name is
  * never shown, its label comes from the step's sentence, its kind, range and unit from the field. A switch, a choice and a
  * heading are added on the panel itself (FREE): an If reads the first two; a heading is a title over the rows below it.
@@ -49,7 +67,8 @@ export type Area = { name: string; label: string; colour: string; rect: Rect };
 export type RunStatus = 'waiting' | 'running' | 'paused' | 'done' | 'failed' | 'stopped';
 /** A run of a macro on one account; trial: the editor's Try it (shown there, not in the list). */
 /** step: where it is while live; lastStep: where it ended (a failed run: the step that stopped it). */
-export type MacroRun = { macroId: string; accountId: string; status: RunStatus; reason?: string; step?: number; lastStep?: number; loops?: number; startedAt: string; endsAt?: string; trial?: boolean };
+/** section: the feature playing (or, ended, where it was); none for the main steps. */
+export type MacroRun = { macroId: string; accountId: string; status: RunStatus; reason?: string; step?: number; lastStep?: number; section?: string | null; loops?: number; startedAt: string; endsAt?: string; trial?: boolean };
 export type Recording = { accountId: string; startsAt: string; steps: number } | null;
 
 /** The app's limits (contract): 100 macros, 500 steps, names up to 60 characters, typed text up to 200. */
@@ -218,7 +237,7 @@ export const freeName = (prefix: string, taken: { name: string }[]) => {
   for (let n = 1; ; n++) if (!taken.some(x => x.name === prefix + n)) return prefix + n;
 };
 /** The counters a macro keeps (its Set and Add steps' names): each shows on its panel. */
-export const counters = (m: Pick<Macro, 'steps'>) => [...new Set(m.steps.filter(s => s.kind === 'setVar' || s.kind === 'addVar').map(s => String(s.name || '').trim()).filter(Boolean))];
+export const counters = (m: Pick<Macro, 'steps'>): string[] => [...new Set(m.steps.filter(s => s.kind === 'setVar' || s.kind === 'addVar').map(s => String(s.name || '').trim()).filter(Boolean))];
 /** The steps with a point on the window (a numbered dot): its number is the step's. */
 export const pointOf = (s: Step, options: Option[] = []): { x: number; y: number } | null =>
   ['click', 'move'].includes(s.kind) || (s.kind === 'waitColour' && !s.region) ? (typeof s.x === 'number' && typeof s.y === 'number' ? { x: s.x, y: s.y }
@@ -322,7 +341,8 @@ export function stepText(t: T, s: Step, m?: Ctx, n = 0): string {
 
 /** What stops a save (or a warning), tied to its step and field. bare: the words without "Step n:" (said on the step's
  * own row). fix: the one-click way out the form offers (Add End if, Pick on game, Choose area, Name it). */
-export type Problem = { step: number | null; text: string; bare: string; warn?: boolean; field?: string; fix?: 'addEnd' | 'pick' | 'area' | 'name' };
+/** sec: the feature whose steps it is about (none: the main steps). */
+export type Problem = { step: number | null; text: string; bare: string; warn?: boolean; field?: string; fix?: 'addEnd' | 'pick' | 'area' | 'name'; sec?: string };
 const okNum = (v: unknown, min: number, max: number) => isOpt(v) || (typeof v === 'number' && isFinite(v) && v >= min && v <= max);
 const okColour = (v: unknown) => isOpt(v) || (typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v));
 const imageKinds = ['clickImage', 'waitImage'];
@@ -427,6 +447,41 @@ export function problems(t: T, m: Macro, macros: Macro[]): Problem[] {
   for (const [k, i] of held) add(i, 'macro.err.neverUp', { k: keyCap(k) });
   return out;
 }
+
+/** What stops a feature from saving, and its warnings: its steps checked as the main ones are (their blocks closed and
+ * keys let go within them), no If stuck in them, how often it plays; on the main steps, a key held where a feature would
+ * come in. Each tied to its feature (sec). */
+export function featureProblems(t: T, m: Macro): Problem[] {
+  const out: Problem[] = [];
+  const feats = m.features || [];
+  if (!feats.length) return out;
+  const name = (f: Feature) => m.options?.find(o => o.name === f.option)?.label || '…';
+  for (const f of feats) {
+    const lead = name(f);
+    for (const p of problems(t, { ...m, name: lead, steps: f.steps, onFail: 'restart', stuckMinutes: 5 }, [])) {
+      if (p.step === null) continue;
+      out.push({ ...p, sec: f.id, text: `${lead}: ${p.text}` });
+    }
+    f.steps.forEach((s, i) => { if (s.kind === 'recover') out.push(mk(t, i, 'macro.feat.errRecover', f.id, lead)); });
+    if (!f.steps.length) out.push({ ...mk(t, null, 'macro.feat.warnEmpty', f.id, lead), warn: true, field: 'feature' });
+    if (f.everyMs != null && !(Number.isFinite(f.everyMs) && f.everyMs >= 1000 && f.everyMs <= 86_400_000)) out.push({ ...mk(t, null, 'macro.feat.errEvery', f.id, lead), field: 'every' });
+  }
+  // Main steps: a key still held at a pass's end keeps the features out.
+  const held = new Set<string>();
+  const ends = new Set(safeEnds(m.steps));
+  m.steps.forEach((s, i) => {
+    if (s.kind === 'down') held.add(s.key);
+    if (s.kind === 'up') held.delete(s.key);
+    if (ends.has(i) && held.size) out.push({ ...mk(t, i, 'macro.feat.warnHeld', undefined, '', { k: keyCap([...held][0]) }), warn: true });
+  });
+  return out;
+}
+
+const mk = (t: T, step: number | null, key: string, sec: string | undefined, name: string, vars: Record<string, string | number> = {}): Problem => {
+  const bare = t(key, { ...vars, name, n: step === null ? '' : step + 1 });
+  const text = step === null ? bare : `${t('macro.stepN', { n: step + 1 })}: ${bare}`;
+  return { step, text: name && step !== null ? `${name}: ${text}` : text, bare, ...(sec ? { sec } : {}) };
+};
 
 /** The label of the list a text step reads ("$o1"). */
 const listName = (ref: string, m?: Ctx) => m?.options?.find(o => '$' + o.name === ref)?.label || '…';

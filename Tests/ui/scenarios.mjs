@@ -173,6 +173,19 @@ export default [
     await s.eval(`document.querySelector('.mc-sees')?.scrollIntoView({ block: 'start' })`);
     await s.wait(200);
   }),
+  // A feature: added (its tab and head), a step moved to it from the main steps (a safe point marked there), then shown.
+  S('macro-features', 'macroedit=m4', async s => {
+    await s.wait(500);
+    await s.click({ css: '#mc-feat-add' });
+    await s.eval(`document.querySelectorAll('.mc-ftab')[0].click()`);
+    await s.wait(150);
+    await s.click({ css: '.mc-step[data-i="4"] [data-st="more"]' });
+    await s.eval(`(() => { const name = document.querySelectorAll('.mc-ftab')[1].querySelector('span').textContent;
+      [...document.querySelectorAll('.menu [role=menuitem], .menu button')].find(e => e.textContent.trim() === name).click(); })()`);
+    await s.wait(150);
+    await s.eval(`document.querySelectorAll('.mc-ftab')[1].click(); document.querySelector('.mc-steps-sec')?.scrollIntoView({ block: 'start' })`);
+    await s.wait(200);
+  }),
   // A text step reads any word ticked in a list; a colour step clicks each spot once, as it shows.
   S('macro-list-each', 'macroedit=m4', async s => {
     await s.wait(500);
@@ -1584,6 +1597,7 @@ export default [
   S('panel-ready', '', null, { page: 'panel-preview.html', size: [400, 620] }),
   S('panel-running', 'state=running&many=1', null, { page: 'panel-preview.html', size: [400, 640] }),
   S('panel-paused', 'state=paused', null, { page: 'panel-preview.html', size: [400, 640] }),
+  S('panel-features', 'state=running&feat=1', null, { page: 'panel-preview.html', size: [400, 640] }),
   S('panel-stopped', 'state=stopped&changed=1', null, { page: 'panel-preview.html', size: [400, 640] }),
   S('panel-no-game', 'state=noGame', null, { page: 'panel-preview.html', size: [400, 620] }),
   S('panel-recording', 'state=recording', async s => { await s.click({ css: '.pn-run' }); }, { page: 'panel-preview.html', size: [400, 620] }),

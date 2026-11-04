@@ -14,8 +14,8 @@ const NO_RUNS: MacroRun[] = [];
 type Account = { id: string; label: string; username?: string; avatarUrl?: string | null; state?: string; session?: { pid?: number } | null };
 type T = (k: string, v?: Record<string, string | number>) => string;
 /** The form, opened on a step (the list's Fix: where the last run stopped, and why). */
-const editAt = (host: Host, m: Macro, at?: { step?: number; reason?: string }) =>
-  (host.editMacro as (macro: object, isNew: boolean, opts?: { step?: number; reason?: string }) => void)(m, false, at);
+const editAt = (host: Host, m: Macro, at?: { step?: number; section?: string | null; reason?: string }) =>
+  (host.editMacro as (macro: object, isNew: boolean, opts?: { step?: number; section?: string | null; reason?: string }) => void)(m, false, at);
 
 /** An account with a Roblox window open here: one a macro can run on, record or take a picture of. */
 export const hasWindow = (a: Account) => a.state === 'running' && (a.session?.pid || 0) > 0;
@@ -261,7 +261,7 @@ function MacroRow({ m, i, count, runs, byId, shown, selected, canRun, dragging, 
   const failed = runs.find(r => r.status === 'failed');
   const said = runs.map(r => runText(t, r, byId.get(r.accountId)?.label || '?'));
   const line = runs.length ? said.join(' · ') : [whenText(t, m), auto && !m.enabled ? t('macro.autoOff') : ''].filter(Boolean).join(' · ');
-  const fix = () => editAt(host, m, failed ? { step: failed.lastStep ?? failed.step, reason: failed.reason } : undefined);
+  const fix = () => editAt(host, m, failed ? { step: failed.lastStep ?? failed.step, section: failed.section, reason: failed.reason } : undefined);
 
   const panel = (btn: HTMLElement) => busy(btn, () => call(shown ? 'hidePanel' : 'showPanel', { id: m.id }));
   const menu = (btn: HTMLElement) => host.menu(btn, [

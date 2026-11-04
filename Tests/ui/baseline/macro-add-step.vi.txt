@@ -230,6 +230,9 @@ html [data-theme="dark" lang="vi"]
                   button.btn.sm [id="mc-add" type="button" aria-expanded="true" aria-haspopup="dialog"]
                     svg.i #u7ty99
                     span "Thêm bước"
+                  button.btn.ghost.sm [id="mc-feat-add" type="button" title="Công tắc trên bảng, có các bước riêng"]
+                    svg.i #1pvni8o
+                    span "Chức năng"
                 div.mc-steps [role="list" aria-labelledby="mc-steps-h"]
                   div.mc-step [role="listitem" aria-label="Bước 1: Bấm Space" style="--d:0"]
                     button.mc-ins [type="button" title="Thêm bước vào đây" tabindex="-1" aria-haspopup="dialog" aria-label="Thêm bước vào đây"]
@@ -307,7 +310,7 @@ html [data-theme="dark" lang="vi"]
         button.btn.danger.push "Xóa"
         button.btn "Hủy"
         button.btn.primary [aria-disabled="false"] "Lưu"
-    div.mc-add-pop.mc-pop.menu [role="dialog" aria-label="Thêm bước" style="left:665.375px;top:330.844px"]
+    div.mc-add-pop.mc-pop.menu [role="dialog" aria-label="Thêm bước" style="left:551px;top:332.844px"]
       div
         div.mc-add-search
           svg.i #1u22jvi
@@ -640,6 +643,9 @@ html [data-theme="dark" lang="vi"]
                   button.btn.sm [id="mc-add" type="button" aria-expanded="false" aria-haspopup="dialog"]
                     svg.i #u7ty99
                     span "Thêm bước"
+                  button.btn.ghost.sm [id="mc-feat-add" type="button" title="Công tắc trên bảng, có các bước riêng"]
+                    svg.i #1pvni8o
+                    span "Chức năng"
                 div.mc-steps [role="list" aria-labelledby="mc-steps-h"]
                   div.mc-step [role="listitem" aria-label="Bước 1: Bấm Space" style="--d:0"]
                     button.mc-ins [type="button" title="Thêm bước vào đây" tabindex="-1" aria-haspopup="dialog" aria-label="Thêm bước vào đây"]

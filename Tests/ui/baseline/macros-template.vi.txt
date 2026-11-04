@@ -261,6 +261,9 @@ html [data-theme="dark" lang="vi"]
                   button.btn.sm [id="mc-add" type="button" aria-expanded="false" aria-haspopup="dialog"]
                     svg.i #u7ty99
                     span "Thêm bước"
+                  button.btn.ghost.sm [id="mc-feat-add" type="button" title="Công tắc trên bảng, có các bước riêng"]
+                    svg.i #1pvni8o
+                    span "Chức năng"
                 div.mc-steps [role="list" aria-labelledby="mc-steps-h"]
                   div.mc-opener.mc-step [role="listitem" aria-label="Bước 1: Lặp đến khi dừng" style="--d:0"]
                     button.mc-ins [type="button" title="Thêm bước vào đây" tabindex="-1" aria-haspopup="dialog" aria-label="Thêm bước vào đây"]
@@ -537,4 +540,4 @@ html [data-theme="dark" lang="vi"]
 #toasts
 -- commands
   pageBusy {"busy":false}
-  saveMacro {"macro":{"accountIds":[],"areas":[],"enabled":true,"hotkey":null,"id":"","jitterMs":40,"jitterPx":3,"maxMinutes":240,"name":"Bấm phím định kỳ","onFail":"stop","options":[{"default":300000,"kind":"number","label":"Mỗi","max":1080000,"min":1000,"name":"o1","unit":"s","value":300000},{"default":"Space","kind":"key","label":"Phím","name":"o2","value":"Space"}],"panel":{"autoShow":false,"placeId":null},"steps":[{"kind":"loop","times":0},{"key":"$o2","kind":"key","ms":60,"note":"Roblox đá người chơi đứng yên sau 20 phút; bước này bấm phím trước lúc đó."},{"kind":"wait","ms":"$o1","note":"Người chơi đổi thời gian này trên bảng"},{"kind":"endLoop"}],"stuckMinutes":5,"targets":"selected","trigger":{"kind":"manual"}}}
+  saveMacro {"macro":{"accountIds":[],"areas":[],"enabled":true,"features":[],"hotkey":null,"id":"","jitterMs":40,"jitterPx":3,"maxMinutes":240,"name":"Bấm phím định kỳ","onFail":"stop","options":[{"default":300000,"kind":"number","label":"Mỗi","max":1080000,"min":1000,"name":"o1","unit":"s","value":300000},{"default":"Space","kind":"key","label":"Phím","name":"o2","value":"Space"}],"panel":{"autoShow":false,"placeId":null},"steps":[{"kind":"loop","times":0},{"key":"$o2","kind":"key","ms":60,"note":"Roblox đá người chơi đứng yên sau 20 phút; bước này bấm phím trước lúc đó."},{"kind":"wait","ms":"$o1","note":"Người chơi đổi thời gian này trên bảng"},{"kind":"endLoop"}],"stuckMinutes":5,"targets":"selected","trigger":{"kind":"manual"}}}

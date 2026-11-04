@@ -1,20 +1,24 @@
 // "Player sees": the macro's panel as the app draws it beside the game (its own small dark window): the name, Run with
 // its hotkey, one status line with the counters, its tabs, the settings the maker handed to the player, Edit areas and
 // Reset. Here the settings' names are typed in place, their order and tab changed, and switches, choices and headings
-// added; the values are set in the steps.
+// added; the values are set in the steps. A feature's switch links to its steps; the switches' order is the order the
+// features play in.
 import { useState, type ReactNode } from 'react';
 import { Icon, useHost } from './host';
 import { asPoint, keyName, msText, type Macro, type Option } from './macros';
 
-export function PlayerSees({ m, options, counts, areas, setLabel, move, remove, tabs, tab, setTab, addTab, renameTab, removeTab, moveTo, add, setChoices, children }: {
+export function PlayerSees({ m, options, counts, areas, setLabel, move, remove, tabs, tab, setTab, addTab, renameTab, removeTab, moveTo, add, setChoices,
+  features, openFeature, addFeature, children }: {
   m: Macro; options: Option[]; counts: string[]; areas: number; setLabel: (name: string, label: string) => void;
-  move: (name: string, dir: number) => void; remove: (name: string) => void;
+  move: (name: string, dir: number) => void; remove: (name: string, btn: HTMLElement) => void;
+  /** The features by their switch's name: each one's id and how many steps it has. */
+  features: Record<string, { id: string; steps: number }>; openFeature: (id: string) => void; addFeature: (() => void) | null;
   tabs: string[]; tab: string | null; setTab: (tab: string) => void; addTab: () => void; renameTab: (old: string, name: string) => void;
   removeTab: (tab: string) => void; moveTo: (name: string, tab: string) => void;
   add: (kind: 'check' | 'choice' | 'list' | 'heading') => void; setChoices: (name: string, choices: string[]) => void; children?: ReactNode;
 }) {
   const host = useHost();
-  const { t } = host;
+  const { t, tn } = host;
   // Times are kept in milliseconds and shown in seconds; a share kept as 0–1 is shown as a percentage.
   const numText = (o: Option) => typeof o.value !== 'number' ? String(o.value)
     : o.unit === 's' || o.unit === 'ms' ? msText(t, o.value)
@@ -23,7 +27,12 @@ export function PlayerSees({ m, options, counts, areas, setLabel, move, remove, 
   const value = (o: Option) => {
     switch (o.kind) {
       case 'colour': return <><i className="mp-swatch" style={{ background: String(o.value) }} /><span className="mp-mini">{t('macro.panel.pick')}</span></>;
-      case 'check': return <span className={`mp-switch${o.value ? ' on' : ''}`}><span /></span>;
+      case 'check': {
+        const f = features[o.name];
+        return <>{f ? <button type="button" className="mp-feat" title={t('macro.feat.open')} onClick={() => openFeature(f.id)}>
+          {tn('macro.feat.steps', f.steps)}<Icon name="chevronRight" /></button> : null}
+          <span className={`mp-switch${o.value ? ' on' : ''}`}><span /></span></>;
+      }
       case 'key': return <><kbd>{keyName(t, String(o.value))}</kbd><span className="mp-mini">{t('macro.panel.change')}</span></>;
       case 'choice': return <Choices o={o} set={list => setChoices(o.name, list)} />;
       case 'list': return <><Choices o={o} set={list => setChoices(o.name, list)} />
@@ -41,6 +50,7 @@ export function PlayerSees({ m, options, counts, areas, setLabel, move, remove, 
   const shown = tabs.length ? options.filter(o => tabOf(o) === tab) : options;
   const addMenu = (btn: HTMLElement) => host.menu(btn, [
     { icon: 'check', text: t('macro.opt.add.check'), run: () => add('check') },
+    ...(addFeature ? [{ icon: 'layers', text: t('macro.opt.add.feature'), run: addFeature }] : []),
     { icon: 'chevronDown', text: t('macro.opt.add.choice'), run: () => add('choice') },
     { icon: 'rows', text: t('macro.opt.add.list'), run: () => add('list') },
     { icon: 'info', text: t('macro.opt.add.heading'), run: () => add('heading') },
@@ -75,7 +85,7 @@ export function PlayerSees({ m, options, counts, areas, setLabel, move, remove, 
             onClick={e => tabMenu(e.currentTarget, o)}><Icon name="chevronRight" /></button> : null}
           <button type="button" className="icon-btn" title={t('lo.up')} aria-label={`${t('lo.up')}: ${o.label}`} disabled={k === 0} onClick={() => move(o.name, -1)}><Icon name="chevronUp" /></button>
           <button type="button" className="icon-btn" title={t('lo.down')} aria-label={`${t('lo.down')}: ${o.label}`} disabled={k === shown.length - 1} onClick={() => move(o.name, 1)}><Icon name="chevronDown" /></button>
-          <button type="button" className="icon-btn" title={t('macro.panel.remove')} aria-label={`${t('macro.panel.remove')}: ${o.label}`} onClick={() => remove(o.name)}><Icon name="x" /></button>
+          <button type="button" className="icon-btn" title={t('macro.panel.remove')} aria-label={`${t('macro.panel.remove')}: ${o.label}`} onClick={e => remove(o.name, e.currentTarget)}><Icon name="x" /></button>
         </span>
       </li>)}</ul> : <p className="mp-none">{t(tabs.length ? 'macro.tab.empty' : 'macro.panel.none')}</p>}
       <div className="mp-foot">{areas ? <span className="mp-btn">{t('macro.panel.areas')}</span> : null}

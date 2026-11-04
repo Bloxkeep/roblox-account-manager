@@ -6,7 +6,8 @@ import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState
 import { createPortal } from 'react-dom';
 import { Icon, useHost } from '../host';
 import { keyFromEvent, keyName } from '../macros';
-import type { PanelOn, PanelOption } from './panelHost';
+import { durText } from '../macros';
+import type { FeatureNow, PanelOn, PanelOption } from './panelHost';
 
 /** What every row reaches: the app, a hint under a row, and whether something holds the keyboard (typing, a key, a list). */
 export interface PanelCtx {
@@ -18,6 +19,8 @@ export interface PanelCtx {
   /** Something takes the keyboard (Esc doesn't hide the panel, it isn't handed back). */
   hold(key: string, on: boolean): void;
   hasWindow: boolean;
+  /** The features switched on while it runs, by their switch's name. */
+  features: Record<string, FeatureNow> | null;
 }
 export const Ctx = createContext<PanelCtx | null>(null);
 const usePanel = () => useContext(Ctx)!;
@@ -384,7 +387,7 @@ export function SwitchField({ o, id, label }: { o: PanelOption; id: string; labe
 /** One setting: its label (cut with … and whole in its title) left, its control right; a control wider than 55 % of the
  * row goes under the label at full width. A refused change says why under it for a few seconds. */
 export function Row({ o, macroId }: { o: PanelOption; macroId: string }) {
-  const { hints } = usePanel();
+  const { hints, features } = usePanel();
   const row = useRef<HTMLDivElement>(null);
   const inner = useRef<HTMLSpanElement>(null);
   const [stack, setStack] = useState(false);
@@ -405,9 +408,29 @@ export function Row({ o, macroId }: { o: PanelOption; macroId: string }) {
     : o.kind === 'point' ? <SpotField o={o} id={id} label={o.label} />
     : <span className="pn-hex">{o.shown}</span>;
   const hint = hints[o.name];
+  const feat = o.kind === 'check' ? features?.[o.name] : undefined;
   return <div ref={row} className={`pn-row k-${o.kind}${stack ? ' stack' : ''}`}>
     <label className="pn-label" htmlFor={id} title={o.label}>{o.label}</label>
     <span className={`pn-ctl${flex ? ' flex' : ''}`}><span ref={inner} className="pn-ctl-in">{control}</span></span>
-    {hint ? <p className="pn-hint" role="alert">{hint}</p> : null}
+    {hint ? <p className="pn-hint" role="alert">{hint}</p> : feat ? <FeatureLine f={feat} /> : null}
   </div>;
+}
+
+/** Under a feature's switch while the macro runs: what it does now. */
+function FeatureLine({ f }: { f: FeatureNow }) {
+  const { t } = useHost();
+  const [clock, setClock] = useState(() => Date.now());
+  useEffect(() => {
+    if (f.state !== 'next') return;
+    const timer = setInterval(() => setClock(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [f.state]);
+  // The time left: whole minutes from a minute on, else seconds.
+  const left = f.state === 'next' ? Math.max(0, (Date.parse(f.at) - clock) / 1000) : 0;
+  const text = f.state === 'playing' ? t('panel.feat.playing', { n: f.step, of: f.of })
+    : f.state === 'due' ? t('panel.feat.due')
+    : f.state === 'failed' ? t('panel.feat.failed', { why: f.why })
+    : f.state === 'next' ? t('panel.feat.next', { d: durText(t, left >= 60 ? Math.ceil(left / 60) * 60 : Math.ceil(left)) })
+    : t('panel.feat.round');
+  return <p className={`pn-feat ${f.state}`}>{text}</p>;
 }

@@ -30,6 +30,8 @@
     { name: 'sellAt', label: long ? 'Sell everything once the bag is this full' : 'Sell when bag is', kind: 'number', tab: tabs[2] || null, value: 90, def: 90, min: 10, max: 100, step: 5, scale: 1, suffix: '%' },
   ];
   if (params.has('changed')) opts[0].value = 1200;
+  // ?feat: two switches are features (steps of their own): one playing, one waiting for its time.
+  if (params.has('feat')) opts.splice(4, 0, { name: 'sell', label: vi ? 'Tự bán cá' : 'Auto sell', kind: 'check', tab: 'Main', value: 1, def: 1 });
   const shown = o => o.kind === 'number' ? fmt(o.value / o.scale) + o.suffix
     : o.kind === 'list' ? `${o.value.length}/${o.choices.length}` : o.kind === 'check' ? (o.value ? 'On' : 'Off')
     : o.kind === 'point' ? `${Math.round(o.value.x * 100)} %, ${Math.round(o.value.y * 100)} %` : String(o.value ?? '');
@@ -46,6 +48,7 @@
       editingAreas: editing, hotkeysOn: true, hasGame: state !== 'noGame', hasWindow: state !== 'noGame',
       recording: state === 'recording' ? { account: names[0] } : null, undoable,
       changed: opts.some(o => o.kind !== 'heading' && !same(o.value, o.def)),
+      features: params.has('feat') && runs.length ? { sell: { state: 'playing', step: 2, of: 3 }, jump: { state: 'next', at: new Date(Date.now() + 6 * 60000).toISOString() } } : null,
     };
   };
   let emit = () => {};

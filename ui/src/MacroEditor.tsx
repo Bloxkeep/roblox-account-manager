@@ -20,10 +20,10 @@ import { GameFrame, TryLines, type Picture, type Seen } from './MacroPicture';
 import { PlayerSees } from './MacroPanel';
 import { hasWindow, useCountdown } from './MacrosView';
 import {
-  AREA_COLOURS, FREE, MAX_NOTE, OPENERS, asPoint, KEYS, LOOK_STEPS, MAX_AREAS, MAX_OPTIONS, MAX_TABS, MOUSE_KEYS, STEP_GROUPS, STEP_ICON, SYNONYMS,
-  blockEnd, camDir, counterName, counters, durText, endOf, freeName, isArea, isOpt, isLive, keyCap, keyFromEvent, keyName, kindsAt, newStep, newTest,
-  pointOf, problems, recording, stepText, stepsToAdd, withAreas,
-  type Area, type Macro, type MacroRun, type Option, type Problem, type Rect, type Step, type Test,
+  AREA_COLOURS, FREE, MAX_FEATURES, MAX_NOTE, OPENERS, asPoint, KEYS, LOOK_STEPS, MAX_AREAS, MAX_OPTIONS, MAX_TABS, MOUSE_KEYS, STEP_GROUPS, STEP_ICON, SYNONYMS,
+  blockEnd, camDir, counterName, counters, durText, endOf, featureProblems, freeName, isArea, isOpt, isLive, keyCap, keyFromEvent, keyName, kindsAt, newStep, newTest,
+  pointOf, problems, recording, safeEnds, stepText, stepsToAdd, withAreas,
+  type Area, type Feature, type Macro, type MacroRun, type Option, type Problem, type Rect, type Step, type Test,
 } from './macros';
 
 type Account = { id: string; label: string; username?: string; avatarUrl?: string | null; state?: string; session?: { pid?: number } | null };
@@ -34,6 +34,10 @@ export interface MacroEditorApi {
 }
 /** A step as the form holds it: its own key for React (taken off before saving). */
 type Held = Step & { _k: number };
+/** A feature as the form holds it: its steps are kept in the form's lists, by its id. */
+type FeatMeta = Omit<Feature, 'steps'>;
+/** A step somewhere in the macro: in a feature's steps (sec, its id) or the main ones (null). */
+type At = { sec: string | null; i: number };
 
 let seq = 0;
 const hold = (s: Step): Held => ({ ...s, _k: ++seq });
@@ -112,10 +116,10 @@ type Ed = {
   newCounter: (anchor: HTMLElement, done: (name: string) => void) => void;
 };
 
-export function MacroEditor({ base, accounts, macros, api, openStep, stoppedReason, goAccounts }: {
+export function MacroEditor({ base, accounts, macros, api, openStep, openSection, stoppedReason, goAccounts }: {
   base: Macro; isNew?: boolean; accounts: Account[]; macros: Macro[]; api: Ref<MacroEditorApi>;
-  /** The Macros list's Fix: this step open and in sight, marked where its last run stopped (and why). */
-  openStep?: number; stoppedReason?: string;
+  /** The Macros list's Fix: this step open and in sight (in this feature's steps, if one), marked where its last run stopped (and why). */
+  openStep?: number; openSection?: string | null; stoppedReason?: string;
   /** The empty picture's "Go to Accounts": closes the form (asking first when something changed) and shows Accounts. */
   goAccounts?: () => void;
 }) {
@@ -127,7 +131,25 @@ export function MacroEditor({ base, accounts, macros, api, openStep, stoppedReas
   const [start] = useState(() => withAreas(t, base));
   const [m, setM] = useState<Macro>(() => ({ ...start, trigger: { ...start.trigger }, accountIds: [...start.accountIds] }));
   const patch = (p: Partial<Macro>) => setM(x => ({ ...x, ...p }));
-  const [steps, setSteps] = useState<Held[]>(() => start.steps.map(hold));
+  // Every list of steps by its key (the main steps: ''); the one shown is `steps`, its entry here stale while it is.
+  const [init] = useState(() => {
+    const own = Object.fromEntries((start.features || []).map(f => [f.id, f.steps.map(hold)]));
+    return { lists: { '': start.steps.map(hold), ...own } as Record<string, Held[]>, sec: openSection && own[openSection] ? openSection : null };
+  });
+  const [feats, setFeats] = useState<FeatMeta[]>(() => (start.features || []).map(({ steps: _s, ...f }) => { void _s; return f; }));
+  const [lists, setLists] = useState(init.lists);
+  const [sec, setSec] = useState<string | null>(init.sec);
+  const [steps, setSteps] = useState<Held[]>(() => init.lists[init.sec ?? '']);
+  const stepsNow = useRef(steps);
+  stepsNow.current = steps;
+  const secKey = sec ?? '';
+  const listOf = (key: string | null) => (key ?? '') === secKey ? steps : lists[key ?? ''] || [];
+  const allHeld = () => ['', ...feats.map(f => f.id)].flatMap(listOf);
+  /** Each step, everywhere, changed the same way (an option handed back, a counter renamed). */
+  const mapAll = (fn: (s: Held) => Held) => {
+    setSteps(list => list.map(fn));
+    setLists(ls => Object.fromEntries(Object.entries(ls).map(([k, list]) => [k, list.map(fn)])));
+  };
   const [cursor, setCursor] = useState(-1);
   const [tried, setTried] = useState(false);
   const [pending, setPending] = useState<{ steps: Step[]; w: number; h: number } | null>(null);
@@ -142,7 +164,7 @@ export function MacroEditor({ base, accounts, macros, api, openStep, stoppedReas
   const [asking, setAsking] = useState<{ anchor: HTMLElement; i: number } | null>(null);
   const [naming, setNaming] = useState<{ anchor: HTMLElement; done: (name: string) => void } | null>(null);
   // What can't be taken away while steps still use it: an area, or a switch or list an If or a text step reads.
-  const [inUse, setInUse] = useState<{ what: string; label: string; steps: number[] } | null>(null);
+  const [inUse, setInUse] = useState<{ what: string; label: string; steps: At[] } | null>(null);
   // Where Try it (or the run the list's Fix came from) stopped, on that step's row.
   const [stopped, setStopped] = useState<{ k: number; reason: string } | null>(() =>
     openStep != null && steps[openStep] && stoppedReason ? { k: steps[openStep]._k, reason: stoppedReason } : null);
@@ -172,7 +194,7 @@ export function MacroEditor({ base, accounts, macros, api, openStep, stoppedReas
   };
   // A switch, a choice or a heading is made on the panel and stays while no step names it; the rest go with their tick.
   const keeps = (refs: Set<string>) => (o: Option) => FREE.has(o.kind) || refs.has(o.name);
-  const shownOpts = opts.filter(keeps(used(steps)));
+  const shownOpts = opts.filter(keeps(used(allHeld())));
   const setOpt = (name: string, p: Partial<Option>) => setM(x => ({ ...x, options: (x.options || []).map(o => o.name === name ? { ...o, ...p } : o) }));
   // The panel's tabs (fewer than two: none); a new setting goes on the one shown.
   const tabs = (m.panel?.tabs?.length || 0) >= 2 ? m.panel!.tabs! : [];
@@ -204,7 +226,7 @@ export function MacroEditor({ base, accounts, macros, api, openStep, stoppedReas
       const name = freeName('o', opts);
       const o: Option = { name, label: freeLabel(t(meta.label)), kind: meta.kind, value: raw, default: raw, ...onTab(),
         ...(meta.min !== undefined ? { min: meta.min, max: meta.max } : {}), ...(meta.unit !== undefined ? { unit: meta.unit } : {}) };
-      patch({ options: [...opts.filter(keeps(used(steps))), o] });
+      patch({ options: [...opts.filter(keeps(used(allHeld()))), o] });
       setSteps(list => list.map((x, k) => k !== i ? x : path === 'point' ? { ...x, x: '$' + name, y: '$' + name } : setAt(x, path, '$' + name)));
     } else {
       const o = optOf(rawAt(s, path));
@@ -246,15 +268,16 @@ export function MacroEditor({ base, accounts, macros, api, openStep, stoppedReas
       }) }));
     if (curTab === name) setTabSel(null);
   };
-  /** The steps (their numbers, from 1) that read a switch, a choice or a list made on the panel. */
-  const readers = (name: string) => steps.flatMap((s, i) => {
+  /** Where each step is that does something: in the main steps, then each feature's. */
+  const findAll = (yes: (s: Held) => boolean): At[] => [null, ...feats.map(f => f.id)].flatMap(sc => listOf(sc).flatMap((s, i) => yes(s) ? [{ sec: sc, i }] : []));
+  /** The steps that read a switch, a choice or a list made on the panel. */
+  const readers = (name: string) => findAll(s => {
     const t2 = s.test as Test | undefined;
-    const reads = (t2?.kind === 'var' && t2.name === name) || s.words === '$' + name || (t2?.kind === 'text' && t2.words === '$' + name);
-    return reads ? [i] : [];
+    return (t2?.kind === 'var' && t2.name === name) || s.words === '$' + name || (t2?.kind === 'text' && t2.words === '$' + name);
   });
 
   /* ── counters (Set and Add steps' names; what the panel calls each) ── */
-  const counterList = counters({ steps });
+  const counterList = counters({ steps: allHeld() });
   const labelOf = (name: string) => counterName(m, name);
   const setCounterLabel = (name: string, label: string) => setPanel({ counterLabels: { ...(m.panel?.counterLabels || {}), [name]: label } });
 
@@ -271,7 +294,7 @@ export function MacroEditor({ base, accounts, macros, api, openStep, stoppedReas
   const setArea = (name: string, p: Partial<Area>) => setM(x => ({ ...x, areas: (x.areas || []).map(a => a.name === name ? { ...a, ...p } : a) }));
   // An area a step still looks in stays: said under it, with links to those steps.
   const delArea = (name: string) => {
-    const by = steps.flatMap((s, i) => s.region === '@' + name || s.test?.region === '@' + name ? [i] : []);
+    const by = findAll(s => s.region === '@' + name || s.test?.region === '@' + name);
     if (by.length) return setInUse({ what: 'area:' + name, label: areas.find(a => a.name === name)?.label || '', steps: by });
     setInUse(null);
     patch({ areas: areas.filter(a => a.name !== name) });
@@ -282,36 +305,45 @@ export function MacroEditor({ base, accounts, macros, api, openStep, stoppedReas
   const sig = (st: Step, field: string, mm: Macro) => field === 'region'
     ? JSON.stringify((mm.areas || []).find(a => '@' + a.name === st.region)?.rect ?? st.region ?? null)
     : JSON.stringify(isOpt(st[field]) ? (mm.options || []).find(o => '$' + o.name === st[field])?.value ?? null : st[field] ?? null);
-  const todos = useRef(steps.flatMap(st => ((st.todo as string[] | undefined) || []).map(field => ({ k: st._k, field, was: sig(st, field, m) }))));
+  const todos = useRef(init.lists[''].flatMap(st => ((st.todo as string[] | undefined) || []).map(field => ({ k: st._k, field, was: sig(st, field, m) }))));
   const todoDone = (x: { k: number; field: string; was: string }) => {
-    const st = steps.find(y => y._k === x.k);
+    const st = allHeld().find(y => y._k === x.k);
     return !st || sig(st, x.field, m) !== x.was;
   };
+  /** A step as saved: its note trimmed, the template's to-dos still not done. */
+  const clean = (st: Held): Step => {
+    const { todo: _t, note: n0, ...rest } = strip(st);
+    void _t;
+    const n1 = String(n0 || '').trim().slice(0, MAX_NOTE);
+    const still = todos.current.filter(x => x.k === st._k && !todoDone(x)).map(x => x.field);
+    return { ...rest, ...(n1 ? { note: n1 } : {}), ...(still.length ? { todo: still } : {}) };
+  };
+  // The features in their switches' order on the panel: the order they play in.
+  const featsInOrder = [...feats].sort((a, b) => opts.findIndex(o => o.name === a.option) - opts.findIndex(o => o.name === b.option));
   const full = (): Macro => {
-    const refs = used(steps);
-    const names = new Set(counters({ steps }));
+    const every = allHeld();
+    const refs = used(every);
+    const names = new Set(counters({ steps: every }));
     // Labels of counters no step keeps any more go; the panel keeps only its own.
     const labels = Object.fromEntries(Object.entries(m.panel?.counterLabels || {}).filter(([k, v]) => names.has(k) && v.trim()));
     const { counterLabels: _l, ...panel } = m.panel || { autoShow: false, placeId: null };
     void _l;
     return { ...m, name: m.name.trim(), options: opts.filter(keeps(refs)),
       panel: Object.keys(labels).length ? { ...panel, counterLabels: labels } : panel,
-      steps: steps.map(st => {
-        const { todo: _t, note: n0, ...rest } = strip(st);
-        void _t;
-        const n1 = String(n0 || '').trim().slice(0, MAX_NOTE);
-        const still = todos.current.filter(x => x.k === st._k && !todoDone(x)).map(x => x.field);
-        return { ...rest, ...(n1 ? { note: n1 } : {}), ...(still.length ? { todo: still } : {}) };
-      }) };
+      steps: listOf(null).map(clean),
+      features: featsInOrder.map(f => ({ ...f, steps: listOf(f.id).map(clean) })) };
   };
+  /** The macro with the steps shown as its own (Edit on game and the picture draw these; a feature's Try plays them). */
+  const shownMacro = (): Macro => sec ? { ...full(), steps: steps.map(clean), features: [] } : full();
   const snapshot = () => JSON.stringify(full());
   const initial = useRef('');
   useEffect(() => { initial.current = snapshot(); }, []); // once, as it opened
-  const all = problems(t, full(), macros);
+  const whole = full();
+  const all = [...problems(t, whole, macros), ...featureProblems(t, whole)];
   const errors = all.filter(p => !p.warn);
-  const latest = useRef({ snapshot, collect: () => ({}) as ReturnType<MacroEditorApi['collect']>, full });
+  const latest = useRef({ snapshot, collect: () => ({}) as ReturnType<MacroEditorApi['collect']>, shownMacro });
   latest.current.snapshot = snapshot;
-  latest.current.full = full;
+  latest.current.shownMacro = shownMacro;
   latest.current.collect = () => {
     setTried(true);
     const first = errors[0];
@@ -323,9 +355,13 @@ export function MacroEditor({ base, accounts, macros, api, openStep, stoppedReas
   /** The place a problem is about, brought into sight: its step open (its block unfolded), the When line or the panel's
    * tab opened; the box to focus. */
   const show = (p: Problem): HTMLElement | null => {
+    // A feature's problem: its steps first.
+    if ((p.sec ?? null) !== sec && (p.step !== null || p.sec)) switchTo(p.sec ?? null);
+    if (p.sec && p.step === null) return form.current?.querySelector<HTMLElement>(p.field === 'every' ? '#mc-feat-every' : '#mc-feat-name') || null;
     if (p.step !== null) {
       unfoldTo(p.step);
-      flushSync(() => setOpenKey(steps[p.step!]._k));
+      const st = stepsNow.current[p.step];
+      if (st) flushSync(() => setOpenKey(st._k));
       const row = rowEl(p.step);
       return row?.querySelector<HTMLElement>('[aria-invalid="true"], .mc-sent :is(input, select, button)') || row;
     }
@@ -351,8 +387,6 @@ export function MacroEditor({ base, accounts, macros, api, openStep, stoppedReas
   };
 
   // A recording this form started: its steps come in here (added to the end or in place of the steps there, as chosen).
-  const stepsNow = useRef(steps);
-  stepsNow.current = steps;
   useEffect(() => on('macroRecorded', (d?: { steps: Step[]; w: number; h: number }) => {
     if (recording.for !== 'editor') return;
     recording.for = null;
@@ -363,17 +397,76 @@ export function MacroEditor({ base, accounts, macros, api, openStep, stoppedReas
   }), [on]);
   const rec = app.macroRecording || null;
 
+  /* ── features (a switch on the panel with steps of its own) ── */
+  /** Shows another list of steps (null: the main ones). Rows are keyed the same everywhere, so what is open or folded stays. */
+  const switchTo = (to: string | null) => {
+    if (to === sec) return;
+    const cur = steps;
+    flushSync(() => {
+      setLists(ls => ({ ...ls, [secKey]: cur }));
+      setSteps(lists[to ?? ''] || []);
+      setSec(to);
+      setCursor(-1); setCutFor(null); setAdding(null); setAsking(null); setInUse(null); setCapture(null); setDragging(null); setDropping(null);
+    });
+  };
+  /** A step somewhere in the macro, brought into sight and open. */
+  const goStep = (at: At) => { switchTo(at.sec); focusRow(at.i); };
+  const featOf = (id: string | null) => feats.find(f => f.id === id);
+  const featLabel = (f?: FeatMeta) => opts.find(o => o.name === f?.option)?.label.trim() || t('macro.feat.unnamed');
+  const setFeat = (id: string, p: Partial<FeatMeta>) => setFeats(list => list.map(f => f.id === id ? { ...f, ...p } : f));
+  const addFeature = () => {
+    if (feats.length >= MAX_FEATURES) return toast(t('macro.feat.full', { n: MAX_FEATURES }), 'warn');
+    if (shownOpts.length >= MAX_OPTIONS) return toast(t('macro.opt.full', { n: MAX_OPTIONS }), 'warn');
+    let n = feats.length + 1;
+    while (opts.some(o => o.label === t('macro.feat.n', { n }))) n++;
+    // Its switch starts on, so Try plays it at once; the player turns it off on the panel.
+    const o: Option = { name: freeName('o', opts), label: t('macro.feat.n', { n }), kind: 'check', value: 1, default: 1, ...onTab() };
+    const id = freeName('f', feats.map(f => ({ name: f.id })));
+    patch({ options: [...shownOpts, o] });
+    setFeats(list => [...list, { id, option: o.name, everyMs: null, onFail: 'skip' }]);
+    setLists(ls => ({ ...ls, [id]: [] }));
+    switchTo(id);
+    setTimeout(() => { const box = form.current?.querySelector<HTMLInputElement>('#mc-feat-name'); box?.focus(); box?.select(); });
+  };
+  // Deleting a feature with steps: asked first, under the button.
+  const [dropping, setDropping] = useState<{ anchor: HTMLElement; id: string } | null>(null);
+  const dropFeature = (id: string, anchor?: HTMLElement, sure = false) => {
+    const f = featOf(id);
+    if (!f) return;
+    if (!sure && listOf(id).length && anchor) return setDropping({ anchor, id });
+    setDropping(null);
+    if (sec === id) switchTo(null);
+    setFeats(list => list.filter(x => x.id !== id));
+    setLists(ls => { const { [id]: _gone, ...rest } = ls; void _gone; return rest; });
+    // Its switch goes too, unless a step still reads it (then it stays a plain switch).
+    if (!readers(f.option).length) setM(x => ({ ...x, options: (x.options || []).filter(o => o.name !== f.option) }));
+  };
+  /** A step (an If or a repeat with its whole block) taken to the end of another list. */
+  const moveToList = (i: number, to: string | null) => {
+    const [a, b] = span(steps, i);
+    const moved = steps.slice(a, b + 1);
+    flushSync(() => {
+      setSteps(list => list.filter((_, k) => k < a || k > b));
+      setLists(ls => ({ ...ls, [to ?? '']: [...(ls[to ?? ''] || []), ...moved] }));
+      setCursor(-1);
+    });
+    toast(t('macro.feat.moved', { n: moved.length, name: to ? featLabel(featOf(to)) : t('macro.feat.main') }), 'info');
+  };
+  const curFeat = featOf(sec);
+
   /* ── steps ── */
   const folds = shapes(steps, folded);
   /** Unfolds every block around step i, so its row is drawn. */
   const unfoldTo = (i: number) => {
-    const around = shapes(steps, new Set()).at(i)?.around || [];
-    const keys = around.map(a => steps[a]._k);
+    const list = stepsNow.current;
+    const around = shapes(list, new Set()).at(i)?.around || [];
+    const keys = around.map(a => list[a]._k);
     if (keys.some(k => folded.has(k))) flushSync(() => setFolded(f => new Set([...f].filter(k => !keys.includes(k)))));
   };
   const focusRow = async (i: number, open = true) => {
     unfoldTo(i);
-    if (open && steps[i]) setOpenKey(steps[i]._k);
+    const st = stepsNow.current[i];
+    if (open && st) setOpenKey(st._k);
     await new Promise(r => setTimeout(r));
     const row = rowEl(i);
     const el = row?.querySelector<HTMLElement>('.mc-sent :is(input, select, button)') || row?.querySelector<HTMLElement>('.mc-step-head');
@@ -522,7 +615,7 @@ export function MacroEditor({ base, accounts, macros, api, openStep, stoppedReas
   const draft = snapshot();
   useEffect(() => {
     if (!onGame || !windowId) return;
-    const timer = setTimeout(() => call('editOnGame', { id: m.id, accountId: windowId, macro: latest.current.full() }, { silent: true }), 120);
+    const timer = setTimeout(() => call('editOnGame', { id: m.id, accountId: windowId, macro: latest.current.shownMacro() }, { silent: true }), 120);
     return () => clearTimeout(timer);
   }, [onGame, windowId, draft]);
   useEffect(() => {
@@ -544,7 +637,9 @@ export function MacroEditor({ base, accounts, macros, api, openStep, stoppedReas
   // the picture, what it found, a note).
   const [seen, setSeen] = useState<Seen | null>(null);
   const [lines, setLines] = useState<Seen[] | null>(null);
-  const [trial, setTrial] = useState<{ id: string; accountId: string; since: number } | null>(null);
+  // sec: the steps it plays (a feature's Try plays them alone); the lines say what happened to those.
+  const [trial, setTrial] = useState<{ id: string; accountId: string; since: number; sec: string | null } | null>(null);
+  const [linesSec, setLinesSec] = useState<string | null>(null);
   const trying = !!trial;
   const lastStep = useRef<number | null>(null);
   useEffect(() => on('macroSeen', (d?: Seen) => {
@@ -554,9 +649,11 @@ export function MacroEditor({ base, accounts, macros, api, openStep, stoppedReas
   const run = trial ? ((app.macroRuns || []) as MacroRun[]).filter(r => r.trial && r.macroId === trial.id && r.accountId === trial.accountId && Date.parse(r.startedAt) >= trial.since).at(-1) : undefined;
   useEffect(() => {
     if (!trial || !run) return;
+    const tried = listOf(trial.sec);
     const line = (d: Seen) => setLines(list => [...(list || []).filter(x => x.step == null || x.step !== d.step), d]);
-    const passed = (k: number) => { if (steps[k] && !BLOCKS.has(steps[k].kind)) line({ w: 0, h: 0, step: k, outcome: LOOKS.has(steps[k].kind) ? 'found' : 'done' }); };
-    const at = run.step ?? null;
+    const passed = (k: number) => { if (tried[k] && !BLOCKS.has(tried[k].kind)) line({ w: 0, h: 0, step: k, outcome: LOOKS.has(tried[k].kind) ? 'found' : 'done' }); };
+    // While a feature plays in the middle of the main steps, the lines wait where those were.
+    const at = run.section ? lastStep.current : run.step ?? null;
     if (lastStep.current !== null && at !== lastStep.current && !isLive(run)) {
       // ended: what stopped it, then how
       if (run.status === 'failed' && (run.reason === 'missingValue' || run.reason === 'notFound' || run.reason === 'timeout'))
@@ -565,28 +662,35 @@ export function MacroEditor({ base, accounts, macros, api, openStep, stoppedReas
     } else if (lastStep.current !== null && at !== null && at !== lastStep.current) passed(lastStep.current);
     if (!isLive(run)) {
       // Where it stopped, on its row: the app says (lastStep), else the last step seen running.
-      const where = run.lastStep ?? lastStep.current;
-      if (run.status === 'failed' && where !== null && steps[where]) {
-        setStopped({ k: steps[where]._k, reason: run.reason || '' });
-        unfoldTo(where);
-        setTimeout(() => rowEl(where)?.scrollIntoView({ block: 'nearest' }));
+      const where = run.section ? run.lastStep ?? null : run.lastStep ?? lastStep.current;
+      const list = run.section ? listOf(run.section) : tried;
+      if (run.status === 'failed' && where !== null && list[where]) {
+        setStopped({ k: list[where]._k, reason: run.reason || '' });
+        if ((run.section ?? trial.sec) === sec) {
+          unfoldTo(where);
+          setTimeout(() => rowEl(where)?.scrollIntoView({ block: 'nearest' }));
+        }
       }
       line({ w: 0, h: 0, outcome: run.status === 'done' ? 'done' : 'stopped' });
       setTrial(null);
     }
     lastStep.current = at;
-  }, [run?.step, run?.status]);
-  const runningAt = trial && run && isLive(run) && run.step != null ? run.step : null;
+  }, [run?.step, run?.status, run?.section]);
+  // The step playing, on its row when its list is the one shown (a feature's, while it plays in the main steps' run).
+  const runningAt = trial && run && isLive(run) && run.step != null && (run.section ?? trial.sec) === sec ? run.step : null;
   useEffect(() => { if (runningAt !== null) unfoldTo(runningAt); }, [runningAt]);
   const tryIt = (btn: HTMLElement) => busy(btn, async () => {
     if (trial) { setTrial(null); return call('stopMacros', { id: trial.id, accountId: trial.accountId, trial: true }); }
     if (!windowId) return toast(t('macro.need.try'), 'info');
-    if (errors.length) { setTried(true); goTo(errors[0]); return toast(t('macro.tryFix'), 'warn'); }
+    // A feature's Try plays its steps alone: the main steps' problems don't stop it.
+    const stops = sec ? errors.filter(p => p.sec === sec || (!p.sec && p.step === null && p.field)) : errors;
+    if (stops.length) { setTried(true); goTo(stops[0]); return toast(t('macro.tryFix'), 'warn'); }
     setLines([]);
+    setLinesSec(sec);
     setStopped(null);
     lastStep.current = null;
-    const r = await call('macroTryRun', { macro: full(), accountId: windowId }) as { queued: number; macroId: string } | undefined;
-    if (r?.macroId) setTrial({ id: r.macroId, accountId: windowId, since: Date.now() - 2000 });
+    const r = await call('macroTryRun', { macro: shownMacro(), accountId: windowId }) as { queued: number; macroId: string } | undefined;
+    if (r?.macroId) setTrial({ id: r.macroId, accountId: windowId, since: Date.now() - 2000, sec });
   });
 
   const record = (btn: HTMLElement) => busy(btn, async () => {
@@ -616,8 +720,9 @@ export function MacroEditor({ base, accounts, macros, api, openStep, stoppedReas
   const taken = new Map(macros.filter(o => o.id !== m.id && o.hotkey).map(o => [o.hotkey!, o.name]));
   const accTicked = new Set(m.accountIds);
   const shown = (p: { step: number | null }) => tried || p.step !== null;
-  const stepProblems = (i: number) => all.filter(p => p.step === i && shown(p));
-  const formProblems = (field: string) => all.filter(p => p.step === null && p.field === field && shown(p));
+  const inSec = (p: Problem) => (p.sec ?? null) === sec;
+  const stepProblems = (i: number) => all.filter(p => p.step === i && inSec(p) && shown(p));
+  const formProblems = (field: string) => all.filter(p => p.step === null && !p.sec && p.field === field && shown(p));
   const who = m.targets === 'accounts' ? tn('macro.tg.n', m.accountIds.length) : t(`macro.tg.${m.targets}`);
   const when = m.trigger.kind === 'interval' ? t('macro.trig.every', { d: durText(t, m.trigger.everySeconds || 60) }) : t(`macro.when.${m.trigger.kind}`);
   const ed: Ed = { val, put, set: setStep, ticked, tick, areas, newArea, pick, cut, canPick: !!windowId, capture, setCapture,
@@ -669,20 +774,30 @@ export function MacroEditor({ base, accounts, macros, api, openStep, stoppedReas
   const todoList = todos.current;
   const nameErr = formProblems('name');
   const whenErr = [...formProblems('accounts'), ...formProblems('every')];
-  const stepsErr = all.filter(p => p.step === null && !p.field && shown(p));
+  const stepsErr = all.filter(p => p.step === null && !p.field && !p.sec && shown(p));
+  const featErr = curFeat ? all.filter(p => p.sec === curFeat.id && p.step === null && shown(p)) : [];
+  // The main steps' safe points (where the features on play), marked on the list; If stuck comes after the last.
+  const safe = !sec && feats.length ? new Set(safeEnds(steps)) : new Set<number>();
+  // The end's mark, unless the last of them is a repeat's end, marked already.
+  const endAt = sec || !feats.length ? -2 : steps.findIndex(s => s.kind === 'recover');
+  const endMarked = safe.has((endAt >= 0 ? endAt : steps.length) - 1);
+  const safeRow = (key: string) => <div key={key} className="mc-safe" role="listitem"><Icon name="layers" /><span>{t('macro.feat.here')}</span></div>;
+  const lists4Move = feats.length ? [{ key: null as string | null, label: t('macro.feat.main') }, ...featsInOrder.map(f => ({ key: f.id as string | null, label: featLabel(f) }))]
+    .filter(x => x.key !== sec) : [];
   const optsErr = formProblems('options');
   return <div className="mc-form" ref={form}>
     {todoList.length ? <div className="mc-todo" role="group" aria-labelledby="mc-todo-h">
       <b id="mc-todo-h">{todoList.every(todoDone) ? t('macro.todo.allDone') : t('macro.todo.title')}</b>
       <ul>{todoList.map((x, k) => {
-        const i = steps.findIndex(y => y._k === x.k);
+        const main = listOf(null);
+        const i = main.findIndex(y => y._k === x.k);
         const done = todoDone(x);
-        const area = x.field === 'region' ? areas.find(a => '@' + a.name === steps[i]?.region)?.label : '';
+        const area = x.field === 'region' ? areas.find(a => '@' + a.name === main[i]?.region)?.label : '';
         return <li key={k} className={done ? 'done' : ''}><Icon name={done ? 'check' : 'record'} />
           <span>{area ? t('macro.todo.area', { area }) : t(`macro.todo.${x.field}`)}{i >= 0 ? <small> · {t('macro.stepN', { n: i + 1 })}</small> : null}</span>
           {done || i < 0 ? null : x.field === 'region'
             ? <button type="button" className="btn sm" onClick={() => { if (!onGame) editOnGame(); }}><Icon name="screens" /><span>{t('macro.game.edit')}</span></button>
-            : <button type="button" className="btn sm" onClick={() => focusRow(i)}>{t('macro.todo.go')}</button>}</li>;
+            : <button type="button" className="btn sm" onClick={() => goStep({ sec: null, i })}>{t('macro.todo.go')}</button>}</li>;
       })}</ul>
     </div> : null}
     <div className="mc-cols">
@@ -694,7 +809,7 @@ export function MacroEditor({ base, accounts, macros, api, openStep, stoppedReas
               onChange={e => patch({ name: e.target.value })} /></label>
             <button type="button" className={`btn mc-try-it${trying ? ' on' : ''}`} id="mc-try" aria-pressed={trying} disabled={!windowId}
               title={windowId ? t('macro.tryItTip', { name: windowName }) : t('macro.need.try')} onClick={e => tryIt(e.currentTarget)}>
-              <Icon name={trying ? 'stop' : 'play'} /><span>{t(trying ? 'macro.tryStop' : 'macro.tryIt')}</span></button>
+              <Icon name={trying ? 'stop' : 'play'} /><span>{t(trying ? 'macro.tryStop' : sec ? 'macro.feat.try' : 'macro.tryIt')}</span></button>
           </div>
           {nameErr.length ? <FieldErr id="mc-name-err" list={nameErr} /> : null}
           <details className="mc-when" open={whenOpen} onToggle={e => setWhenOpen((e.target as HTMLDetailsElement).open)}>
@@ -736,8 +851,8 @@ export function MacroEditor({ base, accounts, macros, api, openStep, stoppedReas
               <div className="mc-grid mc-when-more">
                 <label>{t('macro.onFail')}<select className="select" id="mc-onfail" value={m.onFail} onChange={e => patch({ onFail: e.target.value as Macro['onFail'] })}>
                   {['stop', 'skip', 'restart', 'rejoin', 'alert'].map(k => <option key={k} value={k}>
-                    {t(k === 'restart' && steps.some(s => s.kind === 'recover') ? 'macro.fail.recover' : `macro.fail.${k}`)}</option>)}</select></label>
-                {steps.some(s => LOOK_STEPS.includes(s.kind)) ? <label>{t('macro.stuckL')}<select className="select" id="mc-stuck" value={String(m.stuckMinutes || 0)}
+                    {t(k === 'restart' && listOf(null).some(s => s.kind === 'recover') ? 'macro.fail.recover' : `macro.fail.${k}`)}</option>)}</select></label>
+                {allHeld().some(s => LOOK_STEPS.includes(s.kind)) ? <label>{t('macro.stuckL')}<select className="select" id="mc-stuck" value={String(m.stuckMinutes || 0)}
                   onChange={e => patch({ stuckMinutes: +e.target.value || null })}>{[...new Set([0, 2, 5, 10, 30, m.stuckMinutes || 0])].sort((x, y) => x - y)
                     .map(n => <option key={n} value={String(n)}>{n ? t('macro.stuck.after', { n }) : t('macro.stuck.off')}</option>)}</select></label> : <span />}
               </div>
@@ -760,7 +875,15 @@ export function MacroEditor({ base, accounts, macros, api, openStep, stoppedReas
               onClick={e => record(e.currentTarget)}><Icon name="record" /><span>{t('macro.recordBtn')}</span></button>
             <button type="button" className="btn sm" id="mc-add" aria-haspopup="dialog" aria-expanded={adding?.anchor.id === 'mc-add'}
               onClick={e => openAdd(e.currentTarget)}><Icon name="plus" /><span>{t('macro.addStep')}</span></button>
+            {feats.length ? null : <button type="button" className="btn sm ghost" id="mc-feat-add" title={t('macro.feat.addTip')} onClick={addFeature}>
+              <Icon name="layers" /><span>{t('macro.feat.add')}</span></button>}
           </div>
+          {feats.length ? <FeatTabs feats={featsInOrder} sec={sec} label={featLabel} on={f => !!opts.find(o => o.name === f.option)?.value}
+            bad={key => errors.some(p => (p.sec ?? null) === key)} count={key => listOf(key).length} go={switchTo}
+            add={feats.length < MAX_FEATURES ? addFeature : null} /> : null}
+          {curFeat ? <FeatHead f={curFeat} o={opts.find(o => o.name === curFeat.option)} errs={featErr} set={p => setFeat(curFeat.id, p)}
+            setOpt={p => { const o = opts.find(x => x.name === curFeat.option); if (o) setOpt(o.name, p); }}
+            drop={btn => dropFeature(curFeat.id, btn)} /> : null}
           {rec ? <EditorRecording startsAt={rec.startsAt} count={rec.steps} /> : null}
           {pending ? <div className="mc-pending" role="group" aria-label={t('macro.rec.done', { n: pending.steps.length })}>
             <span>{tn('macro.rec.done', pending.steps.length)}</span>
@@ -768,7 +891,7 @@ export function MacroEditor({ base, accounts, macros, api, openStep, stoppedReas
             <button type="button" className="btn sm" onClick={() => { setSteps(pending.steps.map(hold)); patch({ recordedSize: { w: pending.w, h: pending.h } }); setPending(null); }}>{t('macro.rec.replace')}</button>
             <button type="button" className="btn sm ghost" onClick={() => setPending(null)}>{t('macro.rec.discard')}</button>
           </div> : null}
-          {!steps.length ? <p className="mc-steps-none">{t('macro.noSteps')}</p> : null}
+          {!steps.length ? <p className="mc-steps-none">{t(sec ? 'macro.feat.noSteps' : 'macro.noSteps')}</p> : null}
           {stepsErr.length ? <FieldErr list={stepsErr} /> : null}
           <div className="mc-steps" role="list" aria-labelledby="mc-steps-h"
             onDragOver={e => {
@@ -782,20 +905,27 @@ export function MacroEditor({ base, accounts, macros, api, openStep, stoppedReas
             {steps.map((s, i) => {
               const sh = folds[i];
               if (sh.hidden) return null;
-              const inside = sh.end >= 0 && folded.has(s._k) ? all.filter(p => !p.warn && p.step !== null && p.step > i && p.step <= sh.end).length : 0;
-              return <StepRow key={s._k} s={s} i={i} m={m} count={steps.length} shape={sh} problems={stepProblems(i)} fixOf={fixOf}
+              const inside = sh.end >= 0 && folded.has(s._k) ? all.filter(p => !p.warn && inSec(p) && p.step !== null && p.step > i && p.step <= sh.end).length : 0;
+              const mark = (safe.has(i) || (sh.end >= 0 && folded.has(s._k) && safe.has(sh.end))) ? safeRow('safe-' + s._k) : null;
+              return <Fragment key={s._k}>{i === endAt && !endMarked ? safeRow('safe-end') : null}<StepRow s={s} i={i} m={m} count={steps.length} shape={sh} problems={stepProblems(i)} fixOf={fixOf}
                 dragging={!!dragging && i >= dragging.from && i < dragging.from + dragging.len}
                 open={openKey === s._k} toggle={() => { setOpenKey(openKey === s._k ? null : s._k); setCursor(i); }} ed={ed}
                 folded={folded.has(s._k)} fold={() => toggleFold(s._k)} hiddenBad={inside}
                 running={runningAt === i} stopped={stopped?.k === s._k ? stopped.reason : null}
                 noting={noteFor === s._k} setNoting={on => setNoteFor(on ? s._k : null)} setNote={text => setNoteOf(i, text)}
                 focus={() => setCursor(i)} move={(dir, btn) => moveStep(i, dir, btn)} dup={() => dupStep(i)} del={btn => delStep(i, btn)} cutting={cutFor === i}
-                insert={(btn, at) => openAdd(btn, at)} dragStart={() => { const [a, b] = span(steps, i); setDragging({ from: a, len: b - a + 1 }); }} />;
+                insert={(btn, at) => openAdd(btn, at)} dragStart={() => { const [a, b] = span(steps, i); setDragging({ from: a, len: b - a + 1 }); }}
+                moveTargets={s.kind === 'else' || s.kind === 'recover' ? [] : lists4Move} moveOut={to => moveToList(i, to)} />{mark}</Fragment>;
             })}
+            {endAt === -1 && steps.length && !endMarked ? safeRow('safe-end') : null}
           </div>
         </section>
 
         <PlayerSees m={m} options={shownOpts} counts={counterList.map(labelOf)} areas={areas.length}
+          features={Object.fromEntries(feats.map(f => [f.option, { id: f.id, steps: listOf(f.id).length }]))} openFeature={id => {
+            switchTo(id);
+            form.current?.querySelector('.mc-steps-sec')?.scrollIntoView({ block: 'start' });
+          }} addFeature={feats.length < MAX_FEATURES ? addFeature : null}
           tabs={tabs} tab={curTab} setTab={setTabSel} addTab={addTab} renameTab={renameTab} removeTab={removeTab}
           moveTo={(name, tab) => setM(x => ({ ...x, options: (x.options || []).map(o => {
             if (o.name !== name) return o;
@@ -822,9 +952,12 @@ export function MacroEditor({ base, accounts, macros, api, openStep, stoppedReas
             [list[i], list[j]] = [list[j], list[i]];
             patch({ options: list });
           }}
-          remove={name => {
+          remove={(name, btn) => {
             const o = opts.find(x => x.name === name);
             if (!o) return;
+            // A feature's switch: the feature goes with it (asked first when it has steps).
+            const f = feats.find(x => x.option === name);
+            if (f) return dropFeature(f.id, btn);
             if (FREE.has(o.kind)) {
               // A switch or list a step still reads stays: said here, with links to those steps.
               const by = readers(name);
@@ -834,11 +967,11 @@ export function MacroEditor({ base, accounts, macros, api, openStep, stoppedReas
             }
             // A ticked value: the steps get it back as their own.
             const back = (k: string, v: unknown) => v !== '$' + name ? v : o.kind === 'point' ? asPoint(o.value)?.[k as 'x' | 'y'] : o.value;
-            setSteps(list => list.map(s => ({ ...Object.fromEntries(Object.entries(s).map(([k, v]) => [k, back(k, v)])),
-              ...(s.test ? { test: Object.fromEntries(Object.entries(s.test).map(([k, v]) => [k, back(k, v)])) } : {}) } as Held)));
+            mapAll(s => ({ ...Object.fromEntries(Object.entries(s).map(([k, v]) => [k, back(k, v)])),
+              ...(s.test ? { test: Object.fromEntries(Object.entries(s.test).map(([k, v]) => [k, back(k, v)])) } : {}) } as Held));
           }}>
           {optsErr.length ? <FieldErr list={optsErr} /> : null}
-          {inUse?.what.startsWith('opt:') ? <InUse label={inUse.label} steps={inUse.steps} go={i => focusRow(i)} close={() => setInUse(null)} /> : null}
+          {inUse?.what.startsWith('opt:') ? <InUse label={inUse.label} steps={inUse.steps} name={id => featLabel(featOf(id))} go={goStep} close={() => setInUse(null)} /> : null}
           <label className="mc-switch-row">
             <span className="switch"><input type="checkbox" id="mc-panel-auto" checked={!!m.panel?.autoShow}
               onChange={e => setPanel({ autoShow: e.target.checked })} /><span /></span>
@@ -873,12 +1006,19 @@ export function MacroEditor({ base, accounts, macros, api, openStep, stoppedReas
           </div>
           {note ? <p className="mc-note" role="status"><Icon name="info" /><span>{note}</span></p> : null}
           <AreaList areas={areas} set={setArea} del={delArea} add={() => newArea()} problems={all.filter(p => p.field?.startsWith('area:'))}
-            inUse={inUse?.what.startsWith('area:') ? inUse : null} go={i => focusRow(i)} closeInUse={() => setInUse(null)} />
+            inUse={inUse?.what.startsWith('area:') ? inUse : null} name={id => featLabel(featOf(id))} go={goStep} closeInUse={() => setInUse(null)} />
         </section>
-        {lines ? <TryLines lines={lines} trying={trying} steps={steps} m={m} name={windowName} note={seen?.note} /> : null}
+        {lines ? <TryLines lines={lines} trying={trying} steps={listOf(linesSec)} m={m} name={windowName} note={seen?.note} /> : null}
       </aside>
     </div>
-    {adding ? <AddList anchor={adding.anchor} at={adding.at} steps={steps} add={add} close={() => setAdding(null)} /> : null}
+    {adding ? <AddList anchor={adding.anchor} at={adding.at} steps={steps} inFeature={!!sec} add={add} close={() => setAdding(null)} /> : null}
+    {dropping ? <Pop anchor={dropping.anchor} close={() => setDropping(null)} label={t('macro.feat.del')} className="mc-ask">
+      <p>{tn('macro.feat.delAsk', listOf(dropping.id).length, { name: featLabel(featOf(dropping.id)) })}</p>
+      <div className="mc-pop-acts">
+        <button type="button" className="btn sm ghost" onClick={() => setDropping(null)}>{t('common.cancel')}</button>
+        <button type="button" className="btn sm danger" autoFocus onClick={() => dropFeature(dropping.id, undefined, true)}>{t('macro.delete')}</button>
+      </div>
+    </Pop> : null}
     {asking ? <Pop anchor={asking.anchor} close={() => setAsking(null)} label={t('macro.delStep')} className="mc-ask">
       <p>{tn('macro.block.deleteAsk', folds[asking.i]?.inner || 0, { what: t(steps[asking.i]?.kind === 'if' ? 'macro.block.if' : 'macro.block.loop') })}</p>
       <div className="mc-pop-acts">
@@ -901,11 +1041,72 @@ function FieldErr({ list, id }: { list: Problem[]; id?: string }) {
   return <ul className="mc-ferr" id={id} role="status">{list.map((p, k) => <li key={k} className={p.warn ? 'warn' : ''}><Icon name="alert" /><span>{p.text}</span></li>)}</ul>;
 }
 
-/** "Used by steps 3 and 4": what can't go yet, each step a link to it. */
-function InUse({ label, steps, go, close }: { label: string; steps: number[]; go: (i: number) => void; close: () => void }) {
+/** The main steps and each feature's, as tabs over the list: a feature's switch on or off, a dot where something stops
+ * a save. They play left to right (the order of their switches on the panel). */
+function FeatTabs({ feats, sec, label, on, bad, count, go, add }: {
+  feats: FeatMeta[]; sec: string | null; label: (f: FeatMeta) => string; on: (f: FeatMeta) => boolean;
+  bad: (key: string | null) => boolean; count: (key: string | null) => number; go: (key: string | null) => void; add: (() => void) | null;
+}) {
+  const { t } = useHost();
+  const tab = (key: string | null, name: string, lit: boolean | null) => <button key={key ?? ''} type="button" role="tab" aria-selected={sec === key}
+    className={`mc-ftab${sec === key ? ' on' : ''}`} onClick={() => go(key)}>
+    {lit === null ? null : <i className={`mc-ftab-sw${lit ? ' lit' : ''}`} title={t(lit ? 'macro.feat.isOn' : 'macro.feat.isOff')} aria-hidden="true" />}
+    <span>{name}</span><small>{count(key)}</small>{bad(key) ? <i className="mc-dot-bad" aria-hidden="true" /> : null}</button>;
+  return <div className="mc-ftabs-wrap">
+    <div className="mc-ftabs" role="tablist" aria-label={t('macro.feat.tabs')}>
+      {tab(null, t('macro.feat.main'), null)}
+      {feats.map(f => tab(f.id, label(f), on(f)))}
+      {add ? <button type="button" className="mc-ftab add" id="mc-feat-add" title={t('macro.feat.addTip')} onClick={add}><Icon name="plus" /><span>{t('macro.feat.add')}</span></button> : null}
+    </div>
+    {feats.length > 1 ? <small className="mc-ftabs-say">{t('macro.feat.order')}</small> : null}
+  </div>;
+}
+
+/** The feature shown: its name (its switch's label on the panel), on or off, when it plays, what a failure does in it. */
+function FeatHead({ f, o, errs, set, setOpt, drop }: {
+  f: FeatMeta; o?: Option; errs: Problem[]; set: (p: Partial<FeatMeta>) => void; setOpt: (p: Partial<Option>) => void; drop: (btn: HTMLElement) => void;
+}) {
+  const { t } = useHost();
+  const every = f.everyMs;
+  const [unit, setUnit] = useState<'s' | 'min'>(() => every && every >= 60000 && every % 60000 === 0 ? 'min' : 's');
+  const size = unit === 'min' ? 60000 : 1000;
+  const shown = typeof every === 'number' && Number.isFinite(every) ? +(every / size).toFixed(2) : '';
+  return <div className="mc-feat form" role="group" aria-label={o?.label || t('macro.feat.unnamed')}>
+    <div className="mc-feat-row">
+      <label className="mc-feat-name">{t('macro.feat.name')}<input className="field" id="mc-feat-name" maxLength={30} value={o?.label || ''}
+        aria-invalid={!o?.label.trim() || undefined} onChange={e => setOpt({ label: e.target.value })} /></label>
+      <label className="mc-switch-row mc-feat-on">
+        <span className="switch"><input type="checkbox" checked={!!o?.value} onChange={e => setOpt({ value: e.target.checked ? 1 : 0, default: e.target.checked ? 1 : 0 })} /><span /></span>
+        <span>{t(o?.value ? 'macro.feat.isOn' : 'macro.feat.isOff')}</span></label>
+      <button type="button" className="icon-btn" title={t('macro.feat.del')} aria-label={`${t('macro.feat.del')}: ${o?.label || ''}`} onClick={e => drop(e.currentTarget)}><Icon name="trash" /></button>
+    </div>
+    <div className="mc-grid">
+      <label>{t('macro.feat.when')}<span className="mc-every">
+        <select className="select" id="mc-feat-when" value={every == null ? 'round' : 'every'}
+          onChange={e => set({ everyMs: e.target.value === 'round' ? null : 300000 })}>
+          <option value="round">{t('macro.feat.eachRound')}</option><option value="every">{t('macro.feat.everyOpt')}</option></select>
+        {every == null ? null : <>
+          <input className="field num" id="mc-feat-every" type="number" min={1} max={unit === 'min' ? 1440 : 86400}
+            aria-label={t('macro.feat.everyL')} aria-invalid={errs.some(p => p.field === 'every') || undefined} value={shown}
+            onChange={e => set({ everyMs: e.target.value === '' ? NaN : Math.round(+e.target.value * size) })} />
+          <select className="select" aria-label={t('macro.every.unit')} value={unit} onChange={e => {
+            const u = e.target.value as 's' | 'min';
+            setUnit(u);
+            if (typeof shown === 'number') set({ everyMs: Math.round(shown * (u === 'min' ? 60000 : 1000)) });
+          }}><option value="s">{t('macro.every.s')}</option><option value="min">{t('macro.every.min')}</option></select></>}</span></label>
+      <label>{t('macro.feat.onFail')}<select className="select" id="mc-feat-fail" value={f.onFail} onChange={e => set({ onFail: e.target.value as FeatMeta['onFail'] })}>
+        <option value="skip">{t('macro.feat.fail.skip')}</option><option value="macro">{t('macro.feat.fail.macro')}</option></select></label>
+    </div>
+    <p className="mc-feat-say">{t(every == null ? 'macro.feat.sayRound' : 'macro.feat.sayEvery')}</p>
+    {errs.length ? <FieldErr list={errs} /> : null}
+  </div>;
+}
+
+/** "Used by steps 3 and 4": what can't go yet, each step a link to it (a feature's step with the feature's name). */
+function InUse({ label, steps, name, go, close }: { label: string; steps: At[]; name: (id: string) => string; go: (at: At) => void; close: () => void }) {
   const { t, tn, locale } = useHost();
   const MARK = '\u0001';
-  const nums = steps.map(i => String(i + 1));
+  const nums = steps.map(x => x.sec ? `${name(x.sec)} ${x.i + 1}` : String(x.i + 1));
   const list = new Intl.ListFormat(locale, { style: 'long', type: 'conjunction' }).formatToParts(nums.map((_, k) => `${MARK}${k}${MARK}`))
     .map(p => p.value).join('');
   const text = tn('macro.ref.used', steps.length, { list, name: label });
@@ -915,9 +1116,9 @@ function InUse({ label, steps, go, close }: { label: string; steps: number[]; go
 }
 
 /** The macro's areas: each one's colour on the game, its name (what the steps say: "in Fish area"), and removing it. */
-function AreaList({ areas, set, del, add, problems: probs, inUse, go, closeInUse }: {
+function AreaList({ areas, set, del, add, problems: probs, inUse, name, go, closeInUse }: {
   areas: Area[]; set: (name: string, p: Partial<Area>) => void; del: (name: string) => void; add: () => void; problems: Problem[];
-  inUse: { what: string; label: string; steps: number[] } | null; go: (i: number) => void; closeInUse: () => void;
+  inUse: { what: string; label: string; steps: At[] } | null; name: (id: string) => string; go: (at: At) => void; closeInUse: () => void;
 }) {
   const { t } = useHost();
   return <div className="mc-areas" role="group" aria-labelledby="mc-areas-h">
@@ -933,7 +1134,7 @@ function AreaList({ areas, set, del, add, problems: probs, inUse, go, closeInUse
           <button type="button" className="icon-btn" title={t('macro.area.del')} aria-label={`${t('macro.area.del')}: ${a.label}`} onClick={() => del(a.name)}><Icon name="trash" /></button>
         </div>
         {bad ? <p className="mc-ferr-line"><Icon name="alert" /><span>{bad.text}</span></p> : null}
-        {inUse?.what === 'area:' + a.name ? <InUse label={a.label} steps={inUse.steps} go={go} close={closeInUse} /> : null}
+        {inUse?.what === 'area:' + a.name ? <InUse label={a.label} steps={inUse.steps} name={name} go={go} close={closeInUse} /> : null}
       </li>;
     })}</ul>}
   </div>;
@@ -955,11 +1156,14 @@ function EditorRecording({ startsAt, count }: { startsAt: string; count: number 
 
 /** Add step: a search box, the kinds used lately, then every kind in its group; only those that fit where it goes
  * (Otherwise straight inside an If, Leave the repeat inside a repeat, one If stuck). Enter adds the first match. */
-function AddList({ anchor, at, steps, add, close }: { anchor: HTMLElement; at: number; steps: Step[]; add: (kind: string, at: number) => void; close: () => void }) {
+function AddList({ anchor, at, steps, inFeature, add, close }: {
+  anchor: HTMLElement; at: number; steps: Step[]; inFeature: boolean; add: (kind: string, at: number) => void; close: () => void;
+}) {
   const { t, store } = useHost();
   const [q, setQ] = useState('');
   const list = useRef<HTMLDivElement>(null);
-  const fits = new Set(kindsAt(steps, at));
+  // If stuck belongs to the main steps only.
+  const fits = new Set(kindsAt(steps, at).filter(k => !(inFeature && k === 'recover')));
   const name = (k: string) => t(`macro.kind.${k}`);
   const words = plain(q.trim()).split(/\s+/).filter(Boolean);
   const hay = (k: string, g: string) => plain([name(k), t(`macro.grp.${g}`), ...(SYNONYMS[k] || [])].join(' '));
@@ -1020,11 +1224,13 @@ function NewCounter({ anchor, taken, close, done }: { anchor: HTMLElement; taken
 /* ── a step's row ── */
 
 function StepRow({ s, i, m, count, shape, problems: probs, fixOf, dragging, ed, focus, move, dup, del, cutting, dragStart, open, toggle, folded, fold, hiddenBad,
-  running, stopped, noting, setNoting, setNote, insert }: {
+  running, stopped, noting, setNoting, setNote, insert, moveTargets, moveOut }: {
   s: Held; i: number; m: Macro; count: number; shape: Shape; problems: Problem[]; fixOf: (p: Problem) => { label: string; run: () => void; off?: string } | null;
   dragging: boolean; open: boolean; toggle: () => void; folded: boolean; fold: () => void; hiddenBad: number; running: boolean; stopped: string | null;
   noting: boolean; setNoting: (on: boolean) => void; setNote: (text: string) => void; insert: (btn: HTMLElement, at: number) => void;
   ed: Ed; focus: () => void; move: (dir: number, btn: HTMLElement) => void; dup: () => void; del: (btn: HTMLElement) => void; cutting: boolean; dragStart: () => void;
+  /** The other lists it can go to (the main steps, the features'), at their end. */
+  moveTargets: { key: string | null; label: string }[]; moveOut: (to: string | null) => void;
 }) {
   const host = useHost();
   const { t, tn } = host;
@@ -1057,6 +1263,8 @@ function StepRow({ s, i, m, count, shape, problems: probs, fixOf, dragging, ed, 
   const menu = (btn: HTMLElement) => host.menu(btn, [
     { icon: 'edit', text: t(s.note ? 'macro.note.edit' : 'macro.note.add'), run: () => setNoting(true) },
     { icon: 'copy', text: t('macro.dupStep'), run: dup },
+    ...(moveTargets.length ? ['-' as const, { head: true, text: t('macro.feat.moveTo') },
+      ...moveTargets.map(x => ({ icon: 'chevronRight', text: x.label, run: () => moveOut(x.key) }))] : []),
     '-', { icon: 'trash', text: t('macro.delStep'), danger: true, run: () => del(btn) },
   ], { icons: true });
   const chip = running ? <em className="mc-chip run">{t('macro.run.here')}</em> : null;

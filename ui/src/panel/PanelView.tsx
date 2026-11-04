@@ -80,7 +80,8 @@ export function PanelView({ model, now, pill: pillSent, error, on }: {
     hints,
     hold: (key, h) => { if (h) holds.current.add(key); else holds.current.delete(key); },
     hasWindow: now.hasWindow,
-  }), [on, hint, hints, now.hasWindow]);
+    features: now.features || null,
+  }), [on, hint, hints, now.hasWindow, now.features]);
 
   // The window takes the page's size: its natural height, the rows not scrolled (the app caps it at the screen).
   // Said when it changed, and once after each "panel" from the app (the window shows on that answer); not on every drawing.
@@ -164,14 +165,14 @@ export function PanelView({ model, now, pill: pillSent, error, on }: {
       <button type="button" className={`btn sm${running ? ' danger' : ' go'}`} aria-disabled={!running && blocked ? true : undefined} title={running ? undefined : blocked}
         onClick={run}><Icon name={running ? 'stop' : 'play'} />{t(running ? 'macro.stop' : 'macro.run')}</button>
       <button type="button" className="pn-icon" title={t('panel.unfold')} aria-label={t('panel.unfold')} onClick={() => fold(false)}><Icon name="chevronDown" /></button>
-      {menu ? <TitleMenu at={menu} close={() => setMenu(null)} on={on} lastStep={now.lastError?.step} /> : null}
+      {menu ? <TitleMenu at={menu} close={() => setMenu(null)} on={on} lastStep={now.lastError?.step} section={now.lastError?.section} /> : null}
     </div>;
   }
 
   const options = tabs.length ? model.options.filter(o => (o.tab && tabs.includes(o.tab) ? o.tab : tabs[0]) === shownTab) : model.options;
   const counters = model.counters.filter(c => c.name in now.counters);
   const fix = now.state === 'stopped' && now.lastError
-    ? <button type="button" className="pn-link" onClick={() => on.act('edit', { step: now.lastError!.step })}>{t('panel.fix')}</button> : null;
+    ? <button type="button" className="pn-link" onClick={() => on.act('edit', { step: now.lastError!.step, section: now.lastError!.section ?? null })}>{t('panel.fix')}</button> : null;
 
   return <Ctx.Provider value={ctx}>
     <div ref={root} className={`pn s-${now.state}`}>
@@ -267,11 +268,11 @@ function Tabs({ tabs, tab, setTab }: { tabs: string[]; tab: string; setTab: (x: 
   </div>;
 }
 
-function TitleMenu({ at, close, on, lastStep }: { at: { x: number; y: number }; close: () => void; on: PanelOn; lastStep: number | undefined }) {
+function TitleMenu({ at, close, on, lastStep, section }: { at: { x: number; y: number }; close: () => void; on: PanelOn; lastStep: number | undefined; section?: string | null }) {
   const { t } = useHost();
   return <MenuAt at={{ left: at.x, top: at.y, right: at.x, bottom: at.y, width: 0, height: 0 }} close={close} label={t('panel.editMacro')} items={[
     { text: t('panel.snap'), icon: 'screens', run: () => on.act('snap') },
-    { text: t('panel.editMacro'), icon: 'edit', run: () => on.act('edit', lastStep === undefined ? {} : { step: lastStep }) },
+    { text: t('panel.editMacro'), icon: 'edit', run: () => on.act('edit', lastStep === undefined ? {} : { step: lastStep, section: section ?? null }) },
     { text: t('panel.hide'), icon: 'eyeOff', run: () => on.act('hide') },
   ]} />;
 }

@@ -230,6 +230,9 @@ html [data-theme="dark" lang="vi"]
                   button.btn.sm [id="mc-add" type="button" aria-expanded="false" aria-haspopup="dialog"]
                     svg.i #u7ty99
                     span "Thêm bước"
+                  button.btn.ghost.sm [id="mc-feat-add" type="button" title="Công tắc trên bảng, có các bước riêng"]
+                    svg.i #1pvni8o
+                    span "Chức năng"
                 div.mc-steps [role="list" aria-labelledby="mc-steps-h"]
                   div.mc-opener.mc-step [role="listitem" aria-label="Bước 1: Lặp đến khi dừng" style="--d:0"]
                     button.mc-ins [type="button" title="Thêm bước vào đây" tabindex="-1" aria-haspopup="dialog" aria-label="Thêm bước vào đây"]
@@ -445,7 +448,7 @@ html [data-theme="dark" lang="vi"]
         button.btn.danger.push "Xóa"
         button.btn "Hủy"
         button.btn.primary [aria-disabled="false"] "Lưu"
-    div.mc-counter-pop.mc-pop [role="dialog" aria-label="Bộ đếm mới…" style="left:385.188px;top:366.844px"]
+    div.mc-counter-pop.mc-pop [role="dialog" aria-label="Bộ đếm mới…" style="left:385.188px;top:364.844px"]
       form.form
         label "Tên bộ đếm"
           input.field.sm [autocomplete="off" maxlength="32" aria-describedby="mc-counter-hint" value="gold"]
@@ -697,6 +700,9 @@ html [data-theme="dark" lang="vi"]
                   button.btn.sm [id="mc-add" type="button" aria-expanded="false" aria-haspopup="dialog"]
                     svg.i #u7ty99
                     span "Thêm bước"
+                  button.btn.ghost.sm [id="mc-feat-add" type="button" title="Công tắc trên bảng, có các bước riêng"]
+                    svg.i #1pvni8o
+                    span "Chức năng"
                 div.mc-steps [role="list" aria-labelledby="mc-steps-h"]
                   div.mc-opener.mc-step [role="listitem" aria-label="Bước 1: Lặp đến khi dừng" style="--d:0"]
                     button.mc-ins [type="button" title="Thêm bước vào đây" tabindex="-1" aria-haspopup="dialog" aria-label="Thêm bước vào đây"]

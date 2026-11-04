@@ -1925,7 +1925,7 @@
           setView('accounts');
         };
         ui = window.BloxkeepUI.macroEditor(el.querySelector('.modal-body'), uiHost(), { base, isNew, accounts: accounts(), macros: macros(),
-          openStep: opts.step, stoppedReason: opts.reason, goAccounts });
+          openStep: opts.step, openSection: opts.section, stoppedReason: opts.reason, goAccounts });
         setTimeout(() => el.querySelector('#mc-name')?.focus(), 30);
       },
       onRemoved: () => ui?.unmount(),
@@ -3287,7 +3287,7 @@
     const m = macros().find(x => x.id === d?.id);
     if (!m) return;
     setView('macros');
-    macroModal(m, false, d.step != null ? { step: d.step } : {});
+    macroModal(m, false, d.step != null ? { step: d.step, section: d.section } : {});
   });
 
   toastUi = window.BloxkeepUI.toasts($('#toasts'), uiHost());
