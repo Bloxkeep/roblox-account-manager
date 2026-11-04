@@ -17,6 +17,7 @@ import { CODE_LENGTH, captcha } from './captcha.js';
 import { COMMANDS, api, inviteUrl, replyUrl, verify } from './discord.js';
 import { DAYS_SHOWN, GRACE, GRACE_SLACK_SECONDS, beatEvery, scramble, dashboardKey, dashboardPage, dayOf, onlineMessage, readBeat } from './online.js';
 import { ALL_ACCOUNTS_COMMANDS, ALLOW_FOR, APP_COMMANDS, ANSWER_WAIT, CODE_FOR, CODE_GRACE, COMMANDS_PER_MINUTE, MAX_CODES, MAX_MESSAGE, MAX_PCS, MAX_UNLINKED, MESSAGES_PER_MINUTE, PC_TEXT, REASKED_GAP, SHOTS_PER_MINUTE, TOKEN_FOR, WRONG_CODES, WRONG_WINDOW, choices, handleOf, makeCode, pcId, readAnswer, readCode, readHello } from './remote.js';
+import { RAW_KEPT, makeFeedChannel, rawLine, rawOf } from './feeds.js';
 import { setupServer } from './setup.js';
 import { newer, readInstallDownloads, readLatestTag, readNotes, readRelease, readStatus, readWatch, release } from './sources.js';
 import {
@@ -52,9 +53,11 @@ const OBJECT = 'bot-na', OLD_OBJECT = 'bot', PLACE = 'enam';
 const PUBLIC_URL = 'https://bloxkeep-bot.bloxkeep-app.workers.dev';
 // The custom status under the bot's name changes this often, through what's true right now (texts.js presenceLines).
 const PRESENCE_EVERY = 20_000;
-// What the bot hears from Discord: messages in servers (who posted where, not what: no privileged intent), for the trap.
-// A session made with other intents is not resumed but identified again.
-const INTENTS = 1 << 9;
+// What the bot hears from Discord: messages in servers, for the trap (who posted where) and the game feeds (what arrived
+// in a feed channel: Message Content, a privileged intent, turned on in the Developer Portal). While Discord refuses
+// Message Content (close 4014), the bot goes on without it (Gateway.intents). A session made with other intents is not
+// resumed but identified again.
+const MESSAGES = 1 << 9, MESSAGE_CONTENT = 1 << 15;
 // A captcha is good for this long, and once: a wrong answer means a new picture. Pictures a person may ask for, per window.
 const CAPTCHA_FOR = 5 * 60_000, CAPTCHAS_PER = 5, CAPTCHA_WINDOW = 10 * 60_000;
 // The community server's invite (/discord) is asked Discord whether it still works at most this often.
@@ -136,6 +139,11 @@ export class Gateway extends DurableObject {
       ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('ping', 'pong'));
       this.dayKey = (await ctx.storage.get('dayKey')) ?? null; // { day, key }
       this.here = new Map([...ctx.storage.sql.exec('SELECT * FROM online')].map(r => [r.id, { until: r.until, app: r.app, lang: r.lang }]));
+      // Game feeds (feeds.js): the hidden channels whose messages are kept, and the last RAW_KEPT of each, as they came.
+      ctx.storage.sql.exec('CREATE TABLE IF NOT EXISTS feeds (channel TEXT PRIMARY KEY, guild TEXT NOT NULL, name TEXT NOT NULL, at INTEGER NOT NULL)');
+      ctx.storage.sql.exec('CREATE TABLE IF NOT EXISTS feed_raw (channel TEXT NOT NULL, at INTEGER NOT NULL, data TEXT NOT NULL)');
+      this.feeds = new Set([...ctx.storage.sql.exec('SELECT channel FROM feeds')].map(r => r.channel));
+      this.noContent = (await ctx.storage.get('noContent')) ?? false; // Discord refused Message Content: not asked for
       this.session = (await ctx.storage.get('session')) ?? null; // { id, url, seq }
       this.stopped = (await ctx.storage.get('stopped')) ?? null;
       this.retired = (await ctx.storage.get('retired')) ?? false; // handed over to the object that replaced it
@@ -687,6 +695,8 @@ export class Gateway extends DurableObject {
         return reply({ embeds: [multiEmbed(l, snap.watch)] });
       case 'robloxstatus':
         return reply({ embeds: [statusEmbed(l, snap.status ?? { code: 100, parts: [], incident: null })] });
+      case 'feed':
+        return this.feedCommand(i, reply);
       case 'online': { // anyone, in the channel; Bloxkeep's developers get it all, seen only by them
         if (!await this.isDeveloper(i.member?.user?.id ?? i.user?.id))
           return reply(onlineMessage(this.onlineNow(), null, null, false));
@@ -931,6 +941,84 @@ export class Gateway extends DurableObject {
       now: count, at: new Date(now).toISOString(), forMinutes: Math.round(this.onlineFor(this.beatEvery(count)) / 60_000),
       today: shown.at(-1), days: shown, apps: tally('app'), languages: tally('lang'),
     };
+  }
+
+  // ───────────────────────────── game feeds (feeds.js) ─────────────────────────────
+
+  /** A message (new or edited) in a feed channel, kept as it came; the oldest go past RAW_KEPT. */
+  keepRaw(d, kind) {
+    const sql = this.ctx.storage.sql;
+    sql.exec('INSERT INTO feed_raw (channel, at, data) VALUES (?, ?, ?)', d.channel_id, Date.now(), JSON.stringify(rawOf(d, kind)));
+    sql.exec('DELETE FROM feed_raw WHERE channel = ? AND rowid NOT IN (SELECT rowid FROM feed_raw WHERE channel = ? ORDER BY rowid DESC LIMIT ?)',
+      d.channel_id, d.channel_id, RAW_KEPT);
+  }
+
+  /** What a feed channel kept, newest first: the dashboard key's /feeds/raw.json, and /feed raw. */
+  feedRaw(channel) {
+    return [...this.ctx.storage.sql.exec('SELECT at, data FROM feed_raw WHERE channel = ? ORDER BY rowid DESC', channel)]
+      .map(r => ({ keptAt: new Date(r.at).toISOString(), ...JSON.parse(r.data) }));
+  }
+
+  /** /feed, Bloxkeep's developers only: a hidden channel per source, and what arrived in each. */
+  async feedCommand(i, reply) {
+    const mine = content => reply({ content: content.slice(0, 2000) }, true);
+    if (!await this.isDeveloper(i.member?.user?.id ?? i.user?.id))
+      return mine("Only Bloxkeep's developers can use this.");
+    if (!i.guild_id)
+      return mine('In a server only.');
+    const sub = i.data.options?.[0], opt = n => sub?.options?.find(o => o.name === n)?.value;
+    const sql = this.ctx.storage.sql;
+    // Message Content refused before: asked for again (turned on since, perhaps); refused again, the bot goes on without.
+    const contentNote = this.noContent
+      ? "\nMessage Content is off: messages arrive, but their text and embeds come empty. Turn it on (Developer Portal → Bot → Message Content Intent); the bot asks for it again at your next /feed."
+      : '';
+    if (this.noContent) {
+      this.noContent = false;
+      await this.ctx.storage.delete('noContent');
+      this.drop(4000);
+      this.connect().catch(() => {});
+    }
+    if (sub?.name === 'new') {
+      const me = await api(this.env, 'GET', '/users/@me');
+      const bot = me.ok ? (await me.json()).id : null;
+      if (!bot)
+        return mine("Couldn't ask Discord who the bot is. Try again.");
+      const made = await makeFeedChannel((m, path, body) => api(this.env, m, path, body), i.guild_id, bot, opt('name'), opt('bot') ?? null);
+      if (made.error === 'name')
+        return mine('Give it a name with letters or digits, like shindo-spawn.');
+      if (made.error)
+        return mine(made.refused
+          ? "Discord refused: the bot needs Manage Channels in this server (Server Settings → Roles → its role). Give it that, then run this again."
+          : `Discord refused (${made.error}). Try again.`);
+      sql.exec('INSERT OR REPLACE INTO feeds (channel, guild, name, at) VALUES (?, ?, ?, ?)', made.channel, i.guild_id, made.name, Date.now());
+      this.feeds.add(made.channel);
+      this.log('feed', `${made.made ? 'made' : 'kept'} ${made.name}`);
+      return mine(`${made.made ? 'Made' : 'Already there:'} <#${made.channel}>, hidden, under Feeds. Bring a source into it: Follow their channel into it, or invite their bot and have it post there. Then /feed raw shows what came.${contentNote}`);
+    }
+    if (sub?.name === 'list') {
+      const rows = [...sql.exec(`SELECT f.channel, f.name, COUNT(r.at) AS n, MAX(r.at) AS last FROM feeds f
+        LEFT JOIN feed_raw r ON r.channel = f.channel WHERE f.guild = ? GROUP BY f.channel ORDER BY f.at`, i.guild_id)];
+      if (!rows.length)
+        return mine(`No feed channels yet: /feed new makes one.${contentNote}`);
+      return mine(rows.map(r => `<#${r.channel}>: ${r.n ? `${r.n} kept, last <t:${Math.floor(r.last / 1000)}:R>` : 'nothing yet'}`).join('\n') + contentNote);
+    }
+    const channel = opt('channel');
+    if (!this.feeds.has(channel))
+      return mine(`<#${channel}> isn't a feed channel. /feed list shows them.`);
+    if (sub?.name === 'raw') {
+      const kept = this.feedRaw(channel), key = await dashboardKey(this.env.DISCORD_TOKEN);
+      const link = key ? `\nAll of it, as it came: ${this.env.PUBLIC_URL || PUBLIC_URL}/feeds/raw.json?key=${key}&channel=${channel}` : '';
+      if (!kept.length)
+        return mine(`Nothing has arrived in <#${channel}> yet.${contentNote}`);
+      return mine(`<#${channel}>, newest first:\n${kept.slice(0, 8).map(r => `• ${rawLine(r)}`).join('\n')}${link}${contentNote}`);
+    }
+    if (sub?.name === 'remove') {
+      sql.exec('DELETE FROM feeds WHERE channel = ?', channel);
+      sql.exec('DELETE FROM feed_raw WHERE channel = ?', channel);
+      this.feeds.delete(channel);
+      return mine(`<#${channel}> is no longer a feed: what it got is forgotten. The channel itself stays; delete it in Discord if you like.`);
+    }
+    return mine('Unknown /feed command.');
   }
 
   // ───────────────────────────── the community server ─────────────────────────────
@@ -1246,7 +1334,7 @@ export class Gateway extends DurableObject {
   async open() {
     if (this.stopped || this.ws || !this.env.DISCORD_TOKEN)
       return;
-    const resume = !!(this.session?.id && this.session?.url && this.session.intents === INTENTS);
+    const resume = !!(this.session?.id && this.session?.url && this.session.intents === this.intents());
     const base = this.env.GATEWAY_URL || (resume ? this.session.url : GATEWAY);
     try {
       const res = await fetch(base.replace(/^ws/, 'http').replace(/\/+$/, '') + QUERY, { headers: { Upgrade: 'websocket' } });
@@ -1311,13 +1399,16 @@ export class Gateway extends DurableObject {
         await this.ctx.storage.setAlarm(Date.now() + this.backoff);
         break;
       case 0:
-        if (msg.t === 'MESSAGE_CREATE') {
+        if (msg.t === 'MESSAGE_CREATE' || msg.t === 'MESSAGE_UPDATE') {
           // Every message in every server the bot is in: kept cheap, and the session saved only now and then (below).
-          this.trap(msg.d).catch(() => {});
+          if (this.feeds.has(msg.d.channel_id))
+            this.keepRaw(msg.d, msg.t === 'MESSAGE_CREATE' ? 'new' : 'edit');
+          if (msg.t === 'MESSAGE_CREATE')
+            this.trap(msg.d).catch(() => {});
           break;
         }
         if (msg.t === 'READY') {
-          this.session = { id: msg.d.session_id, url: msg.d.resume_gateway_url, seq: msg.s, intents: INTENTS };
+          this.session = { id: msg.d.session_id, url: msg.d.resume_gateway_url, seq: msg.s, intents: this.intents() };
           this.online('ready', msg.d.user?.username ?? '');
         } else if (msg.t === 'RESUMED') {
           this.online('resumed', '');
@@ -1356,6 +1447,13 @@ export class Gateway extends DurableObject {
     this.ws = null;
     this.ready = false;
     this.log('closed', `${code} ${reason || ''}`.trim());
+    if (code === 4014 && !this.noContent) { // Message Content not turned on: go on without it (the feeds come empty)
+      this.noContent = true;
+      await this.ctx.storage.put('noContent', true);
+      this.log('no message content', 'going on without it');
+      await this.retry();
+      return;
+    }
     if (FATAL[code]) {
       this.stopped = { code, why: FATAL[code], at: Date.now(), token: await tokenHash(this.env.DISCORD_TOKEN) };
       await this.ctx.storage.put('stopped', this.stopped);
@@ -1392,10 +1490,14 @@ export class Gateway extends DurableObject {
     await this.ctx.storage.delete('session');
   }
 
+  intents() {
+    return this.noContent ? MESSAGES : MESSAGES | MESSAGE_CONTENT;
+  }
+
   identity() {
     return {
       token: this.env.DISCORD_TOKEN,
-      intents: INTENTS,
+      intents: this.intents(),
       properties: { os: 'linux', browser: 'bloxkeep', device: 'bloxkeep' },
       presence: { since: null, activities: [{ type: 4, name: 'Custom Status', state: presenceLines(null)[0] }], status: 'online', afk: false },
     };
@@ -1610,6 +1712,13 @@ export default {
       return url.pathname === '/online'
         ? new Response(dashboardPage(), { headers: { 'Content-Type': 'text/html; charset=utf-8', ...noStore } })
         : Response.json(await ask(env, g => g.onlineNow()), { headers: noStore });
+    }
+    if (url.pathname === '/feeds/raw.json') { // what a feed channel kept, as it came (/feed raw gives the link)
+      const key = await dashboardKey(env.DISCORD_TOKEN);
+      if (!key || url.searchParams.get('key') !== key)
+        return Response.json({ error: 'not found' }, { status: 404 });
+      const channel = url.searchParams.get('channel') ?? '';
+      return Response.json(await ask(env, g => g.feedRaw(channel)), { headers: { 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' } });
     }
     if (url.pathname === '/latest') // which Bloxkeep is out: an open app checks for it at once (rather than within the hour)
       return latestVersion(env, ctx);

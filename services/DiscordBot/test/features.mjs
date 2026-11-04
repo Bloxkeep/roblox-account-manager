@@ -4,7 +4,8 @@
 // (a Roblox update as a card, Roblox's notes edited in once they're out), and /verify's captcha (a PNG only that person
 // sees, the code typed into a form, the role given once it's right), /discord (the app's Discord button: an invite that
 // never expires, made again once it stops working), and how many people have Bloxkeep open now (the apps' beats,
-// /online for anyone, in full with its dashboard for Bloxkeep's developers, the line in the bot's status).
+// /online for anyone, in full with its dashboard for Bloxkeep's developers, the line in the bot's status), and /feed (a
+// hidden channel per game feed, what arrives there kept as it came, Message Content refused without the bot stopping).
 // No Discord account or token needed. In this folder: npm install, then node features.mjs (about a minute).
 import { spawn, execSync } from 'node:child_process';
 import crypto from 'node:crypto';
@@ -44,15 +45,23 @@ const waitFor = async (cond, ms) => { const end = Date.now() + ms; while (Date.n
 // ── the fake Gateway: hello, ready, heartbeats answered; the custom statuses sent kept, open connections counted ──
 const gw = new WebSocketServer({ port: GW });
 const statuses = [];
-let open = 0;
+// Each identify's intents; refuseContent: Message Content not turned on (Discord closes 4014 when it's asked for).
+const identified = [];
+let open = 0, gwSocket = null, gwSeq = 1, refuseContent = false;
+// A close as Discord makes it: the connection gone at once, whether or not the other side answers the close.
+const closeHard = (ws, code, why) => { ws.close(code, why); setTimeout(() => ws.terminate(), 200); };
+const dispatch = (t, d) => gwSocket?.send(JSON.stringify({ op: 0, t, s: ++gwSeq, d }));
 gw.on('connection', ws => {
   open++;
+  gwSocket = ws;
   ws.on('close', () => { open--; });
   ws.send(JSON.stringify({ op: 10, d: { heartbeat_interval: 30000 } }));
   ws.on('message', raw => {
     const m = JSON.parse(raw);
     if (m.op === 3) statuses.push(m.d.activities?.[0]);
     if (m.op === 1) ws.send(JSON.stringify({ op: 11 }));
+    if (m.op === 2) identified.push(m.d.intents);
+    if (m.op === 2 && refuseContent && (m.d.intents & (1 << 15))) return closeHard(ws, 4014, 'Disallowed intent(s).');
     if (m.op === 2 || m.op === 6) ws.send(JSON.stringify({ op: 0, t: 'READY', s: 1, d: { session_id: 's1', resume_gateway_url: `ws://127.0.0.1:${GW}`, user: { username: 'TestBot' } } }));
   });
 });
@@ -75,6 +84,11 @@ const rest = http.createServer((req, res) => {
     if (req.method === 'GET' && req.url === '/applications/@me') return send(200, { id: 'app1', approximate_guild_count: 3, approximate_user_install_count: 1 });
     if (req.method === 'PATCH' && /\/messages\/gone$/.test(req.url)) return send(404, { message: 'Unknown Message', code: 10008 });
     if (req.method === 'POST' && /^\/channels\/\w+\/invites$/.test(req.url)) return send(200, { code: `inv${++inviteNo}` });
+    if (req.method === 'GET' && req.url === '/users/@me') return send(200, { id: 'bot1', username: 'TestBot' });
+    // /feed new: the Feeds category, then a channel in it (g2 refuses: the bot can't manage channels there).
+    if (req.method === 'GET' && req.url === '/guilds/g2/channels') return send(200, []);
+    if (req.method === 'POST' && req.url === '/guilds/g2/channels') return send(403, { message: 'Missing Permissions', code: 50013 });
+    if (req.method === 'POST' && req.url === '/guilds/g1/channels') return send(200, { ...call.body, id: call.body?.type === 4 ? 'fcat' : `fch${++msgNo}` });
     // g1's roles, low to high: rv (/verify's), an app's own, rme (u1's), rmod; u0 owns it.
     if (req.method === 'GET' && req.url === '/guilds/g1') return send(200, { id: 'g1', owner_id: 'u0', roles: [
       { id: 'g1', position: 0 }, { id: 'rv', position: 1 }, { id: 'rapp', position: 2, managed: true }, { id: 'rme', position: 3 }, { id: 'rmod', position: 5 }] });
@@ -222,7 +236,7 @@ try {
   await minute(3500);
   const puts = calls.filter(c => c.method === 'PUT');
   check('the commands are put in place, with the bot token', puts.length === 1 && puts[0].url === '/applications/app1/commands' && puts[0].auth === 'Bot test-token'
-    && puts[0].body.map(c => c.name).join() === 'help,download,multi,robloxstatus,notify,setup,online,board,verify,pc', JSON.stringify(puts[0]?.body.map(c => c.name)));
+    && puts[0].body.map(c => c.name).join() === 'help,download,multi,robloxstatus,notify,setup,online,board,verify,pc,feed', JSON.stringify(puts[0]?.body.map(c => c.name)));
   check('…and the first look announces nothing', calls.filter(c => c.method === 'POST').length === 0, calls.length);
   let latestNow = await (await fetch(`http://127.0.0.1:${DEV}/latest`)).json();
   check('/latest says the newest public Bloxkeep, for the apps to update at once', latestNow.version === '1.0.7', JSON.stringify(latestNow));
@@ -533,6 +547,69 @@ try {
     && pictureOf(ready) === 'update-same.png' && linksOf(ready).includes('https://create.roblox.com/docs/release-notes/release-notes-746'), JSON.stringify(textsOf(ready)));
   await minute();
   check('…and never edited', noteEdits().length === 4, noteEdits().length);
+
+  // Game feeds (feeds.js): /feed for Bloxkeep's developers only; a hidden channel per source under Feeds; what arrives
+  // there kept as it came (the last 20, edits too), nothing from other channels; Message Content asked for, and the bot
+  // going on without it while Discord refuses it.
+  check('the bot asks for Message Content', (identified.at(-1) & (1 << 15)) !== 0, identified.at(-1));
+  const stranger = { ...command('feed', { sub: 'new', options: [opt('name', 'x', 3)] }), member: { permissions: '8', user: { id: 'u2' }, roles: [] } };
+  r = await interact(stranger);
+  check("/feed: refused to anyone but Bloxkeep's developers", /Only Bloxkeep's developers/.test(r.json?.data.content ?? '') && r.json?.data.flags === 64, r.json?.data.content);
+  const madeBefore = calls.filter(c => c.url === '/guilds/g1/channels' && c.method === 'POST').length;
+  r = await interact(command('feed', { sub: 'new', options: [opt('name', 'Shindo Spawn!', 3), opt('bot', 'b77', 6)] }));
+  const made = calls.filter(c => c.url === '/guilds/g1/channels' && c.method === 'POST').slice(madeBefore);
+  const [cat, chan] = made.map(c => c.body);
+  check('/feed new: a hidden Feeds category, then feed-shindo-spawn in it', made.length === 2 && cat.name === 'Feeds' && cat.type === 4
+    && cat.permission_overwrites.some(o => o.id === 'g1' && BigInt(o.deny) & (1n << 10n)) && chan.name === 'feed-shindo-spawn' && chan.parent_id === 'fcat', JSON.stringify(made.map(c => c.body)));
+  check("…the bot and the game's bot may see it", ['bot1', 'b77'].every(id => chan.permission_overwrites.some(o => o.id === id && BigInt(o.allow) & (1n << 10n))), JSON.stringify(chan?.permission_overwrites));
+  const feed = /<#(fch\d+)>/.exec(r.json?.data.content ?? '')?.[1];
+  check('…and says where, seen only by them', !!feed && r.json?.data.flags === 64, r.json?.data.content);
+  r = await interact(command('feed', { guild: 'g2', sub: 'new', options: [opt('name', 'sae-egg', 3)] }));
+  check('/feed new where Discord refuses: says the bot needs Manage Channels', /Manage Channels/.test(r.json?.data.content ?? ''), r.json?.data.content);
+  const embed = { title: 'Riser Akuma Blade', description: 'Spawning in ~5 minutes', fields: [{ name: 'Location', value: 'Tempest' }], thumbnail: { url: 'https://x/i.png' } };
+  dispatch('MESSAGE_CREATE', { id: 'fm1', channel_id: feed, guild_id: 'g1', webhook_id: 'w1', author: { id: 'w1', username: 'Shindo Spawn Alert', bot: true }, flags: 2, message_reference: { channel_id: 'their', guild_id: 'their-g' }, content: '', embeds: [embed], timestamp: '2026-11-04T12:00:00Z' });
+  dispatch('MESSAGE_CREATE', { id: 'other', channel_id: 'c1', guild_id: 'g1', author: { id: 'u5', username: 'someone' }, content: 'hi', embeds: [] });
+  dispatch('MESSAGE_UPDATE', { id: 'fm1', channel_id: feed, guild_id: 'g1', webhook_id: 'w1', author: { id: 'w1', username: 'Shindo Spawn Alert', bot: true }, message_reference: { channel_id: 'their' }, content: '', embeds: [{ ...embed, description: 'Spawned' }], edited_timestamp: '2026-11-04T12:05:00Z' });
+  await sleep(600);
+  r = await interact(command('feed', { sub: 'raw', options: [opt('channel', feed)] }));
+  const rawText = r.json?.data.content ?? '';
+  check('/feed raw: the message and its edit, newest first, from a Follow', /edited · Follow · Riser Akuma Blade[\s\S]*new · Follow · Riser Akuma Blade/.test(rawText), rawText);
+  const { dashboardKey } = await import('../worker/online.js');
+  const rawUrl = `http://127.0.0.1:${DEV}/feeds/raw.json?key=${await dashboardKey('test-token')}&channel=${feed}`;
+  check('…with a link to all of it', rawText.includes(rawUrl), rawText);
+  let kept = await (await fetch(rawUrl)).json();
+  check('…which has the embed as it came, and nothing from other channels', kept.length === 2 && kept[1].embeds[0].fields[0].value === 'Tempest'
+    && kept[1].from?.channel_id === 'their' && !JSON.stringify(kept).includes('"hi"'), JSON.stringify(kept).slice(0, 300));
+  check('…without the key: not found', (await fetch(`http://127.0.0.1:${DEV}/feeds/raw.json?channel=${feed}`)).status === 404);
+  for (let n = 0; n < 22; n++)
+    dispatch('MESSAGE_CREATE', { id: `fx${n}`, channel_id: feed, guild_id: 'g1', author: { id: 'b77', username: 'SenZ V2', bot: true }, content: '', embeds: [{ title: `Egg ${n}` }] });
+  await sleep(800);
+  kept = await (await fetch(rawUrl)).json();
+  check('…only the last 20 kept', kept.length === 20 && kept[0].embeds[0].title === 'Egg 21' && kept.at(-1).embeds[0].title === 'Egg 2', `${kept.length} ${kept[0]?.embeds[0]?.title} ${kept.at(-1)?.embeds[0]?.title}`);
+  r = await interact(command('feed', { sub: 'list' }));
+  check('/feed list: each feed channel and how much it kept', new RegExp(`<#${feed}>: 20 kept`).test(r.json?.data.content ?? ''), r.json?.data.content);
+  r = await interact(command('feed', { sub: 'raw', options: [opt('channel', 'c1')] }));
+  check("/feed raw on another channel: says it isn't a feed", /isn't a feed channel/.test(r.json?.data.content ?? ''), r.json?.data.content);
+
+  // Message Content not turned on: Discord closes 4014; the bot goes on without it, says so at /feed, and asks again then.
+  refuseContent = true;
+  const before4014 = identified.length;
+  closeHard(gwSocket, 4009, 'Session timed out'); // a new session: identified again, asking for Message Content
+  await waitFor(() => identified.slice(before4014).some(i => !(i & (1 << 15))), 15000);
+  await sleep(1500);
+  check('Message Content refused: the bot goes on without it, still online', identified.slice(before4014).some(i => i & (1 << 15)) && !(identified.at(-1) & (1 << 15)) && open === 1,
+    `${identified.slice(before4014)} open ${open}`);
+  refuseContent = false;
+  const beforeAsk = identified.length;
+  r = await interact(command('feed', { sub: 'list' }));
+  check('…/feed says Message Content is off', /Message Content is off/.test(r.json?.data.content ?? ''), r.json?.data.content);
+  await waitFor(() => identified.slice(beforeAsk).some(i => i & (1 << 15)), 10000);
+  check('…and the bot asks for it again then (turned on since: it keeps it)', identified.slice(beforeAsk).some(i => i & (1 << 15)), identified.slice(beforeAsk));
+  await sleep(1000);
+  r = await interact(command('feed', { sub: 'list' }));
+  check("…after which /feed no longer says it's off", !/Message Content is off/.test(r.json?.data.content ?? ''), r.json?.data.content);
+  r = await interact(command('feed', { sub: 'remove', options: [opt('channel', feed)] }));
+  check('/feed remove: no longer a feed, what it got forgotten', /no longer a feed/.test(r.json?.data.content ?? '') && (await (await fetch(rawUrl)).json()).length === 0, r.json?.data.content);
 
   let s = await (await fetch(`http://127.0.0.1:${DEV}/status`)).json();
   check('the bot stayed online throughout', s.state === 'online', s.state);

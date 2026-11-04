@@ -51,6 +51,7 @@ export const replyUrl = (env, token) => `${env.DISCORD_API || API}/webhooks/${en
 const vi = () => undefined;
 const channelOption = { type: 7, name: 'channel', description: 'Where to post', description_localizations: vi('Kênh để đăng'), required: true, channel_types: [0, 5] };
 
+import { FEED_COMMAND } from './feeds.js';
 import { PC_COMMAND } from './remote.js';
 
 /** The bot's slash commands, put in place by the bot itself whenever this list changes (worker.js). */
@@ -115,4 +116,6 @@ export const COMMANDS = [
   },
   // Bloxkeep on the person's own PC (remote.js).
   PC_COMMAND,
+  // Other games' alert bots, kept from hidden channels (feeds.js).
+  FEED_COMMAND,
 ];
