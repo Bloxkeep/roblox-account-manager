@@ -993,7 +993,7 @@ export class Gateway extends DurableObject {
       sql.exec('INSERT OR REPLACE INTO feeds (channel, guild, name, at) VALUES (?, ?, ?, ?)', made.channel, i.guild_id, made.name, Date.now());
       this.feeds.add(made.channel);
       this.log('feed', `${made.made ? 'made' : 'kept'} ${made.name}`);
-      return mine(`${made.made ? 'Made' : 'Already there:'} <#${made.channel}>, hidden, under Feeds. Bring a source into it: Follow their channel into it, or invite their bot and have it post there. Then /feed raw shows what came.${contentNote}`);
+      return mine(`${made.made ? 'Made' : 'Already there:'} <#${made.channel}>, hidden, under Feeds.${made.bot ? ` <@${made.bot}> may post there.` : ''} Bring a source into it: Follow their channel into it, or invite their bot and have it post there. Then /feed raw shows what came.${contentNote}`);
     }
     if (sub?.name === 'list') {
       const rows = [...sql.exec(`SELECT f.channel, f.name, COUNT(r.at) AS n, MAX(r.at) AS last FROM feeds f

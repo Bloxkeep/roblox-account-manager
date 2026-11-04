@@ -69,6 +69,8 @@ gw.on('connection', ws => {
 // ── the fake REST API: every call kept; channel "nochan" refuses posts, message "gone" was deleted, invites in
 //    deadInvites were deleted ──
 const calls = [];
+// Channels /feed new made in g1, listed from then on.
+const madeChannels = [];
 const deadInvites = new Set();
 let msgNo = 0, inviteNo = 0;
 const rest = http.createServer((req, res) => {
@@ -88,12 +90,12 @@ const rest = http.createServer((req, res) => {
     // /feed new: the Feeds category, then a channel in it (g2 refuses: the bot can't manage channels there).
     if (req.method === 'GET' && req.url === '/guilds/g2/channels') return send(200, []);
     if (req.method === 'POST' && req.url === '/guilds/g2/channels') return send(403, { message: 'Missing Permissions', code: 50013 });
-    if (req.method === 'POST' && req.url === '/guilds/g1/channels') return send(200, { ...call.body, id: call.body?.type === 4 ? 'fcat' : `fch${++msgNo}` });
+    if (req.method === 'POST' && req.url === '/guilds/g1/channels') { const c = { ...call.body, id: call.body?.type === 4 ? 'fcat' : `fch${++msgNo}` }; madeChannels.push(c); return send(200, c); }
     // g1's roles, low to high: rv (/verify's), an app's own, rme (u1's), rmod; u0 owns it.
     if (req.method === 'GET' && req.url === '/guilds/g1') return send(200, { id: 'g1', owner_id: 'u0', roles: [
       { id: 'g1', position: 0 }, { id: 'rv', position: 1 }, { id: 'rapp', position: 2, managed: true }, { id: 'rme', position: 3 }, { id: 'rmod', position: 5 }] });
     // The community server's channels: one shows how many have Bloxkeep open.
-    if (req.method === 'GET' && req.url === '/guilds/g1/channels') return send(200, [{ id: 'c1', type: 0, name: 'news' }, { id: 'cnt', type: 2, name: '🟢 Using Bloxkeep: 0' }]);
+    if (req.method === 'GET' && req.url === '/guilds/g1/channels') return send(200, [{ id: 'c1', type: 0, name: 'news' }, { id: 'cnt', type: 2, name: '🟢 Using Bloxkeep: 0' }, ...madeChannels]);
     if (req.method === 'GET' && deadInvites.has(req.url.replace('/invites/', ''))) return send(404, { message: 'Unknown Invite', code: 10006 });
     // c3 is a text channel: nothing there can be published.
     if (req.method === 'POST' && /^\/channels\/c3\/messages\/\w+\/crosspost$/.test(req.url)) return send(400, { message: 'Cannot execute action on this channel type', code: 50024 });
@@ -579,6 +581,12 @@ try {
   check("…the bot and the game's bot may see it", ['bot1', 'b77'].every(id => chan.permission_overwrites.some(o => o.id === id && BigInt(o.allow) & (1n << 10n))), JSON.stringify(chan?.permission_overwrites));
   const feed = /<#(fch\d+)>/.exec(r.json?.data.content ?? '')?.[1];
   check('…and says where, seen only by them', !!feed && r.json?.data.flags === 64, r.json?.data.content);
+  // Run again for the same name with the game's bot: the channel kept, that bot let in (its own permission there).
+  r = await interact(command('feed', { sub: 'new', options: [opt('name', 'shindo spawn', 3), opt('bot', 'b88', 6)] }));
+  const letIn = calls.filter(c => c.method === 'PUT' && c.url === `/channels/${feed}/permissions/b88`);
+  check("/feed new again with the game's bot: the channel kept, the bot let in", /Already there: <#/.test(r.json?.data.content ?? '') && /<@b88> may post there/.test(r.json?.data.content ?? '')
+    && letIn.length === 1 && letIn[0].body.type === 1 && BigInt(letIn[0].body.allow) & (1n << 10n)
+    && calls.filter(c => c.url === '/guilds/g1/channels' && c.method === 'POST').length === madeBefore + 2, r.json?.data.content);
   r = await interact(command('feed', { guild: 'g2', sub: 'new', options: [opt('name', 'sae-egg', 3)] }));
   check('/feed new where Discord refuses: says the bot needs Manage Channels', /Manage Channels/.test(r.json?.data.content ?? ''), r.json?.data.content);
   const embed = { title: 'Riser Akuma Blade', description: 'Spawning in ~5 minutes', fields: [{ name: 'Location', value: 'Tempest' }], thumbnail: { url: 'https://x/i.png' } };

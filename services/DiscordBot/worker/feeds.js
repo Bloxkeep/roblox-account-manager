@@ -80,15 +80,22 @@ export async function makeFeedChannel(api, guild, bot, name, theirBot) {
     category = await res.json();
   }
   const found = channels.find(c => c.type === 0 && c.name === channelName && c.parent_id === category.id);
-  if (found)
-    return { channel: found.id, name: channelName, made: false };
+  if (found) { // there already: the game's bot, if named, may post there from now on
+    if (theirBot) {
+      const { id, type, allow, deny } = poster(theirBot);
+      const res = await api('PUT', `/channels/${found.id}/permissions/${id}`, { type, allow, deny });
+      if (!res.ok)
+        return { error: `HTTP ${res.status}`, refused: res.status === 403 };
+    }
+    return { channel: found.id, name: channelName, made: false, bot: theirBot };
+  }
   const overwrites = [...hidden(guild, bot), ...(theirBot ? [poster(theirBot)] : [])];
   const res = await api('POST', `/guilds/${guild}/channels`, {
     name: channelName, type: 0, parent_id: category.id, topic: 'Game feed: what arrives here is kept as it came (/feed raw)', permission_overwrites: overwrites,
   });
   if (!res.ok)
     return { error: `HTTP ${res.status}`, refused: res.status === 403 };
-  return { channel: (await res.json()).id, name: channelName, made: true };
+  return { channel: (await res.json()).id, name: channelName, made: true, bot: theirBot };
 }
 
 /** A kept message in a few words, for /feed list and /feed raw. */
