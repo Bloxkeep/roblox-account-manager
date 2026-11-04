@@ -236,9 +236,15 @@ html [data-theme="dark" lang="vi"]
         div.wn-feats
           article.plain.wn-feat
             div.wn-feat-text
+              h3 "Chức năng cho macro"
+              p "Mỗi công tắc trên bảng macro có thể có bước riêng, như Tự bán cá. Chức năng chạy trọn ở cuối mỗi vòng, mỗi vòng hoặc theo giờ hẹn, và bảng cho biết từng cái đang làm gì."
+              button.wn-go [type="button" FOCUSED] "Mở Macro"
+                svg.i #1g7f83q
+          article.plain.wn-feat
+            div.wn-feat-text
               h3 "Theo dõi game theo từng game"
               p "Cửa sổ được gom theo game, mỗi nhóm có tình trạng riêng. Thu gọn, chỉ xem một game, hoặc đóng hết cửa sổ của game đó."
-              button.wn-go [type="button" FOCUSED] "Mở Theo dõi game"
+              button.wn-go [type="button"] "Mở Theo dõi game"
                 svg.i #1g7f83q
           article.plain.wn-feat
             div.wn-feat-text
@@ -259,6 +265,7 @@ html [data-theme="dark" lang="vi"]
               b "Tự cập nhật giờ có thể chạy ngay"
             li "Thẻ tài khoản hiện giờ chơi hôm nay, preset hiện các lần chạy hôm nay trên thước, thẻ macro hiện hình các bước."
             li "Trình sửa macro thu gọn được khối, tìm bước bằng ô tìm kiếm, thêm bước giữa hai dòng và báo lỗi ngay dưới bước kèm cách sửa. Có 5 mẫu giải thích từng bước."
+            li "Sửa trên game giờ vẽ cả vùng riêng của từng bước để kéo vào chỗ. Bảng macro rộng hơn, giá trị nằm vừa cạnh tên."
             li "Hộp thông báo, cửa sổ mini, cửa sổ đăng nhập và lớp phủ trên game giờ theo theme của bạn."
             li "Trang tài khoản, preset, lịch, đăng nhập, màn hình khóa và nhập vault gọn hơn, cách gọi thống nhất."
             li "Chữ dễ đọc hơn ở mọi theme, theme ảnh nền vẫn giữ ảnh."
@@ -269,6 +276,9 @@ html [data-theme="dark" lang="vi"]
           h4.wn-kind "Đã sửa"
           ul.wn-notes
             li "Đóng giờ thắng cả cửa sổ đang mở dở lẫn lần vào lại đang chạy."
+            li "Macro thứ hai sẽ báo dừng macro kia trước."
+              b "Hai macro không còn chạy cùng lúc trên một cửa sổ"
+            li "Lớp phủ trên game ẩn đi khi đang dùng chương trình khác."
             li "Thoát Bloxkeep sẽ nhả phím macro đang giữ và trả lại file Roblox của bạn."
             li "Thư mục sao lưu không ghi được giờ có báo."
             li "Ảnh game không tải được thì hiện biểu tượng thay thế."

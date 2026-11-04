@@ -4,6 +4,20 @@
     "date": "2026-11-04",
     "highlights": [
       {
+        "icon": "layers",
+        "go": "macros",
+        "en": [
+          "Macro features",
+          "A switch on the macro's panel can have steps of its own, like Auto sell. They play whole at the end of each round, every round or on a timer, and the panel says what each one is doing.",
+          "Open Macros"
+        ],
+        "vi": [
+          "Chức năng cho macro",
+          "Mỗi công tắc trên bảng macro có thể có bước riêng, như Tự bán cá. Chức năng chạy trọn ở cuối mỗi vòng, mỗi vòng hoặc theo giờ hẹn, và bảng cho biết từng cái đang làm gì.",
+          "Mở Macro"
+        ]
+      },
+      {
         "icon": "grid",
         "go": "monitor",
         "en": [
@@ -51,6 +65,7 @@
         "Update automatically can now go right away: it closes every Roblox window first, then updates.",
         "Account cards show today's play, presets show today's runs on a ruler, and macro cards show the shape of their steps.",
         "The macro editor folds blocks, finds a step by search, adds one between rows and shows a problem under its step with a fix. Five templates explain their steps.",
+        "Edit on game also draws each step's own area, to drag into place. The macro panel is wider, so a setting's value fits beside its name.",
         "Message boxes, the mini window, the sign-in window and the game overlay now follow your theme.",
         "The accounts page, presets, schedules, sign-in, the lock screen and import are cleaner, with the same words everywhere.",
         "Text is easier to read in every theme, and picture themes keep their picture.",
@@ -62,6 +77,7 @@
         "Tự cập nhật giờ có thể chạy ngay: đóng hết cửa sổ Roblox trước rồi cập nhật.",
         "Thẻ tài khoản hiện giờ chơi hôm nay, preset hiện các lần chạy hôm nay trên thước, thẻ macro hiện hình các bước.",
         "Trình sửa macro thu gọn được khối, tìm bước bằng ô tìm kiếm, thêm bước giữa hai dòng và báo lỗi ngay dưới bước kèm cách sửa. Có 5 mẫu giải thích từng bước.",
+        "Sửa trên game giờ vẽ cả vùng riêng của từng bước để kéo vào chỗ. Bảng macro rộng hơn, giá trị nằm vừa cạnh tên.",
         "Hộp thông báo, cửa sổ mini, cửa sổ đăng nhập và lớp phủ trên game giờ theo theme của bạn.",
         "Trang tài khoản, preset, lịch, đăng nhập, màn hình khóa và nhập vault gọn hơn, cách gọi thống nhất.",
         "Chữ dễ đọc hơn ở mọi theme, theme ảnh nền vẫn giữ ảnh.",
@@ -73,12 +89,16 @@
     "fixed": {
       "en": [
         "Close now wins over a window still opening or a rejoin under way.",
+        "Two macros no longer play on the same window at once: the second says to stop the first.",
+        "The game overlay hides while another program is in front.",
         "Quitting Bloxkeep lets go of keys a macro was holding and puts back your Roblox files.",
         "A backup folder Bloxkeep can't write to now says so.",
         "Game icons show a sign when Roblox's pictures don't load."
       ],
       "vi": [
         "Đóng giờ thắng cả cửa sổ đang mở dở lẫn lần vào lại đang chạy.",
+        "Hai macro không còn chạy cùng lúc trên một cửa sổ: macro thứ hai sẽ báo dừng macro kia trước.",
+        "Lớp phủ trên game ẩn đi khi đang dùng chương trình khác.",
         "Thoát Bloxkeep sẽ nhả phím macro đang giữ và trả lại file Roblox của bạn.",
         "Thư mục sao lưu không ghi được giờ có báo.",
         "Ảnh game không tải được thì hiện biểu tượng thay thế."

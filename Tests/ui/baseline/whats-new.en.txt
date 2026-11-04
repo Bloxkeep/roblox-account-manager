@@ -236,9 +236,15 @@ html [data-theme="dark" lang="en"]
         div.wn-feats
           article.plain.wn-feat
             div.wn-feat-text
+              h3 "Macro features"
+              p "A switch on the macro's panel can have steps of its own, like Auto sell. They play whole at the end of each round, every round or on a timer, and the panel says what each one is doing."
+              button.wn-go [type="button" FOCUSED] "Open Macros"
+                svg.i #1g7f83q
+          article.plain.wn-feat
+            div.wn-feat-text
               h3 "Game monitor by game"
               p "Windows are grouped by game, each group with its health. Fold a game, show only one, or close all of its windows."
-              button.wn-go [type="button" FOCUSED] "Open Game monitor"
+              button.wn-go [type="button"] "Open Game monitor"
                 svg.i #1g7f83q
           article.plain.wn-feat
             div.wn-feat-text
@@ -259,6 +265,7 @@ html [data-theme="dark" lang="en"]
               b "Update automatically can now go right away"
             li "Account cards show today's play, presets show today's runs on a ruler, and macro cards show the shape of their steps."
             li "The macro editor folds blocks, finds a step by search, adds one between rows and shows a problem under its step with a fix. Five templates explain their steps."
+            li "Edit on game also draws each step's own area, to drag into place. The macro panel is wider, so a setting's value fits beside its name."
             li "Message boxes, the mini window, the sign-in window and the game overlay now follow your theme."
             li "The accounts page, presets, schedules, sign-in, the lock screen and import are cleaner, with the same words everywhere."
             li "Text is easier to read in every theme, and picture themes keep their picture."
@@ -269,6 +276,9 @@ html [data-theme="dark" lang="en"]
           h4.wn-kind "Fixed"
           ul.wn-notes
             li "Close now wins over a window still opening or a rejoin under way."
+            li "The second says to stop the first."
+              b "Two macros no longer play on the same window at once"
+            li "The game overlay hides while another program is in front."
             li "Quitting Bloxkeep lets go of keys a macro was holding and puts back your Roblox files."
             li "A backup folder Bloxkeep can't write to now says so."
             li "Game icons show a sign when Roblox's pictures don't load."
