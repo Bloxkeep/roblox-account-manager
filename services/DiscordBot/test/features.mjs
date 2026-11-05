@@ -13,7 +13,7 @@ import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { WebSocketServer } from 'ws';
+import { WebSocket, WebSocketServer } from 'ws';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const WORKER = path.join(HERE, '..', 'worker');
@@ -613,6 +613,61 @@ try {
   check('/feed list: each feed channel and how much it kept', new RegExp(`<#${feed}>: 20 kept`).test(r.json?.data.content ?? ''), r.json?.data.content);
   r = await interact(command('feed', { sub: 'raw', options: [opt('channel', 'c1')] }));
   check("/feed raw on another channel: says it isn't a feed", /isn't a feed channel/.test(r.json?.data.content ?? ''), r.json?.data.content);
+
+  // /feed show: a feed channel shown in the apps under a game. An app's /feeds/connect socket is told the games and their
+  // cards at once (what was kept already among them), then each new card as it comes (words plain: no pings, no
+  // markdown), a deleted message's card gone, and the games again once a feed is hidden. It only listens.
+  const heard = [];
+  const app = new WebSocket(`ws://127.0.0.1:${DEV}/feeds/connect`);
+  app.on('message', m => heard.push(JSON.parse(String(m))));
+  await waitFor(() => heard.length > 0, 5000);
+  check('an app listening for game feeds: told at once, nothing shown yet', heard[0]?.t === 'feeds' && heard[0].games.length === 0 && heard[0].cards.length === 0, JSON.stringify(heard[0]));
+  r = await interact(command('feed', { sub: 'show', options: [opt('channel', feed), opt('game', 'Blox Fruits', 3), opt('title', 'Stock', 3), opt('place', 2753915549, 4)] }));
+  check('/feed show: under the game, what it kept already shown', /shows in Bloxkeep under Blox Fruits as “Stock” \(20 already there\)/.test(r.json?.data.content ?? ''), r.json?.data.content);
+  await waitFor(() => heard.some(m => m.t === 'feeds' && m.games.length), 3000);
+  let told = heard.findLast(m => m.t === 'feeds');
+  check('…and open apps are told: the game, its place, its source, its cards newest first', told?.games[0]?.id === 'blox-fruits' && told.games[0].name === 'Blox Fruits'
+    && told.games[0].place === 2753915549 && told.games[0].sources[0]?.id === feed && told.games[0].sources[0].title === 'Stock'
+    && told.cards.length === 20 && told.cards[0].title === 'Egg 21' && told.cards[0].game === 'blox-fruits', JSON.stringify(told).slice(0, 400));
+  dispatch('MESSAGE_CREATE', { id: 'bf1', channel_id: feed, guild_id: 'g1', author: { id: 'b77', username: 'Stock Bot', bot: true },
+    content: '<@&555555555555> **Stock reset!**', embeds: [{ title: 'Normal stock', description: 'Next reset <t:4102444800:R>',
+      fields: [{ name: '<:flame:123456789012> Flame', value: '**$250,000**' }, { name: 'Ice', value: '$350,000' }], thumbnail: { url: 'https://x/flame.png', proxy_url: 'https://images-ext-1.discordapp.net/external/abc/https/x/flame.png' } }] });
+  await waitFor(() => heard.some(m => m.t === 'card'), 3000);
+  const bfCard = heard.find(m => m.t === 'card')?.card;
+  check('a new message: its card to open apps, in plain words', bfCard?.id === 'bf1' && bfCard.title === 'Normal stock' && bfCard.text === 'Stock reset!\nNext reset <t:4102444800:R>'
+    && bfCard.fields[0]?.name === '<:flame:123456789012> Flame' && bfCard.fields[0].value === '$250,000' && bfCard.picture === 'https://images-ext-1.discordapp.net/external/abc/https/x/flame.png' && bfCard.until === 4102444800000 && bfCard.game === 'blox-fruits', JSON.stringify(bfCard));
+  dispatch('MESSAGE_DELETE', { id: 'bf1', channel_id: feed, guild_id: 'g1' });
+  await waitFor(() => heard.some(m => m.t === 'gone'), 3000);
+  check('…deleted there: gone from the apps', heard.find(m => m.t === 'gone')?.id === 'bf1', JSON.stringify(heard.at(-1)));
+  // Discord's newer layout (Vulcan's stock: a box per stock, a line per fruit, the change time): a card per box, a field
+  // per fruit with its picture, and the countdown; deleted there, both go.
+  const box = (head, lines, when) => ({ type: 17, accent_color: null, components: [{ type: 10, content: `**${head}**` }, { type: 14, divider: true },
+    { type: 10, content: lines.map(([e, n, v]) => `<:${e}:1300167881337864224> **${n} • <:money:1456628926276173845>\`${v}\`**`).join('\n') }, { type: 14, divider: true },
+    { type: 10, content: `-# <:clock:1182328726185312336> **${head.replace('Current ', '')} Change in** - <t:${when}:R> <@&1562231587914121338>` }] });
+  heard.length = 0;
+  dispatch('MESSAGE_CREATE', { id: 'bf2', channel_id: feed, guild_id: 'g1', webhook_id: '1567631153991524372', author: { id: '1567631153991524372', username: 'Vulcan • Live Stock Bot', avatar: 'a'.repeat(32), bot: true }, flags: 32768,
+    content: '', embeds: [], components: [box('Current Normal Stock', [['chop', 'Blade', '30,000'], ['dark', 'Dark', '500,000']], 4102444800), box('Current Mirage Stock', [['spring', 'Spring', '60,000']], 4102448400)] });
+  await waitFor(() => heard.filter(m => m.t === 'card').length >= 2, 3000);
+  const [normal, mirage] = heard.filter(m => m.t === 'card').map(m => m.card);
+  check("Discord's newer layout: a card per box, a field per item with its picture, the countdown, the poster's picture",
+    normal?.id === 'bf2' && normal.title === 'Current Normal Stock' && normal.fields.length === 2 && normal.fields[0].name === '<:chop:1300167881337864224> Blade'
+    && normal.fields[0].value === '<:money:1456628926276173845>30,000' && normal.until === 4102444800000 && !normal.text.includes('<@&')
+    && normal.author?.icon === `https://cdn.discordapp.com/avatars/1567631153991524372/${'a'.repeat(32)}.webp?size=64` && mirage?.id === 'bf2:1' && mirage.title === 'Current Mirage Stock'
+    && mirage.fields[0].name.endsWith('Spring') && mirage.at < normal.at, JSON.stringify([normal, mirage]).slice(0, 500));
+  dispatch('MESSAGE_DELETE', { id: 'bf2', channel_id: feed, guild_id: 'g1' });
+  await waitFor(() => heard.filter(m => m.t === 'gone').length >= 2, 3000);
+  check('…deleted there: both its cards gone', heard.filter(m => m.t === 'gone').map(m => m.id).sort().join() === 'bf2,bf2:1', JSON.stringify(heard.filter(m => m.t === 'gone')));
+  r = await interact(command('feed', { sub: 'list' }));
+  check('/feed list: which feeds show in Bloxkeep, and how many apps listen', /in Bloxkeep: Blox Fruits › Stock/.test(r.json?.data.content ?? '') && /1 apps listening/.test(r.json?.data.content ?? ''), r.json?.data.content);
+  const heardBefore = heard.length;
+  r = await interact(command('feed', { sub: 'hide', options: [opt('channel', feed)] }));
+  await waitFor(() => heard.length > heardBefore, 3000);
+  check('/feed hide: no longer in the apps', /no longer shows in Bloxkeep/.test(r.json?.data.content ?? '') && heard.at(-1)?.t === 'feeds' && heard.at(-1).games.length === 0, JSON.stringify(heard.at(-1)));
+  let closed = false;
+  app.on('close', () => { closed = true; });
+  app.send('{"t":"hello"}');
+  await waitFor(() => closed, 3000);
+  check('…an app socket only listens: one that talks is closed', closed);
 
   // Message Content not turned on: Discord closes 4014; the bot goes on without it, says so at /feed, and asks again then.
   refuseContent = true;

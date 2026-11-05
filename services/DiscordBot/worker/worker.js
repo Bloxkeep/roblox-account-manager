@@ -17,7 +17,7 @@ import { CODE_LENGTH, captcha } from './captcha.js';
 import { COMMANDS, api, inviteUrl, replyUrl, verify } from './discord.js';
 import { DAYS_SHOWN, GRACE, GRACE_SLACK_SECONDS, beatEvery, scramble, dashboardKey, dashboardPage, dayOf, onlineMessage, readBeat } from './online.js';
 import { ALL_ACCOUNTS_COMMANDS, ALLOW_FOR, APP_COMMANDS, ANSWER_WAIT, CODE_FOR, CODE_GRACE, COMMANDS_PER_MINUTE, MAX_CODES, MAX_MESSAGE, MAX_PCS, MAX_UNLINKED, MESSAGES_PER_MINUTE, PC_TEXT, REASKED_GAP, SHOTS_PER_MINUTE, TOKEN_FOR, WRONG_CODES, WRONG_WINDOW, choices, handleOf, makeCode, pcId, readAnswer, readCode, readHello } from './remote.js';
-import { RAW_KEPT, makeFeedChannel, rawLine, rawOf } from './feeds.js';
+import { CARDS_KEPT, MAX_FEED_SOCKETS, RAW_KEPT, cardsOf, gameId, makeFeedChannel, rawLine, rawOf } from './feeds.js';
 import { setupServer } from './setup.js';
 import { newer, readInstallDownloads, readLatestTag, readNotes, readRelease, readStatus, readWatch, release } from './sources.js';
 import {
@@ -142,6 +142,13 @@ export class Gateway extends DurableObject {
       // Game feeds (feeds.js): the hidden channels whose messages are kept, and the last RAW_KEPT of each, as they came.
       ctx.storage.sql.exec('CREATE TABLE IF NOT EXISTS feeds (channel TEXT PRIMARY KEY, guild TEXT NOT NULL, name TEXT NOT NULL, at INTEGER NOT NULL)');
       ctx.storage.sql.exec('CREATE TABLE IF NOT EXISTS feed_raw (channel TEXT NOT NULL, at INTEGER NOT NULL, data TEXT NOT NULL)');
+      // A feed shown in the apps (/feed show): its game (and that game's place on Roblox) and what it is; its cards.
+      for (const column of ['game TEXT', 'title TEXT', 'place INTEGER'])
+        try {
+          ctx.storage.sql.exec(`ALTER TABLE feeds ADD COLUMN ${column}`);
+        } catch {} // there already
+      ctx.storage.sql.exec(`CREATE TABLE IF NOT EXISTS feed_cards (channel TEXT NOT NULL, id TEXT NOT NULL, at INTEGER NOT NULL,
+        data TEXT NOT NULL, PRIMARY KEY (channel, id))`);
       this.feeds = new Set([...ctx.storage.sql.exec('SELECT channel FROM feeds')].map(r => r.channel));
       this.noContent = (await ctx.storage.get('noContent')) ?? false; // Discord refused Message Content: not asked for
       this.session = (await ctx.storage.get('session')) ?? null; // { id, url, seq }
@@ -343,6 +350,8 @@ export class Gateway extends DurableObject {
   /** A Bloxkeep app connecting (worker.js /remote/connect): its socket, one per PC; told at once whether it's linked. */
   async fetch(request) {
     const url = new URL(request.url);
+    if (url.pathname === '/feeds/connect' && request.headers.get('Upgrade') === 'websocket')
+      return this.feedSocket();
     if (url.pathname !== '/remote/connect' || request.headers.get('Upgrade') !== 'websocket')
       return new Response('not found', { status: 404 });
     const pc = await pcId((request.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, ''));
@@ -375,9 +384,11 @@ export class Gateway extends DurableObject {
   unlinkedSockets() {
     const linked = new Set([...this.ctx.storage.sql.exec('SELECT pc FROM links')].map(r => r.pc));
     let n = 0;
-    for (const ws of this.ctx.getWebSockets())
-      if (!linked.has(ws.deserializeAttachment()?.pc))
+    for (const ws of this.ctx.getWebSockets()) {
+      const pc = ws.deserializeAttachment()?.pc;
+      if (pc && !linked.has(pc)) // not the game feeds' sockets: they have no PC
         n++;
+    }
     return n;
   }
 
@@ -414,6 +425,8 @@ export class Gateway extends DurableObject {
       return;
     }
     const me = ws.deserializeAttachment() ?? {}, pc = me.pc, sql = this.ctx.storage.sql;
+    if (me.feeds) // a game feeds' socket only listens (its "ping" is answered without waking anything)
+      return ws.close(1008, 'listen only');
     if (!pc || !m || typeof m !== 'object')
       return;
     // More than an app ever sends (its names, a code now and then, answers): the socket is closed.
@@ -945,12 +958,80 @@ export class Gateway extends DurableObject {
 
   // ───────────────────────────── game feeds (feeds.js) ─────────────────────────────
 
-  /** A message (new or edited) in a feed channel, kept as it came; the oldest go past RAW_KEPT. */
+  /** A message (new or edited) in a feed channel, kept as it came; the oldest go past RAW_KEPT. Shown in the apps: its card too. */
   keepRaw(d, kind) {
-    const sql = this.ctx.storage.sql;
-    sql.exec('INSERT INTO feed_raw (channel, at, data) VALUES (?, ?, ?)', d.channel_id, Date.now(), JSON.stringify(rawOf(d, kind)));
+    const sql = this.ctx.storage.sql, now = Date.now(), raw = rawOf(d, kind);
+    sql.exec('INSERT INTO feed_raw (channel, at, data) VALUES (?, ?, ?)', d.channel_id, now, JSON.stringify(raw));
     sql.exec('DELETE FROM feed_raw WHERE channel = ? AND rowid NOT IN (SELECT rowid FROM feed_raw WHERE channel = ? ORDER BY rowid DESC LIMIT ?)',
       d.channel_id, d.channel_id, RAW_KEPT);
+    // An edit that says nothing of its words (a pin, an embed's picture loading) leaves the card as it was.
+    if (kind === 'edit' && d.content === undefined && d.embeds === undefined && d.components === undefined)
+      return;
+    for (const card of this.keepCard(d.channel_id, raw, now))
+      this.toFeedSockets({ t: 'card', card });
+  }
+
+  /**
+   * A shown feed's cards for a kept message (the message's id, then id:1, id:2… for the others it holds), stored (the
+   * newest CARDS_KEPT); none when the feed isn't shown or it says nothing. An edit that now holds fewer: the rest go.
+   */
+  keepCard(channel, raw, at) {
+    const sql = this.ctx.storage.sql, feed = [...sql.exec('SELECT game FROM feeds WHERE channel = ?', channel)][0];
+    if (!feed?.game || !raw.id)
+      return [];
+    // In the message's order, top first (newest first in the apps, so a millisecond apart).
+    const cards = cardsOf(raw, at).map((made, i) => ({ id: i ? `${raw.id}:${i}` : raw.id, src: channel, game: gameId(feed.game), at: at - i, ...made }));
+    for (const card of cards)
+      sql.exec('INSERT OR REPLACE INTO feed_cards (channel, id, at, data) VALUES (?, ?, ?, ?)', channel, card.id, card.at, JSON.stringify(card));
+    for (const old of [...sql.exec("SELECT id FROM feed_cards WHERE channel = ? AND (id = ? OR id LIKE ?)", channel, raw.id, `${raw.id}:%`)])
+      if (!cards.some(c => c.id === old.id))
+        this.dropCard(channel, old.id);
+    sql.exec('DELETE FROM feed_cards WHERE channel = ? AND id NOT IN (SELECT id FROM feed_cards WHERE channel = ? ORDER BY at DESC LIMIT ?)',
+      channel, channel, CARDS_KEPT);
+    return cards;
+  }
+
+  /** A message deleted in a feed channel: its cards go, in the apps too. */
+  dropCard(channel, id) {
+    const sql = this.ctx.storage.sql;
+    for (const { id: gone } of [...sql.exec("SELECT id FROM feed_cards WHERE channel = ? AND (id = ? OR id LIKE ?)", channel, id, `${id}:%`)]) {
+      sql.exec('DELETE FROM feed_cards WHERE channel = ? AND id = ?', channel, gone);
+      this.toFeedSockets({ t: 'gone', id: gone });
+    }
+  }
+
+  /** What an app is told when it connects (and all of them when a feed is shown or hidden): the games, their sources, the cards. */
+  feedsNow() {
+    const sql = this.ctx.storage.sql, games = new Map();
+    for (const f of sql.exec('SELECT channel, game, title, place FROM feeds WHERE game IS NOT NULL ORDER BY at')) {
+      const id = gameId(f.game);
+      const g = games.get(id) ?? { id, name: f.game, place: null, sources: [] };
+      g.place ??= f.place ?? null;
+      g.sources.push({ id: f.channel, title: f.title ?? '' });
+      games.set(id, g);
+    }
+    const cards = [...sql.exec('SELECT c.data FROM feed_cards c JOIN feeds f ON f.channel = c.channel WHERE f.game IS NOT NULL ORDER BY c.at DESC')]
+      .map(r => JSON.parse(r.data));
+    return { t: 'feeds', games: [...games.values()], cards };
+  }
+
+  /** An app listening for game feeds (worker.js /feeds/connect): no key, it only listens; told everything at once. */
+  feedSocket() {
+    if (this.ctx.getWebSockets('feeds').length >= Number(this.env.MAX_FEED_SOCKETS ?? MAX_FEED_SOCKETS))
+      return new Response('busy', { status: 503 });
+    const [client, server] = Object.values(new WebSocketPair());
+    this.ctx.acceptWebSocket(server, ['feeds']);
+    server.serializeAttachment({ feeds: true });
+    server.send(JSON.stringify(this.feedsNow()));
+    return new Response(null, { status: 101, webSocket: client });
+  }
+
+  toFeedSockets(message) {
+    const text = JSON.stringify(message);
+    for (const ws of this.ctx.getWebSockets('feeds'))
+      try {
+        ws.send(text);
+      } catch {} // gone meanwhile
   }
 
   /** What a feed channel kept, newest first: the dashboard key's /feeds/raw.json, and /feed raw. */
@@ -996,11 +1077,12 @@ export class Gateway extends DurableObject {
       return mine(`${made.made ? 'Made' : 'Already there:'} <#${made.channel}>, hidden, under Feeds.${made.bot ? ` <@${made.bot}> may post there.` : ''} Bring a source into it: Follow their channel into it, or invite their bot and have it post there. Then /feed raw shows what came.${contentNote}`);
     }
     if (sub?.name === 'list') {
-      const rows = [...sql.exec(`SELECT f.channel, f.name, COUNT(r.at) AS n, MAX(r.at) AS last FROM feeds f
+      const rows = [...sql.exec(`SELECT f.channel, f.name, f.game, f.title, COUNT(r.at) AS n, MAX(r.at) AS last FROM feeds f
         LEFT JOIN feed_raw r ON r.channel = f.channel WHERE f.guild = ? GROUP BY f.channel ORDER BY f.at`, i.guild_id)];
       if (!rows.length)
         return mine(`No feed channels yet: /feed new makes one.${contentNote}`);
-      return mine(rows.map(r => `<#${r.channel}>: ${r.n ? `${r.n} kept, last <t:${Math.floor(r.last / 1000)}:R>` : 'nothing yet'}`).join('\n') + contentNote);
+      return mine(rows.map(r => `<#${r.channel}>: ${r.n ? `${r.n} kept, last <t:${Math.floor(r.last / 1000)}:R>` : 'nothing yet'}${
+        r.game ? ` · in Bloxkeep: ${r.game} › ${r.title}` : ''}`).join('\n') + `\n${this.ctx.getWebSockets('feeds').length} apps listening.` + contentNote);
     }
     const channel = opt('channel');
     if (!this.feeds.has(channel))
@@ -1012,10 +1094,37 @@ export class Gateway extends DurableObject {
         return mine(`Nothing has arrived in <#${channel}> yet.${contentNote}`);
       return mine(`<#${channel}>, newest first:\n${kept.slice(0, 8).map(r => `• ${rawLine(r)}`).join('\n')}${link}${contentNote}`);
     }
+    if (sub?.name === 'show') {
+      const game = String(opt('game') ?? '').trim(), title = String(opt('title') ?? '').trim(), place = opt('place') ?? null;
+      if (!gameId(game))
+        return mine('Give the game a name with letters or digits, like Blox Fruits.');
+      // The game's place, said once, goes for all its feeds.
+      sql.exec('UPDATE feeds SET game = ?, title = ?, place = ? WHERE channel = ?', game, title, place, channel);
+      if (place)
+        sql.exec('UPDATE feeds SET place = ? WHERE game IS NOT NULL AND channel != ?', place, channel);
+      // What it kept already shows at once, oldest first.
+      sql.exec('DELETE FROM feed_cards WHERE channel = ?', channel);
+      for (const r of [...sql.exec('SELECT at, data FROM feed_raw WHERE channel = ? ORDER BY rowid', channel)])
+        this.keepCard(channel, JSON.parse(r.data), r.at);
+      this.toFeedSockets(this.feedsNow());
+      const shown = [...sql.exec('SELECT COUNT(*) AS n FROM feed_cards WHERE channel = ?', channel)][0].n;
+      this.log('feed', `shown ${game} · ${title}`);
+      return mine(`<#${channel}> shows in Bloxkeep under ${game} as “${title}”${shown ? ` (${shown} already there)` : ''}. Open apps get it now.`);
+    }
+    if (sub?.name === 'hide') {
+      sql.exec('UPDATE feeds SET game = NULL WHERE channel = ?', channel);
+      sql.exec('DELETE FROM feed_cards WHERE channel = ?', channel);
+      this.toFeedSockets(this.feedsNow());
+      return mine(`<#${channel}> no longer shows in Bloxkeep. What it gets is still kept here (/feed raw).`);
+    }
     if (sub?.name === 'remove') {
+      const shown = [...sql.exec('SELECT game FROM feeds WHERE channel = ?', channel)][0]?.game;
       sql.exec('DELETE FROM feeds WHERE channel = ?', channel);
       sql.exec('DELETE FROM feed_raw WHERE channel = ?', channel);
+      sql.exec('DELETE FROM feed_cards WHERE channel = ?', channel);
       this.feeds.delete(channel);
+      if (shown)
+        this.toFeedSockets(this.feedsNow());
       return mine(`<#${channel}> is no longer a feed: what it got is forgotten. The channel itself stays; delete it in Discord if you like.`);
     }
     return mine('Unknown /feed command.');
@@ -1402,6 +1511,11 @@ export class Gateway extends DurableObject {
         await this.ctx.storage.setAlarm(Date.now() + this.backoff);
         break;
       case 0:
+        if (msg.t === 'MESSAGE_DELETE') {
+          if (this.feeds.has(msg.d?.channel_id))
+            this.dropCard(msg.d.channel_id, msg.d.id);
+          break;
+        }
         if (msg.t === 'MESSAGE_CREATE' || msg.t === 'MESSAGE_UPDATE') {
           // Every message in every server the bot is in: kept cheap, and the session saved only now and then (below).
           if (this.feeds.has(msg.d.channel_id))
@@ -1725,6 +1839,11 @@ export default {
     }
     if (url.pathname === '/latest') // which Bloxkeep is out: an open app checks for it at once (rather than within the hour)
       return latestVersion(env, ctx);
+    if (url.pathname === '/feeds/connect') { // a Bloxkeep app listening for game feeds (feeds.js)
+      if (env.PING_LIMITER && !(await env.PING_LIMITER.limit({ key: request.headers.get('CF-Connecting-IP') || 'unknown' })).success)
+        return new Response('rate', { status: 429 });
+      return gateway.fetch(request);
+    }
     if (url.pathname === '/remote/connect') { // a Bloxkeep app that can be controlled from Discord (remote.js)
       if (env.PING_LIMITER && !(await env.PING_LIMITER.limit({ key: request.headers.get('CF-Connecting-IP') || 'unknown' })).success)
         return new Response('rate', { status: 429 });
