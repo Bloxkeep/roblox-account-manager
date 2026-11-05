@@ -16,6 +16,10 @@ html [data-theme="dark" lang="en"]
         button.nav [title="Presets"]
           svg.i #1pvni8o
           span "Presets"
+        button.nav [title="Game news (2 new)"]
+          svg.i #17gqz13
+          span "Game news"
+          em.nav-news [id="nav-news"] "2"
         button.nav [title="Macros (Beta)"]
           svg.i #kx2qfl
           span "Macros"
@@ -144,6 +148,14 @@ html [data-theme="dark" lang="en"]
                   div.set-card
                     div.set-row
                       div
+                        div.t "Start with Windows"
+                        div.d "Bloxkeep opens in the tray when you sign in to Windows."
+                      div.ctl
+                        label.switch
+                          input [id="s-boot" type="checkbox" aria-label="Start with Windows" checked=false]
+                          span
+                    div.set-row
+                      div
                         div.t "Keep running in the tray when closed"
                         div.d "Auto-rejoin and Multi-Roblox keep working. To quit, right-click the tray icon."
                       div.ctl
@@ -229,59 +241,43 @@ html [data-theme="dark" lang="en"]
           span.wn-title
             img [alt="" src="logo.svg"]
             span "What’s new"
-              small "Bloxkeep 1.0.17 · November 4, 2026"
+              small "Bloxkeep 1.0.18 · November 6, 2026"
         button.icon-btn [title="Close"]
           svg.i #1tyq039
       div.modal-body
         div.wn-feats
           article.plain.wn-feat
             div.wn-feat-text
-              h3 "Macro features"
-              p "A switch on the macro's panel can have steps of its own, like Auto sell. They play whole at the end of each round, every round or on a timer, and the panel says what each one is doing."
-              button.wn-go [type="button" FOCUSED] "Open Macros"
+              h3 "Game news"
+              p "Live stock and spawns from the games’ own bots, with an alert for the words you pick. Blox Fruits also has a price list you can search. New games show up without an update."
+              button.wn-go [type="button" FOCUSED] "Open Game news"
                 svg.i #1g7f83q
           article.plain.wn-feat
             div.wn-feat-text
-              h3 "Game monitor by game"
-              p "Windows are grouped by game, each group with its health. Fold a game, show only one, or close all of its windows."
-              button.wn-go [type="button"] "Open Game monitor"
-                svg.i #1g7f83q
-          article.plain.wn-feat
-            div.wn-feat-text
-              h3 "Statistics, redrawn"
-              p "Today as a 24-hour clock, the busiest hours, a map of your games that filters the page, and a card per account."
-              button.wn-go [type="button"] "Open Statistics"
-                svg.i #1g7f83q
-          article.plain.wn-feat
-            div.wn-feat-text
-              h3 "A server for each account"
-              p "A preset can put every account in its own server (fewest players, most or random). Leave crowded servers moves a window to a quieter one."
+              h3 "Alerts on your phone"
+              p "Bloxkeep’s alerts (an account dropped, low RAM, a sign-in to renew…) reach your phone through ntfy, a free app."
               button.wn-go [type="button"] "Open Settings"
                 svg.i #1g7f83q
+          article.plain.wn-feat
+            div.wn-feat-text
+              h3 "Macros that count"
+              p "A macro can keep values, do math, read a number or text from the screen, a file or a web page, write to a file or a Discord webhook, and run another macro."
+              button.wn-go [type="button"] "Open Macros"
+                svg.i #1g7f83q
+          article.plain.wn-feat
+            div.wn-feat-text
+              h3 "Main account and friends"
+              p "Mark the account you play on as Main: Select all, Save RAM, the RAM limit and Arrange leave it alone. Friend each other makes your accounts Roblox friends."
         section.improved.wn-group
           h4.wn-kind "Improved"
           ul.wn-notes
-            li "It closes every Roblox window first, then updates."
-              b "Update automatically can now go right away"
-            li "Account cards show today's play, presets show today's runs on a ruler, and macro cards show the shape of their steps."
-            li "The macro editor folds blocks, finds a step by search, adds one between rows and shows a problem under its step with a fix. Five templates explain their steps."
-            li "Edit on game also draws each step's own area, to drag into place. The macro panel is wider, so a setting's value fits beside its name."
-            li "Message boxes, the mini window, the sign-in window and the game overlay now follow your theme."
-            li "The accounts page, presets, schedules, sign-in, the lock screen and import are cleaner, with the same words everywhere."
-            li "Text is easier to read in every theme, and picture themes keep their picture."
-            li "A Roblox window opened outside Bloxkeep (Roblox's app, a browser's Play) with a saved account becomes that account's: its card, macros and auto-rejoin use it."
-            li "A card says Rejoining while a rejoin is under way."
-            li "Bloxkeep uses less memory and CPU while it waits in the background."
-        section.fixed.wn-group
-          h4.wn-kind "Fixed"
-          ul.wn-notes
-            li "Close now wins over a window still opening or a rejoin under way."
-            li "The second says to stop the first."
-              b "Two macros no longer play on the same window at once"
-            li "The game overlay hides while another program is in front."
-            li "Quitting Bloxkeep lets go of keys a macro was holding and puts back your Roblox files."
-            li "A backup folder Bloxkeep can't write to now says so."
-            li "Game icons show a sign when Roblox's pictures don't load."
+            li "Bloxkeep can open in the tray when you sign in."
+              b "Start with Windows"
+            li "Hide account names shows “Account 1”, “Account 2”… for screenshots and streams."
+            li "A Roblox window that keeps using too much RAM closes and goes back into its server."
+              b "Restart a heavy window"
+            li "Create account opens Roblox’s sign-up form, and each account you make there is saved."
+            li "Signing in with a password can solve Roblox’s puzzle in the app."
         details.wn-older
           summary "Also in the 2 versions before"
             svg.i #1g7f83q

@@ -1,5 +1,80 @@
 [
   {
+    "version": "1.0.18",
+    "date": "2026-11-06",
+    "highlights": [
+      {
+        "icon": "news",
+        "go": "news",
+        "en": [
+          "Game news",
+          "Live stock and spawns from the games’ own bots, with an alert for the words you pick. Blox Fruits also has a price list you can search. New games show up without an update.",
+          "Open Game news"
+        ],
+        "vi": [
+          "Tin game",
+          "Stock và spawn trực tiếp từ bot của game, báo khi có từ khóa bạn chọn. Blox Fruits có thêm bảng giá để tra. Game mới tự hiện, không cần cập nhật.",
+          "Mở Tin game"
+        ]
+      },
+      {
+        "icon": "bell",
+        "go": "settings:phone",
+        "en": [
+          "Alerts on your phone",
+          "Bloxkeep’s alerts (an account dropped, low RAM, a sign-in to renew…) reach your phone through ntfy, a free app.",
+          "Open Settings"
+        ],
+        "vi": [
+          "Báo về điện thoại",
+          "Thông báo của Bloxkeep (tài khoản bị văng, thiếu RAM, cần đăng nhập lại…) gửi về điện thoại qua app ntfy miễn phí.",
+          "Mở Cài đặt"
+        ]
+      },
+      {
+        "icon": "layers",
+        "go": "macros",
+        "en": [
+          "Macros that count",
+          "A macro can keep values, do math, read a number or text from the screen, a file or a web page, write to a file or a Discord webhook, and run another macro.",
+          "Open Macros"
+        ],
+        "vi": [
+          "Macro biết đếm",
+          "Macro giữ được giá trị, tính toán, đọc số hoặc chữ trên màn hình, trong file hay trang web, ghi ra file hoặc webhook Discord, và chạy macro khác.",
+          "Mở Macro"
+        ]
+      },
+      {
+        "icon": "users",
+        "en": [
+          "Main account and friends",
+          "Mark the account you play on as Main: Select all, Save RAM, the RAM limit and Arrange leave it alone. Friend each other makes your accounts Roblox friends."
+        ],
+        "vi": [
+          "Tài khoản chính và kết bạn",
+          "Đánh dấu tài khoản bạn tự chơi là Chính: Chọn tất cả, tiết kiệm RAM, giới hạn RAM và sắp xếp sẽ bỏ qua nó. Kết bạn với nhau cho các tài khoản thành bạn bè trên Roblox."
+        ]
+      }
+    ],
+    "improved": {
+      "en": [
+        "Start with Windows: Bloxkeep can open in the tray when you sign in.",
+        "Hide account names shows “Account 1”, “Account 2”… for screenshots and streams.",
+        "Restart a heavy window: a Roblox window that keeps using too much RAM closes and goes back into its server.",
+        "Create account opens Roblox’s sign-up form, and each account you make there is saved.",
+        "Signing in with a password can solve Roblox’s puzzle in the app."
+      ],
+      "vi": [
+        "Mở cùng Windows: Bloxkeep chạy sẵn dưới khay khi bạn vào Windows.",
+        "Ẩn tên tài khoản hiện “Tài khoản 1”, “Tài khoản 2”… khi chụp màn hình hay livestream.",
+        "Mở lại cửa sổ nặng: cửa sổ Roblox dùng quá nhiều RAM sẽ tự đóng rồi vào lại đúng server.",
+        "Tạo tài khoản mở trang đăng ký của Roblox, tài khoản tạo xong được lưu luôn.",
+        "Đăng nhập bằng mật khẩu giải được câu đố của Roblox ngay trong app."
+      ]
+    }
+  },
+  {
     "version": "1.0.17",
     "date": "2026-11-04",
     "highlights": [
