@@ -85,6 +85,8 @@ public sealed partial class AppController
             case "ram":
                 return Plain(DT("RAM is running low"), DT("Close some Roblox windows if things get slow."), DiscordWebhook.Yellow,
                     [new DiscordField(DT("RAM in use"), $"**{Count(0)}%**", true), .. _running.Count > 0 ? [new DiscordField(DT("Roblox windows"), $"{_running.Count}", true)] : Array.Empty<DiscordField>()]);
+            case "restartHeavy":
+                return Plain(DT("A heavy Roblox window restarted"), DiscordWebhook.Escape(text), DiscordWebhook.Yellow);
             case "launch" when en.StartsWith("Roblox closed", StringComparison.Ordinal):
                 return Plain(DF(Count(0) == 1 ? "Roblox closed {0} window" : "Roblox closed {0} windows", Count(0)),
                     DT("Roblox may have blocked running several windows at once. Multi-Roblox may need an update."), DiscordWebhook.Red);

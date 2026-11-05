@@ -127,6 +127,15 @@ sealed class MacroRun
     public Dictionary<int, int>? MainPasses { get; set; }
     /// <summary>Back from the features at a safe point: that step plays on without looking for them again.</summary>
     public bool Resumed { get; set; }
+    /// <summary>Run a macro steps put in place: each step's own number in the macro as saved, by section ("" the main
+    /// steps); none when it runs no other macro.</summary>
+    public Dictionary<string, int[]> Origins { get; init; } = new();
+    /// <summary>The step to show as playing (or where it stopped): the Run a macro step for the other macro's steps.</summary>
+    public int ShownPc => Origins.TryGetValue(Section ?? "", out var o) && o.Length > 0 ? o[Math.Clamp(Pc, 0, o.Length - 1)] : Pc;
+    /// <summary>The macro the step playing now is from, when a Run a macro step put it here: its settings are read.</summary>
+    public Macro? Owner { get; set; }
+    /// <summary>The last web step, so a loop doesn't ask an address many times a second.</summary>
+    public DateTime LastWebAt { get; set; }
     /// <summary>The steps playing now: the feature's, or the main ones.</summary>
     public List<MacroStep> Steps => Feature?.Steps ?? Macro.Steps;
     public int[] JumpsNow => Section is { } id && FeatureJumps.TryGetValue(id, out var jumps) ? jumps : Jumps;
@@ -189,6 +198,8 @@ sealed class MacroPlayer(IMacroDesk desk)
 
     /// <summary>Each account's variables (setVar, addVar), in memory only.</summary>
     public Dictionary<Guid, Dictionary<string, double>> Vars { get; } = new();
+    /// <summary>Each account's text variables (a Set variable step's text, a Read step's words), in memory only.</summary>
+    public Dictionary<Guid, Dictionary<string, string>> Texts { get; } = new();
     /// <summary>Each feature's record on each account, kept across runs (a rejoin doesn't make one play again at once).</summary>
     public Dictionary<(Guid Macro, Guid Account, string Feature), FeatureRecord> Features { get; } = new();
     /// <summary>Runs, finished ones too (the last of each macro and account), in the order queued.</summary>
@@ -206,12 +217,24 @@ sealed class MacroPlayer(IMacroDesk desk)
     public bool Recording { get; set; }
     /// <summary>For the checks: random timing and offsets.</summary>
     public Random Random { get; set; } = Random.Shared;
+    /// <summary>A saved macro by its id (a copy), for Run a macro steps; null when it's gone.</summary>
+    public Func<Guid, Macro?>? FindMacro { get; set; }
+    /// <summary>The clipboard, files and web addresses (Read and Write steps).</summary>
+    public IMacroOutside Outside { get; set; } = new MacroOutside();
 
     /// <summary>Queues the macro on these accounts; one already running there is left alone, except the editor's Try it
     /// of it, which the saved macro takes over from (Run, its hotkey or trigger did nothing, with no word, before). Returns
     /// how many were queued.</summary>
     public int Queue(Macro macro, IEnumerable<Guid> accounts, bool trial = false)
     {
+        var origins = new Dictionary<string, int[]>();
+        if (MacroRules.AllSteps(macro).Any(s => s.Kind == "call"))
+        {
+            macro = MacroRules.Copy(macro);
+            (macro.Steps, origins[""]) = Expand(macro.Steps, [macro.Id]);
+            foreach (var f in macro.Features)
+                (f.Steps, origins[f.Id]) = Expand(f.Steps ?? [], [macro.Id]);
+        }
         var jumps = MacroRules.Jumps(macro.Steps);
         int queued = 0;
         var now = desk.Now;
@@ -236,7 +259,7 @@ sealed class MacroPlayer(IMacroDesk desk)
             _runs.Add(new MacroRun
             {
                 Macro = macro, AccountId = account, Jumps = jumps, StartedAt = now, ResumeAt = now, Trial = trial,
-                FeatureJumps = featureJumps, SafeEnds = safeEnds,
+                FeatureJumps = featureJumps, SafeEnds = safeEnds, Origins = origins,
                 RecoverAt = macro.Steps.FindIndex(st => st.Kind == "recover"),
                 EndsAt = now + TimeSpan.FromMinutes(macro.MaxMinutes),
             });
@@ -322,6 +345,7 @@ sealed class MacroPlayer(IMacroDesk desk)
     {
         Stop(null, reason);
         Vars.Clear();
+        Texts.Clear();
         Features.Clear();
         _runs.Clear();
         Changed?.Invoke();
@@ -519,6 +543,7 @@ sealed class MacroPlayer(IMacroDesk desk)
                 MacroStep step;
                 try
                 {
+                    run.Owner = run.Steps[run.Pc].Owner;
                     step = MacroValues.Resolve(run.Steps[run.Pc], name => Value(run, name));
                 }
                 catch (MacroValueMissing)
@@ -534,6 +559,11 @@ sealed class MacroPlayer(IMacroDesk desk)
                 catch (MacroValueMissing)
                 {
                     Finish(run, "failed", "missingValue");
+                    return;
+                }
+                catch (MacroExprError)
+                {
+                    Finish(run, "failed", "badFormula");
                     return;
                 }
                 catch (MacroCovered)
@@ -1087,14 +1117,78 @@ sealed class MacroPlayer(IMacroDesk desk)
             {
                 if (await turn.FrontAsync(ct) is not { } input)
                     return Then.EndTurn;
-                await TypeAsync(input, turn, s.Text!, ct);
+                await TypeAsync(input, turn, AlertText(run, s.Text!), ct);
                 break;
             }
             case "setVar" or "addVar":
             {
-                var vars = Vars.TryGetValue(run.AccountId, out var v) ? v : Vars[run.AccountId] = new();
-                vars[s.Name!] = s.Kind == "setVar" ? s.Value!.Value : vars.GetValueOrDefault(s.Name!) + s.Value!.Value;
-                Changed?.Invoke();
+                if (s.Kind == "setVar" && s.Text is { } text)
+                {
+                    SetText(run, s.Name!, AlertText(run, text));
+                    break;
+                }
+                double by = s.Expr is { } expr ? MacroExpr.Eval(expr, name => NumberOf(run, name)) : s.Value!.Value;
+                SetNumber(run, s.Name!, s.Kind == "setVar" ? by : NumberOf(run, s.Name!) + by);
+                break;
+            }
+            case "fail":
+                Finish(run, "failed", s.Text ?? "missingMacro");
+                return Then.Over;
+            case "write":
+            {
+                string text = AlertText(run, s.Text!);
+                try
+                {
+                    switch (s.To)
+                    {
+                        case "clipboard": await Outside.CopyAsync(text); break;
+                        case "file": await Outside.AppendFileAsync(s.FileName!, text); break;
+                        case "web":
+                            if (await WebAsync(run, s.Url!, text, ct) is null)
+                                Log.Note("Macro write step: the web address didn't take it; the macro goes on.");
+                            break;
+                    }
+                }
+                catch (Exception ex) when (ex is not (MacroExprError or OperationCanceledException))
+                {
+                    // A clipboard another app holds, a file open elsewhere: noted, and the macro goes on.
+                    Log.Note($"Macro write step to {s.To}: {ex.GetType().Name}; the macro goes on.");
+                }
+                break;
+            }
+            case "read":
+            {
+                run.Deadline ??= desk.Now.AddMilliseconds(s.TimeoutMs ?? 10_000);
+                bool screen = s.From is null or "screen";
+                string? words;
+                try
+                {
+                    words = s.From switch
+                    {
+                        "clipboard" => await Outside.ClipboardAsync(),
+                        "file" => await Outside.ReadFileAsync(s.FileName!),
+                        "web" => await WebAsync(run, s.Url!, null, ct),
+                        _ => await ReadAreaAsync(turn, s.Region),
+                    };
+                }
+                catch (Exception ex) when (ex is not (MacroExprError or OperationCanceledException))
+                {
+                    Log.Note($"Macro read step from {s.From}: {ex.GetType().Name}.");
+                    words = null;
+                }
+                int again = screen ? ReadEvery : s.From == "web" ? 3000 : 1000;
+                if (s.Mode == "text")
+                {
+                    if (string.IsNullOrWhiteSpace(words))
+                        return await NotYetAsync(turn, "timeout", again, ct);
+                    SetText(run, s.Name!, words.Length > 200 ? words[..200].Trim() : words.Trim());
+                }
+                else
+                {
+                    if (words is null || MacroExpr.NumberIn(words) is not { } n)
+                        return await NotYetAsync(turn, "timeout", again, ct);
+                    SetNumber(run, s.Name!, n);
+                }
                 break;
             }
             case "rejoin":
@@ -1114,10 +1208,48 @@ sealed class MacroPlayer(IMacroDesk desk)
                 Finish(run, "done");
                 return Then.Over;
         }
-        if (s.Kind is "waitImage" or "waitText" or "waitColour" or "waitStill" or "clickImage")
+        if (s.Kind is "waitImage" or "waitText" or "waitColour" or "waitStill" or "clickImage" || s is { Kind: "read", From: null or "screen" })
             Seen(run);
         run.Pc++;
         return Then.Next;
+    }
+
+    const int MaxExpanded = 5000;
+
+    /// <summary>
+    /// Run a macro steps put in place: the other macro's own steps (not its If stuck part), its settings and areas read
+    /// now. One that's gone, runs a macro already running here, or goes too deep becomes a step that fails the run.
+    /// </summary>
+    (List<MacroStep> Steps, int[] Origin) Expand(List<MacroStep> steps, List<Guid> chain)
+    {
+        var result = new List<MacroStep>();
+        var origin = new List<int>();
+        for (int i = 0; i < steps.Count; i++)
+        {
+            var inner = steps[i].Kind == "call" ? Inner(steps[i], chain) : [steps[i]];
+            result.AddRange(inner);
+            origin.AddRange(Enumerable.Repeat(i, inner.Count));
+            if (result.Count > MaxExpanded)
+                return ([Fail("missingMacro")], [i]);
+        }
+        return (result, origin.ToArray());
+
+        static MacroStep Fail(string why) => new() { Kind = "fail", Text = why };
+
+        List<MacroStep> Inner(MacroStep call, List<Guid> chain)
+        {
+            if (FindMacro?.Invoke(call.MacroId ?? Guid.Empty) is not { } callee || chain.Contains(callee.Id) || chain.Count > MacroRules.MaxCallDepth)
+                return [Fail("missingMacro")];
+            int end = callee.Steps.FindIndex(s => s.Kind == "recover");
+            var own = new List<MacroStep>();
+            foreach (var s in end < 0 ? callee.Steps : callee.Steps.Take(end))
+            {
+                var mine = s.Clone();
+                mine.Owner = callee;
+                own.Add(mine);
+            }
+            return Expand(own, [.. chain, callee.Id]).Steps;
+        }
     }
 
     /// <summary>Ends the turn here; the run is due again at once (after the others).</summary>
@@ -1281,7 +1413,56 @@ sealed class MacroPlayer(IMacroDesk desk)
         return null;
     }
 
-    static bool SetsVar(Macro m, string name) => MacroRules.AllSteps(m).Any(s => s.Kind is "setVar" or "addVar" && s.Name == name);
+    static bool SetsVar(Macro m, string name) => MacroRules.AllSteps(m).Any(s => s.Kind is "setVar" or "addVar" or "read" && s.Name == name);
+
+    /// <summary>A web step: at most one a second for each run.</summary>
+    async Task<string?> WebAsync(MacroRun run, string url, string? post, CancellationToken ct)
+    {
+        var wait = run.LastWebAt + TimeSpan.FromSeconds(1) - desk.Now;
+        if (wait > TimeSpan.Zero)
+            await desk.Delay((int)wait.TotalMilliseconds, ct);
+        run.LastWebAt = desk.Now;
+        return await Outside.WebAsync(url, post, ct);
+    }
+
+    /// <summary>The words read in the area, its lines joined by spaces; null when Windows can't read text here.</summary>
+    async Task<string?> ReadAreaAsync(Turn turn, MacroRect? region)
+    {
+        if (await turn.PictureAsync() is not { } picture)
+            return null;
+        var read = await desk.ReadAsync(picture, MacroVision.Area(region, picture.Width, picture.Height));
+        return read?.FirstOrDefault(lines => lines.Count > 0) is { } found ? string.Join(" ", found.Select(l => l.Text)).Trim() : null;
+    }
+
+    /// <summary>A name's number for a formula: a variable the macro sets itself is 0 before it is first set; a text that
+    /// holds a number counts as that number.</summary>
+    double NumberOf(MacroRun run, string name)
+    {
+        if (Value(run, name) is not { } v)
+            return SetsVar(run.Macro, name) ? 0 : throw new MacroValueMissing(name);
+        return v.ValueKind switch
+        {
+            JsonValueKind.Number => v.GetDouble(),
+            JsonValueKind.True => 1,
+            JsonValueKind.False => 0,
+            JsonValueKind.String when MacroExpr.NumberIn(v.GetString()!) is { } n => n,
+            _ => throw new MacroExprError(L.F("“{0}” isn't a number.", name)),
+        };
+    }
+
+    void SetNumber(MacroRun run, string name, double value)
+    {
+        (Vars.TryGetValue(run.AccountId, out var v) ? v : Vars[run.AccountId] = new())[name] = Math.Round(value, 9);
+        Texts.GetValueOrDefault(run.AccountId)?.Remove(name);
+        Changed?.Invoke();
+    }
+
+    void SetText(MacroRun run, string name, string value)
+    {
+        (Texts.TryGetValue(run.AccountId, out var t) ? t : Texts[run.AccountId] = new())[name] = value;
+        Vars.GetValueOrDefault(run.AccountId)?.Remove(name);
+        Changed?.Invoke();
+    }
 
     /// <summary>An if's or loopUntil's question, on the window's picture now or the account's variables.</summary>
     async Task<bool> TestAsync(Turn turn, MacroTest t)
@@ -1302,7 +1483,9 @@ sealed class MacroPlayer(IMacroDesk desk)
 
     /// <summary>A value a run reads by name: the account's variable first, then the macro's option ("o1"); an area
     /// by "@a1".</summary>
-    internal JsonElement? Value(MacroRun run, string name) => Value(run.Macro, Vars.GetValueOrDefault(run.AccountId), name);
+    internal JsonElement? Value(MacroRun run, string name) =>
+        Texts.GetValueOrDefault(run.AccountId)?.TryGetValue(name, out var text) == true ? JsonSerializer.SerializeToElement(text)
+            : Value(run.Owner ?? run.Macro, Vars.GetValueOrDefault(run.AccountId), name);
 
     internal static JsonElement? Value(Macro macro, Dictionary<string, double>? vars, string name)
     {
@@ -1723,6 +1906,7 @@ sealed class MacroPlayer(IMacroDesk desk)
             {
                 "key" => HoldFor(s.Ms ?? 60, fps) + frame,
                 "down" or "up" or "move" or "setVar" or "addVar" => frame,
+                "read" => 300,
                 "click" => frame * 2 + HoldFor(60, fps) * (s.Double == true ? 2 : 1),
                 "clickImage" => 300 + frame * 2 + HoldFor(60, fps),
                 "camera" => (s.Ms ?? 200) + frame * 3,

@@ -256,7 +256,7 @@ public sealed partial class AppController
             }),
             counters,
             startedAt = runs.Count > 0 ? runs.Min(r => r.StartedAt) : (DateTime?)null,
-            lastError = failed is null ? null : new { text = FailText(failed.Reason), step = failed.Pc, section = failed.Section },
+            lastError = failed is null ? null : new { text = FailText(failed.Reason), step = failed.ShownPc, section = failed.Section },
             editingAreas = EditingAreasOf(id),
             hotkeysOn = Prefs.GlobalHotkeys,
             hasGame,
@@ -282,7 +282,7 @@ public sealed partial class AppController
         {
             var run = runs.FirstOrDefault(r => r.Section == f.Id) ?? runs.FirstOrDefault(r => r.Due.Contains(f.Id)) ?? runs[0];
             var record = player.Features.GetValueOrDefault((macro.Id, run.AccountId, f.Id));
-            now[f.Option] = run.Section == f.Id ? new { state = "playing", step = run.Pc + 1, of = f.Steps.Count }
+            now[f.Option] = run.Section == f.Id ? new { state = "playing", step = run.ShownPc + 1, of = (run.Origins.TryGetValue(f.Id, out var o) && o.Length > 0 ? o[^1] + 1 : f.Steps.Count) }
                 : run.Due.Contains(f.Id) ? new { state = "due" }
                 : record?.Failed is { } failed ? new { state = "failed", why = FailText(failed) }
                 : f.EveryMs is { } every && record?.LastRan is { } last && DateTime.UtcNow - last < TimeSpan.FromMilliseconds(every)
@@ -979,6 +979,7 @@ public sealed partial class AppController
         if (string.IsNullOrWhiteSpace(draft.Name))
             draft.Name = L.T("New macro");
         MacroRules.Check(draft, vault.Data.Accounts.Select(acc => acc.Id).ToHashSet(), []);
+        MacroRules.CheckCalls(draft, vault.Data.Settings.Macros);
         if (draft.Id == Guid.Empty)
             draft.Id = _tryRun is { } last && OpenMacro(last.Macro) is null ? last.Macro : Guid.NewGuid();
         if (_tryRun is { } previous)
@@ -1016,6 +1017,8 @@ public sealed partial class AppController
         "timeout" => L.T("a wait ran out of time"),
         "notFound" => L.T("what it looks for wasn't there"),
         "missingValue" => L.T("a setting or area is missing"),
+        "badFormula" => L.T("some math went wrong"),
+        "missingMacro" => L.T("a macro it runs is gone"),
         "windowGone" => L.T("the window closed"),
         "maxTime" => L.T("it ran its longest time"),
         "stuck" => L.T("it got stuck"),

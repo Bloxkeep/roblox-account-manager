@@ -80,10 +80,11 @@ public sealed partial class AppController
         foreach (int gone in _coreRoles.Keys.Where(pid => !pids.Contains(pid)).ToList())
             _coreRoles.Remove(gone);
         int front = _splitCoresOn ? RobloxProcesses.ForegroundPid() : 0;
+        var main = MainPids(); // a main account's window keeps the fast cores behind others too
         bool refused = false;
         foreach (int pid in pids)
         {
-            var want = !_splitCoresOn ? CpuCores.Role.Default : pid == front ? CpuCores.Role.Front : CpuCores.Role.Background;
+            var want = !_splitCoresOn ? CpuCores.Role.Default : pid == front || main.Contains(pid) ? CpuCores.Role.Front : CpuCores.Role.Background;
             bool same = _coreRoles.TryGetValue(pid, out var had) ? had == want : want == CpuCores.Role.Default;
             if (same)
                 continue;

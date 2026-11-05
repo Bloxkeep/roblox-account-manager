@@ -1,11 +1,12 @@
-// The main page once the vault is open: the sidebar, and the tabs beside it (Accounts with its dock, Presets, Macros, the
-// game monitor, Statistics, Settings). app.js builds it once per language (buildShell) and shows one tab at a time (setView).
+// The main page once the vault is open: the sidebar, and the tabs beside it (Accounts with its dock, Presets, Game news,
+// Macros, the game monitor, Statistics, Settings). app.js builds it once per language (buildShell) and shows one tab at a time (setView).
 import { type Ref } from 'react';
 import { AccountGrid, AccountsBar, AccountsHead, Dock } from './Accounts';
 import { Guarded } from './Guard';
 import { Icon, useHost } from './host';
 import { MacrosView } from './MacrosView';
 import { MonitorView } from './monitor/MonitorView';
+import { NewsView } from './NewsView';
 import { PresetsView } from './PresetsView';
 import { MonitorHead, Sidebar } from './Sidebar';
 import { AppearancePage } from './settings/AppearancePage';
@@ -44,6 +45,7 @@ export function Shell({ pages, page, preview, stats }: { pages: SettingsPageInfo
         <Guarded name="the dock"><Dock /></Guarded>
       </section>
       <section className="view" id="view-presets" hidden><Guarded name="Presets"><PresetsView /></Guarded></section>
+      <section className="view" id="view-news" hidden><Guarded name="Game news"><NewsView /></Guarded></section>
       <section className="view" id="view-macros" hidden><Guarded name="Macros"><MacrosView /></Guarded></section>
       <section className="view" id="view-stats" hidden><Guarded name="Statistics"><StatsView api={stats} /></Guarded></section>
       <section className="view" id="view-monitor" hidden>

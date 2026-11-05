@@ -50,7 +50,8 @@ public sealed partial class AppController
             var log = _logs.StateOf(pid);
             long? place = log?.PlaceId;
             string status = log is null ? "" : LogConnection(log.Status);
-            list.Add(new MonitorClient(hwnd, pid, null, "Roblox", place is null ? "" : MonitorGameName(place), ram.GetValueOrDefault(pid),
+            // Not in a game, it is "No game" like the accounts' windows, so the page puts them in one lane.
+            list.Add(new MonitorClient(hwnd, pid, null, "Roblox", MonitorGameName(place), ram.GetValueOrDefault(pid),
                 status, status == "ingame" ? log?.JobId : null, MonitorIcon(place)));
         }
         return list;

@@ -120,6 +120,17 @@ public sealed class MacroStep
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public int? Max { get; set; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? Name { get; set; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public double? Value { get; set; }
+    /// <summary>setVar, addVar: a formula worked out when the step plays, instead of <see cref="Value"/> (MacroExpr.cs).</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? Expr { get; set; }
+    /// <summary>call: the other macro whose steps play here, on the same account.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public Guid? MacroId { get; set; }
+    /// <summary>read: where from ("screen", "clipboard", "file", "web"); write: where to ("clipboard", "file", "web").</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? From { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? To { get; set; }
+    /// <summary>read, write: a text file in Documents\Bloxkeep, by its name without ".txt" (MacroOutside.cs).</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? FileName { get; set; }
+    /// <summary>read, write: an https address.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? Url { get; set; }
     /// <summary>follow: the colour of what to keep up with (a line), and the marker kept on it: one colour, or a box's
     /// edges {left, right} (each a colour or "$name"; see MacroFollow.cs).</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? Target { get; set; }
@@ -150,6 +161,8 @@ public sealed class MacroStep
     public Dictionary<string, JsonElement>? Extra { get; set; }
 
     internal MacroStep Clone() => (MacroStep)MemberwiseClone();
+    /// <summary>A step a Run a macro step put in place: the macro it is from, whose settings and areas it reads.</summary>
+    [JsonIgnore] internal Macro? Owner { get; set; }
 }
 
 /// <summary>What an "if" or "loopUntil" asks: "image", "text", "colour" (on the window's picture) or "var".</summary>
@@ -306,7 +319,7 @@ static class MacroRules
     static readonly string[] TargetKinds = ["selected", "all", "accounts"];
     static readonly string[] TriggerKinds = ["manual", "interval", "join", "rejoin"];
     static readonly string[] OnFails = ["stop", "skip", "restart", "rejoin", "alert"];
-    static readonly string[] Ops = ["<", "<=", "=", ">=", ">", "!="];
+    static readonly string[] Ops = ["<", "<=", "=", ">=", ">", "!=", "has", "!has"];
     static readonly Regex VarName = new("^[A-Za-z_][A-Za-z0-9_]{0,31}$", RegexOptions.CultureInvariant);
     static readonly Regex Colour = new("^#[0-9a-fA-F]{6}$", RegexOptions.CultureInvariant);
 
@@ -586,8 +599,75 @@ static class MacroRules
                 break;
             case "setVar" or "addVar":
                 NeedVar(s.Name);
-                if (s.Value is not { } value || !double.IsFinite(value))
+                // A text (setVar only, "{name}" put in when it plays), a formula, or a number.
+                if (s.Kind == "setVar" && s.Text is not null)
+                {
+                    if (s.Text.Length > 0)
+                        NeedText(s.Text, MaxTypeText);
+                    (s.Value, s.Expr) = (null, null);
+                }
+                else if (s.Expr is not null)
+                {
+                    s.Expr = s.Expr.Trim();
+                    if (MacroExpr.Problem(s.Expr) is { } problem)
+                        throw new UserError(problem);
+                    (s.Value, s.Text) = (null, null);
+                }
+                else if (s.Value is not { } value || !double.IsFinite(value))
                     throw new UserError(L.T("Enter a number."));
+                else
+                    s.Text = null;
+                break;
+            case "read":
+                NeedVar(s.Name);
+                if (s.Mode is not ("number" or "text"))
+                    s.Mode = "number";
+                s.TimeoutMs = Timeout(s.TimeoutMs);
+                switch (s.From ??= "screen")
+                {
+                    case "screen":
+                        if (s.Region is null && MacroValues.RefOf(s.Extra, "region") is null)
+                            throw new UserError(L.T("Choose the area to read."));
+                        NeedRegion(s.Region);
+                        (s.FileName, s.Url) = (null, null);
+                        break;
+                    case "clipboard":
+                        (s.Region, s.FileName, s.Url) = (null, null, null);
+                        break;
+                    case "file":
+                        NeedFile(s.FileName);
+                        (s.Region, s.Url) = (null, null);
+                        break;
+                    case "web":
+                        NeedUrl(s.Url);
+                        (s.Region, s.FileName) = (null, null);
+                        break;
+                    default:
+                        throw new UserError(L.T("Choose where to read from."));
+                }
+                break;
+            case "write":
+                NeedText(s.Text, MaxTypeText);
+                switch (s.To)
+                {
+                    case "clipboard":
+                        (s.FileName, s.Url) = (null, null);
+                        break;
+                    case "file":
+                        NeedFile(s.FileName);
+                        s.Url = null;
+                        break;
+                    case "web":
+                        NeedUrl(s.Url);
+                        s.FileName = null;
+                        break;
+                    default:
+                        throw new UserError(L.T("Choose where to write."));
+                }
+                break;
+            case "call":
+                if (s.MacroId is not { } callee || callee == Guid.Empty)
+                    throw new UserError(L.T("Choose the macro to run."));
                 break;
             case "alert":
                 NeedText(s.Text, 200);
@@ -752,6 +832,51 @@ static class MacroRules
     {
         if (name is null || !VarName.IsMatch(name))
             throw new UserError(L.T("A counter's name is letters, digits and _ (up to 32), not starting with a digit."));
+    }
+
+    static void NeedFile(string? name)
+    {
+        if (name is null || !MacroOutside.FileName.IsMatch(name.Trim()))
+            throw new UserError(L.T("A file's name is letters, digits, spaces, - and _."));
+    }
+
+    static void NeedUrl(string? url)
+    {
+        if (url is null || url.Length > 500 || !Uri.TryCreate(url.Trim(), UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps)
+            throw new UserError(L.T("A web address starts with https://."));
+    }
+
+    public const int MaxCallDepth = 5;
+
+    /// <summary>
+    /// The macros a macro runs (Run a macro steps) are saved ones, not itself, and none of them runs it back, at most
+    /// <see cref="MaxCallDepth"/> deep. <paramref name="all"/> are the saved macros.
+    /// </summary>
+    public static void CheckCalls(Macro m, IReadOnlyCollection<Macro> all)
+    {
+        var byId = all.Where(x => x.Id != m.Id).ToDictionary(x => x.Id);
+        byId[m.Id] = m;
+        Walk(m, [m.Id]);
+
+        void Walk(Macro at, List<Guid> chain)
+        {
+            foreach (var s in AllSteps(at).Where(s => s.Kind == "call"))
+            {
+                var id = s.MacroId ?? Guid.Empty;
+                if (!byId.TryGetValue(id, out var callee))
+                {
+                    if (at == m)
+                        throw new UserError(L.T("The macro to run isn't there any more. Choose another."));
+                    continue; // one of the others is out of date: it fails as it plays
+                }
+                if (chain.Contains(id))
+                    throw new UserError(at == m && id == m.Id ? L.T("A macro can't run itself.")
+                        : L.F("“{0}” runs this macro back: they would go round forever.", at.Name));
+                if (chain.Count >= MaxCallDepth)
+                    throw new UserError(L.F("Macros can run other macros {0} deep at most.", MaxCallDepth));
+                Walk(callee, [.. chain, id]);
+            }
+        }
     }
 
     static void NeedColour(string? colour)

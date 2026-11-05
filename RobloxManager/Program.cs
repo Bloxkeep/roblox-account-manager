@@ -118,10 +118,11 @@ static class Program
         UseOurUninstaller();
         // Started again by an update in the background: what the last run handed over (also removed when not).
         var resume = Relaunch.Take(args);
+        StartWithWindows.KeepPathCurrent();
         ShellForm shell;
         try
         {
-            shell = new ShellForm(resume);
+            shell = new ShellForm(resume, startup: args.Contains(StartWithWindows.Arg));
         }
         // Nothing is running yet, so report why the window could not be created instead of vanishing.
         catch (Exception ex)

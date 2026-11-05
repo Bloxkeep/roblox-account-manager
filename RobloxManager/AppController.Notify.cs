@@ -23,7 +23,7 @@ public sealed partial class AppController
     {
         "drop" or "rejoinFail" or "rejoinSlow" or "afk" or "gameBan" => "drop",
         "signin" or "banned" => "signin",
-        "ram" => "ram",
+        "ram" or "restartHeavy" => "ram",
         "launch" => "launch",
         _ when type.StartsWith("schedule", StringComparison.Ordinal) => "schedule",
         _ => null,
@@ -32,12 +32,14 @@ public sealed partial class AppController
     /// <summary>The in-app toast, plus a Windows notification while the window isn't in front: at most one per account and
     /// event type every five minutes, kinds left on in Settings only (the toast shows either way).</summary>
     /// <param name="toast">false when the page shows its own message for this (a launch result).</param>
-    void Notify(string text, string kind, string type, Guid account = default, bool toast = true)
+    /// <param name="repeatKey">What counts as the same notification (by default its type and account).</param>
+    void Notify(string text, string kind, string type, Guid account = default, bool toast = true, string? repeatKey = null)
     {
         // Statistics › Activity keeps the text in both languages: like Discord's copy, before any other L.F.
         NoteNotified(text, kind, type, account);
         // First, while the L.F that made the text is still the last (Discord may want another language or its own name switch).
         NotifyDiscord(text, type, account);
+        NotifyPhone(text, kind, type);
         if (toast)
             Toast(text, kind);
         // None behind the lock screen: it would show the text (an account's name) on the desktop, which the page withholds too.
@@ -46,7 +48,7 @@ public sealed partial class AppController
         if (NotifyKind(type) is { } off && Prefs.NotifyOff.Contains(off))
             return;
         var now = DateTime.UtcNow;
-        string key = $"{type}:{account}";
+        string key = repeatKey ?? $"{type}:{account}";
         // A time ahead of now (the clock was set back) doesn't hold the notification back.
         if (_notified.TryGetValue(key, out var last) && last <= now && now - last < NotifyRepeat)
             return;

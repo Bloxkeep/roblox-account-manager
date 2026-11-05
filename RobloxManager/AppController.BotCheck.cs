@@ -25,17 +25,7 @@ public sealed partial class AppController
             return null;
         }
 
-        string? answer = challenge.Type switch
-        {
-            "proofofwork" when challenge.Meta("sessionId") is { Length: > 0 } session =>
-                challenge.MetaWith("redemptionToken", await RobloxApi.ProofOfWorkTokenAsync(account.Realm, session)),
-            "captchav2" when challenge.Meta("challengeId") is { Length: > 0 } human =>
-                ShowCaptcha(CaptchaForm.Human(account.Realm, human)) is { } redemption ? challenge.MetaWith("redemptionToken", redemption) : null,
-            "captcha" when challenge.Meta("dataExchangeBlob") is { Length: > 0 } blob && challenge.Meta("unifiedCaptchaId") is { Length: > 0 } captchaId =>
-                await ArkoseAnswerAsync(account, challenge, blob, challenge.Meta("actionType") ?? "Generic"),
-            _ => throw new UserError(L.F("Roblox asked {0} for a kind of check Bloxkeep can't show yet ({1}). It was noted, to be added.",
-                Name(account), challenge.Type.Length > 0 ? challenge.Type : "?")),
-        };
+        string? answer = await AnswerCheckAsync(account, challenge);
         if (answer is null || _vault != vault)
             return null;
 
@@ -72,6 +62,20 @@ public sealed partial class AppController
             PushState();
         }
     }
+
+    /// <summary>A check's answer as its metadata (proof of work computed, a puzzle in Bloxkeep's own window); null when the
+    /// window was closed unsolved. A join's and a friend request's checks alike.</summary>
+    async Task<string?> AnswerCheckAsync(Account account, RobloxApi.JoinChallenge challenge) => challenge.Type switch
+    {
+        "proofofwork" when challenge.Meta("sessionId") is { Length: > 0 } session =>
+            challenge.MetaWith("redemptionToken", await RobloxApi.ProofOfWorkTokenAsync(account.Realm, session)),
+        "captchav2" when challenge.Meta("challengeId") is { Length: > 0 } human =>
+            ShowCaptcha(CaptchaForm.Human(account.Realm, human)) is { } redemption ? challenge.MetaWith("redemptionToken", redemption) : null,
+        "captcha" when challenge.Meta("dataExchangeBlob") is { Length: > 0 } blob && challenge.Meta("unifiedCaptchaId") is { Length: > 0 } =>
+            await ArkoseAnswerAsync(account, challenge, blob, challenge.Meta("actionType") ?? "Generic"),
+        _ => throw new UserError(L.F("Roblox asked {0} for a kind of check Bloxkeep can't show yet ({1}). It was noted, to be added.",
+            Name(account), challenge.Type.Length > 0 ? challenge.Type : "?")),
+    };
 
     /// <summary>Closes a window Bloxkeep opens again at once (a field, so the checks don't close a real process).</summary>
     Action<int, bool> _closeForReopen = RobloxProcesses.Close;

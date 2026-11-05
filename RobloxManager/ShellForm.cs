@@ -74,7 +74,8 @@ public sealed class ShellForm : Form
     static string StartMarker => Path.Combine(Vault.DataDir, "starting.flag");
 
     /// <param name="resume">What the previous run handed over when it quit for an update in the background (see <see cref="Relaunch"/>).</param>
-    public ShellForm(Relaunch.State? resume = null)
+    /// <param name="startup">Started by Windows at sign-in (<see cref="StartWithWindows"/>): in the tray, locked.</param>
+    public ShellForm(Relaunch.State? resume = null, bool startup = false)
     {
         // Created first: setting Size below already raises OnResize.
         _app = new AppController(this, PostToPage)
@@ -112,6 +113,8 @@ public sealed class ShellForm : Form
             _showQuietly = !resume.Foreground;
             _frontAtStart = GetForegroundWindow();
         }
+        else if (startup)
+            _startHidden = true;
         _monitor = new MonitorTab(this, _app, () => _web);
         _themeId = Themes.Current.Id;
         Text = Ui.Title;

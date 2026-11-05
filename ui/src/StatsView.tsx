@@ -445,7 +445,7 @@ function Log({ log: d, failed, filtered, retry, more }: {
 /** An account's picture; a deleted account's is a plain figure (its old picture may be someone else's by now). */
 function AccAvatar({ a, label, hide }: { a: StatAccount; label: string; hide: boolean }) {
   if (a.deleted) return <span className="avatar sm gone" aria-hidden="true"><Icon name="user" /></span>;
-  return <span className="avatar sm"><Avatar a={{ avatarUrl: a.avatarUrl, username: hide ? a.id : a.username || a.id, label }} /></span>;
+  return <span className="avatar sm"><Avatar a={{ avatarUrl: hide ? null : a.avatarUrl, username: hide ? a.id : a.username || a.id, label }} /></span>;
 }
 
 /** A game's picture (gamepad placeholder when broken), loaded eagerly while the tab is hidden so the icons show at once. */

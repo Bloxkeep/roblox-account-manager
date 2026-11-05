@@ -153,7 +153,7 @@ static class MacroWatch
     {
         if (seen.Boxes.Count > 0)
             return null;
-        bool looks = macro.Steps.Any(s => s.Kind is "follow" or "clickColour" or "waitColour" or "waitImage" or "clickImage" or "waitText"
+        bool looks = macro.Steps.Any(s => s.Kind is "follow" or "clickColour" or "waitColour" or "waitImage" or "clickImage" or "waitText" or "read"
             || s.Kind is "if" or "loopUntil" && s.Test?.Kind is "image" or "colour" or "text");
         return looks ? L.T("Nothing found: check the colors, areas and settings.") : L.T("No step looks at the game: add a color, picture or text step.");
     }

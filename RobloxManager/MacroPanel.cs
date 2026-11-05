@@ -339,7 +339,8 @@ static class MacroOptions
 
     /// <summary>The variables the macro counts (setVar, addVar), shown on its panel as counters.</summary>
     public static List<string> Counters(Macro m) =>
-        MacroRules.AllSteps(m).Where(s => s is { Kind: "setVar" or "addVar", Name: not null }).Select(s => s.Name!).Distinct().ToList();
+        MacroRules.AllSteps(m).Where(s => s is { Kind: "setVar" or "addVar", Name: not null, Text: null } or { Kind: "read", Name: not null, Mode: not "text" })
+            .Select(s => s.Name!).Distinct().ToList();
 
     /// <summary>
     /// Panels shown by themselves while an account plays their game: those to show now (their game is played, not shown,

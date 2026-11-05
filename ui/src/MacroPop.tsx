@@ -16,8 +16,11 @@ export function Pop({ anchor, close, label, className, children, focusFirst = tr
     const p = panel.current;
     if (!p) return;
     const a = anchor.getBoundingClientRect();
-    // Its whole height, not what a scroll cap left of it.
-    const height = p.scrollHeight + (p.offsetHeight - p.clientHeight), width = p.offsetWidth;
+    // Its whole height, not what a cap left of it (a list inside may shrink to the cap rather than the panel scrolling).
+    const cap = p.style.maxHeight;
+    p.style.maxHeight = 'none';
+    const height = p.offsetHeight, width = p.offsetWidth;
+    p.style.maxHeight = cap;
     const below = a.bottom + 6, roomBelow = innerHeight - 8 - below, roomAbove = a.top - 6 - 8;
     // Never over its button: under it when it fits, else over it when that fits, else the roomier side, scrolled.
     side.current ||= height <= roomBelow ? 'below' : height <= roomAbove ? 'above' : roomBelow >= roomAbove ? 'below' : 'above';

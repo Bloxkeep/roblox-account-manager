@@ -98,6 +98,24 @@ static class MacroSuite
 
     // ───────────────────────── a made-up desktop ─────────────────────────
 
+    sealed class FakeOutside : IMacroOutside
+    {
+        public string Clip = "";
+        public Dictionary<string, string> Files = new();
+        public Dictionary<string, string> Web = new();
+        public List<string> Posts = new();
+        public Task<string?> ClipboardAsync() => Task.FromResult<string?>(Clip);
+        public Task CopyAsync(string text) { Clip = text; return Task.CompletedTask; }
+        public Task<string?> ReadFileAsync(string name) => Task.FromResult(Files.TryGetValue(name, out var f) ? f.Split('\n').Last(l => l.Trim().Length > 0) : null);
+        public Task AppendFileAsync(string name, string line) { Files[name] = Files.TryGetValue(name, out var f) ? f + "\n" + line : line; return Task.CompletedTask; }
+        public Task<string?> WebAsync(string url, string? post, CancellationToken ct)
+        {
+            if (post is not null)
+                Posts.Add(url + " " + post);
+            return Task.FromResult(post is null ? Web.GetValueOrDefault(url) : "ok");
+        }
+    }
+
     internal sealed class FakeDesk : IMacroDesk
     {
         public DateTime Clock = new(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
@@ -385,6 +403,32 @@ static class MacroSuite
         c.Check("a run reads a variable, else the macro's setting, else an area", MacroPlayer.Value(own, null, "o1")?.GetDouble() == 5
             && MacroPlayer.Value(own, new() { ["o1"] = 9 }, "o1")?.GetDouble() == 9 && MacroPlayer.Value(own, null, "@a1")?.GetProperty("w").GetDouble() == 0.2
             && MacroPlayer.Value(own, null, "@a2") is null && MacroPlayer.Value(own, null, "o2") is null);
+
+        // Formulas (MacroExpr.cs): what AutoHotkey's expressions do, in a Set variable step.
+        double E(string f, Dictionary<string, double>? v = null) => MacroExpr.Eval(f, n => v is not null && v.TryGetValue(n, out double d) ? d : throw new MacroValueMissing(n));
+        var vs = new Dictionary<string, double> { ["coins"] = 250, ["n"] = 7 };
+        c.Check("a formula: order, brackets, names, {name}, % never below 0", E("2 + 3 * 4") == 14 && E("(2 + 3) * 4") == 20 && E("coins / 2 + {n}", vs) == 132
+            && E("-1 % 5") == 4 && E("2 ^ 3 ^ 2") == 512 && E("-2 ^ 2") == -4 && E("10 - 2 - 3") == 5);
+        c.Check("a formula's functions and comparisons", E("round(2.5)") == 3 && E("round(3.14159, 2)") == 3.14 && E("floor(2.9) + ceil(2.1)") == 5
+            && E("max(1, n, 3)", vs) == 7 && E("min(4, 2)") == 2 && E("abs(-3)") == 3 && E("coins >= 100", vs) == 1 && E("n = 8 or n < 0", vs) == 0
+            && E("not (n > 1) + 2", vs) == 2 && E("sqrt(9)") == 3);
+        var dice = Enumerable.Range(0, 300).Select(_ => E("random(1, 6)")).ToList();
+        c.Check("random(1, 6) is a whole number from 1 to 6, each seen", dice.All(d => d == Math.Floor(d) && d is >= 1 and <= 6) && dice.Distinct().Count() == 6);
+        c.Check("a formula's mistakes show where",
+            MacroExpr.Problem("2 +") is { } a1 && a1.Contains("stops") && MacroExpr.Problem("2 + * 3") is { } a2 && a2.Contains("* 3")
+            && MacroExpr.Problem("foo(1)") is { } a3 && a3.Contains("foo") && MacroExpr.Problem("round()") is not null && MacroExpr.Problem("(1 + 2") is not null
+            && MacroExpr.Problem("coins * 2 + random(1, 3)") is null, $"{MacroExpr.Problem("2 +")} / {MacroExpr.Problem("2 + * 3")} / {MacroExpr.Problem("foo(1)")}");
+        c.Check("a formula that divides by 0 fails as it plays", Throws<MacroExprError>(() => E("1 / (n - 7)", vs)) && Throws<MacroValueMissing>(() => E("nope + 1")));
+        c.Check("numbers read off the screen, as games write them",
+            MacroExpr.NumberIn("Coins: 1,234") == 1234 && MacroExpr.NumberIn("1.234.567") == 1234567 && MacroExpr.NumberIn("12.5") == 12.5
+            && MacroExpr.NumberIn("3.2K") == 3200 && MacroExpr.NumberIn("1.5M coins") == 1_500_000 && MacroExpr.NumberIn("2B") == 2e9
+            && MacroExpr.NumberIn("x 12,5") == 12.5 && MacroExpr.NumberIn("1,234.56") == 1234.56 && MacroExpr.NumberIn("Level 7 of 10") == 7
+            && MacroExpr.NumberIn("-15 HP") == -15 && MacroExpr.NumberIn("no number") is null && MacroExpr.NumberIn("Lv5") == 5 && MacroExpr.NumberIn("Wave 3 10 left") == 3,
+            $"{MacroExpr.NumberIn("3.2K")} {MacroExpr.NumberIn("x 12,5")} {MacroExpr.NumberIn("Lv5")}");
+        var has = new MacroTest { Kind = "var", Name = "said", Op = "has", Extra = new() { ["value"] = J("reached") } };
+        c.Check("a var check: has (any case) and doesn't have", MacroValues.VarTest(has, _ => J("Level 12 REACHED"), false)
+            && !MacroValues.VarTest(has, _ => J("Level 12"), false)
+            && MacroValues.VarTest(new MacroTest { Kind = "var", Name = "said", Op = "!has", Extra = new() { ["value"] = J("lost") } }, _ => J("You won"), false));
     }
 
     static bool Throws<T>(Action a) where T : Exception
@@ -732,6 +776,80 @@ static class MacroSuite
                 ""","options":[{"name":"o1","label":"Rod","kind":"choice","choices":["Wood","Gold"],"value":"gold"}]"""), accounts);
             await Done(player);
             c.Check("an alert's text takes {name}: counters and settings", said == "Caught 3 with Gold {nope}", said);
+        }
+        {
+            // Read a number into a variable, work it out in a formula, keep a text, type it.
+            var (player, desk, accounts) = Setup();
+            int reads = 0;
+            desk.Picture = () => new Bitmap(800, 600);
+            desk.Lines = () => [++reads <= 1 ? Said("Coins:") : Said("Coins: 1,250")];
+            string? said = null;
+            player.Alert = (_, _, text, _) => said = text;
+            player.Queue(M("""[{"kind":"read","name":"coins","region":{"x":0,"y":0,"w":0.5,"h":0.2}},{"kind":"setVar","name":"left","expr":"max(0, 2000 - coins)"},{"kind":"addVar","name":"left","expr":"round(coins / 100)"},{"kind":"setVar","name":"note","text":"need {left} more"},{"kind":"if","test":{"kind":"var","name":"note","op":"has","value":"763"}},{"kind":"alert","text":"{note}"},{"kind":"endIf"}]"""), accounts);
+            await Done(player);
+            c.Check("read a number (tried again until one shows), formulas, a text variable, has", reads == 2 && player.Vars[accounts[0]]["coins"] == 1250
+                && player.Vars[accounts[0]]["left"] == 763 && player.Texts[accounts[0]]["note"] == "need 763 more" && said == "need 763 more" && player.Runs[0].Status == "done",
+                $"{reads} {said} {player.Runs[0].Status} {player.Runs[0].Reason}");
+        }
+        {
+            var (player, desk, accounts) = Setup();
+            desk.Picture = () => new Bitmap(800, 600);
+            desk.Lines = () => [Said("nothing here")];
+            player.Queue(M("""[{"kind":"read","name":"coins","region":{"x":0,"y":0,"w":0.5,"h":0.2},"timeoutMs":1000},{"kind":"key","key":"K"}]"""), accounts);
+            await Done(player);
+            var (player2, _, accounts2) = Setup();
+            player2.Queue(M("""[{"kind":"setVar","name":"n","value":0},{"kind":"setVar","name":"x","expr":"5 / n"},{"kind":"key","key":"K"}]"""), accounts2);
+            await Done(player2);
+            c.Check("no number read in time fails as a wait does; a division by 0 fails the run (badFormula)",
+                player.Runs[0] is { Status: "failed", Reason: "timeout" } && player2.Runs[0] is { Status: "failed", Reason: "badFormula" },
+                $"{player.Runs[0].Reason} {player2.Runs[0].Reason}");
+        }
+        {
+            // Run a macro: the other's steps play here, its settings read as it starts; its If stuck part doesn't.
+            var (player, desk, accounts) = Setup();
+            var inner = M("""[{"kind":"key","key":"$o1"},{"kind":"addVar","name":"n","value":1},{"kind":"recover"},{"kind":"key","key":"Z"}]""",
+                ""","options":[{"name":"o1","label":"Key","kind":"key","value":"Q","default":"E"}]""");
+            var outer = M($$"""[{"kind":"loop","times":2},{"kind":"call","macroId":"{{inner.Id}}"},{"kind":"endLoop"},{"kind":"key","key":"Y"}]""");
+            player.FindMacro = id => id == inner.Id ? MacroRules.Copy(inner) : null;
+            player.Queue(outer, accounts);
+            await Done(player);
+            c.Check("run a macro: its steps play in place, twice in a repeat, with its own setting; not its If stuck part",
+                desk.Log.Count(l => l.Contains("key Q down")) == 2 && player.Vars[accounts[0]]["n"] == 2 && desk.Log.Any(l => l.Contains("key Y down"))
+                && !desk.Log.Any(l => l.Contains("key Z")) && player.Runs[0].Status == "done", $"{player.Runs[0].Status} {player.Runs[0].Reason} {string.Join(" | ", desk.Log)}");
+            var (player2, desk2, accounts2) = Setup();
+            player2.FindMacro = _ => null;
+            player2.Queue(M($$"""[{"kind":"key","key":"A"},{"kind":"call","macroId":"{{Guid.NewGuid()}}"},{"kind":"key","key":"B"}]"""), accounts2);
+            await Done(player2);
+            c.Check("a macro it runs that's gone fails the run there (missingMacro), shown at the Run a macro step",
+                player2.Runs[0] is { Status: "failed", Reason: "missingMacro", ShownPc: 1 } && desk2.Log.Any(l => l.Contains("key A down")) && !desk2.Log.Any(l => l.Contains("key B")),
+                $"{player2.Runs[0].Reason} {player2.Runs[0].ShownPc}");
+            var self = M("""[{"kind":"key","key":"A"}]""");
+            var other = M($$"""[{"kind":"call","macroId":"{{self.Id}}"}]""");
+            self.Steps.Add(new MacroStep { Kind = "call", MacroId = other.Id });
+            string? Calls(Macro m, params Macro[] all) => Refused(() => MacroRules.CheckCalls(m, all));
+            c.Check("saving: the macro to run is saved, not itself, and doesn't run this one back",
+                Calls(self, self, other) is { } back && back.Contains("back") && Calls(other, other) is { } gone && gone.Contains("isn't there")
+                && Calls(M($$"""[{"kind":"call","macroId":"{{Guid.NewGuid()}}"}]""")) is not null && Calls(other, other, M("""[{"kind":"key","key":"A"}]""")) is not null
+                && CheckOf("""[{"kind":"call"}]""") is not null, $"{Calls(self, self, other)} / {Calls(other, other)}");
+        }
+        {
+            // Read from the clipboard, a file, the web; write to them. A fake outside: nothing on this PC is touched.
+            var (player, desk, accounts) = Setup();
+            var outside = new FakeOutside { Clip = "Gems 3.5K", Files = { ["coins log"] = "12\n40" }, Web = { ["https://x.test/n"] = "{\"count\": 7}" } };
+            player.Outside = outside;
+            player.Queue(M("""[{"kind":"read","from":"clipboard","name":"gems"},{"kind":"read","from":"file","fileName":"coins log","name":"coins"},{"kind":"read","from":"web","url":"https://x.test/n","name":"n"},{"kind":"write","to":"file","fileName":"out","text":"gems {gems} coins {coins} n {n}"},{"kind":"write","to":"clipboard","text":"{coins}"},{"kind":"write","to":"web","url":"https://x.test/hook","text":"done {n}"}]"""), accounts);
+            await Done(player);
+            var v = player.Vars[accounts[0]];
+            c.Check("read from the clipboard, a file's last line, a web answer; write a line, the clipboard, a web post",
+                v["gems"] == 3500 && v["coins"] == 40 && v["n"] == 7 && outside.Files["out"] == "gems 3500 coins 40 n 7" && outside.Clip == "40"
+                && outside.Posts.SequenceEqual(["https://x.test/hook done 7"]) && player.Runs[0].Status == "done",
+                $"{player.Runs[0].Status} {player.Runs[0].Reason} {string.Join(",", v.Select(x => x.Key + "=" + x.Value))} {outside.Files.GetValueOrDefault("out")}");
+            c.Check("saving: a file is a plain name, a web address https",
+                CheckOf("""[{"kind":"write","to":"file","fileName":"../x","text":"a"}]""") is not null && CheckOf("""[{"kind":"write","to":"web","url":"http://x.test","text":"a"}]""") is not null
+                && CheckOf("""[{"kind":"read","from":"file","fileName":"coins log","name":"c"}]""") is null && CheckOf("""[{"kind":"read","name":"c"}]""") is not null);
+            c.Check("web steps go only to public addresses", !MacroOutside.Public(System.Net.IPAddress.Parse("127.0.0.1")) && !MacroOutside.Public(System.Net.IPAddress.Parse("192.168.1.5"))
+                && !MacroOutside.Public(System.Net.IPAddress.Parse("10.0.0.1")) && !MacroOutside.Public(System.Net.IPAddress.Parse("::1")) && !MacroOutside.Public(System.Net.IPAddress.Parse("169.254.169.254"))
+                && MacroOutside.Public(System.Net.IPAddress.Parse("162.159.135.232")));
         }
         {
             var (player, desk, accounts) = Setup();

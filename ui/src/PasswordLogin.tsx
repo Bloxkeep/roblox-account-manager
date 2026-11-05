@@ -350,7 +350,7 @@ export function PasswordLogin({ forRealm, api, way }: {
         <p className="auth-hint">{t('pw.extra')}</p>
       </form>
       <div className="auth-more">
-        <div className="ways"><span>{t('start.more')}</span>{realm === 'vng' ? null : wayButton('browser', t('pw.withBrowser'))}{wayButton('cookie', t('pw.cookie'))}{wayButton('vault', t('pw.vault'), { title: t('start.vaultTip') })}</div>
+        <div className="ways"><span>{t('start.more')}</span>{realm === 'vng' ? null : wayButton('browser', t('pw.withBrowser'))}{realm === 'vng' ? null : wayButton('create', t('pw.create'), { title: t('pw.createTip') })}{wayButton('cookie', t('pw.cookie'))}{wayButton('vault', t('pw.vault'), { title: t('start.vaultTip') })}</div>
       </div>
       <p className="auth-note"><Icon name="lock" /><span>{t('pw.note')}</span></p>
     </>;

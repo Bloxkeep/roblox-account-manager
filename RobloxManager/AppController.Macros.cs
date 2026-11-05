@@ -48,6 +48,8 @@ public sealed partial class AppController
     void WireMacroPlayer(MacroPlayer player)
     {
         player.Changed = MacrosChanged;
+        // A Run a macro step plays the saved macro as it is when the run starts.
+        player.FindMacro = id => Open is null ? null : MacroList().FirstOrDefault(m => m.Id == id) is { } found ? MacroRules.Copy(found) : null;
         // Anti-AFK counts the turn as the window's activity: a nudge right after it would be for nothing.
         player.Played = (_, pid) =>
         {
@@ -149,6 +151,7 @@ public sealed partial class AppController
         if (index < 0 && macros.Count >= MacroRules.MaxMacros)
             throw new UserError(L.F("You can save up to {0} macros.", MacroRules.MaxMacros));
         MacroRules.Check(macro, vault.Data.Accounts.Select(acc => acc.Id).ToHashSet(), macros);
+        MacroRules.CheckCalls(macro, macros);
         if (index < 0)
         {
             // A new one keeps an id it came with (a draft tried with "Try it" before its first save).
@@ -356,8 +359,18 @@ public sealed partial class AppController
         var accountId = Guid.TryParse(Str(a, "accountId"), out var g) ? g : Guid.Empty;
         if (test.Kind == "var")
         {
-            double value = _macroPlayer?.Vars.GetValueOrDefault(accountId)?.GetValueOrDefault(test.Name!) ?? 0;
-            return new { ok = MacroPlayer.Compare(value, test.Op!, test.Value ?? 0) };
+            var texts = _macroPlayer?.Texts.GetValueOrDefault(accountId);
+            var numbers = _macroPlayer?.Vars.GetValueOrDefault(accountId);
+            JsonElement? Of(string name) => texts?.TryGetValue(name, out var t) == true ? JsonSerializer.SerializeToElement(t)
+                : numbers?.TryGetValue(name, out var d) == true ? JsonSerializer.SerializeToElement(d) : null;
+            try
+            {
+                return new { ok = MacroValues.VarTest(test, Of, setByMacro: true) };
+            }
+            catch (MacroValueMissing)
+            {
+                return new { ok = false };
+            }
         }
         using var picture = await MacroPictureOfAsync(accountId);
         // Cut from a window of another width (the macro's recordedSize, when the page sends it): scaled to this one's.
@@ -639,11 +652,11 @@ public sealed partial class AppController
         accountId = r.AccountId,
         status = r.Status,
         reason = r.Reason,
-        step = r.Finished ? (int?)null : r.Pc,
+        step = r.Finished ? (int?)null : r.ShownPc,
         // The feature playing (or where an ended run was): its id; none for the main steps.
         section = r.Section,
         // Where an ended run was: the editor marks the step a failed run stopped at.
-        lastStep = r.Finished ? r.Pc : (int?)null,
+        lastStep = r.Finished ? r.ShownPc : (int?)null,
         trial = r.Trial ? true : (bool?)null,
         loops = r.Loops > 0 ? r.Loops : (int?)null,
         startedAt = r.StartedAt,

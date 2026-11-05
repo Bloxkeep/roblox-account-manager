@@ -145,6 +145,7 @@ export function AddOptions() {
     </div>
     <div className="start-more">
       <div className="ways"><span>{t('start.more')}</span>
+        <button className="btn sm ghost" data-act="add-create" title={t('pw.createTip')}>{t('pw.create')}</button>
         <button className="btn sm ghost" data-act="add-cookie">{t('start.cookie')}</button>
         <button className="btn sm ghost" data-act="import-vault" title={t('start.vaultTip')}>{t('start.vault')}</button>
         <button className="btn sm ghost" data-act="open-web" title={t('start.webTip')}>{t('start.web')}</button></div>
@@ -410,6 +411,7 @@ function OldBuild({ a }: { a: Account }) {
 function Meta({ a }: { a: Account }) {
   const { t, fmtNum } = useHost();
   return <>
+    {a.isMain ? <span className="tag main" title={t('card.mainTip')}>{t('card.main')}</span> : null}
     {a.realm === 'vng' ? <span className="tag vng" title={t('card.vngTip')}>VNG</span> : null}
     {typeof a.robux === 'number' ? <span className="robux" title={t('card.robuxTip')}><Icon name="robux" />{fmtNum(a.robux)}</span>
       : a.robuxWait ? <span className="robux wait" title={t('card.robuxTip')}><Icon name="robux" />…</span> : null}
@@ -527,16 +529,17 @@ function AccountRow({ a, sel, cols }: { a: Account; sel: boolean; cols: string }
   // The card's main button with its words (a bare icon read as a mystery), as wide as the widest of the four (RowAction).
   const action = held(a) ? <button key="bot-check" className="row-act relogin" data-act="bot-check" title={t('m.botCheck')}><Icon name="shield" /><span>{t('card.botCheck')}</span></button>
     : isKicked(a) ? <button key="rejoin" className="row-act relogin" data-act="rejoin" title={t('card.rejoinNowTip')}><Icon name="repeat" /><span>{t('card.rejoinNow')}</span></button>
-    : local || a.state === 'launching' ? <button key="close-one" className="row-act stop" data-act="close-one"><Icon name="power" /><span>{t('card.close')}</span></button>
+    : local || a.state === 'launching' ? <button key="close-one" className="row-act stop" data-act="close-one" title={t('card.close')}><Icon name="power" /><span>{t('card.close')}</span></button>
     : a.rejoin ? <button key="cancel-rejoin" className="row-act stop" data-act="cancel-rejoin" title={t('rj.cancelTip')}><Icon name="x" /><span>{t('rj.cancel')}</span></button>
     : a.cookieValid === false ? <button key="relogin" className="row-act relogin" data-act="relogin" title={t('card.reloginTip')}><Icon name="logIn" /><span>{t('card.relogin')}</span></button>
-    : <button key="play-one" className="row-act play" data-act="play-one"><Icon name="play" /><span>{t('card.play')}</span></button>;
+    : <button key="play-one" className="row-act play" data-act="play-one" title={t('card.play')}><Icon name="play" /><span>{t('card.play')}</span></button>;
   // The card's red pill in a list row too (banned, or signed out), then Roblox VNG and an old Roblox, in front of the
   // status words: in their own columns they took the status's room.
   const badge = <>
     {local || a.state === 'launching' ? null
       : a.banned ? <span className="badge bad" title={t('card.bannedTip')}>{t('card.banned')}</span>
       : a.cookieValid === false ? <span className="badge bad">{t('card.expired')}</span> : null}
+    {a.isMain ? <span className="tag main" title={t('card.mainTip')}>{t('card.main')}</span> : null}
     {a.realm === 'vng' ? <span className="tag vng" title={t('card.vngTip')}>VNG</span> : null}
     {a.session?.oldBuild ? <OldBuild a={a} /> : null}
   </>;

@@ -60,9 +60,10 @@ public sealed partial class AppController
         {
             _memoryPriorityAdopted = true;
             int front = RobloxProcesses.ForegroundPid();
+            var mains = MainPids();
             foreach (var p in players)
             {
-                bool low = s.TrimBackground && p.Pid != front;
+                bool low = s.TrimBackground && p.Pid != front && !mains.Contains(p.Pid);
                 if (RobloxProcesses.SetMemoryPriority(p.Pid, low) && low)
                     _lowMemoryPriority.Add(p.Pid);
             }
@@ -77,10 +78,11 @@ public sealed partial class AppController
 
         // Only touch a window when its role changes (it went to the background, or came to the front).
         int foreground = RobloxProcesses.ForegroundPid();
+        var main = MainPids(); // the window played on is never Save RAM's
         bool refused = false;
         foreach (var p in players)
         {
-            bool background = p.Pid != foreground;
+            bool background = p.Pid != foreground && !main.Contains(p.Pid);
             if (background == _lowMemoryPriority.Contains(p.Pid))
                 continue;
             if (!RobloxProcesses.SetMemoryPriority(p.Pid, background))
@@ -130,10 +132,11 @@ public sealed partial class AppController
             return;
         }
         int front = RobloxProcesses.ForegroundPid();
+        var main = MainPids();
         foreach (var p in players)
         {
             var window = windows.TryGetValue(p.Pid, out var list) ? RobloxProcesses.MainWindowOf(list) : IntPtr.Zero;
-            if (p.Pid == front || window == IntPtr.Zero || !(RobloxProcesses.IsMinimised(window) || RobloxProcesses.IsHidden(window)))
+            if (p.Pid == front || main.Contains(p.Pid) || window == IntPtr.Zero || !(RobloxProcesses.IsMinimised(window) || RobloxProcesses.IsHidden(window)))
             {
                 _restingSince.Remove(p.Pid);
                 _ramEmptied.Remove(p.Pid);
@@ -209,10 +212,11 @@ public sealed partial class AppController
         if (setting != RamLimitAuto)
             _autoRam.Clear(); // back on Auto later, it waits and measures again
         int front = RobloxProcesses.ForegroundPid();
+        var main = MainPids();
         foreach (var p in players)
         {
             var window = windows.TryGetValue(p.Pid, out var list) ? RobloxProcesses.MainWindowOf(list) : IntPtr.Zero;
-            bool resting = setting != 0 && p.Pid != front && window != IntPtr.Zero
+            bool resting = setting != 0 && p.Pid != front && !main.Contains(p.Pid) && window != IntPtr.Zero
                            && (RobloxProcesses.IsMinimised(window) || RobloxProcesses.IsHidden(window));
             long? want = !resting ? null : setting == RamLimitAuto ? AutoLimit(p, now, memory) : setting;
             bool limited = _ramLimited.TryGetValue(p.Pid, out long had);

@@ -11,6 +11,10 @@ public sealed class BrowserLoginForm : Form
 {
     const string ProfilePrefix = "Bloxkeep-login-";
     const string LoginUrl = "https://www.roblox.com/login";
+    /// <summary>roblox.com's home, signed out: its sign-up form.</summary>
+    const string SignUpUrl = "https://www.roblox.com/";
+    /// <summary>Making new accounts on Roblox's own sign-up form (the person fills it in and solves Roblox's checks), not signing in.</summary>
+    readonly bool _create;
     readonly Themes.Theme _theme = Themes.Current;
     /// <summary>A blocked connection hangs instead of failing, so don't wait for the browser to give up.</summary>
     static readonly TimeSpan SlowAfter = TimeSpan.FromSeconds(12);
@@ -23,7 +27,7 @@ public sealed class BrowserLoginForm : Form
     string? _profileDir;
     bool _polling, _closing;
     // What the bar says once the page is up: the instructions, or how the last sign-in went.
-    string _readyText = L.T("Sign in to each account in turn. Press Done when finished.");
+    string _readyText;
     string _readyTone = "";
     // What the top shows now.
     string _message = "", _tone = "";
@@ -31,10 +35,14 @@ public sealed class BrowserLoginForm : Form
     bool _retry;
 
     /// <param name="onSignedIn">Saves the account for a new session cookie and returns a short confirmation.</param>
-    public BrowserLoginForm(Func<string, Task<string>> onSignedIn)
+    /// <param name="create">Opens Roblox's sign-up form: each account made there is saved the same way.</param>
+    public BrowserLoginForm(Func<string, Task<string>> onSignedIn, bool create = false)
     {
         _onSignedIn = onSignedIn;
-        Text = L.T("Sign in to Roblox");
+        _create = create;
+        _readyText = create ? L.T("Fill in Roblox's sign-up form. Each account you make is saved to Bloxkeep. Press Done when finished.")
+            : L.T("Sign in to each account in turn. Press Done when finished.");
+        Text = create ? L.T("Create a Roblox account") : L.T("Sign in to Roblox");
         Icon = Ui.AppIcon;
         BackColor = _theme.Background;
         StartPosition = FormStartPosition.CenterParent;
@@ -178,10 +186,10 @@ public sealed class BrowserLoginForm : Form
     void OpenLoginPage(CoreWebView2 core)
     {
         _retry = false;
-        Say(L.T("Opening the Roblox sign-in page…"), "");
+        Say(_create ? L.T("Opening Roblox's sign-up page…") : L.T("Opening the Roblox sign-in page…"), "");
         _slow.Stop();
         _slow.Start();
-        core.Navigate(LoginUrl);
+        core.Navigate(_create ? SignUpUrl : LoginUrl);
     }
 
     void Retry()
@@ -245,7 +253,7 @@ public sealed class BrowserLoginForm : Form
         if (_closing || IsDisposed)
             return;
         _readyTone = ok ? "ok" : "bad";
-        _readyText = ok ? message + "  " + L.T("Sign in to the next account, or press Done.") : message;
+        _readyText = ok ? message + "  " + (_create ? L.T("Make the next account, or press Done.") : L.T("Sign in to the next account, or press Done.")) : message;
         Say(_readyText, _readyTone);
         ReleaseBrowser();
         await OpenFreshBrowserAsync();

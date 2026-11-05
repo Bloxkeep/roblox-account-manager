@@ -235,6 +235,24 @@ public static class Prefs
     /// opened any way run side by side even at the lock screen. Kept in step by AppController.</summary>
     public static bool MultiRobloxAtStart { get; set; }
 
+    /// <summary>The Game news tab (AppController.Feeds.cs): games followed, how far each was read, the games seen in the
+    /// list already (a new one is marked), and when to be told of news. Per PC, not per vault: nothing here is personal.</summary>
+    public sealed class FeedPrefs
+    {
+        public List<string> Follow { get; set; } = [];
+        /// <summary>A game's newest news read (its time, ms).</summary>
+        public Dictionary<string, long> Read { get; set; } = new(StringComparer.Ordinal);
+        public List<string> Seen { get; set; } = [];
+        public Dictionary<string, FeedAlert> Alerts { get; set; } = new(StringComparer.Ordinal);
+    }
+    /// <summary>"off", "all" (every piece of news) or "words" (news with one of <see cref="Words"/> in it).</summary>
+    public sealed class FeedAlert
+    {
+        public string Mode { get; set; } = "off";
+        public List<string> Words { get; set; } = [];
+    }
+    public static FeedPrefs GameFeeds { get; set; } = new();
+
     static readonly string[] Known =
     [
         "remoteGone",
@@ -242,7 +260,7 @@ public static class Prefs
         "notifications", "notifyOff", "backupFolder", "backupEnabled", "lastBackup", "backupPending", "dailySignInCheck", "lastSignInCheck", "miniOpen", "miniWindow", "panelWindows",
         "mainWindow", "mainMaximized", "robloxHistory", "robloxClosedAt", "robloxClosedCount", "robloxClosedNotified", "skipConfirm", "multiWorked",
         "multiRobloxAtStart", "discordPresence", "customTheme", "vaults", "lastVault", "askVault", "countOnline", "onlineId",
-        "knownVaultIds", "foreignRestore", "savedThemes",
+        "knownVaultIds", "foreignRestore", "savedThemes", "gameFeeds",
     ];
     /// <summary>Keys this build doesn't know (a newer one wrote them): saved back untouched rather than dropped.</summary>
     static readonly Dictionary<string, JsonElement> _extra = new();
@@ -415,6 +433,23 @@ public static class Prefs
                         KnownVaultIds.Add(vaultId);
                 }
             }
+            if (root.TryGetProperty("gameFeeds", out var feeds) && feeds.ValueKind == JsonValueKind.Object)
+            {
+                try
+                {
+                    GameFeeds = feeds.Deserialize<FeedPrefs>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new();
+                }
+                catch (JsonException)
+                {
+                    GameFeeds = new();
+                }
+                GameFeeds.Follow ??= [];
+                GameFeeds.Read = new(GameFeeds.Read ?? [], StringComparer.Ordinal);
+                GameFeeds.Seen ??= [];
+                GameFeeds.Alerts = new((GameFeeds.Alerts ?? []).Where(a => a.Value is not null), StringComparer.Ordinal);
+                foreach (var alert in GameFeeds.Alerts.Values)
+                    alert.Words ??= [];
+            }
             if (Text(root, "foreignRestore") is { } restored && IsVaultId(restored))
                 ForeignRestore = restored;
         }
@@ -508,6 +543,11 @@ public static class Prefs
                 ["multiWorked"] = MultiWorked.ToArray(),
                 ["multiRobloxAtStart"] = MultiRobloxAtStart,
                 ["knownVaultIds"] = KnownVaultIds.Order(StringComparer.Ordinal).ToArray(), ["foreignRestore"] = ForeignRestore,
+                ["gameFeeds"] = new
+                {
+                    follow = GameFeeds.Follow, read = GameFeeds.Read, seen = GameFeeds.Seen,
+                    alerts = GameFeeds.Alerts.ToDictionary(a => a.Key, a => new { mode = a.Value.Mode, words = a.Value.Words }),
+                },
             };
             // Never over a known key: a pref missing from Known would otherwise revert to its loaded value every restart.
             foreach (var (key, value) in _extra)

@@ -64,6 +64,8 @@ public sealed partial class AppController
             s.HopAbovePlayers = (int)Long(a, "hopAbovePlayers");
         if (Has(a, "ramLimitMb", JsonValueKind.Number) && RamLimitChoices.Contains((int)Long(a, "ramLimitMb")))
             s.RamLimitMb = (int)Long(a, "ramLimitMb");
+        if (Has(a, "restartAboveMb", JsonValueKind.Number) && RestartAboveChoices.Contains((int)Long(a, "restartAboveMb")))
+            s.RestartAboveMb = (int)Long(a, "restartAboveMb");
         if (OptBool(a, "splitCores") is { } split)
         {
             s.SplitCores = split;
@@ -246,6 +248,7 @@ public sealed partial class AppController
         Safe(() => _robloxInput?.Dispose());
         Safe(SayOfflineOnExit); // no longer counted as open (not for an update in the background, back within seconds)
         Safe(StopRemote); // Discord says the PC isn't connected
+        Safe(() => _feeds?.Dispose()); // no more game news
         Safe(() => _procTimer.Dispose());
         Safe(() => _homeSession?.Dispose());
         _homeSession = null;
@@ -304,6 +307,13 @@ public sealed partial class AppController
         Prefs.GlobalHotkeys = enabled;
         Prefs.Save();
         HotkeysChanged?.Invoke();
+        PushState();
+        return null;
+    }
+
+    object? SetStartWithWindows(bool enabled)
+    {
+        StartWithWindows.Set(enabled);
         PushState();
         return null;
     }

@@ -20,6 +20,7 @@ export function PerfPage({ title }: { title: string }) {
   const [memWarn, setMemWarn] = useLocal(!!st.memoryWarnings);
   const [trim, setTrim] = useLocal(!!st.trimBackground);
   const [ramLimit, setRamLimit] = useLocal(String(st.ramLimitMb || 0));
+  const [heavy, setHeavy] = useLocal(String(st.restartAboveMb || 0));
   const [cores, setCores] = useLocal(!!st.splitCores);
   // Two kinds of cores (Intel 12th gen and later…): background windows go to the efficiency ones; otherwise only the
   // power-saving mode is left to give.
@@ -75,6 +76,18 @@ export function PerfPage({ title }: { title: string }) {
           <option value="1024">1 GB</option>
           <option value="1536">1.5 GB</option>
           <option value="2048">2 GB</option>
+        </select>
+      </Row>
+      <Row title={t('set.heavy')} desc={t('set.heavyDesc')}>
+        <select className="select" id="s-heavy" aria-label={t('set.heavy')} value={heavy} onChange={e => {
+          setHeavy(e.target.value);
+          call('setSettings', { restartAboveMb: Number(e.target.value) });
+        }}>
+          <option value="0">{t('set.heavyOff')}</option>
+          <option value="3072">{t('set.heavyAbove', { n: 3 })}</option>
+          <option value="4096">{t('set.heavyAbove', { n: 4 })}</option>
+          <option value="6144">{t('set.heavyAbove', { n: 6 })}</option>
+          <option value="8192">{t('set.heavyAbove', { n: 8 })}</option>
         </select>
       </Row>
       <Row title={t('set.cores')} desc={cpu.hybrid ? t('set.coresDesc', { e: cpu.efficient || 0 }) : t('set.coresDescOne')}>

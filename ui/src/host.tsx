@@ -75,8 +75,9 @@ export interface Host {
   /** fn runs on each app.js signal: hideDiscordLink (Settings, its page or the window left), clearPassword (Settings
    * left), presetQuery (its search put back), presetsShown, statsShown / statsHidden, settled (after an unlock or for a
    * new page: tabs not open yet get ready), macrosShown, macroRecorded (a recording's steps, as the app sent them: { steps,
-   * w, h }), monitor (the game monitor's windows, as the app sent them). Returns how to stop. */
-  on(signal: 'hideDiscordLink' | 'clearPassword' | 'presetQuery' | 'presetsShown' | 'statsShown' | 'statsHidden' | 'settled' | 'macrosShown' | 'macroRecorded' | 'macroSeen' | 'onGameEdit' | 'monitor',
+   * w, h }), monitor (the game monitor's windows, as the app sent them), feedCards (Game news: every card, as the app sent
+   * them). Returns how to stop. */
+  on(signal: 'hideDiscordLink' | 'clearPassword' | 'presetQuery' | 'presetsShown' | 'statsShown' | 'statsHidden' | 'settled' | 'macrosShown' | 'macroRecorded' | 'macroSeen' | 'onGameEdit' | 'monitor' | 'feedCards' | 'feedPrices',
     fn: (data?: any) => void): () => void;
   /** The Presets tab's search, as app.js keeps it (a page restarted comes back with it), and a new one typed. */
   presetQuery(): string;

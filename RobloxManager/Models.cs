@@ -32,6 +32,9 @@ public sealed class Account
     public bool UseRobloxConfig { get; set; }
     /// <summary>This account's own frame rate limit in Roblox (see <see cref="RobloxGameSettings.ForLaunch"/>); 0: none.</summary>
     public int FpsCap { get; set; }
+    /// <summary>The account the person plays on: left out of Select all, and its window of Save RAM, the RAM limit, Arrange
+    /// windows and the background cores (it always gets the fast ones).</summary>
+    public bool IsMain { get; set; }
     /// <summary>The authenticator (2-step) key, null when none. A secret like <see cref="Password"/>: only its current code leaves the app.</summary>
     public TotpKey? Authenticator { get; set; }
     /// <summary>What Roblox's public profile of the account said at the last check (see AppController.Health.cs); null until asked.</summary>
@@ -95,6 +98,9 @@ public sealed class AppSettings
     /// the default). See AppController.LimitRestingRam.
     /// </summary>
     public int RamLimitMb { get; set; }
+    /// <summary>A Roblox window whose own memory (commit, which a RAM limit doesn't lower) stays above this many MB is
+    /// closed and opened again into its server (0 = never, the default). See AppController.RestartDueClients.</summary>
+    public int RestartAboveMb { get; set; }
     /// <summary>Background Roblox windows run in Windows' efficiency mode (below-normal priority, efficiency cores); the one
     /// in front at full speed (AppController.Cores.cs). Off by default.</summary>
     public bool SplitCores { get; set; }
@@ -233,8 +239,18 @@ public sealed class VaultData
     public List<ScheduledRunState> ScheduledRuns { get; set; } = new();
     /// <summary>Settings › Discord (see AppController.Discord.cs); kept here because the webhook link is a secret.</summary>
     public DiscordSettings Discord { get; set; } = new();
+    /// <summary>Settings › Notifications › Phone (see AppController.Phone.cs); here because whoever knows the topic reads it.</summary>
+    public PhoneSettings Phone { get; set; } = new();
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? Extra { get; set; }
+}
+
+/// <summary>Alerts on the phone through ntfy: off until the person turns it on.</summary>
+public sealed class PhoneSettings
+{
+    public bool Enabled { get; set; }
+    /// <summary>An ntfy topic's name (on ntfy.sh), or https://server/topic.</summary>
+    public string Topic { get; set; } = "";
 }
 
 /// <summary>Posting to a Discord channel through a webhook: off until the person turns it on.</summary>

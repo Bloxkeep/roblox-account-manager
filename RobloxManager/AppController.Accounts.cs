@@ -6,7 +6,8 @@ namespace RobloxManager;
 public sealed partial class AppController
 {
     /// <summary>Opens the sign-in window; every account signed in there is saved right away (several in a row).</summary>
-    async Task<object?> AddViaBrowserAsync()
+    /// <param name="create">Roblox's sign-up form instead: each account made there is saved the same way.</param>
+    async Task<object?> AddViaBrowserAsync(bool create = false)
     {
         RequireVault();
         var added = new List<AddResult>();
@@ -25,7 +26,7 @@ public sealed partial class AppController
                    });
                    added.Add(result);
                    return L.F(result.Merged ? "{0} was already here — its sign-in was updated." : "{0} saved.", result.Label);
-               }))
+               }, create))
         {
             ShowSignInWindow(form);
         }
@@ -652,6 +653,38 @@ public sealed partial class AppController
         PushState();
         return changed;
     }
+
+    /// <summary>Marks the accounts as ones the person plays on (or not); their open windows are let go of at once.</summary>
+    object SetMain(Guid[] ids, bool on)
+    {
+        int changed = 0;
+        foreach (var account in RequireVault().Data.Accounts.Where(a => ids.Contains(a.Id)))
+        {
+            account.IsMain = on;
+            changed++;
+        }
+        Persist();
+        // Its window back to normal RAM and cores now, not at the next scan.
+        foreach (int pid in MainPids())
+        {
+            if (_lowMemoryPriority.Remove(pid))
+                RobloxProcesses.SetMemoryPriority(pid, background: false);
+            if (_ramLimited.Remove(pid))
+                _ = LimitRamInTurn(pid, null);
+        }
+        Step(() => SplitCores(_corePids));
+        PushState();
+        return changed;
+    }
+
+    /// <summary>The main accounts' Roblox windows (their processes); remembered while the vault is locked, as the windows go on.</summary>
+    HashSet<int> MainPids()
+    {
+        if (_vault is { } vault)
+            _mainPids = vault.Data.Accounts.Where(a => a.IsMain && _running.ContainsKey(a.Id)).Select(a => _running[a.Id].Pid).ToHashSet();
+        return _mainPids;
+    }
+    HashSet<int> _mainPids = [];
 
     object SetAutoRejoin(Guid[] ids, bool enabled)
     {

@@ -22,6 +22,7 @@ export function UpdatesPage({ title }: { title: string }) {
   const [beta, setBeta] = useState(!!u.beta);
   useEffect(() => setBeta(!!u.beta), [u.beta]);
   const [tray, setTray] = useLocal(app.closeToTray !== false);
+  const [boot, setBoot] = useLocal(!!app.startWithWindows);
   const [gpu, setGpu] = useLocal(!app.safeRendering);
   const keys: { on?: boolean; taken?: string[] } = app.hotkeys || {};
   const [hotkeys, setHotkeys] = useLocal(keys.on !== false);
@@ -62,6 +63,9 @@ export function UpdatesPage({ title }: { title: string }) {
       </Row>
     </Group>
     <Group id="app" title={t('set.g.app')}>
+      <Row title={t('set.boot')} desc={t('set.bootDesc')}>
+        <Switch id="s-boot" label={t('set.boot')} checked={boot} onChange={v => { setBoot(v); call('setStartWithWindows', { enabled: v }); }} />
+      </Row>
       <Row title={t('set.tray')} desc={t('set.trayDesc')}>
         <Switch id="s-tray" label={t('set.tray')} checked={tray} onChange={v => { setTray(v); call('setCloseToTray', { enabled: v }); }} />
       </Row>

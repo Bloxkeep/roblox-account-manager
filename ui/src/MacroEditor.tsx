@@ -72,9 +72,11 @@ const META: Record<string, Meta> = {
 };
 /** A camera turn's size in words, as pixels of mouse drag. */
 const CAM = { little: 100, some: 250, lot: 500 } as const;
-const OPS = ['>=', '<=', '=', '>', '<', '!='];
+const OPS = ['>=', '<=', '=', '>', '<', '!=', 'has', '!has'];
+/** A number as typed ("12", "-0.5"): kept as a number; anything else is a formula. */
+const PLAIN_NUMBER = /^\s*-?\d+(\.\d+)?\s*$/;
 /** Steps that look for something on the window: Try it says it found it once they're passed. */
-const LOOKS = new Set(['waitImage', 'clickImage', 'waitColour', 'clickColour', 'waitText', 'if', 'loopUntil', 'follow']);
+const LOOKS = new Set(['waitImage', 'clickImage', 'waitColour', 'clickColour', 'waitText', 'if', 'loopUntil', 'follow', 'read']);
 const BLOCKS = new Set(['loop', 'endLoop', 'else', 'endIf', 'break']);
 /** A block's rail: an If's in the info colour, a repeat's in a quiet accent. */
 const RAIL: Record<string, string> = { if: 'var(--online)', loop: 'color-mix(in srgb, var(--accent) 40%, var(--surface))' };
@@ -112,6 +114,8 @@ type Ed = {
   canPick: boolean; capture: number | null; setCapture: (k: number | null) => void;
   /** The counters (Set and Add steps' names), what each is called, and the settings an If can read. */
   counters: string[]; label: (name: string) => string; readable: Option[];
+  /** The other saved macros a Run a macro step may run. */
+  others: { id: string; name: string }[];
   /** "New counter…": its small dialog, under the list it was picked in; done gets the name. */
   newCounter: (anchor: HTMLElement, done: (name: string) => void) => void;
 };
@@ -727,6 +731,7 @@ export function MacroEditor({ base, accounts, macros, api, openStep, openSection
   const when = m.trigger.kind === 'interval' ? t('macro.trig.every', { d: durText(t, m.trigger.everySeconds || 60) }) : t(`macro.when.${m.trigger.kind}`);
   const ed: Ed = { val, put, set: setStep, ticked, tick, areas, newArea, pick, cut, canPick: !!windowId, capture, setCapture,
     counters: counterList, label: labelOf, readable: shownOpts.filter(o => o.kind === 'check' || o.kind === 'choice' || o.kind === 'number'),
+    others: macros.filter(o => o.id !== m.id).map(o => ({ id: o.id, name: o.name })),
     newCounter: (anchor, done) => setNaming(n => n?.anchor === anchor ? null : { anchor, done }) };
   const place = m.panel?.placeId ? `https://www.roblox.com/games/${m.panel.placeId}` : '';
   const [placeText, setPlaceText] = useState(place);
@@ -1241,7 +1246,7 @@ function StepRow({ s, i, m, count, shape, problems: probs, fixOf, dragging, ed, 
   const body = open ? <StepBody s={s} i={i} m={m} ed={ed} cutting={cutting} invalid={new Set(probs.filter(p => !p.warn && p.field).map(p => p.field!))} /> : null;
   const plainRow = ['else', 'break', 'stop', 'rejoin', 'recover'].includes(s.kind);
   const bad = probs.some(p => !p.warn);
-  const say = stepText(t, s, m, n);
+  const say = stepText(t, s, s.kind === 'call' ? { ...m, macroNames: Object.fromEntries(ed.others.map(o => [o.id, o.name])) } : m, n);
   // Where the row sits: Otherwise one level out (a divider in its If), the rest at their depth. Each block around it draws its rail.
   const at = s.kind === 'else' && shape.depth ? shape.depth - 1 : shape.depth;
   const rails = shape.rails.map((k, L) => <span key={L} className="mc-rail" aria-hidden="true" style={{ left: `${8 + (L - at) * 22}px`, background: railOf(k) }} />);
@@ -1371,6 +1376,18 @@ function StepBody({ s, i, m, ed, cutting, invalid }: { s: Held; i: number; m: Ma
     return words ? pick : <>{pick}{box}</>;
   };
   const num = (path: string, label: string, min: number, max: number) => <Count id={id(path.replace('.', '-'))} label={label} value={v(path)} min={min} max={max} invalid={bad(path)} onChange={put(path)} />;
+  // Where a Read step reads or a Write step writes, and its file name or web address.
+  const placePick = (field: 'from' | 'to', value: string) => <Pick id={id(field)} label={t('macro.e.placeL')} value={value}
+    options={(field === 'from' ? ['screen', 'clipboard', 'file', 'web'] : ['clipboard', 'file', 'web']).map(k => [k, t(`macro.e.place.${k}`)])}
+    onChange={x => ed.set(i, { [field]: x, fileName: x === 'file' ? s.fileName || 'Bloxkeep log' : undefined, url: x === 'web' ? s.url || 'https://' : undefined,
+      ...(field === 'from' && x !== 'screen' ? { region: undefined } : {}) })} />;
+  const placeField = (place: string) => place === 'file' ? <Say k="macro.e.fileIs" parts={{ name: textIn('fileName', 40, t('macro.e.fileL')) }} />
+    : place === 'web' ? <Say k="macro.e.urlIs" parts={{ url: textIn('url', 500, t('macro.e.urlL'), true) }} /> : null;
+  // A number or a formula in one box: "12" stays a number, "coins * 2 + 1" is worked out as the step plays.
+  const formula = () => isOpt(s.value) ? num('value', t('macro.e.valueL'), -1e9, 1e9)
+    : <input className="field sm mc-text mc-formula" id={id('value')} maxLength={200} spellCheck={false} aria-label={t('macro.e.formulaL')} placeholder={t('macro.e.formulaL')}
+      aria-invalid={bad('value') || undefined} value={typeof s.expr === 'string' ? s.expr : typeof s.value === 'number' && Number.isFinite(s.value) ? String(s.value) : ''}
+      onChange={e => { const x = e.target.value; ed.set(i, PLAIN_NUMBER.test(x) ? { value: Number(x), expr: undefined } : { expr: x, value: undefined }); }} />;
   const tune = (kids: ReactNode) => <details className="mc-tune"><summary><span>{t('macro.e.tune')}</span><Icon name="chevronDown" /></summary><div>{kids}</div></details>;
   // How close a colour must be: a share from exact to loose (the app keeps 0–255).
   const closeness = (path: string) => {
@@ -1406,7 +1423,8 @@ function StepBody({ s, i, m, ed, cutting, invalid }: { s: Held; i: number; m: Ma
       {tune(<Say k="macro.e.keyHold" parts={{ d: secs('ms', t('macro.e.keyHoldL')) }} />)}</>; break;
     case 'down': lines = <Say k="macro.e.down" parts={{ key: <KeyBox mouse id={id('key')} value={s.key} k={s._k} ed={ed} onChange={put('key')} /> }} />; break;
     case 'up': lines = <Say k="macro.e.up" parts={{ key: <KeyBox mouse id={id('key')} value={s.key} k={s._k} ed={ed} onChange={put('key')} /> }} />; break;
-    case 'type': lines = <><Say k="macro.e.type" parts={{ text: textIn('text', 200, t('macro.e.typeL'), true) }} /><small className="mc-f-note">{t('macro.typeNote')}</small></>; break;
+    case 'type': lines = <><Say k="macro.e.type" parts={{ text: textIn('text', 200, t('macro.e.typeL'), true) }} />
+      <small className="mc-f-note">{t('macro.typeNote')} {t('macro.varsNote', { x: '{' + (ed.counters[0] || 'coins') + '}' })}</small></>; break;
     case 'click': {
       const how = s.holdMs ? 'hold' : s.double ? 'double' : 'click';
       const howSel = <Pick id={id('how')} label={t('macro.e.howL')} value={how} options={['click', 'double', 'hold'].map(k => [k, t(`macro.e.how.${k}`)])}
@@ -1472,9 +1490,15 @@ function StepBody({ s, i, m, ed, cutting, invalid }: { s: Held; i: number; m: Ma
           v: <Pick id={id('v')} label={t('macro.e.valueL')} value={test?.kind === 'var' && test.value ? '1' : '0'}
             options={[['1', t('macro.e.switchOn')], ['0', t('macro.e.switchOff')]]} onChange={x => ed.put(i, 'test.value', +x)} /> }} />;
         const op = <Pick id={id('op')} label={t('macro.e.opL')} value={String(test && 'op' in test ? test.op : '>=')}
-          options={(o?.kind === 'choice' ? ['=', '!='] : OPS).map(x => [x, t(`macro.e.op.${x}`)])} onChange={put('test.op')} />;
+          options={(o?.kind === 'choice' ? ['=', '!='] : o ? OPS.slice(0, 6) : OPS).map(x => [x, t(`macro.e.op.${x}`)])}
+          onChange={x => {
+            const word = x === 'has' || x === '!has', was = test?.kind === 'var' ? test.value : 1;
+            ed.set(i, { test: { kind: 'var', name, op: x, value: o?.kind === 'choice' || word === (typeof was === 'string') ? was : word ? '' : 1 } });
+          }} />;
         const value = o?.kind === 'choice' ? <Pick id={id('v')} label={t('macro.e.valueL')} value={String(test?.kind === 'var' ? test.value : '')}
-          options={(o.choices || []).map(c => [c, c])} onChange={put('test.value')} /> : num('test.value', t('macro.e.valueL'), -1e9, 1e9);
+          options={(o.choices || []).map(c => [c, c])} onChange={put('test.value')} />
+          : test && 'op' in test && (test.op === 'has' || test.op === '!has') ? textIn('test.value', 40, t('macro.e.wordL'))
+          : num('test.value', t('macro.e.valueL'), -1e9, 1e9);
         return <Say k="macro.e.testVar" vars={{ lead: head }} parts={{ what: lead, name: nameIn, op, v: value }} />;
       };
       const lead = <Pick id={id('tk')} label={t('macro.e.checkL')} value={kind} options={['image', 'text', 'colour', 'var'].map(k => [k, t(`macro.e.check.${k}`)])}
@@ -1500,8 +1524,43 @@ function StepBody({ s, i, m, ed, cutting, invalid }: { s: Held; i: number; m: Ma
         n: num('times', t('macro.e.timesL'), 1, 100000) }} />;
       break;
     }
-    case 'setVar': lines = <Say k="macro.e.setVar" parts={{ name: counterPick('name', false, x => ed.set(i, { name: x })), v: num('value', t('macro.e.valueL'), -1e9, 1e9) }} />; break;
-    case 'addVar': lines = <Say k="macro.e.addVar" parts={{ name: counterPick('name', false, x => ed.set(i, { name: x })), v: num('value', t('macro.e.valueL'), -1e9, 1e9) }} />; break;
+    case 'setVar': {
+      const isText = typeof s.text === 'string';
+      const kindSel = <Pick id={id('as')} label={t('macro.e.asL')} value={isText ? 'text' : 'num'} options={[['num', t('macro.e.as.num')], ['text', t('macro.e.as.text')]]}
+        onChange={x => ed.set(i, x === 'text' ? { text: '', value: undefined, expr: undefined } : { text: undefined, value: 0, expr: undefined })} />;
+      lines = <>
+        <Say k="macro.e.setVar" parts={{ name: counterPick('name', false, x => ed.set(i, { name: x })), kind: kindSel,
+          v: isText ? textIn('text', 200, t('macro.e.textL'), true) : formula() }} />
+        <small className="mc-f-note">{isText ? t('macro.varsNote', { x: '{' + (ed.counters.find(c => c !== s.name) || 'coins') + '}' }) : t('macro.formulaNote')}</small></>;
+      break;
+    }
+    case 'addVar': lines = <><Say k="macro.e.addVar" parts={{ name: counterPick('name', false, x => ed.set(i, { name: x })), v: formula() }} />
+      <small className="mc-f-note">{t('macro.formulaNote')}</small></>; break;
+    case 'read': {
+      const from = s.from || 'screen';
+      lines = <>
+        <Say k="macro.e.read" parts={{ what: <Pick id={id('mode')} label={t('macro.e.readWhatL')} value={s.mode === 'text' ? 'text' : 'number'}
+          options={[['number', t('macro.e.read.number')], ['text', t('macro.e.read.text')]]} onChange={put('mode')} />,
+          from: placePick('from', from),
+          name: counterPick('name', false, x => ed.set(i, { name: x })) }} />
+        {from === 'screen' ? <Say k="macro.e.readWhere" parts={{ where: where('region', false) }} /> : placeField(from)}
+        {until()}<small className="mc-f-note">{t(from === 'screen' ? (s.mode === 'text' ? 'macro.readTextNote' : 'macro.readNote') : from === 'file' ? 'macro.fileNote' : from === 'web' ? 'macro.webReadNote' : 'macro.clipNote')}</small></>;
+      break;
+    }
+    case 'write': {
+      const to = s.to || 'file';
+      lines = <>
+        <Say k="macro.e.write" parts={{ text: textIn('text', 200, t('macro.e.textL'), true), to: placePick('to', to) }} />
+        {placeField(to)}
+        <small className="mc-f-note">{t('macro.varsNote', { x: '{' + (ed.counters[0] || 'coins') + '}' })} {to === 'file' ? t('macro.fileNote') : to === 'web' ? t('macro.webNote') : ''}</small></>;
+      break;
+    }
+    case 'call': lines = <>
+      <Say k="macro.e.call" parts={{ name: <Pick id={id('macro')} label={t('macro.e.callL')} value={String(s.macroId || '')} invalid={bad('macroId')}
+        options={[...(s.macroId ? [] : [['', '—']]), ...ed.others.map(o => [o.id, o.name]),
+          ...(s.macroId && !ed.others.some(o => o.id === s.macroId) ? [[String(s.macroId), t('macro.s.gone')]] : [])]}
+        onChange={x => ed.set(i, { macroId: x || undefined })} /> }} />
+      <small className="mc-f-note">{t('macro.callNote')}</small></>; break;
     case 'alert': lines = <>
       <Say k="macro.e.alert" parts={{ text: textIn('text', 200, t('macro.e.alertL'), true) }} />
       <Check id={id('pic')} label={t('macro.e.alertPic')} checked={!!s.picture} onChange={x => ed.set(i, { picture: x })} />

@@ -555,6 +555,12 @@ public sealed partial class AppController
     static readonly TimeSpan RestartSpacing = TimeSpan.FromMinutes(1);
     /// <summary>A client asked to close for a restart that is still there after this is left alone (tried again later).</summary>
     static readonly TimeSpan RestartCloseTimeout = TimeSpan.FromMinutes(1);
+    /// <summary>The choices of Settings › Staying in game › Restart a heavy window, in MB (0 = never).</summary>
+    internal static readonly int[] RestartAboveChoices = [0, 3072, 4096, 6144, 8192];
+    /// <summary>A window above that much for this long is restarted: not for a moment's peak (a teleport, a big map loading).</summary>
+    static readonly TimeSpan HeavyFor = TimeSpan.FromMinutes(3);
+    /// <summary>Since when each client has been above Restart a heavy window's choice.</summary>
+    readonly Dictionary<int, DateTime> _heavySince = new();
 
     /// <summary>A preset's "restart every N hours": a client in its game that ran that long is closed and reopened through auto-rejoin's
     /// path, one at a time (menu or error screens are auto-rejoin's). A window in use while the person is at the PC waits; one merely
@@ -567,14 +573,33 @@ public sealed partial class AppController
             if (now - restart.At > RestartCloseTimeout || now < restart.At)
                 _restarts.Remove(id);
         }
+        long heavyMb = _vault?.Data.Settings.RestartAboveMb ?? 0;
+        foreach (int pid in _heavySince.Keys.ToList())
+        {
+            if (heavyMb <= 0 || _clientCommit.GetValueOrDefault(pid) / MB <= heavyMb)
+                _heavySince.Remove(pid);
+        }
+        if (heavyMb > 0)
+        {
+            foreach (var (pid, commit) in _clientCommit)
+            {
+                if (commit / MB > heavyMb)
+                    _heavySince.TryAdd(pid, now);
+            }
+        }
         if (_vault is null || _running.Count == 0 || _restarts.Count > 0 || InputTurn.Busy || Settling || _rejoining || _launchCts is not null || _updateReopenSince is not null
             || _pending.Count > 0 || _rejoinQueue.Any(r => r.Restart) || now < _sweepBackgroundUntil || now - _lastSessionStart < RestartSpacing)
             return;
         int? foreground = null;
+        HashSet<int>? main = null;
         foreach (var (id, run) in _running.OrderBy(r => r.Value.Launch.StartedAt).ToList())
         {
-            if (PresetFor(run.Launch.PresetId) is not { RestartHours: > 0 } preset || run.Launch.Target is null
-                || now - run.Launch.StartedAt < TimeSpan.FromHours(preset.RestartHours) || _closingForRejoin.Contains(run.Pid)
+            var preset = PresetFor(run.Launch.PresetId);
+            bool due = preset is { RestartHours: > 0 } && now - run.Launch.StartedAt >= TimeSpan.FromHours(preset.RestartHours);
+            // Too heavy for long enough; never the account the person plays (MAIN).
+            bool heavy = !due && _heavySince.TryGetValue(run.Pid, out var since) && now - since >= HeavyFor
+                         && !(main ??= MainPids()).Contains(run.Pid);
+            if (!(due || heavy) || run.Launch.Target is null || _closingForRejoin.Contains(run.Pid)
                 || _logs.StateOf(run.Pid) is { Status: not "ingame" } || FindAccount(id) is not { } account)
                 continue;
             // Open before Bloxkeep started and its log not found yet: it may be on an error screen, auto-rejoin's.
@@ -588,7 +613,14 @@ public sealed partial class AppController
                 continue;
             _restarts[id] = (RestartTarget(run), now);
             _closingForRejoin.Add(run.Pid); // Bloxkeep's own close: neither a drop nor closed by Roblox
-            Toast(L.F("Restarting {0}'s Roblox (its preset restarts it every {1} h)…", Name(account), preset.RestartHours));
+            if (heavy)
+            {
+                _heavySince.Remove(run.Pid);
+                Notify(L.F("Restarting {0}'s Roblox: it used {1} GB of RAM…", Name(account), Math.Round(_clientCommit.GetValueOrDefault(run.Pid) / (double)(1024 * MB), 1)),
+                    "info", "restartHeavy", id);
+            }
+            else
+                Toast(L.F("Restarting {0}'s Roblox (its preset restarts it every {1} h)…", Name(account), preset!.RestartHours));
             RobloxProcesses.Close(run.Pid, InGameNow(run.Pid));
             return;
         }

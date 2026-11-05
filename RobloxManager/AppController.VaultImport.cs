@@ -242,6 +242,7 @@ public sealed partial class AppController
                     AutoRejoin = other.AutoRejoin,
                     UseRobloxConfig = other.UseRobloxConfig,
                     FpsCap = other.FpsCap,
+                    IsMain = other.IsMain,
                     // When it was last played (on the other PC) is still true, and keeps "Recently used" meaningful.
                     LastUsed = other.LastUsed,
                     // What the other PC last knew may be out of date: checked right after the import.

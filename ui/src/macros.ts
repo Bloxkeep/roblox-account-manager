@@ -124,18 +124,21 @@ export const STEP_GROUPS: [string, string[]][] = [
   ['wait', ['wait', 'waitImage', 'waitText', 'waitColour', 'waitStill']],
   ['check', ['if', 'else']],
   ['flow', ['loop', 'loopUntil', 'break', 'stop', 'recover']],
-  ['other', ['setVar', 'addVar', 'rejoin', 'alert']],
+  ['other', ['setVar', 'addVar', 'read', 'write', 'call', 'rejoin', 'alert']],
 ];
 /** Each kind's icon (the page's own icon set). */
 export const STEP_ICON: Record<string, string> = {
   key: 'keyboard', down: 'keyboard', up: 'keyboard', type: 'message', click: 'mouse', clickImage: 'image', move: 'mouse', camera: 'rotate', scroll: 'sort',
   wait: 'clock', waitImage: 'image', waitText: 'search', waitColour: 'palette', waitStill: 'clock', if: 'branch', else: 'branch', endIf: 'cornerUpLeft',
-  loop: 'repeat', loopUntil: 'repeat', endLoop: 'cornerUpLeft', break: 'logOut', stop: 'stop', setVar: 'tag', addVar: 'tag', rejoin: 'refresh', alert: 'bell',
+  loop: 'repeat', loopUntil: 'repeat', endLoop: 'cornerUpLeft', break: 'logOut', stop: 'stop', setVar: 'tag', addVar: 'tag', read: 'eye', write: 'edit', call: 'play', rejoin: 'refresh', alert: 'bell',
   follow: 'gauge', clickColour: 'palette', recover: 'wrench',
 };
 /** Other words a person may search Add step for, by kind (the kinds' own names and groups are searched too). */
 export const SYNONYMS: Record<string, string[]> = {
   key: ['press', 'hit', 'bấm', 'nhấn', 'phím'], down: ['press', 'bấm', 'nhấn'], click: ['tap', 'mouse', 'bấm', 'nhấn', 'chuột'],
+  setVar: ['variable', 'formula', 'math', 'random', 'biến', 'công thức', 'tính'], addVar: ['variable', 'biến', 'cộng'],
+  read: ['ocr', 'number', 'coins', 'money', 'clipboard', 'file', 'web', 'đọc', 'số', 'tiền'], write: ['clipboard', 'file', 'web', 'webhook', 'log', 'save', 'ghi', 'lưu', 'chép'],
+  call: ['function', 'sub', 'run', 'macro', 'gọi', 'chạy'],
   wait: ['sleep', 'delay', 'pause', 'chờ', 'đợi'], waitImage: ['chờ', 'đợi'], waitText: ['chờ', 'đợi'], waitColour: ['chờ', 'đợi'], waitStill: ['chờ', 'đợi'],
   loop: ['loop', 'again', 'lặp'], loopUntil: ['loop', 'lặp'], break: ['exit', 'leave', 'thoát'], if: ['when', 'check', 'nếu'], else: ['otherwise', 'ngược lại'],
 };
@@ -201,6 +204,10 @@ export function newStep(kind: string): Step {
     case 'type': return { kind, text: '' };
     case 'setVar': return { kind, name: 'count', value: 0 };
     case 'addVar': return { kind, name: 'count', value: 1 };
+    // Reads a number (coins, a level) or the words in an area into a variable, tried again until one shows.
+    case 'read': return { kind, name: 'coins', mode: 'number', from: 'screen', timeoutMs: 10000 };
+    case 'write': return { kind, to: 'file', fileName: 'Bloxkeep log', text: '' };
+    case 'call': return { kind };
     case 'alert': return { kind, text: '', picture: false };
     // Keeps a moving marker on a target (a reel or charge bar): the area to watch and the two colours are set after.
     case 'follow': return { kind, target: '#22c55e', marker: '#ffffff', tolerance: 24, button: 'left', mode: 'onOff', predict: false, kp: 1, kd: 0.4, fps: 60, untilGoneMs: 1000, timeoutMs: 30000 };
@@ -237,7 +244,7 @@ export const freeName = (prefix: string, taken: { name: string }[]) => {
   for (let n = 1; ; n++) if (!taken.some(x => x.name === prefix + n)) return prefix + n;
 };
 /** The counters a macro keeps (its Set and Add steps' names): each shows on its panel. */
-export const counters = (m: Pick<Macro, 'steps'>): string[] => [...new Set(m.steps.filter(s => s.kind === 'setVar' || s.kind === 'addVar').map(s => String(s.name || '').trim()).filter(Boolean))];
+export const counters = (m: Pick<Macro, 'steps'>): string[] => [...new Set(m.steps.filter(s => s.kind === 'setVar' || s.kind === 'addVar' || s.kind === 'read').map(s => String(s.name || '').trim()).filter(Boolean))];
 /** The steps with a point on the window (a numbered dot): its number is the step's. */
 export const pointOf = (s: Step, options: Option[] = []): { x: number; y: number } | null =>
   ['click', 'move'].includes(s.kind) || (s.kind === 'waitColour' && !s.region) ? (typeof s.x === 'number' && typeof s.y === 'number' ? { x: s.x, y: s.y }
@@ -276,7 +283,7 @@ export function durText(t: T, seconds: number): string {
 export const msText = (t: T, ms: number) => ms < 60000 && ms % 1000 ? t('macro.dur.s', { n: +(ms / 1000).toFixed(2) }) : durText(t, ms / 1000);
 
 /** What a step's sentence needs of its macro: the values of its options and the labels of its areas. */
-export type Ctx = Pick<Macro, 'options' | 'areas'> & { panel?: Macro['panel'] };
+export type Ctx = Pick<Macro, 'options' | 'areas'> & { panel?: Macro['panel']; macroNames?: Record<string, string> };
 /** A counter as the panel and the editor call it: its label, else its name. */
 export const counterName = (m: Ctx | undefined, name: string) => m?.panel?.counterLabels?.[name] || name;
 /** A value, or the option it stands for. */
@@ -292,6 +299,12 @@ export const camDir = (s: Step) => Math.abs(Number(s.dx) || 0) >= Math.abs(Numbe
 
 /** What a step does as a sentence ("Hold the left button for 0.6 s at point 2", "Wait until the colour shows in Fish
  * area"): its row's text. Points are numbered after their step (n). */
+/** Where a Read step reads, or a Write step writes: the area on the game, the clipboard, a file by name, a web address's host. */
+const fromText = (t: T, s: Step, where: string) => s.from === 'clipboard' ? t('macro.s.fromClip')
+  : s.from === 'file' ? t('macro.s.fromFile', { name: String(s.fileName || '…') })
+  : s.from === 'web' ? t('macro.s.fromWeb', { host: hostOf(String(s.url || '')) || '…' }) : where;
+const hostOf = (url: string) => { try { return new URL(url).host; } catch { return ''; } };
+
 export function stepText(t: T, s: Step, m?: Ctx, n = 0): string {
   const v = (x: unknown) => valueOf(m, x);
   const ms = (x: unknown) => { const y = v(x); return typeof y === 'number' ? msText(t, y) : '…'; };
@@ -330,8 +343,13 @@ export function stepText(t: T, s: Step, m?: Ctx, n = 0): string {
       return `${lead} ${t(test.not ? 'macro.s.isGone' : 'macro.s.shows', { what, where: at })}`;
     }
     case 'loop': return s.times ? t('macro.s.loopN', { n: String(v(s.times)) }) : t('macro.s.loop');
-    case 'setVar': return t('macro.s.setVar', { name: s.name ? counterName(m, s.name) : '…', v: String(v(s.value)) });
-    case 'addVar': return t('macro.s.addVar', { name: s.name ? counterName(m, s.name) : '…', v: String(v(s.value)) });
+    case 'setVar': return typeof s.text === 'string' ? t('macro.s.setText', { name: s.name ? counterName(m, s.name) : '…', text: s.text })
+      : t('macro.s.setVar', { name: s.name ? counterName(m, s.name) : '…', v: s.expr ?? String(v(s.value)) });
+    case 'addVar': return t('macro.s.addVar', { name: s.name ? counterName(m, s.name) : '…', v: s.expr ?? String(v(s.value)) });
+    case 'read': return t(`macro.s.read.${s.mode === 'text' ? 'text' : 'number'}`, { name: s.name ? counterName(m, s.name) : '…', where: fromText(t, s, where) });
+    case 'write': return t('macro.s.write', { text: String(s.text || '…'), to: s.to === 'clipboard' ? t('macro.s.toClip')
+      : s.to === 'web' ? t('macro.s.toWeb', { host: hostOf(String(s.url || '')) || '…' }) : t('macro.s.toFile', { name: String(s.fileName || '…') }) });
+    case 'call': return t('macro.s.call', { name: (s.macroId && m?.macroNames?.[s.macroId]) || '…' });
     case 'alert': return t(s.picture ? 'macro.s.alertPic' : 'macro.s.alert');
     case 'follow': return t('macro.s.follow', { where });
     case 'recover': return t('macro.s.recover');
@@ -407,7 +425,17 @@ export function problems(t: T, m: Macro, macros: Macro[]): Problem[] {
     if (['clickImage', 'waitImage', 'waitText', 'waitColour', 'waitStill'].includes(s.kind) && !okNum(s.timeoutMs, 100, 3_600_000)) add(i, 'macro.err.timeout');
     if (s.kind === 'type' && !String(s.text || '').trim()) add(i, 'macro.err.typeEmpty', {}, false, 'text');
     if (s.kind === 'type' && String(s.text || '').length > 200) add(i, 'macro.err.typeLong');
-    if ((s.kind === 'setVar' || s.kind === 'addVar') && !String(s.name || '').trim()) add(i, 'macro.err.varName');
+    if ((s.kind === 'setVar' || s.kind === 'addVar' || s.kind === 'read') && !String(s.name || '').trim()) add(i, 'macro.err.varName');
+    if ((s.kind === 'setVar' || s.kind === 'addVar') && typeof s.text !== 'string' && (s.expr !== undefined ? !String(s.expr).trim() : !(isOpt(s.value) || okNum(s.value, -1e12, 1e12))))
+      add(i, 'macro.err.formula', {}, false, 'value');
+    if (s.kind === 'read' && (s.from || 'screen') === 'screen' && !s.region) add(i, 'macro.err.readArea', {}, false, 'region', 'area');
+    const where = s.kind === 'read' ? s.from : s.kind === 'write' ? s.to : '';
+    if (where === 'file' && !/^[\p{L}\p{N} _\-]{1,40}$/u.test(String(s.fileName || '').trim())) add(i, 'macro.err.fileName', {}, false, 'fileName');
+    if (where === 'web' && !/^https:\/\/\S+$/.test(String(s.url || '').trim())) add(i, 'macro.err.url', {}, false, 'url');
+    if (s.kind === 'write' && !String(s.text || '').trim()) add(i, 'macro.err.writeEmpty', {}, false, 'text');
+    if (s.kind === 'call' && !s.macroId) add(i, 'macro.err.callPick', {}, false, 'macroId');
+    if (s.kind === 'call' && s.macroId && !macros.some(x => x.id === s.macroId)) add(i, 'macro.err.callGone', {}, false, 'macroId');
+    if (s.kind === 'read' && !okNum(s.timeoutMs, 100, 3_600_000)) add(i, 'macro.err.timeout');
     if (s.kind === 'alert' && !String(s.text || '').trim()) add(i, 'macro.err.alertEmpty', {}, false, 'text');
     if (s.kind === 'follow') {
       if (!s.region) add(i, 'macro.err.followArea', {}, false, 'region', 'area');

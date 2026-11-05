@@ -109,7 +109,8 @@
   const isOnline = a => isLocal(a) || ['online', 'ingame', 'studio'].includes(a.presence?.type);
 
   // Settings › Appearance › Hide account names: each account shows as "Account 1"… (its place in the list, as the app
-  // numbers them in toasts and window titles). Real names stay in a.real for the search and the name sort only.
+  // numbers them in toasts and window titles), without its picture (an avatar tells who it is as well as a name). Real
+  // names stay in a.real for the search and the name sort only.
   const hidingNames = () => !!S.app?.hideNames;
   // An account whose data didn't change keeps its object, so React redraws only the cards that changed.
   let shownAccounts = new Map();
@@ -122,8 +123,8 @@
       const was = shownAccounts.get(a.id);
       let shown = was?.key === key ? was.account : null;
       if (!shown) {
-        const real = a.real || { label: a.label, username: a.username, displayName: a.displayName, alias: a.alias };
-        shown = { ...a, real, ...(st.hideNames ? { label: t('hide.account', { n: i + 1 }), username: '', displayName: '', alias: '' } : real) };
+        const real = a.real || { label: a.label, username: a.username, displayName: a.displayName, alias: a.alias, avatarUrl: a.avatarUrl };
+        shown = { ...a, real, ...(st.hideNames ? { label: t('hide.account', { n: i + 1 }), username: '', displayName: '', alias: '', avatarUrl: null, mark: String(i + 1) } : { ...real, mark: undefined }) };
       }
       next.set(a.id, { key, account: shown });
       return shown;
@@ -730,6 +731,7 @@
     if (view === 'presets') uiSignal('presetsShown');
     $('#view-macros').hidden = view !== 'macros';
     if (view === 'macros') uiSignal('macrosShown');
+    $('#view-news').hidden = view !== 'news';
     $('#view-settings').hidden = view !== 'settings';
     $('#view-stats').hidden = view !== 'stats';
     $('#view-monitor').hidden = view !== 'monitor';
@@ -1080,7 +1082,7 @@
     introShown() { S.introShown = true; },
     go(target) {
       if (target.startsWith('settings:')) openSettings(target.slice(9));
-      else if (['macros', 'stats', 'monitor'].includes(target)) setView(target);
+      else if (['macros', 'stats', 'monitor', 'news'].includes(target)) setView(target);
       else if (target === 'guide') call('openGuide');
       else if (target === 'web') call('openWebsiteBlank');
       else if (target === 'feedback') feedbackModal();
@@ -1527,7 +1529,9 @@
   const renderSelection = () => pageChanged();
   /** "Select all" means what is on screen: it replaces a selection that included accounts now hidden. */
   function selectAllVisible() {
-    S.selected = new Set(visible().map(a => a.id));
+    // Main accounts (the ones played on) are left out, ticked only by hand; unless they are all there is to pick.
+    const all = visible(), farm = all.filter(a => !a.isMain);
+    S.selected = new Set((farm.length ? farm : all).map(a => a.id));
     renderSelection();
   }
   function onCardClick(id, e) {
@@ -1977,8 +1981,9 @@
   }
 
   /** The sign-in window can add several accounts in a row; select whatever was added. */
-  async function addBrowser(btn) {
-    const r = await busy(btn, () => call('addViaBrowser'));
+  /** @param create Roblox's sign-up form instead of its sign-in: each account made there is saved the same way. */
+  async function addBrowser(btn, create = false) {
+    const r = await busy(btn, () => call('addViaBrowser', create ? { create: true } : {}));
     const added = r?.added || [];
     if (!added.length) return;
     toast(added.length === 1 ? t(added[0].merged ? 't.merged' : 't.added', { name: added[0].label }) : t('t.addedMany', { n: added.length }), 'ok');
@@ -2022,6 +2027,7 @@
       m.close();
       // 'done' (the banner's Done after an account came in) only closes; Cancel in the file import comes back to this sign-in.
       if (way === 'browser') addBrowser(null);
+      else if (way === 'create') addBrowser(null, true);
       else if (way === 'phone') quickLogin(realm);
       else if (way === 'cookie') accountModal(null);
       else if (way === 'vault') importVault(() => passwordLogin(realm));
@@ -2293,6 +2299,13 @@
       ...(S.app.settings?.robloxConfig?.mode === 'marked'
         ? [{ icon: 'sliders', text: t('m.robloxConfig'), checked: ids.every(i => byId(i)?.useRobloxConfig), run: () => toggleRobloxConfig(ids) }] : []),
       { icon: 'sliders', text: t('m.fps'), hint: !many && a.fpsCap ? `${a.fpsCap} FPS` : '', run: () => fpsMenu(ids, x, y) },
+      // The one played on: left out of Select all, and its window of Save RAM, the RAM limit, Arrange windows and the slow cores.
+      { icon: 'star', text: t('m.main'), checked: ids.every(i => byId(i)?.isMain), title: t('m.mainTip'),
+        run: () => call('setMain', { ids, on: !ids.every(i => byId(i)?.isMain) }) },
+      // Every pair of these becomes Roblox friends (roblox.com accounts signed in); a check Roblox asks is shown to solve.
+      ...(many ? [{ icon: 'userPlus', text: t('m.friends'), title: t('m.friendsTip'),
+        disabled: ids.filter(i => byId(i)?.realm !== 'vng' && byId(i)?.cookieValid !== false).length < 2,
+        run: () => call('makeFriends', { ids }) }] : []),
       ...(many ? [] : [
         ...(a.userId ? [{ icon: 'external', text: t('m.profile'), run: () => call('openProfile', { userId: a.userId }) }] : []),
         // roblox.com signed in as this account, in a window of Bloxkeep's own (one per account, several side by side).
@@ -2561,7 +2574,7 @@
       { id: 'lang', icon: 'languages', text: lang === 'vi' ? 'Switch to English' : 'Chuyển sang tiếng Việt', keywords: ['language', 'ngôn ngữ'], run: () => call('setLanguage', { language: lang === 'vi' ? 'en' : 'vi' }) },
       { id: 'lock', icon: 'lock', text: t('side.lock'), keywords: ['password'], run: () => lockApp() },
     ].filter(x => !x.off).map(x => ({ ...x, kind: 'action' }));
-    const tabs = [['accounts', 'users'], ['presets', 'layers'], ['macros', 'keyboard'], ['monitor', 'screens'], ['stats', 'clock'], ['settings', 'sliders']]
+    const tabs = [['accounts', 'users'], ['presets', 'layers'], ['news', 'news'], ['macros', 'keyboard'], ['monitor', 'screens'], ['stats', 'clock'], ['settings', 'sliders']]
       .map(([view, ic]) => ({ id: `tab:${view}`, kind: 'tab', icon: ic, text: t(`nav.${view}`), run: go(view) }));
     tabs.push({ id: 'tab:activity', kind: 'tab', icon: 'history', text: t('alog.title'), keywords: ['log', 'history', 'events'], run: go('stats', () => statsUi?.api.showActivity()) });
     // Each macro's panel: Show it (or Hide it, when it is up).
@@ -2725,6 +2738,7 @@
       case 'import-vault': leaveChooser(el); return importVault();
       case 'relogin': { const a = byId(id); return quickLogin(a?.realm, a?.label); }
       case 'add-browser': leaveChooser(el); return addBrowser(el);
+      case 'add-create': leaveChooser(el); return addBrowser(el, true);
       case 'add-cookie': leaveChooser(el); return accountModal(null);
       // roblox.com in a blank window of Bloxkeep's own, to sign in on the site (several side by side).
       case 'open-web': leaveChooser(el); return call('openWebsiteBlank');
@@ -3279,6 +3293,8 @@
   bridge.on('monitor', d => { MON.last = d; uiSignal('monitor', d); });
   // A macro recording ended (F8, Stop, Ctrl+Alt+0): its steps go to whoever started it (the Macros tab or the macro form).
   bridge.on('macroRecorded', d => uiSignal('macroRecorded', d));
+  bridge.on('feedCards', d => uiSignal('feedCards', d));
+  bridge.on('feedPrices', d => uiSignal('feedPrices', d));
   bridge.on('macroSeen', d => uiSignal('macroSeen', d));
   // Edit on game: a dot or box dragged on the Roblox window (or Done there) goes to the macro form.
   bridge.on('onGameEdit', d => uiSignal('onGameEdit', d));
@@ -3300,7 +3316,7 @@
       S.filter = String(saved.filter || 'all').startsWith('g:') ? 'all' : saved.filter || 'all';
       S.group = typeof saved.group === 'string' ? saved.group : String(saved.filter || '').startsWith('g:') ? saved.filter.slice(2) : '';
       S.query = saved.query || '';
-      S.view = ['presets', 'macros', 'settings', 'stats', 'monitor'].includes(saved.view) ? saved.view : 'accounts';
+      S.view = ['presets', 'news', 'macros', 'settings', 'stats', 'monitor'].includes(saved.view) ? saved.view : 'accounts';
       PV.query = typeof saved.presetQuery === 'string' ? saved.presetQuery : '';
       S.introShown = true;
     }

@@ -341,6 +341,7 @@ public sealed partial class AppController
         Step(() => TickDiscordPresence(now)); // Settings › Discord › Show on my Discord profile, locked or not
         Step(() => TickOnline(now)); // Settings › Bloxkeep › Add me to the online count, locked or not
         Step(TickRemote); // Settings › Discord › Control from Discord, locked or not (locked, it says only that)
+        Step(TickFeeds); // the Game news tab, locked or not (nothing personal comes or goes)
         // Also while locked: a window that ends soon after the commit limit ran out ran out of memory.
         MemoryStatus memory = default;
         Step(() =>

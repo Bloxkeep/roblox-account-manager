@@ -13,8 +13,14 @@ public sealed partial class AppController
     /// <summary>The window shows or hides the mini window (null toggles) and says whether it is open afterwards.</summary>
     public Func<bool?, bool>? SetMiniOpen { get; init; }
 
-    void NoteClientMemory(List<RobloxProcesses.PlayerProcess> players) =>
+    /// <summary>Each client's own memory (commit) as of the last process check: what Settings' "Restart a heavy window" reads.</summary>
+    Dictionary<int, long> _clientCommit = new();
+
+    void NoteClientMemory(List<RobloxProcesses.PlayerProcess> players)
+    {
         _clientRam = players.ToDictionary(p => p.Pid, p => p.Ram);
+        _clientCommit = players.ToDictionary(p => p.Pid, p => p.Private > 0 ? p.Private : p.Ram);
+    }
 
     /// <summary>Every Roblox client on this PC as of the last process check, Bloxkeep's or not.</summary>
     public int RobloxCount => _clientRam.Count;

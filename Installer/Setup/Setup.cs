@@ -831,6 +831,7 @@ namespace BloxkeepSetup
         public static int Uninstall(string root, bool deleteData)
         {
             CloseRunningApp();
+            RemoveStartupEntry();
             var info = new ProcessStartInfo(Path.Combine(root, "Update.exe"), "--uninstall --silent");
             info.UseShellExecute = false;
             info.CreateNoWindow = true;
@@ -847,6 +848,21 @@ namespace BloxkeepSetup
             for (int i = 0; i < 40 && Directory.Exists(root); i++)
                 Thread.Sleep(250);
             return code;
+        }
+
+        /// <summary>Settings › Start with Windows' entry (the app's StartWithWindows): gone with the app.</summary>
+        static void RemoveStartupEntry()
+        {
+            try
+            {
+                using (var run = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run", true))
+                    if (run != null)
+                        run.DeleteValue("Bloxkeep", false);
+                using (var approved = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run", true))
+                    if (approved != null)
+                        approved.DeleteValue("Bloxkeep", false);
+            }
+            catch (Exception) { }
         }
     }
 

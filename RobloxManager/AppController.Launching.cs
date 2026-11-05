@@ -839,6 +839,7 @@ public sealed partial class AppController
             .ToList();
         var others = RobloxProcesses.GetPlayerPids().Where(p => !tracked.Contains(p)).OrderBy(p => p);
         var afk = auto ? AfkClients() : [];
+        afk.UnionWith(MainPids()); // the window played on stays where the person put it
         // Clicked: the windows come over every other app (not after a launch: the person may be busy elsewhere).
         var app = !auto && _owner.IsHandleCreated && _owner.Visible && _owner.WindowState != FormWindowState.Minimized ? _owner.Handle : IntPtr.Zero;
         var s = _vault?.Data.Settings;
@@ -866,6 +867,7 @@ public sealed partial class AppController
             return; // locked, switched off (in Settings or the preset), or another launch started (it tiles when it is done)
         // Two or more tiles, so one window isn't stretched over the whole screen as a grid of one.
         var afk = AfkClients();
+        afk.UnionWith(MainPids());
         if (RobloxProcesses.VisibleWindows(RobloxProcesses.GetPlayerPids())
                 .Count(w => !afk.Contains(w.Key) && w.Value.Count > 0 && !RobloxProcesses.IsMinimised(RobloxProcesses.MainWindowOf(w.Value))) >= 2)
             await ArrangeWindowsAsync(-1, auto: true);

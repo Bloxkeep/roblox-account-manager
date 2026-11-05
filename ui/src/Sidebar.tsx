@@ -29,6 +29,10 @@ export function Sidebar() {
     <div className="side-nav">
       {nav('accounts', 'users', <em id="nav-count">{accounts.length}</em>)}
       {nav('presets', 'layers')}
+      {/* Game news: its followed games' unread news, or New while a game is there that wasn't seen in it yet. */}
+      {nav('news', 'news', app.feeds?.unread ? <em className="nav-news" id="nav-news">{app.feeds.unread > 99 ? '99+' : app.feeds.unread}</em>
+        : app.feeds?.fresh ? <em className="nav-news" id="nav-news">{t('news.new')}</em> : null,
+        app.feeds?.unread ? `${t('nav.news')} (${t('news.unreadN', { n: app.feeds.unread })})` : undefined)}
       {/* Macros are new and work differently on each PC (Roblox windows taken to the front in turn): marked Beta. */}
       {nav('macros', 'keyboard', <em className="nav-beta">{t('macro.beta')}</em>, `${t('nav.macros')} (${t('macro.beta')})`)}
       {nav('monitor', 'screens')}

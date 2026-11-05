@@ -264,10 +264,13 @@ static class MacroValues
             right = word;
         else
             right = JsonSerializer.SerializeToElement(t.Value ?? 0);
+        string l = Text(left), r = Text(right);
+        // Has: the words read (or a setting's) hold the text, whatever the case ("Level 12 reached" has "reached").
+        if (t.Op is "has" or "!has")
+            return l.Contains(r, StringComparison.OrdinalIgnoreCase) == (t.Op == "has");
         if (Number(left) is { } a && Number(right) is { } b)
             return MacroPlayer.Compare(a, t.Op!, b);
-        string l = Text(left), r = Text(right);
-        bool same = string.Equals(l, r, StringComparison.OrdinalIgnoreCase);
+        bool same = string.Equals(l.Trim(), r.Trim(), StringComparison.OrdinalIgnoreCase);
         return t.Op switch
         {
             "=" => same,
