@@ -49,6 +49,7 @@ export const FEED_COMMAND = {
       type: 1, name: 'hide', description: 'Stop showing a feed channel in Bloxkeep (still kept here)',
       options: [{ type: 7, name: 'channel', description: 'The feed channel', required: true, channel_types: [0, 5] }],
     },
+    { type: 1, name: 'prices', description: "Read the games' price lists again now (they're read once a day)" },
     {
       type: 1, name: 'remove', description: 'Stop keeping what a feed channel gets (the channel stays)',
       options: [{ type: 7, name: 'channel', description: 'The feed channel', required: true, channel_types: [0, 5] }],
@@ -90,116 +91,235 @@ const discordPic = u => (httpsUrl(u) && /^https:\/\/(media\.discordapp\.net|cdn\
 const ITEM = /^\s*(<a?:\w{1,40}:\d{5,25}>|\p{Extended_Pictographic}\uFE0F?)?\s*\**\s*([^*•·<`\n]{1,60}?)\s*\**\s*[•·]\s*\**\s*((?:<a?:\w{1,40}:\d{5,25}>\s*)?)`?([^`*\n]{1,60}?)`?\s*\**\s*$/u;
 // A line that is a heading: all of it bold ("**Current Mirage Stock**", "**Normal Stock:**").
 const HEADING = /^\s*\*\*([^*\n]{1,120}?):?\*\*\s*$/;
+const MD_MAX = 4000, BLOCKS_MAX = 40, GALLERY_MAX = 10;
 
 /**
- * What a message shows, as blocks: each embed, or each container of Discord's newer layout (components: text, sections
- * with a picture, galleries), or else its text. A block: its own title (an embed's), its lines, its fields, pictures and
- * colour.
+ * Discord's markdown as the apps show it: pings and mentions out (they mean nothing outside that server), a command's
+ * mention as its name; the rest (bold, lists, quotes, code, links, times, a server's emoji) kept for the app to draw.
  */
-function blocksOf(r) {
-  const blocks = [];
-  const fromParts = (parts, color) => {
-    const block = { title: '', lines: [], fields: [], picture: null, image: null, color: Number.isInteger(color) ? color : null };
-    const walk = list => {
-      for (const c of list ?? []) {
-        if (!c || typeof c !== 'object')
-          continue;
-        if (c.type === 10 && typeof c.content === 'string')
-          block.lines.push(c.content);
-        else if (c.type === 9) {
-          walk(c.components);
-          block.picture ??= discordPic(c.accessory?.media?.proxy_url) ?? discordPic(c.accessory?.media?.url);
-        } else if (c.type === 12)
-          block.image ??= (c.items ?? []).map(i => discordPic(i?.media?.proxy_url) ?? discordPic(i?.media?.url)).find(Boolean) ?? null;
-        else if (c.type === 14)
-          block.lines.push('');
-      }
-    };
-    walk(parts);
-    return block;
-  };
-  const loose = [];
-  for (const c of r.components ?? []) {
-    if (c?.type === 17)
-      blocks.push(fromParts(c.components, c.accent_color));
-    else if (c && [9, 10, 12].includes(c.type))
-      loose.push(c);
-  }
-  if (loose.length)
-    blocks.unshift(fromParts(loose, null));
-  for (const e of (r.embeds ?? []).filter(e => e && typeof e === 'object')) {
-    if (!(e.title || e.description || e.fields?.length || e.author?.name || e.image || e.thumbnail))
+export function md(text) {
+  return cut(String(text ?? '')
+    .replace(/<\/([\w -]{1,64}):\d{5,25}>/g, '/$1')
+    .replace(/<(@[!&]?|#)\d{5,25}>|<id:\w{1,20}>/g, '')
+    .replace(/@(everyone|here)\b/g, '')
+    .replace(/[ \t]+$/gm, '')
+    .replace(/\n{3,}/g, '\n\n').trim(), MD_MAX);
+}
+
+const emojiText = e => (e?.id && /^\d{5,25}$/.test(e.id) ? `<${e.animated ? 'a' : ''}:${String(e.name || 'e').replace(/\W/g, '') || 'e'}:${e.id}>` : typeof e?.name === 'string' ? e.name.slice(0, 20) : '');
+const isVideo = (type, url) => /^video\//.test(type ?? '') || /\.(mp4|webm|mov)(\?|$)/i.test(url ?? '');
+/** A picture or video Discord keeps (its own copy first), as a gallery's item. */
+const mediaItem = (m, extra = {}) => {
+  const url = discordPic(m?.proxy_url) ?? discordPic(m?.url);
+  return url ? { url, video: isVideo(m?.content_type, url), w: m?.width ?? null, h: m?.height ?? null, ...extra } : null;
+};
+const button = b => (b?.type === 2
+  ? { label: cut(String(b.label ?? ''), 80), emoji: emojiText(b.emoji), url: b.style === 5 ? httpsUrl(b.url) : null }
+  : { label: cut(String(b?.placeholder ?? '…'), 80), emoji: '', url: null, menu: true });
+
+/**
+ * Discord's newer layout (components) as the apps' blocks, in order: text, a section (text with a picture or a button
+ * beside it), a gallery, a file, a line between, a row of buttons. A box (container) inside is left to the caller.
+ */
+function componentBlocks(list, files) {
+  const out = [];
+  for (const c of list ?? []) {
+    if (!c || typeof c !== 'object')
       continue;
-    blocks.push({
-      title: e.title || '', lines: e.description ? [e.description] : [], fields: (e.fields ?? []).map(f => ({ name: f?.name ?? '', value: f?.value ?? '' })),
-      picture: discordPic(e.thumbnail?.proxy_url) ?? discordPic(e.thumbnail?.url), image: discordPic(e.image?.proxy_url) ?? discordPic(e.image?.url),
-      color: Number.isInteger(e.color) ? e.color : null, link: httpsUrl(e.url),
-      author: e.author?.name ? { name: cut(plain(e.author.name), 80), icon: discordPic(e.author.proxy_icon_url) ?? discordPic(e.author.icon_url) } : null,
-    });
+    switch (c.type) {
+      case 10: out.push({ t: 'md', md: md(c.content) }); break;
+      case 9: {
+        const text = md((c.components ?? []).filter(x => x?.type === 10).map(x => x.content).join('\n'));
+        const a = c.accessory;
+        out.push({ t: 'section', md: text, thumb: a?.type === 11 ? mediaItem(a.media)?.url ?? null : null, button: a?.type === 2 ? button(a) : null });
+        break;
+      }
+      case 12: {
+        const items = (c.items ?? []).map(i => mediaItem(i?.media, { alt: cut(String(i?.description ?? ''), 200), spoiler: !!i?.spoiler })).filter(Boolean).slice(0, GALLERY_MAX);
+        if (items.length) out.push({ t: 'gallery', items });
+        break;
+      }
+      case 13: {
+        const name = String(c.file?.url ?? '').replace(/^attachment:\/\//, '');
+        const f = files.find(x => x.name === name || x.url === c.file?.url);
+        out.push({ t: 'file', name: cut(String(c.name ?? f?.name ?? (name || 'file')), 120), size: c.size ?? f?.size ?? null });
+        break;
+      }
+      case 14: out.push({ t: 'sep', line: c.divider !== false, big: c.spacing === 2 }); break;
+      case 1: {
+        const items = (c.components ?? []).map(button).filter(b => b.label || b.emoji).slice(0, 5);
+        if (items.length) out.push({ t: 'buttons', items });
+        break;
+      }
+      default:
+        if (typeof c.content === 'string') out.push({ t: 'md', md: md(c.content) });
+    }
   }
-  // The message's own text goes before its first block (a ping and a line over an embed), or is the only block.
-  if (r.content)
-    blocks.length ? blocks[0].lines.unshift(r.content) : blocks.push({ title: '', lines: [r.content], fields: [], picture: null, image: null, color: null });
-  if (!blocks.some(b => b.picture))
-    for (const b of blocks.slice(0, 1))
-      b.picture = discordPic(r.attachments?.find(a => /^image\//.test(a.type ?? ''))?.url);
-  return blocks;
+  return out;
+}
+
+/** An embed as a list: its own title, author, link, colour and side picture, and its blocks. */
+function embedList(e) {
+  const blocks = [];
+  if (e.description) blocks.push({ t: 'md', md: md(e.description) });
+  const fields = (e.fields ?? []).filter(f => f && (f.name || f.value)).slice(0, 25)
+    .map(f => ({ name: md(f.name), value: md(f.value), inline: !!f.inline }));
+  if (fields.length) blocks.push({ t: 'fields', items: fields });
+  const pic = (e.video?.proxy_url ? mediaItem(e.video) : null) ?? mediaItem(e.image);
+  if (pic) blocks.push({ t: 'gallery', items: [pic] });
+  if (e.footer?.text || e.timestamp)
+    blocks.push({ t: 'footer', md: md(e.footer?.text ?? ''), icon: discordPic(e.footer?.proxy_icon_url) ?? discordPic(e.footer?.icon_url), at: Date.parse(e.timestamp ?? '') || null });
+  return {
+    title: e.title || '', blocks, picture: mediaItem(e.thumbnail)?.url ?? null, color: Number.isInteger(e.color) ? e.color : null, link: httpsUrl(e.url),
+    author: e.author?.name ? { name: cut(plain(e.author.name), 80), icon: discordPic(e.author.proxy_icon_url) ?? discordPic(e.author.icon_url), url: httpsUrl(e.author.url) } : null,
+  };
 }
 
 /**
- * A block as cards: split at its headings when it has several, each with items under it ("Normal Stock:" and "Mirage
- * Stock:" in one box are two cards); a heading with nothing under it before the next is left out.
+ * What a message shows, as lists of blocks in Discord's order: its own text, files, stickers and poll, then each box of
+ * the newer layout (loose components together), then each embed. The message's own part goes on top of the first list
+ * (a ping and a line over an embed), or is the only one.
  */
-function cardsOfBlock(b, at) {
-  const groups = [];
-  let group = { title: b.title, lines: [], fields: [...b.fields] };
-  for (const line of b.lines.flatMap(l => String(l).split('\n'))) {
-    const head = HEADING.exec(line);
-    if (head) {
-      if (group.lines.some(l => l.trim()) || group.fields.length)
-        groups.push(group);
-      // A heading right after the block's own title, with nothing between: the title it is.
-      group = { title: head[1].trim(), lines: [], fields: [] };
-      continue;
-    }
-    const item = ITEM.exec(line);
-    if (item && !/<t:\d/.test(line)) {
-      group.fields.push({ name: `${item[1] ? `${item[1]} ` : ''}${item[2].trim()}`, value: `${item[3].trim()}${item[4].trim()}` });
-      continue;
-    }
-    group.lines.push(line);
+function listsOf(r) {
+  const files = r.attachments ?? [];
+  // A message in the older layout has its rows of buttons under its embeds; in the newer one (flag 1 << 15) everything
+  // is in components' own order, and only the files they name are shown.
+  const v2 = ((r.flags ?? 0) & (1 << 15)) !== 0;
+  const mine = [];
+  if (r.content) mine.push({ t: 'md', md: md(r.content) });
+  const media = a => /^(image|video)\//.test(a.type ?? '') || (!a.type && /\.(png|jpe?g|gif|webp|mp4|webm|mov)(\?|$)/i.test(a.url ?? ''));
+  const shown = (v2 ? [] : files).map(a => (media(a) ? mediaItem({ url: a.url, proxy_url: a.proxy, content_type: a.type, width: a.w, height: a.h }, { spoiler: /^SPOILER_/.test(a.name ?? '') }) : null));
+  const pics = shown.filter(Boolean).slice(0, GALLERY_MAX);
+  if (pics.length) mine.push({ t: 'gallery', items: pics });
+  (v2 ? [] : files).forEach((a, i) => { if (!shown[i]) mine.push({ t: 'file', name: cut(String(a.name ?? 'file'), 120), size: a.size ?? null }); });
+  for (const st of (r.stickers ?? []).slice(0, 3))
+    if (/^\d{5,25}$/.test(st?.id ?? '') && [1, 2, 4].includes(st.format))
+      mine.push({ t: 'sticker', url: `https://media.discordapp.net/stickers/${st.id}.${st.format === 4 ? 'gif' : 'webp'}?size=160`, name: cut(String(st.name ?? ''), 40) });
+  if (r.poll?.question) {
+    const counts = r.poll.results?.answer_counts ?? [];
+    mine.push({
+      t: 'poll', q: md(r.poll.question.text), done: !!r.poll.results?.is_finalized, ends: Date.parse(r.poll.expiry ?? '') || null,
+      answers: (r.poll.answers ?? []).slice(0, 10).map(a => ({ text: md(a.poll_media?.text ?? ''), emoji: emojiText(a.poll_media?.emoji), votes: counts.find(c => c.id === a.answer_id)?.count ?? 0 })),
+    });
   }
-  if (group.lines.some(l => l.trim()) || group.fields.length || group.title)
-    groups.push(group);
-  return groups.map(g => {
-    let title = plain(g.title), text = plain(g.lines.join('\n'));
-    if (!title && text) {
-      const [head, ...rest] = text.split('\n');
-      title = head;
-      text = rest.join('\n').trim();
+  const lists = [], loose = [], rows = [];
+  for (const c of r.components ?? []) {
+    if (c?.type === 17)
+      lists.push({ title: '', blocks: componentBlocks(c.components, files), picture: null, color: Number.isInteger(c.accent_color) ? c.accent_color : null, spoiler: !!c.spoiler });
+    else if (c && typeof c === 'object')
+      (c.type === 1 && !v2 ? rows : loose).push(c);
+  }
+  if (loose.length)
+    lists.unshift({ title: '', blocks: componentBlocks(loose, files), picture: null, color: null });
+  for (const e of (r.embeds ?? []).filter(e => e && typeof e === 'object')) {
+    const prev = lists.at(-1);
+    // Several embeds with one link and only a picture each: one embed with a gallery, as Discord draws them.
+    if (prev?.link && e.url === prev.link && !e.title && !e.description && !e.fields?.length && (e.image || e.thumbnail)) {
+      const item = mediaItem(e.image) ?? mediaItem(e.thumbnail), g = prev.blocks.find(b => b.t === 'gallery');
+      if (item) g ? g.items.length < GALLERY_MAX && g.items.push(item) : prev.blocks.push({ t: 'gallery', items: [item] });
+      continue;
     }
-    const fields = g.fields.map(f => ({ name: cut(plain(f.name), 80), value: cut(plain(f.value), 300) })).filter(f => f.name || f.value).slice(0, 25);
-    if (!title && !text && !fields.length)
+    const list = embedList(e);
+    if (list.title || list.blocks.length || list.author || list.picture)
+      lists.push(list);
+  }
+  if (mine.length)
+    lists.length ? lists[0].blocks.unshift(...mine) : lists.push({ title: '', blocks: mine, picture: null, color: null });
+  if (rows.length)
+    lists.length ? lists.at(-1).blocks.push(...componentBlocks(rows, files)) : lists.push({ title: '', blocks: componentBlocks(rows, files), picture: null, color: null });
+  return lists;
+}
+
+const textOf = b => (b.t === 'md' || b.t === 'section' || b.t === 'footer' ? b.md
+  : b.t === 'fields' ? b.items.map(f => `${f.name} ${f.value}`).join('\n')
+  : b.t === 'poll' ? [b.q, ...b.answers.map(a => a.text)].join('\n')
+  : b.t === 'buttons' ? b.items.map(x => x.label).join(' ') : '');
+
+/**
+ * A list as cards: split at its bold headings when it has several, each with what is under it ("Normal Stock:" and
+ * "Mirage Stock:" in one box are two cards; a heading with nothing under it before the next is left out). Lines naming
+ * an item with its price become fields (tiles with the item's picture). Without a heading or a title, a short first line
+ * is the card's title.
+ */
+function cardsOfList(l, at) {
+  const groups = [];
+  // An embed's own title stays: a bold line over it (the message's text) is words, not a heading.
+  let g = { title: l.title, blocks: [], own: !!l.title };
+  const body = b => b.t !== 'sep';
+  const add = b => g.blocks.push(b);
+  for (const b of l.blocks) {
+    if (b.t !== 'md') {
+      add(b);
+      continue;
+    }
+    let text = [];
+    const flush = () => {
+      const m = text.join('\n').trim();
+      if (m) add({ t: 'md', md: m });
+      text = [];
+    };
+    for (const line of b.md.split('\n')) {
+      const head = !(g.own && !g.blocks.some(body)) && HEADING.exec(line);
+      if (head) {
+        flush();
+        if (g.blocks.some(body))
+          groups.push(g);
+        g = { title: head[1].trim(), blocks: [] };
+        continue;
+      }
+      const item = !/<t:\d/.test(line) && ITEM.exec(line);
+      // An item has its picture or a number (a price, a count): "Sea 3 · Castle on the Sea" is words.
+      if (item && (item[1] || /\d/.test(item[4]))) {
+        flush();
+        const f = { name: cut(plain(`${item[1] ? `${item[1]} ` : ''}${item[2].trim()}`), 80), value: cut(plain(`${item[3].trim()}${item[4].trim()}`), 300), inline: true, item: true };
+        const last = g.blocks.at(-1);
+        last?.t === 'fields' && last.items[0]?.item && last.items.length < 25 ? last.items.push(f) : add({ t: 'fields', items: [f] });
+        continue;
+      }
+      text.push(line);
+    }
+    flush();
+  }
+  if (g.blocks.some(body) || g.title)
+    groups.push(g);
+  return groups.map(g => {
+    let title = plain(g.title);
+    const blocks = g.blocks.slice();
+    while (blocks.at(-1)?.t === 'sep') blocks.pop();
+    if (!title && blocks[0]?.t === 'md') {
+      const [head, ...rest] = blocks[0].md.split('\n');
+      if (plain(head).length <= 120 && !/^\s*(```|>)/.test(head)) {
+        title = plain(head);
+        const more = rest.join('\n').trim();
+        more ? (blocks[0] = { t: 'md', md: more }) : blocks.shift();
+      }
+    }
+    const fields = blocks.filter(b => b.t === 'fields').flatMap(b => b.items).map(f => ({ name: cut(plain(f.name), 80), value: cut(plain(f.value), 300) })).filter(f => f.name || f.value).slice(0, 25);
+    const text = cut(plain(blocks.filter(b => b.t !== 'fields').map(textOf).filter(Boolean).join('\n')), 1500);
+    if (!title && !blocks.some(body))
       return null;
-    const all = [g.title, ...g.lines, ...g.fields.flatMap(f => [f.name, f.value])].join(' ');
+    const all = [g.title, ...blocks.map(textOf)].join(' ');
     const until = [...all.matchAll(/<t:(\d{9,11})(?::[tTdDfFR])?>/g)].map(m => Number(m[1]) * 1000).find(ms => ms > at) ?? null;
+    const image = blocks.find(b => b.t === 'gallery')?.items.find(i => !i.video)?.url ?? null;
     return {
-      title: cut(title, 200), text: cut(text, 1500), fields, picture: b.picture ?? null, image: b.image ?? null, author: b.author ?? null,
-      link: b.link ?? null, color: b.color ?? null, until,
+      title: cut(title, 200), text, fields, picture: l.picture ?? null, image, author: l.author ?? null, link: l.link ?? null, color: l.color ?? null, until,
+      blocks: blocks.slice(0, BLOCKS_MAX).map(b => (b.t === 'fields' ? { t: 'fields', items: b.items.map(({ item, ...f }) => f) } : b)), ...(l.spoiler ? { spoiler: true } : {}),
     };
   }).filter(Boolean);
 }
 
 /**
  * A kept message (rawOf) as the cards the apps show, one for each thing it tells (an embed, a box of Discord's newer
- * layout, a heading's part of one): a title, lines of text, items as name/value (with their pictures), a picture, a big
- * picture, who posted it, a colour, and when it ends (the first time in it still ahead of when it came: "changes
- * <t:…:R>"). The message's poster (its name and picture) stands for a card that names none. at: when it came (ms).
+ * layout, a heading's part of one). Each card has its blocks in Discord's order (what the app draws: text with Discord's
+ * markdown, fields, sections, galleries, files, lines, buttons, a footer, a poll, a sticker), and, for alerts and lists,
+ * a title, its words as plain text, its items as name/value, a picture, a big picture, who posted it, a colour, and when
+ * it ends (the first time in it still ahead of when it came: "changes <t:…:R>"). The message's poster (its name and
+ * picture) stands for a card that names none. at: when it came (ms).
  */
 export function cardsOf(r, at = Date.now()) {
   const poster = r.author?.name ? { name: cut(plain(r.author.name), 80), icon: r.author.avatar && /^\d{5,25}$/.test(r.author.id ?? '') && /^(a_)?[0-9a-f]{32}$/.test(r.author.avatar)
     ? `https://cdn.discordapp.com/avatars/${r.author.id}/${r.author.avatar}.webp?size=64` : null } : null;
-  return blocksOf(r).flatMap(b => cardsOfBlock(b, at)).map(c => ({ ...c, author: c.author ?? poster })).slice(0, 10);
+  return listsOf(r).flatMap(l => cardsOfList(l, at)).map(c => ({ ...c, author: c.author ?? poster })).slice(0, 10);
 }
 
 /** The first card of a message, or null (kept for what read one card before). */
@@ -221,7 +341,8 @@ export function rawOf(d, kind) {
     author: d.author ? { id: d.author.id, name: d.author.global_name ?? d.author.username, avatar: d.author.avatar ?? null, bot: !!d.author.bot } : null,
     webhook: d.webhook_id ?? null, flags: d.flags ?? 0, from: d.message_reference ?? null,
     content: d.content ?? '', embeds: d.embeds ?? [], components: d.components ?? [],
-    attachments: (d.attachments ?? []).map(a => ({ name: a.filename, url: a.url, type: a.content_type ?? null })),
+    attachments: (d.attachments ?? []).map(a => ({ name: a.filename, url: a.url, proxy: a.proxy_url ?? null, type: a.content_type ?? null, size: a.size ?? null, w: a.width ?? null, h: a.height ?? null })),
+    stickers: (d.sticker_items ?? []).map(t => ({ id: t.id, name: t.name, format: t.format_type })), poll: d.poll ?? null,
   };
 }
 

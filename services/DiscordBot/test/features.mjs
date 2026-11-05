@@ -121,6 +121,13 @@ let latest = 'v1.0.7';
 let apiDown = false, fileDown = false;
 // The Roblox watch's downloads.json not readable (not written yet, or GitHub's raw files having trouble).
 let downloadsDown = false;
+// A values website's item list (prices.js), 24 items a page: 30 items, their values times the round; refusing while down.
+let priceRound = 1, pricesDown = false;
+const priceItems = () => Array.from({ length: 30 }, (_, n) => ({
+  itemId: `it${n}`, name: n === 0 ? 'Doghouse (Frame Break)' : `Fruit ${n}`, category: n < 20 ? 'Fruits' : 'Limiteds', rarity: 'Rare',
+  image: `https://i.postimg.cc/abc${n}/Fruit-${n}.png,https://bloxfruitsvalues.com/api/bloxfruits/item-image/${n}`,
+  metadata: { regValue: 1000 * (n + 1) * priceRound, permValue: n % 2 ? 'N/A' : 5000 * (n + 1), regDemand: 7, regTrend: 'Stable', beliPrice: 250000, robuxPrice: 0, tier: 'Mythical' },
+}));
 // Roblox's notes, per weekly release, as its Creator Hub page carries them; a release not here has no page yet.
 const notes = new Map();
 const CHANGES = [
@@ -141,6 +148,9 @@ const src = http.createServer((req, res) => {
   // The install files' downloads, as the Roblox watch workflow counts them for the badge.
   if (req.url === '/downloads.json' && downloadsDown) { res.writeHead(404); return res.end('404: Not Found'); }
   if (req.url === '/downloads.json') return json({ installs: 45 });
+  const pg = /^\/prices\?page=(\d+)&limit=24$/.exec(req.url);
+  if (pg && pricesDown) { res.writeHead(503); return res.end(); }
+  if (pg) { const all = priceItems(), p = Number(pg[1]); return json({ items: all.slice((p - 1) * 24, p * 24), pagination: { page: p, limit: 24, totalItems: all.length, hasMore: p * 24 < all.length } }); }
   const m = /^\/api\/tags\/(.+)$/.exec(req.url);
   if (m && apiDown) { res.writeHead(403); return res.end('{"message":"API rate limit exceeded"}'); }
   if (m) return json({ html_url: `https://github.com/Bloxkeep/roblox-account-manager/releases/tag/${m[1]}`, body: NOTES });
@@ -197,7 +207,8 @@ function startDev(extra = {}) {
     WATCH_URL: `http://127.0.0.1:${SRC}/watch.json`, STATUS_URL: `http://127.0.0.1:${SRC}/status.json`, LATEST_URL: `http://127.0.0.1:${SRC}/releases/latest`,
     RELEASE_API_URL: `http://127.0.0.1:${SRC}/api/tags/`, DOWNLOADS_URL: `http://127.0.0.1:${SRC}/downloads.json`, RELEASE_FILE_URL: `http://127.0.0.1:${SRC}/raw/`, RELEASE_EVERY_MS: '1', DOWNLOADS_EVERY_MS: '0', CAPTCHA_CODE: 'K7MXP', COMMUNITY_GUILD: 'g1', INVITE_RECHECK_MS: '0',
     ONLINE_FOR_MS: '8000', BEAT_BUDGET: '1440', PUBLIC_URL: `http://127.0.0.1:${DEV}`,
-    NOTES_URL: `http://127.0.0.1:${SRC}/notes/release-notes-`, NOTES_EVERY_MS: '1', COUNT_EVERY_MS: '3500', LATEST_CACHE_S: '0', ...extra,
+    NOTES_URL: `http://127.0.0.1:${SRC}/notes/release-notes-`, NOTES_EVERY_MS: '1', COUNT_EVERY_MS: '3500', LATEST_CACHE_S: '0',
+    PRICES_API: `http://127.0.0.1:${SRC}/prices`, ...extra,
   };
   dev = spawn(process.execPath, [WRANGLER, 'dev', '--ip', '127.0.0.1', '--port', String(DEV), '--test-scheduled', '--persist-to', PERSIST,
     ...Object.entries(vars).flatMap(([k, v]) => ['--var', `${k}:${v}`]), '--show-interactive-dev-session=false'],
@@ -657,6 +668,36 @@ try {
   dispatch('MESSAGE_DELETE', { id: 'bf2', channel_id: feed, guild_id: 'g1' });
   await waitFor(() => heard.filter(m => m.t === 'gone').length >= 2, 3000);
   check('…deleted there: both its cards gone', heard.filter(m => m.t === 'gone').map(m => m.id).sort().join() === 'bf2,bf2:1', JSON.stringify(heard.filter(m => m.t === 'gone')));
+  // Price lists: read once a day (the minute's cron read it already), /feed prices reads again now. A changed list goes
+  // to open apps (the game is shown), an unchanged one doesn't; the website down keeps the last list. A new app gets the
+  // list with the games; pictures only through the bot, and only those a list has.
+  heard.length = 0;
+  priceRound = 2;
+  r = await interact(command('feed', { sub: 'prices' }));
+  await waitFor(() => heard.some(m => m.t === 'prices'), 3000);
+  const pr = heard.find(m => m.t === 'prices');
+  check('/feed prices: read now, the changed list sent to open apps', /bloxfruitsvalues\.com: 30 items, sent to the apps/.test(r.json?.data.content ?? '')
+    && pr?.game === 'blox-fruits' && pr.items.length === 30 && pr.source?.name === 'bloxfruitsvalues.com' && pr.source.url === 'https://bloxfruitsvalues.com'
+    && pr.items[0].value === 2000 && pr.items[1].perm === null && pr.items[0].demand === 7 && pr.items[0].category === 'Fruits'
+    && pr.items[0].url === 'https://bloxfruitsvalues.com/values/fruits/doghouse-(frame-break)'
+    && pr.items[0].img === `http://127.0.0.1:${DEV}/prices/img?u=${encodeURIComponent('https://i.postimg.cc/abc0/Fruit-0.png')}`, `${r.json?.data.content} ${JSON.stringify(pr?.items?.[0])}`);
+  heard.length = 0;
+  r = await interact(command('feed', { sub: 'prices' }));
+  await sleep(800);
+  check('…the same list again: nothing sent', /30 items, nothing changed/.test(r.json?.data.content ?? '') && !heard.some(m => m.t === 'prices'), r.json?.data.content);
+  pricesDown = true;
+  r = await interact(command('feed', { sub: 'prices' }));
+  pricesDown = false;
+  check("…the website down: the last list stays", /couldn't read it \(HTTP 503\)\. The last list stays \(30 items\)/.test(r.json?.data.content ?? ''), r.json?.data.content);
+  const app2 = new WebSocket(`ws://127.0.0.1:${DEV}/feeds/connect`), heard2 = [];
+  app2.on('message', m => heard2.push(JSON.parse(String(m))));
+  await waitFor(() => heard2.length > 0, 5000);
+  check('…a new app gets the list with the games', heard2[0]?.prices?.['blox-fruits']?.items?.length === 30 && heard2[0].prices['blox-fruits'].items[0].value === 2000, JSON.stringify(heard2[0]?.prices ?? null).slice(0, 200));
+  app2.close();
+  await sleep(500);
+  const imgOther = await fetch(`http://127.0.0.1:${DEV}/prices/img?u=${encodeURIComponent('https://i.postimg.cc/zzz/Other.png')}`);
+  const imgPlain = await fetch(`http://127.0.0.1:${DEV}/prices/img?u=${encodeURIComponent(`http://127.0.0.1:${SRC}/downloads.json`)}`);
+  check("…a picture no list has isn't fetched", imgOther.status === 404 && imgPlain.status === 404, `${imgOther.status} ${imgPlain.status}`);
   r = await interact(command('feed', { sub: 'list' }));
   check('/feed list: which feeds show in Bloxkeep, and how many apps listen', /in Bloxkeep: Blox Fruits › Stock/.test(r.json?.data.content ?? '') && /1 apps listening/.test(r.json?.data.content ?? ''), r.json?.data.content);
   const heardBefore = heard.length;

@@ -18,6 +18,7 @@ import { COMMANDS, api, inviteUrl, replyUrl, verify } from './discord.js';
 import { DAYS_SHOWN, GRACE, GRACE_SLACK_SECONDS, beatEvery, scramble, dashboardKey, dashboardPage, dayOf, onlineMessage, readBeat } from './online.js';
 import { ALL_ACCOUNTS_COMMANDS, ALLOW_FOR, APP_COMMANDS, ANSWER_WAIT, CODE_FOR, CODE_GRACE, COMMANDS_PER_MINUTE, MAX_CODES, MAX_MESSAGE, MAX_PCS, MAX_UNLINKED, MESSAGES_PER_MINUTE, PC_TEXT, REASKED_GAP, SHOTS_PER_MINUTE, TOKEN_FOR, WRONG_CODES, WRONG_WINDOW, choices, handleOf, makeCode, pcId, readAnswer, readCode, readHello } from './remote.js';
 import { CARDS_KEPT, MAX_FEED_SOCKETS, RAW_KEPT, cardsOf, gameId, makeFeedChannel, rawLine, rawOf } from './feeds.js';
+import { PRICES_EVERY, PRICES_RETRY, PRICE_SOURCES, readPrices } from './prices.js';
 import { setupServer } from './setup.js';
 import { newer, readInstallDownloads, readLatestTag, readNotes, readRelease, readStatus, readWatch, release } from './sources.js';
 import {
@@ -188,6 +189,7 @@ export class Gateway extends DurableObject {
       return;
     await this.registerCommands();
     await this.poll();
+    await this.refreshPrices().catch(e => this.log('prices', String(e?.message ?? e).slice(0, 200)));
   }
 
   // ───────────────────────────── moving ─────────────────────────────
@@ -299,6 +301,72 @@ export class Gateway extends DurableObject {
     }
     await this.ctx.storage.put('downloads', kept);
     return kept.n;
+  }
+
+  // ───────────────────────────── prices ─────────────────────────────
+
+  /**
+   * The games' price lists (prices.js), each read once a day (an hour after a failed read; now with /feed prices). A
+   * list that changed goes to the apps at once if its game is shown. A failed read keeps the last list. Returns what
+   * happened to each source.
+   */
+  async refreshPrices(force = false) {
+    const every = Number(this.env.PRICES_EVERY_MS ?? PRICES_EVERY), done = [];
+    for (const source of PRICE_SOURCES) {
+      const key = `prices:${source.game}`, kept = (await this.ctx.storage.get(key)) ?? { at: 0, next: 0, items: [] };
+      if (!force && Date.now() < kept.next)
+        continue;
+      try {
+        const items = await readPrices(source, this.env.PRICES_API || source.api);
+        const changed = JSON.stringify(items) !== JSON.stringify(kept.items);
+        Object.assign(kept, { at: Date.now(), next: Date.now() + every, items, error: null });
+        await this.ctx.storage.put(key, kept);
+        this.log('prices', `${source.game}: ${items.length} items${changed ? '' : ', unchanged'}`);
+        if (changed && this.shownGames().has(source.game))
+          this.toFeedSockets({ t: 'prices', game: source.game, ...this.pricesOf(source, kept) });
+        done.push({ source, n: items.length, changed });
+      } catch (e) {
+        kept.next = Date.now() + Math.min(every, PRICES_RETRY);
+        kept.error = String(e?.message ?? e).slice(0, 200);
+        await this.ctx.storage.put(key, kept);
+        this.log('prices', `${source.game}: ${kept.error}`);
+        done.push({ source, error: kept.error, n: kept.items.length });
+      }
+    }
+    return done;
+  }
+
+  /** A list as the apps get it: where it's from, when it was read, its items (pictures through /prices/img). */
+  pricesOf(source, kept) {
+    const base = this.env.PUBLIC_URL || PUBLIC_URL;
+    return {
+      source: { name: source.name, url: source.site }, at: kept.at,
+      items: kept.items.map(i => ({ ...i, img: i.img ? `${base}/prices/img?u=${encodeURIComponent(i.img)}` : null })),
+    };
+  }
+
+  /** The games shown in Bloxkeep now (their ids). */
+  shownGames() {
+    return new Set([...this.ctx.storage.sql.exec('SELECT DISTINCT game FROM feeds WHERE game IS NOT NULL')].map(r => gameId(r.game)));
+  }
+
+  /** The price lists of the games shown, by game (feedsNow). */
+  async shownPrices() {
+    const shown = this.shownGames(), out = {};
+    for (const source of PRICE_SOURCES) {
+      const kept = shown.has(source.game) ? await this.ctx.storage.get(`prices:${source.game}`) : null;
+      if (kept?.items?.length)
+        out[source.game] = this.pricesOf(source, kept);
+    }
+    return out;
+  }
+
+  /** Whether a picture may go through /prices/img: only one an item of a list has now. */
+  async priceImage(url) {
+    for (const source of PRICE_SOURCES)
+      if (((await this.ctx.storage.get(`prices:${source.game}`))?.items ?? []).some(i => i.img === url))
+        return true;
+    return false;
   }
 
   /** How long a slash command took between Cloudflare's edge and this object, and where it entered (for /status). */
@@ -1000,8 +1068,11 @@ export class Gateway extends DurableObject {
     }
   }
 
-  /** What an app is told when it connects (and all of them when a feed is shown or hidden): the games, their sources, the cards. */
-  feedsNow() {
+  /**
+   * What an app is told when it connects (and all of them when a feed is shown or hidden): the games, their sources, the
+   * cards, the price lists of the games shown.
+   */
+  async feedsNow() {
     const sql = this.ctx.storage.sql, games = new Map();
     for (const f of sql.exec('SELECT channel, game, title, place FROM feeds WHERE game IS NOT NULL ORDER BY at')) {
       const id = gameId(f.game);
@@ -1012,17 +1083,18 @@ export class Gateway extends DurableObject {
     }
     const cards = [...sql.exec('SELECT c.data FROM feed_cards c JOIN feeds f ON f.channel = c.channel WHERE f.game IS NOT NULL ORDER BY c.at DESC')]
       .map(r => JSON.parse(r.data));
-    return { t: 'feeds', games: [...games.values()], cards };
+    return { t: 'feeds', games: [...games.values()], cards, prices: await this.shownPrices() };
   }
 
   /** An app listening for game feeds (worker.js /feeds/connect): no key, it only listens; told everything at once. */
-  feedSocket() {
+  async feedSocket() {
     if (this.ctx.getWebSockets('feeds').length >= Number(this.env.MAX_FEED_SOCKETS ?? MAX_FEED_SOCKETS))
       return new Response('busy', { status: 503 });
+    const now = await this.feedsNow();
     const [client, server] = Object.values(new WebSocketPair());
     this.ctx.acceptWebSocket(server, ['feeds']);
     server.serializeAttachment({ feeds: true });
-    server.send(JSON.stringify(this.feedsNow()));
+    server.send(JSON.stringify(now));
     return new Response(null, { status: 101, webSocket: client });
   }
 
@@ -1084,6 +1156,12 @@ export class Gateway extends DurableObject {
       return mine(rows.map(r => `<#${r.channel}>: ${r.n ? `${r.n} kept, last <t:${Math.floor(r.last / 1000)}:R>` : 'nothing yet'}${
         r.game ? ` · in Bloxkeep: ${r.game} › ${r.title}` : ''}`).join('\n') + `\n${this.ctx.getWebSockets('feeds').length} apps listening.` + contentNote);
     }
+    if (sub?.name === 'prices') {
+      const done = await this.refreshPrices(true);
+      return mine(done.map(d => d.error
+        ? `${d.source.name}: couldn't read it (${d.error}). The last list stays (${d.n} items); tried again in an hour.`
+        : `${d.source.name}: ${d.n} items${d.changed ? ', sent to the apps' : ', nothing changed'}. Next read in a day.`).join('\n') || 'No price lists.');
+    }
     const channel = opt('channel');
     if (!this.feeds.has(channel))
       return mine(`<#${channel}> isn't a feed channel. /feed list shows them.`);
@@ -1106,7 +1184,7 @@ export class Gateway extends DurableObject {
       sql.exec('DELETE FROM feed_cards WHERE channel = ?', channel);
       for (const r of [...sql.exec('SELECT at, data FROM feed_raw WHERE channel = ? ORDER BY rowid', channel)])
         this.keepCard(channel, JSON.parse(r.data), r.at);
-      this.toFeedSockets(this.feedsNow());
+      this.toFeedSockets(await this.feedsNow());
       const shown = [...sql.exec('SELECT COUNT(*) AS n FROM feed_cards WHERE channel = ?', channel)][0].n;
       this.log('feed', `shown ${game} · ${title}`);
       return mine(`<#${channel}> shows in Bloxkeep under ${game} as “${title}”${shown ? ` (${shown} already there)` : ''}. Open apps get it now.`);
@@ -1114,7 +1192,7 @@ export class Gateway extends DurableObject {
     if (sub?.name === 'hide') {
       sql.exec('UPDATE feeds SET game = NULL WHERE channel = ?', channel);
       sql.exec('DELETE FROM feed_cards WHERE channel = ?', channel);
-      this.toFeedSockets(this.feedsNow());
+      this.toFeedSockets(await this.feedsNow());
       return mine(`<#${channel}> no longer shows in Bloxkeep. What it gets is still kept here (/feed raw).`);
     }
     if (sub?.name === 'remove') {
@@ -1124,7 +1202,7 @@ export class Gateway extends DurableObject {
       sql.exec('DELETE FROM feed_cards WHERE channel = ?', channel);
       this.feeds.delete(channel);
       if (shown)
-        this.toFeedSockets(this.feedsNow());
+        this.toFeedSockets(await this.feedsNow());
       return mine(`<#${channel}> is no longer a feed: what it got is forgotten. The channel itself stays; delete it in Discord if you like.`);
     }
     return mine('Unknown /feed command.');
@@ -1804,6 +1882,29 @@ async function latestVersion(env, ctx) {
   return res;
 }
 
+/**
+ * An item's picture for the apps' price lists: only one a list has now (the object says), fetched once and kept a week
+ * per Cloudflare location, so the website's picture host sees a few reads a week rather than one per app.
+ */
+async function priceImage(u, env, ctx) {
+  const key = new Request(`https://bloxkeep-bot.invalid/prices/img?u=${encodeURIComponent(u)}`), cache = caches.default;
+  const hit = await cache.match(key);
+  if (hit)
+    return hit;
+  if (!/^https:\/\//.test(u) || !await ask(env, g => g.priceImage(u)).catch(() => false))
+    return new Response('not found', { status: 404 });
+  const got = await fetch(u, { headers: { 'User-Agent': 'Bloxkeep-bot/1.0 (+https://bloxkeep.github.io/roblox-account-manager)' } }).catch(() => null);
+  const type = got?.headers.get('Content-Type') ?? '';
+  if (!got?.ok || !/^image\/(png|jpeg|webp|gif)$/.test(type.split(';')[0].trim()))
+    return new Response('not found', { status: 404, headers: { 'Cache-Control': 'max-age=600' } });
+  const body = await got.arrayBuffer();
+  if (body.byteLength > 2_000_000)
+    return new Response('too big', { status: 404 });
+  const res = new Response(body, { headers: { 'Content-Type': type, 'Cache-Control': 'public, max-age=604800', 'X-Content-Type-Options': 'nosniff' } });
+  ctx.waitUntil(cache.put(key, res.clone()));
+  return res;
+}
+
 /** The bot's object: made in eastern North America the first time, then wherever it is. */
 const bot = env => env.GATEWAY.get(env.GATEWAY.idFromName(env.OBJECT_NAME || OBJECT), { locationHint: PLACE });
 /** A call someone waits for, made once more if the object was starting over (a deploy: calls.js). */
@@ -1839,6 +1940,8 @@ export default {
     }
     if (url.pathname === '/latest') // which Bloxkeep is out: an open app checks for it at once (rather than within the hour)
       return latestVersion(env, ctx);
+    if (url.pathname === '/prices/img') // an item's picture in a price list (prices.js)
+      return priceImage(url.searchParams.get('u') ?? '', env, ctx);
     if (url.pathname === '/feeds/connect') { // a Bloxkeep app listening for game feeds (feeds.js)
       if (env.PING_LIMITER && !(await env.PING_LIMITER.limit({ key: request.headers.get('CF-Connecting-IP') || 'unknown' })).success)
         return new Response('rate', { status: 429 });
