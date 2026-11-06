@@ -12,7 +12,7 @@ const UA = 'Bloxkeep-bot/1.0 (+https://bloxkeep.github.io/roblox-account-manager
  * there are theirs: the app names and links the site under the list.
  */
 export const PRICE_SOURCES = [
-  { game: 'blox-fruits', name: 'bloxfruitsvalues.com', site: 'https://bloxfruitsvalues.com', api: 'https://bloxfruitsvalues.com/api/v1/items/bloxfruits/all' },
+  { game: 'blox-fruits', title: 'Blox Fruits', place: 2753915549, name: 'bloxfruitsvalues.com', site: 'https://bloxfruitsvalues.com', api: 'https://bloxfruitsvalues.com/api/v1/items/bloxfruits/all' },
 ];
 
 const num = v => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : null);

@@ -19,6 +19,7 @@ import { DAYS_SHOWN, GRACE, GRACE_SLACK_SECONDS, beatEvery, scramble, dashboardK
 import { ALL_ACCOUNTS_COMMANDS, ALLOW_FOR, APP_COMMANDS, ANSWER_WAIT, CODE_FOR, CODE_GRACE, COMMANDS_PER_MINUTE, MAX_CODES, MAX_MESSAGE, MAX_PCS, MAX_UNLINKED, MESSAGES_PER_MINUTE, PC_TEXT, REASKED_GAP, SHOTS_PER_MINUTE, TOKEN_FOR, WRONG_CODES, WRONG_WINDOW, choices, handleOf, makeCode, pcId, readAnswer, readCode, readHello } from './remote.js';
 import { CARDS_KEPT, MAX_FEED_SOCKETS, RAW_KEPT, cardsOf, gameId, makeFeedChannel, rawLine, rawOf } from './feeds.js';
 import { PRICES_EVERY, PRICES_RETRY, PRICE_SOURCES, readPrices } from './prices.js';
+import { WIKI_EVERY, WIKI_ITEMS_MAX, WIKI_REQUESTS_PER_TICK, WIKI_RETRY, WIKI_SOURCES, POPULAR_GAMES, apiOf, readBatch } from './wiki.js';
 import { setupServer } from './setup.js';
 import { newer, readInstallDownloads, readLatestTag, readNotes, readRelease, readStatus, readWatch, release } from './sources.js';
 import {
@@ -150,6 +151,10 @@ export class Gateway extends DurableObject {
         } catch {} // there already
       ctx.storage.sql.exec(`CREATE TABLE IF NOT EXISTS feed_cards (channel TEXT NOT NULL, id TEXT NOT NULL, at INTEGER NOT NULL,
         data TEXT NOT NULL, PRIMARY KEY (channel, id))`);
+      // The Wiki tab (wiki.js): each game's items as last read whole, and the read under way (swapped in once complete).
+      for (const table of ['wiki_items', 'wiki_stage'])
+        ctx.storage.sql.exec(`CREATE TABLE IF NOT EXISTS ${table} (game TEXT NOT NULL, id TEXT NOT NULL, cat TEXT NOT NULL, n INTEGER NOT NULL,
+          data TEXT NOT NULL, PRIMARY KEY (game, id))`);
       this.feeds = new Set([...ctx.storage.sql.exec('SELECT channel FROM feeds')].map(r => r.channel));
       this.noContent = (await ctx.storage.get('noContent')) ?? false; // Discord refused Message Content: not asked for
       this.session = (await ctx.storage.get('session')) ?? null; // { id, url, seq }
@@ -190,6 +195,7 @@ export class Gateway extends DurableObject {
     await this.registerCommands();
     await this.poll();
     await this.refreshPrices().catch(e => this.log('prices', String(e?.message ?? e).slice(0, 200)));
+    await this.refreshWiki().catch(e => this.log('wiki', String(e?.message ?? e).slice(0, 200)));
   }
 
   // ───────────────────────────── moving ─────────────────────────────
@@ -306,9 +312,8 @@ export class Gateway extends DurableObject {
   // ───────────────────────────── prices ─────────────────────────────
 
   /**
-   * The games' price lists (prices.js), each read once a day (an hour after a failed read; now with /feed prices). A
-   * list that changed goes to the apps at once if its game is shown. A failed read keeps the last list. Returns what
-   * happened to each source.
+   * The games' price lists (prices.js), each read once a day (an hour after a failed read; now with /feed prices). The
+   * apps ask for them in their Wiki tab (/wiki). A failed read keeps the last list. Returns what happened to each source.
    */
   async refreshPrices(force = false) {
     const every = Number(this.env.PRICES_EVERY_MS ?? PRICES_EVERY), done = [];
@@ -322,8 +327,6 @@ export class Gateway extends DurableObject {
         Object.assign(kept, { at: Date.now(), next: Date.now() + every, items, error: null });
         await this.ctx.storage.put(key, kept);
         this.log('prices', `${source.game}: ${items.length} items${changed ? '' : ', unchanged'}`);
-        if (changed && this.shownGames().has(source.game))
-          this.toFeedSockets({ t: 'prices', game: source.game, ...this.pricesOf(source, kept) });
         done.push({ source, n: items.length, changed });
       } catch (e) {
         kept.next = Date.now() + Math.min(every, PRICES_RETRY);
@@ -345,20 +348,100 @@ export class Gateway extends DurableObject {
     };
   }
 
-  /** The games shown in Bloxkeep now (their ids). */
-  shownGames() {
-    return new Set([...this.ctx.storage.sql.exec('SELECT DISTINCT game FROM feeds WHERE game IS NOT NULL')].map(r => gameId(r.game)));
+  // ───────────────────────────── wiki ─────────────────────────────
+
+  /**
+   * The games' wikis (wiki.js), each read whole once a day, a few requests a minute (the cron's tick) so no tick does
+   * much: pages go into wiki_stage and replace a game's items once all its categories came. A failed read drops the read
+   * under way, keeps the last items and tries again in an hour.
+   */
+  async refreshWiki() {
+    const sql = this.ctx.storage.sql, now = Date.now();
+    const state = (await this.ctx.storage.get('wiki')) ?? { next: 0, at: {}, job: null, error: null };
+    if (!state.job) {
+      if (now < state.next)
+        return;
+      sql.exec('DELETE FROM wiki_stage');
+      state.job = { s: 0, c: 0, cont: null };
+    }
+    const sources = WIKI_SOURCES, budget = Number(this.env.WIKI_REQUESTS ?? WIKI_REQUESTS_PER_TICK);
+    try {
+      for (let n = 0; n < budget && state.job; n++) {
+        const job = state.job, source = sources[job.s], cat = source.cats[job.c];
+        const { items, next } = await readBatch(source, cat, job.cont, this.env.WIKI_API || apiOf(source));
+        let count = [...sql.exec('SELECT COUNT(*) AS n FROM wiki_stage WHERE game = ?', source.game)][0].n;
+        for (const item of items)
+          if (count < WIKI_ITEMS_MAX && sql.exec('INSERT OR IGNORE INTO wiki_stage VALUES (?, ?, ?, ?, ?)', source.game, item.id, item.cat, count,
+            JSON.stringify(item)).rowsWritten)
+            count++;
+        if (next) {
+          job.cont = next;
+          continue;
+        }
+        job.cont = null;
+        if (++job.c < source.cats.length)
+          continue;
+        // The game read whole: its items now.
+        sql.exec('DELETE FROM wiki_items WHERE game = ?', source.game);
+        sql.exec('INSERT INTO wiki_items SELECT * FROM wiki_stage WHERE game = ?', source.game);
+        sql.exec('DELETE FROM wiki_stage WHERE game = ?', source.game);
+        state.at[source.game] = Date.now();
+        this.log('wiki', `${source.game}: ${count} items`);
+        job.c = 0;
+        if (++job.s >= sources.length) {
+          state.job = null;
+          state.error = null;
+          state.next = Date.now() + Number(this.env.WIKI_EVERY_MS ?? WIKI_EVERY);
+        }
+      }
+    } catch (e) {
+      state.error = `${sources[state.job.s]?.game}: ${String(e?.message ?? e).slice(0, 160)}`;
+      this.log('wiki', state.error);
+      sql.exec('DELETE FROM wiki_stage');
+      state.job = null;
+      state.next = Date.now() + Math.min(Number(this.env.WIKI_EVERY_MS ?? WIKI_EVERY), WIKI_RETRY);
+    }
+    await this.ctx.storage.put('wiki', state);
   }
 
-  /** The price lists of the games shown, by game (feedsNow). */
-  async shownPrices() {
-    const shown = this.shownGames(), out = {};
+  /** The Wiki tab's games: those with a price list or items, in that order, with how many and when they were read. */
+  async wikiIndex() {
+    const games = [], counts = new Map([...this.ctx.storage.sql.exec('SELECT game, COUNT(*) AS n FROM wiki_items GROUP BY game')].map(r => [r.game, r.n]));
+    const at = ((await this.ctx.storage.get('wiki')) ?? {}).at ?? {};
     for (const source of PRICE_SOURCES) {
-      const kept = shown.has(source.game) ? await this.ctx.storage.get(`prices:${source.game}`) : null;
+      const kept = await this.ctx.storage.get(`prices:${source.game}`);
       if (kept?.items?.length)
-        out[source.game] = this.pricesOf(source, kept);
+        games.push({ id: source.game, name: source.title, place: source.place ?? null, kind: 'prices', count: kept.items.length, at: kept.at });
     }
-    return out;
+    for (const source of WIKI_SOURCES)
+      if (counts.get(source.game))
+        games.push({ id: source.game, name: source.name, place: source.place ?? null, kind: 'wiki', count: counts.get(source.game), at: at[source.game] ?? null });
+    // The rest of the games everyone sees: the app finds their wikis itself.
+    for (const g of POPULAR_GAMES)
+      if (!games.some(had => had.id === g.game))
+        games.push({ id: g.game, name: g.name, place: g.place, kind: 'game', count: 0, at: null, wiki: g.wiki });
+    return { games };
+  }
+
+  /** One game of the Wiki tab: its price list, or its wiki's items in the order read (categories in the source's order). */
+  async wikiGame(id) {
+    const prices = PRICE_SOURCES.find(s => s.game === id);
+    if (prices) {
+      const kept = await this.ctx.storage.get(`prices:${id}`);
+      return kept?.items?.length ? { id, name: prices.title, kind: 'prices', ...this.pricesOf(prices, kept) } : null;
+    }
+    const source = WIKI_SOURCES.find(s => s.game === id);
+    if (!source)
+      return null;
+    const items = [...this.ctx.storage.sql.exec('SELECT data FROM wiki_items WHERE game = ? ORDER BY n', id)].map(r => JSON.parse(r.data));
+    if (!items.length)
+      return null;
+    const at = ((await this.ctx.storage.get('wiki')) ?? {}).at?.[id] ?? null;
+    return {
+      id, name: source.name, kind: 'wiki', at, source: { name: source.title, url: source.wiki },
+      license: { name: 'CC BY-SA', url: 'https://creativecommons.org/licenses/by-sa/3.0/' },
+      cats: source.cats.filter(c => items.some(i => i.cat === c)), items,
+    };
   }
 
   /** Whether a picture may go through /prices/img: only one an item of a list has now. */
@@ -1070,7 +1153,7 @@ export class Gateway extends DurableObject {
 
   /**
    * What an app is told when it connects (and all of them when a feed is shown or hidden): the games, their sources, the
-   * cards, the price lists of the games shown.
+   * cards.
    */
   async feedsNow() {
     const sql = this.ctx.storage.sql, games = new Map();
@@ -1083,7 +1166,7 @@ export class Gateway extends DurableObject {
     }
     const cards = [...sql.exec('SELECT c.data FROM feed_cards c JOIN feeds f ON f.channel = c.channel WHERE f.game IS NOT NULL ORDER BY c.at DESC')]
       .map(r => JSON.parse(r.data));
-    return { t: 'feeds', games: [...games.values()], cards, prices: await this.shownPrices() };
+    return { t: 'feeds', games: [...games.values()], cards };
   }
 
   /** An app listening for game feeds (worker.js /feeds/connect): no key, it only listens; told everything at once. */
@@ -1160,7 +1243,7 @@ export class Gateway extends DurableObject {
       const done = await this.refreshPrices(true);
       return mine(done.map(d => d.error
         ? `${d.source.name}: couldn't read it (${d.error}). The last list stays (${d.n} items); tried again in an hour.`
-        : `${d.source.name}: ${d.n} items${d.changed ? ', sent to the apps' : ', nothing changed'}. Next read in a day.`).join('\n') || 'No price lists.');
+        : `${d.source.name}: ${d.n} items${d.changed ? ', new in the apps\' Wiki tab' : ', nothing changed'}. Next read in a day.`).join('\n') || 'No price lists.');
     }
     const channel = opt('channel');
     if (!this.feeds.has(channel))
@@ -1905,6 +1988,30 @@ async function priceImage(u, env, ctx) {
   return res;
 }
 
+/**
+ * The Wiki tab's list of games (/wiki) and one game's items (/wiki/<game>): kept 10 minutes per Cloudflare location, so
+ * many apps opening the tab wake the object a few times an hour (an app keeps what it got for longer).
+ */
+async function wiki(url, env, ctx) {
+  const id = url.pathname === '/wiki' ? null : decodeURIComponent(url.pathname.slice('/wiki/'.length));
+  if (id !== null && !/^[a-z0-9-]{1,40}$/.test(id))
+    return Response.json({ error: 'not found' }, { status: 404 });
+  const key = new Request(`https://bloxkeep-bot.invalid/wiki${id ? `/${id}` : ''}`), cache = caches.default;
+  const hit = await cache.match(key);
+  if (hit)
+    return hit;
+  const body = await ask(env, g => (id ? g.wikiGame(id) : g.wikiIndex())).catch(() => undefined);
+  if (body === undefined)
+    return Response.json({ error: 'busy' }, { status: 503, headers: { 'Cache-Control': 'no-store' } });
+  if (body === null)
+    return Response.json({ error: 'not found' }, { status: 404, headers: { 'Cache-Control': 'max-age=60' } });
+  const seconds = Number(env.WIKI_CACHE_S ?? 600);
+  const res = Response.json(body, { headers: { 'Cache-Control': seconds > 0 ? `public, max-age=${seconds}` : 'no-store' } });
+  if (seconds > 0)
+    ctx.waitUntil(cache.put(key, res.clone()));
+  return res;
+}
+
 /** The bot's object: made in eastern North America the first time, then wherever it is. */
 const bot = env => env.GATEWAY.get(env.GATEWAY.idFromName(env.OBJECT_NAME || OBJECT), { locationHint: PLACE });
 /** A call someone waits for, made once more if the object was starting over (a deploy: calls.js). */
@@ -1940,6 +2047,8 @@ export default {
     }
     if (url.pathname === '/latest') // which Bloxkeep is out: an open app checks for it at once (rather than within the hour)
       return latestVersion(env, ctx);
+    if (url.pathname === '/wiki' || url.pathname.startsWith('/wiki/')) // the apps' Wiki tab (wiki.js, prices.js)
+      return wiki(url, env, ctx);
     if (url.pathname === '/prices/img') // an item's picture in a price list (prices.js)
       return priceImage(url.searchParams.get('u') ?? '', env, ctx);
     if (url.pathname === '/feeds/connect') { // a Bloxkeep app listening for game feeds (feeds.js)

@@ -140,6 +140,22 @@ const CHANGES = [
 ];
 const notesPage = list => `<html><body><script id="__NEXT_DATA__" type="application/json">${JSON.stringify({ props: { pageProps: { data: { releaseNoteContents: { title: 'Release notes', content: list } } } } })}</script></body></html>`;
 const NOTES = '- **Robux at once**: shown as you unlock.\n\n#### New\n- details\n\n**Tiếng Việt**\n\n- **Robux hiện ngay**: lúc mở khoá.\n\n#### Mới\n- chi tiết';
+// A game's wiki (wiki.js, MediaWiki's API): Category:Weapons has three pages, two a request (the second through
+// continue), the third a redirect; other categories are empty. Refusing while down.
+let wikiDown = false;
+const wikiPage = (id, title, text) => ({ pageid: id, title, fullurl: `https://deepwoken.fandom.com/wiki/${title.replace(/ /g, '_')}`,
+  thumbnail: { source: `https://static.wikia.nocookie.net/x/images/${id}.png/revision/latest/scale-to-width-down/240` }, revisions: [{ slots: { main: { content: text } } }] });
+const wikiAnswer = q => {
+  if (q.get('gcmtitle') !== 'Category:Weapons')
+    return { batchcomplete: true };
+  if (!q.get('gcmcontinue'))
+    return { continue: { gcmcontinue: 'page|B|2', continue: 'gcmcontinue||' }, query: { pages: [
+      wikiPage(1, 'Adretian Axe', `{{Weapon Infobox\n|image=<gallery>\nA.png|Base\n</gallery>\n|type=Greataxe\n|damage=24\n|scaling=HVY: 7 / HVY: {{cl|alloyed|8}}\n|obtainment=*[[Duke Ishamon Erisia]]\n*Bought from [[Traan Zakshun|Traan]] for {{c|Notes|300}}\n|rarity=TBA\n|hp=50\n}}\n__NOTOC__\nThe '''Adretian Axe''' is a [[Weapons|Heavy Weapon]].\n{{DefaultCrit|Greataxe}}\n==Gallery==\nx`),
+      wikiPage(2, 'Bronze Sword', '{{Weapon Infobox|type=Sword|damage=10|rarity=Common}}\n==Description==\nA plain sword that every new player starts the game with.'),
+    ] } };
+  return { batchcomplete: true, query: { pages: [wikiPage(3, 'Old Axe', '#REDIRECT [[Adretian Axe]]')] } };
+};
+
 const src = http.createServer((req, res) => {
   const json = v => { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(v)); };
   if (req.url === '/watch.json') return json(watch);
@@ -148,6 +164,10 @@ const src = http.createServer((req, res) => {
   // The install files' downloads, as the Roblox watch workflow counts them for the badge.
   if (req.url === '/downloads.json' && downloadsDown) { res.writeHead(404); return res.end('404: Not Found'); }
   if (req.url === '/downloads.json') return json({ installs: 45 });
+  if (req.url.startsWith('/wikiapi?')) {
+    if (wikiDown) { res.writeHead(503); return res.end(); }
+    return json(wikiAnswer(new URL(req.url, 'http://x').searchParams));
+  }
   const pg = /^\/prices\?page=(\d+)&limit=24$/.exec(req.url);
   if (pg && pricesDown) { res.writeHead(503); return res.end(); }
   if (pg) { const all = priceItems(), p = Number(pg[1]); return json({ items: all.slice((p - 1) * 24, p * 24), pagination: { page: p, limit: 24, totalItems: all.length, hasMore: p * 24 < all.length } }); }
@@ -208,7 +228,7 @@ function startDev(extra = {}) {
     RELEASE_API_URL: `http://127.0.0.1:${SRC}/api/tags/`, DOWNLOADS_URL: `http://127.0.0.1:${SRC}/downloads.json`, RELEASE_FILE_URL: `http://127.0.0.1:${SRC}/raw/`, RELEASE_EVERY_MS: '1', DOWNLOADS_EVERY_MS: '0', CAPTCHA_CODE: 'K7MXP', COMMUNITY_GUILD: 'g1', INVITE_RECHECK_MS: '0',
     ONLINE_FOR_MS: '8000', BEAT_BUDGET: '1440', PUBLIC_URL: `http://127.0.0.1:${DEV}`,
     NOTES_URL: `http://127.0.0.1:${SRC}/notes/release-notes-`, NOTES_EVERY_MS: '1', COUNT_EVERY_MS: '3500', LATEST_CACHE_S: '0',
-    PRICES_API: `http://127.0.0.1:${SRC}/prices`, ...extra,
+    PRICES_API: `http://127.0.0.1:${SRC}/prices`, WIKI_API: `http://127.0.0.1:${SRC}/wikiapi`, WIKI_REQUESTS: '60', WIKI_CACHE_S: '0', ...extra,
   };
   dev = spawn(process.execPath, [WRANGLER, 'dev', '--ip', '127.0.0.1', '--port', String(DEV), '--test-scheduled', '--persist-to', PERSIST,
     ...Object.entries(vars).flatMap(([k, v]) => ['--var', `${k}:${v}`]), '--show-interactive-dev-session=false'],
@@ -668,23 +688,21 @@ try {
   dispatch('MESSAGE_DELETE', { id: 'bf2', channel_id: feed, guild_id: 'g1' });
   await waitFor(() => heard.filter(m => m.t === 'gone').length >= 2, 3000);
   check('…deleted there: both its cards gone', heard.filter(m => m.t === 'gone').map(m => m.id).sort().join() === 'bf2,bf2:1', JSON.stringify(heard.filter(m => m.t === 'gone')));
-  // Price lists: read once a day (the minute's cron read it already), /feed prices reads again now. A changed list goes
-  // to open apps (the game is shown), an unchanged one doesn't; the website down keeps the last list. A new app gets the
-  // list with the games; pictures only through the bot, and only those a list has.
-  heard.length = 0;
+  // Price lists: read once a day (the minute's cron read it already), /feed prices reads again now; the apps' Wiki tab
+  // asks for them (/wiki), not sent with the feeds. The website down keeps the last list. Pictures only through the bot,
+  // and only those a list has.
   priceRound = 2;
   r = await interact(command('feed', { sub: 'prices' }));
-  await waitFor(() => heard.some(m => m.t === 'prices'), 3000);
-  const pr = heard.find(m => m.t === 'prices');
-  check('/feed prices: read now, the changed list sent to open apps', /bloxfruitsvalues\.com: 30 items, sent to the apps/.test(r.json?.data.content ?? '')
-    && pr?.game === 'blox-fruits' && pr.items.length === 30 && pr.source?.name === 'bloxfruitsvalues.com' && pr.source.url === 'https://bloxfruitsvalues.com'
+  const index = await (await fetch(`http://127.0.0.1:${DEV}/wiki`)).json().catch(() => null);
+  const pr = await (await fetch(`http://127.0.0.1:${DEV}/wiki/blox-fruits`)).json().catch(() => null);
+  check("/feed prices: read now, the changed list in the Wiki tab's games", /bloxfruitsvalues\.com: 30 items, new in the apps' Wiki tab/.test(r.json?.data.content ?? '')
+    && index?.games?.[0]?.id === 'blox-fruits' && index.games[0].kind === 'prices' && index.games[0].name === 'Blox Fruits' && index.games[0].count === 30
+    && pr?.kind === 'prices' && pr.items.length === 30 && pr.source?.name === 'bloxfruitsvalues.com' && pr.source.url === 'https://bloxfruitsvalues.com'
     && pr.items[0].value === 2000 && pr.items[1].perm === null && pr.items[0].demand === 7 && pr.items[0].category === 'Fruits'
     && pr.items[0].url === 'https://bloxfruitsvalues.com/values/fruits/doghouse-(frame-break)'
-    && pr.items[0].img === `http://127.0.0.1:${DEV}/prices/img?u=${encodeURIComponent('https://i.postimg.cc/abc0/Fruit-0.png')}`, `${r.json?.data.content} ${JSON.stringify(pr?.items?.[0])}`);
-  heard.length = 0;
+    && pr.items[0].img === `http://127.0.0.1:${DEV}/prices/img?u=${encodeURIComponent('https://i.postimg.cc/abc0/Fruit-0.png')}`, `${r.json?.data.content} ${JSON.stringify(index)} ${JSON.stringify(pr?.items?.[0])}`);
   r = await interact(command('feed', { sub: 'prices' }));
-  await sleep(800);
-  check('…the same list again: nothing sent', /30 items, nothing changed/.test(r.json?.data.content ?? '') && !heard.some(m => m.t === 'prices'), r.json?.data.content);
+  check('…the same list again: nothing changed', /30 items, nothing changed/.test(r.json?.data.content ?? ''), r.json?.data.content);
   pricesDown = true;
   r = await interact(command('feed', { sub: 'prices' }));
   pricesDown = false;
@@ -692,9 +710,28 @@ try {
   const app2 = new WebSocket(`ws://127.0.0.1:${DEV}/feeds/connect`), heard2 = [];
   app2.on('message', m => heard2.push(JSON.parse(String(m))));
   await waitFor(() => heard2.length > 0, 5000);
-  check('…a new app gets the list with the games', heard2[0]?.prices?.['blox-fruits']?.items?.length === 30 && heard2[0].prices['blox-fruits'].items[0].value === 2000, JSON.stringify(heard2[0]?.prices ?? null).slice(0, 200));
+  check("…a new app's feeds come without prices", heard2[0]?.t === 'feeds' && !('prices' in heard2[0]), JSON.stringify(heard2[0] ?? null).slice(0, 200));
   app2.close();
   await sleep(500);
+  // Wikis (wiki.js): read whole by the minute's cron (the first already did), a page's infobox as its lines in plain
+  // words, its first lines, its picture; a redirect left out. The wiki down keeps the last items.
+  await minute(1500);
+  const wi = await (await fetch(`http://127.0.0.1:${DEV}/wiki`)).json().catch(() => null);
+  const dw = await (await fetch(`http://127.0.0.1:${DEV}/wiki/deepwoken`)).json().catch(() => null);
+  const axe = dw?.items?.find(i => i.name === 'Adretian Axe');
+  check("Wiki: the games read, each game's items with their lines in plain words",
+    wi?.games?.slice(0, 3).map(g => g.id).join() === 'blox-fruits,deepwoken,pilgrammed' && wi.games[1].kind === 'wiki' && wi.games[1].count === 2 && wi.games[1].place === 4111023553
+    // Then the popular games (wiki.js POPULAR_GAMES), each once, some with the wiki the bot names.
+    && wi.games.length === 32 && new Set(wi.games.map(g => g.id)).size === 32 && wi.games.slice(3).every(g => g.kind === 'game' && g.place > 0)
+    && wi.games.find(g => g.id === 'shindo-life')?.wiki === null && wi.games.find(g => g.id === 'rivals')?.wiki === 'https://robloxrivals.fandom.com'
+    && dw?.kind === 'wiki' && dw.cats.join() === 'Weapons' && dw.items.length === 2 && dw.source?.url === 'https://deepwoken.fandom.com' && dw.license?.name === 'CC BY-SA'
+    && axe?.cat === 'Weapons' && axe.lead === 'The Adretian Axe is a Heavy Weapon.'
+    && JSON.stringify(axe.fields) === JSON.stringify([['Type', 'Greataxe'], ['Damage', '24'], ['Scaling', 'HVY: 7 / HVY: 8'], ['Obtainment', '• Duke Ishamon Erisia\n• Bought from Traan for 300'], ['HP', '50']])
+    && axe.img === 'https://static.wikia.nocookie.net/x/images/1.png/revision/latest/scale-to-width-down/240' && axe.url === 'https://deepwoken.fandom.com/wiki/Adretian_Axe'
+    && dw.items[1].lead === 'A plain sword that every new player starts the game with.', `${JSON.stringify(wi)} ${JSON.stringify(dw)?.slice(0, 900)}`);
+  const unknown = await fetch(`http://127.0.0.1:${DEV}/wiki/no-such-game`);
+  const bad = await fetch(`http://127.0.0.1:${DEV}/wiki/..%2Fstatus`);
+  check("…a game it doesn't have: not found", unknown.status === 404 && bad.status === 404, `${unknown.status} ${bad.status}`);
   const imgOther = await fetch(`http://127.0.0.1:${DEV}/prices/img?u=${encodeURIComponent('https://i.postimg.cc/zzz/Other.png')}`);
   const imgPlain = await fetch(`http://127.0.0.1:${DEV}/prices/img?u=${encodeURIComponent(`http://127.0.0.1:${SRC}/downloads.json`)}`);
   check("…a picture no list has isn't fetched", imgOther.status === 404 && imgPlain.status === 404, `${imgOther.status} ${imgPlain.status}`);
