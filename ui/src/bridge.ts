@@ -17,7 +17,7 @@ export const COMMANDS = [
   'quickLoginPoll', 'quickLoginStart', 'recordMacro', 'refreshPresence', 'remoteAllow', 'remoteCode', 'removeRecent', 'removeVault',
   'renameVault', 'resetSkipConfirm', 'resolveGame', 'restoreBackup', 'reveal', 'revealDiscordWebhook', 'runMacro', 'runPreset',
   'saveMacro', 'savePreset', 'saveServer', 'saveTheme', 'searchGames', 'seenWhatsNew', 'selectVault', 'sendFeedback', 'servers',
-  'setAskVault', 'setAutoRejoin', 'setAutoUpdate', 'setBackup', 'setBetaUpdates', 'setCloseToTray', 'setPhone', 'phoneTest', 'feedCards', 'feedPrices', 'feedFollow', 'feedRead', 'feedSeen', 'feedAlert', 'feedOpen', 'setStartWithWindows', 'setCountOnline', 'setCustomTheme',
+  'setAskVault', 'setAutoRejoin', 'setAutoUpdate', 'setBackup', 'setBetaUpdates', 'setCloseToTray', 'setPhone', 'phoneTest', 'feedCards', 'wikiGames', 'wikiGame', 'wikiOpen', 'gameLooks', 'playedGames', 'wikiApi', 'wikiFind', 'wikiAbout', 'wikiPick', 'wikiMark', 'feedFollow', 'feedRead', 'feedSeen', 'feedAlert', 'feedOpen', 'setStartWithWindows', 'setCountOnline', 'setBoardName', 'setCustomTheme',
   'setDailySignInCheck', 'setDiscord', 'setDiscordPresence', 'setDiscordWebhook', 'setFpsCap', 'setHideNames', 'setHotkeys',
   'setLanguage', 'setLaunchOrder', 'setNotifications', 'setOption', 'setPresetOrder', 'setPresetSchedule', 'setRemote', 'setRendering',
   'setSettings', 'setTheme', 'setUseRobloxConfig', 'showPanel', 'showPath', 'showWindows', 'skipConfirm', 'solveBotCheck', 'stopMacros',

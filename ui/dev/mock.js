@@ -153,6 +153,25 @@
   // their real times. ?feeds=0: no games yet; ?feeds=wait: still connecting.
   const feedParam = new URLSearchParams(location.search).get('feeds');
   const nowMs = Date.now(), minAgo = m => nowMs - m * 60000;
+  let wikiData = null;
+  /** The Wiki part's picks, saved and seen pages (prefs.json "wikis"); ?wikis=0 starts with none picked. */
+  const wikiPrefs = { games: params.get('wikis') === '0' ? [] : [{ id: 'deepwoken', name: 'Deepwoken', site: 'https://deepwoken.fandom.com', place: 4111023553, img: null, added: false }],
+    saved: [], recent: [] };
+  const WIKI_PLACES = { deepwoken: 4111023553, pilgrammed: 6735572261 };
+  const rbx = id => `https://tr.rbxcdn.com/180DAY-${id}/Image/Png/noFilter`;
+  const LOOKS = {
+    4111023553: { icon: rbx('a893751234c7af8115cd722e925d3eda/150/150'), cover: rbx('7493e7518773b5bd41602823fec30805/768/432'), tint: '#da5b3e', ink: '#111111' },
+    6735572261: { icon: rbx('04bae2ce5dcd6e78674a4e68eecf26bd/150/150'), cover: rbx('1dc6bb213e2ec732e373215b77800e9e/768/432'), tint: '#9830e8', ink: '#ffffff' },
+    2753915549: { icon: rbx('8c9483d381a2da30608e6b1bce490bef/150/150'), cover: rbx('77b3430ced16006f6da18d6a77b95ea0/768/432'), tint: '#e89530', ink: '#111111' },
+    4616652839: { icon: rbx('811d588b6816f26a4e873c91c37e7a79/150/150'), cover: rbx('3ed16ec72aac92a2151e37cd878a82dc/768/432'), tint: '#447ed4', ink: '#111111' },
+    4520749081: { icon: rbx('04c84ed09a851c6908c3eb13c90a8529/150/150'), cover: rbx('967e24842bbdeee4dc6f12d418e02826/768/432'), tint: '#3d75dc', ink: '#ffffff' },
+    126884695634066: { icon: rbx('784c1bdbab86ee643c353d22ef1817eb/150/150'), cover: rbx('e4d893c5432510c9ee42962089a0c86e/768/432'), tint: '#afe830', ink: '#111111' },
+    8737899170: { icon: rbx('bc1cf233a31bb748e497f783a821e1b0/150/150'), cover: rbx('3c7c5b6526b4468631fbf0ac6957debc/768/432'), tint: '#e85d30', ink: '#111111' },
+    16732694052: { icon: rbx('686c1eda2e0bcc5e7da3e1be390ce0b9/150/150'), cover: rbx('a2846a75df26a929cc2f526aecdfaef9/768/432'), tint: '#33e557', ink: '#111111' },
+    1730877806: { icon: rbx('cf1c46ea9b63b7f1e22d3a50657fe01a/150/150'), cover: rbx('7ea3d13248b544e712d0dbe4d1bc84e3/768/432'), tint: '#6ee830', ink: '#111111' },
+    920587237: { icon: rbx('16972705ca6b7ee982e76269d5b887e8/150/150'), cover: rbx('65db55c944d0826a0b113a4c83a3c7bb/768/432'), tint: '#e8a230', ink: '#111111' },
+  };
+  const wikiSample = async () => wikiData || (wikiData = await fetch('/ui/dev/wiki-sample.json').then(r => r.json()));
   const feedGames = feedParam === '0' || feedParam === 'wait' ? [] : [
     { id: 'blox-fruits', name: 'Blox Fruits', place: 2753915549, sources: [{ id: 's1', title: 'Stock' }] },
     { id: 'boss-alerts', name: 'Boss Alerts', place: null, sources: [{ id: 'b1', title: 'Bosses' }] },
@@ -187,6 +206,20 @@
   let dailySignInCheck = true;
   let betaUpdates = params.has('beta'); // ?beta=1: Settings › Get beta versions on
   let countOnline = !params.has('offline'); // ?offline: Settings › Add me to the online count off
+  // What Bloxkeep's users play, as the bot tells back with each beat (online.js communityOf); ?board: this PC on the alts
+  // board; ?noradar: no radar line.
+  let boardName = params.has('board') ? 'Máy farm của Minh' : null;
+  const community = () => ({
+    pcs: 71, alts: 1384,
+    games: [{ game: 994732206, name: 'Blox Fruits', place: 2753915549, pcs: 23 }, { game: 6504986360, name: 'Grow a Garden', place: 126884695634066, pcs: 11 },
+      { game: 5750914919, name: 'Fisch', place: 16732694052, pcs: 7 }, { game: 1650291138, name: 'Grand Piece Online', place: 1730877806, pcs: 5 },
+      { game: 1511883870, name: 'Shindo Life', place: 4616652839, pcs: 4 }],
+    radar: params.has('noradar') ? [] : [{ game: 994732206, name: 'Blox Fruits', place: 2753915549, why: 'lost', pcs: 6, minutes: 15 }],
+    board: [{ name: 'Kho alt VN', alts: 96 }, { name: 'FarmHub', alts: 74 }, { name: 'Máy farm của Minh', alts: 52 }, { name: 'tuan_pc', alts: 40 },
+      { name: 'Bee Farm 24h', alts: 31 }, { name: 'GAG stock', alts: 22 }, { name: 'PC-2', alts: 18 }, { name: 'Night Shift', alts: 15 },
+      { name: 'Lam.alts', alts: 12 }, { name: 'khoa', alts: 9 }].filter(b => boardName || b.name !== 'Máy farm của Minh'),
+    you: boardName ? { rank: 3, of: 17 } : null,
+  });
   // ?remote=code|linked|connecting: Settings › Discord › Control from Discord on, waiting for its code to be typed, linked,
   // or not connected yet.
   const remoteCode = () => ({ on: true, connected: true, linked: false, user: null, code: 'K7MX4P', codeUntil: Date.now() + 9.5 * 60_000, pc: 'GAMING-PC' });
@@ -436,7 +469,7 @@
     : ['robloxUpdated', 'updateReady'].includes(k) ? 'updates' : k.startsWith('schedule') ? 'schedule' : 'drops';
   let emit = () => {};
   const state = () => ({
-    multiAtStart, language, theme, themeApplied: themeApplied(), customTheme, savedThemes, closeToTray, startWithWindows, phone, feeds: feedsState(), hideNames, notifications, notifyOff, dailySignInCheck, lastSignInCheck, skipConfirm, miniOpen, backup, boot: boot(), vaultExists, vaults: vaultsState(), locked, screenLock,
+    multiAtStart, language, theme, themeApplied: themeApplied(), customTheme, savedThemes, closeToTray, startWithWindows, phone, feeds: feedsState(), wikis: wikiPrefs, hideNames, notifications, notifyOff, dailySignInCheck, lastSignInCheck, skipConfirm, miniOpen, backup, boot: boot(), vaultExists, vaults: vaultsState(), locked, screenLock,
     whatsNew: params.has('whatsnew') ? { from: '1.0.0', releases: [{ version: '1.0.1', date: '2026-10-19', en: ['Faster sign-in check: six accounts at a time.', 'Shows the version on the update button.'], vi: ['Kiểm tra đăng nhập nhanh hơn: 6 tài khoản một lúc.', 'Nút cập nhật ghi rõ phiên bản.'] }] } : null,
     // ?noroblox=1: no Roblox installed, so no version of it (the app's RobloxVersionDto with no client).
     robloxVersion: { installed: NO_ROBLOX ? null : '0.742.0.7421053', latest: params.has('rbxold') ? '0.743.0.7430112' : '0.742.0.7421053', upToDate: NO_ROBLOX ? null : !params.has('rbxold'), direct: false, store: settings.launchVia === 'store',
@@ -468,6 +501,8 @@
         quiet: params.get('update') === 'quiet', progress: 0, error: null, auto: true, beta: betaUpdates, checkedAt: minsAgo(23) },
     lockUpdate: locked && !screenLock && lockUpdate !== null ? { go: lockUpdateGo } : null,
     countOnline,
+    boardName,
+    community: countOnline ? { data: community(), at: Date.now() } : null,
     remote,
     installs: NO_ROBLOX ? { handler: null, bloxstrap: false, fishstrap: false, others: [], roblox: false, direct: false, store: false, vng: params.has('vng') }
       : { handler: 'Bloxstrap', bloxstrap: true, fishstrap: false, others: params.has('others') ? ['Voidstrap'] : [], roblox: false, direct: true, store: params.has('store'), vng: params.has('vng') },
@@ -599,7 +634,74 @@
         }
         case 'phoneTest': await new Promise(r => setTimeout(r, 400)); return null;
         case 'feedCards': return feedCards;
-        case 'feedPrices': return feedGames.some(g => g.id === 'blox-fruits') ? { 'blox-fruits': { ...PRICES, at: Date.now() - PRICES.ago } } : {};
+        // The Wiki tab: Blox Fruits' price list, then a trimmed copy of what the bot really read from the Deepwoken and
+        // Pilgrammed wikis (wiki-sample.json). ?wiki=0 the bot can't be reached.
+        case 'wikiGames': {
+          if (params.get('wiki') === '0') throw new Error(tx("The wiki can't be reached right now. Try again in a moment.", 'Chưa tải được wiki. Thử lại sau chút nhé.'));
+          const w = await wikiSample();
+          // Every game with the wiki the bot names for it (wiki.js POPULAR_GAMES).
+          return { games: [{ id: 'blox-fruits', name: 'Blox Fruits', kind: 'prices', count: PRICES.items.length, at: Date.now() - PRICES.ago, place: 2753915549, wiki: 'https://blox-fruits.fandom.com' },
+            ...Object.values(w).map(g => ({ id: g.id, name: g.name, kind: 'wiki', count: g.items.length, at: Date.now() - 5 * 3600e3, place: WIKI_PLACES[g.id], wiki: g.source?.url })),
+            ...[['shindo-life', 'Shindo Life', 4616652839, 'https://shindo-life-rell.fandom.com'], ['king-legacy', 'King Legacy', 4520749081, 'https://king-legacy-official.fandom.com'],
+              ['grow-a-garden', 'Grow a Garden', 126884695634066, 'https://growagarden.fandom.com'], ['pet-simulator-99', 'Pet Simulator 99', 8737899170, 'https://pet-simulator.fandom.com'],
+              ['fisch', 'Fisch', 16732694052, 'https://fisch.fandom.com'], ['grand-piece-online', 'Grand Piece Online', 1730877806, 'https://grand-piece-online.fandom.com'], ['adopt-me', 'Adopt Me!', 920587237, 'https://adoptme.fandom.com']]
+              .map(([id, name, place, wiki]) => ({ id, name, kind: 'game', count: 0, at: null, place, wiki }))] };
+        }
+        // The games this PC's accounts played (AppController.PlayedGames): Blox Fruits joins the bot's card by name, Tap
+        // Simulator (no wiki named by the bot) isn't shown.
+        case 'playedGames': return params.has('noplayed') ? [] : [
+          { name: '[🎃] Blox Fruits', place: 4442272183, hours: 41.5, last: Date.now() - 3600e3 },
+          { name: 'Tap Simulator REBORN', place: 75992362647444, hours: 12.2, last: Date.now() - 86400e3 },
+          { name: 'Anime Vanguards', place: 16146832113, hours: 0.4, last: Date.now() - 5 * 86400e3 }];
+        // Each game's look: its real Roblox icon and picture (2026-11-06), the colour as WikiLook.cs works it out from the icon.
+        case 'gameLooks': {
+          if (params.has('nolooks')) return {};
+          return Object.fromEntries((a.places || []).filter(p => LOOKS[p]).map(p => [String(p), LOOKS[p]]));
+        }
+        case 'wikiGame': {
+          if (a.id === 'blox-fruits') return { id: 'blox-fruits', name: 'Blox Fruits', kind: 'prices', ...PRICES, at: Date.now() - PRICES.ago };
+          const g = (await wikiSample())[a.id];
+          return g ? { ...g, at: Date.now() - 5 * 3600e3 } : null;
+        }
+        case 'wikiOpen': console.log('[mock] open', a.url); window.__opened = a.url; return null;
+        // The whole wiki of a game: the preview asks the real wiki (MediaWiki answers any page with origin=*), as the app does.
+        case 'wikiApi': {
+          const q = new URLSearchParams({ ...Object.fromEntries(Object.entries(a.q || {}).map(([k, v]) => [k, String(v)])), format: 'json', formatversion: '2', origin: '*' });
+          const r = await fetch(`${a.site}/api.php?${q}`);
+          if (!r.ok) throw new Error(tx("The wiki can't be reached right now.", 'Chưa kết nối được tới wiki.'));
+          return r.json();
+        }
+        // Fandom's wiki search doesn't answer pages from elsewhere: the preview guesses the wiki's address from the name.
+        case 'wikiFind': {
+          await wait(300);
+          const slug = String(a.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+          const known = { bloxfruits: 'blox-fruits', pilgrammed: 'pilgrammed-rblx', growagarden: 'growagarden', doors: 'doors-game', arsenal: 'robloxarsenal', typesoul: 'type' };
+          const site = `https://${known[slug] || slug}.fandom.com`;
+          try {
+            const d = await (await fetch(`${site}/api.php?action=query&meta=siteinfo&siprop=general|statistics&format=json&formatversion=2&origin=*`)).json();
+            const g = d.query.general;
+            return [{ site, name: g.sitename, pages: d.query.statistics.articles, views: 100000, img: null, match: params.has('nopick') ? 2 : 3 }];
+          } catch { return []; }
+        }
+        case 'wikiAbout': {
+          const m = /^(?:https?:\/\/)?([a-z0-9.-]+\.(?:fandom\.com|wiki\.gg))/i.exec(String(a.url || '').trim());
+          if (!m) throw new Error(tx("Paste a link to a page of the game's wiki (Fandom or wiki.gg).", 'Dán link một trang trên wiki của game (Fandom hoặc wiki.gg).'));
+          const site = `https://${m[1].toLowerCase()}`;
+          const d = await (await fetch(`${site}/api.php?action=query&meta=siteinfo&siprop=general|statistics&format=json&formatversion=2&origin=*`)).json();
+          return { site, name: d.query.general.sitename, articles: d.query.statistics.articles, mainPage: d.query.general.mainpage, logo: null };
+        }
+        case 'wikiPick': {
+          wikiPrefs.games = wikiPrefs.games.filter(g => g.id !== a.id);
+          if (a.site) wikiPrefs.games.push({ id: a.id, name: a.name, site: a.site, place: a.place || 0, img: a.img || null, added: !!a.added });
+          push(); return null;
+        }
+        case 'wikiMark': {
+          const list = a.list === 'recent' ? 'recent' : 'saved';
+          wikiPrefs[list] = wikiPrefs[list].filter(m => !(m.site === a.site && m.title === a.title));
+          if (list === 'recent' || a.on) wikiPrefs[list].unshift({ site: a.site, title: a.title, game: a.game, at: Date.now() });
+          wikiPrefs[list] = wikiPrefs[list].slice(0, list === 'recent' ? 30 : 300);
+          push(); return null;
+        }
         case 'feedFollow':
           feedPrefs.follow = a.on ? [...new Set([...feedPrefs.follow, a.game])] : feedPrefs.follow.filter(g => g !== a.game);
           if (a.on) feedPrefs.read[a.game] = Math.max(0, ...feedCards.filter(c => c.game === a.game).map(c => c.at));
@@ -637,6 +739,12 @@
         case 'setDailySignInCheck': dailySignInCheck = a.enabled; push(); return null;
         case 'setBetaUpdates': betaUpdates = a.enabled; push(); return null;
         case 'setCountOnline': countOnline = a.enabled; push(); return null;
+        case 'setBoardName': {
+          const name = String(a.name || '').replace(/\s+/g, ' ').trim();
+          if (name && !/^[\p{L}\p{N}][\p{L}\p{N} ._-]{1,19}$/u.test(name))
+            throw new Error(tx('Use 2 to 20 letters or digits (spaces, dots, dashes and underscores too).', 'Dùng 2 đến 20 chữ hoặc số (được có dấu cách, dấu chấm, gạch ngang, gạch dưới).'));
+          boardName = name || null; push(); return { name: boardName };
+        }
         case 'setRemote': remote = a.enabled ? remoteCode() : { on: false, connected: false, linked: null, pc: 'GAMING-PC' }; push(); return null;
         case 'remoteCode': remote = { ...remoteCode(), code: 'Q2W8RN' }; push(); return null;
         case 'openDiscordApp': return null;
@@ -1339,17 +1447,30 @@
       }, 50);
     }, 100);
     if (params.has('monitor')) click('[data-view=monitor]');
-    // ?view=news opens Game news; &prices=1 Blox Fruits' price list there (searched for &q=…).
+    // ?view=news opens the Games tab: &game=deepwoken a game, &part=wiki its Wiki (or prices) part, &cat=Weapons a category,
+    // &sort=Damage that column (twice: &sort=Damage,2), &filter=1 the filters open, &q=… a search, &open=Name an item's page,
+    // &compare=Name1,Name2 those items picked (and &compare…&cmp=1 side by side), &switch=1 the game switch open.
     if (params.get('view') === 'news') {
       click('[data-view=news]');
-      if (params.has('prices')) setTimeout(() => {
-        document.querySelectorAll('.news-parts button')[1]?.click();
-        if (params.get('q')) setTimeout(() => {
-          const box = document.querySelector('.pl-search input');
-          Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(box, params.get('q'));
-          box.dispatchEvent(new Event('input', { bubbles: true }));
-        }, 100);
-      }, 500);
+      const V = '#view-news';
+      const later = (ms, f) => new Promise(r => setTimeout(() => { f(); r(); }, ms));
+      const byText = (sel, text) => [...document.querySelectorAll(sel)].find(b => b.textContent.trim().startsWith(text));
+      const type = (sel, v) => { const box = document.querySelector(sel); if (!box) return;
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(box, v); box.dispatchEvent(new Event('input', { bubbles: true })); };
+      const row = n => [...document.querySelectorAll(`${V} .ws-items tbody tr`)].find(r => r.querySelector('.ws-item span')?.textContent === n);
+      (async () => {
+        await later(700, () => {});
+        if (params.get('game')) await later(0, () => document.querySelector(`${V} .gm-card[data-game="${params.get('game')}"]`)?.click());
+        if (params.get('part')) await later(150, () => document.querySelector(`${V} .gm-parts [data-part="${params.get('part')}"]`)?.click());
+        await later(500, () => params.get('cat') && byText(`${V} .ws-nav button`, params.get('cat'))?.click());
+        if (params.get('sort')) { const [f, n] = params.get('sort').split(','); for (let i = 0; i < (+n || 1); i++) await later(150, () => byText(`${V} .wk-sort`, f)?.click()); }
+        if (params.get('q')) await later(150, () => type(`${V} .ws-search input`, params.get('q')));
+        if (params.has('filter')) await later(150, () => document.querySelector('#wk-filter')?.click());
+        for (const n of (params.get('compare') || '').split(',').filter(Boolean)) await later(120, () => row(n)?.querySelector('.wk-check input')?.click());
+        if (params.get('open')) await later(150, () => row(params.get('open'))?.querySelector('.ws-item')?.click());
+        if (params.has('cmp')) await later(200, () => document.querySelector('#wk-compare')?.click());
+        if (params.has('switch')) await later(200, () => document.querySelector('#gm-switch')?.click());
+      })();
     }
     if (params.has('select') || params.has('menu')) { click('.card[data-id$="2"]'); click('.card[data-id$="4"]'); }
     if (params.has('menu')) click('.card[data-id$="4"] [data-act=card-menu]');

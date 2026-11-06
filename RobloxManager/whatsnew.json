@@ -7,14 +7,14 @@
         "icon": "news",
         "go": "news",
         "en": [
-          "Game news",
-          "Live stock and spawns from the games’ own bots, with an alert for the words you pick. Blox Fruits also has a price list you can search. New games show up without an update.",
-          "Open Game news"
+          "Games: news, wiki and prices",
+          "Every popular game with its wiki inside Bloxkeep: search, item tables, compare, new pages and recent buffs and nerfs. Live stock and spawns from the games’ own bots, with an alert for the words you pick, and Blox Fruits prices.",
+          "Open Games"
         ],
         "vi": [
-          "Tin game",
-          "Stock và spawn trực tiếp từ bot của game, báo khi có từ khóa bạn chọn. Blox Fruits có thêm bảng giá để tra. Game mới tự hiện, không cần cập nhật.",
-          "Mở Tin game"
+          "Game: tin, wiki và giá",
+          "Mỗi game phổ biến có sẵn wiki ngay trong Bloxkeep: tìm, bảng tra, so sánh, trang mới và món vừa buff/nerf. Stock và spawn trực tiếp từ bot của game, báo khi có từ khóa bạn chọn, và bảng giá Blox Fruits.",
+          "Mở Game"
         ]
       },
       {
@@ -49,11 +49,11 @@
         "icon": "users",
         "en": [
           "Main account and friends",
-          "Mark the account you play on as Main: Select all, Save RAM, the RAM limit and Arrange leave it alone. Friend each other makes your accounts Roblox friends."
+          "Mark the account you play on as Main: it opens without Bloxkeep’s Roblox settings or Fast Flags, and Select all, Save RAM, the RAM limit and Arrange leave it alone. Friend each other makes your accounts Roblox friends."
         ],
         "vi": [
           "Tài khoản chính và kết bạn",
-          "Đánh dấu tài khoản bạn tự chơi là Chính: Chọn tất cả, tiết kiệm RAM, giới hạn RAM và sắp xếp sẽ bỏ qua nó. Kết bạn với nhau cho các tài khoản thành bạn bè trên Roblox."
+          "Đánh dấu tài khoản bạn tự chơi là Chính: nó mở lên không dùng cấu hình Roblox hay Fast Flags của Bloxkeep, và Chọn tất cả, tiết kiệm RAM, giới hạn RAM, sắp xếp đều bỏ qua nó. Kết bạn với nhau cho các tài khoản thành bạn bè trên Roblox."
         ]
       }
     ],
@@ -63,14 +63,20 @@
         "Hide account names shows “Account 1”, “Account 2”… for screenshots and streams.",
         "Restart a heavy window: a Roblox window that keeps using too much RAM closes and goes back into its server.",
         "Create account opens Roblox’s sign-up form, and each account you make there is saved.",
-        "Signing in with a password can solve Roblox’s puzzle in the app."
+        "Signing in with a password can solve Roblox’s puzzle in the app.",
+        "Games shows how many PCs with Bloxkeep play each game now, and warns when several just dropped out of it.",
+        "Statistics has a board of the PCs running the most accounts. Join it under a name you pick.",
+        "Fast Flags only go to the accounts in Apply to."
       ],
       "vi": [
         "Mở cùng Windows: Bloxkeep chạy sẵn dưới khay khi bạn vào Windows.",
         "Ẩn tên tài khoản hiện “Tài khoản 1”, “Tài khoản 2”… khi chụp màn hình hay livestream.",
         "Mở lại cửa sổ nặng: cửa sổ Roblox dùng quá nhiều RAM sẽ tự đóng rồi vào lại đúng server.",
         "Tạo tài khoản mở trang đăng ký của Roblox, tài khoản tạo xong được lưu luôn.",
-        "Đăng nhập bằng mật khẩu giải được câu đố của Roblox ngay trong app."
+        "Đăng nhập bằng mật khẩu giải được câu đố của Roblox ngay trong app.",
+        "Tab Game hiện số máy dùng Bloxkeep đang chơi mỗi game, và báo khi nhiều máy vừa bị văng khỏi game đó.",
+        "Thống kê có bảng các máy treo nhiều tài khoản nhất. Lên bảng với tên bạn chọn.",
+        "Fast Flags chỉ áp cho các tài khoản trong mục Áp dụng cho."
       ]
     }
   },

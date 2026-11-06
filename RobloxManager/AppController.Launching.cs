@@ -672,9 +672,12 @@ public sealed partial class AppController
         var settings = RequireVault().Data.Settings;
         var config = settings.RobloxConfig;
         bool windowed = settings.MultiInstance && settings.MultiInstanceWindowed;
-        // A light-AFK preset's values, whatever the shared setup says; the next client gets the person's own back.
-        bool afk = PresetFor(presetId)?.Profile == AfkProfile;
-        var own = RobloxGameSettings.ForLaunch(config, afk, config.Mode == "all" || (config.Mode == "marked" && account.UseRobloxConfig), account.FpsCap);
+        // A light-AFK preset's values, whatever the shared setup says; the next client gets the person's own back. The
+        // main account (the one played on) gets neither, nor the Fast Flags below: only an FPS limit set on it.
+        bool main = account.IsMain;
+        bool afk = !main && PresetFor(presetId)?.Profile == AfkProfile;
+        bool covered = !main && (config.Mode == "all" || (config.Mode == "marked" && account.UseRobloxConfig));
+        var own = RobloxGameSettings.ForLaunch(config, afk, covered, account.FpsCap);
         if (own is not null || windowed || RobloxGameSettings.HasBaseline)
         {
             if (RobloxGameSettings.PrepareFor(own ?? config, own is not null, windowed))
@@ -684,8 +687,9 @@ public sealed partial class AppController
             }
         }
         launchVia = RobloxInstalls.UpdatingOption(launchVia, RobloxVersionDto().UpToDate);
-        // The leanest drawing (Fast Flags) if the person has it on; off, the person's own file goes back first.
-        if (settings.FastFlags)
+        // The leanest drawing (Fast Flags) if the person has it on, for the accounts the Roblox settings go to (Apply to)
+        // and a light-AFK preset's windows; off, "Nobody", or the main account: the person's own file goes back first.
+        if (settings.FastFlags && (covered || afk))
         {
             if (RobloxFlags.Apply(RobloxInstalls.ClientFor(launchVia, settings.CustomLauncher)))
             {

@@ -1352,6 +1352,11 @@ public static class RobloxProcesses
     /// when it had none (Roblox's home screen), null when unreadable. Only the link: the sign-in ticket elsewhere on the
     /// command line is never returned.
     /// </summary>
+    /// <summary>The Roblox app Roblox's installer opened after an update (RobloxInstalls.OwnInstaller): started with
+    /// "-isInstallerLaunch" and no roblox-player link (a game the installer was asked to open has one).</summary>
+    public static bool OpenedByInstaller(int pid, long created) => CommandLineOf(pid, created) is { } line
+        && line.Contains("-isInstallerLaunch", StringComparison.OrdinalIgnoreCase) && !line.Contains("roblox-player:", StringComparison.OrdinalIgnoreCase);
+
     public static string? PlaceLauncherUrlOf(int pid, long created) => CommandLineOf(pid, created) is { } line ? PlaceLauncherUrl(line) : null;
 
     internal static string PlaceLauncherUrl(string commandLine)

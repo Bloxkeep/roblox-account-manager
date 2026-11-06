@@ -70,8 +70,11 @@ static class OnlineSuite
         string id = Prefs.OnlineId ?? "";
         var names = first.EnumerateObject().Select(p => p.Name).Order().ToArray();
         string? pc = (string?)typeof(AppController).GetMethod("OnlineIdForThisPc", Harness.F)!.Invoke(null, null);
+        // What its accounts play goes too (games, how many run, drops, the alts board's name): none here, no account.
         c.Check("…with this PC's id (32 hex digits, not Windows' own id), the version and the language, nothing else",
-            string.Join(",", names) == "age,app,first,id,language" && pc is { Length: 32 } && pc.All(Uri.IsHexDigit) && pc == pc.ToLowerInvariant()
+            string.Join(",", names) == "age,alts,app,board,drops,first,games,id,language" && pc is { Length: 32 } && pc.All(Uri.IsHexDigit) && pc == pc.ToLowerInvariant()
+            && first.GetProperty("games").GetArrayLength() == 0 && first.GetProperty("alts").GetInt32() == 0
+            && first.GetProperty("drops").GetArrayLength() == 0 && first.GetProperty("board").ValueKind == JsonValueKind.Null
             && first.GetProperty("id").GetString() == id && id == pc && !first.ToString().Contains(MachineGuid(), StringComparison.OrdinalIgnoreCase)
             && first.GetProperty("app").GetString() == Harness.Get<AppUpdater>(app, "_updater").CurrentVersion
             && first.GetProperty("language").GetString() is "en" or "vi", first);

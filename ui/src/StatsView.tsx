@@ -7,6 +7,7 @@ import { clockText, playedText, hourText } from './clock';
 import { Icon, useAppState, useHost } from './host';
 import { Avatar } from './Avatar';
 import { AccountCards, Clock, GameMap } from './StatsViz';
+import { AltsBoard } from './Community';
 
 const STATS_PERIODS = [1, 7, 30];
 const AL_GROUPS = ['play', 'drops', 'schedule', 'signin', 'updates'];
@@ -169,6 +170,7 @@ export function StatsView({ api }: { api: Ref<StatsApi> }) {
       <div className="stats">
         <div className="stats-in" id="stats-body" hidden={!onStats}>
           <Figures data={data} failed={failed} retry={btn => busy(btn, loadStats)} game={game} setGame={setGame} />
+          <AltsBoard />
         </div>
         {/* Its name is the tab's already (Statistics | Activity): no heading over the filters. */}
         <section className="stat-card alog" id="alog-sec" aria-label={t('alog.title')} hidden={onStats}>

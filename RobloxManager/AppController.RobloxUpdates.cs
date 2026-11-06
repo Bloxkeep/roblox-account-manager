@@ -146,14 +146,22 @@ public sealed partial class AppController
         string? before = Installs().Client?.Folder;
         if (_updaterExe is not { } exe || !File.Exists(exe))
             throw new UserError(L.T("No launcher here can update Roblox by itself. Roblox updates the next time it opens."));
+        bool own = RobloxInstalls.IsOwnInstaller(exe);
+        // Roblox's installer would close the windows open without a word: they close as Close, update, reopen's do, and
+        // open again after (it comes back here once they are gone).
+        if (own && RobloxProcesses.GetPlayerPids().Length > 0)
+            return UpdateAndReopen();
         var startedAt = DateTime.Now;
         var psi = new System.Diagnostics.ProcessStartInfo(exe) { UseShellExecute = false, WorkingDirectory = Path.GetDirectoryName(exe)! };
-        psi.ArgumentList.Add("-player");
-        psi.ArgumentList.Add("-nolaunch");
+        if (!own)
+        {
+            psi.ArgumentList.Add("-player");
+            psi.ArgumentList.Add("-nolaunch");
+        }
         System.Diagnostics.Process.Start(psi)?.Dispose();
         _robloxUpdating = true;
         PushState();
-        _ = WatchRobloxUpdateAsync(Path.GetFileNameWithoutExtension(exe), before, startedAt, quiet);
+        _ = WatchRobloxUpdateAsync(Path.GetFileNameWithoutExtension(exe), before, startedAt, quiet, own);
         return null;
     }
 
@@ -266,25 +274,30 @@ public sealed partial class AppController
         PushState();
     }
 
-    /// <summary>Until the client's build changes or the launcher's processes for it have all ended, at most 15 minutes.</summary>
-    async Task WatchRobloxUpdateAsync(string launcher, string? before, DateTime startedAt, bool quiet = false)
+    /// <summary>Until the client's build changes or the launcher's processes for it have all ended, at most 15 minutes.
+    /// Roblox's installer (<paramref name="own"/>) is waited for to the end, then the Roblox app it opened is closed: closed
+    /// sooner, while the installer still waits for it to start, the installer would call the launch failed.</summary>
+    async Task WatchRobloxUpdateAsync(string launcher, string? before, DateTime startedAt, bool quiet = false, bool own = false)
     {
         var until = DateTime.UtcNow + TimeSpan.FromMinutes(15);
         try
         {
-            await Task.Delay(TimeSpan.FromSeconds(5));
+            await Task.Delay(TimeSpan.FromSeconds(own ? 2 : 5));
             while (!_disposed && DateTime.UtcNow < until)
             {
                 _installsReadAt = DateTime.MinValue; // read again, compared with the last read (its "Roblox updated to …")
-                if (Installs().Client?.Folder != before)
+                bool updated = Installs().Client?.Folder != before, running = LauncherRunningSince(launcher, startedAt);
+                if (own && !running)
+                    await CloseInstallerAppAsync(startedAt);
+                if (updated && !(own && running))
                     return; // Installs said "Roblox updated to …"
-                if (!LauncherRunningSince(launcher, startedAt))
+                if (!running)
                 {
                     if (!quiet)
-                        Toast(L.F("{0} found no newer Roblox to install.", launcher), "info");
+                        Toast(L.F("{0} found no newer Roblox to install.", own ? "Roblox" : launcher), "info");
                     return;
                 }
-                await Task.Delay(TimeSpan.FromSeconds(3));
+                await Task.Delay(TimeSpan.FromSeconds(own ? 1 : 3));
             }
         }
         finally
@@ -292,6 +305,27 @@ public sealed partial class AppController
             _robloxUpdating = false;
             if (!_disposed)
                 PushState();
+        }
+    }
+
+    /// <summary>Closes the Roblox app Roblox's installer opened since <paramref name="since"/> (no game in it), looking a few
+    /// seconds in case it is still starting.</summary>
+    static async Task CloseInstallerAppAsync(DateTime since)
+    {
+        long after = since.AddSeconds(-1).ToFileTime();
+        for (int look = 0; look < 6; look++)
+        {
+            bool closed = false;
+            foreach (var p in RobloxProcesses.GetPlayers())
+                if (p.Created >= after && !RobloxProcesses.IsClosing(p.Pid) && RobloxProcesses.OpenedByInstaller(p.Pid, p.Created))
+                {
+                    Log.Note($"Closed the Roblox app Roblox's installer opened after updating (pid {p.Pid}).");
+                    RobloxProcesses.Close(p.Pid);
+                    closed = true;
+                }
+            if (closed)
+                return;
+            await Task.Delay(TimeSpan.FromMilliseconds(500));
         }
     }
 

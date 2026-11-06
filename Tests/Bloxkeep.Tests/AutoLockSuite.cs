@@ -207,7 +207,7 @@ static class AutoLockSuite
     static async Task SignInWindows(Checks c, AppController app, List<string> windowsToasts)
     {
         int Toasts() { lock (windowsToasts) return windowsToasts.Count; }
-        void Notify(string type) => Harness.Invoke(app, "Notify", "Farm was kicked", "warn", type, Guid.NewGuid(), true);
+        void Notify(string type) => Harness.Invoke(app, "Notify", "Farm was kicked", "warn", type, Guid.NewGuid(), true, null);
 
         // Shown on a thread of its own with a message loop; `then` runs 200 ms after it is up. True when it was closed by `then`,
         // false when nothing closed it and the 3 s wait had to.

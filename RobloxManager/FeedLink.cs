@@ -21,22 +21,10 @@ public sealed record FeedAuthor(string Name, string? Icon, string? Url = null);
 public sealed record FeedCard(string Id, string Src, string Game, long At, string Title, string Text, List<FeedField> Fields,
     string? Picture, string? Link, int? Color, long? Until, string? Image = null, FeedAuthor? Author = null, JsonElement? Blocks = null, bool Spoiler = false);
 
-/// <summary>Where a game's prices come from: the website's name and address (shown and linked under the list).</summary>
-public sealed record FeedPriceSource(string Name, string Url);
-/// <summary>
-/// An item in a game's price list (services/DiscordBot/worker/prices.js): its name, kind, picture (through Bloxkeep's
-/// bot), value and permanent value, demand of 10 and trend, prices in Beli and Robux, and its page on the website.
-/// </summary>
-public sealed record FeedPriceItem(string Id, string Name, string? Category, string? Rarity, string? Type, string? Img, double? Value, double? Perm,
-    double? Demand, double? PermDemand, string? Trend, string? PermTrend, double? Beli, double? Robux, string? BestFor, long? Updated, string? Url);
-/// <summary>A game's price list, read by the bot once a day: where from, when (ms), the items.</summary>
-public sealed record FeedPrices(FeedPriceSource Source, long At, List<FeedPriceItem> Items);
-
 /// <summary>
 /// Game news (Settings-free: the Game news tab) from Bloxkeep's Discord bot (services/DiscordBot/worker/feeds.js): a
 /// WebSocket that only listens. On connecting it is told the games and their latest news, then each new piece as it comes,
-/// one deleted there, the games again when Bloxkeep's developers add or take away a game or a source, and a game's price
-/// list when the bot has read a new one (once a day; all of them with the games). Nothing goes up
+/// one deleted there, and the games again when Bloxkeep's developers add or take away a game or a source. Nothing goes up
 /// but a "ping" every 30 s, which the bot answers without waking. Connected again after a drop (2 s, then longer, up to
 /// two minutes). Its callbacks run on the thread that made it (the window's).
 /// </summary>
@@ -45,14 +33,13 @@ sealed class FeedLink : IDisposable
     public const string Url = "wss://bloxkeep-bot.bloxkeep-app.workers.dev/feeds/connect";
     static readonly TimeSpan KeepAlive = TimeSpan.FromSeconds(30);
     static readonly TimeSpan FirstRetry = TimeSpan.FromSeconds(2), LastRetry = TimeSpan.FromMinutes(2), StayedUp = TimeSpan.FromSeconds(60);
-    /// <summary>The games and every card at once (30 a source, at most a few KB each), with the price lists (some 40 KB each).</summary>
+    /// <summary>The games and every card at once (30 a source, at most a few KB each).</summary>
     const int MaxMessage = 4 * 1024 * 1024;
     static readonly JsonSerializerOptions Json = new() { PropertyNameCaseInsensitive = true };
 
     readonly string _url;
     readonly SynchronizationContext _ui;
-    readonly Action<List<FeedGame>, List<FeedCard>, Dictionary<string, FeedPrices>> _all;
-    readonly Action<string, FeedPrices> _prices;
+    readonly Action<List<FeedGame>, List<FeedCard>> _all;
     readonly Action<FeedCard> _card;
     readonly Action<string> _gone;
     readonly Action _changed;
@@ -60,16 +47,13 @@ sealed class FeedLink : IDisposable
 
     public bool Connected { get; private set; }
 
-    /// <param name="all">The games, their cards and price lists, all of them (on connecting, and when the games change).</param>
-    /// <param name="prices">A game's new price list.</param>
+    /// <param name="all">The games and their cards, all of them (on connecting, and when the games change).</param>
     /// <param name="card">A new or changed card.</param>
     /// <param name="gone">A card's id, deleted where it came from.</param>
     /// <param name="changed">Connected or not any more.</param>
-    public FeedLink(Action<List<FeedGame>, List<FeedCard>, Dictionary<string, FeedPrices>> all, Action<string, FeedPrices> prices, Action<FeedCard> card,
-        Action<string> gone, Action changed, string? url = null)
+    public FeedLink(Action<List<FeedGame>, List<FeedCard>> all, Action<FeedCard> card, Action<string> gone, Action changed, string? url = null)
     {
         _all = all;
-        _prices = prices;
         _card = card;
         _gone = gone;
         _changed = changed;
@@ -168,8 +152,7 @@ sealed class FeedLink : IDisposable
         }
     }
 
-    sealed record Message(string? T, List<FeedGame>? Games, List<FeedCard>? Cards, FeedCard? Card, string? Id, Dictionary<string, FeedPrices>? Prices,
-        string? Game, FeedPriceSource? Source, long At, List<FeedPriceItem>? Items);
+    sealed record Message(string? T, List<FeedGame>? Games, List<FeedCard>? Cards, FeedCard? Card, string? Id);
 
     void OnMessage(string text)
     {
@@ -188,11 +171,7 @@ sealed class FeedLink : IDisposable
                 var ok = games.Where(Valid).ToList();
                 var known = ok.Select(g => g.Id).ToHashSet(StringComparer.Ordinal);
                 var cards = (m.Cards ?? []).Where(c => Valid(c) && known.Contains(c.Game)).ToList();
-                var prices = (m.Prices ?? []).Where(p => known.Contains(p.Key) && Valid(p.Value)).ToDictionary(p => p.Key, p => Clean(p.Value), StringComparer.Ordinal);
-                OnUi(() => _all(ok, cards, prices));
-                break;
-            case "prices" when m.Game is { Length: > 0 } game && new FeedPrices(m.Source!, m.At, m.Items!) is var list && Valid(list):
-                OnUi(() => _prices(game, Clean(list)));
+                OnUi(() => _all(ok, cards));
                 break;
             case "card" when m.Card is { } card && Valid(card):
                 OnUi(() => _card(card));
@@ -206,21 +185,6 @@ sealed class FeedLink : IDisposable
     static bool Valid(FeedGame g) => g.Id is { Length: > 0 and <= 40 } && g.Name is { Length: > 0 } && g.Sources is not null;
     static bool Valid(FeedCard c) => c.Id is { Length: > 0 } && c.Game is { Length: > 0 } && c.Title is not null && c.Text is not null && c.Fields is not null
         && c.Blocks is not { ValueKind: not JsonValueKind.Array };
-
-    static bool Valid(FeedPrices p) => p.Source is { Name.Length: > 0, Url.Length: > 0 } && p.Items is not null;
-
-    /// <summary>Items with a name, at most 1000; a picture only from the bot that sent the list, the item's page only on the source's website.</summary>
-    FeedPrices Clean(FeedPrices p)
-    {
-        var site = Uri.TryCreate(p.Source.Url, UriKind.Absolute, out var s) && s.Scheme == Uri.UriSchemeHttps ? s : null;
-        var bot = new Uri(_url);
-        bool FromBot(string? img) => Uri.TryCreate(img, UriKind.Absolute, out var u) && u.Host == bot.Host && u.Port == bot.Port
-            && (u.Scheme == Uri.UriSchemeHttps || (bot.Scheme == "ws" && u.Scheme == Uri.UriSchemeHttp)) && u.AbsolutePath == "/prices/img";
-        bool OnSite(string? url) => site is not null && Uri.TryCreate(url, UriKind.Absolute, out var u) && u.Scheme == Uri.UriSchemeHttps && u.Host == site.Host;
-        var items = p.Items.Where(i => i is { Id.Length: > 0, Name.Length: > 0 }).Take(1000)
-            .Select(i => i with { Img = FromBot(i.Img) ? i.Img : null, Url = OnSite(i.Url) ? i.Url : null }).ToList();
-        return p with { Source = p.Source with { Url = site?.AbsoluteUri.TrimEnd('/') ?? "" }, Items = items };
-    }
 
     void OnUi(Action action) => _ui.Post(_ =>
     {

@@ -150,6 +150,10 @@ export function RobloxConfig() {
   // Custom is shown on request, or by itself once the settings match no mode.
   const [custom, setCustom] = useState(false);
   const shown = custom || !level ? 'own' : level;
+  // Fast Flags go to the same accounts as the rest (Apply to; never the main account): none, nothing to switch.
+  const flags = rc.mode === 'off' ? null : <Row title={t('rc.flags')} desc={t('rc.flagsDesc')}>
+    <Switch id="s-rc-flags" label={t('rc.flags')} checked={!!st.fastFlags} onChange={v => call('setSettings', { fastFlags: v })} />
+  </Row>;
   return <Group id="rc" title={t('rc.title')}>
     <div className="rc-modes" id="s-rc-levels" role="group" aria-label={t('rc.level')}>
       {LEVELS.map(({ id, rc: values, ...others }) => <button type="button" key={id} className={`rc-mode${id === shown ? ' on' : ''}`} aria-pressed={id === shown}
@@ -160,15 +164,13 @@ export function RobloxConfig() {
     </div>
     <p className="rc-note" id="s-rc-reopen">{t('rc.reopen')}</p>
     {ownFps ? <p className="rc-note" id="s-rc-own-fps">{tn('rc.ownFps', ownFps)}</p> : null}
-    <Row title={t('rc.flags')} desc={t('rc.flagsDesc')}>
-      <Switch id="s-rc-flags" label={t('rc.flags')} checked={!!st.fastFlags} onChange={v => call('setSettings', { fastFlags: v })} />
-    </Row>
-    {shown !== 'own' ? null : <>
+    {shown !== 'own' ? flags : <>
     <Row title={t('rc.mode')} desc={<span id="s-rc-hint">{rc.mode === 'off' ? '' : rc.mode === 'all' ? t('rc.hint.all')
       : <>{tn('rc.hint.chosen', chosen)} <button type="button" className="link" data-act="rc-pick">{t('rc.pick')}</button></>}</span>}>
       <RcSelect name="mode" rc={rc} />
     </Row>
     {rc.mode === 'off' ? null : <>
+      {flags}
       <Row title={t('rc.graphics')}><RcSelect name="graphics" rc={rc} /></Row>
       <Row title={t('rc.fps')}><RcSelect name="fps" rc={rc} /></Row>
       <Row title={t('rc.volume')}><RcSelect name="volume" rc={rc} /></Row>

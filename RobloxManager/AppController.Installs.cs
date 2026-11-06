@@ -99,7 +99,7 @@ public sealed partial class AppController
         if (upToDate == false && RobloxInstalls.HasBuild(installed!.Exe, _latestRoblox!.Folder))
             (shown, upToDate) = (_latestRoblox.Version, true);
         return new RobloxVersionInfo(shown, _latestRoblox?.Version, upToDate, _vault?.Data.Settings.LaunchVia == "direct" && !RobloxInstalls.UpdatesOnOpen(installed?.Exe),
-            _vault?.Data.Settings.LaunchVia == "store", _updaterExe is { } updater ? Path.GetFileNameWithoutExtension(updater) : null, _robloxUpdating || _updateReopenSince is not null,
+            _vault?.Data.Settings.LaunchVia == "store", _updaterExe is { } updater ? RobloxInstalls.IsOwnInstaller(updater) ? "Roblox" : Path.GetFileNameWithoutExtension(updater) : null, _robloxUpdating || _updateReopenSince is not null,
             _running.Count(r => FindAccount(r.Key) is { } a && RunsOldBuild(a, r.Value.Pid)), _running.Count(r => CanReopen(r.Key, r.Value)));
     }
 

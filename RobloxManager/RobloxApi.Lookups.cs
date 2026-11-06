@@ -408,6 +408,27 @@ public static partial class RobloxApi
         res.Headers.TryGetValues(header, out var values) && values.FirstOrDefault() is { } v
         && int.TryParse(v.Split(',')[0].Trim(), System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out int n) ? n : null;
 
+    /// <summary>Each game's first wide picture (the ones on its Roblox page, 768×432), for many games at once.</summary>
+    public static async Task<Dictionary<long, string>> GetGameCoversAsync(IEnumerable<long> universeIds, CancellationToken ct = default)
+    {
+        var result = new Dictionary<long, string>();
+        foreach (var chunk in universeIds.Where(id => id > 0).Distinct().Chunk(50))
+        {
+            using var doc = await GetJsonAsync(
+                $"https://thumbnails.roblox.com/v1/games/multiget/thumbnails?universeIds={string.Join(',', chunk)}&countPerUniverse=1&defaults=true&size=768x432&format=Png&isCircular=false", ct);
+            if (doc?.RootElement.TryGetProperty("data", out var data) != true || data.ValueKind != JsonValueKind.Array)
+                continue;
+            foreach (var game in data.EnumerateArray())
+            {
+                if (game.TryGetProperty("thumbnails", out var shots) && shots.ValueKind == JsonValueKind.Array && shots.GetArrayLength() > 0
+                    && shots[0].TryGetProperty("state", out var state) && state.GetString() == "Completed"
+                    && shots[0].GetProperty("imageUrl").GetString() is { } url && IsRobloxCdn(url))
+                    result[game.GetProperty("universeId").GetInt64()] = url;
+            }
+        }
+        return result;
+    }
+
     /// <summary>Square game icons for many games at once.</summary>
     public static async Task<Dictionary<long, string>> GetGameIconsAsync(IEnumerable<long> universeIds, CancellationToken ct = default)
     {

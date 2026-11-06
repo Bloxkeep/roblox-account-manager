@@ -411,7 +411,7 @@ function OldBuild({ a }: { a: Account }) {
 function Meta({ a }: { a: Account }) {
   const { t, fmtNum } = useHost();
   return <>
-    {a.isMain ? <span className="tag main" title={t('card.mainTip')}>{t('card.main')}</span> : null}
+    {a.isMain ? <span className="tag main-acc" title={t('card.mainTip')}>{t('card.main')}</span> : null}
     {a.realm === 'vng' ? <span className="tag vng" title={t('card.vngTip')}>VNG</span> : null}
     {typeof a.robux === 'number' ? <span className="robux" title={t('card.robuxTip')}><Icon name="robux" />{fmtNum(a.robux)}</span>
       : a.robuxWait ? <span className="robux wait" title={t('card.robuxTip')}><Icon name="robux" />…</span> : null}
@@ -533,15 +533,18 @@ function AccountRow({ a, sel, cols }: { a: Account; sel: boolean; cols: string }
     : a.rejoin ? <button key="cancel-rejoin" className="row-act stop" data-act="cancel-rejoin" title={t('rj.cancelTip')}><Icon name="x" /><span>{t('rj.cancel')}</span></button>
     : a.cookieValid === false ? <button key="relogin" className="row-act relogin" data-act="relogin" title={t('card.reloginTip')}><Icon name="logIn" /><span>{t('card.relogin')}</span></button>
     : <button key="play-one" className="row-act play" data-act="play-one" title={t('card.play')}><Icon name="play" /><span>{t('card.play')}</span></button>;
-  // The card's red pill in a list row too (banned, or signed out), then Roblox VNG and an old Roblox, in front of the
+  // The card's red pill in a list row too (banned, or signed out), then an old Roblox, in front of the
   // status words: in their own columns they took the status's room.
   const badge = <>
     {local || a.state === 'launching' ? null
       : a.banned ? <span className="badge bad" title={t('card.bannedTip')}>{t('card.banned')}</span>
       : a.cookieValid === false ? <span className="badge bad">{t('card.expired')}</span> : null}
-    {a.isMain ? <span className="tag main" title={t('card.mainTip')}>{t('card.main')}</span> : null}
-    {a.realm === 'vng' ? <span className="tag vng" title={t('card.vngTip')}>VNG</span> : null}
     {a.session?.oldBuild ? <OldBuild a={a} /> : null}
+  </>;
+  // Main and Roblox VNG after the status words: in front, they pushed one row's "Offline" out of line with the rest.
+  const vng = <>
+    {a.isMain ? <span className="tag main-acc" title={t('card.mainTip')}>{t('card.main')}</span> : null}
+    {a.realm === 'vng' ? <span className="tag vng" title={t('card.vngTip')}>VNG</span> : null}
   </>;
   const at = a.username ? `@${a.username}` : '';
   return <article className={`card row ${local && !isKicked(a) ? 'local' : ''}${sel ? ' sel' : ''}`} data-id={a.id} data-act="card" role="option" tabIndex={-1} aria-selected={sel} aria-label={a.label}>
@@ -550,9 +553,9 @@ function AccountRow({ a, sel, cols }: { a: Account; sel: boolean; cols: string }
     <div className="row-name"><b title={a.label}>{a.label}</b>{a.username ? <small title={at}>{at}</small> : null}</div>
     {up
       // Playing here: how long, right after the game (as on the card), never cut off by a long game name.
-      ? <div className={`row-status timed ${st.cls}`} title={st.text}>{badge}<span className="row-st">{st.text}</span>
+      ? <div className={`row-status timed ${st.cls}`} title={st.text}>{badge}<span className="row-st">{st.text}</span>{vng}
         <span className="row-up" title={t('card.upTip')}><Icon name="clock" /><b className="up">{up}</b></span></div>
-      : <div className={`row-status ${st.cls}`} title={st.text}>{badge}{st.until ? <span>{until(st.until, 'rj.rowMin', 'rj.rowSoon')}</span> : st.text}</div>}
+      : <div className={`row-status ${st.cls}`} title={st.text}>{badge}{st.until ? <span>{until(st.until, 'rj.rowMin', 'rj.rowSoon')}</span> : st.text}{vng}</div>}
     <RowColumns a={a} c={JSON.parse(cols)} local={local} />
     <div className="row-actions"><RowAction>{action}</RowAction><button className="icon-btn" data-act="card-menu" title={t('card.moreTip')} aria-label={t('card.moreTip')} aria-haspopup="menu"><Icon name="more" /></button></div>
   </article>;

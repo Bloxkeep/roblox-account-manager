@@ -20,8 +20,6 @@ public sealed partial class AppController
     List<FeedGame> _feedGames = [];
     /// <summary>Newest first.</summary>
     List<FeedCard> _feedCards = [];
-    /// <summary>The price lists of the games that have one, by game.</summary>
-    Dictionary<string, FeedPrices> _feedPrices = [];
     /// <summary>The bot has told the games once since the app started.</summary>
     bool _feedsLoaded;
     /// <summary>The newest card heard of (ms): after a drop, what came since is news to be told of; before the first, nothing is.</summary>
@@ -35,13 +33,11 @@ public sealed partial class AppController
     void TickFeeds()
     {
         if (_feeds is null && !_disposed && FeedsAllowed)
-            _feeds = new FeedLink(OnFeeds, OnFeedPrices, OnFeedCard, OnFeedGone, PushState, FeedsTestUrl);
+            _feeds = new FeedLink(OnFeeds, OnFeedCard, OnFeedGone, PushState, FeedsTestUrl);
     }
 
-    void OnFeeds(List<FeedGame> games, List<FeedCard> cards, Dictionary<string, FeedPrices> prices)
+    void OnFeeds(List<FeedGame> games, List<FeedCard> cards)
     {
-        _feedPrices = prices;
-        Emit("feedPrices", FeedPricesDto());
         bool first = !_feedsLoaded;
         _feedsLoaded = true;
         _feedGames = games;
@@ -72,26 +68,6 @@ public sealed partial class AppController
         AlertFeed(card);
         FeedsChanged();
     }
-
-    void OnFeedPrices(string game, FeedPrices prices)
-    {
-        if (!_feedGames.Any(g => g.Id == game))
-            return;
-        _feedPrices[game] = prices;
-        Emit("feedPrices", FeedPricesDto());
-    }
-
-    /// <summary>The price lists, by game (the page asks with feedPrices and hears of new ones by that name).</summary>
-    object FeedPricesDto() => _feedPrices.ToDictionary(p => p.Key, p => new
-    {
-        source = new { name = p.Value.Source.Name, url = p.Value.Source.Url }, at = p.Value.At,
-        items = p.Value.Items.Select(i => new
-        {
-            id = i.Id, name = i.Name, category = i.Category, rarity = i.Rarity, type = i.Type, img = i.Img, value = i.Value, perm = i.Perm,
-            demand = i.Demand, permDemand = i.PermDemand, trend = i.Trend, permTrend = i.PermTrend, beli = i.Beli, robux = i.Robux, bestFor = i.BestFor,
-            updated = i.Updated, url = i.Url,
-        }),
-    });
 
     void OnFeedGone(string id)
     {
@@ -191,7 +167,7 @@ public sealed partial class AppController
     object? OpenFeedLink(string url)
     {
         if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps
-            || !(_feedCards.Any(c => FeedHasLink(c, url)) || _feedPrices.Values.Any(p => p.Source.Url == url || p.Items.Any(i => i.Url == url))))
+            || !(_feedCards.Any(c => FeedHasLink(c, url))))
             throw new UserError(L.T("That link isn't in the news any more."));
         return OpenUrl(uri.AbsoluteUri);
     }

@@ -169,14 +169,15 @@ public static class RobloxInstalls
     /// <summary>Whether a client behind Roblox's newest build gets updated when it opens: Roblox's own install runs its updater
     /// (the owner's logs, 2026-10-30), a launcher updates its copy first. Started by itself, a client in a launcher's folder
     /// finds no updater ("Updater not found. Skipping update") and goes on into the game on the old build.</summary>
-    public static bool UpdatesOnOpen(string? exe) => exe is null || IsRobloxOwn(exe) || UpdaterFor("direct") is not null;
+    public static bool UpdatesOnOpen(string? exe) => exe is null || IsRobloxOwn(exe) || UpdaterFor("direct") is { } updater && !IsOwnInstaller(updater);
 
     /// <summary>"Directly" with a client behind the newest build, in a launcher's folder: this once through that launcher, which
     /// updates it first. An old build isn't played on (accounts were reported banned for "a disallowed version of Roblox",
     /// 2026-10-31, unconfirmed by Roblox). Anything else, or the newest build not known, is left as chosen.</summary>
     public static string UpdatingOption(string launchVia, bool? upToDate)
     {
-        if (launchVia != "direct" || upToDate != false || UpdaterFor(launchVia) is not { } updater)
+        // Roblox's own copy updates itself as it opens: nothing to go through.
+        if (launchVia != "direct" || upToDate != false || UpdaterFor(launchVia) is not { } updater || IsOwnInstaller(updater))
             return launchVia;
         string name = Path.GetFileNameWithoutExtension(updater);
         return name.Equals("Bloxstrap", StringComparison.OrdinalIgnoreCase) ? "bloxstrap"
@@ -329,20 +330,29 @@ public static class RobloxInstalls
         };
     }
 
-    /// <summary>The Bloxstrap-style launcher this option starts; with "-player -nolaunch" it installs the newest Roblox
-    /// without opening it (Bloxstrap 2.11.4 and Fishstrap source, 2026-10-17). Null for Roblox's own copy (its
-    /// updater's switches aren't known), the Store edition and a hand-picked launcher.</summary>
+    /// <summary>What updates the client this option starts: the Bloxstrap-style launcher whose copy it is, which with "-player
+    /// -nolaunch" installs the newest Roblox without opening it (Bloxstrap 2.11.4 and Fishstrap source, 2026-10-17), or for
+    /// Roblox's own copy its installer beside the client (<see cref="OwnInstaller"/>), which installs the newest build and
+    /// then opens the Roblox app (the owner's PC, 2026-11-06: no switch it keeps stops that, so the app's window is closed
+    /// after). Null for the Store edition, Roblox VNG and a hand-picked launcher.</summary>
     public static string? UpdaterFor(string launchVia, string customLauncher = "")
     {
-        if (launchVia is "custom" or "store" or "roblox" or "vng" || ClientFor(launchVia, customLauncher) is not { } client)
+        if (launchVia is "custom" or "store" or "vng" || ClientFor(launchVia, customLauncher) is not { } client)
             return null;
         foreach (var name in KnownBootstrappers.Concat(FindOtherBootstrappers()))
         {
             if (FindBootstrapper(name) is { } exe && Path.GetDirectoryName(exe) is { } dir && Under(client, dir))
                 return exe;
         }
-        return null;
+        string own = Path.Combine(Path.GetDirectoryName(client) ?? "", OwnInstaller);
+        return IsRobloxOwn(client) && !IsVngClient(client) && File.Exists(own) ? own : null;
     }
+
+    /// <summary>Roblox's installer, in each build folder of its own install: run with no switches it installs the newest build
+    /// for this PC (as Roblox serves it) in seconds, then opens the Roblox app (its window: "-isInstallerLaunch").</summary>
+    public const string OwnInstaller = "RobloxPlayerInstaller.exe";
+
+    public static bool IsOwnInstaller(string? exe) => exe is not null && Path.GetFileName(exe).Equals(OwnInstaller, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>A client's build is behind Roblox's newest. Only builds in "version-&lt;hash>" folders can tell (the Store's has
     /// none); a newer number than Roblox serves is another channel's.</summary>

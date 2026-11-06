@@ -51,6 +51,10 @@ public static class Prefs
     /// to nothing else (AppController.Online.cs). Forgotten when the count is turned off.</summary>
     public static string? OnlineId { get; set; }
 
+    /// <summary>Settings › Privacy › Show this PC on the alts board: its name there (null: not on it, the default). Goes
+    /// with the online count's beats, which also say how many accounts run here (AppController.Online.cs).</summary>
+    public static string? BoardName { get; set; }
+
     /// <summary>The bot was told this copy's first "open" (a new install, AppController.Online.cs): told once.</summary>
     public static bool FirstOpenTold { get; set; }
 
@@ -253,6 +257,34 @@ public static class Prefs
     }
     public static FeedPrefs GameFeeds { get; set; } = new();
 
+    /// <summary>The Games tab's Wiki part (AppController.Wiki.cs): the wiki picked for each game (and games added for their
+    /// wiki alone), pages saved, pages seen lately. Per PC, kept here so nobody signs in anywhere to have them.</summary>
+    public sealed class WikiPrefs
+    {
+        public List<WikiPick> Games { get; set; } = [];
+        public List<WikiMark> Saved { get; set; } = [];
+        public List<WikiMark> Recent { get; set; } = [];
+    }
+    /// <summary>A game's wiki: <see cref="Id"/> the game's in the tab (the bot's, or "w:" and the wiki's host for one added
+    /// here), <see cref="Place"/> its Roblox place when known (for its look).</summary>
+    public sealed class WikiPick
+    {
+        public string Id { get; set; } = "";
+        public string Name { get; set; } = "";
+        public string Site { get; set; } = "";
+        public long Place { get; set; }
+        public string? Img { get; set; }
+        public bool Added { get; set; }
+    }
+    public sealed class WikiMark
+    {
+        public string Site { get; set; } = "";
+        public string Title { get; set; } = "";
+        public string Game { get; set; } = "";
+        public long At { get; set; }
+    }
+    public static WikiPrefs Wikis { get; set; } = new();
+
     static readonly string[] Known =
     [
         "remoteGone",
@@ -260,7 +292,7 @@ public static class Prefs
         "notifications", "notifyOff", "backupFolder", "backupEnabled", "lastBackup", "backupPending", "dailySignInCheck", "lastSignInCheck", "miniOpen", "miniWindow", "panelWindows",
         "mainWindow", "mainMaximized", "robloxHistory", "robloxClosedAt", "robloxClosedCount", "robloxClosedNotified", "skipConfirm", "multiWorked",
         "multiRobloxAtStart", "discordPresence", "customTheme", "vaults", "lastVault", "askVault", "countOnline", "onlineId",
-        "knownVaultIds", "foreignRestore", "savedThemes", "gameFeeds",
+        "knownVaultIds", "foreignRestore", "savedThemes", "gameFeeds", "wikis",
     ];
     /// <summary>Keys this build doesn't know (a newer one wrote them): saved back untouched rather than dropped.</summary>
     static readonly Dictionary<string, JsonElement> _extra = new();
@@ -351,6 +383,7 @@ public static class Prefs
                 CountOnline = false;
             if (Text(root, "onlineId") is { } onlineId && Guid.TryParseExact(onlineId, "N", out _))
                 OnlineId = onlineId;
+            BoardName = AppController.BoardNameOf(Text(root, "boardName"));
             // From before each vault had its own: moved to a vault by Vaults.Load (MoveRemoteTo).
             _remoteControl = root.TryGetProperty("remoteControl", out var remote) && remote.ValueKind == JsonValueKind.True;
             FirstOpenTold = root.TryGetProperty("firstOpenTold", out var told) && told.ValueKind == JsonValueKind.True;
@@ -450,6 +483,20 @@ public static class Prefs
                 foreach (var alert in GameFeeds.Alerts.Values)
                     alert.Words ??= [];
             }
+            if (root.TryGetProperty("wikis", out var wikis) && wikis.ValueKind == JsonValueKind.Object)
+            {
+                try
+                {
+                    Wikis = wikis.Deserialize<WikiPrefs>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new();
+                }
+                catch (JsonException)
+                {
+                    Wikis = new();
+                }
+                Wikis.Games = (Wikis.Games ?? []).Where(g => g is not null && g.Id.Length > 0 && WikiNet.Site(g.Site) is not null).ToList();
+                Wikis.Saved = (Wikis.Saved ?? []).Where(m => m is not null && WikiNet.Site(m.Site) is not null && m.Title.Length > 0).ToList();
+                Wikis.Recent = (Wikis.Recent ?? []).Where(m => m is not null && WikiNet.Site(m.Site) is not null && m.Title.Length > 0).ToList();
+            }
             if (Text(root, "foreignRestore") is { } restored && IsVaultId(restored))
                 ForeignRestore = restored;
         }
@@ -519,7 +566,7 @@ public static class Prefs
             {
                 ["language"] = Language, ["theme"] = Theme, ["closeToTray"] = CloseToTray, ["globalHotkeys"] = GlobalHotkeys, ["hideNames"] = HideNames, ["trayHintShown"] = TrayHintShown,
                 ["safeRendering"] = SafeRendering, ["checkUpdates"] = CheckUpdates, ["betaUpdates"] = BetaUpdates, ["lastVersion"] = LastVersion,
-                ["discordPresence"] = DiscordPresence, ["countOnline"] = CountOnline, ["onlineId"] = OnlineId,
+                ["discordPresence"] = DiscordPresence, ["countOnline"] = CountOnline, ["onlineId"] = OnlineId, ["boardName"] = BoardName,
                 // Written (empty once moved to a vault) so the old keys never come back from what this build doesn't know.
                 ["remoteControl"] = _remoteControl, ["remoteKey"] = _remoteKey, ["remoteGone"] = RemoteGone.ToArray(), ["firstOpenTold"] = FirstOpenTold,
                 ["customTheme"] = new { background = Custom.Background, accent = Custom.Accent, fade = Custom.Fade, picture = Custom.Picture, blur = Custom.Blur },
@@ -547,6 +594,12 @@ public static class Prefs
                 {
                     follow = GameFeeds.Follow, read = GameFeeds.Read, seen = GameFeeds.Seen,
                     alerts = GameFeeds.Alerts.ToDictionary(a => a.Key, a => new { mode = a.Value.Mode, words = a.Value.Words }),
+                },
+                ["wikis"] = new
+                {
+                    games = Wikis.Games.Select(g => new { id = g.Id, name = g.Name, site = g.Site, place = g.Place, img = g.Img, added = g.Added }),
+                    saved = Wikis.Saved.Select(m => new { site = m.Site, title = m.Title, game = m.Game, at = m.At }),
+                    recent = Wikis.Recent.Select(m => new { site = m.Site, title = m.Title, game = m.Game, at = m.At }),
                 },
             };
             // Never over a known key: a pref missing from Known would otherwise revert to its loaded value every restart.

@@ -111,6 +111,15 @@ static class LaunchChoiceSuite
         c.Check("\"directly\", newest build not known: stays directly", RobloxInstalls.UpdatingOption("direct", null) == "direct");
         c.Check("Roblox's own client updates itself when opened", RobloxInstalls.UpdatesOnOpen(global));
         c.Check("another option, out of date: left as chosen", RobloxInstalls.UpdatingOption("roblox", false) == "roblox");
+        // Roblox's own copy is updated by its installer beside the client (it opens the Roblox app after; Bloxkeep closes it).
+        string ownInstaller = Path.Combine(Path.GetDirectoryName(RobloxInstalls.ClientFor("roblox")!)!, RobloxInstalls.OwnInstaller);
+        c.Check("Roblox's own copy without its installer: nothing updates it", RobloxInstalls.UpdaterFor("roblox") is null, RobloxInstalls.UpdaterFor("roblox"));
+        File.WriteAllBytes(ownInstaller, []);
+        c.Check("…with it: its installer does", RobloxInstalls.UpdaterFor("roblox") == ownInstaller && RobloxInstalls.IsOwnInstaller(ownInstaller), RobloxInstalls.UpdaterFor("roblox"));
+        c.Check("…\"directly\" on it, out of date: stays directly (it updates as it opens)", RobloxInstalls.UpdatingOption("direct", false) == "direct",
+            RobloxInstalls.UpdatingOption("direct", false));
+        c.Check("…and Roblox VNG's client never gets it", RobloxInstalls.UpdaterFor("vng") is null);
+        File.Delete(ownInstaller);
         string strapExe = Path.Combine(local, "Bloxstrap", "Bloxstrap.exe");
         string strapClient = Client("Bloxstrap", "version-copy");
         File.WriteAllBytes(strapExe, []);

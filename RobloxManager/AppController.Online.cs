@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Microsoft.Win32;
 
 namespace RobloxManager;
@@ -64,9 +65,18 @@ public sealed partial class AppController
         _onlineSending = true;
         try
         {
-            using var res = await PostOnlineAsync(new { id, app = _updater.CurrentVersion, language = L.Language, age, first });
+            // What this PC plays now, for the sums the bot tells back (CommunityDto): the games its accounts are in, how many
+            // run, the drops since the last beat; its name on the alts board if it joined it. No account.
+            var drops = _onlineDrops.ToList();
+            _onlineDrops.Clear();
+            using var res = await PostOnlineAsync(new
+            {
+                id, app = _updater.CurrentVersion, language = L.Language, age, first,
+                games = PlayingUniverses(), alts = _running.Count, drops = drops.Select(d => new { game = d.Universe, why = d.Why }), board = Prefs.BoardName,
+            });
             if (!res.IsSuccessStatusCode)
             {
+                _onlineDrops.InsertRange(0, drops.Take(OnlineDropsMax - _onlineDrops.Count));
                 RetryOnline();
                 return;
             }
@@ -89,6 +99,13 @@ public sealed partial class AppController
             {
                 _onlineEvery = TimeSpan.FromSeconds(Math.Clamp(seconds, OnlineBeatMin.TotalSeconds, OnlineBeatMax.TotalSeconds));
                 _nextOnline = DateTime.UtcNow + _onlineEvery;
+            }
+            if (answer.RootElement.ValueKind == JsonValueKind.Object && answer.RootElement.TryGetProperty("community", out var community)
+                && community.ValueKind == JsonValueKind.Object)
+            {
+                _community = community.Clone();
+                _communityAt = DateTime.UtcNow;
+                PushState();
             }
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
@@ -171,9 +188,72 @@ public sealed partial class AppController
             SayOfflineAsync(id).Wait(TimeSpan.FromSeconds(2));
     }
 
+    // ───────────────────────────── what Bloxkeep's users play ─────────────────────────────
+
+    /// <summary>An account dropped out since the last beat, for the bot's radar: its game (universe) and why.</summary>
+    readonly record struct OnlineDrop(long Universe, string Why);
+    readonly List<OnlineDrop> _onlineDrops = new();
+    const int OnlineDropsMax = 20;
+    /// <summary>What the bot last said Bloxkeep's users play (services/DiscordBot/worker/online.js communityOf).</summary>
+    JsonElement? _community;
+    DateTime _communityAt;
+
+    /// <summary>The games (Roblox universes) this PC's accounts are in now, the ones Bloxkeep knows the universe of.</summary>
+    long[] PlayingUniverses() => _running.Values
+        .Select(r => _logs.StateOf(r.Pid)?.PlaceId ?? r.Launch.Target?.PlaceId ?? 0)
+        .Select(place => place > 0 ? _games.GetValueOrDefault(place)?.UniverseId ?? 0 : 0)
+        .Where(u => u > 0).Distinct().Take(20).ToArray();
+
+    /// <summary>A disconnect the radar counts (Activity's "disconnected"): kicked by the game, the connection lost, the server
+    /// shut down, or couldn't join. Not the person's own (idle, another device, a private server, an update).</summary>
+    void NoteDrop(long placeId, int code, DateTime at)
+    {
+        string? why = code switch
+        {
+            279 => "join",
+            267 => "kick",
+            ServerShutdown => "shutdown",
+            _ when LostConnection(code) => "lost",
+            _ => null,
+        };
+        long universe = _games.GetValueOrDefault(placeId)?.UniverseId ?? 0;
+        if (why is null || universe <= 0 || DateTime.UtcNow - at > TimeSpan.FromMinutes(5) || !Prefs.CountOnline || _onlineDrops.Count >= OnlineDropsMax)
+            return;
+        _onlineDrops.Add(new OnlineDrop(universe, why));
+    }
+
+    /// <summary>What the Games tab and Statistics show of it: null while the count is off or nothing came yet.</summary>
+    object? CommunityDto() => Prefs.CountOnline && _community is { } c ? new { data = c, at = new DateTimeOffset(_communityAt).ToUnixTimeMilliseconds() } : null;
+
+    /// <summary>A name for the alts board, tidied (spaces made one), or null when it isn't one (2 to 20 letters, digits,
+    /// spaces, dots, dashes, underscores, from a letter or digit: the bot takes nothing else).</summary>
+    public static string? BoardNameOf(string? name)
+    {
+        string tidy = Regex.Replace((name ?? "").Normalize(NormalizationForm.FormC), @"\s+", " ").Trim();
+        return Regex.IsMatch(tidy, @"^[\p{L}\p{N}][\p{L}\p{N} ._-]{1,19}$") ? tidy : null;
+    }
+
+    /// <summary>{name}: on the alts board under this name; empty: off it. A name that isn't one is refused.</summary>
+    object? SetBoardName(string name)
+    {
+        string? tidy = name.Trim().Length == 0 ? null : BoardNameOf(name);
+        if (name.Trim().Length > 0 && tidy is null)
+            throw new UserError(L.T("Use 2 to 20 letters or digits (spaces, dots, dashes and underscores too)."));
+        Prefs.BoardName = tidy;
+        Prefs.Save();
+        _nextOnline = DateTime.MinValue; // on the board (or off it) at the next tick, not the next beat
+        PushState();
+        return new { name = tidy };
+    }
+
     object? SetCountOnline(bool on)
     {
         Prefs.CountOnline = on;
+        if (!on)
+        {
+            _community = null;
+            _onlineDrops.Clear();
+        }
         if (!on && Prefs.OnlineId is { } id)
         {
             if (_onlineSaid && OnlineAllowed)

@@ -6,7 +6,7 @@ import { Guarded } from './Guard';
 import { Icon, useHost } from './host';
 import { MacrosView } from './MacrosView';
 import { MonitorView } from './monitor/MonitorView';
-import { NewsView } from './NewsView';
+import { GamesView } from './GamesView';
 import { PresetsView } from './PresetsView';
 import { MonitorHead, Sidebar } from './Sidebar';
 import { AppearancePage } from './settings/AppearancePage';
@@ -45,7 +45,7 @@ export function Shell({ pages, page, preview, stats }: { pages: SettingsPageInfo
         <Guarded name="the dock"><Dock /></Guarded>
       </section>
       <section className="view" id="view-presets" hidden><Guarded name="Presets"><PresetsView /></Guarded></section>
-      <section className="view" id="view-news" hidden><Guarded name="Game news"><NewsView /></Guarded></section>
+      <section className="view" id="view-news" hidden><Guarded name="Games"><GamesView /></Guarded></section>
       <section className="view" id="view-macros" hidden><Guarded name="Macros"><MacrosView /></Guarded></section>
       <section className="view" id="view-stats" hidden><Guarded name="Statistics"><StatsView api={stats} /></Guarded></section>
       <section className="view" id="view-monitor" hidden>

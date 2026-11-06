@@ -194,7 +194,7 @@ static class DiscordSuite
                 events.Clear();
                 return ((DiscordMessage)Harness.Invoke(app, "EventsMessage", alerts)!, ping);
             }
-            void Notify(string text, string type, Guid subject = default) => Harness.Invoke(app, "Notify", text, "warn", type, subject, false);
+            void Notify(string text, string type, Guid subject = default) => Harness.Invoke(app, "Notify", text, "warn", type, subject, false, null);
 
             Stay(0, 0, TimeSpan.FromMinutes(72), 277);
             var drop = Raise(() => Notify(L.F("{0} left the game — rejoining in {1}s…", Name(0), 5), "drop", accounts[0].Id));

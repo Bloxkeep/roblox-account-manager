@@ -2861,7 +2861,10 @@
       // app's state keeps the button disabled ("Updating…") until the launcher is done, which busy() would undo.
       case 'rbx-update': return (async () => {
         const rv = S.app.robloxVersion || {}, n = S.metrics.robloxCount;
-        if (rv.updating || (n && !await confirmBox(tn('rbx.updateQ', n, { l: rv.updater }), { title: t('rbx.updateTitle'), ok: t('rbx.updateOk') }))) return;
+        // Roblox's own installer can't leave windows open: they close and open again, as Close, update, reopen says.
+        const own = rv.updater === 'Roblox';
+        const q = own ? (rv.reopens ? tn('rbx.reopenQ', n, { m: rv.reopens }) : tn('rbx.reopenNone', n)) : tn('rbx.updateQ', n, { l: rv.updater });
+        if (rv.updating || (n && !await confirmBox(q, { title: t('rbx.updateTitle'), ok: t('rbx.updateOk') }))) return;
         if (await call('updateRoblox') !== undefined) toast(t('rbx.updateStarted', { l: rv.updater }), 'info');
       })();
       case 'rbx-reopen': return (async () => {
@@ -3294,7 +3297,6 @@
   // A macro recording ended (F8, Stop, Ctrl+Alt+0): its steps go to whoever started it (the Macros tab or the macro form).
   bridge.on('macroRecorded', d => uiSignal('macroRecorded', d));
   bridge.on('feedCards', d => uiSignal('feedCards', d));
-  bridge.on('feedPrices', d => uiSignal('feedPrices', d));
   bridge.on('macroSeen', d => uiSignal('macroSeen', d));
   // Edit on game: a dot or box dragged on the Roblox window (or Done there) goes to the macro form.
   bridge.on('onGameEdit', d => uiSignal('onGameEdit', d));

@@ -40,6 +40,8 @@ public sealed partial class AppController
         };
         if (text is not null)
             (entry.Text, entry.TextVi, entry.Names) = ActivitySentences(text);
+        if (kind == "disconnected" && placeId > 0 && code is int dropped)
+            NoteDrop(placeId.Value, dropped, entry.At);
         if (_vault is not { } vault)
         {
             if (_activityWhileLocked.Count < 200)

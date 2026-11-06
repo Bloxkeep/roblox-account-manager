@@ -1,6 +1,6 @@
 // A small thing under its button (Add step's list, a block's "delete it all?", New counter, the template cards): inside
 // its dialog when it has one, so the dialog's keys and focus still hold; the menus' look.
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 
 /** Something under (or over, near the bottom) its button, inside its dialog so the dialog's keys and focus still hold;
@@ -66,6 +66,9 @@ export function Pop({ anchor, close, label, className, children, focusFirst = tr
     };
   }, [anchor, close, placeIt]);
   const host = anchor.closest('.overlay') || document.body;
+  const firstAt = useMemo(() => { const a = anchor.getBoundingClientRect(); return { left: a.left, top: a.bottom + 6 }; }, [anchor]);
   return createPortal(<div className={`mc-pop${className ? ' ' + className : ''}${place?.max ? ' scroll' : ''}`} ref={panel} role="dialog" aria-label={label}
-    style={place ? { left: place.left, top: place.top, maxHeight: place.max } : { opacity: 0, left: 0, top: 0 }}>{children}</div>, host);
+    // Before it's placed: hidden (visibility, which no fade animation overrides) and already under its button, never at
+    // the window's corner: a frame drawn there showed its first row (a game's icon) over Bloxkeep's logo for a blink.
+    style={place ? { left: place.left, top: place.top, maxHeight: place.max } : { visibility: 'hidden', left: firstAt.left, top: firstAt.top }}>{children}</div>, host);
 }

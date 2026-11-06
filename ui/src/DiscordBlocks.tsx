@@ -93,7 +93,7 @@ export function Inline({ text }: { text: string }): ReactNode {
     const key = k++;
     if (m[2] !== undefined) out.push(<code key={key} className="md-code">{m[2].replace(/^ (.*) $/, '$1')}</code>);
     else if (m[3] !== undefined) out.push(<Time key={key} ms={Number(m[3]) * 1000} style={m[4] || 'f'} />);
-    else if (m[7] !== undefined) out.push(<img key={key} className="emj" src={emojiSrc(m[7], m[5] === 'a')} alt={`:${m[6]}:`} title={`:${m[6]}:`} loading="lazy" />);
+    else if (m[7] !== undefined) out.push(<img key={key} className="emj" src={emojiSrc(m[7], m[5] === 'a')} alt={`:${m[6]}:`} title={`:${m[6]}:`} decoding="async" />);
     else if (m[9] !== undefined) out.push(<Link key={key} url={m[9]}><Inline text={m[8]} /></Link>);
     else if (m[10] !== undefined) out.push(<Link key={key} url={m[10]}>{m[10]}</Link>);
     else if (m[11] !== undefined) out.push(<Spoiler key={key}><Inline text={m[11]} /></Spoiler>);
@@ -187,7 +187,7 @@ export function Md({ text, className = '' }: { text: string; className?: string 
 /** A field's name that starts with an emoji (most stock and spawn bots name items so): that emoji as the tile's picture. */
 function splitIcon(name: string): { icon: ReactNode; rest: string } {
   const custom = /^\s*<(a?):(\w+):(\d+)>\s*/.exec(name);
-  if (custom) return { icon: <img src={emojiSrc(custom[3], !!custom[1])} alt="" loading="lazy" />, rest: name.slice(custom[0].length) };
+  if (custom) return { icon: <img src={emojiSrc(custom[3], !!custom[1])} alt="" decoding="async" />, rest: name.slice(custom[0].length) };
   const uni = /^\s*((?:\p{Extended_Pictographic}|\p{Regional_Indicator})(?:️|‍(?:\p{Extended_Pictographic})|\p{Emoji_Modifier}|\p{Regional_Indicator})*)\s*/u.exec(name);
   if (uni) return { icon: <span className="uni">{uni[1]}</span>, rest: name.slice(uni[0].length) };
   return { icon: null, rest: name };
