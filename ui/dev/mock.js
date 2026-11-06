@@ -207,7 +207,8 @@
   let betaUpdates = params.has('beta'); // ?beta=1: Settings › Get beta versions on
   let countOnline = !params.has('offline'); // ?offline: Settings › Add me to the online count off
   // What Bloxkeep's users play, as the bot tells back with each beat (online.js communityOf); ?board: this PC on the alts
-  // board; ?noradar: no radar line.
+  // board (?board&noalts: on it by name, no account running); ?noradar: no radar line. With the count off, the same sums
+  // without this PC (communityNow).
   let boardName = params.has('board') ? 'Máy farm của Minh' : null;
   const community = () => ({
     pcs: 71, alts: 1384,
@@ -217,8 +218,8 @@
     radar: params.has('noradar') ? [] : [{ game: 994732206, name: 'Blox Fruits', place: 2753915549, why: 'lost', pcs: 6, minutes: 15 }],
     board: [{ name: 'Kho alt VN', alts: 96 }, { name: 'FarmHub', alts: 74 }, { name: 'Máy farm của Minh', alts: 52 }, { name: 'tuan_pc', alts: 40 },
       { name: 'Bee Farm 24h', alts: 31 }, { name: 'GAG stock', alts: 22 }, { name: 'PC-2', alts: 18 }, { name: 'Night Shift', alts: 15 },
-      { name: 'Lam.alts', alts: 12 }, { name: 'khoa', alts: 9 }].filter(b => boardName || b.name !== 'Máy farm của Minh'),
-    you: boardName ? { rank: 3, of: 17 } : null,
+      { name: 'Lam.alts', alts: 12 }, { name: 'khoa', alts: 9 }].filter(b => (boardName && countOnline && !params.has('noalts')) || b.name !== 'Máy farm của Minh'),
+    you: boardName && countOnline ? { rank: params.has('noalts') ? null : 3, of: 17 } : null,
   });
   // ?remote=code|linked|connecting: Settings › Discord › Control from Discord on, waiting for its code to be typed, linked,
   // or not connected yet.
@@ -502,7 +503,7 @@
     lockUpdate: locked && !screenLock && lockUpdate !== null ? { go: lockUpdateGo } : null,
     countOnline,
     boardName,
-    community: countOnline ? { data: community(), at: Date.now() } : null,
+    community: { data: community(), at: Date.now() },
     remote,
     installs: NO_ROBLOX ? { handler: null, bloxstrap: false, fishstrap: false, others: [], roblox: false, direct: false, store: false, vng: params.has('vng') }
       : { handler: 'Bloxstrap', bloxstrap: true, fishstrap: false, others: params.has('others') ? ['Voidstrap'] : [], roblox: false, direct: true, store: params.has('store'), vng: params.has('vng') },
@@ -739,6 +740,7 @@
         case 'setDailySignInCheck': dailySignInCheck = a.enabled; push(); return null;
         case 'setBetaUpdates': betaUpdates = a.enabled; push(); return null;
         case 'setCountOnline': countOnline = a.enabled; push(); return null;
+        case 'communityNow': return null;
         case 'setBoardName': {
           const name = String(a.name || '').replace(/\s+/g, ' ').trim();
           if (name && !/^[\p{L}\p{N}][\p{L}\p{N} ._-]{1,19}$/u.test(name))

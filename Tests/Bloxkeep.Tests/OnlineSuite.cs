@@ -30,7 +30,7 @@ static class OnlineSuite
         var (listener, url) = Listen();
         Environment.SetEnvironmentVariable("BLOXKEEP_ONLINE_URL", url);
         var received = new List<JsonElement>();
-        int status = 200;
+        int status = 200, asked = 0;
         string answer = """{"next":120}""";
         var serving = Task.Run(async () =>
         {
@@ -39,6 +39,15 @@ static class OnlineSuite
                 HttpListenerContext ctx;
                 try { ctx = await listener.GetContextAsync(); }
                 catch (Exception) { break; }
+                if (ctx.Request.HttpMethod == "GET") // the sums for an app not in the count (CommunityNow)
+                {
+                    Interlocked.Increment(ref asked);
+                    byte[] sums = Encoding.UTF8.GetBytes("""{"community":{"pcs":3,"alts":9,"games":[],"radar":[],"board":[{"name":"Farm PC","alts":9}],"you":null}}""");
+                    ctx.Response.ContentType = "application/json";
+                    await ctx.Response.OutputStream.WriteAsync(sums);
+                    ctx.Response.Close();
+                    continue;
+                }
                 using (var reader = new StreamReader(ctx.Request.InputStream))
                 {
                     var body = JsonDocument.Parse(await reader.ReadToEndAsync()).RootElement.Clone();
@@ -70,11 +79,13 @@ static class OnlineSuite
         string id = Prefs.OnlineId ?? "";
         var names = first.EnumerateObject().Select(p => p.Name).Order().ToArray();
         string? pc = (string?)typeof(AppController).GetMethod("OnlineIdForThisPc", Harness.F)!.Invoke(null, null);
-        // What its accounts play goes too (games, how many run, drops, the alts board's name): none here, no account.
+        // What its accounts play goes too (games, how many run, drops, the alts board's name): none here, no account; on the
+        // board from the start under a made-up name.
         c.Check("…with this PC's id (32 hex digits, not Windows' own id), the version and the language, nothing else",
             string.Join(",", names) == "age,alts,app,board,drops,first,games,id,language" && pc is { Length: 32 } && pc.All(Uri.IsHexDigit) && pc == pc.ToLowerInvariant()
             && first.GetProperty("games").GetArrayLength() == 0 && first.GetProperty("alts").GetInt32() == 0
-            && first.GetProperty("drops").GetArrayLength() == 0 && first.GetProperty("board").ValueKind == JsonValueKind.Null
+            && first.GetProperty("drops").GetArrayLength() == 0 && first.GetProperty("board").GetString() is { } made && System.Text.RegularExpressions.Regex.IsMatch(made, @"^[A-Z][a-z]+ [A-Z][a-z]+ \d\d$")
+            && Prefs.BoardName == made && Prefs.BoardNameChosen
             && first.GetProperty("id").GetString() == id && id == pc && !first.ToString().Contains(MachineGuid(), StringComparison.OrdinalIgnoreCase)
             && first.GetProperty("app").GetString() == Harness.Get<AppUpdater>(app, "_updater").CurrentVersion
             && first.GetProperty("language").GetString() is "en" or "vi", first);
@@ -130,19 +141,35 @@ static class OnlineSuite
         await Task.Delay(300);
         c.Check("…and nothing more sent", Count() == 12, Count());
 
+        // Off, with the Games tab or Statistics open: the sums asked for apart (no beat, nothing of this PC), once a minute.
+        c.Check("off: no sums kept from the count", Harness.Invoke(app, "CommunityDto") is null);
+        await Harness.Call(app, "communityNow", new { });
+        for (int i = 0; i < 100 && (Volatile.Read(ref asked) < 1 || Harness.Get<bool>(app, "_communityAsking")); i++)
+            await Task.Delay(50);
+        c.Check("…the Games tab or Statistics asks for them apart: no beat, the board shown",
+            asked == 1 && Count() == 12 && Harness.Invoke(app, "CommunityDto") is { } sums && JsonSerializer.Serialize(sums).Contains("Farm PC"), asked);
+        await Harness.Call(app, "communityNow", new { });
+        await Task.Delay(300);
+        c.Check("…not again within the minute", asked == 1, asked);
+
         // On again: counted at once, under this PC's id again.
         await Harness.Call(app, "setCountOnline", new { enabled = true });
         c.Check("on again: a beat at once, this PC's id again", await Beat(DateTime.UtcNow, 13) && Last().GetProperty("id").GetString() == id
             && Prefs.OnlineId == id, Last());
 
+        // The name emptied: off the board, and no made-up one again.
+        await Harness.Call(app, "setBoardName", new { name = "" });
+        c.Check("the board name emptied: off the board, no made-up name again", await Beat(DateTime.UtcNow, 14)
+            && Last().GetProperty("board").ValueKind == JsonValueKind.Null && Prefs.BoardName is null, Last());
+
         // Reinstalled with its data deleted, or an earlier Bloxkeep's random id in prefs.json: still this PC's id, so it
         // isn't counted as one more.
         Prefs.OnlineId = null;
         Harness.Set(app, "_nextOnline", DateTime.MinValue);
-        c.Check("reinstalled, its data deleted: the same id", await Beat(DateTime.UtcNow, 14) && Last().GetProperty("id").GetString() == id, Last());
+        c.Check("reinstalled, its data deleted: the same id", await Beat(DateTime.UtcNow, 15) && Last().GetProperty("id").GetString() == id, Last());
         Prefs.OnlineId = Guid.NewGuid().ToString("N");
         Harness.Set(app, "_nextOnline", DateTime.MinValue);
-        c.Check("…and an earlier random id gives way to it", await Beat(DateTime.UtcNow, 15) && Last().GetProperty("id").GetString() == id
+        c.Check("…and an earlier random id gives way to it", await Beat(DateTime.UtcNow, 16) && Last().GetProperty("id").GetString() == id
             && Prefs.OnlineId == id, Last());
 
         listener.Stop();
@@ -172,6 +199,7 @@ static class OnlineSuite
             var listener = new HttpListener();
             string url = $"http://127.0.0.1:{port}/online/ping/";
             listener.Prefixes.Add(url);
+            listener.Prefixes.Add($"http://127.0.0.1:{port}/online/community/");
             try
             {
                 listener.Start();

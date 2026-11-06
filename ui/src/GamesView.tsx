@@ -54,7 +54,7 @@ export function GamesView() {
   const { cards, loaded } = useFeedCards(shown);
   const { games: botGames, failed } = useWikiGames(shown);
   const played = usePlayed(shown);
-  const community = useCommunity();
+  const community = useCommunity(shown);
   useEffect(() => { if (shown && feeds.fresh) call('feedSeen', {}, { silent: true }); }, [shown, feeds.fresh]);
 
   // One card per game, from any side; followed games first, then the ones with news unread, then the ones added here.

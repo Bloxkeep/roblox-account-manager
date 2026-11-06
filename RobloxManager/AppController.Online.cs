@@ -63,6 +63,14 @@ public sealed partial class AppController
         string age = InstallAge();
         bool first = !Prefs.FirstOpenTold && age == "new";
         _onlineSending = true;
+        if (!Prefs.BoardNameChosen && Prefs.BoardName is null)
+        {
+            // On the alts board from the start under a made-up name, changed or emptied (off the board) in Statistics.
+            Prefs.BoardName = RandomBoardName();
+            Prefs.BoardNameChosen = true;
+            Prefs.Save();
+            PushState();
+        }
         try
         {
             // What this PC plays now, for the sums the bot tells back (CommunityDto): the games its accounts are in, how many
@@ -222,8 +230,57 @@ public sealed partial class AppController
         _onlineDrops.Add(new OnlineDrop(universe, why));
     }
 
-    /// <summary>What the Games tab and Statistics show of it: null while the count is off or nothing came yet.</summary>
-    object? CommunityDto() => Prefs.CountOnline && _community is { } c ? new { data = c, at = new DateTimeOffset(_communityAt).ToUnixTimeMilliseconds() } : null;
+    /// <summary>What the Games tab and Statistics show of it: null while nothing came yet. With the count on, from each beat's
+    /// answer; off, from <see cref="CommunityNow"/>.</summary>
+    object? CommunityDto() => _community is { } c ? new { data = c, at = new DateTimeOffset(_communityAt).ToUnixTimeMilliseconds() } : null;
+
+    /// <summary>The bot's sums for an app not in the count (GET /online/community): what is played, the radar, the board,
+    /// nothing of this PC and nothing sent about it.</summary>
+    static string CommunityUrl => (OnlineTestUrl ?? OnlineUrl).Replace("/online/ping", "/online/community", StringComparison.Ordinal);
+    bool _communityAsking;
+
+    /// <summary>The Games tab or Statistics is open while the count is off: the sums again, at most once a minute (the bot keeps
+    /// them 30 s). With the count on, the beats bring them.</summary>
+    object? CommunityNow()
+    {
+        if (Prefs.CountOnline || !OnlineAllowed || _communityAsking || DateTime.UtcNow - _communityAt < TimeSpan.FromSeconds(55))
+            return null;
+        _communityAsking = true;
+        _ = AskCommunityAsync();
+        return null;
+    }
+
+    async Task AskCommunityAsync()
+    {
+        try
+        {
+            using var res = await OnlineHttp.GetAsync(CommunityUrl);
+            if (!res.IsSuccessStatusCode)
+                return;
+            using var answer = JsonDocument.Parse(await res.Content.ReadAsStringAsync());
+            if (!Prefs.CountOnline && answer.RootElement.ValueKind == JsonValueKind.Object && answer.RootElement.TryGetProperty("community", out var community)
+                && community.ValueKind == JsonValueKind.Object)
+            {
+                _community = community.Clone();
+                _communityAt = DateTime.UtcNow;
+                PushState();
+            }
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
+        {
+        }
+        finally
+        {
+            _communityAsking = false;
+        }
+    }
+
+    static readonly string[] BoardWords1 = ["Swift", "Brave", "Lucky", "Quiet", "Bold", "Calm", "Sly", "Wild", "Mighty", "Clever", "Rapid", "Silent", "Happy", "Fuzzy", "Shiny", "Cosmic"];
+    static readonly string[] BoardWords2 = ["Fox", "Otter", "Panda", "Tiger", "Wolf", "Hawk", "Koala", "Lynx", "Falcon", "Badger", "Raven", "Shark", "Gecko", "Moose", "Bison", "Owl"];
+
+    /// <summary>A made-up name for the alts board, like "Swift Otter 42": nothing of the PC or its accounts in it.</summary>
+    public static string RandomBoardName() =>
+        $"{BoardWords1[RandomNumberGenerator.GetInt32(BoardWords1.Length)]} {BoardWords2[RandomNumberGenerator.GetInt32(BoardWords2.Length)]} {RandomNumberGenerator.GetInt32(10, 100)}";
 
     /// <summary>A name for the alts board, tidied (spaces made one), or null when it isn't one (2 to 20 letters, digits,
     /// spaces, dots, dashes, underscores, from a letter or digit: the bot takes nothing else).</summary>
@@ -240,6 +297,7 @@ public sealed partial class AppController
         if (name.Trim().Length > 0 && tidy is null)
             throw new UserError(L.T("Use 2 to 20 letters or digits (spaces, dots, dashes and underscores too)."));
         Prefs.BoardName = tidy;
+        Prefs.BoardNameChosen = true;
         Prefs.Save();
         _nextOnline = DateTime.MinValue; // on the board (or off it) at the next tick, not the next beat
         PushState();
@@ -251,7 +309,8 @@ public sealed partial class AppController
         Prefs.CountOnline = on;
         if (!on)
         {
-            _community = null;
+            _community = null; // the sums again without this PC's place (CommunityNow)
+            _communityAt = default;
             _onlineDrops.Clear();
         }
         if (!on && Prefs.OnlineId is { } id)

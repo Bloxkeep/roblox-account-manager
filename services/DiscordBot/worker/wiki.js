@@ -51,6 +51,7 @@ export const POPULAR_GAMES = [
   ['fisch', 'Fisch', 16732694052, 'https://fisch.fandom.com'],
   ['bee-swarm-simulator', 'Bee Swarm Simulator', 1537690962, 'https://bee-swarm-simulator.fandom.com'],
   ['bubble-gum-simulator-infinity', 'Bubble Gum Simulator Infinity', 85896571713843, 'https://bgs-infinity.fandom.com'],
+  ['tap-simulator-reborn', 'Tap Simulator REBORN', 72858262610964, 'https://tap-simulator-reborn.fandom.com'], // checked 2026-11-07: universe 10629695169, the only wiki (small)
   ['sols-rng', "Sol's RNG", 15532962292, 'https://sol-rng.fandom.com'],
   ['steal-a-brainrot', 'Steal a Brainrot', 109983668079237, 'https://stealabrainrot.fandom.com'],
   ['99-nights-in-the-forest', '99 Nights in the Forest', 79546208627805, 'https://99-nights-in-the-forest.fandom.com'],

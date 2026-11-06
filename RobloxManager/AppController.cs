@@ -369,6 +369,7 @@ public sealed partial class AppController : IDisposable
         "setBetaUpdates" => Done(SetBetaUpdates(Bool(a, "enabled"))),
         "setCountOnline" => Done(SetCountOnline(Bool(a, "enabled"))),
         "setBoardName" => Done(SetBoardName(Str(a, "name"))),
+        "communityNow" => Done(CommunityNow()),
         "whatsNew" => Done(WhatsNew.Between(null, _updater.CurrentVersion)),
         "seenWhatsNew" => Done(SeenWhatsNew()),
         "setLanguage" => Done(SetLanguage(Str(a, "language"))),

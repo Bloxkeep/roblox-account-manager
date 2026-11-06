@@ -1078,6 +1078,12 @@ export class Gateway extends DurableObject {
     return { next, community: { ...shown, you: b.name ? { rank: rank >= 0 ? rank + 1 : null, of: ranked.length } : null } };
   }
 
+  /** The sums alone, for an app not in the count (GET /online/community): no PC's id, no place of its own. */
+  communityShown() {
+    const { ranked, ...shown } = this.community();
+    return { ...shown, you: null };
+  }
+
   /** What the apps play now (online.js communityOf), worked out at most every 20 seconds (every beat in the checks). */
   community(now = Date.now()) {
     if (this.communityAt && now - this.communityAt < (Number(this.env.COMMUNITY_EVERY_MS ?? 20_000)) && this.communityNow)
@@ -2034,6 +2040,23 @@ async function downloadsBadge(env, ctx) {
  * The newest public Bloxkeep, for the apps: { version }. Kept a minute per Cloudflare location, so however many apps
  * ask, the object answers a few times a minute. Nothing is sent and nothing is kept about who asks.
  */
+/**
+ * What Bloxkeep's users play now (online.js communityOf), for an app that isn't in the online count: the same sums a
+ * beat's answer has, without the PCs' order (ids), kept 30 s per Cloudflare location so the object sees a few asks a minute.
+ */
+async function communityNow(env, ctx) {
+  const key = new Request('https://bloxkeep-bot.invalid/online/community'), cache = caches.default;
+  const hit = await cache.match(key);
+  if (hit)
+    return hit;
+  const community = await ask(env, g => g.communityShown()).catch(() => null);
+  const seconds = Number(env.COMMUNITY_CACHE_S ?? 30);
+  const res = Response.json({ community }, { headers: { 'Cache-Control': community && seconds > 0 ? `public, max-age=${seconds}` : 'no-store' } });
+  if (community && seconds > 0)
+    ctx.waitUntil(cache.put(key, res.clone()));
+  return res;
+}
+
 async function latestVersion(env, ctx) {
   const key = new Request('https://bloxkeep-bot.invalid/latest'), cache = caches.default;
   const hit = await cache.match(key);
@@ -2111,6 +2134,8 @@ export default {
       return downloadsBadge(env, ctx);
     if (url.pathname === '/online/ping' && request.method === 'POST') // a Bloxkeep app, open now (online.js)
       return ping(request, env, gateway);
+    if (url.pathname === '/online/community') // what Bloxkeep's users play, for an app not in the count: sums only
+      return communityNow(env, ctx);
     if (url.pathname === '/online' || url.pathname === '/online.json') { // the dashboard, with the key /online gives
       const key = await dashboardKey(env.DISCORD_TOKEN);
       if (!key || url.searchParams.get('key') !== key)

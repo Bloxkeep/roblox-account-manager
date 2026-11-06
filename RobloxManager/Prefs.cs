@@ -51,9 +51,12 @@ public static class Prefs
     /// to nothing else (AppController.Online.cs). Forgotten when the count is turned off.</summary>
     public static string? OnlineId { get; set; }
 
-    /// <summary>Settings › Privacy › Show this PC on the alts board: its name there (null: not on it, the default). Goes
-    /// with the online count's beats, which also say how many accounts run here (AppController.Online.cs).</summary>
+    /// <summary>Statistics › Most alts now: this PC's name there (null: not on it). Goes with the online count's beats, which
+    /// also say how many accounts run here (AppController.Online.cs). A made-up name at the first beat until one is chosen.</summary>
     public static string? BoardName { get; set; }
+
+    /// <summary>The board name was given (made up or chosen, emptied too): no made-up one again.</summary>
+    public static bool BoardNameChosen { get; set; }
 
     /// <summary>The bot was told this copy's first "open" (a new install, AppController.Online.cs): told once.</summary>
     public static bool FirstOpenTold { get; set; }
@@ -384,6 +387,7 @@ public static class Prefs
             if (Text(root, "onlineId") is { } onlineId && Guid.TryParseExact(onlineId, "N", out _))
                 OnlineId = onlineId;
             BoardName = AppController.BoardNameOf(Text(root, "boardName"));
+            BoardNameChosen = root.TryGetProperty("boardNameChosen", out var chosen) && chosen.ValueKind == JsonValueKind.True;
             // From before each vault had its own: moved to a vault by Vaults.Load (MoveRemoteTo).
             _remoteControl = root.TryGetProperty("remoteControl", out var remote) && remote.ValueKind == JsonValueKind.True;
             FirstOpenTold = root.TryGetProperty("firstOpenTold", out var told) && told.ValueKind == JsonValueKind.True;
@@ -566,7 +570,7 @@ public static class Prefs
             {
                 ["language"] = Language, ["theme"] = Theme, ["closeToTray"] = CloseToTray, ["globalHotkeys"] = GlobalHotkeys, ["hideNames"] = HideNames, ["trayHintShown"] = TrayHintShown,
                 ["safeRendering"] = SafeRendering, ["checkUpdates"] = CheckUpdates, ["betaUpdates"] = BetaUpdates, ["lastVersion"] = LastVersion,
-                ["discordPresence"] = DiscordPresence, ["countOnline"] = CountOnline, ["onlineId"] = OnlineId, ["boardName"] = BoardName,
+                ["discordPresence"] = DiscordPresence, ["countOnline"] = CountOnline, ["onlineId"] = OnlineId, ["boardName"] = BoardName, ["boardNameChosen"] = BoardNameChosen,
                 // Written (empty once moved to a vault) so the old keys never come back from what this build doesn't know.
                 ["remoteControl"] = _remoteControl, ["remoteKey"] = _remoteKey, ["remoteGone"] = RemoteGone.ToArray(), ["firstOpenTold"] = FirstOpenTold,
                 ["customTheme"] = new { background = Custom.Background, accent = Custom.Accent, fade = Custom.Fade, picture = Custom.Picture, blur = Custom.Blur },

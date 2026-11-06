@@ -1,8 +1,9 @@
 // What Bloxkeep's users play now, as the online count's bot tells every app back with each beat (AppController.Online.cs,
 // services/DiscordBot/worker/online.js communityOf): the games played most (a game shows with 3 PCs on it or more), the
 // radar (a game where 3 PCs or more dropped out the same way in the last 15 minutes) and the alts board (the PCs running
-// the most accounts, only the ones that joined it, under the name they chose). Nothing here while the count is off.
-import { Icon, useAppState, useHost } from './host';
+// the most accounts, under a made-up name or the one they chose). With the count off, asked for apart (communityNow).
+import { useEffect } from 'react';
+import { Icon, useAppState, useHost, usePage } from './host';
 import { TextBox } from './settings/parts';
 
 export type PlayingGame = { game: number; name: string | null; place: number | null; pcs: number };
@@ -14,8 +15,19 @@ export type Community = {
 };
 type T = (k: string, v?: Record<string, string | number>) => string;
 
-export function useCommunity(): Community | null {
+/** The sums; while the count is off and this is on screen, asked for once a minute (with the count on, each beat brings them). */
+export function useCommunity(shown: boolean): Community | null {
   const app = useAppState();
+  const { call } = useHost();
+  const off = app.countOnline === false;
+  useEffect(() => {
+    if (!shown || !off)
+      return;
+    const ask = () => { call('communityNow', {}, { silent: true }).catch(() => {}); };
+    ask();
+    const timer = setInterval(ask, 60_000);
+    return () => clearInterval(timer);
+  }, [shown, off]);
   return app.community?.data || null;
 }
 
@@ -38,7 +50,7 @@ export function RadarStrip({ lines, t, named = true }: { lines: RadarLine[]; t: 
 export function AltsBoard() {
   const { t, call, locale } = useHost();
   const app = useAppState();
-  const c = useCommunity();
+  const c = useCommunity(usePage(p => p.view) === 'stats');
   const counted = app.countOnline !== false, name: string = app.boardName || '';
   const num = (n: number) => n.toLocaleString(locale);
   const most = c?.board[0]?.alts || 1;
@@ -54,8 +66,7 @@ export function AltsBoard() {
         <span><b>{num(c.pcs)}</b>{t('cm.pcs')}</span>
       </div> : null}
     </div>
-    {!counted ? <p className="cm-note">{t('cm.off')}</p>
-      : !c ? <p className="cm-note">{t('news.connecting')}</p>
+    {!c ? <p className="cm-note">{t('news.connecting')}</p>
       : !c.board.length ? <p className="cm-note">{t('cm.empty')}</p>
       : <>
         <ol className="cm-podium">{[1, 0, 2].filter(i => top[i]).map(i => <li key={i} className={`cm-step p${i + 1} ${isMe(i) ? 'me' : ''}`}
@@ -73,12 +84,13 @@ export function AltsBoard() {
           </li>;
         })}</ol> : null}
       </>}
-    {counted ? <div className="cm-join">
+    {!counted ? <div className="cm-join"><small>{t('cm.joinOff')}</small></div> : <div className="cm-join">
       {name && c?.you?.rank && c.you.rank > c.board.length ? <p>{t('cm.yourRank', { r: c.you.rank, n: c.you.of })}</p> : null}
+      {name && c?.you && !c.you.rank ? <p>{t('cm.notYet')}</p> : null}
       <label><span>{t(name ? 'cm.nameOn' : 'cm.join')}</span>
         <TextBox className="field sm" saved={name} maxLength={20} spellCheck={false} placeholder={t('cm.namePh')} aria-label={t('cm.join')}
           commit={v => { call('setBoardName', { name: v }); }} /></label>
       <small>{t('cm.joinNote')}</small>
-    </div> : null}
+    </div>}
   </section>;
 }
