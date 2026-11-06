@@ -45,9 +45,10 @@ static class Ui
 
     public static Icon? AppIcon { get; } = LoadAppIcon();
 
+    /// <summary>In December the logo in a Santa hat (shared.js swaps the page's logo the same way), from the next start.</summary>
     static Icon? LoadAppIcon()
     {
-        using var stream = typeof(Ui).Assembly.GetManifestResourceStream("app.ico");
+        using var stream = typeof(Ui).Assembly.GetManifestResourceStream(Clock.Now().Month == 12 ? "app-christmas.ico" : "app.ico");
         return stream is null ? null : new Icon(stream);
     }
 
