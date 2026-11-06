@@ -38,8 +38,25 @@ export const AGES = ['new', 'week', 'old'];
  * launch, antivirus; "Something else" there, or an uninstaller before 1.0.18, says broken). */
 export const WHY = ['broken', 'signin', 'launch', 'antivirus', 'unneeded', 'hard', 'other'];
 
-/** What the app sent, checked: { id, app, lang, first, age } or { id, gone: true, removed, why }; null for anything else.
- * first: a new install's first beat; removed: its uninstaller saying so. */
+// What a beat may also say of the PC's play (Settings › Privacy, with the online count; app 1.0.19 on): the games its
+// accounts are in now (Roblox universes), how many of its accounts are running, its accounts dropped out since the last
+// beat and why, and, only if it joined the alts board, its name there. Never an account. Kept in memory alone: what's
+// shown is the sums ("Playing now", the radar, the board), none of it written down.
+/** Why an account dropped out, for the radar: kicked by the game, connection lost, server shut down, couldn't join. */
+export const DROPS = ['kick', 'lost', 'shutdown', 'join'];
+/** A name on the alts board: 2 to 20 letters, digits, spaces, dots, dashes, underscores, starting with a letter or digit. */
+export const BOARD_NAME = /^[\p{L}\p{N}][\p{L}\p{N} ._-]{1,19}$/u;
+export const GAMES_MAX = 20, DROPS_MAX = 20, ALTS_MAX = 500;
+/** A game shows with at least this many PCs on it, a radar line with this many PCs dropped there the same way (fewer
+ * would point at someone); the radar looks this far back. */
+export const GAME_MIN = 3, RADAR_MIN = 3, RADAR_MINUTES = 15;
+export const GAMES_SHOWN = 12, BOARD_SHOWN = 10;
+
+const ids = (list, max) => Array.isArray(list)
+  ? [...new Set(list.filter(n => Number.isSafeInteger(n) && n > 0))].slice(0, max) : [];
+
+/** What the app sent, checked: { id, app, lang, first, age, games, alts, drops, name } or { id, gone: true, removed,
+ * why }; null for anything else. first: a new install's first beat; removed: its uninstaller saying so. */
 export function readBeat(body) {
   const id = typeof body?.id === 'string' ? body.id.toLowerCase() : '';
   if (!/^[0-9a-f]{32}$/.test(id))
@@ -49,7 +66,43 @@ export function readBeat(body) {
   const app = typeof body.app === 'string' && /^\d+\.\d+\.\d+(-[0-9A-Za-z.]+)?$/.test(body.app) && body.app.length <= 30 ? body.app : null;
   if (!app)
     return null;
-  return { id, app, lang: body.language === 'vi' ? 'vi' : 'en', first: body.first === true, age: AGES.includes(body.age) ? body.age : null };
+  const name = typeof body.board === 'string' ? body.board.normalize('NFC').replace(/\s+/g, ' ').trim() : '';
+  return {
+    id, app, lang: body.language === 'vi' ? 'vi' : 'en', first: body.first === true, age: AGES.includes(body.age) ? body.age : null,
+    games: ids(body.games, GAMES_MAX),
+    alts: Number.isSafeInteger(body.alts) ? Math.min(Math.max(body.alts, 0), ALTS_MAX) : 0,
+    drops: (Array.isArray(body.drops) ? body.drops : []).filter(d => Number.isSafeInteger(d?.game) && d.game > 0 && DROPS.includes(d.why))
+      .slice(0, DROPS_MAX).map(d => ({ game: d.game, why: d.why })),
+    name: BOARD_NAME.test(name) ? name : null,
+  };
+}
+
+/**
+ * What the apps are told back with each beat, and /online shows: the games Bloxkeep's users play now (with at least
+ * GAME_MIN PCs on each), the radar (a game where RADAR_MIN PCs or more dropped out the same way in the last
+ * RADAR_MINUTES), the PCs running the most accounts that joined the board, and how many accounts run in all.
+ * here: id → { games, alts, name }; drops: [{ id, game, why, at }]; names: universe → { name, place }.
+ */
+export function communityOf(here, drops, names, now, min = {}) {
+  const gameMin = min.game ?? GAME_MIN, radarMin = min.radar ?? RADAR_MIN;
+  const named = u => ({ game: u, name: names.get(u)?.name ?? null, place: names.get(u)?.place ?? null });
+  const playing = new Map();
+  let alts = 0;
+  for (const h of here.values()) {
+    alts += h.alts ?? 0;
+    for (const u of h.games ?? [])
+      playing.set(u, (playing.get(u) ?? 0) + 1);
+  }
+  const games = [...playing].filter(([, n]) => n >= gameMin).sort((a, b) => b[1] - a[1] || a[0] - b[0]).slice(0, GAMES_SHOWN)
+    .map(([u, n]) => ({ ...named(u), pcs: n }));
+  const since = now - RADAR_MINUTES * 60_000, hit = new Map();
+  for (const d of drops)
+    if (d.at >= since)
+      hit.set(`${d.game}|${d.why}`, (hit.get(`${d.game}|${d.why}`) ?? new Set()).add(d.id));
+  const radar = [...hit].filter(([, pcs]) => pcs.size >= radarMin).sort((a, b) => b[1].size - a[1].size)
+    .map(([k, pcs]) => { const [u, why] = k.split('|'); return { ...named(Number(u)), why, pcs: pcs.size, minutes: RADAR_MINUTES }; });
+  const board = [...here].filter(([, h]) => h.name && h.alts > 0).sort((a, b) => b[1].alts - a[1].alts || (a[1].since ?? 0) - (b[1].since ?? 0));
+  return { pcs: here.size, alts, games, radar, board: board.slice(0, BOARD_SHOWN).map(([, h]) => ({ name: h.name, alts: h.alts })), ranked: board.map(([id]) => id) };
 }
 
 /** The dashboard's key, made from the bot's token: only the link /online gives opens it, and a new token changes it. */
@@ -91,6 +144,21 @@ export function weekChart(days, today) {
   return `https://quickchart.io/chart?v=4&w=640&h=240&devicePixelRatio=2&bkg=${encodeURIComponent('#2b2d31')}&c=${encodeURIComponent(JSON.stringify(chart))}`;
 }
 
+const RADAR_WORDS = { kick: 'kicked by the game', lost: 'lost connection', shutdown: 'server shut down', join: "couldn't join" };
+/** /online's lines of play: the accounts running, the games played most, the alts board, the radar. */
+export function communityLines(c) {
+  if (!c?.pcs)
+    return [];
+  const game = g => g.name ?? `game ${g.game}`;
+  const clean = s => s.replace(/[_*~`|>\\]/g, m => '\\' + m);
+  return [
+    `**${c.alts}** ${c.alts === 1 ? 'account' : 'accounts'} running on these PCs now`,
+    ...(c.games.length ? [`**Playing now** ${c.games.slice(0, 6).map(g => `${game(g)} ${g.pcs}`).join(' · ')}`] : []),
+    ...(c.board.length ? [`**Most alts now** ${c.board.slice(0, 5).map((b, i) => `${i + 1}. ${clean(b.name)} **${b.alts}**`).join(' · ')}`] : []),
+    ...c.radar.slice(0, 3).map(r => `**Radar** ${game(r)}: ${r.pcs} PCs ${RADAR_WORDS[r.why] ?? r.why} in the last ${r.minutes} minutes`),
+  ];
+}
+
 /** /online's card: online now with today's peak and the last 7 days' peaks as a chart; for Bloxkeep's developers (full)
  * also today's installs and removals with their reasons, the versions in use, how far the bot reaches, the dashboard link. */
 export function onlineMessage(o, link, bot, full = true) {
@@ -114,6 +182,7 @@ export function onlineMessage(o, link, bot, full = true) {
         // No chart of seven empty days.
         ...(o.days.slice(-7).some(d => d.peak)
           ? [{ type: 12, items: [{ media: { url: weekChart(o.days, o.today.day) }, description: "Each day's most at once and its people, the last 7 days" }] }] : []),
+        ...(communityLines(o.community).length ? [text(communityLines(o.community).join('\n'))] : []),
         text([...(full ? [stay, ...(versions ? [`**Versions** ${versions}`] : []), ...(reach ? [reach] : [])] : []),
           `-# The chart: each day's most at once and how many different PCs had Bloxkeep open, the last 7 days. An app counts while it said it's open within ${o.forMinutes} minutes.`].join('\n')),
         ...(link ? [{ type: 1, components: [{ type: 2, style: 5, label: 'Dashboard', url: link }] }] : []),

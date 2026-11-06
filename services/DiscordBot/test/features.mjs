@@ -146,6 +146,7 @@ const NOTES = '- **Robux at once**: shown as you unlock.\n\n#### New\n- details\
 // A game's wiki (wiki.js, MediaWiki's API): Category:Weapons has three pages, two a request (the second through
 // continue), the third a redirect; other categories are empty. Refusing while down.
 let wikiDown = false;
+const gamesAsked = [];
 const wikiPage = (id, title, text) => ({ pageid: id, title, fullurl: `https://deepwoken.fandom.com/wiki/${title.replace(/ /g, '_')}`,
   thumbnail: { source: `https://static.wikia.nocookie.net/x/images/${id}.png/revision/latest/scale-to-width-down/240` }, revisions: [{ slots: { main: { content: text } } }] });
 const wikiAnswer = q => {
@@ -163,6 +164,11 @@ const src = http.createServer((req, res) => {
   const json = v => { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(v)); };
   if (req.url === '/watch.json') return json(watch);
   if (req.url === '/status.json') return json({ result: { status_overall: { status_code: status.code }, status: ['User', 'Player', 'Creator'].map(name => ({ name, status_code: status.code })), incidents: status.code > 100 ? [{ name: 'Players can\'t join' }] : [] } });
+  if (req.url.startsWith('/games?universeIds=')) {
+    gamesAsked.push(req.url);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({ data: req.url.includes('994732206') ? [{ id: 994732206, rootPlaceId: 2753915549, name: '[🎃] Blox Fruits ✨' }] : [] }));
+  }
   if (req.url === '/releases/latest') { res.writeHead(302, { Location: `http://127.0.0.1:${SRC}/releases/tag/${latest}` }); return res.end(); }
   // The install files' downloads, as the Roblox watch workflow counts them for the badge.
   if (req.url === '/downloads.json' && downloadsDown) { res.writeHead(404); return res.end('404: Not Found'); }
@@ -231,6 +237,7 @@ function startDev(extra = {}) {
     RELEASE_API_URL: `http://127.0.0.1:${SRC}/api/tags/`, DOWNLOADS_URL: `http://127.0.0.1:${SRC}/downloads.json`, RELEASE_FILE_URL: `http://127.0.0.1:${SRC}/raw/`, RELEASE_EVERY_MS: '1', DOWNLOADS_EVERY_MS: '0', CAPTCHA_CODE: 'K7MXP', COMMUNITY_GUILD: 'g1', INVITE_RECHECK_MS: '0',
     ONLINE_FOR_MS: '8000', BEAT_BUDGET: '1440', PUBLIC_URL: `http://127.0.0.1:${DEV}`,
     NOTES_URL: `http://127.0.0.1:${SRC}/notes/release-notes-`, NOTES_EVERY_MS: '1', COUNT_EVERY_MS: '3500', LATEST_CACHE_S: '0',
+    ROBLOX_GAMES_URL: `http://127.0.0.1:${SRC}/games?universeIds=`, COMMUNITY_EVERY_MS: '0',
     PRICES_API: `http://127.0.0.1:${SRC}/prices`, WIKI_API: `http://127.0.0.1:${SRC}/wikiapi`, WIKI_REQUESTS: '60', WIKI_CACHE_S: '0', ...extra,
   };
   dev = spawn(process.execPath, [WRANGLER, 'dev', '--ip', '127.0.0.1', '--port', String(DEV), '--test-scheduled', '--persist-to', PERSIST,
@@ -476,6 +483,34 @@ try {
   o = await numbers();
   check("what didn't work counted by its own reason", o.today.removed === 4 && o.today.why.antivirus === 1 && o.today.why.none === 2, JSON.stringify(o.today));
   check('…and named in /online', textsOf({ body: (await interact(asDeveloper)).json?.data }).join('\n').includes('antivirus 1'));
+
+  // What the apps play (online.js communityOf): three PCs in Blox Fruits (universe 994732206), one also in a game only it
+  // plays; two on the alts board. A game shows with 3 PCs or more, a radar line with 3 PCs dropped the same way.
+  const P1 = '1'.repeat(32), P2 = '2'.repeat(32), P3 = '3'.repeat(32);
+  await beat({ id: P1, app: '1.0.19', games: [994732206, 555], alts: 30, board: '  Máy   của Minh ' });
+  await beat({ id: P2, app: '1.0.19', games: [994732206], alts: 45, board: 'Farm_PC', drops: [{ game: 994732206, why: 'lost' }] });
+  b = await beat({ id: P3, app: '1.0.19', games: [994732206], alts: 4, drops: [{ game: 994732206, why: 'lost' }, { game: 994732206, why: 'nope' }] });
+  let c = b.json?.community;
+  check('a beat tells what Bloxkeep users play now: games with 3 PCs or more, accounts running in all',
+    c?.games?.length === 1 && c.games[0].game === 994732206 && c.games[0].pcs === 3 && c.alts === 79 && !JSON.stringify(c).includes('555'), JSON.stringify(c));
+  check('…the alts board: only the PCs that joined it, most first, their names tidied; the one not on it told nothing',
+    JSON.stringify(c?.board) === JSON.stringify([{ name: 'Farm_PC', alts: 45 }, { name: 'Máy của Minh', alts: 30 }]) && c.you === null, JSON.stringify(c));
+  b = await beat({ id: P1, app: '1.0.19', games: [994732206], alts: 30, board: 'Máy của Minh', drops: [{ game: 994732206, why: 'lost' }] });
+  c = b.json?.community;
+  check('…a PC on the board is told its place; the radar shows 3 PCs that lost connection there; no id in any of it',
+    c?.you?.rank === 2 && c.you.of === 2 && c.radar.length === 1 && c.radar[0].why === 'lost' && c.radar[0].pcs === 3 && c.radar[0].minutes === 15
+    && ![P1, P2, P3].some(id => JSON.stringify(c).includes(id)), JSON.stringify(c));
+  check("…a board name that could ping isn't taken", (await beat({ id: P3, app: '1.0.19', games: [994732206], alts: 99, board: '@everyone' })).json?.community?.board?.length === 2);
+  await minute();
+  b = await beat({ id: P2, app: '1.0.19', games: [994732206], alts: 45, board: 'Farm_PC' });
+  check('…the game named from Roblox (once), without its emoji and marks', b.json?.community?.games?.[0]?.name === 'Blox Fruits' && b.json.community.games[0].place === 2753915549
+    && gamesAsked.length === 1, JSON.stringify(b.json?.community?.games) + ' ' + gamesAsked.length);
+  const playCard = textsOf({ body: (await interact(asSomeoneElse)).json?.data }).join('\n');
+  check('/online shows them to everyone: accounts running, playing now, most alts now, the radar',
+    playCard.includes('**174** accounts running') && playCard.includes('**Playing now** Blox Fruits 3') && playCard.includes('**Most alts now** 1. Farm\\_PC **45** · 2. Máy của Minh **30**')
+    && playCard.includes('**Radar** Blox Fruits: 3 PCs lost connection in the last 15 minutes'), playCard);
+  for (const id of [P1, P2, P3])
+    await beat({ id, gone: true });
 
   // A build on Roblox's test channel, checked by the watch: "coming", to both news channels, pinging r1 in g1.
   const base = () => ({ c1: posts('c1').length, c3: posts('c3').length, patches: patches().length });
@@ -731,7 +766,7 @@ try {
   check("Wiki: the games read, each game's items with their lines in plain words",
     wi?.games?.slice(0, 3).map(g => g.id).join() === 'blox-fruits,deepwoken,pilgrammed' && wi.games[1].kind === 'wiki' && wi.games[1].count === 2 && wi.games[1].place === 4111023553
     // Then the popular games (wiki.js POPULAR_GAMES), each once; every game comes with its wiki, so the app never looks for one.
-    && wi.games.length === 32 && new Set(wi.games.map(g => g.id)).size === 32 && wi.games.slice(3).every(g => g.kind === 'game' && g.place > 0)
+    && wi.games.length === 33 && new Set(wi.games.map(g => g.id)).size === 33 && wi.games.slice(3).every(g => g.kind === 'game' && g.place > 0)
     && wi.games.every(g => /^https:\/\/[a-z0-9-]+\.fandom\.com$/.test(g.wiki ?? '')) && wi.games.find(g => g.id === 'shindo-life')?.wiki === 'https://shindo-life-rell.fandom.com'
     && wi.games[1].wiki === 'https://deepwoken.fandom.com'
     && dw?.kind === 'wiki' && dw.cats.join() === 'Weapons' && dw.items.length === 2 && dw.source?.url === 'https://deepwoken.fandom.com' && dw.license?.name === 'CC BY-SA'

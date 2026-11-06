@@ -15,7 +15,7 @@ import { DurableObject } from 'cloudflare:workers';
 import { onceMore } from './calls.js';
 import { CODE_LENGTH, captcha } from './captcha.js';
 import { COMMANDS, api, inviteUrl, replyUrl, verify } from './discord.js';
-import { DAYS_SHOWN, GRACE, GRACE_SLACK_SECONDS, beatEvery, scramble, dashboardKey, dashboardPage, dayOf, onlineMessage, readBeat } from './online.js';
+import { DAYS_SHOWN, GRACE, GRACE_SLACK_SECONDS, RADAR_MINUTES, beatEvery, communityOf, scramble, dashboardKey, dashboardPage, dayOf, onlineMessage, readBeat } from './online.js';
 import { ALL_ACCOUNTS_COMMANDS, ALLOW_FOR, APP_COMMANDS, ANSWER_WAIT, CODE_FOR, CODE_GRACE, COMMANDS_PER_MINUTE, MAX_CODES, MAX_MESSAGE, MAX_PCS, MAX_UNLINKED, MESSAGES_PER_MINUTE, PC_TEXT, REASKED_GAP, SHOTS_PER_MINUTE, TOKEN_FOR, WRONG_CODES, WRONG_WINDOW, choices, handleOf, makeCode, pcId, readAnswer, readCode, readHello } from './remote.js';
 import { CARDS_KEPT, MAX_FEED_SOCKETS, RAW_KEPT, cardsOf, gameId, isNotice, makeFeedChannel, rawLine, rawOf } from './feeds.js';
 import { PRICES_EVERY, PRICES_RETRY, PRICE_SOURCES, readPrices } from './prices.js';
@@ -141,6 +141,12 @@ export class Gateway extends DurableObject {
       ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('ping', 'pong'));
       this.dayKey = (await ctx.storage.get('dayKey')) ?? null; // { day, key }
       this.here = new Map([...ctx.storage.sql.exec('SELECT * FROM online')].map(r => [r.id, { until: r.until, app: r.app, lang: r.lang }]));
+      // What the apps play (online.js communityOf): their drops of the last minutes in memory alone; the names of the
+      // games (Roblox universes) kept, read from Roblox once each.
+      this.drops = [];
+      ctx.storage.sql.exec('CREATE TABLE IF NOT EXISTS universes (id INTEGER PRIMARY KEY, name TEXT, place INTEGER, at INTEGER NOT NULL)');
+      this.universes = new Map([...ctx.storage.sql.exec('SELECT * FROM universes WHERE name IS NOT NULL')].map(r => [r.id, { name: r.name, place: r.place }]));
+      this.universeAsked = new Map();
       // Game feeds (feeds.js): the hidden channels whose messages are kept, and the last RAW_KEPT of each, as they came.
       ctx.storage.sql.exec('CREATE TABLE IF NOT EXISTS feeds (channel TEXT PRIMARY KEY, guild TEXT NOT NULL, name TEXT NOT NULL, at INTEGER NOT NULL)');
       ctx.storage.sql.exec('CREATE TABLE IF NOT EXISTS feed_raw (channel TEXT NOT NULL, at INTEGER NOT NULL, data TEXT NOT NULL)');
@@ -197,6 +203,7 @@ export class Gateway extends DurableObject {
     await this.refreshPrices().catch(e => this.log('prices', String(e?.message ?? e).slice(0, 200)));
     await this.refreshWiki().catch(e => this.log('wiki', String(e?.message ?? e).slice(0, 200)));
     await this.dropGoneFeeds().catch(e => this.log('feed', String(e?.message ?? e).slice(0, 200)));
+    await this.nameUniverses().catch(e => this.log('games', String(e?.message ?? e).slice(0, 200)));
   }
 
   // ───────────────────────────── moving ─────────────────────────────
@@ -1056,13 +1063,59 @@ export class Gateway extends DurableObject {
       if (b.first)
         sql.exec('INSERT INTO installs (day, n) VALUES (?, 1) ON CONFLICT (day) DO UPDATE SET n = n + 1', day);
     }
-    this.here.set(b.id, { until: now, app: b.app, lang: b.lang, counted: dayOf(now) });
+    const was = this.here.get(b.id);
+    this.here.set(b.id, { until: now, app: b.app, lang: b.lang, counted: dayOf(now), games: b.games, alts: b.alts, name: b.name,
+      since: b.name ? (was?.name ? was.since : now) : null });
+    for (const d of b.drops)
+      this.drops.push({ id: b.id, game: d.game, why: d.why, at: now });
     const count = this.countHere(now), next = this.beatEvery(count), until = now + this.onlineFor(next);
     this.here.get(b.id).until = until;
     this.ctx.storage.sql.exec(`INSERT INTO online (id, until, app, lang) VALUES (?, ?, ?, ?)
       ON CONFLICT (id) DO UPDATE SET until = excluded.until, app = excluded.app, lang = excluded.lang`, b.id, until, b.app, b.lang);
     this.notePeak(count, now);
-    return { next };
+    const c = this.community(now), rank = c.ranked.indexOf(b.id);
+    const { ranked, ...shown } = c;
+    return { next, community: { ...shown, you: b.name ? { rank: rank >= 0 ? rank + 1 : null, of: ranked.length } : null } };
+  }
+
+  /** What the apps play now (online.js communityOf), worked out at most every 20 seconds (every beat in the checks). */
+  community(now = Date.now()) {
+    if (this.communityAt && now - this.communityAt < (Number(this.env.COMMUNITY_EVERY_MS ?? 20_000)) && this.communityNow)
+      return this.communityNow;
+    this.countHere(now);
+    this.drops = this.drops.filter(d => d.at >= now - RADAR_MINUTES * 60_000).slice(-5000);
+    const min = this.env.COMMUNITY_MIN ? { game: Number(this.env.COMMUNITY_MIN), radar: Number(this.env.COMMUNITY_MIN) } : {};
+    this.communityNow = communityOf(this.here, this.drops, this.universes, now, min);
+    this.communityAt = now;
+    return this.communityNow;
+  }
+
+  /** The names of the games the apps play that the bot hasn't read yet, from Roblox (50 in one ask; each asked again
+   * after an hour at the most once it failed). */
+  async nameUniverses(now = Date.now()) {
+    const want = new Set();
+    for (const h of this.here.values())
+      for (const u of h.games ?? [])
+        if (!this.universes.has(u) && now - (this.universeAsked.get(u) ?? 0) > 3600_000)
+          want.add(u);
+    const list = [...want].slice(0, 50);
+    if (!list.length)
+      return;
+    for (const u of list)
+      this.universeAsked.set(u, now);
+    const got = await fetch((this.env.ROBLOX_GAMES_URL || 'https://games.roblox.com/v1/games?universeIds=') + list.join(','),
+      { headers: { 'User-Agent': 'Bloxkeep-bot/1.0' } });
+    if (!got.ok)
+      throw new Error(`games ${got.status}`);
+    for (const g of (await got.json())?.data ?? []) {
+      if (!Number.isSafeInteger(g?.id) || typeof g.name !== 'string' || !g.name.trim())
+        continue;
+      // "[🌌] Ride A Pet" → "Ride A Pet": a game's name without its update marks and emoji.
+      const name = g.name.replace(/[[\]()【】「」\p{Extended_Pictographic}️]+/gu, ' ').replace(/\s+/g, ' ').trim().slice(0, 60) || g.name.slice(0, 60);
+      const place = Number.isSafeInteger(g.rootPlaceId) ? g.rootPlaceId : null;
+      this.universes.set(g.id, { name, place });
+      this.ctx.storage.sql.exec('INSERT OR REPLACE INTO universes (id, name, place, at) VALUES (?, ?, ?, ?)', g.id, name, place, now);
+    }
   }
 
   beatEvery(count) {
@@ -1135,7 +1188,7 @@ export class Gateway extends DurableObject {
       removed: Object.values(why.get(day) ?? {}).reduce((a, n) => a + n, 0), why: why.get(day) ?? {} }));
     return {
       now: count, at: new Date(now).toISOString(), forMinutes: Math.round(this.onlineFor(this.beatEvery(count)) / 60_000),
-      today: shown.at(-1), days: shown, apps: tally('app'), languages: tally('lang'),
+      today: shown.at(-1), days: shown, apps: tally('app'), languages: tally('lang'), community: (({ ranked, ...c }) => c)(this.community(now)),
     };
   }
 
@@ -1937,7 +1990,7 @@ async function ping(request, env, gateway) {
   if (env.PING_LIMITER && !(await env.PING_LIMITER.limit({ key: request.headers.get('CF-Connecting-IP') || 'unknown' })).success)
     return Response.json({ error: 'rate' }, { status: 429 });
   const raw = await request.text();
-  if (raw.length > 1000)
+  if (raw.length > 3000)
     return Response.json({ error: 'too large' }, { status: 413 });
   let beat;
   try {

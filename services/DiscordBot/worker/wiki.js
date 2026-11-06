@@ -47,6 +47,7 @@ export const POPULAR_GAMES = [
   ['pilgrammed', 'Pilgrammed', 6735572261, 'https://pilgrammed-rblx.fandom.com'],
   ['pet-simulator-99', 'Pet Simulator 99', 8737899170, 'https://pet-simulator.fandom.com'],
   ['grow-a-garden', 'Grow a Garden', 126884695634066, 'https://growagarden.fandom.com'],
+  ['ride-a-pet', 'Ride A Pet', 124216119978534, 'https://ride-a-pet.fandom.com'], // checked 2026-11-06: universe 10035204815
   ['fisch', 'Fisch', 16732694052, 'https://fisch.fandom.com'],
   ['bee-swarm-simulator', 'Bee Swarm Simulator', 1537690962, 'https://bee-swarm-simulator.fandom.com'],
   ['bubble-gum-simulator-infinity', 'Bubble Gum Simulator Infinity', 85896571713843, 'https://bgs-infinity.fandom.com'],
