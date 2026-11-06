@@ -27,45 +27,45 @@ export const WIKI_SOURCES = [
 ];
 
 /**
- * Games the Games tab shows to everyone, with nothing read here: the app finds each one's wiki itself (Fandom or wiki.gg,
- * by the name) when it is opened. Names as players say them (the wiki goes by it); place is the game's start place on
- * Roblox, for its picture and colour; wiki, when Fandom's search for the name finds another wiki first (checked 2026-11-06).
- * Added or taken out here, the apps have it within the hour, no update.
+ * Games the Games tab shows to everyone, each with its wiki named here (every one opened and checked 2026-11-06: the
+ * biggest wiki of the game on Fandom), so the app never has to look for one. Names as players say them; place is the
+ * game's start place on Roblox, for its picture and colour. Added or taken out here, the apps have it within the hour,
+ * no update.
  */
 export const POPULAR_GAMES = [
-  ['blox-fruits', 'Blox Fruits', 2753915549],
-  ['shindo-life', 'Shindo Life', 4616652839],
-  ['king-legacy', 'King Legacy', 4520749081],
-  ['grand-piece-online', 'Grand Piece Online', 1730877806],
+  ['blox-fruits', 'Blox Fruits', 2753915549, 'https://blox-fruits.fandom.com'],
+  ['shindo-life', 'Shindo Life', 4616652839, 'https://shindo-life-rell.fandom.com'],
+  ['king-legacy', 'King Legacy', 4520749081, 'https://king-legacy-official.fandom.com'],
+  ['grand-piece-online', 'Grand Piece Online', 1730877806, 'https://grand-piece-online.fandom.com'],
   ['fruit-battlegrounds', 'Fruit Battlegrounds', 9224601490, 'https://official-fruit-battlegrounds.fandom.com'],
-  ['anime-adventures', 'Anime Adventures', 8304191830],
-  ['anime-vanguards', 'Anime Vanguards', 16146832113],
+  ['anime-adventures', 'Anime Adventures', 8304191830, 'https://animeadventures.fandom.com'],
+  ['anime-vanguards', 'Anime Vanguards', 16146832113, 'https://animevanguards.fandom.com'],
   ['jujutsu-infinite', 'Jujutsu Infinite', 10450270085, 'https://jujutsuinfinite.fandom.com'],
   ['the-strongest-battlegrounds', 'The Strongest Battlegrounds', 10449761463, 'https://the-strongest-battlegrounds-rblx.fandom.com'],
-  ['deepwoken', 'Deepwoken', 4111023553],
+  ['deepwoken', 'Deepwoken', 4111023553, 'https://deepwoken.fandom.com'],
   ['peroxide', 'Peroxide', 9096881148, 'https://peroxide-roblox.fandom.com'],
-  ['pilgrammed', 'Pilgrammed', 6735572261],
+  ['pilgrammed', 'Pilgrammed', 6735572261, 'https://pilgrammed-rblx.fandom.com'],
   ['pet-simulator-99', 'Pet Simulator 99', 8737899170, 'https://pet-simulator.fandom.com'],
-  ['grow-a-garden', 'Grow a Garden', 126884695634066],
-  ['fisch', 'Fisch', 16732694052],
-  ['bee-swarm-simulator', 'Bee Swarm Simulator', 1537690962],
-  ['bubble-gum-simulator-infinity', 'Bubble Gum Simulator Infinity', 85896571713843],
+  ['grow-a-garden', 'Grow a Garden', 126884695634066, 'https://growagarden.fandom.com'],
+  ['fisch', 'Fisch', 16732694052, 'https://fisch.fandom.com'],
+  ['bee-swarm-simulator', 'Bee Swarm Simulator', 1537690962, 'https://bee-swarm-simulator.fandom.com'],
+  ['bubble-gum-simulator-infinity', 'Bubble Gum Simulator Infinity', 85896571713843, 'https://bgs-infinity.fandom.com'],
   ['sols-rng', "Sol's RNG", 15532962292, 'https://sol-rng.fandom.com'],
-  ['steal-a-brainrot', 'Steal a Brainrot', 109983668079237],
-  ['99-nights-in-the-forest', '99 Nights in the Forest', 79546208627805],
-  ['adopt-me', 'Adopt Me!', 920587237],
-  ['dress-to-impress', 'Dress to Impress', 15101393044],
-  ['royale-high', 'Royale High', 735030788],
-  ['doors', 'Doors', 6516141723],
-  ['forsaken', 'Forsaken', 18687417158],
-  ['murder-mystery-2', 'Murder Mystery 2', 142823291],
+  ['steal-a-brainrot', 'Steal a Brainrot', 109983668079237, 'https://stealabrainrot.fandom.com'],
+  ['99-nights-in-the-forest', '99 Nights in the Forest', 79546208627805, 'https://99-nights-in-the-forest.fandom.com'],
+  ['adopt-me', 'Adopt Me!', 920587237, 'https://adoptme.fandom.com'],
+  ['dress-to-impress', 'Dress to Impress', 15101393044, 'https://dti-dress-to-impress.fandom.com'],
+  ['royale-high', 'Royale High', 735030788, 'https://royale-high.fandom.com'],
+  ['doors', 'Doors', 6516141723, 'https://doors-game.fandom.com'],
+  ['forsaken', 'Forsaken', 18687417158, 'https://forsaken2024.fandom.com'],
+  ['murder-mystery-2', 'Murder Mystery 2', 142823291, 'https://murder-mystery-2.fandom.com'],
   ['rivals', 'Rivals', 17625359962, 'https://robloxrivals.fandom.com'],
-  ['blade-ball', 'Blade Ball', 13772394625],
-  ['bedwars', 'BedWars', 6872265039],
+  ['blade-ball', 'Blade Ball', 13772394625, 'https://bladeball.fandom.com'],
+  ['bedwars', 'BedWars', 6872265039, 'https://robloxbedwars.fandom.com'],
   ['arsenal', 'Arsenal', 286090429, 'https://robloxarsenal.fandom.com'],
-  ['jailbreak', 'Jailbreak', 606849621],
-  ['toilet-tower-defense', 'Toilet Tower Defense', 13775256536],
-].map(([game, name, place, wiki = null]) => ({ game, name, place, wiki }));
+  ['jailbreak', 'Jailbreak', 606849621, 'https://jailbreak.fandom.com'],
+  ['toilet-tower-defense', 'Toilet Tower Defense', 13775256536, 'https://toilet-tower-defense-game.fandom.com'],
+].map(([game, name, place, wiki]) => ({ game, name, place, wiki }));
 
 /** Infobox lines that are about the page, not the item. */
 const SKIP = /^(image\d*|images?|caption\d*|name|title|alloyed name|description|desc|quote|gallery|imagewidth|width|m\.equip|ref|id|category|killmessage|music|gender|theme)$/i;

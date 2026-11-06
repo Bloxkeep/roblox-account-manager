@@ -438,15 +438,17 @@ export class Gateway extends DurableObject {
   async wikiIndex() {
     const games = [], counts = new Map([...this.ctx.storage.sql.exec('SELECT game, COUNT(*) AS n FROM wiki_items GROUP BY game')].map(r => [r.game, r.n]));
     const at = ((await this.ctx.storage.get('wiki')) ?? {}).at ?? {};
+    // Every game comes with its wiki: the app opens it straight away (POPULAR_GAMES, else the source's own).
+    const wikiOf = (id, own = null) => POPULAR_GAMES.find(g => g.game === id)?.wiki ?? own;
     for (const source of PRICE_SOURCES) {
       const kept = await this.ctx.storage.get(`prices:${source.game}`);
       if (kept?.items?.length)
-        games.push({ id: source.game, name: source.title, place: source.place ?? null, kind: 'prices', count: kept.items.length, at: kept.at });
+        games.push({ id: source.game, name: source.title, place: source.place ?? null, kind: 'prices', count: kept.items.length, at: kept.at, wiki: wikiOf(source.game) });
     }
     for (const source of WIKI_SOURCES)
       if (counts.get(source.game))
-        games.push({ id: source.game, name: source.name, place: source.place ?? null, kind: 'wiki', count: counts.get(source.game), at: at[source.game] ?? null });
-    // The rest of the games everyone sees: the app finds their wikis itself.
+        games.push({ id: source.game, name: source.name, place: source.place ?? null, kind: 'wiki', count: counts.get(source.game), at: at[source.game] ?? null, wiki: wikiOf(source.game, source.wiki) });
+    // The rest of the games everyone sees.
     for (const g of POPULAR_GAMES)
       if (!games.some(had => had.id === g.game))
         games.push({ id: g.game, name: g.name, place: g.place, kind: 'game', count: 0, at: null, wiki: g.wiki });

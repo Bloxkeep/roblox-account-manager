@@ -730,9 +730,10 @@ try {
   const axe = dw?.items?.find(i => i.name === 'Adretian Axe');
   check("Wiki: the games read, each game's items with their lines in plain words",
     wi?.games?.slice(0, 3).map(g => g.id).join() === 'blox-fruits,deepwoken,pilgrammed' && wi.games[1].kind === 'wiki' && wi.games[1].count === 2 && wi.games[1].place === 4111023553
-    // Then the popular games (wiki.js POPULAR_GAMES), each once, some with the wiki the bot names.
+    // Then the popular games (wiki.js POPULAR_GAMES), each once; every game comes with its wiki, so the app never looks for one.
     && wi.games.length === 32 && new Set(wi.games.map(g => g.id)).size === 32 && wi.games.slice(3).every(g => g.kind === 'game' && g.place > 0)
-    && wi.games.find(g => g.id === 'shindo-life')?.wiki === null && wi.games.find(g => g.id === 'rivals')?.wiki === 'https://robloxrivals.fandom.com'
+    && wi.games.every(g => /^https:\/\/[a-z0-9-]+\.fandom\.com$/.test(g.wiki ?? '')) && wi.games.find(g => g.id === 'shindo-life')?.wiki === 'https://shindo-life-rell.fandom.com'
+    && wi.games[1].wiki === 'https://deepwoken.fandom.com'
     && dw?.kind === 'wiki' && dw.cats.join() === 'Weapons' && dw.items.length === 2 && dw.source?.url === 'https://deepwoken.fandom.com' && dw.license?.name === 'CC BY-SA'
     && axe?.cat === 'Weapons' && axe.lead === 'The Adretian Axe is a Heavy Weapon.'
     && JSON.stringify(axe.fields) === JSON.stringify([['Type', 'Greataxe'], ['Damage', '24'], ['Scaling', 'HVY: 7 / HVY: 8'], ['Obtainment', '• Duke Ishamon Erisia\n• Bought from Traan for 300'], ['HP', '50']])
