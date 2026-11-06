@@ -196,6 +196,7 @@ export class Gateway extends DurableObject {
     await this.poll();
     await this.refreshPrices().catch(e => this.log('prices', String(e?.message ?? e).slice(0, 200)));
     await this.refreshWiki().catch(e => this.log('wiki', String(e?.message ?? e).slice(0, 200)));
+    await this.dropGoneFeeds().catch(e => this.log('feed', String(e?.message ?? e).slice(0, 200)));
   }
 
   // ───────────────────────────── moving ─────────────────────────────
@@ -310,6 +311,35 @@ export class Gateway extends DurableObject {
   }
 
   // ───────────────────────────── prices ─────────────────────────────
+
+  /** A feed channel no more: what it got is forgotten, and the apps lose its cards. */
+  async forgetFeed(channel) {
+    const sql = this.ctx.storage.sql;
+    const shown = [...sql.exec('SELECT game FROM feeds WHERE channel = ?', channel)][0]?.game;
+    sql.exec('DELETE FROM feeds WHERE channel = ?', channel);
+    sql.exec('DELETE FROM feed_raw WHERE channel = ?', channel);
+    sql.exec('DELETE FROM feed_cards WHERE channel = ?', channel);
+    this.feeds.delete(channel);
+    if (shown)
+      this.toFeedSockets(await this.feedsNow());
+  }
+
+  /**
+   * Feed channels deleted in Discord are forgotten (2026-11-06: Deepwoken's was deleted and stayed in the apps; /feed
+   * remove can't pick a deleted channel). Looked at once an hour, and on /feed list.
+   */
+  async dropGoneFeeds(now = false) {
+    if (!now && Date.now() - (this.feedsLookedAt ?? 0) < 3600_000)
+      return;
+    this.feedsLookedAt = Date.now();
+    for (const channel of [...this.feeds]) {
+      const res = await api(this.env, 'GET', `/channels/${channel}`);
+      if (res.status === 404) {
+        await this.forgetFeed(channel);
+        this.log('feed', `gone ${channel}`);
+      }
+    }
+  }
 
   /**
    * The games' price lists (prices.js), each read once a day (an hour after a failed read; now with /feed prices). The
@@ -1232,6 +1262,7 @@ export class Gateway extends DurableObject {
       return mine(`${made.made ? 'Made' : 'Already there:'} <#${made.channel}>, hidden, under Feeds.${made.bot ? ` <@${made.bot}> may post there.` : ''} Bring a source into it: Follow their channel into it, or invite their bot and have it post there. Then /feed raw shows what came.${contentNote}`);
     }
     if (sub?.name === 'list') {
+      await this.dropGoneFeeds(true);
       const rows = [...sql.exec(`SELECT f.channel, f.name, f.game, f.title, COUNT(r.at) AS n, MAX(r.at) AS last FROM feeds f
         LEFT JOIN feed_raw r ON r.channel = f.channel WHERE f.guild = ? GROUP BY f.channel ORDER BY f.at`, i.guild_id)];
       if (!rows.length)
@@ -1281,13 +1312,7 @@ export class Gateway extends DurableObject {
       return mine(`<#${channel}> no longer shows in Bloxkeep. What it gets is still kept here (/feed raw).`);
     }
     if (sub?.name === 'remove') {
-      const shown = [...sql.exec('SELECT game FROM feeds WHERE channel = ?', channel)][0]?.game;
-      sql.exec('DELETE FROM feeds WHERE channel = ?', channel);
-      sql.exec('DELETE FROM feed_raw WHERE channel = ?', channel);
-      sql.exec('DELETE FROM feed_cards WHERE channel = ?', channel);
-      this.feeds.delete(channel);
-      if (shown)
-        this.toFeedSockets(await this.feedsNow());
+      await this.forgetFeed(channel);
       return mine(`<#${channel}> is no longer a feed: what it got is forgotten. The channel itself stays; delete it in Discord if you like.`);
     }
     return mine('Unknown /feed command.');

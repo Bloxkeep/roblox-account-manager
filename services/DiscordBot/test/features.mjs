@@ -72,6 +72,8 @@ const calls = [];
 // Channels /feed new made in g1, listed from then on.
 const madeChannels = [];
 const deadInvites = new Set();
+// Channels deleted in Discord: asked about, Discord says Unknown Channel.
+const goneChannels = new Set();
 let msgNo = 0, inviteNo = 0;
 const rest = http.createServer((req, res) => {
   let body = '';
@@ -96,6 +98,7 @@ const rest = http.createServer((req, res) => {
       { id: 'g1', position: 0 }, { id: 'rv', position: 1 }, { id: 'rapp', position: 2, managed: true }, { id: 'rme', position: 3 }, { id: 'rmod', position: 5 }] });
     // The community server's channels: one shows how many have Bloxkeep open.
     if (req.method === 'GET' && req.url === '/guilds/g1/channels') return send(200, [{ id: 'c1', type: 0, name: 'news' }, { id: 'cnt', type: 2, name: '🟢 Using Bloxkeep: 0' }, ...madeChannels]);
+    if (req.method === 'GET' && goneChannels.has(req.url.replace('/channels/', ''))) return send(404, { message: 'Unknown Channel', code: 10003 });
     if (req.method === 'GET' && deadInvites.has(req.url.replace('/invites/', ''))) return send(404, { message: 'Unknown Invite', code: 10006 });
     // c3 is a text channel: nothing there can be published.
     if (req.method === 'POST' && /^\/channels\/c3\/messages\/\w+\/crosspost$/.test(req.url)) return send(400, { message: 'Cannot execute action on this channel type', code: 50024 });
@@ -770,6 +773,14 @@ try {
   await sleep(1000);
   r = await interact(command('feed', { sub: 'list' }));
   check("…after which /feed no longer says it's off", !/Message Content is off/.test(r.json?.data.content ?? ''), r.json?.data.content);
+  // A feed channel deleted in Discord (2026-11-06, Deepwoken's): /feed remove can't pick it, so the bot forgets it itself.
+  r = await interact(command('feed', { sub: 'new', options: [opt('name', 'soon gone', 3)] }));
+  const gone = /<#(fch\d+)>/.exec(r.json?.data.content ?? '')?.[1];
+  goneChannels.add(gone);
+  r = await interact(command('feed', { sub: 'list' }));
+  const goneAfter = await interact(command('feed', { sub: 'raw', options: [opt('channel', gone)] }));
+  check('a feed channel deleted in Discord: forgotten (not in /feed list, no longer a feed), the others kept', !!gone && !r.json?.data.content.includes(gone)
+    && r.json?.data.content.includes(feed) && /isn't a feed channel/.test(goneAfter.json?.data.content ?? ''), `${r.json?.data.content} | ${goneAfter.json?.data.content}`);
   r = await interact(command('feed', { sub: 'remove', options: [opt('channel', feed)] }));
   check('/feed remove: no longer a feed, what it got forgotten', /no longer a feed/.test(r.json?.data.content ?? '') && (await (await fetch(rawUrl)).json()).length === 0, r.json?.data.content);
 
