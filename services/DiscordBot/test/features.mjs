@@ -688,6 +688,12 @@ try {
   dispatch('MESSAGE_DELETE', { id: 'bf2', channel_id: feed, guild_id: 'g1' });
   await waitFor(() => heard.filter(m => m.t === 'gone').length >= 2, 3000);
   check('…deleted there: both its cards gone', heard.filter(m => m.t === 'gone').map(m => m.id).sort().join() === 'bf2,bf2:1', JSON.stringify(heard.filter(m => m.t === 'gone')));
+  // Discord's notice that a channel was followed into it (type 12, an empty card in the apps on 2026-11-06): no card.
+  heard.length = 0;
+  dispatch('MESSAGE_CREATE', { id: 'fol1', type: 12, channel_id: feed, guild_id: 'g1', author: { id: 'u9', username: 'H' },
+    message_reference: { channel_id: 'their', guild_id: 'their-g' }, content: 'Deepwoken Info #traan-stock', embeds: [] });
+  await sleep(1500);
+  check("Discord's \"has added … to this channel\" notice: no card in the apps", !heard.some(m => m.t === 'card'), JSON.stringify(heard));
   // Price lists: read once a day (the minute's cron read it already), /feed prices reads again now; the apps' Wiki tab
   // asks for them (/wiki), not sent with the feeds. The website down keeps the last list. Pictures only through the bot,
   // and only those a list has.

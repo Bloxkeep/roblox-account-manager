@@ -337,13 +337,25 @@ export function feedChannelName(name) {
 /** What is kept of a message in a feed channel: what a source's map may read, and how it came (Follow, webhook, bot). */
 export function rawOf(d, kind) {
   return {
-    kind, id: d.id, at: d.edited_timestamp ?? d.timestamp ?? null,
+    kind, id: d.id, type: d.type ?? 0, at: d.edited_timestamp ?? d.timestamp ?? null,
     author: d.author ? { id: d.author.id, name: d.author.global_name ?? d.author.username, avatar: d.author.avatar ?? null, bot: !!d.author.bot } : null,
     webhook: d.webhook_id ?? null, flags: d.flags ?? 0, from: d.message_reference ?? null,
     content: d.content ?? '', embeds: d.embeds ?? [], components: d.components ?? [],
     attachments: (d.attachments ?? []).map(a => ({ name: a.filename, url: a.url, proxy: a.proxy_url ?? null, type: a.content_type ?? null, size: a.size ?? null, w: a.width ?? null, h: a.height ?? null })),
     stickers: (d.sticker_items ?? []).map(t => ({ id: t.id, name: t.name, format: t.format_type })), poll: d.poll ?? null,
   };
+}
+
+/**
+ * Discord's own notice in a channel rather than a post: "<someone> has added <server> #<channel> to this channel" when a
+ * channel is followed (type 12, 2026-11-06: an empty card in the apps), a pin, a join... Kept before "type" was (a
+ * follow's notice): it names the channel it follows and no message, and carries nothing to show.
+ */
+export function isNotice(raw) {
+  if (raw.type && ![0, 19, 20].includes(raw.type))
+    return true;
+  return !raw.type && !!raw.from && !raw.from.message_id && !raw.embeds?.length && !raw.attachments?.length && !raw.components?.length
+    && !raw.stickers?.length && !raw.poll;
 }
 
 /**

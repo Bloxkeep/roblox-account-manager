@@ -17,7 +17,7 @@ import { CODE_LENGTH, captcha } from './captcha.js';
 import { COMMANDS, api, inviteUrl, replyUrl, verify } from './discord.js';
 import { DAYS_SHOWN, GRACE, GRACE_SLACK_SECONDS, beatEvery, scramble, dashboardKey, dashboardPage, dayOf, onlineMessage, readBeat } from './online.js';
 import { ALL_ACCOUNTS_COMMANDS, ALLOW_FOR, APP_COMMANDS, ANSWER_WAIT, CODE_FOR, CODE_GRACE, COMMANDS_PER_MINUTE, MAX_CODES, MAX_MESSAGE, MAX_PCS, MAX_UNLINKED, MESSAGES_PER_MINUTE, PC_TEXT, REASKED_GAP, SHOTS_PER_MINUTE, TOKEN_FOR, WRONG_CODES, WRONG_WINDOW, choices, handleOf, makeCode, pcId, readAnswer, readCode, readHello } from './remote.js';
-import { CARDS_KEPT, MAX_FEED_SOCKETS, RAW_KEPT, cardsOf, gameId, makeFeedChannel, rawLine, rawOf } from './feeds.js';
+import { CARDS_KEPT, MAX_FEED_SOCKETS, RAW_KEPT, cardsOf, gameId, isNotice, makeFeedChannel, rawLine, rawOf } from './feeds.js';
 import { PRICES_EVERY, PRICES_RETRY, PRICE_SOURCES, readPrices } from './prices.js';
 import { WIKI_EVERY, WIKI_ITEMS_MAX, WIKI_REQUESTS_PER_TICK, WIKI_RETRY, WIKI_SOURCES, POPULAR_GAMES, apiOf, readBatch } from './wiki.js';
 import { setupServer } from './setup.js';
@@ -1128,7 +1128,7 @@ export class Gateway extends DurableObject {
    */
   keepCard(channel, raw, at) {
     const sql = this.ctx.storage.sql, feed = [...sql.exec('SELECT game FROM feeds WHERE channel = ?', channel)][0];
-    if (!feed?.game || !raw.id)
+    if (!feed?.game || !raw.id || isNotice(raw))
       return [];
     // In the message's order, top first (newest first in the apps, so a millisecond apart).
     const cards = cardsOf(raw, at).map((made, i) => ({ id: i ? `${raw.id}:${i}` : raw.id, src: channel, game: gameId(feed.game), at: at - i, ...made }));
@@ -1259,10 +1259,12 @@ export class Gateway extends DurableObject {
       const game = String(opt('game') ?? '').trim(), title = String(opt('title') ?? '').trim(), place = opt('place') ?? null;
       if (!gameId(game))
         return mine('Give the game a name with letters or digits, like Blox Fruits.');
-      // The game's place, said once, goes for all its feeds.
+      // The game's place, said once, goes for all its feeds (that game's only: 2026-11-06 Deepwoken's went to Blox Fruits').
       sql.exec('UPDATE feeds SET game = ?, title = ?, place = ? WHERE channel = ?', game, title, place, channel);
       if (place)
-        sql.exec('UPDATE feeds SET place = ? WHERE game IS NOT NULL AND channel != ?', place, channel);
+        for (const f of [...sql.exec('SELECT channel, game FROM feeds WHERE game IS NOT NULL AND channel != ?', channel)])
+          if (gameId(f.game) === gameId(game))
+            sql.exec('UPDATE feeds SET place = ? WHERE channel = ?', place, f.channel);
       // What it kept already shows at once, oldest first.
       sql.exec('DELETE FROM feed_cards WHERE channel = ?', channel);
       for (const r of [...sql.exec('SELECT at, data FROM feed_raw WHERE channel = ? ORDER BY rowid', channel)])
