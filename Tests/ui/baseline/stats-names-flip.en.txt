@@ -41,15 +41,15 @@ html [data-theme="dark" lang="en"]
         div.rig.side-card [id="sys-rig"]
           div.sys [id="sys-card"]
             div.sys-head
-              span.sys-count [title="Account 1 · PID 1111\nAccount 2 · PID 2222"]
+              span.sys-count [title="M… · PID 1111\nF… · PID 2222"]
                 b [id="sys-count"] "2"
                 span [id="sys-count-label"] "windows"
                 span.sys-ram [id="sys-ram"] "1.7 GB"
               button.sys-close [id="sys-close" type="button" title="Close all" aria-label="Close all"]
                 svg.i #16z0s1r
             div.lobby
-              svg.face.play #1syta8n
-              svg.face.play #9rgw8m
+              svg.face.play #1fd15je
+              svg.face.play #v63cjd
             div.bricks [id="sys-meter" title="PC RAM 63% used · 12 GB free" aria-hidden="true"]
               i.r
               i.o
@@ -133,7 +133,7 @@ html [data-theme="dark" lang="en"]
                     time [title="4 min ago · Friday, October 16, 2026 at 11:56:00 AM"] "11:56 AM"
                     span.alog-acc [title="Main"]
                       span.avatar.sm
-                        span.initials [style="--h:191"] "1"
+                        img [alt="" style="--h:64" src=#1qk25wb]
                       b "Main"
                     span.alog-text "Joined Blox Fruits."
                   li.alog-row.ok
@@ -141,7 +141,7 @@ html [data-theme="dark" lang="en"]
                     time [title="5 min ago · Friday, October 16, 2026 at 11:55:00 AM"] "11:55 AM"
                     span.alog-acc [title="Main"]
                       span.avatar.sm
-                        span.initials [style="--h:191"] "1"
+                        img [alt="" style="--h:64" src=#1qk25wb]
                       b "Main"
                     span.alog-text "Opened Roblox to play Blox Fruits."
                   li.alog-row.ok
@@ -149,7 +149,7 @@ html [data-theme="dark" lang="en"]
                     time [title="11 min ago · Friday, October 16, 2026 at 11:49:00 AM"] "11:49 AM"
                     span.alog-acc [title="Farm 1"]
                       span.avatar.sm
-                        span.initials [style="--h:192"] "2"
+                        img [alt="" style="--h:207" src=#uinvo6]
                       b "Farm 1"
                     span.alog-text "Joined Blox Fruits."
                   li.alog-row.ok
@@ -157,7 +157,7 @@ html [data-theme="dark" lang="en"]
                     time [title="12 min ago · Friday, October 16, 2026 at 11:48:00 AM"] "11:48 AM"
                     span.alog-acc [title="Farm 1"]
                       span.avatar.sm
-                        span.initials [style="--h:192"] "2"
+                        img [alt="" style="--h:207" src=#uinvo6]
                       b "Farm 1"
                     span.alog-text "Auto-rejoin opened Roblox again to play Blox Fruits."
                   li.alog-row.info
@@ -165,7 +165,7 @@ html [data-theme="dark" lang="en"]
                     time [title="12 min ago · Friday, October 16, 2026 at 11:47:30 AM"] "11:47 AM"
                     span.alog-acc [title="Farm 1"]
                       span.avatar.sm
-                        span.initials [style="--h:192"] "2"
+                        img [alt="" style="--h:207" src=#uinvo6]
                       b "Farm 1"
                     span.alog-text "Roblox window closed."
                   li.alog-row.warn
@@ -173,7 +173,7 @@ html [data-theme="dark" lang="en"]
                     time [title="13 min ago · Friday, October 16, 2026 at 11:47:00 AM"] "11:47 AM"
                     span.alog-acc [title="Farm 1"]
                       span.avatar.sm
-                        span.initials [style="--h:192"] "2"
+                        img [alt="" style="--h:207" src=#uinvo6]
                       b "Farm 1"
                     span.alog-text "Disconnected from Blox Fruits: kicked for being idle."
                   li.alog-row.ok
@@ -186,7 +186,7 @@ html [data-theme="dark" lang="en"]
                     time [title="2 h ago · Friday, October 16, 2026 at 9:40:00 AM"] "9:40 AM"
                     span.alog-acc [title="Night Owl"]
                       span.avatar.sm
-                        span.initials [style="--h:194"] "4"
+                        img [alt="" style="--h:95" src=#1u67et1]
                       b "Night Owl"
                     span.alog-text "Left [🎃] Adopt Me!."
                 h4.alog-day "Yesterday"
@@ -201,7 +201,7 @@ html [data-theme="dark" lang="en"]
                     time [title="Thursday, October 15, 2026 at 10:25:00 AM"] "10:25 AM"
                     span.alog-acc [title="Trade"]
                       span.avatar.sm
-                        span.initials [style="--h:196"] "6"
+                        img [alt="" style="--h:281" src=#kgijcs]
                       b "Trade"
                     span.alog-text "Roblox closed this window when another one opened."
                   li.alog-row.info
@@ -221,7 +221,7 @@ html [data-theme="dark" lang="en"]
                     time [title="Tuesday, October 13, 2026 at 11:50:00 AM"] "11:50 AM"
                     span.alog-acc [title="Night Owl"]
                       span.avatar.sm
-                        span.initials [style="--h:194"] "4"
+                        img [alt="" style="--h:95" src=#1u67et1]
                       b "Night Owl"
                     span.alog-text "Disconnected from Brookhaven 🏡RP: signed in on another device."
       section.seen.view [id="view-settings" style="--dir:1"]

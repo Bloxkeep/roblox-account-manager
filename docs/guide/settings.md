@@ -102,7 +102,7 @@ Every row is explained in [Sending to Discord](discord.md): **Show on my Discord
 | **Your own › Custom** | Pick a **Background color** and an **Accent color** (buttons, switches, what is selected); the words turn light or dark to stay readable. **Choose…** puts a picture or a video (MP4, WebM) from your PC behind the page; **Background color over the picture** sets how much it shows through and **Blur the background** blurs it. A video plays muted, only while the window is open. Bloxkeep keeps a copy in its data folder. **Save this theme** keeps it under a name. | — |
 | **Your themes** | The themes you saved: click one to use it. **Save as a file** shares one as a `.bloxkeeptheme` file, and **Add from file…** adds one someone shared. | — |
 | **Language** | EN / VI. | EN |
-| **Hide account names** | Shows "Account 1", "Account 2"… everywhere instead of names. See [Backup and security](backup-and-security.md). | Off |
+| **Hide account names** | Shortens every name to its first letter ("F…"), like Discord's streamer mode; avatars stay. See [Backup and security](backup-and-security.md). | Off |
 
 ## Vault & security
 

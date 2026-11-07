@@ -111,10 +111,12 @@
   const inGame = a => (isLocal(a) && !isStranded(a)) || a.presence?.type === 'ingame';
   const isOnline = a => isLocal(a) || ['online', 'ingame', 'studio'].includes(a.presence?.type);
 
-  // Settings › Appearance › Hide account names: each account shows as "Account 1"… (its place in the list, as the app
-  // numbers them in toasts and window titles), without its picture (an avatar tells who it is as well as a name). Real
-  // names stay in a.real for the search and the name sort only.
+  // Settings › Appearance › Hide account names: each account's name shortened to its first letter and "…", its picture
+  // kept, as Discord's streamer mode does (the owner's call, 2026-11-07; the app shortens them the same way in toasts and
+  // window titles: AppController.ShortName). Real names stay in a.real for the search and the name sort only.
   const hidingNames = () => !!S.app?.hideNames;
+  /** A name's first letter as it reads (one emoji is one), or '' for none. */
+  const firstLetter = s => { const v = (s || '').trim(); return v ? (typeof Intl.Segmenter === 'function' ? [...new Intl.Segmenter().segment(v)][0].segment : [...v][0]) : ''; };
   // An account whose data didn't change keeps its object, so React redraws only the cards that changed.
   let shownAccounts = new Map();
   function maskNames(st) {
@@ -127,7 +129,7 @@
       let shown = was?.key === key ? was.account : null;
       if (!shown) {
         const real = a.real || { label: a.label, username: a.username, displayName: a.displayName, alias: a.alias, avatarUrl: a.avatarUrl };
-        shown = { ...a, real, ...(st.hideNames ? { label: t('hide.account', { n: i + 1 }), username: '', displayName: '', alias: '', avatarUrl: null, mark: String(i + 1) } : { ...real, mark: undefined }) };
+        shown = { ...a, real, ...(st.hideNames ? { label: `${firstLetter(real.label || real.username)}…`, username: '', displayName: '', alias: '', avatarUrl: real.avatarUrl, mark: firstLetter(real.label || real.username) || '?' } : { ...real, mark: undefined }) };
       }
       next.set(a.id, { key, account: shown });
       return shown;

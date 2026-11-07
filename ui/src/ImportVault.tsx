@@ -4,7 +4,7 @@
 import { Fragment, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type ReactNode, type Ref } from 'react';
 import { Icon, useAppState, useHost } from './host';
 import { Rich } from './rich';
-import { Avatar } from './Avatar';
+import { Avatar, shortName } from './Avatar';
 
 type FileAccount = { key: number; label: string; username?: string; group?: string; realm?: string; cookieValid?: boolean | null; hasPassword?: boolean; exists?: boolean; avatarUrl?: string };
 type Preview = { token: string; accounts: FileAccount[]; presets: number };
@@ -136,7 +136,7 @@ export function ImportVault({ api, primary, finished }: {
   const signIn = (a: FileAccount) => a.cookieValid === true ? <span className="iv-ck ok">{t('iv.ckOk')}</span>
     : a.cookieValid === false ? <span className="iv-ck bad">{t('iv.ckBad')}</span> : <span className="iv-ck">{t('iv.ckUnknown')}</span>;
   // The names as they show (hidden names are numbered): what the search looks through, and what All new and None act on.
-  const shownAs = (x: FileAccount) => hide ? { ...x, label: t('hide.account', { n: x.key + 1 }), username: '' } : x;
+  const shownAs = (x: FileAccount) => hide ? { ...x, label: shortName(x.label || x.username || ''), username: '' } : x;
   const q = query.trim().toLowerCase();
   const list = q ? all.filter(x => { const a = shownAs(x); return [a.label, a.username, a.group].some(v => (v || '').toLowerCase().includes(q)); }) : all;
   return <div id="iv-body" ref={root}>

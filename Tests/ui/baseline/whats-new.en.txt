@@ -269,6 +269,8 @@ html [data-theme="dark" lang="en"]
           ul.wn-notes
             li "The sidebar’s Roblox card shows a face for each Roblox window (in a game, in the menu, dropped) and the PC’s RAM as studs."
             li "Wiki in Game info opens the game’s wiki right in the Games tab."
+            li "Names shortened to their first letter, pictures kept."
+              b "Hide account names works like Discord’s streamer mode"
             li "Voidstrap can open Roblox, like Bloxstrap and Fishstrap."
             li "The window opens, restores and resizes more smoothly, with no white flash."
             li "Statistics’ board of the PCs with the most accounts looks cleaner and works with the online count off."

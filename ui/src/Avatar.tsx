@@ -6,6 +6,8 @@ import { useState } from 'react';
 type Account = { avatarUrl?: string | null; username?: string; label?: string; mark?: string };
 
 const hue = (s: string) => { let h = 7; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h % 360; };
+/** A hidden name, as Discord's streamer mode shortens one: its first letter as it reads (one emoji is one) and "…". */
+export const shortName = (s: string) => { const v = s.trim(); return v ? `${[...new Intl.Segmenter().segment(v)][0].segment}…` : '…'; };
 const initials = (s: string) => (String(s).match(/[\p{L}\p{N}]/gu) || ['?']).slice(0, 2).join('').toUpperCase();
 
 export function Avatar({ a }: { a: Account }) {

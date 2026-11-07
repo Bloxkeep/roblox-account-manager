@@ -40,7 +40,7 @@ public sealed partial class AppController
             }
             else
             {
-                string name = NameText(account); // "Account 3" while names are hidden
+                string name = NameText(account); // "F…" while names are hidden
                 WindowIcons.Apply(pid, list, "initials:" + name, () => WindowIcons.Initials(name), check: pid == check);
             }
         }

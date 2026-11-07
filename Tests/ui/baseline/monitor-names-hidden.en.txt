@@ -41,15 +41,15 @@ html [data-theme="dark" lang="en"]
         div.rig.side-card [id="sys-rig"]
           div.sys [id="sys-card"]
             div.sys-head
-              span.sys-count [title="Account 1 · PID 1111\nAccount 2 · PID 2222"]
+              span.sys-count [title="M… · PID 1111\nF… · PID 2222"]
                 b [id="sys-count"] "3"
                 span [id="sys-count-label"] "windows"
                 span.sys-ram [id="sys-ram"] "1.7 GB"
               button.sys-close [id="sys-close" type="button" title="Close all" aria-label="Close all"]
                 svg.i #16z0s1r
             div.lobby
-              svg.face.play #1syta8n
-              svg.face.play #9rgw8m
+              svg.face.play #1fd15je
+              svg.face.play #v63cjd
               svg.face.play #1kqz5uh
             div.bricks [id="sys-meter" title="PC RAM 63% used · 12 GB free" aria-hidden="true"]
               i.r

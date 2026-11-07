@@ -102,7 +102,7 @@ Từng dòng được giải thích ở [Gửi lên Discord](discord.vi.md): **H
 | **Của bạn › Tùy chỉnh** | Chọn **Màu nền** và **Màu nhấn** (nút, công tắc, mục đang chọn); chữ tự sáng hay tối để luôn dễ đọc. **Chọn…** đặt một ảnh hoặc video (MP4, WebM) trên máy làm nền phía sau. **Phủ màu nền lên ảnh** chỉnh mức nền hiện qua, **Làm mờ nền** làm nền mờ đi. Video không có tiếng, chỉ chạy khi cửa sổ đang mở. Bloxkeep giữ một bản sao trong thư mục dữ liệu. **Lưu chủ đề này** lưu theme lại kèm tên. | — |
 | **Chủ đề của bạn** | Các theme bạn đã lưu, bấm vào để dùng. **Lưu thành file** để gửi một theme dưới dạng file `.bloxkeeptheme`, **Thêm từ file…** để thêm theme người khác gửi. | — |
 | **Ngôn ngữ** | EN / VI. | EN |
-| **Ẩn tên tài khoản** | Thay tên thật bằng "Tài khoản 1", "Tài khoản 2"… ở mọi chỗ. Xem [Sao lưu và bảo mật](backup-and-security.vi.md). | Tắt |
+| **Ẩn tên tài khoản** | Rút gọn mọi tên còn chữ cái đầu ("F…") như chế độ streamer của Discord; vẫn giữ ảnh. Xem [Sao lưu và bảo mật](backup-and-security.vi.md). | Tắt |
 
 ## Vault & bảo mật
 

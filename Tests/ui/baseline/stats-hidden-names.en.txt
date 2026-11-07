@@ -41,15 +41,15 @@ html [data-theme="dark" lang="en"]
         div.rig.side-card [id="sys-rig"]
           div.sys [id="sys-card"]
             div.sys-head
-              span.sys-count [title="Account 1 · PID 1111\nAccount 2 · PID 2222"]
+              span.sys-count [title="M… · PID 1111\nF… · PID 2222"]
                 b [id="sys-count"] "2"
                 span [id="sys-count-label"] "windows"
                 span.sys-ram [id="sys-ram"] "1.7 GB"
               button.sys-close [id="sys-close" type="button" title="Close all" aria-label="Close all"]
                 svg.i #16z0s1r
             div.lobby
-              svg.face.play #1syta8n
-              svg.face.play #9rgw8m
+              svg.face.play #1fd15je
+              svg.face.play #v63cjd
             div.bricks [id="sys-meter" title="PC RAM 63% used · 12 GB free" aria-hidden="true"]
               i.r
               i.o
@@ -129,7 +129,7 @@ html [data-theme="dark" lang="en"]
                 div.stat
                   small "Longest stay"
                   b [title="4 h 55 min"] "4 h 55 min"
-                  span.stat-sub "Account 1 · Blox Fruits"
+                  span.stat-sub "M… · Blox Fruits"
               div.stat-card [id="stats-days"]
                 h3 "Play time by day"
                   span.days-avg "Average 2 h 20 min a day"
@@ -368,13 +368,13 @@ html [data-theme="dark" lang="en"]
                 div.sd-row
                   div.sd-text
                     b "Kicked for AFK"
-                    small [title="Account 1, Account 2"] "2 times · Account 1, Account 2"
+                    small [title="M…, F…"] "2 times · M…, F…"
                   span.sd-time [title="From each drop to the account’s next session, 12 h at most."] "≈ 2 h 17 min lost"
                   button.btn.sm "Turn on Anti-AFK"
                 div.sd-row
                   div.sd-text
                     b "Lost connection"
-                    small [title="Account 2"] "Once · Account 2"
+                    small [title="F…"] "Once · F…"
                   span.sd-time [title="From each drop to the account’s next session, 12 h at most."] "≈ 49 min lost"
               div.stat-card [id="stats-games"]
                 h3 "Top games"
@@ -397,8 +397,8 @@ html [data-theme="dark" lang="en"]
                   button.opens.sa-card [type="button" title="Show what it played" aria-expanded="false"]
                     span.sa-head
                       span.avatar.sm
-                        span.initials [style="--h:140"] "AC"
-                      b [title="Account 1"] "Account 1"
+                        img [alt="" style="--h:140" src=#1qk25wb]
+                      b [title="M…"] "M…"
                     span.sa-time "7 h 22 min"
                     span.sa-bars [aria-hidden="true"]
                       i [style="height:13.3%"]
@@ -417,8 +417,8 @@ html [data-theme="dark" lang="en"]
                   button.opens.sa-card [type="button" title="Show what it played" aria-expanded="false"]
                     span.sa-head
                       span.avatar.sm
-                        span.initials [style="--h:141"] "AC"
-                      b [title="Account 2"] "Account 2"
+                        img [alt="" style="--h:141" src=#uinvo6]
+                      b [title="F…"] "F…"
                     span.sa-time "5 h 24 min"
                     span.sa-bars [aria-hidden="true"]
                       i [style="height:26.9%"]
@@ -437,8 +437,8 @@ html [data-theme="dark" lang="en"]
                   button.opens.sa-card [type="button" title="Show what it played" aria-expanded="false"]
                     span.sa-head
                       span.avatar.sm
-                        span.initials [style="--h:143"] "AC"
-                      b [title="Account 4"] "Account 4"
+                        img [alt="" style="--h:143" src=#1u67et1]
+                      b [title="N…"] "N…"
                     span.sa-time "3 h 16 min"
                     span.sa-bars [aria-hidden="true"]
                       i [style="height:14.5%"]

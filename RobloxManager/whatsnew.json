@@ -6,6 +6,7 @@
       "en": [
         "The sidebar’s Roblox card shows a face for each Roblox window (in a game, in the menu, dropped) and the PC’s RAM as studs.",
         "Wiki in Game info opens the game’s wiki right in the Games tab.",
+        "Hide account names works like Discord’s streamer mode: names shortened to their first letter, pictures kept.",
         "Voidstrap can open Roblox, like Bloxstrap and Fishstrap.",
         "The window opens, restores and resizes more smoothly, with no white flash.",
         "Statistics’ board of the PCs with the most accounts looks cleaner and works with the online count off.",
@@ -16,6 +17,7 @@
       "vi": [
         "Thẻ Roblox ở thanh bên hiện mỗi cửa sổ một khuôn mặt (trong game, ở menu, bị văng) và RAM máy dạng khối.",
         "Nút Wiki trong Thông tin game mở thẳng wiki trong tab Game.",
+        "Ẩn tên tài khoản giờ giống chế độ streamer của Discord: tên rút còn chữ cái đầu, vẫn giữ ảnh.",
         "Mở Roblox bằng Voidstrap, như Bloxstrap và Fishstrap.",
         "Cửa sổ mở, khôi phục và đổi cỡ mượt hơn, không còn chớp trắng.",
         "Bảng PC treo nhiều tài khoản nhất trong Thống kê gọn hơn, xem được cả khi tắt đếm online.",

@@ -3,9 +3,11 @@ using System.Text.RegularExpressions;
 namespace RobloxManager;
 
 /// <summary>Settings › Appearance › Hide account names, for screenshots and streams: wherever Bloxkeep writes an account's name
-/// (page, toasts, notifications, progress, mini window, monitor tab, Roblox window titles) it writes "Account N" (its place in
-/// the list). The page gets the real names and swaps them itself, so search finds them; copying copies the real one. Discord has
-/// its own switch (Settings › Discord), since a channel may be shared while the screen isn't.</summary>
+/// (page, toasts, notifications, progress, mini window, monitor tab, Roblox window titles) it writes its first letter and "…",
+/// as Discord's streamer mode shortens names, the pictures kept (the owner's call, 2026-11-07). The page gets the real names
+/// and shortens them itself, so search finds them; copying copies the real one. Discord has its own switch (Settings ›
+/// Discord), since a channel may be shared while the screen isn't; there an account stays "Account N" (its place in the
+/// list), to tell them apart in a message.</summary>
 public sealed partial class AppController
 {
     /// <summary>Set while a Discord copy of a message is made: its switch and language instead of the app's.</summary>
@@ -43,7 +45,14 @@ public sealed partial class AppController
     string NameText(Account account)
     {
         var (hide, language) = _nameStyle ?? (Prefs.HideNames, L.Language);
-        return hide ? MaskedName(account, language) : account.Label;
+        return !hide ? account.Label : _nameStyle is null ? ShortName(account) : MaskedName(account, language);
+    }
+
+    /// <summary>"F…": the name's first letter (one character as it reads, an emoji included) and an ellipsis.</summary>
+    internal static string ShortName(Account account)
+    {
+        string name = account.Label.Trim() is { Length: > 0 } label ? label : account.Username.Trim();
+        return name.Length == 0 ? "…" : System.Globalization.StringInfo.GetNextTextElement(name) + "…";
     }
 
     /// <summary>"Account 3": the account's place in the list, as the page numbers them. Never through L.F (see <see cref="L.Made"/>).</summary>

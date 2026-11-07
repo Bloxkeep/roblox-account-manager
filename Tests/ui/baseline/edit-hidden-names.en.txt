@@ -41,15 +41,15 @@ html [data-theme="dark" lang="en"]
         div.rig.side-card [id="sys-rig"]
           div.sys [id="sys-card"]
             div.sys-head
-              span.sys-count [title="Account 1 · PID 1111\nAccount 2 · PID 2222"]
+              span.sys-count [title="M… · PID 1111\nF… · PID 2222"]
                 b [id="sys-count"] "2"
                 span [id="sys-count-label"] "windows"
                 span.sys-ram [id="sys-ram"] "1.7 GB"
               button.sys-close [id="sys-close" type="button" title="Close all" aria-label="Close all"]
                 svg.i #16z0s1r
             div.lobby
-              svg.face.play #1syta8n
-              svg.face.play #9rgw8m
+              svg.face.play #1fd15je
+              svg.face.play #v63cjd
             div.bricks [id="sys-meter" title="PC RAM 63% used · 12 GB free" aria-hidden="true"]
               i.r
               i.o
@@ -151,13 +151,13 @@ html [data-theme="dark" lang="en"]
         div.scroll [id="scroll"]
           div [id="grid"]
             div.grid [role="listbox" aria-label="Accounts" aria-multiselectable="true"]
-              article.card [role="option" tabindex="0" aria-label="Account 5" aria-selected="false"]
+              article.card [role="option" tabindex="0" aria-label="A…" aria-selected="false"]
                 span.check
                   svg.i #14iobj
                 div.avatar
-                  span.initials [style="--h:195"] "5"
+                  img [alt="" style="--h:52" src=#c108i9]
                   i.pdot.studio
-                div.name [title="Account 5"] "Account 5"
+                div.name [title="A…"] "A…"
                 div.sub [title=""]
                 div.activity.studio
                   span.gicon
@@ -179,13 +179,13 @@ html [data-theme="dark" lang="en"]
                     svg.i #1hrhc9o
                   button.icon-btn [title="More" tabindex="0" aria-haspopup="menu" aria-label="More"]
                     svg.i #1e3omv2
-              article.card.local [role="option" tabindex="-1" aria-label="Account 2" aria-selected="false"]
+              article.card.local [role="option" tabindex="-1" aria-label="F…" aria-selected="false"]
                 span.check
                   svg.i #14iobj
                 div.avatar.ingame
-                  span.initials [style="--h:192"] "2"
+                  img [alt="" style="--h:207" src=#uinvo6]
                   i.ingame.pdot
-                div.name [title="Account 2"] "Account 2"
+                div.name [title="F…"] "F…"
                 div.sub [title=""]
                 div.activity.ingame
                   span.gicon
@@ -216,13 +216,13 @@ html [data-theme="dark" lang="en"]
                     svg.i #1hrhc9o
                   button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu" aria-label="More"]
                     svg.i #1e3omv2
-              article.card [role="option" tabindex="-1" aria-label="Account 3" aria-selected="false"]
+              article.card [role="option" tabindex="-1" aria-label="F…" aria-selected="false"]
                 span.check
                   svg.i #14iobj
                 div.avatar.invalid
-                  span.initials [style="--h:193"] "3"
+                  img [alt="" style="--h:207" src=#n0d7cr]
                   i.offline.pdot
-                div.name [title="Account 3"] "Account 3"
+                div.name [title="F…"] "F…"
                 div.sub [title=""]
                 div.activity.signedout
                   span.gicon
@@ -245,13 +245,13 @@ html [data-theme="dark" lang="en"]
                     svg.i #1hrhc9o
                   button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu" aria-label="More"]
                     svg.i #1e3omv2
-              article.card.local [role="option" tabindex="-1" aria-label="Account 1" aria-selected="false"]
+              article.card.local [role="option" tabindex="-1" aria-label="M…" aria-selected="false"]
                 span.check
                   svg.i #14iobj
                 div.avatar.ingame
-                  span.initials [style="--h:191"] "1"
+                  img [alt="" style="--h:64" src=#1qk25wb]
                   i.ingame.pdot
-                div.name [title="Account 1"] "Account 1"
+                div.name [title="M…"] "M…"
                 div.sub [title=""]
                 div.activity.ingame
                   span.gicon
@@ -286,13 +286,13 @@ html [data-theme="dark" lang="en"]
                     svg.i #1hrhc9o
                   button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu" aria-label="More"]
                     svg.i #1e3omv2
-              article.card [role="option" tabindex="-1" aria-label="Account 4" aria-selected="false"]
+              article.card [role="option" tabindex="-1" aria-label="N…" aria-selected="false"]
                 span.check
                   svg.i #14iobj
                 div.avatar.ingame
-                  span.initials [style="--h:194"] "4"
+                  img [alt="" style="--h:95" src=#1u67et1]
                   i.ingame.pdot
-                div.name [title="Account 4"] "Account 4"
+                div.name [title="N…"] "N…"
                 div.sub [title=""]
                 div.activity.ingame
                   span.gicon
@@ -318,13 +318,13 @@ html [data-theme="dark" lang="en"]
                     svg.i #1hrhc9o
                   button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu" aria-label="More"]
                     svg.i #1e3omv2
-              article.card [role="option" tabindex="-1" aria-label="Account 7" aria-selected="false"]
+              article.card [role="option" tabindex="-1" aria-label="T…" aria-selected="false"]
                 span.check
                   svg.i #14iobj
                 div.avatar
-                  span.initials [style="--h:197"] "7"
+                  span.initials [style="--h:281"] "T"
                   i.offline.pdot
-                div.name [title="Account 7"] "Account 7"
+                div.name [title="T…"] "T…"
                 div.sub [title=""]
                 div.activity.launching
                   span.gicon
@@ -342,13 +342,13 @@ html [data-theme="dark" lang="en"]
                     svg.i #1hrhc9o
                   button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu" aria-label="More"]
                     svg.i #1e3omv2
-              article.card [role="option" tabindex="-1" aria-label="Account 6" aria-selected="false"]
+              article.card [role="option" tabindex="-1" aria-label="T…" aria-selected="false"]
                 span.check
                   svg.i #14iobj
                 div.avatar.invalid
-                  span.initials [style="--h:196"] "6"
+                  img [alt="" style="--h:281" src=#kgijcs]
                   i.pdot
-                div.name [title="Account 6"] "Account 6"
+                div.name [title="T…"] "T…"
                 div.sub [title=""]
                 div.activity.unknown
                   span.gicon
@@ -434,9 +434,9 @@ html [data-theme="dark" lang="en"]
       div.modal-body
         div.acc-head
           div.avatar
-            span.initials [style="--h:191"] "1"
+            img [alt="" style="--h:64" src=#1qk25wb]
           div
-            b "Account 1"
+            b "M…"
             div.muted
         div.form
           label "Nickname"

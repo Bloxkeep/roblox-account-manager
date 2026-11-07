@@ -208,7 +208,7 @@ public sealed partial class AppController
         };
     }
 
-    /// <summary>Who an entry is about: the account's name now (its name then, once deleted), or "Account 3" while names are hidden.</summary>
+    /// <summary>Who an entry is about: the account's name now (its name then, once deleted), or "F…" while names are hidden.</summary>
     string? ActivityAccount(ActivityEntry e)
     {
         if (e.AccountId is not { } id)
@@ -219,7 +219,7 @@ public sealed partial class AppController
         return account is null ? L.T("Deleted account") : HiddenName(account);
     }
 
-    string HiddenName(Account account) => string.Format(L.T("Account {0}"), (_vault?.Data.Accounts.IndexOf(account) ?? 0) + 1);
+    static string HiddenName(Account account) => ShortName(account);
 
     /// <summary>While names are hidden, swaps them inside sentences too: whole words, three characters or more, longest first.</summary>
     Func<string, string> ActivityNames(Vault vault)

@@ -41,15 +41,15 @@ html [data-theme="dark" lang="en"]
         div.rig.side-card [id="sys-rig"]
           div.sys [id="sys-card"]
             div.sys-head
-              span.sys-count [title="Account 1 · PID 1111\nAccount 2 · PID 2222"]
+              span.sys-count [title="M… · PID 1111\nF… · PID 2222"]
                 b [id="sys-count"] "2"
                 span [id="sys-count-label"] "windows"
                 span.sys-ram [id="sys-ram"] "1.7 GB"
               button.sys-close [id="sys-close" type="button" title="Close all" aria-label="Close all"]
                 svg.i #16z0s1r
             div.lobby
-              svg.face.play #1syta8n
-              svg.face.play #9rgw8m
+              svg.face.play #1fd15je
+              svg.face.play #v63cjd
             div.bricks [id="sys-meter" title="PC RAM 63% used · 12 GB free" aria-hidden="true"]
               i.r
               i.o
@@ -236,18 +236,18 @@ html [data-theme="dark" lang="en"]
             label.iv-item.rc-item
               input [type="checkbox" checked=true]
               div.avatar.sm
-                img [alt="" style="--h:191" src=#1oebnc6]
+                img [alt="" style="--h:207" src=#1oebnc6]
               span.iv-name
-                b [title="Account 1"] "Account 1"
+                b [title="F…"] "F…"
                 small "Farm · · password saved"
                   span.iv-ck.ok "signed in"
               span.ok.state-pill "New"
             label.iv-item.rc-item
               input [type="checkbox" checked=true]
               div.avatar.sm
-                span.initials [style="--h:192"] "AC"
+                span.initials [style="--h:250"] "S"
               span.iv-name
-                b [title="Account 2"] "Account 2"
+                b [title="S…"] "S…"
                 small
                   span.iv-ck "not checked"
               span.tag.vng [title="Roblox VNG account (Vietnam)"] "VNG"
@@ -255,27 +255,27 @@ html [data-theme="dark" lang="en"]
             label.iv-item.rc-item
               input [type="checkbox" checked=false]
               div.avatar.sm
-                img [alt="" style="--h:193" src=#n0d7cr]
+                img [alt="" style="--h:207" src=#n0d7cr]
               span.iv-name
-                b [title="Account 3"] "Account 3"
+                b [title="F…"] "F…"
                 small "Farm · · password saved"
                   span.iv-ck.ok "signed in"
               span.off.state-pill "Already here"
             label.iv-item.rc-item
               input [type="checkbox" checked=false]
               div.avatar.sm
-                img [alt="" style="--h:194" src=#1qk25wb]
+                img [alt="" style="--h:64" src=#1qk25wb]
               span.iv-name
-                b [title="Account 4"] "Account 4"
+                b [title="M…"] "M…"
                 small "· password saved"
                   span.iv-ck.ok "signed in"
               span.off.state-pill "Already here"
             label.iv-item.rc-item
               input [type="checkbox" checked=true]
               div.avatar.sm
-                img [alt="" style="--h:195" src=#ym4i8b]
+                img [alt="" style="--h:176" src=#ym4i8b]
               span.iv-name
-                b [title="Account 5"] "Account 5"
+                b [title="E…"] "E…"
                 small "Event ·"
                   span.bad.iv-ck "needs sign-in"
               span.ok.state-pill "New"

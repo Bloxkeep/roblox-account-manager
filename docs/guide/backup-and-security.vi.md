@@ -96,8 +96,9 @@ Danh sách đầy đủ có trong [chính sách quyền riêng tư](../../PRIVAC
 
 ## Ẩn tên tài khoản
 
-**Cài đặt › Giao diện › Ẩn tên tài khoản** thay tên thật bằng "Tài khoản 1", "Tài khoản 2"… (theo vị trí trong danh sách) ở mọi chỗ, kể cả tiêu đề cửa sổ Roblox.
+**Cài đặt › Giao diện › Ẩn tên tài khoản** rút gọn mọi tên còn chữ cái đầu như chế độ streamer của Discord ("Farm 1" thành "F…"), ở mọi chỗ, kể cả tiêu đề cửa sổ Roblox.
 
+- Ảnh đại diện vẫn giữ, nên vẫn phân biệt được các tài khoản.
 - Tên đăng nhập @ cũng ẩn đi, và mục **Sửa** không hiện ID người dùng.
 - Ô **Tên gợi nhớ** không sửa được trong lúc này.
 - Ô tìm kiếm vẫn tìm được theo tên thật.

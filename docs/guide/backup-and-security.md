@@ -96,8 +96,9 @@ The full list is in the [privacy policy](../../PRIVACY.md).
 
 ## Hide account names
 
-**Settings › Appearance › Hide account names** shows "Account 1", "Account 2"… (each account's place in the list) everywhere instead of names, Roblox window titles included.
+**Settings › Appearance › Hide account names** shortens every name to its first letter, like Discord's streamer mode ("Farm 1" shows as "F…"), everywhere, Roblox window titles included.
 
+- Avatars stay, so you can still tell the accounts apart.
 - @usernames disappear and **Edit** hides the user ID.
 - The **Nickname** box can't be edited meanwhile.
 - The search still finds accounts by their real names.

@@ -36,10 +36,10 @@ public sealed partial class AppController
             clients, _clientRam.Values.Sum() / MB, TrayMacros());
     }
 
-    /// <summary>The account's picture for the tray's page: Roblox's address for it, once known (its initials meanwhile);
-    /// none while names are hidden (a picture tells who it is too).</summary>
+    /// <summary>The account's picture for the tray's page: Roblox's address for it, once known (its initials meanwhile),
+    /// names hidden or not (hiding names keeps the pictures, as Discord's streamer mode does).</summary>
     public string? TrayPictureUrl(Guid id) =>
-        !Prefs.HideNames && FindAccount(id) is { UserId: > 0 } account ? _avatarUrls.GetValueOrDefault(account.UserId) : null;
+        FindAccount(id) is { UserId: > 0 } account ? _avatarUrls.GetValueOrDefault(account.UserId) : null;
 
     public object TrayCustomTheme() => CustomThemeDto();
 

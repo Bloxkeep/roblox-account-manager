@@ -241,7 +241,7 @@ window.I18N = {
     'dcv.alertFoot': 'Bloxkeep · Alerts', 'dcv.boardTitle': '1 of 2 accounts in game', 'dcv.boardOff': 'dropped', 'dcv.ram': 'Roblox is using 2.4 GB of RAM',
     'dcv.boardFoot': 'Bloxkeep · Board · updates every {n} min', 'dcv.inGame': 'In game', 'dcv.off': 'Dropped', 'dcv.long': '1 h 24 min', 'dcv.short': '12 min',
     // Hide account names, bans, authenticator codes
-    'hide.account': 'Account {n}', 'set.hideNames': 'Hide account names', 'set.hideNamesDesc': 'Shows “Account 1”, “Account 2”… instead, without pictures, for screenshots and streams.',
+    'hide.account': 'Account {n}', 'set.hideNames': 'Hide account names', 'set.hideNamesDesc': 'Shortens names to their first letter, like Discord’s streamer mode, for screenshots and streams. Pictures stay.',
     'dc.hideNames': 'Hide account names in messages', 'dc.hideNamesDesc': 'Messages say “Account 1”, “Account 2”… instead.',
     'ql.linkedHidden': 'Someone entered the code. Confirm on that device.',
     'card.banned': 'Banned', 'card.bannedTip': 'Roblox reports this account as banned. Play skips it.', 'chip.banned': 'Banned',
@@ -1193,7 +1193,7 @@ window.I18N = {
     'dcv.alertFoot': 'Bloxkeep · Thông báo', 'dcv.boardTitle': '1/2 tài khoản đang chơi', 'dcv.boardOff': 'bị văng', 'dcv.ram': 'Roblox đang dùng 2,4 GB RAM',
     'dcv.boardFoot': 'Bloxkeep · Bảng trạng thái · cập nhật mỗi {n} phút', 'dcv.inGame': 'Đang chơi', 'dcv.off': 'Bị văng', 'dcv.long': '1 giờ 24 phút', 'dcv.short': '12 phút',
     // Ẩn tên acc, acc bị ban, mã xác thực
-    'hide.account': 'Tài khoản {n}', 'set.hideNames': 'Ẩn tên tài khoản', 'set.hideNamesDesc': 'Hiện “Tài khoản 1”, “Tài khoản 2”… thay cho tên và ảnh, khi chụp màn hình hay livestream.',
+    'hide.account': 'Tài khoản {n}', 'set.hideNames': 'Ẩn tên tài khoản', 'set.hideNamesDesc': 'Rút gọn tên còn chữ cái đầu như chế độ streamer của Discord, khi chụp màn hình hay livestream. Vẫn giữ ảnh.',
     'dc.hideNames': 'Ẩn tên tài khoản trong tin nhắn', 'dc.hideNamesDesc': 'Tin nhắn ghi “Tài khoản 1”, “Tài khoản 2”… thay cho tên.',
     'ql.linkedHidden': 'Đã có người nhập mã. Xác nhận trên thiết bị đó.',
     'card.banned': 'Bị ban', 'card.bannedTip': 'Roblox báo tài khoản này bị ban. Bấm Vào game sẽ bỏ qua.', 'chip.banned': 'Bị ban',

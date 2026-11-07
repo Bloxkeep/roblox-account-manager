@@ -41,15 +41,15 @@ html [data-theme="dark" lang="vi"]
         div.rig.side-card [id="sys-rig"]
           div.sys [id="sys-card"]
             div.sys-head
-              span.sys-count [title="Tài khoản 1 · PID 1111\nTài khoản 2 · PID 2222"]
+              span.sys-count [title="T… · PID 1111\nF… · PID 2222"]
                 b [id="sys-count"] "3"
                 span [id="sys-count-label"] "cửa sổ"
                 span.sys-ram [id="sys-ram"] "1,7 GB"
               button.sys-close [id="sys-close" type="button" title="Đóng tất cả" aria-label="Đóng tất cả"]
                 svg.i #16z0s1r
             div.lobby
-              svg.face.play #387byl
-              svg.face.play #1c8trxk
+              svg.face.play #1907ocg
+              svg.face.play #5iqsqe
               svg.face.play #wbyqat
             div.bricks [id="sys-meter" title="RAM đã dùng 63% · trống 12 GB" aria-hidden="true"]
               i.r
