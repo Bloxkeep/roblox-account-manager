@@ -6,10 +6,10 @@
 // its whole Wiki (WikiSite.tsx) and its Prices, and a switch to any other game without going back.
 import { RadarStrip, playingOf, useCommunity, type RadarLine } from './Community';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Icon, useAppState, useHost, usePage } from './host';
+import { Icon, useAppState, useHost, usePage, type Host } from './host';
 import { Pop } from './MacroPop';
 import { FollowButton, NewsPanel, useFeedCards, type FeedGame, type Feeds } from './NewsView';
-import { PricePanel, useWikiGames, type WikiInfo } from './WikiView';
+import { PricePanel, useWikiGames, wikiGamesNow, type WikiInfo } from './WikiView';
 import { WikiSite, type WikiPick } from './WikiSite';
 import { timeText } from './DiscordBlocks';
 
@@ -33,6 +33,26 @@ const fold = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,
 const sameName = (s: string) => fold(plainName(s)).replace(/[^a-z0-9]/g, '');
 /** One of the user's own games: news, played here, or added. */
 const mine = (g: Game) => !!(g.news || g.played || g.added);
+/** The same game: by its place, else by its name without what its makers dress it in. */
+const sameGame = (a: { place: number; name: string }, b: { place: number; name: string }) => {
+  const n = sameName(a.name);
+  return (!!a.place && a.place === b.place) || (!!n && n === sameName(b.name));
+};
+
+/**
+ * Game info's Wiki button: the id of the game's card here when this tab has its wiki (the bot names one for it, or it was
+ * added here), else null and the button searches the web for one as before.
+ */
+export async function ourWikiOf(call: Host['call'], picks: WikiPick[], game: { place: number; name: string }) {
+  const bot = await wikiGamesNow(call) || [];
+  const hit = bot.find(w => (w.wiki || picks.some(p => p.id === w.id && p.site)) && sameGame(w, game))
+    || picks.find(p => p.added && p.site && sameGame(p, game));
+  return hit?.id ?? null;
+}
+/** A game to open on its Wiki when the tab is next drawn (ourWikiOf found it), and who to tell. */
+let wikiWanted: string | null = null;
+const wikiListeners = new Set<() => void>();
+export function openOurWiki(id: string) { wikiWanted = id; wikiListeners.forEach(f => f()); }
 
 /** The games played here, asked each time the tab is shown (they change as accounts play). */
 function usePlayed(shown: boolean) {
@@ -111,6 +131,13 @@ export function GamesView() {
   const at: Part | null = parts.includes(part) ? part : parts[0] || null;
   const scroll = useRef<HTMLDivElement>(null);
   const openGame = (id: string) => { setOpenId(id); scroll.current?.scrollTo({ top: 0 }); };
+  // Sent here from Game info's Wiki button: that game, on its Wiki, once its card is in the list.
+  const [wantedTick, setWantedTick] = useState(0);
+  useEffect(() => { const f = () => setWantedTick(n => n + 1); wikiListeners.add(f); return () => { wikiListeners.delete(f); }; }, []);
+  useEffect(() => {
+    if (!wikiWanted || !games.some(g => g.id === wikiWanted)) return;
+    openGame(wikiWanted); setPart('wiki'); wikiWanted = null;
+  }, [wantedTick, games]);
   const remove = (g: Game) => {
     call('wikiPick', { id: g.id, site: '' }, { silent: true });
     setOpenId(null);

@@ -349,6 +349,8 @@ export default [
   S('game-page', '', async s => { await s.click({ css: '.dock-info .gname-link' }); await s.wait(400); }),
   S('game-page-updated', 'gpnew=1', async s => { await s.click({ css: '.dock-info .gname-link' }); await s.wait(400); }),
   S('game-page-no-hours', 'gpempty=1', async s => { await s.click({ css: '.dock-info .gname-link' }); await s.wait(400); }),
+  // Its Wiki, for a game the Games tab has: the dialog closes and that game opens there on its Wiki, read inside Bloxkeep.
+  S('game-page-wiki', '', async s => { await s.click({ css: '.dock-info .gname-link' }); await s.wait(400); await s.click({ css: '[data-gp=wiki]' }); await s.wait(5000); }),
   S('feedback', 'settings=updates', async s => { await s.click(key('fb.open')); }),
   S('import-vault', 'vimport=pick'),
   S('import-vault-preview', 'vimport=preview', async s => { await s.wait(1500); }),

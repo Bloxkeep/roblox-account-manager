@@ -3,7 +3,8 @@
 // quiet (the player counts Bloxkeep notes every half hour: GameHours.cs), and its description. Buttons: its wiki, its
 // roblox.com page. Its figures come from the app (AppController.GamePage.cs).
 import { useState } from 'react';
-import { Icon, useHost } from './host';
+import { Icon, useAppState, useHost } from './host';
+import { openOurWiki, ourWikiOf } from './GamesView';
 
 export interface GameAccount {
   id: string; name: string; minutes: number; kicks: number; kickWhy?: string | null; drops: number;
@@ -21,8 +22,15 @@ export interface GameDetails {
 /** An update this recent is shown as news: Roblox may be shutting old servers down. */
 const FRESH_UPDATE_HOURS = 24;
 
-export function GamePage({ game }: { game: GameDetails }) {
-  const { t, locale, fmtNum, ago, call } = useHost();
+export function GamePage({ game, close }: { game: GameDetails; close?: () => void }) {
+  const { t, locale, fmtNum, ago, call, go } = useHost();
+  const picks = useAppState().wikis?.games || [];
+  // Its wiki: the Games tab's, read inside Bloxkeep, when the tab has this game; else a web search for one.
+  const wiki = async () => {
+    const id = await ourWikiOf(call, picks, { place: game.placeId, name: game.name });
+    if (!id) return call('openGameWiki', { name: game.name });
+    close?.(); go('news'); openOurWiki(id);
+  };
   const [more, setMore] = useState(false);
   const updated = game.updated ? new Date(game.updated) : null;
   const fresh = updated && Date.now() - updated.getTime() < FRESH_UPDATE_HOURS * 3600e3;
@@ -44,7 +52,7 @@ export function GamePage({ game }: { game: GameDetails }) {
         <b>{game.name}</b>
         <small>{[game.creator, game.genre].filter(Boolean).join(' · ')}</small>
       </div>
-      <button className="btn sm" data-gp="wiki" onClick={() => call('openGameWiki', { name: game.name })}><Icon name="book" />{t('gp.wiki')}</button>
+      <button className="btn sm" data-gp="wiki" onClick={wiki}><Icon name="book" />{t('gp.wiki')}</button>
       <button className="btn sm ghost" data-gp="roblox" title={t('gp.roblox')} aria-label={t('gp.roblox')}
         onClick={() => call('openGamePage', { placeId: game.placeId })}><Icon name="external" /></button>
     </div>

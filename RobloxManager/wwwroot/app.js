@@ -1232,7 +1232,7 @@
     modal({
       title: t('gp.title'), body: '', boxClass: 'gp-modal',
       actions: [{ text: t('gp.close'), onClick: ({ close }) => close() }],
-      onMount: ({ el }) => { unmount = window.BloxkeepUI.gamePage(el.querySelector('.modal-body'), uiHost(), game); },
+      onMount: ({ el, close }) => { unmount = window.BloxkeepUI.gamePage(el.querySelector('.modal-body'), uiHost(), game, close); },
       onRemoved: () => unmount?.(),
     });
   }

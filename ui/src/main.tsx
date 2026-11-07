@@ -51,8 +51,8 @@ const BloxkeepUI = {
   flush(fn: () => void) {
     flushSync(fn);
   },
-  gamePage(el: HTMLElement, host: Host, game: GameDetails) {
-    return mount(el, host, <GamePage game={game} />);
+  gamePage(el: HTMLElement, host: Host, game: GameDetails, close?: () => void) {
+    return mount(el, host, <GamePage game={game} close={close} />);
   },
   whatsNew(el: HTMLElement, host: Host, releases: Release[], close: () => void) {
     return mount(el, host, <WhatsNew releases={releases} close={close} />);

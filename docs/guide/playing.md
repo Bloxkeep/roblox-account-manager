@@ -53,7 +53,7 @@ Click the game's name under the box to open its page:
 
 | Part | What it shows |
 |---|---|
-| Top | Its picture, maker and genre. **Wiki** searches the web for its wiki; the arrow opens it on roblox.com. |
+| Top | Its picture, maker and genre. **Wiki** opens the game's wiki in the [Games tab](#the-games-tab) when it is there, otherwise searches the web for one; the arrow opens it on roblox.com. |
 | Updated news | When the game was updated in the last 24 hours: Roblox may be shutting old servers down, so a window that drops now rejoins a new one. |
 | Figures | Playing now, visits, likes and when it was last updated. Roblox shows players and visits only to a signed-in account, so they need one in Bloxkeep. |
 | Your accounts here | Each account that played it in the last 7 days: for how long, kicks (by the game, or AFK for idling), other drops, and whether it's in it now or banned from it. |

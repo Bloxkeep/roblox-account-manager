@@ -3,7 +3,7 @@
 // 40 or less, most damage first"), two to four items side by side with the better number of each line marked, and the
 // items most like one (and by how much each line differs).
 import { useEffect, useMemo, useState } from 'react';
-import { Icon, useHost } from './host';
+import { Icon, useHost, type Host } from './host';
 import { PriceList, type Prices } from './PriceList';
 
 import type { WikiItem as Item } from './wikiText';
@@ -43,13 +43,24 @@ export const VI: Record<string, string> = {
   Value: 'Giá trị', Stack: 'Chồng tối đa', Knockback: 'Đẩy lùi', 'Crit chance': 'Tỉ lệ chí mạng', Velocity: 'Tốc độ bay', 'Heavy cooldown': 'Hồi đòn nặng',
 };
 
+/** The same list asked for from elsewhere (Game info's Wiki button), kept like the tab's; null when the bot can't be asked. */
+export async function wikiGamesNow(call: Host['call']) {
+  if (!gamesNow) {
+    const d = await (call('wikiGames', {}, { silent: true }) as Promise<{ games: WikiInfo[] } | undefined>).catch(() => undefined);
+    if (d) gamesNow = d.games;
+  }
+  return gamesNow;
+}
+
 /** The games with a wiki or a price list, asked for once the tab is first shown. */
 export function useWikiGames(shown: boolean) {
   const { call } = useHost();
   const [games, setGames] = useState<WikiInfo[] | null>(gamesNow);
   const [failed, setFailed] = useState(false);
   useEffect(() => {
-    if (!shown || gamesNow) return;
+    if (!shown) return;
+    // Asked already from elsewhere (Game info's Wiki button) since this was drawn.
+    if (gamesNow) { if (games !== gamesNow) setGames(gamesNow); return; }
     (call('wikiGames', {}, { silent: true }) as Promise<{ games: WikiInfo[] } | undefined>)
       .then(d => { if (d) { gamesNow = d.games; setGames(d.games); } else setFailed(true); }, () => setFailed(true));
   }, [shown]);
