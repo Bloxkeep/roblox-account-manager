@@ -239,7 +239,7 @@ function startDev(extra = {}) {
     RELEASE_API_URL: `http://127.0.0.1:${SRC}/api/tags/`, DOWNLOADS_URL: `http://127.0.0.1:${SRC}/downloads.json`, RELEASE_FILE_URL: `http://127.0.0.1:${SRC}/raw/`, RELEASE_EVERY_MS: '1', DOWNLOADS_EVERY_MS: '0', CAPTCHA_CODE: 'K7MXP', COMMUNITY_GUILD: 'g1', INVITE_RECHECK_MS: '0',
     ONLINE_FOR_MS: '8000', BEAT_BUDGET: '1440', PUBLIC_URL: `http://127.0.0.1:${DEV}`,
     NOTES_URL: `http://127.0.0.1:${SRC}/notes/release-notes-`, NOTES_EVERY_MS: '1', COUNT_EVERY_MS: '3500', LATEST_CACHE_S: '0',
-    ROBLOX_GAMES_URL: `http://127.0.0.1:${SRC}/games?universeIds=`, COMMUNITY_EVERY_MS: '0',
+    ROBLOX_GAMES_URL: `http://127.0.0.1:${SRC}/games?universeIds=`, COMMUNITY_EVERY_MS: '0', REPOST_RELEASE: 'v1.0.10',
     PRICES_API: `http://127.0.0.1:${SRC}/prices`, WIKI_API: `http://127.0.0.1:${SRC}/wikiapi`, WIKI_REQUESTS: '60', WIKI_CACHE_S: '0', ...extra,
   };
   dev = spawn(process.execPath, [WRANGLER, 'dev', '--ip', '127.0.0.1', '--port', String(DEV), '--test-scheduled', '--persist-to', PERSIST,
@@ -621,6 +621,14 @@ try {
   const rel10 = posts('c1').at(-1);
   check('a release with lists only: posted with them, not empty', posts('c1').length === before.c1 + 1 && embedOf(rel10)?.title === 'Bloxkeep 1.0.10 is out'
     && embedOf(rel10)?.description === '**Improved**\n- Faster.\n\n**Fixed**\n- A crash.', JSON.stringify(rel10?.body));
+  // Posted once more (REPOST_RELEASE, as 1.0.20 was after its empty post): at the next look, then never again.
+  before = base();
+  await minute();
+  const again = posts('c1').at(-1);
+  check('…a release set to be posted again: posted once more at the next look', posts('c1').length === before.c1 + 1 && embedOf(again)?.description === embedOf(rel10)?.description, posts('c1').length - before.c1);
+  before = base();
+  await minute();
+  check('…and only once', posts('c1').length === before.c1, posts('c1').length - before.c1);
   notesBody = NOTES;
 
   // Turned off: nothing more there.

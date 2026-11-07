@@ -40,6 +40,8 @@ const MAX_BACKOFF = 60_000;
 const RELEASE_EVERY = 2 * 60_000;
 // How many looks a new release waits for its notes to be readable before it is posted without them (an hour).
 const RELEASE_TRIES = 6;
+/** A release to post once more (its first post went out wrong); the tests set their own with REPOST_RELEASE. */
+const REPOST_DEFAULT = 'v1.0.20';
 // An outage counts once two looks in a row say so, and is over after two that say all is well (no posts for a blip).
 const OUTAGE_LOOKS = 2;
 // A Roblox update posted before Roblox's notes were out: they're looked for this often, for this long, and edited in.
@@ -1540,6 +1542,7 @@ export class Gateway extends DurableObject {
     // What /latest says, as soon as the tag is out (the post waits for its notes, below).
     if (tag && !/-/.test(tag))
       snap.latest = tag.replace(/^v/, '');
+    const announcedBefore = snap.announced.release;
     if (tag && tag !== snap.announced.release && !/-/.test(tag)) {
       const rel = await readRelease(this.env, tag);
       // Its notes not readable yet (GitHub not answering): asked again at the next look, for up to RELEASE_TRIES looks,
@@ -1554,6 +1557,17 @@ export class Gateway extends DurableObject {
         if (prev && (!snap.announced.release || newer(tag, snap.announced.release)))
           posts.push({ kind: 'bloxkeep', make: l => releaseMessage(l, rel) });
         snap.announced.release = tag;
+      }
+    }
+    // Posted once more, the release whose first post went out wrong (1.0.20's was empty, 2026-11-07): only while it is
+    // still the newest, announced before this look (not twice in a row), once its notes read, and never twice (snap.reposted).
+    const REPOST = this.env.REPOST_RELEASE ?? REPOST_DEFAULT;
+    if (REPOST && tag === REPOST && announcedBefore === REPOST && snap.reposted !== REPOST) {
+      const rel = await readRelease(this.env, REPOST);
+      if (rel.read && rel.en) {
+        snap.reposted = REPOST;
+        changed = true;
+        posts.push({ kind: 'bloxkeep', make: l => releaseMessage(l, rel) });
       }
     }
     if (changed || !snap.changedAt)
