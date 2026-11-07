@@ -20,6 +20,17 @@ export function buildDemo(root, out) {
       fs.copyFileSync(path.join(www, f.name), path.join(dir, f.name));
   for (const f of ['mock.js', 'demo.js', 'wiki-sample.json'])
     fs.copyFileSync(path.join(dev, f), path.join(dir, f));
+  // Real pictures (site/demo-pics.mjs): copied to pics/, their list read by demo.js from demo-pics.js.
+  const pics = path.join(root, 'site', 'demo-pics');
+  if (fs.existsSync(path.join(pics, 'map.json'))) {
+    fs.mkdirSync(path.join(dir, 'pics'), { recursive: true });
+    for (const f of fs.readdirSync(pics)) if (f !== 'map.json') fs.copyFileSync(path.join(pics, f), path.join(dir, 'pics', f));
+    fs.writeFileSync(path.join(dir, 'demo-pics.js'), `window.__demoPics = ${fs.readFileSync(path.join(pics, 'map.json'), 'utf8')};`);
+  } else fs.writeFileSync(path.join(dir, 'demo-pics.js'), '');
+  // The Mini window's page: its own bundle, on the main page's demo bridge (demo.js's window.__demoMini).
+  for (const f of ['ui-mini.js', 'ui-mini.css'])
+    fs.copyFileSync(path.join(www, f), path.join(dir, f));
+  fs.writeFileSync(path.join(dir, 'demo-mini.js'), 'window.__mockBridge = window.parent.__demoMini;\n');
 
   // What's new: the three newest versions, as the mock shows them, with their pictures.
   const news = JSON.parse(fs.readFileSync(path.join(root, 'RobloxManager', 'whatsnew.json'), 'utf8')).slice(0, 3);
@@ -36,6 +47,21 @@ export function buildDemo(root, out) {
   // Each script's address changes with it, so a browser never mixes this build's files with the last one's.
   const v = f => createHash('sha256').update(fs.readFileSync(path.join(dir, f))).digest('hex').slice(0, 10);
   const script = f => `<script src="${f}?v=${v(f)}"></script>`;
+  fs.writeFileSync(path.join(dir, 'mini.html'), `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="robots" content="noindex">
+<title>Bloxkeep</title>
+<link rel="stylesheet" href="ui-mini.css?v=${v('ui-mini.css')}">
+</head>
+<body class="panel-page mini-page">
+<div id="mini"></div>
+${['demo-mini.js', 'ui-mini.js'].map(script).join('\n')}
+</body>
+</html>
+`);
   fs.writeFileSync(path.join(dir, 'index.html'), `<!doctype html>
 <html lang="en">
 <head>
@@ -51,8 +77,8 @@ export function buildDemo(root, out) {
 <div id="app"><div class="splash"><img src="logo.svg" alt=""></div></div>
 <div id="layer"></div>
 <div id="toasts"></div>
-<script>window.__mockQuery = 'lang=' + (new URLSearchParams(location.search).get('lang') === 'vi' ? 'vi' : 'en');</script>
-${['mock.js', 'demo.js', 'shared.js', 'i18n.js', 'ui.js', 'app.js', 'livescene.js'].map(script).join('\n')}
+<script>window.__mockQuery = 'nodelay=1&lang=' + (new URLSearchParams(location.search).get('lang') === 'vi' ? 'vi' : 'en');</script>
+${['demo-pics.js', 'mock.js', 'demo.js', 'shared.js', 'i18n.js', 'ui.js', 'app.js', 'livescene.js'].map(script).join('\n')}
 </body>
 </html>
 `);

@@ -212,7 +212,7 @@ for (const lang of ['en', 'vi']) {
   const d = t.demo, demo = home + 'demo/';
   write(demo, page({
     lang, url: demo, alt: other + 'demo/', title: `${d.title} · Bloxkeep`, description: d.description, bodyClass: 'demo', foot: false,
-    body: `<div class="demo-bar"><div class="wrap demo-bar-in"><p>${esc(d.bar)} <span class="demo-small">${esc(d.small)}</span></p><a class="btn small" href="${DOWNLOAD}">${esc(d.download)}</a></div></div>
+    body: `<div class="demo-bar"><div class="wrap top-in demo-bar-in"><p>${esc(d.bar)} <span class="demo-small">${esc(d.small)}</span></p><a class="btn small" href="${DOWNLOAD}">${esc(d.download)}</a></div></div>
 <div class="demo-frame"><iframe src="${rel(demo, 'demo/app/')}?lang=${lang}" title="${esc(d.frame)}"></iframe></div>`,
   }));
   urls.push([demo, other + 'demo/']);

@@ -101,18 +101,14 @@ const L = {
     all: 'All downloads',
     meta: v => `Free and open source · Version ${v} · Windows 10 or 11, 64-bit`,
     heroAlt: "Bloxkeep's main window: account cards, the game bar at the bottom, Multi-Roblox on in the sidebar",
-    farmAlt: 'Four Roblox windows open at once on one PC, titled Roblox - Account 7, 4, 2 and 1, all in the same game',
-    farmTag: 'Your Roblox windows',
-    appTag: 'Bloxkeep, beside them',
     proofTitle: 'See it working',
-    proofText: 'A real screenshot from one Windows PC: six Roblox accounts open at once with Bloxkeep, all in the same game, tiled side by side with one click.',
     proofAlt: 'Six Roblox windows open at once on one PC, tiled three by two, titled Roblox - Account 1 to Roblox - Account 7, all in the same game',
-    proofCaption: 'Account names are hidden. Roblox 0.745, November 2026.',
     proofLink: 'How to turn on Multi-Roblox',
     featuresTitle: 'What it does',
+    groups: ['Play', 'Keep playing', 'Discord and news', 'Your way'],
     more: 'How it works',
     features: [
-      ['multi-roblox', 'multi-roblox-real-detail.jpg', 'Several Roblox windows at once', 'Turn on Multi-Roblox and every account plays in its own window, opened windowed and tiled the way you choose. Each new Roblox build is checked.'],
+      ['multi-roblox', 'multi-roblox-real.jpg', 'Several Roblox windows at once', 'Turn on Multi-Roblox and every account plays in its own window, opened windowed and tiled the way you choose. Each new Roblox build is checked.'],
       ['accounts', 'accounts-list.png', 'All your accounts in one place', 'Add accounts with a code from the Roblox phone app, a password (2-step verification works), the Roblox page or a cookie. See who is online, in a game or needs to sign in.'],
       ['playing', 'demo-servers.webp', 'Pick a game, pick a server', 'Find a game by name or link. Choose the server with the most players, the fewest, the lowest ping or room for all your accounts, or join a friend.'],
       ['presets', 'demo-presets.webp', 'Presets and schedules', 'Save accounts, a game and a server and start them in one click, or on a schedule that also stops them, with timed restarts.'],
@@ -124,7 +120,7 @@ const L = {
       ['windows-and-stats#arrange-windows', 'arrange-layouts.png', 'Arrange windows', "Pick a layout from pictures, like Windows' snap layouts, or a size of your own. Ctrl+Alt+A arranges them from any app."],
       ['settings', 'roblox-updates.png', 'Roblox your way', 'Graphics, FPS and volume for each account. Open Roblox with Bloxstrap, Fishstrap, Voidstrap or your own launcher.'],
       ['troubleshooting#keyboard-shortcuts', 'palette.png', 'Find anything with Ctrl+K', 'Type a few letters to find an account, a game, a setting or an action.'],
-      ['settings#appearance', 'theme-photos.jpg', 'Themes with real photos', 'Nearly 100 themes, some of them real photos that move, or a picture or video of your own behind the page.'],
+      ['settings#appearance', 'theme-photos.jpg', 'Themes', 'Nearly 100 themes, some of them moving scenes, or a picture or video of your own behind the page.'],
       ['backup-and-security', 'lock.png', 'Locked with your password', 'Accounts are encrypted with your master password and stay on your PC. Back them up to a OneDrive or Google Drive folder and restore them on a new PC.'],
       ['getting-started#updates', 'lock-update.png', 'Updates itself', "New versions install by themselves while you aren't using Bloxkeep. Your Roblox windows keep running."],
       ['macros', 'macros.png', 'Macros (Beta)', 'Steps written as plain sentences: press keys, click, wait for a picture, a color or text. Record one or start from a template; a small panel sits beside the game.'],
@@ -132,12 +128,11 @@ const L = {
     ],
     startTitle: 'Start in three steps',
     start: [
-      ['Set a master password', "It unlocks Bloxkeep and keeps your accounts encrypted. It can't be recovered, so pick one you'll remember."],
-      ['Add your accounts', 'Sign in with your phone (recommended), a username and password, or a browser window.'],
-      ['Pick a game and press Play', 'Type a game in the bar at the bottom, click accounts to choose them, press Play.'],
+      ['lock.png', 'Set a master password', "It unlocks Bloxkeep and keeps your accounts encrypted. It can't be recovered, so pick one you'll remember."],
+      ['add-account.png', 'Add your accounts', 'Sign in with your phone (recommended), a username and password, or a browser window.'],
+      ['game-picker.png', 'Pick a game and press Play', 'Type a game in the bar at the bottom, click accounts to choose them, press Play.'],
     ],
     startLink: 'Getting started, step by step',
-    demoAlt: 'Choosing two accounts, switching the game, looking at the server list, then changing the theme',
     safeTitle: 'Your accounts stay yours',
     safe: [
       ['On your PC only', 'Bloxkeep has no server of its own. Your accounts are kept in a file on your PC, encrypted with your master password.'],
@@ -195,18 +190,14 @@ const L = {
     all: 'Tất cả bản tải',
     meta: v => `Miễn phí, mã nguồn mở · Phiên bản ${v} · Windows 10 hoặc 11, 64-bit`,
     heroAlt: 'Cửa sổ chính của Bloxkeep: các thẻ tài khoản, thanh chọn game ở dưới, Multi-Roblox đang bật ở thanh bên',
-    farmAlt: 'Bốn cửa sổ Roblox mở cùng lúc trên một máy, tiêu đề Roblox - Account 7, 4, 2 và 1, cùng ở trong một game',
-    farmTag: 'Các cửa sổ Roblox',
-    appTag: 'Bloxkeep ở bên cạnh',
     proofTitle: 'Chạy thật trên một máy',
-    proofText: 'Ảnh chụp thật trên một máy Windows: sáu tài khoản Roblox mở cùng lúc bằng Bloxkeep, cùng ở trong một game, xếp cạnh nhau chỉ bằng một cú bấm.',
     proofAlt: 'Sáu cửa sổ Roblox mở cùng lúc trên một máy, xếp thành lưới ba nhân hai, tiêu đề từ Roblox - Account 1 đến Roblox - Account 7, cùng ở trong một game',
-    proofCaption: 'Tên tài khoản đã được ẩn. Roblox 0.745, tháng 11/2026.',
     proofLink: 'Cách bật Multi-Roblox',
     featuresTitle: 'Bloxkeep làm được gì',
+    groups: ['Vào game', 'Treo game', 'Discord và tin game', 'Theo ý bạn'],
     more: 'Xem cách dùng',
     features: [
-      ['multi-roblox', 'multi-roblox-real-detail.jpg', 'Nhiều cửa sổ Roblox cùng lúc', 'Bật Multi-Roblox là mỗi tài khoản chơi trong một cửa sổ riêng, mở ở chế độ cửa sổ và xếp theo ý bạn. Mỗi bản Roblox mới đều được kiểm tra.'],
+      ['multi-roblox', 'multi-roblox-real.jpg', 'Nhiều cửa sổ Roblox cùng lúc', 'Bật Multi-Roblox là mỗi tài khoản chơi trong một cửa sổ riêng, mở ở chế độ cửa sổ và xếp theo ý bạn. Mỗi bản Roblox mới đều được kiểm tra.'],
       ['accounts', 'accounts-list.png', 'Mọi tài khoản ở một chỗ', 'Thêm tài khoản bằng mã từ app Roblox trên điện thoại, bằng mật khẩu (có xác minh 2 bước), qua trang Roblox hoặc bằng cookie. Xem ngay ai đang online, đang trong game hay cần đăng nhập lại.'],
       ['playing', 'demo-servers.webp', 'Chọn game, chọn server', 'Tìm game theo tên hoặc link. Chọn server đông nhất, vắng nhất, ping thấp nhất hay đủ chỗ cho mọi tài khoản, hoặc vào cùng bạn bè.'],
       ['presets', 'demo-presets.webp', 'Preset và hẹn giờ', 'Lưu sẵn tài khoản, game và server rồi mở bằng một cú bấm, hoặc theo lịch tự mở tự tắt, kèm khởi động lại định kỳ.'],
@@ -218,7 +209,7 @@ const L = {
       ['windows-and-stats#xếp-cửa-sổ', 'arrange-layouts.png', 'Xếp cửa sổ', 'Chọn kiểu xếp bằng hình mẫu như snap layouts của Windows, hoặc kích thước tự chọn. Ctrl+Alt+A xếp ngay từ app nào cũng được.'],
       ['settings', 'roblox-updates.png', 'Roblox theo ý bạn', 'Đồ họa, FPS và âm lượng riêng cho từng tài khoản. Mở Roblox bằng Bloxstrap, Fishstrap, Voidstrap hoặc launcher của bạn.'],
       ['troubleshooting#phím-tắt', 'palette.png', 'Tìm mọi thứ bằng Ctrl+K', 'Gõ vài chữ là ra tài khoản, game, cài đặt hay thao tác cần tìm.'],
-      ['settings#giao-diện', 'theme-photos.jpg', 'Theme ảnh thật', 'Gần 100 theme, có theme là ảnh thật chuyển động, hoặc đặt ảnh, video của riêng bạn làm nền.'],
+      ['settings#giao-diện', 'theme-photos.jpg', 'Theme', 'Gần 100 theme, có theme là cảnh chuyển động, hoặc đặt ảnh, video của riêng bạn làm nền.'],
       ['backup-and-security', 'lock.png', 'Khóa bằng mật khẩu của bạn', 'Tài khoản được mã hóa bằng mật khẩu chủ và chỉ nằm trên máy bạn. Sao lưu vào thư mục OneDrive hoặc Google Drive, rồi khôi phục trên máy mới.'],
       ['getting-started#cập-nhật', 'lock-update.png', 'Tự cập nhật', 'Bản mới tự cài khi bạn không dùng Bloxkeep. Các cửa sổ Roblox vẫn chạy bình thường.'],
       ['macros', 'macros.png', 'Macro (Beta)', 'Các bước viết thành câu dễ hiểu: bấm phím, bấm chuột, chờ hình, màu hoặc chữ. Ghi lại thao tác hoặc dùng mẫu, kèm bảng nhỏ cạnh game.'],
@@ -226,12 +217,11 @@ const L = {
     ],
     startTitle: 'Bắt đầu trong 3 bước',
     start: [
-      ['Đặt mật khẩu chủ', 'Dùng để mở Bloxkeep và mã hóa tài khoản. Quên là không lấy lại được, nên chọn cái bạn nhớ.'],
-      ['Thêm tài khoản', 'Đăng nhập bằng điện thoại (nên dùng), tên đăng nhập và mật khẩu, hoặc cửa sổ trình duyệt.'],
-      ['Chọn game, bấm Vào game', 'Gõ tên game ở thanh dưới, bấm vào các tài khoản để chọn, rồi bấm Vào game.'],
+      ['lock.png', 'Đặt mật khẩu chủ', 'Dùng để mở Bloxkeep và mã hóa tài khoản. Quên là không lấy lại được, nên chọn cái bạn nhớ.'],
+      ['add-account.png', 'Thêm tài khoản', 'Đăng nhập bằng điện thoại (nên dùng), tên đăng nhập và mật khẩu, hoặc cửa sổ trình duyệt.'],
+      ['game-picker.png', 'Chọn game, bấm Vào game', 'Gõ tên game ở thanh dưới, bấm vào các tài khoản để chọn, rồi bấm Vào game.'],
     ],
     startLink: 'Xem từng bước có hình',
-    demoAlt: 'Chọn hai tài khoản, đổi game, xem danh sách server rồi đổi theme',
     safeTitle: 'Tài khoản vẫn là của bạn',
     safe: [
       ['Chỉ nằm trên máy bạn', 'Bloxkeep không có máy chủ riêng. Tài khoản nằm trong một file trên máy bạn, được mã hóa bằng mật khẩu chủ.'],
@@ -279,6 +269,10 @@ const L = {
 };
 
 /** Real screenshots of Roblox windows (not Bloxkeep's interface): the same picture in every language. */
+/** What it does, in four groups (l.groups): play (Multi-Roblox, accounts, servers, presets, arrange), keep playing (stay in
+ * game, macros, game monitor, statistics), Discord and news (control, alerts, Games tab), your way (lock, updates, Roblox
+ * settings, themes, Ctrl+K). Numbers are places in l.features. */
+const FEATURE_GROUPS = [[0, 1, 2, 3, 9], [4, 15, 5, 6], [7, 8, 16], [13, 14, 10, 12, 11]];
 const SHARED = new Set(['multi-roblox-real.jpg', 'multi-roblox-real-detail.jpg', 'game-monitor-real.jpg']);
 
 const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -294,13 +288,12 @@ export function landing(lang, { version, rel, releases = [] }) {
       <a class="btn big" href="${PORTABLE}">${esc(l.portable)}</a>
     </div>
     <p class="meta">${esc(l.meta(version))} · <a href="${REPO}/releases/latest">${esc(l.all)}</a></p>`;
-  // Multi-Roblox is the real screenshot above it; of the rest, the first six get a row each, picture beside words, and
-  // the others share rows of four.
   // The newest release's highlights, from the app's own What's new (whatsnew.json).
   const top = releases.find(r => r.highlights?.length);
   const news = top && { version: top.version, date: top.date, highlights: top.highlights.map(h => h[lang].slice(0, 2)) };
-  const rest = l.features.filter(([page]) => page !== 'multi-roblox');
-  const rows = rest.slice(0, 6), small = rest.slice(6);
+  // What it does: the features in four groups (FEATURE_GROUPS, by their place in l.features), a tab each; in a group, a
+  // list of them beside one big picture, the chosen one's.
+  const groups = FEATURE_GROUPS.map((ids, g) => ({ name: l.groups[g], items: ids.map(i => l.features[i]) }));
   const body = `<section class="hero">
   <div class="wrap">
     <div class="hero-text">
@@ -310,70 +303,83 @@ export function landing(lang, { version, rel, releases = [] }) {
       <p class="try"><a href="#try">${esc(l.tryLink)} ›</a></p>
     </div>
     <div class="stage">
-      <figure class="stage-farm"><img class="shot" src="${shot('multi-roblox-real-detail.jpg')}" width="1136" height="1020" alt="${esc(l.farmAlt)}"><figcaption>${esc(l.farmTag)}</figcaption></figure>
       <figure class="stage-app" id="try">
         <div class="live" title="${esc(l.liveTip)}">
           <img class="shot" src="${shot('hero.png')}" width="1920" height="1200" alt="${esc(l.heroAlt)}">
-          <iframe src="${rel('demo/app/')}?lang=${lang}" title="${esc(l.liveTip)}" loading="lazy"></iframe>
+          <iframe src="${rel('demo/app/')}?lang=${lang}" title="${esc(l.liveTip)}"></iframe>
           <a class="live-full" href="${rel(home + 'demo/')}">${esc(l.fullScreen)}</a>
-        </div>
-        <figcaption>${esc(l.appTag)}</figcaption></figure>
+          <a class="live-tap" href="${rel(home + 'demo/')}" aria-label="${esc(l.fullScreen)}"></a>
+        </div></figure>
     </div>
   </div>
 </section>
-<script>{ /* The live app in the hero: drawn at 1232 × 770 (the wide sidebar) and scaled to its frame; shown once it has drawn. */
+<script>{ /* The live app in the hero: drawn at least 1232 px wide (the wide sidebar), more on a big screen, and scaled to its
+  frame (up to 1.25×); shown, and clickable, the moment its first accounts are drawn. On a phone the picture opens /demo/. */
   const live = document.querySelector('.live'), frame = live && live.querySelector('iframe');
   if (live && frame) {
-    const fit = () => live.style.setProperty('--k', String(live.clientWidth / 1232));
+    const fit = () => {
+      const w = live.clientWidth, inner = Math.max(1232, w / 1.25);
+      live.style.setProperty('--w', inner + 'px'); live.style.setProperty('--h', inner / 1.6 + 'px'); live.style.setProperty('--k', String(w / inner));
+    };
     fit(); new ResizeObserver(fit).observe(live);
-    frame.addEventListener('load', () => setTimeout(() => live.classList.add('on'), 700));
+    const drawn = () => { try { return !!frame.contentDocument.querySelector('#app .card'); } catch { return true; } };
+    const look = setInterval(() => { if (drawn()) { clearInterval(look); live.classList.add('on'); } }, 100);
+    setTimeout(() => { clearInterval(look); live.classList.add('on'); }, 8000);
   } }</script>
 
 <section class="band alt proof" aria-labelledby="proof">
   <div class="wrap">
     <h2 id="proof">${esc(l.proofTitle)}</h2>
-    <p class="intro">${esc(l.proofText)}</p>
     <figure>
       <a href="${shot('multi-roblox-real.jpg')}"><img class="shot" src="${shot('multi-roblox-real.jpg')}" width="1702" height="1019" loading="lazy" decoding="async" alt="${esc(l.proofAlt)}"></a>
-      <figcaption>${esc(l.proofCaption)} <a href="${rel(`${home}guide/multi-roblox/`)}">${esc(l.proofLink)} ›</a></figcaption>
+      <figcaption><a href="${rel(`${home}guide/multi-roblox/`)}">${esc(l.proofLink)} ›</a></figcaption>
     </figure>
   </div>
 </section>
 
 <section class="band" aria-labelledby="start">
-  <div class="wrap start">
-    <div>
-      <h2 id="start">${esc(l.startTitle)}</h2>
-      <ol class="start-steps">
-${l.start.map(([title, text]) => `        <li><h3>${esc(title)}</h3><p>${esc(text)}</p></li>`).join('\n')}
-      </ol>
-      <a class="more" href="${rel(`${home}guide/getting-started/`)}">${esc(l.startLink)} ›</a>
-    </div>
-    <img class="shot" src="${shot('demo.gif')}" width="960" height="611" loading="lazy" decoding="async" alt="${esc(l.demoAlt)}">
+  <div class="wrap">
+    <h2 id="start">${esc(l.startTitle)}</h2>
+    <ol class="steps3">
+${l.start.map(([img, title, text], i) => `      <li>
+        <img src="${shot(img)}" loading="lazy" decoding="async" alt="">
+        <div><span class="steps3-n">${i + 1}</span><h3>${esc(title)}</h3><p>${esc(text)}</p></div>
+      </li>`).join('\n')}
+    </ol>
+    <a class="more" href="${rel(`${home}guide/getting-started/`)}">${esc(l.startLink)} ›</a>
   </div>
 </section>
 
 <section class="band alt" aria-labelledby="features">
   <div class="wrap">
     <h2 id="features">${esc(l.featuresTitle)}</h2>
-${rows.map(([page, img, title, text]) => `    <article class="row">
-      <a class="row-shot" href="${link(page)}" tabindex="-1"><img class="shot" src="${shot(img)}" loading="lazy" decoding="async" alt=""></a>
-      <div class="row-text">
-        <h3>${esc(title)}</h3>
-        <p>${esc(text)}</p>
-        <a class="more" href="${link(page)}">${esc(l.more)} ›</a>
+    <div class="fx">
+      <div class="fx-tabs" role="tablist" aria-labelledby="features">
+${groups.map((g, i) => `        <button type="button" role="tab" id="fx-t${i}" aria-controls="fx-p${i}" aria-selected="${i === 0}"${i ? ' tabindex="-1"' : ''}>${esc(g.name)}</button>`).join('\n')}
       </div>
-    </article>`).join('\n')}
-    <div class="minis">
-${small.map(([page, img, title, text]) => `      <article class="mini">
-${img ? `        <a class="mini-shot" href="${link(page)}" tabindex="-1"><img src="${shot(img)}" loading="lazy" decoding="async" alt=""></a>
-` : ''}        <h3>${esc(title)}</h3>
-        <p>${esc(text)}</p>
-        <a class="more" href="${link(page)}">${esc(l.more)} ›</a>
-      </article>`).join('\n')}
+${groups.map((g, i) => `      <div class="fx-panel" role="tabpanel" id="fx-p${i}" aria-labelledby="fx-t${i}"${i ? ' hidden' : ''}>
+        <ul class="fx-list">
+${g.items.map(([page, img, title, text], j) => `          <li${j ? '' : ' class="on"'}>
+            <button type="button" class="fx-item" data-shot="${shot(img)}" aria-pressed="${j === 0}"><b>${esc(title)}</b><span>${esc(text)}</span></button>
+            <a class="more" href="${link(page)}">${esc(l.more)} ›</a>
+          </li>`).join('\n')}
+        </ul>
+        <figure class="fx-shot"><img src="${shot(g.items[0][1])}" loading="lazy" decoding="async" alt=""></figure>
+      </div>`).join('\n')}
     </div>
   </div>
 </section>
+<script>{ /* What it does: a tab shows its group; a feature in it shows its picture (arrow keys move along the tabs). */
+  const tabs = [...document.querySelectorAll('.fx-tabs [role=tab]')];
+  const pick = t => tabs.forEach(b => { const on = b === t; b.setAttribute('aria-selected', on); b.tabIndex = on ? 0 : -1;
+    document.getElementById(b.getAttribute('aria-controls')).hidden = !on; });
+  tabs.forEach((t, i) => { t.addEventListener('click', () => pick(t));
+    t.addEventListener('keydown', e => { const d = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+      if (d) { const n = tabs[(i + d + tabs.length) % tabs.length]; pick(n); n.focus(); } }); });
+  document.querySelectorAll('.fx-panel').forEach(p => p.querySelectorAll('.fx-item').forEach(b => b.addEventListener('click', () => {
+    p.querySelectorAll('.fx-list li').forEach(li => { const on = li.contains(b); li.classList.toggle('on', on); li.querySelector('.fx-item').setAttribute('aria-pressed', on); });
+    p.querySelector('.fx-shot img').src = b.dataset.shot;
+  }))); }</script>
 
 ${news ? `<section class="band news" aria-labelledby="news">
   <div class="wrap">

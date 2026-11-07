@@ -38,8 +38,13 @@
     <rect x="598" y="470" width="30" height="78" fill="#1f2937"/><rect x="636" y="470" width="30" height="78" fill="#1f2937"/></svg>`);
   const PICTURES = [scene('#7ec8f0', '#5aa04a', '#b97a4a', '#9aa3ad'), scene('#f4b56a', '#c9a15b', '#7a5230', '#5b6b7a'),
     scene('#1c2a4a', '#2f4f3a', '#45607d', '#6b5b8c'), scene('#a8d8e8', '#e8eef2', '#7a8b99', '#c45c5c')];
+  // Real pictures saved beside the page (site/demo-pics.mjs, put in pics/ by site/demo.mjs): the games' icons and
+  // covers, Roblox's own famous accounts' faces, the wiki's and the news' pictures. What isn't there is drawn.
+  const PICS = window.__demoPics || { games: {}, avatars: [], map: {} };
+  const pic = f => f ? `pics/${f}` : null;
   const drawn = new Map();
   const standIn = url => {
+    if (PICS.map[url]) return pic(PICS.map[url]);
     let p = drawn.get(url);
     if (!p) {
       let h = 0;
@@ -69,8 +74,11 @@
   // The accounts' logins: made up, and not possible on Roblox.
   const LOGINS = [['demo-sunny'], ['demo-farm-01', 'Farmer One'], ['demo-farm-02', 'Farmer Two'], ['demo-night-owl'], ['demo-lan'], ['demo-trade'], ['demo-tester']];
   const ready = (async () => {
-    await Promise.all(LOGINS.map(([username, displayName], i) =>
-      call.call(base, 'debugAccount', { n: i + 1, set: displayName ? { username, displayName } : { username } })));
+    await Promise.all(LOGINS.map(([username, displayName], i) => {
+      const set = displayName ? { username, displayName } : { username };
+      if (PICS.avatars[i]) set.avatarUrl = pic(PICS.avatars[i]);
+      return call.call(base, 'debugAccount', { n: i + 1, set });
+    }));
     // The one the mock leaves opening for ever is ready to play instead.
     await call.call(base, 'debugAccount', { n: 7, set: { state: 'idle', session: null } });
   })();
@@ -87,7 +95,7 @@
       return { id, pid: a.session.pid, accountId: a.id,
         name: last.hideNames ? tx(`Account ${n}`, `Tài khoản ${n}`) : a.label || a.displayName,
         game: a.session.game?.name || tx('No game', 'Chưa vào game'), ramMb: 760 + n * 97, ours: true, minimized: minimized.has(id),
-        picture: PICTURES[n % PICTURES.length], status, jobId: status === 'ingame' ? `job-${a.session.game?.placeId || 0}` : null,
+        picture: pic(PICS.games[a.session.game?.placeId]?.cover) || PICTURES[n % PICTURES.length], status, jobId: status === 'ingame' ? `job-${a.session.game?.placeId || 0}` : null,
         iconUrl: a.session.game?.iconUrl ? standIn(a.session.game.iconUrl) : null };
     });
   };
@@ -96,7 +104,7 @@
   base.attach = fn => {
     emit = (name, d) => fn(name, clean(d));
     attach.call(base, (name, d) => {
-      if (name === 'state' && d) { last = d; setTimeout(send, 60); settle(d.accounts); }
+      if (name === 'state' && d) { last = d; setTimeout(send, 60); settle(d.accounts); miniShow(!!d.miniOpen); setTimeout(miniSend, 0); }
       emit(name, d);
     });
     // The second account's window gets into its game a moment after the page opens.
@@ -121,6 +129,51 @@
       setTimeout(() => call.call(base, 'debugAccount', { n, set: { session: { ...session, connection: 'ingame' } } }), 2500);
     }
   };
+  // The Mini window: the real mini page (mini.html beside this one) in a small frame at the bottom right of the page,
+  // on a bridge of its own (window.__demoMini, which its demo-mini.js takes): the playing accounts, Show and Close.
+  let miniEmit = null, miniFrame = null;
+  const miniData = () => {
+    const playing = (last?.accounts || []).filter(a => a.state === 'running' && a.session);
+    return {
+      unlocked: !last?.locked, robloxCount: playing.length, askCloseAll: true, theme: last?.theme || 'dark', customTheme: last?.customTheme || null,
+      language: vi ? 'vi' : 'en',
+      clients: playing.map(a => {
+        const n = parseInt(a.id.slice(-4), 16) || 0, c = a.session.connection;
+        const state = c === 'disconnected' ? 'disconnected' : c === 'ingame' ? 'game' : 'menu';
+        return { id: a.id, pid: a.session.pid, ramMb: 760 + n * 97, state,
+          name: last.hideNames ? tx(`Account ${n}`, `Tài khoản ${n}`) : a.label || a.displayName || a.username,
+          game: state === 'disconnected' ? tx('Disconnected', 'Mất kết nối') : state === 'game' && a.session.game?.name || tx('No game', 'Chưa vào game') };
+      }),
+    };
+  };
+  const miniSend = () => { if (miniEmit) miniEmit('mini', miniData()); };
+  const miniShow = on => {
+    if (!on) { miniFrame?.remove(); miniFrame = null; miniEmit = null; return; }
+    if (miniFrame) return;
+    miniFrame = document.createElement('iframe');
+    miniFrame.className = 'demo-mini';
+    miniFrame.title = tx('Mini window', 'Cửa sổ mini');
+    miniFrame.src = `mini.html?lang=${vi ? 'vi' : 'en'}`;
+    Object.assign(miniFrame.style, { position: 'fixed', right: '16px', bottom: '16px', width: '300px', height: '360px', border: '0',
+      borderRadius: '10px', boxShadow: '0 12px 40px rgba(0,0,0,.45)', zIndex: '9999', background: 'transparent', colorScheme: 'normal' });
+    document.body.appendChild(miniFrame);
+  };
+  window.__demoMini = {
+    attach(fn) { miniEmit = fn; },
+    call(cmd, a) {
+      if (cmd === 'ready') setTimeout(miniSend, 0);
+      else if (cmd === 'size' && miniFrame && a?.h) miniFrame.style.height = `${Math.min(Math.ceil(a.h), innerHeight - 32)}px`;
+      else if (cmd === 'act') {
+        if (a.what === 'hide') base.call('toggleMini');
+        else if (a.what === 'close') call.call(base, 'closeAccounts', { ids: [a.id] });
+        else if (a.what === 'closeAll') {
+          const ids = (last?.accounts || []).filter(x => x.state === 'running').map(x => x.id);
+          if (ids.length) call.call(base, 'closeAccounts', { ids });
+        }
+      }
+    },
+  };
+
   const OFFLINE = new Set(['wikiApi', 'wikiFind', 'wikiAbout']);
   base.call = async (cmd, a) => {
     await ready;
