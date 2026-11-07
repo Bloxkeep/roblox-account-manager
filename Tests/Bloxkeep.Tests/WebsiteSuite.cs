@@ -248,10 +248,17 @@ static class WebsiteSuite
 
         // Roblox not answering who it is (a notice on the account, too many questions): asked again later, not at every
         // read (2026-10-30 review: every 2 s while Roblox said "User is moderated").
+        // On a page of its own first: roblox.com itself, live on CI, may answer a made-up session with cookies of its own.
+        // Each ask is noted (which session, the wait so far) so a failure says why (2026-11-07: 2 asks once, on CI only).
+        coreO.NavigateToString("<html><body>test</body></html>");
+        await Task.Delay(500);
         int asks = 0;
+        var askLog = new List<string>();
+        var askClock = System.Diagnostics.Stopwatch.StartNew();
         Harness.Set(other, "_identify", (Func<string, Task<RobloxUser?>>)(v =>
         {
             asks++;
+            askLog.Add($"{(v.Contains("_TEST_M_") ? "M" : v.Contains("_TEST_R_") ? "R" : $"other({v.Length})")}@{askClock.ElapsedMilliseconds}ms");
             throw v.Contains("_TEST_M_") ? new RobloxApiException("User is moderated") { Moderated = true } : new RobloxApiException("Too many requests", rateLimited: true);
         }));
         SignIn(coreO, "_TEST_M_" + mark);
@@ -260,15 +267,16 @@ static class WebsiteSuite
             await (Task)Harness.Invoke(other, "SyncSessionAsync")!;
             await Task.Delay(250);
         }
-        c.Check("a sign-in Roblox answers \"User is moderated\" for: asked once, not at every read", asks == 1, asks);
+        c.Check("a sign-in Roblox answers \"User is moderated\" for: asked once, not at every read", asks == 1, string.Join(", ", askLog));
         asks = 0;
+        askLog.Clear();
         SignIn(coreO, "_TEST_R_" + mark);
         for (int i = 0; i < 6; i++)
         {
             await (Task)Harness.Invoke(other, "SyncSessionAsync")!;
             await Task.Delay(250);
         }
-        c.Check("…Roblox saying \"too many\": asked once, then after a wait", asks == 1, asks);
+        c.Check("…Roblox saying \"too many\": asked once, then after a wait", asks == 1, string.Join(", ", askLog));
         foreach (var gone in (await coreO.CookieManager.GetCookiesAsync("https://www.roblox.com")).Where(x => x.Name == ".ROBLOSECURITY"))
             coreO.CookieManager.DeleteCookie(gone);
 

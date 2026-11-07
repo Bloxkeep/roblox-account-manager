@@ -101,7 +101,14 @@ static class AutoLockSuite
         before = Posts();
         Harness.Invoke(app, "Toast", "Farm was kicked", "warn");
         Harness.Invoke(app, "Progress", "Opening SecretUser42");
-        c.Check("no toast or progress reaches the page meanwhile (it could name an account)", Posts() == before);
+        // Looked for by what they are, not by counting every post: a state post from the background (a timer, a reply
+        // finishing) may land in between, and did on CI once (2026-11-07, e4b36f93), the same commit passing in its release build.
+        List<string> since;
+        lock (posts) since = posts.Skip(before).ToList();
+        var leaked = since.Where(p => p.Contains("\"name\":\"toast\"") || p.Contains("\"name\":\"progress\"")
+            || p.Contains("Farm was kicked") || p.Contains("SecretUser42")).ToList();
+        c.Check("no toast or progress reaches the page meanwhile (it could name an account)", leaked.Count == 0,
+            string.Join(" // ", leaked.Select(p => p.Length > 120 ? p[..120] : p)));
         c.Check("the mini window lists no client meanwhile", app.RunningClients().Count == 0);
         // 2026-10-30 review: the mini window went by the vault only, so behind the lock screen it said "No Roblox window
         // is open." and its Close all worked with no password; a monitor-tab move in flight put the tiles back up.
