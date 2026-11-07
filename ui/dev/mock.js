@@ -517,7 +517,7 @@
     launching: false, checking: false, multi, settings: locked ? null : settings, accounts: locked ? [] : accounts, discord: locked ? null : discord,
   });
   // Roblox windows of accounts deleted while playing: like the app, deleting doesn't close them, and they still count.
-  let orphans = 0;
+  let orphans = Number(params.get('others')) || 0; // ?others=1: a Roblox window Bloxkeep didn't open
   const metrics = () => ({
     accounts: accounts.filter(a => a.state === 'running').map((a, i) => ({ id: a.id, ramMb: 780 + i * 140 + Math.round(Math.random() * 30) })),
     robloxCount: accounts.filter(a => a.state === 'running').length + orphans,

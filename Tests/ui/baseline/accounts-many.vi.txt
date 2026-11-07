@@ -48,15 +48,15 @@ html [data-theme="dark" lang="vi"]
               button.sys-close [id="sys-close" type="button" title="Đóng tất cả" aria-label="Đóng tất cả"]
                 svg.i #16z0s1r
             div.lobby
-              svg.face.play #jmg4f2
-              svg.face.play #1aptjyx
-              svg.face.play #1lgfg4j
-              svg.face.play #5s05z5
-              svg.face.play #1qrvwm1
-              svg.face.play #b10lmf
-              svg.face.play #av7dsd
-              svg.face.play #1gal2x1
-              svg.face.play #18kmqtq
+              svg.face.mood-play #jmg4f2
+              svg.face.mood-play #1aptjyx
+              svg.face.mood-play #1lgfg4j
+              svg.face.mood-play #5s05z5
+              svg.face.mood-play #1qrvwm1
+              svg.face.mood-play #b10lmf
+              svg.face.mood-play #av7dsd
+              svg.face.mood-play #1gal2x1
+              svg.face.mood-play #18kmqtq
               em.sys-more [title="Thêm 3 cửa sổ"] "+3"
             div.bricks [id="sys-meter" title="RAM đã dùng 63% · trống 12 GB" aria-hidden="true"]
               i.r

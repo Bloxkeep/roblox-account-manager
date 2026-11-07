@@ -48,8 +48,8 @@ html [data-theme="halong" lang="en"]
               button.sys-close [id="sys-close" type="button" title="Close all" aria-label="Close all"]
                 svg.i #16z0s1r
             div.lobby
-              svg.face.play #1pg0baw
-              svg.face.play #1jzq296
+              svg.face.mood-play #1pg0baw
+              svg.face.mood-play #1jzq296
             div.bricks [id="sys-meter" title="PC RAM 63% used · 12 GB free" aria-hidden="true"]
               i.r
               i.o

@@ -48,8 +48,8 @@ html [data-theme="dark" lang="vi"]
               button.sys-close [id="sys-close" type="button" title="Đóng tất cả" aria-label="Đóng tất cả"]
                 svg.i #16z0s1r
             div.lobby
-              svg.face.play #jmg4f2
-              svg.face.play #1aptjyx
+              svg.face.mood-play #jmg4f2
+              svg.face.mood-play #1aptjyx
             div.bricks [id="sys-meter" title="RAM đã dùng 63% · trống 12 GB" aria-hidden="true"]
               i.r
               i.o
@@ -496,8 +496,8 @@ html [data-theme="dark" lang="vi"]
               button.sys-close [id="sys-close" type="button" title="Đóng tất cả" aria-label="Đóng tất cả" FOCUSED]
                 svg.i #16z0s1r
             div.lobby
-              svg.face.play #jmg4f2
-              svg.face.play #1aptjyx
+              svg.face.mood-play #jmg4f2
+              svg.face.mood-play #1aptjyx
             div.bricks [id="sys-meter" title="RAM đã dùng 63% · trống 12 GB" aria-hidden="true"]
               i.r
               i.o

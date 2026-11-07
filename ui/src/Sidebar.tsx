@@ -51,7 +51,7 @@ export function Sidebar() {
       <div className="side-foot">
         <div id="update-slot">{u?.status === 'ready' && !u.quiet
           ? <button className="btn primary w update-btn" data-act="apply-update" title={t(u.auto ? 'upd.restartTipAuto' : 'upd.restartTip', { v: u.version })}>
-            <Icon name="refresh" /><span><b>{t('upd.versionN', { v: u.version })}</b></span></button> : null}</div>
+            <Icon name="refresh" /><span><b>{t('upd.restart')}</b><small>{t('upd.versionN', { v: u.version })}</small></span></button> : null}</div>
         {/* Switch vault (its face): the open vault locks and the lock screen's picker shows (Vaults.tsx). Bloxkeep's
             Discord server is under Settings › Bloxkeep › Help & feedback. */}
         <div className="side-lock">
@@ -75,7 +75,7 @@ const SLOTS = 10;
 /** Bloxkeep's block face (its logo's), one per Roblox window: smiling in a game, flat-mouthed in the menu, X-eyed when
  * dropped. */
 function Face({ mood, tip }: { mood: Mood; tip: string }) {
-  return <svg className={`face ${mood}`} viewBox="0 0 32 32" aria-hidden="true"><title>{tip}</title>
+  return <svg className={`face mood-${mood}`} viewBox="0 0 32 32" aria-hidden="true"><title>{tip}</title>
     <rect className="fb" x="1" y="1" width="30" height="30" rx="7" />
     {mood === 'drop'
       ? <path className="fl" d="M7.5 10.5l4 4m0-4l-4 4M20.5 10.5l4 4m0-4l-4 4" />

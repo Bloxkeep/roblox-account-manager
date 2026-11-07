@@ -1547,7 +1547,7 @@ kbd { font: 500 var(--fs-1) var(--font); padding: 1px 6px; border-radius: var(--
 .face .fb { fill: var(--face); }
 .face .fi { fill: var(--face-ink); }
 .face .fl { fill: none; stroke: var(--face-ink); stroke-width: 2.6; stroke-linecap: round; }
-.face.drop .fb { fill: var(--dim); }
+.face.mood-drop .fb { fill: var(--dim); } /* mood-: a bare .menu is the drop-down menu (position: fixed), which once blew the menu face up to the card */
 @keyframes face-in { from { opacity: 0; transform: translateY(-6px); } }
 .sys-more { display: grid; place-items: center; aspect-ratio: 1; border-radius: 5px; background: var(--surface-3); font-style: normal; font-size: var(--fs-1); font-weight: 700; color: var(--text-2); font-variant-numeric: tabular-nums; }
 .sys-none { grid-column: 1 / -1; align-self: center; font-size: var(--fs-2); color: var(--muted); }

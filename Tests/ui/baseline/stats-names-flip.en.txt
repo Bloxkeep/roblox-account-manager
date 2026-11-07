@@ -48,8 +48,8 @@ html [data-theme="dark" lang="en"]
               button.sys-close [id="sys-close" type="button" title="Close all" aria-label="Close all"]
                 svg.i #16z0s1r
             div.lobby
-              svg.face.play #1fd15je
-              svg.face.play #v63cjd
+              svg.face.mood-play #1fd15je
+              svg.face.mood-play #v63cjd
             div.bricks [id="sys-meter" title="PC RAM 63% used · 12 GB free" aria-hidden="true"]
               i.r
               i.o

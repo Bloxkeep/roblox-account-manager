@@ -48,8 +48,8 @@ html [data-theme="dark" lang="vi"]
               button.sys-close [id="sys-close" type="button" title="Đóng tất cả" aria-label="Đóng tất cả"]
                 svg.i #16z0s1r
             div.lobby
-              svg.face.play #jmg4f2
-              svg.face.play #1aptjyx
+              svg.face.mood-play #jmg4f2
+              svg.face.mood-play #1aptjyx
             div.bricks [id="sys-meter" title="RAM đã dùng 63% · trống 12 GB" aria-hidden="true"]
               i.r
               i.o
@@ -90,7 +90,8 @@ html [data-theme="dark" lang="vi"]
             button.btn.primary.update-btn.w [title="Khởi động lại để cài 1.0.1 ngay, không thì sẽ tự cài sau. Roblox vẫn chạy."]
               svg.i #e464bo
               span
-                b "Phiên bản 1.0.1"
+                b "Khởi động lại để cập nhật"
+                small "Phiên bản 1.0.1"
           div.side-lock
             button.btn.ghost.w [title="Khóa Bloxkeep bằng mật khẩu chủ. Cửa sổ Roblox vẫn mở; Tự vào lại, Preset hẹn giờ và Discord tạm dừng tới khi mở khóa."]
               svg.i #21scx0

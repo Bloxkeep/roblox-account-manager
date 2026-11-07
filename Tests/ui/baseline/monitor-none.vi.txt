@@ -46,8 +46,8 @@ html [data-theme="dark" lang="vi"]
                 span [id="sys-count-label"] "cửa sổ"
                 span.sys-ram [id="sys-ram"] "1,7 GB"
             div.lobby
-              svg.face.play #jmg4f2
-              svg.face.play #1aptjyx
+              svg.face.mood-play #jmg4f2
+              svg.face.mood-play #1aptjyx
             div.bricks [id="sys-meter" title="RAM đã dùng 63% · trống 12 GB" aria-hidden="true"]
               i.r
               i.o
