@@ -87,9 +87,27 @@ export async function readLatestTag(env) {
 // line (release-notes.ps1). GitHub's API allows 60 unsigned requests an hour per (shared) address; when it doesn't answer
 // (1.0.9 was posted with no highlights on 2026-10-23), they come from whatsnew.json at its tag. read: false when neither
 // could be read (not a release without highlights), so the post can wait for them.
+/** What a release post says: its highlights (what comes before the first heading), or, for a version with none (1.0.19
+ * and 1.0.20 had only Improved and Fixed, and 1.0.20 was posted empty), its lists with their headings in bold. Whole
+ * lines only, up to RELEASE_TEXT_MAX. */
+export function releaseText(text) {
+  const intro = text.split(/^#{1,6} /m)[0].trim();
+  const lines = (intro || text.replace(/^#{1,6} +(.+)$/gm, '**$1**').trim()).split('\n');
+  let out = '';
+  for (const line of lines) {
+    if (out.length + line.length + 1 > RELEASE_TEXT_MAX)
+      return `${out.trimEnd()}\n…`;
+    out += (out ? '\n' : '') + line;
+  }
+  return out;
+}
+const RELEASE_TEXT_MAX = 1500;
+/** release-notes.ps1's headings for whatsnew.json's lists. */
+const LIST_HEADS = { en: { new: 'New', improved: 'Improved', fixed: 'Fixed' }, vi: { new: 'Mới', improved: 'Cải thiện', fixed: 'Đã sửa' } };
+
 export async function readRelease(env, tag) {
   const page = `${REPO}/releases/tag/${tag}`, version = tag.replace(/^v/, '');
-  const highlights = text => text.split(/^#{1,6} /m)[0].trim().slice(0, 1500);
+  const highlights = releaseText;
   let fromApi = null;
   try {
     const d = await getJson(url(env, 'RELEASE_API_URL') + encodeURIComponent(tag));
@@ -105,9 +123,14 @@ export async function readRelease(env, tag) {
     const list = await getJson(`${url(env, 'RELEASE_FILE_URL')}${encodeURIComponent(tag)}/RobloxManager/whatsnew.json`);
     const notes = Array.isArray(list) ? list.find(r => r?.version === version) : null;
     if (notes) {
-      // As release-notes.ps1 writes them: "- **Title**: text", one per highlight.
-      const lines = lang => (notes.highlights ?? []).map(h => h?.[lang]).filter(w => w?.[0])
-        .map(([title, text = '']) => `- **${title}**: ${text}`).join('\n').slice(0, 1500);
+      // As release-notes.ps1 writes them: "- **Title**: text", one per highlight, then the lists under their headings.
+      const lines = lang => releaseText([
+        ...(notes.highlights ?? []).map(h => h?.[lang]).filter(w => w?.[0]).map(([title, text = '']) => `- **${title}**: ${text}`),
+        ...Object.entries(LIST_HEADS[lang]).flatMap(([kind, head]) => {
+          const items = (notes[kind]?.[lang] ?? []).filter(Boolean);
+          return items.length ? ['', `#### ${head}`, ...items.map(n => `- ${n}`)] : [];
+        }),
+      ].join('\n').trim());
       return { tag, version, url: fromApi?.url ?? page, en: lines('en'), vi: lines('vi') || lines('en'), read: true };
     }
   } catch {

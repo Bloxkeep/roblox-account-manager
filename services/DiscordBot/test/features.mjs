@@ -142,7 +142,9 @@ const CHANGES = [
   { ReleaseNotesType: 'Fixes', Status: 'Live', ReleaseNotesText: 'In Studio, fixes the Explorer losing its place.' },
 ];
 const notesPage = list => `<html><body><script id="__NEXT_DATA__" type="application/json">${JSON.stringify({ props: { pageProps: { data: { releaseNoteContents: { title: 'Release notes', content: list } } } } })}</script></body></html>`;
+let notesBody; // what GitHub's API answers for a tag (NOTES, or another release's)
 const NOTES = '- **Robux at once**: shown as you unlock.\n\n#### New\n- details\n\n**Tiếng Việt**\n\n- **Robux hiện ngay**: lúc mở khoá.\n\n#### Mới\n- chi tiết';
+notesBody = NOTES;
 // A game's wiki (wiki.js, MediaWiki's API): Category:Weapons has three pages, two a request (the second through
 // continue), the third a redirect; other categories are empty. Refusing while down.
 let wikiDown = false;
@@ -182,7 +184,7 @@ const src = http.createServer((req, res) => {
   if (pg) { const all = priceItems(), p = Number(pg[1]); return json({ items: all.slice((p - 1) * 24, p * 24), pagination: { page: p, limit: 24, totalItems: all.length, hasMore: p * 24 < all.length } }); }
   const m = /^\/api\/tags\/(.+)$/.exec(req.url);
   if (m && apiDown) { res.writeHead(403); return res.end('{"message":"API rate limit exceeded"}'); }
-  if (m) return json({ html_url: `https://github.com/Bloxkeep/roblox-account-manager/releases/tag/${m[1]}`, body: NOTES });
+  if (m) return json({ html_url: `https://github.com/Bloxkeep/roblox-account-manager/releases/tag/${m[1]}`, body: notesBody });
   const f = /^\/raw\/([^/]+)\/RobloxManager\/whatsnew\.json$/.exec(req.url);
   if (f && !fileDown) return json([{ version: f[1].replace(/^v/, ''), highlights: [{ icon: 'lock', en: ['Private servers', 'listed.'], vi: ['Server riêng', 'đã có.'] }] }]);
   const n = /^\/notes\/release-notes-(\d+)$/.exec(req.url);
@@ -610,6 +612,16 @@ try {
   check("…GitHub's API still not answering: posted with the highlights of its notes file", posts('c1').length === before.c1 + 1
     && embedOf(rel9)?.title === 'Bloxkeep 1.0.9 is out' && embedOf(rel9)?.description === '- **Private servers**: listed.', JSON.stringify(rel9?.body));
   apiDown = false;
+
+  // A release with only Improved and Fixed (1.0.20 was posted empty on 2026-11-07): its lists, headings in bold.
+  notesBody = '#### Improved\n- Faster.\n\n#### Fixed\n- A crash.\n\n**Tiếng Việt**\n\n#### Cải thiện\n- Nhanh hơn.\n\n#### Đã sửa\n- Lỗi văng.';
+  latest = 'v1.0.10';
+  before = base();
+  await minute();
+  const rel10 = posts('c1').at(-1);
+  check('a release with lists only: posted with them, not empty', posts('c1').length === before.c1 + 1 && embedOf(rel10)?.title === 'Bloxkeep 1.0.10 is out'
+    && embedOf(rel10)?.description === '**Improved**\n- Faster.\n\n**Fixed**\n- A crash.', JSON.stringify(rel10?.body));
+  notesBody = NOTES;
 
   // Turned off: nothing more there.
   await interact(command('notify', { sub: 'off' }));
