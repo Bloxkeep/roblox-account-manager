@@ -22,7 +22,7 @@ Giữ các tài khoản Roblox ở một chỗ, chọn game, chọn tài khoản
 | | |
 |---|---|
 | **Thêm tài khoản** | Bằng điện thoại (mã hoặc QR), tên đăng nhập và mật khẩu (có xác minh 2 bước và captcha), cửa sổ trình duyệt, cookie hoặc file Bloxkeep khác. [Tài khoản](docs/guide/accounts.vi.md) |
-| **Xem mọi tài khoản** | Đang online, đang chơi trên máy này hay thiết bị khác, vì sao bị văng, RAM, thời gian chơi, cần đăng nhập lại, bị ban. Tìm kiếm, nhóm, dạng thẻ hoặc danh sách. [Tài khoản](docs/guide/accounts.vi.md) |
+| **Xem mọi tài khoản** | Đang online, đang chơi trên máy này hay thiết bị khác, vì sao bị văng, RAM, thời gian chơi, cần đăng nhập lại, bị ban. Tìm kiếm, nhóm, dạng thẻ hoặc danh sách. Đánh dấu tài khoản chính, cho các tài khoản kết bạn với nhau. [Tài khoản](docs/guide/accounts.vi.md) |
 | **Vào game** | Chọn game theo tên, link hoặc Place ID, và chọn server: đông nhất, vắng nhất, ping thấp nhất, đủ chỗ cho N tài khoản, server riêng của bạn, server của bạn bè hay của một người chơi bất kỳ. [Chơi game](docs/guide/playing.vi.md) |
 | **Multi-Roblox** | Mở nhiều cửa sổ Roblox cùng lúc. Tắt sẵn cho tới khi bạn bật; mỗi bản Roblox mới đều được kiểm tra. [Multi-Roblox](docs/guide/multi-roblox.vi.md) |
 | **Preset** | Lưu sẵn tài khoản, game và server để mở bằng một cú bấm, có hẹn giờ mở và tắt. [Preset](docs/guide/presets.vi.md) |
@@ -31,7 +31,7 @@ Giữ các tài khoản Roblox ở một chỗ, chọn game, chọn tài khoản
 | **Cửa sổ** | Xếp cửa sổ bằng hình mẫu (giống Snap của Windows) hoặc kích thước tự chọn, Theo dõi game có nút thu nhỏ từng cửa sổ, cửa sổ nhỏ, cảnh báo sắp hết RAM. [Cửa sổ và thống kê](docs/guide/windows-and-stats.vi.md) |
 | **Roblox theo ý bạn** | Đồ họa, FPS, âm lượng riêng cho từng tài khoản; mở bằng Roblox, Bloxstrap, Fishstrap, Voidstrap hoặc trình mở của bạn. [Cài đặt](docs/guide/settings.vi.md) |
 | **Thống kê và thông báo** | Giờ chơi so với những ngày trước, dòng thời gian của từng tài khoản, vì sao rớt và mất bao lâu; cảnh báo và trạng thái trực tiếp trong kênh Discord của bạn hoặc trên điện thoại (ntfy); gõ `/pc` trong Discord để xem và điều khiển máy từ xa. [Discord](docs/guide/discord.vi.md) |
-| **Game** | Game phổ biến có sẵn wiki ngay trong Bloxkeep: tìm, bảng tra, món vừa buff/nerf, stock và spawn trực tiếp, bảng giá Blox Fruits. [Có gì mới](https://bloxkeep.github.io/roblox-account-manager/vi/whats-new/) |
+| **Game** | Game phổ biến có sẵn wiki ngay trong Bloxkeep: tìm, bảng tra, món vừa buff/nerf, stock và spawn trực tiếp, bảng giá Blox Fruits. [Tab Game](docs/guide/playing.vi.md#tab-game) |
 | **An toàn sẵn** | Kho mã hóa, khóa app, sao lưu vào thư mục OneDrive hoặc Google Drive, ẩn tên khi livestream. [Sao lưu và bảo mật](docs/guide/backup-and-security.vi.md) |
 | **Của riêng bạn** | 98 giao diện, tiếng Việt và tiếng Anh, tìm nhanh bằng `Ctrl+K`. |
 
@@ -54,7 +54,7 @@ File chưa được ký số nên lần đầu SmartScreen sẽ cảnh báo: b�
 
 ### Cập nhật
 
-Bloxkeep tự tải bản mới khi đang chạy và cài vào lúc bạn không dùng, mở lại vẫn đang mở khóa, đúng chỗ bạn đang làm. Bấm **Khởi động lại để cập nhật** để cập nhật ngay. Vào **Cài đặt › Cập nhật Bloxkeep** để tắt tự cập nhật hoặc nhận cả bản beta. [Cập nhật](docs/guide/getting-started.vi.md#cập-nhật)
+Bloxkeep tự tải bản mới khi đang chạy và cài vào lúc bạn không dùng, mở lại vẫn đang mở khóa, đúng chỗ bạn đang làm. Bấm **Khởi động lại để cập nhật** để cập nhật ngay. Vào **Cài đặt › Bloxkeep** để tắt tự cập nhật hoặc nhận cả bản beta. [Cập nhật](docs/guide/getting-started.vi.md#cập-nhật)
 
 ### Gỡ cài đặt
 
@@ -95,7 +95,7 @@ Gõ `/multi` cho bot để biết Multi-Roblox có chạy trên bản Roblox hi�
 
 - **Chỉ nằm trên máy bạn**, trong `%LOCALAPPDATA%\Bloxkeep` (bản portable: thư mục `data` ngay cạnh app).
 - **Được mã hóa** bằng AES-256-GCM, khóa tạo từ mật khẩu chủ (PBKDF2-HMAC-SHA256, 600.000 vòng). Mật khẩu chủ không bao giờ được lưu.
-- **Mật khẩu và cookie chỉ gửi tới Roblox.** Bloxkeep không thu thập dữ liệu sử dụng. Ngoài Roblox, app chỉ liên lạc với GitHub (cập nhật), bên cung cấp captcha của Roblox (chỉ trong cửa sổ giải đố), và bot của Bloxkeep để đếm ẩn danh số người đang mở (tắt được). Còn lại là thứ bạn tự chọn gửi: góp ý, webhook Discord của bạn, thư mục sao lưu. Danh sách đầy đủ: [chính sách quyền riêng tư](PRIVACY.md) (tiếng Anh).
+- **Mật khẩu và cookie chỉ gửi tới Roblox.** Bloxkeep không thu thập dữ liệu sử dụng. Ngoài Roblox, app chỉ liên lạc với GitHub (cập nhật), bên cung cấp captcha của Roblox (chỉ trong cửa sổ giải đố), và bot của Bloxkeep để đếm số người đang dùng, tắt được (một mã tạo từ máy này, không lần ngược ra được, phiên bản, ngôn ngữ, các game tài khoản của bạn đang ở, số cửa sổ đang chạy và vì sao một tài khoản bị văng; không bao giờ gửi tài khoản). Còn lại là thứ bạn tự chọn gửi: góp ý, webhook Discord của bạn, thư mục sao lưu. Danh sách đầy đủ: [chính sách quyền riêng tư](PRIVACY.md) (tiếng Anh).
 - **Khóa app** là xóa mọi cookie và mật khẩu đã giải mã khỏi bộ nhớ. Thứ bí mật bạn sao chép sẽ bị xóa khỏi clipboard sau 30 giây.
 
 > [!WARNING]
@@ -117,7 +117,7 @@ Bật **Cài đặt › Sao lưu và dữ liệu › Sao lưu vào thư mục** 
 
 **Macro có phải hack không?** Không. Macro chỉ bấm phím, bấm chuột trong cửa sổ Roblox và nhìn hình của nó, như người chơi làm. Nó không bao giờ đọc hay sửa bộ nhớ của game. Dù vậy, có game vẫn cấm dùng macro: hãy xem luật của game.
 
-**Ở Việt Nam không vào được roblox.com thì dùng được không?** Được một phần: đăng nhập bằng điện thoại và bằng mật khẩu đi qua API của Roblox, không qua www.roblox.com; đăng nhập bằng trình duyệt thì cần www.roblox.com. Bloxkeep không có VPN. Tài khoản Roblox VNG thêm được, nhưng chưa mở game được.
+**Ở Việt Nam không vào được roblox.com thì dùng được không?** Được một phần: đăng nhập bằng điện thoại và bằng mật khẩu đi qua API của Roblox, không qua www.roblox.com; đăng nhập bằng trình duyệt thì cần www.roblox.com. Bloxkeep không có VPN. Tài khoản Roblox VNG thêm được và mở game được (vẫn đang thử nghiệm).
 
 **Quên mật khẩu chủ thì sao?** Không lấy lại được. Khôi phục một bản sao lưu mà bạn còn nhớ mật khẩu, hoặc làm lại từ đầu.
 

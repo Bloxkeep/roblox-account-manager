@@ -10,10 +10,10 @@ Short answers to the problems people meet most, then every keyboard shortcut.
 
 **A:** Check these in order:
 
-- Is [Multi-Roblox](multi-roblox.md) on? If the sidebar card says **Off**, turn it on.
-- Yellow **Not working yet — click to fix**: Roblox was open before Bloxkeep. Click it and follow the steps (close every Roblox, including the one in the tray; turn off autostart if offered). Open Bloxkeep before Roblox next time.
-- Yellow **Roblox closed windows** or **A Roblox update may stop it**: a Roblox update may have changed how it blocks several windows. Open **Settings › Roblox version & graphics**, press **Check for a Bloxkeep update**, and play one account at a time until an update fixes it.
-- Using a launcher? If it blocks several windows, choose **RobloxPlayerBeta directly (skip launchers)** in **Settings › Launching › Open Roblox with**.
+- Is [Multi-Roblox](multi-roblox.md) on? If the sidebar's Multi-Roblox switch says **Off**, turn it on.
+- Yellow **Not working yet**: Roblox was open before Bloxkeep. Click it and follow the steps (close every Roblox, including the one in the tray; turn off autostart if offered). Open Bloxkeep before Roblox next time.
+- Yellow **Roblox closed windows** or **A Roblox update may stop it**: a Roblox update may have changed how it blocks several windows. Open **Settings › Roblox version**, press **Check for a Bloxkeep update**, and play one account at a time until an update fixes it.
+- Using a launcher? If it blocks several windows, choose **Roblox directly (no launcher)** in **Settings › Launching › Open Roblox with**.
 
 ### **Q:** A Roblox window crashes as it opens ("Memory dump captured", or Bloxstrap's "Roblox failed to launch")
 

@@ -1,5 +1,5 @@
 == end
-html [data-theme="dark" lang="vi"]
+html [class="" data-theme="dark" lang="vi"]
 #app
   div.lock
     div.dots
@@ -7,11 +7,12 @@ html [data-theme="dark" lang="vi"]
       div.lang [role="group" aria-label="Ngôn ngữ"]
         button [title="English" aria-pressed="false"] "EN"
         button.on [title="Tiếng Việt" aria-pressed="true"] "VI"
-    form.lock-card [id="lock-form" autocomplete="off"]
+    form.lock-card.opened [id="lock-form" autocomplete="off"]
       img.logo-img [alt="" src="logo.svg"]
       div.lock-vault
         span.letter.sm.vault-face [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(21, 128, 61);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "M"
-        b [title="Main"] "Main"
+        span.lock-vault-name
+          b [title="Main"] "Main"
       h2 "Chào mừng trở lại"
       p "Nhập mật khẩu chủ để mở khóa."
       p.lock-paused "Đã tự khóa sau 15 phút không dùng máy. Roblox, tự vào lại, Preset hẹn giờ và Discord vẫn chạy."

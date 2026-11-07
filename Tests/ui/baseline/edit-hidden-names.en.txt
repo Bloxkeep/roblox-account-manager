@@ -16,6 +16,10 @@ html [data-theme="dark" lang="en"]
         button.nav [title="Presets"]
           svg.i #1pvni8o
           span "Presets"
+        button.nav [title="Games (2 new)"]
+          svg.i #17gqz13
+          span "Games"
+          em.nav-news [id="nav-news"] "2"
         button.nav [title="Macros (Beta)"]
           svg.i #kx2qfl
           span "Macros"
@@ -29,39 +33,58 @@ html [data-theme="dark" lang="en"]
         button.nav [title="Settings"]
           svg.i #tbghvg
           span "Settings"
+        button.nav.nav-mini [id="sys-mini" title="Mini window" aria-pressed="false"]
+          svg.i #1y8kmj1
+          span "Mini window"
       div.side-bottom
         div [id="side-warn"]
-        div.side-card [id="sys-card"]
-          h4 "Roblox on this PC"
-          div.sys-row
-            span [title="Account 1 · PID 1111\nAccount 2 · PID 2222"]
-              b [id="sys-count"] "2"
-              span [id="sys-count-label"] "windows"
-            span [id="sys-ram"] "1.7 GB"
-          div.meter [id="sys-meter"]
-            i.roblox [style="transform:scaleX(0.054)"]
-            i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
-          div.sys-foot [id="sys-foot"] "PC RAM 63% used · 12 GB free"
-          div.sys-foot [id="sys-usage" title="Roblox windows only, not the whole PC"] "CPU 12% · GPU 34%"
-          div.sys-ver [id="sys-ver"]
-            span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
-              i.dot.ok
-          button.btn.sm.sys-mini.w [id="sys-mini" aria-pressed="false"]
-            svg.i #1y8kmj1
-            span "Mini window"
-          button.btn.sm.sys-close.w [id="sys-close"]
-            svg.i #16z0s1r
-            span "Close all"
-        div [id="multi-card"]
-          div.multi.ok
-            button.multi-open [title="Multi-Roblox: On: several Roblox windows can be open"]
-              span.led
-              div
-                b "Multi-Roblox"
-                small "On"
-            label.switch [title="Turn off Multi-Roblox"]
-              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
-              span
+        div.rig.side-card [id="sys-rig"]
+          div.sys [id="sys-card"]
+            div.sys-head
+              span.sys-count [title="Account 1 · PID 1111\nAccount 2 · PID 2222"]
+                b [id="sys-count"] "2"
+                span [id="sys-count-label"] "windows"
+                span.sys-ram [id="sys-ram"] "1.7 GB"
+              button.sys-close [id="sys-close" type="button" title="Close all" aria-label="Close all"]
+                svg.i #16z0s1r
+            div.lobby
+              svg.face.play #1syta8n
+              svg.face.play #9rgw8m
+            div.bricks [id="sys-meter" title="PC RAM 63% used · 12 GB free" aria-hidden="true"]
+              i.r
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i
+              i
+              i
+              i
+              i
+              i
+              i
+            div.sys-foot
+              span [id="sys-foot" title="PC RAM 63% used · 12 GB free"] "PC RAM 63%"
+              span [id="sys-usage" title="Roblox windows only, not the whole PC"] "CPU 12% · GPU 34%"
+            div.sys-ver [id="sys-ver"]
+              span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
+                i.dot.ok
+          div [id="multi-card"]
+            div.multi.ok
+              button.multi-open [title="Multi-Roblox: On: several Roblox windows can be open"]
+                div
+                  b "Multi-Roblox"
+              label.switch [title="Turn off Multi-Roblox"]
+                input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
+                span
         div.side-foot
           div [id="update-slot"]
           div.side-lock
@@ -71,11 +94,11 @@ html [data-theme="dark" lang="en"]
             button.btn.ghost.side-sq.vault-btn [title="Switch vault (Vault 1)" aria-label="Switch vault (Vault 1)"]
               span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(21, 128, 61);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
     main.main
-      section.seen.view [id="view-accounts"]
+      section.seen.view [id="view-accounts" style="--dir:1"]
         header.top
           div.top-title
             h1 "Accounts"
-            p [id="acc-sub"] "accounts playing online"
+            p [id="acc-sub" title="7 accounts·3 playing·4 online · Select all"] "accounts playing online"
               b "7"
               span.sep "·"
               b "3"
@@ -132,7 +155,7 @@ html [data-theme="dark" lang="en"]
                 span.check
                   svg.i #14iobj
                 div.avatar
-                  img [alt="" style="--h:195" src=#c108i9]
+                  span.initials [style="--h:195"] "5"
                   i.pdot.studio
                 div.name [title="Account 5"] "Account 5"
                 div.sub [title=""]
@@ -147,6 +170,8 @@ html [data-theme="dark" lang="en"]
                     svg.i #hpg3hu
                   span.ago [title="Last launched from this app"] "Never opened"
                     svg.i #n87usa
+                div.daystrip [role="img" title="Not played today" aria-label="Not played today"]
+                  span.ds-now [style="left:50%"]
                 div.card-actions
                   button.pill-btn.play [tabindex="0"] "Play"
                     svg.i #1ewcuky
@@ -158,7 +183,7 @@ html [data-theme="dark" lang="en"]
                 span.check
                   svg.i #14iobj
                 div.avatar.ingame
-                  img [alt="" style="--h:192" src=#uinvo6]
+                  span.initials [style="--h:192"] "2"
                   i.ingame.pdot
                 div.name [title="Account 2"] "Account 2"
                 div.sub [title=""]
@@ -180,6 +205,10 @@ html [data-theme="dark" lang="en"]
                   span.robux [title="Robux on this account, checked every 30 minutes"] "80"
                     svg.i #hpg3hu
                   span.tag [title="Farm"] "Farm"
+                div.daystrip [role="img" title="Today: played 9 h 30 min" aria-label="Today: played 9 h 30 min"]
+                  i.ds-play [style="left:2.08%;width:max(2px, 35.42%)"]
+                  i.ds-play [style="left:45.83%;width:max(2px, 4.17%)"]
+                  span.ds-now [style="left:50%"]
                 div.card-actions
                   button.pill-btn.stop [tabindex="-1"] "Close"
                     svg.i #16z0s1r
@@ -191,7 +220,7 @@ html [data-theme="dark" lang="en"]
                 span.check
                   svg.i #14iobj
                 div.avatar.invalid
-                  img [alt="" style="--h:193" src=#n0d7cr]
+                  span.initials [style="--h:193"] "3"
                   i.offline.pdot
                 div.name [title="Account 3"] "Account 3"
                 div.sub [title=""]
@@ -207,6 +236,8 @@ html [data-theme="dark" lang="en"]
                     svg.i #n87usa
                     span "Opened 9 days ago"
                 div.acc-note [title="Expired last week"] "Expired last week"
+                div.daystrip [role="img" title="Not played today" aria-label="Not played today"]
+                  span.ds-now [style="left:50%"]
                 div.card-actions
                   button.pill-btn.relogin [title="This account was signed out. Sign in again (with your phone or a browser) to keep using it." tabindex="-1"] "Sign in"
                     svg.i #kqqqno
@@ -218,7 +249,7 @@ html [data-theme="dark" lang="en"]
                 span.check
                   svg.i #14iobj
                 div.avatar.ingame
-                  img [alt="" style="--h:191" src=#1qk25wb]
+                  span.initials [style="--h:191"] "1"
                   i.ingame.pdot
                 div.name [title="Account 1"] "Account 1"
                 div.sub [title=""]
@@ -243,6 +274,11 @@ html [data-theme="dark" lang="en"]
                   span.rejoin [title="Auto-rejoin is on"]
                     svg.i #1ap9cll
                 div.acc-note [title="My main account, don't farm on it"] "My main account, don't farm on it"
+                div.daystrip [role="img" title="Today: played 11 h 45 min · cut off once" aria-label="Today: played 11 h 45 min · cut off once"]
+                  i.ds-play [style="left:0%;width:max(2px, 13.19%)"]
+                    b.ds-cut
+                  i.ds-play [style="left:14.24%;width:max(2px, 35.76%)"]
+                  span.ds-now [style="left:50%"]
                 div.card-actions
                   button.pill-btn.stop [tabindex="-1"] "Close"
                     svg.i #16z0s1r
@@ -254,7 +290,7 @@ html [data-theme="dark" lang="en"]
                 span.check
                   svg.i #14iobj
                 div.avatar.ingame
-                  img [alt="" style="--h:194" src=#1u67et1]
+                  span.initials [style="--h:194"] "4"
                   i.ingame.pdot
                 div.name [title="Account 4"] "Account 4"
                 div.sub [title=""]
@@ -271,6 +307,10 @@ html [data-theme="dark" lang="en"]
                   span.ago [title="Last launched from this app"]
                     svg.i #n87usa
                     span "Opened 5 h ago"
+                div.daystrip [role="img" title="Today: played 1 h 20 min · cut off once" aria-label="Today: played 1 h 20 min · cut off once"]
+                  i.ds-play [style="left:29.17%;width:max(2px, 5.56%)"]
+                    b.ds-cut
+                  span.ds-now [style="left:50%"]
                 div.card-actions
                   button.pill-btn.play [tabindex="-1"] "Play"
                     svg.i #1ewcuky
@@ -282,7 +322,7 @@ html [data-theme="dark" lang="en"]
                 span.check
                   svg.i #14iobj
                 div.avatar
-                  span.initials [style="--h:197"] "AC"
+                  span.initials [style="--h:197"] "7"
                   i.offline.pdot
                 div.name [title="Account 7"] "Account 7"
                 div.sub [title=""]
@@ -293,6 +333,8 @@ html [data-theme="dark" lang="en"]
                     div.k [title="Opening Roblox…"] "Opening Roblox…"
                     div.v [title="Brookhaven 🏡RP"] "Brookhaven 🏡RP"
                 div.meta
+                div.daystrip [role="img" title="Not played today" aria-label="Not played today"]
+                  span.ds-now [style="left:50%"]
                 div.card-actions
                   button.pill-btn.stop [tabindex="-1"] "Close"
                     svg.i #16z0s1r
@@ -304,7 +346,7 @@ html [data-theme="dark" lang="en"]
                 span.check
                   svg.i #14iobj
                 div.avatar.invalid
-                  img [alt="" style="--h:196" src=#kgijcs]
+                  span.initials [style="--h:196"] "6"
                   i.pdot
                 div.name [title="Account 6"] "Account 6"
                 div.sub [title=""]
@@ -320,6 +362,8 @@ html [data-theme="dark" lang="en"]
                     svg.i #n87usa
                     span "Opened 2 days ago"
                 div.acc-note [title="Trading only"] "Trading only"
+                div.daystrip [role="img" title="Not played today" aria-label="Not played today"]
+                  span.ds-now [style="left:50%"]
                 div.card-actions
                   button.pill-btn.play [tabindex="-1"] "Play"
                     svg.i #1ewcuky
@@ -390,7 +434,7 @@ html [data-theme="dark" lang="en"]
       div.modal-body
         div.acc-head
           div.avatar
-            img [alt="" style="--h:191" src=#1qk25wb]
+            span.initials [style="--h:191"] "1"
           div
             b "Account 1"
             div.muted
@@ -410,8 +454,9 @@ html [data-theme="dark" lang="en"]
             span.totp-label "Authenticator key"
               span.muted "(optional)"
             div.totp-live [id="am-totp-live"]
-              b.totp-code [id="am-totp-code"] "009 468"
-              span.totp-left [id="am-totp-left"] "30 s"
+              span.totp-now
+                b.totp-code [id="am-totp-code"] "009 468"
+                span.totp-left [id="am-totp-left"] "30 s"
               button.btn.sm [type="button"] "Copy"
                 svg.i #2s24cy
               button.btn.ghost.sm [type="button"] "Remove"
@@ -429,4 +474,5 @@ html [data-theme="dark" lang="en"]
   pageBusy {"busy":true}
   pageShown {}
   resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
+  todayStrips {}
   totpCode {"id":"00000000-0000-4000-8000-000000000001"}

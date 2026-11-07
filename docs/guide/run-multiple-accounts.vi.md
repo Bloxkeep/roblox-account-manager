@@ -12,8 +12,8 @@ Bình thường Roblox chỉ cho mở một cửa sổ trên mỗi máy: mở c�
 
 1. [Tải Bloxkeep](https://github.com/Bloxkeep/roblox-account-manager/releases/latest), chạy `Bloxkeep-Setup.exe` rồi đặt mật khẩu chính.
 2. Bấm **Thêm tài khoản** và đăng nhập từng tài khoản Roblox.
-3. Nếu Roblox đã mở sẵn, bấm **Đóng tất cả Roblox**. Sau đó bật công tắc trên thẻ **Multi-Roblox** ở cuối thanh bên.
-4. Kiểm tra đèn đã xanh và thẻ ghi **Đang bật, mở được nhiều cửa sổ**.
+3. Nếu Roblox đã mở sẵn, bấm **Đóng tất cả Roblox**. Sau đó bật công tắc **Multi-Roblox** ở cuối thanh bên.
+4. Kiểm tra đèn đã xanh và ghi **Đang bật**.
 5. Chọn game, chọn các tài khoản rồi bấm **Vào game**. Đừng tắt Bloxkeep trong lúc chơi (chạy ẩn dưới khay hệ thống thì được).
 
 <img src="../screenshots/vi/hero.png" width="760" alt="Cửa sổ chính của Bloxkeep: các thẻ tài khoản, thanh chọn game ở dưới, Multi-Roblox đang bật ở thanh bên">
@@ -27,7 +27,7 @@ Bình thường Roblox chỉ cho mở một cửa sổ trên mỗi máy: mở c�
 |---|---|---|
 | Cho mọi tài khoản vào cùng server | Chọn server ở **Chọn server** (**Dùng**), chọn các tài khoản rồi bấm **Vào game**. | [Vào game](playing.vi.md) |
 | Thấy hết các cửa sổ | **Cửa sổ › Xếp cửa sổ Roblox** | [Cửa sổ và thống kê](windows-and-stats.vi.md) |
-| Tự vào lại khi mất kết nối | **Tự vào lại game** | [Treo game](staying-in-game.vi.md) |
+| Tự vào lại khi mất kết nối | **Tự vào lại** | [Treo game](staying-in-game.vi.md) |
 | Không bị kick vì đứng yên | **Chống AFK** | [Treo game](staying-in-game.vi.md) |
 | Treo được nhiều tài khoản hơn | **Giới hạn RAM khi thu nhỏ hoặc ẩn** | [Treo game](staying-in-game.vi.md) |
 | Mở đúng các tài khoản đó bằng một cú bấm, hoặc theo giờ | **Preset** | [Preset và hẹn giờ](presets.vi.md) |

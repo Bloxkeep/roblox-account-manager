@@ -58,7 +58,7 @@ html [data-theme="dark" lang="en"]
           button.btn.danger.sm [type="button" FOCUSED] "Close all"
 -- commands
   ready {}
-  size {"h":386,"w":300}
+  size {"h":386,"w":308}
 == end
 html [data-theme="dark" lang="en"]
 #app
@@ -80,4 +80,4 @@ html [data-theme="dark" lang="en"]
         i
 -- commands
   act {"remember":false,"what":"closeAll"}
-  size {"h":386,"w":300}
+  size {"h":386,"w":308}

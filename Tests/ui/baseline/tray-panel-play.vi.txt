@@ -62,5 +62,4 @@ html [data-theme="dark" lang="vi"]
   size {"h":368,"opened":1,"w":344}
   size {"h":368,"opened":1,"w":344}
   size {"h":464,"opened":1,"w":344}
-  size {"h":472,"opened":1,"w":344}
-  size {"h":472,"opened":1,"w":344}
+  size {"h":464,"opened":1,"w":344}

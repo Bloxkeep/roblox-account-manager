@@ -16,6 +16,10 @@ html [data-theme="dark" lang="vi"]
         button.nav [title="Preset"]
           svg.i #1pvni8o
           span "Preset"
+        button.nav [title="Game (2 tin mới)"]
+          svg.i #17gqz13
+          span "Game"
+          em.nav-news [id="nav-news"] "2"
         button.nav [title="Macro (Beta)"]
           svg.i #kx2qfl
           span "Macro"
@@ -29,39 +33,58 @@ html [data-theme="dark" lang="vi"]
         button.nav.on [title="Cài đặt"]
           svg.i #tbghvg
           span "Cài đặt"
+        button.nav.nav-mini [id="sys-mini" title="Cửa sổ nhỏ" aria-pressed="false"]
+          svg.i #1y8kmj1
+          span "Cửa sổ nhỏ"
       div.side-bottom
         div [id="side-warn"]
-        div.side-card [id="sys-card"]
-          h4 "Roblox trên máy này"
-          div.sys-row
-            span [title="Sunny_The_Builder_Of_Many_Worlds_2010 · PID 1111\npixelfarmer01_with_a_very_long_alias · PID 2222"]
-              b [id="sys-count"] "2"
-              span [id="sys-count-label"] "cửa sổ"
-            span [id="sys-ram"] "1,7 GB"
-          div.meter [id="sys-meter"]
-            i.roblox [style="transform:scaleX(0.054)"]
-            i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
-          div.sys-foot [id="sys-foot"] "RAM đã dùng 63% · trống 12 GB"
-          div.sys-foot [id="sys-usage" title="Chỉ tính cửa sổ Roblox, không tính cả máy"] "CPU 12% · GPU 34%"
-          div.sys-ver [id="sys-ver"]
-            span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · mới nhất"
-              i.dot.ok
-          button.btn.sm.sys-mini.w [id="sys-mini" aria-pressed="false"]
-            svg.i #1y8kmj1
-            span "Cửa sổ nhỏ"
-          button.btn.sm.sys-close.w [id="sys-close"]
-            svg.i #16z0s1r
-            span "Đóng tất cả"
-        div [id="multi-card"]
-          div.multi.ok
-            button.multi-open [title="Multi-Roblox: Đang bật: mở được nhiều cửa sổ Roblox"]
-              span.led
-              div
-                b "Multi-Roblox"
-                small "Đang bật"
-            label.switch [title="Tắt Multi-Roblox"]
-              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
-              span
+        div.rig.side-card [id="sys-rig"]
+          div.sys [id="sys-card"]
+            div.sys-head
+              span.sys-count [title="Sunny_The_Builder_Of_Many_Worlds_2010 · PID 1111\npixelfarmer01_with_a_very_long_alias · PID 2222"]
+                b [id="sys-count"] "2"
+                span [id="sys-count-label"] "cửa sổ"
+                span.sys-ram [id="sys-ram"] "1,7 GB"
+              button.sys-close [id="sys-close" type="button" title="Đóng tất cả" aria-label="Đóng tất cả"]
+                svg.i #16z0s1r
+            div.lobby
+              svg.face.play #4kiawr
+              svg.face.play #7xlbj0
+            div.bricks [id="sys-meter" title="RAM đã dùng 63% · trống 12 GB" aria-hidden="true"]
+              i.r
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i
+              i
+              i
+              i
+              i
+              i
+              i
+            div.sys-foot
+              span [id="sys-foot" title="RAM đã dùng 63% · trống 12 GB"] "RAM máy 63%"
+              span [id="sys-usage" title="Chỉ tính cửa sổ Roblox, không tính cả máy"] "CPU 12% · GPU 34%"
+            div.sys-ver [id="sys-ver"]
+              span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · mới nhất"
+                i.dot.ok
+          div [id="multi-card"]
+            div.multi.ok
+              button.multi-open [title="Multi-Roblox: Đang bật: mở được nhiều cửa sổ Roblox"]
+                div
+                  b "Multi-Roblox"
+              label.switch [title="Tắt Multi-Roblox"]
+                input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
+                span
         div.side-foot
           div [id="update-slot"]
           div.side-lock
@@ -71,8 +94,8 @@ html [data-theme="dark" lang="vi"]
             button.btn.ghost.side-sq.vault-btn [title="Đổi vault (Vault 1)" aria-label="Đổi vault (Vault 1)"]
               span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(21, 128, 61);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
     main.main
-      section.seen.view [id="view-accounts"]
-      section.seen.view [id="view-settings"]
+      section.seen.view [id="view-accounts" style="--dir:1"]
+      section.seen.view [id="view-settings" style="--dir:1"]
         header.top
           div.top-title
             h1 "Cài đặt"

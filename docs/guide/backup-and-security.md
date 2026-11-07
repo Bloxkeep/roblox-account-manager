@@ -44,15 +44,15 @@ A backup opens with the password it was saved with.
 | Way | Use it when | What happens |
 |---|---|---|
 | **Restore from a backup** (first screen) or **Settings › Backup & data › Restore › Restore…** | A new PC, or to go back to a backup. | Always asks first. Your current data is kept as a copy, then Bloxkeep locks: unlock with the backup's password. |
-| **Settings › Backup & data › Import accounts from a vault file › Import…** | You want accounts from another vault or backup. | Adds accounts; yours stay as they are. |
+| **Settings › Backup & data › Import accounts from a Bloxkeep file › Import…** | You want accounts from another vault or backup. | Adds accounts; yours stay as they are. |
 
 ## Importing from another Bloxkeep file
 
-Bring accounts from `vault.rmv` on another PC, or from a `Bloxkeep-backup-…` file. It is in three places: **Add account › Other ways to add › Import from another Bloxkeep vault file…**, **Import from: Bloxkeep file** in **Sign in to Roblox**, and **Settings › Backup & data › Import…**.
+Bring accounts from `vault.rmv` on another PC, or from a `Bloxkeep-backup-…` file. It is in three places: **Add account › Other ways to add › Import from another Bloxkeep file…**, **With a Bloxkeep file** in **Sign in to Roblox**, and **Settings › Backup & data › Import…**.
 
 1. Press **Choose file…** and pick the `.rmv` file.
 2. Type **Master password of this file** and press **Open**.
-3. Tick the accounts to bring over. Each shows **New** or **Already here**, and whether it is signed in, needs sign-in, wasn't checked, or has a password saved. **All** / **None** tick everything or nothing.
+3. Tick the accounts to bring over. Each shows **New** or **Already here**, and whether it is signed in, needs sign-in, wasn't checked, or has a password saved. **All new** / **None** tick the new ones or nothing.
 4. Optionally tick **Also import presets (N)**.
 5. Press **Import**.
 
@@ -90,7 +90,7 @@ Bloxkeep has no accounts or analytics of its own. Your accounts, settings and hi
 | Your backup folder | The encrypted vault. |
 | Your Discord webhook | Only when you turn it on. Never cookies or passwords. |
 | Bloxkeep's developer | Feedback you choose to send. |
-| Bloxkeep's Discord bot | While Bloxkeep is open, an anonymous "open now" note every minute (a code made from the PC that can't be traced back, the version and the language), so the developer can see how many people use Bloxkeep right now. Turn it off in **Settings › Bloxkeep › Privacy › Add me to the online count**. |
+| Bloxkeep's Discord bot | While Bloxkeep is open, a note every few minutes for the online count: a code made from this PC (it can't be traced back), the version, the language, the games your accounts are in, how many run and why one dropped out. Never an account. Turn it off in **Settings › Bloxkeep › Privacy › Add me to the online count**. |
 
 The full list is in the [privacy policy](../../PRIVACY.md).
 

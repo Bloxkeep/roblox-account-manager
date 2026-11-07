@@ -95,7 +95,9 @@ const L = {
     lead: 'Every Roblox account in one place. Pick a game, pick accounts, press Play, and each one opens in its own window.',
     download: 'Download Bloxkeep',
     portable: 'Portable ZIP',
-    tryLink: 'Or try it in your browser first',
+    tryLink: 'Or try it right here first',
+    liveTip: 'The real app on made-up accounts: click around',
+    fullScreen: 'Full screen',
     all: 'All downloads',
     meta: v => `Free and open source · Version ${v} · Windows 10 or 11, 64-bit`,
     heroAlt: "Bloxkeep's main window: account cards, the game bar at the bottom, Multi-Roblox on in the sidebar",
@@ -125,6 +127,8 @@ const L = {
       ['settings#appearance', 'theme-photos.jpg', 'Themes with real photos', 'Nearly 100 themes, some of them real photos that move, or a picture or video of your own behind the page.'],
       ['backup-and-security', 'lock.png', 'Locked with your password', 'Accounts are encrypted with your master password and stay on your PC. Back them up to a OneDrive or Google Drive folder and restore them on a new PC.'],
       ['getting-started#updates', 'lock-update.png', 'Updates itself', "New versions install by themselves while you aren't using Bloxkeep. Your Roblox windows keep running."],
+      ['macros', 'macros.png', 'Macros (Beta)', 'Steps written as plain sentences: press keys, click, wait for a picture, a color or text. Record one or start from a template; a small panel sits beside the game.'],
+      ['playing#the-games-tab', 'games.png', 'Games, wikis and news', "Popular games with their wiki inside Bloxkeep, live news from the games' own alerts, and Blox Fruits prices."],
     ],
     startTitle: 'Start in three steps',
     start: [
@@ -145,7 +149,7 @@ const L = {
     getText: [
       'A small installer: it downloads the newest Bloxkeep (about 60 MB) as it installs.',
       'Any folder on any drive, no admin rights. It installs Microsoft Edge WebView2 if your PC lacks it.',
-      'Bloxkeep then updates itself. To get new features earlier, turn on Get beta versions in Settings › Bloxkeep updates.',
+      'Bloxkeep then updates itself. To get new features earlier, turn on Get beta versions in Settings › Bloxkeep.',
     ],
     smartscreen: "The files aren't code-signed yet, so Windows SmartScreen may warn the first time: click More info, then Run anyway.",
     faqTitle: 'Questions',
@@ -158,7 +162,7 @@ const L = {
       ['Are macros cheating?', "A macro only presses keys and clicks in the Roblox window and looks at its picture, like a person would. It never reads or changes the game's memory. Some games still forbid macros: check the game's rules."],
       ['I forgot my master password.', "It can't be recovered. Restore a backup whose password you remember, or start over."],
       ['Is there a Mac or Linux version?', 'No, Windows 10 and 11 only.'],
-      ['Where do I get help?', "Ask in #help on Bloxkeep's Discord, read the guide, use Send feedback in the app (Settings › Bloxkeep updates), or open an issue on GitHub."],
+      ['Where do I get help?', "Ask in #help on Bloxkeep's Discord, read the guide, use Send feedback in the app (Settings › Bloxkeep), or open an issue on GitHub."],
     ],
     guideLink: 'Read the user guide',
     newsTitle: v => `New in ${v}`,
@@ -185,7 +189,9 @@ const L = {
     lead: 'Mọi tài khoản Roblox ở một chỗ. Chọn game, chọn tài khoản, bấm Vào game, mỗi tài khoản mở một cửa sổ riêng.',
     download: 'Tải Bloxkeep',
     portable: 'Bản portable (ZIP)',
-    tryLink: 'Hoặc dùng thử trên trình duyệt trước',
+    tryLink: 'Hoặc dùng thử ngay tại đây',
+    liveTip: 'App thật với tài khoản giả: cứ bấm thử',
+    fullScreen: 'Toàn màn hình',
     all: 'Tất cả bản tải',
     meta: v => `Miễn phí, mã nguồn mở · Phiên bản ${v} · Windows 10 hoặc 11, 64-bit`,
     heroAlt: 'Cửa sổ chính của Bloxkeep: các thẻ tài khoản, thanh chọn game ở dưới, Multi-Roblox đang bật ở thanh bên',
@@ -215,6 +221,8 @@ const L = {
       ['settings#giao-diện', 'theme-photos.jpg', 'Theme ảnh thật', 'Gần 100 theme, có theme là ảnh thật chuyển động, hoặc đặt ảnh, video của riêng bạn làm nền.'],
       ['backup-and-security', 'lock.png', 'Khóa bằng mật khẩu của bạn', 'Tài khoản được mã hóa bằng mật khẩu chủ và chỉ nằm trên máy bạn. Sao lưu vào thư mục OneDrive hoặc Google Drive, rồi khôi phục trên máy mới.'],
       ['getting-started#cập-nhật', 'lock-update.png', 'Tự cập nhật', 'Bản mới tự cài khi bạn không dùng Bloxkeep. Các cửa sổ Roblox vẫn chạy bình thường.'],
+      ['macros', 'macros.png', 'Macro (Beta)', 'Các bước viết thành câu dễ hiểu: bấm phím, bấm chuột, chờ hình, màu hoặc chữ. Ghi lại thao tác hoặc dùng mẫu, kèm bảng nhỏ cạnh game.'],
+      ['playing#tab-game', 'games.png', 'Game, wiki và tin', 'Game phổ biến có sẵn wiki ngay trong Bloxkeep, tin trực tiếp từ bot của game, và bảng giá Blox Fruits.'],
     ],
     startTitle: 'Bắt đầu trong 3 bước',
     start: [
@@ -235,7 +243,7 @@ const L = {
     getText: [
       'Bộ cài nhỏ: khi cài sẽ tải bản Bloxkeep mới nhất (khoảng 60 MB).',
       'Cài vào thư mục nào, ổ nào cũng được, không cần quyền admin. Tự cài Microsoft Edge WebView2 nếu máy chưa có.',
-      'Sau đó Bloxkeep tự cập nhật. Muốn có tính năng mới sớm hơn, bật Nhận bản beta trong Cài đặt › Cập nhật Bloxkeep.',
+      'Sau đó Bloxkeep tự cập nhật. Muốn có tính năng mới sớm hơn, bật Nhận bản beta trong Cài đặt › Bloxkeep.',
     ],
     smartscreen: 'File chưa có chữ ký số nên lần đầu chạy Windows SmartScreen có thể cảnh báo: bấm More info (Thông tin thêm) rồi Run anyway (Vẫn chạy).',
     faqTitle: 'Hỏi đáp',
@@ -248,7 +256,7 @@ const L = {
       ['Macro có phải hack không?', 'Không. Macro chỉ bấm phím, bấm chuột trong cửa sổ Roblox và nhìn hình của nó, như người chơi làm. Nó không bao giờ đọc hay sửa bộ nhớ của game. Dù vậy, có game vẫn cấm dùng macro: hãy xem luật của game.'],
       ['Quên mật khẩu chủ thì sao?', 'Không lấy lại được. Khôi phục một bản sao lưu mà bạn còn nhớ mật khẩu, hoặc làm lại từ đầu.'],
       ['Dùng trên Mac hay Linux được không?', 'Không, chỉ Windows 10 và 11.'],
-      ['Cần giúp thì hỏi ở đâu?', 'Hỏi trong kênh #help trên Discord của Bloxkeep, đọc hướng dẫn, dùng Gửi góp ý trong app (Cài đặt › Cập nhật Bloxkeep), hoặc mở issue trên GitHub.'],
+      ['Cần giúp thì hỏi ở đâu?', 'Hỏi trong kênh #help trên Discord của Bloxkeep, đọc hướng dẫn, dùng Gửi góp ý trong app (Cài đặt › Bloxkeep), hoặc mở issue trên GitHub.'],
     ],
     guideLink: 'Đọc hướng dẫn sử dụng',
     newsTitle: v => `Có gì mới ở bản ${v}`,
@@ -299,14 +307,27 @@ export function landing(lang, { version, rel, releases = [] }) {
       <h1>${esc(l.h1)}</h1>
       <p class="lead">${esc(l.lead)}</p>
       ${buttons}
-      <p class="try"><a href="${rel(home + 'demo/')}">${esc(l.tryLink)} ›</a></p>
+      <p class="try"><a href="#try">${esc(l.tryLink)} ›</a></p>
     </div>
     <div class="stage">
       <figure class="stage-farm"><img class="shot" src="${shot('multi-roblox-real-detail.jpg')}" width="1136" height="1020" alt="${esc(l.farmAlt)}"><figcaption>${esc(l.farmTag)}</figcaption></figure>
-      <figure class="stage-app"><a href="${rel(home + 'demo/')}" title="${esc(l.tryLink)}"><img class="shot" src="${shot('hero.png')}" width="1920" height="1200" alt="${esc(l.heroAlt)}"></a><figcaption>${esc(l.appTag)}</figcaption></figure>
+      <figure class="stage-app" id="try">
+        <div class="live" title="${esc(l.liveTip)}">
+          <img class="shot" src="${shot('hero.png')}" width="1920" height="1200" alt="${esc(l.heroAlt)}">
+          <iframe src="${rel('demo/app/')}?lang=${lang}" title="${esc(l.liveTip)}" loading="lazy"></iframe>
+          <a class="live-full" href="${rel(home + 'demo/')}">${esc(l.fullScreen)}</a>
+        </div>
+        <figcaption>${esc(l.appTag)}</figcaption></figure>
     </div>
   </div>
 </section>
+<script>{ /* The live app in the hero: drawn at 1232 × 770 (the wide sidebar) and scaled to its frame; shown once it has drawn. */
+  const live = document.querySelector('.live'), frame = live && live.querySelector('iframe');
+  if (live && frame) {
+    const fit = () => live.style.setProperty('--k', String(live.clientWidth / 1232));
+    fit(); new ResizeObserver(fit).observe(live);
+    frame.addEventListener('load', () => setTimeout(() => live.classList.add('on'), 700));
+  } }</script>
 
 <section class="band alt proof" aria-labelledby="proof">
   <div class="wrap">
@@ -345,8 +366,8 @@ ${rows.map(([page, img, title, text]) => `    <article class="row">
     </article>`).join('\n')}
     <div class="minis">
 ${small.map(([page, img, title, text]) => `      <article class="mini">
-        <a class="mini-shot" href="${link(page)}" tabindex="-1"><img src="${shot(img)}" loading="lazy" decoding="async" alt=""></a>
-        <h3>${esc(title)}</h3>
+${img ? `        <a class="mini-shot" href="${link(page)}" tabindex="-1"><img src="${shot(img)}" loading="lazy" decoding="async" alt=""></a>
+` : ''}        <h3>${esc(title)}</h3>
         <p>${esc(text)}</p>
         <a class="more" href="${link(page)}">${esc(l.more)} ›</a>
       </article>`).join('\n')}

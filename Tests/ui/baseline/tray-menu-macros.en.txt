@@ -15,7 +15,6 @@ html [data-theme="dark" lang="en"]
 -- commands
   ready {}
   size {"h":119,"opened":1,"w":292}
-  size {"h":129,"opened":1,"w":292}
-  size {"h":129,"opened":1,"w":292}
+  size {"h":119,"opened":1,"w":292}
   size {"h":414,"opened":1,"w":292}
   size {"h":414,"opened":1,"w":292}

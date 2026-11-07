@@ -160,7 +160,7 @@ export function GameMap({ games, total, picked, pick, fmtSecs }: {
   const boxes = width ? squarify(shown.map(g => g.seconds), width, MAP_H) : [];
   return <div className="stat-card" id="stats-games"><h3>{t('stats.topGames')}
     {picked ? <button type="button" className="chip on gm-chip" onClick={() => pick(null)}><span>{t('stats.onlyGame', { game: games.find(g => g.key === picked)?.name || '…' })}</span><Icon name="x" /></button> : null}</h3>
-    <div className="gm" ref={host} style={{ height: MAP_H }}>{boxes.map((b, i) => {
+    <div className="gm-map" ref={host} style={{ height: MAP_H }}>{boxes.map((b, i) => {
       const g = shown[i], share = Math.round(g.seconds / Math.max(1, total) * 100);
       const big = b.w >= 120 && b.h >= 76, mid = b.w >= 64 && b.h >= 40;
       return <button key={g.key} type="button" className={`gm-box${picked === g.key ? ' on' : ''}${big ? ' big' : mid ? '' : ' tiny'}`} style={{ ...hued(g.key),

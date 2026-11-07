@@ -44,15 +44,15 @@ Bản sao lưu mở bằng mật khẩu dùng lúc sao lưu.
 | Cách | Dùng khi | Kết quả |
 |---|---|---|
 | **Khôi phục từ bản sao lưu** (màn hình đầu) hoặc **Cài đặt › Sao lưu & dữ liệu › Khôi phục › Khôi phục…** | Sang máy mới, hoặc muốn quay về một bản sao lưu. | Luôn hỏi trước. Dữ liệu hiện tại được giữ lại một bản, sau đó Bloxkeep khóa lại: mở khóa bằng mật khẩu của bản sao lưu. |
-| **Cài đặt › Sao lưu & dữ liệu › Nhập tài khoản từ file dữ liệu Bloxkeep › Nhập…** | Muốn lấy tài khoản từ một file dữ liệu hay bản sao lưu khác. | Thêm tài khoản; tài khoản đang có vẫn giữ nguyên. |
+| **Cài đặt › Sao lưu & dữ liệu › Nhập tài khoản từ file Bloxkeep › Nhập…** | Muốn lấy tài khoản từ một file dữ liệu hay bản sao lưu khác. | Thêm tài khoản; tài khoản đang có vẫn giữ nguyên. |
 
 ## Nhập từ file Bloxkeep khác
 
-Dùng để lấy tài khoản từ file `vault.rmv` của máy khác, hoặc từ file `Bloxkeep-backup-…`. Có ba chỗ mở: **Thêm tài khoản › Cách thêm khác › Nhập từ file dữ liệu Bloxkeep khác…**, **Nhập từ: File Bloxkeep** trong hộp **Đăng nhập Roblox**, và **Cài đặt › Sao lưu & dữ liệu › Nhập…**.
+Dùng để lấy tài khoản từ file `vault.rmv` của máy khác, hoặc từ file `Bloxkeep-backup-…`. Có ba chỗ mở: **Thêm tài khoản › Cách thêm khác › Nhập từ file Bloxkeep khác…**, **Từ file Bloxkeep** trong hộp **Đăng nhập Roblox**, và **Cài đặt › Sao lưu & dữ liệu › Nhập…**.
 
 1. Bấm **Chọn file…** và chọn file `.rmv`.
 2. Nhập **Mật khẩu chủ của file này** rồi bấm **Mở**.
-3. Tích những tài khoản muốn lấy. Mỗi dòng ghi **Mới** hay **Đã có**, và tài khoản còn đăng nhập, cần đăng nhập lại, chưa kiểm tra hay đã lưu mật khẩu. **Chọn hết** / **Bỏ chọn** để tích hoặc bỏ tất cả.
+3. Tích những tài khoản muốn lấy. Mỗi dòng ghi **Mới** hay **Đã có**, và tài khoản còn đăng nhập, cần đăng nhập lại, chưa kiểm tra hay đã lưu mật khẩu. **Chọn mới** / **Bỏ chọn** để tích các tài khoản mới hoặc bỏ hết.
 4. Muốn lấy cả preset thì tích **Nhập cả preset (N)**.
 5. Bấm **Nhập**.
 
@@ -90,7 +90,7 @@ Bloxkeep không có tài khoản hay công cụ phân tích riêng. Tài khoản
 | Thư mục sao lưu bạn chọn | Kho dữ liệu đã mã hóa. |
 | Webhook Discord của bạn | Chỉ khi bạn bật. Không bao giờ có cookie hay mật khẩu. |
 | Người làm Bloxkeep | Những góp ý bạn tự gửi. |
-| Bot Discord của Bloxkeep | Khi Bloxkeep đang mở, cứ mỗi phút báo "đang mở" một lần mà không kèm danh tính (một mã tạo từ máy, không lần ngược ra được, phiên bản và ngôn ngữ), để người làm Bloxkeep biết lúc này có bao nhiêu người đang dùng. Tắt ở **Cài đặt › Bloxkeep › Quyền riêng tư › Tính vào số người đang dùng**. |
+| Bot Discord của Bloxkeep | Khi Bloxkeep đang mở, vài phút báo một lần để đếm số người đang dùng: một mã tạo từ máy này (không lần ngược ra được), phiên bản, ngôn ngữ, các game tài khoản của bạn đang ở, số cửa sổ đang chạy và vì sao một tài khoản bị văng. Không bao giờ gửi tài khoản. Tắt ở **Cài đặt › Bloxkeep › Quyền riêng tư › Tính vào số người đang dùng**. |
 
 Danh sách đầy đủ có trong [chính sách quyền riêng tư](../../PRIVACY.md) (tiếng Anh).
 

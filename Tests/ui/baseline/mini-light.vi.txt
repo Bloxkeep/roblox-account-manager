@@ -50,4 +50,4 @@ html [data-theme="light" lang="vi"]
         i
 -- commands
   ready {}
-  size {"h":386,"w":300}
+  size {"h":386,"w":308}

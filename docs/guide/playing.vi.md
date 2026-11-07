@@ -10,7 +10,7 @@ Cách chọn game và server, mở Roblox cho các tài khoản, và dùng cửa
 
 1. Bấm vào ô game ở cuối trang (**1 Game**), gõ tên game, Place ID hoặc link. Chọn game trong danh sách hiện ra.
 2. Muốn vào đúng một server thì dùng **2 Server** (tùy chọn): Job ID, **Chọn server** hoặc **Vào cùng người chơi…**.
-3. Ở tab **Tài khoản**, chọn những tài khoản muốn mở rồi bấm **Vào game** (**3 Vào game**). Nút cho biết sẽ mở bao nhiêu tài khoản.
+3. Ở tab **Tài khoản**, chọn những tài khoản muốn mở rồi bấm **Vào game** (**3 Vào**). Nút cho biết sẽ mở bao nhiêu tài khoản.
 4. Nếu Bloxkeep hỏi **Lưu ý trước khi mở**, đọc rồi bấm **Vẫn mở**.
 5. Muốn dừng giữa chừng thì bấm **Dừng**. Muốn đóng Roblox thì bấm **Đóng**.
 
@@ -24,7 +24,7 @@ Thanh ở cuối tab **Tài khoản** chia thành ba bước có đánh số, t�
 |---|---|
 | **1 Game** | Ảnh game (**Chọn game**), ô game, và bên dưới là game tìm được cùng các game gần đây. |
 | **2 Server** (tùy chọn) | Ô **Job ID**, nút **Chọn server** và **Vào cùng người chơi…**. |
-| **3 Vào game** | Nút **Vào game**, bên dưới là **Preset**, **Đóng** và **Cửa sổ** (**Chỉ mở Roblox**, **Xếp cửa sổ Roblox**). |
+| **3 Vào** | Nút **Vào game**, bên dưới là **Preset**, **Đóng** và **Cửa sổ** (**Chỉ mở Roblox**, **Xếp cửa sổ Roblox**). |
 
 Nút nào cũng có ghi tên. Khi cửa sổ app rất nhỏ thì dòng tên các bước được ẩn đi.
 
@@ -60,14 +60,26 @@ Bấm vào tên game dưới ô game để mở trang của game đó:
 | Giờ nào vắng | Số người chơi theo từng giờ trong ngày. Khi Bloxkeep đang mở, cứ nửa tiếng nó ghi số người chơi các game bạn dùng, một hai ngày là đủ; ba giờ vắng nhất được ghi ra, hợp để hẹn giờ preset. |
 | Giới thiệu game | Mô tả của game, bấm để xem. |
 
+## Tab Game
+
+**Game** ở thanh bên liệt kê các game phổ biến kèm wiki hoặc tin: **Game của bạn** (tài khoản của bạn đã chơi trong 90 ngày qua) ở trên, rồi tới **Phổ biến**. **Tìm game** để tìm. Mở một game để xem:
+
+- **Tin tức**: tin trực tiếp từ bot của game, như stock và spawn. **Báo cho tôi**: **Tắt**, **Mọi tin** hoặc **Có từ khóa** (các từ bạn chọn).
+- **Wiki**: wiki của game ngay trong Bloxkeep: tìm, bảng tra, so sánh, trang mới và món vừa buff/nerf.
+- **Bảng giá**: bảng giá, như của Blox Fruits.
+
+<img src="../screenshots/vi/games.png" width="760" alt="Tab Game: Blox Fruits trong Game của bạn với tin mới, Wiki, Bảng giá, số giờ đã chơi và số máy đang chơi, cảnh báo radar ở trên, các game Phổ biến ở dưới">
+
+Thẻ của mỗi game còn cho biết bao nhiêu máy dùng Bloxkeep đang chơi game đó. Tin game chỉ có ở bản Bloxkeep đã cài.
+
 ## Server
 
 Nút **Chọn server** mở danh sách server của game. Nút bị mờ khi ô game chưa có game, và với server riêng.
 
 <img src="../screenshots/vi/servers.png" width="760" alt="Danh sách server của một game: server riêng của bạn và bạn bè trong game này, mỗi mục kèm nút Dùng server này, rồi các server công khai với nút sắp xếp, Đủ chỗ cho 2 tài khoản và Server ngẫu nhiên">
 
-- **Server riêng của bạn**: các server riêng của game này mà tài khoản đang chọn là chủ hoặc được mời vào (chưa chọn tài khoản nào thì dùng vài tài khoản đã đăng nhập đầu tiên), mỗi server ghi chủ server, số người đang chơi và nút **Dùng server này**. Roblox chỉ cho đúng các tài khoản đó vào, nên server mà vài tài khoản đang chọn không vào được sẽ ghi "chỉ *tài khoản* vào được". **Dùng server này** điền server đó vào ô game dưới dạng server riêng (`roblox://placeId=…&accessCode=…`); bấm **Vào game** là Bloxkeep vào đúng server đó, giống nút Join trên trang Roblox của game.
-- **Bạn bè trong game này**: bạn bè của các tài khoản của bạn đang ở trong game này, mỗi người ghi "bạn của *tài khoản*", kèm nút **Dùng server này**. Quyền riêng tư của họ có thể che đi.
+- **Server riêng của bạn**: các server riêng của game này mà tài khoản đang chọn là chủ hoặc được mời vào (chưa chọn tài khoản nào thì dùng vài tài khoản đã đăng nhập đầu tiên), mỗi server ghi chủ server, số người đang chơi và nút **Dùng**. Roblox chỉ cho đúng các tài khoản đó vào, nên server mà vài tài khoản đang chọn không vào được sẽ ghi "chỉ *tài khoản* vào được". **Dùng** điền server đó vào ô game dưới dạng server riêng (`roblox://placeId=…&accessCode=…`); bấm **Vào game** là Bloxkeep vào đúng server đó, giống nút Join trên trang Roblox của game.
+- **Bạn bè trong game này**: bạn bè của các tài khoản của bạn đang ở trong game này, mỗi người ghi "bạn của *tài khoản*", kèm nút **Dùng**. Quyền riêng tư của họ có thể che đi.
 - **Server công khai**: sắp xếp theo **Đông nhất**, **Vắng nhất**, **Ping thấp nhất** hoặc **FPS cao nhất**. **Đủ chỗ cho N tài khoản** (khi chọn từ 2 tài khoản) chỉ hiện server còn đủ chỗ cho tất cả. **Server ngẫu nhiên** chọn bừa một server.
 - **Dùng** điền Job ID của server đó vào thanh chọn game ("Đã chọn server. Giờ chọn tài khoản rồi bấm Vào game."). Server đã đầy thì nút bị mờ.
 - Ping hiển thị là ping trung bình của người chơi trong server, không phải ping từ máy bạn. Khi Roblox đang bận, danh sách tự thử lại, sau đó hiện nút **Thử lại**.

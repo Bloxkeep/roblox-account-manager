@@ -10,10 +10,10 @@ Trả lời ngắn cho những vấn đề hay gặp nhất, rồi đến toàn 
 
 **Đ:** Kiểm tra lần lượt:
 
-- [Multi-Roblox](multi-roblox.vi.md) đã bật chưa? Thẻ ở thanh bên ghi **Đang tắt** thì bật lên.
-- Đèn vàng **Chưa hoạt động, bấm để sửa**: Roblox đã mở trước Bloxkeep. Bấm vào và làm theo các bước (đóng hết Roblox, kể cả ở khay hệ thống; tắt tự khởi động nếu có). Lần sau nhớ mở Bloxkeep trước Roblox.
-- Đèn vàng **Roblox đã đóng cửa sổ** hoặc **Bản Roblox mới có thể chặn**: một bản Roblox mới có thể đã đổi cách chặn nhiều cửa sổ. Mở **Cài đặt › Phiên bản & đồ họa Roblox**, bấm **Kiểm tra bản cập nhật Bloxkeep**, và chơi từng tài khoản một cho tới khi có bản sửa.
-- Đang dùng launcher? Nếu launcher chặn mở nhiều cửa sổ, chọn **Chạy thẳng RobloxPlayerBeta (bỏ qua launcher)** ở **Cài đặt › Khởi chạy › Mở Roblox bằng**.
+- [Multi-Roblox](multi-roblox.vi.md) đã bật chưa? Công tắc Multi-Roblox ở thanh bên ghi **Đang tắt** thì bật lên.
+- Đèn vàng **Chưa chạy được**: Roblox đã mở trước Bloxkeep. Bấm vào và làm theo các bước (đóng hết Roblox, kể cả ở khay hệ thống; tắt tự khởi động nếu có). Lần sau nhớ mở Bloxkeep trước Roblox.
+- Đèn vàng **Roblox đã đóng cửa sổ** hoặc **Bản Roblox mới có thể chặn**: một bản Roblox mới có thể đã đổi cách chặn nhiều cửa sổ. Mở **Cài đặt › Phiên bản Roblox**, bấm **Kiểm tra cập nhật Bloxkeep**, và chơi từng tài khoản một cho tới khi có bản sửa.
+- Đang dùng launcher? Nếu launcher chặn mở nhiều cửa sổ, chọn **Roblox trực tiếp (không qua launcher)** ở **Cài đặt › Khởi chạy › Mở Roblox bằng**.
 
 ### **H:** Cửa sổ Roblox bị văng ngay khi mở ("Memory dump captured", hoặc Bloxstrap báo "Roblox failed to launch")
 

@@ -12,8 +12,8 @@ A real screenshot from one PC: six accounts open at once, all in the game and ti
 
 1. [Download Bloxkeep](https://github.com/Bloxkeep/roblox-account-manager/releases/latest), run `Bloxkeep-Setup.exe`, and set a master password.
 2. Click **Add account** and sign in to each Roblox account.
-3. If Roblox is already open, press **Close all Roblox**. Then turn on the switch on the **Multi-Roblox** card at the bottom of the sidebar.
-4. Check that the light is green and the card says **On — several windows allowed**.
+3. If Roblox is already open, press **Close all Roblox**. Then turn on the **Multi-Roblox** switch at the bottom of the sidebar.
+4. Check that the light is green and it says **On**.
 5. Pick a game, select your accounts and press **Play**. Keep Bloxkeep open while you play (the tray is fine).
 
 <img src="../screenshots/hero.png" width="760" alt="Bloxkeep's main window: account cards, the game bar at the bottom, Multi-Roblox on in the sidebar">

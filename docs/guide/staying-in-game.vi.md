@@ -2,14 +2,14 @@
 
 # Giữ tài khoản trong game
 
-Cách Bloxkeep giữ các tài khoản luôn ở trong game: Tự vào lại game, Chống AFK, kiểm tra đăng nhập mỗi ngày, và các tùy chọn về RAM, nằm ở **Cài đặt › Treo game**; chạy ẩn dưới khay hệ thống nằm ở **Cài đặt › Bloxkeep**.
+Cách Bloxkeep giữ các tài khoản luôn ở trong game: Tự vào lại, Chống AFK, kiểm tra đăng nhập mỗi ngày, và các tùy chọn về RAM, nằm ở **Cài đặt › Treo máy**; chạy ẩn dưới khay hệ thống nằm ở **Cài đặt › Bloxkeep**.
 
 <img src="../screenshots/vi/settings-staying.png" width="760" alt="Cài đặt, trang Treo game: Tự vào lại game, Chống AFK, Kiểm tra đăng nhập mỗi ngày, Báo khi sắp hết RAM, Tiết kiệm RAM cho cửa sổ chạy nền và Ưu tiên cửa sổ đang chơi">
 
 ## Làm nhanh
 
-1. Mở **Cài đặt › Treo game**.
-2. Ở dòng **Tự vào lại game**, chọn **Bật cho mọi tài khoản**. Muốn bật riêng cho một tài khoản thì dùng **⋯ › Tự vào lại game** của tài khoản đó.
+1. Mở **Cài đặt › Treo máy**.
+2. Bật **Tự vào lại** (cho mọi tài khoản). Muốn bật riêng cho một tài khoản thì dùng **⋯ › Tự vào lại** của tài khoản đó.
 3. Bật **Chống AFK**.
 4. Ở **Cài đặt › Bloxkeep**, để nguyên **Chạy ẩn dưới khay hệ thống khi đóng** ở trạng thái bật, để bấm ✕ chỉ thu Bloxkeep xuống khay chứ không thoát.
 
@@ -19,9 +19,9 @@ Khi Roblox của một tài khoản bị văng, bị kick hoặc mất kết n�
 
 | Bật cho | Ở đâu |
 |---|---|
-| Một tài khoản | **⋯ › Tự vào lại game** của tài khoản đó. |
-| Mọi tài khoản | **Cài đặt › Treo game › Tự vào lại game › Bật cho mọi tài khoản** (khi chỗ bật chỗ tắt sẽ ghi "Bật cho 3/10 tài khoản"). |
-| Cửa sổ của một preset | Tùy chọn **Tự vào lại game** của preset đó (xem [Preset](presets.vi.md)). |
+| Một tài khoản | **⋯ › Tự vào lại** của tài khoản đó. |
+| Mọi tài khoản | **Cài đặt › Treo máy › Tự vào lại** (khi chỉ một số tài khoản bật sẽ ghi "3/10 tài khoản"). |
+| Cửa sổ của một preset | Tùy chọn **Tự vào lại** của preset đó (xem [Preset](presets.vi.md)). |
 
 <img src="../screenshots/vi/card-rejoin.png" width="760" alt="Các thẻ tài khoản: một thẻ đang tự vào lại game sau 5 phút kèm nút Hủy, một thẻ báo Mất kết nối vì bị kick do treo máy">
 
@@ -55,7 +55,7 @@ Khi Roblox của một tài khoản bị văng, bị kick hoặc mất kết n�
 
 ## Chống AFK
 
-**Cài đặt › Treo game › Chống AFK** (preset có thể ghi đè). Roblox kick tài khoản sau 20 phút không có thao tác. Bloxkeep lần lượt chuyển sang từng cửa sổ Roblox đang ở trong game trong chốc lát mà bạn không thấy: cửa sổ được làm trong suốt và cho bấm xuyên qua (lỡ bấm chuột lúc đó thì vẫn trúng cửa sổ bạn đang dùng), được bấm phím F15 một lần (bàn phím thường không có phím này nên game cũng không dùng), rồi bạn về lại cửa sổ đang dùng. Chuột không di chuyển, không click gì, cửa sổ đang thu nhỏ vẫn thu nhỏ.
+**Cài đặt › Treo máy › Chống AFK** (preset có thể ghi đè). Roblox kick tài khoản sau 20 phút không có thao tác. Bloxkeep lần lượt chuyển sang từng cửa sổ Roblox đang ở trong game trong chốc lát mà bạn không thấy: cửa sổ được làm trong suốt và cho bấm xuyên qua (lỡ bấm chuột lúc đó thì vẫn trúng cửa sổ bạn đang dùng), được bấm phím F15 một lần (bàn phím thường không có phím này nên game cũng không dùng), rồi bạn về lại cửa sổ đang dùng. Chuột không di chuyển, không click gì, cửa sổ đang thu nhỏ vẫn thu nhỏ.
 
 - Bắt đầu từ phút thứ 12 kể từ thao tác cuối của cửa sổ, vào phút đầu tiên không ai dùng máy.
 - Cửa sổ còn 2 phút nữa là bị kick thì được xử lý ngay cả khi bạn đang dùng máy, vào lúc bạn ngừng tay 2 giây, nhưng không bao giờ chen ngang ứng dụng toàn màn hình.
@@ -67,7 +67,7 @@ Nếu tài khoản vẫn bị kick, Bloxkeep nói rõ lý do: bạn dùng máy l
 
 ## Rời server đông
 
-**Cài đặt › Treo game › Rời server đông**, mặc định tắt. Chọn một con số: cửa sổ ở server công khai có nhiều người hơn số đó (không tính tài khoản của bạn) sẽ đóng rồi mở lại vào server có từ số đó trở xuống, không trùng server với tài khoản khác của bạn.
+**Cài đặt › Treo máy › Rời server đông**, mặc định tắt. Chọn một con số: cửa sổ ở server công khai có nhiều người hơn số đó (không tính tài khoản của bạn) sẽ đóng rồi mở lại vào server có từ số đó trở xuống, không trùng server với tài khoản khác của bạn.
 
 - Bloxkeep đếm 2 phút một lần theo danh sách server của Roblox, giống danh sách trong **Server**. Số của Roblox có thể chậm vài giây so với trong game.
 - Cửa sổ vừa vào game được để yên 90 giây.
@@ -80,7 +80,7 @@ Mặc định tắt. Bật lên, cửa sổ Bloxkeep mở sẽ có trời xám, 
 
 ## Kiểm tra đăng nhập mỗi ngày
 
-**Cài đặt › Treo game › Kiểm tra đăng nhập mỗi ngày** (bật sẵn). Roblox có thể kết thúc phiên đăng nhập mà không báo ai.
+**Cài đặt › Treo máy › Kiểm tra đăng nhập mỗi ngày** (bật sẵn). Roblox có thể kết thúc phiên đăng nhập mà không báo ai.
 
 - Mỗi ngày một lần, khoảng 45 giây sau khi bạn mở khóa, Bloxkeep kiểm tra đăng nhập của từng tài khoản, lần lượt, cách nhau 2 giây. Bloxkeep cũng xem Roblox có báo bị ban không.
 - Một thông báo duy nhất nêu tên các tài khoản cần đăng nhập lại. Dòng cài đặt có ghi "Lần kiểm tra gần nhất: …".
@@ -88,24 +88,24 @@ Mặc định tắt. Bật lên, cửa sổ Bloxkeep mở sẽ có trời xám, 
 
 ## Báo khi sắp hết RAM
 
-**Cài đặt › Treo game › Báo khi sắp hết RAM** (bật sẵn).
+**Cài đặt › Treo máy › Báo khi sắp hết RAM** (bật sẵn).
 
 - Trước khi mở, hỏi lại nếu RAM trống không đủ cho các cửa sổ mới (hộp thoại **Lưu ý trước khi mở**, xem [Vào game](playing.vi.md)).
 - Trong lúc chơi, báo khi máy dùng từ 92 % RAM trở lên, tối đa 5 phút một lần.
 - Nếu RAM vẫn trống mà bộ nhớ ảo của Windows sắp đầy thì báo chuyện đó, cả trước khi mở lẫn lúc đang chơi: khi ấy cửa sổ Roblox sẽ bị văng ngay khi mở. Xem [Gỡ rối](troubleshooting.vi.md#h-cửa-sổ-roblox-bị-văng-ngay-khi-mở-memory-dump-captured-hoặc-bloxstrap-báo-roblox-failed-to-launch).
-- Thanh RAM trong thẻ **Roblox trên máy này** ở thanh bên chuyển đỏ từ 90 % (xem [Cửa sổ và thống kê](windows-and-stats.vi.md)).
+- Hàng chấm RAM trong thẻ **Roblox trên máy này** ở thanh bên đổi sang màu cảnh báo từ 90 % (xem [Cửa sổ và thống kê](windows-and-stats.vi.md)).
 
 ## Tiết kiệm RAM cho cửa sổ chạy nền
 
-**Cài đặt › Treo game › Tiết kiệm RAM cho cửa sổ chạy nền** (tắt sẵn). Các cửa sổ Roblox bạn không chơi được đặt mức ưu tiên bộ nhớ thấp, nên Windows lấy RAM của chúng trước, chỉ khi máy thiếu RAM. Cửa sổ thu nhỏ hoặc đang ẩn được 1 phút sẽ được dọn RAM một lần, phần game còn dùng tự quay lại. Cửa sổ đang hiện thì không dọn, vì game sẽ bị giật khi cần RAM lại.
+**Cài đặt › Treo máy › Tiết kiệm RAM cho cửa sổ chạy nền** (tắt sẵn). Các cửa sổ Roblox bạn không chơi được đặt mức ưu tiên bộ nhớ thấp, nên Windows lấy RAM của chúng trước, chỉ khi máy thiếu RAM. Cửa sổ thu nhỏ hoặc đang ẩn được 1 phút sẽ được dọn RAM một lần, phần game còn dùng tự quay lại. Cửa sổ đang hiện thì không dọn, vì game sẽ bị giật khi cần RAM lại.
 
 Cửa sổ ở phía trước được trả lại mức ưu tiên bình thường. Nếu Windows không cho, cửa sổ đó chạy như thường.
 
-Game mà RAM cứ tăng dần sau nhiều giờ chỉ trả lại RAM khi Roblox mở lại: dùng **Mở lại Roblox** của Preset (xem [Preset](presets.vi.md)).
+Game mà RAM cứ tăng dần sau nhiều giờ chỉ trả lại RAM khi Roblox mở lại: dùng **Mở lại cửa sổ nặng** (bên dưới) hoặc **Mở lại Roblox** của Preset (xem [Preset](presets.vi.md)).
 
 ## Giới hạn RAM khi thu nhỏ hoặc ẩn
 
-**Cài đặt › Treo game › Giới hạn RAM khi thu nhỏ hoặc ẩn**: **Không giới hạn** (mặc định), **Tự động (theo game)**, **512 MB**, **768 MB**, **1 GB**, **1.5 GB** hoặc **2 GB**. Cửa sổ Roblox thu nhỏ, hoặc bị Bloxkeep ẩn, chỉ giữ tối đa chừng đó trong RAM; phần còn lại của game nằm ở bộ nhớ ảo của Windows. Game để treo dùng rất ít trong số bộ nhớ nó giữ, nên một máy chạy được nhiều tài khoản hơn.
+**Cài đặt › Treo máy › Giới hạn RAM khi thu nhỏ hoặc ẩn**: **Không giới hạn** (mặc định), **Tự động (theo game)**, **512 MB**, **768 MB**, **1 GB**, **1.5 GB** hoặc **2 GB**. Cửa sổ Roblox thu nhỏ, hoặc bị Bloxkeep ẩn, chỉ giữ tối đa chừng đó trong RAM; phần còn lại của game nằm ở bộ nhớ ảo của Windows. Game để treo dùng rất ít trong số bộ nhớ nó giữ, nên một máy chạy được nhiều tài khoản hơn.
 
 **Tự động** đặt mức riêng cho từng game: bắt đầu khi cửa sổ đã nghỉ một phút và máy dùng tới 60 % RAM, giảm dần khi game ổn, nới thêm khi game cần.
 
@@ -119,9 +119,16 @@ Game mà RAM cứ tăng dần sau nhiều giờ chỉ trả lại RAM khi Roblox
 
 Preset Light AFK tự thu nhỏ cửa sổ, nên cũng được giới hạn.
 
+## Mở lại cửa sổ nặng
+
+**Cài đặt › Treo máy › Mở lại cửa sổ nặng**: **Không bao giờ** (mặc định), hoặc **Trên 3 GB**, **4 GB**, **6 GB**, **8 GB**. Cửa sổ Roblox đang trong game mà dùng quá mức RAM đó suốt 3 phút sẽ tự đóng rồi vào lại đúng server, lần lượt từng cửa sổ.
+
+- RAM tăng vọt một lúc (dịch chuyển, tải map lớn) không tính.
+- Không bao giờ mở lại cửa sổ của tài khoản chính, và cửa sổ bạn đang chơi khi bạn đang dùng máy.
+
 ## Ưu tiên cửa sổ đang chơi
 
-**Cài đặt › Treo game › Ưu tiên cửa sổ đang chơi** (tắt sẵn). Phần lớn CPU đời mới có hai loại nhân: nhân mạnh và nhân tiết kiệm (Intel đời 12 trở lên, nhiều laptop đời mới). Khi bật, mọi cửa sổ Roblox chạy nền dùng chế độ hiệu quả của Windows, giống trong Task Manager: nhường cửa sổ bạn đang chơi và chạy chủ yếu trên nhân tiết kiệm, chỉ dùng nhân mạnh khi có nhân đang rảnh, nên không cửa sổ nào bị thiếu CPU. Bấm sang cửa sổ Roblox khác thì cửa sổ đó chạy hết tốc lực ngay.
+**Cài đặt › Treo máy › Ưu tiên cửa sổ đang chơi** (tắt sẵn). Phần lớn CPU đời mới có hai loại nhân: nhân mạnh và nhân tiết kiệm (Intel đời 12 trở lên, nhiều laptop đời mới). Khi bật, mọi cửa sổ Roblox chạy nền dùng chế độ hiệu quả của Windows, giống trong Task Manager: nhường cửa sổ bạn đang chơi và chạy chủ yếu trên nhân tiết kiệm, chỉ dùng nhân mạnh khi có nhân đang rảnh, nên không cửa sổ nào bị thiếu CPU. Bấm sang cửa sổ Roblox khác thì cửa sổ đó chạy hết tốc lực ngay.
 
 - Treo nhiều acc mà cửa sổ đang chơi vẫn mượt, laptop mát hơn.
 - CPU chỉ có một loại nhân thì cửa sổ nền chỉ được đặt chế độ tiết kiệm điện.

@@ -26,7 +26,7 @@ Cách thêm tài khoản, đọc thẻ tài khoản, tìm và chọn tài khoả
 | **Đăng nhập bằng trình duyệt** | Các cách khác không được, hoặc Roblox đòi xác minh thêm. | Trang đăng nhập chính thức của roblox.com. Cần vào được www.roblox.com và Microsoft Edge WebView2. Không dùng cho Roblox VNG. |
 | **Dán cookie** | Bạn đã có sẵn cookie `.ROBLOSECURITY` của tài khoản. | Chỉ **Cookie .ROBLOSECURITY** là bắt buộc. |
 | **Mở roblox.com** rồi **Lưu vào Bloxkeep** | Chủ yếu cần dùng trang web, nhiều tài khoản cùng lúc. | Một tab trống trong cửa sổ trình duyệt của Bloxkeep ([Mở trang web](playing.vi.md#mở-trang-web)). Đăng nhập, rồi bấm **Lưu vào Bloxkeep**. |
-| **Nhập từ: File Bloxkeep** | Chuyển tài khoản từ máy khác hoặc từ bản sao lưu. | Cần mật khẩu chủ của file đó ([Nhập từ file Bloxkeep khác](#nhập-từ-file-bloxkeep-khác)). |
+| **Từ file Bloxkeep** | Chuyển tài khoản từ máy khác hoặc từ bản sao lưu. | Cần mật khẩu chủ của file đó ([Nhập từ file Bloxkeep khác](#nhập-từ-file-bloxkeep-khác)). |
 
 Thêm một tài khoản đã có trong danh sách thì không bị trùng: Bloxkeep chỉ cập nhật phiên đăng nhập của nó. Bloxkeep không đọc được file của các trình quản lý tài khoản khác; nếu công cụ kia cho xem cookie của tài khoản thì dùng **Dán cookie**.
 
@@ -89,9 +89,11 @@ Mở bằng **⋯ Tùy chọn khác** trên thẻ, hoặc bấm chuột phải v
 | **Ẩn cửa sổ Roblox** / **Hiện cửa sổ Roblox** | Ẩn cửa sổ và nút của nó trên thanh tác vụ, game vẫn chạy (tự vào lại và chống AFK cũng vậy). Thẻ của cửa sổ đang ẩn có hình con mắt trước PID: bấm vào để hiện lại. Nút **Cửa sổ** ở thanh dưới ẩn hoặc hiện tất cả; Ctrl+Alt+H cũng vậy. Bloxkeep tự hiện lại hết khi tắt. | Không tài khoản nào đang chơi trên máy này. |
 | **Sang server khác** | Đóng cửa sổ rồi mở lại vào một server khác còn chỗ của cùng game. Các tài khoản cùng game đổi một lượt sẽ vào chung một server. | Không tài khoản nào đang chọn đang chơi ở server công khai trên máy này. |
 | **Xác minh không phải bot** | Chỉ hiện khi thẻ ghi **Roblox đòi xác minh không phải bot**: hiện bước xác minh của Roblox trong cửa sổ của Bloxkeep, rồi mở lại cửa sổ vào game khi Roblox cho vào. | — |
-| **Tự vào lại game** | Bật hoặc tắt tự vào lại game cho các tài khoản này. | — |
+| **Tự vào lại** | Bật hoặc tắt tự vào lại game cho các tài khoản này. | — |
 | **Giới hạn FPS trong Roblox** | Giới hạn riêng của tài khoản, có hiệu lực từ lần mở sau. Vẫn dùng được khi **Áp dụng cho** là **Không áp dụng**. Xem FPS bằng Shift+F5 trong cửa sổ Roblox. | — |
-| **Dùng cấu hình Roblox** | Cho các tài khoản này dùng **Cấu hình Roblox** (đồ họa, FPS, âm lượng). | Chỉ hiện khi **Cài đặt › Treo game › Áp dụng cho** là **Tài khoản đã chọn**. |
+| **Dùng cấu hình Roblox** | Cho các tài khoản này dùng **Cấu hình Roblox** (đồ họa, FPS, âm lượng). | Chỉ hiện khi **Cài đặt › Treo máy › Áp dụng cho** là **Tài khoản đã chọn**. |
+| **Tài khoản chính** | Đánh dấu tài khoản bạn tự chơi (có dấu tích khi đã đánh dấu). Tài khoản này mở lên không dùng cấu hình Roblox hay Fast Flags của Bloxkeep; **Chọn tất cả** bỏ qua nó; tiết kiệm RAM, giới hạn RAM, **Xếp cửa sổ**, **Ưu tiên cửa sổ đang chơi** và **Mở lại cửa sổ nặng** không đụng tới cửa sổ của nó. | — |
+| **Kết bạn với nhau** | Các tài khoản đang chọn kết bạn Roblox với nhau. Nếu Roblox đòi kiểm tra, ô kiểm tra sẽ hiện ra để bạn giải. | Chỉ hiện khi chọn nhiều tài khoản; bị mờ khi có ít hơn hai tài khoản còn đăng nhập (không tính Roblox VNG). |
 | **Trang cá nhân Roblox** | Mở trang cá nhân trên roblox.com bằng trình duyệt của bạn. | Đang chọn nhiều tài khoản, hoặc không có ID người dùng. |
 | **Mở trang web** | Mở roblox.com với tài khoản này đã đăng nhập sẵn, trong cửa sổ trình duyệt của Bloxkeep. | Đang chọn nhiều tài khoản, hoặc là tài khoản Roblox VNG. |
 | **Sao chép tên đăng nhập** | Sao chép tên đăng nhập. | Đang chọn nhiều tài khoản. |
@@ -126,11 +128,11 @@ Bộ lọc **Cần đăng nhập lại** gom hết các tài khoản này. **Ki�
 
 ## Nhập từ file Bloxkeep khác
 
-Dùng cho tài khoản trong `vault.rmv` của máy khác, hoặc file `Bloxkeep-backup-…`. Mở ở **Cách thêm khác › Nhập từ file dữ liệu Bloxkeep khác…**, hoặc **Cài đặt › Sao lưu & dữ liệu › Nhập tài khoản từ file dữ liệu Bloxkeep › Nhập…**.
+Dùng cho tài khoản trong `vault.rmv` của máy khác, hoặc file `Bloxkeep-backup-…`. Mở ở **Cách thêm khác › Nhập từ file Bloxkeep khác…**, hoặc **Cài đặt › Sao lưu & dữ liệu › Nhập tài khoản từ file Bloxkeep › Nhập…**.
 
 1. Bấm **Chọn file…** và chọn file `.rmv`.
 2. Nhập **Mật khẩu chủ của file này** rồi bấm **Mở**.
-3. Tích những tài khoản muốn lấy. Mỗi dòng ghi **Mới** hay **Đã có**. **Chọn hết** / **Bỏ chọn** để tích hoặc bỏ tất cả.
+3. Tích những tài khoản muốn lấy. Mỗi dòng ghi **Mới** hay **Đã có**. **Chọn mới** / **Bỏ chọn** để tích các tài khoản mới hoặc bỏ hết.
 4. Muốn lấy cả preset thì tích **Nhập cả preset (N)**, rồi bấm **Nhập**.
 
 - File gốc vẫn giữ nguyên. Tài khoản lấy sang được khóa bằng mật khẩu chủ của Bloxkeep trên máy này.

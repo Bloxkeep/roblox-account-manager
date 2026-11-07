@@ -63,6 +63,8 @@ kbd { font: .85em ui-monospace, Consolas, monospace; border: 1px solid var(--lin
 
 /* Header and footer */
 .top { position: sticky; top: 0; z-index: 10; background: var(--band); border-bottom: 1px solid var(--line); }
+/* The bar spans the whole window: the name at the left edge, the links at the right, as an app's title bar sits */
+.wrap.top-in { max-width: none; padding: 0 clamp(20px, 2.5vw, 36px); }
 .top-in { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 60px; }
 .brand { display: flex; align-items: center; gap: 10px; color: var(--text); font-weight: 700; font-size: 1.15rem; }
 .brand:hover { text-decoration: none; }
@@ -137,7 +139,14 @@ body.demo main { flex: 1; display: flex; flex-direction: column; min-height: 0; 
 .stage .shot { width: 100%; box-shadow: var(--shadow); }
 .stage .stage-farm { width: 62%; margin-left: auto; position: relative; }
 .stage-app { position: absolute; left: 0; bottom: 0; width: 60%; }
-.stage-app > a { display: block; cursor: pointer; }
+/* The app itself, live, where its screenshot was: the picture shows until the app has drawn over it. */
+.live { position: relative; aspect-ratio: 1.6; overflow: hidden; border-radius: 10px; box-shadow: var(--shadow); background: #0a0c11; }
+.stage .live .shot { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; box-shadow: none; }
+.live iframe { position: absolute; left: 0; top: 0; width: 1232px; height: 770px; border: 0; transform-origin: 0 0; transform: scale(var(--k, .5)); opacity: 0; transition: opacity .4s; }
+.live.on iframe { opacity: 1; }
+.live-full { position: absolute; right: 10px; bottom: 10px; padding: 5px 11px; border-radius: 8px; background: rgba(10, 12, 17, .82); color: #e9ecf3; font-size: .82rem; font-weight: 600; text-decoration: none; opacity: 0; transition: opacity .2s; }
+.live.on:hover .live-full, .live-full:focus-visible { opacity: 1; }
+@media (max-width: 720px) { .live iframe, .live-full { display: none; } }
 .stage figcaption { position: absolute; bottom: calc(100% + 10px); font-size: .9rem; font-weight: 600; color: var(--muted); white-space: nowrap; }
 .stage-farm figcaption { right: 0; }
 .stage-app figcaption { left: 0; }

@@ -1,5 +1,5 @@
 == end
-html [data-theme="dark" lang="vi"]
+html [class="" data-theme="dark" lang="vi"]
 #app
   div.lock
     div.dots
@@ -7,7 +7,7 @@ html [data-theme="dark" lang="vi"]
       div.lang [role="group" aria-label="Ngôn ngữ"]
         button [title="English" aria-pressed="false"] "EN"
         button.on [title="Tiếng Việt" aria-pressed="true"] "VI"
-    div.lock-card.lock-update [id="lock-update"]
+    div.lock-card.lock-update.opened [id="lock-update"]
       img.logo-img [alt="" src="logo.svg"]
       h2 "Đang cập nhật lên 1.0.1"
       p "Lát nữa Bloxkeep sẽ tự mở lại ngay tại đây."

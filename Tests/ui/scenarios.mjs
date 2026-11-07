@@ -1293,7 +1293,7 @@ export default [
   // 7 days: an account's card opens its own timeline; with no records from before, no "vs" line.
   S('stats-account-open', 'stats=1', async s => { await s.click(key('stats.period.7')); await s.wait(300); await s.click({ css: '.sa-card.opens' }); await s.wait(200); }),
   // A box on the games' map: the page counts that game only, the map keeps every game to pick another.
-  S('stats-game-pick', 'stats=1', async s => { await s.click(key('stats.period.30')); await s.wait(300); await s.click({ css: '.gm button:nth-child(2)' }); await s.wait(400); }),
+  S('stats-game-pick', 'stats=1', async s => { await s.click(key('stats.period.30')); await s.wait(300); await s.click({ css: '.gm-map button:nth-child(2)' }); await s.wait(400); }),
   S('stats-no-before', 'stats=1&noprev=1', async s => { await s.click(key('stats.period.7')); await s.wait(300); }, { langs: ['en'] }),
   S('stats-activity-filter', 'stats=1', async s => {
     await s.click(key('alog.title'));

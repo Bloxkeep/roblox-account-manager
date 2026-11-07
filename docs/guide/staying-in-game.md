@@ -9,7 +9,7 @@ How Bloxkeep keeps accounts in their games: Auto-rejoin, Anti-AFK, the daily sig
 ## Quick steps
 
 1. Open **Settings › Staying in game**.
-2. Next to **Auto-rejoin**, choose **On for all accounts**. For a single account, use its **⋯ › Auto-rejoin** instead.
+2. Turn on **Auto-rejoin** (all accounts). For a single account, use its **⋯ › Auto-rejoin** instead.
 3. Turn on **Anti-AFK**.
 4. In **Settings › Bloxkeep**, leave **Keep running in the tray when closed** on, so the ✕ button hides Bloxkeep instead of quitting it.
 
@@ -20,7 +20,7 @@ When an account's Roblox disconnects, gets kicked or loses the connection, Bloxk
 | Turn it on for | Where |
 |---|---|
 | One account | Its **⋯ › Auto-rejoin**. |
-| All accounts | **Settings › Staying in game › Auto-rejoin › On for all accounts** (it reads "On for 3 of 10" when mixed). |
+| All accounts | **Settings › Staying in game › Auto-rejoin** (it shows "3/10 accounts" when only some have it). |
 | A preset's windows | The preset's **Auto-rejoin** option (see [Presets](presets.md)). |
 
 <img src="../screenshots/card-rejoin.png" width="760" alt="Account cards: one is rejoining in 5 minutes with a Cancel button, another shows Disconnected after being kicked for being idle">
@@ -93,7 +93,7 @@ Off by default. On: the windows Bloxkeep opens get a grey sky, no grass and the 
 - Before opening, it asks when the free RAM can't take the new windows (the **Before you open** question, see [Playing](playing.md)).
 - While playing, it warns when the PC uses 92 % of its RAM or more, at most every 5 minutes.
 - When RAM is free but Windows' virtual memory is almost full, it says that instead, before opening and while playing: a Roblox window then crashes as it opens. See [Troubleshooting](troubleshooting.md#q-a-roblox-window-crashes-as-it-opens-memory-dump-captured-or-bloxstraps-roblox-failed-to-launch).
-- The bar in the sidebar's **Roblox on this PC** card turns red from 90 % (see [Windows and statistics](windows-and-stats.md)).
+- The RAM studs in the sidebar's **Roblox on this PC** card change to the warning colour from 90 % (see [Windows and statistics](windows-and-stats.md)).
 
 ## Save RAM for background windows
 
@@ -101,7 +101,7 @@ Off by default. On: the windows Bloxkeep opens get a grey sky, no grass and the 
 
 The window in front gets its normal priority back. If Windows refuses for a window, that window runs as usual.
 
-A game whose RAM keeps growing over hours only gets it back when Roblox restarts: use a preset's **Restart Roblox** (see [Presets](presets.md)).
+A game whose RAM keeps growing over hours only gets it back when Roblox restarts: use **Restart a heavy window** (below) or a preset's **Restart Roblox** (see [Presets](presets.md)).
 
 ## RAM limit when minimized or hidden
 
@@ -119,9 +119,16 @@ A game whose RAM keeps growing over hours only gets it back when Roblox restarts
 
 Light AFK presets minimize their windows, so they get the limit too.
 
-## Put the window you play first
+## Restart a heavy window
 
-**Settings › Staying in game › Put the window you play first** (off by default). Most recent CPUs have two kinds of cores: fast ones and efficiency ones (Intel 12th gen and later, many recent laptops). With this on, every Roblox window in the background runs in Windows' efficiency mode, the same as Task Manager's: it gives way to the window you're playing and runs mostly on the efficiency cores, using a fast core only when one is free, so no window is left without CPU. Click another Roblox window and it runs at full speed at once.
+**Settings › Staying in game › Restart a heavy window**: **Never** (the default), or **Above 3 GB**, **4 GB**, **6 GB** or **8 GB**. A Roblox window in a game that stays above that much RAM for 3 minutes closes and goes back into its server, one window at a time.
+
+- A short peak (a teleport, a big map loading) doesn't count.
+- The main account's window is never restarted, and neither is the window you're playing in while you use the PC.
+
+## Prioritize the window you play
+
+**Settings › Staying in game › Prioritize the window you play** (off by default). Most recent CPUs have two kinds of cores: fast ones and efficiency ones (Intel 12th gen and later, many recent laptops). With this on, every Roblox window in the background runs in Windows' efficiency mode, the same as Task Manager's: it gives way to the window you're playing and runs mostly on the efficiency cores, using a fast core only when one is free, so no window is left without CPU. Click another Roblox window and it runs at full speed at once.
 
 - Many accounts open stay smooth where you play, and a laptop runs cooler.
 - On a CPU with one kind of core, background windows only get the power-saving mode.

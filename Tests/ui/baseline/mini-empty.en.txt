@@ -20,4 +20,4 @@ html [data-theme="dark" lang="en"]
         i
 -- commands
   ready {}
-  size {"h":386,"w":300}
+  size {"h":386,"w":308}

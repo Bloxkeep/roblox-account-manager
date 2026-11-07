@@ -1,5 +1,5 @@
 == end
-html [data-theme="halong" lang="en"]
+html [class="" data-theme="halong" lang="en"]
 #app
   div.lock
     div.dots
@@ -7,7 +7,7 @@ html [data-theme="halong" lang="en"]
       div.lang [role="group" aria-label="Language"]
         button.on [title="English" aria-pressed="true"] "EN"
         button [title="Tiếng Việt" aria-pressed="false"] "VI"
-    form.lock-card.shake [id="lock-form" autocomplete="off"]
+    form.lock-card.opened.shake [id="lock-form" autocomplete="off"]
       img.logo-img [alt="" src="logo.svg"]
       h2 "Set a master password"
       p "You’ll use it to unlock Bloxkeep. It if you forget it."

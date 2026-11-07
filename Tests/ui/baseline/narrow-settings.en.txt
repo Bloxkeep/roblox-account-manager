@@ -11,6 +11,9 @@ html [data-theme="dark" lang="en"]
           em [id="nav-count"] "7"
         button.nav [title="Presets"]
           svg.i #1pvni8o
+        button.nav [title="Games (2 new)"]
+          svg.i #17gqz13
+          em.nav-news [id="nav-news"] "2"
         button.nav [title="Macros (Beta)"]
           svg.i #kx2qfl
         button.nav [title="Game monitor"]
@@ -19,14 +22,15 @@ html [data-theme="dark" lang="en"]
           svg.i #ktpp14
         button.nav.on [title="Settings"]
           svg.i #tbghvg
-        button.nav.nav-mini [title="Mini window" aria-pressed="false"]
+        button.nav.nav-mini [id="sys-mini" title="Mini window" aria-pressed="false"]
           svg.i #1y8kmj1
       div.side-bottom
         div [id="side-warn"]
-        div [id="multi-card"]
-          div.multi.ok
-            button.multi-open [title="Multi-Roblox: On: several Roblox windows can be open"]
-              span.led
+        div.rig.side-card [id="sys-rig"]
+          div [id="multi-card"]
+            div.multi.ok
+              button.multi-open [title="Multi-Roblox: On: several Roblox windows can be open"]
+                span.led
         div.side-foot
           div [id="update-slot"]
           div.side-lock
@@ -35,8 +39,8 @@ html [data-theme="dark" lang="en"]
             button.btn.ghost.side-sq.vault-btn [title="Switch vault (Vault 1)" aria-label="Switch vault (Vault 1)"]
               span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(21, 128, 61);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
     main.main
-      section.seen.view [id="view-accounts"]
-      section.seen.view [id="view-settings"]
+      section.seen.view [id="view-accounts" style="--dir:1"]
+      section.seen.view [id="view-settings" style="--dir:1"]
         header.top
           div.top-title
             h1 "Settings"
@@ -87,12 +91,16 @@ html [data-theme="dark" lang="en"]
                           span "Graphics 1"
                           span "Muted"
                           span "Auto RAM limit"
+                          span "Save RAM"
+                          span "Played window first"
                       button.rc-mode [type="button" aria-pressed="false"]
                         b "Play and farm"
                         small
                           span "45 FPS"
                           span "Graphics 3"
                           span "Keeps volume"
+                          span "Save RAM"
+                          span "Played window first"
                       button.on.rc-mode [type="button" aria-pressed="true"]
                         b "Roblox as is"
                         small
@@ -102,14 +110,6 @@ html [data-theme="dark" lang="en"]
                         small
                           span "Set each one below"
                     p.rc-note [id="s-rc-reopen"] "Takes effect when an account is next opened."
-                    div.set-row
-                      div
-                        div.t "Fast Flags"
-                        div.d "Gray sky, no grass, lowest graphics. Saves a little RAM."
-                      div.ctl
-                        label.switch
-                          input [id="s-rc-flags" type="checkbox" aria-label="Fast Flags" checked=false]
-                          span
                 div.set-grp [id="sec-perf"]
                   h3.set-grp-title "Keeping accounts going"
                   div.set-card
@@ -186,6 +186,17 @@ html [data-theme="dark" lang="en"]
                           option [value="1024"] "1 GB"
                           option [value="1536"] "1.5 GB"
                           option [value="2048"] "2 GB"
+                    div.set-row
+                      div
+                        div.t "Restart a heavy window"
+                        div.d "A Roblox window that keeps using more RAM than this closes and goes back into its server."
+                      div.ctl
+                        select.select [id="s-heavy" aria-label="Restart a heavy window" value="0"]
+                          option [value="0"] "Never"
+                          option [value="3072"] "Above 3 GB"
+                          option [value="4096"] "Above 4 GB"
+                          option [value="6144"] "Above 6 GB"
+                          option [value="8192"] "Above 8 GB"
                     div.set-row
                       div
                         div.t "Prioritize the window you play"

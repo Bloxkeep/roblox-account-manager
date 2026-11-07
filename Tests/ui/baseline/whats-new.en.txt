@@ -16,9 +16,9 @@ html [data-theme="dark" lang="en"]
         button.nav [title="Presets"]
           svg.i #1pvni8o
           span "Presets"
-        button.nav [title="Game news (2 new)"]
+        button.nav [title="Games (2 new)"]
           svg.i #17gqz13
-          span "Game news"
+          span "Games"
           em.nav-news [id="nav-news"] "2"
         button.nav [title="Macros (Beta)"]
           svg.i #kx2qfl
@@ -33,39 +33,58 @@ html [data-theme="dark" lang="en"]
         button.nav.on [title="Settings"]
           svg.i #tbghvg
           span "Settings"
+        button.nav.nav-mini [id="sys-mini" title="Mini window" aria-pressed="false"]
+          svg.i #1y8kmj1
+          span "Mini window"
       div.side-bottom
         div [id="side-warn"]
-        div.side-card [id="sys-card"]
-          h4 "Roblox on this PC"
-          div.sys-row
-            span [title="Main · PID 1111\nFarm 1 · PID 2222"]
-              b [id="sys-count"] "2"
-              span [id="sys-count-label"] "windows"
-            span [id="sys-ram"] "1.7 GB"
-          div.meter [id="sys-meter"]
-            i.roblox [style="transform:scaleX(0.054)"]
-            i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
-          div.sys-foot [id="sys-foot"] "PC RAM 63% used · 12 GB free"
-          div.sys-foot [id="sys-usage" title="Roblox windows only, not the whole PC"] "CPU 12% · GPU 34%"
-          div.sys-ver [id="sys-ver"]
-            span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
-              i.dot.ok
-          button.btn.sm.sys-mini.w [id="sys-mini" aria-pressed="false"]
-            svg.i #1y8kmj1
-            span "Mini window"
-          button.btn.sm.sys-close.w [id="sys-close"]
-            svg.i #16z0s1r
-            span "Close all"
-        div [id="multi-card"]
-          div.multi.ok
-            button.multi-open [title="Multi-Roblox: On: several Roblox windows can be open"]
-              span.led
-              div
-                b "Multi-Roblox"
-                small "On"
-            label.switch [title="Turn off Multi-Roblox"]
-              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
-              span
+        div.rig.side-card [id="sys-rig"]
+          div.sys [id="sys-card"]
+            div.sys-head
+              span.sys-count [title="Main · PID 1111\nFarm 1 · PID 2222"]
+                b [id="sys-count"] "2"
+                span [id="sys-count-label"] "windows"
+                span.sys-ram [id="sys-ram"] "1.7 GB"
+              button.sys-close [id="sys-close" type="button" title="Close all" aria-label="Close all"]
+                svg.i #16z0s1r
+            div.lobby
+              svg.face.play #1pg0baw
+              svg.face.play #1jzq296
+            div.bricks [id="sys-meter" title="PC RAM 63% used · 12 GB free" aria-hidden="true"]
+              i.r
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i
+              i
+              i
+              i
+              i
+              i
+              i
+            div.sys-foot
+              span [id="sys-foot" title="PC RAM 63% used · 12 GB free"] "PC RAM 63%"
+              span [id="sys-usage" title="Roblox windows only, not the whole PC"] "CPU 12% · GPU 34%"
+            div.sys-ver [id="sys-ver"]
+              span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
+                i.dot.ok
+          div [id="multi-card"]
+            div.multi.ok
+              button.multi-open [title="Multi-Roblox: On: several Roblox windows can be open"]
+                div
+                  b "Multi-Roblox"
+              label.switch [title="Turn off Multi-Roblox"]
+                input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
+                span
         div.side-foot
           div [id="update-slot"]
           div.side-lock
@@ -75,8 +94,8 @@ html [data-theme="dark" lang="en"]
             button.btn.ghost.side-sq.vault-btn [title="Switch vault (Vault 1)" aria-label="Switch vault (Vault 1)"]
               span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(21, 128, 61);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
     main.main
-      section.seen.view [id="view-accounts"]
-      section.seen.view [id="view-settings"]
+      section.seen.view [id="view-accounts" style="--dir:1"]
+      section.seen.view [id="view-settings" style="--dir:1"]
         header.top
           div.top-title
             h1 "Settings"
@@ -228,7 +247,7 @@ html [data-theme="dark" lang="en"]
                     div.set-row
                       div
                         div.t "Add me to the online count"
-                        div.d "Every minute while open, Bloxkeep reports in so its maker can see how many use it. Sends only a code made from this PC (can’t be traced back, stays the same after a reinstall), the version and the language."
+                        div.d "While open, Bloxkeep reports in every few minutes, so its maker sees how many use it and everyone sees what Bloxkeep users play. Sends a code made from this PC (can’t be traced back), the version, the language, the games your accounts are in, how many run and why one dropped out. Never an account."
                       div.ctl
                         label.switch
                           input [id="s-online" type="checkbox" aria-label="Add me to the online count" checked=true]
@@ -241,49 +260,31 @@ html [data-theme="dark" lang="en"]
           span.wn-title
             img [alt="" src="logo.svg"]
             span "What’s new"
-              small "Bloxkeep 1.0.18 · November 6, 2026"
+              small "Bloxkeep 1.0.19 · November 7, 2026"
         button.icon-btn [title="Close"]
           svg.i #1tyq039
       div.modal-body
-        div.wn-feats
-          article.plain.wn-feat
-            div.wn-feat-text
-              h3 "Game news"
-              p "Live stock and spawns from the games’ own bots, with an alert for the words you pick. Blox Fruits also has a price list you can search. New games show up without an update."
-              button.wn-go [type="button" FOCUSED] "Open Game news"
-                svg.i #1g7f83q
-          article.plain.wn-feat
-            div.wn-feat-text
-              h3 "Alerts on your phone"
-              p "Bloxkeep’s alerts (an account dropped, low RAM, a sign-in to renew…) reach your phone through ntfy, a free app."
-              button.wn-go [type="button"] "Open Settings"
-                svg.i #1g7f83q
-          article.plain.wn-feat
-            div.wn-feat-text
-              h3 "Macros that count"
-              p "A macro can keep values, do math, read a number or text from the screen, a file or a web page, write to a file or a Discord webhook, and run another macro."
-              button.wn-go [type="button"] "Open Macros"
-                svg.i #1g7f83q
-          article.plain.wn-feat
-            div.wn-feat-text
-              h3 "Main account and friends"
-              p "Mark the account you play on as Main: Select all, Save RAM, the RAM limit and Arrange leave it alone. Friend each other makes your accounts Roblox friends."
         section.improved.wn-group
           h4.wn-kind "Improved"
           ul.wn-notes
-            li "Bloxkeep can open in the tray when you sign in."
-              b "Start with Windows"
-            li "Hide account names shows “Account 1”, “Account 2”… for screenshots and streams."
-            li "A Roblox window that keeps using too much RAM closes and goes back into its server."
-              b "Restart a heavy window"
-            li "Create account opens Roblox’s sign-up form, and each account you make there is saved."
-            li "Signing in with a password can solve Roblox’s puzzle in the app."
+            li "Voidstrap can open Roblox, like Bloxstrap and Fishstrap."
+            li "The window opens, restores and resizes more smoothly, with no white flash."
+            li "Statistics’ board of the PCs with the most accounts looks cleaner and works with the online count off."
+            li "Updating Roblox at once reopens the windows that were in a game."
+            li "Fast Flags say when your launcher replaces them."
+            li "More games in the Games tab."
+        section.fixed.wn-group
+          h4.wn-kind "Fixed"
+          ul.wn-notes
+            li "Joining with a private server link works again."
+            li "Changing the keyboard language no longer shows an error."
+            li "Small fixes in the account list, Game monitor and preset form."
         details.wn-older
           summary "Also in the 2 versions before"
             svg.i #1g7f83q
         p.wn-star
           span "Like Bloxkeep? A star on GitHub helps other players find it."
-          button.wn-go [type="button"] "Open GitHub"
+          button.wn-go [type="button" FOCUSED] "Open GitHub"
             svg.i #1g7f83q
       div.modal-foot
         button.btn.primary "Got it"

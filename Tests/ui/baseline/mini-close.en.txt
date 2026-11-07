@@ -40,6 +40,6 @@ html [data-theme="dark" lang="en"]
 -- commands
   act {"id":"00000000-0000-4000-8000-000000000001","what":"close"}
   ready {}
-  size {"h":386,"w":300}
-  size {"h":386,"w":300}
-  size {"h":386,"w":300}
+  size {"h":386,"w":308}
+  size {"h":386,"w":308}
+  size {"h":386,"w":308}

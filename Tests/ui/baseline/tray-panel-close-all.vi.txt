@@ -101,8 +101,7 @@ html [data-theme="dark" lang="vi"]
         span "Cửa sổ đăng nhập"
 -- commands
   act {"what":"closeAll"}
-  size {"h":273,"opened":1,"w":344}
-  size {"h":273,"opened":1,"w":344}
+  size {"h":297,"opened":1,"w":344}
   size {"h":297,"opened":1,"w":344}
   size {"h":368,"opened":1,"w":344}
   size {"h":368,"opened":1,"w":344}

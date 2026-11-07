@@ -1,5 +1,5 @@
 == end
-html [data-theme="dark" lang="en"]
+html [class="" data-theme="dark" lang="en"]
 #app
   div.lock
     div.dots
@@ -7,13 +7,14 @@ html [data-theme="dark" lang="en"]
       div.lang [role="group" aria-label="Language"]
         button.on [title="English" aria-pressed="true"] "EN"
         button [title="Tiếng Việt" aria-pressed="false"] "VI"
-    form.lock-card [id="lock-form" autocomplete="off"]
+    form.lock-card.opened [id="lock-form" autocomplete="off"]
       img.logo-img [alt="" src="logo.svg"]
       div.lock-vault
         span.sm.vault-face
           img [alt="" src="scene-halong.svg"]
-        b [title="Farm"] "Farm"
-        button.link [type="button"] "Switch vault"
+        span.lock-vault-name
+          b [title="Farm"] "Farm"
+          button.link [type="button"] "Switch vault"
       h2 "Welcome back"
       p "Enter your master password to unlock."
       div.stack

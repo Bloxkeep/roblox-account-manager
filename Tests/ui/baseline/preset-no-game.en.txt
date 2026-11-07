@@ -16,6 +16,10 @@ html [data-theme="dark" lang="en"]
         button.nav.on [title="Presets"]
           svg.i #1pvni8o
           span "Presets"
+        button.nav [title="Games (2 new)"]
+          svg.i #17gqz13
+          span "Games"
+          em.nav-news [id="nav-news"] "2"
         button.nav [title="Macros (Beta)"]
           svg.i #kx2qfl
           span "Macros"
@@ -29,39 +33,58 @@ html [data-theme="dark" lang="en"]
         button.nav [title="Settings"]
           svg.i #tbghvg
           span "Settings"
+        button.nav.nav-mini [id="sys-mini" title="Mini window" aria-pressed="false"]
+          svg.i #1y8kmj1
+          span "Mini window"
       div.side-bottom
         div [id="side-warn"]
-        div.side-card [id="sys-card"]
-          h4 "Roblox on this PC"
-          div.sys-row
-            span [title="Main · PID 1111\nFarm 1 · PID 2222"]
-              b [id="sys-count"] "2"
-              span [id="sys-count-label"] "windows"
-            span [id="sys-ram"] "1.7 GB"
-          div.meter [id="sys-meter"]
-            i.roblox [style="transform:scaleX(0.054)"]
-            i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
-          div.sys-foot [id="sys-foot"] "PC RAM 63% used · 12 GB free"
-          div.sys-foot [id="sys-usage" title="Roblox windows only, not the whole PC"] "CPU 12% · GPU 34%"
-          div.sys-ver [id="sys-ver"]
-            span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
-              i.dot.ok
-          button.btn.sm.sys-mini.w [id="sys-mini" aria-pressed="false"]
-            svg.i #1y8kmj1
-            span "Mini window"
-          button.btn.sm.sys-close.w [id="sys-close"]
-            svg.i #16z0s1r
-            span "Close all"
-        div [id="multi-card"]
-          div.multi.ok
-            button.multi-open [title="Multi-Roblox: On: several Roblox windows can be open"]
-              span.led
-              div
-                b "Multi-Roblox"
-                small "On"
-            label.switch [title="Turn off Multi-Roblox"]
-              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
-              span
+        div.rig.side-card [id="sys-rig"]
+          div.sys [id="sys-card"]
+            div.sys-head
+              span.sys-count [title="Main · PID 1111\nFarm 1 · PID 2222"]
+                b [id="sys-count"] "2"
+                span [id="sys-count-label"] "windows"
+                span.sys-ram [id="sys-ram"] "1.7 GB"
+              button.sys-close [id="sys-close" type="button" title="Close all" aria-label="Close all"]
+                svg.i #16z0s1r
+            div.lobby
+              svg.face.play #1pg0baw
+              svg.face.play #1jzq296
+            div.bricks [id="sys-meter" title="PC RAM 63% used · 12 GB free" aria-hidden="true"]
+              i.r
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i
+              i
+              i
+              i
+              i
+              i
+              i
+            div.sys-foot
+              span [id="sys-foot" title="PC RAM 63% used · 12 GB free"] "PC RAM 63%"
+              span [id="sys-usage" title="Roblox windows only, not the whole PC"] "CPU 12% · GPU 34%"
+            div.sys-ver [id="sys-ver"]
+              span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
+                i.dot.ok
+          div [id="multi-card"]
+            div.multi.ok
+              button.multi-open [title="Multi-Roblox: On: several Roblox windows can be open"]
+                div
+                  b "Multi-Roblox"
+              label.switch [title="Turn off Multi-Roblox"]
+                input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
+                span
         div.side-foot
           div [id="update-slot"]
           div.side-lock
@@ -71,8 +94,8 @@ html [data-theme="dark" lang="en"]
             button.btn.ghost.side-sq.vault-btn [title="Switch vault (Vault 1)" aria-label="Switch vault (Vault 1)"]
               span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(21, 128, 61);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
     main.main
-      section.seen.view [id="view-accounts"]
-      section.seen.view [id="view-presets"]
+      section.seen.view [id="view-accounts" style="--dir:1"]
+      section.seen.view [id="view-presets" style="--dir:1"]
         header.top
           div.top-title
             h1 "Presets"
@@ -97,7 +120,7 @@ html [data-theme="dark" lang="en"]
               small.pvr-hour [style="left:50%"] "12 PM"
               small.pvr-hour [style="left:75%"] "6 PM"
               button.pvr-run [type="button" title="Farm Blox Fruits · 8:00 PM" aria-label="Farm Blox Fruits, 8:00 PM" style="left:83.33%"]
-                img [alt="" src="https://tr.rbxcdn.com/180DAY-774ec14539b264f85fdb6e8a34dfa344/150/150/Image/Png/noFilter"]
+                svg.i #1pvni8o
               span.pvr-now [style="left:50%"]
                 small "12:00 PM"
           div.pv-list [id="pv-list" role="list"]
@@ -110,7 +133,7 @@ html [data-theme="dark" lang="en"]
                 b [title="Farm Blox Fruits"] "Farm Blox Fruits"
                 small [title="Blox Fruits"] "Blox Fruits"
                 span.pv-sum [title="Lowest ping · 12 s between accounts · Anti-AFK on · Light AFK · Restarts every 4 h · Arranges windows · Own Discord channel"] "Lowest ping · 12 s between accounts · Anti-AFK on · Light AFK · Restarts every 4 h · Arranges windows · Own Discord channel"
-                span.pv-next "· · Next: Today 8:00 PM"
+                span.pv-next [title="3 windows open · Mon–Fri 8:00 PM · Next: Today 8:00 PM"] "· · Next: Today 8:00 PM"
                   span.pv-live "3 windows open"
                   span "Mon–Fri 8:00 PM"
               div.pv-accs [title="3 accounts\nFarm 1\nFarm 2\nNight Owl" aria-label="3 accounts"]
@@ -149,7 +172,7 @@ html [data-theme="dark" lang="en"]
                 b [title="Adopt Me trade"] "Adopt Me trade"
                 small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
                 span.pv-sum [title="Any (Roblox picks) · Default wait (8 s) · Auto-rejoin off"] "Any (Roblox picks) · Default wait (8 s) · Auto-rejoin off"
-                span.pv-next
+                span.pv-next [title="Last run 1 h ago"]
                   span "Last run 1 h ago"
               div.pv-accs [title="1 account\nTrade" aria-label="1 account"]
                 span.avatar.sm
@@ -179,7 +202,7 @@ html [data-theme="dark" lang="en"]
                 b [title="Morning check-in"] "Morning check-in"
                 small [title="Roblox home"] "Roblox home"
                 span.pv-sum [title="No wait between accounts"] "No wait between accounts"
-                span.pv-next "·"
+                span.pv-next [title="Schedule off · Thu, 12/24 7:30 AM · Last run 1 day ago"] "·"
                   span "Schedule off · Thu, 12/24 7:30 AM"
                   span "Last run 1 day ago"
               div.pv-accs [title="6 accounts\nMain\nFarm 1\nNight Owl\nAlt\nTrade\nTesting" aria-label="6 accounts"]
@@ -426,6 +449,10 @@ html [data-theme="dark" lang="en"]
         button.nav.on [title="Presets"]
           svg.i #1pvni8o
           span "Presets"
+        button.nav [title="Games (2 new)"]
+          svg.i #17gqz13
+          span "Games"
+          em.nav-news [id="nav-news"] "2"
         button.nav [title="Macros (Beta)"]
           svg.i #kx2qfl
           span "Macros"
@@ -439,39 +466,58 @@ html [data-theme="dark" lang="en"]
         button.nav [title="Settings"]
           svg.i #tbghvg
           span "Settings"
+        button.nav.nav-mini [id="sys-mini" title="Mini window" aria-pressed="false"]
+          svg.i #1y8kmj1
+          span "Mini window"
       div.side-bottom
         div [id="side-warn"]
-        div.side-card [id="sys-card"]
-          h4 "Roblox on this PC"
-          div.sys-row
-            span [title="Main · PID 1111\nFarm 1 · PID 2222"]
-              b [id="sys-count"] "2"
-              span [id="sys-count-label"] "windows"
-            span [id="sys-ram"] "1.7 GB"
-          div.meter [id="sys-meter"]
-            i.roblox [style="transform:scaleX(0.054)"]
-            i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
-          div.sys-foot [id="sys-foot"] "PC RAM 63% used · 12 GB free"
-          div.sys-foot [id="sys-usage" title="Roblox windows only, not the whole PC"] "CPU 12% · GPU 34%"
-          div.sys-ver [id="sys-ver"]
-            span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
-              i.dot.ok
-          button.btn.sm.sys-mini.w [id="sys-mini" aria-pressed="false"]
-            svg.i #1y8kmj1
-            span "Mini window"
-          button.btn.sm.sys-close.w [id="sys-close"]
-            svg.i #16z0s1r
-            span "Close all"
-        div [id="multi-card"]
-          div.multi.ok
-            button.multi-open [title="Multi-Roblox: On: several Roblox windows can be open"]
-              span.led
-              div
-                b "Multi-Roblox"
-                small "On"
-            label.switch [title="Turn off Multi-Roblox"]
-              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
-              span
+        div.rig.side-card [id="sys-rig"]
+          div.sys [id="sys-card"]
+            div.sys-head
+              span.sys-count [title="Main · PID 1111\nFarm 1 · PID 2222"]
+                b [id="sys-count"] "2"
+                span [id="sys-count-label"] "windows"
+                span.sys-ram [id="sys-ram"] "1.7 GB"
+              button.sys-close [id="sys-close" type="button" title="Close all" aria-label="Close all"]
+                svg.i #16z0s1r
+            div.lobby
+              svg.face.play #1pg0baw
+              svg.face.play #1jzq296
+            div.bricks [id="sys-meter" title="PC RAM 63% used · 12 GB free" aria-hidden="true"]
+              i.r
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i
+              i
+              i
+              i
+              i
+              i
+              i
+            div.sys-foot
+              span [id="sys-foot" title="PC RAM 63% used · 12 GB free"] "PC RAM 63%"
+              span [id="sys-usage" title="Roblox windows only, not the whole PC"] "CPU 12% · GPU 34%"
+            div.sys-ver [id="sys-ver"]
+              span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
+                i.dot.ok
+          div [id="multi-card"]
+            div.multi.ok
+              button.multi-open [title="Multi-Roblox: On: several Roblox windows can be open"]
+                div
+                  b "Multi-Roblox"
+              label.switch [title="Turn off Multi-Roblox"]
+                input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
+                span
         div.side-foot
           div [id="update-slot"]
           div.side-lock
@@ -481,8 +527,8 @@ html [data-theme="dark" lang="en"]
             button.btn.ghost.side-sq.vault-btn [title="Switch vault (Vault 1)" aria-label="Switch vault (Vault 1)"]
               span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(21, 128, 61);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
     main.main
-      section.seen.view [id="view-accounts"]
-      section.seen.view [id="view-presets"]
+      section.seen.view [id="view-accounts" style="--dir:1"]
+      section.seen.view [id="view-presets" style="--dir:1"]
         header.top
           div.top-title
             h1 "Presets"
@@ -507,7 +553,7 @@ html [data-theme="dark" lang="en"]
               small.pvr-hour [style="left:50%"] "12 PM"
               small.pvr-hour [style="left:75%"] "6 PM"
               button.pvr-run [type="button" title="Farm Blox Fruits · 8:00 PM" aria-label="Farm Blox Fruits, 8:00 PM" style="left:83.33%"]
-                img [alt="" src="https://tr.rbxcdn.com/180DAY-774ec14539b264f85fdb6e8a34dfa344/150/150/Image/Png/noFilter"]
+                svg.i #1pvni8o
               span.pvr-now [style="left:50%"]
                 small "12:00 PM"
           div.pv-list [id="pv-list" role="list"]
@@ -520,7 +566,7 @@ html [data-theme="dark" lang="en"]
                 b [title="Farm Blox Fruits"] "Farm Blox Fruits"
                 small [title="Blox Fruits"] "Blox Fruits"
                 span.pv-sum [title="Lowest ping · 12 s between accounts · Anti-AFK on · Light AFK · Restarts every 4 h · Arranges windows · Own Discord channel"] "Lowest ping · 12 s between accounts · Anti-AFK on · Light AFK · Restarts every 4 h · Arranges windows · Own Discord channel"
-                span.pv-next "· · Next: Today 8:00 PM"
+                span.pv-next [title="3 windows open · Mon–Fri 8:00 PM · Next: Today 8:00 PM"] "· · Next: Today 8:00 PM"
                   span.pv-live "3 windows open"
                   span "Mon–Fri 8:00 PM"
               div.pv-accs [title="3 accounts\nFarm 1\nFarm 2\nNight Owl" aria-label="3 accounts"]
@@ -559,7 +605,7 @@ html [data-theme="dark" lang="en"]
                 b [title="Adopt Me trade"] "Adopt Me trade"
                 small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
                 span.pv-sum [title="Any (Roblox picks) · Default wait (8 s) · Auto-rejoin off"] "Any (Roblox picks) · Default wait (8 s) · Auto-rejoin off"
-                span.pv-next
+                span.pv-next [title="Last run 1 h ago"]
                   span "Last run 1 h ago"
               div.pv-accs [title="1 account\nTrade" aria-label="1 account"]
                 span.avatar.sm
@@ -589,7 +635,7 @@ html [data-theme="dark" lang="en"]
                 b [title="Morning check-in"] "Morning check-in"
                 small [title="Roblox home"] "Roblox home"
                 span.pv-sum [title="No wait between accounts"] "No wait between accounts"
-                span.pv-next "·"
+                span.pv-next [title="Schedule off · Thu, 12/24 7:30 AM · Last run 1 day ago"] "·"
                   span "Schedule off · Thu, 12/24 7:30 AM"
                   span "Last run 1 day ago"
               div.pv-accs [title="6 accounts\nMain\nFarm 1\nNight Owl\nAlt\nTrade\nTesting" aria-label="6 accounts"]
@@ -804,6 +850,10 @@ html [data-theme="dark" lang="en"]
         button.nav.on [title="Presets"]
           svg.i #1pvni8o
           span "Presets"
+        button.nav [title="Games (2 new)"]
+          svg.i #17gqz13
+          span "Games"
+          em.nav-news [id="nav-news"] "2"
         button.nav [title="Macros (Beta)"]
           svg.i #kx2qfl
           span "Macros"
@@ -817,39 +867,58 @@ html [data-theme="dark" lang="en"]
         button.nav [title="Settings"]
           svg.i #tbghvg
           span "Settings"
+        button.nav.nav-mini [id="sys-mini" title="Mini window" aria-pressed="false"]
+          svg.i #1y8kmj1
+          span "Mini window"
       div.side-bottom
         div [id="side-warn"]
-        div.side-card [id="sys-card"]
-          h4 "Roblox on this PC"
-          div.sys-row
-            span [title="Main · PID 1111\nFarm 1 · PID 2222"]
-              b [id="sys-count"] "2"
-              span [id="sys-count-label"] "windows"
-            span [id="sys-ram"] "1.7 GB"
-          div.meter [id="sys-meter"]
-            i.roblox [style="transform:scaleX(0.054)"]
-            i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
-          div.sys-foot [id="sys-foot"] "PC RAM 63% used · 12 GB free"
-          div.sys-foot [id="sys-usage" title="Roblox windows only, not the whole PC"] "CPU 12% · GPU 34%"
-          div.sys-ver [id="sys-ver"]
-            span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
-              i.dot.ok
-          button.btn.sm.sys-mini.w [id="sys-mini" aria-pressed="false"]
-            svg.i #1y8kmj1
-            span "Mini window"
-          button.btn.sm.sys-close.w [id="sys-close"]
-            svg.i #16z0s1r
-            span "Close all"
-        div [id="multi-card"]
-          div.multi.ok
-            button.multi-open [title="Multi-Roblox: On: several Roblox windows can be open"]
-              span.led
-              div
-                b "Multi-Roblox"
-                small "On"
-            label.switch [title="Turn off Multi-Roblox"]
-              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
-              span
+        div.rig.side-card [id="sys-rig"]
+          div.sys [id="sys-card"]
+            div.sys-head
+              span.sys-count [title="Main · PID 1111\nFarm 1 · PID 2222"]
+                b [id="sys-count"] "2"
+                span [id="sys-count-label"] "windows"
+                span.sys-ram [id="sys-ram"] "1.7 GB"
+              button.sys-close [id="sys-close" type="button" title="Close all" aria-label="Close all"]
+                svg.i #16z0s1r
+            div.lobby
+              svg.face.play #1pg0baw
+              svg.face.play #1jzq296
+            div.bricks [id="sys-meter" title="PC RAM 63% used · 12 GB free" aria-hidden="true"]
+              i.r
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i
+              i
+              i
+              i
+              i
+              i
+              i
+            div.sys-foot
+              span [id="sys-foot" title="PC RAM 63% used · 12 GB free"] "PC RAM 63%"
+              span [id="sys-usage" title="Roblox windows only, not the whole PC"] "CPU 12% · GPU 34%"
+            div.sys-ver [id="sys-ver"]
+              span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
+                i.dot.ok
+          div [id="multi-card"]
+            div.multi.ok
+              button.multi-open [title="Multi-Roblox: On: several Roblox windows can be open"]
+                div
+                  b "Multi-Roblox"
+              label.switch [title="Turn off Multi-Roblox"]
+                input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
+                span
         div.side-foot
           div [id="update-slot"]
           div.side-lock
@@ -859,8 +928,8 @@ html [data-theme="dark" lang="en"]
             button.btn.ghost.side-sq.vault-btn [title="Switch vault (Vault 1)" aria-label="Switch vault (Vault 1)"]
               span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(21, 128, 61);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
     main.main
-      section.seen.view [id="view-accounts"]
-      section.seen.view [id="view-presets"]
+      section.seen.view [id="view-accounts" style="--dir:1"]
+      section.seen.view [id="view-presets" style="--dir:1"]
         header.top
           div.top-title
             h1 "Presets"
@@ -885,7 +954,7 @@ html [data-theme="dark" lang="en"]
               small.pvr-hour [style="left:50%"] "12 PM"
               small.pvr-hour [style="left:75%"] "6 PM"
               button.pvr-run [type="button" title="Farm Blox Fruits · 8:00 PM" aria-label="Farm Blox Fruits, 8:00 PM" style="left:83.33%"]
-                img [alt="" src="https://tr.rbxcdn.com/180DAY-774ec14539b264f85fdb6e8a34dfa344/150/150/Image/Png/noFilter"]
+                svg.i #1pvni8o
               span.pvr-now [style="left:50%"]
                 small "12:00 PM"
           div.pv-list [id="pv-list" role="list"]
@@ -898,7 +967,7 @@ html [data-theme="dark" lang="en"]
                 b [title="Farm Blox Fruits"] "Farm Blox Fruits"
                 small [title="Blox Fruits"] "Blox Fruits"
                 span.pv-sum [title="Lowest ping · 12 s between accounts · Anti-AFK on · Light AFK · Restarts every 4 h · Arranges windows · Own Discord channel"] "Lowest ping · 12 s between accounts · Anti-AFK on · Light AFK · Restarts every 4 h · Arranges windows · Own Discord channel"
-                span.pv-next "· · Next: Today 8:00 PM"
+                span.pv-next [title="3 windows open · Mon–Fri 8:00 PM · Next: Today 8:00 PM"] "· · Next: Today 8:00 PM"
                   span.pv-live "3 windows open"
                   span "Mon–Fri 8:00 PM"
               div.pv-accs [title="3 accounts\nFarm 1\nFarm 2\nNight Owl" aria-label="3 accounts"]
@@ -937,7 +1006,7 @@ html [data-theme="dark" lang="en"]
                 b [title="Adopt Me trade"] "Adopt Me trade"
                 small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
                 span.pv-sum [title="Any (Roblox picks) · Default wait (8 s) · Auto-rejoin off"] "Any (Roblox picks) · Default wait (8 s) · Auto-rejoin off"
-                span.pv-next
+                span.pv-next [title="Last run 1 h ago"]
                   span "Last run 1 h ago"
               div.pv-accs [title="1 account\nTrade" aria-label="1 account"]
                 span.avatar.sm
@@ -967,7 +1036,7 @@ html [data-theme="dark" lang="en"]
                 b [title="Morning check-in"] "Morning check-in"
                 small [title="Roblox home"] "Roblox home"
                 span.pv-sum [title="No wait between accounts"] "No wait between accounts"
-                span.pv-next "·"
+                span.pv-next [title="Schedule off · Thu, 12/24 7:30 AM · Last run 1 day ago"] "·"
                   span "Schedule off · Thu, 12/24 7:30 AM"
                   span "Last run 1 day ago"
               div.pv-accs [title="6 accounts\nMain\nFarm 1\nNight Owl\nAlt\nTrade\nTesting" aria-label="6 accounts"]
@@ -1184,6 +1253,10 @@ html [data-theme="dark" lang="en"]
         button.nav.on [title="Presets"]
           svg.i #1pvni8o
           span "Presets"
+        button.nav [title="Games (2 new)"]
+          svg.i #17gqz13
+          span "Games"
+          em.nav-news [id="nav-news"] "2"
         button.nav [title="Macros (Beta)"]
           svg.i #kx2qfl
           span "Macros"
@@ -1197,39 +1270,58 @@ html [data-theme="dark" lang="en"]
         button.nav [title="Settings"]
           svg.i #tbghvg
           span "Settings"
+        button.nav.nav-mini [id="sys-mini" title="Mini window" aria-pressed="false"]
+          svg.i #1y8kmj1
+          span "Mini window"
       div.side-bottom
         div [id="side-warn"]
-        div.side-card [id="sys-card"]
-          h4 "Roblox on this PC"
-          div.sys-row
-            span [title="Main · PID 1111\nFarm 1 · PID 2222"]
-              b [id="sys-count"] "2"
-              span [id="sys-count-label"] "windows"
-            span [id="sys-ram"] "1.7 GB"
-          div.meter [id="sys-meter"]
-            i.roblox [style="transform:scaleX(0.054)"]
-            i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
-          div.sys-foot [id="sys-foot"] "PC RAM 63% used · 12 GB free"
-          div.sys-foot [id="sys-usage" title="Roblox windows only, not the whole PC"] "CPU 12% · GPU 34%"
-          div.sys-ver [id="sys-ver"]
-            span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
-              i.dot.ok
-          button.btn.sm.sys-mini.w [id="sys-mini" aria-pressed="false"]
-            svg.i #1y8kmj1
-            span "Mini window"
-          button.btn.sm.sys-close.w [id="sys-close"]
-            svg.i #16z0s1r
-            span "Close all"
-        div [id="multi-card"]
-          div.multi.ok
-            button.multi-open [title="Multi-Roblox: On: several Roblox windows can be open"]
-              span.led
-              div
-                b "Multi-Roblox"
-                small "On"
-            label.switch [title="Turn off Multi-Roblox"]
-              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
-              span
+        div.rig.side-card [id="sys-rig"]
+          div.sys [id="sys-card"]
+            div.sys-head
+              span.sys-count [title="Main · PID 1111\nFarm 1 · PID 2222"]
+                b [id="sys-count"] "2"
+                span [id="sys-count-label"] "windows"
+                span.sys-ram [id="sys-ram"] "1.7 GB"
+              button.sys-close [id="sys-close" type="button" title="Close all" aria-label="Close all"]
+                svg.i #16z0s1r
+            div.lobby
+              svg.face.play #1pg0baw
+              svg.face.play #1jzq296
+            div.bricks [id="sys-meter" title="PC RAM 63% used · 12 GB free" aria-hidden="true"]
+              i.r
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i
+              i
+              i
+              i
+              i
+              i
+              i
+            div.sys-foot
+              span [id="sys-foot" title="PC RAM 63% used · 12 GB free"] "PC RAM 63%"
+              span [id="sys-usage" title="Roblox windows only, not the whole PC"] "CPU 12% · GPU 34%"
+            div.sys-ver [id="sys-ver"]
+              span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
+                i.dot.ok
+          div [id="multi-card"]
+            div.multi.ok
+              button.multi-open [title="Multi-Roblox: On: several Roblox windows can be open"]
+                div
+                  b "Multi-Roblox"
+              label.switch [title="Turn off Multi-Roblox"]
+                input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
+                span
         div.side-foot
           div [id="update-slot"]
           div.side-lock
@@ -1239,8 +1331,8 @@ html [data-theme="dark" lang="en"]
             button.btn.ghost.side-sq.vault-btn [title="Switch vault (Vault 1)" aria-label="Switch vault (Vault 1)"]
               span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(21, 128, 61);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
     main.main
-      section.seen.view [id="view-accounts"]
-      section.seen.view [id="view-presets"]
+      section.seen.view [id="view-accounts" style="--dir:1"]
+      section.seen.view [id="view-presets" style="--dir:1"]
         header.top
           div.top-title
             h1 "Presets"
@@ -1265,7 +1357,7 @@ html [data-theme="dark" lang="en"]
               small.pvr-hour [style="left:50%"] "12 PM"
               small.pvr-hour [style="left:75%"] "6 PM"
               button.pvr-run [type="button" title="Farm Blox Fruits · 8:00 PM" aria-label="Farm Blox Fruits, 8:00 PM" style="left:83.33%"]
-                img [alt="" src="https://tr.rbxcdn.com/180DAY-774ec14539b264f85fdb6e8a34dfa344/150/150/Image/Png/noFilter"]
+                svg.i #1pvni8o
               span.pvr-now [style="left:50%"]
                 small "12:00 PM"
           div.pv-list [id="pv-list" role="list"]
@@ -1278,7 +1370,7 @@ html [data-theme="dark" lang="en"]
                 b [title="Farm Blox Fruits"] "Farm Blox Fruits"
                 small [title="Blox Fruits"] "Blox Fruits"
                 span.pv-sum [title="Lowest ping · 12 s between accounts · Anti-AFK on · Light AFK · Restarts every 4 h · Arranges windows · Own Discord channel"] "Lowest ping · 12 s between accounts · Anti-AFK on · Light AFK · Restarts every 4 h · Arranges windows · Own Discord channel"
-                span.pv-next "· · Next: Today 8:00 PM"
+                span.pv-next [title="3 windows open · Mon–Fri 8:00 PM · Next: Today 8:00 PM"] "· · Next: Today 8:00 PM"
                   span.pv-live "3 windows open"
                   span "Mon–Fri 8:00 PM"
               div.pv-accs [title="3 accounts\nFarm 1\nFarm 2\nNight Owl" aria-label="3 accounts"]
@@ -1317,7 +1409,7 @@ html [data-theme="dark" lang="en"]
                 b [title="Adopt Me trade"] "Adopt Me trade"
                 small [title="[🎃] Adopt Me!"] "[🎃] Adopt Me!"
                 span.pv-sum [title="Any (Roblox picks) · Default wait (8 s) · Auto-rejoin off"] "Any (Roblox picks) · Default wait (8 s) · Auto-rejoin off"
-                span.pv-next
+                span.pv-next [title="Last run 1 h ago"]
                   span "Last run 1 h ago"
               div.pv-accs [title="1 account\nTrade" aria-label="1 account"]
                 span.avatar.sm
@@ -1347,7 +1439,7 @@ html [data-theme="dark" lang="en"]
                 b [title="Morning check-in"] "Morning check-in"
                 small [title="Roblox home"] "Roblox home"
                 span.pv-sum [title="No wait between accounts"] "No wait between accounts"
-                span.pv-next "·"
+                span.pv-next [title="Schedule off · Thu, 12/24 7:30 AM · Last run 1 day ago"] "·"
                   span "Schedule off · Thu, 12/24 7:30 AM"
                   span "Last run 1 day ago"
               div.pv-accs [title="6 accounts\nMain\nFarm 1\nNight Owl\nAlt\nTrade\nTesting" aria-label="6 accounts"]

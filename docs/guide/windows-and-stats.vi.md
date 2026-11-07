@@ -16,23 +16,25 @@ Cách xem, xếp gọn và thống kê các cửa sổ Roblox: thẻ **Roblox tr
 
 ## Roblox trên máy này
 
-Thẻ này nằm ở thanh bên và cho biết:
+Thẻ này nằm cuối thanh bên, công tắc **Multi-Roblox** ở ngay dưới. Thẻ cho biết:
 
-- số cửa sổ Roblox đang mở (rê chuột lên con số để xem từng tài khoản và PID) và lượng RAM chúng dùng;
-- thanh RAM của cả máy: phần của Roblox, rồi phần còn lại đang dùng, ví dụ "RAM máy đã dùng 64% · còn trống 5,2 GB";
-- phiên bản Roblox kèm đèn: xanh là "mới nhất", vàng là đã có bản mới ("có bản 0.744", hoặc "có bản mới" khi chỉ là bản vá cùng số phiên bản);
-- nút **Cửa sổ nhỏ**, và **Đóng tất cả** khi đang có Roblox chạy (có hỏi trước).
+- số cửa sổ Roblox đang mở (rê chuột lên con số để xem từng tài khoản và PID) và lượng RAM chúng dùng, kèm nút **Đóng tất cả** (nút nguồn) khi đang có Roblox chạy (có hỏi trước);
+- mỗi cửa sổ Roblox một mặt khối: cười khi tài khoản đang trong game, miệng thẳng khi ở menu Roblox, mắt X khi bị văng. Rê chuột lên mặt để xem của ai. Cửa sổ Roblox không mở bằng Bloxkeep cũng có mặt. Quá mười cửa sổ thì chỗ cuối ghi "+N". Chưa có cửa sổ nào thì ghi "Chưa mở Roblox";
+- một hàng chấm RAM của cả máy, mỗi chấm 5 %: phần của Roblox, rồi phần còn lại đang dùng. Bên dưới là "RAM máy 64%" (rê chuột để xem còn trống bao nhiêu), và % CPU, GPU mà các cửa sổ Roblox dùng;
+- phiên bản Roblox kèm đèn: xanh là "mới nhất", vàng là đã có bản mới ("có bản 0.744", hoặc "có bản mới" khi chỉ là bản vá cùng số phiên bản).
 
-Nếu máy chưa cài Roblox, một thẻ cảnh báo ghi "Hình như máy này chưa cài Roblox."
+**Cửa sổ nhỏ** nằm trong danh sách ở thanh bên, ngay dưới **Cài đặt**. Nếu máy chưa cài Roblox, một thẻ cảnh báo ghi "Hình như máy này chưa cài Roblox."
 
 ## Theo dõi game
 
 **Theo dõi game** ở thanh bên hiện hình trực tiếp của mọi cửa sổ Roblox, kèm tài khoản, game, RAM và PID.
 
+- Cửa sổ được gom theo game. Dòng đầu mỗi nhóm đếm số cửa sổ đang chơi, đang vào và bị rớt, kèm các nút **Thu gọn**, **Thu nhỏ hết** (hoặc **Mở lại hết**), **Chỉ xem game này** và **Đóng hết** (bấm lần hai để xác nhận).
+- Nhãn như **Server A** đánh dấu cửa sổ cùng server: cùng chữ là cùng server.
 - Bấm vào hình để đưa cửa sổ đó lên trên cùng. Cửa sổ đã xếp vẫn giữ nguyên ô.
 - Nút **–** ở góc phải mỗi ô thu nhỏ cửa sổ đó mà không cần mở nó lên; bấm lần nữa để mở lại.
 - Chuột phải để chọn **Hiện**, **Thu nhỏ** (hoặc **Mở lại**), **Đóng Roblox** hay **Sao chép PID**.
-- Cửa sổ đang thu nhỏ thì ghi "Đang thu nhỏ, không có hình trực tiếp".
+- Cửa sổ đang thu nhỏ thì ghi "Đang thu nhỏ, không có hình".
 - Khi có hộp thoại hay menu mở, các hình tạm ẩn đi.
 
 ## Cửa sổ nhỏ
@@ -88,26 +90,26 @@ Muốn thu nhỏ một cửa sổ bằng tay thì kéo mép của nó: lúc kéo
 |---|---|
 | **Để Roblox tự chọn** | Roblox tự quyết định kích thước cửa sổ. |
 | **Phóng to** | Cửa sổ phóng to vẫn là cửa sổ thường, nên không dùng chung cài đặt toàn màn hình của Roblox. |
-| **Xếp cạnh nhau** | Tự xếp các cửa sổ sau khi mở, theo kiểu xếp ở trên. Cần bật [Multi-Roblox](multi-roblox.vi.md). |
+| **Xếp cửa sổ cạnh nhau** | Tự xếp các cửa sổ sau khi mở, theo kiểu xếp ở trên. Cần bật [Multi-Roblox](multi-roblox.vi.md). |
 
 [Preset](presets.vi.md) có tùy chọn **Xếp cửa sổ** riêng (**Theo Cài đặt**, **Bật**, **Tắt**). Cửa sổ của preset dùng **Treo máy nhẹ** không được xếp: chúng được thu nhỏ.
 
 ## Thống kê
 
-**Thống kê** ở thanh bên có hai tab: **Thống kê** và **Hoạt động**.
-- **Dòng thời gian**: mỗi tài khoản một hàng, tô màu theo game, chấm đỏ là lúc rớt.
-- **Vì sao rớt**: thời gian mất theo từng lý do (từ lúc rớt đến lượt chơi kế tiếp, tối đa 12 giờ mỗi lần), kèm nút khi có cài đặt giúp được.
+**Thống kê** ở thanh bên có hai tab: **Thống kê** và **Hoạt động**. Ở tab **Thống kê**, chọn **Hôm nay**, **7 ngày** hoặc **30 ngày**:
+
+- Các ô số liệu: **Giờ chơi**, **Tài khoản đã chơi**, **Lần văng** và **Lượt dài nhất**, kèm mức tăng giảm so với kỳ trước.
+- **Hôm nay**: đồng hồ 24 giờ, mỗi tài khoản một vòng tô màu theo game, vạch đỏ là lúc văng, kim chỉ giờ hiện tại.
+- **7 ngày** và **30 ngày**: **Giờ chơi mỗi ngày**, và **Theo giờ**, bảng ô cho biết mỗi giờ có bao nhiêu cửa sổ chạy.
+- **Vì sao văng**: thời gian mất theo từng lý do (từ lúc văng đến lượt chơi kế tiếp, tối đa 12 giờ mỗi lần), kèm nút khi có cài đặt giúp được.
+- **Game chơi nhiều**: bản đồ các game, ô càng to là chơi càng lâu. Bấm một game để cả trang chỉ tính game đó (**Tất cả game** để quay lại).
+- **Theo tài khoản**: mỗi tài khoản một thẻ với giờ chơi, số lần văng, game chơi nhiều nhất và số ngày treo trọn liền. Ở 7 hoặc 30 ngày, bấm vào thẻ để xem **Dòng thời gian** của tài khoản đó.
+- **Theo Preset**.
+- **Treo nhiều alt nhất**: các máy đang treo nhiều tài khoản nhất lúc này, có đánh dấu máy bạn. Máy này có sẵn trên bảng với một tên đặt ngẫu nhiên: đổi tên hoặc xóa trống (rời bảng) ở ô **Tên trên bảng**. Muốn lên bảng thì phải bật **Tính vào số người đang dùng**.
+- Số liệu tự làm mới mỗi 30 giây khi tab đang mở.
 
 > [!NOTE]
 > Chỉ tính các game mở bằng Bloxkeep.
-
-Ở tab **Thống kê**, chọn **Hôm nay**, **7 ngày** hoặc **30 ngày**:
-
-- Các ô số liệu: **Thời gian chơi**, **Lượt chơi**, **Mất kết nối**, **Chơi nhiều nhất**. Cửa sổ đủ rộng thì có thêm **Tài khoản đã chơi** và **Lượt dài nhất**.
-- **Thời gian chơi theo giờ** (Hôm nay) hoặc **Thời gian chơi theo ngày**.
-- **Theo tài khoản**: thời gian chơi, số lượt và số lần mất kết nối của từng tài khoản.
-- **Game chơi nhiều** và **Theo preset**.
-- Số liệu tự làm mới mỗi 30 giây khi tab đang mở.
 
 <details>
 <summary>Chi tiết thêm</summary>

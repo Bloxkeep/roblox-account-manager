@@ -1,5 +1,5 @@
 == end
-html [data-theme="dark" lang="vi"]
+html [class="" data-theme="dark" lang="vi"]
 #app
   div.lock
     div.dots
@@ -14,7 +14,8 @@ html [data-theme="dark" lang="vi"]
       img.logo-img [alt="" src="logo.svg"]
       div.lock-vault
         span.letter.sm.vault-face [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(190, 24, 93);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
-        b [title="Vault 2"] "Vault 2"
+        span.lock-vault-name
+          b [title="Vault 2"] "Vault 2"
       h2 "Tạo vault mới"
       p "Vault riêng, có tài khoản, Preset và mật khẩu chủ riêng. Quên mật khẩu chủ thì ."
         b "không lấy lại được"

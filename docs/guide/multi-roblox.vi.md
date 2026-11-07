@@ -11,8 +11,8 @@ Cách cho nhiều tài khoản chơi cùng lúc, thẻ Multi-Roblox ở thanh b�
 ## Làm nhanh
 
 1. Mở Bloxkeep trước Roblox. Nếu Roblox đã mở sẵn, bấm **Đóng tất cả Roblox**.
-2. Bật công tắc trên thẻ **Multi-Roblox** ở cuối thanh bên, rồi xác nhận **Bật Multi-Roblox?**.
-3. Kiểm tra đèn đã xanh và thẻ ghi **Đang bật, mở được nhiều cửa sổ**.
+2. Bật công tắc **Multi-Roblox** ở cuối thanh bên (dưới **Roblox trên máy này**), rồi xác nhận **Bật Multi-Roblox?**.
+3. Kiểm tra đèn đã xanh và ghi **Đang bật**.
 4. Chọn các tài khoản rồi bấm **Vào game**. Đừng tắt Bloxkeep trong lúc chơi (chạy ẩn dưới khay hệ thống thì được).
 
 Bạn cũng có thể bấm **Vào game** khi Multi-Roblox đang tắt: hộp thoại **Lưu ý trước khi mở** có nút **Bật Multi-Roblox rồi chơi**.
@@ -33,14 +33,16 @@ Roblox dùng một cái khóa để chỉ cho chạy một cửa sổ. Bloxkeep 
 | Đèn | Chữ | Nghĩa là | Bấm vào chữ |
 |---|---|---|---|
 | Xám | **Đang tắt** | Multi-Roblox đang tắt. | Mở phần chi tiết. |
-| Xanh | **Đang bật, mở được nhiều cửa sổ** | Đang chạy tốt. | Mở phần chi tiết. |
-| Vàng | **Chưa hoạt động, bấm để sửa** | Roblox đã mở từ trước khi bật Multi-Roblox. | Mở phần chi tiết kèm cách sửa. |
-| Vàng | **Roblox đã đóng cửa sổ, bấm để xem** | Roblox đã đóng một cửa sổ khi cửa sổ khác mở ra. | Mở **Cài đặt › Phiên bản & đồ họa Roblox**. |
-| Vàng | **Bản Roblox mới có thể chặn, bấm để xem** | Kiểm tra Multi-Roblox thấy bản Roblox có thay đổi. | Mở **Cài đặt › Phiên bản & đồ họa Roblox**. |
+| Xanh | **Đang bật** | Đang chạy tốt: mở được nhiều cửa sổ Roblox. | Mở phần chi tiết. |
+| Vàng | **Chưa chạy được** | Roblox đã mở từ trước khi bật Multi-Roblox. | Mở phần chi tiết kèm cách sửa. |
+| Vàng | **Roblox đã đóng cửa sổ** | Roblox đã đóng một cửa sổ khi cửa sổ khác mở ra. | Mở **Cài đặt › Phiên bản Roblox**. |
+| Vàng | **Bản Roblox mới có thể chặn, bấm để xem** | Kiểm tra Multi-Roblox thấy bản Roblox có thay đổi. | Mở **Cài đặt › Phiên bản Roblox**. |
+
+Rê chuột lên chữ để xem giải thích.
 
 Công tắc này cũng có ở **Cài đặt › Khởi chạy › Multi-Roblox**, kèm nhãn trạng thái (**Tắt**, **Sẵn sàng**, **Chưa sẵn sàng**) và link **Chi tiết**.
 
-## Sửa lỗi "Chưa hoạt động"
+## Sửa lỗi "Chưa chạy được"
 
 1. **Đóng hết Roblox**, kể cả Roblox ở khay hệ thống: bấm **Đóng tất cả Roblox**.
 2. Chỉ khi Roblox tự chạy cùng Windows: bấm **Tắt tự khởi động** ở dòng **Không cho Roblox tự chạy cùng Windows** (nút đổi thành "Đã tắt ✓").
@@ -56,14 +58,14 @@ Khi Multi-Roblox đang bật, phần chi tiết có hai công tắc:
 
 | Công tắc | Mặc định | Tác dụng |
 |---|---|---|
-| **Luôn mở Roblox ở chế độ cửa sổ** | Bật | Mọi cửa sổ Roblox dùng chung một cài đặt toàn màn hình, nên khi mở nhiều cửa sổ sẽ có cái toàn màn hình, có cái không. Bloxkeep mở tất cả ở chế độ cửa sổ, mở xong thì trả lại cài đặt của bạn. |
-| **Xếp các cửa sổ cạnh nhau sau khi mở** | Tắt | Mở xong các tài khoản, Bloxkeep xếp các cửa sổ cạnh nhau trên màn hình chính. Giống lựa chọn **Cài đặt › Khởi chạy › Khi cửa sổ Roblox mở ra › Xếp cạnh nhau**. |
+| **Luôn mở Roblox dạng cửa sổ** | Bật | Mọi cửa sổ Roblox dùng chung một cài đặt toàn màn hình, nên khi mở nhiều cửa sổ sẽ có cái toàn màn hình, có cái không. Bloxkeep mở tất cả ở chế độ cửa sổ, mở xong thì trả lại cài đặt của bạn. |
+| **Xếp cửa sổ cạnh nhau** | Tắt | Mở xong các tài khoản, Bloxkeep xếp các cửa sổ cạnh nhau trên màn hình chính. Giống lựa chọn **Cài đặt › Khởi chạy › Khi cửa sổ Roblox mở ra › Xếp cửa sổ cạnh nhau**. |
 
 Nút **Tắt Multi-Roblox** ở cuối hộp thoại để tắt tính năng.
 
 ## Kiểm tra Multi-Roblox
 
-Nằm ở **Cài đặt › Phiên bản Roblox › Cập nhật Roblox › Kiểm tra Multi-Roblox**. Mỗi khi Roblox có bản mới, Bloxkeep xem bản đó có thay đổi gì làm Multi-Roblox ngừng chạy không, thường là trước khi bản đó về máy bạn.
+Nằm ở **Cài đặt › Phiên bản Roblox › Kiểm tra Multi-Roblox**. Mỗi khi Roblox có bản mới, Bloxkeep xem bản đó có thay đổi gì làm Multi-Roblox ngừng chạy không, thường là trước khi bản đó về máy bạn.
 
 <img src="../screenshots/vi/roblox-updates.png" width="760" alt="Cài đặt, trang Phiên bản và đồ họa Roblox: Kiểm tra Multi-Roblox báo Có thay đổi, có thể bị chặn, kèm dòng ghi chú nên làm gì và lịch sử cập nhật">
 
@@ -78,14 +80,14 @@ Nằm ở **Cài đặt › Phiên bản Roblox › Cập nhật Roblox › Ki�
 
 ### Khi có cảnh báo
 
-- **Cứ chơi bình thường.** Nếu Roblox bắt đầu đóng cửa sổ cũ mỗi khi mở cửa sổ mới, Bloxkeep sẽ báo, và lúc đó cập nhật Bloxkeep là sửa được. Bấm **Kiểm tra bản cập nhật Bloxkeep**.
+- **Cứ chơi bình thường.** Nếu Roblox bắt đầu đóng cửa sổ cũ mỗi khi mở cửa sổ mới, Bloxkeep sẽ báo, và lúc đó cập nhật Bloxkeep là sửa được. Bấm **Kiểm tra cập nhật Bloxkeep**.
 - Nếu Roblox đã đóng cửa sổ ("Roblox đã đóng *N* cửa sổ khi mở thêm cửa sổ khác"): hãy cập nhật Bloxkeep, có thể bản mới đã sửa. Trong lúc chờ, chơi từng tài khoản một.
 - Cho tới khi hai cửa sổ cùng chơi được trên bản đó, mở nhiều tài khoản sẽ được hỏi trước (xem [Vào game](playing.vi.md)).
 
 <details>
 <summary>Chi tiết thêm</summary>
 
-- Dòng **Bản Roblox sắp ra** cho kết quả của bản Roblox chưa phát hành. **Lịch sử cập nhật** liệt kê mọi bản Roblox đã thấy trên máy.
+- Dòng **Sắp ra (chưa phát hành)** cho kết quả của bản Roblox chưa phát hành. **Lịch sử cập nhật** liệt kê mọi bản Roblox đã thấy trên máy.
 - Nút **Ẩn** để tắt dòng báo "Roblox đã đóng cửa sổ". Dòng này cũng tự mất khi có từ hai tài khoản cùng ở trong game, hoặc khi Roblox cập nhật.
 - Link **Cách hoạt động** mở trang giải thích dài hơn (tiếng Anh): [roblox-watch.md](../roblox-watch.md).
 
@@ -93,7 +95,7 @@ Nằm ở **Cài đặt › Phiên bản Roblox › Cập nhật Roblox › Ki�
 
 ## Mở Roblox bằng
 
-**Cài đặt › Khởi chạy › Launcher & thời gian chờ › Mở Roblox bằng** chọn chương trình dùng để mở Roblox. Dùng Bloxstrap, Fishstrap hoặc Voidstrap thì vẫn giữ được mod.
+**Cài đặt › Khởi chạy › Cách mở Roblox & thời gian chờ › Mở Roblox bằng** chọn chương trình dùng để mở Roblox. Dùng Bloxstrap, Fishstrap hoặc Voidstrap thì vẫn giữ được mod.
 
 | Lựa chọn | Ghi chú |
 |---|---|
@@ -101,9 +103,10 @@ Nằm ở **Cài đặt › Phiên bản Roblox › Cập nhật Roblox › Ki�
 | **Bloxstrap**, **Fishstrap**, **Voidstrap** | Giữ nguyên mod của bạn. |
 | Launcher kiểu Bloxstrap khác | Tự hiện nếu tìm thấy trên máy. |
 | **Roblox (chính thức)** | Bản cài từ roblox.com. |
-| **Chạy thẳng RobloxPlayerBeta (bỏ qua launcher)** | Không qua launcher nào. Nên thử khi launcher chặn mở nhiều cửa sổ. |
-| **Roblox (Microsoft Store), đang thử nghiệm** | Chỉ hiện khi máy có Roblox bản Microsoft Store. Mỗi tài khoản mở trong một cửa sổ riêng. |
-| **Launcher của bạn:** *tên* | Chương trình bạn chọn bằng nút **Chọn…**. Nếu file đó bị chuyển đi hoặc xóa, lúc mở game app sẽ báo. |
+| **Roblox trực tiếp (không qua launcher)** | Không qua launcher nào. Nên thử khi launcher chặn mở nhiều cửa sổ. |
+| **Roblox (Microsoft Store, thử nghiệm)** | Chỉ hiện khi máy có Roblox bản Microsoft Store. Mỗi tài khoản mở trong một cửa sổ riêng. |
+| **Launcher của bạn:** *tên* | Chương trình bạn chọn bằng nút **Launcher khác…**. Nếu file đó bị chuyển đi hoặc xóa, lúc mở game app sẽ báo. |
+| **Roblox VNG** | Bản Roblox của VNG. Luôn nằm cuối, chỉ dùng khi bạn tự chọn. Bị mờ nếu máy chưa cài. |
 
 Lựa chọn chưa cài sẽ ghi "*tên* (chưa cài)" và bị mờ. Nếu máy chỉ có Roblox bản Microsoft Store, ở đây có dòng ghi chú nói rõ.
 

@@ -16,6 +16,10 @@ html [data-theme="retro" lang="en"]
         button.nav [title="Presets"]
           svg.i #1pvni8o
           span "Presets"
+        button.nav [title="Games (2 new)"]
+          svg.i #17gqz13
+          span "Games"
+          em.nav-news [id="nav-news"] "2"
         button.nav [title="Macros (Beta)"]
           svg.i #kx2qfl
           span "Macros"
@@ -29,39 +33,60 @@ html [data-theme="retro" lang="en"]
         button.nav [title="Settings"]
           svg.i #tbghvg
           span "Settings"
+        button.nav.nav-mini [id="sys-mini" title="Mini window" aria-pressed="false"]
+          svg.i #1y8kmj1
+          span "Mini window"
       div.side-bottom
         div [id="side-warn"]
-        div.side-card [id="sys-card"]
-          h4 "Roblox on this PC"
-          div.sys-row
-            span [title="Main · PID 1111\nFarm 1 · PID 2222"]
-              b [id="sys-count"] "4"
-              span [id="sys-count-label"] "windows"
-            span [id="sys-ram"] "1.7 GB"
-          div.meter [id="sys-meter"]
-            i.roblox [style="transform:scaleX(0.054)"]
-            i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
-          div.sys-foot [id="sys-foot"] "PC RAM 63% used · 12 GB free"
-          div.sys-foot [id="sys-usage" title="Roblox windows only, not the whole PC"] "CPU 12% · GPU 34%"
-          div.sys-ver [id="sys-ver"]
-            span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
-              i.dot.ok
-          button.btn.sm.sys-mini.w [id="sys-mini" aria-pressed="false"]
-            svg.i #1y8kmj1
-            span "Mini window"
-          button.btn.sm.sys-close.w [id="sys-close"]
-            svg.i #16z0s1r
-            span "Close all"
-        div [id="multi-card"]
-          div.multi.ok
-            button.multi-open [title="Multi-Roblox: On: several Roblox windows can be open"]
-              span.led
-              div
-                b "Multi-Roblox"
-                small "On"
-            label.switch [title="Turn off Multi-Roblox"]
-              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
-              span
+        div.rig.side-card [id="sys-rig"]
+          div.sys [id="sys-card"]
+            div.sys-head
+              span.sys-count [title="Main · PID 1111\nFarm 1 · PID 2222"]
+                b [id="sys-count"] "4"
+                span [id="sys-count-label"] "windows"
+                span.sys-ram [id="sys-ram"] "1.7 GB"
+              button.sys-close [id="sys-close" type="button" title="Close all" aria-label="Close all"]
+                svg.i #16z0s1r
+            div.lobby
+              svg.face.play #1pg0baw
+              svg.face.play #1jzq296
+              svg.face.play #1kqz5uh
+              svg.face.play #1kqz5uh
+            div.bricks [id="sys-meter" title="PC RAM 63% used · 12 GB free" aria-hidden="true"]
+              i.r
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i
+              i
+              i
+              i
+              i
+              i
+              i
+            div.sys-foot
+              span [id="sys-foot" title="PC RAM 63% used · 12 GB free"] "PC RAM 63%"
+              span [id="sys-usage" title="Roblox windows only, not the whole PC"] "CPU 12% · GPU 34%"
+            div.sys-ver [id="sys-ver"]
+              span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
+                i.dot.ok
+          div [id="multi-card"]
+            div.multi.ok
+              button.multi-open [title="Multi-Roblox: On: several Roblox windows can be open"]
+                div
+                  b "Multi-Roblox"
+              label.switch [title="Turn off Multi-Roblox"]
+                input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
+                span
         div.side-foot
           div [id="update-slot"]
           div.side-lock
@@ -71,7 +96,7 @@ html [data-theme="retro" lang="en"]
             button.btn.ghost.side-sq.vault-btn [title="Switch vault (Vault 1)" aria-label="Switch vault (Vault 1)"]
               span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(21, 128, 61);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
     main.main
-      section.seen.view [id="view-accounts"]
+      section.seen.view [id="view-accounts" style="--dir:1"]
       section.seen.view [id="view-monitor"]
         header.top
           div.top-title

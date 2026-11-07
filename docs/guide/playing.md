@@ -10,7 +10,7 @@ How to pick a game and a server, open Roblox for your accounts, and use Bloxkeep
 
 1. Click the game box at the bottom (**1 Game**) and type a game's name, a Place ID or a link. Pick the game from the list.
 2. To land in one exact server, use **2 Server** (optional): a Job ID, **Browse servers** or **Join a player…**.
-3. On the **Accounts** tab, select the accounts you want to open, then press **Play** (**3 Play**). It shows how many accounts will open.
+3. On the **Accounts** tab, select the accounts you want to open, then press **Play** (**3 Go**). It shows how many accounts will open.
 4. If Bloxkeep asks **Before you open**, read it and press **Open anyway**.
 5. To stop opening early, press **Stop**. To close Roblox, press **Close**.
 
@@ -24,7 +24,7 @@ The bar at the bottom of **Accounts** goes in three numbered steps, left to righ
 |---|---|
 | **1 Game** | The game picture (**Choose a game**), the game box, and under it the game found and recent games. |
 | **2 Server** (optional) | The **Job ID** box, **Browse servers** and **Join a player…**. |
-| **3 Play** | **Play**, and under it **Presets**, **Close** and **Windows** (**Open Roblox only**, **Arrange Roblox windows**). |
+| **3 Go** | **Play**, and under it **Presets**, **Close** and **Windows** (**Open Roblox only**, **Arrange Roblox windows**). |
 
 Every button has its name on it. In the smallest windows the step captions are left out.
 
@@ -60,14 +60,26 @@ Click the game's name under the box to open its page:
 | When it is quiet | Players at each hour of the day. While Bloxkeep is open it notes how many play the games you use every half hour, so this fills in within a day or two; the quietest three hours are named, a good time for a scheduled preset. |
 | About this game | Its description, shown on a click. |
 
+## The Games tab
+
+**Games** in the sidebar lists popular games with their wiki or news: **Your games** (played by your accounts in the last 90 days) first, then **Popular**. **Find a game** searches them. Open one for:
+
+- **News**: posts live from the game's own alerts, such as stock and spawns. **Notify me**: **Off**, **Every post** or **Keywords** (the words you pick).
+- **Wiki**: the game's wiki inside Bloxkeep: search, item tables, compare, new pages and recent buffs and nerfs.
+- **Values**: price lists, such as Blox Fruits'.
+
+<img src="../screenshots/games.png" width="760" alt="The Games tab: Blox Fruits under Your games with its new posts, Wiki, Values, hours played and PCs playing, a radar warning above, Popular games below">
+
+A game's card also says how many PCs with Bloxkeep play it now. News works in the installed Bloxkeep only.
+
 ## Servers
 
 **Browse servers** opens the game's server list. It is greyed out until a game is in the box, and for a private server.
 
 <img src="../screenshots/servers.png" width="760" alt="The server list for a game: your private servers and friends in this game, each with Use server, then public servers with sort buttons, Room for 2 and Random server">
 
-- **Your private servers**: the private servers of this game that your selected accounts own or were invited to (with none selected, your first signed-in accounts), each with its owner, how many are playing and **Use server**. Roblox lets only those accounts in, so a server some selected accounts can't join says "only *account* can join". **Use server** puts it in the game box as a private server (`roblox://placeId=…&accessCode=…`); press **Play**, and Bloxkeep joins it the way the Join button on its Roblox page does.
-- **Friends in this game**: friends of your accounts who are in this game, each "friend of *account*", with **Use server**. Their privacy settings may hide them.
+- **Your private servers**: the private servers of this game that your selected accounts own or were invited to (with none selected, your first signed-in accounts), each with its owner, how many are playing and **Use**. Roblox lets only those accounts in, so a server some selected accounts can't join says "only *account* can join". **Use** puts it in the game box as a private server (`roblox://placeId=…&accessCode=…`); press **Play**, and Bloxkeep joins it the way the Join button on its Roblox page does.
+- **Friends in this game**: friends of your accounts who are in this game, each "friend of *account*", with **Use**. Their privacy settings may hide them.
 - **Public servers**: sort by **Most players**, **Fewest players**, **Lowest ping** or **Best FPS**. **Room for N** (with 2 or more accounts selected) shows only servers with room for all of them. **Random server** picks one.
 - **Use** puts that server's Job ID in the game bar ("Server chosen — select accounts and press Play."). A full server is greyed out.
 - The ping is the average of the players in that server, not your own. When Roblox is busy, the list tries again by itself, then offers **Try again**.

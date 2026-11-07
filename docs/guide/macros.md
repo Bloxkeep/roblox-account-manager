@@ -47,19 +47,42 @@ Tick **Point** on a click to let the player set where it clicks: the panel gets 
 
 A **Tick list** is a list of words (for example enchants) the player ticks on the panel. A **Wait for text** or **If** step can then read "a word ticked in" that list: any ticked word counts, a letter read wrong in a long word is forgiven, and a longer name in the list ("Blessed Song") never counts as a shorter one ("Blessed").
 
-**Click a colour** can also click **each spot once, as it shows**, once the spot has been there for the time you set (rings or targets that pop up one after another).
+**Click a color** can also click **each spot once, as it shows**, once the spot has been there for the time you set (rings or targets that pop up one after another).
 
 The panel opens with **Panel** on the macro's row, from the tray icon's **Macros** page, or with Ctrl+K "Show panel". **Show the panel by itself** opens it while an account is in the game you choose.
 
 > [!IMPORTANT]
 > Steps that need constant input, such as **Keep a bar on target**, keep their window in front while they run. Those games work one account at a time; the others wait their turn.
 
+## Values
+
+A macro can keep numbers and words, like the fish it caught or the coins it has.
+
+| Step | What it does |
+|---|---|
+| **Set a value** | "Set coins to 0". A number, or math like `coins * 2`; `random(1, 6)` gives a random number. |
+| **Add to a value** | "Add 1 to fish". Counters show on the panel. |
+| **Read a number or text** | Reads from an area of the game, a file or a web page into a value. A number takes the first one it sees, like 1,234 or 3.2K. |
+| **Write text** | Writes to the clipboard, a file or a web address (such as a Discord webhook). Type `{coins}` to put a value in. |
+| **Run another macro** | Its steps play here, then this macro goes on. |
+
+An **If** or **Repeat until…** step can check a value ("coins > 100").
+
+## Features
+
+A feature is a switch on the panel with steps of its own, like Auto sell. Press **+ Feature** beside **Main steps** to add one, or move steps into it with **Move to** in a step's **⋯** menu.
+
+- **Plays**: **Every round** (whole, each time the main steps finish a round) or **On a timer** (at the end of a round, once that long has passed, from 1 second to 24 hours). Only while its switch is on.
+- Features play left to right, in their switches' order on the panel, and the panel says what each one is doing.
+- **If it fails**: **Skip this time** or **Same as the macro**.
+- **Try feature** runs just its steps.
+
 ## When it gets stuck
 
 A pop-up or a missed bite can leave a macro waiting for something that never comes.
 
-- Open the line under the name. Set **If something doesn't show in time or it gets stuck** to **Start again from the top**.
-- **Counts as stuck** says how long it may find nothing (for example 5 min) before that happens.
+- Open the line under the name. **If nothing shows or it gets stuck** picks what happens: **Stop on that window**, **Go on to the next step**, **Start again from the top**, **Rejoin the server** or **Alert on Discord and stop**. With an **If stuck…** step, **Start again from the top** reads **Run “If stuck”, then start again**.
+- **Counts as stuck** says how long it may find nothing (2, 5, 10 or 30 min) before that happens.
 - With **Add step**, add **If stuck…**. It goes last; put the steps that clear the way after it, such as closing a pop-up. They run before the macro starts again.
 
 After 5 tries in a row that find nothing, the macro stops on that window.

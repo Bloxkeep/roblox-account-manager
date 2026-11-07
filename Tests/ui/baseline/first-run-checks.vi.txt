@@ -1,5 +1,5 @@
 == too short
-html [data-theme="dark" lang="vi"]
+html [class="" data-theme="dark" lang="vi"]
 #app
   div.lock
     div.dots
@@ -7,7 +7,7 @@ html [data-theme="dark" lang="vi"]
       div.lang [role="group" aria-label="Ngôn ngữ"]
         button [title="English" aria-pressed="false"] "EN"
         button.on [title="Tiếng Việt" aria-pressed="true"] "VI"
-    form.lock-card.shake [id="lock-form" autocomplete="off"]
+    form.lock-card.opened.shake [id="lock-form" autocomplete="off"]
       img.logo-img [alt="" src="logo.svg"]
       h2 "Đặt mật khẩu chủ"
       p "Dùng để mở khóa Bloxkeep. Quên mật khẩu là ."
@@ -35,7 +35,7 @@ html [data-theme="dark" lang="vi"]
   monitorArea {"hidden":true}
   pageShown {}
 == blank
-html [data-theme="dark" lang="vi"]
+html [class="" data-theme="dark" lang="vi"]
 #app
   div.lock
     div.dots
@@ -43,7 +43,7 @@ html [data-theme="dark" lang="vi"]
       div.lang [role="group" aria-label="Ngôn ngữ"]
         button [title="English" aria-pressed="false"] "EN"
         button.on [title="Tiếng Việt" aria-pressed="true"] "VI"
-    form.lock-card.shake [id="lock-form" autocomplete="off"]
+    form.lock-card.opened.shake [id="lock-form" autocomplete="off"]
       img.logo-img [alt="" src="logo.svg"]
       h2 "Đặt mật khẩu chủ"
       p "Dùng để mở khóa Bloxkeep. Quên mật khẩu là ."
@@ -69,7 +69,7 @@ html [data-theme="dark" lang="vi"]
 -- commands
   (none)
 == mismatch
-html [data-theme="dark" lang="vi"]
+html [class="" data-theme="dark" lang="vi"]
 #app
   div.lock
     div.dots
@@ -77,7 +77,7 @@ html [data-theme="dark" lang="vi"]
       div.lang [role="group" aria-label="Ngôn ngữ"]
         button [title="English" aria-pressed="false"] "EN"
         button.on [title="Tiếng Việt" aria-pressed="true"] "VI"
-    form.lock-card.shake [id="lock-form" autocomplete="off"]
+    form.lock-card.opened.shake [id="lock-form" autocomplete="off"]
       img.logo-img [alt="" src="logo.svg"]
       h2 "Đặt mật khẩu chủ"
       p "Dùng để mở khóa Bloxkeep. Quên mật khẩu là ."
@@ -103,7 +103,7 @@ html [data-theme="dark" lang="vi"]
 -- commands
   (none)
 == shown
-html [data-theme="dark" lang="vi"]
+html [class="" data-theme="dark" lang="vi"]
 #app
   div.lock
     div.dots
@@ -111,7 +111,7 @@ html [data-theme="dark" lang="vi"]
       div.lang [role="group" aria-label="Ngôn ngữ"]
         button [title="English" aria-pressed="false"] "EN"
         button.on [title="Tiếng Việt" aria-pressed="true"] "VI"
-    form.lock-card.shake [id="lock-form" autocomplete="off"]
+    form.lock-card.opened.shake [id="lock-form" autocomplete="off"]
       img.logo-img [alt="" src="logo.svg"]
       h2 "Đặt mật khẩu chủ"
       p "Dùng để mở khóa Bloxkeep. Quên mật khẩu là ."
@@ -137,7 +137,7 @@ html [data-theme="dark" lang="vi"]
 -- commands
   (none)
 == end
-html [data-theme="dark" lang="vi"]
+html [class="" data-theme="dark" lang="vi"]
 #app
   div.lock
     div.dots
@@ -145,7 +145,7 @@ html [data-theme="dark" lang="vi"]
       div.lang [role="group" aria-label="Ngôn ngữ"]
         button [title="English" aria-pressed="false"] "EN"
         button.on [title="Tiếng Việt" aria-pressed="true"] "VI"
-    form.lock-card.shake [id="lock-form" autocomplete="off"]
+    form.lock-card.opened.shake [id="lock-form" autocomplete="off"]
       img.logo-img [alt="" src="logo.svg"]
       h2 "Đặt mật khẩu chủ"
       p "Dùng để mở khóa Bloxkeep. Quên mật khẩu là ."

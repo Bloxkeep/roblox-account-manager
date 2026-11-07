@@ -54,12 +54,35 @@ Mở bảng bằng nút **Bảng** ở dòng của macro, trang **Macro** của 
 > [!IMPORTANT]
 > Các bước cần bấm liên tục, như **Giữ thanh trúng đích**, giữ cửa sổ ở trước suốt lúc chạy. Game kiểu này chạy từng tài khoản một, các tài khoản khác chờ lượt.
 
+## Giá trị
+
+Macro giữ được số và chữ, như số cá đã câu hay số xu đang có.
+
+| Bước | Làm gì |
+|---|---|
+| **Đặt giá trị** | "Đặt xu = 0". Một số, hoặc phép tính như `xu * 2`; `random(1, 6)` cho số ngẫu nhiên. |
+| **Cộng thêm** | "Cộng 1 vào cá". Bộ đếm hiện trên bảng. |
+| **Đọc số hoặc chữ** | Đọc từ một vùng trên game, một file hay một trang web vào giá trị. Đọc số thì lấy số đầu tiên thấy được, như 1,234 hay 3.2K. |
+| **Ghi chữ** | Ghi vào clipboard, một file hay một địa chỉ web (như webhook Discord). Gõ `{xu}` để chèn giá trị. |
+| **Chạy macro khác** | Chạy hết các bước của macro đó, rồi chạy tiếp macro này. |
+
+Bước **Nếu** hoặc **Lặp đến khi…** kiểm tra được giá trị ("xu > 100").
+
+## Chức năng
+
+Chức năng là một công tắc trên bảng, có các bước riêng, như Tự bán cá. Bấm **+ Chức năng** cạnh **Vòng chính** để thêm, hoặc chuyển bước sang bằng **Chuyển sang** trong menu **⋯** của bước.
+
+- **Chạy khi**: **Mỗi vòng** (chạy trọn mỗi khi vòng chính xong một vòng) hoặc **Hẹn giờ** (cuối vòng, khi đã đủ thời gian, từ 1 giây tới 24 giờ). Chỉ chạy khi công tắc đang bật.
+- Các chức năng chạy từ trái sang phải, theo thứ tự công tắc trên bảng, và bảng cho biết từng cái đang làm gì.
+- **Nếu lỗi**: **Bỏ qua lần này** hoặc **Như cả macro**.
+- **Thử chức năng** chỉ chạy các bước của nó.
+
 ## Khi macro bị kẹt
 
 Một bảng bật lên hay một lần cá không cắn có thể làm macro chờ mãi.
 
-- Mở dòng dưới tên macro. Ở **Nếu chờ mãi không thấy hoặc bị kẹt**, chọn **Làm lại từ đầu**.
-- **Tính là kẹt** là bao lâu không thấy gì (ví dụ 5 phút) thì làm việc đó.
+- Mở dòng dưới tên macro. **Chờ mãi không thấy hoặc bị kẹt** chọn việc cần làm: **Dừng cửa sổ đó**, **Sang bước tiếp**, **Làm lại từ đầu**, **Vào lại server** hoặc **Báo Discord rồi dừng**. Khi macro có bước **Khi bị kẹt…**, **Làm lại từ đầu** đổi thành **Gỡ kẹt rồi làm lại từ đầu**.
+- **Tính là kẹt** là bao lâu không thấy gì (2, 5, 10 hoặc 30 phút) thì làm việc đó.
 - Ở **Thêm bước**, thêm **Khi bị kẹt…**. Bước này nằm cuối; đặt sau nó các bước gỡ kẹt, như đóng bảng bật lên. Chúng chạy trước khi macro làm lại từ đầu.
 
 Làm lại 5 lần liền mà vẫn không thấy gì thì macro dừng trên cửa sổ đó.

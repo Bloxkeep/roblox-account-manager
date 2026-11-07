@@ -1,5 +1,5 @@
 == end
-html [data-theme="dark" lang="en"]
+html [class="" data-theme="dark" lang="en"]
 #app
   div.lock
     div.dots
@@ -7,11 +7,12 @@ html [data-theme="dark" lang="en"]
       div.lang [role="group" aria-label="Language"]
         button.on [title="English" aria-pressed="true"] "EN"
         button [title="Tiếng Việt" aria-pressed="false"] "VI"
-    form.lock-card [id="lock-form" autocomplete="off"]
+    form.lock-card.opened [id="lock-form" autocomplete="off"]
       img.logo-img [alt="" src="logo.svg"]
       div.lock-vault
         span.letter.sm.vault-face [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(21, 128, 61);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "M"
-        b [title="Main"] "Main"
+        span.lock-vault-name
+          b [title="Main"] "Main"
       h2 "Welcome back"
       p "Enter your master password to unlock."
       p.lock-paused "Locked after 15 minutes without use. Roblox, auto-rejoin, scheduled presets and Discord kept running."

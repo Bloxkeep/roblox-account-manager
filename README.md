@@ -29,7 +29,7 @@ Keep your Roblox accounts in one place, pick a game, pick accounts, press **Play
 | | |
 |---|---|
 | **Add accounts** | With your phone (code or QR), username and password (2-step verification and captchas work), a browser window, a cookie or another Bloxkeep file. [Accounts](docs/guide/accounts.md) |
-| **See every account** | Online, in game here or on another device, why it disconnected, RAM, play time, needs sign-in, banned. Search, groups, cards or list. [Accounts](docs/guide/accounts.md) |
+| **See every account** | Online, in game here or on another device, why it disconnected, RAM, play time, needs sign-in, banned. Search, groups, cards or list. Mark your main account, and make your accounts Roblox friends. [Accounts](docs/guide/accounts.md) |
 | **Play** | Pick a game by name, link or Place ID, and a server: most or fewest players, lowest ping, room for N accounts, your private servers, a friend's or any player's server. [Playing](docs/guide/playing.md) |
 | **Multi-Roblox** | Several Roblox windows at once. Off until you turn it on; every new Roblox build is checked. [Multi-Roblox](docs/guide/multi-roblox.md) |
 | **Presets** | Accounts, game and server saved for one click, with a schedule to start and stop. [Presets](docs/guide/presets.md) |
@@ -38,7 +38,7 @@ Keep your Roblox accounts in one place, pick a game, pick accounts, press **Play
 | **Windows** | Arrange layouts picked from pictures (as Windows' snap layouts) or a size of your own, the Game monitor with a minimise button on each window, a mini window, RAM warnings. [Windows and stats](docs/guide/windows-and-stats.md) |
 | **Roblox your way** | Graphics, FPS and volume per account; open with Roblox, Bloxstrap, Fishstrap, Voidstrap or your own launcher. [Settings](docs/guide/settings.md) |
 | **Stats and alerts** | Play time compared with the days before, a timeline of each account, why accounts dropped and the time it cost; alerts and a live status in your Discord channel or on your phone (ntfy); `/pc` in Discord to check and control your PC from anywhere. [Discord](docs/guide/discord.md) |
-| **Games** | Popular games with their wiki inside Bloxkeep: search, item tables, recent buffs and nerfs, live stock and spawns, Blox Fruits prices. [What's new](https://bloxkeep.github.io/roblox-account-manager/whats-new/) |
+| **Games** | Popular games with their wiki inside Bloxkeep: search, item tables, recent buffs and nerfs, live stock and spawns, Blox Fruits prices. [The Games tab](docs/guide/playing.md#the-games-tab) |
 | **Safe by default** | Encrypted vault, lock, backups to a OneDrive or Google Drive folder, hide names for streams. [Backup and security](docs/guide/backup-and-security.md) |
 | **Yours** | 98 themes, English and Vietnamese, quick search with `Ctrl+K`. |
 
@@ -102,7 +102,7 @@ Type `/multi` to the bot to see whether Multi-Roblox works on the current Roblox
 
 - **On your PC only**, in `%LOCALAPPDATA%\Bloxkeep` (the portable copy: a `data` folder beside it).
 - **Encrypted** with AES-256-GCM, the key made from your master password (PBKDF2-HMAC-SHA256, 600,000 rounds). The master password is never stored.
-- **Your password and cookies only go to Roblox.** Bloxkeep has no analytics. Besides Roblox it talks to GitHub (updates), Roblox's captcha providers (only in a puzzle window), and its own bot for an anonymous "open now" count you can turn off; plus whatever you choose to send (feedback, your Discord webhook, your backup folder). Every host and what goes there: [privacy policy](PRIVACY.md).
+- **Your password and cookies only go to Roblox.** Bloxkeep has no analytics. Besides Roblox it talks to GitHub (updates), Roblox's captcha providers (only in a puzzle window), and its own bot for the online count, which you can turn off (a code made from this PC that can't be traced back, the version, the language, the games your accounts are in, how many run and why one dropped out; never an account); plus whatever you choose to send (feedback, your Discord webhook, your backup folder). Every host and what goes there: [privacy policy](PRIVACY.md).
 - **Locking** drops every decrypted cookie and password from memory. Copied secrets are wiped from the clipboard after 30 seconds.
 
 > [!WARNING]
@@ -124,7 +124,7 @@ Turn on **Settings › Backup & data › Back up to a folder** and pick a OneDri
 
 **Are macros cheating?** A macro only presses keys and clicks in the Roblox window and looks at its picture, like a person would. It never reads or changes the game's memory. Some games still forbid macros: check the game's rules.
 
-**Can I use it in Vietnam without roblox.com?** Partly: phone and password sign-in go through Roblox's API, not www.roblox.com; the browser sign-in needs www.roblox.com. Bloxkeep has no VPN. Roblox VNG accounts can be added, but games can't be opened for them yet.
+**Can I use it in Vietnam without roblox.com?** Partly: phone and password sign-in go through Roblox's API, not www.roblox.com; the browser sign-in needs www.roblox.com. Bloxkeep has no VPN. Roblox VNG accounts can be added and opened too (still being tried out).
 
 **I forgot my master password.** It can't be recovered. Restore a backup whose password you remember, or start over.
 

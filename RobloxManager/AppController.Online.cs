@@ -11,8 +11,9 @@ namespace RobloxManager;
 /// not, it tells Bloxkeep's Discord bot so every minute (further apart when the bot says so) and says goodbye as it
 /// closes (services/DiscordBot/worker/online.js). What goes: an id made from this PC (<see cref="OnlineIdForThisPc"/>),
 /// Bloxkeep's version, the app's language, how long this PC has had Bloxkeep in three rough groups
-/// (<see cref="InstallAge"/>) and, once, that this is a new install's first open; nothing else. The bot keeps only
-/// numbers per day of those. Turned off: a goodbye, the id forgotten, nothing more. Only an installed Bloxkeep counts:
+/// (<see cref="InstallAge"/>), once, that this is a new install's first open, and what this PC plays now: the games its
+/// accounts are in, how many run, the drops since the last beat and its name on the alts board if it joined; never an
+/// account. The bot keeps numbers per day of the first ones, and the rest only in memory while this PC counts as open. Turned off: a goodbye, the id forgotten, nothing more. Only an installed Bloxkeep counts:
 /// a development copy or the checks never do, unless BLOXKEEP_ONLINE_URL points them at a server of their own.
 /// </summary>
 public sealed partial class AppController

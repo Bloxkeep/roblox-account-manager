@@ -38,12 +38,16 @@ export function Sidebar() {
       {nav('monitor', 'screens')}
       {nav('stats', 'clock')}
       {nav('settings', 'sliders')}
-      <button className="nav nav-mini" data-act="mini" title={mini} aria-pressed={!!app.miniOpen}><Icon name="monitor" /><span>{mini}</span></button>
+      {/* The mini window opens a window, it isn't a tab: under them, set apart by a hairline. */}
+      <button className="nav nav-mini" id="sys-mini" data-act="mini" title={mini} aria-pressed={!!app.miniOpen}><Icon name="monitor" /><span>{mini}</span></button>
     </div>
     <div className="side-bottom">
       <div id="side-warn">{app.robloxInstalled ? null : <div className="warn-card" title={t('side.noRoblox')}><Icon name="alert" /><span>{t('side.noRoblox')}</span></div>}</div>
-      <SysCard mini={mini} />
-      <div id="multi-card"><MultiCard /></div>
+      {/* One panel (themes draw it as their card): Roblox on this PC, with Multi-Roblox's switch at its foot. */}
+      <div className="side-card rig" id="sys-rig">
+        <SysCard />
+        <div id="multi-card"><MultiCard /></div>
+      </div>
       <div className="side-foot">
         <div id="update-slot">{u?.status === 'ready' && !u.quiet
           ? <button className="btn primary w update-btn" data-act="apply-update" title={t(u.auto ? 'upd.restartTipAuto' : 'upd.restartTip', { v: u.version })}>
@@ -60,28 +64,70 @@ export function Sidebar() {
   </aside>;
 }
 
-/** Roblox on this PC: its windows (whose is which, by process id), their memory against the whole PC's, its version. */
-function SysCard({ mini }: { mini: string }) {
+/** Where a window's account is, as its face shows it: in a game, in Roblox's menu, dropped from its server. */
+type Mood = 'play' | 'menu' | 'drop';
+const moodOf = (a: any): Mood => a.session?.connection === 'disconnected' ? 'drop' : a.session?.connection === 'menu' || a.session?.connection === 'signedout' ? 'menu' : 'play';
+/** The baseplate's studs: two rows of ten, 5 % of the PC's RAM each. */
+const BRICKS = 20;
+/** Ten across, one on each stud column; past ten, the last place says "+N". */
+const SLOTS = 10;
+
+/** Bloxkeep's block face (its logo's), one per Roblox window: smiling in a game, flat-mouthed in the menu, X-eyed when
+ * dropped. */
+function Face({ mood, tip }: { mood: Mood; tip: string }) {
+  return <svg className={`face ${mood}`} viewBox="0 0 32 32" aria-hidden="true"><title>{tip}</title>
+    <rect className="fb" x="1" y="1" width="30" height="30" rx="7" />
+    {mood === 'drop'
+      ? <path className="fl" d="M7.5 10.5l4 4m0-4l-4 4M20.5 10.5l4 4m0-4l-4 4" />
+      : <><rect className="fi" x="8.4" y="10" width="3.4" height="5.6" rx="1.7" /><rect className="fi" x="20.2" y="10" width="3.4" height="5.6" rx="1.7" /></>}
+    <path className="fl" d={mood === 'play' ? 'M9.6 20.5c3.6 3.4 9.2 3.4 12.8 0' : mood === 'menu' ? 'M11 22h10' : 'M11 23.5c3-2.4 7-2.4 10 0'} />
+  </svg>;
+}
+
+/**
+ * Roblox on this PC, drawn as the farm: a block face for every Roblox window (the account's, or a window Bloxkeep didn't
+ * open) standing on a baseplate whose studs are the PC's RAM, 5 % each (Roblox's, the rest in use, free). Above them
+ * the windows and their memory with Close all; under them the RAM's number, Roblox's CPU and GPU, and its version.
+ */
+function SysCard() {
   const { t, fmtMb } = useHost();
   const app = useAppState();
   const m = useMetrics();
-  const pids = (app.accounts || []).filter((a: any) => a.state === 'running' && a.session?.pid > 0).map((a: any) => `${a.label} · PID ${a.session.pid}`);
-  // The bar is the whole PC's RAM: Roblox's share first, then everything else in use. Transforms only: moving the
-  // bars never makes the page re-run layout.
+  const running = (app.accounts || []).filter((a: any) => a.state === 'running');
+  const pids = running.filter((a: any) => a.session?.pid > 0).map((a: any) => `${a.label} · PID ${a.session.pid}`);
+  const count = m.robloxCount || 0;
+  const people: { key: string; mood: Mood; tip: string }[] = running.map((a: any) => ({ key: a.id, mood: moodOf(a), tip: `${a.label} · ${t(`sys.mood.${moodOf(a)}`)}` }));
+  // Windows Bloxkeep didn't open (or whose account it can't tell) get a face too, in no particular mood.
+  while (people.length < count) people.push({ key: `w${people.length}`, mood: 'play', tip: t('sys.otherWindow') });
+  const over = people.length > SLOTS;
+  const shown = over ? people.slice(0, SLOTS - 1) : people;
   const robloxPct = m.systemMb ? Math.min(100, (m.totalMb / m.systemMb) * 100) : 0;
   const usedPct = Math.max(robloxPct, m.usedPct || 0);
+  const robloxStuds = Math.min(BRICKS, Math.round(robloxPct / (100 / BRICKS)));
+  const usedStuds = Math.max(robloxStuds, Math.min(BRICKS, Math.round(usedPct / (100 / BRICKS))));
+  const used = m.systemMb ? t('sys.used', { pct: Math.round(usedPct), free: fmtMb(m.availableMb || 0) }) : undefined;
   const rv = app.robloxVersion || {};
   const short = (v?: string) => (v || '').split('.').slice(0, 2).join('.');
-  return <div className={`side-card ${usedPct >= 90 ? 'hot' : ''}`} id="sys-card">
-    <h4>{t('sys.title')}</h4>
+  return <div className={`sys ${usedPct >= 90 ? 'hot' : ''}`} id="sys-card">
     {/* Roblox not installed: no windows to count and no version (the warning above says it). */}
-    <div className="sys-row"><span title={pids.join('\n')} hidden={!app.robloxInstalled}><b id="sys-count">{m.robloxCount}</b> <span id="sys-count-label">{t(m.robloxCount === 1 ? 'sys.window1' : 'sys.windows')}</span></span><span id="sys-ram">{fmtMb(m.totalMb)}</span></div>
-    <div className="meter" id="sys-meter"><i className="roblox" style={{ transform: `scaleX(${(robloxPct / 100).toFixed(3)})` }} />
-      <i className="other" style={{ transform: `translateX(${robloxPct.toFixed(1)}%) scaleX(${((usedPct - robloxPct) / 100).toFixed(3)})` }} /></div>
-    <div className="sys-foot" id="sys-foot">{m.systemMb ? t('sys.used', { pct: Math.round(usedPct), free: fmtMb(m.availableMb || 0) }) : ''}</div>
-    {m.robloxCount && (m.cpuPct != null || m.gpuPct != null)
-      ? <div className="sys-foot" id="sys-usage" title={t('sys.usageTip')}>{[m.cpuPct != null ? `CPU ${m.cpuPct}%` : '', m.gpuPct != null ? `GPU ${m.gpuPct}%` : ''].filter(Boolean).join(' · ')}</div>
-      : null}
+    <div className="sys-head" hidden={!app.robloxInstalled}>
+      <span className="sys-count" title={pids.join('\n') || undefined}><b id="sys-count">{count}</b> <span id="sys-count-label">{t(count === 1 ? 'sys.window1' : 'sys.windows')}</span>
+        <span className="sys-ram" id="sys-ram">{fmtMb(m.totalMb)}</span></span>
+      <button type="button" className="sys-close" id="sys-close" data-act="close-all" hidden={!count} title={t('sys.closeAll')} aria-label={t('sys.closeAll')}><Icon name="power" /></button>
+    </div>
+    <div className="lobby">
+      {shown.length
+        ? shown.map(p => <Face key={p.key} mood={p.mood} tip={p.tip} />)
+        : <span className="sys-none">{t(app.robloxInstalled ? 'sys.none' : 'side.noRoblox')}</span>}
+      {over ? <em className="sys-more" title={t('sys.moreTip', { n: people.length - shown.length })}>+{people.length - shown.length}</em> : null}
+    </div>
+    <div className="bricks" id="sys-meter" title={used} aria-hidden="true">
+      {Array.from({ length: BRICKS }, (_, i) => <i key={i} className={i < robloxStuds ? 'r' : i < usedStuds ? 'o' : ''} />)}</div>
+    <div className="sys-foot">
+      <span id="sys-foot" title={used}>{m.systemMb ? t('sys.ramPct', { pct: Math.round(usedPct) }) : ''}</span>
+      {count && (m.cpuPct != null || m.gpuPct != null)
+        ? <span id="sys-usage" title={t('sys.usageTip')}>{[m.cpuPct != null ? `CPU ${m.cpuPct}%` : '', m.gpuPct != null ? `GPU ${m.gpuPct}%` : ''].filter(Boolean).join(' · ')}</span>
+        : null}</div>
     <div className="sys-ver" id="sys-ver" hidden={!app.robloxInstalled}>{rv.installed
       ? rv.upToDate === false
         // Out of date: Settings › Roblox version says how to update (and has Update now when a launcher here can).
@@ -89,8 +135,6 @@ function SysCard({ mini }: { mini: string }) {
           short(rv.latest) === short(rv.installed) ? t('rbx.newBuild') : t('rbx.available', { v: short(rv.latest) })}`}</button>
         : <span title={`Roblox ${rv.installed}`}><i className={`dot ${rv.upToDate ? 'ok' : ''}`} />{`Roblox ${short(rv.installed)}${rv.upToDate ? ` · ${t('rbx.latestShort')}` : ''}`}</span>
       : null}</div>
-    <button className="btn sm w sys-mini" id="sys-mini" data-act="mini" aria-pressed={!!app.miniOpen}><Icon name="monitor" /><span>{mini}</span></button>
-    <button className="btn sm w sys-close" id="sys-close" data-act="close-all" hidden={!m.robloxCount}><Icon name="power" /><span>{t('sys.closeAll')}</span></button>
   </div>;
 }
 

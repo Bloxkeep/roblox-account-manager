@@ -11,8 +11,8 @@ A real screenshot from one PC: six accounts open at once with Bloxkeep, all in t
 ## Quick steps
 
 1. Open Bloxkeep before Roblox. If Roblox is already open, press **Close all Roblox**.
-2. Turn on the switch on the **Multi-Roblox** card at the bottom of the sidebar, and confirm **Turn on Multi-Roblox?**.
-3. Check that the light is green and the card says **On — several windows allowed**.
+2. Turn on the **Multi-Roblox** switch at the bottom of the sidebar (under **Roblox on this PC**), and confirm **Turn on Multi-Roblox?**.
+3. Check that the light is green and it says **On**.
 4. Select your accounts and press **Play**. Keep Bloxkeep open while you play (the tray is fine).
 
 You can also press **Play** with Multi-Roblox off: the **Before you open** question offers **Turn on Multi-Roblox and play**.
@@ -33,10 +33,12 @@ Roblox uses a lock to allow only one window. Bloxkeep holds that lock's name fir
 | Light | Text | Meaning | Clicking the text |
 |---|---|---|---|
 | Grey | **Off** | Multi-Roblox is off. | Opens the details. |
-| Green | **On — several windows allowed** | Working. | Opens the details. |
-| Yellow | **Not working yet — click to fix** | Roblox was open before Multi-Roblox was turned on. | Opens the details with the fix. |
-| Yellow | **Roblox closed windows — click to see** | Roblox closed a window when another one opened. | Opens **Settings › Roblox version & graphics**. |
-| Yellow | **A Roblox update may stop it — click to see** | The Multi-Roblox check found a change in the Roblox build. | Opens **Settings › Roblox version & graphics**. |
+| Green | **On** | Working: several Roblox windows can be open. | Opens the details. |
+| Yellow | **Not working yet** | Roblox was open before Multi-Roblox was turned on. | Opens the details with the fix. |
+| Yellow | **Roblox closed windows** | Roblox closed a window when another one opened. | Opens **Settings › Roblox version**. |
+| Yellow | **A Roblox update may stop it — click to see** | The Multi-Roblox check found a change in the Roblox build. | Opens **Settings › Roblox version**. |
+
+Point at the text for what it means.
 
 The same switch is in **Settings › Launching › Multi-Roblox**, with a pill (**Off**, **Ready**, **Not ready**) and a **Details** link.
 
@@ -57,13 +59,13 @@ While Multi-Roblox is on, its details dialog has two switches:
 | Switch | Default | What it does |
 |---|---|---|
 | **Always open Roblox windowed** | On | All Roblox windows share one fullscreen setting, so with several open some end up fullscreen and some don't. Bloxkeep opens them windowed and puts your setting back once they're open. |
-| **Tile the windows after opening** | Off | Once the accounts are open, the windows are laid out side by side on the main screen. Same as **Settings › Launching › When a Roblox window opens › Tile them side by side**. |
+| **Tile windows side by side** | Off | Once the accounts are open, the windows are laid out side by side on the main screen. Same as **Settings › Launching › When a Roblox window opens › Tile windows side by side**. |
 
 **Turn off Multi-Roblox** at the bottom of the dialog turns the feature off.
 
 ## The Multi-Roblox check
 
-Find it under **Settings › Roblox version › Roblox updates › Multi-Roblox check**. Bloxkeep checks each new Roblox build for changes that could stop Multi-Roblox, usually before the build reaches your PC.
+Find it under **Settings › Roblox version › Multi-Roblox check**. Bloxkeep checks each new Roblox build for changes that could stop Multi-Roblox, usually before the build reaches your PC.
 
 <img src="../screenshots/roblox-updates.png" width="760" alt="Settings, Roblox version and graphics: the Multi-Roblox check shows Changed, may be blocked, with a what-to-do note and the update history">
 
@@ -85,7 +87,7 @@ Find it under **Settings › Roblox version › Roblox updates › Multi-Roblox 
 <details>
 <summary>More details</summary>
 
-- **Next Roblox build** shows the result for a build Roblox hasn't released yet. **Update history** lists every build seen on this PC.
+- **Coming next (not out yet)** shows the result for a build Roblox hasn't released yet. **Update history** lists every build seen on this PC.
 - **Hide** removes the "Roblox closed windows" note. It also goes once two or more accounts are in a game together, or when Roblox updates.
 - **How it works** opens a longer explanation (in English): [roblox-watch.md](../roblox-watch.md).
 
@@ -93,7 +95,7 @@ Find it under **Settings › Roblox version › Roblox updates › Multi-Roblox 
 
 ## Open Roblox with
 
-**Settings › Launching › Launcher & timing › Open Roblox with** chooses the program that opens Roblox. Bloxstrap, Fishstrap and Voidstrap keep your mods.
+**Settings › Launching › How Roblox opens, and waiting times › Open Roblox with** chooses the program that opens Roblox. Bloxstrap, Fishstrap and Voidstrap keep your mods.
 
 | Option | Notes |
 |---|---|
@@ -101,9 +103,10 @@ Find it under **Settings › Roblox version › Roblox updates › Multi-Roblox 
 | **Bloxstrap**, **Fishstrap**, **Voidstrap** | Keep your mods. |
 | Other Bloxstrap-style launchers | Listed when found on this PC. |
 | **Roblox (official)** | The client from roblox.com. |
-| **RobloxPlayerBeta directly (skip launchers)** | No launcher at all. Try it when a launcher blocks several windows. |
+| **Roblox directly (no launcher)** | No launcher at all. Try it when a launcher blocks several windows. |
 | **Roblox (Microsoft Store) — being tested** | Listed when the Microsoft Store's Roblox is installed. Each account opens in a window of its own. |
-| **Your launcher:** *name* | A program you picked with **Choose…**. If it is moved or deleted, launching says so. |
+| **Your launcher:** *name* | A program you picked with **Other launcher…**. If it is moved or deleted, launching says so. |
+| **Roblox VNG** | Roblox VNG's own client. Always last, and used only when you pick it. Greyed out when it isn't installed. |
 
 An option that isn't installed shows "*name* — not installed" and is greyed out. When the Microsoft Store's Roblox is the only Roblox on the PC, a note here says so.
 

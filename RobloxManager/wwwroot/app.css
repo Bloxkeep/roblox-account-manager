@@ -1528,16 +1528,43 @@ kbd { font: 500 var(--fs-1) var(--font); padding: 1px 6px; border-radius: var(--
 .btn.sm.on { border-color: var(--muted); background: var(--surface-3); color: var(--text); box-shadow: none; }
 .btn.w { width: 100%; }
 /* "Restart to update" in the sidebar: the version sits under the label. */
-.sys-ver { margin-top: 8px; font-size: var(--fs-2); color: var(--text-2); }
+.sys-ver { margin-top: 6px; font-size: var(--fs-2); color: var(--text-2); }
 .sys-ver:empty { display: none; }
-.sys-close { margin-top: 10px; color: var(--bad-ink); }
+/* Close all: a quiet power icon at the end of the card's heading, red only once pointed at (it closes every window). */
+/* Roblox on this PC and Multi-Roblox, one panel (#sys-rig): themes that draw cards draw it as theirs. */
+.side-card.rig { padding: 12px 12px 4px; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); }
+#sys-rig .multi { margin-top: 10px; padding: 8px 0; border: 0; border-top: 1px solid var(--line); border-radius: 0; background: transparent; box-shadow: none; }
+#sys-rig .multi:hover { background: transparent; }
+.sys-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 28px; }
+.sys-head[hidden] { display: none; }
+.sys-count { min-width: 0; font-size: var(--fs-3); color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sys-count b { font: 700 22px/1 var(--font-display); color: var(--text); font-variant-numeric: tabular-nums; margin-right: 2px; }
+.sys-ram { color: var(--muted); }
+.sys-ram::before { content: "·"; margin: 0 6px; }
+/* The lobby: a block face for every Roblox window, ten across, each standing on a column of the baseplate below. */
+.lobby { display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px; align-items: end; min-height: 18px; margin-top: 10px; }
+.face { display: block; width: 100%; aspect-ratio: 1; overflow: visible; animation: face-in .32s cubic-bezier(.22, 1, .36, 1) both; }
+.face .fb { fill: var(--face); }
+.face .fi { fill: var(--face-ink); }
+.face .fl { fill: none; stroke: var(--face-ink); stroke-width: 2.6; stroke-linecap: round; }
+.face.drop .fb { fill: var(--dim); }
+@keyframes face-in { from { opacity: 0; transform: translateY(-6px); } }
+.sys-more { display: grid; place-items: center; aspect-ratio: 1; border-radius: 5px; background: var(--surface-3); font-style: normal; font-size: var(--fs-1); font-weight: 700; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.sys-none { grid-column: 1 / -1; align-self: center; font-size: var(--fs-2); color: var(--muted); }
+/* The baseplate: two rows of ten studs, 5 % of the PC's RAM each: Roblox's, then the rest in use, then free. */
+.bricks { display: grid; grid-template-columns: repeat(10, 1fr); grid-auto-rows: 6px; gap: 3px; margin: 4px 0 8px; }
+.bricks i { border-radius: 2px; background: var(--surface-3); transition: background .4s; }
+.bricks i.r { background: var(--meter); }
+.bricks i.o { background: var(--meter-2); }
+#sys-card.hot .bricks i.o { background: var(--warn); }
+.sys-close { display: grid; place-items: center; width: 26px; height: 26px; margin-right: -4px; padding: 0; border: 0; border-radius: var(--r-xs); background: transparent; color: var(--muted); cursor: pointer; transition: background .15s, color .15s; }
+.sys-close[hidden] { display: none; }
+.sys-close:hover { background: var(--bad-soft); color: var(--bad-ink); }
 .sys-close .i { width: 15px; height: 15px; }
-/* The mini window's icon among the nav buttons: only while the sidebar is collapsed (the card with the full button is hidden then). */
-.nav.nav-mini { display: none; }
+/* The mini window: under the tabs, set apart by a hairline (it opens a window, it isn't a page). Pressed while open. */
+.nav.nav-mini { position: relative; margin-top: 12px; }
+.nav.nav-mini::before { content: ""; position: absolute; top: -7px; left: 12px; right: 12px; border-top: 1px solid var(--line-2); }
 .nav.nav-mini[aria-pressed="true"] { background: var(--surface-3); color: var(--text); }
-.sys-mini { margin-top: 10px; }
-.sys-mini .i { width: 15px; height: 15px; }
-.sys-mini[aria-pressed="true"] { background: var(--surface-3); border-color: var(--line-3); }
 /* On the baseline: its middle falls between the digits' middle and the lowercase letters' (raised 1px it sat high). */
 .sys-ver .dot { display: inline-block; width: 7px; height: 7px; margin-right: 7px; border-radius: 50%; background: var(--dim); vertical-align: calc(.5cap - 3.5px); } /* on the capitals' middle */
 .sys-ver .dot.ok { background: var(--ok); }
@@ -1785,7 +1812,10 @@ input[type=range]:focus-visible { outline: 1px solid var(--focus); outline-offse
 .meter i.other { background: var(--meter-2); }
 #sys-card.hot .meter i.other { background: var(--warn); }
 #sys-card.hot .sys-foot { color: var(--warn-ink); }
-.sys-foot { font-size: var(--fs-2); color: var(--muted); }
+/* Under the bar: the PC's RAM (the bar's number) on the left, Roblox's CPU and GPU on the right. */
+.sys-foot { display: flex; justify-content: space-between; gap: 8px; font-size: var(--fs-2); color: var(--muted); font-variant-numeric: tabular-nums; }
+.sys-foot > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sys-foot > span:first-child { color: var(--text-2); }
 
 .multi { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 6px; border-radius: 0; border: 0; border-top: 1px solid var(--line); background: transparent; transition: border-color .15s, background .15s; }
 .multi:hover { background: var(--hover); }
@@ -1798,6 +1828,11 @@ input[type=range]:focus-visible { outline: 1px solid var(--focus); outline-offse
 .multi.ok .led { background: var(--ok); box-shadow: 0 0 0 4px var(--ok-soft); }
 .multi.ok small { color: var(--ok-ink); }
 .multi.warn .led { background: var(--warn); animation: blink 1.4s ease-in-out 3; }
+/* With the wide sidebar, the switch already says on or off: the light and its word show only when something is wrong
+   (not ready, Roblox closed windows, the lock changed). Collapsed, the light is all there is, so it stays. */
+@media (min-width: 1181px) {
+  .multi:is(.ok, .off) :is(.led, small) { display: none; }
+}
 .multi.warn small { color: var(--warn-ink); }
 @keyframes blink { 50% { opacity: .35; } }
 .side-foot { display: grid; gap: 10px; margin-top: 8px; }
@@ -3164,7 +3199,7 @@ body:has(.lock) #toasts { bottom: 24px; }
 @media (max-width: 1180px) {
   .shell { grid-template-columns: 76px minmax(0, 1fr); }
   .side > .side-nav { scrollbar-width: none; } /* in a short window it still scrolls: a bar would squeeze the icons */
-  .brand-name, .brand-sub, .nav span, .nav em, .side-card, .multi div, .multi .switch, .side-foot .btn span:not(.vault-face), .warn-card span { display: none; }
+  .brand-name, .brand-sub, .nav span, .nav em, .side-card:not(.rig), #sys-card, .multi div, .multi .switch, .side-foot .btn span:not(.vault-face), .warn-card span { display: none; }
   .nav > svg.i, .side-foot .btn > svg.i { translate: none; } /* alone in its button now: on its middle */
   .side-nav > .nav.on > * { transform: none; } /* and no step-in: it would leave the middle */
   .warn-card { justify-content: center; padding: 10px 0; }
@@ -3175,10 +3210,9 @@ body:has(.lock) #toasts { bottom: 24px; }
   .side-lock { flex-direction: column; align-items: center; }
   .side-lock .btn.w { flex: none; width: 40px; }
   .nav { justify-content: center; padding: 0; }
-  /* The mini window opens a window, it isn't a tab: a hairline and a gap set it apart from the tabs above. */
-  .nav.nav-mini { display: flex; position: relative; margin-top: 12px; }
-  .nav.nav-mini::before { content: ""; position: absolute; top: -9px; left: 12px; right: 12px; border-top: 1px solid var(--line-2); }
   .multi { justify-content: center; padding: 9px 0 7px; }
+  #sys-rig { padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+  #sys-rig .multi { margin-top: 0; padding: 9px 0 7px; border-top: 1px solid var(--line); }
   /* Only the light is left of the Multi-Roblox card: a short word under it says what the light is. */
   .multi-open { flex: none; flex-direction: column; gap: 5px; }
   .multi-open::after { content: "Multi"; font: 700 var(--fs-1)/1 var(--font); letter-spacing: .02em; color: var(--muted); }
@@ -3248,7 +3282,7 @@ body:has(.lock) #toasts { bottom: 24px; }
 @media (max-height: 760px) and (min-width: 1181px) {
   .side { gap: 4px; padding-top: 14px; }
   .nav { height: 36px; }
-  #sys-card .meter, #sys-card .sys-foot, #sys-card .sys-ver { display: none; } /* #sys-usage is a .sys-foot */
+  #sys-card .bricks, #sys-card .sys-foot, #sys-card .sys-ver { display: none; } /* #sys-usage is in .sys-foot */
   .side-card { padding: 10px 12px; }
 }
 /* The sign-in window in a short window: tighter, so the other ways and the privacy note are within reach. */
@@ -3286,7 +3320,9 @@ body:has(.lock) #toasts { bottom: 24px; }
 }
 /* Bloxkeep's springs (here, after every control's own rules, so their transitions don't undo these): what you press or pick goes past where it lands and comes back (a damped spring, sampled).
    --spring for small things that give and bounce back, --spring-soft for whole pages and longer moves. */
-:root { --spring: linear(0, 0.09, 0.307, 0.572, 0.826, 1.028, 1.161, 1.225, 1.23, 1.194, 1.137, 1.074, 1.019, 0.978, 0.954, 0.946, 0.949, 0.96, 0.974, 0.988, 1, 1.008, 1.012, 1.013, 1); --spring-soft: linear(0, 0.042, 0.146, 0.284, 0.435, 0.582, 0.715, 0.828, 0.919, 0.987, 1.035, 1.064, 1.079, 1.084, 1.08, 1.071, 1.059, 1.047, 1.034, 1.023, 1.014, 1.006, 1.001, 0.997, 1); }
+:root {
+  --face: #f5c933; --face-ink: #15181e; /* the logo's block face (the sidebar's lobby) */
+  --spring: linear(0, 0.09, 0.307, 0.572, 0.826, 1.028, 1.161, 1.225, 1.23, 1.194, 1.137, 1.074, 1.019, 0.978, 0.954, 0.946, 0.949, 0.96, 0.974, 0.988, 1, 1.008, 1.012, 1.013, 1); --spring-soft: linear(0, 0.042, 0.146, 0.284, 0.435, 0.582, 0.715, 0.828, 0.919, 0.987, 1.035, 1.064, 1.079, 1.084, 1.08, 1.071, 1.059, 1.047, 1.034, 1.023, 1.014, 1.006, 1.001, 0.997, 1); }
 /* Pressed, everything you click sinks in at once and springs back when let go (buttons, icon buttons, tabs, chips,
    segments, Settings' pages), by the scale property so a control placed with transform stays put; a switch's knob stretches toward where it goes and bounces into place. */
 .btn, :is(.icon-btn, .nav, .chip, .seg button, .set-nav-item) { transition-property: background, color, border-color, box-shadow, opacity, scale; transition-duration: .15s, .15s, .15s, .15s, .15s, .5s; transition-timing-function: ease, ease, ease, ease, ease, var(--spring); }
@@ -6648,7 +6684,7 @@ body.browser-page { background: linear-gradient(var(--bg), var(--bg)), linear-gr
 /* The games as boxes sized by play time; a click counts only that game. */
 .gm-chip { height: 26px; margin-left: auto; font-size: var(--fs-2); }
 .gm-chip .i { width: 13px; height: 13px; }
-.gm { position: relative; }
+.gm-map { position: relative; } /* not .gm: the Games tab has that (display: contents), which left this map with no size */
 .gm-box { position: absolute; display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; gap: 6px; padding: 10px; overflow: hidden;
   border: 0; border-radius: var(--r-md); background: oklch(var(--g-l) var(--g-c) var(--h) / .22); color: var(--text); text-align: left; cursor: pointer;
   transition: background .15s, outline-color .15s; outline: 1px solid transparent; outline-offset: -2px; }

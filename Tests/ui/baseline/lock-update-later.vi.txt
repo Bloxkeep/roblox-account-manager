@@ -1,5 +1,5 @@
 == end
-html [data-theme="dark" lang="vi"]
+html [class="" data-theme="dark" lang="vi"]
 #app
   div.lock
     div.dots

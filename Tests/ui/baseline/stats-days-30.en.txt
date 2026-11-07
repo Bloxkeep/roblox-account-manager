@@ -16,6 +16,10 @@ html [data-theme="dark" lang="en"]
         button.nav [title="Presets"]
           svg.i #1pvni8o
           span "Presets"
+        button.nav [title="Games (2 new)"]
+          svg.i #17gqz13
+          span "Games"
+          em.nav-news [id="nav-news"] "2"
         button.nav [title="Macros (Beta)"]
           svg.i #kx2qfl
           span "Macros"
@@ -29,39 +33,58 @@ html [data-theme="dark" lang="en"]
         button.nav [title="Settings"]
           svg.i #tbghvg
           span "Settings"
+        button.nav.nav-mini [id="sys-mini" title="Mini window" aria-pressed="false"]
+          svg.i #1y8kmj1
+          span "Mini window"
       div.side-bottom
         div [id="side-warn"]
-        div.side-card [id="sys-card"]
-          h4 "Roblox on this PC"
-          div.sys-row
-            span [title="Main · PID 1111\nFarm 1 · PID 2222"]
-              b [id="sys-count"] "2"
-              span [id="sys-count-label"] "windows"
-            span [id="sys-ram"] "1.7 GB"
-          div.meter [id="sys-meter"]
-            i.roblox [style="transform:scaleX(0.054)"]
-            i.other [style="transform:translateX(5.4%) scaleX(0.576)"]
-          div.sys-foot [id="sys-foot"] "PC RAM 63% used · 12 GB free"
-          div.sys-foot [id="sys-usage" title="Roblox windows only, not the whole PC"] "CPU 12% · GPU 34%"
-          div.sys-ver [id="sys-ver"]
-            span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
-              i.dot.ok
-          button.btn.sm.sys-mini.w [id="sys-mini" aria-pressed="false"]
-            svg.i #1y8kmj1
-            span "Mini window"
-          button.btn.sm.sys-close.w [id="sys-close"]
-            svg.i #16z0s1r
-            span "Close all"
-        div [id="multi-card"]
-          div.multi.ok
-            button.multi-open [title="Multi-Roblox: On: several Roblox windows can be open"]
-              span.led
-              div
-                b "Multi-Roblox"
-                small "On"
-            label.switch [title="Turn off Multi-Roblox"]
-              input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
-              span
+        div.rig.side-card [id="sys-rig"]
+          div.sys [id="sys-card"]
+            div.sys-head
+              span.sys-count [title="Main · PID 1111\nFarm 1 · PID 2222"]
+                b [id="sys-count"] "2"
+                span [id="sys-count-label"] "windows"
+                span.sys-ram [id="sys-ram"] "1.7 GB"
+              button.sys-close [id="sys-close" type="button" title="Close all" aria-label="Close all"]
+                svg.i #16z0s1r
+            div.lobby
+              svg.face.play #1pg0baw
+              svg.face.play #1jzq296
+            div.bricks [id="sys-meter" title="PC RAM 63% used · 12 GB free" aria-hidden="true"]
+              i.r
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i.o
+              i
+              i
+              i
+              i
+              i
+              i
+              i
+            div.sys-foot
+              span [id="sys-foot" title="PC RAM 63% used · 12 GB free"] "PC RAM 63%"
+              span [id="sys-usage" title="Roblox windows only, not the whole PC"] "CPU 12% · GPU 34%"
+            div.sys-ver [id="sys-ver"]
+              span [title="Roblox 0.742.0.7421053"] "Roblox 0.742 · up to date"
+                i.dot.ok
+          div [id="multi-card"]
+            div.multi.ok
+              button.multi-open [title="Multi-Roblox: On: several Roblox windows can be open"]
+                div
+                  b "Multi-Roblox"
+              label.switch [title="Turn off Multi-Roblox"]
+                input [id="side-multi" type="checkbox" aria-label="Multi-Roblox" checked=true]
+                span
         div.side-foot
           div [id="update-slot"]
           div.side-lock
@@ -71,8 +94,8 @@ html [data-theme="dark" lang="en"]
             button.btn.ghost.side-sq.vault-btn [title="Switch vault (Vault 1)" aria-label="Switch vault (Vault 1)"]
               span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(21, 128, 61);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
     main.main
-      section.seen.view [id="view-accounts"]
-      section.seen.view [id="view-stats"]
+      section.seen.view [id="view-accounts" style="--dir:1"]
+      section.seen.view [id="view-stats" style="--dir:1"]
         header.top
           div.top-title
             h1 "Statistics"
@@ -993,7 +1016,7 @@ html [data-theme="dark" lang="en"]
                   span.sd-time [title="From each drop to the account’s next session, 12 h at most."] "≈ 3 h 8 min lost"
               div.stat-card [id="stats-games"]
                 h3 "Top games"
-                div.gm [style="height:236px"]
+                div.gm-map [style="height:236px"]
                   button.big.gm-box [type="button" title="Blox Fruits · 34 h 35 min · 55 %" aria-pressed="false" style="--h:261;height:232px;left:2px;top:2px;width:478.9px"]
                     span.gm-txt
                       b "Blox Fruits"
@@ -1199,6 +1222,412 @@ html [data-theme="dark" lang="en"]
                       b [title="Opened by hand, or before Bloxkeep 1.0.5 noted presets."] "Not from a preset"
                       small "2 accounts · 13 %"
                     span.sg-time "8 h 10 min"
+              section.cm-board.stat-card [id="alts-board" aria-labelledby="alts-board-h"]
+                svg.cm-defs #9n0u14
+                div.cm-head
+                  svg.cm-logo #lb7mp8
+                  div.cm-title
+                    h3 [id="alts-board-h"] "Most alts now"
+                    span.cm-live "Live · PCs running Bloxkeep now"
+                      i
+                  div.cm-stats
+                    span
+                      svg.cm-face #lb7mp8
+                      span
+                        b "1,384"
+                        small "accounts"
+                    span
+                      svg.i #1y8kmj1
+                      span
+                        b "71"
+                        small "PCs"
+                    span
+                      span
+                        b "19.5"
+                        small "per PC"
+                ol.cm-rows [style="--fg:2px;--fg1:2px;--fs:10px;--fs1:10px"]
+                  li.cm-row.p1 [aria-label="1. Kho alt VN: 96 alts"]
+                    span.cm-rank
+                      span.cm-medal "1"
+                    span.cm-name
+                      span [title="Kho alt VN"] "Kho alt VN"
+                      small "Top right now"
+                    span.cm-faces
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                    b "96"
+                      small "alts"
+                  li.cm-row.p2 [aria-label="2. FarmHub: 74 alts"]
+                    span.cm-rank
+                      span.cm-medal "2"
+                    span.cm-name
+                      span [title="FarmHub"] "FarmHub"
+                    span.cm-faces
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                    b "74"
+                  li.cm-row.p3 [aria-label="3. tuan_pc: 40 alts"]
+                    span.cm-rank
+                      span.cm-medal "3"
+                    span.cm-name
+                      span [title="tuan_pc"] "tuan_pc"
+                    span.cm-faces
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                    b "40"
+                  li.cm-row [aria-label="4. Bee Farm 24h: 31 alts"]
+                    span.cm-rank "4"
+                    span.cm-name
+                      span [title="Bee Farm 24h"] "Bee Farm 24h"
+                    span.cm-faces
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                    b "31"
+                  li.cm-row [aria-label="5. GAG stock: 22 alts"]
+                    span.cm-rank "5"
+                    span.cm-name
+                      span [title="GAG stock"] "GAG stock"
+                    span.cm-faces
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                    b "22"
+                  li.cm-row [aria-label="6. PC-2: 18 alts"]
+                    span.cm-rank "6"
+                    span.cm-name
+                      span [title="PC-2"] "PC-2"
+                    span.cm-faces
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                    b "18"
+                  li.cm-row [aria-label="7. Night Shift: 15 alts"]
+                    span.cm-rank "7"
+                    span.cm-name
+                      span [title="Night Shift"] "Night Shift"
+                    span.cm-faces
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                    b "15"
+                  li.cm-row [aria-label="8. Lam.alts: 12 alts"]
+                    span.cm-rank "8"
+                    span.cm-name
+                      span [title="Lam.alts"] "Lam.alts"
+                    span.cm-faces
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                    b "12"
+                  li.cm-row [aria-label="9. khoa: 9 alts"]
+                    span.cm-rank "9"
+                    span.cm-name
+                      span [title="khoa"] "khoa"
+                    span.cm-faces
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                      svg.cm-face #lb7mp8
+                    b "9"
+                div.cm-foot
+                  div.cm-me
+                    label
+                      span "Join with a name"
+                      input.field.sm [placeholder="Farm PC" maxlength="20" aria-label="Join with a name" value=""]
+                  small "Only this name and how many accounts run here are shown. Empty: off the board."
 #layer
 #toasts
 -- commands

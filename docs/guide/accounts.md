@@ -26,7 +26,7 @@ How to add accounts, read their cards, find and select them, and use the account
 | **Sign in with a browser** | The other ways fail, or Roblox wants an extra check. | The official roblox.com sign-in page. Needs www.roblox.com and Microsoft Edge WebView2. Not for Roblox VNG. |
 | **Paste a cookie** | You already have the account's `.ROBLOSECURITY` cookie. | Only **Cookie .ROBLOSECURITY** is required. |
 | **Open roblox.com**, then **Save to Bloxkeep** | You mostly want the website, several accounts side by side. | A blank tab in the Bloxkeep browser window ([Open website](playing.md#open-website)). Sign in, then **Save to Bloxkeep**. |
-| **Import from: Bloxkeep file** | Moving accounts from another PC or a backup. | Needs that file's master password ([Import](#import-from-another-bloxkeep-file)). |
+| **With a Bloxkeep file** | Moving accounts from another PC or a backup. | Needs that file's master password ([Import](#import-from-another-bloxkeep-file)). |
 
 Adding an account that is already in the list never makes a copy: its sign-in is updated. Bloxkeep can't read other account managers' files; if the other tool shows an account's cookie, use **Paste a cookie**.
 
@@ -92,6 +92,8 @@ Open it with **⋯ More** on a card, or right-click the account. If the account 
 | **Auto-rejoin** | Turns auto-rejoin on or off for these accounts. | — |
 | **FPS limit in Roblox** | This account's own limit, from its next opening. Works even when **Apply to** is **Nobody**. Check it with Shift+F5 in the Roblox window. | — |
 | **Use Roblox settings** | Includes these accounts in **Roblox settings** (graphics, FPS, volume). | Shown only when **Settings › Staying in game › Apply to** is **Chosen accounts**. |
+| **Main account** | Marks the account you play on yourself (ticked when it is). It opens without Bloxkeep's Roblox settings or Fast Flags; **Select all** skips it; Save RAM, the RAM limit, **Arrange windows**, **Prioritize the window you play** and **Restart a heavy window** leave its window alone. | — |
+| **Friend each other** | Makes every pair of the selected accounts Roblox friends. If Roblox asks for a check, it shows to solve. | Shown only with several selected; greyed out with fewer than two signed-in accounts (Roblox VNG not counted). |
 | **Roblox profile** | Opens the profile on roblox.com in your browser. | Several selected, or no user ID. |
 | **Open website** | Opens roblox.com signed in as this account, in the Bloxkeep browser window. | Several selected, or Roblox VNG. |
 | **Copy username** | Copies the username. | Several selected. |
@@ -126,11 +128,11 @@ The **Needs sign-in** filter lists them all. **Check sign-ins every day** finds 
 
 ## Import from another Bloxkeep file
 
-For accounts in `vault.rmv` from another PC, or a `Bloxkeep-backup-…` file. Open it from **Other ways to add › Import from another Bloxkeep vault file…**, or **Settings › Backup & data › Import accounts from a vault file › Import…**.
+For accounts in `vault.rmv` from another PC, or a `Bloxkeep-backup-…` file. Open it from **Other ways to add › Import from another Bloxkeep file…**, or **Settings › Backup & data › Import accounts from a Bloxkeep file › Import…**.
 
 1. **Choose file…** and pick the `.rmv` file.
 2. Type **Master password of this file** and press **Open**.
-3. Tick the accounts to bring over. Each shows **New** or **Already here**. **All** / **None** tick everything or nothing.
+3. Tick the accounts to bring over. Each shows **New** or **Already here**. **All new** / **None** tick the new ones or nothing.
 4. Optionally tick **Also import presets (N)**, then press **Import**.
 
 - The file itself isn't changed. Imported accounts are locked with this Bloxkeep's master password.

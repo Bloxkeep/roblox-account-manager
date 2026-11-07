@@ -1,5 +1,5 @@
 == end
-html [data-theme="dark" lang="vi"]
+html [class="" data-theme="dark" lang="vi"]
 #app
   div.lock
     div.dots
@@ -7,13 +7,14 @@ html [data-theme="dark" lang="vi"]
       div.lang [role="group" aria-label="Ngôn ngữ"]
         button [title="English" aria-pressed="false"] "EN"
         button.on [title="Tiếng Việt" aria-pressed="true"] "VI"
-    form.lock-card [id="lock-form" autocomplete="off"]
+    form.lock-card.opened [id="lock-form" autocomplete="off"]
       img.logo-img [alt="" src="logo.svg"]
       div.lock-vault
         span.sm.vault-face
           img [alt="" src="scene-halong.svg"]
-        b [title="Farm"] "Farm"
-        button.link [type="button"] "Đổi vault"
+        span.lock-vault-name
+          b [title="Farm"] "Farm"
+          button.link [type="button"] "Đổi vault"
       h2 "Chào mừng trở lại"
       p "Nhập mật khẩu chủ để mở khóa."
       div.stack

@@ -11,6 +11,9 @@ html [data-theme="dark" lang="vi"]
           em [id="nav-count"] "7"
         button.nav [title="Preset"]
           svg.i #1pvni8o
+        button.nav [title="Game (2 tin mới)"]
+          svg.i #17gqz13
+          em.nav-news [id="nav-news"] "2"
         button.nav.on [title="Macro (Beta)"]
           svg.i #kx2qfl
         button.nav [title="Theo dõi game"]
@@ -19,14 +22,15 @@ html [data-theme="dark" lang="vi"]
           svg.i #ktpp14
         button.nav [title="Cài đặt"]
           svg.i #tbghvg
-        button.nav.nav-mini [title="Cửa sổ nhỏ" aria-pressed="false"]
+        button.nav.nav-mini [id="sys-mini" title="Cửa sổ nhỏ" aria-pressed="false"]
           svg.i #1y8kmj1
       div.side-bottom
         div [id="side-warn"]
-        div [id="multi-card"]
-          div.multi.ok
-            button.multi-open [title="Multi-Roblox: Đang bật: mở được nhiều cửa sổ Roblox"]
-              span.led
+        div.rig.side-card [id="sys-rig"]
+          div [id="multi-card"]
+            div.multi.ok
+              button.multi-open [title="Multi-Roblox: Đang bật: mở được nhiều cửa sổ Roblox"]
+                span.led
         div.side-foot
           div [id="update-slot"]
           div.side-lock
@@ -35,8 +39,8 @@ html [data-theme="dark" lang="vi"]
             button.btn.ghost.side-sq.vault-btn [title="Đổi vault (Vault 1)" aria-label="Đổi vault (Vault 1)"]
               span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(21, 128, 61);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
     main.main
-      section.seen.view [id="view-accounts"]
-      section.seen.view [id="view-macros"]
+      section.seen.view [id="view-accounts" style="--dir:1"]
+      section.seen.view [id="view-macros" style="--dir:1"]
         header.top
           div.top-title
             h1 "Macro"

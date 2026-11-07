@@ -58,4 +58,4 @@ html [data-theme="retro" lang="en"]
           button.btn.danger.sm [type="button" FOCUSED] "Close all"
 -- commands
   ready {}
-  size {"h":386,"w":300}
+  size {"h":386,"w":308}

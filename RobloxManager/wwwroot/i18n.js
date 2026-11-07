@@ -15,7 +15,7 @@ window.I18N = {
     'lock.empty': 'Enter your master password.',
 
     'brand.sub': 'Roblox account manager', 'nav.accounts': 'Accounts', 'nav.settings': 'Settings',
-    'sys.title': 'Roblox on this PC', 'sys.windows': 'windows', 'sys.window1': 'window',
+    'sys.title': 'Roblox on this PC', 'sys.none': 'No Roblox open', 'sys.mood.play': 'in a game', 'sys.mood.menu': 'in the menu', 'sys.mood.drop': 'dropped', 'sys.otherWindow': 'Roblox window not opened by Bloxkeep', 'sys.moreTip': '{n} more windows', 'sys.windows': 'windows', 'sys.window1': 'window',
     'upd.restart': 'Restart to update', 'upd.restartTip': 'Restart Bloxkeep to install {v}. Roblox keeps running.',
     'upd.restartTipAuto': 'Restart to install {v} now, or it installs by itself later. Roblox keeps running.',
     'rbx.latest': 'Up to date', 'rbx.latestShort': 'up to date', 'rbx.available': '{v} available', 'rbx.newBuild': 'update available',
@@ -453,7 +453,7 @@ window.I18N = {
     'am.fine': 'Never share your cookie — it’s the key to your account.',
     'am.needCookie': 'Paste the .ROBLOSECURITY cookie.', 'am.add': 'Add account', 'am.save': 'Save',
 
-    'sys.used': 'PC RAM {pct}% used · {free} free', 'sys.usageTip': 'Roblox windows only, not the whole PC',
+    'sys.used': 'PC RAM {pct}% used · {free} free', 'sys.ramPct': 'PC RAM {pct}%', 'sys.usageTip': 'Roblox windows only, not the whole PC',
     'card.rejoinTip': 'Auto-rejoin is on',
     'm.autoRejoin': 'Auto-rejoin', 'm.rejoinPreset': 'The preset this window was opened with decides this until it closes.', 'm.arrange': 'Arrange Roblox windows',
     'm.monitor': 'Screen {n} ({w}×{h})', 'm.primary': 'main',
@@ -970,7 +970,7 @@ window.I18N = {
     'lock.empty': 'Bạn chưa nhập mật khẩu chủ.',
 
     'brand.sub': 'Quản lý tài khoản Roblox', 'nav.accounts': 'Tài khoản', 'nav.settings': 'Cài đặt',
-    'sys.title': 'Roblox trên máy này', 'sys.windows': 'cửa sổ', 'sys.window1': 'cửa sổ',
+    'sys.title': 'Roblox trên máy này', 'sys.none': 'Chưa mở Roblox', 'sys.mood.play': 'đang trong game', 'sys.mood.menu': 'ở menu', 'sys.mood.drop': 'bị văng', 'sys.otherWindow': 'Cửa sổ Roblox không mở bằng Bloxkeep', 'sys.moreTip': 'Thêm {n} cửa sổ', 'sys.windows': 'cửa sổ', 'sys.window1': 'cửa sổ',
     'upd.restart': 'Khởi động lại để cập nhật', 'upd.restartTip': 'Khởi động lại Bloxkeep để cài bản {v}. Roblox vẫn chạy bình thường.',
     'upd.restartTipAuto': 'Khởi động lại để cài {v} ngay, không thì sẽ tự cài sau. Roblox vẫn chạy.',
     'rbx.latest': 'Đã là bản mới nhất', 'rbx.latestShort': 'mới nhất', 'rbx.available': 'có bản {v}', 'rbx.newBuild': 'có bản mới',
@@ -1405,7 +1405,7 @@ window.I18N = {
     'am.fine': 'Đừng gửi cookie cho ai. Có cookie là vào được tài khoản của bạn.',
     'am.needCookie': 'Bạn chưa dán cookie .ROBLOSECURITY.', 'am.add': 'Thêm tài khoản', 'am.save': 'Lưu',
 
-    'sys.used': 'RAM đã dùng {pct}% · trống {free}', 'sys.usageTip': 'Chỉ tính cửa sổ Roblox, không tính cả máy',
+    'sys.used': 'RAM đã dùng {pct}% · trống {free}', 'sys.ramPct': 'RAM máy {pct}%', 'sys.usageTip': 'Chỉ tính cửa sổ Roblox, không tính cả máy',
     'card.rejoinTip': 'Đang bật Tự vào lại',
     'm.autoRejoin': 'Tự vào lại', 'm.rejoinPreset': 'Cửa sổ này do Preset mở nên làm theo Preset cho tới khi đóng.', 'm.arrange': 'Xếp cửa sổ Roblox',
     'm.monitor': 'Màn hình {n} ({w}×{h})', 'm.primary': 'chính',
