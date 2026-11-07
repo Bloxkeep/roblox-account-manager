@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Blocks, Inline, NewsCtx, timeText, type Block, type Field } from './DiscordBlocks';
 import { Icon, useHost } from './host';
 import { TextBox } from './settings/parts';
+import { useAskWhile } from './useAskWhile';
 
 export type FeedCard = {
   id: string; src: string; game: string; at: number; title: string; text: string; fields: Field[]; picture: string | null; image?: string | null;
@@ -31,10 +32,10 @@ export function useFeedCards(shown: boolean) {
   const { call, on } = useHost();
   const [cards, setCards] = useState<FeedCard[]>(cardsNow || NONE);
   useEffect(() => on('feedCards', (d?: FeedCard[]) => { cardsNow = d || []; setCards(cardsNow); }), [on]);
-  useEffect(() => {
-    if (!shown || cardsNow) return;
-    (call('feedCards', {}, { silent: true }) as Promise<FeedCard[] | undefined>).then(d => { if (d) { cardsNow = d; setCards(d); } });
-  }, [shown]);
+  useAskWhile(shown, cards === NONE, () => {
+    if (cardsNow) { setCards(cardsNow); return Promise.resolve(); }
+    return (call('feedCards', {}, { silent: true }) as Promise<FeedCard[] | undefined>).then(d => { if (d) { cardsNow = d; setCards(d); } });
+  });
   return { cards, loaded: cards !== NONE };
 }
 

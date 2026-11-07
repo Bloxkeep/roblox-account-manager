@@ -517,6 +517,7 @@
     launching: false, checking: false, multi, settings: locked ? null : settings, accounts: locked ? [] : accounts, discord: locked ? null : discord,
   });
   // Roblox windows of accounts deleted while playing: like the app, deleting doesn't close them, and they still count.
+  let wikiFails = 0;
   let orphans = Number(params.get('others')) || 0; // ?others=1: a Roblox window Bloxkeep didn't open
   const metrics = () => ({
     accounts: accounts.filter(a => a.state === 'running').map((a, i) => ({ id: a.id, ramMb: 780 + i * 140 + Math.round(Math.random() * 30) })),
@@ -640,6 +641,8 @@
         // Pilgrammed wikis (wiki-sample.json). ?wiki=0 the bot can't be reached.
         case 'wikiGames': {
           if (params.get('wiki') === '0') throw new Error(tx("The wiki can't be reached right now. Try again in a moment.", 'Chưa tải được wiki. Thử lại sau chút nhé.'));
+          // ?wikifail=N: the first N asks refused, as while Bloxkeep is still locked after Restart to update.
+          if (wikiFails < (Number(params.get('wikifail')) || 0)) { wikiFails++; throw new Error('Bloxkeep is locked.'); }
           const w = await wikiSample();
           // Every game with the wiki the bot names for it (wiki.js POPULAR_GAMES).
           return { games: [{ id: 'blox-fruits', name: 'Blox Fruits', kind: 'prices', count: PRICES.items.length, at: Date.now() - PRICES.ago, place: 2753915549, wiki: 'https://blox-fruits.fandom.com' },

@@ -5,6 +5,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Icon, useHost, type Host } from './host';
 import { PriceList, type Prices } from './PriceList';
+import { useAskWhile } from './useAskWhile';
 
 import type { WikiItem as Item } from './wikiText';
 /** A kind's items as a table: what it's called, the wiki it's from. */
@@ -57,13 +58,12 @@ export function useWikiGames(shown: boolean) {
   const { call } = useHost();
   const [games, setGames] = useState<WikiInfo[] | null>(gamesNow);
   const [failed, setFailed] = useState(false);
-  useEffect(() => {
-    if (!shown) return;
+  useAskWhile(shown, !games, () => {
     // Asked already from elsewhere (Game info's Wiki button) since this was drawn.
-    if (gamesNow) { if (games !== gamesNow) setGames(gamesNow); return; }
-    (call('wikiGames', {}, { silent: true }) as Promise<{ games: WikiInfo[] } | undefined>)
-      .then(d => { if (d) { gamesNow = d.games; setGames(d.games); } else setFailed(true); }, () => setFailed(true));
-  }, [shown]);
+    if (gamesNow) { setGames(gamesNow); return Promise.resolve(); }
+    return (call('wikiGames', {}, { silent: true }) as Promise<{ games: WikiInfo[] } | undefined>)
+      .then(d => { if (d) { gamesNow = d.games; setGames(d.games); setFailed(false); } else setFailed(true); }, () => setFailed(true));
+  });
   return { games, failed };
 }
 
@@ -72,11 +72,8 @@ export function PricePanel({ info, shown }: { info: WikiInfo; shown: boolean }) 
   const { t, call, locale } = useHost();
   const [game, setGame] = useState<PriceGame | null>(loaded.get(info.id) || null);
   const [failed, setFailed] = useState(false);
-  useEffect(() => {
-    if (!shown || game) return;
-    (call('wikiGame', { id: info.id }, { silent: true }) as Promise<PriceGame | null | undefined>)
-      .then(d => { if (d && d.kind === 'prices') { loaded.set(info.id, d); setGame(d); } else setFailed(true); }, () => setFailed(true));
-  }, [shown, info.id]);
+  useAskWhile(shown, !game, () => (call('wikiGame', { id: info.id }, { silent: true }) as Promise<PriceGame | null | undefined>)
+    .then(d => { if (d && d.kind === 'prices') { loaded.set(info.id, d); setGame(d); setFailed(false); } else setFailed(true); }, () => setFailed(true)));
   const open = (url: string) => { call('wikiOpen', { url }); };
   // Not drawn while its part is hidden: an empty page drops the heading's tile (app.css).
   if (!game) return shown ? <div className="empty news-empty"><h2>{failed ? t('wiki.offline') : t('news.connecting')}</h2></div> : null;

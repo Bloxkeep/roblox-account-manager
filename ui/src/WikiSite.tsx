@@ -10,6 +10,7 @@ import { Icon, useAppState, useHost } from './host';
 import { boxChanges, clean, cleanPage, kindName, linkOf, wikiItem, type BoxChange, type Link, type WikiItem } from './wikiText';
 import { DropOdds, ItemTable, Similar, fold } from './WikiView';
 import { timeText } from './DiscordBlocks';
+import { useAskWhile } from './useAskWhile';
 
 export type WikiPick = { id: string; name: string; site: string; place: number; img: string | null; added: boolean };
 export type WikiMark = { site: string; title: string; game: string; at: number };
@@ -303,11 +304,7 @@ export function WikiSite({ pick, gameId, shown }: { pick: WikiPick; gameId: stri
   const scrollAt = useRef<number[]>([]);
   const scroller = () => root.current?.closest('.scroll') as HTMLElement | null;
 
-  useEffect(() => {
-    if (!shown || about) return;
-    setFailed(false);
-    loadAbout(api).then(a => { if (a) { abouts.set(site, a); setAbout(a); } else setFailed(true); });
-  }, [shown, site, about]);
+  useAskWhile(shown, !about, () => loadAbout(api).then(a => { if (a) { abouts.set(site, a); setAbout(a); setFailed(false); } else setFailed(true); }));
   useEffect(() => {
     if (!shown || !about || kinds) return;
     loadKinds(api).then(k => { kindsOf.set(site, k); setKinds(k); }, () => setKinds([]));
