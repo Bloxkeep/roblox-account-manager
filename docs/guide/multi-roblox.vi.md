@@ -6,8 +6,6 @@ Cách cho nhiều tài khoản chơi cùng lúc, thẻ Multi-Roblox ở thanh b�
 
 <img src="../screenshots/multi-roblox-real.jpg" width="760" alt="Ảnh chụp thật trên một máy Windows: sáu cửa sổ Roblox mở cùng lúc, được Bloxkeep xếp cạnh nhau, cùng ở trong một game, tiêu đề từ Roblox - Account 1 đến Roblox - Account 7">
 
-Ảnh chụp thật trên một máy: sáu tài khoản mở cùng lúc bằng Bloxkeep, đều đã vào game và xếp cạnh nhau. Tên tài khoản đã được ẩn.
-
 ## Làm nhanh
 
 1. Mở Bloxkeep trước Roblox. Nếu Roblox đã mở sẵn, bấm **Đóng tất cả Roblox**.

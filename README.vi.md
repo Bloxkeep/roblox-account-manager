@@ -9,7 +9,6 @@
 <p align="center"><a href="#tải-về-và-cài-đặt">Tải về</a> · <a href="#bắt-đầu">Bắt đầu</a> · <a href="docs/guide.vi.md">Hướng dẫn</a> · <a href="https://bloxkeep.github.io/roblox-account-manager/vi/">Trang web</a> · <a href="https://bloxkeep.github.io/roblox-account-manager/vi/whats-new/">Có gì mới</a> · <a href="#cộng-đồng">Cộng đồng</a> · <a href="#dữ-liệu-và-bảo-mật">Bảo mật</a> · <a href="#câu-hỏi-thường-gặp">Câu hỏi thường gặp</a> · <a href="PRIVACY.md">Quyền riêng tư</a></p>
 
 <p align="center"><img src="docs/screenshots/multi-roblox-real.jpg" width="860" alt="Ảnh chụp thật trên một máy Windows: sáu cửa sổ Roblox mở cùng lúc, được Bloxkeep xếp cạnh nhau, cùng ở trong một game, tiêu đề từ Roblox - Account 1 đến Roblox - Account 7"></p>
-<p align="center"><sub>Ảnh chụp thật trên một máy: sáu tài khoản Roblox mở cùng lúc bằng Bloxkeep, xếp cạnh nhau. Tên tài khoản đã được ẩn.</sub></p>
 
 Giữ các tài khoản Roblox ở một chỗ, chọn game, chọn tài khoản, bấm **Vào game**. Mọi thứ nằm trên máy của bạn, được mã hóa bằng mật khẩu chủ. Bloxkeep không có máy chủ riêng.
 
@@ -19,21 +18,36 @@ Giữ các tài khoản Roblox ở một chỗ, chọn game, chọn tài khoản
 
 <img src="docs/screenshots/vi/hero.png" width="860" alt="Cửa sổ chính của Bloxkeep: các thẻ tài khoản, hai tài khoản đang được chọn, thanh chọn game ở dưới và Multi-Roblox đang bật">
 
-| | |
-|---|---|
-| **Thêm tài khoản** | Bằng điện thoại (mã hoặc QR), tên đăng nhập và mật khẩu (có xác minh 2 bước và captcha), cửa sổ trình duyệt, cookie hoặc file Bloxkeep khác. [Tài khoản](docs/guide/accounts.vi.md) |
-| **Xem mọi tài khoản** | Đang online, đang chơi trên máy này hay thiết bị khác, vì sao bị văng, RAM, thời gian chơi, cần đăng nhập lại, bị ban. Tìm kiếm, nhóm, dạng thẻ hoặc danh sách. Đánh dấu tài khoản chính, cho các tài khoản kết bạn với nhau. [Tài khoản](docs/guide/accounts.vi.md) |
-| **Vào game** | Chọn game theo tên, link hoặc Place ID, và chọn server: đông nhất, vắng nhất, ping thấp nhất, đủ chỗ cho N tài khoản, server riêng của bạn, server của bạn bè hay của một người chơi bất kỳ. [Chơi game](docs/guide/playing.vi.md) |
-| **Multi-Roblox** | Mở nhiều cửa sổ Roblox cùng lúc. Tắt sẵn cho tới khi bạn bật; mỗi bản Roblox mới đều được kiểm tra. [Multi-Roblox](docs/guide/multi-roblox.vi.md) |
-| **Preset** | Lưu sẵn tài khoản, game và server để mở bằng một cú bấm, có hẹn giờ mở và tắt. [Preset](docs/guide/presets.vi.md) |
-| **Ở lại trong game** | Chống AFK để không bị đá vì đứng yên, tự vào lại khi bị văng. [Ở lại trong game](docs/guide/staying-in-game.vi.md) |
-| **Macro (Beta)** | Các bước viết thành câu dễ hiểu: bấm phím, bấm chuột, chờ hình, màu hoặc chữ, lặp lại, Nếu. Ghi lại thao tác hoặc bắt đầu từ mẫu, chạy thử, rồi kéo điểm và vùng ngay trên game. Mỗi macro có bảng nhỏ cạnh game với tab, công tắc, danh sách tích chọn và điểm do người chơi tự đặt. Bị kẹt thì macro tự chạy các bước gỡ kẹt. [Macro](docs/guide/macros.vi.md) |
-| **Cửa sổ** | Xếp cửa sổ bằng hình mẫu (giống Snap của Windows) hoặc kích thước tự chọn, Theo dõi game có nút thu nhỏ từng cửa sổ, cửa sổ nhỏ, cảnh báo sắp hết RAM. [Cửa sổ và thống kê](docs/guide/windows-and-stats.vi.md) |
-| **Roblox theo ý bạn** | Đồ họa, FPS, âm lượng riêng cho từng tài khoản; mở bằng Roblox, Bloxstrap, Fishstrap, Voidstrap hoặc trình mở của bạn. [Cài đặt](docs/guide/settings.vi.md) |
-| **Thống kê và thông báo** | Giờ chơi so với những ngày trước, dòng thời gian của từng tài khoản, vì sao rớt và mất bao lâu; cảnh báo và trạng thái trực tiếp trong kênh Discord của bạn hoặc trên điện thoại (ntfy); gõ `/pc` trong Discord để xem và điều khiển máy từ xa. [Discord](docs/guide/discord.vi.md) |
-| **Game** | Game phổ biến có sẵn wiki ngay trong Bloxkeep: tìm, bảng tra, món vừa buff/nerf, stock và spawn trực tiếp, bảng giá Blox Fruits. [Tab Game](docs/guide/playing.vi.md#tab-game) |
-| **An toàn sẵn** | Kho mã hóa, khóa app, sao lưu vào thư mục OneDrive hoặc Google Drive, ẩn tên khi livestream. [Sao lưu và bảo mật](docs/guide/backup-and-security.vi.md) |
-| **Của riêng bạn** | 98 giao diện, tiếng Việt và tiếng Anh, tìm nhanh bằng `Ctrl+K`. |
+<table>
+<tr>
+<td width="50%" valign="top"><a href="docs/guide/accounts.vi.md"><img src="docs/screenshots/vi/add-account.png" width="420" alt="Thêm tài khoản"></a><br><b>Thêm tài khoản</b><br>Bằng điện thoại (mã hoặc QR), tên đăng nhập và mật khẩu (có xác minh 2 bước và captcha), cửa sổ trình duyệt, cookie hoặc file Bloxkeep khác. <a href="docs/guide/accounts.vi.md">Tài khoản</a></td>
+<td width="50%" valign="top"><a href="docs/guide/accounts.vi.md"><img src="docs/screenshots/vi/accounts-list.png" width="420" alt="Xem mọi tài khoản"></a><br><b>Xem mọi tài khoản</b><br>Đang online, đang chơi trên máy này hay thiết bị khác, vì sao bị văng, RAM, thời gian chơi, cần đăng nhập lại, bị ban. Tìm kiếm, nhóm, dạng thẻ hoặc danh sách. Đánh dấu tài khoản chính, cho các tài khoản kết bạn với nhau. <a href="docs/guide/accounts.vi.md">Tài khoản</a></td>
+</tr>
+<tr>
+<td width="50%" valign="top"><a href="docs/guide/playing.vi.md"><img src="docs/screenshots/vi/demo-servers.webp" width="420" alt="Vào game"></a><br><b>Vào game</b><br>Chọn game theo tên, link hoặc Place ID, và chọn server: đông nhất, vắng nhất, ping thấp nhất, đủ chỗ cho N tài khoản, server riêng của bạn, server của bạn bè hay của một người chơi bất kỳ. <a href="docs/guide/playing.vi.md">Chơi game</a></td>
+<td width="50%" valign="top"><a href="docs/guide/multi-roblox.vi.md"><img src="docs/screenshots/multi-roblox-real-detail.jpg" width="420" alt="Multi-Roblox"></a><br><b>Multi-Roblox</b><br>Mở nhiều cửa sổ Roblox cùng lúc. Tắt sẵn cho tới khi bạn bật; mỗi bản Roblox mới đều được kiểm tra. <a href="docs/guide/multi-roblox.vi.md">Multi-Roblox</a></td>
+</tr>
+<tr>
+<td width="50%" valign="top"><a href="docs/guide/presets.vi.md"><img src="docs/screenshots/vi/demo-presets.webp" width="420" alt="Preset"></a><br><b>Preset</b><br>Lưu sẵn tài khoản, game và server để mở bằng một cú bấm, có hẹn giờ mở và tắt. <a href="docs/guide/presets.vi.md">Preset</a></td>
+<td width="50%" valign="top"><a href="docs/guide/staying-in-game.vi.md"><img src="docs/screenshots/vi/demo-rejoin.webp" width="420" alt="Ở lại trong game"></a><br><b>Ở lại trong game</b><br>Chống AFK để không bị đá vì đứng yên, tự vào lại khi bị văng. <a href="docs/guide/staying-in-game.vi.md">Ở lại trong game</a></td>
+</tr>
+<tr>
+<td width="50%" valign="top"><a href="docs/guide/macros.vi.md"><img src="docs/screenshots/vi/macros.png" width="420" alt="Macro (Beta)"></a><br><b>Macro (Beta)</b><br>Các bước viết thành câu dễ hiểu: bấm phím, bấm chuột, chờ hình, màu hoặc chữ, lặp lại, Nếu. Ghi lại thao tác hoặc bắt đầu từ mẫu, chạy thử, rồi kéo điểm và vùng ngay trên game. Mỗi macro có bảng nhỏ cạnh game với tab, công tắc, danh sách tích chọn và điểm do người chơi tự đặt. Bị kẹt thì macro tự chạy các bước gỡ kẹt. <a href="docs/guide/macros.vi.md">Macro</a></td>
+<td width="50%" valign="top"><a href="docs/guide/windows-and-stats.vi.md"><img src="docs/screenshots/game-monitor-real.jpg" width="420" alt="Cửa sổ"></a><br><b>Cửa sổ</b><br>Xếp cửa sổ bằng hình mẫu (giống Snap của Windows) hoặc kích thước tự chọn, Theo dõi game có nút thu nhỏ từng cửa sổ, cửa sổ nhỏ, cảnh báo sắp hết RAM. <a href="docs/guide/windows-and-stats.vi.md">Cửa sổ và thống kê</a></td>
+</tr>
+<tr>
+<td width="50%" valign="top"><a href="docs/guide/settings.vi.md"><img src="docs/screenshots/vi/settings.png" width="420" alt="Roblox theo ý bạn"></a><br><b>Roblox theo ý bạn</b><br>Đồ họa, FPS, âm lượng riêng cho từng tài khoản; mở bằng Roblox, Bloxstrap, Fishstrap, Voidstrap hoặc trình mở của bạn. <a href="docs/guide/settings.vi.md">Cài đặt</a></td>
+<td width="50%" valign="top"><a href="docs/guide/discord.vi.md"><img src="docs/screenshots/vi/stats.png" width="420" alt="Thống kê và thông báo"></a><br><b>Thống kê và thông báo</b><br>Giờ chơi so với những ngày trước, dòng thời gian của từng tài khoản, vì sao rớt và mất bao lâu; cảnh báo và trạng thái trực tiếp trong kênh Discord của bạn hoặc trên điện thoại (ntfy); gõ <code>/pc</code> trong Discord để xem và điều khiển máy từ xa. <a href="docs/guide/discord.vi.md">Discord</a></td>
+</tr>
+<tr>
+<td width="50%" valign="top"><a href="docs/guide/playing.vi.md#tab-game"><img src="docs/screenshots/vi/games.png" width="420" alt="Game"></a><br><b>Game</b><br>Game phổ biến có sẵn wiki ngay trong Bloxkeep: tìm, bảng tra, món vừa buff/nerf, stock và spawn trực tiếp, bảng giá Blox Fruits. <a href="docs/guide/playing.vi.md#tab-game">Tab Game</a></td>
+<td width="50%" valign="top"><a href="docs/guide/backup-and-security.vi.md"><img src="docs/screenshots/vi/lock.png" width="420" alt="An toàn sẵn"></a><br><b>An toàn sẵn</b><br>Kho mã hóa, khóa app, sao lưu vào thư mục OneDrive hoặc Google Drive, ẩn tên khi livestream. <a href="docs/guide/backup-and-security.vi.md">Sao lưu và bảo mật</a></td>
+</tr>
+<tr>
+<td width="50%" valign="top"><img src="docs/screenshots/vi/themes.png" width="420" alt="Của riêng bạn"><br><b>Của riêng bạn</b><br>98 giao diện, tiếng Việt và tiếng Anh, tìm nhanh bằng <code>Ctrl+K</code>.</td>
+<td width="50%"></td>
+</tr>
+</table>
 
 ## Tải về và cài đặt
 
@@ -56,6 +70,8 @@ File chưa được ký số nên lần đầu SmartScreen sẽ cảnh báo: b�
 
 Bloxkeep tự tải bản mới khi đang chạy và cài vào lúc bạn không dùng, mở lại vẫn đang mở khóa, đúng chỗ bạn đang làm. Bấm **Khởi động lại để cập nhật** để cập nhật ngay. Vào **Cài đặt › Bloxkeep** để tắt tự cập nhật hoặc nhận cả bản beta. [Cập nhật](docs/guide/getting-started.vi.md#cập-nhật)
 
+<img src="docs/screenshots/vi/2-restart-to-update.png" width="640" alt="Nút Khởi động lại để cập nhật ở thanh bên">
+
 ### Gỡ cài đặt
 
 Windows **Settings › Apps › Installed apps › Bloxkeep › Uninstall**. Tích **Xóa luôn tài khoản và cài đặt** nếu muốn xóa cả dữ liệu, không thì dữ liệu được giữ lại để cài lại sau. [Gỡ cài đặt](docs/guide/getting-started.vi.md#gỡ-cài-đặt)
@@ -66,7 +82,15 @@ Windows **Settings › Apps › Installed apps › Bloxkeep › Uninstall**. Tí
 2. **Thêm tài khoản.** Bấm **Thêm tài khoản**, rồi chọn **Đăng nhập bằng điện thoại** (nên dùng), tên đăng nhập và mật khẩu, hoặc cửa sổ trình duyệt.
 3. **Vào game.** Gõ tên game ở thanh dưới, bấm vào các tài khoản để chọn, rồi bấm **Vào game**.
 
-<img src="docs/screenshots/demo.gif" width="800" alt="Chọn hai tài khoản, đổi game, xem danh sách server, rồi đổi giao diện">
+<table>
+<tr>
+<td width="33%" valign="top"><img src="docs/screenshots/vi/lock.png" width="280" alt="Màn hình khóa"><br><b>1.</b> Mật khẩu chủ</td>
+<td width="33%" valign="top"><img src="docs/screenshots/vi/add-account.png" width="280" alt="Thêm tài khoản"><br><b>2.</b> Thêm tài khoản</td>
+<td width="33%" valign="top"><img src="docs/screenshots/vi/game-picker.png" width="280" alt="Chọn game"><br><b>3.</b> Chọn game, bấm Vào game</td>
+</tr>
+</table>
+
+<img src="docs/screenshots/vi/demo.gif" width="800" alt="Chọn hai tài khoản, đổi game, xem danh sách server, rồi đổi giao diện">
 
 Hướng dẫn từng bước có hình: [Bắt đầu](docs/guide/getting-started.vi.md).
 
@@ -106,6 +130,8 @@ Gõ `/multi` cho bot để biết Multi-Roblox có chạy trên bản Roblox hi�
 ## Sao lưu và khôi phục
 
 Bật **Cài đặt › Sao lưu và dữ liệu › Sao lưu vào thư mục** rồi chọn một thư mục OneDrive hoặc Google Drive: kho mã hóa được chép vào đó sau mỗi lần thay đổi. Sang máy mới: cài Bloxkeep, chọn **Khôi phục từ bản sao lưu**, nhập mật khẩu lúc tạo bản sao lưu. [Sao lưu tự động](docs/guide/backup-and-security.vi.md#sao-lưu-tự-động)
+
+<img src="docs/screenshots/vi/settings-backup.png" width="640" alt="Cài đặt, Sao lưu và dữ liệu">
 
 ## Câu hỏi thường gặp
 

@@ -6,8 +6,6 @@ Bình thường Roblox chỉ cho mở một cửa sổ trên mỗi máy: mở c�
 
 <img src="../screenshots/multi-roblox-real.jpg" width="760" alt="Ảnh chụp thật trên một máy Windows: sáu cửa sổ Roblox mở cùng lúc, được Bloxkeep xếp cạnh nhau, cùng ở trong một game, tiêu đề từ Roblox - Account 1 đến Roblox - Account 7">
 
-Ảnh chụp thật trên một máy: sáu tài khoản mở cùng lúc, đều đã vào game và xếp cạnh nhau. Tên tài khoản đã được ẩn.
-
 ## Làm nhanh
 
 1. [Tải Bloxkeep](https://github.com/Bloxkeep/roblox-account-manager/releases/latest), chạy `Bloxkeep-Setup.exe` rồi đặt mật khẩu chính.

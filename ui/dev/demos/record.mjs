@@ -13,9 +13,13 @@ const { launch, sleep } = await import(pathToFileURL(path.join(repo, 'Tests/ui/c
 fs.mkdirSync(out, { recursive: true });
 for (const f of fs.readdirSync(out)) fs.rmSync(path.join(out, f));
 
-// The site's takes are 16:9, the shape of its feature cards (which cut a picture to it); What's new's are 16:10.
-const W = 1280, H = ['servers', 'presets', 'rejoin'].includes(name) ? 720 : 800, BASE = `http://localhost:${process.env.PORT || 5178}`;
+// The site's takes are 16:9, the shape of its feature cards (which cut a picture to it); What's new's are 16:10. The
+// README's tour (docs/screenshots/demo.gif) is the whole window, 1320 × 840.
+const W = name === 'tour' ? 1320 : 1280, H = name === 'tour' ? 840 : ['servers', 'presets', 'rejoin'].includes(name) ? 720 : 800, BASE = `http://localhost:${process.env.PORT || 5178}`;
 const b = await launch({ width: W, height: H, scale: 1.5, locale: lang === 'vi' ? 'vi-VN' : 'en-US' });
+// Real game pictures and Roblox avatars (site/demo-pics) with made-up logins, as on the website's try-it page.
+await b.send('Page.addScriptToEvaluateOnNewDocument', { source: `window.__demoPics = ${fs.readFileSync(path.join(repo, 'site/demo-pics/map.json'), 'utf8')};
+${fs.readFileSync(path.join(repo, 'ui/dev/real-pics.js'), 'utf8')}` });
 let at = { x: W / 2, y: H * .7 };
 const mouse = (type, p, extra = {}) => b.send('Input.dispatchMouseEvent', { type, x: p.x, y: p.y, ...extra });
 const ease = t => t < .5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
@@ -347,6 +351,51 @@ const takes = {
       }
       const back = await where('.pv-item[data-id="p1"] [data-pv=edit]');
       await move({ x: back.x - 160, y: back.y + 140 }, 700);
+      await sleep(500);
+    };
+  },
+  /** The README's tour: two accounts chosen, another game picked, its servers looked at, a few themes, back as it began. */
+  async tour() {
+    await b.goto(`${BASE}/ui/dev/preview.html?lang=${lang}&nodelay=1`);
+    await sleep(1500);
+    await drawCursor();
+    at = { x: W * .62, y: H * .42 };
+    await mouse('mouseMoved', at);
+    const theme = id => b.eval(`window.__mockBridge.call('setTheme', { theme: '${id}' })`);
+    return async () => {
+      await sleep(700);
+      await click('.card[data-id$="2"] .check', 700);
+      await sleep(450);
+      await click('.card[data-id$="4"] .check', 650);
+      await sleep(900);
+      await click('#place', 750);
+      await sleep(900);
+      await click('[data-act=pick-game][data-i="1"]', 600);
+      await sleep(1100);
+      await click('[data-act=servers]', 700);
+      await sleep(1400);
+      const list = await where('.overlay .modal-body');
+      await move({ x: list.x, y: list.y + 40 }, 500);
+      for (let i = 0; i < 5; i++) {
+        await mouse('mouseWheel', at, { deltaX: 0, deltaY: 100 });
+        await sleep(60);
+      }
+      await sleep(1300);
+      await click('.overlay .modal-foot .btn', 650);
+      await sleep(700);
+      await move({ x: W * .62, y: H * .42 }, 600);
+      for (const id of ['city', 'sakura', 'paper', 'dark']) {
+        await theme(id);
+        await sleep(1300);
+      }
+      // As the take began: the game back to Blox Fruits, nothing selected.
+      await click('#place', 650);
+      await sleep(700);
+      await click('[data-act=pick-game][data-i="1"]', 550);
+      await sleep(700);
+      await click('[data-act=clear-sel]', 700);
+      await sleep(600);
+      await move({ x: W * .62, y: H * .42 }, 600);
       await sleep(500);
     };
   },

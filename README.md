@@ -16,7 +16,6 @@
 <p align="center"><a href="#download-and-install">Download</a> · <a href="#getting-started">Getting started</a> · <a href="docs/guide.md">User guide</a> · <a href="https://bloxkeep.github.io/roblox-account-manager/">Website</a> · <a href="https://bloxkeep.github.io/roblox-account-manager/whats-new/">What's new</a> · <a href="#community">Community</a> · <a href="#data-and-security">Security</a> · <a href="#faq">FAQ</a> · <a href="PRIVACY.md">Privacy</a></p>
 
 <p align="center"><img src="docs/screenshots/multi-roblox-real.jpg" width="860" alt="A real screenshot of one Windows PC: six Roblox windows open at once, tiled side by side by Bloxkeep, all in the same game, titled Roblox - Account 1 to Roblox - Account 7"></p>
-<p align="center"><sub>A real screenshot from one PC: six Roblox accounts open at once with Bloxkeep, tiled side by side. Account names are hidden.</sub></p>
 
 Keep your Roblox accounts in one place, pick a game, pick accounts, press **Play**. Everything stays on your PC, encrypted with your master password. Bloxkeep has no server of its own.
 
@@ -26,21 +25,36 @@ Keep your Roblox accounts in one place, pick a game, pick accounts, press **Play
 
 <img src="docs/screenshots/hero.png" width="860" alt="Bloxkeep main window: account cards with two accounts chosen, the game bar at the bottom, and Multi-Roblox turned on">
 
-| | |
-|---|---|
-| **Add accounts** | With your phone (code or QR), username and password (2-step verification and captchas work), a browser window, a cookie or another Bloxkeep file. [Accounts](docs/guide/accounts.md) |
-| **See every account** | Online, in game here or on another device, why it disconnected, RAM, play time, needs sign-in, banned. Search, groups, cards or list. Mark your main account, and make your accounts Roblox friends. [Accounts](docs/guide/accounts.md) |
-| **Play** | Pick a game by name, link or Place ID, and a server: most or fewest players, lowest ping, room for N accounts, your private servers, a friend's or any player's server. [Playing](docs/guide/playing.md) |
-| **Multi-Roblox** | Several Roblox windows at once. Off until you turn it on; every new Roblox build is checked. [Multi-Roblox](docs/guide/multi-roblox.md) |
-| **Presets** | Accounts, game and server saved for one click, with a schedule to start and stop. [Presets](docs/guide/presets.md) |
-| **Stay in game** | Anti-AFK against idle kicks, auto-rejoin after a disconnect. [Staying in game](docs/guide/staying-in-game.md) |
-| **Macros (Beta)** | Steps written as plain sentences: press keys, click, wait for a picture, a colour or text, repeat, If. Record one or start from a template, try it, then move its points and areas right on the game. Each macro gets a small panel beside the game with tabs, switches, lists to tick and points the player sets. Stuck? It runs your recovery steps. [Macros](docs/guide/macros.md) |
-| **Windows** | Arrange layouts picked from pictures (as Windows' snap layouts) or a size of your own, the Game monitor with a minimise button on each window, a mini window, RAM warnings. [Windows and stats](docs/guide/windows-and-stats.md) |
-| **Roblox your way** | Graphics, FPS and volume per account; open with Roblox, Bloxstrap, Fishstrap, Voidstrap or your own launcher. [Settings](docs/guide/settings.md) |
-| **Stats and alerts** | Play time compared with the days before, a timeline of each account, why accounts dropped and the time it cost; alerts and a live status in your Discord channel or on your phone (ntfy); `/pc` in Discord to check and control your PC from anywhere. [Discord](docs/guide/discord.md) |
-| **Games** | Popular games with their wiki inside Bloxkeep: search, item tables, recent buffs and nerfs, live stock and spawns, Blox Fruits prices. [The Games tab](docs/guide/playing.md#the-games-tab) |
-| **Safe by default** | Encrypted vault, lock, backups to a OneDrive or Google Drive folder, hide names for streams. [Backup and security](docs/guide/backup-and-security.md) |
-| **Yours** | 98 themes, English and Vietnamese, quick search with `Ctrl+K`. |
+<table>
+<tr>
+<td width="50%" valign="top"><a href="docs/guide/accounts.md"><img src="docs/screenshots/add-account.png" width="420" alt="Add accounts"></a><br><b>Add accounts</b><br>With your phone (code or QR), username and password (2-step verification and captchas work), a browser window, a cookie or another Bloxkeep file. <a href="docs/guide/accounts.md">Accounts</a></td>
+<td width="50%" valign="top"><a href="docs/guide/accounts.md"><img src="docs/screenshots/accounts-list.png" width="420" alt="See every account"></a><br><b>See every account</b><br>Online, in game here or on another device, why it disconnected, RAM, play time, needs sign-in, banned. Search, groups, cards or list. Mark your main account, and make your accounts Roblox friends. <a href="docs/guide/accounts.md">Accounts</a></td>
+</tr>
+<tr>
+<td width="50%" valign="top"><a href="docs/guide/playing.md"><img src="docs/screenshots/demo-servers.webp" width="420" alt="Play"></a><br><b>Play</b><br>Pick a game by name, link or Place ID, and a server: most or fewest players, lowest ping, room for N accounts, your private servers, a friend's or any player's server. <a href="docs/guide/playing.md">Playing</a></td>
+<td width="50%" valign="top"><a href="docs/guide/multi-roblox.md"><img src="docs/screenshots/multi-roblox-real-detail.jpg" width="420" alt="Multi-Roblox"></a><br><b>Multi-Roblox</b><br>Several Roblox windows at once. Off until you turn it on; every new Roblox build is checked. <a href="docs/guide/multi-roblox.md">Multi-Roblox</a></td>
+</tr>
+<tr>
+<td width="50%" valign="top"><a href="docs/guide/presets.md"><img src="docs/screenshots/demo-presets.webp" width="420" alt="Presets"></a><br><b>Presets</b><br>Accounts, game and server saved for one click, with a schedule to start and stop. <a href="docs/guide/presets.md">Presets</a></td>
+<td width="50%" valign="top"><a href="docs/guide/staying-in-game.md"><img src="docs/screenshots/demo-rejoin.webp" width="420" alt="Stay in game"></a><br><b>Stay in game</b><br>Anti-AFK against idle kicks, auto-rejoin after a disconnect. <a href="docs/guide/staying-in-game.md">Staying in game</a></td>
+</tr>
+<tr>
+<td width="50%" valign="top"><a href="docs/guide/macros.md"><img src="docs/screenshots/macros.png" width="420" alt="Macros (Beta)"></a><br><b>Macros (Beta)</b><br>Steps written as plain sentences: press keys, click, wait for a picture, a colour or text, repeat, If. Record one or start from a template, try it, then move its points and areas right on the game. Each macro gets a small panel beside the game with tabs, switches, lists to tick and points the player sets. Stuck? It runs your recovery steps. <a href="docs/guide/macros.md">Macros</a></td>
+<td width="50%" valign="top"><a href="docs/guide/windows-and-stats.md"><img src="docs/screenshots/game-monitor-real.jpg" width="420" alt="Windows"></a><br><b>Windows</b><br>Arrange layouts picked from pictures (as Windows' snap layouts) or a size of your own, the Game monitor with a minimise button on each window, a mini window, RAM warnings. <a href="docs/guide/windows-and-stats.md">Windows and stats</a></td>
+</tr>
+<tr>
+<td width="50%" valign="top"><a href="docs/guide/settings.md"><img src="docs/screenshots/settings.png" width="420" alt="Roblox your way"></a><br><b>Roblox your way</b><br>Graphics, FPS and volume per account; open with Roblox, Bloxstrap, Fishstrap, Voidstrap or your own launcher. <a href="docs/guide/settings.md">Settings</a></td>
+<td width="50%" valign="top"><a href="docs/guide/discord.md"><img src="docs/screenshots/stats.png" width="420" alt="Stats and alerts"></a><br><b>Stats and alerts</b><br>Play time compared with the days before, a timeline of each account, why accounts dropped and the time it cost; alerts and a live status in your Discord channel or on your phone (ntfy); <code>/pc</code> in Discord to check and control your PC from anywhere. <a href="docs/guide/discord.md">Discord</a></td>
+</tr>
+<tr>
+<td width="50%" valign="top"><a href="docs/guide/playing.md#the-games-tab"><img src="docs/screenshots/games.png" width="420" alt="Games"></a><br><b>Games</b><br>Popular games with their wiki inside Bloxkeep: search, item tables, recent buffs and nerfs, live stock and spawns, Blox Fruits prices. <a href="docs/guide/playing.md#the-games-tab">The Games tab</a></td>
+<td width="50%" valign="top"><a href="docs/guide/backup-and-security.md"><img src="docs/screenshots/lock.png" width="420" alt="Safe by default"></a><br><b>Safe by default</b><br>Encrypted vault, lock, backups to a OneDrive or Google Drive folder, hide names for streams. <a href="docs/guide/backup-and-security.md">Backup and security</a></td>
+</tr>
+<tr>
+<td width="50%" valign="top"><img src="docs/screenshots/themes.png" width="420" alt="Yours"><br><b>Yours</b><br>98 themes, English and Vietnamese, quick search with <code>Ctrl+K</code>.</td>
+<td width="50%"></td>
+</tr>
+</table>
 
 ## Download and install
 
@@ -63,6 +77,8 @@ The files aren't code-signed yet, so SmartScreen warns the first time: **More in
 
 Bloxkeep updates itself in the background and installs when you aren't using it, coming back unlocked where you left it. **Restart to update** does it now. **Settings › Bloxkeep** turns it off or adds beta versions. [Updates](docs/guide/getting-started.md#updates)
 
+<img src="docs/screenshots/2-restart-to-update.png" width="640" alt="Restart to update in the sidebar">
+
 ### Uninstall
 
 Windows **Settings › Apps › Installed apps › Bloxkeep › Uninstall**. Tick **Also delete my accounts and settings** to remove your data too; otherwise it's kept for a reinstall. [Uninstall](docs/guide/getting-started.md#uninstall)
@@ -72,6 +88,14 @@ Windows **Settings › Apps › Installed apps › Bloxkeep › Uninstall**. Tic
 1. **Set a master password.** It unlocks Bloxkeep and **can't be recovered**. New PC? Choose **Restore from a backup**.
 2. **Add accounts.** **Add account**, then **Sign in with your phone** (recommended), username and password, or a browser window.
 3. **Play.** Type a game in the bar at the bottom, click accounts to choose them, press **Play**.
+
+<table>
+<tr>
+<td width="33%" valign="top"><img src="docs/screenshots/lock.png" width="280" alt="The lock screen"><br><b>1.</b> Master password</td>
+<td width="33%" valign="top"><img src="docs/screenshots/add-account.png" width="280" alt="Add account"><br><b>2.</b> Add accounts</td>
+<td width="33%" valign="top"><img src="docs/screenshots/game-picker.png" width="280" alt="Choosing a game"><br><b>3.</b> Pick a game, press Play</td>
+</tr>
+</table>
 
 <img src="docs/screenshots/demo.gif" width="800" alt="Choosing two accounts, switching the game, looking at the server list, then changing the theme">
 
@@ -113,6 +137,8 @@ Never send anyone a cookie, `vault.rmv` or a backup: each is a full sign-in to y
 ## Backup and restore
 
 Turn on **Settings › Backup & data › Back up to a folder** and pick a OneDrive or Google Drive folder: the encrypted vault is copied there after each change. On a new PC: install, **Restore from a backup**, enter the password it was saved with. [Backups](docs/guide/backup-and-security.md#automatic-backups)
+
+<img src="docs/screenshots/settings-backup.png" width="640" alt="Settings, Backup and data">
 
 ## FAQ
 

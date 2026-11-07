@@ -6,8 +6,6 @@ Roblox normally allows one window on a PC: opening a second one closes the first
 
 <img src="../screenshots/multi-roblox-real.jpg" width="760" alt="A real screenshot of one Windows PC: six Roblox windows open at once, tiled side by side by Bloxkeep, all in the same game, titled Roblox - Account 1 to Roblox - Account 7">
 
-A real screenshot from one PC: six accounts open at once, all in the game and tiled side by side. Account names are hidden.
-
 ## Quick steps
 
 1. [Download Bloxkeep](https://github.com/Bloxkeep/roblox-account-manager/releases/latest), run `Bloxkeep-Setup.exe`, and set a master password.
