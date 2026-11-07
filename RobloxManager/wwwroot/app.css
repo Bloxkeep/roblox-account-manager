@@ -1440,7 +1440,8 @@ kbd { font: 500 var(--fs-1) var(--font); padding: 1px 6px; border-radius: var(--
 .lock-intro .lock-card > :nth-child(n + 7) { animation-delay: .47s; }
 .lock-intro .lock-lang { animation: fade .5s ease .45s both; }
 .lock-card.opened { animation: none; }
-@keyframes lock-open { from { clip-path: inset(calc(50% - 46px) calc(50% - 46px) round 22px); box-shadow: none; } }
+/* A circle from the middle, where the logo bounced (app.js lockIntro), out past the card's corners. */
+@keyframes lock-open { from { clip-path: circle(56px at 50% 50%); box-shadow: none; } to { clip-path: circle(75% at 50% 50%); } }
 @keyframes lock-line { from { opacity: 0; translate: 0 12px; } }
 .lock-card h2 { font: 650 24px/1.2 var(--font-display); margin: 18px 0 8px; letter-spacing: -.01em; }
 .lock-card p { margin: 0 0 22px; color: var(--muted); }

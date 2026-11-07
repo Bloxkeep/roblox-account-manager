@@ -474,17 +474,37 @@
       target.style.visibility = 'hidden';
     };
     place();
+    // First the logo bounces where the window's still logo was: a squash, a hop, a landing (owner, 2026-11-08: "nảy ở
+    // giữa xong bung ra"); then the card bursts out around it as it flies to its place.
+    // It grows as it hops (the window's still logo is its own size), lands squashed, hops once more and settles big;
+    // the card then bursts out of it as a circle while the logo flies to its place on the card, shrinking back.
+    const BIG = 1.5;
+    const up = 'cubic-bezier(.2, .7, .35, 1)', down = 'cubic-bezier(.6, 0, .85, .45)';
+    const bounce = () => {
+      if (!fly) return Promise.resolve();
+      const at = `translate(${off[0]}px, ${off[1]}px)`;
+      const s = (x, y, lift = 0) => `${at} translateY(${-lift}px) scale(${x}, ${y})`;
+      return fly.animate([
+        { transform: s(1, 1), easing: 'cubic-bezier(.3, 0, .6, 1)' },
+        { transform: s(1.12, .86), offset: .12, easing: up },
+        { transform: s(BIG * .94, BIG * 1.06, 54), offset: .4, easing: down },
+        { transform: s(BIG * 1.16, BIG * .82), offset: .62, easing: up },
+        { transform: s(BIG * .98, BIG * 1.03, 16), offset: .78, easing: down },
+        { transform: s(BIG * 1.05, BIG * .95), offset: .9, easing: up },
+        { transform: s(BIG, BIG) },
+      ], { duration: 1000, fill: 'forwards' }).finished.catch(() => {});
+    };
     const go = () => {
       if (document.hidden) return document.addEventListener('visibilitychange', go, { once: true });
-      requestAnimationFrame(() => {
+      bounce().then(() => requestAnimationFrame(() => {
         root.classList.remove('lock-hold');
         const done = () => { fly?.remove(); if (target) target.style.visibility = ''; };
         const spring = getComputedStyle(root).getPropertyValue('--spring').trim() || 'ease-out';
-        if (fly) fly.animate([{ transform: `translate(${off[0]}px, ${off[1]}px)` }, { transform: 'none' }], { duration: 800, easing: spring, fill: 'forwards' }).finished.then(done, done);
+        if (fly) fly.animate([{ transform: `translate(${off[0]}px, ${off[1]}px) scale(${BIG})` }, { transform: 'none' }], { duration: 800, easing: spring, fill: 'forwards' }).finished.then(done, done);
         // Over: .opened keeps that card's own entrance (rise) from starting once the opening's is taken away, which
         // played the card in a second time. A card drawn later (the update's, another vault's) still rises.
         setTimeout(() => { done(); document.querySelectorAll('.lock-card').forEach(c => c.classList.add('opened')); root.classList.remove('lock-intro'); }, 1500);
-      });
+      }));
     };
     coverGone.then(go);
   }
