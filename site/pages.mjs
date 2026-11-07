@@ -314,11 +314,11 @@ export function landing(lang, { version, rel, releases = [] }) {
   </div>
 </section>
 <script>{ /* The live app in the hero: drawn at least 1232 px wide (the wide sidebar), more on a big screen, and scaled to its
-  frame (up to 1.25×); shown, and clickable, the moment its first accounts are drawn. On a phone the picture opens /demo/. */
+  frame (up to 1.15×); shown, and clickable, the moment its first accounts are drawn. On a phone the picture opens /demo/. */
   const live = document.querySelector('.live'), frame = live && live.querySelector('iframe');
   if (live && frame) {
     const fit = () => {
-      const w = live.clientWidth, inner = Math.max(1232, w / 1.25);
+      const w = live.clientWidth, inner = Math.max(1232, w / 1.15);
       live.style.setProperty('--w', inner + 'px'); live.style.setProperty('--h', inner / 1.6 + 'px'); live.style.setProperty('--k', String(w / inner));
     };
     fit(); new ResizeObserver(fit).observe(live);
