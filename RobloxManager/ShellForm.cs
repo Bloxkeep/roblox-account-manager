@@ -330,13 +330,9 @@ public sealed class ShellForm : Form
             _quitting = false;
             return;
         }
-        // Quitting (the tray menu, Restart to update, the close button with the tray off): the window fades away
-        // first. Not as Windows shuts down or Task Manager ends it: nothing waits on a fade there.
-        if (e.CloseReason is CloseReason.UserClosing or CloseReason.ApplicationExitCall)
-            FadeAway();
+        // No fade on the way out (1.0.19 to 1.0.21-alpha.3 had one): turning the window see-through for it made Windows
+        // show it empty, in the theme's colour, for a frame or two first (OBS, 2026-11-07 11:51, maximised, both closes).
         base.OnFormClosing(e);
-        if (e.Cancel)
-            Unfade();
     }
 
     async Task HideToTrayAsync()
@@ -357,7 +353,6 @@ public sealed class ShellForm : Form
         if (_quitting || IsDisposed || _broughtToFront != brought)
             return;
         _tray.Visible = true;
-        FadeAway();
         Hide();
         if (Prefs.TrayHintShown)
             return;
@@ -749,78 +744,6 @@ public sealed class ShellForm : Form
     }
 
     bool _shownOnce;
-
-    /// <summary>
-    /// The window going (into the tray, quitting, restarting to update): it fades out while sinking a few pixels, a
-    /// fifth of a second, speeding up as it goes; the opposite of <see cref="FadeIn"/>. The page is held still as a picture
-    /// over the window first (the browser may not draw inside a see-through window). Done right here, not on a timer:
-    /// closing and the update's hand-over go on straight after it. The window is left invisible, back in its place.
-    /// </summary>
-    void FadeAway()
-    {
-        if (IsDisposed || !IsHandleCreated || !Visible || WindowState == FormWindowState.Minimized || Opacity < 1)
-            return;
-        if (PictureOfWindow() is { } picture)
-        {
-            PutCover(picture, PictureBoxSizeMode.Normal);
-            _cover?.Update();
-        }
-        var home = Location;
-        int drop = WindowState == FormWindowState.Normal ? LogicalToDeviceUnits(12) : 0;
-        var clock = System.Diagnostics.Stopwatch.StartNew();
-        const double Ms = 200;
-        while (true)
-        {
-            double t = Math.Min(1, clock.Elapsed.TotalMilliseconds / Ms), e = t * t;
-            if (drop > 0)
-                SetWindowPos(Handle, IntPtr.Zero, home.X, home.Y + (int)Math.Round(drop * e), 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
-            Opacity = 1 - e;
-            if (t >= 1)
-                break;
-            Thread.Sleep(8);
-        }
-        if (drop > 0)
-            SetWindowPos(Handle, IntPtr.Zero, home.X, home.Y, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
-    }
-
-    /// <summary>A close that was called off after the fade: the window as it was.</summary>
-    void Unfade()
-    {
-        if (IsDisposed)
-            return;
-        Opacity = 1;
-        RemoveCover();
-    }
-
-    /// <summary>The window's inside as it is on screen now, the browser's drawing included (PrintWindow's full-content mode).</summary>
-    Bitmap? PictureOfWindow()
-    {
-        if (ClientSize.Width <= 0 || ClientSize.Height <= 0)
-            return null;
-        var bitmap = new Bitmap(ClientSize.Width, ClientSize.Height);
-        using (var g = Graphics.FromImage(bitmap))
-        {
-            IntPtr dc = g.GetHdc();
-            bool ok;
-            try
-            {
-                ok = PrintWindow(Handle, dc, PW_CLIENTONLY | PW_RENDERFULLCONTENT);
-            }
-            finally
-            {
-                g.ReleaseHdc(dc);
-            }
-            if (ok)
-                return bitmap;
-        }
-        bitmap.Dispose();
-        return null;
-    }
-
-    const uint PW_CLIENTONLY = 1, PW_RENDERFULLCONTENT = 2;
-
-    [DllImport("user32.dll")]
-    static extern bool PrintWindow(IntPtr hwnd, IntPtr dc, uint flags);
 
     /// <summary>
     /// No saved place (a first start, or a lost screen): the screen with the mouse, fitted. On a 1366×768 or 1080p laptop
