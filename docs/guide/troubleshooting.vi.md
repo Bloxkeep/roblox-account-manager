@@ -28,7 +28,9 @@ Trả lời ngắn cho những vấn đề hay gặp nhất, rồi đến toàn 
 
 ### **H:** Tài khoản bị ban
 
-**Đ:** Nhãn **Bị ban** lấy từ thông tin công khai của Roblox, đọc trong lúc kiểm tra đăng nhập. **Vào game** và preset bỏ qua tài khoản này, tự vào lại game cũng không mở lại nó. Khi hết ban, bấm **⋯ › Kiểm tra đăng nhập** để bỏ nhãn.
+**Đ:** Nhãn **Bị ban** lấy từ thông tin công khai của Roblox, đọc trong lúc kiểm tra đăng nhập. **Vào game** và preset bỏ qua tài khoản này, tự vào lại game cũng không mở lại nó. Khi hết ban, bấm **⋯ › Kiểm tra đăng nhập** để bỏ nhãn. Muốn kháng cáo, bấm **Kháng cáo** trên thẻ: trang kháng cáo của Roblox mở ra, đã đăng nhập sẵn tài khoản đó.
+
+Chỉ bị ban trong một game ("You created or used an account to avoid an enforcement action…", Lỗi 600)? Đó là ban của chính game, thường do game phát hiện tài khoản phụ: tài khoản không có nhãn **Bị ban** và vẫn chơi game khác được. Roblox không nhận kháng cáo loại này; hãy hỏi chủ game, ví dụ trên Discord của game.
 
 ### **H:** Máy chưa cài Roblox, hoặc chỉ có bản Microsoft Store
 

@@ -56,6 +56,94 @@ Keep your Roblox accounts in one place, pick a game, pick accounts, press **Play
 </tr>
 </table>
 
+### Every feature
+
+**Accounts**
+
+- Add Roblox accounts with the Roblox phone app (code or QR), a username and password (2-step verification and captchas work), the roblox.com sign-in page, a .ROBLOSECURITY cookie or another Bloxkeep file
+- See every account at a glance: online, in a game on this PC or another device, why it disconnected, RAM, play time, needs sign-in, banned
+- Appeal a ban: a banned account opens Roblox's Violations & Appeals page, already signed in
+- Search by name, username, nickname, group, note, game or user ID; filters, groups, sorting, cards or a list
+- Save a password and an authenticator key per account: copy the password or the current 2FA code, and the code is filled in at sign-in
+- A daily sign-in check finds accounts Roblox signed out before you press Play
+- roblox.com signed in as each account, in tabs side by side, without touching your own browser
+- Mark your main account, and make your accounts Roblox friends with each other in one click
+- Roblox VNG accounts too (being tested)
+
+**Play**
+
+- Pick a game by name, link or Place ID, with each game's page, recent games and saved servers
+- Server browser: most or fewest players, lowest ping, best FPS, or room for all your accounts
+- Join your private servers, a friend's server, any player's server or a Job ID
+- Join this server: bring your other accounts into one account's server
+- Switch an account to another server, or leave crowded servers by itself
+- Launch order and a wait between accounts; Stop while they open
+- Solve Roblox's bot check in Bloxkeep's own window when a join asks for one
+
+**Multi-Roblox**
+
+- Several Roblox windows at once, one per account, without injecting anything into Roblox
+- Every new Roblox build is checked for changes that could stop it, even builds not out yet
+- Open Roblox with Roblox, Bloxstrap, Fishstrap, Voidstrap, Roblox directly, the Microsoft Store Roblox (being tested) or your own launcher
+- Roblox can always open windowed, so one fullscreen setting never mixes the windows up
+
+**Presets and schedules**
+
+- Save accounts, a game and a server, and start them in one click
+- Server for a preset: any, most or fewest players, lowest ping, random, a fixed Job ID or a player's server
+- Schedules on chosen weekdays or a date, stopping after some hours or at a time; missed runs are handled
+- Per preset: anti-AFK, auto-rejoin, rejoin with another account, Light AFK, restart Roblox every few hours, arrange windows and its own Discord channel
+
+**AFK farming and staying in game**
+
+- Anti-AFK against idle kicks, also while you use another window
+- Auto-rejoin after a disconnect, waiting a little longer each try
+- Modes: AFK farming, Play and farm, or your own graphics, FPS limit and volume for chosen accounts; an FPS cap per account
+- Light AFK and Fast Flags for lower graphics and less RAM
+- RAM tools: low RAM warning, lower memory priority and a RAM limit for background or minimized windows, restart a window that grows too heavy
+- Background Roblox windows run in Windows' efficiency mode, so the one you play stays smooth
+- Roblox updates: close, update and reopen in one click, or update by itself while no window is open
+
+**Roblox windows**
+
+- Arrange windows in a grid picked from pictures, or a size of your own; Ctrl+Alt+A from any app
+- Game monitor: live pictures of every window, with minimize all, open all and close all
+- A mini window that stays on top
+- Hide Roblox windows while their games keep running; hotkeys to hide, minimize, switch and open Bloxkeep
+- The account name and process ID in each window title, the account's picture as the window icon, and a taskbar button per account or per preset
+
+**Macros (Beta)**
+
+- Steps written as plain sentences: press keys, click, wait for a picture, a colour or text, repeat, If
+- Record a macro or start from a template, then move its points and areas right on the game
+- Read numbers and text from the game, a file or a web page; counters on a small panel beside the game
+- Recovery steps when a macro gets stuck; Ctrl+Alt+1 to 9 runs a macro, Ctrl+Alt+0 stops them all
+
+**Stats, alerts and Discord**
+
+- Statistics: today on a 24-hour clock, play time by day and hour, why accounts dropped and the time it cost, top games, each account and preset
+- An activity log you can filter and export as CSV
+- Discord alerts, a live status message and play-time summaries in your own channel, with pings and quiet hours
+- /pc in Discord: see your accounts, take a screenshot of their Roblox windows, run a preset, close windows or switch server, from your phone
+- "Playing Bloxkeep" on your Discord profile, without account names
+- Windows notifications, and alerts on your phone through ntfy
+
+**Games**
+
+- A Games tab with popular games' wikis inside Bloxkeep: search, item tables, compare, recent buffs and nerfs
+- Live news from the games' own alerts, such as stock and spawns, with notifications for the words you pick
+- Blox Fruits values
+
+**Safe and yours**
+
+- Accounts encrypted with AES-256 and your master password, kept only on your PC; no server of its own
+- Lock by hand or after a while away; several vaults with a picker at start
+- Backups to a OneDrive or Google Drive folder, restore on a new PC, import from another Bloxkeep file
+- Hide account names for screenshots and streams
+- Nearly 100 themes, some moving, or your own colours, picture or video; themes shared as files
+- English and Vietnamese, Ctrl+K quick search, a tray menu, start with Windows
+- Free and open source (MIT), updates itself; installer, offline installer or portable ZIP for Windows 10 and 11
+
 ## Download and install
 
 Windows 10 or 11, 64-bit. Nothing else to install first.

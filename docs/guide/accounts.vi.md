@@ -122,7 +122,7 @@ Bloxkeep không giữ lại mật khẩu bạn dùng để đăng nhập. Nếu 
 | Nhãn | Vì sao | Cách xử lý |
 |---|---|---|
 | **Cần đăng nhập lại** | Roblox đã kết thúc phiên đăng nhập đã lưu: đổi mật khẩu, đăng xuất mọi phiên, hoặc một đợt kiểm tra bảo mật. | Bấm **Đăng nhập** trên thẻ và xác nhận bằng điện thoại, hoặc thêm lại tài khoản bằng cách bất kỳ (chỉ cập nhật, không tạo bản trùng). |
-| **Bị ban** | Thông tin công khai của Roblox cho biết như vậy; app đọc nó lúc kiểm tra đăng nhập. | **Vào game** và preset bỏ qua tài khoản này, tự vào lại game cũng không mở lại. Hết ban thì **⋯ › Kiểm tra đăng nhập** sẽ xóa nhãn. |
+| **Bị ban** | Thông tin công khai của Roblox cho biết như vậy; app đọc nó lúc kiểm tra đăng nhập. | Nút của thẻ là **Kháng cáo**: mở trang kháng cáo của Roblox trong trình duyệt của Bloxkeep, đã đăng nhập sẵn tài khoản đó (chỉ chính nó kháng cáo được). **Vào game** và preset bỏ qua tài khoản này, tự vào lại game cũng không mở lại. Hết ban thì **⋯ › Kiểm tra đăng nhập** sẽ xóa nhãn. |
 
 Bộ lọc **Cần đăng nhập lại** gom hết các tài khoản này. **Kiểm tra đăng nhập mỗi ngày** phát hiện trước khi bạn bấm **Vào game** ([Giữ tài khoản trong game](staying-in-game.vi.md)). Muốn kiểm tra ngay, dùng **⋯ › Kiểm tra đăng nhập** trên một tài khoản, hoặc **⋯ Tùy chọn khác › Kiểm tra đăng nhập mọi tài khoản**.
 

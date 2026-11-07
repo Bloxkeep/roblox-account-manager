@@ -122,7 +122,7 @@ Bloxkeep never keeps the password you sign in with. Until you save one yourself,
 | Badge | Why | What to do |
 |---|---|---|
 | **Needs sign-in** | Roblox ended the saved sign-in: a password change, "log out of all sessions" or a security check. | Press **Sign in** on the card and confirm with your phone, or add the account again any way (it is updated, not copied). |
-| **Banned** | Roblox's public information says so; it is read during sign-in checks. | **Play** and presets skip it, and auto-rejoin doesn't reopen it. When the ban is over, **⋯ › Check sign-in** clears the badge. |
+| **Banned** | Roblox's public information says so; it is read during sign-in checks. | Its button is **Appeal**: Roblox's Violations & Appeals page in the Bloxkeep browser, signed in as that account (only it can appeal). **Play** and presets skip it, and auto-rejoin doesn't reopen it. When the ban is over, **⋯ › Check sign-in** clears the badge. |
 
 The **Needs sign-in** filter lists them all. **Check sign-ins every day** finds them before you press **Play** ([Staying in game](staying-in-game.md)). To check now, use **⋯ › Check sign-in** on an account, or **⋯ More › Check sign-in of all accounts**.
 

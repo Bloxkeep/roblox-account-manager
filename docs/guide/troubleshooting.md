@@ -28,7 +28,9 @@ Short answers to the problems people meet most, then every keyboard shortcut.
 
 ### **Q:** An account is banned
 
-**A:** The **Banned** badge comes from Roblox's public information, read during sign-in checks. **Play** and presets skip the account, and auto-rejoin doesn't reopen it. Once the ban is over, **⋯ › Check sign-in** clears the badge.
+**A:** The **Banned** badge comes from Roblox's public information, read during sign-in checks. **Play** and presets skip the account, and auto-rejoin doesn't reopen it. Once the ban is over, **⋯ › Check sign-in** clears the badge. To appeal, press **Appeal** on its card: Roblox's Violations & Appeals page opens, signed in as that account.
+
+Banned from one game only ("You created or used an account to avoid an enforcement action…", Error 600)? That is the game's own ban, often its alt-account detection: the account isn't marked **Banned** and plays other games. Roblox doesn't handle those appeals; ask the game's owners, for example on its Discord.
 
 ### **Q:** Roblox isn't installed, or only the Microsoft Store version is
 

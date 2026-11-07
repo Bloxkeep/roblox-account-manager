@@ -1,5 +1,6 @@
 // The website's own words (build.mjs makes the pages): the landing page and the frame around the guide, in English and
 // Vietnamese. Every claim here is one the README and the guide make; keep them in step.
+import { FEATURES } from './features.mjs';
 export const SITE = 'https://bloxkeep.github.io/roblox-account-manager/';
 export const REPO = 'https://github.com/Bloxkeep/roblox-account-manager';
 // Google gives a name to a whole host, never to a folder like /roblox-account-manager/, and reads it from the WebSite
@@ -381,6 +382,16 @@ ${g.items.map(([page, img, title, text], j) => `          <li${j ? '' : ' class=
     p.querySelector('.fx-shot img').src = b.dataset.shot;
   }))); }</script>
 
+<section class="band" aria-labelledby="all">
+  <div class="wrap">
+    <h2 id="all">${esc(FEATURES[lang].title)}</h2>
+    <p class="intro">${esc(FEATURES[lang].intro)} <a href="${rel(home + 'guide/')}">${esc(l.guideLink)} ›</a></p>
+    <div class="all-groups">
+${FEATURES[lang].groups.map(([group, items]) => `      <div><h3>${esc(group)}</h3><ul>${items.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>`).join('\n')}
+    </div>
+  </div>
+</section>
+
 ${news ? `<section class="band news" aria-labelledby="news">
   <div class="wrap">
     <div class="news-head">
@@ -458,6 +469,7 @@ ${l.faq.map(([q, a]) => `      <details><summary>${esc(q)}</summary><p>${esc(a)}
       license: `${REPO}/blob/main/LICENSE`,
       inLanguage: lang,
       offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+      featureList: FEATURES[lang].groups.flatMap(([, items]) => items),
     }],
   };
   return { title: l.title, description: l.description, body, jsonLd };

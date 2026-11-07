@@ -352,3 +352,10 @@ td + td strong { color: var(--text); }
   .top nav .nav-discord span { display: none; }
   .foot .brand span { display: inline; }
 }
+
+/* Every feature: the whole list, grouped, in columns. */
+.all-groups { columns: 3 300px; column-gap: 40px; margin-top: 28px; }
+.all-groups > div { break-inside: avoid; margin: 0 0 28px; }
+.all-groups h3 { font-size: 1.05rem; margin: 0 0 8px; }
+.all-groups ul { margin: 0; padding-left: 1.1em; color: var(--muted); }
+.all-groups li { margin: 0 0 6px; line-height: 1.5; }
