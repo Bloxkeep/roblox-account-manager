@@ -142,8 +142,8 @@ public sealed class ShellForm : Form
         Shown += (_, _) =>
         {
             _shownOnce = true;
-            Update(); // the start logo painted first, then the window fades in with it
-            FadeIn();
+            Update(); // the start logo painted first, then the window comes in with it
+            _ = OpenWindowAsync();
             if (Prefs.MiniOpen)
                 SetMiniOpen(true, activate: false);
             if (_resumeWindow is not null)
@@ -618,7 +618,7 @@ public sealed class ShellForm : Form
     {
         if (_cover is StartCover start)
             await start.AtRestAsync();
-        while (_fading && !IsDisposed)
+        while ((_fading || _opening) && !IsDisposed)
             await Task.Delay(15);
         RemoveCover();
     }
@@ -714,13 +714,60 @@ public sealed class ShellForm : Form
     /// inside a see-through window).</summary>
     bool _fading;
 
+    /// <summary>The window's entrance on start is playing (OpenWindowAsync).</summary>
+    bool _opening;
+
+    /// <summary>
+    /// The window's entrance on start: a stand-in drawn as the window will look grows in from the middle (WindowOpening),
+    /// then the window, waiting invisible above it, fades in over it in a moment (its title text and buttons are all
+    /// that differ) and the stand-in goes; then the start logo begins to hop. A plain fade when there is nothing to stand
+    /// in for (no start logo, minimised) or the stand-in can't be made.
+    /// </summary>
+    async Task OpenWindowAsync()
+    {
+        var start = _cover as StartCover;
+        if (start is null || WindowState == FormWindowState.Minimized || RobloxProcesses.SeenFrame(Handle) is not { } frame
+            || frame.Width <= 0 || frame.Height <= 0)
+        {
+            FadeIn();
+            start?.Start();
+            return;
+        }
+        _opening = true;
+        try
+        {
+            var client = RectangleToScreen(ClientRectangle);
+            client.Offset(-frame.X, -frame.Y);
+            // Windows 11 rounds a window that isn't maximised and draws its hairline.
+            bool round = WindowState == FormWindowState.Normal && Environment.OSVersion.Version.Build >= 22000;
+            var theme = Themes.Current;
+            using var plate = WindowOpening.Plate(frame.Size, client, theme.Background, theme.Line,
+                round ? LogicalToDeviceUnits(8) : 0, start.DrawLogo);
+            using var standIn = new WindowOpening(frame, plate);
+            await standIn.GrowAsync(Handle);
+            FadeIn(ms: 140, rise: false);
+            while (_fading && !IsDisposed)
+                await Task.Delay(15);
+        }
+        catch (Exception ex)
+        {
+            Log.Note($"Window opening skipped: {ex.Message}");
+            FadeIn();
+        }
+        finally
+        {
+            _opening = false;
+        }
+        start.Start();
+    }
+
     /// <summary>
     /// The window opening: it fades in while rising the last few pixels into its place (unless maximised), a quarter
     /// of a second, slowing at the end. Bloxkeep's own, as Windows' animation effects may be off (they are on many PCs, the owner's too),
     /// which made the window just appear, white for a frame first. Meanwhile the window holds only its start logo
     /// (ShowStartCover): the page, which may not draw in a see-through window, is still on its way.
     /// </summary>
-    void FadeIn()
+    void FadeIn(double ms = 260, bool rise = true)
     {
         if (Opacity >= 1 || _fading || IsDisposed)
             return;
@@ -729,16 +776,15 @@ public sealed class ShellForm : Form
             Opacity = 1;
             return;
         }
-        bool rise = WindowState == FormWindowState.Normal;
+        rise &= WindowState == FormWindowState.Normal;
         var home = Location;
         int drop = rise ? LogicalToDeviceUnits(14) : 0;
         var clock = System.Diagnostics.Stopwatch.StartNew();
-        const double Ms = 260;
         var timer = new System.Windows.Forms.Timer { Interval = 1 };
         _fading = true;
         void Step()
         {
-            double t = Math.Min(1, clock.Elapsed.TotalMilliseconds / Ms), e = 1 - Math.Pow(1 - t, 3);
+            double t = Math.Min(1, clock.Elapsed.TotalMilliseconds / ms), e = 1 - Math.Pow(1 - t, 3);
             if (IsDisposed)
             {
                 timer.Dispose();
