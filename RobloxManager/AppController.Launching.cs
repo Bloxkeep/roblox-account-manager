@@ -852,7 +852,8 @@ public sealed partial class AppController
         using var turn = await InputTurn.EnterAsync("arrange");
         _windowSizes.Clear();
         return await RobloxProcesses.ArrangeGridAsync(tracked.Concat(others).Where(p => !afk.Contains(p)).ToList(), screen.WorkingArea,
-            s?.WindowLayout ?? "fill", skipMinimized: auto, app: app, custom: s is null ? default : new Size(s.WindowWidth, s.WindowHeight));
+            s?.WindowLayout ?? "fill", skipMinimized: auto, app: app, custom: s is null ? default : new Size(s.WindowWidth, s.WindowHeight),
+            raise: atMouse);
     }
 
     HashSet<int> AfkClients() =>

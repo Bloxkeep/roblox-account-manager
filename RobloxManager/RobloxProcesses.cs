@@ -822,10 +822,11 @@ public static class RobloxProcesses
     /// <param name="layout">See <see cref="GridCells"/>.</param>
     /// <param name="app">Bloxkeep's window, when Arrange windows was clicked in it: the windows come over every other app
     /// (<see cref="RaiseAsync"/>). Zero leaves the order of the PC's windows as it is.</param>
+    /// <param name="raise">The hotkey: the windows come over every other app even with Bloxkeep away (in the tray, minimized).</param>
     public static Task<int> ArrangeGridAsync(IReadOnlyList<int> pids, Rectangle area, string layout = "fill", bool skipMinimized = false,
-        IntPtr app = default, Size custom = default) =>
+        IntPtr app = default, Size custom = default, bool raise = false) =>
         // A hidden window isn't tiled: it would be placed unseen, a gap among the others.
-        ArrangeAsync(pids.Select(MainWindow).Where(h => h != IntPtr.Zero && !IsHidden(h) && !(skipMinimized && IsIconic(h))).ToList(), area, layout, app, custom);
+        ArrangeAsync(pids.Select(MainWindow).Where(h => h != IntPtr.Zero && !IsHidden(h) && !(skipMinimized && IsIconic(h))).ToList(), area, layout, app, custom, raise);
 
     /// <summary>
     /// Roblox keeps its window at least 800 × 600 in its own units (1224 × 957 px at 150 %) by answering the "changing"
@@ -833,7 +834,7 @@ public static class RobloxProcesses
     /// it (SWP_NOSENDCHANGING), Roblox takes the size (tried on the owner's PC, 853 × 764). A window that grows back
     /// anyway, or more windows than fit, are spread with <see cref="OverlapSpots"/> so every title bar shows.
     /// </summary>
-    static async Task<int> ArrangeAsync(List<IntPtr> windows, Rectangle area, string layout, IntPtr app = default, Size custom = default)
+    static async Task<int> ArrangeAsync(List<IntPtr> windows, Rectangle area, string layout, IntPtr app = default, Size custom = default, bool raise = false)
     {
         if (windows.Count == 0)
             return 0;
@@ -865,6 +866,8 @@ public static class RobloxProcesses
         }
         if (app != IntPtr.Zero)
             await RaiseAsync(windows, app);
+        else if (raise)
+            await LiftAsync(windows);
         return windows.Count;
     }
 
@@ -998,6 +1001,29 @@ public static class RobloxProcesses
         SetWindowPos(app, windows[0], 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
         SetForegroundWindow(windows[^1]);
     }
+
+    /// <summary>
+    /// Ctrl+Alt+A with Bloxkeep away: nothing of Bloxkeep's in front to stack them under, so each is made always-on-top for
+    /// an instant (as anti-AFK gives your window back), which leaves it first of the usual windows; the last ends on top and
+    /// gets the keyboard (the hotkey lets Bloxkeep hand it). Only stacked under the app in front, the tiled windows stayed
+    /// behind it: after the first press (minimized windows come up as they restore) nothing showed (owner, 2026-11-07).
+    /// </summary>
+    static async Task LiftAsync(List<IntPtr> windows)
+    {
+        const uint Restack = SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE;
+        foreach (var hWnd in windows)
+        {
+            if (!IsWindow(hWnd) || IsHungAppWindow(hWnd))
+                continue;
+            SetWindowPos(hWnd, HWND_TOPMOST, 0, 0, 0, 0, Restack);
+            SetWindowPos(hWnd, HWND_NOTOPMOST, 0, 0, 0, 0, Restack);
+            await Task.Delay(20);
+        }
+        SetForegroundWindow(windows[^1]);
+    }
+
+    static readonly IntPtr HWND_TOPMOST = -1, HWND_NOTOPMOST = -2;
+    [DllImport("user32.dll")] static extern bool IsHungAppWindow(IntPtr hWnd);
 
     [StructLayout(LayoutKind.Sequential)]
     struct RECT { public int Left, Top, Right, Bottom; }

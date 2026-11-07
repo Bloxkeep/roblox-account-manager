@@ -168,7 +168,7 @@ static class ArrangeSuite
                     async Task<List<Rectangle>> Arrange(List<Form> these, Form? app = null, string layout = "fill", Size custom = default, bool overlapping = false)
                     {
                         await Task.Delay(200);
-                        int count = await (Task<int>)arrange.Invoke(null, [these.Select(w => w.Handle).ToList(), area, layout, app?.Handle ?? IntPtr.Zero, custom])!;
+                        int count = await (Task<int>)arrange.Invoke(null, [these.Select(w => w.Handle).ToList(), area, layout, app?.Handle ?? IntPtr.Zero, custom, false])!;
                         await Task.Delay(300);
                         return count == these.Count ? these.Select(w => overlapping ? w.Bounds : RobloxProcesses.SeenFrame(w.Handle) ?? w.Bounds).ToList() : [];
                     }
