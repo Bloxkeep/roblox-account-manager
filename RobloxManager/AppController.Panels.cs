@@ -452,7 +452,7 @@ public sealed partial class AppController
                     if (_owner is ShellForm shell)
                     {
                         Log.Note($"Macro panel {id.ToString()[..8]}: main window brought to the front to edit the macro.");
-                        shell.BringToFront();
+                        shell.ShowInFront("macro panel");
                     }
                     Emit("editMacro", new { id, step, section });
                     break;

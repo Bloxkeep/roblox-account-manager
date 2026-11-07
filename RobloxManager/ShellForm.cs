@@ -229,7 +229,7 @@ public sealed class ShellForm : Form
         {
             if (_mini is null)
             {
-                _mini = new MiniWindow(_app, BringToFront);
+                _mini = new MiniWindow(_app, () => ShowInFront("mini window"));
                 _mini.Dismissed += _app.PushState;
             }
             _mini.Open(activate);
@@ -250,7 +250,7 @@ public sealed class ShellForm : Form
         tw.State = _app.TrayState;
         tw.PictureOf = _app.TrayPictureUrl;
         tw.CustomTheme = _app.TrayCustomTheme;
-        tw.OpenClicked += BringToFront;
+        tw.OpenClicked += () => ShowInFront("tray");
         tw.MiniClicked += () => SetMiniOpen(null);
         tw.QuitClicked += Quit;
         tw.MultiClicked += on => _app.TrayMulti(!on); // only offered where it can switch from here
@@ -271,7 +271,7 @@ public sealed class ShellForm : Form
         // not while a newer balloon is still showing (Windows closes the one it replaced right after).
         tray.BalloonTipClicked += (_, _) =>
         {
-            BringToFront();
+            ShowInFront("notification");
             _balloonUntil = default;
             HideTrayIfIdle();
         };
@@ -406,7 +406,10 @@ public sealed class ShellForm : Form
     /// <summary>How often the window was asked to the front, so a hide under way can tell it was overtaken.</summary>
     int _broughtToFront;
 
-    public void BringToFront([System.Runtime.CompilerServices.CallerMemberName] string? why = null)
+    /// <summary>Shows the window and puts it in front, saying from where. Not a BringToFront overload: passed as an Action,
+    /// that name bound to Control.BringToFront, which only restacks, so Open in the tray and the mini window did nothing
+    /// (owner, 2026-11-08).</summary>
+    public void ShowInFront(string why)
     {
         // Each time Bloxkeep puts itself over what the person is doing, and from where (a player found it "stuck on top").
         Log.Note($"Bloxkeep's window brought to the front ({why}).");
@@ -481,7 +484,7 @@ public sealed class ShellForm : Form
             if ((int)m.WParam == AppController.HotkeyBloxkeep)
             {
                 Log.Note("Hotkey Ctrl+Alt+B received.");
-                BringToFront();
+                ShowInFront("Ctrl+Alt+B");
             }
             else
                 _app.OnHotkey((int)m.WParam);
