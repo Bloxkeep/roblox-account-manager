@@ -821,7 +821,7 @@ public static class RobloxProcesses
     /// <summary>In the given order. Window messages only.</summary>
     /// <param name="layout">See <see cref="GridCells"/>.</param>
     /// <param name="app">Bloxkeep's window, when Arrange windows was clicked in it: the windows come over every other app
-    /// (<see cref="RaiseAsync"/>). Zero leaves the order of the PC's windows as it is.</param>
+    /// (<see cref="LiftAsync"/>). Zero leaves the order of the PC's windows as it is.</param>
     /// <param name="raise">The hotkey: the windows come over every other app even with Bloxkeep away (in the tray, minimized).</param>
     public static Task<int> ArrangeGridAsync(IReadOnlyList<int> pids, Rectangle area, string layout = "fill", bool skipMinimized = false,
         IntPtr app = default, Size custom = default, bool raise = false) =>
@@ -866,10 +866,14 @@ public static class RobloxProcesses
             await UntilRestoredAsync(missed);
             await PlaceAsync(windows, area, layout, custom);
         }
-        if (app != IntPtr.Zero)
-            await RaiseAsync(windows, app);
-        else if (raise)
+        // Lifted over every app, clicked or by the hotkey. Stacked under Bloxkeep's window instead (RaiseAsync), they stayed
+        // under whatever covered Bloxkeep: Ctrl+Alt+A with Bloxkeep open behind Discord or Edge left all but the last window
+        // under that app ("0 in place; 10904 under Discord", owner's error.log, 2026-11-08).
+        if (app != IntPtr.Zero || raise)
+        {
             await LiftAsync(windows);
+            LastArrangeNote += "lifted over other apps; ";
+        }
         return windows.Count;
     }
 
@@ -1019,24 +1023,7 @@ public static class RobloxProcesses
     }
 
     /// <summary>
-    /// Windows lets an app stack windows under the one in front, never over it (tried on the owner's PC, 2026-10-21):
-    /// so each goes under the next, the last under <paramref name="app"/>, then app under them all and the last in front.
-    /// </summary>
-    static async Task RaiseAsync(List<IntPtr> windows, IntPtr app)
-    {
-        IntPtr above = app;
-        for (int i = windows.Count - 1; i >= 0; i--)
-        {
-            SetWindowPos(windows[i], above, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_ASYNCWINDOWPOS);
-            await Task.Delay(40); // each in its turn: each moves on its own window's thread
-            above = windows[i];
-        }
-        SetWindowPos(app, windows[0], 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
-        SetForegroundWindow(windows[^1]);
-    }
-
-    /// <summary>
-    /// Ctrl+Alt+A with Bloxkeep away: nothing of Bloxkeep's in front to stack them under, so each is made always-on-top for
+    /// Arrange, clicked or Ctrl+Alt+A: Windows lets an app stack windows under the one in front, never over it, so each is made always-on-top for
     /// an instant (as anti-AFK gives your window back), which leaves it first of the usual windows; the last ends on top and
     /// gets the keyboard (the hotkey lets Bloxkeep hand it). Only stacked under the app in front, the tiled windows stayed
     /// behind it: after the first press (minimized windows come up as they restore) nothing showed (owner, 2026-11-07).
