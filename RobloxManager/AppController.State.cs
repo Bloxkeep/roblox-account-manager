@@ -63,9 +63,11 @@ public sealed partial class AppController
         DropVaultImport();
     }
 
-    object? OnPageShown()
+    /// <summary>Answered once the window's cover is off (the start logo between hops): the page's opening starts then.</summary>
+    async Task<object?> OnPageShownAsync()
     {
-        PageShown?.Invoke();
+        if (PageShown is { } shown)
+            await shown();
         return null;
     }
 

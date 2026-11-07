@@ -163,7 +163,7 @@ public sealed partial class AppController : IDisposable
     public bool ResumingPage { get; set; }
 
     /// <summary>The page drew its first screen after loading (the window drops the picture it showed meanwhile).</summary>
-    public Action? PageShown { get; init; }
+    public Func<Task>? PageShown { get; init; }
 
     /// <summary>The vault is open and no lock screen is up: what the mini window and the window's cover picture may show.
     /// The idle lock screen counts as locked (2026-10-30 review: the mini window offered "Close all" behind it).</summary>
@@ -361,7 +361,7 @@ public sealed partial class AppController : IDisposable
         "getState" => Done(InitialState()),
         "keepView" => Done(KeepView(Str(a, "view"), Bool(a, "restart"))),
         "pageBusy" => Done(SetPageBusy(Bool(a, "busy"))),
-        "pageShown" => Done(OnPageShown()),
+        "pageShown" => OnPageShownAsync(),
         "checkUpdates" => CheckUpdatesAsync(),
         "applyUpdate" => ApplyUpdateAsync(),
         "updateAtLock" => Done(SetUpdateAtLock(Bool(a, "go"))),

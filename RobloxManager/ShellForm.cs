@@ -48,7 +48,7 @@ public sealed class ShellForm : Form
     byte[]? _snapshot;
     bool _snapshotUnlocked;
     string? _snapshotTheme;
-    PictureBox? _cover;
+    Control? _cover;
     bool _coverSkipLogged;
 
     const int WM_SYSCOMMAND = 0x0112, SC_MINIMIZE = 0xF020, SW_RESTORE = 9, WM_QUERYOPEN = 0x0013;
@@ -85,7 +85,7 @@ public sealed class ShellForm : Form
             SetPageLight = SetPageLight,
             HotkeysChanged = RegisterHotkeys,
             ShowNotification = ShowNotification,
-            PageShown = () => { if (_fading) _coverAfterFade = true; else RemoveCover(); },
+            PageShown = CoverOffAsync,
             SetMiniOpen = open => SetMiniOpen(open),
             SetMonitorArea = area => _monitor?.SetArea(area),
             MonitorRefresh = () => _monitor?.Refresh(),
@@ -588,10 +588,13 @@ public sealed class ShellForm : Form
     }
 
     /// <summary>Covers the window with <paramref name="image"/> until the page says it is drawn (or <paramref name="fallbackMs"/> pass).</summary>
-    void PutCover(Image image, PictureBoxSizeMode mode, int fallbackMs = 4000)
+    void PutCover(Image image, PictureBoxSizeMode mode, int fallbackMs = 4000) =>
+        PutCover(new PictureBox { Dock = DockStyle.Fill, Image = image, SizeMode = mode, BackColor = Themes.Current.Background }, fallbackMs);
+
+    void PutCover(Control cover, int fallbackMs)
     {
         RemoveCover();
-        _cover = new PictureBox { Dock = DockStyle.Fill, Image = image, SizeMode = mode, BackColor = Themes.Current.Background };
+        _cover = cover;
         Controls.Add(_cover);
         _cover.BringToFront();
         _coverTimer.Interval = fallbackMs;
@@ -606,7 +609,18 @@ public sealed class ShellForm : Form
             return;
         int size = LogicalToDeviceUnits(72);
         using var big = new Icon(icon, new Size(size, size));
-        PutCover(big.ToBitmap(), PictureBoxSizeMode.CenterImage, fallbackMs: 15_000);
+        PutCover(new StartCover(big.ToBitmap(), size / 72f, Themes.Current.Background), fallbackMs: 15_000);
+    }
+
+    /// <summary>The page is drawn: its cover comes off, the start logo's between two hops (StartCover.AtRestAsync) and
+    /// once the window is solid. The page's answer waits for it, so its own logo starts where this one stood.</summary>
+    async Task CoverOffAsync()
+    {
+        if (_cover is StartCover start)
+            await start.AtRestAsync();
+        while (_fading && !IsDisposed)
+            await Task.Delay(15);
+        RemoveCover();
     }
 
     void RemoveCover()
@@ -616,7 +630,7 @@ public sealed class ShellForm : Form
             return;
         _cover = null;
         Controls.Remove(cover);
-        cover.Image?.Dispose();
+        (cover as PictureBox)?.Image?.Dispose();
         cover.Dispose();
     }
 
@@ -696,9 +710,9 @@ public sealed class ShellForm : Form
         }
     }
 
-    /// <summary>The page said it was drawn while the window still faded in: its cover comes off once the window is solid
-    /// (the browser may not draw inside a see-through window).</summary>
-    bool _fading, _coverAfterFade;
+    /// <summary>The window is fading in: a cover comes off only once it is solid (CoverOffAsync; the browser may not draw
+    /// inside a see-through window).</summary>
+    bool _fading;
 
     /// <summary>
     /// The window opening: it fades in while rising the last few pixels into its place (unless maximised), a quarter
@@ -738,11 +752,6 @@ public sealed class ShellForm : Form
             {
                 timer.Dispose();
                 _fading = false;
-                if (_coverAfterFade)
-                {
-                    _coverAfterFade = false;
-                    RemoveCover();
-                }
             }
         }
         timer.Tick += (_, _) => Step();
