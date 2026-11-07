@@ -1579,15 +1579,14 @@ kbd { font: 500 var(--fs-1) var(--font); padding: 1px 6px; border-radius: var(--
 .srv-tools .btn { margin-left: auto; }
 .srv-tools .i, .srv-friend-tag .i { width: 14px; height: 14px; }
 .srv-head { margin: 4px 0 8px; font-size: var(--fs-2); font-weight: 650; color: var(--muted); }
-/* Three friends' rows high whatever it shows (looking, none, the friends), so the server list under it doesn't move when
-   the friends come in; a short window takes from it first. */
-.srv-friends { display: grid; align-content: start; gap: 6px; margin-bottom: 16px; height: 150px; overflow-y: auto; }
+/* As tall as what it shows, up to three friends' rows, then scrolling: looking and "none" are one line alike, so the
+   server list under it moves only when friends are found (a fixed three rows left a gap under "none"); a short window
+   takes from it first. */
+.srv-friends { display: grid; align-content: start; gap: 6px; margin-bottom: 16px; max-height: 150px; overflow-y: auto; }
 .srv-friends.list { align-content: start; }
 .srv-friends-note { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: var(--r-md); background: var(--well); border: 1px solid var(--line); font-size: var(--fs-3); color: var(--muted); }
 .srv-friend { display: flex; align-items: center; gap: 10px; padding: 6px 10px 6px 6px; border-radius: var(--r-md); background: var(--well); border: 1px solid var(--line); }
 .srv-friend img, .srv-friend .ph { width: 32px; height: 32px; flex: none; border-radius: 50%; background: var(--surface-3); }
-/* Your private servers: as tall as what they hold (a note is one line), up to the friends' height, then scrolling. */
-#srv-private { height: auto; max-height: 150px; }
 .srv-private .ph { display: grid; place-items: center; border-radius: var(--r-sm); color: var(--muted); }
 .srv-private .ph .i { width: 15px; height: 15px; }
 .srv-private small.warn { color: var(--warn-ink); }
@@ -1597,8 +1596,8 @@ kbd { font: 500 var(--fs-1) var(--font); padding: 1px 6px; border-radius: var(--
 /* (A class set by openServers, not :has(): that made every change anywhere re-style the whole page.) */
 .modal-body.srv-body { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
 .modal-body.srv-body > * { flex: none; }
-.modal-body.srv-body > .srv-friends { flex: 0 1 150px; min-height: 52px; }
-.modal-body.srv-body > #srv-private { flex: none; height: auto; }
+.modal-body.srv-body > .srv-friends { flex: 0 1 auto; min-height: 52px; }
+.modal-body.srv-body > #srv-private { flex: none; }
 .modal-body.srv-body > .srv-list { flex: 1 1 420px; height: auto; max-height: none; min-height: 120px; }
 /* While another order loads, the rows so far stay, dimmed; a note (loading, waiting for Roblox) sits in the middle. */
 .srv-list.stale { opacity: .45; pointer-events: none; transition: opacity .15s; }
@@ -6255,6 +6254,8 @@ html:not(.in-window) .pn.pn-pill { height: 42px; }
 .srv-sort .srv-tools .btn { margin-left: 0; }
 /* The friends keep most of their three rows in a short window: the server list gives way first. */
 .modal-body.srv-body > .srv-friends { flex-shrink: .15; }
+/* A note alone (looking, none) never shrinks: squeezed, its box was cut off at the bottom. */
+.modal-body.srv-body > .srv-friends:not(.list) { flex-shrink: 0; }
 .srv-friend .ph { display: grid; place-items: center; color: var(--muted); }
 .srv-friend .ph .i { width: 16px; height: 16px; }
 .srv-list > .skel-row { height: 46px; }
