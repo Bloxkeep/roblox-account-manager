@@ -104,21 +104,37 @@ html [data-theme="dark" lang="en"]
               span [id="mon-hint"] "Click a picture to bring that window to the front, right-click for more."
                 span.sep "·"
         div.mon-area.mon-tiles [id="mon-area"]
-          div.mon-grid [role="list" style="grid-auto-rows:683px;grid-template-columns:repeat(1, minmax(200px, 1fr))"]
-            div.mon-tile [role="listitem" tabindex="0" aria-label="MainAccount, Blox Fruits, Playing"]
-              div.mon-cap
-                div.mon-lines
-                  div.mon-line
-                    b.mon-name [title="MainAccount"] "MainAccount"
-                    span.mon-tag "1.2 GB"
-                  div.mon-line
-                    span.mon-game [title="Blox Fruits · Playing"] "Blox Fruits"
-                      i.mon-dot.ok
-                    span.mon-tag "PID 14280"
-                button.icon-btn.mon-min [type="button" title="Minimize" tabindex="-1" aria-label="Minimize"]
-                  svg.i #10kcby6
-              div.mon-pic
-                img [alt="" src=#mavkgu]
+          div.mon-lanes
+            section.mon-lane [aria-label="Blox Fruits"]
+              div.mon-lane-head
+                img.mon-gicon [alt="" src=#wpz2b3]
+                div.mon-lane-title
+                  b [title="Blox Fruits"] "Blox Fruits"
+                  span.mon-lane-meta "1 window · 1.2 GB"
+                div.mon-lane-states
+                  span.mon-st.ok "1 playing"
+                div.mon-lane-acts
+                  button.icon-btn [type="button" title="Minimize all" aria-label="Minimize all"]
+                    svg.i #10kcby6
+                  button.icon-btn.mon-kill [type="button" title="Close all" aria-label="Close all"]
+                    svg.i #16z0s1r
+              div.mon-strip [aria-hidden="true"]
+                i.ok
+              div.in-lane.mon-grid [role="list" aria-label="Blox Fruits" style="grid-auto-rows:617px;grid-template-columns:repeat(1, minmax(200px, 1fr))"]
+                div.mon-tile [role="listitem" tabindex="0" aria-label="MainAccount, Blox Fruits, Playing"]
+                  div.mon-cap
+                    div.mon-lines
+                      div.mon-line
+                        b.mon-name [title="MainAccount"] "MainAccount"
+                        span.mon-tag "1.2 GB"
+                      div.mon-line
+                        span.mon-game [title="Playing"] "Playing"
+                          i.mon-dot.ok
+                        span.mon-tag "PID 14280"
+                    button.icon-btn.mon-min [type="button" title="Minimize" tabindex="-1" aria-label="Minimize"]
+                      svg.i #10kcby6
+                  div.mon-pic
+                    img [alt="" src=#mavkgu]
 #layer
 #toasts
 -- commands

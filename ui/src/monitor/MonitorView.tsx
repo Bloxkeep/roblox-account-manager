@@ -4,9 +4,9 @@
 // ones a menu or a toast would lie under, since Windows draws the pictures above the whole page. Until 2026-11 the whole
 // tab was hand-drawn WinForms (WindowThumbnails); now only the pictures are the app's.
 // The app sends the windows every 1.5 s while the tab shows (the "monitor" event, app.js keeps the last one).
-// Windows in more than one game are laid out in a lane per game: its icon, name, windows and RAM, a strip with one
-// segment per window coloured by how it is doing, and buttons for all of them. A lane with a window cut off comes
-// first. A folded lane has no picture boxes, so the app stops drawing (and Windows stops copying) its pictures.
+// The windows are laid out in a lane per game: its icon, name, windows and RAM, a strip with one segment per window
+// coloured by how it is doing, and buttons for all of them (fold and "only this one" with two games or more). A lane
+// with a window cut off comes first. A folded lane has no picture boxes, so the app stops drawing (and Windows stops copying) its pictures.
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Icon, useHost } from '../host';
 import type { MenuItem } from '../Overlays';
@@ -141,13 +141,15 @@ export function MonitorView({ preview }: { preview: boolean }) {
   }
 
   const all = lanes(tiles, t('mon.noGame'));
-  const laned = all.length > 1;
-  const solo = laned && soloGame !== null ? all.find(l => l.game === soloGame) ?? null : null;
+  // One game has its heading too, for its buttons for all the windows (owner, 2026-11-07: no Minimise all with one
+  // game), but nothing to fold or show alone.
+  const multi = all.length > 1;
+  const solo = multi && soloGame !== null ? all.find(l => l.game === soloGame) ?? null : null;
   const shown = solo ? [solo] : all;
-  // Without lanes a fold left from before is no matter: the one grid shows.
-  const open = laned ? shown.filter(l => solo || !folded.has(l.game)) : all;
-  // Each open lane gets an equal share of the height, less the headings; without lanes the grid has it all.
-  const share = laned ? Math.max(LANE_MIN, (size.h - shown.length * (HEAD + LANE_GAP) + LANE_GAP) / Math.max(1, open.length)) : size.h;
+  // With one game a fold left from before is no matter: it shows.
+  const open = multi ? shown.filter(l => solo || !folded.has(l.game)) : all;
+  // Each open lane gets an equal share of the height, less the headings.
+  const share = Math.max(LANE_MIN, (size.h - shown.length * (HEAD + LANE_GAP) + LANE_GAP) / Math.max(1, open.length));
   const layout = new Map(open.map(l => {
     const cols = size.w ? columns(l.tiles.length, size.w, share) : 1;
     const rows = Math.ceil(l.tiles.length / cols);
@@ -198,8 +200,8 @@ export function MonitorView({ preview }: { preview: boolean }) {
     const ram = tile.ramMb > 0 ? fmtMb(tile.ramMb) : '';
     const h = health(tile.status), st = stLabel(tile);
     const letter = tile.jobId ? lane.servers.get(tile.jobId) : undefined;
-    // In a lane its heading names the game: the second line says how the window is doing instead.
-    const line = laned ? st || tile.game : tile.game;
+    // Its lane's heading names the game: the second line says how the window is doing instead.
+    const line = st || tile.game;
     return <div key={tile.id} role="listitem" className={`mon-tile ${tile.minimized ? 'min' : ''} ${h === 'bad' ? 'bad' : ''}`} data-tile={tile.id}
       tabIndex={tile.id === stop ? 0 : -1} aria-label={[tile.name, tile.game, st].filter(Boolean).join(', ')}
       onFocus={() => setFocus(tile.id)}
@@ -210,7 +212,7 @@ export function MonitorView({ preview }: { preview: boolean }) {
         <div className="mon-lines">
           <div className="mon-line"><b className="mon-name" title={tile.name}>{tile.name}</b>{ram ? <span className="mon-tag">{ram}</span> : null}</div>
           <div className="mon-line">
-            <span className="mon-game" title={st && !laned ? `${tile.game} · ${st}` : line}><i className={`mon-dot ${h}`} />{line}</span>
+            <span className="mon-game" title={line}><i className={`mon-dot ${h}`} />{line}</span>
             {letter ? <span className={`mon-tag mon-srv s${(letter.charCodeAt(0) - 65) % 4}`} title={t('mon.serverTip')}>{t('mon.server', { s: letter })}</span> : null}
             <span className="mon-tag">PID {tile.pid}</span>
           </div>
@@ -228,13 +230,11 @@ export function MonitorView({ preview }: { preview: boolean }) {
   };
   const grid = (lane: Lane) => {
     const { cols, tileH } = layout.get(lane.game)!;
-    return <div className={`mon-grid ${laned ? 'in-lane' : ''}`} role="list" aria-label={laned ? lane.game || t('mon.noGame') : undefined}
+    return <div className="mon-grid in-lane" role="list" aria-label={lane.game || t('mon.noGame')}
       style={{ gridTemplateColumns: `repeat(${cols}, minmax(${MIN_W}px, 1fr))`, gridAutoRows: `${tileH}px` }}>
       {lane.tiles.map(tile => tileOf(tile, lane, cols))}
     </div>;
   };
-
-  if (!laned) return <div className="mon-area mon-tiles" id="mon-area" ref={area} onScroll={() => host.monitorMoved()}>{grid(all[0])}</div>;
 
   const lane = (l: Lane) => {
     const isOpen = open.includes(l);
@@ -245,8 +245,8 @@ export function MonitorView({ preview }: { preview: boolean }) {
     const soloToggle = () => { soloGame = solo ? null : l.game; redraw(n => n + 1); };
     const meta = [tn('mon.windows', l.tiles.length), l.ramMb > 0 ? fmtMb(l.ramMb) : ''].filter(Boolean).join(' · ');
     return <section key={l.game} className={`mon-lane ${isOpen ? '' : 'folded'}`} aria-label={name}>
-      <div className="mon-lane-head" onDoubleClick={e => { if (!(e.target as Element).closest('button')) soloToggle(); }}>
-        {solo ? <button type="button" className="btn ghost sm mon-back" onClick={soloToggle}><Icon name="chevronLeft" /><span>{t('mon.allGames')}</span></button>
+      <div className="mon-lane-head" onDoubleClick={e => { if (multi && !(e.target as Element).closest('button')) soloToggle(); }}>
+        {!multi ? null : solo ? <button type="button" className="btn ghost sm mon-back" onClick={soloToggle}><Icon name="chevronLeft" /><span>{t('mon.allGames')}</span></button>
           : <button type="button" className="icon-btn mon-fold" aria-expanded={isOpen} title={t(isOpen ? 'mon.fold' : 'mon.unfold')}
             aria-label={t(isOpen ? 'mon.fold' : 'mon.unfold')} onClick={toggle}><Icon name={isOpen ? 'chevronDown' : 'chevronRight'} /></button>}
         <GameMark url={l.iconUrl} />
@@ -259,7 +259,7 @@ export function MonitorView({ preview }: { preview: boolean }) {
         <div className="mon-lane-acts">
           <button type="button" className="icon-btn" title={t(anyUp ? 'mon.minAll' : 'mon.restoreAll')} aria-label={t(anyUp ? 'mon.minAll' : 'mon.restoreAll')}
             onClick={() => l.tiles.filter(x => x.minimized !== anyUp).forEach(x => act(x, anyUp ? 'minimize' : 'restore'))}><Glyph d={anyUp ? 'min' : 'restore'} /></button>
-          {solo ? null : <button type="button" className="icon-btn" title={t('mon.solo')} aria-label={t('mon.solo')} onClick={soloToggle}><Glyph d="solo" /></button>}
+          {solo || !multi ? null : <button type="button" className="icon-btn" title={t('mon.solo')} aria-label={t('mon.solo')} onClick={soloToggle}><Glyph d="solo" /></button>}
           <button type="button" className={`icon-btn mon-kill ${asking ? 'ask' : ''}`} title={t('mon.closeAll')}
             aria-label={asking ? tn('mon.closeAsk', l.tiles.length) : t('mon.closeAll')}
             onClick={() => { if (asking) { setCloseAsk(null); l.tiles.forEach(x => act(x, 'close')); } else setCloseAsk(l.game); }}>
