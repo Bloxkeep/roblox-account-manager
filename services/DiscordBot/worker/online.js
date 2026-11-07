@@ -51,11 +51,15 @@ export const GAMES_MAX = 20, DROPS_MAX = 20, ALTS_MAX = 500;
  * would point at someone); the radar looks this far back. */
 export const GAME_MIN = 3, RADAR_MIN = 3, RADAR_MINUTES = 15;
 export const GAMES_SHOWN = 12, BOARD_SHOWN = 10;
+/** The theme the app is in (app 1.0.21 on), for "Popular" in its theme picker: one of Bloxkeep's own by id; a custom
+ * theme or "follow Windows" isn't sent. Shown with at least THEME_MIN PCs in it, the THEMES_SHOWN most used. */
+export const THEME_ID = /^[a-z][a-z0-9-]{0,39}$/;
+export const THEME_MIN = 2, THEMES_SHOWN = 8;
 
 const ids = (list, max) => Array.isArray(list)
   ? [...new Set(list.filter(n => Number.isSafeInteger(n) && n > 0))].slice(0, max) : [];
 
-/** What the app sent, checked: { id, app, lang, first, age, games, alts, drops, name } or { id, gone: true, removed,
+/** What the app sent, checked: { id, app, lang, first, age, games, alts, drops, name, theme } or { id, gone: true, removed,
  * why }; null for anything else. first: a new install's first beat; removed: its uninstaller saying so. */
 export function readBeat(body) {
   const id = typeof body?.id === 'string' ? body.id.toLowerCase() : '';
@@ -74,22 +78,25 @@ export function readBeat(body) {
     drops: (Array.isArray(body.drops) ? body.drops : []).filter(d => Number.isSafeInteger(d?.game) && d.game > 0 && DROPS.includes(d.why))
       .slice(0, DROPS_MAX).map(d => ({ game: d.game, why: d.why })),
     name: BOARD_NAME.test(name) ? name : null,
+    theme: typeof body.theme === 'string' && THEME_ID.test(body.theme) && body.theme !== 'custom' && body.theme !== 'system' ? body.theme : null,
   };
 }
 
 /**
  * What the apps are told back with each beat, and /online shows: the games Bloxkeep's users play now (with at least
  * GAME_MIN PCs on each), the radar (a game where RADAR_MIN PCs or more dropped out the same way in the last
- * RADAR_MINUTES), the PCs running the most accounts that joined the board, and how many accounts run in all.
- * here: id → { games, alts, name }; drops: [{ id, game, why, at }]; names: universe → { name, place }.
+ * RADAR_MINUTES), the PCs running the most accounts that joined the board, how many accounts run in all, and the themes
+ * the apps are in (with at least THEME_MIN PCs in each, most first). here: id → { games, alts, name, theme }; drops: [{ id, game, why, at }]; names: universe → { name, place }.
  */
 export function communityOf(here, drops, names, now, min = {}) {
   const gameMin = min.game ?? GAME_MIN, radarMin = min.radar ?? RADAR_MIN;
   const named = u => ({ game: u, name: names.get(u)?.name ?? null, place: names.get(u)?.place ?? null });
-  const playing = new Map();
+  const playing = new Map(), inTheme = new Map();
   let alts = 0;
   for (const h of here.values()) {
     alts += h.alts ?? 0;
+    if (h.theme)
+      inTheme.set(h.theme, (inTheme.get(h.theme) ?? 0) + 1);
     for (const u of h.games ?? [])
       playing.set(u, (playing.get(u) ?? 0) + 1);
   }
@@ -102,7 +109,9 @@ export function communityOf(here, drops, names, now, min = {}) {
   const radar = [...hit].filter(([, pcs]) => pcs.size >= radarMin).sort((a, b) => b[1].size - a[1].size)
     .map(([k, pcs]) => { const [u, why] = k.split('|'); return { ...named(Number(u)), why, pcs: pcs.size, minutes: RADAR_MINUTES }; });
   const board = [...here].filter(([, h]) => h.name && h.alts > 0).sort((a, b) => b[1].alts - a[1].alts || (a[1].since ?? 0) - (b[1].since ?? 0));
-  return { pcs: here.size, alts, games, radar, board: board.slice(0, BOARD_SHOWN).map(([, h]) => ({ name: h.name, alts: h.alts })), ranked: board.map(([id]) => id) };
+  const themes = [...inTheme].filter(([, n]) => n >= (min.theme ?? THEME_MIN)).sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1))
+    .slice(0, THEMES_SHOWN).map(([id, n]) => ({ id, pcs: n }));
+  return { pcs: here.size, alts, games, radar, themes, board: board.slice(0, BOARD_SHOWN).map(([, h]) => ({ name: h.name, alts: h.alts })), ranked: board.map(([id]) => id) };
 }
 
 /** The dashboard's key, made from the bot's token: only the link /online gives opens it, and a new token changes it. */

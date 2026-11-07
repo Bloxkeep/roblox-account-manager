@@ -489,10 +489,12 @@ try {
   // What the apps play (online.js communityOf): three PCs in Blox Fruits (universe 994732206), one also in a game only it
   // plays; two on the alts board. A game shows with 3 PCs or more, a radar line with 3 PCs dropped the same way.
   const P1 = '1'.repeat(32), P2 = '2'.repeat(32), P3 = '3'.repeat(32);
-  await beat({ id: P1, app: '1.0.19', games: [994732206, 555], alts: 30, board: '  Máy   của Minh ' });
-  await beat({ id: P2, app: '1.0.19', games: [994732206], alts: 45, board: 'Farm_PC', drops: [{ game: 994732206, why: 'lost' }] });
-  b = await beat({ id: P3, app: '1.0.19', games: [994732206], alts: 4, drops: [{ game: 994732206, why: 'lost' }, { game: 994732206, why: 'nope' }] });
+  await beat({ id: P1, app: '1.0.19', games: [994732206, 555], alts: 30, board: '  Máy   của Minh ', theme: 'ocean' });
+  await beat({ id: P2, app: '1.0.19', games: [994732206], alts: 45, board: 'Farm_PC', drops: [{ game: 994732206, why: 'lost' }], theme: 'ocean' });
+  b = await beat({ id: P3, app: '1.0.19', games: [994732206], alts: 4, drops: [{ game: 994732206, why: 'lost' }, { game: 994732206, why: 'nope' }], theme: 'dark' });
   let c = b.json?.community;
+  check("the themes the apps are in: one 2 PCs use shows, one only 1 PC uses doesn't",
+    JSON.stringify(c?.themes) === JSON.stringify([{ id: 'ocean', pcs: 2 }]), JSON.stringify(c?.themes));
   check('a beat tells what Bloxkeep users play now: games with 3 PCs or more, accounts running in all',
     c?.games?.length === 1 && c.games[0].game === 994732206 && c.games[0].pcs === 3 && c.alts === 79 && !JSON.stringify(c).includes('555'), JSON.stringify(c));
   check('…the alts board: only the PCs that joined it, most first, their names tidied; the one not on it told nothing',

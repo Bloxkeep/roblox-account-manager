@@ -77,13 +77,15 @@ public sealed partial class AppController
         try
         {
             // What this PC plays now, for the sums the bot tells back (CommunityDto): the games its accounts are in, how many
-            // run, the drops since the last beat; its name on the alts board if it joined it. No account.
+            // run, the drops since the last beat; its name on the alts board if it joined it; the theme picked, for Popular in
+            // the theme picker (one of Bloxkeep's own: not a custom one, not "follow Windows"). No account.
             var drops = _onlineDrops.ToList();
             _onlineDrops.Clear();
             using var res = await PostOnlineAsync(new
             {
                 id, app = _updater.CurrentVersion, language = L.Language, age, first,
                 games = PlayingUniverses(), alts = _running.Count, drops = drops.Select(d => new { game = d.Universe, why = d.Why }), board = Prefs.BoardName,
+                theme = Prefs.Theme is Themes.FollowWindows or Themes.Custom ? null : Prefs.Theme,
             });
             if (!res.IsSuccessStatusCode)
             {

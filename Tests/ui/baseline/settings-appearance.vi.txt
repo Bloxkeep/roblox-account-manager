@@ -144,6 +144,7 @@ html [data-theme="dark" lang="vi"]
                           span [id="s-theme-name"] "Tối"
                       div.ctl
                     div.tg-tabs [id="s-theme-groups"]
+                      button.chip [type="button" aria-pressed="false"] "Phổ biến"
                       button.chip.on [type="button" aria-pressed="true"] "Cơ bản"
                       button.chip [type="button" aria-pressed="false"] "Phong cảnh"
                       button.chip [type="button" aria-pressed="false"] "Màu sắc"
@@ -203,7 +204,7 @@ html [data-theme="dark" lang="vi"]
                     div.set-row
                       div
                         div.t "Ẩn tên tài khoản"
-                        div.d "Hiện “Tài khoản 1”, “Tài khoản 2”… thay cho tên và ảnh, khi chụp màn hình hay livestream."
+                        div.d "Rút gọn tên còn chữ cái đầu như chế độ streamer của Discord, khi chụp màn hình hay livestream. Vẫn giữ ảnh."
                       div.ctl
                         label.switch
                           input [id="s-hidenames" type="checkbox" aria-label="Ẩn tên tài khoản" checked=false]

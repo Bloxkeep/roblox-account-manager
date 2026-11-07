@@ -1,12 +1,14 @@
-// Settings › Appearance: the theme (swatches by group; Custom's colours, picture or video, blur, saving it by name), your
+// Settings › Appearance: the theme (swatches by group, Popular first: the themes Bloxkeep's users are in now, as the online
+// count's bot sums them, Community.tsx; Custom's colours, picture or video, blur, saving it by name), your
 // themes (kept by name, shared as a file), the language, and hiding account names.
 import { useState, useSyncExternalStore, type CSSProperties, type KeyboardEvent } from 'react';
 import { Icon, useAppState, useHost, type CustomTheme, type SavedTheme } from '../host';
 import { Group, Page, Row, Switch, useLocal } from './parts';
 import { ColorInput } from '../ColorField';
+import { useCommunity } from '../Community';
 
 export function AppearancePage({ title }: { title: string }) {
-  const { t, tIn, lang, call, toast, busy, themes, themePending, previewTheme, subscribe, customTheme, customVars, previewCustom } = useHost();
+  const { t, tn, tIn, lang, call, toast, busy, themes, themePending, previewTheme, subscribe, customTheme, customVars, previewCustom } = useHost();
   const app = useAppState();
   // A theme picked with the arrow keys shows at once and saves once the keys rest (app.js previewTheme); marked here meanwhile.
   const pending = useSyncExternalStore(subscribe, themePending);
@@ -23,7 +25,13 @@ export function AppearancePage({ title }: { title: string }) {
   const inUse = current === 'custom' && custom ? saved.find(s => same(s.look, custom)) : undefined;
   const [deleting, setDeleting] = useState<string | null>(null);
   // One group at a time, starting at the one of the theme in use.
-  const [group, setGroup] = useState(() => Object.keys(themes).find(g => themes[g].includes(current)) || Object.keys(themes)[0]);
+  const [picked, setGroup] = useState(() => Object.keys(themes).find(g => themes[g].includes(current)) || Object.keys(themes)[0]);
+  // Popular: the themes most PCs with Bloxkeep open are in now (2 or more each), most first; only ones this app has.
+  const known = new Set(Object.values(themes).flat());
+  const popular = (useCommunity(true)?.themes || []).filter(p => known.has(p.id));
+  const uses = new Map(popular.map(p => [p.id, p.pcs]));
+  const groups: Record<string, string[]> = popular.length ? { popular: popular.map(p => p.id), ...themes } : themes;
+  const group = groups[picked] ? picked : Object.keys(themes)[0];
 
   // The swatches are one Tab stop; the arrow keys (Home/End to the ends) move between them and pick as they go, like radio buttons.
   const keys = (e: KeyboardEvent<HTMLDivElement>) => {
@@ -41,19 +49,20 @@ export function AppearancePage({ title }: { title: string }) {
     <Group id="appearance">
       <Row title={t('set.theme')} desc={<span id="s-theme-name">{t(`theme.${current}`)}</span>} />
       <div className="tg-tabs" id="s-theme-groups">
-        {Object.keys(themes).map(g => <button type="button" key={g} className={`chip ${g === group ? 'on' : ''}`} data-group={g} aria-pressed={g === group}
+        {Object.keys(groups).map(g => <button type="button" key={g} className={`chip ${g === group ? 'on' : ''}`} data-group={g} aria-pressed={g === group}
           onClick={() => setGroup(g)}>{t(`theme.group.${g}`)}</button>)}
       </div>
       <div className="themes" id="s-themes" role="radiogroup" aria-label={t('set.theme')} onKeyDown={keys}>
-        {themes[group].map((id, i) => {
+        {groups[group].map((id, i) => {
           const on = id === current, name = t(`theme.${id}`);
           // data-theme gives each tile its theme's own colours. Another group's theme in use: the first tile takes the Tab stop.
           return <button key={id} className={`swatch ${on ? 'on' : ''}`} data-act="theme" data-id={id} role="radio" aria-checked={on}
-            tabIndex={on || (i === 0 && !themes[group].includes(current)) ? 0 : -1} aria-label={name}>
+            tabIndex={on || (i === 0 && !groups[group].includes(current)) ? 0 : -1} aria-label={name}>
             {id === 'system' ? <><span data-theme="light" /><span data-theme="dark" /></>
               : id === 'custom' && customLook ? <span data-theme="custom" data-tone={customLook.tone} style={{ ...customLook.vars, '--backdrop': customLook.swatch } as CSSProperties}><em /></span>
               : <span data-theme={id}><em /></span>}
             <b>{name}</b>
+            {group === 'popular' ? <small>{tn('set.themeUses', uses.get(id) || 0)}</small> : null}
           </button>;
         })}
       </div>

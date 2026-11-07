@@ -90,7 +90,7 @@ Bloxkeep has no accounts or analytics of its own. Your accounts, settings and hi
 | Your backup folder | The encrypted vault. |
 | Your Discord webhook | Only when you turn it on. Never cookies or passwords. |
 | Bloxkeep's developer | Feedback you choose to send. |
-| Bloxkeep's Discord bot | While Bloxkeep is open, a note every few minutes for the online count: a code made from this PC (it can't be traced back), the version, the language, the games your accounts are in, how many run and why one dropped out. Never an account. Turn it off in **Settings › Bloxkeep › Privacy › Add me to the online count**. |
+| Bloxkeep's Discord bot | While Bloxkeep is open, a note every few minutes for the online count: a code made from this PC (it can't be traced back), the version, the language, the games your accounts are in, how many run, why one dropped out and the theme you picked. Never an account. Turn it off in **Settings › Bloxkeep › Privacy › Add me to the online count**. |
 
 The full list is in the [privacy policy](../../PRIVACY.md).
 

@@ -221,6 +221,9 @@
       { name: 'Bee Farm 24h', alts: 31 }, { name: 'GAG stock', alts: 22 }, { name: 'PC-2', alts: 18 }, { name: 'Night Shift', alts: 15 },
       { name: 'Lam.alts', alts: 12 }, { name: 'khoa', alts: 9 }].map((b, i) => params.has('fewalts') ? { ...b, alts: [9, 7, 6, 5, 4, 3, 3, 2, 2, 1][i] } : b).filter(b => (boardName && countOnline && !params.has('noalts')) || b.name !== 'Máy farm của Minh'),
     you: boardName && countOnline ? { rank: params.has('noalts') ? null : 3, of: 17 } : null,
+    // ?nopopular: no theme used by 2 PCs or more (no Popular group).
+    themes: params.has('nopopular') ? [] : [{ id: 'dark', pcs: 24 }, { id: 'ocean', pcs: 9 }, { id: 'sakura', pcs: 7 }, { id: 'neon', pcs: 5 },
+      { id: 'christmas', pcs: 4 }, { id: 'light', pcs: 3 }, { id: 'retro', pcs: 2 }],
   });
   // ?remote=code|linked|connecting: Settings › Discord › Control from Discord on, waiting for its code to be typed, linked,
   // or not connected yet.

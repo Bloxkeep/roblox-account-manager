@@ -1067,7 +1067,7 @@ export class Gateway extends DurableObject {
     }
     const was = this.here.get(b.id);
     this.here.set(b.id, { until: now, app: b.app, lang: b.lang, counted: dayOf(now), games: b.games, alts: b.alts, name: b.name,
-      since: b.name ? (was?.name ? was.since : now) : null });
+      theme: b.theme, since: b.name ? (was?.name ? was.since : now) : null });
     for (const d of b.drops)
       this.drops.push({ id: b.id, game: d.game, why: d.why, at: now });
     const count = this.countHere(now), next = this.beatEvery(count), until = now + this.onlineFor(next);

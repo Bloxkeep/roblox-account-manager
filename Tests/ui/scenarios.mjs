@@ -335,6 +335,12 @@ export default [
     await s.wait(300);
   }),
   S('settings-saved-none', 'settings=appearance'),
+  // Popular: the themes most PCs with Bloxkeep open are in now, each with how many; none used by 2 PCs: no such group.
+  S('settings-theme-popular', 'settings=appearance', async s => {
+    await s.click({ css: '#s-theme-groups [data-group="popular"]' });
+    await s.wait(300);
+  }),
+  S('settings-theme-nopopular', 'settings=appearance&nopopular=1'),
   S('settings-backup-on', 'settings=backup&backup=1'),
   S('settings-update-ready', 'settings=updates&update=1'),
   S('settings-update-quiet', 'settings=updates&update=quiet'),

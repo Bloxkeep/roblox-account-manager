@@ -10,6 +10,8 @@ export type PlayingGame = { game: number; name: string | null; place: number | n
 export type RadarLine = PlayingGame & { why: 'kick' | 'lost' | 'shutdown' | 'join'; minutes: number };
 export type Community = {
   pcs: number; alts: number; games: PlayingGame[]; radar: RadarLine[]; board: { name: string; alts: number }[];
+  /** The themes the apps are in, with 2 PCs or more each, most first (a bot before 2026-11-08 sends none). */
+  themes?: { id: string; pcs: number }[];
   /** This PC on the board: its place among how many; null when it isn't on it. */
   you: { rank: number | null; of: number } | null;
 };
