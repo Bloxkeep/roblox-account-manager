@@ -25,6 +25,7 @@ public sealed partial class AppController
         // Another create or unlock finished first: that vault stays open, and the file is made its own again (this may have overwritten it).
         if (_vault is not null)
         {
+            Log.Note("Create vault: another create or unlock finished first; that vault stays open.");
             created.Dispose();
             Persist();
             return BuildState();
@@ -54,6 +55,8 @@ public sealed partial class AppController
             // The vault's own refusals are sentences of the app; a file Windows wouldn't read, or broken JSON, aren't.
             if (ex is JsonException)
                 Log.Write(ex);
+            else if (ex is not InvalidPasswordException)
+                Log.Note($"Unlock: the data file couldn't be opened ({ex.GetType().Name}).");
             string text = ex switch
             {
                 InvalidPasswordException or InvalidDataException => ex.Message,
@@ -71,6 +74,7 @@ public sealed partial class AppController
         // worked out: this copy is let go (opened, it would be shown as the other vault's).
         if (_vault is not null || Vaults.Current != unlocking)
         {
+            Log.Note($"Unlock: let go, {(_vault is not null ? "another unlock finished first" : "another vault was picked meanwhile")}.");
             vault.Dispose();
             return BuildState();
         }
@@ -101,6 +105,7 @@ public sealed partial class AppController
         if (s.MultiInstance && !MultiInstance.Armed)
             MultiInstance.Enable();
         _lastArmed = MultiInstance.Armed;
+        Log.Note($"Unlock: vault opened, {vault.Data.Accounts.Count} accounts{(s.MultiInstance && !_lastArmed ? "; Multi-Roblox is on but not armed" : "")}.");
         KeepMultiAtStart(s.MultiInstance);
         // Read before AdoptOpenSessions: its save writes these lists from memory, still empty then.
         foreach (var e in vault.Data.EndedSessions)
@@ -166,10 +171,13 @@ public sealed partial class AppController
     /// is gone or open again. Not ones from long ago: Bloxkeep opened the next day must not start Roblox by itself.</summary>
     void RestoreWaitingRejoins(Vault vault, List<WaitingRejoin> waiting)
     {
+        int before = _rejoinQueue.Count;
         foreach (var w in waiting)
             if (w.Target is { } target && DateTime.UtcNow - w.Due < WaitingRejoinKept && vault.Data.Accounts.Any(a => a.Id == w.AccountId) && !_running.ContainsKey(w.AccountId)
                 && _rejoinQueue.All(r => r.AccountId != w.AccountId))
                 _rejoinQueue.Add(new RejoinRequest(w.AccountId, target, w.Due > DateTime.UtcNow ? w.Due : DateTime.UtcNow + RejoinDelay, PresetId: w.PresetId, Restart: w.Restart));
+        if (waiting.Count > 0)
+            Log.Note($"Unlock: {_rejoinQueue.Count - before} of {waiting.Count} waiting rejoin(s) put back (the rest too old, gone or open).");
     }
 
     /// <summary>Leeway between a launch's time and its client's start, for picking saved clients up again.</summary>
@@ -184,6 +192,7 @@ public sealed partial class AppController
         // After a restart of the PC the same process ids belong to other programs (also after a shutdown with Windows'
         // Fast Startup, which doesn't restart the uptime): the client must have started around its launch.
         var booted = DateTime.UtcNow - TimeSpan.FromMilliseconds(Environment.TickCount64);
+        int adopted = 0;
         bool SameClient(OpenSession session) =>
             started.TryGetValue(session.Pid, out long created) && session.StartedAt >= booted
             && (created == 0 || DateTime.FromFileTimeUtc(created) is var at
@@ -196,8 +205,10 @@ public sealed partial class AppController
                 _running[session.AccountId] = (session.Pid, new PendingLaunch(session.AccountId, [], session.StartedAt, session.Target, PresetId: session.PresetId) { FpsLimit = session.FpsLimit });
                 // A light-AFK window was minimised once already, before Bloxkeep closed: one the person brought back up stays up.
                 _afkMinimised.Add(session.Pid);
+                adopted++;
             }
         }
+        Log.Note($"Unlock: {adopted} of {saved.Count} Roblox window(s) open before were picked up again.");
         saved.Clear();
         Persist();
     }
@@ -206,7 +217,10 @@ public sealed partial class AppController
     {
         // Edits that can't be written yet (the file held by an antivirus) would be lost with the vault.
         if (!SaveBeforeClosing())
+        {
+            Log.Note("Lock: refused, the changes couldn't be saved; Bloxkeep stays unlocked.");
             throw new UserError(L.T("Couldn't save your changes, so Bloxkeep stays unlocked. Try again in a moment."));
+        }
         _launchCts?.Cancel();
         _rejoinCts?.Cancel();
         QuickLoginCancel();
@@ -279,6 +293,7 @@ public sealed partial class AppController
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
+            Log.Note($"Change password: the vault couldn't be written ({ex.GetType().Name}).");
             throw new UserError(L.F("Couldn't save data: {0}", ErrorText(ex)));
         }
         OnPasswordChanged(next);

@@ -35,6 +35,8 @@ public sealed partial class AppController
     TimeSpan _onlineEvery = OnlineBeat;
     TimeSpan _onlineRetry = OnlineRetry;
     bool _onlineSending;
+    /// <summary>The last beat failed: written once, then once more when one goes through.</summary>
+    bool _onlineFailing;
     /// <summary>A beat went through since the app started (or the switch was turned on): there is a goodbye to say.</summary>
     bool _onlineSaid;
 
@@ -86,6 +88,9 @@ public sealed partial class AppController
             if (!res.IsSuccessStatusCode)
             {
                 _onlineDrops.InsertRange(0, drops.Take(OnlineDropsMax - _onlineDrops.Count));
+                if (!_onlineFailing)
+                    Log.Note($"Online count: the bot answered HTTP {(int)res.StatusCode}; tried again sooner, then less and less often.");
+                _onlineFailing = true;
                 RetryOnline();
                 return;
             }
@@ -96,6 +101,9 @@ public sealed partial class AppController
                 return;
             }
             _onlineSaid = true;
+            if (_onlineFailing)
+                Log.Note("Online count: recovered.");
+            _onlineFailing = false;
             _onlineRetry = OnlineRetry;
             if (!Prefs.FirstOpenTold)
             {
@@ -119,6 +127,9 @@ public sealed partial class AppController
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
         {
+            if (!_onlineFailing)
+                Log.Note($"Online count: beat failed ({LogKindOf(ex)}); tried again sooner, then less and less often.");
+            _onlineFailing = true;
             RetryOnline();
         }
         finally
@@ -239,6 +250,8 @@ public sealed partial class AppController
     /// nothing of this PC and nothing sent about it.</summary>
     static string CommunityUrl => (OnlineTestUrl ?? OnlineUrl).Replace("/online/ping", "/online/community", StringComparison.Ordinal);
     bool _communityAsking;
+    /// <summary>The last ask for the sums failed: written once, then once more when one goes through.</summary>
+    bool _communityFailing;
 
     /// <summary>The Games tab or Statistics is open while the count is off: the sums again, at most once a minute (the bot keeps
     /// them 30 s). With the count on, the beats bring them.</summary>
@@ -257,7 +270,15 @@ public sealed partial class AppController
         {
             using var res = await OnlineHttp.GetAsync(CommunityUrl);
             if (!res.IsSuccessStatusCode)
+            {
+                if (!_communityFailing)
+                    Log.Note($"Community sums: the bot answered HTTP {(int)res.StatusCode}; asked again in a minute.");
+                _communityFailing = true;
                 return;
+            }
+            if (_communityFailing)
+                Log.Note("Community sums: recovered.");
+            _communityFailing = false;
             using var answer = JsonDocument.Parse(await res.Content.ReadAsStringAsync());
             if (!Prefs.CountOnline && answer.RootElement.ValueKind == JsonValueKind.Object && answer.RootElement.TryGetProperty("community", out var community)
                 && community.ValueKind == JsonValueKind.Object)
@@ -269,6 +290,9 @@ public sealed partial class AppController
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
         {
+            if (!_communityFailing)
+                Log.Note($"Community sums: not loaded ({LogKindOf(ex)}); asked again in a minute.");
+            _communityFailing = true;
         }
         finally
         {

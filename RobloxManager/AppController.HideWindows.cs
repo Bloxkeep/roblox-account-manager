@@ -19,9 +19,13 @@ public sealed partial class AppController
         int? hidden = null;
         InputTurn.RunWhenFree("hide", () =>
         {
-            hidden = RobloxProcesses.HideWindows(WindowPids(ids));
+            var pids = WindowPids(ids);
+            hidden = RobloxProcesses.HideWindows(pids);
+            Log.Note($"Hide windows: {hidden} of {pids.Length} Roblox window(s) hidden ({(ids.Length == 0 ? "all" : "chosen accounts")}; the rest had no window or were hidden already).");
             PushState();
         });
+        if (hidden is null)
+            Log.Note("Hide windows: waits for a nudge, picture or macro turn to end.");
         return hidden;
     }
 
@@ -32,8 +36,11 @@ public sealed partial class AppController
         InputTurn.RunWhenFree("hide", () =>
         {
             shown = RobloxProcesses.ShowWindows(ids.Length == 0 ? null : WindowPids(ids));
+            Log.Note($"Show windows: {shown} hidden Roblox window(s) shown again ({(ids.Length == 0 ? "all" : $"{ids.Length} chosen account(s)")}).");
             PushState();
         });
+        if (shown is null)
+            Log.Note("Show windows: waits for a nudge, picture or macro turn to end.");
         return shown;
     }
 }

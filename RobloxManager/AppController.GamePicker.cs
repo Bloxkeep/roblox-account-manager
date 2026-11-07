@@ -25,6 +25,7 @@ public sealed partial class AppController
         catch (Exception ex) when (RobloxApi.IsExpectedError(ex))
         {
             // Rows still work without icons.
+            Log.Note($"Game picker: icons of {missing.Count} game(s) not loaded ({LogKindOf(ex)}).");
         }
     }
 
@@ -72,6 +73,7 @@ public sealed partial class AppController
             catch (Exception ex) when (RobloxApi.IsExpectedError(ex))
             {
                 // The rows keep their placeholder.
+                Log.Note($"Game picker: icons of {missing.Count} game(s) not loaded ({LogKindOf(ex)}).");
             }
         }
         return ids.Where(_iconByUniverse.ContainsKey).ToDictionary(id => id.ToString(), id => _iconByUniverse[id]);
@@ -92,6 +94,7 @@ public sealed partial class AppController
                 }
                 catch (Exception ex) when (RobloxApi.IsExpectedError(ex))
                 {
+                    Log.Note($"Game picker: an account's favorites not loaded ({LogKindOf(ex)}).");
                     return [];
                 }
             }));
@@ -105,6 +108,7 @@ public sealed partial class AppController
             }
             catch (Exception ex) when (RobloxApi.IsExpectedError(ex))
             {
+                Log.Note($"Game picker: popular games not loaded ({LogKindOf(ex)}).");
                 return [];
             }
         }

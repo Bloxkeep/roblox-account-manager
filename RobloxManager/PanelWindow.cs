@@ -76,13 +76,18 @@ public sealed class PanelWindow : WebToolWindow
         {
             Push();
             if (activate)
+            {
+                Log.Note($"Macro panel {Short}: brought to the front (already open).");
                 Activate();
+            }
             return;
         }
         ActivateOnShow = activate;
         _showing = true;
         if (!await EnsureBrowserAsync() || IsDisposed)
         {
+            if (!IsDisposed)
+                Log.Note($"Macro panel {Short}: not shown, its page couldn't start.");
             _showing = false;
             return;
         }
@@ -99,6 +104,7 @@ public sealed class PanelWindow : WebToolWindow
 
     public void Dismiss()
     {
+        Log.Note($"Macro panel {Short}: closed by the person.");
         HideQuietly();
         Dismissed?.Invoke();
     }
@@ -154,6 +160,8 @@ public sealed class PanelWindow : WebToolWindow
             Show();
             if (ActivateOnShow)
                 Activate();
+            Log.Note($"Macro panel {Short}: shown always on top {(ActivateOnShow ? "by the person, activated" : "by itself, without the keyboard")}, {WindowReport.Describe(Handle)}.");
+            _layerLogged = (true, true);
             _app.PanelShown(this);
         }
         else if (Size != size)
@@ -245,7 +253,10 @@ public sealed class PanelWindow : WebToolWindow
         bool shown = Visible;
         base.OnBrowserFailed();
         if (shown)
+        {
+            Log.Note($"Macro panel {Short}: opened again after its page crashed.");
             Open(activate: false);
+        }
     }
 
     const int WM_ACTIVATE = 0x0006, WA_INACTIVE = 0;
@@ -271,6 +282,10 @@ public sealed class PanelWindow : WebToolWindow
 
     [DllImport("user32.dll")]
     static extern bool SetWindowPos(IntPtr hWnd, IntPtr after, int x, int y, int cx, int cy, uint flags);
+    [DllImport("user32.dll")]
+    static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint pid);
+    [DllImport("user32.dll", EntryPoint = "GetWindowLongW")]
+    static extern int GetWindowLong(IntPtr hWnd, int index);
 
     const uint SWP_NOSIZE = 0x1, SWP_NOMOVE = 0x2, SWP_NOACTIVATE = 0x10;
     static readonly IntPtr HWND_TOPMOST = new(-1);
@@ -281,6 +296,18 @@ public sealed class PanelWindow : WebToolWindow
     {
         if (!Visible || !IsHandleCreated)
             return;
-        SetWindowPos(Handle, onTop ? HWND_TOPMOST : front, 0, 0, 0, 0, SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOSIZE);
+        bool placed = SetWindowPos(Handle, onTop ? HWND_TOPMOST : front, 0, 0, 0, 0, SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOSIZE);
+        // Runs on every foreground change: logged only when this panel's on-top state or the move's success changes.
+        if (_layerLogged != (onTop, placed))
+        {
+            GetWindowThreadProcessId(front, out uint frontPid);
+            bool topmost = (GetWindowLong(Handle, -20) & 0x8) != 0; // GWL_EXSTYLE, WS_EX_TOPMOST
+            Log.Note($"Macro panel {Short}: {(onTop ? "on top of everything" : "put just below the window in front")} (in front: pid {frontPid}{(frontPid == Environment.ProcessId ? ", Bloxkeep" : "")}){(placed ? "" : ", but Windows refused the move")}; Windows says {(topmost ? "always on top" : "not on top")}.");
+            _layerLogged = (onTop, placed);
+        }
     }
+
+    /// <summary>The layering error.log was last told (on top, move done); the macro's id cut short for it.</summary>
+    (bool OnTop, bool Placed)? _layerLogged;
+    string Short => MacroId.ToString()[..8];
 }

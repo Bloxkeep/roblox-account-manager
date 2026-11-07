@@ -22,6 +22,8 @@ public sealed partial class AppController
     Vault? _robuxVault;
     DateTime _nextRobux;
     bool _robuxBusy;
+    /// <summary>The last round had errors: written to error.log once, then once more when a round goes through.</summary>
+    bool _robuxFailing;
 
     static bool HasRobux(Account a) => a.UserId > 0 && a.Cookie.Length > 0 && a.CookieValid != false && a.Banned != true;
 
@@ -50,6 +52,8 @@ public sealed partial class AppController
     {
         _robuxBusy = true;
         bool cutShort = false;
+        int failures = 0;
+        string? firstKind = null;
         try
         {
             using var gate = new SemaphoreSlim(RobuxAtOnce);
@@ -68,10 +72,14 @@ public sealed partial class AppController
                     catch (RobloxApiException ex) when (ex.RateLimited)
                     {
                         cutShort = true; // the rest wait for the next round, a little later
+                        failures++;
+                        firstKind ??= LogKindOf(ex);
                     }
                     catch (Exception ex) when (RobloxApi.IsExpectedError(ex))
                     {
                         cutShort |= !NetworkUp;
+                        failures++;
+                        firstKind ??= LogKindOf(ex);
                     }
                     if (_vault == vault)
                     {
@@ -85,6 +93,12 @@ public sealed partial class AppController
                     gate.Release();
                 }
             }));
+            if (failures > 0 && !_robuxFailing && _vault == vault)
+                Log.Note($"Robux: {failures} of {accounts.Count} accounts not read ({firstKind}){(cutShort ? "; the round was cut short, next try in 2 minutes" : "; their last number is kept")}.");
+            else if (failures == 0 && _robuxFailing && _vault == vault)
+                Log.Note($"Robux: recovered, {accounts.Count} accounts read.");
+            if (_vault == vault)
+                _robuxFailing = failures > 0;
             if (cutShort)
             {
                 // Asked again soon, those not asked included (they show nothing meanwhile rather than waiting).

@@ -41,6 +41,8 @@ static unsafe class MacroOcr
     static readonly object Lock = new();
     static List<IntPtr>? _engines;
     static bool _tried;
+    /// <summary>error.log: the last unfinished recognition status written.</summary>
+    static int _loggedStatus = AsyncCompleted;
 
     /// <summary>Windows can read text here (some editions lack every recognition language).</summary>
     public static bool Available
@@ -53,6 +55,7 @@ static unsafe class MacroOcr
             }
             catch (Exception ex) when (ex is COMException or DllNotFoundException or EntryPointNotFoundException)
             {
+                Log.Note($"Macro text reading: Windows' text recognition didn't start ({ex.GetType().Name}).");
                 return false;
             }
         }
@@ -244,6 +247,7 @@ static unsafe class MacroOcr
                 Release(statics);
             }
             _engines = engines;
+            Log.Note($"Macro text reading: {engines.Count} recognition language(s) ready.");
             return engines;
         }
     }
@@ -301,6 +305,9 @@ static unsafe class MacroOcr
             }
             if (status != AsyncCompleted)
             {
+                // Once per status: a read every second would repeat it.
+                if (Interlocked.Exchange(ref _loggedStatus, status) != status)
+                    Log.Note($"Macro text reading: Windows' recognition ended with status {status} after {waited.ElapsedMilliseconds} ms; nothing read.");
                 ((delegate* unmanaged[Stdcall]<IntPtr, int>)Slot(info, 9))(info); // Cancel
                 return [];
             }

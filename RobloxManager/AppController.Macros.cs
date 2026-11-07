@@ -101,14 +101,28 @@ public sealed partial class AppController
     /// <summary>The rejoin step: the window closed and opened again into its server, the way a preset's restart does it.</summary>
     string? MacroRejoin(Guid accountId)
     {
+        string tag = $"Macro rejoin on account {accountId.ToString()[..8]}";
         if (!_running.TryGetValue(accountId, out var run) || run.Launch.Target is null)
+        {
+            Log.Note($"{tag}: refused, {(_running.ContainsKey(accountId) ? "the window wasn't opened into a game" : "no window")}.");
             return L.T("Bloxkeep didn't open this window into a game, so it can't rejoin it.");
+        }
         if (_closingForRejoin.Contains(run.Pid))
+        {
+            Log.Note($"{tag}: window {run.Pid} is already closing for a rejoin.");
             return null;
+        }
         if (FindAccount(accountId) is not { } account || account.CookieValid == false || account.Banned == true)
+        {
+            Log.Note($"{tag}: refused, the account is gone, signed out or banned.");
             return L.T("This account can't be opened again now.");
+        }
         if (!MultiInstance.Armed && _running.Count > 1)
+        {
+            Log.Note($"{tag}: refused, Multi-Roblox is off with {_running.Count} windows open.");
             return L.T("Turn on Multi-Roblox to rejoin while other windows are open.");
+        }
+        Log.Note($"{tag}: closing window {run.Pid} to open it again into its server.");
         _restarts[accountId] = (RestartTarget(run), DateTime.UtcNow);
         _closingForRejoin.Add(run.Pid); // Bloxkeep's own close: neither a drop nor closed by Roblox
         RobloxProcesses.Close(run.Pid, InGameNow(run.Pid));
@@ -165,6 +179,8 @@ public sealed partial class AppController
             // Runs going on keep the steps they started with; the next run takes these.
         }
         _macroIntervalAt.Remove(macro.Id);
+        Log.Note($"Macro {macro.Id.ToString()[..8]}: saved{(index < 0 ? " (new)" : "")}, {macro.Steps.Count} steps, {macro.Features.Count} features, trigger {macro.Trigger.Kind}"
+            + $"{(macro.Enabled ? " on" : " off")}, targets {macro.Targets}, hotkey {(macro.Hotkey is { } digit ? $"Ctrl+Alt+{digit}" : "none")}.");
         Persist();
         HotkeysChanged?.Invoke();
         RefreshPanel(macro.Id);
@@ -189,6 +205,7 @@ public sealed partial class AppController
         var macros = MacroList();
         if (macros.RemoveAll(m => m.Id == id) == 0)
             return null;
+        Log.Note($"Macro {id.ToString()[..8]}: deleted.");
         _macroPlayer?.Stop(id, "byUser");
         ClosePanelWindow(id);
         _macroLastAccounts.Remove(id);
@@ -266,17 +283,28 @@ public sealed partial class AppController
         var accounts = accountIds is { Length: 0 } ? [] : MacroAccounts(macro, accountIds);
         if (accounts.Count == 0 && accountIds is null && macro.Targets == "selected")
             accounts = PanelAccounts(macro);
+        string tag = $"Macro {macro.Id.ToString()[..8]}: Run";
         if (accounts.Count == 0)
+        {
+            Log.Note($"{tag} did nothing: no accounts to run on (targets {macro.Targets}, {accountIds?.Length.ToString() ?? "none"} sent).");
             throw new UserError(accountIds is { Length: 0 } || (macro.Targets == "selected" && accountIds is null)
                 ? L.T("Select the accounts to run the macro on.")
                 : L.T("None of the macro's accounts is there."));
+        }
         var open = accounts.Where(_running.ContainsKey).ToList();
         if (open.Count == 0)
+        {
+            Log.Note($"{tag} did nothing: none of its {accounts.Count} accounts has Roblox open.");
             throw new UserError(accounts.Count == 1 ? L.T("This account's Roblox isn't open.") : L.T("None of these accounts has Roblox open."));
+        }
         // One macro on a window at a time: said when it is another's on every one of them.
         if (open.Select(a => MacroPlayerNow.BusyWith(a, macro.Id)).ToList() is var busy && busy.All(o => o is not null))
+        {
+            Log.Note($"{tag} did nothing: another macro runs on all {open.Count} open accounts.");
             throw new UserError(open.Count == 1 ? L.F("{0} is running on this account. Stop it first.", busy[0]!.Name)
                 : L.T("Another macro is running on these accounts. Stop it first."));
+        }
+        Log.Note($"{tag} pressed for {open.Count} open accounts.");
         return new { queued = QueueMacro(macro, open) };
     }
 
@@ -298,7 +326,9 @@ public sealed partial class AppController
     /// <param name="trial">Only Try it's run: the saved macro's own runs, same id, go on.</param>
     object? StopMacros(Guid? id, Guid? accountId = null, bool trial = false)
     {
-        _macroPlayer?.Stop(id, "byUser", accountId, trial);
+        int stopped = _macroPlayer?.Stop(id, "byUser", accountId, trial) ?? 0;
+        Log.Note($"Macro {(id is { } which ? which.ToString()[..8] : "(all)")}: stop asked{(accountId is { } acc ? $" on account {acc.ToString()[..8]}" : "")}"
+            + $"{(trial ? " (Try it)" : "")}, {stopped} runs stopped{(id is null && accountId is null && !trial && _recorder is not null ? ", recording ends" : "")}.");
         if (id is null && accountId is null && !trial)
             _ = StopRecordingAsync();
         PushState();
@@ -334,11 +364,14 @@ public sealed partial class AppController
             }
             catch (OperationCanceledException)
             {
+                Log.Note($"Macro editor picture: window {window.Pid} wasn't free in {PictureWait.TotalSeconds:0} s ({InputTurn.Holder ?? "?"} has it).");
                 throw new UserError(L.T("A macro is using the window. Try again in a moment."));
             }
         }
         using (turn)
             picture = await WindowShot.ClientAsync(window.Handle, shown: false);
+        if (picture is null)
+            Log.Note($"Macro editor picture: window {window.Pid} couldn't be pictured.");
         return picture ?? throw new UserError(L.T("Couldn't take a picture of this window. Try again."));
     }
 
@@ -422,9 +455,15 @@ public sealed partial class AppController
         if (_recorder is not null)
             throw new UserError(L.T("A recording is already going on."));
         if (MacroDeskNow.Window(accountId) is not { } window)
+        {
+            Log.Note($"Macro recording: refused on account {accountId.ToString()[..8]}, no Roblox window.");
             throw new UserError(L.T("This account's Roblox isn't open."));
+        }
         if (window.Elevated)
+        {
+            Log.Note($"Macro recording: refused, window {window.Pid} runs as administrator.");
             throw new UserError(L.T("This Roblox runs as administrator, so Bloxkeep can't record or play into it."));
+        }
         // Runs wait while recording: their input would be recorded too, and would fight the person's.
         // The recorder first: when Windows refuses it, the runs go on.
         var recorder = new MacroRecorder(accountId, window.Pid, window.Handle, _robloxInput);
@@ -444,6 +483,7 @@ public sealed partial class AppController
     {
         if (_recorder is not { } recorder)
             return null;
+        Log.Note($"Macro recording: ending after {(DateTime.UtcNow - recorder.StartsAt).TotalSeconds:0} s (counted from the end of the countdown).");
         _recorder = null;
         if (_macroPlayer is not null)
             _macroPlayer.Recording = false;
@@ -458,6 +498,8 @@ public sealed partial class AppController
     /// <summary>The recording dropped without its steps (the vault locked).</summary>
     void DropRecording()
     {
+        if (_recorder is not null)
+            Log.Note("Macro recording: dropped without its steps (the vault locked).");
         _recorder?.Dispose();
         _recorder = null;
         if (_macroPlayer is not null)
@@ -548,7 +590,11 @@ public sealed partial class AppController
     void RunMacroHotkey(int digit)
     {
         if (Open?.Data.Settings.Macros.FirstOrDefault(m => m.Hotkey == digit) is not { } macro)
+        {
+            Log.Note($"Macro hotkey Ctrl+Alt+{digit}: {(Open is null ? "the vault is locked" : "no macro holds it")}.");
             return;
+        }
+        string tag = $"Macro {macro.Id.ToString()[..8]}: hotkey Ctrl+Alt+{digit}";
         Guid[]? accounts = null;
         if (macro.Targets == "selected")
         {
@@ -557,6 +603,7 @@ public sealed partial class AppController
                 : _macroLastAccounts.GetValueOrDefault(macro.Id);
             if (accounts is not { Length: > 0 })
             {
+                Log.Note($"{tag} did nothing: no Roblox window in front (process {front}) and no accounts it ran on before.");
                 Toast(L.F("Run {0} from Bloxkeep once first: it doesn't know which accounts to use.", macro.Name), "warn");
                 return;
             }
@@ -564,9 +611,11 @@ public sealed partial class AppController
         var open = MacroAccounts(macro, accounts).Where(_running.ContainsKey).ToList();
         if (open.Count == 0)
         {
+            Log.Note($"{tag} did nothing: none of its accounts has Roblox open (targets {macro.Targets}).");
             Toast(L.F("{0}: none of its accounts has Roblox open.", macro.Name), "warn");
             return;
         }
+        Log.Note($"{tag} pressed for {open.Count} open accounts.");
         QueueMacro(macro, open);
     }
 
@@ -579,7 +628,10 @@ public sealed partial class AppController
     void TickMacros(DateTime now)
     {
         if (_recorder is { } recorder && now - recorder.StartsAt > MacroRecorder.MaxLength)
+        {
+            Log.Note("Macro recording: reached its 10 minutes.");
             _ = StopRecordingAsync();
+        }
         if (_vault is null || _recorder is not null)
             return;
         // Not before Bloxkeep has watched the windows a while: the windows already in a game when it opened count as just joined.
@@ -604,7 +656,12 @@ public sealed partial class AppController
                 _macroIntervalAt[macro.Id] = now;
                 var ready = accounts.Where(id => MacroClient(id) is { InGame: true }).ToList();
                 if (ready.Count > 0)
-                    QueueMacro(macro, ready);
+                {
+                    int queued = QueueMacro(macro, ready);
+                    NoteTrigger(macro, $"interval trigger fired, {ready.Count} of {accounts.Count} accounts in a game, {queued} runs started");
+                }
+                else
+                    NoteTrigger(macro, $"interval trigger due, but none of its {accounts.Count} accounts is in a game");
                 continue;
             }
             var due = new List<Guid>();
@@ -620,8 +677,22 @@ public sealed partial class AppController
                 due.Add(id);
             }
             if (due.Count > 0)
-                QueueMacro(macro, due);
+            {
+                int queued = QueueMacro(macro, due);
+                NoteTrigger(macro, $"{macro.Trigger.Kind} trigger fired on {due.Count} accounts, {queued} runs started", always: true);
+            }
         }
+    }
+
+    /// <summary>error.log: what a macro's trigger did, written again only when it changes (a 10 s repeat would fill the log).</summary>
+    readonly Dictionary<Guid, string> _macroTriggerNoted = new();
+
+    void NoteTrigger(Macro macro, string text, bool always = false)
+    {
+        if (!always && _macroTriggerNoted.GetValueOrDefault(macro.Id) == text)
+            return;
+        _macroTriggerNoted[macro.Id] = text;
+        Log.Note($"Macro {macro.Id.ToString()[..8]}: {text}.");
     }
 
     /// <summary>The vault locked: runs stop, the recording is dropped, variables go.</summary>
@@ -632,6 +703,7 @@ public sealed partial class AppController
         _macroLastAccounts.Clear();
         _macroIntervalAt.Clear();
         _macroJoinRan.Clear();
+        _macroTriggerNoted.Clear();
         _macroSweep = null;
         HotkeysChanged?.Invoke();
     }

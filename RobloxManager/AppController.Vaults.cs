@@ -199,6 +199,7 @@ public sealed partial class AppController
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
+            Log.Note($"Remove vault: its file couldn't be set aside ({ex.GetType().Name}); kept on the list.");
             throw new UserError(L.F("Couldn't remove the vault: {0}", ErrorText(ex)));
         }
         DeleteVaultPicture(entry);

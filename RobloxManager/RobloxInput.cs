@@ -90,6 +90,8 @@ sealed class RobloxInput : IDisposable
             _threadId = GetCurrentThreadId();
             window.CreateHandle(new CreateParams { Parent = HWND_MESSAGE });
             Working = Register(window.Handle);
+            if (!Working)
+                Log.Note($"Raw input: Windows refused the registration (error {Marshal.GetLastWin32Error()}); anti-AFK and macros go by Windows' last input instead.");
         }
         catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
         {
@@ -104,7 +106,10 @@ sealed class RobloxInput : IDisposable
             while (GetMessage(out var message, IntPtr.Zero, 0, 0) > 0)
             {
                 if (message.hwnd == IntPtr.Zero && message.message == WM_LISTEN)
-                    Register(message.wParam != IntPtr.Zero ? window.Handle : IntPtr.Zero);
+                {
+                    if (!Register(message.wParam != IntPtr.Zero ? window.Handle : IntPtr.Zero))
+                        Log.Note($"Raw input: turning listening {(message.wParam != IntPtr.Zero ? "on" : "off")} failed (error {Marshal.GetLastWin32Error()}).");
+                }
                 else
                     DispatchMessage(ref message);
             }
@@ -137,7 +142,14 @@ sealed class RobloxInput : IDisposable
             return;
         if (PostThreadMessage(_threadId, WM_LISTEN, on ? 1 : 0, IntPtr.Zero))
             _listening = on;
+        else if (!_listenFailNoted)
+        {
+            _listenFailNoted = true; // tried again every process check: written once
+            Log.Note($"Raw input: couldn't ask its thread to turn listening {(on ? "on" : "off")}.");
+        }
     }
+
+    bool _listenFailNoted;
 
     /// <summary>How many kinds of input (mouse, keyboard) this process takes from Windows now: for the checks.</summary>
     internal static int Registered()

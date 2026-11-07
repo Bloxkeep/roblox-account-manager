@@ -18,6 +18,8 @@ static class Backup
     static readonly TimeSpan SuggestionCacheLifetime = TimeSpan.FromMinutes(1);
     static List<(string Path, string Name)>? _suggestions;
     static DateTime _suggestedAt;
+    /// <summary>An old backup couldn't be deleted: written to error.log once per run.</summary>
+    static bool _pruneFailNoted;
 
     public sealed record Folder(string Path, string Name);
 
@@ -84,6 +86,9 @@ static class Backup
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
                 // The sync client may be uploading it; next time.
+                if (!_pruneFailNoted)
+                    Log.Note($"Backup: an old backup couldn't be deleted ({ex.GetType().Name}); tried again at the next copy.");
+                _pruneFailNoted = true;
             }
         }
     }

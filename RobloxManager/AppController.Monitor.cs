@@ -108,7 +108,10 @@ public sealed partial class AppController
         RequireVault();
         string id = Str(a, "id");
         if (MonitorClients().FirstOrDefault(c => MonitorId(c.Hwnd) == id) is not { } client)
+        {
+            Log.Note($"Game monitor: {Str(a, "what")} did nothing, the window is gone.");
             return null; // gone meanwhile: every action survives that
+        }
         return MonitorAct(client, Str(a, "what"));
     }
 
@@ -118,6 +121,7 @@ public sealed partial class AppController
         switch (what)
         {
             case "show":
+                Log.Note($"Game monitor: Show on Roblox window {client.Pid} ({WindowReport.Describe(client.Hwnd)}).");
                 RobloxProcesses.FocusInTurn(client.Pid);
                 break;
             // After a nudge, a picture or a macro's turn under way (as Show): the turn would put the window back as it
@@ -125,6 +129,7 @@ public sealed partial class AppController
             case "minimize":
                 InputTurn.RunWhenFree("monitor", () =>
                 {
+                    Log.Note($"Game monitor: Minimize on Roblox window {client.Pid} (was {WindowReport.Describe(client.Hwnd)}).");
                     RobloxProcesses.Minimise(client.Hwnd);
                     MonitorRefresh?.Invoke();
                 });
@@ -132,6 +137,7 @@ public sealed partial class AppController
             case "restore":
                 InputTurn.RunWhenFree("monitor", () =>
                 {
+                    Log.Note($"Game monitor: Restore on Roblox window {client.Pid} (was {WindowReport.Describe(client.Hwnd)}).");
                     RobloxProcesses.RestoreQuietly(client.Hwnd);
                     MonitorRefresh?.Invoke();
                 });
@@ -160,11 +166,18 @@ public sealed partial class AppController
     /// hidden). Locked: no tiles, the page shows the lock screen.</summary>
     object? MonitorAreaCommand(JsonElement a)
     {
-        SetMonitorArea?.Invoke(Open is null || Bool(a, "hidden") ? null : ParseMonitorArea(a));
+        var area = Open is null || Bool(a, "hidden") ? null : ParseMonitorArea(a);
+        // Pictures taken away for a bad area from the page: logged once until a good one comes.
+        bool bad = area is null && Open is not null && !Bool(a, "hidden");
+        if (bad && !_monitorAreaBadLogged)
+            Log.Note("Game monitor: the page sent an area out of range; live pictures taken away.");
+        _monitorAreaBadLogged = bad;
+        SetMonitorArea?.Invoke(area);
         return null;
     }
 
     const double MonitorMax = 100_000;
+    bool _monitorAreaBadLogged;
 
     /// <summary>Written so that NaN (a value missing) fails every test.</summary>
     static bool Sane(double x, double y, double w, double h) =>

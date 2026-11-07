@@ -61,6 +61,7 @@ public sealed partial class AppController
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
+            Log.Note($"Import from a vault file: the file couldn't be read ({ex.GetType().Name}).");
             throw new UserError(L.F("Couldn't open the data file: {0}", ErrorText(ex)));
         }
         if (size > Vault.MaxOtherSize)
@@ -105,6 +106,8 @@ public sealed partial class AppController
         // Locked meanwhile: what was decrypted isn't kept.
         if (_vault != vault)
             throw new UserError(L.T("Bloxkeep was locked."));
+        if (read.Status is not (Vault.OtherStatus.Opened or Vault.OtherStatus.WrongPassword))
+            Log.Note($"Import from a vault file: refused ({read.Status}).");
         switch (read.Status)
         {
             case Vault.OtherStatus.WrongPassword:
@@ -171,7 +174,10 @@ public sealed partial class AppController
     {
         var vault = RequireVault();
         if (_vaultImport is not { } session || session.Owner != vault || Str(a, "token") != session.Token)
+        {
+            Log.Note($"Import from a vault file: not applied ({(_vaultImport is null ? "the file was closed or timed out" : "it belongs to another vault or an old token")}).");
             throw new UserError(L.T("The file was closed because it was open too long. Open it again."));
+        }
         var keys = Has(a, "keys", JsonValueKind.Array)
             ? a.GetProperty("keys").EnumerateArray().Where(e => e.ValueKind == JsonValueKind.Number && e.TryGetInt32(out _)).Select(e => e.GetInt32()).ToHashSet()
             : [];
@@ -186,6 +192,7 @@ public sealed partial class AppController
         }
         Persist();
         PushState();
+        Log.Note($"Import from a vault file: {keys.Count} picked, {result.Added.Count} added, {result.Updated.Count} updated, {result.PresetsAdded} presets added, {result.PresetsSkipped} skipped.");
         var touched = result.Added.Concat(result.Updated).ToList();
         if (touched.Count > 0)
             _ = LoadAvatarsAsync(touched.Select(x => x.UserId));

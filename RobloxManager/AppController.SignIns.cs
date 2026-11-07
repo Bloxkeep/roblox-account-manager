@@ -10,6 +10,17 @@ public sealed partial class AppController
     /// <summary>Tries at asking Roblox whose a renewed cookie is, before it is let go.</summary>
     const int RenewedCheckTries = 4;
 
+    /// <summary>An error's kind for error.log: its type and HTTP status, never its message text (it can hold a name).</summary>
+    internal static string LogKindOf(Exception ex) => ex switch
+    {
+        RobloxApiException r => "Roblox API " + (r.RateLimited ? "rate limit" : r.CookieInvalid ? "signed out" : r.Moderated ? "moderated"
+            : r.ServerError ? "server error" : r.SignInRefused ? "sign-in refused" : "refusal")
+            + (System.Text.RegularExpressions.Regex.Match(r.Message, @"HTTP (\d{3})") is { Success: true } m ? $" HTTP {m.Groups[1].Value}" : ""),
+        HttpRequestException h => h.StatusCode is { } code ? $"HTTP {(int)code}" : $"network error ({h.HttpRequestError})",
+        TaskCanceledException => "timeout",
+        _ => ex.GetType().Name,
+    };
+
     /// <summary>From the process timer: the cookies Roblox renewed in its answers go to their accounts.</summary>
     void SaveRenewedSignIns()
     {
@@ -58,7 +69,7 @@ public sealed partial class AppController
             }
             catch (Exception ex) when (RobloxApi.IsExpectedError(ex))
             {
-                Log.Note("Roblox renewed an account's sign-in, but couldn't be asked whose it is; the saved one is kept.");
+                Log.Note($"Roblox renewed an account's sign-in, but couldn't be asked whose it is ({LogKindOf(ex)}, try {attempt}); the saved one is kept.");
                 return;
             }
         }

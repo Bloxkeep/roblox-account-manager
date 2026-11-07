@@ -77,21 +77,35 @@ public sealed partial class AppController
     {
         if (Unlocked && _running.TryGetValue(id, out var info))
             RobloxProcesses.FocusInTurn(info.Pid);
+        else
+            Log.Note($"Mini window: Show did nothing for account {id.ToString()[..8]} ({(Unlocked ? "its Roblox isn't open" : "locked")}).");
     }
 
     public void CloseClient(Guid id)
     {
         if (Unlocked)
             CloseAccounts([id], force: false);
+        else
+            Log.Note("Mini window: Close did nothing (locked).");
     }
 
     /// <summary>Closes every Roblox on this PC, like the page's "Close all"; the number of clients closed. Not while locked,
     /// the lock screen too (a click on the mini window's button just before it came up).</summary>
-    public int CloseAllClients() => Unlocked ? (int)CloseAll(force: false) : 0;
+    public int CloseAllClients()
+    {
+        if (!Unlocked)
+        {
+            Log.Note("Mini window: Close all did nothing (locked).");
+            return 0;
+        }
+        return (int)CloseAll(force: false);
+    }
 
     /// <summary>The page's mini-window button; the window pushes the new state once it has shown or hidden it.</summary>
     object? ToggleMini()
     {
+        if (SetMiniOpen is null)
+            Log.Note("Mini window: the page's button did nothing (no window to show it).");
         SetMiniOpen?.Invoke(null);
         return null;
     }

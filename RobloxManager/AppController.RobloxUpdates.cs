@@ -92,6 +92,7 @@ public sealed partial class AppController
             return false;
         if (_logs.ClosedByNewWindowAt(pid) is not null)
         {
+            Log.Note($"Multi-Roblox: window {pid} closed by Roblox as another opened (its log says so); not rejoined.");
             _closedByRoblox.Add(account);
             CountClosedByRoblox(1, now);
             return true;
@@ -99,7 +100,11 @@ public sealed partial class AppController
         // Out of memory (its log says Windows refused it memory, or the commit limit was nearly used up just now): a crash, as on
         // 2026-10-22 (6 windows, Windows' low-virtual-memory event at 99.7 %), not Roblox closing them; Multi-Roblox is fine.
         if (!inOrder || _logs.OutOfMemoryAt(pid) is not null || _memoryShortAt is { } shortAt && now >= shortAt && now - shortAt <= MemoryCrashWindow)
+        {
+            if (inOrder)
+                Log.Note($"Multi-Roblox: window {pid} ended as another opened, but out of memory; not counted as closed by Roblox.");
             return false;
+        }
         _suspectEnds.RemoveAll(e => now - e.At > CloseBurst || now < e.At || e.Account == account);
         _suspectEnds.Add((account, now, false));
         if (_suspectEnds.Count < 2)
@@ -117,6 +122,7 @@ public sealed partial class AppController
                 _rejoinQueue.RemoveAll(r => r.AccountId == end.Account);
         }
         _closedByRoblox.Add(account);
+        Log.Note($"Multi-Roblox: {counted} window(s) ended together right after another opened (last {pid}); taken as closed by Roblox, not rejoined.");
         CountClosedByRoblox(counted, now);
         return true;
     }
@@ -145,12 +151,16 @@ public sealed partial class AppController
         _installsReadAt = DateTime.MinValue; // the launcher and the client as they are now
         string? before = Installs().Client?.Folder;
         if (_updaterExe is not { } exe || !File.Exists(exe))
+        {
+            Log.Note("Roblox update: no launcher here can update Roblox; it updates as it opens.");
             throw new UserError(L.T("No launcher here can update Roblox by itself. Roblox updates the next time it opens."));
+        }
         bool own = RobloxInstalls.IsOwnInstaller(exe);
         // Roblox's installer would close the windows open without a word: they close as Close, update, reopen's do, and
         // open again after (it comes back here once they are gone).
         if (own && RobloxProcesses.GetPlayerPids().Length > 0)
             return UpdateAndReopen();
+        Log.Note($"Roblox update: started {Path.GetFileName(exe)}{(quiet ? ", automatically" : "")}, from build {before ?? "unknown"}.");
         var startedAt = DateTime.Now;
         var psi = new System.Diagnostics.ProcessStartInfo(exe) { UseShellExecute = false, WorkingDirectory = Path.GetDirectoryName(exe)! };
         if (!own)
@@ -208,6 +218,7 @@ public sealed partial class AppController
         if (version.UpToDate != false || version.Updater is null || version.Latest == _autoUpdatedFor)
             return;
         _autoUpdatedFor = version.Latest;
+        Log.Note($"Roblox update: automatic, to {version.Latest}{(players.Count == 0 ? ", no Roblox open" : $", closing and reopening {players.Count} Roblox")}.");
         if (players.Count == 0)
         {
             UpdateRoblox(quiet: true);
@@ -225,7 +236,10 @@ public sealed partial class AppController
             return null;
         // A launch or rejoin under way would keep opening windows, and the update would give up: "Some Roblox windows didn't close".
         if (OpeningRoblox)
+        {
+            Log.Note("Close, update, reopen: not now, Roblox is still opening.");
             throw new UserError(L.T("Wait until Bloxkeep finishes opening Roblox."));
+        }
         var tracked = new HashSet<int>();
         foreach (var (id, run) in _running.ToList())
         {
@@ -237,8 +251,13 @@ public sealed partial class AppController
             _closingForRejoin.Add(run.Pid); // Bloxkeep's own close: neither a drop nor closed by Roblox
             RobloxProcesses.Close(run.Pid, InGameNow(run.Pid));
         }
+        int untracked = 0;
         foreach (int other in RobloxProcesses.GetPlayerPids().Where(pid => !tracked.Contains(pid)))
+        {
             RobloxProcesses.Close(other);
+            untracked++;
+        }
+        Log.Note($"Close, update, reopen: closing {tracked.Count} tracked and {untracked} other Roblox window(s), {_restarts.Count} to reopen.");
         _updateReopenSince = DateTime.UtcNow;
         _updateReopenUpdating = false;
         PushState();
@@ -256,6 +275,7 @@ public sealed partial class AppController
             {
                 if (now - since < UpdateReopenCloseLimit && now >= since)
                     return;
+                Log.Note($"Close, update, reopen: {RobloxProcesses.GetPlayerPids().Length} Roblox still open after {(int)UpdateReopenCloseLimit.TotalSeconds} s; not updated.");
                 Notify(L.T("Some Roblox windows didn't close, so Roblox wasn't updated."), "warn", "launch");
                 _updateReopenSince = null;
                 PushState();
@@ -265,9 +285,12 @@ public sealed partial class AppController
             _installsReadAt = DateTime.MinValue;
             if (Installs() is not null && _updaterExe is { } exe && File.Exists(exe))
                 UpdateRoblox(quiet: true);
+            else
+                Log.Note("Close, update, reopen: no launcher to update with; Roblox updates as the windows reopen.");
         }
         if (_robloxUpdating)
             return;
+        Log.Note($"Close, update, reopen: done after {(int)(now - since).TotalSeconds} s; the windows reopen.");
         _updateReopenSince = null; // the windows' rejoins go now
         PushState();
     }
@@ -288,15 +311,21 @@ public sealed partial class AppController
                 if (own && !running)
                     await CloseInstallerAppAsync(startedAt);
                 if (updated && !(own && running))
+                {
+                    Log.Note($"Roblox update: done, now build {Installs().Client?.Folder ?? "unknown"}.");
                     return; // Installs said "Roblox updated to …"
+                }
                 if (!running)
                 {
+                    Log.Note($"Roblox update: {launcher} ended without a newer build.");
                     if (!quiet)
                         Toast(L.F("{0} found no newer Roblox to install.", own ? "Roblox" : launcher), "info");
                     return;
                 }
                 await Task.Delay(TimeSpan.FromSeconds(own ? 1 : 3));
             }
+            if (!_disposed)
+                Log.Note($"Roblox update: {launcher} still running after 15 min; stopped watching it.");
         }
         finally
         {
@@ -397,6 +426,7 @@ public sealed partial class AppController
         if (_togetherSince is { } together && now - together >= WorkingAgain && Installs().Client?.Folder is { Length: > 0 } folder
             && !Prefs.MultiWorked.Contains(folder))
         {
+            Log.Note($"Multi-Roblox: two windows played together on build {folder}; it works there.");
             Prefs.MultiWorked.Add(folder);
             if (Prefs.MultiWorked.Count > MaxRobloxHistory)
                 Prefs.MultiWorked.RemoveRange(0, Prefs.MultiWorked.Count - MaxRobloxHistory);
@@ -417,6 +447,7 @@ public sealed partial class AppController
         _closedNoticeDue = null;
         if (Prefs.RobloxClosedNotified is { } told && told.ToLocalTime().Date == DateTime.Now.Date)
         {
+            Log.Note($"Multi-Roblox: Roblox closed {windows} window(s); not said again today.");
             PushStateIfChanged();
             return;
         }
@@ -453,6 +484,7 @@ public sealed partial class AppController
             }
         }
         history.Add(new Prefs.RobloxBuild(at, client.Version, client.Folder, client.Source ?? "", First: last is null));
+        Log.Note($"Roblox build {client.Version} ({client.Folder}, {client.Source ?? "?"}) {(last is null ? "first seen" : $"installed, after {last.Version}")}.");
         if (history.Count > MaxRobloxHistory)
             history.RemoveRange(0, history.Count - MaxRobloxHistory);
         Prefs.Save();

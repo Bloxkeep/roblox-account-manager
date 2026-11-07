@@ -232,12 +232,16 @@ public sealed partial class AppController
         _backupDirty = SavedHash() != hash;
         Prefs.BackupPending = _backupDirty;
         Prefs.Save();
+        if (_backupError is not null)
+            Log.Note("Backup: recovered, a copy was written.");
         _backupError = null;
     }
 
     /// <summary>The reason is shown under Settings › Backup and the copy tried again later.</summary>
     void BackupFailed(Exception ex)
     {
+        if (_backupError is null)
+            Log.Note($"Backup: copy failed ({ex.GetType().Name}); tried again in {BackupInterval.TotalMinutes} min.");
         // A folder Windows won't let Bloxkeep write to (no permission, a drive gone, a file held open) is said as that,
         // not as a file error; the details go to the log either way.
         if (ex is UnauthorizedAccessException or IOException)
@@ -264,7 +268,10 @@ public sealed partial class AppController
             try
             {
                 if (!writing.Wait(Left()))
+                {
+                    Log.Note("Backup on closing: the copy still being written took too long; none made now.");
                     return false;
+                }
             }
             catch (AggregateException)
             {
@@ -468,14 +475,19 @@ public sealed partial class AppController
         {
             // Checked before locking, so a wrong file doesn't cost the session; whether it opens needs its password.
             if (!Vault.LooksLikeVault(dialog.FileName))
+            {
+                Log.Note("Backup: restore refused, the chosen file isn't a Bloxkeep backup.");
                 throw new UserError(L.T("This file is not a Bloxkeep backup."));
+            }
             if (_vault is not null)
                 Lock();
             _restoredOver = Backup.Restore(dialog.FileName, replace) is { } before ? (Vault.ActiveFile, before) : null;
             NoteRestored(dialog.FileName);
+            Log.Note($"Backup: a backup was restored{(Prefs.ForeignRestore is null ? "" : " (made on another PC)")}{(replace ? ", the vault it replaced copied beside it" : "")}.");
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
+            Log.Note($"Backup: restore failed ({ex.GetType().Name}).");
             throw new UserError(L.F("Couldn't restore: {0}", ErrorText(ex)));
         }
         _backupDirty = false; // the vault now equals a backup
@@ -513,6 +525,8 @@ public sealed partial class AppController
         foreach (var preset in s.Presets)
             preset.DiscordWebhook = "";
         PersistSoon();
+        if (had)
+            Log.Note("Backup: first unlock of a vault made on another PC; its launcher and Discord links were removed.");
         if (had)
             Toast(L.T("This backup was made on another PC: the program it opened Roblox with and its Discord links were removed. Set them again in Settings if they're yours."));
     }

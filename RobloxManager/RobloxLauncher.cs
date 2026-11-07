@@ -116,6 +116,7 @@ public static class RobloxLauncher
         {
             if (RobloxInstalls.FindAnyClient() is null)
                 throw new FileNotFoundException(MissingFile);
+            Log.Note("Roblox start: the link handler's Roblox is missing RobloxPlayerBeta.dll; opened directly instead.");
             launchVia = "direct";
         }
         else if (launchVia is "roblox" or "direct" && RobloxInstalls.OwnBuildBroken()
@@ -164,6 +165,7 @@ public static class RobloxLauncher
                     // 2026-10-19: VNG installed over Bloxstrap, then removed). Whatever is left opens it.
                     if (FallbackLauncher() is { } fallback)
                     {
+                        Log.Note($"Roblox start: no usable roblox-player link handler; opened with {Path.GetFileName(fallback.Exe)} ({Path.GetFileName(Path.GetDirectoryName(fallback.Exe))}) instead.");
                         Start(fallback.Exe, [.. fallback.Args, uri]);
                         break;
                     }

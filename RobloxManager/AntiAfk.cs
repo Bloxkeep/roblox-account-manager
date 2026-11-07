@@ -211,15 +211,23 @@ static class AntiAfk
         var hidden = new List<Before>();
         // Windows Bloxkeep hid, shown for the nudge.
         var unseen = new List<IntPtr>();
+        // Each window's outcome for error.log, by process id.
+        var outcomes = new List<string>();
         try
         {
             foreach (var hWnd in windows)
             {
                 if (!keepGoing() || LastInputTick() != baseline)
+                {
+                    outcomes.Add(keepGoing() ? "stopped: a person is back" : "stopped: turned off");
                     break; // turned off, or a person is back: hand the PC over right away
+                }
                 // Touching a hung window could only make Bloxkeep wait.
                 if (!IsWindow(hWnd) || IsHungAppWindow(hWnd))
+                {
+                    outcomes.Add($"{PidOf(hWnd)} skipped ({(IsWindow(hWnd) ? "not responding" : "gone")})");
                     continue;
+                }
                 // Unseen and click-through first, so neither its coming to the front nor a click at that moment shows.
                 // A minimized window still gets kicked: restored for the nudge, then minimized again.
                 bool minimized = IsIconic(hWnd);
@@ -233,17 +241,24 @@ static class AntiAfk
                 try
                 {
                     if (!Focus(hWnd))
+                    {
+                        outcomes.Add($"{PidOf(hWnd)} skipped (Windows refused to bring it to the front)");
                         continue;
+                    }
                     await Task.Delay(minimized ? 400 : 150); // a restored Roblox window needs a moment to draw again
                     // The key goes to whichever window has the keyboard, and a person's keys would mix with it.
                     if (GetForegroundWindow() != hWnd || LastInputTick() != baseline || !keepGoing())
+                    {
+                        outcomes.Add($"{PidOf(hWnd)} skipped ({(GetForegroundWindow() != hWnd ? "lost the front before the key" : LastInputTick() != baseline ? "a person is back" : "turned off")})");
                         continue;
+                    }
                     await press(hWnd);
                     sent = true;
                     await Task.Delay(60);
                     // Our own key counts as input; anything newer than this is a person.
                     baseline = LastInputTick();
                     reached.Add(hWnd);
+                    outcomes.Add($"{PidOf(hWnd)} done{(minimized ? " (minimized)" : unshown ? " (hidden)" : "")}");
                 }
                 finally
                 {
@@ -277,6 +292,8 @@ static class AntiAfk
                 await Task.Delay(50);
             foreach (var before in hidden)
                 Show(before);
+            if (outcomes.Count > 0)
+                Log.Note($"Anti-AFK: nudged {reached.Count} of {windows.Count} Roblox window(s): {string.Join("; ", outcomes)}.");
         }
         return reached;
     }
@@ -323,7 +340,11 @@ static class AntiAfk
     internal static void Show(Before b)
     {
         if (!IsWindow(b.Window) || IsHungAppWindow(b.Window))
+        {
+            if (IsWindow(b.Window))
+                Log.Note($"Unseen window: Roblox window {PidOf(b.Window)} stopped responding while shown unseen (nudge, picture or macro turn); left unseen until it answers.");
             return;
+        }
         const int ours = WS_EX_LAYERED | WS_EX_TRANSPARENT;
         SetWindowLong(b.Window, GWL_EXSTYLE, (GetWindowLong(b.Window, GWL_EXSTYLE) & ~ours) | (b.ExStyle & ours));
         if (b.HadAttributes)
@@ -358,7 +379,8 @@ static class AntiAfk
             && !IsHungAppWindow(previous);
         if (lift)
             SetWindowPos(previous, HWND_TOPMOST, 0, 0, 0, 0, Restack);
-        Focus(previous);
+        if (!Focus(previous))
+            Log.Note($"Keyboard: couldn't give the keyboard back to the window that had it (pid {PidOf(previous)}, {WindowReport.Describe(previous)}); Windows refused.");
         if (lift)
             SetWindowPos(previous, HWND_NOTOPMOST, 0, 0, 0, 0, Restack); // first of the usual windows
     }
@@ -388,6 +410,7 @@ static class AntiAfk
     public static void Recover(IEnumerable<IntPtr> windows)
     {
         const int ours = WS_EX_LAYERED | WS_EX_TRANSPARENT;
+        var recovered = new List<uint>();
         foreach (var w in windows)
         {
             int ex = GetWindowLong(w, GWL_EXSTYLE);
@@ -397,7 +420,17 @@ static class AntiAfk
             SetWindowLong(w, GWL_EXSTYLE, ex & ~ours);
             Animations(w, true);
             RedrawWindow(w, IntPtr.Zero, IntPtr.Zero, RDW_INVALIDATE | RDW_ERASE | RDW_FRAME | RDW_ALLCHILDREN);
+            recovered.Add(PidOf(w));
         }
+        if (recovered.Count > 0)
+            Log.Note($"Unseen window: made {recovered.Count} unseen Roblox window(s) visible again after a cut-short nudge or turn (pids {string.Join(", ", recovered)}).");
+    }
+
+    /// <summary>The window's process id, for error.log (0 when gone).</summary>
+    static uint PidOf(IntPtr hWnd)
+    {
+        GetWindowThreadProcessId(hWnd, out uint pid);
+        return pid;
     }
 
     /// <summary>

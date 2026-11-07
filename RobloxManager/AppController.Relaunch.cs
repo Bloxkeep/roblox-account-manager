@@ -66,8 +66,45 @@ public sealed partial class AppController
         bool atLock = UpdateGoesAtLock();
         if (_relaunching || _applyingUpdate || _disposed || !Prefs.CheckUpdates || _updater.Status != "ready" || AppUpdater.HeldForInstaller
             || now < _autoRelaunchPausedUntil || !QuietForRelaunch(now, atLock))
+        {
+            // A downloaded update waiting: why, logged when that changes.
+            NoteUpdateHeld(_relaunching || _applyingUpdate || _disposed || !Prefs.CheckUpdates || _updater.Status != "ready" ? null
+                : AppUpdater.HeldForInstaller ? "held for the installer" : now < _autoRelaunchPausedUntil ? "paused a day after a failed install"
+                : UpdateHeldWhy(now, atLock));
             return;
+        }
+        NoteUpdateHeld(null);
         _ = RelaunchAsync(atLock);
+    }
+
+    /// <summary>Why a ready update last waited, as logged.</summary>
+    string? _updateHeldWhy;
+
+    void NoteUpdateHeld(string? why)
+    {
+        if (why == _updateHeldWhy)
+            return;
+        _updateHeldWhy = why;
+        if (why is not null)
+            Log.Note($"Update {_updater.NewVersion} ready, waits: {why}.");
+    }
+
+    /// <summary>For the log: the first reason <see cref="QuietForRelaunch"/> says no, read the same way.</summary>
+    string UpdateHeldWhy(DateTime now, bool atLock)
+    {
+        if (!atLock && now - _started < RelaunchAfterStart)
+            return "just started";
+        if (Settling || HomeSessionsActive)
+            return Settling ? "the PC just woke" : "a Roblox sign-in window is open";
+        if (OpeningRoblox || _restarts.Count > 0 || WindowsInTurn || MacrosPlaying || now < _sweepBackgroundUntil || ScheduleDueSoon())
+            return OpeningRoblox ? "Roblox opening or rejoining" : _restarts.Count > 0 ? "a restart under way" : WindowsInTurn || MacrosPlaying ? "a macro or window turn"
+                : ScheduleDueSoon() ? "a scheduled preset due soon" : "Roblox closing";
+        if (_quickLogin is not null || _vaultImportOpening || _vaultImportPath is not null || _backupWrite is { IsCompleted: false }
+            || _signInCheckRunning || _discordSending || _saveFailed || PageBusy || Ui.ModalsOpen > 0)
+            return _saveFailed ? "the vault couldn't be saved" : "something in the app under way";
+        if (Application.OpenForms.Cast<Form>().Any(f => f != _owner && f is not MiniWindow && !(f is PanelWindow p && p.AutoShown) && f.Visible))
+            return "another Bloxkeep window open";
+        return "Bloxkeep in use";
     }
 
     /// <summary>Nobody is using Bloxkeep and nothing a restart would lose is under way. Running Roblox windows don't count:
@@ -122,7 +159,10 @@ public sealed partial class AppController
             // Something may have started meanwhile: the next quiet moment then.
             if (_disposed || !Prefs.CheckUpdates || _updater.Status != "ready" || atLock != UpdateGoesAtLock()
                 || !QuietForRelaunch(DateTime.UtcNow, atLock) || !SaveBeforeClosing())
+            {
+                Log.Note("Update: the restart to install was called off, something started meanwhile.");
                 return;
+            }
             // Opened to the tray (at sign-in), it updates there without a window coming up.
             QuitIntoUpdate(showWindow: atLock && WindowNow?.Invoke().Window == "shown");
         }
@@ -177,7 +217,10 @@ public sealed partial class AppController
             _applyingUpdate = _relaunchArgs is not null;
         }
         if (!_disposed)
+        {
+            Log.Note("Update: Restart to update didn't restart the app.");
             throw new UserError(L.T("Couldn't restart to update. It installs by itself when you quit Bloxkeep."));
+        }
         return null;
     }
 
@@ -220,6 +263,7 @@ public sealed partial class AppController
         QuitForUpdate?.Invoke();
         if (!_disposed)
         {
+            Log.Note("Update: the window didn't close to install; the hand-over was removed.");
             Relaunch.Discard();
             _relaunchArgs = null;
         }
@@ -235,7 +279,10 @@ public sealed partial class AppController
             string appDir = Path.TrimEndingDirectorySeparator(AppContext.BaseDirectory);
             string source = Path.Combine(appDir, "BloxkeepUninstall.exe");
             if (!File.Exists(source) || Path.GetDirectoryName(appDir) is not { } root)
+            {
+                Log.Note("Update: no watch over the restart, BloxkeepUninstall.exe not found beside the app.");
                 return;
+            }
             string dir = Path.Combine(Path.GetTempPath(), "Bloxkeep-Updating-" + Guid.NewGuid().ToString("N")[..8]);
             Directory.CreateDirectory(dir);
             string copy = Path.Combine(dir, "BloxkeepUpdating.exe");

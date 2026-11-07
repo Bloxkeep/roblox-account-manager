@@ -34,6 +34,7 @@ public sealed partial class AppController
         if (viewers.Count == 0)
             throw new UserError(L.T("None of the selected accounts is signed in, so Bloxkeep can't ask Roblox where this player is. Sign them in again first."));
         var (seen, failed) = await WherePlayerIsAsync(user.Id, viewers, vault);
+        Log.Note($"Join a player: {(seen is null ? "no answer" : PlayerStatus(seen))}, asked with {viewers.Count} account(s){(failed is not null ? $", last failure {LaunchFailKind(failed)}" : "")}.");
         if (seen is null)
         {
             throw new UserError(failed is RobloxApiException { CookieInvalid: true }
@@ -260,6 +261,7 @@ public sealed partial class AppController
             return Wait("ended", L.F("{0} waits to join {1}: {1}'s server has just ended. Bloxkeep looks again every minute.", Name(account), player));
         if (answer is { Refused: true })
             return Wait("refused", L.F("{0} waits to join {1}: Roblox won't let this account into the game {1} is in. Bloxkeep looks again every minute.", Name(account), player));
+        Log.Note($"Rejoin: account {account.Id.ToString()[..8]} follows its player to place {target.PlaceId}.");
         if (_followWaitTold.Remove(account.Id))
             Toast(L.F("{0} found {1} again — rejoining their server…", Name(account), player), "info");
         return target;
@@ -274,6 +276,7 @@ public sealed partial class AppController
             if (!_followWaitTold.TryGetValue(account.Id, out string? told) || told != reason)
             {
                 _followWaitTold[account.Id] = reason;
+                Log.Note($"Rejoin: account {account.Id.ToString()[..8]} waits for its followed player ({reason}); looks again in {(int)FollowRecheck.TotalSeconds} s.");
                 Notify(text, "warn", "rejoinFail", account.Id);
             }
             PushState();

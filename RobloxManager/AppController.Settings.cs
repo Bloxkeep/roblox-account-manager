@@ -38,6 +38,8 @@ public sealed partial class AppController
             s.LaunchVia = via;
             _installs = null; // the client (and its version) depends on the option
         }
+        else if (OptStr(a, "launchVia") is { } refused)
+            Log.Note($"Settings: launch option not changed ({(refused == "custom" ? "the custom launcher isn't ready" : RobloxLauncher.IsValidOption(refused) ? "that launcher isn't found on this PC" : "unknown option")}).");
         if (OptBool(a, "memoryWarnings") is { } warnings) s.MemoryWarnings = warnings;
         if (OptBool(a, "antiAfk") is { } antiAfk) s.AntiAfk = antiAfk;
         if (Has(a, "robloxConfig", JsonValueKind.Object))
@@ -87,6 +89,7 @@ public sealed partial class AppController
             else
                 MultiInstance.Disable();
             _lastArmed = MultiInstance.Armed;
+            Log.Note($"Settings: Multi-Roblox turned {(multi ? "on" : "off")} (armed now: {_lastArmed}).");
             KeepMultiAtStart(multi);
         }
         // Both take effect at the next launch; the person's own fullscreen setting is put back by the process check.
@@ -128,6 +131,7 @@ public sealed partial class AppController
             }
             catch (Exception ex) when (ex is UnauthorizedAccessException or IOException or System.Security.SecurityException)
             {
+                Log.Note($"Settings: another tray app's autostart couldn't be turned off ({ex.GetType().Name}).");
                 throw new UserError(L.F("Couldn't turn it off: {0}", ErrorText(ex)));
             }
         }

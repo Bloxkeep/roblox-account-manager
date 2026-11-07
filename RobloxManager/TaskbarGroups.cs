@@ -51,6 +51,7 @@ static class TaskbarGroups
     {
         var placed = ByPid.TryGetValue(pid, out var had) ? had with { Group = group } : new Placed(group, new());
         ByPid[pid] = placed;
+        int written = 0;
         foreach (var hWnd in windows)
         {
             string? now = Read(hWnd);
@@ -60,7 +61,11 @@ static class TaskbarGroups
             if (!placed.Own.ContainsKey(hWnd))
                 placed.Own[hWnd] = IsOurs(now) ? null : now;
             Write(hWnd, group);
+            written++;
         }
+        // Once per client and group change (the group names an account or preset id: only its kind is logged).
+        if (written > 0 && had?.Group != group)
+            Log.Note($"Taskbar buttons: Roblox window {pid} put under its own {(group.StartsWith("Bloxkeep.Preset.", StringComparison.Ordinal) ? "preset" : "account")} button ({written} window(s)).");
     }
 
     /// <summary>The windows' own ids back (turned off, the client's account no longer grouped, Bloxkeep closing).</summary>
@@ -68,6 +73,7 @@ static class TaskbarGroups
     {
         if (!ByPid.Remove(pid, out var placed))
             return;
+        Log.Note($"Taskbar buttons: Roblox window {pid} given back to Roblox's own button.");
         foreach (var hWnd in windows)
         {
             if (placed.Own.TryGetValue(hWnd, out var own))

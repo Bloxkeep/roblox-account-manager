@@ -60,6 +60,7 @@ public sealed partial class AppController
         var leftOutText = leftOut.Select(BannedNotOpened).ToList();
         if (leftOut.Count > 0)
         {
+            Log.Note($"Launch: {leftOut.Count} of {accounts.Count} account(s) left out, banned on Roblox.");
             if (leftOut.Count == accounts.Count)
                 throw new UserError(string.Join("\n", leftOutText));
             accounts = accounts.Except(leftOut).ToList();
@@ -104,6 +105,7 @@ public sealed partial class AppController
             // A preset leaves out the accounts this game banned: nobody may be there to answer a question (tray, schedule).
             if (presetId is not null && target is not null && accounts.Where(acc => GameBanOf(acc, target.PlaceId) is not null).ToList() is { Count: > 0 } gameBanned)
             {
+                Log.Note($"Launch: preset left out {gameBanned.Count} of {accounts.Count} account(s), banned from place {target.PlaceId}.");
                 errors.AddRange(gameBanned.Select(acc => L.F("{0} was banned from this game, so the preset didn't open it. Play it on its own to try anyway.", Name(acc))));
                 if (gameBanned.Count == accounts.Count)
                     throw new UserError(string.Join("\n", errors));
@@ -175,10 +177,16 @@ public sealed partial class AppController
                     "RAM is free, but Windows' virtual memory is almost full, so {0} more Roblox windows may crash as they open. Close other apps or increase virtual memory.", toOpen)));
             warnings.RemoveAll(w => SkippableLaunchWarnings.Contains(w.Kind) && Prefs.SkipConfirm.Contains(LaunchWarningKey(w.Kind)));
             if (warnings.Count > 0 && !force)
+            {
+                Log.Note($"Launch: held for a confirmation ({string.Join(", ", warnings.Select(w => w.Kind))}).");
                 return new LaunchResult(NeedsConfirm: true, Message: string.Join("\n\n", warnings.Select(w => w.Text)),
                     Asks: warnings.Select(w => w.Kind).ToList());
+            }
 
             started = true;
+            Log.Note($"Launch: {accounts.Count} account(s), {(target is null ? "home screen" : $"place {target.PlaceId}{(target.JobId is not null ? ", a chosen server" : target.IsPrivate ? ", private server" : "")}")}"
+                + $"{(presetId is { } ofPreset ? $", preset {ofPreset.ToString()[..8]}" : "")}, via {s.LaunchVia}, Multi-Roblox {(MultiInstance.Armed ? "ready" : s.MultiInstance ? "not ready" : "off")}"
+                + $"{(switching.Count > 0 ? $", {switching.Count} switching" : "")}{(force ? ", confirmed" : "")}.");
             PushState();
             await WaitForSweepAsync(ct);
             int party = accounts.Count(acc => (!_running.ContainsKey(acc.Id) || switching.Contains(acc)) && !StillOpening(acc.Id));
@@ -195,7 +203,10 @@ public sealed partial class AppController
                 var account = accounts[i];
                 await WaitForPendingAsync(ct);
                 if (FindAccount(account.Id) is null)
+                {
+                    Log.Note($"Launch: account {account.Id.ToString()[..8]} skipped, deleted meanwhile.");
                     continue; // deleted while the earlier ones opened
+                }
                 if (switching.Contains(account) && _running.TryGetValue(account.Id, out var old))
                 {
                     Progress(L.F("Closing {0}'s Roblox to switch games…", Name(account)));
@@ -210,12 +221,16 @@ public sealed partial class AppController
                     {
                         // Still open: a real drop later must still rejoin.
                         if (_running.ContainsKey(account.Id))
+                        {
+                            Log.Note($"Launch: account {account.Id.ToString()[..8]}'s window {old.Pid} still open after the wait to switch games (15 s at most).");
                             _userClosed.Remove(account.Id);
+                        }
                     }
                 }
                 if (_running.ContainsKey(account.Id) || StillOpening(account.Id))
                 {
                     bool stayed = _running.ContainsKey(account.Id) && !switching.Contains(account);
+                    Log.Note($"Launch: account {account.Id.ToString()[..8]} skipped, {(stayed ? "already there" : StillOpening(account.Id) ? "still opening" : "already running")}.");
                     skipped.Add(stayed && target is null ? L.F("{0}: already on the home screen — skipped.", Name(account))
                         : stayed ? L.F("{0}: already in this game — skipped.", Name(account))
                         : L.F("{0}: already running — skipped.", Name(account)));
@@ -243,6 +258,7 @@ public sealed partial class AppController
                 catch (Exception ex) when (!ct.IsCancellationRequested
                                            && (RobloxApi.IsExpectedError(ex) || ex is Win32Exception or FileNotFoundException or UserError))
                 {
+                    Log.Note($"Launch: account {account.Id.ToString()[..8]} didn't open ({LaunchFailKind(ex)}).");
                     // Signed out only when the sign-in check agrees: an outage answers 401 for everyone.
                     bool refused = ex is RobloxApiException { CookieInvalid: true } && !await ConfirmSignedOutAsync(account, ct);
                     errors.Add($"{NameText(account)}: {(refused ? RefusedText : ex is Win32Exception or FileNotFoundException ? StartErrorText(ex) : ErrorText(ex))}");
@@ -272,6 +288,7 @@ public sealed partial class AppController
                     }
                     target = other;
                     checkServer = target.JobId is not null;
+                    Log.Note($"Launch: the party's server was full or closed ({closedServers.Count} so far); {(target.JobId is not null ? "moving to another with room" : "Roblox picks one for each")}.");
                     Toast(target.JobId is not null ? L.T("That server is full or has closed, so the accounts go to another one with room for them all.")
                         : L.T("That server is full or has closed, and no other server was found with room for all the accounts: Roblox picks one for each."), "warn");
                     // Goes again, to the new server; not a drop for auto-rejoin.
@@ -283,6 +300,7 @@ public sealed partial class AppController
                             await Task.Delay(300, ct);
                         if (_running.ContainsKey(account.Id))
                         {
+                            Log.Note($"Launch: account {account.Id.ToString()[..8]}'s window {stuck.Pid} wouldn't close to move servers; it stays.");
                             _userClosed.Remove(account.Id); // it wouldn't close: it stays, and auto-rejoin still looks after it
                             continue;
                         }
@@ -297,6 +315,7 @@ public sealed partial class AppController
         }
         catch (Exception ex) when (started && RobloxApi.IsExpectedError(ex))
         {
+            Log.Note($"Launch: stopped by an error ({LaunchFailKind(ex)}).");
             errors.Add(ErrorText(ex));
         }
         finally
@@ -319,6 +338,8 @@ public sealed partial class AppController
             Progress(null);
             PushState();
         }
+        if (started)
+            Log.Note($"Launch: done, {launched} opened, {errors.Count} not opened, {skipped.Count} skipped{(ct.IsCancellationRequested ? ", stopped" : "")}.");
         if (errors.Count > 0 && !ct.IsCancellationRequested)
             Notify(L.P(errors.Count, "{0} account didn't open.", "{0} accounts didn't open.", errors.Count), "warn", "launch", toast: false);
         return new LaunchResult(Launched: launched, Errors: errors, Cancelled: ct.IsCancellationRequested, Skipped: skipped,
@@ -378,9 +399,11 @@ public sealed partial class AppController
             var (servers, _) = await RobloxApi.GetServersAsync(target.PlaceId, true, null, ct);
             if (RoomyServer(servers, party, closed) is { } other)
                 return target with { JobId = other.JobId };
+            Log.Note($"Launch: no other server of place {target.PlaceId} has room for {party} ({servers.Count} read).");
         }
         catch (Exception ex) when (!ct.IsCancellationRequested && RobloxApi.IsExpectedError(ex))
         {
+            Log.Note($"Launch: the server list of place {target.PlaceId} couldn't be read ({LaunchFailKind(ex)}).");
         }
         return target with { JobId = null };
     }
@@ -434,6 +457,7 @@ public sealed partial class AppController
             }
             catch (RobloxApiException ex) when (ex.CookieInvalid && i < candidates.Count - 1)
             {
+                Log.Note($"Launch: share link read refused for account {candidates[i].Id.ToString()[..8]}'s sign-in; trying the next.");
                 await ConfirmSignedOutAsync(candidates[i], ct);
             }
         }
@@ -457,6 +481,8 @@ public sealed partial class AppController
             }
             await Task.Delay(500, ct);
         }
+        if (_pending.Any(p => p.AccountId == account.Id))
+            Log.Note($"Launch: account {account.Id.ToString()[..8]}'s window didn't come within {(int)PendingTimeout.TotalSeconds} s; the next goes on.");
         // Rejoins may go during the wait, or one dropped early in a long launch would wait for all of it. A rejoin
         // started meanwhile counts as a start, so windows still open one every delaySeconds.
         if (delaySeconds <= 0)
@@ -576,11 +602,15 @@ public sealed partial class AppController
                 _pending.Remove(launch);
                 _handedOver.Remove(launch);
                 if (_closeWhenClaimed.Remove(launch))
+                {
+                    Log.Note($"Roblox window {pid} came up and was closed, as asked while it opened.");
                     _closeClient(pid, false);
+                }
                 else
                 {
                     _running[launch.AccountId] = (pid, launch);
                     PersistSoon(); // the open clients on disk (see Persist)
+                    Log.Note($"Roblox window {pid} came up: {WindowReport.Describe(RobloxProcesses.MainWindow(pid))}.");
                 }
                 changed = true;
             }
@@ -597,6 +627,7 @@ public sealed partial class AppController
                         _pendingSeenAlive[launch] = now;
                         continue;
                     }
+                    Log.Note($"Launch: account {launch.AccountId.ToString()[..8]}'s Roblox quit before its window came.");
                     DropPending(launch);
                     changed = true;
                 }
@@ -611,7 +642,10 @@ public sealed partial class AppController
                 _late.Remove(launch);
                 _closeWhenClaimed.Remove(launch);
                 if (!_running.ContainsKey(launch.AccountId) && !_pending.Any(p => p.AccountId == launch.AccountId))
+                {
+                    Log.Note($"Launch: gave up on account {launch.AccountId.ToString()[..8]}'s late window, none came.");
                     ForgetScheduledOpen(launch.AccountId); // no client came of it
+                }
                 continue;
             }
             int pid = pids.Where(p => !launch.Before.Contains(p) && !claimed.Contains(p) && hasWindow(p) && MayBeLaunchOf(trackerOf(p), launch)
@@ -624,7 +658,9 @@ public sealed partial class AppController
                 continue;
             claimed.Add(pid);
             _late.Remove(launch);
-            if (_closeWhenClaimed.Remove(launch))
+            bool closeIt = _closeWhenClaimed.Remove(launch);
+            Log.Note($"Roblox window {pid} came up late, {(int)(now - launch.StartedAt).TotalSeconds} s after its start{(closeIt ? "; closed, as asked meanwhile" : "")}.");
+            if (closeIt)
                 _closeClient(pid, false);
             else
             {
@@ -645,6 +681,7 @@ public sealed partial class AppController
         bool Opening() => _rejoining || _pending.Count > 0;
         if (!Opening())
             return;
+        Log.Note($"Launch: waits for a window still opening ({(_rejoining ? "a rejoin" : $"{_pending.Count} pending")}).");
         Progress(L.T("Waiting for the previous Roblox window to open…"));
         // Bounded: a launch stops pending after PendingTimeout, LateTimeout more while Roblox's updater has it (ExpirePending).
         while (Opening())
@@ -662,6 +699,8 @@ public sealed partial class AppController
         if (FindAccount(account.Id) is null)
             throw new UserError(L.T("Account not found."));
         // A launcher installing the new build: a window opened now would be closed by it, or start the old one.
+        if (_robloxUpdating)
+            Log.Note($"Roblox start: account {account.Id.ToString()[..8]} waits for Roblox's update to finish.");
         while (_robloxUpdating)
         {
             Progress(L.T("Waiting for Roblox to finish updating…"));
@@ -687,7 +726,10 @@ public sealed partial class AppController
                 _robloxSettingsWrittenAt = DateTime.UtcNow;
             }
         }
+        string chosenVia = launchVia;
         launchVia = RobloxInstalls.UpdatingOption(launchVia, RobloxVersionDto().UpToDate);
+        if (launchVia != chosenVia)
+            Log.Note($"Roblox start: through {launchVia} instead of {chosenVia}, so the old Roblox build is updated first.");
         // The leanest drawing (Fast Flags) if the person has it on, for the accounts the Roblox settings go to (Apply to)
         // and a light-AFK preset's windows; off, "Nobody", or the main account: the person's own file goes back first.
         if (settings.FastFlags && (covered || afk))
@@ -706,6 +748,8 @@ public sealed partial class AppController
         // Stopped meanwhile (Stop, Close, a scheduled stop): nothing is opened.
         ct.ThrowIfCancellationRequested();
         string tracker = RobloxLauncher.Launch(ticket, target, launchVia, _vault?.Data.Settings.CustomLauncher ?? "");
+        Log.Note($"Roblox start: account {account.Id.ToString()[..8]} via {launchVia}, {(target is null ? "home screen" : $"place {target.PlaceId}")}"
+            + $"{(restart ? ", a restart" : rejoin ? ", a rejoin" : "")}{(openRetries > 0 ? $", try {openRetries + 1}" : "")}, {before.Count} Roblox already running.");
         _lastSessionStart = DateTime.UtcNow;
         _userClosed.Remove(account.Id);
         ForgetLate(account.Id); // opened again: a window of the earlier try is not this one's
@@ -723,8 +767,10 @@ public sealed partial class AppController
     /// </summary>
     async Task<bool> CloseTrayCopiesAsync(CancellationToken ct)
     {
-        if (RobloxProcesses.CloseTrayCopies() == 0)
+        int trayCopies = RobloxProcesses.CloseTrayCopies();
+        if (trayCopies == 0)
             return false;
+        Log.Note($"Roblox start: closed {trayCopies} Roblox notification-area copy(ies) first.");
         await Task.Delay(TimeSpan.FromMilliseconds(500), ct);
         ArmMultiIfFree(RobloxProcesses.GetPlayerPids());
         return true;
@@ -757,6 +803,8 @@ public sealed partial class AppController
 
     object? CancelLaunch()
     {
+        if (_launchCts is not null)
+            Log.Note("Launch: Stop pressed.");
         _launchCts?.Cancel();
         return null;
     }
@@ -791,6 +839,7 @@ public sealed partial class AppController
             _closeClient(info.Pid, force || InGameNow(info.Pid));
             closed++;
         }
+        Log.Note($"Close: {closed} window(s) or opening(s) closed for {ids.Length} account(s){(force ? ", forced" : "")}.");
         return closed;
     }
 
@@ -814,6 +863,7 @@ public sealed partial class AppController
         // Roblox starts a windowless background client when its last window closes; sweep those for a moment
         // so "close all" really leaves nothing running and multi-instance can re-arm.
         _sweepBackgroundUntil = DateTime.UtcNow + BackgroundSweep;
+        Log.Note($"Close all: {_running.Count} tracked window(s), {_pending.Count} still opening, {_late.Count} late{(force ? ", forced" : "")}.");
         return RobloxProcesses.CloseAll(force, InGameNow);
     }
 
@@ -823,6 +873,7 @@ public sealed partial class AppController
         var remaining = _sweepBackgroundUntil - DateTime.UtcNow;
         if (remaining <= TimeSpan.Zero)
             return;
+        Log.Note($"Launch: waits {remaining.TotalSeconds:0.#} s for Roblox to finish closing.");
         Progress(L.T("Waiting for Roblox to finish closing…"));
         await Task.Delay(remaining, ct);
     }
@@ -851,9 +902,18 @@ public sealed partial class AppController
         // After a nudge, a picture or a macro's turn under way: each puts its window back as it found it.
         using var turn = await InputTurn.EnterAsync("arrange");
         _windowSizes.Clear();
-        return await RobloxProcesses.ArrangeGridAsync(tracked.Concat(others).Where(p => !afk.Contains(p)).ToList(), screen.WorkingArea,
+        var pids = tracked.Concat(others).Where(p => !afk.Contains(p)).ToList();
+        string before = WindowReport.States(pids.Select(RobloxProcesses.MainWindow));
+        int done = await RobloxProcesses.ArrangeGridAsync(pids, screen.WorkingArea,
             s?.WindowLayout ?? "fill", skipMinimized: auto, app: app, custom: s is null ? default : new Size(s.WindowWidth, s.WindowHeight),
             raise: atMouse);
+        // What it came to, as the person sees it: each window in its place, or what's wrong with it (WindowReport).
+        string how = auto ? "after opening" : atMouse ? "hotkey" : "button";
+        Log.Note($"Arrange ({how}, screen {Array.IndexOf(screens, screen) + 1} of {screens.Length}, {s?.WindowLayout ?? "fill"}"
+            + $"{(app != IntPtr.Zero ? ", Bloxkeep in view" : "")}): {done} of {pids.Count} window(s), before {(before.Length > 0 ? before : "none")}; "
+            + RobloxProcesses.LastArrangeNote
+            + WindowReport.Placed(pids.Select(p => (p, RobloxProcesses.MainWindow(p))).ToList(), screen.WorkingArea) + ".");
+        return done;
     }
 
     HashSet<int> AfkClients() =>
@@ -887,7 +947,8 @@ public sealed partial class AppController
         afk.UnionWith(MainPids());
         int tiles = RobloxProcesses.VisibleWindows(RobloxProcesses.GetPlayerPids())
             .Count(w => !afk.Contains(w.Key) && w.Value.Count > 0 && !RobloxProcesses.IsMinimised(RobloxProcesses.MainWindowOf(w.Value)));
-        Log.Note($"Arrange after opening: {tiles} window(s) to tile{(StillJoining(since) ? ", some still joining" : "")}.");
+        Log.Note($"Arrange after opening: {tiles} window(s) to tile{(StillJoining(since) ? ", some still joining" : "")}"
+            + $" ({WindowReport.States(RobloxProcesses.GetPlayerPids().Where(p => !afk.Contains(p)).Select(RobloxProcesses.MainWindow))}).");
         if (tiles >= 2)
             await ArrangeWindowsAsync(-1, auto: true);
     }
@@ -921,6 +982,8 @@ public sealed partial class AppController
     {
         _pending.Remove(launch);
         bool closed = _closeWhenClaimed.Remove(launch);
+        Log.Note($"Launch: stopped waiting for account {launch.AccountId.ToString()[..8]}'s window{(launch.Rejoin ? " (a rejoin)" : "")}"
+            + $"{(late ? ", still taken if it comes late" : "")}{(closed ? ", closed meanwhile" : "")}.");
         if (_handedOver.Remove(launch, out var handed) && !closed)
         {
             OnSessionEnded(launch.AccountId, launch, handed.Log);
@@ -932,6 +995,7 @@ public sealed partial class AppController
             // is. Before, the account was left out for good (review, 2026-10-30). Not a late one: its window may still come.
             if (!late && RetryOpen(account, launch))
                 return;
+            Log.Note($"Rejoin: account {account.Id.ToString()[..8]} gave up, no Roblox window appeared (try {launch.OpenRetries + 1}).");
             Notify(L.F("{0} didn't rejoin: no Roblox window appeared.", Name(account)), "warn", "rejoinFail", account.Id);
         }
         if (!late && !_running.ContainsKey(launch.AccountId))
@@ -951,6 +1015,16 @@ public sealed partial class AppController
         var delay = TimeSpan.FromTicks(Math.Min(NetworkRetryDelay.Ticks * (launch.OpenRetries + 1), MaxRetryDelay.Ticks));
         _rejoinQueue.Add(new RejoinRequest(account.Id, target with { JobId = null }, DateTime.UtcNow + delay, PresetId: launch.PresetId)
             { OpenRetries = launch.OpenRetries + 1 });
+        Log.Note($"Rejoin: account {account.Id.ToString()[..8]} opened no window; try {launch.OpenRetries + 2} in {(int)delay.TotalSeconds} s.");
         return true;
     }
+
+    /// <summary>For error.log: an error's kind and Roblox's flags, never its text (a sentence may name an account).</summary>
+    static string LaunchFailKind(Exception ex) => ex switch
+    {
+        RobloxApiException r => "RobloxApiException" + (r.CookieInvalid ? " cookie-invalid" : "") + (r.RateLimited ? " rate-limited" : "")
+            + (r.ServerError ? " server-error" : "") + (r.SignInRefused ? " sign-in-refused" : "") + (r.Moderated ? " moderated" : ""),
+        Win32Exception w => $"Win32Exception {w.NativeErrorCode}",
+        _ => ex.GetType().Name,
+    };
 }

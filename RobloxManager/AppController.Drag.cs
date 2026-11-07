@@ -55,6 +55,7 @@ public sealed partial class AppController
             if (RobloxProcesses.WindowRect(hwnd) is not { } now
                 || RobloxProcesses.AfterDrag(start, now, grab, release, border) is not { } meant)
                 return;
+            Log.Note($"Drag: Roblox window {PanelNative.PidOf(hwnd)} sized to the dragged {meant.Width}×{meant.Height} (Roblox kept {now.Width}×{now.Height}).");
             RobloxProcesses.PlaceWindow(hwnd, meant);
         }
     }

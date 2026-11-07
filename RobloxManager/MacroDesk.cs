@@ -56,6 +56,8 @@ sealed class MacroDesk(Func<Guid, (int Pid, int Fps, bool InGame)?> client, Func
             if (_elevated.Count > 64)
                 _elevated.Clear();
             _elevated[c.Pid] = elevated = Elevated(c.Pid);
+            if (elevated)
+                Log.Note($"Macro: window {c.Pid} runs as administrator; Windows drops Bloxkeep's input to it.");
         }
         return new MacroWindow(accountId, c.Pid, hWnd, ClientOnScreen(hWnd), c.Fps, c.InGame, elevated);
     }
@@ -80,6 +82,7 @@ sealed class MacroDesk(Func<Guid, (int Pid, int Fps, bool InGame)?> client, Func
         }
         catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception)
         {
+            Log.Note($"Macro: couldn't tell whether window {pid} runs as administrator ({ex.GetType().Name}); taken as not.");
             return false;
         }
     }
@@ -147,6 +150,11 @@ sealed class MacroDesk(Func<Guid, (int Pid, int Fps, bool InGame)?> client, Func
         return _ime;
     }
 
+    /// <summary>error.log: the last screen copy failure, and the last window a turn was refused for (and why).</summary>
+    string? _areaFailed, _refused;
+    /// <summary>error.log: SendInput is being refused (UIPI, a secure desktop); written when that starts and ends.</summary>
+    static bool s_sendFailing;
+
     public async Task<Bitmap?> PictureAsync(MacroWindow window, IMacroTurn? turn) =>
         await WindowShot.ClientAsync(window.Handle, shown: turn is not null);
 
@@ -166,8 +174,14 @@ sealed class MacroDesk(Func<Guid, (int Pid, int Fps, bool InGame)?> client, Func
                 g.CopyFromScreen(client.X + area.X, client.Y + area.Y, 0, 0, area.Size);
                 return shot;
             }
-            catch (Exception) // the screen locked, a secure desktop
+            catch (Exception ex) // the screen locked, a secure desktop
             {
+                // Looked at many times a second: written when it starts failing, not each time.
+                if (_areaFailed != ex.GetType().Name)
+                {
+                    _areaFailed = ex.GetType().Name;
+                    Log.Note($"Macro: copying window {window.Pid}'s area from the screen failed ({_areaFailed}).");
+                }
                 shot.Dispose();
                 return null;
             }
@@ -194,7 +208,10 @@ sealed class MacroDesk(Func<Guid, (int Pid, int Fps, bool InGame)?> client, Func
     {
         IntPtr hWnd = window.Handle;
         if (!IsWindow(hWnd) || IsHungAppWindow(hWnd))
+        {
+            NoteRefused(window.Pid, IsWindow(hWnd) ? "it isn't responding" : "its window is gone");
             return null;
+        }
         uint person = AntiAfk.PersonTick();
         var turn = new Turn(hWnd, GetForegroundWindow(), person, personAt, rawWorks);
         GetCursorPos(out turn.Cursor);
@@ -221,8 +238,14 @@ sealed class MacroDesk(Func<Guid, (int Pid, int Fps, bool InGame)?> client, Func
             }
             if (GetForegroundWindow() != hWnd)
             {
+                NoteRefused(window.Pid, $"Windows didn't bring it forward in {FrontTime.TotalMilliseconds:0} ms{(minimized ? ", it was minimized" : unshown ? ", it was hidden" : "")}");
                 await turn.DisposeAsync();
                 return null;
+            }
+            if (_refused is not null)
+            {
+                Log.Note($"Macro: window {window.Pid} came forward again.");
+                _refused = null;
             }
             // A restored window needs a moment to draw again (as anti-AFK gives it); one in view, a frame.
             await Task.Delay(minimized || unshown ? 400 : Math.Max(17, window.Fps > 0 ? 1000 / window.Fps : 17), ct);
@@ -234,6 +257,16 @@ sealed class MacroDesk(Func<Guid, (int Pid, int Fps, bool InGame)?> client, Func
             await turn.DisposeAsync();
             throw;
         }
+    }
+
+    /// <summary>error.log: a turn refused, written once until the window or the reason changes (a run retries every few seconds).</summary>
+    void NoteRefused(int pid, string why)
+    {
+        string key = $"{pid}:{why}";
+        if (_refused == key)
+            return;
+        _refused = key;
+        Log.Note($"Macro: no turn for window {pid}: {why}.");
     }
 
     /// <summary>A person's input came since <paramref name="started"/>. Raw input knows a device's input from a program's;
@@ -267,7 +300,14 @@ sealed class MacroDesk(Func<Guid, (int Pid, int Fps, bool InGame)?> client, Func
         {
             if (_done)
                 return; // given back (or Bloxkeep closing): nothing more goes out
-            SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<INPUT>());
+            uint taken = SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<INPUT>());
+            // Written when it starts and stops failing, not for every key.
+            if (taken == 0 != s_sendFailing)
+            {
+                s_sendFailing = taken == 0;
+                Log.Note(s_sendFailing ? $"Macro: Windows refused Bloxkeep's input (SendInput error {Marshal.GetLastWin32Error()})."
+                    : "Macro: Windows takes Bloxkeep's input again.");
+            }
             _sent = true;
             _lastSent = (uint)Environment.TickCount;
         }

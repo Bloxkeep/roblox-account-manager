@@ -36,6 +36,8 @@ public sealed partial class AppController
     async Task SendPhoneAsync(string topic, string text, bool urgent)
     {
         string? error = await PhoneAlert.SendAsync(topic, text, urgent);
+        if (error is null && _phoneError is not null)
+            Log.Note("Phone alert: recovered.");
         if (error != _phoneError)
         {
             _phoneError = error;

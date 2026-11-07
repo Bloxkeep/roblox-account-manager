@@ -22,6 +22,9 @@ public sealed partial class AppController
             ? TimeSpan.FromTicks(Math.Min(MaxGameRetry.Ticks, GameRetry.Ticks << Math.Min(misses - 1, 6)))
             : GameRetry;
 
+    /// <summary>The last game lookup failed: written once, then once more when one goes through.</summary>
+    bool _gamesFailing;
+
     /// <summary>Fills the game cache in one batch; places whose universe isn't known from presence are looked up first.</summary>
     async Task LoadGamesAsync(IEnumerable<(long PlaceId, long UniverseId)> places, bool fresh = false)
     {
@@ -76,9 +79,15 @@ public sealed partial class AppController
                 else
                     _gameMisses.Remove(placeId);
             }
+            if (_gamesFailing)
+                Log.Note("Games: lookup recovered.");
+            _gamesFailing = false;
         }
         catch (Exception ex) when (RobloxApi.IsExpectedError(ex))
         {
+            if (!_gamesFailing)
+                Log.Note($"Games: lookup of {wanted.Count} place(s) failed ({LogKindOf(ex)}); names stay unknown, asked again in two minutes.");
+            _gamesFailing = true;
             foreach (var (placeId, _) in wanted)
                 _games.TryAdd(placeId, null);
         }
@@ -118,6 +127,7 @@ public sealed partial class AppController
         catch (RobloxApiException ex) when (ex.RateLimited)
         {
             int retryIn = (int)Math.Ceiling((ex.RetryAfter ?? TimeSpan.FromSeconds(20)).TotalSeconds);
+            Log.Note($"Servers: Roblox rate-limited the server list; the page waits {retryIn} s.");
             return new { servers = Array.Empty<ServerInfo>(), next = (string?)null, busy = true, retryIn, left = 0 };
         }
     }
@@ -157,6 +167,8 @@ public sealed partial class AppController
         if (_friendServers.TryGetValue(key, out var kept) && DateTime.UtcNow - kept.At < FriendServerLifetime)
             return FriendServersDto(kept.Friends, kept.Asked);
         var found = new Dictionary<long, (string JobId, long PlaceId, Guid Via)>();
+        int friendFails = 0;
+        string? friendKind = null;
         await Task.WhenAll(viewers.Select(async viewer =>
         {
             try
@@ -176,8 +188,12 @@ public sealed partial class AppController
             catch (Exception ex) when (RobloxApi.IsExpectedError(ex))
             {
                 // That account's friends are just left out.
+                Interlocked.Increment(ref friendFails);
+                friendKind ??= LogKindOf(ex);
             }
         }));
+        if (friendFails > 0)
+            Log.Note($"Servers: friends of {friendFails} of {viewers.Count} account(s) not read ({friendKind}); left out.");
         var ids = found.Keys.ToList();
         // Names and pictures are extras: without them the friends still show (by id) and can be joined.
         Dictionary<long, RobloxUser> users = [];
@@ -194,6 +210,7 @@ public sealed partial class AppController
         }
         catch (Exception ex) when (RobloxApi.IsExpectedError(ex))
         {
+            Log.Note($"Servers: friends' names and pictures not loaded ({LogKindOf(ex)}); shown without them.");
         }
         var friends = found
             // The server belongs to this place, which can be another place of the game than the one asked.
@@ -247,6 +264,7 @@ public sealed partial class AppController
             return PrivateServersDto(kept.Servers, kept.Asked, kept.Failed);
         var found = new Dictionary<string, PrivateFound>(StringComparer.OrdinalIgnoreCase);
         int failed = 0;
+        string? failedKind = null;
         await Task.WhenAll(viewers.Select(async viewer =>
         {
             try
@@ -265,8 +283,11 @@ public sealed partial class AppController
             catch (Exception ex) when (RobloxApi.IsExpectedError(ex))
             {
                 Interlocked.Increment(ref failed); // that account's servers are just left out
+                failedKind ??= LogKindOf(ex);
             }
         }));
+        if (failed > 0)
+            Log.Note($"Private servers: {failed} of {viewers.Count} account(s) not read ({failedKind}).");
         if (_vault != vault)
             throw new UserError(L.T("Bloxkeep was locked."));
         // Those every account asked can join first, then the fuller ones (people are playing there).

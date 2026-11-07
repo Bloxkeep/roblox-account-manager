@@ -64,8 +64,7 @@ public sealed partial class AppController
     {
         try
         {
-            var done = await ArrangeWindowsAsync(-1, atMouse: true);
-            Log.Note($"Hotkey Ctrl+Alt+A: {done} window(s) arranged.");
+            await ArrangeWindowsAsync(-1, atMouse: true); // its outcome is written by ArrangeWindowsAsync
         }
         catch (Exception ex)
         {

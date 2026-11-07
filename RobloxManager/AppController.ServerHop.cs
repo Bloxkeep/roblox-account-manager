@@ -53,6 +53,7 @@ public sealed partial class AppController
             }
             catch (RobloxApiException ex) when (ex.RateLimited)
             {
+                Log.Note($"Switch server: place {game.Key}'s server list refused (rate-limited).");
                 throw new UserError(L.T("Roblox won't give the server list right now. Try again in a minute."));
             }
             // Locked while Roblox answered: nothing of that vault's is touched any more.
@@ -61,10 +62,12 @@ public sealed partial class AppController
             var fits = servers.Where(s => !leaving.Contains(s.JobId) && s.MaxPlayers - s.Playing >= game.Count()).ToList();
             if (fits.Count == 0)
             {
+                Log.Note($"Switch server: no other server of place {game.Key} has room for {game.Count()} ({servers.Count} read).");
                 Toast(L.F("No other server of {0} has room right now.", GameName(game.Key)), "warn");
                 continue;
             }
             var chosen = fits[Random.Shared.Next(fits.Count)];
+            Log.Note($"Switch server: {game.Count()} window(s) of place {game.Key} to a server with {chosen.Playing}/{chosen.MaxPlayers} ({fits.Count} with room).");
             foreach (var (id, run, _) in game)
             {
                 if (MoveToServer(id, run, game.Key, chosen.JobId))
@@ -120,12 +123,14 @@ public sealed partial class AppController
                 catch (Exception ex) when (!ct.IsCancellationRequested && RobloxApi.IsExpectedError(ex))
                 {
                     // Whatever loaded is used, else Roblox picks.
+                    Log.Note($"Servers apart: place {target.PlaceId}'s server list not fully read ({LaunchFailKind(ex)}), {servers.Count} loaded.");
                 }
                 foreach (var (_, run) in _running)
                 {
                     if (_logs.StateOf(run.Pid) is { PlaceId: { } place, JobId: { } job } && place == target.PlaceId)
                         taken.Add(job);
                 }
+                Log.Note($"Servers apart ({order}): {servers.Count} server(s) of place {target.PlaceId} read, {taken.Count} already taken by open windows.");
             }
             if (ServerApart(servers, taken, order, Random.Shared) is { } chosen)
             {
@@ -135,6 +140,7 @@ public sealed partial class AppController
             if (!said)
             {
                 said = true;
+                Log.Note($"Servers apart: ran out of servers with room after {taken.Count} taken; Roblox picks for the rest.");
                 Toast(L.T("Not enough servers with room were found for every account to have its own: Roblox picks for the rest."), "warn");
             }
             return target with { JobId = null };
@@ -164,6 +170,8 @@ public sealed partial class AppController
     bool _crowdBusy;
     /// <summary>Games told to have no quiet server, and when: said again only after a while.</summary>
     readonly Dictionary<long, DateTime> _noQuietServerSaid = new();
+    /// <summary>The last failure of the crowd check that was logged (null after a good read).</summary>
+    string? _crowdFailNoted;
 
     /// <summary>Every <see cref="CrowdCheckEvery"/>, when Settings asks for it: the servers of the windows in public servers
     /// are counted from Roblox's list, and a window whose server has more than that many other players moves to one with
@@ -217,6 +225,7 @@ public sealed partial class AppController
                 if (_vault != vault)
                     return;
                 var crowded = CrowdedServers(seen, ended, ours, above);
+                _crowdFailNoted = null; // read fine: a later failure is said again
                 if (crowded.Count == 0)
                     continue;
                 var avoid = new HashSet<string>(ours.Keys, StringComparer.OrdinalIgnoreCase);
@@ -228,6 +237,7 @@ public sealed partial class AppController
                         if (!_noQuietServerSaid.TryGetValue(game.Key, out var said) || DateTime.UtcNow - said > TimeSpan.FromMinutes(15))
                         {
                             _noQuietServerSaid[game.Key] = DateTime.UtcNow;
+                            Log.Note($"Crowded servers: place {game.Key} has no server with {above} or fewer players ({seen.Count} read); windows stay.");
                             Toast(L.F("No server of {0} has {1} or fewer players right now. Bloxkeep looks again in a few minutes.", GameName(game.Key), above), "warn");
                         }
                         break;
@@ -237,13 +247,18 @@ public sealed partial class AppController
                         moved++;
                 }
                 if (moved > 0)
+                    Log.Note($"Crowded servers: place {game.Key}, {crowded.Count} server(s) above {above} other players; {moved} window(s) moved to quieter ones.");
+                if (moved > 0)
                     Toast(L.P(moved, "{0} account's server got crowded, so it moves to a quieter one…",
                         "{0} accounts' servers got crowded, so they move to quieter ones…", moved), "ok");
             }
         }
         catch (Exception ex) when (RobloxApi.IsExpectedError(ex))
         {
-            // Rate-limited or offline: counted again next time.
+            // Rate-limited or offline: counted again next time. Logged when the kind changes, not every 2 minutes.
+            string kind = LaunchFailKind(ex);
+            if (kind != _crowdFailNoted)
+                Log.Note($"Crowded servers: the server list couldn't be read ({_crowdFailNoted = kind}); checked again later.");
         }
         finally
         {

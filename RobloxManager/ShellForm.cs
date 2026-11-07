@@ -406,8 +406,10 @@ public sealed class ShellForm : Form
     /// <summary>How often the window was asked to the front, so a hide under way can tell it was overtaken.</summary>
     int _broughtToFront;
 
-    public new void BringToFront()
+    public void BringToFront([System.Runtime.CompilerServices.CallerMemberName] string? why = null)
     {
+        // Each time Bloxkeep puts itself over what the person is doing, and from where (a player found it "stuck on top").
+        Log.Note($"Bloxkeep's window brought to the front ({why}).");
         _broughtToFront++;
         if (!Visible)
             Show();

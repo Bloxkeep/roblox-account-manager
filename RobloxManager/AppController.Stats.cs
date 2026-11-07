@@ -292,6 +292,7 @@ public sealed partial class AppController
             catch (Exception ex) when (RobloxApi.IsExpectedError(ex))
             {
                 // The rows keep their placeholder until the next try.
+                Log.Note($"Statistics: icons of {universes.Count} game(s) not loaded ({LogKindOf(ex)}).");
             }
         }
         return PlayStats(days, game: game);

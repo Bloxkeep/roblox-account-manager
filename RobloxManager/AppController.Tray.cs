@@ -44,7 +44,11 @@ public sealed partial class AppController
     public object TrayCustomTheme() => CustomThemeDto();
 
     /// <summary>The quick panel's eye: the account's Roblox window in front.</summary>
-    public void TrayShowClient(int pid) => RobloxProcesses.FocusInTurn(pid);
+    public void TrayShowClient(int pid)
+    {
+        Log.Note($"Tray: Show on Roblox window {pid}.");
+        RobloxProcesses.FocusInTurn(pid);
+    }
 
     /// <summary>The menu's Multi-Roblox item: only off while on, like the sidebar's switch (turning on asks first, in the
     /// page). With Multi-Roblox only, both ways (its warning was answered when that was chosen).</summary>
@@ -56,7 +60,10 @@ public sealed partial class AppController
             return;
         }
         if (on || _vault is null || _screenLocked)
+        {
+            Log.Note($"Tray: Multi-Roblox item did nothing ({(on ? "turning on is asked in Bloxkeep" : "locked")}).");
             return;
+        }
         SetSettings(JsonSerializer.SerializeToElement(new { multiInstance = false }));
         PushState();
     }
@@ -98,7 +105,10 @@ public sealed partial class AppController
     public async void TrayNewRoblox()
     {
         if (_disposed || _openingHome || _askingHome || _applyingUpdate || _relaunching)
+        {
+            Log.Note($"Tray: New Roblox did nothing ({(_disposed ? "closing" : _openingHome ? "one is opening" : _askingHome ? "its question is open" : "an update or restart is under way")}).");
             return;
+        }
         if (OpeningRoblox)
         {
             Warn(L.T("Wait until Bloxkeep finishes opening Roblox."));
@@ -261,17 +271,24 @@ public sealed partial class AppController
         try
         {
             if (_vault is not { } vault || _screenLocked || FindAccount(id) is not { } account)
+            {
+                Log.Note($"Tray: account {id.ToString()[..8]} not opened ({(_vault is null || _screenLocked ? "locked" : "no such account")}).");
                 return;
+            }
             var s = vault.Data.Settings;
             GameTarget? target = null;
             if (s.LastPlaceInput.Length > 0 && !GameTarget.TryParse(s.LastPlaceInput, s.LastJobId, out target, out string error))
                 throw new UserError(error);
             CheckCanLaunch([account]);
             if (await LaunchAccountsAsync(vault, [account], target, force: false, s.LaunchDelaySeconds) is { NeedsConfirm: true } result)
+            {
+                Log.Note($"Tray: account {id.ToString()[..8]} not opened, its launch asks something first.");
                 Warn(L.T("Opening this account asks something first. Open it from Bloxkeep.") + "\n\n" + result.Message);
+            }
         }
         catch (UserError ex)
         {
+            Log.Note($"Tray: account {id.ToString()[..8]} not opened (refused; the person was told why).");
             Warn(ex.Message);
         }
         catch (Exception ex)
@@ -286,12 +303,19 @@ public sealed partial class AppController
         try
         {
             if (_vault is null || _screenLocked)
+            {
+                Log.Note($"Tray: preset {id.ToString()[..8]} not run (locked).");
                 return;
+            }
             if (await StartPresetAsync(id, force: false) is { NeedsConfirm: true } result)
+            {
+                Log.Note($"Tray: preset {id.ToString()[..8]} not run, it asks something first.");
                 Warn(L.T("This preset asks something before it opens. Run it from Bloxkeep's Presets tab.") + "\n\n" + result.Message);
+            }
         }
         catch (UserError ex)
         {
+            Log.Note($"Tray: preset {id.ToString()[..8]} not run (refused; the person was told why).");
             Warn(ex.Message);
         }
         catch (Exception ex)

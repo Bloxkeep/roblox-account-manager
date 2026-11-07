@@ -21,6 +21,8 @@ public sealed class DiscordPresence : IDisposable
     string? _clientId, _sent;
     DateTime _nextTry;
     bool _disposed;
+    /// <summary>The last try to reach Discord failed: written once, then once more when it connects.</summary>
+    bool _failing;
 
     /// <summary>Shows <paramref name="activity"/> (null clears it) for application <paramref name="clientId"/>; the same one twice is sent once.</summary>
     public async Task SetAsync(Activity? activity, string clientId)
@@ -37,9 +39,15 @@ public sealed class DiscordPresence : IDisposable
                 Close();
                 if (!await ConnectAsync(clientId))
                 {
+                    if (!_failing)
+                        Log.Note("Discord presence: the Discord app isn't reachable on this PC (not running?); tried again every 30 s.");
+                    _failing = true;
                     _nextTry = DateTime.UtcNow + RetryAfter;
                     return;
                 }
+                if (_failing)
+                    Log.Note("Discord presence: connected to the Discord app.");
+                _failing = false;
             }
             string nonce = Guid.NewGuid().ToString();
             await WriteAsync(1, $$"""{"cmd":"SET_ACTIVITY","args":{"pid":{{Environment.ProcessId}},"activity":{{json}}},"nonce":"{{nonce}}"}""");
@@ -49,6 +57,9 @@ public sealed class DiscordPresence : IDisposable
         catch (Exception ex) when (ex is IOException or OperationCanceledException or ObjectDisposedException or JsonException or InvalidOperationException)
         {
             // Discord closed or answered something unexpected: connected again on a later try.
+            if (!_failing)
+                Log.Note($"Discord presence: the link to the Discord app dropped ({ex.GetType().Name}); connected again later.");
+            _failing = true;
             Close();
             _nextTry = DateTime.UtcNow + RetryAfter;
         }

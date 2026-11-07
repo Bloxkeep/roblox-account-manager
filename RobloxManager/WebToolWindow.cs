@@ -138,6 +138,7 @@ public abstract class WebToolWindow : Form
             }
             if (!BrowserReady)
             {
+                Log.Note($"{GetType().Name}: its page started but never said it was ready; the window stays hidden.");
                 _starting = null;
                 return false;
             }
@@ -191,6 +192,7 @@ public abstract class WebToolWindow : Form
     /// <summary>The page crashed: hidden, and started again on the next show.</summary>
     protected virtual void OnBrowserFailed()
     {
+        Log.Note($"{GetType().Name}: its page crashed; hidden ({(Visible ? "was shown" : "was hidden")}), started again on the next show.");
         Hide();
         ReleaseBrowser(force: true);
     }
@@ -326,6 +328,7 @@ public abstract class WebToolWindow : Form
         }
         catch (JsonException)
         {
+            Log.Note($"{GetType().Name}: a message from its page couldn't be read.");
         }
     }
 

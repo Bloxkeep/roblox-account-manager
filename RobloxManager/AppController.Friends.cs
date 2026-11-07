@@ -44,7 +44,10 @@ public sealed partial class AppController
                 {
                     Progress(L.F("Friending accounts… {0}/{1}", ++done, pairs));
                     if (_vault != vault)
+                    {
+                        Log.Note($"Friend each other: stopped, the vault was locked or changed ({made} new so far).");
                         return null;
+                    }
                     string stand = stands.GetValueOrDefault(b.UserId, "NotFriends");
                     if (stand == "Friends")
                     {
@@ -59,6 +62,7 @@ public sealed partial class AppController
                     };
                     if (ok is null)
                     {
+                        Log.Note($"Friend each other: stopped, a check was closed unsolved ({made} new of {pairs} pairs).");
                         Toast(L.F("Stopped: the check was closed. {0} new friends so far.", made), "warn");
                         return null;
                     }
@@ -72,6 +76,7 @@ public sealed partial class AppController
         }
         catch (RobloxApiException ex) when (ex.RateLimited)
         {
+            Log.Note($"Friend each other: Roblox rate-limited it; stopped after {made} new of {pairs} pairs.");
             Toast(L.F("Roblox is rate-limiting requests; try again shortly. {0} new friends so far.", made), "warn");
             return null;
         }
@@ -80,6 +85,8 @@ public sealed partial class AppController
             _friending = false;
             Progress(null);
         }
+        if (failed > 0)
+            Log.Note($"Friend each other: {made} new, {already} already friends, {failed} refused by Roblox of {pairs} pairs.");
         Toast(L.F("Friend each other: {0} new, {1} already friends, {2} failed.", made, already, failed), failed > 0 ? "warn" : "ok");
         return null;
     }
@@ -94,6 +101,8 @@ public sealed partial class AppController
                 return null;
             answer = await RobloxApi.RequestFriendshipAsync(from.Cookie, to.UserId, from.Realm, passed);
         }
+        if (!answer.Ok)
+            Log.Note($"Friend each other: a request was refused (HTTP {answer.Http}, codes {string.Join(",", answer.Codes)}).");
         return answer.Ok;
     }
 
@@ -103,6 +112,8 @@ public sealed partial class AppController
         var answer = await RobloxApi.AcceptFriendRequestAsync(by.Cookie, requester.UserId, by.Realm);
         if (answer.Challenge is { } check && await PassCheckAsync(by, check) is { } passed)
             answer = await RobloxApi.AcceptFriendRequestAsync(by.Cookie, requester.UserId, by.Realm, passed);
+        if (!answer.Ok)
+            Log.Note($"Friend each other: an accept was refused (HTTP {answer.Http}, codes {string.Join(",", answer.Codes)}).");
         return answer.Ok;
     }
 
@@ -118,6 +129,7 @@ public sealed partial class AppController
         }
         catch (RobloxApiException ex) when (!ex.ServerError && !ex.RateLimited)
         {
+            Log.Note($"Friend each other: Roblox didn't take the check's answer ({LogKindOf(ex)}); the request is asked again with it.");
             return solved; // as a join's: the request asked again carrying the answer
         }
     }

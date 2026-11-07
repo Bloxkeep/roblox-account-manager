@@ -142,6 +142,15 @@ sealed class MacroRun
     public MacroFeature? Feature => Section is { } id ? Macro.Features.FirstOrDefault(f => f.Id == id) : null;
     public CancellationTokenSource Cancel { get; } = new();
     public bool Finished => Status is "done" or "failed" or "stopped";
+    /// <summary>For error.log: steps played, the last pause written, notes written once, the last picture match.</summary>
+    public int StepsRun { get; set; }
+    public string? LoggedPause { get; set; }
+    /// <summary>The run before it on this account ended well: its start and end aren't logged (a repeat would fill the log).</summary>
+    public bool Quiet { get; init; }
+    public HashSet<string> Noted { get; } = new();
+    public double? LastScore { get; set; }
+    /// <summary>For error.log: the macro's and the account's ids (first 8 characters), never a name.</summary>
+    public string Tag => $"{Macro.Id.ToString()[..8]}{(Trial ? " (Try it)" : "")} on account {AccountId.ToString()[..8]}";
 }
 
 /// <summary>A feature on one account: when it last played, and why it didn't play through last time (null: it did).</summary>
@@ -195,6 +204,9 @@ sealed class MacroPlayer(IMacroDesk desk)
     /// <summary>The turn going on now (one at a time: InputTurn), for <see cref="ReleaseAll"/>.</summary>
     Turn? _turn;
     DateTime? _fullScreenSince;
+    /// <summary>error.log: the last queue line per macro that started nothing, and whether the full-screen wait ran out.</summary>
+    readonly Dictionary<Guid, string?> _queueNoted = new();
+    bool _fullScreenNoted;
 
     /// <summary>Each account's variables (setVar, addVar), in memory only.</summary>
     public Dictionary<Guid, Dictionary<string, double>> Vars { get; } = new();
@@ -241,11 +253,16 @@ sealed class MacroPlayer(IMacroDesk desk)
         var takenOver = new List<MacroRun>();
         var featureJumps = macro.Features.ToDictionary(f => f.Id, f => MacroRules.Jumps(f.Steps));
         var safeEnds = SafeEnds(macro.Steps);
+        int asked = 0, busy = 0, already = 0, quietQueued = 0;
         foreach (var account in accounts.Distinct())
         {
+            asked++;
             // One macro on a window at a time: two would take turns on it, one's clicks in the middle of the other's.
             if (BusyWith(account, macro.Id) is not null)
+            {
+                busy++;
                 continue;
+            }
             var going = _runs.FirstOrDefault(r => !r.Finished && r.Macro.Id == macro.Id && r.AccountId == account);
             if (going is { Trial: true } && !trial)
             {
@@ -254,10 +271,17 @@ sealed class MacroPlayer(IMacroDesk desk)
                 takenOver.Add(going);
             }
             else if (going is not null)
+            {
+                already++;
                 continue;
+            }
+            bool quiet = _runs.Any(r => r.Finished && r.Macro.Id == macro.Id && r.AccountId == account && r.Status == "done" && r.Reason is null);
+            if (quiet)
+                quietQueued++;
             _runs.RemoveAll(r => r.Finished && r.Macro.Id == macro.Id && r.AccountId == account);
             _runs.Add(new MacroRun
             {
+                Quiet = quiet,
                 Macro = macro, AccountId = account, Jumps = jumps, StartedAt = now, ResumeAt = now, Trial = trial,
                 FeatureJumps = featureJumps, SafeEnds = safeEnds, Origins = origins,
                 RecoverAt = macro.Steps.FindIndex(st => st.Kind == "recover"),
@@ -270,6 +294,12 @@ sealed class MacroPlayer(IMacroDesk desk)
             Finish(run, "stopped", "byUser");
         while (_runs.Count > MaxKept && _runs.FindIndex(r => r.Finished) is >= 0 and var old)
             _runs.RemoveAt(old);
+        string queueNote = $"queued on {queued} of {asked} accounts{(trial ? " (Try it)" : "")}"
+            + (busy > 0 ? $", {busy} busy with another macro" : "") + (already > 0 ? $", {already} already running it" : "");
+        // A repeat that finds it still running would write the same line every period.
+        if (queued > quietQueued || _queueNoted.GetValueOrDefault(macro.Id) != queueNote)
+            Log.Note($"Macro {macro.Id.ToString()[..8]}: {queueNote}.");
+        _queueNoted[macro.Id] = queued > 0 ? null : queueNote;
         if (queued > 0)
         {
             Changed?.Invoke();
@@ -335,6 +365,7 @@ sealed class MacroPlayer(IMacroDesk desk)
     public void ReleaseAll(string why)
     {
         var turn = _turn;
+        Log.Note($"Macro: letting go of everything ({why}){(turn is null ? "" : $", a turn on window {turn.Window.Pid} was going on")}.");
         // Stopped first: the turn, if it goes on a moment, never brings a window forward again.
         Stop(null, why);
         turn?.Abort();
@@ -359,12 +390,31 @@ sealed class MacroPlayer(IMacroDesk desk)
         run.Reason = reason;
         run.EndsAt = desk.Now;
         run.Cancel.Cancel();
+        if (run.Quiet && status == "done" && reason is null)
+            return;
+        Log.Note($"Macro {run.Tag}: {status}{(reason is null ? "" : $" ({reason})")} after {run.StepsRun} steps, at step {run.ShownPc + 1}"
+            + $"{(run.Section is { } feature ? $" of feature {feature}" : "")}, window {run.Pid}.");
     }
+
+    /// <summary>error.log: a note written once per run for a condition that would repeat every look.</summary>
+    static void NoteOnce(MacroRun run, string key, string text)
+    {
+        if (run.Noted.Add(key))
+            Log.Note($"Macro {run.Tag}: {text}");
+    }
+
+    static string KindAt(MacroRun run) => run.Pc >= 0 && run.Pc < run.Steps.Count ? run.Steps[run.Pc].Kind : "end";
 
     void Set(MacroRun run, string status, string? reason)
     {
         if (run.Status == status && run.Reason == reason)
             return;
+        // Each pause reason once in a row: the person at the PC would write one every turn.
+        if (status == "paused" && reason != run.LoggedPause)
+        {
+            run.LoggedPause = reason;
+            Log.Note($"Macro {run.Tag}: paused ({reason}) at step {run.ShownPc + 1}.");
+        }
         // Time held back isn't time stuck.
         if (status == "paused")
             run.PausedAt ??= desk.Now;
@@ -438,7 +488,17 @@ sealed class MacroPlayer(IMacroDesk desk)
             return held;
         }
         _fullScreenSince ??= desk.Now;
-        return desk.Now - _fullScreenSince < FullScreenWait ? held : null;
+        if (desk.Now - _fullScreenSince < FullScreenWait)
+        {
+            _fullScreenNoted = false;
+            return held;
+        }
+        if (!_fullScreenNoted)
+        {
+            _fullScreenNoted = true;
+            Log.Note("Macro: a full-screen app has been in front 5 minutes; macros play anyway.");
+        }
+        return null;
     }
 
     /// <summary>The next run due, in rotation.</summary>
@@ -483,7 +543,12 @@ sealed class MacroPlayer(IMacroDesk desk)
             return;
         }
         if (run.Pid != 0 && run.Pid != window.Pid)
+        {
+            Log.Note($"Macro {run.Tag}: its window changed from {run.Pid} to {window.Pid}; it plays again from the top.");
             StartOver(run);
+        }
+        else if (run.Pid == 0 && !run.Quiet)
+            Log.Note($"Macro {run.Tag}: first turn, window {window.Pid} ({window.Client.Width}x{window.Client.Height}, fps limit {window.Fps}).");
         run.Pid = window.Pid;
         var ct = run.Cancel.Token;
         IDisposable? lease = InputTurn.TryEnter("macro");
@@ -552,6 +617,7 @@ sealed class MacroPlayer(IMacroDesk desk)
                     return;
                 }
                 Then then;
+                run.StepsRun++;
                 try
                 {
                     then = await StepAsync(turn, step, ct);
@@ -789,6 +855,8 @@ sealed class MacroPlayer(IMacroDesk desk)
         {
             _picture?.Dispose();
             _picture = await player.Desk.PictureAsync(window, Input);
+            if (_picture is null)
+                NoteOnce(run, "picture", $"couldn't take a picture of window {window.Pid} at step {run.ShownPc + 1}.");
             return _picture;
         }
 
@@ -1145,14 +1213,14 @@ sealed class MacroPlayer(IMacroDesk desk)
                         case "file": await Outside.AppendFileAsync(s.FileName!, text); break;
                         case "web":
                             if (await WebAsync(run, s.Url!, text, ct) is null)
-                                Log.Note("Macro write step: the web address didn't take it; the macro goes on.");
+                                NoteOnce(run, $"write{run.Section}:{run.Pc}", $"write step {run.ShownPc + 1}: the web address didn't take it; the macro goes on.");
                             break;
                     }
                 }
                 catch (Exception ex) when (ex is not (MacroExprError or OperationCanceledException))
                 {
                     // A clipboard another app holds, a file open elsewhere: noted, and the macro goes on.
-                    Log.Note($"Macro write step to {s.To}: {ex.GetType().Name}; the macro goes on.");
+                    NoteOnce(run, $"write{run.Section}:{run.Pc}:{ex.GetType().Name}", $"write step {run.ShownPc + 1} to {s.To}: {ex.GetType().Name}; the macro goes on.");
                 }
                 break;
             }
@@ -1173,9 +1241,11 @@ sealed class MacroPlayer(IMacroDesk desk)
                 }
                 catch (Exception ex) when (ex is not (MacroExprError or OperationCanceledException))
                 {
-                    Log.Note($"Macro read step from {s.From}: {ex.GetType().Name}.");
+                    NoteOnce(run, $"read{run.Section}:{run.Pc}:{ex.GetType().Name}", $"read step {run.ShownPc + 1} from {s.From}: {ex.GetType().Name}.");
                     words = null;
                 }
+                if (words is null && s.From == "file")
+                    NoteOnce(run, $"nofile{run.Section}:{run.Pc}", $"read step {run.ShownPc + 1}: its file isn't in Documents\\Bloxkeep.");
                 int again = screen ? ReadEvery : s.From == "web" ? 3000 : 1000;
                 if (s.Mode == "text")
                 {
@@ -1185,6 +1255,9 @@ sealed class MacroPlayer(IMacroDesk desk)
                 }
                 else
                 {
+                    // Only the length: what was read may be a name.
+                    if (words is { Length: > 0 } && MacroExpr.NumberIn(words) is null)
+                        NoteOnce(run, $"nonumber{run.Section}:{run.Pc}", $"read step {run.ShownPc + 1} from {s.From ?? "screen"} read {words.Length} characters with no number in them.");
                     if (words is null || MacroExpr.NumberIn(words) is not { } n)
                         return await NotYetAsync(turn, "timeout", again, ct);
                     SetNumber(run, s.Name!, n);
@@ -1194,6 +1267,8 @@ sealed class MacroPlayer(IMacroDesk desk)
             case "rejoin":
             {
                 string? refused = Rejoin?.Invoke(run.AccountId);
+                if (refused is not null)
+                    Log.Note($"Macro {run.Tag}: its rejoin step {run.ShownPc + 1} was refused.");
                 Finish(run, refused is null ? "done" : "failed");
                 return Then.Over;
             }
@@ -1294,6 +1369,11 @@ sealed class MacroPlayer(IMacroDesk desk)
     {
         var run = turn.Run;
         var m = run.Macro;
+        // Once per step and reason: a step that skips on fail would write one every pass.
+        string kind = KindAt(run);
+        NoteOnce(run, $"fail{run.Section}:{run.Pc}:{reason}", $"step {run.ShownPc + 1} ({kind}{(run.Section is { } f ? $", feature {f}" : "")}) failed ({reason})"
+            + (kind is "clickImage" or "waitImage" && run.LastScore is { } score ? $", best picture match {score:0.00}" : "")
+            + (run.Recovering ? " in its If stuck part" : "") + $"; on fail: {(run.Feature is { OnFail: "skip" } ? "skip the feature" : m.OnFail)}, restarts {run.Restarts}.");
         if (run.Recovering && reason != "stuck")
         {
             run.Pc++;
@@ -1314,7 +1394,8 @@ sealed class MacroPlayer(IMacroDesk desk)
             case "skip" or "restart":
                 return Restart(turn);
             case "rejoin":
-                Rejoin?.Invoke(run.AccountId);
+                if (Rejoin?.Invoke(run.AccountId) is not null)
+                    Log.Note($"Macro {run.Tag}: its rejoin on fail was refused.");
                 break;
             case "alert":
                 Alert?.Invoke(run.AccountId, m, reason switch
@@ -1391,6 +1472,7 @@ sealed class MacroPlayer(IMacroDesk desk)
         var gray = MacroVision.ToGray(picture);
         var result = await Task.Run(() => MacroVision.Template(image, scale) is { } template
             ? MacroVision.Find(gray, template, MacroVision.Area(region, gray.W, gray.H)) : null);
+        turn.Run.LastScore = result?.Score;
         return result is { } r && r.Score >= threshold ? (r.Found, picture.Width, picture.Height) : null;
     }
 
@@ -1402,7 +1484,10 @@ sealed class MacroPlayer(IMacroDesk desk)
             return null;
         var read = await desk.ReadAsync(picture, MacroVision.Area(region, picture.Width, picture.Height));
         if (read is null)
+        {
+            NoteOnce(turn.Run, "ocr", $"step {turn.Run.ShownPc + 1} looks for text, but Windows can't read text on this PC.");
             return null;
+        }
         var all = MacroValues.RefOf(extra, "words") is { } name && turn.Run.Macro.Options.FirstOrDefault(o => o.Name == name)?.Choices is { } list
             ? list : new List<string>();
         foreach (var lines in read)
@@ -1431,6 +1516,8 @@ sealed class MacroPlayer(IMacroDesk desk)
         if (await turn.PictureAsync() is not { } picture)
             return null;
         var read = await desk.ReadAsync(picture, MacroVision.Area(region, picture.Width, picture.Height));
+        if (read is null)
+            NoteOnce(turn.Run, "ocr", $"step {turn.Run.ShownPc + 1} reads text, but Windows can't read text on this PC.");
         return read?.FirstOrDefault(lines => lines.Count > 0) is { } found ? string.Join(" ", found.Select(l => l.Text)).Trim() : null;
     }
 

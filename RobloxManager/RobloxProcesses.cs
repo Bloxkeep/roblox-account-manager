@@ -786,7 +786,7 @@ public static class RobloxProcesses
         return (int)pid;
     }
 
-    static IntPtr MainWindow(int pid) => MainWindowOf(TopLevelWindows(pid));
+    internal static IntPtr MainWindow(int pid) => MainWindowOf(TopLevelWindows(pid));
 
     /// <summary>The one titled "Roblox…", else the first; zero for none.</summary>
     public static IntPtr MainWindowOf(IReadOnlyList<IntPtr> windows) =>
@@ -836,6 +836,7 @@ public static class RobloxProcesses
     /// </summary>
     static async Task<int> ArrangeAsync(List<IntPtr> windows, Rectangle area, string layout, IntPtr app = default, Size custom = default, bool raise = false)
     {
+        LastArrangeNote = "";
         if (windows.Count == 0)
             return 0;
         bool restored = false;
@@ -851,6 +852,7 @@ public static class RobloxProcesses
         // Roblox windows, owner's PC, 2026-11-07): one went to the screen asked for, the others stayed full on theirs.
         if (restored)
             await UntilRestoredAsync(windows);
+        await OntoScreenFirstAsync(windows, area);
         await PlaceAsync(windows, area, layout, custom);
         // Any that a late restore or Roblox itself put back (still maximised, or off the screen asked for): again, twice at most.
         for (int tries = 0; tries < 2; tries++)
@@ -870,6 +872,33 @@ public static class RobloxProcesses
             await LiftAsync(windows);
         return windows.Count;
     }
+
+    /// <summary>
+    /// Windows on another screen are moved onto the one asked for first, their size kept, and given time to take its scale.
+    /// Roblox sizes itself for a new scale late (150 % to 125 % on the owner's PC, 2026-11-07), over the tile just given: back
+    /// at its least size (800 × 600 in its own units), bigger than the tiles, so they were laid over each other and the
+    /// screen showed one window. Sized once on the screen, it takes the tile as on its own screen.
+    /// </summary>
+    static async Task OntoScreenFirstAsync(List<IntPtr> windows, Rectangle area)
+    {
+        string target = Screen.FromRectangle(area).DeviceName;
+        bool Elsewhere(IntPtr h) => WindowRect(h) is { } r && Screen.FromRectangle(r).DeviceName != target;
+        var moving = windows.Where(Elsewhere).ToList();
+        if (moving.Count == 0)
+            return;
+        for (int i = 0; i < moving.Count; i++)
+            SetWindowPos(moving[i], IntPtr.Zero, area.X + i * 24, area.Y + i * 24, 0, 0,
+                SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOSENDCHANGING | SWP_ASYNCWINDOWPOS);
+        var until = DateTime.UtcNow.AddSeconds(2);
+        while (DateTime.UtcNow < until && moving.Any(h => IsWindow(h) && Elsewhere(h)))
+            await Task.Delay(100);
+        await Task.Delay(500); // Roblox's own resize for the new scale
+        LastArrangeNote += $"{moving.Count} moved from another screen first; ";
+    }
+
+    /// <summary>What the last arrange did that its result doesn't show (moved across screens, tiled or laid over each other),
+    /// for error.log (AppController.ArrangeWindowsAsync). Window thread only.</summary>
+    internal static string LastArrangeNote = "";
 
     /// <summary>Until none of <paramref name="windows"/> is maximised or minimised any more (a restore asked), 3 s at most.</summary>
     static async Task UntilRestoredAsync(List<IntPtr> windows)
@@ -900,9 +929,13 @@ public static class RobloxProcesses
             await StackAsync(windows, spots, cell, SWP_NOSENDCHANGING);
         }
         if (await KeptSizeAsync(windows, cell) is { } size)
+        {
+            LastArrangeNote += $"laid over each other: windows kept {size.Width}×{size.Height}, bigger than the {cell.Width}×{cell.Height} tiles; ";
             await StackAsync(windows, OverlapSpots(windows.Count, area, size), size);
+        }
         else
         {
+            LastArrangeNote += sideBySide ? $"tiled {cols} across, {cell.Width}×{cell.Height}; " : $"overlapping spots, {cell.Width}×{cell.Height}; ";
             await GrowShrunkAsync(windows, tiles);
             if (sideBySide)
                 CloseGaps(windows, tiles);

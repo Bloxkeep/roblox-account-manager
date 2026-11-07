@@ -61,6 +61,9 @@ sealed class WindowThumbnails : IDisposable
     [DllImport("user32.dll")]
     static extern bool IsWindowVisible(IntPtr hWnd);
 
+    [DllImport("user32.dll")]
+    static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint pid);
+
     /// <summary>One window's picture. Thumb is zero while no thumbnail is registered for it.</summary>
     sealed class Picture
     {
@@ -70,6 +73,8 @@ sealed class WindowThumbnails : IDisposable
         public bool Minimized;
         /// <summary>The window's size when its picture was last placed (empty while unknown).</summary>
         public Size Shown;
+        /// <summary>A refused picture is logged once per window, not on every retry.</summary>
+        public bool RefusedLogged;
     }
 
     readonly Form _host;
@@ -142,8 +147,16 @@ sealed class WindowThumbnails : IDisposable
         if (p.Thumb != IntPtr.Zero || !_host.IsHandleCreated || !IsWindow(hwnd))
             return;
         // Fails for a window that just closed or one of another desktop session: its tile then shows no picture.
-        if (DwmRegisterThumbnail(_host.Handle, hwnd, out var thumb) != 0 || thumb == IntPtr.Zero)
+        if (DwmRegisterThumbnail(_host.Handle, hwnd, out var thumb) is var hr && (hr != 0 || thumb == IntPtr.Zero))
+        {
+            if (!p.RefusedLogged && IsWindow(hwnd))
+            {
+                GetWindowThreadProcessId(hwnd, out uint pid);
+                Log.Note($"Game monitor: Windows refused a live picture of Roblox window {pid} (0x{hr:X8}); its tile shows none.");
+            }
+            p.RefusedLogged = true;
             return;
+        }
         p.Thumb = thumb;
         // Until this is set the source size answers for the whole frame (title bar and borders), and the first
         // placing would fit the picture to the wrong shape.

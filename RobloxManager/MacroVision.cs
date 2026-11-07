@@ -236,6 +236,8 @@ static class MacroVision
     }
 
     static readonly Dictionary<string, Gray> Templates = new();
+    /// <summary>error.log: the length of the last picture that couldn't be read.</summary>
+    static int _badTemplate = -1;
 
     /// <summary>A step's picture (PNG, base64) in grey, scaled by <paramref name="scale"/> (the window's width over the
     /// one it was cut from); null when it can't be read.</summary>
@@ -254,6 +256,9 @@ static class MacroVision
             }
             catch (Exception ex) when (ex is FormatException or ArgumentException or ExternalException)
             {
+                // Not cached, so looked at again each look: written once per picture in a row.
+                if (Interlocked.Exchange(ref _badTemplate, base64.Length) != base64.Length)
+                    Log.Note($"Macro: a step's picture ({base64.Length} characters) can't be read ({ex.GetType().Name}); it is never found.");
                 return null;
             }
             lock (Templates)

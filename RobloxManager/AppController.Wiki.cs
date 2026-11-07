@@ -64,7 +64,10 @@ public sealed partial class AppController
     async Task<object?> WikiGameAsync(string id)
     {
         if (!FeedsAllowed || await WikiLink.GameAsync(WikiBot, id) is not { } g)
+        {
+            Log.Note($"Wiki: a game's items not shown ({(FeedsAllowed ? "the bot had nothing for it" : "off for this copy")}).");
             return null;
+        }
         object source = new { name = g.Source.Name, url = g.Source.Url };
         if (g.Kind == "prices")
             return new

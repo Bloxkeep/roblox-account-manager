@@ -149,6 +149,8 @@ static partial class WikiNet
             }
             catch (Exception e) when (e is HttpRequestException or TaskCanceledException)
             {
+                if (!ct.IsCancellationRequested)
+                    Log.Note($"Wiki: request failed ({AppController.LogKindOf(e)}).");
                 throw new UserError(L.T("The wiki can't be reached right now."));
             }
             using (res)
@@ -158,13 +160,20 @@ static partial class WikiNet
                     var to = next.IsAbsoluteUri ? next : new Uri(new Uri(at), next);
                     bool ours = to.Scheme == Uri.UriSchemeHttps && (HostRule().IsMatch(to.Host) || to.Host == "services.fandom.com");
                     if (!ours)
+                    {
+                        Log.Note("Wiki: a redirect to a site that isn't a wiki was refused.");
                         throw new UserError(L.T("That isn't a wiki Bloxkeep can read."));
+                    }
                     at = to.AbsoluteUri;
                     continue;
                 }
                 if (!res.IsSuccessStatusCode)
+                    Log.Note($"Wiki: HTTP {(int)res.StatusCode}.");
+                if (!res.IsSuccessStatusCode)
                     throw new UserError(res.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.Unauthorized or HttpStatusCode.Gone
                         ? L.T("That isn't a wiki Bloxkeep can read.") : L.T("The wiki can't be reached right now."));
+                if (res.Content.Headers.ContentLength > 12_000_000)
+                    Log.Note($"Wiki: an answer of {res.Content.Headers.ContentLength / 1_000_000} MB was too big to read.");
                 if (res.Content.Headers.ContentLength > 12_000_000)
                     throw new UserError(L.T("That wiki page is too big to show here."));
                 JsonElement value;
@@ -176,10 +185,13 @@ static partial class WikiNet
                 }
                 catch (JsonException)
                 {
+                    Log.Note("Wiki: the answer wasn't JSON.");
                     throw new UserError(L.T("That isn't a wiki Bloxkeep can read."));
                 }
                 catch (Exception e) when (e is HttpRequestException or TaskCanceledException or IOException)
                 {
+                    if (!ct.IsCancellationRequested)
+                        Log.Note($"Wiki: reading the answer failed ({AppController.LogKindOf(e)}).");
                     throw new UserError(L.T("The wiki can't be reached right now."));
                 }
                 lock (Cache)

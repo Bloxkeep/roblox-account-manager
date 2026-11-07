@@ -93,7 +93,8 @@ public sealed partial class AppController
         if (!_taskbarLeftoversCleared && windows.Count > 0)
         {
             _taskbarLeftoversCleared = true;
-            TaskbarGroups.ClearLeftovers(windows.Values.SelectMany(w => w));
+            if (TaskbarGroups.ClearLeftovers(windows.Values.SelectMany(w => w)) is > 0 and var cleared)
+                Log.Note($"Taskbar buttons: {cleared} Roblox window(s) freed from a group a crashed run left.");
         }
         string mode = _vault?.Data.Settings.TaskbarGroups ?? "roblox";
         var grouped = new HashSet<int>();

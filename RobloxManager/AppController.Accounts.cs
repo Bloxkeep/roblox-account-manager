@@ -84,6 +84,7 @@ public sealed partial class AppController
         // Another code was asked for meanwhile (tab switched, "new code" pressed twice): that one is on screen.
         if (start != _quickLoginStarts || _vault is null)
         {
+            Log.Note("Quick Login: a code came after another was asked for (or the vault locked); it was cancelled.");
             _ = RobloxApi.CancelQuickLoginAsync(login);
             return null;
         }
@@ -136,6 +137,7 @@ public sealed partial class AppController
                                                && RobloxApi.IsExpectedError(ex)) && ++_quickLoginFinishTries < 3)
                 {
                     retry = true;
+                    Log.Note($"Quick Login: finishing failed ({LogKindOf(ex)}), try {_quickLoginFinishTries} of 3; tried again at the next poll.");
                     return new { status = "adding" };
                 }
                 finally
@@ -153,6 +155,7 @@ public sealed partial class AppController
                 return new { status = "linked", name = status.AccountName, picture };
             case "Cancelled":
             case "Expired":
+                Log.Note($"Quick Login: the code was {status.Status.ToLowerInvariant()} on Roblox's side.");
                 if (ReferenceEquals(login, _quickLogin))
                     _quickLogin = null;
                 return new { status = status.Status.ToLowerInvariant() };
@@ -246,6 +249,7 @@ public sealed partial class AppController
         {
             if (generation != _loginGeneration)
                 return null;
+            Log.Note($"Password sign-in: Roblox ended the attempt ({LogKindOf(ex)}); back to the start.");
             DropLoginPrompts();
             return new { status = "login", error = ex.Message };
         }
@@ -255,6 +259,7 @@ public sealed partial class AppController
             if (generation != _loginGeneration)
                 return null;
             _twoStepWaitUntil = DateTime.UtcNow + TwoStepWait;
+            Log.Note("Password sign-in: too many 2-step codes tried; Verify waits a minute.");
             return new { status = "wait", error = ex.Message, seconds = (int)TwoStepWait.TotalSeconds };
         }
         // The step spent its prompt (puzzle or code answered), then failed: back to username and password with the reason.
@@ -263,6 +268,7 @@ public sealed partial class AppController
         {
             if (generation != _loginGeneration)
                 return null;
+            Log.Note($"Password sign-in: a step failed ({LogKindOf(ex)}){(_loginCookie is not null ? "; the session is kept, only its lookup is retried" : hadPrompt && !HasLoginPrompt ? "; back to the start" : "")}.");
             if (_loginCookie is not null)
                 return new { status = "finish", error = ErrorText(ex) };
             if (hadPrompt && !HasLoginPrompt)
@@ -297,24 +303,33 @@ public sealed partial class AppController
         if (generation != _loginGeneration)
             return null;
         if (result.ProofOfWork is not null)
+        {
+            Log.Note("Password sign-in: Roblox didn't accept the solved proof-of-work check.");
             throw new UserError(L.T("Roblox didn't accept the sign-in check. Please try again."));
+        }
         // A check only Roblox's site or app can show ends this attempt, with the reason, like a refusal does.
         if (result.Blocked is { } blocked)
+        {
+            Log.Note("Password sign-in: Roblox asked for a check only its own site or app can show.");
             throw new RobloxApiException(blocked, attemptOver: true);
+        }
         if (result.Captcha is { } captcha)
         {
+            Log.Note("Password sign-in: Roblox asked for a puzzle (Arkose).");
             _captcha = captcha;
             _captchaUsed = false;
             return new { status = "captcha" };
         }
         if (result.HumanCaptcha is { } human)
         {
+            Log.Note("Password sign-in: Roblox asked for a puzzle (human check).");
             _humanCaptcha = human;
             _captchaUsed = false;
             return new { status = "captcha" };
         }
         if (result.TwoStep is { } prompt)
         {
+            Log.Note($"Password sign-in: Roblox asked for 2-step verification ({string.Join(", ", prompt.Methods)}).");
             _twoStep = prompt;
             // The first method is the one the code was sent by, or Roblox's preferred one.
             // autofill: the account's authenticator key is saved here, so the page fills its code in (Verify stays the person's).
@@ -332,6 +347,8 @@ public sealed partial class AppController
         if (_captchaUsed && (_captcha?.Username ?? _humanCaptcha?.Username) is { } username)
         {
             // Each fresh puzzle sends the password again: a few per attempt, then the attempt ends.
+            if (_freshPuzzles >= MaxFreshPuzzles)
+                Log.Note($"Password sign-in: {MaxFreshPuzzles} fresh puzzles asked already; the attempt ends.");
             if (_freshPuzzles >= MaxFreshPuzzles)
                 throw new RobloxApiException(L.T("Roblox keeps asking for a new puzzle. Sign in with your phone instead, or try again later."), attemptOver: true);
             _freshPuzzles++;
@@ -353,6 +370,7 @@ public sealed partial class AppController
                 return null;
             if (redemption is null)
             {
+                Log.Note("Password sign-in: the puzzle window was closed unsolved.");
                 _captchaUsed = true;
                 return new { status = "captcha", closed = true };
             }
@@ -369,6 +387,7 @@ public sealed partial class AppController
             return null;
         if (token is null)
         {
+            Log.Note("Password sign-in: the puzzle window was closed unsolved.");
             _captchaUsed = true;
             return new { status = "captcha", closed = true };
         }
@@ -461,6 +480,7 @@ public sealed partial class AppController
             return null;
         if (user is null)
         {
+            Log.Note("Sign-in: Roblox didn't accept the session it just handed out; nothing saved.");
             _loginCookie = null; // Roblox's answer, not a hiccup: the session is no good
             throw new UserError(L.T("Roblox didn't accept that sign-in. Please try again."));
         }
@@ -484,8 +504,11 @@ public sealed partial class AppController
         string cookie = RobloxApi.NormalizeCookie(Str(a, "cookie"));
         if (cookie.Length == 0)
             throw new UserError(L.T("Paste the .ROBLOSECURITY cookie."));
-        var user = await RobloxApi.GetAuthenticatedUserAsync(cookie)
-            ?? throw new UserError(L.T("The cookie is invalid or has expired."));
+        var user = await RobloxApi.GetAuthenticatedUserAsync(cookie);
+        if (user is null)
+            Log.Note("Add by cookie: Roblox didn't accept the pasted cookie.");
+        if (user is null)
+            throw new UserError(L.T("The cookie is invalid or has expired."));
         return AddOrMerge(new Account
         {
             Cookie = cookie,
@@ -526,7 +549,10 @@ public sealed partial class AppController
         var vault = RequireVault();
         // A sign-in finishing behind the lock screen (its window was just closed, or a reply came late) saves nothing.
         if (_screenLocked)
+        {
+            Log.Note("Accounts: a sign-in finished behind the lock screen; nothing saved.");
             throw new UserError(L.T("Bloxkeep is locked."));
+        }
         string realm = Realm.Normalize(incoming.Realm);
         var existing = vault.Data.Accounts.FirstOrDefault(a => a.UserId != 0 && a.UserId == incoming.UserId && Realm.Normalize(a.Realm) == realm);
         if (existing is not null)
@@ -549,6 +575,7 @@ public sealed partial class AppController
             vault.Data.Accounts.Add(incoming);
         }
         var account = existing ?? incoming;
+        Log.Note($"Accounts: account {account.Id.ToString()[..8]} {(existing is not null ? "signed in again (already in the list)" : "added")} ({realm}).");
         Persist();
         PushState();
         _ = LoadAvatarsAsync([account.UserId]);
@@ -565,7 +592,10 @@ public sealed partial class AppController
                 await Task.Delay(1000);
             var vault = _vault;
             if (vault is null)
+            {
+                Log.Note("Import: imported accounts not checked, Bloxkeep was locked.");
                 return;
+            }
             await CheckAccountsAsync(ids);
             var checkedAccounts = vault.Data.Accounts.Where(a => ids.Contains(a.Id)).ToList();
             Toast(L.F("Imported accounts checked: {0} valid, {1} expired.",
@@ -574,6 +604,7 @@ public sealed partial class AppController
         catch (UserError)
         {
             // Vault locked or another check started meanwhile; the user can check again from the menu.
+            Log.Note("Import: imported accounts not checked (locked, or another check started).");
         }
     }
 
@@ -589,10 +620,15 @@ public sealed partial class AppController
         string? cookie = OptStr(a, "cookie") is { } raw ? RobloxApi.NormalizeCookie(raw) : null;
         if (cookie is { Length: > 0 } && cookie != account.Cookie)
         {
-            user = await RobloxApi.GetAuthenticatedUserAsync(cookie, account.Realm)
-                ?? throw new UserError(L.T("The new cookie is invalid or has expired."));
+            user = await RobloxApi.GetAuthenticatedUserAsync(cookie, account.Realm);
+            if (user is null)
+                Log.Note($"Edit account: Roblox didn't accept the new cookie for account {account.Id.ToString()[..8]}; nothing saved.");
+            if (user is null)
+                throw new UserError(L.T("The new cookie is invalid or has expired."));
             // Another user's cookie would turn this account into them, with its alias, password and authenticator (review,
             // 2026-10-30): refused. One saved without a user yet takes whoever it is.
+            if (account.UserId > 0 && user.Id != account.UserId)
+                Log.Note($"Edit account: the new cookie of account {account.Id.ToString()[..8]} signs in another user; refused.");
             if (account.UserId > 0 && user.Id != account.UserId)
                 throw new UserError(L.T("This cookie signs in another account. Add it as a new account instead."));
             // Locked (and maybe reopened) meanwhile: this account object belongs to the old vault.
@@ -642,7 +678,10 @@ public sealed partial class AppController
     object SetFpsCap(Guid[] ids, int fps)
     {
         if (fps != 0 && !RobloxGameSettings.FpsChoices.Contains(fps))
+        {
+            Log.Note($"Accounts: FPS cap {fps} isn't one of the choices; nothing changed.");
             return 0;
+        }
         int changed = 0;
         foreach (var account in RequireVault().Data.Accounts.Where(a => ids.Contains(a.Id)))
         {
@@ -752,6 +791,7 @@ public sealed partial class AppController
             _handedOver.Remove(launch);
         _closeWhenClaimed.RemoveWhere(l => set.Contains(l.AccountId));
         _rejoinQueue.RemoveAll(r => set.Contains(r.AccountId));
+        Log.Note($"Accounts: {removed} of {set.Count} account(s) deleted.");
         Persist();
         PushState();
         return removed;
@@ -782,6 +822,8 @@ public sealed partial class AppController
         var acceptedIn = new HashSet<string>();
         var resumeAt = DateTime.UtcNow;
         var newlyBanned = new List<Account>();
+        string? failedKind = null;
+        int banUnknown = 0;
 
         // Every continuation runs on the UI thread, so the queue and counters need no locking.
         async Task WorkAsync()
@@ -829,6 +871,7 @@ public sealed partial class AppController
                     catch (Exception ex) when (RobloxApi.IsExpectedError(ex))
                     {
                         failed++;
+                        failedKind ??= LogKindOf(ex);
                     }
                     break;
                 }
@@ -852,6 +895,8 @@ public sealed partial class AppController
                     }
                     catch (Exception ex) when (RobloxApi.IsExpectedError(ex))
                     {
+                        banUnknown++; // no clear answer: left as it was
+                        failedKind ??= LogKindOf(ex);
                     }
                     break;
                 }
@@ -888,6 +933,10 @@ public sealed partial class AppController
             Persist();
             PushState();
         }
+        if (bad > 0 || failed > 0 || refused.Count > 0 || newlyBanned.Count > 0 || banUnknown > 0 || _vault != vault)
+            Log.Note($"Sign-in check: {accounts.Count} asked, {ok} fine, {bad} signed out, {refused.Count} refused ({moderated} with a notice), "
+                + $"{failed} unanswered, {newlyBanned.Count} newly banned, {banUnknown} ban checks unanswered{(failedKind is null ? "" : $" ({failedKind})")}"
+                + $"{(_vault != vault ? "; stopped, the vault was locked" : "")}.");
         _ = LoadAvatarsAsync(accounts.Select(a => a.UserId));
         if (newlyBanned.Count > 0 && _vault == vault)
             NotifyBanned(newlyBanned);
@@ -915,6 +964,9 @@ public sealed partial class AppController
         return new { secret, seconds = field == "totp" ? Totp.SecondsLeft(account.Authenticator!, now) : (int?)null };
     }
 
+    /// <summary>The last avatar load failed: written once, then once more when one goes through.</summary>
+    bool _avatarsFailing;
+
     async Task LoadAvatarsAsync(IEnumerable<long> userIds)
     {
         var missing = userIds.Where(id => id > 0 && !_avatarUrls.ContainsKey(id)).Distinct().ToList();
@@ -924,10 +976,16 @@ public sealed partial class AppController
                 return;
             foreach (var (id, url) in await RobloxApi.GetHeadshotUrlsAsync(missing))
                 _avatarUrls[id] = url;
+            if (_avatarsFailing)
+                Log.Note("Avatars: recovered.");
+            _avatarsFailing = false;
             PushState();
         }
         catch (Exception ex) when (RobloxApi.IsExpectedError(ex))
         {
+            if (!_avatarsFailing)
+                Log.Note($"Avatars: {missing.Count} not loaded ({LogKindOf(ex)}); initials show until the next try.");
+            _avatarsFailing = true;
         }
         finally
         {

@@ -78,6 +78,7 @@ public sealed class AppUpdater
 
     async Task RunAsync(UpdateManager manager)
     {
+        bool failedBefore = Status == "error";
         try
         {
             _offline = null;
@@ -85,15 +86,19 @@ public sealed class AppUpdater
             var update = await manager.CheckForUpdatesAsync();
             if (update is null)
             {
+                if (failedBefore)
+                    Log.Note("Update: check recovered, up to date.");
                 Set("upToDate");
                 return;
             }
             NewVersion = update.TargetFullRelease.Version.ToString();
+            Log.Note($"Update: {NewVersion} found, downloading.");
             Progress = 0;
             _reportedProgress = -1;
             Set("downloading");
             await manager.DownloadUpdatesAsync(update, OnProgress);
             _ready = update.TargetFullRelease;
+            Log.Note($"Update: {NewVersion} downloaded, ready to install.");
             // Get beta versions turned off during the download: not this one.
             Set(DropUnwantedBeta() ? "idle" : "ready");
         }
@@ -143,6 +148,7 @@ public sealed class AppUpdater
     {
         if (_ready is not { } ready || Prefs.BetaUpdates || !WhatsNew.IsBeta(ready.Version.ToString()))
             return false;
+        Log.Note($"Update: downloaded beta {ready.Version} dropped (Get beta versions is off).");
         _ready = null;
         NewVersion = null;
         try
@@ -168,8 +174,14 @@ public sealed class AppUpdater
     /// (see <see cref="Relaunch"/>), else it waits for the next start.</summary>
     public void ApplyOnExit(string[]? restartArgs = null)
     {
-        if (_manager is null || _ready is null || HeldForInstaller)
+        if (_manager is null || _ready is null)
             return;
+        if (HeldForInstaller)
+        {
+            Log.Note("Update: not applied on exit; Bloxkeep's installer runs the update itself.");
+            return;
+        }
+        Log.Note($"Update: {_ready.Version} installs once Bloxkeep exits{(restartArgs is null ? "" : ", then it restarts")}.");
         try
         {
             _manager.WaitExitThenApplyUpdates(_ready, silent: true, restart: restartArgs is not null, restartArgs: restartArgs);

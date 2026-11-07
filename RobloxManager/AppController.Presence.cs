@@ -3,6 +3,11 @@ namespace RobloxManager;
 /// <summary>Roblox's online status of each account, and the checks whether an account was signed out.</summary>
 public sealed partial class AppController
 {
+    /// <summary>The last status check failed: written once, then once more when one goes through.</summary>
+    bool _presenceFailing;
+    /// <summary>When a sign-in outage was last written to error.log (at most every half hour).</summary>
+    DateTime _signInOutageNoted;
+
     void RefreshPresenceSoon(TimeSpan delay)
     {
         var at = DateTime.UtcNow + delay;
@@ -113,6 +118,9 @@ public sealed partial class AppController
             _presenceLoaded = true;
             DetectDisconnectedSessions(reliable);
             PushStateIfChanged();
+            if (_presenceFailing)
+                Log.Note("Status check: recovered.");
+            _presenceFailing = false;
         }
         // The account asking was signed out meanwhile: it is marked so (the next check asks with another one) — once
         // a second call agrees, so an outage of Roblox's sign-in service doesn't sign everyone out here one by one.
@@ -123,6 +131,9 @@ public sealed partial class AppController
         catch (Exception ex) when (RobloxApi.IsExpectedError(ex))
         {
             _nextPresence = DateTime.UtcNow + PresenceInterval * 2;
+            if (!_presenceFailing)
+                Log.Note($"Status check: failed ({LogKindOf(ex)}); accounts keep their last status, next try in a minute.");
+            _presenceFailing = true;
         }
         finally
         {
@@ -151,6 +162,7 @@ public sealed partial class AppController
             {
                 if (account.Cookie == cookie && account.CookieValid == false)
                 {
+                    Log.Note($"Sign-in check: account {account.Id.ToString()[..8]} is accepted by Roblox again.");
                     SignInAccepted(account);
                     PersistSoon();
                 }
@@ -159,6 +171,7 @@ public sealed partial class AppController
         }
         catch (Exception ex) when (!ct.IsCancellationRequested && RobloxApi.IsExpectedError(ex))
         {
+            Log.Note($"Sign-in check: a rejected sign-in couldn't be confirmed ({LogKindOf(ex)}); account {account.Id.ToString()[..8]} left as it was.");
             return false;
         }
         // Signed in again meanwhile: the old cookie's answer says nothing about the new one.
@@ -166,11 +179,19 @@ public sealed partial class AppController
             return false;
         // Without this, an outage marked one more account per request that met it, and a rejoin turned auto-rejoin off.
         if (!trusted && await SignInServiceDownAsync(account, ct))
+        {
+            if (DateTime.UtcNow - _signInOutageNoted > TimeSpan.FromMinutes(30))
+            {
+                _signInOutageNoted = DateTime.UtcNow;
+                Log.Note("Sign-in check: Roblox rejected every account asked; taken as an outage, nobody is marked signed out.");
+            }
             return false;
+        }
         if (account.Cookie != cookie)
             return false;
         account.CookieValid = false;
         PersistSoon();
+        Log.Note($"Sign-in check: account {account.Id.ToString()[..8]} marked signed out (Roblox rejected its sign-in twice{(trusted ? "" : ", another account was accepted")}).");
         return true;
     }
 

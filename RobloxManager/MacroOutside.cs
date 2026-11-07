@@ -92,9 +92,10 @@ sealed class MacroOutside : IMacroOutside
             using var res = await Http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
             if (!res.IsSuccessStatusCode)
             {
-                Log.Note($"Macro web step: HTTP {(int)res.StatusCode} from {uri.Host}.");
+                WebNote($"Macro web step: HTTP {(int)res.StatusCode} from {uri.Host}.");
                 return null;
             }
+            _lastWebNote = null;
             await using var body = await res.Content.ReadAsStreamAsync(ct);
             var buffer = new char[MaxRead];
             using var reader = new StreamReader(body, Encoding.UTF8);
@@ -103,9 +104,18 @@ sealed class MacroOutside : IMacroOutside
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or IOException)
         {
-            Log.Note($"Macro web step: {uri.Host} didn't answer ({ex.GetType().Name}).");
+            WebNote($"Macro web step: {uri.Host} didn't answer ({ex.GetType().Name}).");
             return null;
         }
+    }
+
+    /// <summary>error.log: the last web failure written; a step in a loop would write the same one every few seconds.</summary>
+    static string? _lastWebNote;
+
+    static void WebNote(string text)
+    {
+        if (Interlocked.Exchange(ref _lastWebNote, text) != text)
+            Log.Note(text);
     }
 
     /// <summary>Connects only to a public address: never this PC, the home network or a link-local one.</summary>

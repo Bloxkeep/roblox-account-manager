@@ -30,6 +30,8 @@ public sealed partial class AppController
     (Guid Macro, Guid Account)? _tryRun;
 
     const int MaxAutoPanels = 3;
+    /// <summary>The panels' show/hide by their game error.log was last told.</summary>
+    string? _panelsDecidedLogged;
     static readonly TimeSpan StoppedShown = TimeSpan.FromMinutes(10), UndoFor = TimeSpan.FromSeconds(6);
 
     /// <summary>The vault open now, for the panels.</summary>
@@ -448,7 +450,10 @@ public sealed partial class AppController
                     // The feature whose steps it is (none: the main steps).
                     string? section = a.TryGetProperty("section", out var sc) && sc.ValueKind == JsonValueKind.String ? sc.GetString() : null;
                     if (_owner is ShellForm shell)
+                    {
+                        Log.Note($"Macro panel {id.ToString()[..8]}: main window brought to the front to edit the macro.");
                         shell.BringToFront();
+                    }
                     Emit("editMacro", new { id, step, section });
                     break;
             }
@@ -489,7 +494,10 @@ public sealed partial class AppController
     void HidePanelWindow(Guid id, bool byPerson)
     {
         if (ShownPanel(id) is { } panel)
+        {
+            Log.Note($"Macro panel {id.ToString()[..8]}: hidden ({(byPerson ? "by the person" : "its game ended")}).");
             panel.HideQuietly();
+        }
         _panelsAuto.Remove(id);
         if (byPerson && OpenMacro(id) is { Panel.AutoShow: true })
             _panelsClosed.Add(id);
@@ -594,7 +602,10 @@ public sealed partial class AppController
             return;
         using var turn = InputTurn.TryEnter("focus");
         if (turn is null)
+        {
+            Log.Note($"Macro panel {panel.MacroId.ToString()[..8]}: keyboard not handed back to Roblox window {PanelNative.PidOf(target)}, a nudge, picture or macro turn is under way.");
             return;
+        }
         AntiAfk.GiveBack(target);
     }
 
@@ -651,6 +662,11 @@ public sealed partial class AppController
         var playing = inGame.Select(r => r.Key).ToHashSet();
         var (show, hide) = MacroOptions.AutoShow(vault.Data.Settings.Macros, places, _panelsAuto, _panelsClosed,
             id => ShownPanel(id) is not null, m => PanelAccounts(m).Any(playing.Contains), MaxAutoPanels);
+        // Shown and hidden by their game: logged once per change (a panel still opening is asked again each tick).
+        string decided = show.Count + hide.Count == 0 ? "" : $"show {string.Join(", ", show.Select(i => i.ToString()[..8]))}; hide {string.Join(", ", hide.Select(i => i.ToString()[..8]))}";
+        if (decided != _panelsDecidedLogged && decided.Length > 0)
+            Log.Note($"Macro panels by their game: {decided}.");
+        _panelsDecidedLogged = decided;
         foreach (var id in hide)
             HidePanelWindow(id, byPerson: false);
         foreach (var id in show)
@@ -900,7 +916,10 @@ public sealed partial class AppController
             return;
         }
         if (OpenMacro(id) is not { } macro || macro.Areas.Count == 0)
+        {
+            Log.Note($"Macro panel {id.ToString()[..8]}: Move areas on game did nothing (no such macro or no areas).");
             return;
+        }
         var account = PanelAccount(macro);
         if (account == Guid.Empty || MacroDeskNow.Window(account) is not { } window)
         {
@@ -948,6 +967,7 @@ public sealed partial class AppController
         (_overlay, _overlayFor) = (null, null);
         if (overlay is null || overlay.IsDisposed)
             return;
+        Log.Note($"Overlay ({overlay.Kind}): ended by the app (toggled off, replaced, its panel hidden or the vault locked).");
         overlay.End();
         if (tellPage && was is { Page: true })
             Emit("onGameEdit", new { done = true });

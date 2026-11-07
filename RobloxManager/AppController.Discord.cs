@@ -480,8 +480,8 @@ public sealed partial class AppController
         // Offline for long: the oldest go, and the next message says how many.
         while (_discordQueue.Count > DiscordQueueMax)
         {
-            if (_discordQueue[0].Kind != "board")
-                _discordDropped++;
+            if (_discordQueue[0].Kind != "board" && _discordDropped++ == 0)
+                Log.Note($"Discord: the queue is full ({DiscordQueueMax}) while sending fails; the oldest messages are dropped.");
             _discordQueue.RemoveAt(0);
         }
     }
@@ -667,6 +667,8 @@ public sealed partial class AppController
                     _discordQueue.RemoveAt(0);
                     _discordDropped -= dropped;
                 }
+                if (_discordFailures > 0)
+                    Log.Note($"Discord: sending recovered after {_discordFailures} failed tries.");
                 _discordFailures = 0;
                 _discordNextTry = now + result.Wait;
                 _discordLastSent = now;
@@ -674,13 +676,17 @@ public sealed partial class AppController
                 break;
             case DiscordOutcome.MessageGone:
                 // Someone deleted the status message: a new one is posted (and its id kept) right away.
+                Log.Note("Discord: the status message was deleted in Discord; a new one is posted.");
                 d.BoardMessageId = "";
                 PersistSoon();
                 break;
             case DiscordOutcome.RateLimited:
                 _discordNextTry = now + result.Wait;
+                Log.Note($"Discord: rate-limited on a {item.Kind} message; next try in {Math.Ceiling(result.Wait.TotalSeconds)} s.");
                 break;
             case DiscordOutcome.Offline:
+                if (_discordFailures == 0)
+                    Log.Note($"Discord: a {item.Kind} message not sent ({result.Error ?? "network error"}); tried again with growing waits, up to {DiscordMaxBackoff.TotalMinutes} min.");
                 _discordFailures++;
                 var wait = TimeSpan.FromSeconds(15 * Math.Pow(2, Math.Min(_discordFailures - 1, 6)));
                 _discordNextTry = now + (wait < DiscordMaxBackoff ? wait : DiscordMaxBackoff);
@@ -688,6 +694,7 @@ public sealed partial class AppController
                 break;
             case DiscordOutcome.Gone when item.Route is { } gone && PresetFor(gone) is { } preset:
                 // Only that preset's webhook is gone: it goes, and its messages go to Settings' webhook again.
+                Log.Note("Discord: a preset's webhook no longer exists (Discord said so); removed, its messages go to Settings' webhook.");
                 preset.DiscordWebhook = "";
                 DiscordRouteChanged(gone);
                 if (current)
@@ -696,10 +703,12 @@ public sealed partial class AppController
                 _discordError = L.F("Discord says the webhook of preset {0} no longer exists, so it was removed. Its messages go to the channel in Settings again.", preset.Name);
                 break;
             case DiscordOutcome.Gone:
+                Log.Note("Discord: the webhook no longer exists (Discord said so); sending stopped until a new link.");
                 StopDiscord(d);
                 break;
             default:
                 // Discord refused this one message (it never will take it): it goes, the rest follow.
+                Log.Note($"Discord: a {item.Kind} message was refused ({result.Error}); dropped.");
                 if (current)
                     _discordQueue.RemoveAt(0);
                 _discordError = L.F("Discord refused a message: {0}", result.Error);
@@ -783,6 +792,8 @@ public sealed partial class AppController
         var result = await DiscordWebhook.SendAsync(url, DiscordWebhook.Build(message, DiscordPing.None, d.Style != "plain", d.Username, d.AvatarUrl), null, wait: true);
         if (_vault != vault)
             throw new UserError(L.T("Bloxkeep was locked."));
+        if (result.Outcome != DiscordOutcome.Sent)
+            Log.Note($"Discord: a preset's test message wasn't sent ({result.Outcome}{(result.Error is null ? "" : ", " + result.Error)}).");
         return result.Outcome switch
         {
             DiscordOutcome.Sent => null,
@@ -822,6 +833,8 @@ public sealed partial class AppController
             null, wait: true, file: picture);
         if (_vault != vault)
             throw new UserError(L.T("Bloxkeep was locked."));
+        if (result.Outcome != DiscordOutcome.Sent)
+            Log.Note($"Discord: {(summary ? "Send summary now" : "Send test")} wasn't sent ({result.Outcome}{(result.Error is null ? "" : ", " + result.Error)}).");
         switch (result.Outcome)
         {
             case DiscordOutcome.Sent:

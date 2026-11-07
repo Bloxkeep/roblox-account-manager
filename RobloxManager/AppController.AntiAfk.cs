@@ -41,8 +41,19 @@ public sealed partial class AppController
         int front = RobloxProcesses.ForegroundPid();
         if (windows.Keys.Any(pid => _logs.JoinChallengedAt(pid) is { } at && _logs.StateOf(pid) is { Status: "joining" }
                                     && (pid == front || now - at < BotCheckHold)))
+        {
+            if (!_afkBotCheckLogged)
+                Log.Note("Anti-AFK: held back while a Roblox bot check is open.");
+            _afkBotCheckLogged = true;
             return;
+        }
+        _afkBotCheckLogged = false;
         var due = AntiAfkDue(now, on, windows, AntiAfk.Locked(), AntiAfk.IdleTime(), RobloxProcesses.ForegroundPid(), AntiAfk.FullScreenInFront);
+        // Why due windows wait, logged once each time it changes.
+        string held = string.Join(", ", _afkHeld.GroupBy(h => h.Value).OrderBy(g => g.Key).Select(g => $"{g.Count()} {g.Key}"));
+        if (held != _afkHeldLogged && held.Length > 0)
+            Log.Note($"Anti-AFK: due Roblox window(s) held back: {held} (pids {string.Join(", ", _afkHeld.Keys)}).");
+        _afkHeldLogged = held;
         if (due.Count > 0)
             _ = NudgeAsync(due.Select(pid => (pid, windows[pid][0])).ToList());
     }
@@ -143,6 +154,7 @@ public sealed partial class AppController
             // A macro's turn holds them back: an idle kick meanwhile is told as the macro's doing.
             if (InputTurn.Holder == "macro")
             {
+                Log.Note($"Anti-AFK: {clients.Count} due Roblox window(s) wait for a macro's turn to end.");
                 foreach (var (pid, _) in clients)
                     _afkHeld[pid] = AfkHeld.MacroBusy;
             }
@@ -154,7 +166,10 @@ public sealed partial class AppController
             }
             clients = clients.Where(c => _lastInput.GetValueOrDefault(c.Pid, DateTime.MinValue) < asked).ToList();
             if (clients.Count == 0)
+            {
+                Log.Note("Anti-AFK: nudge dropped, every due window had input meanwhile (a macro played into it).");
                 return;
+            }
             // Turning anti-AFK off (or locking, or quitting) stops it between two windows.
             var reached = await AntiAfk.NudgeAsync(clients.Select(c => c.Window).ToList(), () => !_disposed && clients.Any(c => AntiAfkOn(c.Pid)));
             foreach (var (pid, window) in clients)
@@ -173,6 +188,7 @@ public sealed partial class AppController
                     // Backs off, or a minimised window would be restored and minimised again every minute.
                     int misses = _nudgeMisses[pid] = _nudgeMisses.GetValueOrDefault(pid) + 1;
                     _nudgeRetryAt[pid] = NudgeRetryAt(DateTime.UtcNow, misses, LastInput(pid));
+                    Log.Note($"Anti-AFK: Roblox window {pid} not reached ({_afkHeld[pid]}, miss {misses}); tried again at {_nudgeRetryAt[pid].ToLocalTime():HH:mm:ss}.");
                 }
             }
         }
@@ -227,4 +243,7 @@ public sealed partial class AppController
 
     /// <summary>Why anti-AFK last held back from a due window: said if Roblox kicks it for idling anyway.</summary>
     readonly Dictionary<int, AfkHeld> _afkHeld = new();
+    /// <summary>What error.log was last told of held windows and a bot check: each logged once until it changes.</summary>
+    string? _afkHeldLogged;
+    bool _afkBotCheckLogged;
 }

@@ -63,6 +63,7 @@ public sealed partial class AppController
     {
         RequireVault();
         var ids = PresetWindows(presetId);
+        Log.Note($"Preset {presetId.ToString()[..8]}: Close, {ids.Length} account(s) open or opening.");
         return ids.Length == 0 ? 0 : CloseAccounts(ids, force: false);
     }
 
@@ -262,6 +263,7 @@ public sealed partial class AppController
             throw new UserError(L.T("This preset has no schedule. Edit it to add one."));
         if (s.Enabled != enabled)
         {
+            Log.Note($"Preset {id.ToString()[..8]}: schedule switched {(enabled ? "on" : "off")}.");
             var form = JsonSerializer.SerializeToElement(new
             {
                 schedule = new { enabled, time = s.Time, days = s.Days, date = s.Date, stop = s.Stop, stopHours = s.StopHours, stopTime = s.StopTime },
@@ -297,6 +299,9 @@ public sealed partial class AppController
         var vault = RequireVault();
         var preset = vault.Data.Settings.Presets.FirstOrDefault(p => p.Id == id) ?? throw new UserError(L.T("Preset not found."));
         var accounts = preset.AccountIds.Distinct().Select(FindAccount).OfType<Account>().ToList();
+        string tag = $"Preset {id.ToString()[..8]}";
+        Log.Note($"{tag}: run, {accounts.Count} account(s){(preset.AccountIds.Distinct().Count() > accounts.Count ? $" ({preset.AccountIds.Distinct().Count() - accounts.Count} deleted)" : "")}"
+            + $", server {preset.Server}{(force ? ", confirmed" : "")}{(_launchCts is not null || _openingHome ? ", but a launch is under way" : "")}.");
         if (accounts.Count == 0)
             throw new UserError(L.T("This preset has no accounts left."));
         CheckCanLaunch(accounts);
@@ -317,6 +322,7 @@ public sealed partial class AppController
                 }
                 catch (OperationCanceledException) when (slot.IsCancellationRequested)
                 {
+                    Log.Note($"{tag}: stopped while looking for its player.");
                     Progress(null);
                     PushState();
                     return new LaunchResult(Cancelled: true);
@@ -341,6 +347,8 @@ public sealed partial class AppController
                     }
                     : null,
                 preset.Id, apart ? ServersApart(server[4..].ToLowerInvariant()) : null, reserved: slot);
+            Log.Note($"{tag}: {(result.NeedsConfirm ? $"held for a confirmation ({string.Join(", ", result.Asks ?? [])})" : $"{result.Launched} opened, {result.Errors?.Count ?? 0} not opened, {result.Skipped?.Count ?? 0} skipped")}"
+                + $"{(result.Cancelled ? ", stopped" : "")}{(notice is not null ? ", Roblox picks the server" : "")}.");
             // Shown on the Presets tab; a run that opened nothing (all already open, or all failed) doesn't count.
             if (result.Launched > 0 && _vault == vault)
             {
@@ -375,6 +383,8 @@ public sealed partial class AppController
             throw new UserError(L.T("None of the selected accounts is signed in, so Bloxkeep can't ask Roblox where this player is. Sign them in again first."));
         Progress(L.F("Looking for {0}…", player));
         var (seen, failed) = await WherePlayerIsAsync(preset.FollowUserId, viewers, vault, ct);
+        Log.Note($"Preset {preset.Id.ToString()[..8]}: followed player {(seen is null ? failed is not null ? $"not looked up ({LaunchFailKind(failed)})" : "offline" : PlayerStatus(seen))}"
+            + $"{(seen is null || PlayerStatus(seen) != "found" ? ", so it doesn't run" : "")}.");
         if (seen is null && failed is not null)
             throw new UserError(failed is RobloxApiException { CookieInvalid: true }
                 ? L.T("Roblox didn't accept the selected accounts' sign-in. Check their sign-in, then try again.")
@@ -408,6 +418,7 @@ public sealed partial class AppController
         catch (Exception ex) when (!ct.IsCancellationRequested && RobloxApi.IsExpectedError(ex))
         {
             // Rate-limited or offline: whatever loaded is used, else Roblox picks.
+            Log.Note($"Preset server ({choice}): place {target.PlaceId}'s server list not fully read ({LaunchFailKind(ex)}), {servers.Count} loaded.");
             failed = true;
         }
         var fits = servers.Where(s => s.MaxPlayers - s.Playing >= party).ToList();
@@ -417,6 +428,8 @@ public sealed partial class AppController
             "random" => fits.Count > 0 ? fits[Random.Shared.Next(fits.Count)] : null,
             _ => fits.FirstOrDefault(),
         };
+        Log.Note($"Preset server ({choice}): {fits.Count} of {servers.Count} server(s) of place {target.PlaceId} have room for {party}"
+            + (chosen is not null ? $"; chose one with {chosen.Playing}/{chosen.MaxPlayers}{(chosen.Ping > 0 ? $", ping {chosen.Ping}" : "")}." : "; Roblox picks."));
         if (chosen is not null)
             return (target with { JobId = chosen.JobId }, null);
         // Nothing loaded says nothing about room in the servers: said as what happened.
@@ -463,6 +476,8 @@ public sealed partial class AppController
             if (answer is not ({ Full: true } or { Ended: true } or { Refused: true }))
                 return target;
         }
+        if (servers.Count > 0)
+            Log.Note($"Rejoin into: none of {servers.Count} other account server(s) takes account {account.Id.ToString()[..8]}; any server of its game.");
         return null;
     }
 
@@ -497,7 +512,11 @@ public sealed partial class AppController
                 continue;
             _afkMinimised.Add(run.Pid);
             if ((foreground ??= RobloxProcesses.ForegroundPid()) == run.Pid && AntiAfk.PersonActive())
+            {
+                Log.Note($"Light AFK: window {run.Pid} in its game left up, in use.");
                 continue;
+            }
+            Log.Note($"Light AFK: window {run.Pid} minimised, in its game.");
             RobloxProcesses.Minimise(RobloxProcesses.MainWindowOf(list));
         }
     }
@@ -541,9 +560,11 @@ public sealed partial class AppController
             // Put away while it was loading: it stays away (maximised, it also lost its RAM limit for resting windows).
             if (RobloxProcesses.IsMinimised(main) || RobloxProcesses.IsHidden(main))
             {
+                Log.Note($"Maximise: window {run.Pid} left as it is, {(RobloxProcesses.IsHidden(main) ? "hidden" : "minimised")} while loading.");
                 _maximised[run.Pid] = "ingame";
                 continue;
             }
+            Log.Note($"Maximise: window {run.Pid} maximised ({(step == "ingame" ? "in its game" : "up 10 s")}).");
             RobloxProcesses.Maximise(main);
             _maximised[run.Pid] = step;
         }
@@ -561,6 +582,8 @@ public sealed partial class AppController
     static readonly TimeSpan HeavyFor = TimeSpan.FromMinutes(3);
     /// <summary>Since when each client has been above Restart a heavy window's choice.</summary>
     readonly Dictionary<int, DateTime> _heavySince = new();
+    /// <summary>Windows whose due restart was logged as held back (once each).</summary>
+    readonly HashSet<int> _restartHeldNoted = new();
 
     /// <summary>A preset's "restart every N hours": a client in its game that ran that long is closed and reopened through auto-rejoin's
     /// path, one at a time (menu or error screens are auto-rejoin's). A window in use while the person is at the PC waits; one merely
@@ -571,8 +594,12 @@ public sealed partial class AppController
         foreach (var (id, restart) in _restarts.ToList())
         {
             if (now - restart.At > RestartCloseTimeout || now < restart.At)
+            {
+                Log.Note($"Reopen (restart, switch or update): account {id.ToString()[..8]}'s window didn't close within {(int)RestartCloseTimeout.TotalSeconds} s; left running.");
                 _restarts.Remove(id);
+            }
         }
+        _restartHeldNoted.RemoveWhere(pid => _running.Values.All(r => r.Pid != pid));
         long heavyMb = _vault?.Data.Settings.RestartAboveMb ?? 0;
         foreach (int pid in _heavySince.Keys.ToList())
         {
@@ -610,7 +637,14 @@ public sealed partial class AppController
             // Auto-rejoin's path would refuse to open it again (see RejoinAsync): it would stay closed.
             if (account.CookieValid == false || account.Banned == true
                 || (!MultiInstance.Armed && _running.Count > 1))
+            {
+                if (_restartHeldNoted.Add(run.Pid))
+                    Log.Note($"Restart: window {run.Pid} due ({(heavy ? "heavy" : "its preset's hours")}) but left running: "
+                        + (account.CookieValid == false ? "signed out" : account.Banned == true ? "banned on Roblox" : "Multi-Roblox not ready") + ".");
                 continue;
+            }
+            Log.Note($"Restart: closing window {run.Pid} to reopen it, "
+                + (heavy ? $"{_clientCommit.GetValueOrDefault(run.Pid) / MB} MB for {(int)HeavyFor.TotalMinutes} min" : $"every {preset!.RestartHours} h") + ".");
             _restarts[id] = (RestartTarget(run), now);
             _closingForRejoin.Add(run.Pid); // Bloxkeep's own close: neither a drop nor closed by Roblox
             if (heavy)

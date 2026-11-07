@@ -84,6 +84,7 @@ public static class RobloxInstalls
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException)
         {
+            NoteOnce("reading the launchers' uninstall entries", ex);
         }
         return found.Order(StringComparer.OrdinalIgnoreCase).ToList();
     }
@@ -107,6 +108,7 @@ public static class RobloxInstalls
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
+                NoteOnce("listing a Versions folder", ex);
             }
         }
         return found;
@@ -124,10 +126,17 @@ public static class RobloxInstalls
         {
             if (Path.GetDirectoryName(exe) is not { } dir || File.Exists(Path.Combine(dir, ClientDll)) || !File.Exists(exe))
                 return false;
-            return NeedsDll.GetOrAdd((exe, File.GetLastWriteTimeUtc(exe)), _ => FileMentions(exe, ClientDll));
+            return NeedsDll.GetOrAdd((exe, File.GetLastWriteTimeUtc(exe)), _ =>
+            {
+                bool broken = FileMentions(exe, ClientDll);
+                if (broken)
+                    Log.Note($"Roblox installs: build {Path.GetFileName(dir)} is missing {ClientDll}; it isn't used.");
+                return broken;
+            });
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
         {
+            NoteOnce("checking a Roblox build", ex);
             return false;
         }
     }
@@ -168,6 +177,7 @@ public static class RobloxInstalls
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
+                NoteOnce("looking for a broken build of Roblox's own install", ex);
             }
         }
         return false;
@@ -234,6 +244,7 @@ public static class RobloxInstalls
         }
         catch (Exception ex) when (ex is System.Security.SecurityException or UnauthorizedAccessException or IOException)
         {
+            NoteOnce("reading the registered Roblox build", ex);
             return null;
         }
     }
@@ -389,6 +400,7 @@ public static class RobloxInstalls
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
+            NoteOnce("reading a Roblox client's version", ex);
             return null;
         }
     }
@@ -432,6 +444,7 @@ public static class RobloxInstalls
         }
         catch (Exception ex) when (ex is EntryPointNotFoundException or DllNotFoundException or IOException or UnauthorizedAccessException)
         {
+            NoteOnce("looking for Roblox from the Microsoft Store", ex);
             return null;
         }
         finally
@@ -442,6 +455,16 @@ public static class RobloxInstalls
     }
 
     public static bool StoreEditionInstalled() => FindStoreClient() is not null;
+
+    /// <summary>What failed to be read, by kind, already in error.log: these reads repeat, so each is logged once a run.</summary>
+    static readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte> Noted = new();
+
+    /// <summary>One line per kind of failure (no path: it may hold the Windows user's name).</summary>
+    static void NoteOnce(string what, Exception ex)
+    {
+        if (Noted.TryAdd($"{what}|{ex.GetType().Name}", 0))
+            Log.Note($"Roblox installs: {what} failed ({ex.GetType().Name} 0x{ex.HResult:X8}); left out.");
+    }
 
     /// <summary>A client in the Store edition's package folder (…\WindowsApps\ROBLOXCorporation.RobloxGDK_…).</summary>
     public static bool IsStoreClient(string exe) =>

@@ -81,6 +81,8 @@ public sealed partial class AppController
     static readonly TimeSpan RemoteForgetEvery = TimeSpan.FromMinutes(10), RemoteForgetAfterOff = TimeSpan.FromSeconds(30);
     DateTime _nextRemoteForget;
     bool _remoteForgetting;
+    /// <summary>The bot couldn't be told to forget an old link last time: written once until it goes through.</summary>
+    bool _remoteForgetFailing;
 
     /// <summary>Links turned off or of vaults gone, told to the bot until it has said so (<see cref="Prefs.RemoteGone"/>).
     /// A key this Windows user can't read any more can't be told: dropped.</summary>
@@ -106,11 +108,22 @@ public sealed partial class AppController
                 }
                 catch (Exception ex) when (ex is FormatException or CryptographicException)
                 {
+                    Log.Note($"Remote: an old link's key can't be read by this Windows user ({ex.GetType().Name}); dropped without telling the bot.");
                 }
                 if (secret is null || await RemoteLink.ForgetAsync(secret, RemoteTestUrl))
                 {
+                    if (secret is not null && _remoteForgetFailing)
+                    {
+                        _remoteForgetFailing = false;
+                        Log.Note("Remote: the bot was told to forget an old link (recovered).");
+                    }
                     Prefs.RemoteGone.Remove(key);
                     Prefs.Save();
+                }
+                else if (!_remoteForgetFailing)
+                {
+                    _remoteForgetFailing = true;
+                    Log.Note("Remote: the bot couldn't be told to forget an old link; asked again in 10 minutes.");
                 }
             }
         }
@@ -141,6 +154,7 @@ public sealed partial class AppController
         catch (Exception ex) when (ex is FormatException or CryptographicException)
         {
             // Unreadable (copied from another Windows user): a new one, and the PC is linked again with a new code.
+            Log.Note($"Remote: the saved key can't be read ({ex.GetType().Name}); a new one is made, so the PC must be linked again.");
         }
         string secret = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)).TrimEnd('=').Replace('+', '-').Replace('/', '_');
         Prefs.RemoteKey = Convert.ToBase64String(ProtectedData.Protect(Encoding.UTF8.GetBytes(secret), RemoteEntropy, DataProtectionScope.CurrentUser));
@@ -153,6 +167,7 @@ public sealed partial class AppController
         if (on == Prefs.RemoteControl)
             return null;
         Prefs.RemoteControl = on;
+        Log.Note($"Remote: control from Discord turned {(on ? "on" : "off")}.");
         // Off, the secret goes: turned on again, this is a new PC for the bot, linked to nobody until a new code is
         // typed and allowed. The unlink below doesn't reach a bot that can't be reached right now, and with the same
         // secret the PC came back still linked to that Discord account, without asking (2026-10-30 review).
@@ -197,6 +212,8 @@ public sealed partial class AppController
     /// <summary>The answer to someone linking this PC (the page's Allow / Don't allow).</summary>
     object? RemoteAllow(bool allow, string? id = null)
     {
+        Log.Note(_remote is null ? "Remote: a link request was answered, but there is no connection to the bot; nothing sent."
+            : $"Remote: a link request was {(allow ? "allowed" : "refused")}.");
         _remote?.Answer(allow, id);
         PushState();
         return null;
@@ -237,11 +254,16 @@ public sealed partial class AppController
     /// </summary>
     async Task<JsonObject?> RemoteCommandAsync(RemoteCommand c)
     {
+        string cmd = c.Name is "status" or "preset" or "close" or "switch" or "screenshot" ? c.Name : "unknown";
+        Log.Note($"Remote: /pc {cmd} received.");
         try
         {
             // Another vault open (the link's own is closed a moment later): as locked, nothing of it said.
             if (!RemoteOpen)
+            {
+                Log.Note($"Remote: /pc {cmd} answered locked ({(_vault is null || _screenLocked ? "Bloxkeep locked" : "another vault open")}).");
                 return RemoteSay(L.T("Bloxkeep is locked on this PC. Unlock it there first."));
+            }
             return c.Name switch
             {
                 "status" => RemoteStatus(),
@@ -254,6 +276,7 @@ public sealed partial class AppController
         }
         catch (Exception ex) when (ex is UserError || RobloxApi.IsExpectedError(ex))
         {
+            Log.Note($"Remote: /pc {cmd} failed ({(ex is UserError ? "no such preset or account, or not possible now" : LogKindOf(ex))}).");
             return RemoteSay(ErrorText(ex));
         }
         // Anything else (a picture Windows wouldn't make, memory running out): answered and logged, never let out, where it
@@ -269,6 +292,7 @@ public sealed partial class AppController
     JsonObject RemoteStatus()
     {
         var card = BoardMessage(_vault!.Data.Discord, RobloxProcesses.GetPlayers()) with { Footer = "Bloxkeep · " + Environment.MachineName };
+        Log.Note("Remote: /pc status answered with the status card.");
         var payload = DiscordWebhook.Build(card, DiscordPing.None, embed: true, username: null, avatarUrl: null);
         return new JsonObject { ["embeds"] = payload["embeds"]?.DeepClone() };
     }
@@ -280,6 +304,7 @@ public sealed partial class AppController
         var run = StartPresetAsync(preset.Id, force: false);
         if (await Task.WhenAny(run, Task.Delay(RemoteQuickAnswer)) == run)
             return PresetOutcome(preset, await run);
+        Log.Note("Remote: /pc preset still opening after a second; its outcome follows up.");
         _ = FollowUpPresetAsync(c.Id, preset, run);
         return RemoteSay(L.F("Opening {0}…", preset.Name));
     }
@@ -293,6 +318,7 @@ public sealed partial class AppController
         }
         catch (Exception ex) when (ex is UserError || RobloxApi.IsExpectedError(ex))
         {
+            Log.Note($"Remote: /pc preset failed while opening ({LogKindOf(ex)}).");
             outcome = RemoteSay(ErrorText(ex));
         }
         catch (Exception ex)
@@ -300,12 +326,16 @@ public sealed partial class AppController
             Log.Write(ex);
             outcome = RemoteSay(L.T("Something went wrong on this PC. Try again."));
         }
+        if (_remote is null)
+            Log.Note("Remote: /pc preset finished, but the link to the bot is gone; its outcome isn't sent.");
         _remote?.Later(id, outcome);
     }
 
     /// <summary>How a preset's run went: opened how many, what went wrong, or the question it would have asked.</summary>
     JsonObject PresetOutcome(LaunchPreset preset, LaunchResult r)
     {
+        Log.Note(r.NeedsConfirm ? "Remote: /pc preset not run: it would ask a question on the PC first."
+            : $"Remote: /pc preset {(r.Cancelled ? "stopped" : "done")}: opened {r.Launched} account(s), {r.Errors?.Count ?? 0} error(s).");
         if (r.NeedsConfirm)
             return RemoteSay($"{r.Message}\n\n{L.T("Nothing was opened: answer this in Bloxkeep on the PC.")}");
         int total = preset.AccountIds.Distinct().Count(id => FindAccount(id) is not null);
@@ -338,6 +368,7 @@ public sealed partial class AppController
         {
             // Also a window still to come (late) and a rejoin under way: Close all stops them too.
             int open = _running.Count + _pending.Count + _late.Count + (_rejoinInFlight is null ? 0 : 1);
+            Log.Note($"Remote: /pc close all: {open} window(s) to close.");
             if (open == 0)
                 return RemoteSay(L.T("No Roblox window is open on this PC."));
             CloseAll(force: false);
@@ -347,7 +378,11 @@ public sealed partial class AppController
         // As Close on the account: a window still to come (late), a rejoin waiting or under way count too, and are stopped.
         if (!_running.ContainsKey(account.Id) && !_pending.Concat(_late).Any(p => p.AccountId == account.Id)
             && !_rejoinQueue.Any(r => r.AccountId == account.Id) && _rejoinInFlight?.AccountId != account.Id)
+        {
+            Log.Note($"Remote: /pc close: account {account.Id.ToString()[..8]} has no window; nothing closed.");
             return RemoteSay(L.F("{0} has no Roblox window open.", DiscordName(account)));
+        }
+        Log.Note($"Remote: /pc close: account {account.Id.ToString()[..8]} closing.");
         CloseAccounts([account.Id], force: false);
         return RemoteSay(L.F("Closing {0}…", DiscordName(account)));
     }
@@ -359,7 +394,10 @@ public sealed partial class AppController
     {
         // Asked again before the last switch landed (Discord's /pc sent over and over): not moved again meanwhile.
         if (Hopping() || _remoteSwitching)
+        {
+            Log.Note("Remote: /pc switch refused: accounts are still moving to another server.");
             return RemoteSay(L.T("Accounts are still moving to another server. Try again once they're in."));
+        }
         _remoteSwitching = true;
         try
         {
@@ -377,14 +415,19 @@ public sealed partial class AppController
         {
             var playing = PlayingAccounts();
             if (playing.Count == 0)
+            {
+                Log.Note("Remote: /pc switch all: no window open; nothing moved.");
                 return RemoteSay(L.T("No Roblox window is open on this PC."));
+            }
             // Those in one game go to one server together, as Switch server does for several selected.
             int all = await SwitchServerAsync(playing.Select(a => a.Id).ToArray()) is int m ? m : 0;
+            Log.Note($"Remote: /pc switch all: {all} of {playing.Count} account(s) moving.");
             return RemoteSay(all > 0 ? L.F("Moving {0} account(s) to another server…", all)
                 : L.T("Didn't switch: no other server of that game has room right now."));
         }
         var account = FindRemoteAccount(name);
         int moved = await SwitchServerAsync([account.Id]) is int n ? n : 0;
+        Log.Note($"Remote: /pc switch: account {account.Id.ToString()[..8]} {(moved > 0 ? "moving" : "not moved (no other server with room)")}.");
         return RemoteSay(moved > 0 ? L.F("{0} is moving to another server…", DiscordName(account))
             : L.T("Didn't switch: no other server of that game has room right now."));
     }
@@ -411,6 +454,8 @@ public sealed partial class AppController
     async Task<JsonObject?> RemoteScreenshotAsync(RemoteCommand c)
     {
         var now = DateTime.UtcNow;
+        if (_picturing || now - _lastShot < ShotGap)
+            Log.Note($"Remote: /pc screenshot refused: {(_picturing ? "one is under way" : "asked again within 15 s")}.");
         if (_picturing)
             return RemoteSay(L.T("Already taking a screenshot. Try again in a moment."));
         if (now - _lastShot < ShotGap)
@@ -421,17 +466,26 @@ public sealed partial class AppController
         {
             accounts = PlayingAccounts();
             if (accounts.Count == 0)
+            {
+                Log.Note("Remote: /pc screenshot: no window open; nothing pictured.");
                 return RemoteSay(L.T("No Roblox window is open on this PC."));
+            }
         }
         else
         {
             var account = FindRemoteAccount(name);
             if (!_running.ContainsKey(account.Id))
+            {
+                Log.Note($"Remote: /pc screenshot: account {account.Id.ToString()[..8]} has no window; nothing pictured.");
                 return RemoteSay(L.F("{0} has no Roblox window open.", DiscordName(account)));
+            }
             accounts = [account];
         }
         if (_remote is not { } link)
+        {
+            Log.Note("Remote: /pc screenshot dropped: the link to the bot is gone.");
             return null;
+        }
         var pictures = new List<byte[]>();
         var named = new List<string>();
         var notes = new List<string>();
@@ -446,7 +500,10 @@ public sealed partial class AppController
             {
                 // Locked, or turned off, since it was asked: no pictures go out.
                 if (!RemoteOpen)
+                {
+                    Log.Note("Remote: /pc screenshot stopped: locked meanwhile, no pictures sent.");
                     return null;
+                }
                 if (!_running.TryGetValue(account.Id, out var run))
                     continue;
                 var window = RobloxProcesses.MainWindowOf(RobloxProcesses.VisibleWindows([run.Pid])[run.Pid]);
@@ -470,9 +527,13 @@ public sealed partial class AppController
         }
         if (accounts.Count > MaxShots)
             notes.Add(L.F("{0} more not pictured: Discord shows 10 at most.", accounts.Count - MaxShots));
+        Log.Note($"Remote: /pc screenshot: {pictures.Count} of {accounts.Count} window(s) pictured, {notes.Count} note(s).");
         if (pictures.Count == 0)
             return RemoteSay(string.Join("\n", notes));
         string content = string.Join("\n", new[] { string.Join(" · ", named) }.Concat(notes));
-        return await link.ShotAsync(c, content, pictures) ? null : RemoteSay(L.T("Couldn't send the picture to Discord. Try again in a moment."));
+        bool sent = await link.ShotAsync(c, content, pictures);
+        if (!sent)
+            Log.Note("Remote: /pc screenshot: the pictures couldn't be sent to Discord.");
+        return sent ? null : RemoteSay(L.T("Couldn't send the picture to Discord. Try again in a moment."));
     }
 }

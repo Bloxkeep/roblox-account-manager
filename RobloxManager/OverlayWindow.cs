@@ -93,7 +93,10 @@ sealed class OverlayWindow : WebToolWindow
         if (!await EnsureBrowserAsync() || IsDisposed)
         {
             if (!IsDisposed)
+            {
+                Log.Note($"Overlay ({Kind}): its page couldn't start; ended.");
                 Close();
+            }
             return;
         }
         Push();
@@ -107,6 +110,7 @@ sealed class OverlayWindow : WebToolWindow
             Activate();
             FocusPage();
         }
+        Log.Note($"Overlay ({Kind}): opened always on top over {(Kind == Mode.Screen ? "the screen" : $"Roblox window {GamePid}")}, {(Visible ? $"shown and activated, {WindowReport.Describe(Handle)}" : "not shown yet (the game is minimized or another app is in front)")}.");
     }
 
     /// <summary>The points and areas to draw (the page's draft again after each change); the page keeps its own while one is dragged.</summary>
@@ -202,13 +206,20 @@ sealed class OverlayWindow : WebToolWindow
             return;
         if (!IsWindow(_game))
         {
+            Log.Note($"Overlay ({Kind}): its Roblox window is gone; ended.");
             Close();
             return;
         }
         if (IsIconic(_game) || Elsewhere() || !GetClientRect(_game, out var rc))
         {
             if (Visible)
+            {
+                // Once: alt-tabbing back and forth would write a line each time.
+                if (!_hiddenNoted)
+                    Log.Note($"Overlay ({Kind}): hidden ({(IsIconic(_game) ? "the game was minimized" : Elsewhere() ? "another app came in front" : "the game's area couldn't be read")}).");
+                _hiddenNoted = true;
                 Hide();
+            }
             return;
         }
         var origin = new POINT();
@@ -219,7 +230,22 @@ sealed class OverlayWindow : WebToolWindow
         if (client != _client || Bounds != client)
             Bounds = _client = client;
         if (!Visible && IsHandleCreated)
+        {
             Show();
+        }
+    }
+
+    /// <summary>error.log: its first hide was written; later ones aren't.</summary>
+    bool _hiddenNoted;
+
+    /// <summary>The game's process id, for error.log.</summary>
+    uint GamePid
+    {
+        get
+        {
+            GetWindowThreadProcessId(_game, out uint pid);
+            return pid;
+        }
     }
 
     /// <summary>The window in front is neither the game nor one of Bloxkeep's (this overlay, the macro editor that opened it).</summary>
@@ -295,6 +321,7 @@ static class ScreenPicker
         {
             if (panel is not null)
                 panel.Suspended = true;
+            Log.Note($"Screen colour picker: {owner.GetType().Name} hidden while the screen is pictured.");
             owner.Hide();
             await Task.Delay(200); // the panel gone from the picture
             var screen = Screen.FromPoint(Cursor.Position).Bounds;

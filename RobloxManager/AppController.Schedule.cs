@@ -166,6 +166,7 @@ public sealed partial class AppController
             // Said once its minute is over: an unlock within the minute still runs it (and nothing is reported).
             foreach (var missed in _lockedSchedules.Where(m => string.CompareOrdinal(m.Minute, minute) < 0).ToList())
             {
+                Log.Note($"Schedule: preset {missed.Id.ToString()[..8]} missed {missed.Minute[11..]}, Bloxkeep locked.");
                 _missedReported.Add((missed.Id, missed.Minute));
                 Notify(L.F("{0} didn't run at {1}: Bloxkeep was locked.", missed.Name, missed.Minute[11..]), "warn", "scheduleMissed", missed.Id);
             }
@@ -175,13 +176,17 @@ public sealed partial class AppController
         _lockedSchedules.Clear();
         // The timer didn't tick for a while (the PC slept, or hung): a run due in between is said to be missed, once.
         if (lastCheck != default && local - lastCheck > TimeSpan.FromSeconds(90))
+        {
+            Log.Note($"Schedule: no check from {lastCheck:HH:mm} to {local:HH:mm} (the PC slept or hung).");
             ReportScheduleGap(vault, lastCheck, local);
+        }
         // A one-off whose time went by unseen (PC off, Bloxkeep closed): over, as if it had run, not left on with no next run.
         bool over = false;
         foreach (var preset in vault.Data.Settings.Presets)
         {
             if (preset.Schedule is { Enabled: true } once && once.Date.Length > 0 && !DueAt(once, local) && NextRun(once) is null)
             {
+                Log.Note($"Schedule: preset {preset.Id.ToString()[..8]}'s one-off at {once.Date} {once.Time} went by unseen; switched off.");
                 once.Enabled = false;
                 over = true;
             }
@@ -197,7 +202,10 @@ public sealed partial class AppController
             if (preset.Schedule is not { Enabled: true } s || !DueAt(s, local) || s.LastRun == minute)
                 continue;
             if (_scheduledStartTick.TryGetValue(preset.Id, out long last) && tick - last < MinScheduleGap.TotalMilliseconds)
+            {
+                Log.Note($"Schedule: preset {preset.Id.ToString()[..8]} due at {minute[11..]} skipped, it ran {(tick - last) / 60_000} min ago (clock set back).");
                 continue; // the clock was set back: it ran already
+            }
             s.LastRun = minute;
             _scheduledStartTick[preset.Id] = tick;
             if (s.Date.Length > 0)
@@ -206,6 +214,7 @@ public sealed partial class AppController
         }
         if (due.Count == 0)
             return;
+        Log.Note($"Schedule: {due.Count} preset(s) due at {minute[11..]} ({string.Join(", ", due.Select(p => p.Id.ToString()[..8]))}).");
         PersistSoon();
         PushState(); // the next run time changed
         _ = RunScheduledAsync(due);
@@ -223,6 +232,7 @@ public sealed partial class AppController
             catch (Exception ex)
             {
                 // Said, not only logged (ErrorText logs it): nobody may be at the PC to notice a run that didn't happen.
+                Log.Note($"Schedule: preset {preset.Id.ToString()[..8]} didn't run ({LaunchFailKind(ex)}).");
                 Notify(L.F("Scheduled preset {0} didn't run: {1}", preset.Name, ErrorText(ex)), "warn", "scheduleFail", preset.Id);
             }
         }
@@ -235,15 +245,23 @@ public sealed partial class AppController
         var vault = _vault;
         string name = preset.Name;
         var startedAt = Clock.Now(); // the scheduled minute, give or take: a stop "at" counts from here, not from when the launch ends
+        string tag = $"Schedule: preset {preset.Id.ToString()[..8]}";
+        if (_launchCts is not null)
+            Log.Note($"{tag} waits for a launch under way ({(int)ScheduleLaunchWait.TotalMinutes} min at most).");
         // A manual launch under way would refuse this one ("already launching"): it is waited for, within reason.
         for (var until = Clock.UtcNow() + ScheduleLaunchWait; _launchCts is not null && Clock.UtcNow() < until && _vault == vault;)
             await Task.Delay(1000);
+        if (preset.AccountIds.Any(id => _stopClosing.Contains(id) && _running.ContainsKey(id)))
+            Log.Note($"{tag} waits for its stop to finish closing its windows.");
         // This preset's stop firing this same minute is still closing its clients: wait, so the start reopens rather than skips them.
         for (var until = Clock.UtcNow() + ScheduleStopWait; preset.AccountIds.Any(id => _stopClosing.Contains(id) && _running.ContainsKey(id)) && Clock.UtcNow() < until && _vault == vault;)
             await Task.Delay(500);
         _stopClosing.ExceptWith(preset.AccountIds);
         if (_vault != vault)
+        {
+            Log.Note($"{tag} didn't run, Bloxkeep was locked meanwhile.");
             return;
+        }
         // The newest run owns this preset's stop: a pending one (daily 20:00, stop after 24 h) is taken over with its still-open
         // accounts, so the old stop can't close everything minutes after the new start.
         var taken = _scheduledRuns.Where(r => r.PresetId == preset.Id).ToList();
@@ -260,19 +278,25 @@ public sealed partial class AppController
             }
             catch (Exception ex) when (ex is UserError or RobloxApiException || RobloxApi.IsExpectedError(ex))
             {
+                Log.Note($"{tag} didn't run ({LaunchFailKind(ex)}{(_launchCts is not null ? ", a launch still under way" : "")}).");
                 Notify(L.F("Scheduled preset {0} didn't run: {1}", name, ErrorText(ex)), "warn", "scheduleFail", preset.Id);
                 return;
             }
             if (result.NeedsConfirm)
             {
+                Log.Note($"{tag} didn't run, it would need a confirmation ({string.Join(", ", result.Asks ?? [])}).");
                 // The question Play would ask (Multi-Roblox not ready, low RAM) isn't answered for the person.
                 string why = (result.Message ?? "").Replace("\n\n", " ");
                 Notify(L.F("Scheduled preset {0} didn't run: {1}", name, why), "warn", "scheduleFail", preset.Id);
                 return;
             }
             if (result.Cancelled)
+            {
+                Log.Note($"{tag} stopped (Stop pressed or Bloxkeep locked) after {result.Launched} opened.");
                 return; // Stop was pressed (or Bloxkeep locked): the person is there and saw it
+            }
             started = true;
+            Log.Note($"{tag} started: {result.Launched} opened, {result.Errors?.Count ?? 0} not opened, {result.Skipped?.Count ?? 0} already open.");
             if (result.Launched > 0)
                 Notify(L.P(result.Launched, "Scheduled preset {0} started: {1} account opened.", "Scheduled preset {0} started: {1} accounts opened.", name, result.Launched), "ok", "schedule", preset.Id);
             else if (result.Errors is not { Count: > 0 })
@@ -295,13 +319,19 @@ public sealed partial class AppController
         var fresh = preset.AccountIds.Where(id => !before.Contains(id) && Open(id)).ToList();
         if (!started && fresh.Count == 0)
         {
+            if (taken.Count > 0)
+                Log.Note($"Schedule: preset {preset.Id.ToString()[..8]} didn't start; its earlier stop stays.");
             _scheduledRuns.AddRange(taken);
             return;
         }
         var opened = fresh.Concat(taken.SelectMany(r => r.Opened).Where(Open)).Distinct().ToList();
         // Locked meanwhile: kept in memory, written at the next unlock; another vault unlocked meanwhile has other accounts.
         if (vault is null || preset.Schedule is not { } s || s.Stop == "never" || opened.Count == 0 || _vault is not null && _vault != vault)
+        {
+            if (preset.Schedule is { Stop: not "never" })
+                Log.Note($"Schedule: preset {preset.Id.ToString()[..8]}'s stop not set ({(opened.Count == 0 ? "nothing it opened is open" : vault is null ? "locked" : "another vault is open")}).");
             return;
+        }
         var run = new ScheduledRun { PresetId = preset.Id, Vault = vault.FilePath, Name = preset.Name, Opened = opened };
         if (s.Stop == "after")
             run.StopAtTick = Clock.Tick() + (long)(s.StopHours * 3_600_000);
@@ -315,6 +345,8 @@ public sealed partial class AppController
         else
             return;
         _scheduledRuns.Add(run);
+        Log.Note($"Schedule: preset {preset.Id.ToString()[..8]}'s stop set for {opened.Count} account(s), "
+            + (run.StopAtMinute is { } stopMinute ? $"at {stopMinute[11..]}" : $"after {s.StopHours} h") + $"{(taken.Count > 0 ? ", taking over the earlier run's" : "")}.");
         if (NoteScheduledRuns())
             PersistSoon();
     }
@@ -331,6 +363,8 @@ public sealed partial class AppController
         // window is late (it would come after the stop and stay) or whose rejoin is under way.
         var ids = run.Opened.Where(id => _running.ContainsKey(id) || _pending.Concat(_late).Any(p => p.AccountId == id)
             || _rejoinQueue.Any(r => r.AccountId == id) || _rejoinInFlight?.AccountId == id).ToArray();
+        Log.Note($"Schedule: preset {run.PresetId.ToString()[..8]}'s stop, {ids.Length} of {run.Opened.Count} account(s) it opened still open or coming back"
+            + $"{(_vault is not { } current || !OfVault(run, current) ? ", its vault not open" : "")}.");
         if (ids.Length == 0)
             return; // closed by hand meanwhile
         _stopClosing.UnionWith(ids);
@@ -401,6 +435,9 @@ public sealed partial class AppController
                 StopAtMinute = saved.StopAtMinute,
             });
         }
+        int armed = _scheduledRuns.Count(r => OfVault(r, vault));
+        if (armed > 0)
+            Log.Note($"Schedule: {armed} saved stop(s) armed again after the unlock.");
         // Only this vault's: a stop of another vault's run that fired meanwhile is for that vault's next unlock.
         _stoppedWhileLocked.ExceptWith(vault.Data.ScheduledRuns.Select(r => r.PresetId));
         if (NoteScheduledRuns())
@@ -427,6 +464,7 @@ public sealed partial class AppController
                     break;
                 if (at >= toMinute || !DueAt(s, at) || s.LastRun == MinuteKey(at))
                     continue;
+                Log.Note($"Schedule: preset {preset.Id.ToString()[..8]} missed {at:HH:mm}, the PC was asleep or busy.");
                 Notify(L.F("{0} didn't run at {1}: the PC was asleep or busy.", preset.Name, at.ToString("HH\\:mm", Inv)), "warn", "scheduleMissed", preset.Id);
                 break;
             }
@@ -450,7 +488,10 @@ public sealed partial class AppController
                     continue;
                 string minute = MinuteKey(at);
                 if (at >= _lockedSince && s.LastRun != minute && _missedReported.Add((preset.Id, minute)))
+                {
+                    Log.Note($"Schedule: preset {preset.Id.ToString()[..8]} missed {minute[11..]}, Bloxkeep was locked.");
                     Notify(L.F("{0} didn't run at {1}: Bloxkeep was locked.", preset.Name, at.ToString("HH\\:mm", Inv)), "warn", "scheduleMissed", preset.Id);
+                }
                 break;
             }
         }

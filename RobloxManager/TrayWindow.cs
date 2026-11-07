@@ -103,7 +103,10 @@ public sealed class TrayWindow : Form
         try
         {
             if (!await EnsureBrowserAsync())
+            {
+                Log.Note($"Tray: {mode} not shown, its page was let go while starting.");
                 return; // let go meanwhile (closed again, its page failed, the app quitting)
+            }
         }
         catch (Exception ex) when (ex is COMException or InvalidOperationException or ArgumentException or WebView2RuntimeNotFoundException or TimeoutException or ObjectDisposedException)
         {
@@ -131,7 +134,11 @@ public sealed class TrayWindow : Form
     {
         IntPtr menu = CreatePopupMenu();
         if (menu == IntPtr.Zero)
+        {
+            Log.Note("Tray: its page can't start and Windows' own menu couldn't be made either; nothing shown.");
             return;
+        }
+        Log.Note("Tray: its page can't start; Windows' own small menu shown instead.");
         try
         {
             AppendMenuW(menu, MF_STRING, (UIntPtr)1, L.T("Open Bloxkeep"));
@@ -159,6 +166,7 @@ public sealed class TrayWindow : Form
         _hiddenAt = Environment.TickCount64;
         _refresh.Stop();
         Hide();
+        Log.Note($"Tray: {_mode} hidden.");
         _release.Start();
     }
 
@@ -245,6 +253,7 @@ public sealed class TrayWindow : Form
                 {
                     if (_web != web)
                         return;
+                    Log.Note("Tray: its page crashed; hidden, started again on the next open.");
                     HideTray();
                     ReleaseBrowser();
                 });
@@ -303,6 +312,7 @@ public sealed class TrayWindow : Form
         }
         catch (JsonException)
         {
+            Log.Note("Tray: a message from its page couldn't be read.");
         }
     }
 
@@ -430,7 +440,8 @@ public sealed class TrayWindow : Form
             _showing = false;
             Show();
             Activate();
-            SetForegroundWindow(Handle);
+            bool front = SetForegroundWindow(Handle);
+            Log.Note($"Tray: {_mode} shown always on top, {WindowReport.Describe(Handle)}{(front ? "" : "; Windows didn't bring it to the front")}.");
             _web?.Focus();
             _refresh.Start();
         }

@@ -267,6 +267,8 @@ sealed class MacroRecorder : IDisposable
     Point _lastPoint;
     readonly RobloxInput? _raw;
     int _actions;
+    /// <summary>error.log: F8 was written already.</summary>
+    bool _f8Noted;
 
     /// <summary>F8 was pressed (on the window's thread).</summary>
     public System.Action? StopAsked { get; set; }
@@ -291,12 +293,16 @@ sealed class MacroRecorder : IDisposable
         using var ready = new ManualResetEventSlim();
         _thread = new Thread(() => Run(ready)) { IsBackground = true, Name = "Bloxkeep macro recorder" };
         _thread.Start();
-        ready.Wait(TimeSpan.FromSeconds(5));
+        bool readyInTime = ready.Wait(TimeSpan.FromSeconds(5));
         if (_keyboardHook == IntPtr.Zero || _mouseHook == IntPtr.Zero)
         {
+            Log.Note($"Macro recording: didn't start on window {pid}: keyboard hook {(_keyboardHook != IntPtr.Zero ? "set" : "refused")}, mouse hook "
+                + $"{(_mouseHook != IntPtr.Zero ? "set" : "refused")}{(readyInTime ? "" : ", its thread took over 5 s")}.");
             Dispose();
             throw new UserError(L.T("Windows didn't let Bloxkeep record. Try again."));
         }
+        Log.Note($"Macro recording: started on window {pid} ({Client.Width}x{Client.Height}), raw mouse input {(_raw is null ? "off" : "on")}"
+            + $"{(_ui is null ? "; no UI thread, so F8 and the step count won't reach the app" : "")}.");
     }
 
     void Run(ManualResetEventSlim ready)
@@ -306,7 +312,11 @@ sealed class MacroRecorder : IDisposable
         _mouseProc = OnMouse;
         IntPtr module = GetModuleHandle(null);
         _keyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, _keyboardProc, module, 0);
+        int keyboardError = _keyboardHook == IntPtr.Zero ? Marshal.GetLastWin32Error() : 0;
         _mouseHook = SetWindowsHookEx(WH_MOUSE_LL, _mouseProc, module, 0);
+        int mouseError = _mouseHook == IntPtr.Zero ? Marshal.GetLastWin32Error() : 0;
+        if (keyboardError != 0 || mouseError != 0)
+            Log.Note($"Macro recording: SetWindowsHookEx failed (keyboard error {keyboardError}, mouse error {mouseError}).");
         ready.Set();
         if (_keyboardHook != IntPtr.Zero && _mouseHook != IntPtr.Zero)
         {
@@ -352,7 +362,16 @@ sealed class MacroRecorder : IDisposable
             if (!injected && k.vkCode == VK_F8)
             {
                 if (!up)
-                    _ui?.Post(_ => StopAsked?.Invoke(), null);
+                    _ui?.Post(_ =>
+                    {
+                        // Written on the window's thread: the hook must stay quick. Once: a held F8 repeats.
+                        if (!_f8Noted)
+                        {
+                            _f8Noted = true;
+                            Log.Note($"Macro recording: F8 pressed{(StopAsked is null ? ", but nothing listens for it" : "")}.");
+                        }
+                        StopAsked?.Invoke();
+                    }, null);
             }
             else if (!injected && Ours() && MacroKeys.FromScan((ushort)k.scanCode, (k.flags & LLKHF_EXTENDED) != 0, (ushort)k.vkCode) is { } key)
             {
@@ -442,7 +461,12 @@ sealed class MacroRecorder : IDisposable
         lock (_events)
             events = _events.ToList();
         var client = Client;
-        return MacroRecording.ToSteps(events, p => client.Contains(p) ? ((p.X - client.X) / (double)client.Width, (p.Y - client.Y) / (double)client.Height) : null);
+        var steps = MacroRecording.ToSteps(events, p => client.Contains(p) ? ((p.X - client.X) / (double)client.Width, (p.Y - client.Y) / (double)client.Height) : null);
+        int failed = pictures.Count(t => t.IsFaulted), unfinished = pictures.Count(t => !t.IsCompleted);
+        Log.Note($"Macro recording: finished on window {_pid} with {events.Count} events, {steps.Count} steps; click pictures {pictures.Length}"
+            + $"{(failed > 0 ? $", {failed} failed ({pictures.First(t => t.IsFaulted).Exception!.GetBaseException().GetType().Name})" : "")}"
+            + $"{(unfinished > 0 ? $", {unfinished} not done in 3 s" : "")}.");
+        return steps;
     }
 
     bool _disposed;
@@ -457,7 +481,8 @@ sealed class MacroRecorder : IDisposable
         if (_threadId != 0 && _thread.IsAlive)
         {
             PostThreadMessage(_threadId, WM_QUIT, IntPtr.Zero, IntPtr.Zero);
-            _thread.Join(TimeSpan.FromSeconds(2));
+            if (!_thread.Join(TimeSpan.FromSeconds(2)))
+                Log.Note("Macro recording: its hook thread didn't end in 2 s.");
         }
     }
 

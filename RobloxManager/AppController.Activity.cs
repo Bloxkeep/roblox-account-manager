@@ -368,6 +368,7 @@ public sealed partial class AppController
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
+            Log.Note($"Activity: export to CSV failed ({ex.GetType().Name}).");
             throw new UserError(L.F("Couldn't save the file: {0}", ErrorText(ex)));
         }
         return shown.Count;

@@ -48,7 +48,10 @@ sealed class MiniWindow : WebToolWindow
         {
             Push();
             if (activate)
+            {
+                Log.Note("Mini window: brought to the front (already open).");
                 Activate();
+            }
             return;
         }
         if (_showing)
@@ -57,6 +60,8 @@ sealed class MiniWindow : WebToolWindow
         _showing = true;
         if (!await EnsureBrowserAsync() || IsDisposed)
         {
+            if (!IsDisposed)
+                Log.Note("Mini window: not shown, its page couldn't start.");
             _showing = false;
             return;
         }
@@ -73,6 +78,7 @@ sealed class MiniWindow : WebToolWindow
         Prefs.MiniOpen = false;
         Prefs.Save();
         Hide();
+        Log.Note("Mini window: hidden by the person.");
         Dismissed?.Invoke();
     }
 
@@ -150,6 +156,7 @@ sealed class MiniWindow : WebToolWindow
         Show();
         if (ActivateOnShow)
             Activate();
+        Log.Note($"Mini window: shown always on top{(ActivateOnShow ? " and activated" : " without the keyboard (reopened at start)")}, {WindowReport.Describe(Handle)}.");
     }
 
     /// <summary>Only the height changes, between its least and the screen's.</summary>
@@ -245,7 +252,10 @@ sealed class MiniWindow : WebToolWindow
         bool shown = Visible;
         base.OnBrowserFailed();
         if (shown)
+        {
+            Log.Note("Mini window: opened again after its page crashed.");
             Open(activate: false);
+        }
     }
 
     protected override void OnFormClosing(FormClosingEventArgs e)
