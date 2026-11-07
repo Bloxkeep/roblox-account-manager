@@ -114,7 +114,7 @@ public sealed partial class AppController
         paths = new { vault = _vault?.FilePath, log = LogPath, app = AppFolder },
         // Not only the roblox-player: links: another Roblox's uninstaller takes them with it (Roblox VNG's, 2026-10-28)
         // while a client, a launcher or the Store edition is still here, and Default opens that one (FallbackLauncher).
-        robloxInstalled = RegistryInfo().Protocol || Installs() is { Direct: true } or { Store: true } or { Bloxstrap: true } or { Fishstrap: true }
+        robloxInstalled = RegistryInfo().Protocol || Installs() is { Direct: true } or { Store: true } or { Bloxstrap: true } or { Fishstrap: true } or { Voidstrap: true }
             || Installs().Others.Count > 0,
         launching = _launchCts is not null,
         checking = _checking,

@@ -1,5 +1,39 @@
 [
   {
+    "version": "1.0.19",
+    "date": "2026-11-07",
+    "improved": {
+      "en": [
+        "Voidstrap can open Roblox, like Bloxstrap and Fishstrap.",
+        "The window opens, restores and resizes more smoothly, with no white flash.",
+        "Statistics’ board of the PCs with the most accounts looks cleaner and works with the online count off.",
+        "Updating Roblox at once reopens the windows that were in a game.",
+        "Fast Flags say when your launcher replaces them.",
+        "More games in the Games tab."
+      ],
+      "vi": [
+        "Mở Roblox bằng Voidstrap, như Bloxstrap và Fishstrap.",
+        "Cửa sổ mở, khôi phục và đổi cỡ mượt hơn, không còn chớp trắng.",
+        "Bảng PC treo nhiều tài khoản nhất trong Thống kê gọn hơn, xem được cả khi tắt đếm online.",
+        "Cập nhật Roblox ngay sẽ mở lại các cửa sổ đang trong game.",
+        "Fast Flags báo khi launcher của bạn ghi đè.",
+        "Thêm game trong tab Game."
+      ]
+    },
+    "fixed": {
+      "en": [
+        "Joining with a private server link works again.",
+        "Changing the keyboard language no longer shows an error.",
+        "Small fixes in the account list, Game monitor and preset form."
+      ],
+      "vi": [
+        "Vào server riêng bằng link hoạt động lại.",
+        "Đổi ngôn ngữ bàn phím không còn báo lỗi.",
+        "Sửa lặt vặt ở danh sách tài khoản, Theo dõi game và Preset."
+      ]
+    }
+  },
+  {
     "version": "1.0.18",
     "date": "2026-11-06",
     "highlights": [

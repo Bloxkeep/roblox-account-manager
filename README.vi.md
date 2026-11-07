@@ -5,8 +5,8 @@
 <p align="center">Quản lý và mở nhiều tài khoản Roblox trên Windows. Tài khoản được mã hóa và chỉ lưu trên máy của bạn.</p>
 <p align="center"><a href="README.md">English</a> | Tiếng Việt</p>
 <p align="center"><a href="https://github.com/Bloxkeep/roblox-account-manager/releases/latest"><img src="https://img.shields.io/github/v/release/Bloxkeep/roblox-account-manager?label=release" alt="Bản phát hành mới nhất"></a> <a href="https://github.com/Bloxkeep/roblox-account-manager/releases"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fbloxkeep-bot.bloxkeep-app.workers.dev%2Fbadge%2Fdownloads" alt="Số lượt tải file cài"></a> <img src="https://img.shields.io/badge/Windows-10%20%7C%2011%20(64--bit)-0078D4" alt="Windows 10 hoặc 11, 64-bit"> <img src="https://img.shields.io/badge/.NET-10-512BD4" alt=".NET 10"> <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="Giấy phép MIT"></a> <a href="https://bloxkeep-bot.bloxkeep-app.workers.dev/discord"><img src="https://img.shields.io/badge/Discord-v%C3%A0o_server-5865F2" alt="Vào server Discord của Bloxkeep"></a></p>
-<p align="center"><a href="https://github.com/Bloxkeep/roblox-account-manager/releases/latest/download/Bloxkeep-Setup.exe"><img src="https://img.shields.io/badge/T%E1%BA%A3i_cho_Windows-Bloxkeep--Setup.exe-2ea44f?style=for-the-badge" height="36" alt="Tải Bloxkeep cho Windows (Bloxkeep-Setup.exe, bản mới nhất)"></a></p>
-<p align="center"><a href="#tải-về-và-cài-đặt">Tải về</a> · <a href="#bắt-đầu">Bắt đầu</a> · <a href="docs/guide.vi.md">Hướng dẫn</a> · <a href="https://bloxkeep.github.io/roblox-account-manager/vi/">Trang web</a> · <a href="#dữ-liệu-và-bảo-mật">Bảo mật</a> · <a href="#câu-hỏi-thường-gặp">Câu hỏi thường gặp</a> · <a href="https://bloxkeep-bot.bloxkeep-app.workers.dev/discord">Discord</a> · <a href="PRIVACY.md">Quyền riêng tư</a></p>
+<p align="center"><a href="https://github.com/Bloxkeep/roblox-account-manager/releases/latest/download/Bloxkeep-Setup.exe"><img src="https://img.shields.io/badge/T%E1%BA%A3i_cho_Windows-Bloxkeep--Setup.exe-2ea44f?style=for-the-badge" height="36" alt="Tải Bloxkeep cho Windows (Bloxkeep-Setup.exe, bản mới nhất)"></a> <a href="https://bloxkeep-bot.bloxkeep-app.workers.dev/discord"><img src="https://img.shields.io/badge/Discord-V%C3%A0o_server-5865F2?style=for-the-badge&logo=discord&logoColor=white" height="36" alt="Vào server Discord của Bloxkeep"></a></p>
+<p align="center"><a href="#tải-về-và-cài-đặt">Tải về</a> · <a href="#bắt-đầu">Bắt đầu</a> · <a href="docs/guide.vi.md">Hướng dẫn</a> · <a href="https://bloxkeep.github.io/roblox-account-manager/vi/">Trang web</a> · <a href="https://bloxkeep.github.io/roblox-account-manager/vi/whats-new/">Có gì mới</a> · <a href="#cộng-đồng">Cộng đồng</a> · <a href="#dữ-liệu-và-bảo-mật">Bảo mật</a> · <a href="#câu-hỏi-thường-gặp">Câu hỏi thường gặp</a> · <a href="PRIVACY.md">Quyền riêng tư</a></p>
 
 <p align="center"><img src="docs/screenshots/multi-roblox-real.jpg" width="860" alt="Ảnh chụp thật trên một máy Windows: sáu cửa sổ Roblox mở cùng lúc, được Bloxkeep xếp cạnh nhau, cùng ở trong một game, tiêu đề từ Roblox - Account 1 đến Roblox - Account 7"></p>
 <p align="center"><sub>Ảnh chụp thật trên một máy: sáu tài khoản Roblox mở cùng lúc bằng Bloxkeep, xếp cạnh nhau. Tên tài khoản đã được ẩn.</sub></p>
@@ -29,8 +29,9 @@ Giữ các tài khoản Roblox ở một chỗ, chọn game, chọn tài khoản
 | **Ở lại trong game** | Chống AFK để không bị đá vì đứng yên, tự vào lại khi bị văng. [Ở lại trong game](docs/guide/staying-in-game.vi.md) |
 | **Macro (Beta)** | Các bước viết thành câu dễ hiểu: bấm phím, bấm chuột, chờ hình, màu hoặc chữ, lặp lại, Nếu. Ghi lại thao tác hoặc bắt đầu từ mẫu, chạy thử, rồi kéo điểm và vùng ngay trên game. Mỗi macro có bảng nhỏ cạnh game với tab, công tắc, danh sách tích chọn và điểm do người chơi tự đặt. Bị kẹt thì macro tự chạy các bước gỡ kẹt. [Macro](docs/guide/macros.vi.md) |
 | **Cửa sổ** | Xếp cửa sổ bằng hình mẫu (giống Snap của Windows) hoặc kích thước tự chọn, Theo dõi game có nút thu nhỏ từng cửa sổ, cửa sổ nhỏ, cảnh báo sắp hết RAM. [Cửa sổ và thống kê](docs/guide/windows-and-stats.vi.md) |
-| **Roblox theo ý bạn** | Đồ họa, FPS, âm lượng riêng cho từng tài khoản; mở bằng Roblox, Bloxstrap, Fishstrap hoặc trình mở của bạn. [Cài đặt](docs/guide/settings.vi.md) |
-| **Thống kê và Discord** | Giờ chơi so với những ngày trước, dòng thời gian của từng tài khoản, vì sao rớt và mất bao lâu; cảnh báo và trạng thái trực tiếp trong kênh Discord của bạn. [Discord](docs/guide/discord.vi.md) |
+| **Roblox theo ý bạn** | Đồ họa, FPS, âm lượng riêng cho từng tài khoản; mở bằng Roblox, Bloxstrap, Fishstrap, Voidstrap hoặc trình mở của bạn. [Cài đặt](docs/guide/settings.vi.md) |
+| **Thống kê và thông báo** | Giờ chơi so với những ngày trước, dòng thời gian của từng tài khoản, vì sao rớt và mất bao lâu; cảnh báo và trạng thái trực tiếp trong kênh Discord của bạn hoặc trên điện thoại (ntfy); gõ `/pc` trong Discord để xem và điều khiển máy từ xa. [Discord](docs/guide/discord.vi.md) |
+| **Game** | Game phổ biến có sẵn wiki ngay trong Bloxkeep: tìm, bảng tra, món vừa buff/nerf, stock và spawn trực tiếp, bảng giá Blox Fruits. [Có gì mới](https://bloxkeep.github.io/roblox-account-manager/vi/whats-new/) |
 | **An toàn sẵn** | Kho mã hóa, khóa app, sao lưu vào thư mục OneDrive hoặc Google Drive, ẩn tên khi livestream. [Sao lưu và bảo mật](docs/guide/backup-and-security.vi.md) |
 | **Của riêng bạn** | 98 giao diện, tiếng Việt và tiếng Anh, tìm nhanh bằng `Ctrl+K`. |
 
@@ -69,6 +70,23 @@ Windows **Settings › Apps › Installed apps › Bloxkeep › Uninstall**. Tí
 
 Hướng dẫn từng bước có hình: [Bắt đầu](docs/guide/getting-started.vi.md).
 
+## Cộng đồng
+
+<a href="https://bloxkeep-bot.bloxkeep-app.workers.dev/discord"><img src="https://img.shields.io/badge/Discord-V%C3%A0o_server_Bloxkeep-5865F2?style=for-the-badge&logo=discord&logoColor=white" height="36" alt="Vào server Discord của Bloxkeep"></a>
+
+Hỏi khi cần giúp, góp ý tưởng, và biết ngay khi Roblox cập nhật hay Bloxkeep ra bản mới. Lúc vào server có bước xác minh nhanh để chặn bot lừa đảo.
+
+| Kênh | Dùng để |
+|---|---|
+| `#announcements` | Bloxkeep ra bản mới và tin tức |
+| `#roblox-updates` | Bản Roblox sắp ra, đã ra, và khi Roblox lỗi |
+| `#help` | Mỗi câu hỏi một bài: bạn làm gì, chuyện gì xảy ra, bản nào |
+| `#bug-reports` | Gặp lỗi? Ghi các bước và chuyện gì xảy ra |
+| `#ideas` | Mỗi ý tưởng một bài, thả cảm xúc cho ý bạn thích |
+| `#general-vn` | Trò chuyện bằng tiếng Việt |
+
+Gõ `/multi` cho bot để biết Multi-Roblox có chạy trên bản Roblox hiện tại và bản sắp ra không. Không ai của Bloxkeep hỏi cookie, mật khẩu hay mã 2 bước của bạn.
+
 ## Phím tắt
 
 `Ctrl+K` tìm nhanh · `Ctrl+F` tìm kiếm · `Ctrl+L` ô chọn game · `Ctrl+A` chọn tất cả · `Enter` vào game · `F2` sửa · `Delete` xóa · `Esc` bỏ chọn · `Ctrl+Alt+1`–`9` chạy macro, `Ctrl+Alt+0` dừng mọi macro. Chuột phải vào tài khoản để mở menu của nó. Đầy đủ: [Phím tắt](docs/guide/troubleshooting.vi.md#phím-tắt).
@@ -105,7 +123,7 @@ Bật **Cài đặt › Sao lưu và dữ liệu › Sao lưu vào thư mục** 
 
 **Dùng trên Mac hay Linux được không?** Không, chỉ Windows 10 và 11.
 
-**Gặp lỗi hoặc muốn thêm tính năng?** Vào **Cài đặt › Bloxkeep › Gửi góp ý** (app cho xem trước đúng những gì sẽ gửi), hoặc [mở issue](https://github.com/Bloxkeep/roblox-account-manager/issues).
+**Gặp lỗi hoặc muốn thêm tính năng?** Vào **Cài đặt › Bloxkeep › Gửi góp ý** (app cho xem trước đúng những gì sẽ gửi), đăng vào `#bug-reports` hay `#ideas` trên [Discord](#cộng-đồng), hoặc [mở issue](https://github.com/Bloxkeep/roblox-account-manager/issues).
 
 Thêm câu trả lời: [Khắc phục sự cố](docs/guide/troubleshooting.vi.md).
 

@@ -10,7 +10,7 @@ public sealed partial class AppController
     /// <summary>Which Roblox clients and launchers exist, and the version of the client the chosen option starts.</summary>
     /// <param name="Others">Other Bloxstrap-style launchers found here (their option is "other:&lt;name&gt;").</param>
     sealed record InstallsInfo(string? Handler, bool Bloxstrap, bool Fishstrap, List<string> Others, bool Roblox, bool Direct, bool Store, RobloxInstalls.ClientVersion? Client,
-        bool Vng = false);
+        bool Vng = false, bool Voidstrap = false);
 
     /// <param name="UpToDate">null until both versions are known.</param>
     /// <param name="Store">Roblox from the Microsoft Store is chosen: the Store installs its updates, not Roblox itself.</param>
@@ -54,7 +54,8 @@ public sealed partial class AppController
             Direct: (RobloxInstalls.FindAnyClient() ?? RobloxInstalls.FindVngClient()) is not null,
             Store: RobloxInstalls.StoreEditionInstalled(),
             Client: RobloxInstalls.VersionOf(RobloxInstalls.ClientFor(via, custom)),
-            Vng: RobloxInstalls.FindVngClient() is not null),
+            Vng: RobloxInstalls.FindVngClient() is not null,
+            Voidstrap: RobloxInstalls.FindBootstrapper("Voidstrap") is not null),
         RobloxInstalls.UpdaterFor(via, custom));
 
     /// <summary>A read of what is installed kept, and a new Roblox build since the last one said.</summary>

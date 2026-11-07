@@ -46,6 +46,9 @@ export interface StatsApi {
   exportActivity(): void;
 }
 
+/** How long a new period's figures may take before the old ones give way to a spinner. */
+const WAIT_MS = 400;
+
 export function StatsView({ api }: { api: Ref<StatsApi> }) {
   const host = useHost();
   const { t, tn, call, busy, toast, on, store } = host;
@@ -67,11 +70,15 @@ export function StatsView({ api }: { api: Ref<StatsApi> }) {
   const seq = useRef(0), logSeq = useRef(0), alive = useRef(true);
   const now = useRef({ days, filter, game });
   now.current = { days, filter, game };
-  useEffect(() => () => { alive.current = false; }, []);
+  useEffect(() => () => { alive.current = false; clearTimeout(waiting.current); }, []);
+  // A new period: the old figures stay until the new ones are in, so the page doesn't blink to a spinner and back for
+  // the tenth of a second the app takes. Only a slower answer shows the spinner (WAIT_MS).
+  const waiting = useRef(0);
   const loadStats = async () => {
     const mine = ++seq.current;
     const d = await call('playStats', { days: now.current.days, game: now.current.game }, { silent: true }) as Stats | undefined;
     if (mine !== seq.current || !alive.current) return;
+    clearTimeout(waiting.current);
     setFailed(!d);
     if (d) setData(d);
   };
@@ -126,9 +133,10 @@ export function StatsView({ api }: { api: Ref<StatsApi> }) {
     setDays(d);
     now.current.days = d;
     store.set('rm.statsDays', String(d));
-    // The old period's figures never show under the new period's chip: loading until the new ones are in.
-    setData(null);
+    // The old period's figures don't stay long under the new period's chip: past WAIT_MS, a spinner until the new ones are in.
     setFailed(false);
+    clearTimeout(waiting.current);
+    waiting.current = window.setTimeout(() => setData(null), WAIT_MS);
     loadStats();
   };
   const setGame = (key: string | null) => {
@@ -215,7 +223,8 @@ function Figures({ data: d, failed, retry, game, setGame }: { data: Stats | null
   if (!d) {
     return failed
       ? <div className="empty"><h2>{t('stats.error')}</h2><div className="row"><button className="btn" onClick={e => retry(e.currentTarget)}><Icon name="refresh" />{t('srv.retry')}</button></div></div>
-      : <div className="empty"><span className="spin" /></div>;
+      // Not .empty: on a picture theme an empty tab gets a solid background (app.css), and a moment's wait mustn't swap it.
+      : <div className="stats-wait"><span className="spin" /></div>;
   }
   if (!d.sessions) {
     return <div className="empty"><span className="pv-empty-icon"><Icon name="clock" /></span>

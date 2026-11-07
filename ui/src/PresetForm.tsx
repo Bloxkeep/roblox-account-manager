@@ -277,6 +277,8 @@ export function GameBox({ place, setPlace, chose }: { place: string; setPlace: (
   const [index, setIndex] = useState(-1);
   const [lists, setLists] = useState<Record<string, Game[]> | null>(() => host.gameListsCached() as Record<string, Game[]> | null);
   const [card, setCard] = useState<Game | null>(null);
+  /** A link being looked up (from the start when the box opens with one). */
+  const [resolving, setResolving] = useState(() => host.looksLikeTarget(place.trim()));
   const seq = useRef(0), timer = useRef(0), alive = useRef(true);
   useEffect(() => () => { alive.current = false; clearTimeout(timer.current); }, []);
   const rows = (mode === 'search' ? results : lists?.[tab]) || [];
@@ -303,9 +305,10 @@ export function GameBox({ place, setPlace, chose }: { place: string; setPlace: (
     chose(g);
   };
   const resolve = async (value: string) => {
-    if (!value || !host.looksLikeTarget(value)) return setCard(null);
+    if (!value || !host.looksLikeTarget(value)) { setResolving(false); return setCard(null); }
+    setResolving(true);
     const r = await call('resolveGame', { input: value }, { silent: true }) as (Game & { ok?: boolean }) | undefined;
-    if (alive.current && latestPlace.current.trim() === value) setCard(r?.ok ? r : null);
+    if (alive.current && latestPlace.current.trim() === value) { setCard(r?.ok ? r : null); setResolving(false); }
   };
   const latestPlace = useRef(place);
   latestPlace.current = place;
@@ -316,6 +319,7 @@ export function GameBox({ place, setPlace, chose }: { place: string; setPlace: (
     latestPlace.current = raw;
     const value = raw.trim();
     clearTimeout(timer.current);
+    if (!host.looksLikeTarget(value)) setResolving(false);
     const mine = ++seq.current; // a search still on its way answers an older box
     setLoading(false); // a search that was still pending is over; its placeholders must not stay on
     if (!value) {
@@ -383,7 +387,9 @@ export function GameBox({ place, setPlace, chose }: { place: string; setPlace: (
         </div>
       </> : null}
     </div>
-    <div className="ps-game" id="ps-game">{card?.name ? <>{card.iconUrl ? <GameIcon src={card.iconUrl} /> : <span className="gph"><Icon name="gamepad" /></span>}<b>{card.name}</b></> : null}</div>
+    {/* While a link is looked up, its line is kept (an empty icon) so the form below doesn't jump when the name comes. */}
+    <div className="ps-game" id="ps-game">{card?.name ? <>{card.iconUrl ? <GameIcon src={card.iconUrl} /> : <span className="gph"><Icon name="gamepad" /></span>}<b>{card.name}</b></>
+      : resolving ? <span className="gph" aria-hidden="true" /> : null}</div>
   </>;
 }
 

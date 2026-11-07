@@ -149,4 +149,10 @@ Messages that couldn't go while you were offline wait. Very old ones are dropped
 > [!WARNING]
 > Anyone who has the webhook link can post in that channel, so keep it to yourself.
 
+## Bloxkeep's Discord server
+
+Questions, bugs and ideas go to [Bloxkeep's community server](https://bloxkeep-bot.bloxkeep-app.workers.dev/discord): `#help`, `#bug-reports` and `#ideas`, one post each. `#roblox-updates` tells you when a new Roblox build is coming, when it's live and when Roblox is down; `#announcements` brings new Bloxkeep versions. Vietnamese chat is in `#general-vn`. Type `/multi` to the bot to see whether Multi-Roblox works on the current Roblox and the one coming next.
+
+Nobody from Bloxkeep will ever ask for your cookie, password or 2-step codes.
+
 ← [User guide](../guide.md) · Next: [Settings](settings.md) →

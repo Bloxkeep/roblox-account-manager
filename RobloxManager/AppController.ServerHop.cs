@@ -179,7 +179,9 @@ public sealed partial class AppController
         if (_launchCts is not null || _rejoining || _restarts.Count > 0 || Hopping() || Settling || _updateReopenSince is not null)
             return;
         _nextCrowdCheck = now + CrowdCheckEvery;
-        var playing = InPublicServers(_running.Keys).Where(w => now - w.Log.At >= CrowdGrace && !_closingForRejoin.Contains(w.Run.Pid)).ToList();
+        // Not a preset's windows sent to a server on purpose: its own Job ID, or the fullest server ("most").
+        var playing = InPublicServers(_running.Keys).Where(w => now - w.Log.At >= CrowdGrace && !_closingForRejoin.Contains(w.Run.Pid)
+            && PresetFor(w.Run.Launch.PresetId)?.Server is not ("job" or "most")).ToList();
         if (playing.Count == 0)
             return;
         _crowdBusy = true;

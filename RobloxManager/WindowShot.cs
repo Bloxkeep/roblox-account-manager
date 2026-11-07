@@ -18,6 +18,12 @@ static class WindowShot
     static readonly TimeSpan DrawTime = TimeSpan.FromMilliseconds(400);
 
     /// <summary>
+    /// How long a window shown again may take for its first frame, looked at every <see cref="FrameWait"/>; a picture
+    /// still all one colour by then goes as it is (a game drawing nothing, Windows locked).
+    /// </summary>
+    static readonly TimeSpan FirstFrameTime = TimeSpan.FromSeconds(3), FrameWait = TimeSpan.FromMilliseconds(200);
+
+    /// <summary>
     /// How long a picture may take: a Roblox that stops answering meanwhile is given up on (it would hold every /pc
     /// command after it, which are answered one by one).
     /// </summary>
@@ -45,31 +51,46 @@ static class WindowShot
     /// The window's game as a JPEG no wider than <paramref name="maxWidth"/>; null when it can't be pictured (gone, not
     /// answering, no size). <paramref name="black"/> says the picture came out all but black (Windows locked, say).
     /// </summary>
-    public static Task<(byte[] Jpeg, bool Black)?> CaptureAsync(IntPtr hWnd, int maxWidth) =>
-        ShownAsync(hWnd, () => Timed(hWnd, () => Picture(hWnd, maxWidth)), null);
+    public static async Task<(byte[] Jpeg, bool Black)?> CaptureAsync(IntPtr hWnd, int maxWidth)
+    {
+        using var full = await ClientAsync(hWnd, shown: false);
+        return full is null ? null : await Task.Run(() => Picture(full, maxWidth));
+    }
 
     /// <summary>
     /// The window's client area at full size, for a macro to look at (MacroPlayer.cs); null when it can't be pictured. A
     /// minimized or hidden one is shown unseen for it, unless <paramref name="shown"/> (a macro's turn already did).
     /// </summary>
     public static Task<Bitmap?> ClientAsync(IntPtr hWnd, bool shown) =>
-        shown ? Timed(hWnd, () => Client(hWnd)) : ShownAsync(hWnd, () => Timed(hWnd, () => Client(hWnd)), null);
+        shown ? Timed(() => Client(hWnd)) : ShownAsync(hWnd);
 
-    /// <summary><paramref name="look"/> with the window shown: unseen for the moment when it is minimized or hidden.</summary>
-    static async Task<T?> ShownAsync<T>(IntPtr hWnd, Func<Task<T?>> look, T? none)
+    /// <summary>The client area with the window shown: unseen for the moment when it is minimized or hidden.</summary>
+    static async Task<Bitmap?> ShownAsync(IntPtr hWnd)
     {
         // A window that isn't answering would hold whoever asks it to draw.
         if (hWnd == IntPtr.Zero || !IsWindow(hWnd) || IsHungAppWindow(hWnd))
-            return none;
+            return null;
         bool minimized = IsIconic(hWnd), unshown = !IsWindowVisible(hWnd);
         if (!minimized && !unshown)
-            return await look();
+            return await Timed(() => Client(hWnd));
         var before = AntiAfk.Hide(hWnd, (IntPtr.Zero, 0), minimized);
         try
         {
             ShowWindowAsync(hWnd, SW_SHOWNOACTIVATE);
             await Task.Delay(DrawTime);
-            return IsHungAppWindow(hWnd) ? none : await look();
+            // Shown again, Roblox needs a moment for its first frame, longer with many windows open; until then the
+            // picture is all one colour (white: of six windows pictured from Discord, five came out white, the one in view whole, 2026-11-07).
+            var waited = System.Diagnostics.Stopwatch.StartNew();
+            while (true)
+            {
+                if (IsHungAppWindow(hWnd))
+                    return null;
+                var picture = await Timed(() => Client(hWnd));
+                if (picture is null || waited.Elapsed >= FirstFrameTime || !await Task.Run(() => Blank(picture)))
+                    return picture;
+                picture.Dispose();
+                await Task.Delay(FrameWait);
+            }
         }
         finally
         {
@@ -85,7 +106,7 @@ static class WindowShot
     }
 
     /// <summary>The picture, off the window's thread, or null after <see cref="PictureTime"/> (left to finish on its own).</summary>
-    static async Task<T?> Timed<T>(IntPtr hWnd, Func<T?> take)
+    static async Task<T?> Timed<T>(Func<T?> take)
     {
         var picture = Task.Run(take);
         return await Task.WhenAny(picture, Task.Delay(PictureTime)) == picture ? await picture : default;
@@ -114,11 +135,8 @@ static class WindowShot
         return null;
     }
 
-    static (byte[] Jpeg, bool Black)? Picture(IntPtr hWnd, int maxWidth)
+    static (byte[] Jpeg, bool Black)? Picture(Bitmap full, int maxWidth)
     {
-        using var full = Client(hWnd);
-        if (full is null)
-            return null;
         int width = full.Width, height = full.Height;
         bool black = AllButBlack(full);
         double scale = Math.Min(1, (double)maxWidth / width);
@@ -144,6 +162,24 @@ static class WindowShot
         using var stream = new MemoryStream();
         picture.Save(stream, codec, quality);
         return stream.ToArray();
+    }
+
+    /// <summary>Nearly every one of 1,600 points across the picture is the colour of the first: nothing drawn yet.</summary>
+    internal static bool Blank(Bitmap picture)
+    {
+        var first = picture.GetPixel(picture.Width / 80, picture.Height / 80);
+        int same = 0, seen = 0;
+        for (int i = 0; i < 40; i++)
+        {
+            for (int j = 0; j < 40; j++)
+            {
+                var c = picture.GetPixel((int)((i + 0.5) * picture.Width / 40), (int)((j + 0.5) * picture.Height / 40));
+                seen++;
+                if (Math.Abs(c.R - first.R) + Math.Abs(c.G - first.G) + Math.Abs(c.B - first.B) <= 24)
+                    same++;
+            }
+        }
+        return same * 50 >= seen * 49;
     }
 
     /// <summary>Nearly every one of 1,600 points across the picture is black.</summary>

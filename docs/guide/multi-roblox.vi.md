@@ -93,12 +93,12 @@ Nằm ở **Cài đặt › Phiên bản Roblox › Cập nhật Roblox › Ki�
 
 ## Mở Roblox bằng
 
-**Cài đặt › Khởi chạy › Launcher & thời gian chờ › Mở Roblox bằng** chọn chương trình dùng để mở Roblox. Dùng Bloxstrap hoặc Fishstrap thì vẫn giữ được mod.
+**Cài đặt › Khởi chạy › Launcher & thời gian chờ › Mở Roblox bằng** chọn chương trình dùng để mở Roblox. Dùng Bloxstrap, Fishstrap hoặc Voidstrap thì vẫn giữ được mod.
 
 | Lựa chọn | Ghi chú |
 |---|---|
 | **Mặc định** (*tên*) | Chương trình đang mở link Roblox trên máy. |
-| **Bloxstrap**, **Fishstrap** | Giữ nguyên mod của bạn. |
+| **Bloxstrap**, **Fishstrap**, **Voidstrap** | Giữ nguyên mod của bạn. |
 | Launcher kiểu Bloxstrap khác | Tự hiện nếu tìm thấy trên máy. |
 | **Roblox (chính thức)** | Bản cài từ roblox.com. |
 | **Chạy thẳng RobloxPlayerBeta (bỏ qua launcher)** | Không qua launcher nào. Nên thử khi launcher chặn mở nhiều cửa sổ. |

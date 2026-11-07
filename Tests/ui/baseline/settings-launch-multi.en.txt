@@ -16,6 +16,10 @@ html [data-theme="dark" lang="en"]
         button.nav [title="Presets"]
           svg.i #1pvni8o
           span "Presets"
+        button.nav [title="Games (2 new)"]
+          svg.i #17gqz13
+          span "Games"
+          em.nav-news [id="nav-news"] "2"
         button.nav [title="Macros (Beta)"]
           svg.i #kx2qfl
           span "Macros"
@@ -71,8 +75,8 @@ html [data-theme="dark" lang="en"]
             button.btn.ghost.side-sq.vault-btn [title="Switch vault (Vault 1)" aria-label="Switch vault (Vault 1)"]
               span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(21, 128, 61);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
     main.main
-      section.seen.view [id="view-accounts"]
-      section.seen.view [id="view-settings"]
+      section.seen.view [id="view-accounts" style="--dir:1"]
+      section.seen.view [id="view-settings" style="--dir:1"]
         header.top
           div.top-title
             h1 "Settings"
@@ -263,12 +267,13 @@ html [data-theme="dark" lang="en"]
                     div.set-row
                       div
                         div.t "Open Roblox with"
-                        div.d "Bloxstrap and Fishstrap keep your mods."
+                        div.d "Bloxstrap, Fishstrap and Voidstrap keep your mods."
                       div.ctl
                         select.select [id="s-launch" aria-label="Open Roblox with" value="auto"]
                           option [value="auto"] "Default (Bloxstrap)"
                           option [value="bloxstrap"] "Bloxstrap"
                           option [value="fishstrap" disabled] "Fishstrap — not installed"
+                          option [value="voidstrap" disabled] "Voidstrap — not installed"
                           option [value="roblox" disabled] "Roblox (official) — not installed"
                           option [value="direct"] "Roblox directly (no launcher)"
                           option [value="vng" disabled] "Roblox VNG — not installed"
@@ -323,6 +328,10 @@ html [data-theme="dark" lang="en"]
         button.nav [title="Presets"]
           svg.i #1pvni8o
           span "Presets"
+        button.nav [title="Games (2 new)"]
+          svg.i #17gqz13
+          span "Games"
+          em.nav-news [id="nav-news"] "2"
         button.nav [title="Macros (Beta)"]
           svg.i #kx2qfl
           span "Macros"
@@ -378,8 +387,8 @@ html [data-theme="dark" lang="en"]
             button.btn.ghost.side-sq.vault-btn [title="Switch vault (Vault 1)" aria-label="Switch vault (Vault 1)"]
               span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(21, 128, 61);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
     main.main
-      section.seen.view [id="view-accounts"]
-      section.seen.view [id="view-settings"]
+      section.seen.view [id="view-accounts" style="--dir:1"]
+      section.seen.view [id="view-settings" style="--dir:1"]
         header.top
           div.top-title
             h1 "Settings"
@@ -570,12 +579,13 @@ html [data-theme="dark" lang="en"]
                     div.set-row
                       div
                         div.t "Open Roblox with"
-                        div.d "Bloxstrap and Fishstrap keep your mods."
+                        div.d "Bloxstrap, Fishstrap and Voidstrap keep your mods."
                       div.ctl
                         select.select [id="s-launch" aria-label="Open Roblox with" value="auto"]
                           option [value="auto"] "Default (Bloxstrap)"
                           option [value="bloxstrap"] "Bloxstrap"
                           option [value="fishstrap" disabled] "Fishstrap — not installed"
+                          option [value="voidstrap" disabled] "Voidstrap — not installed"
                           option [value="roblox" disabled] "Roblox (official) — not installed"
                           option [value="direct"] "Roblox directly (no launcher)"
                           option [value="vng" disabled] "Roblox VNG — not installed"
@@ -610,6 +620,10 @@ html [data-theme="dark" lang="en"]
         button.nav [title="Presets"]
           svg.i #1pvni8o
           span "Presets"
+        button.nav [title="Games (2 new)"]
+          svg.i #17gqz13
+          span "Games"
+          em.nav-news [id="nav-news"] "2"
         button.nav [title="Macros (Beta)"]
           svg.i #kx2qfl
           span "Macros"
@@ -665,8 +679,8 @@ html [data-theme="dark" lang="en"]
             button.btn.ghost.side-sq.vault-btn [title="Switch vault (Vault 1)" aria-label="Switch vault (Vault 1)"]
               span.letter.vault-face.xs [aria-hidden="true" style="background-attachment:initial;background-clip:initial;background-color:rgb(21, 128, 61);background-image:initial;background-origin:initial;background-position-x:initial;background-position-y:initial;background-repeat:initial;background-size:initial"] "V"
     main.main
-      section.seen.view [id="view-accounts"]
-      section.seen.view [id="view-settings"]
+      section.seen.view [id="view-accounts" style="--dir:1"]
+      section.seen.view [id="view-settings" style="--dir:1"]
         header.top
           div.top-title
             h1 "Settings"
@@ -857,12 +871,13 @@ html [data-theme="dark" lang="en"]
                     div.set-row
                       div
                         div.t "Open Roblox with"
-                        div.d "Bloxstrap and Fishstrap keep your mods."
+                        div.d "Bloxstrap, Fishstrap and Voidstrap keep your mods."
                       div.ctl
                         select.select [id="s-launch" aria-label="Open Roblox with" value="auto"]
                           option [value="auto"] "Default (Bloxstrap)"
                           option [value="bloxstrap"] "Bloxstrap"
                           option [value="fishstrap" disabled] "Fishstrap — not installed"
+                          option [value="voidstrap" disabled] "Voidstrap — not installed"
                           option [value="roblox" disabled] "Roblox (official) — not installed"
                           option [value="direct"] "Roblox directly (no launcher)"
                           option [value="vng" disabled] "Roblox VNG — not installed"

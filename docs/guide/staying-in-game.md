@@ -76,7 +76,7 @@ If an account is kicked anyway, Bloxkeep says why: the PC was in use, it was loc
 
 ## Fast Flags
 
-Off by default. On: the windows Bloxkeep opens get a grey sky, no grass and the lowest graphics, for a little less RAM. Your own Roblox settings come back once they've opened. With Bloxstrap or Fishstrap, the launcher's own flags win.
+Off by default. On: the windows Bloxkeep opens get a grey sky, no grass and the lowest graphics, for a little less RAM. Your own Roblox settings come back once they've opened. With Bloxstrap, Fishstrap or Voidstrap, the launcher's own flags win.
 
 ## Daily sign-in check
 

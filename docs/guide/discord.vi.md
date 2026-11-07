@@ -149,4 +149,10 @@ Tin không gửi được lúc mất mạng sẽ chờ. Tin quá cũ bị bỏ v
 > [!WARNING]
 > Ai có link webhook cũng gửi được tin vào kênh đó, nên đừng đưa cho người khác.
 
+## Server Discord của Bloxkeep
+
+Hỏi đáp, báo lỗi và góp ý ở [server cộng đồng của Bloxkeep](https://bloxkeep-bot.bloxkeep-app.workers.dev/discord): kênh `#help`, `#bug-reports` và `#ideas`, mỗi chuyện một bài. `#roblox-updates` báo khi Roblox sắp ra bản mới, khi bản đó đã ra và khi Roblox lỗi; `#announcements` báo Bloxkeep ra bản mới. Nói chuyện tiếng Việt ở `#general-vn`. Gõ `/multi` cho bot để biết Multi-Roblox có chạy trên bản Roblox hiện tại và bản sắp ra không.
+
+Không ai của Bloxkeep hỏi cookie, mật khẩu hay mã 2 bước của bạn.
+
 ← [Hướng dẫn](../guide.vi.md) · Tiếp: [Cài đặt](settings.vi.md) →

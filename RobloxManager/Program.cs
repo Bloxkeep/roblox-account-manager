@@ -6,6 +6,7 @@ namespace RobloxManager;
 static class Program
 {
     static DateTime _lastErrorBox;
+    static bool _inputLanguageLogged;
 
     [STAThread]
     static void Main(string[] args)
@@ -301,6 +302,16 @@ static class Program
     /// <summary>Logs the error; shows it at most every few seconds so a repeating failure can't flood the screen.</summary>
     static void OnUnexpected(Exception ex)
     {
+        // Another keyboard language picked (Alt+Shift) while Bloxkeep has the keyboard: WinForms names it for an event
+        // Bloxkeep doesn't use, which can't be done without culture data (InvariantGlobalization), so each switch showed
+        // "Unexpected error" (a user's error log, Portuguese 1046, 2026-11-06). The switch itself has already happened.
+        if (ex is System.Globalization.CultureNotFoundException && ex.StackTrace?.Contains("System.Windows.Forms.InputLanguage", StringComparison.Ordinal) == true)
+        {
+            if (!_inputLanguageLogged)
+                Log.Write(ex);
+            _inputLanguageLogged = true;
+            return;
+        }
         Log.Write(ex);
         if (DateTime.Now - _lastErrorBox < TimeSpan.FromSeconds(10))
             return;

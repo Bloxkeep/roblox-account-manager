@@ -130,10 +130,11 @@ export function RobloxPage({ title }: { title: string }) {
   </Page>;
 }
 
-/** What each mode sets. One shows as picked while the settings all say the same. */
-const LEVELS = [
+/** What each mode sets, all of it said on its card. One shows as picked while the settings all say the same. "Play and
+ * farm" leaves the RAM limit as the person set it (it turned a chosen 512 MB off unsaid). */
+const LEVELS: { id: string; rc: Record<string, string | number>; ramLimitMb?: number; trimBackground: boolean; splitCores: boolean; fastFlags?: boolean }[] = [
   { id: 'light', rc: { mode: 'all', graphics: 1, fps: 20, volume: 0 }, ramLimitMb: -1, trimBackground: true, splitCores: true },
-  { id: 'medium', rc: { mode: 'all', graphics: 3, fps: 45, volume: -1 }, ramLimitMb: 0, trimBackground: true, splitCores: true },
+  { id: 'medium', rc: { mode: 'all', graphics: 3, fps: 45, volume: -1 }, trimBackground: true, splitCores: true },
   { id: 'off', rc: { mode: 'off', graphics: 0, fps: 0, volume: -1 }, ramLimitMb: 0, trimBackground: false, splitCores: false, fastFlags: false },
 ];
 
@@ -146,12 +147,16 @@ export function RobloxConfig() {
   const st = app.settings || {};
   const level = LEVELS.find(l => (l.rc.mode === 'off' ? rc.mode === 'off' && !st.fastFlags
       : rc.mode === l.rc.mode && rc.graphics === l.rc.graphics && rc.fps === l.rc.fps && rc.volume === l.rc.volume)
-    && (st.ramLimitMb || 0) === l.ramLimitMb && !!st.trimBackground === l.trimBackground && !!st.splitCores === l.splitCores)?.id;
+    && (l.ramLimitMb === undefined || (st.ramLimitMb || 0) === l.ramLimitMb) && !!st.trimBackground === l.trimBackground && !!st.splitCores === l.splitCores)?.id;
   // Custom is shown on request, or by itself once the settings match no mode.
   const [custom, setCustom] = useState(false);
   const shown = custom || !level ? 'own' : level;
   // Fast Flags go to the same accounts as the rest (Apply to; never the main account): none, nothing to switch.
-  const flags = rc.mode === 'off' ? null : <Row title={t('rc.flags')} desc={t('rc.flagsDesc')}>
+  // A Bloxstrap-style launcher writes its own Fast Flags file as it opens Roblox, over Bloxkeep's (RobloxFlags.cs): said
+  // here, not left to look as if it works. Opened directly, the launcher isn't in the way.
+  const updater: string | null = app.robloxVersion?.updater || null;
+  const overridden = !!updater && updater !== 'Roblox' && st.launchVia !== 'direct';
+  const flags = rc.mode === 'off' ? null : <Row title={t('rc.flags')} desc={overridden ? <>{t('rc.flagsDesc')} <span className="warn-text" id="s-rc-flags-over">{t('rc.flagsOver', { l: updater! })}</span></> : t('rc.flagsDesc')}>
     <Switch id="s-rc-flags" label={t('rc.flags')} checked={!!st.fastFlags} onChange={v => call('setSettings', { fastFlags: v })} />
   </Row>;
   return <Group id="rc" title={t('rc.title')}>

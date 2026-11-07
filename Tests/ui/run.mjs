@@ -23,6 +23,7 @@
 //   node Tests/ui/run.mjs --coverage       which parts of app.js the scenarios ran (Tests/ui/out/coverage.txt)
 //   node Tests/ui/run.mjs --jank           instead of comparing: where things on screen jump once something has loaded
 //                                          (the fake app answers 3x slower), worst first (Tests/ui/out/jank.txt)
+//   (flashes: a frame passing by that is neither before nor after a click, a tab switch or the app's news: Tests/ui/flash.mjs)
 //   node Tests/ui/run.mjs --jobs 4         how many Edges run scenarios side by side (by default one per two processors,
 //                                          up to 8; --coverage and --jank use one); the output keeps the scenarios' order
 // The exit code is the number of scenarios that came out different (or failed).

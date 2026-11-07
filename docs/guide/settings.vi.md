@@ -25,8 +25,8 @@ Mọi trang của **Cài đặt**, mỗi trang một bảng gọn: từng dòng,
 
 | Lựa chọn | Ghi chú |
 |---|---|
-| **Mặc định** (*tên*) | Chương trình đang mở link Roblox trên máy, nhưng không bao giờ là bản Roblox VNG, với mọi tài khoản: bộ cài Roblox VNG chiếm link Roblox, nên khi đó (hoặc khi không còn gì mở link) Bloxkeep dùng Bloxstrap, Fishstrap hoặc bản Roblox có trên máy. |
-| **Bloxstrap**, **Fishstrap** | Giữ nguyên mod của bạn. Launcher kiểu Bloxstrap khác tự hiện nếu tìm thấy. |
+| **Mặc định** (*tên*) | Chương trình đang mở link Roblox trên máy, nhưng không bao giờ là bản Roblox VNG, với mọi tài khoản: bộ cài Roblox VNG chiếm link Roblox, nên khi đó (hoặc khi không còn gì mở link) Bloxkeep dùng Bloxstrap, Fishstrap, Voidstrap hoặc bản Roblox có trên máy. |
+| **Bloxstrap**, **Fishstrap**, **Voidstrap** | Giữ nguyên mod của bạn. Launcher kiểu Bloxstrap khác tự hiện nếu tìm thấy. |
 | **Roblox (chính thức)** | Bản cài từ roblox.com. |
 | **Chạy thẳng RobloxPlayerBeta (bỏ qua launcher)** | Không qua launcher nào. Nên thử khi launcher chặn mở nhiều cửa sổ. |
 | **Roblox (Microsoft Store), đang thử nghiệm** | Chỉ hiện khi máy có Roblox bản Microsoft Store. Mỗi tài khoản mở trong một cửa sổ riêng. |

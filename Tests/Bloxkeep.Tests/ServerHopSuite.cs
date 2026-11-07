@@ -34,9 +34,9 @@ static class ServerHopSuite
         var watcher = Harness.Get<RobloxLogWatcher>(app, "_logs");
         var tails = Harness.Get<System.Collections.IDictionary>(watcher, "_tails");
         var tailType = typeof(RobloxLogWatcher).GetNestedType("Tail", Harness.F)!;
-        void Window(Account account, int pid, GameTarget target, string status, string? job)
+        void Window(Account account, int pid, GameTarget target, string status, string? job, Guid? preset = null)
         {
-            var launch = Activator.CreateInstance(launchType, account.Id, new HashSet<int>(), DateTime.UtcNow.AddMinutes(-5), target, false, null)!;
+            var launch = Activator.CreateInstance(launchType, account.Id, new HashSet<int>(), DateTime.UtcNow.AddMinutes(-5), target, false, preset)!;
             running[account.Id] = Activator.CreateInstance(tupleType, pid, launch);
             var tail = Activator.CreateInstance(tailType, $"stand-in-{pid}.log", pid)!;
             tailType.GetField("State")!.SetValue(tail, new RobloxLogWatcher.ClientState(status, target.PlaceId, job, null, DateTime.UtcNow));
@@ -166,9 +166,9 @@ static class ServerHopSuite
             restarts.Clear();
             var onTheirWay = Harness.Get<System.Collections.IDictionary>(app, "_hopping");
             onTheirWay.Clear();
-            void Joined(Account account, int pid, string job, DateTime at)
+            void Joined(Account account, int pid, string job, DateTime at, Guid? preset = null)
             {
-                Window(account, pid, new GameTarget(Place), "ingame", job);
+                Window(account, pid, new GameTarget(Place), "ingame", job, preset);
                 tailType.GetField("State")!.SetValue(tails[pid], new RobloxLogWatcher.ClientState("ingame", Place, job, null, at));
             }
             running.Remove(a3.Id);
@@ -199,6 +199,26 @@ static class ServerHopSuite
             Joined(a1, 833, "old-server", DateTime.UtcNow);
             await CountServers(3);
             c.Check("a window just in is left alone", closed.Count == 0, string.Join(",", closed));
+            // A preset that sends its accounts to a server on purpose (its Job ID, or the fullest one) keeps them there.
+            foreach (var server in new[] { "job", "most" })
+            {
+                var preset = new LaunchPreset { Name = server, Server = server, AccountIds = [a1.Id] };
+                settings.Presets.Add(preset);
+                Joined(a1, 834, "old-server", DateTime.UtcNow.AddMinutes(-5), preset.Id);
+                await CountServers(3);
+                c.Check($"a preset's window sent to a server on purpose (\"{server}\") stays in it, crowded or not (fails on the old code)",
+                    closed.Count == 0, string.Join(",", closed));
+                settings.Presets.Remove(preset);
+            }
+            closed.Clear();
+            restarts.Clear();
+            onTheirWay.Clear();
+            var anyServer = new LaunchPreset { Name = "any", Server = "any", AccountIds = [a1.Id] };
+            settings.Presets.Add(anyServer);
+            Joined(a1, 835, "old-server", DateTime.UtcNow.AddMinutes(-5), anyServer.Id);
+            await CountServers(3);
+            c.Check("…one where Roblox picked the server still moves", closed.SequenceEqual([835]), string.Join(",", closed));
+            settings.Presets.Remove(anyServer);
         }
         finally
         {

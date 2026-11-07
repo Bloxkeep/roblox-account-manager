@@ -60,16 +60,18 @@ sealed class MonitorTab : IDisposable
         }
         // Never past the browser: a report from before a resize may be larger than the page is now.
         var clip = Rectangle.Intersect(ToHost(a.X, a.Y, a.Width, a.Height), new Rectangle(origin, page.ClientSize));
+        var boxes = new Dictionary<IntPtr, Rectangle>();
+        foreach (var p in a.Pictures.Where(p => _known.Contains(p.Hwnd)))
+            boxes[p.Hwnd] = ToHost(p.X, p.Y, p.Width, p.Height);
+        _pictures.Place(boxes, clip);
+        // Back on the tab, the pictures go on the tiles it still shows (the windows last sent) first, and the windows are
+        // looked up after: looking first kept the tiles empty for that long, and the pictures popped in late (a flash).
         if (!_shown)
         {
             _shown = true;
             Refresh();
             _timer.Start();
         }
-        var boxes = new Dictionary<IntPtr, Rectangle>();
-        foreach (var p in a.Pictures.Where(p => _known.Contains(p.Hwnd)))
-            boxes[p.Hwnd] = ToHost(p.X, p.Y, p.Width, p.Height);
-        _pictures.Place(boxes, clip);
     }
 
     /// <summary>Unregistered before hidden: the pictures are Windows' own and would stay on screen without the page.</summary>

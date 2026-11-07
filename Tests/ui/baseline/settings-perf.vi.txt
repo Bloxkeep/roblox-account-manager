@@ -16,6 +16,10 @@ html [data-theme="dark" lang="vi"]
         button.nav [title="Preset"]
           svg.i #1pvni8o
           span "Preset"
+        button.nav [title="Game (2 tin mới)"]
+          svg.i #17gqz13
+          span "Game"
+          em.nav-news [id="nav-news"] "2"
         button.nav [title="Macro (Beta)"]
           svg.i #kx2qfl
           span "Macro"
@@ -123,12 +127,16 @@ html [data-theme="dark" lang="vi"]
                           span "Đồ họa 1"
                           span "Tắt tiếng"
                           span "Tự giới hạn RAM"
+                          span "Tiết kiệm RAM"
+                          span "Ưu tiên cửa sổ chơi"
                       button.rc-mode [type="button" aria-pressed="false"]
                         b "Vừa treo vừa chơi"
                         small
                           span "45 FPS"
                           span "Đồ họa 3"
                           span "Giữ âm lượng"
+                          span "Tiết kiệm RAM"
+                          span "Ưu tiên cửa sổ chơi"
                       button.on.rc-mode [type="button" aria-pressed="true"]
                         b "Roblox gốc"
                         small
@@ -138,14 +146,6 @@ html [data-theme="dark" lang="vi"]
                         small
                           span "Chọn từng mục bên dưới"
                     p.rc-note [id="s-rc-reopen"] "Có hiệu lực từ lần mở tài khoản sau."
-                    div.set-row
-                      div
-                        div.t "Fast Flags"
-                        div.d "Trời xám, không cỏ, đồ họa thấp nhất. Bớt chút RAM."
-                      div.ctl
-                        label.switch
-                          input [id="s-rc-flags" type="checkbox" aria-label="Fast Flags" checked=false]
-                          span
                 div.set-grp [id="sec-perf"]
                   h3.set-grp-title "Giữ tài khoản trong game"
                   div.set-card
@@ -222,6 +222,17 @@ html [data-theme="dark" lang="vi"]
                           option [value="1024"] "1 GB"
                           option [value="1536"] "1.5 GB"
                           option [value="2048"] "2 GB"
+                    div.set-row
+                      div
+                        div.t "Mở lại cửa sổ nặng"
+                        div.d "Cửa sổ Roblox dùng quá mức RAM này một lúc sẽ tự đóng rồi vào lại đúng server."
+                      div.ctl
+                        select.select [id="s-heavy" aria-label="Mở lại cửa sổ nặng" value="0"]
+                          option [value="0"] "Không bao giờ"
+                          option [value="3072"] "Trên 3 GB"
+                          option [value="4096"] "Trên 4 GB"
+                          option [value="6144"] "Trên 6 GB"
+                          option [value="8192"] "Trên 8 GB"
                     div.set-row
                       div
                         div.t "Ưu tiên cửa sổ đang chơi"

@@ -1,21 +1,23 @@
 // Builds Bloxkeep's website into site/dist for GitHub Pages (https://bloxkeep.github.io/roblox-account-manager/): the landing
 // page (pages.mjs) and the user guide made from docs/guide.md and docs/guide/*.md, in English and Vietnamese, with the
-// screenshots, a sitemap and robots.txt. The guide's Markdown stays the one source: the site is rebuilt from it on every
+// screenshots, a sitemap and robots.txt, and the try-it page (demo.mjs: the app's real interface on made-up accounts). The guide's Markdown stays the one source: the site is rebuilt from it on every
 // push (.github/workflows/pages.yml). Run: npm ci && node build.mjs, then serve site/dist.
 import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { Marked } from 'marked';
-import { SITE, REPO, TOPICS, T, landing } from './pages.mjs';
+import { SITE, REPO, DOWNLOAD, DISCORD, DISCORD_MARK, TOPICS, T, landing, whatsNew } from './pages.mjs';
+import { buildDemo } from './demo.mjs';
 
 const HERE = import.meta.dirname;
 const ROOT = path.resolve(HERE, '..');
 const DOCS = path.join(ROOT, 'docs');
 const OUT = path.join(HERE, 'dist');
 
-/** The newest regular version (not a beta), from the app's own release notes. */
-const version = JSON.parse(fs.readFileSync(path.join(ROOT, 'RobloxManager', 'whatsnew.json'), 'utf8'))
-  .map(r => r.version).find(v => !v.includes('-'));
+/** The regular versions (not betas), newest first, from the app's own release notes; the newest one's number. */
+const releases = JSON.parse(fs.readFileSync(path.join(ROOT, 'RobloxManager', 'whatsnew.json'), 'utf8'))
+  .filter(r => !r.version.includes('-'));
+const version = releases[0].version;
 
 // The stylesheet's address changes with it, so a browser never keeps last version's next to this version's pages.
 const CSS_VERSION = createHash('sha256').update(fs.readFileSync(path.join(HERE, 'style.css'))).digest('hex').slice(0, 10);
@@ -96,7 +98,7 @@ function guideHtml(file, url, lang) {
 }
 
 /** The page around the content: head with what search engines and link previews read, header, footer. */
-function page({ lang, url, alt, title, description, body, bodyClass = '', jsonLd = null }) {
+function page({ lang, url, alt, title, description, body, bodyClass = '', jsonLd = null, foot = true }) {
   const t = T[lang];
   const home = lang === 'vi' ? 'vi/' : '';
   const guide = home + 'guide/';
@@ -131,7 +133,10 @@ ${jsonLd ? `<script type="application/ld+json">${JSON.stringify(jsonLd)}</script
     <a class="brand" href="${rel(url, home)}"><img src="${rel(url, 'logo.svg')}" width="28" height="28" alt=""><span>Bloxkeep</span></a>
     <nav>
       <a href="${rel(url, guide)}">${t.nav.guide}</a>
-      <a href="${REPO}">GitHub</a>
+      <a class="nav-demo" href="${rel(url, home + 'demo/')}">${t.nav.demo}</a>
+      <a class="nav-news" href="${rel(url, home + 'whats-new/')}">${t.nav.news}</a>
+      <a class="nav-discord" href="${DISCORD}"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="${DISCORD_MARK}"/></svg>${t.nav.discord}</a>
+      <a class="nav-github" href="${REPO}">GitHub</a>
       <a class="lang" href="${rel(url, alt)}" hreflang="${lang === 'vi' ? 'en' : 'vi'}" lang="${lang === 'vi' ? 'en' : 'vi'}">${t.nav.other}</a>
       <a class="btn primary small" href="${rel(url, home)}#download">${t.nav.download}</a>
     </nav>
@@ -140,12 +145,35 @@ ${jsonLd ? `<script type="application/ld+json">${JSON.stringify(jsonLd)}</script
 <main>
 ${body}
 </main>
-<footer class="foot">
+${foot ? `<footer class="foot">
   <div class="wrap">
-    <p>${t.foot.disclaimer}</p>
-    <p><a href="${REPO}">GitHub</a> · <a href="${REPO}/releases">${t.foot.releases}</a> · <a href="${REPO}/blob/main/PRIVACY.md">${t.foot.privacy}</a> · <a href="${REPO}/blob/main/docs/CODE_SIGNING_POLICY.md">${t.foot.signing}</a> · <a href="${REPO}/blob/main/LICENSE">${t.foot.license}</a></p>
+    <div class="foot-grid">
+      <div class="foot-brand">
+        <a class="brand" href="${rel(url, home)}"><img src="${rel(url, 'logo.svg')}" width="28" height="28" alt=""><span>Bloxkeep</span></a>
+        <p>${t.foot.tagline}</p>
+        <a class="btn discord-btn" href="${DISCORD}"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="${DISCORD_MARK}"/></svg>${t.nav.discord}</a>
+      </div>
+      <div><p class="foot-head">${t.foot.get}</p><ul>
+        <li><a href="${rel(url, home)}#download">${t.foot.download}</a></li>
+        <li><a href="${rel(url, home + 'demo/')}">${t.nav.demo}</a></li>
+        <li><a href="${rel(url, home + 'whats-new/')}">${t.nav.news}</a></li>
+        <li><a href="${REPO}/releases">${t.foot.releases}</a></li>
+      </ul></div>
+      <div><p class="foot-head">${t.foot.learn}</p><ul>
+        <li><a href="${rel(url, guide)}">${t.nav.guide}</a></li>
+        <li><a href="${rel(url, guide + 'getting-started/')}">${t.foot.start}</a></li>
+        <li><a href="${rel(url, guide + 'troubleshooting/')}">${t.foot.help}</a></li>
+      </ul></div>
+      <div><p class="foot-head">${t.foot.community}</p><ul>
+        <li><a href="${DISCORD}">${t.nav.discord}</a></li>
+        <li><a href="${REPO}">${t.foot.source}</a></li>
+        <li><a href="${REPO}/issues">${t.foot.issue}</a></li>
+      </ul></div>
+    </div>
+    <p class="foot-legal"><a href="${REPO}/blob/main/PRIVACY.md">${t.foot.privacy}</a> · <a href="${REPO}/blob/main/docs/CODE_SIGNING_POLICY.md">${t.foot.signing}</a> · <a href="${REPO}/blob/main/LICENSE">${t.foot.license}</a></p>
+    <p class="foot-legal">${t.foot.disclaimer}</p>
   </div>
-</footer>
+</footer>` : ''}
 </body>
 </html>
 `;
@@ -168,9 +196,26 @@ for (const lang of ['en', 'vi']) {
   const suffix = lang === 'vi' ? '.vi' : '';
 
   // The landing page.
-  const l = landing(lang, { version, rel: to => rel(home, to) });
+  const l = landing(lang, { version, releases, rel: to => rel(home, to) });
   write(home, page({ lang, url: home, alt: other, title: l.title, description: l.description, body: l.body, bodyClass: 'home', jsonLd: l.jsonLd }));
   urls.push([home, other]);
+
+  // What's new: every version's notes, as the app shows them.
+  const news = whatsNew(lang, releases);
+  write(home + 'whats-new/', page({
+    lang, url: home + 'whats-new/', alt: other + 'whats-new/', title: `${news.title} · Bloxkeep`, description: news.description,
+    body: news.body, bodyClass: 'whats-new',
+  }));
+  urls.push([home + 'whats-new/', other + 'whats-new/']);
+
+  // Try it: the real interface on made-up accounts (demo.mjs), in a frame filling the window under a bar that says so.
+  const d = t.demo, demo = home + 'demo/';
+  write(demo, page({
+    lang, url: demo, alt: other + 'demo/', title: `${d.title} · Bloxkeep`, description: d.description, bodyClass: 'demo', foot: false,
+    body: `<div class="demo-bar"><div class="wrap demo-bar-in"><p>${esc(d.bar)} <span class="demo-small">${esc(d.small)}</span></p><a class="btn small" href="${DOWNLOAD}">${esc(d.download)}</a></div></div>
+<div class="demo-frame"><iframe src="${rel(demo, 'demo/app/')}?lang=${lang}" title="${esc(d.frame)}"></iframe></div>`,
+  }));
+  urls.push([demo, other + 'demo/']);
 
   // The guide's front page, then one page per topic.
   const index = guideHtml(path.join(DOCS, `guide${suffix}.md`), home + 'guide/', lang);
@@ -228,5 +273,6 @@ fs.copyFileSync(path.join(DOCS, 'brand', 'social-preview.png'), path.join(OUT, '
 fs.copyFileSync(path.join(DOCS, 'brand', 'bloxkeep.png'), path.join(OUT, 'icon-128.png'));
 fs.copyFileSync(path.join(HERE, 'style.css'), path.join(OUT, 'style.css'));
 fs.cpSync(path.join(HERE, 'static'), OUT, { recursive: true });
+buildDemo(ROOT, OUT);
 
 console.log(`Built ${urls.length} pages (Bloxkeep ${version}) into ${path.relative(ROOT, OUT)}`);

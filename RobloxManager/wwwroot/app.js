@@ -26,6 +26,9 @@
 
   /* ───────────────────────── bridge ─────────────────────────
      The page never talks to the network: it sends commands to the app and receives replies/events. */
+  /** Settles once the app has taken its cover (start logo, old page picture) off the window: the page is on screen. */
+  let coverIsGone;
+  const coverGone = new Promise(r => { coverIsGone = r; });
   const bridge = (() => {
     const wv = window.chrome && window.chrome.webview;
     const mock = window.__mockBridge;
@@ -447,6 +450,42 @@
   /* ───────────────────────── lock screen ───────────────────────── */
   /** "15 minutes", "1 hour", "2 hours": how long the PC went unused before Bloxkeep locked itself. */
   const autoLockText = n => n >= 60 ? (n === 60 ? t('lock.autoHour1') : t('lock.autoHours', { n: n / 60 })) : t('lock.autoMin', { n });
+  /** The first password screen after Bloxkeep starts opens with app.css .lock-intro. Until then the window shows its own
+   *  still logo in the middle (ShellForm's start cover), over the page: the page holds the opening (.lock-hold) and
+   *  keeps a logo of its own in that same spot, and once the cover is gone (and the window shows: it may start in the
+   *  tray) that logo flies up to its place on the card while the card opens out around it. One logo all the way,
+   *  instead of the still one vanishing and another popping up on a card already halfway in. Only once: locking later
+   *  shows the screen plainly. */
+  function lockIntro() {
+    S.lockIntroDone = true;
+    const root = document.documentElement;
+    root.classList.add('lock-intro', 'lock-hold');
+    let fly = null, target = null, off = [0, 0];
+    const place = () => {
+      target = $('.lock-card .logo-img');
+      if (!target) return requestAnimationFrame(place); // React draws the card a moment later
+      const r = target.getBoundingClientRect();
+      off = [innerWidth / 2 - (r.left + r.width / 2), innerHeight / 2 - (r.top + r.height / 2)];
+      fly = Object.assign(document.createElement('img'), { src: target.src, alt: '', className: 'logo-fly' });
+      Object.assign(fly.style, { left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px`, transform: `translate(${off[0]}px, ${off[1]}px)` });
+      document.body.append(fly);
+      target.style.visibility = 'hidden';
+    };
+    place();
+    const go = () => {
+      if (document.hidden) return document.addEventListener('visibilitychange', go, { once: true });
+      requestAnimationFrame(() => {
+        root.classList.remove('lock-hold');
+        const done = () => { fly?.remove(); if (target) target.style.visibility = ''; };
+        const spring = getComputedStyle(root).getPropertyValue('--spring').trim() || 'ease-out';
+        if (fly) fly.animate([{ transform: `translate(${off[0]}px, ${off[1]}px)` }, { transform: 'none' }], { duration: 800, easing: spring, fill: 'forwards' }).finished.then(done, done);
+        // Over: .opened keeps that card's own entrance (rise) from starting once the opening's is taken away, which
+        // played the card in a second time. A card drawn later (the update's, another vault's) still rises.
+        setTimeout(() => { done(); document.querySelectorAll('.lock-card').forEach(c => c.classList.add('opened')); root.classList.remove('lock-intro'); }, 1500);
+      });
+    };
+    coverGone.then(go);
+  }
   function renderLock() {
     // The picker (several vaults), or the password for the vault it offers (a new one for a vault being set up).
     const v = S.app.vaults || {};
@@ -468,6 +507,7 @@
     const notice = mode === 'create' ? '' : S.app.screenLock ? t('lock.auto', { t: autoLockText(S.app.screenLock.minutes) }) : S.lockedInUse ? t('lock.paused') : '';
     $('#app').innerHTML = '';
     uiParts.push(window.BloxkeepUI.lock($('#app'), uiHost(), { mode, notice, kept }, applyState));
+    if (!S.lockIntroDone && mode !== 'pick') lockIntro();
   }
 
   // Switch vault's picker or new-vault form over the open vault: Back, Cancel or the open vault return to it without the
@@ -580,13 +620,14 @@
     themeComing = null;
     if (!fade) {
       root.dataset.theme = id;
+      applyThemeRules();
       return;
     }
     themeComing = id;
     await themePictureReady(id);
     if (themeComing !== id) return;
     themeComing = null;
-    if (root.dataset.theme !== id) document.startViewTransition(() => { root.dataset.theme = id; }).ready.catch(() => { /* skipped: the theme is on anyway */ });
+    if (root.dataset.theme !== id) document.startViewTransition(() => { root.dataset.theme = id; applyThemeRules(); }).ready.catch(() => { /* skipped: the theme is on anyway */ });
   }
   /** A slow picture isn't waited for long: the pick has to answer. */
   function themePictureReady(id) {
@@ -648,8 +689,7 @@
     try { localStorage.setItem('customTheme', JSON.stringify(ct)); } catch { /* the page still shows it now */ }
   }
   // The custom theme's picture or video in a layer under the page (#ct-media), blurred as asked. A video plays muted on a
-  // loop only while the window shows (paused in the tray, so it costs nothing while Roblox runs); still with animations off.
-  const stillMotion = matchMedia('(prefers-reduced-motion: reduce)');
+  // loop only while the window shows (paused in the tray, so it costs nothing while Roblox runs).
   function showCustomMedia(ct) {
     let layer = document.getElementById('ct-media');
     if (!ct?.picture) {
@@ -686,13 +726,77 @@
   function playCustomVideo() {
     const video = document.querySelector('#ct-media video');
     if (!video) return;
-    if (document.hidden || stillMotion.matches) video.pause();
+    if (document.hidden) video.pause();
     else video.play().catch(() => { /* not loaded yet, or gone: its first frame (or the colour) shows */ });
   }
   document.addEventListener('visibilitychange', playCustomVideo);
-  stillMotion.addEventListener?.('change', playCustomVideo);
   new MutationObserver(applyCustomTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
   applyCustomTheme();
+
+  /**
+   * The other themes' own rules switched off. app.css has ~1,600 selectors like `[data-theme="retro"] :is(.btn, .chip…)`:
+   * the browser can't sort those out by class, so it tried every one on every element whenever the page's styles were
+   * worked out again, ~150 ms on Statistics. A maximised or restored window then showed the old, smaller page for 6
+   * frames (OBS, 2026-11-07 07:25). Each such selector (the theme on an element around the one styled) keeps only the
+   * parts for the theme on the page; a rule with none left gets an id nothing has. The rules keep their order, and the
+   * theme's own colours (`[data-theme="x"] { --bg… }`, on the element itself: the theme tiles, the picture probe) stay.
+   */
+  const THEME_OFF = '#bk-theme-off';
+  let themeRules = null, themeRulesFor = null;
+  function splitTop(text, at) {
+    const out = [];
+    let depth = 0, quote = '', from = 0;
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (quote) { if (c === quote) quote = ''; continue; }
+      if (c === '"' || c === "'") quote = c;
+      else if (c === '(' || c === '[') depth++;
+      else if (c === ')' || c === ']') depth--;
+      else if (!depth && at(c, text, i)) { out.push(text.slice(from, i)); from = i + 1; }
+    }
+    out.push(text.slice(from));
+    return out;
+  }
+  /** The themes a selector (one of a list) is for, by a theme on an element around the one it styles; null: any theme. */
+  function themesAround(item) {
+    // What comes before the last combinator outside brackets: the elements around.
+    const parts = splitTop(item.trim(), c => c === ' ' || c === '>' || c === '+' || c === '~');
+    const around = parts.slice(0, -1).join(' ');
+    if (!around.includes('[data-theme=') || /:not\([^)]*data-theme/.test(around)) return null;
+    return new Set([...around.matchAll(/\[data-theme="([^"]+)"\]/g)].map(m => m[1]));
+  }
+  function collectThemeRules() {
+    const found = [];
+    const walk = list => {
+      for (const rule of list) {
+        if (rule instanceof CSSStyleRule) {
+          if (rule.cssRules?.length || !rule.selectorText.includes('[data-theme=')) continue;
+          const items = splitTop(rule.selectorText, c => c === ',').map(text => ({ text: text.trim(), themes: themesAround(text) }));
+          if (items.some(i => i.themes)) found.push({ rule, items });
+        } else if (rule.cssRules) walk(rule.cssRules);
+      }
+    };
+    for (const sheet of document.styleSheets) {
+      if (!/\/app\.css(\?|$)/.test(sheet.href || '')) continue;
+      try { walk(sheet.cssRules); } catch { /* not loaded yet: tried again on load */ return null; }
+    }
+    return found;
+  }
+  function applyThemeRules() {
+    const id = document.documentElement.dataset.theme;
+    if (!id || id === themeRulesFor) return;
+    themeRules ??= collectThemeRules();
+    if (!themeRules) return;
+    themeRulesFor = id;
+    for (const { rule, items } of themeRules) {
+      const kept = items.filter(i => !i.themes || i.themes.has(id)).map(i => i.text);
+      const text = kept.length ? kept.join(', ') : THEME_OFF;
+      if (rule.selectorText !== text) rule.selectorText = text;
+    }
+  }
+  new MutationObserver(applyThemeRules).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  applyThemeRules();
+  window.addEventListener('load', applyThemeRules);
 
   /** A colour or the fade being changed in Settings: shown at once, saved once the changes rest. */
   let customTimer = 0;
@@ -724,6 +828,7 @@
         searchSettings('');
       }
     }
+    const from = S.view;
     S.view = view;
     pageChanged();
     $('#view-accounts').hidden = view !== 'accounts';
@@ -735,11 +840,38 @@
     $('#view-settings').hidden = view !== 'settings';
     $('#view-stats').hidden = view !== 'stats';
     $('#view-monitor').hidden = view !== 'monitor';
+    fadeViews(from, view);
     $(`#view-${view}`)?.classList.add('seen'); // keeps its layout once it's left (app.css: .view.seen[hidden])
     uiSignal(view === 'stats' ? 'statsShown' : 'statsHidden');
     watchMonitor();
     // Synced folders to offer under Backup are looked for when Settings opens, not with every state.
     if (view === 'settings' && !S.app.locked) call('backupSuggestions', {}, { silent: true });
+  }
+
+  /** The tab picked comes in from the side its tab is on in the sidebar (below: from below; app.css .entering, --dir);
+   *  the one left goes at once, and a quick second pick finishes the first. The game monitor comes up still: its live
+   *  pictures are Windows' own, laid where its tiles end up, and can't move with them. */
+  /** Opening (after start-up or unlock): app.css .shell.intro springs the logo out, drops the tabs in one after another
+   *  and brings the page up. Not while the window is in the tray, where nobody would see it. */
+  function introShell() {
+    const shell = $('.shell'), view = S.view !== 'monitor' ? $(`#view-${S.view}`) : null;
+    if (!shell || document.hidden) return;
+    shell.classList.add('intro');
+    view?.style.setProperty('--dir', '1');
+    view?.classList.add('entering');
+    setTimeout(() => { shell.classList.remove('intro'); view?.classList.remove('entering'); }, 1100);
+  }
+  let viewFade = 0;
+  function fadeViews(from, to) {
+    clearTimeout(viewFade);
+    document.querySelectorAll('.main > .view.entering').forEach(v => v.classList.remove('entering'));
+    const old = $(`#view-${from}`), now = $(`#view-${to}`);
+    if (from === to || document.hidden || !old?.classList.contains('seen') || !now || to === 'monitor') return;
+    const order = [...document.querySelectorAll('.side-nav .nav[data-view]')].map(b => b.dataset.view);
+    now.style.setProperty('--dir', order.indexOf(to) < order.indexOf(from) ? '-1' : '1');
+    void now.offsetWidth; // a step-in cut short starts again
+    now.classList.add('entering');
+    viewFade = setTimeout(() => now.classList.remove('entering'), 520);
   }
 
   const accountGroups = () => [...new Set(accounts().map(a => a.group).filter(Boolean))].sort(compareText);
@@ -2468,8 +2600,9 @@
     // No boxes (no window open, or all under a menu): no pictures, said by leaving them out.
     return { x: r.left, y: r.top, w: r.width, h: r.height, scale: devicePixelRatio, ...pictures.length ? { pictures } : {} };
   }
-  /** One report per frame at most, and none that repeats the last; a hidden page says so at once (it gets no frames). */
-  function syncMonitor() {
+  /** One report per frame at most, and none that repeats the last; a hidden page says so at once (it gets no frames),
+   * and so does a change of tab (now): the pictures come and go with the tab, not a frame after it. */
+  function syncMonitor(now = false) {
     const send = () => {
       MON.frame = 0;
       const area = monitorArea(), json = JSON.stringify(area);
@@ -2477,7 +2610,7 @@
       MON.sent = json;
       call('monitorArea', area, { silent: true });
     };
-    if (document.hidden) {
+    if (document.hidden || now === true) {
       cancelAnimationFrame(MON.frame);
       return send();
     }
@@ -2503,7 +2636,7 @@
       MON.dpr = devicePixelRatio;
       matchMedia(`(resolution: ${devicePixelRatio}dppx)`).addEventListener('change', watchMonitor, { once: true });
     }
-    syncMonitor();
+    syncMonitor(true);
   }
   window.addEventListener('resize', syncMonitor);
   document.addEventListener('visibilitychange', syncMonitor);
@@ -2536,7 +2669,7 @@
     const card = $(`#grid .card[data-id="${CSS.escape(id)}"]`);
     if (!card) return;
     setTabStop(card.parentElement, card);
-    card.scrollIntoView({ block: 'nearest', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     card.focus({ preventScroll: true });
     card.classList.remove('flash');
     void card.offsetWidth; // the flash starts again when the same card is asked for twice
@@ -3203,8 +3336,10 @@
     }
     S.bootDone = true;
     stopBoot();
-    if (!S.shell) buildShell();
+    const fresh = !S.shell;
+    if (fresh) buildShell();
     update();
+    if (fresh) introShell();
     if (st.whatsNew && !S.whatsNewShown) {
       S.whatsNewShown = true;
       showWhatsNew(st.whatsNew.releases, () => call('seenWhatsNew'));
@@ -3338,10 +3473,12 @@
   // A page hidden in the background is drawn again when the window comes back; the app covers that moment too.
   document.addEventListener('visibilitychange', () => { if (!document.hidden) pageShown(); });
   // The app covers the window (its logo, or a picture of the old page) until the page is on screen: told once a frame
-  // (with the visible avatars, briefly waited for) is drawn.
+  // (with the visible avatars, briefly waited for) is drawn, and a moment more. Two frames drawn weren't yet two on
+  // screen: woken from its sleep in the tray or from minimised, the browser showed the window empty for two frames
+  // after the picture came off (seen at 60 fps in the owner's recording, 2026-11-07).
   function pageShown() {
     const imgs = [...document.querySelectorAll('#scroll img')].slice(0, 40).map(img => img.decode().catch(() => {}));
     Promise.race([Promise.all(imgs), new Promise(r => setTimeout(r, 400))])
-      .then(() => requestAnimationFrame(() => requestAnimationFrame(() => bridge.call('pageShown').catch(() => {}))));
+      .then(() => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(() => bridge.call('pageShown').catch(() => {}).then(coverIsGone), 120))));
   }
 })();

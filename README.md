@@ -12,8 +12,8 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="MIT license"></a>
   <a href="https://bloxkeep-bot.bloxkeep-app.workers.dev/discord"><img src="https://img.shields.io/badge/Discord-join_the_server-5865F2" alt="Join Bloxkeep's Discord server"></a>
 </p>
-<p align="center"><a href="https://github.com/Bloxkeep/roblox-account-manager/releases/latest/download/Bloxkeep-Setup.exe"><img src="https://img.shields.io/badge/Download_for_Windows-Bloxkeep--Setup.exe-2ea44f?style=for-the-badge" height="36" alt="Download Bloxkeep for Windows (Bloxkeep-Setup.exe, the newest version)"></a></p>
-<p align="center"><a href="#download-and-install">Download</a> · <a href="#getting-started">Getting started</a> · <a href="docs/guide.md">User guide</a> · <a href="https://bloxkeep.github.io/roblox-account-manager/">Website</a> · <a href="#data-and-security">Security</a> · <a href="#faq">FAQ</a> · <a href="https://bloxkeep-bot.bloxkeep-app.workers.dev/discord">Discord</a> · <a href="PRIVACY.md">Privacy</a></p>
+<p align="center"><a href="https://github.com/Bloxkeep/roblox-account-manager/releases/latest/download/Bloxkeep-Setup.exe"><img src="https://img.shields.io/badge/Download_for_Windows-Bloxkeep--Setup.exe-2ea44f?style=for-the-badge" height="36" alt="Download Bloxkeep for Windows (Bloxkeep-Setup.exe, the newest version)"></a> <a href="https://bloxkeep-bot.bloxkeep-app.workers.dev/discord"><img src="https://img.shields.io/badge/Discord-Join_the_server-5865F2?style=for-the-badge&logo=discord&logoColor=white" height="36" alt="Join Bloxkeep's Discord server"></a></p>
+<p align="center"><a href="#download-and-install">Download</a> · <a href="#getting-started">Getting started</a> · <a href="docs/guide.md">User guide</a> · <a href="https://bloxkeep.github.io/roblox-account-manager/">Website</a> · <a href="https://bloxkeep.github.io/roblox-account-manager/whats-new/">What's new</a> · <a href="#community">Community</a> · <a href="#data-and-security">Security</a> · <a href="#faq">FAQ</a> · <a href="PRIVACY.md">Privacy</a></p>
 
 <p align="center"><img src="docs/screenshots/multi-roblox-real.jpg" width="860" alt="A real screenshot of one Windows PC: six Roblox windows open at once, tiled side by side by Bloxkeep, all in the same game, titled Roblox - Account 1 to Roblox - Account 7"></p>
 <p align="center"><sub>A real screenshot from one PC: six Roblox accounts open at once with Bloxkeep, tiled side by side. Account names are hidden.</sub></p>
@@ -36,8 +36,9 @@ Keep your Roblox accounts in one place, pick a game, pick accounts, press **Play
 | **Stay in game** | Anti-AFK against idle kicks, auto-rejoin after a disconnect. [Staying in game](docs/guide/staying-in-game.md) |
 | **Macros (Beta)** | Steps written as plain sentences: press keys, click, wait for a picture, a colour or text, repeat, If. Record one or start from a template, try it, then move its points and areas right on the game. Each macro gets a small panel beside the game with tabs, switches, lists to tick and points the player sets. Stuck? It runs your recovery steps. [Macros](docs/guide/macros.md) |
 | **Windows** | Arrange layouts picked from pictures (as Windows' snap layouts) or a size of your own, the Game monitor with a minimise button on each window, a mini window, RAM warnings. [Windows and stats](docs/guide/windows-and-stats.md) |
-| **Roblox your way** | Graphics, FPS and volume per account; open with Roblox, Bloxstrap, Fishstrap or your own launcher. [Settings](docs/guide/settings.md) |
-| **Stats and Discord** | Play time compared with the days before, a timeline of each account, why accounts dropped and the time it cost; alerts and a live status in your Discord channel. [Discord](docs/guide/discord.md) |
+| **Roblox your way** | Graphics, FPS and volume per account; open with Roblox, Bloxstrap, Fishstrap, Voidstrap or your own launcher. [Settings](docs/guide/settings.md) |
+| **Stats and alerts** | Play time compared with the days before, a timeline of each account, why accounts dropped and the time it cost; alerts and a live status in your Discord channel or on your phone (ntfy); `/pc` in Discord to check and control your PC from anywhere. [Discord](docs/guide/discord.md) |
+| **Games** | Popular games with their wiki inside Bloxkeep: search, item tables, recent buffs and nerfs, live stock and spawns, Blox Fruits prices. [What's new](https://bloxkeep.github.io/roblox-account-manager/whats-new/) |
 | **Safe by default** | Encrypted vault, lock, backups to a OneDrive or Google Drive folder, hide names for streams. [Backup and security](docs/guide/backup-and-security.md) |
 | **Yours** | 98 themes, English and Vietnamese, quick search with `Ctrl+K`. |
 
@@ -76,6 +77,23 @@ Windows **Settings › Apps › Installed apps › Bloxkeep › Uninstall**. Tic
 
 Step by step, with pictures: [Getting started](docs/guide/getting-started.md).
 
+## Community
+
+<a href="https://bloxkeep-bot.bloxkeep-app.workers.dev/discord"><img src="https://img.shields.io/badge/Discord-Join_the_Bloxkeep_server-5865F2?style=for-the-badge&logo=discord&logoColor=white" height="36" alt="Join Bloxkeep's Discord server"></a>
+
+Ask for help, share an idea, and hear about Roblox updates and new Bloxkeep versions as they happen. A quick check when you join keeps scam bots out.
+
+| Channel | For |
+|---|---|
+| `#announcements` | New Bloxkeep versions and news |
+| `#roblox-updates` | Roblox builds coming and live, and outages |
+| `#help` | One question per post: what you did, what happened, your version |
+| `#bug-reports` | Something broke? The steps and what happened |
+| `#ideas` | One idea per post. React to the ones you want |
+| `#general-vn` | Trò chuyện bằng tiếng Việt |
+
+Type `/multi` to the bot to see whether Multi-Roblox works on the current Roblox and the one coming next. Nobody from Bloxkeep will ever ask for your cookie, password or 2-step codes.
+
 ## Keyboard shortcuts
 
 `Ctrl+K` quick search · `Ctrl+F` search · `Ctrl+L` game box · `Ctrl+A` select all · `Enter` play · `F2` edit · `Delete` delete · `Esc` clear the selection · `Ctrl+Alt+1`–`9` run a macro, `Ctrl+Alt+0` stop them all. Right-click an account for its menu. All of them: [Keyboard shortcuts](docs/guide/troubleshooting.md#keyboard-shortcuts).
@@ -112,7 +130,7 @@ Turn on **Settings › Backup & data › Back up to a folder** and pick a OneDri
 
 **Mac or Linux?** No, Windows 10 and 11 only.
 
-**Found a bug or want a feature?** **Settings › Bloxkeep › Send feedback** (it shows exactly what it sends), or [open an issue](https://github.com/Bloxkeep/roblox-account-manager/issues).
+**Found a bug or want a feature?** **Settings › Bloxkeep › Send feedback** (it shows exactly what it sends), post in `#bug-reports` or `#ideas` on [Discord](#community), or [open an issue](https://github.com/Bloxkeep/roblox-account-manager/issues).
 
 More answers: [Troubleshooting](docs/guide/troubleshooting.md).
 

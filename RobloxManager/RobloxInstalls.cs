@@ -4,7 +4,7 @@ using Microsoft.Win32;
 
 namespace RobloxManager;
 
-/// <summary>Finds the Roblox clients and launchers (Bloxstrap, Fishstrap, …) installed for this Windows user.</summary>
+/// <summary>Finds the Roblox clients and launchers (Bloxstrap, Fishstrap, Voidstrap, …) installed for this Windows user.</summary>
 public static class RobloxInstalls
 {
     const string ProtocolCommandKey = @"roblox-player\shell\open\command";
@@ -58,7 +58,11 @@ public static class RobloxInstalls
     }
 
     /// <summary>Launchers with their own option in Settings; others of the same family are found by <see cref="FindOtherBootstrappers"/>.</summary>
-    static readonly string[] KnownBootstrappers = ["Bloxstrap", "Fishstrap"];
+    static readonly string[] KnownBootstrappers = ["Bloxstrap", "Fishstrap", "Voidstrap"];
+
+    /// <summary>Where a launcher keeps its copies of Roblox, one "version-…" folder each: Bloxstrap and Fishstrap "Versions",
+    /// Voidstrap "RblxVersions" (its Paths.cs, KloBraticc/Voidstrap 1.1.3.7, 2026-11-07).</summary>
+    static readonly string[] VersionFolders = ["Versions", "RblxVersions"];
 
     /// <summary>Other Bloxstrap forks: an uninstall entry named after the launcher, whose folder holds "&lt;name&gt;.exe" and
     /// a Versions folder of Roblox clients.</summary>
@@ -74,7 +78,7 @@ public static class RobloxInstalls
                     continue;
                 using var key = uninstall!.OpenSubKey(name);
                 if (key?.GetValue("InstallLocation") is string dir && File.Exists(Path.Combine(dir, name + ".exe"))
-                    && Directory.Exists(Path.Combine(dir, "Versions")))
+                    && VersionFolders.Any(v => Directory.Exists(Path.Combine(dir, v))))
                     found.Add(name);
             }
         }
@@ -88,21 +92,24 @@ public static class RobloxInstalls
     {
         if (root is null)
             return [];
-        string versions = Path.Combine(root, "Versions");
-        if (!Directory.Exists(versions))
-            return [];
-        try
+        var found = new List<string>();
+        foreach (string folder in VersionFolders)
         {
-            return Directory.EnumerateDirectories(versions)
-                .Select(dir => Path.Combine(dir, "RobloxPlayerBeta.exe"))
-                .Where(File.Exists)
-                .Where(exe => !IsBroken(exe))
-                .ToList();
+            string versions = Path.Combine(root, folder);
+            if (!Directory.Exists(versions))
+                continue;
+            try
+            {
+                found.AddRange(Directory.EnumerateDirectories(versions)
+                    .Select(dir => Path.Combine(dir, "RobloxPlayerBeta.exe"))
+                    .Where(File.Exists)
+                    .Where(exe => !IsBroken(exe)));
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+            }
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-            return [];
-        }
+        return found;
     }
 
     const string ClientDll = "RobloxPlayerBeta.dll";
@@ -182,6 +189,7 @@ public static class RobloxInstalls
         string name = Path.GetFileNameWithoutExtension(updater);
         return name.Equals("Bloxstrap", StringComparison.OrdinalIgnoreCase) ? "bloxstrap"
             : name.Equals("Fishstrap", StringComparison.OrdinalIgnoreCase) ? "fishstrap"
+            : name.Equals("Voidstrap", StringComparison.OrdinalIgnoreCase) ? "voidstrap"
             : RobloxLauncher.OtherPrefix + name;
     }
 
@@ -314,6 +322,7 @@ public static class RobloxInstalls
         {
             "bloxstrap" => Bootstrapped("Bloxstrap"),
             "fishstrap" => Bootstrapped("Fishstrap"),
+            "voidstrap" => Bootstrapped("Voidstrap"),
             _ when RobloxLauncher.OtherName(launchVia) is { } other => Bootstrapped(other),
             // A launcher picked by hand: its own copy of Roblox if it keeps one next to it, else the newest anywhere.
             "custom" => (RobloxLauncher.CustomLauncherReady(customLauncher) ? Newest(ClientsIn(Path.GetDirectoryName(customLauncher))) : null) ?? FindAnyClient(),

@@ -35,7 +35,9 @@ export interface TrayViewApi { show(mode: 'panel' | 'menu', state: TrayState, op
 export function TrayView({ api, handle }: { api: TrayApi; handle: Ref<TrayViewApi> }) {
   const [now, setNow] = useState<{ mode: 'panel' | 'menu'; state: TrayState; opened: number } | null>(null);
   useImperativeHandle(handle, () => ({ show: (mode, state, opened) => setNow({ mode, state, opened }) }), []);
-  return now ? <Tray {...now} api={api} /> : null;
+  // A new one each opening, so its first drawing is already the first page: kept, it drew the page it was closed on
+  // (Multi-Roblox's, two rows), the window showed at that size for a frame, then grew to the menu (OBS, 2026-11-07).
+  return now ? <Tray key={`${now.mode}-${now.opened}`} {...now} api={api} /> : null;
 }
 
 const MAX_CLIENTS = 6;

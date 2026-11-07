@@ -1,5 +1,6 @@
 # Publishes Bloxkeep's website (https://bloxkeep.github.io/roblox-account-manager/) to GitHub Pages: site/build.mjs turns the
-# landing page and the user guide (docs/guide) into HTML. Runs whenever what the site is made of changes on main.
+# landing page and the user guide (docs/guide) into HTML, and puts the app's real interface on the try-it page (site/demo.mjs:
+# wwwroot with ui.js built from ui/, on the fake bridge ui/dev/mock.js). Runs whenever what the site is made of changes on main.
 # Pages must be set to "GitHub Actions" (Settings > Pages > Source).
 name: Pages
 
@@ -10,7 +11,12 @@ on:
       - 'docs/**'
       - 'site/**'
       - 'RobloxManager/whatsnew.json'
-      - 'RobloxManager/wwwroot/logo.svg'
+      - 'RobloxManager/wwwroot/**'
+      - 'ui/src/**'
+      - 'ui/build.mjs'
+      - 'ui/dev/mock.js'
+      - 'ui/dev/demo.js'
+      - 'ui/dev/wiki-sample.json'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 
@@ -31,6 +37,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
+      - name: Build the interface (ui.js, for the try-it page)
+        working-directory: ui
+        run: |
+          npm ci
+          node build.mjs
       - name: Build the site
         working-directory: site
         run: |

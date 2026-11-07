@@ -536,14 +536,17 @@ public static partial class RobloxApi
 
     /// <summary>
     /// Roblox's CSRF refusal and nothing else: 403, a new x-csrf-token, no challenge, no error code but 0, and the
-    /// "Token Validation Failed" message — which may be missing only when no token was sent at all: then the request
-    /// can't have got past the token check to the password.
+    /// "Token Validation Failed" message (apis.roblox.com's services say "XSRF token invalid") — which may be missing only
+    /// when no token was sent at all: then the request can't have got past the token check to the password. Without the
+    /// second wording a stale token kept for the session was never replaced there: every private server link failed with
+    /// that 403 until Bloxkeep restarted (a user's error log, 2026-11-06).
     /// </summary>
     internal static bool IsCsrfRefusal(HttpStatusCode status, string? fresh, string? sent, string? challengeId, string body)
     {
         if (status != HttpStatusCode.Forbidden || string.IsNullOrEmpty(fresh) || fresh == sent || !string.IsNullOrEmpty(challengeId))
             return false;
         return Errors(body).Codes.All(c => c == 0)
-            && (sent is null || body.Contains("Token Validation Failed", StringComparison.OrdinalIgnoreCase));
+            && (sent is null || body.Contains("Token Validation Failed", StringComparison.OrdinalIgnoreCase)
+                || body.Contains("XSRF token invalid", StringComparison.OrdinalIgnoreCase));
     }
 }

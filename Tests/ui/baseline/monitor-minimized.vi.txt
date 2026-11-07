@@ -16,6 +16,10 @@ html [data-theme="dark" lang="vi"]
         button.nav [title="Preset"]
           svg.i #1pvni8o
           span "Preset"
+        button.nav [title="Game (2 tin mới)"]
+          svg.i #17gqz13
+          span "Game"
+          em.nav-news [id="nav-news"] "2"
         button.nav [title="Macro (Beta)"]
           svg.i #kx2qfl
           span "Macro"

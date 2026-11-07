@@ -16,6 +16,10 @@ html [data-theme="dark" lang="en"]
         button.nav [title="Presets"]
           svg.i #1pvni8o
           span "Presets"
+        button.nav [title="Games (2 new)"]
+          svg.i #17gqz13
+          span "Games"
+          em.nav-news [id="nav-news"] "2"
         button.nav [title="Macros (Beta)"]
           svg.i #kx2qfl
           span "Macros"
@@ -123,12 +127,16 @@ html [data-theme="dark" lang="en"]
                           span "Graphics 1"
                           span "Muted"
                           span "Auto RAM limit"
+                          span "Save RAM"
+                          span "Played window first"
                       button.rc-mode [type="button" aria-pressed="false"]
                         b "Play and farm"
                         small
                           span "45 FPS"
                           span "Graphics 3"
                           span "Keeps volume"
+                          span "Save RAM"
+                          span "Played window first"
                       button.rc-mode [type="button" aria-pressed="false"]
                         b "Roblox as is"
                         small
@@ -140,14 +148,6 @@ html [data-theme="dark" lang="en"]
                     p.rc-note [id="s-rc-reopen"] "Takes effect when an account is next opened."
                     div.set-row
                       div
-                        div.t "Fast Flags"
-                        div.d "Gray sky, no grass, lowest graphics. Saves a little RAM."
-                      div.ctl
-                        label.switch
-                          input [id="s-rc-flags" type="checkbox" aria-label="Fast Flags" checked=false]
-                          span
-                    div.set-row
-                      div
                         div.t "Apply to"
                         div.d
                           span [id="s-rc-hint"] "Every account Bloxkeep opens gets these settings."
@@ -156,6 +156,15 @@ html [data-theme="dark" lang="en"]
                           option [value="off"] "Nobody"
                           option [value="all"] "All accounts"
                           option [value="marked"] "Chosen accounts"
+                    div.set-row
+                      div
+                        div.t "Fast Flags"
+                        div.d "Gray sky, no grass, lowest graphics. Saves a little RAM. Same accounts as these settings, never the main one."
+                          span.warn-text [id="s-rc-flags-over"] "Bloxstrap writes its own Fast Flags when it opens Roblox, so these don’t apply. Open Roblox directly (Settings › Launching) or set them in Bloxstrap."
+                      div.ctl
+                        label.switch
+                          input [id="s-rc-flags" type="checkbox" aria-label="Fast Flags" checked=false]
+                          span
                     div.set-row
                       div
                         div.t "Graphics quality"
@@ -275,6 +284,17 @@ html [data-theme="dark" lang="en"]
                           option [value="2048"] "2 GB"
                     div.set-row
                       div
+                        div.t "Restart a heavy window"
+                        div.d "A Roblox window that keeps using more RAM than this closes and goes back into its server."
+                      div.ctl
+                        select.select [id="s-heavy" aria-label="Restart a heavy window" value="0"]
+                          option [value="0"] "Never"
+                          option [value="3072"] "Above 3 GB"
+                          option [value="4096"] "Above 4 GB"
+                          option [value="6144"] "Above 6 GB"
+                          option [value="8192"] "Above 8 GB"
+                    div.set-row
+                      div
                         div.t "Prioritize the window you play"
                         div.d "Background windows slow down so it runs smoother."
                       div.ctl
@@ -313,6 +333,10 @@ html [data-theme="dark" lang="en"]
         button.nav [title="Presets"]
           svg.i #1pvni8o
           span "Presets"
+        button.nav [title="Games (2 new)"]
+          svg.i #17gqz13
+          span "Games"
+          em.nav-news [id="nav-news"] "2"
         button.nav [title="Macros (Beta)"]
           svg.i #kx2qfl
           span "Macros"
@@ -420,12 +444,16 @@ html [data-theme="dark" lang="en"]
                           span "Graphics 1"
                           span "Muted"
                           span "Auto RAM limit"
+                          span "Save RAM"
+                          span "Played window first"
                       button.rc-mode [type="button" aria-pressed="false"]
                         b "Play and farm"
                         small
                           span "45 FPS"
                           span "Graphics 3"
                           span "Keeps volume"
+                          span "Save RAM"
+                          span "Played window first"
                       button.rc-mode [type="button" aria-pressed="false"]
                         b "Roblox as is"
                         small
@@ -435,14 +463,6 @@ html [data-theme="dark" lang="en"]
                         small
                           span "Set each one below"
                     p.rc-note [id="s-rc-reopen"] "Takes effect when an account is next opened."
-                    div.set-row
-                      div
-                        div.t "Fast Flags"
-                        div.d "Gray sky, no grass, lowest graphics. Saves a little RAM."
-                      div.ctl
-                        label.switch
-                          input [id="s-rc-flags" type="checkbox" aria-label="Fast Flags" checked=false]
-                          span
                     div.set-row
                       div
                         div.t "Apply to"
@@ -529,6 +549,17 @@ html [data-theme="dark" lang="en"]
                           option [value="1024"] "1 GB"
                           option [value="1536"] "1.5 GB"
                           option [value="2048"] "2 GB"
+                    div.set-row
+                      div
+                        div.t "Restart a heavy window"
+                        div.d "A Roblox window that keeps using more RAM than this closes and goes back into its server."
+                      div.ctl
+                        select.select [id="s-heavy" aria-label="Restart a heavy window" value="0"]
+                          option [value="0"] "Never"
+                          option [value="3072"] "Above 3 GB"
+                          option [value="4096"] "Above 4 GB"
+                          option [value="6144"] "Above 6 GB"
+                          option [value="8192"] "Above 8 GB"
                     div.set-row
                       div
                         div.t "Prioritize the window you play"

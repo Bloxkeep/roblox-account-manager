@@ -3,8 +3,9 @@
 // ?empty=1 an empty vault, ?theme=light (system|light|paper|dim|dark|black) a theme, ?christmas=1 December's logo. Presets: ?view=presets opens their
 // tab, ?nopresets=1 has none, ?many=1 the most the app keeps (50), ?noicons=1 no game icons known yet. ?rejoin=1: an
 // account waiting minutes for auto-rejoin's next try.
+// window.__mockQuery, when set (the website's demo, ui/dev/demo.js), stands in for the address's query, so its own knobs are the only ones.
 (() => {
-  const params = new URLSearchParams(location.search);
+  const params = new URLSearchParams(window.__mockQuery ?? location.search);
   if (params.has('christmas')) window.BloxkeepChristmas = true;
   const cdn = 'https://tr.rbxcdn.com/';
   // Made-up block-head avatars drawn here (no real player's picture or name appears in screenshots).
@@ -151,7 +152,7 @@
   let startWithWindows = false, phone = { enabled: false, topic: '', error: null };
   // Game news: real cards, as the bot made them from Vulcan's Blox Fruits stock messages (2026-11-05), their times moved
   // their real times. ?feeds=0: no games yet; ?feeds=wait: still connecting.
-  const feedParam = new URLSearchParams(location.search).get('feeds');
+  const feedParam = new URLSearchParams(window.__mockQuery ?? location.search).get('feeds');
   const nowMs = Date.now(), minAgo = m => nowMs - m * 60000;
   let wikiData = null;
   /** The Wiki part's picks, saved and seen pages (prefs.json "wikis"); ?wikis=0 starts with none picked. */
@@ -207,7 +208,7 @@
   let betaUpdates = params.has('beta'); // ?beta=1: Settings › Get beta versions on
   let countOnline = !params.has('offline'); // ?offline: Settings › Add me to the online count off
   // What Bloxkeep's users play, as the bot tells back with each beat (online.js communityOf); ?board: this PC on the alts
-  // board (?board&noalts: on it by name, no account running); ?noradar: no radar line. With the count off, the same sums
+  // board (?board&noalts: on it by name, no account running; ?fewalts: a board of a few alts each); ?noradar: no radar line. With the count off, the same sums
   // without this PC (communityNow).
   let boardName = params.has('board') ? 'Máy farm của Minh' : null;
   const community = () => ({
@@ -218,7 +219,7 @@
     radar: params.has('noradar') ? [] : [{ game: 994732206, name: 'Blox Fruits', place: 2753915549, why: 'lost', pcs: 6, minutes: 15 }],
     board: [{ name: 'Kho alt VN', alts: 96 }, { name: 'FarmHub', alts: 74 }, { name: 'Máy farm của Minh', alts: 52 }, { name: 'tuan_pc', alts: 40 },
       { name: 'Bee Farm 24h', alts: 31 }, { name: 'GAG stock', alts: 22 }, { name: 'PC-2', alts: 18 }, { name: 'Night Shift', alts: 15 },
-      { name: 'Lam.alts', alts: 12 }, { name: 'khoa', alts: 9 }].filter(b => (boardName && countOnline && !params.has('noalts')) || b.name !== 'Máy farm của Minh'),
+      { name: 'Lam.alts', alts: 12 }, { name: 'khoa', alts: 9 }].map((b, i) => params.has('fewalts') ? { ...b, alts: [9, 7, 6, 5, 4, 3, 3, 2, 2, 1][i] } : b).filter(b => (boardName && countOnline && !params.has('noalts')) || b.name !== 'Máy farm của Minh'),
     you: boardName && countOnline ? { rank: params.has('noalts') ? null : 3, of: 17 } : null,
   });
   // ?remote=code|linked|connecting: Settings › Discord › Control from Discord on, waiting for its code to be typed, linked,
@@ -505,8 +506,8 @@
     boardName,
     community: { data: community(), at: Date.now() },
     remote,
-    installs: NO_ROBLOX ? { handler: null, bloxstrap: false, fishstrap: false, others: [], roblox: false, direct: false, store: false, vng: params.has('vng') }
-      : { handler: 'Bloxstrap', bloxstrap: true, fishstrap: false, others: params.has('others') ? ['Voidstrap'] : [], roblox: false, direct: true, store: params.has('store'), vng: params.has('vng') },
+    installs: NO_ROBLOX ? { handler: null, bloxstrap: false, fishstrap: false, voidstrap: false, others: [], roblox: false, direct: false, store: false, vng: params.has('vng') }
+      : { handler: 'Bloxstrap', bloxstrap: true, fishstrap: false, voidstrap: params.has('voidstrap'), others: params.has('others') ? ['Otherstrap'] : [], roblox: false, direct: true, store: params.has('store'), vng: params.has('vng') },
     monitors: [{ index: 0, primary: true, width: 1920, height: 1080 }, { index: 1, primary: false, width: 2560, height: 1440 }], dataPath: LONG ? 'C:\\Users\\Administrator\\AppData\\Local\\Packages\\Some.Very.Long.Package.Name_8wekyb3d8bbwe\\LocalCache\\Local\\Bloxkeep' : 'C:\\Users\\Admin\\AppData\\Local\\Bloxkeep', paths: { vault: locked ? null : 'C:\\Users\\Admin\\AppData\\Local\\Bloxkeep\\vault.rmv', log: 'C:\\Users\\Admin\\AppData\\Local\\Bloxkeep\\error.log', app: 'C:\\Users\\Admin\\AppData\\Local\\BloxkeepApp\\current' },
     hotkeys: { on: !params.has('nohotkeys'), taken: params.has('keystaken') ? ['Ctrl+Alt+H'] : [] },
     robloxInstalled: !NO_ROBLOX,
@@ -1498,7 +1499,7 @@
 // not opened by Bloxkeep, &same=1 all in one game (no lanes), &drop=1 one cut off and one joining. The tiles' acts (monitorAct) change the list as the app would.
 (() => {
   const base = window.__mockBridge;
-  const params = new URLSearchParams(location.search);
+  const params = new URLSearchParams(window.__mockQuery ?? location.search);
   if (!base || !params.has('tiles')) return;
   const vi = params.get('lang') === 'vi';
   const long = params.has('long'), hide = params.has('hide');

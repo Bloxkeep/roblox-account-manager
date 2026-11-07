@@ -1083,7 +1083,9 @@
     time = 0;
     // The picture's address as the page resolved it (the theme's --backdrop, whichever folder the page is in).
     if (scene.photo) {
-      const url = /url\("([^"]*photo-[^"]*)"\)/.exec(getComputedStyle(document.body).backgroundImage)?.[1];
+      // On the app's page the picture is on body::before (its own layer, app.css), elsewhere on the body itself.
+      const url = /url\("([^"]*photo-[^"]*)"\)/.exec(getComputedStyle(document.body, '::before').backgroundImage)?.[1]
+        || /url\("([^"]*photo-[^"]*)"\)/.exec(getComputedStyle(document.body).backgroundImage)?.[1];
       if (url) photo = photoLayer(url, scene.photo, canvas);
     }
     size();

@@ -1366,9 +1366,11 @@ export default [
   S('settings-launch-store', 'settings=launch&store=1&others=1', async s => {
     await s.choose({ css: '#s-launch' }, 'store');
     await s.snap('store');
-    await s.choose({ css: '#s-launch' }, 'other:Voidstrap');
+    await s.choose({ css: '#s-launch' }, 'other:Otherstrap');
   }),
   // Roblox VNG on this PC: its own option, chosen and saved.
+  // Voidstrap on this PC: its own option, like Bloxstrap and Fishstrap.
+  S('settings-launch-voidstrap', 'settings=launch&voidstrap=1', async s => { await s.choose({ css: '#s-launch' }, 'voidstrap'); }),
   S('settings-launch-vng', 'settings=launch&vng=1', async s => { await s.choose({ css: '#s-launch' }, 'vng'); }),
   S('settings-launch-long', 'settings=launch&long=1&notready=1'),
   // Hotkeys: on, one taken by another app said under it; turned off.

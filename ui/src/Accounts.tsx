@@ -36,7 +36,8 @@ const ringOf = (a: Account) => {
  * says "in a game"), so for a minute the card says "Closing…" instead (AccountGrid notes it). */
 const closedAt = new Map<string, { at: number; game: string }>();
 const CLOSING_MS = 60_000;
-const closing = (a: Account) => !isLocal(a) && a.state !== 'launching' && !a.rejoin && (closedAt.get(a.id)?.at ?? 0) > Date.now() - CLOSING_MS;
+// Only while Roblox still says online: once it says offline, the card does too (the full minute every time looked stuck).
+const closing = (a: Account) => !isLocal(a) && a.state !== 'launching' && !a.rejoin && isOnline(a) && (closedAt.get(a.id)?.at ?? 0) > Date.now() - CLOSING_MS;
 function GameIcon({ url, className, holder }: { url?: string | null; className?: string; holder: () => ReactNode }) {
   const [failed, setFailed] = useState('');
   return url && failed !== url ? <img className={className} src={url} alt="" loading={className ? 'lazy' : undefined} decoding={className ? 'async' : undefined} onError={() => setFailed(url)} /> : <>{holder()}</>;
@@ -249,7 +250,7 @@ export function AccountGrid() {
 // The list's columns after the status, as the longest value among the rows shown ("" or false: no column). Strings, so
 // the rows are drawn again only when it changes.
 // (Roblox VNG and an old Roblox are badges in front of the status, not columns: see AccountRow.)
-type Cols = { robux: string; group: string; rejoin: boolean; pid: string; live: boolean };
+type Cols = { robux: string; group: string; rejoin: boolean; pid: string; hidden: boolean; live: boolean };
 function listColumns(shown: Account[], fmtNum: (n: number) => string): string {
   const longest = (list: string[]) => list.reduce((a, b) => (b.length > a.length ? b : a), '');
   const cols: Cols = {
@@ -257,6 +258,8 @@ function listColumns(shown: Account[], fmtNum: (n: number) => string): string {
     group: longest(shown.map(a => a.group || '')),
     rejoin: shown.some(rejoinOn),
     pid: longest(shown.filter(isLocal).map(a => a.session?.pid > 0 ? `PID ${a.session.pid}` : '')),
+    // A window Bloxkeep hid: its PID comes with "Hidden" and the eye, so the column is that wide in every row.
+    hidden: shown.some(a => isLocal(a) && a.session?.pid > 0 && a.session.hidden),
     live: shown.some(isLocal),
   };
   return JSON.stringify(cols);
@@ -398,7 +401,9 @@ function RowColumns({ a, c, local }: { a: Account; c: Cols; local: boolean }) {
     </div>
     <div className="row-live">
       {/* The PID's column goes first in a narrow window (app.css), a hidden window's Show button with it. */}
-      {cell(c.live && c.pid, local ? <Pid a={a} /> : null, <span className="pid">{c.pid}</span>, true, 'pid-cell')}
+      {cell(c.live && c.pid, local ? <Pid a={a} /> : null, c.hidden
+        ? <span className="pid-group"><span className="tag hidden-tag">{t('card.hidden')}</span><span className="pid hidden-win"><Icon name="eye" /></span><span className="pid">{c.pid}</span></span>
+        : <span className="pid">{c.pid}</span>, true, 'pid-cell')}
       {cell(c.live, local ? <Live a={a} row /> : null, <b className="ram">{fmtMb(1023)}</b>, true)}
     </div>
   </>;
@@ -541,7 +546,8 @@ function AccountRow({ a, sel, cols }: { a: Account; sel: boolean; cols: string }
       : a.cookieValid === false ? <span className="badge bad">{t('card.expired')}</span> : null}
     {a.session?.oldBuild ? <OldBuild a={a} /> : null}
   </>;
-  // Main and Roblox VNG after the status words: in front, they pushed one row's "Offline" out of line with the rest.
+  // Main and Roblox VNG after the status words, and after the time played: in front of either, they pushed one row's
+  // "Offline" or "2 min" out of line with the rest.
   const vng = <>
     {a.isMain ? <span className="tag main-acc" title={t('card.mainTip')}>{t('card.main')}</span> : null}
     {a.realm === 'vng' ? <span className="tag vng" title={t('card.vngTip')}>VNG</span> : null}
@@ -553,8 +559,8 @@ function AccountRow({ a, sel, cols }: { a: Account; sel: boolean; cols: string }
     <div className="row-name"><b title={a.label}>{a.label}</b>{a.username ? <small title={at}>{at}</small> : null}</div>
     {up
       // Playing here: how long, right after the game (as on the card), never cut off by a long game name.
-      ? <div className={`row-status timed ${st.cls}`} title={st.text}>{badge}<span className="row-st">{st.text}</span>{vng}
-        <span className="row-up" title={t('card.upTip')}><Icon name="clock" /><b className="up">{up}</b></span></div>
+      ? <div className={`row-status timed ${st.cls}`} title={st.text}>{badge}<span className="row-st">{st.text}</span>
+        <span className="row-up" title={t('card.upTip')}><Icon name="clock" /><b className="up">{up}</b></span>{vng}</div>
       : <div className={`row-status ${st.cls}`} title={st.text}>{badge}{st.until ? <span>{until(st.until, 'rj.rowMin', 'rj.rowSoon')}</span> : st.text}{vng}</div>}
     <RowColumns a={a} c={JSON.parse(cols)} local={local} />
     <div className="row-actions"><RowAction>{action}</RowAction><button className="icon-btn" data-act="card-menu" title={t('card.moreTip')} aria-label={t('card.moreTip')} aria-haspopup="menu"><Icon name="more" /></button></div>

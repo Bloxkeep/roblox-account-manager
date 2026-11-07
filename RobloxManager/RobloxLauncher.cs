@@ -7,7 +7,7 @@ public static class RobloxLauncher
 {
     /// <summary>Values of <see cref="AppSettings.LaunchVia"/>, plus "other:&lt;Name&gt;" for another Bloxstrap-style
     /// launcher found here ("custom" is <see cref="AppSettings.CustomLauncher"/>).</summary>
-    public static readonly string[] LaunchOptions = ["auto", "bloxstrap", "fishstrap", "roblox", "direct", "store", "custom", "vng"];
+    public static readonly string[] LaunchOptions = ["auto", "bloxstrap", "fishstrap", "voidstrap", "roblox", "direct", "store", "custom", "vng"];
 
     internal const string OtherPrefix = "other:";
 
@@ -52,11 +52,11 @@ public static class RobloxLauncher
     static bool LinksOpen() =>
         IsProtocolRegistered() && (RobloxInstalls.ProtocolHandlerPath() is not { } handler || (File.Exists(handler) && !RobloxInstalls.IsVngClient(handler)));
 
-    /// <summary>What opens Roblox when the links don't: Bloxstrap or Fishstrap, another Bloxstrap-style launcher, the newest
+    /// <summary>What opens Roblox when the links don't: Bloxstrap, Fishstrap or Voidstrap, another Bloxstrap-style launcher, the newest
     /// RobloxPlayerBeta.exe, and VNG's client only when nothing else is there (the owner's rule, 2026-10-28).</summary>
     internal static (string Exe, string[] Args)? FallbackLauncher()
     {
-        foreach (string name in new[] { "Bloxstrap", "Fishstrap" })
+        foreach (string name in new[] { "Bloxstrap", "Fishstrap", "Voidstrap" })
         {
             if (RobloxInstalls.FindBootstrapper(name) is { } exe)
                 return (exe, ["-player"]);
@@ -102,7 +102,7 @@ public static class RobloxLauncher
 
     static string MissingFile => L.T("Roblox is missing a file (RobloxPlayerBeta.dll). Install Roblox again from roblox.com/download.");
 
-    /// <param name="launchVia">"auto" = whatever Windows opens roblox-player: links with; "bloxstrap"/"fishstrap" = that
+    /// <param name="launchVia">"auto" = whatever Windows opens roblox-player: links with; "bloxstrap"/"fishstrap"/"voidstrap" = that
     /// launcher, keeping its mods; "roblox" = the official client; "direct" = the newest RobloxPlayerBeta.exe;
     /// "other:&lt;Name&gt;" and "custom" get the link as their first argument, as Windows would.</param>
     /// <returns>The link's browser tracker id, new per launch: it is on the client's command line, so its window can be
@@ -136,7 +136,9 @@ public static class RobloxLauncher
                 break;
             case "bloxstrap":
             case "fishstrap":
-                string name = launchVia == "bloxstrap" ? "Bloxstrap" : "Fishstrap";
+            case "voidstrap":
+                // Voidstrap: "-player" and the link as Bloxstrap takes them (its LaunchSettings.cs, 1.1.3.7).
+                string name = launchVia switch { "bloxstrap" => "Bloxstrap", "fishstrap" => "Fishstrap", _ => "Voidstrap" };
                 Start(RobloxInstalls.FindBootstrapper(name) ?? throw new FileNotFoundException(L.F("{0} is not installed.", name)), "-player", uri);
                 break;
             case "roblox":

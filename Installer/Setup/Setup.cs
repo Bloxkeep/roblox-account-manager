@@ -1213,11 +1213,70 @@ namespace BloxkeepSetup
                 Rectangle area = Screen.FromPoint(Cursor.Position).WorkingArea;
                 Location = new Point(area.Left + (area.Width - Width) / 2, area.Top + (area.Height - Height) / 2);
             }
+            // Fades in once shown (OnShown); invisible until then, so no white first frame either.
+            if (!_shooting)
+                Opacity = 0;
+        }
+
+        /// <summary>
+        /// The window coming (fading in while rising the last few pixels, slowing at the end) or going (fading out while
+        /// sinking, speeding up), like Bloxkeep's own window: Windows' animation effects may be off. Going is done right
+        /// there, before the window closes.
+        /// </summary>
+        void Fade(bool coming)
+        {
+            if (!IsHandleCreated || WindowState != FormWindowState.Normal)
+            {
+                Opacity = coming ? 1 : Opacity;
+                return;
+            }
+            Point home = Location;
+            int drop = S(coming ? 14 : 12);
+            Stopwatch clock = Stopwatch.StartNew();
+            double ms = coming ? 260 : 200;
+            if (!coming)
+            {
+                while (true)
+                {
+                    double t = Math.Min(1, clock.Elapsed.TotalMilliseconds / ms), k = t * t;
+                    Location = new Point(home.X, home.Y + (int)Math.Round(drop * k));
+                    Opacity = 1 - k;
+                    if (t >= 1)
+                        break;
+                    Thread.Sleep(8);
+                }
+                Location = home;
+                return;
+            }
+            var timer = new System.Windows.Forms.Timer();
+            timer.Interval = 1;
+            EventHandler step = null;
+            step = delegate
+            {
+                double t = Math.Min(1, clock.Elapsed.TotalMilliseconds / ms), k = 1 - Math.Pow(1 - t, 3);
+                if (IsDisposed)
+                {
+                    timer.Dispose();
+                    return;
+                }
+                Location = new Point(home.X, home.Y + (int)Math.Round(drop * (1 - k)));
+                Opacity = t >= 1 ? 1 : k;
+                if (t >= 1)
+                    timer.Dispose();
+            };
+            timer.Tick += step;
+            step(null, EventArgs.Empty);
+            timer.Start();
         }
 
         protected override void OnShown(EventArgs e)
         {
             base.OnShown(e);
+            if (!_shooting)
+            {
+                Update();
+                Fade(true);
+            }
             if (_page == "updating" && !_shooting)
                 WatchForNewVersion();
             if (Program.Activate != null)
@@ -1256,6 +1315,8 @@ namespace BloxkeepSetup
             else if (_activateWait != null)
                 _activateWait.Unregister(null);
             base.OnFormClosing(e);
+            if (!e.Cancel && Visible && !_shooting && e.CloseReason != CloseReason.WindowsShutDown && e.CloseReason != CloseReason.TaskManagerClosing)
+                Fade(false);
         }
 
         [DllImport("dwmapi.dll")]

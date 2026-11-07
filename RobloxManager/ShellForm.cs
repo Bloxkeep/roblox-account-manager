@@ -51,7 +51,7 @@ public sealed class ShellForm : Form
     PictureBox? _cover;
     bool _coverSkipLogged;
 
-    const int WM_SYSCOMMAND = 0x0112, SC_MINIMIZE = 0xF020, SW_RESTORE = 9;
+    const int WM_SYSCOMMAND = 0x0112, SC_MINIMIZE = 0xF020, SW_RESTORE = 9, WM_QUERYOPEN = 0x0013;
 
     [DllImport("user32.dll")]
     static extern bool PostMessage(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam);
@@ -85,7 +85,7 @@ public sealed class ShellForm : Form
             SetPageLight = SetPageLight,
             HotkeysChanged = RegisterHotkeys,
             ShowNotification = ShowNotification,
-            PageShown = RemoveCover,
+            PageShown = () => { if (_fading) _coverAfterFade = true; else RemoveCover(); },
             SetMiniOpen = open => SetMiniOpen(open),
             SetMonitorArea = area => _monitor?.SetArea(area),
             MonitorRefresh = () => _monitor?.Refresh(),
@@ -141,6 +141,9 @@ public sealed class ShellForm : Form
         // The mini window comes back where it was, without taking the keyboard from the lock screen.
         Shown += (_, _) =>
         {
+            _shownOnce = true;
+            Update(); // the start logo painted first, then the window fades in with it
+            FadeIn();
             if (Prefs.MiniOpen)
                 SetMiniOpen(true, activate: false);
             if (_resumeWindow is not null)
@@ -207,7 +210,7 @@ public sealed class ShellForm : Form
         base.SetVisibleCore(value);
     }
 
-    const uint SWP_NOSIZE = 0x1, SWP_NOMOVE = 0x2, SWP_NOACTIVATE = 0x10;
+    const uint SWP_NOSIZE = 0x1, SWP_NOMOVE = 0x2, SWP_NOZORDER = 0x4, SWP_NOACTIVATE = 0x10;
 
     [DllImport("user32.dll")]
     static extern bool SetWindowPos(IntPtr hwnd, IntPtr after, int x, int y, int cx, int cy, uint flags);
@@ -327,7 +330,13 @@ public sealed class ShellForm : Form
             _quitting = false;
             return;
         }
+        // Quitting (the tray menu, Restart to update, the close button with the tray off): the window fades away
+        // first. Not as Windows shuts down or Task Manager ends it: nothing waits on a fade there.
+        if (e.CloseReason is CloseReason.UserClosing or CloseReason.ApplicationExitCall)
+            FadeAway();
         base.OnFormClosing(e);
+        if (e.Cancel)
+            Unfade();
     }
 
     async Task HideToTrayAsync()
@@ -348,6 +357,7 @@ public sealed class ShellForm : Form
         if (_quitting || IsDisposed || _broughtToFront != brought)
             return;
         _tray.Visible = true;
+        FadeAway();
         Hide();
         if (Prefs.TrayHintShown)
             return;
@@ -475,6 +485,11 @@ public sealed class ShellForm : Form
                 _app.OnHotkey((int)m.WParam);
             return;
         }
+        // Coming back from the taskbar: Windows asks first, while the window is still minimised. Invisible from here, so it
+        // never shows before the page's picture is drawn in it (it showed empty for two frames, OBS 2026-11-07 07:19); it
+        // fades in once back (OnResize).
+        if (m.Msg == WM_QUERYOPEN && WindowState == FormWindowState.Minimized && _shownOnce && !_fading && Opacity >= 1)
+            Opacity = 0;
         if (m.Msg == WM_SYSCOMMAND && ((int)m.WParam & 0xFFF0) == SC_MINIMIZE)
         {
             // Consumed whichever way the minimise goes through, so a leftover never skips the next picture.
@@ -626,6 +641,12 @@ public sealed class ShellForm : Form
         // Maximised or restored with the title bar's button (no ResizeEnd for that): remembered for the next start.
         if (WindowState != _lastState)
         {
+            // Back from the taskbar, still invisible (WM_QUERYOPEN): the page's picture painted now, then the fade.
+            if (_lastState == FormWindowState.Minimized && WindowState != FormWindowState.Minimized && Opacity < 1 && !_fading)
+            {
+                _cover?.Update();
+                BeginInvoke(FadeIn);
+            }
             bool restored = _lastState == FormWindowState.Maximized && WindowState == FormWindowState.Normal;
             _lastState = WindowState;
             if (restored && IsHandleCreated)
@@ -655,15 +676,151 @@ public sealed class ShellForm : Form
 
     protected override void OnLoad(EventArgs e)
     {
+        // Opened: see FadeIn. Invisible until then, so the white Windows paints a new window with for a frame or two
+        // (before its first paint) never shows either. First of all: making the window maximised below (a saved
+        // maximised window, or one too big for the screen) shows it there and then, and it flashed white, full screen,
+        // for a frame before this line (OBS, 2026-11-07).
+        Opacity = 0;
         base.OnLoad(e);
         if (SavedPlace(out _))
             RestorePlace();
         else
             FitFirstPlace();
-        // An update in the background found the window minimised: it comes back that way.
+        // An update in the background found the window minimised: it comes back that way, solid (nothing to fade).
         if (_resumeWindow == "minimized")
+        {
+            Opacity = 1;
             WindowState = FormWindowState.Minimized;
+        }
     }
+
+    /// <summary>The page said it was drawn while the window still faded in: its cover comes off once the window is solid
+    /// (the browser may not draw inside a see-through window).</summary>
+    bool _fading, _coverAfterFade;
+
+    /// <summary>
+    /// The window opening: it fades in while rising the last few pixels into its place (unless maximised), a quarter
+    /// of a second, slowing at the end. Bloxkeep's own, as Windows' animation effects may be off (they are on many PCs, the owner's too),
+    /// which made the window just appear, white for a frame first. Meanwhile the window holds only its start logo
+    /// (ShowStartCover): the page, which may not draw in a see-through window, is still on its way.
+    /// </summary>
+    void FadeIn()
+    {
+        if (Opacity >= 1 || _fading || IsDisposed)
+            return;
+        if (WindowState == FormWindowState.Minimized)
+        {
+            Opacity = 1;
+            return;
+        }
+        bool rise = WindowState == FormWindowState.Normal;
+        var home = Location;
+        int drop = rise ? LogicalToDeviceUnits(14) : 0;
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        const double Ms = 260;
+        var timer = new System.Windows.Forms.Timer { Interval = 1 };
+        _fading = true;
+        void Step()
+        {
+            double t = Math.Min(1, clock.Elapsed.TotalMilliseconds / Ms), e = 1 - Math.Pow(1 - t, 3);
+            if (IsDisposed)
+            {
+                timer.Dispose();
+                _fading = false;
+                return;
+            }
+            if (drop > 0 && WindowState == FormWindowState.Normal)
+                SetWindowPos(Handle, IntPtr.Zero, home.X, home.Y + (int)Math.Round(drop * (1 - e)), 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+            Opacity = t >= 1 ? 1 : e;
+            if (t >= 1)
+            {
+                timer.Dispose();
+                _fading = false;
+                if (_coverAfterFade)
+                {
+                    _coverAfterFade = false;
+                    RemoveCover();
+                }
+            }
+        }
+        timer.Tick += (_, _) => Step();
+        Step();
+        timer.Start();
+    }
+
+    bool _shownOnce;
+
+    /// <summary>
+    /// The window going (into the tray, quitting, restarting to update): it fades out while sinking a few pixels, a
+    /// fifth of a second, speeding up as it goes; the opposite of <see cref="FadeIn"/>. The page is held still as a picture
+    /// over the window first (the browser may not draw inside a see-through window). Done right here, not on a timer:
+    /// closing and the update's hand-over go on straight after it. The window is left invisible, back in its place.
+    /// </summary>
+    void FadeAway()
+    {
+        if (IsDisposed || !IsHandleCreated || !Visible || WindowState == FormWindowState.Minimized || Opacity < 1)
+            return;
+        if (PictureOfWindow() is { } picture)
+        {
+            PutCover(picture, PictureBoxSizeMode.Normal);
+            _cover?.Update();
+        }
+        var home = Location;
+        int drop = WindowState == FormWindowState.Normal ? LogicalToDeviceUnits(12) : 0;
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        const double Ms = 200;
+        while (true)
+        {
+            double t = Math.Min(1, clock.Elapsed.TotalMilliseconds / Ms), e = t * t;
+            if (drop > 0)
+                SetWindowPos(Handle, IntPtr.Zero, home.X, home.Y + (int)Math.Round(drop * e), 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+            Opacity = 1 - e;
+            if (t >= 1)
+                break;
+            Thread.Sleep(8);
+        }
+        if (drop > 0)
+            SetWindowPos(Handle, IntPtr.Zero, home.X, home.Y, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+    }
+
+    /// <summary>A close that was called off after the fade: the window as it was.</summary>
+    void Unfade()
+    {
+        if (IsDisposed)
+            return;
+        Opacity = 1;
+        RemoveCover();
+    }
+
+    /// <summary>The window's inside as it is on screen now, the browser's drawing included (PrintWindow's full-content mode).</summary>
+    Bitmap? PictureOfWindow()
+    {
+        if (ClientSize.Width <= 0 || ClientSize.Height <= 0)
+            return null;
+        var bitmap = new Bitmap(ClientSize.Width, ClientSize.Height);
+        using (var g = Graphics.FromImage(bitmap))
+        {
+            IntPtr dc = g.GetHdc();
+            bool ok;
+            try
+            {
+                ok = PrintWindow(Handle, dc, PW_CLIENTONLY | PW_RENDERFULLCONTENT);
+            }
+            finally
+            {
+                g.ReleaseHdc(dc);
+            }
+            if (ok)
+                return bitmap;
+        }
+        bitmap.Dispose();
+        return null;
+    }
+
+    const uint PW_CLIENTONLY = 1, PW_RENDERFULLCONTENT = 2;
+
+    [DllImport("user32.dll")]
+    static extern bool PrintWindow(IntPtr hwnd, IntPtr dc, uint flags);
 
     /// <summary>
     /// No saved place (a first start, or a lost screen): the screen with the mouse, fitted. On a 1366×768 or 1080p laptop
@@ -738,6 +895,9 @@ public sealed class ShellForm : Form
     {
         base.OnVisibleChanged(e);
         UpdateBackground();
+        // Back from the tray (it faded away into it): fades in again, over the picture of the page (UpdateBackground).
+        if (Visible && _shownOnce && Opacity < 1)
+            BeginInvoke(FadeIn);
     }
 
     /// <summary>In the background, hide the page, put it to sleep (no timers or drawing, memory back to Windows) and poll

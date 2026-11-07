@@ -31,6 +31,7 @@ export function LaunchPage({ title }: { title: string }) {
     ['auto', ins.handler ? t('launch.auto', { name: ins.handler }) : t('launch.autoNone'), true],
     ['bloxstrap', 'Bloxstrap', !!ins.bloxstrap],
     ['fishstrap', 'Fishstrap', !!ins.fishstrap],
+    ['voidstrap', 'Voidstrap', !!ins.voidstrap],
     ...[...new Set([...others, ...(savedOther ? [savedOther] : [])])].map(n => [`other:${n}`, n, others.includes(n)] as [string, string, boolean]),
     ['roblox', t('launch.roblox'), !!ins.roblox],
     ['direct', t('launch.direct'), !!ins.direct],

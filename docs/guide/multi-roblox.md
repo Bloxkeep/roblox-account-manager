@@ -93,12 +93,12 @@ Find it under **Settings › Roblox version › Roblox updates › Multi-Roblox 
 
 ## Open Roblox with
 
-**Settings › Launching › Launcher & timing › Open Roblox with** chooses the program that opens Roblox. Bloxstrap and Fishstrap keep your mods.
+**Settings › Launching › Launcher & timing › Open Roblox with** chooses the program that opens Roblox. Bloxstrap, Fishstrap and Voidstrap keep your mods.
 
 | Option | Notes |
 |---|---|
 | **Default** (*name*) | Whatever opens Roblox links on this PC. |
-| **Bloxstrap**, **Fishstrap** | Keep your mods. |
+| **Bloxstrap**, **Fishstrap**, **Voidstrap** | Keep your mods. |
 | Other Bloxstrap-style launchers | Listed when found on this PC. |
 | **Roblox (official)** | The client from roblox.com. |
 | **RobloxPlayerBeta directly (skip launchers)** | No launcher at all. Try it when a launcher blocks several windows. |

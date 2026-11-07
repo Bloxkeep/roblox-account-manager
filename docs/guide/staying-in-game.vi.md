@@ -76,7 +76,7 @@ Nếu tài khoản vẫn bị kick, Bloxkeep nói rõ lý do: bạn dùng máy l
 
 ## Fast Flags
 
-Mặc định tắt. Bật lên, cửa sổ Bloxkeep mở sẽ có trời xám, không cỏ và đồ họa thấp nhất, bớt được chút RAM. Mở xong thì cài đặt Roblox của bạn trở lại như cũ. Nếu mở bằng Bloxstrap hay Fishstrap thì cờ của launcher được ưu tiên.
+Mặc định tắt. Bật lên, cửa sổ Bloxkeep mở sẽ có trời xám, không cỏ và đồ họa thấp nhất, bớt được chút RAM. Mở xong thì cài đặt Roblox của bạn trở lại như cũ. Nếu mở bằng Bloxstrap, Fishstrap hay Voidstrap thì cờ của launcher được ưu tiên.
 
 ## Kiểm tra đăng nhập mỗi ngày
 

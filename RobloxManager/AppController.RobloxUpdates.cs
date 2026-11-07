@@ -195,8 +195,8 @@ public sealed partial class AppController
         && FindAccount(id) is { Banned: not true, CookieValid: not false };
 
     /// <summary>The newest build goes in by itself once no window could be cut off by it (a launcher's copy: Roblox's own updates
-    /// itself as it opens), or at once with "now": every window closes as Close all does, then the update goes in like Close,
-    /// update, reopen's, with nothing reopened. <see cref="AppSettings.AutoUpdateRoblox"/>.</summary>
+    /// itself as it opens), or at once with "now": as Close, update, reopen, the windows in a game opening again after (the
+    /// owner, 2026-11-07). <see cref="AppSettings.AutoUpdateRoblox"/>.</summary>
     void AutoUpdateRoblox(IReadOnlyList<RobloxProcesses.PlayerProcess> players)
     {
         var s = _vault?.Data.Settings;
@@ -213,10 +213,8 @@ public sealed partial class AppController
             UpdateRoblox(quiet: true);
             return;
         }
-        CloseAll(force: false);
-        _updateReopenSince = DateTime.UtcNow; // TickUpdateReopen updates once they've all gone
-        _updateReopenUpdating = false;
-        PushState();
+        // As Close, update, reopen: the windows in a game open again after (an account farming overnight isn't left closed).
+        UpdateAndReopen();
     }
 
     /// <summary>Settings › Roblox version › Close, update, reopen: every Roblox window closes, the launcher updates Roblox (with none,

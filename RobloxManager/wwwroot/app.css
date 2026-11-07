@@ -1353,6 +1353,14 @@ body {
   user-select: none;
   -webkit-font-smoothing: antialiased;
 }
+/* The app's page: the theme's picture on a layer of its own, drawn once. As the page's own background it was drawn
+   again under whatever changed above it: a scenery picture is hundreds of strokes, and each tab switch waited for
+   them (Starry night: Macros ~100 ms from click to picture, 16 ms on its own layer; measured 2026-11-07).
+   livescene.js reads the picture's address from here. */
+body:not(.tray-page, .panel-page, .ov-page, .tool-page) { background: none; }
+body:not(.tray-page, .panel-page, .ov-page, .tool-page)::before {
+  content: ""; position: fixed; inset: 0; z-index: -2; pointer-events: none; background: var(--backdrop); will-change: transform;
+}
 input, textarea { user-select: text; font: inherit; color: inherit; }
 button { font: inherit; color: inherit; cursor: pointer; }
 button:disabled { cursor: default; }
@@ -1366,12 +1374,14 @@ b, strong { font-weight: 650; }
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-thumb { background: rgba(var(--tint), .1); border-radius: var(--r-md); border: 2px solid transparent; background-clip: padding-box; }
 ::-webkit-scrollbar-thumb:hover { background-color: rgba(var(--tint), .2); }
-:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
-/* One focus ring for everything that takes the focus, over any rule that turned the outline off. */
-:is(button, a, [tabindex], input, select, textarea):focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+:focus-visible { outline: 1px solid var(--focus); outline-offset: 2px; }
+/* One thin focus ring for everything that takes the focus, over any rule that turned the outline off. */
+:is(button, a, [tabindex], input, select, textarea):focus-visible { outline: 1px solid var(--focus); outline-offset: 2px; }
+/* A box you type in: the ring is its own edge (drawn over it), not a second line around it, one thin line everywhere. */
+:is(input:not([type=checkbox], [type=radio], [type=range], [type=color]), textarea, select, .select):focus-visible { outline: 1px solid var(--focus); outline-offset: -1px; }
 /* Boxes that draw their own ring around the field they hold (TimeField) or mark the focused row themselves (palette). */
 .tf-box:focus-visible, .pal-row:focus-visible { outline: none; }
-/* The styles that copy a system draw their own soft ring around a focused field: that ring is the one. */
+/* The styles that copy a system colour a focused field's edge their own way: that edge is the ring. */
 :is([data-theme="macos"], [data-theme="macosdark"], [data-theme="gnome"]) .field:focus-visible { outline: none; }
 /* No browser spinner on numbers, no browser triangle on a fold: the app draws its own. */
 input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
@@ -1407,12 +1417,31 @@ kbd { font: 500 var(--fs-1) var(--font); padding: 1px 6px; border-radius: var(--
   position: relative; width: min(420px, 92vw); padding: 38px 36px 28px; text-align: center;
   background: var(--surface);
   border: 1px solid var(--line-2); border-radius: 26px; box-shadow: 0 30px 80px var(--shadow);
-  animation: rise .45s cubic-bezier(.2, .9, .3, 1);
+  animation: rise .6s var(--spring-soft);
   /* A very short window (a small laptop at 200 %): the card scrolls rather than losing its last link. */
   max-height: calc(100vh - 16px); overflow-y: auto; scrollbar-width: thin;
 }
 @keyframes rise { from { opacity: 0; transform: translateY(16px) scale(.98); } }
 .lock-card .logo-img { width: 72px; height: 72px; }
+/* Opening Bloxkeep (app.js lockIntro, the first password screen): the logo the window showed in the middle flies up to
+   its place on the card (.logo-fly), the card opens out around it from a logo-sized tile, the dots come up and the rest
+   steps in under the logo, line by line. Held (.lock-hold) until the window's own logo is off: the start is that
+   logo, nothing else. No scroll bar meanwhile (lines moving up from below would make the card scroll). */
+.logo-fly { position: fixed; z-index: 60; pointer-events: none; }
+.lock-hold.lock-intro :is(.lock .dots, .lock-card, .lock-card > *, .lock-lang) { animation-play-state: paused !important; }
+.lock-intro .lock .dots { animation: fade .6s ease .1s both; }
+.lock-intro .lock-card { overflow-y: hidden; animation: lock-open .7s var(--spring-soft) both; }
+.lock-intro .lock-card > :not(.logo-img) { animation: lock-line .6s var(--spring-soft) both; }
+.lock-intro .lock-card > :nth-child(2) { animation-delay: .22s; }
+.lock-intro .lock-card > :nth-child(3) { animation-delay: .27s; }
+.lock-intro .lock-card > :nth-child(4) { animation-delay: .32s; }
+.lock-intro .lock-card > :nth-child(5) { animation-delay: .37s; }
+.lock-intro .lock-card > :nth-child(6) { animation-delay: .42s; }
+.lock-intro .lock-card > :nth-child(n + 7) { animation-delay: .47s; }
+.lock-intro .lock-lang { animation: fade .5s ease .45s both; }
+.lock-card.opened { animation: none; }
+@keyframes lock-open { from { clip-path: inset(calc(50% - 46px) calc(50% - 46px) round 22px); box-shadow: none; } }
+@keyframes lock-line { from { opacity: 0; translate: 0 12px; } }
 .lock-card h2 { font: 650 24px/1.2 var(--font-display); margin: 18px 0 8px; letter-spacing: -.01em; }
 .lock-card p { margin: 0 0 22px; color: var(--muted); }
 /* Locked while in use: the line before the box says what waits for the unlock. */
@@ -1483,7 +1512,6 @@ kbd { font: 500 var(--fs-1) var(--font); padding: 1px 6px; border-radius: var(--
   font-weight: 600; font-size: var(--fs-3); white-space: nowrap; transition: background .15s, border-color .15s, transform .1s, opacity .15s;
 }
 .btn:hover:not(:disabled) { background: var(--surface-3); border-color: var(--line-3); }
-.btn:active:not(:disabled) { transform: translateY(1px); }
 .btn:disabled { opacity: .45; }
 /* Off but still focusable and still able to say why in its title (DESIGN.md: a disabled control says why). */
 .btn[aria-disabled="true"] { opacity: .45; pointer-events: none; }
@@ -1661,7 +1689,7 @@ input::-ms-reveal, input::-ms-clear { display: none; }
 .switch input:checked + span::after { transform: translateX(18px); background: var(--accent-ink); }
 /* On but not working (the tray's Multi-Roblox when Roblox was open first): amber, not green. */
 .switch.warn input:checked + span { background: var(--warn); }
-.switch input:focus-visible + span { outline: 2px solid var(--focus); outline-offset: 2px; }
+.switch input:focus-visible + span { outline: 1px solid var(--focus); outline-offset: 2px; }
 /* Off controls look off: dimmed, no hand cursor. */
 .switch input:disabled { cursor: default; }
 .switch input:disabled + span { opacity: .5; }
@@ -1680,7 +1708,7 @@ input[type=checkbox]:not(.switch > input):disabled { opacity: .5; cursor: defaul
 
 input[type=range] { -webkit-appearance: none; appearance: none; width: 180px; height: 6px; border-radius: 6px; background: var(--surface-3); outline: none; }
 input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--inv); box-shadow: 0 0 0 4px var(--active); cursor: pointer; }
-input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offset: 4px; }
+input[type=range]:focus-visible { outline: 1px solid var(--focus); outline-offset: 4px; }
 
 .spin { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--line-3); border-top-color: var(--text); animation: spin .7s linear infinite; display: inline-block; flex: none; }
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -1705,6 +1733,13 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
    always on screen, however many tabs there are and however short the window. */
 .side > .side-nav { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 6px; overflow-y: auto; scrollbar-width: thin; margin: -4px; padding: 4px; } /* room for a tab's focus ring */
 .side-nav > * { flex-shrink: 0; }
+/* Picking a tab: its fill comes up, the bar at its edge springs out from the middle (past its length and back), and its
+   icon and name step in to make room for it; the tab left lets go the same way back. Each tab on its own: nothing
+   travels between them. */
+.side-nav > .nav > * { transition: transform .45s var(--spring-soft); }
+.side-nav > .nav.on > * { transform: translateX(4px); } /* transform: the icons keep their own small translate */
+.side-nav > .nav.on::before { animation: nav-bar .55s var(--spring) .03s both; }
+@keyframes nav-bar { from { scale: 1 0; } }
 .side-bottom { display: flex; flex-direction: column; gap: 6px; }
 .brand { display: flex; align-items: center; gap: 11px; padding: 2px 8px 18px; }
 /* The macOS themes' red, yellow and green window buttons; their signs show while the pointer is over them. */
@@ -1719,7 +1754,7 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .light.l-min::after { content: "−"; }
 .light.l-zoom::after { content: "+"; }
 .lights:hover .light::after, .light:focus-visible::after { opacity: 1; }
-.light:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.light:focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; }
 .brand img { width: 38px; height: 38px; }
 .brand-name { font: 700 15.5px/1.15 var(--font-display); letter-spacing: -.01em; }
 .brand-sub { font-size: var(--fs-1); color: var(--muted); } /* fine print: at 12 px it wrapped in the monospace themes */
@@ -1779,6 +1814,37 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
    it sits under the shown tab (behind .main's own background), out of reach of clicks and Tab. Only tabs already
    opened once (.seen, set by setView): the others stay display: none, which costs nothing while the app starts. */
 .view.seen[hidden] { display: flex !important; content-visibility: hidden; position: absolute; inset: 0; z-index: -1; pointer-events: none; }
+/* Changing tab (app.js fadeViews), in the sidebar's order: a tab further down comes up from below, one higher up comes
+   down from above (--dir, 1 or -1), as if the pages were stacked like their tabs. The tab left goes at once (fading it
+   out let the photo themes' bright picture show through between Settings' veil and the next page); the new one's
+   heading arrives first and the rest a beat after, each settling with a soft spring (a touch past its place and back). */
+.main > .view.entering > * { animation: view-in .42s var(--spring-soft) both; }
+.main > .view.entering > :nth-child(2) { animation-delay: .035s; }
+.main > .view.entering > :nth-child(n + 3) { animation-delay: .07s; }
+@keyframes view-in { from { opacity: 0; translate: 0 calc(var(--dir, 1) * 14px); } }
+/* Opening the app (app.js introShell): the logo springs out with a small turn, the tabs drop in from the left one after
+   another, the cards at the bottom of the sidebar rise, and the page comes up a beat later (.entering above). */
+/* Nothing scrolls meanwhile: the cards rising from below pushed the sidebar 2px past its height, and its scroll bar
+   showed for half a second. */
+.shell.intro :is(.side, .side-nav) { overflow: hidden; }
+.shell.intro .brand img { animation: logo-pop .7s var(--spring) both; }
+.shell.intro .brand-text { animation: intro-tab .5s var(--spring-soft) .08s both; }
+.shell.intro .side-nav > * { animation: intro-tab .5s var(--spring-soft) both; }
+.shell.intro .side-nav > :nth-child(1) { animation-delay: .1s; }
+.shell.intro .side-nav > :nth-child(2) { animation-delay: .135s; }
+.shell.intro .side-nav > :nth-child(3) { animation-delay: .17s; }
+.shell.intro .side-nav > :nth-child(4) { animation-delay: .205s; }
+.shell.intro .side-nav > :nth-child(5) { animation-delay: .24s; }
+.shell.intro .side-nav > :nth-child(6) { animation-delay: .275s; }
+.shell.intro .side-nav > :nth-child(7) { animation-delay: .31s; }
+.shell.intro .side-nav > :nth-child(n + 8) { animation-delay: .345s; }
+.shell.intro .side-bottom > * { animation: intro-up .55s var(--spring-soft) .3s both; }
+.shell.intro .main > .view.entering > * { animation-delay: .14s; }
+.shell.intro .main > .view.entering > :nth-child(2) { animation-delay: .175s; }
+.shell.intro .main > .view.entering > :nth-child(n + 3) { animation-delay: .21s; }
+@keyframes logo-pop { from { opacity: 0; scale: .4; rotate: -14deg; } }
+@keyframes intro-tab { from { opacity: 0; translate: -16px 0; } }
+@keyframes intro-up { from { opacity: 0; translate: 0 16px; } }
 .top { display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; padding: 26px 30px 14px; flex-wrap: wrap; }
 .top h1 { margin: 0; font: 700 26px/1.15 var(--font-display); letter-spacing: -.02em; }
 .top p { margin: 4px 0 0; font-size: var(--fs-3); color: var(--muted); }
@@ -1991,6 +2057,8 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .empty h2 { margin: 0 0 6px; font: 650 var(--fs-6) var(--font-display); }
 .empty p { margin: 0 0 20px; color: var(--muted); max-width: 440px; }
 .empty .row { display: flex; gap: 10px; justify-content: center; }
+/* Statistics waiting for its figures: placed like an empty state, without being one (StatsView.tsx). */
+.stats-wait { display: grid; place-items: center; padding: 70px 20px; }
 /* Getting started (Accounts.tsx StartSteps): three steps on one line over the list, ticked as they are done. */
 .start-steps { list-style: none; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 4px 30px 14px; padding: 10px 16px; border-radius: var(--r-lg); border: 1px solid var(--line-2); background: var(--surface); font-size: var(--fs-3); }
 .ss-title { font-weight: 700; color: var(--text); margin-right: 6px; }
@@ -2157,7 +2225,7 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
   color: var(--text); font: inherit; appearance: none; outline: none; cursor: pointer;
 }
 .select:focus { border-color: var(--focus-line); }
-.select:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.select:focus-visible { outline: 1px solid var(--focus); outline-offset: 2px; }
 .select option { background: var(--raised); color: var(--text); }
 .select option:disabled { color: var(--dim); }
 /* The list a drop-down opens, in the page's colours like Bloxkeep's menus, not the browser's own (WebView2 135 and
@@ -2232,7 +2300,7 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .field.bad { border-color: var(--bad-line); }
 /* Time and date boxes (ui/src/TimeField.tsx): the box's frame around the browser's box and Bloxkeep's own button. */
 .tf { display: inline-flex; align-items: center; gap: 2px; padding-right: 4px; }
-.tf:focus-within { border-color: var(--focus-line); box-shadow: 0 0 0 3px var(--focus-ring); }
+.tf:focus-within { border-color: var(--focus); }
 .tf-box { flex: 1; min-width: 0; height: 100%; padding: 0; border: 0; background: none; color: inherit; font: inherit; outline: none; }
 .tf-btn { flex: none; display: grid; place-items: center; width: 28px; height: 28px; border: 0; border-radius: var(--r-sm); background: none; color: var(--muted); }
 .tf-btn:hover:not(:disabled), .tf-btn[aria-expanded="true"] { background: var(--hover); color: var(--text); }
@@ -2286,7 +2354,7 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .set-more > summary { display: flex; align-items: center; gap: 8px; padding: 14px 0; font-weight: 600; color: var(--text-2); cursor: pointer; list-style: none; }
 .set-more > summary::-webkit-details-marker { display: none; }
 .set-more > summary:hover { color: var(--text); }
-.set-more > summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 6px; }
+.set-more > summary:focus-visible { outline: 1px solid var(--focus); outline-offset: 2px; border-radius: 6px; }
 .set-more > summary .i { width: 16px; height: 16px; margin-left: auto; color: var(--muted); transition: transform .15s; }
 .set-more[open] > summary .i { transform: rotate(180deg); }
 .set-more > .set-sub { margin: 0 0 8px 6px; }
@@ -2539,7 +2607,7 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 .mc-pic-head .select.sm { min-width: 0; max-width: 150px; height: 30px; font-size: var(--fs-3); }
 .mc-pic-none { margin: 0; padding: 18px 8px; font-size: var(--fs-3); color: var(--muted); text-align: center; }
 .mc-pic-frame { position: relative; line-height: 0; border-radius: var(--r-sm); overflow: hidden; background: #000; cursor: crosshair; touch-action: none; user-select: none; }
-.mc-pic-frame:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.mc-pic-frame:focus-visible { outline: 1px solid var(--focus); outline-offset: 2px; }
 .mc-pic-frame img { width: 100%; height: auto; display: block; pointer-events: none; }
 .mc-pic-dot { position: absolute; display: grid; place-items: center; width: 20px; height: 20px; transform: translate(-50%, -50%); border-radius: 50%; border: 2px solid #fff; background: var(--accent); color: #fff; font: 700 var(--fs-1)/1 var(--font); box-shadow: 0 1px 4px rgba(0, 0, 0, .5); pointer-events: none; }
 .mc-pic-dot.on { width: 24px; height: 24px; background: var(--bad); }
@@ -2574,7 +2642,7 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 /* Opening a card (Discord's Preview): as far from its top as a row's text is; 4 px sat on the edge (owner, 2026-11-02). */
 .set-card > .tg-tabs:first-child { padding-top: 16px; }
 .themes { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 12px; padding: 2px 2px 16px; }
-.swatch { position: relative; min-width: 0; padding: 66px 0 0; border: 0; border-radius: var(--r-md); background: none; color: var(--text); text-align: left; outline: 2px solid transparent; outline-offset: 2px; transition: outline-color .15s; }
+.swatch { position: relative; min-width: 0; padding: 66px 0 0; border: 0; border-radius: var(--r-md); background: none; color: var(--text); text-align: left; outline: 1px solid transparent; outline-offset: 2px; transition: outline-color .15s; }
 .swatch > b { display: block; padding: 6px 2px 2px; font: 500 var(--fs-2)/1.3 var(--font); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .swatch:hover > b, .swatch.on > b { color: var(--text); }
 .swatch.on { outline-color: var(--text); }
@@ -2630,7 +2698,7 @@ input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offse
 /* The game's name when it opens the game's page (Accounts.tsx): the plain name's look, underlined on hover. */
 .dock-info .gname-link { text-decoration: underline dotted transparent; text-underline-offset: 3px; cursor: pointer; border-radius: var(--r-xs); }
 .dock-info .gname-link:hover { text-decoration-color: currentColor; }
-.dock-info .gname-link:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.dock-info .gname-link:focus-visible { outline: 1px solid var(--focus); outline-offset: 2px; }
 /* Bloxkeep's colour picker (ui/src/ColorField.tsx). */
 .cf { display: grid; gap: 10px; width: 232px; padding: 4px; }
 .cf-ready { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; }
@@ -2904,7 +2972,7 @@ input[type=range].cf-hue { width: 100%; background: linear-gradient(90deg, #f00,
 .start-opts { display: grid; gap: 10px; width: min(460px, 100%); margin: 0 auto; text-align: left; }
 .start-opt { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: var(--r-lg); border: 1px solid var(--line-2); background: var(--surface); color: var(--text); font: inherit; text-align: left; cursor: pointer; transition: border-color .15s, background .15s; }
 .start-opt:hover, .start-opt:focus-visible { background: var(--surface-2); border-color: var(--line-3); }
-.start-opt:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.start-opt:focus-visible { outline: 1px solid var(--focus); outline-offset: 2px; }
 .start-opt > .i:first-child { width: 22px; height: 22px; flex: none; color: var(--text-2); }
 .start-opt > span { flex: 1; min-width: 0; display: grid; gap: 3px; }
 .start-opt b { display: flex; align-items: center; gap: 8px; font-size: var(--fs-4); font-weight: 650; }
@@ -3098,6 +3166,7 @@ body:has(.lock) #toasts { bottom: 24px; }
   .side > .side-nav { scrollbar-width: none; } /* in a short window it still scrolls: a bar would squeeze the icons */
   .brand-name, .brand-sub, .nav span, .nav em, .side-card, .multi div, .multi .switch, .side-foot .btn span:not(.vault-face), .warn-card span { display: none; }
   .nav > svg.i, .side-foot .btn > svg.i { translate: none; } /* alone in its button now: on its middle */
+  .side-nav > .nav.on > * { transform: none; } /* and no step-in: it would leave the middle */
   .warn-card { justify-content: center; padding: 10px 0; }
   .warn-card .i { margin-top: 0; }
   .brand { justify-content: center; padding: 2px 0 18px; }
@@ -3215,12 +3284,21 @@ body:has(.lock) #toasts { bottom: 24px; }
   .lock-card .logo-img { width: 56px; height: 56px; }
   body:has(#view-accounts:not([hidden])) #toasts { bottom: var(--dock-clear, 114px); }
 }
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
-  /* Something is still loading: a slow fade instead of a spin, so a still ring doesn't look stuck. */
-  .spin, .btn.busy::after, .icon-btn.busy .i { animation: still-busy 1.6s ease-in-out infinite !important; border-top-color: var(--line-3); }
-}
-@keyframes still-busy { 50% { opacity: .35; } }
+/* Bloxkeep's springs (here, after every control's own rules, so their transitions don't undo these): what you press or pick goes past where it lands and comes back (a damped spring, sampled).
+   --spring for small things that give and bounce back, --spring-soft for whole pages and longer moves. */
+:root { --spring: linear(0, 0.09, 0.307, 0.572, 0.826, 1.028, 1.161, 1.225, 1.23, 1.194, 1.137, 1.074, 1.019, 0.978, 0.954, 0.946, 0.949, 0.96, 0.974, 0.988, 1, 1.008, 1.012, 1.013, 1); --spring-soft: linear(0, 0.042, 0.146, 0.284, 0.435, 0.582, 0.715, 0.828, 0.919, 0.987, 1.035, 1.064, 1.079, 1.084, 1.08, 1.071, 1.059, 1.047, 1.034, 1.023, 1.014, 1.006, 1.001, 0.997, 1); }
+/* Pressed, everything you click sinks in at once and springs back when let go (buttons, icon buttons, tabs, chips,
+   segments, Settings' pages), by the scale property so a control placed with transform stays put; a switch's knob stretches toward where it goes and bounces into place. */
+.btn, :is(.icon-btn, .nav, .chip, .seg button, .set-nav-item) { transition-property: background, color, border-color, box-shadow, opacity, scale; transition-duration: .15s, .15s, .15s, .15s, .15s, .5s; transition-timing-function: ease, ease, ease, ease, ease, var(--spring); }
+.btn:active:not(:disabled) { scale: .96; transition-duration: .15s, .15s, .15s, .15s, .15s, .07s; transition-timing-function: ease-out; }
+:is(.icon-btn, .chip, .seg button):active:not(:disabled) { scale: .88; transition-duration: .15s, .15s, .15s, .15s, .15s, .07s; transition-timing-function: ease-out; }
+:is(.nav, .set-nav-item):active { scale: .97; transition-duration: .15s, .15s, .15s, .15s, .15s, .07s; transition-timing-function: ease-out; }
+.switch span::after { transition: transform .5s var(--spring), width .4s var(--spring), background .2s; }
+.switch input:active:not(:disabled) + span::after { width: 22px; transition-duration: .12s, .12s, .2s; transition-timing-function: ease-out; }
+.switch input:checked:active:not(:disabled) + span::after { transform: translateX(12px); }
+
+/* Motion doesn't follow Windows' "Animation effects": many PCs have it off (the owner's too), and the app would sit
+   still on them. */
 
 [data-theme="valentine"] {
   /* Valentine: heart balloons over the hills at dusk, behind glass. */
@@ -5353,7 +5431,7 @@ body:has(.lock) #toasts { bottom: 24px; }
 [data-theme="brutal"] .play-btn:active:not(:disabled) { transform: translate(4px, 4px); box-shadow: none; }
 [data-theme="brutal"] .side { border-right: 3px solid #000; }
 [data-theme="brutal"] .chip.on { background: #ff8fd0; color: #000; }
-[data-theme="brutal"] :is(.nav.on, .set-nav-item[aria-current="page"]) { background: #a3e635; color: #000; box-shadow: 3px 3px 0 #000; outline: 2px solid #000; }
+[data-theme="brutal"] :is(.nav.on, .set-nav-item[aria-current="page"]) { background: #a3e635; color: #000; box-shadow: 3px 3px 0 #000; outline: 1px solid #000; }
 [data-theme="brutal"] .nav.on :is(.i, em) { color: #000; }
 [data-theme="brutal"] .top h1 { font-size: 30px; }
 
@@ -5416,8 +5494,8 @@ body:has(.lock) #toasts { bottom: 24px; }
 [data-theme="macos"] .switch input:checked + span { background: #248a3d; }
 [data-theme="macosdark"] .switch input:checked + span { background: #2a9d4a; }
 :is([data-theme="macos"], [data-theme="macosdark"]) .switch input:checked + span::after { background: #fff; }
-[data-theme="macos"] .field:focus { border-color: #007aff; box-shadow: 0 0 0 3px rgba(0, 122, 255, .3); }
-[data-theme="macosdark"] .field:focus { border-color: #0a84ff; box-shadow: 0 0 0 3px rgba(10, 132, 255, .35); }
+[data-theme="macos"] .field:focus { border-color: #007aff; }
+[data-theme="macosdark"] .field:focus { border-color: #0a84ff; }
 
 /* GNOME (Adwaita): a header bar, flat grey buttons without outlines, boxed lists with a soft edge, blue for the chosen. */
 [data-theme="gnome"] .top { margin-bottom: 10px; padding-bottom: 14px; background: #ebebeb; border-bottom: 1px solid rgba(0, 0, 0, .1); }
@@ -5427,7 +5505,7 @@ body:has(.lock) #toasts { bottom: 24px; }
 [data-theme="gnome"] :is(.btn:not(.primary), .pill-btn, .sort-btn, .chip:not(.on)):hover:not(:disabled) { background: rgba(0, 0, 0, .12); }
 [data-theme="gnome"] :is(.btn.primary, .chip.on) { border-radius: 6px; }
 [data-theme="gnome"] :is(.field, .select) { border: 1px solid var(--line-field); border-radius: 6px; background-color: rgba(0, 0, 0, .06); }
-[data-theme="gnome"] .field:focus { box-shadow: 0 0 0 2px rgba(53, 132, 228, .5); }
+[data-theme="gnome"] .field:focus { border-color: #3584e4; }
 [data-theme="gnome"] .nav { border-radius: 6px; }
 [data-theme="gnome"] :is(.nav.on, .set-nav-item[aria-current="page"]) { background: rgba(0, 0, 0, .1); color: #2e2e2e; }
 [data-theme="gnome"] :is(.modal, .menu, .picker) { border: 0; border-radius: 12px; box-shadow: 0 0 0 1px rgba(0, 0, 0, .05), 0 10px 40px rgba(0, 0, 0, .2); }
@@ -5572,7 +5650,7 @@ body.tray-page { background: var(--surface); overflow: hidden; }
 .tray .tray-check { width: 15px; height: 15px; color: var(--accent); }
 .tray .tray-sub { width: 15px; height: 15px; color: var(--muted); }
 .tray.tray-menu .tray-list .tray-row { min-height: 38px; }
-.tray :focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.tray :focus-visible { outline: 1px solid var(--accent); outline-offset: -2px; }
 .tray:focus { outline: none; }
 .set-row .d .warn-text { color: var(--warn-ink); }
 /* The dock is the page's foot in every theme: rounded corners would stand off the window's edge. */
@@ -5582,7 +5660,7 @@ body.tray-page { background: var(--surface); overflow: hidden; }
 .mc-step-head { flex: 1 1 200px; min-width: 0; display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 8px; border: 0; border-radius: var(--r-sm); background: none; color: var(--text); font: inherit; font-size: var(--fs-3); text-align: left; }
 button.mc-step-head { cursor: pointer; }
 button.mc-step-head:hover { background: var(--hover); }
-button.mc-step-head:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+button.mc-step-head:focus-visible { outline: 1px solid var(--focus); outline-offset: -2px; }
 .mc-step-head > .i { width: 16px; height: 16px; flex: none; color: var(--text-2); }
 .mc-step-head > .i:last-child { width: 14px; height: 14px; margin-left: auto; color: var(--muted); }
 .mc-step-head > b { flex: none; font-weight: 650; }
@@ -5613,7 +5691,7 @@ button.mc-step-head:focus-visible { outline: 2px solid var(--focus); outline-off
 .mc-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; width: min(640px, 100%); margin: 6px auto 12px; }
 .mc-tile { display: grid; justify-items: center; gap: 4px; padding: 18px 12px 16px; border: 1px solid var(--line-2); border-radius: var(--r-lg); background: var(--surface); color: var(--text); font: inherit; text-align: center; cursor: pointer; }
 .mc-tile:hover { background: var(--hover); }
-.mc-tile:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.mc-tile:focus-visible { outline: 1px solid var(--focus); outline-offset: 2px; }
 .mc-tile .i { width: 22px; height: 22px; margin-bottom: 4px; color: var(--accent); }
 .mc-tile b { font-size: var(--fs-4); font-weight: 650; }
 .mc-tile small { font-size: var(--fs-2); color: var(--muted); }
@@ -5630,7 +5708,7 @@ button.mc-step-head:focus-visible { outline: 2px solid var(--focus); outline-off
 .mc-when > summary { display: flex; align-items: center; gap: 8px; min-height: 38px; padding: 0 12px; border-radius: var(--r-md); font-size: var(--fs-3); color: var(--text-2); cursor: pointer; list-style: none; }
 .mc-when > summary::-webkit-details-marker { display: none; }
 .mc-when > summary:hover { background: var(--hover); }
-.mc-when > summary:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.mc-when > summary:focus-visible { outline: 1px solid var(--focus); outline-offset: -2px; }
 .mc-when > summary > span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mc-when > summary .i { width: 14px; height: 14px; flex: none; color: var(--muted); transition: transform .15s; }
 .mc-when[open] > summary .i { transform: rotate(180deg); }
@@ -5657,7 +5735,7 @@ button.mc-step-head:focus-visible { outline: 2px solid var(--focus); outline-off
 .mc-unit > span { font-size: var(--fs-3); color: var(--muted); }
 .mc-pt { display: inline-grid; place-items: center; min-width: 26px; height: 26px; padding: 0 6px; border: 2px solid #fff; border-radius: var(--r-pill); background: var(--accent); color: var(--accent-ink, #fff); font: 700 var(--fs-2)/1 var(--font); box-shadow: 0 0 0 1px var(--line-3); cursor: pointer; }
 .mc-pt:disabled { cursor: default; }
-.mc-pt:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.mc-pt:focus-visible { outline: 1px solid var(--focus); outline-offset: 2px; }
 .mc-vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .mc-colourf, .mc-keyf { display: inline-flex; align-items: center; gap: 6px; }
 .mc-pick .i, .mc-cut .i, .mc-keycap .i { width: 14px; height: 14px; }
@@ -5679,7 +5757,7 @@ button.mc-step-head:focus-visible { outline: 2px solid var(--focus); outline-off
 .mc-pic-frame .mc-pic-dot { pointer-events: auto; cursor: grab; }
 .mc-pic-frame .mc-pic-area { pointer-events: auto; border-style: solid; cursor: move; }
 .mc-pic-frame.cutting :is(.mc-pic-dot, .mc-pic-area) { pointer-events: none; }
-.mc-pic-frame :is(.mc-pic-dot, .mc-pic-area):focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.mc-pic-frame :is(.mc-pic-dot, .mc-pic-area):focus-visible { outline: 1px solid #fff; outline-offset: 2px; }
 .mc-pic-handle { position: absolute; right: -5px; bottom: -5px; width: 10px; height: 10px; border: 1px solid #fff; border-radius: 2px; cursor: nwse-resize; }
 .mc-pic-acts { display: flex; align-items: center; gap: 8px; }
 .mc-pic-acts small { min-width: 0; font-size: var(--fs-2); color: var(--muted); }
@@ -5959,7 +6037,7 @@ html:not(.in-window) .pn.pn-pill { height: 42px; }
 /* The dialog's foot: how many problems stop Save (a click goes to the first); Save looks not ready while there are any. */
 .mc-probs-badge { order: -1; display: inline-flex; align-items: center; gap: 6px; height: 34px; margin-right: 8px; padding: 0 10px; border: 0; border-radius: var(--r-md); background: transparent; color: var(--bad-ink); font: 600 var(--fs-3) var(--font); cursor: pointer; }
 .mc-probs-badge:hover { background: var(--bad-soft); }
-.mc-probs-badge:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.mc-probs-badge:focus-visible { outline: 1px solid var(--focus); outline-offset: 2px; }
 .mc-probs-badge .i { width: 15px; height: 15px; }
 .modal-foot:not(:has(.push)) > .mc-probs-badge { margin-right: auto; }
 .mc-modal .modal-foot .btn.primary[aria-disabled="true"] { opacity: .55; pointer-events: auto; }
@@ -6094,7 +6172,7 @@ html:not(.in-window) .pn.pn-pill { height: 42px; }
 .card:not(.row) > .name { margin-right: 40px; }
 /* Asked for from the quick search: the card is shown for a moment, without selecting it. */
 .card.flash { animation: card-flash 1.2s ease-out; }
-@keyframes card-flash { 0%, 40% { outline: 2px solid var(--focus); outline-offset: 2px; } 100% { outline: 2px solid transparent; outline-offset: 2px; } }
+@keyframes card-flash { 0%, 40% { outline: 1px solid var(--focus); outline-offset: 2px; } 100% { outline: 1px solid transparent; outline-offset: 2px; } }
 
 /* The dock. Play off (nothing selected) looks off but still answers a click with why. */
 .dock-go .play-btn[aria-disabled="true"] { background: var(--surface-3); box-shadow: none; color: var(--muted); cursor: default; }
@@ -6573,7 +6651,7 @@ body.browser-page { background: linear-gradient(var(--bg), var(--bg)), linear-gr
 .gm { position: relative; }
 .gm-box { position: absolute; display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; gap: 6px; padding: 10px; overflow: hidden;
   border: 0; border-radius: var(--r-md); background: oklch(var(--g-l) var(--g-c) var(--h) / .22); color: var(--text); text-align: left; cursor: pointer;
-  transition: background .15s, outline-color .15s; outline: 2px solid transparent; outline-offset: -2px; }
+  transition: background .15s, outline-color .15s; outline: 1px solid transparent; outline-offset: -2px; }
 .gm-box:hover { background: oklch(var(--g-l) var(--g-c) var(--h) / .34); }
 .gm-box.on { outline-color: oklch(var(--g-l) var(--g-c) var(--h)); background: oklch(var(--g-l) var(--g-c) var(--h) / .4); }
 .gm-box img { width: 30px; height: 30px; flex: none; border-radius: var(--r-sm); object-fit: cover; }
@@ -6815,7 +6893,7 @@ body.browser-page { background: linear-gradient(var(--bg), var(--bg)), linear-gr
 .wk-check span { width: 18px; height: 18px; border: 1.5px solid var(--line-2); border-radius: 5px; transition: background .12s, border-color .12s; }
 .wk-check input:checked + span { border-color: var(--accent); background: var(--accent); }
 .wk-check input:checked + span::after { content: ''; display: block; width: 5px; height: 9px; margin: 2px auto 0; border: solid var(--accent-ink); border-width: 0 2px 2px 0; transform: rotate(45deg); }
-.wk-check input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+.wk-check input:focus-visible + span { outline: 1px solid var(--accent); outline-offset: 2px; }
 .wk-check input:disabled + span { opacity: .35; }
 .wk-check input:disabled { cursor: not-allowed; }
 .wk-credit { margin-bottom: 4px; }
@@ -7190,7 +7268,7 @@ body.browser-page { background: linear-gradient(var(--bg), var(--bg)), linear-gr
 .gm-card { display: flex; flex-direction: column; min-width: 0; padding: 0; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface);
   color: inherit; font: inherit; text-align: left; cursor: pointer; overflow: hidden; transition: border-color .12s, transform .12s; }
 .gm-card:hover { border-color: var(--gt, var(--line-2)); transform: translateY(-2px); }
-.gm-card:focus-visible { outline: 2px solid var(--gt, var(--accent)); outline-offset: 2px; }
+.gm-card:focus-visible { outline: 1px solid var(--gt, var(--accent)); outline-offset: 2px; }
 .gm-cover { display: block; aspect-ratio: 16 / 9; background: var(--gt, var(--well)); border-bottom: 3px solid var(--gt, var(--line)); }
 .gm-cover img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .gm-card-body { display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px 14px; min-width: 0; }
@@ -7258,50 +7336,62 @@ body.browser-page { background: linear-gradient(var(--bg), var(--bg)), linear-gr
 /* Not .live / .warn: the account cards' .live row (margin on top) would take the tag out of line. */
 .gm-tag.playing { color: var(--ok, #3fb950); }
 .gm-tag.radar { color: var(--warn, #e5a50a); }
-/* The board: a header with the totals, the first three on a podium (medal colours, each block as high as its alts),
-   the rest as bars measured against the first. */
-.cm-board { --gold: #e8b931; --silver: #b8c0cc; --bronze: #c98a55; }
-.cm-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
-.cm-head h3 { margin: 0; }
-.cm-live { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border-radius: 999px; background: color-mix(in srgb, var(--ok, #3fb950) 14%, transparent);
-  color: var(--ok, #3fb950); font-size: 11.5px; font-weight: 600; }
-.cm-live i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: cm-blink 2s steps(2, jump-none) infinite; }
+/* The board: every account a face (a little block head, like Bloxkeep's own), the faces shrinking (--fs, from Community.tsx)
+   so a row takes two lines at most; the first three with medals, the first framed in gold, this PC's faces green. */
+.cm-board { --gold: #e8b931; --silver: #b8c0cc; --bronze: #c98a55; --eye: #1d1a14; }
+.cm-defs { position: absolute; width: 0; height: 0; overflow: hidden; }
+.cm-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; }
+.cm-logo { flex: none; width: 30px; height: 30px; color: var(--gold); }
+.cm-title { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.cm-title h3 { margin: 0; font-size: 16px; font-weight: 700; }
+.cm-live { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; }
+.cm-live i { width: 7px; height: 7px; border-radius: 50%; background: var(--ok, #3fb950); animation: cm-blink 2s steps(2, jump-none) infinite; }
 @keyframes cm-blink { 50% { opacity: .35; } }
-.cm-totals { display: flex; gap: 20px; margin-left: auto; color: var(--muted); font-size: 12px; }
-.cm-totals span { display: flex; align-items: baseline; gap: 5px; }
-.cm-totals b { color: var(--text); font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
-.cm-note { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
-.cm-podium { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: end; gap: 10px; max-width: 560px; margin: 18px auto 0; padding: 0;
-  border-bottom: 2px solid var(--line, rgba(127, 127, 127, .2)); list-style: none; }
-.cm-step { display: flex; flex-direction: column; align-items: stretch; gap: 8px; min-width: 0; }
-.cm-step.p1 { --m: var(--gold); }
-.cm-step.p2 { --m: var(--silver); }
-.cm-step.p3 { --m: var(--bronze); }
-.cm-who { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; text-align: center; }
-.cm-medal { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--m); color: #1d1a14; font-size: 13px; font-weight: 800; }
-.p1 .cm-medal { width: 32px; height: 32px; font-size: 15px; }
-.cm-who b { max-width: 100%; overflow: hidden; font-size: 13.5px; text-overflow: ellipsis; white-space: nowrap; }
-.cm-who em { padding: 1px 6px; border-radius: 4px; background: var(--accent); color: var(--accent-ink, #fff); font-size: 11px; font-style: normal; font-weight: 600; }
-.cm-block { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 2px; height: calc(var(--h) * 130px); padding-top: 12px;
-  border-top: 3px solid var(--m); border-radius: 8px 8px 0 0; background: color-mix(in srgb, var(--m) 16%, var(--surface-2, transparent)); }
-.cm-block strong { font-size: 26px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; letter-spacing: -.02em; }
-.p1 .cm-block strong { font-size: 32px; }
-.cm-block small { color: var(--muted); font-size: 11.5px; }
-.cm-step.me .cm-block { outline: 2px solid var(--accent); outline-offset: -2px; }
-.cm-rows { display: grid; gap: 2px; margin: 14px 0 0; padding: 0; list-style: none; }
-.cm-row { display: grid; grid-template-columns: 24px minmax(0, 1fr) minmax(80px, 2fr) 44px; align-items: center; gap: 12px; padding: 6px 10px;
-  border-radius: 8px; font-size: 13px; font-variant-numeric: tabular-nums; }
-.cm-row:hover { background: var(--surface-2, transparent); }
-.cm-row.me { background: color-mix(in srgb, var(--accent) 14%, transparent); }
-.cm-rank { color: var(--muted); font-weight: 700; text-align: right; }
+.cm-stats { display: flex; flex-wrap: wrap; gap: 8px; margin-left: auto; }
+.cm-stats > span { display: flex; align-items: center; gap: 9px; padding: 7px 12px; border: 1px solid var(--line-2, var(--line)); border-radius: 11px; background: var(--surface-2); }
+.cm-stats > span > svg { flex: none; width: 18px; height: 18px; }
+.cm-stats > span > svg:not(.cm-face) { color: var(--text-2); }
+.cm-stats > span > span { display: flex; flex-direction: column; line-height: 1.15; }
+.cm-stats b { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.cm-stats small { color: var(--muted); font-size: 11px; font-weight: 600; }
+.cm-note { margin: 14px 0 0; color: var(--muted); font-size: 13px; }
+.cm-rows { display: grid; margin: 16px 0 0; padding: 0; list-style: none; }
+.cm-row { display: grid; grid-template-columns: 26px minmax(110px, 180px) minmax(0, 1fr) 44px; align-items: center; gap: 14px; min-height: 38px; padding: 4px 10px;
+  border-radius: 9px; font-size: 13px; font-variant-numeric: tabular-nums; }
+.cm-row + .cm-row { border-top: 1px solid var(--line); }
+.cm-row.p1 { min-height: 64px; margin-bottom: 6px; border: 1px solid color-mix(in srgb, var(--gold) 40%, transparent); border-radius: 11px;
+  background: color-mix(in srgb, var(--gold) 10%, var(--surface)); }
+.cm-row.p1 + .cm-row { border-top: 0; }
+.cm-row.me { background: var(--surface-2); }
+.cm-row.p1.me { background: color-mix(in srgb, var(--gold) 10%, var(--surface-2)); }
+.cm-rank { color: var(--muted); font-weight: 650; text-align: right; }
+.cm-medal { position: relative; display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 6px; background: var(--m); color: var(--eye); font-size: 12px; font-weight: 700; }
+.cm-row.p1 { --m: var(--gold); } .cm-row.p2 { --m: var(--silver); } .cm-row.p3 { --m: var(--bronze); }
+.cm-row.p1 .cm-medal::before { content: ""; position: absolute; left: 50%; top: -11px; width: 16px; height: 9px; translate: -50% 0; background: var(--gold);
+  clip-path: polygon(0 100%, 0 20%, 25% 60%, 50% 0, 75% 60%, 100% 20%, 100% 100%); }
 .cm-name { display: flex; align-items: center; gap: 8px; min-width: 0; font-weight: 600; }
 .cm-name > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cm-name em { flex: none; padding: 1px 6px; border-radius: 4px; background: var(--accent); color: var(--accent-ink, #fff); font-size: 11px; font-style: normal; }
-.cm-bar { height: 8px; border-radius: 4px; background: var(--surface-3, rgba(127, 127, 127, .15)); overflow: hidden; }
-.cm-bar i { display: block; height: 100%; border-radius: 4px; background: var(--accent); transform: scaleX(var(--f)); transform-origin: left; }
-.cm-row b { text-align: right; }
-.cm-join { display: grid; gap: 6px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line, rgba(127, 127, 127, .2)); font-size: 13px; }
-.cm-join p { margin: 0; font-weight: 600; }
-.cm-join label { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
-.cm-join .field { width: 200px; }
-.cm-join small { color: var(--muted); }
+.cm-name em { flex: none; padding: 1px 6px; border-radius: 6px; background: var(--inv); color: var(--inv-ink); font-size: 11px; font-style: normal; font-weight: 600; }
+.cm-row.p1 .cm-name { flex-direction: column; align-items: flex-start; gap: 1px; font-size: 15px; }
+.cm-row.p1 .cm-name > span { max-width: 100%; }
+.cm-row.p1 .cm-name small { color: color-mix(in srgb, var(--gold) 75%, var(--text)); font-size: 11px; font-weight: 650; }
+.cm-faces { display: flex; flex-wrap: wrap; gap: var(--fg, 4px); padding: 4px 0; }
+/* Mixed, not faded: the dark eyes stay seen on a light theme too. */
+.cm-face { flex: none; width: var(--fs, 20px); height: var(--fs, 20px); color: color-mix(in srgb, var(--text-2) 55%, var(--surface)); }
+.cm-row.p1 .cm-faces { gap: var(--fg1, 6px); }
+.cm-row.p1 .cm-face { width: var(--fs1, 30px); height: var(--fs1, 30px); color: var(--gold); }
+.cm-row.p2 .cm-face { color: var(--silver); }
+.cm-row.p3 .cm-face { color: var(--bronze); }
+.cm-row.me .cm-face, .cm-me .cm-face { color: var(--ok, #3fb950); }
+.cm-row > b { font-weight: 650; text-align: right; }
+.cm-row.p1 > b { font-size: 22px; line-height: 1.1; }
+.cm-row > b small { display: block; color: var(--muted); font-size: 11px; font-weight: 600; }
+.cm-foot { display: grid; gap: 8px; margin-top: 14px; padding: 12px 14px; border: 1px solid var(--line-2, var(--line)); border-radius: 11px; background: var(--surface-2);
+  font-size: 13px; }
+.cm-me { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.cm-me .cm-faces { max-width: 240px; padding: 0; }
+.cm-me p { margin: 0; }
+.cm-me b { font-weight: 650; }
+.cm-me label { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-left: auto; color: var(--muted); }
+.cm-me .field { width: 180px; }
+.cm-foot small { color: var(--muted); }

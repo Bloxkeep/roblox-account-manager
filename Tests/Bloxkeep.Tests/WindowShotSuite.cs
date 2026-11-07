@@ -41,6 +41,8 @@ static class WindowShotSuite
     {
         int me = Environment.ProcessId;
         using var form = new Form { Text = "Bloxkeep screenshot check", BackColor = Color.Red, StartPosition = FormStartPosition.Manual, Left = -3000, Top = -3000, Width = 400, Height = 300 };
+        // A spot of blue: a picture all one colour is taken for a window that hasn't drawn yet, and taken again.
+        form.Controls.Add(new Panel { BackColor = Color.Blue, Left = 20, Top = 40, Width = 60, Height = 60 });
         form.Show();
         Application.DoEvents();
         IntPtr hWnd = form.Handle;
@@ -107,6 +109,18 @@ static class WindowShotSuite
             $"visible {IsWindowVisible(hWnd)}, style {GetWindowLong(hWnd, -20):x} was {style:x}");
         RobloxProcesses.ShowWindows([me]);
         Pump();
+
+        var blank = capture.DeclaringType!.GetMethod("Blank", Harness.F)!;
+        using (var white = new Bitmap(400, 300))
+        {
+            using (var g = Graphics.FromImage(white))
+                g.Clear(Color.White);
+            bool whiteBlank = (bool)blank.Invoke(null, [white])!;
+            using var drawn = new Bitmap(new MemoryStream(inView!.Value.Jpeg));
+            bool drawnBlank = (bool)blank.Invoke(null, [drawn])!;
+            c.Check("a picture all white is taken for nothing drawn yet, one with something on it isn't", whiteBlank && !drawnBlank,
+                $"white {whiteBlank}, drawn {drawnBlank}");
+        }
 
         var gone = (Task)capture.Invoke(null, [IntPtr.Zero, 1920])!;
         c.Check("no window: no picture", ((Task<(byte[] Jpeg, bool Black)?>)gone).Result is null);
