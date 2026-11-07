@@ -137,7 +137,8 @@ static class LockWallSuite
         var later = Since(postsAfterReplies);
         bool onlyLockedState = later.All(LockScreenState);
         c.Check("the tray's Open and Run preset do nothing behind the lock screen: no launch, no change, no toast", Snapshot() == before && notices == 0 && onlyLockedState,
-            $"same {Snapshot() == before}, notices {notices}, {later.Length} posts, only the locked state {onlyLockedState}");
+            $"same {Snapshot() == before}, notices {notices}, {later.Length} posts, only the locked state {onlyLockedState}: "
+            + string.Join(" // ", later.Where(p => !LockScreenState(p)).Select(p => p.Length > 120 ? p[..120] : p)));
         var tray = app.TrayState();
         c.Check("the tray menu counts as closed, with no presets or clients", !tray.Open && tray.Presets.Count == 0, $"open {tray.Open}, {tray.Presets.Count} presets");
         c.Check("…and lists no macros and no running clients", app.TrayMacros().Count == 0 && app.RunningClients().Count == 0 && !app.Unlocked);
