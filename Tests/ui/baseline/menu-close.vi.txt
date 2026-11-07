@@ -360,8 +360,8 @@ html [data-theme="dark" lang="vi"]
                 div.daystrip [role="img" title="Hôm nay chưa chơi" aria-label="Hôm nay chưa chơi"]
                   span.ds-now [style="left:50%"]
                 div.card-actions
-                  button.pill-btn.play [tabindex="-1"] "Vào game"
-                    svg.i #1ewcuky
+                  button.pill-btn.relogin [title="Mở trang kháng cáo của Roblox, đã đăng nhập tài khoản này (chỉ chính nó kháng cáo được)" tabindex="-1"] "Kháng cáo"
+                    svg.i #1a4qrux
                   button.icon-btn [title="Sửa (F2)" tabindex="-1" aria-label="Sửa (F2)"]
                     svg.i #1hrhc9o
                   button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu" aria-label="Tùy chọn khác"]

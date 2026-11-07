@@ -13,18 +13,25 @@ public sealed partial class AppController
     /// <summary>The tab open for a saved account, by account id.</summary>
     readonly Dictionary<Guid, WebsiteTab> _websites = new();
 
-    object? OpenWebsite(Guid id)
+    /// <summary>Roblox's Violations & Appeals page: a ban is appealed there, signed in as the banned account (DevForum,
+    /// "Update on Account Bans, Alt Detection, and Appeals", 2026-11).</summary>
+    const string AppealUrl = "https://www.roblox.com/report-appeals";
+
+    /// <param name="url">A page on roblox.com to open instead of its home (Appeal); an open tab goes there.</param>
+    object? OpenWebsite(Guid id, string? url = null)
     {
         var account = RequireAccount(id);
         if (Realm.Normalize(account.Realm) == Realm.Vng)
             throw new UserError(L.T("The website can't be opened for Roblox VNG accounts yet."));
         if (_websites.TryGetValue(id, out var open) && !open.IsClosed && _webWindow is { IsDisposed: false } window)
         {
+            if (url is not null)
+                open.Go(url);
             window.SelectTab(open);
             ShowWebWindow(window);
             return null;
         }
-        _websites[id] = AddWebsiteTab(id, NameText(account), account.Cookie, TabAvatar(account));
+        _websites[id] = AddWebsiteTab(id, NameText(account), account.Cookie, TabAvatar(account), url);
         return null;
     }
 
@@ -36,10 +43,10 @@ public sealed partial class AppController
         return null;
     }
 
-    WebsiteTab AddWebsiteTab(Guid? id, string? name, string cookie, string? avatar = null)
+    WebsiteTab AddWebsiteTab(Guid? id, string? name, string cookie, string? avatar = null, string? url = null)
     {
         WebsiteTab tab = null!;
-        tab = new WebsiteTab(id, name, cookie, WebsiteSessionChangedAsync, (session, user) => SaveWebsiteAccount(tab, session, user)) { Avatar = avatar };
+        tab = new WebsiteTab(id, name, cookie, WebsiteSessionChangedAsync, (session, user) => SaveWebsiteAccount(tab, session, user)) { Avatar = avatar, StartUrl = url };
         tab.Closed += () =>
         {
             _webTabs.Remove(tab);

@@ -353,9 +353,9 @@ html [data-theme="light" lang="en"]
                   span.cell.end
                 div.row-actions
                   span.cell.row-act-cell
-                    button.play.row-act [title="Play" tabindex="-1"]
-                      svg.i #1ewcuky
-                      span "Play"
+                    button.relogin.row-act [title="Roblox's Violations & Appeals page, signed in as this account (only it can appeal its ban)" tabindex="-1"]
+                      svg.i #1a4qrux
+                      span "Appeal"
                   button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu" aria-label="More"]
                     svg.i #1e3omv2
         div.dock

@@ -447,6 +447,9 @@ function AccountCard({ a, sel }: { a: Account; sel: boolean }) {
     ? <button key="close-one" className="pill-btn stop" data-act="close-one"><Icon name="power" />{t('card.close')}</button>
     : a.rejoin
       ? <button key="cancel-rejoin" className="pill-btn stop" data-act="cancel-rejoin" title={t('rj.cancelTip')}><Icon name="x" />{t('rj.cancel')}</button>
+    // Banned by Roblox: Play skips it, so its button is Roblox's appeal page, signed in as it (owner, 2026-11-06).
+    : a.banned
+      ? <button key="appeal" className="pill-btn relogin" data-act="appeal" title={t('card.appealTip')}><Icon name="external" />{t('card.appeal')}</button>
     : a.cookieValid === false
       ? <button key="relogin" className="pill-btn relogin" data-act="relogin" title={t('card.reloginTip')}><Icon name="logIn" />{t('card.relogin')}</button>
       : <button key="play-one" className="pill-btn play" data-act="play-one"><Icon name="play" />{t('card.play')}</button>;
@@ -518,7 +521,7 @@ function statusLine(t: (k: string, v?: Record<string, string | number>) => strin
 function RowAction({ children }: { children: ReactNode }) {
   const { t } = useHost();
   return <span className="cell row-act-cell">{children}
-    {([['power', 'card.close'], ['x', 'rj.cancel'], ['logIn', 'card.relogin'], ['play', 'card.play'], ['shield', 'card.botCheck'], ['repeat', 'card.rejoinNow']] as const).map(([icon, k]) =>
+    {([['power', 'card.close'], ['x', 'rj.cancel'], ['logIn', 'card.relogin'], ['play', 'card.play'], ['shield', 'card.botCheck'], ['repeat', 'card.rejoinNow'], ['external', 'card.appeal']] as const).map(([icon, k]) =>
       <Sizer key={k}><span className="row-act"><Icon name={icon} /><span>{t(k)}</span></span></Sizer>)}</span>;
 }
 
@@ -536,6 +539,7 @@ function AccountRow({ a, sel, cols }: { a: Account; sel: boolean; cols: string }
     : isKicked(a) ? <button key="rejoin" className="row-act relogin" data-act="rejoin" title={t('card.rejoinNowTip')}><Icon name="repeat" /><span>{t('card.rejoinNow')}</span></button>
     : local || a.state === 'launching' ? <button key="close-one" className="row-act stop" data-act="close-one" title={t('card.close')}><Icon name="power" /><span>{t('card.close')}</span></button>
     : a.rejoin ? <button key="cancel-rejoin" className="row-act stop" data-act="cancel-rejoin" title={t('rj.cancelTip')}><Icon name="x" /><span>{t('rj.cancel')}</span></button>
+    : a.banned ? <button key="appeal" className="row-act relogin" data-act="appeal" title={t('card.appealTip')}><Icon name="external" /><span>{t('card.appeal')}</span></button>
     : a.cookieValid === false ? <button key="relogin" className="row-act relogin" data-act="relogin" title={t('card.reloginTip')}><Icon name="logIn" /><span>{t('card.relogin')}</span></button>
     : <button key="play-one" className="row-act play" data-act="play-one" title={t('card.play')}><Icon name="play" /><span>{t('card.play')}</span></button>;
   // The card's red pill in a list row too (banned, or signed out), then an old Roblox, in front of the

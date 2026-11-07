@@ -2847,6 +2847,7 @@
       case 'close-one': return closeIds([id]);
       case 'bot-check': return busy(el, () => call('solveBotCheck', { id }));
       case 'cancel-rejoin': return call('cancelRejoin', { id }); // the card shows it at once
+      case 'appeal': return call('openAppeal', { id });
       case 'copy-pid': return copy(id, 'pid');
       case 'show-window': return call('showWindows', { ids: [id] });
       case 'edit': return editAccount(id);

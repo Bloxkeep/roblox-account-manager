@@ -110,4 +110,5 @@ html [data-theme="dark" lang="en"]
   resolveGame {"input":"https://www.roblox.com/games/2753915549/Blox-Fruits"}
   todayStrips {}
   wikiApi {"q":{"action":"query","meta":"siteinfo","siprop":"general|statistics|rightsinfo"},"site":"https://blox-fruits.fandom.com"}
+  wikiApi {"q":{"action":"query","meta":"siteinfo","siprop":"general|statistics|rightsinfo"},"site":"https://blox-fruits.fandom.com"}
   wikiGames {}

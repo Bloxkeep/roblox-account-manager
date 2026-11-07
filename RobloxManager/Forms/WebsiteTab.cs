@@ -374,7 +374,19 @@ public sealed class WebsiteTab : UserControl
             return;
         ShowRetry = false;
         Say(L.T("Opening roblox.com…"), "");
-        core.Navigate(AccountId is null && _user is null ? LoginUrl : HomeUrl);
+        core.Navigate(AccountId is null && _user is null ? LoginUrl : StartUrl ?? HomeUrl);
+    }
+
+    /// <summary>Where a saved account's tab opens instead of its home page (Appeal: Roblox's Violations & Appeals).</summary>
+    [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
+    public string? StartUrl { get; set; }
+
+    /// <summary>An open tab goes to <paramref name="url"/>, a page on roblox.com.</summary>
+    public void Go(string url)
+    {
+        StartUrl = url;
+        if (_web.CoreWebView2 is { } core)
+            core.Navigate(url);
     }
 
     void ShowUnreachable()

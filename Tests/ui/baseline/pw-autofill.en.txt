@@ -365,8 +365,8 @@ html [data-theme="dark" lang="en"]
                 div.daystrip [role="img" title="Not played today" aria-label="Not played today"]
                   span.ds-now [style="left:50%"]
                 div.card-actions
-                  button.pill-btn.play [tabindex="-1"] "Play"
-                    svg.i #1ewcuky
+                  button.pill-btn.relogin [title="Roblox's Violations & Appeals page, signed in as this account (only it can appeal its ban)" tabindex="-1"] "Appeal"
+                    svg.i #1a4qrux
                   button.icon-btn [title="Edit (F2)" tabindex="-1" aria-label="Edit (F2)"]
                     svg.i #1hrhc9o
                   button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu" aria-label="More"]
@@ -824,8 +824,8 @@ html [data-theme="dark" lang="en"]
                 div.daystrip [role="img" title="Not played today" aria-label="Not played today"]
                   span.ds-now [style="left:50%"]
                 div.card-actions
-                  button.pill-btn.play [tabindex="-1"] "Play"
-                    svg.i #1ewcuky
+                  button.pill-btn.relogin [title="Roblox's Violations & Appeals page, signed in as this account (only it can appeal its ban)" tabindex="-1"] "Appeal"
+                    svg.i #1a4qrux
                   button.icon-btn [title="Edit (F2)" tabindex="-1" aria-label="Edit (F2)"]
                     svg.i #1hrhc9o
                   button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu" aria-label="More"]
@@ -1278,8 +1278,8 @@ html [data-theme="dark" lang="en"]
                 div.daystrip [role="img" title="Not played today" aria-label="Not played today"]
                   span.ds-now [style="left:50%"]
                 div.card-actions
-                  button.pill-btn.play [tabindex="-1"] "Play"
-                    svg.i #1ewcuky
+                  button.pill-btn.relogin [title="Roblox's Violations & Appeals page, signed in as this account (only it can appeal its ban)" tabindex="-1"] "Appeal"
+                    svg.i #1a4qrux
                   button.icon-btn [title="Edit (F2)" tabindex="-1" aria-label="Edit (F2)"]
                     svg.i #1hrhc9o
                   button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu" aria-label="More"]
@@ -1730,8 +1730,8 @@ html [data-theme="dark" lang="en"]
                 div.daystrip [role="img" title="Not played today" aria-label="Not played today"]
                   span.ds-now [style="left:50%"]
                 div.card-actions
-                  button.pill-btn.play [tabindex="-1"] "Play"
-                    svg.i #1ewcuky
+                  button.pill-btn.relogin [title="Roblox's Violations & Appeals page, signed in as this account (only it can appeal its ban)" tabindex="-1"] "Appeal"
+                    svg.i #1a4qrux
                   button.icon-btn [title="Edit (F2)" tabindex="-1" aria-label="Edit (F2)"]
                     svg.i #1hrhc9o
                   button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu" aria-label="More"]

@@ -482,6 +482,7 @@ public sealed partial class AppController : IDisposable
         "removeRecent" => Done(RemoveRecent(Long(a, "placeId"))),
         "openProfile" => Done(OpenUrl($"https://www.roblox.com/users/{Long(a, "userId")}/profile")),
         "openWebsite" => Done(OpenWebsite(Id(a))),
+        "openAppeal" => Done(OpenWebsite(Id(a), AppealUrl)),
         "openWebsiteBlank" => Done(OpenBlankWebsite()),
         "openDataFolder" => Done(OpenDataFolder()),
         "showPath" => Done(ShowPath(Str(a, "which"))),

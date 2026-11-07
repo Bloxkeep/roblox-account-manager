@@ -343,9 +343,9 @@ html [data-theme="dark" lang="vi"]
                   span.cell.end
                 div.row-actions
                   span.cell.row-act-cell
-                    button.play.row-act [title="Vào game" tabindex="-1"]
-                      svg.i #1ewcuky
-                      span "Vào game"
+                    button.relogin.row-act [title="Mở trang kháng cáo của Roblox, đã đăng nhập tài khoản này (chỉ chính nó kháng cáo được)" tabindex="-1"]
+                      svg.i #1a4qrux
+                      span "Kháng cáo"
                   button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu" aria-label="Tùy chọn khác"]
                     svg.i #1e3omv2
         div.dock
