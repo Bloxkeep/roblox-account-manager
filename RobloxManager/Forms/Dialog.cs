@@ -21,8 +21,9 @@ sealed class Dialog : WebToolWindow
     /// <summary>A button: its text, an optional line under it (a choice), and whether it destroys something.</summary>
     public sealed record Choice(string Text, string? Detail = null, bool Danger = false);
 
-    /// <summary>How long the page may take to draw before Windows' own dialog asks instead.</summary>
-    static readonly TimeSpan StartLimit = TimeSpan.FromSeconds(6);
+    /// <summary>How long the page may take to draw before Windows' own dialog asks instead. Longer in the tests: GitHub's
+    /// busy machine took more than 6 s for a first browser (2026-11-07), and the fallback can't be answered there.</summary>
+    internal static TimeSpan StartLimit = TimeSpan.FromSeconds(6);
 
     readonly object _data;
     readonly bool _owned;
@@ -61,7 +62,7 @@ sealed class Dialog : WebToolWindow
         {
             _limit.Stop();
             if (!_shown)
-                Fail();
+                Fail($"its page hadn't drawn after {StartLimit.TotalSeconds:0} s");
         };
     }
 
@@ -122,7 +123,7 @@ sealed class Dialog : WebToolWindow
         _limit.Start();
         if (!await EnsureBrowserAsync() || IsDisposed)
         {
-            Fail();
+            Fail("its browser didn't start");
             return;
         }
         if (Controls.OfType<WebView2>().FirstOrDefault()?.CoreWebView2 is { } core)
@@ -183,13 +184,17 @@ sealed class Dialog : WebToolWindow
     }
 
     /// <summary>Its page crashed: Windows' own dialog asks the question instead.</summary>
-    protected override void OnBrowserFailed() => Fail();
+    protected override void OnBrowserFailed() => Fail("its page crashed");
 
-    void Fail()
+    /// <summary>Why the page gave up, for error.log.</summary>
+    string? _failWhy;
+
+    void Fail(string why)
     {
         if (_failed || IsDisposed)
             return;
         _failed = true;
+        _failWhy = why;
         Close();
     }
 
@@ -240,6 +245,7 @@ sealed class Dialog : WebToolWindow
         CoreWebView2Environment? env;
         (int, bool) answer;
         bool failed;
+        string? why;
         using (var dialog = new Dialog(text, heading, kind, choices, defaultIndex, cancelIndex, footnote, owner, remember))
         using (var timer = new System.Windows.Forms.Timer())
         {
@@ -256,12 +262,13 @@ sealed class Dialog : WebToolWindow
             }
             dialog.ShowDialog(owner);
             failed = dialog._failed;
+            why = dialog._failWhy;
             answer = (dialog._picked, dialog._remembered);
             env = dialog._env;
         }
         if (failed)
         {
-            Log.Note("Message box: its page didn't start; Windows' dialog asked instead.");
+            Log.Note($"Message box: {why ?? "its page didn't start"} ({asked.ElapsedMilliseconds} ms); Windows' dialog asked instead.");
             return Plain(owner, text, heading, kind, choices, defaultIndex, cancelIndex, footnote, Remaining(timeout, asked.Elapsed), remember);
         }
         WaitForBrowserExit(env);

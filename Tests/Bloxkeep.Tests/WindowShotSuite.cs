@@ -51,11 +51,20 @@ static class WindowShotSuite
         void Pump(int ms = 150) { Application.DoEvents(); Thread.Sleep(ms); Application.DoEvents(); }
 
         var capture = typeof(RobloxProcesses).Assembly.GetType("RobloxManager.WindowShot")!.GetMethod("CaptureAsync", Harness.F)!;
-        (byte[] Jpeg, bool Black)? Shot()
+        // A picture that never finishes is said as such, with the window's state then (GitHub, 2026-11-07: the run stopped at
+        // 8 minutes after the minimized checks, with no word of where), not waited for till the run is stopped.
+        (byte[] Jpeg, bool Black)? Shot(string what)
         {
             var task = (Task)capture.Invoke(null, [hWnd, 1920])!;
-            while (!task.IsCompleted)
+            var clock = System.Diagnostics.Stopwatch.StartNew();
+            while (!task.IsCompleted && clock.Elapsed < TimeSpan.FromSeconds(30))
                 Pump(20);
+            if (!task.IsCompleted)
+            {
+                c.Check($"the picture of {what} finishes", false,
+                    $"not after 30 s: visible {IsWindowVisible(hWnd)}, iconic {IsIconic(hWnd)}, style {GetWindowLong(hWnd, -20):x} was {style:x}");
+                return null;
+            }
             return ((Task<(byte[] Jpeg, bool Black)?>)task).Result;
         }
         string Look((byte[] Jpeg, bool Black)? shot)
@@ -87,12 +96,12 @@ static class WindowShotSuite
             Pump(20);
         DwmFlush();
         Pump();
-        var inView = Shot();
+        var inView = Shot("a window in view");
         c.Check("a window in view: pictured whole, its game only (no title bar)", AllRed(inView) && IsWindowVisible(hWnd) && !IsIconic(hWnd), Look(inView));
 
         form.WindowState = FormWindowState.Minimized;
         Pump();
-        var minimized = Shot();
+        var minimized = Shot("a minimized window");
         Pump();
         c.Check("a minimized window: pictured whole all the same", AllRed(minimized), Look(minimized));
         c.Check("…minimized again after, with its own look back (not unseen, not click-through)", IsIconic(hWnd) && GetWindowLong(hWnd, -20) == style,
@@ -102,7 +111,7 @@ static class WindowShotSuite
 
         RobloxProcesses.HideWindows([me]);
         Pump();
-        var hidden = Shot();
+        var hidden = Shot("a hidden window");
         Pump();
         c.Check("a window Bloxkeep hid: pictured whole", AllRed(hidden), Look(hidden));
         c.Check("…hidden again after, with its own look back", !IsWindowVisible(hWnd) && RobloxProcesses.HasHidden(me) && GetWindowLong(hWnd, -20) == style,

@@ -15,6 +15,10 @@ static class DialogSuite
     public static Task Run(Checks c, string dir)
     {
         Harness.UseDataFolder(dir);
+        // The page's first draw is what's checked here, not the 6 s fallback: GitHub's busy machine took longer for a first
+        // browser (2026-11-07), and Windows' dialog then can't be answered (or shown: no visual styles in this process).
+        var limit = Dialog.StartLimit;
+        Dialog.StartLimit = TimeSpan.FromSeconds(45);
         var done = new TaskCompletionSource();
         var thread = new Thread(() =>
         {
@@ -27,10 +31,14 @@ static class DialogSuite
                 }
                 catch (Exception ex)
                 {
-                    c.Check("the dialog checks ran to their end", false, ex);
+                    // error.log says why the page gave up (its browser, or the time it took).
+                    string log = Path.Combine(dir, "error.log");
+                    c.Check("the dialog checks ran to their end", false, $"{ex.GetType().Name}: {ex.Message}; error.log: "
+                        + (File.Exists(log) ? string.Join(" | ", File.ReadAllLines(log).TakeLast(6)) : "none"));
                 }
                 finally
                 {
+                    Dialog.StartLimit = limit;
                     host.Close();
                 }
             });
@@ -43,7 +51,7 @@ static class DialogSuite
         return done.Task;
     }
 
-    /// <summary>Runs <paramref name="then"/> on the box once it is on screen (or after 15 s, with null).</summary>
+    /// <summary>Runs <paramref name="then"/> on the box once it is on screen (or after 50 s, with null).</summary>
     static void WhenShown(Action<Dialog?> then)
     {
         var clock = System.Diagnostics.Stopwatch.StartNew();
@@ -52,7 +60,7 @@ static class DialogSuite
         {
             var box = Application.OpenForms.OfType<Dialog>().FirstOrDefault();
             bool shown = box is not null && Harness.Get<bool>(box, "_shown");
-            if (!shown && clock.ElapsedMilliseconds < 15000)
+            if (!shown && clock.ElapsedMilliseconds < 50000)
                 return;
             timer.Dispose();
             then(shown ? box : null);
