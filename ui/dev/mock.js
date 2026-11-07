@@ -775,6 +775,7 @@
           '', a.text.trim() || '…', '', a.log ? '── error-log.txt ──\n[2026-10-16 02:10:44] System.Net.Http.HttpRequestException: No such host is known. (presence.roblox.com:443)\n   at RobloxManager.RobloxApi.GetPresenceAsync([account id]) in C:\\Users\\[user]\\Bloxkeep\\RobloxApi.cs:line 512'
             : (language === 'vi' ? '(không kèm nhật ký lỗi)' : '(no error log)')].join('\n') };
         case 'sendFeedback': await wait(700); if (params.has('fbfail')) throw new Error(language === 'vi' ? 'Không kết nối được tới dịch vụ nhận góp ý. Kiểm tra mạng rồi thử lại.' : 'Couldn’t reach the feedback service. Check the internet connection and try again.'); return { sent: true };
+        case 'monitorLane': console.log('monitorLane', a.what, a.ids.length); return null;
         case 'openAppeal': console.log('openAppeal', a.id); return null; // the account's roblox.com tab at Roblox's appeal page
         case 'openWebsite': console.log('openWebsite', a.id); return null; // the app opens its own roblox.com window for the account
         case 'openWebsiteBlank': console.log('openWebsiteBlank'); return null; // likewise, blank, to sign in on the site

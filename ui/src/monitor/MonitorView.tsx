@@ -88,6 +88,9 @@ const GLYPH = {
   min: <path d="M6 12h12" />,
   restore: <rect x="6.5" y="6.5" width="11" height="11" rx="1.5" />,
   solo: <path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3" />,
+  // Two windows: the one in front drawn whole, the other showing round it.
+  front: <><path d="M4 15V5.5A1.5 1.5 0 0 1 5.5 4H15" /><rect x="8.5" y="8.5" width="11.5" height="11.5" rx="1.5" /></>,
+  back: <><rect x="4" y="4" width="11.5" height="11.5" rx="1.5" /><path d="M20 9v9.5a1.5 1.5 0 0 1-1.5 1.5H9" /></>,
 };
 const Glyph = ({ d }: { d: keyof typeof GLYPH }) => <svg className="i" viewBox="0 0 24 24" aria-hidden="true">{GLYPH[d]}</svg>;
 
@@ -159,6 +162,7 @@ export function MonitorView({ preview }: { preview: boolean }) {
   const stop = order.some(x => x.id === focus) ? focus : order[0]?.id;
 
   const act = (tile: MonitorTile, what: string) => { void host.call('monitorAct', { id: tile.id, what }, { silent: true }); };
+  const laneAct = (lane: Lane, what: 'front' | 'back') => { void host.call('monitorLane', { ids: lane.tiles.map(x => x.id), what }, { silent: true }); };
   const items = (tile: MonitorTile): MenuItem[] => [
     { icon: 'external', text: t('mon.show'), run: () => act(tile, 'show') },
     tile.minimized ? { icon: 'screens', text: t('mon.restore'), run: () => act(tile, 'restore') } : { icon: 'screens', text: t('mon.minimize'), run: () => act(tile, 'minimize') },
@@ -257,6 +261,9 @@ export function MonitorView({ preview }: { preview: boolean }) {
           {l.ok ? <span className="mon-st ok">{tn('mon.nOk', l.ok)}</span> : null}
         </div>
         <div className="mon-lane-acts">
+          {/* Over every app, or behind every app, as they are (owner, 2026-11-08). */}
+          <button type="button" className="icon-btn" title={t('mon.frontAll')} aria-label={t('mon.frontAll')} onClick={() => laneAct(l, 'front')}><Glyph d="front" /></button>
+          <button type="button" className="icon-btn" title={t('mon.backAll')} aria-label={t('mon.backAll')} onClick={() => laneAct(l, 'back')}><Glyph d="back" /></button>
           <button type="button" className="icon-btn" title={t(anyUp ? 'mon.minAll' : 'mon.restoreAll')} aria-label={t(anyUp ? 'mon.minAll' : 'mon.restoreAll')}
             onClick={() => l.tiles.filter(x => x.minimized !== anyUp).forEach(x => act(x, anyUp ? 'minimize' : 'restore'))}><Glyph d={anyUp ? 'min' : 'restore'} /></button>
           {solo || !multi ? null : <button type="button" className="icon-btn" title={t('mon.solo')} aria-label={t('mon.solo')} onClick={soloToggle}><Glyph d="solo" /></button>}

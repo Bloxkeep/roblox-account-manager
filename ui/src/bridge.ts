@@ -10,7 +10,7 @@ export const COMMANDS = [
   'findPlayer', 'forgetPlayer', 'friendServers', 'gameDetails', 'gameIcons', 'gameLists', 'getState', 'hidePanel', 'hideRobloxClosed',
   'hideWindows', 'importMacro', 'importTheme', 'joinServer', 'keepView', 'launch', 'lock', 'loginCancel', 'loginCaptcha', 'loginFinish',
   'loginPassword', 'loginTwoStep', 'loginTwoStepCode', 'loginTwoStepSend', 'macroPicture', 'macroTemplates', 'macroTest', 'macroTryRun',
-  'macroWatch', 'monitorAct', 'monitorArea', 'moveMacro', 'multiOnly', 'openBackupFolder', 'openDataFolder', 'openDiscord',
+  'macroWatch', 'monitorAct', 'monitorArea', 'monitorLane', 'moveMacro', 'multiOnly', 'openBackupFolder', 'openDataFolder', 'openDiscord',
   'openDiscordApp', 'openGamePage', 'openGameWiki', 'openGitHub', 'openGuide', 'openProfile', 'openReleaseNotes', 'openRobloxWatch',
   'openWebsite', 'openWebsiteBlank', 'pageBusy', 'pageShown', 'pickBackupFolder', 'pickLauncher', 'pickOnGame', 'pickThemePicture',
   'pickVault', 'pickVaultPicture', 'pinGame', 'playStats', 'presetDiscordTest', 'presetIcons', 'privateServers', 'quickLoginCancel',

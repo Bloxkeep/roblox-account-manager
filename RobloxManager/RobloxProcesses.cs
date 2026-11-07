@@ -1042,7 +1042,29 @@ public static class RobloxProcesses
         SetForegroundWindow(windows[^1]);
     }
 
-    static readonly IntPtr HWND_TOPMOST = -1, HWND_NOTOPMOST = -2;
+    /// <summary>Game monitor's Bring all to front: minimized ones opened again, then all over every app, where they are.</summary>
+    public static async Task BringAllToFrontAsync(List<IntPtr> windows)
+    {
+        windows = windows.Where(h => IsWindow(h) && !IsHidden(h)).ToList();
+        if (windows.Count == 0)
+            return;
+        if (windows.Any(IsIconic))
+        {
+            foreach (var hWnd in windows.Where(IsIconic))
+                ShowWindowAsync(hWnd, SW_RESTORE);
+            await UntilRestoredAsync(windows);
+        }
+        await LiftAsync(windows);
+    }
+
+    /// <summary>Game monitor's Send all to back: behind every other app, as they are (not minimized: the games keep drawing).</summary>
+    public static void SendAllToBack(List<IntPtr> windows)
+    {
+        foreach (var hWnd in windows.Where(IsWindow))
+            SetWindowPos(hWnd, HWND_BOTTOM, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_ASYNCWINDOWPOS);
+    }
+
+    static readonly IntPtr HWND_TOPMOST = -1, HWND_NOTOPMOST = -2, HWND_BOTTOM = 1;
     [DllImport("user32.dll")] static extern bool IsHungAppWindow(IntPtr hWnd);
 
     [StructLayout(LayoutKind.Sequential)]

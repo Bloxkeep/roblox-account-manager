@@ -1884,7 +1884,7 @@ export default [
   }),
   S('monitor-lanes', 'monitor=1&tiles=9&drop=1', async s => { await s.point({ css: '.mon-lane' }); }),
   S('monitor-lane-folded', 'monitor=1&tiles=9&drop=1', async s => { await s.click({ css: '.mon-lane:first-child .mon-fold' }); await s.wait(300); }),
-  S('monitor-lane-solo', 'monitor=1&tiles=9&drop=1', async s => { await s.click({ css: '.mon-lane:nth-child(2) .mon-lane-acts .icon-btn:nth-child(2)' }); await s.wait(300); }),
+  S('monitor-lane-solo', 'monitor=1&tiles=9&drop=1', async s => { await s.click({ css: '.mon-lane:nth-child(2) .mon-lane-acts .icon-btn:nth-child(4)' }); await s.wait(300); }),
   S('monitor-lane-close-ask', 'monitor=1&tiles=9&drop=1', async s => { await s.click({ css: '.mon-lane:first-child .mon-kill' }); await s.wait(200); }),
   S('monitor-none', 'monitor=1&tiles=0', async s => { await s.point({ css: '.mon-empty' }); }),
   S('monitor-light', 'monitor=1&tiles=3&theme=light', async s => { await s.point({ css: '.mon-tile' }); }),

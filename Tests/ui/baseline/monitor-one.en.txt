@@ -114,6 +114,10 @@ html [data-theme="dark" lang="en"]
                 div.mon-lane-states
                   span.mon-st.ok "1 playing"
                 div.mon-lane-acts
+                  button.icon-btn [type="button" title="Bring all to front" aria-label="Bring all to front"]
+                    svg.i #1oicbos
+                  button.icon-btn [type="button" title="Send all to back" aria-label="Send all to back"]
+                    svg.i #1jd5mc5
                   button.icon-btn [type="button" title="Minimize all" aria-label="Minimize all"]
                     svg.i #10kcby6
                   button.icon-btn.mon-kill [type="button" title="Close all" aria-label="Close all"]

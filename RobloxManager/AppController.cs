@@ -488,6 +488,7 @@ public sealed partial class AppController : IDisposable
         "showPath" => Done(ShowPath(Str(a, "which"))),
         "monitorArea" => Done(MonitorAreaCommand(a)),
         "monitorAct" => Done(MonitorActCommand(a)),
+        "monitorLane" => Done(MonitorLaneCommand(a)),
         "setNotifications" => Done(SetNotifications(a)),
         "setDailySignInCheck" => Done(SetDailySignInCheck(Bool(a, "enabled"))),
         "skipConfirm" => Done(SkipConfirm(Str(a, "key"))),

@@ -115,6 +115,32 @@ public sealed partial class AppController
         return MonitorAct(client, Str(a, "what"));
     }
 
+    /// <summary>A game's heading: front (over every app) or back (behind every app) for its windows {ids} (owner, 2026-11-08).</summary>
+    object? MonitorLaneCommand(JsonElement a)
+    {
+        RequireVault();
+        string what = Str(a, "what");
+        var ids = a.TryGetProperty("ids", out var list) && list.ValueKind == JsonValueKind.Array
+            ? list.EnumerateArray().Select(x => x.GetString()).ToHashSet() : [];
+        var windows = MonitorClients().Where(c => ids.Contains(MonitorId(c.Hwnd))).Select(c => c.Hwnd).ToList();
+        if (windows.Count == 0)
+        {
+            Log.Note($"Game monitor: {what} for a game did nothing, its windows are gone.");
+            return null;
+        }
+        InputTurn.RunWhenFree("monitor", async () =>
+        {
+            string before = WindowReport.States(windows);
+            if (what == "front")
+                await RobloxProcesses.BringAllToFrontAsync(windows);
+            else if (what == "back")
+                RobloxProcesses.SendAllToBack(windows);
+            Log.Note($"Game monitor: {(what == "front" ? "Bring all to front" : "Send all to back")} on {windows.Count} Roblox window(s) (were {before}).");
+            MonitorRefresh?.Invoke();
+        });
+        return null;
+    }
+
     /// <summary>A tile's action on its window.</summary>
     object? MonitorAct(MonitorClient client, string what)
     {
