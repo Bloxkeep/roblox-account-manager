@@ -846,9 +846,40 @@ public static class RobloxProcesses
                 restored = true;
             }
         }
+        // Each restore finished first, or it undoes the new place: a fixed 250 ms wait was too short for busy windows (6
+        // Roblox windows, owner's PC, 2026-11-07): one went to the screen asked for, the others stayed full on theirs.
         if (restored)
-            await Task.Delay(250); // let the restore finish so it doesn't undo the new size
+            await UntilRestoredAsync(windows);
+        await PlaceAsync(windows, area, layout, custom);
+        // Any that a late restore or Roblox itself put back (still maximised, or off the screen asked for): again, twice at most.
+        for (int tries = 0; tries < 2; tries++)
+        {
+            await Task.Delay(300);
+            var missed = windows.Where(h => IsZoomed(h) || IsIconic(h) || WindowRect(h) is not { } r || !area.Contains(new Point(r.X + r.Width / 2, r.Y + r.Height / 2))).ToList();
+            if (missed.Count == 0)
+                break;
+            foreach (var hWnd in missed.Where(h => IsZoomed(h) || IsIconic(h)))
+                ShowWindowAsync(hWnd, SW_RESTORE);
+            await UntilRestoredAsync(missed);
+            await PlaceAsync(windows, area, layout, custom);
+        }
+        if (app != IntPtr.Zero)
+            await RaiseAsync(windows, app);
+        return windows.Count;
+    }
 
+    /// <summary>Until none of <paramref name="windows"/> is maximised or minimised any more (a restore asked), 3 s at most.</summary>
+    static async Task UntilRestoredAsync(List<IntPtr> windows)
+    {
+        var until = DateTime.UtcNow.AddSeconds(3);
+        await Task.Delay(100);
+        while (DateTime.UtcNow < until && windows.Any(h => IsWindow(h) && (IsZoomed(h) || IsIconic(h))))
+            await Task.Delay(100);
+        await Task.Delay(150); // the restore's own size settles
+    }
+
+    static async Task PlaceAsync(List<IntPtr> windows, Rectangle area, string layout, Size custom)
+    {
         var (cols, width, height) = GridCells(windows.Count, area.Size, layout, custom);
         var cell = new Size(width, height);
         List<Rectangle> tiles;
@@ -873,9 +904,6 @@ public static class RobloxProcesses
             if (sideBySide)
                 CloseGaps(windows, tiles);
         }
-        if (app != IntPtr.Zero)
-            await RaiseAsync(windows, app);
-        return windows.Count;
     }
 
     /// <summary>

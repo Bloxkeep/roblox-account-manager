@@ -464,6 +464,8 @@ public sealed class ShellForm : Form
         // F8 ends a recording, whatever the switch says (the recorder also watches for it itself).
         if (_app.RecordingMacro)
             RegisterHotKey(Handle, AppController.HotkeyEndRecording, MOD_NOREPEAT, (int)Keys.F8);
+        if (taken.Count > 0 && string.Join(",", taken) != string.Join(",", _app.HotkeysTaken))
+            Log.Note("Hotkeys another app holds: " + string.Join(", ", taken) + ".");
         _app.HotkeysTaken = taken;
     }
 
@@ -475,7 +477,10 @@ public sealed class ShellForm : Form
         {
             // Ctrl+Alt+B: Bloxkeep itself, from the tray too (as its icon's Open does).
             if ((int)m.WParam == AppController.HotkeyBloxkeep)
+            {
+                Log.Note("Hotkey Ctrl+Alt+B received.");
                 BringToFront();
+            }
             else
                 _app.OnHotkey((int)m.WParam);
             return;

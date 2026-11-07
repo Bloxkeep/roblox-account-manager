@@ -18,6 +18,9 @@ public sealed partial class AppController
     {
         if (_disposed)
             return;
+        // Each one noted: "hotkeys stop once a Roblox window came to the front" (owner, 2026-11-07) needs to know
+        // whether the key reached Bloxkeep at all, and what it did.
+        Log.Note($"Hotkey {HotkeyName(id)} received{(InputTurn.Holder is { } who ? $", waiting for {who}'s turn" : "")}.");
         // Hide, minimise and next wait for a nudge, a picture or a macro's turn under way (InputTurn.cs).
         if (id == HotkeyHide)
         {
@@ -33,7 +36,7 @@ public sealed partial class AppController
         }
         else if (id == HotkeyArrange && _vault is not null)
         {
-            _ = ArrangeWindowsAsync(-1, atMouse: true);
+            _ = ArrangeByHotkeyAsync();
         }
         else if (id == HotkeyMinimize)
         {
@@ -56,6 +59,31 @@ public sealed partial class AppController
             RunMacroHotkey(id - HotkeyMacroFirst + 1);
         }
     }
+
+    async Task ArrangeByHotkeyAsync()
+    {
+        try
+        {
+            var done = await ArrangeWindowsAsync(-1, atMouse: true);
+            Log.Note($"Hotkey Ctrl+Alt+A: {done} window(s) arranged.");
+        }
+        catch (Exception ex)
+        {
+            Log.Write(ex);
+        }
+    }
+
+    static string HotkeyName(int id) => id switch
+    {
+        HotkeyHide => "Ctrl+Alt+H",
+        HotkeyArrange => "Ctrl+Alt+A",
+        HotkeyMinimize => "Ctrl+Alt+M",
+        HotkeyNext => "Ctrl+Alt+N",
+        HotkeyStopMacros => "Ctrl+Alt+0",
+        HotkeyEndRecording => "F8",
+        >= HotkeyMacroFirst and < HotkeyMacroFirst + 9 => $"Ctrl+Alt+{id - HotkeyMacroFirst + 1}",
+        _ => $"#{id}",
+    };
 
     /// <summary>The Roblox windows on screen (not the hidden ones), the accounts' in the list's order first, then any other.</summary>
     /// <param name="pids">The clients; every one running when null (the checks pass a window of their own).</param>

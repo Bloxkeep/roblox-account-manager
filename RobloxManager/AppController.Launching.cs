@@ -66,6 +66,7 @@ public sealed partial class AppController
         }
         // Taken before the first await: a second Play meanwhile would pass CheckCanLaunch, and its "switching" list
         // could close the client this one had just opened.
+        var launchStart = DateTime.UtcNow; // the windows opened from here are waited for before tiling
         var cts = _launchCts = reserved ?? new CancellationTokenSource();
         var ct = cts.Token;
         void Release()
@@ -312,7 +313,7 @@ public sealed partial class AppController
                 if (launched > 0)
                     RefreshPresenceSoon(TimeSpan.FromSeconds(20));
                 if (launched > 0 && (PresetFor(presetId)?.Arrange ?? (s.MultiInstance && s.MultiInstanceTile)))
-                    _ = TileWhenOpenAsync(presetId);
+                    _ = TileWhenOpenAsync(presetId, launchStart);
                 Persist();
             }
             Progress(null);
@@ -859,22 +860,48 @@ public sealed partial class AppController
 
     /// <summary>Multi-Roblox's "tile" option or the preset's Arrange windows, once the launch's last window is up.</summary>
     /// <param name="presetId">Its choice decides (asked again at the end, in case it changed).</param>
-    async Task TileWhenOpenAsync(Guid? presetId = null)
+    async Task TileWhenOpenAsync(Guid? presetId, DateTime launchStart)
     {
         var deadline = DateTime.UtcNow + PendingTimeout;
+        var since = launchStart;
         while (!_disposed && (_pending.Count > 0 || _launchCts is not null) && DateTime.UtcNow < deadline)
             await Task.Delay(500);
-        // Roblox sizes its window again as it finishes starting up.
+        // Roblox sizes its window again as it joins its game (maximised again, if it was last closed so): tiled 3 s after
+        // the last window came up, 6 windows still loading on a busy PC came back full screen one by one (owner's video,
+        // 2026-11-07 12:25). So each window opened into a game is waited for until it is in it (a minute at most).
+        var joinBy = DateTime.UtcNow + JoinWaitForTiles;
+        while (!_disposed && _launchCts is null && DateTime.UtcNow < joinBy && StillJoining(since))
+            await Task.Delay(500);
         await Task.Delay(3000);
         if (_disposed || _vault is not { } vault || _launchCts is not null
             || !(PresetFor(presetId)?.Arrange ?? vault.Data.Settings is { MultiInstance: true, MultiInstanceTile: true }))
+        {
+            if (!_disposed && _vault is not null)
+                Log.Note(_launchCts is not null ? "Arrange after opening: left to the next launch."
+                    : "Arrange after opening: off (Settings' \"When a Roblox window opens\" or the preset).");
             return; // locked, switched off (in Settings or the preset), or another launch started (it tiles when it is done)
+        }
         // Two or more tiles, so one window isn't stretched over the whole screen as a grid of one.
         var afk = AfkClients();
         afk.UnionWith(MainPids());
-        if (RobloxProcesses.VisibleWindows(RobloxProcesses.GetPlayerPids())
-                .Count(w => !afk.Contains(w.Key) && w.Value.Count > 0 && !RobloxProcesses.IsMinimised(RobloxProcesses.MainWindowOf(w.Value))) >= 2)
+        int tiles = RobloxProcesses.VisibleWindows(RobloxProcesses.GetPlayerPids())
+            .Count(w => !afk.Contains(w.Key) && w.Value.Count > 0 && !RobloxProcesses.IsMinimised(RobloxProcesses.MainWindowOf(w.Value)));
+        Log.Note($"Arrange after opening: {tiles} window(s) to tile{(StillJoining(since) ? ", some still joining" : "")}.");
+        if (tiles >= 2)
             await ArrangeWindowsAsync(-1, auto: true);
+    }
+
+    /// <summary>How long windows opened into a game are waited for to be in it before they are tiled.</summary>
+    static readonly TimeSpan JoinWaitForTiles = TimeSpan.FromSeconds(60);
+
+    /// <summary>A window opened since <paramref name="since"/> into a game, not in it yet (its log says nothing, or joining).
+    /// Light-AFK and main accounts' windows aren't tiled, so aren't waited for.</summary>
+    bool StillJoining(DateTime since)
+    {
+        var skip = AfkClients();
+        skip.UnionWith(MainPids());
+        return _running.Values.Any(r => r.Launch.StartedAt >= since && r.Launch.Target is not null && !skip.Contains(r.Pid)
+            && _logs.StateOf(r.Pid) is null or { Status: "joining" });
     }
 
     /// <summary>Launches whose client quit early, waiting for the client it may have handed over to: the pid that quit
