@@ -87,6 +87,21 @@ export function MiniView({ data, on }: { data: MiniData; on: MiniOn }) {
     return () => clearTimeout(timer);
   }, [closing, data.clients]);
 
+  // Opened or brought up (Open, the hotkey), Windows hands the window the keyboard and the browser gives it to the first
+  // button, the ✕, drawn with its focus ring (owner, 2026-11-07: "sometimes" = when it was activated): back to the
+  // card, as the tray does, unless a key was pressed since it came (Tab then reaches the ✕).
+  useEffect(() => {
+    let keyed = false;
+    const key = () => { keyed = true; };
+    const focus = () => { if (!keyed) root.current?.focus({ preventScroll: true }); };
+    const blur = () => { keyed = false; };
+    document.addEventListener('keydown', key);
+    window.addEventListener('focus', focus);
+    window.addEventListener('blur', blur);
+    focus();
+    return () => { document.removeEventListener('keydown', key); window.removeEventListener('focus', focus); window.removeEventListener('blur', blur); };
+  }, []);
+
   // Esc hides the window, or first takes back the question.
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
@@ -125,7 +140,7 @@ export function MiniView({ data, on }: { data: MiniData; on: MiniOn }) {
     on.act('close', { id: c.id });
   };
 
-  return <div ref={root} className="pn mini">
+  return <div ref={root} tabIndex={-1} className="pn mini">
     <div className="pn-title" onPointerDown={dragStart}>
       <img className="mini-logo" src={logo} alt="" />
       <b className="pn-name">Bloxkeep</b>

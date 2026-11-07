@@ -2,7 +2,7 @@
 html [data-theme="light" lang="en"]
 #app
   div [id="mini"]
-    div.mini.pn
+    div.mini.pn [tabindex="-1" FOCUSED]
       div.pn-title
         img.mini-logo [alt="" src="logo.svg"]
         b.pn-name "Bloxkeep"
