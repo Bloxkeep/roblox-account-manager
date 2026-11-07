@@ -417,12 +417,12 @@ try {
   const chart = parts(card).find(c => c.type === 12)?.items?.[0]?.media.url ?? '';
   const drawn = JSON.parse(new URL(chart || 'https://x/?c={}').searchParams.get('c'));
   check('…with today\'s peak and people, the versions (no languages), and the last 7 days\' peaks and people as a chart, today the last bars',
-    /Peak today \*\*2\*\*, at <t:\d+:t> · \*\*2\*\* people today/.test(said) && said.includes('**Versions** 1.0.8 **1** · 1.0.8-alpha.2 **1**') && !/Language|\bvi\b/.test(said)
+    /Peak today \*\*2\*\* at <t:\d+:t> · \*\*2\*\* people today/.test(said) && said.includes('Versions 1.0.8 (**1**) · 1.0.8-alpha.2 (**1**)') && !/Language|\bvi\b/.test(said)
     && chart.startsWith('https://quickchart.io/chart?v=4&') && JSON.stringify(drawn.data?.datasets?.[0]?.data) === '[0,0,0,0,0,0,2]'
     // Days before people were counted: no bar (null), not 0.
     && JSON.stringify(drawn.data?.datasets?.[1]?.data) === '[null,null,null,null,null,null,2]' && drawn.data.labels.at(-1) === 'Today', `${said} ${chart.slice(0, 200)}`);
   check('…and how far the bot reaches: servers and user installs from Discord, the PCs linked',
-    /\*\*Bot\*\* \*\*3\*\* servers · \*\*1\*\* user install · \*\*\d+\*\* PCs? linked/.test(said), said);
+    /Bot in \*\*3\*\* servers · \*\*1\*\* user install · \*\*\d+\*\* PCs? linked/.test(said), said);
   const dashboard = linksOf(card)[0] ?? '';
   check('…and a Dashboard button, its link carrying the key', /^http:\/\/127\.0\.0\.1:\d+\/online\?key=[\w-]{24}$/.test(dashboard), dashboard);
   let page = await fetch(dashboard);
@@ -474,7 +474,7 @@ try {
   check('new installs, how long they have had it and removals by reason: each PC once a day',
     o.today.installs === 1 && o.today.ages.new === 1 && o.today.ages.old === 1 && o.today.removed === 2 && o.today.why.hard === 1 && o.today.why.none === 1
     && o.today.people === 5, JSON.stringify(o.today));
-  check('…shown in /online too', textsOf({ body: (await interact(asDeveloper)).json?.data }).join('\n').includes('**Today** 1 new install · had it a day 1, a week 0, longer 1 · removed 2 (too hard 1)'));
+  check('…shown in /online too', textsOf({ body: (await interact(asDeveloper)).json?.data }).join('\n').includes('Today **1** new install · **2** removed (too hard 1)\nHad it a day **1** · a week **0** · longer **1**'));
   check('…and no ids among them', !JSON.stringify(o).includes(D) && !JSON.stringify(o).includes(E));
   // After "It didn't work", what didn't: its own reason (an unknown one is no reason).
   const F = 'f'.repeat(32), G = '9'.repeat(32);
@@ -507,8 +507,8 @@ try {
     && gamesAsked.length === 1, JSON.stringify(b.json?.community?.games) + ' ' + gamesAsked.length);
   const playCard = textsOf({ body: (await interact(asSomeoneElse)).json?.data }).join('\n');
   check('/online shows them to everyone: accounts running, playing now, most alts now, the radar',
-    playCard.includes('**174** accounts running') && playCard.includes('**Playing now** Blox Fruits 3') && playCard.includes('**Most alts now** 1. Farm\\_PC **45** · 2. Máy của Minh **30**')
-    && playCard.includes('**Radar** Blox Fruits: 3 PCs lost connection in the last 15 minutes'), playCard);
+    playCard.includes('**174** accounts running in all') && playCard.includes('### Playing now\n`3` Blox Fruits') && playCard.includes('### Most alts\n`45` Farm\\_PC\n`30` Máy của Minh')
+    && playCard.includes('### Radar\nBlox Fruits: 3 PCs lost connection in the last 15 min'), playCard);
   // An app not in the count asks for the same, without a beat: the sums and the board, no place of its own, no ids.
   const seen = await (await fetch(`http://127.0.0.1:${DEV}/online/community`)).json().catch(() => null);
   check('an app not in the count sees the same: what is played, the radar, the board; no place, no ids',

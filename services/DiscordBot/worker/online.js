@@ -145,35 +145,51 @@ export function weekChart(days, today) {
 }
 
 const RADAR_WORDS = { kick: 'kicked by the game', lost: 'lost connection', shutdown: 'server shut down', join: "couldn't join" };
-/** /online's lines of play: the accounts running, the games played most, the alts board, the radar. */
-export function communityLines(c) {
+/** How many of each list /online shows. */
+const LIST_SHOWN = 5;
+/** /online's play, one block each: the games played most and the alts board as lists, a count in front of each line
+ * (in a code span, so the board's names, which may end in a number, don't run into it), then the radar. */
+export function communityBlocks(c) {
   if (!c?.pcs)
     return [];
-  const game = g => g.name ?? `game ${g.game}`;
-  const clean = s => s.replace(/[_*~`|>\\]/g, m => '\\' + m);
-  return [
-    `**${c.alts}** ${c.alts === 1 ? 'account' : 'accounts'} running on these PCs now`,
-    ...(c.games.length ? [`**Playing now** ${c.games.slice(0, 6).map(g => `${game(g)} ${g.pcs}`).join(' · ')}`] : []),
-    ...(c.board.length ? [`**Most alts now** ${c.board.slice(0, 5).map((b, i) => `${i + 1}. ${clean(b.name)} **${b.alts}**`).join(' · ')}`] : []),
-    ...c.radar.slice(0, 3).map(r => `**Radar** ${game(r)}: ${r.pcs} PCs ${RADAR_WORDS[r.why] ?? r.why} in the last ${r.minutes} minutes`),
-  ];
+  const game = g => clean(g.name ?? `game ${g.game}`);
+  const blocks = [];
+  if (c.games.length)
+    blocks.push([`### Playing now`, ...c.games.slice(0, LIST_SHOWN).map(g => `\`${g.pcs}\` ${game(g)}`),
+      `-# PCs on each game · **${c.alts}** ${c.alts === 1 ? 'account' : 'accounts'} running in all`].join('\n'));
+  else
+    blocks.push(`**${c.alts}** ${c.alts === 1 ? 'account' : 'accounts'} running now`);
+  if (c.board.length)
+    blocks.push([`### Most alts`, ...c.board.slice(0, LIST_SHOWN).map(b => `\`${b.alts}\` ${clean(b.name)}`)].join('\n'));
+  if (c.radar.length)
+    blocks.push([`### Radar`, ...c.radar.slice(0, 3).map(r => `${game(r)}: ${r.pcs} PCs ${RADAR_WORDS[r.why] ?? r.why} in the last ${r.minutes} min`)].join('\n'));
+  return blocks;
 }
+/** Markdown in a name (a game's, a board name) shown as it is, not as formatting. */
+const clean = s => s.replace(/[\\_*~`|>#-]/g, m => '\\' + m);
 
-/** /online's card: online now with today's peak and the last 7 days' peaks as a chart; for Bloxkeep's developers (full)
- * also today's installs and removals with their reasons, the versions in use, how far the bot reaches, the dashboard link. */
+/** /online's card: online now with today's peak and the last 7 days as a chart, then what's played; for Bloxkeep's
+ * developers (full) also, under a line, today's installs and removals, the versions in use, how far the bot reaches and
+ * the dashboard link. */
 export function onlineMessage(o, link, bot, full = true) {
   const time = at => `<t:${Math.floor(at / 1000)}:t>`;
   const text = content => ({ type: 10, content });
-  const peak = o.today.peak ? `Peak today **${o.today.peak}**, at ${time(o.today.at)} · **${o.today.people ?? 0}** ${o.today.people === 1 ? 'person' : 'people'} today`
+  const line = { type: 14, divider: true, spacing: 1 };
+  const peak = o.today.peak ? `Peak today **${o.today.peak}** at ${time(o.today.at)} · **${o.today.people ?? 0}** ${o.today.people === 1 ? 'person' : 'people'} today`
     : 'Nobody yet today';
-  const versions = o.apps.map(r => `${r.name} **${r.n}**`).join(' · ');
-  // Who stays: today's new installs, the people by how long they've had it, and who removed it (and why).
+  const versions = o.apps.map(r => `${r.name} (**${r.n}**)`).join(' · ');
+  // Who stays: today's new installs and who removed it (and why), the people by how long they've had it.
   const t = o.today, ages = t.ages ?? {};
   const why = Object.entries(t.why ?? {}).filter(([k]) => k !== 'none').map(([k, n]) => `${WHY_WORDS[k] ?? k} ${n}`).join(', ');
-  const stay = `**Today** ${t.installs ?? 0} new ${t.installs === 1 ? 'install' : 'installs'} · had it a day ${ages.new ?? 0}, a week ${ages.week ?? 0}, longer ${ages.old ?? 0}`
-    + ` · removed ${t.removed ?? 0}${why ? ` (${why})` : ''}`;
   const count = (n, one, many) => `**${n ?? '?'}** ${n === 1 ? one : many}`;
-  const reach = bot && `**Bot** ${count(bot.servers, 'server', 'servers')} · ${count(bot.installs, 'user install', 'user installs')} · ${count(bot.linked, 'PC linked', 'PCs linked')}`;
+  const dev = full ? [
+    `Today **${t.installs ?? 0}** new ${t.installs === 1 ? 'install' : 'installs'} · **${t.removed ?? 0}** removed${why ? ` (${why})` : ''}`,
+    `Had it a day **${ages.new ?? 0}** · a week **${ages.week ?? 0}** · longer **${ages.old ?? 0}**`,
+    ...(versions ? [`Versions ${versions}`] : []),
+    ...(bot ? [`Bot in ${count(bot.servers, 'server', 'servers')} · ${count(bot.installs, 'user install', 'user installs')} · ${count(bot.linked, 'PC linked', 'PCs linked')}`] : []),
+    `-# Online: the app said it's open within ${o.forMinutes} minutes. People: different PCs that day.`,
+  ].join('\n') : null;
+  const play = communityBlocks(o.community);
   return {
     flags: 1 << 15,
     components: [{
@@ -182,9 +198,8 @@ export function onlineMessage(o, link, bot, full = true) {
         // No chart of seven empty days.
         ...(o.days.slice(-7).some(d => d.peak)
           ? [{ type: 12, items: [{ media: { url: weekChart(o.days, o.today.day) }, description: "Each day's most at once and its people, the last 7 days" }] }] : []),
-        ...(communityLines(o.community).length ? [text(communityLines(o.community).join('\n'))] : []),
-        text([...(full ? [stay, ...(versions ? [`**Versions** ${versions}`] : []), ...(reach ? [reach] : [])] : []),
-          `-# The chart: each day's most at once and how many different PCs had Bloxkeep open, the last 7 days. An app counts while it said it's open within ${o.forMinutes} minutes.`].join('\n')),
+        ...(play.length ? [line, ...play.map(text)] : []),
+        ...(dev ? [line, text(dev)] : []),
         ...(link ? [{ type: 1, components: [{ type: 2, style: 5, label: 'Dashboard', url: link }] }] : []),
       ],
     }],
