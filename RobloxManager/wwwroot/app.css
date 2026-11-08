@@ -6584,6 +6584,20 @@ body.browser-page { background: linear-gradient(var(--bg), var(--bg)), linear-gr
 .bw-msg.ok { color: var(--ok-ink); }
 .bw-msg.bad { color: var(--bad-ink); }
 .bw-bar .btn { flex: none; }
+/* The account picker at the bar's left, and its menu: over the page below while open (WebsiteForm lets the top reach there). */
+.bw-who { display: inline-flex; align-items: center; gap: 8px; flex: 0 1 auto; min-width: 0; max-width: 220px; height: 32px; margin-right: 6px; padding: 0 8px 0 6px; box-sizing: border-box; border: 1px solid var(--line-2); border-radius: var(--r-sm); background: var(--field); color: var(--text); }
+.bw-who:hover, .bw-who.on { background: var(--hover); }
+.bw-who .bw-name { font-weight: 600; }
+.bw-who > .i { width: 14px; height: 14px; color: var(--muted); }
+.menu.bw-accounts { display: flex; flex-direction: column; width: 280px; min-width: 0; padding: 6px; box-sizing: border-box; overflow: hidden; animation: none; box-shadow: none; }
+.bw-find { display: flex; align-items: center; gap: 8px; flex: none; height: 34px; margin-bottom: 6px; padding: 0 10px; border: 1px solid var(--line-2); border-radius: var(--r-sm); background: var(--field); color: var(--muted); }
+.bw-find input { flex: 1; min-width: 0; height: 100%; padding: 0; border: 0; outline: 0; background: none; color: var(--text); font: inherit; }
+.bw-find input:focus-visible { outline: 0; }
+.bw-find:focus-within { border-color: var(--focus); }
+.bw-acc-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; scrollbar-width: thin; }
+.menu .bw-acc .bw-av { flex: none; width: 22px; height: 22px; }
+.menu .bw-acc.on { background: var(--active); color: var(--text); }
+.bw-none { padding: 10px; color: var(--muted); }
 /* The sign-in window: one bar, taller, with Done. */
 .bw.login .bw-bar { height: 52px; padding: 0 12px 0 8px; gap: 8px; }
 .bw.login .bw-site { margin-left: 0; }

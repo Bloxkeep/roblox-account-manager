@@ -1,0 +1,118 @@
+== open
+html [data-theme="dark" lang="en"]
+#app
+  div [id="root"]
+    div.bw
+      div.bw-tabs
+        div.bw-list [role="tablist" aria-label="Tabs"]
+          div.bw-tab
+            button.bw-pick [role="tab" type="button" title="Main" tabindex="-1" aria-selected="false"]
+              span.bw-av
+                img [alt="" src=#oxspc5]
+              span.bw-name "Main"
+          div.bw-tab
+            button.bw-pick [role="tab" type="button" title="Farm 1" tabindex="-1" aria-selected="false"]
+              span.bw-av
+                img [alt="" src=#161eh4p]
+              span.bw-name "Farm 1"
+          div.bw-tab
+            button.bw-pick [role="tab" type="button" title="Farm 2" tabindex="-1" aria-selected="false"]
+              span.bw-av
+                img [alt="" src=#1uf25dn]
+              span.bw-name "Farm 2"
+          div.bw-tab.on
+            button.bw-pick [role="tab" type="button" title="Roblox" tabindex="0" aria-selected="true"]
+              span.bw-av
+                svg.i #1ctn026
+              span.bw-name "Roblox"
+            button.bw-x [type="button" title="Close tab (Ctrl+W)" tabindex="-1" aria-label="Close tab (Ctrl+W)"]
+              svg.i #1tyq039
+        button.bw-new.icon-btn [type="button" title="New tab, to sign in on roblox.com (Ctrl+T)" aria-label="New tab"]
+          svg.i #u7ty99
+      div.bw-bar
+        button.bw-who.on [type="button" title="Switch this tab to another account" aria-expanded="true" aria-haspopup="menu"]
+          span.bw-av
+            svg.i #1ctn026
+          span.bw-name "Roblox"
+          svg.i #u1ag9u
+        div.bw-accounts.menu [role="menu" aria-label="Account" style="left:6px;max-height:440px;top:81.5px"]
+          div.bw-acc-list
+            button.bw-acc [role="menuitemradio" type="button" title="Main" aria-checked="false" FOCUSED]
+              span.bw-av
+                img [alt="" src=#oxspc5]
+              span "Main"
+            button.bw-acc [role="menuitemradio" type="button" title="Farm 1" aria-checked="false"]
+              span.bw-av
+                img [alt="" src=#161eh4p]
+              span "Farm 1"
+            button.bw-acc [role="menuitemradio" type="button" title="Farm 2" aria-checked="false"]
+              span.bw-av
+                img [alt="" src=#1uf25dn]
+              span "Farm 2"
+        button.icon-btn [type="button" title="Back" aria-label="Back"]
+          svg.i #10tf97k
+        button.icon-btn [type="button" title="Forward" aria-label="Forward" disabled]
+          svg.i #1g7f83q
+        button.icon-btn [type="button" title="Reload" aria-label="Reload"]
+          svg.i #e464bo
+        span.bw-site [title="www.roblox.com"]
+          svg.i #21scx0
+          span "www.roblox.com"
+        span.bw-msg [role="status" title="Signed in as Newbie."] "Signed in as Newbie."
+        button.btn.primary.sm [type="button" title="Opens signed in next time. Without saving, closing this tab signs it out here."] "Save to Bloxkeep"
+-- commands
+  menu {"h":122,"w":280,"x":6,"y":81.5}
+  menu {"h":122,"w":280,"x":6,"y":81.5}
+  ready {}
+  size {"h":84,"w":1100}
+  size {"h":84,"w":1100}
+== end
+html [data-theme="dark" lang="en"]
+#app
+  div [id="root"]
+    div.bw
+      div.bw-tabs
+        div.bw-list [role="tablist" aria-label="Tabs"]
+          div.bw-tab.on
+            button.bw-pick [role="tab" type="button" title="Main" tabindex="0" aria-selected="true"]
+              span.bw-av
+                img [alt="" src=#oxspc5]
+              span.bw-name "Main"
+            button.bw-x [type="button" title="Close tab (Ctrl+W)" tabindex="-1" aria-label="Close tab (Ctrl+W)"]
+              svg.i #1tyq039
+          div.bw-tab
+            button.bw-pick [role="tab" type="button" title="Farm 1" tabindex="-1" aria-selected="false"]
+              span.bw-av
+                img [alt="" src=#161eh4p]
+              span.bw-name "Farm 1"
+          div.bw-tab
+            button.bw-pick [role="tab" type="button" title="Farm 2" tabindex="-1" aria-selected="false"]
+              span.bw-av
+                img [alt="" src=#1uf25dn]
+              span.bw-name "Farm 2"
+          div.bw-tab
+            button.bw-pick [role="tab" type="button" title="Roblox" tabindex="-1" aria-selected="false"]
+              span.bw-av
+                svg.i #1ctn026
+              span.bw-name "Roblox"
+        button.bw-new.icon-btn [type="button" title="New tab, to sign in on roblox.com (Ctrl+T)" aria-label="New tab"]
+          svg.i #u7ty99
+      div.bw-bar
+        button.bw-who [type="button" title="Switch this tab to another account" aria-expanded="false" aria-haspopup="menu"]
+          span.bw-av
+            img [alt="" src=#oxspc5]
+          span.bw-name "Main"
+          svg.i #u1ag9u
+        button.icon-btn [type="button" title="Back" aria-label="Back"]
+          svg.i #10tf97k
+        button.icon-btn [type="button" title="Forward" aria-label="Forward" disabled]
+          svg.i #1g7f83q
+        button.icon-btn [type="button" title="Reload" aria-label="Reload"]
+          svg.i #e464bo
+        span.bw-site [title="www.roblox.com"]
+          svg.i #21scx0
+          span "www.roblox.com"
+        span.bw-msg [role="status"]
+-- commands
+  act {"account":"a0","what":"account"}
+  menu {}

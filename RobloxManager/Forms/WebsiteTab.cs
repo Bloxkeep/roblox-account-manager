@@ -40,6 +40,9 @@ public sealed class WebsiteTab : UserControl
     /// <summary>Replaced by the checks.</summary>
     Func<string, Task<RobloxUser?>> _identify = cookie => RobloxApi.GetAuthenticatedUserAsync(cookie);
     bool _closing, _synced, _syncing, _askingLogout, _hasBrowser, _tornDown;
+    /// <summary>Goes up at each switch to another account (<see cref="SwitchToAsync"/>): a read of the session begun
+    /// before it, or an older switch still on its way, is left.</summary>
+    int _generation;
     /// <summary>
     /// A session Roblox couldn't be asked about (no answer, too many questions, a notice on the account): asked again
     /// after a while, not at every read (2026-10-30 review: a blank tab asked every 2 s, ~30 times a minute, while
@@ -202,14 +205,7 @@ public sealed class WebsiteTab : UserControl
             core.Settings.IsGeneralAutofillEnabled = false;
             // DevTools would show the session cookie, which is how cookie thieves talk people into sharing it.
             core.Settings.AreDevToolsEnabled = false;
-            if (AccountId is not null && _cookie.Length > 0)
-            {
-                // Only in this tab's profile, as a cookie for this browser session only.
-                var session = core.CookieManager.CreateCookie(CookieName, _cookie, ".roblox.com", "/");
-                session.IsSecure = true;
-                session.IsHttpOnly = true;
-                core.CookieManager.AddOrUpdateCookie(session);
-            }
+            AddSession(core);
             GuardSignOut(core, env);
 
             core.NewWindowRequested += (_, e) =>
@@ -288,6 +284,69 @@ public sealed class WebsiteTab : UserControl
                 Ui.Error(FindForm(), L.F("Couldn't open the Roblox website: {0}", ex.Message));
                 CloseRequested?.Invoke();
             }
+        }
+    }
+
+    /// <summary>A saved account's session, only in this tab's profile, as a cookie for this browser session only.</summary>
+    void AddSession(CoreWebView2 core)
+    {
+        if (AccountId is null || _cookie.Length == 0)
+            return;
+        var session = core.CookieManager.CreateCookie(CookieName, _cookie, ".roblox.com", "/");
+        session.IsSecure = true;
+        session.IsHttpOnly = true;
+        core.CookieManager.AddOrUpdateCookie(session);
+    }
+
+    /// <summary>
+    /// The account picker on the window's top: this tab signs in as another saved account, on the page it shows (its
+    /// home when that isn't Roblox's). The account it was is read once more first, as when a tab closes, then its
+    /// sign-in goes from the tab's profile: cookies and the site's storage, so nothing of it is left for the next one.
+    /// </summary>
+    public async Task SwitchToAsync(Guid id, string name, string cookie, string? avatar)
+    {
+        if (_tornDown)
+            return;
+        int generation = ++_generation;
+        if (AccountId is not null && _web.CoreWebView2 is not null)
+            await Task.WhenAny(SyncSessionAsync(), Task.Delay(3000));
+        if (generation != _generation || _tornDown)
+            return;
+        AccountId = id;
+        _cookie = cookie;
+        _user = null;
+        CanSave = false;
+        _failedSession = null;
+        _askAgainAt = default;
+        _failures = 0;
+        _sync.Interval = SavedSyncMs;
+        StartUrl = null;
+        Avatar = avatar;
+        SetName(name);
+        // Not started yet: it signs in as this account when it is (OpenAsync).
+        if (_web.CoreWebView2 is not { } core)
+        {
+            Changed();
+            return;
+        }
+        string? here = IsRoblox(core.Source) ? core.Source : null;
+        try
+        {
+            _sync.Stop();
+            core.Stop();
+            Say(L.T("Opening roblox.com…"), "");
+            await core.Profile.ClearBrowsingDataAsync(CoreWebView2BrowsingDataKinds.Cookies | CoreWebView2BrowsingDataKinds.AllDomStorage);
+            if (generation != _generation || _tornDown)
+                return;
+            AddSession(core);
+            ShowRetry = false;
+            core.Navigate(here ?? HomeUrl);
+            _sync.Start();
+        }
+        catch (Exception ex) when (ex is COMException or InvalidOperationException or ObjectDisposedException)
+        {
+            if (!_tornDown)
+                Say(L.F("Couldn't open the Roblox website: {0}", ex.Message), "bad");
         }
     }
 
@@ -410,10 +469,14 @@ public sealed class WebsiteTab : UserControl
         if (_syncing || _web.CoreWebView2 is not { } core)
             return;
         _syncing = true;
+        int generation = _generation;
         try
         {
             var cookies = await core.CookieManager.GetCookiesAsync("https://www.roblox.com");
             string? now = cookies.FirstOrDefault(c => c.Name == CookieName && !string.IsNullOrEmpty(c.Value))?.Value;
+            // Switched to another account meanwhile: what was read may be either one's.
+            if (generation != _generation)
+                return;
             if (AccountId is not { } id)
             {
                 await TrackSignInAsync(now);
@@ -422,7 +485,10 @@ public sealed class WebsiteTab : UserControl
             // None: signed out some other way, or not yet; the saved session is left as it is.
             if (now is null || now == _cookie || Waiting(now))
                 return;
-            if (await _onSessionChanged(id, now))
+            bool saved = await _onSessionChanged(id, now);
+            if (generation != _generation)
+                return;
+            if (saved)
                 _cookie = now;
             else
                 Failed(now, moderated: false);

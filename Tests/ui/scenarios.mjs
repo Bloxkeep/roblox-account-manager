@@ -1957,6 +1957,9 @@ export default [
   S('browser-chrome-blank', 'blank=1', null, { page: 'browser-preview.html', size: [1100, 260] }),
   S('browser-chrome-saved', 'blank=1', async s => { await s.click({ css: '.bw-bar .btn.primary' }); }, { page: 'browser-preview.html', size: [1100, 260] }),
   S('browser-chrome-offline', 'offline=1', null, { page: 'browser-preview.html', size: [1100, 260] }),
+  // The account picker at the bar's left: its menu (a search with many accounts), narrowed, and a pick switching the tab.
+  S('browser-chrome-accounts', '', async s => { await s.click({ css: '.bw-who' }); await s.snap('open'); await s.type('farm', { css: '.bw-find input' }); await s.snap('found'); await s.click({ css: '.bw-acc:nth-child(2)' }); }, { page: 'browser-preview.html', size: [1100, 620] }),
+  S('browser-chrome-accounts-few', 'few=1&blank=1', async s => { await s.click({ css: '.bw-who' }); await s.snap('open'); await s.click({ css: '.bw-acc:nth-child(1)' }); }, { page: 'browser-preview.html', size: [1100, 400], langs: ['en'] }),
   S('browser-chrome-many-tabs', 'many=1', null, { page: 'browser-preview.html', size: [980, 260] }),
   S('browser-chrome-many-narrow', 'many=1', null, { page: 'browser-preview.html', size: [640, 260], langs: ['en'] }),
   S('browser-chrome-close', '', async s => { await s.hover({ css: '.bw-tab:nth-child(2)' }); await s.snap('hover'); await s.click({ css: '.bw-tab:nth-child(2) .bw-x' }); },

@@ -952,6 +952,8 @@ window.I18N = {
     'bw.tabs': 'Tabs', 'bw.new': 'New tab', 'bw.newTip': 'New tab, to sign in on roblox.com (Ctrl+T)', 'bw.close': 'Close tab (Ctrl+W)',
     'bw.back': 'Back', 'bw.forward': 'Forward', 'bw.reload': 'Reload', 'bw.retry': 'Retry', 'bw.save': 'Save to Bloxkeep',
     'bw.saveTip': 'Opens signed in next time. Without saving, closing this tab signs it out here.',
+    'bw.account': 'Account', 'bw.accountTip': 'Switch this tab to another account', 'bw.findAccount': 'Find an account',
+    'bw.noMatch': 'No matches', 'bw.noAccounts': 'No saved accounts yet',
     // ── end P7b ──
 
     // ── P8 ──
@@ -1895,6 +1897,8 @@ window.I18N = {
     'bw.tabs': 'Các tab', 'bw.new': 'Tab mới', 'bw.newTip': 'Tab mới để đăng nhập trên roblox.com (Ctrl+T)', 'bw.close': 'Đóng tab (Ctrl+W)',
     'bw.back': 'Quay lại', 'bw.forward': 'Tiến', 'bw.reload': 'Tải lại', 'bw.retry': 'Thử lại', 'bw.save': 'Lưu vào Bloxkeep',
     'bw.saveTip': 'Lần sau mở là đã đăng nhập sẵn. Không lưu thì đóng tab này sẽ mất đăng nhập ở đây.',
+    'bw.account': 'Tài khoản', 'bw.accountTip': 'Đổi tài khoản cho tab này', 'bw.findAccount': 'Tìm tài khoản',
+    'bw.noMatch': 'Không tìm thấy', 'bw.noAccounts': 'Chưa lưu tài khoản nào',
     // ── end P7b ──
 
     // ── P8 ──

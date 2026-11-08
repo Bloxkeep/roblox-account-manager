@@ -1,0 +1,216 @@
+== open
+html [data-theme="dark" lang="vi"]
+#app
+  div [id="root"]
+    div.bw
+      div.bw-tabs
+        div.bw-list [role="tablist" aria-label="Các tab"]
+          div.bw-tab.on
+            button.bw-pick [role="tab" type="button" title="Main" tabindex="0" aria-selected="true"]
+              span.bw-av
+                img [alt="" src=#oxspc5]
+              span.bw-name "Main"
+            button.bw-x [type="button" title="Đóng tab (Ctrl+W)" tabindex="-1" aria-label="Đóng tab (Ctrl+W)"]
+              svg.i #1tyq039
+          div.bw-tab
+            button.bw-pick [role="tab" type="button" title="Farm 1" tabindex="-1" aria-selected="false"]
+              span.bw-av
+                img [alt="" src=#161eh4p]
+              span.bw-name "Farm 1"
+          div.bw-tab
+            button.bw-pick [role="tab" type="button" title="Farm 2" tabindex="-1" aria-selected="false"]
+              span.bw-av
+                img [alt="" src=#1uf25dn]
+              span.bw-name "Farm 2"
+        button.bw-new.icon-btn [type="button" title="Tab mới để đăng nhập trên roblox.com (Ctrl+T)" aria-label="Tab mới"]
+          svg.i #u7ty99
+      div.bw-bar
+        button.bw-who.on [type="button" title="Đổi tài khoản cho tab này" aria-expanded="true" aria-haspopup="menu"]
+          span.bw-av
+            img [alt="" src=#oxspc5]
+          span.bw-name "Main"
+          svg.i #u1ag9u
+        div.bw-accounts.menu [role="menu" aria-label="Tài khoản" style="left:6px;max-height:440px;top:81.5px"]
+          label.bw-find
+            svg.i #1u22jvi
+            input [type="text" placeholder="Tìm tài khoản" aria-label="Tìm tài khoản" value="" FOCUSED]
+          div.bw-acc-list
+            button.bw-acc.checked.on [role="menuitemradio" type="button" title="Main" aria-checked="true"]
+              span.bw-av
+                img [alt="" src=#oxspc5]
+              span "Main"
+              svg.i #14iobj
+            button.bw-acc [role="menuitemradio" type="button" title="Farm 1" aria-checked="false"]
+              span.bw-av
+                img [alt="" src=#161eh4p]
+              span "Farm 1"
+            button.bw-acc [role="menuitemradio" type="button" title="Farm 2" aria-checked="false"]
+              span.bw-av
+                img [alt="" src=#1uf25dn]
+              span "Farm 2"
+            button.bw-acc [role="menuitemradio" type="button" title="Trader alt with a long name" aria-checked="false"]
+              span.bw-av
+                img [alt="" src=#zjncze]
+              span "Trader alt with a long name"
+            button.bw-acc [role="menuitemradio" type="button" title="Fisher" aria-checked="false"]
+              span.bw-av
+                img [alt="" src=#q7kfcu]
+              span "Fisher"
+            button.bw-acc [role="menuitemradio" type="button" title="Builder" aria-checked="false"]
+              span.bw-av
+                img [alt="" src=#1x5sdhm]
+              span "Builder"
+            button.bw-acc [role="menuitemradio" type="button" title="Farm 3" aria-checked="false"]
+              span.bw-av
+                img [alt="" src=#3u08ny]
+              span "Farm 3"
+            button.bw-acc [role="menuitemradio" type="button" title="Farm 4" aria-checked="false"]
+              span.bw-av
+                img [alt="" src=#k2y75]
+              span "Farm 4"
+            button.bw-acc [role="menuitemradio" type="button" title="Collector" aria-checked="false"]
+              span.bw-av
+                img [alt="" src=#debjwb]
+              span "Collector"
+            button.bw-acc [role="menuitemradio" type="button" title="Grinder" aria-checked="false"]
+              span.bw-av
+                img [alt="" src=#1wi500b]
+              span "Grinder"
+            button.bw-acc [role="menuitemradio" type="button" title="Farm 5" aria-checked="false"]
+              span.bw-av
+                img [alt="" src=#ojn4yn]
+              span "Farm 5"
+            button.bw-acc [role="menuitemradio" type="button" title="Backup" aria-checked="false"]
+              span.bw-av
+                img [alt="" src=#5vwpwr]
+              span "Backup"
+        button.icon-btn [type="button" title="Quay lại" aria-label="Quay lại"]
+          svg.i #10tf97k
+        button.icon-btn [type="button" title="Tiến" aria-label="Tiến" disabled]
+          svg.i #1g7f83q
+        button.icon-btn [type="button" title="Tải lại" aria-label="Tải lại"]
+          svg.i #e464bo
+        span.bw-site [title="www.roblox.com"]
+          svg.i #21scx0
+          span "www.roblox.com"
+        span.bw-msg [role="status"]
+-- commands
+  menu {"h":440,"w":280,"x":6,"y":81.5}
+  menu {"h":440,"w":280,"x":6,"y":81.5}
+  ready {}
+  size {"h":84,"w":1100}
+  size {"h":84,"w":1100}
+== found
+html [data-theme="dark" lang="vi"]
+#app
+  div [id="root"]
+    div.bw
+      div.bw-tabs
+        div.bw-list [role="tablist" aria-label="Các tab"]
+          div.bw-tab.on
+            button.bw-pick [role="tab" type="button" title="Main" tabindex="0" aria-selected="true"]
+              span.bw-av
+                img [alt="" src=#oxspc5]
+              span.bw-name "Main"
+            button.bw-x [type="button" title="Đóng tab (Ctrl+W)" tabindex="-1" aria-label="Đóng tab (Ctrl+W)"]
+              svg.i #1tyq039
+          div.bw-tab
+            button.bw-pick [role="tab" type="button" title="Farm 1" tabindex="-1" aria-selected="false"]
+              span.bw-av
+                img [alt="" src=#161eh4p]
+              span.bw-name "Farm 1"
+          div.bw-tab
+            button.bw-pick [role="tab" type="button" title="Farm 2" tabindex="-1" aria-selected="false"]
+              span.bw-av
+                img [alt="" src=#1uf25dn]
+              span.bw-name "Farm 2"
+        button.bw-new.icon-btn [type="button" title="Tab mới để đăng nhập trên roblox.com (Ctrl+T)" aria-label="Tab mới"]
+          svg.i #u7ty99
+      div.bw-bar
+        button.bw-who.on [type="button" title="Đổi tài khoản cho tab này" aria-expanded="true" aria-haspopup="menu"]
+          span.bw-av
+            img [alt="" src=#oxspc5]
+          span.bw-name "Main"
+          svg.i #u1ag9u
+        div.bw-accounts.menu [role="menu" aria-label="Tài khoản" style="left:6px;max-height:440px;top:81.5px"]
+          label.bw-find
+            svg.i #1u22jvi
+            input [type="text" placeholder="Tìm tài khoản" aria-label="Tìm tài khoản" value="farm" FOCUSED]
+          div.bw-acc-list
+            button.bw-acc [role="menuitemradio" type="button" title="Farm 1" aria-checked="false"]
+              span.bw-av
+                img [alt="" src=#161eh4p]
+              span "Farm 1"
+            button.bw-acc [role="menuitemradio" type="button" title="Farm 2" aria-checked="false"]
+              span.bw-av
+                img [alt="" src=#1uf25dn]
+              span "Farm 2"
+            button.bw-acc [role="menuitemradio" type="button" title="Farm 3" aria-checked="false"]
+              span.bw-av
+                img [alt="" src=#3u08ny]
+              span "Farm 3"
+            button.bw-acc [role="menuitemradio" type="button" title="Farm 4" aria-checked="false"]
+              span.bw-av
+                img [alt="" src=#k2y75]
+              span "Farm 4"
+            button.bw-acc [role="menuitemradio" type="button" title="Farm 5" aria-checked="false"]
+              span.bw-av
+                img [alt="" src=#ojn4yn]
+              span "Farm 5"
+        button.icon-btn [type="button" title="Quay lại" aria-label="Quay lại"]
+          svg.i #10tf97k
+        button.icon-btn [type="button" title="Tiến" aria-label="Tiến" disabled]
+          svg.i #1g7f83q
+        button.icon-btn [type="button" title="Tải lại" aria-label="Tải lại"]
+          svg.i #e464bo
+        span.bw-site [title="www.roblox.com"]
+          svg.i #21scx0
+          span "www.roblox.com"
+        span.bw-msg [role="status"]
+-- commands
+  menu {"h":234,"w":280,"x":6,"y":81.5}
+== end
+html [data-theme="dark" lang="vi"]
+#app
+  div [id="root"]
+    div.bw
+      div.bw-tabs
+        div.bw-list [role="tablist" aria-label="Các tab"]
+          div.bw-tab
+            button.bw-pick [role="tab" type="button" title="Main" tabindex="-1" aria-selected="false"]
+              span.bw-av
+                img [alt="" src=#oxspc5]
+              span.bw-name "Main"
+          div.bw-tab
+            button.bw-pick [role="tab" type="button" title="Farm 1" tabindex="-1" aria-selected="false"]
+              span.bw-av
+                img [alt="" src=#161eh4p]
+              span.bw-name "Farm 1"
+          div.bw-tab.on
+            button.bw-pick [role="tab" type="button" title="Farm 2" tabindex="0" aria-selected="true"]
+              span.bw-av
+                img [alt="" src=#1uf25dn]
+              span.bw-name "Farm 2"
+            button.bw-x [type="button" title="Đóng tab (Ctrl+W)" tabindex="-1" aria-label="Đóng tab (Ctrl+W)"]
+              svg.i #1tyq039
+        button.bw-new.icon-btn [type="button" title="Tab mới để đăng nhập trên roblox.com (Ctrl+T)" aria-label="Tab mới"]
+          svg.i #u7ty99
+      div.bw-bar
+        button.bw-who [type="button" title="Đổi tài khoản cho tab này" aria-expanded="false" aria-haspopup="menu"]
+          span.bw-av
+            img [alt="" src=#1uf25dn]
+          span.bw-name "Farm 2"
+          svg.i #u1ag9u
+        button.icon-btn [type="button" title="Quay lại" aria-label="Quay lại"]
+          svg.i #10tf97k
+        button.icon-btn [type="button" title="Tiến" aria-label="Tiến" disabled]
+          svg.i #1g7f83q
+        button.icon-btn [type="button" title="Tải lại" aria-label="Tải lại"]
+          svg.i #e464bo
+        span.bw-site [title="www.roblox.com"]
+          svg.i #21scx0
+          span "www.roblox.com"
+        span.bw-msg [role="status"]
+-- commands
+  act {"account":"a2","what":"account"}
+  menu {}
