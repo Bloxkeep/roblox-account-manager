@@ -80,9 +80,10 @@ static class OnlineSuite
         var names = first.EnumerateObject().Select(p => p.Name).Order().ToArray();
         string? pc = (string?)typeof(AppController).GetMethod("OnlineIdForThisPc", Harness.F)!.Invoke(null, null);
         // What its accounts play goes too (games, how many run, drops, the alts board's name): none here, no account; on the
-        // board from the start under a made-up name.
+        // board from the start under a made-up name; the theme picked, for Popular (Bloxkeep's own only).
         c.Check("…with this PC's id (32 hex digits, not Windows' own id), the version and the language, nothing else",
-            string.Join(",", names) == "age,alts,app,board,drops,first,games,id,language" && pc is { Length: 32 } && pc.All(Uri.IsHexDigit) && pc == pc.ToLowerInvariant()
+            string.Join(",", names.Where(n => n != "theme")) == "age,alts,app,board,drops,first,games,id,language"
+            && (!first.TryGetProperty("theme", out var theme) || theme.ValueKind == JsonValueKind.Null || theme.GetString() is { Length: > 0 and < 40 }) && pc is { Length: 32 } && pc.All(Uri.IsHexDigit) && pc == pc.ToLowerInvariant()
             && first.GetProperty("games").GetArrayLength() == 0 && first.GetProperty("alts").GetInt32() == 0
             && first.GetProperty("drops").GetArrayLength() == 0 && first.GetProperty("board").GetString() is { } made && System.Text.RegularExpressions.Regex.IsMatch(made, @"^[A-Z][a-z]+ [A-Z][a-z]+ \d\d$")
             && Prefs.BoardName == made && Prefs.BoardNameChosen

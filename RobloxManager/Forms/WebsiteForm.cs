@@ -37,7 +37,6 @@ public sealed class WebsiteForm : Form
         Icon = Ui.AppIcon;
         BackColor = _theme.Background;
         StartPosition = FormStartPosition.Manual;
-        MinimumSize = new Size(LogicalToDeviceUnits(480), LogicalToDeviceUnits(360));
         KeyPreview = true;
 
         _chrome = new ChromeView(this, 84) { Relayout = LayOut };
@@ -49,6 +48,8 @@ public sealed class WebsiteForm : Form
         Controls.Add(_chrome.Control);
         // Back from the main window (where the theme may have changed): drawn again in it.
         Activated += (_, _) => Push();
+        // After the top and the page exist: a minimum above the form's size resizes it, which lays it out (LayOut).
+        MinimumSize = new Size(LogicalToDeviceUnits(480), LogicalToDeviceUnits(360));
     }
 
     protected override async void OnHandleCreated(EventArgs e)
@@ -108,7 +109,8 @@ public sealed class WebsiteForm : Form
     /// </summary>
     void LayOut()
     {
-        if (IsDisposed)
+        // Laid out while the constructor is still making them (a size set there), or after they're gone.
+        if (IsDisposed || _chrome is null || _pages is null)
             return;
         var area = ClientSize;
         int bar = Math.Min(_chrome.BarPixels, area.Height);
