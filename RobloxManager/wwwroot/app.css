@@ -3193,7 +3193,12 @@ body:has(.lock) #toasts { bottom: 24px; }
 }
 @media (max-width: 1280px) {
   .search { width: 260px; }
-  /* The game step gets the picture's room for the game's name and a recent game; the game box opens the list too. */
+  .dock { column-gap: 14px; }
+  .game-thumb { width: 52px; height: 52px; border-radius: var(--r-md); }
+}
+/* Only when even the icon sidebar leaves the game box short: the game step gets the picture's room for the game's name
+   (the game box opens the list too). Down to 1000px it stays: the owner found the mid-size window bare (2026-11-08). */
+@media (max-width: 1000px) {
   .dock { grid-template-columns: minmax(0, 1fr) auto auto; }
   .game-thumb { display: none; }
 }
@@ -3266,6 +3271,7 @@ body:has(.lock) #toasts { bottom: 24px; }
   .top { padding-top: 12px; padding-bottom: 8px; }
   .top p { margin: 0; }
   .dock-info .creator, .dock-info .recents { display: none; }
+  .step-cap { display: none; } /* the numbered captions give their line to the cards */
   .dock-step { row-gap: 6px; }
   .dock-info { min-height: 22px; }
   .bar { padding-bottom: 8px; }
@@ -3280,12 +3286,15 @@ body:has(.lock) #toasts { bottom: 24px; }
 [data-theme="terminal"] .activity .k, [data-theme="gameboy"] .activity .k { font-size: 10.5px; }
 [data-theme="terminal"] .activity .v, [data-theme="gameboy"] .activity .v,
 [data-theme="terminal"] .chip, [data-theme="gameboy"] .chip { font-size: 12px; }
-/* Short windows with the wide sidebar: the Roblox card drops its RAM bar and version lines. */
+/* Short windows with the wide sidebar: tighter, so the Roblox card keeps its RAM bar and version lines. */
 @media (max-height: 760px) and (min-width: 1181px) {
   .side { gap: 4px; padding-top: 14px; }
   .nav { height: 36px; }
-  #sys-card .bricks, #sys-card .sys-foot, #sys-card .sys-ver { display: none; } /* #sys-usage is in .sys-foot */
   .side-card { padding: 10px 12px; }
+}
+/* Only the shortest windows drop them (the owner found a 760px-tall window bare, 2026-11-08). */
+@media (max-height: 700px) and (min-width: 1181px) {
+  #sys-card .bricks, #sys-card .sys-foot, #sys-card .sys-ver { display: none; } /* #sys-usage is in .sys-foot */
 }
 /* The sign-in window in a short window: tighter, so the other ways and the privacy note are within reach. */
 @media (max-height: 700px) {
@@ -3312,7 +3321,6 @@ body:has(.lock) #toasts { bottom: 24px; }
   .bar { padding-bottom: 10px; }
   .card { padding: 12px 14px; }
   .dock { padding-top: 10px; padding-bottom: 10px; }
-  .step-cap { display: none; } /* the numbered captions give their line to the cards */
   .game-thumb { width: 52px; height: 52px; border-radius: var(--r-md); }
   .play-btn { height: 46px; }
   .brand { padding-bottom: 10px; }
