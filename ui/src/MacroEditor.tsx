@@ -1641,7 +1641,7 @@ function Count({ id, label, value, min, max, onChange, invalid }: { id: string; 
 }
 
 function TextIn({ id, label, value, max, wide, onChange, invalid }: { id: string; label: string; value: string; max: number; wide?: boolean; onChange: (v: string) => void; invalid?: boolean }) {
-  return <input className={`field sm mc-text${wide ? ' wide' : ''}`} id={id} maxLength={max} spellCheck={false} aria-label={label} value={value} aria-invalid={invalid || undefined}
+  return <Field size="sm" className={`mc-text${wide ? ' wide' : ''}`} id={id} maxLength={max} spellCheck={false} aria-label={label} value={value} aria-invalid={invalid || undefined}
     placeholder={label} onChange={e => onChange(e.target.value)} />;
 }
 

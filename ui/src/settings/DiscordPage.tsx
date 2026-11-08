@@ -7,7 +7,7 @@ import { NOTIFY_KINDS } from './NotifyPage';
 import { Group, More, Page, Row, Switch, TextBox, useLocal } from './parts';
 import { parseTime } from '../TimeField';
 
-import { Button, Segment, Segmented } from '../kit';
+import { Button, Field, Segment, Segmented } from '../kit';
 const DC_ID = /^\d{17,20}$/;
 const PING_MODES = ['none', 'here', 'everyone', 'user', 'role'];
 const NONE: string[] = [];
@@ -375,7 +375,7 @@ function Ping({ kind, saved, again, setPing, putBack }: {
       {PING_MODES.map(v => <option key={v} value={v}>{t(`dc.ping.${v}`)}</option>)}
       {kind === 'alerts' ? <option value="mixed" disabled hidden>{t('dc.pingMixed')}</option> : null}
     </select>
-    <input className={`field sm dc-id${bad ? ' bad' : ''}`} data-ping-id={kind} ref={box} inputMode="numeric" maxLength={20} spellCheck={false} autoComplete="off"
+    <Field size="sm" className={`dc-id${bad ? ' bad' : ''}`} data-ping-id={kind} ref={box} inputMode="numeric" maxLength={20} spellCheck={false} autoComplete="off"
       placeholder={t('dc.idPh')} aria-label={t('dc.idPh')} hidden={!idShown} value={id} onChange={e => setId(e.target.value)} />
   </div>;
 }

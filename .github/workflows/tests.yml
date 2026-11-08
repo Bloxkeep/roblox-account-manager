@@ -55,5 +55,7 @@ jobs:
         run: node Tests/ui/contract.mjs
       - name: Sizes, gaps, corners and times come from app.css's tokens
         run: node Tests/ui/tokens.mjs --strict
+      - name: Screens use the shared controls (ui/src/kit.tsx)
+        run: node Tests/ui/kit.mjs
       - name: Bloxkeep's checks
         run: dotnet run --project Tests/Bloxkeep.Tests -c Release -- --timeout=8
