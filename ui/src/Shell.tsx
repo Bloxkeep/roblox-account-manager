@@ -20,6 +20,7 @@ import { SecurityPage } from './settings/SecurityPage';
 import { UpdatesPage } from './settings/UpdatesPage';
 import { StatsView, type StatsApi } from './StatsView';
 
+import { Button, IconButton } from './kit';
 export type SettingsPageInfo = { id: string; icon: string; title: string };
 
 export function Shell({ pages, page, preview, stats }: { pages: SettingsPageInfo[]; page: string; preview: boolean; stats: Ref<StatsApi> }) {
@@ -32,11 +33,11 @@ export function Shell({ pages, page, preview, stats }: { pages: SettingsPageInfo
           <div className="top-title"><h1>{t('acc.title')}</h1><Guarded name="the accounts' heading"><AccountsHead /></Guarded></div>
           <div className="top-tools">
             <label className="search"><Icon name="search" /><input id="q" placeholder={t('acc.search')} maxLength={100} aria-label={t('acc.search')} /></label>
-            <button className="icon-btn" data-act="refresh-presence" title={t('acc.refreshTip')}><Icon name="refresh" /></button>
-            <button className="icon-btn" data-act="tools-menu" title={t('acc.moreTip')} aria-haspopup="menu"><Icon name="more" /></button>
+            <IconButton icon="refresh" data-act="refresh-presence" title={t('acc.refreshTip')} />
+            <IconButton icon="more" data-act="tools-menu" title={t('acc.moreTip')} aria-haspopup="menu" />
             <div className="split">
-              <button className="btn primary" data-act="add-choose"><Icon name="userPlus" /><span>{t('acc.add')}</span></button>
-              <button className="btn primary" data-act="add-menu" title={t('acc.addMoreTip')} aria-haspopup="menu"><Icon name="chevronDown" /></button>
+              <Button kind="primary" data-act="add-choose"><Icon name="userPlus" /><span>{t('acc.add')}</span></Button>
+              <Button kind="primary" data-act="add-menu" title={t('acc.addMoreTip')} aria-haspopup="menu"><Icon name="chevronDown" /></Button>
             </div>
           </div>
         </header>

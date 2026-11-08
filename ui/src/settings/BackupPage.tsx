@@ -3,6 +3,7 @@
 import { Ago, Icon, useAppState, useHost } from '../host';
 import { Group, Page, Row, Switch, useLocal } from './parts';
 
+import { Button } from '../kit';
 export function BackupPage({ title }: { title: string }) {
   const { t, call } = useHost();
   const app = useAppState();
@@ -25,11 +26,11 @@ export function BackupPage({ title }: { title: string }) {
         <span className="path" id="s-bk-path">{b.folder || t('bk.noFolder')}</span>
         {b.folder ? null : <span className="bk-hint">{t('bk.needFolderDesc')}</span>}
         <div className="bk-suggest" id="s-bk-suggest">
-          {suggested.map(s => <button key={s.path} className="btn sm ghost" data-act="bk-use" data-path={s.path} title={s.path}>{t('bk.use', { name: s.name })}</button>)}
+          {suggested.map(s => <Button key={s.path} size="sm" ghost data-act="bk-use" data-path={s.path} title={s.path}>{t('bk.use', { name: s.name })}</Button>)}
         </div>
       </>}>
-        <button className="btn sm" data-act="bk-pick">{t('bk.choose')}</button>
-        <button className="btn sm" data-act="bk-open" id="s-bk-open" hidden={!b.folder}><Icon name="folder" />{t('set.openFolder')}</button>
+        <Button size="sm" data-act="bk-pick">{t('bk.choose')}</Button>
+        <Button size="sm" data-act="bk-open" id="s-bk-open" hidden={!b.folder}><Icon name="folder" />{t('set.openFolder')}</Button>
       </Row>
       <div id="s-bk-note">{b.cloud && b.weakPassword ? <div className="set-note"><Icon name="alert" /><span>{t('bk.weak')}</span></div> : null}</div>
       <div id="s-bk-status">
@@ -38,27 +39,27 @@ export function BackupPage({ title }: { title: string }) {
             <div className="t">{b.lastBackup ? <Ago iso={b.lastBackup} tpl="bk.last" /> : t('bk.never')}</div>
             {b.error ? <div className="d err">{b.error}</div> : null}
           </div>
-          <div className="ctl"><button className="btn sm" data-act="bk-now" disabled={!b.folder} title={b.folder ? undefined : t('bk.needFolder')}>{t('bk.now')}</button></div>
+          <div className="ctl"><Button size="sm" data-act="bk-now" disabled={!b.folder} title={b.folder ? undefined : t('bk.needFolder')}>{t('bk.now')}</Button></div>
         </div>
       </div>
     </Group>
     <Group id="restore" title={t('set.g.restore')}>
-      <Row title={t('bk.restore')} desc={t('bk.restoreDesc')}><button className="btn sm" data-act="bk-restore">{t('bk.restoreBtn')}</button></Row>
-      <Row title={t('iv.setRow')} desc={t('iv.setRowDesc')}><button className="btn sm" data-act="bk-import">{t('iv.setBtn')}</button></Row>
+      <Row title={t('bk.restore')} desc={t('bk.restoreDesc')}><Button size="sm" data-act="bk-restore">{t('bk.restoreBtn')}</Button></Row>
+      <Row title={t('iv.setRow')} desc={t('iv.setRowDesc')}><Button size="sm" data-act="bk-import">{t('iv.setBtn')}</Button></Row>
     </Group>
     <Group id="data" title={t('set.data')}>
       <Row title={t('set.dataPath')} desc={<span className="path" id="s-path">{app.dataPath || ''}</span>}>
-        <button className="btn sm" data-act="open-data"><Icon name="folder" />{t('set.openFolder')}</button>
+        <Button size="sm" data-act="open-data"><Icon name="folder" />{t('set.openFolder')}</Button>
       </Row>
       {/* Where each thing is, so nobody has to look it up in the guide: shown in Explorer. */}
       {paths.vault ? <Row title={t('set.vaultPath')} desc={<span className="path" id="s-vault-path">{paths.vault}</span>}>
-        <button className="btn sm" onClick={() => call('showPath', { which: 'vault' })}><Icon name="folder" />{t('set.showFile')}</button>
+        <Button size="sm" onClick={() => call('showPath', { which: 'vault' })}><Icon name="folder" />{t('set.showFile')}</Button>
       </Row> : null}
       <Row title={t('set.logPath')} desc={<span className="path" id="s-log-path">{paths.log || ''}</span>}>
-        <button className="btn sm" onClick={() => call('showPath', { which: 'log' })}><Icon name="folder" />{t('set.showFile')}</button>
+        <Button size="sm" onClick={() => call('showPath', { which: 'log' })}><Icon name="folder" />{t('set.showFile')}</Button>
       </Row>
       <Row title={t('set.appPath')} desc={<span className="path" id="s-app-path">{paths.app || ''}</span>}>
-        <button className="btn sm" onClick={() => call('showPath', { which: 'app' })}><Icon name="folder" />{t('set.openFolder')}</button>
+        <Button size="sm" onClick={() => call('showPath', { which: 'app' })}><Icon name="folder" />{t('set.openFolder')}</Button>
       </Row>
     </Group>
   </Page>;

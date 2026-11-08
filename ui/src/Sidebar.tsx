@@ -4,6 +4,7 @@ import { useLocal } from './settings/parts';
 import { Icon, useAppState, useHost, useMetrics, usePage } from './host';
 import { VaultFace, type VaultInfo } from './Vaults';
 
+import { Button, Switch } from './kit';
 /** The watch found the lock changed in the build Multi-Roblox meets next, and it hasn't worked on it here since. */
 export const watchWarns = (app: Record<string, any>) => {
   const w = app.robloxUpdates?.watch;
@@ -50,14 +51,14 @@ export function Sidebar() {
       </div>
       <div className="side-foot">
         <div id="update-slot">{u?.status === 'ready' && !u.quiet
-          ? <button className="btn primary w update-btn" data-act="apply-update" title={t(u.auto ? 'upd.restartTipAuto' : 'upd.restartTip', { v: u.version })}>
-            <Icon name="refresh" /><span><b>{t('upd.restart')}</b><small>{t('upd.versionN', { v: u.version })}</small></span></button> : null}</div>
+          ? <Button kind="primary" wide className="update-btn" data-act="apply-update" title={t(u.auto ? 'upd.restartTipAuto' : 'upd.restartTip', { v: u.version })}>
+            <Icon name="refresh" /><span><b>{t('upd.restart')}</b><small>{t('upd.versionN', { v: u.version })}</small></span></Button> : null}</div>
         {/* Switch vault (its face): the open vault locks and the lock screen's picker shows (Vaults.tsx). Bloxkeep's
             Discord server is under Settings › Bloxkeep › Help & feedback. */}
         <div className="side-lock">
-          <button className="btn ghost w" data-act="lock" title={t('side.lockTip')}><Icon name="lock" /><span>{t('side.lock')}</span></button>
-          {vault ? <button className="btn ghost side-sq vault-btn" data-act="vault-pick" title={t('vault.switchTip', { name: vault.name })} aria-label={t('vault.switchTip', { name: vault.name })}>
-            <VaultFace vault={vault} className="xs" /></button> : null}
+          <Button ghost wide data-act="lock" title={t('side.lockTip')}><Icon name="lock" /><span>{t('side.lock')}</span></Button>
+          {vault ? <Button ghost className="side-sq vault-btn" data-act="vault-pick" title={t('vault.switchTip', { name: vault.name })} aria-label={t('vault.switchTip', { name: vault.name })}>
+            <VaultFace vault={vault} className="xs" /></Button> : null}
         </div>
       </div>
     </div>
@@ -155,12 +156,11 @@ function MultiCard() {
     : t(!m.enabled ? 'multi.offTip' : m.armed ? 'multi.readyTip' : 'multi.notReadyTip');
   return <div className={`multi ${cls}`}>
     <button className="multi-open" data-act={closed || watched ? 'ru-open' : 'multi-help'} title={`${t('multi.title')}: ${tip}`}><span className="led" /><div><b>{t('multi.title')}</b><small>{text}</small></div></button>
-    <label className="switch" title={t(m.enabled ? 'multi.turnOff' : 'multi.turnOn')}><input type="checkbox" id="side-multi" checked={on} aria-label={t('multi.title')}
-      onChange={async e => {
+    <Switch title={t(m.enabled ? 'multi.turnOff' : 'multi.turnOn')} id="side-multi" checked={on} aria-label={t('multi.title')} onChange={async e => {
         const want = e.target.checked;
         setOn(want);
         if (!await setMulti(want)) setOn(!!m.enabled);
-      }} /><span /></label>
+      }} />
   </div>;
 }
 

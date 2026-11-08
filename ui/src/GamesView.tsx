@@ -13,6 +13,7 @@ import { PricePanel, useWikiGames, wikiGamesNow, type WikiInfo } from './WikiVie
 import { WikiSite, type WikiPick } from './WikiSite';
 import { timeText } from './DiscordBlocks';
 
+import { Button } from './kit';
 type Look = { icon: string | null; cover: string | null; tint: string | null; ink: string | null };
 type Game = { id: string; name: string; place: number; news?: FeedGame; prices?: WikiInfo; pick?: WikiPick; added?: boolean; played?: Played;
   /** How many PCs with Bloxkeep play it now (Community.tsx), and its radar lines. */
@@ -236,7 +237,7 @@ function Hero({ game, look, t, locale, onRemove }: { game: Game; look: Look; t: 
       <GameIcon look={look} name={game.name} big />
       <div><h2>{game.name}</h2><p>{[...from, ...(game.playing ? [t('cm.playingN', { n: game.playing })] : [])].join(' · ')}</p></div>
       {game.news ? <FollowButton game={game.news} t={t} />
-        : onRemove ? <button type="button" className="btn sm ghost gm-remove" id="gm-remove" onClick={onRemove}><Icon name="x" /><span>{t('games.remove')}</span></button> : null}
+        : onRemove ? <Button type="button" size="sm" ghost className="gm-remove" id="gm-remove" onClick={onRemove}><Icon name="x" /><span>{t('games.remove')}</span></Button> : null}
     </div>
     {look.cover ? <img className="gm-hero-cover" src={look.cover} alt="" /> : null}
   </section>;

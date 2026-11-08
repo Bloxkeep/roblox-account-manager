@@ -7,6 +7,7 @@ import { Group, Page, Row, Switch, useLocal } from './parts';
 import { ColorInput } from '../ColorField';
 import { useCommunity } from '../Community';
 
+import { Button, IconButton } from '../kit';
 export function AppearancePage({ title }: { title: string }) {
   const { t, tn, tIn, lang, call, toast, busy, themes, themePending, previewTheme, subscribe, customTheme, customVars, previewCustom } = useHost();
   const app = useAppState();
@@ -76,8 +77,8 @@ export function AppearancePage({ title }: { title: string }) {
           <ColorInput id="s-ct-accent" value={custom.accent} label={t('ct.accent')} onChange={v => previewCustom({ accent: v })} />
         </Row>
         <Row title={t('ct.picture')} desc={t('ct.pictureDesc')}>
-          {custom.picture ? <button className="btn sm ghost" data-act="ct-clear">{t('ct.remove')}</button> : null}
-          <button className="btn sm" data-act="ct-pick"><Icon name="image" />{t(custom.picture ? 'ct.change' : 'ct.pick')}</button>
+          {custom.picture ? <Button size="sm" ghost data-act="ct-clear">{t('ct.remove')}</Button> : null}
+          <Button size="sm" data-act="ct-pick"><Icon name="image" />{t(custom.picture ? 'ct.change' : 'ct.pick')}</Button>
         </Row>
         {custom.picture ? <Row title={t('ct.fade')} desc={t('ct.fadeDesc')}>
           <input type="range" id="s-ct-fade" min={0} max={90} step={5} value={custom.fade} aria-label={t('ct.fade')}
@@ -93,19 +94,19 @@ export function AppearancePage({ title }: { title: string }) {
           <input className="field sm ct-name" id="s-ct-name" maxLength={40} placeholder={inUse?.name || t('ct.namePh')} aria-label={t('ct.namePh')}
             value={name} onChange={e => setName(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && (name.trim() || inUse)) (e.currentTarget.nextElementSibling as HTMLElement)?.click(); }} />
-          <button className="btn sm" id="s-ct-save" disabled={!name.trim() && !inUse}
+          <Button size="sm" id="s-ct-save" disabled={!name.trim() && !inUse}
             onClick={e => busy(e.currentTarget, async () => {
               const named = name.trim() || inUse!.name;
               if (await call('saveTheme', { name: named }) !== undefined) {
                 setName('');
                 toast(t('ct.savedToast', { name: named }), 'ok');
               }
-            })}>{t('ct.saveBtn')}</button>
+            })}>{t('ct.saveBtn')}</Button>
         </Row>
       </div> : null}
       {group === 'custom' ? <Row title={t('ct.yours')} desc={t(saved.length ? 'ct.yoursDesc' : 'ct.yoursNone')}>
-        <button className="btn sm" id="s-ct-import" onClick={e => busy(e.currentTarget, () => call('importTheme'))}>
-          <Icon name="folder" />{t('ct.import')}</button>
+        <Button size="sm" id="s-ct-import" onClick={e => busy(e.currentTarget, () => call('importTheme'))}>
+          <Icon name="folder" />{t('ct.import')}</Button>
       </Row> : null}
       {group === 'custom' && saved.length ? <div className="ct-saved" id="s-saved-themes" role="list">
         {saved.map(s => {
@@ -116,16 +117,16 @@ export function AppearancePage({ title }: { title: string }) {
               <span className="ct-tname">{s.name}</span>
               {s.look.video ? <span className="ct-kind">{t('ct.video')}</span> : null}
             </button>
-            <button className="icon-btn sm" title={t('ct.export')} aria-label={`${t('ct.export')}: ${s.name}`}
+            <IconButton icon="download" className="sm" title={t('ct.export')} aria-label={`${t('ct.export')}: ${s.name}`}
               onClick={async e => {
                 const done = await busy(e.currentTarget, () => call('exportTheme', { id: s.id })) as { saved?: string } | null | undefined;
                 if (done?.saved) toast(t('ct.exported', { file: done.saved }), 'ok');
-              }}><Icon name="download" /></button>
+              }} />
             {deleting === s.id
-              ? <button className="btn sm danger" onClick={() => { setDeleting(null); call('deleteSavedTheme', { id: s.id }); }}
-                  onBlur={() => setDeleting(null)} autoFocus>{t('ct.deleteSure')}</button>
-              : <button className="icon-btn sm ct-del" title={t('ct.delete')} aria-label={`${t('ct.delete')}: ${s.name}`}
-                  onClick={() => setDeleting(s.id)}><Icon name="trash" /></button>}
+              ? <Button size="sm" kind="danger" onClick={() => { setDeleting(null); call('deleteSavedTheme', { id: s.id }); }}
+                  onBlur={() => setDeleting(null)} autoFocus>{t('ct.deleteSure')}</Button>
+              : <IconButton icon="trash" className="sm ct-del" title={t('ct.delete')} aria-label={`${t('ct.delete')}: ${s.name}`}
+                  onClick={() => setDeleting(s.id)} />}
           </div>;
         })}
       </div> : null}

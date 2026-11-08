@@ -5,6 +5,7 @@
 import { useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type Ref } from 'react';
 import { Icon, useHost } from '../host';
 
+import { Button, Check } from '../kit';
 /** One running account, as the app sends it: its name as shown (Hide names holds), its game in words, its window's state. */
 export interface MiniClient { id: string; name: string; game: string; pid: number; ramMb: number; state: 'game' | 'menu' | 'disconnected' }
 
@@ -164,26 +165,26 @@ export function MiniView({ data, on }: { data: MiniData; on: MiniOn }) {
                 <span><span className="mini-game">{c.game}</span>{c.ramMb > 0 ? <><i className="pn-sep" aria-hidden="true">·</i><span className="mini-ram">{fmtMb(c.ramMb)}</span></> : null}</span>
               </span>
               <span className="mini-acts">
-                <button type="button" className="btn sm" disabled={off} onClick={() => { if (settled(c.id)) on.act('show', { id: c.id }); }}>{t('tray.show')}</button>
-                <button type="button" className="btn sm ghost" disabled={off} onClick={() => close(c)}>{t(off ? 'mini.closing' : 'tray.close')}</button>
+                <Button type="button" size="sm" disabled={off} onClick={() => { if (settled(c.id)) on.act('show', { id: c.id }); }}>{t('tray.show')}</Button>
+                <Button type="button" size="sm" ghost disabled={off} onClick={() => close(c)}>{t(off ? 'mini.closing' : 'tray.close')}</Button>
               </span>
             </div>;
           })}
     </div>
 
     <div className="pn-foot mini-foot">
-      <button type="button" className="btn sm ghost danger" aria-disabled={!canCloseAll || undefined}
-        title={canCloseAll ? undefined : t(data.unlocked ? 'mini.none' : 'mini.locked')} onClick={closeAll}>{t('sys.closeAll')}</button>
-      <button type="button" className="btn sm mini-open" onClick={() => on.act('open')}>{t('tray.open')}</button>
+      <Button type="button" size="sm" kind="danger" ghost aria-disabled={!canCloseAll || undefined}
+        title={canCloseAll ? undefined : t(data.unlocked ? 'mini.none' : 'mini.locked')} onClick={closeAll}>{t('sys.closeAll')}</Button>
+      <Button type="button" size="sm" className="mini-open" onClick={() => on.act('open')}>{t('tray.open')}</Button>
     </div>
     <div className="mini-grip" title={t('mini.resize')} onPointerDown={e => { if (e.button === 0) { e.preventDefault(); on.resize(); } }}><i /></div>
 
     {asking ? <div className="mini-ask" role="alertdialog" aria-modal="true" aria-labelledby="mini-ask-q">
       <p id="mini-ask-q">{t('t.closeAllQ')}</p>
-      <label className="mini-remember"><input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} /><span>{t('common.dontAsk')}</span></label>
+      <Check className="mini-remember" checked={remember} onChange={e => setRemember(e.target.checked)} label={t('common.dontAsk')} />
       <div className="mini-ask-btns">
-        <button type="button" className="btn sm ghost" onClick={() => setAsking(false)}>{t('common.cancel')}</button>
-        <button type="button" className="btn sm danger" autoFocus onClick={() => { setAsking(false); on.act('closeAll', { remember }); }}>{t('t.closeAllOk')}</button>
+        <Button type="button" size="sm" ghost onClick={() => setAsking(false)}>{t('common.cancel')}</Button>
+        <Button type="button" size="sm" kind="danger" autoFocus onClick={() => { setAsking(false); on.act('closeAll', { remember }); }}>{t('t.closeAllOk')}</Button>
       </div>
     </div> : null}
   </div>;

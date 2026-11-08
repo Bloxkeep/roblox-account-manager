@@ -4,6 +4,7 @@ import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { Icon, useAppState, useHost } from '../host';
 import { Group, Page, Row, Switch, useLocal } from './parts';
 
+import { Button } from '../kit';
 /** Roblox's id for a build ("version-cec3ad5889b447cf"), shortened to its first 8 characters. */
 const shortBuild = (b: string) => String(b || '').replace(/^version-/i, '').slice(0, 8);
 
@@ -86,9 +87,9 @@ export function RobloxPage({ title }: { title: string }) {
             is for the curious only (on hover). */}
         <Row title={t('ru.installed')} desc={[rvText, inst?.source ? t('ru.via', { s: inst.source }) : ''].filter(Boolean).join(' · ')}>
           <Pill tone={rv.upToDate === false ? 'warn' : rv.upToDate ? 'ok' : 'off'} title={inst?.build ? t('ru.build', { b: shortBuild(inst.build) }) : undefined}>{rv.installed || '—'}</Pill>
-          {canUpdate ? <button type="button" className="btn sm" data-act="rbx-update" disabled={!!rv.updating}>{t(rv.updating ? 'rbx.updating' : 'rbx.update')}</button> : null}</Row>
+          {canUpdate ? <Button type="button" size="sm" data-act="rbx-update" disabled={!!rv.updating}>{t(rv.updating ? 'rbx.updating' : 'rbx.update')}</Button> : null}</Row>
         {rv.oldWindows ? <Row title={tn('rbx.oldWindows', rv.oldWindows)} desc={t('rbx.oldWindowsDesc')}>
-          <button type="button" className="btn sm" data-act="rbx-reopen" disabled={!!rv.updating}>{t('rbx.reopen')}</button></Row> : null}
+          <Button type="button" size="sm" data-act="rbx-reopen" disabled={!!rv.updating}>{t('rbx.reopen')}</Button></Row> : null}
         <Row title={t('rbx.auto')} desc={t(updateWhen === 'now' ? 'rbx.autoDescNow' : 'rbx.autoDesc')}><Switch id="s-rbx-auto" label={t('rbx.auto')} checked={autoUpdate} onChange={setting('autoUpdateRoblox', setAutoUpdate)} /></Row>
         {/* When it goes in: once no window is open, or at once after closing them all (like Close all). */}
         {autoUpdate ? <Row title={t('rbx.when')}>

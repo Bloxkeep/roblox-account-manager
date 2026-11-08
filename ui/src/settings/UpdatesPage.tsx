@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Icon, useAppState, useHost } from '../host';
 import { Group, Page, Row, Switch, useLocal } from './parts';
 
+import { Button } from '../kit';
 /** Ctrl+Alt and each key with what it does, as key chips. */
 const HOTKEYS = [['H', 'set.hk.hide'], ['M', 'set.hk.min'], ['N', 'set.hk.next'], ['A', 'set.hk.arrange'], ['B', 'set.hk.open']];
 function HotkeyChips() {
@@ -49,10 +50,10 @@ export function UpdatesPage({ title }: { title: string }) {
         {/* A quiet fix shows as the version it fixes; its own number on hover. */}
         <div><div className="t" title={u.build && u.build !== u.current ? u.build : undefined}>Bloxkeep {u.current || ''}</div><div className="d">{status}</div></div>
         <div className="ctl">
-          <button className="btn sm ghost" data-act="whats-new">{t('wn.link')}</button>
+          <Button size="sm" ghost data-act="whats-new">{t('wn.link')}</Button>
           {!u.supported ? null : u.status === 'ready' && !u.quiet
-            ? <button className="btn sm primary" data-act="apply-update"><Icon name="refresh" />{t('upd.restart')}</button>
-            : <button className="btn sm" data-act="check-updates" disabled={u.status === 'checking' || u.status === 'downloading' || u.status === 'ready'}><Icon name="refresh" />{t('upd.check')}</button>}
+            ? <Button size="sm" kind="primary" data-act="apply-update"><Icon name="refresh" />{t('upd.restart')}</Button>
+            : <Button size="sm" data-act="check-updates" disabled={u.status === 'checking' || u.status === 'downloading' || u.status === 'ready'}><Icon name="refresh" />{t('upd.check')}</Button>}
         </div>
       </div></div>
       <Row title={t('upd.auto')}>
@@ -79,10 +80,10 @@ export function UpdatesPage({ title }: { title: string }) {
       </Row>
     </Group>
     <Group id="feedback" title={t('fb.group')}>
-      <Row title={t('help.title')} desc={t('help.desc')}><button className="btn sm" data-act="open-guide"><Icon name="book" />{t('help.open')}</button></Row>
-      <Row title={t('fb.title')} desc={t('fb.rowDesc')}><button className="btn sm" data-act="feedback"><Icon name="message" />{t('fb.open')}</button></Row>
-      <Row title={t('dc.title')} desc={t('dc.desc')}><button className="btn sm" data-act="open-discord"><Icon name="discord" />{t('dc.open')}</button></Row>
-      <Row title={t('star.title')} desc={t('star.desc')}><button className="btn sm" data-act="open-github"><Icon name="star" />{t('star.open')}</button></Row>
+      <Row title={t('help.title')} desc={t('help.desc')}><Button size="sm" data-act="open-guide"><Icon name="book" />{t('help.open')}</Button></Row>
+      <Row title={t('fb.title')} desc={t('fb.rowDesc')}><Button size="sm" data-act="feedback"><Icon name="message" />{t('fb.open')}</Button></Row>
+      <Row title={t('dc.title')} desc={t('dc.desc')}><Button size="sm" data-act="open-discord"><Icon name="discord" />{t('dc.open')}</Button></Row>
+      <Row title={t('star.title')} desc={t('star.desc')}><Button size="sm" data-act="open-github"><Icon name="star" />{t('star.open')}</Button></Row>
     </Group>
     <Group id="privacy" title={t('onl.group')}>
       <Row title={t('onl.title')} desc={t('onl.desc')}>

@@ -5,6 +5,7 @@
 import { useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type Ref } from 'react';
 import { Icon, useHost } from '../host';
 
+import { Button, Check, IconButton } from '../kit';
 /** A button: its words, a line under it (then all are stacked as choices), and whether it destroys something. */
 export interface DialogChoice { text: string; detail: string | null; danger: boolean }
 
@@ -91,14 +92,14 @@ export function DialogView({ d, on }: { d: DialogData; on: DialogOn }) {
     <div className="modal-head" onMouseDown={e => { if (e.button === 0 && !(e.target as Element).closest('button')) on.drag(); }}>
       {d.heading ? <h3 id="dlg-title">{d.heading}</h3>
         : <h3 id="dlg-title" className="dlg-app"><img src={logo} alt="" />Bloxkeep</h3>}
-      <button type="button" className="icon-btn" title={t('common.close')} aria-label={t('common.close')} onClick={() => on.act('cancel')}><Icon name="x" /></button>
+      <IconButton icon="x" type="button" title={t('common.close')} aria-label={t('common.close')} onClick={() => on.act('cancel')} />
     </div>
     <div className="modal-body">
       <div className="dlg-msg">
         <span className={`dlg-mark k-${d.kind}`}><Icon name={MARK[d.kind]} /></span>
         <p id="dlg-text" className={`pre dlg-text${d.heading ? '' : ' strong'}`}>{d.text}</p>
       </div>
-      {d.remember ? <label className="dont-ask dlg-remember"><input ref={remember} type="checkbox" /><span>{d.remember}</span></label> : null}
+      {d.remember ? <Check className="dont-ask dlg-remember" ref={remember} label={d.remember} /> : null}
       {listed ? <div className="dlg-choices">
         {buttons.map(({ c, i }) => <button key={i} type="button" data-i={i} className={`dlg-choice${c.danger ? ' danger' : ''}`} onClick={() => pick(i)}>
           <b>{c.text}</b>{c.detail ? <span>{c.detail}</span> : null}
@@ -111,7 +112,7 @@ export function DialogView({ d, on }: { d: DialogData; on: DialogOn }) {
       {/* The main button right, as in the app's own dialogs: the first choice last. */}
       {[...buttons].reverse().map(({ c, i }) => {
         const filled = anyDanger ? c.danger : i === 0;
-        return <button key={i} type="button" data-i={i} className={`btn${filled ? (c.danger ? ' danger' : ' primary') : ''}`} onClick={() => pick(i)}>{c.text}</button>;
+        return <Button key={i} type="button" data-i={i} kind={filled ? (c.danger ? 'danger' : 'primary') : undefined} onClick={() => pick(i)}>{c.text}</Button>;
       })}
     </div> : null}
   </div>;

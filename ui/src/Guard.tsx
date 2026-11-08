@@ -4,6 +4,7 @@
 import { Component, type ReactNode } from 'react';
 import { useAppState, useHost } from './host';
 
+import { Button } from './kit';
 class Guard extends Component<{ name: string; retry: unknown; said: string; again: string; children: ReactNode }, { failed: boolean }> {
   state = { failed: false };
   static getDerivedStateFromError() { return { failed: true }; }
@@ -12,7 +13,7 @@ class Guard extends Component<{ name: string; retry: unknown; said: string; agai
   render() {
     if (!this.state.failed) return this.props.children;
     return <div className="note bad guard-note" role="alert"><span>{this.props.said}</span>
-      <button type="button" className="btn sm" onClick={() => this.setState({ failed: false })}>{this.props.again}</button></div>;
+      <Button type="button" size="sm" onClick={() => this.setState({ failed: false })}>{this.props.again}</Button></div>;
   }
 }
 

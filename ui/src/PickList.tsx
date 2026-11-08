@@ -4,6 +4,7 @@
 import { useImperativeHandle, useRef, useState, type Ref } from 'react';
 import { useHost } from './host';
 import { Avatar } from './Avatar';
+import { Check } from './kit';
 
 export interface PickItem {
   value: string;
@@ -29,10 +30,9 @@ export function PickList({ text, items, api }: { text: string; items: PickItem[]
 
   return <>
     <p className="modal-text">{text}</p>
-    <div className="rc-list">{items.map(i => <label key={i.value} className="rc-item">
-      <input type="checkbox" value={i.value} checked={checked.has(i.value)} onChange={e => toggle(i.value, e.target.checked)} />
+    <div className="rc-list">{items.map(i => <Check key={i.value} className="rc-item" value={i.value} checked={checked.has(i.value)} onChange={e => toggle(i.value, e.target.checked)}>
       {i.avatar ? <div className="avatar sm"><Avatar a={i.avatar} /></div> : null}
       <span><b title={i.sub !== undefined ? i.label : undefined}>{i.label}</b>{i.sub !== undefined ? <small>{i.sub}</small> : null}</span>
-    </label>)}</div>
+    </Check>)}</div>
   </>;
 }

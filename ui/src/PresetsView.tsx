@@ -9,6 +9,7 @@ import { richNodes } from './rich';
 import { fold } from './text';
 import { Avatar } from './Avatar';
 
+import { Button, IconButton, Switch } from './kit';
 /** The app's own limit (MaxPresets); app.js checks it too, so a full list doesn't open an empty form. */
 const MAX_PRESETS = 50;
 const AVATARS_SHOWN = 4;
@@ -128,7 +129,7 @@ export function PresetsView() {
         <label className="search"><Icon name="search" /><input id="pv-q" placeholder={t('pv.search')} maxLength={100} aria-label={t('pv.search')} value={query}
           onChange={e => { setQuery(e.target.value); host.setPresetQuery(e.target.value); }} /></label>
         {/* At the limit it still answers a click (app.js says why in a toast) but reads as off, and says so on hover. */}
-        <button className="btn primary" data-act="pv-new" aria-disabled={full || undefined} title={full ? t('pv.full', { n: MAX_PRESETS }) : undefined}><Icon name="plus" /><span>{t('ps.new')}</span></button>
+        <Button kind="primary" data-act="pv-new" aria-disabled={full || undefined} title={full ? t('pv.full', { n: MAX_PRESETS }) : undefined}><Icon name="plus" /><span>{t('ps.new')}</span></Button>
       </div>
     </header>
     <div className="scroll">
@@ -143,14 +144,14 @@ export function PresetsView() {
       <div className="pv-list" id="pv-list" role="list" ref={list} onPointerUp={() => setArmed(null)} onDragOver={dragOver}
         onDrop={e => e.preventDefault()} onDragEnd={dragEnd}>
         {!all.length ? <div className="empty"><span className="pv-empty-icon"><Icon name="layers" /></span><h2>{t('pv.emptyTitle')}</h2><p>{t('pv.emptyText')}</p>
-          <div className="row"><button className="btn primary" data-act="pv-new"><Icon name="plus" /><span>{t('ps.new')}</span></button></div></div>
+          <div className="row"><Button kind="primary" data-act="pv-new"><Icon name="plus" /><span>{t('ps.new')}</span></Button></div></div>
           : !rows.length ? <div className="empty"><p>{t('pv.noMatch', { q: shownQuery.trim() })}</p>
-            <div className="row"><button className="btn" data-pv="clear-search" onClick={() => {
+            <div className="row"><Button data-pv="clear-search" onClick={() => {
               setQuery('');
               setShownQuery('');
               host.setPresetQuery('');
               document.getElementById('pv-q')?.focus();
-            }}>{t('pv.clearSearch')}</button></div></div>
+            }}>{t('pv.clearSearch')}</Button></div></div>
           : rows.map((p, i) => <PresetRow key={p.id} p={p} i={i} count={rows.length} ordered={ordered} accounts={accountsOf(p)} accCount={accCount}
             launching={!!app.launching} delayDefault={app.settings?.launchDelaySeconds ?? 8} dragging={drag?.id === p.id && !drag.done}
             draggable={armed === p.id} arm={() => setArmed(p.id)} move={move} duplicate={duplicate}
@@ -226,8 +227,7 @@ function PresetRow({ p, i, count, ordered, accounts, accCount, launching, delayD
       : <div className="pv-accs none" title={t('pv.noAccountsTip')}><Icon name="alert" /><small>{t('pv.noAccounts')}</small></div>}
     <div className="pv-sw">{sc?.time ? <>
       <small aria-hidden="true">{t('ps.sch')}</small>
-      <label className="switch" title={t(sc.enabled ? 'pv.schTurnOff' : 'pv.schTurnOn')}>
-        <input type="checkbox" data-pv="sched" ref={schBox} checked={schOn} disabled={schBusy} aria-label={`${t('ps.sch')}: ${p.name}`} onChange={async e => {
+      <Switch title={t(sc.enabled ? 'pv.schTurnOff' : 'pv.schTurnOn')} data-pv="sched" ref={schBox} checked={schOn} disabled={schBusy} aria-label={`${t('ps.sch')}: ${p.name}`} onChange={async e => {
           const want = e.target.checked;
           setSchOn(want);
           setSchBusy(true);
@@ -237,24 +237,23 @@ function PresetRow({ p, i, count, ordered, accounts, accCount, launching, delayD
           if (!document.activeElement || document.activeElement === document.body) schBox.current?.focus();
           if (r === undefined) setSchOn(!want);
           else toast(t(want ? 't.schOn' : 't.schOff', { name: p.name }), 'ok');
-        }} /><span />
-      </label>
+        }} />
     </> : null}</div>
     {/* Run and Close are two buttons (keyed), not one changing its words: the focus doesn't stay on Run after Close,
         where the next Enter would open the windows just closed. */}
     {p.running
-      ? <button key="close" className="btn sm pv-run pv-close" data-pv="close" title={tn('pv.runningTip', p.running)} aria-label={`${t('pv.close')}: ${p.name}`}
-        onClick={e => close(e.currentTarget)}><Icon name="power" /><span>{t('pv.close')}</span></button>
-      : <button key="run" className="btn sm pv-run" data-pv="run" aria-label={`${t('ps.run')}: ${p.name}`} disabled={!accounts.length || launching}
-        onClick={e => busy(e.currentTarget, () => host.runPreset(p.id))}><Icon name="play" /><span>{t('ps.run')}</span></button>}
+      ? <Button key="close" size="sm" className="pv-run pv-close" data-pv="close" title={tn('pv.runningTip', p.running)} aria-label={`${t('pv.close')}: ${p.name}`}
+        onClick={e => close(e.currentTarget)}><Icon name="power" /><span>{t('pv.close')}</span></Button>
+      : <Button key="run" size="sm" className="pv-run" data-pv="run" aria-label={`${t('ps.run')}: ${p.name}`} disabled={!accounts.length || launching}
+        onClick={e => busy(e.currentTarget, () => host.runPreset(p.id))}><Icon name="play" /><span>{t('ps.run')}</span></Button>}
     <span className="pv-acts">
-      <button className="icon-btn" data-pv="edit" title={t('ps.edit')} aria-label={`${t('ps.edit')}: ${p.name}`} onClick={() => host.editPreset(p)}><Icon name="edit" /></button>
-      <button className="icon-btn" data-pv="dup" title={t('pv.duplicate')} aria-label={`${t('pv.duplicate')}: ${p.name}`} onClick={e => duplicate(p, e.currentTarget)}><Icon name="copy" /></button>
-      <button className="icon-btn" data-pv="del" title={t('ps.delete')} aria-label={`${t('ps.delete')}: ${p.name}`} onClick={() => host.deletePreset(p)}><Icon name="trash" /></button>
+      <IconButton icon="edit" data-pv="edit" title={t('ps.edit')} aria-label={`${t('ps.edit')}: ${p.name}`} onClick={() => host.editPreset(p)} />
+      <IconButton icon="copy" data-pv="dup" title={t('pv.duplicate')} aria-label={`${t('pv.duplicate')}: ${p.name}`} onClick={e => duplicate(p, e.currentTarget)} />
+      <IconButton icon="trash" data-pv="del" title={t('ps.delete')} aria-label={`${t('ps.delete')}: ${p.name}`} onClick={() => host.deletePreset(p)} />
     </span>
     {ordered ? <span className="ord-btns">
-      <button className="icon-btn" data-move="-1" title={t('lo.up')} aria-label={`${t('lo.up')}: ${p.name}`} disabled={i === 0} onClick={() => move(p.id, -1)}><Icon name="chevronUp" /></button>
-      <button className="icon-btn" data-move="1" title={t('lo.down')} aria-label={`${t('lo.down')}: ${p.name}`} disabled={i >= count - 1} onClick={() => move(p.id, 1)}><Icon name="chevronDown" /></button>
+      <IconButton icon="chevronUp" data-move="-1" title={t('lo.up')} aria-label={`${t('lo.up')}: ${p.name}`} disabled={i === 0} onClick={() => move(p.id, -1)} />
+      <IconButton icon="chevronDown" data-move="1" title={t('lo.down')} aria-label={`${t('lo.down')}: ${p.name}`} disabled={i >= count - 1} onClick={() => move(p.id, 1)} />
     </span> : null}
   </div>;
 }

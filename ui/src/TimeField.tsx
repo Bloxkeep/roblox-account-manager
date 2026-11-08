@@ -7,6 +7,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type InputHT
 import { createPortal } from 'react-dom';
 import { Icon, useHost } from './host';
 
+import { IconButton } from './kit';
 type BoxProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> & { ref?: Ref<HTMLInputElement>; pastDisabled?: boolean };
 
 export function TimeInput(props: BoxProps) {
@@ -353,9 +354,9 @@ function Calendar({ value, pastDisabled, pick }: { value: string; pastDisabled: 
   const shift = (n: number) => setMonth(new Date(month.getFullYear(), month.getMonth() + n, 1));
   return <div className="tf-cal">
     <div className="tf-cal-head">
-      <button type="button" className="icon-btn" aria-label={t('tf.prevMonth')} title={t('tf.prevMonth')} onClick={() => shift(-1)}><Icon name="chevronLeft" /></button>
+      <IconButton icon="chevronLeft" type="button" aria-label={t('tf.prevMonth')} title={t('tf.prevMonth')} onClick={() => shift(-1)} />
       <b>{t('tf.monthYear', { month: month.toLocaleDateString(locale, { month: 'long' }), n: month.getMonth() + 1, year: month.getFullYear() })}</b>
-      <button type="button" className="icon-btn" aria-label={t('tf.nextMonth')} title={t('tf.nextMonth')} onClick={() => shift(1)}><Icon name="chevronRight" /></button>
+      <IconButton icon="chevronRight" type="button" aria-label={t('tf.nextMonth')} title={t('tf.nextMonth')} onClick={() => shift(1)} />
     </div>
     <div className="tf-cal-grid">
       {[...Array(7).keys()].map(i => <span key={'w' + i} className="tf-wd">{weekdayName((i + first) % 7)}</span>)}

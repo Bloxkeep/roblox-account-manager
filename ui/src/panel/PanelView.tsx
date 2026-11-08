@@ -7,6 +7,7 @@ import { Icon, useHost } from '../host';
 import { Ctx, MenuAt, Row, type PanelCtx } from './PanelControls';
 import { elapsed, type PanelData, type PanelError, type PanelMacro, type PanelNow, type PanelOn, type PanelViewApi } from './panelHost';
 
+import { Button } from '../kit';
 const ERROR_FOR = 5000, RESET_FOR = 6000, AWAY_AFTER = 400, DRAG_FROM = 3;
 
 /** What the panel page (ui-panel.js, pages/panel.tsx) holds: the app's latest "panel" event drawn, a refused change said. */
@@ -162,8 +163,8 @@ export function PanelView({ model, now, pill: pillSent, error, on }: {
       onContextMenu={e => { e.preventDefault(); titleMenu(e.clientX, e.clientY); }}>
       {dot}
       <b className="pn-name" title={model.name}>{model.name}</b>
-      <button type="button" className={`btn sm${running ? ' danger' : ' go'}`} aria-disabled={!running && blocked ? true : undefined} title={running ? undefined : blocked}
-        onClick={run}><Icon name={running ? 'stop' : 'play'} />{t(running ? 'macro.stop' : 'macro.run')}</button>
+      <Button type="button" size="sm" kind={running ? 'danger' : 'go'} aria-disabled={!running && blocked ? true : undefined} title={running ? undefined : blocked}
+        onClick={run}><Icon name={running ? 'stop' : 'play'} />{t(running ? 'macro.stop' : 'macro.run')}</Button>
       <button type="button" className="pn-icon" title={t('panel.unfold')} aria-label={t('panel.unfold')} onClick={() => fold(false)}><Icon name="chevronDown" /></button>
       {menu ? <TitleMenu at={menu} close={() => setMenu(null)} on={on} lastStep={now.lastError?.step} section={now.lastError?.section} /> : null}
     </div>;
@@ -185,11 +186,11 @@ export function PanelView({ model, now, pill: pillSent, error, on }: {
       </div>
 
       <div className="pn-top">
-        <button type="button" className={`btn pn-run${running ? ' danger' : ' go'}`} aria-disabled={!running && blocked ? true : undefined}
+        <Button type="button" className="pn-run" kind={running ? 'danger' : 'go'} aria-disabled={!running && blocked ? true : undefined}
           title={running ? undefined : blocked} onClick={run}>
           <Icon name={running ? 'stop' : 'play'} /><span>{t(running ? 'macro.stop' : 'macro.run')}</span>
           {hotkey ? <kbd>{hotkey}</kbd> : null}
-        </button>
+        </Button>
         <p className={`pn-status${status?.kind === 'error' ? ' bad' : ''}`} aria-live="polite">
           {status ? <>{status.kind === 'reset' ? <><span>{status.text}</span>{now.undoable ? <><i className="pn-sep" aria-hidden="true">·</i><button type="button" className="pn-link"
             onClick={() => { on.act('undoReset'); setStatus(null); }}>{t('panel.undo')}</button></> : null}</> : <span>{status.text}</span>}</>
@@ -209,12 +210,12 @@ export function PanelView({ model, now, pill: pillSent, error, on }: {
       </div>
 
       {model.areasCount > 0 || model.options.some(o => o.kind !== 'heading') ? <div className="pn-foot">
-        {model.areasCount > 0 ? <button type="button" className={`btn sm${now.editingAreas ? ' primary' : ''}`}
+        {model.areasCount > 0 ? <Button type="button" size="sm" kind={now.editingAreas ? 'primary' : undefined}
           aria-disabled={!now.editingAreas && !now.hasWindow ? true : undefined} title={!now.editingAreas && !now.hasWindow ? t('panel.openGame') : undefined}
-          onClick={() => { if (now.editingAreas || now.hasWindow) on.act('areas'); }}>{t(now.editingAreas ? 'panel.editingStop' : 'panel.areas')}</button> : null}
-        {model.options.some(o => o.kind !== 'heading') ? <button type="button" className="btn sm ghost pn-reset" aria-disabled={!now.changed || undefined}
+          onClick={() => { if (now.editingAreas || now.hasWindow) on.act('areas'); }}>{t(now.editingAreas ? 'panel.editingStop' : 'panel.areas')}</Button> : null}
+        {model.options.some(o => o.kind !== 'heading') ? <Button type="button" size="sm" ghost className="pn-reset" aria-disabled={!now.changed || undefined}
           title={now.changed ? undefined : t('panel.resetNone')}
-          onClick={() => { if (!now.changed) return; on.act('reset'); say(t('panel.resetDone'), 'reset', RESET_FOR); }}>{t('panel.reset')}</button> : null}
+          onClick={() => { if (!now.changed) return; on.act('reset'); say(t('panel.resetDone'), 'reset', RESET_FOR); }}>{t('panel.reset')}</Button> : null}
       </div> : null}
 
       {menu ? <TitleMenu at={menu} close={() => setMenu(null)} on={on} lastStep={undefined} /> : null}

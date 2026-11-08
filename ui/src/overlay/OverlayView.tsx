@@ -8,6 +8,7 @@
 import { useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type Ref } from 'react';
 import { useHost } from '../host';
 
+import { Button } from '../kit';
 export interface OverlayDot { step: number; x: number; y: number }
 export interface OverlayRect { x: number; y: number; w: number; h: number }
 export interface OverlayArea { name: string; label: string; colour: string; rect: OverlayRect }
@@ -236,8 +237,8 @@ export function OverlayView({ data, on }: { data: OverlayData; on: OverlayOn }) 
       <b className="ov-title">{title}</b>
       {picking ? null : <span className="ov-hint">{t(data.mode !== 'edit' ? 'ov.areasHint' : dots.length || areas.length ? 'ov.dragHint' : 'ov.emptyHint')}</span>}
       {picking
-        ? <button type="button" className="btn sm ghost" onClick={() => on.act('cancel')}>{t('ov.cancel')}</button>
-        : <button type="button" className="btn sm primary" onClick={() => on.act('done')}>{t('ov.done')}</button>}
+        ? <Button type="button" size="sm" ghost onClick={() => on.act('cancel')}>{t('ov.cancel')}</Button>
+        : <Button type="button" size="sm" kind="primary" onClick={() => on.act('done')}>{t('ov.done')}</Button>}
     </div>
     {picking ? <div className="ov-lens" hidden={!lensAt || !colour} style={lensAt ? { left: lensAt.left, top: lensAt.top } : undefined}>
       <canvas ref={lens} width={lensW} height={lensW} />

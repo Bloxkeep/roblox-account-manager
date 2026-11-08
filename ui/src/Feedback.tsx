@@ -2,6 +2,7 @@
 // "See exactly what will be sent" shows the message as it would go, error log included (account names taken out by the app).
 import { useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react';
 import { Icon, useHost } from './host';
+import { Check } from './kit';
 
 export interface FeedbackValues { kind: 'bug' | 'idea'; text: string; contact: string; log: boolean }
 
@@ -59,8 +60,7 @@ export function Feedback({ locked, api }: { locked: boolean; api: Ref<FeedbackAp
       <label><span>{t('fb.contact')} <span className="muted">{t('fb.optional')}</span></span><input className="field" name="contact" maxLength={100}
         autoComplete="off" spellCheck={false} placeholder={t('fb.contactPh')} value={contact} onChange={e => edited(setContact)(e.target.value)} /></label>
     </div>
-    <label className="dont-ask"><input type="checkbox" name="log" disabled={locked} checked={!locked && log}
-      onChange={e => edited(setLog)(e.target.checked)} /><span>{t(locked ? 'fb.logLocked' : 'fb.log')}</span></label>
+    <Check className="dont-ask" name="log" disabled={locked} checked={!locked && log} onChange={e => edited(setLog)(e.target.checked)} label={t(locked ? 'fb.logLocked' : 'fb.log')} />
     <div className="fb-look"><button type="button" className="link" aria-expanded={preview !== null} onClick={look}>{t('fb.preview')}</button></div>
     <pre className="fb-preview" tabIndex={0} aria-label={t('fb.preview')} hidden={preview === null}>{preview}</pre>
     <p className="fine"><Icon name="shield" /><span>{t('fb.fine')}</span></p>

@@ -19,6 +19,7 @@ import { GameBox } from './PresetForm';
 import { GameFrame, TryLines, type Picture, type Seen } from './MacroPicture';
 import { PlayerSees } from './MacroPanel';
 import { hasWindow, useCountdown } from './MacrosView';
+import { Button, Check as KitCheck, IconButton, Switch } from './kit';
 import {
   AREA_COLOURS, FREE, MAX_FEATURES, MAX_NOTE, OPENERS, asPoint, KEYS, LOOK_STEPS, MAX_AREAS, MAX_OPTIONS, MAX_TABS, MOUSE_KEYS, STEP_GROUPS, STEP_ICON, SYNONYMS,
   blockEnd, camDir, counterName, counters, durText, endOf, featureProblems, freeName, isArea, isOpt, isLive, keyCap, keyFromEvent, keyName, kindsAt, newStep, newTest,
@@ -801,8 +802,8 @@ export function MacroEditor({ base, accounts, macros, api, openStep, openSection
         return <li key={k} className={done ? 'done' : ''}><Icon name={done ? 'check' : 'record'} />
           <span>{area ? t('macro.todo.area', { area }) : t(`macro.todo.${x.field}`)}{i >= 0 ? <small> · {t('macro.stepN', { n: i + 1 })}</small> : null}</span>
           {done || i < 0 ? null : x.field === 'region'
-            ? <button type="button" className="btn sm" onClick={() => { if (!onGame) editOnGame(); }}><Icon name="screens" /><span>{t('macro.game.edit')}</span></button>
-            : <button type="button" className="btn sm" onClick={() => goStep({ sec: null, i })}>{t('macro.todo.go')}</button>}</li>;
+            ? <Button type="button" size="sm" onClick={() => { if (!onGame) editOnGame(); }}><Icon name="screens" /><span>{t('macro.game.edit')}</span></Button>
+            : <Button type="button" size="sm" onClick={() => goStep({ sec: null, i })}>{t('macro.todo.go')}</Button>}</li>;
       })}</ul>
     </div> : null}
     <div className="mc-cols">
@@ -812,9 +813,9 @@ export function MacroEditor({ base, accounts, macros, api, openStep, openSection
             <label>{t('macro.name')}<input className="field" id="mc-name" ref={nameBox} maxLength={60} placeholder={t('macro.namePh')} value={m.name}
               aria-invalid={nameErr.some(p => !p.warn) || undefined} aria-describedby={nameErr.length ? 'mc-name-err' : undefined}
               onChange={e => patch({ name: e.target.value })} /></label>
-            <button type="button" className={`btn mc-try-it${trying ? ' on' : ''}`} id="mc-try" aria-pressed={trying} disabled={!windowId}
+            <Button type="button" className="mc-try-it" id="mc-try" pressed={trying} disabled={!windowId}
               title={windowId ? t('macro.tryItTip', { name: windowName }) : t('macro.need.try')} onClick={e => tryIt(e.currentTarget)}>
-              <Icon name={trying ? 'stop' : 'play'} /><span>{t(trying ? 'macro.tryStop' : sec ? 'macro.feat.try' : 'macro.tryIt')}</span></button>
+              <Icon name={trying ? 'stop' : 'play'} /><span>{t(trying ? 'macro.tryStop' : sec ? 'macro.feat.try' : 'macro.tryIt')}</span></Button>
           </div>
           {nameErr.length ? <FieldErr id="mc-name-err" list={nameErr} /> : null}
           <details className="mc-when" open={whenOpen} onToggle={e => setWhenOpen((e.target as HTMLDetailsElement).open)}>
@@ -846,11 +847,11 @@ export function MacroEditor({ base, accounts, macros, api, openStep, openSection
               {whenErr.length ? <FieldErr list={whenErr} /> : null}
               {m.hotkey && app.hotkeys && !app.hotkeys.on ? <p className="mc-note"><Icon name="info" /><span>{t('macro.hk.off')}</span></p> : null}
               {m.targets === 'accounts' ? <div className="rc-list mc-accs" id="mc-accs" role="group" aria-label={t('macro.targets')}>{accounts.map(a =>
-                <label key={a.id} className="rc-item"><input type="checkbox" checked={accTicked.has(a.id)} aria-label={a.label} onChange={e =>
-                  patch({ accountIds: e.target.checked ? [...m.accountIds, a.id] : m.accountIds.filter(x => x !== a.id) })} />
-                  <div className="avatar sm"><Avatar a={a} /></div><span><b>{a.label}</b>{a.username ? <small>@{a.username}</small> : null}</span></label>)}</div> : null}
+                <KitCheck key={a.id} className="rc-item" checked={accTicked.has(a.id)} aria-label={a.label} onChange={e =>
+                  patch({ accountIds: e.target.checked ? [...m.accountIds, a.id] : m.accountIds.filter(x => x !== a.id) })}>
+                  <div className="avatar sm"><Avatar a={a} /></div><span><b>{a.label}</b>{a.username ? <small>@{a.username}</small> : null}</span></KitCheck>)}</div> : null}
               {m.trigger.kind !== 'manual' ? <label className="mc-switch-row">
-                <span className="switch"><input type="checkbox" id="mc-enabled" checked={m.enabled} onChange={e => patch({ enabled: e.target.checked })} /><span /></span>
+                <Switch inside id="mc-enabled" checked={m.enabled} onChange={e => patch({ enabled: e.target.checked })} />
                 <span><b>{t('macro.auto')}</b><small>{t('macro.autoDesc')}</small></span></label> : null}
               {/* What happens when it goes wrong, then its limits: fields like the ones above, not sentences. */}
               <div className="mc-grid mc-when-more">
@@ -876,12 +877,12 @@ export function MacroEditor({ base, accounts, macros, api, openStep, openSection
         <section className="mc-steps-sec" aria-labelledby="mc-steps-h">
           <div className="mc-steps-head">
             <b id="mc-steps-h">{t('macro.steps')} <span className="muted">({steps.length})</span></b>
-            <button type="button" className="btn sm" id="mc-record" disabled={!windowId || !!rec} title={windowId ? t('macro.rec.tip') : t('macro.need.record')}
-              onClick={e => record(e.currentTarget)}><Icon name="record" /><span>{t('macro.recordBtn')}</span></button>
-            <button type="button" className="btn sm" id="mc-add" aria-haspopup="dialog" aria-expanded={adding?.anchor.id === 'mc-add'}
-              onClick={e => openAdd(e.currentTarget)}><Icon name="plus" /><span>{t('macro.addStep')}</span></button>
-            {feats.length ? null : <button type="button" className="btn sm ghost" id="mc-feat-add" title={t('macro.feat.addTip')} onClick={addFeature}>
-              <Icon name="layers" /><span>{t('macro.feat.add')}</span></button>}
+            <Button type="button" size="sm" id="mc-record" disabled={!windowId || !!rec} title={windowId ? t('macro.rec.tip') : t('macro.need.record')}
+              onClick={e => record(e.currentTarget)}><Icon name="record" /><span>{t('macro.recordBtn')}</span></Button>
+            <Button type="button" size="sm" id="mc-add" aria-haspopup="dialog" aria-expanded={adding?.anchor.id === 'mc-add'}
+              onClick={e => openAdd(e.currentTarget)}><Icon name="plus" /><span>{t('macro.addStep')}</span></Button>
+            {feats.length ? null : <Button type="button" size="sm" ghost id="mc-feat-add" title={t('macro.feat.addTip')} onClick={addFeature}>
+              <Icon name="layers" /><span>{t('macro.feat.add')}</span></Button>}
           </div>
           {feats.length ? <FeatTabs feats={featsInOrder} sec={sec} label={featLabel} on={f => !!opts.find(o => o.name === f.option)?.value}
             bad={key => errors.some(p => (p.sec ?? null) === key)} count={key => listOf(key).length} go={switchTo}
@@ -892,9 +893,9 @@ export function MacroEditor({ base, accounts, macros, api, openStep, openSection
           {rec ? <EditorRecording startsAt={rec.startsAt} count={rec.steps} /> : null}
           {pending ? <div className="mc-pending" role="group" aria-label={t('macro.rec.done', { n: pending.steps.length })}>
             <span>{tn('macro.rec.done', pending.steps.length)}</span>
-            <button type="button" className="btn sm primary" onClick={() => { setSteps(list => [...list, ...pending.steps.map(hold)]); setPending(null); }}>{t('macro.rec.append')}</button>
-            <button type="button" className="btn sm" onClick={() => { setSteps(pending.steps.map(hold)); patch({ recordedSize: { w: pending.w, h: pending.h } }); setPending(null); }}>{t('macro.rec.replace')}</button>
-            <button type="button" className="btn sm ghost" onClick={() => setPending(null)}>{t('macro.rec.discard')}</button>
+            <Button type="button" size="sm" kind="primary" onClick={() => { setSteps(list => [...list, ...pending.steps.map(hold)]); setPending(null); }}>{t('macro.rec.append')}</Button>
+            <Button type="button" size="sm" onClick={() => { setSteps(pending.steps.map(hold)); patch({ recordedSize: { w: pending.w, h: pending.h } }); setPending(null); }}>{t('macro.rec.replace')}</Button>
+            <Button type="button" size="sm" ghost onClick={() => setPending(null)}>{t('macro.rec.discard')}</Button>
           </div> : null}
           {!steps.length ? <p className="mc-steps-none">{t(sec ? 'macro.feat.noSteps' : 'macro.noSteps')}</p> : null}
           {stepsErr.length ? <FieldErr list={stepsErr} /> : null}
@@ -978,8 +979,7 @@ export function MacroEditor({ base, accounts, macros, api, openStep, openSection
           {optsErr.length ? <FieldErr list={optsErr} /> : null}
           {inUse?.what.startsWith('opt:') ? <InUse label={inUse.label} steps={inUse.steps} name={id => featLabel(featOf(id))} go={goStep} close={() => setInUse(null)} /> : null}
           <label className="mc-switch-row">
-            <span className="switch"><input type="checkbox" id="mc-panel-auto" checked={!!m.panel?.autoShow}
-              onChange={e => setPanel({ autoShow: e.target.checked })} /><span /></span>
+            <Switch inside id="mc-panel-auto" checked={!!m.panel?.autoShow} onChange={e => setPanel({ autoShow: e.target.checked })} />
             <span><b>{t('macro.panel.auto')}</b><small>{t('macro.panel.autoDesc')}</small></span></label>
           {m.panel?.autoShow ? <div className="mc-panel-game"><GameBox place={placeText} setPlace={v => {
             setPlaceText(v);
@@ -995,9 +995,9 @@ export function MacroEditor({ base, accounts, macros, api, openStep, openSection
             <b id="mc-game-h">{t('macro.game.title')}</b>
             {live.length > 1 ? <select className="select sm" id="mc-pic-acc" value={windowId} aria-label={t('macro.pic.account')} onChange={e => setAccountId(e.target.value)}>
               {live.map(a => <option key={a.id} value={a.id}>{a.label}</option>)}</select> : null}
-            <button type="button" className={`btn sm${onGame ? ' on' : ''}`} id="mc-ongame" aria-pressed={onGame} disabled={!windowId}
+            <Button type="button" size="sm" id="mc-ongame" pressed={onGame} disabled={!windowId}
               title={windowId ? undefined : t('macro.need.game')} onClick={editOnGame}>
-              <Icon name={onGame ? 'check' : 'screens'} /><span>{t(onGame ? 'macro.game.done' : 'macro.game.edit')}</span></button>
+              <Icon name={onGame ? 'check' : 'screens'} /><span>{t(onGame ? 'macro.game.done' : 'macro.game.edit')}</span></Button>
           </div>
           <p className={`mc-game-say${onGame ? ' on' : ''}`} role="status">{!windowId ? t('macro.game.noWindow')
             : onGame ? t('macro.game.editing', { name: windowName }) : t('macro.game.how', { name: windowName })}</p>
@@ -1005,8 +1005,8 @@ export function MacroEditor({ base, accounts, macros, api, openStep, openSection
             size={m.recordedSize} dots={dots} boxes={areas} found={seen?.boxes || []} cutting={cutFor !== null}
             cancelCut={() => setCutFor(null)} onDot={moveDot} onBox={moveBox} onCut={cutDone} goAccounts={!windowId ? goAccounts : undefined} />
           <div className="mc-pic-acts">
-            <button type="button" className="btn sm" id="mc-pic-take" disabled={!windowId || taking} title={windowId ? undefined : t('macro.need.game')}
-              onClick={e => take(e.currentTarget)}><Icon name="image" /><span>{t(picture ? 'macro.pic.again' : 'macro.pic.take')}</span></button>
+            <Button type="button" size="sm" id="mc-pic-take" disabled={!windowId || taking} title={windowId ? undefined : t('macro.need.game')}
+              onClick={e => take(e.currentTarget)}><Icon name="image" /><span>{t(picture ? 'macro.pic.again' : 'macro.pic.take')}</span></Button>
             <small>{picture ? t('macro.pic.size', { w: picture.w, h: picture.h }) : t('macro.pic.why')}</small>
           </div>
           {note ? <p className="mc-note" role="status"><Icon name="info" /><span>{note}</span></p> : null}
@@ -1020,15 +1020,15 @@ export function MacroEditor({ base, accounts, macros, api, openStep, openSection
     {dropping ? <Pop anchor={dropping.anchor} close={() => setDropping(null)} label={t('macro.feat.del')} className="mc-ask">
       <p>{tn('macro.feat.delAsk', listOf(dropping.id).length, { name: featLabel(featOf(dropping.id)) })}</p>
       <div className="mc-pop-acts">
-        <button type="button" className="btn sm ghost" onClick={() => setDropping(null)}>{t('common.cancel')}</button>
-        <button type="button" className="btn sm danger" autoFocus onClick={() => dropFeature(dropping.id, undefined, true)}>{t('macro.delete')}</button>
+        <Button type="button" size="sm" ghost onClick={() => setDropping(null)}>{t('common.cancel')}</Button>
+        <Button type="button" size="sm" kind="danger" autoFocus onClick={() => dropFeature(dropping.id, undefined, true)}>{t('macro.delete')}</Button>
       </div>
     </Pop> : null}
     {asking ? <Pop anchor={asking.anchor} close={() => setAsking(null)} label={t('macro.delStep')} className="mc-ask">
       <p>{tn('macro.block.deleteAsk', folds[asking.i]?.inner || 0, { what: t(steps[asking.i]?.kind === 'if' ? 'macro.block.if' : 'macro.block.loop') })}</p>
       <div className="mc-pop-acts">
-        <button type="button" className="btn sm ghost" onClick={() => setAsking(null)}>{t('common.cancel')}</button>
-        <button type="button" className="btn sm danger" autoFocus onClick={() => delStep(asking.i, undefined, true)}>{t('macro.delete')}</button>
+        <Button type="button" size="sm" ghost onClick={() => setAsking(null)}>{t('common.cancel')}</Button>
+        <Button type="button" size="sm" kind="danger" autoFocus onClick={() => delStep(asking.i, undefined, true)}>{t('macro.delete')}</Button>
       </div>
     </Pop> : null}
     {naming ? <NewCounter anchor={naming.anchor} taken={counterList} close={() => setNaming(null)} done={(name, label) => {
@@ -1081,9 +1081,9 @@ function FeatHead({ f, o, errs, set, setOpt, drop }: {
       <label className="mc-feat-name">{t('macro.feat.name')}<input className="field" id="mc-feat-name" maxLength={30} value={o?.label || ''}
         aria-invalid={!o?.label.trim() || undefined} onChange={e => setOpt({ label: e.target.value })} /></label>
       <label className="mc-switch-row mc-feat-on">
-        <span className="switch"><input type="checkbox" checked={!!o?.value} onChange={e => setOpt({ value: e.target.checked ? 1 : 0, default: e.target.checked ? 1 : 0 })} /><span /></span>
+        <Switch inside checked={!!o?.value} onChange={e => setOpt({ value: e.target.checked ? 1 : 0, default: e.target.checked ? 1 : 0 })} />
         <span>{t(o?.value ? 'macro.feat.isOn' : 'macro.feat.isOff')}</span></label>
-      <button type="button" className="icon-btn" title={t('macro.feat.del')} aria-label={`${t('macro.feat.del')}: ${o?.label || ''}`} onClick={e => drop(e.currentTarget)}><Icon name="trash" /></button>
+      <IconButton icon="trash" type="button" title={t('macro.feat.del')} aria-label={`${t('macro.feat.del')}: ${o?.label || ''}`} onClick={e => drop(e.currentTarget)} />
     </div>
     <div className="mc-grid">
       <label>{t('macro.feat.when')}<span className="mc-every">
@@ -1117,7 +1117,7 @@ function InUse({ label, steps, name, go, close }: { label: string; steps: At[]; 
   const text = tn('macro.ref.used', steps.length, { list, name: label });
   return <p className="mc-inuse" role="status"><Icon name="info" /><span>{text.split(MARK).map((b, k) => k % 2
     ? <button key={k} type="button" className="link" onClick={() => go(steps[+b])}>{nums[+b]}</button> : b ? <Fragment key={k}>{b}</Fragment> : null)}</span>
-    <button type="button" className="icon-btn" title={t('common.close')} aria-label={t('common.close')} onClick={close}><Icon name="x" /></button></p>;
+    <IconButton icon="x" type="button" title={t('common.close')} aria-label={t('common.close')} onClick={close} /></p>;
 }
 
 /** The macro's areas: each one's colour on the game, its name (what the steps say: "in Fish area"), and removing it. */
@@ -1128,7 +1128,7 @@ function AreaList({ areas, set, del, add, problems: probs, inUse, name, go, clos
   const { t } = useHost();
   return <div className="mc-areas" role="group" aria-labelledby="mc-areas-h">
     <div className="mc-areas-head"><b id="mc-areas-h">{t('macro.area.title')}</b>
-      <button type="button" className="btn sm" id="mc-area-add" onClick={add}><Icon name="plus" /><span>{t('macro.area.new')}</span></button></div>
+      <Button type="button" size="sm" id="mc-area-add" onClick={add}><Icon name="plus" /><span>{t('macro.area.new')}</span></Button></div>
     {!areas.length ? <p className="mc-pic-none">{t('macro.area.none')}</p> : <ul>{areas.map(a => {
       const bad = probs.find(p => p.field === `area:${a.name}`);
       return <li key={a.name}>
@@ -1136,7 +1136,7 @@ function AreaList({ areas, set, del, add, problems: probs, inUse, name, go, clos
           <i style={{ borderColor: a.colour }} aria-hidden="true" />
           <input className="field sm" id={`mc-area-${a.name}`} value={a.label} maxLength={30} aria-label={t('macro.area.name')} aria-invalid={!!bad || undefined}
             onChange={e => set(a.name, { label: e.target.value })} />
-          <button type="button" className="icon-btn" title={t('macro.area.del')} aria-label={`${t('macro.area.del')}: ${a.label}`} onClick={() => del(a.name)}><Icon name="trash" /></button>
+          <IconButton icon="trash" type="button" title={t('macro.area.del')} aria-label={`${t('macro.area.del')}: ${a.label}`} onClick={() => del(a.name)} />
         </div>
         {bad ? <p className="mc-ferr-line"><Icon name="alert" /><span>{bad.text}</span></p> : null}
         {inUse?.what === 'area:' + a.name ? <InUse label={a.label} steps={inUse.steps} name={name} go={go} close={closeInUse} /> : null}
@@ -1153,7 +1153,7 @@ function EditorRecording({ startsAt, count }: { startsAt: string; count: number 
     <span className="mc-rec-dot" aria-hidden="true" />
     <b>{left > 0 ? t('macro.rec.startIn', { n: left }) : t('macro.rec.count', { n: count })}</b>
     <small>{t('macro.rec.hint')}</small>
-    <button type="button" className="btn sm" onClick={e => busy(e.currentTarget, () => call('stopRecording', {}))}><Icon name="stop" /><span>{t('macro.rec.stop')}</span></button>
+    <Button type="button" size="sm" onClick={e => busy(e.currentTarget, () => call('stopRecording', {}))}><Icon name="stop" /><span>{t('macro.rec.stop')}</span></Button>
   </div>;
 }
 
@@ -1219,8 +1219,8 @@ function NewCounter({ anchor, taken, close, done }: { anchor: HTMLElement; taken
       <small id="mc-counter-hint" className={bad || dup ? 'bad' : ''}>{dup ? t('macro.counter.taken') : t('macro.counter.nameHint')}</small>
       <label>{t('macro.counter.label')}<input className="field sm" value={label} maxLength={30} placeholder={name || undefined} onChange={e => setLabel(e.target.value)} /></label>
       <div className="mc-pop-acts">
-        <button type="button" className="btn sm ghost" onClick={close}>{t('common.cancel')}</button>
-        <button type="submit" className="btn sm primary" aria-disabled={!ok} title={ok ? undefined : t('macro.counter.nameHint')}>{t('macro.opt.add')}</button>
+        <Button type="button" size="sm" ghost onClick={close}>{t('common.cancel')}</Button>
+        <Button type="submit" size="sm" kind="primary" aria-disabled={!ok} title={ok ? undefined : t('macro.counter.nameHint')}>{t('macro.opt.add')}</Button>
       </div>
     </form>
   </Pop>;
@@ -1281,17 +1281,17 @@ function StepRow({ s, i, m, count, shape, problems: probs, fixOf, dragging, ed, 
     {rails}{ins}
     <span className="ord-grip" title={t('lo.drag')} onPointerDown={() => setArmed(true)}><Icon name="grip" /></span>
     <span className="mc-step-n" aria-hidden="true">{n}</span>
-    {opener ? <button type="button" className="icon-btn mc-fold" aria-expanded={!folded} title={t(folded ? 'macro.block.unfold' : 'macro.block.fold')}
-      aria-label={`${t(folded ? 'macro.block.unfold' : 'macro.block.fold')}: ${t('macro.stepN', { n })}`} onClick={fold}><Icon name="caretRight" /></button> : null}
+    {opener ? <IconButton icon="caretRight" type="button" className="mc-fold" aria-expanded={!folded} title={t(folded ? 'macro.block.unfold' : 'macro.block.fold')}
+      aria-label={`${t(folded ? 'macro.block.unfold' : 'macro.block.fold')}: ${t('macro.stepN', { n })}`} onClick={fold} /> : null}
     {plainRow ? <span className={`mc-step-head k-${s.kind}`}><Icon name={STEP_ICON[s.kind] || 'info'} /><span className="mc-say">{say}</span>{chip}</span>
       : <button type="button" className={`mc-step-head k-${s.kind}`} aria-expanded={open} onClick={toggle}>
         <Icon name={STEP_ICON[s.kind] || 'info'} /><span className="mc-say">{say}{folded ? <small> {tn('macro.block.steps', shape.inner)}</small> : null}</span>
         {hiddenBad ? <em className="mc-bad-count" title={tn('macro.block.probs', hiddenBad)}>{hiddenBad}</em> : null}{chip}
         <Icon name={open ? 'chevronUp' : 'chevronDown'} /></button>}
     <span className="mc-step-acts">
-      <button type="button" className="icon-btn" data-move="-1" title={t('lo.up')} aria-label={`${t('lo.up')}: ${t('macro.stepN', { n })}`} disabled={i === 0} onClick={e => move(-1, e.currentTarget)}><Icon name="chevronUp" /></button>
-      <button type="button" className="icon-btn" data-move="1" title={t('lo.down')} aria-label={`${t('lo.down')}: ${t('macro.stepN', { n })}`} disabled={(opener ? shape.end : i) >= count - 1} onClick={e => move(1, e.currentTarget)}><Icon name="chevronDown" /></button>
-      <button type="button" className="icon-btn" data-st="more" aria-haspopup="menu" title={t('macro.moreActs')} aria-label={`${t('macro.moreActs')}: ${t('macro.stepN', { n })}`} onClick={e => menu(e.currentTarget)}><Icon name="more" /></button>
+      <IconButton icon="chevronUp" type="button" data-move="-1" title={t('lo.up')} aria-label={`${t('lo.up')}: ${t('macro.stepN', { n })}`} disabled={i === 0} onClick={e => move(-1, e.currentTarget)} />
+      <IconButton icon="chevronDown" type="button" data-move="1" title={t('lo.down')} aria-label={`${t('lo.down')}: ${t('macro.stepN', { n })}`} disabled={(opener ? shape.end : i) >= count - 1} onClick={e => move(1, e.currentTarget)} />
+      <IconButton icon="more" type="button" data-st="more" aria-haspopup="menu" title={t('macro.moreActs')} aria-label={`${t('macro.moreActs')}: ${t('macro.stepN', { n })}`} onClick={e => menu(e.currentTarget)} />
     </span>
     {noting ? <NoteBox value={s.note || ''} done={text => { setNote(text); setNoting(false); }} />
       : s.note ? <p className="mc-step-note"><button type="button" className="link" title={t('macro.note.edit')} onClick={() => setNoting(true)}>{s.note}</button></p> : null}
@@ -1299,7 +1299,7 @@ function StepRow({ s, i, m, count, shape, problems: probs, fixOf, dragging, ed, 
     {probs.length ? <ul className="mc-step-probs">{probs.map((p, k) => {
       const fix = p.warn ? null : fixOf(p);
       return <li key={k} className={p.warn ? 'warn' : ''}><Icon name="alert" /><span>{p.bare}</span>
-        {fix ? <button type="button" className="btn sm" disabled={!!fix.off} title={fix.off} onClick={fix.run}>{fix.label}</button> : null}</li>;
+        {fix ? <Button type="button" size="sm" disabled={!!fix.off} title={fix.off} onClick={fix.run}>{fix.label}</Button> : null}</li>;
     })}</ul> : null}
     {body ? <div className="mc-step-fields">{body}</div> : null}
   </div>;
@@ -1338,8 +1338,8 @@ function StepBody({ s, i, m, ed, cutting, invalid }: { s: Held; i: number; m: Ma
     onClick={() => ed.pick(i, 'point')}><span aria-hidden="true">{n}</span><span className="mc-vh">{t('macro.e.pickPoint')}</span></button>;
   const colour = (path: string, what: 'colour' | 'target' | 'marker', label: string) => <span className="mc-colourf">
     <ColorInput id={id(path.replace('.', '-'))} value={/^#[0-9a-f]{6}$/i.test(String(v(path))) ? String(v(path)) : '#ffffff'} label={label} onChange={put(path)} />
-    <button type="button" className="btn sm mc-pick" disabled={!ed.canPick} title={ed.canPick ? t('macro.e.pickTip') : t('macro.need.game')}
-      onClick={() => ed.pick(i, what, path)}><Icon name="mouse" /><span>{t('macro.e.pick')}</span></button></span>;
+    <Button type="button" size="sm" className="mc-pick" disabled={!ed.canPick} title={ed.canPick ? t('macro.e.pickTip') : t('macro.need.game')}
+      onClick={() => ed.pick(i, what, path)}><Icon name="mouse" /><span>{t('macro.e.pick')}</span></Button></span>;
   const where = (path: string, withPoint: boolean) => {
     const raw = getAt(s, path);
     const cur = isArea(raw) ? raw : withPoint ? 'point' : 'anywhere';
@@ -1358,8 +1358,8 @@ function StepBody({ s, i, m, ed, cutting, invalid }: { s: Held; i: number; m: Ma
     options={[['shows', t('macro.e.shows')], ['gone', t('macro.e.gone')]]} onChange={x => ed.set(i, path === 'test.not' ? { test: { ...s.test, not: x === 'gone' } } : { gone: x === 'gone' })} />;
   const pic = (img: string) => <span className="mc-imgf">
     {img ? <img className="mc-thumb" src={`data:image/png;base64,${img}`} alt={t('macro.e.thePic')} /> : <span className="mc-thumb none" aria-hidden="true"><Icon name="image" /></span>}
-    <button type="button" className={`btn sm mc-cut${cutting ? ' on' : ''}`} aria-pressed={cutting} aria-invalid={bad('image') || undefined} onClick={() => ed.cut(i)}><Icon name="image" />
-      <span>{t(cutting ? 'macro.e.cutting' : img ? 'macro.e.recut' : 'macro.e.cut')}</span></button></span>;
+    <Button type="button" size="sm" className="mc-cut" pressed={cutting} aria-invalid={bad('image') || undefined} onClick={() => ed.cut(i)}><Icon name="image" />
+      <span>{t(cutting ? 'macro.e.cutting' : img ? 'macro.e.recut' : 'macro.e.cut')}</span></Button></span>;
   const until = (path = 'timeoutMs') => <Say k="macro.e.giveUp" parts={{ d: secs(path, t('macro.e.giveUpL')) }} />;
   const textIn = (path: string, max: number, label: string, wide = false) => <TextIn id={id(path.replace('.', '-'))} label={label} value={String(v(path) ?? '')} max={max} wide={wide}
     invalid={bad(path)} onChange={put(path)} />;
@@ -1646,7 +1646,7 @@ function TextIn({ id, label, value, max, wide, onChange, invalid }: { id: string
 }
 
 export function Check({ id, label, checked, onChange }: { id: string; label: string; checked: boolean; onChange: (v: boolean) => void }) {
-  return <label className="mc-check"><input type="checkbox" id={id} checked={checked} onChange={e => onChange(e.target.checked)} /><span>{label}</span></label>;
+  return <KitCheck className="mc-check" id={id} checked={checked} onChange={e => onChange(e.target.checked)} label={label} />;
 }
 
 /** A key from the list, or the next key pressed in the "Press a key" box. Escape there is taken as the key too (the
@@ -1663,7 +1663,7 @@ function KeyBox({ id, value, onChange, k, ed, mouse }: { id: string; value: stri
       {known ? null : <option value="">—</option>}
       {mouse ? MOUSE_KEYS.map(x => <option key={x} value={x}>{keyName(t, x)}</option>) : null}
       {KEYS.map(x => <option key={x} value={x}>{keyCap(x)}</option>)}</select>
-    <button type="button" ref={cap} className={`btn sm mc-keycap${capture ? ' on' : ''}`} aria-expanded={capture} aria-pressed={capture}
+    <Button type="button" ref={cap} size="sm" className="mc-keycap" aria-expanded={capture} pressed={capture}
       title={t('macro.f.pressTip')} onClick={() => setCapture(!capture)} onBlur={() => setCapture(false)}
       onKeyDown={e => {
         if (!capture) return;
@@ -1674,5 +1674,5 @@ function KeyBox({ id, value, onChange, k, ed, mouse }: { id: string; value: stri
         if (!key) return toast(t('macro.f.badKey'), 'warn');
         onChange(key);
         setCapture(false);
-      }}><Icon name="keyboard" /><span>{t(capture ? 'macro.f.pressing' : 'macro.f.press')}</span></button></span>;
+      }}><Icon name="keyboard" /><span>{t(capture ? 'macro.f.pressing' : 'macro.f.press')}</span></Button></span>;
 }

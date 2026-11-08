@@ -7,6 +7,7 @@ import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } fr
 import { Icon, useHost } from './host';
 import { MAX_CUT, stepText, type Area, type Macro, type Rect, type Step } from './macros';
 
+import { Button } from './kit';
 export type Picture = { image: string; w: number; h: number };
 /** What the app sees on the window (macroSeen): its picture, boxes where things were found, a note. Try it's lines use
  * the same shape: step (its index) and outcome (found, notFound, missingValue, done; with no step, how the run ended). */
@@ -119,7 +120,7 @@ export function GameFrame({ picture, size, dots, boxes, found, cutting, cancelCu
       onPointerMove={e => { if (drag) setDrag({ ...drag, to: at(e) }); }} onPointerUp={end} onPointerCancel={() => setDrag(null)}
       onKeyDown={e => { if (e.key === 'Escape' && cutting) { e.stopPropagation(); cancelCut(); } }}>
       {picture ? <img ref={img} src={picture.image} alt="" draggable={false} onLoad={() => { canvas.current = null; }} />
-        : <span className="mc-pic-blank"><span>{t('macro.pic.blank')}</span>{goAccounts ? <button type="button" className="btn sm" onClick={goAccounts}>{t('macro.goAccounts')}</button> : null}</span>}
+        : <span className="mc-pic-blank"><span>{t('macro.pic.blank')}</span>{goAccounts ? <Button type="button" size="sm" onClick={goAccounts}>{t('macro.goAccounts')}</Button> : null}</span>}
       {boxes.map(a => {
         const r = live && drag?.key === a.name ? live as Rect : a.rect;
         return <span key={a.name} className="mc-pic-area" style={{ left: pct(r.x), top: pct(r.y), width: pct(r.w), height: pct(r.h), borderColor: a.colour }}

@@ -7,6 +7,7 @@ import { NOTIFY_KINDS } from './NotifyPage';
 import { Group, More, Page, Row, Switch, TextBox, useLocal } from './parts';
 import { parseTime } from '../TimeField';
 
+import { Button } from '../kit';
 const DC_ID = /^\d{17,20}$/;
 const PING_MODES = ['none', 'here', 'everyone', 'user', 'role'];
 const NONE: string[] = [];
@@ -91,16 +92,16 @@ export function DiscordPage({ title }: { title: string }) {
       </Row>
       <div id="s-dc-note">{d.stopped ? <div className="set-note"><Icon name="alert" /><span>{t('dc.gone')}</span></div> : null}</div>
       <Row title={t('dc.webhook')} desc={<><span className="path" id="s-dc-hook">{link ?? (d.hasWebhook ? d.webhookHint : t('dc.noLink'))}</span><div>{t('dc.webhookHelp')}</div></>}>
-        <button className="btn sm" data-dc="paste" id="s-dc-paste">{t(d.hasWebhook ? 'dc.replace' : 'dc.paste')}</button>
-        <button className="btn sm ghost" id="s-dc-reveal" hidden={!d.hasWebhook} aria-pressed={!!link} onClick={async e => {
+        <Button size="sm" data-dc="paste" id="s-dc-paste">{t(d.hasWebhook ? 'dc.replace' : 'dc.paste')}</Button>
+        <Button size="sm" ghost id="s-dc-reveal" hidden={!d.hasWebhook} aria-pressed={!!link} onClick={async e => {
           if (link) return hide();
           const url = await busy(e.currentTarget, () => call('revealDiscordWebhook')) as string | undefined;
           if (!url) return;
           setShown({ url, hint: d.webhookHint });
           clearTimeout(hideTimer.current);
           hideTimer.current = window.setTimeout(hide, 30_000);
-        }}>{link ? <><Icon name="eyeOff" />{t('dc.hide')}</> : <><Icon name="eye" />{t('dc.show')}</>}</button>
-        <button className="btn sm ghost" data-dc="remove" id="s-dc-remove" hidden={!d.hasWebhook}>{t('dc.remove')}</button>
+        }}>{link ? <><Icon name="eyeOff" />{t('dc.hide')}</> : <><Icon name="eye" />{t('dc.show')}</>}</Button>
+        <Button size="sm" ghost data-dc="remove" id="s-dc-remove" hidden={!d.hasWebhook}>{t('dc.remove')}</Button>
       </Row>
       <div id="s-dc-status">{d.hasWebhook ? <div className="set-row">
         <div>
@@ -108,7 +109,7 @@ export function DiscordPage({ title }: { title: string }) {
           {d.error ? <div className="d err">{d.error}</div> : null}
           {d.queued ? <div className="d">{t('dc.queued', { n: d.queued })}</div> : null}
         </div>
-        <div className="ctl"><button className="btn sm" data-dc="test">{t('dc.test')}</button></div>
+        <div className="ctl"><Button size="sm" data-dc="test">{t('dc.test')}</Button></div>
       </div> : null}</div>
     </Group>
     {/* How messages will look, once there is a link to send them to. */}
@@ -144,14 +145,14 @@ export function DiscordPage({ title }: { title: string }) {
         </select>
       </Row>
       <Row title={t('dc.include')}>
-        <button className="btn sm" data-dc="parts" id="s-dc-parts" aria-haspopup="dialog">{tn('dc.partsN', (s.parts || []).length)}</button>
+        <Button size="sm" data-dc="parts" id="s-dc-parts" aria-haspopup="dialog">{tn('dc.partsN', (s.parts || []).length)}</Button>
       </Row>
       <Row title={t('dc.accounts')} desc={<span id="s-dc-acc">{picked ? t('dc.accN', { n: picked }) : t('dc.accAll')}</span>}>
-        <button className="btn sm" data-dc="accounts">{t('dc.choose')}</button>
+        <Button size="sm" data-dc="accounts">{t('dc.choose')}</Button>
       </Row>
       <Row title={t('dc.ping')}>{ping('summary')}</Row>
       <Row title={t('dc.sendNow')} desc={t('dc.sendNowDesc')}>
-        <button className="btn sm" data-dc="summary-now" id="s-dc-now">{t('dc.sendNowBtn')}</button>
+        <Button size="sm" data-dc="summary-now" id="s-dc-now">{t('dc.sendNowBtn')}</Button>
       </Row>
     </Group>
     <Group id="dc-events" title={t('dc.events')}>
@@ -409,8 +410,8 @@ function RemoteGroup() {
           : <><div className="t">{t('dc.remoteNoCode')}</div>{r.busy ? <div className="d warn-text">{t('dc.remoteBusy')}</div> : null}</>}
       </div>
       <div className="ctl">
-        {r.connected && !r.linked ? <button className="btn sm" id="s-dc-remote-code" onClick={e => busy(e.currentTarget, () => call('remoteCode'))}>{t('dc.remoteNewCode')}</button> : null}
-        {!r.linked ? <button className="btn sm ghost" id="s-dc-remote-add" onClick={() => call('openDiscordApp')}>{t('dc.remoteAdd')}</button> : null}
+        {r.connected && !r.linked ? <Button size="sm" id="s-dc-remote-code" onClick={e => busy(e.currentTarget, () => call('remoteCode'))}>{t('dc.remoteNewCode')}</Button> : null}
+        {!r.linked ? <Button size="sm" ghost id="s-dc-remote-add" onClick={() => call('openDiscordApp')}>{t('dc.remoteAdd')}</Button> : null}
       </div>
     </div> : null}
   </Group>;

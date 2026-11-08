@@ -7,6 +7,7 @@ import { OrderList, type OrderAccount, type OrderListApi } from './OrderList';
 import { DateInput, TimeInput, readBox, exampleOf } from './TimeField';
 import { SuggestInput } from './Suggest';
 
+import { Button, Switch } from './kit';
 // The server choices in two groups: one server for every account, or each account in its own (keys of app.js's list).
 const SERVERS_ALL = ['any', 'most', 'fewest', 'ping', 'random', 'job', 'follow'];
 const SERVERS_EACH = [['eachFewest', 'fewest'], ['eachMost', 'most'], ['eachRandom', 'random']];
@@ -228,15 +229,15 @@ export function PresetForm({ base, isNew, accounts, ticked, gone, api }: {
         <div className="ps-dc-own" id="ps-dc-own" hidden={dcMode !== 'own'}>
           <input className="field" id="ps-dc-link" ref={box('dcLink')} type="text" maxLength={300} spellCheck={false} autoComplete="off"
             placeholder={base.discord || 'https://discord.com/api/webhooks/…'} aria-label={t('ps.dc.link')} value={dcLink} onChange={e => setDcLink(e.target.value)} />
-          <button type="button" className="btn" id="ps-dc-test" onClick={e => busy(e.currentTarget, async () => {
+          <Button type="button" id="ps-dc-test" onClick={e => busy(e.currentTarget, async () => {
             if (await call('presetDiscordTest', { id: base.id || '', url: dcLink.trim() }) !== undefined) toast(t('dc.testOk'), 'ok');
-          })}>{t('dc.test')}</button>
+          })}>{t('dc.test')}</Button>
         </div>
         <p className="ps-opts-note">{base.discord ? `${t('ps.dc.saved')}\n` : ''}{t('ps.dc.note')}{dcOn ? '' : `\n${t('ps.dc.off')}`}</p>
       </details>
       <div className="ps-sched">
         <div className="ps-sched-head">
-          <label className="switch"><input type="checkbox" id="ps-sch-on" checked={schOn} aria-label={t('ps.sch')} onChange={e => setSchOn(e.target.checked)} /><span /></label>
+          <Switch id="ps-sch-on" checked={schOn} aria-label={t('ps.sch')} onChange={e => setSchOn(e.target.checked)} />
           <div><b>{t('ps.sch')}</b><small>{t('ps.schDesc')}</small></div>
         </div>
         <div className="ps-sched-body" id="ps-sch-body" hidden={!schOn}>

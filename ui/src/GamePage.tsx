@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { Icon, useAppState, useHost } from './host';
 import { openOurWiki, ourWikiOf } from './GamesView';
 
+import { Button } from './kit';
 export interface GameAccount {
   id: string; name: string; minutes: number; kicks: number; kickWhy?: string | null; drops: number;
   /** "ingame", "banned" or "" (not in it now); lastPlayed when not in it. */
@@ -52,9 +53,9 @@ export function GamePage({ game, close }: { game: GameDetails; close?: () => voi
         <b>{game.name}</b>
         <small>{[game.creator, game.genre].filter(Boolean).join(' · ')}</small>
       </div>
-      <button className="btn sm" data-gp="wiki" onClick={wiki}><Icon name="book" />{t('gp.wiki')}</button>
-      <button className="btn sm ghost" data-gp="roblox" title={t('gp.roblox')} aria-label={t('gp.roblox')}
-        onClick={() => call('openGamePage', { placeId: game.placeId })}><Icon name="external" /></button>
+      <Button size="sm" data-gp="wiki" onClick={wiki}><Icon name="book" />{t('gp.wiki')}</Button>
+      <Button size="sm" ghost data-gp="roblox" title={t('gp.roblox')} aria-label={t('gp.roblox')}
+        onClick={() => call('openGamePage', { placeId: game.placeId })}><Icon name="external" /></Button>
     </div>
 
     {fresh && updated ? <div className="gp-news note warn"><Icon name="refresh" />

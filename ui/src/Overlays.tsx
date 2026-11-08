@@ -5,9 +5,10 @@ import { Icon, useHost } from './host';
 import { richNodes } from './rich';
 import { SnapPicker } from './Snap';
 
+import { Button, Check, IconButton } from './kit';
 /* ───────────── dialogs ───────────── */
 
-export type ModalAction = { text: string; kind?: string };
+export type ModalAction = { text: string; kind?: 'primary' | 'danger' | '' };
 export interface ModalOpts {
   /** The title: the app's words (markup they carry drawn as such), or something drawn here (What's new's). */
   title: string | ReactNode;
@@ -29,11 +30,11 @@ export function ModalFrame({ title, titleId, body, actions, act, close, boxClass
   const { t } = useHost();
   return <div className={`modal${boxClass ? ` ${boxClass}` : ''}`} role="dialog" aria-modal="true" aria-labelledby={title ? titleId : undefined} aria-label={label}>
     <div className="modal-head"><h3 id={titleId}>{typeof title === 'string' ? richNodes(title) : title}</h3>
-      <button className="icon-btn" data-x="" title={t('common.close')} onClick={close}><Icon name="x" /></button></div>
+      <IconButton icon="x" data-x="" title={t('common.close')} onClick={close} /></div>
     <div className={`modal-body${bodyClass ? ` ${bodyClass}` : ''}`}>{body}</div>
     {footError ? <div className="form-error ps-err" role="alert" hidden /> : null}
     {actions.length ? <div className="modal-foot">{actions.map((a, i) =>
-      <button key={i} className={`btn ${a.kind || ''}`} data-i={i} onClick={e => act(i, e.currentTarget)}>{a.text}</button>)}</div> : null}
+      <Button key={i} kind={a.kind || undefined} data-i={i} onClick={e => act(i, e.currentTarget)}>{a.text}</Button>)}</div> : null}
   </div>;
 }
 
@@ -41,7 +42,7 @@ export function ModalFrame({ title, titleId, body, actions, act, close, boxClass
 export function AskBody({ message, remember }: { message: string; remember: boolean }) {
   const { t } = useHost();
   return <><p className="pre modal-text">{message}</p>
-    {remember ? <label className="dont-ask"><input type="checkbox" id="dont-ask" /><span>{t('common.dontAsk')}</span></label> : null}</>;
+    {remember ? <Check className="dont-ask" id="dont-ask" label={t('common.dontAsk')} /> : null}</>;
 }
 
 export function ErrorsBody({ errors }: { errors: string[] }) {

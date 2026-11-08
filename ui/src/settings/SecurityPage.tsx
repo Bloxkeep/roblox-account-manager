@@ -7,6 +7,7 @@ import { Icon, useAppState, useHost } from '../host';
 import { VaultFace } from '../Vaults';
 import { Group, Page, Row, Switch, useLocal } from './parts';
 
+import { Button } from '../kit';
 /** Lock automatically's choices, in minutes (the app takes only these); 0 never. */
 const AUTO_LOCK = [0, 5, 10, 15, 30, 60, 120];
 
@@ -48,14 +49,14 @@ export function SecurityPage({ title }: { title: string }) {
       </Row>
       <Row title={t('vault.picture')} desc={t('vault.pictureDesc')}>
         <VaultFace vault={vault} className="sm" />
-        {vault.picture ? <button className="btn sm ghost" data-act="vault-picture-clear" data-id={vault.id}>{t('vault.pictureRemove')}</button> : null}
-        <button className="btn sm" data-act="vault-picture" data-id={vault.id}><Icon name="image" />{t('vault.pick')}</button>
+        {vault.picture ? <Button size="sm" ghost data-act="vault-picture-clear" data-id={vault.id}>{t('vault.pictureRemove')}</Button> : null}
+        <Button size="sm" data-act="vault-picture" data-id={vault.id}><Icon name="image" />{t('vault.pick')}</Button>
       </Row>
       <Row title={t('vault.ask')}>
         <Switch id="s-vault-ask" label={t('vault.ask')} checked={askVault} onChange={on => { setAskVault(on); call('setAskVault', { enabled: on }); }} />
       </Row>
       <Row title={t('vault.switch')} desc={t('vault.switchDesc')}>
-        <button className="btn sm" data-act="vault-pick"><Icon name="repeat" />{t('vault.switch')}</button>
+        <Button size="sm" data-act="vault-pick"><Icon name="repeat" />{t('vault.switch')}</Button>
       </Row>
     </Group> : null}
     <Group id="master" title={t('set.master')}>
@@ -89,7 +90,7 @@ export function SecurityPage({ title }: { title: string }) {
         {box('pw-cur', 'set.pwCur', 'set.pwLabelCur', 'current-password', cur, dropError)}
         {box('pw-new', 'set.pwNew', 'set.pwLabelNew', 'new-password', next, v => pwMsg(v ? t('set.pwStrength', { s: t(`lock.strength.${strength(v)}`) }) : '', 'hint'))}
         {box('pw-new2', 'set.pwNew2', 'set.pwLabelNew2', 'new-password', next2, dropError)}
-        <button className="btn primary" type="submit" id="pw-btn" ref={btn}>{t('set.pwBtn')}</button>
+        <Button kind="primary" type="submit" id="pw-btn" ref={btn}>{t('set.pwBtn')}</Button>
         <p className={`pw-msg ${msg.text ? msg.kind : ''}`} id="pw-msg" role="alert">{msg.text}</p>
       </form>
     </Group>

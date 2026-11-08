@@ -6,6 +6,7 @@ import { Icon, useAppState, useHost } from './host';
 import { Rich } from './rich';
 import { Avatar, shortName } from './Avatar';
 
+import { Check, IconButton } from './kit';
 type FileAccount = { key: number; label: string; username?: string; group?: string; realm?: string; cookieValid?: boolean | null; hasPassword?: boolean; exists?: boolean; avatarUrl?: string };
 type Preview = { token: string; accounts: FileAccount[]; presets: number };
 export type ImportResult = { added: number; updated: number; presets: number; presetsSkipped: number; ids?: string[] };
@@ -125,8 +126,8 @@ export function ImportVault({ api, primary, finished }: {
     <div className="form"><label>{t('iv.pw')}
       <span className="pw"><input className="field" type={shown ? 'text' : 'password'} id="iv-pw" ref={pw} maxLength={256} autoComplete="off" spellCheck={false}
         aria-invalid={shownError && !waiting ? true : undefined} onInput={() => { if (error) setError(''); }} />
-        <button type="button" className="icon-btn" id="iv-eye" title={t(shown ? 'lock.hidePw' : 'lock.showPw')} aria-label={t(shown ? 'lock.hidePw' : 'lock.showPw')}
-          aria-pressed={shown} onClick={() => setShown(!shown)}><Icon name={shown ? 'eyeOff' : 'eye'} /></button></span></label></div>
+        <IconButton icon={shown ? 'eyeOff' : 'eye'} type="button" id="iv-eye" title={t(shown ? 'lock.hidePw' : 'lock.showPw')} aria-label={t(shown ? 'lock.hidePw' : 'lock.showPw')}
+          aria-pressed={shown} onClick={() => setShown(!shown)} /></span></label></div>
     {safe}{errorLine}
   </div>;
 
@@ -151,22 +152,21 @@ export function ImportVault({ api, primary, finished }: {
       <div className="rc-list iv-list">{list.map(x => {
         const a = shownAs(x);
         const parts: ReactNode[] = [a.username ? `@${a.username}` : '', a.group || '', signIn(a), a.hasPassword ? t('iv.pwSaved') : ''].filter(Boolean);
-        return <label key={a.key} className="rc-item iv-item">
-          <input type="checkbox" value={a.key} checked={ticked.has(a.key)} onChange={e => {
+        return <Check key={a.key} className="rc-item iv-item" value={a.key} checked={ticked.has(a.key)} onChange={e => {
             const next = new Set(ticked);
             if (e.target.checked) next.add(a.key); else next.delete(a.key);
             setTicked(next);
-          }} />
+          }}>
           <div className="avatar sm"><Avatar a={a} /></div>
           <span className="iv-name"><b title={a.label}>{a.label}</b>
             <small>{parts.map((p, i) => <Fragment key={i}>{i ? ' · ' : null}{p}</Fragment>)}</small></span>
           {a.realm === 'vng' ? <span className="tag vng" title={t('card.vngTip')}>VNG</span> : null}
           <span className={`state-pill ${a.exists ? 'off' : 'ok'}`}>{t(a.exists ? 'iv.exists' : 'iv.new')}</span>
-        </label>;
+        </Check>;
       })}</div>
     </> : <p className="modal-text">{t('iv.empty')}</p>}
-    {preview!.presets ? <label className="iv-presets"><input type="checkbox" id="iv-presets" checked={presets} onChange={e => setPresets(e.target.checked)} />
-      <span><b>{t('iv.presets', { n: preview!.presets })}</b><small>{t('iv.presetsSub')}</small></span></label> : null}
+    {preview!.presets ? <Check className="iv-presets" id="iv-presets" checked={presets} onChange={e => setPresets(e.target.checked)}>
+      <span><b>{t('iv.presets', { n: preview!.presets })}</b><small>{t('iv.presetsSub')}</small></span></Check> : null}
     {all.some(a => a.exists) ? <p className="fine"><Icon name="info" /><span>{t('iv.existsNote')}</span></p> : null}
     {errorLine}
   </div>;

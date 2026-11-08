@@ -4,6 +4,7 @@
 import { useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type Ref } from 'react';
 import { Avatar } from './Avatar';
 import { Icon, useHost } from './host';
+import { Button } from './kit';
 
 /** What the app sends each time the tray opens, and every two seconds while it is open (AppController.TrayState). */
 export interface TrayState {
@@ -162,9 +163,9 @@ function Panel({ s, page, go, api, confirmUntil, setConfirmUntil }: {
         <button type="button" className="tray-btn" onClick={() => api.act('open')}>{t('tray.unlock')}</button></div>
       : <section className="tray-running">
         <div className="tray-label"><span>{t('tray.running')}</span>
-          {canClose ? <button type="button" className={`btn sm ghost tray-link danger${confirming ? ' confirm' : ''}`}
+          {canClose ? <Button type="button" size="sm" ghost kind="danger" className={`tray-link${confirming ? ' confirm' : ''}`}
             onClick={() => { if (confirming) { setConfirmUntil(0); api.act('closeAll'); } else setConfirmUntil(Date.now() + 4000); }}>
-            {confirming ? tn('tray.closeAsk', s.robloxCount) : t('tray.closeAll')}</button> : null}
+            {confirming ? tn('tray.closeAsk', s.robloxCount) : t('tray.closeAll')}</Button> : null}
         </div>
         {clients.length === 0
           ? <div className="tray-empty">{s.robloxCount > 0 ? tn('tray.openCount', s.robloxCount) : t('tray.none')}</div>

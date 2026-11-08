@@ -4,6 +4,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Blocks, Inline, NewsCtx, timeText, type Block, type Field } from './DiscordBlocks';
 import { Icon, useHost } from './host';
+import { Button } from './kit';
 import { TextBox } from './settings/parts';
 import { useAskWhile } from './useAskWhile';
 
@@ -42,9 +43,9 @@ export function useFeedCards(shown: boolean) {
 /** Follow a game: its news count on the tab's badge. */
 export function FollowButton({ game, t }: { game: FeedGame; t: T }) {
   const { call } = useHost();
-  return <button type="button" className={`btn sm ${game.followed ? 'ghost' : 'primary'}`} id="news-follow" aria-pressed={game.followed}
+  return <Button type="button" size="sm" ghost={game.followed} kind={game.followed ? undefined : 'primary'} id="news-follow" aria-pressed={game.followed}
     onClick={() => call('feedFollow', { game: game.id, on: !game.followed })}>
-    <Icon name={game.followed ? 'check' : 'plus'} /><span>{t(game.followed ? 'news.following' : 'news.follow')}</span></button>;
+    <Icon name={game.followed ? 'check' : 'plus'} /><span>{t(game.followed ? 'news.following' : 'news.follow')}</span></Button>;
 }
 
 /** A game's news, shown while `shown`: read as it is shown (what was new keeps its mark while it stays open). */

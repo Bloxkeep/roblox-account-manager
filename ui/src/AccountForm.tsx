@@ -7,6 +7,7 @@ import { Rich } from './rich';
 import { Avatar } from './Avatar';
 import { SuggestInput } from './Suggest';
 
+import { Button, IconButton } from './kit';
 type Account = { id: string; label: string; username?: string; userId?: number; alias?: string; group?: string; note?: string; hasPassword?: boolean; hasAuthenticator?: boolean };
 export interface AccountFormApi {
   collect(): { args: Record<string, unknown> } | { error: string };
@@ -116,8 +117,8 @@ export function AccountForm({ account: a, api, browser }: { account: Account | n
   // Says what a click does now: show, or hide again.
   const eye = (name: string, value: string, set: (v: string) => void) => {
     const label = t(shown[name] ? 'am.hide' : 'common.show');
-    return <button type="button" className="icon-btn" data-reveal={name} title={label} aria-label={label} aria-pressed={!!shown[name]}
-      onClick={() => reveal(name, value, set)}><Icon name={shown[name] ? 'eyeOff' : 'eye'} /></button>;
+    return <IconButton icon={shown[name] ? 'eyeOff' : 'eye'} type="button" data-reveal={name} title={label} aria-label={label} aria-pressed={!!shown[name]}
+      onClick={() => reveal(name, value, set)} />;
   };
 
   const values = () => JSON.stringify([isNew ? (typed.current.has('cookie') ? cookie : '') : null, alias, group,
@@ -175,8 +176,8 @@ export function AccountForm({ account: a, api, browser }: { account: Account | n
         <span className="totp-label">{t('am.totp')} <span className="muted">{t('am.totpHint')}</span></span>
         <div className="totp-live" id="am-totp-live" ref={live} hidden={!liveShown}>
           <span className="totp-now"><b className="totp-code" id="am-totp-code">{code || '··· ···'}</b><span className="totp-left" id="am-totp-left">{left}</span></span>
-          <button type="button" className="btn sm" data-totp="copy" onClick={() => host.copyField(a.id, 'totp')}><Icon name="copy" />{t('am.totpCopy')}</button>
-          <button type="button" className="btn sm ghost" data-totp="remove" onClick={remove}><Icon name="trash" />{t('am.totpRemove')}</button>
+          <Button type="button" size="sm" data-totp="copy" onClick={() => host.copyField(a.id, 'totp')}><Icon name="copy" />{t('am.totpCopy')}</Button>
+          <Button type="button" size="sm" ghost data-totp="remove" onClick={remove}><Icon name="trash" />{t('am.totpRemove')}</Button>
         </div>
         <div className="pw" id="am-totp-box" hidden={liveShown}><input className="field mono" type={shown.authenticator ? 'text' : 'password'} name="authenticator" ref={box} maxLength={512}
           placeholder={t('am.totpPh')} spellCheck={false} autoComplete="off" aria-label={t('am.totp')} aria-describedby="am-totp-msg" value={key} onChange={e => {

@@ -6,6 +6,7 @@ import { Icon, useAppState, useHost, type AppState } from './host';
 import { Rich } from './rich';
 import { VaultFace, VaultPicker, type VaultInfo } from './Vaults';
 
+import { Button, IconButton } from './kit';
 export type LockMode = 'create' | 'unlock' | 'pick';
 
 /** The language buttons (app.js's click handler changes the language: data-act="lang"). */
@@ -138,7 +139,7 @@ export function Lock({ mode, notice, kept, opened }: {
   // Back: to the open vault (the picker is over it), or to the password of the vault the lock screen offers.
   if (mode === 'pick') return <div className="lock vault-pick">
     <div className="dots" />
-    {vaults.current ? <button type="button" className="btn ghost vp-back" data-act="vault-back"><Icon name="chevronLeft" /><span>{t('vault.back')}</span></button> : null}
+    {vaults.current ? <Button type="button" ghost className="vp-back" data-act="vault-back"><Icon name="chevronLeft" /><span>{t('vault.back')}</span></Button> : null}
     <div className="lock-lang"><LangSwitch /></div>
     <VaultPicker />
   </div>;
@@ -159,14 +160,14 @@ export function Lock({ mode, notice, kept, opened }: {
         <div className="boot-bar" role="progressbar" aria-label={title} aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent}>
           <i style={{ transform: `scaleX(${(percent / 100).toFixed(3)})` }} /></div>
         <div className="lock-update-step" id="lock-update-step" aria-live="polite">{ready ? t('lock.upd.install') : t('lock.upd.get', { p: percent })}</div>
-        {ready ? null : <div className="lock-alt"><button type="button" className="btn ghost" id="lock-update-later" title={t('lock.upd.laterTip')} onClick={later}>{t('lock.upd.later')}</button></div>}
+        {ready ? null : <div className="lock-alt"><Button type="button" ghost id="lock-update-later" title={t('lock.upd.laterTip')} onClick={later}>{t('lock.upd.later')}</Button></div>}
       </div>
     </div>;
   }
 
   return <div className="lock">
     <div className="dots" />
-    {adding ? <button type="button" className="btn ghost vp-back" data-act="vault-cancel-add"><Icon name="chevronLeft" /><span>{t('vault.back')}</span></button> : null}
+    {adding ? <Button type="button" ghost className="vp-back" data-act="vault-cancel-add"><Icon name="chevronLeft" /><span>{t('vault.back')}</span></Button> : null}
     <div className="lock-lang"><LangSwitch /></div>
     <form className="lock-card" id="lock-form" autoComplete="off" data-mode={mode} ref={form} onSubmit={submit}>
       <img className="logo-img" src={logo} alt="" />
@@ -180,7 +181,7 @@ export function Lock({ mode, notice, kept, opened }: {
           spellCheck={false} /></label> : null}
         <div className="pw"><input className="field" type={shown ? 'text' : 'password'} id="pw1" ref={pw1} placeholder={t(create ? 'lock.pw6' : 'lock.pw')} maxLength={256} aria-label={t('lock.pw')}
           aria-invalid={invalid === 'pw1' || undefined} {...typing} onInput={() => { setError(''); setInvalid(''); if (create) showStrength(pw1.current!.value); }} />
-          <button type="button" className="icon-btn" id="pw-eye" title={eye} aria-label={eye} aria-pressed={shown} onClick={() => setShown(!shown)}><Icon name={shown ? 'eyeOff' : 'eye'} /></button></div>
+          <IconButton icon={shown ? 'eyeOff' : 'eye'} type="button" id="pw-eye" title={eye} aria-label={eye} aria-pressed={shown} onClick={() => setShown(!shown)} /></div>
         {create ? <>
           <input className="field" type={shown ? 'text' : 'password'} id="pw2" ref={pw2} placeholder={t('lock.pw2')} maxLength={256} aria-label={t('lock.pw2')}
             aria-invalid={invalid === 'pw2' || undefined} {...typing} />
@@ -191,14 +192,14 @@ export function Lock({ mode, notice, kept, opened }: {
       <div className="lock-error" id="lock-error" role="alert">{error}</div>
       {/* From the second refused password: the way on (the two links below it; not offered when it locked by itself). */}
       {refused >= 2 && !create && !screenLock ? <p className="lock-forgot" id="lock-forgot">{t('lock.forgot')}</p> : null}
-      <button className="btn primary big w" type="submit" id="lock-btn" ref={btn}>{t(create ? 'lock.create' : 'lock.unlock')}</button>
+      <Button size="big" kind="primary" wide type="submit" id="lock-btn" ref={btn}>{t(create ? 'lock.create' : 'lock.unlock')}</Button>
       {/* Set up: a backup instead. Unlock: a backup (a forgotten master password can't be recovered) or another vault. */}
       {screenLock || adding ? null : <div className="lock-alt"><button type="button" className="link" data-act="restore-backup">{t('lock.restore')}</button>
         {create ? null : <><span className="sep">·</span><button type="button" className="link" data-act="vault-add">{t('vault.new')}</button></>}</div>}
       {/* For someone who signs in to Roblox only in their own browser: Multi-Roblox without a vault or accounts. */}
       {create && !adding ? <div className="lock-alt lock-multi">{multiOnly
         ? <><span id="lock-multi-on">{t('lock.multiOnlyOn')}</span> <button type="button" className="link" data-act="multi-only-off">{t('lock.multiOnlyOff')}</button>
-          {app.closeToTray ? <button type="button" className="btn ghost lock-close" data-act="win-close">{t('lock.closeWin')}</button> : null}</>
+          {app.closeToTray ? <Button type="button" ghost className="lock-close" data-act="win-close">{t('lock.closeWin')}</Button> : null}</>
         : <button type="button" className="link" data-act="multi-only">{t('lock.multiOnly')}</button>}</div> : null}
     </form>
   </div>;

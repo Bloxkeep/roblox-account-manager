@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Icon, useAppState, useHost } from './host';
 import { Rich } from './rich';
 
+import { Button, Switch } from './kit';
 export function MultiHelp({ enable }: { enable: () => void }) {
   const { t, tn, call, busy, toast } = useHost();
   const m = useAppState().multi || {};
@@ -16,12 +17,12 @@ export function MultiHelp({ enable }: { enable: () => void }) {
 
   const flag = (id: string, key: string, on: boolean, set: (v: boolean) => void, setting: string) =>
     <label className="mh-flag"><span><b>{t(key)}</b><small>{t(`${key}Desc`)}</small></span>
-      <span className="switch"><input type="checkbox" id={id} checked={on} onChange={e => { set(e.target.checked); call('setSettings', { [setting]: e.target.checked }); }} /><span /></span></label>;
+      <Switch inside id={id} checked={on} onChange={e => { set(e.target.checked); call('setSettings', { [setting]: e.target.checked }); }} /></label>;
 
   return <>
     {!m.enabled ? <>
       <p className="modal-text">{t('mh.off')}</p>
-      <button className="btn primary" onClick={enable}><Icon name="layers" />{t('mh.enable')}</button>
+      <Button kind="primary" onClick={enable}><Icon name="layers" />{t('mh.enable')}</Button>
     </> : m.armed ? <>
       <div className="hero-ok"><Icon name="check" /></div>
       <p className="modal-text center">{t('mh.ok1')}</p>
@@ -29,13 +30,13 @@ export function MultiHelp({ enable }: { enable: () => void }) {
     </> : <>
       <p className="modal-text">{t('mh.bad')}</p>
       <ol className="steps">
-        <li><div><Rich k="mh.s1" /><br /><button className="btn sm" onClick={async e => {
+        <li><div><Rich k="mh.s1" /><br /><Button size="sm" onClick={async e => {
           const n = await busy(e.currentTarget, () => call('closeAll')) as number | undefined;
           if (n !== undefined) toast(n ? tn('t.closingAll', n) : t('t.noRoblox'), 'ok');
-        }}><Icon name="power" />{t('mh.s1btn')}</button></div></li>
-        {m.trayAutostart ? <li><div><Rich k="mh.s2" /><br /><button className="btn sm" disabled={trayDone} onClick={async e => {
+        }}><Icon name="power" />{t('mh.s1btn')}</Button></div></li>
+        {m.trayAutostart ? <li><div><Rich k="mh.s2" /><br /><Button size="sm" disabled={trayDone} onClick={async e => {
           if ((await busy(e.currentTarget, () => call('disableTrayAutostart'))) !== undefined) setTrayDone(true);
-        }}>{t(trayDone ? 'mh.s2done' : 'mh.s2btn')}</button></div></li> : null}
+        }}>{t(trayDone ? 'mh.s2done' : 'mh.s2btn')}</Button></div></li> : null}
         <li><div><Rich k="mh.s3" /></div></li>
       </ol>
     </>}

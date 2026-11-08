@@ -5,6 +5,7 @@ import { flushSync } from 'react-dom';
 import { Icon, useHost } from './host';
 import { Avatar } from './Avatar';
 
+import { IconButton } from './kit';
 export type OrderAccount = { id: string; label: string; username?: string };
 export interface OrderListApi {
   /** Every row's account, top to bottom. */
@@ -82,8 +83,8 @@ export function OrderList({ accounts, ticked, api, onChange }: {
         <div className="avatar sm"><Avatar a={a} /></div>
         <span className="ord-txt"><b title={a.label}>{a.label}</b><small>{a.username ? `@${a.username}` : ''}</small></span>
         <span className="ord-btns">
-          <button type="button" className="icon-btn" data-move="-1" title={t('lo.up')} aria-label={t('lo.up')} disabled={i === 0} onClick={e => move(id, -1, e.currentTarget)}><Icon name="chevronUp" /></button>
-          <button type="button" className="icon-btn" data-move="1" title={t('lo.down')} aria-label={t('lo.down')} disabled={i >= order.length - 1} onClick={e => move(id, 1, e.currentTarget)}><Icon name="chevronDown" /></button>
+          <IconButton icon="chevronUp" type="button" data-move="-1" title={t('lo.up')} aria-label={t('lo.up')} disabled={i === 0} onClick={e => move(id, -1, e.currentTarget)} />
+          <IconButton icon="chevronDown" type="button" data-move="1" title={t('lo.down')} aria-label={t('lo.down')} disabled={i >= order.length - 1} onClick={e => move(id, 1, e.currentTarget)} />
         </span>
       </div>;
     })}

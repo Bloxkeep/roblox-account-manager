@@ -4,6 +4,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Icon, useHost } from './host';
 
+import { Button } from './kit';
 type Server = { jobId: string; playing: number; maxPlayers: number; ping?: number; fps?: number };
 type Friend = { userId: number; name?: string; displayName?: string; avatarUrl?: string; via: string; jobId: string; placeId?: number };
 type Reply = { servers: Server[]; next: string | null; busy?: boolean; retryIn?: number; left?: number };
@@ -110,7 +111,7 @@ export function Servers({ placeId, ids, chosen, chosenPrivate }: { placeId: numb
     else if (local(k) && items.length < 150 && next && spare() && !loading) load(true);
   };
   const moreLabel = moreUntil > Date.now() ? t('srv.moreIn', { n: secondsTo(moreUntil) }) : t('srv.more');
-  const more = next ? <button className="btn ghost w" data-more disabled={loading || moreUntil > Date.now()} onClick={() => load(true)}>{moreLabel}</button> : null;
+  const more = next ? <Button ghost wide data-more disabled={loading || moreUntil > Date.now()} onClick={() => load(true)}>{moreLabel}</Button> : null;
   // The list keeps its height (app.css); while another order loads, the rows so far stay dimmed instead of a spinner.
   const rowsShown = !busy && view.length > 0;
 
@@ -129,7 +130,7 @@ export function Servers({ placeId, ids, chosen, chosenPrivate }: { placeId: numb
           return <div key={i} className="srv-friend srv-private">
             <span className="ph"><Icon name="lock" /></span>
             <div className="gtxt"><b title={name}>{name}</b><small className={left ? 'warn' : ''} title={who}>{who}</small></div>
-            <button className="btn sm" data-private={i} disabled={full} title={full ? t('srv.full') : `${name} · ${t('srv.privatePickTip')}`} onClick={() => chosenPrivate(placeId, s.accessCode)}>{t('srv.pick')}</button>
+            <Button size="sm" data-private={i} disabled={full} title={full ? t('srv.full') : `${name} · ${t('srv.privatePickTip')}`} onClick={() => chosenPrivate(placeId, s.accessCode)}>{t('srv.pick')}</Button>
           </div>;
         })}
     </div>
@@ -142,7 +143,7 @@ export function Servers({ placeId, ids, chosen, chosenPrivate }: { placeId: numb
           return <div key={i} className="srv-friend">
             {f.avatarUrl ? <img src={f.avatarUrl} alt="" /> : <span className="ph"><Icon name="user" /></span>}
             <div className="gtxt"><b title={name}>{name}</b><small>{f.name ? `@${f.name} · ` : ''}{t('srv.friendOf', { acc: f.via })}</small></div>
-            <button className="btn sm" data-friend={i} title={t('srv.useFriendTip', { name })} onClick={() => chosen(f.placeId || placeId, f.jobId)}>{t('srv.pick')}</button>
+            <Button size="sm" data-friend={i} title={t('srv.useFriendTip', { name })} onClick={() => chosen(f.placeId || placeId, f.jobId)}>{t('srv.pick')}</Button>
           </div>;
         })}
     </div>
@@ -150,11 +151,11 @@ export function Servers({ placeId, ids, chosen, chosenPrivate }: { placeId: numb
     {/* The orders, then (together, at the end of the line or on the next) "room for all" and a random server. */}
     <div className="srv-sort">{SORTS.map(k => <button key={k} className={`chip ${k === sort ? 'on' : ''}`} data-sort={k} aria-pressed={k === sort} onClick={() => pickSort(k)}>{t(`srv.sort.${k}`)}</button>)}
       <div className="srv-tools">
-        {party > 1 ? <button className={`btn sm ${room ? 'on' : ''}`} data-room aria-pressed={room} title={t('srv.roomTip', { n: party })} onClick={() => setRoom(!room)}><Icon name="users" />{t('srv.room', { n: party })}</button> : null}
-        <button className="btn sm" data-random disabled={!view.some(s => !isFull(s))} onClick={() => {
+        {party > 1 ? <Button size="sm" data-room pressed={room} title={t('srv.roomTip', { n: party })} onClick={() => setRoom(!room)}><Icon name="users" />{t('srv.room', { n: party })}</Button> : null}
+        <Button size="sm" data-random disabled={!view.some(s => !isFull(s))} onClick={() => {
           const open = view.filter(s => !isFull(s));
           if (open.length) { const s = open[Math.floor(Math.random() * open.length)]; chosen(placeId, s.jobId); }
-        }}><Icon name="shuffle" />{t('srv.random')}</button>
+        }}><Icon name="shuffle" />{t('srv.random')}</Button>
       </div>
     </div>
     <div className={`srv-list${rowsShown && loading ? ' stale' : ''}${!rowsShown ? ' note' : ''}`} id="srv-list">
@@ -164,11 +165,11 @@ export function Servers({ placeId, ids, chosen, chosenPrivate }: { placeId: numb
           <b>{t('srv.players', { n: s.playing, max: s.maxPlayers })}{friendsIn(s.jobId) ? <>{' '}<span className="srv-friend-tag" title={t('srv.friendsHere')}><Icon name="users" />{friendsIn(s.jobId)}</span></> : null}</b>
           <span className="srv-ping" title={t('srv.pingTip')}>{s.ping ? t('srv.ping', { ms: s.ping }) : ''}</span>
           <span className="srv-ping" title={t('srv.fpsTip')}>{s.fps ? t('srv.fpsVal', { fps: Math.round(s.fps) }) : ''}</span>
-          <button className="btn sm" disabled={isFull(s)} title={isFull(s) ? t('srv.full') : t('srv.pickTip')} onClick={() => chosen(placeId, s.jobId)}>{t('srv.pick')}</button>
+          <Button size="sm" disabled={isFull(s)} title={isFull(s) ? t('srv.full') : t('srv.pickTip')} onClick={() => chosen(placeId, s.jobId)}>{t('srv.pick')}</Button>
         </div>)}{more}</>
         : loading ? [0, 1, 2, 3].map(i => <div key={i} className="skel-row" />)
         : failed ? <div className="note bad srv-failed" role="alert"><Icon name="alert" /><span>{t('srv.loadError')}</span>
-          <button className="btn sm" onClick={() => load(false)}>{t('srv.retry')}</button></div>
+          <Button size="sm" onClick={() => load(false)}>{t('srv.retry')}</Button></div>
         : items.length ? <><div className="picker-empty">{t('srv.noneRoom', { n: party })}</div>{more}</>
         : <div className="picker-empty">{t('srv.none')}</div>}
     </div>

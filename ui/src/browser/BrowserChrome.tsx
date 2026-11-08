@@ -6,6 +6,7 @@
 import { useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type KeyboardEvent, type Ref } from 'react';
 import { Icon, useHost } from '../host';
 
+import { Button, IconButton } from '../kit';
 export interface BrowserTab {
   id: string;
   /** The account's name as the app shows it (Hide account names holds), whoever signed in on a blank tab, or Roblox. */
@@ -83,13 +84,13 @@ export function BrowserChrome({ d, on }: { d: BrowserData; on: BrowserOn }) {
 
   const site = d.host ? <span className="bw-site" title={d.host}><Icon name="lock" /><span>{d.host}</span></span> : null;
   const status = <span className={`bw-msg${d.tone ? ` ${d.tone}` : ''}`} role="status" title={d.message || undefined}>{d.message}</span>;
-  const retry = d.retry ? <button type="button" className="btn sm" onClick={() => on.act('retry')}>{t('bw.retry')}</button> : null;
+  const retry = d.retry ? <Button type="button" size="sm" onClick={() => on.act('retry')}>{t('bw.retry')}</Button> : null;
 
   if (d.mode === 'login') {
     return <div ref={root} className="bw login">
       <div className="bw-bar">
         {site}{status}{retry}
-        <button type="button" className="btn sm primary" onClick={() => on.act('done')}>{t('common.done')}</button>
+        <Button type="button" size="sm" kind="primary" onClick={() => on.act('done')}>{t('common.done')}</Button>
       </div>
     </div>;
   }
@@ -97,11 +98,11 @@ export function BrowserChrome({ d, on }: { d: BrowserData; on: BrowserOn }) {
     <Tabs tabs={d.tabs} on={on} />
     <div className="bw-bar">
       <AccountPicker d={d} on={on} />
-      <button type="button" className="icon-btn" disabled={!d.back} title={t('bw.back')} aria-label={t('bw.back')} onClick={() => on.act('back')}><Icon name="chevronLeft" /></button>
-      <button type="button" className="icon-btn" disabled={!d.forward} title={t('bw.forward')} aria-label={t('bw.forward')} onClick={() => on.act('forward')}><Icon name="chevronRight" /></button>
-      <button type="button" className="icon-btn" title={t('bw.reload')} aria-label={t('bw.reload')} onClick={() => on.act('reload')}><Icon name="refresh" /></button>
+      <IconButton icon="chevronLeft" type="button" disabled={!d.back} title={t('bw.back')} aria-label={t('bw.back')} onClick={() => on.act('back')} />
+      <IconButton icon="chevronRight" type="button" disabled={!d.forward} title={t('bw.forward')} aria-label={t('bw.forward')} onClick={() => on.act('forward')} />
+      <IconButton icon="refresh" type="button" title={t('bw.reload')} aria-label={t('bw.reload')} onClick={() => on.act('reload')} />
       {site}{status}{retry}
-      {d.save ? <button type="button" className="btn sm primary" title={t('bw.saveTip')} onClick={() => on.act('save')}>{t('bw.save')}</button> : null}
+      {d.save ? <Button type="button" size="sm" kind="primary" title={t('bw.saveTip')} onClick={() => on.act('save')}>{t('bw.save')}</Button> : null}
     </div>
   </div>;
 }
@@ -134,7 +135,7 @@ function Tabs({ tabs, on }: { tabs: BrowserTab[]; on: BrowserOn }) {
       <button type="button" className="bw-x" tabIndex={-1} title={t('bw.close')} aria-label={t('bw.close')} onClick={() => on.act('close', { id: x.id })}><Icon name="x" /></button>
     </div>)}
     </div>
-    <button type="button" className="icon-btn bw-new" title={t('bw.newTip')} aria-label={t('bw.new')} onClick={() => on.act('newTab')}><Icon name="plus" /></button>
+    <IconButton icon="plus" type="button" className="bw-new" title={t('bw.newTip')} aria-label={t('bw.new')} onClick={() => on.act('newTab')} />
   </div>;
 }
 

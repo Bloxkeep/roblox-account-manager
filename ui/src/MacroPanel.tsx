@@ -7,6 +7,7 @@ import { useState, type ReactNode } from 'react';
 import { Icon, useHost } from './host';
 import { asPoint, keyName, msText, type Macro, type Option } from './macros';
 
+import { Button, IconButton } from './kit';
 export function PlayerSees({ m, options, counts, areas, setLabel, move, remove, tabs, tab, setTab, addTab, renameTab, removeTab, moveTo, add, setChoices,
   features, openFeature, addFeature, children }: {
   m: Macro; options: Option[]; counts: string[]; areas: number; setLabel: (name: string, label: string) => void;
@@ -62,7 +63,7 @@ export function PlayerSees({ m, options, counts, areas, setLabel, move, remove, 
   ]);
   return <section className="mc-sees" aria-labelledby="mc-sees-h">
     <div className="mc-sees-head"><b id="mc-sees-h">{t('macro.panel.title')}</b><small>{t('macro.panel.sub')}</small>
-      <button type="button" className="btn sm" id="mc-sees-add" onClick={e => addMenu(e.currentTarget)}><Icon name="plus" /><span>{t('macro.opt.add')}</span></button></div>
+      <Button type="button" size="sm" id="mc-sees-add" onClick={e => addMenu(e.currentTarget)}><Icon name="plus" /><span>{t('macro.opt.add')}</span></Button></div>
     <div className="mp-win" aria-label={t('macro.panel.preview')}>
       <div className="mp-title"><b>{m.name.trim() || t('macro.namePh')}</b><em>{t('macro.beta')}</em>
         <span className="mp-x" aria-hidden="true">–</span><span className="mp-x" aria-hidden="true"><Icon name="x" /></span></div>
@@ -81,11 +82,11 @@ export function PlayerSees({ m, options, counts, areas, setLabel, move, remove, 
           onChange={e => setLabel(o.name, e.target.value)} />
         {o.kind === 'heading' ? null : <span className="mp-val">{value(o)}</span>}
         <span className="mp-acts">
-          {tabs.length ? <button type="button" className="icon-btn" title={t('macro.tab.moveTo')} aria-label={`${t('macro.tab.moveTo')}: ${o.label}`}
-            onClick={e => tabMenu(e.currentTarget, o)}><Icon name="chevronRight" /></button> : null}
-          <button type="button" className="icon-btn" title={t('lo.up')} aria-label={`${t('lo.up')}: ${o.label}`} disabled={k === 0} onClick={() => move(o.name, -1)}><Icon name="chevronUp" /></button>
-          <button type="button" className="icon-btn" title={t('lo.down')} aria-label={`${t('lo.down')}: ${o.label}`} disabled={k === shown.length - 1} onClick={() => move(o.name, 1)}><Icon name="chevronDown" /></button>
-          <button type="button" className="icon-btn" title={t('macro.panel.remove')} aria-label={`${t('macro.panel.remove')}: ${o.label}`} onClick={e => remove(o.name, e.currentTarget)}><Icon name="x" /></button>
+          {tabs.length ? <IconButton icon="chevronRight" type="button" title={t('macro.tab.moveTo')} aria-label={`${t('macro.tab.moveTo')}: ${o.label}`}
+            onClick={e => tabMenu(e.currentTarget, o)} /> : null}
+          <IconButton icon="chevronUp" type="button" title={t('lo.up')} aria-label={`${t('lo.up')}: ${o.label}`} disabled={k === 0} onClick={() => move(o.name, -1)} />
+          <IconButton icon="chevronDown" type="button" title={t('lo.down')} aria-label={`${t('lo.down')}: ${o.label}`} disabled={k === shown.length - 1} onClick={() => move(o.name, 1)} />
+          <IconButton icon="x" type="button" title={t('macro.panel.remove')} aria-label={`${t('macro.panel.remove')}: ${o.label}`} onClick={e => remove(o.name, e.currentTarget)} />
         </span>
       </li>)}</ul> : <p className="mp-none">{t(tabs.length ? 'macro.tab.empty' : 'macro.panel.none')}</p>}
       <div className="mp-foot">{areas ? <span className="mp-btn">{t('macro.panel.areas')}</span> : null}

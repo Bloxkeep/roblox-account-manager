@@ -4,6 +4,7 @@
 import { Fragment, useEffect, useImperativeHandle, useRef, useState, type ReactNode, type Ref } from 'react';
 import { useAppState, useHost } from './host';
 
+import { Button } from './kit';
 type Added = { id: string; label: string; merged?: boolean };
 export interface QuickLoginApi {
   added(): Added[];
@@ -115,7 +116,7 @@ export function QuickLogin({ forName, forRealm, api, browserButton }: {
   useEffect(() => { const b = browserButton(); if (b) b.hidden = realm === 'vng'; }, [realm]);
 
   const again = () => { st.current.expiredInRow = 0; start(); };
-  const newCode = <button className="btn sm" data-new onClick={again}>{t('ql.newCode')}</button>;
+  const newCode = <Button size="sm" data-new onClick={again}>{t('ql.newCode')}</Button>;
   const status: [ReactNode, string] = phase === 'getting' ? [<><span className="spin" /><span>{t('ql.getting')}</span></>, '']
     : phase === 'waiting' ? [<><span className="spin" /><span>{t('ql.waiting', { time: mmss(Math.max(0, Math.ceil((until - Date.now()) / 1000))) })}</span></>, '']
     : phase === 'linked' ? [<>{linked.picture ? <img className="ql-pic" src={linked.picture} alt="" /> : <span className="spin" />}

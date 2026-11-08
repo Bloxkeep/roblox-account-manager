@@ -7,6 +7,7 @@ import { richNodes } from './rich';
 import { Avatar } from './Avatar';
 import { DayStrip } from './DayStrip';
 
+import { Button, IconButton } from './kit';
 type Account = Record<string, any>;
 
 const isLocal = (a: Account) => a.state === 'running';
@@ -146,10 +147,10 @@ export function AddOptions() {
     </div>
     <div className="start-more">
       <div className="ways"><span>{t('start.more')}</span>
-        <button className="btn sm ghost" data-act="add-create" title={t('pw.createTip')}>{t('pw.create')}</button>
-        <button className="btn sm ghost" data-act="add-cookie">{t('start.cookie')}</button>
-        <button className="btn sm ghost" data-act="import-vault" title={t('start.vaultTip')}>{t('start.vault')}</button>
-        <button className="btn sm ghost" data-act="open-web" title={t('start.webTip')}>{t('start.web')}</button></div>
+        <Button size="sm" ghost data-act="add-create" title={t('pw.createTip')}>{t('pw.create')}</Button>
+        <Button size="sm" ghost data-act="add-cookie">{t('start.cookie')}</Button>
+        <Button size="sm" ghost data-act="import-vault" title={t('start.vaultTip')}>{t('start.vault')}</Button>
+        <Button size="sm" ghost data-act="open-web" title={t('start.webTip')}>{t('start.web')}</Button></div>
     </div>
   </>;
 }
@@ -235,7 +236,7 @@ export function AccountGrid() {
   if (!shown.length) {
     return <div id="grid">{all.length
       ? <div className="empty"><h2>{t('nores.title')}</h2><p>{t('nores.text')}</p>
-        <div className="row"><button className="btn" data-act="clear-search">{t(page.query.trim() ? 'nores.clear' : 'nores.all')}</button></div></div>
+        <div className="row"><Button data-act="clear-search">{t(page.query.trim() ? 'nores.clear' : 'nores.all')}</Button></div></div>
       : <div className="empty"><img className="art" src={logo} alt="" /><h2>{t('empty.title')}</h2><StartSteps /><p>{t('empty.text')}</p><AddOptions /></div>}</div>;
   }
   const cols = asList ? listColumns(shown, host.fmtNum) : '';
@@ -468,8 +469,8 @@ function AccountCard({ a, sel }: { a: Account; sel: boolean }) {
     <DayStrip id={a.id} />
     <div className="card-actions">
       {action}
-      <button className="icon-btn" data-act="edit" title={t('card.editTip')} aria-label={t('card.editTip')}><Icon name="edit" /></button>
-      <button className="icon-btn" data-act="card-menu" title={t('card.moreTip')} aria-label={t('card.moreTip')} aria-haspopup="menu"><Icon name="more" /></button>
+      <IconButton icon="edit" data-act="edit" title={t('card.editTip')} aria-label={t('card.editTip')} />
+      <IconButton icon="more" data-act="card-menu" title={t('card.moreTip')} aria-label={t('card.moreTip')} aria-haspopup="menu" />
     </div>
   </article>;
 }
@@ -567,7 +568,7 @@ function AccountRow({ a, sel, cols }: { a: Account; sel: boolean; cols: string }
         <span className="row-up" title={t('card.upTip')}><Icon name="clock" /><b className="up">{up}</b></span>{vng}</div>
       : <div className={`row-status ${st.cls}`} title={st.text}>{badge}{st.until ? <span>{until(st.until, 'rj.rowMin', 'rj.rowSoon')}</span> : st.text}{vng}</div>}
     <RowColumns a={a} c={JSON.parse(cols)} local={local} />
-    <div className="row-actions"><RowAction>{action}</RowAction><button className="icon-btn" data-act="card-menu" title={t('card.moreTip')} aria-label={t('card.moreTip')} aria-haspopup="menu"><Icon name="more" /></button></div>
+    <div className="row-actions"><RowAction>{action}</RowAction><IconButton icon="more" data-act="card-menu" title={t('card.moreTip')} aria-label={t('card.moreTip')} aria-haspopup="menu" /></div>
   </article>;
 }
 
@@ -744,16 +745,16 @@ function Picker({ P }: { P: PageState['picker'] }) {
       : saved ? rows.map((s, i) => <div key={s.id} className={`game-row saved ${i === P.index ? 'on' : ''}`} role="option" id={`pk-${i}`} aria-selected={i === P.index} data-act="pick-game" data-i={i}>
         <GameIcon key={s.iconUrl || ''} url={s.iconUrl} holder={() => <span className="gph"><Icon name="bookmark" /></span>} />
         <div className="gtxt"><b title={s.name}>{s.name}</b><small>{[s.gameName || (s.placeId ? t('dock.placeN', { id: s.placeId }) : ''), s.link ? t('sv.kindLink') : '', s.code ? t('sv.kindCode', { code: s.code }) : ''].filter(Boolean).join(' · ')}</small></div>
-        {s.code ? <button className="icon-btn" tabIndex={-1} data-act="copy-server-code" data-i={i} title={t('sv.copyCode')} aria-label={t('sv.copyCode')}><Icon name="copy" /></button> : null}
+        {s.code ? <IconButton icon="copy" tabIndex={-1} data-act="copy-server-code" data-i={i} title={t('sv.copyCode')} aria-label={t('sv.copyCode')} /> : null}
         {arming === s.id
-          ? <button className="btn sm danger sv-del" tabIndex={-1} data-act="delete-server" data-i={i}>{t('sv.deleteQ')}</button>
-          : <button className="icon-btn" tabIndex={-1} data-act="arm-delete-server" data-i={i} title={t('sv.delete')} aria-label={t('sv.delete')}><Icon name="x" /></button>}
+          ? <Button size="sm" kind="danger" className="sv-del" tabIndex={-1} data-act="delete-server" data-i={i}>{t('sv.deleteQ')}</Button>
+          : <IconButton icon="x" tabIndex={-1} data-act="arm-delete-server" data-i={i} title={t('sv.delete')} aria-label={t('sv.delete')} />}
       </div>)
       : rows.map((g, i) => <div key={`${g.placeId}-${i}`} className={`game-row ${i === P.index ? 'on' : ''}`} role="option" id={`pk-${i}`} aria-selected={i === P.index} data-act="pick-game" data-i={i}>
         <GameIcon key={g.iconUrl || ''} url={g.iconUrl} holder={() => <span className="gph"><Icon name="gamepad" /></span>} />
         <div className="gtxt"><b title={g.name}>{g.name}</b><small>{g.playing ? t('dock.playing', { n: fmtNum(g.playing) }) : t('dock.placeN', { id: g.placeId })}</small></div>
-        <button className={`icon-btn pin ${g.pinned ? 'on' : ''}`} tabIndex={-1} data-act="pin-game" data-i={i} title={t(g.pinned ? 'picker.unpin' : 'picker.pin')}
-          aria-label={t(g.pinned ? 'picker.unpin' : 'picker.pin')} aria-pressed={!!g.pinned}><Icon name={g.pinned ? 'starFill' : 'star'} /></button>
+        <IconButton className={`pin ${g.pinned ? 'on' : ''}`} tabIndex={-1} data-act="pin-game" data-i={i} title={t(g.pinned ? 'picker.unpin' : 'picker.pin')}
+          aria-label={t(g.pinned ? 'picker.unpin' : 'picker.pin')} aria-pressed={!!g.pinned} icon={g.pinned ? 'starFill' : 'star'} />
       </div>)}</div>
   </>;
 }

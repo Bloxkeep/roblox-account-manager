@@ -4,6 +4,7 @@ import { Icon, useAppState, useHost } from '../host';
 import { SIZES, SnapPicker } from '../Snap';
 import { Group, Page, Row, Switch, useLocal } from './parts';
 
+import { Button } from '../kit';
 export function LaunchPage({ title }: { title: string }) {
   const { t, call, setMulti } = useHost();
   const app = useAppState();
@@ -115,7 +116,7 @@ export function LaunchPage({ title }: { title: string }) {
           <label>{t('snap.height')} <input type="number" className="field sm" id="s-winh" min="120" max="4320" step="10" value={winH}
             onChange={e => setWinH(e.target.value)} onBlur={() => saveSize()} onKeyDown={e => { if (e.key === 'Enter') saveSize(); }} /></label>
           <span className="muted">px</span>
-          <button className="btn sm" data-act="arrange"><Icon name="screens" /><span>{t('m.arrange')}</span></button>
+          <Button size="sm" data-act="arrange"><Icon name="screens" /><span>{t('m.arrange')}</span></Button>
         </div> : null}
       </div>
     </Group>
@@ -126,7 +127,7 @@ export function LaunchPage({ title }: { title: string }) {
           {options.map(([value, words, ok]) => <option key={value} value={value} disabled={!ok}>{ok ? words : t('launch.missing', { name: words })}</option>)}
         </select>
         {/* A double click opens one file window (app.js busy). */}
-        <button className="btn sm" data-act="pick-launcher" title={t('launch.pick')}>{t('launch.pickBtn')}</button>
+        <Button size="sm" data-act="pick-launcher" title={t('launch.pick')}>{t('launch.pickBtn')}</Button>
       </Row>
       <div id="s-store">{storeNote ? <div className="set-note"><Icon name="info" /><span>{storeNote}</span></div> : null}</div>
       <Row title={t('set.delay')} desc={t('set.delayDesc')}>

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Icon, useAppState, useHost } from './host';
 
+import { IconButton, Switch } from './kit';
 /** A vault as the app lists it: its picture is a "user/…" file it serves, or none. */
 export interface VaultInfo { id: string; name: string; picture: string | null }
 
@@ -39,8 +40,8 @@ export function VaultPicker() {
           <VaultFace vault={v} /></button>
         <span className="vp-name" title={v.name}>{v.name}</span>
         {/* Not the vault open behind the picker: switch away from it first. */}
-        {v.id === vaults.open ? null : <button className="icon-btn vp-remove" data-act="vault-remove" data-id={v.id} title={t('vault.remove')}
-          aria-label={`${t('vault.remove')}: ${v.name}`}><Icon name="x" /></button>}
+        {v.id === vaults.open ? null : <IconButton icon="x" className="vp-remove" data-act="vault-remove" data-id={v.id} title={t('vault.remove')}
+          aria-label={`${t('vault.remove')}: ${v.name}`} />}
       </li>)}
       <li className="vp-item">
         <button className="vp-tile vp-add" data-act="vault-add" title={t('vault.add')} aria-label={t('vault.add')}><Icon name="plus" /></button>
@@ -49,8 +50,7 @@ export function VaultPicker() {
     </ul>
     <label className="vp-ask">
       <span>{t('vault.ask')}</span>
-      <span className="switch"><input type="checkbox" id="vault-ask" checked={ask}
-        onChange={e => { setAsk(e.target.checked); call('setAskVault', { enabled: e.target.checked }); }} /><span /></span>
+      <Switch inside id="vault-ask" checked={ask} onChange={e => { setAsk(e.target.checked); call('setAskVault', { enabled: e.target.checked }); }} />
     </label>
   </div>;
 }

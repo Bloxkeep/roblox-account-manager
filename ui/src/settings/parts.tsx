@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type InputHTMLAttributes,
 import { Icon, useHost } from '../host';
 import { TimeInput } from '../TimeField';
 import { englishOf } from './index';
+import { Switch as KitSwitch } from '../kit';
 
 /** A value that answers a click at once and follows the app's state when it comes. A new again (a count) puts the saved
  * value back even when it didn't change: after a value the app refused. */
@@ -41,8 +42,7 @@ export function Row({ title, desc, extra, children }: { title: ReactNode; desc?:
 
 export function Switch({ id, label, title, checked, disabled, onChange }:
   { id: string; label?: string; title?: string; checked: boolean; disabled?: boolean; onChange: (on: boolean) => void }) {
-  return <label className="switch" title={title}><input type="checkbox" id={id} aria-label={label || undefined} checked={checked} disabled={disabled}
-    onChange={e => onChange(e.target.checked)} /><span /></label>;
+  return <KitSwitch title={title} id={id} aria-label={label || undefined} checked={checked} disabled={disabled} onChange={e => onChange(e.target.checked)} />;
 }
 
 /** A text box saved when left or on Enter (its change event), not on every key. commit answers false when refused here:

@@ -11,6 +11,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Icon, useHost } from '../host';
 import type { MenuItem } from '../Overlays';
 
+import { Button, IconButton } from '../kit';
 /** One Roblox window, as the app sends it. id: its window handle as a number; name as shown (Hide names holds). */
 export interface MonitorTile { id: string; pid: number; name: string; game: string; ramMb: number; ours: boolean; minimized: boolean;
   /** As the accounts' cards have it: ingame, joining, menu, disconnected, signedout; "" when nothing is known. */
@@ -221,11 +222,11 @@ export function MonitorView({ preview }: { preview: boolean }) {
             <span className="mon-tag">PID {tile.pid}</span>
           </div>
         </div>
-        <button type="button" className="icon-btn mon-min" tabIndex={-1}
+        <IconButton type="button" className="mon-min" tabIndex={-1}
           title={t(tile.minimized ? 'mon.restore' : 'mon.minimize')} aria-label={t(tile.minimized ? 'mon.restore' : 'mon.minimize')}
           onClick={() => act(tile, tile.minimized ? 'restore' : 'minimize')}>
           <Glyph d={tile.minimized ? 'restore' : 'min'} />
-        </button>
+        </IconButton>
       </div>
       <div className="mon-pic" data-pic={tile.id}>
         {tile.minimized ? <p>{t('mon.minimized')}</p> : preview && tile.picture ? <img src={tile.picture} alt="" draggable={false} /> : null}
@@ -250,9 +251,9 @@ export function MonitorView({ preview }: { preview: boolean }) {
     const meta = [tn('mon.windows', l.tiles.length), l.ramMb > 0 ? fmtMb(l.ramMb) : ''].filter(Boolean).join(' · ');
     return <section key={l.game} className={`mon-lane ${isOpen ? '' : 'folded'}`} aria-label={name}>
       <div className="mon-lane-head" onDoubleClick={e => { if (multi && !(e.target as Element).closest('button')) soloToggle(); }}>
-        {!multi ? null : solo ? <button type="button" className="btn ghost sm mon-back" onClick={soloToggle}><Icon name="chevronLeft" /><span>{t('mon.allGames')}</span></button>
-          : <button type="button" className="icon-btn mon-fold" aria-expanded={isOpen} title={t(isOpen ? 'mon.fold' : 'mon.unfold')}
-            aria-label={t(isOpen ? 'mon.fold' : 'mon.unfold')} onClick={toggle}><Icon name={isOpen ? 'chevronDown' : 'chevronRight'} /></button>}
+        {!multi ? null : solo ? <Button type="button" size="sm" ghost className="mon-back" onClick={soloToggle}><Icon name="chevronLeft" /><span>{t('mon.allGames')}</span></Button>
+          : <IconButton icon={isOpen ? 'chevronDown' : 'chevronRight'} type="button" className="mon-fold" aria-expanded={isOpen} title={t(isOpen ? 'mon.fold' : 'mon.unfold')}
+            aria-label={t(isOpen ? 'mon.fold' : 'mon.unfold')} onClick={toggle} />}
         <GameMark url={l.iconUrl} />
         <div className="mon-lane-title"><b title={name}>{name}</b><span className="mon-lane-meta">{meta}</span></div>
         <div className="mon-lane-states">
@@ -262,15 +263,15 @@ export function MonitorView({ preview }: { preview: boolean }) {
         </div>
         <div className="mon-lane-acts">
           {/* Over every app, or behind every app, as they are (owner, 2026-11-08). */}
-          <button type="button" className="icon-btn" title={t('mon.frontAll')} aria-label={t('mon.frontAll')} onClick={() => laneAct(l, 'front')}><Glyph d="front" /></button>
-          <button type="button" className="icon-btn" title={t('mon.backAll')} aria-label={t('mon.backAll')} onClick={() => laneAct(l, 'back')}><Glyph d="back" /></button>
-          <button type="button" className="icon-btn" title={t(anyUp ? 'mon.minAll' : 'mon.restoreAll')} aria-label={t(anyUp ? 'mon.minAll' : 'mon.restoreAll')}
-            onClick={() => l.tiles.filter(x => x.minimized !== anyUp).forEach(x => act(x, anyUp ? 'minimize' : 'restore'))}><Glyph d={anyUp ? 'min' : 'restore'} /></button>
-          {solo || !multi ? null : <button type="button" className="icon-btn" title={t('mon.solo')} aria-label={t('mon.solo')} onClick={soloToggle}><Glyph d="solo" /></button>}
-          <button type="button" className={`icon-btn mon-kill ${asking ? 'ask' : ''}`} title={t('mon.closeAll')}
+          <IconButton type="button" title={t('mon.frontAll')} aria-label={t('mon.frontAll')} onClick={() => laneAct(l, 'front')}><Glyph d="front" /></IconButton>
+          <IconButton type="button" title={t('mon.backAll')} aria-label={t('mon.backAll')} onClick={() => laneAct(l, 'back')}><Glyph d="back" /></IconButton>
+          <IconButton type="button" title={t(anyUp ? 'mon.minAll' : 'mon.restoreAll')} aria-label={t(anyUp ? 'mon.minAll' : 'mon.restoreAll')}
+            onClick={() => l.tiles.filter(x => x.minimized !== anyUp).forEach(x => act(x, anyUp ? 'minimize' : 'restore'))}><Glyph d={anyUp ? 'min' : 'restore'} /></IconButton>
+          {solo || !multi ? null : <IconButton type="button" title={t('mon.solo')} aria-label={t('mon.solo')} onClick={soloToggle}><Glyph d="solo" /></IconButton>}
+          <IconButton type="button" className={`mon-kill ${asking ? 'ask' : ''}`} title={t('mon.closeAll')}
             aria-label={asking ? tn('mon.closeAsk', l.tiles.length) : t('mon.closeAll')}
             onClick={() => { if (asking) { setCloseAsk(null); l.tiles.forEach(x => act(x, 'close')); } else setCloseAsk(l.game); }}>
-            {asking ? <span>{tn('mon.closeAsk', l.tiles.length)}</span> : <Icon name="power" />}</button>
+            {asking ? <span>{tn('mon.closeAsk', l.tiles.length)}</span> : <Icon name="power" />}</IconButton>
         </div>
       </div>
       <div className="mon-strip" aria-hidden="true">{l.tiles.map(x => <i key={x.id} className={health(x.status)} />)}</div>

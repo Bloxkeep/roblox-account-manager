@@ -4,6 +4,7 @@
 import { Icon, useAppState, useHost } from '../host';
 import { Group, Page, Row, Switch, TextBox, useLocal } from './parts';
 
+import { Button } from '../kit';
 /** The kinds of Windows notification that can be turned off one by one (the app maps each event to one of them). */
 export const NOTIFY_KINDS = ['drop', 'schedule', 'signin', 'ram', 'launch'];
 
@@ -39,17 +40,17 @@ export function NotifyPage({ title }: { title: string }) {
         desc={<>{t('set.phoneTopicDesc')}{phone.error ? <><br /><span className="warn-text">{phone.error}</span></> : null}</>}>
         <TextBox className="field sm phone-topic" saved={phone.topic} spellCheck={false} autoComplete="off" maxLength={200}
           aria-label={t('set.phoneTopic')} commit={v => { call('setPhone', { topic: v }); }} />
-        <button className="btn sm ghost" id="s-phone-copy" onClick={() => navigator.clipboard.writeText(phone.topic || '').then(() => toast(t('set.phoneCopied'), 'ok'), () => {})}>
-          <Icon name="copy" />{t('set.phoneCopy')}</button>
-        <button className="btn sm" id="s-phone-test" onClick={e => busy(e.currentTarget, async () => {
+        <Button size="sm" ghost id="s-phone-copy" onClick={() => navigator.clipboard.writeText(phone.topic || '').then(() => toast(t('set.phoneCopied'), 'ok'), () => {})}>
+          <Icon name="copy" />{t('set.phoneCopy')}</Button>
+        <Button size="sm" id="s-phone-test" onClick={e => busy(e.currentTarget, async () => {
           if (await call('phoneTest') !== undefined) toast(t('set.phoneSent'), 'ok');
-        })}>{t('set.phoneTest')}</button>
+        })}>{t('set.phoneTest')}</Button>
       </Row> : null}
     </Group>
     {/* Questions answered "Don't ask again" (a launch warning, closing all Roblox, locking…): all asked again at once. */}
     <Group id="asks" title={t('set.g.asks')}>
       <Row title={t('set.asks')} desc={<span id="s-asks-n">{skipped ? tn('set.asksN', skipped) : t('set.asksNone')}</span>}>
-        <button className="btn sm" data-act="reset-asks" id="s-asks-btn" disabled={!skipped}>{t('set.asksBtn')}</button>
+        <Button size="sm" data-act="reset-asks" id="s-asks-btn" disabled={!skipped}>{t('set.asksBtn')}</Button>
       </Row>
     </Group>
   </Page>;

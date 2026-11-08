@@ -9,6 +9,7 @@ import { Pop } from './MacroPop';
 import { richNodes } from './rich';
 import { MAX_MACROS, OPENERS, STEP_ICON, blankMacro, durText, isLive, keyName, recording, valueOf, type Ctx, type Macro, type Step, type MacroRun, type MacroTemplate, type Recording, type Templates } from './macros';
 
+import { Button, IconButton } from './kit';
 const NONE: Macro[] = [];
 const NO_RUNS: MacroRun[] = [];
 type Account = { id: string; label: string; username?: string; avatarUrl?: string | null; state?: string; session?: { pid?: number } | null };
@@ -166,10 +167,10 @@ export function MacrosView() {
         <p id="mc-sub">{sub.map((s, i) => <Fragment key={i}>{i ? <span className="sep">·</span> : null}{richNodes(s)}</Fragment>)}</p>
       </div>
       <div className="top-tools">
-        <button className="btn mc-stop-all" disabled={!anyLive && !rec} title={t('macro.stopAllTip')} onClick={e => stopAll(e.currentTarget)}>
-          <Icon name="stop" /><span>{t('macro.stopAll')}</span><kbd>Ctrl+Alt+0</kbd></button>
-        <button className="btn primary" id="mc-new" aria-haspopup="menu" onClick={e => { if (cards === e.currentTarget) return setCards(null); newMenu(e.currentTarget); }}>
-          <Icon name="plus" /><span>{t('macro.new')}</span><Icon name="chevronDown" /></button>
+        <Button className="mc-stop-all" disabled={!anyLive && !rec} title={t('macro.stopAllTip')} onClick={e => stopAll(e.currentTarget)}>
+          <Icon name="stop" /><span>{t('macro.stopAll')}</span><kbd>Ctrl+Alt+0</kbd></Button>
+        <Button kind="primary" id="mc-new" aria-haspopup="menu" onClick={e => { if (cards === e.currentTarget) return setCards(null); newMenu(e.currentTarget); }}>
+          <Icon name="plus" /><span>{t('macro.new')}</span><Icon name="chevronDown" /></Button>
       </div>
     </header>
     {rec ? <RecordingBar rec={rec} label={byId.get(rec.accountId)?.label || ''} /> : null}
@@ -228,7 +229,7 @@ function RecordingBar({ rec, label }: { rec: NonNullable<Recording>; label: stri
     <span className="mc-rec-dot" aria-hidden="true" />
     <b>{left > 0 ? t('macro.rec.starting', { name: label, n: left }) : t('macro.rec.on', { name: label, n: rec.steps })}</b>
     <small>{t('macro.rec.hint')}</small>
-    <button className="btn sm" onClick={e => busy(e.currentTarget, () => call('stopRecording', {}))}><Icon name="stop" /><span>{t('macro.rec.stop')}</span></button>
+    <Button size="sm" onClick={e => busy(e.currentTarget, () => call('stopRecording', {}))}><Icon name="stop" /><span>{t('macro.rec.stop')}</span></Button>
   </div>;
 }
 
@@ -286,19 +287,19 @@ function MacroRow({ m, i, count, runs, byId, shown, selected, canRun, dragging, 
         ? runs.map((r, k) => <span key={r.accountId} className={`mc-acc s-${r.status}`}><i aria-hidden="true" />{said[k]}</span>) : line}</span>
     </div>
     <Shape m={m} />
-    <button type="button" className={`btn sm mc-panel${shown ? ' on' : ''}`} data-mc="panel" aria-pressed={shown} title={t(shown ? 'macro.panelHide' : 'macro.panelShow')}
+    <Button type="button" size="sm" className="mc-panel" data-mc="panel" pressed={shown} title={t(shown ? 'macro.panelHide' : 'macro.panelShow')}
       aria-label={`${t('macro.panel')}: ${m.name}`} onClick={e => panel(e.currentTarget)}>{shown ? <i className="mc-panel-dot" aria-hidden="true" /> : <Icon name="screens" />}
-      <span>{t('macro.panel')}</span></button>
+      <span>{t('macro.panel')}</span></Button>
     {/* Run and Stop are two buttons (keyed), as Presets' Run and Close: Enter on Stop doesn't start it again. */}
     {liveRuns.length
-      ? <button key="stop" className="btn sm pv-run mc-stop" data-mc="stop" aria-label={`${t('macro.stop')}: ${m.name}`}
+      ? <Button key="stop" size="sm" className="pv-run mc-stop" data-mc="stop" aria-label={`${t('macro.stop')}: ${m.name}`}
         onClick={e => busy(e.currentTarget, async () => { if (await call('stopMacros', { id: m.id }) !== undefined) toast(t('macro.stopped'), 'ok'); })}>
-        <Icon name="stop" /><span>{t('macro.stop')}</span></button>
-      : <button key="run" className="btn sm pv-run" data-mc="run" aria-label={`${t('macro.run')}: ${m.name}`} disabled={cantRun}
+        <Icon name="stop" /><span>{t('macro.stop')}</span></Button>
+      : <Button key="run" size="sm" className="pv-run" data-mc="run" aria-label={`${t('macro.run')}: ${m.name}`} disabled={cantRun}
         title={cantRun ? t(m.targets === 'selected' ? 'macro.needSelect' : 'macro.noAccountsLeft') : undefined}
-        onClick={e => busy(e.currentTarget, () => host.runMacro(m.id, m.targets === 'selected' && sel.length ? sel : undefined))}><Icon name="play" /><span>{t('macro.run')}</span></button>}
-    <button type="button" className="icon-btn" data-mc="more" aria-haspopup="menu" title={t('macro.moreActs')} aria-label={`${t('macro.moreActs')}: ${m.name}`}
-      onClick={e => menu(e.currentTarget)}><Icon name="more" /></button>
+        onClick={e => busy(e.currentTarget, () => host.runMacro(m.id, m.targets === 'selected' && sel.length ? sel : undefined))}><Icon name="play" /><span>{t('macro.run')}</span></Button>}
+    <IconButton icon="more" type="button" data-mc="more" aria-haspopup="menu" title={t('macro.moreActs')} aria-label={`${t('macro.moreActs')}: ${m.name}`}
+      onClick={e => menu(e.currentTarget)} />
   </div>;
 }
 

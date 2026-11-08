@@ -9,6 +9,7 @@ import { keyFromEvent, keyName } from '../macros';
 import { durText } from '../macros';
 import type { FeatureNow, PanelOn, PanelOption } from './panelHost';
 
+import { Button, Switch } from '../kit';
 /** What every row reaches: the app, a hint under a row, and whether something holds the keyboard (typing, a key, a list). */
 export interface PanelCtx {
   on: PanelOn;
@@ -331,7 +332,7 @@ export function KeyField({ o, id, label }: { o: PanelOption; id: string; label: 
   const key = typeof o.value === 'string' ? o.value : '';
   return <>
     <kbd className={`pn-key${wait ? ' wait' : ''}`} aria-live="polite">{wait ? t('panel.pressKey') : keyName(t, key)}</kbd>
-    <button type="button" id={id} className={`btn sm${wait ? ' on' : ''}`} aria-pressed={wait} aria-label={`${t('panel.change')}: ${label}`}
+    <Button type="button" id={id} size="sm" pressed={wait} aria-label={`${t('panel.change')}: ${label}`}
       onClick={() => set(!wait)} onBlur={() => set(false)}
       onKeyDown={e => {
         if (!wait) return;
@@ -343,7 +344,7 @@ export function KeyField({ o, id, label }: { o: PanelOption; id: string; label: 
         if (!k) { hint(o.name, t('panel.badKey'), 3000); return; }
         set(false);
         if (k !== key) { on.act('set', { name: o.name, key: k }); changed(); }
-      }}>{t('panel.change')}</button>
+      }}>{t('panel.change')}</Button>
   </>;
 }
 
@@ -355,8 +356,8 @@ export function ColourField({ o, id, label }: { o: PanelOption; id: string; labe
   return <>
     <i className="pn-swatch" style={{ background: hex }} aria-hidden="true" />
     <span className="pn-hex">{hex}</span>
-    <button type="button" id={id} className="btn sm" aria-label={`${t('panel.pick')}: ${label}`}
-      onClick={() => { on.act('pickColour', { name: o.name }); changed(); }}>{t('panel.pick')}</button>
+    <Button type="button" id={id} size="sm" aria-label={`${t('panel.pick')}: ${label}`}
+      onClick={() => { on.act('pickColour', { name: o.name }); changed(); }}>{t('panel.pick')}</Button>
   </>;
 }
 
@@ -369,17 +370,16 @@ export function SpotField({ o, id, label }: { o: PanelOption; id: string; label:
   return <>
     <span className="pn-map" aria-hidden="true"><i style={{ left: `${p.x * 100}%`, top: `${p.y * 100}%` }} /></span>
     <span className="pn-hex">{pct(p.x)}, {pct(p.y)}</span>
-    <button type="button" id={id} className="btn sm" aria-disabled={!hasWindow || undefined} aria-label={`${t('panel.pickSpot')}: ${label}`}
+    <Button type="button" id={id} size="sm" aria-disabled={!hasWindow || undefined} aria-label={`${t('panel.pickSpot')}: ${label}`}
       title={hasWindow ? undefined : t('panel.openGame')}
-      onClick={() => { if (hasWindow) { on.act('pickPoint', { name: o.name }); changed(); } }}>{t('panel.pickSpot')}</button>
+      onClick={() => { if (hasWindow) { on.act('pickPoint', { name: o.name }); changed(); } }}>{t('panel.pickSpot')}</Button>
   </>;
 }
 
 export function SwitchField({ o, id, label }: { o: PanelOption; id: string; label: string }) {
   const { on, changed } = usePanel();
   const value = typeof o.value === 'number' && o.value !== 0;
-  return <label className="switch"><input type="checkbox" id={id} checked={value} aria-label={label}
-    onChange={e => { on.act('set', { name: o.name, value: e.target.checked ? 1 : 0 }); changed(); }} /><span /></label>;
+  return <Switch id={id} checked={value} aria-label={label} onChange={e => { on.act('set', { name: o.name, value: e.target.checked ? 1 : 0 }); changed(); }} />;
 }
 
 // ───────────────────────── a row ─────────────────────────

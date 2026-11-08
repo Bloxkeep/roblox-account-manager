@@ -2,6 +2,7 @@
 // the launch stay in app.js behind "Find and join", which reads and writes here through JoinPlayerApi.
 import { Fragment, useImperativeHandle, useRef, useState, type Ref } from 'react';
 import { Icon, useAppState, useHost } from './host';
+import { Check } from './kit';
 
 export type Tone = 'info' | 'warn' | 'error';
 export interface JoinPlayerApi {
@@ -49,8 +50,7 @@ export function JoinPlayer({ count, submit, api }: { count: number; submit: () =
             onClick={async () => { await call('forgetPlayer', { name: n }); box.current?.focus(); }}><Icon name="x" /></button>
         </span>)}
       </div>
-      <label className="dont-ask jp-follow"><input type="checkbox" id="jp-follow" checked={follow} onChange={e => setFollow(e.target.checked)} />
-        <span>{t('jp.follow')}</span></label>
+      <Check className="dont-ask jp-follow" id="jp-follow" checked={follow} onChange={e => setFollow(e.target.checked)} label={t('jp.follow')} />
       <div className={`jp-msg ${msg.tone}`} id="jp-msg" role="status" aria-live="polite" hidden={!msg.text}>
         {msg.spin ? <span className="spin" /> : null}
         {msg.bold !== undefined ? msg.text.split('\u0000').map((part, i) => <Fragment key={i}>{i ? <b>{msg.bold}</b> : null}{part}</Fragment>) : msg.text}</div>

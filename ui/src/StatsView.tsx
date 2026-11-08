@@ -9,6 +9,7 @@ import { Avatar } from './Avatar';
 import { AccountCards, Clock, GameMap } from './StatsViz';
 import { AltsBoard } from './Community';
 
+import { Button } from './kit';
 const STATS_PERIODS = [1, 7, 30];
 const AL_GROUPS = ['play', 'drops', 'schedule', 'signin', 'updates'];
 const AL_PAGE = 100;
@@ -194,7 +195,7 @@ export function StatsView({ api }: { api: Ref<StatsApi> }) {
                 <option value="">{t('alog.allKinds')}</option>
                 {AL_GROUPS.map(g => <option key={g} value={g}>{t(`alog.g.${g}`)}</option>)}
               </select>
-              <button className="btn sm" disabled={!log?.total} onClick={e => exportLog(e.currentTarget)}><Icon name="download" /><span>{t('alog.export')}</span></button>
+              <Button size="sm" disabled={!log?.total} onClick={e => exportLog(e.currentTarget)}><Icon name="download" /><span>{t('alog.export')}</span></Button>
             </div>
           </div>
           <div id="alog-body">
@@ -222,14 +223,14 @@ function Figures({ data: d, failed, retry, game, setGame }: { data: Stats | null
 
   if (!d) {
     return failed
-      ? <div className="empty"><h2>{t('stats.error')}</h2><div className="row"><button className="btn" onClick={e => retry(e.currentTarget)}><Icon name="refresh" />{t('srv.retry')}</button></div></div>
+      ? <div className="empty"><h2>{t('stats.error')}</h2><div className="row"><Button onClick={e => retry(e.currentTarget)}><Icon name="refresh" />{t('srv.retry')}</Button></div></div>
       // Not .empty: on a picture theme an empty tab gets a solid background (app.css), and a moment's wait mustn't swap it.
       : <div className="stats-wait"><span className="spin" /></div>;
   }
   if (!d.sessions) {
     return <div className="empty"><span className="pv-empty-icon"><Icon name="clock" /></span>
       {d.recorded ? <h2>{t('stats.emptyPeriod')}</h2> : <><h2>{t('stats.emptyTitle')}</h2><p>{t('stats.emptyText')}</p></>}
-      {game ? <div className="row"><button className="btn" onClick={() => setGame(null)}>{t('stats.allGames')}</button></div> : null}</div>;
+      {game ? <div className="row"><Button onClick={() => setGame(null)}>{t('stats.allGames')}</Button></div> : null}</div>;
   }
   // A deleted account keeps the name it had when it played; names hidden: the list's "Account N".
   const nameOf = (a: StatAccount) => hide ? byId(a.id)?.label || t('stats.deleted') : a.label || t('stats.deleted');
@@ -401,7 +402,7 @@ function Drops({ d, nameOf, fmtSecs }: { d: Stats; nameOf: (a: StatAccount) => s
       return <div key={l.kind} className="sd-row" data-kind={l.kind}>
         <div className="sd-text"><b>{t(`stats.why.${l.kind}`)}</b><small title={names}>{[tn('stats.timesN', l.times, { n: fmtNum(l.times) }), names].filter(Boolean).join(' · ')}</small></div>
         <span className="sd-time" title={t('stats.lostTip')}>{t('stats.lost', { t: fmtSecs(l.seconds) })}</span>
-        {action ? <button className="btn sm" onClick={() => go('settings:perf')}>{t(action)}</button> : null}
+        {action ? <Button size="sm" onClick={() => go('settings:perf')}>{t(action)}</Button> : null}
       </div>;
     })}
   </div>;
@@ -448,7 +449,7 @@ function Log({ log: d, failed, filtered, retry, more }: {
         </li>;
       })}</ol>
     </Fragment>)}
-    {d.total > d.entries.length ? <div className="alog-more"><button className="btn sm" onClick={e => more(e.currentTarget)}>{t('alog.more')}</button>
+    {d.total > d.entries.length ? <div className="alog-more"><Button size="sm" onClick={e => more(e.currentTarget)}>{t('alog.more')}</Button>
       <small>{t('alog.shown', { n: fmtNum(d.entries.length), total: fmtNum(d.total) })}</small></div> : null}
   </>;
 }

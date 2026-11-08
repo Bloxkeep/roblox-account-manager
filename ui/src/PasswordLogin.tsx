@@ -7,6 +7,7 @@ import { Fragment, useEffect, useImperativeHandle, useLayoutEffect, useRef, useS
 import type { Command } from './bridge';
 import { Icon, useHost } from './host';
 
+import { Button, IconButton } from './kit';
 const METHOD_LABEL: Record<string, string> = { authenticator: 'pw.auth', email: 'pw.email', sms: 'pw.sms' };
 const RESEND_WAIT = 30_000;
 type Added = { id: string; label: string; merged?: boolean };
@@ -252,9 +253,9 @@ export function PasswordLogin({ forRealm, api, way }: {
   const shownErr = err || waitErr;
   const errorLine = <div className="form-error" id="pw-err" hidden={!shownErr}>{shownErr}</div>;
   // Back ends this attempt in the app too: the password goes, and a reply still on its way is dropped.
-  const back = <button type="button" className="btn ghost w" data-back onClick={() => { call('loginCancel', {}, { silent: true }); resetTwoStep(); draw('login'); }}>{t('pw.back')}</button>;
-  const wayButton = (name: string, words: string, extra: { className?: string; title?: string } = {}) =>
-    <button type="button" className={extra.className ?? 'btn sm ghost'} data-x2={name} title={extra.title} onClick={() => way(name, realm)}>{words}</button>;
+  const back = <Button type="button" ghost wide data-back onClick={() => { call('loginCancel', {}, { silent: true }); resetTwoStep(); draw('login'); }}>{t('pw.back')}</Button>;
+  const wayButton = (name: string, words: string, extra: { title?: string } = {}) =>
+    <Button type="button" size="sm" ghost data-x2={name} title={extra.title} onClick={() => way(name, realm)}>{words}</Button>;
   let screen: ReactNode;
 
   if (step === 'captcha' || step === 'finish') {
@@ -267,8 +268,8 @@ export function PasswordLogin({ forRealm, api, way }: {
       </div>
       <div className="auth-acts">
         {errorLine}
-        <button type="button" className="btn primary w" id={captcha ? 'pw-solve' : 'pw-finish'} ref={ref(captcha ? 'solve' : 'finish')}
-          onClick={e => solveOrFinish(e.currentTarget, captcha ? 'loginCaptcha' : 'loginFinish')}>{t(captcha ? 'pw.solve' : 'pw.retry')}</button>
+        <Button type="button" kind="primary" wide id={captcha ? 'pw-solve' : 'pw-finish'} ref={ref(captcha ? 'solve' : 'finish')}
+          onClick={e => solveOrFinish(e.currentTarget, captcha ? 'loginCaptcha' : 'loginFinish')}>{t(captcha ? 'pw.solve' : 'pw.retry')}</Button>
         {back}
       </div>
     </>;
@@ -309,8 +310,8 @@ export function PasswordLogin({ forRealm, api, way }: {
             {!wasSent ? t('pw.send') : resendWait > 0 ? t('pw.resendIn', { s: resendWait }) : t('pw.resend')}</button>
         </div>
         {errorLine}
-        <button className="btn primary w" type="submit" id="pw-verify" ref={ref('verify')}>
-          {verifyWait > 0 ? t('pw.verifyIn', { s: verifyWait }) : t('pw.verify')}</button>
+        <Button kind="primary" wide type="submit" id="pw-verify" ref={ref('verify')}>
+          {verifyWait > 0 ? t('pw.verifyIn', { s: verifyWait }) : t('pw.verify')}</Button>
         {back}
       </form>
     </>;
@@ -330,7 +331,7 @@ export function PasswordLogin({ forRealm, api, way }: {
           }}>{words}</button>)}
       </div>
       {added.length ? <div className="note ok auth-added" role="status"><Icon name="check" /><span>{t('pw.addedList', { names: added.map(x => x.label).join(', ') })}</span>
-        <button type="button" className="btn sm primary" data-x2="done" onClick={() => way('done', realm)}>{t('common.done')}</button></div> : null}
+        <Button type="button" size="sm" kind="primary" data-x2="done" onClick={() => way('done', realm)}>{t('common.done')}</Button></div> : null}
       <div className="auth-phone">
         <button type="button" className="start-opt rec" data-x2="phone" onClick={() => way('phone', realm)}><Icon name="qr" />
           <span><b>{t('start.phone')}<em className="rec-tag">{t('start.rec')}</em></b><small>{t('start.phoneSub')}</small></span><Icon name="chevronRight" /></button>
@@ -343,10 +344,10 @@ export function PasswordLogin({ forRealm, api, way }: {
         <label className="auth-label">{t('pw.pass')}
           <span className="pw lead-ic"><Icon name="lock" /><input className="field" type={shown ? 'text' : 'password'} id="pw-pass" ref={ref('pass')} maxLength={200} autoComplete="off"
             value={pass} aria-invalid={bad.pass || undefined} onChange={e => { setErr(''); setBad(b => ({ ...b, pass: false })); setPass(e.target.value); }} />
-            <button type="button" className="icon-btn" id="pw-eye" title={t(shown ? 'lock.hidePw' : 'lock.showPw')} aria-label={t(shown ? 'lock.hidePw' : 'lock.showPw')}
-              aria-pressed={shown} onClick={() => setShown(!shown)}><Icon name={shown ? 'eyeOff' : 'eye'} /></button></span></label>
+            <IconButton icon={shown ? 'eyeOff' : 'eye'} type="button" id="pw-eye" title={t(shown ? 'lock.hidePw' : 'lock.showPw')} aria-label={t(shown ? 'lock.hidePw' : 'lock.showPw')}
+              aria-pressed={shown} onClick={() => setShown(!shown)} /></span></label>
         {errorLine}
-        <button className="btn primary w" type="submit" id="pw-go" ref={ref('go')}>{t('pw.go')}</button>
+        <Button kind="primary" wide type="submit" id="pw-go" ref={ref('go')}>{t('pw.go')}</Button>
         <p className="auth-hint">{t('pw.extra')}</p>
       </form>
       <div className="auth-more">

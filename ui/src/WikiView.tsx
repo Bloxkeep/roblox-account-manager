@@ -8,6 +8,7 @@ import { PriceList, type Prices } from './PriceList';
 import { useAskWhile } from './useAskWhile';
 
 import type { WikiItem as Item } from './wikiText';
+import { Button, Check, IconButton } from './kit';
 /** A kind's items as a table: what it's called, the wiki it's from. */
 export type ItemList = { name: string; source: { name: string; url: string }; items: Item[] };
 type PriceGame = Prices & { id: string; name: string; kind: 'prices' };
@@ -190,8 +191,7 @@ export function ItemTable({ game, loading, onOpen }: { game: ItemList; loading: 
         </tr></thead>
         <tbody>{shown.slice(0, 400).map(i => <tr key={i.id} className={picked.includes(i.id) ? 'picked' : ''}>
           <td className="ws-pick">
-            <label className="wk-check" title={t('wiki.compareAdd')}><input type="checkbox" checked={picked.includes(i.id)} disabled={!picked.includes(i.id) && picked.length >= COMPARE_MAX}
-              aria-label={`${t('wiki.compareAdd')}: ${i.name}`} onChange={() => togglePick(i.id)} /><span /></label></td>
+            <Check className="wk-check" title={t('wiki.compareAdd')} checked={picked.includes(i.id)} disabled={!picked.includes(i.id) && picked.length >= COMPARE_MAX} aria-label={`${t('wiki.compareAdd')}: ${i.name}`} onChange={() => togglePick(i.id)}><span /></Check></td>
           <td className="ws-name"><button type="button" className="ws-item" onClick={() => onOpen(i)}><Pic item={i} /><span>{i.name}</span></button></td>
           {columns.map(c => <td key={c.field} className={c.number ? 'num' : ''}>{valueOf(i, c.field)?.split('\n')[0] ?? '–'}</td>)}
         </tr>)}</tbody>
@@ -202,10 +202,10 @@ export function ItemTable({ game, loading, onOpen }: { game: ItemList; loading: 
     {picked.length ? <div className="wk-tray" role="region" aria-label={t('wiki.compare')}>
       <span className="wk-tray-items">{pickedItems.map(i => <span key={i.id} className="wk-tray-item">
         {i.img ? <img src={i.img} alt="" referrerPolicy="no-referrer" /> : null}{i.name}
-        <button type="button" className="icon-btn" title={t('wiki.compareRemove')} aria-label={`${t('wiki.compareRemove')}: ${i.name}`} onClick={() => togglePick(i.id)}><Icon name="x" /></button></span>)}</span>
-      <button type="button" className="btn sm ghost" onClick={() => { setPicked([]); setComparing(false); }}>{t('wiki.clear')}</button>
-      <button type="button" className="btn sm primary" id="wk-compare" disabled={picked.length < 2} onClick={() => setComparing(true)}>
-        <Icon name="grid" /><span>{t('wiki.compareN', { n: picked.length })}</span></button>
+        <IconButton icon="x" type="button" title={t('wiki.compareRemove')} aria-label={`${t('wiki.compareRemove')}: ${i.name}`} onClick={() => togglePick(i.id)} /></span>)}</span>
+      <Button type="button" size="sm" ghost onClick={() => { setPicked([]); setComparing(false); }}>{t('wiki.clear')}</Button>
+      <Button type="button" size="sm" kind="primary" id="wk-compare" disabled={picked.length < 2} onClick={() => setComparing(true)}>
+        <Icon name="grid" /><span>{t('wiki.compareN', { n: picked.length })}</span></Button>
     </div> : null}
     {comparing && pickedItems.length >= 2 ? <Compare items={pickedItems} t={t} word={word} onClose={() => setComparing(false)}
       onRemove={id => { togglePick(id); if (picked.length <= 2) setComparing(false); }} /> : null}
@@ -327,7 +327,7 @@ function Compare({ items, t, word, onClose, onRemove }: { items: Item[]; t: T; w
 
   return <div className="overlay wk-overlay" onMouseDown={e => { if (e.target === e.currentTarget) onClose(); }}>
     <div className={`wk-compare ${duel ? 'duel' : 'many'}`} role="dialog" aria-modal="true" aria-label={t('wiki.compare')} style={{ '--n': items.length } as React.CSSProperties}>
-      <button type="button" className="icon-btn cmp-close" title={t('wiki.close')} aria-label={t('wiki.close')} onClick={onClose}><Icon name="x" /></button>
+      <IconButton icon="x" type="button" className="cmp-close" title={t('wiki.close')} aria-label={t('wiki.close')} onClick={onClose} />
       <div className="cmp-head">
         {duel ? null : <div className="cmp-corner"><h2>{t('wiki.compare')}</h2></div>}
         {items.map((i, n) => <div key={i.id} className={`cmp-side s${n} ${ranked.length && wins[n] === top ? 'lead' : ''}`}>
@@ -335,7 +335,7 @@ function Compare({ items, t, word, onClose, onRemove }: { items: Item[]; t: T; w
           <b className="cmp-name">{i.name}</b>
           <small className="cmp-cat">{i.cat}</small>
           {ranked.length ? <span className="cmp-score"><em>{wins[n]}</em>/{ranked.length} {t('wiki.winsOf')}</span> : null}
-          <button type="button" className="icon-btn cmp-drop" title={t('wiki.compareRemove')} aria-label={`${t('wiki.compareRemove')}: ${i.name}`} onClick={() => onRemove(i.id)}><Icon name="x" /></button>
+          <IconButton icon="x" type="button" className="cmp-drop" title={t('wiki.compareRemove')} aria-label={`${t('wiki.compareRemove')}: ${i.name}`} onClick={() => onRemove(i.id)} />
           {duel && n === 0 ? <span className="cmp-vs" aria-hidden="true">VS</span> : null}
         </div>)}
       </div>
