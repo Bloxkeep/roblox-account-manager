@@ -664,7 +664,9 @@ public sealed class ShellForm : Form
             if (_lastState == FormWindowState.Minimized && WindowState != FormWindowState.Minimized && Opacity < 1 && !_fading)
             {
                 _cover?.Update();
-                BeginInvoke(FadeIn);
+                // A lambda, not the method group: FadeIn has optional parameters, so it would be an Action<double, bool>
+                // that BeginInvoke calls with none ("Parameter count mismatch", owner 2026-11-08).
+                BeginInvoke(() => FadeIn());
             }
             bool restored = _lastState == FormWindowState.Maximized && WindowState == FormWindowState.Normal;
             _lastState = WindowState;
@@ -885,7 +887,7 @@ public sealed class ShellForm : Form
         UpdateBackground();
         // Back from the tray (it faded away into it): fades in again, over the picture of the page (UpdateBackground).
         if (Visible && _shownOnce && Opacity < 1)
-            BeginInvoke(FadeIn);
+            BeginInvoke(() => FadeIn()); // a lambda: see OnResize
     }
 
     /// <summary>In the background, hide the page, put it to sleep (no timers or drawing, memory back to Windows) and poll
