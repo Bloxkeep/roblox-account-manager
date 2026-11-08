@@ -53,5 +53,7 @@ jobs:
           node build.mjs
       - name: Where the pieces disagree (report only)
         run: node Tests/ui/contract.mjs
+      - name: Sizes, gaps, corners and times come from app.css's tokens
+        run: node Tests/ui/tokens.mjs --strict
       - name: Bloxkeep's checks
         run: dotnet run --project Tests/Bloxkeep.Tests -c Release -- --timeout=8
