@@ -481,7 +481,7 @@ export default [
     await s.key('Tab', ['shift']);
   }),
   S('cards-double-click', '', async s => { await s.click({ css: '.card[data-id$="4"] .name' }, { double: true }); await s.wait(1500); }),
-  S('dock-recent-pick', '', async s => { await s.click({ css: '.recent-pick' }); await s.wait(800); }),
+  S('dock-recent-pick', '', async s => { await s.click({ css: '.recent-pick' }); await s.wait(800); }, { size: [1440, 860] }), // wide: at 1280 the game's picture takes the recent games' room
   S('game-picker-keys', '', async s => {
     await s.fill(key('dock.place'), '');
     await s.wait(600);

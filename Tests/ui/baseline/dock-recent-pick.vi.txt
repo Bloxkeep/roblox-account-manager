@@ -136,7 +136,10 @@ html [data-theme="dark" lang="vi"]
             button.chip [aria-pressed="false"] "Online"
               i.dot [style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:"]
               em "4"
-            button.chip.more [title="Bộ lọc khác" aria-haspopup="menu"] "+2"
+            button.chip [aria-pressed="false"] "Offline"
+              i.dot [style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:"]
+              em "3"
+            button.chip.more [title="Bộ lọc khác" aria-haspopup="menu"] "+1"
           div.seg [id="layout-seg"]
             button.on [title="Dạng thẻ" aria-label="Dạng thẻ" aria-pressed="true"]
               svg.i #19k0rtd
@@ -372,6 +375,9 @@ html [data-theme="dark" lang="vi"]
                   button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu" aria-label="Tùy chọn khác"]
                     svg.i #1e3omv2
         div.dock
+          button.game-thumb [id="game-thumb" title="Chọn game"]
+            span.gph
+              svg.i #sy1lqp
           div.dock-game.dock-step
             div.step-cap
               b "1"

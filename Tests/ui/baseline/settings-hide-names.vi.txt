@@ -144,6 +144,7 @@ html [data-theme="dark" lang="vi"]
                           span [id="s-theme-name"] "Tối"
                       div.ctl
                     div.tg-tabs [id="s-theme-groups"]
+                      button.chip [type="button" aria-pressed="false"] "Phổ biến"
                       button.chip.on [type="button" aria-pressed="true"] "Cơ bản"
                       button.chip [type="button" aria-pressed="false"] "Phong cảnh"
                       button.chip [type="button" aria-pressed="false"] "Màu sắc"

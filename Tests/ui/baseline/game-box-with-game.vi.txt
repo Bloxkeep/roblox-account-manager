@@ -372,6 +372,9 @@ html [data-theme="dark" lang="vi"]
                   button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu" aria-label="Tùy chọn khác"]
                     svg.i #1e3omv2
         div.dock
+          button.game-thumb [id="game-thumb" title="Chọn game"]
+            span.gph
+              svg.i #sy1lqp
           div.picker [id="picker"]
             div.picker-tabs [role="tablist"]
               button.on.ptab [role="tab" tabindex="-1"] "Gần đây"
@@ -839,6 +842,8 @@ html [data-theme="dark" lang="vi"]
                   button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu" aria-label="Tùy chọn khác"]
                     svg.i #1e3omv2
         div.dock
+          button.game-thumb [id="game-thumb" title="Chọn game"]
+            svg.i #sy1lqp
           div.picker [id="picker"]
             div.picker-head "Kết quả cho “adopt”"
             div.picker-list [id="picker-list" role="listbox"]
@@ -860,14 +865,6 @@ html [data-theme="dark" lang="vi"]
             div.dock-info [id="dock-info" aria-live="polite"]
               span.hint "Chọn game, chọn tài khoản rồi bấm ."
                 b "Vào game"
-              div.recents
-                div.recent [title="Blox Fruits"]
-                  button.recent-pick
-                    i.ph
-                      svg.i #sy1lqp
-                    span "Blox Fruits"
-                  button.rm [title="Xóa khỏi Gần đây" aria-label="Xóa khỏi Gần đây"]
-                    svg.i #1tyq039
           div.dock-server.dock-step
             div.step-cap
               b "2"

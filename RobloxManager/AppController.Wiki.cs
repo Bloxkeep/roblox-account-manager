@@ -12,11 +12,11 @@ public sealed partial class AppController
 {
     Uri WikiBot => WikiLink.BaseOf(FeedsTestUrl);
 
-    async Task<object?> WikiGamesAsync()
+    async Task<object?> WikiGamesAsync(bool again)
     {
         if (!FeedsAllowed)
             return new { games = Array.Empty<object>(), off = true };
-        var games = await WikiLink.GamesAsync(WikiBot);
+        var games = await WikiLink.GamesAsync(WikiBot, again);
         return new { games = games.Select(g => new { id = g.Id, name = g.Name, kind = g.Kind, count = g.Count, at = g.At, place = g.Place, wiki = g.Wiki }) };
     }
 

@@ -529,7 +529,7 @@ public sealed partial class AppController : IDisposable
         "discordTest" => SendDiscordNowAsync(summary: false),
         "setPhone" => Done(SetPhone(a)),
         "feedCards" => Done(FeedCardsDto()),
-        "wikiGames" => WikiGamesAsync(),
+        "wikiGames" => WikiGamesAsync(Bool(a, "again")),
         "gameLooks" => GameLooksAsync(a),
         "playedGames" => Done(PlayedGames()),
         "wikiGame" => WikiGameAsync(Str(a, "id")),

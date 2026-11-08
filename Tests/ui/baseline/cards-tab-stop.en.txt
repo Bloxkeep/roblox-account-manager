@@ -178,7 +178,7 @@ html [data-theme="dark" lang="en"]
                     svg.i #1ewcuky
                   button.icon-btn [title="Edit (F2)" tabindex="0" aria-label="Edit (F2)"]
                     svg.i #1hrhc9o
-                  button.icon-btn [title="More" tabindex="0" aria-haspopup="menu" aria-label="More" FOCUSED]
+                  button.icon-btn [title="More" tabindex="0" aria-haspopup="menu" aria-label="More"]
                     svg.i #1e3omv2
               article.card.local.sel [role="option" tabindex="-1" aria-label="Farm 1" aria-selected="true"]
                 span.check
@@ -373,6 +373,9 @@ html [data-theme="dark" lang="en"]
                   button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu" aria-label="More"]
                     svg.i #1e3omv2
         div.dock
+          button.game-thumb [id="game-thumb" title="Choose a game" FOCUSED]
+            span.gph
+              svg.i #sy1lqp
           div.dock-game.dock-step
             div.step-cap
               b "1"
@@ -385,14 +388,6 @@ html [data-theme="dark" lang="en"]
               span.players "412,873 playing"
               button.srv-open.srv-save [title="Save this server to join it again from the Saved tab: a private server’s link, or the code the game asks for." aria-label="Save server"]
                 svg.i #1c3gvph
-              div.recents
-                div.recent [title="[🎃] Adopt Me!"]
-                  button.recent-pick
-                    i.ph
-                      svg.i #sy1lqp
-                    span "[🎃] Adopt Me!"
-                  button.rm [title="Remove from recent" aria-label="Remove from recent"]
-                    svg.i #1tyq039
           div.dock-server.dock-step
             div.step-cap
               b "2"
@@ -589,7 +584,7 @@ html [data-theme="dark" lang="en"]
         div.scroll [id="scroll"]
           div [id="grid"]
             div.grid [role="listbox" aria-label="Accounts" aria-multiselectable="true"]
-              article.card [role="option" tabindex="0" aria-label="Alt" aria-selected="false" FOCUSED]
+              article.card [role="option" tabindex="0" aria-label="Alt" aria-selected="false"]
                 span.check
                   svg.i #14iobj
                 div.avatar
@@ -611,7 +606,7 @@ html [data-theme="dark" lang="en"]
                 div.daystrip [role="img" title="Not played today" aria-label="Not played today"]
                   span.ds-now [style="left:50%"]
                 div.card-actions
-                  button.pill-btn.play [tabindex="0"] "Play"
+                  button.pill-btn.play [tabindex="0" FOCUSED] "Play"
                     svg.i #1ewcuky
                   button.icon-btn [title="Edit (F2)" tabindex="0" aria-label="Edit (F2)"]
                     svg.i #1hrhc9o
@@ -810,6 +805,9 @@ html [data-theme="dark" lang="en"]
                   button.icon-btn [title="More" tabindex="-1" aria-haspopup="menu" aria-label="More"]
                     svg.i #1e3omv2
         div.dock
+          button.game-thumb [id="game-thumb" title="Choose a game"]
+            span.gph
+              svg.i #sy1lqp
           div.dock-game.dock-step
             div.step-cap
               b "1"
@@ -822,14 +820,6 @@ html [data-theme="dark" lang="en"]
               span.players "412,873 playing"
               button.srv-open.srv-save [title="Save this server to join it again from the Saved tab: a private server’s link, or the code the game asks for." aria-label="Save server"]
                 svg.i #1c3gvph
-              div.recents
-                div.recent [title="[🎃] Adopt Me!"]
-                  button.recent-pick
-                    i.ph
-                      svg.i #sy1lqp
-                    span "[🎃] Adopt Me!"
-                  button.rm [title="Remove from recent" aria-label="Remove from recent"]
-                    svg.i #1tyq039
           div.dock-server.dock-step
             div.step-cap
               b "2"

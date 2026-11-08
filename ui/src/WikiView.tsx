@@ -53,17 +53,39 @@ export async function wikiGamesNow(call: Host['call']) {
   return gamesNow;
 }
 
-/** The games with a wiki or a price list, asked for once the tab is first shown. */
-export function useWikiGames(shown: boolean) {
+/** When the list was last asked for again for games news brought that it lacked (by their ids), once per session each soon. */
+const askedAgain = new Map<string, number>();
+/** How long before a game still missing is asked about again (the bot keeps its list 10 minutes). */
+const AGAIN_EVERY = 10 * 60_000;
+
+/**
+ * The games with a wiki or a price list, asked for once the tab is first shown. A game news brings (a feed shown on the
+ * bot, at once) that the list hasn't got yet, added to the bot meanwhile, asks for the list again, past what the app
+ * keeps: its card showed only after Bloxkeep was opened again (owner, Steal An Egg, 2026-11-08). Each missing game at
+ * most every 10 minutes while the tab is shown, so one the bot has no wiki for doesn't ask on and on.
+ */
+export function useWikiGames(shown: boolean, newsIds: string[] = []) {
   const { call } = useHost();
   const [games, setGames] = useState<WikiInfo[] | null>(gamesNow);
   const [failed, setFailed] = useState(false);
+  const take = (d: { games: WikiInfo[] } | undefined) => { if (d) { gamesNow = d.games; setGames(d.games); setFailed(false); } else setFailed(true); };
   useAskWhile(shown, !games, () => {
     // Asked already from elsewhere (Game info's Wiki button) since this was drawn.
     if (gamesNow) { setGames(gamesNow); return Promise.resolve(); }
-    return (call('wikiGames', {}, { silent: true }) as Promise<{ games: WikiInfo[] } | undefined>)
-      .then(d => { if (d) { gamesNow = d.games; setGames(d.games); setFailed(false); } else setFailed(true); }, () => setFailed(true));
+    return (call('wikiGames', {}, { silent: true }) as Promise<{ games: WikiInfo[] } | undefined>).then(take, () => setFailed(true));
   });
+  const missing = games ? newsIds.filter(id => !games.some(g => g.id === id)).sort().join() : '';
+  const [round, setRound] = useState(0);
+  useEffect(() => {
+    if (!shown || !missing) return;
+    const now = Date.now(), ids = missing.split(',');
+    if (ids.some(id => now - (askedAgain.get(id) ?? 0) >= AGAIN_EVERY)) {
+      for (const id of ids) askedAgain.set(id, now);
+      (call('wikiGames', { again: true }, { silent: true }) as Promise<{ games: WikiInfo[] } | undefined>).then(d => { if (d) take(d); }, () => {});
+    }
+    const timer = setTimeout(() => setRound(n => n + 1), AGAIN_EVERY);
+    return () => clearTimeout(timer);
+  }, [shown, missing, round]);
   return { games, failed };
 }
 

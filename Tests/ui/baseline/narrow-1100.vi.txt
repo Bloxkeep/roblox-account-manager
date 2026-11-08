@@ -317,7 +317,13 @@ html [data-theme="dark" lang="vi"]
                   button.icon-btn [title="Tùy chọn khác" tabindex="-1" aria-haspopup="menu" aria-label="Tùy chọn khác"]
                     svg.i #1e3omv2
         div.dock
+          button.game-thumb [id="game-thumb" title="Chọn game"]
+            span.gph
+              svg.i #sy1lqp
           div.dock-game.dock-step
+            div.step-cap
+              b "1"
+              span "Game"
             label.inwrap [title="Place ID, link game hoặc link server riêng (Ctrl+L)"]
               svg.i #1u22jvi
               input [id="place" role="combobox" placeholder="Tìm game, hoặc dán link / Place ID…" autocomplete="off" maxlength="500" aria-autocomplete="list" aria-controls="picker-list" aria-expanded="false" aria-haspopup="listbox" aria-label="Tìm game, hoặc dán link / Place ID…" value="https://www.roblox.com/games/2753915549/Blox-Fruits"]
@@ -335,6 +341,10 @@ html [data-theme="dark" lang="vi"]
                   button.rm [title="Xóa khỏi Gần đây" aria-label="Xóa khỏi Gần đây"]
                     svg.i #1tyq039
           div.dock-server.dock-step
+            div.step-cap
+              b "2"
+              span "Server"
+              small "tùy chọn"
             label.inwrap.job [title="Mã của một server, để đưa nhiều tài khoản vào cùng server."]
               svg.i #ej9lod
               input [id="job" placeholder="Mã server (Job ID)" maxlength="60" aria-label="Mã server (Job ID)" value=""]
@@ -346,6 +356,9 @@ html [data-theme="dark" lang="vi"]
                 svg.i #145pp0l
                 span "Theo người chơi…"
           div.dock-go.dock-step [id="dock-actions"]
+            div.step-cap
+              b "3"
+              span "Vào"
             button.play-btn [title="Chọn tài khoản trước" aria-disabled="true"]
               svg.i #1ewcuky
               span "Vào game"

@@ -72,7 +72,7 @@ export function GamesView() {
   const picks: WikiPick[] = app.wikis?.games || [];
   const shown = usePage(p => p.view) === 'news';
   const { cards, loaded } = useFeedCards(shown);
-  const { games: botGames, failed } = useWikiGames(shown);
+  const { games: botGames, failed } = useWikiGames(shown, feeds.games.map(n => n.id));
   const played = usePlayed(shown);
   const community = useCommunity(shown);
   useEffect(() => { if (shown && feeds.fresh) call('feedSeen', {}, { silent: true }); }, [shown, feeds.fresh]);

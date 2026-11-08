@@ -260,30 +260,23 @@ html [data-theme="dark" lang="en"]
           span.wn-title
             img [alt="" src="logo.svg"]
             span "What’s new"
-              small "Bloxkeep 1.0.20 · November 7, 2026"
+              small "Bloxkeep 1.0.21 · November 8, 2026"
         button.icon-btn [title="Close"]
           svg.i #1tyq039
       div.modal-body
         section.improved.wn-group
           h4.wn-kind "Improved"
           ul.wn-notes
-            li "The sidebar’s Roblox card shows a face for each Roblox window (in a game, in the menu, dropped) and the PC’s RAM as studs."
-            li "Wiki in Game info opens the game’s wiki right in the Games tab."
-            li "Names shortened to their first letter, pictures kept."
-              b "Hide account names works like Discord’s streamer mode"
-            li "Voidstrap can open Roblox, like Bloxstrap and Fishstrap."
-            li "The window opens, restores and resizes more smoothly, with no white flash."
-            li "Statistics’ board of the PCs with the most accounts looks cleaner and works with the online count off."
-            li "Updating Roblox at once reopens the windows that were in a game."
-            li "Fast Flags say when your launcher replaces them."
-            li "More games in the Games tab."
+            li "Switch accounts right in the Roblox website window, from the corner at its top left."
+            li "Banned accounts have an Appeal button."
+            li "Arranging windows is more reliable, across screens too, and Ctrl+Alt+A brings them over every app."
+            li "Game monitor can bring a game’s windows to the front or send them to the back."
+            li "Settings shows which themes are popular."
+            li "A livelier opening, and a mid-size window keeps everything on show."
         section.fixed.wn-group
           h4.wn-kind "Fixed"
           ul.wn-notes
-            li "Statistics’ Top games shows your games again."
-            li "Joining with a private server link works again."
-            li "Changing the keyboard language no longer shows an error."
-            li "Small fixes in the account list, Game monitor and preset form."
+            li "Many small fixes to the window, tray, Mini window, Game monitor and Games tab."
         details.wn-older
           summary "Also in the 2 versions before"
             svg.i #1g7f83q

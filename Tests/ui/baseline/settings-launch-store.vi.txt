@@ -42,7 +42,7 @@ html [data-theme="dark" lang="vi"]
           div.sys [id="sys-card"]
             div.sys-head
               span.sys-count [title="Tài khoản chính · PID 1111\nFarm 1 · PID 2222"]
-                b [id="sys-count"] "2"
+                b [id="sys-count"] "3"
                 span [id="sys-count-label"] "cửa sổ"
                 span.sys-ram [id="sys-ram"] "1,7 GB"
               button.sys-close [id="sys-close" type="button" title="Đóng tất cả" aria-label="Đóng tất cả"]
@@ -50,6 +50,7 @@ html [data-theme="dark" lang="vi"]
             div.lobby
               svg.face.mood-play #jmg4f2
               svg.face.mood-play #1aptjyx
+              svg.face.mood-play #wbyqat
             div.bricks [id="sys-meter" title="RAM đã dùng 63% · trống 12 GB" aria-hidden="true"]
               i.r
               i.o
@@ -192,7 +193,9 @@ html [data-theme="dark" lang="vi"]
                         div.snap-opts
                           button.current.snap-opt [role="menuitemradio" type="button" title="Tự động" aria-checked="true" data-layout="fill"]
                             span.snap-screen
-                              span.snap-grid [style="grid-template-columns:repeat(2, 1fr);grid-template-rows:repeat(1, 1fr)"]
+                              span.snap-grid [style="grid-template-columns:repeat(2, 1fr);grid-template-rows:repeat(2, 1fr)"]
+                                span
+                                span
                                 span
                                 span
                             span.snap-name "Tự động"
@@ -365,7 +368,7 @@ html [data-theme="dark" lang="vi"]
           div.sys [id="sys-card"]
             div.sys-head
               span.sys-count [title="Tài khoản chính · PID 1111\nFarm 1 · PID 2222"]
-                b [id="sys-count"] "2"
+                b [id="sys-count"] "3"
                 span [id="sys-count-label"] "cửa sổ"
                 span.sys-ram [id="sys-ram"] "1,7 GB"
               button.sys-close [id="sys-close" type="button" title="Đóng tất cả" aria-label="Đóng tất cả"]
@@ -373,6 +376,7 @@ html [data-theme="dark" lang="vi"]
             div.lobby
               svg.face.mood-play #jmg4f2
               svg.face.mood-play #1aptjyx
+              svg.face.mood-play #wbyqat
             div.bricks [id="sys-meter" title="RAM đã dùng 63% · trống 12 GB" aria-hidden="true"]
               i.r
               i.o
@@ -515,7 +519,9 @@ html [data-theme="dark" lang="vi"]
                         div.snap-opts
                           button.current.snap-opt [role="menuitemradio" type="button" title="Tự động" aria-checked="true" data-layout="fill"]
                             span.snap-screen
-                              span.snap-grid [style="grid-template-columns:repeat(2, 1fr);grid-template-rows:repeat(1, 1fr)"]
+                              span.snap-grid [style="grid-template-columns:repeat(2, 1fr);grid-template-rows:repeat(2, 1fr)"]
+                                span
+                                span
                                 span
                                 span
                             span.snap-name "Tự động"

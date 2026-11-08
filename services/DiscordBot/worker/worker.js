@@ -2107,6 +2107,10 @@ async function priceImage(u, env, ctx) {
   return res;
 }
 
+/** The games the list is made of, as a short word: a new game (a deploy) makes the list's cache key a new one. */
+const GAMES_KEY = [...POPULAR_GAMES, ...WIKI_SOURCES, ...PRICE_SOURCES].map(g => `${g.game}:${g.place ?? ''}:${g.wiki ?? ''}`).join()
+  .split('').reduce((h, c) => (Math.imul(h, 31) + c.charCodeAt(0)) >>> 0, 7).toString(36);
+
 /**
  * The Wiki tab's list of games (/wiki) and one game's items (/wiki/<game>): kept 10 minutes per Cloudflare location, so
  * many apps opening the tab wake the object a few times an hour (an app keeps what it got for longer).
@@ -2115,7 +2119,8 @@ async function wiki(url, env, ctx) {
   const id = url.pathname === '/wiki' ? null : decodeURIComponent(url.pathname.slice('/wiki/'.length));
   if (id !== null && !/^[a-z0-9-]{1,40}$/.test(id))
     return Response.json({ error: 'not found' }, { status: 404 });
-  const key = new Request(`https://bloxkeep-bot.invalid/wiki${id ? `/${id}` : ''}`), cache = caches.default;
+  // The list's key changes with its games, so a new game (a deploy) isn't hidden behind the old list for 10 minutes.
+  const key = new Request(`https://bloxkeep-bot.invalid/wiki${id ? `/${id}` : `?g=${GAMES_KEY}`}`), cache = caches.default;
   const hit = await cache.match(key);
   if (hit)
     return hit;

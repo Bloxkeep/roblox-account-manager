@@ -144,6 +144,7 @@ html [data-theme="dark" lang="en"]
                           span [id="s-theme-name"] "Dark"
                       div.ctl
                     div.tg-tabs [id="s-theme-groups"]
+                      button.chip [type="button" aria-pressed="false"] "Popular"
                       button.chip.on [type="button" aria-pressed="true"] "Basic"
                       button.chip [type="button" aria-pressed="false"] "Scenery"
                       button.chip [type="button" aria-pressed="false"] "Colorful"
