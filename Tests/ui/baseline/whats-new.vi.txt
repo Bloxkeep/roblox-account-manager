@@ -260,30 +260,23 @@ html [data-theme="dark" lang="vi"]
           span.wn-title
             img [alt="" src="logo.svg"]
             span "Có gì mới"
-              small "Bloxkeep 1.0.20 · 7 tháng 11, 2026"
+              small "Bloxkeep 1.0.21 · 8 tháng 11, 2026"
         button.icon-btn [title="Đóng"]
           svg.i #1tyq039
       div.modal-body
         section.improved.wn-group
           h4.wn-kind "Cải thiện"
           ul.wn-notes
-            li "Thẻ Roblox ở thanh bên hiện mỗi cửa sổ một khuôn mặt (trong game, ở menu, bị văng) và RAM máy dạng khối."
-            li "Nút Wiki trong Thông tin game mở thẳng wiki trong tab Game."
-            li "Tên rút còn chữ cái đầu, vẫn giữ ảnh."
-              b "Ẩn tên tài khoản giờ giống chế độ streamer của Discord"
-            li "Mở Roblox bằng Voidstrap, như Bloxstrap và Fishstrap."
-            li "Cửa sổ mở, khôi phục và đổi cỡ mượt hơn, không còn chớp trắng."
-            li "Bảng PC treo nhiều tài khoản nhất trong Thống kê gọn hơn, xem được cả khi tắt đếm online."
-            li "Cập nhật Roblox ngay sẽ mở lại các cửa sổ đang trong game."
-            li "Fast Flags báo khi launcher của bạn ghi đè."
-            li "Thêm game trong tab Game."
+            li "Đổi tài khoản ngay trong cửa sổ web Roblox, ở góc trên bên trái."
+            li "Tài khoản bị ban có nút Kháng cáo."
+            li "Xếp cửa sổ ổn định hơn, kể cả sang màn hình khác; Ctrl+Alt+A đưa chúng lên trên mọi app."
+            li "Theo dõi game có thể đưa cửa sổ của một game lên trước hoặc xuống sau."
+            li "Cài đặt cho biết giao diện nào đang được dùng nhiều."
+            li "Mở app sinh động hơn, cửa sổ cỡ vừa không bị ẩn bớt."
         section.fixed.wn-group
           h4.wn-kind "Đã sửa"
           ul.wn-notes
-            li "Top game trong Thống kê hiện lại đầy đủ."
-            li "Vào server riêng bằng link hoạt động lại."
-            li "Đổi ngôn ngữ bàn phím không còn báo lỗi."
-            li "Sửa lặt vặt ở danh sách tài khoản, Theo dõi game và Preset."
+            li "Sửa nhiều lỗi nhỏ ở cửa sổ chính, khay, cửa sổ nhỏ, Theo dõi game và tab Game."
         details.wn-older
           summary "Và 2 phiên bản trước đó"
             svg.i #1g7f83q

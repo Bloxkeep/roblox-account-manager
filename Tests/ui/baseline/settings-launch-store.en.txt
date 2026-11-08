@@ -42,7 +42,7 @@ html [data-theme="dark" lang="en"]
           div.sys [id="sys-card"]
             div.sys-head
               span.sys-count [title="Main · PID 1111\nFarm 1 · PID 2222"]
-                b [id="sys-count"] "2"
+                b [id="sys-count"] "3"
                 span [id="sys-count-label"] "windows"
                 span.sys-ram [id="sys-ram"] "1.7 GB"
               button.sys-close [id="sys-close" type="button" title="Close all" aria-label="Close all"]
@@ -50,6 +50,7 @@ html [data-theme="dark" lang="en"]
             div.lobby
               svg.face.mood-play #1pg0baw
               svg.face.mood-play #1jzq296
+              svg.face.mood-play #1kqz5uh
             div.bricks [id="sys-meter" title="PC RAM 63% used · 12 GB free" aria-hidden="true"]
               i.r
               i.o
@@ -192,7 +193,9 @@ html [data-theme="dark" lang="en"]
                         div.snap-opts
                           button.current.snap-opt [role="menuitemradio" type="button" title="Auto" aria-checked="true" data-layout="fill"]
                             span.snap-screen
-                              span.snap-grid [style="grid-template-columns:repeat(2, 1fr);grid-template-rows:repeat(1, 1fr)"]
+                              span.snap-grid [style="grid-template-columns:repeat(2, 1fr);grid-template-rows:repeat(2, 1fr)"]
+                                span
+                                span
                                 span
                                 span
                             span.snap-name "Auto"
@@ -365,7 +368,7 @@ html [data-theme="dark" lang="en"]
           div.sys [id="sys-card"]
             div.sys-head
               span.sys-count [title="Main · PID 1111\nFarm 1 · PID 2222"]
-                b [id="sys-count"] "2"
+                b [id="sys-count"] "3"
                 span [id="sys-count-label"] "windows"
                 span.sys-ram [id="sys-ram"] "1.7 GB"
               button.sys-close [id="sys-close" type="button" title="Close all" aria-label="Close all"]
@@ -373,6 +376,7 @@ html [data-theme="dark" lang="en"]
             div.lobby
               svg.face.mood-play #1pg0baw
               svg.face.mood-play #1jzq296
+              svg.face.mood-play #1kqz5uh
             div.bricks [id="sys-meter" title="PC RAM 63% used · 12 GB free" aria-hidden="true"]
               i.r
               i.o
@@ -515,7 +519,9 @@ html [data-theme="dark" lang="en"]
                         div.snap-opts
                           button.current.snap-opt [role="menuitemradio" type="button" title="Auto" aria-checked="true" data-layout="fill"]
                             span.snap-screen
-                              span.snap-grid [style="grid-template-columns:repeat(2, 1fr);grid-template-rows:repeat(1, 1fr)"]
+                              span.snap-grid [style="grid-template-columns:repeat(2, 1fr);grid-template-rows:repeat(2, 1fr)"]
+                                span
+                                span
                                 span
                                 span
                             span.snap-name "Auto"

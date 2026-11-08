@@ -257,6 +257,7 @@ html [data-theme="dark" lang="vi"]
 -- commands
   backupSuggestions {}
   backupSuggestions {}
+  communityNow {}
   getState {}
   monitorArea {"hidden":true}
   pageShown {}

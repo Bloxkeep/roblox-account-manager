@@ -144,6 +144,7 @@ html [data-theme="paper" lang="en"]
                           span [id="s-theme-name"] "Paper"
                       div.ctl
                     div.tg-tabs [id="s-theme-groups"]
+                      button.chip [type="button" aria-pressed="false"] "Popular"
                       button.chip.on [type="button" aria-pressed="true"] "Basic"
                       button.chip [type="button" aria-pressed="false"] "Scenery"
                       button.chip [type="button" aria-pressed="false"] "Colorful"
@@ -203,7 +204,7 @@ html [data-theme="paper" lang="en"]
                     div.set-row
                       div
                         div.t "Hide account names"
-                        div.d "Shows “Account 1”, “Account 2”… instead, without pictures, for screenshots and streams."
+                        div.d "Shortens names to their first letter, like Discord’s streamer mode, for screenshots and streams. Pictures stay."
                       div.ctl
                         label.switch
                           input [id="s-hidenames" type="checkbox" aria-label="Hide account names" checked=false]
@@ -365,6 +366,7 @@ html [data-theme="gray" lang="en"]
                           span [id="s-theme-name"] "Gray"
                       div.ctl
                     div.tg-tabs [id="s-theme-groups"]
+                      button.chip [type="button" aria-pressed="false"] "Popular"
                       button.chip.on [type="button" aria-pressed="true"] "Basic"
                       button.chip [type="button" aria-pressed="false"] "Scenery"
                       button.chip [type="button" aria-pressed="false"] "Colorful"
@@ -424,7 +426,7 @@ html [data-theme="gray" lang="en"]
                     div.set-row
                       div
                         div.t "Hide account names"
-                        div.d "Shows “Account 1”, “Account 2”… instead, without pictures, for screenshots and streams."
+                        div.d "Shortens names to their first letter, like Discord’s streamer mode, for screenshots and streams. Pictures stay."
                       div.ctl
                         label.switch
                           input [id="s-hidenames" type="checkbox" aria-label="Hide account names" checked=false]

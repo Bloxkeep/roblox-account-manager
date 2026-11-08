@@ -312,6 +312,9 @@ html [data-theme="dark" lang="en"]
                     svg.i #1e3omv2
         div.dock
           div.dock-game.dock-step
+            div.step-cap
+              b "1"
+              span "Game"
             label.inwrap [title="Place ID, game link or private server link (Ctrl+L)"]
               svg.i #1u22jvi
               input [id="place" role="combobox" placeholder="Search a game, or paste a link / Place ID…" autocomplete="off" maxlength="500" aria-autocomplete="list" aria-controls="picker-list" aria-expanded="false" aria-haspopup="listbox" aria-label="Search a game, or paste a link / Place ID…" value="https://www.roblox.com/games/2753915549/Blox-Fruits"]
@@ -321,6 +324,10 @@ html [data-theme="dark" lang="en"]
               button.srv-open.srv-save [title="Save this server to join it again from the Saved tab: a private server’s link, or the code the game asks for." aria-label="Save server"]
                 svg.i #1c3gvph
           div.dock-server.dock-step
+            div.step-cap
+              b "2"
+              span "Server"
+              small "optional"
             label.inwrap.job [title="Job ID of a specific server, to put several accounts in the same server."]
               svg.i #ej9lod
               input [id="job" placeholder="Job ID" maxlength="60" aria-label="Job ID" value=""]
@@ -332,6 +339,9 @@ html [data-theme="dark" lang="en"]
                 svg.i #145pp0l
                 span "Follow a player…"
           div.dock-go.dock-step [id="dock-actions"]
+            div.step-cap
+              b "3"
+              span "Go"
             button.play-btn [title="Select accounts first" aria-disabled="true"]
               svg.i #1ewcuky
               span "Play"

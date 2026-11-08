@@ -373,6 +373,9 @@ html [data-theme="dark" lang="vi"]
                   button.icon-btn [title="Tùy chọn khác" tabindex="0" aria-haspopup="menu" aria-label="Tùy chọn khác"]
                     svg.i #1e3omv2
         div.dock
+          button.game-thumb [id="game-thumb" title="Chọn game"]
+            span.gph
+              svg.i #sy1lqp
           div.dock-game.dock-step
             div.step-cap
               b "1"
