@@ -1,5 +1,35 @@
 [
   {
+    "version": "1.0.21",
+    "date": "2026-11-08",
+    "improved": {
+      "en": [
+        "Switch accounts right in the Roblox website window, from the corner at its top left.",
+        "Banned accounts have an Appeal button.",
+        "Arranging windows is more reliable, across screens too, and Ctrl+Alt+A brings them over every app.",
+        "Game monitor can bring a game’s windows to the front or send them to the back.",
+        "Settings shows which themes are popular.",
+        "A livelier opening, and a mid-size window keeps everything on show."
+      ],
+      "vi": [
+        "Đổi tài khoản ngay trong cửa sổ web Roblox, ở góc trên bên trái.",
+        "Tài khoản bị ban có nút Kháng cáo.",
+        "Xếp cửa sổ ổn định hơn, kể cả sang màn hình khác; Ctrl+Alt+A đưa chúng lên trên mọi app.",
+        "Theo dõi game có thể đưa cửa sổ của một game lên trước hoặc xuống sau.",
+        "Cài đặt cho biết giao diện nào đang được dùng nhiều.",
+        "Mở app sinh động hơn, cửa sổ cỡ vừa không bị ẩn bớt."
+      ]
+    },
+    "fixed": {
+      "en": [
+        "Many small fixes to the window, tray, Mini window, Game monitor and Games tab."
+      ],
+      "vi": [
+        "Sửa nhiều lỗi nhỏ ở cửa sổ chính, khay, cửa sổ nhỏ, Theo dõi game và tab Game."
+      ]
+    }
+  },
+  {
     "version": "1.0.20",
     "date": "2026-11-07",
     "improved": {
