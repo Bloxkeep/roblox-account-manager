@@ -12,6 +12,7 @@ startPage<BrowserData>({
   part: send => <BrowserRoot handle={view} on={{
     act: (what, args = {}) => send('act', { what, ...args }),
     size: (w, h) => send('size', { w, h }),
+    menu: r => send('menu', r ?? {}),
   }} />,
   show: d => view.current!.show(d),
 });

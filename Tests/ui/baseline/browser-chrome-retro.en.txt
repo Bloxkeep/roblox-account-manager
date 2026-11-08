@@ -25,6 +25,11 @@ html [data-theme="retro" lang="en"]
         button.bw-new.icon-btn [type="button" title="New tab, to sign in on roblox.com (Ctrl+T)" aria-label="New tab"]
           svg.i #u7ty99
       div.bw-bar
+        button.bw-who [type="button" title="Switch this tab to another account" aria-expanded="false" aria-haspopup="menu"]
+          span.bw-av
+            img [alt="" src=#oxspc5]
+          span.bw-name "Main"
+          svg.i #u1ag9u
         button.icon-btn [type="button" title="Back" aria-label="Back"]
           svg.i #10tf97k
         button.icon-btn [type="button" title="Forward" aria-label="Forward" disabled]

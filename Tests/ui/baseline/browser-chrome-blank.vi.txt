@@ -30,6 +30,11 @@ html [data-theme="dark" lang="vi"]
         button.bw-new.icon-btn [type="button" title="Tab mới để đăng nhập trên roblox.com (Ctrl+T)" aria-label="Tab mới"]
           svg.i #u7ty99
       div.bw-bar
+        button.bw-who [type="button" title="Đổi tài khoản cho tab này" aria-expanded="false" aria-haspopup="menu"]
+          span.bw-av
+            svg.i #1ctn026
+          span.bw-name "Roblox"
+          svg.i #u1ag9u
         button.icon-btn [type="button" title="Quay lại" aria-label="Quay lại"]
           svg.i #10tf97k
         button.icon-btn [type="button" title="Tiến" aria-label="Tiến" disabled]

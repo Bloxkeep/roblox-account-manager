@@ -72,6 +72,8 @@ public sealed partial class AppController
                 if (_vault is not null)
                     AddWebsiteTab(null, null, "");
             },
+            Accounts = WebsiteAccounts,
+            SwitchAccount = SwitchWebsiteAccount,
         };
         window.PlaceNear(_owner);
         window.FormClosed += (_, _) =>
@@ -81,6 +83,31 @@ public sealed partial class AppController
         };
         _webWindow = window;
         return window;
+    }
+
+    /// <summary>The account picker's list: the saved accounts in the list's order, as the app names them; not Roblox VNG's
+    /// (the website can't open for them).</summary>
+    IReadOnlyList<WebsiteAccount> WebsiteAccounts() =>
+        _vault?.Data.Accounts.Where(a => Realm.Normalize(a.Realm) != Realm.Vng)
+            .Select(a => new WebsiteAccount(a.Id, NameText(a), TabAvatar(a))).ToList() ?? [];
+
+    /// <summary>The account picker: this tab signs in as that account, on the page it shows; when the account has a tab
+    /// open already, that one is shown instead (one tab per account).</summary>
+    void SwitchWebsiteAccount(WebsiteTab tab, Guid id)
+    {
+        if (_vault is null || tab.IsClosed || tab.AccountId == id || FindAccount(id) is not { } account || Realm.Normalize(account.Realm) == Realm.Vng)
+            return;
+        if (_websites.TryGetValue(id, out var open) && !open.IsClosed && open != tab && _webWindow is { IsDisposed: false } window)
+        {
+            window.SelectTab(open);
+            open.FocusPage();
+            return;
+        }
+        foreach (var key in _websites.Where(p => p.Value == tab).Select(p => p.Key).ToList())
+            _websites.Remove(key);
+        _websites[id] = tab;
+        _ = tab.SwitchToAsync(id, NameText(account), account.Cookie, TabAvatar(account));
+        tab.FocusPage();
     }
 
     static void ShowWebWindow(WebsiteForm window)
@@ -172,6 +199,8 @@ public sealed partial class AppController
             tab.SetName(account is not null ? NameText(account) : null);
             tab.Avatar = account is not null ? TabAvatar(account) : null;
         }
+        if (_webWindow is { IsDisposed: false } window)
+            window.RefreshTop();
     }
 
     /// <summary>The account's avatar on its tab; none while names are hidden (the picture would tell who it is).</summary>

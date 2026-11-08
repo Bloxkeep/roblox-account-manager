@@ -37,6 +37,21 @@ sealed class ChromeView
     bool _ready;
     int _cssHeight;
     object? _last;
+    /// <summary>The open menu under the bar (its place in CSS pixels), or none.</summary>
+    RectangleF? _menu;
+
+    /// <summary>Set by a window that places the bar itself (<see cref="WebsiteForm"/>: its menu over the page): called
+    /// when the bar's height or its menu changes, instead of the bar taking its height docked.</summary>
+    public Action? Relayout { get; set; }
+
+    /// <summary>The bar's own height, in device pixels.</summary>
+    public int BarPixels => Scaled(_cssHeight);
+
+    /// <summary>The open menu's place on the bar's page, in device pixels; null when none is open.</summary>
+    public Rectangle? MenuPixels => _menu is { } m
+        ? Rectangle.FromLTRB((int)Math.Floor(m.Left * _form.DeviceDpi / 96f), (int)Math.Floor(m.Top * _form.DeviceDpi / 96f),
+            (int)Math.Ceiling(m.Right * _form.DeviceDpi / 96f), (int)Math.Ceiling(m.Bottom * _form.DeviceDpi / 96f))
+        : null;
 
     /// <summary>Something clicked on the page: its name and the rest of what it said.</summary>
     public event Action<string, JsonElement>? Act;
@@ -49,12 +64,20 @@ sealed class ChromeView
         _web = new WebView2 { Dock = DockStyle.Top, DefaultBackgroundColor = Themes.Current.Background, TabStop = false };
         _web.Height = Scaled(cssHeight);
         // Dragged onto a monitor of another scale: its height again from the page's, once Windows has rescaled the form.
-        form.DpiChanged += (_, _) => form.BeginInvoke(() => { if (!_web.IsDisposed) _web.Height = Scaled(_cssHeight); });
+        form.DpiChanged += (_, _) => form.BeginInvoke(() => { if (!_web.IsDisposed) Fit(); });
     }
 
     public WebView2 Control => _web;
 
     int Scaled(int css) => (int)Math.Ceiling(css * _form.DeviceDpi / 96f);
+
+    void Fit()
+    {
+        if (Relayout is { } relayout)
+            relayout();
+        else
+            _web.Height = Scaled(_cssHeight);
+    }
 
     /// <summary>Starts the page (the window's handle must exist); false, logged, when it couldn't.</summary>
     public async Task<bool> StartAsync()
@@ -143,8 +166,15 @@ sealed class ChromeView
                     if (args.TryGetProperty("h", out var h) && h.ValueKind == JsonValueKind.Number && (int)Math.Ceiling(h.GetDouble()) is > 0 and < 400 and var css)
                     {
                         _cssHeight = css;
-                        _web.Height = Scaled(css);
+                        Fit();
                     }
+                    break;
+                // The page's menu opened (its place) or closed (none): the window lets it over the page meanwhile.
+                case "menu" when args.ValueKind == JsonValueKind.Object:
+                    _menu = Number(args, "x") is { } x && Number(args, "y") is { } y && Number(args, "w") is { } mw and > 0 && Number(args, "h") is { } mh and > 0
+                        ? new RectangleF((float)x, (float)y, (float)Math.Min(mw, 2000), (float)Math.Min(mh, 2000))
+                        : null;
+                    Fit();
                     break;
                 case "act" when args.ValueKind == JsonValueKind.Object:
                     string what = args.TryGetProperty("what", out var w) && w.ValueKind == JsonValueKind.String ? w.GetString()! : "";
@@ -156,4 +186,7 @@ sealed class ChromeView
         {
         }
     }
+
+    static double? Number(JsonElement args, string name) =>
+        args.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.Number && v.GetDouble() is var d && double.IsFinite(d) && d >= 0 ? d : null;
 }

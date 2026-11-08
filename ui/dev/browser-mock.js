@@ -1,6 +1,7 @@
 'use strict';
 // Fake app for the top of Bloxkeep's browser windows (browser.html) in a normal browser. ?many=1 twelve tabs, ?blank=1 a
-// blank tab someone signed in on (Save to Bloxkeep), ?offline=1 roblox.com unreachable (Retry), ?login=1 the sign-in
+// blank tab someone signed in on (Save to Bloxkeep), ?few=1 three saved accounts (no search in the account picker),
+// ?offline=1 roblox.com unreachable (Retry), ?login=1 the sign-in
 // window's bar, ?theme=light a theme, ?lang=vi Vietnamese. The words are the app's (Forms/WebsiteTab.cs), already in the
 // app's language. The acts change the fake tabs as the window would; what is clicked shows in the page's calls.
 (() => {
@@ -14,7 +15,9 @@
   const names = ['Main', 'Farm 1', 'Farm 2', 'Trader alt with a long name', 'Fisher', 'Builder', 'Farm 3', 'Farm 4', 'Collector', 'Grinder', 'Farm 5', 'Backup'];
   const count = params.has('many') ? 12 : 3;
   let next = 0;
-  let tabs = names.slice(0, count).map((title, i) => ({ id: `t${++next}`, title, avatar: avatar(colours[i]), saved: true }));
+  // The saved accounts (the account picker's list): all twelve, or three with ?few=1.
+  const accounts = names.slice(0, params.has('few') ? 3 : 12).map((name, i) => ({ id: `a${i}`, name, avatar: avatar(colours[i]) }));
+  let tabs = names.slice(0, count).map((title, i) => ({ id: `t${++next}`, title, avatar: avatar(colours[i]), saved: true, account: `a${i}` }));
   if (params.has('blank')) tabs.push({ id: `t${++next}`, title: 'Roblox', avatar: null, saved: false, user: 'Newbie' });
   let selected = params.has('blank') ? tabs[tabs.length - 1].id : tabs[params.has('many') ? 5 : 0].id;
   const offline = params.has('offline');
@@ -31,6 +34,7 @@
   const send = () => emit('browser', {
     mode: login ? 'login' : 'tabs',
     tabs: login ? [] : tabs.map(x => ({ id: x.id, title: x.title, avatar: x.avatar, saved: x.saved, selected: x.id === selected })),
+    accounts: login ? [] : accounts, account: tabs.find(x => x.id === selected)?.account ?? null, room: 560,
     back: !login && !offline, forward: false, host: offline ? null : 'www.roblox.com', ...state(),
     theme: params.get('theme') || 'dark', customTheme: null, language: vi ? 'vi' : 'en',
   });
@@ -43,6 +47,14 @@
     },
     newTab() { const tab = { id: `t${++next}`, title: 'Roblox', avatar: null, saved: false }; tabs.push(tab); selected = tab.id; },
     save() { const tab = tabs.find(x => x.id === selected); if (tab) { tab.saved = true; tab.justSaved = true; tab.title = tab.user || tab.title; } },
+    // The account picker: that account's own tab when it has one, else this tab signs in as it.
+    account(a) {
+      const own = tabs.find(x => x.account === a.account);
+      if (own) { selected = own.id; return; }
+      const tab = tabs.find(x => x.id === selected);
+      const to = accounts.find(x => x.id === a.account);
+      if (tab && to) Object.assign(tab, { account: to.id, title: to.name, avatar: to.avatar, saved: true, user: undefined, justSaved: false });
+    },
   };
   window.__mockBridge = {
     attach(fn) { emit = fn; },
