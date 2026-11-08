@@ -7,7 +7,7 @@ import { Icon, useAppState, useHost } from '../host';
 import { VaultFace } from '../Vaults';
 import { Group, Page, Row, Switch, useLocal } from './parts';
 
-import { Button } from '../kit';
+import { Button, Field } from '../kit';
 /** Lock automatically's choices, in minutes (the app takes only these); 0 never. */
 const AUTO_LOCK = [0, 5, 10, 15, 30, 60, 120];
 
@@ -31,7 +31,7 @@ export function SecurityPage({ title }: { title: string }) {
   // Each box has its name over it that stays once the box is typed in (the placeholder goes).
   const box = (id: string, key: string, label: string, auto: string, ref: typeof cur, onInput: (value: string) => void) =>
     <label className="pw-field"><span>{t(label)}</span>
-      <input className="field" type="password" id={id} placeholder={t(key)} aria-label={t(key)} maxLength={256} autoComplete={auto} ref={ref}
+      <Field type="password" id={id} placeholder={t(key)} aria-label={t(key)} maxLength={256} autoComplete={auto} ref={ref}
         onInput={e => onInput(e.currentTarget.value)} /></label>;
   const dropError = () => { if (msg.text && msg.kind === 'err') pwMsg(''); };
 
@@ -44,7 +44,7 @@ export function SecurityPage({ title }: { title: string }) {
   return <Page id="security" title={title}>
     {vault ? <Group id="vault" title={t('vault.group')}>
       <Row title={t('vault.name')} desc={t('vault.nameDesc')}>
-        <input className="field" id="s-vault-name" value={vaultName} maxLength={40} aria-label={t('vault.name')} spellCheck={false}
+        <Field id="s-vault-name" value={vaultName} maxLength={40} aria-label={t('vault.name')} spellCheck={false}
           onChange={e => setVaultName(e.target.value)} onBlur={saveName} onKeyDown={e => { if (e.key === 'Enter') saveName(); }} />
       </Row>
       <Row title={t('vault.picture')} desc={t('vault.pictureDesc')}>

@@ -5,7 +5,7 @@ import { Icon, useHost } from './host';
 import { richNodes } from './rich';
 import { SnapPicker } from './Snap';
 
-import { Button, Check, IconButton } from './kit';
+import { Button, Check, Field, IconButton } from './kit';
 /* ───────────── dialogs ───────────── */
 
 export type ModalAction = { text: string; kind?: 'primary' | 'danger' | '' };
@@ -53,7 +53,7 @@ export function ErrorsBody({ errors }: { errors: string[] }) {
 export function DiscordLinkBody() {
   const { t } = useHost();
   return <><p className="modal-text">{richNodes(t('dc.pasteText'))}</p>
-    <input className="field" id="dc-link" type="text" maxLength={300} spellCheck={false} autoComplete="off" placeholder="https://discord.com/api/webhooks/…" aria-label={t('dc.webhook')} />
+    <Field id="dc-link" type="text" maxLength={300} spellCheck={false} autoComplete="off" placeholder="https://discord.com/api/webhooks/…" aria-label={t('dc.webhook')} />
     <p className="dc-err" id="dc-link-err" role="alert" /></>;
 }
 
@@ -63,9 +63,9 @@ export function SaveServerBody({ game, hasLink }: { game: string; hasLink: boole
   return <>
     <p className="modal-text">{t(hasLink ? 'sv.withLink' : 'sv.withCode', { game })}</p>
     <label className="sv-label" htmlFor="sv-name">{t('sv.name')}</label>
-    <input className="field" id="sv-name" type="text" maxLength={60} defaultValue={game} autoComplete="off" spellCheck={false} />
+    <Field id="sv-name" type="text" maxLength={60} defaultValue={game} autoComplete="off" spellCheck={false} />
     <label className="sv-label" htmlFor="sv-code">{t(hasLink ? 'sv.codeOptional' : 'sv.code')}</label>
-    <input className="field" id="sv-code" type="text" maxLength={100} autoComplete="off" spellCheck={false} placeholder={t('sv.codeHint')} />
+    <Field id="sv-code" type="text" maxLength={100} autoComplete="off" spellCheck={false} placeholder={t('sv.codeHint')} />
     <p className="dc-err" id="sv-err" role="alert" />
   </>;
 }

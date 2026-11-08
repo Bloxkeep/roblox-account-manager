@@ -7,7 +7,7 @@ import { NOTIFY_KINDS } from './NotifyPage';
 import { Group, More, Page, Row, Switch, TextBox, useLocal } from './parts';
 import { parseTime } from '../TimeField';
 
-import { Button } from '../kit';
+import { Button, Segment, Segmented } from '../kit';
 const DC_ID = /^\d{17,20}$/;
 const PING_MODES = ['none', 'here', 'everyone', 'user', 'role'];
 const NONE: string[] = [];
@@ -271,10 +271,10 @@ function DiscordPreview({ name, avatar, plain, language, hide, ping, minutes }: 
   // The sample's time of day, as this PC writes it (2:30 PM, 14:30).
   const at = new Date(2026, 9, 16, 14, 30).toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit', ...(appLang === 'vi' ? { hourCycle: 'h23' as const } : {}) });
   return <Group id="dc-preview" title={w('title')}>
-    <div className="dcv-kinds"><div className="seg" id="s-dc-preview-kinds" role="tablist" aria-label={w('title')}>
-      {([['alert', 'dc.events'], ['board', 'dc.board']] as const).map(([k, label]) => <button type="button" key={k} role="tab" className={k === kind ? 'on' : ''} data-kind={k}
-        aria-selected={k === kind} onClick={() => setKind(k)}>{t(label)}</button>)}
-    </div></div>
+    <div className="dcv-kinds"><Segmented id="s-dc-preview-kinds" role="tablist" aria-label={w('title')}>
+      {([['alert', 'dc.events'], ['board', 'dc.board']] as const).map(([k, label]) => <Segment type="button" key={k} as="tab" on={k === kind} data-kind={k}
+        onClick={() => setKind(k)}>{t(label)}</Segment>)}
+    </Segmented></div>
     <div className="dcv" id="s-dc-preview" inert>
       <img className="dcv-pic" src={picture} alt="" onError={() => setFailed(avatar || '')} />
       <div className="dcv-body">

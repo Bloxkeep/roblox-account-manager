@@ -5,6 +5,7 @@
 import { useMemo, useState } from 'react';
 import { timeText } from './DiscordBlocks';
 import { Icon } from './host';
+import { Field } from './kit';
 
 export type PriceItem = {
   id: string; name: string; category?: string | null; rarity?: string | null; type?: string | null; img?: string | null;
@@ -37,7 +38,7 @@ export function PriceList({ list, t, locale, now, open }: { list: Prices; t: T; 
   return <section className="pl" aria-label={t('prices.tab')}>
     <div className="pl-tools">
       <label className="pl-search"><Icon name="search" />
-        <input className="field sm" type="search" value={query} placeholder={t('prices.search')} aria-label={t('prices.search')} maxLength={60}
+        <Field size="sm" type="search" value={query} placeholder={t('prices.search')} aria-label={t('prices.search')} maxLength={60}
           autoComplete="off" spellCheck={false} onChange={e => setQuery(e.target.value)} /></label>
       {kinds.length > 1 ? <div className="chips pl-kinds" role="group" aria-label={t('prices.kinds')}>
         <button type="button" className={`chip ${kind ? '' : 'on'}`} aria-pressed={!kind} onClick={() => setKind('')}>{t('news.all')}</button>

@@ -7,7 +7,7 @@ import { Icon, useHost } from '../host';
 import { Ctx, MenuAt, Row, type PanelCtx } from './PanelControls';
 import { elapsed, type PanelData, type PanelError, type PanelMacro, type PanelNow, type PanelOn, type PanelViewApi } from './panelHost';
 
-import { Button } from '../kit';
+import { Button, Segment, Segmented } from '../kit';
 const ERROR_FOR = 5000, RESET_FOR = 6000, AWAY_AFTER = 400, DRAG_FROM = 3;
 
 /** What the panel page (ui-panel.js, pages/panel.tsx) holds: the app's latest "panel" event drawn, a refused change said. */
@@ -255,7 +255,7 @@ function statusText(t: (k: string, v?: Record<string, string | number>) => strin
 function Tabs({ tabs, tab, setTab }: { tabs: string[]; tab: string; setTab: (x: string) => void }) {
   const box = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => { (box.current?.querySelector('.on') as HTMLElement | null)?.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }, [tab]);
-  return <div ref={box} className="seg pn-tabs" role="tablist" onKeyDown={e => {
+  return <Segmented ref={box} className="pn-tabs" role="tablist" onKeyDown={e => {
     const i = tabs.indexOf(tab);
     const to = e.key === 'ArrowRight' ? i + 1 : e.key === 'ArrowLeft' ? i - 1 : e.key === 'Home' ? 0 : e.key === 'End' ? tabs.length - 1 : -2;
     if (to === -2) return;
@@ -264,9 +264,9 @@ function Tabs({ tabs, tab, setTab }: { tabs: string[]; tab: string; setTab: (x: 
     setTab(next);
     requestAnimationFrame(() => (box.current?.querySelector('.on') as HTMLElement | null)?.focus());
   }}>
-    {tabs.map(x => <button type="button" key={x} role="tab" aria-selected={x === tab} tabIndex={x === tab ? 0 : -1} className={x === tab ? 'on' : ''}
-      title={x} onClick={() => setTab(x)}>{x}</button>)}
-  </div>;
+    {tabs.map(x => <Segment type="button" key={x} as="tab" on={x === tab} tabIndex={x === tab ? 0 : -1}
+      title={x} onClick={() => setTab(x)}>{x}</Segment>)}
+  </Segmented>;
 }
 
 function TitleMenu({ at, close, on, lastStep, section }: { at: { x: number; y: number }; close: () => void; on: PanelOn; lastStep: number | undefined; section?: string | null }) {

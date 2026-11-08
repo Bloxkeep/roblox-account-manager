@@ -7,7 +7,7 @@ import { richNodes } from './rich';
 import { Avatar } from './Avatar';
 import { DayStrip } from './DayStrip';
 
-import { Button, IconButton } from './kit';
+import { Badge, Button, IconButton, Segment, Segmented } from './kit';
 type Account = Record<string, any>;
 
 const isLocal = (a: Account) => a.state === 'running';
@@ -125,9 +125,9 @@ export function AccountsBar() {
       <button key={c.f} className={`chip ${filter === c.f ? 'on' : ''}`} data-act="filter" data-f={c.f} aria-pressed={filter === c.f}>
         {c.dot ? <i className="dot" style={{ background: c.dot }} /> : null}{c.text}<em>{c.n}</em></button>)}
       <button className="chip more" data-act="chip-more" aria-haspopup="menu" title={t('chip.moreTip')} hidden>{`+${over || 1}`}</button></> : null}</div>
-    <div className="seg" id="layout-seg">{list.length ? (['cards', 'list'] as const).map(l =>
-      <button key={l} className={layout === l ? 'on' : ''} data-act="layout" data-l={l} title={t(`layout.${l}`)} aria-label={t(`layout.${l}`)} aria-pressed={layout === l}>
-        <Icon name={l === 'cards' ? 'grid' : 'rows'} /></button>) : null}</div>
+    <Segmented id="layout-seg">{list.length ? (['cards', 'list'] as const).map(l =>
+      <Segment key={l} as="toggle" on={layout === l} data-act="layout" data-l={l} title={t(`layout.${l}`)} aria-label={t(`layout.${l}`)}>
+        <Icon name={l === 'cards' ? 'grid' : 'rows'} /></Segment>) : null}</Segmented>
     <button className={`sort-btn ${group ? 'on' : ''}`} data-act="group-menu" id="group-btn" aria-haspopup="menu" hidden={!groups.length} title={`${t('grp.label')}: ${group || t('chip.all')}`}>
       <Icon name="tag" /><span>{`${t('grp.label')}: ${group || t('chip.all')}`}</span></button>
     <button className="sort-btn" data-act="sort-menu" id="sort-btn" aria-haspopup="menu" hidden={list.length < 2} title={`${t('sort.label')}: ${t(`sort.${sort}`)}`}><Icon name="sort" /><span>{`${t('sort.label')}: ${t(`sort.${sort}`)}`}</span></button>
@@ -436,7 +436,7 @@ function AccountCard({ a, sel }: { a: Account; sel: boolean }) {
   // Only what no other line says: the status line already tells running and opening, and a lost sign-in (its status
   // line and Sign in button); a ban stays in sight as a red pill.
   const badge = local || a.state === 'launching' || !a.banned ? null
-    : <span className="badge bad" title={t('card.bannedTip')}>{t('card.banned')}</span>;
+    : <Badge tone="bad" title={t('card.bannedTip')}>{t('card.banned')}</Badge>;
   const sub = [a.username ? `@${a.username}` : '', a.displayName && a.displayName !== a.username && a.displayName !== a.label ? a.displayName : ''].filter(Boolean).join(' · ');
   // A new button, not the old one changed (the focus then goes to the card). Held on Roblox's bot check: Verify, in
   // Bloxkeep's own window. Out of the game (kicked, dropped): back in, as the main button.
@@ -547,8 +547,8 @@ function AccountRow({ a, sel, cols }: { a: Account; sel: boolean; cols: string }
   // status words: in their own columns they took the status's room.
   const badge = <>
     {local || a.state === 'launching' ? null
-      : a.banned ? <span className="badge bad" title={t('card.bannedTip')}>{t('card.banned')}</span>
-      : a.cookieValid === false ? <span className="badge bad">{t('card.expired')}</span> : null}
+      : a.banned ? <Badge tone="bad" title={t('card.bannedTip')}>{t('card.banned')}</Badge>
+      : a.cookieValid === false ? <Badge tone="bad">{t('card.expired')}</Badge> : null}
     {a.session?.oldBuild ? <OldBuild a={a} /> : null}
   </>;
   // Main and Roblox VNG after the status words, and after the time played: in front of either, they pushed one row's

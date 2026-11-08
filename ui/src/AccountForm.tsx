@@ -7,7 +7,7 @@ import { Rich } from './rich';
 import { Avatar } from './Avatar';
 import { SuggestInput } from './Suggest';
 
-import { Button, IconButton } from './kit';
+import { Button, Field, IconButton, TextArea } from './kit';
 type Account = { id: string; label: string; username?: string; userId?: number; alias?: string; group?: string; note?: string; hasPassword?: boolean; hasAuthenticator?: boolean };
 export interface AccountFormApi {
   collect(): { args: Record<string, unknown> } | { error: string };
@@ -162,15 +162,15 @@ export function AccountForm({ account: a, api, browser }: { account: Account | n
         <div><b>{a.label}</b><div className="muted">{[a.username ? `@${a.username}` : '', hide ? '' : `ID ${a.userId}`].filter(Boolean).join(' · ')}</div></div></div>}
     <div className="form">
       {isNew ? <label>{t('am.cookie')}
-        <div className="pw"><input className="field mono" type={shown.cookie ? 'text' : 'password'} name="cookie" maxLength={4096} placeholder="_|WARNING:-DO-NOT-SHARE-THIS…"
+        <div className="pw"><Field className="mono" type={shown.cookie ? 'text' : 'password'} name="cookie" maxLength={4096} placeholder="_|WARNING:-DO-NOT-SHARE-THIS…"
           spellCheck={false} value={cookie} onChange={typedIn('cookie', setCookie)} />{eye('cookie', cookie, setCookie)}</div></label> : null}
       <label>{t('am.alias')}{aliasHidden
-        ? <input className="field" name="alias" maxLength={60} disabled placeholder={t('am.aliasHidden')} />
-        : <input className="field" name="alias" maxLength={60} placeholder={t('am.aliasPh')} value={alias} onChange={e => setAlias(e.target.value)} />}</label>
+        ? <Field name="alias" maxLength={60} disabled placeholder={t('am.aliasHidden')} />
+        : <Field name="alias" maxLength={60} placeholder={t('am.aliasPh')} value={alias} onChange={e => setAlias(e.target.value)} />}</label>
       <label>{t('am.group')}<SuggestInput className="field" name="group" maxLength={40} placeholder={t('am.groupPh')} value={group} setValue={setGroup}
         options={groups} label={t('am.group')} /></label>
       <label><span>{t('am.pw')} <span className="muted">{t('am.pwHint')}</span></span>
-        <div className="pw"><input className="field" type={shown.password ? 'text' : 'password'} name="password" maxLength={200}
+        <div className="pw"><Field type={shown.password ? 'text' : 'password'} name="password" maxLength={200}
           placeholder={!isNew && a.hasPassword ? t('am.pwSaved') : t('am.pwNone')} value={password} onChange={typedIn('password', setPassword)} />{eye('password', password, setPassword)}</div></label>
       {isNew ? null : <div className="totp">
         <span className="totp-label">{t('am.totp')} <span className="muted">{t('am.totpHint')}</span></span>
@@ -179,7 +179,7 @@ export function AccountForm({ account: a, api, browser }: { account: Account | n
           <Button type="button" size="sm" data-totp="copy" onClick={() => host.copyField(a.id, 'totp')}><Icon name="copy" />{t('am.totpCopy')}</Button>
           <Button type="button" size="sm" ghost data-totp="remove" onClick={remove}><Icon name="trash" />{t('am.totpRemove')}</Button>
         </div>
-        <div className="pw" id="am-totp-box" hidden={liveShown}><input className="field mono" type={shown.authenticator ? 'text' : 'password'} name="authenticator" ref={box} maxLength={512}
+        <div className="pw" id="am-totp-box" hidden={liveShown}><Field className="mono" type={shown.authenticator ? 'text' : 'password'} name="authenticator" ref={box} maxLength={512}
           placeholder={t('am.totpPh')} spellCheck={false} autoComplete="off" aria-label={t('am.totp')} aria-describedby="am-totp-msg" value={key} onChange={e => {
             setKey(e.target.value);
             keyNow.current = e.target.value.trim();
@@ -190,7 +190,7 @@ export function AccountForm({ account: a, api, browser }: { account: Account | n
         <p className={`totp-msg ${msg.kind}`} id="am-totp-msg" aria-live="polite">{msg.node}</p>
         <p className="totp-note">{t('am.totpNote')}</p>
       </div>}
-      <label>{t('am.note')}<textarea className="field" name="note" maxLength={500} rows={2} value={note} onChange={e => setNote(e.target.value)} /></label>
+      <label>{t('am.note')}<TextArea name="note" maxLength={500} rows={2} value={note} onChange={e => setNote(e.target.value)} /></label>
     </div>
     {/* About the cookie: only while one is being pasted (adding by cookie). */}
     {isNew ? <p className="fine"><Icon name="shield" /><span>{t('am.fine')}</span></p> : null}

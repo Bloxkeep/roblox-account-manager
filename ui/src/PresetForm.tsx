@@ -7,7 +7,7 @@ import { OrderList, type OrderAccount, type OrderListApi } from './OrderList';
 import { DateInput, TimeInput, readBox, exampleOf } from './TimeField';
 import { SuggestInput } from './Suggest';
 
-import { Button, Switch } from './kit';
+import { Button, Field, Switch } from './kit';
 // The server choices in two groups: one server for every account, or each account in its own (keys of app.js's list).
 const SERVERS_ALL = ['any', 'most', 'fewest', 'ping', 'random', 'job', 'follow'];
 const SERVERS_EACH = [['eachFewest', 'fewest'], ['eachMost', 'most'], ['eachRandom', 'random']];
@@ -165,7 +165,7 @@ export function PresetForm({ base, isNew, accounts, ticked, gone, api }: {
 
   return <>
     <div className="form preset-form" ref={form}>
-      <label>{t('ps.name')}<input className="field" id="ps-name" ref={box('name')} maxLength={60} placeholder={t('ps.namePh')} value={name} onChange={e => setName(e.target.value)} /></label>
+      <label>{t('ps.name')}<Field id="ps-name" ref={box('name')} maxLength={60} placeholder={t('ps.namePh')} value={name} onChange={e => setName(e.target.value)} /></label>
       <GameBox place={place} setPlace={setPlace} chose={g => {
         if (!name.trim() || name === autoName.current) {
           setName(g.name);
@@ -188,7 +188,7 @@ export function PresetForm({ base, isNew, accounts, ticked, gone, api }: {
             .map(n => <option key={n} value={String(n)}>{n === 0 ? t('ps.delayNone') : t('set.seconds', { n })}</option>)}</select></label>
       </div>
       {srvNote ? <p className="ps-hint" id="ps-srv-note">{srvNote}</p> : null}
-      <label id="ps-job-row" hidden={serverShown !== 'job'}>{t('ps.job')}<input className="field" id="ps-job" ref={box('job')} maxLength={60} spellCheck={false}
+      <label id="ps-job-row" hidden={serverShown !== 'job'}>{t('ps.job')}<Field id="ps-job" ref={box('job')} maxLength={60} spellCheck={false}
         placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" value={job} onChange={e => setJob(e.target.value)} /></label>
       <label id="ps-follow-row" hidden={serverShown !== 'follow'}>{t('ps.follow')}<SuggestInput className="field" id="ps-follow" ref={box('follow')} maxLength={100}
         spellCheck={false} placeholder={t('jp.placeholder')} value={follow} setValue={setFollow} options={app.settings?.recentPlayers || []} label={t('ps.follow')} />
@@ -227,7 +227,7 @@ export function PresetForm({ base, isNew, accounts, ticked, gone, api }: {
           if (e.target.value === 'own' && !base.discord) setTimeout(() => boxes.current.dcLink?.focus());
         }}><option value="">{t('ps.dc.main')}</option><option value="own">{t('ps.dc.own')}</option></select></label>
         <div className="ps-dc-own" id="ps-dc-own" hidden={dcMode !== 'own'}>
-          <input className="field" id="ps-dc-link" ref={box('dcLink')} type="text" maxLength={300} spellCheck={false} autoComplete="off"
+          <Field id="ps-dc-link" ref={box('dcLink')} type="text" maxLength={300} spellCheck={false} autoComplete="off"
             placeholder={base.discord || 'https://discord.com/api/webhooks/…'} aria-label={t('ps.dc.link')} value={dcLink} onChange={e => setDcLink(e.target.value)} />
           <Button type="button" id="ps-dc-test" onClick={e => busy(e.currentTarget, async () => {
             if (await call('presetDiscordTest', { id: base.id || '', url: dcLink.trim() }) !== undefined) toast(t('dc.testOk'), 'ok');
@@ -254,7 +254,7 @@ export function PresetForm({ base, isNew, accounts, ticked, gone, api }: {
           <div className="preset-row">
             <label>{t('ps.schStop')}<select className="select" id="ps-sch-stop" value={stop} onChange={e => setStop(e.target.value)}>
               {['never', 'after', 'at'].map(k => <option key={k} value={k}>{t(`ps.schStop.${k}`)}</option>)}</select></label>
-            <label id="ps-sch-hours-row" hidden={stop !== 'after'}>{t('ps.schHours')}<input className="field" id="ps-sch-hours" ref={box('hours')} type="number" min="0.5" max="168" step="0.5"
+            <label id="ps-sch-hours-row" hidden={stop !== 'after'}>{t('ps.schHours')}<Field id="ps-sch-hours" ref={box('hours')} type="number" min="0.5" max="168" step="0.5"
               value={hours} onChange={e => setHours(e.target.value)} /></label>
             <label id="ps-sch-stoptime-row" hidden={stop !== 'at'}>{t('ps.schStopTime')}<TimeInput className="field" id="ps-sch-stoptime" ref={box('stopTime')} value={stopTime} onChange={e => setStopTime(e.target.value)} /></label>
           </div>
@@ -365,7 +365,7 @@ export function GameBox({ place, setPlace, chose }: { place: string; setPlace: (
   useEffect(() => { list.current?.querySelector('.game-row.on')?.scrollIntoView({ block: 'nearest' }); }, [index]);
 
   return <>
-    <label>{t('ps.game')}<input className="field" id="ps-place" maxLength={500} spellCheck={false} autoComplete="off" placeholder={t('ps.gamePh')}
+    <label>{t('ps.game')}<Field id="ps-place" maxLength={500} spellCheck={false} autoComplete="off" placeholder={t('ps.gamePh')}
       role="combobox" aria-haspopup="listbox" aria-autocomplete="list" aria-expanded={open} aria-activedescendant={open && index >= 0 ? `psg-${index}` : undefined}
       value={place} onChange={e => typed(e.target.value)} onKeyDown={keys}
       onFocus={() => { if (!place.trim()) show('browse'); }}

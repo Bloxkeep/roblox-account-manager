@@ -2,7 +2,7 @@
 // the launch stay in app.js behind "Find and join", which reads and writes here through JoinPlayerApi.
 import { Fragment, useImperativeHandle, useRef, useState, type Ref } from 'react';
 import { Icon, useAppState, useHost } from './host';
-import { Check } from './kit';
+import { Check, Field } from './kit';
 
 export type Tone = 'info' | 'warn' | 'error';
 export interface JoinPlayerApi {
@@ -39,7 +39,7 @@ export function JoinPlayer({ count, submit, api }: { count: number; submit: () =
   return <>
     <div className="form jp">
       <p className="modal-text">{tn('jp.note', count)}</p>
-      <label>{t('jp.label')}<input ref={box} className="field" id="jp-name" maxLength={100} autoComplete="off" spellCheck={false}
+      <label>{t('jp.label')}<Field ref={box} id="jp-name" maxLength={100} autoComplete="off" spellCheck={false}
         placeholder={t('jp.placeholder')} value={name} autoFocus onChange={e => { write(e.target.value); setMsg({ text: '', tone: 'info' }); }} /></label>
       <div className="jp-recent" id="jp-recent" role="group" aria-label={t('jp.recent')} hidden={!recent.length}>
         {recent.length ? <small>{t('jp.recent')}</small> : null}

@@ -7,7 +7,7 @@ import { Group, Page, Row, Switch, useLocal } from './parts';
 import { ColorInput } from '../ColorField';
 import { useCommunity } from '../Community';
 
-import { Button, IconButton } from '../kit';
+import { Button, Field, IconButton } from '../kit';
 export function AppearancePage({ title }: { title: string }) {
   const { t, tn, tIn, lang, call, toast, busy, themes, themePending, previewTheme, subscribe, customTheme, customVars, previewCustom } = useHost();
   const app = useAppState();
@@ -91,7 +91,7 @@ export function AppearancePage({ title }: { title: string }) {
           <span className="range-v">{custom.blur || 0} px</span>
         </Row> : null}
         <Row title={t('ct.save')} desc={t('ct.saveDesc')}>
-          <input className="field sm ct-name" id="s-ct-name" maxLength={40} placeholder={inUse?.name || t('ct.namePh')} aria-label={t('ct.namePh')}
+          <Field size="sm" className="ct-name" id="s-ct-name" maxLength={40} placeholder={inUse?.name || t('ct.namePh')} aria-label={t('ct.namePh')}
             value={name} onChange={e => setName(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && (name.trim() || inUse)) (e.currentTarget.nextElementSibling as HTMLElement)?.click(); }} />
           <Button size="sm" id="s-ct-save" disabled={!name.trim() && !inUse}

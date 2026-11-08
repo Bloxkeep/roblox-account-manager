@@ -6,7 +6,7 @@ import { Icon, useAppState, useHost } from './host';
 import { Rich } from './rich';
 import { Avatar, shortName } from './Avatar';
 
-import { Check, IconButton } from './kit';
+import { Check, Field, IconButton } from './kit';
 type FileAccount = { key: number; label: string; username?: string; group?: string; realm?: string; cookieValid?: boolean | null; hasPassword?: boolean; exists?: boolean; avatarUrl?: string };
 type Preview = { token: string; accounts: FileAccount[]; presets: number };
 export type ImportResult = { added: number; updated: number; presets: number; presetsSkipped: number; ids?: string[] };
@@ -124,7 +124,7 @@ export function ImportVault({ api, primary, finished }: {
     {stepLine(2)}
     {fileLine}
     <div className="form"><label>{t('iv.pw')}
-      <span className="pw"><input className="field" type={shown ? 'text' : 'password'} id="iv-pw" ref={pw} maxLength={256} autoComplete="off" spellCheck={false}
+      <span className="pw"><Field type={shown ? 'text' : 'password'} id="iv-pw" ref={pw} maxLength={256} autoComplete="off" spellCheck={false}
         aria-invalid={shownError && !waiting ? true : undefined} onInput={() => { if (error) setError(''); }} />
         <IconButton icon={shown ? 'eyeOff' : 'eye'} type="button" id="iv-eye" title={t(shown ? 'lock.hidePw' : 'lock.showPw')} aria-label={t(shown ? 'lock.hidePw' : 'lock.showPw')}
           aria-pressed={shown} onClick={() => setShown(!shown)} /></span></label></div>
@@ -144,7 +144,7 @@ export function ImportVault({ api, primary, finished }: {
     {stepLine(3)}
     {fileLine}
     {all.length ? <>
-      {all.length > 20 ? <input className="field sm iv-search" type="text" id="iv-search" value={query} maxLength={60} autoComplete="off" spellCheck={false}
+      {all.length > 20 ? <Field size="sm" className="iv-search" type="text" id="iv-search" value={query} maxLength={60} autoComplete="off" spellCheck={false}
         placeholder={t('acc.search')} aria-label={t('acc.search')} onChange={e => setQuery(e.target.value)} /> : null}
       <div className="iv-bar"><span id="iv-count">{t('iv.count', { n, total: all.length })}</span>
         <button type="button" className="link" id="iv-all" onClick={() => setTicked(new Set([...ticked, ...list.filter(a => !a.exists).map(a => a.key)]))}>{t('iv.all')}</button>

@@ -2,7 +2,7 @@
 // "See exactly what will be sent" shows the message as it would go, error log included (account names taken out by the app).
 import { useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react';
 import { Icon, useHost } from './host';
-import { Check } from './kit';
+import { Check, Field, Segment, Segmented, TextArea } from './kit';
 
 export interface FeedbackValues { kind: 'bug' | 'idea'; text: string; contact: string; log: boolean }
 
@@ -45,19 +45,19 @@ export function Feedback({ locked, api }: { locked: boolean; api: Ref<FeedbackAp
     <div className="form">
       {/* Two answers: a segmented pair, not a list to open. */}
       <div className="fb-kind"><span id="fb-kind-l">{t('fb.kind')}</span>
-        <div className="seg wide" role="radiogroup" aria-labelledby="fb-kind-l">
-          {(['bug', 'idea'] as const).map(k => <button type="button" key={k} role="radio" name="kind" value={k} aria-checked={kind === k} className={kind === k ? 'on' : ''}
+        <Segmented wide role="radiogroup" aria-labelledby="fb-kind-l">
+          {(['bug', 'idea'] as const).map(k => <Segment type="button" key={k} as="radio" on={kind === k} name="kind" value={k}
             onClick={() => {
               if (k === kind) return;
               edited(setKind)(k);
               // An idea rarely needs the log; a bug report usually does.
               if (!locked) setLog(k === 'bug');
-            }}>{t(`fb.${k}`)}</button>)}
-        </div>
+            }}>{t(`fb.${k}`)}</Segment>)}
+        </Segmented>
       </div>
-      <label>{t('fb.text')}<textarea ref={textBox} className="field" name="text" maxLength={2000} rows={6} placeholder={t('fb.textPh')}
+      <label>{t('fb.text')}<TextArea ref={textBox} name="text" maxLength={2000} rows={6} placeholder={t('fb.textPh')}
         value={text} onChange={e => edited(setText)(e.target.value)} /></label>
-      <label><span>{t('fb.contact')} <span className="muted">{t('fb.optional')}</span></span><input className="field" name="contact" maxLength={100}
+      <label><span>{t('fb.contact')} <span className="muted">{t('fb.optional')}</span></span><Field name="contact" maxLength={100}
         autoComplete="off" spellCheck={false} placeholder={t('fb.contactPh')} value={contact} onChange={e => edited(setContact)(e.target.value)} /></label>
     </div>
     <Check className="dont-ask" name="log" disabled={locked} checked={!locked && log} onChange={e => edited(setLog)(e.target.checked)} label={t(locked ? 'fb.logLocked' : 'fb.log')} />

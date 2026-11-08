@@ -9,7 +9,7 @@ import { Avatar } from './Avatar';
 import { AccountCards, Clock, GameMap } from './StatsViz';
 import { AltsBoard } from './Community';
 
-import { Button } from './kit';
+import { Button, Segment, Segmented } from './kit';
 const STATS_PERIODS = [1, 7, 30];
 const AL_GROUPS = ['play', 'drops', 'schedule', 'signin', 'updates'];
 const AL_PAGE = 100;
@@ -165,10 +165,10 @@ export function StatsView({ api }: { api: Ref<StatsApi> }) {
     <header className="top">
       <div className="top-title"><h1>{t('stats.title')}</h1><p id="stats-sub">{t(onStats ? 'stats.note' : 'alog.note')}</p></div>
       <div className="top-tools">
-        <div className="seg" id="stats-tabs" role="tablist" aria-label={t('stats.title')}>
+        <Segmented id="stats-tabs" role="tablist" aria-label={t('stats.title')}>
           {[['stats', 'stats.title'], ['activity', 'alog.title']].map(([id, key]) =>
-            <button key={id} type="button" role="tab" className={tab === id ? 'on' : ''} data-tab={id} aria-selected={tab === id} onClick={() => setTab(id)}>{t(key)}</button>)}
-        </div>
+            <Segment key={id} type="button" as="tab" on={tab === id} data-tab={id} onClick={() => setTab(id)}>{t(key)}</Segment>)}
+        </Segmented>
         {/* Nothing ever recorded: no period to pick. (Nothing in this period: the others may have some.) */}
         <div className="chips" id="stats-period" role="group" aria-label={t('stats.title')} hidden={!onStats || !!data && !data.sessions && !data.recorded}>
           {STATS_PERIODS.map(d => <button key={d} className={`chip ${d === days ? 'on' : ''}`} data-days={d} aria-pressed={d === days} onClick={() => setPeriod(d)}>{t(`stats.period.${d}`)}</button>)}

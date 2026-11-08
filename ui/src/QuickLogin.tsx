@@ -4,7 +4,7 @@
 import { Fragment, useEffect, useImperativeHandle, useRef, useState, type ReactNode, type Ref } from 'react';
 import { useAppState, useHost } from './host';
 
-import { Button } from './kit';
+import { Button, Segment, Segmented } from './kit';
 type Added = { id: string; label: string; merged?: boolean };
 export interface QuickLoginApi {
   added(): Added[];
@@ -129,17 +129,17 @@ export function QuickLogin({ forName, forRealm, api, browserButton }: {
   return <>
     {/* Signing a signed-out account in again: its name at the top, in bold. */}
     {forName ? <p className="ql-for">{t('ql.for', { name: '\u0000' }).split('\u0000').map((part, n) => <Fragment key={n}>{n ? <b>{forName}</b> : null}{part}</Fragment>)}</p> : null}
-    <div className="seg wide" role="tablist">
+    <Segmented wide role="tablist">
       {[['', 'Roblox'], ['vng', 'Roblox VNG']].map(([r, words]) =>
-        <button key={r} role="tab" data-realm={r} className={realm === r ? 'on' : ''} aria-selected={realm === r} onClick={() => {
+        <Segment key={r} as="tab" on={realm === r} data-realm={r} onClick={() => {
           if (r === realm) return;
           setRealm(r);
           realmNow.current = r;
           store.set('rm.qlRealm', r);
           st.current.expiredInRow = 0;
           start(r);
-        }}>{words}</button>)}
-    </div>
+        }}>{words}</Segment>)}
+    </Segmented>
     {/* A code that is gone (declined, expired, an error): its picture, letters and steps go dim or away, so nobody scans or types it. */}
     <div className={`ql${phase === 'cancelled' || phase === 'expired' || phase === 'error' ? ' dead' : ''}`}>
       <div className="ql-qr" id="ql-qr">{qr ? <img src={qr} alt="QR" /> : null}</div>

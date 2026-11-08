@@ -19,7 +19,7 @@ import { GameBox } from './PresetForm';
 import { GameFrame, TryLines, type Picture, type Seen } from './MacroPicture';
 import { PlayerSees } from './MacroPanel';
 import { hasWindow, useCountdown } from './MacrosView';
-import { Button, Check as KitCheck, IconButton, Switch } from './kit';
+import { Button, Check as KitCheck, Field, IconButton, Switch } from './kit';
 import {
   AREA_COLOURS, FREE, MAX_FEATURES, MAX_NOTE, OPENERS, asPoint, KEYS, LOOK_STEPS, MAX_AREAS, MAX_OPTIONS, MAX_TABS, MOUSE_KEYS, STEP_GROUPS, STEP_ICON, SYNONYMS,
   blockEnd, camDir, counterName, counters, durText, endOf, featureProblems, freeName, isArea, isOpt, isLive, keyCap, keyFromEvent, keyName, kindsAt, newStep, newTest,
@@ -810,7 +810,7 @@ export function MacroEditor({ base, accounts, macros, api, openStep, openSection
       <div className="mc-main">
         <div className="form mc-top">
           <div className="mc-name-row">
-            <label>{t('macro.name')}<input className="field" id="mc-name" ref={nameBox} maxLength={60} placeholder={t('macro.namePh')} value={m.name}
+            <label>{t('macro.name')}<Field id="mc-name" ref={nameBox} maxLength={60} placeholder={t('macro.namePh')} value={m.name}
               aria-invalid={nameErr.some(p => !p.warn) || undefined} aria-describedby={nameErr.length ? 'mc-name-err' : undefined}
               onChange={e => patch({ name: e.target.value })} /></label>
             <Button type="button" className="mc-try-it" id="mc-try" pressed={trying} disabled={!windowId}
@@ -829,7 +829,7 @@ export function MacroEditor({ base, accounts, macros, api, openStep, openSection
                   if (kind === 'interval' && !m.trigger.everySeconds) setUnit('min');
                 }}>{['manual', 'interval', 'join', 'rejoin'].map(k => <option key={k} value={k}>{t(`macro.trigOpt.${k}`)}</option>)}</select></label>
                 {m.trigger.kind === 'interval' ? <label>{t('macro.everyMin')}<span className="mc-every">
-                  <input className="field num" id="mc-every" type="number" min={unit === 'min' ? 1 : 10} max={unit === 'min' ? 1440 : 86400}
+                  <Field className="num" id="mc-every" type="number" min={unit === 'min' ? 1 : 10} max={unit === 'min' ? 1440 : 86400}
                     aria-invalid={whenErr.some(p => p.field === 'every') || undefined}
                     value={everyShown} onChange={e => patch({ trigger: { kind: 'interval', everySeconds: e.target.value === '' ? NaN : Math.round(+e.target.value * (unit === 'min' ? 60 : 1)) } })} />
                   <select className="select" id="mc-every-unit" aria-label={t('macro.every.unit')} value={unit} onChange={e => {
@@ -864,7 +864,7 @@ export function MacroEditor({ base, accounts, macros, api, openStep, openSection
               </div>
               <div className="mc-grid mc-when-nums">
                 <label>{t('macro.e.stopAfterL')}<NumField id="mc-max" value={m.maxMinutes} min={1} max={240} onChange={v => patch({ maxMinutes: v })} /></label>
-                <label>{t('macro.e.randomMs')}<span className="mc-unit wide"><input className="field num" id="mc-jms" type="number" min={0} max={0.5} step="0.01"
+                <label>{t('macro.e.randomMs')}<span className="mc-unit wide"><Field className="num" id="mc-jms" type="number" min={0} max={0.5} step="0.01"
                   value={Number.isFinite(m.jitterMs) ? +(m.jitterMs / 1000).toFixed(3) : ''}
                   onChange={e => patch({ jitterMs: e.target.value === '' ? NaN : Math.round(+e.target.value * 1000) })} /><span aria-hidden="true">{t('macro.unit.s')}</span></span></label>
                 <label>{t('macro.e.randomPx')}<span className="mc-unit wide"><NumField id="mc-jpx" value={m.jitterPx} min={0} max={20} onChange={v => patch({ jitterPx: v })} />
@@ -1078,7 +1078,7 @@ function FeatHead({ f, o, errs, set, setOpt, drop }: {
   const shown = typeof every === 'number' && Number.isFinite(every) ? +(every / size).toFixed(2) : '';
   return <div className="mc-feat form" role="group" aria-label={o?.label || t('macro.feat.unnamed')}>
     <div className="mc-feat-row">
-      <label className="mc-feat-name">{t('macro.feat.name')}<input className="field" id="mc-feat-name" maxLength={30} value={o?.label || ''}
+      <label className="mc-feat-name">{t('macro.feat.name')}<Field id="mc-feat-name" maxLength={30} value={o?.label || ''}
         aria-invalid={!o?.label.trim() || undefined} onChange={e => setOpt({ label: e.target.value })} /></label>
       <label className="mc-switch-row mc-feat-on">
         <Switch inside checked={!!o?.value} onChange={e => setOpt({ value: e.target.checked ? 1 : 0, default: e.target.checked ? 1 : 0 })} />
@@ -1091,7 +1091,7 @@ function FeatHead({ f, o, errs, set, setOpt, drop }: {
           onChange={e => set({ everyMs: e.target.value === 'round' ? null : 300000 })}>
           <option value="round">{t('macro.feat.eachRound')}</option><option value="every">{t('macro.feat.everyOpt')}</option></select>
         {every == null ? null : <>
-          <input className="field num" id="mc-feat-every" type="number" min={1} max={unit === 'min' ? 1440 : 86400}
+          <Field className="num" id="mc-feat-every" type="number" min={1} max={unit === 'min' ? 1440 : 86400}
             aria-label={t('macro.feat.everyL')} aria-invalid={errs.some(p => p.field === 'every') || undefined} value={shown}
             onChange={e => set({ everyMs: e.target.value === '' ? NaN : Math.round(+e.target.value * size) })} />
           <select className="select" aria-label={t('macro.every.unit')} value={unit} onChange={e => {
@@ -1134,7 +1134,7 @@ function AreaList({ areas, set, del, add, problems: probs, inUse, name, go, clos
       return <li key={a.name}>
         <div className="mc-area-row">
           <i style={{ borderColor: a.colour }} aria-hidden="true" />
-          <input className="field sm" id={`mc-area-${a.name}`} value={a.label} maxLength={30} aria-label={t('macro.area.name')} aria-invalid={!!bad || undefined}
+          <Field size="sm" id={`mc-area-${a.name}`} value={a.label} maxLength={30} aria-label={t('macro.area.name')} aria-invalid={!!bad || undefined}
             onChange={e => set(a.name, { label: e.target.value })} />
           <IconButton icon="trash" type="button" title={t('macro.area.del')} aria-label={`${t('macro.area.del')}: ${a.label}`} onClick={() => del(a.name)} />
         </div>
@@ -1190,7 +1190,7 @@ function AddList({ anchor, at, steps, inFeature, add, close }: {
   return <Pop anchor={anchor} close={close} label={t('macro.addStep')} className="menu mc-add-pop">
     <div onKeyDown={keys}>
       <div className="mc-add-search"><Icon name="search" />
-        <input className="field sm mc-add-q" type="search" value={q} placeholder={t('macro.search')} aria-label={t('macro.search')} spellCheck={false}
+        <Field size="sm" className="mc-add-q" type="search" value={q} placeholder={t('macro.search')} aria-label={t('macro.search')} spellCheck={false}
           onChange={e => setQ(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && matches[0]) { e.preventDefault(); add(matches[0], at); } }} /></div>
       <div className="mc-add-list" ref={list} role="menu" aria-label={t('macro.addStep')}>
         {words.length ? (matches.length ? matches.map(k => item(k)) : <p className="mc-add-none">{t('macro.search.none')}</p>)
@@ -1214,10 +1214,10 @@ function NewCounter({ anchor, taken, close, done }: { anchor: HTMLElement; taken
   const ok = name !== '' && !bad && !dup;
   return <Pop anchor={anchor} close={close} label={t('macro.counter.new')} className="mc-counter-pop">
     <form className="form" onSubmit={e => { e.preventDefault(); if (ok) done(name, label); }}>
-      <label>{t('macro.e.counterL')}<input className="field sm" value={name} maxLength={32} spellCheck={false} autoComplete="off"
+      <label>{t('macro.e.counterL')}<Field size="sm" value={name} maxLength={32} spellCheck={false} autoComplete="off"
         aria-invalid={bad || dup || undefined} aria-describedby="mc-counter-hint" onChange={e => setName(e.target.value.replace(/\s/g, '_'))} /></label>
       <small id="mc-counter-hint" className={bad || dup ? 'bad' : ''}>{dup ? t('macro.counter.taken') : t('macro.counter.nameHint')}</small>
-      <label>{t('macro.counter.label')}<input className="field sm" value={label} maxLength={30} placeholder={name || undefined} onChange={e => setLabel(e.target.value)} /></label>
+      <label>{t('macro.counter.label')}<Field size="sm" value={label} maxLength={30} placeholder={name || undefined} onChange={e => setLabel(e.target.value)} /></label>
       <div className="mc-pop-acts">
         <Button type="button" size="sm" ghost onClick={close}>{t('common.cancel')}</Button>
         <Button type="submit" size="sm" kind="primary" aria-disabled={!ok} title={ok ? undefined : t('macro.counter.nameHint')}>{t('macro.opt.add')}</Button>
@@ -1311,7 +1311,7 @@ function NoteBox({ value, done }: { value: string; done: (text: string) => void 
   const [text, setText] = useState(value);
   const box = useRef<HTMLInputElement>(null);
   useEffect(() => { box.current?.focus(); }, []);
-  return <p className="mc-step-note editing"><input ref={box} className="field sm" value={text} maxLength={MAX_NOTE} placeholder={t('macro.note.ph')} aria-label={t('macro.note.label')}
+  return <p className="mc-step-note editing"><Field ref={box} size="sm" value={text} maxLength={MAX_NOTE} placeholder={t('macro.note.ph')} aria-label={t('macro.note.label')}
     onChange={e => setText(e.target.value)} onBlur={() => done(text)}
     onKeyDown={e => {
       if (e.key === 'Enter') { e.preventDefault(); done(text); }
@@ -1385,7 +1385,7 @@ function StepBody({ s, i, m, ed, cutting, invalid }: { s: Held; i: number; m: Ma
     : place === 'web' ? <Say k="macro.e.urlIs" parts={{ url: textIn('url', 500, t('macro.e.urlL'), true) }} /> : null;
   // A number or a formula in one box: "12" stays a number, "coins * 2 + 1" is worked out as the step plays.
   const formula = () => isOpt(s.value) ? num('value', t('macro.e.valueL'), -1e9, 1e9)
-    : <input className="field sm mc-text mc-formula" id={id('value')} maxLength={200} spellCheck={false} aria-label={t('macro.e.formulaL')} placeholder={t('macro.e.formulaL')}
+    : <Field size="sm" className="mc-text mc-formula" id={id('value')} maxLength={200} spellCheck={false} aria-label={t('macro.e.formulaL')} placeholder={t('macro.e.formulaL')}
       aria-invalid={bad('value') || undefined} value={typeof s.expr === 'string' ? s.expr : typeof s.value === 'number' && Number.isFinite(s.value) ? String(s.value) : ''}
       onChange={e => { const x = e.target.value; ed.set(i, PLAIN_NUMBER.test(x) ? { value: Number(x), expr: undefined } : { expr: x, value: undefined }); }} />;
   const tune = (kids: ReactNode) => <details className="mc-tune"><summary><span>{t('macro.e.tune')}</span><Icon name="chevronDown" /></summary><div>{kids}</div></details>;
@@ -1512,7 +1512,7 @@ function StepBody({ s, i, m, ed, cutting, invalid }: { s: Held; i: number; m: Ma
       const most = Number(v('max')) || 0;
       lines = <>{rest}{s.kind === 'loopUntil' ? <div className="mc-most">
         <Say k="macro.e.atMost" parts={{ n: most ? num('max', t('macro.e.atMostL'), 1, 100000)
-          : <input className="field sm num mc-count" type="number" disabled aria-label={t('macro.e.atMostL')} value="" /> }} />
+          : <Field size="sm" className="num mc-count" type="number" disabled aria-label={t('macro.e.atMostL')} value="" /> }} />
         <Check id={id('nolimit')} label={t('macro.tune.noLimit')} checked={!most} onChange={x => ed.put(i, 'max', x ? 0 : 10)} /></div> : null}</>;
       break;
     }
@@ -1625,18 +1625,18 @@ function Pick({ id, label, value, options, onChange, className, invalid }: { id:
 function Secs({ id, label, ms, onChange, invalid }: { id: string; label: string; ms: unknown; onChange: (v: number) => void; invalid?: boolean }) {
   const { t } = useHost();
   const n = typeof ms === 'number' && Number.isFinite(ms) ? +(ms / 1000).toFixed(3) : '';
-  return <span className="mc-unit"><input className="field sm num" id={id} type="number" min={0} step="0.1" aria-label={label} value={n} aria-invalid={invalid || undefined}
+  return <span className="mc-unit"><Field size="sm" className="num" id={id} type="number" min={0} step="0.1" aria-label={label} value={n} aria-invalid={invalid || undefined}
     onChange={e => onChange(e.target.value === '' ? NaN : Math.round(+e.target.value * 1000))} /><span aria-hidden="true">{t('macro.unit.s')}</span></span>;
 }
 
 /** A whole number in a field of the form (a label above it). */
 function NumField({ id, value, min, max, onChange }: { id: string; value: unknown; min: number; max: number; onChange: (v: number) => void }) {
-  return <input className="field num" id={id} type="number" min={min} max={max}
+  return <Field className="num" id={id} type="number" min={min} max={max}
     value={typeof value === 'number' && Number.isFinite(value) ? value : ''} onChange={e => onChange(e.target.value === '' ? NaN : +e.target.value)} />;
 }
 
 function Count({ id, label, value, min, max, onChange, invalid }: { id: string; label: string; value: unknown; min: number; max: number; onChange: (v: number) => void; invalid?: boolean }) {
-  return <input className="field sm num mc-count" id={id} type="number" min={min} max={max} aria-label={label} aria-invalid={invalid || undefined}
+  return <Field size="sm" className="num mc-count" id={id} type="number" min={min} max={max} aria-label={label} aria-invalid={invalid || undefined}
     value={typeof value === 'number' && Number.isFinite(value) ? value : ''} onChange={e => onChange(e.target.value === '' ? NaN : +e.target.value)} />;
 }
 

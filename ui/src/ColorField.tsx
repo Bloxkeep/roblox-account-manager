@@ -3,6 +3,7 @@
 import { useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { useHost } from './host';
 import { Popup } from './TimeField';
+import { Field } from './kit';
 
 const READY = ['#141a26', '#0b0d12', '#1b2a3a', '#2a1b3d', '#3a1d2b', '#123524', '#f1e9da', '#ffffff',
   '#22c55e', '#3b82f6', '#a855f7', '#ec4899', '#ef4444', '#f59e0b', '#14b8a6', '#eab308'];
@@ -72,7 +73,7 @@ function Picker({ value, onChange }: { value: string; onChange: (hex: string) =>
     </div>
     <input type="range" className="cf-hue" min={0} max={359} value={Math.round(hsv.h)} aria-label={t('cf.hue')}
       onChange={e => set({ ...hsv, h: +e.target.value })} />
-    <input className="field sm cf-hex" value={typed} maxLength={7} spellCheck={false} aria-label={t('cf.hex')}
+    <Field size="sm" className="cf-hex" value={typed} maxLength={7} spellCheck={false} aria-label={t('cf.hex')}
       onChange={e => {
         const v = e.target.value.trim();
         setTyped(v);

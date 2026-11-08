@@ -6,7 +6,7 @@ import { Icon, useAppState, useHost, type AppState } from './host';
 import { Rich } from './rich';
 import { VaultFace, VaultPicker, type VaultInfo } from './Vaults';
 
-import { Button, IconButton } from './kit';
+import { Button, Field, IconButton } from './kit';
 export type LockMode = 'create' | 'unlock' | 'pick';
 
 /** The language buttons (app.js's click handler changes the language: data-act="lang"). */
@@ -177,13 +177,13 @@ export function Lock({ mode, notice, kept, opened }: {
       <p><Rich k={adding ? 'vault.newText' : create ? 'lock.createText' : 'lock.unlockText'} /></p>
       {notice ? <p className="lock-paused">{notice}</p> : null}
       <div className="stack">
-        {adding ? <label className="lock-label"><span>{t('vault.name')}</span><input className="field" id="vault-name" ref={nameBox} defaultValue={vault?.name || ''} maxLength={40}
+        {adding ? <label className="lock-label"><span>{t('vault.name')}</span><Field id="vault-name" ref={nameBox} defaultValue={vault?.name || ''} maxLength={40}
           spellCheck={false} /></label> : null}
-        <div className="pw"><input className="field" type={shown ? 'text' : 'password'} id="pw1" ref={pw1} placeholder={t(create ? 'lock.pw6' : 'lock.pw')} maxLength={256} aria-label={t('lock.pw')}
+        <div className="pw"><Field type={shown ? 'text' : 'password'} id="pw1" ref={pw1} placeholder={t(create ? 'lock.pw6' : 'lock.pw')} maxLength={256} aria-label={t('lock.pw')}
           aria-invalid={invalid === 'pw1' || undefined} {...typing} onInput={() => { setError(''); setInvalid(''); if (create) showStrength(pw1.current!.value); }} />
           <IconButton icon={shown ? 'eyeOff' : 'eye'} type="button" id="pw-eye" title={eye} aria-label={eye} aria-pressed={shown} onClick={() => setShown(!shown)} /></div>
         {create ? <>
-          <input className="field" type={shown ? 'text' : 'password'} id="pw2" ref={pw2} placeholder={t('lock.pw2')} maxLength={256} aria-label={t('lock.pw2')}
+          <Field type={shown ? 'text' : 'password'} id="pw2" ref={pw2} placeholder={t('lock.pw2')} maxLength={256} aria-label={t('lock.pw2')}
             aria-invalid={invalid === 'pw2' || undefined} {...typing} />
           <div className="strength-row"><div className="strength"><i id="pw-meter" ref={meter} /></div><span id="pw-strength" className="pw-strength" ref={label} aria-live="polite" /></div>
         </> : null}

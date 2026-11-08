@@ -13,7 +13,7 @@ import { PricePanel, useWikiGames, wikiGamesNow, type WikiInfo } from './WikiVie
 import { WikiSite, type WikiPick } from './WikiSite';
 import { timeText } from './DiscordBlocks';
 
-import { Button } from './kit';
+import { Button, Field, Segment, Segmented } from './kit';
 type Look = { icon: string | null; cover: string | null; tint: string | null; ink: string | null };
 type Game = { id: string; name: string; place: number; news?: FeedGame; prices?: WikiInfo; pick?: WikiPick; added?: boolean; played?: Played;
   /** How many PCs with Bloxkeep play it now (Community.tsx), and its radar lines. */
@@ -167,13 +167,13 @@ export function GamesView() {
         : <>
           <Hero game={game} look={look!} t={t} locale={locale} onRemove={game.added ? () => remove(game) : null} />
           <RadarStrip lines={game.radar || []} t={t} named={false} />
-          {parts.length > 1 ? <div className="seg gm-parts" role="tablist" aria-label={game.name}>
-            {parts.map(p => <button key={p} type="button" role="tab" aria-selected={at === p} className={at === p ? 'on' : ''} data-part={p} onClick={() => setPart(p)}>
+          {parts.length > 1 ? <Segmented className="gm-parts" role="tablist" aria-label={game.name}>
+            {parts.map(p => <Segment key={p} type="button" as="tab" on={at === p} data-part={p} onClick={() => setPart(p)}>
               <Icon name={p === 'news' ? 'news' : p === 'prices' ? 'tag' : 'book'} />
               <span>{p === 'news' ? t('games.news') : p === 'prices' ? t('prices.tab') : t('games.wiki')}</span>
               {p === 'news' && game.news?.unread ? <em>{game.news.unread}</em> : null}
-            </button>)}
-          </div> : null}
+            </Segment>)}
+          </Segmented> : null}
           {game.news ? <div hidden={at !== 'news'}><NewsPanel key={game.id} game={game.news} cards={cards} loaded={loaded} shown={shown && at === 'news'} /></div> : null}
           {game.pick ? <div hidden={at !== 'wiki'}>
             <WikiSite key={`${game.id}|${game.pick.site}`} pick={game.pick} gameId={game.id} shown={shown && at === 'wiki'} /></div> : null}
@@ -193,7 +193,7 @@ function Grid({ games, lookOf, t, empty, onOpen }: {
   if (empty) return <div className="empty news-empty"><h2>{empty}</h2><p>{t('news.noneText')}</p></div>;
   return <>
     {games.length > 6 ? <div className="pl-tools gm-tools"><label className="pl-search"><Icon name="search" />
-      <input className="field sm" type="search" value={query} placeholder={t('games.search', { n: games.length })} aria-label={t('games.search', { n: games.length })}
+      <Field size="sm" type="search" value={query} placeholder={t('games.search', { n: games.length })} aria-label={t('games.search', { n: games.length })}
         maxLength={40} autoComplete="off" spellCheck={false} onChange={e => setQuery(e.target.value)} /></label></div> : null}
     {list.length ? (words || list.every(mine) || !list.some(mine) ? [list] : [list.filter(mine), list.filter(g => !mine(g))]).map((part, i, parts) => <section key={i} className="gm-sec">
       {parts.length > 1 ? <h2 className="gm-sec-title">{i ? t('games.popular') : t('games.mine')}</h2> : null}
@@ -255,7 +255,7 @@ function Switcher({ games, game, lookOf, t, onPick }: { games: Game[]; game: Gam
       onClick={e => anchor ? close() : setAnchor(e.currentTarget)}>
       <GameIcon look={lookOf(game)} name={game.name} /><h1>{game.name}</h1><Icon name="chevronDown" /></button>
     {anchor ? <Pop anchor={anchor} close={close} label={t('games.switch')} className="mc-pop menu gm-switch-pop">
-      {games.length > 6 ? <input className="field sm" type="search" value={query} placeholder={t('games.search', { n: games.length })} aria-label={t('games.search', { n: games.length })}
+      {games.length > 6 ? <Field size="sm" type="search" value={query} placeholder={t('games.search', { n: games.length })} aria-label={t('games.search', { n: games.length })}
         maxLength={40} autoComplete="off" spellCheck={false} onChange={e => setQuery(e.target.value)}
         onKeyDown={e => { if (e.key === 'Enter' && list[0]) { onPick(list[0].id); close(); } }} /> : null}
       <div className="gm-switch-list" role="listbox" aria-label={t('games.switch')}>

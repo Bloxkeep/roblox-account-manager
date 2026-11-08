@@ -7,7 +7,7 @@ import { Fragment, useEffect, useImperativeHandle, useLayoutEffect, useRef, useS
 import type { Command } from './bridge';
 import { Icon, useHost } from './host';
 
-import { Button, IconButton } from './kit';
+import { Button, Field, IconButton, Segment, Segmented } from './kit';
 const METHOD_LABEL: Record<string, string> = { authenticator: 'pw.auth', email: 'pw.email', sms: 'pw.sms' };
 const RESEND_WAIT = 30_000;
 type Added = { id: string; label: string; merged?: boolean };
@@ -280,8 +280,8 @@ export function PasswordLogin({ forRealm, api, way }: {
         <h4>{t('pw.twoTitle')}</h4>
         <p>{boldIn(t('pw.twoLead', { name: '\u0000' }), user)}</p>
       </div>
-      {methods.length > 1 ? <div className="seg wide" role="tablist">
-        {methods.map(x => <button key={x} type="button" role="tab" data-m={x} className={method === x ? 'on' : ''} aria-selected={method === x} onClick={() => {
+      {methods.length > 1 ? <Segmented wide role="tablist">
+        {methods.map(x => <Segment key={x} type="button" as="tab" on={method === x} data-m={x} onClick={() => {
           setErr('');
           setMethod(x);
           s.current.method = x;
@@ -291,10 +291,10 @@ export function PasswordLogin({ forRealm, api, way }: {
           if (x !== 'authenticator' && s.current.filled && s.current.code === s.current.filled) { setCode(''); s.current.code = ''; setFilledNote(false); }
           fillCode();
           box.current.otp?.focus();
-        }}>{t(METHOD_LABEL[x])}</button>)}
-      </div> : null}
+        }}>{t(METHOD_LABEL[x])}</Segment>)}
+      </Segmented> : null}
       <form id="pw-two" className="auth-form" autoComplete="off" onSubmit={submitTwoStep}>
-        <input className="field auth-code" id="pw-otp" ref={ref('otp')} aria-invalid={bad.code || undefined} inputMode="numeric" maxLength={40} autoComplete="one-time-code" placeholder="000000" aria-label={t('pw.code')}
+        <Field className="auth-code" id="pw-otp" ref={ref('otp')} aria-invalid={bad.code || undefined} inputMode="numeric" maxLength={40} autoComplete="one-time-code" placeholder="000000" aria-label={t('pw.code')}
           value={code} onChange={e => {
             const digits = e.target.value.replace(/\D/g, '').slice(0, 6);
             setErr('');
@@ -319,17 +319,17 @@ export function PasswordLogin({ forRealm, api, way }: {
     // The phone first (no password, no puzzle); the browser sign-in is roblox.com only, so not offered for Roblox VNG.
     screen = <>
       <div className="auth-head"><img src={host.logo} alt="" /><h3>{t('pw.title')}</h3></div>
-      <div className="seg wide" role="tablist">
-        {[['', 'Roblox'], ['vng', 'Roblox VNG']].map(([r, words]) => <button key={r} type="button" role="tab" data-realm={r} className={realm === r ? 'on' : ''}
-          aria-selected={realm === r} onClick={() => {
+      <Segmented wide role="tablist">
+        {[['', 'Roblox'], ['vng', 'Roblox VNG']].map(([r, words]) => <Segment key={r} type="button" as="tab" on={realm === r} data-realm={r}
+          onClick={() => {
             if (pending || r === realm) return; // the answer on its way is for the realm it was sent to
             setErr('');
             setRealm(r);
             store.set('rm.qlRealm', r);
             setShown(false); // what was typed stays, hidden again
             setDrawn(n => n + 1);
-          }}>{words}</button>)}
-      </div>
+          }}>{words}</Segment>)}
+      </Segmented>
       {added.length ? <div className="note ok auth-added" role="status"><Icon name="check" /><span>{t('pw.addedList', { names: added.map(x => x.label).join(', ') })}</span>
         <Button type="button" size="sm" kind="primary" data-x2="done" onClick={() => way('done', realm)}>{t('common.done')}</Button></div> : null}
       <div className="auth-phone">
@@ -339,10 +339,10 @@ export function PasswordLogin({ forRealm, api, way }: {
       <div className="auth-or"><span>{t('pw.orPw')}</span></div>
       <form id="pw-login" className="auth-form tight" autoComplete="off" onSubmit={submitLogin}>
         <label className="auth-label">{t('pw.user')}
-          <span className="lead-ic"><Icon name="user" /><input className="field" id="pw-user" ref={ref('user')} maxLength={60} autoComplete="off" spellCheck={false}
+          <span className="lead-ic"><Icon name="user" /><Field id="pw-user" ref={ref('user')} maxLength={60} autoComplete="off" spellCheck={false}
             value={user} aria-invalid={bad.user || undefined} onChange={e => { setErr(''); setBad(b => ({ ...b, user: false })); setUser(e.target.value); }} /></span></label>
         <label className="auth-label">{t('pw.pass')}
-          <span className="pw lead-ic"><Icon name="lock" /><input className="field" type={shown ? 'text' : 'password'} id="pw-pass" ref={ref('pass')} maxLength={200} autoComplete="off"
+          <span className="pw lead-ic"><Icon name="lock" /><Field type={shown ? 'text' : 'password'} id="pw-pass" ref={ref('pass')} maxLength={200} autoComplete="off"
             value={pass} aria-invalid={bad.pass || undefined} onChange={e => { setErr(''); setBad(b => ({ ...b, pass: false })); setPass(e.target.value); }} />
             <IconButton icon={shown ? 'eyeOff' : 'eye'} type="button" id="pw-eye" title={t(shown ? 'lock.hidePw' : 'lock.showPw')} aria-label={t(shown ? 'lock.hidePw' : 'lock.showPw')}
               aria-pressed={shown} onClick={() => setShown(!shown)} /></span></label>

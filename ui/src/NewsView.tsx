@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Blocks, Inline, NewsCtx, timeText, type Block, type Field } from './DiscordBlocks';
 import { Icon, useHost } from './host';
-import { Button } from './kit';
+import { Button, Segment, Segmented } from './kit';
 import { TextBox } from './settings/parts';
 import { useAskWhile } from './useAskWhile';
 
@@ -92,10 +92,10 @@ function Alerts({ game, t }: { game: FeedGame; t: T }) {
   const mode = game.alert.mode;
   return <div className="news-alert">
     <span className="news-alert-label"><Icon name="bell" />{t('news.tellMe')}</span>
-    <div className="seg news-seg" role="radiogroup" aria-label={t('news.tellMe')}>
-      {(['off', 'all', 'words'] as const).map(m => <button key={m} type="button" role="radio" aria-checked={mode === m} className={mode === m ? 'on' : ''}
-        onClick={() => call('feedAlert', { game: game.id, mode: m })}>{t(`news.tell.${m}`)}</button>)}
-    </div>
+    <Segmented className="news-seg" role="radiogroup" aria-label={t('news.tellMe')}>
+      {(['off', 'all', 'words'] as const).map(m => <Segment key={m} type="button" as="radio" on={mode === m}
+        onClick={() => call('feedAlert', { game: game.id, mode: m })}>{t(`news.tell.${m}`)}</Segment>)}
+    </Segmented>
     {mode === 'words' ? <TextBox className="field sm news-words" saved={game.alert.words.join(', ')} maxLength={400} spellCheck={false}
       placeholder={t('news.wordsHint')} aria-label={t('news.words')} commit={v => { call('feedAlert', { game: game.id, words: v }); }} /> : null}
   </div>;
