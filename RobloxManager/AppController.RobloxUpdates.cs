@@ -273,7 +273,10 @@ public sealed partial class AppController
             RobloxProcesses.CloseTrayCopies();
             if (RobloxProcesses.GetPlayerPids().Length > 0)
             {
-                if (now - since < UpdateReopenCloseLimit && now >= since)
+                // The tick's time is read before AutoUpdateRoblox sets since (DateTime.UtcNow), so the first tick sees a few
+                // milliseconds below zero: that's "just started", not a clock set back (2026-11-11, gave up at once at 01:25).
+                var waited = now - since;
+                if (waited < UpdateReopenCloseLimit && waited > -UpdateReopenCloseLimit)
                     return;
                 Log.Note($"Close, update, reopen: {RobloxProcesses.GetPlayerPids().Length} Roblox still open after {(int)UpdateReopenCloseLimit.TotalSeconds} s; not updated.");
                 Notify(L.T("Some Roblox windows didn't close, so Roblox wasn't updated."), "warn", "launch");
