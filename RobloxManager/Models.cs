@@ -426,4 +426,6 @@ public sealed class OpenSession
     public Guid? PresetId { get; set; }
     /// <summary>The frame rate limit Bloxkeep gave it as it opened; 0: none.</summary>
     public int FpsLimit { get; set; }
+    /// <summary>Opened by Bloxkeep on Roblox's home screen (AppController.PendingLaunch.HomeScreen).</summary>
+    public bool HomeScreen { get; set; }
 }

@@ -553,7 +553,13 @@ static class RejoinSuite
                 const long Picked = 98894876188248;
                 var homeAt = DateTime.UtcNow.AddSeconds(-10);
                 NewWindow();
-                var homeLaunch = Run(null!);
+                object HomeRun()
+                {
+                    var opened = Run(null!);
+                    launchType.GetProperty("HomeScreen")!.SetValue(opened, true);
+                    return opened;
+                }
+                var homeLaunch = HomeRun();
                 Write(Line(homeAt, Launch));
                 Write(Line(homeAt, $"[FLog::Output] ! Joining game '14a2746a-981f-4fed-92c9-d3a998eb8f4c' place {Picked} at 128.116.54.33"));
                 Write(Line(homeAt, "[FLog::Network] serverId: 128.116.54.33|60219"));
@@ -572,9 +578,15 @@ static class RejoinSuite
                 c.Check("…into that game, any server", homeTarget is { PlaceId: Picked, JobId: null }, homeTarget);
                 queue.Clear();
                 closing.Clear();
+                // The same drop in a window adopted from outside Bloxkeep (no game, not opened on the home screen by
+                // Bloxkeep): its server may be a private one, so it isn't rejoined into a public one (AdoptSuite, audit R9).
+                var adoptedLaunch = Run(null!);
+                Tick();
+                c.Check("…but not one adopted from outside Bloxkeep: left open", !closing.Contains(me));
+                c.Check("…nor rejoined once closed", Harness.Invoke(app, "QueueRejoin", account.Id, adoptedLaunch, homeState) is false && queue.Count == 0);
                 // Left by choice there: not rejoined; and one that never was in a game has nowhere to go back to.
                 NewWindow();
-                homeLaunch = Run(null!);
+                homeLaunch = HomeRun();
                 Write(Line(homeAt.AddSeconds(2), Launch));
                 Write(Line(homeAt.AddSeconds(2), $"[FLog::Output] ! Joining game '14a2746a-981f-4fed-92c9-d3a998eb8f4c' place {Picked} at 128.116.54.33"));
                 Write(Line(homeAt.AddSeconds(2), "[FLog::Network] serverId: 128.116.54.33|60219"));

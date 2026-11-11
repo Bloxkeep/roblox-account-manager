@@ -26,6 +26,9 @@ public sealed partial class AppController : IDisposable
         public int OpenRetries { get; init; }
         /// <summary>The frame rate limit Bloxkeep gave it as it opened; 0: none. Its card says so.</summary>
         public int FpsLimit { get; init; }
+        /// <summary>Opened by Bloxkeep on Roblox's home screen: every game in it is the person's pick, and a drop goes back
+        /// to the one it was in. Not a window adopted from outside Bloxkeep, whose server may be a private one (audit R9).</summary>
+        public bool HomeScreen { get; init; }
     }
 
     /// <param name="NetworkRetries">Attempts that failed only because there was no connection.</param>

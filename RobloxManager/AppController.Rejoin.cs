@@ -487,7 +487,8 @@ public sealed partial class AppController
     /// Where a rejoin goes: the game or private server opened (any server: the one it was on may be gone), or a game the
     /// person started in the window since. A window opened on Roblox's home screen goes back to the game the person was
     /// in there (2026-11-11: the owner's dropped with "Disconnected from game" and stayed on Roblox's error box, left
-    /// as "opened without a game"); null while it has been in none.
+    /// as "opened without a game"); null while it has been in none. A window adopted from outside Bloxkeep gets none: its
+    /// server may be a private or reserved one, and going back would be into a public one (audit R9).
     /// </summary>
     static GameTarget? RejoinTarget(PendingLaunch launch, RobloxLogWatcher.ClientState? lastLog)
     {
@@ -495,7 +496,7 @@ public sealed partial class AppController
             return lastLog?.ChosenPlace is { } chosen && chosen != opened.PlaceId
                 ? new GameTarget(chosen) { Follow = opened.Follow }
                 : opened with { JobId = null };
-        return (lastLog?.ChosenPlace ?? lastLog?.PlaceId) is long place and > 0 ? new GameTarget(place) : null;
+        return launch.HomeScreen && (lastLog?.ChosenPlace ?? lastLog?.PlaceId) is long place and > 0 ? new GameTarget(place) : null;
     }
 
     /// <summary>Any place of the game: a game's ban holds in all of them.</summary>

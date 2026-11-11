@@ -753,7 +753,7 @@ public sealed partial class AppController
         _lastSessionStart = DateTime.UtcNow;
         _userClosed.Remove(account.Id);
         ForgetLate(account.Id); // opened again: a window of the earlier try is not this one's
-        _pending.Add(new PendingLaunch(account.Id, before, DateTime.UtcNow, target, rejoin, presetId) { Tracker = tracker, OpenRetries = openRetries, FpsLimit = own?.Fps ?? 0 });
+        _pending.Add(new PendingLaunch(account.Id, before, DateTime.UtcNow, target, rejoin, presetId) { Tracker = tracker, OpenRetries = openRetries, FpsLimit = own?.Fps ?? 0, HomeScreen = target is null });
         NoteActivity(restart ? "reopened" : rejoin ? "rejoined" : "opened", account.Id, target?.PlaceId); // Statistics › Activity
         account.LastUsed = DateTime.Now;
         SignInAccepted(account);
