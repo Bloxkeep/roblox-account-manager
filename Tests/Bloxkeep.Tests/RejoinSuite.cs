@@ -546,6 +546,46 @@ static class RejoinSuite
                 string? dropSaid = Told();
                 c.Check($"Error Code 256 by {what}: read as a drop and rejoined", closing.Contains(me), $"{dropState} | {dropSaid}");
             }
+            // A window opened on Roblox's home screen, a game picked there, then Error Code 1025 ("Disconnected from the
+            // experience", the owner's PC, 2026-11-11, client 0.747's lines): it stayed on Roblox's error box, left as
+            // "opened without a game". It goes back to the game the person was in.
+            {
+                const long Picked = 98894876188248;
+                var homeAt = DateTime.UtcNow.AddSeconds(-10);
+                NewWindow();
+                var homeLaunch = Run(null!);
+                Write(Line(homeAt, Launch));
+                Write(Line(homeAt, $"[FLog::Output] ! Joining game '14a2746a-981f-4fed-92c9-d3a998eb8f4c' place {Picked} at 128.116.54.33"));
+                Write(Line(homeAt, "[FLog::Network] serverId: 128.116.54.33|60219"));
+                Write(Line(homeAt.AddSeconds(1), "[FLog::Network] Disconnect from 1"));
+                Write(Line(homeAt.AddSeconds(1), "[FLog::Network] Client has been disconnected with reason: Disconnected from game, please reconnect"));
+                Write(Line(homeAt.AddSeconds(1), "Warning [FLog::Network] Lost connection with reason : Disconnected from game, please reconnect"));
+                Write(Line(homeAt.AddSeconds(1), "[FLog::Network] Time to disconnect replication data: 0.188800"));
+                var homeState = Poll(s => s.Status == "disconnected" && s.At > homeAt);
+                closing.Clear();
+                Told();
+                Tick();
+                c.Check("a home-screen window dropped in a game picked there (1025): closed to rejoin", closing.Contains(me), homeState);
+                Harness.Invoke(app, "OnSessionEnded", account.Id, homeLaunch, homeState);
+                var homeRequest = queue.Cast<object>().SingleOrDefault();
+                var homeTarget = homeRequest?.GetType().GetProperty("Target")!.GetValue(homeRequest) as GameTarget;
+                c.Check("…into that game, any server", homeTarget is { PlaceId: Picked, JobId: null }, homeTarget);
+                queue.Clear();
+                closing.Clear();
+                // Left by choice there: not rejoined; and one that never was in a game has nowhere to go back to.
+                NewWindow();
+                homeLaunch = Run(null!);
+                Write(Line(homeAt.AddSeconds(2), Launch));
+                Write(Line(homeAt.AddSeconds(2), $"[FLog::Output] ! Joining game '14a2746a-981f-4fed-92c9-d3a998eb8f4c' place {Picked} at 128.116.54.33"));
+                Write(Line(homeAt.AddSeconds(2), "[FLog::Network] serverId: 128.116.54.33|60219"));
+                Write(Line(homeAt.AddSeconds(3), Leave));
+                Write(Line(homeAt.AddSeconds(3), "[FLog::Network] Time to disconnect replication data: 0.2"));
+                homeState = Poll(s => s.Status == "left");
+                Tick();
+                c.Check("…one the person left there: not closed", !closing.Contains(me), homeState);
+                c.Check("…nor rejoined once closed", Harness.Invoke(app, "QueueRejoin", account.Id, homeLaunch, homeState) is false && queue.Count == 0);
+                c.Check("…and a home-screen window never in a game isn't rejoined", Harness.Invoke(app, "QueueRejoin", account.Id, homeLaunch, null) is false && queue.Count == 0);
+            }
             // The client's own disconnect (285), which its notification line can repeat, never over a reason known; the
             // server's code as received is.
             var ownAt = Dropped("[FLog::Network] Client has been disconnected with reason: You have been kicked from the game");

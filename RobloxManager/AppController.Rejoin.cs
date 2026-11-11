@@ -40,11 +40,8 @@ public sealed partial class AppController
         _rejoinsInARow[accountId] = inARow + 1;
         _followWaitTold.Remove(accountId); // a new drop: waiting for its followed player is said again
         var wait = RejoinDelay;
-        // The same game or private server, not the exact server, which may be gone. A game the person picked in the
-        // window since wins over the one opened. A followed player is looked up again (FollowTargetAsync).
-        var target = lastLog?.ChosenPlace is { } chosen && chosen != launch.Target!.PlaceId
-            ? new GameTarget(chosen) { Follow = launch.Target!.Follow }
-            : launch.Target! with { JobId = null };
+        // A followed player is looked up again (FollowTargetAsync).
+        var target = RejoinTarget(launch, lastLog)!;
         _rejoinQueue.Add(new RejoinRequest(accountId, target, DateTime.UtcNow + wait, PresetId: launch.PresetId));
         Log.Note($"Rejoin: account {accountId.ToString()[..8]} queued in {(int)wait.TotalSeconds} s, drop {inARow + 1} in a row, place {target.PlaceId}"
             + $"{(target.Follow is not null ? ", following a player" : "")}{(outOfMemory ? ", ran out of memory" : "")}"
@@ -77,8 +74,8 @@ public sealed partial class AppController
         // Roblox refused the account its game (RejoinFromLogs): a new window would only be refused again.
         if (_joinRefused.Remove(launch))
             return No("Roblox refused the join");
-        if (FindAccount(accountId) is not { } found || launch.Target is null)
-            return No(launch.Target is null ? "opened without a game" : "account gone");
+        if (FindAccount(accountId) is not { } found || RejoinTarget(launch, lastLog) is null)
+            return No(RejoinTarget(launch, lastLog) is null ? "opened without a game, in none since" : "account gone");
         account = found;
         // Banned: a new window would only show the ban again, every few minutes for good.
         if (found.Banned == true)
@@ -254,9 +251,10 @@ public sealed partial class AppController
             }
             bool dropped = state is { Status: "disconnected" } && !SignedInElsewhere(state.Reason) && now - state.At >= TimeSpan.FromSeconds(3);
             // One the person started in the window is theirs: closing it would reopen the game Bloxkeep opened instead.
-            bool neverGotIn = state is { Status: "joining", JobId: null, PersonStarted: false } && now - state.At >= GetInTimeout;
+            // On Roblox's home screen every game is the person's own pick, so only a drop counts there.
+            bool neverGotIn = state is { Status: "joining", JobId: null, PersonStarted: false } && info.Launch.Target is not null && now - state.At >= GetInTimeout;
             if ((!dropped && !neverGotIn)
-                || FindAccount(id) is not { } account || !RejoinOn(account, info.Launch.PresetId) || info.Launch.Target is not { } target
+                || FindAccount(id) is not { } account || !RejoinOn(account, info.Launch.PresetId) || RejoinTarget(info.Launch, state) is null
                 // No rejoin follows (ShouldRejoin): the window stays rather than closing for nothing.
                 || account.Banned == true || GameBanOf(account, RejoinPlace(info.Launch, state)) is not null)
             {
@@ -264,7 +262,7 @@ public sealed partial class AppController
                 if ((dropped || neverGotIn) && _rejoinHeldNoted.Add(info.Pid))
                     Log.Note($"Rejoin: window {info.Pid} {(dropped ? $"disconnected (code {state.Reason?.ToString() ?? "none"})" : "never got into its game")}, left open ("
                         + (FindAccount(id) is not { } held ? "account gone" : !RejoinOn(held, info.Launch.PresetId) ? "auto-rejoin off"
-                            : info.Launch.Target is null ? "opened without a game" : held.Banned == true ? "banned on Roblox" : "banned by the game") + ").");
+                            : RejoinTarget(info.Launch, state) is null ? "opened without a game, in none since" : held.Banned == true ? "banned on Roblox" : "banned by the game") + ").");
                 continue;
             }
             // Not trying again before Roblox's answer is in (asked at JoinCheckAfter, above).
@@ -274,7 +272,7 @@ public sealed partial class AppController
             _closingForRejoin.Add(info.Pid);
             // Said as what it was: on 2026-10-21 a game's "DataStore lock lost, please rejoin the game." went out as
             // "Lost connection".
-            Notify(!dropped ? (target.JobId is not null ? L.F("{0} couldn't get into that server (full or closed) — joining another one…", Name(account))
+            Notify(!dropped ? (info.Launch.Target?.JobId is not null ? L.F("{0} couldn't get into that server (full or closed) — joining another one…", Name(account))
                     : L.F("{0} couldn't get into the game — trying again…", Name(account)))
                 : state.KickMessage is { Length: > 0 } words ? L.F("{0} was kicked by the game, rejoining: {1}", Name(account), words)
                 : state.Reason == 267 ? L.F("{0} was kicked by the game — rejoining…", Name(account))
@@ -483,7 +481,22 @@ public sealed partial class AppController
             ? GameBanOf(account, run.Launch.Target?.PlaceId) : null;
 
     static long RejoinPlace(PendingLaunch launch, RobloxLogWatcher.ClientState? lastLog) =>
-        lastLog?.ChosenPlace ?? launch.Target?.PlaceId ?? 0;
+        lastLog?.ChosenPlace ?? launch.Target?.PlaceId ?? lastLog?.PlaceId ?? 0;
+
+    /// <summary>
+    /// Where a rejoin goes: the game or private server opened (any server: the one it was on may be gone), or a game the
+    /// person started in the window since. A window opened on Roblox's home screen goes back to the game the person was
+    /// in there (2026-11-11: the owner's dropped with "Disconnected from game" and stayed on Roblox's error box, left
+    /// as "opened without a game"); null while it has been in none.
+    /// </summary>
+    static GameTarget? RejoinTarget(PendingLaunch launch, RobloxLogWatcher.ClientState? lastLog)
+    {
+        if (launch.Target is { } opened)
+            return lastLog?.ChosenPlace is { } chosen && chosen != opened.PlaceId
+                ? new GameTarget(chosen) { Follow = opened.Follow }
+                : opened with { JobId = null };
+        return (lastLog?.ChosenPlace ?? lastLog?.PlaceId) is long place and > 0 ? new GameTarget(place) : null;
+    }
 
     /// <summary>Any place of the game: a game's ban holds in all of them.</summary>
     GameBan? GameBanOf(Account account, long? placeId) =>
