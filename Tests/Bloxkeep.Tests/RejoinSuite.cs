@@ -518,6 +518,34 @@ static class RejoinSuite
             Tick();
             string? codeSaid = Told();
             c.Check("…one with a code Bloxkeep has no words for is said with that code", codeSaid == $"{account.Label} was disconnected (Roblox code 299) — restarting Roblox…", codeSaid);
+            // Error Code 256, "Lost connection due to an unknown error. Please reconnect." (a user's screenshot, 2026-11-11,
+            // "auto rejoin will not work"): by its code and by its words only. Without the disconnect line after, the window
+            // still reads as in its game and isn't rejoined; every real disconnect logged so far (26 on the owner's PC,
+            // 2026-11-09…11) has that line, so that case isn't one yet.
+            foreach (var (what, lines, disconnectLine) in new (string, string[], bool)[]
+            {
+                ("its code", ["[FLog::Network] Disconnect reason received: 256", "[FLog::Network] Disconnection Notification. Reason: 256"], true),
+                ("its words only", ["[FLog::Network] Client has been disconnected with reason: Lost connection due to an unknown error. Please reconnect.",
+                    "Warning [FLog::Network] Lost connection with reason : Lost connection due to an unknown error. Please reconnect."], true),
+            })
+            {
+                var dropAt = DateTime.UtcNow.AddSeconds(-10);
+                NewWindow();
+                droppedLaunch = Run(notBanned);
+                Write(Line(dropAt, Launch));
+                Write(Line(dropAt, Join));
+                Write(Line(dropAt, "[FLog::Network] serverId: 128.116.46.33|52353"));
+                foreach (string line in lines)
+                    Write(Line(dropAt.AddSeconds(1), line));
+                if (disconnectLine)
+                    Write(Line(dropAt.AddSeconds(2), "[FLog::Network] Time to disconnect replication data: 0.2"));
+                var dropState = Poll(s => s.Status == "disconnected" && s.At > dropAt.AddSeconds(-1));
+                closing.Clear();
+                Told();
+                Tick();
+                string? dropSaid = Told();
+                c.Check($"Error Code 256 by {what}: read as a drop and rejoined", closing.Contains(me), $"{dropState} | {dropSaid}");
+            }
             // The client's own disconnect (285), which its notification line can repeat, never over a reason known; the
             // server's code as received is.
             var ownAt = Dropped("[FLog::Network] Client has been disconnected with reason: You have been kicked from the game");
