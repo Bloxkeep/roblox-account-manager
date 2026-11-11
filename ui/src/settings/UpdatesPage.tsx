@@ -24,7 +24,7 @@ export function UpdatesPage({ title }: { title: string }) {
   const [tray, setTray] = useLocal(app.closeToTray !== false);
   const [boot, setBoot] = useLocal(!!app.startWithWindows);
   const [gpu, setGpu] = useLocal(!app.safeRendering);
-  const keys: { on?: boolean; taken?: string[] } = app.hotkeys || {};
+  const keys: { on?: boolean; taken?: string[]; typing?: string[] } = app.hotkeys || {};
   const [hotkeys, setHotkeys] = useLocal(keys.on !== false);
   const counted = app.countOnline !== false;
   const [online, setOnline] = useState(counted);
@@ -69,8 +69,10 @@ export function UpdatesPage({ title }: { title: string }) {
       <Row title={t('set.tray')} desc={t('set.trayDesc')}>
         <Switch id="s-tray" label={t('set.tray')} checked={tray} onChange={v => { setTray(v); call('setCloseToTray', { enabled: v }); }} />
       </Row>
-      {/* Hotkeys from any app; one another app already holds is said, not taken from it. */}
-      <Row title={t('set.hotkeys')} desc={<><HotkeyChips />{hotkeys && keys.taken?.length ? <><br /><span className="warn-text">{t('set.hotkeysTaken', { keys: keys.taken.join(', ') })}</span></> : null}</>}>
+      {/* Hotkeys from any app; one another app already holds is said, not taken from it, and so is one the keyboard
+          types a character with (AltGr is Ctrl+Alt). */}
+      <Row title={t('set.hotkeys')} desc={<><HotkeyChips />{hotkeys && keys.taken?.length ? <><br /><span className="warn-text">{t('set.hotkeysTaken', { keys: keys.taken.join(', ') })}</span></> : null}
+        {hotkeys && keys.typing?.length ? <><br /><span className="warn-text">{t('set.hotkeysTyping', { keys: keys.typing.join(', ') })}</span></> : null}</>}>
         <Switch id="s-hotkeys" label={t('set.hotkeys')} checked={hotkeys} onChange={v => { setHotkeys(v); call('setHotkeys', { enabled: v }); }} />
       </Row>
       <Row title={t('set.gpu')} desc={t('set.gpuDesc')}>

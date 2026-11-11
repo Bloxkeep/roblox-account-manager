@@ -80,7 +80,7 @@ public sealed partial class AppController
         savedThemes = SavedThemesDto(),
         closeToTray = Prefs.CloseToTray,
         startWithWindows = StartWithWindows.IsOn,
-        hotkeys = new { on = Prefs.GlobalHotkeys, taken = HotkeysTaken },
+        hotkeys = new { on = Prefs.GlobalHotkeys, taken = HotkeysTaken, typing = HotkeysTyping },
         hideNames = Prefs.HideNames,
         notifications = Prefs.Notifications,
         notifyOff = Prefs.NotifyOff.Where(NotifyKinds.Contains).Order().ToArray(),

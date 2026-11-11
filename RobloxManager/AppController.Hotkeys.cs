@@ -14,6 +14,9 @@ public sealed partial class AppController
     /// <summary>The hotkeys another app already holds ("Ctrl+Alt+H"…), as the window found when registering them.</summary>
     public List<string> HotkeysTaken { get; set; } = [];
 
+    /// <summary>The hotkeys left unregistered because an installed keyboard types a character with them (AltGr is Ctrl+Alt).</summary>
+    public List<string> HotkeysTyping { get; set; } = [];
+
     public void OnHotkey(int id)
     {
         if (_disposed)

@@ -450,22 +450,29 @@ public sealed class ShellForm : Form
         for (int id = AppController.HotkeyStopMacros; id <= AppController.HotkeyEndRecording; id++)
             UnregisterHotKey(Handle, id);
         var taken = new List<string>();
+        var typing = new List<string>();
         if (Prefs.GlobalHotkeys)
         {
+            // AltGr is Ctrl+Alt to Windows: a hotkey on a key the keyboard types with AltGr took the character from every
+            // app (a French keyboard's @ is AltGr+0, and Ctrl+Alt+0 stops macros: Ali, 1.0.21, 2026-11-11). Left free.
+            var altGr = AltGrKeys.Typed();
+            void Add(int id, Keys key, string name)
+            {
+                if (altGr.Contains(key))
+                    typing.Add(name);
+                else if (!RegisterHotKey(Handle, id, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, (int)key))
+                    taken.Add(name);
+            }
             foreach (var (id, key) in Hotkeys)
-            {
-                if (!RegisterHotKey(Handle, id, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, (int)key))
-                    taken.Add("Ctrl+Alt+" + key);
-            }
+                Add(id, key, "Ctrl+Alt+" + key);
             // Macros (Beta): Ctrl+Alt+0 stops them all; Ctrl+Alt+1…9 only for the digits a macro holds.
-            if (!RegisterHotKey(Handle, AppController.HotkeyStopMacros, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, (int)Keys.D0))
-                taken.Add("Ctrl+Alt+0");
+            Add(AppController.HotkeyStopMacros, Keys.D0, "Ctrl+Alt+0");
             foreach (int digit in _app.MacroHotkeys())
-            {
-                if (!RegisterHotKey(Handle, AppController.HotkeyMacroFirst + digit - 1, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, (int)Keys.D0 + digit))
-                    taken.Add("Ctrl+Alt+" + digit);
-            }
+                Add(AppController.HotkeyMacroFirst + digit - 1, Keys.D0 + digit, "Ctrl+Alt+" + digit);
         }
+        if (typing.Count > 0 && string.Join(",", typing) != string.Join(",", _app.HotkeysTyping))
+            Log.Note("Hotkeys left to the keyboard's AltGr: " + string.Join(", ", typing) + ".");
+        _app.HotkeysTyping = typing;
         // F8 ends a recording, whatever the switch says (the recorder also watches for it itself).
         if (_app.RecordingMacro)
             RegisterHotKey(Handle, AppController.HotkeyEndRecording, MOD_NOREPEAT, (int)Keys.F8);
