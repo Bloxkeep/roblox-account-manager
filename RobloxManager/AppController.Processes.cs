@@ -274,6 +274,7 @@ public sealed partial class AppController
         Step(() => TrackPlay(now));
         Step(() => RunAntiAfk(now, windows));
         Step(() => MinimiseAfkWindows(windows));
+        Step(() => KeepRejoinPlaces(now, windows)); // before Maximise: a rejoin going back isn't maximised
         Step(() => MaximiseNewWindows(now, windows));
         Step(() => KeepWindowSizes(now, windows));
         Step(() => TickMacros(now));

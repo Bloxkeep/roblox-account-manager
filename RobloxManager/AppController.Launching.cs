@@ -907,6 +907,7 @@ public sealed partial class AppController
         int done = await RobloxProcesses.ArrangeGridAsync(pids, screen.WorkingArea,
             s?.WindowLayout ?? "fill", skipMinimized: auto, app: app, custom: s is null ? default : new Size(s.WindowWidth, s.WindowHeight),
             raise: atMouse);
+        ForgetGoingBack();
         // What it came to, as the person sees it: each window in its place, or what's wrong with it (WindowReport).
         string how = auto ? "after opening" : atMouse ? "hotkey" : "button";
         Log.Note($"Arrange ({how}, screen {Array.IndexOf(screens, screen) + 1} of {screens.Length}, {s?.WindowLayout ?? "fill"}"

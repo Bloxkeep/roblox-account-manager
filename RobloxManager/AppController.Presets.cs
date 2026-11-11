@@ -548,6 +548,8 @@ public sealed partial class AppController
                 continue;
             if (PresetFor(run.Launch.PresetId) is { } preset && (preset.Profile == AfkProfile || preset.Arrange == true))
                 continue;
+            if (GoingBack(run.Pid))
+                continue; // a rejoin going back to its account's place (AppController.RejoinPlace.cs)
             if (!_windowFirstSeen.TryGetValue(run.Pid, out var seen))
                 _windowFirstSeen[run.Pid] = seen = now;
             // In a game, or up a while (Roblox's home screen, still loading, or a client that writes no log).

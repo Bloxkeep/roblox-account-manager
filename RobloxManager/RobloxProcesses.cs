@@ -777,6 +777,14 @@ public static class RobloxProcesses
             ShowWindowAsync(hWnd, SW_SHOWNOACTIVATE);
     }
 
+    /// <summary>A maximised window back to an ordinary one, without taking the keyboard from the app in front.</summary>
+    public static void UnmaximiseQuietly(IntPtr hWnd)
+    {
+        const int SW_SHOWNOACTIVATE = 4;
+        if (hWnd != IntPtr.Zero && IsZoomed(hWnd))
+            ShowWindowAsync(hWnd, SW_SHOWNOACTIVATE);
+    }
+
     public static int ForegroundPid()
     {
         IntPtr hWnd = GetForegroundWindow();
