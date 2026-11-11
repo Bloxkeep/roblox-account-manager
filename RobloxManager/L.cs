@@ -249,6 +249,8 @@ public static class L
         ["Managing Roblox accounts"] = "Đang quản lý tài khoản Roblox",
         ["{0} games"] = "{0} game",
         ["Get Bloxkeep"] = "Tải Bloxkeep",
+        ["View game"] = "Xem game",
+        ["{0} · {1} games"] = "{0} · {1} game",
         ["You can save up to {0} servers. Delete one first."] = "Chỉ lưu được tối đa {0} server. Hãy xóa bớt một cái trước.",
         ["That saved server isn't there any more."] = "Server đã lưu này không còn nữa.",
         ["This saved server has no code."] = "Server này không có code.",

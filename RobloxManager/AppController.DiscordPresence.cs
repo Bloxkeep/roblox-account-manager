@@ -25,17 +25,33 @@ public sealed partial class AppController
         _ = _discordPresence.SetAsync(on ? PresenceActivity() : null, DiscordApplicationId);
     }
 
+    /// <summary>
+    /// In a game: its name and icon (Bloxkeep's logo at the corner), how many windows, and a button to its page. With
+    /// several games each takes its turn, one per update (<see cref="DiscordPresenceInterval"/>), so the profile moves
+    /// through them. Otherwise how many windows are open, or that Bloxkeep is managing accounts.
+    /// </summary>
     DiscordPresence.Activity PresenceActivity()
     {
         int windows = RobloxCount;
         var games = _running.Values.Select(PlayingPlace).OfType<long>()
-            .Select(id => _games.GetValueOrDefault(id)?.Name).OfType<string>().Where(n => n.Length > 0).Distinct().ToList();
-        string details = windows == 0 ? L.T("Managing Roblox accounts")
-            : L.P(windows, "1 Roblox window open", "{0} Roblox windows open", windows);
-        string? state = games.Count == 1 ? games[0] : games.Count > 1 ? L.F("{0} games", games.Count) : null;
+            .Select(id => _games.GetValueOrDefault(id)).OfType<GameInfo>().Where(g => g.Name.Length > 0)
+            .GroupBy(g => g.Name).Select(g => g.First()).ToList();
+        string open = L.P(windows, "1 Roblox window open", "{0} Roblox windows open", windows);
         long since = new DateTimeOffset(DateTime.SpecifyKind(_started, DateTimeKind.Utc)).ToUnixTimeSeconds();
-        return new(details, state, since, L.T("Get Bloxkeep"), WebsiteUrl);
+        if (games.Count == 0)
+            return new(windows == 0 ? L.T("Managing Roblox accounts") : open, null, since, L.T("Get Bloxkeep"), WebsiteUrl);
+        var shown = games[_presenceTurn++ % games.Count];
+        return new(shown.Name, games.Count > 1 ? L.F("{0} · {1} games", open, games.Count) : open, since, L.T("Get Bloxkeep"), WebsiteUrl)
+        {
+            Picture = shown.IconUrl is { } icon && icon.StartsWith("https://", StringComparison.Ordinal) ? icon : null,
+            PictureText = shown.Name,
+            FirstLabel = L.T("View game"),
+            FirstUrl = $"https://www.roblox.com/games/{shown.PlaceId}",
+        };
     }
+
+    /// <summary>Which game the profile shows next when there are several.</summary>
+    int _presenceTurn;
 
     /// <summary>The game a window is playing: none once it left for Roblox's home screen, lost its connection or was signed
     /// out (the log keeps the last place then; seen 2026-10-20). Without a log yet, the one it was opened with.</summary>

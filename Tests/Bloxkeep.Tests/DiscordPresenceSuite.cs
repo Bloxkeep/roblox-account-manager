@@ -62,8 +62,24 @@ static class DiscordPresenceSuite
             && sent.GetProperty("buttons")[0].GetProperty("url").GetString() == "https://bloxkeep.github.io/roblox-account-manager/",
             seen.Count >= 2 ? seen[1].Body : "nothing sent");
 
+        c.Check("…without a game picture: Discord shows the application's icon, one button",
+            sent.ValueKind == JsonValueKind.Object && !sent.GetProperty("assets").TryGetProperty("large_image", out _) && sent.GetProperty("buttons").GetArrayLength() == 1);
+
         await presence.SetAsync(activity, "123456");
         c.Check("the same activity again isn't sent again", Seen().Count == 2, Seen().Count);
+
+        // In a game: its icon big, Bloxkeep's logo small, the game's page as the first of two buttons.
+        var inGame = Json(DiscordPresence.ActivityJson(activity with
+        {
+            Picture = "https://tr.rbxcdn.com/icon.png", PictureText = "Blox Fruits", FirstLabel = "View game", FirstUrl = "https://www.roblox.com/games/2753915549",
+        }));
+        var assets = inGame.GetProperty("assets");
+        c.Check("in a game: its icon big with its name, Bloxkeep's logo small",
+            assets.GetProperty("large_image").GetString() == "https://tr.rbxcdn.com/icon.png" && assets.GetProperty("large_text").GetString() == "Blox Fruits"
+            && assets.GetProperty("small_image").GetString()!.EndsWith("bloxkeep.png") && assets.GetProperty("small_text").GetString() == "Bloxkeep", inGame);
+        c.Check("…and two buttons, the game's page first", inGame.GetProperty("buttons").GetArrayLength() == 2
+            && inGame.GetProperty("buttons")[0].GetProperty("url").GetString() == "https://www.roblox.com/games/2753915549"
+            && inGame.GetProperty("buttons")[1].GetProperty("label").GetString() == "Get Bloxkeep", inGame);
 
         await presence.SetAsync(null, "123456");
         var last = Seen().LastOrDefault();
@@ -94,13 +110,34 @@ static class DiscordPresenceSuite
         using var app = new AppController(form, _ => { });
         await Harness.Unlock(app);
         var account = Harness.Get<Vault>(app, "_vault").Data.Accounts.Single();
-        Harness.Get<Dictionary<long, GameInfo?>>(app, "_games")[Place] = new GameInfo(Place, 1, "Monster Game", "Maker", 0, null);
+        const string Icon = "https://tr.rbxcdn.com/monster.png";
+        var games = Harness.Get<Dictionary<long, GameInfo?>>(app, "_games");
+        games[Place] = new GameInfo(Place, 1, "Monster Game", "Maker", 0, Icon);
         var running = Harness.Get<System.Collections.IDictionary>(app, "_running");
         var launchType = typeof(AppController).GetNestedType("PendingLaunch", Harness.F)!;
         var launch = Activator.CreateInstance(launchType, account.Id, new HashSet<int>(), DateTime.UtcNow.AddMinutes(-2), new GameTarget(Place), false, null)!;
         running[account.Id] = Activator.CreateInstance(running.GetType().GetGenericArguments()[1], me, launch);
-        string? Game() => ((DiscordPresence.Activity)Harness.Invoke(app, "PresenceActivity")!).State;
+        DiscordPresence.Activity Shown() => (DiscordPresence.Activity)Harness.Invoke(app, "PresenceActivity")!;
+        // The game shown: the first line, with its page as a button; none without a game.
+        string? Game() => Shown() is { FirstUrl: not null } a ? a.Details : null;
         c.Check("a window just opened shows the game it was opened with", Game() == "Monster Game", Game());
+        var first = Shown();
+        c.Check("…with its icon, its page, and the windows open", first.Picture == Icon && first.FirstUrl == $"https://www.roblox.com/games/{Place}"
+            && first.State!.Contains("Roblox window"), first);
+
+        // A second account in another game: each game takes its turn on the profile.
+        const long OtherPlace = 2753915549;
+        games[OtherPlace] = new GameInfo(OtherPlace, 2, "Fruit Game", "Maker", 0, null);
+        var second = new Account { Username = "Second", UserId = 32 };
+        Harness.Get<Vault>(app, "_vault").Data.Accounts.Add(second);
+        var otherLaunch = Activator.CreateInstance(launchType, second.Id, new HashSet<int>(), DateTime.UtcNow.AddMinutes(-2), new GameTarget(OtherPlace), false, null)!;
+        running[second.Id] = Activator.CreateInstance(running.GetType().GetGenericArguments()[1], -1, otherLaunch);
+        var turns = Enumerable.Range(0, 4).Select(_ => Shown()).ToList();
+        c.Check("two games: each takes its turn, saying both are being played",
+            turns.Select(t => t.Details).Distinct().Count() == 2 && turns[0].Details != turns[1].Details && turns.All(t => t.State!.EndsWith("· 2 games")),
+            string.Join(" | ", turns.Select(t => $"{t.Details} / {t.State}")));
+        c.Check("…a game without an icon shows Bloxkeep's", turns.First(t => t.Details == "Fruit Game").Picture is null);
+        running.Remove(second.Id);
 
         var watcher = Harness.Get<RobloxLogWatcher>(app, "_logs");
         using var log = new FileStream(Path.Combine(logs, $"0.743.0.7431134_{DateTime.UtcNow:yyyyMMddTHHmmss}Z_Player_PRESENCE_last.log"),
