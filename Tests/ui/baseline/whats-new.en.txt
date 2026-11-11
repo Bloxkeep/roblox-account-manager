@@ -260,23 +260,21 @@ html [data-theme="dark" lang="en"]
           span.wn-title
             img [alt="" src="logo.svg"]
             span "What’s new"
-              small "Bloxkeep 1.0.21 · November 8, 2026"
+              small "Bloxkeep 1.0.22 · November 11, 2026"
         button.icon-btn [title="Close"]
           svg.i #1tyq039
       div.modal-body
         section.improved.wn-group
           h4.wn-kind "Improved"
           ul.wn-notes
-            li "Switch accounts right in the Roblox website window, from the corner at its top left."
-            li "Banned accounts have an Appeal button."
-            li "Arranging windows is more reliable, across screens too, and Ctrl+Alt+A brings them over every app."
-            li "Game monitor can bring a game’s windows to the front or send them to the back."
-            li "Settings shows which themes are popular."
-            li "A livelier opening, and a mid-size window keeps everything on show."
+            li "A rejoined window goes back to its spot, so there’s no arranging again."
+            li "New games in the Games tab show up without reopening Bloxkeep."
+            li "Bug reports send the whole error log."
         section.fixed.wn-group
           h4.wn-kind "Fixed"
           ul.wn-notes
-            li "Many small fixes to the window, tray, Mini window, Game monitor and Games tab."
+            li "Characters typed with AltGr, like @ on a French keyboard, work again while Bloxkeep is open. Hotkeys on those keys use the left Alt."
+            li "Updating Roblox no longer stops at once with “Some Roblox windows didn’t close”."
         details.wn-older
           summary "Also in the 2 versions before"
             svg.i #1g7f83q
