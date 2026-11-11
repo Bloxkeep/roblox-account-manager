@@ -1,11 +1,12 @@
 // Takes "Send feedback" from Bloxkeep (an idea or a bug report, RobloxManager/AppController.Feedback.cs) and posts it to
 // the developer's Discord channel. The webhook stays here (secret FEEDBACK_WEBHOOK), out of the app, so nobody can
-// post to the channel directly. What anyone can send here is kept small: one JSON body of a few kilobytes, a few sends
-// a minute from one address and a few dozen from everyone, and no pings whatever the text says.
-const MAX_BODY = 40_000;
+// post to the channel directly. What anyone can send here is kept small: one JSON body of a few hundred kilobytes at most
+// (about all of error.log, which starts over at 256 KB), a few sends a minute from one address and a few dozen from
+// everyone, and no pings whatever the text says.
+const MAX_BODY = 1_200_000; // the log's characters, some escaped in JSON (× is ×)
 const MAX_TEXT = 2000;
 const MAX_CONTACT = 100;
-const MAX_LOG = 16_000;
+const MAX_LOG = 200_000;
 // How it looks: docs/discord-style.md.
 const LOGO = 'https://raw.githubusercontent.com/Bloxkeep/roblox-account-manager/main/docs/brand/bloxkeep.png';
 const COLORS = { bug: 0xED4245, idea: 0x5865F2 };

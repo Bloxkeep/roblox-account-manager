@@ -7,7 +7,7 @@ developer, on Discord.
 
 - What it is (a bug or an idea), the message, and a way to reach the sender if they give one.
 - Bloxkeep's version, the Windows version and the app's language.
-- When ticked (on for a bug), the last 12 KB of Bloxkeep's `error.log`, with these taken out first: every account's
+- When ticked (on for a bug), the last 200 KB of Bloxkeep's `error.log` (about all of it), with these taken out first: every account's
   name, display name, alias, user id, password and cookie; any Roblox cookie; Discord links; e-mail addresses; long
   tokens; the Windows user and PC names. The vault has to be unlocked for this, since the account names come from it.
 

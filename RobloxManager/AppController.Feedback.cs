@@ -15,7 +15,12 @@ public sealed partial class AppController
 {
     /// <summary>The feedback Worker (BLOXKEEP_FEEDBACK_URL points elsewhere: the checks' own little server).</summary>
     const string FeedbackUrl = "https://bloxkeep-feedback.bloxkeep-app.workers.dev/feedback";
-    const int FeedbackTextMax = 2000, FeedbackContactMax = 100, FeedbackLogMax = 12_000;
+    const int FeedbackTextMax = 2000, FeedbackContactMax = 100;
+    /// <summary>About all of error.log (it starts over at 256 KB): 12 000 characters cut off a rejoin's first tries and
+    /// the start of what went wrong (a report of 2026-11-11 began at "try 4").</summary>
+    const int FeedbackLogMax = 200_000;
+    /// <summary>What a feedback service from before the longer log takes: the log is cut to this and sent again.</summary>
+    const int FeedbackLogOldMax = 12_000;
     static readonly TimeSpan FeedbackGap = TimeSpan.FromSeconds(60);
     static readonly HttpClient FeedbackHttp = new(new SocketsHttpHandler { UseCookies = false, AllowAutoRedirect = false })
     {
@@ -86,14 +91,18 @@ public sealed partial class AppController
         {
             return null;
         }
-        if (text.Length > FeedbackLogMax)
-        {
-            text = text[^FeedbackLogMax..];
-            int lineEnd = text.IndexOf('\n');
-            if (lineEnd >= 0)
-                text = text[(lineEnd + 1)..];
-        }
+        text = LastLines(text, FeedbackLogMax);
         return text.Trim().Length == 0 ? null : Scrub(text);
+    }
+
+    /// <summary>The end of <paramref name="text"/>, at most <paramref name="max"/> characters, whole lines only.</summary>
+    static string LastLines(string text, int max)
+    {
+        if (text.Length <= max)
+            return text;
+        text = text[^max..];
+        int lineEnd = text.IndexOf('\n');
+        return lineEnd >= 0 ? text[(lineEnd + 1)..] : text;
     }
 
     /// <summary>Takes out what could tell whose a text is: each account's password, cookie, names and id, any cookies and
@@ -166,16 +175,25 @@ public sealed partial class AppController
     async Task PostFeedbackAsync(Feedback f)
     {
         string url = Environment.GetEnvironmentVariable("BLOXKEEP_FEEDBACK_URL") is { Length: > 0 } other ? other : FeedbackUrl;
-        string body = JsonSerializer.Serialize(new { kind = f.Kind, text = f.Text, contact = f.Contact, app = f.App, windows = f.Windows, language = f.Language, log = f.Log });
-        using var content = new StringContent(body, Encoding.UTF8, "application/json");
-        HttpResponseMessage res;
-        try
+        async Task<HttpResponseMessage> Post(string? log)
         {
-            res = await FeedbackHttp.PostAsync(url, content);
+            string body = JsonSerializer.Serialize(new { kind = f.Kind, text = f.Text, contact = f.Contact, app = f.App, windows = f.Windows, language = f.Language, log });
+            using var content = new StringContent(body, Encoding.UTF8, "application/json");
+            try
+            {
+                return await FeedbackHttp.PostAsync(url, content);
+            }
+            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+            {
+                throw new UserError(L.T("Couldn't reach the feedback service. Check the internet connection and try again."));
+            }
         }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        var res = await Post(f.Log);
+        // A service from before the longer log refuses it as too large: the report still goes, with the log's end.
+        if (res.StatusCode == HttpStatusCode.RequestEntityTooLarge && f.Log is { Length: > FeedbackLogOldMax } log)
         {
-            throw new UserError(L.T("Couldn't reach the feedback service. Check the internet connection and try again."));
+            res.Dispose();
+            res = await Post(LastLines(log, FeedbackLogOldMax));
         }
         using (res)
         {

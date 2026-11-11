@@ -66,6 +66,7 @@ static class FeedbackSuite
         Environment.SetEnvironmentVariable("BLOXKEEP_FEEDBACK_URL", url);
         var received = new List<JsonDocument>();
         int answer = 200;
+        int? oldServiceMax = null; // set: a body over it is refused as too large, as the service before the longer log
         TaskCompletionSource? gate = null; // set: the next request is answered only when it is let go (the ones after it at once)
         var serving = Task.Run(async () =>
         {
@@ -75,10 +76,11 @@ static class FeedbackSuite
                 try { ctx = await listener.GetContextAsync(); }
                 catch (Exception) { break; }
                 using var reader = new StreamReader(ctx.Request.InputStream);
-                received.Add(JsonDocument.Parse(await reader.ReadToEndAsync()));
+                string raw = await reader.ReadToEndAsync();
+                received.Add(JsonDocument.Parse(raw));
                 var slow = gate;
                 gate = null;
-                int status = answer;
+                int status = oldServiceMax is int most && raw.Length > most ? 413 : answer;
                 _ = Task.Run(async () =>
                 {
                     if (slow is not null)
@@ -132,6 +134,27 @@ static class FeedbackSuite
         answer = 200;
         var retried = await Harness.Try(app, "sendFeedback", Args("The service is back."));
         c.Check("a failed send can be tried again at once", failed is UserError && retried is not UserError, retried);
+
+        // A long log goes about whole (a report of 2026-11-11 had only 12 KB of it, starting at a rejoin's "try 4"): its
+        // first lines too. A service from before (refusing over 40 000) still gets the report, with the log's last 12 000.
+        string logPath = Path.Combine(Vault.DataDir, "error.log");
+        File.AppendAllText(logPath, string.Concat(Enumerable.Range(1, 1500).Select(i => $"[2026-11-11 10:00:00] Long log line {i:0000} of a rejoin's tries.\n")));
+        Harness.Set(app, "_feedbackSentAt", DateTime.MinValue);
+        int beforeLong = received.Count;
+        var longSent = await Harness.Try(app, "sendFeedback", Args("A long log."));
+        string longLog = received.Count > beforeLong ? received[^1].RootElement.GetProperty("log").GetString() ?? "" : "";
+        c.Check("a long log goes about whole: its early lines too, far past 12 000 characters",
+            longSent is not UserError && longLog.Length > 60_000 && longLog.Contains("Long log line 0001 ") && longLog.TrimEnd().EndsWith("Long log line 1500 of a rejoin's tries."),
+            $"{longSent} {longLog.Length}");
+        Harness.Set(app, "_feedbackSentAt", DateTime.MinValue);
+        oldServiceMax = 40_000;
+        int beforeOld = received.Count;
+        var oldSent = await Harness.Try(app, "sendFeedback", Args("To the old service."));
+        oldServiceMax = null;
+        string cutLog = received.Count == beforeOld + 2 ? received[^1].RootElement.GetProperty("log").GetString() ?? "" : "";
+        c.Check("the service from before refuses it as too large: sent again with the log's last 12 000 characters, whole lines",
+            oldSent is not UserError && cutLog.Length is > 0 and <= 12_000 && cutLog.StartsWith("[2026-11-11") && cutLog.TrimEnd().EndsWith("Long log line 1500 of a rejoin's tries."),
+            $"{oldSent} {received.Count - beforeOld} {cutLog.Length}");
 
         listener.Stop();
         await serving;
