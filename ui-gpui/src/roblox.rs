@@ -1,0 +1,2551 @@
+// Roblox's own services, called from here (the core moves to Rust bit by bit, the owner's call on 2026-11-09): the
+// charts (explore-api: the rows on roblox.com/charts and their games), the game search (search-api: the site's search
+// box) and the games' icons (thumbnails). The charts' games come only to a signed-in account: the app hands one
+// account's sign-in over its pipe (robloxSignIn), kept in memory only and sent to roblox.com alone.
+//
+// An account's friends (friends, presence, users, thumbnails) are asked with that account's own sign-in: Roblox
+// refuses the list to a request that isn't signed in (403, checked 2026-11-10), and names a friend's server only to an
+// account that friend lets join.
+//
+// Each call blocks, so it runs on a thread of its own and answers through a channel the window awaits.
+use std::{collections::HashMap, io::Read, time::Duration};
+
+use futures::channel::oneshot;
+use serde_json::Value;
+
+/// A game in a row or a search: what the card shows.
+#[derive(Clone, Debug)]
+pub struct Game {
+    pub universe: i64,
+    pub place: i64,
+    pub name: String,
+    pub playing: i64,
+    pub up: i64,
+    pub down: i64,
+}
+
+/// A row of the charts (Top Trending, Up-and-Coming…), with what get-sort-content needs to fill it.
+#[derive(Clone, Debug)]
+pub struct Sort {
+    pub id: String,
+    pub name: String,
+    target: Option<i64>,
+    kind: Option<i64>,
+    treatment: Option<String>,
+}
+
+/// The charts' rows when get-sorts names none (it names only the filters to a request that isn't signed in): the ones
+/// roblox.com/charts shows, checked 2026-11-09.
+const CHARTS: [(&str, &str); 5] = [
+    ("top-trending", "Top Trending"),
+    ("up-and-coming", "Up-and-Coming"),
+    ("top-playing-now", "Top Playing Now"),
+    ("fun-with-friends", "Fun with Friends"),
+    ("top-revisited", "Top Revisited"),
+];
+
+/// One for every ask: its connections to Roblox stay open between them (a new one each time cost a quarter of every
+/// ask, measured 2026-11-11: 0.33 s against 0.25 s).
+fn agent() -> ureq::Agent {
+    static AGENT: std::sync::OnceLock<ureq::Agent> = std::sync::OnceLock::new();
+    AGENT.get_or_init(|| ureq::AgentBuilder::new().timeout(Duration::from_secs(20)).user_agent("Bloxkeep").max_idle_connections(64).max_idle_connections_per_host(12).build()).clone()
+}
+
+/// Two asks of Roblox at once. Each ask takes Roblox a quarter of a second whatever it is, so a page that asks ten
+/// things one after another makes its reader wait ten times that; what doesn't need another's answer is asked together.
+pub fn both<A: Send, B: Send>(a: impl FnOnce() -> A + Send, b: impl FnOnce() -> B + Send) -> (A, B) {
+    std::thread::scope(|s| {
+        let a = s.spawn(a);
+        let b = b();
+        (a.join().expect("an ask of Roblox panicked"), b)
+    })
+}
+
+/// The same ask for each of several things, all at once, answers in their order.
+fn each<T: Send, R: Send>(things: Vec<T>, ask: impl Fn(T) -> R + Sync) -> Vec<R> {
+    if things.len() < 2 {
+        return things.into_iter().map(ask).collect();
+    }
+    std::thread::scope(|s| {
+        let ask = &ask;
+        let going: Vec<_> = things.into_iter().map(|t| s.spawn(move || ask(t))).collect();
+        going.into_iter().map(|g| g.join().expect("an ask of Roblox panicked")).collect()
+    })
+}
+
+fn get(url: &str, cookie: Option<&str>) -> Result<Value, String> {
+    let mut req = agent().get(url).set("Accept", "application/json");
+    if let Some(c) = cookie.filter(|c| !c.is_empty()) {
+        req = req.set("Cookie", &format!(".ROBLOSECURITY={c}"));
+    }
+    match req.call() {
+        Ok(r) => {
+            let mut text = String::new();
+            r.into_reader().take(8 << 20).read_to_string(&mut text).map_err(|e| e.to_string())?;
+            serde_json::from_str(&text).map_err(|e| e.to_string())
+        }
+        Err(ureq::Error::Status(code, _)) => Err(format!("Roblox {code}")),
+        Err(e) => Err(e.to_string()),
+    }
+}
+
+fn enc(s: &str) -> String {
+    percent_encoding::utf8_percent_encode(s, percent_encoding::NON_ALPHANUMERIC).to_string()
+}
+
+fn session() -> String {
+    // Any id will do: Roblox ties a page's calls together by it.
+    let n = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_nanos()).unwrap_or(0);
+    format!("{:08x}-{:04x}-4{:03x}-a{:03x}-{:012x}", (n >> 32) as u32, (n >> 16) as u16, (n >> 4) as u16 & 0xfff, n as u16 & 0xfff, (n as u64) & 0xffff_ffff_ffff)
+}
+
+fn int(v: &Value, k: &str) -> i64 {
+    v.get(k).and_then(Value::as_i64).unwrap_or(0)
+}
+
+fn game_of(v: &Value) -> Option<Game> {
+    let name = v.get("name").and_then(Value::as_str).unwrap_or_default().trim().to_string();
+    let place = int(v, "rootPlaceId");
+    (place > 0 && !name.is_empty()).then(|| Game {
+        universe: int(v, "universeId"),
+        place,
+        name,
+        playing: int(v, "playerCount"),
+        up: int(v, "totalUpVotes"),
+        down: int(v, "totalDownVotes"),
+    })
+}
+
+/// The charts' rows, every page of them (as roblox.com asks: up to 25).
+pub fn sorts(cookie: Option<&str>) -> Result<Vec<Sort>, String> {
+    #[cfg(feature = "shot")]
+    if let Some(f) = fixture() {
+        return Ok(f.0);
+    }
+    let s = session();
+    let mut out: Vec<Sort> = Vec::new();
+    let mut token = String::new();
+    for _ in 0..25 {
+        let mut url = format!("https://apis.roblox.com/explore-api/v1/get-sorts?sessionId={s}&device=computer&country=all");
+        if !token.is_empty() {
+            url += &format!("&sortsPageToken={}", enc(&token));
+        }
+        let d = get(&url, cookie)?;
+        for v in d.get("sorts").and_then(Value::as_array).into_iter().flatten() {
+            let id = v.get("sortId").and_then(Value::as_str).unwrap_or_default();
+            if v.get("contentType").and_then(Value::as_str) != Some("Games") || id.is_empty() || out.iter().any(|x| x.id == id) {
+                continue;
+            }
+            out.push(Sort {
+                id: id.into(),
+                name: v.get("sortDisplayName").and_then(Value::as_str).unwrap_or(id).into(),
+                target: v.get("gameSetTargetId").and_then(Value::as_i64),
+                kind: v.get("gameSetTypeId").and_then(Value::as_i64),
+                treatment: v.get("treatmentType").and_then(Value::as_str).map(str::to_string),
+            });
+        }
+        token = d.get("nextSortsPageToken").and_then(Value::as_str).unwrap_or_default().to_string();
+        if token.is_empty() {
+            break;
+        }
+    }
+    if out.is_empty() {
+        out = CHARTS.iter().map(|(id, name)| Sort { id: (*id).into(), name: (*name).into(), target: None, kind: None, treatment: None }).collect();
+    }
+    Ok(out)
+}
+
+/// A row's games, all of them (the games get-sorts carries are only its first few).
+pub fn sort_games(cookie: Option<&str>, sort: &Sort) -> Result<Vec<Game>, String> {
+    #[cfg(feature = "shot")]
+    if let Some(f) = fixture() {
+        return Ok(f.1.get(&sort.id).cloned().unwrap_or_default());
+    }
+    let s = session();
+    let mut url = format!(
+        "https://apis.roblox.com/explore-api/v1/get-sort-content?sessionId={s}&discoverPageSessionInfo={s}&sortId={}&age=all&country=all&device=computer&page=chartsPage&position=1&cpuCores=8&maxResolution=1920x1080",
+        enc(&sort.id)
+    );
+    if let Some(t) = sort.target {
+        url += &format!("&gameSetTargetId={t}");
+    }
+    if let Some(k) = sort.kind {
+        url += &format!("&gameSetTypeId={k}");
+    }
+    if let Some(t) = &sort.treatment {
+        url += &format!("&treatmentType={}", enc(t));
+    }
+    let d = get(&url, cookie)?;
+    Ok(d.get("games").and_then(Value::as_array).into_iter().flatten().filter_map(game_of).collect())
+}
+
+/// Roblox's game search, the one on roblox.com (no sign-in needed).
+pub fn search(query: &str) -> Result<Vec<Game>, String> {
+    let url = format!("https://apis.roblox.com/search-api/omni-search?searchQuery={}&sessionId={}&pageType=all", enc(query), session());
+    let d = get(&url, None)?;
+    Ok(d.get("searchResults")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter(|g| g.get("contentGroupType").and_then(Value::as_str) == Some("Game"))
+        .flat_map(|g| g.get("contents").and_then(Value::as_array).cloned().unwrap_or_default())
+        .filter_map(|v| game_of(&v))
+        .collect())
+}
+
+/// The games' square icons by universe, 100 a call.
+pub fn icons(universes: &[i64]) -> HashMap<i64, String> {
+    let (mut out, missing) = pics::known("icons", universes);
+    let mut learnt = HashMap::new();
+    for chunk in missing.chunks(100) {
+        let ids: Vec<String> = chunk.iter().map(i64::to_string).collect();
+        let url = format!("https://thumbnails.roblox.com/v1/games/icons?universeIds={}&returnPolicy=PlaceHolder&size=150x150&format=Png&isCircular=false", ids.join(","));
+        let Ok(d) = get(&url, None) else { continue };
+        for v in d.get("data").and_then(Value::as_array).into_iter().flatten() {
+            if let Some(u) = v.get("imageUrl").and_then(Value::as_str).filter(|u| !u.is_empty()) {
+                learnt.insert(int(v, "targetId"), u.to_string());
+            }
+        }
+    }
+    pics::learn("icons", &learnt);
+    out.extend(learnt);
+    out
+}
+
+/// The games' wide pictures (16:9) by universe, in one of Roblox's sizes ("480x270", "768x432"), 50 a call. They need
+/// no sign-in (checked 2026-11-11).
+pub fn covers(universes: &[i64], size: &str) -> HashMap<i64, String> {
+    let kind = format!("covers-{size}");
+    let (mut out, missing) = pics::known(&kind, universes);
+    let mut learnt = HashMap::new();
+    for chunk in missing.chunks(50) {
+        let ids: Vec<String> = chunk.iter().map(i64::to_string).collect();
+        let url = format!("https://thumbnails.roblox.com/v1/games/multiget/thumbnails?universeIds={}&countPerUniverse=1&defaults=true&size={size}&format=Png&isCircular=false", ids.join(","));
+        let Ok(d) = get(&url, None) else { continue };
+        for v in d.get("data").and_then(Value::as_array).into_iter().flatten() {
+            let pic = v.get("thumbnails").and_then(Value::as_array).and_then(|t| t.first()).and_then(|t| t.get("imageUrl")).and_then(Value::as_str).filter(|u| !u.is_empty());
+            if let Some(u) = pic {
+                learnt.insert(int(v, "universeId"), u.to_string());
+            }
+        }
+    }
+    pics::learn(&kind, &learnt);
+    out.extend(learnt);
+    out
+}
+
+/// A game's own pictures (the ones its Roblox page turns through), wide, each once. No sign-in needed.
+pub fn shots(universe: i64) -> Vec<String> {
+    let url = format!("https://thumbnails.roblox.com/v1/games/multiget/thumbnails?universeIds={universe}&countPerUniverse=10&defaults=true&size=768x432&format=Png&isCircular=false");
+    let Ok(d) = get(&url, None) else { return Vec::new() };
+    let mut out: Vec<String> = Vec::new();
+    for t in d.pointer("/data/0/thumbnails").and_then(Value::as_array).into_iter().flatten() {
+        let pic = t.get("imageUrl").and_then(Value::as_str).unwrap_or_default();
+        if !pic.is_empty() && !out.iter().any(|u| u == pic) {
+            out.push(pic.to_string());
+        }
+    }
+    out
+}
+
+/// The avatar as a thing with depth: Roblox's own model of it (what its site turns with three.js), for mesh.rs to draw.
+pub struct Solid {
+    pub obj: String,
+    pub mtl: String,
+    /// The MTL's pictures, by the names it gives them.
+    pub pictures: HashMap<String, Vec<u8>>,
+    /// Where Roblox's camera stands, and the model's box.
+    pub eye: [f32; 3],
+    pub min: [f32; 3],
+    pub max: [f32; 3],
+}
+
+/// A file of Roblox's picture servers, by its hash. Which of the eight servers holds it is reckoned from the hash, as
+/// Roblox's own page does (DevForum, "Using Roblox's avatar-3d API…", read 2026-11-11); should that reckoning have
+/// changed, the others are tried.
+fn cdn(hash: &str) -> Option<Vec<u8>> {
+    if hash.is_empty() {
+        return None;
+    }
+    let first = hash.bytes().take(38).fold(31u32, |i, b| i ^ b as u32) % 8;
+    std::iter::once(first).chain((0..8).filter(|n| *n != first)).find_map(|n| {
+        let r = agent().get(&format!("https://t{n}.rbxcdn.com/{hash}")).call().ok()?;
+        let mut out = Vec::new();
+        r.into_reader().take(32 << 20).read_to_end(&mut out).ok()?;
+        (!out.is_empty()).then_some(out)
+    })
+}
+
+/// A user's avatar as a model. Roblox answers only a signed-in request (403 to any other, checked 2026-11-11), so the
+/// answer's shape is the DevForum's, not one seen here with a real sign-in: { state, imageUrl } and, at that address,
+/// { camera: { position }, aabb: { min, max }, obj, mtl, textures }. A model Roblox is still making (after a change)
+/// is waited for a few seconds.
+pub fn solid(cookie: &str, user: i64) -> Result<Solid, String> {
+    // BLOXKEEP_SHOT_MODEL=dir: a hidden shot's model, from model.obj, model.mtl and the pictures beside them.
+    #[cfg(feature = "shot")]
+    if let Ok(dir) = std::env::var("BLOXKEEP_SHOT_MODEL") {
+        let dir = std::path::Path::new(&dir);
+        let read = |n: &str| std::fs::read_to_string(dir.join(n)).map_err(|e| e.to_string());
+        let mut pictures = HashMap::new();
+        for f in std::fs::read_dir(dir).map_err(|e| e.to_string())?.flatten() {
+            let name = f.file_name().to_string_lossy().to_string();
+            if name.ends_with(".png") {
+                pictures.insert(name, std::fs::read(f.path()).map_err(|e| e.to_string())?);
+            }
+        }
+        return Ok(Solid { obj: read("model.obj")?, mtl: read("model.mtl")?, pictures, eye: [0.; 3], min: [0.; 3], max: [0.; 3] });
+    }
+    let mut file = String::new();
+    for round in 0..6 {
+        if round > 0 {
+            std::thread::sleep(Duration::from_millis(1500));
+        }
+        let d = get(&format!("https://thumbnails.roblox.com/v1/users/avatar-3d?userId={user}"), Some(cookie))?;
+        if text(&d, "state") == "Completed" {
+            file = text(&d, "imageUrl");
+            break;
+        }
+    }
+    if file.is_empty() {
+        return Err(String::new());
+    }
+    let d = get(&file, None)?;
+    let xyz = |path: &str| -> [f32; 3] {
+        let at = |k: &str| d.pointer(&format!("{path}/{k}")).and_then(Value::as_f64).unwrap_or(0.) as f32;
+        [at("x"), at("y"), at("z")]
+    };
+    let (obj, mtl) = both(|| cdn(&text(&d, "obj")), || cdn(&text(&d, "mtl")));
+    let obj = String::from_utf8_lossy(&obj.ok_or("obj")?).to_string();
+    let mtl = String::from_utf8_lossy(&mtl.ok_or("mtl")?).to_string();
+    // The pictures the materials name (each name is the picture's hash).
+    let mut names: Vec<String> = mtl.lines().filter(|l| l.trim_start().starts_with("map_Kd")).filter_map(|l| l.split_whitespace().last().map(str::to_string)).collect();
+    names.sort();
+    names.dedup();
+    let pictures: HashMap<String, Vec<u8>> = each(names, |n| cdn(&n).map(|b| (n, b))).into_iter().flatten().collect();
+    Ok(Solid { obj, mtl, pictures, eye: xyz("/camera/position"), min: xyz("/aabb/min"), max: xyz("/aabb/max") })
+}
+
+// ───────────────────────── moved here from the C# app ─────────────────────────
+// Reads of Roblox the C# app made for the interface (its gameLooks and searchGames commands), now made here: they
+// need nothing the app holds (no vault, no window), only Roblox's public answers.
+
+/// Where what Roblox said may be kept between runs: the app's cache folder (--cache, from GpuiHost), none in a hidden
+/// shot or the mock.
+static KEEP: std::sync::OnceLock<Option<std::path::PathBuf>> = std::sync::OnceLock::new();
+
+pub fn keep_in(dir: Option<std::path::PathBuf>) {
+    let _ = KEEP.set(dir);
+}
+
+/// A game's pictures, and when Roblox was asked for them (seconds since 1970).
+#[derive(Clone, Default, serde::Serialize, serde::Deserialize)]
+struct GameLook {
+    icon: String,
+    cover: String,
+    at: u64,
+}
+
+/// A week, as the C# app kept them (WikiLook.cs): the Games tab opens with its pictures at once.
+const LOOKS_KEPT: u64 = 7 * 24 * 3600;
+
+fn looks_book() -> &'static std::sync::Mutex<HashMap<i64, GameLook>> {
+    static BOOK: std::sync::OnceLock<std::sync::Mutex<HashMap<i64, GameLook>>> = std::sync::OnceLock::new();
+    BOOK.get_or_init(|| {
+        // What was kept last time, when there is a place to keep it and it reads.
+        let kept = KEEP.get().cloned().flatten().and_then(|d| std::fs::read_to_string(d.join("ui-game-looks.json")).ok()).and_then(|t| serde_json::from_str::<HashMap<i64, GameLook>>(&t).ok());
+        std::sync::Mutex::new(kept.unwrap_or_default())
+    })
+}
+
+fn now_secs() -> u64 {
+    std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0)
+}
+
+/// How each game is drawn, by its place: its square icon and its wide picture (the C# app's gameLooks, without the
+/// colour it took from the icon, which this interface doesn't use). Kept a week, in the app's cache folder when there
+/// is one; a game Roblox says nothing of is left out, and asked for again the next time.
+pub fn looks(places: &[i64]) -> HashMap<i64, Value> {
+    let now = now_secs();
+    let missing: Vec<i64> = {
+        let book = looks_book().lock().unwrap();
+        places.iter().copied().filter(|p| *p > 0 && !book.get(p).is_some_and(|l| now.saturating_sub(l.at) < LOOKS_KEPT)).collect()
+    };
+    if !missing.is_empty() {
+        // Each place's universe (a dozen asks at a time), then the pictures of them all in two asks.
+        let mut pairs: Vec<(i64, i64)> = Vec::new();
+        for chunk in missing.chunks(12) {
+            pairs.extend(each(chunk.to_vec(), |p| (p, get(&format!("https://apis.roblox.com/universes/v1/places/{p}/universe"), None).map(|d| int(&d, "universeId")).unwrap_or(0))));
+        }
+        let ids: Vec<i64> = pairs.iter().map(|x| x.1).filter(|u| *u > 0).collect();
+        let (small, wide) = both(|| icons(&ids), || covers(&ids, "768x432"));
+        let mut book = looks_book().lock().unwrap();
+        for (place, universe) in pairs {
+            let (icon, cover) = (small.get(&universe).cloned().unwrap_or_default(), wide.get(&universe).cloned().unwrap_or_default());
+            if !icon.is_empty() || !cover.is_empty() {
+                book.insert(place, GameLook { icon, cover, at: now });
+            }
+        }
+        // Kept for the next run (through a file of its own beside the C# app's, written whole then put in place).
+        if let Some(dir) = KEEP.get().cloned().flatten() {
+            if let Ok(text) = serde_json::to_string(&*book) {
+                let _ = std::fs::create_dir_all(&dir);
+                let temp = dir.join("ui-game-looks.json.tmp");
+                if std::fs::write(&temp, text).is_ok() {
+                    let _ = std::fs::rename(&temp, dir.join("ui-game-looks.json"));
+                }
+            }
+        }
+    }
+    let book = looks_book().lock().unwrap();
+    places.iter().filter_map(|p| book.get(p).map(|l| (*p, serde_json::json!({ "icon": l.icon, "cover": l.cover })))).collect()
+}
+
+/// What a game box holds, looked up (the C# app's resolveGame): refused with why ("errorKey", words.json), or a share
+/// link, or the place with its name, maker, players now and icon as far as Roblox gives them. Roblox hides titles and
+/// player counts from a request that isn't signed in, so names come from develop.roblox.com and the count needs a
+/// sign-in (none: no count).
+pub fn resolve(input: &str, cookie: Option<&str>) -> Value {
+    let t = match crate::target::parse(input, "") {
+        Ok(t) => t,
+        Err(why) => return serde_json::json!({ "ok": false, "errorKey": why.key() }),
+    };
+    if t.share.is_some() {
+        return serde_json::json!({ "ok": true, "kind": "share" });
+    }
+    let kind = if t.is_private() { "private" } else if t.job.is_some() { "server" } else { "game" };
+    let universe = get(&format!("https://apis.roblox.com/universes/v1/places/{}/universe", t.place), None).map(|d| int(&d, "universeId")).unwrap_or(0);
+    let mut out = serde_json::json!({ "ok": true, "kind": kind, "placeId": t.place, "name": null, "creator": null, "playing": null, "iconUrl": null });
+    if universe > 0 {
+        let (named, (count, pics)) = both(
+            || get(&format!("https://develop.roblox.com/v1/universes/multiget?ids={universe}"), None),
+            || both(|| get(&format!("https://games.roblox.com/v1/games?universeIds={universe}"), cookie), || icons(&[universe])),
+        );
+        let first = |d: Result<Value, String>| d.ok().and_then(|d| d.get("data").and_then(Value::as_array).and_then(|l| l.first().cloned()));
+        // (A game Roblox names nothing for is left blank, as the app left it out.)
+        if let Some(g) = first(named).filter(|g| !text(g, "name").is_empty()) {
+            out["name"] = text(&g, "name").into();
+            out["creator"] = text(&g, "creatorName").into();
+            out["playing"] = first(count).map(|c| int(&c, "playing")).unwrap_or(0).into();
+            out["iconUrl"] = pics.get(&universe).cloned().map(Value::from).unwrap_or(Value::Null);
+        }
+    }
+    out
+}
+
+/// Games by name for a box that picks one (the C# app's searchGames): Roblox's own search, the first twelve, one row
+/// a place, each with its icon. Fewer than two letters find nothing.
+pub fn search_rows(query: &str) -> Vec<Value> {
+    let query = query.trim();
+    if query.chars().count() < 2 {
+        return Vec::new();
+    }
+    let mut seen = std::collections::HashSet::new();
+    let found: Vec<Game> = search(query).unwrap_or_default().into_iter().filter(|g| seen.insert(g.place)).take(12).collect();
+    let pics = icons(&found.iter().map(|g| g.universe).filter(|u| *u > 0).collect::<Vec<_>>());
+    found
+        .into_iter()
+        .map(|g| serde_json::json!({ "placeId": g.place, "universeId": g.universe, "name": g.name, "playing": g.playing, "iconUrl": pics.get(&g.universe).cloned().unwrap_or_default() }))
+        .collect()
+}
+
+fn post(url: &str, body: &Value, cookie: Option<&str>) -> Result<Value, String> {
+    send("POST", url, body, cookie)
+}
+
+/// A write to Roblox (POST, DELETE…), with the token it asks for.
+fn send(method: &str, url: &str, body: &Value, cookie: Option<&str>) -> Result<Value, String> {
+    serde_json::from_str(&send_text(method, url, body, cookie)?).map_err(|e| e.to_string())
+}
+
+/// The same write, its answer as it came (some of Roblox's answer with nothing).
+fn send_text(method: &str, url: &str, body: &Value, cookie: Option<&str>) -> Result<String, String> {
+    let send = |token: Option<&str>| {
+        let mut req = agent().request(method, url).set("Accept", "application/json").set("Content-Type", "application/json");
+        if let Some(c) = cookie.filter(|c| !c.is_empty()) {
+            req = req.set("Cookie", &format!(".ROBLOSECURITY={c}"));
+        }
+        if let Some(t) = token {
+            req = req.set("x-csrf-token", t);
+        }
+        req.send_string(&body.to_string())
+    };
+    let res = match send(None) {
+        // A signed-in POST is refused once with the token it wants; asked again with it.
+        Err(ureq::Error::Status(403, r)) => match r.header("x-csrf-token").map(str::to_string) {
+            Some(t) => send(Some(&t)),
+            None => return Err("Roblox 403".into()),
+        },
+        other => other,
+    };
+    match res {
+        Ok(r) => {
+            let mut text = String::new();
+            r.into_reader().take(8 << 20).read_to_string(&mut text).map_err(|e| e.to_string())?;
+            Ok(text)
+        }
+        Err(ureq::Error::Status(code, _)) => Err(format!("Roblox {code}")),
+        Err(e) => Err(e.to_string()),
+    }
+}
+
+/// A friend as the Friends page shows them: who, and where Roblox says they are (`kind`: 0 offline, 1 online, 2 in a
+/// game, 3 in Studio). The game and its server are empty when the friend's privacy hides them from the asking account.
+#[derive(Clone, Debug, Default)]
+pub struct Friend {
+    pub id: i64,
+    pub name: String,
+    pub display: String,
+    pub face: String,
+    pub kind: i64,
+    pub game: String,
+    pub game_icon: String,
+    /// The game's wide picture (16:9), for the lane friends in it stand in.
+    pub game_cover: String,
+    pub place: i64,
+    pub universe: i64,
+    pub job: String,
+    /// What this PC has kept of them (friend_shifts): when it last saw them online (0: never yet), and the game it has
+    /// seen them in most. Roblox shows neither.
+    pub seen: i64,
+    pub usual: String,
+}
+
+fn text(v: &Value, k: &str) -> String {
+    v.get(k).and_then(Value::as_str).unwrap_or_default().trim().to_string()
+}
+
+/// The ids of a user's friends: the paged list (Roblox's advice since accounts can have 1,000), else the old whole one.
+fn friend_ids(cookie: &str, user: i64) -> Result<Vec<i64>, String> {
+    let mut out: Vec<i64> = Vec::new();
+    let mut cursor = String::new();
+    for page in 0..20 {
+        let mut url = format!("https://friends.roblox.com/v1/users/{user}/friends/find?userSort=1&limit=50");
+        if !cursor.is_empty() {
+            url += &format!("&cursor={}", enc(&cursor));
+        }
+        let d = match get(&url, Some(cookie)) {
+            Ok(d) => d,
+            Err(_) if page == 0 => {
+                let d = get(&format!("https://friends.roblox.com/v1/users/{user}/friends"), Some(cookie))?;
+                return Ok(d.get("data").and_then(Value::as_array).into_iter().flatten().map(|v| int(v, "id")).filter(|i| *i > 0).collect());
+            }
+            Err(e) => return Err(e),
+        };
+        out.extend(d.get("PageItems").and_then(Value::as_array).into_iter().flatten().map(|v| int(v, "id")).filter(|i| *i > 0));
+        cursor = text(&d, "NextCursor");
+        if cursor.is_empty() {
+            break;
+        }
+    }
+    out.dedup();
+    Ok(out)
+}
+
+/// The square faces of users, 100 a call.
+fn faces(users: &[i64]) -> HashMap<i64, String> {
+    let (mut out, missing) = pics::known("faces", users);
+    let got = each(missing.chunks(100).collect(), |chunk: &[i64]| {
+        let ids: Vec<String> = chunk.iter().map(i64::to_string).collect();
+        get(&format!("https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds={}&size=150x150&format=Png&isCircular=false", ids.join(",")), None)
+    });
+    let mut learnt = HashMap::new();
+    for d in got.into_iter().flatten() {
+        // Only a face Roblox has made: a moderated one ("Blocked") comes as Roblox's crossed-out picture, which read as
+        // a broken image on a card; without it the card shows the friend's first letter.
+        for v in d.get("data").and_then(Value::as_array).into_iter().flatten().filter(|v| v.get("state").and_then(Value::as_str).is_none_or(|s| s == "Completed")) {
+            if let Some(u) = v.get("imageUrl").and_then(Value::as_str).filter(|u| !u.is_empty()) {
+                learnt.insert(int(v, "targetId"), u.to_string());
+            }
+        }
+    }
+    pics::learn("faces", &learnt);
+    out.extend(learnt);
+    out
+}
+
+/// An account's friends with where each is now, as that account may see it. The list and where they are must come;
+/// the names, faces and game icons are extras (a friend without them still shows, by id).
+pub fn friends(cookie: &str, user: i64) -> Result<Vec<Friend>, String> {
+    #[cfg(feature = "shot")]
+    if let Some(list) = friends_fixture() {
+        return Ok(dress(list));
+    }
+    let ids = friend_ids(cookie, user)?;
+    let mut list: Vec<Friend> = ids.iter().map(|id| Friend { id: *id, ..Default::default() }).collect();
+    // Where they are, their names and their faces: asked together, a hundred friends an ask.
+    let hundreds = || ids.chunks(100).collect::<Vec<&[i64]>>();
+    let ((places, names), pictures) = both(
+        || {
+            both(
+                || each(hundreds(), |chunk| post("https://presence.roblox.com/v1/presence/users", &serde_json::json!({ "userIds": chunk }), Some(cookie))),
+                || each(hundreds(), |chunk| post("https://users.roblox.com/v1/users", &serde_json::json!({ "userIds": chunk, "excludeBannedUsers": false }), None)),
+            )
+        },
+        || faces(&ids),
+    );
+    for d in places {
+        let d = d?;
+        for v in d.get("userPresences").and_then(Value::as_array).into_iter().flatten() {
+            let id = int(v, "userId");
+            if let Some(f) = list.iter_mut().find(|f| f.id == id) {
+                f.kind = int(v, "userPresenceType");
+                f.game = if f.kind == 2 { text(v, "lastLocation") } else { String::new() };
+                f.place = if int(v, "placeId") > 0 { int(v, "placeId") } else { int(v, "rootPlaceId") };
+                f.universe = int(v, "universeId");
+                f.job = text(v, "gameId");
+            }
+        }
+    }
+    for d in names.into_iter().flatten() {
+        for v in d.get("data").and_then(Value::as_array).into_iter().flatten() {
+            let id = int(v, "id");
+            if let Some(f) = list.iter_mut().find(|f| f.id == id) {
+                f.name = text(v, "name");
+                f.display = text(v, "displayName");
+            }
+        }
+    }
+    for f in &mut list {
+        if let Some(u) = pictures.get(&f.id) {
+            f.face = u.clone();
+        }
+    }
+    Ok(dress(list))
+}
+
+/// The friend requests waiting for the signed-in account, newest first (the first 50).
+pub fn requests(cookie: &str) -> Result<Vec<Friend>, String> {
+    #[cfg(feature = "shot")]
+    if let Some(list) = fixture_people("requests") {
+        return Ok(dress(list));
+    }
+    let d = get("https://friends.roblox.com/v1/my/friends/requests?limit=50&friendRequestSort=1", Some(cookie))?;
+    let list = d
+        .get("data")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter(|v| int(v, "id") > 0)
+        .map(|v| Friend { id: int(v, "id"), name: text(v, "name"), display: text(v, "displayName"), ..Default::default() })
+        .collect();
+    Ok(dress(list))
+}
+
+/// The people who follow a user ("followers") or whom the user follows ("followings"), newest first (the first 50).
+/// Roblox gives these lists only to a signed-in request.
+pub fn follows(cookie: &str, user: i64, which: &str) -> Result<Vec<Friend>, String> {
+    #[cfg(feature = "shot")]
+    if let Some(list) = fixture_people(which) {
+        return Ok(dress(list));
+    }
+    let d = get(&format!("https://friends.roblox.com/v1/users/{user}/{which}?limit=50&sortOrder=Desc"), Some(cookie))?;
+    let list = d
+        .get("data")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter(|v| int(v, "id") > 0)
+        .map(|v| Friend { id: int(v, "id"), name: text(v, "name"), display: text(v, "displayName"), ..Default::default() })
+        .collect();
+    Ok(dress(list))
+}
+
+/// Roblox's people search, the one on roblox.com (no sign-in needed): the first dozen.
+pub fn people(query: &str) -> Result<Vec<Friend>, String> {
+    let url = format!("https://apis.roblox.com/search-api/omni-search?verticalType=user&searchQuery={}&sessionId={}&pageType=all", enc(query), session());
+    let d = get(&url, None)?;
+    let list = d
+        .get("searchResults")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter(|g| g.get("contentGroupType").and_then(Value::as_str) == Some("User"))
+        .flat_map(|g| g.get("contents").and_then(Value::as_array).cloned().unwrap_or_default())
+        .filter(|v| int(v, "contentId") > 0)
+        .take(12)
+        .map(|v| Friend { id: int(&v, "contentId"), name: text(&v, "username"), display: text(&v, "displayName"), ..Default::default() })
+        .collect();
+    Ok(dress(list))
+}
+
+/// The faces and the game icons, and a name for one Roblox named none.
+fn dress(mut list: Vec<Friend>) -> Vec<Friend> {
+    let want: Vec<i64> = list.iter().filter(|f| f.face.is_empty()).map(|f| f.id).collect();
+    let got = faces(&want);
+    let mut games: Vec<i64> = list.iter().filter(|f| f.universe > 0 && f.game_icon.is_empty()).map(|f| f.universe).collect();
+    games.sort_unstable();
+    games.dedup();
+    let (pics, wide) = both(|| icons(&games), || covers(&games, "480x270"));
+    for f in &mut list {
+        if let Some(u) = got.get(&f.id) {
+            f.face = u.clone();
+        }
+        if let Some(u) = pics.get(&f.universe) {
+            f.game_icon = u.clone();
+        }
+        if let Some(u) = wide.get(&f.universe) {
+            f.game_cover = u.clone();
+        }
+        if f.display.is_empty() {
+            f.display = if f.name.is_empty() { f.id.to_string() } else { f.name.clone() };
+        }
+    }
+    list
+}
+
+/// BLOXKEEP_SHOT_FRIENDS=file.json: a hidden shot's friends and requests, { friends: [{ id, name, displayName, kind, game,
+/// placeId, universeId, jobId }], requests: [the same] }, since Roblox gives them only to a signed-in account.
+#[cfg(feature = "shot")]
+pub fn friends_fixture() -> Option<Vec<Friend>> {
+    fixture_people("friends")
+}
+
+#[cfg(feature = "shot")]
+fn fixture_people(key: &str) -> Option<Vec<Friend>> {
+    let path = std::env::var("BLOXKEEP_SHOT_FRIENDS").ok()?;
+    let d: Value = serde_json::from_str(&std::fs::read_to_string(path).ok()?).ok()?;
+    Some(
+        d.get(key)
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+            .map(|v| Friend {
+                id: int(v, "id"),
+                name: text(v, "name"),
+                display: text(v, "displayName"),
+                kind: int(v, "kind"),
+                game: text(v, "game"),
+                place: int(v, "placeId"),
+                universe: int(v, "universeId"),
+                job: text(v, "jobId"),
+                ..Default::default()
+            })
+            .collect(),
+    )
+}
+
+/// Something worn: its picture and name, and the fitting Roblox keeps with it (sent back as it came).
+#[derive(Clone, Debug, Default)]
+pub struct Item {
+    pub id: i64,
+    pub name: String,
+    pub pic: String,
+    /// Roblox's number for the kind of thing (8 a hat, 11 a shirt…).
+    kind: i64,
+    meta: Option<Value>,
+}
+
+/// What a worn thing is worth: Robux, whether it is a Limited, and the bundle it is a part of (0: none), whose price
+/// this then is.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Price {
+    pub robux: i64,
+    pub limited: bool,
+    pub pack: i64,
+}
+
+/// What things are worth, by id: None when Roblox has no price for one (never sold, or given away and off sale).
+pub type Worth = HashMap<i64, Option<Price>>;
+
+/// Prices read since the app opened: an avatar read again (after a change, or by another tab) asks only for what is new.
+fn price_book() -> &'static std::sync::Mutex<Worth> {
+    static BOOK: std::sync::OnceLock<std::sync::Mutex<Worth>> = std::sync::OnceLock::new();
+    BOOK.get_or_init(Default::default)
+}
+
+/// The most bundles looked up in one read (a call each).
+const PACKS: usize = 16;
+
+/// What worn things are worth (no sign-in needed), which Roblox doesn't add up. A thing on sale: its price. A Limited:
+/// what it has sold for lately (Roblox's recent average price), not what resellers ask. A thing with no price of its
+/// own (a body part, an animation): the price of the cheapest bundle it comes in, which the things worn from it share.
+pub fn worth(ids: &[i64]) -> Result<Worth, String> {
+    let mut book: Worth = price_book().lock().map(|b| b.clone()).unwrap_or_default();
+    let ask: Vec<i64> = ids.iter().copied().filter(|id| !book.contains_key(id)).collect();
+    let mut loose: Vec<i64> = Vec::new();
+    for part in ask.chunks(100) {
+        let items: Vec<Value> = part.iter().map(|id| serde_json::json!({ "itemType": "Asset", "id": id })).collect();
+        let d = post("https://catalog.roblox.com/v1/catalog/items/details", &serde_json::json!({ "items": items }), None)?;
+        for v in d.get("data").and_then(Value::as_array).into_iter().flatten() {
+            let id = int(v, "id");
+            let limited = v.get("itemRestrictions").and_then(Value::as_array).into_iter().flatten().filter_map(Value::as_str).any(|r| r.starts_with("Limited"));
+            let price = v.get("price").and_then(Value::as_i64);
+            let status = v.get("priceStatus").and_then(Value::as_str).unwrap_or_default();
+            let off = status == "Off Sale" || v.get("isOffSale").and_then(Value::as_bool) == Some(true);
+            let one = |robux| Some(Price { robux, limited, pack: 0 });
+            let got = if limited {
+                let sold = get(&format!("https://economy.roblox.com/v1/assets/{id}/resale-data"), None).ok().map(|d| int(&d, "recentAveragePrice")).filter(|p| *p > 0);
+                sold.or(price.filter(|p| *p > 0)).and_then(one)
+            } else {
+                match price {
+                    Some(p) if p > 0 => one(p),
+                    Some(_) if status == "Free" || !off => one(0),
+                    Some(_) => None,
+                    None => {
+                        loose.push(id);
+                        continue;
+                    }
+                }
+            };
+            book.insert(id, got);
+        }
+    }
+    for (n, id) in loose.iter().enumerate() {
+        // Another part of a bundle already found brought this one's price with it.
+        if book.contains_key(id) {
+            continue;
+        }
+        // Past the most, or Roblox not answering: left unknown this time, asked again the next.
+        if n >= PACKS {
+            break;
+        }
+        let Ok(d) = get(&format!("https://catalog.roblox.com/v1/assets/{id}/bundles?limit=10"), None) else { continue };
+        let best = d
+            .get("data")
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+            .filter_map(|b| b.pointer("/product/priceInRobux").and_then(Value::as_i64).filter(|p| *p > 0).map(|p| (p, b)))
+            .min_by_key(|(p, _)| *p);
+        match best {
+            Some((robux, b)) => {
+                let price = Some(Price { robux, limited: false, pack: int(b, "id") });
+                book.insert(*id, price);
+                for it in b.get("items").and_then(Value::as_array).into_iter().flatten() {
+                    let part = int(it, "id");
+                    // A part looked up before with no bundle of its own to price it (a mood) takes this one's.
+                    if text(it, "type") == "Asset" && loose.contains(&part) && !matches!(book.get(&part), Some(Some(_))) {
+                        book.insert(part, price);
+                    }
+                }
+            }
+            None => {
+                book.insert(*id, None);
+            }
+        }
+    }
+    let out: Worth = ids.iter().filter_map(|id| book.get(id).map(|p| (*id, *p))).collect();
+    if let Ok(mut b) = price_book().lock() {
+        b.extend(book);
+    }
+    Ok(out)
+}
+
+/// Something owned, on a shelf of the inventory: `kind` is Roblox's name for what it is ("Hat", "ShirtAccessory").
+#[derive(Clone, Debug, Default)]
+pub struct Owned {
+    pub id: i64,
+    pub name: String,
+    pub kind: String,
+    pub pic: String,
+}
+
+/// The inventory's shelves, as the avatar editor groups them: a key, and the kinds asked for together.
+pub const SHELVES: [(&str, &str); 5] = [
+    ("acc", "Hat,HairAccessory,FaceAccessory,NeckAccessory,ShoulderAccessory,FrontAccessory,BackAccessory,WaistAccessory"),
+    ("clothes", "Shirt,Pants,TShirt,TShirtAccessory,ShirtAccessory,PantsAccessory,JacketAccessory,SweaterAccessory,ShortsAccessory,LeftShoeAccessory,RightShoeAccessory,DressSkirtAccessory"),
+    ("body", "DynamicHead,Torso,RightArm,LeftArm,LeftLeg,RightLeg"),
+    ("anim", "IdleAnimation,WalkAnimation,RunAnimation,JumpAnimation,FallAnimation,ClimbAnimation,SwimAnimation,MoodAnimation"),
+    ("emote", "EmoteAnimation"),
+];
+
+/// A page (50) of what a user owns of those kinds, newest first, and the mark for the next page (empty: the last).
+/// The sign-in lets an account see its own when its inventory is private.
+pub fn inventory(cookie: &str, user: i64, kinds: &str, cursor: &str) -> Result<(Vec<Owned>, String), String> {
+    let mut url = format!("https://inventory.roblox.com/v2/users/{user}/inventory?assetTypes={kinds}&limit=50&sortOrder=Desc");
+    if !cursor.is_empty() {
+        url += &format!("&cursor={}", enc(cursor));
+    }
+    let d = get(&url, Some(cookie))?;
+    let mut list: Vec<Owned> = d
+        .get("data")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter(|v| int(v, "assetId") > 0)
+        .map(|v| Owned { id: int(v, "assetId"), name: text(v, "name"), kind: text(v, "assetType"), pic: String::new() })
+        .collect();
+    let ids: Vec<i64> = list.iter().map(|o| o.id).collect();
+    let got = thumbs("assets?size=150x150&assetIds=", &ids);
+    for o in &mut list {
+        o.pic = got.get(&o.id).cloned().unwrap_or_default();
+    }
+    Ok((list, text(&d, "nextPageCursor")))
+}
+
+/// Where layered clothing sits when it is put on (Roblox wants an order with each): shoes under trousers, a jacket
+/// over a shirt. The numbers only say which is over which.
+fn layer(kind: &str) -> Option<i64> {
+    Some(match kind {
+        "LeftShoeAccessory" | "RightShoeAccessory" => 3,
+        "PantsAccessory" => 4,
+        "ShortsAccessory" => 5,
+        "DressSkirtAccessory" => 6,
+        "TShirtAccessory" => 7,
+        "ShirtAccessory" => 8,
+        "SweaterAccessory" => 9,
+        "JacketAccessory" => 10,
+        _ => return None,
+    })
+}
+
+/// The signed-in account puts one owned thing on. Roblox allows so many of a kind (avatar-rules: one shirt, three
+/// hats…): when that kind is full, the one worn longest makes room. Then the whole list is set again.
+pub fn put_on(cookie: &str, user: i64, asset: i64, kind: &str) -> Result<(), String> {
+    // An emote isn't worn: it goes on the wheel.
+    if kind == "EmoteAnimation" {
+        return put_emote(cookie, user, asset);
+    }
+    let rules = get("https://avatar.roblox.com/v1/avatar-rules", None)?;
+    let plain = |s: &str| s.replace([' ', '-'], "");
+    let (kind_id, most) = rules
+        .get("wearableAssetTypes")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .find(|t| plain(&text(t, "name")) == kind)
+        .map(|t| (int(t, "id"), int(t, "maxNumber").max(1)))
+        .ok_or("Roblox")?;
+    let d = get(&format!("https://avatar.roblox.com/v4/avatar/users/{user}"), Some(cookie))?;
+    let mut items = items_of(d.get("avatarModel").unwrap_or(&Value::Null));
+    if items.iter().any(|i| i.id == asset) {
+        return Ok(());
+    }
+    while items.iter().filter(|i| i.kind == kind_id).count() as i64 >= most {
+        let at = items.iter().position(|i| i.kind == kind_id).ok_or("Roblox")?;
+        items.remove(at);
+    }
+    items.push(Item { id: asset, kind: kind_id, meta: layer(kind).map(|o| serde_json::json!({ "order": o, "version": 1 })), ..Default::default() });
+    worn(&post("https://avatar.roblox.com/v2/avatar/set-wearing-assets", &serde_json::json!({ "assets": wear_list(&items) }), Some(cookie))?)
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct Outfit {
+    pub id: i64,
+    pub name: String,
+    pub pic: String,
+}
+
+/// An account's avatar as Roblox shows it to anyone: the full picture, the body kind (R6, R15), what it wears and
+/// the outfits it has saved.
+#[derive(Clone, Debug, Default)]
+pub struct Avatar {
+    pub pic: String,
+    pub rig: String,
+    pub items: Vec<Item>,
+    pub outfits: Vec<Outfit>,
+    /// The body: its sizes (SCALES' order), the head's colour (hex), and from Roblox's avatar rules the least and most
+    /// each size may be and the skin colours offered.
+    pub scales: [f64; 5],
+    pub colour: String,
+    pub ranges: [(f64, f64); 5],
+    pub palette: Vec<String>,
+    /// The avatar's history kept on this PC, newest first, and which of them is the avatar as it is now.
+    pub looks: Vec<Look>,
+    pub now: usize,
+    /// The emotes on its wheel (eight places at most), by place.
+    pub emotes: Vec<Emote>,
+}
+
+/// An emote on the wheel: its place there (1 to 8).
+#[derive(Clone, Debug, Default)]
+pub struct Emote {
+    pub id: i64,
+    pub name: String,
+    pub slot: i64,
+    pub pic: String,
+}
+
+/// The wheel's places.
+pub const EMOTES: i64 = 8;
+
+/// The emotes on a user's wheel (Roblox shows them to anyone), without their pictures.
+fn emotes_of(user: i64, cookie: Option<&str>) -> Result<Vec<Emote>, String> {
+    let d = get(&format!("https://avatar.roblox.com/v2/avatar/users/{user}/avatar"), cookie)?;
+    let mut list: Vec<Emote> = d
+        .get("emotes")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter(|v| int(v, "assetId") > 0)
+        .map(|v| Emote { id: int(v, "assetId"), name: text(v, "assetName"), slot: int(v, "position"), pic: String::new() })
+        .collect();
+    list.sort_by_key(|e| e.slot);
+    Ok(list)
+}
+
+/// The signed-in account puts an emote on its wheel, in the first free place; a full wheel is said, not overwritten.
+fn put_emote(cookie: &str, user: i64, asset: i64) -> Result<(), String> {
+    let have = emotes_of(user, Some(cookie))?;
+    let slot = (1..=EMOTES).find(|s| !have.iter().any(|e| e.slot == *s)).ok_or(format!("{EMOTES}/{EMOTES}"))?;
+    let d = post(&format!("https://avatar.roblox.com/v1/emotes/{asset}/{slot}"), &serde_json::json!({}), Some(cookie))?;
+    if d.get("success").and_then(Value::as_bool) == Some(false) { Err("Roblox".into()) } else { Ok(()) }
+}
+
+/// The signed-in account takes the emote off a place of its wheel.
+pub fn clear_emote(cookie: &str, slot: i64) -> Result<(), String> {
+    let d = send("DELETE", &format!("https://avatar.roblox.com/v1/emotes/{slot}"), &serde_json::json!({}), Some(cookie))?;
+    if d.get("success").and_then(Value::as_bool) == Some(false) { Err("Roblox".into()) } else { Ok(()) }
+}
+
+/// A look the avatar had, kept on this PC: when it was first seen, its picture (a file) and everything Roblox said
+/// of it then (kind, sizes, colours, what it wore), so it can be put on again. Roblox keeps no such history: a change
+/// there loses what was worn before unless it was saved as an outfit first.
+#[derive(Clone, Debug, Default)]
+pub struct Look {
+    pub at: i64,
+    pub pic: String,
+    model: Value,
+}
+
+/// How many looks an account keeps; the oldest goes when another comes.
+const LOOKS: usize = 40;
+
+/// What Bloxkeep keeps of Roblox on this PC, that Roblox itself doesn't keep (an avatar's looks, the changes among an
+/// account's friends): a folder each under this PC's Bloxkeep data (BLOXKEEP_KEPT: elsewhere, for a hidden shot).
+fn kept(what: &str) -> std::path::PathBuf {
+    std::env::var("BLOXKEEP_KEPT")
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|_| std::path::PathBuf::from(std::env::var("LOCALAPPDATA").unwrap_or_else(|_| ".".into())).join("Bloxkeep"))
+        .join(what)
+}
+
+/// Where an account's looks are kept.
+fn looks_dir(user: i64) -> std::path::PathBuf {
+    kept("avatar-history").join(user.to_string())
+}
+
+/// Something that changed among an account's friends between two reads of the list: a friend who is "new", one who is
+/// "gone" (no longer a friend: either side ended it, or their account went) or one "renamed" (`was`: the name before).
+/// Roblox tells an account none of these.
+#[derive(Clone, Debug, Default)]
+pub struct Shift {
+    pub at: i64,
+    pub kind: String,
+    pub id: i64,
+    pub name: String,
+    pub display: String,
+    pub was: String,
+    pub face: String,
+}
+
+/// How many changes an account keeps.
+const SHIFTS: usize = 100;
+
+/// The friends just read are held against the ones known on this PC (a file an account), and what differs is kept:
+/// returns the changes, newest first. The first read only learns who the friends are. A friend missing from one read
+/// isn't gone yet (Roblox's list comes short now and then): one missing from two reads running is.
+///
+/// Each read also notes who is online and in which game, so a friend carries when this PC last saw them online and the
+/// game it has seen them in most (a game counts once in five minutes, however often the list is read).
+pub fn friend_shifts(user: i64, now: &mut [Friend]) -> Vec<Shift> {
+    let dir = kept("friends-history");
+    let path = dir.join(format!("{user}.json"));
+    let at = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs() as i64).unwrap_or(0);
+    let old: Option<Value> = std::fs::read_to_string(&path).ok().and_then(|t| serde_json::from_str(&t).ok());
+    let mut known: serde_json::Map<String, Value> = old.as_ref().and_then(|o| o.get("known")).and_then(Value::as_object).cloned().unwrap_or_default();
+    let mut missing: serde_json::Map<String, Value> = old.as_ref().and_then(|o| o.get("missing")).and_then(Value::as_object).cloned().unwrap_or_default();
+    let mut shifts: Vec<Value> = old.as_ref().and_then(|o| o.get("shifts")).and_then(Value::as_array).cloned().unwrap_or_default();
+    let mut seen: serde_json::Map<String, Value> = old.as_ref().and_then(|o| o.get("seen")).and_then(Value::as_object).cloned().unwrap_or_default();
+    for f in now.iter_mut() {
+        let key = f.id.to_string();
+        let mut rec = seen.get(&key).filter(|r| r.is_object()).cloned().unwrap_or_else(|| serde_json::json!({}));
+        if f.kind != 0 {
+            rec["at"] = serde_json::json!(at);
+        }
+        if f.kind == 2 && !f.game.is_empty() && at - int(&rec, "gat") >= 300 {
+            let n = rec["g"][f.game.as_str()].as_i64().unwrap_or(0);
+            rec["g"][f.game.as_str()] = serde_json::json!(n + 1);
+            rec["gat"] = serde_json::json!(at);
+        }
+        f.seen = int(&rec, "at");
+        f.usual = rec.get("g").and_then(Value::as_object).into_iter().flatten().max_by_key(|(_, n)| n.as_i64().unwrap_or(0)).map(|(g, _)| g.clone()).unwrap_or_default();
+        if rec.as_object().is_some_and(|o| !o.is_empty()) {
+            seen.insert(key, rec);
+        }
+    }
+    let first = old.is_none();
+    let mut fresh: Vec<Value> = Vec::new();
+    let entry = |kind: &str, id: i64, name: &str, display: &str, was: &str| serde_json::json!({ "at": at, "kind": kind, "id": id, "name": name, "display": display, "was": was });
+    for f in now.iter() {
+        let key = f.id.to_string();
+        missing.remove(&key);
+        match known.get(&key) {
+            None if !first => fresh.push(entry("new", f.id, &f.name, &f.display, "")),
+            // A name is compared only when Roblox named the friend this time (the names are an extra that may not come).
+            Some(k) if !f.name.is_empty() && !text(k, "display").is_empty() && text(k, "display") != f.display => fresh.push(entry("renamed", f.id, &f.name, &f.display, &text(k, "display"))),
+            Some(k) if !f.name.is_empty() && !text(k, "name").is_empty() && text(k, "name") != f.name => fresh.push(entry("renamed", f.id, &f.name, &f.display, &format!("@{}", text(k, "name")))),
+            _ => {}
+        }
+        if !f.name.is_empty() || !known.contains_key(&key) {
+            known.insert(key, serde_json::json!({ "name": f.name, "display": f.display }));
+        }
+    }
+    let here: std::collections::HashSet<String> = now.iter().map(|f| f.id.to_string()).collect();
+    let absent: Vec<String> = known.keys().filter(|k| !here.contains(*k)).cloned().collect();
+    for key in absent {
+        if missing.contains_key(&key) {
+            let k = known.remove(&key).unwrap_or(Value::Null);
+            missing.remove(&key);
+            seen.remove(&key);
+            fresh.push(entry("gone", key.parse().unwrap_or(0), &text(&k, "name"), &text(&k, "display"), ""));
+        } else {
+            missing.insert(key, serde_json::json!(at));
+        }
+    }
+    fresh.extend(shifts.drain(..));
+    fresh.truncate(SHIFTS);
+    let _ = std::fs::create_dir_all(&dir);
+    let _ = std::fs::write(&path, serde_json::json!({ "known": known, "missing": missing, "shifts": fresh, "seen": seen }).to_string());
+    let ids: Vec<i64> = fresh.iter().map(|v| int(v, "id")).filter(|i| *i > 0).collect();
+    let got = faces(&ids);
+    fresh
+        .iter()
+        .map(|v| Shift { at: int(v, "at"), kind: text(v, "kind"), id: int(v, "id"), name: text(v, "name"), display: text(v, "display"), was: text(v, "was"), face: got.get(&int(v, "id")).cloned().unwrap_or_default() })
+        .collect()
+}
+
+/// What makes two looks the same one: the kind of body, its sizes and colours, and what is worn with its fitting.
+fn look_mark(model: &Value) -> String {
+    let mut worn: Vec<String> = model.get("assets").and_then(Value::as_array).into_iter().flatten().map(|a| format!("{}{}", int(a, "id"), a.get("meta").filter(|m| !m.is_null()).map(Value::to_string).unwrap_or_default())).collect();
+    worn.sort();
+    format!("{}|{}|{}|{}", text(model, "playerAvatarType"), model.get("scales").map(Value::to_string).unwrap_or_default(), model.get("bodyColors").map(Value::to_string).unwrap_or_default(), worn.join(","))
+}
+
+fn read_looks(user: i64) -> Vec<Look> {
+    let dir = looks_dir(user);
+    let list: Vec<Value> = std::fs::read_to_string(dir.join("index.json")).ok().and_then(|t| serde_json::from_str(&t).ok()).unwrap_or_default();
+    list.iter()
+        .map(|v| Look { at: int(v, "at"), pic: dir.join(text(v, "pic")).to_string_lossy().replace('\\', "/"), model: v.get("model").cloned().unwrap_or(Value::Null) })
+        .filter(|l| l.model.is_object())
+        .collect()
+}
+
+/// The avatar as it was just read joins its history when it is a look not kept yet (so one made in Roblox's own app
+/// is kept too, the next time Bloxkeep reads the avatar). Returns the history, newest first, and where this look is
+/// in it.
+fn keep_look(user: i64, model: &Value, pic_url: &str) -> (Vec<Look>, usize) {
+    let mut looks = read_looks(user);
+    let mark = look_mark(model);
+    if let Some(i) = looks.iter().position(|l| look_mark(&l.model) == mark) {
+        return (looks, i);
+    }
+    // No picture yet (Roblox is still drawing it): kept the next time, with one.
+    let bytes = (!pic_url.is_empty()).then(|| agent().get(pic_url).call().ok()).flatten().and_then(|r| {
+        let mut b = Vec::new();
+        r.into_reader().take(8 << 20).read_to_end(&mut b).ok().map(|_| b)
+    });
+    let Some(bytes) = bytes.filter(|b| !b.is_empty()) else { return (looks, usize::MAX) };
+    let dir = looks_dir(user);
+    let at = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs() as i64).unwrap_or(0);
+    let name = format!("{at}.png");
+    if std::fs::create_dir_all(&dir).is_err() || std::fs::write(dir.join(&name), bytes).is_err() {
+        return (looks, usize::MAX);
+    }
+    looks.insert(0, Look { at, pic: dir.join(&name).to_string_lossy().replace('\\', "/"), model: model.clone() });
+    for old in looks.drain(LOOKS.min(looks.len())..) {
+        let _ = std::fs::remove_file(&old.pic);
+    }
+    let index: Vec<Value> = looks.iter().map(|l| serde_json::json!({ "at": l.at, "pic": std::path::Path::new(&l.pic).file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default(), "model": l.model })).collect();
+    let _ = std::fs::write(dir.join("index.json"), serde_json::to_string(&index).unwrap_or_default());
+    (looks, 0)
+}
+
+/// The signed-in account's avatar becomes what a model says (a kept look, a saved outfit): the kind of body, its sizes
+/// and colours, then what it wears.
+fn become_model(cookie: &str, rig: &str, scales: Option<&Value>, colours: Option<&Value>, items: &[Item]) -> Result<(), String> {
+    let kind = match rig {
+        "R6" => Some(1),
+        "R15" => Some(3),
+        _ => None,
+    };
+    if let Some(r) = kind {
+        post("https://avatar.roblox.com/v1/avatar/set-player-avatar-type", &serde_json::json!({ "playerAvatarType": r }), Some(cookie))?;
+    }
+    if let Some(sc) = scales.filter(|v| v.is_object()) {
+        post("https://avatar.roblox.com/v1/avatar/set-scales", sc, Some(cookie))?;
+    }
+    if let Some(b) = colours.filter(|v| v.is_object()) {
+        let part = |k: &str| text(b, k).trim_start_matches('#').to_string();
+        let all = serde_json::json!({
+            "headColor3": part("headColor"), "torsoColor3": part("torsoColor"),
+            "rightArmColor3": part("rightArmColor"), "leftArmColor3": part("leftArmColor"),
+            "rightLegColor3": part("rightLegColor"), "leftLegColor3": part("leftLegColor"),
+        });
+        post("https://avatar.roblox.com/v2/avatar/set-body-colors", &all, Some(cookie))?;
+    }
+    worn(&post("https://avatar.roblox.com/v2/avatar/set-wearing-assets", &serde_json::json!({ "assets": wear_list(items) }), Some(cookie))?)
+}
+
+/// The signed-in account goes back to a look of its history.
+pub fn wear_look(cookie: &str, look: &Look) -> Result<(), String> {
+    let m = &look.model;
+    become_model(cookie, &text(m, "playerAvatarType"), m.get("scales"), m.get("bodyColors"), &items_of(m))
+}
+
+/// The body's sizes as Roblox names them, in the order the page shows them.
+pub const SCALES: [&str; 5] = ["height", "width", "head", "proportion", "bodyType"];
+
+/// Roblox's answer to a change of the body: refused when it says so.
+fn done(d: &Value) -> Result<(), String> {
+    if d.get("success").and_then(Value::as_bool) == Some(false) { Err("Roblox".into()) } else { Ok(()) }
+}
+
+/// The signed-in account's body becomes R15 or R6.
+pub fn set_rig(cookie: &str, r15: bool) -> Result<(), String> {
+    done(&post("https://avatar.roblox.com/v1/avatar/set-player-avatar-type", &serde_json::json!({ "playerAvatarType": if r15 { 3 } else { 1 } }), Some(cookie))?)
+}
+
+/// The signed-in account's skin, one colour all over (as the avatar editor's skin tones).
+pub fn set_colour(cookie: &str, hex: &str) -> Result<(), String> {
+    let h = hex.trim_start_matches('#');
+    let all = serde_json::json!({ "headColor3": h, "torsoColor3": h, "rightArmColor3": h, "leftArmColor3": h, "rightLegColor3": h, "leftLegColor3": h });
+    done(&post("https://avatar.roblox.com/v2/avatar/set-body-colors", &all, Some(cookie))?)
+}
+
+/// One of the signed-in account's sizes changes; the others are sent back as they are now.
+pub fn set_scale(cookie: &str, user: i64, which: usize, value: f64) -> Result<(), String> {
+    let d = get(&format!("https://avatar.roblox.com/v4/avatar/users/{user}"), Some(cookie))?;
+    let mut scales = d.pointer("/avatarModel/scales").filter(|v| v.is_object()).cloned().ok_or("Roblox")?;
+    scales[SCALES[which.min(4)]] = serde_json::json!((value * 100.).round() / 100.);
+    done(&post("https://avatar.roblox.com/v1/avatar/set-scales", &scales, Some(cookie))?)
+}
+
+/// Pictures by id from one of the thumbnail lists, 100 a call; one still being drawn is asked for again a few times.
+fn thumbs(path: &str, ids: &[i64]) -> HashMap<i64, String> {
+    let (mut out, missing) = pics::known(path, ids);
+    let had: std::collections::HashSet<i64> = out.keys().copied().collect();
+    for chunk in missing.chunks(100) {
+        let list: Vec<String> = chunk.iter().map(i64::to_string).collect();
+        let url = format!("https://thumbnails.roblox.com/v1/{path}{}&format=Png&isCircular=false", list.join(","));
+        for round in 0..4 {
+            let Ok(d) = get(&url, None) else { break };
+            let mut pending = false;
+            for v in d.get("data").and_then(Value::as_array).into_iter().flatten() {
+                match v.get("imageUrl").and_then(Value::as_str).filter(|u| !u.is_empty()) {
+                    Some(u) => {
+                        out.insert(int(v, "targetId"), u.to_string());
+                    }
+                    None => pending |= v.get("state").and_then(Value::as_str) == Some("Pending"),
+                }
+            }
+            if !pending || round == 3 {
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(1500));
+        }
+    }
+    let learnt: HashMap<i64, String> = out.iter().filter(|(k, _)| !had.contains(*k)).map(|(k, v)| (*k, v.clone())).collect();
+    pics::learn(path, &learnt);
+    out
+}
+
+/// The pictures' addresses Roblox gave by id, kept on this PC a while (an item's for a week, a game's for a day, a
+/// face's for two hours: it changes with the avatar), so a page opened again asks Roblox only for what is new. Asking
+/// for an address costs a quarter of a second at least, and a picture still being drawn a second and a half more.
+mod pics {
+    use std::{
+        collections::HashMap,
+        sync::{LazyLock, Mutex},
+        time::{Duration, Instant, SystemTime, UNIX_EPOCH},
+    };
+
+    use serde_json::{Value, json};
+
+    struct Known {
+        /// "kind|id" → (address, when it was learnt, seconds since 1970).
+        map: HashMap<String, (String, i64)>,
+        saved: Instant,
+        dirty: bool,
+    }
+
+    static KNOWN: LazyLock<Mutex<Known>> = LazyLock::new(|| {
+        let mut map = HashMap::new();
+        if let Ok(t) = std::fs::read_to_string(file())
+            && let Ok(Value::Object(o)) = serde_json::from_str::<Value>(&t)
+        {
+            for (k, v) in o {
+                if let (Some(u), Some(at)) = (v.get(0).and_then(Value::as_str), v.get(1).and_then(Value::as_i64)) {
+                    map.insert(k, (u.to_string(), at));
+                }
+            }
+        }
+        Mutex::new(Known { map, saved: Instant::now() - Duration::from_secs(60), dirty: false })
+    });
+
+    fn file() -> std::path::PathBuf {
+        super::kept("cache").join("picture-addresses.json")
+    }
+
+    fn now() -> i64 {
+        SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs() as i64).unwrap_or(0)
+    }
+
+    /// How long an address of this kind is trusted.
+    fn life(kind: &str) -> i64 {
+        if kind.starts_with("faces") || kind.starts_with("users/") {
+            2 * 3600
+        } else if kind.starts_with("icons") || kind.starts_with("covers") || kind.starts_with("groups/") {
+            24 * 3600
+        } else {
+            7 * 24 * 3600
+        }
+    }
+
+    /// The addresses kept for these ids, and the ids still to ask Roblox for.
+    pub fn known(kind: &str, ids: &[i64]) -> (HashMap<i64, String>, Vec<i64>) {
+        let (mut out, mut missing) = (HashMap::new(), Vec::new());
+        let oldest = now() - life(kind);
+        let k = KNOWN.lock().unwrap_or_else(|e| e.into_inner());
+        for id in ids {
+            match k.map.get(&format!("{kind}|{id}")) {
+                Some((u, at)) if *at >= oldest => {
+                    out.insert(*id, u.clone());
+                }
+                _ => missing.push(*id),
+            }
+        }
+        (out, missing)
+    }
+
+    /// Addresses just given by Roblox; written to the PC at most every few seconds.
+    pub fn learn(kind: &str, got: &HashMap<i64, String>) {
+        let mut k = KNOWN.lock().unwrap_or_else(|e| e.into_inner());
+        if !got.is_empty() {
+            let at = now();
+            for (id, u) in got {
+                k.map.insert(format!("{kind}|{id}"), (u.clone(), at));
+            }
+            k.dirty = true;
+        }
+        if !k.dirty || k.saved.elapsed() < Duration::from_secs(3) {
+            return;
+        }
+        // Older than any kind is trusted: dropped; and the oldest once there are too many.
+        let cutoff = now() - 7 * 24 * 3600;
+        k.map.retain(|_, (_, at)| *at >= cutoff);
+        if k.map.len() > 40_000 {
+            let mut ats: Vec<i64> = k.map.values().map(|(_, at)| *at).collect();
+            ats.sort_unstable();
+            let keep_from = ats[ats.len() - 30_000];
+            k.map.retain(|_, (_, at)| *at >= keep_from);
+        }
+        let body = Value::Object(k.map.iter().map(|(key, (u, at))| (key.clone(), json!([u, at]))).collect());
+        let path = file();
+        if let Some(dir) = path.parent() {
+            let _ = std::fs::create_dir_all(dir);
+        }
+        let tmp = path.with_extension("tmp");
+        if std::fs::write(&tmp, body.to_string()).is_ok() && std::fs::rename(&tmp, &path).is_ok() {
+            k.saved = Instant::now();
+            k.dirty = false;
+        }
+    }
+}
+
+fn items_of(model: &Value) -> Vec<Item> {
+    model
+        .get("assets")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter(|v| int(v, "id") > 0)
+        .map(|v| Item {
+            id: int(v, "id"),
+            name: text(v, "name"),
+            pic: String::new(),
+            kind: v.pointer("/assetType/id").and_then(Value::as_i64).unwrap_or(0),
+            meta: v.get("meta").filter(|m| !m.is_null()).cloned(),
+            ..Default::default()
+        })
+        .collect()
+}
+
+/// What set-wearing-assets takes: each id, with its fitting when it has one.
+fn wear_list(items: &[Item]) -> Value {
+    Value::Array(
+        items
+            .iter()
+            .map(|i| match &i.meta {
+                Some(m) => serde_json::json!({ "id": i.id, "meta": m }),
+                None => serde_json::json!({ "id": i.id }),
+            })
+            .collect(),
+    )
+}
+
+/// A user's avatar (no sign-in needed: Roblox shows avatars to anyone).
+pub fn avatar(user: i64) -> Result<Avatar, String> {
+    let d = get(&format!("https://avatar.roblox.com/v4/avatar/users/{user}"), None)?;
+    let model = d.get("avatarModel").cloned().unwrap_or(Value::Null);
+    let mut items = items_of(&model);
+    let worn: Vec<i64> = items.iter().map(|i| i.id).collect();
+    // The rest doesn't wait for each other: the outfits (then their pictures), the big picture, the wheel (then its
+    // pictures; an extra, the avatar shows without it), the pictures of what is worn, and the rules (extras too:
+    // without them the body shows, with nothing to pick).
+    let ((outfits, pic), ((emotes, got), rules)) = both(
+        || {
+            both(
+                || {
+                    let mut outfits: Vec<Outfit> = get(&format!("https://avatar.roblox.com/v2/avatar/users/{user}/outfits?page=1&itemsPerPage=50&isEditable=true"), None)
+                        .ok()
+                        .and_then(|d| d.get("data").and_then(Value::as_array).cloned())
+                        .unwrap_or_default()
+                        .iter()
+                        .filter(|v| int(v, "id") > 0)
+                        .map(|v| Outfit { id: int(v, "id"), name: text(v, "name"), pic: String::new() })
+                        .collect();
+                    let ids: Vec<i64> = outfits.iter().map(|o| o.id).collect();
+                    let got = thumbs("users/outfits?size=150x150&userOutfitIds=", &ids);
+                    for o in &mut outfits {
+                        o.pic = got.get(&o.id).cloned().unwrap_or_default();
+                    }
+                    outfits
+                },
+                || thumbs("users/avatar?size=420x420&userIds=", &[user]).remove(&user).unwrap_or_default(),
+            )
+        },
+        || {
+            both(
+                || {
+                    both(
+                        || {
+                            let mut emotes = emotes_of(user, None).unwrap_or_default();
+                            let ids: Vec<i64> = emotes.iter().map(|e| e.id).collect();
+                            let got = thumbs("assets?size=150x150&assetIds=", &ids);
+                            for e in &mut emotes {
+                                e.pic = got.get(&e.id).cloned().unwrap_or_default();
+                            }
+                            emotes
+                        },
+                        || thumbs("assets?size=150x150&assetIds=", &worn),
+                    )
+                },
+                || get("https://avatar.roblox.com/v1/avatar-rules", None).unwrap_or(Value::Null),
+            )
+        },
+    );
+    for i in &mut items {
+        i.pic = got.get(&i.id).cloned().unwrap_or_default();
+    }
+    let num = |v: Option<&Value>, or: f64| v.and_then(Value::as_f64).unwrap_or(or);
+    let mut scales = [1., 1., 1., 0., 0.];
+    for (i, k) in SCALES.iter().enumerate() {
+        scales[i] = num(model.pointer(&format!("/scales/{k}")), scales[i]);
+    }
+    let mut ranges = [(0., 0.); 5];
+    for (i, k) in SCALES.iter().enumerate() {
+        ranges[i] = (num(rules.pointer(&format!("/scales/{k}/min")), 0.), num(rules.pointer(&format!("/scales/{k}/max")), 0.));
+    }
+    let palette = rules.get("basicBodyColorsPalette").and_then(Value::as_array).into_iter().flatten().map(|c| text(c, "hexColor").trim_start_matches('#').to_uppercase()).filter(|h| h.len() == 6).collect();
+    let colour = model.pointer("/bodyColors/headColor").and_then(Value::as_str).unwrap_or_default().trim_start_matches('#').to_uppercase();
+    let (looks, now) = keep_look(user, &model, &pic);
+    Ok(Avatar { pic, rig: text(&model, "playerAvatarType"), items, outfits, scales, colour, ranges, palette, looks, now, emotes })
+}
+
+/// Roblox's answer to a list of things to wear: refused when it says so, or names any it would not put on.
+fn worn(d: &Value) -> Result<(), String> {
+    let bad = d.get("invalidAssetIds").and_then(Value::as_array).is_some_and(|l| !l.is_empty()) || d.get("invalidAssets").and_then(Value::as_array).is_some_and(|l| !l.is_empty());
+    if d.get("success").and_then(Value::as_bool) == Some(false) || bad { Err("Roblox".into()) } else { Ok(()) }
+}
+
+/// The signed-in account takes one thing off: what it wears now, without that, set again (Roblox has no call for one).
+pub fn take_off(cookie: &str, user: i64, asset: i64) -> Result<(), String> {
+    let d = get(&format!("https://avatar.roblox.com/v4/avatar/users/{user}"), Some(cookie))?;
+    let mut items = items_of(d.get("avatarModel").unwrap_or(&Value::Null));
+    items.retain(|i| i.id != asset);
+    worn(&post("https://avatar.roblox.com/v2/avatar/set-wearing-assets", &serde_json::json!({ "assets": wear_list(&items) }), Some(cookie))?)
+}
+
+/// The signed-in account puts a saved outfit on: its body kind, sizes and colours, then what it wears.
+pub fn wear_outfit(cookie: &str, outfit: i64) -> Result<(), String> {
+    let d = get(&format!("https://avatar.roblox.com/v4/outfits/{outfit}/details"), Some(cookie))?;
+    let o = d.get("outfitModel").ok_or("Roblox")?;
+    become_model(cookie, &text(o, "playerAvatarType"), o.get("scale"), o.get("bodyColors"), &items_of(o))
+}
+
+/// A community (group) a user is in, with their rank's name there.
+#[derive(Clone, Debug, Default)]
+pub struct Group {
+    pub id: i64,
+    pub name: String,
+    pub role: String,
+    pub members: i64,
+    pub pic: String,
+}
+
+/// A game a community made.
+#[derive(Clone, Debug, Default)]
+pub struct ClubGame {
+    pub place: i64,
+    pub name: String,
+    pub visits: i64,
+    pub pic: String,
+    /// Its wide picture (16:9), for a shelf's tile.
+    pub cover: String,
+}
+
+/// A community's page, as Roblox shows it to anyone: who owns it, what it says of itself, its shout, its ranks with how
+/// many hold each (highest first) and the games it made.
+#[derive(Clone, Debug, Default)]
+pub struct Club {
+    pub id: i64,
+    pub name: String,
+    pub about: String,
+    pub owner: String,
+    pub shout: String,
+    pub members: i64,
+    pub pic: String,
+    pub roles: Vec<(String, i64)>,
+    pub games: Vec<ClubGame>,
+}
+
+pub fn club(id: i64) -> Result<Club, String> {
+    let d = get(&format!("https://groups.roblox.com/v1/groups/{id}"), None)?;
+    let mut roles: Vec<(i64, String, i64)> = get(&format!("https://groups.roblox.com/v1/groups/{id}/roles"), None)
+        .ok()
+        .and_then(|d| d.get("roles").and_then(Value::as_array).cloned())
+        .unwrap_or_default()
+        .iter()
+        // (Rank 0 is the guest; the "base" role doubles the members' own.)
+        .filter(|v| int(v, "rank") > 0 && v.get("isBase").and_then(Value::as_bool) != Some(true))
+        .map(|v| (int(v, "rank"), text(v, "name"), int(v, "memberCount")))
+        .collect();
+    roles.sort_by_key(|r| std::cmp::Reverse(r.0));
+    let made = get(&format!("https://games.roblox.com/v2/groups/{id}/gamesV2?accessFilter=2&limit=50&sortOrder=Desc"), None)
+        .ok()
+        .and_then(|d| d.get("data").and_then(Value::as_array).cloned())
+        .unwrap_or_default();
+    let universes: Vec<i64> = made.iter().map(|v| int(v, "id")).filter(|u| *u > 0).collect();
+    let (pics, wide) = both(|| icons(&universes), || covers(&universes, "480x270"));
+    let mut games: Vec<ClubGame> = made
+        .iter()
+        .filter(|v| v.pointer("/rootPlace/id").and_then(Value::as_i64).unwrap_or(0) > 0)
+        .map(|v| ClubGame {
+            place: v.pointer("/rootPlace/id").and_then(Value::as_i64).unwrap_or(0),
+            name: text(v, "name").trim().to_string(),
+            visits: int(v, "placeVisits"),
+            pic: pics.get(&int(v, "id")).cloned().filter(|u| !stand_in(u)).unwrap_or_default(),
+            cover: wide.get(&int(v, "id")).cloned().filter(|u| !stand_in(u)).unwrap_or_default(),
+        })
+        .collect();
+    games.sort_by_key(|g| std::cmp::Reverse(g.visits));
+    Ok(Club {
+        id,
+        name: text(&d, "name"),
+        about: text(&d, "description").trim().to_string(),
+        owner: d.pointer("/owner/username").and_then(Value::as_str).unwrap_or_default().to_string(),
+        shout: d.pointer("/shout/body").and_then(Value::as_str).unwrap_or_default().trim().to_string(),
+        members: int(&d, "memberCount"),
+        pic: thumbs("groups/icons?size=150x150&groupIds=", &[id]).remove(&id).unwrap_or_default(),
+        roles: roles.into_iter().map(|r| (r.1, r.2)).collect(),
+        games,
+    })
+}
+
+/// The communities each user is in, with their rank's name there, asked once since the app opened.
+fn club_book() -> &'static std::sync::Mutex<HashMap<i64, HashMap<i64, String>>> {
+    static BOOK: std::sync::OnceLock<std::sync::Mutex<HashMap<i64, HashMap<i64, String>>>> = std::sync::OnceLock::new();
+    BOOK.get_or_init(Default::default)
+}
+
+/// Which of these users are in a community, each with their rank's name (Roblox shows anyone's communities). Roblox's
+/// own page tells this of one account at a time.
+pub fn club_mine(id: i64, users: &[i64]) -> Vec<(i64, String)> {
+    let mut out = Vec::new();
+    for &user in users.iter().take(40) {
+        let known = club_book().lock().ok().and_then(|b| b.get(&user).cloned());
+        let of = match known {
+            Some(of) => of,
+            None => {
+                let Ok(d) = get(&format!("https://groups.roblox.com/v2/users/{user}/groups/roles"), None) else { continue };
+                let of: HashMap<i64, String> = d
+                    .get("data")
+                    .and_then(Value::as_array)
+                    .into_iter()
+                    .flatten()
+                    .map(|v| (v.pointer("/group/id").and_then(Value::as_i64).unwrap_or(0), v.pointer("/role/name").and_then(Value::as_str).unwrap_or_default().to_string()))
+                    .collect();
+                if let Ok(mut b) = club_book().lock() {
+                    b.insert(user, of.clone());
+                }
+                of
+            }
+        };
+        if let Some(role) = of.get(&id) {
+            out.push((user, role.clone()));
+        }
+    }
+    out
+}
+
+/// A user's profile as Roblox shows it to anyone, and what only their own sign-in gets (the Robux).
+#[derive(Clone, Debug, Default)]
+pub struct Profile {
+    pub name: String,
+    pub display: String,
+    pub about: String,
+    /// The day they joined, as Roblox writes it (2006-03-08T…).
+    pub joined: String,
+    pub face: String,
+    /// The whole avatar, standing (the face is the head only).
+    pub body: String,
+    pub friends: i64,
+    pub followers: i64,
+    pub following: i64,
+    pub robux: Option<i64>,
+    pub groups: Vec<Group>,
+    /// The games they marked as favourites (newest first) and the ones they made (most played first), as Roblox shows
+    /// anyone; and their newest badges, which Roblox gives only to a signed-in request.
+    pub favs: Vec<ClubGame>,
+    pub made: Vec<ClubGame>,
+    pub badges: Vec<Badge>,
+}
+
+/// A badge won in a game.
+#[derive(Clone, Debug, Default)]
+pub struct Badge {
+    pub name: String,
+    pub pic: String,
+}
+
+/// How many games or badges a profile's shelf shows.
+const SHELF: usize = 14;
+
+/// A list of games as games.roblox.com gives one (a user's favourites, the ones they made), with their icons.
+fn games_list(url: &str) -> Vec<ClubGame> {
+    let all = get(url, None).ok().and_then(|d| d.get("data").and_then(Value::as_array).cloned()).unwrap_or_default();
+    let universes: Vec<i64> = all.iter().map(|v| int(v, "id")).filter(|u| *u > 0).collect();
+    let (pics, wide) = both(|| icons(&universes), || covers(&universes, "480x270"));
+    all.iter()
+        .filter(|v| v.pointer("/rootPlace/id").and_then(Value::as_i64).unwrap_or(0) > 0)
+        .map(|v| ClubGame {
+            place: v.pointer("/rootPlace/id").and_then(Value::as_i64).unwrap_or(0),
+            name: text(v, "name").trim().to_string(),
+            visits: int(v, "placeVisits"),
+            pic: pics.get(&int(v, "id")).cloned().filter(|u| !stand_in(u)).unwrap_or_default(),
+            cover: wide.get(&int(v, "id")).cloned().filter(|u| !stand_in(u)).unwrap_or_default(),
+        })
+        .collect()
+}
+
+/// Roblox's grey stand-in for a game that has no picture of its own (its address names "GameIcon<n>" or
+/// "GameMediaItem<n>" where a real one names "Image"; checked 2026-11-12): left out, so its tile shows the game's
+/// letter rather than a grey Roblox mark that reads as a broken picture.
+pub fn stand_in(url: &str) -> bool {
+    url.split('/').any(|part| part.starts_with("GameIcon") || part.starts_with("GameMediaItem"))
+}
+
+/// A user's profile. The user must come; the counts, the Robux and the communities are left out when Roblox doesn't
+/// give them.
+pub fn profile(cookie: &str, user: i64) -> Result<Profile, String> {
+    let count = |url: String, with: Option<&str>| get(&url, with).ok().map(|d| int(&d, "count")).unwrap_or(0);
+    let signed = !cookie.is_empty();
+    let communities = || {
+        let mut groups: Vec<Group> = get(&format!("https://groups.roblox.com/v2/users/{user}/groups/roles"), None)
+            .ok()
+            .and_then(|d| d.get("data").and_then(Value::as_array).cloned())
+            .unwrap_or_default()
+            .iter()
+            .filter_map(|v| {
+                let g = v.get("group")?;
+                Some(Group { id: int(g, "id"), name: text(g, "name"), role: v.get("role").map(|r| text(r, "name")).unwrap_or_default(), members: int(g, "memberCount"), pic: String::new() })
+            })
+            .filter(|g| g.id > 0)
+            .collect();
+        let ids: Vec<i64> = groups.iter().map(|g| g.id).collect();
+        let got = thumbs("groups/icons?size=150x150&groupIds=", &ids);
+        for g in &mut groups {
+            g.pic = got.get(&g.id).cloned().unwrap_or_default();
+        }
+        groups
+    };
+    let favourites = || {
+        let mut favs = games_list(&format!("https://games.roblox.com/v2/users/{user}/favorite/games?limit=25&sortOrder=Desc&accessFilter=2"));
+        favs.truncate(SHELF);
+        favs
+    };
+    let creations = || {
+        let mut made = games_list(&format!("https://games.roblox.com/v2/users/{user}/games?accessFilter=2&limit=25&sortOrder=Desc"));
+        made.sort_by_key(|g| std::cmp::Reverse(g.visits));
+        made.truncate(SHELF);
+        made
+    };
+    let won = || {
+        if !signed {
+            return Vec::new();
+        }
+        let mut badges: Vec<(i64, Badge)> = get(&format!("https://badges.roblox.com/v1/users/{user}/badges?limit=25&sortOrder=Desc"), Some(cookie))
+            .ok()
+            .and_then(|d| d.get("data").and_then(Value::as_array).cloned())
+            .unwrap_or_default()
+            .iter()
+            .filter(|v| int(v, "id") > 0)
+            .map(|v| (int(v, "id"), Badge { name: text(v, "name").trim().to_string(), pic: String::new() }))
+            .take(SHELF)
+            .collect();
+        let ids: Vec<i64> = badges.iter().map(|b| b.0).collect();
+        let got = thumbs("badges/icons?size=150x150&badgeIds=", &ids);
+        for (id, b) in &mut badges {
+            b.pic = got.get(id).cloned().unwrap_or_default();
+        }
+        badges.into_iter().map(|b| b.1).collect::<Vec<Badge>>()
+    };
+    // Nothing here waits for anything else, so it is all asked at once (ten asks one after another took 3 s).
+    let ((d, (friends, robux)), ((groups, (favs, made)), (badges, ((face, body), (followers, following))))) = both(
+        || {
+            both(
+                || get(&format!("https://users.roblox.com/v1/users/{user}"), None),
+                || {
+                    both(
+                        // Roblox counts friends only for a signed-in request (it answers 0 to others).
+                        || if signed { count("https://friends.roblox.com/v1/my/friends/count".into(), Some(cookie)) } else { count(format!("https://friends.roblox.com/v1/users/{user}/friends/count"), None) },
+                        || if signed { robux(cookie, user) } else { None },
+                    )
+                },
+            )
+        },
+        || {
+            both(
+                || both(communities, || both(favourites, creations)),
+                || {
+                    both(won, || {
+                        both(
+                            || both(|| faces(&[user]).remove(&user).unwrap_or_default(), || thumbs("users/avatar?size=420x420&userIds=", &[user]).remove(&user).unwrap_or_default()),
+                            || both(|| count(format!("https://friends.roblox.com/v1/users/{user}/followers/count"), None), || count(format!("https://friends.roblox.com/v1/users/{user}/followings/count"), None)),
+                        )
+                    })
+                },
+            )
+        },
+    );
+    let d = d?;
+    Ok(Profile {
+        name: text(&d, "name"),
+        display: text(&d, "displayName"),
+        about: text(&d, "description"),
+        joined: text(&d, "created"),
+        face,
+        body,
+        friends,
+        followers,
+        following,
+        robux,
+        groups,
+        favs,
+        made,
+        badges,
+    })
+}
+
+/// Something in the Marketplace: an item or a bundle, who made it, and its price (None: not on sale; 0: free).
+#[derive(Clone, Debug, Default)]
+pub struct Ware {
+    pub id: i64,
+    pub bundle: bool,
+    pub name: String,
+    pub maker: String,
+    pub price: Option<i64>,
+    pub pic: String,
+    /// What it says of itself, and Roblox's id for it as a thing sold (empty: an old kind this app can't buy).
+    pub about: String,
+    pub collectible: String,
+}
+
+/// What a thing's maker sells it for on the Marketplace, as Roblox says when its page is opened: the price, and
+/// whether it can be bought there now (on sale, not only inside a game, not sold out).
+#[derive(Clone, Debug, Default)]
+pub struct Offer {
+    pub price: i64,
+    pub open: bool,
+    product: String,
+    seller: i64,
+    seller_kind: String,
+}
+
+pub fn offer(collectible: &str) -> Result<Offer, String> {
+    let d = post("https://apis.roblox.com/marketplace-items/v1/items/details", &serde_json::json!({ "itemIds": [collectible] }), None)?;
+    let v = d.get(0).ok_or("Roblox")?;
+    let product = text(v, "collectibleProductId");
+    // (productSaleStatus 3: on sale; 0: off sale. A stock of 0 is a thing with no limit.)
+    let open = int(v, "productSaleStatus") == 3 && text(v, "saleLocationType").starts_with("Shop") && (int(v, "assetStock") == 0 || int(v, "unitsAvailableForConsumption") > 0) && !product.is_empty();
+    Ok(Offer { price: int(v, "price"), open, product, seller: int(v, "creatorId"), seller_kind: text(v, "creatorType") })
+}
+
+/// The signed-in account buys a thing from its maker at the price it was shown. The offer is read again first: a sale
+/// that closed ("off") or a price that moved ("price") stops it here, and Roblox holds the purchase to the same price
+/// itself. Asked once: nothing here sends it a second time.
+pub fn buy(cookie: &str, user: i64, collectible: &str, price: i64) -> Result<(), String> {
+    let o = offer(collectible)?;
+    if !o.open {
+        return Err("off".into());
+    }
+    if o.price != price {
+        return Err("price".into());
+    }
+    let body = serde_json::json!({
+        "collectibleItemId": collectible,
+        "expectedCurrency": 1,
+        "expectedPrice": price,
+        "expectedPurchaserId": user.to_string(),
+        "expectedPurchaserType": "User",
+        "expectedSellerId": o.seller,
+        "expectedSellerType": o.seller_kind,
+        "idempotencyKey": session(),
+        "collectibleProductId": o.product,
+    });
+    let d = post(&format!("https://apis.roblox.com/marketplace-sales/v1/item/{collectible}/purchase-item"), &body, Some(cookie))?;
+    if d.get("purchased").and_then(Value::as_bool) == Some(true) {
+        return Ok(());
+    }
+    Err(["errorMessage", "purchaseResult"].iter().map(|k| text(&d, k)).find(|t| !t.is_empty()).unwrap_or_else(|| "Roblox".into()))
+}
+
+/// A game's pass: what it gives, its price (None: not on sale), and whether the signed-in account that asked owns it.
+#[derive(Clone, Debug, Default)]
+pub struct Pass {
+    pub id: i64,
+    product: i64,
+    pub name: String,
+    pub about: String,
+    pub price: Option<i64>,
+    pub pic: String,
+    pub owned: bool,
+}
+
+/// A game's passes, as Roblox lists them to anyone (a sign-in adds which of them its account owns).
+pub fn passes(place: i64, cookie: Option<&str>) -> Result<Vec<Pass>, String> {
+    let universe = int(&get(&format!("https://apis.roblox.com/universes/v1/places/{place}/universe"), None)?, "universeId");
+    if universe == 0 {
+        return Err("Roblox".into());
+    }
+    let d = get(&format!("https://apis.roblox.com/game-passes/v1/universes/{universe}/game-passes?passView=Full&pageSize=100"), cookie)?;
+    let mut list: Vec<Pass> = d
+        .get("gamePasses")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter(|v| int(v, "id") > 0)
+        .map(|v| {
+            let sold = v.get("isForSale").and_then(Value::as_bool) == Some(true);
+            let name = [text(v, "displayName"), text(v, "name")].into_iter().find(|n| !n.trim().is_empty()).unwrap_or_default();
+            Pass {
+                id: int(v, "id"),
+                product: int(v, "productId"),
+                name: name.trim().to_string(),
+                about: text(v, "displayDescription").trim().to_string(),
+                price: v.get("price").and_then(Value::as_i64).filter(|_| sold),
+                pic: String::new(),
+                owned: v.get("isOwned").and_then(Value::as_bool) == Some(true),
+            }
+        })
+        .collect();
+    let ids: Vec<i64> = list.iter().map(|p| p.id).collect();
+    let pics = thumbs("game-passes?size=150x150&gamePassIds=", &ids);
+    for p in &mut list {
+        p.pic = pics.get(&p.id).cloned().unwrap_or_default();
+    }
+    Ok(list)
+}
+
+/// The signed-in account buys a pass at the price it was shown. What Roblox sells it for is read again first: a sale
+/// that closed ("off") or a price that moved ("price") stops it here, and Roblox holds the purchase to the same price
+/// itself. Asked once: nothing here sends it a second time.
+pub fn buy_pass(cookie: &str, pass: &Pass, price: i64) -> Result<(), String> {
+    let now = get(&format!("https://apis.roblox.com/game-passes/v1/game-passes/{}/product-info", pass.id), None)?;
+    if now.get("IsForSale").and_then(Value::as_bool) != Some(true) {
+        return Err("off".into());
+    }
+    let product = int(&now, "ProductId");
+    if now.get("PriceInRobux").and_then(Value::as_i64) != Some(price) || product == 0 || product != pass.product {
+        return Err("price".into());
+    }
+    let d = post(&format!("https://apis.roblox.com/game-passes/v1/game-passes/{product}/purchase"), &serde_json::json!({ "expectedPrice": price }), Some(cookie))?;
+    if d.get("purchased").and_then(Value::as_bool) == Some(true) {
+        return Ok(());
+    }
+    Err(["reason", "errorMessage"].iter().map(|k| text(&d, k)).find(|t| !t.is_empty()).unwrap_or_else(|| "Roblox".into()))
+}
+
+/// Which of these users own a thing of a kind ("Asset", "Bundle", "GamePass"): Roblox tells it of anyone whose
+/// inventory is open; `me`, with its sign-in, of itself whatever its inventory's setting.
+pub fn owners(kind: &str, id: i64, users: &[i64], me: Option<(i64, &str)>) -> Vec<i64> {
+    users
+        .iter()
+        .take(40)
+        .filter(|&&user| {
+            let cookie = me.filter(|m| m.0 == user).map(|m| m.1);
+            get(&format!("https://inventory.roblox.com/v1/users/{user}/items/{kind}/{id}/is-owned"), cookie).ok().and_then(|v| v.as_bool()) == Some(true)
+        })
+        .copied()
+        .collect()
+}
+
+/// The signed-in account's Robux.
+pub fn robux(cookie: &str, user: i64) -> Option<i64> {
+    get(&format!("https://economy.roblox.com/v1/users/{user}/currency"), Some(cookie)).ok().and_then(|d| d.get("robux").and_then(Value::as_i64))
+}
+
+/// A free limited that can still be had: how many are left of how many, whether its Marketplace page gives it too
+/// (else only the game does), and the game it is given in (0 and empty until Roblox has said which).
+#[derive(Clone, Debug, Default)]
+pub struct Free {
+    pub id: i64,
+    pub name: String,
+    pub pic: String,
+    pub left: i64,
+    pub total: i64,
+    pub shop: bool,
+    pub universe: i64,
+    pub place: i64,
+    pub game: String,
+    /// Roblox has been asked for its game and answered (with no place still: it names none).
+    pub known: bool,
+}
+
+/// Asked once since the app opened: the game a free limited is given in (0: Roblox names none), and a game's start
+/// place and name.
+fn free_book() -> &'static std::sync::Mutex<(HashMap<i64, i64>, HashMap<i64, (i64, String)>)> {
+    static BOOK: std::sync::OnceLock<std::sync::Mutex<(HashMap<i64, i64>, HashMap<i64, (i64, String)>)>> = std::sync::OnceLock::new();
+    BOOK.get_or_init(Default::default)
+}
+
+/// The most new things asked about in one read (a call each): the rest wait for the next read.
+const FREE_ASKS: usize = 12;
+
+/// The free limiteds still in stock among the Marketplace's lately updated free things (its first two pages; no
+/// sign-in needed), the most left first. Roblox's own app has no such list. Each one's game is asked once (economy's
+/// details name the universe, develop's universe its start place and name: games.roblox.com tells nothing of a game
+/// to a request that isn't signed in).
+pub fn free_new() -> Result<Vec<Free>, String> {
+    let mut list: Vec<Free> = Vec::new();
+    let mut cursor = String::new();
+    for _ in 0..2 {
+        let mut url = String::from("https://catalog.roblox.com/v1/search/items/details?Category=1&MaxPrice=0&SortType=3&Limit=30&IncludeNotForSale=false");
+        if !cursor.is_empty() {
+            url += &format!("&Cursor={}", enc(&cursor));
+        }
+        let d = match get(&url, None) {
+            Ok(d) => d,
+            Err(e) if list.is_empty() => return Err(e),
+            Err(_) => break,
+        };
+        for v in d.get("data").and_then(Value::as_array).into_iter().flatten() {
+            let (id, left, total) = (int(v, "id"), int(v, "unitsAvailableForConsumption"), int(v, "totalQuantity"));
+            if text(v, "itemType") != "Asset" || text(v, "priceStatus") != "Free" || left <= 0 || total <= 0 || list.iter().any(|f| f.id == id) {
+                continue;
+            }
+            list.push(Free { id, name: text(v, "name").trim().to_string(), left, total, shop: text(v, "saleLocationType").starts_with("Shop"), ..Default::default() });
+        }
+        cursor = text(&d, "nextPageCursor");
+        if cursor.is_empty() {
+            break;
+        }
+    }
+    let ids: Vec<i64> = list.iter().map(|f| f.id).collect();
+    let pics = thumbs("assets?size=420x420&assetIds=", &ids);
+    let (mut wheres, mut games) = free_book().lock().map(|b| b.clone()).unwrap_or_default();
+    let mut asks = 0;
+    // The ones with the most left are asked about first: those are what is worth going after.
+    list.sort_by_key(|f| std::cmp::Reverse(f.left));
+    for f in &mut list {
+        f.pic = pics.get(&f.id).cloned().unwrap_or_default();
+        let universe = match wheres.get(&f.id) {
+            Some(u) => *u,
+            None if asks >= FREE_ASKS => continue,
+            None => {
+                asks += 1;
+                // Refused (asked too much): no more this read.
+                let Ok(d) = get(&format!("https://economy.roblox.com/v2/assets/{}/details", f.id), None) else {
+                    asks = FREE_ASKS;
+                    continue;
+                };
+                let u = d.pointer("/SaleLocation/UniverseIds/0").and_then(Value::as_i64).unwrap_or(0);
+                wheres.insert(f.id, u);
+                u
+            }
+        };
+        if universe == 0 {
+            f.known = true;
+            continue;
+        }
+        f.universe = universe;
+        let game = match games.get(&universe) {
+            Some(g) => g.clone(),
+            None if asks >= FREE_ASKS => continue,
+            None => {
+                asks += 1;
+                let Ok(d) = get(&format!("https://develop.roblox.com/v1/universes/{universe}"), None) else {
+                    asks = FREE_ASKS;
+                    continue;
+                };
+                let g = (int(&d, "rootPlaceId"), text(&d, "name").trim().to_string());
+                games.insert(universe, g.clone());
+                g
+            }
+        };
+        (f.place, f.game) = game;
+        f.known = true;
+    }
+    if let Ok(mut b) = free_book().lock() {
+        *b = (wheres, games);
+    }
+    Ok(list)
+}
+
+/// A page (30) of the Marketplace, the one on roblox.com/catalog (no sign-in needed): what a search finds, or its
+/// front shelf when nothing is asked; and the mark for the next page (empty: the last).
+/// Narrowed and ordered as the Marketplace's filters ask: `filters` is the search's own words for them,
+/// "&Category=11&SortType=3" and the like (catalog.roblox.com's v1 search: Category 1 all, 3 clothing, 11 accessories,
+/// 12 animations; SalesTypeFilter 2 the Limiteds; SortType 1 most favourited, 2 best selling, 3 newest, 4 the lowest
+/// price, which wants MinPrice=1 or the free things come first; no SortType with words: the best match).
+pub fn catalog(query: &str, cursor: &str, filters: &str) -> Result<(Vec<Ware>, String), String> {
+    let mut url = String::from("https://catalog.roblox.com/v1/search/items/details?Limit=30");
+    url += filters;
+    if !query.is_empty() {
+        url += &format!("&Keyword={}", enc(query));
+    }
+    if !cursor.is_empty() {
+        url += &format!("&Cursor={}", enc(cursor));
+    }
+    let d = get(&url, None)?;
+    let mut list: Vec<Ware> = d
+        .get("data")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter(|v| int(v, "id") > 0)
+        .map(|v| {
+            let status = text(v, "priceStatus").replace(' ', "").to_lowercase();
+            let price = match status.as_str() {
+                "free" => Some(0),
+                "offsale" | "noresellers" => None,
+                _ => Some(if int(v, "lowestPrice") > 0 { int(v, "lowestPrice") } else { int(v, "price") }),
+            };
+            Ware {
+                id: int(v, "id"),
+                bundle: text(v, "itemType") == "Bundle",
+                name: text(v, "name"),
+                maker: text(v, "creatorName"),
+                price,
+                pic: String::new(),
+                about: text(v, "description").trim().to_string(),
+                collectible: text(v, "collectibleItemId"),
+            }
+        })
+        .collect();
+    let of = |bundle: bool| list.iter().filter(|w| w.bundle == bundle).map(|w| w.id).collect::<Vec<i64>>();
+    // (420 px: a tile is about 150 px wide on a 150 % screen and the thing's page 260; Roblox's 150 px came out soft.)
+    let items = thumbs("assets?size=420x420&assetIds=", &of(false));
+    let bundles = thumbs("bundles/thumbnails?size=420x420&bundleIds=", &of(true));
+    for w in &mut list {
+        w.pic = if w.bundle { bundles.get(&w.id) } else { items.get(&w.id) }.cloned().unwrap_or_default();
+    }
+    Ok((list, text(&d, "nextPageCursor")))
+}
+
+/// An account's own settings, as Roblox's Settings page shows them (accountinformation and accountsettings, both in
+/// Roblox's published API docs): its email (Roblox masks it) and whether it is verified, whether a phone is verified,
+/// its birthday, its country, its About words, and who may send it trades and of what worth. Each part is asked on
+/// its own; one Roblox doesn't answer is left unknown (None), and only when none answers is it an error.
+#[derive(Clone, Debug, Default)]
+pub struct AccountSettings {
+    pub email: Option<(String, bool)>,
+    pub phone: Option<bool>,
+    pub birthday: Option<(i64, i64, i64)>,
+    pub country: Option<String>,
+    pub about: Option<String>,
+    pub trade_privacy: Option<String>,
+    pub trade_value: Option<String>,
+}
+
+/// Who may send trades (Roblox's names, in the order its page lists them) and the number each is set by.
+pub const TRADE_PRIVACY: [(&str, i64); 5] = [("All", 7), ("Followers", 6), ("Following", 5), ("Friends", 3), ("NoOne", 2)];
+/// The least a trade sent to it must be worth.
+pub const TRADE_VALUE: [(&str, i64); 4] = [("None", 1), ("Low", 2), ("Medium", 3), ("High", 4)];
+
+pub fn account_settings(cookie: &str) -> Result<AccountSettings, String> {
+    let info = "https://accountinformation.roblox.com/v1";
+    let set = "https://accountsettings.roblox.com/v1";
+    let urls = [
+        (format!("{set}/email"), "email"),
+        (format!("{info}/phone"), "phone"),
+        (format!("{info}/birthdate"), "birthdate"),
+        (format!("{set}/account/settings/account-country"), "country"),
+        (format!("{info}/description"), "description"),
+        (format!("{set}/trade-privacy"), "tradePrivacy"),
+        (format!("{set}/trade-value"), "tradeValue"),
+    ];
+    let got: Vec<Result<Value, String>> = std::thread::scope(|sc| {
+        let jobs: Vec<_> = urls.iter().map(|(u, k)| sc.spawn(move || ask(u, cookie, k))).collect();
+        jobs.into_iter().map(|j| j.join().unwrap_or_else(|_| Err(String::new()))).collect()
+    });
+    if let Some(Err(why)) = got.iter().find(|g| g.is_err()).filter(|_| got.iter().all(|g| g.is_err() || g.as_ref().is_ok_and(Value::is_null))) {
+        return Err(why.clone());
+    }
+    let part = |i: usize| got[i].as_ref().ok().filter(|v| v.is_object());
+    let word = |v: &Value, k: &str| v.get(k).and_then(Value::as_str).map(str::to_string);
+    Ok(AccountSettings {
+        email: part(0).map(|v| (text(v, "emailAddress"), v.get("verified").and_then(Value::as_bool).unwrap_or(false))),
+        phone: part(1).map(|v| v.get("isVerified").and_then(Value::as_bool).unwrap_or(false) && !text(v, "phone").is_empty()),
+        birthday: part(2).map(|v| (int(v, "birthDay"), int(v, "birthMonth"), int(v, "birthYear"))).filter(|b| b.1 > 0 && b.2 > 0),
+        country: part(3).and_then(|v| v.get("value")).and_then(|c| word(c, "localizedName").or_else(|| word(c, "countryName"))).filter(|c| !c.is_empty()),
+        about: part(4).map(|v| text(v, "description")),
+        trade_privacy: part(5).and_then(|v| word(v, "tradePrivacy")),
+        trade_value: part(6).and_then(|v| word(v, "tradeValue")),
+    })
+}
+
+/// The account's About words, saved (Roblox answers with them as kept: it may have hidden some with #).
+pub fn set_about(cookie: &str, words: &str) -> Result<String, String> {
+    let d = post("https://accountinformation.roblox.com/v1/description", &serde_json::json!({ "description": words }), Some(cookie))?;
+    Ok(text(&d, "description"))
+}
+
+/// Who may send trades: one of TRADE_PRIVACY's numbers.
+pub fn set_trade_privacy(cookie: &str, n: i64) -> Result<(), String> {
+    post("https://accountsettings.roblox.com/v1/trade-privacy", &serde_json::json!({ "tradePrivacy": n }), Some(cookie)).map(|_| ())
+}
+
+/// The least a trade must be worth: one of TRADE_VALUE's numbers.
+pub fn set_trade_value(cookie: &str, n: i64) -> Result<(), String> {
+    send_text("POST", "https://accountsettings.roblox.com/v1/trade-value", &serde_json::json!({ "tradeValue": n }), Some(cookie)).map(|_| ())
+}
+
+/// A call only a signed-in account gets an answer to. BLOXKEEP_SHOT_INBOX=file.json: a hidden shot answers from that
+/// file instead ({ messages, notifications, transactions }: each as Roblox sends it), so the reading is exercised.
+fn ask(url: &str, cookie: &str, _key: &str) -> Result<Value, String> {
+    #[cfg(feature = "shot")]
+    if let Ok(path) = std::env::var("BLOXKEEP_SHOT_INBOX") {
+        let d: Value = std::fs::read_to_string(path).ok().and_then(|t| serde_json::from_str(&t).ok()).unwrap_or(Value::Null);
+        return Ok(d.get(_key).cloned().unwrap_or(Value::Null));
+    }
+    get(url, Some(cookie))
+}
+
+/// Words out of Roblox's marked-up text: tags dropped (a line break kept), the common entities read.
+fn plain(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let mut tag = String::new();
+    let mut inside = false;
+    for ch in s.chars() {
+        match ch {
+            '<' => {
+                inside = true;
+                tag.clear();
+            }
+            '>' if inside => {
+                inside = false;
+                let t = tag.trim_start_matches('/').to_lowercase();
+                if t.starts_with("br") || t == "p" || t == "div" {
+                    out.push('\n');
+                }
+            }
+            _ if inside => tag.push(ch),
+            _ => out.push(ch),
+        }
+    }
+    out.replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", "\"").replace("&#39;", "'").replace("&nbsp;", " ").trim().to_string()
+}
+
+/// A chat: who it is with (its name, or the other person's), its last words, and the names of those in it.
+#[derive(Clone, Debug, Default)]
+pub struct Talk {
+    pub id: String,
+    pub name: String,
+    pub face: String,
+    pub last: String,
+    pub when: String,
+    pub unread: i64,
+    pub group: bool,
+    pub people: HashMap<i64, String>,
+}
+
+/// A line of a chat.
+#[derive(Clone, Debug, Default)]
+pub struct Line {
+    pub sender: i64,
+    pub text: String,
+    pub when: String,
+}
+
+const CHAT: &str = "https://apis.roblox.com/platform-chat-api/v1";
+
+/// The signed-in account's chats, the latest 30 (Roblox has no documentation for these: the names are the ones the
+/// open-source roblox-api crate reads, 0.1.8).
+pub fn talks(cookie: &str, me: i64) -> Result<Vec<Talk>, String> {
+    let d = ask(&format!("{CHAT}/get-user-conversations?include_user_data=true&pageSize=30"), cookie, "conversations")?;
+    let mut list: Vec<(Talk, i64)> = d
+        .get("conversations")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter(|v| !text(v, "id").is_empty())
+        .map(|v| {
+            let people: HashMap<i64, String> = v
+                .get("user_data")
+                .and_then(Value::as_object)
+                .into_iter()
+                .flatten()
+                .filter_map(|(k, u)| {
+                    let n = text(u, "display_name");
+                    Some((k.parse().ok()?, if n.is_empty() { text(u, "name") } else { n }))
+                })
+                .collect();
+            let other = v.get("participant_user_ids").and_then(Value::as_array).into_iter().flatten().filter_map(Value::as_i64).find(|id| *id != me).unwrap_or(0);
+            let group = text(v, "type") == "group";
+            let name = text(v, "name");
+            let name = if !group || name.is_empty() { people.get(&other).cloned().unwrap_or(name) } else { name };
+            let talk = Talk {
+                id: text(v, "id"),
+                name,
+                face: String::new(),
+                last: v.pointer("/preview_message/content").and_then(Value::as_str).map(plain).unwrap_or_default(),
+                when: text(v, "updated_at"),
+                unread: int(v, "unread_message_count"),
+                group,
+                people,
+            };
+            (talk, other)
+        })
+        .collect();
+    let ids: Vec<i64> = list.iter().map(|(_, o)| *o).filter(|o| *o > 0).collect();
+    let got = faces(&ids);
+    for (t, o) in &mut list {
+        t.face = got.get(o).cloned().unwrap_or_default();
+    }
+    Ok(list.into_iter().map(|(t, _)| t).collect())
+}
+
+/// A chat's latest lines, oldest first.
+pub fn lines(cookie: &str, id: &str) -> Result<Vec<Line>, String> {
+    let d = ask(&format!("{CHAT}/get-conversation-messages?conversation_id={}&pageSize=30", enc(id)), cookie, "chatMessages")?;
+    let mut out: Vec<Line> = d
+        .get("messages")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter(|v| v.get("is_deleted").and_then(Value::as_bool) != Some(true))
+        .map(|v| Line { sender: int(v, "sender_user_id"), text: plain(&text(v, "content")), when: text(v, "created_at") })
+        .filter(|l| !l.text.is_empty())
+        .collect();
+    out.sort_by(|a, b| a.when.cmp(&b.when));
+    Ok(out)
+}
+
+/// The signed-in account says something in a chat.
+pub fn say(cookie: &str, id: &str, words: &str) -> Result<(), String> {
+    post(&format!("{CHAT}/send-messages"), &serde_json::json!({ "conversation_id": id, "messages": [{ "content": words }] }), Some(cookie)).map(|_| ())
+}
+
+/// The signed-in account has seen a chat.
+pub fn seen(cookie: &str, id: &str) -> Result<(), String> {
+    post(&format!("{CHAT}/mark-conversations"), &serde_json::json!({ "conversation_ids": [id] }), Some(cookie)).map(|_| ())
+}
+
+/// A message in the account's inbox.
+#[derive(Clone, Debug, Default)]
+pub struct Letter {
+    pub id: i64,
+    pub from: String,
+    /// The sender's face.
+    pub face: String,
+    pub subject: String,
+    pub body: String,
+    pub when: String,
+    pub read: bool,
+}
+
+/// The newest 30 messages of the signed-in account's inbox.
+pub fn letters(cookie: &str) -> Result<Vec<Letter>, String> {
+    let d = ask("https://privatemessages.roblox.com/v1/messages?pageNumber=0&pageSize=30&messageTab=Inbox", cookie, "messages")?;
+    let mut list: Vec<(i64, Letter)> = d
+        .get("collection")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .map(|v| {
+            let who = v.get("sender").cloned().unwrap_or(Value::Null);
+            let name = text(&who, "displayName");
+            (
+                int(&who, "id"),
+                Letter {
+                    id: int(v, "id"),
+                    from: if name.is_empty() { text(&who, "name") } else { name },
+                    face: String::new(),
+                    subject: plain(&text(v, "subject")),
+                    body: plain(&text(v, "body")),
+                    when: text(v, "created"),
+                    read: v.get("isRead").and_then(Value::as_bool).unwrap_or(true),
+                },
+            )
+        })
+        .collect();
+    // Who each is from, as a face (a face is public: no sign-in goes with the ask).
+    let mut ids: Vec<i64> = list.iter().map(|x| x.0).filter(|id| *id > 0).collect();
+    ids.sort_unstable();
+    ids.dedup();
+    let got = faces(&ids);
+    for (id, m) in &mut list {
+        m.face = got.get(id).cloned().unwrap_or_default();
+    }
+    Ok(list.into_iter().map(|x| x.1).collect())
+}
+
+/// The signed-in account has read that message.
+pub fn mark_read(cookie: &str, id: i64) -> Result<(), String> {
+    post("https://privatemessages.roblox.com/v1/messages/mark-read", &serde_json::json!({ "messageIds": [id] }), Some(cookie)).map(|_| ())
+}
+
+/// A notification: Roblox's own words when it sends them, else its kind ("FriendRequestReceived"…) and the name it is
+/// about, for the page to word.
+#[derive(Clone, Debug, Default)]
+pub struct Notice {
+    pub text: String,
+    pub kind: String,
+    pub name: String,
+    pub when: String,
+}
+
+/// The signed-in account's latest 30 notifications.
+pub fn notices(cookie: &str) -> Result<Vec<Notice>, String> {
+    let d = ask("https://notifications.roblox.com/v2/stream-notifications/get-recent?maxRows=30&startIndex=0", cookie, "notifications")?;
+    Ok(d.as_array()
+        .into_iter()
+        .flatten()
+        .map(|v| {
+            let c = v.get("content").filter(|c| c.is_object());
+            let state = c.map(|c| text(c, "currentState")).filter(|s| !s.is_empty()).unwrap_or_else(|| "default".into());
+            let words = c.and_then(|c| c.pointer(&format!("/states/{state}/visualItems/textBody/0/label/text"))).and_then(Value::as_str).map(plain).unwrap_or_default();
+            // The name it is about: the first "…UserName" its details carry.
+            let name = v
+                .get("metadataCollection")
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten()
+                .filter_map(Value::as_object)
+                .flat_map(|o| o.iter())
+                .find(|(k, v)| k.ends_with("UserName") && v.is_string())
+                .and_then(|(_, v)| v.as_str())
+                .unwrap_or_default()
+                .to_string();
+            Notice { text: words, kind: text(v, "notificationSourceType"), name, when: text(v, "eventDate") }
+        })
+        .collect())
+}
+
+/// A line of the Robux account: what it was for, with whom, how much (in is above zero) and when.
+#[derive(Clone, Debug, Default)]
+pub struct Deal {
+    pub what: String,
+    pub who: String,
+    pub amount: i64,
+    pub when: String,
+    pub pending: bool,
+}
+
+/// A trade in one of the account's lists: who it is with, when it was made and when it lapses, and Roblox's word for
+/// where it stands ("Open", "Completed", "Declined"…).
+#[derive(Clone, Debug, Default)]
+pub struct Trade {
+    pub id: i64,
+    pub who_id: i64,
+    pub who: String,
+    pub face: String,
+    pub when: String,
+    pub until: String,
+    pub status: String,
+}
+
+/// One thing in a trade: its serial number when it has one (0: none), and what it has sold for lately (RAP).
+#[derive(Clone, Debug, Default)]
+pub struct TradeItem {
+    pub name: String,
+    pub serial: i64,
+    pub rap: i64,
+    pub pic: String,
+}
+
+/// What one side puts in.
+#[derive(Clone, Debug, Default)]
+pub struct TradeSide {
+    pub robux: i64,
+    pub items: Vec<TradeItem>,
+}
+
+/// A trade's two sides: the account's own, and the other's.
+#[derive(Clone, Debug, Default)]
+pub struct TradeDetail {
+    pub mine: TradeSide,
+    pub theirs: TradeSide,
+}
+
+/// The lists Roblox keeps trades in, as its address names them.
+pub const TRADES: [&str; 4] = ["inbound", "outbound", "completed", "inactive"];
+
+/// The signed-in account's trades of one list, newest first (trades.roblox.com v1, as Roblox documents it).
+pub fn trades(cookie: &str, list: &str) -> Result<Vec<Trade>, String> {
+    let d = ask(&format!("https://trades.roblox.com/v1/trades/{list}?limit=25&sortOrder=Desc"), cookie, &format!("trades{list}"))?;
+    let mut out: Vec<Trade> = d
+        .get("data")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter(|v| int(v, "id") > 0)
+        .map(|v| {
+            let u = v.get("user").cloned().unwrap_or(Value::Null);
+            let name = [text(&u, "displayName"), text(&u, "name")].into_iter().find(|n| !n.is_empty()).unwrap_or_default();
+            Trade { id: int(v, "id"), who_id: int(&u, "id"), who: name, face: String::new(), when: text(v, "created"), until: text(v, "expiration"), status: text(v, "status") }
+        })
+        .collect();
+    let users: Vec<i64> = out.iter().map(|t| t.who_id).filter(|u| *u > 0).collect();
+    let got = faces(&users);
+    for t in &mut out {
+        t.face = got.get(&t.who_id).cloned().unwrap_or_default();
+    }
+    Ok(out)
+}
+
+/// A trade's two sides (v2, which names the things as they are traded now; v1's shape is read when that is what
+/// comes). `with`: the other party, which tells the sides apart.
+pub fn trade(cookie: &str, id: i64, with: i64) -> Result<TradeDetail, String> {
+    let d = ask(&format!("https://trades.roblox.com/v2/trades/{id}"), cookie, "tradeDetail")?;
+    // (side, the asset its picture is asked by)
+    let mut sides: Vec<(i64, TradeSide, Vec<i64>)> = Vec::new();
+    for key in ["participantAOffer", "participantBOffer"] {
+        let Some(o) = d.get(key).filter(|o| o.is_object()) else { continue };
+        let mut assets = Vec::new();
+        let items = o
+            .get("items")
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+            .map(|i| {
+                let asset = if i.pointer("/itemTarget/itemType").and_then(Value::as_str) == Some("Asset") { i.pointer("/itemTarget/targetId").and_then(Value::as_str).and_then(|t| t.parse().ok()).unwrap_or(0) } else { 0 };
+                assets.push(asset);
+                TradeItem { name: text(i, "itemName"), serial: int(i, "serialNumber"), rap: int(i, "recentAveragePrice"), pic: String::new() }
+            })
+            .collect();
+        sides.push((o.pointer("/user/id").and_then(Value::as_i64).unwrap_or(0), TradeSide { robux: int(o, "robux"), items }, assets));
+    }
+    if sides.is_empty() {
+        for o in d.get("offers").and_then(Value::as_array).into_iter().flatten() {
+            let mut assets = Vec::new();
+            let items = o
+                .get("userAssets")
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten()
+                .map(|i| {
+                    assets.push(int(i, "assetId"));
+                    TradeItem { name: text(i, "name"), serial: int(i, "serialNumber"), rap: int(i, "recentAveragePrice"), pic: String::new() }
+                })
+                .collect();
+            sides.push((o.pointer("/user/id").and_then(Value::as_i64).unwrap_or(0), TradeSide { robux: int(o, "robux"), items }, assets));
+        }
+    }
+    if sides.len() != 2 {
+        return Err("Roblox".into());
+    }
+    let all: Vec<i64> = sides.iter().flat_map(|s| s.2.iter().copied()).filter(|a| *a > 0).collect();
+    let pics = thumbs("assets?size=150x150&assetIds=", &all);
+    for s in &mut sides {
+        for (item, asset) in s.1.items.iter_mut().zip(&s.2) {
+            item.pic = pics.get(asset).cloned().unwrap_or_default();
+        }
+    }
+    let theirs = if sides[0].0 == with { 0 } else { 1 };
+    let mut sides = sides.into_iter().map(|s| s.1);
+    let (a, b) = (sides.next().unwrap_or_default(), sides.next().unwrap_or_default());
+    Ok(if theirs == 0 { TradeDetail { mine: b, theirs: a } } else { TradeDetail { mine: a, theirs: b } })
+}
+
+/// The signed-in account accepts a trade, or declines it (its own, sent to someone: takes it back).
+pub fn trade_act(cookie: &str, id: i64, accept: bool) -> Result<(), String> {
+    post(&format!("https://trades.roblox.com/v1/trades/{id}/{}", if accept { "accept" } else { "decline" }), &serde_json::json!({}), Some(cookie)).map(|_| ())
+}
+
+/// The signed-in account's latest Robux lines: purchases, sales, Robux bought and Premium's, newest first. A kind
+/// Roblox doesn't answer for is left out; none answered is the error.
+pub fn deals(cookie: &str, user: i64) -> Result<Vec<Deal>, String> {
+    let mut out: Vec<Deal> = Vec::new();
+    let mut failed = None;
+    let mut any = false;
+    for kind in ["Purchase", "Sale", "CurrencyPurchase", "PremiumStipend"] {
+        match ask(&format!("https://economy.roblox.com/v2/users/{user}/transactions?transactionType={kind}&limit=25"), cookie, &format!("transactions{kind}")) {
+            Ok(d) => {
+                any = true;
+                out.extend(d.get("data").and_then(Value::as_array).into_iter().flatten().map(|v| {
+                    let what = v.get("details").map(|x| text(x, "name")).unwrap_or_default();
+                    Deal {
+                        what: if what.is_empty() { kind.to_string() } else { what },
+                        who: v.get("agent").map(|x| text(x, "name")).unwrap_or_default(),
+                        amount: v.pointer("/currency/amount").and_then(Value::as_i64).unwrap_or(0),
+                        when: text(v, "created"),
+                        pending: v.get("isPending").and_then(Value::as_bool).unwrap_or(false),
+                    }
+                }));
+            }
+            Err(e) => failed = Some(e),
+        }
+    }
+    if !any {
+        return Err(failed.unwrap_or_default());
+    }
+    out.sort_by(|a, b| b.when.cmp(&a.when));
+    Ok(out)
+}
+
+/// Runs a call on a thread of its own; its answer comes through the channel.
+pub fn run<T: Send + 'static>(f: impl FnOnce() -> T + Send + 'static) -> oneshot::Receiver<T> {
+    let (tx, rx) = oneshot::channel();
+    let _ = std::thread::Builder::new().name("roblox".into()).spawn(move || {
+        let _ = tx.send(f());
+    });
+    rx
+}
+
+/// BLOXKEEP_SHOT_EXPLORE=file.json: a hidden shot's charts, { sorts: [{ sortId, sortDisplayName, games: […] }] }, since
+/// Roblox fills them only for a signed-in account.
+#[cfg(feature = "shot")]
+fn fixture() -> Option<(Vec<Sort>, HashMap<String, Vec<Game>>)> {
+    let path = std::env::var("BLOXKEEP_SHOT_EXPLORE").ok()?;
+    let d: Value = serde_json::from_str(&std::fs::read_to_string(path).ok()?).ok()?;
+    let mut sorts = Vec::new();
+    let mut games = HashMap::new();
+    for v in d.get("sorts").and_then(Value::as_array).into_iter().flatten() {
+        let id = v.get("sortId").and_then(Value::as_str).unwrap_or_default().to_string();
+        sorts.push(Sort { id: id.clone(), name: v.get("sortDisplayName").and_then(Value::as_str).unwrap_or_default().into(), target: None, kind: None, treatment: None });
+        games.insert(id, v.get("games").and_then(Value::as_array).into_iter().flatten().filter_map(game_of).collect());
+    }
+    Some((sorts, games))
+}
+
+const USER_SETTINGS: &str = "https://apis.roblox.com/user-settings-api/v1/user-settings";
+
+/// Who sees the account online and who may join it in a game (Roblox's Settings › Privacy › Visibility, its help page
+/// "Online Status and Visibility"), as the website's own words: "AllUsers", "Friends", "NoOne"… Empty for one Roblox's
+/// answer lacks. The endpoint is the website's (it answers 401 without a sign-in, asked 2026-11-11); the field names
+/// are as others have written them down, not tried on a real account yet.
+pub fn visibility(cookie: &str) -> Result<(String, String), String> {
+    let d = get(USER_SETTINGS, Some(cookie))?;
+    // (A plain word, or an object that holds it.)
+    let word = |key: &str| match d.get(key) {
+        Some(Value::String(t)) => t.clone(),
+        Some(o) => o.get("currentValue").or(o.get("value")).and_then(Value::as_str).unwrap_or_default().to_string(),
+        None => String::new(),
+    };
+    Ok((word("whoCanSeeMyOnlineStatus"), word("whoCanJoinMeInExperiences")))
+}
+
+/// Sets them for the account (None leaves one as it is).
+pub fn set_visibility(cookie: &str, online: Option<&str>, join: Option<&str>) -> Result<(), String> {
+    let mut body = serde_json::Map::new();
+    if let Some(v) = online {
+        body.insert("whoCanSeeMyOnlineStatus".into(), v.into());
+    }
+    if let Some(v) = join {
+        body.insert("whoCanJoinMeInExperiences".into(), v.into());
+    }
+    send_text("POST", USER_SETTINGS, &Value::Object(body), Some(cookie)).map(|_| ())
+}

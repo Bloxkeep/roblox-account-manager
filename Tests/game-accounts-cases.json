@@ -1,0 +1,539 @@
+{
+ "now": 1794300000000,
+ "cases": [
+  {
+   "what": "two accounts, the most played first",
+   "place": 10,
+   "universe": 100,
+   "sessions": [
+    {
+     "account": "11111111-1111-1111-1111-111111111111",
+     "label": null,
+     "place": 10,
+     "universe": 100,
+     "start": -120,
+     "end": -60,
+     "reason": "left",
+     "code": null
+    },
+    {
+     "account": "22222222-2222-2222-2222-222222222222",
+     "label": null,
+     "place": 10,
+     "universe": 100,
+     "start": -300,
+     "end": -120,
+     "reason": "left",
+     "code": null
+    }
+   ],
+   "games": {},
+   "expect": [
+    {
+     "account": "22222222-2222-2222-2222-222222222222",
+     "seconds": 10800,
+     "kicks": 0,
+     "idle": false,
+     "drops": 0,
+     "now": false,
+     "last": -120,
+     "label": null
+    },
+    {
+     "account": "11111111-1111-1111-1111-111111111111",
+     "seconds": 3600,
+     "kicks": 0,
+     "idle": false,
+     "drops": 0,
+     "now": false,
+     "last": -60,
+     "label": null
+    }
+   ]
+  },
+  {
+   "what": "another place of the game counts, by its universe from the stay, from another stay of the place, or from the looked-up games; another game doesn't",
+   "place": 10,
+   "universe": 100,
+   "sessions": [
+    {
+     "account": "11111111-1111-1111-1111-111111111111",
+     "label": null,
+     "place": 11,
+     "universe": 100,
+     "start": -60,
+     "end": -30,
+     "reason": "left",
+     "code": null
+    },
+    {
+     "account": "11111111-1111-1111-1111-111111111111",
+     "label": null,
+     "place": 12,
+     "universe": 0,
+     "start": -200,
+     "end": -190,
+     "reason": "left",
+     "code": null
+    },
+    {
+     "account": "22222222-2222-2222-2222-222222222222",
+     "label": null,
+     "place": 12,
+     "universe": 100,
+     "start": -10980,
+     "end": -10880,
+     "reason": "left",
+     "code": null
+    },
+    {
+     "account": "11111111-1111-1111-1111-111111111111",
+     "label": null,
+     "place": 13,
+     "universe": 0,
+     "start": -20,
+     "end": -10,
+     "reason": "left",
+     "code": null
+    },
+    {
+     "account": "11111111-1111-1111-1111-111111111111",
+     "label": null,
+     "place": 99,
+     "universe": 999,
+     "start": -500,
+     "end": -400,
+     "reason": "left",
+     "code": null
+    }
+   ],
+   "games": {
+    "13": {
+     "universe": 100,
+     "name": "Side",
+     "root": 10
+    }
+   },
+   "expect": [
+    {
+     "account": "11111111-1111-1111-1111-111111111111",
+     "seconds": 3000,
+     "kicks": 0,
+     "idle": false,
+     "drops": 0,
+     "now": false,
+     "last": -10,
+     "label": null
+    }
+   ]
+  },
+  {
+   "what": "the page's universe unknown: only the place itself",
+   "place": 10,
+   "universe": 0,
+   "sessions": [
+    {
+     "account": "11111111-1111-1111-1111-111111111111",
+     "label": null,
+     "place": 10,
+     "universe": 0,
+     "start": -60,
+     "end": -30,
+     "reason": "left",
+     "code": null
+    },
+    {
+     "account": "11111111-1111-1111-1111-111111111111",
+     "label": null,
+     "place": 11,
+     "universe": 0,
+     "start": -30,
+     "end": -20,
+     "reason": "left",
+     "code": null
+    },
+    {
+     "account": "22222222-2222-2222-2222-222222222222",
+     "label": null,
+     "place": 11,
+     "universe": 100,
+     "start": -30,
+     "end": -20,
+     "reason": "left",
+     "code": null
+    }
+   ],
+   "games": {},
+   "expect": [
+    {
+     "account": "11111111-1111-1111-1111-111111111111",
+     "seconds": 1800,
+     "kicks": 0,
+     "idle": false,
+     "drops": 0,
+     "now": false,
+     "last": -30,
+     "label": null
+    }
+   ]
+  },
+  {
+   "what": "kicks by the game and for idling, and other drops",
+   "place": 10,
+   "universe": 100,
+   "sessions": [
+    {
+     "account": "11111111-1111-1111-1111-111111111111",
+     "label": null,
+     "place": 10,
+     "universe": 100,
+     "start": -500,
+     "end": -490,
+     "reason": "disconnected",
+     "code": 267
+    },
+    {
+     "account": "11111111-1111-1111-1111-111111111111",
+     "label": null,
+     "place": 10,
+     "universe": 100,
+     "start": -480,
+     "end": -470,
+     "reason": "disconnected",
+     "code": 278
+    },
+    {
+     "account": "11111111-1111-1111-1111-111111111111",
+     "label": null,
+     "place": 10,
+     "universe": 100,
+     "start": -460,
+     "end": -450,
+     "reason": "disconnected",
+     "code": 277
+    },
+    {
+     "account": "11111111-1111-1111-1111-111111111111",
+     "label": null,
+     "place": 10,
+     "universe": 100,
+     "start": -440,
+     "end": -430,
+     "reason": "disconnected",
+     "code": null
+    },
+    {
+     "account": "11111111-1111-1111-1111-111111111111",
+     "label": null,
+     "place": 10,
+     "universe": 100,
+     "start": -420,
+     "end": -410,
+     "reason": "left",
+     "code": null
+    },
+    {
+     "account": "11111111-1111-1111-1111-111111111111",
+     "label": null,
+     "place": 10,
+     "universe": 100,
+     "start": -400,
+     "end": -390,
+     "reason": "closed",
+     "code": 278
+    }
+   ],
+   "games": {},
+   "expect": [
+    {
+     "account": "11111111-1111-1111-1111-111111111111",
+     "seconds": 3600,
+     "kicks": 2,
+     "idle": true,
+     "drops": 2,
+     "now": false,
+     "last": -390,
+     "label": null
+    }
+   ]
+  },
+  {
+   "what": "still in it: it counts to now, and a disconnect with no end isn't one yet",
+   "place": 10,
+   "universe": 100,
+   "sessions": [
+    {
+     "account": "11111111-1111-1111-1111-111111111111",
+     "label": null,
+     "place": 10,
+     "universe": 100,
+     "start": -30,
+     "end": null,
+     "reason": "disconnected",
+     "code": 267
+    }
+   ],
+   "games": {},
+   "expect": [
+    {
+     "account": "11111111-1111-1111-1111-111111111111",
+     "seconds": 1800,
+     "kicks": 0,
+     "idle": false,
+     "drops": 0,
+     "now": true,
+     "last": 0,
+     "label": null
+    }
+   ]
+  },
+  {
+   "what": "seven days: older is out, and a stay across the line counts from the line",
+   "place": 10,
+   "universe": 100,
+   "sessions": [
+    {
+     "account": "11111111-1111-1111-1111-111111111111",
+     "label": null,
+     "place": 10,
+     "universe": 100,
+     "start": -10200,
+     "end": -10140,
+     "reason": "disconnected",
+     "code": 267
+    },
+    {
+     "account": "11111111-1111-1111-1111-111111111111",
+     "label": null,
+     "place": 10,
+     "universe": 100,
+     "start": -10140,
+     "end": -10050,
+     "reason": "disconnected",
+     "code": 278
+    }
+   ],
+   "games": {},
+   "expect": [
+    {
+     "account": "11111111-1111-1111-1111-111111111111",
+     "seconds": 1800,
+     "kicks": 1,
+     "idle": true,
+     "drops": 0,
+     "now": false,
+     "last": -10050,
+     "label": null
+    }
+   ]
+  },
+  {
+   "what": "an end exactly on the line is out",
+   "place": 10,
+   "universe": 100,
+   "sessions": [
+    {
+     "account": "11111111-1111-1111-1111-111111111111",
+     "label": null,
+     "place": 10,
+     "universe": 100,
+     "start": -10140,
+     "end": -10080,
+     "reason": "left",
+     "code": null
+    }
+   ],
+   "games": {},
+   "expect": []
+  },
+  {
+   "what": "an end before its start counts nothing, but the account stands",
+   "place": 10,
+   "universe": 100,
+   "sessions": [
+    {
+     "account": "11111111-1111-1111-1111-111111111111",
+     "label": null,
+     "place": 10,
+     "universe": 100,
+     "start": -10,
+     "end": -20,
+     "reason": "left",
+     "code": null
+    }
+   ],
+   "games": {},
+   "expect": [
+    {
+     "account": "11111111-1111-1111-1111-111111111111",
+     "seconds": 0,
+     "kicks": 0,
+     "idle": false,
+     "drops": 0,
+     "now": false,
+     "last": -20,
+     "label": null
+    }
+   ]
+  },
+  {
+   "what": "equal time keeps the order the accounts came in",
+   "place": 10,
+   "universe": 100,
+   "sessions": [
+    {
+     "account": "11111111-1111-1111-1111-111111111111",
+     "label": null,
+     "place": 10,
+     "universe": 100,
+     "start": -120,
+     "end": -60,
+     "reason": "left",
+     "code": null
+    },
+    {
+     "account": "22222222-2222-2222-2222-222222222222",
+     "label": null,
+     "place": 10,
+     "universe": 100,
+     "start": -240,
+     "end": -180,
+     "reason": "left",
+     "code": null
+    }
+   ],
+   "games": {},
+   "expect": [
+    {
+     "account": "11111111-1111-1111-1111-111111111111",
+     "seconds": 3600,
+     "kicks": 0,
+     "idle": false,
+     "drops": 0,
+     "now": false,
+     "last": -60,
+     "label": null
+    },
+    {
+     "account": "22222222-2222-2222-2222-222222222222",
+     "seconds": 3600,
+     "kicks": 0,
+     "idle": false,
+     "drops": 0,
+     "now": false,
+     "last": -180,
+     "label": null
+    }
+   ]
+  },
+  {
+   "what": "the name is the one its last stay in the list kept",
+   "place": 10,
+   "universe": 100,
+   "sessions": [
+    {
+     "account": "11111111-1111-1111-1111-111111111111",
+     "label": "New name",
+     "place": 10,
+     "universe": 100,
+     "start": -60,
+     "end": -50,
+     "reason": "left",
+     "code": null
+    },
+    {
+     "account": "11111111-1111-1111-1111-111111111111",
+     "label": "Old name",
+     "place": 10,
+     "universe": 100,
+     "start": -300,
+     "end": -200,
+     "reason": "left",
+     "code": null
+    }
+   ],
+   "games": {},
+   "expect": [
+    {
+     "account": "11111111-1111-1111-1111-111111111111",
+     "seconds": 6600,
+     "kicks": 0,
+     "idle": false,
+     "drops": 0,
+     "now": false,
+     "last": -50,
+     "label": "Old name"
+    }
+   ]
+  },
+  {
+   "what": "last played is its latest end, whatever the order",
+   "place": 10,
+   "universe": 100,
+   "sessions": [
+    {
+     "account": "11111111-1111-1111-1111-111111111111",
+     "label": null,
+     "place": 10,
+     "universe": 100,
+     "start": -100,
+     "end": -40,
+     "reason": "left",
+     "code": null
+    },
+    {
+     "account": "11111111-1111-1111-1111-111111111111",
+     "label": null,
+     "place": 10,
+     "universe": 100,
+     "start": -400,
+     "end": -300,
+     "reason": "left",
+     "code": null
+    },
+    {
+     "account": "11111111-1111-1111-1111-111111111111",
+     "label": null,
+     "place": 10,
+     "universe": 100,
+     "start": -90,
+     "end": -80,
+     "reason": "left",
+     "code": null
+    }
+   ],
+   "games": {},
+   "expect": [
+    {
+     "account": "11111111-1111-1111-1111-111111111111",
+     "seconds": 10200,
+     "kicks": 0,
+     "idle": false,
+     "drops": 0,
+     "now": false,
+     "last": -40,
+     "label": null
+    }
+   ]
+  },
+  {
+   "what": "nobody played it",
+   "place": 10,
+   "universe": 100,
+   "sessions": [
+    {
+     "account": "11111111-1111-1111-1111-111111111111",
+     "label": null,
+     "place": 99,
+     "universe": 999,
+     "start": -60,
+     "end": -30,
+     "reason": "left",
+     "code": null
+    }
+   ],
+   "games": {},
+   "expect": []
+  }
+ ]
+}

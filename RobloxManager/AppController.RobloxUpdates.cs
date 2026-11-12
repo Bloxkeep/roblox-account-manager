@@ -179,6 +179,26 @@ public sealed partial class AppController
     readonly Dictionary<int, RobloxInstalls.ClientVersion?> _clientBuilds = new();
     /// <summary>The newest build the automatic update was tried for: once each, so a launcher that can't doesn't run every tick.</summary>
     string? _autoUpdatedFor;
+    /// <summary>The build the automatic update is waiting for windows over (said once in the log).</summary>
+    string? _autoUpdateWaitsFor;
+
+    /// <summary>How many of the Roblox windows open would stay closed after "Close, update, reopen": those not among the ones
+    /// that can be opened again.</summary>
+    internal static int WouldStayClosed(IEnumerable<int> open, IEnumerable<int> reopenable)
+    {
+        var again = reopenable.ToHashSet();
+        return open.Count(pid => !again.Contains(pid));
+    }
+
+    /// <summary>Whether the windows told to close have had their time. A start ahead of the tick's clock counts from now: the
+    /// automatic update starts the wait inside a tick, after the tick's clock was read, and the old check ("now is before the
+    /// start") gave up at once: the windows had been closed, and nothing was updated or opened again (2026-11-11).</summary>
+    internal static bool CloseTimeUp(DateTime now, ref DateTime since, TimeSpan limit)
+    {
+        if (now < since)
+            since = now;
+        return now - since >= limit;
+    }
     /// <summary>When "Close, update, reopen" closed the windows; null when none is under way. Rejoins wait for it.</summary>
     DateTime? _updateReopenSince;
     bool _updateReopenUpdating;
@@ -217,6 +237,19 @@ public sealed partial class AppController
         var version = RobloxVersionDto();
         if (version.UpToDate != false || version.Updater is null || version.Latest == _autoUpdatedFor)
             return;
+        // By itself it closes only what it can open again. A window not in a game, one whose log isn't read yet (a second
+        // after unlocking, when the windows open before are picked up) or one Bloxkeep didn't open would stay closed: the
+        // owner's window did, 2026-11-11 01:25 ("closing 1 tracked … 0 to reopen"). It waits for them instead.
+        int stay = WouldStayClosed(players.Select(p => p.Pid), _running.Where(r => CanReopen(r.Key, r.Value)).Select(r => r.Value.Pid));
+        if (stay > 0)
+        {
+            if (_autoUpdateWaitsFor != version.Latest)
+            {
+                _autoUpdateWaitsFor = version.Latest;
+                Log.Note($"Roblox update: automatic, to {version.Latest}, waits: {stay} of {players.Count} Roblox window(s) open couldn't be opened again after it (not in a game yet, or not opened by Bloxkeep).");
+            }
+            return;
+        }
         _autoUpdatedFor = version.Latest;
         Log.Note($"Roblox update: automatic, to {version.Latest}{(players.Count == 0 ? ", no Roblox open" : $", closing and reopening {players.Count} Roblox")}.");
         if (players.Count == 0)
@@ -273,8 +306,11 @@ public sealed partial class AppController
             RobloxProcesses.CloseTrayCopies();
             if (RobloxProcesses.GetPlayerPids().Length > 0)
             {
-                if (now - since < UpdateReopenCloseLimit && now >= since)
+                if (!CloseTimeUp(now, ref since, UpdateReopenCloseLimit))
+                {
+                    _updateReopenSince = since;
                     return;
+                }
                 Log.Note($"Close, update, reopen: {RobloxProcesses.GetPlayerPids().Length} Roblox still open after {(int)UpdateReopenCloseLimit.TotalSeconds} s; not updated.");
                 Notify(L.T("Some Roblox windows didn't close, so Roblox wasn't updated."), "warn", "launch");
                 _updateReopenSince = null;

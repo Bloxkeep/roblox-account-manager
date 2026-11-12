@@ -44,7 +44,7 @@ public sealed partial class AppController
         }
         return new
         {
-            placeId, name = details.Name, creator = details.Creator, genre = details.Genre, iconUrl = icon, description = details.Description,
+            placeId, universe, name = details.Name, creator = details.Creator, genre = details.Genre, iconUrl = icon, description = details.Description,
             playing = details.Playing, visits = details.Visits, favorites = details.Favorites, likes = details.LikesPercent,
             created = details.Created, updated = details.Updated,
             accounts = GameAccounts(placeId, universe, DateTime.UtcNow),
@@ -59,29 +59,46 @@ public sealed partial class AppController
     internal List<object> GameAccounts(long placeId, long universe, DateTime now)
     {
         var vault = RequireVault();
+        return GameAccountsOf(vault.Data.PlaySessions, KnownGameOf, placeId, universe, now).Select(r =>
+        {
+            var account = FindAccount(r.Id);
+            // Hide account names applies here too; a deleted account goes by the name it had.
+            string name = account is not null ? Name(account).ToString() : Prefs.HideNames ? "–" : r.Label ?? "–";
+            return (object)new
+            {
+                id = r.Id, name, minutes = (int)Math.Round(r.Seconds / 60), kicks = r.Kicks, kickWhy = r.Idle ? "AFK" : null, drops = r.Drops,
+                now = r.Now ? "ingame" : account is not null && GameBanOf(account, placeId) is not null ? "banned" : "",
+                lastPlayed = r.Now ? (DateTime?)null : r.Last,
+            };
+        }).ToList();
+    }
+
+    /// <summary>An account's stays in a game over 7 days, summed: how long, kicks (by the game or for idling) and other
+    /// drops, whether it is in it now, when it last was, and the name its last stay kept.</summary>
+    internal sealed record GameStay(Guid Id, double Seconds, int Kicks, bool Idle, int Drops, bool Now, DateTime Last, string? Label);
+
+    /// <summary>
+    /// The sum behind <see cref="GameAccounts"/>, apart from the accounts' names and bans: most played first. The GPUI
+    /// interface makes the same sum itself from the raw stays (ui-gpui/src/history.rs, since 2026-11-11); one table of
+    /// cases, Tests/game-accounts-cases.json, holds both to the same answers (suite "game-accounts" here, a test there).
+    /// </summary>
+    internal static List<GameStay> GameAccountsOf(IReadOnlyList<PlaySession> sessions, Func<long, KnownGame?> known, long placeId, long universe, DateTime now)
+    {
         var since = now.AddDays(-7);
         // A stay begun before its place was looked up has no universe: its place tells, from another stay or the cache.
-        var universeOf = vault.Data.PlaySessions.Where(s => s.UniverseId > 0).GroupBy(s => s.PlaceId).ToDictionary(g => g.Key, g => g.Last().UniverseId);
+        var universeOf = sessions.Where(s => s.UniverseId > 0).GroupBy(s => s.PlaceId).ToDictionary(g => g.Key, g => g.Last().UniverseId);
         bool InGame(PlaySession s) => s.PlaceId == placeId
-            || universe > 0 && (s.UniverseId > 0 ? s.UniverseId : universeOf.GetValueOrDefault(s.PlaceId) is > 0 and var u ? u : _games.GetValueOrDefault(s.PlaceId)?.UniverseId ?? 0) == universe;
-        var rows = new List<(Guid Id, string Name, double Seconds, int Kicks, bool Idle, int Drops, bool Now, DateTime Last)>();
-        foreach (var group in vault.Data.PlaySessions.Where(InGame).Where(s => (s.EndedAt ?? now) > since).GroupBy(s => s.AccountId))
+            || universe > 0 && (s.UniverseId > 0 ? s.UniverseId : universeOf.GetValueOrDefault(s.PlaceId) is > 0 and var u ? u : known(s.PlaceId)?.Universe ?? 0) == universe;
+        var rows = new List<GameStay>();
+        foreach (var group in sessions.Where(InGame).Where(s => (s.EndedAt ?? now) > since).GroupBy(s => s.AccountId))
         {
             double seconds = group.Sum(s => Math.Max(0, ((s.EndedAt ?? now) - (s.StartedAt > since ? s.StartedAt : since)).TotalSeconds));
             var ended = group.Where(s => s.EndReason == "disconnected" && s.EndedAt > since).ToList();
             int kicks = ended.Count(s => s.ReasonCode is { } c && KickCodes.Contains(c));
-            var account = FindAccount(group.Key);
-            // Hide account names applies here too; a deleted account goes by the name it had.
-            string name = account is not null ? Name(account).ToString() : Prefs.HideNames ? "–" : group.Last().AccountLabel ?? "–";
-            rows.Add((group.Key, name, seconds, kicks, ended.Any(s => s.ReasonCode == IdleKickCode), ended.Count - kicks,
-                group.Any(s => s.EndedAt is null), group.Max(s => s.EndedAt ?? now)));
+            rows.Add(new GameStay(group.Key, seconds, kicks, ended.Any(s => s.ReasonCode == IdleKickCode), ended.Count - kicks,
+                group.Any(s => s.EndedAt is null), group.Max(s => s.EndedAt ?? now), group.Last().AccountLabel));
         }
-        return rows.OrderByDescending(r => r.Seconds).Select(r => (object)new
-        {
-            id = r.Id, name = r.Name, minutes = (int)Math.Round(r.Seconds / 60), kicks = r.Kicks, kickWhy = r.Idle ? "AFK" : null, drops = r.Drops,
-            now = r.Now ? "ingame" : FindAccount(r.Id) is { } a && GameBanOf(a, placeId) is not null ? "banned" : "",
-            lastPlayed = r.Now ? (DateTime?)null : r.Last,
-        }).ToList();
+        return rows.OrderByDescending(r => r.Seconds).ToList();
     }
 
     /// <summary>Its wiki: a web search for it, since each game's wiki lives on a site of its own.</summary>

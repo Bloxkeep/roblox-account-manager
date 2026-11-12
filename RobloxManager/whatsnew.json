@@ -1,5 +1,31 @@
 [
   {
+    "version": "1.0.22",
+    "date": "2026-11-11",
+    "improved": {
+      "en": [
+        "A rejoined window goes back to its spot, so there’s no arranging again.",
+        "New games in the Games tab show up without reopening Bloxkeep.",
+        "Bug reports send the whole error log."
+      ],
+      "vi": [
+        "Cửa sổ vào lại game về đúng chỗ cũ, không phải xếp lại.",
+        "Game mới trong tab Game tự hiện, không cần mở lại Bloxkeep.",
+        "Báo lỗi gửi kèm đủ nhật ký lỗi."
+      ]
+    },
+    "fixed": {
+      "en": [
+        "Characters typed with AltGr, like @ on a French keyboard, work again while Bloxkeep is open. Hotkeys on those keys use the left Alt.",
+        "Updating Roblox no longer stops at once with “Some Roblox windows didn’t close”."
+      ],
+      "vi": [
+        "Gõ được lại ký tự dùng AltGr (như @ trên bàn phím Pháp) khi Bloxkeep đang mở. Phím tắt trên các phím đó dùng Alt trái.",
+        "Cập nhật Roblox không còn dừng ngay với báo “Có cửa sổ Roblox chưa đóng”."
+      ]
+    }
+  },
+  {
     "version": "1.0.21",
     "date": "2026-11-08",
     "improved": {

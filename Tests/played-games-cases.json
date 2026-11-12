@@ -1,0 +1,850 @@
+{
+ "now": 1794300000000,
+ "cases": [
+  {
+   "what": "two stays of one game add up",
+   "sessions": [
+    {
+     "place": 10,
+     "universe": 100,
+     "game": "Alpha",
+     "start": -180,
+     "end": -120,
+     "seen": null
+    },
+    {
+     "place": 10,
+     "universe": 100,
+     "game": "Alpha",
+     "start": -60,
+     "end": -30,
+     "seen": null
+    }
+   ],
+   "games": {},
+   "expect": [
+    {
+     "name": "Alpha",
+     "place": 10,
+     "hours": 1.5,
+     "last": -60
+    }
+   ]
+  },
+  {
+   "what": "a stay with no universe joins its place's, and the latest name is the game's",
+   "sessions": [
+    {
+     "place": 20,
+     "universe": 0,
+     "game": "Beta old",
+     "start": -300,
+     "end": -240,
+     "seen": null
+    },
+    {
+     "place": 20,
+     "universe": 200,
+     "game": "Beta",
+     "start": -100,
+     "end": -40,
+     "seen": null
+    }
+   ],
+   "games": {},
+   "expect": [
+    {
+     "name": "Beta",
+     "place": 20,
+     "hours": 2.0,
+     "last": -100
+    }
+   ]
+  },
+  {
+   "what": "a place nobody knows the universe of stands alone",
+   "sessions": [
+    {
+     "place": 30,
+     "universe": 0,
+     "game": "Gamma",
+     "start": -90,
+     "end": -30,
+     "seen": null
+    }
+   ],
+   "games": {},
+   "expect": [
+    {
+     "name": "Gamma",
+     "place": 30,
+     "hours": 1.0,
+     "last": -90
+    }
+   ]
+  },
+  {
+   "what": "the app's looked-up games tell the universe and the start place",
+   "sessions": [
+    {
+     "place": 41,
+     "universe": 0,
+     "game": "",
+     "start": -120,
+     "end": -60,
+     "seen": null
+    },
+    {
+     "place": 42,
+     "universe": 0,
+     "game": "Delta",
+     "start": -50,
+     "end": -20,
+     "seen": null
+    }
+   ],
+   "games": {
+    "41": {
+     "universe": 400,
+     "name": "Delta Cached",
+     "root": 40
+    },
+    "42": {
+     "universe": 400,
+     "name": "Delta Cached",
+     "root": 40
+    }
+   },
+   "expect": [
+    {
+     "name": "Delta",
+     "place": 40,
+     "hours": 1.5,
+     "last": -50
+    }
+   ]
+  },
+  {
+   "what": "a name from the looked-up game when no stay has one",
+   "sessions": [
+    {
+     "place": 51,
+     "universe": 0,
+     "game": "",
+     "start": -90,
+     "end": -30,
+     "seen": null
+    }
+   ],
+   "games": {
+    "51": {
+     "universe": 500,
+     "name": "Epsilon",
+     "root": 51
+    }
+   },
+   "expect": [
+    {
+     "name": "Epsilon",
+     "place": 51,
+     "hours": 1.0,
+     "last": -90
+    }
+   ]
+  },
+  {
+   "what": "a game nothing names is left out",
+   "sessions": [
+    {
+     "place": 61,
+     "universe": 0,
+     "game": "",
+     "start": -60,
+     "end": -30,
+     "seen": null
+    }
+   ],
+   "games": {},
+   "expect": []
+  },
+  {
+   "what": "older than 90 days is out, and a stay across the line counts from the line",
+   "sessions": [
+    {
+     "place": 70,
+     "universe": 700,
+     "game": "Zeta",
+     "start": -129720,
+     "end": -129660,
+     "seen": null
+    },
+    {
+     "place": 70,
+     "universe": 700,
+     "game": "Zeta",
+     "start": -129660,
+     "end": -129570,
+     "seen": null
+    },
+    {
+     "place": 71,
+     "universe": 710,
+     "game": "Eta",
+     "start": -129700,
+     "end": -129600,
+     "seen": null
+    }
+   ],
+   "games": {},
+   "expect": [
+    {
+     "name": "Zeta",
+     "place": 70,
+     "hours": 0.5,
+     "last": -129660
+    }
+   ]
+  },
+  {
+   "what": "a stay still open ends when it was last seen, or now; equal hours keep their order",
+   "sessions": [
+    {
+     "place": 80,
+     "universe": 800,
+     "game": "Theta",
+     "start": -45,
+     "end": null,
+     "seen": -15
+    },
+    {
+     "place": 81,
+     "universe": 810,
+     "game": "Iota",
+     "start": -30,
+     "end": null,
+     "seen": null
+    }
+   ],
+   "games": {},
+   "expect": [
+    {
+     "name": "Theta",
+     "place": 80,
+     "hours": 0.5,
+     "last": -45
+    },
+    {
+     "name": "Iota",
+     "place": 81,
+     "hours": 0.5,
+     "last": -30
+    }
+   ]
+  },
+  {
+   "what": "most played first",
+   "sessions": [
+    {
+     "place": 1,
+     "universe": 11,
+     "game": "A",
+     "start": -30,
+     "end": 0,
+     "seen": null
+    },
+    {
+     "place": 2,
+     "universe": 22,
+     "game": "B",
+     "start": -120,
+     "end": 0,
+     "seen": null
+    },
+    {
+     "place": 3,
+     "universe": 33,
+     "game": "C",
+     "start": -60,
+     "end": 0,
+     "seen": null
+    }
+   ],
+   "games": {},
+   "expect": [
+    {
+     "name": "B",
+     "place": 2,
+     "hours": 2.0,
+     "last": -120
+    },
+    {
+     "name": "C",
+     "place": 3,
+     "hours": 1.0,
+     "last": -60
+    },
+    {
+     "name": "A",
+     "place": 1,
+     "hours": 0.5,
+     "last": -30
+    }
+   ]
+  },
+  {
+   "what": "a half goes to the even tenth",
+   "sessions": [
+    {
+     "place": 90,
+     "universe": 900,
+     "game": "Kappa",
+     "start": -15,
+     "end": 0,
+     "seen": null
+    },
+    {
+     "place": 91,
+     "universe": 910,
+     "game": "Lambda",
+     "start": -45,
+     "end": 0,
+     "seen": null
+    }
+   ],
+   "games": {},
+   "expect": [
+    {
+     "name": "Lambda",
+     "place": 91,
+     "hours": 0.8,
+     "last": -45
+    },
+    {
+     "name": "Kappa",
+     "place": 90,
+     "hours": 0.2,
+     "last": -15
+    }
+   ]
+  },
+  {
+   "what": "an end before its start counts nothing",
+   "sessions": [
+    {
+     "place": 95,
+     "universe": 950,
+     "game": "Mu",
+     "start": -10,
+     "end": -20,
+     "seen": null
+    }
+   ],
+   "games": {},
+   "expect": [
+    {
+     "name": "Mu",
+     "place": 95,
+     "hours": 0.0,
+     "last": -10
+    }
+   ]
+  },
+  {
+   "what": "a stay with no place is skipped",
+   "sessions": [
+    {
+     "place": 0,
+     "universe": 0,
+     "game": "Nu",
+     "start": -60,
+     "end": -30,
+     "seen": null
+    }
+   ],
+   "games": {},
+   "expect": []
+  },
+  {
+   "what": "the thirty most played",
+   "sessions": [
+    {
+     "place": 1001,
+     "universe": 5001,
+     "game": "G1",
+     "start": -6,
+     "end": 0,
+     "seen": null
+    },
+    {
+     "place": 1002,
+     "universe": 5002,
+     "game": "G2",
+     "start": -12,
+     "end": 0,
+     "seen": null
+    },
+    {
+     "place": 1003,
+     "universe": 5003,
+     "game": "G3",
+     "start": -18,
+     "end": 0,
+     "seen": null
+    },
+    {
+     "place": 1004,
+     "universe": 5004,
+     "game": "G4",
+     "start": -24,
+     "end": 0,
+     "seen": null
+    },
+    {
+     "place": 1005,
+     "universe": 5005,
+     "game": "G5",
+     "start": -30,
+     "end": 0,
+     "seen": null
+    },
+    {
+     "place": 1006,
+     "universe": 5006,
+     "game": "G6",
+     "start": -36,
+     "end": 0,
+     "seen": null
+    },
+    {
+     "place": 1007,
+     "universe": 5007,
+     "game": "G7",
+     "start": -42,
+     "end": 0,
+     "seen": null
+    },
+    {
+     "place": 1008,
+     "universe": 5008,
+     "game": "G8",
+     "start": -48,
+     "end": 0,
+     "seen": null
+    },
+    {
+     "place": 1009,
+     "universe": 5009,
+     "game": "G9",
+     "start": -54,
+     "end": 0,
+     "seen": null
+    },
+    {
+     "place": 1010,
+     "universe": 5010,
+     "game": "G10",
+     "start": -60,
+     "end": 0,
+     "seen": null
+    },
+    {
+     "place": 1011,
+     "universe": 5011,
+     "game": "G11",
+     "start": -66,
+     "end": 0,
+     "seen": null
+    },
+    {
+     "place": 1012,
+     "universe": 5012,
+     "game": "G12",
+     "start": -72,
+     "end": 0,
+     "seen": null
+    },
+    {
+     "place": 1013,
+     "universe": 5013,
+     "game": "G13",
+     "start": -78,
+     "end": 0,
+     "seen": null
+    },
+    {
+     "place": 1014,
+     "universe": 5014,
+     "game": "G14",
+     "start": -84,
+     "end": 0,
+     "seen": null
+    },
+    {
+     "place": 1015,
+     "universe": 5015,
+     "game": "G15",
+     "start": -90,
+     "end": 0,
+     "seen": null
+    },
+    {
+     "place": 1016,
+     "universe": 5016,
+     "game": "G16",
+     "start": -96,
+     "end": 0,
+     "seen": null
+    },
+    {
+     "place": 1017,
+     "universe": 5017,
+     "game": "G17",
+     "start": -102,
+     "end": 0,
+     "seen": null
+    },
+    {
+     "place": 1018,
+     "universe": 5018,
+     "game": "G18",
+     "start": -108,
+     "end": 0,
+     "seen": null
+    },
+    {
+     "place": 1019,
+     "universe": 5019,
+     "game": "G19",
+     "start": -114,
+     "end": 0,
+     "seen": null
+    },
+    {
+     "place": 1020,
+     "universe": 5020,
+     "game": "G20",
+     "start": -120,
+     "end": 0,
+     "seen": null
+    },
+    {
+     "place": 1021,
+     "universe": 5021,
+     "game": "G21",
+     "start": -126,
+     "end": 0,
+     "seen": null
+    },
+    {
+     "place": 1022,
+     "universe": 5022,
+     "game": "G22",
+     "start": -132,
+     "end": 0,
+     "seen": null
+    },
+    {
+     "place": 1023,
+     "universe": 5023,
+     "game": "G23",
+     "start": -138,
+     "end": 0,
+     "seen": null
+    },
+    {
+     "place": 1024,
+     "universe": 5024,
+     "game": "G24",
+     "start": -144,
+     "end": 0,
+     "seen": null
+    },
+    {
+     "place": 1025,
+     "universe": 5025,
+     "game": "G25",
+     "start": -150,
+     "end": 0,
+     "seen": null
+    },
+    {
+     "place": 1026,
+     "universe": 5026,
+     "game": "G26",
+     "start": -156,
+     "end": 0,
+     "seen": null
+    },
+    {
+     "place": 1027,
+     "universe": 5027,
+     "game": "G27",
+     "start": -162,
+     "end": 0,
+     "seen": null
+    },
+    {
+     "place": 1028,
+     "universe": 5028,
+     "game": "G28",
+     "start": -168,
+     "end": 0,
+     "seen": null
+    },
+    {
+     "place": 1029,
+     "universe": 5029,
+     "game": "G29",
+     "start": -174,
+     "end": 0,
+     "seen": null
+    },
+    {
+     "place": 1030,
+     "universe": 5030,
+     "game": "G30",
+     "start": -180,
+     "end": 0,
+     "seen": null
+    },
+    {
+     "place": 1031,
+     "universe": 5031,
+     "game": "G31",
+     "start": -186,
+     "end": 0,
+     "seen": null
+    },
+    {
+     "place": 1032,
+     "universe": 5032,
+     "game": "G32",
+     "start": -192,
+     "end": 0,
+     "seen": null
+    }
+   ],
+   "games": {},
+   "expect": [
+    {
+     "name": "G32",
+     "place": 1032,
+     "hours": 3.2,
+     "last": -192
+    },
+    {
+     "name": "G31",
+     "place": 1031,
+     "hours": 3.1,
+     "last": -186
+    },
+    {
+     "name": "G30",
+     "place": 1030,
+     "hours": 3.0,
+     "last": -180
+    },
+    {
+     "name": "G29",
+     "place": 1029,
+     "hours": 2.9,
+     "last": -174
+    },
+    {
+     "name": "G28",
+     "place": 1028,
+     "hours": 2.8,
+     "last": -168
+    },
+    {
+     "name": "G27",
+     "place": 1027,
+     "hours": 2.7,
+     "last": -162
+    },
+    {
+     "name": "G26",
+     "place": 1026,
+     "hours": 2.6,
+     "last": -156
+    },
+    {
+     "name": "G25",
+     "place": 1025,
+     "hours": 2.5,
+     "last": -150
+    },
+    {
+     "name": "G24",
+     "place": 1024,
+     "hours": 2.4,
+     "last": -144
+    },
+    {
+     "name": "G23",
+     "place": 1023,
+     "hours": 2.3,
+     "last": -138
+    },
+    {
+     "name": "G22",
+     "place": 1022,
+     "hours": 2.2,
+     "last": -132
+    },
+    {
+     "name": "G21",
+     "place": 1021,
+     "hours": 2.1,
+     "last": -126
+    },
+    {
+     "name": "G20",
+     "place": 1020,
+     "hours": 2.0,
+     "last": -120
+    },
+    {
+     "name": "G19",
+     "place": 1019,
+     "hours": 1.9,
+     "last": -114
+    },
+    {
+     "name": "G18",
+     "place": 1018,
+     "hours": 1.8,
+     "last": -108
+    },
+    {
+     "name": "G17",
+     "place": 1017,
+     "hours": 1.7,
+     "last": -102
+    },
+    {
+     "name": "G16",
+     "place": 1016,
+     "hours": 1.6,
+     "last": -96
+    },
+    {
+     "name": "G15",
+     "place": 1015,
+     "hours": 1.5,
+     "last": -90
+    },
+    {
+     "name": "G14",
+     "place": 1014,
+     "hours": 1.4,
+     "last": -84
+    },
+    {
+     "name": "G13",
+     "place": 1013,
+     "hours": 1.3,
+     "last": -78
+    },
+    {
+     "name": "G12",
+     "place": 1012,
+     "hours": 1.2,
+     "last": -72
+    },
+    {
+     "name": "G11",
+     "place": 1011,
+     "hours": 1.1,
+     "last": -66
+    },
+    {
+     "name": "G10",
+     "place": 1010,
+     "hours": 1.0,
+     "last": -60
+    },
+    {
+     "name": "G9",
+     "place": 1009,
+     "hours": 0.9,
+     "last": -54
+    },
+    {
+     "name": "G8",
+     "place": 1008,
+     "hours": 0.8,
+     "last": -48
+    },
+    {
+     "name": "G7",
+     "place": 1007,
+     "hours": 0.7,
+     "last": -42
+    },
+    {
+     "name": "G6",
+     "place": 1006,
+     "hours": 0.6,
+     "last": -36
+    },
+    {
+     "name": "G5",
+     "place": 1005,
+     "hours": 0.5,
+     "last": -30
+    },
+    {
+     "name": "G4",
+     "place": 1004,
+     "hours": 0.4,
+     "last": -24
+    },
+    {
+     "name": "G3",
+     "place": 1003,
+     "hours": 0.3,
+     "last": -18
+    }
+   ]
+  },
+  {
+   "what": "the last stay of a place tells its universe, even one older than 90 days; the game opens by its latest stay's place",
+   "sessions": [
+    {
+     "place": 99,
+     "universe": 0,
+     "game": "Xi",
+     "start": -60,
+     "end": -30,
+     "seen": null
+    },
+    {
+     "place": 99,
+     "universe": 990,
+     "game": "Xi",
+     "start": -130100,
+     "end": -130000,
+     "seen": null
+    },
+    {
+     "place": 98,
+     "universe": 990,
+     "game": "Xi two",
+     "start": -20,
+     "end": -10,
+     "seen": null
+    }
+   ],
+   "games": {},
+   "expect": [
+    {
+     "name": "Xi two",
+     "place": 98,
+     "hours": 0.7,
+     "last": -20
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,129 @@
+// RobloxApi.Friends.cs: friends between the person's own accounts (Friend each other): where two stand, a request,
+// its acceptance.
+use std::collections::HashMap;
+
+use serde_json::{Value, json};
+
+use super::login::{decode_json, decode_metadata, safe_name};
+use super::{
+    HttpRequest, JoinChallenge, RobloxApiException, add_challenge_headers, errors, header, post_with_csrf, rate_limited, raw_text, realm, refused,
+    request, send,
+};
+use crate::core::base::{Cancel, Res};
+use crate::core::{l, log};
+
+/// Where the signed-in account stands with each of `others`: "Friends", "RequestSent", "RequestReceived" or
+/// "NotFriends", by user id (one missing from Roblox's answer is left out).
+pub fn friend_statuses(cookie: &str, user_id: i64, others: &[i64], realm: &str, ct: &Cancel) -> Res<HashMap<i64, String>> {
+    let mut result = HashMap::new();
+    if others.is_empty() {
+        return Ok(result);
+    }
+    let url = format!(
+        "{}/v1/users/{user_id}/friends/statuses?userIds={}",
+        realm::api(realm, "friends"),
+        others.iter().map(i64::to_string).collect::<Vec<_>>().join(",")
+    );
+    let req = request("GET", &url, Some(cookie), false, realm::GLOBAL);
+    let res = send(&req, ct)?;
+    let body = res.text();
+    if res.status == 429 {
+        return Err(rate_limited());
+    }
+    if !res.is_success() {
+        return Err(refused("Friend statuses", res.status, &body, res.status == 401));
+    }
+    if let Some(Value::Object(root)) = decode_json(&body)
+        && let Some(Value::Array(data)) = root.get("data")
+    {
+        for d in data {
+            // TryGetProperty on an entry that isn't an object throws in the C#; such an answer never comes.
+            let Value::Object(d) = d else { continue };
+            if let Some(Value::Number(id)) = d.get("id")
+                && let Some(other) = id.as_i64()
+                && let Some(Value::String(s)) = d.get("status")
+            {
+                result.insert(other, s.clone());
+            }
+        }
+    }
+    Ok(result)
+}
+
+/// Roblox's answer to a friend request or an acceptance: HTTP status, its error codes, and the check holding it
+/// (rblx-challenge-* headers), if any.
+#[derive(Clone, Debug, Default)]
+pub struct FriendAnswer {
+    pub http: i32,
+    pub codes: Vec<i32>,
+    pub challenge: Option<JoinChallenge>,
+}
+
+impl FriendAnswer {
+    pub fn ok(&self) -> bool {
+        (200..300).contains(&self.http)
+    }
+}
+
+/// The signed-in account asks `target_user_id` to be friends; `answered` carries a check passed, as roblox.com asks
+/// again once its check is solved.
+pub fn request_friendship(cookie: &str, target_user_id: i64, realm: &str, answered: Option<&JoinChallenge>, ct: &Cancel) -> Res<FriendAnswer> {
+    friend_post(
+        &format!("{}/v1/users/{target_user_id}/request-friendship", realm::api(realm, "friends")),
+        &json!({ "friendshipOriginSourceType": 0 }).to_string(),
+        cookie,
+        realm,
+        answered,
+        "Friend request",
+        ct,
+    )
+}
+
+/// The signed-in account accepts the request `requester_user_id` sent it.
+pub fn accept_friend_request(cookie: &str, requester_user_id: i64, realm: &str, answered: Option<&JoinChallenge>, ct: &Cancel) -> Res<FriendAnswer> {
+    friend_post(&format!("{}/v1/users/{requester_user_id}/accept-friend-request", realm::api(realm, "friends")), "{}", cookie, realm, answered, "Friend accept", ct)
+}
+
+/// The signed-in account turns down the request `requester_user_id` sent it.
+pub fn decline_friend_request(cookie: &str, requester_user_id: i64, realm: &str, answered: Option<&JoinChallenge>, ct: &Cancel) -> Res<FriendAnswer> {
+    friend_post(&format!("{}/v1/users/{requester_user_id}/decline-friend-request", realm::api(realm, "friends")), "{}", cookie, realm, answered, "Friend decline", ct)
+}
+
+/// The signed-in account stops being friends with `target_user_id`.
+pub fn unfriend(cookie: &str, target_user_id: i64, realm: &str, answered: Option<&JoinChallenge>, ct: &Cancel) -> Res<FriendAnswer> {
+    friend_post(&format!("{}/v1/users/{target_user_id}/unfriend", realm::api(realm, "friends")), "{}", cookie, realm, answered, "Unfriend", ct)
+}
+
+fn friend_post(url: &str, json: &str, cookie: &str, realm: &str, answered: Option<&JoinChallenge>, what: &str, ct: &Cancel) -> Res<FriendAnswer> {
+    let configure = |req: &mut HttpRequest| {
+        if let Some(answered) = answered {
+            add_challenge_headers(req, answered);
+        }
+    };
+    let res = post_with_csrf(url, cookie, json, answered.map(|_| &configure as &dyn Fn(&mut HttpRequest)), ct, realm)?;
+    let body = res.text();
+    let mut challenge = None;
+    if let Some(challenge_id) = header(&res, "rblx-challenge-id").filter(|c| !c.is_empty()) {
+        let meta = decode_metadata(header(&res, "rblx-challenge-metadata").as_deref());
+        challenge = Some(JoinChallenge {
+            id: challenge_id,
+            r#type: header(&res, "rblx-challenge-type").unwrap_or_default(),
+            metadata_json: meta.as_ref().map(raw_text).unwrap_or_else(|| "{}".into()),
+        });
+    }
+    let (codes, summary) = errors(&body);
+    // Codes and Roblox's messages only: never the rest of the reply.
+    log::note(&format!(
+        "{what}: HTTP {}{}{}",
+        res.status,
+        challenge.as_ref().map(|c| format!(", held for a check ({})", safe_name(&c.r#type))).unwrap_or_default(),
+        if res.is_success() { String::new() } else { format!(", errors {summary}") }
+    ));
+    if res.status == 401 {
+        return Err(RobloxApiException { status: 401, cookie_invalid: true, ..RobloxApiException::new(l::t("This account was signed out — sign in to it again.")) }.into());
+    }
+    if res.status == 429 && challenge.is_none() {
+        return Err(rate_limited());
+    }
+    Ok(FriendAnswer { http: res.status as i32, codes, challenge })
+}

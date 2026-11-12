@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 namespace RobloxManager;
 
 /// <summary>
@@ -89,6 +91,37 @@ public sealed partial class AppController
             Log.Note($"Friend each other: {made} new, {already} already friends, {failed} refused by Roblox of {pairs} pairs.");
         Toast(L.F("Friend each other: {0} new, {1} already friends, {2} failed.", made, already, failed), failed > 0 ? "warn" : "ok");
         return null;
+    }
+
+    /// <summary>{id, userId, act}: one account's own move in Friends (the GPUI window's Friends): "request" asks that Roblox
+    /// user to be friends, "accept" and "decline" answer their request, "unfriend" ends it. A check Roblox holds it for is
+    /// shown to solve, then it is asked again. { ok, held (the check was closed unsolved), http, codes }; the window words it.</summary>
+    async Task<object?> FriendActAsync(JsonElement a)
+    {
+        RequireVault();
+        var account = RequireAccount(Id(a));
+        long user = Long(a, "userId");
+        string act = Str(a, "act");
+        Func<RobloxApi.JoinChallenge?, Task<RobloxApi.FriendAnswer>>? ask = act switch
+        {
+            "request" => c => RobloxApi.RequestFriendshipAsync(account.Cookie, user, account.Realm, c),
+            "accept" => c => RobloxApi.AcceptFriendRequestAsync(account.Cookie, user, account.Realm, c),
+            "decline" => c => RobloxApi.DeclineFriendRequestAsync(account.Cookie, user, account.Realm, c),
+            "unfriend" => c => RobloxApi.UnfriendAsync(account.Cookie, user, account.Realm, c),
+            _ => null,
+        };
+        if (ask is null || user <= 0 || account.Cookie.Length == 0 || account.Realm != Realm.Global)
+            return new { ok = false, held = false, http = 0, codes = Array.Empty<int>() };
+        var answer = await ask(null);
+        if (answer.Challenge is { } check)
+        {
+            if (await PassCheckAsync(account, check) is not { } passed)
+                return new { ok = false, held = true, http = answer.Http, codes = Array.Empty<int>() };
+            answer = await ask(passed);
+        }
+        if (!answer.Ok)
+            Log.Note($"Friends: {act} was refused (HTTP {answer.Http}, codes {string.Join(",", answer.Codes)}).");
+        return new { ok = answer.Ok, held = false, http = answer.Http, codes = answer.Codes.ToArray() };
     }
 
     /// <summary><paramref name="from"/> asks <paramref name="to"/>; true sent, false refused, null a check closed unsolved.</summary>

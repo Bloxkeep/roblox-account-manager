@@ -10,9 +10,9 @@ import { DayStrip } from './DayStrip';
 import { Badge, Button, IconButton, Segment, Segmented } from './kit';
 type Account = Record<string, any>;
 
-const isLocal = (a: Account) => a.state === 'running';
+export const isLocal = (a: Account) => a.state === 'running';
 /** Its window here lost the game (kicked, dropped, banned by the game): still open, but nothing is being played. */
-const isKicked = (a: Account) => isLocal(a) && (a.session?.connection === 'disconnected' || !!a.session?.bannedByGame);
+export const isKicked = (a: Account) => isLocal(a) && (a.session?.connection === 'disconnected' || !!a.session?.bannedByGame);
 /** Auto-rejoin for the account's client: a preset that opened it may turn it on or off for that client. */
 const rejoinOn = (a: Account) => a.session?.autoRejoin ?? a.autoRejoin;
 const isStranded = (a: Account) => isLocal(a) && ['disconnected', 'menu', 'signedout'].includes(a.session?.connection);
@@ -27,7 +27,7 @@ const KICK: Record<number, string> = { 278: 'kick.idle', 267: 'kick.game', 273: 
 const presenceType = (a: Account) => !isLocal(a) ? (closing(a) ? '' : a.presence?.type || '')
   : a.session?.connection === 'disconnected' || held(a) ? 'kicked' : a.session?.connection === 'menu' ? 'online'
   : a.session?.connection === 'signedout' ? 'offline' : 'ingame';
-const ringOf = (a: Account) => {
+export const ringOf = (a: Account) => {
   const p = presenceType(a);
   // Roblox's bot check: the amber dot and the words say it; no ring around the picture.
   if (held(a)) return '';
@@ -39,7 +39,7 @@ const closedAt = new Map<string, { at: number; game: string }>();
 const CLOSING_MS = 60_000;
 // Only while Roblox still says online: once it says offline, the card does too (the full minute every time looked stuck).
 const closing = (a: Account) => !isLocal(a) && a.state !== 'launching' && !a.rejoin && isOnline(a) && (closedAt.get(a.id)?.at ?? 0) > Date.now() - CLOSING_MS;
-function GameIcon({ url, className, holder }: { url?: string | null; className?: string; holder: () => ReactNode }) {
+export function GameIcon({ url, className, holder }: { url?: string | null; className?: string; holder: () => ReactNode }) {
   const [failed, setFailed] = useState('');
   return url && failed !== url ? <img className={className} src={url} alt="" loading={className ? 'lazy' : undefined} decoding={className ? 'async' : undefined} onError={() => setFailed(url)} /> : <>{holder()}</>;
 }
@@ -484,7 +484,7 @@ function onTheWay(a: Account, c: string | undefined, at: 'act' | 'row' = 'act'):
 }
 
 /** The account's status in a few words, for the compact list. */
-function statusLine(t: (k: string, v?: Record<string, string | number>) => string, a: Account): { cls: string; text: string; until?: string | null } {
+export function statusLine(t: (k: string, v?: Record<string, string | number>) => string, a: Account): { cls: string; text: string; until?: string | null } {
   const p = a.presence;
   if (a.state === 'launching') return { cls: 'launching', text: t('act.opening') };
   if (a.rejoin && !isLocal(a)) return { cls: 'launching', text: t(a.rejoin.restart ? 'rj.rowRestart' : 'rj.k'), until: a.rejoin.restart ? null : a.rejoin.at };

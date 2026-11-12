@@ -1,0 +1,258 @@
+[
+ {
+  "in": "2753915549",
+  "job": "",
+  "ok": true,
+  "place": 2753915549
+ },
+ {
+  "in": "  2753915549 ",
+  "job": "",
+  "ok": true,
+  "place": 2753915549
+ },
+ {
+  "in": "+123",
+  "job": "",
+  "ok": true,
+  "place": 123
+ },
+ {
+  "in": "",
+  "job": "",
+  "ok": false,
+  "error": "Enter a Place ID or paste a Roblox game link."
+ },
+ {
+  "in": "   ",
+  "job": "",
+  "ok": false,
+  "error": "Enter a Place ID or paste a Roblox game link."
+ },
+ {
+  "in": "blox fruits",
+  "job": "",
+  "ok": false,
+  "error": "Pick the game from the search list, or paste a game link or Place ID."
+ },
+ {
+  "in": "12345678901234567890123",
+  "job": "",
+  "ok": false,
+  "error": "Pick the game from the search list, or paste a game link or Place ID."
+ },
+ {
+  "in": "placeId=555&gameInstanceId=0a1b2c3d-0000-1111-2222-333344445555",
+  "job": "",
+  "ok": false,
+  "error": "Pick the game from the search list, or paste a game link or Place ID."
+ },
+ {
+  "in": "0",
+  "job": "",
+  "ok": false,
+  "error": "Invalid Place ID."
+ },
+ {
+  "in": "-5",
+  "job": "",
+  "ok": false,
+  "error": "Invalid Place ID."
+ },
+ {
+  "in": "https://www.roblox.com/games/2753915549/Blox-Fruits",
+  "job": "",
+  "ok": true,
+  "place": 2753915549
+ },
+ {
+  "in": "HTTPS://WWW.ROBLOX.COM/GAMES/99/x",
+  "job": "",
+  "ok": true,
+  "place": 99
+ },
+ {
+  "in": "https://www.roblox.com/games/42 extra words",
+  "job": "",
+  "ok": true,
+  "place": 42
+ },
+ {
+  "in": "https://www.roblox.com/games/2753915549/Blox-Fruits?privateServerLinkCode=12345678901234567890",
+  "job": "",
+  "ok": true,
+  "place": 2753915549,
+  "link": "12345678901234567890"
+ },
+ {
+  "in": "https://www.roblox.com/games/1?PRIVATESERVERLINKCODE=abc",
+  "job": "",
+  "ok": true,
+  "place": 1,
+  "link": "abc"
+ },
+ {
+  "in": "https://www.roblox.com/games/1?privateServerLinkCode=a%20b",
+  "job": "",
+  "ok": true,
+  "place": 1,
+  "link": "a b"
+ },
+ {
+  "in": "roblox://placeId=77&linkCode=LC1",
+  "job": "",
+  "ok": true,
+  "place": 77,
+  "link": "LC1"
+ },
+ {
+  "in": "https://www.roblox.com/games/2753915549?gameInstanceId=0A1B2C3D-0000-1111-2222-333344445555",
+  "job": "",
+  "ok": true,
+  "place": 2753915549,
+  "jobId": "0a1b2c3d-0000-1111-2222-333344445555"
+ },
+ {
+  "in": "roblox://placeId=2753915549&gameInstanceId={0a1b2c3d-0000-1111-2222-333344445555}",
+  "job": "",
+  "ok": true,
+  "place": 2753915549,
+  "jobId": "0a1b2c3d-0000-1111-2222-333344445555"
+ },
+ {
+  "in": "roblox://placeId=8&jobId=0a1b2c3d000011112222333344445555",
+  "job": "",
+  "ok": true,
+  "place": 8,
+  "jobId": "0a1b2c3d-0000-1111-2222-333344445555"
+ },
+ {
+  "in": "https://www.roblox.com/games/3?gameInstanceId=",
+  "job": "",
+  "ok": true,
+  "place": 3
+ },
+ {
+  "in": "https://www.roblox.com/games/3?gameInstanceId=nope",
+  "job": "",
+  "ok": false,
+  "error": "Invalid Job ID (expected xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)."
+ },
+ {
+  "in": "roblox://experiences/start?placeId=2753915549",
+  "job": "",
+  "ok": true,
+  "place": 2753915549
+ },
+ {
+  "in": "https://www.roblox.com/games/start?placeId=123&launchData=x",
+  "job": "",
+  "ok": true,
+  "place": 123
+ },
+ {
+  "in": "roblox://placeId=2753915549&accessCode=0A1B2C3D-0000-1111-2222-333344445555",
+  "job": "",
+  "ok": true,
+  "place": 2753915549,
+  "access": "0a1b2c3d-0000-1111-2222-333344445555"
+ },
+ {
+  "in": "roblox://placeId=2753915549&accessCode=not-a-code",
+  "job": "",
+  "ok": false,
+  "error": "Invalid private server access code."
+ },
+ {
+  "in": "roblox://placeId=5&accessCode=",
+  "job": "",
+  "ok": true,
+  "place": 5
+ },
+ {
+  "in": "https://www.roblox.com/share?code=abcdef123&type=Server",
+  "job": "",
+  "ok": true,
+  "place": 0,
+  "share": "abcdef123"
+ },
+ {
+  "in": "https://www.roblox.com/share?code=abc",
+  "job": "",
+  "ok": true,
+  "place": 0,
+  "share": "abc"
+ },
+ {
+  "in": "https://www.roblox.com/share?code=abc&type=server",
+  "job": "",
+  "ok": true,
+  "place": 0,
+  "share": "abc"
+ },
+ {
+  "in": "https://www.roblox.com/share?code=abcdef123&type=ExperienceDetails",
+  "job": "",
+  "ok": false,
+  "error": "Only private-server share links (type=Server) are supported. For a regular game, paste a roblox.com/games/… link."
+ },
+ {
+  "in": "roblox://navigation/share_links?code=xyz&type=Server",
+  "job": "",
+  "ok": true,
+  "place": 0,
+  "share": "xyz"
+ },
+ {
+  "in": "https://ro.blox.com/Ebh5?af_dp=roblox%3A%2F%2Fnavigation%2Fshare_links%3Fcode%3Dfromdp%26type%3DServer&af_web_dp=https%3A%2F%2Fwww.roblox.com%2Fshare%3Fcode%3Dfromweb%26type%3DServer",
+  "job": "",
+  "ok": true,
+  "place": 0,
+  "share": "fromweb"
+ },
+ {
+  "in": "https://ro.blox.com/Ebh5?af_dp=roblox%3A%2F%2FplaceId%3D4321",
+  "job": "",
+  "ok": true,
+  "place": 4321
+ },
+ {
+  "in": "https://www.roblox.com/home",
+  "job": "",
+  "ok": false,
+  "error": "This link has no Place ID."
+ },
+ {
+  "in": "https://www.roblox.com/games/",
+  "job": "",
+  "ok": false,
+  "error": "This link has no Place ID."
+ },
+ {
+  "in": "2753915549",
+  "job": "0A1B2C3D-0000-1111-2222-333344445555",
+  "ok": true,
+  "place": 2753915549,
+  "jobId": "0a1b2c3d-0000-1111-2222-333344445555"
+ },
+ {
+  "in": "2753915549",
+  "job": "0a1b2c3d000011112222333344445555",
+  "ok": true,
+  "place": 2753915549,
+  "jobId": "0a1b2c3d-0000-1111-2222-333344445555"
+ },
+ {
+  "in": "2753915549",
+  "job": "zzz",
+  "ok": false,
+  "error": "Invalid Job ID (expected xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)."
+ },
+ {
+  "in": "https://www.roblox.com/games/9?gameInstanceId=0a1b2c3d-0000-1111-2222-333344445555",
+  "job": "11111111-2222-3333-4444-555555555555",
+  "ok": true,
+  "place": 9,
+  "jobId": "11111111-2222-3333-4444-555555555555"
+ }
+]

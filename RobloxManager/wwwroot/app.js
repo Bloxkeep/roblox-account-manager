@@ -87,7 +87,7 @@
     app: null,            // last state pushed by the app
     shell: false,         // main shell rendered
     lockMode: null,       // 'create' | 'unlock' while the lock screen is shown
-    view: 'accounts',
+    view: 'home',
     selected: new Set(),
     anchor: null,
     filter: 'all',
@@ -853,6 +853,7 @@
     const from = S.view;
     S.view = view;
     pageChanged();
+    $('#view-home').hidden = view !== 'home';
     $('#view-accounts').hidden = view !== 'accounts';
     $('#view-presets').hidden = view !== 'presets';
     if (view === 'presets') uiSignal('presetsShown');
@@ -2729,7 +2730,7 @@
       { id: 'lang', icon: 'languages', text: lang === 'vi' ? 'Switch to English' : 'Chuyển sang tiếng Việt', keywords: ['language', 'ngôn ngữ'], run: () => call('setLanguage', { language: lang === 'vi' ? 'en' : 'vi' }) },
       { id: 'lock', icon: 'lock', text: t('side.lock'), keywords: ['password'], run: () => lockApp() },
     ].filter(x => !x.off).map(x => ({ ...x, kind: 'action' }));
-    const tabs = [['accounts', 'users'], ['presets', 'layers'], ['news', 'news'], ['macros', 'keyboard'], ['monitor', 'screens'], ['stats', 'clock'], ['settings', 'sliders']]
+    const tabs = [['home', 'home'], ['accounts', 'users'], ['presets', 'layers'], ['news', 'news'], ['macros', 'keyboard'], ['monitor', 'screens'], ['stats', 'clock'], ['settings', 'sliders']]
       .map(([view, ic]) => ({ id: `tab:${view}`, kind: 'tab', icon: ic, text: t(`nav.${view}`), run: go(view) }));
     tabs.push({ id: 'tab:activity', kind: 'tab', icon: 'history', text: t('alog.title'), keywords: ['log', 'history', 'events'], run: go('stats', () => statsUi?.api.showActivity()) });
     // Each macro's panel: Show it (or Hide it, when it is up).
@@ -2886,6 +2887,9 @@
         return;
       case 'lang': return el.dataset.lang !== lang && call('setLanguage', { language: el.dataset.lang });
       case 'view': return setView(el.dataset.view);
+      // The home page: a game into the game box (on the Accounts tab, to pick the accounts), an account's card shown.
+      case 'put-game': return putGame(+el.dataset.place);
+      case 'reveal': return revealAccount(el.dataset.id);
       case 'lock': return lockApp();
       case 'reset-asks': return call('resetSkipConfirm').then(n => n !== undefined && toast(t('set.asksDone'), 'ok'));
       case 'add-choose': return addChooser();
@@ -3476,7 +3480,7 @@
       S.filter = String(saved.filter || 'all').startsWith('g:') ? 'all' : saved.filter || 'all';
       S.group = typeof saved.group === 'string' ? saved.group : String(saved.filter || '').startsWith('g:') ? saved.filter.slice(2) : '';
       S.query = saved.query || '';
-      S.view = ['presets', 'news', 'macros', 'settings', 'stats', 'monitor'].includes(saved.view) ? saved.view : 'accounts';
+      S.view = ['accounts', 'presets', 'news', 'macros', 'settings', 'stats', 'monitor'].includes(saved.view) ? saved.view : 'home';
       PV.query = typeof saved.presetQuery === 'string' ? saved.presetQuery : '';
       S.introShown = true;
     }

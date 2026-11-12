@@ -50,6 +50,18 @@ public static partial class RobloxApi
         FriendPostAsync(Realm.Api(realm, "friends") + $"/v1/users/{requesterUserId}/accept-friend-request",
             "{}", cookie, realm, answered, "Friend accept", ct);
 
+    /// <summary>The signed-in account turns down the request <paramref name="requesterUserId"/> sent it.</summary>
+    public static Task<FriendAnswer> DeclineFriendRequestAsync(string cookie, long requesterUserId, string realm = Realm.Global,
+        JoinChallenge? answered = null, CancellationToken ct = default) =>
+        FriendPostAsync(Realm.Api(realm, "friends") + $"/v1/users/{requesterUserId}/decline-friend-request",
+            "{}", cookie, realm, answered, "Friend decline", ct);
+
+    /// <summary>The signed-in account stops being friends with <paramref name="targetUserId"/>.</summary>
+    public static Task<FriendAnswer> UnfriendAsync(string cookie, long targetUserId, string realm = Realm.Global,
+        JoinChallenge? answered = null, CancellationToken ct = default) =>
+        FriendPostAsync(Realm.Api(realm, "friends") + $"/v1/users/{targetUserId}/unfriend",
+            "{}", cookie, realm, answered, "Unfriend", ct);
+
     static async Task<FriendAnswer> FriendPostAsync(string url, string json, string cookie, string realm, JoinChallenge? answered, string what,
         CancellationToken ct)
     {

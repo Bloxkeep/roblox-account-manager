@@ -25,6 +25,13 @@ export default [
   S('account-fps-cap', '', async s => { await s.click({ css: '.card[data-id$="2"] [data-act=card-menu]' }); await s.click(key('m.fps')); await s.snap('list'); await s.click({ text: '20 FPS', within: '.menu' }); await s.snap('set'); await s.click({ css: '.card[data-id$="2"] [data-act=card-menu]' }); }),
   S('account-edit', 'edit=1'),
   S('accounts-empty', 'empty=1'),
+  // ── Home (the page the app opens on): the game on the stage, the shelf, the seats, presets and what Bloxkeep's users play ──
+  S('home', 'home=1'),
+  // A game picked on the shelf goes on the stage; the arrow keys move along the shelf.
+  S('home-shelf-pick', 'home=1', async s => { await s.click({ css: '.hm-tile:nth-of-type(2)' }); await s.snap('picked'); await s.key('ArrowRight'); }),
+  S('home-empty', 'home=1&empty=1'),
+  S('home-light', 'home=1&theme=light'),
+  S('home-narrow', 'home=1', null, { size: [860, 640] }),
   // Getting started: accounts never opened yet. The game step ticks once a game is in the box; Play is the step left.
   S('start-steps', 'fresh=1', async s => {
     await s.fill(key('dock.place'), 'https://www.roblox.com/games/2753915549/Blox-Fruits');

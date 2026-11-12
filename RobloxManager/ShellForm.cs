@@ -36,6 +36,12 @@ public sealed class ShellForm : Form
     /// <summary>Until when the newest notification balloon may be on screen; the icon isn't hidden before that.</summary>
     DateTime _balloonUntil;
     WebView2? _web;
+
+    /// <summary>1.1's GPUI interface in place of the page, behind the hidden switch (<see cref="GpuiHost"/>).</summary>
+    GpuiHost? _gpui;
+
+    /// <summary>The GPUI interface failed this run: the page is used instead.</summary>
+    bool _gpuiFailed;
     /// <summary>The small always-on-top window, made the first time it is opened and kept (hidden) from then on.</summary>
     MiniWindow? _mini;
     readonly MonitorTab _monitor;
@@ -51,7 +57,11 @@ public sealed class ShellForm : Form
     Control? _cover;
     bool _coverSkipLogged;
 
-    const int WM_SYSCOMMAND = 0x0112, SC_MINIMIZE = 0xF020, SW_RESTORE = 9, WM_QUERYOPEN = 0x0013;
+    const int WM_SYSCOMMAND = 0x0112, SC_MINIMIZE = 0xF020, SW_RESTORE = 9, WM_QUERYOPEN = 0x0013, WM_NCCALCSIZE = 0x0083;
+    [DllImport("user32.dll")]
+    static extern bool IsZoomed(IntPtr hWnd);
+
+    const int WM_SETFOCUS = 0x0007, WM_PARENTNOTIFY = 0x0210, WM_LBUTTONDOWN = 0x0201, WM_RBUTTONDOWN = 0x0204, WM_MBUTTONDOWN = 0x0207;
 
     [DllImport("user32.dll")]
     static extern bool PostMessage(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam);
@@ -115,7 +125,9 @@ public sealed class ShellForm : Form
         }
         else if (startup)
             _startHidden = true;
-        _monitor = new MonitorTab(this, _app, () => _web);
+        // The pictures' boxes are counted from the page's top-left: the browser's, or with the GPUI interface the shell's
+        // own client area, which its window fills (GpuiHost.Fit).
+        _monitor = new MonitorTab(this, _app, () => _gpui is { Placed: true } ? this : _web);
         _themeId = Themes.Current.Id;
         Text = Ui.Title;
         BackColor = Themes.Current.Background;
@@ -391,6 +403,11 @@ public sealed class ShellForm : Form
 
     void PostToPage(string json)
     {
+        if (_gpui is { } gpui)
+        {
+            gpui.Post(json);
+            return;
+        }
         if (IsDisposed || _web is not { IsDisposed: false } web)
             return;
         try
@@ -478,6 +495,27 @@ public sealed class ShellForm : Form
     /// drawn, so it can't be captured afterwards. The minimise is then sent again.</summary>
     protected override void WndProc(ref Message m)
     {
+        // The GPUI interface is another program's window inside this one: Windows hands the keyboard to this window, not
+        // to it. So whenever this one gets the keyboard (the app comes to the front, Alt+Tab, a click on its edge) or the
+        // interface is clicked, the keyboard goes on to the interface; else nothing could be typed in it.
+        if (_gpui is { Placed: true } typing && !IsDisposed
+            && (m.Msg == WM_SETFOCUS || (m.Msg == WM_PARENTNOTIFY && (m.WParam.ToInt64() & 0xFFFF) is WM_LBUTTONDOWN or WM_RBUTTONDOWN or WM_MBUTTONDOWN)))
+            BeginInvoke(typing.Focus);
+        // With the GPUI interface the window has no title bar: its top bar moves the window and has the buttons. Windows'
+        // frame stays on the sides and bottom, for resizing, snapping and the shadow; only the top edge is the client's.
+        if (m.Msg == WM_NCCALCSIZE && m.WParam != IntPtr.Zero && _gpui is not null)
+        {
+            int top = Marshal.ReadInt32(m.LParam, 4); // NCCALCSIZE_PARAMS.rgrc[0].top
+            base.WndProc(ref m);
+            // Maximised, Windows puts the frame beyond the screen's edge: the client starts that far down.
+            // (Asked of Windows: WindowState still says Normal while the window is being maximised, so the interface's top
+            // 11 px sat above the screen; seen on the owner's maximised window, 2026-11-11.)
+            if (IsZoomed(Handle))
+                top += GpuiHost.FrameThickness(Handle);
+            Marshal.WriteInt32(m.LParam, 4, top);
+            m.Result = IntPtr.Zero;
+            return;
+        }
         if (m.Msg == WM_HOTKEY)
         {
             // Ctrl+Alt+B: Bloxkeep itself, from the tray too (as its icon's Open does).
@@ -656,6 +694,7 @@ public sealed class ShellForm : Form
     protected override void OnResize(EventArgs e)
     {
         base.OnResize(e);
+        _gpui?.Fit();
         UpdateBackground();
         // Maximised or restored with the title bar's button (no ResizeEnd for that): remembered for the next start.
         if (WindowState != _lastState)
@@ -1065,6 +1104,8 @@ public sealed class ShellForm : Form
         if (!Prefs.SafeRendering)
             DeleteSafeProfile();
         ShowStartCover(); // before the slowest step, making the browser environment
+        if (!_gpuiFailed && GpuiHost.Exe is { } gpuiExe && await StartGpuiAsync(gpuiExe))
+            return;
 
         bool offeredInstall = false;
         // The browser profile may still be held by the copy this one replaced (an update's restart) for a moment.
@@ -1110,6 +1151,41 @@ public sealed class ShellForm : Form
                 Quit();
                 return;
             }
+        }
+    }
+
+    /// <summary>Starts 1.1's GPUI interface; false (and the page instead) when it can't.</summary>
+    async Task<bool> StartGpuiAsync(string exe)
+    {
+        var gpui = new GpuiHost(this, _app.HandleGpuiMessageAsync);
+        gpui.Gone += () =>
+        {
+            if (_gpui != gpui || IsDisposed || _quitting)
+                return;
+            // It crashed or quit: the page takes over, the vault stays as it is.
+            _gpui = null;
+            _gpuiFailed = true;
+            gpui.Dispose();
+            GpuiHost.FrameChanged(Handle); // the title bar comes back for the page
+            _ = InitAsync();
+        };
+        _gpui = gpui;
+        GpuiHost.FrameChanged(Handle); // the title bar goes (WndProc)
+        try
+        {
+            await gpui.StartAsync(exe);
+            _pageLoaded = true;
+            TryMarkStarting(false);
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException or OperationCanceledException or InvalidOperationException or System.ComponentModel.Win32Exception)
+        {
+            Log.Note($"GPUI interface didn't start: {ex.Message}");
+            _gpui = null;
+            _gpuiFailed = true;
+            gpui.Dispose();
+            GpuiHost.FrameChanged(Handle);
+            return false;
         }
     }
 
@@ -1315,6 +1391,7 @@ public sealed class ShellForm : Form
         RemoveCover();
         _coverTimer.Dispose();
         _monitor.Dispose();
+        _gpui?.Dispose();
         _app.Dispose();
         base.OnFormClosed(e);
     }

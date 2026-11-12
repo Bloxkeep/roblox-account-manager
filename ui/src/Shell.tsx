@@ -1,4 +1,4 @@
-// The main page once the vault is open: the sidebar, and the tabs beside it (Accounts with its dock, Presets, Game news,
+// The main page once the vault is open: the sidebar, and the tabs beside it (Home, Accounts with its dock, Presets, Game news,
 // Macros, the game monitor, Statistics, Settings). app.js builds it once per language (buildShell) and shows one tab at a time (setView).
 import { type Ref } from 'react';
 import { AccountGrid, AccountsBar, AccountsHead, Dock } from './Accounts';
@@ -7,8 +7,9 @@ import { Icon, useHost } from './host';
 import { MacrosView } from './MacrosView';
 import { MonitorView } from './monitor/MonitorView';
 import { GamesView } from './GamesView';
+import { HomeView } from './Home';
 import { PresetsView } from './PresetsView';
-import { MonitorHead, Sidebar } from './Sidebar';
+import { MonitorHead, Sidebar, StatusBar } from './Sidebar';
 import { AppearancePage } from './settings/AppearancePage';
 import { BackupPage } from './settings/BackupPage';
 import { DiscordPage } from './settings/DiscordPage';
@@ -28,7 +29,8 @@ export function Shell({ pages, page, preview, stats }: { pages: SettingsPageInfo
   return <div className="shell">
     <Guarded name="the sidebar"><Sidebar /></Guarded>
     <main className="main">
-      <section className="view" id="view-accounts">
+      <section className="view" id="view-home"><div className="scroll"><Guarded name="Home"><HomeView /></Guarded></div></section>
+      <section className="view" id="view-accounts" hidden>
         <header className="top">
           <div className="top-title"><h1>{t('acc.title')}</h1><Guarded name="the accounts' heading"><AccountsHead /></Guarded></div>
           <div className="top-tools">
@@ -54,6 +56,7 @@ export function Shell({ pages, page, preview, stats }: { pages: SettingsPageInfo
         <Guarded name="the game monitor"><MonitorView preview={preview} /></Guarded>
       </section>
       <section className="view" id="view-settings" hidden><Settings pages={pages} page={page} /></section>
+      <Guarded name="the status bar"><StatusBar /></Guarded>
     </main>
   </div>;
 }

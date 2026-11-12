@@ -1,5 +1,5 @@
-// The sidebar: window buttons (macOS themes), the logo with the Discord button, the tabs, then Roblox on this PC,
-// Multi-Roblox's card, a waiting update and Lock. Buttons keep their data-act for app.js's one click handler.
+// The sidebar, a rail of icons: window buttons (macOS themes), the logo, the tabs (each one's name on hover), a waiting
+// update and Lock. Roblox on this PC and Multi-Roblox are on the status bar along the page's foot (StatusBar). Buttons keep their data-act for app.js's one click handler.
 import { useLocal } from './settings/parts';
 import { Icon, useAppState, useHost, useMetrics, usePage } from './host';
 import { VaultFace, type VaultInfo } from './Vaults';
@@ -28,6 +28,7 @@ export function Sidebar() {
     <div className="brand"><img src={logo} alt="" /><div className="brand-text">
       <div className="brand-name">Bloxkeep</div><div className="brand-sub">{t('brand.sub')}</div></div></div>
     <div className="side-nav">
+      {nav('home', 'home')}
       {nav('accounts', 'users', <em id="nav-count">{accounts.length}</em>)}
       {nav('presets', 'layers')}
       {/* Game news: its followed games' unread news, or New while a game is there that wasn't seen in it yet. */}
@@ -44,11 +45,6 @@ export function Sidebar() {
     </div>
     <div className="side-bottom">
       <div id="side-warn">{app.robloxInstalled ? null : <div className="warn-card" title={t('side.noRoblox')}><Icon name="alert" /><span>{t('side.noRoblox')}</span></div>}</div>
-      {/* One panel (themes draw it as their card): Roblox on this PC, with Multi-Roblox's switch at its foot. */}
-      <div className="side-card rig" id="sys-rig">
-        <SysCard />
-        <div id="multi-card"><MultiCard /></div>
-      </div>
       <div className="side-foot">
         <div id="update-slot">{u?.status === 'ready' && !u.quiet
           ? <Button kind="primary" wide className="update-btn" data-act="apply-update" title={t(u.auto ? 'upd.restartTipAuto' : 'upd.restartTip', { v: u.version })}>
@@ -63,6 +59,15 @@ export function Sidebar() {
       </div>
     </div>
   </aside>;
+}
+
+/** The line along the page's foot: Roblox on this PC (its windows, their memory, the PC's RAM, CPU and GPU, Roblox's
+ * version) and Multi-Roblox's switch. It was the sidebar's card before the sidebar became a rail of icons. */
+export function StatusBar() {
+  return <footer className="status" id="sys-rig">
+    <SysCard />
+    <div id="multi-card"><MultiCard /></div>
+  </footer>;
 }
 
 /** Where a window's account is, as its face shows it: in a game, in Roblox's menu, dropped from its server. */

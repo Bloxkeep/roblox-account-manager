@@ -28,27 +28,73 @@ public sealed partial class AppController
     {
         if (Open is not { } vault)
             return Array.Empty<object>();
-        var now = DateTime.UtcNow;
+        return PlayedGamesOf(vault.Data.PlaySessions, KnownGameOf, DateTime.UtcNow)
+            .Select(g => new { name = g.Name, place = g.Place, hours = g.Hours, last = UnixMs(g.Last) })
+            .ToList();
+    }
+
+    /// <summary>A game the app has looked up, as the stays' sums need it: its universe, name and start place.</summary>
+    internal sealed record KnownGame(long Universe, string Name, long Root);
+
+    KnownGame? KnownGameOf(long place) => _games.GetValueOrDefault(place) is { } g ? new KnownGame(g.UniverseId, g.Name, g.PlaceId) : null;
+
+    static long UnixMs(DateTime utc) => new DateTimeOffset(DateTime.SpecifyKind(utc, DateTimeKind.Utc)).ToUnixTimeMilliseconds();
+
+    /// <summary>
+    /// The sum behind <see cref="PlayedGames"/>, apart from where the stays and the looked-up games come from. The GPUI
+    /// interface makes the same sum itself from the raw stays (ui-gpui/src/history.rs, since 2026-11-11); one table of
+    /// cases, Tests/played-games-cases.json, holds both to the same answers (suite "played-games" here, a test there).
+    /// </summary>
+    internal static List<(string Name, long Place, double Hours, DateTime Last)> PlayedGamesOf(IReadOnlyList<PlaySession> sessions, Func<long, KnownGame?> known, DateTime now)
+    {
         var since = now - PlayHistory;
-        var universeOf = vault.Data.PlaySessions.Where(s => s.UniverseId > 0).GroupBy(s => s.PlaceId).ToDictionary(g => g.Key, g => g.Last().UniverseId);
+        var universeOf = sessions.Where(s => s.UniverseId > 0).GroupBy(s => s.PlaceId).ToDictionary(g => g.Key, g => g.Last().UniverseId);
         long KeyOf(PlaySession s) => s.UniverseId > 0 ? s.UniverseId
-            : universeOf.GetValueOrDefault(s.PlaceId) is > 0 and var u ? u : _games.GetValueOrDefault(s.PlaceId)?.UniverseId is > 0 and var c ? c : -s.PlaceId;
-        return vault.Data.PlaySessions
+            : universeOf.GetValueOrDefault(s.PlaceId) is > 0 and var u ? u : known(s.PlaceId)?.Universe is > 0 and var c ? c : -s.PlaceId;
+        return sessions
             .Where(s => s.PlaceId > 0 && (s.EndedAt ?? s.LastSeenAt ?? now) > since)
             .GroupBy(KeyOf)
             .Select(g =>
             {
                 var last = g.MaxBy(s => s.StartedAt)!;
-                string name = g.Where(s => s.GameName.Length > 0).MaxBy(s => s.StartedAt)?.GameName ?? _games.GetValueOrDefault(last.PlaceId)?.Name ?? "";
-                long place = g.Select(s => _games.GetValueOrDefault(s.PlaceId)?.PlaceId ?? 0).FirstOrDefault(p => p > 0) is > 0 and var root ? root : last.PlaceId;
+                string name = g.Where(s => s.GameName.Length > 0).MaxBy(s => s.StartedAt)?.GameName ?? known(last.PlaceId)?.Name ?? "";
+                long place = g.Select(s => known(s.PlaceId)?.Root ?? 0).FirstOrDefault(p => p > 0) is > 0 and var root ? root : last.PlaceId;
                 double hours = g.Sum(s => Math.Max(0, ((s.EndedAt ?? s.LastSeenAt ?? now) - (s.StartedAt > since ? s.StartedAt : since)).TotalHours));
                 return (name, place, hours, last: last.StartedAt);
             })
             .Where(g => g.name.Length > 0)
             .OrderByDescending(g => g.hours)
             .Take(30)
-            .Select(g => new { g.name, g.place, hours = Math.Round(g.hours, 1), last = new DateTimeOffset(DateTime.SpecifyKind(g.last, DateTimeKind.Utc)).ToUnixTimeMilliseconds() })
+            .Select(g => (g.name, g.place, Math.Round(g.hours, 1), g.last))
             .ToList();
+    }
+
+    /// <summary>
+    /// The stays as they are kept, for the GPUI interface to make its sums from (ui-gpui/src/history.rs): each stay's
+    /// account, place, universe, game name, start, end and last-seen (ms), why it ended; the games looked up for their
+    /// places; and this PC's clock. Account names are left out while Hide account names is on. Nothing while locked.
+    /// </summary>
+    object PlaySessionsRaw()
+    {
+        long now = UnixMs(DateTime.UtcNow);
+        if (Open is not { } vault)
+            return new { now, sessions = Array.Empty<object>(), games = new Dictionary<string, object>(), bans = Array.Empty<object>() };
+        var sessions = vault.Data.PlaySessions;
+        return new
+        {
+            now,
+            sessions = sessions.Select(s => new
+            {
+                account = s.AccountId, label = Prefs.HideNames ? null : s.AccountLabel, place = s.PlaceId, universe = s.UniverseId, game = s.GameName,
+                start = UnixMs(s.StartedAt), end = s.EndedAt is { } e ? UnixMs(e) : (long?)null, seen = s.LastSeenAt is { } l ? UnixMs(l) : (long?)null,
+                reason = s.EndReason, code = s.ReasonCode, preset = s.PresetId,
+            }).ToList(),
+            games = sessions.Select(s => s.PlaceId).Concat(vault.Data.Accounts.SelectMany(a => a.GameBans.Select(b => b.PlaceId))).Distinct()
+                .Select(p => (Place: p, Game: KnownGameOf(p))).Where(x => x.Game is not null)
+                .ToDictionary(x => x.Place.ToString(), x => (object)new { universe = x.Game!.Universe, name = x.Game.Name, root = x.Game.Root }),
+            // The games that banned an account (a game's page says so in place of when the account last played).
+            bans = vault.Data.Accounts.SelectMany(a => a.GameBans.Select(b => new { account = a.Id, place = b.PlaceId })).ToList(),
+        };
     }
 
     /// <summary>How the Games tab draws each game (its picture, icon and colour), by Roblox place.</summary>

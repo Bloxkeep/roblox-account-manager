@@ -1,0 +1,687 @@
+// Pictures by address, as the page shows them: Roblox's (https, avatars and game icons), the app's own files (a path),
+// and data: addresses (the dev mock's drawn faces). Each is fetched once by worker threads and kept for the session;
+// a view asks with `pic(url, cx)` and gets None until it is there, then every window is drawn again.
+//
+// Made quick (the owner, 2026-11-12: slow everywhere, avatars, items): a picture from the web is kept on this PC too
+// (cache/pictures), so the next run draws it at once; the last asked is fetched first (what the page shows now, not
+// what scrolled past); and the workers keep their connections to each server open between pictures.
+use std::{
+    collections::HashMap,
+    io::Read,
+    path::PathBuf,
+    sync::{Arc, Condvar, LazyLock, Mutex},
+    time::{Duration, Instant, SystemTime},
+};
+
+use base64::Engine;
+use futures::channel::oneshot;
+use gpui_kit::{App, Global, Image, ImageCacheError, ImageFormat, ImageSource, RenderImage, Window};
+
+enum Slot {
+    Loading,
+    /// The picture, its own colour when it has one (`tone`), when it was last asked for (a draw asks for every
+    /// picture it shows, each time), and its size in pixels when it can be made smaller (not an SVG or a GIF).
+    Ready(Arc<Image>, Option<u32>, Instant, Option<(u32, u32)>),
+    Failed,
+}
+
+/// A smaller copy of a picture, made for the pixels it takes on screen (see `pic_at`).
+enum CopyState {
+    Loading,
+    Ready(Arc<RenderImage>),
+    Failed,
+}
+
+struct Smaller {
+    /// Its longer side in pixels (the key: a picture's copies all keep its shape).
+    long: u32,
+    state: CopyState,
+    used: Instant,
+}
+
+/// A copy not drawn for this long while another size of the same picture was drawn after it is let go (a window
+/// dragged wider makes a new size every few pixels; the old ones are off screen).
+const SUPERSEDED: Duration = Duration::from_secs(10);
+
+/// Past this many pictures kept, the ones no draw has asked for in IDLE are let go (their decoded copy in GPUI's cache
+/// and their place on each window's atlas too), oldest first, down to KEEP. A picture asked for lately is never let go,
+/// however many there are (a page of 650 friends keeps all 650): a picture on screen is asked for by every draw, and the
+/// arrival that runs this came from a draw moments before. One let go and wanted again comes back from this PC's copy
+/// (cache/pictures) in a few milliseconds. Without this every picture ever shown (a shop browsed for an hour) stayed
+/// decoded in memory for the whole run.
+const MAX_READY: usize = 600;
+const KEEP: usize = 400;
+const IDLE: Duration = Duration::from_secs(600);
+/// Addresses that failed, kept so they aren't asked again and again; past this many the list starts over.
+const MAX_FAILED: usize = 2000;
+
+type Fetched = (Vec<u8>, Option<u32>, Option<(u32, u32)>);
+type Job = (String, oneshot::Sender<Option<Fetched>>);
+
+/// The pictures waiting: taken newest first, so what was asked last (the page as it is now) comes before what a
+/// scroll left behind.
+struct Queue {
+    jobs: Mutex<Vec<Job>>,
+    ready: Condvar,
+}
+
+pub struct Images {
+    slots: HashMap<String, Slot>,
+    /// Each picture's smaller copies, by its address.
+    copies: HashMap<String, Vec<Smaller>>,
+    queue: Arc<Queue>,
+}
+
+impl Global for Images {}
+
+/// How many pictures load at once.
+const WORKERS: usize = 12;
+
+pub fn init(cx: &mut App) {
+    let queue = Arc::new(Queue { jobs: Mutex::new(Vec::new()), ready: Condvar::new() });
+    // Its connections stay open between pictures, one per worker and server: ureq keeps only one per server unless
+    // told, so every other worker paid a new TLS handshake for each picture.
+    let agent = ureq::AgentBuilder::new()
+        .timeout(Duration::from_secs(20))
+        .user_agent("Bloxkeep")
+        .max_idle_connections(64)
+        .max_idle_connections_per_host(WORKERS)
+        .build();
+    for i in 0..WORKERS {
+        let queue = queue.clone();
+        let agent = agent.clone();
+        let _ = std::thread::Builder::new().name(format!("pictures-{i}")).spawn(move || {
+            loop {
+                let job = {
+                    let Ok(mut jobs) = queue.jobs.lock() else { break };
+                    loop {
+                        if let Some(j) = jobs.pop() {
+                            break j;
+                        }
+                        match queue.ready.wait(jobs) {
+                            Ok(j) => jobs = j,
+                            Err(_) => return,
+                        }
+                    }
+                };
+                let (url, done) = job;
+                let _ = done.send(fetch(&agent, &url).map(|b| {
+                    let tone = tone_of(&b);
+                    let dims = dims_of(&b);
+                    (b, tone, dims)
+                }));
+            }
+        });
+    }
+    let _ = std::thread::Builder::new().name("pictures-prune".into()).spawn(prune_often);
+    cx.set_global(Images { slots: HashMap::new(), copies: HashMap::new(), queue });
+}
+
+/// Where pictures from the web are kept on this PC: Bloxkeep's cache folder (BLOXKEEP_KEPT or BLOXKEEP_DATA: a hidden
+/// shot's or a check's own).
+static DISK: LazyLock<PathBuf> = LazyLock::new(|| {
+    let base = std::env::var("BLOXKEEP_KEPT")
+        .or_else(|_| std::env::var("BLOXKEEP_DATA"))
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| PathBuf::from(std::env::var("LOCALAPPDATA").unwrap_or_else(|_| ".".into())).join("Bloxkeep"));
+    base.join("cache").join("pictures")
+});
+
+/// The most kept, and how long a picture whose address isn't its content is trusted (Roblox's are: a new picture gets
+/// a new address).
+const DISK_MAX: u64 = 400 << 20;
+const DISK_LIFE: Duration = Duration::from_secs(7 * 24 * 3600);
+
+fn disk_name(url: &str) -> PathBuf {
+    // FNV-1a over the address, twice with different seeds: a name that stays the same from build to build.
+    let mut a: u64 = 0xcbf29ce484222325;
+    let mut b: u64 = 0x84222325cbf29ce4;
+    for &x in url.as_bytes() {
+        a = (a ^ x as u64).wrapping_mul(0x100000001b3);
+        b = (b ^ x as u64).wrapping_mul(0x100000001b3).rotate_left(5);
+    }
+    DISK.join(format!("{a:016x}{b:016x}"))
+}
+
+/// Roblox's picture servers name each picture by its content.
+fn lasting(url: &str) -> bool {
+    url.starts_with("https://") && url.split('/').nth(2).is_some_and(|h| h.ends_with(".rbxcdn.com"))
+}
+
+fn from_disk(url: &str) -> Option<Vec<u8>> {
+    let path = disk_name(url);
+    if !lasting(url) {
+        let age = std::fs::metadata(&path).ok()?.modified().ok()?.elapsed().unwrap_or_default();
+        if age > DISK_LIFE {
+            return None;
+        }
+    }
+    let b = std::fs::read(&path).ok()?;
+    format_of(&b).is_some().then_some(b)
+}
+
+fn to_disk(url: &str, b: &[u8]) {
+    let path = disk_name(url);
+    let _ = std::fs::create_dir_all(&*DISK);
+    let tmp = path.with_extension("tmp");
+    if std::fs::write(&tmp, b).is_ok() && std::fs::rename(&tmp, &path).is_err() {
+        let _ = std::fs::remove_file(&tmp);
+    }
+}
+
+/// Once a run, a little after it starts: the pictures kept longest go while the folder is over its size.
+fn prune_often() {
+    std::thread::sleep(Duration::from_secs(30));
+    loop {
+        prune();
+        // A run kept open in the tray for days stays within DISK_MAX too.
+        std::thread::sleep(Duration::from_secs(3600));
+    }
+}
+
+fn prune() {
+    let Ok(dir) = std::fs::read_dir(&*DISK) else { return };
+    let mut files: Vec<(SystemTime, u64, PathBuf)> = dir
+        .flatten()
+        .filter_map(|e| {
+            let m = e.metadata().ok()?;
+            m.is_file().then(|| (m.modified().unwrap_or(SystemTime::UNIX_EPOCH), m.len(), e.path()))
+        })
+        .collect();
+    let mut total: u64 = files.iter().map(|f| f.1).sum();
+    if total <= DISK_MAX {
+        return;
+    }
+    files.sort_by_key(|f| f.0);
+    for (_, len, path) in files {
+        if total <= DISK_MAX * 3 / 4 {
+            break;
+        }
+        if std::fs::remove_file(&path).is_ok() {
+            total -= len;
+        }
+    }
+}
+
+fn fetch(agent: &ureq::Agent, url: &str) -> Option<Vec<u8>> {
+    let started = Instant::now();
+    let web = url.starts_with("http://") || url.starts_with("https://");
+    if web && let Some(b) = from_disk(url) {
+        log(url, started, "disk");
+        return Some(b);
+    }
+    let got = fetch_now(agent, url);
+    if web && let Some(b) = got.as_ref().filter(|b| format_of(b).is_some()) {
+        to_disk(url, b);
+        log(url, started, "web");
+    }
+    got
+}
+
+/// BLOXKEEP_PIC_LOG=1: each picture's time printed (where it came from, how long it took).
+fn log(url: &str, started: Instant, from: &str) {
+    static ON: LazyLock<bool> = LazyLock::new(|| std::env::var("BLOXKEEP_PIC_LOG").is_ok());
+    if *ON {
+        eprintln!("[pic] {from} {:>5} ms {}", started.elapsed().as_millis(), url.chars().take(90).collect::<String>());
+    }
+}
+
+fn fetch_now(agent: &ureq::Agent, url: &str) -> Option<Vec<u8>> {
+    if let Some(rest) = url.strip_prefix("data:") {
+        let (meta, body) = rest.split_once(',')?;
+        return if meta.ends_with(";base64") {
+            base64::engine::general_purpose::STANDARD.decode(body).ok()
+        } else {
+            Some(percent_encoding::percent_decode_str(body).collect())
+        };
+    }
+    if url.starts_with("http://") || url.starts_with("https://") {
+        // A page of many pictures (an inventory shelf) has some of them refused or cut off now and then: each gets
+        // three goes, a little apart, before it is given up for the session.
+        for round in 0..3u64 {
+            if round > 0 {
+                std::thread::sleep(std::time::Duration::from_millis(500 * round));
+            }
+            let Ok(r) = agent.get(url).call() else { continue };
+            let mut bytes = Vec::new();
+            if r.into_reader().take(16 << 20).read_to_end(&mut bytes).is_ok() && !bytes.is_empty() {
+                return Some(bytes);
+            }
+        }
+        return None;
+    }
+    std::fs::read(url.strip_prefix("file:///").unwrap_or(url)).ok()
+}
+
+fn format_of(b: &[u8]) -> Option<ImageFormat> {
+    Some(match b {
+        [0x89, b'P', b'N', b'G', ..] => ImageFormat::Png,
+        [0xff, 0xd8, ..] => ImageFormat::Jpeg,
+        [b'G', b'I', b'F', ..] => ImageFormat::Gif,
+        [b'R', b'I', b'F', b'F', _, _, _, _, b'W', b'E', b'B', b'P', ..] => ImageFormat::Webp,
+        [b'B', b'M', ..] => ImageFormat::Bmp,
+        _ if b.iter().take(256).collect::<Vec<_>>().windows(4).any(|w| w == [&b'<', &b's', &b'v', &b'g']) => ImageFormat::Svg,
+        _ => return None,
+    })
+}
+
+/// A picture's own colour: the hue most of its vivid pixels share, at a lightness and strength that read on the dark
+/// surfaces (a game's icon gives its tiles their base). PNGs only (what Roblox is asked for); None for a grey picture.
+fn tone_of(b: &[u8]) -> Option<u32> {
+    if !matches!(b, [0x89, b'P', b'N', b'G', ..]) {
+        return None;
+    }
+    let img = image::load_from_memory_with_format(b, image::ImageFormat::Png).ok()?.to_rgba8();
+    let (w, h) = img.dimensions();
+    let step = (w.max(h) / 48).max(1) as usize;
+    // Twelve slices of the colour wheel: each pixel votes for its own with how vivid and bright it is.
+    let mut votes = [(0f64, 0f64, 0f64, 0f64); 12];
+    for y in (0..h).step_by(step) {
+        for x in (0..w).step_by(step) {
+            let p = img.get_pixel(x, y).0;
+            if p[3] < 128 {
+                continue;
+            }
+            let (r, g, bl) = (p[0] as f64 / 255., p[1] as f64 / 255., p[2] as f64 / 255.);
+            let (mx, mn) = (r.max(g).max(bl), r.min(g).min(bl));
+            let spread = mx - mn;
+            if spread < 0.12 {
+                continue;
+            }
+            let hue = if mx == r { ((g - bl) / spread).rem_euclid(6.) } else if mx == g { (bl - r) / spread + 2. } else { (r - g) / spread + 4. } * 60.;
+            let k = spread * spread * mx;
+            let v = &mut votes[((hue / 30.) as usize).min(11)];
+            *v = (v.0 + k, v.1 + hue.to_radians().cos() * k, v.2 + hue.to_radians().sin() * k, v.3 + spread * k);
+        }
+    }
+    let best = votes.iter().copied().fold((0f64, 0f64, 0f64, 0f64), |a, v| if v.0 > a.0 { v } else { a });
+    if best.0 <= 0. {
+        return None;
+    }
+    let hue = best.2.atan2(best.1).to_degrees().rem_euclid(360.);
+    let strength = (best.3 / best.0).clamp(0.45, 0.8);
+    // HSL to RGB at a fixed lightness.
+    let light = 0.56;
+    let chroma = (1. - (2. * light - 1f64).abs()) * strength;
+    let x = chroma * (1. - ((hue / 60.).rem_euclid(2.) - 1.).abs());
+    let (r, g, bl) = match (hue / 60.) as u32 {
+        0 => (chroma, x, 0.),
+        1 => (x, chroma, 0.),
+        2 => (0., chroma, x),
+        3 => (0., x, chroma),
+        4 => (x, 0., chroma),
+        _ => (chroma, 0., x),
+    };
+    let m = light - chroma / 2.;
+    let byte = |v: f64| ((v + m).clamp(0., 1.) * 255.).round() as u32;
+    Some(byte(r) << 16 | byte(g) << 8 | byte(bl))
+}
+
+/// A picture's size in pixels, read from its header, when a smaller copy can be made of it: not an SVG (GPUI draws
+/// those at their size) nor a GIF (a copy would stop it moving).
+fn dims_of(b: &[u8]) -> Option<(u32, u32)> {
+    if matches!(format_of(b), None | Some(ImageFormat::Svg | ImageFormat::Gif)) {
+        return None;
+    }
+    image::ImageReader::new(std::io::Cursor::new(b)).with_guessed_format().ok()?.into_dimensions().ok().filter(|(w, h)| *w > 0 && *h > 0)
+}
+
+/// The picture made `w`×`h` pixels with a filter that weighs every pixel it covers (GPUI's own drawing samples four
+/// pixels of the full picture, so a 150 px face shown at 45 px came out jagged): the colours weighed by their alpha, so
+/// the see-through edge round an avatar doesn't darken. Kept as GPUI keeps pictures: blue, green, red, alpha, not
+/// premultiplied.
+fn shrink(bytes: &[u8], w: u32, h: u32, sigma: f32) -> Option<RenderImage> {
+    let mut decoder = image::ImageReader::new(std::io::Cursor::new(bytes)).with_guessed_format().ok()?.into_decoder().ok()?;
+    let orientation = image::ImageDecoder::orientation(&mut decoder).ok()?;
+    let mut picture = image::DynamicImage::from_decoder(decoder).ok()?;
+    picture.apply_orientation(orientation);
+    let mut rgba = picture.into_rgba8();
+    let (sw, sh) = rgba.dimensions();
+    // A picture turned on its side by its EXIF note: the copy turns with it.
+    let (w, h) = if sw != sh && (sw > sh) != (w > h) && w != h { (h, w) } else { (w, h) };
+    for p in rgba.pixels_mut() {
+        let a = p[3] as u32;
+        for c in &mut p.0[..3] {
+            *c = ((*c as u32 * a + 127) / 255) as u8;
+        }
+    }
+    // A picture many times bigger is first boxed down to twice the size (each pixel counted once, quick), so the
+    // finer filter has little to do.
+    if sw > w * 3 && sh > h * 3 {
+        rgba = image::imageops::thumbnail(&rgba, w * 2, h * 2);
+    }
+    let mut out = image::imageops::resize(&rgba, w, h, image::imageops::FilterType::CatmullRom);
+    // A soft copy (`soft`): blurred while its colours are still weighed by their alpha.
+    if sigma > 0. {
+        out = image::imageops::fast_blur(&out, sigma);
+    }
+    for p in out.pixels_mut() {
+        let a = p[3];
+        for c in &mut p.0[..3] {
+            let v = (*c).min(a);
+            *c = if a == 0 { 0 } else { ((v as u32 * 255 + a as u32 / 2) / a as u32).min(255) as u8 };
+        }
+        p.0.swap(0, 2);
+    }
+    Some(RenderImage::new(vec![image::Frame::new(out)]))
+}
+
+/// The longer side, in pixels, of the copy a box of `bw`×`bh` pixels wants of a `w`×`h` picture filling it (as
+/// ObjectFit::Cover), or None when the picture is near that size already. Rounded up to a step, so a box that grows
+/// a few pixels at a time (a window dragged wider) doesn't ask for a new copy each frame.
+fn copy_long(w: u32, h: u32, bw: f32, bh: f32) -> Option<u32> {
+    let f = (bw / w as f32).max(bh / h as f32);
+    if !(f > 0. && f < 0.8) {
+        return None;
+    }
+    let long = (w.max(h) as f32 * f).ceil().max(1.) as u32;
+    let step = if long <= 128 { 8 } else if long <= 256 { 16 } else { 32 };
+    Some(long.div_ceil(step) * step).filter(|l| *l < w.max(h))
+}
+
+fn copy_dims(w: u32, h: u32, long: u32) -> (u32, u32) {
+    let k = long as f64 / w.max(h) as f64;
+    (((w as f64 * k).round() as u32).max(1), ((h as f64 * k).round() as u32).max(1))
+}
+
+enum Use {
+    Copy(Arc<RenderImage>),
+    Original,
+    Wait,
+}
+
+/// The copy of the picture at `url` whose longer side is `long` pixels: made off the UI thread the first time, and
+/// meanwhile the nearest size already made (else nothing, for a moment, rather than the jagged original).
+fn copy(url: &str, long: u32, original: &Arc<Image>, (w, h): (u32, u32), sigma: f32, cx: &mut App) -> Use {
+    let now = Instant::now();
+    let images = cx.global_mut::<Images>();
+    if !images.copies.contains_key(url) {
+        images.copies.insert(url.to_string(), Vec::new());
+    }
+    let Some(copies) = images.copies.get_mut(url) else { return Use::Original };
+    match copies.iter_mut().find(|c| c.long == long) {
+        Some(c) => {
+            c.used = now;
+            match &c.state {
+                CopyState::Ready(r) => return Use::Copy(r.clone()),
+                CopyState::Failed => return Use::Original,
+                CopyState::Loading => {}
+            }
+        }
+        None => {
+            copies.push(Smaller { long, state: CopyState::Loading, used: now });
+            let bytes = original.clone();
+            let (cw, ch) = copy_dims(w, h, long);
+            let made = cx.background_executor().spawn(async move { shrink(&bytes.bytes, cw, ch, sigma) });
+            let key = url.to_string();
+            cx.spawn(async move |cx| {
+                let made = made.await;
+                let _ = cx.update(|cx| {
+                    let images = cx.global_mut::<Images>();
+                    // Let go meanwhile (its picture was): dropped with it.
+                    let Some(c) = images.copies.get_mut(&key).and_then(|l| l.iter_mut().find(|c| c.long == long)) else { return };
+                    c.state = match made {
+                        Some(r) => CopyState::Ready(Arc::new(r)),
+                        None => CopyState::Failed,
+                    };
+                    trim(cx);
+                    cx.refresh_windows();
+                });
+            })
+            .detach();
+        }
+    }
+    let copies = cx.global_mut::<Images>().copies.get_mut(url);
+    let nearest = copies.and_then(|l| {
+        l.iter_mut().filter(|c| matches!(c.state, CopyState::Ready(_))).min_by_key(|c| c.long.abs_diff(long))
+    });
+    match nearest {
+        Some(c) => {
+            c.used = now;
+            match &c.state {
+                CopyState::Ready(r) => Use::Copy(r.clone()),
+                _ => Use::Wait,
+            }
+        }
+        None => Use::Wait,
+    }
+}
+
+/// The own colour of the picture at an address, once it has loaded (asking starts the load).
+pub fn tone(url: &str, cx: &mut App) -> Option<u32> {
+    pic(url, cx)?;
+    match cx.global::<Images>().slots.get(url) {
+        Some(Slot::Ready(_, tone, _, _)) => *tone,
+        _ => None,
+    }
+}
+
+/// Lets go of the pictures not asked for longest once more than MAX_READY are kept, and starts the failed list over
+/// past MAX_FAILED; the smaller copies the same way, and also those whose picture went, and those not drawn for
+/// SUPERSEDED while another size of theirs was drawn since. Run outside any window's drawing (a picture's arrival), so
+/// every window's atlas can be reached.
+fn trim(cx: &mut App) {
+    let images = cx.global_mut::<Images>();
+    let failed = images.slots.values().filter(|s| matches!(s, Slot::Failed)).count();
+    if failed > MAX_FAILED {
+        images.slots.retain(|_, s| !matches!(s, Slot::Failed));
+    }
+    let now = Instant::now();
+    let count = images.slots.values().filter(|s| matches!(s, Slot::Ready(..))).count();
+    let mut gone: Vec<Arc<Image>> = Vec::new();
+    if count > MAX_READY {
+        let mut idle: Vec<(Instant, String)> = images
+            .slots
+            .iter()
+            .filter_map(|(k, s)| match s {
+                Slot::Ready(_, _, used, _) if now.duration_since(*used) >= IDLE => Some((*used, k.clone())),
+                _ => None,
+            })
+            .collect();
+        idle.sort_unstable_by_key(|(used, _)| *used);
+        gone = idle
+            .iter()
+            .take(count.saturating_sub(KEEP))
+            .filter_map(|(_, k)| match images.slots.remove(k) {
+                Some(Slot::Ready(i, _, _, _)) => Some(i),
+                _ => None,
+            })
+            .collect();
+        // Two addresses with the same bytes share one decoded picture in GPUI (its id is the bytes' hash): one still
+        // kept keeps it drawn.
+        let kept: std::collections::HashSet<u64> = images.slots.values().filter_map(|s| if let Slot::Ready(i, _, _, _) = s { Some(i.id) } else { None }).collect();
+        gone.retain(|i| !kept.contains(&i.id));
+    }
+    // The copies. One whose picture isn't kept can't be drawn (pic_at needs the picture first).
+    let mut gone_copies: Vec<Arc<RenderImage>> = Vec::new();
+    let slots = &images.slots;
+    images.copies.retain(|url, list| {
+        // (A soft copy is kept under its picture's address and SOFT.)
+        let kept = matches!(slots.get(url.strip_suffix(SOFT).unwrap_or(url)), Some(Slot::Ready(..)));
+        let latest = list.iter().map(|c| c.used).max();
+        list.retain_mut(|c| {
+            if matches!(c.state, CopyState::Loading) {
+                return true;
+            }
+            let idle = now.duration_since(c.used);
+            let superseded = idle >= SUPERSEDED && latest.is_some_and(|l| l > c.used);
+            if kept && !superseded {
+                return true;
+            }
+            if let CopyState::Ready(r) = &c.state {
+                gone_copies.push(r.clone());
+            }
+            false
+        });
+        !list.is_empty()
+    });
+    let ready = images.copies.values().flatten().filter(|c| matches!(c.state, CopyState::Ready(_))).count();
+    if ready > MAX_READY {
+        let mut idle: Vec<(Instant, String, u32)> = images
+            .copies
+            .iter()
+            .flat_map(|(k, l)| l.iter().map(move |c| (k, c)))
+            .filter(|(_, c)| matches!(c.state, CopyState::Ready(_)) && now.duration_since(c.used) >= IDLE)
+            .map(|(k, c)| (c.used, k.clone(), c.long))
+            .collect();
+        idle.sort_unstable_by_key(|(used, _, _)| *used);
+        for (_, k, long) in idle.into_iter().take(ready.saturating_sub(KEEP)) {
+            if let Some(list) = images.copies.get_mut(&k)
+                && let Some(at) = list.iter().position(|c| c.long == long)
+                && let CopyState::Ready(r) = list.remove(at).state
+            {
+                gone_copies.push(r);
+            }
+        }
+        images.copies.retain(|_, l| !l.is_empty());
+    }
+    if gone.is_empty() && gone_copies.is_empty() {
+        return;
+    }
+    for window in cx.windows() {
+        let _ = window.update(cx, |_, window, cx| {
+            for i in &gone {
+                if let Some(drawn) = i.clone().get_render_image(window, cx) {
+                    let _ = window.drop_image(drawn);
+                }
+            }
+            for r in &gone_copies {
+                let _ = window.drop_image(r.clone());
+            }
+        });
+    }
+    for i in gone {
+        i.remove_asset(cx);
+    }
+}
+
+/// The picture at an address for a box of `w`×`h` logical px that it fills (ObjectFit::Cover; a square box for a
+/// face or an icon), once it has loaded; asking starts the load. A picture much bigger than the box's pixels on this
+/// window's screen is drawn from a copy made at those pixels (see `shrink`), kept per size; one near its size as it is.
+pub fn pic_at(url: &str, w: f32, h: f32, cx: &mut App) -> Option<ImageSource> {
+    let original = pic(url, cx)?;
+    let dims = match cx.global::<Images>().slots.get(url) {
+        Some(Slot::Ready(_, _, _, dims)) => *dims,
+        _ => None,
+    };
+    let Some(dims) = dims else { return Some(ImageSource::Image(original)) };
+    let key = url.to_string();
+    let load = move |window: &mut Window, cx: &mut App| -> Option<Result<Arc<RenderImage>, ImageCacheError>> {
+        let scale = window.scale_factor();
+        let made = match copy_long(dims.0, dims.1, w * scale, h * scale) {
+            Some(long) => copy(&key, long, &original, dims, 0., cx),
+            None => Use::Original,
+        };
+        match made {
+            Use::Copy(r) => Some(Ok(r)),
+            Use::Original => original.clone().use_render_image(window, cx).map(Ok),
+            Use::Wait => None,
+        }
+    };
+    Some(ImageSource::Custom(Arc::new(load)))
+}
+
+/// A loaded picture's size in pixels (None while it loads, or for an SVG or a GIF): what a box drawn at the
+/// picture's own shape needs.
+pub fn dims(url: &str, cx: &App) -> Option<(u32, u32)> {
+    match cx.global::<Images>().slots.get(url) {
+        Some(Slot::Ready(_, _, _, dims)) => *dims,
+        _ => None,
+    }
+}
+
+/// What a soft copy's address ends with, after its picture's.
+const SOFT: &str = "#bloxkeep-soft";
+
+/// The picture at an address blurred, for a picture stretched far past its own pixels (a game's 768 px cover across a
+/// wide window's stage came out smeared, the owner's "rẻ tiền", 2026-11-12): made once off the UI thread at a fixed
+/// small size, its blur meant, drawn stretched under something sharp. None while it loads or is made.
+pub fn soft(url: &str, cx: &mut App) -> Option<ImageSource> {
+    let original = pic(url, cx)?;
+    let dims = match cx.global::<Images>().slots.get(url) {
+        Some(Slot::Ready(_, _, _, dims)) => (*dims)?,
+        _ => return None,
+    };
+    let key = format!("{url}{SOFT}");
+    let long = 360.min(dims.0.max(dims.1));
+    let load = move |_: &mut Window, cx: &mut App| -> Option<Result<Arc<RenderImage>, ImageCacheError>> {
+        match copy(&key, long, &original, dims, 7., cx) {
+            Use::Copy(r) => Some(Ok(r)),
+            Use::Original | Use::Wait => None,
+        }
+    };
+    Some(ImageSource::Custom(Arc::new(load)))
+}
+
+/// `pic_at`, with the picture itself (what kit::fade_in keys its fade on).
+pub fn pic_pair(url: &str, w: f32, h: f32, cx: &mut App) -> Option<(ImageSource, Arc<Image>)> {
+    let original = pic(url, cx)?;
+    Some((pic_at(url, w, h, cx)?, original))
+}
+
+/// Whether the picture at an address could not be had (offline, gone, not a picture): a place kept for it can
+/// shrink to a quiet line instead of standing empty at full size.
+pub fn failed(url: &str, cx: &App) -> bool {
+    matches!(cx.global::<Images>().slots.get(url), Some(Slot::Failed))
+}
+
+/// `pic_at` for a square box (a face, an icon).
+pub fn pic_sq(url: &str, size: f32, cx: &mut App) -> Option<ImageSource> {
+    pic_at(url, size, size, cx)
+}
+
+/// The picture at an address, once it has loaded; asking starts the load.
+pub fn pic(url: &str, cx: &mut App) -> Option<Arc<Image>> {
+    if url.is_empty() {
+        return None;
+    }
+    let images = cx.global_mut::<Images>();
+    match images.slots.get_mut(url) {
+        Some(Slot::Ready(i, _, used, _)) => {
+            *used = Instant::now();
+            return Some(i.clone());
+        }
+        Some(Slot::Loading | Slot::Failed) => return None,
+        None => {}
+    }
+    images.slots.insert(url.to_string(), Slot::Loading);
+    let (tx, rx) = oneshot::channel();
+    if let Ok(mut jobs) = images.queue.jobs.lock() {
+        jobs.push((url.to_string(), tx));
+    }
+    images.queue.ready.notify_one();
+    let key = url.to_string();
+    cx.spawn(async move |cx| {
+        let bytes = rx.await.ok().flatten();
+        let _ = cx.update(|cx| {
+            let images = cx.global_mut::<Images>();
+            let slot = match bytes.and_then(|(b, tone, dims)| format_of(&b).map(|f| (Image::from_bytes(f, b), tone, dims))) {
+                Some((i, tone, dims)) => Slot::Ready(Arc::new(i), tone, Instant::now(), dims),
+                None => Slot::Failed,
+            };
+            images.slots.insert(key, slot);
+            trim(cx);
+            cx.refresh_windows();
+        });
+    })
+    .detach();
+    None
+}
+
+static USER: std::sync::OnceLock<Option<std::path::PathBuf>> = std::sync::OnceLock::new();
+
+/// The app's folder of pictures the user chose (--pictures).
+pub fn keep_user(dir: Option<std::path::PathBuf>) {
+    let _ = USER.set(dir);
+}
+
+/// One of those pictures as the app names it in its state ("user/<file>"), when the file is there.
+pub fn user(name: &str) -> Option<std::path::PathBuf> {
+    let dir = USER.get()?.as_ref()?;
+    let file = name.strip_prefix("user/").unwrap_or(name);
+    if file.is_empty() || file.contains(['/', '\\']) || file.contains("..") {
+        return None;
+    }
+    let path = dir.join(file);
+    path.is_file().then_some(path)
+}
