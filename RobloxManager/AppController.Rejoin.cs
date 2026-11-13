@@ -12,7 +12,7 @@ public sealed partial class AppController
         // A game ban in its last lines, unseen before the window closed: noted all the same, or the next preset would
         // open the account into Join Error 600.
         if (lastLog is { BannedByGame: true } && FindAccount(accountId) is { } banned)
-            NoteGameBan(banned, lastLog.ChosenPlace ?? launch.Target?.PlaceId ?? lastLog.PlaceId, lastLog.KickMessage, launch.StartedAt);
+            NoteGameBan(banned, lastLog.ChosenPlace ?? launch.Target?.PlaceId ?? lastLog.PlaceId, lastLog.KickMessage, launch.StartedAt, lastLog.BanEnds);
         // Closed for good: a scheduled stop no longer owns the account, so a client opened by hand later stays open.
         if (!QueueRejoin(accountId, launch, lastLog))
             ForgetScheduledOpen(accountId);
@@ -172,7 +172,7 @@ public sealed partial class AppController
             if (state is { Status: "disconnected", BannedByGame: true })
             {
                 if (_gameBanNoted.Add(info.Pid) && FindAccount(id) is { } banned)
-                    NoteGameBan(banned, state.ChosenPlace ?? info.Launch.Target?.PlaceId ?? state.PlaceId, state.KickMessage, info.Launch.StartedAt);
+                    NoteGameBan(banned, state.ChosenPlace ?? info.Launch.Target?.PlaceId ?? state.PlaceId, state.KickMessage, info.Launch.StartedAt, state.BanEnds);
                 continue;
             }
             // Held for Roblox's bot check (RobloxLogWatcher.ChallengedMark): closing and reopening it looped into the same
@@ -211,7 +211,8 @@ public sealed partial class AppController
                 if (check is { IsCompletedSuccessfully: true, Result.Banned: true })
                 {
                     _gameBanNoted.Add(info.Pid);
-                    NoteGameBan(asking, wanted.PlaceId, check.Result.Reason, info.Launch.StartedAt);
+                    // Roblox's join answer gives no end: a timed ban noted earlier keeps its own.
+                    NoteGameBan(asking, wanted.PlaceId, check.Result.Reason, info.Launch.StartedAt, GameBanOf(asking, wanted.PlaceId)?.Until);
                     continue;
                 }
                 if (check.IsCompletedSuccessfully)
@@ -449,16 +450,18 @@ public sealed partial class AppController
     /// </summary>
     /// <param name="since">When the window opened: a ban noted since is this one, seen again after Bloxkeep restarted
     /// with the window still open, and isn't told again.</param>
-    void NoteGameBan(Account account, long? placeId, string? message, DateTime since)
+    /// <param name="until">When a timed ban ends (<see cref="GameBan.Until"/>); null for a permanent one.</param>
+    void NoteGameBan(Account account, long? placeId, string? message, DateTime since, DateTime? until = null)
     {
         if (placeId is not long place || place <= 0)
             return;
         var known = GameBanOf(account, place);
         if (known is not null && known.At >= since)
         {
-            if (known.Message is null && message is not null)
+            if (known.Message is null && message is not null || known.Until is null && until is not null)
             {
-                known.Message = message;
+                known.Message ??= message;
+                known.Until ??= until;
                 PersistSoon();
                 PushState();
             }
@@ -468,8 +471,9 @@ public sealed partial class AppController
         message ??= known?.Message;
         string game = _games.GetValueOrDefault(place)?.Name is { Length: > 0 } name ? name : L.F("Place {0}", place);
         account.GameBans.RemoveAll(b => SameGame(b.PlaceId, place));
-        account.GameBans.Add(new GameBan { PlaceId = place, GameName = _games.GetValueOrDefault(place)?.Name, At = DateTime.UtcNow, Message = message });
-        Log.Note($"Game ban: account {account.Id.ToString()[..8]} banned from place {place}{(message is { Length: > 0 } ? ", with the game's message" : "")}; no rejoins there.");
+        account.GameBans.Add(new GameBan { PlaceId = place, GameName = _games.GetValueOrDefault(place)?.Name, At = DateTime.UtcNow, Message = message, Until = until });
+        Log.Note($"Game ban: account {account.Id.ToString()[..8]} banned from place {place}{(message is { Length: > 0 } ? ", with the game's message" : "")}"
+            + (until is { } ends ? $" until {ends:yyyy-MM-dd HH:mm:ss} UTC" : "") + "; no rejoins there.");
         PersistSoon();
         Notify(message is { Length: > 0 }
             ? L.F("{0} was banned from {1} by the game: {2}", Name(account), game, message)
@@ -504,12 +508,24 @@ public sealed partial class AppController
         return launch.HomeScreen && (lastLog?.ChosenPlace ?? lastLog?.PlaceId) is long place and > 0 ? new GameTarget(place) : null;
     }
 
-    /// <summary>Any place of the game: a game's ban holds in all of them.</summary>
+    /// <summary>Any place of the game: a game's ban holds in all of them. A timed ban past its end holds no longer.</summary>
     GameBan? GameBanOf(Account account, long? placeId) =>
-        placeId is long place ? account.GameBans.FirstOrDefault(b => SameGame(b.PlaceId, place)) : null;
+        placeId is long place ? account.GameBans.FirstOrDefault(b => SameGame(b.PlaceId, place) && !(b.Until <= DateTime.UtcNow)) : null;
 
     void ForgetLiftedGameBans()
     {
+        // A timed ban whose end has passed: forgotten, so the account's card and the warning before opening go too.
+        foreach (var account in _vault?.Data.Accounts ?? [])
+        {
+            var now = DateTime.UtcNow;
+            foreach (var ended in account.GameBans.Where(b => b.Until <= now).ToList())
+            {
+                account.GameBans.Remove(ended);
+                Log.Note($"Game ban: account {account.Id.ToString()[..8]}'s ban from place {ended.PlaceId} is over (it ended {ended.Until:yyyy-MM-dd HH:mm:ss} UTC).");
+                PersistSoon();
+                PushState();
+            }
+        }
         foreach (var (id, info) in _running)
         {
             if (_logs.StateOf(info.Pid) is not { Status: "ingame", PlaceId: long here } || FindAccount(id) is not { GameBans.Count: > 0 } account)

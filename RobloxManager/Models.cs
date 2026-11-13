@@ -393,6 +393,9 @@ public sealed class GameBan
     public DateTime At { get; set; }
     /// <summary>The game's words, when it gave any ("Exploiting").</summary>
     public string? Message { get; set; }
+    /// <summary>When a timed ban ends (the ban's endTimestamp, UTC); null for a permanent ban or one whose end isn't known.
+    /// Past it, the ban no longer holds.</summary>
+    public DateTime? Until { get; set; }
 }
 
 /// <summary>A client that ended here lately, with its server and game: Roblox keeps reporting the account there for

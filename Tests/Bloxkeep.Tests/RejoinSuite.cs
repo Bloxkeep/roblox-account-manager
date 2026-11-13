@@ -815,6 +815,45 @@ static class RejoinSuite
             Poll(s => s.Status == "ingame");
             Harness.Invoke(app, "ForgetLiftedGameBans");
             c.Check("…and once the account is in that game again, the ban is forgotten", account.GameBans.Count == 0, account.GameBans.Count);
+            // A timed ban (BanAsync with a duration): its end is in the kick line's metadata. The owner's test 2026-11-14,
+            // the exact metadata: still "banned" ten minutes after the 2-minute ban ended.
+            {
+                var realEnd = RobloxLogWatcher.BanEndOf(
+                    """{"moderatorType":"creator","durationSeconds":"120","endTimestamp":"2026-11-13T23:09:32Z","dynamicReasonTextFilterStatus":"2","beginTimestamp":"2026-11-13T23:07:32Z"}""");
+                c.Check("a timed ban's end is read from its metadata (endTimestamp, UTC)",
+                    realEnd is DateTime { Kind: DateTimeKind.Utc } e && e == new DateTime(2026, 11, 13, 23, 9, 32, DateTimeKind.Utc), realEnd);
+                var fromDuration = RobloxLogWatcher.BanEndOf(
+                    """{"moderatorType":"creator","durationSeconds":"120","beginTimestamp":"2026-11-13T23:07:32Z"}""");
+                c.Check("…or from its start and duration", fromDuration is DateTime d && d == new DateTime(2026, 11, 13, 23, 9, 32, DateTimeKind.Utc), fromDuration);
+                var permanent = RobloxLogWatcher.BanEndOf(
+                    """{"moderatorType":"creator","durationSeconds":"-1","dynamicReasonTextFilterStatus":"2","beginTimestamp":"2026-10-21T00:07:04Z"}""");
+                c.Check("…a permanent one has none", permanent is null, permanent);
+
+                foreach (var (what, endsIn) in new[] { ("still running", TimeSpan.FromMinutes(2)), ("already over", TimeSpan.FromSeconds(-30)) })
+                {
+                    account.GameBans.Clear();
+                    var ends = DateTime.UtcNow.Add(endsIn);
+                    NewWindow();
+                    Run(new GameTarget(Gpo));
+                    var timedAt = DateTime.UtcNow;
+                    Played(timedAt, "Error [FLog::CreatorError] Error: Server Kick Message: test 12: ban 2 phut; Metadata: {\"moderatorType\":\"creator\",\"durationSeconds\":\"120\",\"endTimestamp\":\""
+                        + ends.ToString("yyyy-MM-ddTHH:mm:ssZ", System.Globalization.CultureInfo.InvariantCulture)
+                        + "\",\"dynamicReasonTextFilterStatus\":\"2\",\"beginTimestamp\":\"" + ends.AddSeconds(-120).ToString("yyyy-MM-ddTHH:mm:ssZ", System.Globalization.CultureInfo.InvariantCulture) + "\"}");
+                    var timed = Poll(s => s.Status == "disconnected" && s.At >= timedAt.AddSeconds(-1));
+                    closing.Clear();
+                    Told();
+                    Tick();
+                    Told();
+                    bool banHolds = Harness.Invoke(app, "GameBanOf", account, (long?)Gpo) is not null;
+                    Harness.Invoke(app, "ForgetLiftedGameBans");
+                    if (endsIn > TimeSpan.Zero)
+                        c.Check($"a timed ban {what}: noted with its end, and it holds", timed is { BannedByGame: true, BanEnds: not null } && banHolds
+                            && account.GameBans.SingleOrDefault()?.Until is { } until && Math.Abs((until - ends).TotalSeconds) < 1.5, $"{timed} | {account.GameBans.SingleOrDefault()?.Until}");
+                    else
+                        c.Check($"a timed ban {what}: holds no longer, and is forgotten (no warning before opening)", !banHolds && account.GameBans.Count == 0, account.GameBans.Count);
+                }
+                account.GameBans.Clear();
+            }
 
             // Its log in a game, no disconnect line, while Roblox's own status says it's out of one (Roblox's "Disconnected"
             // box over a game that failed while loading, a RoALT user's report 2026-11-14): closed and rejoined after three
