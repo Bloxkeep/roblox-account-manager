@@ -796,8 +796,14 @@ public sealed partial class AppController
         foreach (var (id, info) in _running.ToList())
         {
             var account = FindAccount(id);
-            // The log is the better source (RejoinFromLogs); a strike from before it was found says nothing.
-            if (LogFollowed(info.Pid))
+            // A log in its game while Roblox's own status, asked with the account's own sign-in, says it isn't, several
+            // checks running: Roblox's "Disconnected" box with no disconnect line logged (a game that failed while loading,
+            // a RoALT user's report 2026-11-14). Roblox accounts only: a VNG account's status isn't trusted for this.
+            bool stuckInGame = account is { Realm: Realm.Global } && _logs.StateOf(info.Pid) is { Status: "ingame", TeleportStarted: null } inGame
+                && DateTime.UtcNow - inGame.At >= DisconnectGrace
+                && _presence.TryGetValue(account.UserId, out var said) && said.Type is 0 or 1; // not its own answer: no strike below, none lost
+            // Otherwise the log is the better source (RejoinFromLogs); a strike from before it was found says nothing.
+            if (LogFollowed(info.Pid) && !stuckInGame)
             {
                 _offlineStrikes.Remove(id);
                 continue;
@@ -815,16 +821,20 @@ public sealed partial class AppController
                 continue;
             }
             int strikes = _offlineStrikes[id] = _offlineStrikes.GetValueOrDefault(id) + 1;
-            if (strikes < 2)
+            if (strikes < (stuckInGame ? StuckInGameStrikes : 2))
                 continue;
             _offlineStrikes.Remove(id);
-            Log.Note($"Rejoin: closing window {info.Pid} to rejoin, its account was out of a game on two status checks (no log to go by).");
+            Log.Note(stuckInGame
+                ? $"Rejoin: closing window {info.Pid} to rejoin, its log says in a game but its account was out of one on {StuckInGameStrikes} status checks."
+                : $"Rejoin: closing window {info.Pid} to rejoin, its account was out of a game on two status checks (no log to go by).");
             _closingForRejoin.Add(info.Pid); // Bloxkeep's own close: never taken for Roblox closing it
             Notify(L.F("{0} dropped out of the game, reason unknown — restarting Roblox…", Name(account)), "info", "drop", account.Id);
             RobloxProcesses.Close(info.Pid);
         }
     }
 
+    /// <summary>Status checks in a row that must say out of a game before a window whose log says in one is closed.</summary>
+    const int StuckInGameStrikes = 3;
     /// <summary>Clients already being closed for a kick in their log (so it happens once).</summary>
     readonly HashSet<int> _closingForRejoin = new();
     /// <summary>Roblox's code for "the same account joined from another device": never fight that with a rejoin.</summary>

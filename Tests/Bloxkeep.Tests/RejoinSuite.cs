@@ -88,7 +88,7 @@ static class RejoinSuite
             var tail = Harness.Get<System.Collections.IDictionary>(watcher, "_tails")[me]!;
             foreach (string field in new[] { "State", "TeleportAt" })
                 tail.GetType().GetField(field)!.SetValue(tail, null);
-            foreach (string field in new[] { "OwnStart", "Leaving" })
+            foreach (string field in new[] { "OwnStart", "Leaving", "DroppedByReason" })
                 tail.GetType().GetField(field)!.SetValue(tail, false);
             tail.GetType().GetField("Connections")!.SetValue(tail, 0);
             // A new process too: nothing Bloxkeep held about the old one's id.
@@ -519,14 +519,16 @@ static class RejoinSuite
             string? codeSaid = Told();
             c.Check("…one with a code Bloxkeep has no words for is said with that code", codeSaid == $"{account.Label} was disconnected (Roblox code 299) — restarting Roblox…", codeSaid);
             // Error Code 256, "Lost connection due to an unknown error. Please reconnect." (a user's screenshot, 2026-11-11,
-            // "auto rejoin will not work"): by its code and by its words only. Without the disconnect line after, the window
-            // still reads as in its game and isn't rejoined; every real disconnect logged so far (26 on the owner's PC,
-            // 2026-11-09…11) has that line, so that case isn't one yet.
+            // "auto rejoin will not work"): by its code and by its words only. Without the disconnect line after too: a game
+            // that failed while loading showed Roblox's "Disconnected" box and stayed "In game" (a RoALT user's report,
+            // 2026-11-14), so a reason line is a drop by itself.
             foreach (var (what, lines, disconnectLine) in new (string, string[], bool)[]
             {
                 ("its code", ["[FLog::Network] Disconnect reason received: 256", "[FLog::Network] Disconnection Notification. Reason: 256"], true),
                 ("its words only", ["[FLog::Network] Client has been disconnected with reason: Lost connection due to an unknown error. Please reconnect.",
                     "Warning [FLog::Network] Lost connection with reason : Lost connection due to an unknown error. Please reconnect."], true),
+                ("its code, no disconnect line after", ["[FLog::Network] Disconnection Notification. Reason: 256"], false),
+                ("its words, no disconnect line after", ["Warning [FLog::Network] Lost connection with reason : Lost connection to the game server, please reconnect"], false),
             })
             {
                 var dropAt = DateTime.UtcNow.AddSeconds(-10);
@@ -545,6 +547,32 @@ static class RejoinSuite
                 Tick();
                 string? dropSaid = Told();
                 c.Check($"Error Code 256 by {what}: read as a drop and rejoined", closing.Contains(me), $"{dropState} | {dropSaid}");
+            }
+            // A teleport's old server may log a reason: still a teleport, not a drop (RoALT's "instanced server" report,
+            // 2026-11-13: a move to another server of the game said "Disconnected" and was rejoined over).
+            {
+                var tpReasonAt = DateTime.UtcNow.AddSeconds(-10);
+                NewWindow();
+                droppedLaunch = Run(notBanned);
+                Write(Line(tpReasonAt, Launch));
+                Write(Line(tpReasonAt, Join));
+                Write(Line(tpReasonAt, "[FLog::Network] serverId: 128.116.46.33|52353"));
+                Write(Line(tpReasonAt.AddSeconds(5), "[FLog::UgcExperienceController] UgcExperienceController: doTeleport: url "));
+                Write(Line(tpReasonAt.AddSeconds(5.1), "[FLog::Network] Disconnection Notification. Reason: 277"));
+                Write(Line(tpReasonAt.AddSeconds(5.2), "[FLog::Network] Time to disconnect replication data: 0.2"));
+                var tpReasonState = Poll(s => s.At >= tpReasonAt.AddSeconds(5));
+                closing.Clear();
+                Tick();
+                c.Check("a teleport whose old server logs a reason: joining, left alone", tpReasonState is { Status: "joining" } && !closing.Contains(me), tpReasonState);
+                // Leaving: the client's own request is no drop.
+                NewWindow();
+                droppedLaunch = Run(notBanned);
+                Write(Line(tpReasonAt, Launch));
+                Write(Line(tpReasonAt, Join));
+                Write(Line(tpReasonAt, "[FLog::Network] serverId: 128.116.46.33|52353"));
+                Write(Line(tpReasonAt.AddSeconds(5), "[FLog::Network] Disconnection Notification. Reason: 285"));
+                var ownState = Poll(s => s.At >= tpReasonAt);
+                c.Check("…the client's own request (285) alone is no drop", ownState is { Status: "ingame" }, ownState);
             }
             // A window opened on Roblox's home screen, a game picked there, then Error Code 1025 ("Disconnected from the
             // experience", the owner's PC, 2026-11-11, client 0.747's lines): it stayed on Roblox's error box, left as
@@ -736,6 +764,52 @@ static class RejoinSuite
             Poll(s => s.Status == "ingame");
             Harness.Invoke(app, "ForgetLiftedGameBans");
             c.Check("…and once the account is in that game again, the ban is forgotten", account.GameBans.Count == 0, account.GameBans.Count);
+
+            // Its log in a game, no disconnect line, while Roblox's own status says it's out of one (Roblox's "Disconnected"
+            // box over a game that failed while loading, a RoALT user's report 2026-11-14): closed and rejoined after three
+            // checks in a row; never on Roblox's word while it says in a game, nor right after the join.
+            {
+                NewWindow();
+                var inLaunch = Activator.CreateInstance(launchType, account.Id, new HashSet<int>(), DateTime.UtcNow.AddMinutes(-5), new GameTarget(920587237), false, null)!;
+                running[account.Id] = Activator.CreateInstance(tupleType, me, inLaunch);
+                var inAt = DateTime.UtcNow.AddMinutes(-4);
+                Write(Line(inAt, Launch));
+                Write(Line(inAt, "[FLog::Output] ! Joining game 'e403336e-5756-44c9-b029-0ae6873a3d03' place 920587237 at 10.32.36.210"));
+                Write(Line(inAt, "[FLog::Network] serverId: 128.116.46.33|56123"));
+                Poll(s => s.Status == "ingame" && s.At <= inAt.AddSeconds(1));
+                var presence = Harness.Get<System.Collections.IDictionary>(app, "_presence");
+                Harness.Get<System.Collections.IDictionary>(app, "_offlineStrikes").Clear();
+                closing.Clear();
+                Told();
+                presence[21L] = new Presence(2, "Game", 920587237, null, null, null, null);
+                for (int i = 0; i < 4; i++)
+                    Harness.Invoke(app, "DetectDisconnectedSessions", new HashSet<long> { 21 });
+                c.Check("a log in a game and Roblox saying so too: left alone", !closing.Contains(me), closing.Count);
+                presence[21L] = new Presence(1, "Website", null, null, null, null, null);
+                Harness.Invoke(app, "DetectDisconnectedSessions", new HashSet<long> { 21 });
+                Harness.Invoke(app, "DetectDisconnectedSessions", new HashSet<long> { 21 });
+                bool afterTwo = closing.Contains(me);
+                Harness.Invoke(app, "DetectDisconnectedSessions", new HashSet<long>());
+                bool unreliable = closing.Contains(me);
+                Harness.Invoke(app, "DetectDisconnectedSessions", new HashSet<long> { 21 });
+                c.Check("a log in a game while Roblox's own status says out of one: closed and rejoined on the third check, not before, nor on a status not its own",
+                    !afterTwo && !unreliable && closing.Contains(me), $"{afterTwo} {unreliable} {closing.Count}");
+                // Just in: Roblox's status may not have caught up.
+                NewWindow();
+                running[account.Id] = Activator.CreateInstance(tupleType, me, inLaunch);
+                var justAt = DateTime.UtcNow.AddSeconds(-30);
+                Write(Line(justAt, Launch));
+                Write(Line(justAt, "[FLog::Output] ! Joining game 'e403336e-5756-44c9-b029-0ae6873a3d03' place 920587237 at 10.32.36.210"));
+                Write(Line(justAt, "[FLog::Network] serverId: 128.116.46.33|56123"));
+                Poll(s => s.Status == "ingame" && s.At >= justAt.AddSeconds(-1));
+                Harness.Get<System.Collections.IDictionary>(app, "_offlineStrikes").Clear();
+                closing.Clear();
+                for (int i = 0; i < 4; i++)
+                    Harness.Invoke(app, "DetectDisconnectedSessions", new HashSet<long> { 21 });
+                c.Check("…but not in its first two minutes in the game", !closing.Contains(me), closing.Count);
+                closing.Clear();
+                Told();
+            }
 
             // What a review of these found (2026-10-21), one case each.
             var noted = Harness.Get<HashSet<int>>(app, "_gameBanNoted");

@@ -56,6 +56,8 @@ public sealed partial class RobloxLogWatcher
         public DateTime? UpdateHandOff;
         /// <summary>The signed-in account, from the join report (see <see cref="JoinReportMark"/>).</summary>
         public long? UserId;
+        /// <summary>Shown as a drop by a reason line (see <see cref="DropOnReason"/>): the disconnect line after it adds nothing.</summary>
+        public bool DroppedByReason;
     }
 
     /// <summary>
@@ -496,6 +498,7 @@ public sealed partial class RobloxLogWatcher
                 tail.State?.PersonStarted == true, TeleportStarted: tail.State?.TeleportStarted);
             tail.OwnStart = false;
             tail.JoinChallenged = null;
+            tail.DroppedByReason = false;
         }
         // The line itself: Roblox's client also has "launchUGCGameInternal: deferred download complete" and the like, no game start.
         else if (line.Contains(LaunchMark, StringComparison.Ordinal) && line.AsSpan().TrimEnd().EndsWith(LaunchMark, StringComparison.Ordinal))
@@ -509,10 +512,12 @@ public sealed partial class RobloxLogWatcher
             tail.OwnStart = tail.State is not null;
             tail.State = new ClientState("joining", null, null, null, TimeOf(line), tail.State?.ChosenPlace, tail.OwnStart);
             tail.JoinChallenged = null;
+            tail.DroppedByReason = false;
         }
         else if (line.Contains(ConnectedMark, StringComparison.Ordinal))
         {
             tail.Connections++;
+            tail.DroppedByReason = false;
             if (tail.State is { Status: "joining" } joining)
                 tail.State = joining with { Status = "ingame", At = TimeOf(line), PersonStarted = false, TeleportStarted = null };
         }
@@ -554,18 +559,39 @@ public sealed partial class RobloxLogWatcher
             else
                 (tail.PendingKickMessage, tail.PendingBan) = (message, ban);
         }
-        else if ((line.Contains(ReasonWordsMark, StringComparison.Ordinal) || line.Contains(LostWithReasonMark, StringComparison.Ordinal))
-                 && ReasonOfWords(line) is int worded)
-            RememberReason(tail, worded, 1);
+        else if (line.Contains(ReasonWordsMark, StringComparison.Ordinal) || line.Contains(LostWithReasonMark, StringComparison.Ordinal))
+        {
+            int? worded = ReasonOfWords(line);
+            DropOnReason(tail, worded, line);
+            if (worded is int known)
+                RememberReason(tail, known, 1);
+        }
         else if (line.Contains("disconnect reason to", StringComparison.Ordinal) && ReasonLine().Match(line) is { Success: true } reason
                  && int.TryParse(reason.Groups[1].Value, NumberStyles.None, CultureInfo.InvariantCulture, out int why))
+        {
+            DropOnReason(tail, why, line);
             RememberReason(tail, why, 3);
+        }
         else if (line.Contains("Disconnect reason received", StringComparison.Ordinal) && ReceivedReasonLine().Match(line) is { Success: true } received
                  && int.TryParse(received.Groups[1].Value, NumberStyles.None, CultureInfo.InvariantCulture, out int sent))
+        {
+            DropOnReason(tail, sent, line);
             RememberReason(tail, sent, 3);
+        }
         else if (line.Contains("Disconnection Notification", StringComparison.Ordinal) && NotificationReasonLine().Match(line) is { Success: true } notified
                  && int.TryParse(notified.Groups[1].Value, NumberStyles.None, CultureInfo.InvariantCulture, out int code))
+        {
+            DropOnReason(tail, code, line);
             RememberReason(tail, code, code == ClientRequest ? 0 : 2);
+        }
+        else if (line.Contains(DisconnectedMark, StringComparison.Ordinal) && tail.DroppedByReason && tail.State is { Status: "disconnected" })
+        {
+            // Already shown as a drop by its reason line: this line only ends that server.
+            tail.Connections = Math.Max(0, tail.Connections - 1);
+            tail.TeleportAt = null;
+            tail.Leaving = false;
+            tail.DroppedByReason = false;
+        }
         else if (line.Contains(DisconnectedMark, StringComparison.Ordinal) && tail.State is { } state)
         {
             var at = TimeOf(line);
@@ -614,6 +640,36 @@ public sealed partial class RobloxLogWatcher
             tail.BackgroundUpdate = true;
         else if (line.Contains(UpdateThreadMark, StringComparison.Ordinal) && !tail.BackgroundUpdate)
             tail.UpdateHandOff ??= TimeOf(line);
+    }
+
+    /// <summary>
+    /// A reason line is a drop by itself: a game that fails while loading (or a server that drops it) shows Roblox's
+    /// "Disconnected" box, and its "Time to disconnect replication data" line may never come, so the window read as in
+    /// its game for good (a RoALT user's report 2026-11-14: kicked on joining, still "In game"). Not while leaving, nor
+    /// in a teleport (its old server's lines), nor a join still on its old server, nor the client's own request (285).
+    /// None of these lines is logged on a plain leave or teleport (the owner's 0.747 logs, 2026-11-12/13).
+    /// </summary>
+    static void DropOnReason(Tail tail, int? code, string line)
+    {
+        // Roblox's own network line only, never a game's output quoting one.
+        int tag = line.IndexOf('[');
+        if (tag < 0 || !(line.AsSpan(tag).StartsWith("[FLog::Network]", StringComparison.Ordinal) || line.AsSpan(tag).StartsWith("[DFLog::Network", StringComparison.Ordinal)))
+            return;
+        if (tail.Leaving || code == ClientRequest || tail.State is not { Status: "ingame" or "joining" } state
+            || state.TeleportStarted is not null || state.Status == "joining" && tail.Connections > 0)
+            return;
+        var at = TimeOf(line);
+        if (tail.TeleportAt is { } teleport && at - teleport < TeleportWindow)
+            return;
+        tail.ShownReasonRank = tail.PendingReasonRank;
+        tail.State = state with
+        {
+            Status = "disconnected", Reason = tail.PendingReason, KickMessage = tail.PendingKickMessage, BannedByGame = tail.PendingBan, At = at,
+            TeleportStarted = null,
+        };
+        tail.PendingReason = null;
+        (tail.PendingKickMessage, tail.PendingBan) = (null, false);
+        tail.DroppedByReason = true;
     }
 
     // A numeric code can arrive after the words. Replicator (3) > numeric notification (2) > mapped words (1); equal

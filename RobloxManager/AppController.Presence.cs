@@ -54,7 +54,8 @@ public sealed partial class AppController
             // Privacy can hide an account from the others. Accounts with a client here are asked with their own cookie (auto-rejoin
             // relies on it) unless its log is followed; others only when their game is hidden.
             var askOwn = accounts.Where(a => a != viewer && a.CookieValid != false && a.Cookie.Length > 0
-                                             && !(_running.TryGetValue(a.Id, out var run) && LogFollowed(run.Pid))
+                                             // One whose log says in a game is asked too when the others' answer says not (DetectDisconnectedSessions).
+                                             && !(_running.TryGetValue(a.Id, out var run) && LogFollowed(run.Pid) && _logs.StateOf(run.Pid) is not { Status: "ingame" })
                                              && (a.Realm == Realm.Vng || result.TryGetValue(a.UserId, out var p)
                                                  && (_running.ContainsKey(a.Id) ? p.Type != 2 || p.PlaceId is null : p is { Type: 2, PlaceId: null })))
                 .ToList();
