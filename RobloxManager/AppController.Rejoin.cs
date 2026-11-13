@@ -253,6 +253,11 @@ public sealed partial class AppController
             // One the person started in the window is theirs: closing it would reopen the game Bloxkeep opened instead.
             // On Roblox's home screen every game is the person's own pick, so only a drop counts there.
             bool neverGotIn = state is { Status: "joining", JobId: null, PersonStarted: false } && info.Launch.Target is not null && now - state.At >= GetInTimeout;
+            // A chosen server Roblox's join answer says ended or full: another one at once, not after GetInTimeout.
+            bool serverGone = state is { Status: "joining", JobId: null, PersonStarted: false } && info.Launch.Target is { JobId.Length: > 0 }
+                && _joinChecks.TryGetValue(info.Pid, out var gone)
+                && gone.Answer is { IsCompletedSuccessfully: true, Result: { Ended: true } or { Full: true, QueuePosition: not > 0 } };
+            neverGotIn |= serverGone;
             if ((!dropped && !neverGotIn)
                 || FindAccount(id) is not { } account || !RejoinOn(account, info.Launch.PresetId) || RejoinTarget(info.Launch, state) is null
                 // No rejoin follows (ShouldRejoin): the window stays rather than closing for nothing.
@@ -268,7 +273,7 @@ public sealed partial class AppController
             // Not trying again before Roblox's answer is in (asked at JoinCheckAfter, above).
             if (neverGotIn && _joinChecks.TryGetValue(info.Pid, out var pending) && !pending.Answer.IsCompleted)
                 continue;
-            Log.Note($"Rejoin: closing window {info.Pid} to rejoin, {(dropped ? $"disconnected (code {state.Reason?.ToString() ?? "none"}{(state.KickMessage is { Length: > 0 } ? ", kicked with a message" : "")})" : $"no server after {(int)GetInTimeout.TotalSeconds} s")}.");
+            Log.Note($"Rejoin: closing window {info.Pid} to rejoin, {(dropped ? $"disconnected (code {state.Reason?.ToString() ?? "none"}{(state.KickMessage is { Length: > 0 } ? ", kicked with a message" : "")})" : serverGone ? "its chosen server ended or is full" : $"no server after {(int)GetInTimeout.TotalSeconds} s")}.");
             _closingForRejoin.Add(info.Pid);
             // Said as what it was: on 2026-10-21 a game's "DataStore lock lost, please rejoin the game." went out as
             // "Lost connection".

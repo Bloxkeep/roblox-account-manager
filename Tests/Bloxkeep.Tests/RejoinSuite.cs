@@ -247,6 +247,33 @@ static class RejoinSuite
                 var ban211 = await (Task<RobloxApi.JoinAnswer?>)t.GetMethod("CheckJoinAsync", Harness.F)!.Invoke(app,
                     [account, new GameTarget(107778070777162, DeadServer), "test", CancellationToken.None])!;
                 c.Check("…a ban by the game (211) on a named server stays a ban and a refusal", ban211 is { Banned: true, ServerGone: false, Refused: true });
+                // One account opened into a chosen server that had ended (the owner's, 2026-11-14: Roblox's "This experience
+                // has ended, or the server became unavailable unexpectedly due to a system error", answered 311 at 46 s and
+                // closed only at 60 s). Asked 12 s on, and another server at once on that answer.
+                Harness.Get<System.Collections.IDictionary>(app, "_joinChecks").Remove(me);
+                partyReply = new(200, 12, "Unable to join Game 311");
+                partyAsks = 0;
+                string cookieBefore = account.Cookie;
+                account.Cookie = "test"; // asked with its own sign-in
+                NewWindow();
+                Run(new GameTarget(107778070777162, DeadServer));
+                Write(Line(DateTime.UtcNow.AddSeconds(-8), Launch));
+                Poll(s => s.Status == "joining" && s.JobId is null && DateTime.UtcNow - s.At < TimeSpan.FromSeconds(9));
+                closing.Clear();
+                Tick();
+                bool askedEarly = partyAsks > 0;
+                NewWindow();
+                Write(Line(DateTime.UtcNow.AddSeconds(-14), Launch));
+                Poll(s => s.Status == "joining" && s.JobId is null && DateTime.UtcNow - s.At > TimeSpan.FromSeconds(13));
+                Told();
+                Tick(); // asks
+                Tick(); // reads the answer
+                string? goneSaid = Told();
+                c.Check("a chosen server that ended: not asked about before 12 s, then closed for another server on Roblox's answer, not a minute on",
+                    !askedEarly && partyAsks == 1 && closing.Contains(me) && goneSaid == $"{account.Label} couldn't get into that server (full or closed) — joining another one…",
+                    $"{askedEarly} {partyAsks} {closing.Count} {goneSaid}");
+                closing.Clear();
+                account.Cookie = cookieBefore;
                 // Roblox would let it in (status 2): the join is slow, not refused. It got its server 2 s on.
                 Harness.Get<System.Collections.IDictionary>(app, "_joinChecks").Remove(me);
                 partyReply = new(200, 2, null);
