@@ -575,6 +575,30 @@ static class RejoinSuite
                 string? dropSaid = Told();
                 c.Check($"Error Code 256 by {what}: read as a drop and rejoined", closing.Contains(me), $"{dropState} | {dropSaid}");
             }
+            // Roblox's "Connection Failed" box (279, no response from server) after "Joining game": the owner's test
+            // 2026-11-14, a rejoin into a server that had just run out of memory. No serverId, no disconnect line; the
+            // window sat on the box, read as joining a named server that no timeout covered. The real lines, in order.
+            {
+                var noResponseAt = DateTime.UtcNow.AddSeconds(-40);
+                NewWindow();
+                droppedLaunch = Run(notBanned);
+                Write(Line(noResponseAt, Launch));
+                Write(Line(noResponseAt, Join));
+                Write(Line(noResponseAt.AddSeconds(10), "Error [DFLog::RbxTransportDummyClient] Failed to establish connection to server at 128.116.46.33:49386, reason NoResponse: 1 (No Response)"));
+                var stillJoining = Poll(s => s.Status == "joining");
+                closing.Clear();
+                Tick();
+                c.Check("Connection Failed: RbxTransport's own failure isn't the end (RakNet is tried after it)", stillJoining is { Status: "joining" } && !closing.Contains(me), stillJoining);
+                Write(Line(noResponseAt.AddSeconds(30), "Error [DFLog::NetworkClient] Failed to connect to server at 128.116.46.33|50694, no response."));
+                Write(Line(noResponseAt.AddSeconds(30), "Info [DFLog::NetworkClient] Failed to connect to server after falling back from RbxTransport to RakNet. Disconnect code: 279. Original connection failure reason: NoResponse: 1 (No Response)"));
+                var failState = Poll(s => s.Status == "disconnected");
+                closing.Clear();
+                Told();
+                Tick();
+                string? failSaid = Told();
+                c.Check("Connection Failed (279) after Joining game: read as a drop and rejoined", failState is { Status: "disconnected", Reason: 279 } && closing.Contains(me), $"{failState} | {failSaid}");
+                c.Check("…said as a lost connection", failSaid == $"{account.Label} lost connection — restarting Roblox…", failSaid);
+            }
             // A teleport's old server may log a reason: still a teleport, not a drop (RoALT's "instanced server" report,
             // 2026-11-13: a move to another server of the game said "Disconnected" and was rejoined over).
             {

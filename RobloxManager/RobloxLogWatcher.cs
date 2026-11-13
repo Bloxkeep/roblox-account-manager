@@ -133,6 +133,18 @@ public sealed partial class RobloxLogWatcher
     // The server's own code, from the 0.744 client's strings; not seen in a log yet.
     [GeneratedRegex(@"\[FLog::Network\] Disconnect reason received: (\d+)", RegexOptions.CultureInvariant)]
     private static partial Regex ReceivedReasonLine();
+    // Roblox couldn't reach the server it was sent to: its "Connection Failed" box (279 "No response from server").
+    // Logged after "Joining game", with no serverId and no disconnect line after it (the owner's test 2026-11-14, 0.747,
+    // a rejoin into a server that had just run out of memory):
+    //   [DFLog::NetworkClient] Failed to connect to server at 128.116.46.33|50694, no response.
+    //   [DFLog::NetworkClient] Failed to connect to server after falling back from RbxTransport to RakNet. Disconnect code: 279. ...
+    // RbxTransport's own failure before it ("[DFLog::RbxTransportDummyClient] Failed to establish connection") is not
+    // the end: RakNet is tried after it.
+    const string ConnectFailedMark = "[DFLog::NetworkClient] Failed to connect to server";
+    [GeneratedRegex(@"Disconnect code: (\d+)", RegexOptions.CultureInvariant)]
+    private static partial Regex ConnectFailedCode();
+    /// <summary>Roblox's ConnectionError for "No response from server" (ConnectErrors 279).</summary>
+    const int NoResponse = 279;
     /// <summary>
     /// DisconnectClientRequest: the notification line can repeat it after the server's reason, so it never overrides one.
     /// </summary>
@@ -583,6 +595,25 @@ public sealed partial class RobloxLogWatcher
         {
             DropOnReason(tail, code, line);
             RememberReason(tail, code, code == ClientRequest ? 0 : 2);
+        }
+        // A join that never reached its server ends here: the window sat on Roblox's "Connection Failed" box, read as
+        // still joining a named server, which no timeout covered (see ConnectFailedMark).
+        else if (line.Contains(ConnectFailedMark, StringComparison.Ordinal))
+        {
+            if (!tail.Leaving && tail.State is { Status: "joining" } failing)
+            {
+                int failed = ConnectFailedCode().Match(line) is { Success: true } said
+                    && int.TryParse(said.Groups[1].Value, NumberStyles.None, CultureInfo.InvariantCulture, out int c) ? c : NoResponse;
+                tail.ShownReasonRank = 3;
+                tail.State = failing with { Status = "disconnected", Reason = failed, KickMessage = null, BannedByGame = false, At = TimeOf(line), TeleportStarted = null };
+                tail.TeleportAt = null;
+                tail.PendingReason = null;
+                (tail.PendingKickMessage, tail.PendingBan) = (null, false);
+            }
+            // The fallback line after it only sharpens the code.
+            else if (tail.State is { Status: "disconnected", Reason: NoResponse } shown && ConnectFailedCode().Match(line) is { Success: true } exact
+                     && int.TryParse(exact.Groups[1].Value, NumberStyles.None, CultureInfo.InvariantCulture, out int code2))
+                tail.State = shown with { Reason = code2 };
         }
         else if (line.Contains(DisconnectedMark, StringComparison.Ordinal) && tail.DroppedByReason && tail.State is { Status: "disconnected" })
         {
