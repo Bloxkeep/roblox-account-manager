@@ -41,7 +41,8 @@ export default {
       return reply({ error: 'text' }, 400);
     const short = (value, max) => typeof value === 'string' ? value.trim().slice(0, max) : '';
     const contact = short(body.contact, MAX_CONTACT);
-    const app = /^\d+\.\d+\.\d+$/.test(body.app) ? body.app : '?';
+    // A quiet fix's version has a tag after it ("1.0.23-alpha.5"): before 2026-11-14 those read as '?'.
+    const app = typeof body.app === 'string' && /^\d+\.\d+\.\d+(?:-[0-9A-Za-z]+(?:\.[0-9A-Za-z]+)*)?$/.test(body.app) && body.app.length <= 40 ? body.app : '?';
     const windows = short(body.windows, 80) || '?';
     const language = body.language === 'vi' ? 'Tiếng Việt' : 'English';
     const log = short(body.log, MAX_LOG);
