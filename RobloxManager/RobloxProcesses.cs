@@ -281,6 +281,11 @@ public static class RobloxProcesses
         return result;
     }
 
+    /// <summary>The clients with a window Windows calls "not responding" (no answer for 5 s: IsHungAppWindow), in one pass over
+    /// the desktop's windows; no process is opened.</summary>
+    public static HashSet<int> HungPids(IEnumerable<int> pids) =>
+        VisibleWindows(pids).Where(w => w.Value.Any(IsHungAppWindow)).Select(w => w.Key).ToHashSet();
+
     // ───────── windows hidden while their game runs ─────────
     // Shown again when Bloxkeep closes, or at its next start after a crash: the windows it hid are written down (pid
     // and window) in the data folder.

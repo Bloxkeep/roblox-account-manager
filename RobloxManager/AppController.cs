@@ -6,7 +6,11 @@ using Microsoft.Win32;
 namespace RobloxManager;
 
 /// <summary>An error whose message is shown to the user as-is.</summary>
-public sealed class UserError(string message) : Exception(message);
+public class UserError(string message) : Exception(message);
+
+/// <summary>A launch held back: Roblox would install its update as it opened, closing every Roblox window open
+/// (AppController.HoldForRobloxUpdate). A rejoin waits and tries again.</summary>
+public sealed class RobloxUpdateHold(string message) : UserError(message);
 
 /// <summary>
 /// Everything behind the web UI. The page sends {id, cmd, args}; each command gets a {type:"reply"} and state

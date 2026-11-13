@@ -586,6 +586,30 @@ public sealed partial class AppController
     readonly Dictionary<int, DateTime> _heavySince = new();
     /// <summary>Windows whose due restart was logged as held back (once each).</summary>
     readonly HashSet<int> _restartHeldNoted = new();
+    /// <summary>Since when each client's window has been "not responding", seen on every tick in a row.</summary>
+    readonly Dictionary<int, DateTime> _hungSince = new();
+    /// <summary>A window frozen this long is closed and opened again: a big map loading or a teleport stalls seconds, not this.</summary>
+    static readonly TimeSpan HungFor = TimeSpan.FromMinutes(1);
+    /// <summary>Frozen windows already said to be left open (once each).</summary>
+    readonly HashSet<int> _hungTold = new();
+
+    void TrackHung(DateTime now)
+    {
+        // The PC just woke: windows catch up for a while, and a time from before the sleep says nothing.
+        if (Settling || _running.Count == 0)
+        {
+            _hungSince.Clear();
+            _hungTold.Clear();
+            return;
+        }
+        // Not a window under Save RAM's limit: paging back in can stall it for a long while without being frozen.
+        var hung = RobloxProcesses.HungPids(_running.Values.Select(r => r.Pid).Where(pid => !_ramLimited.ContainsKey(pid)));
+        foreach (int pid in _hungSince.Keys.Where(pid => !hung.Contains(pid)).ToList())
+            _hungSince.Remove(pid);
+        foreach (int pid in hung)
+            _hungSince.TryAdd(pid, now);
+        _hungTold.RemoveWhere(pid => !_hungSince.ContainsKey(pid));
+    }
 
     /// <summary>A preset's "restart every N hours": a client in its game that ran that long is closed and reopened through auto-rejoin's
     /// path, one at a time (menu or error screens are auto-rejoin's). A window in use while the person is at the PC waits; one merely
@@ -616,6 +640,7 @@ public sealed partial class AppController
                     _heavySince.TryAdd(pid, now);
             }
         }
+        TrackHung(now);
         if (_vault is null || _running.Count == 0 || _restarts.Count > 0 || InputTurn.Busy || Settling || _rejoining || _launchCts is not null || _updateReopenSince is not null
             || _pending.Count > 0 || _rejoinQueue.Any(r => r.Restart) || now < _sweepBackgroundUntil || now - _lastSessionStart < RestartSpacing)
             return;
@@ -623,6 +648,32 @@ public sealed partial class AppController
         HashSet<int>? main = null;
         foreach (var (id, run) in _running.OrderBy(r => r.Value.Launch.StartedAt).ToList())
         {
+            // Frozen: Windows' "not responding" for HungFor in a row. Bloxkeep took it for a running game and never reopened it
+            // (RoALT closes and reopens one after 30 s).
+            if (_hungSince.TryGetValue(run.Pid, out var frozen) && now - frozen >= HungFor && !_closingForRejoin.Contains(run.Pid)
+                && FindAccount(id) is { } stuck)
+            {
+                // Reopened only where auto-rejoin would: on, a game to go back to, signed in, not banned, Multi-Roblox ready. Never
+                // the account the person plays (MAIN): they see it and may wait for it.
+                bool reopen = run.Launch.Target is not null && RejoinOn(stuck, run.Launch.PresetId) && stuck.CookieValid != false && stuck.Banned != true
+                              && (MultiInstance.Armed || _running.Count == 1) && !(main ??= MainPids()).Contains(run.Pid);
+                if (!reopen)
+                {
+                    if (_hungTold.Add(run.Pid))
+                    {
+                        Log.Note($"Frozen: window {run.Pid} not responding for {(int)(now - frozen).TotalSeconds} s; left open (not reopened by auto-rejoin).");
+                        Notify(L.F("{0}'s Roblox window stopped responding.", Name(stuck)), "warn", "restartHung", id);
+                    }
+                    continue;
+                }
+                Log.Note($"Restart: closing window {run.Pid} to reopen it, not responding for {(int)(now - frozen).TotalSeconds} s.");
+                _restarts[id] = (RestartTarget(run), now);
+                _closingForRejoin.Add(run.Pid); // Bloxkeep's own close: neither a drop nor closed by Roblox
+                _hungSince.Remove(run.Pid);
+                Notify(L.F("Restarting {0}'s Roblox: its window stopped responding…", Name(stuck)), "warn", "restartHung", id);
+                RobloxProcesses.Close(run.Pid, force: true); // a frozen window takes no WM_CLOSE
+                return;
+            }
             var preset = PresetFor(run.Launch.PresetId);
             bool due = preset is { RestartHours: > 0 } && now - run.Launch.StartedAt >= TimeSpan.FromHours(preset.RestartHours);
             // Too heavy for long enough; never the account the person plays (MAIN).

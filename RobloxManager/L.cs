@@ -128,6 +128,10 @@ public static class L
             "Không tìm thấy RobloxPlayerBeta.exe. Chọn cách mở khác ở Cài đặt › Khởi chạy › Mở Roblox bằng, hoặc cài lại Roblox.",
         ["{0} is not installed."] = "Máy chưa cài {0}.",
         ["The official Roblox client is not installed."] = "Máy chưa cài Roblox bản chính thức.",
+        ["Roblox would install an update as this window opens, and that closes every Roblox window open. Close the other Roblox windows first, or use Close, update, reopen under Settings › Roblox version."] =
+            "Mở cửa sổ này thì Roblox sẽ tự cập nhật và tắt hết các cửa sổ Roblox đang mở. Hãy đóng các cửa sổ kia trước, hoặc dùng Đóng, cập nhật, mở lại ở Cài đặt › Phiên bản Roblox.",
+        ["{0} waits to rejoin: opening it now would make Roblox update and close every Roblox window open. It rejoins once the other windows are closed or Roblox is updated."] =
+            "{0} chờ vào lại: mở bây giờ thì Roblox sẽ tự cập nhật và tắt hết các cửa sổ đang mở. Sẽ vào lại khi các cửa sổ kia đóng hoặc Roblox cập nhật xong.",
         ["Roblox isn't installed. Install it from roblox.com/download, then try again."] =
             "Máy chưa cài Roblox. Hãy cài từ roblox.com/download rồi thử lại.",
         ["Only Roblox from the Microsoft Store is installed. Choose it under Settings › Launching › Open Roblox with, or install Roblox from roblox.com/download."] =
@@ -859,6 +863,9 @@ public static class L
         ["A topic is 6 to 64 letters, digits, - or _ (or https://your-server/topic)."] = "Tên kênh gồm 6 đến 64 chữ, số, - hoặc _ (hoặc https://máy-chủ/kênh).",
         ["Bloxkeep can reach this phone. Alerts will come here."] = "Bloxkeep đã gửi được tới điện thoại này. Thông báo sẽ về đây.",
         ["Restarting {0}'s Roblox: it used {1} GB of RAM…"] = "Đang mở lại Roblox của {0}: dùng tới {1} GB RAM…",
+        ["Restarting {0}'s Roblox: its window stopped responding…"] = "Đang mở lại Roblox của {0}: cửa sổ bị treo…",
+        ["{0}'s Roblox window stopped responding."] = "Cửa sổ Roblox của {0} bị treo.",
+        ["{0} stays where it is: {1}"] = "{0} vẫn ở chỗ cũ: {1}",
         ["A heavy Roblox window restarted"] = "Đã mở lại một cửa sổ Roblox nặng",
         ["That game isn't in the news any more."] = "Game này không còn trong Tin game.",
         ["That link isn't in the news any more."] = "Link này không còn trong Tin game.",

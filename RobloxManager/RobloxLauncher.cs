@@ -176,6 +176,16 @@ public static class RobloxLauncher
                         ? L.T("Only Roblox from the Microsoft Store is installed. Choose it under Settings › Launching › Open Roblox with, or install Roblox from roblox.com/download.")
                         : L.T("Roblox isn't installed. Install it from roblox.com/download, then try again."));
                 }
+                // The links on another channel's build with Roblox's live one installed beside it: that one, as Windows would
+                // start the links' (RobloxInstalls.LiveBuild: the other would update and close every Roblox window open).
+                if (RobloxInstalls.UsableHandlerPath() is { } links && Path.GetFileName(links).Equals("RobloxPlayerBeta.exe", StringComparison.OrdinalIgnoreCase)
+                    && RobloxInstalls.LiveBeside(links) is { } live
+                    && !string.Equals(live, links, StringComparison.OrdinalIgnoreCase))
+                {
+                    Log.Note($"Roblox start: the links open build {Path.GetFileName(Path.GetDirectoryName(links))}; started Roblox's live build {Path.GetFileName(Path.GetDirectoryName(live))} instead.");
+                    Start(live, uri);
+                    break;
+                }
                 // Not in Bloxkeep's folder (see Program.Main): the launcher may keep running as long as Roblox does.
                 Process.Start(new ProcessStartInfo(uri) { UseShellExecute = true, WorkingDirectory = Path.GetTempPath() })?.Dispose();
                 break;

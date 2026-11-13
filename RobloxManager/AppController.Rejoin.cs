@@ -577,6 +577,9 @@ public sealed partial class AppController
     Func<MemoryStatus> _readMemory = SystemMemory.Read;
     static readonly TimeSpan MemoryHoldRecheck = TimeSpan.FromSeconds(30);
     readonly HashSet<Guid> _memoryHeldTold = new();
+    /// <summary>A rejoin held back by HoldForRobloxUpdate looks again this often; each account is told once.</summary>
+    static readonly TimeSpan UpdateHoldRecheck = TimeSpan.FromMinutes(1);
+    readonly HashSet<Guid> _updateHeldTold = new();
     /// <summary>How long anti-AFK waits after a window was held on Roblox's bot check (its nudges would take the front).</summary>
     static readonly TimeSpan BotCheckHold = TimeSpan.FromMinutes(5);
     /// <summary>Accounts whose window was hidden when their client ended: the window their rejoin opens is hidden too.</summary>
@@ -672,6 +675,7 @@ public sealed partial class AppController
             }
             await StartSessionAsync(account, target, vault.Data.Settings.LaunchVia, cts.Token, rejoin: true, presetId: request.PresetId,
                 restart: request.Restart, openRetries: request.OpenRetries);
+            _updateHeldTold.Remove(account.Id);
             Persist();
             PushState();
         }
@@ -679,6 +683,14 @@ public sealed partial class AppController
         {
             // Close all, or Close of this account: whatever it ran into meanwhile, nothing to say.
             Log.Note($"Rejoin: account {account.Id.ToString()[..8]}'s rejoin called off.");
+        }
+        catch (RobloxUpdateHold)
+        {
+            // Opening it would update Roblox and close every window open (HoldForRobloxUpdate): it waits, said once.
+            if (_updateHeldTold.Add(account.Id))
+                Notify(L.F("{0} waits to rejoin: opening it now would make Roblox update and close every Roblox window open. It rejoins once the other windows are closed or Roblox is updated.",
+                    Name(account)), "warn", "rejoinFail", account.Id);
+            Again(request with { Due = DateTime.UtcNow + UpdateHoldRecheck });
         }
         catch (UserError)
         {

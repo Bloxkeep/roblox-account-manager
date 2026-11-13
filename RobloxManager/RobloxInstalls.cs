@@ -220,16 +220,40 @@ public static class RobloxInstalls
                 ? v : new Version(0, 0);
         bool Registered(string p) => registered is not null && IsRobloxOwn(p)
             && string.Equals(Path.GetFileName(Path.GetDirectoryName(p)), registered, StringComparison.OrdinalIgnoreCase);
-        // …\<install>\Versions\version-…\RobloxPlayerBeta.exe: one pick per Versions folder.
+        // …\<install>\Versions\version-…\RobloxPlayerBeta.exe: one pick per Versions folder. Roblox's live build first (LiveBuild).
         return paths.GroupBy(p => Path.GetDirectoryName(Path.GetDirectoryName(p)) ?? "", StringComparer.OrdinalIgnoreCase)
-            .Select(install => install.OrderByDescending(Registered).ThenByDescending(VersionNumber).ThenByDescending(File.GetLastWriteTimeUtc).First())
-            .OrderByDescending(VersionNumber)
+            .Select(install => install.OrderByDescending(IsLive).ThenByDescending(Registered).ThenByDescending(VersionNumber).ThenByDescending(File.GetLastWriteTimeUtc).First())
+            .OrderByDescending(IsLive)
+            .ThenByDescending(VersionNumber)
             .ThenByDescending(File.GetLastWriteTimeUtc)
             .FirstOrDefault();
     }
 
+    /// <summary>
+    /// The build folder ("version-…") Roblox serves everyone now (clientsettingscdn's WindowsPlayer, no channel); null until
+    /// Roblox answered. Roblox puts some accounts on a test channel and installs that channel's build next to the live one,
+    /// the roblox-player links then pointing at it. Bloxkeep's links ask for no channel, so a client on the test build finds
+    /// itself off the live one and runs Roblox's installer, which closes every Roblox window open: on a user's PC (2026-11-13,
+    /// 0.747.649 installed beside the live 0.747.0) each window opened with others running ended them all within seconds.
+    /// RoALT met it too and starts the live build's file; Bloxkeep does the same when that build is installed.
+    /// </summary>
+    public static string? LiveBuild { get; set; }
+
+    /// <summary>The client is in Roblox's live build's folder (<see cref="LiveBuild"/>).</summary>
+    static bool IsLive(string exe) =>
+        LiveBuild is { Length: > 0 } live && string.Equals(Path.GetFileName(Path.GetDirectoryName(exe)), live, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>The live build's client in the same Versions folder as this one when it is there and this is another build;
+    /// otherwise the client as given (<see cref="LiveBuild"/>).</summary>
+    public static string? LiveBeside(string? exe)
+    {
+        if (exe is null || LiveBuild is not { Length: > 0 } live || IsLive(exe) || !HasBuild(exe, live))
+            return exe;
+        return Path.Combine(Path.GetDirectoryName(Path.GetDirectoryName(exe))!, live, "RobloxPlayerBeta.exe");
+    }
+
     /// <summary>In Roblox's own install (its installer's, per user or for all), not a launcher's copy.</summary>
-    static bool IsRobloxOwn(string exe) =>
+    public static bool IsRobloxOwn(string exe) =>
         Under(exe, Path.Combine(Local, "Roblox")) || Under(exe, Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "Roblox"));
 
     /// <summary>The build folder ("version-…") Roblox's installer set the roblox-player link up for, written beside its command.</summary>
@@ -344,7 +368,7 @@ public static class RobloxInstalls
             // Whatever opens roblox-player: links (not VNG's client: see IsVngClient).
             _ => UsableHandlerPath() is { } handler
                 ? Path.GetFileName(handler).Equals("RobloxPlayerBeta.exe", StringComparison.OrdinalIgnoreCase)
-                    ? handler
+                    ? LiveBeside(handler) // what RobloxLauncher starts in the links' place (LiveBuild)
                     : Newest(ClientsIn(Path.GetDirectoryName(handler))) ?? FindAnyClient()
                 : FindAnyClient() ?? FindVngClient(),
         };

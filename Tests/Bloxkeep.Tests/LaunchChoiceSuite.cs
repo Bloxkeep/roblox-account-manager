@@ -94,6 +94,31 @@ static class LaunchChoiceSuite
             File.Delete(Path.Combine(local, "Roblox", "Versions", "version-other", "RobloxPlayerBeta.exe"));
         }
 
+        // A test channel's build registered and newer, Roblox's live build beside it (a user's PC, 2026-11-13: each window
+        // opened on the test build updated Roblox and closed every other): the live one is started, as RoALT does.
+        string test = Client("Roblox", "version-test"), liveBuild = Client("Roblox", "version-live2");
+        File.Copy(Path.Combine(Environment.SystemDirectory, "notepad.exe"), test, overwrite: true);
+        Registered(() => "version-test");
+        try
+        {
+            c.Check("without the live build known: the registered test build, as before", RobloxInstalls.FindOfficialClient() == test, RobloxInstalls.FindOfficialClient());
+            RobloxInstalls.LiveBuild = "version-live2";
+            c.Check("the live build known and installed: it, over the registered and higher test build", RobloxInstalls.FindOfficialClient() == liveBuild, RobloxInstalls.FindOfficialClient());
+            c.Check("…the links' test build gives way to it", RobloxInstalls.LiveBeside(test) == liveBuild, RobloxInstalls.LiveBeside(test));
+            c.Check("…the live build itself stays", RobloxInstalls.LiveBeside(liveBuild) == liveBuild);
+            File.Delete(liveBuild);
+            c.Check("the live build not installed: the test build, nothing beside it", RobloxInstalls.FindOfficialClient() == test && RobloxInstalls.LiveBeside(test) == test,
+                RobloxInstalls.FindOfficialClient());
+        }
+        finally
+        {
+            RobloxInstalls.LiveBuild = null;
+            Registered(null);
+            Directory.Delete(Path.GetDirectoryName(test)!, recursive: true);
+            if (Directory.Exists(Path.GetDirectoryName(liveBuild)))
+                Directory.Delete(Path.GetDirectoryName(liveBuild)!, recursive: true);
+        }
+
         // A build whose DLL is gone can't start (the exe names it); one from before that DLL, or with it beside, can.
         string broken = Client("Roblox", "version-broken");
         File.WriteAllBytes(broken, [.. new byte[(1 << 20) - 5], .. System.Text.Encoding.ASCII.GetBytes("RobloxPlayerBeta.dll"), 0]);

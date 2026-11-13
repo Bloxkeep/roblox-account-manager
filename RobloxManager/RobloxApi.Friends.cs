@@ -15,20 +15,32 @@ public static partial class RobloxApi
         var result = new Dictionary<long, string>();
         if (others.Count == 0)
             return result;
-        string url = Realm.Api(realm, "friends") + $"/v1/users/{userId}/friends/statuses?userIds=" + string.Join(",", others);
-        using var req = Request(HttpMethod.Get, url, cookie);
-        using var res = await Http.SendAsync(req, ct);
-        string body = await res.Content.ReadAsStringAsync(ct);
-        if (res.StatusCode == HttpStatusCode.TooManyRequests)
-            throw new RobloxApiException(L.T("Roblox is rate-limiting requests; try again shortly."), rateLimited: true);
-        if (!res.IsSuccessStatusCode)
-            throw Refused("Friend statuses", res.StatusCode, body, cookieInvalid: res.StatusCode == HttpStatusCode.Unauthorized);
-        if (DecodeJson(body) is { ValueKind: JsonValueKind.Object } root && root.TryGetProperty("data", out var data) && data.ValueKind == JsonValueKind.Array)
-            foreach (var d in data.EnumerateArray())
-                if (d.TryGetProperty("id", out var id) && id.TryGetInt64(out long other) && d.TryGetProperty("status", out var s) && s.ValueKind == JsonValueKind.String)
-                    result[other] = s.GetString() ?? "";
+        // At most 50 ids a call: Roblox has a "too many ids" error with no stated limit (RoALT uses 50, as presence's is).
+        foreach (var chunk in others.Distinct().Chunk(50))
+        {
+            string url = Realm.Api(realm, "friends") + $"/v1/users/{userId}/friends/statuses?userIds=" + string.Join(",", chunk);
+            using var req = Request(HttpMethod.Get, url, cookie);
+            using var res = await Http.SendAsync(req, ct);
+            string body = await res.Content.ReadAsStringAsync(ct);
+            if (res.StatusCode == HttpStatusCode.TooManyRequests)
+                throw new RobloxApiException(L.T("Roblox is rate-limiting requests; try again shortly."), rateLimited: true);
+            if (!res.IsSuccessStatusCode)
+                throw Refused("Friend statuses", res.StatusCode, body, cookieInvalid: res.StatusCode == HttpStatusCode.Unauthorized);
+            if (DecodeJson(body) is { ValueKind: JsonValueKind.Object } root && root.TryGetProperty("data", out var data) && data.ValueKind == JsonValueKind.Array)
+                foreach (var d in data.EnumerateArray())
+                    if (d.TryGetProperty("id", out var id) && id.TryGetInt64(out long other) && d.TryGetProperty("status", out var s) && StatusName(s) is { } name)
+                        result[other] = name;
+        }
         return result;
     }
+
+    /// <summary>A friend status as its name: Roblox sends the name, and its numbered form (0–3, the same order) has been seen too.</summary>
+    static string? StatusName(JsonElement status) => status.ValueKind switch
+    {
+        JsonValueKind.String => status.GetString() ?? "",
+        JsonValueKind.Number when status.TryGetInt32(out int n) && n is >= 0 and <= 3 => ((string[])["NotFriends", "Friends", "RequestSent", "RequestReceived"])[n],
+        _ => null,
+    };
 
     /// <summary>Roblox's answer to a friend request or an acceptance: HTTP status, its error codes, and the check holding it
     /// (rblx-challenge-* headers), if any.</summary>

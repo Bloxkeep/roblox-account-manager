@@ -453,8 +453,9 @@ public static partial class RobloxApi
     public static async Task<Dictionary<long, Presence>> GetPresenceAsync(string? cookie, IReadOnlyCollection<long> userIds, string realm = Realm.Global, CancellationToken ct = default)
     {
         var result = new Dictionary<long, Presence>();
-        // 100 ids per request (Roblox's limit); the requests go out together.
-        var pages = await Task.WhenAll(userIds.Where(id => id > 0).Distinct().Chunk(100).Select(async chunk =>
+        // 50 ids per request: Roblox refuses 51 ("Too many User Ids being sent in the request.", HTTP 400, recorded by RoALT),
+        // and one refused page fails the whole check, so 51 accounts or more had no status at all. The requests go out together.
+        var pages = await Task.WhenAll(userIds.Where(id => id > 0).Distinct().Chunk(50).Select(async chunk =>
         {
             string json = JsonSerializer.Serialize(new { userIds = chunk });
             using var res = await PostWithCsrfAsync(Realm.Api(realm, "presence") + "/v1/presence/users", cookie ?? "", json, null, ct, realm);

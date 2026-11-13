@@ -111,6 +111,9 @@ public sealed partial class AppController
             if (await RobloxApi.GetLatestClientVersionAsync() is { } latest && latest != _latestRoblox)
             {
                 _latestRoblox = latest;
+                // Launches start this build when it is installed (another channel's would update and close every window).
+                RobloxInstalls.LiveBuild = latest.Folder.StartsWith("version-", StringComparison.OrdinalIgnoreCase) ? latest.Folder : null;
+                _installsReadAt = DateTime.MinValue; // the client picked may change with it
                 PushState();
             }
         }
