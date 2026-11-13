@@ -162,6 +162,19 @@ static class LaunchChoiceSuite
         c.Check("the Store's copy has no build folder: not compared", !RobloxInstalls.IsBehind(Build("2.744.1.0", ""), newestBuild));
         c.Check("newest or window not known: not behind", !RobloxInstalls.IsBehind(null, newestBuild) && !RobloxInstalls.IsBehind(newestBuild, null));
 
+        // Roblox releasing a build while windows are open (the owner's question, 2026-11-14): a launch with Roblox open asks
+        // for the live build again unless it was just asked; with none open the 30-minute check is enough.
+        var at = new DateTime(2026, 11, 14, 12, 0, 0, DateTimeKind.Utc);
+        c.Check("live build never asked: a launch asks", AppController.AskLiveAgain(false, DateTime.MinValue, at, 0));
+        c.Check("Roblox open, asked a minute ago: asked again", AppController.AskLiveAgain(true, at, at.AddMinutes(1), 3));
+        c.Check("Roblox open, just asked (a batch): not asked again", !AppController.AskLiveAgain(true, at, at.AddSeconds(10), 3));
+        c.Check("no Roblox open: the update closes nothing, not asked", !AppController.AskLiveAgain(true, at, at.AddMinutes(20), 0));
+        // A staged rollout: Roblox lists a build this PC doesn't get yet. A client started for it, in a game on its old build, shows it.
+        c.Check("asked for the new build, in a game on the old one: not rolled out here", AppController.NotRolledOut("version-new", Build("0.744.0.100", "version-old"), true));
+        c.Check("…still loading: not known yet", !AppController.NotRolledOut("version-new", Build("0.744.0.100", "version-old"), false));
+        c.Check("…in a game on the new build: it was rolled out", !AppController.NotRolledOut("version-new", Build("0.745.0.100", "VERSION-NEW"), true));
+        c.Check("…its build not read: not known", !AppController.NotRolledOut("version-new", null, true));
+
         // Only Roblox VNG left (a launcher of this PC's own may still stand ahead of it: then that one is used).
         Directory.Delete(Path.Combine(local, "Roblox"), recursive: true);
         if (RobloxInstalls.FindAnyClient() is null)

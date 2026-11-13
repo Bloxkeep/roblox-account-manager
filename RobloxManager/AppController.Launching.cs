@@ -722,7 +722,8 @@ public sealed partial class AppController
         if (launchVia != chosenVia)
             Log.Note($"Roblox start: through {launchVia} instead of {chosenVia}, so the old Roblox build is updated first.");
         // The live build not known yet (Bloxkeep started in the background, a scheduled launch): asked now, since it picks the client.
-        if (_latestRoblox is null)
+        // With Roblox open, asked again unless just asked: one released since would close every window as this one updates.
+        if (AskLiveAgain(_latestRoblox is not null, _latestRobloxAt, DateTime.UtcNow, RobloxProcesses.GetPlayerPids().Length))
             await RefreshLatestRobloxAsync();
         HoldForRobloxUpdate(account, launchVia, settings.CustomLauncher);
         // The sign-in ticket last, after every wait above: one fetched first sat through a Roblox update (RoALT gets its
@@ -780,8 +781,9 @@ public sealed partial class AppController
     /// <summary>
     /// Holds a launch back when it would close every Roblox window open: Roblox's own install with only another channel's build
     /// (newer than the live one Roblox serves, its live build not installed beside it, see RobloxInstalls.LiveBuild) checks the
-    /// live version as it opens, runs Roblox's installer, and that ends every client (a user's PC, 2026-11-13). With no Roblox
-    /// open it goes on: the update closes nothing. RoALT holds the same launch ("update hold").
+    /// live version as it opens, runs Roblox's installer, and that ends every client (a user's PC, 2026-11-13). So does one
+    /// behind a build Roblox released while windows are open, unless that build isn't rolled out to this PC (LiveNotHere). With
+    /// no Roblox open it goes on: the update closes nothing. RoALT holds the same launch ("update hold").
     /// </summary>
     void HoldForRobloxUpdate(Account account, string launchVia, string customLauncher)
     {
@@ -803,11 +805,19 @@ public sealed partial class AppController
                 + $"({live.Folder}): {name} would update it first and close the {open} Roblox open.");
             throw new RobloxUpdateHold(L.F("{0} would update Roblox as this window opens, and that closes every Roblox window open. Close the other Roblox windows first, or use Close, update, reopen under Settings › Roblox version.", name));
         }
-        if (!RobloxInstalls.IsRobloxOwn(client)
-            || !(Version.TryParse(have.Version, out var mine) && Version.TryParse(live.Version, out var served) && mine > served))
+        if (!RobloxInstalls.IsRobloxOwn(client))
             return;
-        Log.Note($"Roblox start: account {account.Id.ToString()[..8]} held back, Roblox's build {have.Version} ({have.Folder}) is another channel's, "
-            + $"the live {live.Version} ({live.Folder}) isn't installed, and opening it would update Roblox and close the {open} Roblox open.");
+        if (Version.TryParse(have.Version, out var mine) && Version.TryParse(live.Version, out var served) && mine > served)
+            Log.Note($"Roblox start: account {account.Id.ToString()[..8]} held back, Roblox's build {have.Version} ({have.Folder}) is another channel's, "
+                + $"the live {live.Version} ({live.Folder}) isn't installed, and opening it would update Roblox and close the {open} Roblox open.");
+        // Roblox released a new build while windows are open (the owner's question, 2026-11-14): Roblox's own client behind
+        // the live build runs Roblox's installer as it opens, and that installer ends every client, as the other channel's did.
+        // Not when Roblox hasn't rolled that build out to this PC yet (LiveNotHere): the client opens on its own build then.
+        else if (RobloxInstalls.IsBehind(have, live) && !LiveNotHere(live))
+            Log.Note($"Roblox start: account {account.Id.ToString()[..8]} held back, Roblox's build {have.Version} ({have.Folder}) is behind the live "
+                + $"{live.Version} ({live.Folder}), and opening it would update Roblox and close the {open} Roblox open.");
+        else
+            return;
         throw new RobloxUpdateHold(L.T("Roblox would install an update as this window opens, and that closes every Roblox window open. Close the other Roblox windows first, or use Close, update, reopen under Settings › Roblox version."));
     }
 

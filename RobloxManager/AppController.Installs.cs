@@ -99,6 +99,9 @@ public sealed partial class AppController
         string? shown = installed?.Version;
         if (upToDate == false && RobloxInstalls.HasBuild(installed!.Exe, _latestRoblox!.Folder))
             (shown, upToDate) = (_latestRoblox.Version, true);
+        // Listed by Roblox but not rolled out to this PC yet (LiveNotHere): Roblox has nothing to update here, so nothing is out of date.
+        if (upToDate == false && LiveNotHere(_latestRoblox!))
+            upToDate = true;
         return new RobloxVersionInfo(shown, _latestRoblox?.Version, upToDate, _vault?.Data.Settings.LaunchVia == "direct" && !RobloxInstalls.UpdatesOnOpen(installed?.Exe),
             _vault?.Data.Settings.LaunchVia == "store", _updaterExe is { } updater ? RobloxInstalls.IsOwnInstaller(updater) ? "Roblox" : Path.GetFileNameWithoutExtension(updater) : null, _robloxUpdating || _updateReopenSince is not null,
             _running.Count(r => FindAccount(r.Key) is { } a && RunsOldBuild(a, r.Value.Pid)), _running.Count(r => CanReopen(r.Key, r.Value)));
@@ -108,8 +111,12 @@ public sealed partial class AppController
     {
         try
         {
-            if (await RobloxApi.GetLatestClientVersionAsync() is { } latest && latest != _latestRoblox)
+            var asked = await RobloxApi.GetLatestClientVersionAsync();
+            _latestRobloxAt = DateTime.UtcNow;
+            if (asked is { } latest && latest != _latestRoblox)
             {
+                if (latest.Folder != _latestRoblox?.Folder)
+                    _latestRobloxSince = DateTime.UtcNow;
                 _latestRoblox = latest;
                 // Launches start this build when it is installed (another channel's would update and close every window).
                 RobloxInstalls.LiveBuild = latest.Folder.StartsWith("version-", StringComparison.OrdinalIgnoreCase) ? latest.Folder : null;

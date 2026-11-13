@@ -184,15 +184,60 @@ public sealed partial class AppController
     bool _updateReopenUpdating;
     static readonly TimeSpan UpdateReopenCloseLimit = TimeSpan.FromSeconds(30);
 
+    /// <summary>When Roblox's live build was last asked; a launch with Roblox open asks again past <see cref="LiveRecheck"/>.</summary>
+    DateTime _latestRobloxAt = DateTime.MinValue;
+    /// <summary>When the live build in _latestRoblox was first seen: a client started after it asked Roblox for that build.</summary>
+    DateTime _latestRobloxSince = DateTime.MinValue;
+    /// <summary>Roblox's own clients started behind the live build after it was listed, with the build they asked for: each one
+    /// that gets into a game still on its old build shows Roblox hasn't rolled the build out to this PC (<see cref="LiveNotHere"/>).</summary>
+    readonly Dictionary<int, string> _rolloutProbes = new();
+    /// <summary>A live build Roblox lists but hasn't rolled out to this PC, and when that was seen.</summary>
+    (string Folder, DateTime At)? _liveNotHere;
+    /// <summary>How long a "not rolled out here" holds: a staged rollout can reach this PC later (RoALT trusts it 30 minutes too).</summary>
+    static readonly TimeSpan NotHereFor = TimeSpan.FromMinutes(30);
+    /// <summary>A launch with Roblox open asks for the live build again when the last answer is older than this: Roblox can release
+    /// one while windows are open, and a client behind it would update and close them all (RoALT asks before every launch).</summary>
+    static readonly TimeSpan LiveRecheck = TimeSpan.FromSeconds(30);
+
+    /// <summary>Whether a launch asks Roblox for its live build first: never asked, or Roblox is open and the answer is old.</summary>
+    internal static bool AskLiveAgain(bool known, DateTime askedAt, DateTime now, int open) =>
+        !known || (open > 0 && now - askedAt > LiveRecheck);
+
+    /// <summary>Roblox lists a build before it reaches every PC (staged rollouts). A client that asked for <paramref name="askedFor"/>
+    /// and got into a game on another build wasn't updated by Roblox, so that build isn't this PC's update yet (as RoALT reads it).</summary>
+    internal static bool NotRolledOut(string askedFor, RobloxInstalls.ClientVersion? runs, bool inGame) =>
+        inGame && runs is not null && !runs.Folder.Equals(askedFor, StringComparison.OrdinalIgnoreCase);
+
+    bool LiveNotHere(RobloxInstalls.ClientVersion live) =>
+        _liveNotHere is { } seen && seen.Folder.Equals(live.Folder, StringComparison.OrdinalIgnoreCase) && DateTime.UtcNow - seen.At < NotHereFor;
+
     void NoteClientBuilds(IReadOnlyList<RobloxProcesses.PlayerProcess> players)
     {
         foreach (var player in players)
         {
-            if (!_clientBuilds.ContainsKey(player.Pid))
-                _clientBuilds[player.Pid] = RobloxInstalls.VersionOf(RobloxProcesses.LaunchPath(player.Pid, player.Created));
+            if (_clientBuilds.ContainsKey(player.Pid))
+                continue;
+            string? path = RobloxProcesses.LaunchPath(player.Pid, player.Created);
+            var build = _clientBuilds[player.Pid] = RobloxInstalls.VersionOf(path);
+            if (path is not null && _latestRoblox is { } live && RobloxInstalls.IsRobloxOwn(path) && !RobloxInstalls.IsVngClient(path)
+                && RobloxInstalls.IsBehind(build, live) && player.Created > 0 && DateTime.FromFileTimeUtc(player.Created) > _latestRobloxSince)
+                _rolloutProbes[player.Pid] = live.Folder;
         }
         foreach (int gone in _clientBuilds.Keys.Where(pid => players.All(p => p.Pid != pid)).ToList())
             _clientBuilds.Remove(gone);
+        foreach (var (pid, asked) in _rolloutProbes.ToList())
+        {
+            bool inGame = _logs.StateOf(pid) is { Status: "ingame" };
+            if (!_clientBuilds.TryGetValue(pid, out var runs) || inGame)
+                _rolloutProbes.Remove(pid);
+            if (NotRolledOut(asked, runs, inGame) && _latestRoblox is { } now && now.Folder == asked && !LiveNotHere(now))
+            {
+                _liveNotHere = (asked, DateTime.UtcNow);
+                Log.Note($"Roblox update: Roblox lists {now.Version} ({asked}), but a Roblox started for it got into a game on {runs!.Version} ({runs.Folder}): "
+                    + "not rolled out to this PC yet, so launches with Roblox open aren't held for it.");
+                PushState();
+            }
+        }
     }
 
     /// <summary>A window on a build older than Roblox's newest. Roblox VNG has its own builds, so it's never compared.</summary>
@@ -212,7 +257,7 @@ public sealed partial class AppController
         var s = _vault?.Data.Settings;
         bool now = s?.RobloxUpdateWhen == "now";
         if (s?.AutoUpdateRoblox != true || (players.Count > 0 && !now) || _robloxUpdating || _updateReopenSince is not null
-            || OpeningRoblox || _rejoinQueue.Count > 0 || Settling || ScheduleDueSoon())
+            || OpeningRoblox || _rejoinQueue.Any(r => !_updateHeldTold.Contains(r.AccountId)) || Settling || ScheduleDueSoon())
             return;
         var version = RobloxVersionDto();
         if (version.UpToDate != false || version.Updater is null || version.Latest == _autoUpdatedFor)
