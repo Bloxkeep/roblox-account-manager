@@ -211,12 +211,6 @@ pub fn played(root: &Root, seconds: i64) -> String {
     }
 }
 
-/// "3h06" on a bar, the same in both languages (never "0h00" for some play).
-fn bar_time(s: i64) -> String {
-    let m = if s > 0 { (s as f64 / 60.).round().max(1.) as i64 } else { 0 };
-    format!("{}h{:02}", m / 60, m % 60)
-}
-
 fn offset() -> i64 {
     crate::time::utc_offset_secs()
 }
@@ -413,6 +407,7 @@ pub fn stats(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
         .rounded(px(R_PANEL))
         .bg(c(PANEL))
         .overflow_hidden()
+        .relative()
         .flex()
         .flex_col()
         .child(header)
@@ -531,7 +526,17 @@ fn figures(root: &Root, w: f32, cx: &mut Context<Root>) -> Div {
         }
         page = page.child(clock_card).children(drops);
     } else {
-        page = page.child(days(root, d, w));
+        // Who played when, an account a track across the days (critique 2026-11-13, P2: a column a day said only
+        // how much, the same chart any dashboard has; the tracks say who, which game, and where they dropped).
+        let avg = avg_day(d);
+        page = page.child(
+            card()
+                .child(
+                    card_title(root.tr("stats.timeline"))
+                        .when(avg >= 60, |t| t.child(div().flex_1()).child(div().text_size(px(T_M)).text_color(c(MUTED)).child(root.i18n.tv("stats.avgDay", &[("t", &played(root, avg))])))),
+                )
+                .child(timeline(root, d, None, w - 42., cx)),
+        );
         if !arr(d, "heat").is_empty() {
             page = page.child(heat(root, d, w));
         }
@@ -1217,122 +1222,17 @@ fn stay_clock(root: &Root, hourly: bool, at: i64) -> String {
     if hourly { clock_at(root, at) } else { format!("{} {}", day_label(root, local_day(at), false), clock_at(root, at)) }
 }
 
-/// 7 and 30 days: a bar a day on one baseline, today brighter, the day's average beside the title. 7 days: every bar's
-/// time on top; 30 days: today's and the longest day's, a date under every 5th day counted back from today.
-fn days(root: &Root, d: &Value, w: f32) -> Div {
-    let buckets = arr(d, "buckets");
-    let n = buckets.len();
-    if n == 0 {
-        return div();
-    }
-    let last = n - 1;
-    let sec: Vec<i64> = buckets.iter().map(|b| int(b, "seconds")).collect();
-    let many = n > 10;
-    let every = if many { 5 } else { 1 };
-    let top = (0..n).fold(0, |best, i| if sec[i] > sec[best] { i } else { best });
-    let top_shown = many && top != last && last - top >= 3 && sec[top] > 0;
+/// The average play time a day over the period: from the first day played when the period starts before the records
+/// do, else over all its days.
+fn avg_day(d: &Value) -> i64 {
+    let sec: Vec<i64> = arr(d, "buckets").iter().map(|b| int(b, "seconds")).collect();
+    let n = sec.len();
     let first = if d.get("previous").is_some_and(Value::is_null) { sec.iter().position(|x| *x > 0) } else { Some(0) };
     let counted = match first {
         Some(f) => n - f,
         None => n,
     };
-    let avg = int(d, "totalSeconds") / counted.max(1) as i64;
-    const BAR_H: f32 = 132.;
-    struct Day {
-        band: SharedString,
-        seconds: i64,
-        today: bool,
-        time: SharedString,
-        full: SharedString,
-        played: SharedString,
-    }
-    let now_day = local_day(crate::time::now_secs());
-    let rows: Vec<Day> = buckets
-        .iter()
-        .enumerate()
-        .map(|(i, b)| {
-            let today = i == last;
-            let v = sec[i];
-            let show_time = !many || today || (top_shown && i == top);
-            let day = local_day(secs(b, "start"));
-            Day {
-                band: if today { root.tr("alog.today") } else { day_label(root, day, many) }.into(),
-                seconds: v,
-                today,
-                time: if show_time { if v > 0 { bar_time(v) } else { "0".into() } } else { String::new() }.into(),
-                full: day_heading(root, day, now_day).into(),
-                played: played(root, v).into(),
-            }
-        })
-        .collect();
-    // The bars drawn here, not by the chart kit: its words are a fixed 10 px, too small for the day names and times,
-    // and today couldn't stand out. Today's bar is the bright one, its time and name in bold; the others' quiet. The
-    // axis names every `every`-th day, counted from the first; a bar's whole day and time are under the mouse.
-    let most = sec.iter().copied().max().unwrap_or(0).max(1) as f32;
-    const LABEL_H: f32 = 20.;
-    let mut bars = div().h(px(BAR_H + LABEL_H + 26.)).flex().items_end().gap(px(if many { 4. } else { 12. }));
-    for (i, day) in rows.into_iter().enumerate() {
-        let part = (day.seconds as f32 / most).clamp(0., 1.) * BAR_H / (BAR_H + LABEL_H);
-        let named = !many || day.today || i % every == 0;
-        let tip: SharedString = format!("{} · {}", day.full, day.played).into();
-        let bar_el = div()
-            .w_full()
-            .max_w(px(56.))
-            .rounded_t(px(4.))
-            .bg(if day.today { c(ACCENT) } else { ca(ACCENT, 0.45) })
-            .when(day.seconds > 0, |d| d.min_h(px(3.)));
-        bars = bars.child(
-            div()
-                .id(("st-day", i))
-                .flex_1()
-                .min_w_0()
-                .h_full()
-                .flex()
-                .flex_col()
-                .items_center()
-                .gap(px(8.))
-                .child(
-                    div()
-                        .w_full()
-                        .flex_1()
-                        .flex()
-                        .flex_col()
-                        .items_center()
-                        .justify_end()
-                        .gap(px(4.))
-                        .when(!day.time.is_empty(), |d| {
-                            d.child(
-                                div()
-                                    .flex_none()
-                                    .text_size(px(T_S))
-                                    .font_features(tnum())
-                                    .when(day.today, |d| d.font_weight(FontWeight::SEMIBOLD))
-                                    .text_color(if day.today { c(TEXT) } else { c(MUTED) })
-                                    .child(day.time.clone()),
-                            )
-                        })
-                        .child(grow_in("st-days", i, part, bar_el)),
-                )
-                .child(
-                    div()
-                        .h(px(18.))
-                        .flex_none()
-                        .text_size(px(T_S))
-                        .whitespace_nowrap()
-                        .when(day.today, |d| d.font_weight(FontWeight::SEMIBOLD))
-                        .text_color(if day.today { c(TEXT) } else { c(MUTED) })
-                        .when(named, |d| d.child(day.band.clone())),
-                )
-                .tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into()),
-        );
-    }
-    let _ = w;
-    card()
-        .child(
-            card_title(root.tr("stats.byDay"))
-                .when(avg >= 60, |t| t.child(div().flex_1()).child(div().text_size(px(T_M)).text_color(c(MUTED)).child(root.i18n.tv("stats.avgDay", &[("t", &played(root, avg))])))),
-        )
-        .child(bars)
+    int(d, "totalSeconds") / counted.max(1) as i64
 }
 
 /// 7 and 30 days by hour: a row a day (today last), a cell an hour, the brighter the more windows ran in it.
@@ -1350,6 +1250,9 @@ fn heat(root: &Root, d: &Value, w: f32) -> Div {
     let label_w = 58.;
     let cell_h = if many { 9. } else { 16. };
     let cells_w = (w - 42. - label_w - 8.).max(240.);
+    // Today's hours still to come: an outline, not the black of an hour nobody played (they read as broken, critique
+    // 2026-11-13).
+    let now_hour = (crate::time::now_secs() + offset()).rem_euclid(86400) / 3600;
     let mut grid = div().flex().flex_col().gap(px(2.));
     let mut hours = div().relative().h(px(20.)).ml(px(label_w + 8.)).w(px(cells_w));
     for k in 0..8 {
@@ -1380,7 +1283,7 @@ fn heat(root: &Root, d: &Value, w: f32) -> Div {
                     .flex_1()
                     .h(px(cell_h))
                     .rounded(px(2.))
-                    .bg(tone(level(v)))
+                    .map(|d| if i == last && h as i64 > now_hour { d.border_1().border_color(ca(WHITE, 0.06)) } else { d.bg(tone(level(v))) })
                     .tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into()),
             );
         }

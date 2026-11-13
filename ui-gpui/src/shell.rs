@@ -941,6 +941,13 @@ impl Root {
                 f.scroll.set_offset(point(px(0.), px(-y)));
             }
         }
+        // BLOXKEEP_SHOT_CLIP=place: the mouse rests on that game's tile (its gameplay clip plays).
+        #[cfg(feature = "shot")]
+        if let Ok(place) = std::env::var("BLOXKEEP_SHOT_CLIP").map(|p| p.parse::<i64>().unwrap_or(0)) {
+            if pages::clips::resting(self) != Some(place) {
+                pages::clips::hover(self, place, true, cx);
+            }
+        }
         // BLOXKEEP_SHOT_GAME="blox-fruits" (or a place id), BLOXKEEP_SHOT_TAB="news|prices": a shot opens that game's page.
         #[cfg(feature = "shot")]
         if let (Ok(id), true) = (std::env::var("BLOXKEEP_SHOT_GAME"), self.games.open.is_none()) {
@@ -1117,7 +1124,9 @@ impl Root {
                 _ => {}
             }
         }
-        if !matches!(self.page, Page::Home | Page::Accounts | Page::Games) || self.state.is_null() || self.locked() {
+        // (Every page lays a game's picture under its top now, 2026-11-13: the games and their pictures are asked on
+        // any page, once each. Statistics opened first showed none.)
+        if self.state.is_null() || self.locked() {
             return;
         }
         if self.page == Page::Games {
@@ -1938,14 +1947,16 @@ impl Root {
             .copied()
             .filter(|a| a.pointer("/session/connection").and_then(Value::as_str) == Some("disconnected"))
             .collect();
-        let fine: Vec<&Value> = playing.iter().copied().filter(|a| !dropped.iter().any(|d| std::ptr::eq(*d, *a))).collect();
+        // Open but back on Roblox's menu (or signed out in it): a group of its own, not "Playing" (owner 2026-11-13).
+        let menu: Vec<&Value> = playing.iter().copied().filter(|a| pages::accounts::in_menu(a)).collect();
+        let fine: Vec<&Value> = playing.iter().copied().filter(|a| !dropped.iter().any(|d| std::ptr::eq(*d, *a)) && !pages::accounts::in_menu(a)).collect();
         // Not open and in trouble (a sign-in to do again, a ban): with the dropped ones, on top, said in red.
         let troubled = |a: &Value| side_trouble(a).is_some();
         let idle_all: Vec<&Value> = accounts.iter().copied().filter(|a| a.get("state").and_then(Value::as_str) != Some("running")).collect();
         let check: Vec<&Value> = dropped.iter().copied().chain(idle_all.iter().copied().filter(|a| troubled(a))).collect();
         let idle: Vec<&Value> = idle_all.iter().copied().filter(|a| !troubled(a)).collect();
         let mut list = div().flex().flex_col().px(px(8.)).pb(px(12.));
-        for (key, rows) in [("ui.grp.check", &check), ("ui.grp.playing", &fine), ("ui.grp.idle", &idle)] {
+        for (key, rows) in [("ui.grp.check", &check), ("ui.grp.playing", &fine), ("act.menuHere", &menu), ("ui.grp.idle", &idle)] {
             if rows.is_empty() {
                 continue;
             }
@@ -2087,8 +2098,8 @@ impl Root {
                         d.child(IconButton::new("sys-close", "power").size(26.).tip(self.tr("sys.closeAll")).on_click(cx.listener(|r, _, window, cx| r.close_all(false, window, cx))))
                     }),
             )
-            // (Home shows the PC's CPU and RAM in its own cards, while something plays.)
-            .when(self.page != Page::Home || pages::home::playing_now(self) == 0, |d| {
+            // (On every page: Home's CPU and RAM cards gave way to its account strip, critique 2026-11-13.)
+            .map(|d| {
                 d.child(div().w(px(1.)).h(px(16.)).bg(c(LINE)))
                     .child(meter("chip", self.tr("ui.cpu"), cpu, !compact))
                     .child(div().w(px(1.)).h(px(16.)).bg(c(LINE)))
@@ -2339,11 +2350,14 @@ fn account_row(a: &Value, dropped: bool, root: &Root, cx: &mut Context<Root>) ->
     // ("label" first: with names hidden it is the only one left, the others blanked; the row showed no name, 2026-11-12.)
     let name = [s("label"), s("alias"), s("displayName"), s("username")].into_iter().find(|n| !n.is_empty()).unwrap_or_default().to_string();
     let running = s("state") == "running";
-    let game = a.pointer("/session/game/name").and_then(Value::as_str).filter(|g| !g.is_empty()).map(str::to_string);
+    // (On Roblox's menu: "Not in a game", not the last game it left.)
+    let menu = pages::accounts::in_menu(a);
+    let game = if menu { Some(root.tr("act.menuWhere")) } else { a.pointer("/session/game/name").and_then(Value::as_str).filter(|g| !g.is_empty()).map(str::to_string) };
     let face = images::pic_sq(s("avatarUrl"), FACE, cx);
     let id = s("id").to_string();
     let trouble = side_trouble(a);
-    let dot = if trouble.is_some() { BAD } else if dropped { WARN } else if running { OK } else { DIM };
+    // (Banned: grey, not red, critique 2026-11-13: nothing to do now, Play skips it; red is for a sign-in to do.)
+    let dot = match trouble { Some("chip.banned") => MUTED, Some(_) => BAD, None if dropped => WARN, None if menu => ONLINE, None if running => OK, None => DIM };
     let game = game.map(|g| crate::pages::home::clean(&g));
     // Playing: for how long (it counts up); not open: when it last was.
     let now = crate::time::now_secs();
@@ -2364,7 +2378,7 @@ fn account_row(a: &Value, dropped: bool, root: &Root, cx: &mut Context<Root>) ->
     });
     let game = game.or_else(|| Some(root.tr(if a.get("lastUsed").and_then(Value::as_str).is_some_and(|t| !t.is_empty()) { "chip.offline" } else { "card.never" })));
     let (sub, sub_col) = match trouble {
-        Some(k) => (Some(root.tr(k)), c(BAD)),
+        Some(k) => (Some(root.tr(k)), c(if k == "chip.banned" { MUTED } else { BAD })),
         None => (game, if dropped { c(WARN) } else { c(MUTED) }),
     };
     let first: String = name.chars().find(|c| c.is_alphanumeric()).map(|c| c.to_uppercase().collect()).unwrap_or_default();
@@ -2386,6 +2400,7 @@ fn account_row(a: &Value, dropped: bool, root: &Root, cx: &mut Context<Root>) ->
         .gap(px(12.))
         .rounded(px(R_M))
         .tones(ca(WHITE, 0.), ca(WHITE, 0.045))
+        .children(crate::pages::accounts::number(root, &id).map(|n| crate::pages::accounts::key_tag(n, a, 20.)))
         .child(
             div()
                 .relative()

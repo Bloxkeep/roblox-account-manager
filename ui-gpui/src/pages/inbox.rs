@@ -347,7 +347,7 @@ pub fn inbox(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElemen
     let _ = width;
     let tab = ib.tab.min(4);
     let (able, viewer) = friends::looking(root);
-    let shell = div().id("inbox").size_full().rounded(px(R_PANEL)).bg(c(PANEL)).overflow_hidden().flex().flex_col();
+    let shell = div().id("inbox").relative().size_full().rounded(px(R_PANEL)).bg(c(PANEL)).overflow_hidden().flex().flex_col();
     let unread = match &ib.letters {
         Some(Ok(l)) => l.iter().filter(|m| !m.read).count(),
         _ => 0,

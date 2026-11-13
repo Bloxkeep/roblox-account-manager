@@ -49,7 +49,8 @@ pub fn games(root: &Root) -> Vec<Game> {
     for a in root.accounts() {
         let st = a.get("state").and_then(Value::as_str).unwrap_or_default();
         let Some(place) = a.pointer("/session/game/placeId").and_then(Value::as_i64) else { continue };
-        if st != "running" && st != "launching" {
+        // (A window back on Roblox's menu still names its last game: it isn't playing it.)
+        if (st != "running" && st != "launching") || crate::pages::accounts::in_menu(a) {
             continue;
         }
         match now.iter_mut().find(|g| g.place == place) {
@@ -121,9 +122,9 @@ pub fn home(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
                         .flex()
                         .flex_col()
                         .gap(px(SECTION_GAP))
-                        // (With no Roblox open the four cards said 0 / 8, 0 %, 0.0 GB: the status bar has the PC's CPU
-                        // and RAM then.)
-                        .when(playing_now(root) > 0, |d| d.child(figures(root, inner)))
+                        // The farm in one look, an account a key (critique 2026-11-13, P1: Home showed the game and hid
+                        // the farm's health in a small "2 / 7" card; the CPU and RAM cards went to the status bar).
+                        .when(!root.accounts().is_empty(), |d| d.child(fleet(root, inner, cx)))
                         .child(shelf(root, &all, focus, inner, cx))
                         .when(root.accounts().is_empty(), |d| d.child(get_started(root, cx)))
                         .child(presets(root, inner, cx)),
@@ -160,10 +161,8 @@ fn stage(root: &Root, all: &[Game], focus: usize, width: f32, cx: &mut Context<R
         let none = root.accounts().is_empty();
         // Nothing played yet: the welcome stands on the picture of the game Bloxkeep's users play most (the stage was
         // a bare dark block with a line of words in its corner, owner 2026-11-12), words at its foot as a game's are.
-        let top = root.state.pointer("/community/data/games/0/place").and_then(Value::as_i64);
-        let url = top.and_then(|p| look(root, p, "cover")).map(str::to_string);
-        let pic = url.as_deref().and_then(|u| images::pic(u, cx)).zip(url.clone());
-        return base.when_some(pic, |d, (p, u)| d.child(backdrop(&u, &p, width, art, cx))).child(
+        // (No picture behind it any more: the blurred game washes went, the owner, 2026-11-13.)
+        return base.child(
             div()
                 .absolute()
                 .inset_0()
@@ -192,8 +191,7 @@ fn stage(root: &Root, all: &[Game], focus: usize, width: f32, cx: &mut Context<R
     let running = !g.accounts.is_empty();
     let n = g.accounts.len() as i64;
     let cover = look(root, g.place, "cover").map(str::to_string);
-    let pic = cover.as_deref().and_then(|u| images::pic(u, cx)).zip(cover.clone());
-    // The cover itself, sharp at its own size at the stage's right, the words at its left (`backdrop` is it blurred):
+    // The cover itself, sharp at its own size at the stage's right, the words at its left:
     // dropped when the words would have too little room.
     let card_h = (h - 36.).min(300.).max(0.);
     let card_w = (card_h * 16. / 9.).round();
@@ -253,8 +251,7 @@ fn stage(root: &Root, all: &[Game], focus: usize, width: f32, cx: &mut Context<R
     // run), and then a small picture in the corner (my wrong turn of 2026-11-11, their second screenshot): its height
     // follows the surface's width now, so it stays a picture. It darkens towards the words on its left and runs into
     // the surface below. (In a box of its own: an img placed absolute itself gets no size and draws nothing.)
-    base.when_some(pic, |d, (p, u)| d.child(backdrop(&u, &p, width, art, cx)))
-        .when_some(card, |d, k| d.child(div().absolute().right(px(SIDE)).bottom(px(4.)).child(k)))
+    base.when_some(card, |d, k| d.child(div().absolute().right(px(SIDE)).bottom(px(4.)).child(k)))
         .child(
             div()
                 .absolute()
@@ -352,32 +349,13 @@ fn get_started(root: &Root, cx: &mut Context<Root>) -> impl IntoElement {
         )
 }
 
-/// The stage's picture, edge to edge. A game's cover is 768 px wide at most: stretched across a wide stage it came out
-/// smeared, its own lettering muddled under the title (the owner: "rẻ tiền", beside Lunar's, 2026-11-12). So it is drawn
-/// blurred on purpose, a wash of the game's colours, and quieter; the cover stands sharp beside the words
-/// (`showcase`). It darkens towards the words on its left and runs into the surface below.
-fn backdrop(url: &str, p: &std::sync::Arc<Image>, width: f32, art: f32, cx: &mut App) -> impl IntoElement {
-    let soft = images::soft(url, cx);
-    div()
-        .absolute()
-        .top_0()
-        .left_0()
-        .w(px(width))
-        .h(px(art))
-        // (Cover draws the whole scaled picture; it is the box that cuts it.)
-        .rounded_t(px(R_PANEL))
-        .overflow_hidden()
-        .children(soft.map(|s| fade_in(img(s).size_full().rounded_t(px(R_PANEL)).object_fit(ObjectFit::Cover), p)))
-        // (The wash is quieter than the picture was: the sharp cover and the words lead.)
-        .child(div().absolute().inset_0().bg(ca(PANEL, 0.30)))
-        // (GPUI's see-through gradients come out about half as strong as their stops say, so each fade is laid more
-        // than once; measured on the shots, 2026-11-09.)
-        .children((0..2).map(|_| {
-            div().absolute().inset_0().rounded_t(px(R_PANEL)).bg(linear_gradient(90., linear_color_stop(ca(PANEL, 0.75), 0.), linear_color_stop(ca(PANEL, 0.), 0.6)))
-        }))
-        .children((0..2).map(|_| {
-            div().absolute().inset_0().rounded_t(px(R_PANEL)).bg(linear_gradient(180., linear_color_stop(ca(PANEL, 0.), 0.45), linear_color_stop(c(PANEL), 1.)))
-        }))
+/// The stage's game's cover, else the game Bloxkeep's users play most (Profile's banner falls back to it).
+pub fn wash(root: &Root, cx: &mut App) -> Option<(String, std::sync::Arc<Image>)> {
+    let url = hero_place(root)
+        .and_then(|p| look(root, p, "cover"))
+        .or_else(|| root.state.pointer("/community/data/games/0/place").and_then(Value::as_i64).and_then(|p| look(root, p, "cover")))?
+        .to_string();
+    images::pic(&url, cx).map(|p| (url, p))
 }
 
 /// The game's cover at its own sharpness, `w`×`h`, on the stage's wash: a hairline round it, no shadow.
@@ -403,56 +381,83 @@ fn showcase(url: &str, w: f32, h: f32, cx: &mut App) -> Option<Div> {
 /// The page's side margin, the Accounts page's: the stage's words and every row under it start here.
 const SIDE: f32 = 24.;
 
-/// The PC in four figures: accounts playing, CPU, RAM, and the RAM Roblox's windows take. (The status bar shows CPU and
-/// RAM on the other places, not here.)
-fn figures(root: &Root, width: f32) -> impl IntoElement {
-    let m = &root.metrics;
-    let f = |k: &str| m.get(k).and_then(Value::as_f64).unwrap_or(0.);
+/// The farm: every account as a key in the vault's order (its numbered tag, its name, what it does now), so a glance
+/// says whether the farm is alive. Its head says the same in words; a key opens the Accounts page.
+fn fleet(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement {
+    use crate::pages::accounts as acc;
     let all = root.accounts();
-    let playing = all.iter().filter(|a| a.get("state").and_then(Value::as_str) == Some("running")).count();
-    let system = f("systemMb");
-    let used = (system - f("availableMb")).max(0.);
-    let gb = |mb: f64| format!("{:.1}", mb / 1024.);
-    // Four in a row (the figure's detail left out when a card is narrow), two by two when the room is short: the
-    // library under them stays in sight on a small window.
-    let (cols, w) = grid_fit(width, 150., GRID_GAP);
-    let w = if cols >= 4 { ((width - 3. * GRID_GAP) / 4.).floor() } else { ((width - GRID_GAP) / 2.).floor().max(w) };
-    grid(GRID_GAP).children([
-        // (Named for the accounts, "in a game" at its right: "Playing now" is the stage's line right above it.)
-        figure("users", root.tr("nav.accounts"), format!("{playing} / {}", all.len()), Some(root.tr("sys.mood.play")), if all.is_empty() { 0. } else { playing as f64 / all.len() as f64 }, false, w),
-        figure("chip", root.tr("ui.cpu"), format!("{:.0}%", f("cpuPct")), None, f("cpuPct") / 100., true, w),
-        figure("gauge", root.tr("ui.ram"), format!("{:.0}%", f("usedPct")), Some(format!("{} / {} GB", gb(used), gb(system))), f("usedPct") / 100., true, w),
-        figure("screens", root.tr("ui.robloxRam"), format!("{} GB", gb(f("totalMb"))), (system > 0.).then(|| root.i18n.tv("home.ofRam", &[("pct", &format!("{:.0}", f("totalMb") / system * 100.))])), if system > 0. { f("totalMb") / system } else { 0. }, true, w),
-    ])
-}
-
-/// A figure: its mark on a small block and its name, the value large in tabular figures (with its detail at the
-/// right), and a bar that only turns colour when it's high. A count of accounts isn't a load, so its bar stays grey.
-#[allow(clippy::too_many_arguments)]
-fn figure(icon_name: &'static str, label: String, value: String, extra: Option<String>, part: f64, load: bool, w: f32) -> impl IntoElement {
-    let part = part.clamp(0., 1.) as f32;
-    let extra = extra.filter(|_| w >= 240.);
-    surface()
-        .w(px(w))
-        .flex_none()
-        .px(px(16.))
-        .pt(px(14.))
-        .pb(px(16.))
+    let now = crate::time::now_secs();
+    let playing = all.iter().filter(|a| a.get("state").and_then(Value::as_str) == Some("running") && !acc::in_menu(a)).count();
+    let dropped = all.iter().filter(|a| is_dropped(a)).count();
+    let look = all
+        .iter()
+        .filter(|a| a.get("state").and_then(Value::as_str) != Some("running") && (a.get("cookieValid").and_then(Value::as_bool) == Some(false)))
+        .count();
+    let mut said = vec![(if playing > 0 { root.i18n.tn("acc.sum.playing", playing as i64, &[]) } else { root.tr("acc.sum.idle") }, None)];
+    if dropped > 0 {
+        said.push((root.i18n.tv("ui.droppedN", &[("n", &dropped.to_string())]), Some(c(WARN))));
+    }
+    if look > 0 {
+        said.push((root.i18n.tn("acc.sum.look", look as i64, &[]), Some(c(BAD))));
+    }
+    // As many to a row as fit at 168 px; a short farm keeps its keys at most 248 wide, not stretched across.
+    // (The keys' ground starts 10 px left of the text's edge, so the row is 20 wider than the page's column.)
+    let width = width + 20.;
+    let (cols, w) = grid_fit(width, 168., 8.);
+    let w = if all.len() < cols { w.max(((width - 8. * (all.len() as f32 - 1.)) / all.len() as f32).floor()).min(248.) } else { w };
+    let keys = all.iter().enumerate().map(|(i, a)| {
+        let (state, tone, _) = acc::state_of(root, a);
+        let running = a.get("state").and_then(Value::as_str) == Some("running");
+        let in_game = running && !acc::in_menu(a);
+        let clock = running
+            .then(|| a.pointer("/session/since").and_then(Value::as_str).and_then(crate::time::iso_secs).map(|t| crate::time::clock(now - t)))
+            .flatten();
+        // Playing: the game it is in, in the state's colour (the state word is the tag's fill already).
+        let game = in_game.then(|| a.pointer("/session/game/name").and_then(Value::as_str).filter(|g| !g.is_empty()).map(clean)).flatten();
+        let line = match (&game, tone) {
+            (Some(g), OK) => g.clone(),
+            _ => state,
+        };
+        let col = if tone == OK || tone == TEXT_2 { c(MUTED) } else { c(tone) };
+        hot(("fleet", i))
+            .w(px(w))
+            .flex_none()
+            .px(px(10.))
+            .py(px(10.))
+            .flex()
+            .items_center()
+            .gap(px(12.))
+            .rounded(px(R_M))
+            .cursor_pointer()
+            .child(acc::key_tag(i + 1, a, 30.))
+            .child(
+                div()
+                    .flex_1()
+                    .min_w_0()
+                    .flex()
+                    .flex_col()
+                    .gap(px(1.))
+                    .child(
+                        div()
+                            .flex()
+                            .items_baseline()
+                            .gap(px(6.))
+                            .child(div().flex_1().min_w_0().truncate().text_size(px(T_M)).font_weight(FontWeight::SEMIBOLD).text_color(c(TEXT)).child(acc::label(a)))
+                            .when_some(clock, |d, t| d.child(div().flex_none().text_size(px(T_S)).text_color(c(MUTED)).font_features(tnum()).child(t))),
+                    )
+                    .child(div().truncate().text_size(px(T_S)).text_color(col).child(line)),
+            )
+            .on_click(cx.listener(|r, _, _, cx| {
+                r.go(Page::Accounts);
+                cx.notify();
+            }))
+    });
+    div()
         .flex()
         .flex_col()
         .gap(px(10.))
-        .child(
-            div()
-                .flex()
-                .items_center()
-                .gap(px(10.))
-                .child(div().size(px(28.)).flex_none().rounded(px(R_S)).bg(ca(WHITE, 0.06)).flex().items_center().justify_center().child(icon(icon_name, 15., c(TEXT_2))))
-                .child(div().flex_1().min_w_0().truncate().text_size(px(T_M)).font_weight(FontWeight::MEDIUM).text_color(c(TEXT_2)).child(label))
-                // Its detail on the name's line, at the right (it sat on the big figure's baseline, low and apart).
-                .when_some(extra, |d, e| d.child(div().flex_none().text_size(px(T_S)).text_color(c(MUTED)).font_features(tnum()).child(e))),
-        )
-        .child(div().text_size(px(T_STAGE)).font_weight(FontWeight::SEMIBOLD).line_height(px(32.)).font_features(tnum()).child(value))
-        .child(bar(SharedString::from(format!("fig-{icon_name}")), if load { part } else { part.min(0.79) }, None))
+        .child(section_head(root.tr("nav.accounts"), Some(all.len())).child(facts(said)))
+        .child(div().w(px(width)).flex().flex_wrap().gap(px(8.)).ml(px(-10.)).children(keys))
 }
 
 /// The games, under a head with two choices: this PC's (running, then played lately) and what Bloxkeep's users play
@@ -507,7 +512,7 @@ fn shelf(root: &Root, all: &[Game], focus: usize, width: f32, cx: &mut Context<R
                 cascade(
                     "home-games",
                     i,
-                    cover_tile(("game", i), cover, icon_url, g.name.clone(), sub, g.accounts.len(), i == focus, tile_w, cx).on_click(cx.listener(move |r, _, _, cx| {
+                    cover_tile(("game", i), cover, icon_url, g.name.clone(), sub, g.accounts.len(), i == focus, tile_w, crate::pages::clips::tile_clip(root, place, cx), cx).on_click(cx.listener(move |r, _, _, cx| {
                         r.picked = Some(place);
                         cx.notify();
                     })),
@@ -540,6 +545,7 @@ fn shelf(root: &Root, all: &[Game], focus: usize, width: f32, cx: &mut Context<R
                         0,
                         false,
                         tile_w,
+                        crate::pages::clips::tile_clip(root, place, cx),
                         cx,
                     )
                     .on_click(cx.listener(move |r, _, _, cx| {
@@ -596,7 +602,7 @@ pub fn see_all(id: &'static str, words: String, f: impl Fn(&ClickEvent, &mut Win
 /// icon, name and one fact under it. `windows`: its Roblox windows open now, said on the picture. The one `on` (the
 /// stage's) is ringed in yellow. Flat: no raised base under it.
 #[allow(clippy::too_many_arguments)]
-pub fn cover_tile(id: (&'static str, usize), cover: Option<String>, icon_url: Option<String>, name: String, (sub, live): (String, bool), windows: usize, on: bool, w: f32, cx: &mut App) -> Hot {
+pub fn cover_tile(id: (&'static str, usize), cover: Option<String>, icon_url: Option<String>, name: String, (sub, live): (String, bool), windows: usize, on: bool, w: f32, clip: crate::pages::clips::TileClip, cx: &mut App) -> Hot {
     let art_h = (w * 9. / 16.).round();
     let picture = cover.as_deref().and_then(|u| images::pic_pair(u, w, art_h, cx));
     // The game's own colour, from its icon (else its cover): the ground of its picture.
@@ -605,7 +611,10 @@ pub fn cover_tile(id: (&'static str, usize), cover: Option<String>, icon_url: Op
     let first: String = name.chars().find(|c| c.is_alphanumeric()).map(|c| c.to_uppercase().collect()).unwrap_or_default();
     let icon_side = (art_h * 0.5).round();
     let big_icon = if picture.is_none() { icon_url.as_deref().and_then(|u| images::pic_sq(u, icon_side, cx)) } else { None };
+    let crate::pages::clips::TileClip { layer, hover } = clip;
     let art = div()
+        .id(SharedString::from(format!("{}-art-{}", id.0, id.1)))
+        .on_hover(hover)
         .relative()
         .w(px(w))
         .h(px(art_h))
@@ -623,6 +632,8 @@ pub fn cover_tile(id: (&'static str, usize), cover: Option<String>, icon_url: Op
             (None, Some(i)) => d.child(img(i).size(px(icon_side)).rounded(px(R_L))),
             (None, None) => d.child(div().text_size(px(T_STAGE + 8.)).font_weight(FontWeight::BOLD).text_color(c(DIM)).child(first.clone())),
         })
+        // Its gameplay clip while the mouse rests on it (pages/clips.rs).
+        .children(layer)
         // The chosen one's yellow ring, drawn over the picture (a see-through border would show the game's colour as
         // an edge round the others).
         .when(on, |d| d.child(div().absolute().inset_0().rounded(px(R_L)).border_2().border_color(c(FACE))))

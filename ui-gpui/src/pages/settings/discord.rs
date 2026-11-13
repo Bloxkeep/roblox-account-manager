@@ -3,6 +3,7 @@
 // Bloxkeep" on the profile and control from Discord. What the old page asked in a box is done in place: the link is
 // pasted under its row, Remove asks under it, the summary's parts and accounts are ticked under theirs. The link itself
 // never comes to the window unless asked for (Show), and goes again after half a minute.
+use std::cell::{Cell, RefCell};
 use std::collections::HashSet;
 use std::time::Duration;
 
@@ -13,6 +14,44 @@ use crate::pages::preset_form::parse_time;
 
 const PING_MODES: [&str; 5] = ["none", "here", "everyone", "user", "role"];
 const PARTS: [&str; 5] = ["total", "accounts", "games", "sessions", "kicks"];
+
+thread_local! {
+    /// The buttons whose command is on its way (Send test, Send summary, Show, New code, Save): pressed again they do
+    /// nothing until it answers, as the old page's busy buttons did.
+    static BUSY: RefCell<HashSet<&'static str>> = RefCell::new(HashSet::new());
+    /// Which Show the link is shown for: the half-minute of an earlier Show mustn't hide a later one early.
+    static SHOWN_FOR: Cell<u64> = const { Cell::new(0) };
+    /// The remote code's minutes are being counted down (the page drawn again every 15 s while it shows).
+    static TICKING: Cell<bool> = const { Cell::new(false) };
+}
+
+fn busy(key: &str) -> bool {
+    BUSY.with(|b| b.borrow().contains(key))
+}
+
+/// `ask` for a button: it stays off until the app answers.
+fn ask_busy(r: &mut Root, key: &'static str, cmd: &str, args: Value, cx: &mut Context<Root>, done: impl FnOnce(&mut Root, Value) + 'static) {
+    let Some(link) = r.link.clone() else { return };
+    if busy(key) {
+        return;
+    }
+    BUSY.with(|b| b.borrow_mut().insert(key));
+    let rx = link.call(cmd, args);
+    cx.spawn(async move |this, cx| {
+        let answer = rx.await;
+        BUSY.with(|b| b.borrow_mut().remove(key));
+        let _ = this.update(cx, |r, cx| {
+            match answer {
+                Ok(Ok(v)) => done(r, v),
+                Ok(Err(e)) => r.toast = Some((e, "bad".into())),
+                Err(_) => {}
+            }
+            cx.notify();
+        });
+    })
+    .detach();
+    cx.notify();
+}
 
 /// The page's text boxes, made when the page is first opened (a box needs the window).
 pub struct Boxes {
@@ -89,6 +128,14 @@ pub(super) fn opened(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) 
         cx.subscribe_in(&boxes.ping_id, window, |r: &mut Root, _, ev: &InputEvent, _, cx| match ev {
             InputEvent::PressEnter { .. } | InputEvent::Blur => commit_ping(r, matches!(ev, InputEvent::Blur), cx),
             _ => {}
+        })
+        .detach();
+        // A shown link goes back to masked when the window loses focus (as the old page's did).
+        cx.observe_window_activation(window, |r: &mut Root, window, cx| {
+            if !window.is_window_active() && r.settings.dc_shown.is_some() {
+                r.settings.dc_shown = None;
+                cx.notify();
+            }
         })
         .detach();
         r.settings.dc = Some(boxes);
@@ -244,9 +291,15 @@ fn save_link(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
         return;
     }
     let Some(link) = r.link.clone() else { return };
+    if busy("link") {
+        return;
+    }
+    BUSY.with(|b| b.borrow_mut().insert("link"));
+    cx.notify();
     cx.spawn_in(window, async move |this, cx| {
         let answer = link.call("setDiscordWebhook", json!({ "url": url })).await;
         if let Ok(Err(e)) = answer {
+            BUSY.with(|b| b.borrow_mut().remove("link"));
             let _ = this.update(cx, |r, cx| {
                 r.settings.dc_link_err = Some(e);
                 cx.notify();
@@ -256,6 +309,7 @@ fn save_link(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
         if then_on {
             let _ = link.call("setDiscord", json!({ "enabled": true })).await;
         }
+        BUSY.with(|b| b.borrow_mut().remove("link"));
         let _ = this.update_in(cx, |r, window, cx| {
             r.settings.dc_link = None;
             if let Some(bx) = r.settings.dc.as_ref() {
@@ -397,7 +451,8 @@ pub(super) fn discord(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
     let Some(bx) = root.settings.dc.as_ref() else { return vec![] };
     let mut out = Vec::new();
 
-    // ── the connection card: on or off, the channel's link, the last message; its actions under it
+    // ── the connection card, the old page's first group: sending on or off (what it does), the webhook link with what
+    // to do with it and where to get one, then the last message sent with Send test.
     let shown = root.settings.dc_shown.as_ref().filter(|(_, h)| has_hook && *h == hint).map(|(u, _)| u.clone());
     let (state, tone) = if !has_hook {
         (root.tr("set.dc.state.none"), Tone::Muted)
@@ -406,25 +461,15 @@ pub(super) fn discord(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
     } else {
         (root.tr("set.dc.state.off"), Tone::Muted)
     };
-    let last = s(d, "lastSent");
-    let sub = if has_hook {
-        let when = match crate::time::iso_secs(last) {
-            Some(at) if !last.is_empty() => root.i18n.tv("dc.last", &[("t", &crate::time::ago(crate::time::now_secs() - at, &root.i18n))]),
-            _ => root.tr("dc.never"),
-        };
-        format!("{} · {when}", shown.clone().unwrap_or_else(|| hint.clone()))
-    } else {
-        root.tr("dc.onDesc")
-    };
     let this = cx.entity().downgrade();
     let pasting = root.settings.dc_link.is_some();
-    // The connection at a glance: Discord's mark on its block, the state in words (its dot) and the link or what it
-    // does; at the right the one thing to do: link a channel (the main action) or, once linked, sending on or off.
+    // The connection at a glance: Discord's mark on its block, the state in words (its dot) and what sending does; at
+    // the right the one thing to do: link a channel (the main action) or, once linked, sending on or off.
     let mark = div().size(px(48.)).flex_none().rounded(px(R_M + 2.)).bg(c(RAISED_2)).border_1().border_color(ca(WHITE, 0.06)).flex().items_center().justify_center().child(icon("discord", 24., c(TEXT)));
     let head = div()
         .px(px(ROW_X))
         .pt(px(20.))
-        .pb(px(22.))
+        .pb(px(20.))
         .flex()
         .items_center()
         .gap(px(16.))
@@ -444,7 +489,7 @@ pub(super) fn discord(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
                         .child(div().size(px(8.)).flex_none().rounded_full().bg(c(match tone { Tone::Ok => OK, _ => DIM })))
                         .child(div().text_size(px(T_GROUP)).line_height(px(24.)).font_weight(FontWeight::SEMIBOLD).child(state)),
                 )
-                .child(div().text_size(px(T_M)).line_height(px(18.)).text_color(c(TEXT_2)).truncate().font_features(tnum()).child(sub)),
+                .child(div().text_size(px(T_M)).line_height(px(18.)).text_color(c(TEXT_2)).child(root.tr("dc.onDesc"))),
         )
         .map(|d| {
             if has_hook {
@@ -466,35 +511,50 @@ pub(super) fn discord(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
                 d
             }
         });
-    let showing = shown.is_some();
-    let actions = div()
-        .px(px(ROW_X))
-        .py(px(12.))
-        .flex()
-        .items_center()
-        .gap(px(8.))
-        .when(has_hook, |d| {
-            d.child(Button::new("s-dc-test", root.tr("dc.test")).small().icon("message").on_click(cx.listener(|r, _, _, cx| {
-                ask(r, "discordTest", Value::Null, cx, |r, _| ok(r, r.tr("dc.testOk")));
-            })))
-        })
-        .when(has_hook, |d| d.child(Button::new("s-dc-paste", root.tr("dc.replace")).small().icon("link").on_click(cx.listener(|r, _, window, cx| open_link(r, false, window, cx)))))
-        .when(has_hook, |d| {
-            d.child(
-                Button::new("s-dc-reveal", root.tr(if showing { "dc.hide" } else { "dc.show" })).small().quiet().icon(if showing { "eyeOff" } else { "eye" }).on_click(cx.listener(move |r, _, _, cx| {
+    let mut card: Vec<AnyElement> = vec![found(&format!("{} {} Discord", root.tr("dc.on"), root.tr("dc.onDesc")), head.into_any_element())];
+    if !s(d, "stopped").is_empty() {
+        card.push(note("alert", root.tr("dc.gone"), WARN));
+    }
+    // A line of the card: its words on the left (a name, then muted lines), its buttons on the right.
+    let line = |words: Div, ctl: Div| div().px(px(ROW_X)).py(px(14.)).flex().items_center().gap(px(24.)).child(words).child(ctl.flex_none().flex().items_center().gap(px(6.)));
+    let title_t = |t: String| div().text_size(px(T_L)).line_height(px(20.)).font_weight(FontWeight::MEDIUM).text_color(c(TEXT)).child(t);
+    let desc_t = |t: String, col: u32| div().text_size(px(T_M)).line_height(px(18.)).text_color(c(col)).child(t);
+    if has_hook {
+        // The webhook link: masked, or the whole link while shown; where to get one under it.
+        let showing = shown.is_some();
+        let words = div()
+            .flex_1()
+            .min_w_0()
+            .flex()
+            .flex_col()
+            .gap(px(3.))
+            .child(title_t(root.tr("dc.webhook")))
+            .child(desc_t(shown.clone().unwrap_or_else(|| hint.clone()), TEXT_2).font_features(tnum()))
+            .child(desc_t(root.tr("dc.webhookHelp"), MUTED));
+        let ctl = div()
+            .child(Button::new("s-dc-paste", root.tr("dc.replace")).small().icon("link").on_click(cx.listener(|r, _, window, cx| open_link(r, false, window, cx))))
+            .child(
+                Button::new("s-dc-reveal", root.tr(if showing { "dc.hide" } else { "dc.show" })).small().quiet().icon(if showing { "eyeOff" } else { "eye" }).disabled(busy("reveal")).on_click(cx.listener(move |r, _, _, cx| {
                     if showing {
                         r.settings.dc_shown = None;
                         cx.notify();
                         return;
                     }
                     let hint = s(dc(r), "webhookHint").to_string();
-                    ask(r, "revealDiscordWebhook", Value::Null, cx, move |r, v| {
+                    let n = SHOWN_FOR.with(|f| {
+                        f.set(f.get() + 1);
+                        f.get()
+                    });
+                    ask_busy(r, "reveal", "revealDiscordWebhook", Value::Null, cx, move |r, v| {
                         let Some(url) = v.as_str().map(str::to_string) else { return };
                         r.settings.dc_shown = Some((url, hint));
                     });
-                    // Shown for half a minute, then masked again.
+                    // Shown for half a minute, then masked again (unless shown again since).
                     cx.spawn(async move |this, cx| {
                         cx.background_executor().timer(Duration::from_secs(30)).await;
+                        if SHOWN_FOR.with(Cell::get) != n {
+                            return;
+                        }
                         let _ = this.update(cx, |r, cx| {
                             r.settings.dc_shown = None;
                             cx.notify();
@@ -503,29 +563,24 @@ pub(super) fn discord(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
                     .detach();
                 })),
             )
-            .child(div().flex_1())
             .child(Button::new("s-dc-remove", root.tr("dc.remove")).small().quiet().icon("trash").on_click(cx.listener(|r, _, _, cx| {
                 r.settings.asking = Some("dc-remove");
                 r.settings.dc_link = None;
                 cx.notify();
-            })))
-        });
-    let mut card: Vec<AnyElement> = vec![head.into_any_element()];
-    if !s(d, "stopped").is_empty() {
-        card.push(note("alert", root.tr("dc.gone"), WARN));
+            })));
+        card.push(found(&format!("{} {}", root.tr("dc.webhook"), root.tr("dc.webhookHelp")), line(words, ctl).into_any_element()));
+        if root.settings.asking == Some("dc-remove") {
+            card.push(question(root, "dc-remove-q", root.tr("dc.removeTitle"), root.tr("dc.removeConfirm"), root.tr("dc.remove"), true, cx, |r, cx| {
+                r.settings.dc_shown = None;
+                ask(r, "setDiscordWebhook", json!({ "url": "" }), cx, |_, _| {});
+            }));
+        }
+    } else if !pasting {
+        // No link yet: where to get one (the old page said it under the link row), before it is pasted.
+        card.push(found(&root.tr("dc.webhookHelp"), note("info", root.tr("dc.webhookHelp"), MUTED)));
     }
-    if !s(d, "error").is_empty() {
-        card.push(note("alert", s(d, "error").to_string(), BAD));
-    }
-    // No link yet: where to get one (the old page said it under the link row), before it is pasted.
-    if !has_hook && !pasting {
-        card.push(note("info", root.tr("dc.webhookHelp"), MUTED));
-    }
-    let queued = d.get("queued").and_then(Value::as_i64).unwrap_or(0);
-    if queued > 0 {
-        card.push(note("clock", root.i18n.tv("dc.queued", &[("n", &queued.to_string())]), MUTED));
-    }
-    if root.settings.dc_link.is_some() {
+    if pasting {
+        let saving = busy("link");
         card.push(
             div()
                 .px(px(ROW_X))
@@ -535,6 +590,7 @@ pub(super) fn discord(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
                 .gap(px(10.))
                 .bg(c(INSET))
                 .child(div().text_size(px(T_M)).font_weight(FontWeight::SEMIBOLD).child(root.tr("dc.pasteTitle")))
+                .child(div().text_size(px(T_S)).text_color(c(TEXT_2)).child(crate::i18n::plain(&root.tr("dc.pasteText"))))
                 .child(
                     div()
                         .flex()
@@ -545,7 +601,7 @@ pub(super) fn discord(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
                             r.settings.dc_link = None;
                             cx.notify();
                         })))
-                        .child(Button::new("s-dc-link-ok", root.tr("dc.save")).small().primary().on_click(cx.listener(|r, _, window, cx| save_link(r, window, cx)))),
+                        .child(Button::new("s-dc-link-ok", root.tr("dc.save")).small().primary().disabled(saving).on_click(cx.listener(|r, _, window, cx| save_link(r, window, cx)))),
                 )
                 .child(match root.settings.dc_link_err.clone() {
                     Some(e) => div().text_size(px(T_S)).text_color(c(BAD)).child(e),
@@ -554,16 +610,36 @@ pub(super) fn discord(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
                 .into_any_element(),
         );
     }
-    if root.settings.asking == Some("dc-remove") {
-        card.push(question(root, "dc-remove-q", root.tr("dc.removeTitle"), root.tr("dc.removeConfirm"), root.tr("dc.remove"), true, cx, |r, cx| {
-            r.settings.dc_shown = None;
-            ask(r, "setDiscordWebhook", json!({ "url": "" }), cx, |_, _| {});
-        }));
-    }
     if has_hook {
-        card.push(actions.into_any_element());
+        // The last message: when it went (or nothing yet), what went wrong, what waits; Send test beside it.
+        let last = s(d, "lastSent");
+        let when = match crate::time::iso_secs(last) {
+            Some(at) if !last.is_empty() => root.i18n.tv("dc.last", &[("t", &crate::time::ago(crate::time::now_secs() - at, &root.i18n))]),
+            _ => root.tr("dc.never"),
+        };
+        let err = s(d, "error");
+        let queued = d.get("queued").and_then(Value::as_i64).unwrap_or(0);
+        let words = div()
+            .flex_1()
+            .min_w_0()
+            .flex()
+            .flex_col()
+            .gap(px(3.))
+            .child(title_t(when).font_features(tnum()))
+            .when(!err.is_empty(), |w| w.child(desc_t(err.to_string(), BAD)))
+            .when(queued > 0, |w| w.child(desc_t(root.i18n.tv("dc.queued", &[("n", &queued.to_string())]), MUTED)));
+        let ctl = div().child(Button::new("s-dc-test", root.tr("dc.test")).small().icon("message").disabled(busy("test")).on_click(cx.listener(|r, _, _, cx| {
+            ask_busy(r, "test", "discordTest", Value::Null, cx, |r, _| ok(r, r.tr("dc.testOk")));
+        })));
+        card.push(found(&root.tr("dc.test"), line(words, ctl).into_any_element()));
     }
     out.push(group(None, card));
+
+    // ── how messages will look, once there is a link to send them to: right under the connection, above the tabs,
+    // as the old page had it (it was hidden in the Messages tab).
+    if has_hook && !super::finding() {
+        out.push(preview(root, cx));
+    }
 
     // ── the tabs: one kind of thing at a time
     let tab = root.settings.dc_tab;
@@ -691,8 +767,8 @@ fn summary_tab(root: &Root, bx: &Boxes, cx: &mut Context<Root>) -> Vec<Div> {
     what.push(row(
         root.tr("dc.sendNow"),
         Some(root.tr("dc.sendNowDesc")),
-        Button::new("s-dc-now", root.tr("dc.sendNowBtn")).small().icon("message").on_click(cx.listener(|r, _, _, cx| {
-            ask(r, "discordSummaryNow", Value::Null, cx, |r, _| ok(r, r.tr("dc.sentOk")));
+        Button::new("s-dc-now", root.tr("dc.sendNowBtn")).small().icon("message").disabled(busy("now")).on_click(cx.listener(|r, _, _, cx| {
+            ask_busy(r, "now", "discordSummaryNow", Value::Null, cx, |r, _| ok(r, r.tr("dc.sentOk")));
         })),
     ));
     vec![group(None, sched), group(Some(root.tr("dc.summary")), what)]
@@ -755,13 +831,11 @@ fn alerts_tab(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
     vec![group(None, all), group(Some(root.tr("dc.kinds")), kinds)]
 }
 
-/// How messages look: the preview, the status message, quiet hours, the sender's name and picture, language and style.
+/// How messages look: the status message, quiet hours, the sender's name and picture, language and style (the
+/// preview of them stands above the tabs).
 fn messages_tab(root: &Root, bx: &Boxes, cx: &mut Context<Root>) -> Vec<Div> {
     let d = dc(root);
     let mut out = Vec::new();
-    if b(d, "hasWebhook") {
-        out.push(preview(root, cx));
-    }
     let board = d.get("board").unwrap_or(&Value::Null);
     let minutes = board.get("minutes").and_then(Value::as_i64).unwrap_or(5);
     let every = [2, 5, 10, 15, 30, 60].into_iter().map(|m| (m, root.i18n.tv("dc.everyN", &[("n", &m.to_string())]), false)).collect();
@@ -918,6 +992,13 @@ fn preview(root: &Root, cx: &mut Context<Root>) -> Div {
     };
     let at = if root.i18n.vietnamese { "14:30" } else { "2:30 PM" };
     let name = { let n = s(d, "username"); if n.is_empty() { "Bloxkeep" } else { n } }.to_string();
+    // The sender's picture: the one linked once it has loaded, else Bloxkeep's logo (as Discord shows it then).
+    let avatar = s(d, "avatarUrl").to_string();
+    let face = if avatar.is_empty() { None } else { crate::images::pic_sq(&avatar, 36., cx) };
+    let face = match face {
+        Some(src) => img(src).size(px(36.)).flex_none().rounded_full(),
+        None => img("logo.svg").size(px(36.)).flex_none().rounded_full(),
+    };
     let small_t = |t: String| div().text_size(px(T_S - 1.)).text_color(c(MUTED)).child(t);
     let body: AnyElement = if plain {
         let mut col = div().flex().flex_col().gap(px(2.)).text_size(px(T_S)).text_color(c(TEXT_2));
@@ -989,7 +1070,7 @@ fn preview(root: &Root, cx: &mut Context<Root>) -> Div {
                 .bg(c(INSET))
                 .flex()
                 .gap(px(12.))
-                .child(img("logo.svg").size(px(36.)).flex_none().rounded_full())
+                .child(face)
                 .child(
                     div()
                         .flex_1()
@@ -1040,6 +1121,16 @@ fn remote(root: &Root, cx: &mut Context<Root>) -> Vec<AnyElement> {
                 .child(t(if user.is_empty() { root.tr("dc.remoteLinked") } else { root.i18n.tv("dc.remoteLinkedTo", &[("user", user)]) }))
                 .child(dsc(root.i18n.tv("dc.remoteUse", &[("pc", s(r, "pc"))]), MUTED));
         } else if !code.is_empty() && left > 0 {
+            // The minutes left counted down: the page drawn again every 15 s while the code shows.
+            if !TICKING.with(Cell::get) && !super::finding() {
+                TICKING.with(|t| t.set(true));
+                cx.spawn(async move |this, cx| {
+                    cx.background_executor().timer(Duration::from_secs(15)).await;
+                    TICKING.with(|t| t.set(false));
+                    let _ = this.update(cx, |_, cx| cx.notify());
+                })
+                .detach();
+            }
             lines = lines
                 .child(
                     div()
@@ -1060,7 +1151,7 @@ fn remote(root: &Root, cx: &mut Context<Root>) -> Vec<AnyElement> {
             .flex()
             .gap(px(6.))
             .when(connected && !linked, |d| {
-                d.child(Button::new("s-dc-remote-code", root.tr("dc.remoteNewCode")).small().on_click(cx.listener(|r, _, _, cx| ask(r, "remoteCode", Value::Null, cx, |_, _| {}))))
+                d.child(Button::new("s-dc-remote-code", root.tr("dc.remoteNewCode")).small().disabled(busy("code")).on_click(cx.listener(|r, _, _, cx| ask_busy(r, "code", "remoteCode", Value::Null, cx, |_, _| {}))))
             })
             .when(!linked, |d| d.child(Button::new("s-dc-remote-add", root.tr("dc.remoteAdd")).small().quiet().on_click(cx.listener(|r, _, _, _| r.send("openDiscordApp", Value::Null)))));
         rows.push(div().px(px(ROW_X)).py(px(14.)).flex().items_center().gap(px(24.)).child(lines).child(ctl).into_any_element());

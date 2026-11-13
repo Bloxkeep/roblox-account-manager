@@ -82,15 +82,24 @@ impl BrowserLoginForm {
         let (tx, mut rx) = mpsc::unbounded::<SignedIn>();
         let create = self.create;
         let slot = self.window.clone();
+        log::note(if create { "Sign-in window: opening Roblox's sign-up form." } else { "Sign-in window: opening." });
         let started = host::start_thread("sign-in window", move || LoginWindow::open(owner, create, tx, slot));
         if !started {
+            log::note("Sign-in window: its thread couldn't start.");
             return DialogResult::Cancel;
         }
-        // Ends when the window is gone (its sender with it).
+        // Ends when the window is gone (its sender with it), also when its thread ended early (a failure there).
         while let Some((cookie, reply)) = rx.next().await {
             let answer = (self.on_signed_in)(cookie).await;
             let _ = reply.send(answer);
         }
+        // The app is usable again however the window went: it was disabled while the window was up, and a window
+        // whose thread failed never gave it back (the owner, 2026-11-13: "add account with browser breaks the app").
+        if owner != 0 {
+            // SAFETY: plain call; enabling an enabled window does nothing.
+            unsafe { EnableWindow(owner as HWND, 1) };
+        }
+        log::note("Sign-in window: closed.");
         DialogResult::Cancel
     }
 
@@ -149,6 +158,7 @@ impl LoginWindow {
         let title = if create { l::t("Create a Roblox account") } else { l::t("Sign in to Roblox") };
         let hwnd = host::create_window(host::CLASS_FORM, &title, WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN, 0, owner, Rect::default());
         if hwnd == 0 {
+            log::note("Sign-in window: Windows couldn't make it.");
             return;
         }
         host::set_icon(hwnd);
@@ -256,6 +266,7 @@ impl LoginWindow {
         }
         me.lay_out();
         host::show(hwnd, SW_SHOW);
+        log::note(&format!("Sign-in window: shown, {}.", crate::core::window_report::describe(hwnd)));
     }
 
     fn on_message(self: &Rc<Self>, h: HWND, msg: u32, w: WPARAM, l: LPARAM) -> Option<isize> {

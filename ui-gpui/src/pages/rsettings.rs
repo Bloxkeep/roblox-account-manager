@@ -184,7 +184,7 @@ fn section(head: impl Into<SharedString>, card: impl IntoElement) -> Div {
 pub fn page(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement {
     let rs = &root.rset;
     let (able, viewer) = friends::looking(root);
-    let shell = div().id("rsettings").size_full().rounded(px(R_PANEL)).bg(c(PANEL)).overflow_hidden().flex().flex_col();
+    let shell = div().id("rsettings").relative().size_full().rounded(px(R_PANEL)).bg(c(PANEL)).overflow_hidden().flex().flex_col();
     let header = div()
         .flex_none()
         .px(px(24.))

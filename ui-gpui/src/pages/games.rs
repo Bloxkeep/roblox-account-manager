@@ -151,6 +151,8 @@ pub struct Data {
     /// has given two or more.
     pub shots: HashMap<i64, (Vec<String>, Entity<CarouselState>)>,
     asked_shots: HashSet<i64>,
+    /// The gameplay clips the tiles play under the mouse (pages/clips.rs).
+    pub clips: crate::pages::clips::Clips,
     pub stays: HashMap<i64, Vec<Value>>,
     pub found: Option<(String, Option<Result<Vec<roblox::Game>, String>>)>,
     /// Play on a game's page: the game (its Open id) and the accounts ticked to join it.
@@ -760,25 +762,11 @@ pub fn games(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElemen
     div().size_full().flex().flex_col().gap(px(8.)).child(crate::pages::tabs::strip(root, cx)).child(div().flex_1().min_h_0().child(content))
 }
 
-/// Where the news come from, as a dot and a few words.
-fn status(root: &Root) -> (bool, String) {
-    let f = |k: &str| root.state.pointer(&format!("/feeds/{k}")).and_then(Value::as_bool).unwrap_or(false);
-    let key = if !f("on") {
-        "news.offHere"
-    } else if !f("connected") {
-        if f("loaded") { "news.offline" } else { "news.connecting" }
-    } else {
-        "news.live"
-    };
-    (f("connected"), root.tr(key))
-}
-
 fn grid(root: &Root, all: &[Game], width: f32, cx: &mut Context<Root>) -> impl IntoElement {
     let inner = width - 2. * (PAD + 4.);
     let query = root.game_search.read(cx).value().trim().to_lowercase();
     let shown: Vec<&Game> = all.iter().filter(|g| query.is_empty() || g.name.to_lowercase().contains(&query)).collect();
     let card_w = home_fit(inner).1 + 2. * CPAD;
-    let (live, words) = status(root);
 
     let header = div()
         .flex_none()
@@ -790,23 +778,7 @@ fn grid(root: &Root, all: &[Game], width: f32, cx: &mut Context<Root>) -> impl I
         .gap(px(10.))
         .child(div().text_size(px(T_TITLE)).font_weight(FontWeight::BOLD).child("Roblox"))
         .child(div().ml(px(6.)).child(views(root, cx)))
-        // (Not on a narrow page: it squeezed the search to "Search Robl", the owner's 1200 px window, 2026-11-12.)
-        .when(width >= 1150., |d| d.child({
-            // (What "the games' own alerts" are, on a hover: review 3a.3.)
-            let tip: SharedString = root.tr("news.liveTip").into();
-            div()
-                .id("news-live")
-                .ml(px(8.))
-                .min_w_0()
-                .flex()
-                .items_center()
-                .gap(px(7.))
-                .text_size(px(T_S))
-                .text_color(c(MUTED))
-                .child(div().size(px(7.)).flex_none().rounded_full().bg(if live { c(OK) } else { c(DIM) }))
-                .child(div().truncate().child(words))
-                .tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into())
-        }))
+        // (The "Live from the games' own alerts" line was taken out: "no one needs to know", the owner, 2026-11-13.)
         .child(div().flex_1())
         .child(
             div()
@@ -922,6 +894,9 @@ fn friends_strip(root: &Root, width: f32, cx: &mut Context<Root>) -> Option<AnyE
     const FACE: f32 = 72.;
     const CELL: f32 = 92.;
     const GAP_F: f32 = 10.;
+    // Join as the account whose friends these are, for one in a game whose server Roblox shows (the Friends page's Join;
+    // Roblox's own row of faces joins from a face, owner 2026-11-12).
+    let join_as = crate::pages::friends::looking(root).1.and_then(|a| a.get("id").and_then(Value::as_str).map(str::to_string));
     let fit = (((width + GAP_F) / (CELL + GAP_F)).floor() as usize).max(2);
     let face_circle = |inner: AnyElement| div().relative().size(px(FACE)).flex_none().rounded_full().bg(c(RAISED_2)).flex().items_center().justify_center().child(inner);
     let add = hot("gf-add")
@@ -949,6 +924,14 @@ fn friends_strip(root: &Root, width: f32, cx: &mut Context<Root>) -> Option<AnyE
         };
         let who = f.id;
         let shown = if f.display.is_empty() { f.name.clone() } else { f.display.clone() };
+        let joinable = f.kind == 2 && f.place > 0 && !f.job.is_empty();
+        let join = join_as.clone().filter(|_| joinable).map(|acc| {
+            let (place, job, name) = (f.place, f.job.clone(), f.name.clone());
+            Button::new(("gf-join", i), root.tr("fr.join")).small().tint().on_click(cx.listener(move |r, _, _, cx| {
+                cx.stop_propagation();
+                r.launch("joinServer", json!({ "ids": [acc], "placeId": place, "jobId": job, "followUserId": who, "followName": name }), false, cx)
+            }))
+        });
         hot(("gf-face", i))
             .w(px(CELL))
             .flex_none()
@@ -974,7 +957,8 @@ fn friends_strip(root: &Root, width: f32, cx: &mut Context<Root>) -> Option<AnyE
                     .gap(px(1.))
                     .child(div().max_w_full().truncate().text_size(px(T_S)).font_weight(FontWeight::MEDIUM).child(shown))
                     // (Where they are, when Roblox says: the one thing Roblox's row of faces doesn't show.)
-                    .when(f.kind == 2 && !f.game.is_empty(), |d| d.child(div().max_w_full().truncate().text_size(px(T_XS)).text_color(c(OK)).child(clean(&f.game)))),
+                    .when(f.kind == 2 && !f.game.is_empty(), |d| d.child(div().max_w_full().truncate().text_size(px(T_XS)).text_color(c(OK)).child(clean(&f.game))))
+                    .when_some(join, |d, b| d.child(div().mt(px(4.)).on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation()).child(b))),
             )
             .on_click(cx.listener(move |r, _, _, cx| crate::pages::profile::open_person(r, who, cx)))
     }).collect::<Vec<_>>();
@@ -1003,6 +987,11 @@ fn keep_playing(root: &Root, width: f32, cx: &mut Context<Root>) -> Option<AnyEl
     let (cols, w) = home_fit(width);
     let vi = root.i18n.vietnamese;
     let n = all.len();
+    // A wide page: the first game on a spotlight, big and playing its clip, the next ones stacked beside it (the
+    // owner, 2026-11-13: "one layer with cards spread on it … be creative").
+    if width >= 900. {
+        return Some(div().flex().flex_col().gap(px(12.)).child(section_head(root.tr("games.keepPlaying"), Some(n))).child(spotlight(root, &all, width, cx)).into_any_element());
+    }
     let tiles: Vec<AnyElement> = all
         .into_iter()
         .take(cols)
@@ -1021,7 +1010,7 @@ fn keep_playing(root: &Root, width: f32, cx: &mut Context<Root>) -> Option<AnyEl
             cascade(
                 "gk-in",
                 i,
-                crate::pages::home::cover_tile(("gk-tile", i), look(root, g.place, "cover"), icon_url, g.name.clone(), (sub, running), g.accounts.len(), false, w, cx).on_click(
+                crate::pages::home::cover_tile(("gk-tile", i), look(root, g.place, "cover"), icon_url, g.name.clone(), (sub, running), g.accounts.len(), false, w, crate::pages::clips::tile_clip(root, place, cx), cx).on_click(
                     cx.listener(move |r, _, _, cx| {
                         open_place(r, place, &name);
                         cx.notify();
@@ -1032,6 +1021,157 @@ fn keep_playing(root: &Root, width: f32, cx: &mut Context<Root>) -> Option<AnyEl
         })
         .collect();
     Some(div().flex().flex_col().gap(px(12.)).child(section_head(root.tr("games.keepPlaying"), Some(n))).child(crate::kit::grid(GRID_GAP).children(tiles)).into_any_element())
+}
+
+/// What a game in Keep playing says under its name: its windows now, else its hours, else "lately".
+fn played(root: &Root, g: &crate::pages::home::Game) -> (String, bool) {
+    let running = !g.accounts.is_empty();
+    let sub = if running {
+        root.i18n.tv("home.runningN", &[("n", &g.accounts.len().to_string())])
+    } else if g.hours >= 1. {
+        root.i18n.tv("home.hours", &[("n", &thousands(g.hours.round() as i64, root.i18n.vietnamese))])
+    } else {
+        root.tr("home.recentShort")
+    };
+    (sub, running)
+}
+
+/// The first game big, its gameplay clip playing on its picture (muted, pages/clips.rs), its name large on a plate at
+/// its foot; the next three stacked at its right, each a picture and its name.
+fn spotlight(root: &Root, all: &[crate::pages::home::Game], width: f32, cx: &mut Context<Root>) -> AnyElement {
+    const GAP_S: f32 = 16.;
+    let big_w = ((width - GAP_S) * 0.64).round();
+    // (A 16:9 spotlight stood taller than the window: its name and buttons fell under the fold, 2026-11-13.)
+    let big_h = (big_w * 0.42).clamp(240., 420.).round();
+    let side_w = width - big_w - GAP_S;
+    let Some(g) = all.first() else { return div().into_any_element() };
+    let (place, name) = (g.place, g.name.clone());
+    crate::pages::clips::want(root, place, cx);
+    let (sub, running) = played(root, g);
+    let cover = look(root, place, "cover");
+    let picture = cover.as_deref().and_then(|u| crate::images::pic_pair(u, big_w, big_h, cx));
+    let badge = look(root, place, "icon").or(g.icon.clone()).and_then(|u| crate::images::pic_sq(&u, 52., cx));
+    let n = g.accounts.len();
+    let mut acts = div().flex().gap(px(8.));
+    if running {
+        acts = acts.child(Button::new("gs-windows", root.i18n.tn("home.windowsN", n as i64, &[])).icon("screens").primary().on_click(cx.listener(|r, _, _, cx| {
+            r.go(crate::pages::Page::Accounts);
+            cx.notify();
+        })));
+    }
+    let (p2, n2) = (place, name.clone());
+    acts = acts.child(Button::new("gs-page", root.tr("home.gamePage")).icon("info").map(|b| if running { b.glass() } else { b.primary() }).on_click(cx.listener(move |r, _, _, cx| {
+        open_place(r, p2, &n2);
+        cx.notify();
+    })));
+    // The plate: solid, at the picture's foot, so the words read on any picture (no fade over the game).
+    let plate = div()
+        .absolute()
+        .left(px(14.))
+        .bottom(px(14.))
+        .max_w(px(big_w - 28.))
+        .p(px(14.))
+        .pr(px(18.))
+        .rounded(px(R_L))
+        .bg(ca(GROUND, 0.88))
+        .flex()
+        .items_center()
+        .gap(px(14.))
+        .children(badge.map(|b| div().size(px(52.)).flex_none().rounded(px(R_M)).overflow_hidden().child(img(b).size_full().object_fit(ObjectFit::Cover))))
+        .child(
+            div()
+                .min_w_0()
+                .flex()
+                .flex_col()
+                .gap(px(4.))
+                .child(div().truncate().text_size(px(26.)).line_height(px(30.)).font_weight(FontWeight::BOLD).child(name.clone()))
+                .child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap(px(6.))
+                        .text_size(px(T_M))
+                        .text_color(c(TEXT_2))
+                        .child(div().size(px(7.)).rounded_full().bg(if running { c(OK) } else { c(MUTED) }))
+                        .child(sub),
+                ),
+        )
+        .child(div().ml(px(8.)).flex_none().child(acts));
+    let big = hot("gs-big")
+        .relative()
+        .w(px(big_w))
+        .h(px(big_h))
+        .flex_none()
+        .rounded(px(R_L))
+        .overflow_hidden()
+        .bg(c(RAISED))
+        .cursor_pointer()
+        .children(picture.map(|(p, k)| fade_in(img(p).size_full().object_fit(ObjectFit::Cover), &k).into_any_element()))
+        .children(crate::pages::clips::ready(root, place))
+        .child(plate)
+        .on_click(cx.listener(move |r, _, _, cx| {
+            open_place(r, place, &name);
+            cx.notify();
+        }));
+
+    // The next ones, a picture and words each, filling the spotlight's height.
+    let rows = all.len().saturating_sub(1).min(3);
+    let row_h = if rows == 0 { 0. } else { ((big_h - GAP_S * (rows as f32 - 1.)) / rows as f32).min(big_h / 2.).floor() };
+    let pic_h = row_h;
+    let pic_w = (pic_h * 16. / 9.).min(side_w * 0.6).round();
+    let side = all.iter().skip(1).take(3).enumerate().map(|(i, g)| {
+        let (place, name) = (g.place, g.name.clone());
+        let (sub, running) = played(root, g);
+        let pic = look(root, place, "cover").and_then(|u| crate::images::pic_pair(&u, pic_w, pic_h, cx));
+        let clip = crate::pages::clips::tile_clip(root, place, cx);
+        let art = div()
+            .id(SharedString::from(format!("gs-side-art-{place}")))
+            .on_hover(clip.hover)
+            .relative()
+            .w(px(pic_w))
+            .h(px(pic_h))
+            .flex_none()
+            .rounded(px(R_L))
+            .overflow_hidden()
+            .bg(c(RAISED))
+            .children(pic.map(|(p, k)| fade_in(img(p).size_full().object_fit(ObjectFit::Cover), &k).into_any_element()))
+            .children(clip.layer);
+        cascade(
+            "gs-in",
+            i,
+            hot(("gs-side", i))
+                .h(px(row_h))
+                .flex()
+                .items_center()
+                .gap(px(14.))
+                .cursor_pointer()
+                .child(art)
+                .child(
+                    div()
+                        .min_w_0()
+                        .flex()
+                        .flex_col()
+                        .gap(px(4.))
+                        .child(div().truncate().text_size(px(T_H)).font_weight(FontWeight::SEMIBOLD).child(name.clone()))
+                        .child(
+                            div()
+                                .flex()
+                                .items_center()
+                                .gap(px(6.))
+                                .text_size(px(T_S))
+                                .text_color(c(MUTED))
+                                .when(running, |d| d.child(div().size(px(6.)).rounded_full().bg(c(OK))))
+                                .child(sub),
+                        ),
+                )
+                .on_click(cx.listener(move |r, _, _, cx| {
+                    open_place(r, place, &name);
+                    cx.notify();
+                })),
+        )
+        .into_any_element()
+    });
+    div().flex().gap(px(GAP_S)).child(big).child(div().w(px(side_w)).min_w_0().flex().flex_col().gap(px(GAP_S)).children(side)).into_any_element()
 }
 
 fn section(title: String, cards: Vec<AnyElement>) -> impl IntoElement {
@@ -1295,6 +1435,7 @@ fn tile(root: &Root, i: usize, g: &roblox::Game, ranked: bool, w: f32, art_h: f3
     let tone = art_tone(root, g, cx);
     let votes = g.up + g.down;
     let (place, name) = (g.place, g.name.clone());
+    let clip = crate::pages::clips::tile_clip(root, place, cx);
     hot(SharedString::from(format!("rxg-{i}-{}", g.place)))
         .w(px(w))
         .h(px(tile_h))
@@ -1311,6 +1452,8 @@ fn tile(root: &Root, i: usize, g: &roblox::Game, ranked: bool, w: f32, art_h: f3
         }))
         .child(
             div()
+                .id(SharedString::from(format!("rxg-art-{i}-{place}")))
+                .on_hover(clip.hover)
                 .relative()
                 .w_full()
                 .h(px(art_h))
@@ -1328,6 +1471,7 @@ fn tile(root: &Root, i: usize, g: &roblox::Game, ranked: bool, w: f32, art_h: f3
                     Some((p, k)) => d.child(fade_in(img(p).size_full().rounded(px(R_L)).object_fit(ObjectFit::Cover), &k)),
                     None => d.child(letter(&g.name, 34.)),
                 })
+                .children(clip.layer)
                 .when(ranked, |d| {
                     d.child(
                         div()
@@ -1371,6 +1515,7 @@ fn lead(root: &Root, g: &roblox::Game, chart: String, w: f32, h: f32, cx: &mut C
     let image = art(root, g, true, w - 2. * TPAD, h - 2. * TPAD, cx);
     let votes = g.up + g.down;
     let (place, name) = (g.place, g.name.clone());
+    let clip = crate::pages::clips::tile_clip(root, place, cx);
     hot(SharedString::from(format!("rxg-lead-{}", g.place)))
         .w(px(w))
         .h(px(h))
@@ -1385,6 +1530,8 @@ fn lead(root: &Root, g: &roblox::Game, chart: String, w: f32, h: f32, cx: &mut C
         }))
         .child(
             div()
+                .id(SharedString::from(format!("rxg-lead-art-{}", g.place)))
+                .on_hover(clip.hover)
                 .relative()
                 .size_full()
                 .rounded(px(R_L))
@@ -1397,6 +1544,7 @@ fn lead(root: &Root, g: &roblox::Game, chart: String, w: f32, h: f32, cx: &mut C
                     Some((p, k)) => d.child(fade_in(img(p).size_full().rounded(px(R_L)).object_fit(ObjectFit::Cover), &k)),
                     None => d.child(letter(&g.name, 64.)),
                 })
+                .children(clip.layer)
                 // The words' ground: the picture darkens toward its foot. (Laid twice: GPUI's see-through gradients
                 // come out about half as strong as their stops say.)
                 .children((0..2).map(|_| div().absolute().inset_0().rounded(px(R_L)).bg(linear_gradient(180., linear_color_stop(ca(GROUND, 0.), 0.4), linear_color_stop(ca(GROUND, 0.9), 1.)))))

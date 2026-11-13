@@ -534,7 +534,7 @@ pub fn profile(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElem
     let (able, viewer) = friends::looking(root);
     // Roblox's own page of what is shown: the person's when one is open.
     let user = pf.person.as_ref().map(|p| p.0).unwrap_or(pf.of);
-    let shell = div().id("profile").size_full().rounded(px(R_PANEL)).bg(c(PANEL)).overflow_hidden().flex().flex_col();
+    let shell = div().id("profile").relative().size_full().rounded(px(R_PANEL)).bg(c(PANEL)).overflow_hidden().flex().flex_col();
     let header = div()
         .flex_none()
         .px(px(PAD + 4.))
@@ -607,9 +607,6 @@ fn filled(root: &Root, p: &Profile, user: i64, width: f32, own: bool, cx: &mut C
     let (_, card_w) = grid_fit(inner, 360., GRID_GAP);
     let figure = |label: String, value: String| div().flex().flex_col().gap(px(2.)).child(div().text_size(px(T_S)).text_color(c(MUTED)).child(label)).child(div().text_size(px(T_FIG)).line_height(px(28.)).font_weight(FontWeight::SEMIBOLD).font_features(tnum()).child(value));
 
-    // The whole avatar, standing (its face until that has come).
-    let stood = (!p.body.is_empty()).then(|| images::pic_pair(&p.body, 168., 168., cx)).flatten();
-    let face = if stood.is_some() { None } else { (!p.face.is_empty()).then(|| images::pic_sq(&p.face, 96., cx)).flatten() };
     // At the right of a wide header, what Roblox's page says of them in facts: how long they have been on Roblox, their
     // Roblox ID, the visits to the games they made, the communities they are in.
     let mut known: Vec<(String, String)> = Vec::new();
@@ -653,65 +650,134 @@ fn filled(root: &Root, p: &Profile, user: i64, width: f32, own: bool, cx: &mut C
                     .child(div().text_size(px(T_L)).font_weight(FontWeight::SEMIBOLD).font_features(tnum()).truncate().child(value))
             }))
     });
-    let who = surface()
-        .p(px(20.))
-        .flex()
-        .items_center()
-        .gap(px(24.))
-        // (The avatar on a block of its own, as a tile is.)
-        .child(div()
-                .size(px(168.))
-                .flex_none()
-                .rounded(px(R_L))
+    // A banner on top (the owner's reference, 2026-11-13): a game they like, sharp, edge to edge; their face in a big
+    // ring over its foot; their words in a bubble beside it; under it a greeting with their name, then the figures.
+    const BANNER: f32 = 190.;
+    const AV: f32 = 148.;
+    // The games they like side by side, each near its own size (one game's cover stretched across the whole width
+    // came out smeared, 2026-11-13); with none, the page's game.
+    let mut covers: Vec<String> = p.favs.iter().chain(p.made.iter()).map(|g| g.cover.clone()).filter(|u| !u.is_empty()).collect();
+    covers.dedup();
+    if covers.is_empty() {
+        covers.extend(crate::pages::home::wash(root, cx).map(|(u, _)| u));
+    }
+    let k = covers.len().min((inner / (BANNER * 16. / 9.)).ceil().max(1.) as usize).max(1);
+    let tile_w = ((inner - 2. * (k as f32 - 1.)) / k as f32).floor();
+    let banner: Vec<AnyElement> = covers
+        .iter()
+        .take(k)
+        .map(|u| {
+            div()
+                .flex_1()
+                .h_full()
                 .overflow_hidden()
-                .bg(c(RAISED))
-                .border_1()
-                .border_color(c(LINE))
-                .flex()
-                .items_center()
-                .justify_center()
-                .when_some(stood, |d, (src, key)| d.child(fade_in(img(src).size_full().object_fit(ObjectFit::Cover), &key)))
-                .when_some(face, |d, f| d.child(img(f).size(px(96.)).rounded_full())))
+                .bg(c(RAISED_2))
+                .children(images::pic_pair(u, tile_w, BANNER, cx).map(|(src, key)| fade_in(img(src).size_full().object_fit(ObjectFit::Cover), &key).into_any_element()))
+                .into_any_element()
+        })
+        .collect();
+    let face = [&p.face, &p.body].into_iter().find(|u| !u.is_empty()).and_then(|u| images::pic_pair(u, AV, AV, cx));
+    let hour = ((crate::time::now_secs() + crate::time::utc_offset_secs()).rem_euclid(86_400)) / 3600;
+    let hello = root.tr(match hour {
+        5..=11 => "pf.hiMorning",
+        12..=17 => "pf.hiAfternoon",
+        _ => "pf.hiEvening",
+    });
+    let title = div()
+        .flex()
+        .items_baseline()
+        .min_w_0()
+        .text_size(px(T_STAGE))
+        .font_weight(FontWeight::BOLD)
+        .line_height(px(36.))
+        .when(own, |d| d.child(div().flex_none().whitespace_nowrap().child(hello)))
+        .child(div().truncate().when(own, |d| d.text_color(c(FACE))).child(p.display.clone()));
+    let words = div()
+        .when(wide_head, |d| d.flex_none().w(px(560.)))
+        .when(!wide_head, |d| d.flex_1())
+        .min_w_0()
+        .flex()
+        .flex_col()
+        .gap(px(10.))
         .child(
             div()
-                .when(wide_head, |d| d.flex_none().w(px(560.)))
-                .when(!wide_head, |d| d.flex_1())
-                .min_w_0()
                 .flex()
                 .flex_col()
-                .gap(px(10.))
-                .child(
-                    div()
-                        .flex()
-                        .flex_col()
-                        .gap(px(2.))
-                        .child(div().text_size(px(T_STAGE)).font_weight(FontWeight::BOLD).line_height(px(34.)).truncate().child(p.display.clone()))
-                        .child(div().text_size(px(T_M)).text_color(c(MUTED)).child(format!("@{} · {}", p.name, root.i18n.tv("pf.joined", &[("d", &day(&p.joined))])))),
-                )
-                .when(!p.about.is_empty(), |d| d.child(div().max_w(px(640.)).max_h(px(88.)).overflow_hidden().text_size(px(T_M)).text_color(c(TEXT_2)).line_height(px(21.)).child(p.about.clone())))
-                .child(
-                    div()
-                        .pt(px(6.))
-                        .flex()
-                        .flex_wrap()
-                        .gap_x(px(40.))
-                        .gap_y(px(10.))
-                        // (Roblox counts someone else's friends only for a signed-in ask: 0 is left out.)
-                        .when(own || p.friends > 0, |d| d.child(figure(root.tr("nav.friends"), thousands(p.friends, vi))))
-                        // (The account's two counts open their lists.)
-                        .when(own, |d| {
-                            d.child(focusable(div().id("pf-followers")).cursor_pointer().rounded(px(R_S)).hover(|d| d.opacity(0.8)).on_click(cx.listener(|r, _, _, cx| open_folk(r, "followers", cx))).child(figure(root.tr("pf.followers"), thousands(p.followers, vi))))
-                                .child(focusable(div().id("pf-following")).cursor_pointer().rounded(px(R_S)).hover(|d| d.opacity(0.8)).on_click(cx.listener(|r, _, _, cx| open_folk(r, "followings", cx))).child(figure(root.tr("pf.following"), thousands(p.following, vi))))
-                        })
-                        .when(!own, |d| d.child(figure(root.tr("pf.followers"), thousands(p.followers, vi))).child(figure(root.tr("pf.following"), thousands(p.following, vi))))
-                        .when_some(p.robux, |d, r| {
-                            d.child(div().flex().flex_col().gap(px(2.)).child(div().text_size(px(T_S)).text_color(c(MUTED)).child("Robux")).child(
-                                div().flex().items_center().gap(px(6.)).child(icon("robux", 18., c(TEXT))).child(div().text_size(px(T_FIG)).line_height(px(28.)).font_weight(FontWeight::SEMIBOLD).font_features(tnum()).child(thousands(r, vi))),
-                            ))
-                        }),
-                ),
+                .gap(px(2.))
+                .child(title)
+                .child(div().text_size(px(T_M)).text_color(c(MUTED)).child(format!("@{} · {}", p.name, root.i18n.tv("pf.joined", &[("d", &day(&p.joined))])))),
         )
-        .children(side);
+        .child(
+            div()
+                .pt(px(4.))
+                .flex()
+                .flex_wrap()
+                .gap_x(px(40.))
+                .gap_y(px(10.))
+                // (Roblox counts someone else's friends only for a signed-in ask: 0 is left out.)
+                .when(own || p.friends > 0, |d| d.child(figure(root.tr("nav.friends"), thousands(p.friends, vi))))
+                // (The account's two counts open their lists.)
+                .when(own, |d| {
+                    d.child(focusable(div().id("pf-followers")).cursor_pointer().rounded(px(R_S)).hover(|d| d.opacity(0.8)).on_click(cx.listener(|r, _, _, cx| open_folk(r, "followers", cx))).child(figure(root.tr("pf.followers"), thousands(p.followers, vi))))
+                        .child(focusable(div().id("pf-following")).cursor_pointer().rounded(px(R_S)).hover(|d| d.opacity(0.8)).on_click(cx.listener(|r, _, _, cx| open_folk(r, "followings", cx))).child(figure(root.tr("pf.following"), thousands(p.following, vi))))
+                })
+                .when(!own, |d| d.child(figure(root.tr("pf.followers"), thousands(p.followers, vi))).child(figure(root.tr("pf.following"), thousands(p.following, vi))))
+                .when_some(p.robux, |d, r| {
+                    d.child(div().flex().flex_col().gap(px(2.)).child(div().text_size(px(T_S)).text_color(c(MUTED)).child("Robux")).child(
+                        div().flex().items_center().gap(px(6.)).child(icon("robux", 18., c(TEXT))).child(div().text_size(px(T_FIG)).line_height(px(28.)).font_weight(FontWeight::SEMIBOLD).font_features(tnum()).child(thousands(r, vi))),
+                    ))
+                }),
+        );
+    // Their "About", first line, as a thought beside their face (Roblox has no status any more; this is theirs).
+    let about = p.about.lines().map(str::trim).find(|l| !l.is_empty()).map(str::to_string);
+    let bubble = about.map(|t| {
+        div()
+            .absolute()
+            .left(px(28. + AV + 6.))
+            .top(px(BANNER - 52.))
+            .flex()
+            .items_center()
+            .gap(px(4.))
+            .child(div().size(px(7.)).flex_none().rounded_full().bg(c(RAISED_2)))
+            .child(div().size(px(11.)).flex_none().rounded_full().bg(c(RAISED_2)))
+            .child(div().max_w(px(440.)).h(px(38.)).px(px(16.)).flex().items_center().rounded_full().bg(c(RAISED_2)).text_size(px(T_M)).text_color(c(TEXT_2)).child(div().truncate().child(t)))
+    });
+    let who = div()
+        .relative()
+        .rounded(px(R_L))
+        .overflow_hidden()
+        .bg(c(RAISED))
+        .border_1()
+        .border_color(c(LINE))
+        .child(div().w_full().h(px(BANNER)).flex().gap(px(2.)).bg(c(RAISED)).overflow_hidden().children(banner))
+        .child(
+            div()
+                .pl(px(28. + AV + 24.))
+                .pr(px(24.))
+                .pt(px(14.))
+                .pb(px(22.))
+                .min_h(px(AV * 0.45 + 40.))
+                .flex()
+                .items_start()
+                .gap(px(24.))
+                .child(words)
+                .children(side),
+        )
+        .child(
+            div()
+                .absolute()
+                .left(px(28.))
+                .top(px(BANNER - AV * 0.55))
+                .size(px(AV))
+                .rounded_full()
+                .border_4()
+                .border_color(c(RAISED))
+                .bg(c(RAISED_2))
+                .overflow_hidden()
+                // (GPUI cuts children to the box, not to its round corners: the picture is rounded itself.)
+                .when_some(face, |d, (src, key)| d.child(fade_in(img(src).size_full().rounded_full().object_fit(ObjectFit::Cover), &key))),
+        )
+        .children(bubble);
 
     let groups: Vec<AnyElement> = p
         .groups
@@ -1368,7 +1434,7 @@ pub fn shop(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
     let pf = &root.profile;
     let inner = width - 2. * (PAD + 4.);
     let (cols, tile_w) = ware_fit(inner);
-    let shell = div().id("shop").size_full().rounded(px(R_PANEL)).bg(c(PANEL)).overflow_hidden().flex().flex_col();
+    let shell = div().id("shop").relative().size_full().rounded(px(R_PANEL)).bg(c(PANEL)).overflow_hidden().flex().flex_col();
     let header = div()
         .flex_none()
         .px(px(PAD + 4.))

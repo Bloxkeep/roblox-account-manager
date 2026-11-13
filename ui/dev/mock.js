@@ -566,7 +566,7 @@
         case 'gameDetails': {
           const now = Date.now(), h = n => new Date(now - n * 3600e3).toISOString();
           return {
-            placeId: a.placeId, universe: 994732206, name: 'Blox Fruits', creator: 'Gamer Robot Inc', genre: params.get('lang') === 'vi' ? 'Phiêu lưu' : 'Adventure',
+            placeId: a.placeId, universe: Number(params.get('gpuniverse')) || 994732206, name: 'Blox Fruits', creator: 'Gamer Robot Inc', genre: params.get('lang') === 'vi' ? 'Phiêu lưu' : 'Adventure',
             iconUrl: null, playing: 412873, visits: 48216000000, favorites: 8700000, likes: 92, upVotes: 12853413, downVotes: 1071858, maxPlayers: 12,
             created: '2019-01-16T03:29:19Z', updated: params.has('gpnew') ? h(1) : h(30),
             description: 'Train with swords or fruits, sail between islands and take on bosses with friends.\n\nWhat is new:\n- A harbour town on the third sea\n- Two new bosses and their drops\n- Faster ships and a shared map\n\nTips:\n- Fruits appear on the map every hour\n- The dealer changes his stock every 4 hours\n- Join a crew to share quests and rewards',

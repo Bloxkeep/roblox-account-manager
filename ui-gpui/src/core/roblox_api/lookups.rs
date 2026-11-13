@@ -592,12 +592,14 @@ fn retry_after_secs(res: &HttpResponse) -> Option<i32> {
     v.parse::<i64>().ok().filter(|s| *s >= 0).map(|s| s.min(i32::MAX as i64) as i32)
 }
 
-/// Each game's first wide picture (the ones on its Roblox page, 768×432), for many games at once.
+/// Each game's first wide picture (the ones on its Roblox page, 768×432), for many games at once. WebP: a sixth of the
+/// PNG's bytes (33 KB against 183 KB, measured 2026-11-13), and Roblox's picture servers are slow the first time a
+/// picture is asked for (about 1.4 s a PNG from Vietnam).
 pub fn get_game_covers(universe_ids: impl IntoIterator<Item = i64>, ct: &Cancel) -> Res<HashMap<i64, String>> {
     let mut result = HashMap::new();
     for chunk in chunks(universe_ids, 50) {
         let url = format!(
-            "https://thumbnails.roblox.com/v1/games/multiget/thumbnails?universeIds={}&countPerUniverse=1&defaults=true&size=768x432&format=Png&isCircular=false",
+            "https://thumbnails.roblox.com/v1/games/multiget/thumbnails?universeIds={}&countPerUniverse=1&defaults=true&size=768x432&format=Webp&isCircular=false",
             joined(&chunk, ",")
         );
         let Some(doc) = get_json(&url, ct, None)? else { continue };
@@ -622,7 +624,7 @@ pub fn get_game_icons(universe_ids: impl IntoIterator<Item = i64>, ct: &Cancel) 
     let mut result = HashMap::new();
     for chunk in chunks(universe_ids, 100) {
         let url = format!(
-            "https://thumbnails.roblox.com/v1/games/icons?universeIds={}&returnPolicy=PlaceHolder&size=150x150&format=Png&isCircular=false",
+            "https://thumbnails.roblox.com/v1/games/icons?universeIds={}&returnPolicy=PlaceHolder&size=150x150&format=Webp&isCircular=false",
             joined(&chunk, ",")
         );
         let Some(doc) = get_json(&url, ct, None)? else { continue };

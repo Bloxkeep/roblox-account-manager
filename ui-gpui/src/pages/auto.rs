@@ -373,6 +373,7 @@ pub fn auto(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
         .rounded(px(R_PANEL))
         .bg(c(PANEL))
         .overflow_hidden()
+        .relative()
         .flex()
         .flex_col()
         .child(header)

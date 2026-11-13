@@ -376,7 +376,7 @@ pub fn picture(url: &str, cx: &mut App) -> Option<std::sync::Arc<Image>> {
 pub fn avatar(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement {
     let av = &root.avatar;
     let (able, viewer) = friends::looking(root);
-    let shell = div().id("avatar").size_full().rounded(px(R_PANEL)).bg(c(PANEL)).overflow_hidden().flex().flex_col();
+    let shell = div().id("avatar").relative().size_full().rounded(px(R_PANEL)).bg(c(PANEL)).overflow_hidden().flex().flex_col();
 
     let header = div()
         .flex_none()

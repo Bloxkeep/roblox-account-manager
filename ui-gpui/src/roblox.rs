@@ -193,13 +193,13 @@ pub fn search(query: &str) -> Result<Vec<Game>, String> {
         .collect())
 }
 
-/// The games' square icons by universe, 100 a call.
+/// The games' square icons by universe, 100 a call. WebP, as the covers (a sixth of a PNG's bytes).
 pub fn icons(universes: &[i64]) -> HashMap<i64, String> {
-    let (mut out, missing) = pics::known("icons", universes);
+    let (mut out, missing) = pics::known("icons-webp", universes);
     let mut learnt = HashMap::new();
     for chunk in missing.chunks(100) {
         let ids: Vec<String> = chunk.iter().map(i64::to_string).collect();
-        let url = format!("https://thumbnails.roblox.com/v1/games/icons?universeIds={}&returnPolicy=PlaceHolder&size=150x150&format=Png&isCircular=false", ids.join(","));
+        let url = format!("https://thumbnails.roblox.com/v1/games/icons?universeIds={}&returnPolicy=PlaceHolder&size=150x150&format=Webp&isCircular=false", ids.join(","));
         let Ok(d) = get(&url, None) else { continue };
         for v in d.get("data").and_then(Value::as_array).into_iter().flatten() {
             if let Some(u) = v.get("imageUrl").and_then(Value::as_str).filter(|u| !u.is_empty()) {
@@ -207,20 +207,21 @@ pub fn icons(universes: &[i64]) -> HashMap<i64, String> {
             }
         }
     }
-    pics::learn("icons", &learnt);
+    pics::learn("icons-webp", &learnt);
     out.extend(learnt);
     out
 }
 
 /// The games' wide pictures (16:9) by universe, in one of Roblox's sizes ("480x270", "768x432"), 50 a call. They need
-/// no sign-in (checked 2026-11-11).
+/// no sign-in (checked 2026-11-11). WebP: 33 KB a 480×270 against the PNG's 183 KB, and Roblox's picture servers take
+/// about 1.4 s for a PNG nobody near has asked for lately (measured from Vietnam, 2026-11-13); 0.8 s for the WebP.
 pub fn covers(universes: &[i64], size: &str) -> HashMap<i64, String> {
-    let kind = format!("covers-{size}");
+    let kind = format!("covers-webp-{size}");
     let (mut out, missing) = pics::known(&kind, universes);
     let mut learnt = HashMap::new();
     for chunk in missing.chunks(50) {
         let ids: Vec<String> = chunk.iter().map(i64::to_string).collect();
-        let url = format!("https://thumbnails.roblox.com/v1/games/multiget/thumbnails?universeIds={}&countPerUniverse=1&defaults=true&size={size}&format=Png&isCircular=false", ids.join(","));
+        let url = format!("https://thumbnails.roblox.com/v1/games/multiget/thumbnails?universeIds={}&countPerUniverse=1&defaults=true&size={size}&format=Webp&isCircular=false", ids.join(","));
         let Ok(d) = get(&url, None) else { continue };
         for v in d.get("data").and_then(Value::as_array).into_iter().flatten() {
             let pic = v.get("thumbnails").and_then(Value::as_array).and_then(|t| t.first()).and_then(|t| t.get("imageUrl")).and_then(Value::as_str).filter(|u| !u.is_empty());
@@ -236,7 +237,7 @@ pub fn covers(universes: &[i64], size: &str) -> HashMap<i64, String> {
 
 /// A game's own pictures (the ones its Roblox page turns through), wide, each once. No sign-in needed.
 pub fn shots(universe: i64) -> Vec<String> {
-    let url = format!("https://thumbnails.roblox.com/v1/games/multiget/thumbnails?universeIds={universe}&countPerUniverse=10&defaults=true&size=768x432&format=Png&isCircular=false");
+    let url = format!("https://thumbnails.roblox.com/v1/games/multiget/thumbnails?universeIds={universe}&countPerUniverse=10&defaults=true&size=768x432&format=Webp&isCircular=false");
     let Ok(d) = get(&url, None) else { return Vec::new() };
     let mut out: Vec<String> = Vec::new();
     for t in d.pointer("/data/0/thumbnails").and_then(Value::as_array).into_iter().flatten() {
@@ -246,6 +247,74 @@ pub fn shots(universe: i64) -> Vec<String> {
         }
     }
     out
+}
+
+/// A game's gameplay clip, when its page has one: the asset of the first "GamePreviewVideo" among its media
+/// (games.roblox.com/v1/games/{universe}/media, read 2026-11-13: type 86, the asset's id in `imageId`; Adopt Me has one,
+/// most games none).
+pub fn preview_video(universe: i64) -> Option<i64> {
+    let d = get(&format!("https://games.roblox.com/v1/games/{universe}/media"), None).ok()?;
+    d.get("data")?
+        .as_array()?
+        .iter()
+        .find(|m| m.get("assetTypeId").and_then(Value::as_i64) == Some(86) && m.get("approved").and_then(Value::as_bool) != Some(false))?
+        .get("imageId")?
+        .as_i64()
+        .filter(|id| *id > 0)
+}
+
+/// The gameplay clip of the game at `place`, its file on this PC (see `video_file`), when it has one.
+pub fn place_clip(place: i64, dir: &std::path::Path) -> Option<std::path::PathBuf> {
+    let universe = int(&get(&format!("https://apis.roblox.com/universes/v1/places/{place}/universe"), None).ok()?, "universeId");
+    if universe <= 0 {
+        return None;
+    }
+    video_file(preview_video(universe)?, dir)
+}
+
+/// The clip's file on this PC (`dir`/{asset}.webm), fetched the first time: Roblox's asset delivery names where it is
+/// without a sign-in (a WebM of ~10 MB, sent gzipped). The folder keeps the newest clips up to CLIPS_MAX.
+pub fn video_file(asset: i64, dir: &std::path::Path) -> Option<std::path::PathBuf> {
+    const CLIPS_MAX: u64 = 300 << 20;
+    let file = dir.join(format!("{asset}.webm"));
+    if file.metadata().is_ok_and(|m| m.len() > 0) {
+        return Some(file);
+    }
+    let d = get(&format!("https://assetdelivery.roblox.com/v2/assetId/{asset}"), None).ok()?;
+    let at = d.pointer("/locations/0/location")?.as_str()?;
+    if !at.starts_with("https://") {
+        return None;
+    }
+    let r = agent().get(at).timeout(Duration::from_secs(180)).call().ok()?;
+    let mut bytes = Vec::new();
+    r.into_reader().take(64 << 20).read_to_end(&mut bytes).ok()?;
+    // (A WebM starts with Matroska's mark; anything else, an error page, isn't kept.)
+    if !bytes.starts_with(&[0x1a, 0x45, 0xdf, 0xa3]) {
+        return None;
+    }
+    std::fs::create_dir_all(dir).ok()?;
+    let part = dir.join(format!("{asset}.part"));
+    std::fs::write(&part, &bytes).ok()?;
+    std::fs::rename(&part, &file).ok()?;
+    // The oldest go once the folder is past its size (never the one just fetched).
+    let mut kept: Vec<(std::time::SystemTime, u64, std::path::PathBuf)> = std::fs::read_dir(dir)
+        .into_iter()
+        .flatten()
+        .flatten()
+        .filter_map(|e| {
+            let m = e.metadata().ok()?;
+            Some((m.modified().ok()?, m.len(), e.path()))
+        })
+        .collect();
+    kept.sort_unstable_by(|a, b| b.0.cmp(&a.0));
+    let mut total = 0u64;
+    for (_, len, path) in kept {
+        total += len;
+        if total > CLIPS_MAX && path != file {
+            let _ = std::fs::remove_file(path);
+        }
+    }
+    Some(file)
 }
 
 /// The avatar as a thing with depth: Roblox's own model of it (what its site turns with three.js), for mesh.rs to draw.

@@ -127,6 +127,11 @@ static DISK: LazyLock<PathBuf> = LazyLock::new(|| {
     base.join("cache").join("pictures")
 });
 
+/// Another folder of that cache (`videos`: the games' clips).
+pub fn kept_dir(sub: &str) -> PathBuf {
+    DISK.parent().map(|p| p.join(sub)).unwrap_or_else(|| DISK.join(sub))
+}
+
 /// The most kept, and how long a picture whose address isn't its content is trusted (Roblox's are: a new picture gets
 /// a new address).
 const DISK_MAX: u64 = 400 << 20;
@@ -266,12 +271,14 @@ fn format_of(b: &[u8]) -> Option<ImageFormat> {
 }
 
 /// A picture's own colour: the hue most of its vivid pixels share, at a lightness and strength that read on the dark
-/// surfaces (a game's icon gives its tiles their base). PNGs only (what Roblox is asked for); None for a grey picture.
+/// surfaces (a game's icon gives its tiles their base). PNG or WebP (what Roblox is asked for); None for a grey picture.
 fn tone_of(b: &[u8]) -> Option<u32> {
-    if !matches!(b, [0x89, b'P', b'N', b'G', ..]) {
-        return None;
-    }
-    let img = image::load_from_memory_with_format(b, image::ImageFormat::Png).ok()?.to_rgba8();
+    let format = match format_of(b)? {
+        ImageFormat::Png => image::ImageFormat::Png,
+        ImageFormat::Webp => image::ImageFormat::WebP,
+        _ => return None,
+    };
+    let img = image::load_from_memory_with_format(b, format).ok()?.to_rgba8();
     let (w, h) = img.dimensions();
     let step = (w.max(h) / 48).max(1) as usize;
     // Twelve slices of the colour wheel: each pixel votes for its own with how vivid and bright it is.
@@ -351,7 +358,7 @@ fn shrink(bytes: &[u8], w: u32, h: u32, sigma: f32) -> Option<RenderImage> {
         rgba = image::imageops::thumbnail(&rgba, w * 2, h * 2);
     }
     let mut out = image::imageops::resize(&rgba, w, h, image::imageops::FilterType::CatmullRom);
-    // A soft copy (`soft`): blurred while its colours are still weighed by their alpha.
+    // A blurred copy (sigma above 0): blurred while its colours are still weighed by their alpha.
     if sigma > 0. {
         out = image::imageops::fast_blur(&out, sigma);
     }
@@ -496,8 +503,7 @@ fn trim(cx: &mut App) {
     let mut gone_copies: Vec<Arc<RenderImage>> = Vec::new();
     let slots = &images.slots;
     images.copies.retain(|url, list| {
-        // (A soft copy is kept under its picture's address and SOFT.)
-        let kept = matches!(slots.get(url.strip_suffix(SOFT).unwrap_or(url)), Some(Slot::Ready(..)));
+        let kept = matches!(slots.get(url.as_str()), Some(Slot::Ready(..)));
         let latest = list.iter().map(|c| c.used).max();
         list.retain_mut(|c| {
             if matches!(c.state, CopyState::Loading) {
@@ -588,29 +594,6 @@ pub fn dims(url: &str, cx: &App) -> Option<(u32, u32)> {
         Some(Slot::Ready(_, _, _, dims)) => *dims,
         _ => None,
     }
-}
-
-/// What a soft copy's address ends with, after its picture's.
-const SOFT: &str = "#bloxkeep-soft";
-
-/// The picture at an address blurred, for a picture stretched far past its own pixels (a game's 768 px cover across a
-/// wide window's stage came out smeared, the owner's "rẻ tiền", 2026-11-12): made once off the UI thread at a fixed
-/// small size, its blur meant, drawn stretched under something sharp. None while it loads or is made.
-pub fn soft(url: &str, cx: &mut App) -> Option<ImageSource> {
-    let original = pic(url, cx)?;
-    let dims = match cx.global::<Images>().slots.get(url) {
-        Some(Slot::Ready(_, _, _, dims)) => (*dims)?,
-        _ => return None,
-    };
-    let key = format!("{url}{SOFT}");
-    let long = 360.min(dims.0.max(dims.1));
-    let load = move |_: &mut Window, cx: &mut App| -> Option<Result<Arc<RenderImage>, ImageCacheError>> {
-        match copy(&key, long, &original, dims, 7., cx) {
-            Use::Copy(r) => Some(Ok(r)),
-            Use::Original | Use::Wait => None,
-        }
-    };
-    Some(ImageSource::Custom(Arc::new(load)))
 }
 
 /// `pic_at`, with the picture itself (what kit::fade_in keys its fade on).

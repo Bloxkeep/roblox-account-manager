@@ -17,7 +17,7 @@ percent-encoding = "2"
 # The Wiki tab reads a wiki page's HTML (pages/wiki.rs): the same parser GPUI's text view uses.
 html5ever = "0.27"
 markup5ever_rcdom = "0.3"
-image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp"] }
 # The logo drawn at its exact pixels (crisp.rs); the version GPUI already brings.
 resvg = { version = "=0.46.0", default-features = false }
 raw-window-handle = "0.6"
@@ -45,7 +45,7 @@ unicode-segmentation = { version = "1", optional = true }
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_UI_WindowsAndMessaging", "Win32_UI_Input_KeyboardAndMouse", "Win32_System_Time", "Win32_Graphics_Gdi", "Win32_Graphics_Dwm", "Win32_Graphics_GdiPlus", "Win32_System_SystemInformation", "Win32_System_Threading", "Win32_System_Diagnostics_ToolHelp", "Win32_System_Registry", "Win32_System_LibraryLoader", "Win32_System_RemoteDesktop", "Win32_System_RestartManager", "Win32_Security", "Win32_Security_Cryptography", "Win32_Security_WinTrust", "Win32_Storage_FileSystem", "Win32_Storage_Packaging_Appx", "Win32_UI_Input", "Win32_UI_Shell", "Win32_UI_Shell_Common", "Win32_UI_HiDpi", "Win32_UI_Controls", "Win32_UI_Controls_Dialogs", "Win32_UI_Accessibility", "Win32_System_Com", "Win32_System_Com_StructuredStorage", "Win32_System_Ole", "Win32_System_DataExchange", "Win32_System_Memory", "Win32_System_Pipes", "Win32_System_IO", "Win32_System_Environment", "Win32_System_Performance", "Win32_NetworkManagement_IpHelper", "Win32_NetworkManagement_Ndis", "Win32_Networking_WinSock", "Win32_System_ProcessStatus", "Win32_System_Kernel", "Win32_System_Console", "Win32_System_Power", "Win32_System_WindowsProgramming"] }
 webview2-com = { version = "0.38", optional = true }
-windows = { version = "0.61", optional = true, features = ["Foundation", "Foundation_Collections", "Globalization", "Graphics_Imaging", "Media_Ocr", "Security_Cryptography", "Storage_Streams", "Win32_Foundation", "Win32_System_WinRT", "Win32_System_Com", "Win32_System_Com_StructuredStorage", "Win32_UI_Shell", "Win32_Graphics_Gdi", "Win32_UI_WindowsAndMessaging"] }
+windows = { version = "0.61", optional = true, features = ["Foundation", "Foundation_Collections", "Globalization", "Graphics_Imaging", "Media_Ocr", "Security_Cryptography", "Storage_Streams", "Win32_Foundation", "Win32_System_WinRT", "Win32_System_Com", "Win32_System_Com_StructuredStorage", "Win32_UI_Shell", "Win32_Graphics_Gdi", "Win32_UI_WindowsAndMessaging", "Win32_Media_MediaFoundation"] }
 gpui-pre = { version = "=0.3.11", optional = true, features = ["test-support"] }
 gpui-pre-windows = { version = "=0.3.11", optional = true, features = ["test-support"] }
 
@@ -53,7 +53,7 @@ gpui-pre-windows = { version = "=0.3.11", optional = true, features = ["test-sup
 # The Rust core (src/core/), being joined in: `cargo check --features core`.
 core = ["dep:uuid", "dep:indexmap", "dep:rand", "dep:num-bigint", "dep:sha1_smol", "dep:sha2", "dep:aes-gcm", "dep:pbkdf2", "dep:zeroize", "dep:getrandom", "dep:tungstenite", "dep:velopack", "dep:tiny-skia", "dep:fontdue", "dep:zip", "dep:unicode-normalization", "dep:unicode-segmentation", "dep:webview2-com", "dep:windows", "serde_json/preserve_order", "image/jpeg", "image/gif", "image/bmp", "image/webp"]
 # GPUI draws the hidden window into a picture (its test support): --shot, for checking screens without showing a window.
-shot = ["dep:gpui-pre", "dep:gpui-pre-windows"]
+shot = ["dep:gpui-pre", "dep:gpui-pre-windows", "dep:windows"]
 
 [profile.release]
 opt-level = 3

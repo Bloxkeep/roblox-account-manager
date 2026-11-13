@@ -29,6 +29,9 @@ pub fn with_bar(id: &'static str, h: &ScrollHandle, scroller: impl IntoElement) 
         .min_h_0()
         .size_full()
         .relative()
+        // The body stops short of the panel's foot: a row cut flush against the rounded edge, right above the status
+        // bar, looked like a scratch (the owner, Profile page, 2026-11-12).
+        .pb(px(14.))
         .child(scroller)
         .child(crate::pages::auto::scroll_bar_named(SharedString::from(format!("{id}-bar")), h))
 }

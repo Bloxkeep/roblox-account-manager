@@ -25,6 +25,7 @@ pub mod stats;
 pub mod tabs;
 pub mod visibility;
 pub mod games;
+pub mod clips;
 pub mod home;
 pub mod import_vault;
 pub mod inbox;

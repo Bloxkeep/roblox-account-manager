@@ -1,11 +1,12 @@
 // A game's servers, a tab of its page (pages/games.rs). On top, the picked accounts' friends in this game and the
-// server each is in (friendServers; a public row shows how many of them are there). Then public ones, as the web page's server list had them
+// server each is in (friendServers; a public row shows how many of them are there). Then the private ones (below), then the
+// public ones, as the web page's server list had them
 // (ui/src/Servers.tsx): how full each is, the ping and frame rate Roblox reports for it, sorted by players (Roblox
 // sorts), ping or FPS (sorted here), more pages on demand, a random one; Roblox lets an app load these lists only a few
 // times a minute, and the app says how long to wait ("servers": { servers, next, busy, retryIn }). Join opens the
 // page's Play row for that server.
 //
-// Then its private servers, a tab of its page (pages/games.rs): the ones the app's accounts can join, read by the app
+// The private servers, under the friends (above the public list since 2026-11-13): the ones the app's accounts can join, read by the app
 // itself (its "privateServers": each account asked with its own sign-in, the answers put together), each with who owns
 // it, how full it is, and a button for every account that can join it. Roblox's own page shows them one account at a
 // time. Joining is the app's launch, into the server by its access code.
@@ -305,8 +306,10 @@ pub fn view(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
         .flex_col()
         .gap(px(SECTION_GAP))
         .child(div().flex().flex_col().gap(px(12.)).child(section_head(root.tr("srv.friendsTitle"), n_friends.filter(|n| *n > 0))).child(friends_body))
-        .child(public(root, width, cx))
+        // Private before public (owner, 2026-11-13): the public list runs long with more pages on demand, and the
+        // private servers under it were out of sight.
         .child(div().flex().flex_col().gap(px(12.)).child(section_head(root.tr("srv.privateTitle"), n_private.filter(|n| *n > 0))).child(private(root, width, cx)))
+        .child(public(root, width, cx))
         .into_any_element()
 }
 

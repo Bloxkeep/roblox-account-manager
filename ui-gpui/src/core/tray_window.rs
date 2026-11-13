@@ -284,6 +284,10 @@ impl TrayWindow {
         }
         self.hidden_at.set(clock::tick());
         self.refresh.stop();
+        let web = self.web.borrow().clone();
+        if let Some(web) = web {
+            web.set_visible(false);
+        }
         win_form::hide(self.hwnd());
         log::note(&format!("Tray: {} hidden.", self.mode.borrow()));
         self.release.start();
@@ -358,6 +362,9 @@ impl TrayWindow {
         }
         web.set_background(themes::current().surface);
         web.set_bounds(win_form::client_size(h));
+        // Its page draws only while it is told it is seen: made in the hidden window, it is told so when the window
+        // shows (`on_size`). Never told, it stayed an empty box (the owner, 2026-11-13; the mini window's same fault).
+        web.set_visible(win_form::is_visible(h));
         *me.web.borrow_mut() = Some(web.clone());
         app_pages::configure(web.core(), &env)?;
         let weak = Rc::downgrade(&me);
@@ -618,6 +625,7 @@ impl TrayWindow {
             ));
             let web = self.web.borrow().clone();
             if let Some(web) = web {
+                web.set_visible(true);
                 web.focus();
             }
             self.refresh.start();

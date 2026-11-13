@@ -32,6 +32,7 @@ mod target;
 mod theme;
 mod theme_table;
 mod time;
+mod video;
 mod wikihtml;
 mod wikitext;
 

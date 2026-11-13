@@ -334,7 +334,7 @@ pub fn friends(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElem
         _ => &[],
     };
 
-    let shell = div().id("friends").size_full().rounded(px(R_PANEL)).bg(c(PANEL)).overflow_hidden().flex().flex_col();
+    let shell = div().id("friends").relative().size_full().rounded(px(R_PANEL)).bg(c(PANEL)).overflow_hidden().flex().flex_col();
     let body: AnyElement = if able.is_empty() || matches!(fr.sign, Some(None)) {
         div()
             .flex_1()
@@ -365,20 +365,20 @@ pub fn friends(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElem
                 if fr.adding {
                     rows = rows.child(add(root, l, inner, cx));
                 }
-                // The groups flow on the page's grid as the Accounts page's games do: each as wide as its cards (all
-                // the columns at most, wrapping inside), side by side, onto the next line when this one is full; its
-                // head over its own cards. (One group a line left the right half of a wide window empty.)
+                // A group a line, the page's width, its head over its cards on the page's fixed grid (critique
+                // 2026-11-13, P2: groups flowing side by side ran Requests, a game and Online into one ragged row and
+                // the reading order was lost).
+                let _ = cols;
                 let mut blocks: Vec<AnyElement> = Vec::new();
                 let block = |head: AnyElement, cards: Vec<AnyElement>| {
-                    let span = cards.len().clamp(1, cols);
                     div()
-                        .w(px(span as f32 * card_w + (span as f32 - 1.) * GRID_GAP))
+                        .w_full()
                         .flex_none()
                         .flex()
                         .flex_col()
                         .gap(px(12.))
-                        // (Every head as tall as a game's, so groups side by side start their cards on one line.)
-                        .child(div().w_full().h(px(GROUP_PIC)).flex().items_center().child(head))
+                        // (A head its own height now the groups stack: a game's picture, or a line of words.)
+                        .child(div().w_full().flex().items_center().child(head))
                         .child(grid(GRID_GAP).children(cards))
                         .into_any_element()
                 };
@@ -465,7 +465,7 @@ pub fn friends(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElem
                     blocks.push(block(head.into_any_element(), cards));
                 }
                 if !blocks.is_empty() {
-                    rows = rows.child(div().w_full().flex().flex_wrap().items_start().gap_x(px(GRID_GAP)).gap_y(px(SECTION_GAP)).children(blocks));
+                    rows = rows.child(div().w_full().flex().flex_col().gap(px(SECTION_GAP)).children(blocks));
                 }
                 if !any {
                     rows = rows.child(div().pt(px(12.)).text_size(px(T_M)).text_color(c(MUTED)).child(root.tr(if l.is_empty() { "fr.none" } else { "fr.noneHere" })));

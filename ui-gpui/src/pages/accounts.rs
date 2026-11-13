@@ -35,6 +35,12 @@ fn conn(a: &Value) -> &str {
 pub fn is_local(a: &Value) -> bool {
     s(a, "state") == "running"
 }
+/// Its window open but not in a game: back on Roblox's menu after leaving one, or signed out in it. Its session still
+/// names the last game it played, which is not where it is (owner 2026-11-13: Home said "Playing Thai Anomalies" for
+/// hours after they left it).
+pub fn in_menu(a: &Value) -> bool {
+    is_local(a) && matches!(conn(a), "menu" | "signedout")
+}
 fn launching(a: &Value) -> bool {
     s(a, "state") == "launching"
 }
@@ -59,6 +65,62 @@ fn banned(a: &Value) -> bool {
 pub fn label(a: &Value) -> String {
     ["label", "alias", "displayName", "username"].iter().map(|k| s(a, k)).find(|n| !n.is_empty()).unwrap_or_default().to_string()
 }
+/// An account's number on the rack: its place in the vault from 1 (the order they were added in, not the sort shown,
+/// so a number stays with its account wherever it shows).
+pub fn number(root: &Root, id: &str) -> Option<usize> {
+    root.accounts().iter().position(|a| s(a, "id") == id).map(|i| i + 1)
+}
+
+/// The account's numbered tag (1.1's own mark, 2026-11-13): its state told by fill, ring and a mark, never by colour
+/// alone (critique 2026-11-13, P0). Solid green: in a game here. Soft blue: online elsewhere. Orange ring, no fill:
+/// opening. Solid orange with the alert mark: dropped or held. Solid red with the sign-in mark: needs a sign-in, the one
+/// thing to do now. Banned: grey with the number struck through (nothing to fix here, Play skips it). Resting: a quiet
+/// outline. `h` tall, the number in tabular figures.
+pub fn key_tag(n: usize, a: &Value, h: f32) -> Div {
+    let out = signed_out(a) || (is_local(a) && conn(a) == "signedout");
+    let gone = !out && banned(a);
+    let dropped = !out && !gone && (is_kicked(a) || held(a));
+    let opening = !out && !gone && !dropped && launching(a);
+    let (fill, words, ring, mark) = if out {
+        (c(BAD), c(WHITE), c(BAD), Some("logIn"))
+    } else if gone {
+        (ca(WHITE, 0.03), c(MUTED), ca(WHITE, 0.16), None)
+    } else if dropped {
+        (c(WARN), c(INK), c(WARN), Some("alert"))
+    } else if opening {
+        (ca(WHITE, 0.0), c(WARN), ca(WARN, 0.85), None)
+    } else if is_local(a) && in_game(a) {
+        (c(OK), c(INK), c(OK), None)
+    } else if in_game(a) || is_online(a) {
+        (ca(ONLINE, 0.16), c(ONLINE), ca(ONLINE, 0.5), None)
+    } else {
+        (ca(WHITE, 0.04), c(MUTED), ca(WHITE, 0.12), None)
+    };
+    let size = if h >= 26. { T_M } else { T_XS };
+    div()
+        .relative()
+        .h(px(h))
+        .min_w(px((h * 1.25).round()))
+        .px(px((h * 0.2).round()))
+        .flex_none()
+        .flex()
+        .items_center()
+        .justify_center()
+        .gap(px((h * 0.12).round()))
+        .rounded(px((h * 0.24).round()))
+        .bg(fill)
+        .border_1()
+        .border_color(ring)
+        .text_size(px(size))
+        .font_weight(FontWeight::BOLD)
+        .font_features(tnum())
+        .text_color(words)
+        .when_some(mark, |d, m| d.child(icon(m, (h * 0.5).round(), words)))
+        .child(format!("{n:02}"))
+        // Banned: the number struck through.
+        .when(gone, |d| d.child(div().absolute().left(px((h * 0.18).round())).right(px((h * 0.18).round())).top(px((h / 2. - 1.).round())).h(px(1.5)).bg(c(MUTED))))
+}
+
 /// Free to join a game: not open, signed in, not banned (as the Accounts bar's Play).
 pub fn can_play(a: &Value) -> bool {
     !is_local(a) && !launching(a) && !signed_out(a) && !banned(a)
@@ -173,7 +235,7 @@ fn until(root: &Root, iso: &str, tpl: &str, soon: &str) -> String {
 /// What it does now, in a few words, its colour, and whether the game's name goes after it. A window here says how its
 /// join goes (the web page's Activity): teleporting, waiting for a server, a full server and its place in line, held
 /// by Roblox's bot check, didn't get in, dropped and why.
-fn state_of(root: &Root, a: &Value) -> (String, u32, bool) {
+pub fn state_of(root: &Root, a: &Value) -> (String, u32, bool) {
     let now = crate::time::now_secs();
     if launching(a) {
         return (root.tr("act.opening"), WARN, false);
@@ -223,7 +285,7 @@ fn state_of(root: &Root, a: &Value) -> (String, u32, bool) {
     } else if presence(a) == "online" {
         (root.tr("act.online"), TEXT_2, false)
     } else if banned(a) {
-        (root.tr("card.banned"), BAD, false)
+        (root.tr("card.banned"), MUTED, false)
     } else if signed_out(a) {
         (root.tr("card.expired"), BAD, false)
     } else {
@@ -403,8 +465,10 @@ fn ring_of(a: &Value) -> Hsla {
         c(OK)
     } else if is_online(a) {
         c(ONLINE)
-    } else if signed_out(a) || banned(a) {
+    } else if signed_out(a) {
         ca(BAD, 0.6)
+    } else if banned(a) {
+        ca(WHITE, 0.2)
     } else {
         ca(WHITE, 0.12)
     }
@@ -716,6 +780,7 @@ pub fn accounts(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoEle
         .rounded(px(R_PANEL))
         .bg(c(PANEL))
         .overflow_hidden()
+        .relative()
         .flex()
         .flex_col()
         .child(header(root, &all, width, rows, cx))
@@ -863,6 +928,7 @@ fn look_row(root: &Root, a: &Value, cx: &mut Context<Root>) -> impl IntoElement 
         }))
         .on_mouse_down(MouseButton::Right, on_right(a, cx))
         .children(menu::place(root, a, false, cx))
+        .children(number(root, &id).map(|n| key_tag(n, a, 22.)))
         .child(avatar(a, 40., PANEL, cx))
         .child(
             div()
@@ -965,18 +1031,6 @@ fn header(root: &Root, all: &[Value], width: f32, rows: bool, cx: &mut Context<R
     names.sort_by_key(|g| folded(g));
     names.dedup();
     let now = root.acc_group.clone().filter(|g| names.contains(g));
-    let groups = (!names.is_empty()).then(|| {
-        let shown = now.clone().unwrap_or_else(|| root.tr("chip.all"));
-        let items: Vec<DropItem> = std::iter::once((None, root.tr("chip.all")))
-            .chain(names.iter().map(|g| (Some(g.clone()), g.clone())))
-            .map(|(key, text): (Option<String>, String)| {
-                let on = key == now;
-                let f: DropAct = std::rc::Rc::new(move |r, _, _| r.acc_group = key.clone());
-                (text, on, f)
-            })
-            .collect();
-        drop_list(root, "acc-group", "tag", Some(root.tr("grp.label")), shown, items, cx)
-    });
     // The order: kept by the app, so it is the same next time; under it, the order Play opens the picked accounts in.
     let how = root.state.pointer("/settings/sort").and_then(Value::as_str).unwrap_or("name").to_string();
     let mut items: Vec<DropItem> = ["name", "status", "recent", "order"]
@@ -990,7 +1044,24 @@ fn header(root: &Root, all: &[Value], width: f32, rows: bool, cx: &mut Context<R
         .collect();
     items.push((LINE_ITEM.to_string(), false, std::rc::Rc::new(|_, _, _| {})));
     items.push((root.tr("lo.edit"), false, std::rc::Rc::new(|r, window, cx| open_order(r, window, cx))));
-    let sorts = drop_list(root, "acc-sort", "sort", Some(root.tr("sort.label")), root.tr(&format!("sort.{how}")), items, cx);
+    // The groups, when the accounts have any, in the same list under their own head (one menu for how the page is
+    // shown: Group and Sort were two tools side by side, critique 2026-11-13, P1).
+    if !names.is_empty() {
+        items.insert(0, (format!("{HEAD_ITEM}{}", root.tr("sort.label")), false, std::rc::Rc::new(|_, _, _| {})));
+        items.push((LINE_ITEM.to_string(), false, std::rc::Rc::new(|_, _, _| {})));
+        items.push((format!("{HEAD_ITEM}{}", root.tr("grp.label")), false, std::rc::Rc::new(|_, _, _| {})));
+        for key in std::iter::once(None).chain(names.iter().cloned().map(Some)) {
+            let on = key == now;
+            let text = key.clone().unwrap_or_else(|| root.tr("chip.all"));
+            let f: DropAct = std::rc::Rc::new(move |r, _, _| r.acc_group = key.clone());
+            items.push((text, on, f));
+        }
+    }
+    let shown = match &now {
+        Some(g) => format!("{} · {g}", root.tr(&format!("sort.{how}"))),
+        None => root.tr(&format!("sort.{how}")),
+    };
+    let sorts = drop_list(root, "acc-sort", "sort", Some(root.tr("sort.label")), shown, items, cx);
     // Select all: the ones shown; the main accounts (the ones played on) are left out, unless they are all there is.
     let query = root.acc_search.read(cx).value().trim().to_lowercase();
     let seen: Vec<&Value> = all.iter().filter(|a| passes(a, root.acc_filter, &query)).filter(|a| now.as_deref().is_none_or(|g| s(a, "group") == g)).collect();
@@ -1016,7 +1087,6 @@ fn header(root: &Root, all: &[Value], width: f32, rows: bool, cx: &mut Context<R
         .gap(px(4.))
         .child(layout)
         .child(tool_rule())
-        .children(groups)
         .child(sorts)
         // Windows: Open Roblox only, hide or show them all, and Arrange's layouts as pictures (pages/snap.rs).
         .child(crate::pages::snap::button(root, false, cx))
@@ -1048,7 +1118,7 @@ fn header(root: &Root, all: &[Value], width: f32, rows: bool, cx: &mut Context<R
                                 .items_baseline()
                                 .gap(px(10.))
                                 .child(div().text_size(px(T_TITLE)).line_height(px(38.)).font_weight(FontWeight::BOLD).child(root.tr("acc.title")))
-                                .child(div().text_size(px(T_TITLE)).line_height(px(38.)).text_color(c(DIM)).font_features(tnum()).child(all.len().to_string())),
+                                .child(div().text_size(px(T_TITLE)).line_height(px(38.)).text_color(c(MUTED)).font_features(tnum()).child(all.len().to_string())),
                         )
                         .when(!all.is_empty(), |d| d.child(facts(summary))),
                 )
@@ -1112,7 +1182,8 @@ fn header(root: &Root, all: &[Value], width: f32, rows: bool, cx: &mut Context<R
                                 Filter::Playing => Some(OK),
                                 Filter::Online => Some(ONLINE),
                                 Filter::Offline => Some(MUTED),
-                                Filter::Invalid | Filter::Banned => Some(BAD),
+                                Filter::Invalid => Some(BAD),
+                                Filter::Banned => Some(MUTED),
                             };
                             chip(SharedString::from(format!("chip-{text}")), on)
                                 .h(px(TOOL_H))
@@ -1273,6 +1344,8 @@ type DropAct = std::rc::Rc<dyn Fn(&mut Root, &mut Window, &mut Context<Root>)>;
 /// hairline between groups of rows.
 type DropItem = (String, bool, DropAct);
 const LINE_ITEM: &str = "-";
+/// A list item that is a small head over the items after it (its words after this mark).
+const HEAD_ITEM: &str = "\u{1}";
 
 /// A quiet tool that opens a short list under it ("Group  All ▾", "Sort  Name ▾"): `name` before the value chosen
 /// (none when room is short). The row keeps one bright thing, the chosen filter.
@@ -1309,6 +1382,10 @@ fn drop_list(root: &Root, key: &'static str, mark: &'static str, name: Option<St
         for (i, (text, on, f)) in items.into_iter().enumerate() {
             if text == LINE_ITEM {
                 menu = menu.child(div().h(px(1.)).my(px(4.)).mx(px(6.)).bg(c(LINE)));
+                continue;
+            }
+            if let Some(head) = text.strip_prefix(HEAD_ITEM) {
+                menu = menu.child(div().px(px(10.)).pt(px(6.)).pb(px(2.)).text_size(px(T_XS)).font_weight(FontWeight::SEMIBOLD).text_color(c(MUTED)).child(head.to_string()));
                 continue;
             }
             menu = menu.child(
@@ -1368,13 +1445,25 @@ fn lane(root: &Root, i: usize, l: Lane, col_w: f32, span: usize, lines: usize, c
     });
     let close_btn = {
         let label = format!("{} · {n}", root.tr("card.close"));
-        let act = cx.listener(move |r: &mut Root, _: &ClickEvent, _, _| {
-            if !close_ids.is_empty() {
-                r.send("closeAccounts", json!({ "ids": close_ids, "force": false }));
+        // Two windows or more: asked first, as Close all is (its "Don't ask again" covers both), so one stray click
+        // doesn't end a farm (critique 2026-11-13, P1).
+        let game = crate::pages::home::clean(&l.name);
+        let act = cx.listener(move |r: &mut Root, _: &ClickEvent, window, cx| {
+            let (ids, hs) = (close_ids.clone(), strays.clone());
+            let go = move |r: &mut Root, _: &mut Context<Root>| {
+                if !ids.is_empty() {
+                    r.send("closeAccounts", json!({ "ids": ids, "force": false }));
+                }
+                for h in &hs {
+                    r.send("monitorAct", json!({ "id": h, "what": "close" }));
+                }
+            };
+            if n < 2 {
+                return go(r, cx);
             }
-            for h in &strays {
-                r.send("monitorAct", json!({ "id": h, "what": "close" }));
-            }
+            let title = if game.is_empty() { r.tr("t.closeAllTitle") } else { format!("{} {game}?", r.tr("card.close")) };
+            let text = r.i18n.tv("t.closeAllN", &[("n", &n.to_string())]);
+            r.confirm(title, text, r.tr("card.close"), true, Some("closeAll"), window, cx, go);
         });
         // (Labelled: it is the lane's main button. A one-column lane short of room keeps its icon, its words the tip,
         // so the game's name isn't cut to "Brookhaven…", review 2.5.)
@@ -1455,7 +1544,8 @@ fn tile(root: &Root, a: &Value, w: f32, lines: usize, cx: &mut Context<Root>) ->
     // (The tile's hairline is inside its width.)
     let pic_w = w - 2. * INSET_PAD - 2.;
     let h = (pic_w * 9. / 16.).floor();
-    let cover = cover_of(root, game_place(a)).and_then(|u| images::pic_at(&u, pic_w, h, cx));
+    // No game picture for a window back on the menu: its session still names the game it left.
+    let cover = cover_of(root, if in_menu(a) { None } else { game_place(a) }).and_then(|u| images::pic_at(&u, pic_w, h, cx));
     // Its main button at the foot, as a not-open card has Play there: Close, or the way back in (Rejoin, Verify) when
     // dropped or held on Roblox's bot check; then Edit and its menu (review 2.2: a playing tile had no Edit).
     let main = action(root, a, "tile", cx);
@@ -1560,7 +1650,14 @@ fn tile(root: &Root, a: &Value, w: f32, lines: usize, cx: &mut Context<Root>) ->
                                 .min_w_0()
                                 .flex()
                                 .flex_col()
-                                .child(div().min_w_0().text_size(px(T_L)).line_height(px(20.)).font_weight(FontWeight::SEMIBOLD).truncate().child(label(a)))
+                                .child(
+                                    div()
+                                        .flex()
+                                        .items_center()
+                                        .gap(px(6.))
+                                        .children((!other).then(|| number(root, &id)).flatten().map(|n| key_tag(n, a, 20.)))
+                                        .child(div().min_w_0().text_size(px(T_L)).line_height(px(20.)).font_weight(FontWeight::SEMIBOLD).truncate().child(label(a))),
+                                )
                                 .when_some(under, |d, u| d.child(div().min_w_0().truncate().text_size(px(T_S)).line_height(px(16.)).text_color(c(MUTED)).child(u))),
                         )
                         .when_some(up_of(a), |d, t| d.child(div().flex_none().text_size(px(T_M)).text_color(c(MUTED)).font_features(tnum()).child(t)))
@@ -2270,6 +2367,7 @@ fn card(root: &Root, a: &Value, w: f32, lines: usize, cx: &mut Context<Root>) ->
                                 .flex()
                                 .items_center()
                                 .gap(px(6.))
+                                .children(number(root, &id).map(|n| key_tag(n, a, 20.)))
                                 .child(div().min_w_0().flex_shrink(1.).text_size(px(T_L)).font_weight(FontWeight::SEMIBOLD).truncate().child(label(a)))
                                 .children(tags)
                                 .child(div().flex_1())

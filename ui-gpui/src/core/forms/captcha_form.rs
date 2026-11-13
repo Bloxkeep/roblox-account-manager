@@ -104,6 +104,11 @@ impl CaptchaForm {
             return DialogResult::Cancel;
         }
         let _ = done_rx.await;
+        // The app is usable again however the window went (a window whose thread failed never gave it back).
+        if owner != 0 {
+            // SAFETY: plain call; enabling an enabled window does nothing.
+            unsafe { EnableWindow(owner as HWND, 1) };
+        }
         self.window.lock().unwrap_or_else(|e| e.into_inner()).result.unwrap_or(DialogResult::Cancel)
     }
 

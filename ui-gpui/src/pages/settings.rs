@@ -185,11 +185,12 @@ fn group(title: Option<String>, rows: Vec<AnyElement>) -> Div {
     div().flex().flex_col().gap(px(8.)).when_some(title, |d, t| d.child(section_head(t, None))).child(rows_card(rows))
 }
 
-/// The card the rows of a group stand in.
+/// A group's rows: no card round them any more, a hairline over each, flush with the heads' left edge (critique
+/// 2026-11-13, P2: every page was the same stack of rounded cards; Settings reads as a list now, as a settings page is).
 fn rows_card(rows: Vec<AnyElement>) -> Div {
-    let mut card = surface().overflow_hidden().flex().flex_col();
-    for (i, r) in rows.into_iter().enumerate() {
-        card = card.child(div().when(i > 0, |d| d.border_t_1().border_color(c(LINE))).child(r));
+    let mut card = div().flex().flex_col();
+    for r in rows {
+        card = card.child(div().border_t_1().border_color(c(LINE)).child(r));
     }
     card
 }
@@ -216,8 +217,8 @@ fn row_el(words: String, title: impl IntoElement, desc: Option<String>, ctl: imp
     let words = format!("{words} {}", desc.as_deref().unwrap_or_default());
     let el = div()
         .px(px(ROW_X))
-        .py(px(14.))
-        .min_h(px(64.))
+        .py(px(12.))
+        .min_h(px(58.))
         .flex()
         .items_center()
         .gap(px(32.))
@@ -227,8 +228,8 @@ fn row_el(words: String, title: impl IntoElement, desc: Option<String>, ctl: imp
     found(&words, el)
 }
 
-/// A row's sides: 20 px in from the card's edges.
-const ROW_X: f32 = 20.;
+/// A row's sides: none, the rows stand flush with the group's head (they sat 20 px into a card).
+const ROW_X: f32 = 0.;
 
 /// A row's name (14 px, medium) and what it does under it in muted.
 fn row_words(title: impl IntoElement, desc: Option<String>) -> Div {
@@ -780,6 +781,7 @@ pub fn settings(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
         .rounded(px(R_PANEL))
         .bg(c(PANEL))
         .overflow_hidden()
+        .relative()
         .flex()
         .flex_col()
         .child(header)
