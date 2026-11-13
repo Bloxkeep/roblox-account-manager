@@ -346,7 +346,7 @@ static class MacroSuite
         }
         uint e = 0x45 | (0x12 << 8);
         var file = Rec((0x100, e, 0, 1000), (0x101, e, 0, 1120), (0x201, 960, 540, 1500), (0x202, 960, 540, 1560));
-        var m = MacroRecording.FromTinyTask(file, "rec");
+        var m = MacroRecording.FromTinyTask(file, "rec", out _);
         var keyStep = m.Steps.FirstOrDefault(s => s.Kind == "key");
         var click = m.Steps.FirstOrDefault(s => s.Kind == "click");
         c.Check("a TinyTask file: a key held 120 ms, then a click in the middle of a 1920×1080 screen",
@@ -369,6 +369,24 @@ static class MacroSuite
             JsonSerializer.Serialize(longWalk, MacroRules.PageJson));
         var made = new Macro { Name = "Walk", Steps = longWalk.Concat(walk).ToList() };
         c.Check("…and both pass a macro's checks", Refused(() => MacroRules.Check(made, new List<Guid>(), [])) is null);
+
+        // A macro takes 5000 steps (a whole 10-minute recording), not 500.
+        static MacroStep Tap() => new() { Kind = "key", Key = "E", Ms = 60 };
+        c.Check("a macro of 5000 steps passes its checks, one of 5001 doesn't",
+            Refused(() => MacroRules.Check(new Macro { Name = "Long", Steps = Enumerable.Range(0, 5000).Select(_ => Tap()).ToList() }, new List<Guid>(), [])) is null
+            && Refused(() => MacroRules.Check(new Macro { Name = "Long", Steps = Enumerable.Range(0, 5001).Select(_ => Tap()).ToList() }, new List<Guid>(), [])) is not null);
+        // Longer than that: cut where a macro ends, with what it held let go there and no wait last, and how much was left
+        // out known (said to the person, never left out unseen).
+        var tooLong = new List<MacroEvent> { new(0, "keyDown", "W") };
+        for (int i = 0; i < 3000; i++)
+            tooLong.AddRange([new MacroEvent(100 + i * 200, "keyDown", "E"), new MacroEvent(150 + i * 200, "keyUp", "E")]);
+        tooLong.Add(new MacroEvent(700_000, "keyUp", "W"));
+        var cutSteps = MacroRecording.ToSteps(tooLong, _ => (0.5, 0.5), out int whole);
+        c.Check("a recording past 5000 steps: cut there, its held key let go at the end, no wait last, the rest counted",
+            cutSteps.Count <= MacroRules.MaxSteps && cutSteps[0] is { Kind: "down", Key: "W" } && cutSteps[^1] is { Kind: "up", Key: "W" }
+            && cutSteps.All(s => s.Kind != "up" || s.Key == "W") && cutSteps.Count(s => s.Kind == "up") == 1 && whole > MacroRules.MaxSteps,
+            $"{cutSteps.Count} of {whole}, last {cutSteps[^2].Kind} {cutSteps[^1].Kind}:{cutSteps[^1].Key}");
+        c.Check("…and the cut macro passes its checks", Refused(() => MacroRules.Check(new Macro { Name = "Cut", Steps = cutSteps }, new List<Guid>(), [])) is null);
     }
 
     // ───────────────────────── settings and areas in steps ─────────────────────────
@@ -928,8 +946,8 @@ static class MacroSuite
         c.Check("a key a feature holds and never lets go is refused",
             CheckOf("""[{"kind":"key","key":"A"}]""", Feats(sell: """[{"kind":"down","key":"W"}]""")) is not null);
         c.Check("If stuck in a feature is refused", CheckOf("""[{"kind":"key","key":"A"}]""", Feats(sell: """[{"kind":"recover"}]""")) is not null);
-        c.Check("the steps of the macro and its features count together (500)",
-            CheckOf("[" + string.Join(",", Enumerable.Repeat("""{"kind":"key","key":"A"}""", 499)) + "]", Feats()) is not null);
+        c.Check("the steps of the macro and its features count together (5000)",
+            CheckOf("[" + string.Join(",", Enumerable.Repeat("""{"kind":"key","key":"A"}""", MacroRules.MaxSteps - 1)) + "]", Feats()) is not null);
         c.Check("the main steps' safe points: the end of each pass of a repeat inside no other block",
             string.Join(",", MacroPlayer.SafeEnds(Read("""[{"kind":"loop","times":0},{"kind":"if","test":{"kind":"var","name":"n","op":"=","value":1}},{"kind":"loop","times":2},{"kind":"endLoop"},{"kind":"endIf"},{"kind":"endLoop"},{"kind":"loop","times":2},{"kind":"endLoop"}]""").Steps)) == "5,7");
         {

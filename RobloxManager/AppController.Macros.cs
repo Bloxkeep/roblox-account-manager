@@ -489,6 +489,11 @@ public sealed partial class AppController
             _macroPlayer.Recording = false;
         HotkeysChanged?.Invoke();
         var steps = await recorder.FinishAsync();
+        _recorderStepsChecked = -1;
+        // Recorded between two checks past the most: its end left out, said.
+        if (recorder.LeftOut > 0)
+            Notify(L.F("The recording was longer than a macro holds ({0} steps): its last {1} steps were left out.", MacroRules.MaxSteps, recorder.LeftOut),
+                "warn", "macro", recorder.AccountId);
         PushState();
         if (_vault is not null)
             Emit("macroRecorded", new { steps, w = recorder.Client.Width, h = recorder.Client.Height });
@@ -530,7 +535,7 @@ public sealed partial class AppController
     }
 
     /// <summary>A macro from a file, not saved: the editor opens it, and Save checks it.</summary>
-    static Macro ReadMacroFile(string path)
+    Macro ReadMacroFile(string path)
     {
         var info = new FileInfo(path);
         if (!info.Exists || info.Length > MaxMacroImport)
@@ -538,7 +543,13 @@ public sealed partial class AppController
         byte[] bytes = File.ReadAllBytes(path);
         string name = CutText(Path.GetFileNameWithoutExtension(path), MacroRules.MaxName);
         if (path.EndsWith(".rec", StringComparison.OrdinalIgnoreCase))
-            return MacroRecording.FromTinyTask(bytes, name.Length > 0 ? name : "TinyTask");
+        {
+            var made = MacroRecording.FromTinyTask(bytes, name.Length > 0 ? name : "TinyTask", out int whole);
+            if (whole > made.Steps.Count)
+                Notify(L.F("The recording was longer than a macro holds ({0} steps): its last {1} steps were left out.", MacroRules.MaxSteps, whole - made.Steps.Count),
+                    "warn", "macro");
+            return made;
+        }
         Macro macro;
         try
         {
@@ -623,6 +634,8 @@ public sealed partial class AppController
     public int[] MacroHotkeys() => Open?.Data.Settings.Macros.Where(m => m.Hotkey is >= 1 and <= 9).Select(m => m.Hotkey!.Value).Distinct().Order().ToArray() ?? [];
 
     public bool RecordingMacro => _recorder is not null;
+    /// <summary>The recorder's count at the last check of its steps against a macro's most (TickMacros).</summary>
+    int _recorderStepsChecked = -1;
 
     /// <summary>Every process tick: macros that start by themselves, a recording past its 10 minutes.</summary>
     void TickMacros(DateTime now)
@@ -631,6 +644,18 @@ public sealed partial class AppController
         {
             Log.Note("Macro recording: reached its 10 minutes.");
             _ = StopRecordingAsync();
+        }
+        // A macro's most steps: the recording stops there and says so, rather than its end being left out unseen
+        // (counted again only after more was recorded; a step is at most two of what the recorder counts, with its wait).
+        else if (_recorder is { } full && full.Steps * 2 >= MacroRules.MaxSteps - 10 && full.Steps != _recorderStepsChecked)
+        {
+            _recorderStepsChecked = full.Steps;
+            if (full.StepsNow() >= MacroRules.MaxSteps - 5)
+            {
+                Log.Note($"Macro recording: reached a macro's {MacroRules.MaxSteps} steps.");
+                Notify(L.F("Recording stopped: a macro holds up to {0} steps.", MacroRules.MaxSteps), "warn", "macro", full.AccountId);
+                _ = StopRecordingAsync();
+            }
         }
         if (_vault is null || _recorder is not null)
             return;

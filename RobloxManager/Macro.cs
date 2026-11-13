@@ -312,7 +312,7 @@ static class MacroKeys
 /// if/else/loop steps make, worked out once.</summary>
 static class MacroRules
 {
-    public const int MaxMacros = 100, MaxName = 60, MaxSteps = 500, MaxImageSide = 256, MaxDepth = 20;
+    public const int MaxMacros = 100, MaxName = 60, MaxSteps = 5000, MaxImageSide = 256, MaxDepth = 20;
     public const int MaxTypeText = 200, MaxWaitMs = 3_600_000;
     /// <summary>Base64 of every picture in one macro together: they ride in the encrypted vault, saved every few seconds.</summary>
     const int MaxImagesBase64 = 4 * 1024 * 1024;

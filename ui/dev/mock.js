@@ -334,6 +334,13 @@
         { kind: 'type', text: 'gg' }],
       recordedSize: { w: 800, h: 600 } },
   ].map(m => ({ jitterMs: 40, jitterPx: 3, maxMinutes: 10, onFail: 'stop', ...m }));
+  // ?longmacro=5000: a recorded-looking macro of that many steps (taps and waits), to see the editor at a macro's most.
+  if (params.has('longmacro')) {
+    const n = Math.max(2, Number(params.get('longmacro')) || 5000);
+    macros.push({ id: 'm6', name: tx('Long recording', 'Bản ghi dài'), targets: 'selected', accountIds: [], trigger: { kind: 'manual' }, enabled: true, hotkey: null,
+      jitterMs: 40, jitterPx: 3, maxMinutes: 10, onFail: 'stop', recordedSize: { w: 1280, h: 720 },
+      steps: Array.from({ length: n }, (_, i) => i % 2 ? { kind: 'wait', ms: 120 + (i % 7) * 30 } : { kind: 'key', key: 'WASD'[i / 2 % 4], ms: 60 + (i % 5) * 40 }) });
+  }
   settings.macros = macros;
   const setMacros = list => { macros = list; settings = { ...settings, macros }; };
   let macroRuns = params.has('macros') && !params.has('nomacros') ? [

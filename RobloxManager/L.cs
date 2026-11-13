@@ -250,6 +250,9 @@ public static class L
         ["{0} games"] = "{0} game",
         ["Get Bloxkeep"] = "Tải Bloxkeep",
         ["View game"] = "Xem game",
+        ["Recording stopped: a macro holds up to {0} steps."] = "Đã dừng ghi: mỗi macro tối đa {0} bước.",
+        ["The recording was longer than a macro holds ({0} steps): its last {1} steps were left out."] =
+            "Bản ghi dài hơn mức tối đa của macro ({0} bước): {1} bước cuối đã bị bỏ.",
         ["{0} · {1} games"] = "{0} · {1} game",
         ["You can save up to {0} servers. Delete one first."] = "Chỉ lưu được tối đa {0} server. Hãy xóa bớt một cái trước.",
         ["That saved server isn't there any more."] = "Server đã lưu này không còn nữa.",

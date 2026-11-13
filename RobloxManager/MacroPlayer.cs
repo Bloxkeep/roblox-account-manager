@@ -1289,7 +1289,8 @@ sealed class MacroPlayer(IMacroDesk desk)
         return Then.Next;
     }
 
-    const int MaxExpanded = 5000;
+    /// <summary>Steps of a run with its Run a macro steps put in place: ten macros of the most steps.</summary>
+    const int MaxExpanded = 10 * MacroRules.MaxSteps;
 
     /// <summary>
     /// Run a macro steps put in place: the other macro's own steps (not its If stuck part), its settings and areas read

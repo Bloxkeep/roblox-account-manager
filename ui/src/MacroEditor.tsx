@@ -83,6 +83,10 @@ const RAIL: Record<string, string> = { if: 'var(--online)', loop: 'color-mix(in 
 const railOf = (kind: string) => RAIL[kind === 'if' ? 'if' : 'loop'];
 /** How many kinds Add step remembers as used lately. */
 const RECENT = 5;
+/** From this many steps (a long recording) only the rows near the view are drawn; the rest is empty space of their height. */
+const DRAW_NEAR_FROM = 600;
+const ROW_GAP = 4; // .mc-steps' gap
+const NEAR_PX = 900; // drawn above and below the view
 
 /** Each row of the list as drawn: how deep it sits, the blocks around it (outermost first), and for an opener where its
  * block ends and how many steps it holds; an end row's opener; the folded block hiding it, if any. */
@@ -186,7 +190,21 @@ export function MacroEditor({ base, accounts, macros, api, openStep, openSection
 
   const form = useRef<HTMLDivElement>(null);
   const nameBox = useRef<HTMLInputElement>(null);
-  const rowEl = (i: number) => form.current?.querySelector<HTMLElement>(`.mc-step[data-i="${i}"]`) || null;
+  const findRow = (i: number) => form.current?.querySelector<HTMLElement>(`.mc-step[data-i="${i}"]`) || null;
+  /** Step i's row; in a long list one not drawn yet is drawn first (the caller then scrolls to it or focuses in it). */
+  const rowEl = (i: number) => {
+    const row = findRow(i);
+    const p = near.current.on && !row ? near.current.posOf.get(i) : undefined;
+    if (p === undefined) return row;
+    flushSync(() => setWin([Math.max(0, p - 20), p + 20]));
+    return findRow(i);
+  };
+  // A long list: which shown rows are drawn ([from, to) among the rows not folded away), their measured heights.
+  const listBox = useRef<HTMLDivElement>(null);
+  const [win, setWin] = useState<[number, number]>([0, 40]);
+  const tall = useRef(new Map<number, number>());
+  const guess = useRef(0);
+  const near = useRef({ on: false, shown: [] as number[], posOf: new Map<number, number>(), keys: [] as number[] });
 
   /* ── options (what the player may change) ── */
   const optOf = (v: unknown) => isOpt(v) ? opts.find(o => '$' + o.name === v) : undefined;
@@ -460,6 +478,62 @@ export function MacroEditor({ base, accounts, macros, api, openStep, openSection
 
   /* ── steps ── */
   const folds = shapes(steps, folded);
+  const drawNear = steps.length >= DRAW_NEAR_FROM;
+  if (drawNear) {
+    const shown: number[] = [];
+    const posOf = new Map<number, number>();
+    folds.forEach((sh, i) => { if (!sh.hidden) { posOf.set(i, shown.length); shown.push(i); } });
+    near.current = { on: true, shown, posOf, keys: steps.map(s => s._k) };
+  } else near.current = { on: false, shown: [], posOf: new Map(), keys: [] };
+  /** A shown row's height with its gap: measured once drawn, else the average seen so far. */
+  const rowSpace = (p: number) => (tall.current.get(near.current.keys[near.current.shown[p]]) ?? (guess.current || 60)) + ROW_GAP;
+  /** The rows near the view, from where the list sits in the dialog's scrolling body. */
+  const placeNear = () => {
+    const list = listBox.current;
+    const { on, shown } = near.current;
+    if (!on || !list) return;
+    let box: HTMLElement | null = list.parentElement;
+    while (box && !/(auto|scroll)/.test(getComputedStyle(box).overflowY)) box = box.parentElement;
+    const view = box ? box.getBoundingClientRect() : { top: 0, height: innerHeight };
+    const viewH = box ? box.offsetHeight : innerHeight;
+    // The dialog grows in as it opens: on-screen distances are scaled back to the list's own.
+    const scale = view.height && viewH ? view.height / viewH : 1;
+    const top = (view.top - list.getBoundingClientRect().top) / scale - NEAR_PX, bottom = top + viewH + 2 * NEAR_PX;
+    let y = 0, a = -1, b = shown.length;
+    for (let p = 0; p < shown.length; p++) {
+      const h = rowSpace(p);
+      if (a < 0 && y + h > top) a = p;
+      if (y > bottom) { b = p; break; }
+      y += h;
+    }
+    if (a < 0) a = Math.max(0, shown.length - 1);
+    setWin(w => w[0] === a && w[1] === b ? w : [a, b]);
+  };
+  // Drawn rows measured after each draw; the first ones set the guess for the rest.
+  useLayoutEffect(() => {
+    const list = listBox.current;
+    if (!drawNear || !list) return;
+    const seen: number[] = [];
+    list.querySelectorAll<HTMLElement>(':scope > .mc-step[data-i]').forEach(r => {
+      const k = near.current.keys[+r.dataset.i!];
+      if (k !== undefined) { tall.current.set(k, r.offsetHeight); seen.push(r.offsetHeight); }
+    });
+    if (!guess.current && seen.length) { guess.current = seen.reduce((x, y) => x + y, 0) / seen.length; placeNear(); }
+  });
+  useLayoutEffect(() => { if (drawNear) placeNear(); }, [drawNear, steps, folded]);
+  useEffect(() => {
+    const list = listBox.current;
+    if (!drawNear || !list) return;
+    let box: HTMLElement | null = list.parentElement;
+    while (box && !/(auto|scroll)/.test(getComputedStyle(box).overflowY)) box = box.parentElement;
+    const on: HTMLElement | Window = box || window;
+    let frame = 0;
+    const soon = () => { if (!frame) frame = requestAnimationFrame(() => { frame = 0; placeNear(); }); };
+    on.addEventListener('scroll', soon, { passive: true });
+    const seen = new ResizeObserver(soon);
+    seen.observe(box || list);
+    return () => { on.removeEventListener('scroll', soon); seen.disconnect(); cancelAnimationFrame(frame); };
+  }, [drawNear]);
   /** Unfolds every block around step i, so its row is drawn. */
   const unfoldTo = (i: number) => {
     const list = stepsNow.current;
@@ -786,6 +860,17 @@ export function MacroEditor({ base, accounts, macros, api, openStep, openSection
   // The end's mark, unless the last of them is a repeat's end, marked already.
   const endAt = sec || !feats.length ? -2 : steps.findIndex(s => s.kind === 'recover');
   const endMarked = safe.has((endAt >= 0 ? endAt : steps.length) - 1);
+  // The rows drawn: all of a short list; of a long one those near the view (and a dragged block's first row), with space for the rest.
+  let drawn: number[], above = 0, below = 0;
+  if (drawNear) {
+    const { shown, posOf } = near.current;
+    let a = Math.min(win[0], shown.length), b = Math.min(Math.max(win[1], a), shown.length);
+    const held = dragging ? posOf.get(dragging.from) : undefined;
+    if (held !== undefined) { a = Math.min(a, held); b = Math.max(b, held + 1); }
+    drawn = shown.slice(a, b);
+    for (let p = 0; p < a; p++) above += rowSpace(p);
+    for (let p = b; p < shown.length; p++) below += rowSpace(p);
+  } else drawn = steps.map((_, i) => i);
   const safeRow = (key: string) => <div key={key} className="mc-safe" role="listitem"><Icon name="layers" /><span>{t('macro.feat.here')}</span></div>;
   const lists4Move = feats.length ? [{ key: null as string | null, label: t('macro.feat.main') }, ...featsInOrder.map(f => ({ key: f.id as string | null, label: featLabel(f) }))]
     .filter(x => x.key !== sec) : [];
@@ -906,8 +991,10 @@ export function MacroEditor({ base, accounts, macros, api, openStep, openSection
               const over = (e.target as HTMLElement).closest<HTMLElement>('.mc-step');
               if (over?.dataset.i) dragOver(+over.dataset.i);
             }}
-            onDrop={e => e.preventDefault()} onDragEnd={() => setDragging(null)}>
-            {steps.map((s, i) => {
+            onDrop={e => e.preventDefault()} onDragEnd={() => setDragging(null)} ref={listBox}>
+            {above > 0 ? <div className="mc-steps-gap" aria-hidden="true" style={{ height: above - ROW_GAP }} /> : null}
+            {drawn.map(i => {
+              const s = steps[i];
               const sh = folds[i];
               if (sh.hidden) return null;
               const inside = sh.end >= 0 && folded.has(s._k) ? all.filter(p => !p.warn && inSec(p) && p.step !== null && p.step > i && p.step <= sh.end).length : 0;
@@ -922,6 +1009,7 @@ export function MacroEditor({ base, accounts, macros, api, openStep, openSection
                 insert={(btn, at) => openAdd(btn, at)} dragStart={() => { const [a, b] = span(steps, i); setDragging({ from: a, len: b - a + 1 }); }}
                 moveTargets={s.kind === 'else' || s.kind === 'recover' ? [] : lists4Move} moveOut={to => moveToList(i, to)} />{mark}</Fragment>;
             })}
+            {below > 0 ? <div className="mc-steps-gap" aria-hidden="true" style={{ height: below - ROW_GAP }} /> : null}
             {endAt === -1 && steps.length && !endMarked ? safeRow('safe-end') : null}
           </div>
         </section>

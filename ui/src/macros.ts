@@ -71,9 +71,9 @@ export type RunStatus = 'waiting' | 'running' | 'paused' | 'done' | 'failed' | '
 export type MacroRun = { macroId: string; accountId: string; status: RunStatus; reason?: string; step?: number; lastStep?: number; section?: string | null; loops?: number; startedAt: string; endsAt?: string; trial?: boolean };
 export type Recording = { accountId: string; startsAt: string; steps: number } | null;
 
-/** The app's limits (contract): 100 macros, 500 steps, names up to 60 characters, typed text up to 200. */
+/** The app's limits (contract): 100 macros, 5000 steps, names up to 60 characters, typed text up to 200. */
 export const MAX_MACROS = 100;
-export const MAX_STEPS = 500;
+export const MAX_STEPS = 5000;
 export const MAX_OPTIONS = 30;
 export const MAX_AREAS = 8;
 /** Each new area's colour, in turn: told apart on the game and on the picture. */
