@@ -95,9 +95,15 @@ public sealed partial class AppController
             // Resolved before deciding who switches: clients already in that server are compared by its link code.
             if (target?.ShareCode is { } shareCode)
             {
-                Progress(L.T("Reading the private server link…"));
-                var (placeId, linkCode) = await ResolveShareAsync(accounts, shareCode, ct);
-                target = target with { PlaceId = placeId, LinkCode = linkCode, ShareCode = null };
+                Progress(L.T("Reading the share link…"));
+                var share = await ResolveShareAsync(accounts, shareCode, target.ShareType, ct);
+                if (share.Expired)
+                    Log.Note("Launch: the share link has expired; joining anyway, as the website does.");
+                target = target with
+                {
+                    PlaceId = share.PlaceId, LinkCode = share.LinkCode, JobId = share.JobId ?? target.JobId, ShareCode = null, ShareType = null,
+                    LaunchData = share.LaunchData,
+                };
                 Progress(null);
             }
             if (target is not null)
@@ -448,18 +454,18 @@ public sealed partial class AppController
     /// <summary>
     /// With the first account whose sign-in Roblox accepts, so a dead first account doesn't stop the whole launch.
     /// </summary>
-    async Task<(long PlaceId, string LinkCode)> ResolveShareAsync(List<Account> accounts, string shareCode, CancellationToken ct)
+    async Task<RobloxApi.ShareTarget> ResolveShareAsync(List<Account> accounts, string shareCode, string? shareType, CancellationToken ct)
     {
         // Roblox's share links are read on apis.roblox.com: a Roblox VNG sign-in has no business there (review, 2026-10-30).
         var global = accounts.Where(acc => acc.Realm == Realm.Global).ToList();
         if (global.Count == 0)
-            throw new UserError(L.T("Private server links are read with a Roblox account. Select one that isn't Roblox VNG."));
+            throw new UserError(L.T("Share links are read with a Roblox account. Select one that isn't Roblox VNG."));
         var candidates = global.Where(acc => acc.CookieValid != false).Concat(global).Distinct().ToList();
         for (int i = 0; ; i++)
         {
             try
             {
-                return await RobloxApi.ResolvePrivateServerShareAsync(candidates[i].Cookie, shareCode, ct);
+                return await RobloxApi.ResolveShareAsync(candidates[i].Cookie, shareCode, shareType, ct);
             }
             catch (RobloxApiException ex) when (ex.CookieInvalid && i < candidates.Count - 1)
             {
@@ -780,13 +786,25 @@ public sealed partial class AppController
     void HoldForRobloxUpdate(Account account, string launchVia, string customLauncher)
     {
         if (_latestRoblox is not { } live || !live.Folder.StartsWith("version-", StringComparison.OrdinalIgnoreCase)
-            || RobloxInstalls.ClientFor(launchVia, customLauncher) is not { } client
-            || !RobloxInstalls.IsRobloxOwn(client) || RobloxInstalls.IsVngClient(client)
-            || RobloxInstalls.VersionOf(client) is not { } have || have.Folder.Equals(live.Folder, StringComparison.OrdinalIgnoreCase)
-            || !(Version.TryParse(have.Version, out var mine) && Version.TryParse(live.Version, out var served) && mine > served))
+            || RobloxInstalls.ClientFor(launchVia, customLauncher) is not { } client || RobloxInstalls.IsVngClient(client)
+            || RobloxInstalls.VersionOf(client) is not { } have || have.Folder.Equals(live.Folder, StringComparison.OrdinalIgnoreCase))
             return;
         int open = RobloxProcesses.GetPlayerPids().Length;
         if (open == 0)
+            return;
+        // A Bloxstrap-style launcher behind the live build: it updates first, and its update ends every Roblox open (RoALT
+        // holds this one too). Its background update, when it would take this one, leaves them.
+        if (RobloxInstalls.UpdaterFor(launchVia, customLauncher) is { } launcher && !RobloxInstalls.IsOwnInstaller(launcher))
+        {
+            if (!RobloxInstalls.IsBehind(have, live) || RobloxInstalls.UpdatesInBackground(launcher, have, live))
+                return;
+            string name = Path.GetFileNameWithoutExtension(launcher);
+            Log.Note($"Roblox start: account {account.Id.ToString()[..8]} held back, {name}'s Roblox is {have.Version} ({have.Folder}), the live one {live.Version} "
+                + $"({live.Folder}): {name} would update it first and close the {open} Roblox open.");
+            throw new RobloxUpdateHold(L.F("{0} would update Roblox as this window opens, and that closes every Roblox window open. Close the other Roblox windows first, or use Close, update, reopen under Settings › Roblox version.", name));
+        }
+        if (!RobloxInstalls.IsRobloxOwn(client)
+            || !(Version.TryParse(have.Version, out var mine) && Version.TryParse(live.Version, out var served) && mine > served))
             return;
         Log.Note($"Roblox start: account {account.Id.ToString()[..8]} held back, Roblox's build {have.Version} ({have.Folder}) is another channel's, "
             + $"the live {live.Version} ({live.Folder}) isn't installed, and opening it would update Roblox and close the {open} Roblox open.");

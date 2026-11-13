@@ -504,6 +504,8 @@ public sealed partial class AppController
         string cookie = RobloxApi.NormalizeCookie(Str(a, "cookie"));
         if (cookie.Length == 0)
             throw new UserError(L.T("Paste the .ROBLOSECURITY cookie."));
+        if (!RobloxApi.CookieTextValid(cookie))
+            throw new UserError(RobloxApi.CookieTextError);
         var user = await RobloxApi.GetAuthenticatedUserAsync(cookie);
         if (user is null)
             Log.Note("Add by cookie: Roblox didn't accept the pasted cookie.");
@@ -620,6 +622,8 @@ public sealed partial class AppController
         string? cookie = OptStr(a, "cookie") is { } raw ? RobloxApi.NormalizeCookie(raw) : null;
         if (cookie is { Length: > 0 } && cookie != account.Cookie)
         {
+            if (!RobloxApi.CookieTextValid(cookie))
+                throw new UserError(RobloxApi.CookieTextError);
             user = await RobloxApi.GetAuthenticatedUserAsync(cookie, account.Realm);
             if (user is null)
                 Log.Note($"Edit account: Roblox didn't accept the new cookie for account {account.Id.ToString()[..8]}; nothing saved.");
@@ -856,7 +860,8 @@ public sealed partial class AppController
                     }
                     catch (RobloxApiException ex) when (ex.RateLimited && attempt < 4)
                     {
-                        var wait = DateTime.UtcNow + TimeSpan.FromSeconds(4 * attempt);
+                        // As long as Roblox says (its reset: 30–50 s seen), not a guess of a few seconds that ran out first.
+                        var wait = DateTime.UtcNow + (ex.RetryAfter ?? TimeSpan.FromSeconds(4 * attempt));
                         if (wait > resumeAt)
                             resumeAt = wait;
                         continue;

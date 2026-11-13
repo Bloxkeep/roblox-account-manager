@@ -72,6 +72,50 @@ public sealed partial class RobloxLogWatcher
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "RobloxPCVNG", "logs"),
         ];
     internal static IReadOnlyList<string> Folders => LogDirs;
+
+    /// <summary>How long Roblox's own logs are kept: a week still holds the ones a bug report needs.</summary>
+    internal static readonly TimeSpan KeepLogs = TimeSpan.FromDays(7);
+
+    /// <summary>
+    /// Deletes Roblox's logs older than <see cref="KeepLogs"/> (its folders' own *.log files only). Roblox keeps every one, and
+    /// a PC farming with many windows writes a log per window per start (RoALT clears its after a day). One still being written
+    /// can't be deleted and stays. The number deleted.
+    /// </summary>
+    internal static int CleanOldLogs(DateTime nowUtc)
+    {
+        int removed = 0;
+        foreach (string dir in LogDirs)
+        {
+            try
+            {
+                if (!Directory.Exists(dir))
+                    continue;
+                var files = new DirectoryInfo(dir).GetFiles("*.log", SearchOption.TopDirectoryOnly);
+                // Nothing written for a week by that clock: Roblox unused since, or the clock set far ahead. Either way the
+                // newest logs would go too: left as they are.
+                if (files.Length == 0 || nowUtc - files.Max(f => f.LastWriteTimeUtc) > KeepLogs)
+                    continue;
+                foreach (var file in files)
+                {
+                    if (nowUtc - file.LastWriteTimeUtc <= KeepLogs)
+                        continue;
+                    try
+                    {
+                        file.Delete();
+                        removed++;
+                    }
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                    {
+                        // In use or not Bloxkeep's to delete: left.
+                    }
+                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+            }
+        }
+        return removed;
+    }
     // A game start, logged before "Joining game" (seen 2026-10-13 in 0.742, and in the Store edition): a launch that
     // stalls while loading never gets further, so it counts as joining from here.
     const string LaunchMark = "[FLog::SingleSurfaceApp] launchUGCGameInternal";

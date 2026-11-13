@@ -69,7 +69,7 @@ public static partial class RobloxApi
         using var res = await Http.SendAsync(req, ct);
         string body = await res.Content.ReadAsStringAsync(ct);
         if (res.StatusCode == HttpStatusCode.TooManyRequests)
-            throw new RobloxApiException(L.T("Roblox is rate-limiting requests; try again shortly."), rateLimited: true);
+            throw RateLimitedBy(res);
         if (!res.IsSuccessStatusCode)
             throw Refused("Username lookup", res.StatusCode, body);
         using var doc = JsonDocument.Parse(body);
@@ -93,7 +93,7 @@ public static partial class RobloxApi
             req.Content = new StringContent(JsonSerializer.Serialize(new { userIds = chunk, excludeBannedUsers = true }), Encoding.UTF8, "application/json");
             using var res = await Http.SendAsync(req, ct);
             if (strict && res.StatusCode == HttpStatusCode.TooManyRequests)
-                throw new RobloxApiException(L.T("Roblox is rate-limiting requests; try again shortly."), rateLimited: true);
+                throw RateLimitedBy(res);
             if (strict && !res.IsSuccessStatusCode)
                 throw Refused("User lookup", res.StatusCode, await res.Content.ReadAsStringAsync(ct));
             if (!res.IsSuccessStatusCode)
@@ -115,7 +115,7 @@ public static partial class RobloxApi
         using var req = Request(HttpMethod.Get, Realm.Api(realm, "users") + $"/v1/users/{userId}", null);
         using var res = await Http.SendAsync(req, ct);
         if (res.StatusCode == HttpStatusCode.TooManyRequests)
-            throw new RobloxApiException(L.T("Roblox is rate-limiting requests; try again shortly."), rateLimited: true);
+            throw RateLimitedBy(res);
         if (!res.IsSuccessStatusCode)
             return null;
         using var doc = JsonDocument.Parse(await res.Content.ReadAsStringAsync(ct));
@@ -404,6 +404,18 @@ public static partial class RobloxApi
     }
 
     /// <summary>The first number of a rate-limit header ("2" of "2", "3" of "3, 3;w=60"), or null.</summary>
+    /// <summary>
+    /// How long a 429 asks to wait: Roblox's x-ratelimit-reset (seconds until its window starts over), else Retry-After.
+    /// Its Retry-After is the shorter and wrong one: recorded 429s (RoALT's fixtures) said "Retry-After: 5" with a reset of
+    /// 30 (friends) and 50 (server list).
+    /// </summary>
+    internal static TimeSpan RateLimitWait(HttpResponseMessage res) =>
+        TimeSpan.FromSeconds(Math.Clamp(FirstNumber(res, "x-ratelimit-reset") ?? (int?)res.Headers.RetryAfter?.Delta?.TotalSeconds ?? 20, 1, 120));
+
+    /// <summary>Roblox's 429 as Bloxkeep says it, with how long to wait (<see cref="RateLimitWait"/>).</summary>
+    internal static RobloxApiException RateLimitedBy(HttpResponseMessage res) =>
+        new(L.T("Roblox is rate-limiting requests; try again shortly."), rateLimited: true) { RetryAfter = RateLimitWait(res) };
+
     static int? FirstNumber(HttpResponseMessage res, string header) =>
         res.Headers.TryGetValues(header, out var values) && values.FirstOrDefault() is { } v
         && int.TryParse(v.Split(',')[0].Trim(), System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out int n) ? n : null;
@@ -460,7 +472,7 @@ public static partial class RobloxApi
             string json = JsonSerializer.Serialize(new { userIds = chunk });
             using var res = await PostWithCsrfAsync(Realm.Api(realm, "presence") + "/v1/presence/users", cookie ?? "", json, null, ct, realm);
             if (res.StatusCode == HttpStatusCode.TooManyRequests)
-                throw new RobloxApiException(L.T("Roblox is rate-limiting requests; try again shortly."), rateLimited: true);
+                throw RateLimitedBy(res);
             // A failed page would read as "everyone offline / unknown"; fail the whole check so the last answer stays.
             // 401 with a cookie: that sign-in is dead (flagged, so the caller can mark it and ask with another).
             if (!res.IsSuccessStatusCode)

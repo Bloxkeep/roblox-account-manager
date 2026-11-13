@@ -13,6 +13,22 @@ public sealed record GameTarget(long PlaceId, string? JobId = null, string? Link
     /// player up again and goes to their current server instead of this place.</summary>
     public FollowedPlayer? Follow { get; init; }
 
+    /// <summary>The kind of roblox.com share link <see cref="ShareCode"/> is: null for a private server ("Server", also when
+    /// the link doesn't say), an invite or a game's page (<see cref="ShareTypes"/>), or <see cref="ShareV2"/>.</summary>
+    public string? ShareType { get; init; }
+
+    /// <summary>Data a link hands the game as it starts (an event, a friend's invite), at most 200 bytes as Roblox takes it.</summary>
+    public string? LaunchData { get; init; }
+
+    /// <summary>A "?v=v2" share link, read at Roblox's deeplinks/v2 (it names no type).</summary>
+    public const string ShareV2 = "v2";
+
+    /// <summary>The share-link types that lead into a game (the website's; RoALT reads the same): a private server, an
+    /// invite to a friend's server, a game's page, a screenshot, an affiliate or an event link. A profile, an avatar item
+    /// or a post don't.</summary>
+    public static readonly string[] ShareTypes = ["Server", "ExperienceInvite", "NotificationExperienceInvite", "ScreenshotInvite",
+        "ExperienceDetails", "ExperienceAffiliate", "ExperienceEvent"];
+
     /// <summary>A private server's access code (Browse servers): only accounts that own it or were invited get in, unlike a
     /// link code, which lets in anyone with the link.</summary>
     public string? AccessCode { get; init; }
@@ -44,7 +60,7 @@ public sealed record GameTarget(long PlaceId, string? JobId = null, string? Link
         }
 
         long placeId = 0;
-        string? linkCode = null, shareCode = null, jobId = null, accessCode = null;
+        string? linkCode = null, shareCode = null, shareType = null, jobId = null, accessCode = null;
         if (!long.TryParse(input, out placeId))
         {
             // Words, not a link (a game typed by name and not picked from the search): say what to do instead.
@@ -71,10 +87,17 @@ public sealed record GameTarget(long PlaceId, string? JobId = null, string? Link
                          || input.Contains("share_links", StringComparison.OrdinalIgnoreCase);
             if (share && query.TryGetValue("code", out var code))
             {
-                if (query.TryGetValue("type", out var type) && !type.Equals("Server", StringComparison.OrdinalIgnoreCase))
+                // A friend's invite, a game's or an event's link, a private server: Roblox says where each leads (read at launch).
+                if (query.TryGetValue("v", out var v) && v.Equals("v2", StringComparison.OrdinalIgnoreCase))
+                    shareType = ShareV2;
+                else if (query.TryGetValue("type", out var type))
                 {
-                    error = L.T("Only private-server share links (type=Server) are supported. For a regular game, paste a roblox.com/games/… link.");
-                    return false;
+                    shareType = ShareTypes.FirstOrDefault(known => known.Equals(type, StringComparison.OrdinalIgnoreCase));
+                    if (shareType is null)
+                    {
+                        error = L.T("This share link doesn't lead to a game. Paste a game link, a private server link or an invite.");
+                        return false;
+                    }
                 }
                 shareCode = code;
             }
@@ -117,7 +140,11 @@ public sealed record GameTarget(long PlaceId, string? JobId = null, string? Link
             jobId = guid.ToString("D"); // Guid also accepts {…} and undashed forms, which Roblox and the log comparison don't
         }
 
-        target = new GameTarget(placeId, NullIfEmpty(jobId), NullIfEmpty(linkCode), shareCode) { AccessCode = accessCode };
+        target = new GameTarget(placeId, NullIfEmpty(jobId), NullIfEmpty(linkCode), shareCode)
+        {
+            AccessCode = accessCode,
+            ShareType = shareType is "Server" ? null : shareType,
+        };
         return true;
     }
 

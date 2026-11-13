@@ -23,6 +23,11 @@ public static class RobloxInstalls
             int end = command.IndexOf('"', 1);
             return end > 1 ? command[1..end] : null;
         }
+        // Unquoted: up to ".exe", so a folder with a space ("C:\Program Files\Fishstrap\Fishstrap.exe -player %1") isn't cut
+        // at "C:\Program" (RoALT reads it the same way).
+        int exe = command.IndexOf(".exe", StringComparison.OrdinalIgnoreCase);
+        if (exe > 0)
+            return command[..(exe + 4)];
         int space = command.IndexOf(' ');
         return space > 0 ? command[..space] : command;
     }
@@ -390,6 +395,34 @@ public static class RobloxInstalls
         }
         string own = Path.Combine(Path.GetDirectoryName(client) ?? "", OwnInstaller);
         return IsRobloxOwn(client) && !IsVngClient(client) && File.Exists(own) ? own : null;
+    }
+
+    /// <summary>
+    /// Whether a Bloxstrap-style launcher bringing this client up to the live build leaves the Roblox windows open. Its usual
+    /// update ends every RobloxPlayerBeta first (Bloxstrap's Bootstrapper.cs, read 2026-11-14: UpgradeRoblox calls
+    /// KillRobloxInstances); only its background update doesn't, and only when turned on (BackgroundUpdatesEnabled in its
+    /// Settings.json), at most one version behind and with 5 GB free. Unknown counts as closing them.
+    /// </summary>
+    public static bool UpdatesInBackground(string launcher, ClientVersion client, ClientVersion live)
+    {
+        try
+        {
+            string dir = Path.GetDirectoryName(launcher) ?? "";
+            string settings = Path.Combine(dir, "Settings.json");
+            if (!File.Exists(settings))
+                return false;
+            using var doc = System.Text.Json.JsonDocument.Parse(File.ReadAllText(settings));
+            if (!(doc.RootElement.ValueKind == System.Text.Json.JsonValueKind.Object
+                  && doc.RootElement.TryGetProperty("BackgroundUpdatesEnabled", out var on) && on.ValueKind == System.Text.Json.JsonValueKind.True))
+                return false;
+            if (!Version.TryParse(client.Version, out var have) || !Version.TryParse(live.Version, out var newest) || newest.Minor - have.Minor is not (0 or 1))
+                return false;
+            return new DriveInfo(Path.GetPathRoot(dir)!).AvailableFreeSpace >= 5_000_000_000;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException or ArgumentException)
+        {
+            return false;
+        }
     }
 
     /// <summary>Roblox's installer, in each build folder of its own install: run with no switches it installs the newest build

@@ -93,6 +93,8 @@ public sealed partial class AppController
     /// (see <see cref="UpdateOffersAtLock"/>), so the sooner it is known the better.</summary>
     DateTime _nextUpdateCheck = DateTime.UtcNow;
     DateTime _nextRobloxVersionCheck;
+    /// <summary>When Roblox's old logs are next cleared (RobloxLogWatcher.CleanOldLogs): at the first tick, then daily.</summary>
+    DateTime _nextLogClean;
     RobloxInstalls.ClientVersion? _latestRoblox;
     /// <summary>The version that ran before an update, until the page has shown what's new since then.</summary>
     string? _updatedFrom;

@@ -72,7 +72,7 @@ public sealed partial class AppController
     {
         if (_saveDue is not null)
             _saveDue = now;
-        _nextPresence = _nextRobloxVersionCheck = _nextUpdateCheck = now;
+        _nextPresence = _nextRobloxVersionCheck = _nextUpdateCheck = _nextLogClean = now;
         _sweepBackgroundUntil = MovedBack(_sweepBackgroundUntil, back);
         _resumedAt = MovedBack(_resumedAt, back);
         _started = MovedBack(_started, back);
@@ -157,7 +157,7 @@ public sealed partial class AppController
             _running.Remove(id);
             // A scheduled stop closing it is done: another preset with this account opened later doesn't wait 20 s for it
             // (2026-10-30 review: only the same preset's next run cleared it).
-            _stopClosing.Remove(id);
+            bool stopping = _stopClosing.Remove(id);
             PersistSoon(); // the open clients on disk (see Persist)
             // Read before the log watcher drops the pid below, with the log's last lines (a leave logged right before quitting).
             var log = EndedState(info.Pid);
@@ -194,7 +194,30 @@ public sealed partial class AppController
                 _handedOver[info.Launch] = (info.Pid, log);
             }
             else
+            {
+                // Ended on its own (no leave, disconnect or sign-out in its log, not closed by anyone): what it left behind
+                // goes to error.log, off this thread. A disconnect is skipped: a server's shutdown ends many at once.
+                if (!stopping && !inOrder && !closedByRoblox && !_userClosed.Contains(id) && !_restarts.ContainsKey(id)
+                    && !_closingForRejoin.Contains(info.Pid) && log?.Status is not ("left" or "disconnected" or "signedout"))
+                {
+                    int pid = info.Pid;
+                    var started = info.Launch.StartedAt;
+                    var last = log?.Status ?? "no log";
+                    _ = Task.Run(() =>
+                    {
+                        try
+                        {
+                            Log.Note($"Window {pid} ended on its own (last log: {last}): "
+                                + (RobloxCrashInfo.Describe(pid, started, now) ?? "no crash report, no Windows error record") + ".");
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Write(ex);
+                        }
+                    });
+                }
                 OnSessionEnded(id, info.Launch, log);
+            }
             changed = true;
         }
 
@@ -320,6 +343,16 @@ public sealed partial class AppController
         if (_procTimer.Interval != interval)
             _procTimer.Interval = interval;
 
+        if (now >= _nextLogClean)
+        {
+            _nextLogClean = now + TimeSpan.FromDays(1);
+            _ = Task.Run(() =>
+            {
+                int removed = RobloxLogWatcher.CleanOldLogs(DateTime.UtcNow);
+                if (removed > 0)
+                    Log.Note($"Roblox logs: {removed} older than {(int)RobloxLogWatcher.KeepLogs.TotalDays} days deleted.");
+            });
+        }
         if (now >= _nextRobloxVersionCheck && !_background)
         {
             _nextRobloxVersionCheck = now + RobloxVersionInterval;

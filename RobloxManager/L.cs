@@ -119,8 +119,8 @@ public static class L
         ["Accounts are still moving to another server. Try again once they're in."] = "Tài khoản đang chuyển server. Vào xong rồi hãy thử lại.",
         ["Roblox has a notice on this account to accept first. Open its roblox.com and accept it."] = "Roblox có thông báo cho tài khoản này cần xác nhận trước. Mở roblox.com của tài khoản và bấm đồng ý.",
         ["Roblox refused to sign this account in (HTTP {0}). Open its roblox.com to see why."] = "Roblox không cho tài khoản này đăng nhập (HTTP {0}). Mở roblox.com của nó để xem lý do.",
-        ["Couldn't open the private server link (HTTP {0}). Check the link, or try again in a moment."] = "Không mở được link server riêng (HTTP {0}). Kiểm tra lại link hoặc thử lại sau giây lát.",
-        ["The private server link is invalid or has expired."] = "Link server riêng không hợp lệ hoặc đã hết hạn.",
+        ["Couldn't open the share link (HTTP {0}). Check the link, or try again in a moment."] = "Không mở được link chia sẻ (HTTP {0}). Kiểm tra lại link hoặc thử lại sau giây lát.",
+        ["The share link is invalid or has expired."] = "Link chia sẻ không hợp lệ hoặc đã hết hạn.",
         ["Roblox is rate-limiting requests; try again shortly."] = "Roblox đang tạm chặn vì có quá nhiều yêu cầu. Chờ chút rồi thử lại.",
         ["Roblox is missing a file (RobloxPlayerBeta.dll). Install Roblox again from roblox.com/download."] =
             "Roblox thiếu tệp RobloxPlayerBeta.dll. Hãy cài lại Roblox từ roblox.com/download.",
@@ -128,8 +128,13 @@ public static class L
             "Không tìm thấy RobloxPlayerBeta.exe. Chọn cách mở khác ở Cài đặt › Khởi chạy › Mở Roblox bằng, hoặc cài lại Roblox.",
         ["{0} is not installed."] = "Máy chưa cài {0}.",
         ["The official Roblox client is not installed."] = "Máy chưa cài Roblox bản chính thức.",
+        ["That isn't a whole Roblox cookie: it has characters a cookie never has (\"…\", curly quotes or accents). Copy it again, all of it."] =
+            "Đây không phải cookie Roblox đầy đủ: có ký tự mà cookie không bao giờ có (\"…\", ngoặc cong hoặc chữ có dấu). Hãy copy lại toàn bộ.",
+        ["This account's saved sign-in is damaged — sign in to it again."] = "Đăng nhập đã lưu của tài khoản này bị hỏng — hãy đăng nhập lại.",
         ["Roblox would install an update as this window opens, and that closes every Roblox window open. Close the other Roblox windows first, or use Close, update, reopen under Settings › Roblox version."] =
             "Mở cửa sổ này thì Roblox sẽ tự cập nhật và tắt hết các cửa sổ Roblox đang mở. Hãy đóng các cửa sổ kia trước, hoặc dùng Đóng, cập nhật, mở lại ở Cài đặt › Phiên bản Roblox.",
+        ["{0} would update Roblox as this window opens, and that closes every Roblox window open. Close the other Roblox windows first, or use Close, update, reopen under Settings › Roblox version."] =
+            "Mở cửa sổ này thì {0} sẽ cập nhật Roblox và tắt hết các cửa sổ Roblox đang mở. Hãy đóng các cửa sổ kia trước, hoặc dùng Đóng, cập nhật, mở lại ở Cài đặt › Phiên bản Roblox.",
         ["{0} waits to rejoin: opening it now would make Roblox update and close every Roblox window open. It rejoins once the other windows are closed or Roblox is updated."] =
             "{0} chờ vào lại: mở bây giờ thì Roblox sẽ tự cập nhật và tắt hết các cửa sổ đang mở. Sẽ vào lại khi các cửa sổ kia đóng hoặc Roblox cập nhật xong.",
         ["Roblox isn't installed. Install it from roblox.com/download, then try again."] =
@@ -145,8 +150,8 @@ public static class L
         ["Couldn't start Roblox from the Microsoft Store."] = "Không mở được Roblox bản Microsoft Store.",
         ["Windows couldn't start Roblox (error {0})."] = "Windows không mở được Roblox (lỗi {0}).",
         ["Enter a Place ID or paste a Roblox game link."] = "Nhập Place ID hoặc dán link game Roblox.",
-        ["Only private-server share links (type=Server) are supported. For a regular game, paste a roblox.com/games/… link."] =
-            "Chỉ hỗ trợ link chia sẻ server riêng (type=Server). Game thường thì dán link roblox.com/games/…",
+        ["This share link doesn't lead to a game. Paste a game link, a private server link or an invite."] =
+            "Link chia sẻ này không dẫn vào game. Hãy dán link game, link server riêng hoặc link mời.",
         ["Pick the game from the search list, or paste a game link or Place ID."] = "Chọn game trong kết quả tìm kiếm, hoặc dán link game hay Place ID.",
         ["Invalid Place ID."] = "Place ID không hợp lệ.",
         ["Invalid Job ID (expected xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)."] = "Job ID không hợp lệ (phải có dạng xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx).",
@@ -354,7 +359,7 @@ public static class L
             "Máy đang dùng {0}% RAM. Hãy đóng bớt cửa sổ Roblox nếu thấy lag.",
         ["Already launching — wait a moment or press Stop."] = "Đang mở Roblox rồi, chờ chút hoặc bấm Dừng.",
         ["Select at least one account."] = "Hãy chọn ít nhất một tài khoản.",
-        ["Reading the private server link…"] = "Đang đọc link server riêng…",
+        ["Reading the share link…"] = "Đang đọc link chia sẻ…",
         ["{0}: already running — skipped."] = "Bỏ qua {0}: đang chạy rồi.",
         ["{0}: already in this game — skipped."] = "Bỏ qua {0}: đang ở game này rồi.",
         ["{0}: already on the home screen — skipped."] = "Bỏ qua {0}: đang ở màn hình chính rồi.",
@@ -443,8 +448,8 @@ public static class L
         ["Close tab"] = "Đóng tab",
         ["Keep browsing"] = "Xem tiếp",
         ["The website can't be opened for Roblox VNG accounts yet."] = "Chưa mở được trang web cho tài khoản Roblox VNG.",
-        ["Private server links are read with a Roblox account. Select one that isn't Roblox VNG."] =
-            "Link server riêng cần một tài khoản Roblox để đọc. Hãy chọn một tài khoản không phải Roblox VNG.",
+        ["Share links are read with a Roblox account. Select one that isn't Roblox VNG."] =
+            "Link chia sẻ cần một tài khoản Roblox để đọc. Hãy chọn một tài khoản không phải Roblox VNG.",
         ["Signed in."] = "Đã đăng nhập.",
         ["Signed in as {0}."] = "Đã đăng nhập: {0}.",
         ["Can't reach roblox.com. Check your internet connection, then press Retry."] =

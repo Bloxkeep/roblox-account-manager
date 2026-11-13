@@ -214,8 +214,16 @@ public static partial class RobloxApi
         int semi = c.IndexOf(';');
         if (semi >= 0)
             c = c[..semi];
-        return c.Trim();
+        // A cookie has no spaces: a paste wrapped over lines (a chat, a text file) is joined back.
+        return string.Concat(c.Where(ch => !char.IsWhiteSpace(ch)));
     }
+
+    /// <summary>Only what a header can carry (visible ASCII), as every real cookie is. "…" (a cut-off copy), curly quotes or
+    /// accents made the request fail inside .NET, which Bloxkeep then called a network error (RoALT checks the same).</summary>
+    public static bool CookieTextValid(string cookie) => cookie.All(ch => ch is > ' ' and < (char)127);
+
+    /// <summary>Said for a pasted cookie that isn't one (<see cref="CookieTextValid"/>).</summary>
+    public static string CookieTextError => L.T("That isn't a whole Roblox cookie: it has characters a cookie never has (\"…\", curly quotes or accents). Copy it again, all of it.");
 
     public static bool IsExpectedError(Exception ex) =>
         ex is HttpRequestException or TaskCanceledException or JsonException or RobloxApiException
@@ -227,7 +235,12 @@ public static partial class RobloxApi
         req.Headers.TryAddWithoutValidation("User-Agent", UserAgent);
         req.Headers.TryAddWithoutValidation("Accept", "application/json, text/plain, */*");
         if (!string.IsNullOrEmpty(cookie))
+        {
+            // A damaged saved cookie (it never signed in): said as a sign-in to redo, not as a network error.
+            if (!CookieTextValid(cookie))
+                throw new RobloxApiException(L.T("This account's saved sign-in is damaged — sign in to it again."), cookieInvalid: true);
             req.Headers.TryAddWithoutValidation("Cookie", $"{CookieName}={cookie}");
+        }
         if (fromWebsite)
         {
             req.Headers.TryAddWithoutValidation("Origin", Realm.Website(realm));
@@ -305,7 +318,7 @@ public static partial class RobloxApi
         if (res.StatusCode == HttpStatusCode.Unauthorized)
             return null;
         if (res.StatusCode == HttpStatusCode.TooManyRequests)
-            throw new RobloxApiException(L.T("Roblox is rate-limiting requests; try again shortly."), rateLimited: true);
+            throw RateLimitedBy(res);
         string body = await res.Content.ReadAsStringAsync(ct);
         if (!res.IsSuccessStatusCode)
             throw Refused("Signed-in user", res.StatusCode, body);

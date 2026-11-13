@@ -23,7 +23,7 @@ public static partial class RobloxApi
             using var res = await Http.SendAsync(req, ct);
             string body = await res.Content.ReadAsStringAsync(ct);
             if (res.StatusCode == HttpStatusCode.TooManyRequests)
-                throw new RobloxApiException(L.T("Roblox is rate-limiting requests; try again shortly."), rateLimited: true);
+                throw RateLimitedBy(res);
             if (!res.IsSuccessStatusCode)
                 throw Refused("Friend statuses", res.StatusCode, body, cookieInvalid: res.StatusCode == HttpStatusCode.Unauthorized);
             if (DecodeJson(body) is { ValueKind: JsonValueKind.Object } root && root.TryGetProperty("data", out var data) && data.ValueKind == JsonValueKind.Array)
@@ -85,7 +85,7 @@ public static partial class RobloxApi
         if (res.StatusCode == HttpStatusCode.Unauthorized)
             throw new RobloxApiException(L.T("This account was signed out — sign in to it again."), cookieInvalid: true);
         if (res.StatusCode == HttpStatusCode.TooManyRequests && challenge is null)
-            throw new RobloxApiException(L.T("Roblox is rate-limiting requests; try again shortly."), rateLimited: true);
+            throw RateLimitedBy(res);
         return new FriendAnswer((int)res.StatusCode, codes, challenge);
     }
 }

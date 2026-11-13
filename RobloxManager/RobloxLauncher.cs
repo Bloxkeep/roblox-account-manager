@@ -84,6 +84,9 @@ public static class RobloxLauncher
             return $"{baseUrl}request=RequestPrivateGame&{common}&linkCode={Uri.EscapeDataString(t.LinkCode)}&joinAttemptOrigin=privateServerListJoin";
         if (t.JobId is not null)
             return $"{baseUrl}request=RequestGameJob&{common}&gameId={t.JobId}&joinAttemptOrigin=publicServerListJoin";
+        // A link's launch data goes with a plain join, before isPlayTogetherGame as the website puts it.
+        if (t.LaunchData is { Length: > 0 } data)
+            common = $"browserTrackerId={browserTrackerId}&placeId={t.PlaceId}&launchData={Uri.EscapeDataString(data)}&isPlayTogetherGame=false&joinAttemptId={Guid.NewGuid()}";
         return $"{baseUrl}request=RequestGame&{common}&joinAttemptOrigin=PlayButton";
     }
 
