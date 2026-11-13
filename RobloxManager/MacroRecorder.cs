@@ -26,6 +26,8 @@ static class MacroRecording
     /// <summary>A camera drag is cut into pieces this long at most.</summary>
     const int CameraPiece = 400;
     const int MinWait = 30;
+    /// <summary>The longest hold a key step takes (MacroRules' check of a step).</summary>
+    const int KeyStepMaxMs = 10_000;
 
     /// <summary>A step made, from when to when it plays (the waits go between), and where (a click).</summary>
     sealed record Act(int Start, int End, MacroStep Step, Point At = default);
@@ -52,7 +54,16 @@ static class MacroRecording
                     bool alone = up > 0 && e.Key != "Alt" && events.Skip(i + 1).Take(up - i - 1).All(x => x.Kind is "move" or "pos" || (x.Kind == "keyDown" && x.Key == e.Key));
                     if (alone)
                     {
-                        actions.Add(new(e.Ms, events[up].Ms, new MacroStep { Kind = "key", Key = e.Key, Ms = Math.Clamp(events[up].Ms - e.Ms, 30, 5000) }));
+                        // Held as long as it was: a walk cut to 5 s stopped meters short (a user's report, 2026-11-13). Past a
+                        // key step's 10 s it is Hold, a wait and Release.
+                        int hold = events[up].Ms - e.Ms;
+                        if (hold <= KeyStepMaxMs)
+                            actions.Add(new(e.Ms, events[up].Ms, new MacroStep { Kind = "key", Key = e.Key, Ms = Math.Max(hold, 30) }));
+                        else
+                        {
+                            actions.Add(new(e.Ms, e.Ms, new MacroStep { Kind = "down", Key = e.Key }));
+                            actions.Add(new(events[up].Ms, events[up].Ms, new MacroStep { Kind = "up", Key = e.Key }));
+                        }
                         for (int j = i + 1; j <= up; j++)
                             used.Add(j);
                     }

@@ -359,6 +359,16 @@ static class MacroSuite
         c.Check("a key held across another is a Hold and a Release around it",
             steps.Any(s => s is { Kind: "down", Key: "W" }) && steps.Any(s => s is { Kind: "up", Key: "W" }) && steps.Any(s => s is { Kind: "key", Key: "Space" }),
             string.Join(" ", steps.Select(s => s.Kind + ":" + s.Key)));
+        // A walk held alone as long as it was (2026-11-13: one of 8 s was cut to 5 s and stopped meters short); past a key
+        // step's 10 s, Hold, the wait and Release.
+        var walk = MacroRecording.ToSteps([new MacroEvent(0, "keyDown", "W"), new MacroEvent(8000, "keyUp", "W")], _ => (0.5, 0.5));
+        c.Check("a key held alone 8 s plays 8 s, not 5", walk is [{ Kind: "key", Key: "W", Ms: 8000 }], JsonSerializer.Serialize(walk, MacroRules.PageJson));
+        var longWalk = MacroRecording.ToSteps([new MacroEvent(0, "keyDown", "W"), new MacroEvent(25_000, "keyUp", "W"), new MacroEvent(25_500, "keyDown", "E"), new MacroEvent(25_600, "keyUp", "E")], _ => (0.5, 0.5));
+        c.Check("…one held 25 s: Hold, a 25 s wait, Release, then what came after",
+            longWalk is [{ Kind: "down", Key: "W" }, { Kind: "wait", Ms: 25_000 }, { Kind: "up", Key: "W" }, { Kind: "wait", Ms: 500 }, { Kind: "key", Key: "E", Ms: 100 }],
+            JsonSerializer.Serialize(longWalk, MacroRules.PageJson));
+        var made = new Macro { Name = "Walk", Steps = longWalk.Concat(walk).ToList() };
+        c.Check("…and both pass a macro's checks", Refused(() => MacroRules.Check(made, new List<Guid>(), [])) is null);
     }
 
     // ───────────────────────── settings and areas in steps ─────────────────────────
