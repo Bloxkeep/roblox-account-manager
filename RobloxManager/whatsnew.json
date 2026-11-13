@@ -1,5 +1,57 @@
 [
   {
+    "version": "1.0.23",
+    "date": "2026-11-14",
+    "new": {
+      "en": [
+        "Auto-rejoin also brings back a game you picked on Roblox’s home screen.",
+        "Your Discord profile shows the game you play with its icon, how many windows are open and a View game button.",
+        "Every Roblox share link opens: game invites, events, screenshots and a friend’s server."
+      ],
+      "vi": [
+        "Tự vào lại cả game bạn chọn trên màn hình chính của Roblox.",
+        "Hồ sơ Discord hiện game đang chơi kèm biểu tượng, số cửa sổ đang mở và nút Xem game.",
+        "Mở được mọi link chia sẻ của Roblox: mời vào game, sự kiện, ảnh chụp, server của bạn bè."
+      ]
+    },
+    "improved": {
+      "en": [
+        "Macros hold up to 5000 steps, and a recording that hits the limit says so.",
+        "Online status works with more than 50 accounts.",
+        "A Roblox window frozen for a minute is reopened.",
+        "A server you chose that has ended or is full: another one is joined within seconds.",
+        "Roblox’s old logs are deleted after a week."
+      ],
+      "vi": [
+        "Macro chứa được tới 5000 bước, ghi tới giới hạn thì có báo.",
+        "Trạng thái online chạy được khi có hơn 50 tài khoản.",
+        "Cửa sổ Roblox bị treo một phút thì được mở lại.",
+        "Server bạn chọn đã đóng hoặc đầy thì vào server khác trong vài giây.",
+        "Log cũ của Roblox được xóa sau một tuần."
+      ]
+    },
+    "fixed": {
+      "en": [
+        "A game that fails while loading, or a server that can’t be reached, is rejoined instead of staying “Playing” or “Joining”.",
+        "An account on Roblox’s test build no longer closes all your other windows.",
+        "A launcher updating Roblox (Bloxstrap and others) no longer closes your open windows: the launch waits.",
+        "A game’s timed ban ends on time, with no more “banned” warning after it.",
+        "A key held alone in a recording keeps its whole hold.",
+        "Launches retry when Roblox says to slow down, instead of failing.",
+        "A pasted cookie with spaces or line breaks works."
+      ],
+      "vi": [
+        "Game lỗi khi đang tải hoặc không vào được server thì tự vào lại, không còn kẹt “Đang chơi” hay “Đang vào game”.",
+        "Tài khoản dùng Roblox bản thử không còn làm đóng hết các cửa sổ khác.",
+        "Launcher cập nhật Roblox (Bloxstrap…) không còn đóng các cửa sổ đang mở: lượt mở sẽ chờ.",
+        "Lệnh ban có thời hạn của game hết đúng giờ, không còn báo “bị ban” sau đó.",
+        "Phím giữ một mình trong bản ghi giữ đủ thời gian.",
+        "Mở game thử lại khi Roblox báo chậm lại, không báo lỗi.",
+        "Cookie dán vào có dấu cách hay xuống dòng vẫn dùng được."
+      ]
+    }
+  },
+  {
     "version": "1.0.22",
     "date": "2026-11-11",
     "improved": {
