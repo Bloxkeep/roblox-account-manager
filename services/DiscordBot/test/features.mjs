@@ -485,6 +485,18 @@ try {
   o = await numbers();
   check("what didn't work counted by its own reason", o.today.removed === 4 && o.today.why.antivirus === 1 && o.today.why.none === 2, JSON.stringify(o.today));
   check('…and named in /online', textsOf({ body: (await interact(asDeveloper)).json?.data }).join('\n').includes('antivirus 1'));
+  // Who removed it (uninstallers from 1.0.23 on): how long they'd had it and the version removed, once a day per PC; a
+  // version that isn't one is left out, and the older uninstallers above said neither.
+  const H = '8'.repeat(32), I = '7'.repeat(32);
+  await beat({ id: H, gone: true, removed: true, why: 'unneeded', age: 'new', app: '1.0.23-alpha.4' });
+  await beat({ id: H, gone: true, removed: true, why: 'unneeded', age: 'new', app: '1.0.23-alpha.4' });
+  await beat({ id: I, gone: true, removed: true, age: 'old', app: 'not a version' });
+  o = await numbers();
+  check('removals by how long they had it and by version, each PC once',
+    o.today.removed === 6 && o.today.goneAges.new === 1 && o.today.goneAges.old === 1 && !o.today.goneAges.week
+    && o.today.goneApps['1.0.23-alpha.4'] === 1 && Object.keys(o.today.goneApps).length === 1, JSON.stringify(o.today));
+  check('…shown in /online', textsOf({ body: (await interact(asDeveloper)).json?.data }).join('\n')
+    .includes('\nRemoved by: had it a day **1** · longer **1** · 1.0.23-alpha.4 (**1**)\n'));
 
   // What the apps play (online.js communityOf): three PCs in Blox Fruits (universe 994732206), one also in a game only it
   // plays; two on the alts board. A game shows with 3 PCs or more, a radar line with 3 PCs dropped the same way.

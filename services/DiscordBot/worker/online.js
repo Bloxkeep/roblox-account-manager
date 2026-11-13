@@ -34,6 +34,8 @@ export async function scramble(key, id) {
 
 /** How long a PC has had Bloxkeep, as the app says it (its data folder's age): a day, a week, longer. */
 export const AGES = ['new', 'week', 'old'];
+/** How long they'd had it, in the developers' /online lines. */
+const AGE_WORDS = { new: 'had it a day', week: 'a week', old: 'longer' };
 /** Why someone removed Bloxkeep, as its uninstaller's buttons say it: after "It didn't work", what didn't (signin,
  * launch, antivirus; "Something else" there, or an uninstaller before 1.0.18, says broken). */
 export const WHY = ['broken', 'signin', 'launch', 'antivirus', 'unneeded', 'hard', 'other'];
@@ -59,15 +61,22 @@ export const THEME_MIN = 2, THEMES_SHOWN = 8;
 const ids = (list, max) => Array.isArray(list)
   ? [...new Set(list.filter(n => Number.isSafeInteger(n) && n > 0))].slice(0, max) : [];
 
+/** A version as the app (or its uninstaller) says it: 1.0.23 or 1.0.23-alpha.4. */
+const versionOf = v => typeof v === 'string' && /^\d+\.\d+\.\d+(-[0-9A-Za-z.]+)?$/.test(v) && v.length <= 30 ? v : null;
+
 /** What the app sent, checked: { id, app, lang, first, age, games, alts, drops, name, theme } or { id, gone: true, removed,
- * why }; null for anything else. first: a new install's first beat; removed: its uninstaller saying so. */
+ * why, age, app }; null for anything else. first: a new install's first beat; removed: its uninstaller saying so, with
+ * how long the PC had Bloxkeep and the version removed (uninstallers from 1.0.23 on; null before). */
 export function readBeat(body) {
   const id = typeof body?.id === 'string' ? body.id.toLowerCase() : '';
   if (!/^[0-9a-f]{32}$/.test(id))
     return null;
-  if (body.gone === true)
-    return { id, gone: true, removed: body.removed === true, why: body.removed === true && WHY.includes(body.why) ? body.why : null };
-  const app = typeof body.app === 'string' && /^\d+\.\d+\.\d+(-[0-9A-Za-z.]+)?$/.test(body.app) && body.app.length <= 30 ? body.app : null;
+  if (body.gone === true) {
+    const removed = body.removed === true;
+    return { id, gone: true, removed, why: removed && WHY.includes(body.why) ? body.why : null,
+      age: removed && AGES.includes(body.age) ? body.age : null, app: removed ? versionOf(body.app) : null };
+  }
+  const app = versionOf(body.app);
   if (!app)
     return null;
   const name = typeof body.board === 'string' ? body.board.normalize('NFC').replace(/\s+/g, ' ').trim() : '';
@@ -190,9 +199,14 @@ export function onlineMessage(o, link, bot, full = true) {
   // Who stays: today's new installs and who removed it (and why), the people by how long they've had it.
   const t = o.today, ages = t.ages ?? {};
   const why = Object.entries(t.why ?? {}).filter(([k]) => k !== 'none').map(([k, n]) => `${WHY_WORDS[k] ?? k} ${n}`).join(', ');
+  // Who removed it, as uninstallers from 1.0.23 on say: how long they'd had it, the version they had.
+  const goneAges = AGES.filter(a => t.goneAges?.[a]).map(a => `${AGE_WORDS[a]} **${t.goneAges[a]}**`);
+  const goneApps = Object.entries(t.goneApps ?? {}).sort((a, b) => b[1] - a[1]).map(([v, n]) => `${v} (**${n}**)`);
+  const gone = [...goneAges, ...goneApps].join(' · ');
   const count = (n, one, many) => `**${n ?? '?'}** ${n === 1 ? one : many}`;
   const dev = full ? [
     `Today **${t.installs ?? 0}** new ${t.installs === 1 ? 'install' : 'installs'} · **${t.removed ?? 0}** removed${why ? ` (${why})` : ''}`,
+    ...(gone ? [`Removed by: ${gone}`] : []),
     `Had it a day **${ages.new ?? 0}** · a week **${ages.week ?? 0}** · longer **${ages.old ?? 0}**`,
     ...(versions ? [`Versions ${versions}`] : []),
     ...(bot ? [`Bot in ${count(bot.servers, 'server', 'servers')} · ${count(bot.installs, 'user install', 'user installs')} · ${count(bot.linked, 'PC linked', 'PCs linked')}`] : []),
