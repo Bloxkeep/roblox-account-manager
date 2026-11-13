@@ -34,7 +34,7 @@
       "en": [
         "A game that fails while loading, or a server that can’t be reached, is rejoined instead of staying “Playing” or “Joining”.",
         "An account on Roblox’s test build no longer closes all your other windows.",
-        "A launcher updating Roblox (Bloxstrap and others) no longer closes your open windows: the launch waits.",
+        "A Roblox update, new from Roblox or through a launcher (Bloxstrap and others), no longer closes your open windows: the launch waits.",
         "A game’s timed ban ends on time, with no more “banned” warning after it.",
         "A key held alone in a recording keeps its whole hold.",
         "Launches retry when Roblox says to slow down, instead of failing.",
@@ -43,7 +43,7 @@
       "vi": [
         "Game lỗi khi đang tải hoặc không vào được server thì tự vào lại, không còn kẹt “Đang chơi” hay “Đang vào game”.",
         "Tài khoản dùng Roblox bản thử không còn làm đóng hết các cửa sổ khác.",
-        "Launcher cập nhật Roblox (Bloxstrap…) không còn đóng các cửa sổ đang mở: lượt mở sẽ chờ.",
+        "Roblox ra bản mới hay launcher (Bloxstrap…) cập nhật Roblox không còn đóng các cửa sổ đang mở: lượt mở sẽ chờ.",
         "Lệnh ban có thời hạn của game hết đúng giờ, không còn báo “bị ban” sau đó.",
         "Phím giữ một mình trong bản ghi giữ đủ thời gian.",
         "Mở game thử lại khi Roblox báo chậm lại, không báo lỗi.",
