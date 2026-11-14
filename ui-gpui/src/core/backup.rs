@@ -241,7 +241,7 @@ pub fn restore(file: &Path, replace_existing: bool) -> Res<Option<PathBuf>> {
         let path = vault::old_vaults_dir().join(format!("vault-before-restore-{}.rmv", yyyymmdd_hhmmss(Stamp::now())));
         // File.Copy(…, overwrite: false).
         if path.exists() {
-            return Err(Fail::other(format!("{} exists", path.display())));
+            return Err(vault::exists_error(windows_sys::Win32::Foundation::ERROR_FILE_EXISTS, &path).into());
         }
         fs::copy(vault::vault_path(), &path)?;
         before = Some(path);

@@ -193,8 +193,15 @@
  {
   "in": "https://www.roblox.com/share?code=abcdef123&type=ExperienceDetails",
   "job": "",
+  "ok": true,
+  "place": 0,
+  "share": "abcdef123"
+ },
+ {
+  "in": "https://www.roblox.com/share?code=p1&type=AvatarItemDetails",
+  "job": "",
   "ok": false,
-  "error": "Only private-server share links (type=Server) are supported. For a regular game, paste a roblox.com/games/… link."
+  "error": "This share link doesn't lead to a game. Paste a game link, a private server link or an invite."
  },
  {
   "in": "roblox://navigation/share_links?code=xyz&type=Server",

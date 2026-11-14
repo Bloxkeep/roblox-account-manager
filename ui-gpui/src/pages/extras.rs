@@ -159,7 +159,7 @@ pub fn open_feedback(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) 
                     .h(px(28.))
                     .px(px(10.))
                     .justify_center()
-                    .text_size(px(T_S + 0.5))
+                    .text_size(px(T_M))
                     .cursor_pointer()
                     .child(r.tr(key))
                     .on_click(move |_, w, cx| {
@@ -369,6 +369,12 @@ pub fn whats_new(r: &mut Root, releases: Vec<Value>, window: &mut Window, cx: &m
         return;
     }
     r.extras.older = false;
+    // The pictures' files, found once as the box opens (in both languages), not on every drawing of it.
+    let files: Vec<[Option<String>; 2]> = releases[0]
+        .get("highlights")
+        .and_then(Value::as_array)
+        .map(|l| l.iter().map(|h| [wn_picture(s(h, "image"), false), wn_picture(s(h, "image"), true)]).collect())
+        .unwrap_or_default();
     let this = cx.weak_entity();
     window.open_dialog(cx, move |dialog, window, cx| {
         let Some(root) = this.upgrade() else { return dialog };
@@ -379,8 +385,9 @@ pub fn whats_new(r: &mut Root, releases: Vec<Value>, window: &mut Window, cx: &m
         // with its shape: drawn whole at the card's width, never cut to a strip (review 9.1).
         let pictures: Vec<Option<(std::sync::Arc<Image>, f32)>> = highlights
             .iter()
-            .map(|h| {
-                let path = wn_picture(s(h, "image"), vi)?;
+            .enumerate()
+            .map(|(i, _)| {
+                let path = files.get(i).and_then(|f| f[usize::from(vi)].clone())?;
                 let p = crate::images::pic(&path, cx)?;
                 let shape = crate::images::dims(&path, cx).map(|(w, h)| w as f32 / h as f32).filter(|a| a.is_finite() && *a > 0.2 && *a < 6.).unwrap_or(16. / 10.);
                 Some((p, shape))
@@ -491,7 +498,7 @@ pub fn whats_new(r: &mut Root, releases: Vec<Value>, window: &mut Window, cx: &m
                 .flex_wrap()
                 .items_center()
                 .gap(px(10.))
-                .child(div().flex_1().min_w(px(200.)).text_size(px(T_S + 0.5)).text_color(c(MUTED)).child(r.tr("wn.star")))
+                .child(div().flex_1().min_w(px(200.)).text_size(px(T_M)).text_color(c(MUTED)).child(r.tr("wn.star")))
                 .child(Button::new("wn-star", r.tr("star.open")).icon("star").small().on_click(move |_, _, cx| {
                     let _ = star.update(cx, |r, _| r.send("openGitHub", json!({})));
                 })),

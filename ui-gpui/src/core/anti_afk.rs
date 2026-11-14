@@ -188,6 +188,12 @@ fn tick_now() -> u32 {
     unsafe { GetTickCount() }
 }
 
+/// How long ago a tick was (wrapping every 49 days). A last-input tick a few ms ahead of the clock read here is "just
+/// now", not 49 days ago: taken plainly it read as the PC long idle just as someone typed.
+fn since_tick(last: u32) -> Duration {
+    Duration::from_millis((tick_now().wrapping_sub(last) as i32).max(0) as u64)
+}
+
 /// The PC's last-input time right after our own nudges, which must not be mistaken for a person.
 static OWN_INPUT: AtomicU32 = AtomicU32::new(0);
 /// The person's last input before those nudges.
@@ -199,7 +205,7 @@ pub fn idle_time() -> Duration {
     if last == OWN_INPUT.load(Ordering::SeqCst) {
         last = PERSON_INPUT.load(Ordering::SeqCst);
     }
-    Duration::from_millis(tick_now().wrapping_sub(last) as u64)
+    since_tick(last)
 }
 
 /// The person's last input (GetLastInputInfo's tick), our own sends left out.
@@ -218,7 +224,7 @@ pub fn note_own_input(person: u32) {
 /// Input within USER_IDLE_NEEDED; our own nudges don't count.
 pub fn person_active() -> bool {
     let last = last_input_tick();
-    last != OWN_INPUT.load(Ordering::SeqCst) && Duration::from_millis(tick_now().wrapping_sub(last) as u64) < USER_IDLE_NEEDED
+    last != OWN_INPUT.load(Ordering::SeqCst) && since_tick(last) < USER_IDLE_NEEDED
 }
 
 /// A window left as it is (in view): only its place in the stack is noted, to go back to.
@@ -387,9 +393,11 @@ fn hidden(h: isize, place: (isize, i32), minimized: bool, click_through: bool) -
     let (mut key, mut alpha, mut flags) = (0u32, 255u8, 0u32);
     let mut had = false;
     if (ex & WS_EX_LAYERED) != 0 {
-        if let Some((k, a, f)) = layered_attributes(h) {
-            (key, alpha, flags, had) = (k, a, f, true);
-        }
+        (key, alpha, flags, had) = match layered_attributes(h) {
+            Some((k, a, f)) => (k, a, f, true),
+            // Layered another way (UpdateLayeredWindow): nothing to read, and `hide`'s alpha would stay. Shown fully again.
+            None => (0, 255, LWA_ALPHA, true),
+        };
     }
     let before = Before { window: h, ex_style: ex, had_attributes: had, key, alpha, flags, above: place.0, depth: place.1, minimized };
     set_ex_style(h, ex | WS_EX_LAYERED | if click_through { WS_EX_TRANSPARENT } else { 0 });

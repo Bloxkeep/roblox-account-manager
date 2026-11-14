@@ -24,6 +24,8 @@ pub struct UpdatesState {
     /// (see UpdateOffersAtLock), so the sooner it is known the better.
     pub next_update_check: Cell<Stamp>,
     pub next_roblox_version_check: Cell<Stamp>,
+    /// When Roblox's old logs are next cleared (roblox_log_watcher::clean_old_logs): at the first tick, then daily.
+    pub next_log_clean: Cell<Stamp>,
     pub latest_roblox: RefCell<Option<ClientVersion>>,
     /// The version that ran before an update, until the page has shown what's new since then.
     pub updated_from: RefCell<Option<String>>,
@@ -36,6 +38,7 @@ impl Default for UpdatesState {
             updater: RefCell::new(Arc::new(AppUpdater::new())),
             next_update_check: Cell::new(Stamp::utc_now()),
             next_roblox_version_check: Cell::new(stamp_min()),
+            next_log_clean: Cell::new(stamp_min()),
             latest_roblox: RefCell::new(None),
             updated_from: RefCell::new(None),
         }

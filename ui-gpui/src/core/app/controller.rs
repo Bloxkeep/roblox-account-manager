@@ -21,7 +21,7 @@ use super::accounts::BootProgress;
 use crate::core::base::{Cancel, Fail, Guid, Res, Stamp};
 use crate::core::game_target::GameTarget;
 use crate::core::models::{Account, stamp_min};
-use crate::core::roblox_api::{GameInfo, Presence, realm};
+use crate::core::roblox_api::{GameInfo, HTTP_REQUEST_EXCEPTION, JSON_EXCEPTION, Presence, TASK_CANCELED_EXCEPTION, fail_type_name, is_fail_kind, realm};
 use crate::core::roblox_log_watcher::RobloxLogWatcher;
 use crate::core::roblox_usage::RobloxUsage;
 use crate::core::vault::{self, Vault};
@@ -48,11 +48,14 @@ pub struct PendingLaunch {
     pub open_retries: i32,
     /// The frame rate limit Bloxkeep gave it as it opened; 0: none. Its card says so.
     pub fps_limit: i32,
+    /// Opened by Bloxkeep on Roblox's home screen: every game in it is the person's pick, and a drop goes back to the one
+    /// it was in. Not a window adopted from outside Bloxkeep, whose server may be a private one (audit R9).
+    pub home_screen: bool,
 }
 
 impl PendingLaunch {
     pub fn new(account_id: Guid, before: HashSet<i32>, started_at: Stamp, target: Option<GameTarget>, rejoin: bool, preset_id: Option<Guid>) -> PendingLaunch {
-        PendingLaunch { account_id, before, started_at: Cell::new(started_at), target, rejoin, preset_id, tracker: None, open_retries: 0, fps_limit: 0 }
+        PendingLaunch { account_id, before, started_at: Cell::new(started_at), target, rejoin, preset_id, tracker: None, open_retries: 0, fps_limit: 0, home_screen: false }
     }
 }
 
@@ -185,6 +188,9 @@ pub struct ControllerState {
     pub rejoins_in_a_row: RefCell<HashMap<Guid, i32>>,
     pub offline_strikes: RefCell<HashMap<Guid, i32>>,
     pub vault: RefCell<Option<Arc<Vault>>>,
+    /// The vault `vault_token` last saw and its number: the Weak keeps its memory from being reused by the next vault
+    /// (an address alone came back the same after a lock and unlock), while its contents go with the last strong one.
+    pub last_vault: RefCell<(std::sync::Weak<Vault>, usize)>,
     pub launch_cts: RefCell<Option<Cancel>>,
     pub rejoin_cts: RefCell<Option<Cancel>>,
     /// While a multi-account launch waits between two: the accounts still to open (rejoins of the others go
@@ -259,6 +265,7 @@ impl Default for ControllerState {
             rejoins_in_a_row: RefCell::new(HashMap::new()),
             offline_strikes: RefCell::new(HashMap::new()),
             vault: RefCell::new(None),
+            last_vault: RefCell::new((std::sync::Weak::new(), 0)),
             launch_cts: RefCell::new(None),
             rejoin_cts: RefCell::new(None),
             launch_waiting: RefCell::new(None),
@@ -464,16 +471,25 @@ pub fn error_text(fail: &Fail) -> String {
         Fail::User(m) => m.clone(),
         Fail::Roblox { message, .. } => message.clone(),
         Fail::Other(m) if vault::is_invalid_password(fail) => m.clone(),
-        // TaskCanceledException: a call off ("cancelled", base::Cancel::check).
-        Fail::Other(m) if m == "cancelled" => {
-            log::note(&format!("TaskCanceledException: {m}")); // offline, most likely: the reason without a stack
+        // HttpRequestException or TaskCanceledException (a call off: "cancelled", base::Cancel::check).
+        Fail::Other(m) if is_fail_kind(fail, HTTP_REQUEST_EXCEPTION) || is_fail_kind(fail, TASK_CANCELED_EXCEPTION) => {
+            log::note(&format!("{}: {m}", fail_type_name(fail))); // offline, most likely: the reason without a stack
             l::t("Couldn't reach Roblox. Check your internet connection and try again.")
         }
-        Fail::Other(_) => {
+        // The C#'s sentence by the exception's type: access denied, a file in use, unexpected JSON (an io::Error's text
+        // ends with "(os error N)"; 5 is access denied).
+        Fail::Other(m) => {
             log::write(fail);
-            // PORT: the C# picks a sentence by the exception's type (access denied, a file in use, unexpected JSON);
-            // Fail::Other carries only its text, so every other failure gets the general one.
-            l::t("Something went wrong. Try again in a moment.")
+            match os_error_code(m) {
+                Some(5) => l::t("Windows denied access to the file."),
+                // Only the file errors (not found, path not found, in use, locked): out of memory (8), a small page file
+                // (1455), a socket (10000 and up) aren't about a file.
+                // Disk full (39, 112) and a file mapped by another program (1224) are IOExceptions in the C# too.
+                Some(2 | 3 | 32 | 33 | 39 | 112 | 1224) => l::t("Windows couldn't read or write the file (another program may be using it)."),
+                Some(_) => l::t("Something went wrong. Try again in a moment."),
+                None if is_fail_kind(fail, JSON_EXCEPTION) => l::t("Roblox sent an answer Bloxkeep didn't expect. Try again in a moment."),
+                None => l::t("Something went wrong. Try again in a moment."),
+            }
         }
     }
 }
@@ -571,9 +587,9 @@ impl App {
         if at_start && !multi_instance::armed() {
             multi_instance::enable();
         }
-        // PORT: SystemEvents.PowerModeChanged, SystemEvents.TimeChanged and NetworkChange.NetworkAvailabilityChanged are
-        // WinForms/.NET events; the window passes WM_POWERBROADCAST and WM_TIMECHANGE (and the network watcher its
-        // changes) to on_power_mode_changed, on_time_changed and on_network_availability_changed (AppController.Power).
+        // PORT: SystemEvents.PowerModeChanged and TimeChanged come as WM_POWERBROADCAST and WM_TIMECHANGE to the shell
+        // window (shell_form's wnd_proc); NetworkChange.NetworkAvailabilityChanged is this watcher (AppController.Power).
+        super::power::watch_network();
         self.note_version();
     }
 
@@ -623,7 +639,15 @@ impl App {
     /// upset it, so wait past the longest seen; an account the game is known to have banned is asked at once (the
     /// owner's wish, 2026-10-21).
     pub fn join_check_after(&self, account: &Account, target: &GameTarget) -> Duration {
-        if self.game_ban_of(account, Some(target.place_id)).is_some() { Duration::from_secs(5) } else { Duration::from_secs(40) }
+        // A chosen server is asked about as a party's is (SERVER_CHECK): one that had ended sat on Roblox's "This experience
+        // has ended" for a minute before another was tried (the owner's, 2026-11-14).
+        if self.game_ban_of(account, Some(target.place_id)).is_some() {
+            Duration::from_secs(5)
+        } else if target.job_id.as_deref().is_some_and(|j| !j.is_empty()) {
+            super::launching::SERVER_CHECK
+        } else {
+            Duration::from_secs(40)
+        }
     }
 
     // ───────────────────────────── bridge ─────────────────────────────
@@ -661,6 +685,12 @@ impl App {
     }
 
     pub fn progress(&self, text: Option<&str>) {
+        // The clear names nobody, so it goes through the lock screen too: a check that ends behind it would otherwise
+        // leave its banner up after unlocking.
+        if text.is_none() {
+            self.post(&format!("{{\"type\":\"event\",\"name\":\"progress\",\"data\":{}}}", json!({ "text": Value::Null })));
+            return;
+        }
         self.emit("progress", json!({ "text": text }));
     }
 
@@ -676,7 +706,7 @@ impl App {
     /// always push, so a control the page changed on its own is put back when the app refused the change.
     pub fn push_state_if_changed(&self) {
         if self.controller.page_attached.get() && !self.controller.page_asleep.get() {
-            let state = self.build_state();
+            let state = super::state::with_kept_probes(|| self.build_state());
             self.post_state(&state, false);
         }
     }
@@ -694,6 +724,7 @@ impl App {
     /// page: every failure becomes an error reply instead of a crash.
     pub async fn handle_message(self: &Rc<Self>, json: &str) {
         let mut id: i64 = 0;
+        let mut asked = String::new();
         let outcome: Res<Value> = async {
             let root: Value = match serde_json::from_str(json) {
                 Ok(v) => v,
@@ -709,12 +740,19 @@ impl App {
                 _ => return Err(Fail::other("The requested operation requires an element of type 'String'.")),
             };
             let args = root.get("args").cloned().unwrap_or(Value::Null);
+            asked = cmd.clone();
             self.handle(&cmd, &args).await
         }
         .await;
         let reply = match outcome {
             Ok(result) => format!("{{\"type\":\"reply\",\"id\":{id},\"ok\":true,\"result\":{result}}}"),
-            Err(fail) => format!("{{\"type\":\"reply\",\"id\":{id},\"ok\":false,\"error\":{}}}", quoted(&error_text(&fail))),
+            Err(fail) => {
+                // An unexpected failure is logged by error_text; which command it came from goes just before it.
+                if matches!(fail, Fail::Other(_)) && !vault::is_invalid_password(&fail) {
+                    log::note(&format!("Command \"{asked}\" failed:"));
+                }
+                format!("{{\"type\":\"reply\",\"id\":{id},\"ok\":false,\"error\":{}}}", quoted(&error_text(&fail)))
+            }
         };
         self.post(&reply);
     }
@@ -745,6 +783,17 @@ impl App {
     async fn dispatch_command(self: &Rc<Self>, cmd: &str, a: &Value) -> Res<Value> {
         match cmd {
             "getState" => done(self.initial_state()),
+            "console" => {
+                let since = a.get("version").and_then(Value::as_u64).unwrap_or(u64::MAX);
+                Ok(match log::console_lines(since) {
+                    Some((version, lines)) => json!({ "version": version, "lines": lines }),
+                    None => Value::Null,
+                })
+            }
+            "consoleClear" => {
+                log::console_clear();
+                Ok(Value::Null)
+            }
             "keepView" => done(self.keep_view(&str_of(a, "view"), bool_of(a, "restart"))),
             "pageBusy" => done(self.set_page_busy(bool_of(a, "busy"))),
             "pageShown" => done(self.on_page_shown().await),
@@ -769,13 +818,13 @@ impl App {
                 if has(a, "fade", JsonKind::Number) { int32_of(a, "fade") } else { None },
                 if has(a, "blur", JsonKind::Number) { int32_of(a, "blur") } else { None },
             )),
-            "pickThemePicture" => done(self.pick_theme_picture()),
+            "pickThemePicture" => done(self.pick_theme_picture().await),
             "clearThemePicture" => done(self.clear_theme_picture()),
             "saveTheme" => done(self.save_theme(&str_of(a, "name"))),
             "useSavedTheme" => done(self.use_saved_theme(&str_of(a, "id"))),
             "deleteSavedTheme" => done(self.delete_saved_theme(&str_of(a, "id"))),
-            "exportTheme" => done(self.export_theme(&str_of(a, "id"))),
-            "importTheme" => done(self.import_theme()),
+            "exportTheme" => done(self.export_theme(&str_of(a, "id")).await),
+            "importTheme" => done(self.import_theme().await),
             "setCloseToTray" => done(self.set_close_to_tray(bool_of(a, "enabled"))),
             "setStartWithWindows" => done(self.set_start_with_windows(bool_of(a, "enabled"))),
             "setHotkeys" => done(self.set_hotkeys(bool_of(a, "enabled"))),
@@ -814,7 +863,7 @@ impl App {
                 done(self.login_step(move || async move { app.login_captcha().await }, false).await)
             }
             "addViaCookie" => done(self.add_via_cookie(a).await),
-            "vaultImportPick" => done(self.vault_import_pick()),
+            "vaultImportPick" => done(self.vault_import_pick().await),
             "vaultImportOpen" => done(self.vault_import_open(&str_of(a, "password")).await),
             "vaultImportApply" => done(self.vault_import_apply(a)),
             "vaultImportCancel" => done(self.drop_vault_import(false)),
@@ -822,7 +871,7 @@ impl App {
             "setAutoRejoin" => done(self.set_auto_rejoin(&ids_of(a), bool_of(a, "enabled"))),
             "cancelRejoin" => done(self.cancel_rejoin(id_of(a))),
             "setUseRobloxConfig" => done(self.set_use_roblox_config(&ids_of(a), bool_of(a, "enabled"))),
-            "setFpsCap" => done(self.set_fps_cap(&ids_of(a), long_of(a, "fps") as i32)),
+            "setFpsCap" => done(self.set_fps_cap(&ids_of(a), long_of(a, "fps").clamp(0, i32::MAX as i64) as i32)),
             "setMain" => done(self.set_main(&ids_of(a), bool_of(a, "on"))),
             "makeFriends" => done(self.make_friends(&ids_of(a)).await),
             "friendAct" => done(self.friend_act(a).await),
@@ -878,8 +927,9 @@ impl App {
             "macroTest" => done(self.macro_test(a).await),
             "recordMacro" => done(self.record_macro(parse_guid(&str_of(a, "accountId")).unwrap_or(Guid::nil()))),
             "stopRecording" => done(self.stop_recording().await),
-            "importMacro" => done(self.import_macro()),
-            "exportMacro" => done(self.export_macro(id_of(a))),
+            "importMacro" => done(self.import_macro().await),
+            "pickModFile" => done(self.pick_mod_file().await),
+            "exportMacro" => done(self.export_macro(id_of(a)).await),
             "showPanel" => done(self.show_panel(id_of(a), true)),
             "hidePanel" => done(self.show_panel(id_of(a), false)),
             "setOption" => {
@@ -918,6 +968,17 @@ impl App {
             // (page "settings": on Roblox's own Settings page, for what it keeps there only: privacy, security…)
             "openWebsite" => done(self.open_website(id_of(a), (str_of(a, "page") == "settings").then_some(super::website::SETTINGS_URL))),
             "openAppeal" => done(self.open_website(id_of(a), Some(super::website::APPEAL_URL))),
+            // Marketplace › Watching: a change to a watched thing, said as Bloxkeep's other news is.
+            "notifyItem" => {
+                self.notify(&str_of(a, "text"), "info", "item", Guid::nil(), true, Some(&str_of(a, "key")));
+                done(Value::Null)
+            }
+            "openModPage" => done(App::open_url(&format!("https://gamebanana.com/mods/{}", long_of(a, "id")))),
+            // Roblox › Mods: every file a mod gave back to Roblox's own, now.
+            "restoreMods" => {
+                let (back, left) = crate::core::rt::blocking(crate::core::roblox_mods::restore_all).await;
+                done(serde_json::json!({ "back": back, "left": left }))
+            }
             "openWebsiteBlank" => done(self.open_blank_website()),
             "openDataFolder" => done(App::open_data_folder()),
             "showPath" => done(self.show_path(&str_of(a, "which"))),
@@ -931,29 +992,29 @@ impl App {
             "toggleMini" => done(self.toggle_mini()),
             "window" => done(self.control_window(&str_of(a, "action"))),
             "setBackup" => done(self.set_backup(a)),
-            "pickBackupFolder" => done(self.pick_backup_folder()),
+            "pickBackupFolder" => done(self.pick_backup_folder().await),
             "openBackupFolder" => done(App::open_backup_folder()),
             "backupSuggestions" => done(self.refresh_backup_suggestions()),
             "backupNow" => done(self.backup_now().await),
-            "restoreBackup" => done(self.restore_backup()),
+            "restoreBackup" => done(self.restore_backup().await),
             "pickVault" => done(self.show_vault_picker()),
             "closeVaultPicker" => done(self.close_vault_picker()),
             "selectVault" => done(self.select_vault(&str_of(a, "id"))),
             "addVault" => done(self.add_vault()),
             "cancelAddVault" => done(self.cancel_add_vault()),
             "renameVault" => done(self.rename_vault(&str_of(a, "id"), &str_of(a, "name"))),
-            "pickVaultPicture" => done(self.pick_vault_picture(&str_of(a, "id"))),
+            "pickVaultPicture" => done(self.pick_vault_picture(&str_of(a, "id")).await),
             "clearVaultPicture" => done(self.clear_vault_picture(&str_of(a, "id"))),
             "removeVault" => done(self.remove_vault(&str_of(a, "id"))),
             "setAskVault" => done(self.set_ask_vault(bool_of(a, "enabled"))),
-            "pickLauncher" => done(self.pick_launcher()),
+            "pickLauncher" => done(self.pick_launcher().await),
             "playStats" => {
                 let game = opt_str(a, "game").filter(|g| !g.is_empty());
                 done(self.play_stats_async(long_of(a, "days") as i32, game).await)
             }
             "todayStrips" => done(self.today_strips()),
             "activity" => done(self.activity_list(a)),
-            "exportActivity" => done(self.export_activity(a)),
+            "exportActivity" => done(self.export_activity(a).await),
             "findPlayer" => done(self.find_player(a).await),
             "joinServer" => done(self.join_server(a).await),
             "forgetPlayer" => done(self.forget_player(&str_of(a, "name"))),
@@ -967,7 +1028,7 @@ impl App {
             "discordTest" => done(self.send_discord_now(false).await),
             "setPhone" => done(self.set_phone(a)),
             "feedCards" => done(self.feed_cards_dto()),
-            "wikiGames" => done(self.wiki_games().await),
+            "wikiGames" => done(self.wiki_games(bool_of(a, "again")).await),
             "gameLooks" => done(self.game_looks(a).await),
             "playedGames" => done(self.played_games()),
             "playSessions" => done(self.play_sessions_raw()),

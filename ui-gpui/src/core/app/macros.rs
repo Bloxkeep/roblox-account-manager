@@ -10,7 +10,7 @@ use std::{
     cell::{Cell, RefCell},
     collections::{HashMap, HashSet},
     rc::Rc,
-    sync::{Arc, MutexGuard, OnceLock, atomic::Ordering, mpsc},
+    sync::{Arc, Mutex, MutexGuard, OnceLock, atomic::Ordering, mpsc},
     thread::ThreadId,
     time::Duration,
 };
@@ -27,8 +27,9 @@ use crate::core::macro_desk::{ClientFn, MacroDesk, PersonAtFn, RawWorksFn};
 use crate::core::macro_model::{Macro, MacroTest, macro_rules, macro_rules::page_json, macro_rules::page_json::Shape, net};
 use crate::core::macro_player::{self, IMacroDesk, MacroPlayer, MacroRun, RunRef};
 use crate::core::macro_recorder::{MacroRecorder, Post, macro_recording};
+use crate::core::roblox_input::RawInput;
 use crate::core::win_kit::{Picture, Rect};
-use crate::core::{input_turn, l, log, macro_ocr, macro_templates, macro_vision, multi_instance, roblox_processes, rt, ui, window_shot};
+use crate::core::{input_turn, l, log, macro_ocr, macro_vision, multi_instance, roblox_processes, rt, ui, window_shot};
 
 /// Ctrl+Alt+0 stops every macro and a recording; Ctrl+Alt+1…9 are ids 11…19; F8 (alone) ends a recording.
 pub const HOTKEY_STOP_MACROS: i32 = 10;
@@ -48,6 +49,8 @@ pub struct MacrosState {
     pub macro_player: RefCell<Option<Arc<MacroPlayer>>>,
     pub macro_desk: RefCell<Option<Arc<MacroDesk>>>,
     pub recorder: RefCell<Option<MacroRecorder>>,
+    /// The recorder's count at the last check of its steps against a macro's most (tick_macros).
+    pub recorder_steps_checked: Cell<i32>,
     pub macro_sweep: Cell<Option<f64>>,
     /// The accounts each macro last ran on (Ctrl+Alt+digit of a macro for the selected accounts, with no window in front).
     pub macro_last_accounts: RefCell<HashMap<Guid, Vec<Guid>>>,
@@ -133,6 +136,16 @@ fn cut_units(text: &str, max: usize) -> String {
     out
 }
 
+/// Raw input's handle for the desk; asks the core only until the input exists (made on the first process tick).
+fn raw_input(slot: &OnceLock<RawInput>) -> Option<&RawInput> {
+    if slot.get().is_none()
+        && let Some(handle) = ask_core(Duration::from_secs(1), |app| app.anti_afk.roblox_input.borrow().as_ref().map(|i| i.handle())).flatten()
+    {
+        let _ = slot.set(handle);
+    }
+    slot.get()
+}
+
 impl App {
     // ───────────────────────── the desk and the player ─────────────────────────
 
@@ -142,12 +155,25 @@ impl App {
             return desk;
         }
         let _ = CORE.set(std::thread::current().id());
-        let client: ClientFn = Arc::new(|account| ask_core(Duration::from_secs(2), move |app| app.macro_client(account)).flatten());
-        // PORT: C# read _robloxInput straight from the player (all on the UI thread); here the App holds it on the core.
-        let person_at: PersonAtFn =
-            Arc::new(|| ask_core(Duration::from_secs(1), |app| app.anti_afk.roblox_input.borrow().as_ref().and_then(|i| i.person_at())).flatten());
-        let raw_works: RawWorksFn =
-            Arc::new(|| ask_core(Duration::from_secs(1), |app| app.anti_afk.roblox_input.borrow().as_ref().is_some_and(|i| i.working())).unwrap_or(false));
+        // The core busy past the wait (a vault save, a slow tick): the last answer for that account, not "no window" (which
+        // ended the run as windowGone; the C# asked on its own thread and always had an answer).
+        let last: Arc<Mutex<HashMap<Guid, Option<(i32, i32, bool)>>>> = Arc::new(Mutex::new(HashMap::new()));
+        let client: ClientFn = Arc::new(move |account| match ask_core(Duration::from_secs(2), move |app| app.macro_client(account)) {
+            Some(answer) => {
+                last.lock().unwrap_or_else(|e| e.into_inner()).insert(account, answer);
+                answer
+            }
+            None => last.lock().unwrap_or_else(|e| e.into_inner()).get(&account).copied().flatten(),
+        });
+        // PORT: C# read _robloxInput straight from the player (all on the UI thread). Here the desk keeps raw input's
+        // handle and reads its atomics: no core round trip per frame. Fetched once from the core if not made yet.
+        let raw: Arc<OnceLock<RawInput>> = Arc::new(OnceLock::new());
+        if let Some(handle) = self.anti_afk.roblox_input.borrow().as_ref().map(|i| i.handle()) {
+            let _ = raw.set(handle);
+        }
+        let raw_at = raw.clone();
+        let person_at: PersonAtFn = Arc::new(move || raw_input(&raw_at).and_then(|i| i.person_at()));
+        let raw_works: RawWorksFn = Arc::new(move || raw_input(&raw).is_some_and(|i| i.working()));
         let desk = Arc::new(MacroDesk::new(client, Some(person_at), Some(raw_works)));
         *self.macros.macro_desk.borrow_mut() = Some(desk.clone());
         desk
@@ -172,14 +198,18 @@ impl App {
     fn wire_macro_player(&self, player: &Arc<MacroPlayer>) {
         *player.changed.write().unwrap_or_else(|e| e.into_inner()) =Some(Arc::new(|| rt::post(|| App::with(|app| app.macros_changed()))));
         // A Run a macro step plays the saved macro as it is when the run starts.
+        // The core busy past a wait (a vault save, a slow tick) isn't "no such macro" (that ended the step as deleted; the C#
+        // read it on the UI thread and always had an answer): asked again, 10 s each, before giving up.
         *player.find_macro.write().unwrap_or_else(|e| e.into_inner()) = Some(Arc::new(|id| {
-            ask_core(Duration::from_secs(2), move |app| {
-                if app.open().is_none() {
-                    return None;
-                }
-                app.vault(|d| d.settings.macros.iter().find(|m| m.id == id).map(macro_rules::copy)).ok().flatten()
-            })
-            .flatten()
+            let ask = move || {
+                ask_core(Duration::from_secs(10), move |app| {
+                    if app.open().is_none() {
+                        return None;
+                    }
+                    app.vault(|d| d.settings.macros.iter().find(|m| m.id == id).map(macro_rules::copy)).ok().flatten()
+                })
+            };
+            ask().or_else(ask).flatten()
         }));
         // Anti-AFK counts the turn as the window's activity: a nudge right after it would be for nothing.
         *player.played.write().unwrap_or_else(|e| e.into_inner()) = Some(Arc::new(|_, pid| {
@@ -734,9 +764,10 @@ impl App {
         // Runs wait while recording: their input would be recorded too, and would fight the person's.
         // The recorder first: when Windows refuses it, the runs go on.
         let post: Post = Arc::new(|job| rt::post(job));
-        // PORT: C# handed the recorder AppController's RobloxInput; here the App owns its RobloxInput (not shared), so the
-        // recorder gets none and guesses the camera's turn from the pointer, as it does when raw input isn't working.
-        let recorder = MacroRecorder::new(account_id, window.pid, window.handle, None, Some(post))?;
+        // The App's raw input, as C# handed the recorder its RobloxInput: Roblox keeps the pointer still while the camera
+        // turns, so the turn is read from the mouse itself (without it, guessed from the pointer).
+        let raw = self.anti_afk.roblox_input.borrow().as_ref().map(|i| i.handle());
+        let recorder = MacroRecorder::new(account_id, window.pid, window.handle, raw, Some(post))?;
         if let Some(player) = self.macro_player() {
             player.stop(None, "recording", None, false);
         }
@@ -774,6 +805,15 @@ impl App {
             (steps, recorder)
         })
         .await;
+        self.macros.recorder_steps_checked.set(-1);
+        // Recorded between two checks past the most: its end left out, said.
+        if recorder.left_out > 0 {
+            let text = l::f(
+                "The recording was longer than a macro holds ({0} steps): its last {1} steps were left out.",
+                &[&macro_rules::MAX_STEPS, &recorder.left_out],
+            );
+            self.notify(&text, "warn", "macro", recorder.account_id, true, None);
+        }
         self.push_state();
         if self.controller.vault.borrow().is_some() {
             let steps: Vec<Value> = steps.iter().map(|s| page_json::write(s, Shape::Step)).collect();
@@ -796,22 +836,83 @@ impl App {
 
     // ───────────────────────── files ─────────────────────────
 
-    pub fn import_macro(&self) -> Res<Value> {
+    pub async fn import_macro(&self) -> Res<Value> {
         self.vault(|_| ())?;
         let t = MACRO_FILE_TYPE;
         let filter = format!(
-            "{} (*{t}; *.rec)|*{t};*.rec|{} (*{t})|*{t}|{} (*.rec)|*.rec",
+            "{} (*{t}; *.rec; *.py; *.json; *.txt; *.exe)|*{t};*.rec;*.py;*.json;*.txt;*.exe|{} (*{t})|*{t}|{} (*.rec)|*.rec|{} (*.py)|*.py|{} (*.exe; GlorpSettings.json; Config.txt)|*.exe;*.json;*.txt",
             l::t("Macros"),
             l::t("Bloxkeep macro"),
-            l::t("TinyTask recording")
+            l::t("TinyTask recording"),
+            l::t("Python macro script"),
+            l::t("Fishing macro settings")
         );
         let owner = self.controller.owner.get();
         let title = l::t("Add a macro from a file");
         let dir = documents();
-        let Some(path) = ui::modal(|| open_file_dialog(owner, &title, &filter, &dir)) else {
+        // On a worker thread, so the core keeps answering while the dialog is open (a running macro asks it about its
+        // windows; a stalled core reads as the window gone).
+        let Some(path) = rt::blocking(move || ui::modal(|| open_file_dialog(owner, &title, &filter, &dir))).await else {
             return Ok(Value::Null);
         };
-        Ok(App::for_page(&App::read_macro_file(&path)?))
+        self.vault(|_| ())?; // asked again: it may have locked while the dialog was open
+        let (m, left_out, lines) = App::read_macro_file_full(&path)?;
+        // A Python script's lines that aren't steps (an `if`, a screenshot search…): said, so they can be redone in
+        // the editor by hand.
+        // Another fishing macro's settings: what of it didn't carry over, in its own sentences.
+        if !lines.is_empty() && !path.to_lowercase().ends_with(".py") {
+            self.notify(&lines.join(" "), "warn", "macro", Guid::nil(), true, None);
+        } else if !lines.is_empty() {
+            let first: Vec<&str> = lines.iter().take(3).map(String::as_str).collect();
+            let text = l::f("{0} lines of the script aren't steps Bloxkeep can play and were left out: {1}", &[&lines.len(), &first.join(" · ")]);
+            self.notify(&text, "warn", "macro", Guid::nil(), true, None);
+        }
+        if left_out > 0 {
+            let text = l::f("The recording was longer than a macro holds ({0} steps): its last {1} steps were left out.", &[&macro_rules::MAX_STEPS, &left_out]);
+            self.notify(&text, "warn", "macro", Guid::nil(), true, None);
+        }
+        Ok(App::for_page(&m))
+    }
+
+    /// A mod file on this PC to put in (Roblox › Mods › Import): its path, or null when the box was closed. The page
+    /// puts it in (modstore::import).
+    pub async fn pick_mod_file(&self) -> Res<Value> {
+        let filter = format!("{} (*.zip; *.rar; *.7z; *.png; *.ogg; *.ttf…)|*.zip;*.rar;*.7z;*.png;*.jpg;*.jpeg;*.webp;*.tga;*.dds;*.ktx;*.ogg;*.mp3;*.wav;*.ttf;*.otf;*.mesh", l::t("Roblox mods"));
+        let owner = self.controller.owner.get();
+        let title = l::t("Add a mod from a file");
+        let dir = std::env::var("USERPROFILE").map(|h| format!("{h}\\Downloads")).unwrap_or_else(|_| documents());
+        let Some(path) = rt::blocking(move || ui::modal(|| open_file_dialog(owner, &title, &filter, &dir))).await else {
+            return Ok(Value::Null);
+        };
+        Ok(json!({ "path": path }))
+    }
+
+    /// A fishing tool's exe (IRUS Glorp, Idiotproof): never run, only its folder looked at, for the settings file
+    /// such a tool keeps next to itself once it has been opened. Glorp's own defaults when it hasn't saved any yet.
+    fn read_fishing_exe(path: &str) -> Res<(Macro, Vec<String>)> {
+        let screen = crate::core::win_form::primary_screen().bounds;
+        let screen = (screen.width as f64, screen.height as f64);
+        let exe = std::path::Path::new(path);
+        let dir = exe.parent().unwrap_or(std::path::Path::new("."));
+        for name in ["GlorpSettings.json", "Config.txt"] {
+            let file = dir.join(name);
+            if std::fs::metadata(&file).ok().is_none_or(|m| !m.is_file() || m.len() > MAX_MACRO_IMPORT) {
+                continue;
+            }
+            let Ok(bytes) = std::fs::read(&file) else { continue };
+            let Ok(json) = serde_json::from_slice::<Value>(bytes.strip_prefix(&[0xEF, 0xBB, 0xBF]).unwrap_or(&bytes)) else { continue };
+            if let Some(made) = crate::core::macro_fishing::from_settings(&json, screen) {
+                return Ok(made);
+            }
+        }
+        let stem = exe.file_stem().map(|s| s.to_string_lossy().to_lowercase()).unwrap_or_default();
+        if stem.contains("glorp") {
+            if let Some((m, mut said)) = crate::core::macro_fishing::from_settings(&crate::core::macro_fishing::glorp_defaults(), screen) {
+                said.insert(0, l::t("Glorp hasn't saved its settings next to it yet, so its own defaults were used."));
+                return Ok((m, said));
+            }
+        }
+        Err(user(l::t("No fishing macro settings next to that program. Open it once so it saves them (GlorpSettings.json or Config.txt), then pick it again.")))
     }
 
     /// A macro not saved yet, for the editor: its id empty ("").
@@ -825,6 +926,19 @@ impl App {
 
     /// A macro from a file, not saved: the editor opens it, and Save checks it.
     pub fn read_macro_file(path: &str) -> Res<Macro> {
+        App::read_macro_file_whole(path).map(|(m, _)| m)
+    }
+
+    /// As read_macro_file, with the steps a TinyTask recording longer than a macro holds left out (0 for none).
+    pub fn read_macro_file_whole(path: &str) -> Res<(Macro, usize)> {
+        App::read_macro_file_full(path).map(|(m, n, _)| (m, n))
+    }
+
+    /// As read_macro_file_whole, with a Python script's lines that were left out ("12: if hp < 50:").
+    pub fn read_macro_file_full(path: &str) -> Res<(Macro, usize, Vec<String>)> {
+        if path.to_lowercase().ends_with(".exe") {
+            return App::read_fishing_exe(path).map(|(m, said)| (m, 0, said));
+        }
         let size = std::fs::metadata(path).ok().filter(|m| m.is_file()).map(|m| m.len());
         if size.is_none_or(|len| len > MAX_MACRO_IMPORT) {
             return Err(user(l::t("That file is too big to be a macro.")));
@@ -833,11 +947,24 @@ impl App {
         let stem = std::path::Path::new(path).file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default();
         let name = App::cut_text(&stem, macro_rules::MAX_NAME as usize);
         if path.to_lowercase().ends_with(".rec") {
-            return macro_recording::from_tiny_task(&bytes, if name.is_empty() { "TinyTask" } else { &name });
+            let (made, whole) = macro_recording::from_tiny_task_whole(&bytes, if name.is_empty() { "TinyTask" } else { &name })?;
+            let left_out = whole.saturating_sub(made.steps.len());
+            return Ok((made, left_out, Vec::new()));
+        }
+        if path.to_lowercase().ends_with(".py") {
+            let text = String::from_utf8_lossy(bytes.strip_prefix(&[0xEF, 0xBB, 0xBF]).unwrap_or(&bytes)).into_owned();
+            let (made, lines) = crate::core::macro_python::from_python(&text, if name.is_empty() { "Python" } else { &name })?;
+            return Ok((made, 0, lines));
         }
         // JsonDocument.Parse skips a UTF-8 byte order mark.
         let body = bytes.strip_prefix(&[0xEF, 0xBB, 0xBF]).unwrap_or(&bytes);
         let json: Value = serde_json::from_slice(body).map_err(|_| user(l::t("That isn't a macro.")))?;
+        // Another fishing macro's settings (IRUS Glorp's GlorpSettings.json, Idiotproof's Config.txt): read into
+        // "Cast and reel", its box measured against the main screen (where those tools look).
+        let screen = crate::core::win_form::primary_screen().bounds;
+        if let Some((made, said)) = crate::core::macro_fishing::from_settings(&json, (screen.width as f64, screen.height as f64)) {
+            return Ok((made, 0, said));
+        }
         let mut m = App::read_macro(&json)?;
         m.id = Guid::nil();
         m.hotkey = None; // a hotkey may be another macro's here
@@ -849,10 +976,10 @@ impl App {
         if m.trigger.kind != "manual" && m.targets == "selected" {
             m.targets = "all".into();
         }
-        Ok(m)
+        Ok((m, 0, Vec::new()))
     }
 
-    pub fn export_macro(&self, id: Guid) -> Res<Value> {
+    pub async fn export_macro(&self, id: Guid) -> Res<Value> {
         let m = self.macro_by_id(id)?;
         // Path.GetInvalidFileNameChars() on Windows.
         let invalid = |ch: char| (ch as u32) < 32 || matches!(ch, '"' | '<' | '>' | '|' | ':' | '*' | '?' | '\\' | '/');
@@ -861,7 +988,8 @@ impl App {
         let owner = self.controller.owner.get();
         let title = l::t("Save the macro as a file");
         let dir = documents();
-        let Some(path) = ui::modal(|| save_file_dialog(owner, &title, &filter, &file_name, &dir)) else {
+        // On a worker thread, as Import's.
+        let Some(path) = rt::blocking(move || ui::modal(|| save_file_dialog(owner, &title, &filter, &file_name, &dir))).await else {
             return Ok(Value::Null);
         };
         std::fs::write(&path, App::macro_file_text(&m))?;
@@ -948,8 +1076,29 @@ impl App {
             .borrow()
             .as_ref()
             .is_some_and(|r| now.secs_since(r.starts_at) > crate::core::macro_recorder::MAX_LENGTH.as_secs_f64());
+        // A macro's most steps: the recording stops there and says so, rather than its end being left out unseen
+        // (counted again only after more was recorded; a step is at most two of what the recorder counts, with its wait).
+        let max = macro_rules::MAX_STEPS;
+        let full = if past {
+            None
+        } else {
+            self.macros.recorder.borrow().as_ref().and_then(|r| {
+                let n = r.steps();
+                (n.saturating_mul(2) >= max - 10 && n != self.macros.recorder_steps_checked.get()).then(|| {
+                    self.macros.recorder_steps_checked.set(n);
+                    (r.steps_now() >= (max - 5) as usize, r.account_id)
+                })
+            })
+        };
         if past {
             log::note("Macro recording: reached its 10 minutes.");
+            let app = self.clone();
+            rt::spawn(async move {
+                let _ = app.stop_recording().await;
+            });
+        } else if let Some((true, account)) = full {
+            log::note(&format!("Macro recording: reached a macro's {max} steps."));
+            self.notify(&l::f("Recording stopped: a macro holds up to {0} steps.", &[&max]), "warn", "macro", account, true, None);
             let app = self.clone();
             rt::spawn(async move {
                 let _ = app.stop_recording().await;
@@ -1130,5 +1279,49 @@ impl App {
             (Some(_), Some(seconds)) if self.macro_player().is_some_and(|p| p.active()) => json!({ "seconds": seconds }),
             _ => Value::Null,
         }
+    }
+}
+
+#[cfg(test)]
+mod fishing_exe_tests {
+    use super::App;
+
+    /// A folder as a person has it: the tool's exe (never run; here an empty stand-in) and what sits next to it.
+    fn folder(name: &str, files: &[(&str, &str)]) -> std::path::PathBuf {
+        let dir = std::env::temp_dir().join(format!("bloxkeep-fishing-{name}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        for (f, text) in files {
+            std::fs::write(dir.join(f), text).unwrap();
+        }
+        dir
+    }
+
+    #[test]
+    fn picks_the_settings_next_to_the_exe() {
+        let dir = folder("glorp", &[("IRUS Glorp.exe", ""), ("GlorpSettings.json", r#"{"area_coords":{"x":700,"y":1100,"width":1000,"height":100},"cast_hold_time":0.8,"recast_delay":1.0}"#)]);
+        let (m, left, said) = App::read_macro_file_full(dir.join("IRUS Glorp.exe").to_str().unwrap()).unwrap();
+        assert!(m.name.contains("Glorp") && left == 0 && !said.is_empty());
+        let _ = std::fs::remove_dir_all(&dir);
+
+        let dir = folder("idiot", &[("Windows (1.1).exe", ""), ("Config.txt", "\u{feff}{\"areas\":{\"fish\":{\"x\":765,\"y\":1217,\"width\":1032,\"height\":38}},\"fish\":{\"delay_after_end\":1.0}}")]);
+        let (m, _, _) = App::read_macro_file_full(dir.join("Windows (1.1).exe").to_str().unwrap()).unwrap();
+        assert!(m.name.contains("Idiotproof"));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_glorp_never_opened_uses_its_defaults() {
+        let dir = folder("glorp-new", &[("IRUS_Glorp.exe", "")]);
+        let (m, _, said) = App::read_macro_file_full(dir.join("IRUS_Glorp.exe").to_str().unwrap()).unwrap();
+        assert!(m.name.contains("Glorp") && said.len() >= 2);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn an_exe_with_nothing_next_to_it_says_so() {
+        let dir = folder("bare", &[("Windows (1.1).exe", "")]);
+        assert!(App::read_macro_file_full(dir.join("Windows (1.1).exe").to_str().unwrap()).is_err());
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

@@ -227,25 +227,84 @@ pub fn face(id: &str, name: &str, picture: Option<&str>, size: f32, radius: f32,
 }
 
 /// The faint dots behind the card: one every 26 px, fading out from the middle (the web page's .dots and its mask).
+/// Dots per side of one painted block of the grid.
+const DOT_BLOCK: usize = 4;
+/// Faintness steps a block can take.
+const DOT_LEVELS: usize = 16;
+
+thread_local! {
+    /// A block of dots at each faintness, drawn at the window's pixels (its side in pixels, the pictures).
+    static DOT_TILES: std::cell::RefCell<Option<(u32, Vec<std::sync::Arc<RenderImage>>)>> = const { std::cell::RefCell::new(None) };
+}
+
+/// A block of DOT_BLOCK × DOT_BLOCK dots `side` pixels square, `scale` pixels a point, at faintness `a`.
+fn dot_tile(side: u32, scale: f32, a: f32) -> Option<RenderImage> {
+    let mut px_buf = vec![0u8; (side * side * 4) as usize];
+    let alpha = (a * 255.).round().clamp(0., 255.) as u8;
+    for i in 0..DOT_BLOCK {
+        for j in 0..DOT_BLOCK {
+            // Each dot 2 points square around 13 + 26·n, as the grid had them.
+            let (x0, y0) = (((12. + 26. * i as f32) * scale).round() as u32, ((12. + 26. * j as f32) * scale).round() as u32);
+            let (x1, y1) = (((14. + 26. * i as f32) * scale).round() as u32, ((14. + 26. * j as f32) * scale).round() as u32);
+            for y in y0..y1.min(side) {
+                for x in x0..x1.min(side) {
+                    let at = ((y * side + x) * 4) as usize;
+                    px_buf[at..at + 4].copy_from_slice(&[255, 255, 255, alpha]);
+                }
+            }
+        }
+    }
+    let buffer = image::RgbaImage::from_raw(side, side, px_buf)?;
+    Some(RenderImage::new(vec![image::Frame::new(buffer)]))
+}
+
+/// A faint grid of dots, brightest in the middle. Drawn as blocks of dots made once per window scale (about 350 pictures
+/// on a big screen), not one shape a dot (about 5000 every frame).
 fn dots() -> impl IntoElement {
     canvas(
         |_, _, _| (),
         |bounds, _, window, _| {
             let (w, h) = (f32::from(bounds.size.width), f32::from(bounds.size.height));
             let reach = 0.7 * (w * w + h * h).sqrt() / 2.;
-            let mut y = 13.;
-            while y < h {
-                let mut x = 13.;
-                while x < w {
-                    let far = ((x - w / 2.).powi(2) + (y - h / 2.).powi(2)).sqrt();
+            let scale = window.scale_factor();
+            let block = 26. * DOT_BLOCK as f32;
+            let side = (block * scale).round().max(1.) as u32;
+            let tiles = DOT_TILES.with(|t| {
+                let mut t = t.borrow_mut();
+                if t.as_ref().is_none_or(|(s, _)| *s != side) {
+                    if let Some((_, old)) = t.take() {
+                        for o in old {
+                            let _ = window.drop_image(o);
+                        }
+                    }
+                    let made: Option<Vec<_>> = (0..DOT_LEVELS).map(|l| dot_tile(side, scale, 0.11 * (l as f32 + 1.) / DOT_LEVELS as f32).map(std::sync::Arc::new)).collect();
+                    *t = Some((side, made.unwrap_or_default()));
+                }
+                t.as_ref().map(|(_, v)| v.clone()).unwrap_or_default()
+            });
+            if tiles.len() != DOT_LEVELS {
+                return;
+            }
+            let snap = |v: f32| (v * scale).round() / scale;
+            let shown = side as f32 / scale;
+            let mut by = 0.;
+            while by < h {
+                let mut bx = 0.;
+                while bx < w {
+                    // The faintness at the block's middle, in steps.
+                    let (cx_, cy_) = (bx + block / 2., by + block / 2.);
+                    let far = ((cx_ - w / 2.).powi(2) + (cy_ - h / 2.).powi(2)).sqrt();
                     let a = 0.11 * (1. - far / reach);
                     if a > 0.004 {
-                        let at = Bounds::new(bounds.origin + point(px(x - 1.), px(y - 1.)), size(px(2.), px(2.)));
-                        window.paint_quad(fill(at, ca(WHITE, a)).corner_radii(px(1.)));
+                        let level = ((a / 0.11 * DOT_LEVELS as f32).round() as usize).clamp(1, DOT_LEVELS) - 1;
+                        let x = snap(f32::from(bounds.origin.x) + bx);
+                        let y = snap(f32::from(bounds.origin.y) + by);
+                        let at = Bounds::new(point(px(x), px(y)), size(px(shown), px(shown)));
+                        let _ = window.paint_image(at, at, Corners::all(px(0.)), tiles[level].clone(), 0, false);
                     }
-                    x += 26.;
+                    bx += block;
                 }
-                y += 26.;
+                by += block;
             }
         },
     )
@@ -264,7 +323,7 @@ fn lang_switch(root: &Root, cx: &mut Context<Root>) -> Div {
             segment(SharedString::from(format!("lock-lang-{lang}")), on)
                 .h(px(26.))
                 .px(px(10.))
-                .text_size(px(12.))
+                .text_size(px(T_S))
                 .font_weight(FontWeight::SEMIBOLD)
                 .cursor_pointer()
                 .child(label)
@@ -358,7 +417,7 @@ pub fn lock(root: &Root, window: &mut Window, cx: &mut Context<Root>) -> AnyElem
             // As the kit's fields: a border that can be seen at rest, stronger under the pointer.
             .border_color(if bad { c(BAD) } else { ca(TEXT, 0.26) })
             .when(!bad, |d| d.hover(|s| s.border_color(ca(TEXT, 0.5))))
-            .text_size(px(14.))
+            .text_size(px(T_L))
             .text_color(c(TEXT))
             .child(div().flex_1().min_w_0().child(Input::new(state).appearance(false)))
     };
@@ -416,7 +475,7 @@ pub fn lock(root: &Root, window: &mut Window, cx: &mut Context<Root>) -> AnyElem
     lines.push(
         div()
             .mt(px(22.))
-            .text_size(px(26.))
+            .text_size(px(T_STAGE))
             .line_height(px(32.))
             .font_weight(FontWeight::BOLD)
             .text_center()
@@ -445,7 +504,7 @@ pub fn lock(root: &Root, window: &mut Window, cx: &mut Context<Root>) -> AnyElem
                 .flex()
                 .flex_col()
                 .gap(px(6.))
-                .child(div().text_size(px(12.)).font_weight(FontWeight::SEMIBOLD).text_color(c(TEXT_2)).child(root.tr("vault.name")))
+                .child(div().text_size(px(T_S)).font_weight(FontWeight::SEMIBOLD).text_color(c(TEXT_2)).child(root.tr("vault.name")))
                 .child(boxed(&root.vault_name, false)),
         );
     }
@@ -465,7 +524,7 @@ pub fn lock(root: &Root, window: &mut Window, cx: &mut Context<Root>) -> AnyElem
                 .gap(px(10.))
                 .child(div().flex_1().h(px(4.)).rounded_full().bg(c(RAISED_2)).child(div().h_full().rounded_full().bg(c(tone)).with_spring("pw-meter", SpringAnimation::new(EASE).to(part), |d, w| d.w(relative(w.clamp(0., 1.))))))
                 // Before anything is typed the bar says what it is for (an empty bar with no word, review 8.2).
-                .child(div().w(px(64.)).flex_none().text_size(px(12.)).text_color(if typed.is_empty() { c(MUTED) } else { c(tone) }).child(root.tr(if typed.is_empty() { "lock.strength.none".to_string() } else { format!("lock.strength.{level}") }.as_str()))),
+                .child(div().w(px(64.)).flex_none().text_size(px(T_S)).text_color(if typed.is_empty() { c(MUTED) } else { c(tone) }).child(root.tr(if typed.is_empty() { "lock.strength.none".to_string() } else { format!("lock.strength.{level}") }.as_str()))),
         );
     }
     lines.push(div().w_full().child(shake(root.lock.noes, stack)).into_any_element());
@@ -499,7 +558,7 @@ pub fn lock(root: &Root, window: &mut Window, cx: &mut Context<Root>) -> AnyElem
             .rounded(px(R_M))
             .bg(c(FACE))
             .text_color(c(INK))
-            .text_size(px(14.))
+            .text_size(px(T_L))
             .font_weight(FontWeight::SEMIBOLD)
             .gap(px(8.))
             .map(|d| if busy { d.opacity(0.75).child(spinner(15., c(INK))) } else { d.cursor_pointer().hover(|d| d.bg(c(FACE_HI))).active(|d| d.bg(c(FACE_DOWN))) })
@@ -576,7 +635,7 @@ fn update(root: &Root, window: &Window, cx: &mut Context<Root>) -> Div {
     let title = if flag(u, "quiet") || version.is_empty() { root.tr("lock.upd.title") } else { root.i18n.tv("lock.upd.titleV", &[("v", version)]) };
     card()
         .child(img(crate::crisp::logo(72., window)).size(px(72.)))
-        .child(div().mt(px(22.)).text_size(px(26.)).line_height(px(32.)).font_weight(FontWeight::BOLD).text_center().child(title))
+        .child(div().mt(px(22.)).text_size(px(T_STAGE)).line_height(px(32.)).font_weight(FontWeight::BOLD).text_center().child(title))
         .child(div().mt(px(8.)).mb(px(26.)).text_size(px(T_L)).line_height(px(21.)).text_color(c(TEXT_2)).text_center().child(root.tr("lock.upd.note")))
         .child(
             div()
@@ -601,7 +660,7 @@ fn update(root: &Root, window: &Window, cx: &mut Context<Root>) -> Div {
                 .child(div().w_full().h(px(6.)).rounded_full().bg(c(RAISED_2)).child(div().h_full().rounded_full().bg(c(FACE)).with_spring("lock-upd", SpringAnimation::new(EASE).to(percent as f32 / 100.), |d, w| d.w(relative(w.clamp(0., 1.)))))),
         )
         .when(!ready, |d| {
-            d.child(div().mt(px(20.)).child(Button::new("lock-update-later", root.tr("lock.upd.later")).quiet().on_click(cx.listener(|r, _, _, cx| {
+            d.child(div().mt(px(20.)).child(Button::new("lock-update-later", root.tr("lock.upd.later")).quiet().tip(root.tr("lock.upd.laterTip")).on_click(cx.listener(|r, _, _, cx| {
                 r.lock.updating = Some(false);
                 r.lock.focused = false;
                 r.send("updateAtLock", json!({ "go": false }));
@@ -617,7 +676,7 @@ fn picker(root: &Root, window: &Window, cx: &mut Context<Root>) -> Div {
     let current = v.get("current").and_then(Value::as_str).unwrap_or_default();
     let open = v.get("open").and_then(Value::as_str).unwrap_or_default();
     let list: Vec<Value> = v.get("list").and_then(Value::as_array).cloned().unwrap_or_default();
-    let name_under = |name: String| div().w(px(132.)).truncate().text_center().text_size(px(13.)).font_weight(FontWeight::SEMIBOLD).text_color(c(TEXT_2)).child(name);
+    let name_under = |name: String| div().w(px(132.)).truncate().text_center().text_size(px(T_M)).font_weight(FontWeight::SEMIBOLD).text_color(c(TEXT_2)).child(name);
     let mut tiles = div().flex().flex_wrap().justify_center().gap(px(22.));
     for (i, one) in list.iter().enumerate() {
         let id = one.get("id").and_then(Value::as_str).unwrap_or_default().to_string();
@@ -683,14 +742,14 @@ fn picker(root: &Root, window: &Window, cx: &mut Context<Root>) -> Div {
         .items_center()
         .gap(px(22.))
         .child(img(crate::crisp::logo(56., window)).size(px(56.)))
-        .child(div().text_size(px(26.)).line_height(px(32.)).font_weight(FontWeight::BOLD).text_center().child(root.tr("vault.who")))
+        .child(div().text_size(px(T_STAGE)).line_height(px(32.)).font_weight(FontWeight::BOLD).text_center().child(root.tr("vault.who")))
         .child(tiles)
         .child(
             div()
                 .flex()
                 .items_center()
                 .gap(px(12.))
-                .text_size(px(13.))
+                .text_size(px(T_M))
                 .text_color(c(TEXT_2))
                 .child(root.tr("vault.ask"))
                 .child(Switch::new("vault-ask", flag(v, "ask")).on_toggle(cx.listener(|r, on: &bool, _, cx| run(r, "setAskVault", json!({ "enabled": *on }), cx)))),

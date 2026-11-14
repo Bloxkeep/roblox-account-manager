@@ -8,12 +8,12 @@ use super::{
     fail_of, fail_type_name, get_str, header, is_fail_kind, kind_lower, login_refused, normalize_cookie, parse_json, post_with_csrf, raw_text,
     realm, refused, request, send, try_prop,
 };
-use crate::core::base::{Cancel, Fail, Res};
+use crate::core::base::{Cancel, Fail, Redacted, Res};
 use crate::core::{l, log};
 
 /// A password sign-in's outcome: a cookie (done), a two-step prompt or captcha to answer, or a check this app
 /// can't show (`blocked`: what to tell the person; the attempt ends).
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Default)]
 pub struct LoginResult {
     pub cookie: Option<String>,
     pub two_step: Option<TwoStepPrompt>,
@@ -21,6 +21,20 @@ pub struct LoginResult {
     pub blocked: Option<String>,
     pub proof_of_work: Option<ProofOfWorkPrompt>,
     pub human_captcha: Option<HumanCaptchaPrompt>,
+}
+
+/// `cookie` left out: it is the account.
+impl std::fmt::Debug for LoginResult {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("LoginResult")
+            .field("cookie", &self.cookie.as_ref().map(|_| Redacted))
+            .field("two_step", &self.two_step)
+            .field("captcha", &self.captcha)
+            .field("blocked", &self.blocked)
+            .field("proof_of_work", &self.proof_of_work)
+            .field("human_captcha", &self.human_captcha)
+            .finish()
+    }
 }
 
 impl LoginResult {
@@ -32,7 +46,7 @@ impl LoginResult {
 /// Roblox's "captchav2", HUMAN Security's press-and-hold check: fetched from apis.roblox.com/v2/captcha with
 /// `captcha_challenge_id` and solved in CaptchaForm, which hands back a redemption token.
 /// `metadata`: the challenge's own metadata, sent back with the token filled in.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Default)]
 pub struct HumanCaptchaPrompt {
     pub realm: String,
     pub login_challenge_id: String,
@@ -42,9 +56,22 @@ pub struct HumanCaptchaPrompt {
     pub password: String,
 }
 
+impl std::fmt::Debug for HumanCaptchaPrompt {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("HumanCaptchaPrompt")
+            .field("realm", &self.realm)
+            .field("login_challenge_id", &self.login_challenge_id)
+            .field("captcha_challenge_id", &self.captcha_challenge_id)
+            .field("metadata", &Redacted) // a challenge token: kept out of logs as the password is
+            .field("username", &self.username)
+            .field("password", &Redacted)
+            .finish()
+    }
+}
+
 /// A proof-of-work check: a puzzle of a few CPU seconds, solved in the background as roblox.com does.
 /// `metadata`: the challenge's own metadata (session, request path…); it goes back to Roblox as-is, with the token filled in.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Default)]
 pub struct ProofOfWorkPrompt {
     pub realm: String,
     pub login_challenge_id: String,
@@ -54,11 +81,24 @@ pub struct ProofOfWorkPrompt {
     pub password: String,
 }
 
+impl std::fmt::Debug for ProofOfWorkPrompt {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ProofOfWorkPrompt")
+            .field("realm", &self.realm)
+            .field("login_challenge_id", &self.login_challenge_id)
+            .field("session_id", &self.session_id)
+            .field("metadata", &Redacted) // a challenge token: kept out of logs as the password is
+            .field("username", &self.username)
+            .field("password", &Redacted)
+            .finish()
+    }
+}
+
 /// What's needed to finish a two-step sign-in: the user picks where the code comes from and types it.
 /// `media_type`: set when the login answer carried "twoStepVerificationData" (a 200, no cookie) instead of a
 /// challenge header: the code went that way already (e.g. "Email"), and the sign-in finishes through
 /// /v3/users/{id}/two-step-verification/login with the ticket rather than by repeating the login.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct TwoStepPrompt {
     pub realm: String,
     pub user_id: i64,
@@ -72,6 +112,23 @@ pub struct TwoStepPrompt {
     pub methods: Vec<String>,
     /// Set once Roblox accepted the code, so a retry after a failed finish doesn't send the spent code again.
     pub verification_token: Option<String>,
+}
+
+impl std::fmt::Debug for TwoStepPrompt {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("TwoStepPrompt")
+            .field("realm", &self.realm)
+            .field("user_id", &self.user_id)
+            .field("challenge_id", &self.challenge_id)
+            .field("login_challenge_id", &self.login_challenge_id)
+            .field("username", &self.username)
+            .field("password", &Redacted)
+            .field("media_type", &self.media_type)
+            .field("action_type", &self.action_type)
+            .field("methods", &self.methods)
+            .field("verification_token", &self.verification_token.as_ref().map(|_| Redacted))
+            .finish()
+    }
 }
 
 impl TwoStepPrompt {
@@ -117,7 +174,7 @@ fn code_method(media_type: &str) -> Option<&'static str> {
 /// A captcha on a sign-in: Arkose Labs' FunCaptcha (see apis.roblox.com/captcha/v1/metadata); `blob` ties it to this attempt.
 /// `challenge_type`: "captcha", or "captchav2" when Roblox asks for one after another check.
 /// `metadata`: the challenge's own metadata, sent back with the token filled in.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct CaptchaPrompt {
     pub realm: String,
     pub login_challenge_id: String,
@@ -128,6 +185,22 @@ pub struct CaptchaPrompt {
     pub password: String,
     pub challenge_type: String,
     pub metadata: String,
+}
+
+impl std::fmt::Debug for CaptchaPrompt {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("CaptchaPrompt")
+            .field("realm", &self.realm)
+            .field("login_challenge_id", &self.login_challenge_id)
+            .field("unified_captcha_id", &self.unified_captcha_id)
+            .field("blob", &Redacted)
+            .field("action_type", &self.action_type)
+            .field("username", &self.username)
+            .field("password", &Redacted)
+            .field("challenge_type", &self.challenge_type)
+            .field("metadata", &Redacted) // a challenge token: kept out of logs as the password is
+            .finish()
+    }
 }
 
 fn cookie_from(res: &HttpResponse) -> Option<String> {
@@ -430,7 +503,7 @@ pub fn finish_proof_of_work_login(prompt: &ProofOfWorkPrompt, ct: &Cancel) -> Re
 /// Fetches a proof-of-work puzzle, computes its answer and trades it for the redemption token the check wants.
 pub fn proof_of_work_token(realm: &str, session_id: &str, ct: &Cancel) -> Res<String> {
     let service = format!("{}/proof-of-work-service/v1/pow-puzzle", realm::api(realm, "apis"));
-    let (puzzle_type, artifacts);
+    let (puzzle_type, artifacts, body_of_puzzle);
     {
         let req = request("GET", &format!("{service}?sessionID={}", super::escape_data_string(session_id)), None, false, realm::GLOBAL);
         let res = send(&req, ct)?;
@@ -449,6 +522,7 @@ pub fn proof_of_work_token(realm: &str, session_id: &str, ct: &Cancel) -> Res<St
             Some(Value::String(a)) => a.clone(),
             Some(a) => raw_text(a),
         };
+        body_of_puzzle = body.clone();
         let fields = as_object(&root)?.keys().cloned().collect::<Vec<_>>().join(", ");
         let art = match decode_json(&artifacts) {
             Some(Value::Object(art)) => format!(", artifacts {}", art.keys().cloned().collect::<Vec<_>>().join(", ")),
@@ -457,7 +531,7 @@ pub fn proof_of_work_token(realm: &str, session_id: &str, ct: &Cancel) -> Res<St
         log::note(&format!("Proof-of-work puzzle: type '{}', fields {fields}{art}", safe_name(&puzzle_type)));
     }
 
-    let solution = solve_puzzle(&puzzle_type, &artifacts, ct)?;
+    let solution = solve_puzzle(&puzzle_type, &artifacts, &body_of_puzzle, ct)?;
 
     let res = post_with_csrf(&service, "", &json!({ "sessionID": session_id, "solution": solution }).to_string(), None, ct, realm)?;
     let body = res.text();
@@ -479,14 +553,32 @@ pub fn proof_of_work_token(realm: &str, session_id: &str, ct: &Cancel) -> Res<St
     Ok(redemption_token)
 }
 
+/// A JSON number's digits as written, by its field name (any case), in any of `texts` (each also read as base64), the
+/// field's quotes escaped or not: a number too big for f64.
+fn raw_digits(texts: &[&str], name: &str) -> Option<String> {
+    let pattern = regex::Regex::new(&format!(r#"(?i)\\?"{}\\?"\s*:\s*(\d+)"#, regex::escape(name))).ok()?;
+    let decoded: Vec<String> = texts
+        .iter()
+        .filter_map(|t| base64::engine::general_purpose::STANDARD.decode(t.trim()).ok())
+        .filter_map(|b| String::from_utf8(b).ok())
+        .collect();
+    texts.iter().copied().chain(decoded.iter().map(String::as_str)).find_map(|t| pattern.captures(t).map(|c| c[1].to_string()))
+}
+
 /// Roblox's time-lock puzzle: square A modulo N, T times. Inherently serial: a few seconds of one CPU core per
 /// sign-in.
-fn solve_puzzle(puzzle_type: &str, artifacts: &str, ct: &Cancel) -> Res<String> {
-    fn number(obj: &serde_json::Map<String, Value>, name: &str) -> Option<BigUint> {
+/// `raw`: the answer's own text, where a number too big for serde_json's f64 still has all its digits.
+fn solve_puzzle(puzzle_type: &str, artifacts: &str, raw: &str, ct: &Cancel) -> Res<String> {
+    let number = |obj: &serde_json::Map<String, Value>, name: &str| -> Option<BigUint> {
         let (_, value) = obj.iter().find(|(k, _)| k.eq_ignore_ascii_case(name))?;
         let text = match value {
             Value::String(s) => s.clone(),
-            Value::Number(_) => raw_text(value),
+            // GetRawText: the digits as Roblox wrote them. serde_json reads a 2048-bit number as an f64 ("1.2e616"),
+            // so they are read from the text itself (the artifacts, base64 or not, or the whole answer).
+            Value::Number(_) => {
+                let parsed = raw_text(value);
+                if parsed.bytes().all(|b| b.is_ascii_digit()) { parsed } else { raw_digits(&[artifacts, raw], name).unwrap_or(parsed) }
+            }
             _ => return None,
         };
         // NumberStyles.None: digits only.
@@ -494,7 +586,7 @@ fn solve_puzzle(puzzle_type: &str, artifacts: &str, ct: &Cancel) -> Res<String> 
             return None;
         }
         BigUint::parse_bytes(text.as_bytes(), 10)
-    }
+    };
     // Roblox names the type as a number: 1 is the time-lock puzzle (seen Oct 2026, with artifacts N, A, T).
     let parts = if puzzle_type == "1" || puzzle_type.eq_ignore_ascii_case("TimeLockPuzzle") {
         match decode_json(artifacts) {

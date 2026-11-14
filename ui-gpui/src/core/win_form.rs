@@ -18,7 +18,7 @@ use std::{
         Arc,
         atomic::{AtomicBool, AtomicIsize, AtomicU64, Ordering},
     },
-    task::{Context, Poll},
+    task::Context,
 };
 
 use futures::{
@@ -27,7 +27,7 @@ use futures::{
 };
 use windows_sys::Win32::{
     Foundation::{HWND, LPARAM, LRESULT, POINT, RECT, WPARAM},
-    Graphics::Gdi::{ClientToScreen, InvalidateRect, MONITOR_DEFAULTTONEAREST, MonitorFromPoint},
+    Graphics::Gdi::{ClientToScreen, InvalidateRect, MONITOR_DEFAULTTONEAREST, MonitorFromPoint, RDW_ALLCHILDREN, RDW_ERASE, RDW_FRAME, RDW_INVALIDATE, RedrawWindow},
     System::{
         Com::{COINIT_APARTMENTTHREADED, CoInitializeEx},
         LibraryLoader::GetModuleHandleW,
@@ -61,9 +61,15 @@ type Posted = Box<dyn FnOnce() + Send + 'static>;
 
 thread_local! {
     static TASKS: RefCell<HashMap<u64, Task>> = RefCell::new(HashMap::new());
+    /// Tasks being polled now, and those woken meanwhile (from a nested loop under the poll: a modal, a menu, a drag):
+    /// polled again once the poll gives back, or the wake would be lost.
+    static POLLING: RefCell<std::collections::HashSet<u64>> = RefCell::new(std::collections::HashSet::new());
+    static REWAKE: RefCell<std::collections::HashSet<u64>> = RefCell::new(std::collections::HashSet::new());
     static NEXT_TASK: Cell<u64> = const { Cell::new(1) };
     static TIMERS: RefCell<HashMap<usize, Weak<TimerInner>>> = RefCell::new(HashMap::new());
     static DELAYS: RefCell<HashMap<usize, oneshot::Sender<()>>> = RefCell::new(HashMap::new());
+    // The handler box create_window is making a window with, until WM_NCCREATE takes it.
+    static UNTAKEN: Cell<usize> = const { Cell::new(0) };
     static NEXT_TIMER: Cell<usize> = const { Cell::new(1) };
 }
 
@@ -133,6 +139,45 @@ pub fn pump() {
     }
 }
 
+/// Waits for `rx`'s answer while this thread's windows go on getting their messages (a modal wait, as ShowDialog's loop
+/// was): for the windows thread waiting on another thread that may send to its windows (an owner disabled by a dialog
+/// on a thread of its own). None when the sender went away.
+pub fn wait_pumping<T>(rx: &std::sync::mpsc::Receiver<T>) -> Option<T> {
+    wait_pumping_for(rx, None)
+}
+
+/// wait_pumping with a time limit: None once `limit` has passed without an answer.
+pub fn wait_pumping_for<T>(rx: &std::sync::mpsc::Receiver<T>, limit: Option<std::time::Duration>) -> Option<T> {
+    use std::sync::mpsc::TryRecvError;
+    let deadline = limit.map(|l| std::time::Instant::now() + l);
+    loop {
+        match rx.try_recv() {
+            Ok(v) => return Some(v),
+            Err(TryRecvError::Disconnected) => return None,
+            Err(TryRecvError::Empty) => {}
+        }
+        if deadline.is_some_and(|d| std::time::Instant::now() >= d) {
+            return None;
+        }
+        // SAFETY: a wait on no handles that wakes for any message (or after 50 ms, for the answer), then the standard
+        // dispatch of what came.
+        unsafe {
+            MsgWaitForMultipleObjects(0, std::ptr::null(), 0, 50, QS_ALLINPUT);
+            let mut msg: MSG = std::mem::zeroed();
+            while PeekMessageW(&mut msg, std::ptr::null_mut(), 0, 0, PM_REMOVE) != 0 {
+                if msg.message == WM_QUIT {
+                    // The app is closing: no more waiting without the pump, since the other thread may be calling
+                    // into this one (a dialog's EnableWindow on its owner) and would hang the quit.
+                    PostQuitMessage(msg.wParam as i32);
+                    return rx.try_recv().ok();
+                }
+                TranslateMessage(&msg);
+                DispatchMessageW(&msg);
+            }
+        }
+    }
+}
+
 /// This is the windows thread (InvokeRequired is false).
 pub fn is_windows_thread() -> bool {
     // SAFETY: plain query.
@@ -187,21 +232,47 @@ pub fn spawn(f: impl Future<Output = ()> + 'static) {
 }
 
 fn poll_task(id: u64) {
-    let Some(mut task) = TASKS.with(|t| t.borrow_mut().remove(&id)) else { return };
+    let Some(mut task) = TASKS.with(|t| t.borrow_mut().remove(&id)) else {
+        if POLLING.with(|p| p.borrow().contains(&id)) {
+            REWAKE.with(|r| r.borrow_mut().insert(id));
+        }
+        return;
+    };
     let w = waker(Arc::new(Wake { id }));
     let mut cx = Context::from_waker(&w);
-    if task.as_mut().poll(&mut cx).is_pending() {
+    POLLING.with(|p| p.borrow_mut().insert(id));
+    // A task that panics ends there (shown as an unexpected error); the windows thread goes on.
+    let pending = super::program::shielded(|| false, || task.as_mut().poll(&mut cx).is_pending());
+    POLLING.with(|p| p.borrow_mut().remove(&id));
+    let again = REWAKE.with(|r| r.borrow_mut().remove(&id));
+    if pending {
         TASKS.with(|t| t.borrow_mut().insert(id, task));
+        if again {
+            w.wake_by_ref();
+        }
     }
 }
 
-/// Task.Delay on the windows thread.
+/// Task.Delay on the windows thread. A delay dropped before its time (it lost a race: `wait_for`) kills its timer.
 pub async fn delay(ms: u32) {
+    struct Pending(usize);
+    impl Drop for Pending {
+        fn drop(&mut self) {
+            let id = self.0;
+            if DELAYS.try_with(|d| d.borrow_mut().remove(&id)).ok().flatten().is_some() {
+                // SAFETY: the timer set below on our own window; not fired yet, so still there.
+                unsafe {
+                    KillTimer(hwnd(INVOKE_HWND.load(Ordering::SeqCst)), id);
+                }
+            }
+        }
+    }
     let (tx, rx) = oneshot::channel();
     let id = next_timer_id();
     DELAYS.with(|d| d.borrow_mut().insert(id, tx));
+    let _pending = Pending(id);
     let h = INVOKE_HWND.load(Ordering::SeqCst);
-    // SAFETY: a timer on our own hidden window; killed when it fires.
+    // SAFETY: a timer on our own hidden window; killed when it fires or when this is dropped.
     unsafe {
         SetTimer(hwnd(h), id, ms.max(1), None);
     }
@@ -250,7 +321,7 @@ unsafe extern "system" fn invoke_proc(h: HWND, msg: u32, wparam: WPARAM, lparam:
         WM_APP_INVOKE => {
             // SAFETY: lparam is the Box::into_raw of `invoke`, taken back once here.
             let f = unsafe { Box::from_raw(lparam as *mut Posted) };
-            f();
+            super::program::shielded(|| (), f);
             0
         }
         WM_APP_WAKE => {
@@ -268,7 +339,7 @@ unsafe extern "system" fn invoke_proc(h: HWND, msg: u32, wparam: WPARAM, lparam:
             } else if let Some(t) = TIMERS.with(|t| t.borrow().get(&id).and_then(|w| w.upgrade())) {
                 let tick = t.tick.borrow().clone();
                 if let Some(tick) = tick {
-                    tick();
+                    super::program::shielded(|| (), || tick());
                 }
             } else {
                 // SAFETY: a timer nobody holds any more.
@@ -383,12 +454,17 @@ unsafe extern "system" fn form_proc(h: HWND, msg: u32, wparam: WPARAM, lparam: L
         if msg == WM_NCCREATE {
             let cs = &*(lparam as *const CREATESTRUCTW);
             SetWindowLongPtrW(h, GWLP_USERDATA, cs.lpCreateParams as isize);
+            UNTAKEN.with(|u| {
+                if u.get() == cs.lpCreateParams as usize {
+                    u.set(0);
+                }
+            });
         }
         let data = GetWindowLongPtrW(h, GWLP_USERDATA) as *const Handler;
         let mut result = None;
         if !data.is_null() {
             let handler = (*data).clone();
-            result = handler(h as isize, msg, wparam, lparam);
+            result = super::program::shielded(|| None, || handler(h as isize, msg, wparam, lparam));
         }
         if msg == WM_NCDESTROY && !data.is_null() {
             SetWindowLongPtrW(h, GWLP_USERDATA, 0);
@@ -434,6 +510,7 @@ pub fn create_window(class: &str, class_style: u32, style: u32, ex_style: u32, b
     let class_w = wide(class);
     let title_w = wide(title);
     let data = Box::into_raw(Box::new(handler));
+    UNTAKEN.with(|u| u.set(data as usize));
     // SAFETY: the handler's box goes in through lpCreateParams and is freed at WM_NCDESTROY (or below when nothing was made).
     let h = unsafe {
         CreateWindowExW(
@@ -451,9 +528,13 @@ pub fn create_window(class: &str, class_style: u32, style: u32, ex_style: u32, b
             data as *const std::ffi::c_void,
         )
     };
+    let untaken = UNTAKEN.with(|u| u.replace(0)) == data as usize;
     if h.is_null() {
-        // SAFETY: no window took the box.
-        unsafe { drop(Box::from_raw(data)) };
+        // Once WM_NCCREATE took the box, WM_NCDESTROY freed it with the failed window.
+        if untaken {
+            // SAFETY: no window took the box.
+            unsafe { drop(Box::from_raw(data)) };
+        }
         return Err(Fail::other("CreateWindowEx failed"));
     }
     Ok(h as isize)
@@ -638,6 +719,14 @@ pub fn set_opacity(h: isize, opacity: f64) {
     // SAFETY: plain style and layering calls on our own window.
     unsafe {
         let ex = GetWindowLongPtrW(hwnd(h), GWL_EXSTYLE) as u32;
+        if opacity >= 1.0 {
+            // Solid again: WinForms took the layered style off at Opacity = 1, and so do we.
+            if ex & WS_EX_LAYERED != 0 {
+                SetWindowLongPtrW(hwnd(h), GWL_EXSTYLE, (ex & !WS_EX_LAYERED) as isize);
+                RedrawWindow(hwnd(h), std::ptr::null(), std::ptr::null_mut(), RDW_ERASE | RDW_INVALIDATE | RDW_FRAME | RDW_ALLCHILDREN);
+            }
+            return;
+        }
         if ex & WS_EX_LAYERED == 0 {
             SetWindowLongPtrW(hwnd(h), GWL_EXSTYLE, (ex | WS_EX_LAYERED) as isize);
         }
@@ -710,7 +799,9 @@ pub fn set_icon(h: isize, icon: isize) {
     // SAFETY: plain messages to our own window; the icon is the app's, kept for the whole run.
     unsafe {
         SendMessageW(hwnd(h), WM_SETICON, ICON_BIG as WPARAM, icon);
-        SendMessageW(hwnd(h), WM_SETICON, ICON_SMALL as WPARAM, icon);
+        // (The title bar's: the .ico's own small picture when this is the app's icon, not the big one shrunk.)
+        let small = if super::ui::app_icon() == Some(icon) { super::ui::app_icon_small().unwrap_or(icon) } else { icon };
+        SendMessageW(hwnd(h), WM_SETICON, ICON_SMALL as WPARAM, small);
     }
 }
 

@@ -186,7 +186,7 @@ pub mod folder_dialog {
     //! FolderBrowserDialog.ShowDialog(owner).
     use crate::core::win_kit;
     use windows_sys::Win32::Foundation::{HWND, LPARAM};
-    use windows_sys::Win32::System::Com::CoTaskMemFree;
+    use windows_sys::Win32::System::Com::{COINIT_APARTMENTTHREADED, CoInitializeEx, CoTaskMemFree, CoUninitialize};
     use windows_sys::Win32::UI::Shell::{BIF_NEWDIALOGSTYLE, BIF_RETURNONLYFSDIRS, BROWSEINFOW, SHBrowseForFolderW, SHGetPathFromIDListW};
     use windows_sys::Win32::UI::WindowsAndMessaging::{SendMessageW, WM_USER};
 
@@ -204,8 +204,20 @@ pub mod folder_dialog {
     /// The folder chosen, or None when cancelled.
     // PORT: .NET's FolderBrowserDialog shows Windows' Vista folder picker (IFileOpenDialog) with the description as its
     // title; this is the shell's folder browser (SHBrowseForFolder), the description above its tree, the "Make new
-    // folder" button included. It needs COM started on the calling thread, as the window's thread has it.
+    // folder" button included. With BIF_NEWDIALOGSTYLE it needs a single-threaded COM apartment on the calling thread:
+    // it runs on a worker (the core's apartment is multithreaded), so it starts one here and ends it before returning.
     pub fn pick(owner: isize, description: &str, initial_dir: &str) -> Option<String> {
+        // SAFETY: plain call, paired with CoUninitialize below on this same thread when it succeeded.
+        let hr = unsafe { CoInitializeEx(std::ptr::null(), COINIT_APARTMENTTHREADED as _) };
+        let chosen = browse(owner, description, initial_dir);
+        if hr >= 0 {
+            // SAFETY: CoInitializeEx succeeded on this thread.
+            unsafe { CoUninitialize() };
+        }
+        chosen
+    }
+
+    fn browse(owner: isize, description: &str, initial_dir: &str) -> Option<String> {
         let title = win_kit::wide(description);
         let initial = win_kit::wide(initial_dir);
         let mut info: BROWSEINFOW = unsafe { std::mem::zeroed() };
@@ -375,8 +387,9 @@ impl App {
         *self.backup.backup_timer.borrow_mut() = Some(timer.clone());
         let delay = delay.max(Duration::from_millis(1000));
         rt::spawn(async move {
-            rt::sleep(delay).await;
-            if timer.is_cancelled() {
+            // Called off (a newer save rescheduled it): ends at once, so a burst of saves doesn't leave tasks parked
+            // until their old time.
+            if !rt::sleep_or(&timer, delay).await {
                 return;
             }
             let Some(app) = this() else { return };
@@ -486,9 +499,9 @@ impl App {
         while self.backup.backup_busy.get() {
             rt::sleep(Duration::from_millis(100)).await;
         }
-        self.backup.backup_busy.set(true);
+        let busy = crate::core::base::Busy::set(&self.backup.backup_busy);
         let ok = self.backup_on_worker().await;
-        self.backup.backup_busy.set(false);
+        drop(busy);
         if ok {
             self.backup_when_due(); // the vault changed again while the copy was being written (a failure retries later by itself)
         }
@@ -590,7 +603,9 @@ impl App {
             return Err(Fail::user(l::t("Pick a folder outside Bloxkeep's own data folder.")));
         }
         let current = prefs::lock().backup_folder.clone();
+        // The same folder picked again: still turns backups on (with them off, it stayed off before).
         if same_path(folder, current.as_deref()) {
+            prefs::lock().backup_enabled = true;
             return Ok(());
         }
         {
@@ -605,12 +620,14 @@ impl App {
         Ok(())
     }
 
-    pub fn pick_backup_folder(&self) -> Res<Value> {
+    pub async fn pick_backup_folder(&self) -> Res<Value> {
         let current = prefs::lock().backup_folder.clone();
         let initial = current.filter(|c| Path::new(c).is_dir()).unwrap_or_else(user_profile);
         let owner = self.controller.owner.get();
         let description = l::t("Choose a folder for backups");
-        if let Some(chosen) = ui::modal(|| folder_dialog::pick(owner, &description, &initial)) {
+        // On a worker thread, so the core keeps answering (the window's Quit, timers) while the dialog is open.
+        let chosen = rt::blocking(move || ui::modal(|| folder_dialog::pick(owner, &description, &initial))).await;
+        if let Some(chosen) = chosen {
             self.use_backup_folder(&chosen)?;
             prefs::save();
             if self.vault_ref().is_some() && backup_ready() {
@@ -636,7 +653,7 @@ impl App {
     /// Before a vault exists (first-run screen) the backup simply becomes the vault. Otherwise (Settings, or the
     /// lock screen after a forgotten password) the open one is locked and saved first, a copy of it kept beside the new
     /// one; the restored vault unlocks with its own master password.
-    pub fn restore_backup(&self) -> Res<Value> {
+    pub async fn restore_backup(&self) -> Res<Value> {
         if self.controller.launch_cts.borrow().is_some() {
             return Err(Fail::user(l::t("Wait until Bloxkeep finishes opening Roblox.")));
         }
@@ -645,10 +662,15 @@ impl App {
         let owner = self.controller.owner.get();
         let title = l::t("Choose a Bloxkeep backup");
         let filter = l::t("Bloxkeep backups") + " (*.rmv)|*.rmv";
-        let Some(chosen) = ui::modal(|| open_file_dialog(owner, &title, &filter, &initial)) else {
+        // On a worker thread, as Choose folder's, so the core keeps answering (timers, the tray's Quit) while it is open.
+        let Some(chosen) = rt::blocking(move || ui::modal(|| open_file_dialog(owner, &title, &filter, &initial))).await else {
             self.push_state();
             return Ok(Value::Null);
         };
+        // Asked again: the core kept running while the dialog was open, so a Play may have started meanwhile.
+        if self.controller.launch_cts.borrow().is_some() {
+            return Err(Fail::user(l::t("Wait until Bloxkeep finishes opening Roblox.")));
+        }
         let file = PathBuf::from(&chosen);
         let replace = self.vault_ref().is_some() || vault::exists();
         let run = || -> Res<()> {

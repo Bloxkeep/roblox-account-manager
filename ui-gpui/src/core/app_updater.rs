@@ -17,11 +17,20 @@ use crate::core::log;
 use crate::core::prefs;
 use crate::core::whats_new;
 
-/// Where releases come from, set at build time: BLOXKEEP_UPDATE_REPO=https://github.com/owner/name.
-// PORT: the C# reads its AssemblyMetadata "UpdateRepo" (-p:UpdateRepo=…); the Rust build takes it from the environment
-// at compile time.
+/// Bloxkeep's own GitHub repo, where its releases are (scripts/build.bat's default for the C#'s UpdateRepo).
+const DEFAULT_REPO: &str = "https://github.com/Bloxkeep/roblox-account-manager";
+
+/// Where releases come from: Bloxkeep's repo, or BLOXKEEP_UPDATE_REPO=https://github.com/owner/name set at build time
+/// (a fork; set empty for a build that never updates).
+// PORT: the C# reads its AssemblyMetadata "UpdateRepo" (-p:UpdateRepo=…, build.bat defaulting it to Bloxkeep's repo);
+// the Rust build takes it from the environment at compile time and has the same default, so a release can't go out
+// unable to update. A copy not installed by Velopack (no Update.exe beside it: a build folder, the try-out) still
+// never updates: UpdateManager::new answers NotInstalled there.
 fn repo() -> Option<&'static str> {
-    option_env!("BLOXKEEP_UPDATE_REPO").filter(|r| !r.is_empty())
+    match option_env!("BLOXKEEP_UPDATE_REPO") {
+        Some(repo) => Some(repo).filter(|r| !r.is_empty()),
+        None => Some(DEFAULT_REPO),
+    }
 }
 
 /// Bloxkeep's installer or uninstaller asked this run to quit (Program's quit event): it runs Velopack's Update.exe
@@ -164,9 +173,22 @@ impl AppUpdater {
             }
             s.running = true;
         }
+        // Let go even when the check panics: a flag left on had every later check wait forever.
+        struct Running<'a>(&'a AppUpdater);
+        impl Drop for Running<'_> {
+            fn drop(&mut self) {
+                let mut s = guard(&self.0.state);
+                s.running = false;
+                // A check that panicked midway isn't left showing "Checking…" for good.
+                if std::thread::panicking() && (s.status == "checking" || s.status == "downloading") {
+                    s.status = "error".into();
+                }
+                drop(s);
+                self.0.done.notify_all();
+            }
+        }
+        let _running = Running(self);
         self.run(manager);
-        guard(&self.state).running = false;
-        self.done.notify_all();
     }
 
     fn run(&self, manager: &UpdateManager) {
@@ -397,6 +419,9 @@ struct GithubSource {
     listed: Arc<Mutex<HashMap<(String, String), String>>>,
 }
 
+/// Each release's feed text as last read, by its asset's API address (see `get_release_feed`).
+static FEEDS: std::sync::LazyLock<Mutex<HashMap<String, String>>> = std::sync::LazyLock::new(|| Mutex::new(HashMap::new()));
+
 /// GitHub's release as its API lists it (the fields Velopack reads).
 #[derive(serde::Deserialize, Default)]
 #[serde(default)]
@@ -439,7 +464,8 @@ impl GithubSource {
         let repo = url::Url::parse(&self.repo)?;
         let path = format!("repos{}/releases?per_page={PER_PAGE}&page={PAGE}", repo.path().trim_end_matches('/'));
         let address = url::Url::parse(&GithubSource::api_base(&repo))?.join(&path)?;
-        let text = ureq::get(address.as_str())
+        static HTTP: std::sync::LazyLock<ureq::Agent> = std::sync::LazyLock::new(|| crate::net::builder().build());
+        let text = HTTP.get(address.as_str())
             .set("Accept", "application/vnd.github.v3+json")
             .call()
             .map_err(|e| velopack::Error::Generic(e.to_string()))?
@@ -473,11 +499,23 @@ impl UpdateSource for GithubSource {
         let mut feed = velopack::VelopackAssetFeed { Assets: Vec::new() };
         let mut listed = HashMap::new();
         let releases_file = format!("releases.{channel}.json");
+        // Every listed release's feed is still read (a delta's base is in an older release, and a quiet fix sits in the
+        // newest public one), but each only once: kept by its asset's API address, which carries the asset's id, so a
+        // feed uploaded again (release-fix.ps1) is a new address and is read anew. Ten downloads per check before.
+        let mut seen = HashMap::new();
         for release in &releases {
             // A release without the feed file is skipped.
             let Ok(feed_url) = GithubSource::asset_url(release, &releases_file) else { continue };
-            let text = velopack::download::download_url_as_string(&feed_url)?;
+            let key = release.assets.iter().flatten().find(|a| a.name.as_deref() == Some(releases_file.as_str())).and_then(|a| a.url.clone());
+            let kept = key.as_ref().and_then(|k| guard(&FEEDS).get(k).cloned());
+            let text = match kept {
+                Some(text) => text,
+                None => velopack::download::download_url_as_string(&feed_url)?,
+            };
             let part: velopack::VelopackAssetFeed = serde_json::from_str(text.trim_start_matches('\u{feff}'))?;
+            if let Some(key) = key {
+                seen.insert(key, text);
+            }
             for asset in part.Assets {
                 if let Ok(address) = GithubSource::asset_url(release, &asset.FileName) {
                     listed.entry((asset.FileName.clone(), asset.Version.clone())).or_insert(address);
@@ -486,6 +524,7 @@ impl UpdateSource for GithubSource {
             }
         }
         *guard(&self.listed) = listed;
+        *guard(&FEEDS) = seen; // only the releases listed now
         Ok(feed)
     }
 

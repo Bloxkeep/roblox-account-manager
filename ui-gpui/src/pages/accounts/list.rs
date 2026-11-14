@@ -6,6 +6,7 @@ use gpui_kit::{prelude::*, *};
 use serde_json::Value;
 
 use super::{
+    day_line, day_strip, dot_of, edit_button, game_icon, game_name, handle_of, last_line, note_of, opened_of, small_line, tags_of, want_strips,
     action, avatar, banned, foreign, id_of, is_kicked, is_local, label, launching, line_of, menu, more_button, no_pick, old_build, old_tag, on_right, pid_el, ram_mb, mb_text, rejoin_on, robux_el,
     robux_of, s, signed_out, tag, toggle, up_of,
 };
@@ -39,16 +40,31 @@ pub fn rows(root: &Root, shown: &[&Value], narrow: bool, cx: &mut Context<Root>)
     };
     // One surface, a line an account with a hairline between (a card a line read as a stack of buttons), each line
     // as tall, its columns as wide in every line.
+    // A long list: only the lines near the view are made (crate::near), each line and its hairline 57 px.
     let n = shown.len();
+    let must = super::revealed_in(root, shown);
+    let near = crate::near::Near::new(n >= crate::near::FROM, "acc-rows", n, ROW_H, 1., must);
     let mut list = div().w_full().p(px(4.)).flex().flex_col().rounded(px(R_L + 2.)).bg(c(RAISED)).border_1().border_color(c(LINE));
-    for (i, a) in shown.iter().enumerate() {
-        list = list.child(row(root, a, &cols, cx));
-        if i + 1 < n {
-            list = list.child(div().h(px(1.)).mx(px(12.)).flex_none().bg(c(LINE)));
+    list = list.children(near.mark());
+    for part in near.parts {
+        match part {
+            crate::near::Part::Space(h) => list = list.child(crate::near::space(h)),
+            crate::near::Part::Rows(r) => {
+                for i in r.clone() {
+                    list = list.child(row(root, shown[i], &cols, cx));
+                    // (A hairline between lines; none under a part's last: the room after it counts it.)
+                    if i + 1 < r.end {
+                        list = list.child(div().h(px(1.)).mx(px(12.)).flex_none().bg(c(LINE)));
+                    }
+                }
+            }
         }
     }
     list
 }
+
+/// A line's height.
+const ROW_H: f32 = 56.;
 
 fn row(root: &Root, a: &Value, cols: &Cols, cx: &mut Context<Root>) -> impl IntoElement {
     let id = id_of(a);
@@ -71,7 +87,8 @@ fn row(root: &Root, a: &Value, cols: &Cols, cx: &mut Context<Root>) -> impl Into
     hot(key.clone())
         .group(key.clone())
         .relative()
-        .h(px(56.))
+        .child(super::spot(root, &id, R_M))
+        .h(px(ROW_H))
         .pl(px(14.))
         .pr(px(6.))
         .flex()
@@ -95,7 +112,7 @@ fn row(root: &Root, a: &Value, cols: &Cols, cx: &mut Context<Root>) -> impl Into
                 r.selected.insert(pick.clone());
                 r.play(std::slice::from_ref(&pick), cx);
             } else {
-                toggle(r, &pick);
+                toggle(r, &pick, e.modifiers().shift, cx);
             }
             cx.notify();
         }))
@@ -123,8 +140,8 @@ fn row(root: &Root, a: &Value, cols: &Cols, cx: &mut Context<Root>) -> impl Into
                     }
                 })
                 .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
-                .on_click(cx.listener(move |r, _, _, cx| {
-                    toggle(r, &tick_id);
+                .on_click(cx.listener(move |r, e: &ClickEvent, _, cx| {
+                    toggle(r, &tick_id, e.modifiers().shift, cx);
                     cx.notify();
                 })),
         )
@@ -182,4 +199,112 @@ fn row(root: &Root, a: &Value, cols: &Cols, cx: &mut Context<Root>) -> impl Into
         // Its button, every line's as wide; then the menu.
         .child(div().w(px(cols.button)).flex_none().flex().justify_end().children(main.filter(|_| !foreign(a)).map(no_pick)))
         .child(more_button(root, a, "row", 28., cx))
+}
+
+/// One account in full beside the list (its detail, the line clicked last): the face and name large, its number and
+/// tags, what it does, the game it is in, its facts a line each (play time, RAM, PID, last opened, today, note),
+/// today's strip, then its main button wide and Edit. Flat, one surface like the list's.
+pub fn detail(root: &Root, a: &Value, cx: &mut Context<Root>) -> Div {
+    want_strips(root, cx);
+    let id = id_of(a);
+    let local = is_local(a);
+    let (line, tone) = line_of(root, a);
+    let line_said = line.clone();
+    let robux = robux_of(root, a).map(|r| robux_el(root, &id, r));
+    let game = game_name(a);
+    let pic = game_icon(a).and_then(|u| crate::images::pic_sq(&u, 40., cx));
+    let up = up_of(a);
+    let ram = local.then(|| ram_mb(root, a)).flatten().map(|m| mb_text(m, root.i18n.vietnamese));
+    let pid = local.then(|| pid_el(root, a, cx)).flatten();
+    let opened = opened_of(root, a);
+    let today = day_line(root, &id);
+    let note = note_of(a);
+    let main = action(root, a, "detail", cx);
+    let fact = |mark: &'static str, text: String| small_line(mark, text).h(px(22.)).text_size(px(T_M)).text_color(c(TEXT_2));
+    let hair = || div().h(px(1.)).flex_none().bg(c(LINE));
+    div()
+        .w(px(340.))
+        .flex_none()
+        .p(px(18.))
+        .flex()
+        .flex_col()
+        .gap(px(14.))
+        .rounded(px(R_L + 2.))
+        .bg(c(RAISED))
+        .border_1()
+        .border_color(c(LINE))
+        // Who: the face large, the number and name, @username, Robux.
+        .child(
+            div()
+                .flex()
+                .items_center()
+                .gap(px(14.))
+                .child(avatar(a, 56., RAISED, cx))
+                .child(
+                    div()
+                        .flex_1()
+                        .min_w_0()
+                        .flex()
+                        .flex_col()
+                        .gap(px(3.))
+                        .child(
+                            div()
+                                .flex()
+                                .items_center()
+                                .gap(px(8.))
+                                .child(div().min_w_0().truncate().text_size(px(T_SEC)).font_weight(FontWeight::SEMIBOLD).child(label(a))),
+                        )
+                        .children(handle_of(a).map(|h| div().min_w_0().truncate().text_size(px(T_S)).text_color(c(MUTED)).child(h))),
+                ),
+        )
+        .child(div().flex().flex_wrap().items_center().gap(px(6.)).children(tags_of(root, a)).child(div().flex_1()).children(robux))
+        // What it does now, and the game it is in.
+        .child(hair())
+        .child(
+            div()
+                .flex()
+                .items_center()
+                .gap(px(8.))
+                .text_size(px(T_M))
+                .child(div().size(px(8.)).flex_none().rounded_full().bg(c(dot_of(a))))
+                .child(div().min_w_0().flex_1().text_color(c(if tone == OK || tone == MUTED { TEXT } else { tone })).child(line)),
+        )
+        .when_some(game, |d, g| {
+            d.child(
+                div()
+                    .flex()
+                    .items_center()
+                    .gap(px(10.))
+                    .child(match pic {
+                        Some(p) => img(p).size(px(40.)).flex_none().rounded(px(R_S)).into_any_element(),
+                        None => div().size(px(40.)).flex_none().rounded(px(R_S)).bg(c(INSET)).flex().items_center().justify_center().child(icon("gamepad", 18., c(MUTED))).into_any_element(),
+                    })
+                    .child(div().min_w_0().flex_1().truncate().text_size(px(T_M)).font_weight(FontWeight::MEDIUM).child(g)),
+            )
+        })
+        // Its facts, a line each.
+        .child(hair())
+        .child(
+            div()
+                .flex()
+                .flex_col()
+                .gap(px(4.))
+                .when_some(up, |d, t| d.child(fact("clock", t)))
+                .when_some(ram, |d, r| d.child(fact("chip", r)))
+                .when_some(pid, |d, p| d.child(div().h(px(22.)).flex().items_center().gap(px(6.)).text_size(px(T_M)).child(icon("screens", 12., c(MUTED))).child(p)))
+                // (Not when the state above says it already.)
+                .when(opened != line_said && opened != root.tr("card.never"), |d| d.child(last_line(root, a, opened)))
+                .when_some(today, |d, t| d.child(fact("calendar", t)))
+                .when_some(note, |d, n| d.child(fact("message", n))),
+        )
+        .child(day_strip(root, &id))
+        // Its main button wide, then Edit.
+        .child(
+            div()
+                .flex()
+                .items_center()
+                .gap(px(8.))
+                .child(div().flex_1().min_w_0().children(main.filter(|_| !foreign(a)).map(no_pick)))
+                .child(edit_button(root, a, "detail", 34., cx)),
+        )
 }

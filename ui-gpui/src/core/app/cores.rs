@@ -14,7 +14,7 @@ use windows_sys::Win32::{
     System::Threading::GetCurrentThreadId,
     UI::{
         Accessibility::{HWINEVENTHOOK, SetWinEventHook, UnhookWinEvent},
-        WindowsAndMessaging::{EVENT_SYSTEM_FOREGROUND, GetMessageW, MSG, PostThreadMessageW, WINEVENT_OUTOFCONTEXT, WM_QUIT},
+        WindowsAndMessaging::{EVENT_SYSTEM_FOREGROUND, GetMessageW, MSG, PM_NOREMOVE, PeekMessageW, PostThreadMessageW, WINEVENT_OUTOFCONTEXT, WM_QUIT},
     },
 };
 
@@ -60,11 +60,13 @@ impl App {
             // ends, and the loop reads messages for this thread only.
             unsafe {
                 let hook = SetWinEventHook(EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND, std::ptr::null_mut(), Some(on_foreground_event), 0, 0, WINEVENT_OUTOFCONTEXT);
+                // The thread's message queue made now, so a stop posted right after the id is handed over isn't lost.
+                let mut msg: MSG = std::mem::zeroed();
+                PeekMessageW(&mut msg, std::ptr::null_mut(), 0, 0, PM_NOREMOVE);
                 let _ = tx.send(if hook.is_null() { 0 } else { GetCurrentThreadId() });
                 if hook.is_null() {
                     return;
                 }
-                let mut msg: MSG = std::mem::zeroed();
                 while GetMessageW(&mut msg, std::ptr::null_mut(), 0, 0) > 0 {
                     if msg.message == WM_QUIT {
                         break;

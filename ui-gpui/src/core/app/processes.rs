@@ -115,7 +115,7 @@ pub fn public_target_of(launch_url: Option<&str>, state: Option<&ClientState>) -
 
 /// Runs the job of a check, catching a panic as the C#'s catch did any exception.
 fn guarded(job: impl FnOnce() -> Res<()>) -> Result<(), (String, String)> {
-    match std::panic::catch_unwind(AssertUnwindSafe(job)) {
+    match crate::core::program::catch_unwind(AssertUnwindSafe(job)) {
         Ok(Ok(())) => Ok(()),
         Ok(Err(f)) => Err((crate::core::roblox_api::fail_type_name(&f), f.message().to_string())),
         Err(panic) => {
@@ -195,6 +195,7 @@ impl App {
         self.controller.next_presence.set(now);
         self.updates.next_roblox_version_check.set(now);
         self.updates.next_update_check.set(now);
+        self.updates.next_log_clean.set(now);
         let c = &self.controller;
         c.sweep_background_until.set(moved_back(c.sweep_background_until.get(), back));
         c.resumed_at.set(moved_back(c.resumed_at.get(), back));
@@ -300,10 +301,23 @@ impl App {
             self.controller.running.borrow_mut().shift_remove(&id);
             // A scheduled stop closing it is done: another preset with this account opened later doesn't wait 20 s for it
             // (2026-10-30 review: only the same preset's next run cleared it).
-            self.schedule.stop_closing.borrow_mut().remove(&id);
+            let stopping = self.schedule.stop_closing.borrow_mut().remove(&id);
             self.persist_soon(); // the open clients on disk (see persist)
             // Read before the log watcher drops the pid below, with the log's last lines (a leave logged right before quitting).
             let mut log = self.ended_state(info.0);
+            // Roblox's own words on why it ended (roblox_words.rs), unless Bloxkeep closed it: the person's Close, a
+            // schedule's stop, a restart, or a rejoin of a drop it already wrote the reason of.
+            if !stopping
+                && !self.controller.user_closed.borrow().contains(&id)
+                && !self.presets.restarts.borrow().contains_key(&id)
+                && !self.rejoin.closing_for_rejoin.borrow().contains(&info.0)
+            {
+                let last = log.as_ref().map(|l| match l.reason {
+                    Some(code) => format!("{}, code {code}", l.status),
+                    None => l.status.clone(),
+                });
+                self.note_roblox_lines(info.0, &format!("ended, last state {}", last.as_deref().unwrap_or("none")));
+            }
             if self.controller.logs.borrow().out_of_memory_at(info.0).is_some() {
                 self.rejoin.ran_out_of_memory.borrow_mut().insert(id);
             }
@@ -349,6 +363,27 @@ impl App {
                 set_seen_alive(self, &info.1, now);
                 set_by(&mut self.launching.handed_over.borrow_mut(), &info.1, (info.0, log));
             } else {
+                // Ended on its own (no leave, disconnect or sign-out in its log, not closed by anyone): what it left behind
+                // goes to error.log, off this thread. A disconnect is skipped: a server's shutdown ends many at once.
+                if !stopping
+                    && !in_order
+                    && !closed_by_roblox
+                    && !self.controller.user_closed.borrow().contains(&id)
+                    && !self.presets.restarts.borrow().contains_key(&id)
+                    && !self.rejoin.closing_for_rejoin.borrow().contains(&info.0)
+                    && !log.as_ref().is_some_and(|l| matches!(l.status.as_str(), "left" | "disconnected" | "signedout"))
+                {
+                    let pid = info.0;
+                    let ran_for = Duration::from_secs_f64(now.secs_since(info.1.started_at.get()).max(0.0));
+                    let last = log.as_ref().map(|l| l.status.clone()).unwrap_or_else(|| "no log".into());
+                    std::thread::spawn(move || {
+                        let found = crate::core::roblox_crash_info::describe(pid, ran_for);
+                        log::note(&format!(
+                            "Window {pid} ended on its own (last log: {last}): {}.",
+                            found.as_deref().unwrap_or("no crash report, no Windows error record")
+                        ));
+                    });
+                }
                 self.on_session_ended(id, &info.1, log);
             }
             changed = true;
@@ -472,6 +507,11 @@ impl App {
             self.minimise_afk_windows(&windows);
             Ok(())
         });
+        // Before Maximise: a rejoin going back isn't maximised.
+        self.step("KeepRejoinPlaces(now, windows)", || {
+            self.keep_rejoin_places(now, &windows);
+            Ok(())
+        });
         self.step("MaximiseNewWindows(now, windows)", || {
             self.maximise_new_windows(now, &windows);
             Ok(())
@@ -493,10 +533,11 @@ impl App {
             self.step("window titles", || {
                 for (id, info) in running(self) {
                     // With its process id, so a window can be matched to Task Manager and to its Roblox log.
+                    // (This tick's window list, as the C# did: not a desktop walk of its own for each client.)
                     if let Some(account) = self.find_account(id)
-                        && windows.get(&info.0).is_some_and(|list| !list.is_empty())
+                        && let Some(list) = windows.get(&info.0).filter(|list| !list.is_empty())
                     {
-                        roblox_processes::set_window_title(info.0, &format!("Roblox - {} (PID {})", self.name_text(&account), info.0));
+                        roblox_processes::set_windows_title(list, &format!("Roblox - {} (PID {})", self.name_text(&account), info.0));
                     }
                 }
                 Ok(())
@@ -546,6 +587,15 @@ impl App {
             self.controller.proc_interval_ms.set(interval);
         }
 
+        if now >= self.updates.next_log_clean.get() {
+            self.updates.next_log_clean.set(now.plus_secs(24.0 * 3600.0));
+            std::thread::spawn(|| {
+                let removed = crate::core::roblox_log_watcher::clean_old_logs(std::time::SystemTime::now());
+                if removed > 0 {
+                    log::note(&format!("Roblox logs: {removed} older than {} days deleted.", crate::core::roblox_log_watcher::KEEP_LOGS.as_secs() / 86400));
+                }
+            });
+        }
         if now >= self.updates.next_roblox_version_check.get() && !self.controller.background.get() {
             self.updates.next_roblox_version_check.set(now.plus_secs(secs(ROBLOX_VERSION_INTERVAL)));
             rt::spawn({
@@ -969,6 +1019,7 @@ impl App {
                 tracker: None,
                 open_retries: 0,
                 fps_limit: 0,
+                home_screen: false,
             });
             self.controller.running.borrow_mut().insert(account_id, (p.pid, launch));
             // Not one Bloxkeep opened: Settings' Maximise leaves it as the person has it.

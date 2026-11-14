@@ -153,7 +153,7 @@
   ] : [];
   let closeToTray = true;
   let hideNames = params.has('hide'); // ?hide=1: Settings › Appearance › Hide account names is on
-  let startWithWindows = false, phone = { enabled: false, topic: '', error: null };
+  let startWithWindows = false, phone = { enabled: params.has('phone'), topic: params.has('phone') ? 'bloxkeep-k3v9x2m7q1' : '', error: null }; // ?phone: on, with a topic
   // Game news: real cards, as the bot made them from Vulcan's Blox Fruits stock messages (2026-11-05), their times moved
   // their real times. ?feeds=0: no games yet; ?feeds=wait: still connecting.
   const feedParam = new URLSearchParams(window.__mockQuery ?? location.search).get('feeds');
@@ -595,7 +595,7 @@
           if (params.has('srvbusy') || srvAsked.length >= 3)
             return { servers: [], next: null, busy: true, retryIn: params.has('srvbusy') ? 23 : Math.ceil((60000 - (now - srvAsked[0])) / 1000), left: 0 };
           srvAsked.push(now);
-          return { servers: Array.from({ length: 12 }, (_, i) => ({ jobId: `00000000-0000-0000-0000-${String(i).padStart(12, '0')}`, playing: 15 - i, maxPlayers: 15, ping: 140 - i * 9, fps: 50 + (i * 7) % 11 })), next: a?.cursor ? null : 'more', busy: false, left: 3 - srvAsked.length };
+          return { servers: Array.from({ length: Number(params.get('srvmany')) || 12 }, (_, i) => ({ jobId: `00000000-0000-0000-0000-${String(i).padStart(12, '0')}`, playing: Math.max(1, 15 - (i % 15)), maxPlayers: 15, ping: 140 - i * 9, fps: 50 + (i * 7) % 11 })), next: a?.cursor ? null : 'more', busy: false, left: 3 - srvAsked.length };
         }
         case 'seenWhatsNew': return null;
         case 'updateAtLock': lockUpdateGo = !!a.go; push(); return null;

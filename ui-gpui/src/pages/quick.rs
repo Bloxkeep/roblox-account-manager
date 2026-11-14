@@ -42,6 +42,10 @@ pub struct Data {
     added: Vec<(String, String)>,
     /// Codes that ran out one after another: renewed quietly a few times, then it stops asking Roblox.
     expired_row: u32,
+    /// Signing a signed-out account in again: its name, at the top.
+    for_name: String,
+    /// Which opening this is: the countdown loop of one closed and opened again at once stops (two ran side by side).
+    opened: u64,
 }
 
 fn s<'a>(v: &'a Value, k: &str) -> &'a str {
@@ -125,7 +129,14 @@ fn heard(r: &mut Root, mine: u64, answer: Result<Reply, futures::channel::onesho
             window.refresh();
             return false;
         }
-        Err(_) => return false,
+        // The line to the app went: said, not left waiting on a code that can't be heard about.
+        Err(_) => {
+            clear(r);
+            r.quick.error = r.tr("ui.lost");
+            r.quick.phase = Phase::Failed;
+            window.refresh();
+            return false;
+        }
     };
     let go_on = match s(&v, "status") {
         "added" => {
@@ -192,7 +203,13 @@ fn close(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
 }
 
 pub fn open(r: &mut Root, vng: bool, window: &mut Window, cx: &mut Context<Root>) {
-    r.quick = Data { open: true, vng, code_n: r.quick.code_n, ..Default::default() };
+    open_for(r, vng, String::new(), window, cx)
+}
+
+/// "Sign in again" on a signed-out account (app.js's quickLogin(realm, label)): its realm, and its name at the top.
+pub fn open_for(r: &mut Root, vng: bool, for_name: String, window: &mut Window, cx: &mut Context<Root>) {
+    let opened = r.quick.opened.wrapping_add(1);
+    r.quick = Data { open: true, vng, code_n: r.quick.code_n, for_name, opened, ..Default::default() };
     r.help_open = true;
     start(r, window, cx);
     // The time left on the code counts down.
@@ -203,7 +220,7 @@ pub fn open(r: &mut Root, vng: bool, window: &mut Window, cx: &mut Context<Root>
                 if r.quick.open && r.quick.phase == Phase::Waiting {
                     window.refresh();
                 }
-                r.quick.open
+                r.quick.open && r.quick.opened == opened
             });
             if !matches!(going, Ok(true)) {
                 break;
@@ -224,7 +241,7 @@ pub fn open(r: &mut Root, vng: bool, window: &mut Window, cx: &mut Context<Root>
         let mut realm = div().flex().gap(px(2.)).p(px(3.)).rounded(px(R_M)).bg(c(INSET));
         for (label, vng) in [("Roblox", false), ("Roblox VNG", true)] {
             let this = this.clone();
-            realm = realm.child(segment(label, q.vng == vng).flex_1().h(px(28.)).justify_center().text_size(px(T_S + 0.5)).cursor_pointer().child(label).on_click(move |_, w, cx| {
+            realm = realm.child(segment(label, q.vng == vng).flex_1().h(px(28.)).justify_center().text_size(px(T_M)).cursor_pointer().child(label).on_click(move |_, w, cx| {
                 let _ = this.update(cx, |r, cx| {
                     if r.quick.vng != vng {
                         r.quick.vng = vng;
@@ -332,10 +349,28 @@ pub fn open(r: &mut Root, vng: bool, window: &mut Window, cx: &mut Context<Root>
             Phase::Expired => ended(None, "clock", r.tr("ql.expired"), again),
             Phase::Failed => ended(Some(BAD), "alert", q.error.clone(), again),
         };
-        let mut body = div().flex().flex_col().gap(px(16.)).child(realm).child(main).child(status);
+        let mut body = div().flex().flex_col().gap(px(16.));
+        if !q.for_name.is_empty() {
+            // "Signing in again to <b>name</b>.": the name in bold, where the words put it.
+            let words = r.i18n.tv("ql.for", &[("name", "\u{0}")]);
+            let mut parts = words.split('\u{0}');
+            let before = parts.next().unwrap_or_default().to_string();
+            let after = parts.next().unwrap_or_default().to_string();
+            body = body.child(
+                div()
+                    .flex()
+                    .flex_wrap()
+                    .text_size(px(T_M))
+                    .text_color(c(TEXT_2))
+                    .child(before)
+                    .child(div().font_weight(FontWeight::BOLD).text_color(c(TEXT)).child(q.for_name.clone()))
+                    .child(after),
+            );
+        }
+        body = body.child(realm).child(main).child(status);
         if !q.added.is_empty() {
             let names = q.added.iter().map(|(_, n)| n.clone()).collect::<Vec<_>>().join(", ");
-            body = body.child(div().text_size(px(T_S + 0.5)).line_height(px(17.)).text_color(c(OK)).child(r.i18n.tv("ql.addedList", &[("names", &names)])));
+            body = body.child(div().text_size(px(T_M)).line_height(px(17.)).text_color(c(OK)).child(r.i18n.tv("ql.addedList", &[("names", &names)])));
         }
         let (browser, done, shut) = (this.clone(), this.clone(), this.clone());
         let foot = dialog_foot()

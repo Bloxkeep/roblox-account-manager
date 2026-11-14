@@ -154,7 +154,7 @@ pub(super) fn roblox(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
                         .flex()
                         .flex_col()
                         .gap(px(10.))
-                        .child(div().text_size(px(T_S + 0.5)).text_color(c(TEXT_2)).child(text))
+                        .child(div().text_size(px(T_M)).text_color(c(TEXT_2)).child(text))
                         .child(
                             div()
                                 .flex()
@@ -181,7 +181,7 @@ pub(super) fn roblox(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
         .flex()
         .items_start()
         .gap(px(16.))
-        .child(div().size(px(44.)).flex_none().rounded(px(R_M)).bg(c(RAISED_2)).flex().items_center().justify_center().child(icon("gamepad", 22., c(TEXT))))
+        .child(div().flex_none().child(icon("gamepad", 28., c(TEXT))))
         .child(
             div()
                 .flex_1()
@@ -195,7 +195,7 @@ pub(super) fn roblox(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
                         .items_center()
                         .gap(px(10.))
                         .child(tip(
-                            div().id("ru-build").text_size(px(T_H + 2.)).font_weight(FontWeight::BOLD).child(if installed.is_empty() { "Roblox".to_string() } else { format!("Roblox {installed}") }),
+                            div().id("ru-build").text_size(px(T_SEC)).font_weight(FontWeight::BOLD).child(if installed.is_empty() { "Roblox".to_string() } else { format!("Roblox {installed}") }),
                             build_tip,
                         ))
                         .child(badge(
@@ -208,7 +208,7 @@ pub(super) fn roblox(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
                         )),
                 )
                 // (Up to date: the badge says it already, so the line under it says what that was checked against.)
-                .child(div().text_size(px(T_S + 0.5)).text_color(c(TEXT_2)).child(if up_to_date == Some(true) && !updating {
+                .child(div().text_size(px(T_M)).text_color(c(TEXT_2)).child(if up_to_date == Some(true) && !updating {
                     root.tr("set.rbx.same")
                 } else {
                     rv_text
@@ -266,15 +266,24 @@ pub(super) fn roblox(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
 
     // ── updating by itself
     let auto = st.get("autoUpdateRoblox").and_then(Value::as_bool) != Some(false);
-    let when_now = s(st, "robloxUpdateWhen") == "now";
+    // When it goes in: once no window is open (accounts opened before then wait, or play on the build running), or at
+    // once after closing them all (like Close all).
+    let when = match s(st, "robloxUpdateWhen") {
+        "now" => "now",
+        "keep" => "keep",
+        _ => "idle",
+    };
     let mut upd = vec![row(
         root.tr("rbx.auto"),
-        Some(root.tr(if when_now { "rbx.autoDescNow" } else { "rbx.autoDesc" })),
+        Some(root.tr(match when {
+            "now" => "rbx.autoDescNow",
+            "keep" => "rbx.autoDescKeep",
+            _ => "rbx.autoDesc",
+        })),
         switch("s-rbx-auto", auto, cx, |r, on, cx| set(r, json!({ "autoUpdateRoblox": on }), cx)),
     )];
     if auto {
-        let when = if when_now { "now" } else { "idle" };
-        let items = ["idle", "now"].into_iter().map(|k| (k, root.tr(&format!("rbx.when.{k}")), false)).collect();
+        let items = ["idle", "keep", "now"].into_iter().map(|k| (k, root.tr(&format!("rbx.when.{k}")), false)).collect();
         upd.push(row(root.tr("rbx.when"), None, chips(root, cx, "s-rbx-when", items, &when, |r, v, cx| set(r, json!({ "robloxUpdateWhen": v }), cx))));
     }
     out.push(group(None, upd));
@@ -303,7 +312,7 @@ pub(super) fn roblox(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
     if warns && closed.is_none() {
         watch.push(row_el(
             root.tr("rw.todo"),
-            div().text_size(px(T_S + 0.5)).font_weight(FontWeight::NORMAL).text_color(c(TEXT_2)).child(root.tr("rw.todo")),
+            div().text_size(px(T_M)).font_weight(FontWeight::NORMAL).text_color(c(TEXT_2)).child(root.tr("rw.todo")),
             None,
             Button::new("rw-check2", root.tr("rw.checkBloxkeep")).small().on_click(cx.listener(|r, _, _, cx| check_bloxkeep(r, cx))),
         ));
@@ -353,6 +362,8 @@ pub(super) fn roblox(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
                     Button::new(("ru-notes", i), root.tr("ru.notesShort"))
                         .small()
                         .quiet()
+                        // (Roblox writes them for game creators, RobloxPage.tsx says.)
+                        .tip(format!("{} · {}", root.tr("ru.notes"), root.tr("ru.notesHint")))
                         .icon_end("external")
                         .on_click(cx.listener(move |r, _, _, _| r.send("openReleaseNotes", json!({ "version": version.clone() })))),
                 )
@@ -575,12 +586,17 @@ fn rc_picker(root: &Root, cx: &mut Context<Root>) -> AnyElement {
                     if ids.is_empty() {
                         continue;
                     }
-                    if let Ok(Err(e)) = link.call("setUseRobloxConfig", json!({ "ids": ids, "enabled": enabled })).await {
-                        let _ = this.update(cx, |r, cx| {
-                            r.toast = Some((e, "bad".into()));
-                            cx.notify();
-                        });
-                        return;
+                    match link.call("setUseRobloxConfig", json!({ "ids": ids, "enabled": enabled })).await {
+                        Ok(Ok(_)) => {}
+                        Ok(Err(e)) => {
+                            let _ = this.update(cx, |r, cx| {
+                                r.toast = Some((e, "bad".into()));
+                                cx.notify();
+                            });
+                            return;
+                        }
+                        // No answer (the app's pipe dropped): the picker stays open, nothing said picked.
+                        Err(_) => return,
                     }
                 }
                 let _ = this.update(cx, |r, cx| {

@@ -2,38 +2,49 @@
 // greys flat and small next to the old page): blue-slate surfaces in clear layers (the ground darkest, a panel a step
 // up, a card a step above that, each step one you can see), the old page's type scale, the face yellow on the main
 // button of a place and on whatever is chosen.
+// Colours reworked 2026-11-13 (owner, on the real app: "màu không sang"): the surfaces keep their clear steps but lose
+// their blue (charcoal, not slate) and their hairlines go fainter; the words are ivory, not blue-white; the face is a
+// soft gold, not the logo's full yellow (that stays the logo's own), kept for a place's one main action and a switch
+// that is on: what is merely chosen (the rail's place, a filter, a segment) is a light pill, not a yellow one; and the
+// state colours are a shade quieter.
+// The same evening (owner, on that build: "trông app nhợt nhạt"): the soft gold, ivory words and quiet states together
+// washed the page out. Kept: charcoal with no blue, the face only on a place's one main action, the chosen thing a
+// neutral pill. Back to full strength: the ground deeper and the steps wider, the words near white, the face a full
+// gold, the state colours vivid.
 use gpui_kit::{Hsla, Rgba, rgb};
 
-pub const GROUND: u32 = 0x0c0e13;
-pub const PANEL: u32 = 0x151922;
-pub const RAISED: u32 = 0x1c212c;
-pub const RAISED_2: u32 = 0x262c39;
-pub const TEXT: u32 = 0xe9ecf3;
-pub const TEXT_2: u32 = 0xb6bccc;
+pub const GROUND: u32 = 0x08080a;
+pub const PANEL: u32 = 0x121317;
+pub const RAISED: u32 = 0x1b1c21;
+pub const RAISED_2: u32 = 0x27282f;
+pub const TEXT: u32 = 0xf7f6f2;
+pub const TEXT_2: u32 = 0xc9c7c0;
 /// Meta text (times, "played 12 h"). As light as the old page's (#969cad there, neutral here): the first pick
 /// (#86868d) left most of a screen's words dim.
-pub const MUTED: u32 = 0x969cad;
-pub const DIM: u32 = 0x4b5263;
-pub const FACE: u32 = 0xf5c933;
-pub const FACE_HI: u32 = 0xffd84d;
+pub const MUTED: u32 = 0x9a9890;
+pub const DIM: u32 = 0x5a5852;
+pub const FACE: u32 = 0xf6c63a;
+pub const FACE_HI: u32 = 0xffd75e;
 /// The base a yellow block stands on (the main button's, pressed down onto it).
-pub const FACE_BASE: u32 = 0xa67d10;
-pub const INK: u32 = 0x15181e;
-pub const OK: u32 = 0x3ccf6e;
-pub const WARN: u32 = 0xf2a93b;
+pub const FACE_BASE: u32 = 0x9a7a12;
+pub const INK: u32 = 0x171200;
+pub const OK: u32 = 0x3ddc84;
+pub const WARN: u32 = 0xffab3d;
 /// Online on Roblox (its site or app), not playing: the dot on an account's face.
-pub const ONLINE: u32 = 0x5b9cf0;
-pub const BAD: u32 = 0xef5b4c;
+pub const ONLINE: u32 = 0x5aa2ff;
+pub const BAD: u32 = 0xff6257;
 pub const WHITE: u32 = 0xffffff;
 /// The rail's own ground, a shade off the window's, and the hairline around panels and between parts.
-pub const RAIL_BG: u32 = 0x0f1218;
-pub const LINE: u32 = 0x2a303d;
+pub const RAIL_BG: u32 = 0x0b0b0e;
+pub const LINE: u32 = 0x2a2b32;
 /// A text box's ground: a shade below what it sits on, so it reads as a place to type.
-pub const INSET: u32 = 0x0e1117;
+pub const INSET: u32 = 0x0a0a0c;
+/// The Roblox tab's view capsule: true black on every theme, as a phone's camera island is.
+pub const ISLAND: u32 = 0x000000;
 /// The face yellow pressed.
-pub const FACE_DOWN: u32 = 0xe0b82c;
+pub const FACE_DOWN: u32 = 0xdcae22;
 /// A switch's knob while it is off (on, it is the ink on the yellow).
-pub const KNOB: u32 = 0xc9c9cf;
+pub const KNOB: u32 = 0xd4d2cc;
 /// Black, the same on every theme: what a block's base is darkened toward (kit::base_of), never a ground of its own.
 pub const SHADE: u32 = 0x000000;
 
@@ -281,8 +292,71 @@ fn build(dark: bool, w: &[(u32, f32); web::N], tint: u32, picture: Option<(Strin
     Palette { slots: s, tint: rgb(tint).into(), dark, backdrop }
 }
 
+/// Bloxkeep's own picture theme, not one of the web page's (so not in the generated table): the keep at dusk. A
+/// rendered scene (three.js, assets/photo-keep.jpg): you stand on the walk between the keep's two walls, built of
+/// rounded blocks, lanterns along them; the walk runs to the gatehouse on the horizon; the logo's keeper rises behind
+/// it; sky lanterns drift up under the stars. The page lies thin over it, as launchers lay theirs over their own
+/// banner: the cards are the plates.
+pub const KEEP: crate::theme_table::Look = crate::theme_table::Look {
+    id: "keep",
+    dark: true,
+    scene: Some("photo-keep.jpg"),
+    under: (0x0b1030, 1.),
+    veil: None,
+    frost: None,
+    tint: 0xdfe4ff,
+    web: [
+        (0x070a14, 0.),
+        (0x070a14, 0.5),
+        (0x0c1230, 0.9),
+        (0xffffff, 0.08),
+        (0xffffff, 0.15),
+        (0x0b1024, 0.95),
+        (0x000000, 0.3),
+        (0x0a0f22, 0.9),
+        (0xdfe4ff, 0.16),
+        (0xf1f4fa, 1.),
+        (0xd0d6ea, 1.),
+        (0xb4bccf, 1.),
+        (0x7c86a3, 1.),
+        (0xe2c06a, 1.),
+        (0xecd089, 1.),
+        (0x17140c, 1.),
+        (0x34d399, 1.),
+        (0xfbbf24, 1.),
+        (0x8fb4ff, 1.),
+        (0xfb7185, 1.),
+        (0xcbd2e1, 1.),
+    ],
+};
+/// How thick the page and the rail lie over the keep's picture (thinner than the 72 % of the web's sharp pictures:
+/// its sky is dark where the words are, and the cards carry the rest; thick enough that Settings' rows, which stand
+/// on the page itself, read over the lanterns low in the picture).
+const KEEP_PAGE: f32 = 0.64;
+const KEEP_RAIL: f32 = 0.84;
+/// How soft the keep's picture is drawn (logical px): a little, so it sits behind the page instead of beside it.
+const KEEP_BLUR: f32 = 1.;
+
+/// A picture's file, built into the program: Bloxkeep's own, else one of the web page's.
+pub fn scene_bytes(name: &str) -> Option<&'static [u8]> {
+    match name {
+        "photo-keep.jpg" => Some(include_bytes!("../assets/photo-keep.jpg")),
+        _ => crate::theme_table::scene_bytes(name),
+    }
+}
+
 /// A web theme by its id; Dark (and anything unknown) is Bloxkeep's own.
 pub fn palette_of(id: &str) -> Palette {
+    if id == KEEP.id {
+        let picture = KEEP.scene.map(|f| (f.to_string(), hx(KEEP.under), None, KEEP_BLUR, None));
+        let mut p = build(true, &KEEP.web, KEEP.tint, picture);
+        for (hex, a) in [(PANEL, KEEP_PAGE), (RAIL_BG, KEEP_RAIL)] {
+            if let Some(i) = slot(hex) {
+                p.slots[i] = Hsla { a, ..p.slots[i] };
+            }
+        }
+        return p;
+    }
     let Some(l) = crate::theme_table::LOOKS.iter().find(|l| l.id == id && id != "dark") else {
         return Palette::own();
     };

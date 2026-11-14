@@ -66,6 +66,93 @@ fn roblox(req: &HttpRequest, asked: &Mutex<Vec<String>>, fail_b: &AtomicBool) ->
     }
 }
 
+/// Share links beyond private servers (RoALT reads them; Bloxkeep refused all but type=Server until 2026-11-14): a friend's
+/// invite, a game's page, a "?v=v2" link, each read at Roblox (a stand-in here, in the website's answer shape).
+async fn share_links(c: &mut Checks) {
+    use crate::core::{game_target::SHARE_V2, roblox_api::play::resolve_share, rt};
+    const JOB: &str = "12345678-1234-4234-8234-123456789abc";
+    let invite = GameTarget::try_parse("https://www.roblox.com/share?code=abc123&type=ExperienceInvite", "");
+    c.check(
+        "a friend's invite link: taken, to read at launch (was refused)",
+        invite.as_ref().is_ok_and(|t| t.share_code.as_deref() == Some("abc123") && t.share_type.as_deref() == Some("ExperienceInvite")),
+        format!("{invite:?}"),
+    );
+    let server = GameTarget::try_parse("https://www.roblox.com/share?code=xyz&type=Server", "");
+    c.check(
+        "…a private server's: as before (no type kept)",
+        server.as_ref().is_ok_and(|t| t.share_code.as_deref() == Some("xyz") && t.share_type.is_none()),
+        format!("{server:?}"),
+    );
+    let v2 = GameTarget::try_parse("https://www.roblox.com/share?code=v2code&v=v2", "");
+    c.check(
+        "…a v2 link: read at deeplinks/v2",
+        v2.as_ref().is_ok_and(|t| t.share_code.as_deref() == Some("v2code") && t.share_type.as_deref() == Some(SHARE_V2)),
+        format!("{v2:?}"),
+    );
+    let item = GameTarget::try_parse("https://www.roblox.com/share?code=p1&type=AvatarItemDetails", "");
+    c.check("…an avatar item's: refused, saying it isn't a game", item.as_ref().is_err_and(|e| e.contains("doesn't lead to a game")), format!("{item:?}"));
+
+    let status = Arc::new(Mutex::new("Valid".to_string()));
+    let asked = Arc::new(Mutex::new(Vec::<String>::new()));
+    {
+        let (status, asked) = (status.clone(), asked.clone());
+        *roblox_api::STAND_IN.write().unwrap_or_else(|e| e.into_inner()) = Some(Box::new(move |req: &HttpRequest| {
+            let rest = req.url.split("://").nth(1).unwrap_or("");
+            let path = rest[rest.find('/').unwrap_or(rest.len())..].split('?').next().unwrap_or("").to_string();
+            let body = req.body.as_ref().map(|b| String::from_utf8_lossy(b).into_owned()).unwrap_or_default();
+            asked.lock().unwrap().push(format!("{path} {body}"));
+            if req.headers_named("x-csrf-token").next().is_none() {
+                let mut csrf = json_answer(403, json!({ "errors": [{ "code": 0, "message": "Token Validation Failed" }] }));
+                csrf.headers.push(("x-csrf-token".into(), "t".into()));
+                return Ok(csrf);
+            }
+            Ok(match path.as_str() {
+                "/sharelinks/v1/resolve-link" if body.contains("ExperienceInvite") => json_answer(
+                    200,
+                    json!({ "experienceInviteData": { "status": status.lock().unwrap().clone(), "placeId": PLACE, "instanceId": JOB, "inviterId": 5 } }),
+                ),
+                "/sharelinks/v1/resolve-link" => json_answer(200, json!({ "experienceDetailsInviteData": { "status": "Valid", "placeId": PLACE, "launchData": "event=7" } })),
+                "/deeplinks/v2/resolve" => json_answer(200, json!({ "linkType": "Experience", "status": "Valid", "targetId": PLACE, "customData": "from-v2" })),
+                _ => json_answer(404, json!({})),
+            })
+        }));
+    }
+    let resolve = |code: &'static str, kind: Option<&'static str>| rt::blocking(move || resolve_share("cookie-a", code, kind, &Cancel::new()));
+    let r = resolve("abc123", Some("ExperienceInvite")).await;
+    c.check(
+        "an invite still valid: the friend's server of that game",
+        r.as_ref().is_ok_and(|t| t.place_id == PLACE && t.job_id.as_deref() == Some(JOB) && t.link_code.is_none() && !t.expired),
+        format!("{r:?}"),
+    );
+    *status.lock().unwrap() = "Expired".into();
+    let r = resolve("abc123", Some("ExperienceInvite")).await;
+    c.check(
+        "…expired: the game, not that server, and said expired (joined anyway, as the website does)",
+        r.as_ref().is_ok_and(|t| t.place_id == PLACE && t.job_id.is_none() && t.expired),
+        format!("{r:?}"),
+    );
+    let r = resolve("d1", Some("ExperienceDetails")).await;
+    c.check(
+        "a game's link: the game with its launch data",
+        r.as_ref().is_ok_and(|t| t.place_id == PLACE && t.job_id.is_none() && t.launch_data.as_deref() == Some("event=7")),
+        format!("{r:?}"),
+    );
+    let r = resolve("v2code", Some(SHARE_V2)).await;
+    c.check(
+        "a v2 link: its place and custom data",
+        r.as_ref().is_ok_and(|t| t.place_id == PLACE && t.launch_data.as_deref() == Some("from-v2"))
+            && asked.lock().unwrap().iter().any(|a| a.starts_with("/deeplinks/v2/resolve")),
+        format!("{r:?}"),
+    );
+    let target = GameTarget { launch_data: Some("event=7".into()), ..GameTarget::new(PLACE, None, None, None) };
+    let link = unescape_data_string(&roblox_launcher::build_launch_uri("TICKET", Some(&target), None));
+    c.check(
+        "the launch carries the launch data in a plain join",
+        link.contains("request=RequestGame&") && link.contains(&format!("&placeId={PLACE}&launchData=event%3D7&isPlayTogetherGame=false")),
+        &link,
+    );
+}
+
 pub async fn run(c: &mut Checks, _dir: &str) {
     // ── The game box's deep link ──
     let parsed = GameTarget::try_parse(&format!("roblox://placeId={PLACE}&accessCode={}", SHARED.to_uppercase()), "");
@@ -197,5 +284,6 @@ pub async fn run(c: &mut Checks, _dir: &str) {
         g["ok"] == true && g["kind"] == "private" && g["placeId"].as_i64() == Some(PLACE),
         &g,
     );
+    share_links(c).await;
     no_network();
 }

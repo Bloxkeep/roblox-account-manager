@@ -90,13 +90,12 @@ impl App {
     }
 
     pub async fn daily_sign_in_check(self: &Rc<Self>) {
-        self.health.sign_in_check_running.set(true);
+        let _running = crate::core::base::Busy::set(&self.health.sign_in_check_running);
         // Background work must never take the app down; the next due time tries again.
         if let Err(ex) = self.quiet_sign_in_check().await {
             log::write(&ex);
             self.health.sign_in_check_retry_at.set(Stamp::utc_now().plus_secs(secs(SIGN_IN_CHECK_RETRY)));
         }
-        self.health.sign_in_check_running.set(false);
     }
 
     /// The vault is still open, the person hasn't started their own check or turned this off, and there's a connection.
@@ -127,9 +126,14 @@ impl App {
                 stopped = true;
                 break;
             }
-            let Some(account) = find(id) else { continue }; // deleted meanwhile: neither asked about nor named
+            if find(id).is_none() {
+                continue; // deleted meanwhile: neither asked about nor named
+            }
             let mut attempt = 1;
             loop {
+                // Read again each try, as the C#'s account.Cookie: after a rate limit's pause the account may have been
+                // signed in again, and the old cookie's answer would only be thrown away.
+                let Some(account) = find(id) else { break };
                 let cookie = account.cookie.clone();
                 let (c, r) = (cookie.clone(), account.realm.clone());
                 match rt::blocking(move || roblox_api::get_authenticated_user(&c, &r, &Cancel::new())).await {
@@ -270,13 +274,18 @@ impl App {
             self.push_state_if_changed();
         }
         if !signed_out.is_empty() && self.is_vault(&vault) {
+            // (Accounts deleted during the check's pauses drop out: no "0 accounts…" when none is left.)
             let accounts: Vec<Account> = signed_out.iter().filter_map(|id| find(*id)).collect();
-            let text = self.signed_out_text(&accounts);
-            self.notify(&text, "warn", "signin", Guid::nil(), true, None);
+            if !accounts.is_empty() {
+                let text = self.signed_out_text(&accounts);
+                self.notify(&text, "warn", "signin", Guid::nil(), true, None);
+            }
         }
         if !banned.is_empty() && self.is_vault(&vault) {
             let accounts: Vec<Account> = banned.iter().filter_map(|id| find(*id)).collect();
-            self.notify_banned(accounts);
+            if !accounts.is_empty() {
+                self.notify_banned(accounts);
+            }
         }
         if stopped {
             return Ok(());

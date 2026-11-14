@@ -10,7 +10,6 @@ use super::App;
 use crate::core::{
     base::{Cancel, Guid},
     log,
-    models::Account,
     roblox_processes, rt, summary_card, taskbar_groups,
     win_kit::Picture,
     window_icons,
@@ -27,6 +26,8 @@ pub struct WindowIconsState {
     /// Settings › Taskbar buttons (taskbar_groups.rs): a button per account, or a group per preset (windows without one
     /// stay in Roblox's); "roblox" puts every window's own id back.
     pub taskbar_leftovers_cleared: Cell<bool>,
+    /// A pass of window_icons (messages to Roblox's windows) is still running on its worker: the next tick skips.
+    pub icons_busy: Cell<bool>,
 }
 
 /// An avatar's bytes as a picture; None when the decoder can't read them.
@@ -39,56 +40,77 @@ fn decode_picture(bytes: &[u8]) -> Option<Picture> {
 }
 
 impl App {
+    /// The icons are put on the windows from a worker thread: each is a message to Roblox's window (300 ms at most), so a
+    /// slow one no longer holds the core thread up, and a pass still running makes the next tick skip.
     pub fn apply_window_icons(self: &Rc<Self>, alive: &HashSet<i32>, windows: &HashMap<i32, Vec<isize>>) {
-        window_icons::forget(alive);
-        let on = self.vault(|d| d.settings.window_pictures.unwrap_or(d.settings.rename_windows)).unwrap_or(false);
-        if !on {
-            for pid in window_icons::pids() {
-                window_icons::remove(pid, windows.get(&pid).map_or(&[][..], |w| &w[..]));
-            }
+        if self.window_icons.icons_busy.get() {
             return;
         }
-        let running: Vec<(Guid, i32)> = self.controller.running.borrow().iter().map(|(id, r)| (*id, r.0)).collect();
-        let mut shown: Vec<(i32, Vec<isize>, Account)> = Vec::new();
-        for (id, pid) in running {
-            if let Some(account) = self.find_account(id)
-                && let Some(list) = windows.get(&pid).filter(|l| !l.is_empty())
-            {
-                shown.push((pid, list.clone(), account));
-            }
-        }
-        // One client's windows are asked whether they still have their icon at a time, each every half a minute.
-        let check = window_icons::next_to_check(&shown.iter().map(|s| s.0).collect::<Vec<_>>());
-        for (pid, list, account) in &shown {
-            let url = self.controller.avatar_urls.borrow().get(&account.user_id).cloned();
-            let mut picture: Option<Picture> = None;
-            if let Some(url) = &url {
-                match self.window_icons.icon_pictures.borrow().get(url) {
-                    Some(known) => picture = known.clone(),
-                    None => {
-                        let app = self.clone();
-                        let url = url.clone();
-                        // C#: `_ = LoadIconPictureAsync(url)`.
-                        rt::spawn(async move { app.load_icon_picture(url).await });
+        let alive = alive.clone();
+        let on = self.vault(|d| d.settings.window_pictures.unwrap_or(d.settings.rename_windows)).unwrap_or(false);
+        // (pid, windows, what the picture shows, the picture or none, the name for the initials)
+        let mut jobs: Vec<(i32, Vec<isize>, String, Option<Picture>, String)> = Vec::new();
+        if on {
+            let running: Vec<(Guid, i32)> = self.controller.running.borrow().iter().map(|(id, r)| (*id, r.0)).collect();
+            for (id, pid) in running {
+                let (Some(account), Some(list)) = (self.find_account(id), windows.get(&pid).filter(|l| !l.is_empty())) else {
+                    continue;
+                };
+                let url = self.controller.avatar_urls.borrow().get(&account.user_id).cloned();
+                let mut picture: Option<Picture> = None;
+                if let Some(url) = &url {
+                    match self.window_icons.icon_pictures.borrow().get(url) {
+                        Some(known) => picture = known.clone(),
+                        None => {
+                            let app = self.clone();
+                            let url = url.clone();
+                            // C#: `_ = LoadIconPictureAsync(url)`.
+                            rt::spawn(async move { app.load_icon_picture(url).await });
+                        }
                     }
                 }
-            }
-            match (picture, &url) {
-                (Some(picture), Some(url)) => {
-                    window_icons::apply(*pid, list, url, &|| picture.clone(), Some(*pid) == check);
-                }
-                _ => {
-                    let name = self.name_text(account); // "F…" while names are hidden
-                    window_icons::apply(*pid, list, &format!("initials:{name}"), &|| window_icons::initials(&name), Some(*pid) == check);
+                let name = self.name_text(&account); // "F…" while names are hidden
+                match (picture, url) {
+                    (Some(picture), Some(url)) => jobs.push((pid, list.clone(), url, Some(picture), name)),
+                    _ => jobs.push((pid, list.clone(), format!("initials:{name}"), None, name)),
                 }
             }
         }
+        let off_windows = if on { HashMap::new() } else { windows.clone() };
+        self.window_icons.icons_busy.set(true);
+        let app = self.clone();
+        rt::spawn(async move {
+            let _busy = crate::core::base::on_drop(|| app.window_icons.icons_busy.set(false));
+            rt::blocking(move || {
+                window_icons::forget(&alive);
+                if !on {
+                    for pid in window_icons::pids() {
+                        window_icons::remove(pid, off_windows.get(&pid).map_or(&[][..], |w| &w[..]));
+                    }
+                    return;
+                }
+                // One client's windows are asked whether they still have their icon at a time, each every half a minute.
+                let check = window_icons::next_to_check(&jobs.iter().map(|j| j.0).collect::<Vec<_>>());
+                for (pid, list, key, picture, name) in &jobs {
+                    let again = Some(*pid) == check;
+                    match picture {
+                        Some(picture) => window_icons::apply(*pid, list, key, &|| picture.clone(), again),
+                        None => window_icons::apply(*pid, list, key, &|| window_icons::initials(name), again),
+                    }
+                }
+            })
+            .await;
+        });
     }
 
     pub async fn load_icon_picture(self: &Rc<Self>, url: String) {
         if !self.window_icons.icon_loading.borrow_mut().insert(url.clone()) {
             return;
         }
+        // finally: off the loading list however this ends.
+        let _loading = crate::core::base::on_drop(|| {
+            self.window_icons.icon_loading.borrow_mut().remove(&url);
+        });
         let address = url.clone();
         let picture: Option<Picture> = rt::blocking(move || summary_card::load_avatar(&address, &Cancel::new()).and_then(|bytes| decode_picture(&bytes))).await;
         {
@@ -98,7 +120,6 @@ impl App {
             }
             pictures.insert(url.clone(), picture);
         }
-        self.window_icons.icon_loading.borrow_mut().remove(&url);
     }
 
     pub fn apply_taskbar_groups(&self, alive: &HashSet<i32>, windows: &HashMap<i32, Vec<isize>>) {
@@ -134,6 +155,8 @@ impl App {
 
     /// Bloxkeep closing: the icons are Bloxkeep's and go with it, so a window left pointing at one would show none.
     pub fn give_icons_back(&self) {
+        // A pass still running on its worker puts none on again after this.
+        window_icons::close();
         for pid in window_icons::pids() {
             let found = roblox_processes::visible_windows(&[pid]);
             window_icons::remove(pid, found.get(&pid).map_or(&[][..], |w| &w[..]));

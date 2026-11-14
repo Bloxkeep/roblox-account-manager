@@ -107,7 +107,7 @@ impl App {
                     ""
                 };
                 json!({
-                    "id": r.id, "name": name, "minutes": (r.seconds / 60.0).round() as i32, "kicks": r.kicks,
+                    "id": r.id, "name": name, "minutes": (r.seconds / 60.0).round_ties_even() as i32, "kicks": r.kicks,
                     "kickWhy": if r.idle { Some("AFK") } else { None }, "drops": r.drops,
                     "now": state,
                     "lastPlayed": if r.now { None } else { Some(r.last) },

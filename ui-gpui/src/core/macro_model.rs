@@ -480,7 +480,7 @@ pub mod macro_rules {
 
     pub const MAX_MACROS: i32 = 100;
     pub const MAX_NAME: i32 = 60;
-    pub const MAX_STEPS: i32 = 500;
+    pub const MAX_STEPS: i32 = 5000;
     pub const MAX_IMAGE_SIDE: i32 = 256;
     pub const MAX_DEPTH: i32 = 20;
     pub const MAX_TYPE_TEXT: i32 = 200;

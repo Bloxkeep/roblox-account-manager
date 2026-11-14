@@ -1,0 +1,4 @@
+# The C runtime inside the exe: Bloxkeep starts on a PC without the Visual C++ Redistributable (no "VCRUNTIME140.dll
+# was not found").
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]

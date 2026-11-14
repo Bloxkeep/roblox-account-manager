@@ -43,7 +43,8 @@ pub struct JoinPlayerState {
     pub players: RefCell<HashMap<String, RobloxUser>>,
     /// Why each account waits for its followed player, as last said: said again only when the reason changes.
     pub follow_wait_told: RefCell<HashMap<Guid, String>>,
-    pub follow_seen: RefCell<HashMap<i64, (Arc<Vault>, Stamp, Option<Presence>)>>,
+    /// Weak: what was seen must not keep a locked vault's cookies in memory.
+    pub follow_seen: RefCell<HashMap<i64, (std::sync::Weak<Vault>, Stamp, Option<Presence>)>>,
 }
 
 /// ^[A-Za-z0-9_]{3,20}$
@@ -358,7 +359,7 @@ impl App {
         }
         let known = self.join_player.follow_seen.borrow().get(&follow.user_id).cloned();
         let seen: Option<Presence> = match known {
-            Some((v, at, seen)) if Arc::ptr_eq(&v, &vault) && Stamp::utc_now().secs_since(at) < secs(FOLLOW_SEEN_FOR) => seen,
+            Some((v, at, seen)) if v.upgrade().is_some_and(|v| Arc::ptr_eq(&v, &vault)) && Stamp::utc_now().secs_since(at) < secs(FOLLOW_SEEN_FOR) => seen,
             _ => {
                 let (seen, failed) = self.where_player_is(follow.user_id, viewers, vault.clone(), ct).await;
                 if seen.is_none()
@@ -367,8 +368,10 @@ impl App {
                     return Err(failed);
                 }
                 // Only "not in a server yet": a server found is asked afresh each time, since the player may have moved on.
-                if seen.as_ref().is_none_or(|s| App::presence_rank(s) < 5) {
-                    self.join_player.follow_seen.borrow_mut().insert(follow.user_id, (vault.clone(), Stamp::utc_now(), seen.clone()));
+                // Nor a part answer (one account saw nothing, a later one was refused or rate-limited): the accounts that
+                // couldn't ask may see the player, so every follower isn't kept waiting on it.
+                if failed.is_none() && seen.as_ref().is_none_or(|s| App::presence_rank(s) < 5) {
+                    self.join_player.follow_seen.borrow_mut().insert(follow.user_id, (Arc::downgrade(&vault), Stamp::utc_now(), seen.clone()));
                 } else {
                     self.join_player.follow_seen.borrow_mut().remove(&follow.user_id);
                 }

@@ -175,7 +175,7 @@ pub fn open(r: &mut Root, ids: Vec<String>, window: &mut Window, cx: &mut Contex
                         .gap(px(2.))
                         .rounded_full()
                         .bg(c(RAISED_2))
-                        .text_size(px(T_S + 0.5))
+                        .text_size(px(T_M))
                         // A name from the list is looked up at once.
                         .child(focusable(div().id(("jp-pick", i))).cursor_pointer().text_color(c(TEXT_2)).hover(|s| s.text_color(c(TEXT))).child(name).on_click(move |_, w, cx| {
                             let _ = pick.update(cx, |r, cx| {

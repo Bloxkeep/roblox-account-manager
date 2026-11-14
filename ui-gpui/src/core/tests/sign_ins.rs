@@ -39,6 +39,7 @@ struct Request {
     cookie: Option<String>,
     csrf: bool,
     body: String,
+    like_client: bool,
 }
 
 /// Who each made-up cookie signs in, and a new cookie to set in the next answer to a request carrying a given one.
@@ -103,7 +104,7 @@ impl Roblox {
         let cookie = req.headers_named("Cookie").next().map(|h| h.replace(".ROBLOSECURITY=", ""));
         let csrf = req.headers_named("x-csrf-token").next().is_some();
         let text = req.body.as_ref().map(|b| String::from_utf8_lossy(b).into_owned()).unwrap_or_default();
-        self.asked.lock().unwrap().push(Request { host: host.clone(), path: path.clone(), cookie: cookie.clone(), csrf, body: text.clone() });
+        self.asked.lock().unwrap().push(Request { host: host.clone(), path: path.clone(), cookie: cookie.clone(), csrf, body: text.clone(), like_client: req.like_roblox_client });
         if path.ends_with("/favorite/games") {
             while self.gated.load(Ordering::SeqCst) {
                 std::thread::sleep(Duration::from_millis(20));
@@ -326,6 +327,42 @@ async fn body(c: &mut Checks, app: &Rc<App>, roblox: &Arc<Roblox>, cookie: &dyn 
             roblox.asked_with(&next).iter().map(|r| r.path.clone()).collect::<Vec<_>>().join(", "),
         );
     }
+    // A sign-in ticket is bound to the address that asked for it, and Roblox's client redeems it without Windows' proxy
+    // (a user's report, 2026-11-14: 403 at sign-in): asked the client's way; every other call as before.
+    let asked = roblox.asked.lock().unwrap().iter().map(|r| (r.path.clone(), r.like_client)).collect::<Vec<_>>();
+    let tickets: Vec<bool> = asked.iter().filter(|(p, _)| p == "/v1/authentication-ticket/").map(|(_, l)| *l).collect();
+    c.check(
+        "the sign-in ticket is asked the way Roblox's client connects (no Windows proxy), its CSRF try too",
+        tickets.len() >= 2 && tickets.iter().all(|l| *l),
+        &tickets,
+    );
+    c.check(
+        "…and nothing else is",
+        asked.iter().all(|(p, l)| !*l || p == "/v1/authentication-ticket/"),
+        asked.iter().filter(|(_, l)| *l).map(|(p, _)| p.clone()).collect::<Vec<_>>(),
+    );
+    // libcurl's choice from the environment (Roblox's client): https_proxy first, all_proxy after, none for a host in
+    // no_proxy; Windows' proxy setting never.
+    let env = |pairs: &'static [(&'static str, &'static str)]| move |n: &str| pairs.iter().find(|(k, _)| *k == n).map(|(_, v)| v.to_string());
+    let pick = |pairs: &'static [(&'static str, &'static str)]| crate::net::env_proxy_for("auth.roblox.com", env(pairs));
+    c.check("no proxy in the environment: straight to Roblox", pick(&[]).is_none(), pick(&[]));
+    c.check(
+        "https_proxy before all_proxy",
+        pick(&[("ALL_PROXY", "http://b:2"), ("https_proxy", "http://a:1")]).as_deref() == Some("http://a:1"),
+        pick(&[("ALL_PROXY", "http://b:2"), ("https_proxy", "http://a:1")]),
+    );
+    c.check("all_proxy alone is taken", pick(&[("ALL_PROXY", "http://b:2")]).as_deref() == Some("http://b:2"), pick(&[("ALL_PROXY", "http://b:2")]));
+    c.check(
+        "no_proxy naming roblox.com (or *) skips it",
+        pick(&[("https_proxy", "http://a:1"), ("no_proxy", "localhost,.roblox.com")]).is_none() && pick(&[("https_proxy", "http://a:1"), ("NO_PROXY", "*")]).is_none(),
+        pick(&[("https_proxy", "http://a:1"), ("no_proxy", "localhost,.roblox.com")]),
+    );
+    c.check(
+        "…but not a name that only ends the same (notroblox.com)",
+        pick(&[("https_proxy", "http://a:1"), ("no_proxy", "x.notroblox.com,blox.com")]).as_deref() == Some("http://a:1"),
+        pick(&[("https_proxy", "http://a:1"), ("no_proxy", "x.notroblox.com,blox.com")]),
+    );
+
     let renewed = of(a).cookie_renewed;
     c.check("…and noted as renewed", renewed.is_some_and(|at| Stamp::now().secs_since(at) < 60.0), renewed);
 
@@ -594,14 +631,14 @@ async fn body(c: &mut Checks, app: &Rc<App>, roblox: &Arc<Roblox>, cookie: &dyn 
     // ── A private server's share link (review, 2026-10-30) ──
     // Read on apis.roblox.com with a Roblox account's sign-in, never a Roblox VNG one's, even first in launch order.
     roblox.clear();
-    let vng_only = app.resolve_share(&[of(v)], "share-code", &Cancel::new()).await;
+    let vng_only = app.resolve_share(&[of(v)], "share-code", None, &Cancel::new()).await;
     let v_cookie = of(v).cookie;
     c.check(
         "a share link with only a Roblox VNG account selected: said, and its sign-in not sent to roblox.com",
         refusal(&vng_only).is_some() && roblox.asked_with(&v_cookie).is_empty(),
         format!("{vng_only:?}"),
     );
-    let _ = app.resolve_share(&[of(v), of(a)], "share-code", &Cancel::new()).await;
+    let _ = app.resolve_share(&[of(v), of(a)], "share-code", None, &Cancel::new()).await;
     let mut sharers: Vec<Option<String>> = Vec::new();
     for r in roblox.asked().into_iter().filter(|r| r.path.contains("resolve-link")) {
         if !sharers.contains(&r.cookie) {

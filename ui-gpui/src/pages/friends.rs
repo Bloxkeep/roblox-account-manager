@@ -7,6 +7,7 @@
 // Roblox's check when it holds one), joinServer (the usual launch), openProfile.
 use std::{
     collections::HashMap,
+    sync::{LazyLock, Mutex},
     time::{Duration, Instant},
 };
 
@@ -69,6 +70,298 @@ pub struct Data {
     /// The card whose menu was open last: still built, so it can close as it opened (kit::pop).
     pub card_menu_was: Option<i64>,
     pub sure: Option<i64>,
+    /// A right click on a face in Games' row of faces: whose menu and where the mouse was, and whether it is open
+    /// (false: on its way out, still built so it closes as it opened).
+    pub face_menu: Option<(i64, Point<Pixels>)>,
+    pub face_menu_open: bool,
+    /// Only the friends with this label (with the status filter).
+    pub label_filter: Option<u32>,
+    /// The labels' box (under the Labels button): open, the colour a new label gets, and the friend a new one is for
+    /// (opened from that friend's menu).
+    pub tags_open: bool,
+    pub tag_colour: usize,
+    pub tag_for: Option<i64>,
+    /// A friend's menu shows the labels to tick.
+    pub menu_tags: bool,
+}
+
+/// A label of the user's own for friends: a name and a colour (LABEL_COLOURS). Kept on this PC (prefs.rs), the same for
+/// every account: a friend is the same person whichever account looks.
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
+pub struct Label {
+    pub id: u32,
+    pub name: String,
+    pub colour: u32,
+}
+
+#[derive(Clone, Default, serde::Serialize, serde::Deserialize)]
+pub struct Labels {
+    pub list: Vec<Label>,
+    /// The labels each friend has, by their Roblox id.
+    #[serde(default)]
+    pub of: HashMap<i64, Vec<u32>>,
+}
+
+pub const LABEL_COLOURS: [u32; 8] = [0xff6257, 0xffab3d, 0xf6c63a, 0x3ddc84, 0x2ec4b6, 0x5aa2ff, 0xa78bfa, 0xf472b6];
+
+static LABELS: LazyLock<Mutex<Labels>> = LazyLock::new(|| Mutex::new(crate::prefs::get("friendLabels").and_then(|v| serde_json::from_value(v).ok()).unwrap_or_default()));
+
+pub fn labels() -> Labels {
+    LABELS.lock().map(|l| l.clone()).unwrap_or_default()
+}
+
+/// A friend's labels, in the list's order.
+pub fn labels_of(user: i64) -> Vec<Label> {
+    let Ok(l) = LABELS.lock() else { return Vec::new() };
+    let Some(ids) = l.of.get(&user) else { return Vec::new() };
+    l.list.iter().filter(|x| ids.contains(&x.id)).cloned().collect()
+}
+
+fn change_labels(f: impl FnOnce(&mut Labels)) {
+    let Ok(mut l) = LABELS.lock() else { return };
+    f(&mut l);
+    // (A friend left with none is forgotten.)
+    l.of.retain(|_, v| !v.is_empty());
+    crate::prefs::set("friendLabels", serde_json::to_value(&*l).unwrap_or_default());
+}
+
+fn toggle_label(user: i64, id: u32) {
+    change_labels(|l| {
+        let v = l.of.entry(user).or_default();
+        if let Some(i) = v.iter().position(|x| *x == id) {
+            v.remove(i);
+        } else {
+            v.push(id);
+        }
+    });
+}
+
+/// A new label from the box: its name (one already there isn't made twice), the colour picked, and given to the friend
+/// it was opened for.
+pub fn add_label(r: &mut Root, cx: &mut Context<Root>) {
+    let name: String = r.label_box.read(cx).value().trim().chars().take(24).collect();
+    if name.is_empty() {
+        return;
+    }
+    let colour = LABEL_COLOURS[r.friends.tag_colour % LABEL_COLOURS.len()];
+    let user = r.friends.tag_for;
+    let mut made = false;
+    change_labels(|l| {
+        let id = match l.list.iter().find(|x| x.name.eq_ignore_ascii_case(&name)) {
+            Some(x) => x.id,
+            None => {
+                let id = l.list.iter().map(|x| x.id).max().unwrap_or(0) + 1;
+                l.list.push(Label { id, name: name.clone(), colour });
+                made = true;
+                id
+            }
+        };
+        if let Some(u) = user {
+            let v = l.of.entry(u).or_default();
+            if !v.contains(&id) {
+                v.push(id);
+            }
+        }
+    });
+    // The next one gets the next colour, so labels made one after another differ.
+    if made {
+        r.friends.tag_colour = (r.friends.tag_colour + 1) % LABEL_COLOURS.len();
+    }
+    r.friends.tag_for = None;
+    // (The box is emptied just after: that needs the window.)
+    if let Some(h) = cx.windows().first().copied() {
+        let this = cx.weak_entity();
+        cx.spawn(async move |_, cx| {
+            let _ = cx.update_window(h, |_, window, cx| {
+                let _ = this.update(cx, |r, cx| r.label_box.update(cx, |s, cx| s.set_value("", window, cx)));
+            });
+        })
+        .detach();
+    }
+    cx.notify();
+}
+
+/// The server the account looked through is in (to invite a friend to), when it is in one.
+fn my_server(root: &Root) -> Option<(i64, String)> {
+    looking_ref(root).1.and_then(|a| crate::pages::accounts::menu::server_of(a))
+}
+
+/// A friend invited to the server the account is in: its link copied and put in their chat's box (Inbox), to send with
+/// Enter, so it goes as the user's own words and Roblox's filter shows on it.
+fn invite(r: &mut Root, user: i64, window: &mut Window, cx: &mut Context<Root>) {
+    let Some((place, job)) = my_server(r) else { return };
+    let link = format!("https://www.roblox.com/games/start?placeId={place}&gameInstanceId={job}");
+    cx.write_to_clipboard(ClipboardItem::new_string(link.clone()));
+    r.chat_box.update(cx, |s, cx| s.set_value(link, window, cx));
+    r.toast = None;
+    crate::pages::inbox::chat_with(r, user, cx);
+    if r.toast.is_none() {
+        r.toast = Some((r.tr("fr.inviteReady"), "ok".into()));
+    }
+}
+
+/// A friend's menu's labels part: "Labels ›" and, open, each label to tick for them and "New label…" (the labels' box,
+/// for them).
+fn tag_rows(root: &Root, user: i64, from_face: bool, close: fn(&mut Root), cx: &mut Context<Root>) -> Vec<AnyElement> {
+    let base = |id: ElementId| hot(id).h(px(32.)).px(px(10.)).rounded(px(R_S)).flex().items_center().gap(px(8.)).text_size(px(T_M)).text_color(c(TEXT_2)).cursor_pointer();
+    let k = from_face as usize;
+    let open = root.friends.menu_tags;
+    let mut out = vec![
+        base(("fr-m-tags", k).into())
+            .child(icon("tag", 14., c(MUTED)))
+            .child(div().flex_1().child(root.tr("tag.labels")))
+            .child(icon(if open { "chevronUp" } else { "chevronDown" }, 12., c(MUTED)))
+            .on_click(cx.listener(|r, _, _, cx| {
+                r.friends.menu_tags = !r.friends.menu_tags;
+                cx.notify();
+            }))
+            .into_any_element(),
+    ];
+    if !open {
+        return out;
+    }
+    let mine: Vec<u32> = labels_of(user).iter().map(|l| l.id).collect();
+    for (i, l) in labels().list.into_iter().enumerate() {
+        let on = mine.contains(&l.id);
+        let id = l.id;
+        out.push(
+            base(("fr-m-tag", i * 2 + k).into())
+                .pl(px(18.))
+                .child(div().size(px(9.)).flex_none().rounded_full().bg(c(l.colour)))
+                .child(div().flex_1().min_w_0().truncate().child(l.name))
+                .when(on, |d| d.child(icon("check", 14., c(FACE))))
+                .on_click(cx.listener(move |_, _, _, cx| {
+                    toggle_label(user, id);
+                    cx.notify();
+                }))
+                .into_any_element(),
+        );
+    }
+    out.push(
+        base(("fr-m-newtag", k).into())
+            .pl(px(18.))
+            .text_color(c(MUTED))
+            .child(icon("plus", 13., c(MUTED)))
+            .child(root.tr("tag.new"))
+            .on_click(cx.listener(move |r, _, window, cx| {
+                close(r);
+                r.friends.tags_open = true;
+                r.friends.tag_for = Some(user);
+                let h = r.label_box.read(cx).focus_handle(cx);
+                window.focus(&h, cx);
+                cx.notify();
+            }))
+            .into_any_element(),
+    );
+    out
+}
+
+/// The labels' box, under the Labels button: each label (its colour turns on a click, the bin deletes it from every
+/// friend) and a new one's name, colour and Add.
+fn tags_box(root: &Root, cx: &mut Context<Root>) -> impl IntoElement {
+    let lb = labels();
+    let count = |id: u32| lb.of.values().filter(|v| v.contains(&id)).count();
+    let for_name = root.friends.tag_for.and_then(|u| match &root.friends.list {
+        Some(Ok(l)) => l.iter().find(|f| f.id == u).map(|f| f.display.clone()),
+        _ => None,
+    });
+    let picked = root.friends.tag_colour % LABEL_COLOURS.len();
+    let typed = !root.label_box.read(cx).value().trim().is_empty();
+    div()
+        .id("fr-tags-box")
+        .occlude()
+        .w(px(300.))
+        .p(px(14.))
+        .rounded(px(R_M))
+        .bg(c(RAISED))
+        .border_1()
+        .border_color(c(LINE))
+        .shadow_lg()
+        .flex()
+        .flex_col()
+        .gap(px(10.))
+        .on_mouse_down_out(cx.listener(|r, _, _, cx| {
+            r.friends.tags_open = false;
+            r.friends.tag_for = None;
+            cx.notify();
+        }))
+        .child(div().text_size(px(T_L)).font_weight(FontWeight::SEMIBOLD).child(root.tr("tag.yours")))
+        .map(|d| {
+            if lb.list.is_empty() {
+                return d.child(div().text_size(px(T_S)).line_height(px(18.)).text_color(c(MUTED)).child(root.tr("tag.none")));
+            }
+            d.child(div().flex().flex_col().gap(px(2.)).children(lb.list.iter().enumerate().map(|(i, l)| {
+                let id = l.id;
+                div()
+                    .h(px(32.))
+                    .flex()
+                    .items_center()
+                    .gap(px(8.))
+                    .child(
+                        div()
+                            .id(("fr-tag-col", i))
+                            .size(px(16.))
+                            .flex_none()
+                            .rounded_full()
+                            .bg(c(l.colour))
+                            .cursor_pointer()
+                            .hover(|d| d.opacity(0.8))
+                            .tooltip({
+                                let t: SharedString = root.tr("tag.recolour").into();
+                                move |_, cx| cx.new(|_| Tip(t.clone())).into()
+                            })
+                            .on_click(cx.listener(move |_, _, _, cx| {
+                                change_labels(|lb| {
+                                    if let Some(x) = lb.list.iter_mut().find(|x| x.id == id) {
+                                        let at = LABEL_COLOURS.iter().position(|c| *c == x.colour).unwrap_or(0);
+                                        x.colour = LABEL_COLOURS[(at + 1) % LABEL_COLOURS.len()];
+                                    }
+                                });
+                                cx.notify();
+                            })),
+                    )
+                    .child(div().flex_1().min_w_0().truncate().text_size(px(T_M)).child(l.name.clone()))
+                    .child(div().text_size(px(T_S)).text_color(c(MUTED)).child(count(id).to_string()))
+                    .child(IconButton::new(("fr-tag-del", i), "trash").size(28.).tip(root.tr("tag.delete")).on_click(cx.listener(move |r, _, _, cx| {
+                        change_labels(|lb| {
+                            lb.list.retain(|x| x.id != id);
+                            for v in lb.of.values_mut() {
+                                v.retain(|x| *x != id);
+                            }
+                        });
+                        if r.friends.label_filter == Some(id) {
+                            r.friends.label_filter = None;
+                        }
+                        cx.notify();
+                    })))
+            })))
+        })
+        .child(div().h(px(1.)).bg(c(LINE)))
+        .when_some(for_name, |d, n| d.child(div().text_size(px(T_S)).text_color(c(MUTED)).child(root.i18n.tv("tag.forWho", &[("name", &n)]))))
+        .child(field(&root.label_box, Some("tag")).h(px(36.)))
+        .child(
+            div()
+                .flex()
+                .items_center()
+                .gap(px(6.))
+                .children(LABEL_COLOURS.iter().enumerate().map(|(i, col)| {
+                    div()
+                        .id(("fr-tag-pick", i))
+                        .size(px(24.))
+                        .p(px(3.))
+                        .rounded_full()
+                        .border_2()
+                        .border_color(if i == picked { c(FACE) } else { gpui_kit::transparent_black() })
+                        .cursor_pointer()
+                        .child(div().size_full().rounded_full().bg(c(*col)))
+                        .on_click(cx.listener(move |r, _, _, cx| {
+                            r.friends.tag_colour = i;
+                            cx.notify();
+                        }))
+                }))
+                .child(div().flex_1())
+                .child(Button::new("fr-tag-add", root.tr("tag.add")).small().primary().disabled(!typed).on_click(cx.listener(|r, _, _, cx| add_label(r, cx)))),
+        )
 }
 
 /// Where friends are is asked again when the page is looked at this long after the last answer.
@@ -76,6 +369,8 @@ const FRESH: Duration = Duration::from_secs(60);
 /// "No account is signed in" is asked again at most this often (at once when the app's accounts change).
 const NOBODY_AGAIN: Duration = Duration::from_secs(5);
 const CARD_W: f32 = 300.;
+/// A friend's card's height (its words are one line each: the card never grows).
+const FRIEND_H: f32 = 70.;
 
 fn s<'a>(v: &'a Value, k: &str) -> &'a str {
     v.get(k).and_then(Value::as_str).unwrap_or_default()
@@ -83,10 +378,14 @@ fn s<'a>(v: &'a Value, k: &str) -> &'a str {
 
 /// The accounts whose friends can be asked: signed in, on roblox.com.
 pub fn able(root: &Root) -> Vec<Value> {
+    able_ref(root).into_iter().cloned().collect()
+}
+
+/// `able`, borrowed from the app's state (what a page drawn every frame asks for: no copy of every account).
+pub fn able_ref(root: &Root) -> Vec<&Value> {
     root.accounts()
         .iter()
         .filter(|a| a.get("cookieValid").and_then(Value::as_bool) != Some(false) && s(a, "realm").is_empty() && a.get("userId").and_then(Value::as_i64).unwrap_or(0) > 0)
-        .cloned()
         .collect()
 }
 
@@ -100,11 +399,33 @@ pub fn nobody(r: &Root) -> bool {
     matches!(r.friends.sign, Some(None))
 }
 
+/// What a Roblox tab shows before there is a signed-in account: the tab's own mark, what it needs it for, and Add account.
+pub fn need_account(root: &Root, id: &'static str, key: &str, mark: &'static str, cx: &mut Context<Root>) -> AnyElement {
+    div()
+        .flex_1()
+        .flex()
+        .flex_col()
+        .items_center()
+        .justify_center()
+        .gap(px(16.))
+        .pb(px(40.))
+        .child(div().size(px(56.)).rounded_full().border_1().border_color(c(LINE)).flex().items_center().justify_center().child(icon(mark, 24., c(MUTED))))
+        .child(div().max_w(px(420.)).text_center().text_size(px(T_M)).line_height(px(21.)).text_color(c(TEXT_2)).child(root.tr(key)))
+        .child(Button::new(id, root.tr("acc.add")).icon("plus").primary().on_click(cx.listener(|r, _, _, cx| r.add_account(cx))))
+        .into_any_element()
+}
+
 /// The accounts that can be looked through, and the one that is: the one the app answered for, else the one picked.
 pub fn looking(root: &Root) -> (Vec<Value>, Option<Value>) {
-    let able = able(root);
-    let at = root.friends.sign.as_ref().and_then(|s| s.as_ref()).map(|s| s.0.clone()).or(root.friends.account.clone());
-    let viewer = at.as_ref().and_then(|id| able.iter().find(|a| s(a, "id") == id)).cloned();
+    let (able, viewer) = looking_ref(root);
+    (able.into_iter().cloned().collect(), viewer.cloned())
+}
+
+/// `looking`, borrowed from the app's state.
+pub fn looking_ref(root: &Root) -> (Vec<&Value>, Option<&Value>) {
+    let able = able_ref(root);
+    let at = root.friends.sign.as_ref().and_then(|s| s.as_ref()).map(|s| s.0.as_str()).or(root.friends.account.as_deref());
+    let viewer = at.and_then(|id| able.iter().find(|a| s(a, "id") == id)).copied();
     (able, viewer)
 }
 
@@ -120,10 +441,10 @@ pub fn want(r: &mut Root, link: &crate::link::Link, cx: &mut Context<Root>) {
 /// The sign-in of the account looked through, asked of the app once (Friends and Avatar share it).
 pub fn want_sign(r: &mut Root, link: &crate::link::Link, cx: &mut Context<Root>) {
     #[cfg(feature = "shot")]
-    if r.friends.sign.is_none() && (std::env::var("BLOXKEEP_SHOT_FRIENDS").is_ok() || std::env::var("BLOXKEEP_SHOT_AVATAR").is_ok() || std::env::var("BLOXKEEP_SHOT_PROFILE").is_ok() || std::env::var("BLOXKEEP_SHOT_INBOX").is_ok()) {
+    if r.friends.sign.is_none() && (std::env::var("BLOXKEEP_SHOT_FRIENDS").is_ok() || std::env::var("BLOXKEEP_SHOT_AVATAR").is_ok() || std::env::var("BLOXKEEP_SHOT_PROFILE").is_ok() || std::env::var("BLOXKEEP_SHOT_INBOX").is_ok() || std::env::var("BLOXKEEP_SHOT_CART").is_ok()) {
         // A hidden shot: the mock's first account, with the friends from the file (roblox.rs) or the avatar of the
         // Roblox user BLOXKEEP_SHOT_AVATAR names (an avatar is public).
-        let first = r.friends.account.clone().or(able(r).first().map(|a| s(a, "id").to_string())).unwrap_or_default();
+        let first = r.friends.account.clone().or(able_ref(r).first().map(|a| s(a, "id").to_string())).unwrap_or_default();
         let user = std::env::var("BLOXKEEP_SHOT_AVATAR").or(std::env::var("BLOXKEEP_SHOT_PROFILE")).ok().and_then(|v| v.parse().ok()).unwrap_or(0);
         r.friends.asked_sign = true;
         r.friends.sign = Some(Some((first, user, String::new())));
@@ -183,6 +504,26 @@ fn load(r: &mut Root, cx: &mut Context<Root>) {
                 if got.is_ok() {
                     r.friends.shifts = shifts;
                 }
+                // A friend in a game now who wasn't (or was in another) at the last reading: the capsule opens for them.
+                if let (Some(Ok(old)), Ok(new)) = (&r.friends.list, &got) {
+                    let went = new.iter().find(|f| f.kind == 2 && !f.game.is_empty() && old.iter().any(|o| o.id == f.id && (o.kind != 2 || o.place != f.place)));
+                    if let Some(f) = went.cloned() {
+                        let act = (f.place > 0 && !f.job.is_empty()).then(|| crate::pages::games::LiveAct::Join { acc: id.clone(), place: f.place, job: f.job.clone(), user: f.id, name: f.name.clone() });
+                        let l = crate::pages::games::Live {
+                            key: format!("friend:{}:{}", f.id, f.place),
+                            pic: f.face.clone(),
+                            round: true,
+                            icon: "users",
+                            tone: OK,
+                            title: if f.display.is_empty() { f.name.clone() } else { f.display.clone() },
+                            sub: r.i18n.tv("live.inGame", &[("game", &f.game)]),
+                            act,
+                            busy: false,
+                            at: Instant::now(),
+                        };
+                        crate::pages::games::live_show(r, l, cx);
+                    }
+                }
                 r.friends.list = Some(got);
                 r.friends.requests = asks;
                 r.friends.loading = false;
@@ -209,6 +550,7 @@ impl Data {
         }
         self.menu = false;
         self.card_menu = None;
+        self.face_menu_open = false;
         self.sure = None;
         // A move or a search still under way is dropped with its answer: its button and the box come back.
         self.acts.retain(|_, a| *a != Act::Busy);
@@ -233,7 +575,121 @@ impl Data {
         self.acts.clear();
         self.found = None;
         self.card_menu_was = None;
+        self.face_menu = None;
     }
+}
+
+/// A right click on a friend's face (Games' row of faces): its menu opens where the mouse is.
+pub fn open_face_menu(r: &mut Root, user: i64, at: Point<Pixels>) {
+    r.friends.face_menu = Some((user, at));
+    r.friends.face_menu_open = true;
+    r.friends.sure = None;
+    r.friends.menu_tags = false;
+}
+
+/// The menu of a friend's face: what the Friends page does for a friend, where the right click was. Join (as the
+/// account whose friends these are) and their game only while Roblox shows where they play; Unfriend takes a second
+/// click, as on the card's menu.
+pub fn face_menu(root: &Root, cx: &mut Context<Root>) -> Option<AnyElement> {
+    let (user, at) = root.friends.face_menu?;
+    let Some(Ok(list)) = &root.friends.list else { return None };
+    let f = list.iter().find(|f| f.id == user)?;
+    let open = root.friends.face_menu_open;
+    let join_as = looking(root).1.and_then(|a| a.get("id").and_then(Value::as_str).map(str::to_string));
+    let joinable = f.kind == 2 && f.place > 0 && !f.job.is_empty();
+    let in_game = f.kind == 2 && f.place > 0;
+    let sure = root.friends.sure == Some(user);
+    fn close(r: &mut Root) {
+        r.friends.face_menu_open = false;
+        r.friends.sure = None;
+        r.friends.menu_tags = false;
+    }
+    let row = |id: &'static str, glyph: &'static str, text: String| {
+        hot(id).h(px(32.)).px(px(10.)).rounded(px(R_S)).flex().items_center().gap(px(8.)).text_size(px(T_M)).text_color(c(TEXT_2)).cursor_pointer().child(icon(glyph, 14., c(MUTED))).child(text)
+    };
+    let (place, job, name, game) = (f.place, f.job.clone(), f.name.clone(), f.game.clone());
+    let mut menu = div()
+        .id("ff-menu")
+        .occlude()
+        .w(px(220.))
+        .p(px(4.))
+        .rounded(px(R_M))
+        .bg(c(RAISED))
+        .border_1()
+        .border_color(c(LINE))
+        .shadow_lg()
+        .flex()
+        .flex_col()
+        .on_mouse_down_out(cx.listener(move |r, _, _, cx| {
+            // (Only the menu this one was built for: a right click on another face has just opened its own.)
+            if r.friends.face_menu_open && r.friends.face_menu == Some((user, at)) {
+                close(r);
+                cx.notify();
+            }
+        }));
+    if let Some(acc) = join_as.filter(|_| joinable) {
+        let (job, name) = (job.clone(), name.clone());
+        menu = menu.child(row("ff-join", "play", root.tr("fr.join")).on_click(cx.listener(move |r, _, _, cx| {
+            close(r);
+            r.launch("joinServer", json!({ "ids": [acc], "placeId": place, "jobId": job, "followUserId": user, "followName": name }), false, cx)
+        })));
+    }
+    if in_game {
+        menu = menu.child(row("ff-game", "gamepad", root.tr("fr.seeGame")).on_click(cx.listener(move |r, _, _, cx| {
+            close(r);
+            crate::pages::games::open_place(r, place, &game);
+            cx.notify();
+        })));
+    }
+    if my_server(root).is_some() {
+        menu = menu.child(row("ff-invite", "link", root.tr("fr.invite")).on_click(cx.listener(move |r, _, window, cx| {
+            close(r);
+            invite(r, user, window, cx);
+            cx.notify();
+        })));
+    }
+    let copied = root.tr("t.copiedUser");
+    menu = menu
+        .child(row("ff-profile", "user", root.tr("ui.profile")).on_click(cx.listener(move |r, _, _, cx| {
+            close(r);
+            crate::pages::profile::open_person(r, user, cx);
+        })))
+        .child(row("ff-chat", "message", root.tr("fr.chat")).on_click(cx.listener(move |r, _, _, cx| {
+            close(r);
+            crate::pages::inbox::chat_with(r, user, cx);
+        })))
+        .child(row("ff-copy", "copy", root.tr("m.copyUser")).on_click(cx.listener(move |r, _, _, cx| {
+            close(r);
+            cx.write_to_clipboard(ClipboardItem::new_string(name.clone()));
+            r.toast = Some((copied.clone(), "ok".into()));
+            cx.notify();
+        })))
+        .children(tag_rows(root, user, true, close, cx))
+        .child(div().h(px(1.)).mx(px(6.)).my(px(4.)).bg(c(LINE)))
+        .child(
+            hot("ff-unfriend")
+                .h(px(32.))
+                .px(px(10.))
+                .rounded(px(R_S))
+                .flex()
+                .items_center()
+                .gap(px(8.))
+                .text_size(px(T_M))
+                .cursor_pointer()
+                .text_color(c(if sure { BAD } else { TEXT_2 }))
+                .child(icon("x", 14., c(if sure { BAD } else { MUTED })))
+                .child(root.tr(if sure { "fr.sure" } else { "fr.unfriend" }))
+                .on_click(cx.listener(move |r, _, _, cx| {
+                    if r.friends.sure == Some(user) {
+                        close(r);
+                        act(r, user, "unfriend", cx);
+                    } else {
+                        r.friends.sure = Some(user);
+                    }
+                    cx.notify();
+                })),
+        );
+    Some(deferred(anchored().position(at).snap_to_window_with_margin(px(8.)).child(pop(format!("ff-pop-{user}"), open, menu))).with_priority(2).into_any_element())
 }
 
 fn again(r: &mut Root, cx: &mut Context<Root>) {
@@ -324,28 +780,33 @@ fn passes(f: &Friend, by: Filter) -> bool {
     }
 }
 
+/// Passes the status filter and the label filter.
+fn shown(f: &Friend, fr: &Data, lb: &Labels) -> bool {
+    passes(f, fr.filter) && fr.label_filter.is_none_or(|id| lb.of.get(&f.id).is_some_and(|v| v.contains(&id)))
+}
+
 pub fn friends(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement {
     let fr = &root.friends;
     let inner = width - 2. * (PAD + 4.);
     let (cols, card_w) = grid_fit(inner, CARD_W, GRID_GAP);
-    let (able, viewer) = looking(root);
+    // BLOXKEEP_SHOT_SCROLL=<px>: a shot of the page scrolled down that far (asked again until the page is long enough).
+    #[cfg(feature = "shot")]
+    if let Ok(y) = std::env::var("BLOXKEEP_SHOT_SCROLL").map(|v| v.parse::<f32>().unwrap_or(0.)) {
+        let h = crate::scrolled::handle("fr-body");
+        if (h.offset().y + px(y)).abs() > px(1.) {
+            h.set_offset(point(px(0.), px(-y)));
+        }
+    }
+    let (able, viewer) = looking_ref(root);
     let list: &[Friend] = match &fr.list {
         Some(Ok(l)) => l,
         _ => &[],
     };
+    let lb = labels();
 
     let shell = div().id("friends").relative().size_full().rounded(px(R_PANEL)).bg(c(PANEL)).overflow_hidden().flex().flex_col();
     let body: AnyElement = if able.is_empty() || matches!(fr.sign, Some(None)) {
-        div()
-            .flex_1()
-            .flex()
-            .flex_col()
-            .items_center()
-            .justify_center()
-            .gap(px(14.))
-            .child(div().text_size(px(T_M)).text_color(c(MUTED)).child(root.tr("fr.noAccount")))
-            .child(Button::new("fr-add-acc", root.tr("acc.add")).icon("plus").primary().on_click(cx.listener(|r, _, _, cx| r.add_account(cx))))
-            .into_any_element()
+        need_account(root, "fr-add-acc", "fr.noAccount", "users", cx)
     } else {
         match &fr.list {
             None => note(root.tr("fr.loading")).into_any_element(),
@@ -368,8 +829,18 @@ pub fn friends(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElem
                 // A group a line, the page's width, its head over its cards on the page's fixed grid (critique
                 // 2026-11-13, P2: groups flowing side by side ran Requests, a game and Online into one ragged row and
                 // the reading order was lost).
-                let _ = cols;
                 let mut blocks: Vec<AnyElement> = Vec::new();
+                let block_with = |head: AnyElement, grid: Div| {
+                    div()
+                        .w_full()
+                        .flex_none()
+                        .flex()
+                        .flex_col()
+                        .gap(px(12.))
+                        .child(div().w_full().flex().items_center().child(head))
+                        .child(grid)
+                        .into_any_element()
+                };
                 let block = |head: AnyElement, cards: Vec<AnyElement>| {
                     div()
                         .w_full()
@@ -382,14 +853,14 @@ pub fn friends(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElem
                         .child(grid(GRID_GAP).children(cards))
                         .into_any_element()
                 };
-                if !fr.requests.is_empty() && fr.filter == Filter::All {
+                if !fr.requests.is_empty() && fr.filter == Filter::All && fr.label_filter.is_none() {
                     let cards: Vec<AnyElement> = fr.requests.iter().map(|f| card(root, f, card_w, Kind::Request, cx).into_any_element()).collect();
                     blocks.push(block(text_head(root.tr("fr.requests"), fr.requests.len(), None).into_any_element(), cards));
                 }
                 let mut any = false;
                 // Friends in a game stand by game, a group each (as Accounts lays out its windows), the fullest first:
                 // where everyone is shows at a glance, which Roblox's one row of faces doesn't.
-                let playing: Vec<&Friend> = l.iter().filter(|f| f.kind == 2 && passes(f, fr.filter)).collect();
+                let playing: Vec<&Friend> = l.iter().filter(|f| f.kind == 2 && shown(f, fr, &lb)).collect();
                 let mut lanes: Vec<(String, String, Vec<&Friend>)> = Vec::new();
                 for f in playing {
                     match lanes.iter_mut().find(|(name, _, _)| *name == f.game) {
@@ -430,7 +901,7 @@ pub fn friends(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElem
                 }
                 for (g, key) in [(1, "chip.online"), (0, "chip.offline")] {
                     // Studio sits with Online: there, but not in a game to join.
-                    let mut of: Vec<&Friend> = l.iter().filter(|f| passes(f, fr.filter)).filter(|f| if g == 1 { f.kind == 1 || f.kind == 3 } else { f.kind == g }).collect();
+                    let mut of: Vec<&Friend> = l.iter().filter(|f| shown(f, fr, &lb)).filter(|f| if g == 1 { f.kind == 1 || f.kind == 3 } else { f.kind == g }).collect();
                     // Offline: those seen online latest come first.
                     if g == 0 {
                         of.sort_by(|a, b| b.seen.cmp(&a.seen));
@@ -440,12 +911,16 @@ pub fn friends(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElem
                     }
                     any = true;
                     let n = of.len();
-                    let cards = of.into_iter().map(|f| card(root, f, card_w, Kind::Friend(join_as.clone(), false), cx).into_any_element()).collect();
-                    blocks.push(block(text_head(root.tr(key), n, None).into_any_element(), cards));
+                    // Hundreds of friends: only the rows near the view are made (crate::near), each card one height.
+                    let id = if g == 1 { "fr-online" } else { "fr-offline" };
+                    let grid = crate::near::grid(id, n, cols, FRIEND_H, GRID_GAP, None, |i| {
+                        card(root, of[i], card_w, Kind::Friend(join_as.clone(), false), cx).h(px(FRIEND_H)).into_any_element()
+                    });
+                    blocks.push(block_with(text_head(root.tr(key), n, None).into_any_element(), grid));
                 }
                 // What changed among the friends, the latest dozen: who is new, who is no longer a friend, who took
                 // another name. Kept on this PC: Roblox tells none of it.
-                if !fr.shifts.is_empty() && fr.filter == Filter::All {
+                if !fr.shifts.is_empty() && fr.filter == Filter::All && fr.label_filter.is_none() {
                     let cards: Vec<AnyElement> = fr
                         .shifts
                         .iter()
@@ -474,7 +949,7 @@ pub fn friends(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElem
             }
         }
     };
-    shell.child(header(root, list, viewer.as_ref(), cx)).child(body)
+    shell.child(header(root, list, viewer, cx)).child(body)
 }
 
 fn note(text: String) -> Div {
@@ -541,8 +1016,8 @@ fn header(root: &Root, list: &[Friend], viewer: Option<&Value>, cx: &mut Context
                 .flex()
                 .items_center()
                 .gap(px(10.))
-                .child(div().text_size(px(T_TITLE)).font_weight(FontWeight::BOLD).child("Roblox"))
-                .child(div().ml(px(6.)).child(crate::pages::games::views(root, cx)))
+                .child(div().h(px(38.)).flex().items_center().child(crate::kit::roblox_word(22., c(TEXT))))
+                .relative().child(crate::pages::games::island(root, cx))
                 .child(div().flex_1())
                 .when(matches!(fr.list, Some(Ok(_))), |d| {
                     d.child(Button::new("fr-add", root.tr("fr.add")).icon("userPlus").on_click(cx.listener(|r, _, window, cx| {
@@ -559,7 +1034,48 @@ fn header(root: &Root, list: &[Friend], viewer: Option<&Value>, cx: &mut Context
                 }),
         )
         // The filters as the Accounts page's: no track, a dot of where they are, the count; the one shown a yellow block.
+        // Then the user's own labels, the same way, and the Labels button (its box under it).
         .when(!list.is_empty(), |d| {
+            let lb = labels();
+            let tag_chips: Vec<AnyElement> = lb
+                .list
+                .iter()
+                .enumerate()
+                .map(|(i, l)| {
+                    let id = l.id;
+                    let on = fr.label_filter == Some(id);
+                    let n = list.iter().filter(|f| lb.of.get(&f.id).is_some_and(|v| v.contains(&id))).count();
+                    chip(("fr-tag-chip", i), on)
+                        .h(px(TOOL_H))
+                        .child(div().size(px(8.)).flex_none().rounded_full().bg(c(l.colour)))
+                        .child(l.name.clone())
+                        .child(chip_count(n, on))
+                        .on_click(cx.listener(move |r, _, _, cx| {
+                            r.friends.label_filter = if r.friends.label_filter == Some(id) { None } else { Some(id) };
+                            cx.notify();
+                        }))
+                        .into_any_element()
+                })
+                .collect();
+            let has_tags = !tag_chips.is_empty();
+            let tags_button = div()
+                .relative()
+                .child(
+                    chip("fr-tags", fr.tags_open)
+                        .h(px(TOOL_H))
+                        .child(icon("tag", 13., c(if fr.tags_open { INK } else { MUTED })))
+                        .child(root.tr(if has_tags { "tag.labels" } else { "tag.addFirst" }))
+                        .on_click(cx.listener(|r, _, window, cx| {
+                            r.friends.tags_open = !r.friends.tags_open;
+                            r.friends.tag_for = None;
+                            if r.friends.tags_open {
+                                let h = r.label_box.read(cx).focus_handle(cx);
+                                window.focus(&h, cx);
+                            }
+                            cx.notify();
+                        })),
+                )
+                .when(fr.tags_open, |d| d.child(div().absolute().top(px(TOOL_H + 6.)).left_0().child(deferred(anchored().snap_to_window_with_margin(px(8.)).child(tags_box(root, cx))).with_priority(2))));
             d.child(div().flex().flex_wrap().items_center().gap(px(4.)).children(chips.into_iter().enumerate().map(|(i, (f, text, count))| {
                 let on = fr.filter == f;
                 let dot = match f {
@@ -577,7 +1093,11 @@ fn header(root: &Root, list: &[Friend], viewer: Option<&Value>, cx: &mut Context
                         r.friends.filter = f;
                         cx.notify();
                     }))
-            })))
+                    .into_any_element()
+            })
+            .chain(has_tags.then(|| div().w(px(1.)).h(px(18.)).mx(px(6.)).bg(c(LINE)).into_any_element()))
+            .chain(tag_chips)
+            .chain(std::iter::once(div().ml(px(4.)).child(tags_button).into_any_element()))))
         })
 }
 
@@ -615,6 +1135,7 @@ fn card(root: &Root, f: &Friend, w: f32, kind: Kind, cx: &mut Context<Root>) -> 
     };
     let line = match f.kind {
         2 if in_lane => format!("@{}", f.name),
+        2 if !f.game.is_empty() && f.since > 0 => format!("{} · {}", f.game, crate::time::span(crate::time::now_secs() - f.since)),
         2 if !f.game.is_empty() => f.game.clone(),
         2 => root.tr("chip.ingame"),
         3 => root.tr("fr.studio"),
@@ -649,7 +1170,7 @@ fn card(root: &Root, f: &Friend, w: f32, kind: Kind, cx: &mut Context<Root>) -> 
     let dim = is_friend && f.kind == 0 && root.friends.card_menu != Some(user);
     let base = div()
         .w(px(w))
-        .min_h(px(70.))
+        .min_h(px(FRIEND_H))
         .py(px(10.))
         .pl(px(12.))
         .pr(px(8.))
@@ -706,7 +1227,30 @@ fn card(root: &Root, f: &Friend, w: f32, kind: Kind, cx: &mut Context<Root>) -> 
                 .flex()
                 .flex_col()
                 .gap(px(2.))
-                .child(div().text_size(px(T_L)).font_weight(FontWeight::MEDIUM).truncate().child(f.display.clone()))
+                .child({
+                    // (Labels as their colour dots after the name, their names on hover: a pill took the name's room on
+                    // a card this narrow; the chips over the list say which colour is which.)
+                    let tags = if is_friend { labels_of(user) } else { Vec::new() };
+                    let names: SharedString = tags.iter().map(|l| l.name.as_str()).collect::<Vec<_>>().join(", ").into();
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap(px(7.))
+                        .min_w_0()
+                        .child(div().min_w_0().flex_shrink(1.).text_size(px(T_L)).font_weight(FontWeight::MEDIUM).truncate().child(f.display.clone()))
+                        .when(!tags.is_empty(), |d| {
+                            d.child(
+                                div()
+                                    .id(("fr-dots", user as u64 as usize))
+                                    .flex_none()
+                                    .flex()
+                                    .items_center()
+                                    .gap(px(3.))
+                                    .children(tags.iter().take(4).map(|l| div().size(px(8.)).rounded_full().bg(c(l.colour))))
+                                    .tooltip(move |_, cx| cx.new(|_| Tip(names.clone())).into()),
+                            )
+                        })
+                })
                 .child(
                     div()
                         .flex()
@@ -755,11 +1299,13 @@ fn card(root: &Root, f: &Friend, w: f32, kind: Kind, cx: &mut Context<Root>) -> 
     if !is_friend {
         return with;
     }
-    // A friend's card: a menu with the profile and Unfriend (a second click does it).
+    // A friend's card: Chat (their chat in the Inbox), and a menu with the profile and Unfriend (a second click does it).
+    let with = with.child(IconButton::new(("fr-chat", key), "message").size(30.).tip(root.tr("fr.chat")).on_click(cx.listener(move |r, _, _, cx| crate::pages::inbox::chat_with(r, user, cx))));
     let mut more = div().relative().flex_none().child(IconButton::new(("fr-more", key), "more").size(30.).on_click(cx.listener(move |r, _, _, cx| {
         r.friends.card_menu = if r.friends.card_menu == Some(user) { None } else { Some(user) };
         r.friends.card_menu_was = Some(user);
         r.friends.sure = None;
+        r.friends.menu_tags = false;
         cx.notify();
     })));
     if root.friends.card_menu == Some(user) || root.friends.card_menu_was == Some(user) {
@@ -780,12 +1326,25 @@ fn card(root: &Root, f: &Friend, w: f32, kind: Kind, cx: &mut Context<Root>) -> 
             .on_mouse_down_out(cx.listener(|r, _, _, cx| {
                 r.friends.card_menu = None;
                 r.friends.sure = None;
+                r.friends.menu_tags = false;
                 cx.notify();
             }))
+            .when(my_server(root).is_some(), |d| {
+                d.child(row("fr-m-invite").text_color(c(TEXT_2)).child(icon("link", 14., c(MUTED))).child(root.tr("fr.invite")).on_click(cx.listener(move |r, _, window, cx| {
+                    r.friends.card_menu = None;
+                    invite(r, user, window, cx);
+                    cx.notify();
+                })))
+            })
             .child(row("fr-m-profile").text_color(c(TEXT_2)).child(icon("user", 14., c(MUTED))).child(root.tr("ui.profile")).on_click(cx.listener(move |r, _, _, cx| {
                 r.friends.card_menu = None;
                 crate::pages::profile::open_person(r, user, cx);
             })))
+            .children(tag_rows(root, user, false, |r| {
+                r.friends.card_menu = None;
+                r.friends.menu_tags = false;
+            }, cx))
+            .child(div().h(px(1.)).mx(px(6.)).my(px(4.)).bg(c(LINE)))
             .child(row("fr-m-unfriend").text_color(c(if sure { BAD } else { TEXT_2 })).child(icon("x", 14., c(if sure { BAD } else { MUTED }))).child(root.tr(if sure { "fr.sure" } else { "fr.unfriend" })).on_click(
                 cx.listener(move |r, _, _, cx| {
                     if r.friends.sure == Some(user) {

@@ -19,7 +19,7 @@ use crate::core::app::discord_alerts::DiscordAlert;
 use crate::core::app::discord_presence::DISCORD_APPLICATION_ID;
 use crate::core::app::notify::{NOTIFY_KINDS, NOTIFY_REPEAT, notify_kind};
 use crate::core::app::schedule::try_time;
-use crate::core::app::stats::{local_day, local_day_hour};
+use crate::core::app::stats::local_day_hour;
 use crate::core::base::{Cancel, Fail, Guid, Res, Stamp};
 use crate::core::discord_webhook::{self as webhook, DiscordField, DiscordFile, DiscordMessage, DiscordOutcome, DiscordPing, DiscordResult};
 use crate::core::models::{DiscordSettings, LaunchPreset, stamp_min};
@@ -136,14 +136,22 @@ pub fn day_key(local: Stamp) -> String {
 /// The latest local time at or before `local` a daily (no weekday) or weekly summary was due.
 pub fn last_summary_due(local: Stamp, time: &str, weekday: Option<i32>) -> Option<Stamp> {
     let at = try_time(time)?;
-    let at_secs = at as f64;
-    let on_day = |days: i64| local_day(local, days).plus_secs(at_secs);
+    // The time on the clock that day (as the C#'s local.Date + at), not seconds after midnight: on a day the clocks
+    // change, "09:00" would otherwise come at 10:00 or 08:00. Noon names the day, as midnight may not exist.
+    let on_day = |days: i64| {
+        let c = local_day_hour(local, days, 12).local();
+        Stamp::from_local(c.year, c.month, c.day, (at / 3600) as u32, (at % 3600 / 60) as u32, 0)
+    };
     let mut back = 0i64;
     if on_day(0) > local {
         back = -1;
     }
     let mut due = on_day(back);
     if let Some(w) = weekday {
+        // A weekday from an old vault or backup isn't checked: one outside 0..=6 has no due day.
+        if !(0..=6).contains(&w) {
+            return None;
+        }
         while due.local().weekday as i32 != w {
             back -= 1;
             due = on_day(back);
@@ -947,7 +955,6 @@ impl App {
         let app = self.clone();
         rt::spawn(async move {
             if let Err(ex) = app.send_queued_core(token, d, item, message, dropped, edit, url).await {
-                app.discord.sending.set(false);
                 // Only the kind is logged (no message could hold the link).
                 let kind = match ex {
                     Fail::User(_) => "UserError",
@@ -976,12 +983,14 @@ impl App {
         url: String,
     ) -> Res<()> {
         let board = item.kind == "board";
+        // Set before the task started; cleared however this ends (a panic in the picture or the send too).
+        let sending = crate::core::base::Busy::set(&self.discord.sending);
         let result = {
             let picture = summary_picture(&message).await;
             let mut payload = webhook::build(&message, &item.ping, d.style != "plain", Some(&d.username), Some(&d.avatar_url), picture.as_ref().map(|p| p.name.as_str()));
             let (u, e) = (url.clone(), edit.clone());
             let result = rt::blocking(move || webhook::send(&u, &mut payload, e.as_deref(), board, &Cancel::new(), picture.as_ref())).await;
-            self.discord.sending.set(false);
+            drop(sending);
             result?
         };
         if self.controller.disposed.get() {
@@ -1027,7 +1036,7 @@ impl App {
             DiscordOutcome::Sent => {
                 if current {
                     self.discord.queue.borrow_mut().remove(0);
-                    self.discord.dropped.set(self.discord.dropped.get() - dropped);
+                    self.discord.dropped.set((self.discord.dropped.get() - dropped).max(0));
                 }
                 if self.discord.failures.get() > 0 {
                     log::note(&format!("Discord: sending recovered after {} failed tries.", self.discord.failures.get()));

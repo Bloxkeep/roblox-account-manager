@@ -197,6 +197,11 @@ pub fn protocol_handler_path() -> Option<String> {
         let end = rest.find('"')?;
         return if end > 0 { Some(rest[..end].to_string()) } else { None };
     }
+    // Unquoted: up to ".exe", so a folder with a space ("C:\Program Files\Fishstrap\Fishstrap.exe -player %1") isn't cut
+    // at "C:\Program" (RoALT reads it the same way).
+    if let Some(exe) = command.to_ascii_lowercase().find(".exe").filter(|i| *i > 0) {
+        return Some(command[..exe + 4].to_string());
+    }
     match command.find(' ') {
         Some(space) if space > 0 => Some(command[..space].to_string()),
         Some(_) => Some(command.to_string()),
@@ -440,14 +445,15 @@ pub(crate) fn newest(paths: Vec<String>) -> Option<String> {
         if let Some(known) = version.get(&key) {
             return *known;
         }
-        let text = version_of(Some(p)).map(|v| v.version).unwrap_or_default();
+        // The version alone: version_of's source_of lists the Uninstall keys and every launcher, for each client.
+        let text = version_text(p).unwrap_or_default();
         let v = VERSION_PREFIX.find(&text).and_then(|m| parse_version(m.as_str())).unwrap_or([0, 0, -1, -1]);
         version.insert(key, v);
         v
     };
     let is_registered =
         |p: &str| registered.as_deref().is_some_and(|r| is_roblox_own(p) && dir_name(p).is_some_and(|d| eq_ci(&file_name(&d), r)));
-    // …\<install>\Versions\version-…\RobloxPlayerBeta.exe: one pick per Versions folder.
+    // …\<install>\Versions\version-…\RobloxPlayerBeta.exe: one pick per Versions folder. Roblox's live build first (LIVE_BUILD).
     let mut groups: Vec<(String, Vec<String>)> = Vec::new();
     for p in paths {
         let install = dir_name(&dir_name(&p).unwrap_or_default()).unwrap_or_default();
@@ -456,30 +462,63 @@ pub(crate) fn newest(paths: Vec<String>) -> Option<String> {
             None => groups.push((install, vec![p])),
         }
     }
-    let mut picks: Vec<(String, [i64; 4], Option<SystemTime>)> = Vec::new();
+    let mut picks: Vec<(String, bool, [i64; 4], Option<SystemTime>)> = Vec::new();
     for (_, members) in groups {
-        let mut best: Option<(bool, [i64; 4], Option<SystemTime>, String)> = None;
+        let mut best: Option<(bool, bool, [i64; 4], Option<SystemTime>, String)> = None;
         for p in members {
-            let key = (is_registered(&p), version_number(&p), last_write(&p));
-            if best.as_ref().is_none_or(|b| (key.0, key.1, key.2) > (b.0, b.1, b.2)) {
-                best = Some((key.0, key.1, key.2, p));
+            let key = (is_live(&p), is_registered(&p), version_number(&p), last_write(&p));
+            if best.as_ref().is_none_or(|b| (key.0, key.1, key.2, key.3) > (b.0, b.1, b.2, b.3)) {
+                best = Some((key.0, key.1, key.2, key.3, p));
             }
         }
-        if let Some((_, v, t, p)) = best {
-            picks.push((p, v, t));
+        if let Some((live, _, v, t, p)) = best {
+            picks.push((p, live, v, t));
         }
     }
-    let mut best: Option<(String, [i64; 4], Option<SystemTime>)> = None;
+    let mut best: Option<(String, bool, [i64; 4], Option<SystemTime>)> = None;
     for pick in picks {
-        if best.as_ref().is_none_or(|b| (pick.1, pick.2) > (b.1, b.2)) {
+        if best.as_ref().is_none_or(|b| (pick.1, pick.2, pick.3) > (b.1, b.2, b.3)) {
             best = Some(pick);
         }
     }
     best.map(|b| b.0)
 }
 
+/// The build folder ("version-…") Roblox serves everyone now (clientsettingscdn's WindowsPlayer, no channel); None until
+/// Roblox answered. Roblox puts some accounts on a test channel and installs that channel's build next to the live one,
+/// the roblox-player links then pointing at it. Bloxkeep's links ask for no channel, so a client on the test build finds
+/// itself off the live one and runs Roblox's installer, which closes every Roblox window open: on a user's PC (2026-11-13,
+/// 0.747.649 installed beside the live 0.747.0) each window opened with others running ended them all within seconds.
+/// RoALT met it too and starts the live build's file; Bloxkeep does the same when that build is installed.
+static LIVE_BUILD: RwLock<Option<String>> = RwLock::new(None);
+
+pub fn set_live_build(folder: Option<String>) {
+    *LIVE_BUILD.write().unwrap_or_else(|e| e.into_inner()) = folder;
+}
+
+pub fn live_build() -> Option<String> {
+    LIVE_BUILD.read().unwrap_or_else(|e| e.into_inner()).clone().filter(|b| !b.is_empty())
+}
+
+/// The client is in Roblox's live build's folder (LIVE_BUILD).
+fn is_live(exe: &str) -> bool {
+    live_build().is_some_and(|live| dir_name(exe).is_some_and(|d| eq_ci(&file_name(&d), &live)))
+}
+
+/// The live build's client in the same Versions folder as this one when it is there and this is another build;
+/// otherwise the client as given (LIVE_BUILD).
+pub fn live_beside(exe: Option<String>) -> Option<String> {
+    let exe = exe?;
+    let Some(live) = live_build() else { return Some(exe) };
+    if is_live(&exe) || !has_build(Some(&exe), Some(&live)) {
+        return Some(exe);
+    }
+    let versions = dir_name(&dir_name(&exe).unwrap_or_default()).unwrap_or_default();
+    Some(combine(&combine(&versions, &live), "RobloxPlayerBeta.exe"))
+}
+
 /// In Roblox's own install (its installer's, per user or for all), not a launcher's copy.
-fn is_roblox_own(exe: &str) -> bool {
+pub fn is_roblox_own(exe: &str) -> bool {
     under(exe, &combine(&local(), "Roblox")) || under(exe, &combine(&program_files_x86(), "Roblox"))
 }
 
@@ -487,7 +526,7 @@ fn is_roblox_own(exe: &str) -> bool {
 pub(crate) static REGISTERED_BUILD_OVERRIDE: RwLock<Option<Box<dyn Fn() -> Option<String> + Send + Sync>>> = RwLock::new(None);
 
 /// The build folder ("version-…") Roblox's installer set the roblox-player link up for, written beside its command.
-fn registered_build() -> Option<String> {
+pub(crate) fn registered_build() -> Option<String> {
     if let Some(stand) = REGISTERED_BUILD_OVERRIDE.read().unwrap_or_else(|e| e.into_inner()).as_ref() {
         return stand();
     }
@@ -594,7 +633,8 @@ pub fn client_for(launch_via: &str, custom_launcher: &str) -> Option<String> {
         _ => match usable_handler_path() {
             Some(handler) => {
                 if eq_ci(&file_name(&handler), "RobloxPlayerBeta.exe") {
-                    Some(handler)
+                    // What roblox_launcher starts in the links' place (LIVE_BUILD).
+                    live_beside(Some(handler))
                 } else {
                     newest(clients_in(dir_name(&handler).as_deref())).or_else(find_any_client)
                 }
@@ -627,6 +667,122 @@ pub fn updater_for(launch_via: &str, custom_launcher: &str) -> Option<String> {
     if is_roblox_own(&client) && !is_vng_client(&client) && file_exists(&own) { Some(own) } else { None }
 }
 
+/// Whether a Bloxstrap-style launcher bringing this client up to the live build leaves the Roblox windows open. Its usual
+/// update ends every RobloxPlayerBeta first (Bloxstrap's Bootstrapper.cs, read 2026-11-14: UpgradeRoblox calls
+/// KillRobloxInstances); only its background update doesn't, and only when turned on (BackgroundUpdatesEnabled in its
+/// Settings.json), at most one version behind and with 5 GB free. Unknown counts as closing them.
+pub fn updates_in_background(launcher: &str, client: &ClientVersion, live: &ClientVersion) -> bool {
+    let dir = dir_name(launcher).unwrap_or_default();
+    let Ok(text) = std::fs::read_to_string(combine(&dir, "Settings.json")) else { return false };
+    let Ok(serde_json::Value::Object(root)) = serde_json::from_str::<serde_json::Value>(text.trim_start_matches('\u{feff}')) else { return false };
+    if root.get("BackgroundUpdatesEnabled") != Some(&serde_json::Value::Bool(true)) {
+        return false;
+    }
+    let minor = |v: &str| v.split('.').nth(1).and_then(|m| m.parse::<i64>().ok());
+    let (Some(have), Some(newest)) = (parse_version(&client.version).and(minor(&client.version)), parse_version(&live.version).and(minor(&live.version))) else {
+        return false;
+    };
+    if !matches!(newest - have, 0 | 1) {
+        return false;
+    }
+    free_bytes(&dir).is_some_and(|free| free >= 5_000_000_000)
+}
+
+/// Free space for this user on the drive holding `dir`.
+fn free_bytes(dir: &str) -> Option<u64> {
+    use windows_sys::Win32::Storage::FileSystem::GetDiskFreeSpaceExW;
+    let d = crate::core::win_kit::wide(dir);
+    let (mut available, mut total, mut free) = (0u64, 0u64, 0u64);
+    // SAFETY: plain call with three out values on the stack.
+    let ok = unsafe { GetDiskFreeSpaceExW(d.as_ptr(), &mut available, &mut total, &mut free) };
+    if ok == 0 { None } else { Some(available) }
+}
+
+/// Where `kept_copy` keeps the build the windows open run on (Settings › Roblox version › When: "keep").
+pub fn kept_root() -> String {
+    combine(&combine(&local(), "Bloxkeep"), "Roblox kept")
+}
+
+const CLIENT_SETTINGS: &str = "ClientSettings";
+
+/// A copy of Roblox's own build `exe` is in, without its updater: started from there, Roblox opens on that build instead of
+/// updating, which would close every Roblox window open. Roblox looks for the updater beside itself only (the owner's logs,
+/// 2026-11-13: "Checking if updater exists at …\version-…\RobloxPlayerInstaller.exe"), and without it says "Updater not
+/// found. Skipping update" and plays on, as a launcher's copy does. Files are hard links where they can be (no space
+/// taken, even after Roblox deletes its old build), its Fast Flags (ClientSettings) copied fresh each time. A launcher's
+/// copy (no updater beside it) is started as it is.
+pub fn kept_copy(exe: &str) -> std::io::Result<String> {
+    use std::path::{Path, PathBuf};
+    if !is_roblox_own(exe) {
+        return Ok(exe.to_string());
+    }
+    let from = PathBuf::from(dir_name(exe).unwrap_or_default());
+    let to = Path::new(&kept_root()).join(from.file_name().unwrap_or_default());
+    if !to.join(".complete").exists() {
+        let part = PathBuf::from(format!("{}.part", to.display()));
+        for old in [&to, &part] {
+            if old.is_dir() {
+                std::fs::remove_dir_all(old)?;
+            }
+        }
+        copy_tree(&from, &from, &part)?;
+        std::fs::write(part.join(".complete"), "")?;
+        std::fs::rename(&part, &to)?;
+    }
+    let flags = to.join(CLIENT_SETTINGS);
+    if flags.is_dir() {
+        std::fs::remove_dir_all(&flags)?;
+    }
+    let source = from.join(CLIENT_SETTINGS);
+    if source.is_dir() {
+        std::fs::create_dir_all(&flags)?;
+        for e in std::fs::read_dir(&source)? {
+            let e = e?;
+            if e.file_type()?.is_file() {
+                std::fs::copy(e.path(), flags.join(e.file_name()))?;
+            }
+        }
+    }
+    Ok(to.join(Path::new(exe).file_name().unwrap_or_default()).to_string_lossy().into_owned())
+}
+
+/// Every file under `dir` into `part` at its place under `root`, a hard link where it can be, without the updater and
+/// the Fast Flags folder at the top.
+fn copy_tree(root: &std::path::Path, dir: &std::path::Path, part: &std::path::Path) -> std::io::Result<()> {
+    for e in std::fs::read_dir(dir)? {
+        let e = e?;
+        let path = e.path();
+        let rel = path.strip_prefix(root).unwrap_or(&path).to_path_buf();
+        let rel_text = rel.to_string_lossy();
+        if e.file_type()?.is_dir() {
+            if !rel_text.eq_ignore_ascii_case(CLIENT_SETTINGS) {
+                copy_tree(root, &path, part)?;
+            }
+            continue;
+        }
+        if rel_text.eq_ignore_ascii_case(OWN_INSTALLER) {
+            continue;
+        }
+        let target = part.join(&rel);
+        if let Some(parent) = target.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        if std::fs::hard_link(&path, &target).is_err() {
+            std::fs::copy(&path, &target)?;
+        }
+    }
+    Ok(())
+}
+
+/// Removes the kept builds; only called with no Roblox open (a running one's files would go from under it).
+pub fn forget_kept_copies() -> std::io::Result<()> {
+    let root = kept_root();
+    if std::path::Path::new(&root).is_dir() {
+        std::fs::remove_dir_all(&root)?;
+    }
+    Ok(())
+}
+
 /// Roblox's installer, in each build folder of its own install: run with no switches it installs the newest build
 /// for this PC (as Roblox serves it) in seconds, then opens the Roblox app (its window: "-isInstallerLaunch").
 pub const OWN_INSTALLER: &str = "RobloxPlayerInstaller.exe";
@@ -649,21 +805,25 @@ pub fn is_behind(client: Option<&ClientVersion>, latest: Option<&ClientVersion>)
 /// Reads the version stamped in a client's file (the file is only read, never run).
 pub fn version_of(exe: Option<&str>) -> Option<ClientVersion> {
     let exe = exe?;
+    let version = version_text(exe)?;
+    let folder = if is_store_client(exe) { String::new() } else { file_name(&dir_name(exe).unwrap_or_default()) };
+    Some(ClientVersion { version, folder, source: Some(source_of(exe)), exe: Some(exe.to_string()) })
+}
+
+/// `version_of`'s version without the rest (no registry or launcher lookups): None when the file isn't there, or is a
+/// Store client whose package folder doesn't say.
+fn version_text(exe: &str) -> Option<String> {
     if !file_exists(exe) {
         return None;
     }
-    let (text, parts) = file_version(exe);
-    // The text form ("0, 742, 0, 7421053"): the numeric parts are 16-bit, and Roblox's build number is larger.
-    let mut version = text.unwrap_or_default().split([',', '.']).map(str::trim).filter(|p| !p.is_empty()).collect::<Vec<_>>().join(".");
-    if version.is_empty() {
-        version = format!("{}.{}.{}.{}", parts[0], parts[1], parts[2], parts[3]);
-    }
     // The Store's exe reads 0.0.0.0: its package folder's name has the version (and no Roblox build id).
     if is_store_client(exe) {
-        return store_version(&file_name(&dir_name(exe).unwrap_or_default()))
-            .map(|store| ClientVersion { version: store, folder: String::new(), source: Some(source_of(exe)), exe: Some(exe.to_string()) });
+        return store_version(&file_name(&dir_name(exe).unwrap_or_default()));
     }
-    Some(ClientVersion { version, folder: file_name(&dir_name(exe).unwrap_or_default()), source: Some(source_of(exe)), exe: Some(exe.to_string()) })
+    let (text, parts) = file_version(exe);
+    // The text form ("0, 742, 0, 7421053"): the numeric parts are 16-bit, and Roblox's build number is larger.
+    let version = text.unwrap_or_default().split([',', '.']).map(str::trim).filter(|p| !p.is_empty()).collect::<Vec<_>>().join(".");
+    Some(if version.is_empty() { format!("{}.{}.{}.{}", parts[0], parts[1], parts[2], parts[3]) } else { version })
 }
 
 /// FileVersionInfo: the FileVersion text (first translation, then the usual English code pages) and the fixed

@@ -25,15 +25,70 @@ fn show(key: String) {
     if let Ok(mut s) = SHOWN.lock() {
         s.insert(key);
     }
+    SHOWN_N.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+}
+
+/// Counted up by each spoiler shown: the lines worked out before are worked out again.
+static SHOWN_N: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+thread_local! {
+    /// Lines with their marks already worked out (by the line's id and words), while the language, the spoilers shown
+    /// and the half minute (times read "in 5 min") stay the same; and texts already split into their parts.
+    static RUNS: std::cell::RefCell<(u64, std::collections::HashMap<u64, std::rc::Rc<Run>>)> = Default::default();
+    static PARTS: std::cell::RefCell<std::collections::HashMap<u64, std::rc::Rc<Vec<Part>>>> = Default::default();
+}
+
+/// At most this many of each kept; past it they all go and are worked out again as drawn.
+const KEPT: usize = 3000;
+
+fn hash_of(x: impl std::hash::Hash) -> u64 {
+    use std::hash::Hasher;
+    let mut h = std::collections::hash_map::DefaultHasher::new();
+    x.hash(&mut h);
+    h.finish()
+}
+
+/// A line's words and marks, worked out once (Discord's markdown is a long regex: not on every frame).
+fn run_of(root: &Root, id: &str, text: &str) -> std::rc::Rc<Run> {
+    let stamp = hash_of((crate::time::now_secs() / 30, root.i18n.vietnamese, SHOWN_N.load(std::sync::atomic::Ordering::Relaxed)));
+    let key = hash_of((id, text));
+    RUNS.with(|c| {
+        let mut c = c.borrow_mut();
+        if c.0 != stamp || c.1.len() > KEPT {
+            c.0 = stamp;
+            c.1.clear();
+        }
+        c.1.entry(key)
+            .or_insert_with(|| {
+                let mut run = Run::default();
+                let mut n = 0;
+                walk(root, text, &Mark::default(), id, &mut n, &mut run);
+                std::rc::Rc::new(run)
+            })
+            .clone()
+    })
+}
+
+/// A text's parts (paragraphs, lists, quotes…), split once.
+fn parts_of(text: &str) -> std::rc::Rc<Vec<Part>> {
+    let key = hash_of(text);
+    PARTS.with(|c| {
+        let mut c = c.borrow_mut();
+        if c.len() > KEPT {
+            c.clear();
+        }
+        c.entry(key).or_insert_with(|| std::rc::Rc::new(parts(text))).clone()
+    })
 }
 
 fn st<'a>(v: &'a Value, k: &str) -> &'a str {
     v.get(k).and_then(Value::as_str).unwrap_or_default()
 }
 
-/// A picture's address as one to load: https only (a mock run's samples from the source tree aside).
+/// A picture's address as one to load: Discord's own servers over https only (a picture from any host would tell
+/// that host the viewer's IP), a mock run's samples from the source tree aside.
 fn media(url: &str) -> Option<String> {
-    if url.starts_with("https://") {
+    if discord_media(url) {
         return Some(url.to_string());
     }
     let rel = url.strip_prefix("/ui/dev/")?;
@@ -43,6 +98,13 @@ fn media(url: &str) -> Option<String> {
     let assets = std::env::var_os("BLOXKEEP_UI_ASSETS")?;
     let f = std::path::PathBuf::from(assets).join("..").join("..").join("ui").join("dev").join(rel);
     f.is_file().then(|| f.to_string_lossy().into_owned())
+}
+
+/// Whether an address is a picture on Discord's servers (where the news's pictures live).
+pub fn discord_media(url: &str) -> bool {
+    let Some(rest) = url.strip_prefix("https://") else { return false };
+    let host = rest.split(['/', '?', '#']).next().unwrap_or_default().to_ascii_lowercase();
+    matches!(host.as_str(), "cdn.discordapp.com" | "media.discordapp.net" | "images-ext-1.discordapp.net" | "images-ext-2.discordapp.net")
 }
 
 pub fn emoji_url(id: &str) -> String {
@@ -170,9 +232,7 @@ fn inline(root: &Root, id: String, text: &str, cx: &mut Context<Root>) -> AnyEle
         Some(cap) => (images::pic(&emoji_url(&cap[1]), cx), &text[cap.get(0).map_or(0, |m| m.end())..]),
         None => (None, text),
     };
-    let mut run = Run::default();
-    let mut n = 0;
-    walk(root, rest, &Mark::default(), &id, &mut n, &mut run);
+    let run = run_of(root, &id, rest);
     let mut highlights = Vec::new();
     let mut clicks: Vec<(Range<usize>, Click)> = Vec::new();
     for (range, m) in &run.marks {
@@ -216,7 +276,7 @@ fn inline(root: &Root, id: String, text: &str, cx: &mut Context<Root>) -> AnyEle
             _ => {}
         }
     }
-    let styled = StyledText::new(run.text).with_highlights(highlights);
+    let styled = StyledText::new(run.text.clone()).with_highlights(highlights);
     let words: AnyElement = if clicks.is_empty() {
         styled.into_any_element()
     } else {
@@ -350,7 +410,7 @@ fn parts(text: &str) -> Vec<Part> {
 /// Text with Discord's markdown: headings, small print, quotes, lists, code, and the inline marks.
 pub fn md(root: &Root, id: &str, text: &str, cx: &mut Context<Root>) -> Div {
     let mut d = div().flex().flex_col().gap(px(6.)).text_size(px(T_M)).line_height(px(19.)).text_color(c(TEXT_2));
-    for (i, p) in parts(text).into_iter().enumerate() {
+    for (i, p) in parts_of(text).iter().enumerate() {
         let pid = format!("{id}.{i}");
         d = d.child(match p {
             Part::P(lines) => div()
@@ -359,21 +419,21 @@ pub fn md(root: &Root, id: &str, text: &str, cx: &mut Context<Root>) -> Div {
                 .children(lines.iter().enumerate().map(|(j, l)| if l.trim().is_empty() { div().h(px(8.)).into_any_element() } else { inline(root, format!("{pid}.{j}"), l, cx) }).collect::<Vec<_>>()),
             Part::H(level, t) => div()
                 .pt(px(2.))
-                .text_size(px(match level {
+                .text_size(px(match *level {
                     1 => T_H + 5.,
                     2 => T_H + 2.,
                     _ => T_L,
                 }))
-                .line_height(px(match level {
+                .line_height(px(match *level {
                     1 => 26.,
                     2 => 23.,
                     _ => 20.,
                 }))
                 .font_weight(FontWeight::SEMIBOLD)
                 .text_color(c(TEXT))
-                .child(inline(root, pid, &t, cx)),
-            Part::Sub(t) => div().text_size(px(T_S)).line_height(px(17.)).text_color(c(MUTED)).child(inline(root, pid, &t, cx)),
-            Part::Quote(t) => div().pl(px(12.)).border_l(px(3.)).border_color(ca(WHITE, 0.18)).child(md(root, &pid, &t, cx)),
+                .child(inline(root, pid, t, cx)),
+            Part::Sub(t) => div().text_size(px(T_S)).line_height(px(17.)).text_color(c(MUTED)).child(inline(root, pid, t, cx)),
+            Part::Quote(t) => div().pl(px(12.)).border_l(px(3.)).border_color(ca(WHITE, 0.18)).child(md(root, &pid, t, cx)),
             Part::Code(t) => div()
                 .px(px(10.))
                 .py(px(8.))
@@ -391,7 +451,7 @@ pub fn md(root: &Root, id: &str, text: &str, cx: &mut Context<Root>) -> Div {
                     .iter()
                     .enumerate()
                     .map(|(j, (depth, t))| {
-                        let mark = if ordered { format!("{}.", start as usize + j) } else { "•".into() };
+                        let mark = if *ordered { format!("{}.", *start as usize + j) } else { "•".into() };
                         div()
                             .ml(px(*depth as f32 * 18.))
                             .flex()

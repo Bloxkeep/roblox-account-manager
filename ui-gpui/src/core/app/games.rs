@@ -261,8 +261,8 @@ impl App {
                 Ok(json!({ "servers": servers.iter().map(server_json).collect::<Vec<_>>(), "next": next, "busy": false, "left": roblox_api::server_list_left() }))
             }
             Err(ex) if ex.rate_limited() => {
-                // PORT: Fail::Roblox doesn't carry Roblox's Retry-After yet, so the C#'s fallback of 20 s is always used.
-                let retry_in = Duration::from_secs(20).as_secs_f64().ceil() as i32;
+                // Roblox's Retry-After when it said, else 20 s (as the C#).
+                let retry_in = ex.retry_after().unwrap_or(Duration::from_secs(20)).as_secs_f64().ceil() as i32;
                 log::note(&format!("Servers: Roblox rate-limited the server list; the page waits {retry_in} s."));
                 Ok(json!({ "servers": [], "next": Value::Null, "busy": true, "retryIn": retry_in, "left": 0 }))
             }
@@ -521,7 +521,7 @@ impl App {
                 .len()
                 .cmp(&a.via.len())
                 .then(b.server.playing.cmp(&a.server.playing))
-                .then(a.server.name.to_lowercase().cmp(&b.server.name.to_lowercase()))
+                .then(crate::core::win_kit::culture_cmp(&a.server.name, &b.server.name))
         });
         let all_failed = !viewers.is_empty() && failed == viewers.len();
         {

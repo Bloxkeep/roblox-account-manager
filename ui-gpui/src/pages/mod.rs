@@ -29,6 +29,7 @@ pub mod clips;
 pub mod home;
 pub mod import_vault;
 pub mod inbox;
+pub mod mods;
 pub mod rsettings;
 pub mod join;
 pub mod wiki;
@@ -76,7 +77,7 @@ impl Page {
         match self {
             Page::Home => "home",
             Page::Accounts => "users",
-            Page::Games => "gamepad",
+            Page::Games => "roblox",
             Page::Auto => "repeat",
             Page::Stats => "clock",
             Page::Settings => "sliders",

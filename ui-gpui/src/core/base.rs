@@ -120,6 +120,92 @@ impl From<serde_json::Error> for Fail {
     }
 }
 
+/// A busy flag set for as long as this lives: cleared when dropped, so a future dropped mid-await or a worker that
+/// panicked can't leave it set for good.
+pub struct Busy<'a>(&'a std::cell::Cell<bool>);
+
+impl<'a> Busy<'a> {
+    pub fn set(flag: &'a std::cell::Cell<bool>) -> Busy<'a> {
+        flag.set(true);
+        Busy(flag)
+    }
+}
+
+impl Drop for Busy<'_> {
+    fn drop(&mut self) {
+        self.0.set(false);
+    }
+}
+
+/// Runs `f` when dropped (C#'s `finally`): also when the task holding it is dropped mid-await or a worker panicked.
+pub struct OnDrop<F: FnOnce()>(Option<F>);
+
+pub fn on_drop<F: FnOnce()>(f: F) -> OnDrop<F> {
+    OnDrop(Some(f))
+}
+
+impl<F: FnOnce()> Drop for OnDrop<F> {
+    fn drop(&mut self) {
+        if let Some(f) = self.0.take() {
+            f();
+        }
+    }
+}
+
+/// Stands for a secret (a password, cookie, key, webhook link) in a hand-written Debug, so `{:?}` in a log or a panic
+/// never carries it.
+pub struct Redacted;
+
+impl std::fmt::Debug for Redacted {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("<redacted>")
+    }
+}
+
+/// C#'s `text.Substring(0, max)`, counted in UTF-16 units as C# (and Discord, ntfy, the bot) count; the whole text when
+/// shorter. A cut through a surrogate pair stops one unit early: half an emoji can't be held, and from_utf16_lossy
+/// would make it U+FFFD.
+pub fn cut_utf16(text: &str, max: usize) -> &str {
+    let mut units = 0;
+    for (i, c) in text.char_indices() {
+        units += c.len_utf16();
+        if units > max {
+            return &text[..i];
+        }
+    }
+    text
+}
+
+/// Environment.GetFolderPath(LocalApplicationData): %LOCALAPPDATA%, else the known folder Windows keeps for it, so a
+/// process started without that variable still finds the data instead of a folder relative to wherever it runs.
+pub fn local_app_data() -> std::path::PathBuf {
+    if let Some(local) = std::env::var_os("LOCALAPPDATA").filter(|v| !v.is_empty()) {
+        return local.into();
+    }
+    use windows_sys::Win32::System::Com::CoTaskMemFree;
+    use windows_sys::Win32::UI::Shell::{FOLDERID_LocalAppData, SHGetKnownFolderPath};
+    let mut path: windows_sys::core::PWSTR = std::ptr::null_mut();
+    // SAFETY: FOLDERID_LocalAppData is a valid known-folder id; `path` receives a CoTaskMemAlloc'd string freed below.
+    let hr = unsafe { SHGetKnownFolderPath(&FOLDERID_LocalAppData, 0, std::ptr::null_mut(), &mut path) };
+    let mut text = std::ffi::OsString::new();
+    if hr >= 0 && !path.is_null() {
+        use std::os::windows::ffi::OsStringExt;
+        // SAFETY: `path` is a NUL-terminated wide string from the call above.
+        text = unsafe {
+            let mut n = 0usize;
+            while *path.add(n) != 0 {
+                n += 1;
+            }
+            std::ffi::OsString::from_wide(std::slice::from_raw_parts(path, n))
+        };
+    }
+    if !path.is_null() {
+        // SAFETY: freed once, as SHGetKnownFolderPath asks (even when it failed).
+        unsafe { CoTaskMemFree(path as *const std::ffi::c_void) };
+    }
+    text.into()
+}
+
 /// C#'s CancellationToken and its source in one: whoever holds a copy can call the work off, and the work asks.
 #[derive(Clone, Default, Debug)]
 pub struct Cancel(Arc<AtomicBool>);
@@ -214,6 +300,93 @@ fn local_offset_minutes() -> i32 {
     (crate::time::utc_offset_secs() / 60) as i32
 }
 
+/// This PC's minutes ahead of UTC at a moment (seconds since 1970): that date's own summer time, as .NET's DateTime
+/// takes it, not today's.
+fn offset_at(unix_secs: i64) -> i32 {
+    zone_offset(unix_secs, false)
+}
+
+/// The same for a time on this PC's clock (its seconds since 1970 read as if UTC). A time skipped or repeated at a
+/// clock change gets the offset Windows picks for it.
+fn offset_for_local(local_secs: i64) -> i32 {
+    zone_offset(local_secs, true)
+}
+
+#[cfg(windows)]
+fn zone_offset(secs: i64, wall_clock: bool) -> i32 {
+    use std::{
+        cell::RefCell,
+        collections::HashMap,
+        time::{Duration, Instant},
+    };
+    // Statistics asks hundreds of times a frame. Clocks change on a quarter hour, so one answer serves each 15
+    // minutes; all are forgotten after a minute (the PC's time zone may have changed).
+    thread_local! {
+        static CACHE: RefCell<(Option<Instant>, HashMap<(i64, bool), i32>)> = RefCell::new((None, HashMap::new()));
+    }
+    let key = (secs.div_euclid(900), wall_clock);
+    let hit = CACHE.with(|c| {
+        let mut c = c.borrow_mut();
+        if c.0.is_none_or(|at| at.elapsed() > Duration::from_secs(60)) || c.1.len() > 8192 {
+            *c = (Some(Instant::now()), HashMap::new());
+        }
+        c.1.get(&key).copied()
+    });
+    if let Some(m) = hit {
+        return m;
+    }
+    let m = windows_offset(key.0 * 900, wall_clock).unwrap_or_else(local_offset_minutes);
+    CACHE.with(|c| c.borrow_mut().1.insert(key, m));
+    m
+}
+
+#[cfg(not(windows))]
+fn zone_offset(_secs: i64, _wall_clock: bool) -> i32 {
+    local_offset_minutes()
+}
+
+/// Windows' answer for one moment (`wall_clock`: `secs` is this PC's clock); None outside SYSTEMTIME's years.
+#[cfg(windows)]
+fn windows_offset(secs: i64, wall_clock: bool) -> Option<i32> {
+    use windows_sys::Win32::{
+        Foundation::SYSTEMTIME,
+        System::Time::{DYNAMIC_TIME_ZONE_INFORMATION, GetDynamicTimeZoneInformation, SystemTimeToTzSpecificLocalTimeEx, TzSpecificLocalTimeToSystemTimeEx},
+    };
+    let (days, rest) = (secs.div_euclid(86400), secs.rem_euclid(86400));
+    let (y, m, d) = civil_from_days(days);
+    if !(1601..=30827).contains(&y) {
+        return None;
+    }
+    let from = SYSTEMTIME {
+        wYear: y as u16,
+        wMonth: m as u16,
+        wDayOfWeek: 0,
+        wDay: d as u16,
+        wHour: (rest / 3600) as u16,
+        wMinute: (rest % 3600 / 60) as u16,
+        wSecond: (rest % 60) as u16,
+        wMilliseconds: 0,
+    };
+    // SAFETY: plain structs Windows reads and fills in.
+    let mut tz: DYNAMIC_TIME_ZONE_INFORMATION = unsafe { std::mem::zeroed() };
+    if unsafe { GetDynamicTimeZoneInformation(&mut tz) } == u32::MAX {
+        return None;
+    }
+    let mut to: SYSTEMTIME = unsafe { std::mem::zeroed() };
+    let ok = unsafe {
+        if wall_clock {
+            TzSpecificLocalTimeToSystemTimeEx(&tz, &from, &mut to)
+        } else {
+            SystemTimeToTzSpecificLocalTimeEx(&tz, &from, &mut to)
+        }
+    };
+    if ok == 0 {
+        return None;
+    }
+    let to_secs = days_from_civil(to.wYear as i64, to.wMonth as i64, to.wDay as i64) * 86400 + to.wHour as i64 * 3600 + to.wMinute as i64 * 60 + to.wSecond as i64;
+    Some(((if wall_clock { secs - to_secs } else { to_secs - secs }) / 60) as i32)
+}
+
 impl Stamp {
     /// DateTime.Now.
     pub fn now() -> Stamp {
@@ -232,9 +405,9 @@ impl Stamp {
     }
     /// A moment by this PC's clock (new DateTime(y, m, d, h, min, s), local).
     pub fn from_local(year: i32, month: u32, day: u32, hour: u32, minute: u32, second: u32) -> Stamp {
-        let off = local_offset_minutes();
-        let secs = days_from_civil(year as i64, month as i64, day as i64) * 86400 + hour as i64 * 3600 + minute as i64 * 60 + second as i64 - off as i64 * 60;
-        Stamp { ticks: secs * TICKS_PER_SEC, kind: Kind::Local(off) }
+        let wall = days_from_civil(year as i64, month as i64, day as i64) * 86400 + hour as i64 * 3600 + minute as i64 * 60 + second as i64;
+        let off = offset_for_local(wall);
+        Stamp { ticks: (wall - off as i64 * 60) * TICKS_PER_SEC, kind: Kind::Local(off) }
     }
     pub fn kind(self) -> Kind {
         self.kind
@@ -251,7 +424,7 @@ impl Stamp {
     }
     /// ToLocalTime(): the same moment, written by this PC's clock.
     pub fn to_local(self) -> Stamp {
-        Stamp { ticks: self.ticks, kind: Kind::Local(local_offset_minutes()) }
+        Stamp { ticks: self.ticks, kind: Kind::Local(offset_at(self.unix_secs())) }
     }
     /// The moment `secs` later (earlier when negative): AddSeconds, AddMinutes(m) is `plus_secs(m * 60.)`…
     pub fn plus_secs(self, secs: f64) -> Stamp {
@@ -267,7 +440,7 @@ impl Stamp {
     }
     /// Its parts on this PC's clock.
     pub fn local(self) -> Civil {
-        self.civil(local_offset_minutes())
+        self.civil(offset_at(self.unix_secs()))
     }
     /// Its parts in UTC.
     pub fn utc(self) -> Civil {
@@ -285,7 +458,7 @@ impl Stamp {
         let offset = match self.kind {
             Kind::Utc => 0,
             Kind::Local(m) => m,
-            Kind::Unspecified => local_offset_minutes(),
+            Kind::Unspecified => offset_at(self.unix_secs()),
         };
         let c = self.civil(offset);
         let mut out = format!("{:04}-{:02}-{:02}T{:02}:{:02}:{:02}", c.year, c.month, c.day, c.hour, c.minute, c.second);
@@ -325,7 +498,7 @@ impl Stamp {
         let offset = match kind {
             Kind::Utc => 0,
             Kind::Local(m) => m,
-            Kind::Unspecified => local_offset_minutes(),
+            Kind::Unspecified => offset_for_local(days_from_civil(y, m, day) * 86400 + h * 3600 + min * 60 + s),
         };
         let secs = days_from_civil(y, m, day) * 86400 + h * 3600 + min * 60 + s - offset as i64 * 60;
         Some(Stamp { ticks: secs * TICKS_PER_SEC + frac_ticks, kind })

@@ -283,7 +283,7 @@ fn child_of(p: &Data, index: usize) -> usize {
 
 // ───────────────────────── the entries ─────────────────────────
 
-fn build(r: &Root) -> Vec<Entry> {
+fn build(r: &Root, set_words: &[(Part, Vec<String>)]) -> Vec<Entry> {
     use crate::pages::accounts::{is_local, label};
     let accounts = r.accounts();
     let st = r.state.get("settings").cloned().unwrap_or(Value::Null);
@@ -340,7 +340,7 @@ fn build(r: &Root) -> Vec<Entry> {
         t("home", "nav.home", &[], Run::Go(Page::Home)),
         t("users", "nav.accounts", &[], Run::Go(Page::Accounts)),
         t("layers", "nav.presets", &[], Run::Auto(pages::auto::Tab::Presets)),
-        t("gamepad", Page::Games.label_key(), &[games_word.as_str()], Run::Go(Page::Games)),
+        t("roblox", Page::Games.label_key(), &[games_word.as_str()], Run::Go(Page::Games)),
         t("keyboard", "nav.macros", &[], Run::Auto(pages::auto::Tab::Macros)),
         t("clock", "nav.stats", &[], Run::Go(Page::Stats)),
         t("sliders", "nav.settings", &[], Run::Go(Page::Settings)),
@@ -364,6 +364,9 @@ fn build(r: &Root) -> Vec<Entry> {
         let mut hint = vec![what, pages::preset_menu::acc_count(r, n)];
         if !matches!(server, "any" | "follow" | "") && !place.is_empty() {
             hint.push(r.tr(&format!("ps.srv.{server}")));
+        }
+        if let Some(t) = p.pointer("/schedule/enabled").and_then(Value::as_bool).filter(|on| *on).and_then(|_| pages::auto::next_text(r, p)) {
+            hint.push(t);
         }
         out.push(entry(Kind::Preset, Lead::Icon("layers"), s(p, "name").to_string(), hint.join(" · "), &[s(p, "gameName")], Run::Preset(s(p, "id").to_string())));
     }
@@ -415,7 +418,8 @@ fn build(r: &Root) -> Vec<Entry> {
 
     // Settings' parts.
     for part in Part::ALL {
-        out.push(entry(Kind::Setting, Lead::Icon(part.icon()), r.tr(part.title()), String::new(), &[], Run::Settings(part)));
+        let keys: Vec<&str> = set_words.iter().find(|(p, _)| *p == part).map(|(_, w)| w.iter().map(String::as_str).collect()).unwrap_or_default();
+        out.push(entry(Kind::Setting, Lead::Icon(part.icon()), r.tr(part.title()), String::new(), &keys, Run::Settings(part)));
     }
     out
 }
@@ -443,17 +447,19 @@ fn ask(r: &mut Root, cmd: &str, args: Value, cx: &mut Context<Root>, done: impl 
 /// An account brought into view on Accounts: a filter, a group or a search that hides it is put aside, and the search
 /// then names it (the cards don't scroll to one by themselves here).
 fn reveal(r: &mut Root, id: &str, window: &mut Window, cx: &mut Context<Root>) {
-    r.go(Page::Accounts);
-    let Some(name) = r.accounts().iter().find(|a| s(a, "id") == id).map(crate::pages::accounts::label) else { return };
-    r.acc_filter = crate::pages::accounts::Filter::All;
-    r.acc_group = None;
-    r.acc_search.update(cx, |st, cx| st.set_value(name, window, cx));
+    crate::pages::accounts::reveal(r, id, window, cx);
 }
 
 fn perform(r: &mut Root, run: Run, window: &mut Window, cx: &mut Context<Root>) {
     match run {
         Run::Join => {
             let ids: Vec<String> = r.accounts().iter().map(|a| s(a, "id").to_string()).filter(|id| r.selected.contains(id)).collect();
+            if ids.is_empty() {
+                r.toast = Some((r.tr("t.selectFirst"), "warn".into()));
+                r.go(Page::Accounts);
+                cx.notify();
+                return;
+            }
             pages::join::open(r, ids, window, cx);
         }
         Run::Add => r.add_account(cx),
@@ -507,7 +513,7 @@ fn perform(r: &mut Root, run: Run, window: &mut Window, cx: &mut Context<Root>) 
             pages::stats::export(r, cx);
         }
         Run::Lang(l) => r.send("setLanguage", json!({ "language": l })),
-        Run::Lock => r.send("lock", Value::Null),
+        Run::Lock => r.lock_app(window, cx),
         Run::Go(p) => r.go(p),
         Run::Auto(tab) => {
             r.auto.tab = tab;
@@ -522,6 +528,7 @@ fn perform(r: &mut Root, run: Run, window: &mut Window, cx: &mut Context<Root>) 
         // A game put in the bar's game box (no server), as the recent games do.
         Run::Game(place) => {
             r.go(Page::Accounts);
+            pages::accounts::clear_job(window, cx);
             r.place.update(cx, |st, cx| st.set_value(format!("https://www.roblox.com/games/{place}"), window, cx));
             r.resolve_place(cx);
         }
@@ -582,7 +589,14 @@ fn step(r: &mut Root, by: i32, page: bool) {
 
 /// Opens it (Ctrl+K). Not over another dialog, and not while locked.
 pub fn open(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
-    if r.palette.open || r.locked() || r.state.is_null() || window.has_active_dialog(cx) {
+    // Ctrl+K again closes it (app.js).
+    if r.palette.open {
+        window.close_dialog(cx);
+        r.palette.open = false;
+        cx.notify();
+        return;
+    }
+    if r.locked() || r.state.is_null() || window.has_active_dialog(cx) {
         return;
     }
     let hint = r.tr("pal.placeholder");
@@ -595,7 +609,8 @@ pub fn open(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
         }
     });
     let seq = r.palette.seq.wrapping_add(1);
-    let entries = Rc::new(build(r));
+    let set_words = crate::pages::settings::part_words(r, cx);
+    let entries = Rc::new(build(r, &set_words));
     r.palette = Data { open: true, seq, _input: Some(input.clone()), _typed: Some(typed), entries, ..Default::default() };
     requery(&mut r.palette, "");
     // BLOXKEEP_SHOT_PAL="farm": a shot's palette with those words typed.

@@ -73,7 +73,8 @@ impl RamTurn {
         let (jobs, inbox) = mpsc::channel::<RamJob>();
         std::thread::spawn(move || {
             for job in inbox {
-                job();
+                // One that panics (shown as an unexpected error) doesn't end the turn for the asks after it.
+                let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(job));
             }
         });
         RamTurn { jobs, left: Arc::new((Mutex::new(0), Condvar::new())) }
@@ -321,11 +322,18 @@ impl App {
         let left = turn.left.clone();
         *left.0.lock().unwrap_or_else(|e| e.into_inner()) += 1;
         let job: RamJob = Box::new(move || {
+            // Counted down even when the ask panics: LiftRamLimits would wait its whole 5 s on exit for it.
+            struct Done(Arc<(Mutex<usize>, Condvar)>);
+            impl Drop for Done {
+                fn drop(&mut self) {
+                    let mut n = self.0.0.lock().unwrap_or_else(|e| e.into_inner());
+                    *n = n.saturating_sub(1);
+                    self.0.1.notify_all();
+                }
+            }
+            let _done = Done(left);
             let answer = ask();
             let _ = tx.send(answer);
-            let mut n = left.0.lock().unwrap_or_else(|e| e.into_inner());
-            *n -= 1;
-            left.1.notify_all();
         });
         if turn.jobs.send(job).is_err() {
             // The worker is gone (it never stops on its own): nothing was asked.

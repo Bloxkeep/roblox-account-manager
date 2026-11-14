@@ -82,8 +82,9 @@ pub fn on_power_mode_changed(mode: PowerMode) {
                 App::with(|app| app.on_suspending());
                 let _ = done.send(());
             });
-            // The core's thread is gone (closing): nothing more to wait for.
-            let _ = wait.recv();
+            // The core's thread is gone (closing): nothing more to wait for. Windows gives this message only a few
+            // seconds; a core held up elsewhere mustn't freeze the window's thread past that.
+            let _ = wait.recv_timeout(Duration::from_secs(3));
         }
         PowerMode::Resume => rt::post(|| App::with(|app| app.on_resumed())),
         PowerMode::StatusChange => {}
@@ -95,6 +96,29 @@ pub fn on_power_mode_changed(mode: PowerMode) {
 pub fn on_time_changed() {
     // PORT: TimeZoneInfo.ClearCachedData(): crate::core::time reads Windows' offset at each call and caches nothing, so there
     // is nothing to clear.
+}
+
+/// NetworkChange.NetworkAvailabilityChanged's watcher: a thread that waits on Windows' address-change notice and passes on
+/// each change of `is_network_available`.
+pub fn watch_network() {
+    let _ = std::thread::Builder::new().name("Bloxkeep network watch".into()).spawn(|| {
+        let mut was = is_network_available();
+        loop {
+            // SAFETY: both null: the call blocks until an IPv4 address changes.
+            let r = unsafe { windows_sys::Win32::NetworkManagement::IpHelper::NotifyAddrChange(std::ptr::null_mut(), std::ptr::null()) };
+            if r != 0 {
+                // Not offered: network_up asks again every 30 s while down.
+                return;
+            }
+            // Adapters settle over a moment: one look after it.
+            std::thread::sleep(Duration::from_millis(500));
+            let now = is_network_available();
+            if now != was {
+                was = now;
+                on_network_availability_changed(now);
+            }
+        }
+    });
 }
 
 /// NetworkChange.NetworkAvailabilityChanged, from the network watcher's thread.

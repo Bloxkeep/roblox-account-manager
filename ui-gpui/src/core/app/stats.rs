@@ -324,7 +324,6 @@ impl App {
         let slept_while_locked = self.stats.slept_while_locked.get();
         for session in open {
             let ended = self.stats.ended_while_locked.borrow().get(&session.account_id).cloned();
-            let quit = ended.is_some();
             let same = self.controller.running.borrow().get(&session.account_id).is_some_and(|(pid, _)| *pid == session.pid);
             match slept_while_locked {
                 Some(slept) if slept > session.started_at && (if let Some(e) = &ended { e.2 > slept } else { same }) => {
@@ -823,7 +822,10 @@ pub fn full_day_streaks(sessions: &[PlaySession], now_utc: Stamp) -> HashMap<Gui
             continue;
         }
         let hours = played.entry(s.account_id).or_insert_with(|| (0..STREAK_DAYS).map(|_| vec![0.0; 24]).collect());
-        add_heat(hours, first, s.started_at, end);
+        // From the first counted day only: a stay open for weeks (an AFK farm) would otherwise walk every hour
+        // before it, on each Statistics refresh, only to throw those hours away.
+        let start = if s.started_at > first_utc { s.started_at } else { first_utc };
+        add_heat(hours, first, start, end);
     }
     played
         .into_iter()

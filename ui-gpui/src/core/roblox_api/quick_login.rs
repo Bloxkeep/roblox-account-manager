@@ -4,7 +4,7 @@ use serde_json::{Value, json};
 
 use super::{
     COOKIE_NAME, QuickLoginCode, QuickLoginStatus, get_prop, get_str, header, is_expected_error, normalize_cookie, parse_assume_utc, parse_json,
-    post_with_csrf, rate_limited, realm, refused, request, send, try_prop,
+    post_with_csrf, rate_limited_by, realm, refused, request, send, try_prop,
 };
 use crate::core::base::{Cancel, Fail, Res, Stamp};
 use crate::core::l;
@@ -19,7 +19,7 @@ pub fn create_quick_login(realm: &str, ct: &Cancel) -> Res<QuickLoginCode> {
     let res = post_with_csrf(&format!("{}create", quick_login_base(realm)), "", "{}", None, ct, realm)?;
     let body = res.text();
     if res.status == 429 {
-        return Err(rate_limited());
+        return Err(rate_limited_by(&res));
     }
     if !res.is_success() {
         return Err(refused("Quick Login code", res.status, &body, false));
@@ -64,7 +64,7 @@ pub fn get_quick_login_status(login: &QuickLoginCode, ct: &Cancel) -> Res<QuickL
         return Ok(QuickLoginStatus { status: "Expired".into(), account_name: None, picture_url: None });
     }
     if res.status == 429 {
-        return Err(rate_limited());
+        return Err(rate_limited_by(&res));
     }
     if !res.is_success() {
         return Err(refused("Quick Login status", res.status, &body, false));
@@ -99,7 +99,7 @@ pub fn finish_quick_login(login: &QuickLoginCode, ct: &Cancel) -> Res<String> {
         return Ok(cookie);
     }
     if res.status == 429 {
-        return Err(rate_limited());
+        return Err(rate_limited_by(&res));
     }
     Err(refused("Quick Login finish", res.status, &body, false))
 }

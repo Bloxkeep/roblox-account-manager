@@ -19,7 +19,7 @@ use crate::core::base::{Fail, Guid, Res, Stamp};
 use crate::core::win_kit::{Point, Rect as Rectangle};
 use crate::core::macro_desk::MacroDesk;
 use crate::core::macro_model::{MacroStep, macro_keys};
-use crate::core::roblox_input::RobloxInput;
+use crate::core::roblox_input::RawInput;
 use crate::core::{l, log, window_shot};
 
 /// Something recorded: a key or mouse button going down or up, a wheel turn, a relative mouse move (raw units) or the
@@ -64,6 +64,8 @@ pub mod macro_recording {
     /// A camera drag is cut into pieces this long at most.
     const CAMERA_PIECE: i32 = 400;
     const MIN_WAIT: i32 = 30;
+    /// The longest hold a key step takes (macro_rules' check of a step).
+    const KEY_STEP_MAX_MS: i32 = 10_000;
 
     /// A step made, from when to when it plays (the waits go between), and where (a click).
     #[derive(Clone, Debug)]
@@ -89,6 +91,12 @@ pub mod macro_recording {
 
     /// `place`: a screen point as 0..1 of the window's client area; None for one outside it.
     pub fn to_steps(recorded: &[MacroEvent], place: &dyn Fn(Point) -> Option<(f64, f64)>) -> Vec<MacroStep> {
+        to_steps_whole(recorded, place).0
+    }
+
+    /// The steps, and how many the whole recording makes: more than MAX_STEPS, and its end was left out (said, never
+    /// silently: a long recording stopped short of where it was recorded to).
+    pub fn to_steps_whole(recorded: &[MacroEvent], place: &dyn Fn(Point) -> Option<(f64, f64)>) -> (Vec<MacroStep>, usize) {
         let mut events: Vec<MacroEvent> = recorded.to_vec();
         events.sort_by_key(|e| e.ms); // stable, as OrderBy
         let mut actions: Vec<Act> = Vec::new();
@@ -111,7 +119,15 @@ pub mod macro_recording {
                         && events[i + 1..up as usize].iter().all(|x| matches!(x.kind.as_str(), "move" | "pos") || (x.kind == "keyDown" && x.key.as_deref() == Some(key.as_str())));
                     if alone {
                         let up_ms = events[up as usize].ms;
-                        actions.push(act(e.ms, up_ms, MacroStep { key: Some(key.clone()), ms: Some((up_ms - e.ms).clamp(30, 5000)), ..step("key") }));
+                        // Held as long as it was: a walk cut to 5 s stopped meters short (a user's report, 2026-11-13).
+                        // Past a key step's 10 s it is Hold, a wait and Release.
+                        let hold = up_ms - e.ms;
+                        if hold <= KEY_STEP_MAX_MS {
+                            actions.push(act(e.ms, up_ms, MacroStep { key: Some(key.clone()), ms: Some(hold.max(30)), ..step("key") }));
+                        } else {
+                            actions.push(act(e.ms, e.ms, MacroStep { key: Some(key.clone()), ..step("down") }));
+                            actions.push(act(up_ms, up_ms, MacroStep { key: Some(key.clone()), ..step("up") }));
+                        }
                         for j in i + 1..=up as usize {
                             used.insert(j);
                         }
@@ -233,8 +249,36 @@ pub mod macro_recording {
             steps.push(a.step);
             at = at.max(a.end);
         }
-        steps.truncate(macro_rules::MAX_STEPS as usize);
-        steps
+        let whole = steps.len();
+        let max = macro_rules::MAX_STEPS as usize;
+        (if whole > max { cut_steps(steps, max) } else { steps }, whole)
+    }
+
+    /// The first steps, at most `max`: keys held there let go at the end (not left held), no wait last.
+    fn cut_steps(steps: Vec<MacroStep>, max: usize) -> Vec<MacroStep> {
+        for n in (1..=max).rev() {
+            let mut kept: Vec<MacroStep> = steps[..n.min(steps.len())].to_vec();
+            while kept.last().is_some_and(|s| s.kind == "wait") {
+                kept.pop();
+            }
+            let mut held: Vec<String> = Vec::new();
+            for s in &kept {
+                match (s.kind.as_str(), &s.key) {
+                    ("down", Some(down)) => held.push(down.clone()),
+                    ("up", Some(up)) => {
+                        if let Some(at) = held.iter().position(|k| k == up) {
+                            held.remove(at);
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            if kept.len() + held.len() <= max {
+                kept.extend(held.into_iter().map(|key| MacroStep { key: Some(key), ..step("up") }));
+                return kept;
+            }
+        }
+        Vec::new()
     }
 
     fn camera(dx: i32, dy: i32, ms: i32) -> MacroStep {
@@ -316,12 +360,17 @@ pub mod macro_recording {
 
     /// A TinyTask recording as a macro (not saved), its places as parts of a 1920 × 1080 screen.
     pub fn from_tiny_task(file: &[u8], name: &str) -> Res<Macro> {
+        from_tiny_task_whole(file, name).map(|(m, _)| m)
+    }
+
+    /// As from_tiny_task, with how many steps the whole recording makes (see to_steps_whole).
+    pub fn from_tiny_task_whole(file: &[u8], name: &str) -> Res<(Macro, usize)> {
         let (fw, fh) = TINY_TASK_FRAME;
-        let steps = to_steps(&read_tiny_task(file)?, &|p: Point| Some((p.x as f64 / fw as f64, p.y as f64 / fh as f64)));
+        let (steps, whole) = to_steps_whole(&read_tiny_task(file)?, &|p: Point| Some((p.x as f64 / fw as f64, p.y as f64 / fh as f64)));
         if steps.is_empty() {
             return Err(Fail::user(l::t("That recording has nothing Bloxkeep can play.")));
         }
-        Ok(Macro { name: name.into(), steps, recorded_size: Some(MacroSize { w: fw, h: fh }), jitter_ms: 0, jitter_px: 0, ..Default::default() })
+        Ok((Macro { name: name.into(), steps, recorded_size: Some(MacroSize { w: fw, h: fh }), jitter_ms: 0, jitter_px: 0, ..Default::default() }, whole))
     }
 
     /// A square of about `side` px around `at` (client pixels), as PNG base64.
@@ -431,9 +480,11 @@ pub struct MacroRecorder {
     rec: Arc<Rec>,
     thread: Option<JoinHandle<()>>,
     ended: Option<mpsc::Receiver<()>>,
-    raw: Option<Arc<RobloxInput>>,
+    raw: Option<RawInput>,
     raw_moved: Option<RawMoved>,
     disposed: bool,
+    /// Once finished: the steps past a macro's limit that were left out (none when the recording stopped at it).
+    pub left_out: usize,
 }
 
 pub const COUNTDOWN: Duration = Duration::from_secs(3);
@@ -442,7 +493,7 @@ pub const MAX_LENGTH: Duration = Duration::from_secs(10 * 60);
 impl MacroRecorder {
     /// `ui`: how work reaches the window's thread (F8, the step count, click pictures); None: they never do, as in C#
     /// with no SynchronizationContext.
-    pub fn new(account_id: Guid, pid: i32, window: isize, raw: Option<Arc<RobloxInput>>, ui: Option<Post>) -> Res<MacroRecorder> {
+    pub fn new(account_id: Guid, pid: i32, window: isize, raw: Option<RawInput>, ui: Option<Post>) -> Res<MacroRecorder> {
         let raw = raw.filter(|r| r.working());
         let client = MacroDesk::client_on_screen(window);
         let rec = Arc::new(Rec {
@@ -481,8 +532,17 @@ impl MacroRecorder {
             .spawn(move || {
                 run(&worker, ready_tx);
                 let _ = ended_tx.send(());
-            })
-            .map_err(Fail::from)?;
+            });
+        let thread = match thread {
+            Ok(thread) => thread,
+            Err(e) => {
+                // Not recording after all: the mouse callback put on the shared raw input above comes off again.
+                if let Some(r) = &raw {
+                    r.set_mouse_moved(None);
+                }
+                return Err(Fail::from(e));
+            }
+        };
         let mut me = MacroRecorder {
             account_id,
             starts_at: Stamp::utc_now().plus_secs(COUNTDOWN.as_secs_f64()),
@@ -493,6 +553,7 @@ impl MacroRecorder {
             raw,
             raw_moved,
             disposed: false,
+            left_out: 0,
         };
         let ready_in_time = ready_rx.recv_timeout(Duration::from_secs(5)).is_ok();
         let (keyboard, mouse) = (rec.keyboard_hook.load(Ordering::SeqCst), rec.mouse_hook.load(Ordering::SeqCst));
@@ -531,6 +592,12 @@ impl MacroRecorder {
         self.rec.actions.load(Ordering::SeqCst)
     }
 
+    /// How many steps the recording so far makes, waits included (the limit is counted in these).
+    pub fn steps_now(&self) -> usize {
+        let events: Vec<MacroEvent> = self.rec.events.lock().unwrap_or_else(|e| e.into_inner()).clone();
+        macro_recording::to_steps_whole(&events, &|_| Some((0.5, 0.5))).1
+    }
+
     /// Stops recording; the steps recorded, as parts of the client area it had when recording began.
     pub fn finish(&mut self) -> Vec<MacroStep> {
         self.dispose();
@@ -543,13 +610,14 @@ impl MacroRecorder {
         }
         let events: Vec<MacroEvent> = self.rec.events.lock().unwrap_or_else(|e| e.into_inner()).clone();
         let client = self.client;
-        let steps = macro_recording::to_steps(&events, &|p: Point| {
+        let (steps, whole) = macro_recording::to_steps_whole(&events, &|p: Point| {
             if contains(client, p) {
                 Some(((p.x - client.x) as f64 / client.width as f64, (p.y - client.y) as f64 / client.height as f64))
             } else {
                 None
             }
         });
+        self.left_out = whole.saturating_sub(steps.len());
         let states: Vec<Shot> = pictures.iter().map(shot).collect();
         let failed: Vec<&String> = states.iter().filter_map(|s| if let Shot::Failed(kind) = s { Some(kind) } else { None }).collect();
         let unfinished = states.iter().filter(|s| **s == Shot::Going).count();
@@ -761,6 +829,11 @@ impl Rec {
     }
 
     fn on_mouse(self: &Arc<Self>, message: u32, at: Point, mouse_data: u32, flags: u32) {
+        // Moves come hundreds a second: only a camera drag without raw input uses them (the button's down resets the
+        // last place), so the others go before the window in front is looked up.
+        if message == WM_MOUSEMOVE && (self.raw_on || !self.right_down.load(Ordering::SeqCst)) {
+            return;
+        }
         if (flags & LLMHF_INJECTED) != 0 || !(self.ours() || matches!(message, WM_LBUTTONUP | WM_RBUTTONUP | WM_MBUTTONUP)) {
             return;
         }
@@ -768,9 +841,9 @@ impl Rec {
             WM_MOUSEMOVE => {
                 // Without raw input, the camera's turn is guessed from where the pointer goes.
                 let mut last = self.last_point.lock().unwrap_or_else(|e| e.into_inner());
-                if self.right_down.load(Ordering::SeqCst) && !self.raw_on && (at.x != last.x || at.y != last.y) {
+                if at.x != last.x || at.y != last.y {
                     let (dx, dy) = (at.x - last.x, at.y - last.y);
-                    self.add(MacroEvent { dx, dy, ..MacroEvent::new(self.now(), "move") }, false);
+                    self.add_move(dx, dy);
                 }
                 *last = at;
             }
@@ -781,9 +854,12 @@ impl Rec {
                 }
                 *self.last_point.lock().unwrap_or_else(|e| e.into_inner()) = at;
                 let index = self.add(MacroEvent { button: Some(button.into()), at, ..MacroEvent::new(self.now(), "down") }, true);
-                if button != "middle" {
+                // Noted here, on the hook thread, so finish (right after F8) sees it; only the capture is posted.
+                if button != "middle"
+                    && let Some(state) = self.note_picture()
+                {
                     let me = self.clone();
-                    self.post(move || me.picture(index, at));
+                    self.post(move || me.picture(index, at, state));
                 }
             }
             WM_LBUTTONUP | WM_RBUTTONUP | WM_MBUTTONUP => {
@@ -806,24 +882,59 @@ impl Rec {
     /// A person's raw mouse move (RobloxInput's thread): the camera's turn while the right button is held.
     fn on_raw_move(self: &Arc<Self>, dx: i32, dy: i32) {
         if self.right_down.load(Ordering::SeqCst) && self.ours() {
-            self.add(MacroEvent { dx, dy, ..MacroEvent::new(self.now(), "move") }, false);
+            self.add_move(dx, dy);
         }
     }
 
-    /// A picture of where a click landed, for "click by image" (asked on the window's thread, taken on a thread of its own).
-    fn picture(self: &Arc<Self>, index: usize, click_at: Point) {
-        let at = Point { x: click_at.x - self.client.x, y: click_at.y - self.client.y };
-        let state = Arc::new(Mutex::new(Shot::Going));
+    /// A relative move, added to the last one when that came within MOVE_EVERY: a 1000 Hz mouse would otherwise add
+    /// thousands of events a few seconds into a drag (the path is kept at about a frame's detail).
+    fn add_move(self: &Arc<Self>, dx: i32, dy: i32) {
+        let now = self.now();
         {
-            let mut pictures = self.pictures.lock().unwrap_or_else(|e| e.into_inner());
-            if pictures.len() >= 100 {
+            let mut events = self.events.lock().unwrap_or_else(|e| e.into_inner());
+            if let Some(last) = events.last_mut()
+                && last.kind == "move"
+                && now - last.ms < MOVE_EVERY
+            {
+                last.dx += dx;
+                last.dy += dy;
                 return;
             }
-            pictures.push(state.clone());
         }
+        self.add(MacroEvent { dx, dy, ..MacroEvent::new(now, "move") }, false);
+    }
+
+    /// A click's picture noted as coming (at most 100); None when none will be taken (no window thread to ask).
+    fn note_picture(&self) -> Option<Arc<Mutex<Shot>>> {
+        self.ui.as_ref()?;
+        let mut pictures = self.pictures.lock().unwrap_or_else(|e| e.into_inner());
+        if pictures.len() >= 100 {
+            return None;
+        }
+        let state = Arc::new(Mutex::new(Shot::Going));
+        pictures.push(state.clone());
+        Some(state)
+    }
+
+    /// A picture of where a click landed, for "click by image" (asked on the window's thread, taken on a thread of its own).
+    fn picture(self: &Arc<Self>, index: usize, click_at: Point, state: Arc<Mutex<Shot>>) {
+        let at = Point { x: click_at.x - self.client.x, y: click_at.y - self.client.y };
         let me = self.clone();
-        let spawned = std::thread::Builder::new().name("Bloxkeep click picture".into()).spawn(move || {
-            let taken = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| -> Res<()> {
+        // A job dropped without running (the core's queue not up, at start or exit) marks its picture failed, or
+        // finish() waited its whole time for a picture that never comes.
+        struct Untaken(Arc<Mutex<Shot>>);
+        impl Drop for Untaken {
+            fn drop(&mut self) {
+                let mut s = self.0.lock().unwrap_or_else(|e| e.into_inner());
+                if matches!(*s, Shot::Going) {
+                    *s = Shot::Failed("NotTaken".into());
+                }
+            }
+        }
+        let untaken = Untaken(state.clone());
+        shoot(Box::new(move || {
+            let _untaken = untaken;
+            let taken = crate::core::program::catch_unwind(std::panic::AssertUnwindSafe(|| -> Res<()> {
                 if let Some(picture) = window_shot::client(me.window, true)
                     && let Some(image) = macro_recording::cut(&picture, at, 64)?
                     && let Some(e) = me.events.lock().unwrap_or_else(|e| e.into_inner()).get_mut(index)
@@ -842,9 +953,46 @@ impl Rec {
                 }),
                 Err(_) => Shot::Failed("Exception".into()),
             };
-        });
-        if spawned.is_err() {
-            *self.pictures.lock().unwrap_or_else(|e| e.into_inner()).last_mut().expect("just pushed").lock().unwrap_or_else(|e| e.into_inner()) = Shot::Failed("Exception".into());
+        }));
+    }
+}
+
+/// Recorded moves closer together than this (ms) are one.
+const MOVE_EVERY: i32 = 8;
+/// Click pictures taken at once at most (each a PrintWindow of the whole window); the rest wait their turn.
+const SHOTS_AT_ONCE: usize = 2;
+
+type ShotJob = Box<dyn FnOnce() + Send>;
+/// Click pictures waiting, and how many threads take them now.
+static SHOTS: Mutex<(std::collections::VecDeque<ShotJob>, usize)> = Mutex::new((std::collections::VecDeque::new(), 0));
+
+/// A click picture taken on one of at most SHOTS_AT_ONCE threads, in order.
+fn shoot(job: ShotJob) {
+    {
+        let mut shots = SHOTS.lock().unwrap_or_else(|e| e.into_inner());
+        shots.0.push_back(job);
+        if shots.1 >= SHOTS_AT_ONCE {
+            return; // a thread going takes it next
         }
+        shots.1 += 1;
+    }
+    let spawned = std::thread::Builder::new().name("Bloxkeep click picture".into()).spawn(|| {
+        loop {
+            let job = {
+                let mut shots = SHOTS.lock().unwrap_or_else(|e| e.into_inner());
+                match shots.0.pop_front() {
+                    Some(job) => job,
+                    None => {
+                        shots.1 -= 1;
+                        return;
+                    }
+                }
+            };
+            job(); // catches its own panics
+        }
+    });
+    if spawned.is_err() {
+        // No thread: the picture waits for the next one (or counts as not done when the recording ends).
+        SHOTS.lock().unwrap_or_else(|e| e.into_inner()).1 -= 1;
     }
 }

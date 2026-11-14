@@ -12,15 +12,25 @@ use crate::core::base::{Fail, Res, Stamp, new_guid};
 use crate::core::log;
 use crate::core::models::to_net_json_string;
 
-/// What the profile shows; the application's icon and name come with it.
-#[derive(Clone, Debug, PartialEq, Eq)]
+/// What the profile shows; the application's name comes with it, and its icon unless a picture is given.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Activity {
     pub details: String,
     pub state: Option<String>,
     pub start_unix: i64,
     pub button_label: String,
     pub button_url: String,
+    /// The big picture (an https address: the game's icon), with Bloxkeep's logo small at its corner.
+    pub picture: Option<String>,
+    /// Said when the big picture is pointed at.
+    pub picture_text: Option<String>,
+    /// A button before button_label's (Discord takes two): the game's page.
+    pub first_label: Option<String>,
+    pub first_url: Option<String>,
 }
+
+/// Bloxkeep's logo, as the Discord bot's and feedback's messages show it.
+const LOGO: &str = "https://raw.githubusercontent.com/Bloxkeep/roblox-account-manager/main/docs/brand/bloxkeep.png";
 
 /// The tests' stand-in for Discord's pipe; Discord's own otherwise.
 static TEST_PIPE: LazyLock<Option<String>> = LazyLock::new(|| std::env::var("BLOXKEEP_DISCORD_PIPE").ok().filter(|p| !p.is_empty()));
@@ -66,7 +76,17 @@ impl DiscordPresence {
             return;
         }
         // Busy with another call: this one is skipped (WaitAsync(0)).
-        let Ok(mut s) = self.gate.try_lock() else { return };
+        let mut s = match self.gate.try_lock() {
+            Ok(s) => s,
+            Err(std::sync::TryLockError::WouldBlock) => return,
+            // A call that panicked: its pipe may be half written, so it starts again from a fresh connection.
+            Err(std::sync::TryLockError::Poisoned(e)) => {
+                let mut s = e.into_inner();
+                close(&mut s);
+                self.gate.clear_poison();
+                s
+            }
+        };
         if s.sent.as_deref() == Some(json.as_str()) && s.client_id.as_deref() == Some(client_id) {
             return;
         }
@@ -123,11 +143,11 @@ impl Drop for DiscordPresence {
 
 /// `s` cut to Discord's lines of 2 to 128 UTF-16 units.
 fn fit(s: &str) -> String {
-    let units: Vec<u16> = s.encode_utf16().collect();
-    if units.len() > 128 {
-        // PORT: C#'s s[..127] can split a surrogate pair; a Rust String can't hold half of one (it becomes U+FFFD).
-        String::from_utf16_lossy(&units[..127]) + "…"
-    } else if units.len() < 2 {
+    let units = s.encode_utf16().count();
+    if units > 128 {
+        // PORT: C#'s s[..127] can split a surrogate pair; a Rust String can't hold half of one, so it stops before it.
+        crate::core::base::cut_utf16(s, 127).to_string() + "…"
+    } else if units < 2 {
         format!("{s:<2}")
     } else {
         s.to_string()
@@ -136,13 +156,26 @@ fn fit(s: &str) -> String {
 
 /// The activity as Discord's SET_ACTIVITY takes it: lines of 2 to 128 characters, one link button.
 pub(crate) fn activity_json(a: &Activity) -> String {
-    let label: Vec<u16> = a.button_label.encode_utf16().collect();
-    let label = if label.len() > 32 { String::from_utf16_lossy(&label[..32]) } else { a.button_label.clone() };
+    let button = |label: &str, url: &str| json!({ "label": crate::core::base::cut_utf16(label, 32).to_string(), "url": url });
+    let mut buttons = Vec::new();
+    if let (Some(label), Some(url)) = (a.first_label.as_deref().filter(|l| !l.is_empty()), a.first_url.as_deref().filter(|u| !u.is_empty())) {
+        buttons.push(button(label, url));
+    }
+    buttons.push(button(&a.button_label, &a.button_url));
     let mut activity = Map::new();
     activity.insert("details".into(), json!(fit(&a.details)));
     activity.insert("timestamps".into(), json!({ "start": a.start_unix }));
-    activity.insert("assets".into(), json!({ "large_text": "Bloxkeep" }));
-    activity.insert("buttons".into(), json!([{ "label": label, "url": a.button_url }]));
+    let assets = match a.picture.as_deref().filter(|p| !p.is_empty()) {
+        Some(picture) => json!({
+            "large_image": picture,
+            "large_text": fit(a.picture_text.as_deref().unwrap_or("Bloxkeep")),
+            "small_image": LOGO,
+            "small_text": "Bloxkeep",
+        }),
+        None => json!({ "large_text": "Bloxkeep" }),
+    };
+    activity.insert("assets".into(), assets);
+    activity.insert("buttons".into(), Value::Array(buttons));
     if let Some(state) = a.state.as_deref().filter(|s| !s.is_empty()) {
         activity.insert("state".into(), json!(fit(state)));
     }

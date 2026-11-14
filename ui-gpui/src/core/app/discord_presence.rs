@@ -26,11 +26,13 @@ pub struct DiscordPresenceState {
     /// Shared with the work threads that talk to the Discord app.
     pub discord_presence: Arc<DiscordPresence>,
     pub next_discord_presence: Cell<Stamp>,
+    /// Which game the profile shows next when there are several.
+    pub presence_turn: Cell<usize>,
 }
 
 impl Default for DiscordPresenceState {
     fn default() -> DiscordPresenceState {
-        DiscordPresenceState { discord_presence: Arc::new(DiscordPresence::new()), next_discord_presence: Cell::new(stamp_min()) }
+        DiscordPresenceState { discord_presence: Arc::new(DiscordPresence::new()), next_discord_presence: Cell::new(stamp_min()), presence_turn: Cell::new(0) }
     }
 }
 
@@ -48,29 +50,44 @@ impl App {
         });
     }
 
+    /// In a game: its name and icon (Bloxkeep's logo at the corner), how many windows, and a button to its page. With
+    /// several games each takes its turn, one per update (DISCORD_PRESENCE_INTERVAL), so the profile moves through them.
+    /// Otherwise how many windows are open, or that Bloxkeep is managing accounts.
     pub fn presence_activity(&self) -> Activity {
         let windows = self.roblox_count();
         let runs: Vec<(i32, Rc<PendingLaunch>)> = self.controller.running.borrow().values().cloned().collect();
-        let mut games: Vec<String> = Vec::new();
+        let mut games: Vec<crate::core::roblox_api::GameInfo> = Vec::new();
         for run in &runs {
-            if let Some(name) = self.playing_place((run.0, &run.1)).and_then(|id| self.known_game(id)).map(|g| g.name) {
-                if !name.is_empty() && !games.contains(&name) {
-                    games.push(name);
+            if let Some(game) = self.playing_place((run.0, &run.1)).and_then(|id| self.known_game(id)) {
+                if !game.name.is_empty() && !games.iter().any(|g| g.name == game.name) {
+                    games.push(game);
                 }
             }
         }
-        let details = if windows == 0 {
-            l::t("Managing Roblox accounts")
-        } else {
-            l::p(windows as i64, "1 Roblox window open", "{0} Roblox windows open", &[&windows])
-        };
-        let state = match games.len() {
-            1 => Some(games[0].clone()),
-            0 => None,
-            n => Some(l::f("{0} games", &[&n])),
-        };
+        let open = l::p(windows as i64, "1 Roblox window open", "{0} Roblox windows open", &[&windows]);
         let since = self.relaunch.started.get().unix_secs();
-        Activity { details, state, start_unix: since, button_label: l::t("Get Bloxkeep"), button_url: WEBSITE_URL.to_string() }
+        let base = |details: String, state: Option<String>| Activity {
+            details,
+            state,
+            start_unix: since,
+            button_label: l::t("Get Bloxkeep"),
+            button_url: WEBSITE_URL.to_string(),
+            ..Default::default()
+        };
+        if games.is_empty() {
+            return base(if windows == 0 { l::t("Managing Roblox accounts") } else { open }, None);
+        }
+        let turn = self.discord_presence.presence_turn.get();
+        self.discord_presence.presence_turn.set(turn.wrapping_add(1));
+        let shown = &games[turn % games.len()];
+        let state = if games.len() > 1 { l::f("{0} · {1} games", &[&open, &games.len()]) } else { open };
+        Activity {
+            picture: shown.icon_url.clone().filter(|icon| icon.starts_with("https://")),
+            picture_text: Some(shown.name.clone()),
+            first_label: Some(l::t("View game")),
+            first_url: Some(format!("https://www.roblox.com/games/{}", shown.place_id)),
+            ..base(shown.name.clone(), Some(state))
+        }
     }
 
     /// The game a window is playing: none once it left for Roblox's home screen, lost its connection or was signed

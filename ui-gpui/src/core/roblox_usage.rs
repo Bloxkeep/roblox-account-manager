@@ -37,6 +37,8 @@ struct State {
     read_at: Option<Instant>,
     gpu_before: Option<GpuQuery>,
     gpu_gone: bool,
+    /// Reads of the GPU counters that failed in a row: one can fail as instances come and go (a client opening).
+    gpu_failures: u32,
     cpu_pct: Option<i32>,
     gpu_pct: Option<i32>,
 }
@@ -96,7 +98,23 @@ impl RobloxUsage {
                 }
             }
             let _done = Done(&inner.reading);
-            read(&mut lock(&inner.state), &pids);
+            // Read on a copy, the lock let go meanwhile: the page's tick asks cpu_pct/gpu_pct under the same lock, and
+            // the first read takes about half a second (the C# read without a lock; review 2026-11-13). The last
+            // numbers stay readable until the new ones are in.
+            let mut work = {
+                let mut s = lock(&inner.state);
+                State {
+                    cpu_times: std::mem::take(&mut s.cpu_times),
+                    read_at: s.read_at,
+                    gpu_before: s.gpu_before.take(),
+                    gpu_gone: s.gpu_gone,
+                    gpu_failures: s.gpu_failures,
+                    cpu_pct: s.cpu_pct,
+                    gpu_pct: s.gpu_pct,
+                }
+            };
+            read(&mut work, &pids);
+            *lock(&inner.state) = work;
         });
     }
 }
@@ -141,6 +159,9 @@ fn processor_time(pid: i32) -> Option<Duration> {
     Some(Duration::from_nanos((ticks(kernel) + ticks(user)) * 100))
 }
 
+/// Failed reads in a row before the GPU figure is given up for the run.
+const GPU_TRIES: u32 = 3;
+
 fn read_gpu(s: &mut State, pids: &[i32]) -> Option<i32> {
     if s.gpu_gone {
         return None;
@@ -149,19 +170,30 @@ fn read_gpu(s: &mut State, pids: &[i32]) -> Option<i32> {
         // The first read only takes the counters' first sample: a value needs two.
         match open_gpu_query() {
             Some(q) => s.gpu_before = Some(q),
-            None => s.gpu_gone = true, // Windows without the counters, or with them switched off: not asked again.
+            None => gpu_failed(s), // Windows without the counters, or with them switched off: not asked again.
         }
         return None;
     };
     match gpu_rows(&query) {
         Some(rows) => {
             s.gpu_before = Some(query);
+            s.gpu_failures = 0;
             Some(gpu_percent(&rows, pids))
         }
         None => {
-            s.gpu_gone = true;
+            s.gpu_before = Some(query); // kept for the next try
+            gpu_failed(s);
             None
         }
+    }
+}
+
+/// One failed read; a few in a row: not asked again this run.
+fn gpu_failed(s: &mut State) {
+    s.gpu_failures += 1;
+    if s.gpu_failures >= GPU_TRIES {
+        s.gpu_gone = true;
+        s.gpu_before = None;
     }
 }
 

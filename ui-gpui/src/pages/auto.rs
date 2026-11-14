@@ -37,7 +37,8 @@ pub struct Data {
     pub form: Option<crate::pages::preset_form::Form>,
     /// The macro form, open in place of the list.
     pub macro_form: Option<crate::pages::macro_form::Form>,
-    asked_icons: bool,
+    /// When the presets' game icons were last asked for (asked again 5 minutes on while one is still missing).
+    asked_icons: Option<std::time::Instant>,
     /// The macro whose "…" menu is open, and the one a click outside just closed (so its own button doesn't reopen it).
     menu: Option<String>,
     menu_closed: Option<(String, std::time::Instant)>,
@@ -69,8 +70,9 @@ fn s<'a>(v: &'a Value, k: &str) -> &'a str {
 fn int(v: &Value, k: &str) -> i64 {
     v.get(k).and_then(Value::as_i64).unwrap_or(0)
 }
-fn list(root: &Root, k: &str) -> Vec<Value> {
-    root.state.pointer(&format!("/settings/{k}")).and_then(Value::as_array).cloned().unwrap_or_default()
+/// The app's presets or macros, as its state holds them (borrowed: the page is drawn every frame).
+fn list<'a>(root: &'a Root, k: &str) -> &'a [Value] {
+    root.state.pointer(&format!("/settings/{k}")).and_then(Value::as_array).map(Vec::as_slice).unwrap_or(&[])
 }
 
 /// A command whose answer matters: what it returns goes to `done`; a refusal is said in a toast.
@@ -89,6 +91,33 @@ fn ask(r: &mut Root, cmd: &str, args: Value, cx: &mut Context<Root>, done: impl 
         });
     })
     .detach();
+}
+
+/// `ask` for a button that must not send twice (app.js's guards): pressed again before the answer, nothing.
+fn ask_once(r: &mut Root, key: &'static str, cmd: &str, args: Value, cx: &mut Context<Root>, done: impl FnOnce(&mut Root, Value) + 'static) {
+    let Some(link) = r.link.clone() else { return };
+    if !r.in_flight.insert(key) {
+        return;
+    }
+    let rx = link.call(cmd, args);
+    cx.spawn(async move |this, cx| {
+        let answer = rx.await;
+        let _ = this.update(cx, |r, cx| {
+            r.in_flight.remove(key);
+            match answer {
+                Ok(Ok(v)) => done(r, v),
+                Ok(Err(e)) => r.toast = Some((e, "bad".into())),
+                Err(_) => {}
+            }
+            cx.notify();
+        });
+    })
+    .detach();
+}
+
+/// The Presets tab's search box is on the page (Ctrl+F goes to it; else to the accounts' search, as app.js).
+pub fn preset_search_shown(r: &Root) -> bool {
+    r.auto.form.is_none() && r.auto.macro_form.is_none() && r.auto.tab == Tab::Presets && !list(r, "presets").is_empty()
 }
 
 fn ok(r: &mut Root, text: String) {
@@ -241,6 +270,9 @@ pub fn auto(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
             let scheduled = presets.iter().filter(|p| p.pointer("/schedule/enabled").and_then(Value::as_bool).unwrap_or(false)).count();
             let open: i64 = presets.iter().map(|p| int(p, "running")).sum();
             let mut v = vec![(if n == 1 { root.tr("pv.count1") } else { root.i18n.tn("pv.countN", n, &[]) }, None)];
+            if n >= 50 {
+                v.push((root.tr("pv.atMax"), Some(c(WARN))));
+            }
             if scheduled > 0 {
                 v.push((root.i18n.tv("pv.scheduled", &[("n", &scheduled.to_string())]), None));
             }
@@ -289,7 +321,7 @@ pub fn auto(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
     ));
     // Macros are still in Beta (MacrosView.tsx's title pill).
     let beta = (tab == Tab::Macros).then(|| {
-        let tip: SharedString = root.tr("macro.betaTip").into();
+        let tip: SharedString = format!("{} {}", root.tr("macro.betaTip"), root.tr("macro.honest")).into();
         div()
             .id("mc-beta")
             .flex_none()
@@ -314,7 +346,7 @@ pub fn auto(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
         .when(tab == Tab::Presets, |d| {
             let full = presets.len() >= 50;
             d.when(!presets.is_empty(), |d| d.child(div().w(px(if narrow { 200. } else { 280. })).min_w(px(140.)).flex_shrink(1.).child(field(&root.preset_search, Some("search")))))
-                .child(Button::new("pv-new", root.tr("ps.new")).icon("plus").primary().on_click(cx.listener(move |r, _, window, cx| {
+                .when(!presets.is_empty(), |d| d.child(Button::new("pv-new", root.tr("ps.new")).icon("plus").primary().on_click(cx.listener(move |r, _, window, cx| {
                     if full {
                         r.toast = Some((r.i18n.tv("pv.full", &[("n", "50")]), "warn".into()));
                         cx.notify();
@@ -322,17 +354,26 @@ pub fn auto(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
                     }
                     r.auto.confirm = None;
                     crate::pages::preset_form::open(r, None, window, cx);
-                })))
+                }))))
         })
         .when(tab == Tab::Macros, |d| {
             let full = macros.len() >= 100;
-            d.child(Button::new("mc-stop-all", root.tr("macro.stopAll")).icon("stop").disabled(!any_live).on_click(cx.listener(|r, _, _, cx| {
+            // Stop all only while something runs; Import and New only once there is a list (the empty one has both).
+            d.when(any_live, |d| d.child(Button::new("mc-stop-all", root.tr("macro.stopAll")).icon("stop").tip(root.tr("macro.stopAllTip")).on_click(cx.listener(|r, _, _, cx| {
                 ask(r, "stopMacros", json!({}), cx, |r, _| ok(r, r.tr("macro.stoppedAll")))
+            }))))
+            .when(!macros.is_empty(), |d| d.child(Button::new("mc-import", root.tr("macro.import")).icon("folder").quiet().on_click(cx.listener(move |r, _, window, cx| {
+                if !macros_full(r, full, cx) {
+                    import_macro(r, window, cx)
+                }
             })))
-            .child(Button::new("mc-new", root.tr("macro.new")).icon("plus").primary().disabled(full).on_click(cx.listener(|r, _, window, cx| {
+            .child(Button::new("mc-new", root.tr("macro.new")).icon("plus").primary().on_click(cx.listener(move |r, _, window, cx| {
+                if macros_full(r, full, cx) {
+                    return;
+                }
                 r.auto.confirm = None;
                 crate::pages::macro_form::open(r, None, window, cx);
-            })))
+            }))))
         });
 
     let header = div()
@@ -394,19 +435,150 @@ pub(crate) fn scroll_bar(id: &'static str, handle: &ScrollHandle) -> Div {
 }
 
 /// [`scroll_bar`] for an id made at run time.
-pub(crate) fn scroll_bar_named(id: impl Into<ElementId>, handle: &ScrollHandle) -> Div {
+pub(crate) fn scroll_bar_named<H: gpui_kit::component::scroll::ScrollbarHandle + Clone>(id: impl Into<ElementId>, handle: &H) -> Div {
     div().absolute().top_0().bottom_0().right(px(2.)).w(px(10.)).child(Scrollbar::vertical(handle).id(id).mode(ScrollbarMode::Scrolling).viewport_from_layout())
 }
 
-/// Asks for the presets' game icons the app doesn't know yet, once a time the page is opened.
+/// Asks for the presets' game icons the app doesn't know yet; again after 5 minutes while one is still missing (a
+/// preset added later, a first asking that failed offline: PresetsView.tsx).
 pub fn want(r: &mut Root) {
-    if r.auto.asked_icons {
+    if r.auto.asked_icons.is_some_and(|at| at.elapsed() < std::time::Duration::from_secs(300)) {
         return;
     }
     if list(r, "presets").iter().any(|p| !s(p, "placeInput").is_empty() && s(p, "iconUrl").is_empty()) {
-        r.auto.asked_icons = true;
+        r.auto.asked_icons = Some(std::time::Instant::now());
         r.send("presetIcons", json!({}));
     }
+}
+
+/// At the most macros there may be: says so instead (MacrosView.tsx's full()).
+fn macros_full(r: &mut Root, full: bool, cx: &mut Context<Root>) -> bool {
+    if full {
+        r.toast = Some((r.i18n.tv("macro.full", &[("n", "100")]), "warn".into()));
+        cx.notify();
+    }
+    full
+}
+
+/// A macro saved to a file (Export) opens in the form as a new one (MacrosView.tsx's importFile).
+fn import_macro(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
+    let Some(link) = r.link.clone() else { return };
+    let rx = link.call("importMacro", json!({}));
+    cx.spawn_in(window, async move |this, cx| {
+        let answer = rx.await;
+        let _ = this.update_in(cx, |r, window, cx| {
+            match answer {
+                // (A form opened while the file box was up keeps its edits: the file isn't put over it.)
+                Ok(Ok(m)) if m.is_object() && r.auto.macro_form.is_none() => {
+                    r.auto.confirm = None;
+                    crate::pages::macro_form::open(r, Some(m), window, cx);
+                }
+                Ok(Err(e)) => r.toast = Some((e, "bad".into())),
+                _ => {}
+            }
+            cx.notify();
+        });
+    })
+    .detach();
+}
+
+/// No macros yet: three ways to start, Record, From a template, Blank, and a file to import (MacrosView.tsx's
+/// mc-empty). Record needs a Roblox window open (it says so); a template is picked in the form, on its templates card.
+fn macro_start(root: &Root, cx: &mut Context<Root>) -> Div {
+    let tile = |k: usize, mark: &'static str, title: String, text: String| {
+        card(("mc-tile", k))
+            .w(px(200.))
+            .h(px(150.))
+            .px(px(16.))
+            .pt(px(22.))
+            .flex()
+            .flex_col()
+            .items_center()
+            .gap(px(6.))
+            .cursor_pointer()
+            .child(div().flex_none().mb(px(6.)).child(icon(mark, 22., c(TEXT_2))))
+            .child(div().text_size(px(T_M)).font_weight(FontWeight::SEMIBOLD).child(title))
+            .child(div().text_size(px(T_S)).line_height(px(17.)).text_color(c(MUTED)).text_center().child(text))
+    };
+    let tiles = div()
+        .mt(px(14.))
+        .flex()
+        .flex_wrap()
+        .justify_center()
+        .gap(px(12.))
+        .child(div().relative().child(tile(0, "record", root.tr("macro.record"), root.tr("macro.tile.record")).on_click(cx.listener(|r, _, window, cx| {
+            r.auto.confirm = None;
+            // Several windows: which one first (MacrosView.tsx's record menu).
+            if crate::pages::macro_form::record_windows(r).len() > 1 {
+                let just = r.auto.menu_closed.as_ref().is_some_and(|(k, at)| k == REC_MENU && at.elapsed().as_millis() < 300);
+                r.auto.menu_closed = None;
+                r.auto.menu = if just || r.auto.menu.as_deref() == Some(REC_MENU) { None } else { Some(REC_MENU.into()) };
+                cx.notify();
+            } else {
+                crate::pages::macro_form::record_new(r, window, cx);
+            }
+        }))).children(record_menu(root, cx)))
+        .child(tile(1, "layers", root.tr("macro.fromTemplate"), root.tr("macro.tile.template")).on_click(cx.listener(|r, _, window, cx| {
+            r.auto.confirm = None;
+            crate::pages::macro_form::open(r, None, window, cx);
+        })))
+        .child(tile(2, "plus", root.tr("macro.empty"), root.tr("macro.tile.blank")).on_click(cx.listener(|r, _, window, cx| {
+            r.auto.confirm = None;
+            crate::pages::macro_form::open(r, None, window, cx);
+        })));
+    let link = div()
+        .id("mc-import-link")
+        .mt(px(6.))
+        .text_size(px(T_M))
+        .text_color(c(TEXT_2))
+        .cursor_pointer()
+        .hover(|d| d.text_color(c(TEXT)))
+        .child(root.tr("macro.importLink"))
+        .on_click(cx.listener(|r, _, window, cx| import_macro(r, window, cx)));
+    empty("keyboard", root.tr("macro.emptyTitle"), root.tr("macro.emptyText")).child(tiles).child(link)
+}
+
+const REC_MENU: &str = "\u{1}record";
+
+/// Record's "On which window?" list under its tile.
+fn record_menu(root: &Root, cx: &mut Context<Root>) -> Option<Div> {
+    if root.auto.menu.as_deref() != Some(REC_MENU) {
+        return None;
+    }
+    let mut menu = div()
+        .id("mc-rec-menu")
+        .occlude()
+        .min_w(px(200.))
+        .p(px(4.))
+        .rounded(px(R_M))
+        .bg(c(RAISED))
+        .border_1()
+        .border_color(c(LINE))
+        .shadow_lg()
+        .flex()
+        .flex_col()
+        .on_mouse_down_out(cx.listener(|r, _, _, cx| {
+            if r.auto.menu.as_deref() == Some(REC_MENU) {
+                r.auto.menu = None;
+                r.auto.menu_closed = Some((REC_MENU.into(), std::time::Instant::now()));
+                cx.notify();
+            }
+        }))
+        .child(div().px(px(10.)).py(px(6.)).text_size(px(T_S)).font_weight(FontWeight::SEMIBOLD).text_color(c(MUTED)).child(root.tr("macro.recordWhich")));
+    for (k, (acc, name)) in crate::pages::macro_form::record_windows(root).into_iter().enumerate() {
+        menu = menu.child(
+            menu_row(("mc-rec-i", k))
+                .text_color(c(TEXT_2))
+                .child(icon("record", 15., c(TEXT_2)))
+                .child(div().flex_1().whitespace_nowrap().child(name))
+                .on_click(cx.listener(move |r, _, window, cx| {
+                    r.auto.menu = None;
+                    crate::pages::macro_form::record_on(r, acc.clone(), window, cx);
+                    cx.notify();
+                })),
+        );
+    }
+    Some(div().absolute().top(relative(1.)).left_0().child(deferred(anchored().snap_to_window_with_margin(px(8.)).child(pop("mc-rec-pop", true, menu.mt(px(6.))))).with_priority(1)))
 }
 
 fn empty(icon_name: &'static str, title: String, text: String) -> Div {
@@ -416,7 +588,7 @@ fn empty(icon_name: &'static str, title: String, text: String) -> Div {
         .flex_col()
         .items_center()
         .gap(px(8.))
-        .child(div().size(px(56.)).flex_none().rounded(px(R_L)).bg(c(RAISED_2)).flex().items_center().justify_center().child(icon(icon_name, 24., c(TEXT_2))).mb(px(6.)))
+        .child(div().flex_none().child(icon(icon_name, 28., c(MUTED))).mb(px(6.)))
         .child(div().text_size(px(T_SEC)).font_weight(FontWeight::SEMIBOLD).child(title))
         .child(div().max_w(px(420.)).text_size(px(T_M)).text_color(c(MUTED)).text_center().child(text))
 }
@@ -768,7 +940,7 @@ fn preset_row(root: &Root, p: &Value, i: usize, group: u8, ids: &[String], by_id
     let launching = root.state.get("launching").and_then(Value::as_bool).unwrap_or(false);
     let run = if running > 0 {
         let pid = id.clone();
-        Button::new(("pv-close", i), root.tr("pv.close")).icon("power").small().on_click(cx.listener(move |r, _, _, cx| {
+        Button::new(("pv-close", i), root.tr("pv.close")).icon("power").small().tip(root.i18n.tn("pv.runningTip", running as i64, &[])).on_click(cx.listener(move |r, _, _, cx| {
             ask(r, "closePreset", json!({ "id": pid }), cx, |r, v| {
                 let n = v.as_i64().unwrap_or(0);
                 r.toast = Some(if n > 0 { (r.i18n.tn("t.closing", n, &[]), "ok".into()) } else { (r.tr("t.noneRunning"), "info".into()) });
@@ -791,24 +963,47 @@ fn preset_row(root: &Root, p: &Value, i: usize, group: u8, ids: &[String], by_id
     let dup = {
         let (pid, was_on) = (id.clone(), sc_on);
         IconButton::new(("pv-dup", i), "copy").size(30.).tip(root.tr("pv.duplicate")).on_click(cx.listener(move |r, _, _, cx| {
-            ask(r, "duplicatePreset", json!({ "id": pid }), cx, move |r, _| ok(r, r.tr(if was_on { "pv.duplicatedOff" } else { "pv.duplicated" })))
+            ask_once(r, "duplicatePreset", "duplicatePreset", json!({ "id": pid }), cx, move |r, _| ok(r, r.tr(if was_on { "pv.duplicatedOff" } else { "pv.duplicated" })))
         }))
     };
     let del = {
         let pid = id.clone();
-        delete_button(root, "pv-del", i, cx, root.tr("ps.deleteTitle"), root.i18n.tv("ps.deleteQ", &[("name", s(p, "name"))]), Some("deletePreset"), move |r, cx| ask(r, "deletePreset", json!({ "id": pid }), cx, |r, _| ok(r, r.tr("ps.deleted"))))
+        delete_button(root, "pv-del", i, cx, root.tr("ps.deleteTitle"), root.i18n.tv("ps.deleteQ", &[("name", s(p, "name"))]), Some("deletePreset"), move |r, cx| ask_once(r, "deletePreset", "deletePreset", json!({ "id": pid }), cx, |r, _| ok(r, r.tr("ps.deleted"))))
     };
+    // Up and Down, beside the grip (PresetsView.tsx's move): a place within its section, without dragging.
+    // (Only among the rows of its own section: the sections are by state, a move across them would show nothing.)
+    let mates: Vec<String> = list(root, "presets").iter().filter(|q| preset_group(q) == group).map(|q| s(q, "id").to_string()).filter(|x| ids.contains(x)).collect();
+    let moves = (mates.len() > 1).then(|| {
+        let at = mates.iter().position(|x| *x == id).unwrap_or(0);
+        let step = |key: &'static str, glyph: &'static str, to: Option<usize>, cx: &mut Context<Root>| {
+            let (pid, other) = (id.clone(), to.and_then(|j| mates.get(j)).cloned());
+            IconButton::new((key, i), glyph).size(30.).tip(root.tr(if key == "pv-up" { "lo.up" } else { "lo.down" })).disabled(other.is_none()).on_click(cx.listener(move |r, _, _, cx| {
+                let Some(other) = other.clone() else { return };
+                swap_presets(r, &pid, &other, cx);
+            }))
+        };
+        div()
+            .flex_none()
+            .flex()
+            .items_center()
+            .gap(px(2.))
+            .child(step("pv-up", "chevronUp", at.checked_sub(1), cx))
+            .child(step("pv-down", "chevronDown", Some(at + 1).filter(|j| *j < mates.len()), cx))
+    });
     let held = root.auto.drag.as_ref().is_some_and(|d| !d.macros && d.id == id);
-    let handle = (ids.len() > 1).then(|| {
+    let handle = (mates.len() > 1).then(|| {
         let (pid, all) = (id.clone(), ids.to_vec());
         grip(root, "pv-grip", i, held, cx, move |r| r.auto.drag = Some(Drag { macros: false, group, id: pid.clone(), order: all.clone() }))
     });
     let tip: SharedString = summary.clone().into();
 
+    // A row alone in its section has no grip, but its picture stays in line with the other sections' rows.
+    let gap = (handle.is_none() && ids.len() > 1).then(|| div().w(px(18.)).flex_none());
     follow_drag(row_shell(("pv-row", i)), id.clone(), group, cx)
-        .pl(px(if handle.is_some() { 4. } else { 12. }))
+        .pl(px(if ids.len() > 1 { 4. } else { 12. }))
         .when(held, |d| d.opacity(0.6))
         .children(handle)
+        .children(gap)
         .child(tile)
         .child(
             div()
@@ -838,7 +1033,17 @@ fn preset_row(root: &Root, p: &Value, i: usize, group: u8, ids: &[String], by_id
         // (The faces start at one x in every row: right-aligned, a row of one face and a row of four began apart.)
         .child(div().flex_none().w(px(44.)).flex().justify_end().children(sch).children(sch_add))
         .child(div().flex_none().w(px(84.)).flex().justify_end().child(run))
+        // (Its room kept when it has none, so Run and the rest stay in one column down the sections.)
+        .child(moves.unwrap_or_else(|| div().flex_none().w(px(62.))))
         .child(div().flex_none().flex().items_center().gap(px(2.)).child(edit).child(dup).child(del))
+}
+
+/// Two presets change places in the whole order.
+fn swap_presets(r: &mut Root, a: &str, b: &str, cx: &mut Context<Root>) {
+    let mut order: Vec<String> = list(r, "presets").iter().map(|v| s(v, "id").to_string()).collect();
+    let (Some(i), Some(j)) = (order.iter().position(|x| x == a), order.iter().position(|x| x == b)) else { return };
+    order.swap(i, j);
+    ask_once(r, "setPresetOrder", "setPresetOrder", json!({ "ids": order }), cx, |_, _| {});
 }
 
 /// Today on one ruler, midnight to midnight: each preset that runs today as its game's icon at its time (those gone by
@@ -948,10 +1153,16 @@ fn live(r: &Value) -> bool {
     matches!(s(r, "status"), "waiting" | "running" | "paused")
 }
 
+/// Why a run stopped, in words: a known reason's (macro.why.*), else as it came (a Fail step's own text).
+pub(crate) fn why_text(root: &Root, reason: &str) -> String {
+    let key = format!("macro.why.{reason}");
+    if root.i18n.has(&key) { root.tr(&key) } else { reason.to_string() }
+}
+
 /// One account's run in words: "Main: running", "Farm 1: waiting its turn", "Farm 2: stopped (didn't see it)".
 fn run_text(root: &Root, r: &Value, name: &str) -> String {
     let (status, reason) = (s(r, "status"), s(r, "reason"));
-    let why = if reason.is_empty() { String::new() } else { root.tr(&format!("macro.why.{reason}")) };
+    let why = if reason.is_empty() { String::new() } else { why_text(root, reason) };
     if status == "waiting" && (reason.is_empty() || reason == "busy") {
         return root.i18n.tv("macro.line.turn", &[("a", name)]);
     }
@@ -1020,7 +1231,7 @@ fn macro_list(root: &Root, macros: &[Value], runs: &[Value], narrow: bool, wide:
         body = body.child(recording(root, rec, cx));
     }
     if macros.is_empty() {
-        return body.child(empty("keyboard", root.tr("macro.emptyTitle"), root.tr("macro.emptyText")));
+        return body.child(macro_start(root, cx));
     }
     let by_id: HashMap<&str, &Value> = root.accounts().iter().map(|a| (s(a, "id"), a)).collect();
     let panels: HashSet<&str> = root.state.get("panelsShown").and_then(Value::as_array).into_iter().flatten().filter_map(Value::as_str).collect();
@@ -1141,16 +1352,22 @@ fn macro_row(
     let tile = {
         div()
             .relative()
-            .size(px(44.))
+            .size(px(26.))
             .flex_none()
-            .rounded(px(R_M))
-            .bg(if live_runs > 0 { tinted(RAISED_2, OK, 0.22) } else { c(RAISED_2) })
             .flex()
             .items_center()
             .justify_center()
-            .child(icon(if auto { "repeat" } else { "keyboard" }, 20., if live_runs > 0 { c(OK) } else { c(TEXT_2) }))
-            .when(failed, |d| d.child(div().absolute().top(px(-3.)).right(px(-3.)).size(px(11.)).rounded_full().border_2().border_color(c(PANEL)).bg(c(BAD))))
+            .child(icon(if auto { "repeat" } else { "keyboard" }, 22., if live_runs > 0 { c(OK) } else { c(TEXT_2) }))
+            .when(failed, |d| {
+                let tip: SharedString = root.tr("macro.fixTip").into();
+                d.child(div().id(("mc-bad", i)).absolute().top(px(-3.)).right(px(-3.)).size(px(11.)).rounded_full().border_2().border_color(c(PANEL)).bg(c(BAD)).tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into()))
+            })
     };
+    // Where its run stopped, for the menu's Fix (MacrosView.tsx's editAt: the step, in its list).
+    let stopped_at = runs.iter().find(|r| s(r, "status") == "failed").map(|r| {
+        let step = r.get("lastStep").and_then(Value::as_u64).or_else(|| r.get("step").and_then(Value::as_u64)).map(|x| x as usize);
+        (step, Some(s(r, "section").to_string()).filter(|x| !x.is_empty()))
+    });
 
     // Its panel beside the game, shown or not; a narrow window keeps only its icon.
     let panel = {
@@ -1184,14 +1401,7 @@ fn macro_row(
         let mid = id.clone();
         let on = (targets == "selected" && !sel.is_empty()).then(|| sel.clone());
         Button::new(("mc-run", i), root.tr("macro.run")).icon("play").small().disabled(cant).on_click(cx.listener(move |r, _, _, cx| {
-            let args = match &on {
-                Some(ids) => json!({ "id": mid, "accountIds": ids }),
-                None => json!({ "id": mid }),
-            };
-            ask(r, "runMacro", args, cx, |r, v| {
-                let n = int(&v, "queued");
-                r.toast = Some(if n > 0 { (r.i18n.tn("macro.queued", n, &[]), "ok".into()) } else { (r.tr("macro.queuedNone"), "info".into()) });
-            })
+            r.run_macro(mid.clone(), on.clone(), cx)
         }))
     };
 
@@ -1226,18 +1436,19 @@ fn macro_row(
                 )
                 .child(line),
         )
-        .when(!narrow, |d| d.child(div().flex_none().w(px(if wide { 300. } else { 200. })).flex().justify_end().child(shape(root, m, i, if wide { 300. } else { 200. }))))
+        .when(!narrow, |d| d.child(div().flex_none().w(px(if wide { 300. } else { 200. })).flex().justify_end().child(shape(root, m, i, if wide { 300. } else { 200. }, runs.iter().find(|r| s(r, "status") == "running").and_then(|r| r.get("step")).and_then(Value::as_u64).map(|x| x as usize)))))
         .child(div().flex_none().w(px(if narrow { 34. } else { 124. })).flex().justify_end().child(panel))
         .child(div().flex_none().w(px(84.)).flex().justify_end().child(run))
         // (Its place in the whole list, not in its section: Up and Down move it there.)
-        .child(more_menu(root, m, ids.iter().position(|x| *x == id).unwrap_or(i), count, cx))
+        .child(more_menu(root, m, ids.iter().position(|x| *x == id).unwrap_or(i), count, stopped_at, cx))
 }
 
 type MenuAct = Box<dyn Fn(&mut Root, &mut Window, &mut Context<Root>)>;
 
-/// A macro's "…": Edit, Duplicate, Export, pause or resume (one that runs by itself), its place, Delete (MacrosView.tsx's
-/// row menu). A second click on the button, or a click outside, closes it.
-fn more_menu(root: &Root, m: &Value, i: usize, count: usize, cx: &mut Context<Root>) -> Div {
+/// A macro's "…": Fix (its last run stopped: the editor at that step), Edit, Duplicate, Export, pause or resume (one
+/// that runs by itself), its place, Delete (MacrosView.tsx's row menu). A second click on the button, or a click
+/// outside, closes it.
+fn more_menu(root: &Root, m: &Value, i: usize, count: usize, stopped_at: Option<(Option<usize>, Option<String>)>, cx: &mut Context<Root>) -> Div {
     let id = s(m, "id").to_string();
     let open = root.auto.menu.as_deref() == Some(id.as_str());
     let auto = m.pointer("/trigger/kind").and_then(Value::as_str).unwrap_or("manual") != "manual";
@@ -1257,6 +1468,10 @@ fn more_menu(root: &Root, m: &Value, i: usize, count: usize, cx: &mut Context<Ro
     }
     // (None: a hairline between groups.)
     let mut items: Vec<Option<(&'static str, String, bool, bool, MenuAct)>> = Vec::new();
+    if let Some((step, sec)) = stopped_at {
+        let whole = m.clone();
+        items.push(Some(("wrench", root.tr("macro.fix"), false, false, Box::new(move |r, window, cx| crate::pages::macro_form::open_at(r, whole.clone(), step, sec.clone(), window, cx)))));
+    }
     {
         let whole = m.clone();
         items.push(Some(("edit", root.tr("macro.edit"), false, false, Box::new(move |r, window, cx| crate::pages::macro_form::open(r, Some(whole.clone()), window, cx)))));
@@ -1362,12 +1577,13 @@ fn more_menu(root: &Root, m: &Value, i: usize, count: usize, cx: &mut Context<Ro
     wrap.child(div().absolute().top(px(36.)).right_0().child(deferred(anchored().anchor(Anchor::TopRight).snap_to_window_with_margin(px(8.)).child(pop(SharedString::from(format!("mc-pop-{id}")), open, menu))).with_priority(1)))
 }
 
-/// A macro at a glance: its steps in order as small chips, a key's own label, a wait's seconds, a loop's count; a
-/// block's end a short bar.
-/// Each chip says what it is under the mouse ("Press a key: W", "Wait: 2s"): the chips alone were 22 px marks nobody
-/// could read.
-fn shape(root: &Root, m: &Value, row_i: usize, max_w: f32) -> Div {
-    let steps: Vec<Value> = m.get("steps").and_then(Value::as_array).cloned().unwrap_or_default();
+/// A macro at a glance, as a track: its steps in order on one line, a key's own label, the others their mark, joined by
+/// a thread; a wait is no chip of its own but the thread's length between them (longer for a longer wait, its seconds
+/// on it), so the macro's rhythm shows: a burst of keys, then a long pause. A block's end a short blue bar. The step a
+/// run is on is ringed green.
+/// Each mark says what it is under the mouse ("Press a key: W", "Wait: 2s").
+fn shape(root: &Root, m: &Value, row_i: usize, max_w: f32, at: Option<usize>) -> Div {
+    let steps: &[Value] = m.get("steps").and_then(Value::as_array).map(Vec::as_slice).unwrap_or(&[]);
     // A value set by one of the macro's choices ("$o2") shows the choice's value.
     let value = |v: Option<&Value>| -> Option<Value> {
         let v = v?;
@@ -1376,27 +1592,66 @@ fn shape(root: &Root, m: &Value, row_i: usize, max_w: f32) -> Div {
             None => Some(v.clone()),
         }
     };
-    let mut row = div().flex_none().max_w(px(max_w)).flex().items_center().gap(px(3.)).overflow_hidden();
+    let thread = |w: f32| div().flex_none().w(px(w)).h(px(26.)).flex().items_center().child(div().w_full().h(px(1.)).bg(ca(TEXT, 0.22)));
+    let mut row = div().flex_none().max_w(px(max_w)).flex().items_center().overflow_hidden();
+    // Whether the last thing put down was a mark (the next mark is joined to it by a short thread).
+    let mut after_mark = false;
     for (k, st) in steps.iter().take(SHAPE_MAX).enumerate() {
         let kind = s(st, "kind");
         let chip_id = SharedString::from(format!("mc-sh-{row_i}-{k}"));
-        if kind == "endIf" || kind == "endLoop" {
-            let tip: SharedString = root.tr(&format!("macro.kind.{kind}")).into();
+        let what = root.tr(&format!("macro.kind.{kind}"));
+        if kind == "wait" {
+            let ms = value(st.get("ms")).and_then(|v| v.as_f64()).unwrap_or(0.);
+            let secs = format!("{}s", (ms / 100.).round() / 10.);
+            // 0.5 s a short thread, each doubling a little longer (a 30 s wait doesn't take the whole line).
+            let w = (18. + 9. * (1. + ms as f32 / 500.).log2()).clamp(18., 64.);
+            let tip: SharedString = format!("{}: {secs}", what.trim_end_matches('…')).into();
             row = row.child(
                 div()
                     .id(chip_id)
-                    .px(px(2.))
+                    .flex_none()
+                    .w(px(w))
+                    .h(px(26.))
+                    .relative()
+                    .child(thread(w))
+                    .child(
+                        div()
+                            .absolute()
+                            .top(px(-3.))
+                            .left_0()
+                            .right_0()
+                            .flex()
+                            .justify_center()
+                            .text_size(px(10.))
+                            .font_features(tnum())
+                            .text_color(c(MUTED))
+                            .child(secs),
+                    )
+                    .tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into()),
+            );
+            after_mark = false;
+            continue;
+        }
+        if after_mark {
+            row = row.child(thread(8.));
+        }
+        after_mark = true;
+        if kind == "endIf" || kind == "endLoop" {
+            let tip: SharedString = what.into();
+            row = row.child(
+                div()
+                    .id(chip_id)
+                    .px(px(1.))
                     .h(px(26.))
                     .flex()
                     .items_center()
-                    .child(div().w(px(3.)).h(px(18.)).rounded(px(2.)).bg(ca(ONLINE, 0.6)))
+                    .child(div().w(px(3.)).h(px(16.)).rounded(px(2.)).bg(ca(ONLINE, 0.6)))
                     .tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into()),
             );
             continue;
         }
         let label = match kind {
             "key" | "down" | "up" => value(st.get("key")).and_then(|k| k.as_str().map(|k| key_name(root, k))),
-            "wait" => value(st.get("ms")).and_then(|v| v.as_f64()).map(|ms| format!("{}s", (ms / 100.).round() / 10.)),
             "loop" => Some(match st.get("times").and_then(Value::as_i64) {
                 Some(n) if n > 0 => format!("×{n}"),
                 _ => "∞".into(),
@@ -1404,38 +1659,43 @@ fn shape(root: &Root, m: &Value, row_i: usize, max_w: f32) -> Div {
             _ => None,
         };
         let opens = matches!(kind, "if" | "loop" | "loopUntil");
-        let what = root.tr(&format!("macro.kind.{kind}"));
+        let now = at == Some(k);
         let tip: SharedString = match &label {
             Some(l) => format!("{}: {l}", what.trim_end_matches('…')),
             None => what,
         }
         .into();
+        let tone = if now {
+            c(OK)
+        } else if opens {
+            c(ONLINE)
+        } else {
+            c(TEXT_2)
+        };
         row = row.child(
-            // (A block's opener in blue, as the web page's .mc-sh.opens.)
             div()
                 .id(chip_id)
                 .tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into())
-                // (26 px with a 14 px mark: at 22 / 12 the mouse read as a "0", review 5.4.)
-                .h(px(26.))
-                .min_w(px(26.))
-                .px(px(6.))
+                .h(px(24.))
+                .min_w(px(24.))
+                .px(px(5.))
                 .flex()
+                .flex_none()
                 .items_center()
                 .justify_center()
                 .gap(px(3.))
                 .rounded(px(6.))
-                .border_1()
-                .border_color(if opens { ca(ONLINE, 0.5) } else { c(LINE) })
-                .bg(if opens { ca(ONLINE, 0.1) } else { ca(WHITE, 0.04) })
+                .bg(ca(WHITE, 0.06))
+                .when(now, |d| d.border_1().border_color(c(OK)))
                 .text_size(px(T_S))
                 .font_weight(FontWeight::SEMIBOLD)
-                .text_color(if opens { c(ONLINE) } else { c(TEXT_2) })
-                .when(label.is_none() || kind == "loop", |d| d.child(icon(step_icon(kind), 14., if opens { c(ONLINE) } else { c(TEXT_2) })))
+                .text_color(tone)
+                .when(label.is_none() || kind == "loop", |d| d.child(icon(step_icon(kind), 13., tone)))
                 .when_some(label, |d, l| d.child(l)),
         );
     }
     if steps.len() > SHAPE_MAX {
-        row = row.child(div().ml(px(3.)).text_size(px(T_S)).text_color(c(MUTED)).child(format!("+{}", steps.len() - SHAPE_MAX)));
+        row = row.child(thread(8.)).child(div().text_size(px(T_S)).text_color(c(MUTED)).child(format!("+{}", steps.len() - SHAPE_MAX)));
     }
     row
 }

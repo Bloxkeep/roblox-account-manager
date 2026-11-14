@@ -177,16 +177,22 @@ pub(super) fn is_start_error(ex: &Fail) -> bool {
 }
 
 /// RobloxApiException { SignInRefused: true }.
-pub(super) fn sign_in_refused(_ex: &Fail) -> bool {
-    // PORT: base::Fail::Roblox doesn't carry sign_in_refused yet (dropped in roblox_api's From<RobloxApiException>), so
-    // this reads false until it does; the refused accounts then aren't offered their roblox.com.
-    false
+/// A launch held back by hold_for_roblox_update (C#'s RobloxUpdateHold, a UserError): a rejoin waits and tries again.
+pub const UPDATE_HOLD_TEXT: &str = "Roblox would install an update as this window opens, and that closes every Roblox window open. Close the other Roblox windows first, or use Close, update, reopen under Settings › Roblox version.";
+
+/// Also a launcher's hold ("{0} would update Roblox…"): both end with the same advice.
+pub fn is_update_hold(ex: &Fail) -> bool {
+    let tail = |s: &str| s.rsplit_once(". ").map(|(_, t)| t.to_string()).unwrap_or_default();
+    matches!(ex, Fail::User(m) if *m == l::t(UPDATE_HOLD_TEXT) || (!tail(m).is_empty() && tail(m) == tail(&l::t(UPDATE_HOLD_TEXT))))
+}
+
+pub(super) fn sign_in_refused(ex: &Fail) -> bool {
+    ex.sign_in_refused()
 }
 
 /// RobloxApiException { Moderated: true }.
-pub(super) fn moderated(_ex: &Fail) -> bool {
-    // PORT: base::Fail::Roblox doesn't carry moderated yet (see sign_in_refused).
-    false
+pub(super) fn moderated(ex: &Fail) -> bool {
+    ex.moderated()
 }
 
 // ───────── AppController.Launching.cs ─────────
@@ -264,8 +270,10 @@ pub fn launch_fail_kind(ex: &Fail) -> String {
             )
         }
         _ if is_fail_kind(ex, "Win32Exception") => {
-            // The native code, when the launcher's failure starts with it ("Win32Exception: 5 …").
-            let rest = ex.message().split_once(':').map(|x| x.1.trim()).unwrap_or("");
+            // The native code: "Win32Exception: 5 …", or in brackets as the launcher words it ("ShellExecute failed (2)").
+            // A failed spawn ends in Rust's own "(os error 2)": the bracket then starts with words, so skip them to the code.
+            let message = ex.message();
+            let rest = message.rsplit_once('(').map(|x| x.1.strip_prefix("os error ").unwrap_or(x.1)).or_else(|| message.split_once(':').map(|x| x.1.trim())).unwrap_or("");
             let code: String = rest.chars().take_while(|c| c.is_ascii_digit() || *c == '-').collect();
             format!("Win32Exception {code}")
         }
@@ -387,15 +395,21 @@ impl App {
         let mut started = false;
 
         let outcome: Res<Option<LaunchResult>> = async {
-            let s = settings();
             // Resolved before deciding who switches: clients already in that server are compared by its link code.
             if let Some(share_code) = target.as_ref().and_then(|t| t.share_code.clone()) {
-                self.progress(Some(&l::t("Reading the private server link…")));
-                let (place_id, link_code) = self.resolve_share(&accounts, &share_code, &ct).await?;
+                self.progress(Some(&l::t("Reading the share link…")));
+                let share_type = target.as_ref().and_then(|t| t.share_type.clone());
+                let share = self.resolve_share(&accounts, &share_code, share_type.as_deref(), &ct).await?;
+                if share.expired {
+                    log::note("Launch: the share link has expired; joining anyway, as the website does.");
+                }
                 if let Some(t) = target.as_mut() {
-                    t.place_id = place_id;
-                    t.link_code = Some(link_code);
+                    t.place_id = share.place_id;
+                    t.link_code = share.link_code;
+                    t.job_id = share.job_id.or(t.job_id.take());
                     t.share_code = None;
+                    t.share_type = None;
+                    t.launch_data = share.launch_data;
                 }
                 self.progress(None);
             }
@@ -421,7 +435,7 @@ impl App {
             self.apply_watch_names();
             // Only Roblox's notification-area copy runs: the launch ends it anyway (start_session), so it goes first and
             // Multi-Roblox is ready, rather than said not to be.
-            if s.multi_instance
+            if settings().multi_instance
                 && (!multi_instance::armed() || multi_instance::stale())
                 && !players.is_empty()
                 && roblox_processes::visible_windows(&players.iter().map(|p| p.pid).collect::<Vec<_>>()).values().all(|w| w.is_empty())
@@ -430,7 +444,7 @@ impl App {
             {
                 players = roblox_processes::get_players();
             }
-            if s.multi_instance && (!multi_instance::armed() || multi_instance::stale()) && players.is_empty() {
+            if settings().multi_instance && (!multi_instance::armed() || multi_instance::stale()) && players.is_empty() {
                 multi_instance::enable();
             }
             // Accounts already playing: left alone in the same game, else switched. Roblox kicks a second client of the
@@ -504,6 +518,9 @@ impl App {
                     ));
                 }
             }
+            // The settings as they are past the waits above (the share link, game bans, playability): the C# read its live
+            // settings object at each use, so Multi-Roblox or the memory warnings switched meanwhile count.
+            let s = settings();
             let roblox_open = roblox_processes::visible_windows(&players.iter().map(|p| p.pid).collect::<Vec<_>>()).values().any(|list| !list.is_empty());
             if (accounts.len() > 1 || roblox_open) && !multi_instance::armed() {
                 warnings.push(if s.multi_instance {
@@ -609,16 +626,23 @@ impl App {
             let mut i: isize = 0;
             while (i as usize) < accounts.len() && same_vault(self, &vault) {
                 ct.check()?;
-                let account = accounts[i as usize].clone();
                 self.wait_for_pending(&ct).await?;
-                if self.find_account(account.id).is_none() {
-                    log::note(&format!("Launch: account {} skipped, deleted meanwhile.", short(account.id)));
+                // The account as it is now (C# kept the live object): a cookie renewed or a setting changed while the
+                // earlier ones opened is the one used.
+                let Some(account) = self.find_account(accounts[i as usize].id) else {
+                    log::note(&format!("Launch: account {} skipped, deleted meanwhile.", short(accounts[i as usize].id)));
                     i += 1;
                     continue; // deleted while the earlier ones opened
-                }
+                };
                 if switching.contains(&account.id)
                     && let Some(old) = run_of(self, account.id)
                 {
+                    // Roblox would refuse the new window (signed out, no connection): the one in the old game stays.
+                    if let Some(why) = self.sign_in_refused_now(account.id, &ct).await {
+                        errors.push(format!("{}: {why}", self.name_text(&account)));
+                        i += 1;
+                        continue;
+                    }
                     let n = self.name(&account);
                     self.progress(Some(&l::f("Closing {0}'s Roblox to switch games…", &[&n])));
                     self.controller.user_closed.borrow_mut().insert(account.id); // not a disconnect: no auto-rejoin into the old game
@@ -744,7 +768,7 @@ impl App {
                     let other = if closed_servers.len() > MAX_SERVER_SWAPS {
                         GameTarget { job_id: None, ..t.clone() }
                     } else {
-                        self.other_server(&t, party, &closed_servers, &ct).await
+                        self.other_server(&t, party, &closed_servers, &ct).await?
                     };
                     // Got in after all (a slow join): it stays, the rest follow.
                     if self.server_answer(account.id) == Some("in") {
@@ -820,7 +844,10 @@ impl App {
                 && let Some(t) = target.as_ref()
                 && same_vault(self, &vault)
             {
-                self.remember_game(t.place_id)?;
+                // Not `?`: this is the finally part, progress and the "didn't open" notice below must still come.
+                if let Err(ex) = self.remember_game(t.place_id) {
+                    log::write(&ex);
+                }
                 rt::spawn({
                     let app = self.clone();
                     async move {
@@ -914,23 +941,26 @@ impl App {
     }
 
     /// With none, or no answer, Roblox picks one for each account.
-    async fn other_server(self: &Rc<Self>, target: &GameTarget, party: i32, closed: &[String], ct: &Cancel) -> GameTarget {
+    /// Err only when the launch was stopped meanwhile (C#'s cancel escaped too: the window that met the full server stays).
+    async fn other_server(self: &Rc<Self>, target: &GameTarget, party: i32, closed: &[String], ct: &Cancel) -> Res<GameTarget> {
         self.progress(Some(&l::t("Finding a server…")));
         let (place, c) = (target.place_id, ct.clone());
         match rt::blocking(move || roblox_api::get_servers(place, true, None, &c)).await {
             Ok((servers, _)) => {
                 if let Some(other) = roomy_server(&servers, party, closed) {
-                    return GameTarget { job_id: Some(other.job_id.clone()), ..target.clone() };
+                    return Ok(GameTarget { job_id: Some(other.job_id.clone()), ..target.clone() });
                 }
                 log::note(&format!("Launch: no other server of place {} has room for {party} ({} read).", target.place_id, servers.len()));
             }
             Err(ex) if !ct.is_cancelled() && roblox_api::is_expected_error(&ex) => {
                 log::note(&format!("Launch: the server list of place {} couldn't be read ({}).", target.place_id, launch_fail_kind(&ex)));
             }
-            // PORT: the C# let any other exception escape here; other_server's callers treat it as "no other server".
+            Err(ex) if ct.is_cancelled() => return Err(ex),
+            // PORT: the C# let any other exception escape here; other_server's caller treats it as "no other server".
             Err(ex) => log::write(&ex),
         }
-        GameTarget { job_id: None, ..target.clone() }
+        ct.check()?;
+        Ok(GameTarget { job_id: None, ..target.clone() })
     }
 
     /// Not one the person closed meanwhile.
@@ -962,11 +992,17 @@ impl App {
     }
 
     /// With the first account whose sign-in Roblox accepts, so a dead first account doesn't stop the whole launch.
-    pub(crate) async fn resolve_share(self: &Rc<Self>, accounts: &[Account], share_code: &str, ct: &Cancel) -> Res<(i64, String)> {
+    pub(crate) async fn resolve_share(
+        self: &Rc<Self>,
+        accounts: &[Account],
+        share_code: &str,
+        share_type: Option<&str>,
+        ct: &Cancel,
+    ) -> Res<roblox_api::play::ShareTarget> {
         // Roblox's share links are read on apis.roblox.com: a Roblox VNG sign-in has no business there (review, 2026-10-30).
         let global: Vec<&Account> = accounts.iter().filter(|acc| acc.realm == realm::GLOBAL).collect();
         if global.is_empty() {
-            return Err(Fail::user(l::t("Private server links are read with a Roblox account. Select one that isn't Roblox VNG.")));
+            return Err(Fail::user(l::t("Share links are read with a Roblox account. Select one that isn't Roblox VNG.")));
         }
         let mut candidates: Vec<Account> = Vec::new();
         for acc in global.iter().filter(|acc| acc.cookie_valid != Some(false)).chain(global.iter()) {
@@ -976,8 +1012,8 @@ impl App {
         }
         let mut i = 0;
         loop {
-            let (cookie, code, c) = (candidates[i].cookie.clone(), share_code.to_string(), ct.clone());
-            match rt::blocking(move || roblox_api::resolve_private_server_share(&cookie, &code, &c)).await {
+            let (cookie, code, kind, c) = (candidates[i].cookie.clone(), share_code.to_string(), share_type.map(str::to_string), ct.clone());
+            match rt::blocking(move || roblox_api::play::resolve_share(&cookie, &code, kind.as_deref(), &c)).await {
                 Ok(found) => return Ok(found),
                 Err(ex) if ex.cookie_invalid() && i < candidates.len() - 1 => {
                     log::note(&format!("Launch: share link read refused for account {}'s sign-in; trying the next.", short(candidates[i].id)));
@@ -1176,7 +1212,11 @@ impl App {
                 } else {
                     self.controller.running.borrow_mut().insert(launch.account_id, (pid, launch.clone()));
                     self.persist_soon(); // the open clients on disk (see persist)
-                    log::note(&format!("Roblox window {pid} came up: {}.", window_report::describe(roblox_processes::main_window(pid))));
+                    let main = roblox_processes::main_window(pid);
+                    // A box in place of a game window (an error at start): what it says.
+                    let words = window_report::small_window_words(main).map(|w| format!("; it shows {}", self.scrub(&w))).unwrap_or_default();
+                    log::note(&format!("Roblox window {pid} came up: {}{words}.", window_report::describe(main)));
+                    self.window_came_up();
                 }
                 changed = true;
             }
@@ -1193,6 +1233,22 @@ impl App {
                         continue;
                     }
                     log::note(&format!("Launch: account {}'s Roblox quit before its window came.", short(launch.account_id)));
+                    let in_a_row = self.note_quit(&launch);
+                    // Opened by hand: said. "Opened 1 account." was the last word with no window to show for it (the
+                    // owner's run, 2026-11-13). A rejoin has its own words (drop_pending), a handed-over one its session's end.
+                    if !launch.rejoin
+                        && !closing_has(self, &launch)
+                        && get_by(&self.launching.handed_over.borrow(), &launch).is_none()
+                        && let Some(account) = self.find_account(launch.account_id)
+                    {
+                        let n = self.name(&account);
+                        let said = if in_a_row >= 2 {
+                            l::f("{0}: Roblox closed again before its window opened. If it keeps happening, close all Roblox windows, then open them again.", &[&n])
+                        } else {
+                            l::f("{0}: Roblox closed before its window opened. Try again.", &[&n])
+                        };
+                        self.notify(&said, "warn", "launch", account.id, true, None);
+                    }
                     self.drop_pending(&launch, false);
                     changed = true;
                 }
@@ -1274,6 +1330,101 @@ impl App {
         Ok(())
     }
 
+    /// Holds a launch back when it would close every Roblox window open: Roblox's own install with only another channel's
+    /// build (newer than the live one Roblox serves, its live build not installed beside it, see roblox_installs::LIVE_BUILD)
+    /// checks the live version as it opens, runs Roblox's installer, and that ends every client (a user's PC, 2026-11-13).
+    /// So does one behind a build Roblox released while windows are open, unless that build isn't rolled out to this PC
+    /// (live_not_here). With no Roblox open it goes on: the update closes nothing. RoALT holds the same launch ("update
+    /// hold"). With the update set to wait and play on meanwhile (keeps_running_build) it isn't held: the client returned
+    /// opens on the build it has, never updating (roblox_installs::kept_copy); None opens as chosen.
+    fn hold_for_roblox_update(&self, account: &Account, launch_via: &str, custom_launcher: &str) -> Res<Option<String>> {
+        let Some(live) = self.updates.latest_roblox.borrow().clone() else { return Ok(None) };
+        if !roblox_api::starts_with_ci(&live.folder, "version-") {
+            return Ok(None);
+        }
+        let Some(client) = roblox_installs::client_for(launch_via, custom_launcher) else { return Ok(None) };
+        if roblox_installs::is_vng_client(&client) {
+            return Ok(None);
+        }
+        let Some(have) = roblox_installs::version_of(Some(&client)) else { return Ok(None) };
+        if have.folder.eq_ignore_ascii_case(&live.folder) {
+            return Ok(None);
+        }
+        let open = roblox_processes::get_player_pids().len();
+        if open == 0 {
+            return Ok(None);
+        }
+        let keep = self.keeps_running_build();
+        // A Bloxstrap-style launcher behind the live build: it updates first, and its update ends every Roblox open (RoALT
+        // holds this one too). Its background update, when it would take this one, leaves them.
+        if let Some(launcher) = roblox_installs::updater_for(launch_via, custom_launcher).filter(|l| !roblox_installs::is_own_installer(Some(l))) {
+            if !roblox_installs::is_behind(Some(&have), Some(&live)) || roblox_installs::updates_in_background(&launcher, &have, &live) {
+                return Ok(None);
+            }
+            let name = std::path::Path::new(&launcher).file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default();
+            if keep {
+                // Its copy started by itself, past the launcher: no updater beside it, so it plays on its build.
+                log::note(&format!(
+                    "Roblox start: account {} opens on {name}'s Roblox {} ({}) as it is, not the live {} ({}): {open} Roblox open, and the update waits until none is.",
+                    short(account.id),
+                    have.version,
+                    have.folder,
+                    live.version,
+                    live.folder
+                ));
+                return Ok(Some(client));
+            }
+            log::note(&format!(
+                "Roblox start: account {} held back, {name}'s Roblox is {} ({}), the live one {} ({}): {name} would update it first and close the {open} Roblox open.",
+                short(account.id),
+                have.version,
+                have.folder,
+                live.version,
+                live.folder
+            ));
+            return Err(Fail::User(l::f(
+                "{0} would update Roblox as this window opens, and that closes every Roblox window open. Close the other Roblox windows first, or use Close, update, reopen under Settings › Roblox version.",
+                &[&name],
+            )));
+        }
+        if !roblox_installs::is_roblox_own(&client) {
+            return Ok(None);
+        }
+        let parse = |v: &str| -> Option<Vec<u64>> { v.split('.').map(|p| p.parse::<u64>().ok()).collect() };
+        if matches!((parse(&have.version), parse(&live.version)), (Some(mine), Some(served)) if mine > served) {
+            log::note(&format!(
+                "Roblox start: account {} held back, Roblox's build {} ({}) is another channel's, the live {} ({}) isn't installed, and opening it would update Roblox and close the {open} Roblox open.",
+                short(account.id),
+                have.version,
+                have.folder,
+                live.version,
+                live.folder
+            ));
+        } else if roblox_installs::is_behind(Some(&have), Some(&live)) && !self.live_not_here(&live) {
+            // Roblox released a new build while windows are open (the owner's question, 2026-11-14): Roblox's own client behind
+            // the live build runs Roblox's installer as it opens, and that installer ends every client, as the other channel's did.
+            // Not when Roblox hasn't rolled that build out to this PC yet (live_not_here): the client opens on its own build then.
+            log::note(&format!(
+                "Roblox start: account {} held back, Roblox's build {} ({}) is behind the live {} ({}), and opening it would update Roblox and close the {open} Roblox open.",
+                short(account.id),
+                have.version,
+                have.folder,
+                live.version,
+                live.folder
+            ));
+        } else {
+            return Ok(None);
+        }
+        if keep {
+            log::note(&format!(
+                "Roblox start: account {} opens on that build instead, from a copy without Roblox's updater; the update waits until no Roblox is open.",
+                short(account.id)
+            ));
+            return Ok(Some(client));
+        }
+        Err(Fail::User(l::t(UPDATE_HOLD_TEXT)))
+    }
+
     /// `preset_id`: also on its rejoins and restarts: its options apply.
     /// `restart`: opened again by its preset's planned restart (a rejoin too).
     /// `open_retries`: see RejoinRequest::open_retries.
@@ -1289,14 +1440,6 @@ impl App {
         restart: bool,
         open_retries: i32,
     ) -> Res<()> {
-        let ticket = {
-            let (cookie, realm_of, c) = (account.cookie.clone(), account.realm.clone(), ct.clone());
-            rt::blocking(move || roblox_api::get_auth_ticket(&cookie, &c, &realm_of)).await?
-        };
-        ct.check()?;
-        if self.find_account(account.id).is_none() {
-            return Err(Fail::user(l::t("Account not found.")));
-        }
         // A launcher installing the new build: a window opened now would be closed by it, or start the old one.
         if self.controller.roblox_updating.get() {
             log::note(&format!("Roblox start: account {} waits for Roblox's update to finish.", short(account.id)));
@@ -1307,8 +1450,36 @@ impl App {
         }
         // Roblox's tray copy would take this launch over and open no window (Bloxstrap: "Roblox failed to launch").
         self.close_tray_copies(ct).await?;
-        let before: HashSet<i32> = roblox_processes::get_player_pids().into_iter().collect();
+        let chosen_via = launch_via.to_string();
+        let launch_via = roblox_installs::updating_option(launch_via, self.roblox_version_dto().up_to_date);
+        if launch_via != chosen_via {
+            log::note(&format!("Roblox start: through {launch_via} instead of {chosen_via}, so the old Roblox build is updated first."));
+        }
+        // The live build not known yet (Bloxkeep started in the background, a scheduled launch): asked now, since it picks the client.
+        // With Roblox open, asked again unless just asked: one released since would close every window as this one updates.
+        let known = self.updates.latest_roblox.borrow().is_some();
+        if super::roblox_updates::ask_live_again(known, self.roblox_updates.latest_roblox_at.get(), Stamp::utc_now(), roblox_processes::get_player_pids().len()) {
+            let _ = self.refresh_latest_roblox().await;
+        }
+        // The settings as they are after the waits above (the C# reads its live settings object at each use).
+        let custom_launcher = self.vault(|d| d.settings.custom_launcher.clone())?;
+        let kept_build = self.hold_for_roblox_update(account, &launch_via, &custom_launcher)?;
+        // The account as it is now, not as it was before the waits above (the C# reads the live account): a sign-in renewed
+        // meanwhile, or the main account / Apply to / FPS cap changed, goes with this window.
+        let Some(now_account) = self.find_account(account.id) else { return Err(Fail::user(l::t("Account not found."))) };
+        let account = &now_account;
+        // The sign-in ticket last, after every wait above: one fetched first sat through a Roblox update (RoALT gets its
+        // ticket right before starting the client, too).
+        let ticket = {
+            let (cookie, realm_of, c) = (account.cookie.clone(), account.realm.clone(), ct.clone());
+            rt::blocking(move || roblox_api::get_auth_ticket(&cookie, &c, &realm_of)).await?
+        };
+        ct.check()?;
+        let Some(now_account) = self.find_account(account.id) else { return Err(Fail::user(l::t("Account not found."))) };
+        let account = &now_account;
+        // Read after the ticket's wait, as the C# reads them: Fast Flags, Apply to, the window mode changed meanwhile count.
         let settings = self.vault(|d| d.settings.clone())?;
+        let before: HashSet<i32> = roblox_processes::get_player_pids().into_iter().collect();
         let config = settings.roblox_config.clone();
         let windowed = settings.multi_instance && settings.multi_instance_windowed;
         // A light-AFK preset's values, whatever the shared setup says; the next client gets the person's own back. The
@@ -1323,11 +1494,6 @@ impl App {
             self.controller.roblox_settings_pending.set(true);
             self.controller.roblox_settings_written_at.set(Stamp::utc_now());
         }
-        let chosen_via = launch_via.to_string();
-        let launch_via = roblox_installs::updating_option(launch_via, self.roblox_version_dto().up_to_date);
-        if launch_via != chosen_via {
-            log::note(&format!("Roblox start: through {launch_via} instead of {chosen_via}, so the old Roblox build is updated first."));
-        }
         // The leanest drawing (Fast Flags) if the person has it on, for the accounts the Roblox settings go to (Apply to)
         // and a light-AFK preset's windows; off, "Nobody", or the main account: the person's own file goes back first.
         if settings.fast_flags && (covered || afk) {
@@ -1339,10 +1505,35 @@ impl App {
             roblox_flags::restore();
             self.controller.roblox_flags_pending.set(false);
         }
+        // Mods (Roblox › Mods) laid into Roblox's own builds, and the ones turned off taken out (core/roblox_mods.rs).
+        let mods = super::super::roblox_mods::applies_to(&launch_via);
+        if mods {
+            let client = roblox_installs::client_for(&launch_via, &settings.custom_launcher);
+            let _ = rt::blocking(move || super::super::roblox_mods::apply(client.as_deref())).await;
+        }
+        // The build the windows open run on, copied last so its Fast Flags are the ones just written. Not copied: it waits instead.
+        let mut kept_client = None;
+        if let Some(kept) = kept_build {
+            let source = std::path::Path::new(&kept).parent().map(|p| p.to_string_lossy().into_owned()).unwrap_or_default();
+            match rt::blocking(move || roblox_installs::kept_copy(&kept).map_err(|e| Fail::other(e.to_string()))).await {
+                Ok(c) => {
+                    // (The kept copy shares the build's files by hard links: matched to it, mods and all.)
+                    if mods && let Some(dir) = std::path::Path::new(&c).parent().map(|p| p.to_string_lossy().into_owned()).filter(|d| *d != source) {
+                        let src = source.clone();
+                        let _ = rt::blocking(move || super::super::roblox_mods::apply_in(&dir, &src)).await;
+                    }
+                    kept_client = Some(c)
+                }
+                Err(ex) => {
+                    log::note(&format!("Roblox start: account {} held back, its build couldn't be copied to open on: {ex}", short(account.id)));
+                    return Err(Fail::User(l::t(UPDATE_HOLD_TEXT)));
+                }
+            }
+        }
         // Stopped meanwhile (Stop, Close, a scheduled stop): nothing is opened.
         ct.check()?;
         let custom = self.vault(|d| d.settings.custom_launcher.clone()).unwrap_or_default();
-        let tracker = roblox_launcher::launch(&ticket, target.as_ref(), &launch_via, &custom)?;
+        let tracker = roblox_launcher::launch(&ticket, target.as_ref(), &launch_via, &custom, kept_client.as_deref())?;
         log::note(&format!(
             "Roblox start: account {} via {launch_via}, {}{}{}, {} Roblox already running.",
             short(account.id),
@@ -1364,10 +1555,12 @@ impl App {
         self.controller.user_closed.borrow_mut().remove(&account.id);
         self.forget_late(account.id); // opened again: a window of the earlier try is not this one's
         let place = target.as_ref().map(|t| t.place_id);
+        let home_screen = target.is_none();
         let launch = Rc::new(PendingLaunch {
             account_id: account.id,
             before,
             started_at: std::cell::Cell::new(Stamp::utc_now()),
+            home_screen,
             target,
             rejoin,
             preset_id,
@@ -1548,7 +1741,7 @@ impl App {
             .into_iter()
             .map(|(id, run)| (self.find_account(id).map(|a| a.label()).unwrap_or_default(), run.0))
             .collect();
-        tracked_runs.sort_by(|a, b| a.0.to_lowercase().cmp(&b.0.to_lowercase()));
+        tracked_runs.sort_by(|a, b| win_kit::culture_cmp(&a.0, &b.0));
         let tracked: Vec<i32> = tracked_runs.into_iter().map(|t| t.1).collect();
         let mut others: Vec<i32> = roblox_processes::get_player_pids().into_iter().filter(|p| !tracked.contains(p)).collect();
         others.sort();
@@ -1556,9 +1749,10 @@ impl App {
         afk.extend(self.main_pids()); // the window played on stays where the person put it
         // Clicked: the windows come over every other app (not after a launch: the person may be busy elsewhere).
         let app_window = if !auto && owner_in_view { owner } else { 0 };
-        let s = self.vault(|d| d.settings.clone()).ok();
         // After a nudge, a picture or a macro's turn under way: each puts its window back as it found it.
         let turn = rt::blocking(|| input_turn::enter("arrange", None)).await?;
+        // The layout as it is once the turn came (the C# held the live settings object, read after the wait).
+        let s = self.vault(|d| d.settings.clone()).ok();
         self.processes.window_sizes.borrow_mut().clear();
         let pids: Vec<i32> = tracked.iter().chain(others.iter()).copied().filter(|p| !afk.contains(p)).collect();
         let before = window_report::states(&pids.iter().map(|p| roblox_processes::main_window(*p)).collect::<Vec<_>>());
@@ -1569,6 +1763,7 @@ impl App {
             let (pids, layout) = (pids.clone(), layout.clone());
             rt::blocking(move || roblox_processes::arrange_grid(&pids, area, &layout, auto, app_window, custom, at_mouse)).await
         };
+        self.forget_going_back();
         // What it came to, as the person sees it: each window in its place, or what's wrong with it (window_report).
         let how = if auto {
             "after opening"

@@ -25,6 +25,21 @@ pub fn hwnd(h: isize) -> HWND {
 }
 
 /// A string for Windows: UTF-16, ended by a zero.
+/// C#'s StringComparer.CurrentCultureIgnoreCase: Windows' own order for the person's language ("_" before digits,
+/// "Ă" next to "A"), not the code order of lowercased text.
+pub fn culture_cmp(a: &str, b: &str) -> std::cmp::Ordering {
+    use windows_sys::Win32::Globalization::{CompareStringEx, NORM_IGNORECASE};
+    let (wa, wb): (Vec<u16>, Vec<u16>) = (a.encode_utf16().collect(), b.encode_utf16().collect());
+    // SAFETY: both buffers are passed with their lengths; a null locale name is the user's default.
+    let r = unsafe { CompareStringEx(std::ptr::null(), NORM_IGNORECASE, wa.as_ptr(), wa.len() as i32, wb.as_ptr(), wb.len() as i32, std::ptr::null(), std::ptr::null(), 0) };
+    match r {
+        1 => std::cmp::Ordering::Less,
+        2 => std::cmp::Ordering::Equal,
+        3 => std::cmp::Ordering::Greater,
+        _ => a.to_lowercase().cmp(&b.to_lowercase()),
+    }
+}
+
 pub fn wide(s: &str) -> Vec<u16> {
     s.encode_utf16().chain(std::iter::once(0)).collect()
 }

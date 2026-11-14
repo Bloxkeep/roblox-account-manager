@@ -284,13 +284,14 @@ impl App {
     }
 
     /// "Choose a picture or video…": one from the PC, copied into the data folder, behind the page from now on.
-    pub fn pick_theme_picture(&self) -> Res<Value> {
+    /// The box waits on a worker thread (as tray.rs's), so the core keeps answering while it is open.
+    pub async fn pick_theme_picture(&self) -> Res<Value> {
         let owner = self.controller.owner.get();
         let title = l::t("Choose a background picture or video");
         let filter = l::t("Pictures and videos")
             + " (*.png;*.jpg;*.jpeg;*.webp;*.gif;*.bmp;*.mp4;*.webm)|*.png;*.jpg;*.jpeg;*.webp;*.gif;*.bmp;*.mp4;*.webm";
         let initial = special_folder(CSIDL_MYPICTURES);
-        let Some(chosen) = crate::core::ui::modal(|| open_file_dialog(owner, &title, &filter, &initial)) else {
+        let Some(chosen) = crate::core::rt::blocking(move || crate::core::ui::modal(|| open_file_dialog(owner, &title, &filter, &initial))).await else {
             return Ok(Value::Null);
         };
         let kind = extension_lower(&chosen);
@@ -354,7 +355,7 @@ impl App {
         Value::Null
     }
 
-    pub fn export_theme(&self, id: &str) -> Res<Value> {
+    pub async fn export_theme(&self, id: &str) -> Res<Value> {
         let theme = prefs::lock().saved_themes.iter().find(|t| t.id == id).cloned();
         let theme = theme.ok_or_else(|| Fail::user(l::t("That theme isn't there any more.")))?;
         let owner = self.controller.owner.get();
@@ -364,14 +365,14 @@ impl App {
         let file: String = theme.name.chars().map(|ch| if matches!(ch, '"' | '<' | '>' | '|' | ':' | '*' | '?' | '\\' | '/') || (ch as u32) < 32 { '-' } else { ch }).collect();
         let file = file + THEME_FILE_TYPE;
         let initial = special_folder(CSIDL_MYDOCUMENTS);
-        let Some(chosen) = crate::core::ui::modal(|| save_file_dialog(owner, &title, &filter, &file, &initial)) else {
+        let Some(chosen) = crate::core::rt::blocking(move || crate::core::ui::modal(|| save_file_dialog(owner, &title, &filter, &file, &initial))).await else {
             return Ok(Value::Null);
         };
         write_theme_file(&theme, &chosen)?;
         Ok(json!({ "saved": file_name(&chosen) }))
     }
 
-    pub fn import_theme(&self) -> Res<Value> {
+    pub async fn import_theme(&self) -> Res<Value> {
         if prefs::lock().saved_themes.len() >= themes::MAX_SAVED {
             return Err(Fail::user(l::f("You can keep up to {0} themes. Delete one first.", &[&themes::MAX_SAVED])));
         }
@@ -379,7 +380,7 @@ impl App {
         let title = l::t("Add a theme from a file");
         let filter = l::t("Bloxkeep theme") + &format!(" (*{THEME_FILE_TYPE})|*{THEME_FILE_TYPE}");
         let initial = special_folder(CSIDL_MYDOCUMENTS);
-        let Some(chosen) = crate::core::ui::modal(|| open_file_dialog(owner, &title, &filter, &initial)) else {
+        let Some(chosen) = crate::core::rt::blocking(move || crate::core::ui::modal(|| open_file_dialog(owner, &title, &filter, &initial))).await else {
             return Ok(Value::Null);
         };
         self.add_theme_file(&chosen)
@@ -389,6 +390,10 @@ impl App {
         let theme = read_theme_file(path)?;
         {
             let mut p = prefs::lock();
+            // Asked again here: a theme may have been saved while Import's box was open (the core keeps running).
+            if p.saved_themes.len() >= themes::MAX_SAVED {
+                return Err(Fail::user(l::f("You can keep up to {0} themes. Delete one first.", &[&themes::MAX_SAVED])));
+            }
             p.saved_themes.insert(0, theme.clone());
             p.custom = theme.look;
         }

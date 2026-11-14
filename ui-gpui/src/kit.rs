@@ -200,6 +200,11 @@ pub fn icon(name: &str, size: f32, color: Hsla) -> Svg {
     svg().path(SharedString::from(format!("icons/{name}.svg"))).size(px(size)).flex_none().text_color(color)
 }
 
+/// "ROBLOX" as Roblox writes it (its tilted square for the first O), `h` high, in a colour: the Roblox part's title.
+pub fn roblox_word(h: f32, color: Hsla) -> Svg {
+    svg().path("icons/roblox-word.svg").h(px(h)).w(px(h * 5.14)).flex_none().text_color(color)
+}
+
 /// The keyboard's ring: a hairline that is there all along (clear), so showing it moves nothing.
 pub fn focusable(d: Stateful<Div>) -> Stateful<Div> {
     d.tab_index(0).border_1().border_color(ca(WHITE, 0.)).focus_visible(|s| s.border_color(ca(TEXT, 0.75)))
@@ -258,6 +263,7 @@ pub struct Button {
     small: bool,
     big: bool,
     disabled: bool,
+    tip: Option<SharedString>,
     on_click: Option<Click>,
 }
 
@@ -272,8 +278,14 @@ impl Button {
             small: false,
             big: false,
             disabled: false,
+            tip: None,
             on_click: None,
         }
+    }
+    /// What it does in more words, under the mouse (none for empty words).
+    pub fn tip(mut self, t: impl Into<SharedString>) -> Self {
+        self.tip = Some(t.into()).filter(|t| !t.is_empty());
+        self
     }
     pub fn primary(mut self) -> Self {
         self.kind = Kind::Primary;
@@ -361,6 +373,9 @@ impl RenderOnce for Button {
             .when_some(self.icon, |d, i| d.child(icon(i, size, fg)))
             .child(self.label)
             .when_some(self.icon_end, |d, i| d.child(icon(i, size - 2., fg)));
+        if let Some(t) = self.tip {
+            b = b.tooltip(move |_, cx| cx.new(|_| Tip(t.clone())).into());
+        }
         if self.disabled {
             b = b.opacity(0.45);
         } else {
@@ -385,6 +400,7 @@ pub struct IconButton {
     on: bool,
     selected: bool,
     filled: bool,
+    primary: bool,
     glass: bool,
     round: bool,
     off: bool,
@@ -402,6 +418,7 @@ impl IconButton {
             on: false,
             selected: false,
             filled: false,
+            primary: false,
             glass: false,
             round: false,
             off: false,
@@ -449,6 +466,11 @@ impl IconButton {
         self.filled = true;
         self
     }
+    /// In the main button's yellow: the arrow half of a split button (Add account ▾), as `Button::primary`.
+    pub fn primary(mut self) -> Self {
+        self.primary = true;
+        self
+    }
     pub fn tip(mut self, t: impl Into<SharedString>) -> Self {
         self.tip = Some(t.into());
         self
@@ -466,9 +488,9 @@ impl RenderOnce for IconButton {
         let live = !self.off && !self.busy;
         let fg = if self.off {
             c(DIM)
-        } else if self.selected {
+        } else if self.primary {
             c(INK)
-        } else if self.on || self.glass || self.filled || over {
+        } else if self.selected || self.on || self.glass || self.filled || over {
             c(TEXT)
         } else {
             c(TEXT_2)
@@ -477,6 +499,8 @@ impl RenderOnce for IconButton {
         // (The place you're on: its mark is a layer of its own, below.)
         let (bg, edge) = if self.selected {
             ((clear, clear), (clear, clear))
+        } else if self.primary {
+            ((c(FACE), c(FACE_HI)), (clear, clear))
         } else if self.glass {
             ((ca(GROUND, 0.55), ca(GROUND, 0.75)), (ca(WHITE, 0.12), ca(WHITE, 0.22)))
         } else if self.filled {
@@ -498,7 +522,8 @@ impl RenderOnce for IconButton {
             .when(!self.round, |d| d.rounded(px(radius + 1.)))
             // (The web page's icon buttons give more than its buttons: scale .88.)
             // The mark of the place you're on grows in on the spring and shrinks away when you leave (nav-bar).
-            .child(div().absolute().rounded(px(radius)).bg(c(FACE)).with_spring("here", SpringAnimation::new(BOUNCE).to(self.selected), |d, p| {
+            // (A quiet tile, not the face colour: the yellow is kept for the one main action of a place, owner 2026-11-13.)
+            .child(div().absolute().rounded(px(radius)).bg(ca(TEXT, 0.12)).with_spring("here", SpringAnimation::new(BOUNCE).to(self.selected), |d, p| {
                 let k = p.0.max(0.);
                 d.inset(px((1. - k) * 9.)).opacity(k.min(1.))
             }))
@@ -517,12 +542,18 @@ pub struct Switch {
     id: ElementId,
     on: bool,
     disabled: bool,
+    small: bool,
     on_toggle: Option<Toggle>,
 }
 
 impl Switch {
     pub fn new(id: impl Into<ElementId>, on: bool) -> Self {
-        Self { id: id.into(), on, disabled: false, on_toggle: None }
+        Self { id: id.into(), on, disabled: false, small: false, on_toggle: None }
+    }
+    /// The status bar's: 30×18 and on in the words' own light, not the accent (the one yellow is the page's main action).
+    pub fn small(mut self) -> Self {
+        self.small = true;
+        self
     }
     pub fn disabled(mut self, d: bool) -> Self {
         self.disabled = d;
@@ -543,23 +574,26 @@ impl RenderOnce for Switch {
         let down = down && live;
         // The track is 42×24 with a 16 px knob (app.css .switch); the box around it is what takes the press and the ring. The knob
         // slides with a spring and, while pressed, stretches toward the side it will go to.
-        const TRAVEL: f32 = 18.;
-        const STRETCH: f32 = 5.;
-        let knob = div().absolute().top_0().h(px(16.)).rounded_full().with_spring("knob", SpringAnimation::new(if down { SNAP } else { BOUNCE }).to(if down { 1f32 } else { 0. }), move |d, v| {
-            let grow = (v * STRETCH).max(-2.);
-            d.w(px(16. + grow)).left(px(if on { -grow } else { 0. })).bg(if on { c(INK) } else { c(KNOB) })
+        let small = self.small;
+        let (w, h, k) = if small { (30., 18., 12.) } else { (42., 24., 16.) };
+        let travel = w - k - 8.;
+        let stretch = if small { 3. } else { 5. };
+        let lit = if small { c(TEXT) } else { c(FACE) };
+        let knob = div().absolute().top_0().h(px(k)).rounded_full().with_spring("knob", SpringAnimation::new(if down { SNAP } else { BOUNCE }).to(if down { 1f32 } else { 0. }), move |d, v| {
+            let grow = (v * stretch).max(-2.);
+            d.w(px(k + grow)).left(px(if on { -grow } else { 0. })).bg(if on { c(INK) } else { c(KNOB) })
         });
-        let slide = div().absolute().top(px(3.)).size(px(16.)).child(knob).with_spring("slide", SpringAnimation::new(BOUNCE).to(on), |d, p| d.left(px(3. + TRAVEL * p.0)));
+        let slide = div().absolute().top(px((h - k) / 2. - 1.)).size(px(k)).child(knob).with_spring("slide", SpringAnimation::new(BOUNCE).to(on), move |d, p| d.left(px(3. + travel * p.0)));
         let track = div()
             .relative()
-            .w(px(42.))
-            .h(px(24.))
+            .w(px(w))
+            .h(px(h))
             .rounded_full()
             .border_1()
             .child(slide)
             .with_spring("track", SpringAnimation::new(EASE).to(on), move |d, p| {
                 let off = if over && live { ca(WHITE, 0.2) } else { c(RAISED_2) };
-                d.bg(mix(off, c(FACE), p.0)).border_color(mix(ca(TEXT, 0.3), ca(FACE, 0.), p.0))
+                d.bg(mix(off, lit, p.0)).border_color(mix(ca(TEXT, 0.3), ca(WHITE, 0.), p.0))
             });
         focusable(div().id(self.id))
             .p(px(3.))
@@ -633,6 +667,12 @@ impl RenderOnce for Check {
     }
 }
 
+/// The mark of a picked thing (a row, a tile, a menu item): a solid yellow square with a dark tick, `size` across. One
+/// place for it: five were drawn by hand at four sizes and three corner rounds.
+pub fn tick_mark(size: f32) -> Div {
+    div().size(px(size)).flex_none().rounded(px((size * 0.3).round())).bg(c(FACE)).flex().items_center().justify_center().child(icon("check", (size * 0.64).round(), c(INK)))
+}
+
 #[derive(Clone, Copy)]
 pub enum Tone {
     Ok,
@@ -649,18 +689,19 @@ pub fn badge(text: impl Into<SharedString>, tone: Tone) -> Div {
         Tone::Bad => BAD,
         Tone::Muted => TEXT_2,
     };
+    // A dot and the word in its colour; only trouble gets a ground of its own (a tinted pill on every state read as a
+    // row of stickers, and nothing stood out).
+    let bad = matches!(tone, Tone::Bad);
     div()
         .h(px(22.))
-        .px(px(9.))
         .flex()
         .items_center()
         .gap(px(6.))
-        .rounded_full()
-        .bg(ca(col, 0.12))
         .text_color(c(col))
         .text_size(px(T_S))
         .font_weight(FontWeight::SEMIBOLD)
-        .child(div().size(px(6.)).rounded_full().bg(c(col)))
+        .when(bad, |d| d.px(px(9.)).rounded_full().bg(ca(col, 0.14)))
+        .when(!bad, |d| d.child(div().size(px(6.)).rounded_full().bg(c(col))))
         .child(text.into())
 }
 
@@ -706,7 +747,7 @@ impl RenderOnce for Segmented {
 pub fn segment(id: impl Into<ElementId>, on: bool) -> Hot {
     let h = hot(id).flex().flex_none().items_center().rounded(px(7.)).text_size(px(T_M)).font_weight(FontWeight::SEMIBOLD);
     if on {
-        h.tones(c(FACE), c(FACE)).text_color(c(INK))
+        h.tones(c(TEXT), c(TEXT)).text_color(c(GROUND))
     } else {
         h.tones(ca(WHITE, 0.), ca(WHITE, 0.05)).text_color(c(TEXT_2)).cursor_pointer().hover(|d| d.text_color(c(TEXT)))
     }
@@ -717,7 +758,7 @@ pub fn segment(id: impl Into<ElementId>, on: bool) -> Hot {
 pub fn chip(id: impl Into<ElementId>, on: bool) -> Hot {
     let h = hot(id).h(px(30.)).px(px(10.)).flex().flex_none().items_center().gap(px(7.)).rounded(px(9.)).text_size(px(T_M)).font_weight(FontWeight::SEMIBOLD).cursor_pointer();
     if on {
-        h.tones(c(FACE), c(FACE_HI)).text_color(c(INK))
+        h.tones(c(TEXT), c(TEXT)).text_color(c(GROUND))
     } else {
         h.tones(ca(WHITE, 0.), ca(WHITE, 0.07)).text_color(c(TEXT_2)).hover(|d| d.text_color(c(TEXT)))
     }
@@ -737,7 +778,7 @@ pub fn chip_count(n: usize, on: bool) -> Div {
         .text_size(px(T_S))
         .font_weight(FontWeight::SEMIBOLD)
         .font_features(tnum())
-        .map(|d| if on { d.bg(ca(INK, 0.16)).text_color(c(INK)) } else { d.bg(ca(WHITE, 0.09)).text_color(c(TEXT_2)) })
+        .map(|d| if on { d.bg(ca(GROUND, 0.14)).text_color(c(GROUND)) } else { d.bg(ca(WHITE, 0.09)).text_color(c(TEXT_2)) })
         .child(n.to_string())
 }
 
@@ -746,7 +787,7 @@ pub fn chip_count(n: usize, on: bool) -> Div {
 pub fn pill(id: impl Into<ElementId>, on: bool, live: bool) -> Hot {
     let h = hot(id).h(px(30.)).px(px(12.)).flex().flex_none().items_center().rounded_full().text_size(px(T_M)).font_weight(FontWeight::MEDIUM).border_1();
     if on {
-        h.tones(c(FACE), c(FACE)).edge(ca(FACE, 0.), ca(FACE, 0.)).text_color(c(INK))
+        h.tones(c(TEXT), c(TEXT)).edge(ca(TEXT, 0.), ca(TEXT, 0.)).text_color(c(GROUND))
     } else if live {
         h.tones(ca(WHITE, 0.04), ca(WHITE, 0.09)).edge(ca(WHITE, 0.), ca(WHITE, 0.)).text_color(c(TEXT_2)).cursor_pointer().hover(|d| d.text_color(c(TEXT)))
     } else {
@@ -1060,7 +1101,7 @@ pub fn alert_panel(tone: u32, title: impl Into<SharedString>, count: usize) -> D
                 .flex()
                 .items_center()
                 .gap(px(10.))
-                .child(div().size(px(24.)).flex_none().rounded(px(7.)).bg(ca(tone, 0.18)).flex().items_center().justify_center().child(icon("alert", 14., c(tone))))
+                .child(icon("alert", 15., c(tone)).flex_none())
                 .child(div().text_size(px(T_SEC)).font_weight(FontWeight::SEMIBOLD).text_color(c(TEXT)).child(title.into()))
                 .child(div().text_size(px(T_SEC)).text_color(c(MUTED)).font_features(tnum()).child(count.to_string())),
         )
@@ -1287,7 +1328,7 @@ pub fn framed_center(dialog: Dialog, title: impl Into<SharedString>, close_tip: 
             .px(px(48.))
             .flex()
             .justify_center()
-            .child(div().text_size(px(18.)).line_height(px(24.)).font_weight(FontWeight::SEMIBOLD).text_color(c(TEXT)).text_center().child(title.into()))
+            .child(div().text_size(px(T_GROUP)).line_height(px(24.)).font_weight(FontWeight::SEMIBOLD).text_color(c(TEXT)).text_center().child(title.into()))
             .child(div().absolute().top(px(10.)).right(px(10.)).child(dialog_x(close_tip, close))),
     )
 }
@@ -1315,7 +1356,7 @@ pub fn dialog_head(title: impl Into<SharedString>, close_tip: impl Into<SharedSt
         .pb(px(11.))
         .border_b_1()
         .border_color(c(LINE))
-        .child(div().min_w_0().flex_1().text_size(px(18.)).line_height(px(24.)).font_weight(FontWeight::SEMIBOLD).text_color(c(TEXT)).child(title.into()))
+        .child(div().min_w_0().flex_1().text_size(px(T_GROUP)).line_height(px(24.)).font_weight(FontWeight::SEMIBOLD).text_color(c(TEXT)).child(title.into()))
         .child(dialog_x(close_tip, close))
 }
 
@@ -1446,6 +1487,6 @@ pub fn folded(text: &str) -> String {
     ];
     text.chars()
         .flat_map(char::to_lowercase)
-        .map(|ch| GROUPS.iter().find(|(from, _)| from.contains(ch)).map_or(ch, |(_, to)| *to))
+        .map(|ch| if ch.is_ascii() { ch } else { GROUPS.iter().find(|(from, _)| from.contains(ch)).map_or(ch, |(_, to)| *to) })
         .collect()
 }

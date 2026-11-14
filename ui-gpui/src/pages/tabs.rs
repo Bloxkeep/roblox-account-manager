@@ -106,6 +106,34 @@ pub fn open(r: &mut Root, id: String) {
     take_out(r);
 }
 
+/// Another vault opened, or accounts deleted: the tabs of accounts no longer there go (with what was read for them);
+/// the tab shown stays, on the app's pick again if its account went.
+pub fn forget_gone(r: &mut Root) {
+    let ids: std::collections::HashSet<String> = r.accounts().iter().map(|a| s(a, "id").to_string()).collect();
+    let gone = |t: &Tab| t.account.as_ref().is_some_and(|id| !ids.contains(id));
+    let at = r.tabs.at;
+    let shown_gone = r.friends.account.as_ref().is_some_and(|id| !ids.contains(id));
+    if shown_gone {
+        r.friends.account = None;
+    }
+    if let Some(t) = r.tabs.list.get_mut(at) {
+        if shown_gone || gone(t) {
+            t.account = None;
+        }
+    }
+    // (The shown one is kept: its place is how many kept tabs come before it.)
+    let (mut i, mut before) = (0, 0);
+    r.tabs.list.retain(|t| {
+        let keep = i == at || !gone(t);
+        if keep && i < at {
+            before += 1;
+        }
+        i += 1;
+        keep
+    });
+    r.tabs.at = before.min(r.tabs.list.len().saturating_sub(1));
+}
+
 /// A tab closes; the last one stays. Closing the one shown shows its neighbour.
 pub fn close(r: &mut Root, i: usize) {
     if r.tabs.list.len() < 2 || i >= r.tabs.list.len() {
@@ -180,7 +208,8 @@ pub fn strip(root: &Root, cx: &mut Context<Root>) -> impl IntoElement {
         r.tabs.menu = !r.tabs.menu;
         cx.notify();
     })));
-    if !rest.is_empty() {
+    // (Built while open or fading out only, not every frame: an avatar a row.)
+    if !rest.is_empty() && crate::pages::accounts::pop_alive("rbx-tab-pop", tabs.menu) {
         let mut menu = div()
             .id("rbx-tab-menu")
             .occlude()

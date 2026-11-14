@@ -101,8 +101,14 @@ const LAST_RETRY: Duration = Duration::from_secs(120);
 const STAYED_UP: Duration = Duration::from_secs(60);
 /// The games and every card at once (30 a source, at most a few KB each).
 const MAX_MESSAGE: usize = 4 * 1024 * 1024;
-/// How often a quiet link looks for news and for being stopped (the socket doesn't block).
+/// How often `wait` looks for being stopped.
 const POLL: Duration = Duration::from_millis(100);
+/// How long a read waits for news before looking for being stopped and for the ping that is due.
+const READ_WAIT: Duration = Duration::from_secs(1);
+/// The connect and the handshake together; a send waits as long at most.
+const CONNECT_LIMIT: Duration = Duration::from_secs(15);
+
+type Socket = WebSocket<MaybeTlsStream<TcpStream>>;
 
 pub type AllFn = Box<dyn Fn(Vec<FeedGame>, Vec<FeedCard>) + Send + Sync>;
 pub type CardFn = Box<dyn Fn(FeedCard) + Send + Sync>;
@@ -181,15 +187,16 @@ fn run_link(shared: &Shared) {
         let mut connected_at: Option<Instant> = None;
         let mut config = WebSocketConfig::default();
         config.max_message_size = Some(MAX_MESSAGE);
-        // PORT: the connect itself can't be stopped part way (tungstenite blocks); a stop is seen once it returns.
-        // Any failure (WebSocketException, IOException, HttpRequestException in the C#) only means trying again later.
-        if let Ok((mut ws, _)) = tungstenite::client::connect_with_config(shared.url.as_str(), Some(config), 3) {
+        // PORT: the connect itself can't be stopped part way (tungstenite blocks); a stop is seen once it returns, within
+        // CONNECT_LIMIT. Any failure (WebSocketException, IOException, HttpRequestException in the C#) only means
+        // trying again later.
+        if let Some(mut ws) = connect(&shared.url, config) {
             connected_at = Some(Instant::now());
             on_ui(|| {
                 shared.connected.store(true, Ordering::SeqCst);
                 (shared.changed)();
             });
-            if set_nonblocking(&ws) {
+            if set_read_timeout(&ws, READ_WAIT) {
                 read(shared, &mut ws);
             }
             let _ = ws.close(None);
@@ -214,21 +221,43 @@ fn run_link(shared: &Shared) {
     }
 }
 
-/// The socket doesn't block, so reading can stop and the ping go out on time.
-fn set_nonblocking(ws: &WebSocket<MaybeTlsStream<TcpStream>>) -> bool {
-    match ws.get_ref() {
-        MaybeTlsStream::Plain(s) => s.set_nonblocking(true).is_ok(),
-        MaybeTlsStream::Rustls(s) => s.get_ref().set_nonblocking(true).is_ok(),
-        _ => false,
-    }
+/// TCP within CONNECT_LIMIT, then the handshake within what is left of it (tungstenite's own `connect` waits as long as
+/// Windows does, a minute or more on a network that drops packets).
+fn connect(url: &str, config: WebSocketConfig) -> Option<Socket> {
+    use std::net::ToSocketAddrs;
+    let parsed = url::Url::parse(url).ok()?;
+    let host = parsed.host_str()?.to_string();
+    let port = parsed.port_or_known_default()?;
+    let until = Instant::now() + CONNECT_LIMIT;
+    let stream = (host.as_str(), port).to_socket_addrs().ok()?.find_map(|addr| {
+        let left = until.saturating_duration_since(Instant::now());
+        if left.is_zero() { None } else { TcpStream::connect_timeout(&addr, left).ok() }
+    })?;
+    let left = until.saturating_duration_since(Instant::now()).max(Duration::from_millis(1));
+    stream.set_read_timeout(Some(left)).ok()?;
+    stream.set_write_timeout(Some(CONNECT_LIMIT)).ok()?;
+    let (ws, _) = tungstenite::client_tls_with_config(url, stream, Some(config), None).ok()?;
+    Some(ws)
 }
 
+/// Reads wait a second at most, so reading can stop and the ping go out on time. Set on the socket's own stream: a
+/// timeout on a `try_clone()` of it doesn't reach it on Windows (see remote_link).
+fn set_read_timeout(ws: &Socket, timeout: Duration) -> bool {
+    let tcp = match ws.get_ref() {
+        MaybeTlsStream::Plain(s) => s,
+        MaybeTlsStream::Rustls(s) => s.get_ref(),
+        _ => return false,
+    };
+    tcp.set_read_timeout(Some(timeout)).is_ok()
+}
+
+/// Nothing came within the wait (or a send couldn't go yet): not a drop.
 fn is_would_block(e: &tungstenite::Error) -> bool {
-    matches!(e, tungstenite::Error::Io(io) if io.kind() == std::io::ErrorKind::WouldBlock)
+    matches!(e, tungstenite::Error::Io(io) if matches!(io.kind(), std::io::ErrorKind::WouldBlock | std::io::ErrorKind::TimedOut))
 }
 
 /// Reads until the link closes or drops, or the link is stopped; the "ping" every 30 s goes out on the way.
-fn read(shared: &Shared, ws: &mut WebSocket<MaybeTlsStream<TcpStream>>) {
+fn read(shared: &Shared, ws: &mut Socket) {
     let mut next_ping = Instant::now() + KEEP_ALIVE;
     loop {
         if shared.stop.load(Ordering::SeqCst) {
@@ -258,7 +287,6 @@ fn read(shared: &Shared, ws: &mut WebSocket<MaybeTlsStream<TcpStream>>) {
             Ok(_) => {} // Ping and Pong frames: tungstenite answers them itself
             Err(e) if is_would_block(&e) => {
                 let _ = ws.flush();
-                std::thread::sleep(POLL);
             }
             // A message over MAX_MESSAGE, a drop, a close: connected again later.
             Err(_) => return,
@@ -342,7 +370,7 @@ fn valid_card(c: &FeedCard, raw: &Value) -> bool {
 
 /// A callback, its failure logged rather than ending the link.
 fn on_ui(action: impl FnOnce()) {
-    if let Err(panic) = std::panic::catch_unwind(std::panic::AssertUnwindSafe(action)) {
+    if let Err(panic) = crate::core::program::catch_unwind(std::panic::AssertUnwindSafe(action)) {
         let text = panic.downcast_ref::<&str>().map(|s| s.to_string()).or_else(|| panic.downcast_ref::<String>().cloned()).unwrap_or_else(|| "a callback failed".into());
         log::write(&text);
     }

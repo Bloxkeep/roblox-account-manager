@@ -9,7 +9,9 @@ use std::time::Duration;
 use windows_sys::Win32::Foundation::{HWND, POINT};
 use windows_sys::Win32::System::Threading::GetCurrentThreadId;
 use windows_sys::Win32::UI::Accessibility::{HWINEVENTHOOK, SetWinEventHook, UnhookWinEvent};
-use windows_sys::Win32::UI::WindowsAndMessaging::{DispatchMessageW, GetCursorPos, GetMessageW, MSG, PostThreadMessageW, TranslateMessage, WINEVENT_OUTOFCONTEXT, WM_QUIT};
+use windows_sys::Win32::UI::WindowsAndMessaging::{
+    DispatchMessageW, GetCursorPos, GetMessageW, MSG, PM_NOREMOVE, PeekMessageW, PostThreadMessageW, TranslateMessage, WINEVENT_OUTOFCONTEXT, WM_QUIT,
+};
 
 use super::App;
 use super::panels::panel_native;
@@ -119,6 +121,12 @@ impl App {
             };
             // SAFETY: GetCurrentThreadId has no preconditions.
             let thread = unsafe { GetCurrentThreadId() };
+            // The thread's message queue made now, so a stop posted right after the id is handed over isn't lost.
+            // SAFETY: MSG is plain data PeekMessageW fills in.
+            unsafe {
+                let mut msg: MSG = std::mem::zeroed();
+                PeekMessageW(&mut msg, std::ptr::null_mut(), 0, 0, PM_NOREMOVE);
+            }
             let _ = tx.send((thread, hook as isize));
             // SAFETY: a plain message loop; MSG is plain data filled by GetMessageW.
             unsafe {

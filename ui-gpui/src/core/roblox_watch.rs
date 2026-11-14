@@ -21,7 +21,7 @@ static LOCK_NAME: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^ROBLOX_[A-Za-
 const VERDICTS: [&str; 5] = ["first", "same", "changed", "renamed", "gone"];
 
 // PORT: ureq 2 has no PooledConnectionLifetime; no cookie store either (UseCookies = false).
-static HTTP: LazyLock<ureq::Agent> = LazyLock::new(|| ureq::AgentBuilder::new().timeout(Duration::from_secs(15)).redirects(5).build());
+static HTTP: LazyLock<ureq::Agent> = LazyLock::new(|| crate::net::builder().timeout(Duration::from_secs(15)).redirects(5).build());
 
 /// `hash`: the build's folder name ("version-…"), as under Roblox's Versions folder.
 /// `verdict`: first, same, changed, renamed or gone.

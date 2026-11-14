@@ -141,6 +141,8 @@ impl App {
         // Sent while typing in the game box or on a list-look change: the page already shows it, so just remember it.
         let quick = a.as_object().is_some_and(|o| !o.is_empty() && o.keys().all(|k| matches!(k.as_str(), "lastPlaceInput" | "lastJobId" | "layout" | "sort")));
         let mut fx = Effects::default();
+        // The disk scan for other launchers before the vault's lock, not under it: every other command would wait on it.
+        let others: Option<Vec<String>> = opt_str(a, "launchVia").and_then(|v| roblox_launcher::other_name(&v)).map(|_| roblox_installs::find_other_bootstrappers());
         self.vault_mut(|d| {
             let s = &mut d.settings;
             if let Some(place) = opt_str(a, "lastPlaceInput") {
@@ -181,7 +183,7 @@ impl App {
             if let Some(via) = opt_str(a, "launchVia") {
                 let ok = roblox_launcher::is_valid_option(&via)
                     && (via != "custom" || roblox_launcher::custom_launcher_ready(&s.custom_launcher))
-                    && roblox_launcher::other_name(&via).is_none_or(|other| roblox_installs::find_other_bootstrappers().contains(&other));
+                    && roblox_launcher::other_name(&via).is_none_or(|other| others.as_ref().is_some_and(|o| o.contains(&other)));
                 if ok {
                     s.launch_via = via;
                     fx.installs_dropped = true; // the client (and its version) depends on the option
@@ -212,7 +214,7 @@ impl App {
                     c.graphics = long_of(rc, "graphics").clamp(0, 10) as i32;
                 }
                 if has(rc, "fps", JsonKind::Number) {
-                    let fps = long_of(rc, "fps") as i32;
+                    let fps = i32::try_from(long_of(rc, "fps")).unwrap_or(-1);
                     c.fps = if roblox_game_settings::FPS_CHOICES.contains(&fps) { fps } else { 0 };
                 }
                 if has(rc, "volume", JsonKind::Number) {
@@ -226,20 +228,29 @@ impl App {
             if let Some(auto_update) = opt_bool(a, "autoUpdateRoblox") {
                 s.auto_update_roblox = auto_update;
             }
-            if let Some(when) = opt_str(a, "robloxUpdateWhen").filter(|w| w == "idle" || w == "now") {
+            if let Some(when) = opt_str(a, "robloxUpdateWhen").filter(|w| w == "idle" || w == "now" || w == "keep") {
                 s.roblox_update_when = when;
             }
             if let Some(fast_flags) = opt_bool(a, "fastFlags") {
                 s.fast_flags = fast_flags;
             }
-            if has(a, "hopAbovePlayers", JsonKind::Number) && HOP_ABOVE_CHOICES.contains(&(long_of(a, "hopAbovePlayers") as i32)) {
-                s.hop_above_players = long_of(a, "hopAbovePlayers") as i32;
+            if has(a, "hopAbovePlayers", JsonKind::Number)
+                && let Ok(v) = i32::try_from(long_of(a, "hopAbovePlayers"))
+                && HOP_ABOVE_CHOICES.contains(&v)
+            {
+                s.hop_above_players = v;
             }
-            if has(a, "ramLimitMb", JsonKind::Number) && RAM_LIMIT_CHOICES.contains(&(long_of(a, "ramLimitMb") as i32)) {
-                s.ram_limit_mb = long_of(a, "ramLimitMb") as i32;
+            if has(a, "ramLimitMb", JsonKind::Number)
+                && let Ok(v) = i32::try_from(long_of(a, "ramLimitMb"))
+                && RAM_LIMIT_CHOICES.contains(&v)
+            {
+                s.ram_limit_mb = v;
             }
-            if has(a, "restartAboveMb", JsonKind::Number) && RESTART_ABOVE_CHOICES.contains(&(long_of(a, "restartAboveMb") as i32)) {
-                s.restart_above_mb = long_of(a, "restartAboveMb") as i32;
+            if has(a, "restartAboveMb", JsonKind::Number)
+                && let Ok(v) = i32::try_from(long_of(a, "restartAboveMb"))
+                && RESTART_ABOVE_CHOICES.contains(&v)
+            {
+                s.restart_above_mb = v;
             }
             if let Some(split) = opt_bool(a, "splitCores") {
                 s.split_cores = split;
@@ -249,8 +260,10 @@ impl App {
                 s.launch_delay_seconds = long_of(a, "launchDelaySeconds").clamp(0, 120) as i32;
             }
             // Only the choices Settings offers; choosing counts as using the PC (the wait starts from now).
-            if has(a, "autoLockMinutes", JsonKind::Number) && AUTO_LOCK_CHOICES.contains(&(long_of(a, "autoLockMinutes") as i32)) {
-                s.auto_lock_minutes = long_of(a, "autoLockMinutes") as i32;
+            if has(a, "autoLockMinutes", JsonKind::Number) && let Ok(minutes) = i32::try_from(long_of(a, "autoLockMinutes"))
+                && AUTO_LOCK_CHOICES.contains(&minutes)
+            {
+                s.auto_lock_minutes = minutes;
                 fx.active_now = true;
             }
             if let Some(multi) = opt_bool(a, "multiInstance").filter(|m| *m != s.multi_instance) {
@@ -314,6 +327,8 @@ impl App {
             && gpu == prefs::lock().safe_rendering
         {
             set(!gpu).await;
+            // The switch shows the saved choice.
+            self.push_state();
         }
         Value::Null
     }
@@ -336,8 +351,9 @@ impl App {
     }
 
     /// "Choose a launcher…": started with the roblox-player: link as its first argument, as Windows does for the link's handler.
-    pub fn pick_launcher(&self) -> Res<Value> {
+    pub async fn pick_launcher(&self) -> Res<Value> {
         let current = self.vault(|d| d.settings.custom_launcher.clone())?;
+        let token = self.vault_token();
         let owner = self.controller.owner.get();
         let title = l::t("Choose the program that opens Roblox");
         let filter = l::t("Programs") + " (*.exe)|*.exe";
@@ -346,7 +362,14 @@ impl App {
         } else {
             special_folder(CSIDL_LOCAL_APPDATA)
         };
-        if let Some(chosen) = crate::core::ui::modal(|| open_file_dialog(owner, &title, &filter, &initial)) {
+        // On a worker thread, so the core keeps answering (the window's Quit, timers) while the dialog is open.
+        let chosen = crate::core::rt::blocking(move || crate::core::ui::modal(|| open_file_dialog(owner, &title, &filter, &initial))).await;
+        if let Some(chosen) = chosen {
+            // The core kept running while the box was open: locked, or another vault opened, the program isn't put
+            // into a vault it wasn't chosen for.
+            if self.vault_token() != token {
+                return Err(Fail::user(l::t("Bloxkeep was locked.")));
+            }
             if full_path(&chosen).to_lowercase() == full_path(&executable_path()).to_lowercase() {
                 return Err(Fail::user(l::t("Pick the program that opens Roblox, not Bloxkeep itself.")));
             }
@@ -414,66 +437,84 @@ impl App {
         self.controller.disposed.set(true);
         // Each step on its own: one that fails is logged and the rest still run, so the save, the update's install and
         // the vault's closing never depend on the others (review 2026-11-03). The save comes first for the same reason.
-        fn safe(step: Res<()>) {
-            if let Err(e) = step {
-                log::write(&e);
+        // A step that panics is caught (logged) and the rest still run, as the C#'s Safe(…) did for a thrown exception.
+        fn step<R>(f: impl FnOnce() -> R) {
+            if crate::core::program::catch_unwind(std::panic::AssertUnwindSafe(f)).is_err() {
+                log::note("A closing step failed (see above); the rest still run.");
             }
         }
-        // PORT: a step that panicked in Rust isn't caught like a thrown exception; each step reports failure as Res.
-        self.save_before_closing(); // normally done already, before the window agreed to close
-        self.give_cores_back();
-        self.lift_ram_limits();
-        self.give_memory_priority_back(); // no Roblox window stays at low RAM priority without Bloxkeep to raise it again
+        step(|| self.save_before_closing()); // normally done already, before the window agreed to close
+        step(|| self.give_cores_back());
+        step(|| self.lift_ram_limits());
+        step(|| self.give_memory_priority_back()); // no Roblox window stays at low RAM priority without Bloxkeep to raise it again
         // A launch cut short: the next Roblox opened by hand gets the person's own file. Also one that couldn't be put
         // back earlier (held, read-only): still noted, tried once more.
-        if self.controller.roblox_flags_pending.get() || roblox_flags::pending() {
-            roblox_flags::restore();
-        }
+        step(|| {
+            if self.controller.roblox_flags_pending.get() || roblox_flags::pending() {
+                roblox_flags::restore();
+            }
+        });
         // Quit within seconds of a launch (or during one): the process check never put the person's own in-game settings
         // back, so their next Roblox would start windowed, muted, at Light AFK's FPS (2026-10-30 review). With Roblox
         // still open the copy is kept, for the next start to finish the job. Also one that couldn't be written earlier.
-        if self.controller.roblox_settings_pending.get() || roblox_game_settings::has_baseline() {
-            roblox_game_settings::restore(roblox_processes::get_player_pids().is_empty());
-        }
-        self.stop_watching_drags();
-        self.give_icons_back();
+        step(|| {
+            if self.controller.roblox_settings_pending.get() || roblox_game_settings::has_baseline() {
+                roblox_game_settings::restore(roblox_processes::get_player_pids().is_empty());
+            }
+        });
+        step(|| self.stop_watching_drags());
+        step(|| self.give_icons_back());
         // A macro's held keys and buttons let go now, before the windows go back: its own endings never run once this
         // thread closes, and W stayed down until the person pressed it (B5).
-        if let Some(player) = self.macros.macro_player.borrow().as_ref() {
-            player.release_all("closing");
-        }
+        step(|| {
+            if let Some(player) = self.macros.macro_player.borrow().as_ref() {
+                player.release_all("closing");
+            }
+        });
         // Quitting during a nudge or a /pc screenshot left that window see-through and click-through until Bloxkeep ran
         // again (review 2026-10-30). Not waited for: both go on on this thread, which is closing; one still running
         // stops at its next window (disposed) and puts back only what it changed.
-        let windows: Vec<isize> = roblox_processes::visible_windows(&roblox_processes::get_player_pids()).into_values().flatten().collect();
-        anti_afk::recover(&windows);
-        // PORT: SystemEvents/NetworkChange handlers aren't subscribed here (the window passes those messages on, see
-        // `init`); the updater's report is unhooked.
-        self.updates.updater.borrow().set_on_changed(None);
-        self.discord_presence.discord_presence.dispose(); // the profile stops showing Bloxkeep
-        if let Some(input) = self.anti_afk.roblox_input.borrow_mut().as_mut() {
-            input.dispose();
-        }
-        self.say_offline_on_exit(); // no longer counted as open (not for an update in the background, back within seconds)
-        self.stop_remote(); // Discord says the PC isn't connected
-        if let Some(feeds) = self.feeds.feeds.borrow().as_ref() {
-            feeds.dispose(); // no more game news
-        }
+        step(|| {
+            let windows: Vec<isize> = roblox_processes::visible_windows(&roblox_processes::get_player_pids()).into_values().flatten().collect();
+            anti_afk::recover(&windows);
+        });
+        // PORT: SystemEvents/NetworkChange come from the window and the network watcher (see `init`); the updater's
+        // report is unhooked.
+        step(|| self.updates.updater.borrow().set_on_changed(None));
+        step(|| self.discord_presence.discord_presence.dispose()); // the profile stops showing Bloxkeep
+        step(|| {
+            if let Some(input) = self.anti_afk.roblox_input.borrow_mut().as_mut() {
+                input.dispose();
+            }
+        });
+        step(|| self.say_offline_on_exit()); // no longer counted as open (not for an update in the background, back within seconds)
+        step(|| self.stop_remote()); // Discord says the PC isn't connected
+        step(|| {
+            if let Some(feeds) = self.feeds.feeds.borrow().as_ref() {
+                feeds.dispose(); // no more game news
+            }
+        });
         // _procTimer.Dispose(): the timer's loop ends at its next turn (disposed).
-        let home = self.tray.home_session.borrow_mut().take();
-        if let Some(mut home) = home {
-            home.dispose();
-        }
-        self.save_before_closing(); // anything the steps above changed
-        if let Some(timer) = self.backup.backup_timer.borrow_mut().take() {
-            timer.cancel();
-        }
-        let _ = self.drop_vault_import(false);
-        self.close_websites(None);
+        step(|| {
+            let home = self.tray.home_session.borrow_mut().take();
+            if let Some(mut home) = home {
+                home.dispose();
+            }
+        });
+        step(|| self.save_before_closing()); // anything the steps above changed
+        step(|| {
+            if let Some(timer) = self.backup.backup_timer.borrow_mut().take() {
+                timer.cancel();
+            }
+        });
+        step(|| {
+            let _ = self.drop_vault_import(false);
+        });
+        step(|| self.close_websites(None));
         // A downloaded update installs once the app has closed (started again at once when this quit is the background update).
         let relaunch_args = self.relaunch.relaunch_args.borrow().clone();
-        self.updates.updater.borrow().apply_on_exit(relaunch_args.as_deref());
-        crate::core::ui::clear_secret_clipboard();
+        step(|| self.updates.updater.borrow().apply_on_exit(relaunch_args.as_deref()));
+        step(crate::core::ui::clear_secret_clipboard);
         if let Some(c) = self.controller.launch_cts.borrow().as_ref() {
             c.cancel();
         }
@@ -481,14 +522,16 @@ impl App {
             c.cancel();
         }
         // The Discord status message says Bloxkeep closed (if Discord answers quickly), unless this quit is a background update.
-        if relaunch_args.is_none()
-            && let Some(sent) = self.final_discord_board(true)
-        {
-            let _ = sent.recv_timeout(Duration::from_secs(2)); // best effort
-        }
+        step(|| {
+            if relaunch_args.is_none()
+                && let Some(sent) = self.final_discord_board(true)
+            {
+                let _ = sent.recv_timeout(Duration::from_secs(2)); // best effort
+            }
+        });
         let vault = self.controller.vault.borrow_mut().take();
         if let Some(v) = vault {
-            v.dispose();
+            step(|| v.dispose());
         }
     }
 

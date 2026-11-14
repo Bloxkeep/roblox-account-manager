@@ -149,6 +149,9 @@ impl OverlayWindow {
         if !WebToolWindow::ensure_browser(dynme).await || self.tool.is_disposed() {
             if !self.tool.is_disposed() {
                 log::note(&format!("Overlay ({:?}): its page couldn't start; ended.", self.kind));
+                // No window was made, so close() only disposes it: the ending is told here, or the panel behind a
+                // screen pick stayed hidden and Edit/Pick never heard back.
+                self.on_form_closed();
                 self.tool.close();
             }
             return;

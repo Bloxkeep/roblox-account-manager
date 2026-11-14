@@ -2,7 +2,7 @@
 //! when a window joins, changes server, leaves or is kicked. Each log is tied to its window by Windows' Restart Manager
 //! (who has the file open). The format is not an official API, so Roblox's presence stays as the fallback.
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{HashMap, HashSet, VecDeque},
     io::{Read as _, Seek, SeekFrom},
     os::windows::fs::OpenOptionsExt,
     sync::{
@@ -45,6 +45,8 @@ pub struct ClientState {
     pub banned_by_game: bool,
     pub teleport_started: Option<Stamp>,
     pub never_joined: bool,
+    /// When a timed game ban in its kick line ends (`ban_end_of`); None for a permanent one.
+    pub ban_ends: Option<Stamp>,
 }
 
 impl ClientState {
@@ -62,6 +64,7 @@ impl ClientState {
             banned_by_game: false,
             teleport_started: None,
             never_joined: false,
+            ban_ends: None,
         }
     }
 }
@@ -86,6 +89,7 @@ pub(crate) struct Tail {
     /// The game's kick line, logged before the disconnect it explains.
     pending_kick_message: Option<String>,
     pending_ban: bool,
+    pending_ban_ends: Option<Stamp>,
     /// A game start that isn't the window's first: the game its "Joining game" names is one the person chose.
     pub(crate) own_start: bool,
     /// Servers connected to ("serverId:") and not yet left (a disconnect line ends one).
@@ -99,6 +103,13 @@ pub(crate) struct Tail {
     update_hand_off: Option<Stamp>,
     /// The signed-in account, from the join report (see JOIN_REPORT_MARK).
     user_id: Option<i64>,
+    /// Shown as a drop by a reason line (see drop_on_reason): the disconnect line after it adds nothing.
+    pub(crate) dropped_by_reason: bool,
+    /// Roblox's own words for error.log (see keep_line): lines that tell why a window ended, and the last few lines.
+    said: VecDeque<Kept>,
+    other: VecDeque<Kept>,
+    last_lines: VecDeque<Kept>,
+    lines_read: u64,
 }
 
 impl Tail {
@@ -117,6 +128,7 @@ impl Tail {
             shown_reason_rank: 0,
             pending_kick_message: None,
             pending_ban: false,
+            pending_ban_ends: None,
             own_start: false,
             connections: 0,
             closed_by_new_window: None,
@@ -126,7 +138,20 @@ impl Tail {
             background_update: false,
             update_hand_off: None,
             user_id: None,
+            dropped_by_reason: false,
+            said: VecDeque::new(),
+            other: VecDeque::new(),
+            last_lines: VecDeque::new(),
+            lines_read: 0,
         }
+    }
+
+    /// The log came back shorter than what was read (cut short, or replaced under the same name): read again from the
+    /// start as a log just found is, so its lines don't apply on top of what the old content left (a half line, an
+    /// open server count, a state, a kick waiting for its disconnect).
+    fn restart(&mut self) {
+        let fresh = Tail::new(std::mem::take(&mut self.path), self.pid);
+        *self = Tail { serial: self.serial, ..fresh };
     }
 }
 
@@ -153,6 +178,41 @@ pub fn folders() -> &'static [String] {
     log_dirs()
 }
 
+/// How long Roblox's own logs are kept: a week still holds the ones a bug report needs.
+pub const KEEP_LOGS: std::time::Duration = std::time::Duration::from_secs(7 * 24 * 3600);
+
+/// Deletes Roblox's logs older than KEEP_LOGS (its folders' own *.log files only). Roblox keeps every one, and a PC farming
+/// with many windows writes a log per window per start (RoALT clears its after a day). One still being written can't be
+/// deleted and stays. The number deleted.
+pub fn clean_old_logs(now: std::time::SystemTime) -> usize {
+    let mut removed = 0;
+    let age = |t: std::time::SystemTime| now.duration_since(t).unwrap_or_default();
+    for dir in log_dirs() {
+        let Ok(entries) = std::fs::read_dir(dir) else { continue };
+        let files: Vec<(std::path::PathBuf, std::time::SystemTime)> = entries
+            .flatten()
+            .filter(|e| e.file_name().to_string_lossy().to_ascii_lowercase().ends_with(".log"))
+            .filter_map(|e| {
+                let meta = e.metadata().ok().filter(|m| m.is_file())?;
+                Some((e.path(), meta.modified().ok()?))
+            })
+            .collect();
+        // Nothing written for a week by that clock: Roblox unused since, or the clock set far ahead. Either way the newest
+        // logs would go too: left as they are.
+        let Some(newest) = files.iter().map(|f| f.1).max() else { continue };
+        if age(newest) > KEEP_LOGS {
+            continue;
+        }
+        for (path, at) in files {
+            // In use or not Bloxkeep's to delete: left.
+            if age(at) > KEEP_LOGS && std::fs::remove_file(&path).is_ok() {
+                removed += 1;
+            }
+        }
+    }
+    removed
+}
+
 // A game start, logged before "Joining game" (seen 2026-10-13 in 0.742, and in the Store edition): a launch that
 // stalls while loading never gets further, so it counts as joining from here.
 const LAUNCH_MARK: &str = "[FLog::SingleSurfaceApp] launchUGCGameInternal";
@@ -163,6 +223,17 @@ static REASON_LINE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"setting repl
 // come before or after the disconnect line.
 static NOTIFICATION_REASON_LINE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"Disconnection Notification\. Reason: (\d+)").expect("notification"));
 // The server's own code, from the 0.744 client's strings; not seen in a log yet.
+// Roblox couldn't reach the server it was sent to: its "Connection Failed" box (279 "No response from server"). Logged
+// after "Joining game", with no serverId and no disconnect line after it (the owner's test 2026-11-14, 0.747, a rejoin into
+// a server that had just run out of memory):
+//   [DFLog::NetworkClient] Failed to connect to server at 128.116.46.33|50694, no response.
+//   [DFLog::NetworkClient] Failed to connect to server after falling back from RbxTransport to RakNet. Disconnect code: 279. ...
+// RbxTransport's own failure before it ("[DFLog::RbxTransportDummyClient] Failed to establish connection") is not the end:
+// RakNet is tried after it.
+const CONNECT_FAILED_MARK: &str = "[DFLog::NetworkClient] Failed to connect to server";
+static CONNECT_FAILED_CODE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"Disconnect code: (\d+)").expect("connect failed"));
+/// Roblox's ConnectionError for "No response from server" (ConnectErrors 279).
+const NO_RESPONSE: i32 = 279;
 static RECEIVED_REASON_LINE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\[FLog::Network\] Disconnect reason received: (\d+)").expect("received"));
 /// DisconnectClientRequest: the notification line can repeat it after the server's reason, so it never overrides one.
 const CLIENT_REQUEST: i32 = 285;
@@ -287,6 +358,18 @@ pub struct RobloxLogWatcher {
     search: Option<JoinHandle<LogSearch>>,
     /// Each log with the offset read from, the new one and the text (None: nothing new).
     reading: Option<JoinHandle<Vec<Chunk>>>,
+    /// Clients gone (pid, when, their kept lines): one that quit before Bloxkeep took its window still has its words.
+    ended: VecDeque<Ended>,
+    /// Clients whose lines already went to error.log (App::note_roblox_lines): not written again for a launch's quit.
+    noted: HashSet<i32>,
+}
+
+/// A client gone: its pid, when, its log and the lines kept from it.
+struct Ended {
+    pid: i32,
+    at: Stamp,
+    path: String,
+    lines: Vec<String>,
 }
 
 impl Default for RobloxLogWatcher {
@@ -297,7 +380,7 @@ impl Default for RobloxLogWatcher {
 
 impl RobloxLogWatcher {
     pub fn new() -> RobloxLogWatcher {
-        RobloxLogWatcher { tails: HashMap::new(), foreign: HashSet::new(), unmatched: HashMap::new(), search: None, reading: None }
+        RobloxLogWatcher { tails: HashMap::new(), foreign: HashSet::new(), unmatched: HashMap::new(), search: None, reading: None, ended: VecDeque::new(), noted: HashSet::new() }
     }
 
     pub fn state_of(&self, pid: i32) -> Option<ClientState> {
@@ -349,8 +432,85 @@ impl RobloxLogWatcher {
         ended(tail)
     }
 
+    /// Roblox's own lines from this client's log (see keep_line) from the last WORDS_SPAN, live or just gone; empty when
+    /// its log wasn't found. The client counts as written (`ended_since` leaves it out).
+    pub fn lines_of(&mut self, pid: i32) -> Vec<String> {
+        self.noted.insert(pid);
+        let since = Stamp::utc_now().plus_secs(-WORDS_SPAN_SECS);
+        match self.tails.get(&pid) {
+            Some(tail) => kept_lines(tail, Some(since)),
+            None => self.ended.iter().rev().find(|e| e.pid == pid).map(|e| e.lines.clone()).unwrap_or_default(),
+        }
+    }
+
+    /// Clients gone since `at`, not in `before` and not written yet, newest first: a launch's client that quit before its
+    /// window.
+    pub fn ended_since(&self, at: Stamp, before: &HashSet<i32>) -> Vec<(i32, Vec<String>)> {
+        self.ended
+            .iter()
+            .rev()
+            .filter(|e| e.at.secs_since(at) >= -1.0 && !before.contains(&e.pid) && !self.noted.contains(&e.pid))
+            .map(|e| (e.pid, e.lines.clone()))
+            .collect()
+    }
+
+    /// Player logs begun since `at` that no client here was followed through and nobody holds open, newest first, with
+    /// their lines: a client that quit before its log was found (the search waits FIRST_WAIT_SECS). At most two, each
+    /// read up to QUIT_LOG_MOST.
+    pub fn unfollowed_logs_since(&self, at: Stamp) -> Vec<(String, Vec<String>)> {
+        let known: HashSet<String> = self.tails.values().map(|t| t.path.to_lowercase()).chain(self.ended.iter().map(|e| e.path.to_lowercase())).collect();
+        let from = std::time::UNIX_EPOCH + std::time::Duration::from_millis((at.unix_ms() - 2000).max(0) as u64);
+        let mut logs: Vec<(String, std::time::SystemTime)> = Vec::new();
+        for dir in log_dirs() {
+            let Ok(entries) = std::fs::read_dir(dir) else { continue };
+            for entry in entries.flatten() {
+                let name = entry.file_name().to_string_lossy().into_owned();
+                if !is_player_log(&name) || name.to_lowercase().contains("crashhandler") {
+                    continue;
+                }
+                let path = entry.path().to_string_lossy().into_owned();
+                let Ok(meta) = entry.metadata() else { continue };
+                let created = meta.created().or_else(|_| meta.modified()).unwrap_or(std::time::UNIX_EPOCH);
+                if created >= from && !known.contains(&path.to_lowercase()) {
+                    logs.push((path, created));
+                }
+            }
+        }
+        logs.sort_by(|a, b| b.1.cmp(&a.1));
+        let mut found = Vec::new();
+        for (path, _) in logs.into_iter().take(4) {
+            if !opened_by(&path).is_empty() {
+                continue; // a running client's
+            }
+            let mut tail = Tail::new(path.clone(), 0);
+            while tail.offset < QUIT_LOG_MOST && read_more(&mut tail) {}
+            let name = path.rsplit(['\\', '/']).next().unwrap_or_default().to_string();
+            found.push((name, kept_lines(&tail, None)));
+            if found.len() == 2 {
+                break;
+            }
+        }
+        found
+    }
+
     /// True when a state changed.
     pub fn poll(&mut self, pids: &[i32]) -> bool {
+        let now = Stamp::utc_now();
+        let gone: Vec<i32> = self.tails.keys().copied().filter(|pid| !pids.contains(pid)).collect();
+        for pid in gone {
+            if let Some(mut tail) = self.tails.remove(&pid) {
+                // Its last lines: the process is gone, so nothing holds the file busy (claimed windows were read by
+                // last_state_of this tick already).
+                read(&mut tail);
+                let lines = kept_lines(&tail, Some(now.plus_secs(-WORDS_SPAN_SECS)));
+                self.ended.push_back(Ended { pid, at: now, path: tail.path, lines });
+            }
+        }
+        while self.ended.len() > 40 || self.ended.front().is_some_and(|e| now.secs_since(e.at) > ENDED_KEPT_SECS) {
+            self.ended.pop_front();
+        }
+        let (tails, ended) = (&self.tails, &self.ended);
+        self.noted.retain(|pid| tails.contains_key(pid) || ended.iter().any(|e| e.pid == *pid));
         self.tails.retain(|pid, _| pids.contains(pid));
         self.take_search(pids);
         let tails = &self.tails;
@@ -358,7 +518,6 @@ impl RobloxLogWatcher {
         if pids.is_empty() {
             return false;
         }
-        let now = Stamp::utc_now();
         for &pid in pids {
             if !self.tails.contains_key(&pid) {
                 self.unmatched.entry(pid).or_insert((now, now, FIRST_WAIT_SECS));
@@ -407,6 +566,10 @@ impl RobloxLogWatcher {
             };
             if tail.serial != serial || tail.offset != from {
                 continue;
+            }
+            // read_chunk starts over at 0 only when the file is shorter than `from`: the only way back.
+            if offset < from {
+                tail.restart();
             }
             tail.offset = offset;
             if let Some(text) = text {
@@ -536,6 +699,9 @@ fn read_more(tail: &mut Tail) -> bool {
 
 fn read(tail: &mut Tail) -> bool {
     let (offset, text) = read_chunk(&tail.path, tail.offset);
+    if offset < tail.offset {
+        tail.restart(); // see take_reads
+    }
     tail.offset = offset;
     match text {
         Some(text) => apply_text(tail, &text),
@@ -579,8 +745,11 @@ fn read_chunk(path: &str, offset: i64) -> (i64, Option<String>) {
         // at it: decoded now it would turn into two U+FFFD. Bytes that are wrong inside the text stay as before (U+FFFD).
         if let Err(e) = std::str::from_utf8(&buffer[..read])
             && e.error_len().is_none()
-            && e.valid_up_to() > 0
         {
+            // Only the start of a letter so far: nothing read, the offset stays for when the rest is written.
+            if e.valid_up_to() == 0 {
+                return Ok((offset, None));
+            }
             read = e.valid_up_to();
         }
         Ok((offset + read as i64, Some(String::from_utf8_lossy(&buffer[..read]).into_owned())))
@@ -624,9 +793,135 @@ pub(crate) fn apply_text(tail: &mut Tail, read: &str) -> bool {
     tail.partial = text[end + 1..].to_string();
     let before = tail.state.clone();
     for line in enumerate_lines(&text[..end]) {
+        keep_line(tail, line);
         apply(tail, line);
     }
     tail.state != before
+}
+
+// ───────── Roblox's own words for error.log ─────────
+// Bloxkeep's log says what Bloxkeep did; why Roblox showed an error, quit or left a game is only in Roblox's log. Users
+// rarely send that one (2026-11-15: two reports, 403 at start and rejoins "blocked", neither provable without it), so a
+// window that ends gets its own lines written to error.log (App::note_roblox_lines).
+
+/// Kept lines for this long before a window ends (older ones say little about why it ended).
+const WORDS_SPAN_SECS: f64 = 600.0;
+/// Gone clients' lines kept this long (a launch held for Roblox's updater still finds its client's).
+const ENDED_KEPT_SECS: f64 = 1800.0;
+/// A quit client's log read this far at most (one that ran seconds writes far less).
+const QUIT_LOG_MOST: i64 = 512 * 1024;
+const KEEP_SAID: usize = 12;
+const KEEP_OTHER: usize = 6;
+const KEEP_LAST: usize = 6;
+const LINE_MOST: usize = 240;
+
+/// One kept line: its place in the log, its time, the line shortened, and its words with numbers taken out (a retry
+/// loop's lines differ only in those).
+#[derive(Clone)]
+struct Kept {
+    n: u64,
+    at: Stamp,
+    text: String,
+    shape: String,
+}
+
+/// Never kept: lines with a sign-in ticket itself or a join link (they carry the account's id and names, URL-encoded past any
+/// scrub), and the game's own output (other players' names, the game's words).
+static NEVER_KEPT: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r#"(?i)joinscripturl|ticket=|ticket"|gameinfo:|username|displayname|user_?id|\[FLog::(?:Output|CreatorError)\]"#).expect("never-kept pattern")
+});
+/// Roblox's own account of a session: its network, joins, leaves, updater and crash lines, and words that say why.
+static SAYS_WHY: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(
+        r"(?i)\[D?FLog::(?:Network|NetworkClient|SessionTransitionFSM|UpdateController|CrashReportLog|Teleport\w*|GameJoin\w*|PlaceLauncher\w*)\]|disconnect|kick|\bban(?:ned)?\b|authenticat|unauthori|forbidden|denied|lost connection|shut ?down|leaveUGCGame|not.?approved|moderat|WebLogin|authentication-ticket|NoReload|singleton|\b40[13]\b|\b429\b|\[D?FLog::HttpTraceError\].*roblox\.com",
+    )
+    .expect("says-why pattern")
+});
+/// Other errors, kept apart so a game's missing sounds and meshes can't push out the lines above.
+static OTHER_ERROR: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(?i)error|fail|exception|crash|timed? ?out|refus|invalid|reject|abort").expect("other-error pattern")
+});
+static ASSET_NOISE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(?i)rbxasset|rbxcdn|sound|wrap|deform|asset|texture|mesh|animation|memoryPrioritization").expect("asset-noise pattern")
+});
+/// A join's routine steps (owner's real logs, 2026-11-15: they filled the kept lines after every rejoin and say nothing of why).
+static ROUTINE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(?i)Replicator (?:created|destroyed)|Time taken to initialize|Assigned peer id|Join snapshot timer|MegaReplicator|UDMUX Address|serverId:|NetworkClient:Remove").expect("routine pattern")
+});
+/// Numbers, pointers (0x22b8d281cf0) and ids turned to "#", so a retry loop's lines read as one.
+static NUMBERS: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?i)0x[0-9a-f]+|\b[0-9a-f]{6,}\b|\d+").expect("numbers pattern"));
+static PLAYER_PATH: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"Players\.[^\s.:]+").expect("player-path pattern"));
+
+/// The line's own words, after "time,uptime,thread,level": the uptime column (403.97…) must not read as an HTTP 403.
+fn words_of(line: &str) -> &str {
+    let mut parts = line.splitn(4, ',');
+    match (parts.next(), parts.next(), parts.next(), parts.next()) {
+        (Some(_), Some(_), Some(_), Some(rest)) => rest.trim_start_matches(|c: char| c.is_ascii_digit()).trim_start_matches([',', ' ']),
+        _ => line.trim(),
+    }
+}
+
+/// "2026-11-14T07:57:02.368Z,1.36,be64,6,Warning [FLog::Warning] text" as "07:57:02 Warning [FLog::Warning] text".
+fn short_line(line: &str) -> String {
+    let words = PLAYER_PATH.replace_all(words_of(line), "Players.[player]");
+    let time = line.split(',').next().unwrap_or_default();
+    match time.get(11..19).filter(|_| time.as_bytes().get(10) == Some(&b'T')) {
+        Some(clock) if words.len() < line.len() => cut(&format!("{clock} {words}")),
+        _ => cut(&words),
+    }
+}
+
+fn cut(text: &str) -> String {
+    match text.char_indices().nth(LINE_MOST) {
+        Some((i, _)) => format!("{}…", &text[..i]),
+        None => text.to_string(),
+    }
+}
+
+/// Into a ring of `most`: a line of the same shape as one there replaces it (counted once, at its newest place).
+fn push_kept(ring: &mut VecDeque<Kept>, kept: Kept, most: usize) {
+    if let Some(i) = ring.iter().position(|k| k.shape == kept.shape) {
+        ring.remove(i);
+    }
+    ring.push_back(kept);
+    if ring.len() > most {
+        ring.pop_front();
+    }
+}
+
+fn keep_line(tail: &mut Tail, line: &str) {
+    if line.trim().is_empty() || NEVER_KEPT.is_match(line) {
+        return;
+    }
+    tail.lines_read += 1;
+    let words = words_of(line);
+    let text = short_line(line);
+    let kept = Kept { n: tail.lines_read, at: time_of(line), shape: NUMBERS.replace_all(words, "#").into_owned(), text };
+    // A game's missing sounds and meshes fail by the hundred, some with "HTTP 403": never the reason a window ended.
+    if ASSET_NOISE.is_match(words) || ROUTINE.is_match(words) {
+    } else if SAYS_WHY.is_match(words) {
+        push_kept(&mut tail.said, kept.clone(), KEEP_SAID);
+    } else if OTHER_ERROR.is_match(words) {
+        push_kept(&mut tail.other, kept.clone(), KEEP_OTHER);
+    }
+    // The same line over and over at the end (a heartbeat, a memory callback) counts once.
+    push_kept(&mut tail.last_lines, kept, KEEP_LAST);
+}
+
+/// Tests: the lines kept from a whole log's text (roblox-words suite).
+pub(crate) fn kept_from(text: &str) -> Vec<String> {
+    let mut tail = Tail::new(String::new(), 0);
+    apply_text(&mut tail, text);
+    kept_lines(&tail, None)
+}
+
+/// The lines kept, in the log's order; with `since`, the ones that say why only from then on (the last lines always).
+fn kept_lines(tail: &Tail, since: Option<Stamp>) -> Vec<String> {
+    let recent = |k: &&Kept| since.is_none_or(|s| k.at >= s);
+    let mut all: Vec<&Kept> = tail.said.iter().filter(recent).chain(tail.other.iter().filter(recent)).chain(tail.last_lines.iter()).collect();
+    all.sort_by_key(|k| k.n);
+    all.dedup_by_key(|k| k.n);
+    all.into_iter().map(|k| k.text.clone()).collect()
 }
 
 /// long.TryParse(…, NumberStyles.None, InvariantCulture): ASCII digits only.
@@ -642,6 +937,46 @@ fn parse_i32(s: &str) -> Option<i32> {
         return None;
     }
     s.parse().ok()
+}
+
+/// A reason line is a drop by itself: a game that fails while loading (or a server that drops it) shows Roblox's
+/// "Disconnected" box, and its "Time to disconnect replication data" line may never come, so the window read as in its
+/// game for good (a RoALT user's report 2026-11-14: kicked on joining, still "In game"). Not while leaving, nor in a
+/// teleport (its old server's lines), nor a join still on its old server, nor the client's own request (285). None of
+/// these lines is logged on a plain leave or teleport (the owner's 0.747 logs, 2026-11-12/13).
+fn drop_on_reason(tail: &mut Tail, code: Option<i32>, line: &str) {
+    // Roblox's own network line only, never a game's output quoting one.
+    let Some(tag) = line.find('[') else { return };
+    if !(line[tag..].starts_with("[FLog::Network]") || line[tag..].starts_with("[DFLog::Network")) {
+        return;
+    }
+    let Some(state) = tail.state.clone() else { return };
+    if tail.leaving
+        || code == Some(CLIENT_REQUEST)
+        || !(state.status == "ingame" || state.status == "joining")
+        || state.teleport_started.is_some()
+        || (state.status == "joining" && tail.connections > 0)
+    {
+        return;
+    }
+    let at = time_of(line);
+    if tail.teleport_at.is_some_and(|teleport| at.secs_since(teleport) < TELEPORT_WINDOW_SECS) {
+        return;
+    }
+    tail.shown_reason_rank = tail.pending_reason_rank;
+    tail.state = Some(ClientState {
+        status: "disconnected".into(),
+        reason: tail.pending_reason,
+        kick_message: tail.pending_kick_message.clone(),
+        banned_by_game: tail.pending_ban,
+                ban_ends: tail.pending_ban_ends,
+        at,
+        teleport_started: None,
+        ..state
+    });
+    tail.pending_reason = None;
+    (tail.pending_kick_message, tail.pending_ban, tail.pending_ban_ends) = (None, false, None);
+    tail.dropped_by_reason = true;
 }
 
 /// One line of the log: what it changes in the client's state.
@@ -661,7 +996,7 @@ pub(crate) fn apply(tail: &mut Tail, line: &str) {
         // A teleport stays open: its old server's disconnect line may still come (see TELEPORT_MARK).
         tail.leaving = false;
         tail.pending_reason = None;
-        (tail.pending_kick_message, tail.pending_ban) = (None, false);
+        (tail.pending_kick_message, tail.pending_ban, tail.pending_ban_ends) = (None, false, None);
         let place = parse_i64(&join[2]);
         let previous = tail.state.clone();
         tail.state = Some(ClientState {
@@ -672,21 +1007,24 @@ pub(crate) fn apply(tail: &mut Tail, line: &str) {
         });
         tail.own_start = false;
         tail.join_challenged = None;
+        tail.dropped_by_reason = false;
     }
     // The line itself: Roblox's client also has "launchUGCGameInternal: deferred download complete" and the like, no game start.
     else if line.contains(LAUNCH_MARK) && line.trim_end().ends_with(LAUNCH_MARK) {
         tail.leaving = false;
         tail.teleport_at = None;
         tail.pending_reason = None;
-        (tail.pending_kick_message, tail.pending_ban) = (None, false);
+        (tail.pending_kick_message, tail.pending_ban, tail.pending_ban_ends) = (None, false, None);
         // Bloxkeep's start is a window's first; a later one is the person picking a game on Roblox's screens after
         // leaving or a kick (seen 2026-10-19).
         tail.own_start = tail.state.is_some();
         let chosen = tail.state.as_ref().and_then(|s| s.chosen_place);
         tail.state = Some(ClientState { chosen_place: chosen, person_started: tail.own_start, ..ClientState::new("joining", None, None, None, time_of(line)) });
         tail.join_challenged = None;
+        tail.dropped_by_reason = false;
     } else if line.contains(CONNECTED_MARK) {
         tail.connections += 1;
+        tail.dropped_by_reason = false;
         if let Some(joining) = tail.state.as_ref().filter(|s| s.status == "joining") {
             tail.state = Some(ClientState { status: "ingame".into(), at: time_of(line), person_started: false, teleport_started: None, ..joining.clone() });
         }
@@ -715,25 +1053,66 @@ pub(crate) fn apply(tail: &mut Tail, line: &str) {
         let words = kick[1].trim();
         let message = if words.is_empty() { None } else { Some(words.to_string()) };
         let ban = is_ban(&kick[2]);
+        let ends = if ban { ban_end_of(&kick[2]) } else { None };
         // Normally before the disconnect line; one logged after it completes the state shown.
         match tail.state.as_ref() {
             Some(shown) if shown.status == "disconnected" && shown.kick_message.is_none() && !shown.banned_by_game => {
-                tail.state = Some(ClientState { kick_message: message, banned_by_game: ban, ..shown.clone() });
+                tail.state = Some(ClientState { kick_message: message, banned_by_game: ban, ban_ends: ends, ..shown.clone() });
             }
-            _ => (tail.pending_kick_message, tail.pending_ban) = (message, ban),
+            _ => (tail.pending_kick_message, tail.pending_ban, tail.pending_ban_ends) = (message, ban, ends),
         }
-    } else if let Some(worded) = (if line.contains(REASON_WORDS_MARK) || line.contains(LOST_WITH_REASON_MARK) { reason_of_words(line) } else { None }) {
-        remember_reason(tail, worded, 1);
-    } else if let Some(why) = (if line.contains("disconnect reason to") { REASON_LINE.captures(line).and_then(|c| parse_i32(&c[1])) } else { None }) {
+    } else if line.contains(REASON_WORDS_MARK) || line.contains(LOST_WITH_REASON_MARK) {
+        let worded = reason_of_words(line);
+        drop_on_reason(tail, worded, line);
+        if let Some(known) = worded {
+            remember_reason(tail, known, 1);
+        }
+    } else if let Some(why) = if line.contains("disconnect reason to") { REASON_LINE.captures(line).and_then(|c| parse_i32(&c[1])) } else { None } {
+        drop_on_reason(tail, Some(why), line);
         remember_reason(tail, why, 3);
     } else if let Some(sent) =
-        (if line.contains("Disconnect reason received") { RECEIVED_REASON_LINE.captures(line).and_then(|c| parse_i32(&c[1])) } else { None })
+        if line.contains("Disconnect reason received") { RECEIVED_REASON_LINE.captures(line).and_then(|c| parse_i32(&c[1])) } else { None }
     {
+        drop_on_reason(tail, Some(sent), line);
         remember_reason(tail, sent, 3);
     } else if let Some(code) =
-        (if line.contains("Disconnection Notification") { NOTIFICATION_REASON_LINE.captures(line).and_then(|c| parse_i32(&c[1])) } else { None })
+        if line.contains("Disconnection Notification") { NOTIFICATION_REASON_LINE.captures(line).and_then(|c| parse_i32(&c[1])) } else { None }
     {
+        drop_on_reason(tail, Some(code), line);
         remember_reason(tail, code, if code == CLIENT_REQUEST { 0 } else { 2 });
+    }
+    // A join that never reached its server ends here: the window sat on Roblox's "Connection Failed" box, read as still
+    // joining a named server, which no timeout covered (see CONNECT_FAILED_MARK).
+    else if line.contains(CONNECT_FAILED_MARK) {
+        let said = CONNECT_FAILED_CODE.captures(line).and_then(|c| parse_i32(&c[1]));
+        match tail.state.clone() {
+            Some(failing) if !tail.leaving && failing.status == "joining" => {
+                tail.shown_reason_rank = 3;
+                tail.state = Some(ClientState {
+                    status: "disconnected".into(),
+                    reason: Some(said.unwrap_or(NO_RESPONSE)),
+                    kick_message: None,
+                    banned_by_game: false,
+                    at: time_of(line),
+                    teleport_started: None,
+                    ..failing
+                });
+                tail.teleport_at = None;
+                tail.pending_reason = None;
+                (tail.pending_kick_message, tail.pending_ban, tail.pending_ban_ends) = (None, false, None);
+            }
+            // The fallback line after it only sharpens the code.
+            Some(shown) if shown.status == "disconnected" && shown.reason == Some(NO_RESPONSE) && said.is_some() => {
+                tail.state = Some(ClientState { reason: said, ..shown });
+            }
+            _ => {}
+        }
+    } else if line.contains(DISCONNECTED_MARK) && tail.dropped_by_reason && tail.state.as_ref().is_some_and(|s| s.status == "disconnected") {
+        // Already shown as a drop by its reason line: this line only ends that server.
+        tail.connections = 0.max(tail.connections - 1);
+        tail.teleport_at = None;
+        tail.leaving = false;
+        tail.dropped_by_reason = false;
     } else if line.contains(DISCONNECTED_MARK) && tail.state.is_some() {
         let state = tail.state.clone().expect("checked");
         let at = time_of(line);
@@ -751,7 +1130,7 @@ pub(crate) fn apply(tail: &mut Tail, line: &str) {
             }
             // The old server's kick words go with it, not with the next server's disconnect.
             tail.pending_reason = None;
-            (tail.pending_kick_message, tail.pending_ban) = (None, false);
+            (tail.pending_kick_message, tail.pending_ban, tail.pending_ban_ends) = (None, false, None);
             return;
         }
         tail.shown_reason_rank = if tail.leaving { 0 } else { tail.pending_reason_rank };
@@ -763,6 +1142,7 @@ pub(crate) fn apply(tail: &mut Tail, line: &str) {
                 reason: tail.pending_reason,
                 kick_message: tail.pending_kick_message.clone(),
                 banned_by_game: tail.pending_ban,
+                ban_ends: tail.pending_ban_ends,
                 at,
                 teleport_started: None,
                 ..state
@@ -770,7 +1150,7 @@ pub(crate) fn apply(tail: &mut Tail, line: &str) {
         });
         tail.leaving = false;
         tail.pending_reason = None;
-        (tail.pending_kick_message, tail.pending_ban) = (None, false);
+        (tail.pending_kick_message, tail.pending_ban, tail.pending_ban_ends) = (None, false, None);
     } else if line.contains(WND_CHECK_MARK) && (line.contains(NEW_PROCESS_EVENT_MARK) || line.contains(NEW_PROCESS_MUTEX_MARK)) {
         if tail.closed_by_new_window.is_none() {
             tail.closed_by_new_window = Some(time_of(line));
@@ -823,6 +1203,36 @@ pub fn is_ban(metadata: &str) -> bool {
         Ok(doc) => doc.as_object().is_some_and(|o| o.contains_key("moderatorType") || o.contains_key("beginTimestamp")),
         Err(_) => metadata.contains("\"moderatorType\""),
     }
+}
+
+/// When a timed ban ends, UTC: its endTimestamp, else beginTimestamp + durationSeconds. None for a permanent ban
+/// (durationSeconds -1, or no end given). The owner's test 2026-11-14 (BanAsync, 120 s):
+/// {"moderatorType":"creator","durationSeconds":"120","endTimestamp":"2026-11-13T23:09:32Z","dynamicReasonTextFilterStatus":"2","beginTimestamp":"2026-11-13T23:07:32Z"};
+/// without it the account was still treated as banned ten minutes after the ban ended.
+pub fn ban_end_of(metadata: &str) -> Option<Stamp> {
+    if !metadata.trim_start().starts_with('{') {
+        return None;
+    }
+    let root = serde_json::from_str::<serde_json::Value>(metadata).ok()?;
+    let root = root.as_object()?;
+    let text = |name: &str| -> Option<String> {
+        match root.get(name)? {
+            serde_json::Value::String(s) => Some(s.clone()),
+            serde_json::Value::Number(n) => Some(n.to_string()),
+            _ => None,
+        }
+    };
+    // Read as UTC when it names no zone (AssumeUniversal).
+    let time = |t: Option<String>| -> Option<Stamp> {
+        let t = t?.trim().to_string();
+        let zoned = t.ends_with(['Z', 'z']) || t.get(10..).is_some_and(|clock| clock.contains(['+', '-']));
+        Stamp::parse(&if zoned { t } else { format!("{t}Z") })
+    };
+    if let Some(end) = time(text("endTimestamp")) {
+        return Some(end);
+    }
+    let seconds = text("durationSeconds")?.trim().parse::<i64>().ok().filter(|s| *s > 0)?;
+    time(text("beginTimestamp")).map(|begin| begin.plus_secs(seconds as f64))
 }
 
 pub fn reason_of_words(line: &str) -> Option<i32> {
@@ -909,7 +1319,7 @@ pub fn replay(text: &str) -> Vec<String> {
         if apply_text(&mut tail, line) {
             if let Some(s) = &tail.state {
                 out.push(format!(
-                    "{}|{}|{}|{}|{}|{}|{}|{}|{}|{}",
+                    "{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}",
                     s.status,
                     opt(s.place_id),
                     s.job_id.clone().unwrap_or_default(),
@@ -919,13 +1329,14 @@ pub fn replay(text: &str) -> Vec<String> {
                     s.kick_message.clone().unwrap_or_default(),
                     s.banned_by_game,
                     s.teleport_started.is_some(),
-                    s.never_joined
+                    s.never_joined,
+                    opt(s.ban_ends.map(|t| t.to_utc().unix_secs()))
                 ));
             }
         }
     }
     out.push(format!(
-        "end|newWindow={}|oom={}|inOrder={}|challenged={}|bgUpdate={}|handOff={}|user={}|connections={}",
+        "end|newWindow={}|oom={}|inOrder={}|challenged={}|bgUpdate={}|handOff={}|user={}|connections={}|dropped={}|leaving={}",
         tail.closed_by_new_window.is_some(),
         tail.out_of_memory.is_some(),
         tail.closed_in_order.is_some(),
@@ -933,7 +1344,9 @@ pub fn replay(text: &str) -> Vec<String> {
         tail.background_update,
         tail.update_hand_off.is_some(),
         opt(tail.user_id),
-        tail.connections
+        tail.connections,
+        tail.dropped_by_reason,
+        tail.leaving
     ));
     out
 }

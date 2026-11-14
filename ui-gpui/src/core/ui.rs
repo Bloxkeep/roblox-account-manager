@@ -13,7 +13,7 @@ use windows_sys::Win32::{
     Graphics::Dwm::DwmSetWindowAttribute,
     System::{
         DataExchange::{CloseClipboard, EmptyClipboard, GetClipboardData, IsClipboardFormatAvailable, OpenClipboard, RegisterClipboardFormatW, SetClipboardData},
-        Memory::{GMEM_MOVEABLE, GlobalAlloc, GlobalLock, GlobalUnlock},
+        Memory::{GMEM_MOVEABLE, GlobalAlloc, GlobalLock, GlobalSize, GlobalUnlock},
         Ole::CF_UNICODETEXT,
         SystemInformation::OSVERSIONINFOW,
     },
@@ -31,6 +31,31 @@ use super::{
 
 pub const TITLE: &str = "Bloxkeep";
 
+/// Environment.GetFolderPath: the folder Windows keeps for `id`; None when it can't say.
+fn known_folder(id: &windows_sys::core::GUID) -> Option<std::path::PathBuf> {
+    use std::os::windows::ffi::OsStringExt;
+    use windows_sys::Win32::{System::Com::CoTaskMemFree, UI::Shell::SHGetKnownFolderPath};
+    let mut path: windows_sys::core::PWSTR = std::ptr::null_mut();
+    // SAFETY: a valid known-folder id; `path` receives a CoTaskMemAlloc'd string, freed below even on failure.
+    let hr = unsafe { SHGetKnownFolderPath(id, 0, std::ptr::null_mut(), &mut path) };
+    let mut out = None;
+    if hr >= 0 && !path.is_null() {
+        // SAFETY: a NUL-terminated wide string from the call above.
+        out = Some(unsafe {
+            let mut n = 0usize;
+            while *path.add(n) != 0 {
+                n += 1;
+            }
+            std::path::PathBuf::from(std::ffi::OsString::from_wide(std::slice::from_raw_parts(path, n)))
+        });
+    }
+    if !path.is_null() {
+        // SAFETY: freed once.
+        unsafe { CoTaskMemFree(path as *const std::ffi::c_void) };
+    }
+    out
+}
+
 /// Makes Explorer redraw our shortcuts' icons: an update replaces the program folder, and Explorer can keep a
 /// blank icon it cached meanwhile.
 pub fn refresh_shell_icons() {
@@ -41,9 +66,10 @@ pub fn refresh_shell_icons() {
         }
         p
     };
-    // Environment.SpecialFolder.DesktopDirectory and .Programs.
+    // Environment.SpecialFolder.DesktopDirectory (where Windows keeps it: OneDrive moves it) and .Programs.
+    let desktop = known_folder(&windows_sys::Win32::UI::Shell::FOLDERID_Desktop).unwrap_or_else(|| folder("USERPROFILE", &["Desktop"]));
     let paths = [
-        folder("USERPROFILE", &["Desktop"]).join(format!("{TITLE}.lnk")),
+        desktop.join(format!("{TITLE}.lnk")),
         folder("APPDATA", &["Microsoft", "Windows", "Start Menu", "Programs"]).join(format!("{TITLE}.lnk")),
         std::env::current_exe().unwrap_or_default(),
     ];
@@ -73,6 +99,25 @@ static APP_ICON: LazyLock<isize> = LazyLock::new(load_app_icon);
 pub fn app_icon() -> Option<isize> {
     let h = *APP_ICON;
     if h == 0 { None } else { Some(h) }
+}
+
+static APP_ICON_SMALL: LazyLock<isize> = LazyLock::new(|| {
+    // SAFETY: a plain read of a system size.
+    let side = unsafe { windows_sys::Win32::UI::WindowsAndMessaging::GetSystemMetrics(windows_sys::Win32::UI::WindowsAndMessaging::SM_CXSMICON) };
+    let side = if side > 0 { side } else { 16 };
+    // December keeps the Santa hat (its own small pictures); the rest of the year the tray's own drawing.
+    if clock::now().local().month == 12 { icon_from_ico(&APP_ICON_BYTES, side) } else { icon_from_ico(TRAY_ICO, side) }
+});
+
+/// The Keeper's face alone, upright, drawn on the pixel grid of each small size (16–48 px; scratchpad's trayico page).
+const TRAY_ICO: &[u8] = include_bytes!("../../assets/tray.ico");
+
+/// The app's icon at the small size Windows draws in the notification area and a title bar (16 px, 24 at 150 %).
+/// Not app.ico's small pictures: those are the big logo shrunk (tilted −8°, the grey block behind, blurred), so the
+/// tray looked bent whichever of them was used (the owner's tray, 2026-11-13: "méo vẫn hoàn méo").
+pub fn app_icon_small() -> Option<isize> {
+    let h = *APP_ICON_SMALL;
+    if h == 0 { app_icon() } else { Some(h) }
 }
 
 const APP_ICO: &[u8] = include_bytes!("../../../RobloxManager/app.ico");
@@ -306,8 +351,10 @@ fn clipboard_text() -> Option<String> {
         if p.is_null() {
             return None;
         }
+        // Within the block: another program's text may lack its ending zero.
+        let most = GlobalSize(data) / 2;
         let mut len = 0;
-        while *p.add(len) != 0 {
+        while len < most && *p.add(len) != 0 {
             len += 1;
         }
         let text = String::from_utf16_lossy(std::slice::from_raw_parts(p, len));
@@ -318,13 +365,31 @@ fn clipboard_text() -> Option<String> {
 
 /// Removes a copied password or cookie now (on lock and exit), if it is still what the clipboard holds.
 pub fn clear_secret_clipboard() {
-    CLIPBOARD_TIMER.fetch_add(1, Ordering::SeqCst);
-    let Some(secret) = CLIPBOARD_SECRET.lock().unwrap_or_else(|e| e.into_inner()).take() else { return };
-    // An ExternalException (the clipboard held by another program): left as it is.
-    if !open_clipboard() {
+    let mine = CLIPBOARD_TIMER.fetch_add(1, Ordering::SeqCst) + 1;
+    wipe_secret(mine, 0);
+}
+
+fn wipe_secret(mine: u64, tries: u32) {
+    if CLIPBOARD_SECRET.lock().unwrap_or_else(|e| e.into_inner()).is_none() {
         return;
     }
-    if clipboard_text().as_deref() == Some(secret.as_str()) {
+    // The clipboard held by another program: the secret is kept and tried again a little later (a newer copy or
+    // clear calls that off), or it stayed on the clipboard for good.
+    if !open_clipboard() {
+        if tries < 10 {
+            let _ = std::thread::Builder::new().name("clipboard-wipe".into()).spawn(move || {
+                std::thread::sleep(Duration::from_secs(3));
+                if CLIPBOARD_TIMER.load(Ordering::SeqCst) == mine {
+                    wipe_secret(mine, tries + 1);
+                }
+            });
+        }
+        return;
+    }
+    let secret = CLIPBOARD_SECRET.lock().unwrap_or_else(|e| e.into_inner()).take();
+    if let Some(secret) = secret
+        && clipboard_text().as_deref() == Some(secret.as_str())
+    {
         // SAFETY: the clipboard is open.
         unsafe { EmptyClipboard() };
     }
@@ -386,6 +451,12 @@ pub fn copy_to_clipboard(text: &str, secret: bool) -> bool {
         ok &= put(format_named("ExcludeClipboardContentFromMonitorProcessing"), &[0u8; 4]);
         ok &= put(format_named("CanIncludeInClipboardHistory"), &0i32.to_le_bytes());
         ok &= put(format_named("CanUploadToCloudClipboard"), &0i32.to_le_bytes());
+        if !ok {
+            // Without the marks it would go into clipboard history (and maybe the cloud) and stay there: taken off
+            // again before the clipboard closes, and the copy is reported failed.
+            // SAFETY: the clipboard is still open.
+            unsafe { EmptyClipboard() };
+        }
     }
     // SAFETY: opened above.
     unsafe { CloseClipboard() };

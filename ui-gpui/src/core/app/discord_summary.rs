@@ -286,11 +286,12 @@ impl App {
                     .enumerate()
                     .map(|(i, g)| {
                         format!(
-                            "**{}.** {} · {} · {:.0}%",
+                            "**{}.** {} · {} · {}%",
                             i + 1,
                             webhook::game_link(&stay_game(&g.2), Some(g.2.place_id)),
                             self.duration(g.1 as i64),
-                            (g.1 / total * 100.0)
+                            // .NET's "0%" rounds half away from zero (12.5 % is 13 %), as f64::round does.
+                            (g.1 / total * 100.0).round() as i64
                         )
                     })
                     .collect();

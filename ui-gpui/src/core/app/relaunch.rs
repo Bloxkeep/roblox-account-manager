@@ -99,7 +99,13 @@ fn other_windows_shown(owner: isize) -> bool {
             let look = &mut *(data as *mut Look);
             let mut pid = 0u32;
             GetWindowThreadProcessId(hwnd, &mut pid);
-            if pid == std::process::id() && hwnd as isize != look.owner && IsWindowVisible(hwnd) != 0 {
+            // Not a tool window (the mini window, a panel, an overlay, the tray's menu: web_tool_window makes them so) nor
+            // a click-through one (anti-AFK's unseen window): the C# skipped the mini window and a panel shown by
+            // itself, and with them counted the update waited for a quiet moment forever (review 2026-11-13). A
+            // dialog is ui::modals_open's.
+            const SKIP: i32 = (windows_sys::Win32::UI::WindowsAndMessaging::WS_EX_TOOLWINDOW | windows_sys::Win32::UI::WindowsAndMessaging::WS_EX_TRANSPARENT) as i32;
+            let ex = windows_sys::Win32::UI::WindowsAndMessaging::GetWindowLongW(hwnd, windows_sys::Win32::UI::WindowsAndMessaging::GWL_EXSTYLE);
+            if pid == std::process::id() && hwnd as isize != look.owner && IsWindowVisible(hwnd) != 0 && ex & SKIP == 0 {
                 look.found = true;
                 return 0;
             }
@@ -346,10 +352,15 @@ impl App {
             // Opened to the tray (at sign-in), it updates there without a window coming up.
             let show = at_lock && self.window_now().0 == "shown";
             // catch (IOException or UnauthorizedAccessException or CryptographicException or ObjectDisposedException)
-            if let Err(ex) = self.quit_into_update(show) {
-                log::write(&ex);
-                relaunch::discard();
-                *self.relaunch.relaunch_args.borrow_mut() = None;
+            match self.quit_into_update(show) {
+                Ok(()) => {
+                    self.closed_for_update().await;
+                }
+                Err(ex) => {
+                    log::write(&ex);
+                    relaunch::discard();
+                    *self.relaunch.relaunch_args.borrow_mut() = None;
+                }
             }
         }
         // finally
@@ -390,7 +401,12 @@ impl App {
             if !self.save_before_closing() {
                 return Err(Fail::user(l::t("Couldn't save your changes, so the update waits. Try again in a moment.")));
             }
-            self.quit_into_update(true)
+            self.quit_into_update(true)?;
+            if !self.closed_for_update().await {
+                log::note("Update: Restart to update didn't restart the app.");
+                return Err(Fail::user(l::t("Couldn't restart to update. It installs by itself when you quit Bloxkeep.")));
+            }
+            Ok(())
         }
         .await;
         let result = match tried {
@@ -408,10 +424,6 @@ impl App {
         // finally
         self.updates.applying_update.set(self.relaunch.relaunch_args.borrow().is_some());
         result?;
-        if !self.controller.disposed.get() {
-            log::note("Update: Restart to update didn't restart the app.");
-            return Err(Fail::user(l::t("Couldn't restart to update. It installs by itself when you quit Bloxkeep.")));
-        }
         Ok(Value::Null)
     }
 
@@ -473,12 +485,25 @@ impl App {
         if let Some(quit) = quit {
             quit();
         }
-        if !self.controller.disposed.get() {
-            log::note("Update: the window didn't close to install; the hand-over was removed.");
-            relaunch::discard();
-            *self.relaunch.relaunch_args.borrow_mut() = None;
-        }
         Ok(())
+    }
+
+    /// quit() only posts the close, so the window goes a moment later (C#'s Close() was at once). Still open after a
+    /// while (the person kept it open): the hand-over is removed, the key mustn't wait on disk.
+    async fn closed_for_update(&self) -> bool {
+        for _ in 0..150 {
+            if self.controller.disposed.get() {
+                return true;
+            }
+            rt::sleep(Duration::from_millis(100)).await;
+        }
+        if self.controller.disposed.get() {
+            return true;
+        }
+        log::note("Update: the window didn't close to install; the hand-over was removed.");
+        relaunch::discard();
+        *self.relaunch.relaunch_args.borrow_mut() = None;
+        false
     }
 
     /// Unlocks with the handed-over key and keeps the page's view. No key (too late, or started by the watch) or one that

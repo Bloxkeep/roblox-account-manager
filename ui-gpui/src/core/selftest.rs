@@ -208,6 +208,18 @@ pub fn log_replay(file: &str) -> i32 {
     0
 }
 
+/// --core-log-words FILE: the lines of a Roblox log kept for error.log (roblox_log_watcher::keep_line), unscrubbed.
+pub fn log_words(file: &str) -> i32 {
+    let Ok(bytes) = std::fs::read(file) else {
+        println!("can't read {file}");
+        return 1;
+    };
+    for line in crate::core::roblox_log_watcher::kept_from(&String::from_utf8_lossy(&bytes)) {
+        println!("{line}");
+    }
+    0
+}
+
 /// --core-words OUT: every sentence of the app's own table with its Vietnamese, as JSON lines [english, vietnamese].
 pub fn words(out: &str) -> i32 {
     let lines: Vec<String> = crate::core::l::keys().into_iter().map(|k| json!([k, crate::core::l::t_in(k, "vi")]).to_string()).collect();

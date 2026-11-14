@@ -20,7 +20,7 @@ pub fn stamp_min() -> Stamp {
     Stamp::parse("0001-01-01T00:00:00").expect("a fixed date")
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase", default)]
 pub struct Account {
     pub id: Guid,
@@ -100,6 +100,40 @@ impl Account {
     }
 }
 
+/// `password`, `cookie` and `authenticator` left out: `{:?}` can end up in a log.
+impl std::fmt::Debug for Account {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use crate::core::base::Redacted;
+        f.debug_struct("Account")
+            .field("id", &self.id)
+            .field("user_id", &self.user_id)
+            .field("username", &self.username)
+            .field("display_name", &self.display_name)
+            .field("alias", &self.alias)
+            .field("group", &self.group)
+            .field("note", &self.note)
+            .field("password", &Redacted)
+            .field("cookie", &Redacted)
+            .field("realm", &self.realm)
+            .field("created_at", &self.created_at)
+            .field("last_used", &self.last_used)
+            .field("last_checked", &self.last_checked)
+            .field("cookie_valid", &self.cookie_valid)
+            .field("cookie_renewed", &self.cookie_renewed)
+            .field("auto_rejoin", &self.auto_rejoin)
+            .field("rejoin_off_by_sign_out", &self.rejoin_off_by_sign_out)
+            .field("use_roblox_config", &self.use_roblox_config)
+            .field("fps_cap", &self.fps_cap)
+            .field("is_main", &self.is_main)
+            .field("authenticator", &self.authenticator.as_ref().map(|_| Redacted))
+            .field("banned", &self.banned)
+            .field("banned_since", &self.banned_since)
+            .field("game_bans", &self.game_bans)
+            .field("extra", &self.extra)
+            .finish()
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase", default)]
 pub struct AppSettings {
@@ -142,6 +176,8 @@ pub struct AppSettings {
     /// A launcher installs Roblox's newest build by itself while no Roblox window is open.
     pub auto_update_roblox: bool,
     /// When that update goes in: "idle" once no Roblox window is open, "now" closing them all first (like Close all).
+    /// When that update goes in: "idle" once no Roblox window is open, "now" closing them all first (like Close all), "keep"
+    /// once none is open too, windows opened meanwhile playing on the build already running instead of waiting.
     pub roblox_update_when: String,
     /// Roblox's leanest drawing for the windows Bloxkeep opens, Light AFK presets' too. See RobloxFlags.
     pub fast_flags: bool,
@@ -227,7 +263,7 @@ impl Default for AppSettings {
 }
 
 /// A saved launch: these accounts, in this order, into this game and kind of server.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase", default)]
 pub struct LaunchPreset {
     pub id: Guid,
@@ -297,6 +333,35 @@ impl Default for LaunchPreset {
     }
 }
 
+/// `discord_webhook` left out: anyone with it can post to the channel.
+impl std::fmt::Debug for LaunchPreset {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("LaunchPreset")
+            .field("id", &self.id)
+            .field("name", &self.name)
+            .field("account_ids", &self.account_ids)
+            // It can be a private server's link (privateServerLinkCode), which lets anyone in: never written out.
+            .field("place_input", &crate::core::base::Redacted)
+            .field("game_name", &self.game_name)
+            .field("server", &self.server)
+            .field("job_id", &self.job_id)
+            .field("follow_player", &self.follow_player)
+            .field("follow_user_id", &self.follow_user_id)
+            .field("delay_seconds", &self.delay_seconds)
+            .field("schedule", &self.schedule)
+            .field("last_run_at", &self.last_run_at)
+            .field("anti_afk", &self.anti_afk)
+            .field("auto_rejoin", &self.auto_rejoin)
+            .field("rejoin_with", &self.rejoin_with)
+            .field("profile", &self.profile)
+            .field("restart_hours", &self.restart_hours)
+            .field("arrange", &self.arrange)
+            .field("discord_webhook", &crate::core::base::Redacted)
+            .field("extra", &self.extra)
+            .finish()
+    }
+}
+
 impl LaunchPreset {
     /// A copy, through its JSON: every field, a newer Bloxkeep's too, so a copy can't lose one (a followed player's id
     /// was lost, and the copy could never run). Same id: the caller gives it its own. (C#'s `Clone()`; named so beside
@@ -344,7 +409,7 @@ impl Default for PresetSchedule {
 
 /// A server saved to join again: a private server's link, or a code a game asks for inside it (Bloxkeep opens
 /// the game and copies the code; it never types it in).
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase", default)]
 pub struct SavedServer {
     pub id: Guid,
@@ -358,6 +423,22 @@ pub struct SavedServer {
     pub code: String,
     #[serde(flatten)]
     pub extra: Extra,
+}
+
+/// `link` and `code` left out: either lets anyone into the private server.
+impl std::fmt::Debug for SavedServer {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SavedServer")
+            .field("id", &self.id)
+            .field("name", &self.name)
+            .field("place_id", &self.place_id)
+            .field("universe_id", &self.universe_id)
+            .field("game_name", &self.game_name)
+            .field("link", &crate::core::base::Redacted)
+            .field("code", &crate::core::base::Redacted)
+            .field("extra", &self.extra)
+            .finish()
+    }
 }
 
 impl Default for SavedServer {
@@ -430,7 +511,7 @@ impl Default for VaultData {
 }
 
 /// Alerts on the phone through ntfy: off until the person turns it on.
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase", default)]
 pub struct PhoneSettings {
     pub enabled: bool,
@@ -438,8 +519,15 @@ pub struct PhoneSettings {
     pub topic: String,
 }
 
+/// `topic` left out: whoever knows it reads the alerts.
+impl std::fmt::Debug for PhoneSettings {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("PhoneSettings").field("enabled", &self.enabled).field("topic", &crate::core::base::Redacted).finish()
+    }
+}
+
 /// Posting to a Discord channel through a webhook: off until the person turns it on.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase", default)]
 pub struct DiscordSettings {
     pub enabled: bool,
@@ -520,6 +608,42 @@ impl Default for DiscordSettings {
             quiet_to: "07:00".into(),
             extra: Extra::new(),
         }
+    }
+}
+
+/// `webhook_url` left out: anyone with it can post to the channel.
+impl std::fmt::Debug for DiscordSettings {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("DiscordSettings")
+            .field("enabled", &self.enabled)
+            .field("webhook_url", &crate::core::base::Redacted)
+            .field("stopped", &self.stopped)
+            .field("username", &self.username)
+            .field("avatar_url", &self.avatar_url)
+            .field("language", &self.language)
+            .field("style", &self.style)
+            .field("hide_names", &self.hide_names)
+            .field("summary_daily", &self.summary_daily)
+            .field("summary_daily_time", &self.summary_daily_time)
+            .field("summary_weekly", &self.summary_weekly)
+            .field("summary_weekday", &self.summary_weekday)
+            .field("summary_weekly_time", &self.summary_weekly_time)
+            .field("summary_after_schedule", &self.summary_after_schedule)
+            .field("summary_days", &self.summary_days)
+            .field("summary_parts", &self.summary_parts)
+            .field("summary_accounts", &self.summary_accounts)
+            .field("last_daily", &self.last_daily)
+            .field("last_weekly", &self.last_weekly)
+            .field("board", &self.board)
+            .field("board_minutes", &self.board_minutes)
+            .field("board_message_id", &self.board_message_id)
+            .field("events", &self.events)
+            .field("pings", &self.pings)
+            .field("quiet", &self.quiet)
+            .field("quiet_from", &self.quiet_from)
+            .field("quiet_to", &self.quiet_to)
+            .field("extra", &self.extra)
+            .finish()
     }
 }
 
@@ -672,11 +796,14 @@ pub struct GameBan {
     pub at: Stamp,
     /// The game's words, when it gave any ("Exploiting").
     pub message: Option<String>,
+    /// When a timed ban ends (the ban's endTimestamp, UTC); None for a permanent ban or one whose end isn't known. Past
+    /// it, the ban no longer holds.
+    pub until: Option<Stamp>,
 }
 
 impl Default for GameBan {
     fn default() -> GameBan {
-        GameBan { place_id: 0, game_name: None, at: stamp_min(), message: None }
+        GameBan { place_id: 0, game_name: None, at: stamp_min(), message: None, until: None }
     }
 }
 
@@ -726,11 +853,13 @@ pub struct OpenSession {
     pub preset_id: Option<Guid>,
     /// The frame rate limit Bloxkeep gave it as it opened; 0: none.
     pub fps_limit: i32,
+    /// Opened by Bloxkeep on Roblox's home screen (PendingLaunch::home_screen).
+    pub home_screen: bool,
 }
 
 impl Default for OpenSession {
     fn default() -> OpenSession {
-        OpenSession { account_id: Guid::nil(), pid: 0, started_at: stamp_min(), target: None, preset_id: None, fps_limit: 0 }
+        OpenSession { account_id: Guid::nil(), pid: 0, started_at: stamp_min(), target: None, preset_id: None, fps_limit: 0, home_screen: false }
     }
 }
 

@@ -30,6 +30,8 @@ pub struct Data {
     busy: bool,
     /// Where the list of the file's accounts is scrolled to.
     list_scroll: ScrollHandle,
+    /// Which opening this is: the countdown loop of one closed and opened again at once stops (two ran side by side).
+    opened: u64,
 }
 
 fn s<'a>(v: &'a Value, k: &str) -> &'a str {
@@ -53,9 +55,10 @@ fn wait_left(r: &Root) -> Option<u64> {
     r.import.wait_until.map(|t| t.saturating_duration_since(Instant::now())).filter(|d| !d.is_zero()).map(|d| d.as_secs().max(1))
 }
 
-/// Names hidden (Settings): the file's accounts too, numbered by their place in the file.
+/// Names hidden (Settings): the file's accounts too, by their first letter as the page's are (no numbers).
 fn shown_name(root: &Root, a: &Value) -> String {
-    if flag(&root.state, "hideNames") { format!("#{}", key_of(a) + 1) } else { s(a, "label").to_string() }
+    let name = s(a, "label");
+    if flag(&root.state, "hideNames") { name.trim().chars().next().map(|c| format!("{c}…")).unwrap_or_else(|| "…".into()) } else { name.to_string() }
 }
 
 /// A long file name with its middle left out, so its start and its ".rmv" both show.
@@ -85,9 +88,14 @@ fn call(r: &mut Root, cmd: &'static str, args: Value, window: &mut Window, cx: &
     r.import.error = None;
     window.refresh();
     let rx = link.call(cmd, args);
+    // (An answer for a box closed and opened again since is the old box's: dropped.)
+    let opened = r.import.opened;
     cx.spawn_in(window, async move |this, cx| {
         let answer = rx.await;
         let _ = this.update_in(cx, |r, window, cx| {
+            if r.import.opened != opened {
+                return;
+            }
             r.import.busy = false;
             if r.import.open {
                 match answer {
@@ -208,7 +216,8 @@ fn close(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
 }
 
 pub fn open(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
-    r.import = Data { open: true, ..Default::default() };
+    let opened = r.import.opened.wrapping_add(1);
+    r.import = Data { open: true, opened, ..Default::default() };
     r.help_open = true;
     // While a try waits, the button counts down.
     cx.spawn_in(window, async move |this, cx| {
@@ -221,7 +230,7 @@ pub fn open(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
                     }
                     window.refresh();
                 }
-                r.import.open
+                r.import.open && r.import.opened == opened
             });
             if !matches!(going, Ok(true)) {
                 break;
@@ -253,7 +262,7 @@ pub fn open(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
                     .gap(px(8.))
                     .child(icon("folder", 15., c(TEXT_2)))
                     .child(div().min_w_0().flex_1().truncate().text_size(px(T_M)).font_weight(FontWeight::SEMIBOLD).child(short_name(&f.file)))
-                    .child(focusable(div().id("iv-other")).flex_none().text_size(px(T_S + 0.5)).text_color(c(TEXT_2)).underline().cursor_pointer().hover(|st| st.text_color(c(TEXT))).child(r.tr("iv.otherFile")).on_click(move |_, w, cx| {
+                    .child(focusable(div().id("iv-other")).flex_none().text_size(px(T_M)).text_color(c(TEXT_2)).underline().cursor_pointer().hover(|st| st.text_color(c(TEXT))).child(r.tr("iv.otherFile")).on_click(move |_, w, cx| {
                         let _ = other.update(cx, |r, cx| pick(r, w, cx));
                     })),
             );
@@ -295,13 +304,13 @@ pub fn open(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
                     let (every, none) = (this.clone(), this.clone());
                     let new_keys: Vec<i64> = list.iter().filter(|a| !flag(a, "exists")).map(key_of).collect();
                     let seen_keys: Vec<i64> = list.iter().map(key_of).collect();
-                    let word = |id: &'static str, key: &str| focusable(div().id(id)).text_size(px(T_S + 0.5)).text_color(c(TEXT_2)).underline().cursor_pointer().hover(|st| st.text_color(c(TEXT))).child(r.tr(key));
+                    let word = |id: &'static str, key: &str| focusable(div().id(id)).text_size(px(T_M)).text_color(c(TEXT_2)).underline().cursor_pointer().hover(|st| st.text_color(c(TEXT))).child(r.tr(key));
                     body = body.child(
                         div()
                             .flex()
                             .items_center()
                             .gap(px(14.))
-                            .child(div().flex_1().text_size(px(T_S + 0.5)).text_color(c(MUTED)).child(r.i18n.tv("iv.count", &[("n", &n.to_string()), ("total", &all.len().to_string())])))
+                            .child(div().flex_1().text_size(px(T_M)).text_color(c(MUTED)).child(r.i18n.tv("iv.count", &[("n", &n.to_string()), ("total", &all.len().to_string())])))
                             .child(word("iv-all", "iv.all").on_click(move |_, w, cx| {
                                 let _ = every.update(cx, |r, _| r.import.ticked.extend(new_keys.iter().copied()));
                                 w.refresh();
@@ -382,8 +391,8 @@ pub fn open(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
                                         .child(under),
                                 )
                                 // (Roblox VNG's: the amber tag, as the web page's .tag.vng.)
-                                .when(s(a, "realm") == "vng", |d| d.child(div().flex_none().h(px(20.)).px(px(7.)).rounded_full().flex().items_center().bg(ca(WARN, 0.14)).text_size(px(T_XS)).font_weight(FontWeight::SEMIBOLD).text_color(c(WARN)).child("VNG")))
-                                .child(div().flex_none().h(px(20.)).px(px(8.)).rounded_full().flex().items_center().bg(ca(if exists { WHITE } else { OK }, if exists { 0.06 } else { 0.16 })).text_size(px(T_S)).text_color(c(if exists { MUTED } else { OK })).child(r.tr(if exists { "iv.exists" } else { "iv.new" }))),
+                                .when(s(a, "realm") == "vng", |d| d.child(div().flex_none().text_size(px(T_XS)).font_weight(FontWeight::SEMIBOLD).text_color(c(WARN)).child("VNG")))
+                                .child(div().flex_none().text_size(px(T_S)).font_weight(FontWeight::MEDIUM).text_color(c(if exists { MUTED } else { OK })).child(r.tr(if exists { "iv.exists" } else { "iv.new" }))),
                         );
                     }
                     // (Taller than its box: it scrolls inside it, its scrollbar there all along.)

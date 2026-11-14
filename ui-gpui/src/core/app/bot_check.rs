@@ -90,6 +90,9 @@ impl App {
         if !same_vault(self, &vault) {
             return Ok(Value::Null);
         }
+        // The account as it is once the check was solved (that can take minutes; the C# held the live one): a sign-in
+        // renewed meanwhile is the one the answer goes with.
+        let Some(account) = self.find_account(id) else { return Ok(Value::Null) };
 
         // challenge/continue refused a join's check (2026-10-27) with 403 "an internal error occurred", whatever the
         // answer's shape: then the join is asked again carrying the answer, as that request's retry.

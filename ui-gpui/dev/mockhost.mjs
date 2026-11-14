@@ -59,6 +59,36 @@ const local = v => {
   return out;
 };
 
+// Statistics › Console: a run's worth of lines (core/log.rs's shape), the times counted back from now.
+const consoleLines = () => {
+  const now = Math.floor(Date.now() / 1000);
+  const rows = [
+    [3540, 3540, 'note', 'Bloxkeep', '', 'Bloxkeep 1.0.24 started (Windows build 26300, vi).', 1],
+    [3500, 3500, 'opened', 'Game', 'Alt 1', 'Opened Grow a Garden', 1],
+    [3490, 3490, 'opened', 'Game', 'Farm 2', 'Opened Grow a Garden', 1],
+    [3300, 3300, 'note', 'Bot check', '', 'Roblox asked for a check of kind "rostile" on a join.', 1],
+    [2400, 2400, 'disconnected', 'Drop', 'Farm 2', 'Lost connection (Error 277)', 1],
+    [2380, 2380, 'rejoined', 'Game', 'Farm 2', 'Back in Grow a Garden after 20 s', 1],
+    [1260, 1080, 'error', 'Bloxkeep', '', "Couldn't reach presence.roblox.com: timed out (os error 10060)", 14],
+    [1250, 1100, 'note', 'Rejoin', '', 'No internet: the reconnection waits for it to come back.', 31],
+    [1000, 1000, 'rejoined', 'Game', 'Alt 1', 'Back in Grow a Garden after 3 min', 1],
+    [620, 620, 'note', 'Anti-AFK', '', 'Pressed for 4 windows.', 1],
+    [300, 300, 'closedByRoblox', 'Drop', 'Main', 'Kicked: Same account launched experience from different device', 1],
+    [290, 290, 'note', 'Rejoin', '', "Main's window ended, not rejoined (kicked by Roblox).", 1],
+    [120, 120, 'error', 'Bloxkeep', '', 'Command "joinServer" failed: the server is full (HTTP 409)', 1],
+    [40, 40, 'opened', 'Game', 'Main', 'Opened Blox Fruits', 1],
+  ];
+  // ?conlines=N: that many lines (a long run), the list above repeated with the times spread back.
+  const many = Number(new URLSearchParams(query).get('conlines')) || 0;
+  const base = rows.slice();
+  for (let i = 0; rows.length < many; i++) {
+    const [, , kind, source, account, text] = base[i % base.length];
+    const ago = 3600 + (many - rows.length) * 7;
+    rows.unshift([ago, ago, kind, source, account, `${text} #${many - rows.length}`, 1]);
+  }
+  return { version: 7, lines: rows.map(([a, l, kind, source, account, text, times], i) => ({ id: i + 1, at: now - a, last: now - l, kind, source, account, text, times, tone: kind === 'error' ? 'bad' : kind === 'note' ? 'note' : /disconnected|closedByRoblox/.test(kind) ? 'warn' : 'ok' })) };
+};
+
 const name = `bloxkeep-ui-mock-${process.pid}`;
 let down = null;
 const queue = [];
@@ -80,7 +110,7 @@ await serve(`${name}-up`, s => {
       if (!msg.cmd) continue;
       if (process.env.MOCK_LOG) console.log('[mockhost] <-', line.slice(0, 200));
       try {
-        let result = (await mock.call(msg.cmd, msg.args ?? {})) ?? null;
+        let result = msg.cmd === 'console' ? consoleLines() : msg.cmd === 'consoleClear' ? null : (await mock.call(msg.cmd, msg.args ?? {})) ?? null;
         // gameLooks answers by place: its icon and cover from the demo's copies when they're there.
         if (msg.cmd === 'gameLooks' && map) {
           result = { ...(result || {}) };

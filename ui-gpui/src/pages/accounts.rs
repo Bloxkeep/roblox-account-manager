@@ -11,7 +11,7 @@ use crate::{images, kit::*, shell::Root, theme::*};
 // The list layout, the account menu (its state and the page's other state Root doesn't hold), and the start for new
 // users (no accounts yet, or none opened yet).
 mod list;
-mod menu;
+pub(crate) mod menu;
 mod start;
 
 /// The filters over the list, as the web page's chips.
@@ -24,6 +24,8 @@ pub enum Filter {
     /// Signed out: they need signing in again.
     Invalid,
     Banned,
+    /// Open on this PC (the web page's "On this PC").
+    Local,
 }
 
 fn s<'a>(a: &'a Value, k: &str) -> &'a str {
@@ -32,6 +34,228 @@ fn s<'a>(a: &'a Value, k: &str) -> &'a str {
 fn conn(a: &Value) -> &str {
     a.pointer("/session/connection").and_then(Value::as_str).unwrap_or_default()
 }
+thread_local! {
+    /// Where each account's card, tile or row was last drawn (window pixels), for `reveal` to scroll to, with the
+    /// Accounts frame it was drawn in: only the latest frame's count (a card a filter or the windows view took away
+    /// kept its old place, and the arrow keys landed on it).
+    static SPOTS: std::cell::RefCell<std::collections::HashMap<String, (u64, Bounds<Pixels>)>> = Default::default();
+    /// Counts the Accounts page's frames (one per `accounts` call).
+    static FRAME: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+}
+
+/// The account being revealed (or that the arrow keys are on), as its place among `shown`: a long list draws it
+/// wherever it is, so it can be scrolled to.
+pub fn revealed_in(root: &Root, shown: &[&Value]) -> Option<usize> {
+    let id = root.revealed.as_ref().map(|(id, _)| id.as_str()).or(root.acc_cursor.as_deref())?;
+    shown.iter().position(|a| s(a, "id") == id)
+}
+
+/// Where this account was drawn in the latest Accounts frame.
+fn spot_now(id: &str) -> Option<Bounds<Pixels>> {
+    let now = FRAME.with(std::cell::Cell::get);
+    SPOTS.with(|s| s.borrow().get(id).filter(|(f, _)| *f == now).map(|(_, b)| *b))
+}
+
+/// How long a revealed account's ring stays.
+const FLASH: std::time::Duration = std::time::Duration::from_millis(1600);
+
+/// Laid over an account's card, tile or row: notes where it is drawn, and rings it while it is being revealed (yellow)
+/// or while the arrow keys are on it (a thin light ring).
+pub fn spot(root: &Root, id: &str, radius: f32) -> impl IntoElement {
+    let key = id.to_string();
+    let lit = root.revealed.as_ref().is_some_and(|(r, at)| r == id && at.elapsed() < FLASH);
+    let cursor = root.acc_cursor.as_deref() == Some(id);
+    div()
+        .absolute()
+        .inset_0()
+        .rounded(px(radius))
+        .when(cursor && !lit, |d| d.border_2().border_color(ca(WHITE, 0.55)))
+        .when(lit, |d| d.border_2().border_color(c(FACE)))
+        .child(
+            canvas(
+                move |b, _, _| {
+                    let now = FRAME.with(std::cell::Cell::get);
+                    SPOTS.with(|s| s.borrow_mut().insert(key, (now, b)))
+                },
+                |_, _, _, _| {},
+            )
+            .absolute()
+            .inset_0(),
+        )
+}
+
+/// The windows view on or off, kept for the next run.
+pub fn set_win_view(r: &mut Root, on: bool) {
+    r.acc_win = on;
+    crate::prefs::set("accWindows", Value::Bool(on));
+}
+
+/// A key among the cards.
+#[derive(Clone, Copy, PartialEq)]
+pub enum CardKey {
+    Left,
+    Right,
+    Up,
+    Down,
+    First,
+    Last,
+    /// Space: the card the keys are on picked or let go.
+    Pick,
+}
+
+/// Scrolls the Accounts body so a noted card is in view (in its middle when it was out of it).
+fn scroll_to_spot(spot: Bounds<Pixels>) {
+    let h = crate::scrolled::handle("acc-body");
+    let (view, off) = (h.bounds(), h.offset());
+    if spot.top() < view.top() || spot.bottom() > view.bottom() {
+        let y = spot.top() - view.top() - off.y;
+        let want = -(y - (view.size.height - spot.size.height).max(px(0.)) / 2.);
+        let max = h.max_offset().y;
+        h.set_offset(point(off.x, want.min(px(0.)).max(-max)));
+    }
+}
+
+/// The arrows move among the cards as they are laid out on screen (the nearest one that way), Home and End to the
+/// first and the last, Space picks; the first key lands on the first card.
+pub fn card_key(r: &mut Root, k: CardKey, cx: &mut Context<Root>) -> bool {
+    let shown: Vec<String> = shown_accounts(r, cx).iter().map(|a| s(a, "id").to_string()).collect();
+    let mut cards: Vec<(String, Bounds<Pixels>)> = shown.iter().filter_map(|id| spot_now(id).map(|b| (id.clone(), b))).collect();
+    if cards.is_empty() {
+        return false;
+    }
+    // Reading order: by line, then left to right.
+    cards.sort_by(|a, b| (f32::from(a.1.top()).round() as i64, f32::from(a.1.left()) as i64).cmp(&(f32::from(b.1.top()).round() as i64, f32::from(b.1.left()) as i64)));
+    let at = r.acc_cursor.as_ref().and_then(|id| cards.iter().position(|(c, _)| c == id));
+    if k == CardKey::Pick {
+        let Some(i) = at else { return false };
+        let id = cards[i].0.clone();
+        toggle(r, &id, false, cx);
+        r.acc_cursor = Some(id);
+        cx.notify();
+        return true;
+    }
+    // Home and End in a long list: the first or last account may not be drawn yet (crate::near). The keys' account
+    // is always drawn (revealed_in), so it is put there and scrolled to once it has been.
+    let end = match k {
+        CardKey::First => shown.first(),
+        CardKey::Last => shown.last(),
+        _ => None,
+    };
+    if let Some(id) = end.filter(|id| !cards.iter().any(|(c, _)| c == *id)).cloned() {
+        r.acc_cursor = Some(id.clone());
+        cx.spawn(async move |_, cx| {
+            for _ in 0..20 {
+                cx.background_executor().timer(std::time::Duration::from_millis(40)).await;
+                if let Some(b) = spot_now(&id) {
+                    scroll_to_spot(b);
+                    let _ = cx.update(|cx| cx.refresh_windows());
+                    break;
+                }
+            }
+        })
+        .detach();
+        cx.notify();
+        return true;
+    }
+    let to = match (at, k) {
+        (None, _) | (_, CardKey::First) => 0,
+        (_, CardKey::Last) => cards.len() - 1,
+        (Some(i), CardKey::Left) => i.saturating_sub(1),
+        (Some(i), CardKey::Right) => (i + 1).min(cards.len() - 1),
+        (Some(i), _) => {
+            let here = cards[i].1;
+            let (cx0, cy0) = (f32::from(here.left() + here.right()) / 2., f32::from(here.top() + here.bottom()) / 2.);
+            let down = k == CardKey::Down;
+            cards
+                .iter()
+                .enumerate()
+                .filter(|(_, (_, b))| {
+                    let cy = f32::from(b.top() + b.bottom()) / 2.;
+                    if down { cy > cy0 + 4. } else { cy < cy0 - 4. }
+                })
+                .min_by(|(_, (_, a)), (_, (_, b))| {
+                    let d = |b: &Bounds<Pixels>| ((f32::from(b.top() + b.bottom()) / 2. - cy0).abs(), (f32::from(b.left() + b.right()) / 2. - cx0).abs());
+                    let (ay, ax) = d(a);
+                    let (by, bx) = d(b);
+                    // The nearest line first, then the nearest across it.
+                    (ay.round() as i64, ax as i64).cmp(&(by.round() as i64, bx as i64))
+                })
+                .map(|(j, _)| j)
+                .unwrap_or(i)
+        }
+    };
+    let (id, b) = cards[to].clone();
+    r.acc_cursor = Some(id);
+    scroll_to_spot(b);
+    cx.notify();
+    true
+}
+
+/// Brings an account into view on Accounts and rings it a moment, the selection left as it was; a filter, a group or a
+/// search that hides it is put aside first (app.js's revealAccount).
+pub fn reveal(r: &mut Root, id: &str, window: &mut Window, cx: &mut Context<Root>) {
+    r.go(crate::pages::Page::Accounts);
+    if !shown_accounts(r, cx).iter().any(|a| s(a, "id") == id) {
+        r.acc_filter = Filter::All;
+        r.acc_group = None;
+        r.acc_search.update(cx, |st, cx| st.set_value("", window, cx));
+    }
+    SPOTS.with(|s| s.borrow_mut().clear());
+    let at = std::time::Instant::now();
+    r.revealed = Some((id.to_string(), at));
+    let id = id.to_string();
+    cx.spawn(async move |this, cx| {
+        // Once the page has been drawn and its cards noted (a few frames at most). Not there in the windows view (an
+        // account with no window has no tile in it): the cards come back and it is looked for there.
+        for i in 0..20 {
+            cx.background_executor().timer(std::time::Duration::from_millis(40)).await;
+            let Some(spot) = spot_now(&id) else {
+                if i == 9 {
+                    let _ = this.update(cx, |r, cx| {
+                        if r.acc_win {
+                            set_win_view(r, false);
+                            cx.notify();
+                        }
+                    });
+                }
+                continue;
+            };
+            let h = crate::scrolled::handle("acc-body");
+            let (view, off) = (h.bounds(), h.offset());
+            if spot.top() < view.top() || spot.bottom() > view.bottom() {
+                // Its place in the scrolled body, then the offset that stands it in the middle of the view.
+                let y = spot.top() - view.top() - off.y;
+                let want = -(y - (view.size.height - spot.size.height).max(px(0.)) / 2.);
+                let max = h.max_offset().y;
+                h.set_offset(point(off.x, want.min(px(0.)).max(-max)));
+            }
+            let _ = this.update(cx, |_, cx| cx.notify());
+            break;
+        }
+        cx.background_executor().timer(FLASH).await;
+        let _ = this.update(cx, |r, cx| {
+            if r.revealed.as_ref().is_some_and(|(_, t)| *t == at) {
+                r.revealed = None;
+            }
+            cx.notify();
+        });
+    })
+    .detach();
+    cx.notify();
+}
+
+/// How long a window just closed here says "Closing…" at most (while Roblox's status still says online).
+pub const CLOSING: std::time::Duration = std::time::Duration::from_secs(60);
+
+/// Its window here closed under a minute ago and Roblox still says it is online (Accounts.tsx's closing): the card
+/// says "Closing…" and the game it was in, not "Playing elsewhere".
+pub fn closing<'a>(root: &'a Root, a: &Value) -> Option<&'a str> {
+    if is_local(a) || launching(a) || a.get("rejoin").is_some_and(|v| !v.is_null()) || !is_online(a) {
+        return None;
+    }
+    root.closed_at.get(s(a, "id")).filter(|(at, _)| at.elapsed() < CLOSING).map(|(_, game)| game.as_str())
+}
+
 pub fn is_local(a: &Value) -> bool {
     s(a, "state") == "running"
 }
@@ -65,79 +289,108 @@ fn banned(a: &Value) -> bool {
 pub fn label(a: &Value) -> String {
     ["label", "alias", "displayName", "username"].iter().map(|k| s(a, k)).find(|n| !n.is_empty()).unwrap_or_default().to_string()
 }
-/// An account's number on the rack: its place in the vault from 1 (the order they were added in, not the sort shown,
-/// so a number stays with its account wherever it shows).
-pub fn number(root: &Root, id: &str) -> Option<usize> {
-    root.accounts().iter().position(|a| s(a, "id") == id).map(|i| i + 1)
-}
+// No numbered tags (owner 2026-11-14: "bỏ số đi"): the face's dot and the state line say how an account is.
 
-/// The account's numbered tag (1.1's own mark, 2026-11-13): its state told by fill, ring and a mark, never by colour
-/// alone (critique 2026-11-13, P0). Solid green: in a game here. Soft blue: online elsewhere. Orange ring, no fill:
-/// opening. Solid orange with the alert mark: dropped or held. Solid red with the sign-in mark: needs a sign-in, the one
-/// thing to do now. Banned: grey with the number struck through (nothing to fix here, Play skips it). Resting: a quiet
-/// outline. `h` tall, the number in tabular figures.
-pub fn key_tag(n: usize, a: &Value, h: f32) -> Div {
-    let out = signed_out(a) || (is_local(a) && conn(a) == "signedout");
-    let gone = !out && banned(a);
-    let dropped = !out && !gone && (is_kicked(a) || held(a));
-    let opening = !out && !gone && !dropped && launching(a);
-    let (fill, words, ring, mark) = if out {
-        (c(BAD), c(WHITE), c(BAD), Some("logIn"))
-    } else if gone {
-        (ca(WHITE, 0.03), c(MUTED), ca(WHITE, 0.16), None)
-    } else if dropped {
-        (c(WARN), c(INK), c(WARN), Some("alert"))
-    } else if opening {
-        (ca(WHITE, 0.0), c(WARN), ca(WARN, 0.85), None)
-    } else if is_local(a) && in_game(a) {
-        (c(OK), c(INK), c(OK), None)
-    } else if in_game(a) || is_online(a) {
-        (ca(ONLINE, 0.16), c(ONLINE), ca(ONLINE, 0.5), None)
-    } else {
-        (ca(WHITE, 0.04), c(MUTED), ca(WHITE, 0.12), None)
-    };
-    let size = if h >= 26. { T_M } else { T_XS };
-    div()
-        .relative()
-        .h(px(h))
-        .min_w(px((h * 1.25).round()))
-        .px(px((h * 0.2).round()))
-        .flex_none()
-        .flex()
-        .items_center()
-        .justify_center()
-        .gap(px((h * 0.12).round()))
-        .rounded(px((h * 0.24).round()))
-        .bg(fill)
-        .border_1()
-        .border_color(ring)
-        .text_size(px(size))
-        .font_weight(FontWeight::BOLD)
-        .font_features(tnum())
-        .text_color(words)
-        .when_some(mark, |d, m| d.child(icon(m, (h * 0.5).round(), words)))
-        .child(format!("{n:02}"))
-        // Banned: the number struck through.
-        .when(gone, |d| d.child(div().absolute().left(px((h * 0.18).round())).right(px((h * 0.18).round())).top(px((h / 2. - 1.).round())).h(px(1.5)).bg(c(MUTED))))
-}
+/// An account card's and an open window's tile corner (owner 2026-11-14: rounder cards).
+const R_CARD: f32 = 18.;
 
 /// Free to join a game: not open, signed in, not banned (as the Accounts bar's Play).
 pub fn can_play(a: &Value) -> bool {
     !is_local(a) && !launching(a) && !signed_out(a) && !banned(a)
 }
-fn id_of(a: &Value) -> String {
+pub fn id_of(a: &Value) -> String {
     s(a, "id").to_string()
 }
 
+/// What it is really called while names are hidden (shell.rs keeps it under "real"), else the field.
+fn real<'a>(a: &'a Value, k: &str) -> &'a str {
+    a.pointer(&format!("/real/{k}")).and_then(Value::as_str).unwrap_or_else(|| s(a, k))
+}
+
+/// The search as app.js's visible(): without accents ("hoang" finds "Hoàng"), "@name" for the username, a user ID
+/// whole (or its start from 6 digits on), real names while they are hidden, and the game it plays.
+pub fn found(a: &Value, query: &str) -> bool {
+    let q = folded(query.trim().trim_start_matches('@'));
+    if q.is_empty() {
+        return true;
+    }
+    let id = a.get("userId").map(|v| match v {
+        Value::String(t) => t.clone(),
+        other => other.to_string(),
+    });
+    if q.chars().all(|c| c.is_ascii_digit()) && id.as_deref().is_some_and(|id| id == q || (q.len() >= 6 && id.starts_with(&q))) {
+        return true;
+    }
+    [real(a, "alias"), real(a, "username"), real(a, "displayName"), s(a, "label"), s(a, "group"), s(a, "note")]
+        .into_iter()
+        .chain([a.pointer("/presence/game").and_then(Value::as_str).unwrap_or_default(), a.pointer("/session/game/name").and_then(Value::as_str).unwrap_or_default()])
+        .any(|v| folded(v).contains(&q))
+}
+
 fn passes(a: &Value, f: Filter, query: &str) -> bool {
-    let hit = query.is_empty() || ["alias", "displayName", "username", "group", "note", "label"].iter().any(|k| s(a, k).to_lowercase().contains(query));
-    hit && match f {
+    found(a, query) && match f {
         Filter::All => true,
         Filter::Playing => in_game(a),
         Filter::Online => is_online(a),
         Filter::Offline => !is_online(a),
         Filter::Invalid => signed_out(a),
         Filter::Banned => banned(a),
+        Filter::Local => is_local(a),
+    }
+}
+
+/// Text already folded (no accents, no case), compared as the web page's collator did (numeric: "Farm 2" before
+/// "Farm 10").
+struct Natural(String);
+impl PartialEq for Natural {
+    fn eq(&self, other: &Self) -> bool {
+        self.cmp(other) == std::cmp::Ordering::Equal
+    }
+}
+impl Eq for Natural {}
+impl Ord for Natural {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        natural(&self.0, &other.0)
+    }
+}
+impl PartialOrd for Natural {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+fn natural(x: &str, y: &str) -> std::cmp::Ordering {
+    let (mut a, mut b) = (x.chars().peekable(), y.chars().peekable());
+    loop {
+        match (a.peek().copied(), b.peek().copied()) {
+            (None, None) => return std::cmp::Ordering::Equal,
+            (None, Some(_)) => return std::cmp::Ordering::Less,
+            (Some(_), None) => return std::cmp::Ordering::Greater,
+            (Some(c), Some(d)) if c.is_ascii_digit() && d.is_ascii_digit() => {
+                let mut n = String::new();
+                while let Some(c) = a.peek().copied().filter(char::is_ascii_digit) {
+                    n.push(c);
+                    a.next();
+                }
+                let mut m = String::new();
+                while let Some(d) = b.peek().copied().filter(char::is_ascii_digit) {
+                    m.push(d);
+                    b.next();
+                }
+                let (n, m) = (n.trim_start_matches('0'), m.trim_start_matches('0'));
+                let o = n.len().cmp(&m.len()).then_with(|| n.cmp(m));
+                if o != std::cmp::Ordering::Equal {
+                    return o;
+                }
+            }
+            (Some(c), Some(d)) => {
+                if c != d {
+                    return c.cmp(&d);
+                }
+                a.next();
+                b.next();
+            }
+        }
     }
 }
 
@@ -147,16 +400,89 @@ fn sort(root: &Root, list: &mut [Value]) {
     let how = root.state.pointer("/settings/sort").and_then(Value::as_str).unwrap_or("name").to_string();
     let order: Vec<String> = root.state.pointer("/settings/launchOrder").and_then(Value::as_array).map(|l| l.iter().filter_map(Value::as_str).map(str::to_string).collect()).unwrap_or_default();
     let place = |a: &Value| order.iter().position(|i| i == s(a, "id")).unwrap_or(usize::MAX);
-    let rank = |a: &Value| if in_game(a) { 0 } else if launching(a) { 1 } else if is_online(a) { 2 } else { 3 };
-    list.sort_by(|x, y| {
-        let first = match how.as_str() {
-            "status" => rank(x).cmp(&rank(y)),
-            "recent" => s(y, "lastUsed").cmp(s(x, "lastUsed")),
-            "order" => place(x).cmp(&place(y)),
-            _ => std::cmp::Ordering::Equal,
+    // As app.js's statusRank: open here, opening, playing elsewhere, online or in Studio, offline, then the ones signed
+    // out or banned last.
+    let rank = |a: &Value| {
+        if is_local(a) {
+            0
+        } else if launching(a) {
+            1
+        } else if presence(a) == "ingame" {
+            2
+        } else if matches!(presence(a), "online" | "studio") {
+            3
+        } else if signed_out(a) || banned(a) {
+            5
+        } else {
+            4
+        }
+    };
+    // Names by their real text even while hidden (hiding doesn't reshuffle the list), then the username.
+    fn name_of(a: &Value) -> &str {
+        ["label", "alias", "displayName", "username"].iter().map(|k| real(a, k)).find(|n| !n.is_empty()).unwrap_or_default()
+    }
+    // Each account's key made once (its names folded once), not on every compare.
+    list.sort_by_cached_key(|a| {
+        let (first, last) = match how.as_str() {
+            "status" => (rank(a) as u64, std::cmp::Reverse(String::new())),
+            "recent" => (0u64, std::cmp::Reverse(s(a, "lastUsed").to_string())),
+            "order" => (place(a) as u64, std::cmp::Reverse(String::new())),
+            _ => (0, std::cmp::Reverse(String::new())),
         };
-        first.then_with(|| folded(&label(x)).cmp(&folded(&label(y))))
+        (first, last, Natural(folded(name_of(a))), Natural(folded(real(a, "username"))))
     });
+}
+
+/// What a list was made from: the state and windows as sent, the search, filter, group and order.
+#[derive(Clone, PartialEq)]
+struct ShownKey {
+    state: u64,
+    windows: u64,
+    query: String,
+    filter: Option<Filter>,
+    group: Option<String>,
+    sort: String,
+}
+
+thread_local! {
+    /// The cards shown and every account in order (the windows view), made again only when what they come from
+    /// changes: with hundreds of accounts, cloning and sorting them every frame cost a lot.
+    static SHOWN: std::cell::RefCell<Option<(ShownKey, std::rc::Rc<Vec<Value>>)>> = const { std::cell::RefCell::new(None) };
+    static EVERY: std::cell::RefCell<Option<(ShownKey, std::rc::Rc<Vec<Value>>)>> = const { std::cell::RefCell::new(None) };
+}
+
+fn shown_key(root: &Root, query: String, filter: Option<Filter>, group: Option<String>) -> ShownKey {
+    ShownKey {
+        state: root.state_gen,
+        windows: root.windows_gen,
+        query,
+        filter,
+        group,
+        sort: root.state.pointer("/settings/sort").and_then(Value::as_str).unwrap_or("name").to_string(),
+    }
+}
+
+fn cached(
+    slot: &'static std::thread::LocalKey<std::cell::RefCell<Option<(ShownKey, std::rc::Rc<Vec<Value>>)>>>,
+    key: ShownKey,
+    make: impl FnOnce() -> Vec<Value>,
+) -> std::rc::Rc<Vec<Value>> {
+    if let Some(list) = slot.with(|c| c.borrow().as_ref().filter(|(k, _)| *k == key).map(|(_, l)| l.clone())) {
+        return list;
+    }
+    let list = std::rc::Rc::new(make());
+    slot.with(|c| *c.borrow_mut() = Some((key, list.clone())));
+    list
+}
+
+/// Every account sorted, other PCs' windows after: the windows view shows them all, whatever the filter says.
+fn every_sorted(root: &Root) -> std::rc::Rc<Vec<Value>> {
+    cached(&EVERY, shown_key(root, String::new(), None, None), || {
+        let mut every = root.accounts().to_vec();
+        sort(root, &mut every);
+        every.extend(others(root));
+        every
+    })
 }
 
 /// Why an account dropped, from Roblox's disconnect code (roblox_codes.rs: every code Roblox has).
@@ -280,14 +606,22 @@ pub fn state_of(root: &Root, a: &Value) -> (String, u32, bool) {
             _ => (root.tr("act.joiningHere"), OK, true),
         };
     }
-    if presence(a) == "ingame" {
+    if let Some(game) = closing(root, a) {
+        let words = if game.is_empty() { root.tr("card.closing") } else { format!("{} · {}", root.tr("card.closing"), crate::pages::home::clean(game)) };
+        (words, MUTED, false)
+    } else if presence(a) == "ingame" {
         (root.tr("row.elsewhere"), TEXT_2, true)
     } else if presence(a) == "online" {
         (root.tr("act.online"), TEXT_2, false)
+    } else if presence(a) == "studio" {
+        (root.tr("act.studio"), TEXT_2, false)
     } else if banned(a) {
         (root.tr("card.banned"), MUTED, false)
     } else if signed_out(a) {
         (root.tr("card.expired"), BAD, false)
+    } else if let Some(t) = a.pointer("/presence/lastOnline").and_then(Value::as_str).and_then(crate::time::iso_secs) {
+        // Roblox's own "last online" when it says (Accounts.tsx's card), else when it was last opened here.
+        (root.i18n.tv("act.lastOnline", &[("t", &crate::time::ago(now - t, &root.i18n))]), MUTED, false)
     } else {
         let last = a.get("lastUsed").and_then(Value::as_str).and_then(crate::time::iso_secs);
         (
@@ -305,9 +639,30 @@ pub fn state_of(root: &Root, a: &Value) -> (String, u32, bool) {
 /// hasn't named yet says it is loading it.
 fn line_of(root: &Root, a: &Value) -> (String, u32) {
     let (state, tone, with_game) = state_of(root, a);
+    // Where it is when no game says it (Accounts.tsx's Activity, its second line): a window still opening, the menu,
+    // signed out in a window here, online on the site or app, a game hidden by privacy, Studio, a status not known yet.
+    let detail = |k: &str| format!("{state} · {}", root.tr(k));
     let text = match (with_game, game_name(a)) {
         (true, Some(g)) => format!("{state} · {g}"),
-        (true, None) if is_local(a) => format!("{state} · {}", root.tr("act.gameLoading")),
+        // Dropped, banned by the game, held by the bot check, a join that failed: the window is still there.
+        (true, None) if is_local(a) && (matches!(conn(a), "disconnected") || matches!(phase(a), "challenged" | "joinFailed") || a.pointer("/session/bannedByGame").and_then(Value::as_bool).unwrap_or(false)) => detail("act.stillOpen"),
+        (true, None) if is_local(a) => detail("act.gameLoading"),
+        (true, None) if presence(a) == "ingame" => detail("act.hidden"),
+        _ if launching(a) => match game_name(a) {
+            Some(g) => format!("{state} · {g}"),
+            None => detail("act.waitWindow"),
+        },
+        _ if rejoin_wait(a).is_some() || closing(root, a).is_some() => state,
+        _ if is_local(a) && conn(a) == "menu" => detail("act.menuWhere"),
+        _ if is_local(a) && conn(a) == "signedout" => detail("act.signedOutWhere"),
+        _ if is_local(a) => state,
+        _ if presence(a) == "online" => detail("act.onlineWhere"),
+        _ if presence(a) == "studio" => match a.pointer("/presence/game").and_then(Value::as_str).filter(|g| !g.is_empty()) {
+            Some(g) => format!("{state} · {}", crate::pages::home::clean(g)),
+            None => detail("act.studioWhat"),
+        },
+        // Roblox hasn't said yet (the first look after opening the app): not "never opened".
+        _ if a.get("presence").is_none_or(Value::is_null) && !banned(a) && !signed_out(a) => format!("{} · {}", root.tr("act.unknown"), root.tr("act.updating")),
         _ => state,
     };
     (text, tone)
@@ -383,14 +738,25 @@ fn pid_el(root: &Root, a: &Value, cx: &mut Context<Root>) -> Option<Stateful<Div
             .flex_none()
             .text_color(c(MUTED))
             .font_features(tnum())
-            .when(!foreign(a), |d| {
-                d.cursor_pointer()
-                    .hover(|d| d.text_color(c(TEXT)))
-                    .tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into())
-                    .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
-                    .on_click(cx.listener(move |r, _, _, cx| copy(r, copy_id.clone(), "pid", cx)))
+            .cursor_pointer()
+            .hover(|d| d.text_color(c(TEXT)))
+            .tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into())
+            .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
+            .map(|d| {
+                if foreign(a) {
+                    // A window Bloxkeep didn't open: copied by its window (MonitorView.tsx's Copy PID).
+                    let hwnd = s(a, "hwnd").to_string();
+                    d.on_click(cx.listener(move |r, _, _, cx| {
+                        r.send("monitorAct", json!({ "id": hwnd, "what": "copyPid" }));
+                        r.toast = Some((r.tr("t.copiedPid"), "ok".into()));
+                        cx.notify();
+                    }))
+                } else {
+                    d.on_click(cx.listener(move |r, _, _, cx| copy(r, copy_id.clone(), "pid", cx)))
+                }
             })
-            .child(format!("PID {pid}")),
+            // Bloxkeep hid its window (Accounts.tsx's "Hidden" beside the PID).
+            .child(if hidden(a) { format!("{} · PID {pid}", root.tr("card.hidden")) } else { format!("PID {pid}") }),
     )
 }
 
@@ -407,17 +773,18 @@ fn action(root: &Root, a: &Value, at: &str, cx: &mut Context<Root>) -> Option<Bu
         Button::new(key, root.tr("card.botCheck")).icon("shield").tint().on_click(cx.listener(move |r, _, _, _| r.send("solveBotCheck", json!({ "id": id }))))
     } else if is_kicked(a) {
         let me = vec![a.clone()];
-        Button::new(key, root.tr("card.rejoinNow")).icon("repeat").tint().on_click(cx.listener(move |r, _, _, cx| r.rejoin(&me, cx)))
+        Button::new(key, root.tr("card.rejoinNow")).icon("repeat").tint().tip(root.tr("card.rejoinNowTip")).on_click(cx.listener(move |r, _, _, cx| r.rejoin(&me, cx)))
     } else if is_local(a) || launching(a) {
         Button::new(key, root.tr("card.close")).icon("power").on_click(cx.listener(move |r, _, _, cx| close(r, vec![id.clone()], false, cx)))
     } else if rejoin_wait(a).is_some() {
-        Button::new(key, root.tr("rj.cancel")).icon("x").on_click(cx.listener(move |r, _, _, _| r.send("cancelRejoin", json!({ "id": id }))))
+        Button::new(key, root.tr("rj.cancel")).icon("x").tip(root.tr("rj.cancelTip")).on_click(cx.listener(move |r, _, _, _| r.send("cancelRejoin", json!({ "id": id }))))
     } else if banned(a) {
         // Play skips it, so its button is Roblox's appeal page, signed in as it.
-        Button::new(key, root.tr("card.appeal")).icon("external").on_click(cx.listener(move |r, _, _, _| r.send("openAppeal", json!({ "id": id }))))
+        Button::new(key, root.tr("card.appeal")).icon("external").tip(root.tr("card.appealTip")).on_click(cx.listener(move |r, _, _, _| r.send("openAppeal", json!({ "id": id }))))
     } else if signed_out(a) {
         let vng = s(a, "realm") == "vng";
-        Button::new(key, root.tr("card.relogin")).icon("logIn").tint().on_click(cx.listener(move |r, _, window, cx| crate::pages::quick::open(r, vng, window, cx)))
+        let name = label(a);
+        Button::new(key, root.tr("card.relogin")).icon("logIn").tint().tip(root.tr("card.reloginTip")).on_click(cx.listener(move |r, _, window, cx| crate::pages::quick::open_for(r, vng, name.clone(), window, cx)))
     } else {
         Button::new(key, root.tr("card.play")).icon("play").on_click(cx.listener(move |r, _, _, cx| r.play(std::slice::from_ref(&id), cx)))
     };
@@ -523,6 +890,9 @@ pub fn avatar(a: &Value, size: f32, ring: u32, cx: &mut App) -> Div {
 /// One grid for the whole page: window tiles and cards share its columns (each at least this wide, the row ending
 /// where the page does), so every section lines up: four across at 1707 px, three at 1180.
 const COL_MIN: f32 = 330.;
+/// A Game monitor tile at least this wide: its live picture is what you look at there (the owner, 2026-11-13:
+/// "to tí, hơi nhỏ"; at 330 like a card, three to four a row were too small to read a window).
+const MON_COL_MIN: f32 = 470.;
 /// The page's sides (the header's and the body's), on the 8 px rhythm.
 const SIDE_PAD: f32 = 24.;
 /// How far a block's base shows under it.
@@ -582,11 +952,33 @@ fn cover_of(root: &Root, place: Option<i64>) -> Option<String> {
     place.and_then(|p| root.looks.get(&p)).and_then(|l| l.get("cover")).and_then(Value::as_str).filter(|u| !u.is_empty()).map(str::to_string)
 }
 
-/// Picks or drops one account (a card or a tile is a tick box: the bar below acts on all those picked).
-fn toggle(r: &mut Root, id: &str) {
+/// Picks or drops one account (a card or a tile is a tick box: the bar below acts on all those picked). With Shift,
+/// every one shown from the last clicked to this one is picked (app.js's onCardClick).
+fn toggle(r: &mut Root, id: &str, shift: bool, cx: &App) {
+    // (A click ends the arrow keys' ring.)
+    r.acc_cursor = None;
+    if shift && let Some(anchor) = r.acc_anchor.clone() {
+        // (Accounts only: another program's window is picked by its own click, as Select all leaves them out.)
+        let shown = shown_accounts(r, cx);
+        let mut own: Vec<&Value> = shown.iter().filter(|a| !foreign(a)).collect();
+        // In the order on screen: the cards come in sections (needs a look, open here, the rest), so a range by the
+        // sorted list picked accounts that weren't between the two clicks.
+        let listed = cx.try_global::<menu::Ui>().and_then(|u| u.list).unwrap_or(r.state.pointer("/settings/layout").and_then(Value::as_str) != Some("cards"));
+        if !r.acc_win && !listed {
+            let not_open = |a: &Value| !is_local(a) && !launching(a);
+            own.sort_by_key(|a| if not_open(a) { if signed_out(a) || banned(a) { 0 } else { 2 } } else { 1 });
+        }
+        let ids: Vec<String> = own.into_iter().map(id_of).collect();
+        if let (Some(i), Some(j)) = (ids.iter().position(|x| *x == anchor), ids.iter().position(|x| x == id)) {
+            let (i, j) = (i.min(j), i.max(j));
+            r.selected.extend(ids[i..=j].iter().cloned());
+            return;
+        }
+    }
     if !r.selected.remove(id) {
         r.selected.insert(id.to_string());
     }
+    r.acc_anchor = Some(id.to_string());
 }
 
 /// The Roblox windows of one game: the old Game monitor's lane, now beside the accounts they belong to.
@@ -643,15 +1035,18 @@ fn lanes(root: &Root, shown: &[Value]) -> Vec<Lane> {
 /// game the accounts play here, each window a tile (its picture, face, name, time, RAM); then the accounts not open.
 /// A tile or a card is a tick box: the bar at the foot acts on those picked (play, rejoin, close).
 /// The cards the page shows: the search, the filter and the group applied, sorted, other PCs' after.
-fn shown_accounts(root: &Root, cx: &App) -> Vec<Value> {
-    let query = root.acc_search.read(cx).value().trim().to_lowercase();
-    let all = root.accounts();
-    // (A group picked that no account is in any more counts as none.)
-    let group = root.acc_group.clone().filter(|g| all.iter().any(|a| s(a, "group") == g));
-    let mut shown: Vec<Value> = all.iter().filter(|a| passes(a, root.acc_filter, &query)).filter(|a| group.as_deref().is_none_or(|g| s(a, "group") == g)).cloned().collect();
-    sort(root, &mut shown);
-    shown.extend(others(root).into_iter().filter(|a| passes(a, root.acc_filter, &query)));
-    shown
+fn shown_accounts(root: &Root, cx: &App) -> std::rc::Rc<Vec<Value>> {
+    let query = root.acc_search.read(cx).value().to_string();
+    let key = shown_key(root, query.clone(), Some(root.acc_filter), root.acc_group.clone());
+    cached(&SHOWN, key, || {
+        let all = root.accounts();
+        // (A group picked that no account is in any more counts as none.)
+        let group = root.acc_group.clone().filter(|g| all.iter().any(|a| s(a, "group") == g));
+        let mut shown: Vec<Value> = all.iter().filter(|a| passes(a, root.acc_filter, &query)).filter(|a| group.as_deref().is_none_or(|g| s(a, "group") == g)).cloned().collect();
+        sort(root, &mut shown);
+        shown.extend(others(root).into_iter().filter(|a| passes(a, root.acc_filter, &query)));
+        shown
+    })
 }
 
 /// A key on the Accounts page (none typed into a box, no dialog open), as the old page had them.
@@ -675,11 +1070,13 @@ pub fn key(r: &mut Root, k: Key, window: &mut Window, cx: &mut Context<Root>) ->
     let own: Vec<String> = picked.iter().filter(|a| !foreign(a)).map(id_of).collect();
     match k {
         Key::All => {
-            let ids: Vec<String> = shown_accounts(r, cx).iter().map(id_of).collect();
-            if ids.is_empty() {
+            // (As the header's Select all: accounts only, not another program's windows.)
+            let shown: Vec<Value> = shown_accounts(r, cx).iter().filter(|a| !foreign(a)).cloned().collect();
+            if shown.is_empty() {
                 return false;
             }
-            r.selected.extend(ids);
+            let farm: Vec<String> = shown.iter().filter(|a| !a.get("isMain").and_then(Value::as_bool).unwrap_or(false)).map(id_of).collect();
+            r.selected = if farm.is_empty() { shown.iter().map(id_of).collect() } else { farm.into_iter().collect() };
         }
         Key::Clear => {
             if menu::is_open(cx) {
@@ -688,6 +1085,8 @@ pub fn key(r: &mut Root, k: Key, window: &mut Window, cx: &mut Context<Root>) ->
                 r.acc_menu = false;
             } else if !r.selected.is_empty() {
                 r.selected.clear();
+            } else if cx.try_global::<menu::Ui>().is_some_and(|u| u.place_wanted.is_some()) {
+                cx.global_mut::<menu::Ui>().place_wanted = None;
             } else {
                 return false;
             }
@@ -734,8 +1133,10 @@ fn ask_delete(r: &mut Root, ids: Vec<String>, names: Vec<String>, window: &mut W
 }
 
 /// The layout shown: cards or a list, as picked here or as the app's settings keep it ("layout", as app.js sent it).
+/// A list until cards are picked (the setting is "" until first chosen): the owner, 2026-11-13, "muốn cái list là mặc
+/// định chứ không phải card".
 fn as_list(root: &Root, cx: &mut App) -> bool {
-    let kept = root.state.pointer("/settings/layout").and_then(Value::as_str) == Some("list");
+    let kept = root.state.pointer("/settings/layout").and_then(Value::as_str) != Some("cards");
     let picked = cx.try_global::<menu::Ui>().and_then(|u| u.list);
     // (Once the settings say the same, they lead again: another vault brings its own.)
     if picked == Some(kept) {
@@ -745,11 +1146,15 @@ fn as_list(root: &Root, cx: &mut App) -> bool {
 }
 
 pub fn accounts(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement {
+    FRAME.with(|f| f.set(f.get() + 1));
+    // Older frames' places go (windows not opened by Bloxkeep get a new id each time, so the map only grew).
+    let now = FRAME.with(std::cell::Cell::get);
+    SPOTS.with(|s| s.borrow_mut().retain(|_, (f, _)| *f + 1 >= now));
     #[cfg(feature = "shot")]
     menu::shot_hooks(root, cx);
     #[cfg(feature = "shot")]
     shot_place(cx);
-    let all = root.accounts().to_vec();
+    let all = root.accounts();
     let shown = shown_accounts(root, cx);
     let picked: Vec<Value> = all.iter().filter(|a| root.selected.contains(s(a, "id"))).cloned().collect();
     let inner = width - 2. * SIDE_PAD;
@@ -760,19 +1165,80 @@ pub fn accounts(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoEle
     if let Some(steps) = start::steps(root, true) {
         body = body.child(steps);
     }
-    if rows {
-        // The Roblox windows' live pictures over the list too (the old Game monitor; the list had none, so the owner
-        // couldn't find them, 2026-11-12), then one line an account.
-        body = body.children(windows(root, &shown, inner, cx));
+    if root.acc_win {
+        // The Roblox windows' live pictures, a block a game, with the buttons for each game's windows (the old Game
+        // monitor, its own view of the page since 2026-11-13: the owner's pick over pictures above the cards).
+        // Every window, whatever the filter says: with "Playing" picked, a window on Roblox's home screen (or one not
+        // opened by Bloxkeep) went, and the view said "Open a game…" under a tab that counted 1, with "No matching
+        // accounts" under that (the owner's screenshot, 2026-11-13).
+        let every = every_sorted(root);
+        body = match windows(root, &every, inner, cx) {
+            // (What a picture does, as the old monitor's head said.)
+            Some(w) => body.child(div().text_size(px(T_S)).text_color(c(MUTED)).child(root.tr("mon.hint"))).child(w),
+            None => body.child(
+                div()
+                    .py(px(56.))
+                    .flex()
+                    .flex_col()
+                    .items_center()
+                    .gap(px(12.))
+                    .child(div().size(px(44.)).rounded(px(R_M)).bg(c(RAISED_2)).flex().items_center().justify_center().child(icon("screens", 20., c(MUTED))))
+                    .child(div().text_size(px(T_L)).text_color(c(TEXT_2)).child(root.tr("mon.empty"))),
+            ),
+        };
+    } else if rows {
         let own: Vec<&Value> = shown.iter().filter(|a| !foreign(a)).collect();
         if !own.is_empty() {
-            body = body.child(list::rows(root, &own, width < 1300., cx));
+            // Wide enough: the account clicked last in full beside the list (a list and its detail, as launchers lay
+            // out a list of things to pick), else the first one picked, else the first one.
+            if width >= 1300. {
+                let focus = root
+                    .acc_anchor
+                    .as_deref()
+                    .and_then(|id| own.iter().copied().find(|a| s(a, "id") == id))
+                    .or_else(|| own.iter().copied().find(|a| root.selected.contains(s(a, "id"))))
+                    .unwrap_or(own[0]);
+                body = body.child(
+                    div()
+                        .flex()
+                        .items_start()
+                        .gap(px(16.))
+                        .child(div().flex_1().min_w_0().child(list::rows(root, &own, width < 1760., cx)))
+                        .child(list::detail(root, focus, cx)),
+                );
+            } else {
+                body = body.child(list::rows(root, &own, width < 1300., cx));
+            }
         }
     } else {
         body = cards(root, body, &shown, inner, cx);
     }
-    if shown.is_empty() && !all.is_empty() {
-        body = body.child(div().pt(px(24.)).text_size(px(T_M)).text_color(c(MUTED)).child(root.tr("nores.title")));
+    if shown.is_empty() && !all.is_empty() && !root.acc_win {
+        body = body.child(
+            div()
+                .pt(px(24.))
+                .flex()
+                .flex_col()
+                .gap(px(4.))
+                .child(div().text_size(px(T_M)).text_color(c(TEXT_2)).child(root.tr("nores.title")))
+                .child(div().text_size(px(T_S)).text_color(c(MUTED)).child(root.tr("nores.text")))
+                // Clear search with a search typed, else Show all; either puts the search, filter and group aside
+                // (Accounts.tsx's clear-search).
+                .child(div().pt(px(8.)).flex().child(
+                    Button::new("nores-clear", root.tr(if root.acc_search.read(cx).value().trim().is_empty() { "nores.all" } else { "nores.clear" })).on_click(cx.listener(
+                        |r, _, window, cx| {
+                            r.acc_filter = Filter::All;
+                            r.acc_group = None;
+                            let search = r.acc_search.clone();
+                            search.update(cx, |st, cx| {
+                                st.set_value("", window, cx);
+                                st.focus(window, cx);
+                            });
+                            cx.notify();
+                        },
+                    )),
+                )),
+        );
     }
 
     div()
@@ -783,7 +1249,7 @@ pub fn accounts(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoEle
         .relative()
         .flex()
         .flex_col()
-        .child(header(root, &all, width, rows, cx))
+        .child(header(root, all, width, rows, cx))
         .child(if all.is_empty() {
             start::empty(root, cx).into_any_element()
         } else {
@@ -796,7 +1262,38 @@ pub fn accounts(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoEle
                 .child(crate::scrolled::body("acc-body", body))
                 .into_any_element()
         })
-        .when(!picked.is_empty(), |d| d.child(bar(root, &picked, width, cx)))
+        .when(!picked.is_empty() || cx.try_global::<menu::Ui>().is_some_and(|u| u.place_wanted == Some(root.nav)), |d| d.child(bar(root, &picked, width, cx)))
+}
+
+/// A pop-up menu is built while it is open and while it fades out after (kit::pop's 140 ms): not, as before, every
+/// frame from its first opening on, shut or not.
+pub fn pop_alive(key: &str, open: bool) -> bool {
+    thread_local! {
+        /// By menu: open at the last look, and when it was seen shut after being open.
+        static SEEN: std::cell::RefCell<std::collections::HashMap<String, (bool, Option<std::time::Instant>)>> = Default::default();
+    }
+    SEEN.with(|m| {
+        let mut m = m.borrow_mut();
+        let e = m.entry(key.to_string()).or_insert((false, None));
+        if open {
+            *e = (true, None);
+            return true;
+        }
+        if e.0 {
+            *e = (false, Some(std::time::Instant::now()));
+        }
+        e.1.is_some_and(|at| at.elapsed() < std::time::Duration::from_millis(250))
+    })
+}
+
+/// Ctrl+L or "/" (app.js ~3222): the bar's game box wanted, even with none picked (the bar shows for it).
+pub fn want_place(nav: u64, cx: &mut App) {
+    cx.default_global::<menu::Ui>().place_wanted = Some(nav);
+}
+
+/// Esc in the game box: the bar shown for it alone goes.
+pub fn unwant_place(cx: &mut App) {
+    cx.default_global::<menu::Ui>().place_wanted = None;
 }
 
 /// A shot's bar with a game in its box (BLOXKEEP_SHOT_PLACE=<place id>) and, with BLOXKEEP_SHOT_JOB=1, the Job ID box
@@ -813,15 +1310,13 @@ fn shot_place(cx: &mut Context<Root>) {
     cx.spawn(async move |_, cx| {
         let _ = cx.update_window(h, |_, window, cx| {
             let _ = this.update(cx, |r, cx| {
+                clear_job(window, cx);
                 r.place.update(cx, |st, cx| st.set_value(place.clone(), window, cx));
                 r.resolve_place(cx);
                 if std::env::var("BLOXKEEP_SHOT_JOB").is_ok() {
-                    let hint = r.tr("dock.job");
-                    let e = cx.new(|cx| gpui_kit::component::input::InputState::new(window, cx).placeholder(hint));
+                    let e = job_entity(r, window, cx);
                     e.update(cx, |st, cx| st.set_value("1f0a3c2e-77d1-4b8e-9c5a-2d6e8f9a0b1c", window, cx));
-                    let ui = cx.default_global::<menu::Ui>();
-                    ui.job = Some(e);
-                    ui.job_open = true;
+                    cx.default_global::<menu::Ui>().job_open = true;
                 }
                 cx.notify();
             });
@@ -834,11 +1329,16 @@ fn shot_place(cx: &mut Context<Root>) {
 /// list alike: the games flow on the page's grid, each taking as many columns as it has windows (all of them at most,
 /// wrapping inside its own block past that), its head over its own tiles. None while no window is open.
 fn windows(root: &Root, shown: &[Value], inner: f32, cx: &mut Context<Root>) -> Option<Div> {
-    let lanes = lanes(root, shown);
+    let mut lanes = lanes(root, shown);
     if lanes.is_empty() {
         return None;
     }
-    let (cols, col_w) = grid_fit(inner, COL_MIN, GRID_GAP);
+    let multi = lanes.len() > 1;
+    // One game alone (its head's Only this game), while it is still open.
+    if let Some(solo) = root.mon_solo.as_deref().filter(|g| lanes.iter().any(|l| l.name == *g)) {
+        lanes.retain(|l| l.name == solo);
+    }
+    let (cols, col_w) = grid_fit(inner, MON_COL_MIN, GRID_GAP);
     // (Every tile as tall as the fullest one: tiles side by side end on one line, review 2.3.)
     let tile_n = lanes.iter().flat_map(|l| l.items.iter()).map(|a| tile_lines(root, a)).max().unwrap_or(0);
     Some(
@@ -848,7 +1348,7 @@ fn windows(root: &Root, shown: &[Value], inner: f32, cx: &mut Context<Root>) -> 
                 .enumerate()
                 .map(|(i, l)| {
                     let span = l.items.len().clamp(1, cols);
-                    lane(root, i, l, col_w, span, tile_n, cx).into_any_element()
+                    lane(root, i, l, col_w, span, tile_n, multi, cx).into_any_element()
                 })
                 .collect::<Vec<_>>(),
         ),
@@ -861,7 +1361,7 @@ fn cards(root: &Root, mut body: Div, shown: &[Value], inner: f32, cx: &mut Conte
     let not_open = |a: &&Value| !is_local(a) && !launching(a);
     let check: Vec<&Value> = shown.iter().filter(not_open).filter(|a| signed_out(a) || banned(a)).collect();
     let idle: Vec<&Value> = shown.iter().filter(not_open).filter(|a| !signed_out(a) && !banned(a)).collect();
-    let col_w = grid_fit(inner, COL_MIN, GRID_GAP).1;
+    let (per, col_w) = grid_fit(inner, COL_MIN, GRID_GAP);
     // What needs a hand: one calm panel, a full-width row each with its fix lined up at the right.
     if !check.is_empty() {
         let n = check.len();
@@ -871,7 +1371,21 @@ fn cards(root: &Root, mut body: Div, shown: &[Value], inner: f32, cx: &mut Conte
         }
         body = body.child(panel);
     }
-    body = body.children(windows(root, shown, inner, cx));
+    // Open here (or opening): cards as the others, their windows' pictures being on the Windows view.
+    let open: Vec<&Value> = shown.iter().filter(|a| !foreign(a) && (is_local(a) || launching(a))).collect();
+    if !open.is_empty() {
+        let n = open.len();
+        let lines = open.iter().map(|a| card_lines(root, a)).max().unwrap_or(0);
+        let must = revealed_in(root, &open);
+        body = body.child(
+            div()
+                .flex()
+                .flex_col()
+                .gap(px(12.))
+                .child(section_head(root.tr("acc.grp.open"), Some(n)))
+                .child(crate::near::grid("acc-open", n, per, card_h(lines), GRID_GAP, must, |i| card(root, open[i], col_w, lines, cx).into_any_element()).pb(px(RISE))),
+        );
+    }
     if !idle.is_empty() {
         let n = idle.len();
         body = body.child(
@@ -883,7 +1397,8 @@ fn cards(root: &Root, mut body: Div, shown: &[Value], inner: f32, cx: &mut Conte
                 // (Every card as tall as the fullest one: the grid's rows stay even.)
                 .child({
                     let lines = idle.iter().map(|a| card_lines(root, a)).max().unwrap_or(0);
-                    grid(GRID_GAP).pb(px(RISE)).children(idle.into_iter().map(|a| card(root, a, col_w, lines, cx).into_any_element()).collect::<Vec<_>>())
+                    let must = revealed_in(root, &idle);
+                    crate::near::grid("acc-idle", n, per, card_h(lines), GRID_GAP, must, |i| card(root, idle[i], col_w, lines, cx).into_any_element()).pb(px(RISE))
                 }),
         );
     }
@@ -921,14 +1436,14 @@ fn look_row(root: &Root, a: &Value, cx: &mut Context<Root>) -> impl IntoElement 
     alert_row(SharedString::from(format!("look-{id}")))
         .h(px(88.))
         .relative()
+        .child(spot(root, &id, R_M))
         .map(|d| if on { d.tones(tinted(PANEL, FACE, 0.10), tinted(PANEL, FACE, 0.13)) } else { d })
-        .on_click(cx.listener(move |r, _, _, cx| {
-            toggle(r, &pick);
+        .on_click(cx.listener(move |r, e: &ClickEvent, _, cx| {
+            toggle(r, &pick, e.modifiers().shift, cx);
             cx.notify();
         }))
         .on_mouse_down(MouseButton::Right, on_right(a, cx))
         .children(menu::place(root, a, false, cx))
-        .children(number(root, &id).map(|n| key_tag(n, a, 22.)))
         .child(avatar(a, 40., PANEL, cx))
         .child(
             div()
@@ -965,11 +1480,11 @@ fn look_row(root: &Root, a: &Value, cx: &mut Context<Root>) -> impl IntoElement 
                         .items_center()
                         .gap(px(10.))
                         .children(tags)
-                        .child(small_line("history", opened).flex_none())
+                        .child(last_line(root, a, opened).flex_none())
                         .when_some(note, |d, n| d.child(small_line("message", n).min_w_0())),
                 ),
         )
-        .when(on, |d| d.child(div().size(px(22.)).flex_none().rounded(px(7.)).bg(c(FACE)).flex().items_center().justify_center().child(icon("check", 14., c(INK)))))
+        .when(on, |d| d.child(tick_mark(22.)))
         .child(alert_fix(div().children(fix.map(no_pick))))
         .child(edit_button(root, a, "look", 28., cx))
         .child(more_button(root, a, "look", 28., cx))
@@ -983,29 +1498,61 @@ fn header(root: &Root, all: &[Value], width: f32, rows: bool, cx: &mut Context<R
     // Short of room (a window about 1180 wide): the tools keep the value chosen and drop their names.
     let compact = width < 1300.;
     // Cards or a list (the web page's layout switch): kept by the app with the sort, so it is the same next time.
-    let layout = view_switch(
-        [("cards", "grid", false), ("list", "rows", true)]
-            .into_iter()
-            .map(|(key, mark, list)| {
-                let tip: SharedString = root.tr(&format!("layout.{key}")).into();
-                view_choice(SharedString::from(format!("acc-layout-{key}")), mark, rows == list).tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into()).on_click(cx.listener(move |r, _, _, cx| {
-                    cx.default_global::<menu::Ui>().list = Some(list);
-                    r.send("setSettings", json!({ "layout": key }));
-                    cx.notify();
-                }))
-            })
-            .collect(),
+    // Cards, a list, or the Roblox windows (the Game monitor): the windows one named, with how many are open.
+    let n_win = root.windows.len();
+    let mut views: Vec<Hot> = [("cards", "grid", false), ("list", "rows", true)]
+        .into_iter()
+        .map(|(key, mark, list)| {
+            let tip: SharedString = root.tr(&format!("layout.{key}")).into();
+            view_choice(SharedString::from(format!("acc-layout-{key}")), mark, !root.acc_win && rows == list).tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into()).on_click(cx.listener(move |r, _, _, cx| {
+                cx.default_global::<menu::Ui>().list = Some(list);
+                r.send("setSettings", json!({ "layout": key }));
+                set_win_view(r, false);
+                cx.notify();
+            }))
+        })
+        .collect();
+    views.push(
+        segment("acc-layout-windows", root.acc_win)
+            .h(px(TOOL_H - 6.))
+            .px(px(10.))
+            .gap(px(6.))
+            .rounded(px(R_S - 2.))
+            .text_size(px(T_M))
+            .font_weight(FontWeight::MEDIUM)
+            .text_color(if root.acc_win { c(INK) } else { c(TEXT_2) })
+            .child(icon("screens", 15., if root.acc_win { c(INK) } else { c(TEXT_2) }))
+            .when(!compact, |d| d.child(root.tr("mon.title")))
+            .when(n_win > 0, |d| d.child(div().text_color(if root.acc_win { c(INK) } else { c(MUTED) }).child(n_win.to_string())))
+            .on_click(cx.listener(|r, _, _, cx| {
+                set_win_view(r, true);
+                cx.notify();
+            })),
     );
+    let layout = view_switch(views);
     let playing = all.iter().filter(|a| in_game(a)).count();
-    let online = all.iter().filter(|a| is_online(a)).count();
-    let mut chips = vec![
-        (Filter::All, root.tr("chip.all"), all.len()),
-        (Filter::Playing, root.tr("chip.ingame"), playing),
-        (Filter::Online, root.tr("chip.online"), online),
-        (Filter::Offline, root.tr("chip.offline"), all.len() - online),
-    ];
-    // (Shown only while there are some: needing a sign-in, and banned.)
-    for (f, key, n) in [(Filter::Invalid, "chip.invalid", all.iter().filter(|a| signed_out(a)).count()), (Filter::Banned, "chip.banned", all.iter().filter(|a| banned(a)).count())] {
+    // The chips count the group picked and the search typed, as the list shows them ("All 500" over three rows read
+    // wrong); in a group, empty ones go.
+    let picked_group = root.acc_group.clone().filter(|g| all.iter().any(|a| s(a, "group") == g));
+    let typed = root.acc_search.read(cx).value().to_string();
+    let grouped: Vec<&Value> = all.iter().filter(|a| picked_group.as_deref().is_none_or(|g| s(a, "group") == g) && found(a, &typed)).collect();
+    let g_online = grouped.iter().filter(|a| is_online(a)).count();
+    let mut chips = vec![(Filter::All, root.tr("chip.all"), grouped.len())];
+    for (f, key, n) in [
+        (Filter::Playing, "chip.ingame", grouped.iter().filter(|a| in_game(a)).count()),
+        (Filter::Online, "chip.online", g_online),
+        (Filter::Offline, "chip.offline", grouped.len() - g_online),
+    ] {
+        if picked_group.is_none() || n > 0 || root.acc_filter == f {
+            chips.push((f, root.tr(key), n));
+        }
+    }
+    // (Shown only while there are some: open on this PC, needing a sign-in, and banned.)
+    for (f, key, n) in [
+        (Filter::Local, "chip.local", grouped.iter().filter(|a| is_local(a)).count()),
+        (Filter::Invalid, "chip.invalid", grouped.iter().filter(|a| signed_out(a)).count()),
+        (Filter::Banned, "chip.banned", grouped.iter().filter(|a| banned(a)).count()),
+    ] {
         if n > 0 || root.acc_filter == f {
             chips.push((f, root.tr(key), n));
         }
@@ -1016,7 +1563,17 @@ fn header(root: &Root, all: &[Value], width: f32, rows: bool, cx: &mut Context<R
     let ram: f64 = all.iter().chain(strays.iter()).filter(|a| is_local(a)).filter_map(|a| ram_mb(root, a)).sum();
     let dropped = all.iter().filter(|a| is_kicked(a)).count();
     let look = all.iter().filter(|a| !is_local(a) && !launching(a) && (signed_out(a) || banned(a))).count();
-    let mut summary = vec![(if playing > 0 { root.i18n.tn("acc.sum.playing", playing as i64, &[]) } else { root.tr("acc.sum.idle") }, None)];
+    // (A window open with nobody in a game, or one Bloxkeep didn't open: "Roblox not open" stood over a bar that
+    // said "1 Roblox window", the owner's screenshot, 2026-11-13.)
+    let open = all.iter().filter(|a| is_local(a)).count() + strays.len();
+    let first = if playing > 0 {
+        root.i18n.tn("acc.sum.playing", playing as i64, &[])
+    } else if open > 0 {
+        root.i18n.tn("ui.robloxWindows", open as i64, &[("n", &open.to_string())])
+    } else {
+        root.tr("acc.sum.idle")
+    };
+    let mut summary = vec![(first, None)];
     if ram > 0. {
         summary.push((mb_text(ram, root.i18n.vietnamese), None));
     }
@@ -1036,8 +1593,15 @@ fn header(root: &Root, all: &[Value], width: f32, rows: bool, cx: &mut Context<R
     let mut items: Vec<DropItem> = ["name", "status", "recent", "order"]
         .into_iter()
         .map(|key| {
-            let f: DropAct = std::rc::Rc::new(move |r, _, _| {
+            let f: DropAct = std::rc::Rc::new(move |r, _, cx| {
+                // Shown at once: the app only remembers this one and sends no new state for it (set_settings' "quick"
+                // keys: the web page showed it itself), so the list kept its old order until some other change came
+                // (the owner, 2026-11-13: "bấm 1 hồi nó mới nhảy qua cái mình chọn").
+                if let Some(now) = r.state.pointer_mut("/settings/sort") {
+                    *now = json!(key);
+                }
                 r.send("setSettings", json!({ "sort": key }));
+                cx.notify();
             });
             (root.tr(&format!("sort.{key}")), how == key, f)
         })
@@ -1063,7 +1627,7 @@ fn header(root: &Root, all: &[Value], width: f32, rows: bool, cx: &mut Context<R
     };
     let sorts = drop_list(root, "acc-sort", "sort", Some(root.tr("sort.label")), shown, items, cx);
     // Select all: the ones shown; the main accounts (the ones played on) are left out, unless they are all there is.
-    let query = root.acc_search.read(cx).value().trim().to_lowercase();
+    let query = root.acc_search.read(cx).value().to_string();
     let seen: Vec<&Value> = all.iter().filter(|a| passes(a, root.acc_filter, &query)).filter(|a| now.as_deref().is_none_or(|g| s(a, "group") == g)).collect();
     let farm: Vec<String> = seen.iter().filter(|a| !a.get("isMain").and_then(Value::as_bool).unwrap_or(false)).map(|a| id_of(a)).collect();
     let pickable: Vec<String> = if farm.is_empty() { seen.iter().map(|a| id_of(a)).collect() } else { farm };
@@ -1135,14 +1699,17 @@ fn header(root: &Root, all: &[Value], width: f32, rows: bool, cx: &mut Context<R
                     IconButton::new("acc-refresh", "refresh").size(38.).busy(busy).tip(root.tr("acc.refreshTip")).on_click(cx.listener(|r, _, _, cx| refresh(r, cx)))
                 })
                 .child(tools_menu(root, all, cx))
-                // Add account, and the other ways to add one beside it.
+                // Add account, and the other ways to add one beside it: one yellow button split by a hairline, as the C#
+                // page's (owner 2026-11-13: the arrow was a separate dark square).
                 .child(
                     div()
                         .flex()
                         .flex_none()
                         .items_center()
-                        .gap(px(2.))
-                        .child(Button::new("acc-add", root.tr("acc.add")).icon("plus").primary().on_click(cx.listener(|r, _, _, cx| r.add_account(cx))))
+                        .rounded(px(R_M + 1.))
+                        .bg(c(FACE))
+                        .child(Button::new("acc-add", root.tr("acc.add")).icon("userPlus").primary().on_click(cx.listener(|r, _, _, cx| r.add_account(cx))))
+                        .child(div().w(px(1.)).h(px(22.)).bg(ca(INK, 0.22)))
                         .child(add_menu(root, cx)),
                 ),
         )
@@ -1184,6 +1751,7 @@ fn header(root: &Root, all: &[Value], width: f32, rows: bool, cx: &mut Context<R
                                 Filter::Offline => Some(MUTED),
                                 Filter::Invalid => Some(BAD),
                                 Filter::Banned => Some(MUTED),
+                                Filter::Local => Some(OK),
                             };
                             chip(SharedString::from(format!("chip-{text}")), on)
                                 .h(px(TOOL_H))
@@ -1246,7 +1814,8 @@ fn refresh(r: &mut Root, cx: &mut Context<Root>) {
 }
 
 /// A line of an icon menu: its icon, words, whether it is a danger (red), and what picking it does; None: a hairline.
-type MenuLine = Option<(&'static str, String, bool, DropAct)>;
+/// (None for the act: the line greyed, as a disabled item of the web page's menus.)
+type MenuLine = Option<(&'static str, String, bool, Option<DropAct>)>;
 
 /// An icon button with a short menu under it (the header's ⋮, Add's other ways), on the same open/closed state as the
 /// toolbar's lists, so one of them is open at a time.
@@ -1256,10 +1825,9 @@ fn icon_menu(root: &Root, key: &'static str, button: IconButton, width: f32, lin
         let just = r.acc_drop_closed.is_some_and(|(k, at)| k == key && at.elapsed().as_millis() < 300);
         r.acc_drop_closed = None;
         r.acc_drop = if just || r.acc_drop == Some(key) { None } else { Some(key) };
-        r.acc_drop_was = Some(key);
         cx.notify();
     })));
-    if open || root.acc_drop_was == Some(key) {
+    if pop_alive(key, open) {
         let mut menu = div()
             .id(SharedString::from(format!("{key}-menu")))
             .occlude()
@@ -1285,17 +1853,15 @@ fn icon_menu(root: &Root, key: &'static str, button: IconButton, width: f32, lin
                 continue;
             };
             let tone = if danger { BAD } else { TEXT };
-            menu = menu.child(
-                menu_row((key, 2000 + i))
-                    .text_color(c(tone))
-                    .child(icon(mark, 14., c(if danger { BAD } else { TEXT_2 })))
-                    .child(div().min_w_0().flex_1().truncate().child(text))
-                    .on_click(cx.listener(move |r, _, window, cx| {
-                        r.acc_drop = None;
-                        f(r, window, cx);
-                        cx.notify();
-                    })),
-            );
+            let row = menu_row((key, 2000 + i)).child(icon(mark, 14., c(if danger { BAD } else { TEXT_2 }))).child(div().min_w_0().flex_1().truncate().child(text));
+            menu = menu.child(match f {
+                Some(f) => row.text_color(c(tone)).on_click(cx.listener(move |r, _, window, cx| {
+                    r.acc_drop = None;
+                    f(r, window, cx);
+                    cx.notify();
+                })),
+                None => row.opacity(0.45).cursor_default(),
+            });
         }
         wrap = wrap.child(div().absolute().top(px(42.)).right_0().child(deferred(anchored().anchor(Anchor::TopRight).snap_to_window_with_margin(px(8.)).child(pop(SharedString::from(format!("{key}-pop")), open, menu))).with_priority(1)));
     }
@@ -1305,10 +1871,12 @@ fn icon_menu(root: &Root, key: &'static str, button: IconButton, width: f32, lin
 /// The header's ⋮ (app.js's tools-menu): check every sign-in, the launch order, close or end every Roblox, the guide.
 fn tools_menu(root: &Root, all: &[Value], cx: &mut Context<Root>) -> Div {
     let some = !all.is_empty();
-    let act = |f: fn(&mut Root, &mut Window, &mut Context<Root>)| -> DropAct { std::rc::Rc::new(f) };
+    let act = |f: fn(&mut Root, &mut Window, &mut Context<Root>)| -> Option<DropAct> { Some(std::rc::Rc::new(f)) };
     let mut lines: Vec<MenuLine> = Vec::new();
     if some {
-        lines.push(Some(("refresh", root.tr("m.checkAll"), false, act(|r, _, cx| check_accounts(r, Vec::new(), cx)))));
+        // (Greyed while a check runs, as app.js's S.app.checking.)
+        let checking = root.state.get("checking").and_then(Value::as_bool).unwrap_or(false);
+        lines.push(Some(("refresh", root.tr("m.checkAll"), false, if checking { None } else { act(|r, _, cx| check_accounts(r, Vec::new(), cx)) })));
     }
     if all.len() > 1 {
         lines.push(Some(("sort", root.tr("m.launchOrder"), false, act(|r, window, cx| open_order(r, window, cx)))));
@@ -1325,7 +1893,7 @@ fn tools_menu(root: &Root, all: &[Value], cx: &mut Context<Root>) -> Div {
 
 /// Beside Add account (app.js's add-menu): the other ways to add one, from another Bloxkeep file, and roblox.com.
 fn add_menu(root: &Root, cx: &mut Context<Root>) -> Div {
-    let act = |f: fn(&mut Root, &mut Window, &mut Context<Root>)| -> DropAct { std::rc::Rc::new(f) };
+    let act = |f: fn(&mut Root, &mut Window, &mut Context<Root>)| -> Option<DropAct> { Some(std::rc::Rc::new(f)) };
     let lines: Vec<MenuLine> = vec![
         Some(("qr", root.tr("m.addCode"), false, act(|r, window, cx| crate::pages::quick::open(r, false, window, cx)))),
         Some(("globe", root.tr("m.addBrowser"), false, act(|r, _, cx| r.add_browser(cx)))),
@@ -1335,31 +1903,30 @@ fn add_menu(root: &Root, cx: &mut Context<Root>) -> Div {
         None,
         Some(("external", root.tr("m.openWeb"), false, act(|r, _, _| r.send("openWebsiteBlank", json!({}))))),
     ];
-    icon_menu(root, "acc-addmore", IconButton::new("acc-addmore-btn", "chevronDown").size(38.).filled().tip(root.tr("acc.addMoreTip")), 320., lines, cx)
+    icon_menu(root, "acc-addmore", IconButton::new("acc-addmore-btn", "chevronDown").size(38.).primary().tip(root.tr("acc.addMoreTip")), 320., lines, cx)
 }
 
 /// What a short list's row does when picked.
-type DropAct = std::rc::Rc<dyn Fn(&mut Root, &mut Window, &mut Context<Root>)>;
+pub(crate) type DropAct = std::rc::Rc<dyn Fn(&mut Root, &mut Window, &mut Context<Root>)>;
 /// A row of a short list: its words, whether it is the one chosen, what picking it does. Words of `LINE_ITEM` are a
 /// hairline between groups of rows.
-type DropItem = (String, bool, DropAct);
+pub(crate) type DropItem = (String, bool, DropAct);
 const LINE_ITEM: &str = "-";
 /// A list item that is a small head over the items after it (its words after this mark).
 const HEAD_ITEM: &str = "\u{1}";
 
 /// A quiet tool that opens a short list under it ("Group  All ▾", "Sort  Name ▾"): `name` before the value chosen
 /// (none when room is short). The row keeps one bright thing, the chosen filter.
-fn drop_list(root: &Root, key: &'static str, mark: &'static str, name: Option<String>, value: String, items: Vec<DropItem>, cx: &mut Context<Root>) -> Div {
+pub(crate) fn drop_list(root: &Root, key: &'static str, mark: &'static str, name: Option<String>, value: String, items: Vec<DropItem>, cx: &mut Context<Root>) -> Div {
     let open = root.acc_drop == Some(key);
     let mut wrap = div().relative().flex_none().child(tool(key, Some(mark), open).child(tool_words(name, value)).child(tool_chev()).on_click(cx.listener(move |r, _, _, cx| {
         // A click outside the open list closed it just now: this click on its own button only closes it.
         let just = r.acc_drop_closed.is_some_and(|(k, at)| k == key && at.elapsed().as_millis() < 300);
         r.acc_drop_closed = None;
         r.acc_drop = if just || r.acc_drop == Some(key) { None } else { Some(key) };
-        r.acc_drop_was = Some(key);
         cx.notify();
     })));
-    if open || root.acc_drop_was == Some(key) {
+    if pop_alive(key, open) {
         let mut menu = div()
             .id(SharedString::from(format!("{key}-menu")))
             .occlude()
@@ -1414,7 +1981,8 @@ fn trouble(a: &Value) -> bool {
 /// One game's windows as a block on the page's grid, `span` columns wide: its head over its own tiles (the game's icon
 /// on the game's own colour, its name, how many windows and their RAM, and the buttons for all of them at its right
 /// edge), then its windows, each tile standing on the game's colour.
-fn lane(root: &Root, i: usize, l: Lane, col_w: f32, span: usize, lines: usize, cx: &mut Context<Root>) -> impl IntoElement {
+#[allow(clippy::too_many_arguments)]
+fn lane(root: &Root, i: usize, l: Lane, col_w: f32, span: usize, lines: usize, multi: bool, cx: &mut Context<Root>) -> impl IntoElement {
     // As wide as its columns; one column wide, its buttons are icons (their words the tips).
     let w = span as f32 * col_w + (span as f32 - 1.) * GRID_GAP;
     let tight = span < 2;
@@ -1434,6 +2002,27 @@ fn lane(root: &Root, i: usize, l: Lane, col_w: f32, span: usize, lines: usize, c
     if l.kicked > 0 {
         meta.push((root.i18n.tn("mon.nBad", l.kicked as i64, &[]), Some(c(WARN))));
     }
+    // How its windows are doing (the old monitor's lane head): still joining, playing.
+    let how = |a: &Value| if foreign(a) { window_of(root, a).map(|w| s(w, "status").to_string()).unwrap_or_default() } else { conn(a).to_string() };
+    let joining = l.items.iter().filter(|a| how(a) == "joining").count();
+    let playing = l.items.iter().filter(|a| how(a) == "ingame").count();
+    if joining > 0 {
+        meta.push((root.i18n.tn("mon.nJoin", joining as i64, &[]), Some(c(WARN))));
+    }
+    if playing > 0 && playing < n {
+        meta.push((root.i18n.tn("mon.nOk", playing as i64, &[]), Some(c(OK))));
+    }
+    // A letter for each server two or more of its windows share (MonitorView.tsx's lanes()).
+    let mut seen: Vec<(String, usize)> = Vec::new();
+    for a in &l.items {
+        if let Some(j) = job_of(root, a) {
+            match seen.iter_mut().find(|(k, _)| *k == j) {
+                Some(e) => e.1 += 1,
+                None => seen.push((j, 1)),
+            }
+        }
+    }
+    let letters: Vec<(String, char)> = seen.into_iter().filter(|(_, n)| *n > 1).enumerate().map(|(k, (j, _))| (j, (b'A' + (k % 26) as u8) as char)).collect();
     let close_ids = ids.clone();
     let win_ids = ids.clone();
     let win_btn = (!win_ids.is_empty()).then(|| {
@@ -1482,6 +2071,63 @@ fn lane(root: &Root, i: usize, l: Lane, col_w: f32, span: usize, lines: usize, c
             None => d.child(icon("gamepad", 20., c(MUTED))),
         }),
     );
+    // The old Game monitor's buttons for a game's windows (MonitorView.tsx): to the front, to the back, minimised or
+    // open again, this game alone, folded to its head.
+    let key = l.name.clone();
+    let folded = root.mon_fold.contains(&key);
+    let solo = root.mon_solo.as_deref() == Some(key.as_str());
+    let wins: Vec<(String, bool)> = l
+        .items
+        .iter()
+        .filter_map(|a| window_of(root, a))
+        .map(|w| (s(w, "id").to_string(), w.get("minimized").and_then(Value::as_bool).unwrap_or(false)))
+        .filter(|(h, _)| !h.is_empty())
+        .collect();
+    let any_up = wins.iter().any(|(_, m)| !m);
+    let tool = |k: &'static str, mark: &'static str, tip: String| IconButton::new((k, i), mark).size(30.).tip(tip);
+    let mut win_tools: Vec<AnyElement> = Vec::new();
+    if !wins.is_empty() {
+        let hs: Vec<String> = wins.iter().map(|(h, _)| h.clone()).collect();
+        let (front, back) = (hs.clone(), hs);
+        win_tools.push(tool("lane-front", "winFront", root.tr("mon.frontAll")).on_click(cx.listener(move |r, _, _, _| r.send("monitorLane", json!({ "ids": front, "what": "front" })))).into_any_element());
+        win_tools.push(tool("lane-back", "winBack", root.tr("mon.backAll")).on_click(cx.listener(move |r, _, _, _| r.send("monitorLane", json!({ "ids": back, "what": "back" })))).into_any_element());
+        let flip: Vec<String> = wins.iter().filter(|(_, m)| *m != any_up).map(|(h, _)| h.clone()).collect();
+        let what = if any_up { "minimize" } else { "restore" };
+        win_tools.push(
+            tool("lane-min", if any_up { "winMin" } else { "winRestore" }, root.tr(if any_up { "mon.minAll" } else { "mon.restoreAll" }))
+                .on_click(cx.listener(move |r, _, _, _| {
+                    for h in &flip {
+                        r.send("monitorAct", json!({ "id": h, "what": what }));
+                    }
+                }))
+                .into_any_element(),
+        );
+    }
+    if multi || solo {
+        let k = key.clone();
+        win_tools.push(
+            if solo {
+                Button::new(("lane-solo", i), root.tr("mon.allGames")).icon("chevronLeft").small().quiet().on_click(cx.listener(move |r, _, _, cx| {
+                    r.mon_solo = None;
+                    cx.notify();
+                })).into_any_element()
+            } else {
+                tool("lane-solo", "focus", root.tr("mon.solo")).on_click(cx.listener(move |r, _, _, cx| {
+                    r.mon_solo = Some(k.clone());
+                    cx.notify();
+                })).into_any_element()
+            },
+        );
+    }
+    let fold = {
+        let k = key.clone();
+        tool("lane-fold", if folded { "chevronRight" } else { "chevronDown" }, root.tr(if folded { "mon.unfold" } else { "mon.fold" })).on_click(cx.listener(move |r, _, _, cx| {
+            if !r.mon_fold.remove(&k) {
+                r.mon_fold.insert(k.clone());
+            }
+            cx.notify();
+        }))
+    };
     let head = group_head(picture, l.name.clone(), facts(meta)).child(
         div()
             .flex()
@@ -1493,9 +2139,13 @@ fn lane(root: &Root, i: usize, l: Lane, col_w: f32, span: usize, lines: usize, c
                 let label = root.i18n.tv("ui.rejoinN", &[("n", &dropped.len().to_string())]);
                 d.child(Button::new(("lane-rejoin", i), label).icon("refresh").tint().small().on_click(cx.listener(move |r, _, _, cx| r.rejoin(&dropped, cx))))
             })
-            .children(win_btn)
-            .child(close_btn),
+            .child(div().flex().items_center().gap(px(2.)).children(win_tools).children(win_btn))
+            .child(close_btn)
+            .child(fold),
     );
+    if folded {
+        return div().w(px(w)).flex_none().flex().flex_col().child(head);
+    }
     let tiles: Vec<AnyElement> = l
         .items
         .iter()
@@ -1507,7 +2157,8 @@ fn lane(root: &Root, i: usize, l: Lane, col_w: f32, span: usize, lines: usize, c
             } else {
                 game_base
             };
-            on_base(base, RISE, R_L + 1., tile(root, a, col_w, lines, cx)).w(px(col_w)).into_any_element()
+            let srv = job_of(root, a).and_then(|j| letters.iter().find(|(k, _)| *k == j).map(|(_, ch)| *ch));
+            on_base(base, RISE, R_CARD + 1., tile(root, a, col_w, lines, srv, cx)).w(px(col_w)).into_any_element()
         })
         .collect();
     div().w(px(w)).flex_none().flex().flex_col().gap(px(16.)).child(head).child(grid(GRID_GAP).pb(px(RISE)).children(tiles))
@@ -1529,7 +2180,16 @@ fn tile_lines(root: &Root, a: &Value) -> usize {
 }
 
 /// `lines`: the most lines of facts a tile on the page has (`tile_lines`), so all of them are one height.
-fn tile(root: &Root, a: &Value, w: f32, lines: usize, cx: &mut Context<Root>) -> impl IntoElement {
+/// The server a window is in (Roblox's job id), from its log for an account, from the window list for another window.
+fn job_of(root: &Root, a: &Value) -> Option<String> {
+    let j = if foreign(a) { window_of(root, a).and_then(|w| w.get("jobId")).and_then(Value::as_str) } else { a.pointer("/session/jobId").and_then(Value::as_str) };
+    j.filter(|j| !j.is_empty()).map(str::to_string)
+}
+
+/// Server colours for the letters, as app.css's .mon-srv s0–s3.
+const SRV_TONES: [u32; 4] = [0x60a5fa, 0xf472b6, 0x34d399, 0xfbbf24];
+
+fn tile(root: &Root, a: &Value, w: f32, lines: usize, srv: Option<char>, cx: &mut Context<Root>) -> impl IntoElement {
     const INSET_PAD: f32 = 6.;
     want_strips(root, cx);
     let id = id_of(a);
@@ -1570,15 +2230,26 @@ fn tile(root: &Root, a: &Value, w: f32, lines: usize, cx: &mut Context<Root>) ->
     let pick = id.clone();
     let tick_id = id.clone();
     let front = hwnd.clone();
+    // Minimise it or open it again, beside Edit (the old monitor had it on the picture, where Windows draws now).
+    let min_btn = hwnd.clone().map(|h| {
+        let what = if minimized { "restore" } else { "minimize" };
+        no_pick(
+            IconButton::new(SharedString::from(format!("tile-min-{id}")), if minimized { "winRestore" } else { "winMin" })
+                .size(30.)
+                .tip(root.tr(if minimized { "mon.restore" } else { "mon.minimize" }))
+                .on_click(cx.listener(move |r, _, _, _| r.send("monitorAct", json!({ "id": h, "what": what })))),
+        )
+    });
     let group = SharedString::from(format!("tile-{id}"));
     hot(group.clone())
         .lift(3.)
         .group(group.clone())
+        .child(spot(root, &id, R_CARD))
         .w(px(w))
         .p(px(INSET_PAD))
         .flex()
         .flex_col()
-        .rounded(px(R_L))
+        .rounded(px(R_CARD))
         .cursor_pointer()
         .map(|d| {
             if on {
@@ -1591,13 +2262,13 @@ fn tile(root: &Root, a: &Value, w: f32, lines: usize, cx: &mut Context<Root>) ->
             }
         })
         .on_click(cx.listener(move |r, e: &ClickEvent, _, cx| {
-            if e.modifiers().control && !other {
-                toggle(r, &pick);
+            if (e.modifiers().control || e.modifiers().shift) && !other {
+                toggle(r, &pick, e.modifiers().shift, cx);
                 cx.notify();
             } else if let Some(h) = &front {
                 r.send("monitorAct", json!({ "id": h, "what": "show" }));
             } else if !other {
-                toggle(r, &pick);
+                toggle(r, &pick, false, cx);
                 cx.notify();
             }
         }))
@@ -1607,7 +2278,7 @@ fn tile(root: &Root, a: &Value, w: f32, lines: usize, cx: &mut Context<Root>) ->
                 .relative()
                 .w_full()
                 .h(px(h))
-                .rounded(px(R_L - INSET_PAD + 1.))
+                .rounded(px(R_CARD - INSET_PAD + 1.))
                 .overflow_hidden()
                 .bg(ca(WHITE, 0.05))
                 .when_some(cover, |d, p| d.child(div().absolute().inset_0().child(img(p).size_full().object_fit(ObjectFit::Cover))))
@@ -1655,12 +2326,14 @@ fn tile(root: &Root, a: &Value, w: f32, lines: usize, cx: &mut Context<Root>) ->
                                         .flex()
                                         .items_center()
                                         .gap(px(6.))
-                                        .children((!other).then(|| number(root, &id)).flatten().map(|n| key_tag(n, a, 20.)))
                                         .child(div().min_w_0().text_size(px(T_L)).line_height(px(20.)).font_weight(FontWeight::SEMIBOLD).truncate().child(label(a))),
                                 )
                                 .when_some(under, |d, u| d.child(div().min_w_0().truncate().text_size(px(T_S)).line_height(px(16.)).text_color(c(MUTED)).child(u))),
                         )
-                        .when_some(up_of(a), |d, t| d.child(div().flex_none().text_size(px(T_M)).text_color(c(MUTED)).font_features(tnum()).child(t)))
+                        .when_some(up_of(a), |d, t| {
+                            let tip: SharedString = root.tr("card.upTip").into();
+                            d.child(div().id(SharedString::from(format!("up-{}", id_of(a)))).flex_none().text_size(px(T_M)).text_color(c(MUTED)).font_features(tnum()).child(t).tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into()))
+                        })
                         // The round tick: picks the account for the bar below (a window not opened by Bloxkeep has none).
                         .when(!other, |d| {
                             d.child(
@@ -1685,8 +2358,8 @@ fn tile(root: &Root, a: &Value, w: f32, lines: usize, cx: &mut Context<Root>) ->
                                         move |_, cx| cx.new(|_| Tip(t.clone())).into()
                                     })
                                     .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
-                                    .on_click(cx.listener(move |r, _, _, cx| {
-                                        toggle(r, &tick_id);
+                                    .on_click(cx.listener(move |r, e: &ClickEvent, _, cx| {
+                                        toggle(r, &tick_id, e.modifiers().shift, cx);
                                         cx.notify();
                                     })),
                             )
@@ -1703,6 +2376,18 @@ fn tile(root: &Root, a: &Value, w: f32, lines: usize, cx: &mut Context<Root>) ->
                         .child(div().size(px(7.)).flex_none().rounded_full().bg(c(tone)))
                         .child(div().min_w_0().truncate().font_weight(FontWeight::MEDIUM).text_color(if tone == OK || tone == TEXT_2 { c(TEXT_2) } else { c(tone) }).child(state))
                         .child(div().flex_1())
+                        // Windows with the same letter are in the same server.
+                        .when_some(srv, |d, ch| {
+                            let tip: SharedString = root.tr("mon.serverTip").into();
+                            let tone = SRV_TONES[((ch as u8 - b'A') % 4) as usize];
+                            d.child(
+                                div()
+                                    .id(SharedString::from(format!("srv-{id}")))
+                                    .flex_none()
+                                    .child(tag(root.i18n.tv("mon.server", &[("s", &ch.to_string())]), tone))
+                                    .tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into()),
+                            )
+                        })
                         .child(
                             div()
                                 .flex()
@@ -1711,7 +2396,15 @@ fn tile(root: &Root, a: &Value, w: f32, lines: usize, cx: &mut Context<Root>) ->
                                 .gap(px(6.))
                                 .text_color(c(MUTED))
                                 .font_features(tnum())
-                                .when_some(ram, |d, r| d.child(r))
+                                .when_some(ram, |d, r| {
+                                    // "RAM in use", with the FPS limit it was opened with when there is one (Accounts.tsx).
+                                    let tip: SharedString = match fps {
+                                        Some(f) => format!("{} · {f} FPS. {}", root.tr("card.ramTip"), root.tr("card.fpsTip")),
+                                        None => root.tr("card.ramTip"),
+                                    }
+                                    .into();
+                                    d.child(div().id(SharedString::from(format!("tile-ram-{id}"))).child(r).tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into()))
+                                })
                                 .when(both, |d| d.child(sep()))
                                 .children(pid),
                         ),
@@ -1758,7 +2451,17 @@ fn tile(root: &Root, a: &Value, w: f32, lines: usize, cx: &mut Context<Root>) ->
                         .gap(px(4.))
                         .children(main.map(no_pick))
                         .child(div().flex_1())
-                        .when(!other, |d| d.child(edit_button(root, a, "tile", 30., cx)).child(more_button(root, a, "tile", 30., cx))),
+                        .children(min_btn)
+                        .when(!other, |d| d.child(edit_button(root, a, "tile", 30., cx)).child(more_button(root, a, "tile", 30., cx)))
+                        // A window Bloxkeep didn't open has no account menu: its Close here (MonitorView.tsx's tile menu).
+                        .when_some(hwnd.clone().filter(|_| other), |d, h| {
+                            d.child(no_pick(
+                                IconButton::new(SharedString::from(format!("tile-close-{id}")), "power")
+                                    .size(30.)
+                                    .tip(root.tr("mon.close"))
+                                    .on_click(cx.listener(move |r, _, _, _| r.send("monitorAct", json!({ "id": h, "what": "close" })))),
+                            ))
+                        }),
                 ),
         )
 }
@@ -1841,7 +2544,6 @@ pub fn open_order(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
                     .items_center()
                     .gap(px(10.))
                     .child(crate::kit::grip())
-                    .child(div().w(px(18.)).flex_none().text_size(px(T_S)).text_color(c(MUTED)).font_features(tnum()).child((i + 1).to_string()))
                     .child(face)
                     .child(div().min_w_0().flex_1().truncate().text_size(px(T_M)).font_weight(FontWeight::MEDIUM).child(name.clone()))
                     .child(step(i.saturating_sub(1), "lo-up", "chevronUp", i == 0))
@@ -2208,7 +2910,8 @@ fn day_strip(root: &Root, id: &str) -> Stateful<Div> {
                 .bg(c(OK))
                 .when(cut, |d| d.child(div().absolute().right(px(-1.)).top(px(-2.)).w(px(2.)).h(px(8.)).rounded(px(1.)).bg(c(BAD))))
         }))
-        .when_some(now, |d, n| d.child(div().absolute().top(px(1.)).left(relative(frac(n))).ml(px(-1.)).w(px(2.)).h(px(10.)).rounded(px(1.)).bg(c(TEXT_2))))
+        // The day so far, a shade lighter than the rest of the track (was a tick standing out of it).
+        .when_some(now, |d, n| d.child(div().absolute().left_0().top(px(4.)).h(px(4.)).w(relative(frac(n))).rounded_full().bg(ca(WHITE, 0.07))))
         .tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into())
 }
 
@@ -2252,11 +2955,33 @@ fn small_line(mark: &'static str, text: String) -> Div {
         .child(div().min_w_0().truncate().child(text))
 }
 
+/// "Opened 9 days ago" as a quiet line, with "Last launched from this app" under the mouse (Accounts.tsx's title).
+fn last_line(root: &Root, a: &Value, text: String) -> Stateful<Div> {
+    let tip: SharedString = root.tr("card.lastTip").into();
+    div().id(SharedString::from(format!("last-{}", id_of(a)))).min_w_0().child(small_line("history", text)).tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into())
+}
+
 /// The small words a card or tile carries after the name: Main, and the group it is in.
 fn tags_of(root: &Root, a: &Value) -> Vec<Div> {
     let mut out = Vec::new();
+    // A tag with what it means under the mouse (Accounts.tsx's titles).
+    let id = id_of(a);
+    let explained = |key: &str, el: Div, tip: String| {
+        let tip: SharedString = tip.into();
+        div().flex_none().child(div().id(SharedString::from(format!("{key}-{id}"))).child(el).tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into()))
+    };
     if a.get("isMain").and_then(Value::as_bool).unwrap_or(false) {
-        out.push(tag(root.tr("card.main"), TEXT_2));
+        out.push(explained("main-tag", tag(root.tr("card.main"), TEXT_2), root.tr("card.mainTip")));
+    }
+    // Roblox VNG's, as the list's row says (Accounts.tsx's card).
+    if s(a, "realm") == "vng" {
+        out.push(explained("vng-tag", tag("VNG".to_string(), ONLINE), root.tr("card.vngTip")));
+    }
+    // The Roblox its open window runs ("0.742"), unless it is the old build (that one has its own tag).
+    if is_local(a) && !a.pointer("/session/oldBuild").and_then(Value::as_bool).unwrap_or(false) {
+        if let Some(v) = a.pointer("/session/robloxVersion").and_then(Value::as_str).filter(|v| !v.is_empty()) {
+            out.push(tag(v.split('.').take(2).collect::<Vec<_>>().join("."), MUTED));
+        }
     }
     if let Some(g) = Some(s(a, "group").trim()).filter(|g| !g.is_empty()) {
         out.push(tag(g.to_string(), TEXT_2));
@@ -2304,6 +3029,12 @@ fn card_lines(root: &Root, a: &Value) -> usize {
 /// An account not open here: its face, name, @username and Robux; Main and its group; what it does (online, playing
 /// elsewhere, last opened…), how long it played today and its note; then its main button (Play, Sign in, Appeal, Cancel
 /// rejoin), Edit and its ⋮ at the foot. A click picks it, a double click plays it; picked, warm with a yellow ring.
+/// A card's height with `lines` extra lines of facts: its padding, the face's row, the state's line and the extra
+/// lines, today's strip, the foot.
+fn card_h(lines: usize) -> f32 {
+    18. + 44. + 12. + 20. + lines as f32 * 20. + 12. + 12. + 14. + 1. + 12. + 30. + 14.
+}
+
 /// `lines`: the most lines of facts a card in its grid has, so all of them are one height.
 fn card(root: &Root, a: &Value, w: f32, lines: usize, cx: &mut Context<Root>) -> impl IntoElement {
     want_strips(root, cx);
@@ -2315,18 +3046,18 @@ fn card(root: &Root, a: &Value, w: f32, lines: usize, cx: &mut Context<Root>) ->
     let under = handle_of(a);
     let main = action(root, a, "card", cx);
     let pick = id.clone();
-    // (Its padding, the face's row, the state's line and the extra lines, today's strip, the foot.)
-    let h = 16. + 44. + 12. + 20. + lines as f32 * 20. + 12. + 12. + 14. + 30. + 14.;
+    let h = card_h(lines);
     let body = hot(SharedString::from(format!("card-{id}")))
         .lift(3.)
+        .child(spot(root, &id, R_CARD))
         .w(px(w))
         .h(px(h))
-        .pt(px(16.))
+        .pt(px(18.))
         .pb(px(14.))
-        .px(px(16.))
+        .px(px(18.))
         .flex()
         .flex_col()
-        .rounded(px(R_L))
+        .rounded(px(R_CARD))
         .cursor_pointer()
         .map(|d| {
             if on {
@@ -2342,7 +3073,7 @@ fn card(root: &Root, a: &Value, w: f32, lines: usize, cx: &mut Context<Root>) ->
                 r.selected.insert(pick.clone());
                 r.play(std::slice::from_ref(&pick), cx);
             } else {
-                toggle(r, &pick);
+                toggle(r, &pick, e.modifiers().shift, cx);
             }
             cx.notify();
         }))
@@ -2367,7 +3098,6 @@ fn card(root: &Root, a: &Value, w: f32, lines: usize, cx: &mut Context<Root>) ->
                                 .flex()
                                 .items_center()
                                 .gap(px(6.))
-                                .children(number(root, &id).map(|n| key_tag(n, a, 20.)))
                                 .child(div().min_w_0().flex_shrink(1.).text_size(px(T_L)).font_weight(FontWeight::SEMIBOLD).truncate().child(label(a)))
                                 .children(tags)
                                 .child(div().flex_1())
@@ -2375,7 +3105,7 @@ fn card(root: &Root, a: &Value, w: f32, lines: usize, cx: &mut Context<Root>) ->
                         )
                         .when_some(under, |d, u| d.child(div().min_w_0().truncate().text_size(px(T_S)).text_color(c(MUTED)).child(u))),
                 )
-                .when(on, |d| d.child(div().size(px(22.)).flex_none().rounded(px(7.)).bg(c(FACE)).flex().items_center().justify_center().child(icon("check", 14., c(INK))))),
+                .when(on, |d| d.child(tick_mark(22.))),
         )
         // What it does, then today and the note.
         .child(
@@ -2396,16 +3126,17 @@ fn card(root: &Root, a: &Value, w: f32, lines: usize, cx: &mut Context<Root>) ->
                         .child(div().size(px(7.)).flex_none().rounded_full().bg(c(dot_of(a))))
                         .child(div().min_w_0().truncate().text_color(c(if tone == TEXT_2 || tone == OK || tone == MUTED { TEXT_2 } else { tone })).child(line)),
                 )
-                .when_some(opened, |d, t| d.child(small_line("history", t)))
+                .when_some(opened, |d, t| d.child(last_line(root, a, t)))
                 .when_some(note, |d, n| d.child(small_line("message", n)))
                 // Today, at the foot of the facts (the room a card with fewer lines keeps is above it, not a gap).
                 .child(div().flex_1())
                 .child(day_strip(root, &id)),
         )
-        // Its main button, Edit, its ⋮.
+        // Its main button, Edit, its ⋮, under a hairline that sets the foot apart from the facts.
+        .child(div().mt(px(14.)).h(px(1.)).flex_none().bg(ca(WHITE, 0.06)))
         .child(
             div()
-                .mt(px(14.))
+                .mt(px(12.))
                 .h(px(30.))
                 .flex()
                 .items_center()
@@ -2417,24 +3148,123 @@ fn card(root: &Root, a: &Value, w: f32, lines: usize, cx: &mut Context<Root>) ->
         )
         .children(menu::place(root, a, false, cx))
         .relative();
-    on_base(if on { c(FACE_BASE) } else { base_dark() }, RISE, R_L + 1., body).w(px(w))
+    on_base(if on { c(FACE_BASE) } else { base_dark() }, RISE, R_CARD + 1., body).w(px(w))
 }
 
 
-/// Play for the picked accounts that are free: into the server whose Job ID is in the bar's box, when one is there and
-/// a game is too; else as Play does (the game in the box, or Roblox's home screen).
+/// Play for the picked accounts that are free (Root::play reads the Job ID box, as every Play does).
 fn play_picked(r: &mut Root, ids: &[String], cx: &mut Context<Root>) {
-    let job = cx.try_global::<menu::Ui>().filter(|u| u.job_open).and_then(|u| u.job.clone()).map(|e| e.read(cx).value().trim().to_string()).unwrap_or_default();
-    let place = r.place.read(cx).value().trim().to_string();
-    if job.is_empty() || place.is_empty() || ids.is_empty() {
-        r.play(ids, cx);
-        return;
+    r.play(ids, cx);
+}
+
+/// The picked accounts played (Enter in the game box or the Job ID box, as app.js's launch([...S.selected])).
+pub fn play_selected(r: &mut Root, cx: &mut Context<Root>) {
+    let own: Vec<String> = r.accounts().iter().filter(|a| r.selected.contains(s(a, "id")) && !foreign(a)).map(id_of).collect();
+    r.play(&own, cx);
+}
+
+/// The Job ID box, made once (a box needs the window): Enter in it plays the picked accounts (app.js ~620).
+fn job_entity(r: &Root, window: &mut Window, cx: &mut Context<Root>) -> Entity<gpui_kit::component::input::InputState> {
+    if let Some(e) = cx.try_global::<menu::Ui>().and_then(|u| u.job.clone()) {
+        return e;
     }
-    r.launch("launch", json!({ "ids": ids, "appOnly": false, "placeInput": place, "jobId": job }), false, cx);
+    let hint = r.tr("dock.job");
+    let e = cx.new(|cx| gpui_kit::component::input::InputState::new(window, cx).placeholder(hint));
+    cx.subscribe(&e, |r: &mut Root, _, ev: &gpui_kit::component::input::InputEvent, cx| {
+        if matches!(ev, gpui_kit::component::input::InputEvent::PressEnter { .. }) {
+            play_selected(r, cx);
+            cx.notify();
+        }
+    })
+    .detach();
+    cx.default_global::<menu::Ui>().job = Some(e.clone());
+    e
+}
+
+/// What the bar's Job ID box holds while it is out (app.js's #job, read by every Play); empty when put away.
+pub fn job_text(cx: &App) -> String {
+    cx.try_global::<menu::Ui>().filter(|u| u.job_open).and_then(|u| u.job.clone()).map(|e| e.read(cx).value().trim().to_string()).unwrap_or_default()
+}
+
+/// The game in the bar's box changed: a Job ID left from another game no longer goes with it (app.js empties #job in
+/// pickGame, pickSaved, the recent-game chips, usePrivateServer and putGame).
+pub fn clear_job(window: &mut Window, cx: &mut App) {
+    let ui = cx.default_global::<menu::Ui>();
+    ui.job_stale = false;
+    if let Some(e) = ui.job.clone() {
+        e.update(cx, |st, cx| st.set_value("", window, cx));
+    }
+}
+
+/// The Job ID box emptied where no window is at hand: at the next frame (Root::render calls settle_job).
+pub fn clear_job_soon(cx: &mut App) {
+    let ui = cx.default_global::<menu::Ui>();
+    ui.job_stale = true;
+}
+
+pub fn settle_job(window: &mut Window, cx: &mut App) {
+    if cx.try_global::<menu::Ui>().is_some_and(|u| u.job_stale) {
+        clear_job(window, cx);
+    }
+}
+
+/// The game box's game is known (app.js's resolveGame): a Job ID that went with another game is emptied, and this game
+/// is the one the box's Job ID now goes with.
+pub fn game_known(place: i64, cx: &mut App) {
+    let (at, job) = cx.try_global::<menu::Ui>().map(|u| (u.job_place, u.job.clone())).unwrap_or_default();
+    let held = job.is_some_and(|e| !e.read(cx).value().trim().is_empty());
+    if held && at.is_some_and(|j| j != place) {
+        clear_job_soon(cx);
+    }
+    cx.default_global::<menu::Ui>().job_place = Some(place);
+}
+
+/// The Job ID to send with Play: none when the game box now holds another game than the one it went with (a game
+/// typed and played without Enter, before its lookup); that box is then emptied.
+pub fn job_for(place_input: &str, cx: &mut App) -> String {
+    let job = job_text(cx);
+    if job.is_empty() {
+        return job;
+    }
+    let at = cx.try_global::<menu::Ui>().and_then(|u| u.job_place);
+    match (at, crate::target::parse(place_input, "")) {
+        (Some(j), Ok(t)) if t.place > 0 && t.place != j => {
+            clear_job_soon(cx);
+            String::new()
+        }
+        _ => job,
+    }
 }
 
 /// The server to join, by its Job ID (the web page's Server box): a button until it is wanted (a box needs the window
 /// to be made), then the box with an x that puts it away (and empties it: any server again).
+/// A server picked to play in (app.js's useServer): its game in the game box, its Job ID in the bar's server box; the
+/// accounts are then picked and played as usual.
+/// A game put in the Play box on Accounts, its Job ID box emptied (app.js's putGame).
+pub fn put_game(r: &mut Root, place: i64, window: &mut Window, cx: &mut Context<Root>) {
+    r.go(crate::pages::Page::Accounts);
+    let url = format!("https://www.roblox.com/games/{place}");
+    clear_job(window, cx);
+    if r.place.read(cx).value().trim() != url {
+        r.place.update(cx, |st, cx| st.set_value(url, window, cx));
+        r.resolve_place(cx);
+    }
+    cx.notify();
+}
+
+pub fn use_server(r: &mut Root, place: i64, job: String, window: &mut Window, cx: &mut Context<Root>) {
+    cx.default_global::<menu::Ui>().job_place = Some(place);
+    let url = format!("https://www.roblox.com/games/{place}");
+    if r.place.read(cx).value().trim() != url {
+        r.place.update(cx, |st, cx| st.set_value(url, window, cx));
+        r.resolve_place(cx);
+    }
+    let e = job_entity(r, window, cx);
+    e.update(cx, |st, cx| st.set_value(job, window, cx));
+    cx.default_global::<menu::Ui>().job_open = true;
+    cx.notify();
+}
+
 fn job_box(root: &Root, compact: bool, cx: &mut Context<Root>) -> AnyElement {
     let ui = cx.try_global::<menu::Ui>();
     let shown = ui.filter(|u| u.job_open).and_then(|u| u.job.clone());
@@ -2458,15 +3288,7 @@ fn job_box(root: &Root, compact: bool, cx: &mut Context<Root>) -> AnyElement {
             .into_any_element(),
         None => {
             let open = cx.listener(|r: &mut Root, _: &ClickEvent, window: &mut Window, cx: &mut Context<Root>| {
-                let hint = r.tr("dock.job");
-                let e = match cx.try_global::<menu::Ui>().and_then(|u| u.job.clone()) {
-                    Some(e) => e,
-                    None => {
-                        let e = cx.new(|cx| gpui_kit::component::input::InputState::new(window, cx).placeholder(hint));
-                        cx.default_global::<menu::Ui>().job = Some(e.clone());
-                        e
-                    }
-                };
+                let e = job_entity(r, window, cx);
                 cx.default_global::<menu::Ui>().job_open = true;
                 e.update(cx, |st, cx| st.focus(window, cx));
                 cx.notify();
@@ -2552,7 +3374,11 @@ fn bar(root: &Root, picked: &[Value], width: f32, cx: &mut Context<Root>) -> imp
             })))
         });
 
-    let play = (k > 0).then(|| {
+    // (Also while opening: the ones picked are then all opening, and Stop stands in Play's place.)
+    let opening = root.state.get("launching").and_then(Value::as_bool).unwrap_or(false);
+    // (And for Ctrl+L or "/" with none picked: the bar is there for its game box, which they focus.)
+    let wanted = cx.try_global::<menu::Ui>().is_some_and(|u| u.place_wanted == Some(root.nav));
+    let play = (k > 0 || opening || wanted).then(|| {
         div()
             .flex_1()
             .min_w_0()
@@ -2577,7 +3403,11 @@ fn bar(root: &Root, picked: &[Value], width: f32, cx: &mut Context<Root>) -> imp
             // Choose a game: the ones played lately, the pinned, the saved servers, favourites, popular.
             .child(crate::pages::picker::button(root, cx))
             .children(crate::pages::picker::save_button(root, cx))
-            .child(div().flex_1().min_w(px(200.)).child(field(&root.place, None)))
+            .child(div().id("bar-place").flex_1().min_w(px(200.)).child(field(&root.place, None)).tooltip({
+                // What the box takes (Accounts.tsx's title).
+                let tip: SharedString = root.tr("dock.placeTip").into();
+                move |_, cx| cx.new(|_| Tip(tip.clone())).into()
+            }))
             .child(job_box(root, compact, cx))
             .children(browse_servers(root, compact, cx))
             .children(recents.into_iter().enumerate().map(|(i, r)| {
@@ -2596,12 +3426,13 @@ fn bar(root: &Root, picked: &[Value], width: f32, cx: &mut Context<Root>) -> imp
                     .tooltip(move |_, cx| cx.new(|_| Tip(name.clone())).into())
                     .on_click(cx.listener(move |r, _, window, cx| {
                         let url = format!("https://www.roblox.com/games/{place}");
+                        clear_job(window, cx);
                         r.place.update(cx, |st, cx| st.set_value(url, window, cx));
                         r.resolve_place(cx);
                     }))
             }))
             // While accounts are being opened one after another: Stop, in Play's place.
-            .child(div().flex_none().child(if root.state.get("launching").and_then(Value::as_bool).unwrap_or(false) {
+            .child(div().flex_none().child(if opening {
                 Button::new("bar-stop", root.tr("dock.stop")).icon("stop").danger().on_click(cx.listener(|r, _, _, _| r.send("cancelLaunch", json!({}))))
             } else {
                 Button::new("bar-play", if k > 1 { format!("{verb} · {k}") } else { verb })
@@ -2645,6 +3476,9 @@ fn bar(root: &Root, picked: &[Value], width: f32, cx: &mut Context<Root>) -> imp
             cx.notify();
         })));
 
+    // What the game box holds (Accounts.tsx's DockInfo): looking it up, why not, a private-server link, or the game's
+    // name (its page on a click), the kind of server, its maker and how many play it.
+    let info = (k > 0 || opening || wanted).then(|| dock_info(root, has_game, cx));
     // Two lines at any width: who and what to do with them, then where to play (one line ran out of room).
     div()
         .flex_none()
@@ -2664,4 +3498,51 @@ fn bar(root: &Root, picked: &[Value], width: f32, cx: &mut Context<Root>) -> imp
         .gap(px(10.))
         .child(div().flex().items_center().gap(px(12.)).child(who).child(div().flex_1()).child(acts))
         .children(play)
+        .children(info)
+}
+
+fn dock_info(root: &Root, has_game: bool, cx: &mut Context<Root>) -> Div {
+    let line = div().h(px(18.)).min_w_0().flex().items_center().gap(px(8.)).pl(px(42.)).text_size(px(T_S)).text_color(c(TEXT_2));
+    let g = root.game.as_ref();
+    if !has_game {
+        return line.text_color(c(MUTED)).child(crate::i18n::plain(&root.tr("dock.hint")));
+    }
+    if root.place_asking {
+        return line.child(icon("refresh", 12., c(MUTED))).child(root.tr("dock.finding"));
+    }
+    let Some(g) = g else { return line };
+    if g.get("ok").and_then(Value::as_bool) != Some(true) {
+        let why = s(g, "error").to_string();
+        return line.text_color(c(WARN)).child(icon("alert", 12., c(WARN))).child(div().truncate().child(why));
+    }
+    let kind = s(g, "kind");
+    if kind == "share" {
+        return line.child(tag(root.tr("dock.share"), FACE)).child(div().truncate().child(root.tr("dock.shareNote")));
+    }
+    let place = g.get("placeId").and_then(Value::as_i64).unwrap_or(0);
+    let name = Some(crate::pages::home::clean(s(g, "name"))).filter(|n| !n.is_empty()).unwrap_or_else(|| root.i18n.tv("dock.placeN", &[("id", &place.to_string())]));
+    let public = place > 0 && kind != "private" && kind != "server";
+    let tip: SharedString = root.tr("gp.open").into();
+    let (n2, p2) = (name.clone(), place);
+    line.child(
+        div()
+            .id("dock-game")
+            .min_w_0()
+            .truncate()
+            .font_weight(FontWeight::SEMIBOLD)
+            .text_color(c(TEXT))
+            .child(name)
+            .when(public, |d| {
+                d.cursor_pointer().hover(|d| d.underline()).tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into()).on_click(cx.listener(move |r, _, _, cx| {
+                    crate::pages::games::open_place(r, p2, &n2);
+                    cx.notify();
+                }))
+            }),
+    )
+    .when(kind == "private", |d| d.child(tag(root.tr("dock.private"), FACE)))
+    .when(kind == "server", |d| d.child(tag(root.tr("dock.server"), FACE)))
+    .when(!s(g, "creator").is_empty(), |d| d.child(div().flex_none().text_color(c(MUTED)).child(root.i18n.tv("dock.by", &[("c", s(g, "creator"))]))))
+    .when_some(g.get("playing").and_then(Value::as_i64).filter(|n| *n > 0), |d, n| {
+        d.child(div().flex_none().text_color(c(MUTED)).child(root.i18n.tv("dock.playing", &[("n", &crate::pages::games::thousands(n, root.i18n.vietnamese))])))
+    })
 }

@@ -37,7 +37,7 @@ pub fn latest_test_url() -> Option<String> {
 }
 
 /// OnlineHttp (AppController.Online.cs): no cookies, no redirects followed, 20 s at most.
-static ONLINE_HTTP: LazyLock<ureq::Agent> = LazyLock::new(|| ureq::AgentBuilder::new().redirects(0).timeout(Duration::from_secs(20)).build());
+static ONLINE_HTTP: LazyLock<ureq::Agent> = LazyLock::new(|| crate::net::builder().redirects(0).timeout(Duration::from_secs(20)).build());
 
 /// GET a URL: its text when it answered 2xx; None for any other answer; Err when it couldn't be reached or read.
 fn get_text(url: &str) -> Result<Option<String>, String> {
@@ -80,7 +80,7 @@ impl App {
     }
 
     pub async fn look_at_latest(self: &Rc<Self>) {
-        self.latest.latest_looking.set(true);
+        let _looking = crate::core::base::Busy::set(&self.latest.latest_looking);
         let url = latest_test_url().unwrap_or_else(|| LATEST_URL.to_string());
         // Not reached, or not JSON: asked again in a few minutes; the hourly check goes on meanwhile.
         if let Ok(Some(text)) = rt::blocking(move || get_text(&url)).await
@@ -95,6 +95,5 @@ impl App {
                 }
             }
         }
-        self.latest.latest_looking.set(false);
     }
 }

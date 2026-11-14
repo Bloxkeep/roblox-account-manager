@@ -91,10 +91,22 @@ fn icons() -> std::sync::MutexGuard<'static, Icons> {
     ICONS.lock().unwrap_or_else(|e| e.into_inner())
 }
 
+/// Set once Bloxkeep gives the icons back at quit: a pass still running on its worker then puts none on again.
+static CLOSED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// No more icons from here on (Bloxkeep is closing); `remove` still works.
+pub fn close() {
+    CLOSED.store(true, std::sync::atomic::Ordering::SeqCst);
+}
+
 /// `key`: what the picture shows (the picture's address, or the initials and colour): drawn again when it changes.
 /// `check`: its windows are asked whether they still have the icons (`next_to_check`).
 pub fn apply(pid: i32, windows: &[isize], key: &str, draw: &dyn Fn() -> Picture, check: bool) {
     let mut s = icons();
+    // Asked with the list held: give_icons_back's removal then comes either after this pass or finds it stopped here.
+    if CLOSED.load(std::sync::atomic::Ordering::SeqCst) {
+        return;
+    }
     let differs = s.by_pid.get(&pid).is_none_or(|m| m.key != key);
     if differs {
         let picture = draw();

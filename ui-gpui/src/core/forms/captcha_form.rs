@@ -4,7 +4,7 @@ use std::{
     collections::HashSet,
     io::Read,
     path::PathBuf,
-    rc::{Rc, Weak},
+    rc::Rc,
     sync::{Arc, LazyLock, Mutex},
     time::{Duration, Instant},
 };
@@ -37,7 +37,7 @@ const PROFILE_PREFIX: &str = "Bloxkeep-captcha-";
 const SLOW_AFTER: Duration = Duration::from_secs(20);
 
 /// The relay to HUMAN's hosts: no cookies of its own, any compression undone, 20 s at most.
-static RELAY: LazyLock<ureq::Agent> = LazyLock::new(|| ureq::AgentBuilder::new().timeout(Duration::from_secs(20)).build());
+static RELAY: LazyLock<ureq::Agent> = LazyLock::new(|| crate::net::builder().timeout(Duration::from_secs(20)).build());
 // PORT: HttpClient's AutomaticDecompression = All; ureq 2 undoes gzip (its default feature) but not brotli or deflate.
 
 /// HUMAN's first-party routes: /{app id without "PX"}/init.js, /xhr/…, /captcha/….
@@ -508,6 +508,9 @@ fn send(method: &str, target: &str, body: Option<Vec<u8>>, headers: &[(String, S
             if let Some(px) = px_cookies(value) {
                 req = req.set("Cookie", &px);
             }
+        } else if key.eq_ignore_ascii_case("Accept-Encoding") {
+            // Not the page's ("gzip, deflate, br, zstd"): ureq undoes only gzip, so a brotli answer reached the page
+            // still packed and without its Content-Encoding (HttpClient undid them all). ureq asks for gzip itself.
         } else if !key.eq_ignore_ascii_case("Host") && !key.eq_ignore_ascii_case("Content-Length") {
             req = req.set(key, value);
         }

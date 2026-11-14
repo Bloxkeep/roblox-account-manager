@@ -9,7 +9,10 @@ use std::{
     collections::HashMap,
     io::Read,
     path::PathBuf,
-    sync::{Arc, Condvar, LazyLock, Mutex},
+    sync::{
+        Arc, Condvar, LazyLock, Mutex,
+        atomic::{AtomicU64, Ordering},
+    },
     time::{Duration, Instant, SystemTime},
 };
 
@@ -18,11 +21,38 @@ use futures::channel::oneshot;
 use gpui_kit::{App, Global, Image, ImageCacheError, ImageFormat, ImageSource, RenderImage, Window};
 
 enum Slot {
-    Loading,
+    /// On its way: how often it failed before (above 0: still failed() till it comes, so a place shrunk for it
+    /// doesn't spring back to full size for the moment the retry takes), and when a draw last asked for it.
+    Loading(u32, Arc<AtomicU64>),
     /// The picture, its own colour when it has one (`tone`), when it was last asked for (a draw asks for every
     /// picture it shows, each time), and its size in pixels when it can be made smaller (not an SVG or a GIF).
     Ready(Arc<Image>, Option<u32>, Instant, Option<(u32, u32)>),
-    Failed,
+    /// Since when, how many times in a row, and whether the server said it isn't there (404, 403): asked again after
+    /// FAILED_RETRY, twice that after the next failure and so on (a moment offline, Roblox's CDN busy), not for the rest
+    /// of the run; one the server refused only after GONE_RETRY.
+    Failed(Instant, u32, bool),
+}
+
+const FAILED_RETRY: Duration = Duration::from_secs(60);
+const FAILED_MAX: Duration = Duration::from_secs(30 * 60);
+const GONE_RETRY: Duration = Duration::from_secs(60 * 60);
+
+/// A picture waiting in the queue that no draw has asked for this long (scrolled away, the page left) is dropped
+/// there, not fetched: asked for again, it is queued again.
+const STALE: Duration = Duration::from_secs(20);
+
+/// The time since the run started, in ms: when a draw last asked for a picture on its way.
+fn ms_now() -> u64 {
+    static START: LazyLock<Instant> = LazyLock::new(Instant::now);
+    START.elapsed().as_millis() as u64
+}
+
+/// How long a picture that failed `n` times in a row waits before it is asked again.
+fn wait_after(n: u32, gone: bool) -> Duration {
+    if gone {
+        return GONE_RETRY;
+    }
+    FAILED_RETRY.saturating_mul(1 << n.saturating_sub(1).min(5)).min(FAILED_MAX)
 }
 
 /// A smaller copy of a picture, made for the pixels it takes on screen (see `pic_at`).
@@ -56,7 +86,17 @@ const IDLE: Duration = Duration::from_secs(600);
 const MAX_FAILED: usize = 2000;
 
 type Fetched = (Vec<u8>, Option<u32>, Option<(u32, u32)>);
-type Job = (String, oneshot::Sender<Option<Fetched>>);
+
+/// How a fetch ended.
+enum Got {
+    Bytes(Fetched),
+    /// Not had; true when the server said it isn't there (a 4xx other than "too many"), not worth asking soon.
+    Failed(bool),
+    /// Left in the queue too long unasked: not fetched.
+    Dropped,
+}
+
+type Job = (String, oneshot::Sender<Got>, Arc<AtomicU64>);
 
 /// The pictures waiting: taken newest first, so what was asked last (the page as it is now) comes before what a
 /// scroll left behind.
@@ -81,7 +121,7 @@ pub fn init(cx: &mut App) {
     let queue = Arc::new(Queue { jobs: Mutex::new(Vec::new()), ready: Condvar::new() });
     // Its connections stay open between pictures, one per worker and server: ureq keeps only one per server unless
     // told, so every other worker paid a new TLS handshake for each picture.
-    let agent = ureq::AgentBuilder::new()
+    let agent = crate::net::builder()
         .timeout(Duration::from_secs(20))
         .user_agent("Bloxkeep")
         .max_idle_connections(64)
@@ -104,12 +144,19 @@ pub fn init(cx: &mut App) {
                         }
                     }
                 };
-                let (url, done) = job;
-                let _ = done.send(fetch(&agent, &url).map(|b| {
-                    let tone = tone_of(&b);
-                    let dims = dims_of(&b);
-                    (b, tone, dims)
-                }));
+                let (url, done, asked) = job;
+                if ms_now().saturating_sub(asked.load(Ordering::Relaxed)) > STALE.as_millis() as u64 {
+                    let _ = done.send(Got::Dropped);
+                    continue;
+                }
+                let _ = done.send(match fetch(&agent, &url) {
+                    Ok(b) => {
+                        let tone = tone_of(&b);
+                        let dims = dims_of(&b);
+                        Got::Bytes((b, tone, dims))
+                    }
+                    Err(gone) => Got::Failed(gone),
+                });
             }
         });
     }
@@ -208,15 +255,16 @@ fn prune() {
     }
 }
 
-fn fetch(agent: &ureq::Agent, url: &str) -> Option<Vec<u8>> {
+/// The picture's bytes, or whether the server said it isn't there (true) rather than failing a moment (false).
+fn fetch(agent: &ureq::Agent, url: &str) -> Result<Vec<u8>, bool> {
     let started = Instant::now();
     let web = url.starts_with("http://") || url.starts_with("https://");
     if web && let Some(b) = from_disk(url) {
         log(url, started, "disk");
-        return Some(b);
+        return Ok(b);
     }
     let got = fetch_now(agent, url);
-    if web && let Some(b) = got.as_ref().filter(|b| format_of(b).is_some()) {
+    if web && let Some(b) = got.as_ref().ok().filter(|b| format_of(b).is_some()) {
         to_disk(url, b);
         log(url, started, "web");
     }
@@ -231,31 +279,35 @@ fn log(url: &str, started: Instant, from: &str) {
     }
 }
 
-fn fetch_now(agent: &ureq::Agent, url: &str) -> Option<Vec<u8>> {
+fn fetch_now(agent: &ureq::Agent, url: &str) -> Result<Vec<u8>, bool> {
     if let Some(rest) = url.strip_prefix("data:") {
-        let (meta, body) = rest.split_once(',')?;
+        let (meta, body) = rest.split_once(',').ok_or(true)?;
         return if meta.ends_with(";base64") {
-            base64::engine::general_purpose::STANDARD.decode(body).ok()
+            base64::engine::general_purpose::STANDARD.decode(body).map_err(|_| true)
         } else {
-            Some(percent_encoding::percent_decode_str(body).collect())
+            Ok(percent_encoding::percent_decode_str(body).collect())
         };
     }
     if url.starts_with("http://") || url.starts_with("https://") {
         // A page of many pictures (an inventory shelf) has some of them refused or cut off now and then: each gets
-        // three goes, a little apart, before it is given up for the session.
+        // three goes, a little apart. A server that says the picture isn't there (404, 403...) is not asked again.
         for round in 0..3u64 {
             if round > 0 {
                 std::thread::sleep(std::time::Duration::from_millis(500 * round));
             }
-            let Ok(r) = agent.get(url).call() else { continue };
+            let r = match agent.get(url).call() {
+                Ok(r) => r,
+                Err(ureq::Error::Status(code, _)) if (400..500).contains(&code) && code != 408 && code != 429 => return Err(true),
+                Err(_) => continue,
+            };
             let mut bytes = Vec::new();
             if r.into_reader().take(16 << 20).read_to_end(&mut bytes).is_ok() && !bytes.is_empty() {
-                return Some(bytes);
+                return Ok(bytes);
             }
         }
-        return None;
+        return Err(false);
     }
-    std::fs::read(url.strip_prefix("file:///").unwrap_or(url)).ok()
+    std::fs::read(url.strip_prefix("file:///").unwrap_or(url)).map_err(|_| true)
 }
 
 fn format_of(b: &[u8]) -> Option<ImageFormat> {
@@ -469,9 +521,9 @@ pub fn tone(url: &str, cx: &mut App) -> Option<u32> {
 /// every window's atlas can be reached.
 fn trim(cx: &mut App) {
     let images = cx.global_mut::<Images>();
-    let failed = images.slots.values().filter(|s| matches!(s, Slot::Failed)).count();
+    let failed = images.slots.values().filter(|s| matches!(s, Slot::Failed(..))).count();
     if failed > MAX_FAILED {
-        images.slots.retain(|_, s| !matches!(s, Slot::Failed));
+        images.slots.retain(|_, s| !matches!(s, Slot::Failed(..)));
     }
     let now = Instant::now();
     let count = images.slots.values().filter(|s| matches!(s, Slot::Ready(..))).count();
@@ -605,7 +657,11 @@ pub fn pic_pair(url: &str, w: f32, h: f32, cx: &mut App) -> Option<(ImageSource,
 /// Whether the picture at an address could not be had (offline, gone, not a picture): a place kept for it can
 /// shrink to a quiet line instead of standing empty at full size.
 pub fn failed(url: &str, cx: &App) -> bool {
-    matches!(cx.global::<Images>().slots.get(url), Some(Slot::Failed))
+    match cx.global::<Images>().slots.get(url) {
+        Some(Slot::Failed(..)) => true,
+        Some(Slot::Loading(n, _)) => *n > 0,
+        _ => false,
+    }
 }
 
 /// `pic_at` for a square box (a face, an icon).
@@ -624,23 +680,40 @@ pub fn pic(url: &str, cx: &mut App) -> Option<Arc<Image>> {
             *used = Instant::now();
             return Some(i.clone());
         }
-        Some(Slot::Loading | Slot::Failed) => return None,
-        None => {}
+        Some(Slot::Loading(_, asked)) => {
+            asked.store(ms_now(), Ordering::Relaxed);
+            return None;
+        }
+        Some(Slot::Failed(at, n, gone)) if at.elapsed() < wait_after(*n, *gone) => return None,
+        _ => {}
     }
-    images.slots.insert(url.to_string(), Slot::Loading);
+    let fails = match images.slots.get(url) {
+        Some(Slot::Failed(_, n, _)) => *n,
+        _ => 0,
+    };
+    let asked = Arc::new(AtomicU64::new(ms_now()));
+    images.slots.insert(url.to_string(), Slot::Loading(fails, asked.clone()));
     let (tx, rx) = oneshot::channel();
     if let Ok(mut jobs) = images.queue.jobs.lock() {
-        jobs.push((url.to_string(), tx));
+        jobs.push((url.to_string(), tx, asked));
     }
     images.queue.ready.notify_one();
     let key = url.to_string();
     cx.spawn(async move |cx| {
-        let bytes = rx.await.ok().flatten();
+        let got = rx.await.unwrap_or(Got::Failed(false));
         let _ = cx.update(|cx| {
             let images = cx.global_mut::<Images>();
-            let slot = match bytes.and_then(|(b, tone, dims)| format_of(&b).map(|f| (Image::from_bytes(f, b), tone, dims))) {
-                Some((i, tone, dims)) => Slot::Ready(Arc::new(i), tone, Instant::now(), dims),
-                None => Slot::Failed,
+            let slot = match got {
+                // Not asked for lately: let go, queued again when a draw asks.
+                Got::Dropped => {
+                    images.slots.remove(&key);
+                    return;
+                }
+                Got::Bytes((b, tone, dims)) => match format_of(&b) {
+                    Some(f) => Slot::Ready(Arc::new(Image::from_bytes(f, b)), tone, Instant::now(), dims),
+                    None => Slot::Failed(Instant::now(), fails + 1, true),
+                },
+                Got::Failed(gone) => Slot::Failed(Instant::now(), fails + 1, gone),
             };
             images.slots.insert(key, slot);
             trim(cx);

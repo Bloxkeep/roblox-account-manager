@@ -18,12 +18,24 @@ pub struct Infobox {
     pub rows: Vec<(String, String)>,
 }
 
-/// A page ready to draw: its HTML, its box of facts, and the pictures the HTML shows.
+/// A page ready to draw: its HTML, its box of facts, the pictures the HTML shows, and its parts (its headings).
 #[derive(Clone, Debug, Default)]
 pub struct Clean {
     pub html: String,
     pub infobox: Option<Infobox>,
     pub images: Vec<String>,
+    pub sections: Vec<Section>,
+}
+
+/// A part of a page, for its Contents (WikiSite.tsx's sections, toclevel 1 and 2): its heading's words, its level (1
+/// for an h2, 2 for an h3), the wiki's anchor for it, and where its heading starts in the HTML. Only headings at the
+/// top of the page's words count, so the HTML cut there is whole on both sides.
+#[derive(Clone, Debug, Default)]
+pub struct Section {
+    pub line: String,
+    pub level: u8,
+    pub anchor: Option<String>,
+    pub at: usize,
 }
 
 /// How a rewritten link says what it does (the text view hands the address back on a click).
@@ -47,6 +59,9 @@ const DROP_CLASSES: &[&str] = &[
 ];
 /// The widest a picture is drawn in the words.
 const IMG_MAX: u32 = 420;
+/// Wrappers around a page's words and its headings (MediaWiki's parser output, its newer heading boxes): their words
+/// are kept but not the block, so the headings stand at the top of the HTML (and the page can be cut there).
+const OPEN_CLASSES: &[&str] = &["mw-parser-output", "mw-heading", "mw-content-ltr", "mw-content-rtl"];
 
 fn attr(attrs: &RefCell<Vec<html5ever::Attribute>>, name: &str) -> Option<String> {
     attrs.borrow().iter().find(|a| &*a.name.local == name).map(|a| a.value.to_string())
@@ -191,6 +206,19 @@ struct Ctx<'a> {
     infobox: Option<Infobox>,
     images: Vec<String>,
     seen: HashSet<String>,
+    /// How many elements written are open now (0: at the top of the page's words), and the headings met there.
+    depth: usize,
+    sections: Vec<Section>,
+}
+
+/// A heading's anchor: its own id, else its mw-headline's (older MediaWiki).
+fn anchor_of(node: &Handle, attrs: &RefCell<Vec<html5ever::Attribute>>) -> Option<String> {
+    attr(attrs, "id").filter(|a| !a.is_empty()).or_else(|| {
+        first(node, &|_, c| has(c, "mw-headline")).and_then(|h| match &h.data {
+            NodeData::Element { attrs, .. } => attr(attrs, "id").filter(|a| !a.is_empty()),
+            _ => None,
+        })
+    })
 }
 
 fn walk(node: &Handle, out: &mut String, cx: &mut Ctx) {
@@ -249,7 +277,19 @@ fn walk(node: &Handle, out: &mut String, cx: &mut Ctx) {
             }
             let keep = KEEP_TAGS.contains(&tag);
             // A block the view doesn't know (div, section, figure…) keeps its words apart from the next.
-            let block = !keep && matches!(tag, "div" | "section" | "figure" | "aside" | "center" | "header" | "footer" | "nav" | "details" | "summary" | "figcaption");
+            let block = !keep
+                && matches!(tag, "div" | "section" | "figure" | "aside" | "center" | "header" | "footer" | "nav" | "details" | "summary" | "figcaption")
+                && !cls.iter().any(|c| OPEN_CLASSES.contains(&c.as_str()));
+            // A part of the page starts here: a heading at the top of its words.
+            if cx.depth == 0 && matches!(tag, "h2" | "h3") {
+                let line = text_of(node).replace('\n', " ");
+                if !line.is_empty() {
+                    cx.sections.push(Section { line, level: if tag == "h2" { 1 } else { 2 }, anchor: anchor_of(node, attrs), at: out.len() });
+                }
+            }
+            if (keep && !matches!(tag, "br" | "hr")) || block {
+                cx.depth += 1;
+            }
             if keep {
                 out.push('<');
                 out.push_str(tag);
@@ -290,8 +330,10 @@ fn walk(node: &Handle, out: &mut String, cx: &mut Ctx) {
             }
             if keep && !matches!(tag, "br" | "hr") {
                 out.push_str(&format!("</{tag}>"));
+                cx.depth -= 1;
             } else if block {
                 out.push_str("</div>");
+                cx.depth -= 1;
             }
         }
         _ => {
@@ -305,10 +347,10 @@ fn walk(node: &Handle, out: &mut String, cx: &mut Ctx) {
 /// The page's HTML made safe and plain, its box of facts taken out.
 pub fn clean_page(html: &str, site: &str) -> Clean {
     let dom: RcDom = parse_document(RcDom::default(), Default::default()).one(html);
-    let mut cx = Ctx { site, infobox: None, images: Vec::new(), seen: HashSet::new() };
+    let mut cx = Ctx { site, infobox: None, images: Vec::new(), seen: HashSet::new(), depth: 0, sections: Vec::new() };
     let mut out = String::with_capacity(html.len() / 2);
     walk(&dom.document, &mut out, &mut cx);
-    Clean { html: out, infobox: cx.infobox, images: cx.images }
+    Clean { html: out, infobox: cx.infobox, images: cx.images, sections: cx.sections }
 }
 
 /// A short HTML snippet's words (a search hit's snippet, a heading's line).

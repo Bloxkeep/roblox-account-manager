@@ -165,7 +165,7 @@ pub async fn run(c: &mut Checks, dir: &str) {
     if roblox_launcher::custom_launcher_ready(NETWORK_LAUNCHER) || roblox_launcher::other_name("custom").is_some() {
         c.skip("Play with a launcher on the network: refused as gone, nothing started", "starts Roblox");
     } else {
-        let result = roblox_launcher::launch("ticket", None, "custom", NETWORK_LAUNCHER);
+        let result = roblox_launcher::launch("ticket", None, "custom", NETWORK_LAUNCHER, None);
         c.check(
             "Play with a launcher on the network: refused as gone, nothing started",
             matches!(&result, Err(Fail::User(m)) if m.contains("gone")),

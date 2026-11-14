@@ -5,11 +5,14 @@
 // links opening here, and each kind as a table to search, filter, sort and compare, with the items most like one and
 // the odds of a drop. Text and pictures are the wiki's (CC BY-SA): every page names and links it.
 use std::{
+    cell::RefCell,
     collections::{HashMap, HashSet},
+    rc::Rc,
     sync::{Arc, LazyLock, Mutex},
     time::Duration,
 };
 
+use gpui_kit::component::input::{InputEvent, InputState};
 use gpui_kit::component::text::TextView;
 use gpui_kit::{prelude::*, *};
 use serde_json::{Value, json};
@@ -86,18 +89,49 @@ struct Changed {
 #[derive(Clone)]
 struct Article {
     title: String,
-    html: String,
+    html: SharedString,
     infobox: Option<Infobox>,
     images: Vec<String>,
     cats: Vec<String>,
     missing: bool,
+    /// Its parts, for its Contents (shown with 3 or more, as WikiSite.tsx's loadPage).
+    sections: Vec<wikihtml::Section>,
 }
 
 #[derive(Clone, Default)]
 struct Table {
-    items: Vec<Item>,
+    /// Shared, not copied, by each frame that draws it.
+    items: Rc<Vec<Item>>,
     done: bool,
     failed: bool,
+    /// Its number as last read (each read 50 more): what the views' caches go by.
+    rev: u64,
+}
+
+/// The next table read's number.
+static TABLE_REV: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+
+/// A table as filtered and sorted (by the fingerprint of what it was worked out from): its lines and the items shown.
+struct TableCut {
+    key: u64,
+    lines: Rc<Vec<Line>>,
+    shown: Rc<Vec<usize>>,
+}
+
+/// What an article found in the tables (by the fingerprint of the page and the tables): the item it is, its facts, and
+/// the items most like it.
+struct ArtFound {
+    key: u64,
+    item: Option<usize>,
+    facts: Rc<Vec<(String, String)>>,
+    sim: Rc<(Vec<wikitext::SimLine>, Vec<usize>)>,
+}
+
+fn hash_of(x: impl std::hash::Hash) -> u64 {
+    use std::hash::Hasher;
+    let mut h = std::collections::hash_map::DefaultHasher::new();
+    x.hash(&mut h);
+    h.finish()
 }
 
 /// What the tab has read (kept while the app runs, by wiki) and what it shows.
@@ -113,8 +147,11 @@ pub struct Data {
     fresh: HashMap<String, Fresh>,
     changes: HashMap<String, Vec<Changed>>,
     asked_fresh: HashSet<String>,
-    /// Pages by "site|title" (None: it couldn't be read).
-    pages: HashMap<String, Option<Article>>,
+    /// Pages by "site|title" (None: it couldn't be read), and when each was last shown (the one shown longest ago goes
+    /// first when there are too many).
+    pages: HashMap<String, Option<Rc<Article>>>,
+    page_used: HashMap<String, u64>,
+    page_tick: u64,
     asked_pages: HashSet<String>,
     tables: HashMap<String, Table>,
     asked_tables: HashSet<String>,
@@ -135,10 +172,21 @@ pub struct Data {
     filtering: bool,
     picked: Vec<String>,
     comparing: bool,
+    /// The number lines' Min and Max boxes (WikiView.tsx's wk-range), by line, and the table they are for: made the
+    /// first time its filters show (a box needs the window, so `settle` makes them).
+    ranges: Vec<(String, Entity<InputState>, Entity<InputState>)>,
+    ranges_for: String,
+    /// The drop odds' "tries so far" box (WikiView.tsx's DropOdds) and the page it is for.
+    tried: Option<(String, Entity<InputState>)>,
+    /// The table view's and the article's work, kept between frames.
+    cut: RefCell<Option<TableCut>>,
+    found: RefCell<Option<ArtFound>>,
 }
 
 /// A link clicked in an article (the text view hands it back from outside the window's reach).
 static CLICKED: Mutex<Option<String>> = Mutex::new(None);
+/// Where each part of the shown article starts on the window (by its place in the Contents), as last drawn.
+static PART_TOPS: LazyLock<Mutex<HashMap<usize, Pixels>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
 /// The article's pictures loaded so far, for the text view to draw.
 static LOADED: LazyLock<Mutex<HashMap<String, Arc<Image>>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
 /// A clear pixel, drawn while a picture loads.
@@ -189,6 +237,8 @@ pub fn want(r: &mut Root, site: &str, game: &str, cx: &mut Context<Root>) {
         r.wiki.views = vec![View::Home];
         r.wiki.sort = None;
         r.wiki.filters.clear();
+        r.wiki.ranges.clear();
+        r.wiki.ranges_for.clear();
         r.wiki.picked.clear();
         r.wiki.comparing = false;
         r.wiki.hits.clear();
@@ -264,6 +314,9 @@ pub fn want(r: &mut Root, site: &str, game: &str, cx: &mut Context<Root>) {
     match view_now(&r.wiki) {
         View::Page { title, .. } => {
             let k = key(&site, &title);
+            r.wiki.page_tick += 1;
+            let tick = r.wiki.page_tick;
+            r.wiki.page_used.insert(k.clone(), tick);
             if r.wiki.asked_pages.insert(k.clone()) {
                 load_page(link, site, title, cx);
             } else if let Some(Some(a)) = r.wiki.pages.get(&k)
@@ -294,10 +347,19 @@ pub fn want(r: &mut Root, site: &str, game: &str, cx: &mut Context<Root>) {
                                 .collect::<Vec<_>>(),
                         )
                     });
+                    let failed = hits.is_none();
                     let _ = this.update(cx, |r, cx| {
-                        r.wiki.results.insert(k, hits);
+                        r.wiki.results.insert(k.clone(), hits);
                         cx.notify();
                     });
+                    // Failed (offline a moment): asked again while it is shown.
+                    if failed {
+                        cx.background_executor().timer(crate::pages::games::RETRY).await;
+                        let _ = this.update(cx, |r, cx| {
+                            r.wiki.asked_results.remove(&k);
+                            cx.notify();
+                        });
+                    }
                 })
                 .detach();
             }
@@ -360,10 +422,20 @@ fn load_kinds(link: Link, site: String, cx: &mut Context<Root>) {
         }
         kinds.sort_by(|a, b| b.count.cmp(&a.count));
         kinds.truncate(KINDS_MAX);
+        // (Neither asking answered: the wiki or the network failed a moment; asked again after a while.)
+        let failed = boxes.is_none() && used.is_none();
+        let site2 = site.clone();
         let _ = this.update(cx, |r, cx| {
-            r.wiki.kinds.insert(site, kinds);
+            r.wiki.kinds.insert(site2, kinds);
             cx.notify();
         });
+        if failed {
+            cx.background_executor().timer(crate::pages::games::RETRY).await;
+            let _ = this.update(cx, |r, cx| {
+                r.wiki.asked_kinds.remove(&site);
+                cx.notify();
+            });
+        }
     })
     .detach();
 }
@@ -424,6 +496,15 @@ fn load_fresh(link: Link, site: String, cx: &mut Context<Root>) {
             r.wiki.fresh.insert(site2, fresh);
             cx.notify();
         });
+        // (Neither list answered: asked again after a while, not kept empty for the session.)
+        if made.is_none() && edits.is_none() {
+            cx.background_executor().timer(crate::pages::games::RETRY).await;
+            let _ = this.update(cx, |r, cx| {
+                r.wiki.asked_fresh.remove(&site);
+                cx.notify();
+            });
+            return;
+        }
         if edited.is_empty() {
             return;
         }
@@ -473,7 +554,7 @@ fn load_page(link: Link, site: String, title: String, cx: &mut Context<Root>) {
                     html.push_str(&format!("<li><a href=\"{}{}\">{}</a></li>", wikihtml::PAGE, attr_esc(name), attr_esc(shown)));
                 }
                 html.push_str("</ul>");
-                Article { title: title.clone(), html: if list.is_empty() { String::new() } else { html }, infobox: None, images: Vec::new(), cats: Vec::new(), missing: list.is_empty() }
+                Article { title: title.clone(), html: if list.is_empty() { SharedString::default() } else { html.into() }, infobox: None, images: Vec::new(), cats: Vec::new(), missing: list.is_empty(), sections: Vec::new() }
             })
         } else {
             let d = link
@@ -482,7 +563,7 @@ fn load_page(link: Link, site: String, title: String, cx: &mut Context<Root>) {
                 .ok()
                 .and_then(Result::ok);
             match d {
-                Some(d) if d.get("error").is_some() => Some(Article { title: title.clone(), html: String::new(), infobox: None, images: Vec::new(), cats: Vec::new(), missing: true }),
+                Some(d) if d.get("error").is_some() => Some(Article { title: title.clone(), html: SharedString::default(), infobox: None, images: Vec::new(), cats: Vec::new(), missing: true, sections: Vec::new() }),
                 Some(d) => d.get("parse").and_then(|p| {
                     let text = p.get("text").and_then(Value::as_str)?;
                     let clean = wikihtml::clean_page(text, &site);
@@ -496,21 +577,32 @@ fn load_page(link: Link, site: String, title: String, cx: &mut Context<Root>) {
                         .filter(|c| !c.is_empty())
                         .take(30)
                         .collect();
-                    Some(Article { title: Some(s(p, "title")).filter(|t| !t.is_empty()).unwrap_or(title.clone()), html: clean.html, infobox: clean.infobox, images: clean.images, cats, missing: false })
+                    Some(Article { title: Some(s(p, "title")).filter(|t| !t.is_empty()).unwrap_or(title.clone()), html: clean.html.into(), infobox: clean.infobox, images: clean.images, cats, missing: false, sections: clean.sections })
                 }),
                 None => None,
             }
         };
+        let failed = page.is_none();
         let _ = this.update(cx, |r, cx| {
+            // Too many kept: the one shown longest ago goes.
             if r.wiki.pages.len() > 40
-                && let Some(old) = r.wiki.pages.keys().find(|x| **x != k).cloned()
+                && let Some(old) = r.wiki.pages.keys().filter(|x| **x != k).min_by_key(|x| r.wiki.page_used.get(*x).copied().unwrap_or(0)).cloned()
             {
                 r.wiki.pages.remove(&old);
                 r.wiki.asked_pages.remove(&old);
+                r.wiki.page_used.remove(&old);
             }
-            r.wiki.pages.insert(k, page);
+            r.wiki.pages.insert(k.clone(), page.map(Rc::new));
             cx.notify();
         });
+        // Not read (offline a moment): asked again while it is shown, not only once 40 others pushed it out.
+        if failed {
+            cx.background_executor().timer(crate::pages::games::RETRY).await;
+            let _ = this.update(cx, |r, cx| {
+                r.wiki.asked_pages.remove(&k);
+                cx.notify();
+            });
+        }
     })
     .detach();
 }
@@ -536,8 +628,16 @@ fn load_table(link: Link, site: String, template: String, mut said: HashMap<Stri
                 o.extend(c);
             }
             let Some(d) = api(&link, &site, q).await else {
+                // What came stays, said to be cut short; read again after a while.
                 let _ = this.update(cx, |r, cx| {
-                    r.wiki.tables.entry(k.clone()).or_default().failed = true;
+                    let t = r.wiki.tables.entry(k.clone()).or_default();
+                    t.failed = true;
+                    t.done = true;
+                    cx.notify();
+                });
+                cx.background_executor().timer(crate::pages::games::RETRY).await;
+                let _ = this.update(cx, |r, cx| {
+                    r.wiki.asked_tables.remove(&k);
                     cx.notify();
                 });
                 return;
@@ -556,7 +656,7 @@ fn load_table(link: Link, site: String, template: String, mut said: HashMap<Stri
             let k2 = k.clone();
             let alive = this
                 .update(cx, |r, cx| {
-                    r.wiki.tables.insert(k2, Table { items: now, done, failed: false });
+                    r.wiki.tables.insert(k2, Table { items: Rc::new(now), done, failed: false, rev: TABLE_REV.fetch_add(1, std::sync::atomic::Ordering::Relaxed) });
                     r.wiki.said.extend(said_now);
                     cx.notify();
                 })
@@ -621,6 +721,8 @@ fn go(r: &mut Root, v: View) {
     if matches!(v, View::Table(_)) && view_now(&r.wiki) != v {
         r.wiki.sort = None;
         r.wiki.filters.clear();
+        r.wiki.ranges.clear();
+        r.wiki.ranges_for.clear();
         r.wiki.filtering = false;
         r.wiki.picked.clear();
         r.wiki.comparing = false;
@@ -687,8 +789,18 @@ pub fn search(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
 
 /// A link clicked in an article: its own pages open here, the rest in the browser.
 pub fn settle(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
+    boxes(r, window, cx);
     let Some(href) = CLICKED.lock().ok().and_then(|mut c| c.take()) else { return };
-    if let Some(title) = href.strip_prefix(wikihtml::PAGE) {
+    if let Some(anchor) = href.strip_prefix(wikihtml::ANCHOR) {
+        // A place in this page: its part scrolled to, when it is one of its Contents (WikiSite.tsx's jump).
+        let same = |a: &str| a.replace(' ', "_").to_lowercase();
+        if let View::Page { title, .. } = view_now(&r.wiki)
+            && let Some(Some(a)) = r.wiki.pages.get(&key(&r.wiki.site, &title))
+            && let Some(at) = a.sections.iter().position(|s| s.anchor.as_deref().is_some_and(|x| same(x) == same(anchor)))
+        {
+            jump(r, at);
+        }
+    } else if let Some(title) = href.strip_prefix(wikihtml::PAGE) {
         let title = title.split('#').next().unwrap_or(title).to_string();
         let table = match view_now(&r.wiki) {
             View::Page { table, .. } => table,
@@ -702,6 +814,59 @@ pub fn settle(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
     cx.notify();
 }
 
+/// A text box whose typing redraws the page.
+fn new_box(hint: String, window: &mut Window, cx: &mut Context<Root>) -> Entity<InputState> {
+    let e = cx.new(|cx| InputState::new(window, cx).placeholder(hint));
+    cx.subscribe(&e, |_, _, ev: &InputEvent, cx| {
+        if matches!(ev, InputEvent::Change) {
+            cx.notify();
+        }
+    })
+    .detach();
+    e
+}
+
+/// The boxes the view shown types into, made here as they are needed (a box needs the window): each number line's Min
+/// and Max while a table's filters are open, the tries on a page (WikiView.tsx's wk-range and DropOdds).
+fn boxes(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
+    match view_now(&r.wiki) {
+        View::Table(t) if r.wiki.filtering => {
+            let k = key(&r.wiki.site, &t);
+            if r.wiki.ranges_for == k {
+                return;
+            }
+            let Some(tb) = r.wiki.tables.get(&k).filter(|tb| !tb.items.is_empty()) else { return };
+            let lines = lines_of(&tb.items);
+            let wanted: Vec<String> = facets(&lines).into_iter().filter(|l| l.number).map(|l| l.field.clone()).collect();
+            // (Asked again while the table still comes in: a line can turn up with more pages.)
+            // (A read cut short by a failure counts as done too, and is read on later: not settled then.)
+            if tb.done && !tb.failed {
+                r.wiki.ranges_for = k;
+            }
+            for f in wanted {
+                if !r.wiki.ranges.iter().any(|(x, _, _)| *x == f) {
+                    let (lo, hi) = (new_box(r.tr("wiki.min"), window, cx), new_box(r.tr("wiki.max"), window, cx));
+                    r.wiki.ranges.push((f, lo, hi));
+                }
+            }
+        }
+        View::Page { title, .. } if r.wiki.tried.as_ref().is_none_or(|(t, _)| *t != title) => {
+            let e = new_box("0".into(), window, cx);
+            r.wiki.tried = Some((title, e));
+        }
+        _ => {}
+    }
+}
+
+/// Scrolls the page to a part of the shown article (its place in the Contents), where it was last drawn.
+fn jump(r: &mut Root, at: usize) {
+    let Some(top) = PART_TOPS.lock().ok().and_then(|m| m.get(&at).copied()) else { return };
+    let s = &r.games.page_scroll;
+    let mut off = s.offset();
+    off.y = (off.y + s.bounds().top() + px(12.) - top).min(px(0.)).max(-s.max_offset().y);
+    s.set_offset(off);
+}
+
 // ---- Drawing ----
 
 fn note(text: String) -> Div {
@@ -709,7 +874,7 @@ fn note(text: String) -> Div {
 }
 
 fn h1(text: impl Into<SharedString>) -> Div {
-    div().text_size(px(26.)).font_weight(FontWeight::BOLD).line_height(px(34.)).child(text.into())
+    div().text_size(px(T_STAGE)).font_weight(FontWeight::BOLD).line_height(px(34.)).child(text.into())
 }
 
 fn h2(text: String, sub: Option<String>) -> Div {
@@ -718,7 +883,7 @@ fn h2(text: String, sub: Option<String>) -> Div {
         .flex()
         .flex_col()
         .gap(px(3.))
-        .child(div().text_size(px(17.)).font_weight(FontWeight::SEMIBOLD).child(text))
+        .child(div().text_size(px(T_GROUP)).font_weight(FontWeight::SEMIBOLD).child(text))
         .when_some(sub, |d, s| d.child(div().text_size(px(T_S)).text_color(c(MUTED)).child(s)))
 }
 
@@ -1164,7 +1329,7 @@ fn result_card(id: impl Into<ElementId>, title: &str, text: Option<&str>, w: f32
         .items_center()
         .gap(px(12.))
         .cursor_pointer()
-        .child(div().size(px(36.)).flex_none().rounded(px(R_M)).bg(ca(WHITE, 0.06)).flex().items_center().justify_center().child(icon("book", 16., c(TEXT_2))))
+        .child(div().flex_none().child(icon("book", 18., c(TEXT_2))))
         .child(
             div()
                 .flex_1()
@@ -1234,51 +1399,89 @@ fn lines_of(items: &[Item]) -> Vec<Line> {
     out.into_iter().map(|(_, l)| l).collect()
 }
 
+/// What a table can be filtered by (WikiView.tsx's facets): a number line's range, or a line with a few values
+/// (rarity, type, element…).
+fn facets(lines: &[Line]) -> Vec<&Line> {
+    lines.iter().filter(|l| l.number || (l.values.len() >= 2 && l.values.len() <= 24)).take(8).collect()
+}
+
 fn table_view(root: &Root, template: &str, width: f32, cx: &mut Context<Root>) -> AnyElement {
     let w = &root.wiki;
     let name = w.kinds.get(&w.site).and_then(|ks| ks.iter().find(|k| k.template == template)).map(|k| k.name.clone()).unwrap_or_else(|| wikitext::kind_name(template));
-    let table = w.tables.get(&key(&w.site, template)).cloned().unwrap_or_default();
+    let none = Table::default();
+    let table = w.tables.get(&key(&w.site, template)).unwrap_or(&none);
     if table.items.is_empty() {
         let says = if table.failed { "wiki.offline" } else if table.done { "wiki.nothing" } else { "news.connecting" };
         return div().flex().flex_col().gap(px(8.)).child(h1(name)).child(note(root.tr(says))).into_any_element();
     }
-    let items = &table.items;
-    let lines = lines_of(items);
-    let columns: Vec<&Line> = lines.iter().filter(|l| l.number || l.values.len() <= 30).take(COLUMNS).collect();
-    let facets: Vec<&Line> = lines.iter().filter(|l| !l.number && l.values.len() >= 2 && l.values.len() <= 24).take(8).collect();
-
-    // Found by words, filtered by values, sorted by a column.
+    let items: &[Item] = &table.items;
     let words: Vec<String> = fold(&root.wiki_tq.read(cx).value()).split_whitespace().map(str::to_string).collect();
-    let mut shown: Vec<&Item> = items
+    // The ranges as typed (read before the lines are known: they are part of what the cut is kept by).
+    let typed: Vec<(String, Option<f64>, Option<f64>)> = w
+        .ranges
         .iter()
-        .filter(|i| {
-            if !words.is_empty() {
-                let all = fold(&format!("{} {}", i.name, i.fields.iter().map(|f| f.1.as_str()).collect::<Vec<_>>().join(" ")));
-                if !words.iter().all(|wd| all.contains(wd.as_str())) {
-                    return false;
-                }
-            }
-            w.filters.iter().all(|(f, vs)| vs.is_empty() || value_of(i, f).is_some_and(|v| vs.iter().any(|x| x == v)))
-        })
+        .map(|(f, lo, hi)| (f.clone(), number_of(Some(lo.read(cx).value().trim())), number_of(Some(hi.read(cx).value().trim()))))
         .collect();
-    if let Some((field, down)) = &w.sort {
-        let number = lines.iter().find(|l| l.field == *field).is_some_and(|l| l.number);
-        shown.sort_by(|a, b| {
-            let (va, vb) = (value_of(a, field), value_of(b, field));
-            match (va, vb) {
-                (None, None) => std::cmp::Ordering::Equal,
-                (None, _) => std::cmp::Ordering::Greater,
-                (_, None) => std::cmp::Ordering::Less,
-                (Some(x), Some(y)) => {
-                    let o = if number { number_of(Some(x)).unwrap_or(f64::MIN).total_cmp(&number_of(Some(y)).unwrap_or(f64::MIN)) } else { x.cmp(y) };
-                    if *down { o.reverse() } else { o }
+    let cut_key = hash_of((
+        &w.site,
+        template,
+        table.rev,
+        &words,
+        &w.filters,
+        typed.iter().map(|(f, lo, hi)| (f, lo.map(f64::to_bits), hi.map(f64::to_bits))).collect::<Vec<_>>(),
+        &w.sort,
+    ));
+    let kept = w.cut.borrow().as_ref().filter(|c| c.key == cut_key).map(|c| (c.lines.clone(), c.shown.clone()));
+    let (lines, order) = kept.unwrap_or_else(|| {
+        let lines = Rc::new(lines_of(items));
+        let facets = facets(&lines);
+        let ranges: Vec<&(String, Option<f64>, Option<f64>)> = typed.iter().filter(|(f, lo, hi)| (lo.is_some() || hi.is_some()) && facets.iter().any(|l| l.number && l.field == *f)).collect();
+        let mut shown: Vec<usize> = (0..items.len())
+            .filter(|k| {
+                let i = &items[*k];
+                if !words.is_empty() {
+                    let all = fold(&format!("{} {}", i.name, i.fields.iter().map(|f| f.1.as_str()).collect::<Vec<_>>().join(" ")));
+                    if !words.iter().all(|wd| all.contains(wd.as_str())) {
+                        return false;
+                    }
                 }
-            }
-        });
-    }
+                w.filters.iter().all(|(f, vs)| vs.is_empty() || value_of(i, f).is_some_and(|v| vs.iter().any(|x| x == v)))
+                    && ranges.iter().all(|(f, lo, hi)| number_of(value_of(i, f)).is_some_and(|n| lo.is_none_or(|lo| n >= lo) && hi.is_none_or(|hi| n <= hi)))
+            })
+            .collect();
+        if let Some((field, down)) = &w.sort {
+            let number = lines.iter().find(|l| l.field == *field).is_some_and(|l| l.number);
+            shown.sort_by(|a, b| {
+                let (va, vb) = (value_of(&items[*a], field), value_of(&items[*b], field));
+                match (va, vb) {
+                    (None, None) => std::cmp::Ordering::Equal,
+                    (None, _) => std::cmp::Ordering::Greater,
+                    (_, None) => std::cmp::Ordering::Less,
+                    (Some(x), Some(y)) => {
+                        let o = if number { number_of(Some(x)).unwrap_or(f64::MIN).total_cmp(&number_of(Some(y)).unwrap_or(f64::MIN)) } else { x.cmp(y) };
+                        if *down { o.reverse() } else { o }
+                    }
+                }
+            });
+        }
+        let shown = Rc::new(shown);
+        *w.cut.borrow_mut() = Some(TableCut { key: cut_key, lines: lines.clone(), shown: shown.clone() });
+        (lines, shown)
+    });
+    let columns: Vec<&Line> = lines.iter().filter(|l| l.number || l.values.len() <= 30).take(COLUMNS).collect();
+    let facets = facets(&lines);
+    // A number line's range as typed in its boxes (WikiView.tsx's Filter min/max): either end may be left empty.
+    let ranges: Vec<&(String, Option<f64>, Option<f64>)> = typed.iter().filter(|(f, lo, hi)| (lo.is_some() || hi.is_some()) && facets.iter().any(|l| l.number && l.field == *f)).collect();
+    // Found by words, filtered by values and ranges, sorted by a column (worked out above, once for each change).
+    let shown: Vec<&Item> = order.iter().map(|k| &items[*k]).collect();
 
-    let loading = (!table.done).then(|| root.i18n.tv("wiki.loadingN", &[("n", &n_text(root, items.len() as i64))]));
-    let filtered = w.filters.iter().filter(|(_, v)| !v.is_empty()).count();
+    // (A read cut short says so beside what came.)
+    let loading = if table.failed {
+        Some(root.tr("wiki.offline"))
+    } else {
+        (!table.done).then(|| root.i18n.tv("wiki.loadingN", &[("n", &n_text(root, items.len() as i64))]))
+    };
+    let filtered = w.filters.iter().filter(|(_, v)| !v.is_empty()).count() + ranges.len();
     let mut tag = div().flex().flex_wrap().items_center().gap(px(10.)).text_size(px(T_M)).text_color(c(MUTED)).child(root.i18n.tv("wiki.pagesN", &[("n", &n_text(root, shown.len() as i64))]));
     if let Some(l) = loading {
         tag = tag.child("·").child(l);
@@ -1298,8 +1501,12 @@ fn table_view(root: &Root, template: &str, width: f32, cx: &mut Context<Root>) -
             })))
         })
         .when(filtered > 0, |d| {
-            d.child(Button::new("wk-filter-clear", root.tr("wiki.clear")).quiet().small().on_click(cx.listener(|r, _, _, cx| {
+            d.child(Button::new("wk-filter-clear", root.tr("wiki.clear")).quiet().small().on_click(cx.listener(|r, _, window, cx| {
                 r.wiki.filters.clear();
+                for (_, lo, hi) in r.wiki.ranges.clone() {
+                    lo.update(cx, |s, cx| s.set_value("", window, cx));
+                    hi.update(cx, |s, cx| s.set_value("", window, cx));
+                }
                 cx.notify();
             })))
         });
@@ -1312,6 +1519,19 @@ fn table_view(root: &Root, template: &str, width: f32, cx: &mut Context<Root>) -
     if w.filtering {
         let mut panel = surface().p(px(14.)).flex().flex_col().gap(px(10.));
         for (fi, l) in facets.iter().enumerate() {
+            // A number line: its Min – Max boxes (WikiView.tsx 166-171).
+            if l.number {
+                let Some((_, lo, hi)) = w.ranges.iter().find(|(f, _, _)| *f == l.field) else { continue };
+                let range = div()
+                    .flex()
+                    .items_center()
+                    .gap(px(8.))
+                    .child(field(lo, None).w(px(110.)).h(px(32.)))
+                    .child(div().text_color(c(MUTED)).child("–"))
+                    .child(field(hi, None).w(px(110.)).h(px(32.)));
+                panel = panel.child(div().flex().items_center().gap(px(14.)).child(div().w(px(140.)).flex_none().text_size(px(T_S)).text_color(c(MUTED)).child(word(root, &l.field))).child(range));
+                continue;
+            }
             let on_now: Vec<String> = w.filters.iter().find(|(f, _)| *f == l.field).map(|(_, v)| v.clone()).unwrap_or_default();
             let mut vals = div().flex().flex_wrap().gap(px(6.));
             for (vi, v) in l.values.iter().enumerate() {
@@ -1391,8 +1611,11 @@ fn table_view(root: &Root, template: &str, width: f32, cx: &mut Context<Root>) -
     for (ci, l) in columns.iter().enumerate() {
         let on = w.sort.as_ref().filter(|(f, _)| *f == l.field).map(|(_, d)| *d);
         let (field, number) = (l.field.clone(), l.number);
+        // (Its tip as WikiView.tsx's wk-sort title.)
+        let tip = SharedString::from(root.i18n.tv("wiki.sortBy", &[("f", &word(root, &l.field))]));
         head = head.child(
             focusable(div().id(("wk-sort", ci)))
+                .tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into())
                 .w(px(col_w))
                 .flex_none()
                 .flex()
@@ -1419,6 +1642,7 @@ fn table_view(root: &Root, template: &str, width: f32, cx: &mut Context<Root>) -
         let full = !picked_on && w.picked.len() >= COMPARE_MAX;
         let (id, open_title) = (it.id.clone(), wiki_title_of(&it.url, &root.wiki.site).unwrap_or_else(|| it.name.clone()));
         let tpl = template.to_string();
+        let pick_tip = SharedString::from(root.tr("wiki.compareAdd"));
         let mut row = div()
             .flex()
             .items_center()
@@ -1430,7 +1654,8 @@ fn table_view(root: &Root, template: &str, width: f32, cx: &mut Context<Root>) -
             .border_color(ca(WHITE, 0.04))
             .when(picked_on, |d| d.bg(tinted(PANEL, FACE, 0.08)))
             .child(
-                div().w(px(30.)).flex_none().child(Check::new(("wk-pick", ri), picked_on).on_toggle({
+                // (Its tip as WikiView.tsx's wk-check title; a full comparison takes no more, as its disabled box.)
+                div().id(("wk-pick-tip", ri)).w(px(30.)).flex_none().when(full, |d| d.opacity(0.4)).tooltip(move |_, cx| cx.new(|_| Tip(pick_tip.clone())).into()).child(Check::new(("wk-pick", ri), picked_on).on_toggle({
                     let this = cx.entity().downgrade();
                     move |_, _, cx| {
                         if full {
@@ -1645,17 +1870,41 @@ fn article_view(root: &Root, about: &About, title: &str, table: Option<&str>, wi
     };
 
     // The item as a table has it (when opened from one), else as its box shows it: its facts for the drop odds.
-    let items: Vec<Item> = table.and_then(|t| w.tables.get(&key(&site, t))).map(|t| t.items.clone()).unwrap_or_default();
-    let named = |i: &Item| fold(&i.name) == fold(title.rsplit('/').next().unwrap_or(title)) || fold(&i.name) == fold(&article.title);
-    let item = items.iter().find(|i| named(i)).cloned();
-    let facts: Vec<(String, String)> = item
-        .as_ref()
-        .map(|i| i.fields.clone())
-        .or_else(|| w.tables.iter().filter(|(k, _)| k.starts_with(&format!("{site}|"))).find_map(|(_, t)| t.items.iter().find(|i| named(i)).map(|i| i.fields.clone())))
-        .or_else(|| article.infobox.as_ref().map(|b| b.rows.clone()))
-        .unwrap_or_default();
+    let items: Rc<Vec<Item>> = table.and_then(|t| w.tables.get(&key(&site, t))).map(|t| t.items.clone()).unwrap_or_default();
+    // (Looked for once for the page and the tables as they are, not on every frame.)
+    let prefix = format!("{site}|");
+    let mut revs: Vec<(&String, u64)> = w.tables.iter().filter(|(k, _)| k.starts_with(&prefix)).map(|(k, t)| (k, t.rev)).collect();
+    revs.sort();
+    // (No table: the empty list is a new one each frame, its address no key; 0 then.)
+    let items_at = if items.is_empty() { 0 } else { Rc::as_ptr(&items) as usize };
+    let found_key = hash_of((&site, title, table, Rc::as_ptr(&article) as usize, items_at, revs));
+    let kept = w.found.borrow().as_ref().filter(|f| f.key == found_key).map(|f| (f.item, f.facts.clone(), f.sim.clone()));
+    let (item_at, facts, sim) = kept.unwrap_or_else(|| {
+        let (want_a, want_b) = (fold(title.rsplit('/').next().unwrap_or(title)), fold(&article.title));
+        let named = |i: &Item| {
+            let n = fold(&i.name);
+            n == want_a || n == want_b
+        };
+        let item_at = items.iter().position(|i| named(i));
+        let facts: Vec<(String, String)> = item_at
+            .map(|k| items[k].fields.clone())
+            .or_else(|| w.tables.iter().filter(|(k, _)| k.starts_with(&prefix)).find_map(|(_, t)| t.items.iter().find(|i| named(i)).map(|i| i.fields.clone())))
+            .or_else(|| article.infobox.as_ref().map(|b| b.rows.clone()))
+            .unwrap_or_default();
+        let sim = match item_at {
+            Some(k) => {
+                let (lines, near) = wikitext::similar_to(&items[k], &items);
+                let near = near.into_iter().filter_map(|p| items.iter().position(|x| std::ptr::eq(x, p))).collect();
+                (lines, near)
+            }
+            None => (Vec::new(), Vec::new()),
+        };
+        let (facts, sim) = (Rc::new(facts), Rc::new(sim));
+        *w.found.borrow_mut() = Some(ArtFound { key: found_key, item: item_at, facts: facts.clone(), sim: sim.clone() });
+        (item_at, facts, sim)
+    });
     if let Some(p) = wikitext::drop_chance(&facts) {
-        body = body.child(odds(root, p));
+        body = body.child(odds(root, p, cx));
     }
 
     // The words, drawn by GPUI's text view; pictures handed to it as they load.
@@ -1671,27 +1920,62 @@ fn article_view(root: &Root, about: &About, title: &str, table: Option<&str>, wi
             }
         }
     }
-    let words = TextView::html(SharedString::from(format!("wk-art-{}", key(&site, &article.title))), article.html.clone())
-        .selectable(true)
-        .image_source(|uri| {
-            let u = uri.to_string();
-            ImageSource::Image(LOADED.lock().ok().and_then(|m| m.get(&u).cloned()).unwrap_or_else(|| BLANK.clone()))
-        })
-        .on_link_click(|href, _, _, cx| {
-            if let Ok(mut c) = CLICKED.lock() {
-                *c = Some(href.to_string());
-            }
-            cx.refresh_windows();
-        });
-    let text = div().min_w_0().flex_1().text_size(px(T_L)).text_color(c(TEXT)).line_height(px(22.)).child(words);
+    let words = |id: String, html: SharedString| {
+        TextView::html(SharedString::from(id), html)
+            .selectable(true)
+            .image_source(|uri| {
+                let u = uri.to_string();
+                ImageSource::Image(LOADED.lock().ok().and_then(|m| m.get(&u).cloned()).unwrap_or_else(|| BLANK.clone()))
+            })
+            .on_link_click(|href, _, _, cx| {
+                if let Ok(mut c) = CLICKED.lock() {
+                    *c = Some(href.to_string());
+                }
+                cx.refresh_windows();
+            })
+    };
+    let art_id = format!("wk-art-{}", key(&site, &article.title));
+    if let Ok(mut tops) = PART_TOPS.lock() {
+        tops.clear();
+    }
+    let mut text = div().min_w_0().flex_1().text_size(px(T_L)).text_color(c(TEXT)).line_height(px(22.));
+    // Contents with 3 or more parts (WikiSite.tsx's loadPage, wikiText.ts's ws-toc): after the first words, before the
+    // first heading. GPUI's text view can't scroll its HTML to a heading, so the words are drawn a part at a time
+    // (cut where each heading starts, at the top of the page's words) and each part's place on the window is noted
+    // as it is drawn: a line of the Contents scrolls the page there.
+    let parts = &article.sections;
+    let cuts_ok = parts.len() >= 3 && parts.windows(2).all(|p| p[0].at < p[1].at) && parts.last().is_some_and(|p| p.at <= article.html.len()) && parts.iter().all(|p| article.html.is_char_boundary(p.at));
+    if cuts_ok {
+        let lead = &article.html[..parts[0].at];
+        if !lead.trim().is_empty() {
+            text = text.child(words(format!("{art_id}-lead"), SharedString::from(lead.to_string())));
+        }
+        text = text.child(contents(root, parts, cx));
+        for (k, p) in parts.iter().enumerate() {
+            let until = parts.get(k + 1).map(|n| n.at).unwrap_or(article.html.len());
+            let chunk = SharedString::from(article.html[p.at..until].to_string());
+            text = text.child(
+                div()
+                    .relative()
+                    .child(canvas(move |b, _, _| {
+                        if let Ok(mut tops) = PART_TOPS.lock() {
+                            tops.insert(k, b.origin.y);
+                        }
+                    }, |_, _, _, _| {}).absolute().inset_0())
+                    .child(words(format!("{art_id}-{k}"), chunk)),
+            );
+        }
+    } else {
+        text = text.child(words(art_id, article.html.clone()));
+    }
     let side = article.infobox.as_ref().map(|b| infobox_card(root, b, cx));
     if width >= 980. {
         body = body.child(div().flex().items_start().gap(px(24.)).child(text).children(side.map(|s| s.w(px(SIDE)).flex_none())));
     } else {
         body = body.children(side).child(text);
     }
-    if let Some(it) = item {
-        body = body.child(similar(root, &it, &items, table.unwrap_or_default(), cx));
+    if item_at.is_some() {
+        body = body.child(similar(root, &sim.0, &sim.1, &items, table.unwrap_or_default(), cx));
     }
     if !article.cats.is_empty() {
         let mut cats = div().flex().flex_wrap().items_center().gap(px(8.)).text_size(px(T_S)).child(div().text_color(c(MUTED)).font_weight(FontWeight::SEMIBOLD).child(format!("{}:", root.tr("wiki.cats"))));
@@ -1705,6 +1989,54 @@ fn article_view(root: &Root, about: &About, title: &str, table: Option<&str>, wi
         body = body.child(div().pt(px(8.)).border_t_1().border_color(ca(WHITE, 0.06)).child(cats));
     }
     body.into_any_element()
+}
+
+/// An article's Contents (wikiText.ts's ws-toc): its parts numbered as the wiki numbers them (1, 1.1), the second
+/// level under its first; a line scrolls the page to its part.
+fn contents(root: &Root, parts: &[wikihtml::Section], cx: &mut Context<Root>) -> Div {
+    let mut list = div().flex().flex_col().gap(px(2.));
+    let (mut one, mut two) = (0, 0);
+    for (k, p) in parts.iter().enumerate() {
+        let number = if p.level == 1 {
+            one += 1;
+            two = 0;
+            one.to_string()
+        } else if one > 0 {
+            two += 1;
+            format!("{one}.{two}")
+        } else {
+            continue;
+        };
+        list = list.child(
+            focusable(div().id(("wk-toc", k)))
+                .flex()
+                .gap(px(8.))
+                .py(px(2.))
+                .when(p.level == 2, |d| d.pl(px(18.)))
+                .cursor_pointer()
+                .text_color(c(TEXT_2))
+                .hover(|st| st.text_color(c(TEXT)).underline())
+                .child(div().flex_none().text_color(c(MUTED)).font_features(tnum()).child(number))
+                .child(div().min_w_0().child(p.line.clone()))
+                .on_click(cx.listener(move |r, _, _, cx| {
+                    jump(r, k);
+                    cx.notify();
+                })),
+        );
+    }
+    div().flex().my(px(10.)).child(
+        surface()
+            .max_w(px(440.))
+            .px(px(14.))
+            .py(px(10.))
+            .flex()
+            .flex_col()
+            .gap(px(6.))
+            .text_size(px(T_M))
+            .line_height(px(20.))
+            .child(div().font_weight(FontWeight::SEMIBOLD).text_color(c(TEXT)).child(root.tr("wiki.toc")))
+            .child(list),
+    )
 }
 
 /// The page's box of facts as a card: its title, picture and lines.
@@ -1734,15 +2066,15 @@ fn infobox_card(root: &Root, b: &Infobox, cx: &mut Context<Root>) -> Div {
 }
 
 /// The items most like one, as a table: each differing line with + or −, green where it's better.
-fn similar(root: &Root, item: &Item, items: &[Item], table: &str, cx: &mut Context<Root>) -> Div {
-    let (lines, near) = wikitext::similar_to(item, items);
+fn similar(root: &Root, lines: &[wikitext::SimLine], near: &[usize], items: &[Item], table: &str, cx: &mut Context<Root>) -> Div {
+    let near: Vec<&Item> = near.iter().filter_map(|k| items.get(*k)).collect();
     if near.is_empty() {
         return div();
     }
     let site = root.wiki.site.clone();
     let mut list = surface().overflow_hidden().flex().flex_col();
     let mut head = div().flex().items_center().h(px(34.)).px(px(12.)).text_size(px(T_S)).text_color(c(MUTED)).font_weight(FontWeight::SEMIBOLD).border_b_1().border_color(ca(WHITE, 0.08)).child(div().w(px(240.)).flex_none().child(root.tr("wiki.name")));
-    for l in &lines {
+    for l in lines {
         head = head.child(div().flex_1().child(word(root, &l.field)));
     }
     list = list.child(head);
@@ -1765,7 +2097,7 @@ fn similar(root: &Root, item: &Item, items: &[Item], table: &str, cx: &mut Conte
                     cx.notify();
                 })),
         );
-        for l in &lines {
+        for l in lines {
             let v = value_of(p, &l.field);
             let d = number_of(v).map(|n| ((n - l.at) * 100.).round() / 100.);
             let better = d.is_some_and(|d| d != 0. && if less_is_better(&l.field) { d < 0. } else { d > 0. });
@@ -1788,13 +2120,25 @@ fn similar(root: &Root, item: &Item, items: &[Item], table: &str, cx: &mut Conte
 }
 
 /// "How long to farm it": for an item with a drop chance, the tries it takes for half, nine in ten and 99 of 100
-/// players to have it, on a track. The wiki says only "1%".
-fn odds(root: &Root, p: f64) -> Div {
+/// players to have it, on a track, and how lucky (or not) you are after the tries you made, typed in its box, your
+/// tries filling the track (WikiView.tsx's DropOdds). The wiki says only "1%".
+fn odds(root: &Root, p: f64, cx: &mut Context<Root>) -> Div {
     let marks: Vec<(f64, i64)> = [0.5, 0.9, 0.99].iter().map(|c| (*c, wikitext::tries_for(p, *c))).collect();
     let end = marks[2].1.max(1) as f32;
     let pct = format!("{}%", trim_num(p * 100.));
     let each = root.i18n.tv("wiki.oddsEach", &[("p", &pct), ("n", &n_text(root, (1. / p).round() as i64))]);
+    let tried_box = root.wiki.tried.as_ref().map(|(_, e)| e.clone());
+    // Its digits only, at most 8 of them (the old box's maxLength), as at most ten million tries.
+    let n: i64 = tried_box
+        .as_ref()
+        .map(|e| e.read(cx).value().chars().filter(char::is_ascii_digit).take(8).collect::<String>().parse::<i64>().unwrap_or(0).min(10_000_000))
+        .unwrap_or(0);
+    let had = (n > 0).then(|| 1. - (1. - p).powf(n as f64));
+    let share = |x: f64| if x < 0.995 { format!("{:.0}%", x * 100.) } else { format!("{}%", trim_num((x * 1000.).round() / 10.)) };
     let mut track = div().relative().h(px(56.)).mt(px(6.)).child(div().absolute().top(px(10.)).left_0().right_0().h(px(4.)).rounded_full().bg(c(RAISED_2)));
+    if had.is_some() {
+        track = track.child(div().absolute().top(px(10.)).left_0().h(px(4.)).rounded_full().bg(ca(FACE, 0.6)).w(relative((n as f32 / end).min(1.))));
+    }
     for (i, (ch, n)) in marks.iter().enumerate() {
         let at = *n as f32 / end;
         let label = root.i18n.tv("wiki.oddsFor", &[("c", &format!("{}%", trim_num(ch * 100.)))]);
@@ -1822,6 +2166,25 @@ fn odds(root: &Root, p: f64) -> Div {
         .gap(px(4.))
         .child(div().flex().flex_wrap().items_center().gap(px(10.)).child(div().text_size(px(T_H)).font_weight(FontWeight::SEMIBOLD).child(root.tr("wiki.odds"))).child(div().text_size(px(T_M)).text_color(c(MUTED)).child(each)))
         .child(track)
+        .when_some(tried_box, |d, e| {
+            d.child(
+                div()
+                    .flex()
+                    .flex_wrap()
+                    .items_center()
+                    .gap(px(12.))
+                    .text_size(px(T_M))
+                    .text_color(c(MUTED))
+                    .mt(px(4.))
+                    .child(root.tr("wiki.oddsTried"))
+                    .child(field(&e, None).w(px(110.)).h(px(32.)))
+                    .when_some(had, |d, had| {
+                        // Nine in ten would have it by now: unlucky, said in the warning colour.
+                        let words = root.i18n.tv(if had >= 0.5 { "wiki.oddsUnlucky" } else { "wiki.oddsNormal" }, &[("c", &share(had))]);
+                        d.child(div().text_color(if had >= 0.9 { c(WARN) } else { c(TEXT) }).when(had >= 0.9, |d| d.font_weight(FontWeight::SEMIBOLD)).child(words))
+                    }),
+            )
+        })
 }
 
 fn trim_num(x: f64) -> String {

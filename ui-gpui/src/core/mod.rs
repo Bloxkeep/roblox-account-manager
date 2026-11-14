@@ -2,6 +2,7 @@
 // Joined to the window through `app::App` (the old AppController) on the core's own thread (rt.rs).
 #![allow(dead_code)]
 
+pub mod altgr_hotkeys;
 pub mod anti_afk;
 pub mod app;
 pub mod app_pages;
@@ -29,6 +30,8 @@ pub mod macro_ocr;
 pub mod macro_outside;
 pub mod macro_panel;
 pub mod macro_player;
+pub mod macro_fishing;
+pub mod macro_python;
 pub mod macro_recorder;
 pub mod macro_templates;
 pub mod macro_values;
@@ -53,6 +56,8 @@ pub mod roblox_home_session;
 pub mod roblox_input;
 pub mod roblox_installs;
 pub mod roblox_launcher;
+pub mod roblox_mods;
+pub mod roblox_crash_info;
 pub mod roblox_log_watcher;
 pub mod roblox_processes;
 pub mod roblox_usage;

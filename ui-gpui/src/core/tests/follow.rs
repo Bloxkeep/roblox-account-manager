@@ -322,7 +322,7 @@ async fn body(
     app.controller.rejoin_queue.borrow_mut().clear();
     set_join(answer(200, Some(2), None));
 
-    app.update_account(id, |a| a.game_bans = vec![GameBan { place_id: PLACE, game_name: None, at: Stamp::utc_now(), message: None }]);
+    app.update_account(id, |a| a.game_bans = vec![GameBan { place_id: PLACE, game_name: None, at: Stamp::utc_now(), message: None, until: None }]);
     let joins_before = join_asked.lock().unwrap().len();
     let went = follow_to(followed(OTHER_PLACE), true).await.ok().flatten();
     let s = told();

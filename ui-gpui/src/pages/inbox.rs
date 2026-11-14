@@ -23,6 +23,8 @@ pub struct Data {
     /// Chat: the chats, the one open with its lines (None while they load), and whether something is being said.
     talks: Option<Result<Vec<Talk>, String>>,
     talk_at: Option<String>,
+    /// The friend whose chat was asked for from their card (chat_with), until the chats have come.
+    want_with: Option<i64>,
     /// The chat shown was put there by the app (the newest, so the pane isn't empty), not picked: Roblox hasn't been
     /// told it was seen, and its unread mark stands until it is picked.
     peek: bool,
@@ -67,7 +69,7 @@ pub fn want(r: &mut Root, link: &crate::link::Link, cx: &mut Context<Root>) {
     friends::want_sign(r, link, cx);
     let Some((_, user, _)) = friends::signed(r) else { return };
     if r.inbox.of != user {
-        r.inbox = Data { of: user, tab: r.inbox.tab, ..Default::default() };
+        r.inbox = Data { of: user, tab: r.inbox.tab, want_with: r.inbox.want_with, ..Default::default() };
     }
     let tab = r.inbox.tab.min(4);
     let have = match tab {
@@ -230,9 +232,41 @@ fn again(r: &mut Root, cx: &mut Context<Root>) {
     }
 }
 
+/// A friend's chat, from their card on Friends: the Inbox's Chat with theirs open. (The owner, 2026-11-13: "sao không
+/// có nút chat với bạn bè": chat was only under Inbox, with no way to it from a friend.)
+pub fn chat_with(r: &mut Root, user: i64, cx: &mut Context<Root>) {
+    r.games.view = crate::pages::games::View::Inbox;
+    r.inbox.tab = 0;
+    r.inbox.want_with = Some(user);
+    settle_with(r, cx);
+    cx.notify();
+}
+
+/// Their chat is opened once the chats are here. One never chatted with isn't in Roblox's list: that is said (a new
+/// chat isn't started from here: Roblox's call for it isn't one this app has seen answered).
+fn settle_with(r: &mut Root, cx: &mut Context<Root>) {
+    let Some(user) = r.inbox.want_with else { return };
+    // (The chats didn't come: the wish goes with them, so a later visit doesn't jump to that chat, or say it is
+    // missing, out of the blue. The Chat tab says why it is empty.)
+    if matches!(r.inbox.talks, Some(Err(_))) {
+        r.inbox.want_with = None;
+        return;
+    }
+    let Some(Ok(l)) = &r.inbox.talks else { return };
+    let found = l.iter().find(|t| !t.group && t.people.contains_key(&user)).map(|t| t.id.clone());
+    r.inbox.want_with = None;
+    match found {
+        Some(id) => open_talk(r, id, cx),
+        None => r.toast = Some((r.tr("inbox.noTalk"), "info".into())),
+    }
+}
+
 /// With no chat picked, the newest one is shown beside the list, so the pane isn't an empty box. Only its lines are
 /// read: Roblox is told a chat was seen when it is picked (open_talk).
 fn peek(r: &mut Root, cx: &mut Context<Root>) {
+    if r.inbox.want_with.is_some() && r.inbox.talks.is_some() {
+        settle_with(r, cx);
+    }
     if r.inbox.talk_at.is_some() {
         return;
     }
@@ -255,16 +289,36 @@ fn open_talk(r: &mut Root, id: String, cx: &mut Context<Root>) {
     if !same {
         r.inbox.lines = None;
     }
+    let mut was = 0;
     if let Some(Ok(l)) = &mut r.inbox.talks {
         if let Some(t) = l.iter_mut().find(|t| t.id == id) {
-            t.unread = 0;
+            was = std::mem::take(&mut t.unread);
         }
-    }
-    if let Some((_, _, cookie)) = friends::signed(r).filter(|s| !s.2.is_empty()) {
-        drop(roblox::run(move || roblox::seen(&cookie, &id)));
     }
     if !same {
         read_lines(r, cx);
+    }
+    if let Some((_, user, cookie)) = friends::signed(r).filter(|s| !s.2.is_empty()) {
+        let ask = id.clone();
+        let rx = roblox::run(move || roblox::seen(&cookie, &ask));
+        // Roblox not told: the chat's unread count comes back (it is still unread there).
+        cx.spawn(async move |this, cx| {
+            if matches!(rx.await, Ok(Ok(()))) || was == 0 {
+                return;
+            }
+            let _ = this.update(cx, |r, cx| {
+                if r.inbox.of != user {
+                    return;
+                }
+                if let Some(Ok(l)) = &mut r.inbox.talks {
+                    if let Some(t) = l.iter_mut().find(|t| t.id == id && t.unread == 0) {
+                        t.unread = was;
+                        cx.notify();
+                    }
+                }
+            });
+        })
+        .detach();
     }
     cx.notify();
 }
@@ -297,20 +351,29 @@ pub fn say(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
         return;
     }
     r.inbox.saying = true;
-    r.chat_box.update(cx, |s, cx| s.set_value("", window, cx));
     cx.notify();
-    let ask = id.clone();
-    let rx = roblox::run(move || roblox::say(&cookie, &ask, &words));
-    cx.spawn(async move |this, cx| {
+    let (ask, said) = (id.clone(), words.clone());
+    let rx = roblox::run(move || roblox::say(&cookie, &ask, &said));
+    cx.spawn_in(window, async move |this, cx| {
         let done = rx.await.unwrap_or_else(|_| Err(String::new()));
-        let _ = this.update(cx, |r, cx| {
+        let _ = this.update_in(cx, |r, window, cx| {
             if r.inbox.of != user {
                 return;
             }
             r.inbox.saying = false;
+            // Said: the box empties (when it still holds those words) and the chat still open reads its lines again.
+            // Not said: the words stay in the box to send again, and the chat's lines stay; the failure is a toast.
+            let here = r.inbox.talk_at.as_deref() == Some(id.as_str());
             match done {
-                Ok(()) => read_lines(r, cx),
-                Err(why) => r.inbox.lines = Some(Err(why)),
+                Ok(()) => {
+                    if here && r.chat_box.read(cx).value().trim() == words {
+                        r.chat_box.update(cx, |s, cx| s.set_value("", window, cx));
+                    }
+                    if here {
+                        read_lines(r, cx);
+                    }
+                }
+                Err(why) => r.toast = Some((if why.is_empty() { "Roblox".into() } else { why }, "bad".into())),
             }
             cx.notify();
         });
@@ -346,7 +409,7 @@ pub fn inbox(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElemen
     // dates out of order across the page.
     let _ = width;
     let tab = ib.tab.min(4);
-    let (able, viewer) = friends::looking(root);
+    let (able, viewer) = friends::looking_ref(root);
     let shell = div().id("inbox").relative().size_full().rounded(px(R_PANEL)).bg(c(PANEL)).overflow_hidden().flex().flex_col();
     let unread = match &ib.letters {
         Some(Ok(l)) => l.iter().filter(|m| !m.read).count(),
@@ -370,14 +433,14 @@ pub fn inbox(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElemen
                 .flex()
                 .items_center()
                 .gap(px(10.))
-                .child(div().text_size(px(T_TITLE)).font_weight(FontWeight::BOLD).child("Roblox"))
-                .child(div().ml(px(6.)).child(crate::pages::games::views(root, cx)))
+                .child(div().h(px(38.)).flex().items_center().child(crate::kit::roblox_word(22., c(TEXT))))
+                .relative().child(crate::pages::games::island(root, cx))
                 .child(div().flex_1())
                 .when(viewer.is_some(), |d| {
                     d.child(IconButton::new("in-refresh", "refresh").size(34.).busy(ib.reading[tab]).tip(root.tr("fr.refresh")).on_click(cx.listener(|r, _, _, cx| again(r, cx))))
                 }),
         )
-        .child(div().flex().flex_wrap().items_center().gap(px(4.)).children(tabs.into_iter().enumerate().map(|(i, (text, count))| {
+        .when(!(able.is_empty() || friends::nobody(root)), |d| d.child(div().flex().flex_wrap().items_center().gap(px(4.)).children(tabs.into_iter().enumerate().map(|(i, (text, count))| {
             let on = tab == i;
             chip(("in-tab", i), on)
                 .h(px(TOOL_H))
@@ -390,20 +453,11 @@ pub fn inbox(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElemen
                     r.inbox.tab = i;
                     cx.notify();
                 }))
-        })));
+        }))));
 
     let failed = |why: &String| note(root.i18n.tv("in.failed", &[("why", if why.is_empty() { "Roblox" } else { why })]));
     let body: AnyElement = if able.is_empty() || friends::nobody(root) {
-        div()
-            .flex_1()
-            .flex()
-            .flex_col()
-            .items_center()
-            .justify_center()
-            .gap(px(14.))
-            .child(div().text_size(px(T_M)).text_color(c(MUTED)).child(root.tr("fr.noAccount")))
-            .child(Button::new("in-add-acc", root.tr("acc.add")).icon("plus").primary().on_click(cx.listener(|r, _, _, cx| r.add_account(cx))))
-            .into_any_element()
+        friends::need_account(root, "in-add-acc", "in.noAccount", "message", cx)
     } else {
         let rows: Result<Option<Vec<AnyElement>>, AnyElement> = match tab {
             0 => match &ib.talks {
@@ -789,7 +843,7 @@ fn letters(root: &Root, list: &[Letter], cx: &mut Context<Root>) -> impl IntoEle
                                 .flex()
                                 .flex_col()
                                 .gap(px(3.))
-                                .child(div().text_size(px(18.)).font_weight(FontWeight::BOLD).line_height(px(24.)).truncate().child(m.subject.clone()))
+                                .child(div().text_size(px(T_GROUP)).font_weight(FontWeight::BOLD).line_height(px(24.)).truncate().child(m.subject.clone()))
                                 .child(div().text_size(px(T_M)).text_color(c(MUTED)).truncate().child(format!("{} · {}", m.from, day(&m.when)))),
                         ),
                 )

@@ -24,14 +24,37 @@ pub struct Data {
     pub open: bool,
     was: bool,
     closed: Option<Instant>,
+    /// When it last closed: once its fade is over it is no longer built (`shut`).
+    shut_at: Option<Instant>,
+}
+
+/// The menu's fade (kit::pop's 140 ms) and a little over: after it, a closed menu isn't built any more.
+const FADE: std::time::Duration = std::time::Duration::from_millis(200);
+
+/// The menu closes: it fades out, then stops being built (it was built every frame, closed, for ever).
+fn shut(r: &mut Root, cx: &mut Context<Root>) {
+    r.preset_menu.open = false;
+    r.preset_menu.shut_at = Some(Instant::now());
+    cx.spawn(async move |this, cx| {
+        cx.background_executor().timer(FADE).await;
+        let _ = this.update(cx, |r, cx| {
+            let m = &mut r.preset_menu;
+            // (Opened again since, or closed again later: that close's own wait ends it.)
+            if !m.open && m.was && m.shut_at.is_some_and(|t| t.elapsed() >= FADE - std::time::Duration::from_millis(20)) {
+                m.was = false;
+                cx.notify();
+            }
+        });
+    })
+    .detach();
 }
 
 fn s<'a>(v: &'a Value, k: &str) -> &'a str {
     v.get(k).and_then(Value::as_str).unwrap_or_default()
 }
 
-fn presets(root: &Root) -> Vec<Value> {
-    root.state.pointer("/settings/presets").and_then(Value::as_array).cloned().unwrap_or_default()
+fn presets(root: &Root) -> &[Value] {
+    root.state.pointer("/settings/presets").and_then(Value::as_array).map(Vec::as_slice).unwrap_or(&[])
 }
 
 /// How many of a preset's accounts are still there (one deleted since is left out).
@@ -46,7 +69,9 @@ pub fn acc_count(root: &Root, n: usize) -> String {
 
 /// Save as preset…: the preset form, new, with the picked accounts and the bar's game (app.js newPreset).
 pub fn save_as(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
-    r.preset_menu.open = false;
+    if r.preset_menu.open {
+        shut(r, cx);
+    }
     if presets(r).len() >= MAX_PRESETS {
         r.toast = Some((r.i18n.tv("pv.full", &[("n", &MAX_PRESETS.to_string())]), "warn".into()));
         cx.notify();
@@ -64,8 +89,12 @@ pub fn button(root: &Root, labelled: bool, cx: &mut Context<Root>) -> Div {
     let open = root.preset_menu.open;
     let toggle = cx.listener(|r: &mut Root, _: &ClickEvent, _, cx| {
         let just = r.preset_menu.closed.take().is_some_and(|at| at.elapsed().as_millis() < 300);
-        r.preset_menu.open = !just && !r.preset_menu.open;
-        r.preset_menu.was = true;
+        if !just && !r.preset_menu.open {
+            r.preset_menu.open = true;
+            r.preset_menu.was = true;
+        } else if r.preset_menu.open {
+            shut(r, cx);
+        }
         r.acc_menu = false;
         cx.notify();
     });
@@ -119,7 +148,7 @@ fn menu(root: &Root, cx: &mut Context<Root>) -> Stateful<Div> {
             row.opacity(0.38).cursor_default()
         } else {
             row.on_click(cx.listener(move |r, _, _, cx| {
-                r.preset_menu.open = false;
+                shut(r, cx);
                 r.launch("runPreset", json!({ "id": id }), false, cx);
                 cx.notify();
             }))
@@ -139,7 +168,7 @@ fn menu(root: &Root, cx: &mut Context<Root>) -> Stateful<Div> {
         .flex_col()
         .on_mouse_down_out(cx.listener(|r, _, _, cx| {
             if r.preset_menu.open {
-                r.preset_menu.open = false;
+                shut(r, cx);
                 r.preset_menu.closed = Some(Instant::now());
                 cx.notify();
             }
@@ -149,7 +178,7 @@ fn menu(root: &Root, cx: &mut Context<Root>) -> Stateful<Div> {
         .child(div().h(px(1.)).my(px(6.)).mx(px(4.)).bg(c(LINE)))
         .child(menu_row("bp-save").h(px(36.)).child(icon("plus", 15., c(TEXT_2))).child(div().flex_1().min_w_0().truncate().child(root.tr("ps.save"))).on_click(cx.listener(|r, _, window, cx| save_as(r, window, cx))))
         .child(menu_row("bp-manage").h(px(36.)).child(icon("edit", 15., c(TEXT_2))).child(div().flex_1().min_w_0().truncate().child(root.tr("ps.manage"))).on_click(cx.listener(|r, _, _, cx| {
-            r.preset_menu.open = false;
+            shut(r, cx);
             r.auto.tab = Tab::Presets;
             r.go(Page::Auto);
             cx.notify();

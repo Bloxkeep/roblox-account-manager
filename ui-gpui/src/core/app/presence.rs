@@ -69,7 +69,7 @@ impl App {
             return Ok(Value::Null);
         }
 
-        self.controller.presence_busy.set(true);
+        let busy = crate::core::base::Busy::set(&self.controller.presence_busy);
         let viewer: Option<Account> = accounts.iter().find(|a| a.cookie_valid != Some(false) && !a.cookie.is_empty() && a.realm == realm::GLOBAL).cloned();
         let run: Res<bool> = async {
             // Roblox's accounts only: Roblox VNG counts user ids apart, so a VNG account's number is someone else on Roblox
@@ -101,7 +101,10 @@ impl App {
                     Some(a.id) != viewer_id
                         && a.cookie_valid != Some(false)
                         && !a.cookie.is_empty()
-                        && !runs.get(&a.id).is_some_and(|pid| self.log_followed(*pid))
+                        // One whose log says in a game is asked too when the others' answer says not (detect_disconnected_sessions).
+                        && !runs.get(&a.id).is_some_and(|pid| {
+                            self.log_followed(*pid) && self.controller.logs.borrow().state_of(*pid).is_none_or(|s| s.status != "ingame")
+                        })
                         && (a.realm == realm::VNG
                             || result.get(&a.user_id).is_some_and(|p| {
                                 if runs.contains_key(&a.id) { p.r#type != 2 || p.place_id.is_none() } else { p.r#type == 2 && p.place_id.is_none() }
@@ -221,7 +224,7 @@ impl App {
             Err(ex) => Err(ex),
         };
         // finally
-        self.controller.presence_busy.set(false);
+        drop(busy);
         // A failed first try leaves the accounts as "status unknown" instead of loading forever.
         if !self.controller.presence_loaded.get() {
             self.controller.boot_status_done.set(true);

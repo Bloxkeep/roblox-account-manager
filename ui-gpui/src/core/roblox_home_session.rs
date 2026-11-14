@@ -159,7 +159,9 @@ impl RobloxHomeSession {
         let Ok(entries) = std::fs::read_dir(root) else { return };
         for e in entries.flatten() {
             let name = e.file_name().to_string_lossy().into_owned();
-            if e.path().is_dir() && is_alias_name(&name) {
+            // (Not is_dir(): it follows the junction, and one whose Roblox folder is gone, after an update, was kept
+            // for good; delete_alias looks at the entry itself, as EnumerateDirectories did.)
+            if is_alias_name(&name) {
                 delete_alias(&e.path());
             }
         }

@@ -23,6 +23,8 @@ thread_local! {
     static SHOWN_FOR: Cell<u64> = const { Cell::new(0) };
     /// The remote code's minutes are being counted down (the page drawn again every 15 s while it shows).
     static TICKING: Cell<bool> = const { Cell::new(false) };
+    /// The last ID said to be wrong.
+    static BAD_ID: RefCell<String> = const { RefCell::new(String::new()) };
 }
 
 fn busy(key: &str) -> bool {
@@ -148,18 +150,44 @@ pub(super) fn opened(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) 
     }
 }
 
-/// A box left or Enter pressed: its value saved when it is a good one and new; else what is saved comes back.
-fn commit(r: &mut Root, which: &'static str, window: &mut Window, cx: &mut Context<Root>) {
-    let Some(bx) = r.settings.dc.as_ref() else { return };
-    let (from_box, to_box) = (bx.from.clone(), bx.to.clone());
-    let e = match which {
+/// The box for one of the saved values.
+fn box_for(bx: &Boxes, which: &str) -> Entity<InputState> {
+    match which {
         "daily" => bx.daily.clone(),
         "weekly" => bx.weekly.clone(),
         "from" => bx.from.clone(),
         "to" => bx.to.clone(),
         "name" => bx.name.clone(),
         _ => bx.avatar.clone(),
-    };
+    }
+}
+
+/// `setDiscord` for a box: refused by the app, the reason is said and the box shows what is saved again
+/// (DiscordPage.tsx's `again`).
+fn ask_box(r: &mut Root, which: &'static str, args: Value, window: &mut Window, cx: &mut Context<Root>) {
+    let Some(link) = r.link.clone() else { return };
+    let rx = link.call("setDiscord", args);
+    cx.spawn_in(window, async move |this, cx| {
+        let answer = rx.await;
+        let _ = this.update_in(cx, |r, window, cx| {
+            if let Ok(Err(e)) = answer {
+                r.toast = Some((e, "bad".into()));
+                if let Some(e) = r.settings.dc.as_ref().map(|bx| box_for(bx, which)) {
+                    let v = saved(r, which);
+                    put(&e, &v, window, cx);
+                }
+                cx.notify();
+            }
+        });
+    })
+    .detach();
+}
+
+/// A box left or Enter pressed: its value saved when it is a good one and new; else what is saved comes back.
+fn commit(r: &mut Root, which: &'static str, window: &mut Window, cx: &mut Context<Root>) {
+    let Some(bx) = r.settings.dc.as_ref() else { return };
+    let (from_box, to_box) = (bx.from.clone(), bx.to.clone());
+    let e = box_for(bx, which);
     let v = text(&e, cx);
     let was = saved(r, which);
     match which {
@@ -175,7 +203,7 @@ fn commit(r: &mut Root, which: &'static str, window: &mut Window, cx: &mut Conte
                 put(&e, &was, window, cx);
             } else if v != was {
                 let key = if which == "name" { "username" } else { "avatarUrl" };
-                ask(r, "setDiscord", json!({ key: v }), cx, |_, _| {});
+                ask_box(r, which, json!({ key: v }), window, cx);
             }
         }
         _ => match parse_time(&v) {
@@ -188,7 +216,7 @@ fn commit(r: &mut Root, which: &'static str, window: &mut Window, cx: &mut Conte
                         "from" => "quietFrom",
                         _ => "quietTo",
                     };
-                    ask(r, "setDiscord", json!({ key: t }), cx, |_, _| {});
+                    ask_box(r, which, json!({ key: t }), window, cx);
                     // From and To the same never applies: said so when it happens.
                     let other = if which == "from" { text(&to_box, cx) } else if which == "to" { text(&from_box, cx) } else { String::new() };
                     if !other.is_empty() && parse_time(&other) == Ok(Some(t.clone())) {
@@ -237,10 +265,18 @@ fn commit_ping(r: &mut Root, left: bool, cx: &mut Context<Root>) {
         return;
     }
     if !(17..=20).contains(&v.len()) || !v.bytes().all(|b| b.is_ascii_digit()) {
-        r.toast = Some((r.tr(if mode == "role" { "dc.badRole" } else { "dc.badUser" }), "warn".into()));
+        // (Enter and then leaving the box is the same mistake: said once.)
+        if BAD_ID.with(|b| b.replace(v.clone())) != v {
+            r.toast = Some((r.tr(if mode == "role" { "dc.badRole" } else { "dc.badUser" }), "warn".into()));
+        }
+        // Left the box: the next try is a new one, told again even with the same text.
+        if left {
+            BAD_ID.with(|b| b.take());
+        }
         cx.notify();
         return;
     }
+    BAD_ID.with(|b| b.take());
     r.settings.dc_ping = None;
     set_ping(r, &kind, format!("{mode}:{v}"), cx);
     cx.notify();
@@ -298,7 +334,8 @@ fn save_link(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
     cx.notify();
     cx.spawn_in(window, async move |this, cx| {
         let answer = link.call("setDiscordWebhook", json!({ "url": url })).await;
-        if let Ok(Err(e)) = answer {
+        if let Ok(Err(e)) = &answer {
+            let e = e.clone();
             BUSY.with(|b| b.borrow_mut().remove("link"));
             let _ = this.update(cx, |r, cx| {
                 r.settings.dc_link_err = Some(e);
@@ -306,8 +343,17 @@ fn save_link(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
             });
             return;
         }
+        // No answer (the app's pipe dropped): nothing is known saved, so the box stays as it is.
+        if answer.is_err() {
+            BUSY.with(|b| b.borrow_mut().remove("link"));
+            let _ = this.update(cx, |_, cx| cx.notify());
+            return;
+        }
+        let mut on_failed = None;
         if then_on {
-            let _ = link.call("setDiscord", json!({ "enabled": true })).await;
+            if let Ok(Err(e)) = link.call("setDiscord", json!({ "enabled": true })).await {
+                on_failed = Some(e);
+            }
         }
         BUSY.with(|b| b.borrow_mut().remove("link"));
         let _ = this.update_in(cx, |r, window, cx| {
@@ -316,7 +362,11 @@ fn save_link(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
                 let e = bx.link.clone();
                 e.update(cx, |st, cx| st.set_value("", window, cx));
             }
-            ok(r, r.tr(if then_on { "dc.savedOn" } else { "dc.saved" }));
+            match on_failed {
+                // The link is kept; only turning sending on failed.
+                Some(e) => r.toast = Some((e, "bad".into())),
+                None => ok(r, r.tr(if then_on { "dc.savedOn" } else { "dc.saved" })),
+            }
             cx.notify();
         });
     })
@@ -465,7 +515,7 @@ pub(super) fn discord(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
     let pasting = root.settings.dc_link.is_some();
     // The connection at a glance: Discord's mark on its block, the state in words (its dot) and what sending does; at
     // the right the one thing to do: link a channel (the main action) or, once linked, sending on or off.
-    let mark = div().size(px(48.)).flex_none().rounded(px(R_M + 2.)).bg(c(RAISED_2)).border_1().border_color(ca(WHITE, 0.06)).flex().items_center().justify_center().child(icon("discord", 24., c(TEXT)));
+    let mark = div().flex_none().child(icon("discord", 30., c(TEXT)));
     let head = div()
         .px(px(ROW_X))
         .pt(px(20.))
@@ -655,6 +705,7 @@ pub(super) fn discord(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
                 r.settings.menu = None;
                 r.settings.dc_pick = None;
                 r.settings.dc_ping = None;
+                r.settings.dc_shown = None;
                 cx.notify();
             }))
         }));
@@ -913,7 +964,7 @@ fn dc_picker(root: &Root, cx: &mut Context<Root>) -> AnyElement {
     };
     let cancel = |r: &mut Root| r.settings.dc_pick = None;
     let saved = |r: &mut Root, v: Value, cx: &mut Context<Root>| {
-        ask(r, "setDiscord", v, cx, |r, _| r.settings.dc_pick = None);
+        ask_busy(r, "pick", "setDiscord", v, cx, |r, _| r.settings.dc_pick = None);
     };
     if what == "parts" {
         let items = PARTS.iter().map(|p| (p.to_string(), root.tr(&format!("dc.part.{p}")), String::new())).collect();
@@ -999,7 +1050,7 @@ fn preview(root: &Root, cx: &mut Context<Root>) -> Div {
         Some(src) => img(src).size(px(36.)).flex_none().rounded_full(),
         None => img("logo.svg").size(px(36.)).flex_none().rounded_full(),
     };
-    let small_t = |t: String| div().text_size(px(T_S - 1.)).text_color(c(MUTED)).child(t);
+    let small_t = |t: String| div().text_size(px(T_XS)).text_color(c(MUTED)).child(t);
     let body: AnyElement = if plain {
         let mut col = div().flex().flex_col().gap(px(2.)).text_size(px(T_S)).text_color(c(TEXT_2));
         col = col.child(div().font_weight(FontWeight::SEMIBOLD).text_color(c(TEXT)).child(if author.is_empty() { title.clone() } else { format!("{author} · {title}") }));
@@ -1085,7 +1136,7 @@ fn preview(root: &Root, cx: &mut Context<Root>) -> Div {
                                 .gap(px(6.))
                                 .child(div().text_size(px(T_M)).font_weight(FontWeight::SEMIBOLD).child(name))
                                 .child(div().px(px(4.)).rounded(px(3.)).bg(hsla(0.65, 0.55, 0.6, 1.)).text_size(px(10.)).font_weight(FontWeight::BOLD).text_color(c(WHITE)).child("APP"))
-                                .child(div().text_size(px(T_S - 1.)).text_color(c(MUTED)).child(at)),
+                                .child(div().text_size(px(T_XS)).text_color(c(MUTED)).child(at)),
                         )
                         .when_some(mention, |d, m| d.child(div().flex().child(div().px(px(3.)).rounded(px(3.)).bg(hsla(0.65, 0.5, 0.6, 0.25)).text_size(px(T_S)).text_color(hsla(0.65, 0.7, 0.8, 1.)).child(m))))
                         .child(body),

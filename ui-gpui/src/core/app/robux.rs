@@ -75,22 +75,28 @@ impl App {
         if self.robux.robux_busy.get() || !self.network_up() {
             return;
         }
-        let mut accounts: Vec<Account> = vault.data().accounts.iter().filter(|a| App::has_robux(a)).cloned().collect();
-        if now >= self.robux.next_robux.get() {
+        // Between rounds only the accounts not asked yet are copied (usually none): this runs on every 1.5 s tick,
+        // and copying every account with its cookie each time was wasted work.
+        let due = now >= self.robux.next_robux.get();
+        let accounts: Vec<Account> = {
+            let asked = self.robux.robux_asked.borrow();
+            vault.data().accounts.iter().filter(|a| App::has_robux(a) && (due || !asked.contains(&a.id))).cloned().collect()
+        };
+        if due {
             self.robux.next_robux.set(now.plus_secs(ROBUX_INTERVAL.as_secs_f64()));
-        } else {
-            let asked = self.robux.robux_asked.borrow().clone();
-            accounts.retain(|a| !asked.contains(&a.id));
-            if accounts.is_empty() {
-                return;
-            }
+        } else if accounts.is_empty() {
+            return;
         }
+        // Busy from here, not from the task's first step: a second call in the same turn (unlock and the
+        // process tick) would otherwise start a second round alongside. The task's own guard clears it.
+        self.robux.robux_busy.set(true);
         let app = self.clone();
         rt::spawn(async move { app.refresh_robux(vault, accounts).await });
     }
 
     pub async fn refresh_robux(self: &Rc<Self>, vault: Arc<Vault>, accounts: Vec<Account>) {
-        self.robux.robux_busy.set(true);
+        // finally: cleared however this ends.
+        let _busy = crate::core::base::Busy::set(&self.robux.robux_busy);
         let count = accounts.len();
         let round = Round {
             cut_short: Cell::new(false),
@@ -167,8 +173,6 @@ impl App {
             }
             self.push_state_if_changed();
         }
-        // finally
-        self.robux.robux_busy.set(false);
     }
 
     pub fn robux_of(&self, a: &Account) -> Option<i64> {

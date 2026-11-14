@@ -209,7 +209,10 @@ fn ask(q: Question) -> (i32, bool) {
             host::quit();
         });
         if started {
-            if let Ok(answer) = rx.recv() {
+            // The windows thread keeps its messages going meanwhile: the dialog disables its owner (a message sent to
+            // this thread), and a blocked wait there froze the app for good (closing's "Couldn't save your changes").
+            let answer = if crate::core::win_form::is_windows_thread() { crate::core::win_form::wait_pumping(&rx) } else { rx.recv().ok() };
+            if let Some(answer) = answer {
                 return answer;
             }
         }
@@ -479,6 +482,9 @@ struct DialogWindow {
     /// The page's size in its own (CSS) pixels, as it last said.
     page: Cell<Size>,
     closed: Cell<bool>,
+    /// The owner `show_dialog` disabled (0: none): enabled again before the window goes, so Windows gives it the focus
+    /// back rather than another program.
+    owner_off: Cell<isize>,
     disposed: Cell<bool>,
     /// The timeout's timer, started when the window shows (dialog.Shown += timer.Start).
     on_shown_extra: RefCell<Option<std::rc::Weak<Timer>>>,
@@ -524,6 +530,7 @@ impl DialogWindow {
             ready: RefCell::new(None),
             page: Cell::new(Size::default()),
             closed: Cell::new(false),
+            owner_off: Cell::new(0),
             disposed: Cell::new(false),
             on_shown_extra: RefCell::new(None),
         });
@@ -581,11 +588,13 @@ impl DialogWindow {
                 Some(0)
             }
             WM_CLOSE => {
+                self.owner_back();
                 // SAFETY: plain call on this window.
                 unsafe { DestroyWindow(h) };
                 Some(0)
             }
             WM_DESTROY => {
+                self.owner_back();
                 self.closed.set(true);
                 self.limit.stop();
                 host::wake();
@@ -605,14 +614,20 @@ impl DialogWindow {
     fn show_dialog(self: &Rc<Self>, owner: Option<isize>) {
         let owner = owner.filter(|&o| o != 0).map(host::root);
         if let Some(o) = owner {
-            // SAFETY: plain call; enabled again below.
+            // SAFETY: plain call; enabled again as the window goes (owner_back).
             unsafe { EnableWindow(o as HWND, 0) };
+            self.owner_off.set(o);
         }
         host::show(self.hwnd, SW_SHOW);
         self.on_shown();
         let me = self.clone();
         host::run_loop(Some(&move || me.closed.get()));
-        if let Some(o) = owner {
+        self.owner_back();
+    }
+
+    fn owner_back(&self) {
+        let o = self.owner_off.replace(0);
+        if o != 0 {
             // SAFETY: plain call.
             unsafe { EnableWindow(o as HWND, 1) };
         }
@@ -897,6 +912,7 @@ impl DialogWindow {
         self.limit.dispose();
         self.release_browser();
         if host::is_window(self.hwnd) {
+            self.owner_back();
             // SAFETY: plain call on this window.
             unsafe { DestroyWindow(self.hwnd as HWND) };
         }

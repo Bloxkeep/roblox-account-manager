@@ -5,7 +5,7 @@ use crate::core::base::{Extra, Stamp};
 use crate::core::roblox_api::unescape_data_string;
 
 /// An account's authenticator key as the vault keeps it: the shared secret and how codes are made from it.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase", default)]
 pub struct TotpKey {
     /// Base32 (A–Z, 2–7), upper case, without spaces or padding.
@@ -22,6 +22,19 @@ pub struct TotpKey {
 impl Default for TotpKey {
     fn default() -> Self {
         TotpKey { secret: String::new(), digits: 6, period: 30, algorithm: "SHA1".into(), extra: Extra::new() }
+    }
+}
+
+/// `secret` left out: it makes every code.
+impl std::fmt::Debug for TotpKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("TotpKey")
+            .field("secret", &crate::core::base::Redacted)
+            .field("digits", &self.digits)
+            .field("period", &self.period)
+            .field("algorithm", &self.algorithm)
+            .field("extra", &self.extra)
+            .finish()
     }
 }
 

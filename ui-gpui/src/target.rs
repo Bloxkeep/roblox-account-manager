@@ -193,7 +193,11 @@ fn parse_at(place_input: &str, job_input: &str, depth: u8) -> Result<Target, Why
             }
             let is_share = has(input, "roblox.com/share") || has(input, "share_links");
             if let (true, Some(code)) = (is_share, find(&query, "code")) {
-                if find(&query, "type").is_some_and(|t| !t.eq_ignore_ascii_case("Server")) {
+                // A friend's invite, a game's or an event's link, a private server (the core reads where each leads at launch).
+                const KINDS: [&str; 7] =
+                    ["Server", "ExperienceInvite", "NotificationExperienceInvite", "ScreenshotInvite", "ExperienceDetails", "ExperienceAffiliate", "ExperienceEvent"];
+                let v2 = find(&query, "v").is_some_and(|v| v.eq_ignore_ascii_case("v2"));
+                if !v2 && find(&query, "type").is_some_and(|t| !KINDS.iter().any(|k| k.eq_ignore_ascii_case(t))) {
                     return Err(Why::ShareKind);
                 }
                 share = Some(code.to_string());

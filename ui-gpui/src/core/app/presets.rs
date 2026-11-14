@@ -82,7 +82,14 @@ pub struct PresetsState {
     pub heavy_since: RefCell<HashMap<i32, Stamp>>,
     /// Windows whose due restart was logged as held back (once each).
     pub restart_held_noted: RefCell<HashSet<i32>>,
+    /// Since when each client's window has been "not responding", seen on every tick in a row.
+    pub hung_since: RefCell<HashMap<i32, Stamp>>,
+    /// Frozen windows already said to be left open (once each).
+    pub hung_told: RefCell<HashSet<i32>>,
 }
+
+/// A window frozen this long is closed and opened again: a big map loading or a teleport stalls seconds, not this.
+const HUNG_FOR: Duration = Duration::from_secs(60);
 
 /// The first 8 characters of an id, as the log writes it (`id.ToString()[..8]`).
 pub(super) fn short(id: &Guid) -> String {
@@ -832,15 +839,14 @@ impl App {
     }
 
     /// Anti-AFK for a Roblox window here: the preset's that opened it, else Settings (also windows opened outside Bloxkeep).
+    /// Called per window every tick: reads the one switch, without copying the settings.
     pub fn anti_afk_on(&self, pid: i32) -> bool {
-        let Ok(settings) = self.vault(|d| d.settings.clone()) else {
-            return false;
-        };
-        let preset_id = self.controller.running.borrow().values().find(|(p, _)| *p == pid).map(|(_, launch)| launch.preset_id);
-        match preset_id {
-            Some(preset_id) => App::anti_afk_for(self.preset_for(preset_id).as_ref(), &settings),
-            None => settings.anti_afk,
-        }
+        let preset_id = self.controller.running.borrow().values().find(|(p, _)| *p == pid).and_then(|(_, launch)| launch.preset_id);
+        self.vault(|d| {
+            let preset = preset_id.and_then(|id| d.settings.presets.iter().find(|p| p.id == id));
+            App::anti_afk_for(preset, &d.settings)
+        })
+        .unwrap_or(false)
     }
 
     /// A light-AFK preset's window is minimised once in its game (Roblox draws less then). Only once, so a window brought
@@ -898,6 +904,9 @@ impl App {
                 if preset.profile == AFK_PROFILE || preset.arrange == Some(true) {
                     continue;
                 }
+            }
+            if self.going_back(pid) {
+                continue; // a rejoin going back to its account's place (rejoin_place.rs)
             }
             let seen = *self.presets.window_first_seen.borrow_mut().entry(pid).or_insert(now);
             // In a game, or up a while (Roblox's home screen, still loading, or a client that writes no log).
@@ -967,6 +976,7 @@ impl App {
                 }
             }
         }
+        self.track_hung(now);
         let held = self.held_vault().is_none()
             || self.controller.running.borrow().is_empty()
             || !self.presets.restarts.borrow().is_empty()
@@ -989,6 +999,39 @@ impl App {
             self.controller.running.borrow().iter().map(|(id, (pid, launch))| (*id, *pid, launch.clone())).collect();
         runs.sort_by(|a, b| a.2.started_at.get().cmp(&b.2.started_at.get()));
         for (id, pid, launch) in runs {
+            // Frozen: Windows' "not responding" for HUNG_FOR in a row. Bloxkeep took it for a running game and never
+            // reopened it (RoALT closes and reopens one after 30 s).
+            let frozen = self.presets.hung_since.borrow().get(&pid).copied();
+            if let Some(frozen) = frozen.filter(|f| now.secs_since(*f) >= secs(HUNG_FOR))
+                && !self.rejoin.closing_for_rejoin.borrow().contains(&pid)
+                && let Some(stuck) = self.find_account(id)
+            {
+                let frozen_s = now.secs_since(frozen) as i64;
+                // Reopened only where auto-rejoin would: on, a game to go back to, signed in, not banned, Multi-Roblox
+                // ready. Never the account the person plays (MAIN): they see it and may wait for it.
+                let running_count = self.controller.running.borrow().len();
+                let reopen = launch.target.is_some()
+                    && self.rejoin_on(&stuck, launch.preset_id)
+                    && stuck.cookie_valid != Some(false)
+                    && stuck.banned != Some(true)
+                    && (multi_instance::armed() || running_count == 1)
+                    && !main.get_or_insert_with(|| self.main_pids()).contains(&pid);
+                if !reopen {
+                    if self.presets.hung_told.borrow_mut().insert(pid) {
+                        log::note(&format!("Frozen: window {pid} not responding for {frozen_s} s; left open (not reopened by auto-rejoin)."));
+                        self.notify(&l::f("{0}'s Roblox window stopped responding.", &[&self.name(&stuck)]), "warn", "restartHung", id, true, None);
+                    }
+                    continue;
+                }
+                log::note(&format!("Restart: closing window {pid} to reopen it, not responding for {frozen_s} s."));
+                let target = self.restart_target(pid, &launch);
+                self.presets.restarts.borrow_mut().insert(id, (target, now));
+                self.rejoin.closing_for_rejoin.borrow_mut().insert(pid); // Bloxkeep's own close: neither a drop nor closed by Roblox
+                self.presets.hung_since.borrow_mut().remove(&pid);
+                self.notify(&l::f("Restarting {0}'s Roblox: its window stopped responding…", &[&self.name(&stuck)]), "warn", "restartHung", id, true, None);
+                roblox_processes::close(pid, true); // a frozen window takes no WM_CLOSE
+                return;
+            }
             let preset = self.preset_for(launch.preset_id);
             let launch_started = launch.started_at.get();
             let due = preset.as_ref().is_some_and(|p| p.restart_hours > 0 && now.secs_since(launch_started) >= p.restart_hours as f64 * 3600.0);
@@ -1051,6 +1094,27 @@ impl App {
             roblox_processes::close(pid, self.in_game_now(pid));
             return;
         }
+    }
+
+    fn track_hung(&self, now: Stamp) {
+        // The PC just woke: windows catch up for a while, and a time from before the sleep says nothing.
+        if self.settling() || self.controller.running.borrow().is_empty() {
+            self.presets.hung_since.borrow_mut().clear();
+            self.presets.hung_told.borrow_mut().clear();
+            return;
+        }
+        // Not a window under Save RAM's limit: paging back in can stall it for a long while without being frozen.
+        let pids: Vec<i32> = {
+            let limited = self.memory.ram_limited.borrow();
+            self.controller.running.borrow().values().map(|(pid, _)| *pid).filter(|pid| !limited.contains_key(pid)).collect()
+        };
+        let hung = roblox_processes::hung_pids(&pids);
+        let mut since = self.presets.hung_since.borrow_mut();
+        since.retain(|pid, _| hung.contains(pid));
+        for pid in hung {
+            since.entry(pid).or_insert(now);
+        }
+        self.presets.hung_told.borrow_mut().retain(|pid| since.contains_key(pid));
     }
 
     /// Where a restart goes: the client's current server while it's the game it was opened into (a preset's accounts stay

@@ -40,6 +40,8 @@ pub struct Data {
     key_seq: u64,
     /// The note's box: a few lines (app.css textarea.field), made with the form.
     note: Option<Entity<TextareaState>>,
+    /// The nickname, group and note as the form opened with them: Cancel or × asks first once one has changed.
+    start: [String; 3],
 }
 
 fn s<'a>(v: &'a Value, k: &str) -> &'a str {
@@ -57,7 +59,7 @@ fn account(r: &Root) -> Option<Value> {
 
 /// "123456" as "123 456".
 fn split(code: &str) -> String {
-    if code.len() == 6 { format!("{} {}", &code[..3], &code[3..]) } else { code.to_string() }
+    if code.len() == 6 && code.is_ascii() { format!("{} {}", &code[..3], &code[3..]) } else { code.to_string() }
 }
 
 /// The saved key is the one in use: there is one, it isn't being removed, and no other key is typed.
@@ -88,6 +90,7 @@ pub fn open(r: &mut Root, id: Option<String>, window: &mut Window, cx: &mut Cont
     let text = |k: &str| a.as_ref().map(|a| s(a, k).to_string()).unwrap_or_default();
     // (While names are hidden the nickname can't be shown, so it isn't edited either.)
     let (alias, group, note) = (if hide { String::new() } else { text("alias") }, text("group"), text("note"));
+    r.acc_form.start = [alias.clone(), group.clone(), note.clone()];
     for (e, v) in [(r.af_alias.clone(), alias), (r.af_group.clone(), group)] {
         e.update(cx, |st, cx| st.set_value(v, window, cx));
     }
@@ -275,13 +278,13 @@ pub fn open(r: &mut Root, id: Option<String>, window: &mut Window, cx: &mut Cont
         let (cancel, go, shut) = (this.clone(), this.clone(), this.clone());
         let foot = dialog_foot()
             .child(Button::new("af-cancel", r.tr("common.cancel")).on_click(move |_, w, cx| {
-                let _ = cancel.update(cx, |r, cx| close(r, w, cx));
+                let _ = cancel.update(cx, |r, cx| close_asking(r, w, cx));
             }))
             .child(Button::new("af-save", r.tr(if is_new { "am.add" } else { "am.save" })).primary().on_click(move |_, w, cx| {
                 let _ = go.update(cx, |r, cx| save(r, w, cx));
             }));
         framed(dialog, r.tr(if is_new { "am.addTitle" } else { "am.editTitle" }), r.tr("common.close"), move |_, w, cx| {
-            let _ = shut.update(cx, |r, cx| close(r, w, cx));
+            let _ = shut.update(cx, |r, cx| close_asking(r, w, cx));
         })
         .w(px(DIALOG_W))
         .centered()
@@ -294,10 +297,41 @@ pub fn open(r: &mut Root, id: Option<String>, window: &mut Window, cx: &mut Cont
     });
 }
 
+/// Something typed that Save would keep: a cookie, a password other than the saved one shown, a key or its removal,
+/// or the nickname, group or note changed.
+fn changed(r: &Root, cx: &App) -> bool {
+    let f = &r.acc_form;
+    let val = |e: &Entity<InputState>| e.read(cx).value().trim().to_string();
+    let pw = val(&r.af_password);
+    let note = f.note.as_ref().map(|n| n.read(cx).value().to_string()).unwrap_or_default();
+    !val(&r.af_cookie).is_empty()
+        || (!pw.is_empty() && Some(&pw) != f.pw_loaded.as_ref())
+        || !val(&r.af_key).is_empty()
+        || f.remove_key
+        || val(&r.af_alias) != f.start[0].trim()
+        || val(&r.af_group) != f.start[1].trim()
+        || note.trim() != f.start[2].trim()
+}
+
+/// Cancel or ×: closes, asking first when something would be lost.
+fn close_asking(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
+    // A save on its way: its answer closes the form (or shows what's wrong). A "Discard changes?" box up meanwhile
+    // was the dialog that answer closed, leaving the form open and dead.
+    if r.acc_form.busy {
+        return;
+    }
+    if changed(r, cx) {
+        r.ask_discard(window, cx, close);
+    } else {
+        close(r, window, cx);
+    }
+}
+
 fn close(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
     r.acc_form.open = false;
     r.acc_form.seq += 1;
-    // (Nothing secret stays in the boxes.)
+    // (Nothing secret stays in the boxes, nor the saved password read for the eye.)
+    r.acc_form.pw_loaded = None;
     for e in [r.af_cookie.clone(), r.af_password.clone(), r.af_key.clone()] {
         e.update(cx, |st, cx| st.set_value("", window, cx));
     }
@@ -396,7 +430,10 @@ fn reveal(r: &mut Root, at: usize, window: &mut Window, cx: &mut Context<Root>) 
                     }
                     if let Ok(Ok(Value::String(pw))) = answer {
                         r.acc_form.pw_loaded = Some(pw.clone());
-                        r.af_password.update(cx, |st, cx| st.set_value(pw, window, cx));
+                        // Typed into meanwhile: what the person typed stays, the saved one isn't put over it.
+                        if r.af_password.read(cx).value().is_empty() {
+                            r.af_password.update(cx, |st, cx| st.set_value(pw, window, cx));
+                        }
                     }
                 });
             })

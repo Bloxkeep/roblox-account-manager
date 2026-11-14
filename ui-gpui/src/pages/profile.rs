@@ -29,6 +29,10 @@ pub struct Data {
     of: i64,
     pub got: Option<Result<Profile, String>>,
     loading: bool,
+    /// The tickets (avatar::ticket) of the profile's read and the Marketplace's page under way: an answer with
+    /// another is old.
+    load_ask: u64,
+    page_ask: u64,
     /// The Marketplace: what was asked ("" the front shelf), what it holds so far (None while its first page loads),
     /// the mark for its next page, and whether a page is being read.
     asked: Option<String>,
@@ -45,6 +49,10 @@ pub struct Data {
     /// they were read, whether a read is under way, the ones seen on the first read (None before it) and the ones
     /// that came after it, which carry a New mark.
     pub free: bool,
+    /// Watching, shown in place of the catalog (itemwatch.rs): the list as last read from disk.
+    pub watch_view: bool,
+    pub watch: Vec<crate::itemwatch::Watched>,
+    pub watch_read: bool,
     frees: Option<Result<Vec<Free>, String>>,
     free_at: Option<std::time::Instant>,
     free_reading: bool,
@@ -81,6 +89,13 @@ struct ItemView {
     armed: bool,
     busy: bool,
     done: Option<Result<(), String>>,
+    /// Try on: the account wearing it, as a picture (None until asked; Err: why not), whether it is being drawn, and
+    /// whether the picture shows it on the account (else the thing itself).
+    tried: Option<Result<String, String>>,
+    trying: bool,
+    on_me: bool,
+    /// On the Watching list.
+    watched: bool,
 }
 
 /// The community shown: its id and name (known before it loads), its page (None while it loads), and which of the
@@ -136,8 +151,15 @@ const FREE_FRESH: std::time::Duration = std::time::Duration::from_secs(10);
 pub fn want(r: &mut Root, link: &crate::link::Link, cx: &mut Context<Root>) {
     friends::want_sign(r, link, cx);
     let Some((_, user, _)) = friends::signed(r) else { return };
-    if (r.profile.of != user || r.profile.got.is_none()) && !r.profile.loading {
+    // Another account: the last one's profile (and what is on its way for it) goes at once, even mid-load.
+    if r.profile.of != user {
         r.profile.of = user;
+        r.profile.got = None;
+        r.profile.loading = false;
+        r.profile.folk = None;
+        r.profile.person = None;
+    }
+    if r.profile.got.is_none() && !r.profile.loading {
         load(r, cx);
     }
 }
@@ -145,14 +167,18 @@ pub fn want(r: &mut Root, link: &crate::link::Link, cx: &mut Context<Root>) {
 fn load(r: &mut Root, cx: &mut Context<Root>) {
     let Some((_, user, cookie)) = friends::signed(r) else { return };
     r.profile.loading = true;
+    let ask = crate::pages::avatar::ticket();
+    r.profile.load_ask = ask;
     let rx = roblox::run(move || roblox::profile(&cookie, user));
     cx.spawn(async move |this, cx| {
         let got = rx.await.unwrap_or_else(|_| Err(String::new()));
         let _ = this.update(cx, |r, cx| {
-            r.profile.loading = false;
-            if r.profile.of == user {
-                r.profile.got = Some(got);
+            // Overtaken (another account, or asked again since): dropped.
+            if r.profile.load_ask != ask || r.profile.of != user {
+                return;
             }
+            r.profile.loading = false;
+            r.profile.got = Some(got);
             cx.notify();
         });
     })
@@ -531,7 +557,7 @@ fn club_page(root: &Root, view: &ClubView, width: f32, cx: &mut Context<Root>) -
 
 pub fn profile(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement {
     let pf = &root.profile;
-    let (able, viewer) = friends::looking(root);
+    let (able, viewer) = friends::looking_ref(root);
     // Roblox's own page of what is shown: the person's when one is open.
     let user = pf.person.as_ref().map(|p| p.0).unwrap_or(pf.of);
     let shell = div().id("profile").relative().size_full().rounded(px(R_PANEL)).bg(c(PANEL)).overflow_hidden().flex().flex_col();
@@ -543,8 +569,8 @@ pub fn profile(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElem
         .flex()
         .items_center()
         .gap(px(10.))
-        .child(div().text_size(px(T_TITLE)).font_weight(FontWeight::BOLD).child("Roblox"))
-        .child(div().ml(px(6.)).child(crate::pages::games::views(root, cx)))
+        .child(div().h(px(38.)).flex().items_center().child(crate::kit::roblox_word(22., c(TEXT))))
+        .relative().child(crate::pages::games::island(root, cx))
         .child(div().flex_1())
         // (A community's page has its own way out to roblox.com, and nothing of the profile's to read again.)
         .when(viewer.is_some() && pf.club.is_none() && pf.folk.is_none() && pf.person.is_none(), |d| {
@@ -570,16 +596,7 @@ pub fn profile(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElem
         };
         div().flex_1().min_h_0().flex().flex_col().child(back).child(content).into_any_element()
     } else if able.is_empty() || friends::nobody(root) {
-        div()
-            .flex_1()
-            .flex()
-            .flex_col()
-            .items_center()
-            .justify_center()
-            .gap(px(14.))
-            .child(div().text_size(px(T_M)).text_color(c(MUTED)).child(root.tr("fr.noAccount")))
-            .child(Button::new("pf-add-acc", root.tr("acc.add")).icon("plus").primary().on_click(cx.listener(|r, _, _, cx| r.add_account(cx))))
-            .into_any_element()
+        friends::need_account(root, "pf-add-acc", "pf.noAccount", "user", cx)
     } else {
         match &pf.got {
             None => note(root.tr("pf.loading")).into_any_element(),
@@ -612,7 +629,7 @@ fn filled(root: &Root, p: &Profile, user: i64, width: f32, own: bool, cx: &mut C
     let mut known: Vec<(String, String)> = Vec::new();
     if let Some(at) = crate::time::iso_secs(&p.joined) {
         let days = ((crate::time::now_secs() - at) / 86_400).max(0);
-        let age = if days >= 365 { root.i18n.tn("pf.years", days * 4 / 1461, &[]) } else { root.i18n.tn("pf.months", (days / 30).max(1), &[]) };
+        let age = if days >= 365 { root.i18n.tn("pf.years", days / 365, &[]) } else { root.i18n.tn("pf.months", (days / 30).max(1), &[]) };
         known.push((root.tr("pf.age"), age));
     }
     if user > 0 {
@@ -924,7 +941,7 @@ fn open_item(r: &mut Root, ware: Ware, cx: &mut Context<Root>) {
     let (id, collectible) = (ware.id, ware.collectible.clone());
     // (An old kind has no offer to ask for: it opens on roblox.com.)
     let offer = collectible.is_empty().then(|| Err(String::new()));
-    r.profile.item = Some(ItemView { ware, offer, me: 0, robux: None, owners: None, mine: None, armed: false, busy: false, done: None });
+    r.profile.item = Some(ItemView { ware, offer, me: 0, robux: None, owners: None, mine: None, armed: false, busy: false, done: None, tried: None, trying: false, on_me: false, watched: crate::itemwatch::watching(id) });
     if collectible.is_empty() {
         return;
     }
@@ -956,14 +973,16 @@ fn ask_item(r: &mut Root, user: i64, cookie: String, cx: &mut Context<Root>) {
     let kind = if bundle { "Bundle" } else { "Asset" };
     // First this account's Robux and whether it owns it (Buy waits for these only), then every account's.
     let mine_cookie = cookie.clone();
-    let quick = roblox::run(move || (roblox::robux(&mine_cookie, user), roblox::owners(kind, id, &[user], Some((user, &mine_cookie))).contains(&user)));
+    let quick = roblox::run(move || (roblox::robux(&mine_cookie, user), roblox::owns(kind, id, user, &mine_cookie)));
     cx.spawn(async move |this, cx| {
+        // (No answer at all: left unknown, so Buy stays off; taking it as "not owned" could buy a second copy.)
         let Ok((robux, mine)) = quick.await else { return };
         let _ = this.update(cx, |r, cx| {
             let pf = &mut r.profile;
             if let Some(i) = pf.item.as_mut().filter(|i| i.ware.id == id && i.me == user) {
                 i.robux = robux;
-                i.mine = Some(mine || pf.bought.contains(&(user, id, bundle)));
+                // Roblox didn't say (and not bought here): left unknown, Buy stays off.
+                i.mine = if pf.bought.contains(&(user, id, bundle)) { Some(true) } else { mine };
                 cx.notify();
             }
         });
@@ -1013,6 +1032,7 @@ fn buy(r: &mut Root, cx: &mut Context<Root>) {
         let done = rx.await.unwrap_or_else(|_| Err(String::new()));
         let _ = this.update(cx, |r, cx| {
             // Kept whatever is shown now, so it holds when this thing is shown again.
+            crate::pages::games::stale_corner(r);
             let pf = &mut r.profile;
             pf.buying.retain(|b| *b != (user, id, bundle));
             if done.is_ok() && !pf.bought.contains(&(user, id, bundle)) {
@@ -1038,6 +1058,33 @@ fn buy(r: &mut Root, cx: &mut Context<Root>) {
 
 /// A thing's page: its picture and what it is, its maker's price, Buy (a first click arms it and says whose Robux, a
 /// second buys), and the app's accounts that own it already.
+/// Try on: the account shown, wearing the thing open, drawn by Roblox (nothing is changed on the account).
+fn try_on(r: &mut Root, cx: &mut Context<Root>) {
+    let Some((_, user, cookie)) = friends::signed(r) else { return };
+    let Some(item) = r.profile.item.as_mut().filter(|i| !i.ware.bundle && !i.trying) else { return };
+    // (Asked once per thing and account: shown again from what came.)
+    if matches!(item.tried, Some(Ok(_))) && item.me == user {
+        item.on_me = !item.on_me;
+        return;
+    }
+    let id = item.ware.id;
+    item.trying = true;
+    item.on_me = true;
+    item.tried = None;
+    let rx = roblox::run(move || roblox::try_on(&cookie, id));
+    cx.spawn(async move |this, cx| {
+        let got = rx.await.unwrap_or_else(|_| Err(String::new()));
+        let _ = this.update(cx, |r, cx| {
+            if let Some(i) = r.profile.item.as_mut().filter(|i| i.ware.id == id) {
+                i.trying = false;
+                i.tried = Some(got);
+                cx.notify();
+            }
+        });
+    })
+    .detach();
+}
+
 fn item_page(root: &Root, view: &ItemView, inner: f32, cx: &mut Context<Root>) -> AnyElement {
     let vi = root.i18n.vietnamese;
     let w = &view.ware;
@@ -1130,8 +1177,50 @@ fn item_page(root: &Root, view: &ItemView, inner: f32, cx: &mut Context<Root>) -
         Some(_) => div().flex().flex_col().gap(px(12.)).items_start().child(said(MUTED, root.tr("shop.notHere"))).child(on_roblox()),
     };
 
-    let pic = (!w.pic.is_empty()).then(|| images::pic_pair(&w.pic, 260., 260., cx)).flatten();
-    let lost = !w.pic.is_empty() && images::failed(&w.pic, cx);
+    // (On the account, once tried: Roblox's drawing of it wearing the thing, in the thing's place.)
+    let worn = view.tried.as_ref().and_then(|t| t.as_ref().ok()).filter(|_| view.on_me).cloned();
+    let shown = worn.clone().unwrap_or_else(|| w.pic.clone());
+    let pic = (!shown.is_empty()).then(|| images::pic_pair(&shown, 260., 260., cx)).flatten();
+    let lost = !shown.is_empty() && images::failed(&shown, cx);
+    let watch_btn = (!w.bundle).then(|| {
+        let ware = w.clone();
+        Button::new("item-watch", root.tr(if view.watched { "watch.on" } else { "watch.add" }))
+            .icon("bell")
+            .small()
+            .when(view.watched, |b| b.tint())
+            .on_click(cx.listener(move |r, _, _, cx| {
+                match crate::itemwatch::toggle(ware.id, &ware.name, &ware.pic, &ware.maker, &ware.collectible) {
+                    Ok(on) => {
+                        if let Some(i) = r.profile.item.as_mut() {
+                            i.watched = on;
+                        }
+                        r.profile.watch = crate::itemwatch::list();
+                        r.toast = Some((r.tr(if on { "watch.added" } else { "watch.removed" }), "ok".into()));
+                    }
+                    Err(why) => r.toast = Some((if why == "full" { r.i18n.tv("watch.full", &[("n", &crate::itemwatch::MOST.to_string())]) } else { why }, "bad".into())),
+                }
+                cx.notify();
+            }))
+    });
+    let try_row = (!w.bundle).then(|| {
+        let why = view.tried.as_ref().and_then(|t| t.as_ref().err()).filter(|_| !view.trying).map(|_| root.tr("shop.tryFailed"));
+        div()
+            .flex()
+            .items_center()
+            .gap(px(10.))
+            .children(watch_btn)
+            .when(signed.is_some(), |d| d.child(
+                Button::new("item-try", root.tr(if view.trying { "shop.trying" } else if worn.is_some() { "shop.tryOff" } else { "shop.try" }))
+                    .icon("user")
+                    .small()
+                    .disabled(view.trying)
+                    .on_click(cx.listener(|r, _, _, cx| {
+                        try_on(r, cx);
+                        cx.notify();
+                    })),
+            ))
+            .children(why.map(|t| div().text_size(px(T_S)).text_color(c(WARN)).child(t)))
+    });
     // At the right of a wide card, what it is in facts (as a profile's header has them): its kind, its maker, its
     // Roblox ID, and which of the accounts have it. Without them the right 60 % of the card stood empty (review 3f.2).
     let facts_side = (inner >= 1000.).then(|| {
@@ -1186,6 +1275,7 @@ fn item_page(root: &Root, view: &ItemView, inner: f32, cx: &mut Context<Root>) -
                 .gap(px(14.))
                 .child(div().flex().flex_col().gap(px(4.)).child(div().text_size(px(T_TITLE)).font_weight(FontWeight::BOLD).child(w.name.clone())).child(div().text_size(px(T_M)).text_color(c(MUTED)).truncate().child(w.maker.clone())))
                 .child(buying)
+                .children(try_row)
                 .when(!w.about.is_empty(), |d| d.child(div().max_h(px(100.)).overflow_hidden().text_size(px(T_M)).text_color(c(TEXT_2)).line_height(px(20.)).child(w.about.clone()))),
         )
         .children(facts_side)
@@ -1271,6 +1361,8 @@ fn read_free(r: &mut Root, cx: &mut Context<Root>) {
                     // over the one-of-a-kind things that fill Roblox's own order.
                     let mut list = list;
                     list.sort_by_key(|f| (!p.free_fresh.contains(&f.id), std::cmp::Reverse(f.left)));
+                    #[cfg(feature = "shot")]
+                    crate::near::shot_many(&mut list);
                     p.frees = Some(Ok(list));
                     // BLOXKEEP_SHOT_FREE_OPEN=1: a hidden shot opens the first one's game, as its button does.
                     #[cfg(feature = "shot")]
@@ -1303,7 +1395,8 @@ fn read_free(r: &mut Root, cx: &mut Context<Root>) {
 /// The search box's words (Enter), or the front shelf again when it was emptied.
 pub fn shop_find(r: &mut Root, cx: &mut Context<Root>) {
     let q = r.shop_search.read(cx).value().trim().to_string();
-    if r.profile.asked.as_deref() == Some(q.as_str()) {
+    // (The same words again after a failed read ask again.)
+    if r.profile.asked.as_deref() == Some(q.as_str()) && !matches!(r.profile.wares, Some(Err(_))) {
         return;
     }
     r.profile.asked = Some(q);
@@ -1340,6 +1433,7 @@ fn filters(cat: usize, sort: usize, words: bool) -> String {
 /// The Marketplace narrowed or ordered another way: what it holds goes, and its first page is read again.
 fn refilter(r: &mut Root, cat: usize, sort: usize, cx: &mut Context<Root>) {
     r.profile.free = false;
+    r.profile.watch_view = false;
     if r.profile.cat == cat && r.profile.sort == sort {
         return;
     }
@@ -1360,14 +1454,17 @@ fn page(r: &mut Root, cx: &mut Context<Root>) {
     let cursor = if r.profile.wares.is_some() { r.profile.next.clone() } else { String::new() };
     r.profile.reading = true;
     let ask = q.clone();
+    let ticket = crate::pages::avatar::ticket();
+    r.profile.page_ask = ticket;
     let (cat, sort) = (r.profile.cat, r.profile.sort);
     let by = filters(cat, sort, !q.is_empty());
     let rx = roblox::run(move || roblox::catalog(&ask, &cursor, &by));
     cx.spawn(async move |this, cx| {
         let got = rx.await.unwrap_or_else(|_| Err(String::new()));
         let _ = this.update(cx, |r, cx| {
-            // A page for words, or filters, no longer asked is dropped.
-            if r.profile.asked.as_deref() != Some(q.as_str()) || (r.profile.cat, r.profile.sort) != (cat, sort) {
+            // A page for words, or filters, no longer asked is dropped; so is one overtaken by a newer ask (the same
+            // words asked again after others: their first page would come twice).
+            if r.profile.asked.as_deref() != Some(q.as_str()) || (r.profile.cat, r.profile.sort) != (cat, sort) || r.profile.page_ask != ticket {
                 return;
             }
             r.profile.reading = false;
@@ -1381,6 +1478,10 @@ fn page(r: &mut Root, cx: &mut Context<Root>) {
                     // all when none has).
                     #[cfg(feature = "shot")]
                     let shown = std::env::var("BLOXKEEP_SHOT_ITEM").ok().and_then(|_| first.iter().find(|w| w.price.is_some_and(|p| p > 0) && !w.collectible.is_empty()).or(first.iter().find(|w| !w.collectible.is_empty())).cloned());
+                    #[cfg(feature = "shot")]
+                    let mut first = first;
+                    #[cfg(feature = "shot")]
+                    crate::near::shot_many(&mut first);
                     r.profile.wares = Some(Ok(first));
                     r.profile.next = next;
                     #[cfg(feature = "shot")]
@@ -1443,8 +1544,8 @@ pub fn shop(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
         .flex()
         .items_center()
         .gap(px(10.))
-        .child(div().text_size(px(T_TITLE)).font_weight(FontWeight::BOLD).child("Roblox"))
-        .child(div().ml(px(6.)).child(crate::pages::games::views(root, cx)))
+        .child(div().h(px(38.)).flex().items_center().child(crate::kit::roblox_word(22., c(TEXT))))
+        .relative().child(crate::pages::games::island(root, cx))
         .child(div().flex_1())
         .when(!pf.free && pf.item.is_none(), |d| d.child(div().w(px(if width < 900. { 220. } else { 300. })).min_w(px(140.)).flex_shrink(1.).child(field(&root.shop_search, Some("search")))));
     // Under it: the whole catalog, or the free limiteds in stock.
@@ -1467,7 +1568,7 @@ pub fn shop(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
                 .items_center()
                 .gap(px(4.))
                 .children(CATS.iter().enumerate().map(|(i, (key, _))| {
-                    let on = !pf.free && pf.cat == i;
+                    let on = !pf.free && !pf.watch_view && pf.cat == i;
                     chip(("shop-cat", i), on).h(px(TOOL_H)).px(px(12.)).child(root.tr(key)).on_click(cx.listener(move |r, _, _, cx| {
                         refilter(r, i, sort, cx);
                         cx.notify();
@@ -1476,15 +1577,37 @@ pub fn shop(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
                 .child(tool_rule())
                 .child(chip("shop-kind-free", pf.free).h(px(TOOL_H)).px(px(12.)).child(icon("tag", 15., c(if pf.free { INK } else { MUTED }))).child(root.tr("shop.freeNew")).on_click(cx.listener(|r, _, _, cx| {
                     r.profile.free = true;
+                    r.profile.watch_view = false;
                     cx.notify();
-                }))),
+                })))
+                .child({
+                    let on = pf.watch_view;
+                    let fresh = pf.watch.iter().any(|w| w.fresh);
+                    chip("shop-kind-watch", on)
+                        .h(px(TOOL_H))
+                        .px(px(12.))
+                        .child(icon("bell", 15., c(if on { INK } else { MUTED })))
+                        .child(root.tr("watch.title"))
+                        .when(!pf.watch.is_empty(), |d| d.child(chip_count(pf.watch.len(), on)))
+                        .when(fresh && !on, |d| d.child(div().size(px(7.)).rounded_full().bg(c(OK))))
+                        .on_click(cx.listener(|r, _, _, cx| {
+                            r.profile.watch_view = true;
+                            r.profile.free = false;
+                            r.profile.watch = crate::itemwatch::list();
+                            crate::itemwatch::seen();
+                            cx.notify();
+                        }))
+                }),
         )
-        .when(!pf.free, |d| d.child(sort_drop(root, cx)));
+        .when(!pf.free && !pf.watch_view, |d| d.child(sort_drop(root, cx)));
     if let Some(view) = &pf.item {
         return shell.child(header).child(item_page(root, view, inner, cx));
     }
     if pf.free {
         return shell.child(header).child(kinds).child(frees(root, tile_w, cx));
+    }
+    if pf.watch_view {
+        return shell.child(header).child(kinds).child(watch_list(root, inner, cx));
     }
 
     // BLOXKEEP_SHOT_WAITING=1: a hidden shot keeps the Marketplace as it is while its first page is on its way.
@@ -1498,9 +1621,11 @@ pub fn shop(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
         Some(Err(why)) => note(root.i18n.tv("shop.failed", &[("why", if why.is_empty() { "Roblox" } else { why })])).into_any_element(),
         Some(Ok(l)) if l.is_empty() => note(root.tr("shop.none")).into_any_element(),
         Some(Ok(l)) => {
-            let tiles: Vec<AnyElement> = l.iter().enumerate().map(|(n, w)| ware_tile(root, "shop-ware", n, w, tile_w, cx)).collect();
+            // (Only the lines near the view are made once there are many: each More adds a page of Roblox's.)
+            let key = crate::near::sig((l.len(), l.first().map(|w| w.id)));
+            let tiles = crate::near::tiles("shop-wares", l.len(), tile_w, SGAP, key, false, tile_w + 80., |n| ware_tile(root, "shop-ware", n, &l[n], tile_w, cx));
             crate::scrolled::body("shop-body", 
-                    div().px(px(PAD + 4.)).pt(px(4.)).pb(px(24.)).flex().flex_col().gap(px(18.)).child(div().mx(px(-6.)).flex().flex_wrap().gap(px(SGAP)).children(tiles)).when(!pf.next.is_empty(), |d| {
+                    div().px(px(PAD + 4.)).pt(px(4.)).pb(px(24.)).flex().flex_col().gap(px(18.)).child(div().mx(px(-6.)).child(tiles)).when(!pf.next.is_empty(), |d| {
                         d.child(div().flex().child(Button::new("shop-more", root.tr("av.more")).disabled(pf.reading).on_click(cx.listener(|r, _, _, cx| {
                             if !r.profile.reading {
                                 page(r, cx);
@@ -1588,10 +1713,9 @@ fn frees(root: &Root, tile_w: f32, cx: &mut Context<Root>) -> AnyElement {
         Some(Ok(l)) if l.is_empty() => return note(root.tr("shop.freeNone")).into_any_element(),
         Some(Ok(l)) => l,
     };
-    let tiles: Vec<AnyElement> = list
-        .iter()
-        .enumerate()
-        .map(|(n, f)| {
+    let key = crate::near::sig((list.len(), list.first().map(|f| f.id)));
+    let tile = |n: usize| {
+            let f = &list[n];
             let id = f.id;
             let few = f.left * 4 <= f.total || f.left <= 2;
             let left = root.i18n.tv("shop.left", &[("n", &thousands(f.left, root.i18n.vietnamese)), ("m", &thousands(f.total, root.i18n.vietnamese))]);
@@ -1635,8 +1759,118 @@ fn frees(root: &Root, tile_w: f32, cx: &mut Context<Root>) -> AnyElement {
                         }),
                 )
                 .into_any_element()
-        })
-        .collect();
-    crate::scrolled::body("free-body", div().px(px(PAD + 4. - 6.)).pt(px(4.)).pb(px(24.)).flex().flex_wrap().gap(px(SGAP)).children(tiles))
+        };
+    let tiles = crate::near::tiles("free-tiles", list.len(), tile_w, SGAP, key, false, tile_w + 90., tile);
+    crate::scrolled::body("free-body", div().px(px(PAD + 4. - 6.)).pt(px(4.)).pb(px(24.)).child(tiles))
         .into_any_element()
+}
+
+/// A change to a watched thing in words: "Cheaper: 120 → 90 R$".
+pub fn change_words(root: &Root, ch: &crate::itemwatch::Change) -> String {
+    let vi = root.i18n.vietnamese;
+    let n = |x: i64| thousands(x, vi);
+    match ch.kind.as_str() {
+        "sale" if ch.to == 0 => root.tr("watch.c.saleFree"),
+        "sale" => root.i18n.tv("watch.c.sale", &[("to", &n(ch.to))]),
+        "off" => root.tr("watch.c.off"),
+        "price" => root.i18n.tv("watch.c.price", &[("from", &n(ch.from)), ("to", &n(ch.to))]),
+        "resale" if ch.from == 0 => root.i18n.tv("watch.c.resaleNew", &[("to", &n(ch.to))]),
+        "resale" => root.i18n.tv("watch.c.resale", &[("from", &n(ch.from)), ("to", &n(ch.to))]),
+        "stock" => root.i18n.tv("watch.c.stock", &[("to", &n(ch.to))]),
+        _ => String::new(),
+    }
+}
+
+/// Marketplace › Watching: each thing with its numbers now, its last change, and how many of the accounts here have the
+/// Robux for it (the thing Roblox's own page can't say: it only knows the one signed in).
+fn watch_list(root: &Root, inner: f32, cx: &mut Context<Root>) -> AnyElement {
+    let list = &root.profile.watch;
+    if list.is_empty() {
+        return div()
+            .flex_1()
+            .px(px(PAD + 4.))
+            .py(px(60.))
+            .flex()
+            .flex_col()
+            .items_center()
+            .gap(px(8.))
+            .child(icon("bell", 26., c(DIM)))
+            .child(div().text_size(px(T_L)).font_weight(FontWeight::SEMIBOLD).child(root.tr("watch.empty")))
+            .child(div().max_w(px(420.)).text_center().text_size(px(T_M)).text_color(c(MUTED)).child(root.tr("watch.emptySub")))
+            .into_any_element();
+    }
+    let vi = root.i18n.vietnamese;
+    let robux: Vec<i64> = root.accounts().iter().filter_map(|a| a.get("robux").and_then(serde_json::Value::as_i64)).collect();
+    let now = crate::time::now_secs();
+    let rows = list.iter().enumerate().map(|(i, w)| {
+        let pic = (!w.pic.is_empty()).then(|| images::pic_pair(&w.pic, 56., 56., cx)).flatten();
+        let cost = match (w.price.filter(|_| w.sale), w.resale) {
+            (Some(a), Some(b)) => Some(a.min(b)),
+            (a, b) => a.or(b),
+        };
+        let state = match cost {
+            Some(0) => div().text_color(c(OK)).child(root.tr("shop.free")),
+            Some(p) => div().flex().items_center().gap(px(5.)).font_features(tnum()).child(icon("robux", 13., c(TEXT))).child(thousands(p, vi)),
+            None => div().text_color(c(MUTED)).child(root.tr("shop.off")),
+        };
+        let can = cost.filter(|p| *p > 0).map(|p| robux.iter().filter(|r| **r >= p).count());
+        let last = w.log.first().map(|ch| format!("{} · {}", change_words(root, ch), crate::time::ago(now - ch.at, &root.i18n)));
+        let ware = Ware { id: w.id, bundle: false, name: w.name.clone(), maker: w.maker.clone(), price: w.price, pic: w.pic.clone(), about: String::new(), collectible: w.collectible.clone() };
+        let id = w.id;
+        hot(("watch-row", i))
+            .px(px(12.))
+            .py(px(10.))
+            .flex()
+            .items_center()
+            .gap(px(14.))
+            .rounded(px(R_L))
+            .tones(c(RAISED), c(RAISED_2))
+            .border_1()
+            .border_color(if w.fresh { ca(OK, 0.5) } else { c(LINE) })
+            .cursor_pointer()
+            .child(div().size(px(56.)).flex_none().rounded(px(R_M)).bg(c(INSET)).overflow_hidden().flex().items_center().justify_center().map(|d| match pic {
+                Some((p, k)) => d.child(fade_in(img(p).size_full().object_fit(ObjectFit::Contain), &k)),
+                None => d.child(icon("image", 18., c(DIM))),
+            }))
+            .child(
+                div()
+                    .flex_1()
+                    .min_w_0()
+                    .flex()
+                    .flex_col()
+                    .gap(px(3.))
+                    .child(div().text_size(px(T_L)).font_weight(FontWeight::SEMIBOLD).truncate().child(w.name.clone()))
+                    .child(div().text_size(px(T_S)).text_color(if w.fresh { c(OK) } else { c(MUTED) }).truncate().child(last.unwrap_or_else(|| root.tr("watch.noChange")))),
+            )
+            .children(w.left.map(|n| div().flex_none().text_size(px(T_S)).text_color(c(MUTED)).font_features(tnum()).child(root.i18n.tv("watch.left", &[("n", &thousands(n, vi))]))))
+            .children(can.filter(|_| !robux.is_empty()).map(|n| {
+                div().flex_none().text_size(px(T_S)).text_color(if n > 0 { c(TEXT_2) } else { c(MUTED) }).child(if n > 0 { root.i18n.tv("watch.canPay", &[("n", &n.to_string())]) } else { root.tr("watch.nonePay") })
+            }))
+            .child(div().flex_none().w(px(90.)).flex().justify_end().text_size(px(T_L)).font_weight(FontWeight::SEMIBOLD).child(state))
+            .child(IconButton::new(("watch-x", i), "x").size(28.).tip(root.tr("watch.stop")).on_click(cx.listener(move |r, _, _, cx| {
+                cx.stop_propagation();
+                if let Ok(false) = crate::itemwatch::toggle(id, "", "", "", "") {
+                    r.profile.watch = crate::itemwatch::list();
+                }
+                cx.notify();
+            })))
+            .on_click(cx.listener(move |r, _, _, cx| {
+                open_item(r, ware.clone(), cx);
+                cx.notify();
+            }))
+    });
+    let _ = inner;
+    crate::scrolled::body(
+        "watch-body",
+        div()
+            .px(px(PAD + 4.))
+            .pt(px(4.))
+            .pb(px(24.))
+            .flex()
+            .flex_col()
+            .gap(px(8.))
+            .children(rows)
+            .child(div().pt(px(8.)).text_size(px(T_S)).text_color(c(DIM)).child(root.i18n.tv("watch.how", &[("n", &(crate::itemwatch::EVERY.as_secs() / 60).to_string())]))),
+    )
+    .into_any_element()
 }

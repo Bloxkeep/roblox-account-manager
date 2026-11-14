@@ -75,7 +75,7 @@ pub async fn run(c: &mut Checks, dir: &str) {
     let (fa, fb) = (Account { username: "First".into(), user_id: 31, ..Default::default() }, Account { username: "Second".into(), user_id: 32, ..Default::default() });
     let (a, b) = (fa.id, fb.id);
     seed(vec![fa, fb]);
-    let (app, _said) = quiet_app();
+    let (app, heard) = quiet_app();
     unlock(&app).await;
 
     let updating = Rc::new(Cell::new(false));
@@ -164,6 +164,20 @@ pub async fn run(c: &mut Checks, dir: &str) {
     );
     let said = start_error_text(&shell_failed);
     c.check("…nor the link Windows was asked to open", !said.contains("SECRET"), &said);
+    // A real start of a program that isn't there, as the launcher starts one (Command::spawn, its error kept).
+    match std::process::Command::new(&ticketed).spawn() {
+        Ok(mut child) => {
+            let _ = child.kill();
+            c.check("a program that isn't there doesn't start", false, ());
+        }
+        Err(e) => {
+            let said = start_error_text(&fail_of("Win32Exception", e));
+            c.check("…a real failed start: a sentence of Bloxkeep's with Windows' error number", !said.contains("SECRET") && said.contains("(error 2)"), &said);
+        }
+    }
+    // No program for the roblox-player: link (ShellExecute's SE_ERR_NOASSOC): Windows' number, as .NET's Win32Exception.
+    let said = start_error_text(&fail_of("Win32Exception", std::io::Error::from_raw_os_error(1155)));
+    c.check("no program opens the link: Windows' error number, not a raw text", said == crate::core::l::f("Windows couldn't start Roblox (error {0}).", &[&1155]), &said);
     let not_installed = Fail::user("Bloxstrap is not installed.");
     let said = start_error_text(&not_installed);
     c.check("Bloxkeep's own sentence (a launcher not installed) is shown as it is", said == "Bloxstrap is not installed.", &said);
@@ -331,6 +345,27 @@ pub async fn run(c: &mut Checks, dir: &str) {
     c.check("…nor with auto-rejoin off", len == 0, len);
     reset(&app);
     app.controller.rejoin_queue.borrow_mut().clear();
+
+    // A launch by hand whose client quit before its window: said. "Opened 1 account." was the last word with no window
+    // to show for it (the owner's run, 2026-11-13).
+    let by_hand = |closing: bool| {
+        let l = launch(a, 20.0, FIRST, None);
+        app.controller.pending.borrow_mut().push(l.clone());
+        app.controller.pending_seen_alive.borrow_mut().insert(LaunchRef(l.clone()), Stamp::utc_now().plus_secs(-10.0));
+        if closing {
+            app.controller.close_when_claimed.borrow_mut().insert(LaunchRef(l));
+        }
+    };
+    let quit_said = || heard.borrow().iter().filter(|line| line.contains("\"toast\"") && line.contains("First: Roblox closed before its window opened")).count();
+    let before = quit_said();
+    by_hand(false);
+    claim(&[]);
+    c.check("a launch by hand whose client quit before its window: said, and no longer waited for", quit_said() == before + 1 && pending_len() == 0, quit_said() - before);
+    by_hand(true);
+    claim(&[]);
+    c.check("…one Close was pressed on meanwhile: not said", quit_said() == before + 1 && pending_len() == 0, quit_said() - before);
+    app.controller.close_when_claimed.borrow_mut().clear();
+    reset(&app);
 
     // Roblox's updater read from Windows' process list: the C# started a stand-in under its name (ping, copied).
     for what in [

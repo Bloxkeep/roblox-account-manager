@@ -9,7 +9,7 @@ use std::{
     rc::Rc,
     sync::{
         Arc, Mutex,
-        atomic::{AtomicI32, Ordering},
+        atomic::{AtomicBool, AtomicI32, Ordering},
     },
     time::Duration,
 };
@@ -51,6 +51,8 @@ fn joined(app: &App, account: Guid, pid: i32, target: GameTarget, status: &str, 
 struct Roblox {
     list: Mutex<String>,
     server_errors: AtomicI32,
+    /// Roblox refuses the sign-in ticket asked before a window is closed to move.
+    signed_out: AtomicBool,
 }
 
 impl Roblox {
@@ -58,6 +60,17 @@ impl Roblox {
         let rest = req.url.split("://").nth(1).unwrap_or("");
         let (host, path_query) = rest.split_at(rest.find('/').unwrap_or(rest.len()));
         let path = path_query.split('?').next().unwrap_or("");
+        if path.starts_with("/v1/authentication-ticket") {
+            return if self.signed_out.load(Ordering::SeqCst) {
+                HttpResponse {
+                    status: 401,
+                    headers: vec![("Content-Type".into(), "application/json".into())],
+                    body: br#"{"errors":[{"code":0,"message":"Authorization has been denied for this request."}]}"#.to_vec(),
+                }
+            } else {
+                HttpResponse { status: 200, headers: vec![("rbx-authentication-ticket".into(), "stand-in-ticket".into())], body: b"{}".to_vec() }
+            };
+        }
         let servers = path.contains("/servers/Public");
         if servers && self.server_errors.load(Ordering::SeqCst) > 0 {
             self.server_errors.fetch_sub(1, Ordering::SeqCst);
@@ -103,7 +116,7 @@ pub async fn run(c: &mut Checks, _dir: &str) {
     let closed_now = || closed.borrow().clone();
     let going = |a: Guid| app.presets.restarts.borrow().get(&a).map(|r| r.0.clone());
 
-    let roblox = Arc::new(Roblox { list: Mutex::new(FIRST_LIST.into()), server_errors: AtomicI32::new(0) });
+    let roblox = Arc::new(Roblox { list: Mutex::new(FIRST_LIST.into()), server_errors: AtomicI32::new(0), signed_out: AtomicBool::new(false) });
     let plain = {
         let r = roblox.clone();
         move || {
@@ -196,6 +209,21 @@ pub async fn run(c: &mut Checks, _dir: &str) {
         format!("{gone:?} {:?} {}", closed_now(), app.server_hop.hopping.borrow().len()),
     );
     plain();
+
+    // Roblox won't sign the account in again (signed out): its window stays where it is instead of closing for nothing
+    // (RoALT checks first too; before, it closed and the reopening was refused).
+    window(&app, a1, 823, place(), "ingame", Some("old-server"), None);
+    roblox.signed_out.store(true, Ordering::SeqCst);
+    let refused = call(&app, "switchServer", json!({ "ids": [a1] })).await;
+    roblox.signed_out.store(false, Ordering::SeqCst);
+    c.check(
+        "a sign-in Roblox refuses: the window isn't closed, not marked as moving (fails on the old code)",
+        matches!(&refused, Ok(v) if v == 0)
+            && closed_now().is_empty()
+            && app.server_hop.hopping.borrow().is_empty()
+            && !app.presets.restarts.borrow().contains_key(&a1),
+        format!("{refused:?} {:?} {}", closed_now(), app.server_hop.hopping.borrow().len()),
+    );
 
     // Locked after the switch: the reopenings went with the vault, and so do the marks.
     window(&app, a1, 822, place(), "ingame", Some("old-server"), None);

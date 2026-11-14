@@ -57,6 +57,8 @@ static ALL: &[Theme] = &[
     theme("terminal", true, 0x030603, 0x081008, 0xb9f7c3, 0x86d996, 0x1f4a27),
     // Text2 must differ from Text: it is what a disabled menu item is drawn in.
     theme("contrast", true, 0x000000, 0x000000, 0xffffff, 0xc4c4c4, 0x8a8a8a),
+    // Bloxkeep's own picture theme (the keep at dusk; theme.rs's KEEP).
+    theme("keep", true, 0x070a14, 0x0c1230, 0xf1f4fa, 0xd0d6ea, 0x2a3358),
     theme("aurora", true, 0x040813, 0x141b2c, 0xf1f4fa, 0xc9d0de, 0x3a4458),
     theme("sunset", true, 0x22133f, 0x3a1a40, 0xfff1ea, 0xf0cfc4, 0x6a3f5c),
     theme("city", true, 0x050718, 0x161830, 0xf1f4fa, 0xc9d0de, 0x363a5c),

@@ -8,6 +8,7 @@ use std::sync::{Arc, LazyLock, Mutex};
 
 use crate::core::win_kit::{Picture as Bitmap, Rect as Rectangle};
 use crate::core::log;
+use crate::core::macro_model::macro_rules::MAX_IMAGE_SIDE;
 use crate::core::macro_model::{MacroRect, net};
 
 /// A grey picture: one byte a pixel, row after row.
@@ -273,6 +274,8 @@ pub fn resize(g: &Gray, w: i32, h: i32) -> Gray {
 }
 
 static TEMPLATES: LazyLock<Mutex<HashMap<String, Arc<Gray>>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
+/// The greys kept at most, in bytes (65 pictures at the largest a step may save).
+const TEMPLATE_BYTES: usize = 65 * (MAX_IMAGE_SIDE * MAX_IMAGE_SIDE) as usize;
 /// error.log: the length of the last picture that couldn't be read.
 static BAD_TEMPLATE: AtomicI32 = AtomicI32::new(-1);
 
@@ -302,7 +305,9 @@ pub fn template(base64: &str, scale: f64) -> Option<Arc<Gray>> {
             };
             let gray = Arc::new(to_gray(&bitmap, None));
             let mut templates = TEMPLATES.lock().unwrap_or_else(|e| e.into_inner());
-            if templates.len() > 64 {
+            // Bounded by what the greys hold too, not only how many: a few big ones are as much as many small.
+            let bytes: usize = templates.values().map(|g| g.p.len()).sum();
+            if templates.len() > 64 || bytes + gray.p.len() > TEMPLATE_BYTES {
                 templates.clear();
             }
             templates.insert(base64.to_string(), gray.clone());
@@ -362,6 +367,7 @@ pub(crate) mod gdip {
     };
     use windows_sys::Win32::UI::Shell::SHCreateMemStream;
 
+    use crate::core::macro_model::macro_rules::MAX_IMAGE_SIDE;
     use crate::core::win_kit::{Picture as Bitmap, Rect as Rectangle};
 
     /// PixelFormat32bppARGB.
@@ -445,9 +451,9 @@ pub(crate) mod gdip {
                 GdipGetImageWidth(bitmap as *mut GpImage, &mut w);
                 GdipGetImageHeight(bitmap as *mut GpImage, &mut h);
             }
-            // A picture past any screen (an imported file made so): refused, as GDI+'s InvalidParameter, before its
-            // w × h could overflow.
-            if w == 0 || h == 0 || w > 16_384 || h > 16_384 {
+            // A picture bigger than a step may save (MAX_IMAGE_SIDE; an imported file made so): refused, as GDI+'s
+            // InvalidParameter, before its pixels are read (16384² would be a gigabyte).
+            if w == 0 || h == 0 || w > MAX_IMAGE_SIDE as u32 || h > MAX_IMAGE_SIDE as u32 {
                 Err(2)
             } else {
                 read_pixels(bitmap, w as i32, h as i32).map(|px| Bitmap { width: w as i32, height: h as i32, pixels: px })

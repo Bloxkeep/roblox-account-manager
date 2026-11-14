@@ -34,7 +34,7 @@ pub const ONLINE_RETRY: Duration = Duration::from_secs(2 * 60);
 pub const ONLINE_DROPS_MAX: usize = 20;
 
 /// No cookies, no redirects followed, 20 s at most (C#'s OnlineHttp).
-static ONLINE_HTTP: LazyLock<ureq::Agent> = LazyLock::new(|| ureq::AgentBuilder::new().redirects(0).timeout(Duration::from_secs(20)).build());
+static ONLINE_HTTP: LazyLock<ureq::Agent> = LazyLock::new(|| crate::net::builder().redirects(0).timeout(Duration::from_secs(20)).build());
 
 pub const BOARD_WORDS1: [&str; 16] = ["Swift", "Brave", "Lucky", "Quiet", "Bold", "Calm", "Sly", "Wild", "Mighty", "Clever", "Rapid", "Silent", "Happy", "Fuzzy", "Shiny", "Cosmic"];
 pub const BOARD_WORDS2: [&str; 16] = ["Fox", "Otter", "Panda", "Tiger", "Wolf", "Hawk", "Koala", "Lynx", "Falcon", "Badger", "Raven", "Shark", "Gecko", "Moose", "Bison", "Owl"];
@@ -205,6 +205,10 @@ impl App {
         let pc = rt::blocking(online_id_for_this_pc).await;
         let (id, first_open_told) = {
             let mut s = prefs::lock();
+            // Turned off during that read: the id it cleared isn't made again (the PC would stay counted, no goodbye sent).
+            if !s.count_online {
+                return;
+            }
             let changed = s.online_id.is_none() || pc.as_ref().is_some_and(|pc| s.online_id.as_ref() != Some(pc));
             if changed {
                 s.online_id = Some(pc.clone().unwrap_or_else(|| new_guid().simple().to_string()));
@@ -220,7 +224,8 @@ impl App {
         // Roughly how long this PC has had Bloxkeep, and whether this is a new install's first open (not an old copy just updated).
         let age = install_age();
         let first = !first_open_told && age == "new";
-        self.online.online_sending.set(true);
+        // finally: cleared however this ends.
+        let _sending = crate::core::base::Busy::set(&self.online.online_sending);
         let needs_name = {
             let s = prefs::lock();
             !s.board_name_chosen && s.board_name.is_none()
@@ -308,8 +313,6 @@ impl App {
             self.online.online_failing.set(true);
             self.retry_online();
         }
-        // finally
-        self.online.online_sending.set(false);
     }
 
     /// Sooner than the next beat: two minutes, then four, eight… up to the usual gap, so a bot that can't answer
@@ -360,7 +363,7 @@ impl App {
         let why = match code {
             279 => Some("join"),
             267 => Some("kick"),
-            SERVER_SHUTDOWN | 274 | 275 => Some("shutdown"),
+            SERVER_SHUTDOWN => Some("shutdown"), // only 288, as AppController.Online.cs counts it
             _ if lost_connection(code) => Some("lost"),
             _ => None,
         };
@@ -400,6 +403,8 @@ impl App {
     /// The bot's sums for an app not in the count (GET /online/community): what is played, the radar, the board,
     /// nothing of this PC and nothing sent about it.
     pub async fn ask_community(self: &Rc<Self>) {
+        // finally: cleared however this ends (community_now set it already).
+        let _asking = crate::core::base::Busy::set(&self.online.community_asking);
         let outcome: Res<()> = async {
             let (status, text) = rt::blocking(|| read_answer(ONLINE_HTTP.get(&community_url()).call())).await?;
             if !(200..300).contains(&status) {
@@ -430,8 +435,6 @@ impl App {
             }
             self.online.community_failing.set(true);
         }
-        // finally
-        self.online.community_asking.set(false);
     }
 
     /// A made-up name for the alts board, like "Swift Otter 42": nothing of the PC or its accounts in it.

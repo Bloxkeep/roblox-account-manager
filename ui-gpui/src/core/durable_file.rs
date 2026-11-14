@@ -35,8 +35,9 @@ pub fn write(path: impl AsRef<Path>, bytes: &[u8]) -> Res<()> {
     tmp.push(".tmp");
     let tmp = std::path::PathBuf::from(tmp);
     {
-        // FileMode.Create, FileShare.None.
-        let mut fs = std::fs::OpenOptions::new().write(true).create(true).truncate(true).open(&tmp)?;
+        // FileMode.Create, FileShare.None: a sync client or a scanner can't open it half written.
+        use std::os::windows::fs::OpenOptionsExt;
+        let mut fs = std::fs::OpenOptions::new().write(true).create(true).truncate(true).share_mode(0).open(&tmp)?;
         fs.write_all(bytes)?;
         fs.flush()?;
         fs.sync_all()?; // Flush(flushToDisk: true)

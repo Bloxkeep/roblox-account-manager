@@ -13,7 +13,7 @@ use crate::core::log;
 const SERVER: &str = "https://ntfy.sh/";
 // .NET's `$` also matches before a final "\n": `\n?\z` here.
 static TOPIC: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^[A-Za-z0-9_-]{6,64}\n?\z").unwrap());
-static HTTP: LazyLock<ureq::Agent> = LazyLock::new(|| ureq::AgentBuilder::new().timeout(Duration::from_secs(10)).redirects(0).build());
+static HTTP: LazyLock<ureq::Agent> = LazyLock::new(|| crate::net::builder().timeout(Duration::from_secs(10)).redirects(0).build());
 
 /// A new topic no one could guess: "bloxkeep-" and 16 letters and digits.
 pub fn new_topic() -> String {
@@ -61,8 +61,7 @@ pub fn send(topic: &str, text: &str, urgent: bool, ct: &Cancel) -> Option<String
         return Some(l::t("ntfy didn't answer. Check the internet connection."));
     }
     // At most 1000 UTF-16 units, as C# cuts it.
-    let units: Vec<u16> = text.encode_utf16().collect();
-    let body = if units.len() > 1000 { String::from_utf16_lossy(&units[..1000]) } else { text.to_string() };
+    let body = crate::core::base::cut_utf16(text, 1000).to_string();
     let mut req = HTTP
         .post(&url_of(topic))
         .set("Content-Type", "text/plain; charset=utf-8")

@@ -31,6 +31,97 @@ fn is_visible(h: isize) -> bool {
     unsafe { IsWindowVisible(hwnd(h)) != 0 }
 }
 
+fn class_of(h: isize) -> String {
+    use windows_sys::Win32::UI::WindowsAndMessaging::GetClassNameW;
+    let mut buf = [0u16; 128];
+    // SAFETY: the buffer and its length match.
+    let n = unsafe { GetClassNameW(hwnd(h), buf.as_mut_ptr(), buf.len() as i32) };
+    String::from_utf16_lossy(&buf[..n.max(0) as usize])
+}
+
+/// A top-level window's caption: GetWindowText reads it without asking the window (no hang on a busy client).
+fn caption_of(h: isize) -> String {
+    use windows_sys::Win32::UI::WindowsAndMessaging::GetWindowTextW;
+    let mut buf = [0u16; 256];
+    // SAFETY: the buffer and its length match.
+    let n = unsafe { GetWindowTextW(hwnd(h), buf.as_mut_ptr(), buf.len() as i32) };
+    String::from_utf16_lossy(&buf[..n.max(0) as usize])
+}
+
+/// A control's words: WM_GETTEXT with a time limit, the only way to read a control of another process (GetWindowText
+/// reads captions alone).
+fn control_text(h: isize, wait_ms: u32) -> String {
+    use windows_sys::Win32::UI::WindowsAndMessaging::{SMTO_ABORTIFHUNG, SendMessageTimeoutW, WM_GETTEXT};
+    let mut buf = vec![0u16; 1024];
+    let mut copied: usize = 0;
+    // SAFETY: WM_GETTEXT writes at most wParam units (NUL included) into the buffer, which outlives the call.
+    let ok = unsafe { SendMessageTimeoutW(hwnd(h), WM_GETTEXT, buf.len(), buf.as_mut_ptr() as isize, SMTO_ABORTIFHUNG, wait_ms, &mut copied) };
+    if ok == 0 {
+        return String::new();
+    }
+    String::from_utf16_lossy(&buf[..copied.min(buf.len())])
+}
+
+fn children(h: isize) -> Vec<isize> {
+    use windows_sys::Win32::{Foundation::HWND, UI::WindowsAndMessaging::EnumChildWindows};
+    unsafe extern "system" fn each(child: HWND, found: isize) -> i32 {
+        // SAFETY: `found` is the Vec passed below, alive for the whole enumeration.
+        let list = unsafe { &mut *(found as *mut Vec<isize>) };
+        list.push(child as isize);
+        (list.len() < 16) as i32
+    }
+    let mut list: Vec<isize> = Vec::new();
+    // SAFETY: the callback only pushes into `list`, which outlives the synchronous enumeration.
+    unsafe { EnumChildWindows(hwnd(h), Some(each), &mut list as *mut Vec<isize> as isize) };
+    list
+}
+
+/// Roblox's game window class.
+const GAME_WINDOW_CLASS: &str = "WINDOWSCLIENT";
+/// A standard Windows message box.
+const DIALOG_CLASS: &str = "#32770";
+
+/// A box in place of a game window (2026-11-14, a user's report: starts showed a 361×166 box, "Error 403" on their
+/// screen and nothing of it in error.log): what it says. A standard message box gives its caption and words (asked with
+/// WM_GETTEXT only, at most about a second in all); another kind its class and caption. None for Roblox's game window,
+/// a minimised one, or one of a game's size.
+pub fn small_window_words(h: isize) -> Option<String> {
+    if h == 0 || !is_window(h) || is_iconic(h) {
+        return None;
+    }
+    let rect = window_rect(h)?;
+    if rect.width >= 640 || rect.height >= 420 {
+        return None;
+    }
+    let class = class_of(h);
+    if class.eq_ignore_ascii_case(GAME_WINDOW_CLASS) {
+        return None;
+    }
+    let title = caption_of(h).trim().to_string();
+    if class != DIALOG_CLASS {
+        return Some(format!("a small window (class {class}, title \"{title}\")"));
+    }
+    let started = std::time::Instant::now();
+    let mut words: Vec<String> = Vec::new();
+    for child in children(h) {
+        if started.elapsed() > std::time::Duration::from_millis(1000) {
+            break;
+        }
+        if class_of(child).eq_ignore_ascii_case("Button") {
+            continue;
+        }
+        let text = control_text(child, 300).split_whitespace().collect::<Vec<_>>().join(" ");
+        if !text.is_empty() {
+            words.push(text);
+        }
+    }
+    Some(if words.is_empty() {
+        format!("a message box \"{title}\" (its words not readable)")
+    } else {
+        format!("a message box \"{title}\": \"{}\"", words.join(" "))
+    })
+}
+
 /// "1224×957 normal, screen 2 of 2" / "maximized" / "full screen" / "minimized" / "gone".
 pub fn describe(h: isize) -> String {
     if h == 0 || !is_window(h) {

@@ -274,7 +274,8 @@ impl App {
     }
 
     pub async fn nudge(self: &Rc<Self>, clients: Vec<(i32, isize)>) {
-        self.controller.nudging.set(true);
+        // Cleared when this ends, also by a panic: a stuck flag would hold back every window timer for good.
+        let _nudging = crate::core::base::Busy::set(&self.controller.nudging);
         let mut turn: Option<input_turn::Lease> = None;
         // try
         'run: {
@@ -310,6 +311,14 @@ impl App {
             let keep_going = |app: &App| !app.controller.disposed.get() && clients.iter().any(|c| app.anti_afk_on(c.0));
             let keep = Arc::new(AtomicBool::new(keep_going(self)));
             let finished = Rc::new(Cell::new(false));
+            // Set when the nudge is over, also by a panic, so the loop below always stops.
+            struct Finished(Rc<Cell<bool>>);
+            impl Drop for Finished {
+                fn drop(&mut self) {
+                    self.0.set(true);
+                }
+            }
+            let finish = Finished(finished.clone());
             {
                 let (app, keep, finished, clients) = (self.clone(), keep.clone(), finished.clone(), clients.clone());
                 rt::spawn(async move {
@@ -324,7 +333,7 @@ impl App {
                 let keep = keep.clone();
                 rt::blocking(move || anti_afk::nudge(&handles, &|| keep.load(Ordering::SeqCst), None)).await
             };
-            finished.set(true);
+            drop(finish);
             for (pid, window) in &clients {
                 let pid = *pid;
                 if reached.contains(window) {
@@ -359,7 +368,6 @@ impl App {
         if let Some(lease) = turn {
             lease.dispose();
         }
-        self.controller.nudging.set(false);
     }
 
     /// An idle kick despite anti-AFK: tells the person why it didn't reach the window, and error.log (no account data).

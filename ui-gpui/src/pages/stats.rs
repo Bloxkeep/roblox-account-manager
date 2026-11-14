@@ -17,6 +17,8 @@ pub enum Tab {
     #[default]
     Stats,
     Activity,
+    /// What Bloxkeep did and ran into this run, line by line (core/log.rs's Console).
+    Console,
 }
 
 const PERIODS: [i64; 3] = [1, 7, 30];
@@ -24,6 +26,8 @@ const GROUPS: [&str; 5] = ["play", "drops", "schedule", "signin", "updates"];
 const PAGE: i64 = 100;
 const NO_PRESET: &str = "00000000-0000-0000-0000-000000000000";
 const REFRESH: Duration = Duration::from_secs(30);
+/// Home shows this many of the newest events.
+const HOME_ROWS: i64 = 6;
 
 pub struct Data {
     pub tab: Tab,
@@ -46,14 +50,71 @@ pub struct Data {
     /// Today's clock: the account pointed at (its ring stands out, the middle says its time).
     active: Option<String>,
     last: Option<Instant>,
+    /// Hide names as the figures were asked with: turned on or off, they are asked again (the names come from the app).
+    hid: Option<bool>,
     pub scroll: ScrollHandle,
+    /// Home's "Recent activity": the newest events of every account, when they were asked, and Hide names then.
+    home_log: Option<Value>,
+    home_at: Option<Instant>,
+    home_hid: Option<bool>,
+    /// Home's asking now: an older one's late reply is dropped.
+    home_seq: u64,
+    /// An export under way: another click waits for it.
+    exporting: bool,
+    /// The Console: its lines (oldest first, as the app keeps them), the version they are, and whether it is asking now.
+    pub con: Option<Vec<Value>>,
+    con_ver: u64,
+    con_asking: bool,
+    /// Its filters: 0 every line, 1 errors, 2 accounts; one source or account clicked on; one minute of the strip.
+    pub con_kind: u8,
+    pub con_source: Option<String>,
+    pub con_account: Option<String>,
+    pub con_minute: Option<i64>,
+    /// The Console's lines as a list GPUI draws only the visible part of; it follows the newest line while it is at the
+    /// bottom.
+    con_list: ListState,
+    /// The lines as shown (filtered, names hidden, times written), made again only when what they come from changed.
+    con_rows: std::cell::RefCell<(Option<ConKey>, std::rc::Rc<Vec<ConRow>>)>,
+}
+
+/// What the shown lines come from: the lines' version, the filters, Hide names.
+#[derive(Clone, PartialEq)]
+struct ConKey {
+    ver: u64,
+    kind: u8,
+    source: Option<String>,
+    account: Option<String>,
+    hide: bool,
+}
+
+/// One Console line ready to draw.
+struct ConRow {
+    id: u64,
+    at: String,
+    source: String,
+    tone: u32,
+    account: String,
+    account_shown: String,
+    text: String,
+    bad: bool,
+    again: Option<String>,
 }
 
 impl Default for Data {
     fn default() -> Self {
+        // The tab and period last picked (StatsView.tsx's rm.statsTab, rm.statsDays).
+        let days = crate::prefs::get("statsDays").and_then(|v| v.as_i64()).filter(|d| PERIODS.contains(d)).unwrap_or(7);
+        let picked = crate::prefs::get("statsTab").and_then(|v| v.as_str().map(str::to_string));
+        #[cfg(feature = "shot")]
+        let picked = std::env::var("BLOXKEEP_SHOT_STATS_TAB").ok().or(picked);
+        let tab = match picked.as_deref() {
+            Some("activity") => Tab::Activity,
+            Some("console") => Tab::Console,
+            _ => Tab::Stats,
+        };
         Self {
-            tab: Tab::Stats,
-            days: 7,
+            tab,
+            days,
             game: None,
             data: None,
             failed: false,
@@ -68,7 +129,26 @@ impl Default for Data {
             menu: false,
             active: None,
             last: None,
+            hid: None,
             scroll: ScrollHandle::new(),
+            home_log: None,
+            home_at: None,
+            home_hid: None,
+            home_seq: 0,
+            exporting: false,
+            con: None,
+            con_ver: u64::MAX,
+            con_asking: false,
+            con_kind: 0,
+            con_source: None,
+            con_account: None,
+            con_minute: None,
+            con_list: {
+                let l = ListState::new(0, ListAlignment::Top, px(400.)).with_uniform_item_height(px(20.));
+                l.set_follow_mode(FollowMode::Tail);
+                l
+            },
+            con_rows: Default::default(),
         }
     }
 }
@@ -90,6 +170,11 @@ fn secs(v: &Value, k: &str) -> i64 {
 
 /// Fresh figures and events when the page opens and every 30 s while it is shown.
 pub fn want(r: &mut Root, cx: &mut Context<Root>) {
+    let hide = r.state.get("hideNames").and_then(Value::as_bool).unwrap_or(false);
+    if r.stats.hid != Some(hide) {
+        r.stats.hid = Some(hide);
+        r.stats.last = None;
+    }
     if r.stats.last.is_some_and(|t| t.elapsed() < REFRESH) {
         return;
     }
@@ -106,6 +191,107 @@ pub fn want(r: &mut Root, cx: &mut Context<Root>) {
 
 /// The figures for the period (and game) picked; a reply to an older request is dropped, a failed one keeps the figures
 /// already shown.
+/// Home's newest events (every account, every kind), asked when Home opens and every 30 s while it is shown.
+pub fn want_home(r: &mut Root, cx: &mut Context<Root>) {
+    let hide = r.state.get("hideNames").and_then(Value::as_bool).unwrap_or(false);
+    if r.stats.home_hid != Some(hide) {
+        r.stats.home_hid = Some(hide);
+        r.stats.home_at = None;
+    }
+    if r.stats.home_at.is_some_and(|t| t.elapsed() < REFRESH) {
+        return;
+    }
+    let Some(link) = r.link.clone() else { return };
+    r.stats.home_at = Some(Instant::now());
+    r.stats.home_seq += 1;
+    let mine = r.stats.home_seq;
+    let rx = link.call("activity", json!({ "account": Value::Null, "group": Value::Null, "limit": HOME_ROWS }));
+    cx.spawn(async move |this, cx| {
+        let got = rx.await;
+        let _ = this.update(cx, |r, cx| {
+            if r.stats.home_seq == mine
+                && let Ok(Ok(v)) = got
+                && v.is_object()
+            {
+                r.stats.home_log = Some(v);
+                cx.notify();
+            }
+        });
+        cx.background_executor().timer(REFRESH + Duration::from_millis(50)).await;
+        let _ = this.update(cx, |_, cx| cx.notify());
+    })
+    .detach();
+}
+
+/// Home's foot: the newest events, a line each (when, who, what), and "See all" to Statistics' Activity. Nothing
+/// while there are none: Home ended in an empty half under the presets (the owner, 2026-11-13: "có khoảng trống ở
+/// dưới thì lấp gì vào đi").
+pub fn recent(root: &Root, cx: &mut Context<Root>) -> Option<AnyElement> {
+    let log = root.stats.home_log.as_ref()?;
+    let entries = arr(log, "entries");
+    if entries.is_empty() {
+        return None;
+    }
+    let now = crate::time::now_secs();
+    let today = local_day(now);
+    let mut list = div().flex().flex_col();
+    for (i, e) in entries.iter().take(HOME_ROWS as usize).enumerate() {
+        let at = secs(e, "at");
+        let tone = match s(e, "tone") {
+            "ok" => c(OK),
+            "warn" => c(WARN),
+            "bad" => c(BAD),
+            _ => c(DIM),
+        };
+        let account = s(e, "account").to_string();
+        let acc = Some(s(e, "accountId")).filter(|x| !x.is_empty()).and_then(|id| root.accounts().iter().find(|a| s(a, "id") == id));
+        let when = if local_day(at) == today { crate::time::ago(now - at, &root.i18n) } else { format!("{} · {}", day_heading(root, local_day(at), today), clock_at(root, at)) };
+        list = list.child(
+            div()
+                .flex()
+                .items_center()
+                .gap(px(12.))
+                .px(px(8.))
+                .min_h(px(38.))
+                .when(i > 0, |d| d.border_t_1().border_color(c(LINE)))
+                .child(div().size(px(7.)).flex_none().rounded_full().bg(tone))
+                .child(
+                    div()
+                        .w(px(150.))
+                        .flex_none()
+                        .flex()
+                        .items_center()
+                        .gap(px(8.))
+                        .min_w_0()
+                        .when(account.is_empty(), |d| d.text_size(px(T_M)).font_weight(FontWeight::MEDIUM).text_color(c(MUTED)).child("Bloxkeep"))
+                        .when(!account.is_empty(), |d| {
+                            d.when_some(acc, |d, a| d.child(face(a, 20., cx)))
+                                .child(div().min_w_0().truncate().text_size(px(T_M)).font_weight(FontWeight::MEDIUM).child(account.clone()))
+                        }),
+                )
+                .child(div().flex_1().min_w_0().truncate().text_size(px(T_M)).text_color(c(TEXT_2)).child(s(e, "text").to_string()))
+                .child(div().flex_none().text_size(px(T_S)).font_features(tnum()).text_color(c(MUTED)).child(when)),
+        );
+    }
+    Some(
+        div()
+            .flex()
+            .flex_col()
+            .gap(px(10.))
+            .child(section_head(root.tr("home.recentLog"), None).child(crate::pages::home::see_all(
+                "home-log-all",
+                root.tr("home.all"),
+                cx.listener(|r, _, _, cx| {
+                    r.stats.tab = Tab::Activity;
+                    r.go(crate::pages::Page::Stats);
+                    cx.notify();
+                }),
+            )))
+            .child(card().child(list))
+            .into_any_element(),
+    )
+}
+
 fn load_stats(r: &mut Root, cx: &mut Context<Root>) {
     let Some(link) = r.link.clone() else { return };
     r.stats.seq += 1;
@@ -150,6 +336,11 @@ fn load_log(r: &mut Root, cx: &mut Context<Root>) {
             match got {
                 Ok(Ok(v)) if v.is_object() => {
                     r.stats.log = Some(v);
+                    // BLOXKEEP_SHOT_SCROLL=900: a shot of the list scrolled down that far.
+                    #[cfg(feature = "shot")]
+                    if let Ok(y) = std::env::var("BLOXKEEP_SHOT_SCROLL").map(|v| v.parse::<f32>().unwrap_or(0.)) {
+                        r.stats.scroll.set_offset(point(px(0.), px(-y)));
+                    }
                     r.stats.log_failed = false;
                 }
                 _ => r.stats.log_failed = true,
@@ -162,11 +353,16 @@ fn load_log(r: &mut Root, cx: &mut Context<Root>) {
 
 pub fn export(r: &mut Root, cx: &mut Context<Root>) {
     let Some(link) = r.link.clone() else { return };
+    if r.stats.exporting {
+        return;
+    }
+    r.stats.exporting = true;
     let opt = |v: &str| if v.is_empty() { Value::Null } else { json!(v) };
     let rx = link.call("exportActivity", json!({ "account": opt(&r.stats.account), "group": opt(&r.stats.group) }));
     cx.spawn(async move |this, cx| {
         let got = rx.await;
         let _ = this.update(cx, |r, cx| {
+            r.stats.exporting = false;
             match got {
                 Ok(Ok(v)) => {
                     let n = v.as_i64().unwrap_or(0);
@@ -344,13 +540,26 @@ pub fn stats(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
     let data = st.data.as_ref();
     let never = data.is_some_and(|d| int(d, "sessions") == 0 && !d.get("recorded").and_then(Value::as_bool).unwrap_or(false));
 
-    let switch = Segmented::new("st-tab", if on_stats { "s" } else { "a" })
-        .item("s", root.tr("stats.title"))
-        .item("a", root.tr("alog.title"))
-        .on_select({
+    let switch = Segmented::new(
+        "st-tab",
+        match st.tab {
+            Tab::Stats => "s",
+            Tab::Activity => "a",
+            Tab::Console => "c",
+        },
+    )
+    .item("s", root.tr("stats.title"))
+    .item("a", root.tr("alog.title"))
+    .item("c", root.tr("con.title"))
+    .on_select({
             let this = cx.entity().downgrade();
             move |v, _, cx| {
-                let t = if v.as_ref() == "a" { Tab::Activity } else { Tab::Stats };
+                let (t, name) = match v.as_ref() {
+                    "a" => (Tab::Activity, "activity"),
+                    "c" => (Tab::Console, "console"),
+                    _ => (Tab::Stats, "stats"),
+                };
+                crate::prefs::set("statsTab", json!(name));
                 let _ = this.update(cx, |r, cx| {
                     r.stats.tab = t;
                     r.stats.menu = false;
@@ -367,9 +576,12 @@ pub fn stats(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
                 let d: i64 = v.parse().unwrap_or(7);
                 let _ = this.update(cx, |r, cx| {
                     if r.stats.days != d {
+                        crate::prefs::set("statsDays", json!(d));
                         r.stats.days = d;
                         r.stats.open = None;
                         r.stats.failed = false;
+                        // (The old period's figures don't stay up under the new one's name while it is read.)
+                        r.stats.data = None;
                         load_stats(r, cx);
                     }
                     cx.notify();
@@ -394,13 +606,21 @@ pub fn stats(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
                 .flex_col()
                 .gap(px(2.))
                 .child(div().text_size(px(T_TITLE)).line_height(px(38.)).font_weight(FontWeight::BOLD).child(root.tr("nav.stats")))
-                .child(div().truncate().text_size(px(T_M)).text_color(c(MUTED)).child(root.tr(if on_stats { "stats.note" } else { "alog.note" }))),
+                .child(div().truncate().text_size(px(T_M)).text_color(c(MUTED)).child(root.tr(match st.tab {
+                    Tab::Stats => "stats.note",
+                    Tab::Activity => "alog.note",
+                    Tab::Console => "con.note",
+                }))),
         )
         .child(switch)
         .when(on_stats && !never, |d| d.child(period));
 
     let inner = width - 2. * SIDE;
-    let body = if on_stats { figures(root, inner, cx).into_any_element() } else { activity(root, cx).into_any_element() };
+    let body = match st.tab {
+        Tab::Stats => figures(root, inner, cx).into_any_element(),
+        Tab::Activity => activity(root, cx).into_any_element(),
+        Tab::Console => div().into_any_element(),
+    };
     div()
         .id("stats")
         .size_full()
@@ -411,7 +631,13 @@ pub fn stats(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
         .flex()
         .flex_col()
         .child(header)
-        .child(crate::scrolled::with_bar("stats-body", &st.scroll, div().id("stats-body").size_full().overflow_y_scroll().track_scroll(&st.scroll).child(div().px(px(SIDE)).pt(px(4.)).pb(px(32.)).child(body))))
+        .map(|d| {
+            if st.tab == Tab::Console {
+                d.child(console(root, cx))
+            } else {
+                d.child(crate::scrolled::with_bar("stats-body", &st.scroll, div().id("stats-body").size_full().overflow_y_scroll().track_scroll(&st.scroll).child(div().px(px(SIDE)).pt(px(4.)).pb(px(32.)).child(body))))
+            }
+        })
         .into_any_element()
 }
 
@@ -435,7 +661,7 @@ fn empty(icon_name: &'static str, title: String, text: Option<String>) -> Div {
         .flex_col()
         .items_center()
         .gap(px(8.))
-        .child(div().size(px(56.)).flex_none().rounded(px(R_L)).bg(c(RAISED_2)).flex().items_center().justify_center().child(icon(icon_name, 24., c(TEXT_2))).mb(px(6.)))
+        .child(div().flex_none().child(icon(icon_name, 28., c(MUTED))).mb(px(6.)))
         .child(div().text_size(px(T_SEC)).font_weight(FontWeight::SEMIBOLD).child(title))
         .when_some(text, |d, t| d.child(div().max_w(px(420.)).text_size(px(T_M)).text_color(c(MUTED)).text_center().child(t)))
 }
@@ -503,7 +729,21 @@ fn figures(root: &Root, w: f32, cx: &mut Context<Root>) -> Div {
     if int(d, "sessions") == 0 {
         let recorded = d.get("recorded").and_then(Value::as_bool).unwrap_or(false);
         let e = if recorded { empty("clock", root.tr("stats.emptyPeriod"), None) } else { empty("clock", root.tr("stats.emptyTitle"), Some(root.tr("stats.emptyText"))) };
-        return e.when(st.game.is_some(), |e| e.child(div().mt(px(8.)).child(Button::new("st-all", root.tr("stats.allGames")).on_click(cx.listener(|r, _, _, cx| pick_game(r, None, cx))))));
+        if st.game.is_some() {
+            return e.child(div().mt(px(8.)).child(Button::new("st-all", root.tr("stats.allGames")).on_click(cx.listener(|r, _, _, cx| pick_game(r, None, cx)))));
+        }
+        // Nothing yet: the way to the first play from here (an account first, then a game).
+        let none = root.accounts().is_empty();
+        return e.when(!recorded, |e| {
+            e.child(div().mt(px(10.)).child(Button::new("st-first", root.tr(if none { "acc.add" } else { "home.pickGame" })).icon(if none { "plus" } else { "gamepad" }).primary().on_click(cx.listener(move |r, _, _, cx| {
+                if none {
+                    r.add_account(cx);
+                } else {
+                    r.go(crate::pages::Page::Games);
+                }
+                cx.notify();
+            }))))
+        });
     }
     let hourly = d.get("hourly").and_then(Value::as_bool).unwrap_or(false);
     let mut page = div().flex().flex_col().gap(px(GRID_GAP)).child(tiles(root, d, w));
@@ -728,6 +968,10 @@ fn alts_board(root: &Root, w: f32, cx: &mut Context<Root>) -> Div {
 }
 
 fn pick_game(r: &mut Root, key: Option<String>, cx: &mut Context<Root>) {
+    if r.stats.game != key {
+        r.stats.data = None;
+        r.stats.failed = false;
+    }
     r.stats.game = key;
     r.stats.open = None;
     load_stats(r, cx);
@@ -776,13 +1020,11 @@ fn tiles(root: &Root, d: &Value, w: f32) -> Div {
             .child(div().text_size(px(T_M)).font_weight(FontWeight::MEDIUM).text_color(c(MUTED)).child(label))
             .child(value.text_size(px(if hero { T_TITLE + 6. } else { T_FIG + 2. })).line_height(px(if hero { 42. } else { 30. })).font_weight(FontWeight::BOLD).font_features(tnum()).truncate())
             .child(sub.unwrap_or_else(|| div().text_size(px(T_S)).child(" ")));
+        // Only the lead is a panel of its own; the other three share one (below), so the row isn't four equal boxes.
         div()
             .when(w >= 700., |d| d.flex_basis(px(0.)).flex_grow(if hero { 2. } else { 1. }))
             .min_w(px(if hero { 260. } else { 160. }))
-            .rounded(px(R_L))
-            .bg(ca(WHITE, 0.045))
-            .border_1()
-            .border_color(c(LINE))
+            .when(hero, |d| d.rounded(px(R_L)).bg(ca(WHITE, 0.045)).border_1().border_color(c(LINE)))
             .px(px(20.))
             .py(px(16.))
             .flex()
@@ -829,6 +1071,14 @@ fn tiles(root: &Root, d: &Value, w: f32) -> Div {
         .gap(px(GRID_GAP))
         .when(w < 700., |d| d.flex_col())
         .child(tile(true, root.tr("stats.total"), div().child(played(root, total)), change(total, prev.map(|p| int(p, "totalSeconds")), true), spark))
+        .child(
+            div()
+                .when(w >= 700., |d| d.flex_basis(px(0.)).flex_grow(3.))
+                .flex()
+                .when(w < 700., |d| d.flex_col())
+                .rounded(px(R_L))
+                .border_1()
+                .border_color(c(LINE))
         .child(tile(
             false,
             root.tr("stats.played"),
@@ -840,7 +1090,8 @@ fn tiles(root: &Root, d: &Value, w: f32) -> Div {
             None,
         ))
         .child(tile(false, root.tr("stats.kicks"), div().child(num(kicks, vi)), change(kicks, prev.map(|p| int(p, "kicks")), false), None))
-        .child(tile(false, root.tr("stats.longest"), div().child(longest.map(|l| played(root, int(l, "seconds"))).unwrap_or("—".into())), long_sub, None))
+        .child(tile(false, root.tr("stats.longest"), div().child(longest.map(|l| played(root, int(l, "seconds"))).unwrap_or("—".into())), long_sub, None)),
+        )
 }
 
 /// Each account's stays from the period's start up to now (two hours at least), each in its game's colour with its icon
@@ -1132,7 +1383,7 @@ fn clock(root: &Root, d: &Value, w: f32, cx: &mut Context<Root>) -> Div {
             .items_center()
             .justify_center()
             .gap(px(4.))
-            .child(div().text_size(px(22.)).font_weight(FontWeight::SEMIBOLD).font_features(tnum()).child(played(root, focus.map_or(int(d, "totalSeconds"), |a| int(a, "seconds")))))
+            .child(div().text_size(px(T_FIG)).font_weight(FontWeight::SEMIBOLD).font_features(tnum()).child(played(root, focus.map_or(int(d, "totalSeconds"), |a| int(a, "seconds")))))
             // As wide as the space inside the rings (the inner ring's width left "now" alone on a second line, review
             // 6.1); wrapped onto a second line rather than cut only when that is still too narrow.
             .child(div().max_w(px((inner_edge.max(R_IN) * 2. - 20.) * k)).text_center().line_height(px(16.)).line_clamp(2).text_size(px(T_S)).text_color(c(MUTED)).child(middle_small)),
@@ -1246,13 +1497,17 @@ fn heat(root: &Root, d: &Value, w: f32) -> Div {
     let level = |v: f64| if v <= 0. { 0 } else { ((v / most * 4.).ceil() as usize).min(4) };
     // Five steps of the heat colour (app.css .heat): an empty hour the well, the others the heat faded into it, so an hour
     // played still stands out from an empty one.
-    let tone = |l: usize| if l == 0 { ca(0x000000, 0.28) } else { ca(HEAT, [0., 0.55, 0.7, 0.85, 1.][l]) };
+    // (An empty hour a faint light well, not black: black cells in a row of green read as holes, 2026-11-13.)
+    let tone = |l: usize| if l == 0 { ca(WHITE, 0.05) } else { ca(HEAT, [0., 0.55, 0.7, 0.85, 1.][l]) };
     let label_w = 58.;
     let cell_h = if many { 9. } else { 16. };
     let cells_w = (w - 42. - label_w - 8.).max(240.);
     // Today's hours still to come: an outline, not the black of an hour nobody played (they read as broken, critique
     // 2026-11-13).
     let now_hour = (crate::time::now_secs() + offset()).rem_euclid(86400) / 3600;
+    // A cell's tip is put together only when it shows (720 cells on 30 days): the words with their gaps, the hours.
+    let tip_words: SharedString = root.i18n.tv("stats.heatTip", &[]).into();
+    let marks: std::rc::Rc<Vec<String>> = std::rc::Rc::new((0..24).map(|h| hour_mark(root, h)).collect());
     let mut grid = div().flex().flex_col().gap(px(2.));
     let mut hours = div().relative().h(px(20.)).ml(px(label_w + 8.)).w(px(cells_w));
     for k in 0..8 {
@@ -1261,7 +1516,7 @@ fn heat(root: &Root, d: &Value, w: f32) -> Div {
     grid = grid.child(hours);
     for (i, row) in heat.iter().enumerate() {
         let day = first_day + i as i64;
-        let day_text = if i == last { root.tr("alog.today") } else { day_label(root, day, many) };
+        let day_text: SharedString = if i == last { root.tr("alog.today") } else { day_label(root, day, many) }.into();
         let shown = !many || (last - i) % 5 == 0;
         let mut line = div().h(px(cell_h)).flex().items_center().gap(px(8.)).child(
             div()
@@ -1270,13 +1525,12 @@ fn heat(root: &Root, d: &Value, w: f32) -> Div {
                 .whitespace_nowrap()
                 .text_size(px(T_S))
                 .text_color(c(if i == last { TEXT } else { MUTED }))
-                .child(if shown { day_text.clone() } else { String::new() }),
+                .child(if shown { day_text.clone() } else { SharedString::default() }),
         );
         let mut cells = div().flex().gap(px(2.)).w(px(cells_w));
         for (h, v) in row.as_array().into_iter().flatten().enumerate() {
             let v = v.as_f64().unwrap_or(0.);
-            let tip: SharedString =
-                root.i18n.tv("stats.heatTip", &[("d", &day_text), ("h", &hour_mark(root, h as i64)), ("n", &format!("{}", (v * 10.).round() / 10.).replace('.', if vi { "," } else { "." }))]).into();
+            let (words, day, marks) = (tip_words.clone(), day_text.clone(), marks.clone());
             cells = cells.child(
                 div()
                     .id(SharedString::from(format!("ht-{i}-{h}")))
@@ -1284,7 +1538,11 @@ fn heat(root: &Root, d: &Value, w: f32) -> Div {
                     .h(px(cell_h))
                     .rounded(px(2.))
                     .map(|d| if i == last && h as i64 > now_hour { d.border_1().border_color(ca(WHITE, 0.06)) } else { d.bg(tone(level(v))) })
-                    .tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into()),
+                    .tooltip(move |_, cx| {
+                        let n = format!("{}", (v * 10.).round() / 10.).replace('.', if vi { "," } else { "." });
+                        let tip = words.replace("{d}", &day).replace("{h}", marks.get(h).map_or("", String::as_str)).replace("{n}", &n);
+                        cx.new(|_| Tip(tip.into())).into()
+                    }),
             );
         }
         line = line.child(cells);
@@ -1728,14 +1986,16 @@ fn log_list(root: &Root, cx: &mut Context<Root>) -> Div {
     }
     let now = crate::time::now_secs();
     let today = local_day(now);
-    let mut list = div().flex().flex_col();
-    let mut last_day = i64::MIN;
-    for (i, e) in entries.iter().enumerate() {
+    // A line each, its day's heading over the day's first: only the lines near the view are made (crate::near), a page
+    // more at a time making the list ever longer.
+    let key = crate::near::sig((entries.len(), &st.account, &st.group, entries.first().map(|e| secs(e, "at"))));
+    let line = |i: usize, cx: &mut Context<Root>| {
+        let e = &entries[i];
         let at = secs(e, "at");
         let day = local_day(at);
-        let day_first = day != last_day;
-        if day != last_day {
-            last_day = day;
+        let day_first = i == 0 || local_day(secs(&entries[i - 1], "at")) != day;
+        let mut list = div().w_full().flex().flex_col();
+        if day_first {
             list = list.child(
                 div()
                     .pt(px(if i == 0 { 2. } else { 16. }))
@@ -1794,7 +2054,9 @@ fn log_list(root: &Root, cx: &mut Context<Root>) -> Div {
                 )
                 .child(div().flex_1().min_w_0().py(px(6.)).text_size(px(T_M)).text_color(c(TEXT_2)).child(s(e, "text").to_string())),
         );
-    }
+        list.into_any_element()
+    };
+    let mut list = div().flex().flex_col().child(crate::near::measured("al-rows", entries.len(), key, 37., 0., |i| line(i, cx)));
     let total = int(log, "total");
     if total > entries.len() as i64 {
         list = list.child(
@@ -1812,4 +2074,311 @@ fn log_list(root: &Root, cx: &mut Context<Root>) -> Div {
         );
     }
     list
+}
+
+// ───────────────────────── Console ─────────────────────────
+
+/// Asks the app for its Console lines every second while the tab is shown (only what changed comes back), and stops
+/// when the page or the tab changes.
+fn console_watch(r: &mut Root, cx: &mut Context<Root>) {
+    if r.stats.con_asking {
+        return;
+    }
+    let Some(link) = r.link.clone() else { return };
+    r.stats.con_asking = true;
+    cx.spawn(async move |this, cx| {
+        loop {
+            let Ok((go, ver)) = this.update(cx, |r, _| (r.page == crate::pages::Page::Stats && r.stats.tab == Tab::Console && !r.locked(), r.stats.con_ver)) else { return };
+            if !go {
+                let _ = this.update(cx, |r, _| r.stats.con_asking = false);
+                return;
+            }
+            let got = link.call("console", json!({ "version": ver })).await;
+            let _ = this.update(cx, |r, cx| {
+                if let Ok(Ok(v)) = got
+                    && !v.is_null()
+                {
+                    r.stats.con_ver = v.get("version").and_then(Value::as_u64).unwrap_or(0);
+                    r.stats.con = Some(arr(&v, "lines").to_vec());
+                    cx.notify();
+                }
+            });
+            cx.background_executor().timer(Duration::from_secs(1)).await;
+        }
+    })
+    .detach();
+}
+
+/// An account's name as the Console shows it: with Hide names on (and always in a copy) "Account 1", "Account 2"…
+/// in the order they first show up; the names inside the lines' words are swapped the same way.
+struct Masks(Vec<(String, String)>);
+
+impl Masks {
+    fn new(lines: &[Value], hide: bool, word: &str) -> Self {
+        let mut out: Vec<(String, String)> = Vec::new();
+        if hide {
+            for l in lines {
+                let a = s(l, "account");
+                if !a.is_empty() && !out.iter().any(|(n, _)| n == a) {
+                    let shown = format!("{word} {}", out.len() + 1);
+                    out.push((a.to_string(), shown));
+                }
+            }
+            // Longest first: "Alt 12" is swapped before "Alt 1" could eat its start.
+            out.sort_by_key(|(n, _)| std::cmp::Reverse(n.len()));
+        }
+        Self(out)
+    }
+    fn name(&self, a: &str) -> String {
+        self.0.iter().find(|(n, _)| n == a).map(|(_, m)| m.clone()).unwrap_or_else(|| a.to_string())
+    }
+    fn words(&self, t: &str) -> String {
+        self.0.iter().fold(t.to_string(), |t, (n, m)| t.replace(n.as_str(), m))
+    }
+}
+
+fn is_error(l: &Value) -> bool {
+    s(l, "kind") == "error"
+}
+fn is_account(l: &Value) -> bool {
+    !s(l, "account").is_empty()
+}
+
+/// What a line's source is coloured: errors red, an account dropped or signed out amber, Bloxkeep's own notes muted.
+fn kind_color(l: &Value) -> u32 {
+    match s(l, "tone") {
+        "bad" => BAD,
+        "warn" => WARN,
+        "note" => MUTED,
+        _ => TEXT_2,
+    }
+}
+
+/// 13:05 (the Console's times are 24-hour in both languages, as a log's are).
+fn hh_mm(local: i64) -> String {
+    format!("{:02}:{:02}", local.div_euclid(3600).rem_euclid(24), local.div_euclid(60).rem_euclid(60))
+}
+
+/// The Console: a log as a log reads, one line each, oldest at the top and the newest at the bottom, in a monospace
+/// face on the darkest ground: `13:44:22 [Rejoin] Main: the words ×31`. A click on a [source] or an account shows only
+/// its lines.
+fn console(root: &Root, cx: &mut Context<Root>) -> Div {
+    let st = &root.stats;
+    if !st.con_asking {
+        let this = cx.entity().downgrade();
+        cx.defer(move |cx| {
+            let _ = this.update(cx, |r, cx| console_watch(r, cx));
+        });
+    }
+    let empty_vec = Vec::new();
+    let all = st.con.as_ref().unwrap_or(&empty_vec);
+    let hide = root.state.get("hideNames").and_then(Value::as_bool).unwrap_or(false);
+    let masks = Masks::new(all, hide, &root.tr("con.account"));
+
+    let (n_err, n_acc) = (all.iter().filter(|l| is_error(l)).count(), all.iter().filter(|l| is_account(l)).count());
+    let kinds = [(0u8, root.tr("con.all"), all.len()), (1, root.tr("con.errors"), n_err), (2, root.tr("con.accounts"), n_acc)];
+    let mut row = div().flex().items_center().gap(px(6.));
+    for (k, label, n) in kinds {
+        let on = st.con_kind == k;
+        row = row.child(chip(("con-kind", k as usize), on).child(label).child(chip_count(n, on)).on_click(cx.listener(move |r, _, _, cx| {
+            r.stats.con_kind = k;
+            r.stats.con_list.set_follow_mode(FollowMode::Tail);
+            cx.notify();
+        })));
+    }
+    // What was clicked to narrow it down, each with its own way back.
+    let narrowed: Vec<(&'static str, String)> =
+        [st.con_source.clone().map(|v| ("source", format!("[{v}]"))), st.con_account.clone().map(|v| ("account", masks.name(&v)))].into_iter().flatten().collect();
+    if !narrowed.is_empty() {
+        row = row.child(tool_rule());
+    }
+    for (i, (what, value)) in narrowed.into_iter().enumerate() {
+        row = row.child(tool(("con-narrow", i), None, true).child(value).child(icon("x", 12., c(MUTED))).on_click(cx.listener(move |r, _, _, cx| {
+            if what == "source" {
+                r.stats.con_source = None;
+            } else {
+                r.stats.con_account = None;
+            }
+            r.stats.con_list.set_follow_mode(FollowMode::Tail);
+            cx.notify();
+        })));
+    }
+    row = row.child(div().flex_1()).child(
+        tool("con-copy", Some("copy"), false).child(root.tr("con.copy")).on_click(cx.listener(|r, _, _, cx| {
+            let Some(all) = r.stats.con.as_ref() else { return };
+            // Always without names: a copy goes into bug reports and Discord.
+            let masks = Masks::new(all, true, &r.tr("con.account"));
+            let text: Vec<String> = all.iter().map(|l| plain_line(l, &masks)).collect();
+            cx.write_to_clipboard(ClipboardItem::new_string(text.join("\n")));
+            let n = text.len() as i64;
+            r.toast = Some((r.i18n.tn("con.copied", n, &[("n", &num(n, r.i18n.vietnamese))]), "ok".into()));
+            cx.notify();
+        })),
+    );
+    row = row.child(tool("con-clear", Some("trash"), false).child(root.tr("con.clear")).on_click(cx.listener(|r, _, _, cx| {
+        if let Some(link) = r.link.clone() {
+            link.send("consoleClear", Value::Null);
+        }
+        r.stats.con = Some(Vec::new());
+        r.stats.con_ver = r.stats.con_ver.wrapping_add(1);
+        cx.notify();
+    })));
+
+    let rows = con_rows(st, all, &masks, hide);
+    let mono = |d: Div| d.font_family("Consolas").text_size(px(12.5)).line_height(px(20.));
+    let log = if st.con.is_none() || rows.is_empty() {
+        let words = if st.con.is_none() {
+            "…".to_string()
+        } else {
+            root.tr(if all.is_empty() { "con.emptyNote" } else { "con.none" })
+        };
+        div().size_full().px(px(16.)).py(px(10.)).child(mono(div()).text_color(c(DIM)).child(words)).into_any_element()
+    } else {
+        // Only the lines in view (and a little around them) are made and drawn: 1,500 lines cost what 40 do.
+        let this = cx.entity().downgrade();
+        let rows_for = rows.clone();
+        let lines = list(st.con_list.clone(), move |ix, _, _| {
+            let Some(row) = rows_for.get(ix) else { return div().into_any_element() };
+            let id = row.id as usize;
+            let (this_src, this_acc) = (this.clone(), this.clone());
+            let (source, account) = (row.source.clone(), row.account.clone());
+            mono(div())
+                .id(("con-line", id))
+                .mx(px(10.))
+                .px(px(6.))
+                .rounded(px(4.))
+                .hover(|d| d.bg(ca(WHITE, 0.035)))
+                .flex()
+                .items_start()
+                .gap(px(8.))
+                .child(div().flex_none().text_color(c(DIM)).child(row.at.clone()))
+                .child(
+                    div()
+                        .id(("con-src", id))
+                        .flex_none()
+                        .text_color(c(row.tone))
+                        .cursor_pointer()
+                        .hover(|d| d.underline())
+                        .child(format!("[{}]", row.source))
+                        .on_click(move |_, _, cx| {
+                            let _ = this_src.update(cx, |r, cx| {
+                                r.stats.con_source = Some(source.clone());
+                                r.stats.con_list.set_follow_mode(FollowMode::Tail);
+                                cx.notify();
+                            });
+                        }),
+                )
+                .child(
+                    div()
+                        .flex_1()
+                        .min_w_0()
+                        .flex()
+                        .flex_wrap()
+                        .gap_x(px(8.))
+                        .when(!row.account.is_empty(), |d| {
+                            d.child(
+                                div()
+                                    .id(("con-acc", id))
+                                    .flex_none()
+                                    .text_color(c(TEXT))
+                                    .cursor_pointer()
+                                    .hover(|d| d.underline())
+                                    .child(format!("{}:", row.account_shown))
+                                    .on_click(move |_, _, cx| {
+                                        let _ = this_acc.update(cx, |r, cx| {
+                                            r.stats.con_account = Some(account.clone());
+                                            r.stats.con_list.set_follow_mode(FollowMode::Tail);
+                                            cx.notify();
+                                        });
+                                    }),
+                            )
+                        })
+                        .child(div().text_color(if row.bad { c(BAD) } else { c(TEXT_2) }).child(row.text.clone()))
+                        .when_some(row.again.clone(), |d, a| d.child(div().flex_none().text_color(c(WARN)).child(a))),
+                )
+                .into_any_element()
+        })
+        .size_full()
+        .py(px(10.));
+        crate::scrolled::with_bar("con-body", &st.con_list, lines).into_any_element()
+    };
+    div()
+        .flex_1()
+        .min_h_0()
+        .px(px(SIDE))
+        .pb(px(SIDE))
+        .flex()
+        .flex_col()
+        .gap(px(12.))
+        .child(row)
+        .child(div().flex_1().min_h_0().flex().flex_col().rounded(px(R_M)).bg(c(GROUND)).border_1().border_color(c(LINE)).overflow_hidden().child(log))
+}
+
+/// The lines to show, made again only when the lines, the filters or Hide names changed. The list is told: following
+/// the newest line it goes on following; read further up it stays on the line it was showing.
+fn con_rows(st: &Data, all: &[Value], masks: &Masks, hide: bool) -> std::rc::Rc<Vec<ConRow>> {
+    let key = ConKey { ver: st.con_ver, kind: st.con_kind, source: st.con_source.clone(), account: st.con_account.clone(), hide };
+    let mut cache = st.con_rows.borrow_mut();
+    if cache.0.as_ref() == Some(&key) {
+        return cache.1.clone();
+    }
+    let off = crate::time::utc_offset_secs();
+    let rows: Vec<ConRow> = all
+        .iter()
+        .filter(|l| match st.con_kind {
+            1 => is_error(l),
+            2 => is_account(l),
+            _ => true,
+        })
+        .filter(|l| st.con_source.as_deref().is_none_or(|v| s(l, "source") == v))
+        .filter(|l| st.con_account.as_deref().is_none_or(|v| s(l, "account") == v))
+        .map(|l| {
+            let t = int(l, "at") + off;
+            let times = int(l, "times");
+            let account = s(l, "account").to_string();
+            ConRow {
+                id: l.get("id").and_then(Value::as_u64).unwrap_or(0),
+                at: format!("{}:{:02}", hh_mm(t), t.rem_euclid(60)),
+                source: s(l, "source").to_string(),
+                tone: kind_color(l),
+                account_shown: masks.name(&account),
+                account,
+                text: masks.words(s(l, "text")),
+                bad: is_error(l),
+                again: (times > 1).then(|| format!("×{times} → {}", hh_mm(int(l, "last") + off))),
+            }
+        })
+        .collect();
+    let list = &st.con_list;
+    let same_view = cache.0.as_ref().is_some_and(|k| k.kind == key.kind && k.source == key.source && k.account == key.account);
+    if same_view && !list.is_following_tail() {
+        // Read further up: the line at the top stays at the top (lines come at the end, old ones go at the start).
+        let top = list.logical_scroll_top();
+        let top_id = cache.1.get(top.item_ix).map(|r| r.id);
+        list.reset(rows.len());
+        let ix = top_id.and_then(|id| rows.iter().position(|r| r.id == id)).unwrap_or(0);
+        list.scroll_to(ListOffset { item_ix: ix, offset_in_item: top.offset_in_item });
+    } else {
+        list.reset(rows.len());
+        list.set_follow_mode(FollowMode::Tail);
+    }
+    let rows = std::rc::Rc::new(rows);
+    *cache = (Some(key), rows.clone());
+    rows
+}
+
+/// One line as copied: `13:44:22 [Rejoin] Account 1: the words (×31)`.
+fn plain_line(l: &Value, masks: &Masks) -> String {
+    let t = int(l, "at") + crate::time::utc_offset_secs();
+    let times = int(l, "times");
+    let acc = s(l, "account");
+    format!(
+        "{}:{:02} [{}] {}{}{}",
+        hh_mm(t),
+        t.rem_euclid(60),
+        s(l, "source"),
+        if acc.is_empty() { String::new() } else { format!("{}: ", masks.name(acc)) },
+        masks.words(s(l, "text")),
+        if times > 1 { format!(" (×{times})") } else { String::new() }
+    )
 }

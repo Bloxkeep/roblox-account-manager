@@ -31,7 +31,12 @@ const GROUPS: [(&str, &[&str]); 6] = [
     ("other", &["setVar", "addVar", "read", "write", "call", "rejoin", "alert"]),
 ];
 const OPS: [&str; 8] = [">=", "<=", "=", ">", "<", "!=", "has", "!has"];
-const MAX_STEPS: usize = 500;
+const MAX_STEPS: usize = 5000;
+/// From this many steps (a long recording) only the rows near the view are drawn; the rest is empty space of their
+/// height (MacroEditor.tsx's DRAW_NEAR_FROM): 5000 rows drawn every frame made the editor crawl.
+const DRAW_NEAR_FROM: usize = 600;
+/// Drawn above and below the view.
+const NEAR_PX: f32 = 900.;
 const MAX_AREAS: usize = 8;
 const MAX_OPTIONS: usize = 30;
 const MAX_NOTE: usize = 80;
@@ -71,6 +76,16 @@ struct Trial {
     id: String,
     account: String,
     since: i64,
+    /// The steps it plays: a feature's (its id), or the main ones.
+    sec: Option<String>,
+}
+
+/// A line of Try it's results (MacroPicture.tsx's TryLines): a step it got past ("Step 2 found it: …"), or where it
+/// found nothing.
+struct TryLine {
+    step: usize,
+    ok: bool,
+    text: String,
 }
 
 #[derive(Clone, PartialEq)]
@@ -107,6 +122,8 @@ pub struct Form {
     /// The macro as the app keeps it.
     m: Value,
     is_new: bool,
+    /// What the form held as it opened (`snapshot`): leaving with something else asks "Discard changes?" first.
+    start: Option<Value>,
     name: Entity<InputState>,
     /// "Every": the number, and whether it counts minutes (else seconds).
     every: Entity<InputState>,
@@ -140,6 +157,9 @@ pub struct Form {
     drag: Option<Drag>,
     frame: Rc<Cell<Option<Bounds<Pixels>>>>,
     picking: bool,
+    /// The step a point or colour picked on the game goes to when the click comes (moved with the steps; None once
+    /// that step is gone).
+    pick_at: Option<usize>,
     on_game: bool,
     /// A line under the still (what to do now).
     say: Option<String>,
@@ -182,10 +202,260 @@ pub struct Form {
     /// The step whose ⋮ menu is open, and the one a click outside just closed (its own ⋮ must not open it again).
     step_menu: Option<usize>,
     step_menu_shut: Option<(usize, std::time::Instant)>,
+    /// Add step's search box (MacroEditor.tsx's AddList), and the place a row's "+" chose for the next step (None:
+    /// after the open one, else at the end).
+    search: Entity<InputState>,
+    add_here: Option<usize>,
+    /// Try it's lines so far, the step it was on when last drawn, and whether its end was seen (MacroEditor.tsx's
+    /// lines, lastStep: written while drawing, as the web editor's effect did on each change of the run).
+    lines: RefCell<Vec<TryLine>>,
+    /// A long list (DRAW_NEAR_FROM steps on): where the rows' list stood in the window and the window's height, as the
+    /// last frame measured them, and each step's rows' height once drawn (by its index).
+    near_at: Rc<Cell<(f32, f32)>>,
+    near_tall: Rc<RefCell<std::collections::HashMap<usize, f32>>>,
+    last_step: Cell<Option<usize>>,
+    trial_over: Cell<bool>,
+    /// This form's number: a late reply (save, still, Try it, Record) for a form since closed is dropped.
+    id: u64,
+    /// The problems as last worked out, and the fingerprint of what they were worked out from.
+    probs: RefCell<Option<(u64, Rc<Vec<Prob>>)>>,
+}
+
+/// The next form's number.
+static FORMS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+
+/// The form open now, when it is still the one with this number.
+fn form_of(r: &mut Root, id: u64) -> Option<&mut Form> {
+    r.auto.macro_form.as_mut().filter(|f| f.id == id)
+}
+
+/// What the form holds as typed (the macro and the boxes' text): leaving with something else asks first. Not checked
+/// for problems, so a macro that can't be saved yet still asks.
+fn snapshot(f: &Form, cx: &App) -> Value {
+    // Without the form's own marks: a block folded or unfolded is the view, not a change to the macro, and asked
+    // "Discard changes?" on Back with nothing changed.
+    let mut m = f.m.clone();
+    strip_marks(&mut m);
+    json!({
+        "m": m,
+        "boxes": [text(&f.name, cx), text(&f.every, cx), text(&f.max, cx), text(&f.jit_ms, cx), text(&f.jit_px, cx)],
+        "everyMin": f.every_min,
+    })
+}
+
+/// Whether leaving now would lose something.
+fn changed(r: &Root, cx: &App) -> bool {
+    r.auto.macro_form.as_ref().is_some_and(|f| Some(snapshot(f, cx)) != f.start)
 }
 
 const MAX_FEATURES: usize = 10;
 const MAX_TABS: usize = 6;
+/// The kinds Add step lists as used lately (MacroEditor.tsx's RECENT).
+const RECENT: usize = 5;
+
+thread_local! {
+    /// The kinds added lately, newest first (MacroEditor.tsx's store "macro.recentKinds"; here kept while the app runs).
+    static RECENT_KINDS: RefCell<Vec<&'static str>> = const { RefCell::new(Vec::new()) };
+}
+
+fn remember(kind: &'static str) {
+    RECENT_KINDS.with(|l| {
+        let mut l = l.borrow_mut();
+        l.retain(|k| *k != kind);
+        l.insert(0, kind);
+        l.truncate(RECENT);
+    });
+}
+
+fn recent_kinds() -> Vec<&'static str> {
+    RECENT_KINDS.with(|l| l.borrow().clone())
+}
+
+/// Other words a search finds a kind by (macros.ts's SYNONYMS).
+fn synonyms(kind: &str) -> &'static [&'static str] {
+    match kind {
+        "key" => &["press", "hit", "bấm", "nhấn", "phím"],
+        "down" => &["press", "bấm", "nhấn"],
+        "click" => &["tap", "mouse", "bấm", "nhấn", "chuột"],
+        "setVar" => &["variable", "formula", "math", "random", "biến", "công thức", "tính"],
+        "addVar" => &["variable", "biến", "cộng"],
+        "read" => &["ocr", "number", "coins", "money", "clipboard", "file", "web", "đọc", "số", "tiền"],
+        "write" => &["clipboard", "file", "web", "webhook", "log", "save", "ghi", "lưu", "chép"],
+        "call" => &["function", "sub", "run", "macro", "gọi", "chạy"],
+        "wait" => &["sleep", "delay", "pause", "chờ", "đợi"],
+        "waitImage" | "waitText" | "waitColour" | "waitStill" => &["chờ", "đợi"],
+        "loop" => &["loop", "again", "lặp"],
+        "loopUntil" => &["loop", "lặp"],
+        "break" => &["exit", "leave", "thoát"],
+        "if" => &["when", "check", "nếu"],
+        "else" => &["otherwise", "ngược lại"],
+        _ => &[],
+    }
+}
+
+/// The kinds that fit where a step would go in (macros.ts's kindsAt): an Otherwise straight inside an If without one,
+/// Leave the repeat inside a repeat, one If stuck, in the main steps only; in Add step's order.
+fn kinds_fit(steps: &[Value], at: usize, feature: bool) -> Vec<&'static str> {
+    let mut stack: Vec<(bool, bool)> = Vec::new();
+    for st in steps.get(..at.min(steps.len())).unwrap_or(&[]) {
+        match s(st, "kind") {
+            "if" => stack.push((true, false)),
+            "loop" | "loopUntil" => stack.push((false, false)),
+            "else" => {
+                if let Some(top) = stack.last_mut() {
+                    top.1 = true;
+                }
+            }
+            k if ender(k) => {
+                stack.pop();
+            }
+            _ => {}
+        }
+    }
+    let fits = |kind: &str| match kind {
+        "else" => stack.last().is_some_and(|(is_if, has_else)| *is_if && !*has_else),
+        "break" => stack.iter().any(|(is_if, _)| !*is_if),
+        "recover" => !feature && !steps.iter().any(|st| s(st, "kind") == "recover"),
+        _ => true,
+    };
+    GROUPS.iter().flat_map(|(_, kinds)| kinds.iter().copied()).filter(|k| fits(k)).collect()
+}
+
+/// Add step's search (MacroEditor.tsx's AddList): the kinds whose name, group or other words hold every word typed
+/// (case and Vietnamese marks aside), those whose name starts with the first word first.
+fn step_matches(root: &Root, q: &str, fit: &[&'static str]) -> Vec<&'static str> {
+    let words: Vec<String> = crate::kit::folded(q.trim()).split_whitespace().map(str::to_string).collect();
+    let Some(first) = words.first() else { return Vec::new() };
+    let name = |k: &str| root.tr(&format!("macro.kind.{k}"));
+    let mut out: Vec<&'static str> = Vec::new();
+    for (g, kinds) in GROUPS {
+        for k in kinds.iter().copied().filter(|k| fit.contains(k)) {
+            let mut hay = vec![name(k), root.tr(&format!("macro.grp.{g}"))];
+            hay.extend(synonyms(k).iter().map(|x| x.to_string()));
+            let hay = crate::kit::folded(&hay.join(" "));
+            if words.iter().all(|w| hay.contains(w.as_str())) {
+                out.push(k);
+            }
+        }
+    }
+    out.sort_by_key(|k| !crate::kit::folded(&name(k)).starts_with(first.as_str()));
+    out
+}
+
+// ── the form's own marks on a step, never saved: a folded block, a template's to-dos as they were when it opened ──
+
+const FOLD: &str = "_fold";
+const TODO_WAS: &str = "_todoWas";
+
+fn is_folded(st: &Value) -> bool {
+    st.get(FOLD).and_then(Value::as_bool) == Some(true)
+}
+
+/// A to-do's field as it is now (MacroEditor.tsx's sig): an area by its box on the game, a setting by its value.
+fn todo_sig(m: &Value, st: &Value, field: &str) -> String {
+    let named = |list: &str, name: &str, key: &str| arr(m, list).iter().find(|x| s(x, "name") == name).and_then(|x| x.get(key)).cloned().unwrap_or(Value::Null);
+    let v = if field == "region" {
+        match area_ref(st.get("region")) {
+            Some(n) => named("areas", n, "rect"),
+            None => st.get("region").cloned().unwrap_or(Value::Null),
+        }
+    } else {
+        match opt_ref(st.get(field)) {
+            Some(n) => named("options", n, "value"),
+            None => st.get(field).cloned().unwrap_or(Value::Null),
+        }
+    };
+    v.to_string()
+}
+
+/// A template's to-dos (the fields it marked on its steps, "todo") noted as they are now: each is done once changed.
+fn mark_todos(m: &mut Value) {
+    let src: &Value = m;
+    let was: Vec<Option<Value>> = arr(src, "steps")
+        .iter()
+        .map(|st| {
+            let fields: Vec<&str> = arr(st, "todo").iter().filter_map(Value::as_str).collect();
+            (!fields.is_empty() && !has(st, TODO_WAS)).then(|| Value::Object(fields.iter().map(|f| (f.to_string(), json!(todo_sig(src, st, f)))).collect()))
+        })
+        .collect();
+    if let Some(steps) = arr_mut(m, "steps") {
+        for (st, w) in steps.iter_mut().zip(was) {
+            if let Some(w) = w {
+                set(st, TODO_WAS, w);
+            }
+        }
+    }
+}
+
+/// The template's to-dos: the step each is on, its field, and whether it is done (MacroEditor.tsx's todoList).
+fn todo_items(m: &Value) -> Vec<(usize, String, bool)> {
+    let mut out = Vec::new();
+    for (i, st) in arr(m, "steps").iter().enumerate() {
+        let Some(was) = st.get(TODO_WAS).and_then(Value::as_object) else { continue };
+        for field in arr(st, "todo").iter().filter_map(Value::as_str) {
+            let done = was.get(field).and_then(Value::as_str).is_none_or(|w| w != todo_sig(m, st, field));
+            out.push((i, field.to_string(), done));
+        }
+    }
+    out
+}
+
+/// The macro as saved: each step keeps only the to-dos not done yet (MacroEditor.tsx's clean), the form's marks go.
+fn finish_marks(m: &mut Value) {
+    let src: &Value = m;
+    let still: Vec<Option<Vec<String>>> = arr(src, "steps")
+        .iter()
+        .map(|st| {
+            let was = st.get(TODO_WAS).and_then(Value::as_object)?;
+            Some(arr(st, "todo").iter().filter_map(Value::as_str).filter(|f| was.get(*f).and_then(Value::as_str) == Some(todo_sig(src, st, f).as_str())).map(str::to_string).collect())
+        })
+        .collect();
+    if let Some(steps) = arr_mut(m, "steps") {
+        for (st, left) in steps.iter_mut().zip(still) {
+            match left {
+                Some(l) if l.is_empty() => drop_key(st, "todo"),
+                Some(l) => set(st, "todo", json!(l)),
+                None => {}
+            }
+        }
+    }
+    strip_marks(m);
+}
+
+/// The form's marks off every step (the main ones and each feature's).
+fn strip_marks(m: &mut Value) {
+    let clean = |l: &mut Vec<Value>| {
+        for st in l {
+            drop_key(st, FOLD);
+            drop_key(st, TODO_WAS);
+        }
+    };
+    if let Some(l) = arr_mut(m, "steps") {
+        clean(l);
+    }
+    if let Some(fs) = arr_mut(m, "features") {
+        for fe in fs {
+            if let Some(l) = arr_mut(fe, "steps") {
+                clean(l);
+            }
+        }
+    }
+}
+
+/// What a template needs from the game before it works (MacrosView.tsx's needsText): a picture of the button, an area
+/// on it, or that it is ready as it is.
+fn needs_text(root: &Root, tp: &Value) -> String {
+    let steps = arr(tp, "steps");
+    let todo: HashSet<&str> = steps.iter().flat_map(|x| arr(x, "todo").iter().filter_map(Value::as_str)).collect();
+    let pic = todo.contains("image") || steps.iter().any(|x| matches!(s(x, "kind"), "clickImage" | "waitImage") && s(x, "image").is_empty());
+    let area = todo.contains("region") || !arr(tp, "areas").is_empty();
+    let what: Vec<String> = [(pic, "macro.tpl.needs.pic"), (area, "macro.tpl.needs.area")].into_iter().filter(|(on, _)| *on).map(|(_, k)| root.tr(k)).collect();
+    match what.as_slice() {
+        [] => root.tr("macro.tpl.needs.none"),
+        [one] => root.i18n.tv("macro.tpl.needs", &[("what", one)]),
+        [a, b, ..] => root.i18n.tv("macro.tpl.needs", &[("what", &root.i18n.tv("macro.tpl.both", &[("a", a), ("b", b)]))]),
+    }
+}
 
 // ───────────────────────── values ─────────────────────────
 
@@ -362,7 +632,10 @@ fn block_end(steps: &[Value], i: usize) -> Option<usize> {
             k if opener(k) => d += 1,
             k if ender(k) => {
                 if d == 0 {
-                    return Some(j);
+                    // Closed by the other kind (an If by End repeat: only in a broken macro, an import say): no block,
+                    // as macros.ts's blockEnd, so deleting the opener doesn't take everything up to that wrong end.
+                    let want = if s(&steps[i], "kind") == "if" { "endIf" } else { "endLoop" };
+                    return (k == want).then_some(j);
                 }
                 d -= 1;
             }
@@ -831,8 +1104,26 @@ impl Form {
         self.capture = false;
         self.cutting = None;
         self.naming = None;
+        self.pick_at = None;
         self.step_drag = None;
         self.pending = None;
+        self.add_here = None;
+    }
+
+    /// The steps moved: what points at a step by its place (the picture being cut, New name…'s step, a pick on the game
+    /// on its way, the open ⋮ menu) follows it; one whose step went is dropped.
+    fn remap(&mut self, map: impl Fn(usize) -> Option<usize>) {
+        self.cutting = self.cutting.and_then(&map);
+        self.naming = self.naming.and_then(|(i, p)| map(i).map(|i| (i, p)));
+        self.pick_at = self.pick_at.and_then(&map);
+        self.step_menu = self.step_menu.and_then(&map);
+        // A row's "+" too: the next step added still goes beside that row, wherever it went.
+        self.add_here = self.add_here.and_then(&map);
+    }
+
+    /// Steps a..=b gone from the list: those after them move up, those in it are dropped.
+    fn remap_gone(&mut self, a: usize, b: usize) {
+        self.remap(|o| if o < a { Some(o) } else if o > b { Some(o - (b - a + 1)) } else { None });
     }
 
     /// The panel's tabs (fewer than two: none) and the one shown.
@@ -990,6 +1281,7 @@ impl Form {
             l.extend(moved);
         }
         self.open = None;
+        self.remap_gone(a, b);
     }
 
     /// Dragged over row j: the dragged rows move there at once (as the web editor did), and the open step goes with them.
@@ -1003,20 +1295,22 @@ impl Form {
             return;
         }
         let to = if j < from { j } else { j + 1 - len };
-        let open_key = self.open.map(|o| if o >= from && o < from + len { (true, o - from) } else { (false, o) });
         let Some(l) = self.steps_mut() else { return };
         let moved: Vec<Value> = l.drain(from..from + len).collect();
         for (k, st) in moved.into_iter().enumerate() {
             l.insert(to + k, st);
         }
-        // The open step follows: inside the block, by its place in it; else as the rest shifted round it.
-        self.open = open_key.map(|(inside, o)| {
-            if inside {
-                return to + o;
+        // The open step (and the rest pointing at a step) follows: inside the block, by its place in it; else as the
+        // rest shifted round it.
+        let follow = move |o: usize| {
+            if o >= from && o < from + len {
+                return Some(to + o - from);
             }
             let without = if o >= from + len { o - len } else { o };
-            if without >= to { without + len } else { without }
-        });
+            Some(if without >= to { without + len } else { without })
+        };
+        self.open = self.open.and_then(follow);
+        self.remap(follow);
         self.step_drag = Some((to, len));
     }
 
@@ -1116,11 +1410,33 @@ impl Form {
         }
     }
 
-    /// Where Add step puts a step: after the open one, else at the end.
+    /// Where Add step puts a step: where a row's "+" said, else after the open one, else at the end.
     fn add_at(&self) -> usize {
-        match self.open {
-            Some(i) if i < self.steps().len() => i + 1,
-            _ => self.steps().len(),
+        let len = self.steps().len();
+        match (self.add_here, self.open) {
+            (Some(k), _) => k.min(len),
+            (None, Some(i)) if i < len => i + 1,
+            _ => len,
+        }
+    }
+
+    /// An If or a Repeat folded to its one row, or opened again (MacroEditor.tsx's toggleFold).
+    fn toggle_fold(&mut self, i: usize) {
+        let Some(st) = self.step_mut(i) else { return };
+        if is_folded(st) {
+            drop_key(st, FOLD);
+        } else {
+            set(st, FOLD, json!(true));
+        }
+    }
+
+    /// Every block around step i unfolded, so its row is drawn (MacroEditor.tsx's unfoldTo).
+    fn unfold_to(&mut self, i: usize) {
+        let around: Vec<usize> = (0..i.min(self.steps().len())).filter(|&j| is_folded(&self.steps()[j]) && block_end(self.steps(), j).is_some_and(|e| e >= i)).collect();
+        for j in around {
+            if let Some(st) = self.step_mut(j) {
+                drop_key(st, FOLD);
+            }
         }
     }
 
@@ -1130,6 +1446,7 @@ impl Form {
             self.error = Some(too_many);
             return;
         }
+        remember(kind);
         // (If stuck's steps are the macro's last; it turns on starting again and the stuck watch.)
         let at = if kind == "recover" { self.steps().len() } else { self.add_at() };
         if kind == "recover" {
@@ -1140,11 +1457,15 @@ impl Form {
         }
         let Some(steps) = self.steps_mut() else { return };
         let at = at.min(steps.len());
+        let n = new.len();
         for (k, st) in new.into_iter().enumerate() {
             steps.insert(at + k, st);
         }
+        self.remap(|o| Some(if o >= at { o + n } else { o }));
+        self.unfold_to(at);
         self.open = (!matches!(kind, "else" | "break" | "stop" | "rejoin" | "recover")).then_some(at);
         self.adding = false;
+        self.add_here = None;
         self.keys = false;
     }
 
@@ -1162,12 +1483,15 @@ impl Form {
             }
             let x = steps.remove(i - 1);
             steps.insert(b, x);
+            // The block went up one; the step over it is now under it.
+            self.remap(|o| Some(if (i..=b).contains(&o) { o - 1 } else if o == i - 1 { b } else { o }));
         } else {
             if b + 1 >= len {
                 return;
             }
             let x = steps.remove(b + 1);
             steps.insert(i, x);
+            self.remap(|o| Some(if (i..=b).contains(&o) { o + 1 } else if o == b + 1 { i } else { o }));
         }
         let to = if dir < 0 { i - 1 } else { i + 1 };
         self.open = match self.open {
@@ -1185,41 +1509,37 @@ impl Form {
             return;
         }
         let Some(steps) = self.steps_mut() else { return };
+        let n = copy.len();
         for (k, st) in copy.into_iter().enumerate() {
             steps.insert(end + 1 + k, st);
         }
+        self.remap(|o| Some(if o > end { o + n } else { o }));
         self.open = None;
     }
 
-    /// The step goes; an If or a Repeat takes its end (and its Otherwise) with it, the steps inside stay.
+    /// The steps inside an If or a Repeat (its Otherwise and the ends not counted), as MacroEditor.tsx's fold shape.
+    fn inner_steps(&self, i: usize) -> usize {
+        let Some(end) = block_end(self.steps(), i) else { return 0 };
+        self.steps()[i + 1..end].iter().filter(|x| !matches!(s(x, "kind"), "else" | "endIf" | "endLoop")).count()
+    }
+
+    /// The step goes; an If or a Repeat goes whole, the steps inside it too (MacroEditor.tsx's delStep, after it asked).
     fn del_step(&mut self, i: usize) {
-        let end = block_end(self.steps(), i);
-        let mut gone = vec![i];
-        if let Some(end) = end {
-            gone.push(end);
-            if self.steps().get(i).map(|x| s(x, "kind")) == Some("if") {
-                let mut d = 0i32;
-                for j in i + 1..end {
-                    match self.steps().get(j).map(|x| s(x, "kind")).unwrap_or_default() {
-                        k if opener(k) => d += 1,
-                        k if ender(k) => d -= 1,
-                        "else" if d == 0 => gone.push(j),
-                        _ => {}
-                    }
-                }
-            }
-        }
-        gone.sort_unstable();
+        let end = block_end(self.steps(), i).unwrap_or(i);
+        let mut gone = None;
         if let Some(steps) = self.steps_mut() {
-            for j in gone.into_iter().rev() {
-                if j < steps.len() {
-                    steps.remove(j);
-                }
+            let end = end.min(steps.len().saturating_sub(1));
+            if i <= end && i < steps.len() {
+                steps.drain(i..=end);
+                gone = Some(end);
             }
         }
         self.open = None;
         self.keys = false;
         self.cutting = None;
+        if let Some(end) = gone {
+            self.remap_gone(i, end);
+        }
     }
 
     /// The step's point; one the player sets (a point setting) moves the setting's value.
@@ -1612,6 +1932,10 @@ fn fill(f: &mut Form, window: &mut Window, cx: &mut Context<Root>) {
     if let Some(tab) = f.cur_tab() {
         set_box(&f.tab_name, tab, window, cx);
     }
+    // Add step's search starts empty each time it opens (the web editor's list was made anew).
+    if !f.adding {
+        set_box(&f.search, String::new(), window, cx);
+    }
 }
 
 /// The settings' boxes from the macro (a template taken).
@@ -1633,14 +1957,28 @@ fn load_top(f: &mut Form, window: &mut Window, cx: &mut Context<Root>) {
 
 /// A new macro (None), or one of the saved ones to change.
 pub fn open(r: &mut Root, m: Option<Value>, window: &mut Window, cx: &mut Context<Root>) {
-    let is_new = m.is_none();
-    let m = m.filter(Value::is_object).unwrap_or_else(|| {
-        json!({
-            "id": "", "name": "", "steps": [], "targets": "selected", "accountIds": [], "trigger": { "kind": "manual" }, "enabled": true, "hotkey": null,
-            "jitterMs": 40, "jitterPx": 3, "maxMinutes": 10, "onFail": "stop", "stuckMinutes": 5, "options": [], "areas": [], "panel": { "autoShow": false, "placeId": null }
-        })
+    // (One with no id yet is new too: a macro read from a file, saved as a new one.)
+    let is_new = m.as_ref().is_none_or(|m| m.get("id").and_then(Value::as_str).unwrap_or_default().is_empty());
+    let blank = json!({
+        "id": "", "name": "", "steps": [], "targets": "selected", "accountIds": [], "trigger": { "kind": "manual" }, "enabled": true, "hotkey": null,
+        "jitterMs": 40, "jitterPx": 3, "maxMinutes": 10, "onFail": "stop", "stuckMinutes": 5, "options": [], "areas": [], "panel": { "autoShow": false, "placeId": null }
     });
-    let watch = |e: &Entity<InputState>, cx: &mut Context<Root>| {
+    let m = match m.filter(Value::is_object) {
+        // What it has over the blank's defaults (MacrosView.tsx's importFile: { ...blankMacro(), ...m, id: '' }).
+        Some(Value::Object(given)) if is_new => {
+            let mut all = blank;
+            for (k, v) in given {
+                all[k] = v;
+            }
+            all["id"] = json!("");
+            all
+        }
+        Some(m) => m,
+        None => blank,
+    };
+    let mut m = m;
+    mark_todos(&mut m);
+    let watch =|e: &Entity<InputState>, cx: &mut Context<Root>| {
         cx.subscribe(e, |_, _, ev: &InputEvent, cx| {
             if matches!(ev, InputEvent::Change) {
                 cx.notify();
@@ -1748,6 +2086,28 @@ pub fn open(r: &mut Root, m: Option<Value>, window: &mut Window, cx: &mut Contex
         }
     })
     .detach();
+    // Add step's search: Enter adds the first kind it finds (MacroEditor.tsx's AddList).
+    let search = mk_box(r.tr("macro.search"), String::new(), window, cx);
+    cx.subscribe_in(&search, window, |r: &mut Root, e, ev: &InputEvent, window, cx| {
+        match ev {
+            InputEvent::Change => cx.notify(),
+            InputEvent::PressEnter { .. } => {
+                let q = e.read(cx).value().to_string();
+                let too_many = r.i18n.tv("macro.err.tooMany", &[("max", &MAX_STEPS.to_string())]);
+                let root: &Root = r;
+                let first = root.auto.macro_form.as_ref().and_then(|f| step_matches(root, &q, &kinds_fit(f.steps(), f.add_at(), f.sec.is_some())).first().copied());
+                if let (Some(kind), Some(f)) = (first, r.auto.macro_form.as_mut()) {
+                    f.error = None;
+                    f.add(kind, too_many);
+                    fill(f, window, cx);
+                    push_game(r);
+                }
+                cx.notify();
+            }
+            _ => {}
+        }
+    })
+    .detach();
     let wins = windows(r);
     let mine: Vec<&str> = arr(&m, "accountIds").iter().filter_map(Value::as_str).collect();
     let account = wins.iter().find(|(id, _)| mine.contains(&id.as_str())).or(wins.first()).map(|(id, _)| id.clone()).unwrap_or_default();
@@ -1755,6 +2115,7 @@ pub fn open(r: &mut Root, m: Option<Value>, window: &mut Window, cx: &mut Contex
     let mut f = Form {
         m,
         is_new,
+        start: None,
         name,
         every,
         every_min: false,
@@ -1780,6 +2141,7 @@ pub fn open(r: &mut Root, m: Option<Value>, window: &mut Window, cx: &mut Contex
         drag: None,
         frame: Rc::new(Cell::new(None)),
         picking: false,
+        pick_at: None,
         on_game: false,
         say: None,
         area_boxes: Vec::new(),
@@ -1809,9 +2171,19 @@ pub fn open(r: &mut Root, m: Option<Value>, window: &mut Window, cx: &mut Contex
         run_open: false,
         step_menu: None,
         step_menu_shut: None,
+        search,
+        add_here: None,
+        lines: RefCell::new(Vec::new()),
+        near_at: Rc::new(Cell::new((0., 0.))),
+        near_tall: Rc::new(RefCell::new(std::collections::HashMap::new())),
+        last_step: Cell::new(None),
+        trial_over: Cell::new(false),
+        id: FORMS.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
+        probs: RefCell::new(None),
     };
     load_top(&mut f, window, cx);
     fill(&mut f, window, cx);
+    f.start = Some(snapshot(&f, cx));
     r.auto.macro_form = Some(f);
     if is_new {
         want_templates(r, cx);
@@ -1819,7 +2191,75 @@ pub fn open(r: &mut Root, m: Option<Value>, window: &mut Window, cx: &mut Contex
     cx.notify();
 }
 
+/// A saved macro opened at a step (the list's Fix on a run that stopped, MacrosView.tsx's editAt): that step's list
+/// shown (the main steps, or a feature's), the step open.
+pub fn open_at(r: &mut Root, m: Value, step: Option<usize>, sec: Option<String>, window: &mut Window, cx: &mut Context<Root>) {
+    open(r, Some(m), window, cx);
+    if let Some(f) = r.auto.macro_form.as_mut() {
+        let sec = sec.filter(|id| feat_of(&f.m, id).is_some());
+        f.switch_to(sec);
+        let step = step.filter(|i| *i < f.steps().len());
+        show_at(f, (step, f.sec.clone()), window, cx);
+    }
+    cx.notify();
+}
+
+/// Record from the list (MacrosView.tsx's record): with no Roblox window open it says so; else a new macro's form
+/// opens and records on the window it uses.
+pub fn record_new(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
+    if windows(r).is_empty() {
+        r.toast = Some((r.tr("macro.need.record"), "info".into()));
+        return cx.notify();
+    }
+    open(r, None, window, cx);
+    record(r, cx);
+}
+
+/// The accounts with a Roblox window open: the list's Record asks which one when there are several (MacrosView.tsx).
+pub fn record_windows(root: &Root) -> Vec<(String, String)> {
+    windows(root)
+}
+
+/// Record from the list on the window picked.
+pub fn record_on(r: &mut Root, acc: String, window: &mut Window, cx: &mut Context<Root>) {
+    open(r, None, window, cx);
+    if let Some(f) = r.auto.macro_form.as_mut() {
+        f.account = acc;
+    }
+    record(r, cx);
+}
+
+/// No Roblox window to picture: off to Accounts to open one (app.js's goAccounts), asking first when Save would keep
+/// something now.
+fn go_accounts(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
+    let changed = changed(r, cx);
+    let go = |r: &mut Root, cx: &mut Context<Root>| {
+        close(r, cx);
+        r.go(crate::pages::Page::Accounts);
+        cx.notify();
+    };
+    if changed {
+        // Only if the form is still the one asked about: closed meanwhile (a save's answer), nobody wanted Accounts.
+        r.ask_discard(window, cx, move |r, _, cx| {
+            if r.auto.macro_form.is_some() {
+                go(r, cx);
+            }
+        });
+    } else {
+        go(r, cx);
+    }
+}
+
 /// The form closed: Edit on game ends, and the pictures it held go from GPUI's cache.
+/// Back or Cancel: the form goes, asking first when Save would keep something now (a step, a name, a setting).
+pub fn leave(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
+    if changed(r, cx) {
+        r.ask_discard(window, cx, |r, _, cx| close(r, cx));
+    } else {
+        close(r, cx);
+    }
+}
+
 pub fn close(r: &mut Root, cx: &mut Context<Root>) {
     if let Some(f) = r.auto.macro_form.take() {
         if f.on_game {
@@ -1955,12 +2395,43 @@ fn open_step(r: &mut Root, i: Option<usize>, window: &mut Window, cx: &mut Conte
     cx.notify();
 }
 
+/// A step that needs an area (MacroEditor.tsx's fixOf "area"): with none yet, a new one is made and the step looks in
+/// it; else the step opens where its area is chosen.
+fn fix_area(r: &mut Root, i: usize, window: &mut Window, cx: &mut Context<Root>) {
+    let full = r.i18n.tv("macro.area.full", &[("n", &MAX_AREAS.to_string())]);
+    if let Some(f) = r.auto.macro_form.as_mut() {
+        if arr(&f.m, "areas").is_empty() {
+            let path = f.steps().get(i).and_then(region_path).unwrap_or("region");
+            f.set_region(i, path, "new", &full);
+        }
+        f.unfold_to(i);
+    }
+    open_step(r, Some(i), window, cx);
+    push_game(r);
+}
+
+/// "Name it" (MacroEditor.tsx's fixOf "name"): the macro's name box, or the first area with no name, takes the typing.
+fn fix_name(r: &mut Root, area: bool, window: &mut Window, cx: &mut Context<Root>) {
+    let Some(f) = r.auto.macro_form.as_ref() else { return };
+    let target = if area {
+        let empty = arr(&f.m, "areas").iter().find(|a| s(a, "label").trim().is_empty()).map(|a| s(a, "name").to_string());
+        empty.and_then(|n| f.area_boxes.iter().find(|(k, _)| *k == n).map(|(_, e)| e.clone()))
+    } else {
+        Some(f.name.clone())
+    };
+    if let Some(e) = target {
+        e.update(cx, |b, cx| b.focus(window, cx));
+    }
+    cx.notify();
+}
+
 /// Where a problem is: its step, in the main steps or a feature's.
 type At = (Option<usize>, Option<String>);
 
 /// What Save sends, or what stops it (and the step it is on).
 fn collect(root: &Root, f: &Form, cx: &App) -> Result<Value, (String, At)> {
     let mut m = f.m.clone();
+    finish_marks(&mut m);
     let name = text(&f.name, cx).trim().to_string();
     set(&mut m, "name", json!(name));
     let kind = m.get("trigger").map(|t| s(t, "kind")).filter(|k| !k.is_empty()).unwrap_or("manual").to_string();
@@ -1974,9 +2445,12 @@ fn collect(root: &Root, f: &Form, cx: &App) -> Result<Value, (String, At)> {
         set(&mut m, "trigger", json!({ "kind": kind }));
     }
     if let Some(n) = parse(&text(&f.max, cx)) {
-        set(&mut m, "maxMinutes", json!(n.max(0.).round() as i64));
+        set(&mut m, "maxMinutes", json!(n.round().clamp(1., 240.) as i64));
     }
-    if let Some(n) = parse(&text(&f.jit_ms, cx)) {
+    // (The box shows seconds with 2 decimals: left as shown, the exact ms the macro has stay, 45 not 50.)
+    let jit = text(&f.jit_ms, cx);
+    let shown = f.m.get("jitterMs").and_then(Value::as_f64).map(|n| trim(n / 1000.));
+    if let Some(n) = parse(&jit).filter(|_| shown.as_deref() != Some(jit.as_str())) {
         set(&mut m, "jitterMs", json!((n.clamp(0., 0.5) * 1000.).round() as i64));
     }
     if let Some(n) = parse(&text(&f.jit_px, cx)) {
@@ -2023,7 +2497,8 @@ fn show_at(f: &mut Form, at: At, window: &mut Window, cx: &mut Context<Root>) {
     if step.is_some() || sec.is_some() {
         f.switch_to(sec);
     }
-    if step.is_some() {
+    if let Some(i) = step {
+        f.unfold_to(i);
         f.open = step;
     }
     fill(f, window, cx);
@@ -2047,25 +2522,31 @@ fn save(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
         }
     };
     let Some(link) = r.link.clone() else { return };
+    let mut id = 0;
     if let Some(f) = r.auto.macro_form.as_mut() {
         f.saving = true;
         f.error = None;
+        id = f.id;
     }
     let rx = link.call("saveMacro", args);
     cx.notify();
     cx.spawn(async move |this, cx| {
         let answer = rx.await;
         let _ = this.update(cx, |r, cx| {
+            // (Left while saving and another form opened: that one stays as it is.)
+            if form_of(r, id).is_none() {
+                return;
+            }
             match answer {
                 Ok(Ok(_)) => close(r, cx),
                 Ok(Err(e)) => {
-                    if let Some(f) = r.auto.macro_form.as_mut() {
+                    if let Some(f) = form_of(r, id) {
                         f.saving = false;
                         f.error = Some(e);
                     }
                 }
                 Err(_) => {
-                    if let Some(f) = r.auto.macro_form.as_mut() {
+                    if let Some(f) = form_of(r, id) {
                         f.saving = false;
                     }
                 }
@@ -2150,15 +2631,17 @@ fn take_picture(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
         return cx.notify();
     };
     let Some(link) = r.link.clone() else { return };
+    let mut id = 0;
     if let Some(f) = r.auto.macro_form.as_mut() {
         f.taking = true;
+        id = f.id;
     }
     let rx = link.call("macroPicture", json!({ "accountId": acc }));
     cx.notify();
     cx.spawn_in(window, async move |this, cx| {
         let answer = rx.await;
         let _ = this.update_in(cx, |r, window, cx| {
-            let Some(f) = r.auto.macro_form.as_mut() else { return };
+            let Some(f) = form_of(r, id) else { return };
             f.taking = false;
             match answer {
                 Ok(Ok(v)) => {
@@ -2199,20 +2682,26 @@ fn pick_on_game(r: &mut Root, i: usize, colour: Option<&'static str>, window: &m
     };
     let Some(link) = r.link.clone() else { return };
     let say = r.i18n.tv("macro.pickNow", &[("name", &label)]);
+    let mut id = 0;
     if let Some(f) = r.auto.macro_form.as_mut() {
         f.picking = true;
+        f.pick_at = Some(i);
         f.say = Some(say);
+        id = f.id;
     }
     let rx = link.call("pickOnGame", json!({ "accountId": acc }));
     cx.notify();
     cx.spawn_in(window, async move |this, cx| {
         let answer = rx.await;
         let _ = this.update_in(cx, |r, window, cx| {
-            if let Some(f) = r.auto.macro_form.as_mut() {
+            if let Some(f) = form_of(r, id) {
                 f.picking = false;
                 f.say = None;
+                // The step it was for, where it is now (it may have moved, or gone, while the click was awaited).
+                let at = f.pick_at.take();
                 match answer {
-                    Ok(Ok(v)) if v.is_object() => {
+                    Ok(Ok(v)) if v.is_object() && at.is_some() => {
+                        let i = at.unwrap_or_default();
                         let (x, y) = (num(&v, "x") as f32, num(&v, "y") as f32);
                         match colour {
                             None => f.set_xy(i, x, y),
@@ -2447,7 +2936,22 @@ fn shown_macro(f: &Form) -> Value {
         set(&mut m, "steps", json!(steps));
         set(&mut m, "features", json!([]));
     }
+    strip_marks(&mut m);
     m
+}
+
+/// Edit on game turned on (a template's "Place the area"): with no window it says so.
+fn edit_on_game(r: &mut Root, cx: &mut Context<Root>) {
+    let has_win = r.auto.macro_form.as_ref().and_then(|f| window_of(r, f)).is_some();
+    let e = r.tr("macro.need.game");
+    let Some(f) = r.auto.macro_form.as_mut() else { return };
+    if !has_win {
+        f.error = Some(e);
+    } else if !f.on_game {
+        f.on_game = true;
+        push_game(r);
+    }
+    cx.notify();
 }
 
 /// Edit on game: the window's dots and boxes drawn again from the form.
@@ -2530,11 +3034,12 @@ pub fn on_event(r: &mut Root, name: &str, data: &Value, window: &mut Window, cx:
 /// The app's templates (macroTemplates), for a new macro to start from.
 fn want_templates(r: &mut Root, cx: &mut Context<Root>) {
     let Some(link) = r.link.clone() else { return };
+    let id = r.auto.macro_form.as_ref().map_or(0, |f| f.id);
     let rx = link.call("macroTemplates", json!({}));
     cx.spawn(async move |this, cx| {
         let answer = rx.await;
         let _ = this.update(cx, |r, cx| {
-            if let (Some(f), Ok(Ok(v))) = (r.auto.macro_form.as_mut(), answer) {
+            if let (Some(f), Ok(Ok(v))) = (form_of(r, id), answer) {
                 f.templates = Some(arr(&v, "macros").to_vec());
                 cx.notify();
             }
@@ -2557,8 +3062,11 @@ fn use_template(r: &mut Root, k: usize, window: &mut Window, cx: &mut Context<Ro
         }
     }
     set(&mut m, "id", json!(""));
+    // Its to-dos (the fields it marked on its steps) are said over the form until each is set.
+    mark_todos(&mut m);
     f.switch_to(None);
     f.m = m;
+    f.remap(|_| None);
     f.tab_sel = None;
     f.open = None;
     f.adding = false;
@@ -2581,6 +3089,80 @@ fn trial_run<'a>(root: &'a Root, f: &Form) -> Option<&'a Value> {
 
 fn live(run: &Value) -> bool {
     matches!(s(run, "status"), "waiting" | "running" | "paused")
+}
+
+/// The steps that look for something: passed, Try it says it "found" it (MacroEditor.tsx's LOOKS).
+const LOOKS: [&str; 9] = ["waitImage", "clickImage", "waitColour", "clickColour", "waitText", "if", "loopUntil", "follow", "read"];
+/// The steps Try it says nothing of (MacroEditor.tsx's BLOCKS).
+const BLOCKS: [&str; 5] = ["loop", "endLoop", "else", "endIf", "break"];
+
+/// Try it's lines followed as its run moves (MacroEditor.tsx's effect on run.step and run.status): each step it got past
+/// is a line ("found" for those that look for something), and the step it stopped on says why (a setting empty, or
+/// nothing seen). While a feature plays in the middle of the main steps, the lines wait where those were.
+fn track_trial(root: &Root, f: &Form, run: Option<&Value>, names: &[(String, String)]) {
+    let (Some(t), Some(run)) = (f.trial.as_ref(), run) else { return };
+    if f.trial_over.get() {
+        return;
+    }
+    let tried: &[Value] = match t.sec.as_deref().and_then(|id| feat_of(&f.m, id)) {
+        Some(fe) => arr(fe, "steps"),
+        None => arr(&f.m, "steps"),
+    };
+    let mut lines = f.lines.borrow_mut();
+    let mut line = |k: usize, outcome: &str| {
+        let Some(st) = tried.get(k) else { return };
+        let n = (k + 1).to_string();
+        let what = step_text(root, &f.m, names, st, k + 1);
+        let (ok, text) = match outcome {
+            "found" => (true, root.i18n.tv("macro.try.found", &[("n", &n), ("what", &what)])),
+            "done" => (true, root.i18n.tv("macro.try.done", &[("n", &n), ("what", &what)])),
+            "missingValue" => (false, root.i18n.tv("macro.try.empty", &[("n", &n)])),
+            _ => (false, root.i18n.tv("macro.try.notSeen", &[("n", &n), ("what", &what)])),
+        };
+        lines.retain(|x| x.step != k);
+        lines.push(TryLine { step: k, ok, text });
+    };
+    let passed = |k: usize, line: &mut dyn FnMut(usize, &str)| {
+        if let Some(st) = tried.get(k) {
+            let kind = s(st, "kind");
+            if !BLOCKS.contains(&kind) {
+                line(k, if LOOKS.contains(&kind) { "found" } else { "done" });
+            }
+        }
+    };
+    let in_feature = !s(run, "section").is_empty();
+    let last = f.last_step.get();
+    let at = if in_feature { last } else { run.get("step").and_then(Value::as_u64).map(|x| x as usize) };
+    let over = !live(run);
+    match last {
+        Some(l) if at != Some(l) && over => {
+            let why = s(run, "reason");
+            if s(run, "status") == "failed" && matches!(why, "missingValue" | "notFound" | "timeout") {
+                line(l, if why == "missingValue" { "missingValue" } else { "notFound" });
+            } else if s(run, "status") == "done" {
+                passed(l, &mut line);
+            }
+        }
+        Some(l) if at.is_some_and(|a| a != l) => passed(l, &mut line),
+        _ => {}
+    }
+    if over {
+        f.trial_over.set(true);
+    }
+    f.last_step.set(at);
+}
+
+/// Each state the app sends (Root::set_state, after the state is kept): Try it's lines follow every step the run is
+/// seen on, not only the one the next frame shows (several states can come between two frames).
+pub fn on_state(root: &Root) {
+    let Some(f) = root.auto.macro_form.as_ref() else { return };
+    if f.trial.is_none() || f.trial_over.get() {
+        return;
+    }
+    let my_id = s(&f.m, "id");
+    let saved: &[Value] = root.state.pointer("/settings/macros").and_then(Value::as_array).map(Vec::as_slice).unwrap_or(&[]);
+    let others: Vec<(String, String)> = saved.iter().filter(|o| s(o, "id") != my_id).map(|o| (s(o, "id").to_string(), s(o, "name").to_string())).collect();
+    track_trial(root, f, trial_run(root, f), &others);
 }
 
 /// Try it: the macro as it is in the form, once, on the window chosen; again, it stops.
@@ -2615,18 +3197,24 @@ fn try_it(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
     set(&mut draft, "name", json!(name));
     let Some(link) = r.link.clone() else { return };
     let rx = link.call("macroTryRun", json!({ "macro": draft, "accountId": acc }));
+    let mut id = 0;
     if let Some(f) = r.auto.macro_form.as_mut() {
         f.error = None;
+        id = f.id;
     }
     cx.spawn(async move |this, cx| {
         let answer = rx.await;
         let _ = this.update(cx, |r, cx| {
-            let Some(f) = r.auto.macro_form.as_mut() else { return };
+            let Some(f) = form_of(r, id) else { return };
             match answer {
                 Ok(Ok(v)) => {
                     let id = s(&v, "macroId").to_string();
                     if !id.is_empty() {
-                        f.trial = Some(Trial { id, account: acc, since: crate::time::now_secs() });
+                        f.trial = Some(Trial { id, account: acc, since: crate::time::now_secs(), sec: f.sec.clone() });
+                        // A new try's lines start over (MacroEditor.tsx's tryIt: setLines([]), lastStep = null).
+                        f.lines.borrow_mut().clear();
+                        f.last_step.set(None);
+                        f.trial_over.set(false);
                     }
                 }
                 Ok(Err(e)) => f.error = Some(e),
@@ -2649,16 +3237,18 @@ fn record(r: &mut Root, cx: &mut Context<Root>) {
         return cx.notify();
     };
     let Some(link) = r.link.clone() else { return };
+    let mut id = 0;
     if let Some(f) = r.auto.macro_form.as_mut() {
         f.recording = true;
         f.pending = None;
+        id = f.id;
     }
     let rx = link.call("recordMacro", json!({ "accountId": acc }));
     cx.notify();
     cx.spawn(async move |this, cx| {
         let answer = rx.await;
         let _ = this.update(cx, |r, cx| {
-            if let (Some(f), Ok(Err(e))) = (r.auto.macro_form.as_mut(), answer) {
+            if let (Some(f), Ok(Err(e))) = (form_of(r, id), answer) {
                 f.recording = false;
                 f.error = Some(e);
             }
@@ -2678,6 +3268,16 @@ struct Prob {
     warn: bool,
     /// The feature whose steps it is about (None: the main steps, or the macro itself).
     sec: Option<String>,
+    /// The fix its row offers (macros.ts's Problem.fix): "area" (a new area, or the step opened at its areas),
+    /// "name" (the name box), "areaName" (an area's name box).
+    fix: Option<&'static str>,
+}
+
+/// The problem just said offers a fix.
+fn fix_last(o: &mut [Prob], fix: &'static str) {
+    if let Some(p) = o.last_mut() {
+        p.fix = Some(fix);
+    }
 }
 
 fn say(out: &mut Vec<Prob>, i18n: &I18n, step: Option<usize>, key: &str, vars: &[(&str, &str)], warn: bool) {
@@ -2694,7 +3294,7 @@ fn say(out: &mut Vec<Prob>, i18n: &I18n, step: Option<usize>, key: &str, vars: &
         }
         _ => text.clone(),
     };
-    out.push(Prob { step, text, bare, warn, sec: None });
+    out.push(Prob { step, text, bare, warn, sec: None, fix: None });
 }
 
 fn ok_num(v: Option<&Value>, min: f64, max: f64) -> bool {
@@ -2721,8 +3321,10 @@ fn problems(i18n: &I18n, m: &Value, name: &str, saved: &[Value]) -> Vec<Prob> {
     let name = name.trim();
     if name.is_empty() {
         say(o, i18n, None, "macro.err.name", &[], false);
+        fix_last(o, "name");
     } else if saved.iter().any(|x| s(x, "id") != s(m, "id") && s(x, "name").trim().to_lowercase() == name.to_lowercase()) {
         say(o, i18n, None, "macro.err.sameName", &[], true);
+        fix_last(o, "name");
     }
     if s(m, "targets") == "accounts" && arr(m, "accountIds").is_empty() {
         say(o, i18n, None, "macro.err.noAccounts", &[], false);
@@ -2740,6 +3342,7 @@ fn problems(i18n: &I18n, m: &Value, name: &str, saved: &[Value]) -> Vec<Prob> {
     }
     if arr(m, "areas").iter().any(|x| s(x, "label").trim().is_empty()) {
         say(o, i18n, None, "macro.err.areaName", &[], false);
+        fix_last(o, "areaName");
     }
     // Each feature's steps, checked as the main ones are (macros.ts's featureProblems); no If stuck in them; how
     // often it plays; on the main steps, a key held where the features would come in.
@@ -2904,6 +3507,7 @@ fn step_problems(i18n: &I18n, m: &Value, steps: &[Value], saved: &[Value], featu
         }
         if k == "read" && matches!(s(st, "from"), "" | "screen") && !has(st, "region") {
             say(o, i18n, p, "macro.err.readArea", &[], false);
+            fix_last(o, "area");
         }
         let place = match k {
             "read" => s(st, "from"),
@@ -2939,6 +3543,7 @@ fn step_problems(i18n: &I18n, m: &Value, steps: &[Value], saved: &[Value], featu
         if k == "follow" {
             if !has(st, "region") {
                 say(o, i18n, p, "macro.err.followArea", &[], false);
+                fix_last(o, "area");
             }
             let marker = st.get("marker");
             let marker_ok = match marker {
@@ -3007,6 +3612,7 @@ fn step_problems(i18n: &I18n, m: &Value, steps: &[Value], saved: &[Value], featu
         }
         if no_area {
             say(o, i18n, p, "macro.err.noArea", &[], false);
+            fix_last(o, "area");
         }
         if is_test(k) {
             let t = st.get("test").unwrap_or(&Value::Null);
@@ -4051,6 +4657,7 @@ fn step_body(root: &Root, f: &Form, i: usize, st: &Value, others: &[(String, Str
                 Button::new(("mf-pick-c", n), t("macro.e.pick"))
                     .icon("mouse")
                     .small()
+                    .tip(t(if win { "macro.e.pickTip" } else { "macro.need.game" }))
                     .disabled(!win || f.picking)
                     .on_click(cx.listener(move |r, _, window, cx| pick_on_game(r, i, Some(path), window, cx))),
             );
@@ -4060,7 +4667,7 @@ fn step_body(root: &Root, f: &Form, i: usize, st: &Value, others: &[(String, Str
             continue;
         }
         if matches!(path, "y" | "test.y") {
-            line = line.child(Button::new("mf-pick-p", t("macro.fix.pick")).icon("mouse").small().disabled(!win || f.picking).on_click(cx.listener(move |r, _, window, cx| pick_on_game(r, i, None, window, cx))));
+            line = line.child(Button::new("mf-pick-p", t("macro.fix.pick")).icon("mouse").small().tip(t(if win { "macro.e.pickPoint" } else { "macro.need.game" })).disabled(!win || f.picking).on_click(cx.listener(move |r, _, window, cx| pick_on_game(r, i, None, window, cx))));
             row = row.child(div().flex().items_end().gap(px(12.)).children(point_x.take()).child(lab(label, line)));
             continue;
         }
@@ -4111,11 +4718,23 @@ fn step_body(root: &Root, f: &Form, i: usize, st: &Value, others: &[(String, Str
         l
     });
     let note_row = lab(t("macro.note.label"), field(&f.note, None).h(px(34.)).w(px(300.)));
+    // What is wrong with it, each with its fix when it has one (an area to choose: MacroEditor.tsx's fixOf "area").
+    let wrong: Vec<Div> = probs
+        .iter()
+        .enumerate()
+        .map(|(k, p)| {
+            let line = div().flex().items_center().gap(px(10.)).child(div().flex_1().min_w_0().child(bad_line(p.bare.clone(), p.warn)));
+            match p.fix {
+                Some("area") if !p.warn => line.child(Button::new(("mf-fix-area", k), t("macro.fix.area")).small().on_click(cx.listener(move |r, _, window, cx| fix_area(r, i, window, cx)))),
+                _ => line,
+            }
+        })
+        .collect();
     div()
         .flex()
         .flex_col()
         .gap(px(12.))
-        .children(probs.iter().map(|p| bad_line(p.bare.clone(), p.warn)))
+        .children(wrong)
         .child(row)
         .children(under)
         .children(notes.into_iter().map(note))
@@ -4188,7 +4807,15 @@ fn frame(root: &Root, f: &Form, w: f32, cx: &mut Context<Root>) -> AnyElement {
                 .child(div().px(px(24.)).max_w(px(340.)).text_center().text_size(px(T_M)).font_weight(FontWeight::MEDIUM).text_color(c(TEXT)).child(root.tr("macro.pic.blank")))
                 .child(div().px(px(24.)).max_w(px(340.)).text_center().text_size(px(T_S)).line_height(px(17.)).text_color(c(MUTED)).child(root.tr("macro.pic.why")))
                 .children(waits.map(|w| div().text_size(px(T_S)).text_color(c(TEXT_2)).font_features(tnum()).child(w)))
-                .child(div().mt(px(4.)).child(Button::new("mf-take", root.tr("macro.pic.take")).icon("image").small().disabled(!can_take).on_click(cx.listener(|r, _, window, cx| take_picture(r, window, cx))))),
+                .child(
+                    div()
+                        .mt(px(4.))
+                        .flex()
+                        .gap(px(8.))
+                        .child(Button::new("mf-take", root.tr("macro.pic.take")).icon("image").small().disabled(!can_take).on_click(cx.listener(|r, _, window, cx| take_picture(r, window, cx))))
+                        // No window at all: the way to open one (MacroPicture.tsx's goAccounts).
+                        .when(window_of(root, f).is_none(), |d| d.child(Button::new("mf-go-acc", root.tr("macro.goAccounts")).small().quiet().on_click(cx.listener(|r, _, window, cx| go_accounts(r, window, cx))))),
+                ),
         ),
     };
     // No still yet: the empty box alone. The dots and boxes are places on a picture; without it they float on nothing
@@ -4350,10 +4977,20 @@ fn game_card(root: &Root, f: &Form, pic_w: f32, run: Option<&Value>, cx: &mut Co
             (false, root.i18n.tv("macro.try.end.stopped", &[("name", &wname)]))
         };
         let tone = if ok { c(OK) } else { c(BAD) };
-        body = body.child(section(
-            t("macro.try.title"),
-            div().flex().items_center().gap(px(8.)).text_size(px(T_M)).text_color(c(TEXT_2)).child(icon(if live(run) { "clock" } else if ok { "check" } else { "alert" }, 14., tone)).child(words),
-        ));
+        // A line a step (MacroPicture.tsx's TryLines: "Step 2 found it: …", "Step 3 didn't see it yet: …"), then
+        // how the run is doing or ended.
+        let said = |ok: bool, mark: &'static str, words: String| {
+            let tone = if ok { c(OK) } else { c(BAD) };
+            div().flex().items_start().gap(px(8.)).text_size(px(T_M)).line_height(px(19.)).text_color(c(TEXT_2)).child(icon(mark, 14., tone).mt(px(2.))).child(div().flex_1().min_w_0().child(words))
+        };
+        let mut list = div().flex().flex_col().gap(px(6.));
+        for l in f.lines.borrow().iter() {
+            list = list.child(said(l.ok, if l.ok { "check" } else { "alert" }, l.text.clone()));
+        }
+        list = list.child(
+            div().flex().items_start().gap(px(8.)).text_size(px(T_M)).line_height(px(19.)).text_color(c(TEXT_2)).child(icon(if live(run) { "clock" } else if ok { "check" } else { "alert" }, 14., tone).mt(px(2.))).child(div().flex_1().min_w_0().child(words)),
+        );
+        body = body.child(section(t("macro.try.title"), list));
     }
     // The areas: each one's colour, its name (what the steps say: "in Fish area"), and taking it away.
     let areas = arr(&f.m, "areas");
@@ -4497,6 +5134,10 @@ fn player_card(root: &Root, f: &Form, cx: &mut Context<Root>) -> Div {
                                     .text_color(c(TEXT))
                                     .child(root.i18n.tn("macro.feat.steps", arr(fe, "steps").len() as i64, &[]))
                                     .child(icon("chevronRight", 13., c(TEXT_2)))
+                                    .tooltip({
+                                        let tip: SharedString = root.tr("macro.feat.open").into();
+                                        move |_, cx| cx.new(|_| Tip(tip.clone())).into()
+                                    })
                                     .on_click(edit(cx, move |form| form.switch_to(Some(id.clone())))),
                             )
                             .child(on_off)
@@ -4512,7 +5153,10 @@ fn player_card(root: &Root, f: &Form, cx: &mut Context<Root>) -> Div {
             "list" => root.i18n.tv("macro.opt.ticked", &[("n", &arr(o, "value").len().to_string()), ("all", &arr(o, "choices").len().to_string())]).into_any_element(),
             _ => div().into_any_element(),
         };
-        let choices = f.choice_boxes.iter().find(|(n, _)| *n == name).map(|(_, b)| field(b, None).h(px(32.)).w(px(200.)));
+        let choices = f.choice_boxes.iter().find(|(n, _)| *n == name).map(|(_, b)| {
+            let tip: SharedString = root.tr("macro.opt.choicesTip").into();
+            div().id(SharedString::from(format!("mf-choices-{name}"))).child(field(b, None).h(px(32.)).w(px(200.))).tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into())
+        });
         let (n_up, n_down, n_del, n_tab) = (name.clone(), name.clone(), name.clone(), name.clone());
         let menu_open = f.tab_menu.as_deref() == Some(name.as_str());
         list = list.child(
@@ -4894,9 +5538,31 @@ fn step_more(root: &Root, f: &Form, i: usize, kind: &str, too_many: String, cx: 
                 form.dup_step(i, too_many.clone());
             }))
         };
-        let del = menu_row(("mf-del", i)).text_color(c(BAD)).hover(|d| d.text_color(c(BAD))).child(icon("trash", 15., c(BAD))).child(div().flex_1().child(t("macro.delStep"))).on_click(edit(cx, move |form| {
-            form.step_menu = None;
-            form.del_step(i);
+        // An If or a Repeat with steps in it asks first: they go with it.
+        let inner = f.inner_steps(i);
+        let what = t(if kind == "if" { "macro.block.if" } else { "macro.block.loop" });
+        let ask = (inner > 0).then(|| root.i18n.tn("macro.block.deleteAsk", inner as i64, &[("what", &what)]));
+        let del = menu_row(("mf-del", i)).text_color(c(BAD)).hover(|d| d.text_color(c(BAD))).child(icon("trash", 15., c(BAD))).child(div().flex_1().child(t("macro.delStep"))).on_click(cx.listener(move |r, _, window, cx| {
+            if let Some(form) = r.auto.macro_form.as_mut() {
+                form.step_menu = None;
+            }
+            // (No step is open after it, so only the lists' boxes would need filling, and deleting steps leaves them.)
+            let gone = move |r: &mut Root, cx: &mut Context<Root>| {
+                if let Some(form) = r.auto.macro_form.as_mut() {
+                    form.error = None;
+                    form.del_step(i);
+                }
+                push_game(r);
+                cx.notify();
+            };
+            match ask.clone() {
+                None => gone(r, cx),
+                Some(text) => {
+                    let (title, ok) = (r.tr("macro.delStep"), r.tr("macro.delete"));
+                    r.confirm(title, text, ok, true, None, window, cx, gone);
+                }
+            }
+            cx.notify();
         }));
         let menu = div()
             .id(("mf-step-menu", i))
@@ -4923,6 +5589,70 @@ fn step_more(root: &Root, f: &Form, i: usize, kind: &str, too_many: String, cx: 
     wrap
 }
 
+/// Add step's kinds (MacroEditor.tsx's AddList): a search box, the kinds used lately, then every kind in its group;
+/// only those that fit where it goes. Words typed show the kinds they find (Enter adds the first), or that none is
+/// called so.
+fn add_list(root: &Root, f: &Form, fit: &[&'static str], cx: &mut Context<Root>) -> Div {
+    let t = |k: &str| root.tr(k);
+    let too_many = root.i18n.tv("macro.err.tooMany", &[("max", &MAX_STEPS.to_string())]);
+    let mut n = 0usize;
+    let mut kinds = |list: &[&'static str], cx: &mut Context<Root>| {
+        let mut line = div().flex().flex_wrap().gap(px(6.));
+        for &kind in list {
+            n += 1;
+            let too_many = too_many.clone();
+            line = line.child(
+                pill(("mf-kind", n), false, true)
+                    .gap(px(7.))
+                    .child(icon(step_icon(kind), 14., c(TEXT_2)))
+                    .child(t(&format!("macro.kind.{kind}")))
+                    .on_click(edit(cx, move |form| form.add(kind, too_many.clone()))),
+            );
+        }
+        line
+    };
+    let row = |label: String, line: Div| div().flex().items_start().gap(px(12.)).child(div().w(px(110.)).flex_none().pt(px(7.)).text_size(px(T_S)).text_color(c(MUTED)).child(label)).child(line.flex_1().min_w_0());
+    let mut panel = div().p(px(14.)).rounded(px(R_M)).bg(ca(WHITE, 0.04)).flex().flex_col().gap(px(12.)).child(field(&f.search, Some("search")).h(px(34.)).max_w(px(320.)));
+    let q = text(&f.search, cx);
+    if !q.trim().is_empty() {
+        let found = step_matches(root, &q, fit);
+        return if found.is_empty() { panel.child(note(t("macro.search.none"))) } else { panel.child(kinds(&found, cx)) };
+    }
+    let recent: Vec<&'static str> = recent_kinds().into_iter().filter(|k| fit.contains(k)).collect();
+    if !recent.is_empty() {
+        let line = kinds(&recent, cx);
+        panel = panel.child(row(t("macro.recent"), line));
+    }
+    for (group, list) in GROUPS {
+        let here: Vec<&'static str> = list.iter().copied().filter(|k| fit.contains(k)).collect();
+        if here.is_empty() {
+            continue;
+        }
+        let line = kinds(&here, cx);
+        panel = panel.child(row(t(&format!("macro.grp.{group}")), line));
+    }
+    panel
+}
+
+/// The form's problems, worked out again only when the macro, its name, the saved ones or the language changed.
+fn form_problems(root: &Root, f: &Form, saved: &[Value], cx: &App) -> Rc<Vec<Prob>> {
+    use std::hash::{Hash, Hasher};
+    let name = text(&f.name, cx);
+    let mut h = std::collections::hash_map::DefaultHasher::new();
+    crate::pages::games::sig_of(&f.m, &mut h);
+    saved.iter().for_each(|x| crate::pages::games::sig_of(x, &mut h));
+    (&name, root.i18n.vietnamese).hash(&mut h);
+    let key = h.finish();
+    if let Some((k, p)) = f.probs.borrow().as_ref()
+        && *k == key
+    {
+        return p.clone();
+    }
+    let p = Rc::new(problems(&root.i18n, &f.m, &name, saved));
+    *f.probs.borrow_mut() = Some((key, p.clone()));
+    p
+}
+
 pub fn form(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
     let Some(f) = root.auto.macro_form.as_ref() else { return div().into_any_element() };
     let m = &f.m;
@@ -4931,7 +5661,7 @@ pub fn form(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
     let saved: &[Value] = root.state.pointer("/settings/macros").and_then(Value::as_array).map(Vec::as_slice).unwrap_or(&[]);
     // The other macros: a Run step's choices, and the hotkeys taken.
     let others: Vec<(String, String)> = saved.iter().filter(|o| s(o, "id") != my_id).map(|o| (s(o, "id").to_string(), s(o, "name").to_string())).collect();
-    let taken: HashSet<i64> = saved.iter().filter(|o| s(o, "id") != my_id).filter_map(|o| o.get("hotkey").and_then(Value::as_i64)).collect();
+    let taken: std::collections::HashMap<i64, String> = saved.iter().filter(|o| s(o, "id") != my_id).filter_map(|o| Some((o.get("hotkey").and_then(Value::as_i64)?, s(o, "name").to_string()))).collect();
     let win = window_of(root, f);
     let wide = width >= 1100.;
     // The game and the settings in a column at the right, wider as the window is; its picture fills it.
@@ -4939,13 +5669,18 @@ pub fn form(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
     let pic_w = if wide { side_w - 42. } else { (width - 2. * SIDE - 42.).clamp(240., 640.) };
 
     // What stops a save: on its step, and (once Save or Try was pressed) at the foot.
-    let probs = problems(&root.i18n, m, &text(&f.name, cx), saved);
+    let probs = form_problems(root, f, saved, cx);
     let run = trial_run(root, f);
     let running_at = run.filter(|x| live(x)).and_then(|x| x.get("step")).and_then(Value::as_u64).map(|x| x as usize);
     let stopped = run.filter(|x| !live(x) && s(x, "status") == "failed").and_then(|x| Some((x.get("lastStep")?.as_u64()? as usize, s(x, "reason").to_string())));
     let trying = run.is_some_and(live);
+    track_trial(root, f, run, &others);
 
     // Name and Try it.
+    let try_tip = match win.as_ref() {
+        Some((_, name)) => root.i18n.tv("macro.tryItTip", &[("name", name)]),
+        None => t("macro.need.try"),
+    };
     let head_row = div()
         .flex()
         .items_end()
@@ -4954,13 +5689,18 @@ pub fn form(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
         .child(
             Button::new("mf-try", t(if trying { "macro.tryStop" } else if f.sec.is_some() { "macro.feat.try" } else { "macro.tryIt" }))
                 .icon(if trying { "stop" } else { "play" })
+                .tip(try_tip)
                 .disabled(win.is_none())
                 .on_click(cx.listener(|r, _, window, cx| try_it(r, window, cx))),
         );
 
-    // A template to start from (a new macro with no steps yet).
-    let templates = (f.is_new && f.steps().is_empty()).then(|| f.templates.as_ref()).flatten().filter(|l| !l.is_empty()).map(|list| {
+    // A template to start from (a new macro with no steps yet): what each does and what it needs from the game
+    // (MacrosView.tsx's template cards), or that there are none.
+    let templates = (f.is_new && f.steps().is_empty()).then(|| f.templates.as_ref()).flatten().map(|list| {
         let mut tiles = div().flex().flex_wrap().gap(px(10.));
+        if list.is_empty() {
+            tiles = tiles.child(note(t("macro.noTemplates")));
+        }
         for (k, tp) in list.iter().enumerate() {
             let ic = Some(s(tp, "icon")).filter(|x| ICONS.contains(x)).unwrap_or("play");
             tiles = tiles.child(
@@ -4971,7 +5711,7 @@ pub fn form(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
                     .items_start()
                     .gap(px(10.))
                     .cursor_pointer()
-                    .child(div().size(px(30.)).flex_none().rounded(px(R_S)).bg(ca(WHITE, 0.07)).flex().items_center().justify_center().child(icon(ic, 15., c(TEXT_2))))
+                    .child(div().flex_none().child(icon(ic, 17., c(TEXT_2))))
                     .child(
                         div()
                             .flex_1()
@@ -4980,12 +5720,66 @@ pub fn form(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
                             .flex_col()
                             .gap(px(3.))
                             .child(div().text_size(px(T_M)).font_weight(FontWeight::SEMIBOLD).child(s(tp, "name").to_string()))
-                            .child(div().text_size(px(T_S)).line_height(px(16.)).text_color(c(MUTED)).child(s(tp, "about").to_string())),
+                            .child(div().text_size(px(T_S)).line_height(px(16.)).text_color(c(MUTED)).child(s(tp, "about").to_string()))
+                            .when(!arr(tp, "steps").is_empty(), |d| d.child(div().pt(px(2.)).text_size(px(T_S)).line_height(px(16.)).text_color(c(TEXT_2)).child(needs_text(root, tp)))),
                     )
                     .on_click(cx.listener(move |r, _, window, cx| use_template(r, k, window, cx))),
             );
         }
         card().gap(px(12.)).child(div().flex().flex_col().gap(px(3.)).child(div().text_size(px(T_H)).font_weight(FontWeight::SEMIBOLD).child(t("macro.fromTemplate"))).child(note(t("macro.tile.template")))).child(tiles)
+    });
+
+    // A template's to-dos over the form (MacroEditor.tsx's mc-todo): what it still needs set, each ticked once done,
+    // with the way to it (an area: Edit on game; the rest: its step).
+    let todos = todo_items(m);
+    let todo_box = (!todos.is_empty()).then(|| {
+        let all_done = todos.iter().all(|(_, _, d)| *d);
+        let mut list = div().flex().flex_col().gap(px(8.));
+        for (k, (i, fld, done)) in todos.iter().enumerate() {
+            let (i, done) = (*i, *done);
+            let area = if fld == "region" {
+                arr(m, "steps").get(i).and_then(|st| area_ref(st.get("region"))).and_then(|n| arr(m, "areas").iter().find(|a| s(a, "name") == n)).map(|a| s(a, "label").to_string()).filter(|l| !l.is_empty())
+            } else {
+                None
+            };
+            let words = match area {
+                Some(a) => root.i18n.tv("macro.todo.area", &[("area", &a)]),
+                None => t(&format!("macro.todo.{fld}")),
+            };
+            let step_n = root.i18n.tv("macro.stepN", &[("n", &(i + 1).to_string())]);
+            let mut row = div()
+                .min_h(px(30.))
+                .flex()
+                .items_center()
+                .gap(px(10.))
+                .child(icon(if done { "check" } else { "record" }, 14., if done { c(OK) } else { c(MUTED) }))
+                .child(
+                    div()
+                        .flex_1()
+                        .min_w_0()
+                        .flex()
+                        .items_baseline()
+                        .gap(px(6.))
+                        .text_size(px(T_M))
+                        .text_color(if done { c(MUTED) } else { c(TEXT) })
+                        .child(words)
+                        .child(div().flex_none().text_size(px(T_S)).text_color(c(MUTED)).child(format!("· {step_n}"))),
+                );
+            if !done {
+                row = row.child(if fld == "region" {
+                    Button::new(("mf-todo", k), t("macro.game.edit")).icon("screens").small().disabled(f.on_game).on_click(cx.listener(|r, _, _, cx| edit_on_game(r, cx)))
+                } else {
+                    Button::new(("mf-todo", k), t("macro.todo.go")).small().on_click(cx.listener(move |r, _, window, cx| {
+                        if let Some(f) = r.auto.macro_form.as_mut() {
+                            show_at(f, (Some(i), None), window, cx);
+                        }
+                        cx.notify();
+                    }))
+                });
+            }
+            list = list.child(row);
+        }
+        card().gap(px(10.)).child(div().text_size(px(T_H)).font_weight(FontWeight::SEMIBOLD).child(t(if all_done { "macro.todo.allDone" } else { "macro.todo.title" }))).child(list)
     });
 
     // When it runs.
@@ -5053,9 +5847,16 @@ pub fn form(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
     // Hotkey: Ctrl+Alt and a digit; one another macro has can't be picked.
     let hot_now = m.get("hotkey").and_then(Value::as_i64).map(|n| n.to_string()).unwrap_or_default();
     let mut hk_items = vec![(String::new(), t("macro.hk.none"), true)];
-    hk_items.extend((1..=9i64).map(|n| (n.to_string(), n.to_string(), !taken.contains(&n))));
+    // One another macro has says whose it is (MacroEditor.tsx's macro.hk.taken: "3 · Farm").
+    hk_items.extend((1..=9i64).map(|n| match taken.get(&n) {
+        Some(owner) => (n.to_string(), root.i18n.tv("macro.hk.taken", &[("k", &n.to_string()), ("name", owner)]), false),
+        None => (n.to_string(), n.to_string(), true),
+    }));
     let hk_title = if hot_now.is_empty() { t("macro.hotkey") } else { format!("{} · Ctrl+Alt+{hot_now}", t("macro.hotkey")) };
     let hotkey = pick(cx, "mf-hk", hk_items, &hot_now, |form, v| set(&mut form.m, "hotkey", v.parse::<i64>().map_or(Value::Null, |n| json!(n))));
+    // A hotkey while the app's hotkeys are off (Settings): it won't work until they are on (MacroEditor.tsx).
+    let hk_off = !hot_now.is_empty() && root.state.pointer("/hotkeys/on").and_then(Value::as_bool) == Some(false);
+    let hotkey = div().flex().flex_col().gap(px(8.)).child(hotkey).when(hk_off, |d| d.child(note(t("macro.hk.off"))));
 
     // What a wait that runs out does, when a run counts as stuck, how long it may run, its random extras.
     let fail = Some(s(m, "onFail")).filter(|k| !k.is_empty()).unwrap_or("stop").to_string();
@@ -5069,7 +5870,10 @@ pub fn form(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
         mins.sort_unstable();
     }
     let mut stuck_items = vec![("0".to_string(), t("macro.stuck.off"), true)];
-    stuck_items.extend(mins.into_iter().map(|n| (n.to_string(), dur(root, n * 60), true)));
+    stuck_items.extend(mins.into_iter().map(|n| (n.to_string(), root.i18n.tv("macro.stuck.after", &[("n", &n.to_string())]), true)));
+    // Only a step that looks for something can find nothing (MacroEditor.tsx's LOOK_STEPS, main steps and features).
+    const LOOK: [&str; 7] = ["waitImage", "waitText", "waitColour", "waitStill", "clickImage", "clickColour", "follow"];
+    let looks = arr(m, "steps").iter().chain(arr(m, "features").iter().flat_map(|fe| arr(fe, "steps").iter())).any(|x| LOOK.contains(&s(x, "kind")));
     let stuck = pick(cx, "mf-stuck", stuck_items, &stuck_now.unwrap_or(0).to_string(), |form, v| set(&mut form.m, "stuckMinutes", v.parse::<i64>().ok().filter(|n| *n > 0).map_or(Value::Null, |n| json!(n))));
     let unit = |u: String| div().text_size(px(T_S)).text_color(c(MUTED)).child(u);
     let limits = div()
@@ -5114,7 +5918,7 @@ pub fn form(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
         .child(section(t("macro.targets"), who))
         .child(section(hk_title, hotkey))
         .child(section(t("macro.onFail"), on_fail))
-        .child(section(t("macro.stuckL"), stuck))
+        .when(looks, |d| d.child(section(t("macro.stuckL"), stuck)))
         .child(limits);
 
     // The steps.
@@ -5130,19 +5934,145 @@ pub fn form(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
         .id("mf-rows")
         .flex()
         .flex_col()
-        .gap(px(2.))
         .when(dragged.is_some(), |d| d.cursor_grabbing())
         .on_mouse_up(MouseButton::Left, cx.listener(|r, _, _, cx| end_step_drag(r, cx)))
         .on_mouse_up_out(MouseButton::Left, cx.listener(|r, _, _, cx| end_step_drag(r, cx)));
+    // Add step's kinds: under a row's "+" when one was pressed, else under the Add step button.
+    let fit = kinds_fit(steps, f.add_at(), f.sec.is_some());
+    let mut add_kinds = f.adding.then(|| add_list(root, f, &fit, cx));
+    // A long list: only the rows near the view are drawn, the others are space of their height (measured once drawn,
+    // else the average of those measured). Where the list stands comes from the frame before: one scroll step late,
+    // which NEAR_PX covers; a jump further asks for another frame at once.
+    let draw_near = count >= DRAW_NEAR_FROM;
+    let mut near_y = 0f32;
+    let mut near_gap = 0f32;
+    let (near_top, near_view) = f.near_at.get();
+    let near_view = if near_view > 0. { near_view } else { 1200. };
+    let (near_from, near_to) = (-near_top - NEAR_PX, -near_top + near_view + NEAR_PX);
+    let near_guess = {
+        let tall = f.near_tall.borrow();
+        if tall.is_empty() { 54. } else { tall.values().sum::<f32>() / tall.len() as f32 }
+    };
+    if draw_near {
+        let at = f.near_at.clone();
+        rows = rows.child(
+            canvas(
+                move |b, window, _| {
+                    let (old_top, old_view) = at.get();
+                    let now = (f32::from(b.origin.y), f32::from(window.viewport_size().height));
+                    at.set(now);
+                    if (now.0 - old_top).abs() > NEAR_PX / 3. || now.1 != old_view {
+                        window.refresh();
+                    }
+                },
+                |_, _, _, _| {},
+            )
+            .h(px(0.)),
+        );
+    }
+    // A folded block's rows after its opener are not drawn (MacroEditor.tsx's shapes: hidden).
+    let mut hide_to: Option<usize> = None;
     for (i, st) in steps.iter().enumerate() {
+        if hide_to.is_some_and(|e| i <= e) {
+            continue;
+        }
         let kind = s(st, "kind");
         let open = f.open == Some(i);
+        if draw_near {
+            // A folded block's opener hides its rows here as well, drawn or not.
+            if opener(kind) && is_folded(st) {
+                hide_to = block_end(steps, i);
+            }
+            let h = f.near_tall.borrow().get(&i).copied().unwrap_or(near_guess);
+            let keep = open || f.add_here == Some(i) || f.step_drag.is_some_and(|(from, _)| from == i) || running_at == Some(i);
+            let far = near_y + h < near_from || near_y > near_to;
+            near_y += h;
+            if far && !keep {
+                near_gap += h;
+                continue;
+            }
+            if near_gap > 0. {
+                rows = rows.child(div().h(px(near_gap)).flex_none());
+                near_gap = 0.;
+            }
+        }
+        // This step's rows, measured as drawn (a long list).
+        let outer = std::mem::replace(&mut rows, div().id(("mf-steprows", i)).flex().flex_col());
         let indent = deep.get(i).copied().unwrap_or(0) as f32 * 20.;
         let quiet = ender(kind) || kind == "else";
         let has_body = !ender(kind) && !matches!(kind, "else" | "break" | "stop" | "recover" | "rejoin");
         let mine: Vec<&Prob> = probs.iter().filter(|p| p.step == Some(i) && p.sec == f.sec).collect();
         let bad = mine.iter().any(|p| !p.warn);
         let warn = !bad && !mine.is_empty();
+        // An If or a Repeat with its end folds to its one row: "· 4 steps", and how many problems are hidden in it.
+        let end = if opener(kind) { block_end(steps, i) } else { None };
+        let fold = end.is_some() && is_folded(st);
+        if fold {
+            hide_to = end;
+        }
+        let hidden_bad = if fold { probs.iter().filter(|p| !p.warn && p.sec == f.sec && p.step.is_some_and(|k| k > i && end.is_some_and(|e| k <= e))).count() } else { 0 };
+        // Between the rows: a "+" under the mouse puts a step at that place (MacroEditor.tsx's mc-ins).
+        rows = rows.child(if dragged.is_some() {
+            div().h(px(8.)).into_any_element()
+        } else {
+            let g = SharedString::from(format!("mf-ins-{i}"));
+            let tip: SharedString = t("macro.insHere").into();
+            div()
+                .id(("mf-ins", i))
+                .group(g.clone())
+                .ml(px(indent + 24.))
+                .h(px(8.))
+                .flex()
+                .items_center()
+                .gap(px(4.))
+                .cursor_pointer()
+                .child(div().flex_none().size(px(16.)).rounded_full().bg(c(PANEL)).border_1().border_color(ca(FACE, 0.6)).flex().items_center().justify_center().opacity(0.).group_hover(g.clone(), |s| s.opacity(1.)).child(icon("plus", 10., c(FACE))))
+                .child(div().flex_1().h(px(1.)).bg(ca(FACE, 0.)).group_hover(g, |s| s.bg(ca(FACE, 0.45))))
+                .tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into())
+                .on_click(edit(cx, move |form| {
+                    if form.adding && form.add_here == Some(i) {
+                        form.adding = false;
+                        form.add_here = None;
+                    } else {
+                        form.adding = true;
+                        form.add_here = Some(i);
+                        form.keys = false;
+                    }
+                }))
+                .into_any_element()
+        });
+        if f.add_here == Some(i) {
+            if let Some(p) = add_kinds.take() {
+                rows = rows.child(div().ml(px(indent + 24.)).mr(px(126.)).mb(px(6.)).child(p));
+            }
+        }
+        let fold_button = end.map(|_| {
+            IconButton::new(("mf-fold", i), if fold { "chevronRight" } else { "chevronDown" })
+                .size(26.)
+                .tip(t(if fold { "macro.block.unfold" } else { "macro.block.fold" }))
+                .on_click(edit(cx, move |form| form.toggle_fold(i)))
+        });
+        let folded_words = fold.then(|| root.i18n.tn("macro.block.steps", f.inner_steps(i) as i64, &[]));
+        let hidden_mark = (hidden_bad > 0).then(|| {
+            let tip: SharedString = root.i18n.tn("macro.block.probs", hidden_bad as i64, &[]).into();
+            div()
+                .id(("mf-hidden-bad", i))
+                .flex_none()
+                .min_w(px(20.))
+                .h(px(20.))
+                .px(px(6.))
+                .rounded_full()
+                .border_1()
+                .border_color(c(BAD))
+                .flex()
+                .items_center()
+                .justify_center()
+                .text_size(px(T_XS))
+                .font_weight(FontWeight::SEMIBOLD)
+                .text_color(c(BAD))
+                .child(hidden_bad.to_string())
+                .tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into())
+        });
         let main = hot(("mf-step", i))
             .flex_1()
             .min_w_0()
@@ -5156,8 +6086,19 @@ pub fn form(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
             .cursor_pointer()
             .child(div().w(px(24.)).flex_none().text_size(px(T_S)).text_color(c(MUTED)).font_features(tnum()).child((i + 1).to_string()))
             .child(icon(step_icon(kind), 15., if opener(kind) { c(FACE) } else { c(TEXT_2) }))
-            .child(div().flex_1().min_w_0().truncate().text_size(px(T_M)).font_weight(FontWeight::MEDIUM).text_color(if quiet { c(MUTED) } else { c(TEXT) }).child(step_text(root, m, &others, st, i + 1)))
-            .when(running_at == Some(i), |d| d.child(div().flex_none().px(px(7.)).py(px(1.)).rounded_full().bg(ca(OK, 0.18)).text_size(px(T_XS)).font_weight(FontWeight::SEMIBOLD).text_color(c(OK)).child(t("macro.run.here"))))
+            .child(
+                div()
+                    .map(|d| if fold { d.flex_shrink(1.) } else { d.flex_1() })
+                    .min_w_0()
+                    .truncate()
+                    .text_size(px(T_M))
+                    .font_weight(FontWeight::MEDIUM)
+                    .text_color(if quiet { c(MUTED) } else { c(TEXT) })
+                    .child(step_text(root, m, &others, st, i + 1)),
+            )
+            .when_some(folded_words, |d, w| d.child(div().flex_none().text_size(px(T_S)).text_color(c(MUTED)).child(w)).child(div().flex_1()))
+            .children(hidden_mark)
+            .when(running_at == Some(i), |d| d.child(div().flex_none().text_size(px(T_S)).font_weight(FontWeight::SEMIBOLD).text_color(c(OK)).child(t("macro.run.here"))))
             .when(bad || warn, |d| d.child(div().size(px(8.)).flex_none().rounded_full().bg(if bad { c(BAD) } else { c(WARN) })))
             .on_click(cx.listener(move |r, _, window, cx| open_step(r, if open { None } else { Some(i) }, window, cx)));
         let too_many = root.i18n.tv("macro.err.tooMany", &[("max", &MAX_STEPS.to_string())]);
@@ -5210,6 +6151,7 @@ pub fn form(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
                 }))
             })
             .child(grip)
+            .children(fold_button)
             .child(main)
             .child(if has_body {
                 IconButton::new(("mf-open", i), if open { "chevronUp" } else { "chevronDown" })
@@ -5244,14 +6186,22 @@ pub fn form(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
             rows = rows.child(div().ml(px(under_ml)).mb(px(4.)).text_size(px(T_S)).text_color(c(MUTED)).child(s(st, "note").to_string()));
         }
         if let Some((_, why)) = stopped.as_ref().filter(|(k, _)| *k == i) {
-            let words = if why.is_empty() || why == "notFound" || why == "timeout" { t("macro.stop.here") } else { root.i18n.tv("macro.stop.hereWhy", &[("why", &t(&format!("macro.why.{why}")))]) };
+            let words = if why.is_empty() || why == "notFound" || why == "timeout" { t("macro.stop.here") } else { root.i18n.tv("macro.stop.hereWhy", &[("why", &crate::pages::auto::why_text(root, why))]) };
             rows = rows.child(div().ml(px(under_ml)).mb(px(4.)).child(bad_line(words, false)));
         }
         if open && has_body {
-            rows = rows.child(div().ml(px(indent + 56.)).mr(px(126.)).mt(px(2.)).mb(px(8.)).p(px(14.)).rounded(px(R_M)).bg(ca(WHITE, 0.04)).child(step_body(root, f, i, st, &others, win.is_some(), &mine, cx)));
+            rows = rows.child(div().ml(px(indent + 56.)).mr(px(126.)).mt(px(2.)).mb(px(8.)).pl(px(16.)).py(px(4.)).border_l_2().border_color(ca(WHITE, 0.1)).child(step_body(root, f, i, st, &others, win.is_some(), &mine, cx)));
         } else if !mine.is_empty() {
             // What is wrong, under its row (not only a dot), and a closed row's Fix that opens it.
-            let fix = (!open && bad).then(|| Button::new(("mf-fix", i), t("macro.fix")).small().on_click(cx.listener(move |r, _, window, cx| open_step(r, Some(i), window, cx))));
+            // A step with no area to look in: its own fix (MacroEditor.tsx's fixOf "area"); else Fix opens it.
+            let area_fix = mine.iter().find(|p| !p.warn).is_some_and(|p| p.fix == Some("area"));
+            let fix = (!open && bad).then(|| {
+                if area_fix {
+                    Button::new(("mf-fix", i), t("macro.fix.area")).small().on_click(cx.listener(move |r, _, window, cx| fix_area(r, i, window, cx)))
+                } else {
+                    Button::new(("mf-fix", i), t("macro.fix")).small().on_click(cx.listener(move |r, _, window, cx| open_step(r, Some(i), window, cx)))
+                }
+            });
             rows = rows.child(
                 div()
                     .ml(px(indent + 66.))
@@ -5264,7 +6214,7 @@ pub fn form(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
                     .children(fix),
             );
         }
-        if safe.contains(&i) {
+        if safe.contains(&i) || (fold && end.is_some_and(|e| safe.contains(&e))) {
             rows = rows.child(
                 div()
                     .ml(px(22.))
@@ -5284,71 +6234,50 @@ pub fn form(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
                     .child(t("macro.feat.here")),
             );
         }
+        let mine_rows = std::mem::replace(&mut rows, outer);
+        rows = if draw_near {
+            let tall = f.near_tall.clone();
+            rows.child(mine_rows.relative().child(canvas(move |b, _, _| {
+                tall.borrow_mut().insert(i, f32::from(b.size.height));
+            }, |_, _, _, _| {}).absolute().inset_0()))
+        } else {
+            rows.child(mine_rows)
+        };
+    }
+    if near_gap > 0. {
+        rows = rows.child(div().h(px(near_gap)).flex_none());
     }
 
-    // Add step: the kinds that fit where it would go (an Otherwise inside an If without one, Leave inside a Repeat,
-    // one If stuck, outside every block).
-    let at = f.add_at().min(count);
-    let mut stack: Vec<(bool, bool)> = Vec::new();
-    for st in steps.get(..at).unwrap_or(&[]) {
-        match s(st, "kind") {
-            "if" => stack.push((true, false)),
-            "loop" | "loopUntil" => stack.push((false, false)),
-            "else" => {
-                if let Some(top) = stack.last_mut() {
-                    top.1 = true;
-                }
-            }
-            k if ender(k) => {
-                stack.pop();
-            }
-            _ => {}
-        }
-    }
-    let fits = |kind: &str| match kind {
-        "else" => stack.last().is_some_and(|(is_if, has_else)| *is_if && !*has_else),
-        "break" => stack.iter().any(|(is_if, _)| !*is_if),
-        "recover" => !steps.iter().any(|st| s(st, "kind") == "recover"),
-        _ => true,
-    };
+    // Add step (its kinds: add_list), and Record.
     let rec = root.state.get("macroRecording").filter(|v| v.is_object());
+    let open_here = f.adding && f.add_here.is_none();
     let mut add = div().flex().flex_col().gap(px(12.)).child(
         div()
             .flex()
             .items_center()
             .gap(px(8.))
             .child(
-                Button::new("mf-add", t("macro.addStep")).icon("plus").icon_end(if f.adding { "chevronUp" } else { "chevronDown" }).on_click(edit(cx, |form| {
-                    form.adding = !form.adding;
+                Button::new("mf-add", t("macro.addStep")).icon("plus").icon_end(if open_here { "chevronUp" } else { "chevronDown" }).on_click(edit(cx, |form| {
+                    // (Open under a row's "+": it comes here instead.)
+                    if form.add_here.take().is_some() {
+                        form.adding = true;
+                    } else {
+                        form.adding = !form.adding;
+                    }
                     form.keys = false;
                 })),
             )
             .child(
                 Button::new("mf-rec", t("macro.recordBtn"))
                     .icon("record")
+                    .tip(t(if win.is_some() { "macro.rec.tip" } else { "macro.need.record" }))
                     .disabled(win.is_none() || rec.is_some())
                     .on_click(cx.listener(|r, _, _, cx| record(r, cx))),
             ),
     );
-    if f.adding {
-        let mut n = 0usize;
-        let mut groups = div().p(px(14.)).rounded(px(R_M)).bg(ca(WHITE, 0.04)).flex().flex_col().gap(px(12.));
-        for (group, kinds) in GROUPS {
-            let mut line = div().flex().flex_wrap().gap(px(6.));
-            for kind in kinds.iter().copied().filter(|k| fits(k)) {
-                n += 1;
-                let too_many = root.i18n.tv("macro.err.tooMany", &[("max", &MAX_STEPS.to_string())]);
-                line = line.child(
-                    pill(("mf-kind", n), false, true)
-                        .gap(px(7.))
-                        .child(icon(step_icon(kind), 14., c(TEXT_2)))
-                        .child(t(&format!("macro.kind.{kind}")))
-                        .on_click(edit(cx, move |form| form.add(kind, too_many.clone()))),
-                );
-            }
-            groups = groups.child(div().flex().items_start().gap(px(12.)).child(div().w(px(110.)).flex_none().pt(px(7.)).text_size(px(T_S)).text_color(c(MUTED)).child(t(&format!("macro.grp.{group}")))).child(line.flex_1().min_w_0()));
-        }
-        add = add.child(groups);
+    // (Not placed under a row, as its "+" is gone with the rows: here.)
+    if let Some(p) = add_kinds.take() {
+        add = add.child(p);
     }
 
     // A recording under way (its countdown, then its steps so far), or its steps waiting to be added.
@@ -5398,6 +6327,7 @@ pub fn form(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
                     }
                     set(&mut form.m, "recordedSize", json!({ "w": num(&p, "w"), "h": num(&p, "h") }));
                     form.open = None;
+                    form.remap(|_| None);
                 }
             })))
             .child(Button::new("mf-rec-drop", t("macro.rec.discard")).quiet().small().on_click(edit(cx, |form| form.pending = None)))
@@ -5409,8 +6339,8 @@ pub fn form(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
             section_head(t("macro.steps"), Some(count))
                 .when(feats.is_empty(), |d| d.child(feat_add(root, "mf-feat-add-head", cx))),
         )
-        .children(feat_tabs(root, f, &probs, cx))
-        .children(feat_head(root, f, &probs, cx))
+        .children(feat_tabs(root, f, &probs[..], cx))
+        .children(feat_head(root, f, &probs[..], cx))
         .children(recording)
         .children(pending)
         .when(count == 0, |d| d.child(note(t(if f.sec.is_some() { "macro.feat.noSteps" } else { "macro.noSteps" }))))
@@ -5430,10 +6360,10 @@ pub fn form(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
             .flex()
             .items_start()
             .gap(px(GRID_GAP))
-            .child(div().flex_1().min_w_0().flex().flex_col().gap(px(GRID_GAP)).child(div().flex().flex_col().gap(px(10.)).child(head_row).child(run_line).when(run_open, |d| d.child(top))).children(templates).child(steps_card).child(player))
+            .child(div().flex_1().min_w_0().flex().flex_col().gap(px(GRID_GAP)).children(todo_box).child(div().flex().flex_col().gap(px(10.)).child(head_row).child(run_line).when(run_open, |d| d.child(top))).children(templates).child(steps_card).child(player))
             .child(div().w(px(side_w)).flex_none().flex().flex_col().gap(px(GRID_GAP)).child(game))
     } else {
-        div().px(px(SIDE)).pt(px(4.)).pb(px(32.)).flex().flex_col().gap(px(GRID_GAP)).child(div().flex().flex_col().gap(px(10.)).child(head_row).child(run_line).when(run_open, |d| d.child(top))).children(templates).child(game).child(steps_card).child(player)
+        div().px(px(SIDE)).pt(px(4.)).pb(px(32.)).flex().flex_col().gap(px(GRID_GAP)).children(todo_box).child(div().flex().flex_col().gap(px(10.)).child(head_row).child(run_line).when(run_open, |d| d.child(top))).children(templates).child(game).child(steps_card).child(player)
     };
 
     // When it runs, on whom, its hotkey, how many steps: the web editor's summary line, said at once under its name.
@@ -5457,7 +6387,7 @@ pub fn form(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
                 .flex()
                 .items_center()
                 .gap(px(4.))
-                .child(tool("mf-back", Some("chevronLeft"), false).ml(px(-10.)).child(t("nav.auto")).on_click(cx.listener(|r, _, _, cx| close(r, cx))))
+                .child(tool("mf-back", Some("chevronLeft"), false).ml(px(-10.)).child(t("nav.auto")).on_click(cx.listener(|r, _, window, cx| leave(r, window, cx))))
                 .child(div().text_size(px(T_M)).text_color(c(DIM)).child("/"))
                 .child(div().px(px(6.)).text_size(px(T_M)).text_color(c(MUTED)).child(kind_title.clone())),
         )
@@ -5494,6 +6424,12 @@ pub fn form(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
     let errors: Vec<&Prob> = probs.iter().filter(|p| !p.warn).collect();
     let first_step = errors.iter().find(|p| p.step.is_some() || p.sec.is_some()).map(|p| (p.step, p.sec.clone()));
     let say = f.error.clone().or_else(|| (f.tried && !errors.is_empty()).then(|| root.i18n.tn("macro.problemsN", errors.len() as i64, &[])));
+    // The first problem a name would fix (the macro's, or an area's): "Name it" takes you to the box
+    // (MacroEditor.tsx's fixOf "name").
+    let name_fix = errors.first().and_then(|p| p.fix).filter(|x| matches!(*x, "name" | "areaName")).filter(|_| say.is_some()).map(|x| {
+        let area = x == "areaName";
+        Button::new("mf-fix-name", t("macro.fix.name")).small().on_click(cx.listener(move |r, _, window, cx| fix_name(r, area, window, cx)))
+    });
     let foot = div()
         .flex_none()
         .px(px(SIDE))
@@ -5524,7 +6460,8 @@ pub fn form(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
                     })
             }),
         )
-        .child(Button::new("mf-cancel", t("common.cancel")).quiet().on_click(cx.listener(|r, _, _, cx| close(r, cx))))
+        .children(name_fix)
+        .child(Button::new("mf-cancel", t("common.cancel")).quiet().on_click(cx.listener(|r, _, window, cx| leave(r, window, cx))))
         .child(Button::new("mf-save", t("macro.save")).icon("check").primary().disabled(f.saving).on_click(cx.listener(|r, _, window, cx| save(r, window, cx))));
 
     div()

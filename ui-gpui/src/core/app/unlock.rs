@@ -243,6 +243,7 @@ impl App {
                 target: launch.target.clone(),
                 preset_id: launch.preset_id,
                 fps_limit: launch.fps_limit,
+                home_screen: launch.home_screen,
             })
             .collect();
         let mut d = vault.data();
@@ -326,6 +327,7 @@ impl App {
             if same_client(session) && known && !taken {
                 let mut launch = PendingLaunch::new(session.account_id, Default::default(), session.started_at, session.target.clone(), false, session.preset_id);
                 launch.fps_limit = session.fps_limit;
+                launch.home_screen = session.home_screen;
                 self.controller.running.borrow_mut().insert(session.account_id, (session.pid, Rc::new(launch)));
                 // A light-AFK window was minimised once already, before Bloxkeep closed: one the person brought back up stays up.
                 self.presets.afk_minimised.borrow_mut().insert(session.pid);
@@ -374,6 +376,10 @@ impl App {
         // Nothing of the vault stays reachable while locked: dispose only wipes the key, so the decrypted accounts,
         // cookies and passwords go only once no field holds the vault (or what was made from it) any more.
         self.discord.vault.set(None);
+        // The Robux round keeps the vault it counted for (and the balances): both go with the lock.
+        *self.robux.robux_vault.borrow_mut() = None;
+        self.robux.robux.borrow_mut().clear();
+        self.robux.robux_asked.borrow_mut().clear();
         self.games.friend_ids.borrow_mut().clear();
         self.games.friend_servers.borrow_mut().clear();
         self.games.private_servers.borrow_mut().clear(); // their access codes are the vault's accounts'

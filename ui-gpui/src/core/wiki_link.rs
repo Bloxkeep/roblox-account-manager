@@ -110,7 +110,7 @@ const MAX_ITEMS: usize = 2000;
 const MAX_FIELDS: usize = 30;
 const MAX_TEXT: usize = 1000;
 const KEEP: Duration = Duration::from_secs(30 * 60);
-static HTTP: LazyLock<ureq::Agent> = LazyLock::new(|| ureq::AgentBuilder::new().redirects(0).timeout(Duration::from_secs(30)).build());
+static HTTP: LazyLock<ureq::Agent> = LazyLock::new(|| crate::net::builder().redirects(0).timeout(Duration::from_secs(30)).build());
 static ID_RULE: LazyLock<Regex> = LazyLock::new(|| Regex::new("^[a-z0-9-]{1,40}$").unwrap());
 
 #[derive(Clone)]
@@ -138,8 +138,9 @@ pub fn base_of(feeds_url: Option<&str>) -> Url {
     Url::parse(BASE).unwrap()
 }
 
-pub fn games(bot: &Url, ct: &Cancel) -> Res<Vec<WikiGameInfo>> {
-    if let Some(KeptValue::Games(kept)) = fresh("") {
+/// again: asked past what is kept here, since a game news brought has no card yet (one added to the bot since).
+pub fn games(bot: &Url, again: bool, ct: &Cancel) -> Res<Vec<WikiGameInfo>> {
+    if !again && let Some(KeptValue::Games(kept)) = fresh("") {
         return Ok(kept);
     }
     let doc = get(&join(bot, "/wiki")?, ct)?;
@@ -333,6 +334,5 @@ fn utf16_len(s: &str) -> usize {
 
 /// The first n UTF-16 units, as s[..n] in the C#.
 fn cut(s: &str, n: usize) -> String {
-    let units: Vec<u16> = s.encode_utf16().collect();
-    if units.len() <= n { s.to_string() } else { String::from_utf16_lossy(&units[..n]) }
+    crate::core::base::cut_utf16(s, n).to_string()
 }

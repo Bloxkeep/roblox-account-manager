@@ -5,6 +5,7 @@
 //! every sentence (`l::t`) reads it. Never call `l::t`, `vaults::current` or `save` while holding `lock()`.
 use std::collections::HashSet;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{LazyLock, Mutex, MutexGuard, RwLock};
 use std::time::Duration;
 
@@ -52,8 +53,8 @@ pub struct SavedTheme {
 }
 
 /// A vault on this PC (the lock screen's picker, `vaults`): its own file and master password. Names and pictures show
-/// before anything is unlocked, so nothing here is secret.
-#[derive(Clone, Debug, Default)]
+/// before anything is unlocked; `remote_key` is the one secret (hidden from Debug).
+#[derive(Clone, Default)]
 pub struct VaultEntry {
     pub id: String,
     /// vault.rmv for the first, vault-<id>.rmv for the others.
@@ -67,6 +68,21 @@ pub struct VaultEntry {
     /// encrypted for this Windows user, so not readable from the file).
     pub remote_control: bool,
     pub remote_key: Option<String>,
+}
+
+impl std::fmt::Debug for VaultEntry {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("VaultEntry")
+            .field("id", &self.id)
+            .field("file", &self.file)
+            .field("name", &self.name)
+            .field("picture", &self.picture)
+            .field("last_backup", &self.last_backup)
+            .field("backup_pending", &self.backup_pending)
+            .field("remote_control", &self.remote_control)
+            .field("remote_key", &self.remote_key.as_ref().map(|_| super::base::Redacted))
+            .finish()
+    }
 }
 
 /// `at`: when the build was installed (its folder's time), or first seen for the first entry. `source`: whose copy
@@ -410,6 +426,8 @@ const KNOWN: &[&str] = &[
     "mainWindow", "mainMaximized", "robloxHistory", "robloxClosedAt", "robloxClosedCount", "robloxClosedNotified", "skipConfirm", "multiWorked",
     "multiRobloxAtStart", "discordPresence", "customTheme", "vaults", "lastVault", "askVault", "countOnline", "onlineId",
     "knownVaultIds", "foreignRestore", "savedThemes", "gameFeeds", "wikis",
+    // Read and written here, but not in the C#'s list: kept out of `extra`, where a stale copy (remoteKey, a secret) sat.
+    "globalHotkeys", "boardName", "boardNameChosen", "firstOpenTold", "remoteControl", "remoteKey",
 ];
 
 /// String length as C# counts it (UTF-16 units).
@@ -465,8 +483,12 @@ pub fn load() {
             // Missing or unreadable prefs: defaults. Held by another program: nothing is known to be wrong with it, so
             // this run's defaults don't overwrite it.
             if prefs_path().exists() {
-                lock().unreadable = true;
-                log::note(&format!("prefs.json couldn't be opened ({:?}); this run's settings won't be saved over it.", e.kind()));
+                let mut s = lock();
+                s.unreadable = true;
+                // What this run starts from, so a later save that can read the file again knows what changed since.
+                *UNREAD_START.lock().unwrap_or_else(|e| e.into_inner()) = Some(snapshot(&s, &language()));
+                drop(s);
+                log::note(&format!("prefs.json couldn't be opened ({:?}); this run's settings won't be saved over it until it can be read.", e.kind()));
             }
             return;
         }
@@ -894,18 +916,122 @@ fn ordinal_sorted(set: &HashSet<String>) -> Vec<String> {
     list
 }
 
+/// Numbers each save's snapshot, taken under the prefs lock, so they count in the order the state was read.
+static SNAPSHOTS: AtomicU64 = AtomicU64::new(0);
+/// Writes one at a time: the newest snapshot tried, and whether it was written. An older one coming late is
+/// never written over it.
+static WRITTEN: Mutex<(u64, bool)> = Mutex::new((0, true));
+
+/// The settings as this run started, when prefs.json couldn't be read then.
+static UNREAD_START: Mutex<Option<Map<String, Value>>> = Mutex::new(None);
+
+/// prefs.json couldn't be read at start: read again before a save. Once it can be, what it holds comes back, with
+/// this run's changes over it (a vault the file doesn't list added), and saving works again. False while still held.
+fn read_again() -> bool {
+    if !lock().unreadable {
+        return true;
+    }
+    // One save at a time does this; the others find it done.
+    static AGAIN: Mutex<()> = Mutex::new(());
+    let _one = AGAIN.lock().unwrap_or_else(|e| e.into_inner());
+    if !lock().unreadable {
+        return true;
+    }
+    let file = match std::fs::read(prefs_path()) {
+        Ok(bytes) => serde_json::from_str::<Value>(String::from_utf8_lossy(&bytes).trim_start_matches('\u{feff}')).ok(),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => None,
+        Err(_) => return false,
+    };
+    let Some(Value::Object(mut merged)) = file else {
+        // Gone, or not JSON (kept aside first, as at start): nothing of the person's to keep, this run's settings saved.
+        if prefs_path().exists() {
+            keep_damaged();
+        }
+        lock().unreadable = false;
+        log::note("prefs.json can be saved again.");
+        return true;
+    };
+    let start = UNREAD_START.lock().unwrap_or_else(|e| e.into_inner()).take().unwrap_or_default();
+    let now = snapshot(&lock(), &language());
+    for (key, value) in now {
+        if start.get(&key) == Some(&value) {
+            continue; // not changed this run: the file's own stays
+        }
+        if key == "vaults"
+            && let (Some(Value::Array(theirs)), Value::Array(ours)) = (merged.get_mut("vaults"), &value)
+        {
+            let file_of = |v: &Value| v.get("file").and_then(Value::as_str).map(str::to_ascii_lowercase);
+            let listed: HashSet<String> = theirs.iter().filter_map(file_of).collect();
+            theirs.extend(ours.iter().filter(|v| file_of(v).is_some_and(|f| !listed.contains(&f))).cloned());
+            continue;
+        }
+        merged.insert(key, value);
+    }
+    let Ok(text) = serde_json::to_string(&Value::Object(merged)) else { return false };
+    if crate::core::durable_file::write_text(prefs_path(), &text).is_err() {
+        *UNREAD_START.lock().unwrap_or_else(|e| e.into_inner()) = Some(start);
+        return false;
+    }
+    // Read back as at start, over fresh settings: the file's values in memory too, so later saves keep them.
+    *lock() = State::default();
+    load();
+    log::note("prefs.json could be read again; its settings are back, with this run's changes kept.");
+    !lock().unreadable
+}
+
 /// Written to a temp file first, so a crash mid-write never leaves an empty prefs.json (and defaults).
 /// false when it couldn't be written (`save_failed`); what was set still applies for this session.
 pub fn save() -> bool {
-    let language = language();
-    let mut s = lock();
-    if s.unreadable {
-        s.save_failed = true; // logged when it was found; nothing is written over a file that couldn't be read
+    if !read_again() {
+        lock().save_failed = true; // logged when it was found; nothing is written over a file that couldn't be read
         return false;
     }
-    if let Err(e) = std::fs::create_dir_all(vault::data_dir()) {
-        return failed(&mut s, &format!("prefs.json couldn't be saved ({:?}); tried {SAVE_TRIES} times. The settings apply until Bloxkeep closes, and are kept by the next save that works.", e.kind()));
+    let language = language();
+    let (text, number) = {
+        let mut s = lock();
+        let values = snapshot(&s, &language);
+        match crate::core::models::to_net_json_string(&values) {
+            Ok(text) => (text, SNAPSHOTS.fetch_add(1, Ordering::SeqCst) + 1),
+            Err(e) => return failed(&mut s, &format!("prefs.json couldn't be saved ({e}); tried {SAVE_TRIES} times. The settings apply until Bloxkeep closes, and are kept by the next save that works.")),
+        }
+    };
+    // The disk work (fsync, rename, waits between tries) outside the prefs lock, which every part of the app reads.
+    let mut last = WRITTEN.lock().unwrap_or_else(|e| e.into_inner());
+    if number < last.0 {
+        return last.1; // a newer snapshot went first: this one's changes are in it
     }
+    last.0 = number;
+    // Flushed to disk before it replaces the old file: a power cut can't leave it empty (language, theme and
+    // the backup folder would quietly reset, and backups stop).
+    let result = std::fs::create_dir_all(vault::data_dir()).map_err(|e| format!("{:?}", e.kind())).and_then(|()| {
+        // An antivirus or sync program holding the file lets go within a moment, as for the vault: tried a few times.
+        let mut attempt = 1;
+        loop {
+            match crate::core::durable_file::write_text(&prefs_path(), &text) {
+                Ok(()) => return Ok(()),
+                Err(_) if attempt < SAVE_TRIES => std::thread::sleep(SAVE_RETRY_WAIT),
+                Err(e) => return Err(e.to_string()),
+            }
+            attempt += 1;
+        }
+    });
+    last.1 = result.is_ok();
+    // Still under WRITTEN, so a later save's outcome can't be overtaken by this one's.
+    match result {
+        Ok(()) => {
+            lock().save_failed = false;
+            true
+        }
+        // The choice still applies for this session, and the next Save that works writes it all.
+        Err(why) => failed(
+            &mut lock(),
+            &format!("prefs.json couldn't be saved ({why}); tried {SAVE_TRIES} times. The settings apply until Bloxkeep closes, and are kept by the next save that works."),
+        ),
+    }
+}
+
+/// prefs.json's content from the state now.
+fn snapshot(s: &State, language: &str) -> Map<String, Value> {
     let first = s.vault_list.iter().find(|v| v.file == vaults::FIRST_FILE);
     let mut values = Map::new();
     let mut put = |key: &str, value: Value| {
@@ -1003,31 +1129,7 @@ pub fn save() -> bool {
             values.insert(key.clone(), value.clone());
         }
     }
-    // Flushed to disk before it replaces the old file: a power cut can't leave it empty (language, theme and
-    // the backup folder would quietly reset, and backups stop).
-    let text = match crate::core::models::to_net_json_string(&values) {
-        Ok(text) => text,
-        Err(e) => return failed(&mut s, &format!("prefs.json couldn't be saved ({e}); tried {SAVE_TRIES} times. The settings apply until Bloxkeep closes, and are kept by the next save that works.")),
-    };
-    // An antivirus or sync program holding the file lets go within a moment, as for the vault: tried a few times.
-    let mut attempt = 1;
-    loop {
-        match crate::core::durable_file::write_text(&prefs_path(), &text) {
-            Ok(()) => {
-                s.save_failed = false;
-                return true;
-            }
-            Err(_) if attempt < SAVE_TRIES => std::thread::sleep(SAVE_RETRY_WAIT),
-            Err(e) => {
-                // The choice still applies for this session, and the next Save that works writes it all.
-                return failed(
-                    &mut s,
-                    &format!("prefs.json couldn't be saved ({e}); tried {SAVE_TRIES} times. The settings apply until Bloxkeep closes, and are kept by the next save that works."),
-                );
-            }
-        }
-        attempt += 1;
-    }
+    values
 }
 
 /// A failed Save: the flag the app shows a notice for (AppController.AutoLock.cs), and one line in the log per session.

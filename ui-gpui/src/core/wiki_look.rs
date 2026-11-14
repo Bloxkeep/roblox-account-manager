@@ -28,7 +28,7 @@ pub struct WikiLookInfo {
     pub ink: Option<String>,
 }
 
-static HTTP: LazyLock<ureq::Agent> = LazyLock::new(|| ureq::AgentBuilder::new().timeout(Duration::from_secs(10)).build());
+static HTTP: LazyLock<ureq::Agent> = LazyLock::new(|| crate::net::builder().timeout(Duration::from_secs(10)).build());
 const KEPT_FOR_SECS: f64 = 7.0 * 24.0 * 3600.0;
 
 /// DateTime's default (0001-01-01), for a kept entry without its time.
@@ -58,6 +58,8 @@ impl Default for Kept {
 static KNOWN: LazyLock<Mutex<HashMap<i64, Kept>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
 static GATE: Mutex<()> = Mutex::new(());
 static LOADED: AtomicBool = AtomicBool::new(false);
+/// Places whose icon colour is being worked out now: a second look meanwhile doesn't queue them (and download them) again.
+static TINTING: LazyLock<Mutex<std::collections::HashSet<i64>>> = LazyLock::new(|| Mutex::new(std::collections::HashSet::new()));
 
 fn file_path() -> std::path::PathBuf {
     vault::cache_dir().join("game-looks.json")
@@ -70,8 +72,12 @@ pub fn of(places: impl IntoIterator<Item = i64>) -> Res<HashMap<i64, WikiLookInf
             wanted.push(p);
         }
     }
-    let _gate = lock(&GATE);
-    load();
+    // Only the first read of the kept list is one at a time: the Roblox lookups below (up to ~30 s) no longer make
+    // another call wait for them.
+    {
+        let _gate = lock(&GATE);
+        load();
+    }
     let missing: Vec<i64> = {
         let known = lock(&KNOWN);
         wanted
@@ -86,10 +92,23 @@ pub fn of(places: impl IntoIterator<Item = i64>) -> Res<HashMap<i64, WikiLookInf
     if !missing.is_empty() {
         let ct = Cancel::new();
         let ct = &ct;
-        let universes: Vec<(i64, i64)> = std::thread::scope(|s| {
-            let jobs: Vec<_> = missing.iter().map(|&p| (p, s.spawn(move || try_or(api::get_universe_id(p, ct), 0i64)))).collect();
-            jobs.into_iter().map(|(p, j)| j.join().unwrap_or(Ok(0)).map(|u| (p, u))).collect::<Res<Vec<_>>>()
-        })?;
+        // Four at a time, as Games looks them up (SemaphoreSlim(4)), not a thread per place (up to ~100).
+        let queue = Mutex::new(missing.iter().copied().enumerate());
+        let answers: Mutex<Vec<Option<Res<i64>>>> = Mutex::new(vec![None; missing.len()]);
+        std::thread::scope(|s| {
+            for _ in 0..4 {
+                s.spawn(|| {
+                    loop {
+                        let Some((i, place)) = lock(&queue).next() else { break };
+                        // A lookup that panicked counts as not found, as a failed thread's join did.
+                        let got = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| try_or(api::get_universe_id(place, ct), 0i64))).unwrap_or(Ok(0));
+                        lock(&answers)[i] = Some(got);
+                    }
+                });
+            }
+        });
+        let answers = answers.into_inner().unwrap_or_else(|e| e.into_inner());
+        let universes: Vec<(i64, i64)> = missing.iter().zip(answers).map(|(&p, got)| got.unwrap_or(Ok(0)).map(|u| (p, u))).collect::<Res<Vec<_>>>()?;
         let ids: Vec<i64> = universes.iter().map(|u| u.1).filter(|u| *u > 0).collect();
         let (icons, covers) = std::thread::scope(|s| {
             let icons = s.spawn(|| try_or(api::get_game_icons(ids.clone(), ct), HashMap::new()));
@@ -103,6 +122,10 @@ pub fn of(places: impl IntoIterator<Item = i64>) -> Res<HashMap<i64, WikiLookInf
                 let (icon, cover) = (icons.get(universe).cloned(), covers.get(universe).cloned());
                 // The colour stays while the icon does.
                 let kept = match known.get(place) {
+                    // Nothing came back (offline, Roblox busy): the pictures known before stay, asked again later.
+                    Some(had) if icon.is_none() && cover.is_none() && (had.icon.is_some() || had.cover.is_some()) => {
+                        Kept { at: Stamp::utc_now(), ..had.clone() }
+                    }
                     Some(had) if had.tinted && had.icon == icon && icon.is_some() => Kept { cover, at: Stamp::utc_now(), ..had.clone() },
                     _ => Kept { tinted: icon.is_none(), icon, cover, tint: None, ink: None, at: Stamp::utc_now() },
                 };
@@ -113,7 +136,12 @@ pub fn of(places: impl IntoIterator<Item = i64>) -> Res<HashMap<i64, WikiLookInf
     }
     let untinted: Vec<(i64, String)> = {
         let known = lock(&KNOWN);
-        wanted.iter().filter_map(|p| known.get(p).filter(|k| !k.tinted).and_then(|k| k.icon.clone()).map(|icon| (*p, icon))).collect()
+        let mut tinting = lock(&TINTING);
+        wanted
+            .iter()
+            .filter_map(|p| known.get(p).filter(|k| !k.tinted).and_then(|k| k.icon.clone()).map(|icon| (*p, icon)))
+            .filter(|(p, _)| tinting.insert(*p))
+            .collect()
     };
     if !untinted.is_empty() {
         std::thread::spawn(move || tint_all(untinted));
@@ -140,6 +168,10 @@ fn tint_all(icons: Vec<(i64, String)>) {
                         if q.is_empty() { None } else { Some(q.remove(0)) }
                     };
                     let Some((place, icon)) = next else { break };
+                    // Off the list however this one ends: the next look may queue it again if it stayed untinted.
+                    let _done = crate::core::base::on_drop(|| {
+                        lock(&TINTING).remove(&place);
+                    });
                     // An error the C# didn't catch went unseen in its Task.Run: the icon stays untinted, asked again next time.
                     let Ok((tint, ink)) = try_or(tint_url(&icon), (None, None)) else { continue };
                     let mut known = lock(&KNOWN);
@@ -182,15 +214,18 @@ fn load() {
 }
 
 /// Only what Roblox answered is kept (a game it didn't is asked again next time).
+/// One at a time (a lookup's and the colours' thread both save), so a newer list is never written over by an older one.
 fn save() {
+    static SAVING: Mutex<()> = Mutex::new(());
+    let _one = lock(&SAVING);
     let text = {
         let known = lock(&KNOWN);
         let kept: HashMap<&i64, &Kept> = known.iter().filter(|(_, k)| k.icon.is_some() || k.cover.is_some()).collect();
         serde_json::to_string(&kept).unwrap_or_else(|_| "{}".into())
     };
-    let path = file_path();
-    let temp = format!("{}.tmp", path.to_string_lossy());
-    let done = std::fs::create_dir_all(vault::cache_dir()).and_then(|_| std::fs::write(&temp, text)).and_then(|_| std::fs::rename(&temp, &path));
+    let done = std::fs::create_dir_all(vault::cache_dir())
+        .map_err(|e| e.to_string())
+        .and_then(|_| crate::core::durable_file::write_text(file_path(), &text).map_err(|e| e.to_string()));
     if let Err(e) = done {
         log::note(&format!("Game pictures: the list couldn't be kept ({e})."));
     }

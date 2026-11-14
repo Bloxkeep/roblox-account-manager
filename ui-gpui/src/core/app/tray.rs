@@ -247,14 +247,14 @@ impl App {
         // The question holds nothing up: auto-rejoin, schedules and the rest carry on while it waits for an answer
         // (a window that lost its game while it was open was closed for a rejoin that then never came).
         if self.tray.home_session.borrow().is_none() {
-            self.tray.asking_home.set(true);
+            let asking = crate::core::base::Busy::set(&self.tray.asking_home);
             let owner = self.controller.owner.get();
             let text = l::t("Separate sign-in windows are experimental. All Roblox windows temporarily stop saving sign-ins and some settings. Your usual saved sign-in may expire. If Bloxkeep quits or crashes while a separate window stays open, that window may replace the saved sign-in. Close separate windows before quitting Bloxkeep. Long sessions have not been verified.");
             let (yes, no) = (l::t("Open separate window"), l::t("Cancel"));
             // PORT: Dialog.Confirm ran a nested message loop on the UI thread, so the rest went on meanwhile; here the
             // box waits on a worker thread and the core's thread carries on.
             let ok = rt::blocking(move || ui::modal(|| dialog::confirm(Some(owner), &text, &yes, &no, true))).await;
-            self.tray.asking_home.set(false);
+            drop(asking);
             if !ok {
                 return;
             }
@@ -269,7 +269,7 @@ impl App {
         }
         let mut acquired = false;
         let mut started = false;
-        self.tray.opening_home.set(true);
+        let opening = crate::core::base::Busy::set(&self.tray.opening_home);
         let outcome = self.open_home_window(&client, &mut acquired, &mut started).await;
         if let Err(e) = outcome {
             if is_io_failure(&e) {
@@ -286,7 +286,7 @@ impl App {
                 log::write(&e);
             }
         }
-        self.tray.opening_home.set(false);
+        drop(opening);
         if !self.controller.disposed.get() {
             self.push_state();
         }

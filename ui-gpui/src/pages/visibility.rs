@@ -74,6 +74,7 @@ fn load(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
         r.vis.rows = Some(ids.iter().enumerate().map(|(i, id)| if i == 2 { bad_row(id, String::new()) } else { json!({ "id": id, "ok": true, "online": "Friends", "join": if i == 0 { "AllUsers" } else { "Friends" } }) }).collect());
         return;
     }
+    let all = ids.clone();
     cx.spawn_in(window, async move |this, cx| {
         let signs = signs(link, ids).await;
         let rows = roblox::run(move || {
@@ -86,13 +87,14 @@ fn load(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
                 })
                 .collect::<Vec<Value>>()
         })
-        .await
-        .unwrap_or_default();
+        .await;
         let _ = this.update_in(cx, |r, window, cx| {
             // (A later reading, or the box opened again for other accounts, has the say.)
             if r.vis.asked != asked {
                 return;
             }
+            // (The reading itself failed: each account says so, not an empty list.)
+            let rows = rows.unwrap_or_else(|_| all.iter().map(|id| bad_row(id, r.tr("ps.failed"))).collect());
             r.vis.rows = Some(rows);
             window.refresh();
             cx.notify();
@@ -157,6 +159,8 @@ fn apply(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
                     r.vis.rows = None;
                     load(r, window, cx);
                 }
+            } else {
+                r.vis.said = Some((r.tr("ps.failed"), true));
             }
             window.refresh();
             cx.notify();

@@ -35,6 +35,9 @@ pub struct Data {
     saving: Option<(bool, i64, i64, String)>,
     sv_error: Option<String>,
     sv_busy: bool,
+    /// Which Save-server box is the latest, and whether it is still open: a late answer closes only its own box.
+    sv_seq: u64,
+    sv_open: bool,
 }
 
 /// Enter in the list's box: the games of that name.
@@ -72,7 +75,7 @@ pub fn cleared(r: &mut Root) {
 /// Save server's button: there once the box holds a game Roblox knows.
 pub fn save_button(root: &Root, cx: &mut Context<Root>) -> Option<IconButton> {
     root.game.as_ref().filter(|g| g.get("ok").and_then(Value::as_bool) == Some(true))?;
-    Some(IconButton::new("bar-save-server", "bookmark").size(34.).tip(root.tr("sv.save")).on_click(cx.listener(|r, _, window, cx| open_save(r, window, cx))))
+    Some(IconButton::new("bar-save-server", "bookmark").size(34.).tip(root.tr("sv.saveTip")).on_click(cx.listener(|r, _, window, cx| open_save(r, window, cx))))
 }
 
 /// A hidden shot's Save server (BLOXKEEP_SHOT_ASK=saveserver): the box given Blox Fruits, then the box once the game is
@@ -111,6 +114,16 @@ fn open_save(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
     r.picker.sv_error = None;
     r.picker.sv_busy = false;
     r.picker.open = false;
+    r.picker.sv_seq += 1;
+    r.picker.sv_open = true;
+    let seq = r.picker.sv_seq;
+    let gone = move |this: &WeakEntity<Root>, cx: &mut App| {
+        let _ = this.update(cx, |r, _| {
+            if r.picker.sv_seq == seq {
+                r.picker.sv_open = false;
+            }
+        });
+    };
     let (name, hint) = (game.clone(), r.tr("sv.codeHint"));
     r.sv_name.update(cx, |st, cx| st.set_value(name, window, cx));
     r.sv_code.update(cx, |st, cx| {
@@ -133,14 +146,23 @@ fn open_save(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
             body = body.child(form_error(why));
         }
         let go = this.clone();
-        framed(dialog, r.tr("sv.title"), r.tr("common.close"), |_, w, cx| w.close_dialog(cx))
+        let (shut, cancel, closed) = (this.clone(), this.clone(), this.clone());
+        framed(dialog, r.tr("sv.title"), r.tr("common.close"), move |_, w, cx| {
+            gone(&shut, cx);
+            w.close_dialog(cx);
+        })
             .w(px(480.))
             .centered()
             .entrance(DialogEntrance::FadeSlide)
+            // (Esc or a click beside it.)
+            .on_close(move |_, _, cx| gone(&closed, cx))
             .child(dialog_body(body))
             .footer(
                 dialog_foot()
-                    .child(Button::new("sv-cancel", r.tr("common.cancel")).on_click(|_, w, cx| w.close_dialog(cx)))
+                    .child(Button::new("sv-cancel", r.tr("common.cancel")).on_click(move |_, w, cx| {
+                        gone(&cancel, cx);
+                        w.close_dialog(cx);
+                    }))
                     .child(Button::new("sv-save", r.tr("sv.saveBtn")).primary().on_click(move |_, w, cx| {
                         let _ = go.update(cx, |r, cx| save_server(r, w, cx));
                     })),
@@ -166,19 +188,28 @@ pub fn save_server(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
     r.picker.sv_busy = true;
     r.picker.sv_error = None;
     let rx = link.call("saveServer", json!({ "name": name, "code": code, "link": at, "placeId": place, "universeId": universe, "gameName": game }));
+    let seq = r.picker.sv_seq;
     cx.spawn_in(window, async move |this, cx| {
         let answer = rx.await;
         let _ = this.update_in(cx, |r, window, cx| {
-            r.picker.sv_busy = false;
+            // Its box closed meanwhile (or another opened): the newest dialog may be some other one.
+            let mine = r.picker.sv_seq == seq && r.picker.sv_open;
+            if r.picker.sv_seq == seq {
+                r.picker.sv_busy = false;
+            }
             match answer {
                 Ok(Ok(v)) => {
-                    r.picker.saving = None;
-                    window.close_dialog(cx);
+                    if mine {
+                        r.picker.saving = None;
+                        r.picker.sv_open = false;
+                        window.close_dialog(cx);
+                    }
                     r.toast = Some((r.i18n.tv("sv.saved", &[("name", s(&v, "name"))]), "ok".into()));
                     // (The Saved tab is the one shown when the list opens next.)
                     r.picker.tab = 2;
                 }
-                Ok(Err(e)) => r.picker.sv_error = Some(e),
+                Ok(Err(e)) if mine => r.picker.sv_error = Some(e),
+                Ok(Err(_)) => {}
                 Err(_) => {}
             }
             window.refresh();
@@ -248,6 +279,8 @@ fn close(r: &mut Root) {
 /// A game, or a saved server, into the box: its picture and name are looked up as for a link typed there.
 fn pick(r: &mut Root, link: String, window: &mut Window, cx: &mut Context<Root>) {
     r.picker.open = false;
+    // (Another game, or a saved server: a Job ID left in its box went with the game before, app.js's pickGame/pickSaved.)
+    crate::pages::accounts::clear_job(window, cx);
     r.place.update(cx, |st, cx| st.set_value(link, window, cx));
     r.resolve_place(cx);
     cx.notify();
@@ -286,7 +319,10 @@ pub fn button(root: &Root, cx: &mut Context<Root>) -> Div {
             }
             cx.notify();
         })))
-        .child(div().absolute().bottom(px(42.)).left_0().child(deferred(anchored().anchor(Anchor::BottomLeft).snap_to_window_with_margin(px(8.)).child(pop("picker-pop", open, list(root, cx)))).with_priority(1)))
+        // (The list built while open or fading out only, not every frame after its first opening.)
+        .when(crate::pages::accounts::pop_alive("picker-pop", open), |d| {
+            d.child(div().absolute().bottom(px(42.)).left_0().child(deferred(anchored().anchor(Anchor::BottomLeft).snap_to_window_with_margin(px(8.)).child(pop("picker-pop", open, list(root, cx)))).with_priority(1)))
+        })
 }
 
 fn list(root: &Root, cx: &mut Context<Root>) -> Stateful<Div> {
@@ -309,7 +345,7 @@ fn list(root: &Root, cx: &mut Context<Root>) -> Stateful<Div> {
                 .flex_none()
                 .h(px(26.))
                 .px(px(9.))
-                .text_size(px(T_S + 0.5))
+                .text_size(px(T_M))
                 .cursor_pointer()
                 .child(root.tr(&format!("picker.{}", TABS[i])))
                 .on_click(cx.listener(move |r, _, _, cx| {
@@ -450,7 +486,7 @@ fn list(root: &Root, cx: &mut Context<Root>) -> Stateful<Div> {
         }))
         .child(field(&root.picker_q, Some("search")).h(px(32.)))
         .child(match &found {
-            Some((q, _)) => div().px(px(6.)).text_size(px(T_S + 0.5)).text_color(c(MUTED)).child(root.i18n.tv("picker.results", &[("q", q)])).into_any_element(),
+            Some((q, _)) => div().px(px(6.)).text_size(px(T_M)).text_color(c(MUTED)).child(root.i18n.tv("picker.results", &[("q", q)])).into_any_element(),
             None => head.into_any_element(),
         })
         .child(body)

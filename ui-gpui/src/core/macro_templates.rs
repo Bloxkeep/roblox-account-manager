@@ -155,45 +155,72 @@ fn click() -> Res<Template> {
     })
 }
 
+/// What "Cast and reel" is made with: its own defaults, or the settings of another fishing macro read in
+/// (macro_fishing.rs). Times in ms, colours "#rrggbb", the bar's area as parts of the screen.
+#[derive(Clone, Debug)]
+pub struct CastParams {
+    pub hold_ms: i64,
+    pub target: String,
+    pub marker: String,
+    pub bar_wait_ms: i64,
+    pub area: (f64, f64, f64, f64),
+    pub tolerance: i64,
+    pub rest_ms: i64,
+}
+
+impl Default for CastParams {
+    fn default() -> Self {
+        Self { hold_ms: 800, target: "#22c55e".into(), marker: "#ffffff".into(), bar_wait_ms: 60000, area: (0.3, 0.75, 0.4, 0.06), tolerance: 24, rest_ms: 1500 }
+    }
+}
+
 fn cast() -> Res<Template> {
+    cast_with(&CastParams::default())
+}
+
+pub fn cast_with(p: &CastParams) -> Res<Template> {
     let name = l::t("Cast and reel");
     let options = r##"
         [
-          {"name":"o1","label":%HOLD%,"kind":"number","value":800,"default":800,"min":0,"max":10000,"unit":"s"},
-          {"name":"o2","label":%TARGET%,"kind":"colour","value":"#22c55e","default":"#22c55e"},
-          {"name":"o3","label":%MARKER%,"kind":"colour","value":"#ffffff","default":"#ffffff"},
+          {"name":"o1","label":%HOLD%,"kind":"number","value":%HOLDV%,"default":800,"min":0,"max":10000,"unit":"s"},
+          {"name":"o2","label":%TARGET%,"kind":"colour","value":%TARGETV%,"default":"#22c55e"},
+          {"name":"o3","label":%MARKER%,"kind":"colour","value":%MARKERV%,"default":"#ffffff"},
           {"name":"o4","label":%STRENGTH%,"kind":"number","value":1,"default":1,"min":0,"max":10,"unit":""},
-          {"name":"o5","label":%BAR%,"kind":"number","value":60000,"default":60000,"min":1000,"max":600000,"unit":"s"}
+          {"name":"o5","label":%BAR%,"kind":"number","value":%BARV%,"default":60000,"min":1000,"max":600000,"unit":"s"}
         ]
         "##
     .replace("%HOLD%", &s(&l::t("Hold to cast")))
     .replace("%TARGET%", &s(&l::t("Target color")))
     .replace("%MARKER%", &s(&l::t("Marker color")))
     .replace("%STRENGTH%", &s(&l::t("Strength")))
-    .replace("%BAR%", &s(&l::t("Wait for the bar")));
+    .replace("%BAR%", &s(&l::t("Wait for the bar")))
+    .replace("%HOLDV%", &p.hold_ms.clamp(0, 10000).to_string())
+    .replace("%TARGETV%", &s(&p.target))
+    .replace("%MARKERV%", &s(&p.marker))
+    .replace("%BARV%", &p.bar_wait_ms.clamp(1000, 600000).to_string());
+    let (x, y, w, h) = p.area;
     let areas = r##"
-        [ {"name":"a1","label":%AREA%,"colour":"#3b82f6","rect":{"x":0.3,"y":0.75,"w":0.4,"h":0.06} } ]
+        [ {"name":"a1","label":%AREA%,"colour":"#3b82f6","rect":{"x":%X%,"y":%Y%,"w":%W%,"h":%H%} } ]
         "##
-    .replace("%AREA%", &s(&l::t("Bar area")));
-    let mut m = macro_of(
-        &name,
-        240,
-        r##"
+    .replace("%AREA%", &s(&l::t("Bar area")))
+    .replace("%X%", &format!("{:.4}", x.clamp(0., 1.)))
+    .replace("%Y%", &format!("{:.4}", y.clamp(0., 1.)))
+    .replace("%W%", &format!("{:.4}", w.clamp(0.01, 1.)))
+    .replace("%H%", &format!("{:.4}", h.clamp(0.01, 1.)));
+    let steps = r##"
         [
           {"kind":"loop","times":0},
           {"kind":"click","x":0.5,"y":0.5,"button":"left","holdMs":"$o1"},
-          {"kind":"follow","region":"@a1","target":"$o2","marker":"$o3","tolerance":24,
+          {"kind":"follow","region":"@a1","target":"$o2","marker":"$o3","tolerance":%TOL%,
            "button":"left","mode":"smooth","kp":"$o4","kd":0.4,"predict":true,"fps":60,"untilGoneMs":1000,"timeoutMs":"$o5"},
           {"kind":"addVar","name":"catches","value":1},
-          {"kind":"wait","ms":1500},
+          {"kind":"wait","ms":%REST%},
           {"kind":"endLoop"}
         ]
-        "##,
-        &options,
-        &areas,
-        "selected",
-        MANUAL,
-    )?;
+        "##
+    .replace("%TOL%", &p.tolerance.clamp(0, 120).to_string())
+    .replace("%REST%", &p.rest_ms.clamp(0, 600000).to_string());
+    let mut m = macro_of(&name, 240, &steps, &options, &areas, "selected", MANUAL)?;
     todo(&mut m.steps[1], &["x"]);
     todo(&mut m.steps[2], &["region", "target", "marker"]);
     note(&mut m.steps[1], l::t("Holds to cast: drag dot 2 to where you cast"));

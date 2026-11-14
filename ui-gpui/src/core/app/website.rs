@@ -53,7 +53,7 @@ impl App {
             return Err(Fail::user(l::t("The website can't be opened for Roblox VNG accounts yet.")));
         }
         let open = self.website.websites.borrow().get(&id).cloned();
-        if let Some(open) = open.filter(|t| !t.is_closed())
+        if let Some(open) = open.as_ref().filter(|t| !t.is_closed())
             && let Some(window) = self.open_web_window()
         {
             if let Some(url) = url {
@@ -62,6 +62,11 @@ impl App {
             window.select_tab(&open);
             App::show_web_window(&window);
             return Ok(Value::Null);
+        }
+        // Its old tab outlived the window: closed, so the account doesn't end up with two.
+        if let Some(old) = open.filter(|t| !t.is_closed()) {
+            old.close_now();
+            self.website.web_tabs.borrow_mut().retain(|t| *t != old);
         }
         let tab = self.add_website_tab(Some(id), Some(self.name_text(&account)), account.cookie.clone(), self.tab_avatar(&account), url.map(str::to_string));
         self.website.websites.borrow_mut().insert(id, tab);

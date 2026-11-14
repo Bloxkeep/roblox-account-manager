@@ -229,6 +229,10 @@ pub fn delete_all_data() {
         return;
     }
     delete_caches();
+    // The Wiki tab's game looks (wiki_look), or the cache folder and the data folder were never removed.
+    for name in ["game-looks.json", "game-looks.json.tmp"] {
+        let _ = fs::remove_file(cache_dir().join(name));
+    }
     let folders: Vec<PathBuf> = [data_dir().to_path_buf(), old_vaults_dir(), pictures_dir()].into_iter().filter(|d| d.is_dir()).collect();
     let files: Vec<PathBuf> = folders
         .iter()
@@ -313,7 +317,7 @@ fn resolve_data_dir() -> PathBuf {
     if portable.is_dir() {
         return portable;
     }
-    let local = PathBuf::from(std::env::var("LOCALAPPDATA").unwrap_or_default());
+    let local = crate::core::base::local_app_data();
     let dir = local.join("Bloxkeep");
     copy_from_old_name(&local.join("RobloxManager"), &dir);
     dir
@@ -333,7 +337,7 @@ fn copy_from_old_name(old_dir: &Path, new_dir: &Path) {
             if source.is_file() {
                 // File.Copy(…, overwrite: false): an existing file is an error, not overwritten.
                 if target.exists() {
-                    return Err(std::io::Error::new(std::io::ErrorKind::AlreadyExists, "exists"));
+                    return Err(std::io::Error::from_raw_os_error(windows_sys::Win32::Foundation::ERROR_FILE_EXISTS as i32));
                 }
                 fs::copy(&source, &target)?;
             }
@@ -786,12 +790,45 @@ fn decrypt(file: &[u8], key: &[u8]) -> Res<Option<VaultData>> {
         return Ok(None); // AuthenticationTagMismatchException
     }
     // The password was right (the tag matched): a field that won't read changed shape in a newer version.
-    let data: Option<VaultData> = serde_json::from_slice(&plain).map_err(|_| newer())?;
+    let data: Option<VaultData> = match serde_json::from_slice(&plain) {
+        Ok(data) => data,
+        // System.Text.Json read null into a string, list, bool or object and the C# app may have written one;
+        // serde won't. Only on this path, so a clean file's unknown fields round-trip exactly.
+        Err(_) => {
+            let mut value: serde_json::Value = serde_json::from_slice(&plain).map_err(|_| newer())?;
+            drop_nulls(&mut value);
+            serde_json::from_value(value).map_err(|_| newer())?
+        }
+    };
     let data = data.unwrap_or_default();
     if data.version > SUPPORTED_VERSION {
         return Err(newer());
     }
     Ok(Some(data))
+}
+
+/// Removes null members and null array elements at every depth: a missing field takes the model's default, which is
+/// what C# did with null in practice (and the same as null for an Option field: the models default those to None).
+fn drop_nulls(value: &mut serde_json::Value) {
+    match value {
+        serde_json::Value::Object(map) => {
+            map.retain(|_, v| !v.is_null());
+            for (key, v) in map.iter_mut() {
+                // A macro's steps, features and words keep their nulls: their places count (loop and break targets
+                // are step numbers) and a null step shows as "Step N is empty." (macro_model's steps_de).
+                if let (true, serde_json::Value::Array(items)) = (matches!(key.as_str(), "Steps" | "Features" | "Words"), &mut *v) {
+                    items.iter_mut().for_each(drop_nulls);
+                } else {
+                    drop_nulls(v);
+                }
+            }
+        }
+        serde_json::Value::Array(items) => {
+            items.retain(|v| !v.is_null());
+            items.iter_mut().for_each(drop_nulls);
+        }
+        _ => {}
+    }
 }
 
 /// Puts the previous save back in place of the damaged main file, which is kept as vault.rmv.damaged-….
@@ -811,7 +848,7 @@ fn recovered(path: PathBuf, key: Vec<u8>, salt: Vec<u8>, iterations: i32, data: 
 /// File.Move(from, to): fails when `to` exists (std's rename would replace it).
 fn rename_new(from: &Path, to: &Path) -> std::io::Result<()> {
     if to.exists() {
-        return Err(std::io::Error::new(std::io::ErrorKind::AlreadyExists, format!("{} exists", to.display())));
+        return Err(exists_error(windows_sys::Win32::Foundation::ERROR_ALREADY_EXISTS, to));
     }
     fs::rename(from, to)
 }
@@ -819,9 +856,16 @@ fn rename_new(from: &Path, to: &Path) -> std::io::Result<()> {
 /// File.Copy(from, to) without overwrite.
 fn copy_new(from: &Path, to: &Path) -> std::io::Result<()> {
     if to.exists() {
-        return Err(std::io::Error::new(std::io::ErrorKind::AlreadyExists, format!("{} exists", to.display())));
+        return Err(exists_error(windows_sys::Win32::Foundation::ERROR_FILE_EXISTS, to));
     }
     fs::copy(from, to).map(|_| ())
+}
+
+/// The IOException .NET throws there, as Windows' own error: its "(os error N)" makes it an I/O failure to
+/// `is_io_error` and `error_text`, which a custom io::Error's text wouldn't. The path goes to the log only.
+pub(crate) fn exists_error(code: u32, path: &Path) -> std::io::Error {
+    log::note(&format!("{} exists", path.display()));
+    std::io::Error::from_raw_os_error(code as i32)
 }
 
 /// A save writes vault.rmv.tmp, then swaps it in and keeps the replaced file as vault.rmv.bak. A swap cut short
@@ -919,7 +963,14 @@ pub fn set_aside(file: &str) -> Res<PathBuf> {
     rename_new(&path, &kept)?;
     for (from, what) in [(with_suffix(&path, ".bak"), "spare"), (with_suffix(&path, ".tmp"), "unsaved")] {
         if from.is_file() {
-            rename_new(&from, &old_vaults_dir().join(format!("vault-removed-{stamp}-{what}.rmv")))?;
+            // The main file is already moved: a spare copy that won't move is deleted rather than left to be found
+            // again at the next start as a vault of its own.
+            if let Err(e) = rename_new(&from, &old_vaults_dir().join(format!("vault-removed-{stamp}-{what}.rmv"))) {
+                log::write(&e);
+                if let Err(e) = fs::remove_file(&from) {
+                    log::write(&e);
+                }
+            }
         }
     }
     Ok(kept)
@@ -971,9 +1022,10 @@ fn wide(path: &Path) -> Vec<u16> {
     path.as_os_str().encode_wide().chain(std::iter::once(0)).collect()
 }
 
-/// File.Replace(tmp, path, bak, ignoreMetadataErrors: true): ReplaceFileW with write-through, metadata errors ignored.
+/// File.Replace(tmp, path, bak, ignoreMetadataErrors: true): ReplaceFileW with metadata errors ignored. (No
+/// REPLACEFILE_WRITE_THROUGH: documented as not supported, and .NET doesn't pass it; the .tmp was fsynced already.)
 fn replace_file_keeping_backup(replacement: &Path, replaced: &Path, backup: &Path) -> std::io::Result<()> {
-    use windows_sys::Win32::Storage::FileSystem::{REPLACEFILE_IGNORE_MERGE_ERRORS, REPLACEFILE_WRITE_THROUGH, ReplaceFileW};
+    use windows_sys::Win32::Storage::FileSystem::{REPLACEFILE_IGNORE_MERGE_ERRORS, ReplaceFileW};
     let (replaced_w, replacement_w, backup_w) = (wide(replaced), wide(replacement), wide(backup));
     // SAFETY: three NUL-terminated UTF-16 paths that live across the call; the two reserved pointers are null.
     let ok = unsafe {
@@ -981,7 +1033,7 @@ fn replace_file_keeping_backup(replacement: &Path, replaced: &Path, backup: &Pat
             replaced_w.as_ptr(),
             replacement_w.as_ptr(),
             backup_w.as_ptr(),
-            REPLACEFILE_WRITE_THROUGH | REPLACEFILE_IGNORE_MERGE_ERRORS,
+            REPLACEFILE_IGNORE_MERGE_ERRORS,
             std::ptr::null(),
             std::ptr::null(),
         )

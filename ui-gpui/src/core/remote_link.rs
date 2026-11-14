@@ -24,12 +24,24 @@ use crate::core::models::to_net_json_string;
 
 /// A command from Discord (/pc): its id (to answer it), its name ("status", "preset", "close", "switch", "screenshot")
 /// and value; for a screenshot, the link its pictures are sent to (Discord's own, for that one answer).
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct RemoteCommand {
     pub id: String,
     pub name: String,
     pub value: Option<String>,
     pub reply: Option<String>,
+}
+
+/// `reply` left out: a Discord link that posts as the bot's answer.
+impl std::fmt::Debug for RemoteCommand {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("RemoteCommand")
+            .field("id", &self.id)
+            .field("name", &self.name)
+            .field("value", &self.value)
+            .field("reply", &self.reply.as_ref().map(|_| crate::core::base::Redacted))
+            .finish()
+    }
 }
 
 pub const URL: &str = "wss://bloxkeep-bot.bloxkeep-app.workers.dev/remote/connect";
@@ -299,7 +311,8 @@ impl Drop for RemoteLink {
     }
 }
 
-static HTTP: LazyLock<ureq::Agent> = LazyLock::new(|| ureq::AgentBuilder::new().timeout(Duration::from_secs(60)).build());
+// No redirects: `may_send_to` checked only the first address, and a redirect could take the screenshots elsewhere.
+static HTTP: LazyLock<ureq::Agent> = LazyLock::new(|| crate::net::builder().redirects(0).timeout(Duration::from_secs(60)).build());
 
 static BOT_REPLY: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(&format!(
@@ -323,8 +336,7 @@ pub(crate) fn is_bot_reply(reply: &str) -> bool {
 
 /// A name cut as the bot cuts them (60 UTF-16 units).
 fn cut(name: &str) -> String {
-    let units: Vec<u16> = name.encode_utf16().collect();
-    if units.len() > MAX_NAME { String::from_utf16_lossy(&units[..MAX_NAME]) } else { name.to_string() }
+    crate::core::base::cut_utf16(name, MAX_NAME).to_string()
 }
 
 /// The names, cut as the bot cuts them, as many as fit in `budget` characters as sent; and the characters used.
@@ -390,9 +402,16 @@ fn connect(url: &str, secret: &str, limit: Duration) -> Result<Socket, String> {
     stream.set_write_timeout(Some(left)).map_err(|e| e.to_string())?;
     let mut request = url.into_client_request().map_err(|e| e.to_string())?;
     request.headers_mut().insert("Authorization", format!("Bearer {secret}").parse().map_err(|_| "bad secret")?);
+    // A message over 64 KB is refused as it comes in (a read error, which ends the reading as the C# does), never
+    // gathered in memory first.
+    let mut config = tungstenite::protocol::WebSocketConfig::default();
+    config.max_message_size = Some(MAX_MESSAGE);
+    config.max_frame_size = Some(MAX_MESSAGE);
     // ClientWebSocket's KeepAliveInterval = 0: no pings of its own (the bot answers our own "ping" without waking).
-    let (ws, _) = tungstenite::client_tls_with_config(request, stream, None, None).map_err(|e| e.to_string())?;
-    tcp_of(&ws).ok_or("no stream")?.set_write_timeout(None).map_err(|e| e.to_string())?;
+    let (ws, _) = tungstenite::client_tls_with_config(request, stream, Some(config), None).map_err(|e| e.to_string())?;
+    // A send stuck on a hung network ends the session after this (the read, ping and send share one thread, so a send
+    // with no limit held dispose and the next reconnect back until TCP gave up).
+    tcp_of(&ws).ok_or("no stream")?.set_write_timeout(Some(Duration::from_secs(30))).map_err(|e| e.to_string())?;
     Ok(ws)
 }
 
@@ -534,10 +553,7 @@ fn session(inner: &Arc<Inner>, mut ws: Socket, out: &mpsc::Receiver<String>) -> 
             Err(tungstenite::Error::Io(e)) if matches!(e.kind(), std::io::ErrorKind::WouldBlock | std::io::ErrorKind::TimedOut) => continue,
             Err(_) => return Ok(()),
         };
-        // A message over 64 KB ends the reading, as the C# does.
-        if text.len() > MAX_MESSAGE {
-            return Ok(());
-        }
+        // A message over 64 KB never gets here: the socket's own limit (see `connect`) ended the reading.
         if text != "pong" {
             on_message(inner, &text)?;
         }
@@ -603,7 +619,7 @@ fn on_message(inner: &Arc<Inner>, text: &str) -> Res<()> {
 fn run_command(inner: &Inner, command: RemoteCommand) {
     let id = command.id.clone();
     // A command's own error (a panic here) is logged and left unanswered, as the C# does with its exception.
-    let answer = match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| (inner.command)(command))) {
+    let answer = match crate::core::program::catch_unwind(std::panic::AssertUnwindSafe(|| (inner.command)(command))) {
         Ok(answer) => answer,
         Err(_) => {
             log::note("Remote command failed.");

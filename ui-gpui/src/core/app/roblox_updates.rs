@@ -73,6 +73,37 @@ pub struct RobloxUpdatesState {
     /// A read of what is installed under way on a worker (C#'s Task): its answer comes on this channel; a worker that
     /// failed hangs up without one.
     pub installs_reading: RefCell<Option<Receiver<InstallsRead>>>,
+    /// When Roblox's live build was last asked; a launch with Roblox open asks again past LIVE_RECHECK.
+    pub latest_roblox_at: Cell<Stamp>,
+    /// When the live build in latest_roblox was first seen: a client started after it asked Roblox for that build.
+    pub latest_roblox_since: Cell<Stamp>,
+    /// Roblox's own clients started behind the live build after it was listed, with the build they asked for: each one that
+    /// gets into a game still on its old build shows Roblox hasn't rolled the build out to this PC (live_not_here).
+    pub rollout_probes: RefCell<HashMap<i32, String>>,
+    /// A live build Roblox lists but hasn't rolled out to this PC, and when that was seen.
+    pub live_not_here: RefCell<Option<(String, Stamp)>>,
+}
+
+/// How long a "not rolled out here" holds: a staged rollout can reach this PC later (RoALT trusts it 30 minutes too).
+const NOT_HERE_FOR: Duration = Duration::from_secs(30 * 60);
+/// A launch with Roblox open asks for the live build again when the last answer is older than this: Roblox can release one
+/// while windows are open, and a client behind it would update and close them all (RoALT asks before every launch).
+const LIVE_RECHECK: Duration = Duration::from_secs(30);
+
+/// Whether a launch asks Roblox for its live build first: never asked, or Roblox is open and the answer is old.
+pub fn ask_live_again(known: bool, asked_at: Stamp, now: Stamp, open: usize) -> bool {
+    !known || (open > 0 && now.secs_since(asked_at) > secs(LIVE_RECHECK))
+}
+
+/// Roblox lists a build before it reaches every PC (staged rollouts). A client that asked for `asked_for` and got into a
+/// game on another build wasn't updated by Roblox, so that build isn't this PC's update yet (as RoALT reads it).
+pub fn not_rolled_out(asked_for: &str, runs: Option<&ClientVersion>, in_game: bool) -> bool {
+    in_game && runs.is_some_and(|r| !r.folder.eq_ignore_ascii_case(asked_for))
+}
+
+/// DateTime.FromFileTimeUtc.
+fn from_file_time(created: i64) -> Stamp {
+    Stamp::from_unix_ms((created - 116_444_736_000_000_000) / 10_000)
 }
 
 impl Default for RobloxUpdatesState {
@@ -93,6 +124,10 @@ impl Default for RobloxUpdatesState {
             update_reopen_since: Cell::new(None),
             update_reopen_updating: Cell::new(false),
             installs_reading: RefCell::new(None),
+            latest_roblox_at: Cell::new(crate::core::models::stamp_min()),
+            latest_roblox_since: Cell::new(crate::core::models::stamp_min()),
+            rollout_probes: RefCell::new(HashMap::new()),
+            live_not_here: RefCell::new(None),
         }
     }
 }
@@ -315,7 +350,8 @@ impl App {
         let own = roblox_installs::is_own_installer(Some(&exe));
         // Roblox's installer would close the windows open without a word: they close as Close, update, reopen's do, and
         // open again after (it comes back here once they are gone).
-        if own && !roblox_processes::get_player_pids().is_empty() {
+        // Not while Close, update, reopen itself calls this: it would turn the call down and nothing would update.
+        if own && self.roblox_updates.update_reopen_since.get().is_none() && !roblox_processes::get_player_pids().is_empty() {
             return self.update_and_reopen();
         }
         let file_name = Path::new(&exe).file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
@@ -342,14 +378,78 @@ impl App {
         Ok(Value::Null)
     }
 
+    /// Settings › Roblox version › When: "keep": the update waits until no Roblox is open, and windows opened meanwhile play
+    /// on the build already running (hold_for_roblox_update) instead of waiting for it.
+    pub fn keeps_running_build(&self) -> bool {
+        self.controller.vault.borrow().as_ref().is_some_and(|v| {
+            let s = &v.data().settings;
+            s.auto_update_roblox && s.roblox_update_when == "keep"
+        })
+    }
+
+    pub fn live_not_here(&self, live: &ClientVersion) -> bool {
+        self.roblox_updates
+            .live_not_here
+            .borrow()
+            .as_ref()
+            .is_some_and(|(folder, at)| folder.eq_ignore_ascii_case(&live.folder) && Stamp::utc_now().secs_since(*at) < secs(NOT_HERE_FOR))
+    }
+
     pub fn note_client_builds(&self, players: &[PlayerProcess]) {
-        let mut builds = self.roblox_updates.client_builds.borrow_mut();
-        for player in players {
-            if !builds.contains_key(&player.pid) {
-                builds.insert(player.pid, roblox_installs::version_of(roblox_processes::launch_path(player.pid, player.created).as_deref()));
+        let live = self.updates.latest_roblox.borrow().clone();
+        let since = self.roblox_updates.latest_roblox_since.get();
+        {
+            let mut builds = self.roblox_updates.client_builds.borrow_mut();
+            for player in players {
+                if builds.contains_key(&player.pid) {
+                    continue;
+                }
+                let path = roblox_processes::launch_path(player.pid, player.created);
+                let build = roblox_installs::version_of(path.as_deref());
+                if let (Some(path), Some(live)) = (path.as_deref(), live.as_ref())
+                    && roblox_installs::is_roblox_own(path)
+                    && !roblox_installs::is_vng_client(path)
+                    && roblox_installs::is_behind(build.as_ref(), Some(live))
+                    && player.created > 0
+                    && from_file_time(player.created) > since
+                {
+                    self.roblox_updates.rollout_probes.borrow_mut().insert(player.pid, live.folder.clone());
+                }
+                builds.insert(player.pid, build);
+            }
+            builds.retain(|pid, _| players.iter().any(|p| p.pid == *pid));
+        }
+        // The builds kept to play on go once no Roblox is open or opening: the update can go in then.
+        if players.is_empty()
+            && !self.opening_roblox()
+            && self.controller.pending.borrow().is_empty()
+            && std::path::Path::new(&roblox_installs::kept_root()).is_dir()
+            && roblox_installs::forget_kept_copies().is_ok()
+        {
+            log::note("Roblox update: no Roblox open, the build kept to play on is removed.");
+        }
+        let probes: Vec<(i32, String)> = self.roblox_updates.rollout_probes.borrow().iter().map(|(p, f)| (*p, f.clone())).collect();
+        for (pid, asked) in probes {
+            let in_game = self.controller.logs.borrow().state_of(pid).is_some_and(|s| s.status == "ingame");
+            let runs = self.roblox_updates.client_builds.borrow().get(&pid).cloned();
+            if runs.is_none() || in_game {
+                self.roblox_updates.rollout_probes.borrow_mut().remove(&pid);
+            }
+            let runs = runs.flatten();
+            let now_live = self.updates.latest_roblox.borrow().clone();
+            if not_rolled_out(&asked, runs.as_ref(), in_game)
+                && let Some(now_live) = now_live.filter(|n| n.folder == asked)
+                && !self.live_not_here(&now_live)
+                && let Some(runs) = runs
+            {
+                *self.roblox_updates.live_not_here.borrow_mut() = Some((asked.clone(), Stamp::utc_now()));
+                log::note(&format!(
+                    "Roblox update: Roblox lists {} ({asked}), but a Roblox started for it got into a game on {} ({}): not rolled out to this PC yet, so launches with Roblox open aren't held for it.",
+                    now_live.version, runs.version, runs.folder
+                ));
+                self.push_state();
             }
         }
-        builds.retain(|pid, _| players.iter().any(|p| p.pid == *pid));
     }
 
     /// A window on a build older than Roblox's newest. Roblox VNG has its own builds, so it's never compared.
@@ -383,7 +483,7 @@ impl App {
             || self.controller.roblox_updating.get()
             || self.roblox_updates.update_reopen_since.get().is_some()
             || self.opening_roblox()
-            || !self.controller.rejoin_queue.borrow().is_empty()
+            || self.controller.rejoin_queue.borrow().iter().any(|r| !self.rejoin.update_held_told.borrow().contains(&r.account_id))
             || self.settling()
             || self.schedule_due_soon()
         {
@@ -517,12 +617,16 @@ impl App {
     /// Roblox's installer (`own`) is waited for to the end, then the Roblox app it opened is closed: closed
     /// sooner, while the installer still waits for it to start, the installer would call the launch failed.
     pub async fn watch_roblox_update(self: &Rc<Self>, launcher: String, before: Option<String>, started_at: Stamp, quiet: bool, own: bool) {
+        // Set before the task started; cleared however this ends.
+        let updating = crate::core::base::Busy::set(&self.controller.roblox_updating);
         let until = Stamp::utc_now().plus_secs(15.0 * 60.0);
         rt::sleep(Duration::from_secs(if own { 2 } else { 5 })).await;
         let mut finished = false;
         while !self.controller.disposed.get() && Stamp::utc_now() < until {
-            self.controller.installs_read_at.set(stamp_min()); // read again, compared with the last read (its "Roblox updated to …")
-            let updated = self.installs().client.map(|c| c.folder) != before;
+            // Read again on a worker (up to a second on a busy PC), compared with the last read (its "Roblox updated to …").
+            let (via, custom) = self.launch_option();
+            let (installs, updater) = rt::blocking(move || read_installs(&via, &custom)).await;
+            let updated = self.take_installs(installs, updater, Stamp::utc_now()).client.map(|c| c.folder) != before;
             let running = {
                 let launcher = launcher.clone();
                 rt::blocking(move || launcher_running_since(&launcher, started_at)).await
@@ -550,7 +654,7 @@ impl App {
             log::note(&format!("Roblox update: {launcher} still running after 15 min; stopped watching it."));
         }
         // finally
-        self.controller.roblox_updating.set(false);
+        drop(updating);
         if !self.controller.disposed.get() {
             self.push_state();
         }

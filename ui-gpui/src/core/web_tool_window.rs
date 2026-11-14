@@ -908,8 +908,13 @@ pub mod browser {
                     (Err(e), _) => Err(fail(e)),
                     (Ok(()), None) => Err(Fail::other("WebView2 gave no controller")),
                 };
-                if let Some(tx) = tx.borrow_mut().take() {
-                    let _ = tx.send(out);
+                if let Some(tx) = tx.borrow_mut().take()
+                    && let Err(Ok(orphan)) = tx.send(out)
+                {
+                    // The start was called off meanwhile (released, disposed): nobody takes this browser, so it is
+                    // closed here, or it stayed hidden in the window with its renderer until the app quit.
+                    // SAFETY: a plain COM call on the windows thread.
+                    let _ = unsafe { orphan.Close() };
                 }
                 Ok(())
             }));

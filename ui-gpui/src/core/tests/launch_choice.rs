@@ -124,6 +124,35 @@ async fn body(c: &mut Checks, local: &str) {
     let _ = std::fs::remove_file(&stale);
     let _ = std::fs::remove_file(format!(r"{local}\Roblox\Versions\version-other\RobloxPlayerBeta.exe"));
 
+    // A test channel's build registered and newer, Roblox's live build beside it (a user's PC, 2026-11-13: each window
+    // opened on the test build updated Roblox and closed every other): the live one is started, as RoALT does.
+    let (test, live_build) = (client(local, "Roblox", "version-test"), client(local, "Roblox", "version-live2"));
+    let _ = std::fs::copy(notepad(), &test);
+    registered(Some("version-test"));
+    c.check(
+        "without the live build known: the registered test build, as before",
+        installs::find_official_client().as_deref() == Some(test.as_str()),
+        installs::find_official_client(),
+    );
+    installs::set_live_build(Some("version-live2".into()));
+    c.check(
+        "the live build known and installed: it, over the registered and higher test build",
+        installs::find_official_client().as_deref() == Some(live_build.as_str()),
+        installs::find_official_client(),
+    );
+    c.check("…the links' test build gives way to it", installs::live_beside(Some(test.clone())).as_deref() == Some(live_build.as_str()), installs::live_beside(Some(test.clone())));
+    c.check("…the live build itself stays", installs::live_beside(Some(live_build.clone())).as_deref() == Some(live_build.as_str()), ());
+    let _ = std::fs::remove_file(&live_build);
+    c.check(
+        "the live build not installed: the test build, nothing beside it",
+        installs::find_official_client().as_deref() == Some(test.as_str()) && installs::live_beside(Some(test.clone())).as_deref() == Some(test.as_str()),
+        installs::find_official_client(),
+    );
+    installs::set_live_build(None);
+    registered(None);
+    let _ = std::fs::remove_dir_all(installs::dir_name(&test).unwrap_or_default());
+    let _ = std::fs::remove_dir_all(installs::dir_name(&live_build).unwrap_or_default());
+
     // A build whose DLL is gone can't start (the exe names it); one from before that DLL, or with it beside, can.
     let broken = client(local, "Roblox", "version-broken");
     let mut bytes = vec![0u8; (1 << 20) - 5];
@@ -188,6 +217,56 @@ async fn body(c: &mut Checks, local: &str) {
         !installs::is_behind(None, Some(&newest_build)) && !installs::is_behind(Some(&newest_build), None),
         (),
     );
+
+    // Roblox releasing a build while windows are open (the owner's question, 2026-11-14): a launch with Roblox open asks
+    // for the live build again unless it was just asked; with none open the 30-minute check is enough.
+    {
+        use crate::core::app::roblox_updates::{ask_live_again, not_rolled_out};
+        let at = crate::core::base::Stamp::parse("2026-11-14T12:00:00Z").expect("a time");
+        c.check("live build never asked: a launch asks", ask_live_again(false, crate::core::models::stamp_min(), at, 0), ());
+        c.check("Roblox open, asked a minute ago: asked again", ask_live_again(true, at, at.plus_secs(60.0), 3), ());
+        c.check("Roblox open, just asked (a batch): not asked again", !ask_live_again(true, at, at.plus_secs(10.0), 3), ());
+        c.check("no Roblox open: the update closes nothing, not asked", !ask_live_again(true, at, at.plus_secs(20.0 * 60.0), 0), ());
+        // A staged rollout: Roblox lists a build this PC doesn't get yet. A client started for it, in a game on its old build, shows it.
+        c.check("asked for the new build, in a game on the old one: not rolled out here", not_rolled_out("version-new", Some(&build("0.744.0.100", "version-old")), true), ());
+        c.check("…still loading: not known yet", !not_rolled_out("version-new", Some(&build("0.744.0.100", "version-old")), false), ());
+        c.check("…in a game on the new build: it was rolled out", !not_rolled_out("version-new", Some(&build("0.745.0.100", "VERSION-NEW")), true), ());
+        c.check("…its build not read: not known", !not_rolled_out("version-new", None, true), ());
+    }
+
+    // When: "keep": a window opened while Roblox has an update plays on the build running, from a copy without Roblox's
+    // updater (Roblox looks for it beside itself only, and without it skips the update).
+    {
+        let read = |p: &str| std::fs::read_to_string(p).unwrap_or_default();
+        let keep_exe = client(local, "Roblox", "version-keep");
+        let keep_dir = installs::dir_name(&keep_exe).unwrap_or_default();
+        let _ = std::fs::write(format!(r"{keep_dir}\RobloxPlayerInstaller.exe"), "updater");
+        let _ = std::fs::create_dir_all(format!(r"{keep_dir}\content\fonts"));
+        let _ = std::fs::write(format!(r"{keep_dir}\content\fonts\a.ttf"), "font");
+        let _ = std::fs::create_dir_all(format!(r"{keep_dir}\ClientSettings"));
+        let own_flags = format!(r"{keep_dir}\ClientSettings\ClientAppSettings.json");
+        let _ = std::fs::write(&own_flags, r#"{"a":1}"#);
+        let kept = installs::kept_copy(&keep_exe).unwrap_or_default();
+        let kept_dir = installs::dir_name(&kept).unwrap_or_default();
+        let kept_flags = format!(r"{kept_dir}\ClientSettings\ClientAppSettings.json");
+        c.check("kept: Roblox's client copied outside Roblox's install", std::path::Path::new(&kept).is_file() && !installs::is_roblox_own(&kept), &kept);
+        c.check("…without Roblox's updater beside it", !std::path::Path::new(&format!(r"{kept_dir}\RobloxPlayerInstaller.exe")).exists(), ());
+        c.check("…with its game files", read(&format!(r"{kept_dir}\content\fonts\a.ttf")) == "font", ());
+        c.check("…and its Fast Flags", read(&kept_flags) == r#"{"a":1}"#, read(&kept_flags));
+        let _ = std::fs::write(&own_flags, r#"{"a":2}"#);
+        let again = installs::kept_copy(&keep_exe).unwrap_or_default();
+        c.check("the next window: the same copy, its Fast Flags as written now", again == kept && read(&kept_flags) == r#"{"a":2}"#, (&again, read(&kept_flags)));
+        c.check("…and the Fast Flags aren't Roblox's own file (a write there stays there)", read(&own_flags) == r#"{"a":2}"#, ());
+        let strap = format!(r"{local}\Bloxstrap\RobloxPlayerBeta.exe");
+        c.check("a launcher's copy has no updater beside it: started as it is", installs::kept_copy(&strap).ok().as_deref() == Some(strap.as_str()), ());
+        let _ = installs::forget_kept_copies();
+        c.check(
+            "no Roblox open: the kept build goes, Roblox's own stays",
+            !std::path::Path::new(&installs::kept_root()).exists() && std::path::Path::new(&keep_exe).is_file(),
+            (),
+        );
+        let _ = std::fs::remove_dir_all(&keep_dir);
+    }
 
     // Only Roblox VNG left (a launcher of this PC's own may still stand ahead of it: then that one is used).
     let _ = std::fs::remove_dir_all(format!(r"{local}\Roblox"));

@@ -226,8 +226,8 @@ pub fn page_files_now() -> Option<Vec<(String, i64)>> {
                 (next, pages, name)
             };
             if let Some(colon) = name.find(":\\") {
-                if colon >= 1 {
-                    let root: String = name[colon - 1..].chars().take(3).collect();
+                if let Some(before) = name[..colon].chars().next_back() {
+                    let root: String = std::iter::once(before).chain(name[colon..].chars().take(2)).collect();
                     let add = pages * page_size() / MB;
                     match files.iter_mut().find(|f| f.0.eq_ignore_ascii_case(&root)) {
                         Some(f) => f.1 += add,

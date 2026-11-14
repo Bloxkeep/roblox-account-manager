@@ -1034,7 +1034,8 @@ impl App {
     /// Every process tick: panels shown and hidden by their game, and what they show.
     pub fn tick_panels(&self) {
         let Some(vault) = self.open() else { return };
-        let macros = vault.data().settings.macros.clone();
+        // Only the macros whose panel shows by itself: the rest aren't looked at here, so not copied every tick.
+        let macros: Vec<Macro> = vault.data().settings.macros.iter().filter(|m| m.panel.auto_show).cloned().collect();
         // No macro and no panel: nothing to show, hide or refresh (the usual case), so no lists built every tick.
         if macros.is_empty() && self.panels.panels.borrow().is_empty() && self.panels.panels_auto.borrow().is_empty() {
             return;
@@ -1606,11 +1607,11 @@ impl App {
         let ended = self.try_ended();
         // Between a macro's turns only: a picture shows a minimised window for a moment, as a turn does.
         let Some(lease) = input_turn::try_enter("picture") else { return };
-        self.panels.watch_busy.set(true);
+        // Cleared also by a panic in the look: a stuck flag would stop every later tick.
+        let _busy = crate::core::base::Busy::set(&self.panels.watch_busy);
         if let Err(e) = self.watch_look(w, window.handle, m, lease, ended).await {
             log::write(&e);
         }
-        self.panels.watch_busy.set(false);
     }
 
     async fn watch_look(self: &Rc<Self>, w: (Guid, Guid, bool), handle: isize, m: Macro, lease: input_turn::Lease, ended: Option<String>) -> Res<()> {

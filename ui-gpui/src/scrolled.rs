@@ -19,11 +19,19 @@ pub fn handle(id: &'static str) -> ScrollHandle {
 /// right edge.
 pub fn body(id: &'static str, body: impl IntoElement) -> Div {
     let h = handle(id);
+    // BLOXKEEP_SHOT_BODY=<id> with BLOXKEEP_SHOT_SCROLL=<px>: a hidden shot of that body scrolled down that far.
+    #[cfg(feature = "shot")]
+    if std::env::var("BLOXKEEP_SHOT_BODY").is_ok_and(|b| b == id)
+        && let Ok(y) = std::env::var("BLOXKEEP_SHOT_SCROLL").map(|v| v.parse::<f32>().unwrap_or(0.))
+        && (h.offset().y + px(y)).abs() > px(1.)
+    {
+        h.set_offset(point(px(0.), px(-y)));
+    }
     with_bar(id, &h, div().id(id).size_full().overflow_y_scroll().track_scroll(&h).child(body))
 }
 
 /// A scrolling element that already has its own handle, put in a box with the bar beside it.
-pub fn with_bar(id: &'static str, h: &ScrollHandle, scroller: impl IntoElement) -> Div {
+pub fn with_bar<H: gpui_kit::component::scroll::ScrollbarHandle + Clone>(id: &'static str, h: &H, scroller: impl IntoElement) -> Div {
     div()
         .flex_1()
         .min_h_0()

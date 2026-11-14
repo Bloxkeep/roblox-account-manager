@@ -149,7 +149,8 @@ impl App {
         let pop_reused = pop_kept.is_some();
         let cookie = self.any_global_cookie();
         // Both lists side by side; an expected failure is noted and gives an empty list, any other fails the request.
-        type Lists = (Vec<GameSummary>, Vec<GameSummary>, Vec<String>);
+        // The two bools: that list came back empty because its reads failed.
+        type Lists = (Vec<GameSummary>, Vec<GameSummary>, Vec<String>, bool, bool);
         let lists: Res<Lists> = rt::blocking(move || {
             let ct = Cancel::new();
             std::thread::scope(|scope| {
@@ -203,12 +204,16 @@ impl App {
                 let pop = pop.join().unwrap_or_else(|_| Err(Fail::other("popular thread died")));
                 let (favorites, mut notes) = fav?;
                 let (popular, note) = pop?;
+                // Any account's read failed, even with others' games in: a part list isn't kept for the whole lifetime
+                // (one account's favourites standing in for five).
+                let fav_failed = !notes.is_empty();
+                let pop_failed = popular.is_empty() && note.is_some();
                 notes.extend(note);
-                Ok((favorites, popular, notes))
+                Ok((favorites, popular, notes, fav_failed, pop_failed))
             })
         })
         .await;
-        let (favorites, popular, notes) = lists?;
+        let (favorites, popular, notes, fav_failed, pop_failed) = lists?;
         for note in notes {
             log::note(&note);
         }
@@ -217,11 +222,17 @@ impl App {
         if !same_vault(&self.held_vault(), &Some(vault)) {
             return Err(Fail::user(l::t("Bloxkeep was locked.")));
         }
+        // An empty list from failed reads (no connection for a moment) isn't kept: the next look tries again rather than
+        // showing nothing for the whole lifetime.
         {
-            let fav_at = if fav_reused { self.game_picker.favorite_games.borrow().as_ref().map_or(now, |f| f.1) } else { now };
-            *self.game_picker.favorite_games.borrow_mut() = Some((favorites.clone(), fav_at));
-            let pop_at = if pop_reused { self.game_picker.popular_games.borrow().as_ref().map_or(now, |p| p.1) } else { now };
-            *self.game_picker.popular_games.borrow_mut() = Some((popular.clone(), pop_at));
+            if !fav_failed {
+                let fav_at = if fav_reused { self.game_picker.favorite_games.borrow().as_ref().map_or(now, |f| f.1) } else { now };
+                *self.game_picker.favorite_games.borrow_mut() = Some((favorites.clone(), fav_at));
+            }
+            if !pop_failed {
+                let pop_at = if pop_reused { self.game_picker.popular_games.borrow().as_ref().map_or(now, |p| p.1) } else { now };
+                *self.game_picker.popular_games.borrow_mut() = Some((popular.clone(), pop_at));
+            }
         }
 
         let (recent_saved, pinned_saved): (Vec<RecentGame>, Vec<RecentGame>) = self.vault(|d| (d.settings.recent_games.clone(), d.settings.pinned_games.clone()))?;

@@ -75,7 +75,7 @@ impl App {
         if self.friends.friending.get() {
             return Err(Fail::user(l::t("Already friending accounts. Wait for it to finish.")));
         }
-        self.friends.friending.set(true);
+        let friending = crate::core::base::Busy::set(&self.friends.friending);
         let (mut made, mut already, mut failed, mut done) = (0, 0, 0, 0);
         let pairs = accounts.len() * (accounts.len() - 1) / 2;
         let run: Res<Ended> = async {
@@ -134,7 +134,7 @@ impl App {
         }
         .await;
         // finally
-        self.friends.friending.set(false);
+        drop(friending);
         self.progress(None);
         match run {
             Err(ex) if ex.rate_limited() => {

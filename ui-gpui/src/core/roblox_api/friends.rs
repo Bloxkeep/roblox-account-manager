@@ -6,7 +6,7 @@ use serde_json::{Value, json};
 
 use super::login::{decode_json, decode_metadata, safe_name};
 use super::{
-    HttpRequest, JoinChallenge, RobloxApiException, add_challenge_headers, errors, header, post_with_csrf, rate_limited, raw_text, realm, refused,
+    HttpRequest, JoinChallenge, RobloxApiException, add_challenge_headers, errors, header, post_with_csrf, rate_limited_by, raw_text, realm, refused,
     request, send,
 };
 use crate::core::base::{Cancel, Res};
@@ -19,35 +19,56 @@ pub fn friend_statuses(cookie: &str, user_id: i64, others: &[i64], realm: &str, 
     if others.is_empty() {
         return Ok(result);
     }
-    let url = format!(
-        "{}/v1/users/{user_id}/friends/statuses?userIds={}",
-        realm::api(realm, "friends"),
-        others.iter().map(i64::to_string).collect::<Vec<_>>().join(",")
-    );
-    let req = request("GET", &url, Some(cookie), false, realm::GLOBAL);
-    let res = send(&req, ct)?;
-    let body = res.text();
-    if res.status == 429 {
-        return Err(rate_limited());
+    // At most 50 ids a call: Roblox has a "too many ids" error with no stated limit (RoALT uses 50, as presence's is).
+    let mut distinct: Vec<i64> = Vec::new();
+    for id in others {
+        if !distinct.contains(id) {
+            distinct.push(*id);
+        }
     }
-    if !res.is_success() {
-        return Err(refused("Friend statuses", res.status, &body, res.status == 401));
-    }
-    if let Some(Value::Object(root)) = decode_json(&body)
-        && let Some(Value::Array(data)) = root.get("data")
-    {
-        for d in data {
-            // TryGetProperty on an entry that isn't an object throws in the C#; such an answer never comes.
-            let Value::Object(d) = d else { continue };
-            if let Some(Value::Number(id)) = d.get("id")
-                && let Some(other) = id.as_i64()
-                && let Some(Value::String(s)) = d.get("status")
-            {
-                result.insert(other, s.clone());
+    for chunk in distinct.chunks(50) {
+        let url = format!(
+            "{}/v1/users/{user_id}/friends/statuses?userIds={}",
+            realm::api(realm, "friends"),
+            chunk.iter().map(i64::to_string).collect::<Vec<_>>().join(",")
+        );
+        let req = request("GET", &url, Some(cookie), false, realm::GLOBAL);
+        let res = send(&req, ct)?;
+        let body = res.text();
+        if res.status == 429 {
+            return Err(rate_limited_by(&res));
+        }
+        if !res.is_success() {
+            return Err(refused("Friend statuses", res.status, &body, res.status == 401));
+        }
+        if let Some(Value::Object(root)) = decode_json(&body)
+            && let Some(Value::Array(data)) = root.get("data")
+        {
+            for d in data {
+                // TryGetProperty on an entry that isn't an object throws in the C#; such an answer never comes.
+                let Value::Object(d) = d else { continue };
+                if let Some(Value::Number(id)) = d.get("id")
+                    && let Some(other) = id.as_i64()
+                    && let Some(name) = d.get("status").and_then(status_name)
+                {
+                    result.insert(other, name);
+                }
             }
         }
     }
     Ok(result)
+}
+
+/// A friend status as its name: Roblox sends the name, and its numbered form (0–3, the same order) has been seen too.
+fn status_name(status: &Value) -> Option<String> {
+    match status {
+        Value::String(s) => Some(s.clone()),
+        Value::Number(n) => match n.as_i64() {
+            Some(n @ 0..=3) => Some(["NotFriends", "Friends", "RequestSent", "RequestReceived"][n as usize].to_string()),
+            _ => None,
+        },
+        _ => None,
+    }
 }
 
 /// Roblox's answer to a friend request or an acceptance: HTTP status, its error codes, and the check holding it
@@ -123,7 +144,7 @@ fn friend_post(url: &str, json: &str, cookie: &str, realm: &str, answered: Optio
         return Err(RobloxApiException { status: 401, cookie_invalid: true, ..RobloxApiException::new(l::t("This account was signed out — sign in to it again.")) }.into());
     }
     if res.status == 429 && challenge.is_none() {
-        return Err(rate_limited());
+        return Err(rate_limited_by(&res));
     }
     Ok(FriendAnswer { http: res.status as i32, codes, challenge })
 }

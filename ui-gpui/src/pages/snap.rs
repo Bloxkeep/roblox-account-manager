@@ -19,7 +19,6 @@ pub const LAYOUTS: [&str; 8] = ["fill", "2x1", "3x1", "2x2", "3x2", "3x3", "4x3"
 #[derive(Default)]
 pub struct Data {
     pub open: bool,
-    was: bool,
     closed: Option<Instant>,
     screens: bool,
 }
@@ -234,11 +233,11 @@ pub fn button(root: &Root, compact: bool, cx: &mut Context<Root>) -> Div {
                 let just = r.snap.closed.take().is_some_and(|at| at.elapsed().as_millis() < 300);
                 r.snap.open = !just && !r.snap.open;
                 r.snap.screens = false;
-                r.snap.was = true;
                 cx.notify();
             })),
     );
-    if open || root.snap.was {
+    // (Built while open or fading out only, not every frame after its first opening.)
+    if crate::pages::accounts::pop_alive("acc-windows-pop", open) {
         wrap = wrap.child(div().absolute().top(px(TOOL_H + 4.)).right_0().child(deferred(anchored().anchor(Anchor::TopRight).snap_to_window_with_margin(px(8.)).child(pop("acc-windows-pop", open, menu(root, cx)))).with_priority(1)));
     }
     wrap
@@ -329,6 +328,5 @@ fn row(id: impl Into<ElementId>, icon_name: &'static str, label: String) -> Hot 
 pub fn shot(r: &mut Root, cx: &mut Context<Root>) {
     r.go(crate::pages::Page::Accounts);
     r.snap.open = true;
-    r.snap.was = true;
     cx.notify();
 }

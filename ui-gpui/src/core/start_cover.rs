@@ -14,7 +14,7 @@ use std::{
 use futures::channel::oneshot;
 use windows_sys::Win32::{
     Foundation::RECT,
-    Graphics::Gdi::{BI_RGB, BITMAPINFO, BITMAPINFOHEADER, BeginPaint, DIB_RGB_COLORS, EndPaint, PAINTSTRUCT, SetDIBitsToDevice},
+    Graphics::Gdi::{BI_RGB, BITMAPINFO, BITMAPINFOHEADER, BeginPaint, DIB_RGB_COLORS, EndPaint, InvalidateRect, PAINTSTRUCT, SetDIBitsToDevice},
     UI::WindowsAndMessaging::{GetClientRect, HWND_TOP, SWP_NOACTIVATE, SetWindowPos, WM_ERASEBKGND, WM_PAINT, WS_CHILD, WS_CLIPSIBLINGS, WS_VISIBLE},
 };
 
@@ -51,7 +51,7 @@ impl StartCover {
         me.timer.on_tick(move || {
             let Some(c) = w.upgrade() else { return };
             if c.clock.get().is_some() {
-                win_form::invalidate(c.handle.get());
+                c.invalidate_logo();
             }
             if !c.rest.borrow().is_empty() && c.at_rest_now() {
                 for tx in c.rest.borrow_mut().drain(..) {
@@ -141,15 +141,39 @@ impl StartCover {
         (0.0, 1.0, 1.0)
     }
 
+    /// Each tick redraws only the square the logo hops in, not the whole window (about 4 MB a frame before).
+    fn invalidate_logo(&self) {
+        let h = self.handle.get();
+        if h == 0 {
+            return;
+        }
+        let size = win_form::client_size(h);
+        let (lw, lh) = (self.logo.width as f32, self.logo.height as f32);
+        // The widest squash (1.1) and the tallest stretch (1.06) at the highest lift (18), with a margin.
+        let half_w = lw * 0.6 + 4.0;
+        let bottom = (size.height as f32 + lh) / 2.0 + 4.0;
+        let top = bottom - lh * 1.1 - 18.0 * self.unit - 8.0;
+        let r = RECT {
+            left: (size.width as f32 / 2.0 - half_w).floor() as i32,
+            top: top.floor() as i32,
+            right: (size.width as f32 / 2.0 + half_w).ceil() as i32,
+            bottom: bottom.ceil() as i32,
+        };
+        // SAFETY: plain call on our own child.
+        unsafe { InvalidateRect(hwnd(h), &r, 0) };
+    }
+
     fn paint(&self, h: isize) {
         let size = win_form::client_size(h);
-        let mut canvas = Picture::new(size.width.max(1), size.height.max(1));
-        canvas.fill(0xFF00_0000 | (self.back.r as u32) << 16 | (self.back.g as u32) << 8 | self.back.b as u32);
-        self.draw_logo(&mut canvas, Rect::new(0, 0, size.width, size.height));
         // SAFETY: BeginPaint/EndPaint pair; the DIB header describes `canvas`' pixels, read during the call.
         unsafe {
             let mut ps: PAINTSTRUCT = std::mem::zeroed();
             let dc = BeginPaint(hwnd(h), &mut ps);
+            // Only what needs drawing: the logo's square on a tick, the whole window when it opens or is resized.
+            let at = ps.rcPaint;
+            let mut canvas = Picture::new((at.right - at.left).max(1), (at.bottom - at.top).max(1));
+            canvas.fill(0xFF00_0000 | (self.back.r as u32) << 16 | (self.back.g as u32) << 8 | self.back.b as u32);
+            self.draw_logo(&mut canvas, Rect::new(-at.left, -at.top, size.width, size.height));
             let mut info: BITMAPINFO = std::mem::zeroed();
             info.bmiHeader = BITMAPINFOHEADER {
                 biSize: std::mem::size_of::<BITMAPINFOHEADER>() as u32,
@@ -160,7 +184,7 @@ impl StartCover {
                 biCompression: BI_RGB,
                 ..std::mem::zeroed()
             };
-            SetDIBitsToDevice(dc, 0, 0, canvas.width as u32, canvas.height as u32, 0, 0, 0, canvas.height as u32, canvas.pixels.as_ptr() as *const _, &info, DIB_RGB_COLORS);
+            SetDIBitsToDevice(dc, at.left, at.top, canvas.width as u32, canvas.height as u32, 0, 0, 0, canvas.height as u32, canvas.pixels.as_ptr() as *const _, &info, DIB_RGB_COLORS);
             EndPaint(hwnd(h), &ps);
         }
     }

@@ -45,8 +45,10 @@ pub struct MiniWindow {
     sent: RefCell<Option<String>>,
     /// Its height in CSS pixels, as the person left it.
     height: Cell<i32>,
-    /// Dismissed.
+    /// Dismissed, or its page couldn't start.
     pub on_dismissed: RefCell<Option<Box<dyn Fn()>>>,
+    /// On screen (its page has drawn).
+    pub on_shown: RefCell<Option<Box<dyn Fn()>>>,
 }
 
 impl MiniWindow {
@@ -61,6 +63,7 @@ impl MiniWindow {
             sent: RefCell::new(None),
             height: Cell::new(DEFAULT_HEIGHT),
             on_dismissed: RefCell::new(None),
+            on_shown: RefCell::new(None),
         });
         let weak: Weak<dyn WebTool> = Rc::downgrade(&me) as Weak<dyn WebTool>;
         me.tool.bind(weak);
@@ -89,7 +92,7 @@ impl MiniWindow {
     pub fn open(self: &Rc<Self>, activate: bool) {
         let me = self.clone();
         win_form::spawn(async move {
-            prefs::lock().mini_open = true;
+            let was_open = std::mem::replace(&mut prefs::lock().mini_open, true);
             prefs::save();
             if me.tool.visible() {
                 me.push();
@@ -106,10 +109,18 @@ impl MiniWindow {
             me.showing.set(true);
             let dynme: Rc<dyn WebTool> = me.clone();
             if !WebToolWindow::ensure_browser(dynme).await || me.tool.is_disposed() {
+                me.showing.set(false);
                 if !me.tool.is_disposed() {
                     log::note("Mini window: not shown, its page couldn't start.");
+                    // Not open after all: kept as it was, and the button shows it closed.
+                    if !was_open {
+                        prefs::lock().mini_open = false;
+                        prefs::save();
+                    }
+                    if let Some(f) = me.on_dismissed.borrow().as_ref() {
+                        f();
+                    }
                 }
-                me.showing.set(false);
                 return;
             }
             me.push(); // the page answers with its size once it has drawn, and the window shows then (on_page_size)
@@ -118,8 +129,14 @@ impl MiniWindow {
 
     /// Hidden at the person's request (✕, Esc, Alt+F4, the page's button); forgotten as open, unlike the app's exit.
     pub fn dismiss(&self) {
-        self.showing.set(false);
+        let was_showing = self.showing.replace(false);
         if !self.tool.visible() {
+            // Closed while still opening (its page not drawn yet): open() had already noted it open, so the next
+            // start would bring it back though the person turned it off.
+            if was_showing {
+                prefs::lock().mini_open = false;
+                prefs::save();
+            }
             return;
         }
         self.save_bounds();
@@ -155,7 +172,7 @@ impl MiniWindow {
         rt::post(|| {
             App::with(|app| {
                 // A failure is caught here as the C#'s catch (Exception) in Tick was.
-                let message = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| app.mini_message()));
+                let message = crate::core::program::catch_unwind(std::panic::AssertUnwindSafe(|| app.mini_message()));
                 win_form::invoke(move || {
                     if let Some(me) = MiniWindow::current() {
                         match message {
@@ -291,6 +308,9 @@ impl WebTool for MiniWindow {
         if activated {
             self.tool.activate();
         }
+        if let Some(f) = self.on_shown.borrow().as_ref() {
+            f();
+        }
         log::note(&format!(
             "Mini window: shown always on top{}, {}.",
             if activated { " and activated" } else { " without the keyboard (reopened at start)" },
@@ -341,7 +361,7 @@ impl WebTool for MiniWindow {
                 rt::post(move || {
                     App::with(|app| {
                         if remember {
-                            app.skip_confirm("closeAll");
+                            let _ = app.skip_confirm("closeAll"); // a known key: never refused
                         }
                         app.close_all_clients();
                     })

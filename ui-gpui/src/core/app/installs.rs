@@ -10,7 +10,7 @@ use super::App;
 use super::controller::{INSTALL_CACHE_LIFETIME, REGISTRY_CACHE_LIFETIME};
 use crate::core::base::{Cancel, Guid, Res, Stamp};
 use crate::core::roblox_installs::{self, ClientVersion};
-use crate::core::{l, log, multi_instance, roblox_api, roblox_launcher, rt, win_kit};
+use crate::core::{l, multi_instance, roblox_api, roblox_launcher, rt, win_kit};
 
 /// The instance fields AppController.Installs.cs declares.
 #[derive(Default)]
@@ -102,16 +102,19 @@ pub fn read_installs(via: &str, custom: &str) -> (InstallsInfo, Option<String>) 
     let used = roblox_installs::usable_handler_path().or_else(|| roblox_launcher::fallback_launcher().map(|f| f.0));
     // PORT: the C# let ClientFor's exception go up from here; roblox_installs::client_for answers None instead.
     let client = roblox_installs::client_for(via, custom);
+    // Each of these scans folders and the registry: once each per read.
+    let vng = roblox_installs::find_vng_client().is_some();
+    let direct = vng || roblox_installs::find_any_client().is_some();
     let installs = InstallsInfo {
         handler: used.map(|u| win_kit::file_stem(&u)),
         bloxstrap: roblox_installs::find_bootstrapper("Bloxstrap").is_some(),
         fishstrap: roblox_installs::find_bootstrapper("Fishstrap").is_some(),
         others: roblox_installs::find_other_bootstrappers(),
         roblox: roblox_installs::find_official_client().is_some(),
-        direct: roblox_installs::find_any_client().or_else(roblox_installs::find_vng_client).is_some(),
+        direct,
         store: roblox_installs::store_edition_installed(),
         client: roblox_installs::version_of(client.as_deref()),
-        vng: roblox_installs::find_vng_client().is_some(),
+        vng,
         voidstrap: roblox_installs::find_bootstrapper("Voidstrap").is_some(),
     };
     (installs, roblox_installs::updater_for(via, custom))
@@ -217,6 +220,10 @@ impl App {
             shown = Some(l.version.clone());
             up_to_date = Some(true);
         }
+        // Listed by Roblox but not rolled out to this PC yet (live_not_here): Roblox has nothing to update here, so nothing is out of date.
+        if up_to_date == Some(false) && latest.as_ref().is_some_and(|l| self.live_not_here(l)) {
+            up_to_date = Some(true);
+        }
         let launch_via = self.controller.vault.borrow().as_ref().map(|v| v.data().settings.launch_via.clone());
         let updater = self.installs.updater_exe.borrow().clone().map(|u| {
             if roblox_installs::is_own_installer(Some(&u)) { "Roblox".to_string() } else { win_kit::file_stem(&u) }
@@ -239,9 +246,19 @@ impl App {
     }
 
     pub async fn refresh_latest_roblox(self: &Rc<Self>) -> Res<()> {
-        match rt::blocking(|| roblox_api::get_latest_client_version(&Cancel::new())).await {
+        let asked = rt::blocking(|| roblox_api::get_latest_client_version(&Cancel::new())).await;
+        if asked.is_ok() {
+            self.roblox_updates.latest_roblox_at.set(Stamp::utc_now());
+        }
+        match asked {
             Ok(Some(latest)) => {
                 if self.updates.latest_roblox.borrow().as_ref() != Some(&latest) {
+                    if self.updates.latest_roblox.borrow().as_ref().map(|l| l.folder.as_str()) != Some(latest.folder.as_str()) {
+                        self.roblox_updates.latest_roblox_since.set(Stamp::utc_now());
+                    }
+                    // Launches start this build when it is installed (another channel's would update and close every window).
+                    roblox_installs::set_live_build(roblox_api::starts_with_ci(&latest.folder, "version-").then(|| latest.folder.clone()));
+                    self.controller.installs_read_at.set(crate::core::models::stamp_min()); // the client picked may change with it
                     *self.updates.latest_roblox.borrow_mut() = Some(latest);
                     self.push_state();
                 }

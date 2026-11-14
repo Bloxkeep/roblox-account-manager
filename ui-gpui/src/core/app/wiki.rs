@@ -58,12 +58,12 @@ impl App {
         wiki_link::base_of(feeds_test_url().as_deref())
     }
 
-    pub async fn wiki_games(self: &Rc<Self>) -> Res<Value> {
+    pub async fn wiki_games(self: &Rc<Self>, again: bool) -> Res<Value> {
         if !self.feeds_allowed() {
             return Ok(json!({ "games": [], "off": true }));
         }
         let bot = self.wiki_bot();
-        let games = rt::blocking(move || wiki_link::games(&bot, &Cancel::new())).await?;
+        let games = rt::blocking(move || wiki_link::games(&bot, again, &Cancel::new())).await?;
         Ok(json!({
             "games": games.iter().map(|g| json!({
                 "id": g.id, "name": g.name, "kind": g.kind, "count": g.count, "at": g.at, "place": g.place, "wiki": g.wiki,
@@ -310,7 +310,8 @@ impl App {
             }
         }
         let site = str_of(a, "site");
-        rt::blocking(move || wiki_net::api(&site, &q, &Cancel::new())).await
+        // The page takes its own copy of the answer; made here, off the core's thread, and only for the page.
+        rt::blocking(move || wiki_net::api(&site, &q, &Cancel::new()).map(|v| std::sync::Arc::unwrap_or_clone(v))).await
     }
 
     /// Wikis for a game's name, best first.

@@ -48,6 +48,54 @@ fn secs(d: Duration) -> f64 {
     d.as_secs_f64()
 }
 
+/// What build_state asks Windows for: the start-with-Windows entry, the monitors and whether the vault file is there.
+#[derive(Clone)]
+struct Probes {
+    start_with_windows: bool,
+    monitors: Vec<Value>,
+    vault_exists: bool,
+}
+
+/// How long the timers' pushes reuse those answers (a command's push reads them fresh).
+const PROBES_KEPT: Duration = Duration::from_secs(2);
+
+thread_local! {
+    static PROBES: RefCell<Option<(std::time::Instant, Probes)>> = const { RefCell::new(None) };
+    static TIMER_PUSH: Cell<bool> = const { Cell::new(false) };
+}
+
+/// Runs `f` (a timer's build_state) with the answers of the last 2 s reused instead of the registry, the monitors and
+/// the disk being asked again every tick.
+pub(super) fn with_kept_probes<R>(f: impl FnOnce() -> R) -> R {
+    struct Off;
+    impl Drop for Off {
+        fn drop(&mut self) {
+            TIMER_PUSH.with(|t| t.set(false));
+        }
+    }
+    TIMER_PUSH.with(|t| t.set(true));
+    let _off = Off;
+    f()
+}
+
+fn probes() -> Probes {
+    let reuse = TIMER_PUSH.with(Cell::get);
+    if reuse && let Some(kept) = PROBES.with(|p| p.borrow().as_ref().filter(|(at, _)| at.elapsed() < PROBES_KEPT).map(|(_, k)| k.clone())) {
+        return kept;
+    }
+    let fresh = Probes {
+        start_with_windows: start_with_windows::is_on(),
+        monitors: win_kit::all_screens()
+            .into_iter()
+            .enumerate()
+            .map(|(i, s)| json!({ "index": i, "primary": s.primary, "width": s.bounds.width, "height": s.bounds.height }))
+            .collect(),
+        vault_exists: vault::exists(),
+    };
+    PROBES.with(|p| *p.borrow_mut() = Some((std::time::Instant::now(), fresh.clone())));
+    fresh
+}
+
 impl App {
     /// The page's first request; says once whether it replaces an earlier page of this session.
     pub fn initial_state(self: &Rc<Self>) -> Value {
@@ -156,11 +204,7 @@ impl App {
         let screen_locked = self.auto_lock.screen_locked.get();
         let installs = self.installs();
         let registry = self.registry_info();
-        let monitors: Vec<Value> = win_kit::all_screens()
-            .into_iter()
-            .enumerate()
-            .map(|(i, s)| json!({ "index": i, "primary": s.primary, "width": s.bounds.width, "height": s.bounds.height }))
-            .collect();
+        let Probes { start_with_windows: start_on, monitors, vault_exists } = probes();
         json!({
             "language": l::language(),
             "theme": theme,
@@ -168,8 +212,8 @@ impl App {
             "customTheme": App::custom_theme_dto(),
             "savedThemes": App::saved_themes_dto(),
             "closeToTray": close_to_tray,
-            "startWithWindows": start_with_windows::is_on(),
-            "hotkeys": { "on": global_hotkeys, "taken": self.hotkeys.hotkeys_taken.borrow().clone() },
+            "startWithWindows": start_on,
+            "hotkeys": { "on": global_hotkeys, "taken": self.hotkeys.hotkeys_taken.borrow().clone(), "typing": self.hotkeys.hotkeys_typing.borrow().clone() },
             "hideNames": hide_names,
             "notifications": notifications,
             "notifyOff": notify_off,
@@ -196,7 +240,7 @@ impl App {
                 (Some(from), Some(_)) => json!({ "from": from, "releases": super::updates::releases_json(&crate::core::whats_new::between(Some(from), &updater.current_version())) }),
                 _ => Value::Null,
             },
-            "vaultExists": vault::exists(),
+            "vaultExists": vault_exists,
             "vaults": self.vaults_dto(),
             "multiAtStart": multi_at_start,
             "locked": open.is_none(),
@@ -476,6 +520,8 @@ impl App {
             "layout": s.layout,
             "sort": s.sort,
             "launchDelaySeconds": s.launch_delay_seconds,
+            // (Missing in the C# too, whose page kept its own copy: the chips here read the state, and went back to Off.)
+            "hopAbovePlayers": s.hop_above_players,
             "memoryWarnings": s.memory_warnings,
             "trimBackground": s.trim_background,
             "autoUpdateRoblox": s.auto_update_roblox,

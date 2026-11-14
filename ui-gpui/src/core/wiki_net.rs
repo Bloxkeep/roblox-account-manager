@@ -6,7 +6,7 @@
 //! to a page asks nothing again.
 use std::collections::HashMap;
 use std::io::Read;
-use std::sync::{LazyLock, Mutex};
+use std::sync::{Arc, LazyLock, Mutex};
 use std::time::{Duration, Instant};
 
 use regex::{Regex, RegexBuilder};
@@ -19,10 +19,15 @@ use crate::core::roblox_api::{HTTP_REQUEST_EXCEPTION, TASK_CANCELED_EXCEPTION, e
 use crate::core::{l, log};
 
 // PORT: ureq 2 has no cookie store unless asked (UseCookies = false); gzip as its default feature, brotli with its feature.
-static HTTP: LazyLock<ureq::Agent> = LazyLock::new(|| ureq::AgentBuilder::new().redirects(0).timeout(Duration::from_secs(25)).build());
-static CACHE: LazyLock<Mutex<HashMap<String, (Instant, Value)>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
+static HTTP: LazyLock<ureq::Agent> = LazyLock::new(|| crate::net::builder().redirects(0).timeout(Duration::from_secs(25)).build());
+/// Each answer with when it came and its size as read: shared, so a hit or a keep copies no JSON tree.
+static CACHE: LazyLock<Mutex<HashMap<String, (Instant, Arc<Value>, usize)>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
 const KEEP: Duration = Duration::from_secs(20 * 60);
 const CACHE_MAX: usize = 120;
+/// The answers kept, by their parsed size (four times the text): 120 parsed pages of up to 12 MB each would be gigabytes.
+const CACHE_MAX_BYTES: usize = 48_000_000;
+/// An answer bigger than this isn't read (a page this size is no wiki article).
+const MAX_BODY: u64 = 12_000_000;
 
 /// Application.ProductVersion without its "+…" build part.
 // PORT: the C# read Application.ProductVersion; the crate's version stands in.
@@ -96,8 +101,9 @@ fn utf16_len(s: &str) -> usize {
     s.encode_utf16().count()
 }
 
-/// One read of a wiki's API (action query, parse or expandtemplates), as JSON. Fails with Fail::User when it can't be read.
-pub fn api(site_text: &str, q: &HashMap<String, String>, ct: &Cancel) -> Res<Value> {
+/// One read of a wiki's API (action query, parse or expandtemplates), as JSON, shared with the kept answers (no copy
+/// of the tree). Fails with Fail::User when it can't be read.
+pub fn api(site_text: &str, q: &HashMap<String, String>, ct: &Cancel) -> Res<Arc<Value>> {
     let wiki = site(Some(site_text)).ok_or_else(not_a_wiki)?;
     if !q.get("action").is_some_and(|a| ACTIONS.contains(&a.as_str())) {
         return Err(not_a_wiki());
@@ -195,11 +201,11 @@ fn log_kind(f: &Fail) -> String {
 }
 
 /// A GET of JSON, kept a while; a move to another wiki host (a renamed wiki) is followed, nowhere else.
-fn get_json(url: &str, ct: &Cancel) -> Res<Value> {
-    if let Some((at, value)) = lock(&CACHE).get(url)
+fn get_json(url: &str, ct: &Cancel) -> Res<Arc<Value>> {
+    if let Some((at, value, _)) = lock(&CACHE).get(url)
         && at.elapsed() < KEEP
     {
-        return Ok(value.clone());
+        return Ok(Arc::clone(value));
     }
     let mut at = url.to_string();
     let mut hop = 0;
@@ -241,12 +247,18 @@ fn get_json(url: &str, ct: &Cancel) -> Res<Value> {
             return Err(if matches!(status, 404 | 401 | 410) { not_a_wiki() } else { unreachable() });
         }
         let length = res.header("Content-Length").and_then(|v| v.trim().parse::<i64>().ok());
-        if let Some(length) = length.filter(|l| *l > 12_000_000) {
+        if let Some(length) = length.filter(|l| *l > MAX_BODY as i64) {
             log::note(&format!("Wiki: an answer of {} MB was too big to read.", length / 1_000_000));
             return Err(Fail::user(l::t("That wiki page is too big to show here.")));
         }
         let mut body = Vec::new();
-        if let Err(e) = res.into_reader().read_to_end(&mut body) {
+        // One byte over the limit tells a too-big answer sent without Content-Length (chunked) from one just at it.
+        let read = res.into_reader().take(MAX_BODY + 1).read_to_end(&mut body);
+        if read.is_ok() && body.len() as u64 > MAX_BODY {
+            log::note("Wiki: an answer without its length was too big to read.");
+            return Err(Fail::user(l::t("That wiki page is too big to show here.")));
+        }
+        if let Err(e) = read {
             if !ct.is_cancelled() {
                 let kind = if e.kind() == std::io::ErrorKind::TimedOut { TASK_CANCELED_EXCEPTION } else { "IOException" };
                 log::note(&format!("Wiki: reading the answer failed ({}).", log_kind(&fail_of(kind, e))));
@@ -261,15 +273,24 @@ fn get_json(url: &str, ct: &Cancel) -> Res<Value> {
                 return Err(not_a_wiki());
             }
         };
+        // Counted as parsed, not as read: a JSON tree in memory is several times its text, and the cap is about RAM.
+        let size = body.len().saturating_mul(4);
+        let value = Arc::new(value);
         let mut cache = lock(&CACHE);
-        if cache.len() >= CACHE_MAX {
-            let mut by_age: Vec<(Instant, String)> = cache.iter().map(|(k, (t, _))| (*t, k.clone())).collect();
-            by_age.sort_by_key(|(t, _)| *t);
-            for (_, old) in by_age.into_iter().take(CACHE_MAX / 4) {
+        let mut total: usize = cache.values().map(|e| e.2).sum();
+        if cache.len() >= CACHE_MAX || total + size > CACHE_MAX_BYTES {
+            // The oldest go: a quarter of them at least, more until this one fits.
+            let mut by_age: Vec<(Instant, String, usize)> = cache.iter().map(|(k, (t, _, n))| (*t, k.clone(), *n)).collect();
+            by_age.sort_by_key(|(t, _, _)| *t);
+            for (i, (_, old, n)) in by_age.into_iter().enumerate() {
+                if i >= CACHE_MAX / 4 && total + size <= CACHE_MAX_BYTES {
+                    break;
+                }
                 cache.remove(&old);
+                total -= n;
             }
         }
-        cache.insert(url.to_string(), (Instant::now(), value.clone()));
+        cache.insert(url.to_string(), (Instant::now(), Arc::clone(&value), size));
         return Ok(value);
     }
 }

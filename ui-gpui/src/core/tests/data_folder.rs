@@ -123,11 +123,12 @@ pub async fn run(c: &mut Checks, _dir: &str) {
     );
     // Held by another program as Bloxkeep starts: not damaged, so this run's defaults aren't saved over it either.
     let prefs_file = data.join("prefs.json");
+    // (Still held as it saves: once the file can be read again, a save puts its settings back and writes, prefs::read_again.)
     {
         let _held = hold(&prefs_file);
         prefs::load();
+        prefs::save();
     }
-    prefs::save();
     c.check("a prefs.json held by another program at the start isn't overwritten with defaults", read(&data, "prefs.json") == "x", read(&data, "prefs.json"));
     prefs::lock().unreadable = false;
 

@@ -2,7 +2,8 @@
 // (a link or Place ID pasted, a recent game, or a search by name), kind of server, wait between accounts, Job ID or the
 // player to follow, the ticked accounts in launch order, options for its windows, its own Discord channel, the
 // schedule. The rules are PresetForm.tsx's and app.js's presetModal: what Save sends (savePreset's args) and what it
-// checks before. No browser pickers: choices are chips and switches, times and dates are typed.
+// checks before. No browser pickers: choices are chips and switches, times are typed, a date typed or picked from
+// Bloxkeep's own calendar (calendar.rs).
 use std::collections::HashSet;
 
 use gpui_kit::component::input::{InputEvent, InputState};
@@ -26,6 +27,8 @@ const WEEK: [i64; 7] = [1, 2, 3, 4, 5, 6, 0];
 pub struct Form {
     id: String,
     is_new: bool,
+    /// Something was typed or picked since it opened: leaving asks "Discard changes?" first (app.js's askClose).
+    touched: bool,
     /// The saved Discord link, masked (the page never holds it).
     saved_discord: Option<String>,
     name: Entity<InputState>,
@@ -67,6 +70,10 @@ pub struct Form {
     /// button then only closes it).
     drop: Option<&'static str>,
     drop_closed: Option<(&'static str, std::time::Instant)>,
+    /// The date box's calendar while it is open (the month on it), and when a click outside last closed it (its own
+    /// button's click then only closes it).
+    cal: Option<(i32, u32)>,
+    cal_closed: Option<std::time::Instant>,
     /// A ticked account held by its grip: its row follows the mouse among the ticked.
     held: Option<String>,
 }
@@ -83,37 +90,110 @@ fn looks_like_target(v: &str) -> bool {
     v.contains("roblox.com/") || (v.len() >= 3 && v.chars().all(|c| c.is_ascii_digit()))
 }
 
-/// "20:00" from "20:00", "8:5", "2000", "20h"; Err for anything else, None for empty.
+/// "20:00" from "20:00", "8:00 PM", "8pm", "7:30 p.m.", "2000", "830", "8.30", "20h30" (TimeField.tsx's parseTime);
+/// Err for anything else, None for empty. Read char by char: no byte slicing, so no text can make it panic.
 pub(crate) fn parse_time(v: &str) -> Result<Option<String>, ()> {
-    let v = v.trim().to_lowercase().replace('h', ":").replace('.', ":");
+    let v: Vec<char> = v.trim().to_lowercase().chars().collect();
     if v.is_empty() {
         return Ok(None);
     }
-    let (h, m) = match v.split_once(':') {
-        Some((h, m)) => (h.trim().to_string(), if m.trim().is_empty() { "0".into() } else { m.trim().to_string() }),
-        None if v.len() == 4 => (v[..2].to_string(), v[2..].to_string()),
-        None if v.len() <= 2 => (v.clone(), "0".into()),
-        None => return Err(()),
+    let digit = |i: usize| v.get(i).is_some_and(char::is_ascii_digit);
+    let num = |from: usize, len: usize| v[from..from + len].iter().fold(0u32, |n, c| n * 10 + c.to_digit(10).unwrap_or(0));
+    let ws = |mut i: usize| {
+        while v.get(i).is_some_and(|c| c.is_whitespace()) {
+            i += 1;
+        }
+        i
     };
-    match (h.parse::<u32>(), m.parse::<u32>()) {
-        (Ok(h), Ok(m)) if h < 24 && m < 60 => Ok(Some(format!("{h:02}:{m:02}"))),
-        _ => Err(()),
+    // The end: `\s*([ap])?\.?\s*(?:m\.?)?$`; Some(whether a/p and which) when it reaches the end.
+    let tail = |i: usize| -> Option<Option<bool>> {
+        let mut i = ws(i);
+        let ap = match v.get(i) {
+            Some('a') => Some(false),
+            Some('p') => Some(true),
+            _ => None,
+        };
+        if ap.is_some() {
+            i += 1;
+        }
+        if v.get(i) == Some(&'.') {
+            i += 1;
+        }
+        i = ws(i);
+        if v.get(i) == Some(&'m') {
+            i += 1;
+            if v.get(i) == Some(&'.') {
+                i += 1;
+            }
+        }
+        (i == v.len()).then_some(ap)
+    };
+    // The hour's one or two digits (two first, as the pattern's greedy \d{1,2}), each with its minutes first, then without.
+    let mut found = None;
+    'hours: for hl in [2usize, 1] {
+        if !(0..hl).all(digit) {
+            continue;
+        }
+        // `(?:\s*[:.h]?\s*(\d{2}))?`
+        let mut i = ws(hl);
+        if matches!(v.get(i), Some(':' | '.' | 'h')) {
+            i = ws(i + 1);
+        }
+        if digit(i) && digit(i + 1) {
+            if let Some(ap) = tail(i + 2) {
+                found = Some((num(0, hl), num(i, 2), ap));
+                break 'hours;
+            }
+        }
+        if let Some(ap) = tail(hl) {
+            found = Some((num(0, hl), 0, ap));
+            break 'hours;
+        }
     }
+    let Some((mut h, m, ap)) = found else { return Err(()) };
+    if let Some(pm) = ap {
+        if !(1..=12).contains(&h) {
+            return Err(());
+        }
+        h = h % 12 + if pm { 12 } else { 0 };
+    }
+    if h <= 23 && m <= 59 { Ok(Some(format!("{h:02}:{m:02}"))) } else { Err(()) }
 }
 
-/// "2026-12-24" from that or from "24/12/2026" (the Vietnamese order); Err for anything else, None for empty.
+/// "2026-12-24" from that, or from "24/12/2026", "24-12-26" in the language's order (day first in Vietnamese,
+/// month first in English: TimeField.tsx's parseDate); Err for anything else or a day that doesn't exist, None for empty.
 fn parse_date(v: &str) -> Result<Option<String>, ()> {
     let v = v.trim();
     if v.is_empty() {
         return Ok(None);
     }
-    let n: Vec<u32> = v.split(['-', '/', '.']).map(|x| x.trim().parse::<u32>().unwrap_or(0)).collect();
-    let (y, m, d) = match n.as_slice() {
-        [y, m, d] if *y > 1000 => (*y, *m, *d),
-        [d, m, y] if *y > 1000 => (*y, *m, *d),
+    if v.chars().any(|c| !(c.is_ascii_digit() || c.is_whitespace() || matches!(c, '.' | '/' | '-'))) {
+        return Err(());
+    }
+    let parts: Vec<&str> = v.split(|c: char| !c.is_ascii_digit()).filter(|x| !x.is_empty()).collect();
+    if parts.len() != 3 {
+        return Err(());
+    }
+    // A number too long for any date is no date (and can't overflow).
+    let n: Vec<u32> = parts.iter().map(|x| if x.len() > 6 { u32::MAX } else { x.parse().unwrap_or(u32::MAX) }).collect();
+    let iso = v.len() > 4 && v.as_bytes()[..4].iter().all(u8::is_ascii_digit) && !v.as_bytes()[4].is_ascii_digit();
+    let (y, m, d) = if iso {
+        (n[0], n[1], n[2])
+    } else if crate::time::english() {
+        (n[2], n[0], n[1])
+    } else {
+        (n[2], n[1], n[0])
+    };
+    let y = if y < 100 { 2000 + y } else { y };
+    let leap = (y % 4 == 0 && y % 100 != 0) || y % 400 == 0;
+    let last = match m {
+        1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
+        4 | 6 | 9 | 11 => 30,
+        2 if leap => 29,
+        2 => 28,
         _ => return Err(()),
     };
-    if (1..=12).contains(&m) && (1..=31).contains(&d) { Ok(Some(format!("{y:04}-{m:02}-{d:02}"))) } else { Err(()) }
+    if (1000..=9999).contains(&y) && (1..=last).contains(&d) { Ok(Some(format!("{y:04}-{m:02}-{d:02}"))) } else { Err(()) }
 }
 
 fn tri_of(v: &Value, k: &str) -> Option<bool> {
@@ -154,8 +234,11 @@ pub fn open(r: &mut Root, p: Option<Value>, window: &mut Window, cx: &mut Contex
             let v = value.to_string();
             e.update(cx, |st, cx| st.set_value(v, window, cx));
         }
-        cx.subscribe(&e, |_, _, ev: &InputEvent, cx| {
+        cx.subscribe(&e, |r: &mut Root, _, ev: &InputEvent, cx| {
             if matches!(ev, InputEvent::Change) {
+                if let Some(f) = r.auto.form.as_mut() {
+                    f.touched = true;
+                }
                 cx.notify();
             }
         })
@@ -190,6 +273,18 @@ pub fn open(r: &mut Root, p: Option<Value>, window: &mut Window, cx: &mut Contex
                 }
                 if looks_like_target(&v) {
                     resolve(r, v, cx);
+                } else if v.chars().count() >= 2 {
+                    // A name: searched once typing pauses (PresetForm.tsx's 200 ms), as well as on Enter.
+                    let boxed = e.clone();
+                    cx.spawn(async move |this, cx| {
+                        cx.background_executor().timer(std::time::Duration::from_millis(200)).await;
+                        let _ = this.update(cx, |r, cx| {
+                            if r.auto.form.is_some() && boxed.read(cx).value().trim() == v {
+                                search(r, v, cx);
+                            }
+                        });
+                    })
+                    .detach();
                 }
             }
             InputEvent::PressEnter { .. } if !v.is_empty() && !looks_like_target(&v) => search(r, v, cx),
@@ -225,9 +320,12 @@ pub fn open(r: &mut Root, p: Option<Value>, window: &mut Window, cx: &mut Contex
         seq: 0,
         error: None,
         saving: false,
+        touched: false,
         scroll: ScrollHandle::new(),
         drop: None,
         drop_closed: None,
+        cal: None,
+        cal_closed: None,
         held: None,
         name,
         place,
@@ -241,6 +339,15 @@ pub fn open(r: &mut Root, p: Option<Value>, window: &mut Window, cx: &mut Contex
     };
     let start = text(&form.place, cx);
     r.auto.form = Some(form);
+    // BLOXKEEP_SHOT_CAL=1: a shot with the schedule on, set to a date, and the date's calendar open.
+    #[cfg(feature = "shot")]
+    if std::env::var("BLOXKEEP_SHOT_CAL").as_deref() == Ok("1") {
+        if let Some(f) = r.auto.form.as_mut() {
+            f.sch_on = true;
+            f.once = true;
+            f.cal = Some(crate::calendar::start_month(parse_date(&text(&f.date, cx)).ok().flatten().as_deref()));
+        }
+    }
     if looks_like_target(&start) {
         resolve(r, start, cx);
     }
@@ -441,11 +548,25 @@ fn save(r: &mut Root, cx: &mut Context<Root>) {
 // ───────────────────────── drawing ─────────────────────────
 
 /// A change to the form from a click.
+/// Back or Cancel: the form goes, asking first when something in it would be lost.
+pub fn leave(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
+    if r.auto.form.as_ref().is_some_and(|f| f.touched && !f.saving) {
+        r.ask_discard(window, cx, |r, _, cx| {
+            r.auto.form = None;
+            cx.notify();
+        });
+    } else {
+        r.auto.form = None;
+        cx.notify();
+    }
+}
+
 fn edit(cx: &mut Context<Root>, f: impl Fn(&mut Form) + 'static) -> impl Fn(&ClickEvent, &mut Window, &mut App) + 'static {
     cx.listener(move |r, _, _, cx| {
         if let Some(form) = r.auto.form.as_mut() {
             f(form);
             form.error = None;
+            form.touched = true;
         }
         cx.notify();
     })
@@ -508,7 +629,12 @@ fn select(
 ) -> Div {
     let Some(f) = root.auto.form.as_ref() else { return div() };
     let open = f.drop == Some(key);
-    let shown = groups.iter().flat_map(|(_, l)| l.iter()).find(|(v, _, _)| v == selected).map(|(_, l, _)| l.clone()).unwrap_or_default();
+    let mut shown = groups.iter().flat_map(|(_, l)| l.iter()).find(|(v, _, _)| v == selected).map(|(_, l, _)| l.clone()).unwrap_or_default();
+    // A server picked for each account says so when closed ("Each account: Most players", PresetForm.tsx); its list's
+    // heading says it when open.
+    if key == "ps-srv" && selected.starts_with("each") && !shown.is_empty() {
+        shown = format!("{}{shown}", root.tr("ps.srvEachIn"));
+    }
     let button = focusable(div().id(key))
         .h(px(40.))
         .px(px(12.))
@@ -588,6 +714,42 @@ fn select(
         }
     }
     wrap.child(div().absolute().top(px(44.)).left_0().child(deferred(anchored().anchor(Anchor::TopLeft).snap_to_window_with_margin(px(8.)).child(pop(SharedString::from(format!("{key}-pop")), open, menu))).with_priority(1)))
+}
+
+/// The one-off date: typed, or picked from Bloxkeep's own calendar under the box's calendar button (TimeField.tsx's
+/// DateInput, past days off). A day picked goes into the box as the form opened it ("2026-12-24").
+fn date_box(root: &Root, f: &Form, cx: &mut Context<Root>) -> Div {
+    let button = IconButton::new("ps-cal-btn", "calendar").size(28.).on(f.cal.is_some()).tip(root.tr("tf.pickDate")).on_click(cx.listener(|r, _, _, cx| {
+        if let Some(f) = r.auto.form.as_mut() {
+            let just = f.cal_closed.is_some_and(|at| at.elapsed().as_millis() < 300);
+            f.cal_closed = None;
+            f.cal = if just || f.cal.is_some() { None } else { Some(crate::calendar::start_month(parse_date(&text(&f.date, cx)).ok().flatten().as_deref())) };
+        }
+        cx.notify();
+    }));
+    let wrap = div().relative().w(px(180.)).child(boxed(&f.date).child(button));
+    let Some(shown) = f.cal else { return wrap };
+    let chosen = parse_date(&text(&f.date, cx)).ok().flatten();
+    let panel = crate::calendar::panel("ps-cal", &root.i18n, shown, chosen.as_deref(), true, cx, |r: &mut Root, act, window, cx| {
+        let Some(f) = r.auto.form.as_mut() else { return };
+        match act {
+            crate::calendar::Act::Shift(n) => f.cal = f.cal.map(|m| crate::calendar::shift(m, n)),
+            crate::calendar::Act::Close => {
+                if f.cal.take().is_some() {
+                    f.cal_closed = Some(std::time::Instant::now());
+                }
+            }
+            crate::calendar::Act::Pick(day) => {
+                f.cal = None;
+                f.touched = true;
+                f.error = None;
+                let date = f.date.clone();
+                date.update(cx, |st, cx| st.set_value(day, window, cx));
+            }
+        }
+        cx.notify();
+    });
+    wrap.child(crate::calendar::popover("ps-cal", 40., panel))
 }
 
 /// The page's sides (the Accounts page's).
@@ -832,7 +994,8 @@ pub fn form(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
                         .when(!user.is_empty(), |d| d.child(div().truncate().text_size(px(T_S)).text_color(c(MUTED)).child(format!("@{user}")))),
                 )
                 .when_some(at, |d, k| {
-                    d.child(div().w(px(20.)).flex_none().text_size(px(T_S)).text_color(c(MUTED)).font_features(tnum()).text_right().child((k + 1).to_string()))
+                    // (No place numbers: owner 2026-11-14, no numbers on accounts.)
+                    d
                         // An arrow that can't move it (the first one's up, the last one's down) leaves its place empty:
                         // greyed, the thin dim chevron read as another icon weight (review 4.5).
                         .child(if k == 0 { div().size(px(28.)).flex_none().into_any_element() } else { IconButton::new(("ps-up", i), "chevronUp").size(28.).tip(root.tr("lo.up")).on_click(up).into_any_element() })
@@ -975,7 +1138,7 @@ pub fn form(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
             chips(cx, "ps-mode", vec![("days".into(), root.tr("ps.schDays"), false), ("once".into(), root.tr("ps.schOnce"), false)], if f.once { "once" } else { "days" }, |f, v| f.once = v == "once"),
         ))
         .child(if f.once {
-            setting(root.tr("ps.schDate"), stacked, false, div().w(px(180.)).child(boxed(&f.date))).into_any_element()
+            setting(root.tr("ps.schDate"), stacked, false, date_box(root, f, cx)).into_any_element()
         } else {
             // Days are many at once: a block toggles its own day.
             let mut row = div().flex().flex_wrap().gap(px(6.));
@@ -1136,10 +1299,7 @@ pub fn form(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
         .gap(px(8.))
         .child(
             div().flex().items_center().gap(px(4.)).child(
-                tool("ps-back", Some("chevronLeft"), false).ml(px(-10.)).child(root.tr("nav.auto")).on_click(cx.listener(|r, _, _, cx| {
-                    r.auto.form = None;
-                    cx.notify();
-                })),
+                tool("ps-back", Some("chevronLeft"), false).ml(px(-10.)).child(root.tr("nav.auto")).on_click(cx.listener(|r, _, window, cx| leave(r, window, cx))),
             )
             .child(div().text_size(px(T_M)).text_color(c(DIM)).child("/"))
             .child(div().px(px(6.)).text_size(px(T_M)).text_color(c(MUTED)).child(root.tr(if f.is_new { "ps.newTitle" } else { "ps.editTitle" }))),
@@ -1195,10 +1355,7 @@ pub fn form(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
                 .min_w_0()
                 .when_some(f.error.clone(), |d, e| d.flex().items_center().gap(px(8.)).text_size(px(T_M)).text_color(c(BAD)).child(icon("alert", 15., c(BAD))).child(div().min_w_0().child(e))),
         )
-        .child(Button::new("ps-cancel", root.tr("common.cancel")).quiet().on_click(cx.listener(|r, _, _, cx| {
-            r.auto.form = None;
-            cx.notify();
-        })))
+        .child(Button::new("ps-cancel", root.tr("common.cancel")).quiet().on_click(cx.listener(|r, _, window, cx| leave(r, window, cx))))
         .child(Button::new("ps-save", root.tr("ps.saveBtn")).icon("check").primary().disabled(f.saving).on_click(cx.listener(|r, _, _, cx| save(r, cx))));
 
     div()

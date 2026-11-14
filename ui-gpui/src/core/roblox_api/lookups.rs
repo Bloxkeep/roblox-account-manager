@@ -7,7 +7,7 @@ use serde_json::{Value, json};
 
 use super::{
     GameDetailsInfo, GameInfo, GameSummary, HTTP_REQUEST_EXCEPTION, HttpResponse, Presence, RobloxApiException, RobloxUser, ServerInfo, as_array,
-    get_f64, get_i64, get_prop, get_str, is_expected_error, is_fail_kind, lock, parse_assume_utc, parse_json, post_with_csrf, rate_limited, realm,
+    get_f64, get_i64, get_prop, get_str, is_expected_error, is_fail_kind, lock, parse_assume_utc, parse_json, post_with_csrf, rate_limited_by, realm,
     refused, request, send, try_i32, try_i64, try_prop,
 };
 use crate::core::base::{Cancel, Fail, Res, Stamp, new_guid};
@@ -111,7 +111,7 @@ pub fn get_user_by_name(username: &str, ct: &Cancel) -> Res<Option<RobloxUser>> 
     let res = send(&req, ct)?;
     let body = res.text();
     if res.status == 429 {
-        return Err(rate_limited());
+        return Err(rate_limited_by(&res));
     }
     if !res.is_success() {
         return Err(refused("Username lookup", res.status, &body, false));
@@ -133,7 +133,7 @@ pub fn get_users(user_ids: impl IntoIterator<Item = i64>, ct: &Cancel, strict: b
         req.set_json_body(&json!({ "userIds": chunk, "excludeBannedUsers": true }).to_string());
         let res = send(&req, ct)?;
         if strict && res.status == 429 {
-            return Err(rate_limited());
+            return Err(rate_limited_by(&res));
         }
         if strict && !res.is_success() {
             return Err(refused("User lookup", res.status, &res.text(), false));
@@ -156,7 +156,7 @@ pub fn get_banned(user_id: i64, realm: &str, ct: &Cancel) -> Res<Option<bool>> {
     let req = request("GET", &format!("{}/v1/users/{user_id}", realm::api(realm, "users")), None, false, realm::GLOBAL);
     let res = send(&req, ct)?;
     if res.status == 429 {
-        return Err(rate_limited());
+        return Err(rate_limited_by(&res));
     }
     if !res.is_success() {
         return Ok(None);
@@ -236,7 +236,7 @@ pub(crate) fn joined_result<T>(r: std::thread::Result<Res<T>>) -> Res<T> {
     r.unwrap_or_else(|_| Err(Fail::other("a lookup thread panicked")))
 }
 
-fn get_universe_details(universe_ids: &[i64], ct: &Cancel) -> Res<HashMap<i64, (String, String, i64)>> {
+pub(super) fn get_universe_details(universe_ids: &[i64], ct: &Cancel) -> Res<HashMap<i64, (String, String, i64)>> {
     let mut result = HashMap::new();
     let query = universe_ids.iter().map(|id| format!("ids={id}")).collect::<Vec<_>>().join("&");
     let Some(doc) = get_json(&format!("https://develop.roblox.com/v1/universes/multiget?{query}"), ct, None)? else {
@@ -581,13 +581,13 @@ pub(crate) fn read_servers(root: &Value) -> Res<Vec<ServerInfo>> {
 }
 
 /// The first number of a rate-limit header ("2" of "2", "3" of "3, 3;w=60"), or None.
-fn first_number(res: &HttpResponse, header: &str) -> Option<i32> {
+pub(super) fn first_number(res: &HttpResponse, header: &str) -> Option<i32> {
     let v = res.headers_named(header).next()?;
     v.split(',').next().unwrap_or("").trim().parse::<i32>().ok()
 }
 
 /// Retry-After as a number of seconds (a date there gives none), as res.Headers.RetryAfter?.Delta.
-fn retry_after_secs(res: &HttpResponse) -> Option<i32> {
+pub(super) fn retry_after_secs(res: &HttpResponse) -> Option<i32> {
     let v = res.headers_named("Retry-After").next()?.trim();
     v.parse::<i64>().ok().filter(|s| *s >= 0).map(|s| s.min(i32::MAX as i64) as i32)
 }
@@ -644,16 +644,17 @@ pub fn get_game_icons(universe_ids: impl IntoIterator<Item = i64>, ct: &Cancel) 
 /// privacy settings allow it.
 pub fn get_presence(cookie: Option<&str>, user_ids: &[i64], realm: &str, ct: &Cancel) -> Res<HashMap<i64, Presence>> {
     let mut result = HashMap::new();
-    // 100 ids per request (Roblox's limit); the requests go out together.
+    // 50 ids per request: Roblox refuses 51 ("Too many User Ids being sent in the request.", HTTP 400, recorded by RoALT),
+    // and one refused page fails the whole check, so 51 accounts or more had no status at all. The requests go out together.
     let pages: Vec<Res<String>> = std::thread::scope(|s| {
-        let handles: Vec<_> = chunks(user_ids.iter().copied(), 100)
+        let handles: Vec<_> = chunks(user_ids.iter().copied(), 50)
             .into_iter()
             .map(|chunk| {
                 s.spawn(move || -> Res<String> {
                     let json = json!({ "userIds": chunk }).to_string();
                     let res = post_with_csrf(&format!("{}/v1/presence/users", realm::api(realm, "presence")), cookie.unwrap_or(""), &json, None, ct, realm)?;
                     if res.status == 429 {
-                        return Err(rate_limited());
+                        return Err(rate_limited_by(&res));
                     }
                     // A failed page would read as "everyone offline / unknown"; fail the whole check so the last answer stays.
                     // 401 with a cookie: that sign-in is dead (flagged, so the caller can mark it and ask with another).

@@ -9,7 +9,7 @@
 use std::{
     collections::HashMap,
     sync::{
-        Arc, Mutex,
+        Arc, Condvar, Mutex,
         atomic::{AtomicBool, Ordering},
     },
     thread::JoinHandle,
@@ -125,6 +125,8 @@ pub struct WindowThumbnails {
     /// A window was minimised or opened again: the page says so in its tile (the C# `Changed` event).
     pub on_changed: Arc<Mutex<Option<ChangedFn>>>,
     stop: Arc<AtomicBool>,
+    /// Wakes the watch when watching starts or it is to end (it sleeps on `inner`'s lock meanwhile).
+    wake: Arc<Condvar>,
     watch: Option<JoinHandle<()>>,
 }
 
@@ -139,17 +141,25 @@ impl WindowThumbnails {
         let inner = Arc::new(Mutex::new(Inner { host, pictures: HashMap::new(), clip: Rect::default(), watching: false }));
         let on_changed: Arc<Mutex<Option<ChangedFn>>> = Arc::new(Mutex::new(None));
         let stop = Arc::new(AtomicBool::new(false));
+        let wake = Arc::new(Condvar::new());
         // PORT: the WinForms Timer (50 ms, on the window's thread) is a thread with a stop flag; DWM's thumbnail calls
-        // take handles and may come from any thread, and every look at the pictures holds their lock.
-        let (i, c, s) = (inner.clone(), on_changed.clone(), stop.clone());
+        // take handles and may come from any thread, and every look at the pictures holds their lock. Not watching
+        // (another page shown), it sleeps until woken rather than 20 times a second.
+        let (i, c, s, w) = (inner.clone(), on_changed.clone(), stop.clone(), wake.clone());
         let watch = std::thread::Builder::new()
             .name("Bloxkeep thumbnails".into())
             .spawn(move || {
                 while !s.load(Ordering::SeqCst) {
+                    {
+                        let mut g = i.lock().unwrap_or_else(|e| e.into_inner());
+                        while !g.watching && !s.load(Ordering::SeqCst) {
+                            g = w.wait(g).unwrap_or_else(|e| e.into_inner());
+                        }
+                    }
                     std::thread::sleep(WATCH_EVERY);
                     let minimized = {
                         let mut g = i.lock().unwrap_or_else(|e| e.into_inner());
-                        if !g.watching {
+                        if !g.watching || s.load(Ordering::SeqCst) {
                             continue;
                         }
                         follow(&mut g)
@@ -162,7 +172,7 @@ impl WindowThumbnails {
                 }
             })
             .ok();
-        WindowThumbnails { inner, on_changed, stop, watch }
+        WindowThumbnails { inner, on_changed, stop, wake, watch }
     }
 
     fn lock(&self) -> std::sync::MutexGuard<'_, Inner> {
@@ -194,6 +204,9 @@ impl WindowThumbnails {
         }
         update(&mut g);
         g.watching = !g.pictures.is_empty();
+        if g.watching {
+            self.wake.notify_all();
+        }
     }
 
     /// Every picture taken away (the page shows something else there).
@@ -219,6 +232,11 @@ impl WindowThumbnails {
 
     pub fn dispose(&mut self) {
         self.stop.store(true, Ordering::SeqCst);
+        {
+            // Under the lock: the watch is either before its check (and sees the flag) or asleep (and is woken).
+            let _g = self.lock();
+            self.wake.notify_all();
+        }
         if let Some(t) = self.watch.take() {
             let _ = t.join();
         }

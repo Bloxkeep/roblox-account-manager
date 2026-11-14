@@ -114,6 +114,8 @@ static MINI_SHOWN: AtomicBool = AtomicBool::new(false);
 static QUITTING: AtomicBool = AtomicBool::new(false);
 /// How the next run starts (the C# constructor's arguments), given by program::main_core before the interface runs.
 static PREPARED: Mutex<Option<(Option<relaunch::State>, bool)>> = Mutex::new(None);
+/// What the last run handed over, for App::resume once App::init has run (the C# constructed the controller first).
+static RESUME_AFTER_INIT: Mutex<Option<relaunch::State>> = Mutex::new(None);
 /// With the C#'s GPUI host the window had no title bar: its top bar moved the window. Set when the interface's window
 /// keeps Windows' frame and wants only its title bar gone (`WM_NCCALCSIZE`); off by default, as GPUI draws its own.
 pub static CUSTOM_FRAME: AtomicBool = AtomicBool::new(false);
@@ -140,14 +142,15 @@ pub fn is_attached() -> bool {
 }
 
 /// Asks the App something and waits for its answer (at most `wait`): the C# called the controller on the same thread.
-fn ask_app<T: Send + 'static>(wait: Duration, f: impl FnOnce(&Rc<App>) -> T + Send + 'static) -> Option<T> {
+/// Err(true) when the wait ran out (the core is busy, not failed); Err(false) when no answer will come.
+fn ask_app<T: Send + 'static>(wait: Duration, f: impl FnOnce(&Rc<App>) -> T + Send + 'static) -> Result<T, bool> {
     let (tx, rx) = std::sync::mpsc::channel();
     rt::post(move || {
         App::with(|app| {
             let _ = tx.send(f(app));
         })
     });
-    rx.recv_timeout(wait).ok()
+    rx.recv_timeout(wait).map_err(|e| matches!(e, std::sync::mpsc::RecvTimeoutError::Timeout))
 }
 
 // ───────── the tray icon (WinForms' NotifyIcon) ─────────
@@ -172,7 +175,7 @@ impl TrayIcon {
         let mut d = self.data();
         d.uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP;
         d.uCallbackMessage = WM_TRAY;
-        d.hIcon = ui::app_icon().unwrap_or(0) as _;
+        d.hIcon = ui::app_icon_small().unwrap_or(0) as _;
         let tip = wide(ui::TITLE);
         d.szTip[..tip.len()].copy_from_slice(&tip);
         // SAFETY: the structure lives for the call.
@@ -253,9 +256,17 @@ pub struct ShellForm {
     opening: Cell<bool>,
     opacity: Cell<f64>,
     shown_once: Cell<bool>,
+    /// Inside on_form_closing: a second close (a posted WM_CLOSE while its "couldn't save" box pumps) is cancelled.
+    in_closing: Cell<bool>,
     last_state: Cell<WindowState>,
     minimum_size: Cell<Size>,
     hotkeys_taken: RefCell<Vec<String>>,
+    /// The hotkeys left to the keyboard's AltGr (its hook refused), as error.log was last told of them.
+    hotkeys_typing: RefCell<Vec<String>>,
+    /// The hotkeys on keys the keyboard types with AltGr, on a keyboard hook; None when there are none.
+    alt_gr_hotkeys: RefCell<Option<super::altgr_hotkeys::AltGrHotkeys>>,
+    /// The AltGr hotkeys error.log was last told of.
+    alt_gr_noted: RefCell<String>,
     closed: Cell<bool>,
 }
 
@@ -283,7 +294,9 @@ unsafe extern "system" fn shell_proc(h: HWND, msg: u32, wparam: WPARAM, lparam: 
     }
     let shell = SHELL.with(|s| s.borrow().clone());
     if let Some(shell) = shell {
-        if let Some(r) = shell.wnd_proc(msg, wparam, lparam) {
+        // A panic while closing keeps the window up (the default close would quit the app instead of hiding it).
+        let fallback = move || (msg == WM_CLOSE).then_some(0);
+        if let Some(r) = super::program::shielded(fallback, || shell.wnd_proc(msg, wparam, lparam)) {
             return r;
         }
     }
@@ -309,6 +322,10 @@ pub fn attach(h: isize) {
     // sent after this returns), so that one already has somewhere to go. (Never called before 2026-11-12: every reply
     // was dropped, and the real window showed an empty app with CPU and RAM at 0 %.)
     rt::post(move || App::with(|app| app.init(h, Rc::new(|line: &str| super::gpui_host::post(line.to_string())))));
+    // Resume after init: its unlock pushes state and toasts and opens dialogs, which need the owner and the post.
+    if let Some(state) = RESUME_AFTER_INIT.lock().unwrap_or_else(|e| e.into_inner()).take() {
+        rt::post(move || App::with(|app| app.resume(state)));
+    }
     // SAFETY: our procedure sees the window's messages first; removed at WM_NCDESTROY.
     unsafe { SetWindowSubclass(hwnd(h), Some(shell_proc), SUBCLASS_ID, 0) };
     shell.on_handle_created();
@@ -320,7 +337,11 @@ pub fn attach(h: isize) {
     note_show(&format!("attached, start hidden={}", shell.start_hidden.get()));
     shell.set_visible(true);
     note_show(&format!("after show: visible={}", shell.visible()));
-    shell.on_shown();
+    // Started in the tray (Windows' sign-in, an update while hidden): the Shown event, and its entrance, wait for the
+    // first real show (set_visible), as WinForms' did.
+    if shell.visible() && !shell.shown_once.get() {
+        shell.on_shown();
+    }
 }
 
 /// The App's side of the window (the delegates the C# constructor set on AppController): each hops to the windows
@@ -438,7 +459,7 @@ impl ShellForm {
             start_hidden = state.window == "hidden";
             show_quietly = !state.foreground;
             front_at_start = win_form::foreground_window();
-            rt::post(move || App::with(|app| app.resume(state)));
+            *RESUME_AFTER_INIT.lock().unwrap_or_else(|e| e.into_inner()) = Some(state);
         } else if startup {
             start_hidden = true;
         }
@@ -486,9 +507,13 @@ impl ShellForm {
             opening: Cell::new(false),
             opacity: Cell::new(1.0),
             shown_once: Cell::new(false),
+            in_closing: Cell::new(false),
             last_state: Cell::new(WindowState::Normal),
             minimum_size: Cell::new(Size::default()),
             hotkeys_taken: RefCell::new(Vec::new()),
+            hotkeys_typing: RefCell::new(Vec::new()),
+            alt_gr_hotkeys: RefCell::new(None),
+            alt_gr_noted: RefCell::new(String::new()),
             closed: Cell::new(false),
         });
         win_form::set_text(h, ui::TITLE);
@@ -560,7 +585,7 @@ impl ShellForm {
         if self.told_locked_after_update.get() {
             return;
         }
-        let Some(Some(text)) = ask_app(Duration::from_secs(10), |app| app.locked_after_update()) else { return };
+        let Ok(Some(text)) = ask_app(Duration::from_secs(10), |app| app.locked_after_update()) else { return };
         self.told_locked_after_update.set(true);
         let me = self.clone();
         win_form::spawn(async move {
@@ -593,6 +618,9 @@ impl ShellForm {
         // SAFETY: plain call on our window.
         unsafe { ShowWindow(hwnd(self.handle), if value { if self.show_quietly.get() { SW_SHOWNOACTIVATE } else { SW_SHOW } } else { SW_HIDE }) };
         self.on_visible_changed();
+        if value && !self.shown_once.get() {
+            self.on_shown();
+        }
     }
 
     /// Shown for the first time (the Shown event).
@@ -638,18 +666,28 @@ impl ShellForm {
                     MINI_SHOWN.store(false, Ordering::SeqCst);
                     rt::post(|| App::with(|app| app.push_state()));
                 }));
+                // Open only once it is really on screen: a page that never drew left the button stuck on "open".
+                *mini.on_shown.borrow_mut() = Some(Box::new(|| {
+                    if !MINI_SHOWN.swap(true, Ordering::SeqCst) {
+                        rt::post(|| App::with(|app| app.push_state()));
+                    }
+                }));
                 *self.mini.borrow_mut() = Some(mini);
             }
             let mini = self.mini.borrow().clone();
             if let Some(mini) = mini {
                 mini.open(activate);
             }
-            MINI_SHOWN.store(true, Ordering::SeqCst);
-            rt::post(|| App::with(|app| app.push_state()));
         } else {
             let mini = self.mini.borrow().clone();
+            let was = mini.as_ref().is_some_and(|m| m.visible());
             if let Some(mini) = mini {
                 mini.dismiss(); // which pushes the state itself
+            }
+            // Never got on screen (its page didn't start, or asked again while opening): dismiss had nothing to do, so
+            // the flag the page's button toggles from is put right here, or the button stayed stuck on "open".
+            if !was && MINI_SHOWN.swap(false, Ordering::SeqCst) {
+                rt::post(|| App::with(|app| app.push_state()));
             }
         }
         show
@@ -785,6 +823,16 @@ impl ShellForm {
 
     /// FormClosing: true cancels the close.
     fn on_form_closing(self: &Rc<Self>, shutting_down: bool) -> bool {
+        if self.in_closing.replace(true) {
+            return !shutting_down;
+        }
+        struct Out<'a>(&'a Cell<bool>);
+        impl Drop for Out<'_> {
+            fn drop(&mut self) {
+                self.0.set(false);
+            }
+        }
+        let _out = Out(&self.in_closing);
         self.save_place();
         // Windows shutting down and Task Manager still close the app; the uninstaller and the tray menu use quit.
         if !self.quitting.get() && prefs::lock().close_to_tray && !shutting_down {
@@ -793,7 +841,16 @@ impl ShellForm {
             return true;
         }
         // Changes that can't be written yet (file held by an antivirus) would be lost: ask, unless Windows is shutting down.
-        let saved = ask_app(Duration::from_secs(10), |app| app.save_before_closing()).unwrap_or(false);
+        // A core still busy after the wait (a file dialog open on it) is not a failed save: no "Couldn't save" then.
+        let saved = match ask_app(Duration::from_secs(10), |app| app.save_before_closing()) {
+            Ok(saved) => saved,
+            Err(timed_out) => {
+                if timed_out {
+                    log::note("Closing: the save before closing didn't answer in 10 s; quitting without asking.");
+                }
+                timed_out
+            }
+        };
         if !saved && !shutting_down {
             let owner = Some(self.handle);
             let quit = ui::modal(|| {
@@ -886,6 +943,16 @@ impl ShellForm {
 
     /// The hotkeys from any app while the switch is on; one another app holds is reported in Settings.
     fn register_hotkeys(&self) {
+        // Asked of the App without waiting on it: a busy core used to time the ask out and drop the macro hotkeys.
+        rt::post(|| {
+            App::with(|app| {
+                let (digits, recording) = (app.macro_hotkeys(), app.recording_macro());
+                with(move |s| s.apply_hotkeys(digits, recording));
+            })
+        });
+    }
+
+    fn apply_hotkeys(&self, digits: Vec<i32>, recording: bool) {
         let h = hwnd(self.handle);
         // SAFETY: unregistering ids that may not be registered only fails.
         unsafe {
@@ -896,27 +963,58 @@ impl ShellForm {
                 UnregisterHotKey(h, id);
             }
         }
-        let (digits, recording) = ask_app(Duration::from_secs(10), |app| (app.macro_hotkeys(), app.recording_macro())).unwrap_or_default();
+        // The old hook goes before a new one is set.
+        self.alt_gr_hotkeys.borrow_mut().take();
         let mut taken: Vec<String> = Vec::new();
+        let mut typing: Vec<String> = Vec::new();
         let global = prefs::lock().global_hotkeys;
-        // SAFETY: plain registrations on our window.
-        unsafe {
-            if global {
-                for (id, key) in HOTKEYS {
-                    if RegisterHotKey(h, id, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, key) == 0 {
-                        taken.push(format!("Ctrl+Alt+{}", char::from_u32(key).unwrap_or('?')));
-                    }
+        if global {
+            // AltGr is Ctrl+Alt to Windows: a hotkey on a key the keyboard types with AltGr took the character from every
+            // app (a French keyboard's @ is AltGr+0, and Ctrl+Alt+0 stops macros: a user's report, 1.0.21, 2026-11-11).
+            // Those keys go to a keyboard hook that tells the left Alt (the hotkey) from AltGr (typing).
+            let alt_gr = super::altgr_hotkeys::typed();
+            let mut hooked: std::collections::HashMap<u32, i32> = std::collections::HashMap::new();
+            let mut hooked_names: Vec<String> = Vec::new();
+            let mut add = |id: i32, key: u32, name: String| {
+                if alt_gr.contains(&key) {
+                    hooked.insert(key, id);
+                    hooked_names.push(name);
+                // SAFETY: a plain registration on our window.
+                } else if unsafe { RegisterHotKey(h, id, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, key) } == 0 {
+                    taken.push(name);
                 }
-                // Macros (Beta): Ctrl+Alt+0 stops them all; Ctrl+Alt+1…9 only for the digits a macro holds.
-                if RegisterHotKey(h, macros::HOTKEY_STOP_MACROS, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, VK_D0) == 0 {
-                    taken.push("Ctrl+Alt+0".into());
-                }
-                for digit in digits {
-                    if RegisterHotKey(h, macros::HOTKEY_MACRO_FIRST + digit - 1, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, VK_D0 + digit as u32) == 0 {
-                        taken.push(format!("Ctrl+Alt+{digit}"));
-                    }
-                }
+            };
+            for (id, key) in HOTKEYS {
+                add(id, key, format!("Ctrl+Alt+{}", char::from_u32(key).unwrap_or('?')));
             }
+            // Macros (Beta): Ctrl+Alt+0 stops them all; Ctrl+Alt+1…9 only for the digits a macro holds.
+            add(macros::HOTKEY_STOP_MACROS, VK_D0, "Ctrl+Alt+0".into());
+            for digit in digits {
+                add(macros::HOTKEY_MACRO_FIRST + digit - 1, VK_D0 + digit as u32, format!("Ctrl+Alt+{digit}"));
+            }
+            if !hooked.is_empty() {
+                // Posted: the hook's thread must answer Windows at once.
+                let started = super::altgr_hotkeys::AltGrHotkeys::start(hooked, |id| with(move |s| s.on_hotkey(id)));
+                let names = hooked_names.join(",");
+                match started {
+                    // Left to the keyboard, as said in Settings.
+                    None => typing.extend(hooked_names),
+                    Some(hook) => {
+                        if names != *self.alt_gr_noted.borrow() {
+                            log::note(&format!("Hotkeys on AltGr keys, with the left Alt only: {}.", hooked_names.join(", ")));
+                        }
+                        *self.alt_gr_hotkeys.borrow_mut() = Some(hook);
+                    }
+                }
+                *self.alt_gr_noted.borrow_mut() = names;
+            }
+        }
+        if !typing.is_empty() && typing.join(",") != self.hotkeys_typing.borrow().join(",") {
+            log::note(&format!("Hotkeys left to the keyboard's AltGr: {}.", typing.join(", ")));
+        }
+        *self.hotkeys_typing.borrow_mut() = typing.clone();
+        // SAFETY: a plain registration on our window.
+        unsafe {
             // F8 ends a recording, whatever the switch says (the recorder also watches for it itself).
             if recording {
                 RegisterHotKey(h, macros::HOTKEY_END_RECORDING, MOD_NOREPEAT, VK_F8);
@@ -926,7 +1024,23 @@ impl ShellForm {
             log::note(&format!("Hotkeys another app holds: {}.", taken.join(", ")));
         }
         *self.hotkeys_taken.borrow_mut() = taken.clone();
-        rt::post(move || App::with(|app| *app.hotkeys.hotkeys_taken.borrow_mut() = taken));
+        rt::post(move || {
+            App::with(|app| {
+                *app.hotkeys.hotkeys_taken.borrow_mut() = taken;
+                *app.hotkeys.hotkeys_typing.borrow_mut() = typing;
+            })
+        });
+    }
+
+    /// A hotkey, from Windows (RegisterHotKey) or the AltGr hook.
+    fn on_hotkey(self: &Rc<Self>, id: i32) {
+        // Ctrl+Alt+B: Bloxkeep itself, from the tray too (as its icon's Open does).
+        if id == hotkeys::HOTKEY_BLOXKEEP {
+            log::note("Hotkey Ctrl+Alt+B received.");
+            self.show_in_front("Ctrl+Alt+B");
+        } else {
+            rt::post(move || App::with(|app| app.on_hotkey(id)));
+        }
     }
 
     /// The window's messages, before the interface's own (WndProc).
@@ -950,14 +1064,7 @@ impl ShellForm {
                 Some(0)
             }
             WM_HOTKEY => {
-                // Ctrl+Alt+B: Bloxkeep itself, from the tray too (as its icon's Open does).
-                let id = wparam as i32;
-                if id == hotkeys::HOTKEY_BLOXKEEP {
-                    log::note("Hotkey Ctrl+Alt+B received.");
-                    self.show_in_front("Ctrl+Alt+B");
-                } else {
-                    rt::post(move || App::with(|app| app.on_hotkey(id)));
-                }
+                self.on_hotkey(wparam as i32);
                 Some(0)
             }
             // Coming back from the taskbar: Windows asks first, while the window is still minimised. Invisible from here,
@@ -988,6 +1095,33 @@ impl ShellForm {
                 self.on_user_preference_changed();
                 None
             }
+            // SystemEvents.PowerModeChanged and TimeChanged.
+            WM_POWERBROADCAST => {
+                use super::app::power::{PowerMode, on_power_mode_changed};
+                match wparam as u32 {
+                    PBT_APMSUSPEND => on_power_mode_changed(PowerMode::Suspend),
+                    PBT_APMRESUMEAUTOMATIC | PBT_APMRESUMESUSPEND => on_power_mode_changed(PowerMode::Resume),
+                    PBT_APMPOWERSTATUSCHANGE => on_power_mode_changed(PowerMode::StatusChange),
+                    _ => {}
+                }
+                None
+            }
+            WM_TIMECHANGE => {
+                super::app::power::on_time_changed();
+                None
+            }
+            // Moved to a screen of another scale: the smallest size follows (WinForms rescaled MinimumSize), or a 100 %
+            // size held on a 150 % screen let the window shrink to two thirds of what it needs.
+            WM_DPICHANGED => {
+                // SAFETY: lParam is the suggested RECT for this message.
+                let suggested = unsafe { *(lparam as *const windows_sys::Win32::Foundation::RECT) };
+                let dpi = (wparam & 0xFFFF) as i32;
+                let area = screen_from_rect(Rect::new(suggested.left, suggested.top, suggested.right - suggested.left, suggested.bottom - suggested.top)).working_area;
+                self.minimum_size.set(fit(Size::new(980 * dpi / 96, 620 * dpi / 96), area.size()));
+                None
+            }
+            // Every WM_CLOSE (the ×, Alt+F4, the taskbar's Close) follows "keep running when closed"; only quit(), the tray's
+            // Exit and Windows shutting down really quit. Telling the taskbar's Close from another program's isn't possible.
             WM_CLOSE => {
                 if self.on_form_closing(false) {
                     return Some(0);
@@ -1313,6 +1447,7 @@ impl ShellForm {
         if self.closed.replace(true) {
             return;
         }
+        self.alt_gr_hotkeys.borrow_mut().take();
         // A run whose interface got on screen was good; so was one quit by the person or Windows.
         if self.page_loaded.get() || self.quitting.get() || shutting_down {
             try_mark_starting(false);
@@ -1330,7 +1465,19 @@ impl ShellForm {
         self.remove_cover();
         self.cover_timer.dispose();
         self.monitor.dispose();
-        rt::post(|| App::with(|app| app.dispose()));
+        if shutting_down {
+            // Windows may end the process once WM_ENDSESSION returns: the clean-up (Roblox's flags and settings put
+            // back, Discord told, the clipboard cleared) is waited for, as the C# did it in OnFormClosed itself.
+            let (tx, rx) = std::sync::mpsc::channel::<()>();
+            rt::post(move || {
+                App::with(|app| app.dispose());
+                let _ = tx.send(());
+            });
+            // Pumped: a step of dispose that needs this thread (a window it owns) doesn't stall the rest to the time limit.
+            let _ = win_form::wait_pumping_for(&rx, Some(Duration::from_secs(5)));
+        } else {
+            rt::post(|| App::with(|app| app.dispose()));
+        }
     }
 }
 

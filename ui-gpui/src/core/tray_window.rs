@@ -242,6 +242,14 @@ impl TrayWindow {
                 }
             }
             me.push(); // the page answers with its size, and the window shows then (on_size)
+            // A page that never answers: not left "showing", or its browser was kept for good.
+            let opened = me.opened.get();
+            win_form::delay(15_000).await;
+            if me.showing.get() && me.opened.get() == opened && !me.visible() {
+                log::note(&format!("Tray: {mode} not shown, its page didn't draw in 15 s."));
+                me.showing.set(false);
+                me.release.start();
+            }
         });
     }
 

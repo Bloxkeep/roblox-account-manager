@@ -1113,10 +1113,8 @@ async fn clear_session_data(core: &ICoreWebView2) -> host::WinResult<()> {
 }
 
 /// RobloxApiException { Moderated: true }.
-// PORT: base::Fail has no Moderated yet (roblox_api drops it, see its PORT note); a 403 with Roblox's notice sentence,
-// which only the moderated case says, stands for it.
 fn is_moderated(ex: &Fail) -> bool {
-    matches!(ex, Fail::Roblox { status: 403, .. }) && ex.message() == l::t("Roblox has a notice on this account to accept first. Open its roblox.com and accept it.")
+    ex.moderated()
 }
 
 /// Uri.TryCreate(url, Absolute) and its Host; None when it isn't an absolute address with a host.

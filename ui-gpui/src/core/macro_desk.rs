@@ -512,9 +512,14 @@ impl Turn {
     }
 
     fn send(&self, inputs: &[INPUT]) {
-        let mut st = self.state();
+        Turn::send_in(&mut self.state(), inputs);
+    }
+
+    /// Sends under the state lock the caller holds, so a press and its note go together: abort, between the two, would
+    /// let go of everything noted and leave this press down. False when the turn is over (nothing sent).
+    fn send_in(st: &mut TurnState, inputs: &[INPUT]) -> bool {
         if st.done {
-            return; // given back (or Bloxkeep closing): nothing more goes out
+            return false; // given back (or Bloxkeep closing): nothing more goes out
         }
         // SAFETY: the slice's length and element size are passed as Windows requires.
         let taken = unsafe { SendInput(inputs.len() as u32, inputs.as_ptr(), std::mem::size_of::<INPUT>() as i32) };
@@ -531,6 +536,33 @@ impl Turn {
         }
         st.sent = true;
         st.last_sent = tick_count();
+        true
+    }
+
+    /// A press and what lets it go noted, in one go under the lock.
+    fn press(&self, inputs: &[INPUT], what: &str, up: bool, release: INPUT) {
+        let mut st = self.state();
+        if Turn::send_in(&mut st, inputs) {
+            st.down.note(what, up, release);
+        }
+    }
+
+    /// Ends the turn's input: what is still down (a press halfway, a step that panicked) let go, nothing sent after.
+    /// False when it had ended already.
+    fn let_go_all(&self) -> bool {
+        let mut st = self.state();
+        if st.done {
+            return false;
+        }
+        let ups = st.down.ups();
+        if !ups.is_empty() {
+            // SAFETY: the slice's length and element size are passed as Windows requires.
+            unsafe { SendInput(ups.len() as u32, ups.as_ptr(), std::mem::size_of::<INPUT>() as i32) };
+            st.sent = true;
+            st.last_sent = tick_count();
+        }
+        st.done = true;
+        true
     }
 
     fn hiding(&self) -> bool {
@@ -572,8 +604,15 @@ impl Turn {
 }
 
 impl IMacroTurn for Turn {
+    /// Read again each time (the window may have moved or changed size since the turn began); the last known when
+    /// Windows can't say (the window going).
     fn client(&self) -> Rect {
-        *self.client.lock().unwrap_or_else(|e| e.into_inner())
+        let now = MacroDesk::client_on_screen(self.h);
+        let mut known = self.client.lock().unwrap_or_else(|e| e.into_inner());
+        if now.width > 0 && now.height > 0 {
+            *known = now;
+        }
+        *known
     }
 
     fn still_front(&self) -> bool {
@@ -586,24 +625,31 @@ impl IMacroTurn for Turn {
     }
 
     fn key(&self, key: &MacroKey, up: bool) {
-        let mut input = keyboard(key.vk, key.scan, KEYEVENTF_SCANCODE | if key.extended { KEYEVENTF_EXTENDEDKEY } else { 0 } | if up { KEYEVENTF_KEYUP } else { 0 });
-        self.send(&[input]);
+        let input = keyboard(key.vk, key.scan, KEYEVENTF_SCANCODE | if key.extended { KEYEVENTF_EXTENDEDKEY } else { 0 } | if up { KEYEVENTF_KEYUP } else { 0 });
+        let mut release = input;
         // SAFETY: a keyboard INPUT: its union holds a KEYBDINPUT.
-        unsafe { input.Anonymous.ki.dwFlags |= KEYEVENTF_KEYUP };
-        self.state().down.note(&format!("key {}:{}", key.scan, if key.extended { "True" } else { "False" }), up, input);
+        unsafe { release.Anonymous.ki.dwFlags |= KEYEVENTF_KEYUP };
+        self.press(&[input], &format!("key {}:{}", key.scan, if key.extended { "True" } else { "False" }), up, release);
     }
 
-    /// PORT: C# got one UTF-16 unit per call; the player hands a whole character, so each of its units is sent here
-    /// (one for most, both halves of a pair past U+FFFF), each noted as held on its own as C# did per call.
+    /// PORT: C# got one UTF-16 unit per call; the player hands a whole character once (`up` false), and each of its
+    /// units goes down and up together in one SendInput (hi down, hi up, lo down, lo up for a pair past U+FFFF), so the
+    /// halves never interleave. Nothing stays held; `up` true sends nothing.
     fn char(&self, ch: char, up: bool) {
-        let mut units = [0u16; 2];
-        for &c in ch.encode_utf16(&mut units).iter() {
-            let mut input = keyboard(0, c, KEYEVENTF_UNICODE | if up { KEYEVENTF_KEYUP } else { 0 });
-            self.send(&[input]);
-            // SAFETY: a keyboard INPUT: its union holds a KEYBDINPUT.
-            unsafe { input.Anonymous.ki.dwFlags |= KEYEVENTF_KEYUP };
-            self.state().down.note(&format!("char {c}"), up, input);
+        if up {
+            return;
         }
+        let mut units = [0u16; 2];
+        let mut inputs = Vec::with_capacity(4);
+        for &c in ch.encode_utf16(&mut units).iter() {
+            let input = keyboard(0, c, KEYEVENTF_UNICODE);
+            let mut release = input;
+            // SAFETY: a keyboard INPUT: its union holds a KEYBDINPUT.
+            unsafe { release.Anonymous.ki.dwFlags |= KEYEVENTF_KEYUP };
+            inputs.push(input);
+            inputs.push(release);
+        }
+        self.send(&inputs);
     }
 
     fn move_to(&self, screen: Point) {
@@ -639,8 +685,7 @@ impl IMacroTurn for Turn {
                 }
             }
         };
-        self.send(&[mouse(0, 0, flag(up), 0)]);
-        self.state().down.note(&format!("button {}", flag(true)), up, mouse(0, 0, flag(true), 0));
+        self.press(&[mouse(0, 0, flag(up), 0)], &format!("button {}", flag(true)), up, mouse(0, 0, flag(true), 0));
     }
 
     fn wheel(&self, notches: i32) {
@@ -654,19 +699,38 @@ impl IMacroTurn for Turn {
             if root == 0 || root == self.h {
                 return true;
             }
-            let mut st = self.state();
-            if pid_of(root) != std::process::id() || st.through.iter().any(|w| w.0 == root) {
-                return false; // another app's window, or ours that won't let clicks through
+            if pid_of(root) != std::process::id() {
+                return false; // another app's window
             }
+            // Noted under the lock, changed after it: SetWindowLongW waits on the window's (the app's) thread, which may
+            // itself be waiting on this lock in abort.
+            let style = {
+                let mut st = self.state();
+                if st.done || st.through.iter().any(|w| w.0 == root) {
+                    return false; // the turn is over, or ours that won't let clicks through
+                }
+                // SAFETY: plain query of a window of ours (no message sent).
+                let style = unsafe { GetWindowLongW(hwnd(root), GWL_EXSTYLE) };
+                st.through.push((root, style));
+                style
+            };
             // SAFETY: plain calls on a window of ours.
             unsafe {
-                let style = GetWindowLongW(hwnd(root), GWL_EXSTYLE);
-                st.through.push((root, style));
                 SetWindowLongW(hwnd(root), GWL_EXSTYLE, style | WS_EX_LAYERED as i32 | WS_EX_TRANSPARENT as i32);
                 // Newly layered, a window shows nothing until it is given its opacity.
                 if style & WS_EX_LAYERED as i32 == 0 {
                     SetLayeredWindowAttributes(hwnd(root), 0, 255, LWA_ALPHA);
                 }
+            }
+            // Given back meanwhile (abort, from the app's thread): its style was put back before this change, so again.
+            let missed = {
+                let st = self.state();
+                st.done && !st.through.iter().any(|w| w.0 == root)
+            };
+            if missed && is_window(root) {
+                // SAFETY: plain call on a window of ours.
+                unsafe { SetWindowLongW(hwnd(root), GWL_EXSTYLE, style) };
+                return false;
             }
         }
         false
@@ -679,7 +743,7 @@ impl IMacroTurn for Turn {
     /// The pointer back where it was, your window back in front, the Roblox window back in its place and
     /// state, and our input noted as ours (anti-AFK and the next turn don't take it for a person's).
     fn dispose(&self) {
-        if self.state().done {
+        if !self.let_go_all() {
             return;
         }
         if self.put_back()
@@ -700,16 +764,8 @@ impl IMacroTurn for Turn {
 
     /// Bloxkeep closing: what is still down let go and the PC given back before this returns.
     fn abort(&self) {
-        let ups = {
-            let mut st = self.state();
-            if st.done {
-                return;
-            }
-            st.down.ups()
-        };
-        if !ups.is_empty() {
-            // SAFETY: the slice's length and element size are passed as Windows requires.
-            unsafe { SendInput(ups.len() as u32, ups.as_ptr(), std::mem::size_of::<INPUT>() as i32) };
+        if !self.let_go_all() {
+            return;
         }
         if self.put_back()
             && let Some(before) = &self.before
@@ -721,6 +777,13 @@ impl IMacroTurn for Turn {
             }
             anti_afk::show(before);
         }
+    }
+}
+
+/// A turn dropped without being given back (the player's thread panicked mid-step): given back here, keys let go.
+impl Drop for Turn {
+    fn drop(&mut self) {
+        self.dispose();
     }
 }
 

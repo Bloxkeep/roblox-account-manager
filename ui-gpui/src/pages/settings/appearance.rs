@@ -137,11 +137,22 @@ fn change(r: &mut Root, patch: Value, cx: &mut Context<Root>) {
             }
             let Some(c) = r.settings.look.preview.clone() else { return };
             let field = |k: &str| c.get(k).cloned().unwrap_or(Value::Null);
-            ask(r, "setCustomTheme", json!({ "background": field("background"), "accent": field("accent"), "fade": field("fade"), "blur": field("blur") }), cx, move |r, _| {
-                if r.settings.look.round == round {
-                    r.settings.look.preview = None;
-                }
-            });
+            let Some(link) = r.link.clone() else { return };
+            let rx = link.call("setCustomTheme", json!({ "background": field("background"), "accent": field("accent"), "fade": field("fade"), "blur": field("blur") }));
+            cx.spawn(async move |this, cx| {
+                let answer = rx.await;
+                let _ = this.update(cx, |r, cx| {
+                    // Kept or refused, the look shown is the app's again (a refused one doesn't stay as if saved).
+                    if let Ok(Err(e)) = &answer {
+                        r.toast = Some((e.clone(), "bad".into()));
+                    }
+                    if r.settings.look.round == round {
+                        r.settings.look.preview = None;
+                    }
+                    cx.notify();
+                });
+            })
+            .detach();
         });
     })
     .detach();
@@ -214,7 +225,7 @@ pub fn appearance(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
     let asked = root.settings.look.group;
     let shown_group = asked
         .filter(|g| groups.contains(g))
-        .unwrap_or_else(|| GROUPS.iter().find(|(_, l)| l.contains(&cur.as_str())).map(|(g, _)| *g).unwrap_or("basic"));
+        .unwrap_or_else(|| if cur == crate::theme::KEEP.id { "scenery" } else { GROUPS.iter().find(|(_, l)| l.contains(&cur.as_str())).map(|(g, _)| *g).unwrap_or("basic") });
     let mut tabs = div().flex().flex_wrap().gap(px(4.));
     for (i, g) in groups.iter().copied().enumerate() {
         tabs = tabs.child(chip(("ap-group", i), g == shown_group).child(root.tr(&format!("theme.group.{g}"))).on_click(cx.listener(move |r, _, _, cx| {
@@ -225,7 +236,9 @@ pub fn appearance(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
     let ids: Vec<(&'static str, Option<i64>)> = if shown_group == "popular" {
         popular.iter().map(|(id, n)| (*id, Some(*n))).collect()
     } else {
-        GROUPS.iter().find(|(g, _)| *g == shown_group).map(|(_, l)| l.iter().map(|id| (*id, None)).collect()).unwrap_or_default()
+        // (Bloxkeep's own picture theme leads the sceneries: it isn't one of the web page's.)
+        let own = (shown_group == "scenery").then_some((crate::theme::KEEP.id, None));
+        own.into_iter().chain(GROUPS.iter().find(|(g, _)| *g == shown_group).into_iter().flat_map(|(_, l)| l.iter().map(|id| (*id, None)))).collect()
     };
     let mut grid = div().flex().flex_wrap().gap(px(14.));
     for (i, (id, uses)) in ids.into_iter().enumerate() {
@@ -326,7 +339,7 @@ fn tile(root: &Root, id: &'static str, i: usize, on: bool, uses: Option<i64>, cx
                 .border_1()
                 .border_color(if on { c(FACE) } else { ca(WHITE, 0.14) })
                 .child(picture)
-                .when(on, |d| d.child(div().absolute().top(px(6.)).right(px(6.)).size(px(20.)).rounded(px(6.)).bg(c(FACE)).flex().items_center().justify_center().child(icon("check", 13., c(INK))))),
+                .when(on, |d| d.child(tick_mark(20.).absolute().top(px(6.)).right(px(6.)))),
         )
         .child(
             div()
@@ -453,6 +466,9 @@ fn saved_rows(root: &Root, cx: &mut Context<Root>) -> Vec<AnyElement> {
                         .when(video, |d| d.child(badge(root.tr("ct.video"), Tone::Muted)))
                         .on_click(cx.listener(move |r, _, _, cx| {
                             r.settings.look.picked = Some(("custom".into(), Instant::now()));
+                            // (A change still waiting to be sent would undo the pick: it goes.)
+                            r.settings.look.preview = None;
+                            r.settings.look.round += 1;
                             r.send("useSavedTheme", json!({ "id": use_id }));
                             cx.notify();
                         })),

@@ -28,7 +28,9 @@ pub fn iso_secs(s: &str) -> Option<i64> {
         i += 1;
     }
     if i < b.len() && (b[i] == b'+' || b[i] == b'-') {
-        let off = num(i + 1, 2)? * 3600 + num(i + 4, 2).unwrap_or(0) * 60;
+        // "+07:00" or "+0700".
+        let minutes_at = if b.get(i + 3) == Some(&b':') { i + 4 } else { i + 3 };
+        let off = num(i + 1, 2)? * 3600 + num(minutes_at, 2).unwrap_or(0) * 60;
         t -= if b[i] == b'+' { off } else { -off };
     }
     Some(t)
@@ -38,6 +40,22 @@ pub fn iso_secs(s: &str) -> Option<i64> {
 pub fn clock(secs: i64) -> String {
     let s = secs.max(0);
     format!("{}:{:02}:{:02}", s / 3600, s / 60 % 60, s % 60)
+}
+
+/// A short span for a small place: "40s", "17m", "1h 20m" ("17p", "1g20" in Vietnamese, as people write it).
+pub fn span(secs: i64) -> String {
+    let s = secs.max(0);
+    let (h, m) = (s / 3600, s / 60 % 60);
+    match (s, english()) {
+        (0..60, true) => format!("{s}s"),
+        (0..60, false) => format!("{s} giây"),
+        (60..3600, true) => format!("{m}m"),
+        (60..3600, false) => format!("{m}p"),
+        (_, true) if m == 0 => format!("{h}h"),
+        (_, true) => format!("{h}h {m}m"),
+        (_, false) if m == 0 => format!("{h} giờ"),
+        (_, false) => format!("{h}g{m:02}"),
+    }
 }
 
 /// How long ago, in the app's words.
@@ -54,6 +72,21 @@ pub fn ago(secs: i64, i18n: &I18n) -> String {
 
 /// The PC's clock ahead of UTC, in seconds (+25200 in Vietnam), summer time included.
 pub fn utc_offset_secs() -> i64 {
+    // Asked hundreds of times a frame by Statistics: Windows is read at most once a second.
+    thread_local! {
+        static LAST: std::cell::Cell<Option<(std::time::Instant, i64)>> = const { std::cell::Cell::new(None) };
+    }
+    if let Some((at, v)) = LAST.with(|l| l.get())
+        && at.elapsed() < std::time::Duration::from_secs(1)
+    {
+        return v;
+    }
+    let v = read_utc_offset();
+    LAST.with(|l| l.set(Some((std::time::Instant::now(), v))));
+    v
+}
+
+fn read_utc_offset() -> i64 {
     #[cfg(windows)]
     {
         use windows_sys::Win32::System::Time::{GetTimeZoneInformation, TIME_ZONE_INFORMATION};

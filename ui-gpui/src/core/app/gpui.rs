@@ -23,18 +23,16 @@ impl App {
     /// with it, so the window knows whose it holds.
     pub fn roblox_sign_in(&self, a: &Value) -> Value {
         let wanted = if has(a, "id", JsonKind::String) { a["id"].as_str().and_then(parse_guid) } else { None };
-        let vault = self.controller.vault.borrow().clone();
+        // Behind the idle lock screen no sign-in goes out, as no other answer does.
+        let vault = if self.auto_lock.screen_locked.get() { None } else { self.controller.vault.borrow().clone() };
         let from = vault.and_then(|v| {
             let data = v.data();
-            let mut matching: Vec<_> = data
-                .accounts
+            // OrderByDescending(a => a.IsMain).First(): the first main account, else the first one (min_by_key keeps the first).
+            data.accounts
                 .iter()
                 .filter(|a| a.cookie_valid != Some(false) && !a.cookie.is_empty() && a.realm == realm::GLOBAL && wanted.is_none_or(|w| a.id == w))
+                .min_by_key(|a| !a.is_main)
                 .cloned()
-                .collect();
-            // OrderByDescending(a => a.IsMain): stable, the main accounts first.
-            matching.sort_by_key(|a| !a.is_main);
-            matching.into_iter().next()
         });
         json!({
             "cookie": from.as_ref().map(|a| a.cookie.clone()),

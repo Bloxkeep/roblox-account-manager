@@ -14,7 +14,7 @@ use super::{
     App,
     controller::{GET_IN_TIMEOUT, JOINING_TIMEOUT, MAX_NETWORK_RETRIES, MAX_OPEN_RETRIES, MAX_TICKET_RETRIES, PendingLaunch, REJOIN_DELAY, RejoinRequest, DISCONNECT_GRACE},
     launching::{
-        Run, add_launch, has_launch, is_running, is_start_error, launch_fail_kind, linked, log_of, remove_launch, retry_delay, run_of, running, secs,
+        Run, add_launch, has_launch, is_running, is_start_error, launch_fail_kind, linked, log_of, remove_launch, retry_delay, running, secs,
         short, vault_now,
     },
 };
@@ -67,6 +67,8 @@ pub struct RejoinState {
     /// A field, so the checks can answer for Windows. None: system_memory::read.
     pub read_memory: RefCell<Option<Rc<dyn Fn() -> MemoryStatus>>>,
     pub memory_held_told: RefCell<HashSet<Guid>>,
+    /// Accounts told their rejoin waits for Roblox's update (hold_for_roblox_update), once each.
+    pub update_held_told: RefCell<HashSet<Guid>>,
     /// Accounts whose window was hidden when their client ended: the window their rejoin opens is hidden too.
     pub hide_when_in: RefCell<HashSet<Guid>>,
     pub ran_out_of_memory: RefCell<HashSet<Guid>>,
@@ -89,6 +91,16 @@ pub const JOIN_CHECK_RETRY: Duration = Duration::from_secs(30);
 pub const QUEUE_RECHECK: Duration = Duration::from_secs(60);
 pub const GAME_BAN_RECHECK_LIMIT: Duration = Duration::from_secs(6);
 pub const MEMORY_HOLD_RECHECK: Duration = Duration::from_secs(30);
+/// A rejoin held back by hold_for_roblox_update looks again this often; each account is told once.
+pub const UPDATE_HOLD_RECHECK: Duration = Duration::from_secs(60);
+
+/// "yyyy-MM-dd HH:mm:ss" of a UTC time, for error.log.
+fn ban_time(at: Stamp) -> String {
+    let iso = at.to_iso();
+    iso.get(..19).map(|t| t.replace('T', " ")).unwrap_or(iso)
+}
+/// Status checks in a row that must say out of a game before a window whose log says in one is closed.
+const STUCK_IN_GAME_STRIKES: i32 = 3;
 /// How long anti-AFK waits after a window was held on Roblox's bot check (its nudges would take the front).
 pub const BOT_CHECK_HOLD: Duration = Duration::from_secs(5 * 60);
 /// Roblox's code for "the same account joined from another device": never fight that with a rejoin.
@@ -100,8 +112,10 @@ pub const IDLE_KICK: i32 = 278;
 /// Codes whose Roblox error box has no Reconnect button (reconnectDisabledList in Connection.lua, roblox_codes.rs): a
 /// rejoin would only be refused again. Bloxkeep skips them too, except a game's kick (267), which games often ask to
 /// rejoin after.
+/// 545 (PlacelaunchCollaborationCoreGated) is on Roblox's list but not on the C# app's (AppController.Rejoin.cs
+/// NoReconnect): left out so a rejoin decides as 1.0.23 did.
 pub fn no_reconnect(code: i32) -> bool {
-    code != 267 && crate::roblox_codes::NO_RECONNECT.contains(&code)
+    code != 267 && code != 545 && crate::roblox_codes::NO_RECONNECT.contains(&code)
 }
 
 /// Roblox's DisconnectRejoin (276): same message as SAME_ACCOUNT_ELSEWHERE, so taken the same way.
@@ -115,8 +129,9 @@ pub fn roblox_wont_reconnect(code: Option<i32>) -> bool {
 
 /// Codes Roblox's own error screen reconnects by itself (autoReconnectAllowedList in Connection.lua). Only these are said
 /// as a lost connection; a disconnect without a code is said as one with an unknown reason.
+/// 1026 is on Roblox's list but not on the C# app's (AppController.Rejoin.cs LostConnection): left out to say it as 1.0.23 did.
 pub fn lost_connection(code: i32) -> bool {
-    crate::roblox_codes::AUTO_RECONNECT.contains(&code)
+    code != 1026 && crate::roblox_codes::AUTO_RECONNECT.contains(&code)
 }
 
 /// Why Roblox's join answer refuses: the status in the client's own words (its error is 512 + the status, so 12 is 524
@@ -135,7 +150,23 @@ pub fn join_refusal_words(status: Option<i32>, message: Option<&str>) -> String 
 }
 
 pub fn rejoin_place(launch: &PendingLaunch, last_log: Option<&ClientState>) -> i64 {
-    last_log.and_then(|l| l.chosen_place).or(launch.target.as_ref().map(|t| t.place_id)).unwrap_or(0)
+    last_log.and_then(|l| l.chosen_place).or(launch.target.as_ref().map(|t| t.place_id)).or(last_log.and_then(|l| l.place_id)).unwrap_or(0)
+}
+
+/// Where a rejoin goes: the game or private server opened (any server: the one it was on may be gone), or a game the
+/// person started in the window since. A window opened on Roblox's home screen goes back to the game the person was in
+/// there (2026-11-11: the owner's dropped with "Disconnected from game" and stayed on Roblox's error box, left as "opened
+/// without a game"); None while it has been in none. A window adopted from outside Bloxkeep gets none: its server may be
+/// a private or reserved one, and going back would be into a public one (audit R9).
+pub fn rejoin_target(launch: &PendingLaunch, last_log: Option<&ClientState>) -> Option<GameTarget> {
+    if let Some(opened) = &launch.target {
+        return Some(match last_log.and_then(|l| l.chosen_place) {
+            Some(chosen) if chosen != opened.place_id => GameTarget { place_id: chosen, follow: opened.follow.clone(), ..Default::default() },
+            _ => GameTarget { job_id: None, ..opened.clone() },
+        });
+    }
+    let place = last_log.and_then(|l| l.chosen_place.or(l.place_id)).filter(|p| *p > 0)?;
+    launch.home_screen.then(|| GameTarget { place_id: place, ..Default::default() })
 }
 
 pub fn playability_why(answer: &Playability) -> String {
@@ -177,7 +208,7 @@ impl App {
             && self.find_account(account_id).is_some()
         {
             let place = log.chosen_place.or(launch.target.as_ref().map(|t| t.place_id)).or(log.place_id);
-            self.note_game_ban(account_id, place, log.kick_message.clone(), launch.started_at.get());
+            self.note_game_ban(account_id, place, log.kick_message.clone(), launch.started_at.get(), log.ban_ends);
         }
         // Closed for good: a scheduled stop no longer owns the account, so a client opened by hand later stays open.
         if !self.queue_rejoin(account_id, launch, last_log.as_ref()) {
@@ -214,13 +245,8 @@ impl App {
         self.controller.rejoins_in_a_row.borrow_mut().insert(account_id, in_a_row + 1);
         self.join_player.follow_wait_told.borrow_mut().remove(&account_id); // a new drop: waiting for its followed player is said again
         let wait = REJOIN_DELAY;
-        // The same game or private server, not the exact server, which may be gone. A game the person picked in the
-        // window since wins over the one opened. A followed player is looked up again (follow_target).
-        let opened = launch.target.clone().unwrap_or_default();
-        let target = match last_log.and_then(|l| l.chosen_place) {
-            Some(chosen) if chosen != opened.place_id => GameTarget { place_id: chosen, follow: opened.follow.clone(), ..Default::default() },
-            _ => GameTarget { job_id: None, ..opened },
-        };
+        // A followed player is looked up again (follow_target).
+        let target = rejoin_target(launch, last_log).unwrap_or_default();
         self.controller.rejoin_queue.borrow_mut().push(RejoinRequest {
             account_id,
             target: target.clone(),
@@ -274,8 +300,9 @@ impl App {
             return no("Roblox refused the join");
         }
         let found = self.find_account(account_id);
-        let Some(found) = found.filter(|_| launch.target.is_some()) else {
-            return no(if launch.target.is_none() { "opened without a game" } else { "account gone" });
+        let has_target = rejoin_target(launch, last_log).is_some();
+        let Some(found) = found.filter(|_| has_target) else {
+            return no(if !has_target { "opened without a game, in none since" } else { "account gone" });
         };
         // Banned: a new window would only show the ban again, every few minutes for good.
         if found.banned == Some(true) {
@@ -390,7 +417,7 @@ impl App {
                 let newly = self.rejoin.game_ban_noted.borrow_mut().insert(info.0);
                 if newly && self.find_account(id).is_some() {
                     let place = state.chosen_place.or(info.1.target.as_ref().map(|t| t.place_id)).or(state.place_id);
-                    self.note_game_ban(id, place, state.kick_message.clone(), info.1.started_at.get());
+                    self.note_game_ban(id, place, state.kick_message.clone(), info.1.started_at.get(), state.ban_ends);
                 }
                 continue;
             }
@@ -461,7 +488,9 @@ impl App {
                     && r.banned()
                 {
                     self.rejoin.game_ban_noted.borrow_mut().insert(info.0);
-                    self.note_game_ban(asking.id, Some(wanted.place_id), r.reason(), info.1.started_at.get());
+                    // Roblox's join answer gives no end: a timed ban noted earlier keeps its own.
+                    let until = self.game_ban_of(&asking, Some(wanted.place_id)).and_then(|b| b.until);
+                    self.note_game_ban(asking.id, Some(wanted.place_id), r.reason(), info.1.started_at.get(), until);
                     continue;
                 }
                 if let Some(result) = &answer_now {
@@ -523,12 +552,20 @@ impl App {
             }
             let dropped = state.status == "disconnected" && !signed_in_elsewhere(state.reason) && now.secs_since(state.at) >= 3.0;
             // One the person started in the window is theirs: closing it would reopen the game Bloxkeep opened instead.
-            let never_got_in = stuck_joining && now.secs_since(state.at) >= secs(GET_IN_TIMEOUT);
+            // On Roblox's home screen every game is the person's own pick, so only a drop counts there.
+            let never_got_in = stuck_joining && info.1.target.is_some() && now.secs_since(state.at) >= secs(GET_IN_TIMEOUT);
+            // A chosen server Roblox's join answer says ended or full: another one at once, not after GET_IN_TIMEOUT.
+            let server_gone = stuck_joining
+                && info.1.target.as_ref().is_some_and(|t| t.job_id.as_deref().is_some_and(|j| !j.is_empty()))
+                && self.rejoin.join_checks.borrow().get(&info.0).is_some_and(|gone| {
+                    gone.answer.borrow().as_ref().is_some_and(|a| a.as_ref().is_some_and(|a| a.ended() || (a.full() && !a.queue_position.is_some_and(|q| q > 0))))
+                });
+            let never_got_in = never_got_in || server_gone;
             let account = self.find_account(id);
             let go = (dropped || never_got_in)
                 && account.as_ref().is_some_and(|a| {
                     self.rejoin_on(a, info.1.preset_id)
-                        && info.1.target.is_some()
+                        && rejoin_target(&info.1, Some(&state)).is_some()
                         // No rejoin follows (should_rejoin): the window stays rather than closing for nothing.
                         && a.banned != Some(true)
                         && self.game_ban_of(a, Some(rejoin_place(&info.1, Some(&state)))).is_none()
@@ -539,7 +576,7 @@ impl App {
                     let why = match self.find_account(id) {
                         None => "account gone",
                         Some(held) if !self.rejoin_on(&held, info.1.preset_id) => "auto-rejoin off",
-                        Some(_) if info.1.target.is_none() => "opened without a game",
+                        Some(_) if rejoin_target(&info.1, Some(&state)).is_none() => "opened without a game, in none since",
                         Some(held) if held.banned == Some(true) => "banned on Roblox",
                         Some(_) => "banned by the game",
                     };
@@ -556,7 +593,7 @@ impl App {
                 continue;
             }
             let account = account.expect("checked above");
-            let target = info.1.target.clone().expect("checked above");
+            let target_job = info.1.target.as_ref().and_then(|t| t.job_id.clone());
             // Not trying again before Roblox's answer is in (asked at join_check_after, above).
             if never_got_in
                 && let Some(pending) = self.rejoin.join_checks.borrow().get(&info.0)
@@ -573,6 +610,8 @@ impl App {
                         state.reason.map(|c| c.to_string()).unwrap_or_else(|| "none".into()),
                         if state.kick_message.as_deref().is_some_and(|m| !m.is_empty()) { ", kicked with a message" } else { "" }
                     )
+                } else if server_gone {
+                    "its chosen server ended or is full".to_string()
                 } else {
                     format!("no server after {} s", GET_IN_TIMEOUT.as_secs())
                 }
@@ -582,7 +621,7 @@ impl App {
             // "Lost connection".
             let n = self.name(&account);
             let text = if !dropped {
-                if target.job_id.is_some() {
+                if target_job.is_some() {
                     l::f("{0} couldn't get into that server (full or closed) — joining another one…", &[&n])
                 } else {
                     l::f("{0} couldn't get into the game — trying again…", &[&n])
@@ -618,10 +657,12 @@ impl App {
         if !self.has_game(place_id, false) {
             // LoadGamesAsync(...).WaitAsync(limit): given up on (not called off) when the limit comes first.
             let load = self.load_games(vec![(place_id, 0)], false);
+            // Told to stop once the game is in, so the waiting thread doesn't spin on until the limit for nothing.
+            let loaded = Cancel::new();
             let wait = {
-                let l2 = limit.clone();
+                let (l2, loaded) = (limit.clone(), loaded.clone());
                 rt::blocking(move || {
-                    while !l2.is_cancelled() {
+                    while !l2.is_cancelled() && !loaded.is_cancelled() {
                         std::thread::sleep(Duration::from_millis(25));
                     }
                 })
@@ -629,7 +670,10 @@ impl App {
             futures::pin_mut!(load);
             futures::pin_mut!(wait);
             match futures::future::select(load, wait).await {
-                futures::future::Either::Left((done, _)) => done?,
+                futures::future::Either::Left((done, _)) => {
+                    loaded.cancel();
+                    done?
+                }
                 futures::future::Either::Right(_) => {
                     if timed_out(&limit) {
                         log::note(&format!("Playability of place {place_id}: no answer within {} s; not asked.", PLAYABILITY_LIMIT.as_secs()));
@@ -780,7 +824,8 @@ impl App {
     /// (forget_lifted_game_bans).
     /// `since`: when the window opened: a ban noted since is this one, seen again after Bloxkeep restarted with the
     /// window still open, and isn't told again.
-    pub fn note_game_ban(&self, account_id: Guid, place_id: Option<i64>, message: Option<String>, since: Stamp) {
+    /// `until`: when a timed ban ends (GameBan::until); None for a permanent one.
+    pub fn note_game_ban(&self, account_id: Guid, place_id: Option<i64>, message: Option<String>, since: Stamp, until: Option<Stamp>) {
         let Some(place) = place_id.filter(|p| *p > 0) else {
             return;
         };
@@ -789,11 +834,16 @@ impl App {
         };
         let known = self.game_ban_of(&account, Some(place));
         if let Some(known) = known.as_ref().filter(|k| k.at >= since) {
-            if known.message.is_none() && message.is_some() {
+            if (known.message.is_none() && message.is_some()) || (known.until.is_none() && until.is_some()) {
                 let known_place = known.place_id;
                 let _ = self.update_account(account_id, |a| {
                     if let Some(b) = a.game_bans.iter_mut().find(|b| b.place_id == known_place) {
-                        b.message = message.clone();
+                        if b.message.is_none() {
+                            b.message = message.clone();
+                        }
+                        if b.until.is_none() {
+                            b.until = until;
+                        }
                     }
                 });
                 self.persist_soon();
@@ -811,13 +861,14 @@ impl App {
         let gone: Vec<i64> = account.game_bans.iter().filter(|b| self.same_game(b.place_id, place)).map(|b| b.place_id).collect();
         let _ = self.update_account(account_id, |a| {
             a.game_bans.retain(|b| !gone.contains(&b.place_id));
-            a.game_bans.push(GameBan { place_id: place, game_name: game_name.clone(), at: Stamp::utc_now(), message: message.clone() });
+            a.game_bans.push(GameBan { place_id: place, game_name: game_name.clone(), at: Stamp::utc_now(), message: message.clone(), until });
         });
         let with_words = message.as_deref().is_some_and(|m| !m.is_empty());
         log::note(&format!(
-            "Game ban: account {} banned from place {place}{}; no rejoins there.",
+            "Game ban: account {} banned from place {place}{}{}; no rejoins there.",
             short(account_id),
-            if with_words { ", with the game's message" } else { "" }
+            if with_words { ", with the game's message" } else { "" },
+            until.map(|u| format!(" until {} UTC", ban_time(u))).unwrap_or_default()
         ));
         self.persist_soon();
         let n = self.name(&account);
@@ -837,13 +888,30 @@ impl App {
         if stuck { self.game_ban_of(account, run.1.target.as_ref().map(|t| t.place_id)) } else { None }
     }
 
-    /// Any place of the game: a game's ban holds in all of them.
+    /// Any place of the game: a game's ban holds in all of them. A timed ban past its end holds no longer.
     pub fn game_ban_of(&self, account: &Account, place_id: Option<i64>) -> Option<GameBan> {
         let place = place_id?;
-        account.game_bans.iter().find(|b| self.same_game(b.place_id, place)).cloned()
+        let now = Stamp::utc_now();
+        account.game_bans.iter().find(|b| self.same_game(b.place_id, place) && !b.until.is_some_and(|u| u <= now)).cloned()
     }
 
     pub fn forget_lifted_game_bans(&self) {
+        // A timed ban whose end has passed: forgotten, so the account's card and the warning before opening go too.
+        let now = Stamp::utc_now();
+        for account in self.vault(|d| d.accounts.clone()).unwrap_or_default() {
+            let ended: Vec<GameBan> = account.game_bans.iter().filter(|b| b.until.is_some_and(|u| u <= now)).cloned().collect();
+            for ban in ended {
+                let _ = self.update_account(account.id, |a| a.game_bans.retain(|b| !(b.place_id == ban.place_id && b.until == ban.until)));
+                log::note(&format!(
+                    "Game ban: account {}'s ban from place {} is over (it ended {} UTC).",
+                    short(account.id),
+                    ban.place_id,
+                    ban.until.map(ban_time).unwrap_or_default()
+                ));
+                self.persist_soon();
+                self.push_state();
+            }
+        }
         for (id, info) in running(self) {
             let Some(here) = log_of(self, info.0).filter(|l| l.status == "ingame").and_then(|l| l.place_id) else {
                 continue;
@@ -959,9 +1027,23 @@ impl App {
                 q.remove(i);
             }
         }
+        // Set now, not when the task first runs (after this tick): the restarts and server switches below in this same
+        // tick must see it, as C#'s RejoinAsync set it at once. Cleared when the task ends, even one that stopped early.
+        self.controller.rejoining.set(true);
+        // The rejoin under way and its cancel are set now too: C#'s RejoinAsync set them before its first await, so a
+        // Close of that account in this same turn (before the task first runs) calls it off (cancel_rejoin_under_way).
+        let under_way = Rc::new(due.clone());
+        let cts = Cancel::new();
+        *self.rejoin.rejoin_in_flight.borrow_mut() = Some(under_way.clone());
+        *self.controller.rejoin_cts.borrow_mut() = Some(cts.clone());
+        let generation = self.rejoin.rejoin_generation.get() + 1;
+        self.rejoin.rejoin_generation.set(generation);
         rt::spawn({
             let app = self.clone();
-            async move { app.rejoin(due).await }
+            async move {
+                let _rejoining = crate::core::base::Busy::set(&app.controller.rejoining);
+                app.clone().rejoin_taken(due, Some((under_way, cts, generation))).await
+            }
         });
     }
 
@@ -1003,6 +1085,22 @@ impl App {
     }
 
     pub(crate) async fn rejoin(self: Rc<Self>, request: RejoinRequest) {
+        self.rejoin_taken(request, None).await
+    }
+
+    /// `taken`: the request, cancel and generation run_due_rejoin already set as under way (None: set here).
+    async fn rejoin_taken(self: Rc<Self>, request: RejoinRequest, taken: Option<(Rc<RejoinRequest>, Cancel, u64)>) {
+        // Let go of what run_due_rejoin set, if nothing newer took it (a rejoin that stops before starting).
+        let let_go = |app: &App, taken: &Option<(Rc<RejoinRequest>, Cancel, u64)>| {
+            if let Some((r, _, generation)) = taken {
+                if app.rejoin.rejoin_in_flight.borrow().as_ref().is_some_and(|x| Rc::ptr_eq(x, r)) {
+                    *app.rejoin.rejoin_in_flight.borrow_mut() = None;
+                }
+                if app.rejoin.rejoin_generation.get() == *generation {
+                    *app.controller.rejoin_cts.borrow_mut() = None;
+                }
+            }
+        };
         let vault = vault_now(&self);
         let account = self.find_account(request.account_id);
         // server_hop.rs: taken here, even by a rejoin that stops below.
@@ -1029,9 +1127,11 @@ impl App {
         };
         if let Some(why) = stop {
             log::note(&format!("Rejoin: account {} dropped from the queue ({why}).", short(request.account_id)));
+            let_go(&self, &taken);
             return;
         }
         let (Some(_vault), Some(account)) = (vault, account) else {
+            let_go(&self, &taken);
             return;
         };
         self.controller.rejoining.set(true);
@@ -1048,14 +1148,20 @@ impl App {
             if request.network_retries > 0 { format!(", network try {}", request.network_retries + 1) } else { String::new() },
             if request.open_retries > 0 { format!(", open try {}", request.open_retries + 1) } else { String::new() }
         ));
-        let request = Rc::new(request);
-        *self.rejoin.rejoin_in_flight.borrow_mut() = Some(request.clone());
-        let cts = Cancel::new();
-        *self.controller.rejoin_cts.borrow_mut() = Some(cts.clone());
         // PORT: `_rejoinCts == cts` below is a reference compare; base::Cancel doesn't expose its Arc, so a count of the
         // rejoins that took `rejoin_cts` stands in.
-        let generation = self.rejoin.rejoin_generation.get() + 1;
-        self.rejoin.rejoin_generation.set(generation);
+        let (request, cts, generation) = match taken {
+            Some(taken) => taken,
+            None => {
+                let request = Rc::new(request);
+                *self.rejoin.rejoin_in_flight.borrow_mut() = Some(request.clone());
+                let cts = Cancel::new();
+                *self.controller.rejoin_cts.borrow_mut() = Some(cts.clone());
+                let generation = self.rejoin.rejoin_generation.get() + 1;
+                self.rejoin.rejoin_generation.set(generation);
+                (request, cts, generation)
+            }
+        };
         let ct: Cancel = cts.clone();
         // Back in the queue to try again later, unless it was called off meanwhile.
         let again = |app: &App, next: RejoinRequest| {
@@ -1079,6 +1185,8 @@ impl App {
             }
             // Banned while it played (the daily check would say so hours later): a new window would only show the ban
             // every few minutes. No clear answer lets the rejoin go on.
+            // The account as it is after the follow and teammate waits (the C# held the live one): its cookie now.
+            let account = self.find_account(account.id).unwrap_or_else(|| account.clone());
             match self.check_ban(&account).await {
                 Ok(Some(true)) => {
                     log::note(&format!("Rejoin: account {} not rejoined, banned on Roblox.", short(account.id)));
@@ -1116,7 +1224,13 @@ impl App {
                 return Ok(());
             }
             let via = self.vault(|d| d.settings.launch_via.clone())?;
+            // The account as it is now: a cookie renewed while the follow, teammate or ban checks waited is the one used.
+            let Some(account) = self.find_account(account.id) else {
+                log::note(&format!("Rejoin: account {} not rejoined, deleted meanwhile.", short(request.account_id)));
+                return Ok(());
+            };
             self.start_session(&account, Some(target), &via, &ct, true, request.preset_id, request.restart, request.open_retries).await?;
+            self.rejoin.update_held_told.borrow_mut().remove(&account.id);
             self.persist();
             self.push_state();
             Ok(())
@@ -1128,8 +1242,23 @@ impl App {
             if ct.is_cancelled() {
                 // Close all, or Close of this account: whatever it ran into meanwhile, nothing to say.
                 log::note(&format!("Rejoin: account {}'s rejoin called off.", short(account.id)));
-            } else if matches!(ex, Fail::User(_)) {
-                // The account was deleted while the ticket was fetched.
+            } else if super::launching::is_update_hold(&ex) {
+                // Opening it would update Roblox and close every window open (hold_for_roblox_update): it waits, said once.
+                if self.rejoin.update_held_told.borrow_mut().insert(account.id) {
+                    let n = self.name(&account);
+                    self.notify(
+                        &l::f("{0} waits to rejoin: opening it now would make Roblox update and close every Roblox window open. It rejoins once the other windows are closed or Roblox is updated.", &[&n]),
+                        "warn",
+                        "rejoinFail",
+                        account.id,
+                        true,
+                        None,
+                    );
+                }
+                again(&self, RejoinRequest { due: Stamp::utc_now().plus_secs(secs(UPDATE_HOLD_RECHECK)), ..(*request).clone() });
+            } else if matches!(ex, Fail::User(_)) && self.find_account(request.account_id).is_none() {
+                // The account was deleted while the ticket was fetched. (Only then: the launcher's "Roblox isn't installed" sentences are
+                // Fail::User too, and were taken for a deletion, the rejoin dropped without a word; review 2026-11-13.)
                 log::note(&format!("Rejoin: account {} not rejoined, deleted meanwhile.", short(request.account_id)));
             } else if network && request.network_retries < MAX_NETWORK_RETRIES {
                 // No connection (often right after sleep) or Roblox busy: try again, each time later; not counted as a
@@ -1143,14 +1272,14 @@ impl App {
                     delay.as_secs()
                 ));
                 again(&self, RejoinRequest { due: Stamp::utc_now().plus_secs(secs(delay)), network_retries: request.network_retries + 1, ..(*request).clone() });
-            } else if is_start_error(&ex) && request.open_retries < MAX_OPEN_RETRIES {
+            } else if (is_start_error(&ex) || matches!(ex, Fail::User(_))) && request.open_retries < MAX_OPEN_RETRIES {
                 // Roblox wouldn't start: most likely its updater swapping the build folder under the launch. Tried again later,
                 // as a client that quits before its window is (retry_open); before, the account was left out for good while a
                 // drop in game is rejoined (review, 2026-10-30).
                 log::note(&format!("A rejoin's Roblox didn't start, tried again later: {}", super::controller::start_error_log(&ex)));
                 let delay = retry_delay(request.open_retries);
                 again(&self, RejoinRequest { due: Stamp::utc_now().plus_secs(secs(delay)), open_retries: request.open_retries + 1, ..(*request).clone() });
-            } else if roblox_api::is_expected_error(&ex) || is_start_error(&ex) {
+            } else if roblox_api::is_expected_error(&ex) || is_start_error(&ex) || matches!(ex, Fail::User(_)) {
                 log::note(&format!("Rejoin: account {} failed ({}).", short(account.id), launch_fail_kind(&ex)));
                 let mut why: Option<String> = None;
                 let mut said = true;
@@ -1241,8 +1370,18 @@ impl App {
         }
         for (id, info) in running(self) {
             let account = self.find_account(id);
-            // The log is the better source (rejoin_from_logs); a strike from before it was found says nothing.
-            if self.log_followed(info.0) {
+            // A log in its game while Roblox's own status, asked with the account's own sign-in, says it isn't, several
+            // checks running: Roblox's "Disconnected" box with no disconnect line logged (a game that failed while loading,
+            // a RoALT user's report 2026-11-14). Roblox accounts only: a VNG account's status isn't trusted for this.
+            let stuck_in_game = account.as_ref().is_some_and(|a| {
+                a.realm == crate::core::roblox_api::realm::GLOBAL
+                    && self.controller.logs.borrow().state_of(info.0).is_some_and(|s| {
+                        s.status == "ingame" && s.teleport_started.is_none() && Stamp::utc_now().secs_since(s.at) >= secs(DISCONNECT_GRACE)
+                    })
+                    && self.controller.presence.borrow().get(&a.user_id).is_some_and(|p| p.r#type == 0 || p.r#type == 1)
+            });
+            // Otherwise the log is the better source (rejoin_from_logs); a strike from before it was found says nothing.
+            if self.log_followed(info.0) && !stuck_in_game {
                 self.controller.offline_strikes.borrow_mut().remove(&id);
                 continue;
             }
@@ -1277,11 +1416,15 @@ impl App {
                 s.insert(id, n);
                 n
             };
-            if strikes < 2 {
+            if strikes < if stuck_in_game { STUCK_IN_GAME_STRIKES } else { 2 } {
                 continue;
             }
             self.controller.offline_strikes.borrow_mut().remove(&id);
-            log::note(&format!("Rejoin: closing window {} to rejoin, its account was out of a game on two status checks (no log to go by).", info.0));
+            log::note(&if stuck_in_game {
+                format!("Rejoin: closing window {} to rejoin, its log says in a game but its account was out of one on {STUCK_IN_GAME_STRIKES} status checks.", info.0)
+            } else {
+                format!("Rejoin: closing window {} to rejoin, its account was out of a game on two status checks (no log to go by).", info.0)
+            });
             self.rejoin.closing_for_rejoin.borrow_mut().insert(info.0); // Bloxkeep's own close: never taken for Roblox closing it
             let n = self.name(&account);
             self.notify(&l::f("{0} dropped out of the game, reason unknown — restarting Roblox…", &[&n]), "info", "drop", account.id, true, None);

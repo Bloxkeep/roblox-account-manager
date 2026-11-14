@@ -20,6 +20,8 @@ use crate::{
 };
 
 actions!(bloxkeep, [FocusSearch, FocusNext, FocusPrev, GoBack, GoForward, FindHere, FocusPlace, PickAll, DeletePicked, EditPicked, PlayPicked, ClearPicked]);
+// The arrows, Home, End and Space among the Accounts page's cards (app.js's moveCardFocus), never while typing.
+actions!(bloxkeep, [CardLeft, CardRight, CardUp, CardDown, CardFirst, CardLast, CardPick]);
 
 /// Home's games card: this PC's games, or what Bloxkeep's users play.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -52,22 +54,58 @@ pub struct Root {
     /// The games this PC played lately (playedGames), asked for once Home is shown.
     pub played: Option<Vec<Value>>,
     asked_played: bool,
+    /// When it was last asked and on which visit to a page: Home or Games opened again asks again (GamesView.tsx).
+    played_at: Option<std::time::Instant>,
+    played_nav: u64,
     /// Each game's pictures by place (gameLooks: icon, cover), and the places already asked for.
     pub looks: std::collections::HashMap<i64, Value>,
     asked_looks: std::collections::HashSet<i64>,
+    /// How many times each game's pictures came back missing: a game Roblox never answers for (deleted, no icon)
+    /// stops being asked after a few, instead of every half minute for the whole session.
+    look_misses: std::collections::HashMap<i64, u8>,
     /// The game on Home's stage, picked from its games.
     /// Which way the place shown came in: 1. from below, -1. from above (kit::step_in).
     pub step_from: f32,
+    /// Counts the page changes (go, Back, Forward): what was asked "for this page" (Ctrl+L's bar) is stale after one.
+    pub nav: u64,
+    /// Counts the app's states taken in (what is worked out from the accounts once per state is kept by it).
+    pub state_gen: u64,
     pub picked: Option<i64>,
     /// Accounts: the cards picked (by id), the filter over them, the game box of the bar that plays them and the game
     /// it found (resolveGame's answer).
     pub selected: std::collections::HashSet<String>,
+    /// The last account clicked on its own: Shift+click picks every one shown from it to the one clicked.
+    pub acc_anchor: Option<String>,
+    /// The accounts open here at the last state, with their game; and when each one's window closed, and its game:
+    /// Roblox's web status lags behind for a while, so for a minute the card says "Closing…" (Accounts.tsx's closedAt).
+    was_local: std::collections::HashMap<String, String>,
+    pub closed_at: std::collections::HashMap<String, (std::time::Instant, String)>,
+    /// The account just brought into view on Accounts (Home's keys, the palette), ringed for a moment (app.js's
+    /// revealAccount flash).
+    pub revealed: Option<(String, std::time::Instant)>,
+    /// The card the arrow keys are on (a thin ring), until a click.
+    pub acc_cursor: Option<String>,
+    /// Accounts shows the Roblox windows (the Game monitor) instead of the cards or the list; kept between runs.
+    pub acc_win: bool,
+    /// On the windows view: the games folded to their head, and the one game shown alone.
+    pub mon_fold: std::collections::HashSet<String>,
+    pub mon_solo: Option<String>,
+    /// What the app was last told: a form or dialog is open (pageBusy, so an update waits instead of restarting over it).
+    busy_told: bool,
+    /// The game box's words are being looked up (the bar says "Looking up the game…").
+    pub place_asking: bool,
+    /// Settings was open (unlocked) at the last frame: opening it asks for the backup folders to suggest.
+    on_settings: bool,
+    /// A launch or a preset run waiting for its answer: another click meanwhile does nothing (app.js's inFlight).
+    pub in_flight: std::collections::HashSet<&'static str>,
     pub acc_filter: pages::accounts::Filter,
     pub place: Entity<InputState>,
     pub game: Option<Value>,
     /// Accounts' live pictures: the Roblox windows as the app sent them last ("monitor": every 1.5 s while the page
     /// says where their pictures go), and that report, gathered while the window is laid out each frame.
     pub windows: Vec<Value>,
+    /// Counts the "monitor" reports, so lists made from the windows know when to be made again.
+    pub windows_gen: u64,
     pub live: Live,
     /// Games: what it asked the app for and the game open on it, and its two search boxes (games, a price list's items).
     pub games: pages::games::Data,
@@ -86,6 +124,9 @@ pub struct Root {
     pub inbox: pages::inbox::Data,
     /// The Roblox tab's Settings, and its About box.
     pub rset: pages::rsettings::Data,
+    /// Roblox › Mods, and its search box.
+    pub mods: pages::mods::Data,
+    pub mods_q: Entity<InputState>,
     pub rset_about: Entity<gpui_kit::component::input::TextareaState>,
     pub passes: pages::passes::Data,
     /// The lock screen (pages/lock.rs), and its two password boxes (the second only when a vault is set up).
@@ -98,6 +139,8 @@ pub struct Root {
     pub s_vault_name: Entity<InputState>,
     /// Statistics' alts board: this PC's name on it.
     pub board_name: Entity<InputState>,
+    /// Settings › Notifications: the phone's ntfy topic, typed.
+    pub phone_topic: Entity<InputState>,
     /// Settings › Launching: a Roblox window's own width and height, typed.
     pub win_w: Entity<InputState>,
     pub win_h: Entity<InputState>,
@@ -108,10 +151,9 @@ pub struct Root {
     pub seen_open: bool,
     /// Accounts: the picked accounts' "more" menu is open.
     pub acc_menu: bool,
-    /// Accounts' short lists ("Group: All", "Sort: Name"): the one open, the one last open (it closes as it
-    /// opened), and the one a click outside closed just now (that click on its own button must not reopen it).
+    /// Accounts' short lists ("Group: All", "Sort: Name"): the one open, and the one a click outside closed just now
+    /// (that click on its own button must not reopen it). One closing fades out (accounts::pop_alive).
     pub acc_drop: Option<&'static str>,
-    pub acc_drop_was: Option<&'static str>,
     pub acc_drop_closed: Option<(&'static str, std::time::Instant)>,
     /// Accounts: only this group's (none: every group).
     pub acc_group: Option<String>,
@@ -189,6 +231,8 @@ pub struct Root {
     community_at: Option<std::time::Instant>,
     /// Friends' Add friend box: a name, sent to Roblox's people search on Enter.
     pub friend_search: Entity<InputState>,
+    /// Friends' labels: a new label's name, added on Enter.
+    pub label_box: Entity<InputState>,
     pub home_tab: HomeTab,
     /// Where the left button went down on the top bar; moving a few pixels from there moves the window.
     drag_from: Option<Point<Pixels>>,
@@ -196,9 +240,13 @@ pub struct Root {
     shown: bool,
     /// The window's own focus, so the keys (Ctrl+K, Tab) work before anything is clicked.
     focus: FocusHandle,
+    /// The avatar's 3D box, which takes W A S D while clicked (pages/avatar.rs).
+    pub avatar_focus: FocusHandle,
     tasks: Vec<Task<()>>,
     /// The shown toast's timer: a new toast drops (cancels) the one before.
     toast_task: Option<Task<()>>,
+    /// The notice its timer was started for (its words and kind, and which showing of them).
+    toast_timed: Option<((String, String), u32)>,
 }
 
 impl Root {
@@ -230,6 +278,13 @@ impl Root {
                 r.games.found = None;
                 cx.notify();
             }
+            _ => {}
+        })
+        .detach();
+        let mods_q = mk("mods.search", window, cx);
+        cx.subscribe(&mods_q, |r: &mut Root, _, e: &InputEvent, cx| match e {
+            InputEvent::PressEnter { .. } => pages::mods::search(r, cx),
+            InputEvent::Change if r.mods_q.read(cx).value().trim().is_empty() && !r.mods.words_empty() => pages::mods::search(r, cx),
             _ => {}
         })
         .detach();
@@ -358,6 +413,13 @@ impl Root {
             _ => {}
         })
         .detach();
+        let label_box = mk("tag.name", window, cx);
+        cx.subscribe(&label_box, |r: &mut Root, _, e: &InputEvent, cx| {
+            if matches!(e, InputEvent::PressEnter { .. }) {
+                pages::friends::add_label(r, cx);
+            }
+        })
+        .detach();
         let friend_search = mk("fr.find", window, cx);
         cx.subscribe(&friend_search, |r: &mut Root, _, e: &InputEvent, cx| {
             if matches!(e, InputEvent::PressEnter { .. }) {
@@ -422,6 +484,16 @@ impl Root {
             }
         })
         .detach();
+        let phone_topic = cx.new(|cx| InputState::new(window, cx));
+        cx.subscribe_in(&phone_topic, window, |r: &mut Root, e, ev: &InputEvent, _, cx| {
+            if matches!(ev, InputEvent::PressEnter { .. } | InputEvent::Blur) {
+                let topic: String = e.read(cx).value().trim().chars().take(200).collect();
+                if topic != r.state.pointer("/phone/topic").and_then(Value::as_str).unwrap_or_default() {
+                    pages::settings::ask(r, "setPhone", json!({ "topic": topic }), cx, |_, _| {});
+                }
+            }
+        })
+        .detach();
         let pw_box = |hint: &str, window: &mut Window, cx: &mut Context<Root>| {
             let hint = i18n.t(hint);
             let e = cx.new(|cx| InputState::new(window, cx).masked(true).placeholder(hint));
@@ -441,11 +513,20 @@ impl Root {
         let pw_new2 = pw_box("set.pwNew2", window, cx);
         let place_hint = i18n.t("dock.place");
         let place = cx.new(|cx| InputState::new(window, cx).placeholder(place_hint));
-        // Enter looks the game up; any change forgets the game found before (Play then says "Open Roblox" or "Play").
+        // Enter looks the game up and, empty or holding a link / Place ID, plays the picked accounts (app.js's onPlaceKey;
+        // words aren't a game to open); any change forgets the game found before (Play then says "Open Roblox" or "Play").
         cx.subscribe(&place, |r: &mut Root, _, e: &InputEvent, cx| match e {
-            InputEvent::PressEnter { .. } => r.resolve_place(cx),
+            InputEvent::PressEnter { .. } => {
+                let v = r.place.read(cx).value().trim().to_string();
+                r.resolve_place(cx);
+                if v.is_empty() || v.contains("roblox.com") || v.contains("roblox://") || v.chars().all(|ch| ch.is_ascii_digit()) {
+                    pages::accounts::play_selected(r, cx);
+                }
+            }
             InputEvent::Change => {
                 r.game = None;
+                // (A lookup still running is for the old words: its answer is dropped, so nothing is asked now.)
+                r.place_asking = false;
                 cx.notify();
             }
             _ => {}
@@ -464,11 +545,17 @@ impl Root {
             toast_n: 0,
             shot_asked: false,
             step_from: 1.,
+            nav: 0,
+            state_gen: 0,
+            windows_gen: 0,
             hwnd: None,
             played: None,
             asked_played: false,
+            played_at: None,
+            played_nav: 0,
             looks: Default::default(),
             asked_looks: Default::default(),
+            look_misses: Default::default(),
             picked: None,
             windows: Vec::new(),
             live: Live::default(),
@@ -481,6 +568,8 @@ impl Root {
             inbox: Default::default(),
             rset: Default::default(),
             rset_about,
+            mods: Default::default(),
+            mods_q,
             passes: Default::default(),
             lock: Default::default(),
             lock_pw,
@@ -488,6 +577,7 @@ impl Root {
             vault_name,
             s_vault_name,
             board_name,
+            phone_topic,
             win_w,
             win_h,
             pw_cur,
@@ -496,7 +586,6 @@ impl Root {
             seen_open: false,
             acc_menu: false,
             acc_drop: None,
-            acc_drop_was: None,
             acc_drop_closed: None,
             acc_group: None,
             order_edit: Vec::new(),
@@ -548,7 +637,20 @@ impl Root {
             news_words,
             community_at: None,
             friend_search,
+            label_box,
             selected: Default::default(),
+            acc_anchor: None,
+            was_local: Default::default(),
+            closed_at: Default::default(),
+            revealed: None,
+            acc_cursor: None,
+            acc_win: crate::prefs::get("accWindows").and_then(|v| v.as_bool()).unwrap_or(false),
+            mon_fold: Default::default(),
+            mon_solo: None,
+            busy_told: false,
+            place_asking: false,
+            on_settings: false,
+            in_flight: Default::default(),
             acc_filter: pages::accounts::Filter::All,
             place,
             game: None,
@@ -559,9 +661,65 @@ impl Root {
             lost: false,
             shown: false,
             focus: cx.focus_handle(),
+            avatar_focus: cx.focus_handle(),
             tasks: Vec::new(),
             toast_task: None,
+            toast_timed: None,
         };
+        // The window's heartbeat for core/log.rs's watch: this runs on the window's own thread, so a beat that stops
+        // coming means the window stopped answering (written to error.log and the Console with how long).
+        #[cfg(feature = "core")]
+        root.tasks.push(cx.spawn(async move |_, cx| {
+            loop {
+                crate::core::log::window_beat();
+                cx.background_executor().timer(Duration::from_millis(500)).await;
+            }
+        }));
+        // Marketplace › Watching (itemwatch.rs): every few minutes the watched things are read again, and what changed
+        // is said as Bloxkeep's other news is (a toast, Windows, Discord, phone).
+        #[cfg(not(feature = "shot"))]
+        root.tasks.push(cx.spawn(async move |this, cx| {
+            cx.background_executor().timer(Duration::from_secs(40)).await;
+            loop {
+                let got = crate::roblox::run(crate::itemwatch::check).await.unwrap_or_default();
+                let alive = this.update(cx, |r, cx| {
+                    for (w, changes) in &got {
+                        for ch in changes {
+                            let text = format!("{}: {}", w.name, pages::profile::change_words(r, ch));
+                            r.send("notifyItem", serde_json::json!({ "text": text, "key": format!("item:{}:{}:{}", w.id, ch.kind, ch.at) }));
+                        }
+                    }
+                    // The first change also opens the capsule, with the thing's picture.
+                    if let Some((w, ch)) = got.iter().find_map(|(w, c)| c.first().map(|ch| (w, ch))) {
+                        let l = pages::games::Live {
+                            key: format!("item:{}:{}", w.id, ch.at),
+                            pic: w.pic.clone(),
+                            round: false,
+                            icon: "tag",
+                            tone: OK,
+                            title: w.name.clone(),
+                            sub: pages::profile::change_words(r, ch),
+                            act: Some(pages::games::LiveAct::Watching),
+                            busy: false,
+                            at: std::time::Instant::now(),
+                        };
+                        pages::games::live_show(r, l, cx);
+                    }
+                    let fresh = crate::itemwatch::list();
+                    if !got.is_empty() || fresh.len() != r.profile.watch.len() {
+                        r.profile.watch = fresh;
+                        if r.profile.watch_view {
+                            crate::itemwatch::seen();
+                        }
+                        cx.notify();
+                    }
+                });
+                if alive.is_err() {
+                    break;
+                }
+                cx.background_executor().timer(crate::itemwatch::EVERY).await;
+            }
+        }));
         // The playing times count up each second while someone plays.
         root.tasks.push(cx.spawn(async move |this, cx| {
             loop {
@@ -609,6 +767,8 @@ impl Root {
                 self.place.update(cx, |s, cx| s.set_placeholder(p, window, cx));
                 let p = self.i18n.t("ui.findGame");
                 self.game_search.update(cx, |s, cx| s.set_placeholder(p, window, cx));
+                let p = self.i18n.t("mods.search");
+                self.mods_q.update(cx, |s, cx| s.set_placeholder(p, window, cx));
                 let p = self.i18n.t("prices.search");
                 self.price_search.update(cx, |s, cx| s.set_placeholder(p, window, cx));
                 let p = self.i18n.t("jp.placeholder");
@@ -627,6 +787,8 @@ impl Root {
                 self.shop_search.update(cx, |s, cx| s.set_placeholder(p, window, cx));
                 let p = self.i18n.t("fr.find");
                 self.friend_search.update(cx, |s, cx| s.set_placeholder(p, window, cx));
+                let p = self.i18n.t("tag.name");
+                self.label_box.update(cx, |s, cx| s.set_placeholder(p, window, cx));
                 let p = self.i18n.t("lock.pw");
                 self.lock_pw.update(cx, |s, cx| s.set_placeholder(p, window, cx));
                 let p = self.i18n.t("lock.pw2");
@@ -642,6 +804,9 @@ impl Root {
         let was = self.locked();
         let was_adding = pages::lock::adding(self);
         self.state = state;
+        self.state_gen += 1;
+        // Try it's log follows every state the app sends, not only the ones a frame draws.
+        pages::macro_form::on_state(self);
         // The theme it says is in use (Settings › Appearance): its colours, and the picture behind the window.
         crate::theme::follow(&self.state, cx);
         // Names hidden (Settings › Appearance): every account goes by its first letter everywhere, as the web page
@@ -660,6 +825,7 @@ impl Root {
                 }
             }
         }
+        self.prune_selected();
         if self.help_open {
             window.refresh();
         }
@@ -669,6 +835,40 @@ impl Root {
                 self.show_whats_new(list);
                 self.send("seenWhatsNew", json!({}));
             }
+        }
+        // A window here that just closed: noted, and drawn again once the minute is over.
+        let mut closed_now = false;
+        let mut open_now = std::collections::HashMap::new();
+        let seen: Vec<(String, Option<String>, bool)> = self
+            .accounts()
+            .iter()
+            .map(|a| {
+                let id = a.get("id").and_then(Value::as_str).unwrap_or_default().to_string();
+                let game = pages::accounts::is_local(a).then(|| {
+                    if a.pointer("/presence/type").and_then(Value::as_str) == Some("ingame") { a.pointer("/presence/game").and_then(Value::as_str) } else { None }
+                        .or_else(|| a.pointer("/session/game/name").and_then(Value::as_str))
+                        .unwrap_or_default()
+                        .to_string()
+                });
+                (id, game, a.get("state").and_then(Value::as_str) == Some("launching"))
+            })
+            .collect();
+        for (id, game, launching) in seen {
+            if let Some(game) = game {
+                open_now.insert(id, game);
+            } else if let Some(game) = self.was_local.get(&id).filter(|_| !launching).cloned() {
+                self.closed_at.insert(id, (std::time::Instant::now(), game));
+                closed_now = true;
+            }
+        }
+        self.was_local = open_now;
+        self.closed_at.retain(|_, (at, _)| at.elapsed() < pages::accounts::CLOSING);
+        if closed_now {
+            cx.spawn(async move |this, cx| {
+                cx.background_executor().timer(pages::accounts::CLOSING + std::time::Duration::from_millis(500)).await;
+                let _ = this.update(cx, |_, cx| cx.notify());
+            })
+            .detach();
         }
         if !self.locked() {
             self.seen_open = true;
@@ -686,6 +886,10 @@ impl Root {
         let on_board = self.state.get("boardName").and_then(Value::as_str).unwrap_or_default().to_string();
         if self.board_name.read(cx).value().as_ref() != on_board && !self.board_name.read(cx).focus_handle(cx).is_focused(window) {
             self.board_name.update(cx, |s, cx| s.set_value(on_board, window, cx));
+        }
+        let topic = self.state.pointer("/phone/topic").and_then(Value::as_str).unwrap_or_default().to_string();
+        if self.phone_topic.read(cx).value().as_ref() != topic && !self.phone_topic.read(cx).focus_handle(cx).is_focused(window) {
+            self.phone_topic.update(cx, |s, cx| s.set_value(topic, window, cx));
         }
         // Settings' box for the open vault's name follows the app, unless it is being typed in.
         let name = self.open_vault_name();
@@ -715,12 +919,19 @@ impl Root {
             }
             k
         };
-        if sign_key != self.sign_key {
+        // (Locked, the app shows no vault and no accounts: that is not "every account gone", so the key waits for the
+        // unlock, and the Games account tabs survive a Lock and Unlock of the same vault. The sign-ins still go at the
+        // lock, below.)
+        if sign_key != self.sign_key && !self.locked() {
             let first = self.sign_key.is_empty();
             self.sign_key = sign_key;
             if !first {
                 self.games.forget_sign_in();
                 self.friends.forget_sign_in();
+                // Another vault's games played.
+                self.asked_played = false;
+                // Tabs of accounts no longer here go (Games' account tabs).
+                pages::tabs::forget_gone(self);
             }
         }
         if was != self.locked() {
@@ -728,6 +939,9 @@ impl Root {
                 // Nothing stays over the lock screen: the boxes open close, and what was typed into a secret box
                 // (a cookie, a password, an authenticator key) goes with them.
                 window.close_all_dialogs(cx);
+                // A sign-in lent before the lock is not kept behind it (the vault may not be the same one after).
+                self.games.forget_sign_in();
+                self.friends.forget_sign_in();
                 for e in [&self.af_cookie, &self.af_password, &self.af_key, &self.pl_pass, &self.pl_code, &self.pw_cur, &self.pw_new, &self.pw_new2, &self.iv_pw] {
                     e.update(cx, |s, cx| s.set_value("", window, cx));
                 }
@@ -766,6 +980,12 @@ impl Root {
         #[cfg(feature = "shot")]
         {
             match std::env::var("BLOXKEEP_SHOT_DROP").as_deref() {
+                Ok("launch") => {
+                    if self.settings.menu_was.is_none() {
+                        self.settings.menu = Some("s-launch");
+                        self.settings.menu_was = Some("s-launch");
+                    }
+                }
                 Ok("sort") => self.acc_drop = Some("acc-sort"),
                 Ok("group") => self.acc_drop = Some("acc-group"),
                 _ => {}
@@ -832,8 +1052,34 @@ impl Root {
         #[cfg(feature = "shot")]
         if let Ok(kind) = std::env::var("BLOXKEEP_SHOT_SHOP") {
             self.games.view = pages::games::View::Shop;
-            // BLOXKEEP_SHOT_SHOP=free: on its New free list.
+            // BLOXKEEP_SHOT_SHOP=free: on its New free list; =watch: on Watching.
             self.profile.free = kind == "free";
+            if kind == "watch" && !self.profile.watch_view {
+                self.profile.watch_view = true;
+                self.profile.watch = crate::itemwatch::list();
+            }
+        }
+        // BLOXKEEP_SHOT_LIVE=friend|item|mod|done: the capsule open for a made-up moment.
+        #[cfg(feature = "shot")]
+        if let Ok(kind) = std::env::var("BLOXKEEP_SHOT_LIVE") {
+            if self.games.live.is_none() {
+                let join = pages::games::LiveAct::Join { acc: String::new(), place: 2753915549, job: "x".into(), user: 1, name: "minh".into() };
+                let (icon, tone, title, sub, act, busy) = match kind.as_str() {
+                    "friend" => ("users", OK, "Minh".to_string(), self.i18n.tv("live.inGame", &[("game", "Blox Fruits")]), Some(join), false),
+                    "item" => ("tag", OK, "Valkyrie Helm".to_string(), "1,200 \u{2192} 950 R$".to_string(), Some(pages::games::LiveAct::Watching), false),
+                    "done" => ("check", OK, "Skybox Collection".to_string(), self.i18n.tv("mods.added", &[("n", "54")]), Some(pages::games::LiveAct::Mods), false),
+                    _ => ("layers", TEXT_2, "Skybox Collection".to_string(), self.tr("live.installing"), None, true),
+                };
+                self.games.live = Some(pages::games::Live { key: "shot".into(), pic: std::env::var("BLOXKEEP_SHOT_LIVE_PIC").unwrap_or_default(), round: kind == "friend", icon, tone, title, sub, act, busy, at: std::time::Instant::now() });
+            }
+        }
+        // BLOXKEEP_SHOT_MODS=1|mine: on Roblox › Mods (its library, or the ones put in).
+        #[cfg(feature = "shot")]
+        if let Ok(kind) = std::env::var("BLOXKEEP_SHOT_MODS") {
+            if self.games.view != pages::games::View::Mods {
+                self.games.view = pages::games::View::Mods;
+                self.mods.mine = kind == "mine";
+            }
         }
         // BLOXKEEP_SHOT_FIND="anime": a shot starts with that search sent to Roblox.
         #[cfg(feature = "shot")]
@@ -948,6 +1194,32 @@ impl Root {
                 pages::clips::hover(self, place, true, cx);
             }
         }
+        // BLOXKEEP_SHOT_TOAST="words": a notice set the way a page sets one (straight into `toast`, no timer of its
+        // own), once: a shot before and one after 5 s show that it goes away by itself (toast_layer's timer).
+        #[cfg(feature = "shot")]
+        {
+            static SAID: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+            if let Ok(words) = std::env::var("BLOXKEEP_SHOT_TOAST")
+                && !SAID.swap(true, std::sync::atomic::Ordering::Relaxed)
+            {
+                self.toast = Some((words, "ok".into()));
+            }
+        }
+        // BLOXKEEP_SHOT_KEEP_ALL=1: a shot of the Games tab with Keep playing showing every game.
+        #[cfg(feature = "shot")]
+        if std::env::var("BLOXKEEP_SHOT_KEEP_ALL").is_ok() {
+            self.games.keep_all = true;
+        }
+        // BLOXKEEP_SHOT_ACC_WIN=1: Accounts in its Game monitor view; BLOXKEEP_SHOT_ACC_PLAYING=1: the Playing filter on.
+        #[cfg(feature = "shot")]
+        {
+            if std::env::var("BLOXKEEP_SHOT_ACC_WIN").is_ok() {
+                self.acc_win = true;
+            }
+            if std::env::var("BLOXKEEP_SHOT_ACC_PLAYING").is_ok() {
+                self.acc_filter = pages::accounts::Filter::Playing;
+            }
+        }
         // BLOXKEEP_SHOT_GAME="blox-fruits" (or a place id), BLOXKEEP_SHOT_TAB="news|prices": a shot opens that game's page.
         #[cfg(feature = "shot")]
         if let (Ok(id), true) = (std::env::var("BLOXKEEP_SHOT_GAME"), self.games.open.is_none()) {
@@ -977,6 +1249,16 @@ impl Root {
 
     /// An Accounts key (Ctrl+A, Delete, F2, Enter, Escape): only on that page, with nothing typed into a box and no
     /// dialog open; Enter only when the page itself has the focus (on a button or a card it presses that).
+    /// Not while a button or another control has the focus (app.js skipped them when e.target.closest('button')):
+    /// Space presses that, the arrows are its own.
+    fn card_key(r: &mut Self, k: pages::accounts::CardKey, window: &mut Window, cx: &mut Context<Self>) {
+        let on_page = window.focused(cx).is_none_or(|f| f == r.focus);
+        let fits = r.page == Page::Accounts && !r.locked() && !window.has_active_dialog(cx) && window.focused_input(cx).is_none() && on_page;
+        if !(fits && pages::accounts::card_key(r, k, cx)) {
+            cx.propagate();
+        }
+    }
+
     fn acc_key(r: &mut Self, k: pages::accounts::Key, window: &mut Window, cx: &mut Context<Self>) {
         let typing = window.focused_input(cx).is_some() || window.context_stack().iter().any(|c| c.contains("Input"));
         let on_page = window.focused(cx).is_none_or(|f| f == r.focus);
@@ -987,15 +1269,35 @@ impl Root {
     }
 
     /// Opens a page and remembers the one it leaves for Back.
+    /// The picked ones that are gone (an account deleted, another program's window closed) are dropped: else Esc was
+    /// taken by a selection nothing on the page shows.
+    fn prune_selected(&mut self) {
+        if self.selected.is_empty() {
+            return;
+        }
+        let ids: std::collections::HashSet<String> = self
+            .accounts()
+            .iter()
+            .filter_map(|a| a.get("id").and_then(Value::as_str).map(str::to_string))
+            // (Another program's window goes by "win-" and its id, as accounts::others names it.)
+            .chain(self.windows.iter().map(|w| format!("win-{}", w.get("id").and_then(Value::as_str).unwrap_or_default())))
+            .collect();
+        self.selected.retain(|id| ids.contains(id));
+    }
+
     pub fn go(&mut self, p: Page) {
         if p != self.page {
             // (A place further down the rail comes in from below, one further up from above.)
             let at = |x: Page| Page::ALL.iter().position(|y| *y == x).unwrap_or(0);
             self.step_from = if at(p) >= at(self.page) { 1. } else { -1. };
             self.back.push(self.page);
-            self.back.truncate(50);
+            // (The newest 50 kept: truncate would drop the one just pushed.)
+            if self.back.len() > 50 {
+                self.back.drain(..self.back.len() - 50);
+            }
             self.fwd.clear();
             self.page = p;
+            self.nav += 1;
         }
     }
 
@@ -1004,6 +1306,7 @@ impl Root {
         if let Some(p) = from.pop() {
             to.push(self.page);
             self.page = p;
+            self.nav += 1;
         }
     }
 
@@ -1030,6 +1333,8 @@ impl Root {
             }
             "monitor" => {
                 self.windows = data.get("tiles").and_then(Value::as_array).cloned().unwrap_or_default();
+                self.windows_gen += 1;
+                self.prune_selected();
                 cx.notify();
             }
             "progress" => {
@@ -1091,9 +1396,13 @@ impl Root {
         if self.page == Page::Stats && !self.state.is_null() && !self.locked() {
             pages::stats::want(self, cx);
         }
+        if self.page == Page::Home && !self.state.is_null() && !self.locked() {
+            pages::stats::want_home(self, cx);
+        }
         // Games: whose the first tab is (the app's pick) is asked at once, so its tab can say.
         if self.page == Page::Games && !self.state.is_null() && !self.locked() {
             pages::friends::want_sign(self, &link, cx);
+            pages::games::want_corner(self, cx);
         }
         // (The Game view shows the friends' faces too, as Roblox's home does.)
         if self.page == Page::Games && matches!(self.games.view, pages::games::View::Friends | pages::games::View::Games) && !self.state.is_null() && !self.locked() {
@@ -1121,6 +1430,7 @@ impl Root {
                 pages::games::View::Shop => pages::profile::want_shop(self, cx),
                 pages::games::View::Inbox => pages::inbox::want(self, &link, cx),
                 pages::games::View::Settings => pages::rsettings::want(self, &link, cx),
+                pages::games::View::Mods => pages::mods::want(self, cx),
                 _ => {}
             }
         }
@@ -1132,14 +1442,25 @@ impl Root {
         if self.page == Page::Games {
             pages::games::want(self, cx);
         }
-        if !self.asked_played {
+        // Asked again on each new visit to Home or Games (at most twice a minute): they change as accounts play.
+        let again = self.played_nav != self.nav
+            && matches!(self.page, Page::Home | Page::Games)
+            && self.played_at.map_or(true, |t| t.elapsed() >= Duration::from_secs(30));
+        if !self.asked_played || again {
             self.asked_played = true;
+            self.played_at = Some(std::time::Instant::now());
+            self.played_nav = self.nav;
             // The stays come raw from the app, and their sum is made here (history.rs; the app's playedGames command
             // made it until 2026-11-11).
             let rx = link.call("playSessions", json!({}));
+            let key = self.sign_key.clone();
             cx.spawn(async move |this, cx| {
                 let got = rx.await.ok().and_then(Result::ok);
                 let _ = this.update(cx, |r, cx| {
+                    // (Another vault opened meanwhile: its own answer is asked.)
+                    if r.sign_key != key {
+                        return;
+                    }
                     r.played = Some(match got {
                         Some(raw) => {
                             let (sessions, known, now) = crate::history::read(&raw);
@@ -1170,29 +1491,91 @@ impl Root {
             return;
         }
         self.asked_looks.extend(places.iter().copied());
+        let asked = places.clone();
         let rx = crate::roblox::run(move || crate::roblox::looks(&places));
         cx.spawn(async move |this, cx| {
-            let Ok(got) = rx.await else { return };
+            let got = rx.await.unwrap_or_default();
+            // (One not answered may be asked again after a while: a passing failure isn't kept for the session.)
+            let missed: Vec<i64> = asked.into_iter().filter(|p| !got.contains_key(p)).collect();
             let _ = this.update(cx, |r, cx| {
                 r.looks.extend(got);
                 cx.notify();
             });
+            if !missed.is_empty() {
+                cx.background_executor().timer(pages::games::RETRY).await;
+                let _ = this.update(cx, |r, cx| {
+                    for p in &missed {
+                        let tries = r.look_misses.entry(*p).or_insert(0);
+                        *tries += 1;
+                        if *tries < 3 {
+                            r.asked_looks.remove(p);
+                        }
+                    }
+                    cx.notify();
+                });
+            }
         })
         .detach();
     }
 
-    /// Puts dropped accounts back in their game, as app.js's rejoinOne does for each (the server they were on is gone).
+    /// Puts dropped accounts back in their game, as app.js's rejoinOne does for each (the server they were on is gone):
+    /// the game it was in (its server's place, its session's game, else the game Roblox says it is in), else the game in
+    /// the Accounts bar's box, else Roblox's home. One at a time: the core takes one launch at once and refuses the
+    /// others ("Already launching").
     pub fn rejoin(&mut self, accounts: &[Value], cx: &mut Context<Self>) {
-        for a in accounts {
-            let Some(id) = a.get("id").and_then(Value::as_str) else { continue };
-            let place = a
-                .pointer("/session/jobPlaceId")
-                .and_then(Value::as_i64)
-                .or_else(|| a.pointer("/session/game/placeId").and_then(Value::as_i64))
-                .unwrap_or(0);
-            let input = if place > 0 { format!("https://www.roblox.com/games/{place}") } else { String::new() };
-            self.launch("launch", json!({ "ids": [id], "appOnly": false, "placeInput": input, "jobId": "" }), false, cx);
+        let dock = self.game.as_ref().filter(|g| g.get("ok").and_then(Value::as_bool) == Some(true)).and_then(|g| g.get("placeId")).and_then(Value::as_i64).filter(|p| *p > 0);
+        let jobs: Vec<Value> = accounts
+            .iter()
+            .filter_map(|a| {
+                let id = a.get("id").and_then(Value::as_str)?;
+                let presence = (a.pointer("/presence/type").and_then(Value::as_str) == Some("ingame")).then(|| a.pointer("/presence/placeId").and_then(Value::as_i64)).flatten();
+                let place = a
+                    .pointer("/session/jobPlaceId")
+                    .and_then(Value::as_i64)
+                    .filter(|p| *p > 0)
+                    .or_else(|| a.pointer("/session/game/placeId").and_then(Value::as_i64).filter(|p| *p > 0))
+                    .or(presence.filter(|p| *p > 0))
+                    .or(dock);
+                Some(match place {
+                    Some(p) => json!({ "ids": [id], "appOnly": false, "placeInput": format!("https://www.roblox.com/games/{p}"), "jobId": "" }),
+                    None => json!({ "ids": [id], "appOnly": true, "placeInput": "", "jobId": "" }),
+                })
+            })
+            .collect();
+        self.rejoin_next(jobs, cx);
+    }
+
+    fn rejoin_next(&mut self, mut jobs: Vec<Value>, cx: &mut Context<Self>) {
+        if jobs.is_empty() {
+            return;
         }
+        let args = jobs.remove(0);
+        self.rejoin_run(args, false, jobs, cx);
+    }
+
+    /// One rejoin sent (forced: after "Open anyway"), then the rest. A question first ("Before you open"): the rest
+    /// wait for its answer, and go on after it whatever it is (the box keeps them: Pending::LaunchAsk's rest).
+    fn rejoin_run(&mut self, mut args: Value, force: bool, rest: Vec<Value>, cx: &mut Context<Self>) {
+        let Some(link) = self.link.clone() else { return };
+        args["force"] = force.into();
+        let rx = link.call("launch", args.clone());
+        cx.spawn(async move |this, cx| {
+            let answer = rx.await;
+            let _ = this.update(cx, |r, cx| {
+                let rest = match answer {
+                    Ok(Ok(v)) => r.launch_done("launch", args, v, rest),
+                    // (Refused: the rest are left, as before.)
+                    Ok(Err(e)) => {
+                        r.toast = Some((e.to_string(), "error".into()));
+                        Vec::new()
+                    }
+                    Err(_) => Vec::new(),
+                };
+                r.rejoin_next(rest, cx);
+                cx.notify();
+            });
+        })
+        .detach();
     }
 
     /// What's new, for these releases (newest first): opened once there is a window to open it in.
@@ -1216,6 +1599,7 @@ impl Root {
     pub fn add_browser_as(&mut self, create: bool, cx: &mut Context<Self>) {
         let Some(link) = self.link.clone() else { return };
         let rx = link.call("addViaBrowser", if create { json!({ "create": true }) } else { json!({}) });
+        let vault = self.state.pointer("/vaults/open").cloned();
         cx.spawn(async move |this, cx| {
             let Some(r) = rx.await.ok().and_then(Result::ok) else { return };
             let added = r.get("added").and_then(Value::as_array).cloned().unwrap_or_default();
@@ -1231,6 +1615,15 @@ impl Root {
                     r.i18n.tv("t.addedMany", &[("n", &added.len().to_string())])
                 };
                 r.toast = Some((text, "ok".into()));
+                // (Locked, or another vault opened while the browser was up: those ids aren't on the page.)
+                if r.locked() || r.state.pointer("/vaults/open").cloned() != vault {
+                    cx.notify();
+                    return;
+                }
+                // The ones added are picked, ready to play (app.js's addBrowser).
+                let ids: Vec<String> = added.iter().filter_map(|a| a.get("id").and_then(Value::as_str)).map(str::to_string).collect();
+                r.acc_anchor = ids.last().cloned();
+                r.selected = ids.into_iter().collect();
                 cx.notify();
             });
         })
@@ -1240,6 +1633,98 @@ impl Root {
     /// The app's question in a box over the window, as app.js's confirmBox: Cancel and the answer (red when it destroys
     /// something), and "Don't ask again" for the questions the app lets you skip (its SkippableConfirms), whose yes is
     /// then assumed. The box, its cover and how they come and go are GPUI Component's Dialog; the buttons are the kit's.
+    /// Runs a macro on its accounts (or on these), as app.js's runMacro: on how many windows, roughly how long one turn
+    /// over them takes (the app pushes it with the run, maybe just after the answer), and, when its steps need the
+    /// window the whole time, that it takes one account at a time (so a queue isn't taken for a fault).
+    pub fn run_macro(&mut self, id: String, ids: Option<Vec<String>>, cx: &mut Context<Self>) {
+        let Some(link) = self.link.clone() else { return };
+        let args = match &ids {
+            Some(ids) => json!({ "id": id, "accountIds": ids }),
+            None => json!({ "id": id }),
+        };
+        let rx = link.call("runMacro", args);
+        cx.spawn(async move |this, cx| {
+            let answer = rx.await;
+            cx.background_executor().timer(std::time::Duration::from_millis(60)).await;
+            let _ = this.update(cx, |r, cx| {
+                match answer {
+                    Ok(Ok(v)) => {
+                        let n = v.get("queued").and_then(Value::as_i64).unwrap_or(0);
+                        if n == 0 {
+                            r.toast = Some((r.tr("macro.queuedNone"), "info".into()));
+                        } else {
+                            let mut text = r.i18n.tn("macro.queued", n, &[]);
+                            if let Some(sweep) = r.state.pointer("/macroSweep/seconds").and_then(Value::as_f64).filter(|s| *s > 0.) {
+                                let d = if sweep < 60. {
+                                    r.i18n.tv("macro.dur.s", &[("n", &(sweep.round() as i64).max(1).to_string())])
+                                } else {
+                                    r.i18n.tv("macro.dur.min", &[("n", &((sweep / 60.).round() as i64).to_string())])
+                                };
+                                text = format!("{text} {}", r.i18n.tv("macro.sweep", &[("d", &d)]));
+                            }
+                            let constant = r
+                                .state
+                                .pointer("/settings/macros")
+                                .and_then(Value::as_array)
+                                .and_then(|l| l.iter().find(|m| m.get("id").and_then(Value::as_str) == Some(id.as_str())))
+                                .and_then(|m| m.get("steps"))
+                                .and_then(Value::as_array)
+                                .is_some_and(|steps| {
+                                    steps.iter().any(|st| {
+                                        let kind = st.get("kind").and_then(Value::as_str).unwrap_or_default();
+                                        kind == "follow" || (kind == "clickColour" && st.get("repeatUntilGoneMs").and_then(Value::as_i64).unwrap_or(0) > 0)
+                                    })
+                                });
+                            if constant && n > 1 {
+                                text = format!("{text} {}", r.tr("macro.oneAtATime"));
+                            }
+                            r.toast = Some((text, "ok".into()));
+                        }
+                    }
+                    Ok(Err(e)) => r.toast = Some((e, "bad".into())),
+                    Err(_) => {}
+                }
+                cx.notify();
+            });
+        })
+        .detach();
+    }
+
+    /// Lock: Roblox windows stay open, but auto-rejoin, scheduled presets and Discord pause until unlocked
+    /// (AppController.Lock); when any of that is in use it says so first, with "Don't ask again" (app.js's lockApp).
+    pub fn lock_app(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let mut paused: Vec<String> = Vec::new();
+        let rejoining = self
+            .accounts()
+            .iter()
+            .filter(|a| {
+                let local = a.get("state").and_then(Value::as_str) == Some("running");
+                let on = a.pointer("/session/autoRejoin").and_then(Value::as_bool).or_else(|| a.get("autoRejoin").and_then(Value::as_bool)).unwrap_or(false);
+                (local && on) || a.get("rejoin").is_some_and(|v| !v.is_null())
+            })
+            .count();
+        if rejoining > 0 {
+            paused.push(self.i18n.tn("lockq.rejoin", rejoining as i64, &[("n", &rejoining.to_string())]));
+        }
+        let scheduled = self
+            .state
+            .pointer("/settings/presets")
+            .and_then(Value::as_array)
+            .map_or(0, |l| l.iter().filter(|p| p.pointer("/schedule/enabled").and_then(Value::as_bool) == Some(true)).count());
+        if scheduled > 0 {
+            paused.push(self.i18n.tn("lockq.schedule", scheduled as i64, &[("n", &scheduled.to_string())]));
+        }
+        if self.state.pointer("/discord/enabled").and_then(Value::as_bool) == Some(true) && self.state.pointer("/discord/hasWebhook").and_then(Value::as_bool) == Some(true) {
+            paused.push(self.tr("lockq.discord"));
+        }
+        if paused.is_empty() {
+            self.send("lock", Value::Null);
+            return;
+        }
+        let text = format!("{}\n{}", self.tr("lockq.text"), paused.iter().map(|p| format!("• {p}")).collect::<Vec<_>>().join("\n"));
+        self.confirm(self.tr("lockq.title"), text, self.tr("side.lock"), false, Some("lock"), window, cx, |r, _| r.send("lock", Value::Null));
+    }
+
     #[allow(clippy::too_many_arguments)]
     pub fn confirm(
         &mut self,
@@ -1299,6 +1784,33 @@ impl Root {
         });
     }
 
+    /// "Discard changes?" over a form closed with something typed in it (app.js's modal askClose): Cancel keeps the
+    /// form; Discard runs `then`, which closes it.
+    pub fn ask_discard(&mut self, window: &mut Window, cx: &mut Context<Self>, then: impl Fn(&mut Root, &mut Window, &mut Context<Root>) + 'static) {
+        let this = cx.weak_entity();
+        let then = std::rc::Rc::new(then);
+        let (title, text, cancel, ok) = (self.tr("common.discardTitle"), self.tr("common.discardQ"), self.tr("common.cancel"), self.tr("common.discard"));
+        window.open_dialog(cx, move |dialog, _, _| {
+            let (this, then) = (this.clone(), then.clone());
+            crate::kit::framed(dialog, title.clone(), cancel.clone(), |_, w, cx| w.close_dialog(cx))
+                .w(px(420.))
+                .centered()
+                .entrance(DialogEntrance::FadeSlide)
+                .child(crate::kit::dialog_body(div().text_size(px(T_M)).line_height(px(20.)).text_color(c(TEXT_2)).child(text.clone())))
+                .footer(
+                    crate::kit::dialog_foot()
+                        .child(Button::new("discard-no", cancel.clone()).on_click(|_, w, cx| w.close_dialog(cx)))
+                        .child(Button::new("discard-yes", ok.clone()).danger().on_click(move |_, w, cx| {
+                            w.close_dialog(cx);
+                            let _ = this.update(cx, |r, cx| {
+                                then(r, w, cx);
+                                cx.notify();
+                            });
+                        })),
+                )
+        });
+    }
+
     /// Play, as app.js's launch: the game in the Accounts bar's box, or Roblox's home screen when it's empty. What the
     /// app asks back (Multi-Roblox off, a game ban…) comes with round 2's dialogs; until then its words are a toast.
     pub fn play(&mut self, ids: &[String], cx: &mut Context<Self>) {
@@ -1309,6 +1821,13 @@ impl Root {
             return;
         }
         let place = self.place.read(cx).value().trim().to_string();
+        // The server in the Job ID box, as app.js's launch read #job for every Play (card, Enter, menus, palette).
+        // (Not one that went with another game: a game typed and played before its lookup said so.)
+        let job = crate::pages::accounts::job_for(&place, cx);
+        if !job.is_empty() && !place.is_empty() {
+            self.launch("launch", json!({ "ids": ids, "appOnly": false, "placeInput": place, "jobId": job }), false, cx);
+            return;
+        }
         self.play_at(ids, place, cx);
     }
 
@@ -1322,13 +1841,21 @@ impl Root {
     /// didn't open, and how many did.
     pub fn launch(&mut self, cmd: &'static str, mut args: Value, force: bool, cx: &mut Context<Self>) {
         let Some(link) = self.link.clone() else { return };
+        // One at a time, as the web page had it: a double click asked "Open anyway?" twice and ran it twice.
+        let busy: &'static str = if cmd == "runPreset" { "preset" } else { "launch" };
+        if !self.in_flight.insert(busy) {
+            return;
+        }
         args["force"] = force.into();
         let rx = link.call(cmd, args.clone());
         cx.spawn(async move |this, cx| {
             let answer = rx.await;
             let _ = this.update(cx, |r, cx| {
+                r.in_flight.remove(busy);
                 match answer {
-                    Ok(Ok(v)) => r.launch_done(cmd, args, v),
+                    Ok(Ok(v)) => {
+                        r.launch_done(cmd, args, v, Vec::new());
+                    }
                     Ok(Err(e)) => r.toast = Some((e.to_string(), "error".into())),
                     Err(_) => {}
                 }
@@ -1338,16 +1865,21 @@ impl Root {
         .detach();
     }
 
-    fn launch_done(&mut self, cmd: &'static str, args: Value, answer: Value) {
+    /// `rest`: the rejoins still to send after this one (Root::rejoin_run); given back to be sent now, or kept by the
+    /// question this answer asks (then sent after its answer), or dropped when the app was locked meanwhile.
+    fn launch_done(&mut self, cmd: &'static str, args: Value, answer: Value, rest: Vec<Value>) -> Vec<Value> {
         // (Locked meanwhile: nothing to ask or report.)
-        if !answer.is_object() || self.locked() {
-            return;
+        if self.locked() {
+            return Vec::new();
+        }
+        if !answer.is_object() {
+            return rest;
         }
         let flag = |k: &str| answer.get(k).and_then(Value::as_bool).unwrap_or(false);
         let count = |k: &str| answer.get(k).and_then(Value::as_array).map_or(0, |l| l.len()) as i64;
         if flag("needsConfirm") {
-            self.pending.push(Pending::LaunchAsk { cmd, args, answer });
-            return;
+            self.pending.push(Pending::LaunchAsk { cmd, args, answer, rest });
+            return Vec::new();
         }
         let launched = answer.get("launched").and_then(Value::as_i64).unwrap_or(0);
         if count("errors") > 0 {
@@ -1362,6 +1894,7 @@ impl Root {
             self.toast = Some((self.i18n.tn("t.skipped", n, &[("n", &n.to_string())]), "info".into()));
         }
         self.toast_n += 1;
+        rest
     }
 
     /// A box that was waiting for a window (render opens them).
@@ -1373,36 +1906,46 @@ impl Root {
             Pending::Add => pages::password::open(self, window, cx),
             // "Before you open": Cancel, Fix Multi-Roblox (it isn't working), Open anyway, Turn on Multi-Roblox and
             // play (it is off). The questions the app lets you skip offer "Don't ask again" (app.js's launchAsk).
-            Pending::LaunchAsk { cmd, args, answer } => {
+            // Rejoins waiting behind it (`rest`) go on after Cancel or once the forced or re-asked launch is answered;
+            // the box then has no x, so it can't be put aside with them forgotten. Fix Multi-Roblox leaves them.
+            Pending::LaunchAsk { cmd, args, answer, rest } => {
                 let asks: Vec<String> = answer.get("asks").and_then(Value::as_array).map(|l| l.iter().filter_map(Value::as_str).map(str::to_string).collect()).unwrap_or_default();
                 let can_skip = !asks.is_empty() && asks.iter().all(|k| ["multiOff", "watch", "memory"].contains(&k.as_str()));
                 let (multi_off, not_ready) = (asks.iter().any(|k| k == "multiOff"), asks.iter().any(|k| k == "multiNotReady"));
-                let mut choices = vec![Choice::new(self.tr("common.cancel"), 0, |_, _, _, _| {})];
+                let queued = !rest.is_empty();
+                let mut choices = vec![{
+                    let rest = rest.clone();
+                    Choice::new(self.tr("common.cancel"), 0, move |r, _, _, cx| r.rejoin_next(rest.clone(), cx))
+                }];
                 if not_ready {
                     choices.push(Choice::new(self.tr("t.fixMulti"), 0, |r, _, window, cx| r.multi_help(window, cx)));
                 }
                 {
-                    let (args, asks) = (args.clone(), asks.clone());
+                    let (args, asks, rest) = (args.clone(), asks.clone(), rest.clone());
                     choices.push(Choice::new(self.tr("t.openAnyway"), if multi_off || not_ready { 0 } else { 1 }, move |r, ticked, _, cx| {
                         if can_skip && ticked {
                             for k in &asks {
                                 r.send("skipConfirm", json!({ "key": format!("launch.{k}") }));
                             }
                         }
-                        r.launch(cmd, args.clone(), true, cx);
+                        if queued {
+                            r.rejoin_run(args.clone(), true, rest.clone(), cx);
+                        } else {
+                            r.launch(cmd, args.clone(), true, cx);
+                        }
                     }));
                 }
                 if multi_off {
                     // Turned on (after its own warning), the launch runs again with its other questions still asked.
                     choices.push(Choice::new(self.tr("t.multiAndPlay"), 1, move |r, _, window, cx| {
-                        let args = args.clone();
+                        let (args, rest) = (args.clone(), rest.clone());
                         r.confirm(r.tr("set.multiConfirmTitle"), r.tr("set.multiConfirm"), r.tr("set.multiOk"), false, Some("multi"), window, cx, move |r, cx| {
                             let Some(link) = r.link.clone() else { return };
                             let rx = link.call("setSettings", json!({ "multiInstance": true }));
-                            let args = args.clone();
+                            let (args, rest) = (args.clone(), rest.clone());
                             cx.spawn(async move |this, cx| {
                                 if let Ok(Ok(_)) = rx.await {
-                                    let _ = this.update(cx, |r, cx| r.launch(cmd, args, false, cx));
+                                    let _ = this.update(cx, |r, cx| if rest.is_empty() { r.launch(cmd, args, false, cx) } else { r.rejoin_run(args, false, rest, cx) });
                                 }
                             })
                             .detach();
@@ -1411,7 +1954,7 @@ impl Root {
                 }
                 let text = answer.get("message").and_then(Value::as_str).unwrap_or_default().to_string();
                 let tick = can_skip.then(|| self.tr("common.dontAsk"));
-                self.ask_box(self.tr("t.confirmTitle"), text, Vec::new(), tick, true, choices, window, cx);
+                self.ask_box(self.tr("t.confirmTitle"), text, Vec::new(), tick, !queued, choices, window, cx);
             }
             // The accounts that didn't open, each with why; the ones Roblox wouldn't sign in can be opened on roblox.com.
             Pending::LaunchErrors(answer) => {
@@ -1507,7 +2050,7 @@ impl Root {
                 crate::kit::framed(dialog, title.clone(), close_tip, |_, w, cx| w.close_dialog(cx))
             } else {
                 dialog.close_button(false).p_0().gap_0().title(
-                    div().w_full().px(px(24.)).pt(px(16.)).pb(px(12.)).border_b_1().border_color(c(LINE)).text_size(px(18.)).line_height(px(24.)).font_weight(FontWeight::SEMIBOLD).text_color(c(TEXT)).child(title.clone()),
+                    div().w_full().px(px(24.)).pt(px(16.)).pb(px(12.)).border_b_1().border_color(c(LINE)).text_size(px(T_GROUP)).line_height(px(24.)).font_weight(FontWeight::SEMIBOLD).text_color(c(TEXT)).child(title.clone()),
                 )
             };
             dialog
@@ -1560,7 +2103,7 @@ impl Root {
                 })));
             } else if armed {
                 body = body
-                    .child(div().flex().justify_center().child(div().size(px(48.)).rounded_full().bg(ca(OK, 0.16)).flex().items_center().justify_center().child(icon("check", 24., c(OK)))))
+                    .child(div().flex().justify_center().child(icon("check", 28., c(OK))))
                     .child(text("mh.ok1").text_center().text_color(c(TEXT)))
                     .child(text("mh.ok2").text_center().text_color(c(MUTED)));
             } else {
@@ -1712,15 +2255,31 @@ impl Root {
         let Some(link) = self.link.clone() else { return };
         if input.is_empty() {
             self.game = None;
+            self.place_asking = false;
             cx.notify();
             return;
         }
         let _ = link;
-        let asked = self.resolve_game(input);
+        let asked = self.resolve_game(input.clone());
+        self.place_asking = true;
+        cx.notify();
         cx.spawn(async move |this, cx| {
-            let Some(g) = asked.await else { return };
+            let got = asked.await;
             let _ = this.update(cx, |r, cx| {
+                // (An answer for words no longer in the box is dropped.)
+                if r.place.read(cx).value().trim() != input {
+                    return;
+                }
+                r.place_asking = false;
+                let Some(g) = got else {
+                    cx.notify();
+                    return;
+                };
                 let g = r.worded(g);
+                // A Job ID that went with another game is emptied (app.js's resolveGame and S.jobPlace).
+                if let Some(p) = g.get("placeId").and_then(Value::as_i64).filter(|p| *p > 0) {
+                    pages::accounts::game_known(p, cx);
+                }
                 if g.get("ok").and_then(Value::as_bool) == Some(false) {
                     let why = g.get("error").and_then(Value::as_str).unwrap_or_default().to_string();
                     if !why.is_empty() {
@@ -1745,7 +2304,7 @@ impl Root {
     /// The size typed for a Roblox window goes to the app, within what it takes (160–7680 by 120–4320; a box that
     /// holds no number counts as the usual 640 by 480), when it isn't the size already kept.
     fn save_window_size(&mut self, cx: &mut Context<Self>) {
-        let num = |e: &Entity<InputState>, lo: i64, hi: i64, or: i64| e.read(cx).value().trim().parse::<f64>().ok().map(|v| v.round() as i64).filter(|v| *v > 0).unwrap_or(or).clamp(lo, hi);
+        let num = |e: &Entity<InputState>, lo: i64, hi: i64, or: i64| e.read(cx).value().trim().parse::<f64>().ok().map(|v| v.round() as i64).filter(|v| *v != 0).unwrap_or(or).clamp(lo, hi);
         let (w, h) = (num(&self.win_w, 160, 7680, 640), num(&self.win_h, 120, 4320, 480));
         let kept = |key: &str, or: i64| self.state.pointer(key).and_then(Value::as_i64).unwrap_or(or);
         if w != kept("/settings/windowWidth", 640) || h != kept("/settings/windowHeight", 480) {
@@ -1790,7 +2349,7 @@ impl Root {
         self.set_state(state, window, cx);
     }
 
-    fn rail(&self, window: &Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn rail(&self, _window: &Window, cx: &mut Context<Self>) -> impl IntoElement {
         let page = self.page;
         div()
             .w(px(RAIL))
@@ -1804,7 +2363,7 @@ impl Root {
             .border_r_1()
             .border_color(c(LINE))
             // The logo has its own colours, so it is a picture, not an icon (an icon takes one colour).
-            .child(div().h(px(TOP)).flex_none().flex().items_center().child(img(crate::crisp::logo(32., window)).size(px(32.))))
+            .child(div().h(px(TOP)).flex_none().flex().items_center().child(crate::crisp::blocks(34.)))
             .child(div().mt(px(14.)).flex().flex_col().gap(px(6.)).children(
                 {
                     // (As the window first shows, and each time it is unlocked, they come in from the left one after
@@ -1812,7 +2371,7 @@ impl Root {
                     let mut items = Vec::new();
                     // Games carries how much news hasn't been read (99+ at most), or a dot when some is fresh.
                     let unread = self.state.pointer("/feeds/unread").and_then(Value::as_i64).unwrap_or(0);
-                    let fresh = self.state.pointer("/feeds/fresh").and_then(Value::as_bool).unwrap_or(false);
+                    let fresh = self.state.pointer("/feeds/fresh").and_then(Value::as_i64).unwrap_or(0) > 0; // (a count, not a flag)
                     for (i, p) in Page::ALL.into_iter().filter(|p| *p != Page::Settings).enumerate() {
                         let mark = (p == Page::Games && (unread > 0 || fresh)).then(|| {
                             let base = div().absolute().top(px(3.)).right(px(3.)).rounded_full().bg(c(FACE));
@@ -1831,10 +2390,12 @@ impl Root {
             .child(div().w(px(28.)).h(px(1.)).my(px(14.)).bg(c(LINE)))
             .child(tab_in(6, nav_button(Page::Settings, page, &self.i18n, cx)))
             .child(div().flex_1())
-            // Switch vault (its face), once there are several: the open vault locks only when another is picked.
-            .when(self.state.pointer("/vaults/list").and_then(Value::as_array).is_some_and(|l| l.len() > 1), |d| {
+            // Switch vault (its face) whenever one is open, as Sidebar.tsx: with one vault it is the way to the lock screen's
+            // picker and its Create a new vault. The open vault locks only when another is picked.
+            .when(self.state.pointer("/vaults/open").and_then(Value::as_str).is_some_and(|o| !o.is_empty()), |d| {
                 let v = self.state.get("vaults").cloned().unwrap_or(Value::Null);
                 let (id, name) = (v.get("current").and_then(Value::as_str).unwrap_or_default().to_string(), v.get("name").and_then(Value::as_str).unwrap_or_default().to_string());
+                let tip: SharedString = self.i18n.tv("vault.switchTip", &[("name", &name)]).into();
                 d.child(
                     hot("vault-switch")
                         .size(px(42.))
@@ -1845,10 +2406,11 @@ impl Root {
                         .justify_center()
                         .cursor_pointer()
                         .child(pages::lock::face(&id, &name, v.get("picture").and_then(Value::as_str), 24., 6., 12.))
+                        .tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into())
                         .on_click(cx.listener(|r, _, _, _| r.send("pickVault", json!({})))),
                 )
             })
-            .child(IconButton::new("lock", "lock").size(42.).tip(self.tr("ui.lock")).on_click(cx.listener(|r, _, _, _| r.send("lock", Value::Null))))
+            .child(IconButton::new("lock", "lock").size(42.).tip(self.tr("side.lockTip")).on_click(cx.listener(|r, _, window, cx| r.lock_app(window, cx))))
     }
 
     /// The top bar, which is the window's title bar too: pressing and moving on its empty part moves the window, a double
@@ -1931,21 +2493,14 @@ impl Root {
 
     fn side(&self, cx: &mut Context<Self>) -> impl IntoElement {
         let all = self.accounts();
-        let query = self.acc_search.read(cx).value().to_lowercase();
-        let accounts: Vec<&Value> = all
-            .iter()
-            .filter(|a| {
-                query.is_empty()
-                    || ["alias", "displayName", "username", "group", "note"]
-                        .iter()
-                        .any(|k| a.get(*k).and_then(Value::as_str).is_some_and(|v| v.to_lowercase().contains(&query)))
-            })
-            .collect();
+        // The Accounts page's search (no accents, "@name", user ID, real names while hidden).
+        let query = self.acc_search.read(cx).value().to_string();
+        let accounts: Vec<&Value> = all.iter().filter(|a| pages::accounts::found(a, &query)).collect();
         let playing: Vec<&Value> = accounts.iter().copied().filter(|a| a.get("state").and_then(Value::as_str) == Some("running")).collect();
         let dropped: Vec<&Value> = playing
             .iter()
             .copied()
-            .filter(|a| a.pointer("/session/connection").and_then(Value::as_str) == Some("disconnected"))
+            .filter(|a| pages::home::is_dropped(a))
             .collect();
         // Open but back on Roblox's menu (or signed out in it): a group of its own, not "Playing" (owner 2026-11-13).
         let menu: Vec<&Value> = playing.iter().copied().filter(|a| pages::accounts::in_menu(a)).collect();
@@ -2081,9 +2636,9 @@ impl Root {
             .flex_none()
             .flex()
             .items_center()
-            .gap(px(18.))
+            .gap(px(24.))
             .px(px(6.))
-            .text_size(px(T_S + 0.5))
+            .text_size(px(T_M))
             .text_color(c(TEXT_2))
             .font_features(tnum())
             .child(
@@ -2100,13 +2655,15 @@ impl Root {
             )
             // (On every page: Home's CPU and RAM cards gave way to its account strip, critique 2026-11-13.)
             .map(|d| {
-                d.child(div().w(px(1.)).h(px(16.)).bg(c(LINE)))
-                    .child(meter("chip", self.tr("ui.cpu"), cpu, !compact))
-                    .child(div().w(px(1.)).h(px(16.)).bg(c(LINE)))
-                    .child(meter("gauge", self.tr("ui.ram"), ram, !compact))
+                // (What each counts, as the old PC card's titles said; space between them, no rules.)
+                d.child(meter("chip", self.tr("ui.cpu"), cpu, !compact, self.tr("sys.usageTip")))
+                    .child(meter("gauge", self.tr("ui.ram"), ram, !compact, {
+                        let free = m.get("availableMb").and_then(Value::as_f64).map(|mb| if mb >= 1024. { format!("{:.1} GB", mb / 1024.) } else { format!("{mb:.0} MB") }).unwrap_or_default();
+                        self.i18n.tv("sys.used", &[("pct", &ram.to_string()), ("free", &free)])
+                    }))
                     // The GPU too while Roblox runs (the old PC card's "GPU 34 %").
                     .when_some(m.get("gpuPct").and_then(Value::as_f64).filter(|_| windows > 0), |d, g| {
-                        d.child(div().w(px(1.)).h(px(16.)).bg(c(LINE))).child(meter("monitor", "GPU".into(), g.round() as i64, !compact))
+                        d.child(meter("monitor", "GPU".into(), g.round() as i64, !compact, self.tr("sys.usageTip")))
                     })
             })
             .when_some(self.progress.clone(), |d, p| d.child(div().text_color(c(TEXT_2)).child(p)))
@@ -2126,7 +2683,7 @@ impl Root {
                 tool("sys-mini", (!on).then_some("screens"), false)
                     .h(px(28.))
                     .px(px(8.))
-                    .text_size(px(T_S + 0.5))
+                    .text_size(px(T_M))
                     .when(on, |d| d.child(div().size(px(7.)).rounded_full().bg(c(OK))))
                     .when(!tight, |d| d.child(self.tr("sys.mini")))
                     .tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into())
@@ -2141,6 +2698,7 @@ impl Root {
                         .icon("refresh")
                         .primary()
                         .small()
+                        .tip(self.i18n.tv(if self.state.pointer("/update/auto").and_then(Value::as_bool).unwrap_or(false) { "upd.restartTipAuto" } else { "upd.restartTip" }, &[("v", &v)]))
                         .on_click(cx.listener(|r, _, _, _| r.send("applyUpdate", json!({})))),
                 )
             })
@@ -2151,18 +2709,49 @@ impl Root {
                     .gap(px(8.))
                     // Its light (off, working, or on but blocked) and its name open its box (MultiHelp).
                     .child({
-                        let armed = self.state.pointer("/multi/armed").and_then(Value::as_bool).unwrap_or(false);
+                        // As Sidebar.tsx's MultiCard: Roblox closed windows, or the watch found the lock changed in the
+                        // next build: orange, and the click leads to Settings › Roblox updates instead of the box.
+                        let on = |p: &str| self.state.pointer(p).and_then(Value::as_bool).unwrap_or(false);
+                        let armed = on("/multi/armed");
+                        let closed = multi && on("/robloxUpdates/closed");
+                        let check = self.state.pointer("/robloxUpdates/watch/check").and_then(Value::as_str).unwrap_or_default();
+                        let watched = multi && armed && !closed && ["changed", "renamed", "gone"].contains(&check) && !on("/robloxUpdates/watch/worked");
+                        let page = self.tr("set.p.roblox");
+                        let tip: SharedString = format!(
+                            "{}: {}",
+                            self.tr("multi.title"),
+                            if closed {
+                                self.i18n.tv("multi.closedTip", &[("page", &page)])
+                            } else if watched {
+                                self.i18n.tv("multi.watchTip", &[("page", &page)])
+                            } else {
+                                self.tr(if !multi { "multi.offTip" } else if armed { "multi.readyTip" } else { "multi.notReadyTip" })
+                            }
+                        )
+                        .into();
+                        let to_updates = closed || watched;
                         focusable(div().id("multi-help"))
                             .flex()
                             .items_center()
                             .gap(px(7.))
                             .cursor_pointer()
                             .hover(|s| s.text_color(c(TEXT)))
-                            .child(div().size(px(7.)).rounded_full().bg(c(if !multi { DIM } else if armed { OK } else { WARN })))
+                            .when(to_updates, |d| d.text_color(c(WARN)))
+                            // (A light only when it is on but not ready: on and fine, the switch already says so.)
+                            .when(multi && !(armed && !to_updates), |d| d.child(div().size(px(6.)).rounded_full().bg(c(WARN))))
                             .child(self.tr("multi.title"))
-                            .on_click(cx.listener(|r, _, window, cx| r.multi_help(window, cx)))
+                            .tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into())
+                            .on_click(cx.listener(move |r, _, window, cx| {
+                                if to_updates {
+                                    r.settings.part = pages::settings::Part::Roblox;
+                                    r.go(Page::Settings);
+                                    cx.notify();
+                                } else {
+                                    r.multi_help(window, cx)
+                                }
+                            }))
                     })
-                    .child(Switch::new("multi", multi).on_toggle(
+                    .child(Switch::new("multi", multi).small().on_toggle(
                     cx.listener(move |r, on: &bool, window, cx| {
                         // Like app.js's setMulti: turning it on asks first (Roblox's rules; "Don't ask again" is the
                         // app's to keep); the state that comes back moves the switch.
@@ -2205,10 +2794,12 @@ impl Root {
             tool("sys-rbx-ver", None, false)
                 .h(px(28.))
                 .px(px(8.))
-                .text_size(px(T_S + 0.5))
+                .text_size(px(T_M))
                 .font_features(tnum())
+                .text_color(c(MUTED))
                 .when(up == Some(false), |d| d.text_color(c(WARN)))
-                .child(div().size(px(7.)).flex_none().rounded_full().bg(dot))
+                // A light only when something is to be done (newer Roblox): up to date is the quiet case.
+                .when(up != Some(true), |d| d.child(div().size(px(6.)).flex_none().rounded_full().bg(dot)))
                 .child(words)
                 .tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into())
                 .on_click(cx.listener(|r, _, _, cx| {
@@ -2221,6 +2812,33 @@ impl Root {
     }
 
     fn toast_layer(&mut self, window: &mut Window, cx: &mut Context<Self>) -> Option<AnyElement> {
+        // Every notice goes away by itself after 5 s, whoever said it. Only the app's own "toast" event started a
+        // timer, so one a page set itself ("Opened 1 account.", "Select accounts first") stayed for good (owner, on
+        // the real app, 2026-11-13). The timer starts here, where every notice passes; a newer notice drops it.
+        match self.toast.clone() {
+            Some(now) => {
+                let key = (now, self.toast_n);
+                if self.toast_timed.as_ref() != Some(&key) {
+                    let text = key.0.0.clone();
+                    self.toast_timed = Some(key);
+                    // (A shot says so: a hidden window can't show the notice leaving.)
+                    #[cfg(feature = "shot")]
+                    eprintln!("shot: toast timed: {text}");
+                    self.toast_task = Some(cx.spawn(async move |this, cx| {
+                        cx.background_executor().timer(Duration::from_secs(5)).await;
+                        let _ = this.update(cx, |r, cx| {
+                            if r.toast.as_ref().is_some_and(|(t, _)| *t == text) {
+                                r.toast = None;
+                                #[cfg(feature = "shot")]
+                                eprintln!("shot: toast gone: {text}");
+                                cx.notify();
+                            }
+                        });
+                    }));
+                }
+            }
+            None => self.toast_timed = None,
+        }
         if let Some(now) = &self.toast {
             if *now != self.toast_was.0 {
                 self.toast_was = (now.clone(), self.toast_n);
@@ -2239,9 +2857,9 @@ impl Root {
         let key = format!("toast-{text}");
         let notice = div()
                     .max_w(px(480.))
-                    .pl(px(8.))
+                    .pl(px(14.))
                     .pr(px(16.))
-                    .py(px(8.))
+                    .py(px(11.))
                     .flex()
                     .items_center()
                     .gap(px(11.))
@@ -2253,7 +2871,7 @@ impl Root {
                     .text_size(px(T_M))
                     .relative()
                     .child(self.live.cover())
-                    .child(div().size(px(26.)).flex_none().rounded(px(R_S)).bg(ca(dot, 0.16)).flex().items_center().justify_center().child(icon(mark, 14., c(dot))))
+                    .child(div().flex_none().child(icon(mark, 16., c(dot))))
                     .child(div().min_w_0().line_height(px(19.)).child(text));
         // It slides up into place, a little past it and back, as the web page's did (kit::slide_in); a new notice
         // (other words) slides in again, the same one said again only shakes, and it sinks and fades as it leaves.
@@ -2284,15 +2902,19 @@ fn nav_button(p: Page, page: Page, i18n: &I18n, cx: &mut Context<Root>) -> AnyEl
 }
 
 /// A figure in the status bar: its icon, name, percent and a short bar that turns orange, then red, as it fills.
-fn meter(icon_name: &'static str, name: String, pct: i64, with_bar: bool) -> impl IntoElement {
+fn meter(icon_name: &'static str, name: String, pct: i64, with_bar: bool, tip: String) -> impl IntoElement {
+    let tip: SharedString = tip.into();
     div()
+        .id(SharedString::from(format!("meter-tip-{icon_name}")))
+        .tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into())
         .flex()
         .items_center()
-        .gap(px(8.))
-        .child(icon(icon_name, 15., c(MUTED)))
-        .child(div().text_color(c(MUTED)).child(name))
+        .gap(px(7.))
+        // Its name small and quiet, its figure in the words' light, a hairline of a bar: no icon (three icons in a row
+        // with names beside them said everything twice).
+        .child(div().text_size(px(T_S)).text_color(c(MUTED)).child(name))
         .child(div().w(px(32.)).text_color(c(TEXT)).font_weight(FontWeight::MEDIUM).font_features(tnum()).child(format!("{pct}%")))
-        .when(with_bar, |d| d.child(bar(SharedString::from(format!("meter-{icon_name}")), pct as f32 / 100., Some(72.))))
+        .when(with_bar, |d| d.child(bar(SharedString::from(format!("meter-{icon_name}")), pct as f32 / 100., Some(44.)).h(px(2.))))
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -2387,7 +3009,8 @@ fn account_row(a: &Value, dropped: bool, root: &Root, cx: &mut Context<Root>) ->
         Some(Button::new(SharedString::from(format!("rejoin-{id}")), root.tr("card.rejoinNow")).small().tint().on_click(cx.listener(move |r: &mut Root, _, _, cx| r.rejoin(&me, cx))).into_any_element())
     } else if trouble == Some("chip.invalid") {
         let vng = s("realm") == "vng";
-        Some(Button::new(SharedString::from(format!("relogin-{id}")), root.tr("card.relogin")).small().tint().on_click(cx.listener(move |r: &mut Root, _, window, cx| crate::pages::quick::open(r, vng, window, cx))).into_any_element())
+        let who = name.to_string();
+        Some(Button::new(SharedString::from(format!("relogin-{id}")), root.tr("card.relogin")).small().tint().on_click(cx.listener(move |r: &mut Root, _, window, cx| crate::pages::quick::open_for(r, vng, who.clone(), window, cx))).into_any_element())
     } else {
         None
     };
@@ -2400,7 +3023,7 @@ fn account_row(a: &Value, dropped: bool, root: &Root, cx: &mut Context<Root>) ->
         .gap(px(12.))
         .rounded(px(R_M))
         .tones(ca(WHITE, 0.), ca(WHITE, 0.045))
-        .children(crate::pages::accounts::number(root, &id).map(|n| crate::pages::accounts::key_tag(n, a, 20.)))
+        // No number tag here (owner 2026-11-14: "bỏ số đi"): the face's dot and the line under the name say the state.
         .child(
             div()
                 .relative()
@@ -2450,7 +3073,8 @@ impl Choice {
 
 /// A box that waits for a window to open in.
 enum Pending {
-    LaunchAsk { cmd: &'static str, args: Value, answer: Value },
+    /// `rest`: rejoins waiting behind this one, sent after the answer, whichever it is.
+    LaunchAsk { cmd: &'static str, args: Value, answer: Value, rest: Vec<Value> },
     LaunchErrors(Value),
     Remote(Value),
     /// Add account: which way.
@@ -2466,6 +3090,9 @@ impl Render for Root {
         pages::games::settle_words(self, window, cx);
         pages::rsettings::settle(self, window, cx);
         pages::wiki::settle(self, window, cx);
+        pages::accounts::settle_job(window, cx);
+        // Settings left (or the app locked): typed passwords emptied, the Discord link hidden again.
+        pages::settings::settle(self, window, cx);
         // The search reads every part's rows, Discord's too: its boxes are made here the first time something is
         // searched (they were only made when Discord itself was opened, so "discord" found two unrelated rows).
         if self.page == Page::Settings && self.settings.dc.is_none() && !self.set_q.read(cx).value().trim().is_empty() {
@@ -2475,6 +3102,18 @@ impl Render for Root {
             pages::settings::appearance::settle(self, window, cx);
         }
         self.community_tick();
+        // app.js's syncBusy: something typed in a form would be lost to an update's restart, so it waits.
+        let busy = window.has_active_dialog(cx) || self.auto.form.is_some() || self.auto.macro_form.is_some();
+        if busy != self.busy_told {
+            self.busy_told = busy;
+            self.send("pageBusy", json!({ "busy": busy }));
+        }
+        // app.js asked for the backup folders to suggest (OneDrive, Google Drive, …) each time Settings was opened.
+        let on_settings = self.page == Page::Settings && !self.locked();
+        if on_settings && !self.on_settings {
+            self.send("backupSuggestions", json!({}));
+        }
+        self.on_settings = on_settings;
         if !self.pending.is_empty() {
             let waiting = std::mem::take(&mut self.pending);
             cx.defer_in(window, move |r, window, cx| {
@@ -2611,10 +3250,10 @@ impl Render for Root {
             div().size_full().child(pages::lock::lock(self, window, cx))
         } else if self.lost {
             panel().size_full().flex().flex_col().items_center().justify_center().gap(px(10.)).child(
-                div().size(px(56.)).flex_none().rounded(px(R_L)).bg(ca(WARN, 0.14)).flex().items_center().justify_center().child(icon("power", 24., c(WARN))).mb(px(6.)),
+                icon("power", 30., c(WARN)).flex_none().mb(px(6.)),
             )
             .child(div().text_size(px(T_GROUP)).font_weight(FontWeight::SEMIBOLD).child(self.tr("ui.lost")))
-            .child(div().text_size(px(T_M + 0.5)).text_color(c(MUTED)).child(self.tr("ui.lostSub")))
+            .child(div().text_size(px(T_L)).text_color(c(MUTED)).child(self.tr("ui.lostSub")))
         } else {
             if page == Page::Home {
                 div().size_full().child(pages::home::home(self, main_w, cx))
@@ -2660,7 +3299,7 @@ impl Render for Root {
                 }
                 let field = match r.page {
                     Page::Settings => r.set_q.clone(),
-                    Page::Auto => r.preset_search.clone(),
+                    Page::Auto if pages::auto::preset_search_shown(r) => r.preset_search.clone(),
                     _ => {
                         r.go(Page::Accounts);
                         r.acc_search.clone()
@@ -2672,23 +3311,55 @@ impl Render for Root {
                     s.select_all(window, cx);
                 });
             }))
-            // Ctrl+L, as a browser's address bar: the game box under the picked accounts.
+            // Ctrl+L, as a browser's address bar, or "/" (no box focused): the game box on Accounts' bar, which shows for
+            // it even with none picked (app.js ~3222).
             .on_action(cx.listener(|r, _: &FocusPlace, window, cx| {
-                if r.locked() || window.has_active_dialog(cx) || r.selected.is_empty() {
+                if r.locked() || window.has_active_dialog(cx) {
                     return cx.propagate();
                 }
                 r.go(Page::Accounts);
+                pages::accounts::want_place(r.nav, cx);
                 cx.notify();
                 r.place.update(cx, |s, cx| {
                     s.focus(window, cx);
                     s.select_all(window, cx);
                 });
             }))
+            .on_action(cx.listener(|r, _: &CardLeft, window, cx| Self::card_key(r, pages::accounts::CardKey::Left, window, cx)))
+            .on_action(cx.listener(|r, _: &CardRight, window, cx| Self::card_key(r, pages::accounts::CardKey::Right, window, cx)))
+            .on_action(cx.listener(|r, _: &CardUp, window, cx| Self::card_key(r, pages::accounts::CardKey::Up, window, cx)))
+            .on_action(cx.listener(|r, _: &CardDown, window, cx| Self::card_key(r, pages::accounts::CardKey::Down, window, cx)))
+            .on_action(cx.listener(|r, _: &CardFirst, window, cx| Self::card_key(r, pages::accounts::CardKey::First, window, cx)))
+            .on_action(cx.listener(|r, _: &CardLast, window, cx| Self::card_key(r, pages::accounts::CardKey::Last, window, cx)))
+            .on_action(cx.listener(|r, _: &CardPick, window, cx| Self::card_key(r, pages::accounts::CardKey::Pick, window, cx)))
             .on_action(cx.listener(|r, _: &PickAll, window, cx| Self::acc_key(r, pages::accounts::Key::All, window, cx)))
             .on_action(cx.listener(|r, _: &DeletePicked, window, cx| Self::acc_key(r, pages::accounts::Key::Delete, window, cx)))
             .on_action(cx.listener(|r, _: &EditPicked, window, cx| Self::acc_key(r, pages::accounts::Key::Edit, window, cx)))
             .on_action(cx.listener(|r, _: &PlayPicked, window, cx| Self::acc_key(r, pages::accounts::Key::Play, window, cx)))
-            .on_action(cx.listener(|r, _: &ClearPicked, window, cx| Self::acc_key(r, pages::accounts::Key::Clear, window, cx)))
+            .on_action(cx.listener(|r, _: &ClearPicked, window, cx| {
+                // Esc in a preset's or a macro's form: leaving it, asking first when something would be lost (app.js's
+                // askClose).
+                if r.page == Page::Auto && !r.locked() && !window.has_active_dialog(cx) {
+                    if r.auto.macro_form.is_some() {
+                        return pages::macro_form::leave(r, window, cx);
+                    }
+                    if r.auto.form.is_some() {
+                        return pages::preset_form::leave(r, window, cx);
+                    }
+                }
+                // Esc in the bar's game box: its list closed first, else out of the box (app.js blurred it), and the bar
+                // that showed only for it (Ctrl+L or "/" with none picked) goes.
+                if r.page == Page::Accounts && !r.locked() && !window.has_active_dialog(cx) && r.place.read(cx).focus_handle(cx).is_focused(window) {
+                    if r.picker.open {
+                        r.picker.open = false;
+                    } else {
+                        pages::accounts::unwant_place(cx);
+                        window.focus(&r.focus, cx);
+                    }
+                    return cx.notify();
+                }
+                Self::acc_key(r, pages::accounts::Key::Clear, window, cx)
+            }))
             .size_full()
             .relative()
             .flex()

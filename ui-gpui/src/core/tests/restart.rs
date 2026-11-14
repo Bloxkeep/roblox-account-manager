@@ -63,6 +63,61 @@ async fn until(mut get: impl FnMut() -> Option<ClientState>) -> Option<ClientSta
     None
 }
 
+/// Sets a file's last write time `ago` before now.
+fn written_ago(path: &std::path::Path, ago: Duration) {
+    if let Ok(f) = std::fs::File::options().write(true).open(path) {
+        let _ = f.set_modified(std::time::SystemTime::now() - ago);
+    }
+}
+
+fn old_logs_and_crashes(c: &mut Checks, logs: &std::path::Path) {
+    use crate::core::{roblox_crash_info, roblox_log_watcher::clean_old_logs};
+    const DAY: u64 = 24 * 3600;
+    // Roblox's logs older than a week go (Roblox keeps every one); the newest stay, and a clock set far ahead deletes nothing.
+    let (old_log, new_log, note) = (logs.join("old_Player_last.log"), logs.join("new_Player_last.log"), logs.join("keep.txt"));
+    for f in [&old_log, &new_log, &note] {
+        std::fs::write(f, "x").expect("written");
+    }
+    written_ago(&old_log, Duration::from_secs(10 * DAY));
+    written_ago(&note, Duration::from_secs(10 * DAY));
+    c.check(
+        "a clock set a year ahead: no Roblox log deleted",
+        clean_old_logs(std::time::SystemTime::now() + Duration::from_secs(365 * DAY)) == 0 && new_log.exists() && old_log.exists(),
+        (),
+    );
+    let cleaned = clean_old_logs(std::time::SystemTime::now());
+    c.check(
+        "Roblox's logs over a week old deleted, the recent one and other files kept",
+        cleaned == 1 && !old_log.exists() && new_log.exists() && note.exists(),
+        cleaned,
+    );
+    let _ = std::fs::remove_file(&new_log);
+    let _ = std::fs::remove_file(&note);
+
+    // A window that ended on its own: Roblox's crash reports since it opened, and Windows' record for its process id.
+    let reports = logs.join("crashes").join("reports");
+    std::fs::create_dir_all(&reports).expect("reports folder");
+    let (old_dump, new_dump) = (reports.join("old.dmp"), reports.join("new.dmp"));
+    std::fs::write(&old_dump, "x").expect("written");
+    std::fs::write(&new_dump, "x").expect("written");
+    written_ago(&old_dump, Duration::from_secs(2 * 3600));
+    let dumps = roblox_crash_info::dumps_since(std::time::SystemTime::now() - Duration::from_secs(3600));
+    c.check("crash reports: only the ones since the window opened", dumps == ["new.dmp"], dumps.join(","));
+    let _ = std::fs::remove_dir_all(logs.join("crashes"));
+    const EVENTS: &str = concat!(
+        "<Event xmlns='x'><System><Provider Name='Application Error'/></System><EventData><Data Name='AppName'>Other.exe</Data>",
+        "<Data Name='ProcessId'>0x10</Data></EventData></Event><Event xmlns='x'><System/><EventData><Data Name='AppName'>RobloxPlayerBeta.exe</Data>",
+        "<Data Name='AppVersion'>0.747.0.7471481</Data><Data Name='ModuleName'>RobloxPlayerBeta.dll</Data><Data Name='ExceptionCode'>c0000005</Data>",
+        "<Data Name='FaultingOffset'>0000000000123abc</Data><Data Name='ProcessId'>0x950c</Data></EventData></Event>"
+    );
+    let fault = roblox_crash_info::fault_in(EVENTS, 0x950c);
+    c.check(
+        "Windows' error record found by its hex process id",
+        fault.as_deref().is_some_and(|f| f.contains("RobloxPlayerBeta.dll") && f.contains("c0000005")) && roblox_crash_info::fault_in(EVENTS, 0x11).is_none(),
+        &fault,
+    );
+}
+
 fn open(app: &App, account: Guid, pid: i32, started_at: Stamp) {
     let launch = Rc::new(PendingLaunch::new(account, HashSet::new(), started_at, Some(GameTarget::new(PLACE, None, None, None)), false, None));
     app.controller.running.borrow_mut().insert(account, (pid, launch));
@@ -76,6 +131,7 @@ pub async fn run(c: &mut Checks, dir: &str) {
     unsafe { std::env::set_var("BLOXKEEP_ROBLOX_LOGS", &logs) };
     let me = std::process::id() as i32;
     let line = log_line;
+    old_logs_and_crashes(c, &logs);
 
     // A client running for 12 hours: its join is more than the 4 MB a read takes at once back.
     let t0 = Stamp::utc_now().plus_secs(-12.0 * 3600.0);

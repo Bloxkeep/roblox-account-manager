@@ -721,6 +721,59 @@ fn tiny_task(c: &mut Checks) {
         has("down", "W") && has("up", "W") && has("key", "Space"),
         steps.iter().map(|s| format!("{}:{}", s.kind, s.key.clone().unwrap_or_default())).collect::<Vec<_>>().join(" "),
     );
+    let shown = |steps: &[MacroStep]| steps.iter().map(|s| format!("{}:{}:{:?}", s.kind, s.key.clone().unwrap_or_default(), s.ms)).collect::<Vec<_>>().join(" ");
+    let is = |s: &MacroStep, kind: &str, key: Option<&str>, ms: Option<i32>| s.kind == kind && s.key.as_deref() == key && (ms.is_none() || s.ms == ms);
+    // A walk held alone as long as it was (2026-11-13: one of 8 s was cut to 5 s and stopped meters short); past a key
+    // step's 10 s, Hold, the wait and Release.
+    let walk = macro_recording::to_steps(&[ev(0, "keyDown", "W"), ev(8000, "keyUp", "W")], &|_| Some((0.5, 0.5)));
+    c.check("a key held alone 8 s plays 8 s, not 5", walk.len() == 1 && is(&walk[0], "key", Some("W"), Some(8000)), shown(&walk));
+    let long_walk = macro_recording::to_steps(
+        &[ev(0, "keyDown", "W"), ev(25_000, "keyUp", "W"), ev(25_500, "keyDown", "E"), ev(25_600, "keyUp", "E")],
+        &|_| Some((0.5, 0.5)),
+    );
+    c.check(
+        "…one held 25 s: Hold, a 25 s wait, Release, then what came after",
+        long_walk.len() == 5
+            && is(&long_walk[0], "down", Some("W"), None)
+            && is(&long_walk[1], "wait", None, Some(25_000))
+            && is(&long_walk[2], "up", Some("W"), None)
+            && is(&long_walk[3], "wait", None, Some(500))
+            && is(&long_walk[4], "key", Some("E"), Some(100)),
+        shown(&long_walk),
+    );
+    let mut made = Macro { name: "Walk".into(), steps: long_walk.iter().chain(walk.iter()).cloned().collect(), ..Default::default() };
+    let refused = check_macro(&mut made);
+    c.check("…and both pass a macro's checks", refused.is_none(), refused);
+
+    // A macro takes 5000 steps (a whole 10-minute recording), not 500.
+    let max = macro_rules::MAX_STEPS as usize;
+    let tap = || MacroStep { kind: "key".into(), key: Some("E".into()), ms: Some(60), ..Default::default() };
+    let mut at_max = Macro { name: "Long".into(), steps: (0..max).map(|_| tap()).collect(), ..Default::default() };
+    let mut past_max = Macro { name: "Long".into(), steps: (0..max + 1).map(|_| tap()).collect(), ..Default::default() };
+    let (at_max, past_max) = (check_macro(&mut at_max), check_macro(&mut past_max));
+    c.check("a macro of 5000 steps passes its checks, one of 5001 doesn't", max == 5000 && at_max.is_none() && past_max.is_some(), (at_max, past_max));
+    // Longer than that: cut where a macro ends, with what it held let go there and no wait last, and how much was left
+    // out known (said to the person, never left out unseen).
+    let mut too_long = vec![ev(0, "keyDown", "W")];
+    for i in 0..3000 {
+        too_long.push(ev(100 + i * 200, "keyDown", "E"));
+        too_long.push(ev(150 + i * 200, "keyUp", "E"));
+    }
+    too_long.push(ev(700_000, "keyUp", "W"));
+    let (cut, whole) = macro_recording::to_steps_whole(&too_long, &|_| Some((0.5, 0.5)));
+    c.check(
+        "a recording past 5000 steps: cut there, its held key let go at the end, no wait last, the rest counted",
+        cut.len() <= max
+            && cut.first().is_some_and(|s| is(s, "down", Some("W"), None))
+            && cut.last().is_some_and(|s| is(s, "up", Some("W"), None))
+            && cut.iter().all(|s| s.kind != "up" || s.key.as_deref() == Some("W"))
+            && cut.iter().filter(|s| s.kind == "up").count() == 1
+            && whole > max,
+        format!("{} of {whole}, last {}", cut.len(), shown(&cut[cut.len().saturating_sub(2)..])),
+    );
+    let mut cut_macro = Macro { name: "Cut".into(), steps: cut, ..Default::default() };
+    let refused = check_macro(&mut cut_macro);
+    c.check("…and the cut macro passes its checks", refused.is_none(), refused);
 }
 
 // ───────────────────────── settings and areas in steps ─────────────────────────
@@ -1741,8 +1794,8 @@ fn features(c: &mut Checks) {
     c.check("a repeat never ended in a feature is refused, naming it", never_ended.as_deref().is_some_and(|e| e.starts_with("Sell:")), &never_ended);
     c.check("a key a feature holds and never lets go is refused", check_of(a, &feats(r#"[{"kind":"down","key":"W"}]"#, EAT, "", 1, 1)).is_some(), "");
     c.check("If stuck in a feature is refused", check_of(a, &feats(r#"[{"kind":"recover"}]"#, EAT, "", 1, 1)).is_some(), "");
-    let many = format!("[{}]", vec![r#"{"kind":"key","key":"A"}"#; 499].join(","));
-    c.check("the steps of the macro and its features count together (500)", check_of(&many, &feats_all()).is_some(), "");
+    let many = format!("[{}]", vec![r#"{"kind":"key","key":"A"}"#; crate::core::macro_model::macro_rules::MAX_STEPS as usize - 1].join(","));
+    c.check("the steps of the macro and its features count together (5000)", check_of(&many, &feats_all()).is_some(), "");
     let mut ends: Vec<i32> = macro_player::safe_ends(
         &read(
             r#"[{"kind":"loop","times":0},{"kind":"if","test":{"kind":"var","name":"n","op":"=","value":1}},{"kind":"loop","times":2},{"kind":"endLoop"},{"kind":"endIf"},{"kind":"endLoop"},{"kind":"loop","times":2},{"kind":"endLoop"}]"#,

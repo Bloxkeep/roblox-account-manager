@@ -246,6 +246,7 @@ impl R {
             tail.teleport_at = None;
             tail.own_start = false;
             tail.leaving = false;
+            tail.dropped_by_reason = false;
             tail.connections = 0;
         }
         // A new process too: nothing Bloxkeep held about the old one's id.
@@ -485,6 +486,38 @@ async fn body(c: &mut Checks, r: &mut R) {
         ban211.as_ref().is_some_and(|a| a.banned() && !a.server_gone && a.refused()),
         &ban211,
     );
+    // One account opened into a chosen server that had ended (the owner's, 2026-11-14: Roblox's "This experience has
+    // ended, or the server became unavailable unexpectedly due to a system error", answered 311 at 46 s and closed only at
+    // 60 s). Asked 12 s on, and another server at once on that answer.
+    app.rejoin.join_checks.borrow_mut().remove(&me);
+    *party_reply.lock().unwrap() = answer(200, Some(12), Some("Unable to join Game 311"));
+    party_asks.store(0, Ordering::SeqCst);
+    let cookie_before = r.acc().cookie.clone();
+    r.edit(|a| a.cookie = "test".into()); // asked with its own sign-in
+    r.new_window();
+    r.run(Some(dead.clone()));
+    r.line(now().plus_secs(-8.0), LAUNCH);
+    r.poll(|s| s.status == "joining" && s.job_id.is_none() && now().secs_since(s.at) < 9.0).await;
+    r.clear_closing();
+    r.tick().await;
+    let asked_early = party_asks.load(Ordering::SeqCst) > 0;
+    r.new_window();
+    r.line(now().plus_secs(-14.0), LAUNCH);
+    r.poll(|s| s.status == "joining" && s.job_id.is_none() && now().secs_since(s.at) > 13.0).await;
+    r.told();
+    r.tick().await; // asks
+    r.tick().await; // reads the answer
+    let gone_said = r.told();
+    c.check(
+        "a chosen server that ended: not asked about before 12 s, then closed for another server on Roblox's answer, not a minute on",
+        !asked_early
+            && party_asks.load(Ordering::SeqCst) == 1
+            && r.closing()
+            && gone_said.as_deref() == Some(format!("{} couldn't get into that server (full or closed) — joining another one…", r.label()).as_str()),
+        format!("{asked_early} {} {} {gone_said:?}", party_asks.load(Ordering::SeqCst), r.closing()),
+    );
+    r.clear_closing();
+    r.edit(|a| a.cookie = cookie_before.clone());
     // Roblox would let it in (status 2): the join is slow, not refused. It got its server 2 s on.
     app.rejoin.join_checks.borrow_mut().remove(&me);
     *party_reply.lock().unwrap() = answer(200, Some(2), None);
@@ -1072,7 +1105,7 @@ async fn body(c: &mut Checks, r: &mut R) {
     let open_before = r.take_running();
     app.controller.running.borrow_mut().clear();
     let bans_before = r.acc().game_bans.clone();
-    r.edit(|a| a.game_bans = vec![GameBan { place_id: GPO, game_name: None, at: now(), message: None }]);
+    r.edit(|a| a.game_bans = vec![GameBan { place_id: GPO, game_name: None, at: now(), message: None, until: None }]);
     let preset_result = open(&app, r.acc(), GPO, Some(crate::core::base::new_guid())).await;
     let preset_error = refusal(&preset_result);
     c.check(
@@ -1132,7 +1165,7 @@ async fn body(c: &mut Checks, r: &mut R) {
 
     // A rejoin waiting its turn for an account a game banned since it was queued: not done (no question to Roblox, no
     // window: it returns at once).
-    r.edit(|a| a.game_bans = vec![GameBan { place_id: GPO, game_name: None, at: now(), message: None }]);
+    r.edit(|a| a.game_bans = vec![GameBan { place_id: GPO, game_name: None, at: now(), message: None, until: None }]);
     let queued_open = r.take_running();
     app.controller.running.borrow_mut().clear();
     let waiting_rejoin = RejoinRequest::new(id, GameTarget::new(GPO, None, None, None), now());
@@ -1203,8 +1236,298 @@ async fn body(c: &mut Checks, r: &mut R) {
     r.poll(|s| s.status == "joining" && s.job_id.is_none()).await;
     c.check("…nor for one stuck on a join without a server (a game's ban, Join Error 600)", !asks_for(&stuck_open, 920587237), ());
 
+    newer_drops(c, r).await;
     closed_by_roblox(c, r, &not_banned).await;
     memory_and_waits(c, r).await;
+}
+
+/// Main's 1.0.23 rejoin checks (RejoinSuite.cs): a reason line is a drop by itself (Error Code 256), Roblox's "Connection
+/// Failed" box (279), a teleport's old server's reason, a log in a game while Roblox's status says out of one, and a timed
+/// game ban's end.
+async fn newer_drops(c: &mut Checks, r: &mut R) {
+    let app = r.app.clone();
+    let me = r.me;
+    let not_banned = game(PLACE);
+    // Error Code 256, "Lost connection due to an unknown error. Please reconnect." (a user's screenshot, 2026-11-11, "auto
+    // rejoin will not work"): by its code and by its words only. Without the disconnect line after too: a game that failed
+    // while loading showed Roblox's "Disconnected" box and stayed "In game" (a RoALT user's report, 2026-11-14).
+    let cases: [(&str, &[&str], bool); 4] = [
+        ("its code", &["[FLog::Network] Disconnect reason received: 256", "[FLog::Network] Disconnection Notification. Reason: 256"], true),
+        (
+            "its words only",
+            &[
+                "[FLog::Network] Client has been disconnected with reason: Lost connection due to an unknown error. Please reconnect.",
+                "Warning [FLog::Network] Lost connection with reason : Lost connection due to an unknown error. Please reconnect.",
+            ],
+            true,
+        ),
+        ("its code, no disconnect line after", &["[FLog::Network] Disconnection Notification. Reason: 256"], false),
+        ("its words, no disconnect line after", &["Warning [FLog::Network] Lost connection with reason : Lost connection to the game server, please reconnect"], false),
+    ];
+    for (what, lines, disconnect_line) in cases {
+        let drop_at = now().plus_secs(-10.0);
+        r.new_window();
+        r.run(not_banned.clone());
+        r.line(drop_at, LAUNCH);
+        r.line(drop_at, JOIN);
+        r.line(drop_at, "[FLog::Network] serverId: 128.116.46.33|52353");
+        for line in lines {
+            r.line(drop_at.plus_secs(1.0), line);
+        }
+        if disconnect_line {
+            r.line(drop_at.plus_secs(2.0), "[FLog::Network] Time to disconnect replication data: 0.2");
+        }
+        let state = r.poll(|s| s.status == "disconnected" && s.at > drop_at.plus_secs(-1.0)).await;
+        r.clear_closing();
+        r.told();
+        r.tick().await;
+        let said = r.told();
+        c.check(&format!("Error Code 256 by {what}: read as a drop and rejoined"), r.closing(), format!("{state:?} | {said:?}"));
+    }
+
+    // Roblox's "Connection Failed" box (279, no response from server) after "Joining game": the owner's test 2026-11-14, a
+    // rejoin into a server that had just run out of memory. No serverId, no disconnect line. The real lines, in order.
+    {
+        let at = now().plus_secs(-40.0);
+        r.new_window();
+        r.run(not_banned.clone());
+        r.line(at, LAUNCH);
+        r.line(at, JOIN);
+        r.line(
+            at.plus_secs(10.0),
+            "Error [DFLog::RbxTransportDummyClient] Failed to establish connection to server at 128.116.46.33:49386, reason NoResponse: 1 (No Response)",
+        );
+        let still = r.poll(|s| s.status == "joining").await;
+        r.clear_closing();
+        r.tick().await;
+        c.check(
+            "Connection Failed: RbxTransport's own failure isn't the end (RakNet is tried after it)",
+            still.as_ref().is_some_and(|s| s.status == "joining") && !r.closing(),
+            &still,
+        );
+        r.line(at.plus_secs(30.0), "Error [DFLog::NetworkClient] Failed to connect to server at 128.116.46.33|50694, no response.");
+        r.line(
+            at.plus_secs(30.0),
+            "Info [DFLog::NetworkClient] Failed to connect to server after falling back from RbxTransport to RakNet. Disconnect code: 279. Original connection failure reason: NoResponse: 1 (No Response)",
+        );
+        let failed = r.poll(|s| s.status == "disconnected").await;
+        r.clear_closing();
+        r.told();
+        r.tick().await;
+        let said = r.told();
+        c.check(
+            "Connection Failed (279) after Joining game: read as a drop and rejoined",
+            failed.as_ref().is_some_and(|s| s.status == "disconnected" && s.reason == Some(279)) && r.closing(),
+            format!("{failed:?} | {said:?}"),
+        );
+        c.check("…said as a lost connection", said.as_deref() == Some(format!("{} lost connection — restarting Roblox…", r.label()).as_str()), &said);
+    }
+
+    // A teleport's old server may log a reason: still a teleport, not a drop (RoALT's "instanced server" report, 2026-11-13).
+    {
+        let at = now().plus_secs(-10.0);
+        r.new_window();
+        r.run(not_banned.clone());
+        r.line(at, LAUNCH);
+        r.line(at, JOIN);
+        r.line(at, "[FLog::Network] serverId: 128.116.46.33|52353");
+        r.line(at.plus_secs(5.0), "[FLog::UgcExperienceController] UgcExperienceController: doTeleport: url ");
+        r.line(at.plus_secs(5.1), "[FLog::Network] Disconnection Notification. Reason: 277");
+        r.line(at.plus_secs(5.2), "[FLog::Network] Time to disconnect replication data: 0.2");
+        let state = r.poll(|s| s.at >= at.plus_secs(5.0)).await;
+        r.clear_closing();
+        r.tick().await;
+        c.check(
+            "a teleport whose old server logs a reason: joining, left alone",
+            state.as_ref().is_some_and(|s| s.status == "joining") && !r.closing(),
+            &state,
+        );
+        // Leaving: the client's own request is no drop.
+        r.new_window();
+        r.run(not_banned.clone());
+        r.line(at, LAUNCH);
+        r.line(at, JOIN);
+        r.line(at, "[FLog::Network] serverId: 128.116.46.33|52353");
+        r.line(at.plus_secs(5.0), "[FLog::Network] Disconnection Notification. Reason: 285");
+        let own = r.poll(|s| s.at >= at && s.status == "ingame").await;
+        rt::sleep(Duration::from_millis(300)).await;
+        let own = r.poll(|_| true).await.or(own);
+        c.check("…the client's own request (285) alone is no drop", own.as_ref().is_some_and(|s| s.status == "ingame"), &own);
+    }
+
+    // Its log in a game, no disconnect line, while Roblox's own status says it's out of one (Roblox's "Disconnected" box
+    // over a game that failed while loading, a RoALT user's report 2026-11-14): closed and rejoined after three checks in a
+    // row; never on Roblox's word while it says in a game, nor right after the join.
+    {
+        const IN_PLACE: i64 = 920587237;
+        let join_line = format!("[FLog::Output] ! Joining game 'e403336e-5756-44c9-b029-0ae6873a3d03' place {IN_PLACE} at 10.32.36.210");
+        r.edit(|a| a.user_id = 21);
+        r.new_window();
+        r.run_at(game(IN_PLACE), now().plus_secs(-300.0));
+        let in_at = now().plus_secs(-240.0);
+        r.line(in_at, LAUNCH);
+        r.line(in_at, &join_line);
+        r.line(in_at, "[FLog::Network] serverId: 128.116.46.33|56123");
+        r.poll(|s| s.status == "ingame" && s.at <= in_at.plus_secs(1.0)).await;
+        app.controller.offline_strikes.borrow_mut().clear();
+        r.clear_closing();
+        r.told();
+        let presence = |p: Presence| app.controller.presence.borrow_mut().insert(21, p);
+        presence(Presence { r#type: 2, location: Some("Game".into()), place_id: Some(IN_PLACE), ..Default::default() });
+        for _ in 0..4 {
+            app.detect_disconnected_sessions(&HashSet::from([21i64]));
+        }
+        c.check("a log in a game and Roblox saying so too: left alone", !r.closing(), ());
+        presence(Presence { r#type: 1, location: Some("Website".into()), ..Default::default() });
+        app.detect_disconnected_sessions(&HashSet::from([21i64]));
+        app.detect_disconnected_sessions(&HashSet::from([21i64]));
+        let after_two = r.closing();
+        app.detect_disconnected_sessions(&HashSet::new());
+        let unreliable = r.closing();
+        app.detect_disconnected_sessions(&HashSet::from([21i64]));
+        c.check(
+            "a log in a game while Roblox's own status says out of one: closed and rejoined on the third check, not before, nor on a status not its own",
+            !after_two && !unreliable && r.closing(),
+            format!("{after_two} {unreliable} {}", r.closing()),
+        );
+        // Just in: Roblox's status may not have caught up.
+        r.new_window();
+        r.run_at(game(IN_PLACE), now().plus_secs(-300.0));
+        let just_at = now().plus_secs(-30.0);
+        r.line(just_at, LAUNCH);
+        r.line(just_at, &join_line);
+        r.line(just_at, "[FLog::Network] serverId: 128.116.46.33|56123");
+        r.poll(|s| s.status == "ingame" && s.at >= just_at.plus_secs(-1.0)).await;
+        app.controller.offline_strikes.borrow_mut().clear();
+        r.clear_closing();
+        for _ in 0..4 {
+            app.detect_disconnected_sessions(&HashSet::from([21i64]));
+        }
+        c.check("…but not in its first two minutes in the game", !r.closing(), ());
+        r.clear_closing();
+        r.told();
+        app.controller.presence.borrow_mut().remove(&21);
+    }
+
+    // A timed ban (BanAsync with a duration): its end is in the kick line's metadata. The owner's test 2026-11-14, the
+    // exact metadata: still "banned" ten minutes after the 2-minute ban ended.
+    {
+        let at = |t: &str| Stamp::parse(t).expect("a time");
+        let real_end = roblox_log_watcher::ban_end_of(
+            r#"{"moderatorType":"creator","durationSeconds":"120","endTimestamp":"2026-11-13T23:09:32Z","dynamicReasonTextFilterStatus":"2","beginTimestamp":"2026-11-13T23:07:32Z"}"#,
+        );
+        c.check("a timed ban's end is read from its metadata (endTimestamp, UTC)", real_end == Some(at("2026-11-13T23:09:32Z")), &real_end);
+        let from_duration = roblox_log_watcher::ban_end_of(r#"{"moderatorType":"creator","durationSeconds":"120","beginTimestamp":"2026-11-13T23:07:32Z"}"#);
+        c.check("…or from its start and duration", from_duration == Some(at("2026-11-13T23:09:32Z")), &from_duration);
+        let permanent = roblox_log_watcher::ban_end_of(
+            r#"{"moderatorType":"creator","durationSeconds":"-1","dynamicReasonTextFilterStatus":"2","beginTimestamp":"2026-10-21T00:07:04Z"}"#,
+        );
+        c.check("…a permanent one has none", permanent.is_none(), &permanent);
+
+        let iso = |s: Stamp| format!("{}Z", &s.to_iso()[..19]);
+        for (what, ends_in) in [("still running", 120.0), ("already over", -30.0)] {
+            r.edit(|a| a.game_bans.clear());
+            let ends = now().plus_secs(ends_in);
+            r.new_window();
+            r.run(game(GPO));
+            let timed_at = now();
+            let kick = format!(
+                "Error [FLog::CreatorError] Error: Server Kick Message: test 12: ban 2 phut; Metadata: {{\"moderatorType\":\"creator\",\"durationSeconds\":\"120\",\"endTimestamp\":\"{}\",\"dynamicReasonTextFilterStatus\":\"2\",\"beginTimestamp\":\"{}\"}}",
+                iso(ends),
+                iso(ends.plus_secs(-120.0))
+            );
+            r.line(timed_at, LAUNCH);
+            r.line(timed_at, &format!("[FLog::Output] ! Joining game 'e403336e-5756-44c9-b029-0ae6873a3d03' place {GPO} at 10.32.36.210"));
+            r.line(timed_at, "[FLog::Network] serverId: 128.116.46.33|56123");
+            r.line(timed_at.plus_secs(1.0), &kick);
+            r.line(timed_at.plus_secs(2.0), "[FLog::Network] Disconnect reason received: 267");
+            r.line(timed_at.plus_secs(2.0), "[FLog::Network] Disconnection Notification. Reason: 267");
+            r.line(timed_at.plus_secs(2.1), "[FLog::Network] Time to disconnect replication data: 0.2");
+            let timed = r.poll(|s| s.status == "disconnected" && s.at >= timed_at.plus_secs(-1.0)).await;
+            r.clear_closing();
+            r.told();
+            r.tick().await;
+            r.told();
+            let holds = app.game_ban_of(&r.acc(), Some(GPO)).is_some();
+            app.forget_lifted_game_bans();
+            let bans = r.acc().game_bans;
+            if ends_in > 0.0 {
+                c.check(
+                    &format!("a timed ban {what}: noted with its end, and it holds"),
+                    timed.as_ref().is_some_and(|s| s.banned_by_game && s.ban_ends.is_some())
+                        && holds
+                        && bans.len() == 1
+                        && bans[0].until.is_some_and(|u| u.secs_since(ends).abs() < 1.5),
+                    format!("{timed:?} | {:?}", bans.first().and_then(|b| b.until)),
+                );
+            } else {
+                c.check(&format!("a timed ban {what}: holds no longer, and is forgotten (no warning before opening)"), !holds && bans.is_empty(), bans.len());
+            }
+        }
+        r.edit(|a| a.game_bans.clear());
+    }
+
+    // A window opened on Roblox's home screen, a game picked there, then Error Code 1025 ("Disconnected from the
+    // experience", the owner's PC, 2026-11-11, client 0.747's lines): it stayed on Roblox's error box, left as "opened
+    // without a game". It goes back to the game the person was in.
+    {
+        const PICKED: i64 = 98894876188248;
+        let picked_join = format!("[FLog::Output] ! Joining game '14a2746a-981f-4fed-92c9-d3a998eb8f4c' place {PICKED} at 128.116.54.33");
+        let home_run = |r: &R| -> Rc<PendingLaunch> {
+            let mut opened = PendingLaunch::new(r.id, HashSet::new(), now().plus_secs(-120.0), None, false, None);
+            opened.home_screen = true;
+            let opened = Rc::new(opened);
+            r.app.controller.running.borrow_mut().insert(r.id, (r.me, opened.clone()));
+            opened
+        };
+        let home_at = now().plus_secs(-10.0);
+        r.new_window();
+        let home_launch = home_run(r);
+        r.line(home_at, LAUNCH);
+        r.line(home_at, &picked_join);
+        r.line(home_at, "[FLog::Network] serverId: 128.116.54.33|60219");
+        r.line(home_at.plus_secs(1.0), "[FLog::Network] Disconnect from 1");
+        r.line(home_at.plus_secs(1.0), "[FLog::Network] Client has been disconnected with reason: Disconnected from game, please reconnect");
+        r.line(home_at.plus_secs(1.0), "Warning [FLog::Network] Lost connection with reason : Disconnected from game, please reconnect");
+        r.line(home_at.plus_secs(1.0), "[FLog::Network] Time to disconnect replication data: 0.188800");
+        let home_state = r.poll(|s| s.status == "disconnected" && s.at > home_at).await;
+        r.clear_closing();
+        r.told();
+        r.tick().await;
+        c.check("a home-screen window dropped in a game picked there (1025): closed to rejoin", r.closing(), &home_state);
+        r.clear_queue();
+        app.on_session_ended(r.id, &home_launch, home_state.clone());
+        let home_target = r.queued_target();
+        c.check(
+            "…into that game, any server",
+            home_target.as_ref().is_some_and(|t| t.place_id == PICKED && t.job_id.is_none()),
+            format!("{home_target:?}"),
+        );
+        r.clear_queue();
+        r.clear_closing();
+        // The same drop in a window adopted from outside Bloxkeep (no game, not opened on the home screen by Bloxkeep): its
+        // server may be a private one, so it isn't rejoined into a public one.
+        let adopted = r.run(None);
+        r.tick().await;
+        c.check("…but not one adopted from outside Bloxkeep: left open", !r.closing(), ());
+        c.check("…nor rejoined once closed", !app.queue_rejoin(r.id, &adopted, home_state.as_ref()) && r.queue_len() == 0, r.queue_len());
+        // Left by choice there: not rejoined; and one that never was in a game has nowhere to go back to.
+        r.new_window();
+        let home_launch = home_run(r);
+        r.line(home_at.plus_secs(2.0), LAUNCH);
+        r.line(home_at.plus_secs(2.0), &picked_join);
+        r.line(home_at.plus_secs(2.0), "[FLog::Network] serverId: 128.116.54.33|60219");
+        r.line(home_at.plus_secs(3.0), LEAVE);
+        r.line(home_at.plus_secs(3.0), "[FLog::Network] Time to disconnect replication data: 0.2");
+        let left = r.poll(|s| s.status == "left").await;
+        r.tick().await;
+        c.check("…one the person left there: not closed", !r.closing(), &left);
+        c.check("…nor rejoined once closed (left there)", !app.queue_rejoin(r.id, &home_launch, left.as_ref()) && r.queue_len() == 0, r.queue_len());
+        c.check("…and a home-screen window never in a game isn't rejoined", !app.queue_rejoin(r.id, &home_launch, None) && r.queue_len() == 0, r.queue_len());
+        r.clear_queue();
+        r.clear_closing();
+    }
+    let _ = me;
 }
 
 /// Roblox's join answers for windows that don't get in, playability, and rechecking a game's ban (lines 750-1018 of the C#).
@@ -1228,7 +1551,7 @@ async fn joins(c: &mut Checks, r: &mut R, questions: &Arc<AtomicI32>, reply: &Ar
     // server): left as it is, as no rejoin would follow its close.
     r.new_window();
     r.run(game(920587237));
-    r.edit(|a| a.game_bans.push(GameBan { place_id: 920587237, game_name: None, at: now().plus_secs(-3600.0), message: None }));
+    r.edit(|a| a.game_bans.push(GameBan { place_id: 920587237, game_name: None, at: now().plus_secs(-3600.0), message: None, until: None }));
     r.line(now().plus_secs(-70.0), LAUNCH);
     r.poll(|s| s.status == "joining" && s.job_id.is_none() && now().secs_since(s.at) > 65.0).await;
     r.set_check(Some(Some(answer(200, Some(6), Some("The game you requested is currently full.")))), now());
@@ -1252,7 +1575,7 @@ async fn joins(c: &mut Checks, r: &mut R, questions: &Arc<AtomicI32>, reply: &Ar
     // A join question that got no answer: asked again half a minute on, not never; a ban in that answer is then told.
     r.new_window();
     r.run(game(GPO));
-    r.edit(|a| a.game_bans = vec![GameBan { place_id: GPO, game_name: None, at: now().plus_secs(-3600.0), message: None }]);
+    r.edit(|a| a.game_bans = vec![GameBan { place_id: GPO, game_name: None, at: now().plus_secs(-3600.0), message: None, until: None }]);
     r.line(now().plus_secs(-20.0), LAUNCH);
     r.poll(|s| s.status == "joining" && s.job_id.is_none() && now().secs_since(s.at) > 15.0).await;
     set_reply(answer(200, Some(12), Some("Unable to join Game 211")));
@@ -1431,11 +1754,11 @@ async fn joins(c: &mut Checks, r: &mut R, questions: &Arc<AtomicI32>, reply: &Ar
     // A ban noted before is asked about before opening: one Roblox would let in now is forgotten; one it still refuses is kept.
     let gpo = GameTarget::new(GPO, None, None, None);
     set_reply(answer(200, Some(2), None));
-    r.edit(|a| a.game_bans = vec![GameBan { place_id: GPO, game_name: None, at: now().plus_secs(-86400.0), message: None }]);
+    r.edit(|a| a.game_bans = vec![GameBan { place_id: GPO, game_name: None, at: now().plus_secs(-86400.0), message: None, until: None }]);
     let _ = app.recheck_game_bans(&[r.acc()], &gpo, &Cancel::new()).await;
     c.check("a ban noted before that Roblox no longer holds: forgotten before opening", r.acc().game_bans.is_empty(), r.acc().game_bans.len());
     set_reply(answer(200, Some(12), Some("Unable to join Game 211")));
-    r.edit(|a| a.game_bans = vec![GameBan { place_id: GPO, game_name: None, at: now().plus_secs(-86400.0), message: None }]);
+    r.edit(|a| a.game_bans = vec![GameBan { place_id: GPO, game_name: None, at: now().plus_secs(-86400.0), message: None, until: None }]);
     let _ = app.recheck_game_bans(&[r.acc()], &gpo, &Cancel::new()).await;
     c.check("…one Roblox still holds: kept", r.acc().game_bans.len() == 1, r.acc().game_bans.len());
     // …and a preset asks before leaving the account out (here Roblox still holds it: nothing opens).
@@ -1480,7 +1803,7 @@ async fn joins(c: &mut Checks, r: &mut R, questions: &Arc<AtomicI32>, reply: &Ar
     app.controller.running.borrow_mut().clear();
     let bans_before_play = r.acc().game_bans.clone();
     // A ban noted too, so that nothing opens whatever the checks find.
-    r.edit(|a| a.game_bans = vec![GameBan { place_id: GATED, game_name: None, at: now(), message: None }]);
+    r.edit(|a| a.game_bans = vec![GameBan { place_id: GATED, game_name: None, at: now(), message: None, until: None }]);
     let played = open(&app, r.acc(), GATED, None).await;
     let play_asks = played.as_ref().ok().and_then(|p| p.asks.clone());
     let play_said = played.as_ref().ok().and_then(|p| p.message.clone());
@@ -1688,7 +2011,7 @@ async fn memory_and_waits(c: &mut Checks, r: &mut R) {
         let once = r.told();
         c.check("…said once", once.is_none() && r.queue_len() == 1, &once);
         // Room again: it goes ahead. A ban by the game noted, so nothing opens: the rejoin returns at once.
-        r.edit(|a| a.game_bans = vec![GameBan { place_id: 920587237, game_name: None, at: now(), message: None }]);
+        r.edit(|a| a.game_bans = vec![GameBan { place_id: 920587237, game_name: None, at: now(), message: None, until: None }]);
         *memory_now.borrow_mut() = memory(20480);
         set_due(&app);
         app.run_due_rejoin(now());
@@ -1711,7 +2034,7 @@ async fn memory_and_waits(c: &mut Checks, r: &mut R) {
         r.edit(|a| a.auto_rejoin = true);
         let held_bans = r.acc().game_bans.clone();
         // A ban by the game noted, so nothing opens: the rejoin returns at once.
-        r.edit(|a| a.game_bans = vec![GameBan { place_id: 920587237, game_name: None, at: now(), message: None }]);
+        r.edit(|a| a.game_bans = vec![GameBan { place_id: 920587237, game_name: None, at: now(), message: None, until: None }]);
         app.controller.running.borrow_mut().clear();
         r.clear_queue();
         let due_rejoin = |preset: Option<Guid>| RejoinRequest {

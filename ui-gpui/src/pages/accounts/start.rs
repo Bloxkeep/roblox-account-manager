@@ -14,7 +14,8 @@ struct Logo(f32);
 
 impl RenderOnce for Logo {
     fn render(self, window: &mut Window, _: &mut App) -> impl IntoElement {
-        img(crate::crisp::logo(self.0, window)).size(px(self.0)).flex_none()
+        let _ = window;
+        crate::crisp::mark(self.0)
     }
 }
 
@@ -49,9 +50,10 @@ pub fn steps(root: &Root, boxed: bool) -> Option<Div> {
                 if is_done {
                     d.bg(c(OK)).child(icon("check", 14., c(INK)))
                 } else if is_now {
-                    d.bg(c(FACE)).text_color(c(INK)).child((i + 1).to_string())
+                    // (No step numbers: owner 2026-11-14, no numbers anywhere.)
+                    d.bg(c(FACE)).child(div().size(px(8.)).rounded_full().bg(c(INK)))
                 } else {
-                    d.bg(c(INSET)).border_1().border_color(c(DIM)).text_color(c(MUTED)).child((i + 1).to_string())
+                    d.bg(c(INSET)).border_1().border_color(c(DIM))
                 }
             });
         line = line.child(
@@ -115,15 +117,11 @@ pub fn empty(root: &Root, cx: &mut Context<Root>) -> impl IntoElement {
                     .justify_between()
                     .child(
                         div()
-                            .size(px(40.))
                             .flex_none()
-                            .rounded(px(R_M))
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .map(|d| if first { d.bg(c(FACE)).child(icon(mark, 20., c(INK))) } else { d.bg(c(INSET)).child(icon(mark, 20., c(TEXT_2))) }),
+                            // The mark alone; the suggested way says so in words beside it, not with a yellow block.
+                            .child(icon(mark, 24., if first { c(TEXT) } else { c(TEXT_2) })),
                     )
-                    .when_some(rec, |d, r| d.child(div().h(px(20.)).px(px(8.)).flex().items_center().rounded_full().bg(ca(OK, 0.16)).text_color(c(OK)).text_size(px(T_XS)).font_weight(FontWeight::SEMIBOLD).child(r))),
+                    .when_some(rec, |d, r| d.child(div().text_color(c(OK)).text_size(px(T_S)).font_weight(FontWeight::SEMIBOLD).child(r))),
             )
             .child(
                 div()
@@ -142,8 +140,16 @@ pub fn empty(root: &Root, cx: &mut Context<Root>) -> impl IntoElement {
                 cx.notify();
             }))
     };
+    let r_tip = (root.tr("pw.createTip"), root.tr("start.vaultTip"), root.tr("start.webTip"));
     let other = |key: &'static str, text: String, cx: &mut Context<Root>| {
-        Button::new(key, text).quiet().small().on_click(cx.listener(move |r, _, window, cx| {
+        // What each other way does, under the mouse (Accounts.tsx's start screen).
+        let tip = match key {
+            "start-create" => r_tip.0.clone(),
+            "start-vault" => r_tip.1.clone(),
+            "start-web" => r_tip.2.clone(),
+            _ => String::new(),
+        };
+        Button::new(key, text).quiet().small().tip(tip).on_click(cx.listener(move |r, _, window, cx| {
             match key {
                 "start-create" => r.add_browser_as(true, cx),
                 "start-cookie" => crate::pages::account_form::open(r, None, window, cx),

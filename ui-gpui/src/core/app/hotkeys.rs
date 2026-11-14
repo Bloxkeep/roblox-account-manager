@@ -23,6 +23,9 @@ pub struct HotkeysState {
     pub hotkeys_changed: RefCell<Option<Rc<dyn Fn()>>>,
     /// The hotkeys another app already holds ("Ctrl+Alt+H"…), as the window found when registering them.
     pub hotkeys_taken: RefCell<Vec<String>>,
+    /// The hotkeys left unregistered because an installed keyboard types a character with them (AltGr is Ctrl+Alt) and
+    /// its keyboard hook was refused.
+    pub hotkeys_typing: RefCell<Vec<String>>,
 }
 
 pub fn hotkey_name(id: i32) -> String {

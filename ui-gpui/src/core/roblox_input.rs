@@ -82,9 +82,10 @@ impl RobloxInput {
         RobloxInput { shared, thread, thread_id, working, listening: true, listen_fail_noted: false }
     }
 
-    /// Windows takes the registration: input is seen. When it doesn't, anti-AFK counts as before.
+    /// Windows takes the registration: input is seen. When it doesn't, anti-AFK counts as before. False too once the
+    /// input thread is gone (nothing is seen any more: a person would never count).
     pub fn working(&self) -> bool {
-        self.working.load(Ordering::SeqCst)
+        self.working.load(Ordering::SeqCst) && self.thread.as_ref().is_some_and(|t| !t.is_finished())
     }
 
     /// Input is taken only while it is needed (a Roblox window runs, AppController's process check says): with none, every
@@ -120,6 +121,12 @@ impl RobloxInput {
         self.shared.reached.lock().unwrap_or_else(|e| e.into_inner()).get(&pid).copied()
     }
 
+    /// A handle a macro recording keeps (C# handed the recorder the RobloxInput itself): whether input is seen, and the
+    /// mouse-move callback. It doesn't own the input thread.
+    pub fn handle(&self) -> RawInput {
+        RawInput { shared: self.shared.clone(), working: self.working.clone() }
+    }
+
     /// Dispose: asks the input thread to end.
     pub fn dispose(&mut self) {
         let id = self.thread_id.load(Ordering::SeqCst);
@@ -129,6 +136,27 @@ impl RobloxInput {
                 PostThreadMessageW(id, WM_QUIT, 0, 0);
             }
         }
+    }
+}
+
+/// What a macro recording uses of RobloxInput (`RobloxInput::handle`).
+#[derive(Clone)]
+pub struct RawInput {
+    shared: Arc<Shared>,
+    working: Arc<AtomicBool>,
+}
+
+impl RawInput {
+    pub fn working(&self) -> bool {
+        self.working.load(Ordering::SeqCst)
+    }
+    /// Same as `RobloxInput::person_at`, read from any thread.
+    pub fn person_at(&self) -> Option<Stamp> {
+        let ms = self.shared.person_at.load(Ordering::SeqCst);
+        if ms > 0 { Some(Stamp::from_unix_ms(ms)) } else { None }
+    }
+    pub fn set_mouse_moved(&self, moved: Option<MovedFn>) {
+        *self.shared.mouse_moved.lock().unwrap_or_else(|e| e.into_inner()) = moved;
     }
 }
 
@@ -185,9 +213,19 @@ unsafe extern "system" fn sink_proc(h: HWND, msg: u32, wparam: WPARAM, lparam: L
     unsafe { DefWindowProcW(h, msg, wparam, lparam) }
 }
 
+/// Not working any more once the input thread ends, however it ends (RawInput handles have no thread to look at).
+struct NotWorking(Arc<AtomicBool>);
+
+impl Drop for NotWorking {
+    fn drop(&mut self) {
+        self.0.store(false, Ordering::SeqCst);
+    }
+}
+
 fn run(shared: Arc<Shared>, thread_id: Arc<AtomicU32>, working: Arc<AtomicBool>, ready: mpsc::Sender<()>) {
+    let _ended = NotWorking(working.clone());
     let class = wide("BloxkeepInputSink");
-    let mut window: HWND = std::ptr::null_mut();
+    let window: HWND;
     // SAFETY: the class and window are this thread's; the Arc stays alive in this function until the window is destroyed.
     unsafe {
         thread_id.store(GetCurrentThreadId(), Ordering::SeqCst);

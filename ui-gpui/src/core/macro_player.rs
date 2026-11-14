@@ -1,5 +1,6 @@
 // MacroPlayer.cs: playing macros into Roblox windows.
 use std::collections::{HashMap, HashSet, VecDeque};
+use std::panic::AssertUnwindSafe;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, LazyLock, Mutex, MutexGuard, RwLock};
 use std::thread::JoinHandle;
@@ -17,7 +18,7 @@ use crate::core::macro_panel::macro_options;
 use crate::core::macro_values::{self, MacroValueMissing};
 use crate::core::macro_vision::{self, Gray};
 use crate::core::win_kit::{Picture, Point, Rect};
-use crate::core::{input_turn, l, log};
+use crate::core::{input_turn, l, log, program};
 
 /// A Roblox window a macro plays into, as the desktop has it now.
 /// `client`: its client area on the screen, in pixels. `fps`: the frame rate limit Bloxkeep gave it; 0: not known.
@@ -68,7 +69,8 @@ pub trait IMacroTurn: Send + Sync {
     /// A person's input came since the turn began (ours never counts).
     fn person_input(&self) -> bool;
     fn key(&self, key: &MacroKey, up: bool);
-    /// PORT: C# sent one UTF-16 unit; a character past U+FFFF comes here whole (the implementation sends both halves).
+    /// PORT: C# sent one UTF-16 unit; a character past U+FFFF comes here whole. Called once (`up` false): the
+    /// implementation sends each half's down and up together, so a pair never interleaves.
     fn char(&self, c: char, up: bool);
     fn move_to(&self, screen: Point);
     fn move_by(&self, dx: i32, dy: i32);
@@ -181,7 +183,12 @@ fn press_held(input: &dyn IMacroTurn, held: &str, up: bool) {
 /// Math.Round(v, digits): to even on a tie, as .NET.
 pub fn round_to(v: f64, digits: i32) -> f64 {
     let scale = 10f64.powi(digits);
-    (v * scale).round_ties_even() / scale
+    let scaled = v * scale;
+    // Too big to scale (a huge number, many digits): no digits past its last anyway, so it stays as it is.
+    if !scaled.is_finite() || scale == 0.0 {
+        return v;
+    }
+    scaled.round_ties_even() / scale
 }
 
 /// A picture as PNG bytes (Bitmap.Save(…, ImageFormat.Png)).
@@ -432,7 +439,8 @@ const WAIT_SLICE: i32 = 250;
 const MAX_KEPT: usize = 200;
 /// Restarts in a row, nothing seen in between, before a stuck run gives up.
 pub const MAX_RESTARTS: i32 = 5;
-const MAX_EXPANDED: usize = 5000;
+/// Steps of a run with its Run a macro steps put in place: ten macros of the most steps.
+const MAX_EXPANDED: usize = 10 * crate::core::macro_model::macro_rules::MAX_STEPS as usize;
 
 /// Plays macros into Roblox windows. Runs (macro × account) are queued; one window at a time gets a turn, in rotation:
 /// a turn plays steps until a long wait or a wait on the picture, then the window is given back and the next one goes,
@@ -817,7 +825,8 @@ impl MacroPlayer {
         let now = self.desk.now();
         {
             let mut r = lk(run);
-            if r.status == status && r.reason.as_deref() == reason {
+            // Stopped meanwhile (Stop, Bloxkeep closing): a late status would bring a finished run back.
+            if r.finished() || r.status == status && r.reason.as_deref() == reason {
                 return;
             }
             // Each pause reason once in a row: the person at the PC would write one every turn.
@@ -847,6 +856,24 @@ impl MacroPlayer {
     }
 
     fn run_loop(self: Arc<Self>) {
+        if program::catch_unwind(AssertUnwindSafe(|| self.run_loop_())).is_ok() {
+            return;
+        }
+        // A panic outside a turn: the loop is gone, so its runs end (a run left "waiting" would never play, and the
+        // flag left set would keep every later run from starting one).
+        let live = {
+            let mut st = self.st();
+            st.loop_running = false;
+            st.turn = None;
+            st.runs.iter().filter(|r| !lk(r).finished()).cloned().collect::<Vec<_>>()
+        };
+        for run in &live {
+            self.finish(run, "failed", None);
+        }
+        self.changed();
+    }
+
+    fn run_loop_(&self) {
         let none = Cancel::new();
         loop {
             {
@@ -996,9 +1023,16 @@ impl MacroPlayer {
         };
         let turn = Arc::new(Turn { input: Mutex::new(None), window, run: run.clone(), started: self.desk.now(), picture: Mutex::new(None) });
         self.st().turn = Some(turn.clone());
-        let body = self.turn_body(&turn, &ct);
+        // A panic in a step still ends the turn: keys let go, Bloxkeep's windows clickable again, the PC handed on.
+        let body = match program::catch_unwind(AssertUnwindSafe(|| self.turn_body(&turn, &ct))) {
+            Ok(body) => body,
+            Err(_) => Err(Halt::Fail(Fail::other(format!("Macro {}: a step panicked.", lk(run).tag())))),
+        };
         // Handed on even when giving the window back failed: every nudge, picture and hotkey waits for it.
-        self.end_turn(&turn);
+        if program::catch_unwind(AssertUnwindSafe(|| self.end_turn(&turn))).is_err() {
+            // The desk's own turn gives the PC back as it goes (its Drop); here only what this one keeps is let go of.
+            lk(&turn.input).take();
+        }
         lease.dispose();
         drop(lease);
         {
@@ -1046,7 +1080,15 @@ impl MacroPlayer {
             }
             let (feature_done, pc, limit, recovering) = {
                 let r = lk(run);
-                let limit = if r.recovering || r.recover_at < 0 { r.r#macro.steps.len() as i32 } else { r.recover_at };
+                // A feature ends at its own last step: the main steps' count (or their If stuck part) would cut a longer
+                // one short in its middle.
+                let limit = if r.section.is_some() {
+                    r.steps().len() as i32
+                } else if r.recovering || r.recover_at < 0 {
+                    r.r#macro.steps.len() as i32
+                } else {
+                    r.recover_at
+                };
                 (r.section.is_some() && r.pc >= r.steps().len() as i32, r.pc, limit, r.recovering)
             };
             if feature_done {
@@ -1742,7 +1784,10 @@ impl MacroPlayer {
         if matches!(s.kind.as_str(), "waitImage" | "waitText" | "waitColour" | "waitStill" | "clickImage") || (s.kind == "read" && matches!(s.from.as_deref(), None | Some("screen"))) {
             seen(&mut lk(run));
         }
-        lk(run).pc += 1;
+        let mut r = lk(run);
+        // A wait met: the next wait gets its own timeout, not what is left of this one's.
+        r.deadline = None;
+        r.pc += 1;
         Ok(Then::Next)
     }
 
@@ -2162,10 +2207,10 @@ impl MacroPlayer {
             }
             let mut hit: Option<Rect> = None;
             let (mut w, mut h) = (0, 0);
-            if let Some(picture) = self.picture(turn) {
-                (w, h) = (picture.width, picture.height);
-                let area = macro_vision::area(s.region.as_ref(), w, h);
-                if let Some(first) = macro_follow::blobs(&Pixels::of(&picture, Some(area)), &colour, s.tolerance.unwrap_or(24), s.min_size.unwrap_or(4))?.first() {
+            if let Some(look) = self.look(turn, s.region.as_ref()) {
+                (w, h) = (look.width, look.height);
+                let area = look.area;
+                if let Some(first) = macro_follow::blobs(&Pixels::of(&look.picture, Some(look.part)), &colour, s.tolerance.unwrap_or(24), s.min_size.unwrap_or(4))?.first() {
                     hit = Some(Rect { x: first.x + area.x, y: first.y + area.y, ..*first });
                 }
             }
@@ -2206,6 +2251,22 @@ impl MacroPlayer {
         Ok(Then::Next)
     }
 
+    /// What a real-time step looks at: once the window is in front, only its area, copied quickly (as follow does: a
+    /// whole PrintWindow every other frame is far slower); before that, or when the copy fails, the whole picture.
+    fn look(&self, turn: &Turn, region: Option<&MacroRect>) -> Option<Look> {
+        if let Some(input) = turn.input() {
+            let client = input.client();
+            let area = macro_vision::area(region, client.width, client.height);
+            if let Some(shot) = self.desk.area(&turn.window, &*input, area) {
+                let part = Rect::new(0, 0, shot.width, shot.height);
+                return Some(Look { picture: Arc::new(shot), part, area, width: client.width, height: client.height });
+            }
+        }
+        let picture = self.picture(turn)?;
+        let area = macro_vision::area(region, picture.width, picture.height);
+        Some(Look { part: area, area, width: picture.width, height: picture.height, picture })
+    }
+
     /// When a real-time step that clicks as things come gives up: REAL_TIME_CAP after it began, or its timeout when
     /// that is longer.
     fn give_up_at(&self, s: &MacroStep) -> Stamp {
@@ -2236,12 +2297,12 @@ impl MacroPlayer {
                 lk(run).deadline = None;
                 return self.failed(turn, "timeout");
             }
-            if let Some(picture) = self.picture(turn) {
-                let (w, h) = (picture.width, picture.height);
-                let area = macro_vision::area(s.region.as_ref(), w, h);
+            if let Some(look) = self.look(turn, s.region.as_ref()) {
+                let (w, h) = (look.width, look.height);
+                let area = look.area;
                 let mut now_spots: Vec<Spot> = Vec::new();
                 let mut taken: HashSet<usize> = HashSet::new();
-                for b in macro_follow::blobs(&Pixels::of(&picture, Some(area)), &colour, s.tolerance.unwrap_or(24), s.min_size.unwrap_or(4))? {
+                for b in macro_follow::blobs(&Pixels::of(&look.picture, Some(look.part)), &colour, s.tolerance.unwrap_or(24), s.min_size.unwrap_or(4))? {
                     let centre = ((area.x as f32 + b.x as f32 + b.width as f32 / 2.0), (area.y as f32 + b.y as f32 + b.height as f32 / 2.0));
                     let size = (b.width.max(b.height) as f32).max(8.0);
                     let same = spots.iter().enumerate().position(|(k, p)| {
@@ -2435,6 +2496,22 @@ impl MacroPlayer {
         Point { x, y }
     }
 
+    /// A wait inside a step that keeps the window (a long press), in WAIT_SLICE pieces each asking whether the turn may
+    /// go on; Cancelled when it may not (the step plays again next turn). A wait of one piece is a plain delay.
+    fn wait_in_front(&self, turn: &Turn, ms: i32, ct: &Cancel) -> Result<(), Halt> {
+        let until = after_ms(self.desk.now(), ms as f64);
+        loop {
+            let left = ms_since(until, self.desk.now()).ceil();
+            if left <= 0.0 {
+                return Ok(());
+            }
+            self.delay((WAIT_SLICE as f64).min(left) as i32, ct)?;
+            if ms_since(until, self.desk.now()) > 0.0 && self.interrupted(turn).is_some() {
+                return Err(Halt::Cancelled);
+            }
+        }
+    }
+
     /// `hold_ms`: held this long (a charge); 0: a plain click.
     #[allow(clippy::too_many_arguments)]
     fn click(&self, input: &dyn IMacroTurn, turn: &Turn, at: Point, button: &str, twice: bool, ct: &Cancel, hold_ms: i32) -> Result<(), Halt> {
@@ -2454,7 +2531,7 @@ impl MacroPlayer {
                 self.delay(60.max(frame), ct)?;
             }
             input.button(button, false);
-            let waited = self.delay(hold_for(self.jitter(if hold_ms > 0 { hold_ms } else { 60 }, jitter_ms), turn.window.fps), ct);
+            let waited = self.wait_in_front(turn, hold_for(self.jitter(if hold_ms > 0 { hold_ms } else { 60 }, jitter_ms), turn.window.fps), ct);
             input.button(button, true);
             waited?;
         }
@@ -2515,12 +2592,16 @@ impl MacroPlayer {
         };
         tap(key_of(Some("Slash"))?, false)?;
         self.delay(150.max(frame * 3), ct)?; // the chat box opening
-        for c in text.chars() {
+        for (i, c) in text.chars().enumerate() {
+            // A long text takes seconds: the person, the window leaving the front or anti-AFK's turn stop it between
+            // letters (the step types it again next turn) rather than typing on into whatever is in front.
+            if i > 0 && i % 8 == 0 && self.interrupted(turn).is_some() {
+                return Err(Halt::Cancelled);
+            }
             match macro_keys::for_char(c) {
                 Some((k, shift)) => tap(k, shift)?,
                 None => {
-                    input.char(c, false);
-                    input.char(c, true);
+                    input.char(c, false); // down and up together, per UTF-16 half
                     self.delay(15.max(frame / 2), ct)?;
                 }
             }
@@ -2712,6 +2793,16 @@ fn ms_of(d: Duration) -> f64 {
 /// than one can fall between two) and never under 60 ms.
 pub fn hold_for(ms: i32, fps: i32) -> i32 {
     ms.max(60.max(if fps > 0 { (2000.0 / fps as f64).ceil() as i32 } else { 0 }))
+}
+
+/// A real-time step's look: `part` of `picture` holds the step's `area` of a window `width`×`height` (the client's
+/// pixels, or the whole picture's).
+struct Look {
+    picture: Arc<Picture>,
+    part: Rect,
+    area: Rect,
+    width: i32,
+    height: i32,
 }
 
 /// A patch being watched: where its middle is (picture pixels), since when, and whether it was clicked.

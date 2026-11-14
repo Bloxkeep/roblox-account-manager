@@ -197,7 +197,12 @@ fn save_file_dialog(owner: isize, title: &str, filter: &str, file_name: &str, de
 impl App {
     /// The vault open now, as a token to tell it from another one later (C#'s reference comparison of `_vault`).
     pub(crate) fn vault_token(&self) -> Option<usize> {
-        self.controller.vault.borrow().as_ref().map(|v| &**v as *const crate::core::vault::Vault as usize)
+        let vault = self.controller.vault.borrow().clone()?;
+        let mut last = self.controller.last_vault.borrow_mut();
+        if !last.0.upgrade().is_some_and(|l| std::sync::Arc::ptr_eq(&l, &vault)) {
+            *last = (std::sync::Arc::downgrade(&vault), last.1 + 1);
+        }
+        Some(last.1)
     }
 
     /// Adds an entry; the account's and game's names are kept as they are now, for after a deletion.
@@ -230,6 +235,29 @@ impl App {
             entry.text = Some(english);
             entry.text_vi = Some(vietnamese);
             entry.names = names;
+        }
+        {
+            // Statistics › Console: the sentence as shown now (its names too: the Console is only in memory), else the
+            // game and Roblox's code.
+            let mut words = text.unwrap_or_default().to_string();
+            if words.is_empty() {
+                words = entry.game_name.clone().or(place.map(|p| format!("place {p}"))).unwrap_or_default();
+                if let Some(c) = code {
+                    words = if words.is_empty() { format!("code {c}") } else { format!("{words} · code {c}") };
+                }
+            }
+            if words.is_empty() {
+                words = kind.to_string();
+            }
+            // A log's short tag, the same in both languages (the words after it are in the person's).
+            let tag = match activity_group(kind) {
+                "play" => "Game",
+                "signin" => "Sign-in",
+                "updates" => "Update",
+                "schedule" => "Schedule",
+                _ => "Drop",
+            };
+            log::console_line(kind, Some(tag), &activity_tone(&entry), entry.account_label.as_deref().unwrap_or(""), &words);
         }
         if kind == "disconnected" {
             if let (Some(place), Some(dropped)) = (place, code) {
@@ -401,10 +429,10 @@ impl App {
                 (*id, label, place)
             })
             .collect();
-        // PORT: StringComparer.CurrentCultureIgnoreCase: compared here by lower case.
+        // StringComparer.CurrentCultureIgnoreCase.
         named.sort_by(|x, y| {
             let by_place = if hide { x.2.cmp(&y.2) } else { std::cmp::Ordering::Equal };
-            by_place.then_with(|| x.1.to_lowercase().cmp(&y.1.to_lowercase()))
+            by_place.then_with(|| crate::core::win_kit::culture_cmp(&x.1, &y.1))
         });
         Ok(json!({
             "total": shown.len(),
@@ -603,7 +631,7 @@ impl App {
 
     /// {account?, group?}: every entry the page shows, into a CSV the person picks (newest first, this PC's time
     /// zone). Returns how many, or null when cancelled.
-    pub fn export_activity(&self, a: &Value) -> Res<Value> {
+    pub async fn export_activity(&self, a: &Value) -> Res<Value> {
         let token = self.vault_token();
         let mut shown = self.shown_activity(a)?;
         if shown.is_empty() {
@@ -614,7 +642,8 @@ impl App {
         let title = l::t("Export the activity log");
         let filter = l::t("CSV file") + " (*.csv)|*.csv";
         let owner = self.controller.owner.get();
-        let picked = crate::core::ui::modal(|| save_file_dialog(owner, &title, &filter, &file_name, "csv"));
+        // On a worker thread: the core keeps answering while the box is open.
+        let picked = crate::core::rt::blocking(move || crate::core::ui::modal(|| save_file_dialog(owner, &title, &filter, &file_name, "csv"))).await;
         let Some(path) = picked else { return Ok(Value::Null) };
         if self.vault_token() != token {
             return Err(Fail::user(l::t("Bloxkeep was locked.")));

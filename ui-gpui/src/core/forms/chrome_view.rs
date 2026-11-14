@@ -214,7 +214,7 @@ pub mod host {
 
     unsafe extern "system" fn form_proc(hwnd: HWND, msg: u32, w: WPARAM, l: LPARAM) -> LRESULT {
         let handler = HANDLERS.try_with(|m| m.borrow().get(&(hwnd as isize)).cloned()).ok().flatten();
-        let result = handler.and_then(|h| h(hwnd, msg, w, l));
+        let result = handler.and_then(|h| crate::core::program::shielded(|| None, || h(hwnd, msg, w, l)));
         if msg == WM_NCDESTROY {
             let _ = HANDLERS.try_with(|m| m.borrow_mut().remove(&(hwnd as isize)));
         }
@@ -230,7 +230,7 @@ pub mod host {
             WM_RUN => {
                 // SAFETY: lparam is the box `Invoker::run` leaked for this one message.
                 let f: Box<dyn FnOnce() + Send> = *unsafe { Box::from_raw(l as *mut Box<dyn FnOnce() + Send>) };
-                f();
+                crate::core::program::shielded(|| (), f);
                 0
             }
             WM_POLL => {
@@ -242,7 +242,7 @@ pub mod host {
             WM_TIMER => {
                 let tick = try_here().and_then(|h| h.timers.borrow().get(&w).cloned());
                 if let Some(tick) = tick {
-                    tick();
+                    crate::core::program::shielded(|| (), || tick());
                 }
                 0
             }
@@ -400,7 +400,8 @@ pub mod host {
         };
         let w = waker(Arc::new(TaskWaker { invoker: h.invoker, id }));
         let mut cx = Context::from_waker(&w);
-        match fut.as_mut().poll(&mut cx) {
+        // A task that panics ends there (shown as an unexpected error); the thread goes on.
+        match crate::core::program::shielded(|| Poll::Ready(()), || fut.as_mut().poll(&mut cx)) {
             Poll::Ready(()) => {
                 h.tasks.borrow_mut().remove(&id);
                 h.rewake.borrow_mut().remove(&id);
@@ -685,7 +686,7 @@ pub mod host {
             // SAFETY: plain calls; the icon is the app's, kept for its whole run.
             unsafe {
                 SendMessageW(hwnd as HWND, WM_SETICON, ICON_BIG as WPARAM, icon);
-                SendMessageW(hwnd as HWND, WM_SETICON, ICON_SMALL as WPARAM, icon);
+                SendMessageW(hwnd as HWND, WM_SETICON, ICON_SMALL as WPARAM, crate::core::ui::app_icon_small().unwrap_or(icon));
             }
         }
     }

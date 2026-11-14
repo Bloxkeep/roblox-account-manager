@@ -31,6 +31,8 @@ const RESEND: Duration = Duration::from_secs(30);
 #[derive(Default)]
 pub struct Data {
     open: bool,
+    /// Which opening this is: an answer or a countdown of a box closed and opened again is dropped.
+    seq: u64,
     vng: bool,
     step: Step,
     err: Option<String>,
@@ -115,9 +117,13 @@ fn ask(r: &mut Root, cmd: &'static str, args: Value, window: &mut Window, cx: &m
     r.pwl.err = None;
     window.refresh();
     let rx = link.call(cmd, args);
+    let seq = r.pwl.seq;
     cx.spawn_in(window, async move |this, cx| {
         let answer = rx.await;
         let _ = this.update_in(cx, |r, window, cx| {
+            if r.pwl.seq != seq {
+                return;
+            }
             r.pwl.pending = false;
             if r.pwl.open {
                 match answer {
@@ -189,7 +195,7 @@ fn handle(r: &mut Root, v: Value, window: &mut Window, cx: &mut Context<Root>) {
 /// The saved key's code in the box, following it as it changes while the box is untouched.
 fn fill_code(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
     r.pwl.fill_n += 1;
-    let mine = r.pwl.fill_n;
+    let (mine, seq) = (r.pwl.fill_n, r.pwl.seq);
     let untouched = |r: &Root, cx: &App| {
         let now = r.pl_code.read(cx).value().to_string();
         now.is_empty() || now == r.pwl.filled
@@ -204,7 +210,7 @@ fn fill_code(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
         let code = s(&v, "code").to_string();
         let secs = v.get("seconds").and_then(Value::as_u64).unwrap_or(30).max(1);
         let took = this.update_in(cx, |r, window, cx| {
-            if !r.pwl.open || r.pwl.fill_n != mine || code.is_empty() || r.pwl.method != "authenticator" || !untouched(r, cx) {
+            if !r.pwl.open || r.pwl.seq != seq || r.pwl.fill_n != mine || code.is_empty() || r.pwl.method != "authenticator" || !untouched(r, cx) {
                 return false;
             }
             r.pwl.filled = code.clone();
@@ -217,7 +223,7 @@ fn fill_code(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
         }
         cx.background_executor().timer(Duration::from_millis(secs * 1000 + 300)).await;
         let _ = this.update_in(cx, |r, window, cx| {
-            if r.pwl.open && r.pwl.fill_n == mine {
+            if r.pwl.open && r.pwl.seq == seq && r.pwl.fill_n == mine {
                 fill_code(r, window, cx);
             }
         });
@@ -286,9 +292,13 @@ fn send_code(r: &mut Root, via: String, window: &mut Window, cx: &mut Context<Ro
     r.pwl.err = None;
     window.refresh();
     let rx = link.call("loginTwoStepSend", json!({ "method": via }));
+    let seq = r.pwl.seq;
     cx.spawn_in(window, async move |this, cx| {
         let answer = rx.await;
         let _ = this.update_in(cx, |r, window, cx| {
+            if r.pwl.seq != seq {
+                return;
+            }
             r.pwl.sending = false;
             if r.pwl.open {
                 match answer {
@@ -355,14 +365,15 @@ fn main_button(id: &'static str, label: String, off: bool, busy: bool) -> Statef
         .rounded(px(R_M + 1.))
         .bg(c(FACE))
         .text_color(c(INK))
-        .text_size(px(T_M + 0.5))
+        .text_size(px(T_L))
         .font_weight(FontWeight::SEMIBOLD)
         .map(|d| if busy { d.opacity(0.75).child(spinner(14., c(INK))) } else if off { d.opacity(0.5) } else { d.cursor_pointer().hover(|d| d.bg(c(FACE_HI))).active(|d| d.bg(c(FACE_DOWN))) })
         .child(label)
 }
 
 pub fn open(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
-    r.pwl = Data { open: true, methods: vec!["authenticator".into(), "email".into()], method: "authenticator".into(), ..Default::default() };
+    let seq = r.pwl.seq.wrapping_add(1);
+    r.pwl = Data { open: true, seq, methods: vec!["authenticator".into(), "email".into()], method: "authenticator".into(), ..Default::default() };
     r.help_open = true;
     // Each box says what goes in it, in the language of the moment (made once at the start, before it was known; with
     // only an icon the boxes read as empty, review 9.2).
@@ -382,10 +393,11 @@ pub fn open(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
             cx.background_executor().timer(Duration::from_secs(1)).await;
             let going = this.update_in(cx, |r, window, _| {
                 let p = &r.pwl;
-                if p.open && p.step == Step::TwoStep && (left(p.verify_at) > 0 || left(p.resend_at.get(&p.method).copied()) > 0) {
+                if p.open && p.seq == seq && p.step == Step::TwoStep && (left(p.verify_at) > 0 || left(p.resend_at.get(&p.method).copied()) > 0) {
                     window.refresh();
                 }
-                p.open
+                // (Closed and opened again: the new box runs its own loop.)
+                p.open && p.seq == seq
             });
             if !matches!(going, Ok(true)) {
                 break;
@@ -405,7 +417,7 @@ pub fn open(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
         // not as one more line of the form.)
         let error = said.map(form_error);
         let label = |key: &str| div().text_size(px(T_S)).font_weight(FontWeight::MEDIUM).text_color(c(TEXT_2)).child(r.tr(key));
-        let quiet_link = |id: &'static str, text: String| focusable(div().id(id)).text_size(px(T_S + 0.5)).text_color(c(TEXT_2)).cursor_pointer().hover(|st| st.text_color(c(TEXT))).child(text);
+        let quiet_link = |id: &'static str, text: String| focusable(div().id(id)).text_size(px(T_M)).text_color(c(TEXT_2)).cursor_pointer().hover(|st| st.text_color(c(TEXT))).child(text);
         // Back ends this attempt in the app too: the password goes, and a reply still on its way is dropped.
         let back = {
             let this = this.clone();
@@ -424,8 +436,8 @@ pub fn open(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
                 .flex_col()
                 .items_center()
                 .gap(px(8.))
-                .child(div().size(px(44.)).rounded_full().bg(ca(FACE, 0.14)).flex().items_center().justify_center().child(icon(icon_name, 22., c(FACE))))
-                .child(div().text_size(px(T_H + 2.)).font_weight(FontWeight::SEMIBOLD).child(title))
+                .child(icon(icon_name, 26., c(FACE)))
+                .child(div().text_size(px(T_SEC)).font_weight(FontWeight::SEMIBOLD).child(title))
                 .child(div().text_size(px(T_M)).line_height(px(20.)).text_color(c(TEXT_2)).text_center().child(text))
         };
         let mut body = div().flex().flex_col().gap(px(14.));
@@ -457,7 +469,7 @@ pub fn open(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
                     for m in p.methods.clone() {
                         let this = this.clone();
                         let on = p.method == m;
-                        tabs = tabs.child(segment(SharedString::from(format!("pw-m-{m}")), on).flex_1().h(px(28.)).justify_center().text_size(px(T_S + 0.5)).cursor_pointer().child(r.tr(label_of(&m))).on_click(move |_, w, cx| {
+                        tabs = tabs.child(segment(SharedString::from(format!("pw-m-{m}")), on).flex_1().h(px(28.)).justify_center().text_size(px(T_M)).cursor_pointer().child(r.tr(label_of(&m))).on_click(move |_, w, cx| {
                             let m = m.clone();
                             let _ = this.update(cx, |r, cx| {
                                 r.pwl.err = None;
@@ -494,7 +506,7 @@ pub fn open(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
                             .flex()
                             .items_center()
                             .gap(px(10.))
-                            .child(div().min_w_0().flex_1().text_size(px(T_S + 0.5)).text_color(c(MUTED)).child(if was_sent { r.tr(if p.method == "sms" { "pw.sentSms" } else { "pw.sentEmail" }) } else { String::new() }))
+                            .child(div().min_w_0().flex_1().text_size(px(T_M)).text_color(c(MUTED)).child(if was_sent { r.tr(if p.method == "sms" { "pw.sentSms" } else { "pw.sentEmail" }) } else { String::new() }))
                             .child(quiet_link("pw-send", words).on_click(move |_, w, cx| {
                                 let via = via.clone();
                                 let _ = send.update(cx, |r, cx| send_code(r, via, w, cx));
@@ -514,7 +526,7 @@ pub fn open(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
                 let mut realm = div().flex().gap(px(2.)).p(px(3.)).rounded(px(R_M)).bg(c(INSET));
                 for (words, vng) in [("Roblox", false), ("Roblox VNG", true)] {
                     let this = this.clone();
-                    realm = realm.child(segment(words, p.vng == vng).flex_1().h(px(28.)).justify_center().text_size(px(T_S + 0.5)).cursor_pointer().child(words).on_click(move |_, w, cx| {
+                    realm = realm.child(segment(words, p.vng == vng).flex_1().h(px(28.)).justify_center().text_size(px(T_M)).cursor_pointer().child(words).on_click(move |_, w, cx| {
                         let _ = this.update(cx, |r, cx| {
                             // (The answer on its way is for the realm it was sent to.)
                             if !r.pwl.pending && r.pwl.vng != vng {
@@ -627,7 +639,7 @@ pub fn open(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
                                 .gap(px(9.))
                                 .cursor_pointer()
                                 .child(icon(ic, 15., c(TEXT_2)))
-                                .child(div().flex_1().min_w_0().truncate().text_size(px(T_S + 0.5)).font_weight(FontWeight::MEDIUM).text_color(c(TEXT)).child(r.tr(key)))
+                                .child(div().flex_1().min_w_0().truncate().text_size(px(T_M)).font_weight(FontWeight::MEDIUM).text_color(c(TEXT)).child(r.tr(key)))
                                 .on_click(move |_, w, cx| {
                                     let _ = this.update(cx, |r, cx| way(r, name, w, cx));
                                 }),
@@ -656,7 +668,21 @@ pub fn open(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
         }
         let shut = this.clone();
         framed_center(dialog, r.tr("pw.title"), r.tr("common.close"), move |_, w, cx| {
-            let _ = shut.update(cx, |r, cx| close(r, w, cx));
+            // (Asks first when it would throw away what was typed, or a sign-in half way: PasswordLogin.tsx's
+            // asksToClose.)
+            let _ = shut.update(cx, |r, cx| {
+                // A step on its way: its answer may close or redraw the dialog, which would shut a "Discard?" box up
+                // over it instead. Closed once it has answered.
+                if r.pwl.pending {
+                    return;
+                }
+                let typed = !r.pl_user.read(cx).value().trim().is_empty() || !r.pl_pass.read(cx).value().is_empty();
+                if !matches!(r.pwl.step, Step::Login | Step::Finish) || typed {
+                    r.ask_discard(w, cx, close);
+                } else {
+                    close(r, w, cx);
+                }
+            });
         })
         .w(px(DIALOG_AUTH_W))
         .centered()

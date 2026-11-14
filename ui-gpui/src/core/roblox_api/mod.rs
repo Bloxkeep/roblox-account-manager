@@ -130,13 +130,25 @@ impl Playability {
 }
 
 /// A Quick Login code. `private_key` is a secret: it never leaves the app's memory.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct QuickLoginCode {
     pub realm: String,
     pub code: String,
     pub private_key: String,
     pub expires_utc: Stamp,
     pub image_path: Option<String>,
+}
+
+impl std::fmt::Debug for QuickLoginCode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("QuickLoginCode")
+            .field("realm", &self.realm)
+            .field("code", &self.code)
+            .field("private_key", &crate::core::base::Redacted)
+            .field("expires_utc", &self.expires_utc)
+            .field("image_path", &self.image_path)
+            .finish()
+    }
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
@@ -236,9 +248,23 @@ impl From<RobloxApiException> for Fail {
     }
 }
 
-/// The "Roblox is rate-limiting requests" refusal many calls share.
-fn rate_limited() -> Fail {
-    RobloxApiException { rate_limited: true, status: 429, ..RobloxApiException::new(l::t("Roblox is rate-limiting requests; try again shortly.")) }.into()
+/// How long a 429 asks to wait: Roblox's x-ratelimit-reset (seconds until its window starts over), else Retry-After, else
+/// 20 s; 1 to 120 s. Its Retry-After is the shorter and wrong one: recorded 429s (RoALT's fixtures) said "Retry-After: 5"
+/// with a reset of 30 (friends) and 50 (server list).
+pub(crate) fn rate_limit_wait(res: &HttpResponse) -> Duration {
+    let secs = lookups::first_number(res, "x-ratelimit-reset").or_else(|| lookups::retry_after_secs(res)).unwrap_or(20).clamp(1, 120);
+    Duration::from_secs(secs as u64)
+}
+
+/// Roblox's 429 as Bloxkeep says it, with how long to wait (`rate_limit_wait`).
+fn rate_limited_by(res: &HttpResponse) -> Fail {
+    RobloxApiException {
+        rate_limited: true,
+        status: 429,
+        retry_after: Some(rate_limit_wait(res)),
+        ..RobloxApiException::new(l::t("Roblox is rate-limiting requests; try again shortly."))
+    }
+    .into()
 }
 
 // .NET's exception kinds, as the start of a `Fail::Other`'s text, so a `catch (HttpRequestException)` keeps its meaning.
@@ -285,11 +311,14 @@ pub struct HttpRequest {
     pub url: String,
     pub headers: Vec<(String, String)>,
     pub body: Option<Vec<u8>>,
+    /// Sent the way Roblox's own client goes, not through Windows' proxy (net::builder_like_roblox_client): the sign-in
+    /// ticket, which Roblox refuses when the client redeems it from another address.
+    pub like_roblox_client: bool,
 }
 
 impl HttpRequest {
     pub fn new(method: &'static str, url: impl Into<String>) -> HttpRequest {
-        HttpRequest { method, url: url.into(), headers: Vec::new(), body: None }
+        HttpRequest { method, url: url.into(), headers: Vec::new(), body: None, like_roblox_client: false }
     }
     /// TryAddWithoutValidation.
     pub fn add_header(&mut self, name: &str, value: &str) {
@@ -308,11 +337,22 @@ impl HttpRequest {
 }
 
 /// An answer, its body read in full (as HttpClient buffers it).
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Default)]
 pub struct HttpResponse {
     pub status: u16,
     pub headers: Vec<(String, String)>,
     pub body: Vec<u8>,
+}
+
+/// Header names and the body's size only: a Set-Cookie carries .ROBLOSECURITY, a body can carry tokens.
+impl std::fmt::Debug for HttpResponse {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("HttpResponse")
+            .field("status", &self.status)
+            .field("headers", &self.header_names())
+            .field("body_len", &self.body.len())
+            .finish()
+    }
 }
 
 impl HttpResponse {
@@ -361,7 +401,7 @@ fn http() -> &'static ureq::Agent {
     static AGENT: OnceLock<ureq::Agent> = OnceLock::new();
     AGENT.get_or_init(|| {
         // PORT: ureq has no PooledConnectionLifetime (5 minutes in the C#); idle connections are kept by its own pool rules.
-        ureq::AgentBuilder::new()
+        crate::net::builder()
             .redirects(0)
             .timeout(Duration::from_secs(20))
             // Connect over IPv4 only. An auth ticket is bound to the IP that requested it; the Roblox client redeems it
@@ -369,6 +409,16 @@ fn http() -> &'static ureq::Agent {
             .resolver(|netloc: &str| -> std::io::Result<Vec<SocketAddr>> { Ok(netloc.to_socket_addrs()?.filter(|a| a.is_ipv4()).collect()) })
             .build()
     })
+}
+
+/// http()'s agent, reaching the host as Roblox's client does (no Windows proxy). Made per call: one per launch.
+fn http_like_roblox_client(url: &str) -> ureq::Agent {
+    let host = url::Url::parse(url).ok().and_then(|u| u.host_str().map(str::to_string)).unwrap_or_default();
+    crate::net::builder_like_roblox_client(&host)
+        .redirects(0)
+        .timeout(Duration::from_secs(20))
+        .resolver(|netloc: &str| -> std::io::Result<Vec<SocketAddr>> { Ok(netloc.to_socket_addrs()?.filter(|a| a.is_ipv4()).collect()) })
+        .build()
 }
 
 /// One request on an agent, its answer read whole: any HTTP status is an answer; no answer is an HttpRequestException
@@ -430,10 +480,16 @@ pub fn send(req: &HttpRequest, ct: &Cancel) -> Res<HttpResponse> {
     if ct.is_cancelled() {
         return Err(fail_of(TASK_CANCELED_EXCEPTION, "The request was canceled."));
     }
+    // A damaged saved cookie (it never signed in): said as a sign-in to redo, not as a network error.
+    let named = format!("{COOKIE_NAME}=");
+    if req.headers_named("Cookie").any(|c| c.strip_prefix(named.as_str()).is_some_and(|v| !cookie_text_valid(v))) {
+        return Err(RobloxApiException { cookie_invalid: true, ..RobloxApiException::new(l::t("This account's saved sign-in is damaged — sign in to it again.")) }.into());
+    }
     let res = {
         let stand_in = STAND_IN.read().unwrap_or_else(|e| e.into_inner());
         match stand_in.as_ref() {
             Some(answer) => answer(req)?,
+            None if req.like_roblox_client => send_on(&http_like_roblox_client(&req.url), req)?,
             None => send_on(http(), req)?,
         }
     };
@@ -504,7 +560,7 @@ fn parse_cookie_date(text: &str) -> Option<Stamp> {
     let weekday = DAYS.iter().position(|d| d.eq_ignore_ascii_case(day_name))?;
     let b = rest.as_bytes();
     // "dd-MMM-yyyy HH:mm:ss GMT" or "dd MMM yyyy HH:mm:ss GMT": 24 characters either way.
-    if b.len() != 24 || !(b[2] == b'-' && b[6] == b'-' || b[2] == b' ' && b[6] == b' ') || b[11] != b' ' || b[14] != b':' || b[17] != b':' || &rest[20..] != " GMT" {
+    if b.len() != 24 || !(b[2] == b'-' && b[6] == b'-' || b[2] == b' ' && b[6] == b' ') || b[11] != b' ' || b[14] != b':' || b[17] != b':' || rest.get(20..) != Some(" GMT") {
         return None;
     }
     let num = |from: usize, len: usize| -> Option<u32> {
@@ -532,7 +588,19 @@ pub fn normalize_cookie(raw: &str) -> String {
     if let Some(semi) = c.find(';') {
         c.truncate(semi);
     }
-    c.trim().to_string()
+    // A cookie has no spaces: a paste wrapped over lines (a chat, a text file) is joined back.
+    c.chars().filter(|ch| !ch.is_whitespace()).collect()
+}
+
+/// Only what a header can carry (visible ASCII), as every real cookie is. "…" (a cut-off copy), curly quotes or accents
+/// made the request fail, which Bloxkeep then called a network error (RoALT checks the same).
+pub fn cookie_text_valid(cookie: &str) -> bool {
+    cookie.chars().all(|ch| ch > ' ' && ch < '\u{7f}')
+}
+
+/// Said for a pasted cookie that isn't one (`cookie_text_valid`).
+pub fn cookie_text_error() -> String {
+    l::t("That isn't a whole Roblox cookie: it has characters a cookie never has (\"…\", curly quotes or accents). Copy it again, all of it.")
 }
 
 /// HttpRequestException, TaskCanceledException, JsonException, RobloxApiException, KeyNotFoundException or
@@ -654,7 +722,7 @@ pub fn get_authenticated_user(cookie: &str, realm: &str, ct: &Cancel) -> Res<Opt
         return Ok(None);
     }
     if res.status == 429 {
-        return Err(rate_limited());
+        return Err(rate_limited_by(&res));
     }
     let body = res.text();
     if !res.is_success() {
@@ -838,11 +906,22 @@ pub fn join_check(cookie: &str, place_id: i64, job_id: Option<&str>, realm: &str
 }
 
 /// The check on a join (rblx-challenge-* headers): id, kind ("captcha", "captchav2", "proofofwork"…), metadata JSON.
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Default, PartialEq)]
 pub struct JoinChallenge {
     pub id: String,
     pub r#type: String,
     pub metadata_json: String,
+}
+
+/// The metadata (the check's tokens) never printed; JoinAnswer and FriendAnswer print through this.
+impl std::fmt::Debug for JoinChallenge {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("JoinChallenge")
+            .field("id", &self.id)
+            .field("type", &self.r#type)
+            .field("metadata_json", &crate::core::base::Redacted)
+            .finish()
+    }
 }
 
 impl JoinChallenge {

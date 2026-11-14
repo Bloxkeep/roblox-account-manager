@@ -186,6 +186,11 @@ impl App {
                 fits.len()
             ));
             for (id, run, _) in &game {
+                if let Some(why) = self.sign_in_refused_now(*id, &Cancel::new()).await {
+                    let n = self.find_account(*id).map(|a| self.name_text(&a)).unwrap_or_default();
+                    self.toast(&l::f("{0} stays where it is: {1}", &[&n, &why]), "warn");
+                    continue;
+                }
                 if self.move_to_server(*id, run, place, &chosen.job_id) {
                     moved += 1;
                 }
@@ -205,6 +210,31 @@ impl App {
         }
         self.push_state();
         Ok(json!(moved))
+    }
+
+    /// Before a working window is closed to open it elsewhere: a sign-in ticket is asked for (and dropped), so an account
+    /// Roblox would refuse now (signed out, a moderation notice, no connection) keeps its window instead of losing it for
+    /// nothing. RoALT checks the same before closing. None when Roblox signed it in; else why not, logged.
+    pub async fn sign_in_refused_now(&self, id: Guid, ct: &Cancel) -> Option<String> {
+        let Some(account) = self.find_account(id) else { return Some(l::t("Account not found.")) };
+        let (cookie, realm, c) = (account.cookie.clone(), account.realm.clone(), ct.clone());
+        match rt::blocking(move || roblox_api::get_auth_ticket(&cookie, &c, &realm)).await {
+            Ok(_) => None,
+            Err(ex) if !ct.is_cancelled() && roblox_api::is_expected_error(&ex) => {
+                log::note(&format!(
+                    "Account {}'s window stays open: a new sign-in was refused ({}), so it isn't closed to reopen.",
+                    &id.to_string()[..8],
+                    launch_fail_kind(&ex)
+                ));
+                Some(App::error_text(&ex))
+            }
+            // The C# lets anything else end the switch, closing nothing: the window stays here too, never closed on a
+            // sign-in nobody saw work.
+            Err(ex) => {
+                log::note(&format!("Account {}'s window stays open: the sign-in check failed unexpectedly ({ex}).", &id.to_string()[..8]));
+                Some(App::error_text(&ex))
+            }
+        }
     }
 
     /// Closes the window to reopen it in that server (auto-rejoin's path); false when it closed or was replaced meanwhile,
@@ -421,6 +451,9 @@ impl App {
                         break;
                     };
                     avoid.insert(job_key(&quiet));
+                    if self.sign_in_refused_now(*id, &Cancel::new()).await.is_some() {
+                        continue;
+                    }
                     if self.move_to_server(*id, run, place, &quiet) {
                         moved += 1;
                     }

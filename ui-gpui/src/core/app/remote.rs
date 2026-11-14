@@ -207,28 +207,35 @@ impl App {
         let open = self.remote_open();
         let machine = machine_name();
         let language = l::language();
-        let (accounts, presets): (Vec<Account>, Vec<LaunchPreset>) =
-            if open { self.vault(|d| (d.accounts.clone(), d.settings.presets.clone())).unwrap_or_default() } else { (Vec::new(), Vec::new()) };
-        let names: Vec<String> = accounts.iter().map(|a| self.discord_name(a)).collect();
-        // What it would say, hashed: the hello (names cut to fit, then JSON) is made only when that changed, not every tick.
+        // What it would say, hashed from what its names are made of (read in place: no copies, no names built every
+        // tick): the hello (names cut to fit, then JSON) is made only when that changed.
         let mut said = DefaultHasher::new();
         open.hash(&mut said);
         language.hash(&mut said);
         machine.hash(&mut said);
         if open {
-            for name in &names {
-                name.hash(&mut said);
-            }
-            '|'.hash(&mut said);
-            for preset in &presets {
-                preset.name.hash(&mut said);
-            }
+            let _ = self.vault(|d| {
+                d.discord.hide_names.hash(&mut said);
+                d.discord.language.hash(&mut said);
+                for a in &d.accounts {
+                    a.id.hash(&mut said);
+                    a.alias.hash(&mut said);
+                    a.username.hash(&mut said);
+                }
+                '|'.hash(&mut said);
+                for preset in &d.settings.presets {
+                    preset.name.hash(&mut said);
+                }
+            });
         }
         let key = said.finish();
         if self.remote.remote_said.get() == Some(key) {
             return;
         }
         self.remote.remote_said.set(Some(key));
+        let (accounts, presets): (Vec<Account>, Vec<LaunchPreset>) =
+            if open { self.vault(|d| (d.accounts.clone(), d.settings.presets.clone())).unwrap_or_default() } else { (Vec::new(), Vec::new()) };
+        let names: Vec<String> = accounts.iter().map(|a| self.discord_name(a)).collect();
         // PORT: Distinct(StringComparer.CurrentCultureIgnoreCase): compared here by lower case.
         let distinct = |list: Vec<String>| {
             let mut out: Vec<String> = Vec::new();
@@ -257,6 +264,8 @@ impl App {
     }
 
     async fn forget_remote_links(self: &Rc<Self>) {
+        // Set before the task started; cleared however this ends.
+        let _forgetting = crate::core::base::Busy::set(&self.remote.remote_forgetting);
         let keys: Vec<String> = prefs::lock().remote_gone.clone();
         for key in keys {
             let secret = match read_key(&key) {
@@ -285,7 +294,6 @@ impl App {
                 log::note("Remote: the bot couldn't be told to forget an old link; asked again in 10 minutes.");
             }
         }
-        self.remote.remote_forgetting.set(false);
     }
 
     pub fn stop_remote(&self) {
@@ -581,10 +589,8 @@ impl App {
             log::note("Remote: /pc switch refused: accounts are still moving to another server.");
             return Ok(self.remote_say(&l::t("Accounts are still moving to another server. Try again once they're in.")));
         }
-        self.remote.remote_switching.set(true);
-        let result = self.remote_switch_now(name).await;
-        self.remote.remote_switching.set(false);
-        result
+        let _switching = crate::core::base::Busy::set(&self.remote.remote_switching);
+        self.remote_switch_now(name).await
     }
 
     async fn remote_switch_now(self: &Rc<Self>, name: &str) -> Res<Value> {
@@ -658,7 +664,7 @@ impl App {
         let mut pictures: Vec<Vec<u8>> = Vec::new();
         let mut named: Vec<String> = Vec::new();
         let mut notes: Vec<String> = Vec::new();
-        self.remote.picturing.set(true);
+        let picturing = crate::core::base::Busy::set(&self.remote.picturing);
         let mut turn: Option<crate::core::input_turn::Lease> = None;
         let body: Res<bool> = async {
             // A nudge or a macro's turn under way finishes first (a few seconds at most).
@@ -693,7 +699,7 @@ impl App {
         if let Some(turn) = turn {
             turn.dispose();
         }
-        self.remote.picturing.set(false);
+        drop(picturing);
         self.remote.last_shot.set(Stamp::utc_now());
         if !body? {
             return Ok(None);

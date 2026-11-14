@@ -24,7 +24,7 @@ fn file_path() -> std::path::PathBuf {
     crate::core::vault::data_dir().join("resume.bin")
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase", default)]
 pub struct State {
     pub written_at: Stamp,
@@ -44,6 +44,25 @@ pub struct State {
     pub view: Option<String>,
     /// The lock screen was up (a while without use): the next run comes back behind it, not unlocked.
     pub screen_locked: bool,
+}
+
+/// `key` left out: it opens the vault.
+impl std::fmt::Debug for State {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("State")
+            .field("written_at", &self.written_at)
+            .field("from", &self.from)
+            .field("to", &self.to)
+            .field("key", &self.key.as_ref().map(|_| crate::core::base::Redacted))
+            .field("salt", &self.salt)
+            .field("iterations", &self.iterations)
+            .field("weak_password", &self.weak_password)
+            .field("window", &self.window)
+            .field("foreground", &self.foreground)
+            .field("view", &self.view)
+            .field("screen_locked", &self.screen_locked)
+            .finish()
+    }
 }
 
 impl Default for State {

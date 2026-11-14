@@ -127,15 +127,20 @@ pub(crate) fn load_avatar(url: &str, ct: &Cancel) -> Option<Vec<u8>> {
     }
     let host_ok = url
         .strip_prefix("https://")
-        .map(|rest| rest.split(['/', '?', '#']).next().unwrap_or("").split(':').next().unwrap_or("").to_ascii_lowercase())
+        .map(|rest| rest.split(['/', '?', '#']).next().unwrap_or(""))
+        // A user part ("a.rbxcdn.com:x@other.host") is refused before the port is cut, or the real host hides behind it.
+        .filter(|authority| !authority.contains('@'))
+        .map(|authority| authority.split(':').next().unwrap_or("").to_ascii_lowercase())
         .is_some_and(|host| host.ends_with(".rbxcdn.com"));
-    if !host_ok || url.chars().any(char::is_whitespace) {
+    // A backslash reads as a slash to the web parser ("https://other.host\x.rbxcdn.com" goes to other.host).
+    if !host_ok || url.contains('\\') || url.chars().any(char::is_whitespace) {
         return None;
     }
     if ct.is_cancelled() {
         return None;
     }
-    let agent = ureq::AgentBuilder::new().timeout(Duration::from_secs(6)).build();
+    // No redirects: only the rbxcdn.com host checked above is ever asked.
+    let agent = crate::net::builder().redirects(0).timeout(Duration::from_secs(6)).build();
     let response = agent.get(url).call().ok()?;
     let mut bytes = Vec::new();
     use std::io::Read;

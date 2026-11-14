@@ -10,6 +10,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod assets;
+mod calendar;
 // The C# app moved to Rust (src/core/), compiled only with `--features core` until it is joined to the window.
 #[cfg(feature = "core")]
 mod core;
@@ -21,10 +22,15 @@ mod images;
 mod kit;
 mod link;
 mod mesh;
+mod itemwatch;
+mod modstore;
+mod net;
+mod prefs;
 mod pages;
 mod roblox;
 mod roblox_codes;
 mod scene;
+mod near;
 mod scrolled;
 mod shell;
 mod shot;
@@ -44,9 +50,11 @@ fn main() {
     let args: Vec<String> = std::env::args().collect();
     let arg = |k: &str| args.iter().position(|a| a == k).and_then(|i| args.get(i + 1)).cloned();
     let pipe = arg("--pipe");
-    // --core (a build with the `core` feature): the app itself runs in this process (src/core, the C# app moved to
-    // Rust): no C# app, no pipes. It then says where the cache and the pictures are (core::gpui_host::start).
-    let in_process = cfg!(feature = "core") && args.iter().any(|a| a == "--core") && pipe.is_none();
+    // A build with the `core` feature is the app itself (src/core, the C# app moved to Rust): no C# app, no pipes,
+    // also started bare (the installed shortcut, Velopack's install and update steps); `--core` is still taken. Only
+    // `--pipe` (the dev mock host) makes it the page alone. It then says where the cache and the pictures are
+    // (core::gpui_host::start).
+    let in_process = cfg!(feature = "core") && pipe.is_none();
     if !in_process {
         // --cache DIR: the app's cache folder, where what Roblox said may be kept between runs (roblox::keep_in).
         roblox::keep_in(arg("--cache").map(PathBuf::from));
@@ -70,6 +78,11 @@ fn main() {
     #[cfg(feature = "core")]
     if let Some(file) = arg("--core-log-replay") {
         std::process::exit(core::selftest::log_replay(&file));
+    }
+    // --core-log-words FILE: the lines of a Roblox log that would go to error.log when its window ends.
+    #[cfg(feature = "core")]
+    if let Some(file) = arg("--core-log-words") {
+        std::process::exit(core::selftest::log_words(&file));
     }
     // --core-suite NAME DIR: one of the C# tests moved to Rust (core/tests), on the data folder DIR; --core-suites [NAME..]
     // [--online] [--timeout=MIN]: each in a child process, as Tests/Bloxkeep.Tests ran them.
@@ -157,11 +170,19 @@ fn run_ui(link: Option<(link::Link, futures::channel::mpsc::UnboundedReceiver<li
             // Accounts' keys, as the old page had them (each passes on when it doesn't apply).
             KeyBinding::new("ctrl-f", shell::FindHere, Some("Bloxkeep")),
             KeyBinding::new("ctrl-l", shell::FocusPlace, Some("Bloxkeep")),
+            KeyBinding::new("/", shell::FocusPlace, Some("Bloxkeep && !Input")),
             KeyBinding::new("ctrl-a", shell::PickAll, Some("Bloxkeep")),
             KeyBinding::new("delete", shell::DeletePicked, Some("Bloxkeep")),
             KeyBinding::new("f2", shell::EditPicked, Some("Bloxkeep")),
             KeyBinding::new("enter", shell::PlayPicked, Some("Bloxkeep")),
             KeyBinding::new("escape", shell::ClearPicked, Some("Bloxkeep")),
+            KeyBinding::new("left", shell::CardLeft, Some("Bloxkeep && !Input")),
+            KeyBinding::new("right", shell::CardRight, Some("Bloxkeep && !Input")),
+            KeyBinding::new("up", shell::CardUp, Some("Bloxkeep && !Input")),
+            KeyBinding::new("down", shell::CardDown, Some("Bloxkeep && !Input")),
+            KeyBinding::new("home", shell::CardFirst, Some("Bloxkeep && !Input")),
+            KeyBinding::new("end", shell::CardLast, Some("Bloxkeep && !Input")),
+            KeyBinding::new("space", shell::CardPick, Some("Bloxkeep && !Input")),
         ]);
         pages::palette::bind(cx);
         let fonts = ["Regular", "Medium", "SemiBold", "Bold"]

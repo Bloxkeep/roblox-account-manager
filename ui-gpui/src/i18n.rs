@@ -18,6 +18,16 @@ impl I18n {
         serde_json::from_str(json).unwrap_or_default()
     }
 
+    /// Each Vietnamese text with its English one: Settings' search finds a row by either (app.js's data-en).
+    pub fn en_by_vi(&self) -> HashMap<String, String> {
+        self.vi.iter().filter_map(|(k, v)| self.en.get(k).map(|e| (plain(v), plain(e)))).collect()
+    }
+
+    /// A key's English words, whatever the language shown.
+    pub fn en(&self, key: &str) -> String {
+        self.en.get(key).map(|e| plain(e)).unwrap_or_default()
+    }
+
     /// Words made for 1.1 (assets/words.json), on top of the page's: they go into i18n.js when the old page goes.
     pub fn add(&mut self, json: &str) {
         if let Ok(more) = serde_json::from_str::<I18n>(json) {
@@ -32,7 +42,7 @@ impl I18n {
         crate::time::set_english(!self.vietnamese);
     }
 
-    fn raw(&self, key: &str) -> Option<&str> {
+    pub fn raw(&self, key: &str) -> Option<&str> {
         let own = if self.vietnamese { self.vi.get(key) } else { None };
         own.or_else(|| self.en.get(key)).map(String::as_str)
     }
@@ -99,6 +109,10 @@ impl I18n {
 
 /// Drops the page's markup: tags gone, entities the page uses turned back into characters.
 pub fn plain(s: &str) -> String {
+    // Most words have no markup: one copy, not a scan and four replaces (a page asks hundreds per frame).
+    if !s.contains(['<', '&']) {
+        return s.to_string();
+    }
     let mut out = String::with_capacity(s.len());
     let mut in_tag = false;
     for ch in s.chars() {

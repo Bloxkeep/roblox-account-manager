@@ -142,7 +142,9 @@ impl Link {
 
     /// A command whose answer nobody waits for.
     pub fn send(&self, cmd: &str, args: Value) {
-        drop(self.call(cmd, args));
+        // (Not put among the waiting: a command the app never answered left its entry there for good.)
+        let id = self.next.fetch_add(1, Ordering::Relaxed);
+        self.write(&json!({ "id": id, "cmd": cmd, "args": args }));
     }
 
     /// Tells the app this window's handle, so it can lay the window inside its own.

@@ -67,9 +67,9 @@ impl Video {
             return;
         }
         let (tx, rx) = mpsc::sync_channel::<Frame>(AHEAD);
-        let path = self.path.clone();
+        let parts = parts(&self.path);
         // (The thread ends by itself once `rx` is gone: its next frame finds nobody to take it.)
-        if std::thread::Builder::new().name("video".into()).spawn(move || decode(&path, &tx)).is_err() {
+        if std::thread::Builder::new().name("video".into()).spawn(move || decode(&parts, &tx)).is_err() {
             self.failed = true;
             cx.emit(Failed);
             return;
@@ -111,8 +111,11 @@ async fn play(this: WeakEntity<Video>, rx: mpsc::Receiver<Frame>, cx: &mut Async
                 Err(TryRecvError::Disconnected) => {
                     let _ = this.update(cx, |v, cx| {
                         v.playing = false;
+                        // The decoder loops until nobody takes its frames: ending while they are still taken means the
+                        // file went or broke mid-way. Not started again (it failed again and again, a few seconds
+                        // apart); a clip that showed frames keeps its last one.
+                        v.failed = true;
                         if !shown_any {
-                            v.failed = true;
                             cx.emit(Failed);
                         }
                         cx.notify();
@@ -188,7 +191,7 @@ enum End {
 /// The decoder's thread: the clip over and over, each pass's times following on from the last, until nobody takes its
 /// frames.
 #[cfg(all(windows, any(feature = "core", feature = "shot")))]
-fn decode(path: &Path, tx: &SyncSender<Frame>) {
+fn decode(parts: &[PathBuf], tx: &SyncSender<Frame>) {
     use windows::Win32::{
         Media::MediaFoundation::{MF_VERSION, MFSTARTUP_LITE, MFShutdown, MFStartup},
         System::Com::{COINIT_MULTITHREADED, CoInitializeEx, CoUninitialize},
@@ -198,12 +201,19 @@ fn decode(path: &Path, tx: &SyncSender<Frame>) {
         let com = CoInitializeEx(None, COINIT_MULTITHREADED).is_ok();
         if MFStartup(MF_VERSION, MFSTARTUP_LITE).is_ok() {
             let mut base = 0i64;
-            // (A file that ends before its first frame isn't started again and again.)
-            while let End::Again(next) = pass(path, tx, base) {
-                if next <= base {
+            // (A clip that ends before its first frame isn't started again and again.)
+            'clip: loop {
+                let start = base;
+                for part in parts {
+                    match pass(part, tx, base) {
+                        End::Again(next) if next > base => base = next,
+                        End::Again(_) => {}
+                        End::Stop => break 'clip,
+                    }
+                }
+                if base <= start {
                     break;
                 }
-                base = next;
             }
             let _ = MFShutdown();
         }
@@ -214,7 +224,7 @@ fn decode(path: &Path, tx: &SyncSender<Frame>) {
 }
 
 #[cfg(not(all(windows, any(feature = "core", feature = "shot"))))]
-fn decode(_: &Path, _: &SyncSender<Frame>) {}
+fn decode(_: &[PathBuf], _: &SyncSender<Frame>) {}
 
 /// One pass through the file: its frames, their times moved on by `base`.
 #[cfg(all(windows, any(feature = "core", feature = "shot")))]
@@ -252,6 +262,8 @@ unsafe fn pass(path: &Path, tx: &SyncSender<Frame>, base: i64) -> End {
         };
         let Ok((reader, mut w, mut h)) = open() else { return End::Stop };
         let (mut last, mut step) = (0i64, 666_667i64);
+        // (A part of an HLS clip may count on from the parts before it: its times are taken from its first frame.)
+        let mut first: Option<i64> = None;
         loop {
             let (mut flags, mut at, mut sample) = (0u32, 0i64, None::<IMFSample>);
             if reader.ReadSample(video, 0, None, Some(&mut flags), Some(&mut at), Some(&mut sample)).is_err() || flags & MF_SOURCE_READERF_ERROR.0 as u32 != 0 {
@@ -283,6 +295,7 @@ unsafe fn pass(path: &Path, tx: &SyncSender<Frame>, base: i64) -> End {
             });
             let _ = buffer.Unlock();
             let Some(bgra) = bgra else { continue };
+            let at = at - *first.get_or_insert(at);
             if at > last {
                 step = (at - last).clamp(1, 10_000_000);
             }
@@ -292,4 +305,15 @@ unsafe fn pass(path: &Path, tx: &SyncSender<Frame>, base: i64) -> End {
             }
         }
     }
+}
+
+/// The files to play in turn: the clip itself, or for an HLS clip (roblox.rs's `{asset}.parts`) the parts it lists.
+fn parts(path: &Path) -> Vec<PathBuf> {
+    if path.extension().is_some_and(|e| e == "parts") {
+        let dir = path.parent().unwrap_or(Path::new("."));
+        if let Ok(names) = std::fs::read_to_string(path) {
+            return names.lines().filter(|n| !n.trim().is_empty()).map(|n| dir.join(n.trim())).collect();
+        }
+    }
+    vec![path.to_path_buf()]
 }

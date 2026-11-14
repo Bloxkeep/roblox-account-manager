@@ -140,6 +140,8 @@ pub struct Data {
     pub menu_closed: Option<(&'static str, std::time::Instant)>,
     /// Appearance: the theme groups, Custom's colours and boxes (appearance.rs).
     pub look: appearance::Look,
+    /// Settings was the page shown at the last frame (`settle` notices it being left).
+    pub here: bool,
 }
 
 fn s<'a>(v: &'a Value, k: &str) -> &'a str {
@@ -152,8 +154,29 @@ fn st(root: &Root) -> &Value {
     root.state.get("settings").unwrap_or(&Value::Null)
 }
 
+/// Each frame (Root::render): Settings being left is noticed here, as the page only changes in shell.rs's `go`.
+pub fn settle(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
+    let here = r.page == crate::pages::Page::Settings && !r.locked();
+    if r.settings.here && !here {
+        on_leave(r, window, cx);
+    }
+    r.settings.here = here;
+}
+
+/// Settings left (app.js's setView): the master password's boxes and what was said under them are emptied
+/// (SecurityPage's clearPassword), and a Discord link shown is masked again (hideDiscordLink).
+pub fn on_leave(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
+    for e in [r.pw_cur.clone(), r.pw_new.clone(), r.pw_new2.clone()] {
+        if !e.read(cx).value().is_empty() {
+            e.update(cx, |s, cx| s.set_value("", window, cx));
+        }
+    }
+    r.settings.pw_msg = None;
+    r.settings.dc_shown = None;
+}
+
 /// A command whose answer matters: what it returns goes to `done`; a refusal is said in a toast.
-fn ask(r: &mut Root, cmd: &str, args: Value, cx: &mut Context<Root>, done: impl FnOnce(&mut Root, Value) + 'static) {
+pub(crate) fn ask(r: &mut Root, cmd: &str, args: Value, cx: &mut Context<Root>, done: impl FnOnce(&mut Root, Value) + 'static) {
     let Some(link) = r.link.clone() else { return };
     let rx = link.call(cmd, args);
     cx.spawn(async move |this, cx| {
@@ -182,6 +205,19 @@ fn set(r: &mut Root, v: Value, cx: &mut Context<Root>) {
 
 /// Rows in one card, under their section's head (kit::section_head) when it has one; a hairline between rows.
 fn group(title: Option<String>, rows: Vec<AnyElement>) -> Div {
+    // (While searched: its name is noted, for the search to find a part by the name of one of its groups.)
+    if let Some(t) = &title {
+        WORDS.with(|w| {
+            if let Some(w) = w.borrow_mut().as_mut() {
+                w.push(with_en(t.clone(), &[t]));
+            }
+        });
+        TITLES.with(|l| {
+            if let Some(l) = l.borrow_mut().as_mut() {
+                l.push(t.clone());
+            }
+        });
+    }
     div().flex().flex_col().gap(px(8.)).when_some(title, |d, t| d.child(section_head(t, None))).child(rows_card(rows))
 }
 
@@ -199,6 +235,47 @@ thread_local! {
     /// While Settings is searched: the words (folded), whether the part being built matched by its name, and the rows
     /// that match, kept as they are (their switches still work) to be shown by part.
     static FIND: std::cell::RefCell<Option<(String, bool, Vec<AnyElement>)>> = const { std::cell::RefCell::new(None) };
+    /// While searched in Vietnamese: each text's English words, so "proxy" or "backup" finds its row too.
+    static EN: std::cell::RefCell<Option<std::rc::Rc<std::collections::HashMap<String, String>>>> = const { std::cell::RefCell::new(None) };
+    /// That map, made once (the words don't change while the app runs): the search used to make it again every frame.
+    static EN_MADE: std::cell::RefCell<Option<std::rc::Rc<std::collections::HashMap<String, String>>>> = const { std::cell::RefCell::new(None) };
+    /// While searched: the names of the groups the part being built has.
+    static TITLES: std::cell::RefCell<Option<Vec<String>>> = const { std::cell::RefCell::new(None) };
+    /// While the palette reads the parts: every row's words and group's name of the part being built.
+    static WORDS: std::cell::RefCell<Option<Vec<String>>> = const { std::cell::RefCell::new(None) };
+}
+
+/// Each part's rows and group names, for the palette to find a part by one of its settings (app.js's palette read
+/// every Settings page's row and group titles). Built as the search builds them; nothing is shown.
+pub fn part_words(root: &Root, cx: &mut Context<Root>) -> Vec<(Part, Vec<String>)> {
+    EN.with(|m| *m.borrow_mut() = en_of(root));
+    let out = Part::ALL
+        .into_iter()
+        .map(|p| {
+            // (A query no row has: every row is read, none is kept.)
+            FIND.with(|f| *f.borrow_mut() = Some(("\u{1}".into(), false, Vec::new())));
+            WORDS.with(|w| *w.borrow_mut() = Some(Vec::new()));
+            let _ = build_part(root, p, cx);
+            FIND.with(|f| f.borrow_mut().take());
+            (p, WORDS.with(|w| w.borrow_mut().take()).unwrap_or_default())
+        })
+        .collect();
+    EN.with(|m| m.borrow_mut().take());
+    out
+}
+
+fn build_part(root: &Root, p: Part, cx: &mut Context<Root>) -> Vec<Div> {
+    match p {
+        Part::Launch => launch(root, cx),
+        Part::Roblox => roblox::roblox(root, cx),
+        Part::Perf => perf(root, cx),
+        Part::Notify => notify(root, cx),
+        Part::Discord => discord::discord(root, cx),
+        Part::Appearance => appearance::appearance(root, cx),
+        Part::Security => security(root, cx),
+        Part::Backup => backup(root, cx),
+        Part::Updates => updates(root, cx),
+    }
 }
 
 /// Whether the parts are being built for the search box (every row read, not shown as built).
@@ -214,7 +291,7 @@ fn row(title: impl Into<SharedString>, desc: Option<String>, ctl: impl IntoEleme
 
 /// A row whose name is more than words (a badge beside it, a path under it): `words` is what the search reads.
 fn row_el(words: String, title: impl IntoElement, desc: Option<String>, ctl: impl IntoElement) -> AnyElement {
-    let words = format!("{words} {}", desc.as_deref().unwrap_or_default());
+    let words = with_en(format!("{words} {}", desc.as_deref().unwrap_or_default()), &[&words, desc.as_deref().unwrap_or_default()]);
     let el = div()
         .px(px(ROW_X))
         .py(px(12.))
@@ -247,14 +324,38 @@ fn row_words(title: impl IntoElement, desc: Option<String>) -> Div {
 /// from the same left edge.
 fn row_wide(title: impl Into<SharedString>, desc: Option<String>, ctl: impl IntoElement) -> AnyElement {
     let title: SharedString = title.into();
-    let words = format!("{title} {}", desc.as_deref().unwrap_or_default());
+    let words = with_en(format!("{title} {}", desc.as_deref().unwrap_or_default()), &[&title, desc.as_deref().unwrap_or_default()]);
     let el = div().px(px(ROW_X)).pt(px(14.)).pb(px(18.)).flex().flex_col().gap(px(14.)).child(row_words(title, desc)).child(ctl).into_any_element();
     found(&words, el)
+}
+
+/// Each Vietnamese text's English (I18n::en_by_vi) while the page is in Vietnamese, made the first time it is asked.
+fn en_of(root: &Root) -> Option<std::rc::Rc<std::collections::HashMap<String, String>>> {
+    if !root.i18n.vietnamese {
+        return None;
+    }
+    Some(EN_MADE.with(|m| m.borrow_mut().get_or_insert_with(|| std::rc::Rc::new(root.i18n.en_by_vi())).clone()))
+}
+
+/// A row's words, and while searched in Vietnamese the English of its name and description too.
+fn with_en(words: String, parts: &[&str]) -> String {
+    EN.with(|m| match m.borrow().as_ref() {
+        Some(m) => {
+            let en: Vec<&str> = parts.iter().filter_map(|p| m.get(*p)).map(String::as_str).collect();
+            if en.is_empty() { words } else { format!("{words} {}", en.join(" ")) }
+        }
+        None => words,
+    })
 }
 
 /// A built row as the search sees it: shown as is with no search; with one, kept for the results when its words (or
 /// its part's name) match, and an empty spot in the part's own card either way.
 pub(super) fn found(words: &str, el: AnyElement) -> AnyElement {
+    WORDS.with(|w| {
+        if let Some(w) = w.borrow_mut().as_mut() {
+            w.push(words.to_string());
+        }
+    });
     let hit = FIND.with(|f| f.borrow().as_ref().map(|(q, all, _)| *all || folded(words).contains(q.as_str())));
     match hit {
         None => el,
@@ -322,8 +423,39 @@ fn chips_with<T: Clone + PartialEq + 'static>(
     current: &T,
     f: impl Fn(&mut Root, T, &mut Window, &mut Context<Root>) + 'static,
 ) -> Div {
+    chips_marked(root, cx, key, items, Vec::new(), current, f)
+}
+
+/// What stands before a choice in a menu (and on its button when chosen): one of the app's icons, or a letter for a
+/// named program that has no icon of its own here (Bloxstrap's B).
+#[derive(Clone, Copy)]
+enum Mark {
+    Icon(&'static str),
+    Letter(char),
+}
+
+fn mark(m: Mark, on: bool) -> Div {
+    let tone = if on { c(TEXT) } else { c(MUTED) };
+    // The mark alone, no box round it: a box on every choice read as a row of stickers.
+    let tile = div().min_w(px(14.)).flex_none().flex().items_center().justify_center();
+    match m {
+        Mark::Icon(name) => tile.child(icon(name, 14., tone)),
+        Mark::Letter(l) => tile.text_size(px(T_XS)).font_weight(FontWeight::SEMIBOLD).text_color(tone).child(l.to_string()),
+    }
+}
+
+/// The same, with a mark before each choice (`marks` in the same order; empty for none).
+fn chips_marked<T: Clone + PartialEq + 'static>(
+    root: &Root,
+    cx: &mut Context<Root>,
+    key: &'static str,
+    items: Vec<(T, String, bool)>,
+    marks: Vec<Mark>,
+    current: &T,
+    f: impl Fn(&mut Root, T, &mut Window, &mut Context<Root>) + 'static,
+) -> Div {
     let f = std::rc::Rc::new(f);
-    if items.len() <= 3 {
+    if items.len() <= 3 && marks.is_empty() {
         let mut track = div().flex().flex_none().gap(px(2.)).p(px(3.)).rounded(px(R_M)).bg(c(INSET)).border_1().border_color(c(LINE));
         for (i, (value, label, off)) in items.into_iter().enumerate() {
             let on = value == *current;
@@ -332,7 +464,7 @@ fn chips_with<T: Clone + PartialEq + 'static>(
                 segment((key, i), on)
                     .h(px(26.))
                     .px(px(12.))
-                    .text_size(px(T_S + 0.5))
+                    .text_size(px(T_M))
                     .whitespace_nowrap()
                     .when(off, |d| d.opacity(0.4))
                     .child(label)
@@ -343,6 +475,7 @@ fn chips_with<T: Clone + PartialEq + 'static>(
     }
     let open = root.settings.menu == Some(key);
     let label = items.iter().find(|(v, _, _)| v == current).map(|(_, l, _)| l.clone()).unwrap_or_else(|| "—".into());
+    let chosen_mark = items.iter().position(|(v, _, _)| v == current).and_then(|i| marks.get(i).copied());
     let mut wrap = div().relative().flex_none().child(
         hot(key)
             .h(px(34.))
@@ -359,6 +492,7 @@ fn chips_with<T: Clone + PartialEq + 'static>(
             .cursor_pointer()
             .text_size(px(T_M))
             .text_color(c(TEXT))
+            .when_some(chosen_mark, |d, m| d.pl(px(8.)).child(mark(m, true)))
             .child(div().flex_1().min_w_0().truncate().child(label))
             .child(icon(if open { "chevronUp" } else { "chevronDown" }, 14., c(MUTED)))
             .on_click(cx.listener(move |r, _, _, cx| {
@@ -395,10 +529,12 @@ fn chips_with<T: Clone + PartialEq + 'static>(
         for (i, (value, label, off)) in items.into_iter().enumerate() {
             let on = value == *current;
             let f = f.clone();
+            let m = marks.get(i).copied();
             menu = menu.child(
                 menu_row((key, 1000 + i))
                     .text_color(if on { c(TEXT) } else { c(TEXT_2) })
                     .when(off, |d| d.opacity(0.4))
+                    .when_some(m, |d, m| d.gap(px(10.)).child(mark(m, on)))
                     .child(div().min_w_0().flex_1().whitespace_nowrap().child(label))
                     .child(div().w(px(14.)).flex_none().when(on, |d| d.child(icon("check", 14., c(TEXT)))))
                     .when(!off, |d| {
@@ -567,15 +703,11 @@ fn path_text(p: &str) -> Div {
 /// A part picked in the nav (or by its name over search results): the search is emptied, what was half done in the
 /// part being left is dropped, and the page goes back to its top.
 fn open_part(r: &mut Root, p: Part, window: &mut Window, cx: &mut Context<Root>) {
-    if !r.set_q.read(cx).value().is_empty() {
+    let searched = !r.set_q.read(cx).value().is_empty();
+    if searched {
         r.set_q.update(cx, |s, cx| s.set_value("", window, cx));
-        r.settings.part = p;
-        if p == Part::Discord {
-            discord::opened(r, window, cx);
-        }
-        r.settings.scroll.set_offset(point(px(0.), px(0.)));
-        cx.notify();
-    } else if r.settings.part != p {
+    }
+    if searched || r.settings.part != p {
         r.settings.part = p;
         r.settings.asking = None;
         r.settings.rc_pick = None;
@@ -670,37 +802,45 @@ pub fn settings(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
                 .px(px(12.))
                 .rounded(px(R_M))
                 .gap(px(11.))
-                .text_size(px(T_M + 0.5))
+                .text_size(px(T_L))
                 .font_weight(if on { FontWeight::SEMIBOLD } else { FontWeight::MEDIUM })
                 .child(icon(p.icon(), 16., if on { c(INK) } else { c(MUTED) }))
                 .child(div().flex_1().min_w_0().truncate().child(root.tr(p.title())))
-                .when(look, |d| d.child(div().size(px(7.)).flex_none().rounded_full().bg(if on { c(INK) } else { c(WARN) })))
+                .when(look, |d| {
+                    // (Shell.tsx's dot says what it is under the mouse.)
+                    let tip: SharedString = root.tr("set.needsLook").into();
+                    d.child(div().id(("set-look", i)).size(px(7.)).flex_none().rounded_full().bg(if on { c(INK) } else { c(WARN) }).tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into()))
+                })
                 .when(!on, |d| d.on_click(cx.listener(move |r, _, window, cx| open_part(r, p, window, cx)))),
         );
     }
-    let build = |p: Part, cx: &mut Context<Root>| match p {
-        Part::Launch => launch(root, cx),
-        Part::Roblox => roblox::roblox(root, cx),
-        Part::Perf => perf(root, cx),
-        Part::Notify => notify(root, cx),
-        Part::Discord => discord::discord(root, cx),
-        Part::Appearance => appearance::appearance(root, cx),
-        Part::Security => security(root, cx),
-        Part::Backup => backup(root, cx),
-        Part::Updates => updates(root, cx),
-    };
+    let build = |p: Part, cx: &mut Context<Root>| build_part(root, p, cx);
     // Words in the search box: every part is built, and only its rows that match are shown, under the part's name (a
     // part whose name matches shows all its rows); Open goes to that part.
     let q = folded(root.set_q.read(cx).value().trim());
     let searching = !q.is_empty();
+    // The English words a search set up go once it is cleared: left, every later frame looked each row up in them.
+    if !searching {
+        EN.with(|m| m.borrow_mut().take());
+    }
     let mut hits = 0usize;
     let body: Vec<Div> = if searching {
         let mut out = Vec::new();
+        EN.with(|m| *m.borrow_mut() = en_of(root));
         for p in Part::ALL {
-            let all = folded(&root.tr(p.title())).contains(q.as_str());
+            let all = folded(&root.tr(p.title())).contains(q.as_str()) || folded(&root.i18n.en(p.title())).contains(q.as_str());
             FIND.with(|f| *f.borrow_mut() = Some((q.clone(), all, Vec::new())));
+            TITLES.with(|l| *l.borrow_mut() = Some(Vec::new()));
             let _ = build(p, cx);
-            let found = FIND.with(|f| f.borrow_mut().take()).map(|(_, _, v)| v).unwrap_or_default();
+            let mut found = FIND.with(|f| f.borrow_mut().take()).map(|(_, _, v)| v).unwrap_or_default();
+            // A group's name that matches (app.js's set-grp-title, in either language) shows its rows: the part is
+            // built again with all its rows.
+            let titles = TITLES.with(|l| l.borrow_mut().take()).unwrap_or_default();
+            if !all && titles.iter().any(|t| folded(&with_en(t.clone(), &[t])).contains(q.as_str())) {
+                FIND.with(|f| *f.borrow_mut() = Some((q.clone(), true, Vec::new())));
+                let _ = build(p, cx);
+                found = FIND.with(|f| f.borrow_mut().take()).map(|(_, _, v)| v).unwrap_or_default();
+            }
             if found.is_empty() {
                 continue;
             }
@@ -755,7 +895,7 @@ pub fn settings(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
         .flex_col()
         .gap(px(4.))
         .child(div().text_size(px(T_FIG)).line_height(px(30.)).font_weight(FontWeight::BOLD).child(part_title))
-        .when_some(part_about, |d, t| d.child(div().text_size(px(T_M + 0.5)).line_height(px(20.)).text_color(c(TEXT_2)).child(t)));
+        .when_some(part_about, |d, t| d.child(div().text_size(px(T_L)).line_height(px(20.)).text_color(c(TEXT_2)).child(t)));
     let header = div()
         .flex_none()
         .px(px(24.))
@@ -837,7 +977,7 @@ const SIZES: [(i64, i64); 15] = [
     (400, 300),
     (320, 240),
 ];
-const DELAYS: [i64; 10] = [0, 3, 5, 8, 10, 15, 20, 30, 45, 60];
+const DELAYS: [i64; 12] = [0, 3, 5, 8, 10, 15, 20, 30, 45, 60, 90, 120];
 
 fn launch(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
     let st = st(root);
@@ -867,7 +1007,12 @@ fn launch(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
         root.tr("set.multi"),
         div().flex().items_center().gap(px(8.)).child(root.tr("set.multi")).child(badge(root.tr(pill), tone)),
         Some(root.tr("set.multiDesc")),
-        multi,
+        div()
+            .flex()
+            .items_center()
+            .gap(px(8.))
+            .child(Button::new("s-multi-help", root.tr("set.details")).small().quiet().on_click(cx.listener(|r, _, window, cx| r.multi_help(window, cx))))
+            .child(multi),
     )];
     if asking {
         let no_ask = root.settings.no_ask;
@@ -1020,6 +1165,18 @@ fn launch(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
         options.push(("custom".into(), root.i18n.tv("launch.custom", &[("name", custom)]), true));
     }
     options.push(("vng".into(), "Roblox VNG".into(), has("vng")));
+    let marks: Vec<Mark> = options
+        .iter()
+        .map(|(v, words, _)| match v.as_str() {
+            "auto" => Mark::Icon("link"),
+            "roblox" => Mark::Icon("roblox"),
+            "direct" => Mark::Icon("play"),
+            "store" => Mark::Icon("download"),
+            "custom" => Mark::Icon("folder"),
+            "vng" => Mark::Icon("globe"),
+            _ => Mark::Letter(words.chars().find(|ch| ch.is_alphanumeric()).unwrap_or('?').to_ascii_uppercase()),
+        })
+        .collect();
     let options: Vec<(String, String, bool)> =
         options.into_iter().map(|(v, words, ok)| if ok { (v, words, false) } else { (v, root.i18n.tv("launch.missing", &[("name", &words)]), true) }).collect();
     let via = if options.iter().any(|o| o.0 == via_saved) { via_saved.clone() } else { "auto".into() };
@@ -1039,7 +1196,7 @@ fn launch(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
             .flex()
             .items_center()
             .gap(px(8.))
-            .child(chips(root, cx, "s-launch", options, &via, |r, v, cx| set(r, json!({ "launchVia": v }), cx)))
+            .child(chips_marked(root, cx, "s-launch", options, marks, &via, |r, v, _, cx| set(r, json!({ "launchVia": v }), cx)))
             // After the choices and in words ("Other launcher…"): a bare folder before them said nothing (review 7.3).
             .child(Button::new("s-pick-launcher", root.tr("launch.pickBtn")).icon("folder").small().quiet().on_click(cx.listener(|r, _, _, cx| {
                 ask(r, "pickLauncher", json!({}), cx, |_, _| {})
@@ -1198,13 +1355,13 @@ fn notify(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
         let copy = topic.clone();
         phone_rows.push(row_el(
             root.tr("set.phoneTopic"),
-            div().flex().flex_col().gap(px(4.)).child(root.tr("set.phoneTopic")).child(
-                div().px(px(8.)).py(px(4.)).rounded(px(R_S)).bg(c(INSET)).text_size(px(T_S)).font_family("Consolas").text_color(c(TEXT_2)).child(topic),
-            ),
+            root.tr("set.phoneTopic"),
             Some(desc),
             div()
                 .flex()
+                .items_center()
                 .gap(px(8.))
+                .child(div().w(px(240.)).child(crate::kit::field(&root.phone_topic, None)))
                 .child(Button::new("s-phone-copy", root.tr("set.phoneCopy")).icon("copy").small().quiet().on_click(cx.listener(move |r, _, _, cx| {
                     cx.write_to_clipboard(ClipboardItem::new_string(copy.clone()));
                     ok(r, r.tr("set.phoneCopied"));
@@ -1402,19 +1559,29 @@ fn backup(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
     let suggested: Vec<(String, String)> =
         bk.get("suggested").and_then(Value::as_array).map(|l| l.iter().map(|x| (s(x, "path").to_string(), s(x, "name").to_string())).collect()).unwrap_or_default();
     let mut ctl = div().flex().items_center().gap(px(8.));
-    if !has_folder {
-        for (i, (p, n)) in suggested.into_iter().enumerate() {
-            ctl = ctl.child(Button::new(("s-bk-use", i), root.i18n.tv("bk.use", &[("name", &n)])).small().quiet().icon("cloud").on_click(cx.listener(move |r, _, _, cx| {
-                ask(r, "setBackup", json!({ "folder": p.clone() }), cx, |_, _| {})
-            })));
-        }
+    for (i, (p, n)) in suggested.into_iter().enumerate() {
+        ctl = ctl.child(Button::new(("s-bk-use", i), root.i18n.tv("bk.use", &[("name", &n)])).small().quiet().icon("cloud").on_click(cx.listener(move |r, _, _, cx| {
+            ask(r, "setBackup", json!({ "folder": p.clone() }), cx, |_, _| {})
+        })));
     }
     ctl = ctl
         .when(has_folder, |d| {
             d.child(IconButton::new("s-bk-open", "folder").tip(root.tr("set.openFolder")).on_click(cx.listener(|r, _, _, _| r.send("openBackupFolder", json!({})))))
         })
         .child(Button::new("s-bk-pick", root.tr("bk.choose")).small().on_click(cx.listener(|r, _, _, cx| ask(r, "pickBackupFolder", json!({}), cx, |_, _| {}))));
-    rows.push(row_el(root.tr("bk.folder"), div().flex().flex_col().gap(px(4.)).child(root.tr("bk.folder")).child(path_text(if has_folder { &folder } else { &no_folder })), None, ctl));
+    rows.push(row_el(
+        root.tr("bk.folder"),
+        div()
+            .flex()
+            .flex_col()
+            .gap(px(4.))
+            .child(root.tr("bk.folder"))
+            .child(path_text(if has_folder { &folder } else { &no_folder }))
+            // None yet: nothing is backed up until one is chosen (BackupPage.tsx).
+            .when(!has_folder, |d| d.child(div().text_size(px(T_S)).text_color(c(WARN)).child(root.tr("bk.needFolderDesc")))),
+        None,
+        ctl,
+    ));
     if b(bk, "cloud") && b(bk, "weakPassword") {
         rows.push(note("alert", root.tr("bk.weak"), WARN));
     }
@@ -1426,7 +1593,7 @@ fn backup(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
     rows.push(row(
         status,
         Some(s(bk, "error").to_string()).filter(|e| !e.is_empty()),
-        Button::new("s-bk-now", root.tr("bk.now")).small().disabled(!has_folder).on_click(cx.listener(|r, _, _, cx| {
+        Button::new("s-bk-now", root.tr("bk.now")).small().disabled(!has_folder).tip(if has_folder { String::new() } else { root.tr("bk.needFolder") }).on_click(cx.listener(|r, _, _, cx| {
             ask(r, "backupNow", json!({}), cx, |r, _| ok(r, r.tr("bk.done")))
         })),
     ));
@@ -1508,9 +1675,12 @@ fn updates(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
     let supported = b(u, "supported");
     let status = s(u, "status");
     let v = s(u, "version");
+    // The time; on another day than today, the date too (UpdatesPage.tsx).
     let when = u.get("checkedAt").and_then(Value::as_str).and_then(crate::time::iso_secs).map(|at| {
         let l = at + crate::time::utc_offset_secs();
-        format!("{:02}:{:02}", l.rem_euclid(86400) / 3600, l.rem_euclid(3600) / 60)
+        let hm = format!("{:02}:{:02}", l.rem_euclid(86400) / 3600, l.rem_euclid(3600) / 60);
+        let today = (crate::time::now_secs() + crate::time::utc_offset_secs()).div_euclid(86400);
+        if l.div_euclid(86400) == today { hm } else { format!("{} {hm}", civil_dm(l.div_euclid(86400), root.i18n.vietnamese)) }
     });
     let text = if !supported {
         root.tr("upd.unsupported")
@@ -1562,6 +1732,8 @@ fn updates(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
         chips_line = chips_line.child(one.child(kbd(k)).child(div().ml(px(3.)).child(root.tr(key))));
     }
     let taken: Vec<String> = keys.get("taken").and_then(Value::as_array).map(|l| l.iter().filter_map(Value::as_str).map(str::to_string).collect()).unwrap_or_default();
+    // One the keyboard types a character with (AltGr is Ctrl+Alt) is said too, when its hook was refused.
+    let typing: Vec<String> = keys.get("typing").and_then(Value::as_array).map(|l| l.iter().filter_map(Value::as_str).map(str::to_string).collect()).unwrap_or_default();
     let app = vec![
         row(
             root.tr("set.boot"),
@@ -1592,10 +1764,20 @@ fn updates(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
                     .child(chips_line)
                     .when(keys_on && !taken.is_empty(), |d| {
                         d.child(div().text_size(px(T_S)).text_color(c(WARN)).child(root.i18n.tv("set.hotkeysTaken", &[("keys", &taken.join(", "))])))
+                    })
+                    .when(keys_on && !typing.is_empty(), |d| {
+                        d.child(div().text_size(px(T_S)).text_color(c(WARN)).child(root.i18n.tv("set.hotkeysTyping", &[("keys", &typing.join(", "))])))
                     }),
             )
             .child(switch("s-hotkeys", keys_on, cx, |r, on, cx| ask(r, "setHotkeys", json!({ "enabled": on }), cx, |_, _| {})))
             .into_any_element(),
+        // Hardware acceleration of the windows still drawn as web pages (mini window, macro panel, sign-in browser):
+        // off is the safe rendering WebView2 starts with (UpdatesPage.tsx's s-gpu).
+        row(
+            root.tr("set.gpu"),
+            Some(root.tr("set.gpuDesc")),
+            switch("s-gpu", !b(&root.state, "safeRendering"), cx, |r, on, cx| ask(r, "setRendering", json!({ "gpu": on }), cx, |_, _| {})),
+        ),
     ];
     let link = |id: &'static str, icon_name: &'static str, label: String, cmd: &'static str| {
         Button::new(id, label).icon(icon_name).small().on_click(cx.listener(move |r, _, _, _| r.send(cmd, json!({}))))

@@ -181,7 +181,17 @@ pub fn main_core(args: &[String]) {
     // PORT: a Rust panic is the nearest thing to an unhandled exception; the hook logs it and shows it (throttled), and
     // the thread it happened on still ends. The C#'s TaskScheduler.UnobservedTaskException has no counterpart (a task's
     // panic ends that task).
-    std::panic::set_hook(Box::new(|info| on_unexpected(&info.to_string())));
+    // (A panic caught where the code goes on, as the C#'s try/catch did, is only logged: see catch_unwind.)
+    std::panic::set_hook(Box::new(|info| {
+        // Which thread: "core", "main" (the window), a watcher's own; the panic's words name only the line.
+        let text = format!("{info} (thread \"{}\")", std::thread::current().name().unwrap_or("unnamed"));
+        if CAUGHT.with(|c| c.get() > 0) {
+            log::write(&text);
+        } else {
+            on_unexpected(&text);
+        }
+    }));
+    log::catch_crashes();
 
     if !relaunch::is_update_run(args) {
         wait_for_update_run(UPDATE_RUN_WAIT);
@@ -215,6 +225,11 @@ pub fn main_core(args: &[String]) {
     roblox_processes::show_left_hidden(); // Roblox windows a run that ended suddenly had hidden
     window_icons::clear_leftovers(); // …and the icons it had put on them (its taskbar groups: at the first window check)
     prefs::load();
+    {
+        let version = option_env!("BLOXKEEP_VERSION").unwrap_or(env!("CARGO_PKG_VERSION"));
+        log::run_started(version.split('+').next().unwrap_or(version), ui::windows_build(), &l::language(), relaunch::is_update_run(args));
+    }
+    log::watch_window();
     vaults::load(); // the vault the lock screen offers (and an update's restart opens): the last one used
     BrowserLoginForm::cleanup_leftover_profiles();
     CaptchaForm::cleanup_leftover_profiles();
@@ -229,7 +244,13 @@ pub fn main_core(args: &[String]) {
     // interface can ask anything (the C# constructor set them).
     let (stop_tx, stop_rx) = oneshot::channel::<()>();
     let (ready_tx, ready_rx) = mpsc::channel::<bool>();
-    let core = std::thread::Builder::new().name("core".into()).spawn(move || {
+    let core = std::thread::Builder::new().name("core".into()).stack_size(16 << 20).spawn(move || {
+        // COM for the window property stores (taskbar groups) and the shell calls made here; free-threaded, as this
+        // thread pumps no messages.
+        // SAFETY: once, first thing on this thread; it lives as long as the process.
+        unsafe {
+            windows_sys::Win32::System::Com::CoInitializeEx(std::ptr::null(), windows_sys::Win32::System::Com::COINIT_MULTITHREADED as u32);
+        }
         rt::run(move || async move {
             // Nothing is running yet, so report why the App could not be made instead of vanishing.
             let made = std::panic::catch_unwind(std::panic::AssertUnwindSafe(App::start));
@@ -295,8 +316,15 @@ pub fn main_core(args: &[String]) {
     if let Ok(core) = core {
         let _ = core.join();
     }
+    if ran.is_ok() {
+        log::run_ended();
+    }
     drop(single); // the single-instance mutex goes with the process, after everything else
     if let Err(e) = ran {
+        // The window failed (it couldn't be made, or its thread panicked): what went wrong stays on screen until read.
+        if let Some(h) = ERROR_BOX.lock().unwrap_or_else(|e| e.into_inner()).take() {
+            let _ = h.join();
+        }
         std::panic::resume_unwind(e);
     }
 }
@@ -423,9 +451,33 @@ fn use_our_uninstaller() {
 }
 
 static LAST_ERROR_BOX: Mutex<Option<Instant>> = Mutex::new(None);
+/// The error box last shown: when the window's own thread fails, the process waits for it to be closed before it ends
+/// (else the box would go with the process before anyone saw it).
+static ERROR_BOX: Mutex<Option<std::thread::JoinHandle<()>>> = Mutex::new(None);
 static INPUT_LANGUAGE_LOGGED: AtomicBool = AtomicBool::new(false);
 
 /// Logs the error; shows it at most every few seconds so a repeating failure can't flood the screen.
+thread_local! {
+    /// How deep this thread is in catch_unwind's below: a panic there is caught and handled, not unexpected.
+    static CAUGHT: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
+}
+
+/// std::panic::catch_unwind for a panic the code catches and goes on from (the C#'s try/catch): the hook only logs it.
+/// The error box was for what nothing caught (Application.ThreadException), and it came up for these too.
+pub fn catch_unwind<F: FnOnce() -> R + std::panic::UnwindSafe, R>(f: F) -> std::thread::Result<R> {
+    CAUGHT.with(|c| c.set(c.get() + 1));
+    let r = std::panic::catch_unwind(f);
+    CAUGHT.with(|c| c.set(c.get() - 1));
+    r
+}
+
+/// For a call from Windows (a window procedure, a hook, a posted closure, a timer): a panic crossing into Windows aborts
+/// the whole process. Here it is shown like any unexpected error (the hook) and the call answers `fallback`; the app goes
+/// on, as the C#'s Application.ThreadException let it.
+pub fn shielded<R>(fallback: impl FnOnce() -> R, f: impl FnOnce() -> R) -> R {
+    std::panic::catch_unwind(std::panic::AssertUnwindSafe(f)).unwrap_or_else(|_| fallback())
+}
+
 fn on_unexpected(message: &str) {
     // PORT: the C# skipped the CultureNotFoundException WinForms raised on a keyboard-language switch (Alt+Shift) under
     // InvariantGlobalization; there is no WinForms InputLanguage here, so the case can't happen. The flag is kept for a
@@ -446,5 +498,7 @@ fn on_unexpected(message: &str) {
     }
     // The box on its own thread: a panic on the windows thread must not wait on that thread's own messages.
     let text = l::f("Unexpected error: {0}", &[&message]);
-    let _ = std::thread::Builder::new().name("error-box".into()).spawn(move || ui::error(None, &text));
+    if let Ok(h) = std::thread::Builder::new().name("error-box".into()).spawn(move || ui::error(None, &text)) {
+        *ERROR_BOX.lock().unwrap_or_else(|e| e.into_inner()) = Some(h);
+    }
 }

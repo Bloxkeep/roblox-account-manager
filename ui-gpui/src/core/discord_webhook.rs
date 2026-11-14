@@ -168,7 +168,7 @@ pub const GREY: i32 = 0x4E5058;
 pub const DEFAULT_NAME: &str = "Bloxkeep";
 pub const LOGO: &str = "https://raw.githubusercontent.com/Bloxkeep/roblox-account-manager/main/docs/brand/bloxkeep.png";
 
-static HTTP: LazyLock<ureq::Agent> = LazyLock::new(|| ureq::AgentBuilder::new().timeout(Duration::from_secs(15)).redirects(0).build());
+static HTTP: LazyLock<ureq::Agent> = LazyLock::new(|| crate::net::builder().timeout(Duration::from_secs(15)).redirects(0).build());
 // PORT: PooledConnectionLifetime (5 min) has no ureq setting; ureq keeps idle connections in its own pool.
 
 // discord.com, discordapp.com and their canary./ptb. hosts, an optional API version, then the webhook's id and token.
@@ -195,7 +195,11 @@ pub fn try_normalize(url: Option<&str>) -> Option<String> {
 /// What the page shows of a saved link: enough to tell two webhooks apart, never the token.
 pub fn mask(url: &str) -> String {
     match WEBHOOK_PATTERN.captures(url) {
-        Some(m) => format!("discord.com/api/webhooks/…{}/••••••", &m[1][m[1].len() - 4..]),
+        // The id's last four characters: `\d` takes any script's digits, so not always four bytes.
+        Some(m) => {
+            let start = m[1].char_indices().rev().nth(3).map_or(0, |(i, _)| i);
+            format!("discord.com/api/webhooks/…{}/••••••", &m[1][start..])
+        }
         None => String::new(),
     }
 }
@@ -228,15 +232,10 @@ fn len16(s: &str) -> usize {
 /// Cut to at most `max` UTF-16 units (Discord counts no fewer), ending with "…" when cut.
 pub fn cut(text: Option<&str>, max: usize) -> String {
     let text = text.unwrap_or("");
-    let units: Vec<u16> = text.encode_utf16().collect();
-    if units.len() <= max {
+    if len16(text) <= max {
         return text.to_string();
     }
-    let mut end = max.saturating_sub(1);
-    if end > 0 && (0xD800..=0xDBFF).contains(&units[end - 1]) {
-        end -= 1; // never half an emoji
-    }
-    String::from_utf16_lossy(&units[..end]) + "…"
+    crate::core::base::cut_utf16(text, max.saturating_sub(1)).to_string() + "…"
 }
 
 /// The JSON Discord gets: an embed (or plain text) within every limit, pings first in `content` and

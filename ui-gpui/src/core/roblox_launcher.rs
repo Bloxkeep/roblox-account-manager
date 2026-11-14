@@ -2,13 +2,13 @@
 use std::io::BufRead;
 use std::os::windows::process::CommandExt;
 use std::process::{Command, Stdio};
-use std::sync::LazyLock;
+use std::sync::{LazyLock, Mutex};
 
 use regex::Regex;
 
 use crate::core::base::{Fail, Res};
 use crate::core::game_target::GameTarget;
-use crate::core::roblox_api::{escape_data_string, fail_of};
+use crate::core::roblox_api::{eq_ci, escape_data_string, fail_of};
 use crate::core::roblox_installs::{self as installs, combine, dir_name, file_name, has_invalid_file_name_chars};
 use crate::core::{l, log};
 
@@ -124,6 +124,16 @@ fn place_launcher_url(t: &GameTarget, browser_tracker_id: &str) -> String {
     if let Some(job) = &t.job_id {
         return format!("{BASE_URL}request=RequestGameJob&{common}&gameId={job}&joinAttemptOrigin=publicServerListJoin");
     }
+    // A link's launch data goes with a plain join, before isPlayTogetherGame as the website puts it.
+    if let Some(data) = t.launch_data.as_deref().filter(|d| !d.is_empty()) {
+        let common = format!(
+            "browserTrackerId={browser_tracker_id}&placeId={}&launchData={}&isPlayTogetherGame=false&joinAttemptId={}",
+            t.place_id,
+            escape_data_string(data),
+            uuid::Uuid::new_v4()
+        );
+        return format!("{BASE_URL}request=RequestGame&{common}&joinAttemptOrigin=PlayButton");
+    }
     format!("{BASE_URL}request=RequestGame&{common}&joinAttemptOrigin=PlayButton")
 }
 
@@ -155,9 +165,14 @@ fn not_found(text: String) -> Fail {
 /// "other:<Name>" and "custom" get the link as their first argument, as Windows would.
 /// Returns the link's browser tracker id, new per launch: it is on the client's command line, so its window can be
 /// told apart (roblox_processes::launch_tracker_of).
-pub fn launch(ticket: &str, target: Option<&GameTarget>, launch_via: &str, custom_launcher: &str) -> Res<String> {
+/// `client`: a client to start as it is, past the choice: the build the windows open run on (roblox_installs::kept_copy).
+pub fn launch(ticket: &str, target: Option<&GameTarget>, launch_via: &str, custom_launcher: &str, client: Option<&str>) -> Res<String> {
     let tracker = new_browser_tracker_id();
     let uri = build_launch_uri(ticket, target, Some(&tracker));
+    if let Some(client) = client {
+        start(client, &[&uri])?;
+        return Ok(tracker);
+    }
     let mut launch_via = launch_via.to_string();
     // Windows would only show its own error for a client missing its DLL: another build opens instead, or this is said.
     if matches!(launch_via.as_str(), "auto" | "") && installs::handler_broken() {
@@ -246,11 +261,56 @@ pub fn launch(ticket: &str, target: Option<&GameTarget>, launch_via: &str, custo
                     l::t("Roblox isn't installed. Install it from roblox.com/download, then try again.")
                 }));
             }
+            // The links on another channel's build with Roblox's live one installed beside it: that one, as Windows would
+            // start the links' (roblox_installs::LIVE_BUILD: the other would update and close every Roblox window open).
+            if let Some(links) = installs::usable_handler_path().filter(|h| eq_ci(&file_name(h), "RobloxPlayerBeta.exe"))
+                && let Some(live) = installs::live_beside(Some(links.clone())).filter(|live| !eq_ci(live, &links))
+            {
+                log::note(&format!(
+                    "Roblox start: the links open build {}; started Roblox's live build {} instead.",
+                    file_name(&dir_name(&links).unwrap_or_default()),
+                    file_name(&dir_name(&live).unwrap_or_default())
+                ));
+                start(&live, &[&uri])?;
+                return Ok(tracker);
+            }
+            note_links();
             // Not in Bloxkeep's folder (see Program.Main): the launcher may keep running as long as Roblox does.
             shell_open(&uri)?;
         }
     }
     Ok(tracker)
+}
+
+// ───────── Starts through the links ─────────
+// A user's report (2026-11-14): Bloxkeep had started Roblox's live build itself for hours (the links on another build),
+// then a start went through the links instead, and which program they opened wasn't in error.log. It is now, each time
+// it changes: the handler's file and folder, the build its installer registered, and Roblox's live build.
+
+/// What the links opened at the last start through them.
+static LINKS_SEEN: Mutex<String> = Mutex::new(String::new());
+
+/// Names only, never a path (it holds the Windows user's name).
+fn note_links() {
+    let handler = installs::protocol_handler_path().unwrap_or_default();
+    let live = installs::live_build();
+    let beside = match &live {
+        None => "not known yet".to_string(),
+        Some(live) if dir_name(&handler).is_some_and(|d| eq_ci(&file_name(&d), live)) => format!("{live}, the same"),
+        Some(live) if installs::has_build(Some(&handler), Some(live)) => format!("{live}, installed beside it"),
+        Some(live) => format!("{live}, not installed beside it (or broken)"),
+    };
+    let seen = format!(
+        "Roblox start: through the links, which open {} ({}, registered build {}); Roblox's live build: {beside}.",
+        file_name(&handler),
+        file_name(&dir_name(&handler).unwrap_or_default()),
+        installs::registered_build().unwrap_or_else(|| "none".into())
+    );
+    let mut last = LINKS_SEEN.lock().unwrap_or_else(|e| e.into_inner());
+    if *last != seen {
+        log::note(&seen);
+        *last = seen;
+    }
 }
 
 /// Process.Start with UseShellExecute: Windows opens the link with its handler, from the temp folder.
@@ -262,9 +322,23 @@ fn shell_open(uri: &str) -> Res<()> {
     let dir = wide(&std::env::temp_dir().to_string_lossy());
     // SAFETY: all strings are NUL-terminated and outlive the call; no parent window.
     let r = unsafe { ShellExecuteW(std::ptr::null_mut(), verb.as_ptr(), file.as_ptr(), std::ptr::null(), dir.as_ptr(), SW_SHOWNORMAL) };
-    // Above 32 is success.
+    // Above 32 is success. A failure as .NET's Win32Exception: Windows' own error number (GetLastError, 1155 when no
+    // program opens the link), which the person is told ("Windows couldn't start Roblox (error 1155)"), never a raw text.
     if r as isize <= 32 {
-        return Err(fail_of("Win32Exception", format!("ShellExecute failed ({})", r as isize)));
+        let last = std::io::Error::last_os_error();
+        let code = match last.raw_os_error() {
+            Some(code) if code != 0 => code,
+            // ShellExecute's own numbers, as Windows' errors.
+            _ => match r as isize {
+                0 => 8,           // out of memory
+                26 => 32,         // SE_ERR_SHARE: a sharing violation
+                27 | 31 => 1155,  // SE_ERR_ASSOCINCOMPLETE, SE_ERR_NOASSOC: no program for the link
+                28..=30 => 1156,  // SE_ERR_DDE*: DDE failed
+                32 => 1157,       // SE_ERR_DLLNOTFOUND
+                other => other as i32,
+            },
+        };
+        return Err(fail_of("Win32Exception", std::io::Error::from_raw_os_error(code)));
     }
     Ok(())
 }
@@ -298,13 +372,15 @@ fn start_in_store_package(exe: &str, uri: &str) -> Res<()> {
         "-NonInteractive",
         "-Command",
         &format!(
-            "Invoke-CommandInDesktopPackage -PackageFamilyName {} -AppId {} -Command {} -Args {}",
+            "Invoke-CommandInDesktopPackage -PackageFamilyName {} -AppId {} -Command {} -Args $env:BK_URI",
             quote(installs::STORE_FAMILY),
             quote(installs::STORE_APP_ID),
             quote(exe),
-            quote(uri)
         ),
     ])
+    // The link (sign-in ticket in it) goes in the child's environment, not its command line, which Windows can log
+    // (process creation 4688, PowerShell script blocks 4104) and other programs can read.
+    .env("BK_URI", uri)
     .current_dir(std::env::temp_dir())
     .stdin(Stdio::null())
     .stdout(Stdio::null())

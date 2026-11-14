@@ -87,7 +87,7 @@ pub async fn try_install(owner: Option<isize>) -> bool {
     let step = win_form::blocking(move || -> Step {
         let download = || -> Result<(), String> {
             std::fs::create_dir_all(&work_dir).map_err(|e| e.to_string())?;
-            let agent = ureq::AgentBuilder::new().timeout(Duration::from_secs(120)).build();
+            let agent = crate::net::builder().timeout(Duration::from_secs(120)).build();
             let response = agent.get(BOOTSTRAPPER_URL).call().map_err(|e| e.to_string())?;
             let mut bytes = Vec::new();
             response.into_reader().read_to_end(&mut bytes).map_err(|e| e.to_string())?;

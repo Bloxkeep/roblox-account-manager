@@ -213,15 +213,18 @@ impl App {
     }
 
     /// A picture from the PC for a vault's tile, copied into the data folder (shown before unlocking, so anyone at the PC sees it).
-    pub fn pick_vault_picture(&self, id: &str) -> Res<Value> {
-        let entry = entry_of(id)?;
+    pub async fn pick_vault_picture(&self, id: &str) -> Res<Value> {
+        entry_of(id)?;
         let owner = self.controller.owner.get();
         let title = l::t("Choose a picture for this vault");
         let filter = l::t("Pictures") + " (*.png;*.jpg;*.jpeg;*.webp;*.gif;*.bmp)|*.png;*.jpg;*.jpeg;*.webp;*.gif;*.bmp";
         let initial = special_folder(CSIDL_MYPICTURES);
-        let Some(chosen) = ui::modal(|| open_file_dialog(owner, &title, &filter, &initial)) else {
+        // On a worker thread: the core keeps answering while the box is open.
+        let Some(chosen) = crate::core::rt::blocking(move || ui::modal(|| open_file_dialog(owner, &title, &filter, &initial))).await else {
             return Ok(Value::Null);
         };
+        // The vault may have been taken off the list while the box was open: then no picture is copied for it.
+        let entry = entry_of(id)?;
         let chosen = Path::new(&chosen);
         let kind = chosen.extension().map(|e| format!(".{}", e.to_string_lossy().to_lowercase())).unwrap_or_default();
         if !PICTURE_TYPES.contains(&kind.as_str()) {

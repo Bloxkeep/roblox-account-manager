@@ -52,6 +52,27 @@ pub struct Data {
     friends: Option<Result<Value, ()>>,
     friends_at: Option<Instant>,
     friends_asking: bool,
+    /// The accounts the private servers and the friends were last asked with: other accounts picked ask again at once,
+    /// not a minute later.
+    private_ids: Vec<String>,
+    friend_ids: Vec<String>,
+    /// "Room for all": only servers with a seat for every account picked (Servers.tsx's room); None: on when more
+    /// than one is picked.
+    room: Option<bool>,
+    /// The page Roblox said to wait for was a next one (asked again by itself then, the rows so far kept).
+    wait_more: bool,
+    /// How many more lists Roblox gives this minute (None: not known): a page for ping or FPS only while one is left
+    /// for the next click (Servers.tsx's spare).
+    left: Option<i64>,
+}
+
+/// Ping and FPS are sorted here, over the rows loaded.
+fn local(sort: &str) -> bool {
+    sort == "ping" || sort == "fps"
+}
+
+fn spare(r: &Root) -> bool {
+    r.servers.left.is_none_or(|n| n < 0 || n >= 2)
 }
 
 /// A page of public servers: the first (again), or the next.
@@ -83,17 +104,37 @@ fn load_public(r: &mut Root, more: bool, cx: &mut Context<Root>) {
             r.servers.more = false;
             match answer {
                 Ok(Ok(v)) if v.get("busy").and_then(Value::as_bool) == Some(true) => {
-                    let secs = v.get("retryIn").and_then(Value::as_u64).unwrap_or(20);
-                    r.servers.wait_until = Some(Instant::now() + Duration::from_secs(secs));
+                    // (No wait given, or 0: 20 s, as Servers.tsx's `r.retryIn || 20`; 0 asked again every 400 ms.)
+                    let secs = v.get("retryIn").and_then(Value::as_u64).filter(|n| *n > 0).unwrap_or(20);
+                    let until = Instant::now() + Duration::from_secs(secs);
+                    r.servers.wait_until = Some(until);
+                    r.servers.wait_more = more;
+                    // Asked again by itself once the wait is over (Servers.tsx), even with nothing else redrawing.
+                    cx.spawn(async move |this, cx| {
+                        cx.background_executor().timer(Duration::from_secs(secs) + Duration::from_millis(400)).await;
+                        let _ = this.update(cx, |r, cx| {
+                            if r.servers.place == place && r.servers.wait_until == Some(until) && !r.servers.more {
+                                r.servers.wait_until = None;
+                                load_public(r, more, cx);
+                            }
+                        });
+                    })
+                    .detach();
                 }
                 Ok(Ok(v)) => {
                     r.servers.wait_until = None;
+                    r.servers.left = v.get("left").and_then(Value::as_i64);
                     let mut got = v.get("servers").and_then(Value::as_array).cloned().unwrap_or_default();
                     // (A page may repeat a server of the one before.)
                     got.retain(|n| !r.servers.rows.iter().any(|o| o.get("jobId") == n.get("jobId")));
                     r.servers.rows.extend(got);
                     r.servers.next = v.get("next").and_then(Value::as_str).filter(|n| !n.is_empty()).map(str::to_string);
+                    // Ping and FPS: the first page and one more, so the order is over more than one page's servers.
+                    if !more && local(r.servers.sort) && r.servers.next.is_some() && spare(r) {
+                        load_public(r, true, cx);
+                    }
                 }
+                Err(_) | Ok(Err(_)) if more => {}
                 _ => r.servers.failed = true,
             }
             cx.notify();
@@ -106,9 +147,13 @@ fn set_sort(r: &mut Root, sort: &'static str, cx: &mut Context<Root>) {
     let was = r.servers.sort == "fewest";
     r.servers.sort = sort;
     // Ping and FPS are sorted here, from the fullest servers (the ones people play on); only emptiest-first asks again.
-    if was != (sort == "fewest") {
+    // (No rows yet with the first page still on its way: that page is the answer; asking again would spend a list.)
+    if was != (sort == "fewest") || (r.servers.rows.is_empty() && !r.servers.more) {
         r.servers.more = false;
         load_public(r, false, cx);
+    } else if local(sort) && r.servers.rows.len() < 150 && r.servers.next.is_some() && spare(r) && !r.servers.more {
+        // A next page for the order to be over more servers, while that leaves one for the next click.
+        load_public(r, true, cx);
     }
     cx.notify();
 }
@@ -122,18 +167,26 @@ pub fn want(r: &mut Root, place: i64, cx: &mut Context<Root>) {
         load_public(r, false, cx);
     } else if !r.servers.more && r.servers.wait_until.is_some_and(|t| Instant::now() >= t) {
         r.servers.wait_until = None;
-        if r.servers.rows.is_empty() {
+        if r.servers.wait_more && r.servers.next.is_some() {
+            load_public(r, true, cx);
+        } else if r.servers.rows.is_empty() {
             load_public(r, false, cx);
         }
     }
     want_friends(r, place, cx);
-    if r.servers.loading || r.servers.at.is_some_and(|t| t.elapsed() < FRESH) {
+    if r.servers.loading {
+        return;
+    }
+    // The accounts asked: the picked ones (Servers.tsx's ids), else the signed-in ones; the app's limit of them (six).
+    let able = friends::able_ref(r);
+    let picked: Vec<String> = able.iter().filter(|a| r.selected.contains(s(a, "id"))).take(6).map(|a| s(a, "id").to_string()).collect();
+    let ids: Vec<String> = if picked.is_empty() { able.iter().take(6).map(|a| s(a, "id").to_string()).collect() } else { picked };
+    if r.servers.private_ids == ids && r.servers.at.is_some_and(|t| t.elapsed() < FRESH) {
         return;
     }
     let Some(link) = r.link.clone() else { return };
     r.servers.loading = true;
-    // The accounts asked: the signed-in ones, the app's limit of them (it takes six).
-    let ids: Vec<String> = friends::able(r).iter().take(6).map(|a| s(a, "id").to_string()).collect();
+    r.servers.private_ids = ids.clone();
     let rx = link.call("privateServers", json!({ "placeId": place, "ids": ids }));
     cx.spawn(async move |this, cx| {
         let got = match rx.await {
@@ -159,12 +212,16 @@ pub fn want(r: &mut Root, place: i64, cx: &mut Context<Root>) {
 /// Where the accounts' friends are in this game (the app asks with three accounts' own sign-ins, the picked ones
 /// first): their servers, to join.
 fn want_friends(r: &mut Root, place: i64, cx: &mut Context<Root>) {
-    if r.servers.friends_asking || r.servers.friends_at.is_some_and(|t| t.elapsed() < FRESH) {
+    if r.servers.friends_asking {
+        return;
+    }
+    let ids: Vec<String> = r.accounts().iter().filter_map(|a| a.get("id").and_then(Value::as_str)).filter(|id| r.selected.contains(*id)).map(str::to_string).collect();
+    if r.servers.friend_ids == ids && r.servers.friends_at.is_some_and(|t| t.elapsed() < FRESH) {
         return;
     }
     let Some(link) = r.link.clone() else { return };
     r.servers.friends_asking = true;
-    let ids: Vec<String> = r.accounts().iter().filter_map(|a| a.get("id").and_then(Value::as_str)).filter(|id| r.selected.contains(*id)).map(str::to_string).collect();
+    r.servers.friend_ids = ids.clone();
     let rx = link.call("friendServers", json!({ "placeId": place, "ids": ids }));
     cx.spawn(async move |this, cx| {
         let got = match rx.await {
@@ -253,6 +310,8 @@ fn friends(root: &Root, width: f32, cx: &mut Context<Root>) -> (Option<usize>, A
             let at = (!handle.is_empty()).then(|| format!("@{handle}"));
             let whose = root.i18n.tv("srv.friendOf", &[("acc", s(f, "via"))]);
             let job = s(f, "jobId").to_string();
+            // (Their own place, as the web page's f.placeId || placeId: a friend can be in one of the game's sub-places.)
+            let their_place = f.get("placeId").and_then(Value::as_i64).filter(|p| *p > 0);
             let tip: SharedString = root.i18n.tv("srv.useFriendTip", &[("name", &name)]).into();
             block()
                     .w(px(card_w))
@@ -284,6 +343,7 @@ fn friends(root: &Root, width: f32, cx: &mut Context<Root>) -> (Option<usize>, A
                         div().id(("srv-friend", i)).flex_none().tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into()).child(
                             Button::new(("srv-friend-join", i), root.tr("srv.join")).icon("play").small().disabled(job.is_empty()).on_click(cx.listener(move |r, _, _, cx| {
                                 crate::pages::games::pick_for_server(r, job.clone());
+                                r.games.pick_place = their_place;
                                 cx.notify();
                             })),
                         ),
@@ -320,7 +380,14 @@ fn public(root: &Root, width: f32, cx: &mut Context<Root>) -> Div {
         let (n, most) = (v.get("playing").and_then(Value::as_i64).unwrap_or(0), v.get("maxPlayers").and_then(Value::as_i64).unwrap_or(0));
         most > 0 && n >= most
     };
-    let mut rows: Vec<&Value> = sv.rows.iter().collect();
+    // The accounts that would go in together: those picked that can play.
+    let party = root.accounts().iter().filter(|a| root.selected.contains(s(a, "id")) && crate::pages::accounts::can_play(a)).count().max(1) as i64;
+    let room = party > 1 && sv.room.unwrap_or(true);
+    let mut rows: Vec<&Value> = sv
+        .rows
+        .iter()
+        .filter(|v| !room || v.get("maxPlayers").and_then(Value::as_i64).unwrap_or(0) - v.get("playing").and_then(Value::as_i64).unwrap_or(0) >= party)
+        .collect();
     if sort == "ping" {
         rows.sort_by_key(|v| v.get("ping").and_then(Value::as_i64).filter(|p| *p > 0).unwrap_or(i64::MAX));
     }
@@ -343,6 +410,25 @@ fn public(root: &Root, width: f32, cx: &mut Context<Root>) -> Div {
                 .on_click(cx.listener(move |r, _, _, cx| set_sort(r, key, cx))),
         );
     }
+    if party > 1 {
+        sorts = sorts.child(
+            chip("srv-room", room)
+                .h(px(TOOL_H))
+                .px(px(12.))
+                .gap(px(6.))
+                .cursor_pointer()
+                .child(icon("users", 14., c(if room { INK } else { MUTED })))
+                .child(root.i18n.tv("srv.room", &[("n", &party.to_string())]))
+                .tooltip({
+                    let tip: SharedString = root.i18n.tv("srv.roomTip", &[("n", &party.to_string())]).into();
+                    move |_, cx| cx.new(|_| Tip(tip.clone())).into()
+                })
+                .on_click(cx.listener(move |r, _, _, cx| {
+                    r.servers.room = Some(!room);
+                    cx.notify();
+                })),
+        );
+    }
     let open: Vec<String> = rows.iter().filter(|v| !full(v)).map(|v| s(v, "jobId").to_string()).filter(|j| !j.is_empty()).collect();
     let head = section_head(root.tr("srv.publicTitle"), (!rows.is_empty()).then_some(rows.len())).flex_wrap().gap(px(12.)).child(sorts).child(
         // A server with room, any of them.
@@ -362,16 +448,19 @@ fn public(root: &Root, width: f32, cx: &mut Context<Root>) -> Div {
             said(root.tr("srv.loadError"), false).child(Button::new("srv-retry", root.tr("srv.retry")).small().on_click(cx.listener(|r, _, _, cx| load_public(r, false, cx)))).into_any_element()
         } else if sv.more || !sv.asked {
             said(root.tr("av.reading"), true).into_any_element()
+        } else if room && !sv.rows.is_empty() {
+            // Servers there are, none with a seat for every account picked.
+            said(root.i18n.tv("srv.noneRoom", &[("n", &party.to_string())]), false).into_any_element()
         } else {
             said(root.tr("srv.none"), false).into_any_element()
         }
     } else {
         // Each server a card: how full it is, large, with its bar; the ping and frame rate under it; friends there; Join.
+        // (Only the lines near the view are made once there are many: each More adds a page of Roblox's.)
         let (_, card_w) = grid_fit(width, 232., GRID_GAP);
-        let cards: Vec<AnyElement> = rows
-            .iter()
-            .enumerate()
-            .map(|(i, v)| {
+        let key = crate::near::sig((rows.len(), rows.first().map(|v| s(v, "jobId").to_string())));
+        let mut card = |i: usize| {
+                let v = &rows[i];
                 let (n, most) = (v.get("playing").and_then(Value::as_i64).unwrap_or(0), v.get("maxPlayers").and_then(Value::as_i64).unwrap_or(0));
                 let is_full = full(v);
                 let ping = v.get("ping").and_then(Value::as_i64).unwrap_or(0);
@@ -431,19 +520,20 @@ fn public(root: &Root, width: f32, cx: &mut Context<Root>) -> Div {
                                 .items_center()
                                 .gap(px(10.))
                                 .child(if line.is_empty() {
-                                    div().flex_1().min_w_0().truncate().text_size(px(T_S)).text_color(c(DIM)).font_features(tnum()).child(job.chars().take(8).collect::<String>())
+                                    div().flex_1().min_w_0().truncate().text_size(px(T_S)).text_color(c(DIM)).font_features(tnum()).child(job.chars().take(8).collect::<String>()).into_any_element()
                                 } else {
-                                    facts(line).flex_1().text_size(px(T_S))
+                                    // What the ping and the frame rate are (Servers.tsx's titles): the players', not yours.
+                                    let tip: SharedString = [(ping > 0).then(|| root.tr("srv.pingTip")), (fps > 0.).then(|| root.tr("srv.fpsTip"))].into_iter().flatten().collect::<Vec<_>>().join("\n").into();
+                                    div().id(("srv-facts", i)).flex_1().min_w_0().child(facts(line).text_size(px(T_S))).tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into()).into_any_element()
                                 })
-                                .child(Button::new(("srv-join", i), root.tr("srv.join")).icon("play").small().disabled(is_full || job.is_empty()).on_click(cx.listener(move |r, _, _, cx| {
+                                .child(Button::new(("srv-join", i), root.tr("srv.join")).icon("play").small().disabled(is_full || job.is_empty()).tip(if is_full { root.tr("srv.full") } else { String::new() }).on_click(cx.listener(move |r, _, _, cx| {
                                     crate::pages::games::pick_for_server(r, join.clone());
                                     cx.notify();
                                 }))),
                         )
                 .into_any_element()
-            })
-            .collect();
-        grid(GRID_GAP).children(cards).into_any_element()
+            };
+        crate::near::tiles("srv-cards", rows.len(), card_w, GRID_GAP, key, true, 128., &mut card).into_any_element()
     };
     // More of them: Roblox's next page (it may ask to wait first).
     let more = (!rows.is_empty() && sv.next.is_some()).then(|| {
@@ -503,7 +593,7 @@ fn private(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
                             .flex()
                             .items_center()
                             .gap(px(12.))
-                            .child(div().size(px(40.)).flex_none().rounded(px(R_M)).bg(c(RAISED_2)).flex().items_center().justify_center().child(icon("key", 18., c(TEXT_2))))
+                            .child(div().flex_none().child(icon("key", 20., c(TEXT_2))))
                             .child(
                                 div()
                                     .flex_1()
@@ -511,7 +601,7 @@ fn private(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
                                     .flex()
                                     .flex_col()
                                     .gap(px(2.))
-                                    .child(div().truncate().text_size(px(T_L)).font_weight(FontWeight::SEMIBOLD).text_color(c(TEXT)).child(s(v, "name").to_string()))
+                                    .child(div().truncate().text_size(px(T_L)).font_weight(FontWeight::SEMIBOLD).text_color(c(TEXT)).child(Some(s(v, "name")).filter(|n| !n.trim().is_empty()).map_or_else(|| root.tr("srv.privateUnnamed"), str::to_string)))
                                     .child(div().truncate().text_size(px(T_S)).text_color(c(MUTED)).child(s(v, "owner").to_string())),
                             )
                             .child(div().flex_none().flex().items_center().gap(px(6.)).text_size(px(T_M)).font_features(tnum()).text_color(c(tone)).child(icon("users", 14., c(tone))).child(count)),

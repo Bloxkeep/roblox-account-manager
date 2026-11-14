@@ -3,7 +3,11 @@
 //! anti-AFK shows it (all but invisible, click-through, not given the keyboard: anti_afk::hide), given time
 //! to draw, pictured, then minimized or hidden again. Only the game is pictured, not the title bar (an account's name).
 //! Tried on the owner's PC (2026-10-29): a minimized window came out whole, in about half a second, nothing seen.
-use std::{ffi::c_void, sync::mpsc, time::Duration};
+use std::{
+    ffi::c_void,
+    sync::{Condvar, Mutex, mpsc},
+    time::Duration,
+};
 
 use windows_sys::Win32::{
     Foundation::{HWND, RECT},
@@ -121,13 +125,44 @@ fn shown_now(h: isize) -> Option<Picture> {
     result
 }
 
-/// The picture, off the calling thread, or None after PICTURE_TIME (left to finish on its own).
+/// Windows with a picture worker still running. At most one per window: a window that stops answering would
+/// otherwise get a new stuck thread (with its DC and DIB) on every look.
+static BUSY: Mutex<Vec<isize>> = Mutex::new(Vec::new());
+static BUSY_FREED: Condvar = Condvar::new();
+
+/// Takes the window off BUSY when its worker ends, however it ends.
+struct Free(isize);
+
+impl Drop for Free {
+    fn drop(&mut self) {
+        BUSY.lock().unwrap_or_else(|e| e.into_inner()).retain(|&b| b != self.0);
+        BUSY_FREED.notify_all();
+    }
+}
+
+/// The picture, off the calling thread, or None after PICTURE_TIME (left to finish on its own). While the window's
+/// last worker still runs, waits for it within PICTURE_TIME instead of starting another.
 fn timed(h: isize) -> Option<Picture> {
+    // One limit for both waits (the last worker, then this one): PICTURE_TIME in all, not twice it.
+    let deadline = std::time::Instant::now() + PICTURE_TIME;
+    {
+        let busy = BUSY.lock().unwrap_or_else(|e| e.into_inner());
+        let (mut busy, _) = BUSY_FREED.wait_timeout_while(busy, PICTURE_TIME, |b| b.contains(&h)).unwrap_or_else(|e| e.into_inner());
+        if busy.contains(&h) {
+            return None;
+        }
+        busy.push(h);
+    }
+    let free = Free(h);
     let (tx, rx) = mpsc::channel();
-    std::thread::spawn(move || {
+    let spawned = std::thread::Builder::new().name("Bloxkeep window picture".into()).spawn(move || {
+        let _free = free;
         let _ = tx.send(take_client(h));
     });
-    rx.recv_timeout(PICTURE_TIME).ok().flatten()
+    if spawned.is_err() {
+        return None; // the closure, with `free`, was dropped: the window is free again
+    }
+    rx.recv_timeout(deadline.saturating_duration_since(std::time::Instant::now())).ok().flatten()
 }
 
 /// The client area at full size; None when it can't be pictured.

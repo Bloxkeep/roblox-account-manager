@@ -22,6 +22,13 @@ pub struct Ui {
     /// The bar's Job ID box (made the first time its button is pressed: a box needs the window) and whether it shows.
     pub job: Option<Entity<gpui_kit::component::input::InputState>>,
     pub job_open: bool,
+    /// The game the Job ID goes with (app.js's S.jobPlace): the last one the game box was known to hold.
+    pub job_place: Option<i64>,
+    /// The Job ID box to be emptied at the next frame (where no window was at hand: a lookup's answer, Play).
+    pub job_stale: bool,
+    /// Ctrl+L or "/" with none picked: the bar shows anyway, its game box focused, until Esc or another page (the
+    /// Root's page-change count it was asked at).
+    pub place_wanted: Option<u64>,
     /// The header's refresh is waiting for the app (its icon turns until then).
     pub refreshing: bool,
     #[cfg(feature = "shot")]
@@ -149,7 +156,7 @@ fn run(f: impl Fn(&mut Root, &mut Window, &mut Context<Root>) + 'static) -> Go {
 }
 
 /// The server an account is in, when it can be followed: its place and job.
-fn server_of(a: &Value) -> Option<(i64, String)> {
+pub(crate) fn server_of(a: &Value) -> Option<(i64, String)> {
     let pick = |job: Option<&str>, places: [Option<i64>; 2]| {
         let job = job.filter(|j| !j.is_empty())?;
         let place = places.into_iter().flatten().find(|p| *p > 0)?;
@@ -213,20 +220,16 @@ fn main_lines(root: &Root, a: &Value, ids: &[String], picked: &[&Value]) -> Vec<
     }
     out.push(Some(mac));
     out.push(None);
-    // Its server: the other accounts picked go into it (the bar has no server box, so it is done at once).
+    // Its server: put in the bar (game and Job ID), for the accounts picked to Play into, as the web page did.
     if !many && let Some((place, job)) = server_of(a) {
-        let me = id.clone();
+        let name = super::label(a);
         out.push(Some(line(
             "cm-follow",
             Some("server"),
             root.tr("m.follow"),
-            run(move |r, _, cx| {
-                let go: Vec<String> = r.accounts().iter().filter(|x| r.selected.contains(s(x, "id")) && s(x, "id") != me && super::can_play(x)).map(id_of).collect();
-                if go.is_empty() {
-                    r.toast = Some((r.tr("t.selectFirst"), "warn".into()));
-                } else {
-                    r.launch("joinServer", json!({ "ids": go, "placeId": place, "jobId": job }), false, cx);
-                }
+            run(move |r, window, cx| {
+                super::use_server(r, place, job.clone(), window, cx);
+                r.toast = Some((r.i18n.tv("srv.followed", &[("name", &name)]), "ok".into()));
             }),
         )));
     }
@@ -405,17 +408,21 @@ fn macro_lines(root: &Root, ids: &[String]) -> Vec<Option<Line>> {
     if list.is_empty() {
         let mut l = line("cm-macro-none", Some("keyboard"), root.tr("macro.noneYet"), Go::Nothing);
         l.off = true;
-        return vec![Some(l)];
+        // (And a way to make one, as app.js's sub-menu had: to Macros, a new one started.)
+        let new = line("cm-macro-new", Some("plus"), root.tr("macro.newPal"), run(|r, window, cx| {
+            r.auto.tab = crate::pages::auto::Tab::Macros;
+            r.auto.confirm = None;
+            r.go(crate::pages::Page::Auto);
+            crate::pages::macro_form::open(r, None, window, cx);
+        }));
+        return vec![Some(l), Some(new)];
     }
     list.iter()
         .enumerate()
         .map(|(i, m)| {
             let (mid, go) = (s(m, "id").to_string(), ids.to_vec());
             let mut l = line(("cm-macro-run", i), Some("play"), s(m, "name").to_string(), run(move |r, _, cx| {
-                act(r, "runMacro", json!({ "id": mid, "accountIds": go }), cx, |r, v| {
-                    let n = v.get("queued").and_then(Value::as_i64).unwrap_or(0);
-                    r.toast = Some(if n > 0 { (r.i18n.tn("macro.queued", n, &[]), "ok".into()) } else { (r.tr("macro.queuedNone"), "info".into()) });
-                })
+                r.run_macro(mid.clone(), Some(go.clone()), cx)
             }));
             l.hint = m.get("hotkey").and_then(Value::as_str).filter(|k| !k.is_empty()).map(|k| format!("Ctrl+Alt+{k}"));
             Some(l)
@@ -426,10 +433,12 @@ fn macro_lines(root: &Root, ids: &[String]) -> Vec<Option<Line>> {
 /// This account's menu where it opens: under its ⋮ (`button`) or where the right click was; None while it is shut
 /// (and gone) or open elsewhere.
 pub fn place(root: &Root, a: &Value, button: bool, cx: &mut Context<Root>) -> Option<AnyElement> {
-    let m = cx.try_global::<Ui>()?.menu.clone()?;
-    if m.id != s(a, "id") || m.at.is_none() != button {
+    // (Whose it is looked at before the menu is copied: this runs for every card each frame.)
+    let mine = cx.try_global::<Ui>()?.menu.as_ref().is_some_and(|m| m.id == s(a, "id") && m.at.is_none() == button);
+    if !mine {
         return None;
     }
+    let m = cx.try_global::<Ui>()?.menu.clone()?;
     let key = SharedString::from(format!("cm-pop-{}-{}", m.id, if button { "b" } else { "p" }));
     let menu = pop(key, m.open, body(root, a, &m, cx));
     Some(match m.at {
@@ -555,7 +564,7 @@ fn row(l: Line, cx: &mut Context<Root>) -> impl IntoElement {
         .when_some(l.tick, |d, t| {
             d.child(div().w(px(16.)).flex_none().flex().items_center().justify_center().map(|d| match t {
                 // (What is on: a small solid yellow block.)
-                Tick::On => d.child(div().size(px(16.)).rounded(px(5.)).bg(c(FACE)).flex().items_center().justify_center().child(icon("check", 11., c(INK)))),
+                Tick::On => d.child(tick_mark(16.)),
                 Tick::Some => d.child(div().w(px(9.)).h(px(2.)).rounded_full().bg(c(TEXT_2))),
                 Tick::Off => d,
             }))

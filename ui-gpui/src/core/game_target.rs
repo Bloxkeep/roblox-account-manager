@@ -30,7 +30,20 @@ pub struct GameTarget {
     /// A private server's access code (Browse servers): only accounts that own it or were invited get in, unlike a
     /// link code, which lets in anyone with the link.
     pub access_code: Option<String>,
+    /// The kind of roblox.com share link `share_code` is: None for a private server ("Server", also when the link doesn't
+    /// say), an invite or a game's page (`SHARE_TYPES`), or `SHARE_V2`.
+    pub share_type: Option<String>,
+    /// Data a link hands the game as it starts (an event, a friend's invite), at most 200 bytes as Roblox takes it.
+    pub launch_data: Option<String>,
 }
+
+/// A "?v=v2" share link, read at Roblox's deeplinks/v2 (it names no type).
+pub const SHARE_V2: &str = "v2";
+
+/// The share-link types that lead into a game (the website's; RoALT reads the same): a private server, an invite to a
+/// friend's server, a game's page, a screenshot, an affiliate or an event link. A profile, an avatar item or a post don't.
+pub const SHARE_TYPES: [&str; 7] =
+    ["Server", "ExperienceInvite", "NotificationExperienceInvite", "ScreenshotInvite", "ExperienceDetails", "ExperienceAffiliate", "ExperienceEvent"];
 
 static GAME_PATH: LazyLock<Regex> = LazyLock::new(|| RegexBuilder::new(r"/games/(\d+)").case_insensitive(true).build().unwrap());
 // A pair also right after "roblox://" or at the start ("placeId=…&gameInstanceId=…"), not only after ? or &.
@@ -38,7 +51,7 @@ static QUERY_PAIR: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?:[?&]|//|^)
 
 impl GameTarget {
     pub fn new(place_id: i64, job_id: Option<String>, link_code: Option<String>, share_code: Option<String>) -> Self {
-        GameTarget { place_id, job_id, link_code, share_code, follow: None, access_code: None }
+        GameTarget { place_id, job_id, link_code, share_code, ..Default::default() }
     }
 
     /// A private server, by its link or by its access code.
@@ -64,6 +77,7 @@ impl GameTarget {
         let mut place_id: i64 = 0;
         let (mut link_code, mut share_code, mut job_id, mut access_code): (Option<String>, Option<String>, Option<String>, Option<String>) =
             (None, None, None, None);
+        let mut share_type: Option<String> = None;
         match input.parse::<i64>() {
             Ok(n) => {
                 place_id = n;
@@ -100,10 +114,14 @@ impl GameTarget {
 
                 let share = contains_ci(input, "roblox.com/share") || contains_ci(input, "share_links");
                 if share && let Some(code) = get("code") {
-                    if let Some(kind) = get("type")
-                        && !kind.eq_ignore_ascii_case("Server")
-                    {
-                        return Err(l::t("Only private-server share links (type=Server) are supported. For a regular game, paste a roblox.com/games/… link."));
+                    // A friend's invite, a game's or an event's link, a private server: Roblox says where each leads (read at launch).
+                    if get("v").is_some_and(|v| v.eq_ignore_ascii_case("v2")) {
+                        share_type = Some(SHARE_V2.to_string());
+                    } else if let Some(kind) = get("type") {
+                        match SHARE_TYPES.iter().find(|known| known.eq_ignore_ascii_case(&kind)) {
+                            Some(known) => share_type = Some(known.to_string()),
+                            None => return Err(l::t("This share link doesn't lead to a game. Paste a game link, a private server link or an invite.")),
+                        }
                     }
                     share_code = Some(code);
                 }
@@ -140,7 +158,16 @@ impl GameTarget {
             }
         }
 
-        Ok(GameTarget { place_id, job_id: null_if_empty(job_id), link_code: null_if_empty(link_code), share_code, follow: None, access_code })
+        Ok(GameTarget {
+            place_id,
+            job_id: null_if_empty(job_id),
+            link_code: null_if_empty(link_code),
+            share_code,
+            follow: None,
+            access_code,
+            share_type: share_type.filter(|t| t != "Server"),
+            launch_data: None,
+        })
     }
 }
 

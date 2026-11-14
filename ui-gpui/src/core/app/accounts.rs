@@ -134,6 +134,10 @@ fn rbxcdn(url: &str) -> bool {
         return false;
     }
     let authority = rest.split(['/', '?', '#']).next().unwrap_or("");
+    // Browsers and C#'s Uri read '\' as '/': "https://evil.com\@a.rbxcdn.com/" is evil.com.
+    if authority.contains('\\') {
+        return false;
+    }
     let host = authority.rsplit_once('@').map(|(_, h)| h).unwrap_or(authority);
     let host = host.split(':').next().unwrap_or("").to_ascii_lowercase();
     host.ends_with(".rbxcdn.com")
@@ -174,8 +178,9 @@ impl CheckRun {
         }
     }
 
-    fn pause_for(&self, attempt: i32) {
-        let wait = Stamp::utc_now().plus_secs(4.0 * attempt as f64);
+    /// As long as Roblox says (its reset: 30–50 s seen), not a guess of a few seconds that ran out first.
+    fn pause_for(&self, attempt: i32, said: Option<Duration>) {
+        let wait = Stamp::utc_now().plus_secs(said.map(|d| d.as_secs_f64()).unwrap_or(4.0 * attempt as f64));
         if wait > self.resume_at.get() {
             self.resume_at.set(wait);
         }
@@ -260,6 +265,10 @@ impl App {
         *self.accounts.quick_login.borrow_mut() = Some(login.clone());
         let l2 = (*login).clone();
         let qr = rt::blocking(move || roblox_api::get_quick_login_qr(&l2, &Cancel::new())).await?;
+        // Again after the picture: a newer code asked for meanwhile is the one polled, so this one isn't shown.
+        if start != self.accounts.quick_login_starts.get() {
+            return Ok(Value::Null);
+        }
         let seconds = seconds_left(login.expires_utc);
         Ok(json!({ "code": login.code, "qr": qr, "seconds": seconds }))
     }
@@ -292,7 +301,8 @@ impl App {
         let picture = status.picture_url.clone().filter(|p| rbxcdn(p));
         match status.status.as_str() {
             "Validated" => {
-                self.accounts.quick_login_finishing.set(true);
+                // Cleared by the finally below, or by a panic or a dropped poll: "adding" mustn't stay for good.
+                let finishing = crate::core::base::Busy::set(&self.accounts.quick_login_finishing);
                 let mut retry = false;
                 let outcome: Res<Value> = async {
                     // The code is spent once traded: a retry after the account lookup failed reuses the session it gave.
@@ -345,7 +355,7 @@ impl App {
                     Err(ex) => Err(ex),
                 };
                 // finally
-                self.accounts.quick_login_finishing.set(false);
+                drop(finishing);
                 if !retry {
                     self.accounts.quick_login_finish_tries.set(0);
                     *self.accounts.quick_login_cookie.borrow_mut() = None;
@@ -766,6 +776,9 @@ impl App {
         if cookie.is_empty() {
             return Err(Fail::user(l::t("Paste the .ROBLOSECURITY cookie.")));
         }
+        if !roblox_api::cookie_text_valid(&cookie) {
+            return Err(Fail::user(roblox_api::cookie_text_error()));
+        }
         let c2 = cookie.clone();
         let user = rt::blocking(move || roblox_api::get_authenticated_user(&c2, realm::GLOBAL, &Cancel::new())).await?;
         if user.is_none() {
@@ -900,6 +913,9 @@ impl App {
         let mut user = None;
         let cookie = opt_str(a, "cookie").map(|raw| roblox_api::normalize_cookie(&raw));
         if let Some(c) = cookie.as_ref().filter(|c| !c.is_empty() && **c != account.cookie) {
+            if !roblox_api::cookie_text_valid(c) {
+                return Err(Fail::user(roblox_api::cookie_text_error()));
+            }
             let (c2, r2) = (c.clone(), account.realm.clone());
             let found = rt::blocking(move || roblox_api::get_authenticated_user(&c2, &r2, &Cancel::new())).await?;
             let short = account.id.to_string()[..8].to_string();
@@ -1146,7 +1162,8 @@ impl App {
         };
         let total = accounts.len();
 
-        self.controller.checking.set(true);
+        // Cleared at the finally below, or if this is dropped or panics first (check_imported waits on it).
+        let checking = crate::core::base::Busy::set(&self.controller.checking);
         self.push_state();
         // Roblox and Roblox VNG sign in apart: one accepted on Roblox says nothing of VNG's service (review, 2026-10-30).
         let st = CheckRun {
@@ -1204,7 +1221,7 @@ impl App {
                             a.last_checked = Some(Stamp::now());
                         }
                         Err(ex) if ex.rate_limited() && attempt < 4 => {
-                            st.pause_for(attempt);
+                            st.pause_for(attempt, ex.retry_after());
                             attempt += 1;
                             continue;
                         }
@@ -1235,7 +1252,7 @@ impl App {
                         Ok(Some(true)) => st.newly_banned.borrow_mut().push(id),
                         Ok(_) => {}
                         Err(ex) if ex.rate_limited() => {
-                            st.pause_for(attempt);
+                            st.pause_for(attempt, None);
                             if attempt < 3 {
                                 attempt += 1;
                                 continue;
@@ -1287,7 +1304,7 @@ impl App {
         }
         .await;
         // finally
-        self.controller.checking.set(false);
+        drop(checking);
         self.progress(None);
         self.persist();
         self.push_state();
@@ -1373,7 +1390,12 @@ impl App {
                 return Ok(());
             }
             let m = missing.clone();
+            let asked_in = self.vault_ref();
             let got = rt::blocking(move || roblox_api::get_headshot_urls(m, &Cancel::new())).await?;
+            // Locked (the pictures cleared) or another vault opened meanwhile: these belong to the one that was open.
+            if !asked_in.as_ref().is_some_and(|v| self.is_vault(v)) {
+                return Ok(());
+            }
             {
                 let mut urls = self.controller.avatar_urls.borrow_mut();
                 for (id, url) in got {

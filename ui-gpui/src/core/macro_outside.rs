@@ -50,7 +50,19 @@ impl ureq::Resolver for PublicResolver {
     }
 }
 
-static HTTP: LazyLock<ureq::Agent> = LazyLock::new(|| ureq::AgentBuilder::new().redirects(0).timeout(Duration::from_secs(8)).resolver(PublicResolver).build());
+/// Without the system proxy: through one, ureq resolves only the proxy's address, so PublicResolver would check the
+/// proxy and never the step's own host. Trusts the same roots as net.rs (public ones and Windows' store).
+static HTTP: LazyLock<ureq::Agent> = LazyLock::new(|| {
+    let mut roots = rustls::RootCertStore::empty();
+    roots.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
+    let _ = roots.add_parsable_certificates(rustls_native_certs::load_native_certs().certs);
+    let provider = std::sync::Arc::new(rustls::crypto::ring::default_provider());
+    let mut b = ureq::AgentBuilder::new();
+    if let Ok(tls) = rustls::ClientConfig::builder_with_provider(provider).with_safe_default_protocol_versions() {
+        b = b.tls_config(std::sync::Arc::new(tls.with_root_certificates(roots).with_no_client_auth()));
+    }
+    b.redirects(0).timeout(Duration::from_secs(8)).resolver(PublicResolver).build()
+});
 
 /// Documents\Bloxkeep.
 pub fn folder() -> PathBuf {
@@ -88,11 +100,13 @@ impl IMacroOutside for MacroOutside {
         if !path.is_file() {
             return Ok(None);
         }
-        let lines = read_all_lines(&path)?;
-        Ok(Some(match lines.iter().rev().find(|l| !l.trim().is_empty()) {
-            Some(last) => utf16_prefix(last.trim(), MAX_READ),
-            None => String::new(),
-        }))
+        // Polled every second: only the file's end is read, the whole file only when its end holds no full line.
+        let last = |lines: &[String]| lines.iter().rev().find(|l| !l.trim().is_empty()).map(|l| utf16_prefix(l.trim(), MAX_READ));
+        let found = match last(&read_tail_lines(&path)?) {
+            Some(line) => Some(line),
+            None => last(&read_all_lines(&path)?),
+        };
+        Ok(Some(found.unwrap_or_default()))
     }
 
     fn append_file(&self, name: &str, line: &str) -> Res<()> {
@@ -117,47 +131,68 @@ impl IMacroOutside for MacroOutside {
         Ok(())
     }
 
+    /// On a worker, waited for with the token: the address's name lookup has no timeout of its own, and the turn (keys
+    /// held, the window in front) must stop at once when the run is stopped or Bloxkeep closes. A worker left behind
+    /// ends on its own (the 8 s timeout, or the lookup giving up).
     fn web(&self, url: &str, post: Option<&str>, ct: &Cancel) -> Res<Option<String>> {
-        let url = url.trim();
-        let Some(host) = https_host(url) else {
+        let url = url.trim().to_string();
+        let Some(host) = https_host(&url) else {
             return Err(Fail::user(l::t("A web address starts with https://.")));
         };
         ct.check()?;
-        let req = HTTP.request(if post.is_none() { "GET" } else { "POST" }, url).set("User-Agent", "Bloxkeep-macro");
-        let sent = match post {
-            // PORT: .NET's serializer wrote non-ASCII as \uXXXX; serde_json writes it as it is (the same JSON).
-            Some(p) => req.set("Content-Type", "application/json; charset=utf-8").send_string(&serde_json::json!({ "content": p }).to_string()),
-            None => req.call(),
-        };
-        // PORT: ureq can't be called off halfway; the 8 s timeout bounds it, and the token is asked again after.
-        let res = match sent {
-            Ok(res) => res,
-            Err(ureq::Error::Status(code, _)) => {
-                web_note(&format!("Macro web step: HTTP {code} from {host}."));
-                return Ok(None);
+        let post = post.map(str::to_string);
+        let (tx, rx) = std::sync::mpsc::channel();
+        std::thread::Builder::new().name("Bloxkeep macro web".into()).spawn(move || {
+            let _ = tx.send(web_now(&url, &host, post.as_deref()));
+        })?;
+        loop {
+            match rx.recv_timeout(Duration::from_millis(50)) {
+                Ok(answer) => {
+                    ct.check()?;
+                    return answer;
+                }
+                Err(std::sync::mpsc::RecvTimeoutError::Timeout) => ct.check()?,
+                Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => return Err(Fail::other("The web step's worker ended without an answer.")),
             }
-            Err(ureq::Error::Transport(t)) => {
-                let kind = if transport_timed_out(&t) { "TaskCanceledException" } else { "HttpRequestException" };
-                web_note(&format!("Macro web step: {host} didn't answer ({kind})."));
-                return Ok(None);
-            }
-        };
-        ct.check()?;
-        if !(200..=299).contains(&res.status()) {
-            web_note(&format!("Macro web step: HTTP {} from {host}.", res.status()));
+        }
+    }
+}
+
+/// The web step's request itself (blocking).
+fn web_now(url: &str, host: &str, post: Option<&str>) -> Res<Option<String>> {
+    let req = HTTP.request(if post.is_none() { "GET" } else { "POST" }, url).set("User-Agent", "Bloxkeep-macro");
+    let sent = match post {
+        // PORT: .NET's serializer wrote non-ASCII as \uXXXX; serde_json writes it as it is (the same JSON).
+        Some(p) => req.set("Content-Type", "application/json; charset=utf-8").send_string(&serde_json::json!({ "content": p }).to_string()),
+        None => req.call(),
+    };
+    // PORT: ureq can't be called off halfway; the 8 s timeout bounds it, and the caller stops waiting on the token.
+    let res = match sent {
+        Ok(res) => res,
+        Err(ureq::Error::Status(code, _)) => {
+            web_note(&format!("Macro web step: HTTP {code} from {host}."));
             return Ok(None);
         }
-        *LAST_WEB_NOTE.lock().unwrap_or_else(|e| e.into_inner()) = None;
-        // At most MAX_READ characters: up to 4 bytes each in UTF-8.
-        let mut bytes = Vec::new();
-        if let Err(e) = res.into_reader().take((MAX_READ * 4) as u64).read_to_end(&mut bytes) {
-            let kind = if e.kind() == std::io::ErrorKind::TimedOut { "TaskCanceledException" } else { "IOException" };
+        Err(ureq::Error::Transport(t)) => {
+            let kind = if transport_timed_out(&t) { "TaskCanceledException" } else { "HttpRequestException" };
             web_note(&format!("Macro web step: {host} didn't answer ({kind})."));
             return Ok(None);
         }
-        let text = String::from_utf8_lossy(bytes.strip_prefix(&[0xEF, 0xBB, 0xBF]).unwrap_or(&bytes)).into_owned();
-        Ok(Some(utf16_prefix(&text, MAX_READ)))
+    };
+    if !(200..=299).contains(&res.status()) {
+        web_note(&format!("Macro web step: HTTP {} from {host}.", res.status()));
+        return Ok(None);
     }
+    *LAST_WEB_NOTE.lock().unwrap_or_else(|e| e.into_inner()) = None;
+    // At most MAX_READ characters: up to 4 bytes each in UTF-8.
+    let mut bytes = Vec::new();
+    if let Err(e) = res.into_reader().take((MAX_READ * 4) as u64).read_to_end(&mut bytes) {
+        let kind = if e.kind() == std::io::ErrorKind::TimedOut { "TaskCanceledException" } else { "IOException" };
+        web_note(&format!("Macro web step: {host} didn't answer ({kind})."));
+        return Ok(None);
+    }
+    let text = String::from_utf8_lossy(bytes.strip_prefix(&[0xEF, 0xBB, 0xBF]).unwrap_or(&bytes)).into_owned();
+    Ok(Some(utf16_prefix(&text, MAX_READ)))
 }
 
 fn transport_timed_out(t: &ureq::Transport) -> bool {
@@ -272,6 +307,39 @@ fn read_all_lines(path: &std::path::Path) -> Res<Vec<String>> {
     } else {
         String::from_utf8_lossy(&bytes).into_owned()
     };
+    Ok(split_lines(&text))
+}
+
+/// The lines in the file's last 64 KB (its byte order mark read from the start), the first one, likely cut, left
+/// out. The whole file when it is that small.
+fn read_tail_lines(path: &std::path::Path) -> Res<Vec<String>> {
+    use std::io::{Seek, SeekFrom};
+    const TAIL: u64 = 64 * 1024;
+    let mut file = std::fs::File::open(path)?;
+    let len = file.metadata()?.len();
+    if len <= TAIL {
+        return read_all_lines(path);
+    }
+    let mut head = [0u8; 2];
+    file.read_exact(&mut head)?;
+    // Even, so a UTF-16 file's halves stay paired.
+    file.seek(SeekFrom::Start((len - TAIL) & !1))?;
+    let mut bytes = Vec::new();
+    file.read_to_end(&mut bytes)?;
+    let text = match head {
+        [0xFF, 0xFE] => String::from_utf16_lossy(&bytes.chunks_exact(2).map(|c| u16::from_le_bytes([c[0], c[1]])).collect::<Vec<_>>()),
+        [0xFE, 0xFF] => String::from_utf16_lossy(&bytes.chunks_exact(2).map(|c| u16::from_be_bytes([c[0], c[1]])).collect::<Vec<_>>()),
+        _ => String::from_utf8_lossy(&bytes).into_owned(),
+    };
+    let mut lines = split_lines(&text);
+    if !lines.is_empty() {
+        lines.remove(0);
+    }
+    Ok(lines)
+}
+
+/// Lines split at \r\n, \n or \r, as File.ReadAllLines splits them.
+fn split_lines(text: &str) -> Vec<String> {
     let mut lines = Vec::new();
     let mut line = String::new();
     let mut chars = text.chars().peekable();
@@ -290,7 +358,7 @@ fn read_all_lines(path: &std::path::Path) -> Res<Vec<String>> {
     if !line.is_empty() {
         lines.push(line);
     }
-    Ok(lines)
+    lines
 }
 
 /// Environment.GetFolderPath(SpecialFolder.MyDocuments).
@@ -320,31 +388,52 @@ fn documents() -> Option<PathBuf> {
 mod clipboard {
     use std::time::Duration;
 
-    use windows_sys::Win32::Foundation::{GlobalFree, HANDLE};
+    use windows_sys::Win32::Foundation::{GlobalFree, HANDLE, HWND};
     use windows_sys::Win32::System::DataExchange::{CloseClipboard, EmptyClipboard, GetClipboardData, IsClipboardFormatAvailable, OpenClipboard, SetClipboardData};
     use windows_sys::Win32::System::Memory::{GMEM_MOVEABLE, GlobalAlloc, GlobalLock, GlobalSize, GlobalUnlock};
+    use windows_sys::Win32::UI::WindowsAndMessaging::{CreateWindowExW, DestroyWindow, HWND_MESSAGE};
 
     use crate::core::base::{Fail, Res};
 
     const CF_UNICODETEXT: u32 = 13;
 
+    /// The open clipboard and its owner, a message-only window made for this call (with no owner, EmptyClipboard
+    /// leaves the clipboard ownerless and SetClipboardData fails). Closed, then the window destroyed, on drop.
+    struct Opened(HWND);
+
+    impl Drop for Opened {
+        fn drop(&mut self) {
+            // SAFETY: the clipboard was opened by this thread; the window was made on this thread.
+            unsafe {
+                CloseClipboard();
+                if !self.0.is_null() {
+                    DestroyWindow(self.0);
+                }
+            }
+        }
+    }
+
     /// OpenClipboard, tried `times` times `delay_ms` apart (another app may hold it a moment).
-    fn open(times: i32, delay_ms: u64) -> Res<()> {
+    fn open(times: i32, delay_ms: u64) -> Res<Opened> {
+        let class: Vec<u16> = "STATIC".encode_utf16().chain(std::iter::once(0)).collect();
+        // SAFETY: a message-only window of the built-in STATIC class; destroyed below or by Opened's drop.
+        let owner = unsafe {
+            CreateWindowExW(0, class.as_ptr(), std::ptr::null(), 0, 0, 0, 0, 0, HWND_MESSAGE, std::ptr::null_mut(), std::ptr::null_mut(), std::ptr::null())
+        };
         for i in 0..times.max(1) {
-            // SAFETY: no owner window; the clipboard is closed again by the caller.
-            if unsafe { OpenClipboard(std::ptr::null_mut()) } != 0 {
-                return Ok(());
+            // SAFETY: `owner` is this thread's window (or null); the clipboard is closed again by Opened's drop.
+            if unsafe { OpenClipboard(owner) } != 0 {
+                return Ok(Opened(owner));
             }
             if i + 1 < times {
                 std::thread::sleep(Duration::from_millis(delay_ms));
             }
         }
+        if !owner.is_null() {
+            // SAFETY: made above on this thread, never handed on.
+            unsafe { DestroyWindow(owner) };
+        }
         Err(Fail::other("ExternalException: Requested Clipboard operation did not succeed."))
-    }
-
-    fn close() {
-        // SAFETY: only called after a successful OpenClipboard.
-        unsafe { CloseClipboard() };
     }
 
     pub fn contains_text() -> bool {
@@ -353,10 +442,8 @@ mod clipboard {
     }
 
     pub fn get_text() -> Res<String> {
-        open(10, 100)?;
-        let text = read_text();
-        close();
-        Ok(text)
+        let _open = open(10, 100)?;
+        Ok(read_text())
     }
 
     fn read_text() -> String {
@@ -379,19 +466,16 @@ mod clipboard {
     }
 
     pub fn clear() -> Res<()> {
-        open(10, 100)?;
+        let _open = open(10, 100)?;
         // SAFETY: the clipboard is open.
         unsafe { EmptyClipboard() };
-        close();
         Ok(())
     }
 
     /// Clipboard.SetDataObject(text, copy: true, retryTimes, retryDelay).
     pub fn set_text(text: &str, retry_times: i32, retry_delay_ms: u64) -> Res<()> {
-        open(retry_times, retry_delay_ms)?;
-        let result = put(text);
-        close();
-        result
+        let _open = open(retry_times, retry_delay_ms)?;
+        put(text)
     }
 
     fn put(text: &str) -> Res<()> {

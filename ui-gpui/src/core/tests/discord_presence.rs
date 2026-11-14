@@ -66,7 +66,7 @@ pub async fn run(c: &mut Checks, dir: &str) {
         let none = DiscordPresence::new();
         let quiet = Instant::now();
         none.set(
-            Some(&Activity { details: "1 Roblox window open".into(), state: None, start_unix: 1, button_label: "Get Bloxkeep".into(), button_url: "https://example.com/".into() }),
+            Some(&Activity { details: "1 Roblox window open".into(), state: None, start_unix: 1, button_label: "Get Bloxkeep".into(), button_url: "https://example.com/".into(), ..Default::default() }),
             "123456",
         );
         let ms = quiet.elapsed().as_millis();
@@ -102,6 +102,7 @@ pub async fn run(c: &mut Checks, dir: &str) {
         start_unix: 1_700_000_000,
         button_label: "Get Bloxkeep".into(),
         button_url: "https://bloxkeep.github.io/roblox-account-manager/".into(),
+        ..Default::default()
     };
     presence.set(Some(&activity), "123456");
     let seen = || frames.lock().unwrap().clone();
@@ -122,9 +123,39 @@ pub async fn run(c: &mut Checks, dir: &str) {
             && sent["buttons"][0]["url"] == "https://bloxkeep.github.io/roblox-account-manager/",
         s.get(1).map(|f| f.1.clone()).unwrap_or_else(|| "nothing sent".into()),
     );
+    c.check(
+        "…without a game picture: Discord shows the application's icon, one button",
+        sent["assets"].is_object() && sent["assets"].get("large_image").is_none() && sent["buttons"].as_array().map(Vec::len) == Some(1),
+        sent.to_string(),
+    );
 
     presence.set(Some(&activity), "123456");
     c.check("the same activity again isn't sent again", seen().len() == 2, seen().len());
+
+    // In a game: its icon big, Bloxkeep's logo small, the game's page as the first of two buttons.
+    let in_game = json(&crate::core::discord_presence::activity_json(&Activity {
+        picture: Some("https://tr.rbxcdn.com/icon.png".into()),
+        picture_text: Some("Blox Fruits".into()),
+        first_label: Some("View game".into()),
+        first_url: Some("https://www.roblox.com/games/2753915549".into()),
+        ..activity.clone()
+    }));
+    let assets = &in_game["assets"];
+    c.check(
+        "in a game: its icon big with its name, Bloxkeep's logo small",
+        assets["large_image"] == "https://tr.rbxcdn.com/icon.png"
+            && assets["large_text"] == "Blox Fruits"
+            && assets["small_image"].as_str().is_some_and(|s| s.ends_with("bloxkeep.png"))
+            && assets["small_text"] == "Bloxkeep",
+        in_game.to_string(),
+    );
+    c.check(
+        "…and two buttons, the game's page first",
+        in_game["buttons"].as_array().map(Vec::len) == Some(2)
+            && in_game["buttons"][0]["url"] == "https://www.roblox.com/games/2753915549"
+            && in_game["buttons"][1]["label"] == "Get Bloxkeep",
+        in_game.to_string(),
+    );
 
     presence.set(None, "123456");
     let s = seen();
@@ -175,14 +206,45 @@ async fn game_shown(c: &mut Checks, dir: &str) {
     let (app, _said) = app();
     unlock(&app).await;
     let account = app.vault(|d| d.accounts[0].clone()).expect("unlocked");
+    const ICON: &str = "https://tr.rbxcdn.com/monster.png";
     app.controller.games.borrow_mut().insert(
         PLACE,
-        Some(GameInfo { place_id: PLACE, universe_id: 1, name: "Monster Game".into(), creator: "Maker".into(), playing: 0, icon_url: None }),
+        Some(GameInfo { place_id: PLACE, universe_id: 1, name: "Monster Game".into(), creator: "Maker".into(), playing: 0, icon_url: Some(ICON.into()) }),
     );
     let launch = PendingLaunch::new(account.id, Default::default(), Stamp::utc_now().plus_secs(-120.0), Some(GameTarget::new(PLACE, None, None, None)), false, None);
     app.controller.running.borrow_mut().insert(account.id, (me, Rc::new(launch)));
-    let game = || app.presence_activity().state;
+    // The game sits on the top line (details), with a button to its page; without one the top line is a count.
+    let game = || Some(app.presence_activity()).filter(|a| a.first_url.is_some()).map(|a| a.details);
     c.check("a window just opened shows the game it was opened with", game().as_deref() == Some("Monster Game"), game());
+    let first = app.presence_activity();
+    c.check(
+        "…with its icon, its page, and the windows open",
+        first.picture.as_deref() == Some(ICON)
+            && first.first_url.as_deref() == Some(&*format!("https://www.roblox.com/games/{PLACE}"))
+            && first.state.as_deref().is_some_and(|s| s.contains("Roblox window")),
+        format!("{first:?}"),
+    );
+
+    // A second account in another game: each game takes its turn on the profile.
+    const OTHER_PLACE: i64 = 2753915549;
+    app.controller.games.borrow_mut().insert(
+        OTHER_PLACE,
+        Some(GameInfo { place_id: OTHER_PLACE, universe_id: 2, name: "Fruit Game".into(), creator: "Maker".into(), playing: 0, icon_url: None }),
+    );
+    let second = Account { username: "Second".into(), user_id: 32, ..Default::default() };
+    let second_id = second.id;
+    let _ = app.vault_mut(|d| d.accounts.push(second));
+    let other = PendingLaunch::new(second_id, Default::default(), Stamp::utc_now().plus_secs(-120.0), Some(GameTarget::new(OTHER_PLACE, None, None, None)), false, None);
+    app.controller.running.borrow_mut().insert(second_id, (-1, Rc::new(other)));
+    let turns: Vec<Activity> = (0..4).map(|_| app.presence_activity()).collect();
+    let details: std::collections::HashSet<&str> = turns.iter().map(|t| t.details.as_str()).collect();
+    c.check(
+        "two games: each takes its turn, saying both are being played",
+        details.len() == 2 && turns[0].details != turns[1].details && turns.iter().all(|t| t.state.as_deref().is_some_and(|s| s.ends_with("· 2 games"))),
+        turns.iter().map(|t| format!("{} / {:?}", t.details, t.state)).collect::<Vec<_>>().join(" | "),
+    );
+    c.check("…a game without an icon shows Bloxkeep's", turns.iter().find(|t| t.details == "Fruit Game").is_some_and(|t| t.picture.is_none()), ());
+    app.controller.running.borrow_mut().remove(&second_id);
 
     let stamp = {
         let c = Stamp::utc_now().utc();

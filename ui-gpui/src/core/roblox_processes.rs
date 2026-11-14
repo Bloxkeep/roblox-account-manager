@@ -374,6 +374,12 @@ unsafe extern "system" fn collect_window(h: HWND, data: LPARAM) -> i32 {
 
 /// One pass over the desktop's windows. A window Bloxkeep hid (`hide_windows`) counts as visible, so
 /// every check that a client has its window (not a tray copy, matched to its launch) still holds.
+/// The clients with a window Windows calls "not responding" (no answer for 5 s: IsHungAppWindow), in one pass over the
+/// desktop's windows; no process is opened.
+pub fn hung_pids(pids: &[i32]) -> HashSet<i32> {
+    visible_windows(pids).into_iter().filter(|(_, list)| list.iter().any(|h| is_hung(*h))).map(|(pid, _)| pid).collect()
+}
+
 pub fn visible_windows(pids: &[i32]) -> HashMap<i32, Vec<isize>> {
     let mut result: HashMap<i32, Vec<isize>> = pids.iter().map(|&pid| (pid, Vec::new())).collect();
     if result.is_empty() {
@@ -706,7 +712,7 @@ fn sweep_closing() {
     loop {
         std::thread::sleep(SWEEP_TICK);
         // One bad tick must not end the loop for good.
-        if std::panic::catch_unwind(sweep_once).is_err() {
+        if crate::core::program::catch_unwind(sweep_once).is_err() {
             log::note("Closing Roblox: a sweep failed.");
         }
         let mut s = closing();
@@ -878,6 +884,14 @@ pub fn minimise(h: isize) {
 pub fn restore_quietly(h: isize) {
     const SW_SHOWNOACTIVATE: i32 = 4;
     if h != 0 && is_iconic(h) {
+        show_async(h, SW_SHOWNOACTIVATE);
+    }
+}
+
+/// A maximised window back to an ordinary one, without taking the keyboard from the app in front.
+pub fn unmaximise_quietly(h: isize) {
+    const SW_SHOWNOACTIVATE: i32 = 4;
+    if h != 0 && is_zoomed(h) {
         show_async(h, SW_SHOWNOACTIVATE);
     }
 }
@@ -1415,6 +1429,10 @@ static TRAY_COPIES: LazyLock<Mutex<HashMap<(i32, i64), bool>>> = LazyLock::new(|
 /// and Store): "RobloxPlayerBeta.exe --launch-to-tray". It never gets a window; a Roblox started while it runs hands
 /// its launch to it and quits ("NoReload Detector: WebPlay NoReload with Tray only!"), so no window opens.
 pub fn is_tray_copy(pid: i32, created: i64) -> bool {
+    // No start time (the by-name fallback): a reused pid would get the old verdict, so asked afresh each time.
+    if created == 0 {
+        return command_line_of(pid, 0).is_some_and(|l| l.to_lowercase().contains("--launch-to-tray"));
+    }
     {
         let mut known = TRAY_COPIES.lock().unwrap_or_else(|e| e.into_inner());
         if let Some(&k) = known.get(&(pid, created)) {
@@ -1424,7 +1442,10 @@ pub fn is_tray_copy(pid: i32, created: i64) -> bool {
             known.clear();
         }
     }
-    let tray = command_line_of(pid, 0).is_some_and(|l| l.to_lowercase().contains("--launch-to-tray"));
+    // Kept only when the command line was read: one refused once (the process still starting) is asked again, or a
+    // tray copy taken for a window would never be ended and swallow the next launch.
+    let Some(line) = command_line_of(pid, 0) else { return false };
+    let tray = line.to_lowercase().contains("--launch-to-tray");
     TRAY_COPIES.lock().unwrap_or_else(|e| e.into_inner()).insert((pid, created), tray);
     tray
 }
@@ -1452,7 +1473,9 @@ static TRACKER_TEXT: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?i)browser
 /// passes the link to RobloxPlayerBeta.exe untouched; the old launcher passed "-b N". "" when none, None when
 /// unreadable. Nothing else of the command line is kept: the sign-in ticket is in it.
 pub fn launch_tracker_of(pid: i32, created: i64) -> Option<String> {
-    if let Some(known) = TRACKERS.lock().unwrap_or_else(|e| e.into_inner()).get(&(pid, created)) {
+    if created != 0
+        && let Some(known) = TRACKERS.lock().unwrap_or_else(|e| e.into_inner()).get(&(pid, created))
+    {
         return Some(known.clone());
     }
     let line = command_line_of(pid, created)?;
@@ -1460,6 +1483,10 @@ pub fn launch_tracker_of(pid: i32, created: i64) -> Option<String> {
         None => String::new(),
         Some(c) => c.get(1).or_else(|| c.get(2)).map(|m| m.as_str().to_string()).unwrap_or_default(),
     };
+    // No start time (the by-name fallback): a reused pid would get the old launch's id, so not kept.
+    if created == 0 {
+        return Some(tracker);
+    }
     let mut known = TRACKERS.lock().unwrap_or_else(|e| e.into_inner());
     if known.len() > 200 {
         known.clear();
@@ -1492,11 +1519,8 @@ pub fn place_launcher_url(command_line: &str) -> String {
         return String::new();
     };
     let url = found.get(1).or_else(|| found.get(2)).map(|m| m.as_str()).unwrap_or("");
-    // Uri.UnescapeDataString. PORT: escapes that don't make UTF-8 leave the link as it was (.NET kept just those escaped).
-    match percent_encoding::percent_decode_str(url).decode_utf8() {
-        Ok(text) => text.into_owned(),
-        Err(_) => url.to_string(),
-    }
+    // Uri.UnescapeDataString: escapes that make UTF-8 decoded, any other left as it is (not the whole link left escaped).
+    crate::core::roblox_api::unescape_data_string(url)
 }
 
 /// Windows 8.1 and later; None when it can't be read (gone, not ours).

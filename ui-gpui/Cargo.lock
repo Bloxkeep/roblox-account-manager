@@ -726,7 +726,7 @@ dependencies = [
 
 [[package]]
 name = "bloxkeep-ui"
-version = "1.0.23-alpha.2"
+version = "1.0.24"
 dependencies = [
  "aes-gcm",
  "anyhow",
@@ -748,6 +748,8 @@ dependencies = [
  "raw-window-handle",
  "regex",
  "resvg 0.46.0",
+ "rustls",
+ "rustls-native-certs",
  "serde",
  "serde_json",
  "sha1_smol",
@@ -760,6 +762,7 @@ dependencies = [
  "url",
  "uuid",
  "velopack",
+ "webpki-roots 0.26.11",
  "webview2-com",
  "windows 0.61.3",
  "windows-sys 0.61.2",

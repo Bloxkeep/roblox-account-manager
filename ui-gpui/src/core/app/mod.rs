@@ -59,9 +59,11 @@ pub mod presence;
 pub mod presets;
 pub mod processes;
 pub mod rejoin;
+pub mod rejoin_place;
 pub mod relaunch;
 pub mod remote;
 pub mod roblox_updates;
+pub mod roblox_words;
 pub mod robux;
 pub mod saved_servers;
 pub mod schedule;
@@ -126,6 +128,7 @@ pub struct App {
     pub presets: presets::PresetsState,
     pub processes: processes::ProcessesState,
     pub rejoin: rejoin::RejoinState,
+    pub rejoin_place: rejoin_place::RejoinPlaceState,
     pub relaunch: relaunch::RelaunchState,
     pub remote: remote::RemoteState,
     pub roblox_updates: roblox_updates::RobloxUpdatesState,

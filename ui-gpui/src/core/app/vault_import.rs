@@ -262,14 +262,15 @@ pub fn imported_preset_name(presets: &[LaunchPreset], name: &str) -> String {
 
 impl App {
     /// "Choose file…": returns the file's name, or null when cancelled (an earlier file and its preview stay).
-    pub fn vault_import_pick(&self) -> Res<Value> {
+    pub async fn vault_import_pick(&self) -> Res<Value> {
         let vault = self.require_vault_ref()?;
         let folder = prefs::lock().backup_folder.clone();
         let initial = folder.filter(|f| Path::new(f).is_dir()).unwrap_or_else(user_profile);
         let owner = self.controller.owner.get();
         let title = l::t("Choose another Bloxkeep data file");
         let filter = l::t("Bloxkeep data files") + " (*.rmv)|*.rmv";
-        let Some(chosen) = ui::modal(|| open_file_dialog(owner, &title, &filter, &initial)) else {
+        // On a worker thread, so the core keeps answering (the window's Quit, timers) while the dialog is open.
+        let Some(chosen) = rt::blocking(move || ui::modal(|| open_file_dialog(owner, &title, &filter, &initial))).await else {
             return Ok(Value::Null);
         };
         let path = std::path::absolute(&chosen).map(|p: PathBuf| p.to_string_lossy().into_owned()).unwrap_or(chosen);
@@ -311,10 +312,11 @@ impl App {
         }
         check_import_file(&path, &vault)?; // it may have been replaced since it was picked
         self.drop_vault_import(true);
-        self.vault_import.vault_import_opening.set(true);
+        // Held until the list is made (the pictures' short wait included): a second Open meanwhile is told to wait
+        // rather than making a second session whose token voids the first.
+        let _opening = crate::core::base::Busy::set(&self.vault_import.vault_import_opening);
         let (p, pw) = (PathBuf::from(&path), password.to_string());
         let (status, data) = rt::blocking(move || vault::read_other(&p, &pw)).await;
-        self.vault_import.vault_import_opening.set(false);
         // Locked meanwhile: what was decrypted isn't kept.
         if !self.is_vault(&vault) {
             return Err(Fail::user(l::t("Bloxkeep was locked.")));
@@ -354,6 +356,11 @@ impl App {
         }
         if !self.is_vault(&vault) {
             return Err(Fail::user(l::t("Bloxkeep was locked.")));
+        }
+        // Another file picked while this one opened: its accounts aren't shown (or imported) under that one.
+        if self.vault_import.vault_import_path.borrow().as_deref() != Some(path.as_str()) {
+            log::note("Import from a vault file: another file was picked while it opened; dropped.");
+            return Ok(Value::Null);
         }
 
         let mut bytes = [0u8; 16];

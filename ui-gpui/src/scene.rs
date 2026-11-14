@@ -32,6 +32,9 @@ struct Scene {
     /// asks again once it's done).
     shown: Option<(Key, Arc<RenderImage>, Option<Arc<RenderImage>>)>,
     drawing: Option<Key>,
+    /// The last picture that couldn't be drawn (a custom theme's file gone or unreadable): not asked again for that key,
+    /// or every frame started another read and decode of it.
+    failed: Option<Key>,
     thumbs: HashMap<Key, Option<Arc<RenderImage>>>,
 }
 
@@ -121,7 +124,7 @@ fn picture(key: Key, b: &Backdrop, window: &mut Window, cx: &mut Context<Root>) 
     if s.shown.as_ref().is_some_and(|(k, _, _)| *k == key) {
         return same_file;
     }
-    if s.drawing.is_none() {
+    if s.drawing.is_none() && s.failed.as_ref() != Some(&key) {
         s.drawing = Some(key.clone());
         let task = draw_task(key.clone(), b.under, b.veil, cx);
         cx.spawn_in(window, async move |this, cx| {
@@ -131,8 +134,14 @@ fn picture(key: Key, b: &Backdrop, window: &mut Window, cx: &mut Context<Root>) 
                 s.drawing = None;
                 // (Kept even when another size is wanted by now: it shows, stretched, until that one is drawn.)
                 let old = match drawn {
-                    Some((p, f)) => s.shown.replace((key, Arc::new(p), f.map(Arc::new))),
-                    None => None,
+                    Some((p, f)) => {
+                        s.failed = None;
+                        s.shown.replace((key, Arc::new(p), f.map(Arc::new)))
+                    }
+                    None => {
+                        s.failed = Some(key);
+                        None
+                    }
                 };
                 if let Some((_, old, frosted)) = old {
                     cx.drop_image(old, Some(window));
@@ -187,10 +196,10 @@ fn pack(h: Hsla) -> u32 {
 
 /// The picture drawn on the background executor: the file read (a user's picture from disk) and drawn there.
 fn draw_task(key: Key, under: Hsla, veil: Option<Hsla>, cx: &mut Context<Root>) -> Task<Option<(RenderImage, Option<RenderImage>)>> {
-    let user = if crate::theme_table::scene_bytes(&key.file).is_none() { crate::images::user(&key.file) } else { None };
+    let user = if crate::theme::scene_bytes(&key.file).is_none() { crate::images::user(&key.file) } else { None };
     let (under, veil) = (under.to_rgb(), veil.map(|v| v.to_rgb()));
     cx.background_executor().spawn(async move {
-        let bytes: std::borrow::Cow<'static, [u8]> = match crate::theme_table::scene_bytes(&key.file) {
+        let bytes: std::borrow::Cow<'static, [u8]> = match crate::theme::scene_bytes(&key.file) {
             Some(b) => b.into(),
             None => std::fs::read(user?).ok()?.into(),
         };
@@ -233,8 +242,9 @@ fn draw(bytes: &[u8], svg: bool, w: u32, h: u32, blur: u32, under: Rgba, veil: O
         image::imageops::resize(&cut, w, h, image::imageops::FilterType::Triangle)
     };
     if blur > 0 {
-        // Blurred small and brought back up: a strong blur at full size would take seconds.
-        let f = 4u32;
+        // Blurred small and brought back up: a strong blur at full size would take seconds. A slight one is done
+        // at full size (shrinking alone would soften the picture more than the blur asked for).
+        let f = (blur / 3).clamp(1, 4);
         let (sw, sh) = ((w / f).max(1), (h / f).max(1));
         let small = image::imageops::resize(&pic, sw, sh, image::imageops::FilterType::Triangle);
         let small = image::imageops::fast_blur(&small, (blur as f32 / f as f32).max(0.5));

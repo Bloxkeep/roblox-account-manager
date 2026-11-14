@@ -6,7 +6,7 @@ use serde_json::{Value, json};
 use super::lookups::get_json;
 use super::{
     HTTP_REQUEST_EXCEPTION, Playability, RobloxApiException, errors, escape_data_string, get_i64, get_str, header, is_fail_kind, is_moderated,
-    parse_json, post_with_csrf, rate_limited, realm, request, send, try_prop,
+    parse_json, post_with_csrf, rate_limit_wait, rate_limited_by, realm, request, send, try_prop,
 };
 use crate::core::base::{Cancel, Res};
 use crate::core::{l, log};
@@ -44,7 +44,7 @@ pub fn get_robux(cookie: &str, realm: &str, user_id: i64, ct: &Cancel) -> Res<Op
     let req = request("GET", &format!("{}/v1/users/{user_id}/currency", realm::api(realm, "economy")), Some(cookie), false, realm);
     let res = send(&req, ct)?;
     if res.status == 429 {
-        return Err(rate_limited());
+        return Err(rate_limited_by(&res));
     }
     if !res.is_success() {
         return Ok(None);
@@ -60,13 +60,62 @@ pub(crate) fn read_robux(body: &str) -> Option<i64> {
     }
 }
 
+const MAX_TICKET_WAITS: i32 = 2;
+const MAX_TICKET_WAIT: std::time::Duration = std::time::Duration::from_secs(60);
+
 /// One-time ticket that signs the Roblox client in as this account, from the account's own realm. VNG's client
 /// redeemed roblox.com tickets at auth.robloxapp.vnggames.com (seen 2026-10-19): one sign-in service, two names.
 pub fn get_auth_ticket(cookie: &str, ct: &Cancel, realm: &str) -> Res<String> {
     let realm = realm::normalize(Some(realm));
-    let body = get_client_assertion(cookie, ct, realm)?.unwrap_or_else(|| "{}".into());
-    let configure = |req: &mut super::HttpRequest| req.add_header("RBXAuthenticationNegotiation", "1");
-    let res = post_with_csrf(&format!("{}/v1/authentication-ticket/", realm::api(realm, "auth")), cookie, &body, Some(&configure as &dyn Fn(&mut super::HttpRequest)), ct, realm)?;
+    let assertion = get_client_assertion(cookie, ct, realm)?;
+    // Said in error.log (a user's report, 2026-11-14: tickets taken, then refused by Roblox's client at sign-in, 403).
+    if assertion.is_none() {
+        log::note("Sign-in ticket: Roblox gave no client assertion; the ticket was asked with an empty body.");
+    }
+    let body = assertion.unwrap_or_else(|| "{}".into());
+    // The ticket is bound to the address that asks for it, and Roblox's client redeems it without Windows' proxy: asked
+    // the client's way. Only when Roblox can't be reached that way, through the proxy as before (said in error.log).
+    let proxy = crate::net::proxy_in_use();
+    let mut like_client = true;
+    let configure_client = |req: &mut super::HttpRequest| {
+        req.add_header("RBXAuthenticationNegotiation", "1");
+        req.like_roblox_client = true;
+    };
+    let configure_proxy = |req: &mut super::HttpRequest| req.add_header("RBXAuthenticationNegotiation", "1");
+    let url = format!("{}/v1/authentication-ticket/", realm::api(realm, "auth"));
+    // Rate-limited: waited out as Roblox says (its reset, up to a minute) and asked again, twice at most; a launch of many
+    // accounts lost the ones refused instead (RoALT waits and asks again too).
+    let mut attempt = 0;
+    let res = loop {
+        let configure: &dyn Fn(&mut super::HttpRequest) = if like_client { &configure_client } else { &configure_proxy };
+        let res = match post_with_csrf(&url, cookie, &body, Some(configure), ct, realm) {
+            Err(e) if like_client && !ct.is_cancelled() && proxy.is_some() && (is_fail_kind(&e, HTTP_REQUEST_EXCEPTION) || is_fail_kind(&e, super::TASK_CANCELED_EXCEPTION)) => {
+                log::note(&format!(
+                    "Sign-in ticket: Roblox not reached without Windows' proxy ({}); asked through it ({}) instead, which Roblox's client may refuse (it doesn't use that proxy).",
+                    super::fail_type_name(&e),
+                    proxy.as_deref().unwrap_or_default()
+                ));
+                like_client = false;
+                continue;
+            }
+            r => r?,
+        };
+        if attempt == 0 && like_client && let Some(p) = &proxy {
+            log::note(&format!("Sign-in ticket: asked without Windows' proxy ({p}), as Roblox's client signs in."));
+        }
+        if res.status == 429 && attempt < MAX_TICKET_WAITS {
+            let wait = rate_limit_wait(&res);
+            if wait <= MAX_TICKET_WAIT {
+                log::note(&format!("Sign-in ticket: rate-limited, asked again in {} s.", wait.as_secs()));
+                if !ct.sleep(wait) {
+                    ct.check()?;
+                }
+                attempt += 1;
+                continue;
+            }
+        }
+        break res;
+    };
 
     if let Some(ticket) = header(&res, "rbx-authentication-ticket").filter(|t| !t.is_empty()) {
         return Ok(ticket);
@@ -75,7 +124,7 @@ pub fn get_auth_ticket(cookie: &str, ct: &Cancel, realm: &str) -> Res<String> {
         return Err(RobloxApiException { status: 401, cookie_invalid: true, ..RobloxApiException::new(l::t("This account was signed out — sign in to it again.")) }.into());
     }
     if res.status == 429 {
-        return Err(rate_limited());
+        return Err(rate_limited_by(&res));
     }
     let text = res.text();
     log::note(&format!("Sign-in ticket{}: HTTP {}, errors {}", if realm == realm::VNG { " (VNG)" } else { "" }, res.status, errors(&text).1));
@@ -169,7 +218,7 @@ pub fn get_private_servers(cookie: &str, place_id: i64, ct: &Cancel) -> Res<Vec<
         let req = request("GET", &url, Some(cookie), false, realm::GLOBAL);
         let res = send(&req, ct)?;
         if res.status == 429 {
-            return Err(rate_limited());
+            return Err(rate_limited_by(&res));
         }
         if res.status == 401 {
             return Err(RobloxApiException { status: 401, cookie_invalid: true, ..RobloxApiException::new(l::t("This account was signed out — sign in to it again.")) }.into());
@@ -237,30 +286,120 @@ pub(crate) fn read_private_servers(body: &str) -> (Vec<PrivateServer>, Option<St
     (list, next)
 }
 
-/// Turns a "roblox.com/share?code=…&type=Server" link into the place and private-server link code.
-pub fn resolve_private_server_share(cookie: &str, share_code: &str, ct: &Cancel) -> Res<(i64, String)> {
-    let json = json!({ "linkId": share_code, "linkType": "Server" }).to_string();
-    let res = post_with_csrf("https://apis.roblox.com/sharelinks/v1/resolve-link", cookie, &json, None, ct, realm::GLOBAL)?;
+/// Where a share link leads: the place, a private server's link code, an invite's server (while the invite is valid), a
+/// link's launch data. Expired links still join, as on the website.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct ShareTarget {
+    pub place_id: i64,
+    pub link_code: Option<String>,
+    pub job_id: Option<String>,
+    pub launch_data: Option<String>,
+    pub expired: bool,
+}
+
+/// Each share-link type's part of resolve-link's answer (the website's names; one is filled, by type).
+const SHARE_FIELDS: [(&str, &str); 7] = [
+    ("Server", "privateServerInviteData"),
+    ("ExperienceInvite", "experienceInviteData"),
+    ("NotificationExperienceInvite", "notificationExperienceInviteData"),
+    ("ScreenshotInvite", "screenshotInviteData"),
+    ("ExperienceDetails", "experienceDetailsInviteData"),
+    ("ExperienceAffiliate", "experienceAffiliateData"),
+    ("ExperienceEvent", "experienceEventData"),
+];
+
+/// Roblox's limit on a link's launch data; longer is left out.
+const MAX_LAUNCH_DATA: usize = 200;
+
+/// Reads a roblox.com share link with the account's sign-in: a private server's (type=Server, the only kind until
+/// 2026-11-14), a friend's invite, a game's, an event's or a screenshot's (sharelinks/v1/resolve-link), or a "?v=v2" one
+/// (deeplinks/v2/resolve). RoALT reads them the same way.
+pub fn resolve_share(cookie: &str, share_code: &str, share_type: Option<&str>, ct: &Cancel) -> Res<ShareTarget> {
+    let v2 = share_type == Some(crate::core::game_target::SHARE_V2);
+    let kind = share_type.unwrap_or("Server");
+    let json = if v2 { json!({ "linkId": share_code }) } else { json!({ "linkId": share_code, "linkType": kind }) }.to_string();
+    let url = if v2 { "https://apis.roblox.com/deeplinks/v2/resolve" } else { "https://apis.roblox.com/sharelinks/v1/resolve-link" };
+    let res = post_with_csrf(url, cookie, &json, None, ct, realm::GLOBAL)?;
     let body = res.text();
     if res.status == 401 {
         return Err(RobloxApiException { status: 401, cookie_invalid: true, ..RobloxApiException::new(l::t("This account was signed out — sign in to it again.")) }.into());
     }
+    if res.status == 429 {
+        return Err(rate_limited_by(&res));
+    }
     if !res.is_success() {
-        log::note(&format!("Private server link: HTTP {}, errors {}", res.status, errors(&body).1));
+        log::note(&format!("Share link ({kind}): HTTP {}, errors {}", res.status, errors(&body).1));
         return Err(RobloxApiException {
             status: res.status,
-            ..RobloxApiException::new(l::f("Couldn't open the private server link (HTTP {0}). Check the link, or try again in a moment.", &[&res.status]))
+            ..RobloxApiException::new(l::f("Couldn't open the share link (HTTP {0}). Check the link, or try again in a moment.", &[&res.status]))
         }
         .into());
     }
-
-    let doc = parse_json(&body)?;
-    if let Some(data @ Value::Object(_)) = try_prop(&doc, "privateServerInviteData")?
-        && let Some(place @ Value::Number(_)) = try_prop(data, "placeId")?
-        && let Some(link) = try_prop(data, "linkCode")?
-        && let Some(link_code) = get_str(link)?.filter(|l| !l.is_empty())
-    {
-        return Ok((get_i64(place)?, link_code));
+    let invalid = || -> crate::core::base::Fail { RobloxApiException::new(l::t("The share link is invalid or has expired.")).into() };
+    let is = |status: &Option<String>, what: &str| status.as_deref().is_some_and(|s| s.eq_ignore_ascii_case(what));
+    let root = parse_json(&body)?;
+    if !root.is_object() {
+        return Err(invalid());
     }
-    Err(RobloxApiException::new(l::t("The private server link is invalid or has expired.")).into())
+    if v2 {
+        let status = share_text(&root, "status");
+        let Some(target) = share_num(&root, "targetId").filter(|_| !is(&status, "Invalid") && share_text(&root, "linkType").as_deref() == Some("Experience"))
+        else {
+            return Err(invalid());
+        };
+        let custom = root.get("customData").and_then(Value::as_str).map(str::to_string);
+        return Ok(ShareTarget { place_id: target, launch_data: launch_data_of(custom), expired: is(&status, "Expired"), ..Default::default() });
+    }
+    for (kind, field) in SHARE_FIELDS {
+        let Some(d) = root.get(field).filter(|d| d.is_object()) else { continue };
+        let status = share_text(d, "status");
+        if is(&status, "Invalid") {
+            return Err(invalid());
+        }
+        let place = match share_num(d, "placeId") {
+            Some(p) => p,
+            None => match share_num(d, "universeId") {
+                Some(universe) => super::lookups::get_universe_details(&[universe], ct)?.get(&universe).map(|d| d.2).unwrap_or(0),
+                None => 0,
+            },
+        };
+        if place <= 0 {
+            return Err(invalid());
+        }
+        let expired = is(&status, "Expired");
+        if kind == "Server" {
+            return match share_text(d, "linkCode") {
+                Some(link_code) => Ok(ShareTarget { place_id: place, link_code: Some(link_code), expired, ..Default::default() }),
+                None => Err(invalid()),
+            };
+        }
+        // An invite joins the friend's server only while it is valid, as the website does; else the game.
+        if kind.ends_with("ExperienceInvite")
+            && (status.is_none() || is(&status, "Valid"))
+            && let Some(job) = share_text(d, "instanceId").and_then(|j| crate::core::game_target::guid_try_parse(&j))
+        {
+            return Ok(ShareTarget { place_id: place, job_id: Some(job), expired, ..Default::default() });
+        }
+        let launch = share_text(d, "launchData").or_else(|| d.get("joinData").filter(|j| j.is_object()).and_then(|j| share_text(j, "launchData")));
+        return Ok(ShareTarget { place_id: place, launch_data: launch_data_of(launch), expired, ..Default::default() });
+    }
+    Err(invalid())
+}
+
+fn share_text(e: &Value, name: &str) -> Option<String> {
+    e.get(name).and_then(Value::as_str).filter(|s| !s.is_empty()).map(str::to_string)
+}
+
+fn share_num(e: &Value, name: &str) -> Option<i64> {
+    e.get(name).filter(|v| v.is_number()).and_then(Value::as_i64).filter(|n| *n > 0)
+}
+
+fn launch_data_of(data: Option<String>) -> Option<String> {
+    match data {
+        Some(d) if d.chars().count() > MAX_LAUNCH_DATA => {
+            log::note(&format!("Share link: its launch data ({} characters) is over Roblox's {MAX_LAUNCH_DATA} and was left out.", d.chars().count()));
+            None
+        }
+        d => d,
+    }
 }

@@ -146,7 +146,7 @@ impl MonitorTab {
         };
         rt::post(move || {
             App::with(|app| {
-                let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                let result = crate::core::program::catch_unwind(std::panic::AssertUnwindSafe(|| {
                     let clients = app.monitor_clients();
                     let windows: Vec<isize> = clients.iter().map(|c| c.hwnd).collect();
                     app.emit_monitor(&clients, &|h: isize| minimized.get(&h).copied().unwrap_or_else(|| win_form::is_iconic(h) || !win_form::is_visible(h)));

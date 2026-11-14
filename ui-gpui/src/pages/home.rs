@@ -23,6 +23,8 @@ pub struct Game {
     pub icon: Option<String>,
     pub accounts: Vec<Value>,
     pub hours: f64,
+    /// When it was last played (ms since 1970; 0 not known).
+    pub last: f64,
 }
 
 /// A game's name without the event tag games put in front of it ("[🎃] Adopt Me!" → "Adopt Me!").
@@ -39,8 +41,9 @@ pub fn clean(name: &str) -> String {
     t.to_string()
 }
 
+/// Dropped from its game, as the Accounts page counts it (Accounts.tsx's isKicked): disconnected, or banned by the game.
 pub fn is_dropped(a: &Value) -> bool {
-    a.get("state").and_then(Value::as_str) == Some("running") && a.pointer("/session/connection").and_then(Value::as_str) == Some("disconnected")
+    crate::pages::accounts::is_kicked(a)
 }
 
 /// Running games first (most accounts first), then those played lately that aren't running.
@@ -61,6 +64,7 @@ pub fn games(root: &Root) -> Vec<Game> {
                 icon: a.pointer("/session/game/iconUrl").and_then(Value::as_str).map(str::to_string),
                 accounts: vec![a.clone()],
                 hours: 0.,
+                last: 0.,
             }),
         }
     }
@@ -77,10 +81,21 @@ pub fn games(root: &Root) -> Vec<Game> {
                 return None;
             }
             let last = p.get("last").and_then(Value::as_f64).unwrap_or(0.);
-            Some((last, Game { place, name, icon: None, accounts: Vec::new(), hours: p.get("hours").and_then(Value::as_f64).unwrap_or(0.) }))
+            Some((last, Game { place, name, icon: None, accounts: Vec::new(), hours: p.get("hours").and_then(Value::as_f64).unwrap_or(0.), last }))
         })
         .collect();
     recent.sort_by(|a, b| b.0.total_cmp(&a.0));
+    // No play history (yet): the games put in the Play box lately instead (Home.tsx's recentGames).
+    if recent.is_empty() {
+        for g in root.state.pointer("/settings/recentGames").and_then(Value::as_array).into_iter().flatten().take(8) {
+            let place = g.get("placeId").and_then(Value::as_i64).unwrap_or(0);
+            let name = clean(g.get("name").and_then(Value::as_str).unwrap_or_default());
+            if place > 0 && !name.is_empty() && !now.iter().any(|x| x.place == place || bare(&x.name) == bare(&name)) {
+                let icon = g.get("iconUrl").and_then(Value::as_str).map(str::to_string);
+                recent.push((0., Game { place, name, icon, accounts: Vec::new(), hours: 0., last: 0. }));
+            }
+        }
+    }
     now.extend(recent.into_iter().map(|(_, g)| g).take(12));
     now
 }
@@ -122,27 +137,25 @@ pub fn home(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
                         .flex()
                         .flex_col()
                         .gap(px(SECTION_GAP))
-                        // The farm in one look, an account a key (critique 2026-11-13, P1: Home showed the game and hid
-                        // the farm's health in a small "2 / 7" card; the CPU and RAM cards went to the status bar).
-                        .when(!root.accounts().is_empty(), |d| d.child(fleet(root, inner, cx)))
+                        // (No strip of the accounts here: the column beside the page lists them already, the owner
+                        // 2026-11-13: "thừa, bên cạnh có rồi".)
                         .child(shelf(root, &all, focus, inner, cx))
                         .when(root.accounts().is_empty(), |d| d.child(get_started(root, cx)))
-                        .child(presets(root, inner, cx)),
+                        .child(presets(root, inner, cx))
+                        .when(!root.accounts().is_empty(), |d| d.children(crate::pages::stats::recent(root, cx))),
                 ),
         )
 }
 
-/// How tall the stage's picture stands: near a third of the surface's width, within what a small window can give and
-/// a big one should take.
-fn art_h(width: f32) -> f32 {
-    // (It was 36 % of the width, 320 to 500: the stage took near half the first screen and the presets fell off its
-    // foot on the owner's 1707×1020.)
-    // (440 at most left a 2560×1440 window's lower half empty, 2026-11-12: past 2000 px it may grow to 560.)
-    (width * 0.30).clamp(300., if width > 2000. { 560. } else { 440. }).round()
+/// How tall the game's cover stands at the stage's right: the stage is as tall as it and no taller (it kept the
+/// height of the edge-to-edge picture that went, and the words sat at its foot under a dark empty band, the owner
+/// 2026-11-13).
+fn cover_h(width: f32) -> f32 {
+    (width * 0.17).clamp(200., if width > 2000. { 360. } else { 300. }).round()
 }
 
-/// How far the rows under the stage rise over the picture's faded foot.
-const RISE: f32 = 96.;
+/// The stage's room above its contents, from the panel's top edge.
+const TOP: f32 = 28.;
 
 /// How many accounts are in a Roblox window now.
 pub fn playing_now(root: &Root) -> usize {
@@ -151,26 +164,21 @@ pub fn playing_now(root: &Root) -> usize {
 
 /// The game on the stage, on its own picture: what it is doing, and what to do with it.
 fn stage(root: &Root, all: &[Game], focus: usize, width: f32, cx: &mut Context<Root>) -> impl IntoElement {
-    // The picture is taller than the stage's own block, so the rows below rise over its faded foot (layout C of the
-    // mockup the owner picked, 2026-11-09: the game's picture fills the top of the surface edge to edge and fades
-    // into it).
-    let art = art_h(width);
-    let h = art - RISE;
-    let base = div().relative().h(px(h)).flex_none();
-    let Some(g) = all.get(focus) else {
-        let none = root.accounts().is_empty();
+    // A row as tall as its contents: the words beside the cover, centred on it.
+    let base = div().pt(px(TOP)).px(px(SIDE)).flex().items_center().gap(px(2. * SIDE)).flex_none();
+    let none = root.accounts().is_empty();
+    // No accounts: the welcome and Add account, whatever was played before (Home.tsx's focus).
+    let Some(g) = all.get(focus).filter(|_| !none) else {
         // Nothing played yet: the welcome stands on the picture of the game Bloxkeep's users play most (the stage was
         // a bare dark block with a line of words in its corner, owner 2026-11-12), words at its foot as a game's are.
         // (No picture behind it any more: the blurred game washes went, the owner, 2026-11-13.)
         return base.child(
             div()
-                .absolute()
-                .inset_0()
-                .px(px(SIDE))
-                .pb(px(4.))
+                .flex_1()
+                .min_w_0()
+                .py(px(24.))
                 .flex()
                 .flex_col()
-                .justify_end()
                 .gap(px(10.))
                 .child(div().text_size(px(40.)).line_height(px(46.)).font_weight(FontWeight::BOLD).child(root.tr(if none { "home.welcome" } else { "home.noGame" })))
                 .child(div().max_w(px(520.)).text_size(px(T_L)).text_color(on_picture(0.86)).child(root.tr(if none { "home.welcomeSub" } else { "home.noGameSub" })))
@@ -191,12 +199,16 @@ fn stage(root: &Root, all: &[Game], focus: usize, width: f32, cx: &mut Context<R
     let running = !g.accounts.is_empty();
     let n = g.accounts.len() as i64;
     let cover = look(root, g.place, "cover").map(str::to_string);
-    // The cover itself, sharp at its own size at the stage's right, the words at its left:
-    // dropped when the words would have too little room.
-    let card_h = (h - 36.).min(300.).max(0.);
-    let card_w = (card_h * 16. / 9.).round();
-    let card = cover.as_deref().filter(|_| width - card_w - 3. * SIDE >= 440.).and_then(|u| showcase(u, card_w, card_h.round(), cx));
-    let words_room = if card.is_some() { card_w + 2. * SIDE } else { SIDE };
+    // The stage is ONE block on the game's own colour (taken from its picture, solid: the base its tiles stand on
+    // elsewhere), the words on its left half and the cover filling its right half edge to edge, sharp. It was words on
+    // the bare panel with a small cover floating at the right (the owner, 2026-11-13: "trông đơn điệu quá").
+    let block_h = cover_h(width).max(if running { 268. } else { 236. });
+    let pic_w = (block_h * 16. / 9.).round();
+    // Dropped when the words would have too little room.
+    let picture = cover.as_deref().filter(|_| width - 2. * SIDE - pic_w >= 460.).and_then(|u| images::pic_pair(u, pic_w, block_h, cx));
+    let icon_url = look(root, g.place, "icon").map(str::to_string).or_else(|| g.icon.clone());
+    let tone = icon_url.as_deref().and_then(|u| images::tone(u, cx)).or_else(|| cover.as_deref().and_then(|u| images::tone(u, cx)));
+    let ground = tone.map(|t| tinted(RAISED, t, 0.2)).unwrap_or_else(|| c(RAISED));
     let badge = look(root, g.place, "icon").map(str::to_string).or_else(|| g.icon.clone()).and_then(|u| images::pic(&u, cx));
     let dropped: Vec<Value> = g.accounts.iter().filter(|a| is_dropped(a)).cloned().collect();
     let since = g.accounts.iter().filter_map(|a| a.pointer("/session/since").and_then(Value::as_str).and_then(crate::time::iso_secs)).min();
@@ -223,14 +235,23 @@ fn stage(root: &Root, all: &[Game], focus: usize, width: f32, cx: &mut Context<R
         if let Some(t) = since {
             facts = facts.child(sep()).child(div().font_features(tnum()).child(crate::time::clock(crate::time::now_secs() - t)));
         }
-    } else if g.hours > 0. {
-        facts = facts.child(sep()).child(root.i18n.tv("ui.playedH", &[("n", &format!("{:.0}", g.hours.max(1.)))]));
+    } else {
+        if g.hours > 0. {
+            facts = facts.child(sep()).child(root.i18n.tv("ui.playedH", &[("n", &format!("{:.0}", g.hours.max(1.)))]));
+        }
+        // When it was last played (Home.tsx's stage: "last 3 days ago").
+        if g.last > 0. {
+            let ago = crate::time::ago(crate::time::now_secs() - (g.last / 1000.) as i64, &root.i18n);
+            facts = facts.child(sep()).child(root.i18n.tv("home.last", &[("t", &ago)]));
+        }
     }
 
     let mut acts = div().mt(px(6.)).flex().gap(px(8.));
     if running {
         acts = acts.child(Button::new("stage-windows", root.i18n.tn("home.windowsN", n, &[])).icon("screens").primary().big().on_click(
             cx.listener(|r, _, _, cx| {
+                // Their windows: Accounts' windows view.
+                crate::pages::accounts::set_win_view(r, true);
                 r.go(Page::Accounts);
                 cx.notify();
             }),
@@ -240,6 +261,15 @@ fn stage(root: &Root, all: &[Game], focus: usize, width: f32, cx: &mut Context<R
         let label = root.i18n.tv("ui.rejoinN", &[("n", &dropped.len().to_string())]);
         acts = acts.child(Button::new("stage-rejoin", label).icon("refresh").tint().big().on_click(cx.listener(move |r, _, _, cx| r.rejoin(&dropped, cx))));
     }
+    // The game into the Play box on Accounts, to pick who plays it (Home.tsx's put-game): "Add accounts" while it runs.
+    let place = g.place;
+    acts = acts.child(
+        Button::new("stage-put", root.tr(if running { "home.addMore" } else { "home.pickAccounts" }))
+            .icon(if running { "userPlus" } else { "play" })
+            .map(|b| if running { b.glass() } else { b.primary() })
+            .big()
+            .on_click(cx.listener(move |r, _, window, cx| crate::pages::accounts::put_game(r, place, window, cx))),
+    );
     // Its page in Games: Roblox's figures, your accounts in it, the quiet hours, its news.
     let (place, name) = (g.place, g.name.clone());
     acts = acts.child(Button::new("stage-game", root.tr("home.gamePage")).icon("info").glass().big().on_click(cx.listener(move |r, _, _, cx| {
@@ -247,44 +277,77 @@ fn stage(root: &Root, all: &[Game], focus: usize, width: f32, cx: &mut Context<R
         cx.notify();
     })));
 
-    // The picture, edge to edge. It was a 244 px strip of a 16:9 picture on a wide window (the owner's first real
-    // run), and then a small picture in the corner (my wrong turn of 2026-11-11, their second screenshot): its height
-    // follows the surface's width now, so it stays a picture. It darkens towards the words on its left and runs into
-    // the surface below. (In a box of its own: an img placed absolute itself gets no size and draws nothing.)
-    base.when_some(card, |d, k| d.child(div().absolute().right(px(SIDE)).bottom(px(4.)).child(k)))
-        .child(
-            div()
-                .absolute()
-                .inset_0()
-                .pl(px(SIDE))
-                .pr(px(words_room))
-                .pb(px(4.))
-                .flex()
-                .flex_col()
-                .justify_end()
-                .gap(px(10.))
-                .child(
-                    div()
-                        .flex()
-                        .items_center()
-                        .gap(px(14.))
-                        .when_some(badge, |d, b| {
-                            d.child(
-                                div()
-                                    .size(px(52.))
-                                    .flex_none()
-                                    .rounded(px(R_L))
-                                    .overflow_hidden()
-                                    .border_1()
-                                    .border_color(ca(WHITE, 0.14))
-                                    .child(img(b).size_full().object_fit(ObjectFit::Cover)),
-                            )
-                        })
-                        .child(div().min_w_0().max_w(px(560.)).text_size(px(40.)).font_weight(FontWeight::BOLD).line_height(px(46.)).truncate().child(g.name.clone())),
-                )
-                .child(facts)
-                .child(acts),
-        )
+    // Who is in it, faces overlapping (six at most, then "+N").
+    let who = running.then(|| {
+        let more = g.accounts.len().saturating_sub(6);
+        div()
+            .flex()
+            .items_center()
+            .children(g.accounts.iter().take(6).enumerate().map(|(i, a)| div().when(i > 0, |d| d.ml(px(-8.))).child(crate::pages::accounts::avatar(a, 30., RAISED, cx))))
+            .when(more > 0, |d| d.child(div().ml(px(8.)).text_size(px(T_S)).text_color(on_picture(0.86)).font_features(tnum()).child(format!("+{more}"))))
+    });
+    // Its cover, the block's right half: the gameplay clip plays on it while the mouse rests there; a click opens its page.
+    let clip = crate::pages::clips::tile_clip(root, g.place, cx);
+    let (place, name) = (g.place, g.name.clone());
+    let art = picture.map(|(src, orig)| {
+        div()
+            .id("stage-art")
+            .on_hover(clip.hover)
+            .relative()
+            .w(px(pic_w))
+            .h(px(block_h))
+            .flex_none()
+            .cursor_pointer()
+            .child(fade_in(img(src).size_full().object_fit(ObjectFit::Cover).rounded_tr(px(R_L)).rounded_br(px(R_L)), &orig))
+            .children(clip.layer)
+            .on_click(cx.listener(move |r, _, _, cx| {
+                crate::pages::games::open_place(r, place, &name);
+                cx.notify();
+            }))
+    });
+    base.child(
+        div()
+            .flex_1()
+            .min_w_0()
+            .h(px(block_h))
+            .flex()
+            .rounded(px(R_L))
+            .overflow_hidden()
+            .bg(ground)
+            .child(
+                div()
+                    .flex_1()
+                    .min_w_0()
+                    .px(px(28.))
+                    .flex()
+                    .flex_col()
+                    .justify_center()
+                    .gap(px(10.))
+                    .child(
+                        div()
+                            .flex()
+                            .items_center()
+                            .gap(px(14.))
+                            .when_some(badge, |d, b| {
+                                d.child(
+                                    div()
+                                        .size(px(52.))
+                                        .flex_none()
+                                        .rounded(px(R_L))
+                                        .overflow_hidden()
+                                        .border_1()
+                                        .border_color(ca(WHITE, 0.14))
+                                        .child(img(b).size_full().object_fit(ObjectFit::Cover).rounded(px(R_L))),
+                                )
+                            })
+                            .child(div().min_w_0().max_w(px(560.)).text_size(px(40.)).font_weight(FontWeight::BOLD).line_height(px(46.)).truncate().child(g.name.clone())),
+                    )
+                    .child(facts)
+                    .children(who)
+                    .child(acts),
+            )
+            .children(art),
+    )
 }
 
 
@@ -304,17 +367,25 @@ fn get_started(root: &Root, cx: &mut Context<Root>) -> impl IntoElement {
             .rounded(px(R_L))
             .border_1()
             .cursor_pointer()
-            .map(|d| if now { d.tones(tinted(RAISED, FACE, 0.07), tinted(RAISED_2, FACE, 0.10)).edge(ca(FACE, 0.75), c(FACE)) } else { d.tones(c(RAISED), c(RAISED_2)).edge(c(LINE), ca(WHITE, 0.17)) })
+            .tones(c(RAISED), c(RAISED_2))
+            .edge(c(LINE), ca(WHITE, 0.17))
             .child(
                 div()
-                    .size(px(40.))
+                    .size(px(28.))
                     .flex_none()
-                    .rounded(px(R_M))
+                    .rounded_full()
+                    .border_1()
+                    .border_color(if now { ca(TEXT, 0.6) } else { c(LINE) })
                     .flex()
                     .items_center()
                     .justify_center()
-                    .map(|d| if now { d.bg(c(FACE)).child(icon(mark, 20., c(INK))) } else { d.bg(c(INSET)).child(icon(mark, 20., c(TEXT_2))) }),
+                    .text_size(px(T_M))
+                    .font_weight(FontWeight::SEMIBOLD)
+                    .font_features(tnum())
+                    .text_color(if now { c(TEXT) } else { c(MUTED) })
+                    .child(format!("{}", i + 1)),
             )
+            .child(div().flex_none().child(icon(mark, 18., c(MUTED))))
             .child(
                 div()
                     .flex_1()
@@ -322,7 +393,6 @@ fn get_started(root: &Root, cx: &mut Context<Root>) -> impl IntoElement {
                     .flex()
                     .flex_col()
                     .gap(px(2.))
-                    .child(div().text_size(px(T_S)).text_color(c(MUTED)).font_features(tnum()).child(format!("{}", i + 1)))
                     .child(div().text_size(px(T_L)).font_weight(FontWeight::SEMIBOLD).text_color(c(TEXT)).truncate().child(root.tr(key))),
             )
             .on_click(cx.listener(move |r, _, _, cx| {
@@ -358,107 +428,8 @@ pub fn wash(root: &Root, cx: &mut App) -> Option<(String, std::sync::Arc<Image>)
     images::pic(&url, cx).map(|p| (url, p))
 }
 
-/// The game's cover at its own sharpness, `w`×`h`, on the stage's wash: a hairline round it, no shadow.
-fn showcase(url: &str, w: f32, h: f32, cx: &mut App) -> Option<Div> {
-    if w < 160. {
-        return None;
-    }
-    let (src, orig) = images::pic_pair(url, w, h, cx)?;
-    Some(
-        div()
-            .w(px(w))
-            .h(px(h))
-            .flex_none()
-            .rounded(px(R_L))
-            .overflow_hidden()
-            .bg(c(RAISED))
-            .border_1()
-            .border_color(ca(WHITE, 0.14))
-            .child(fade_in(img(src).size_full().object_fit(ObjectFit::Cover), &orig)),
-    )
-}
-
 /// The page's side margin, the Accounts page's: the stage's words and every row under it start here.
 const SIDE: f32 = 24.;
-
-/// The farm: every account as a key in the vault's order (its numbered tag, its name, what it does now), so a glance
-/// says whether the farm is alive. Its head says the same in words; a key opens the Accounts page.
-fn fleet(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement {
-    use crate::pages::accounts as acc;
-    let all = root.accounts();
-    let now = crate::time::now_secs();
-    let playing = all.iter().filter(|a| a.get("state").and_then(Value::as_str) == Some("running") && !acc::in_menu(a)).count();
-    let dropped = all.iter().filter(|a| is_dropped(a)).count();
-    let look = all
-        .iter()
-        .filter(|a| a.get("state").and_then(Value::as_str) != Some("running") && (a.get("cookieValid").and_then(Value::as_bool) == Some(false)))
-        .count();
-    let mut said = vec![(if playing > 0 { root.i18n.tn("acc.sum.playing", playing as i64, &[]) } else { root.tr("acc.sum.idle") }, None)];
-    if dropped > 0 {
-        said.push((root.i18n.tv("ui.droppedN", &[("n", &dropped.to_string())]), Some(c(WARN))));
-    }
-    if look > 0 {
-        said.push((root.i18n.tn("acc.sum.look", look as i64, &[]), Some(c(BAD))));
-    }
-    // As many to a row as fit at 168 px; a short farm keeps its keys at most 248 wide, not stretched across.
-    // (The keys' ground starts 10 px left of the text's edge, so the row is 20 wider than the page's column.)
-    let width = width + 20.;
-    let (cols, w) = grid_fit(width, 168., 8.);
-    let w = if all.len() < cols { w.max(((width - 8. * (all.len() as f32 - 1.)) / all.len() as f32).floor()).min(248.) } else { w };
-    let keys = all.iter().enumerate().map(|(i, a)| {
-        let (state, tone, _) = acc::state_of(root, a);
-        let running = a.get("state").and_then(Value::as_str) == Some("running");
-        let in_game = running && !acc::in_menu(a);
-        let clock = running
-            .then(|| a.pointer("/session/since").and_then(Value::as_str).and_then(crate::time::iso_secs).map(|t| crate::time::clock(now - t)))
-            .flatten();
-        // Playing: the game it is in, in the state's colour (the state word is the tag's fill already).
-        let game = in_game.then(|| a.pointer("/session/game/name").and_then(Value::as_str).filter(|g| !g.is_empty()).map(clean)).flatten();
-        let line = match (&game, tone) {
-            (Some(g), OK) => g.clone(),
-            _ => state,
-        };
-        let col = if tone == OK || tone == TEXT_2 { c(MUTED) } else { c(tone) };
-        hot(("fleet", i))
-            .w(px(w))
-            .flex_none()
-            .px(px(10.))
-            .py(px(10.))
-            .flex()
-            .items_center()
-            .gap(px(12.))
-            .rounded(px(R_M))
-            .cursor_pointer()
-            .child(acc::key_tag(i + 1, a, 30.))
-            .child(
-                div()
-                    .flex_1()
-                    .min_w_0()
-                    .flex()
-                    .flex_col()
-                    .gap(px(1.))
-                    .child(
-                        div()
-                            .flex()
-                            .items_baseline()
-                            .gap(px(6.))
-                            .child(div().flex_1().min_w_0().truncate().text_size(px(T_M)).font_weight(FontWeight::SEMIBOLD).text_color(c(TEXT)).child(acc::label(a)))
-                            .when_some(clock, |d, t| d.child(div().flex_none().text_size(px(T_S)).text_color(c(MUTED)).font_features(tnum()).child(t))),
-                    )
-                    .child(div().truncate().text_size(px(T_S)).text_color(col).child(line)),
-            )
-            .on_click(cx.listener(|r, _, _, cx| {
-                r.go(Page::Accounts);
-                cx.notify();
-            }))
-    });
-    div()
-        .flex()
-        .flex_col()
-        .gap(px(10.))
-        .child(section_head(root.tr("nav.accounts"), Some(all.len())).child(facts(said)))
-        .child(div().w(px(width)).flex().flex_wrap().gap(px(8.)).ml(px(-10.)).children(keys))
-}
 
 /// The games, under a head with two choices: this PC's (running, then played lately) and what Bloxkeep's users play
 /// now; their wide pictures one row of the page's grid, each on its game's colour.
@@ -491,18 +462,22 @@ fn shelf(root: &Root, all: &[Game], focus: usize, width: f32, cx: &mut Context<R
     } else {
         tile_w
     };
+    // Full rows only (a lone game on a second row looked dropped); the tabs count what shows, See all has the rest.
+    let full_rows = |n: usize| {
+        let k = n.min(cols * rows);
+        if k > cols { k - k % cols } else { k }
+    };
+    let (games_shown, community_shown) = (full_rows(all.len()), full_rows(community.len()));
     let tiles: Vec<AnyElement> = match tab_now {
         HomeTab::Games => all
             .iter()
-            // (Full rows only, as the community's.)
-            .take({
-                let k = all.len().min(cols * rows);
-                if k > cols { k - k % cols } else { k }
-            })
+            .take(games_shown)
             .enumerate()
             .map(|(i, g)| {
                 let place = g.place;
-                let sub = if g.accounts.is_empty() {
+                let sub = if g.accounts.is_empty() && g.hours <= 0. {
+                    (root.tr("home.recent"), false)
+                } else if g.accounts.is_empty() {
                     (root.i18n.tv("ui.playedH", &[("n", &format!("{:.0}", g.hours.max(1.)))]), false)
                 } else {
                     (root.tr("home.playing"), true)
@@ -522,11 +497,7 @@ fn shelf(root: &Root, all: &[Game], focus: usize, width: f32, cx: &mut Context<R
             .collect(),
         HomeTab::Community => community
             .iter()
-            // (Full rows only: a lone game on a second row looked dropped.)
-            .take({
-                let k = community.len().min(cols * rows);
-                if k > cols { k - k % cols } else { k }
-            })
+            .take(community_shown)
             .enumerate()
             .map(|(i, g)| {
                 let place = g.get("place").and_then(Value::as_i64).unwrap_or(0);
@@ -580,7 +551,7 @@ fn shelf(root: &Root, all: &[Game], focus: usize, width: f32, cx: &mut Context<R
         .gap(px(12.))
         .child(
             section_head(root.tr("home.games"), None)
-                .child(view_switch(vec![pick(HomeTab::Games, "gamepad", root.tr("ui.myGames"), all.len(), cx), pick(HomeTab::Community, "globe", root.tr("ui.community"), community.len(), cx)]))
+                .child(view_switch(vec![pick(HomeTab::Games, "gamepad", root.tr("ui.myGames"), games_shown, cx), pick(HomeTab::Community, "globe", root.tr("ui.community"), community_shown, cx)]))
                 .child(see_all("home-games-all", root.tr("home.all"), cx.listener(|r, _, _, cx| {
                     r.go(Page::Games);
                     cx.notify();
@@ -628,7 +599,7 @@ pub fn cover_tile(id: (&'static str, usize), cover: Option<String>, icon_url: Op
         .items_center()
         .justify_center()
         .map(|d| match (picture, big_icon) {
-            (Some((p, k)), _) => d.child(fade_in(img(p).size_full().object_fit(ObjectFit::Cover), &k)),
+            (Some((p, k)), _) => d.child(fade_in(img(p).size_full().object_fit(ObjectFit::Cover).rounded(px(R_L)), &k)),
             (None, Some(i)) => d.child(img(i).size(px(icon_side)).rounded(px(R_L))),
             (None, None) => d.child(div().text_size(px(T_STAGE + 8.)).font_weight(FontWeight::BOLD).text_color(c(DIM)).child(first.clone())),
         })
@@ -683,7 +654,7 @@ pub fn cover_tile(id: (&'static str, usize), cover: Option<String>, icon_url: Op
                         .items_center()
                         .justify_center()
                         .map(|d| match badge {
-                            Some(i) => d.child(img(i).size_full().object_fit(ObjectFit::Cover)),
+                            Some(i) => d.child(img(i).size_full().object_fit(ObjectFit::Cover).rounded(px(R_M))),
                             None => d.text_size(px(T_H)).font_weight(FontWeight::BOLD).text_color(c(MUTED)).child(first),
                         }),
                 )
@@ -722,14 +693,14 @@ fn presets(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement 
     } else {
         card_w
     };
-    let alive: Vec<String> = root.accounts().iter().filter_map(|a| a.get("id").and_then(Value::as_str).map(str::to_string)).collect();
+    let alive: std::collections::HashSet<&str> = root.accounts().iter().filter_map(|a| a.get("id").and_then(Value::as_str)).collect();
     let mut cards = grid(GRID_GAP).pb(px(4.));
     for (i, p) in presets.iter().take(cols * 2).enumerate() {
         let s = |k: &str| p.get(k).and_then(Value::as_str).unwrap_or_default().to_string();
         let n = p
             .get("accountIds")
             .and_then(Value::as_array)
-            .map(|ids| ids.iter().filter(|id| id.as_str().is_some_and(|x| alive.iter().any(|a| a == x))).count())
+            .map(|ids| ids.iter().filter(|id| id.as_str().is_some_and(|x| alive.contains(x))).count())
             .unwrap_or(0) as i64;
         let game = if s("gameName").is_empty() { root.tr("ps.noGame") } else { clean(&s("gameName")) };
         let pic = p.get("iconUrl").and_then(Value::as_str).and_then(|u| images::pic_sq(u, 44., cx));
@@ -762,7 +733,7 @@ fn presets(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement 
                         .overflow_hidden()
                         .bg(ca(WHITE, 0.06))
                         .map(|d| match pic {
-                            Some(i) => d.child(img(i).size_full().object_fit(ObjectFit::Cover)),
+                            Some(i) => d.child(img(i).size_full().object_fit(ObjectFit::Cover).rounded(px(R_M))),
                             None => d.child(icon("layers", 18., c(MUTED))),
                         }),
                 )

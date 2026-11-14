@@ -21,6 +21,7 @@ pub const MAX_SAVE_RETRY: Duration = Duration::from_secs(5 * 60);
 
 /// IOException or UnauthorizedAccessException: a write Windows refused (an antivirus, a sync client, a read-only folder).
 // PORT: Fail carries only its text; an io::Error's text ends "(os error N)", which is what tells them apart here.
+// So the core makes its own I/O failures (a file already there: vault::exists_error) from Windows' error codes too.
 pub(crate) fn is_io_error(fail: &Fail) -> bool {
     matches!(fail, Fail::Other(m) if m.contains("(os error "))
 }

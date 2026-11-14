@@ -5,7 +5,7 @@
 //! put back once that client has started.
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::{Mutex, RwLock};
+use std::sync::{LazyLock, Mutex, RwLock};
 use std::time::{Duration, Instant, SystemTime};
 
 use regex::{Captures, Regex};
@@ -22,7 +22,7 @@ fn roblox_dir() -> String {
     if let Some(d) = ROBLOX_DIR.read().unwrap_or_else(|e| e.into_inner()).clone() {
         return d;
     }
-    Path::new(&std::env::var("LOCALAPPDATA").unwrap_or_default()).join("Roblox").to_string_lossy().into_owned()
+    crate::core::base::local_app_data().join("Roblox").to_string_lossy().into_owned()
 }
 
 /// Tests: Roblox's folder in place of the real one.
@@ -82,8 +82,15 @@ fn settings_file(cached: bool) -> Option<String> {
     found
 }
 
-fn element(kind: &str, name: &str) -> Regex {
-    Regex::new(&format!("(<{kind} name=\"{}\">)([^<]*)(</{kind}>)", regex::escape(name))).unwrap()
+/// Each of KEYS' elements, made once: `restore` looks every couple of seconds.
+static ELEMENTS: LazyLock<Vec<Regex>> = LazyLock::new(|| {
+    KEYS.iter().map(|(kind, name)| Regex::new(&format!("(<{kind} name=\"{}\">)([^<]*)(</{kind}>)", regex::escape(name))).unwrap()).collect()
+});
+
+/// The element of one of KEYS.
+fn element(kind: &str, name: &str) -> &'static Regex {
+    let i = KEYS.iter().position(|k| *k == (kind, name)).expect("one of KEYS");
+    &ELEMENTS[i]
 }
 
 /// ToString("0.##", InvariantCulture).
@@ -184,8 +191,10 @@ pub fn prepare_for(config: &RobloxConfig, use_config: bool, windowed: bool) -> b
                     refreshed = true;
                 }
             }
-            if refreshed {
-                save_baseline(&b);
+            // PORT: the C# goes on when this fails; then the person's newer values would be only in memory while
+            // Bloxkeep's go into the file, and a restart would put back the older ones. Nothing written instead.
+            if refreshed && !save_baseline(&b) {
+                return false;
             }
             b
         }
@@ -274,9 +283,13 @@ pub fn restore(final_: bool) {
                     }
                 }
                 if updated != text {
-                    back = write(file, &updated); // not written: tried again when the file changes, and at the final restore
+                    back = write(file, &updated); // not written: tried again on the next tick, and at the final restore
                 }
-                if let Some((time, len)) = file_stamp(file) {
+                // Only a file put back is marked seen: a write refused a moment (Roblox or an antivirus holding the file)
+                // left unmarked is tried again next time, since Roblox may not touch the file again until the next join.
+                if back
+                    && let Some((time, len)) = file_stamp(file)
+                {
                     *lock(&LAST_SEEN) = Some((file.to_string(), time, len));
                 }
             }

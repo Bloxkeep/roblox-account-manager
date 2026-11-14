@@ -9,7 +9,7 @@ use std::{
     net::{TcpListener, TcpStream},
     rc::Rc,
     sync::{
-        atomic::{AtomicBool, AtomicU16, Ordering},
+        atomic::{AtomicBool, AtomicU16, AtomicUsize, Ordering},
         mpsc, Arc, Mutex,
     },
     thread::JoinHandle,
@@ -241,10 +241,13 @@ pub async fn run(c: &mut Checks, dir: &str) {
     let answer = Arc::new(AtomicU16::new(200));
     // Set: the next request is answered only when it is let go (the ones after it at once).
     let gate: Arc<Mutex<Option<mpsc::Receiver<()>>>> = Arc::new(Mutex::new(None));
-    let (status, held) = (answer.clone(), gate.clone());
-    let mut server = StandInServer::start(Box::new(move |_got| {
+    // Set (not 0): a body over it is refused as too large, as the service before the longer log.
+    let old_service_max = Arc::new(AtomicUsize::new(0));
+    let (status, held, old_max) = (answer.clone(), gate.clone(), old_service_max.clone());
+    let mut server = StandInServer::start(Box::new(move |got| {
         let slow = held.lock().unwrap().take();
-        let code = status.load(Ordering::SeqCst);
+        let most = old_max.load(Ordering::SeqCst);
+        let code = if most > 0 && got.body.len() > most { 413 } else { status.load(Ordering::SeqCst) };
         if let Some(slow) = slow {
             let _ = slow.recv_timeout(Duration::from_secs(30));
         }
@@ -325,6 +328,45 @@ pub async fn run(c: &mut Checks, dir: &str) {
     answer.store(200, Ordering::SeqCst);
     let retried = call(&app, "sendFeedback", args("The service is back.", true, "bug")).await;
     c.check("a failed send can be tried again at once", user_error(&failed).is_some() && user_error(&retried).is_none(), &retried);
+
+    // A long log goes about whole (a report of 2026-11-11 had only 12 KB of it, starting at a rejoin's "try 4"): its
+    // first lines too. A service from before (refusing over 40 000) still gets the report, with the log's last 12 000.
+    {
+        use std::io::Write;
+        let mut log = std::fs::OpenOptions::new().append(true).open(crate::core::vault::data_dir().join("error.log")).expect("error.log");
+        let lines: String = (1..=1500).map(|i| format!("[2026-11-11 10:00:00] Long log line {i:04} of a rejoin's tries.\n")).collect();
+        log.write_all(lines.as_bytes()).expect("written");
+    }
+    app.feedback.feedback_sent_at.set(stamp_min());
+    let before_long = server.count();
+    let long_sent = call(&app, "sendFeedback", args("A long log.", true, "bug")).await;
+    let got = received(&server);
+    let long_log = if got.len() > before_long { got.last().and_then(|g| g["log"].as_str()).unwrap_or("").to_string() } else { String::new() };
+    c.check(
+        "a long log goes about whole: its early lines too, far past 12 000 characters",
+        user_error(&long_sent).is_none()
+            && long_log.encode_utf16().count() > 60_000
+            && long_log.contains("Long log line 0001 ")
+            && long_log.trim_end().ends_with("Long log line 1500 of a rejoin's tries."),
+        format!("{long_sent:?} {}", long_log.len()),
+    );
+    app.feedback.feedback_sent_at.set(stamp_min());
+    old_service_max.store(40_000, Ordering::SeqCst);
+    let before_old = server.count();
+    let old_sent = call(&app, "sendFeedback", args("To the old service.", true, "bug")).await;
+    old_service_max.store(0, Ordering::SeqCst);
+    let got = received(&server);
+    let cut_log = if got.len() == before_old + 2 { got.last().and_then(|g| g["log"].as_str()).unwrap_or("").to_string() } else { String::new() };
+    let cut_units = cut_log.encode_utf16().count();
+    c.check(
+        "the service from before refuses it as too large: sent again with the log's last 12 000 characters, whole lines",
+        user_error(&old_sent).is_none()
+            && cut_units > 0
+            && cut_units <= 12_000
+            && cut_log.starts_with("[2026-11-11")
+            && cut_log.trim_end().ends_with("Long log line 1500 of a rejoin's tries."),
+        format!("{old_sent:?} {} {cut_units}", got.len() - before_old),
+    );
 
     server.stop();
     app.feedback.feedback_sent_at.set(stamp_min());

@@ -19,11 +19,15 @@ use crate::core::{l, rt, vault};
 pub const FEEDBACK_URL: &str = "https://bloxkeep-feedback.bloxkeep-app.workers.dev/feedback";
 pub const FEEDBACK_TEXT_MAX: usize = 2000;
 pub const FEEDBACK_CONTACT_MAX: usize = 100;
-pub const FEEDBACK_LOG_MAX: usize = 12_000;
+/// About all of error.log (it starts over at 256 KB): 12 000 characters cut off a rejoin's first tries and the start of
+/// what went wrong (a report of 2026-11-11 began at "try 4").
+pub const FEEDBACK_LOG_MAX: usize = 200_000;
+/// What a feedback service from before the longer log takes: the log is cut to this and sent again.
+pub const FEEDBACK_LOG_OLD_MAX: usize = 12_000;
 pub const FEEDBACK_GAP: Duration = Duration::from_secs(60);
 
 /// No cookies, no redirects followed, 20 s at most (C#'s FeedbackHttp).
-static FEEDBACK_HTTP: LazyLock<ureq::Agent> = LazyLock::new(|| ureq::AgentBuilder::new().redirects(0).timeout(Duration::from_secs(20)).build());
+static FEEDBACK_HTTP: LazyLock<ureq::Agent> = LazyLock::new(|| crate::net::builder().redirects(0).timeout(Duration::from_secs(20)).build());
 static COOKIE_TEXT: LazyLock<Regex> = LazyLock::new(|| Regex::new(r#"_\|WARNING:-DO-NOT-SHARE-THIS[^\s"']*"#).expect("cookie pattern"));
 static WEBHOOK_TEXT: LazyLock<Regex> =
     LazyLock::new(|| RegexBuilder::new(r"https?://(?:[a-z]+\.)?discord(?:app)?\.com/api/webhooks/\S+").case_insensitive(true).build().expect("webhook pattern"));
@@ -182,12 +186,7 @@ impl App {
         if text.is_empty() {
             return None;
         }
-        if units(&text) > FEEDBACK_LOG_MAX {
-            text = last_units(&text, FEEDBACK_LOG_MAX);
-            if let Some(rest) = after_first_line(&text) {
-                text = rest;
-            }
-        }
+        text = last_lines(&text, FEEDBACK_LOG_MAX);
         if text.trim().is_empty() { None } else { Some(self.scrub(&text)) }
     }
 
@@ -258,34 +257,46 @@ impl App {
         if self.feedback.feedback_sending.get() || Stamp::utc_now().secs_since(self.feedback.feedback_sent_at.get()) < FEEDBACK_GAP.as_secs_f64() {
             return Err(Fail::user(l::t("Feedback was just sent. Wait a minute before sending more.")));
         }
-        self.feedback.feedback_sending.set(true);
+        let sending = crate::core::base::Busy::set(&self.feedback.feedback_sending);
         let result = self.post_feedback(f).await;
-        self.feedback.feedback_sending.set(false);
+        drop(sending);
         result?;
         Ok(json!({ "sent": true }))
     }
 
     pub async fn post_feedback(self: &Rc<Self>, f: Feedback) -> Res<()> {
         let url = std::env::var("BLOXKEEP_FEEDBACK_URL").ok().filter(|u| !u.is_empty()).unwrap_or_else(|| FEEDBACK_URL.to_string());
-        // The C#'s anonymous object, its names in this order; a missing log is written as null.
-        let body = format!(
-            "{{\"kind\":{},\"text\":{},\"contact\":{},\"app\":{},\"windows\":{},\"language\":{},\"log\":{}}}",
-            json!(f.kind),
-            json!(f.text),
-            json!(f.contact),
-            json!(f.app),
-            json!(f.windows),
-            json!(f.language),
-            json!(f.log)
-        );
-        // Ok(status) for any answer; Err when it couldn't be reached (HttpRequestException, TaskCanceledException).
-        let answer = rt::blocking(move || match FEEDBACK_HTTP.post(&url).set("Content-Type", "application/json; charset=utf-8").send_string(&body) {
-            Ok(res) => Ok(res.status()),
-            Err(ureq::Error::Status(code, _)) => Ok(code),
-            Err(e) => Err(e.to_string()),
-        })
-        .await;
-        let status = answer.map_err(|_| Fail::user(l::t("Couldn't reach the feedback service. Check the internet connection and try again.")))?;
+        let post = |log: Option<String>| {
+            // The C#'s anonymous object, its names in this order; a missing log is written as null.
+            let body = format!(
+                "{{\"kind\":{},\"text\":{},\"contact\":{},\"app\":{},\"windows\":{},\"language\":{},\"log\":{}}}",
+                json!(f.kind),
+                json!(f.text),
+                json!(f.contact),
+                json!(f.app),
+                json!(f.windows),
+                json!(f.language),
+                json!(log)
+            );
+            let url = url.clone();
+            async move {
+                // Ok(status) for any answer; Err when it couldn't be reached (HttpRequestException, TaskCanceledException).
+                let answer = rt::blocking(move || match FEEDBACK_HTTP.post(&url).set("Content-Type", "application/json; charset=utf-8").send_string(&body) {
+                    Ok(res) => Ok(res.status()),
+                    Err(ureq::Error::Status(code, _)) => Ok(code),
+                    Err(e) => Err(e.to_string()),
+                })
+                .await;
+                answer.map_err(|_| Fail::user(l::t("Couldn't reach the feedback service. Check the internet connection and try again.")))
+            }
+        };
+        let mut status = post(f.log.clone()).await?;
+        // A service from before the longer log refuses it as too large: the report still goes, with the log's end.
+        if status == 413
+            && let Some(log) = f.log.as_deref().filter(|l| units(l) > FEEDBACK_LOG_OLD_MAX)
+        {
+            status = post(Some(last_lines(log, FEEDBACK_LOG_OLD_MAX))).await?;
+        }
         if status == 429 {
             return Err(Fail::user(l::t("A lot of feedback is arriving right now. Try again in a minute.")));
         }
@@ -295,4 +306,13 @@ impl App {
         self.feedback.feedback_sent_at.set(Stamp::utc_now());
         Ok(())
     }
+}
+
+/// The end of `text`, at most `max` characters (UTF-16 units, as the C#'s), whole lines only.
+fn last_lines(text: &str, max: usize) -> String {
+    if units(text) <= max {
+        return text.to_string();
+    }
+    let end = last_units(text, max);
+    after_first_line(&end).unwrap_or(end)
 }
