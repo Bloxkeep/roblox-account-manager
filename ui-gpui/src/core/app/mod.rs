@@ -172,6 +172,18 @@ impl App {
         }
     }
 
+    /// A failure a window of Bloxkeep's showed the person (a sign-in window, the website tab), in error.log with names
+    /// and ids scrubbed. On the core's thread with the open vault's secrets too; on any other (a message box on the
+    /// windows' thread) with the names seen so far, so nothing shown goes unwritten.
+    pub fn note_shown(what: &str, text: &str) {
+        let app = APP.try_with(|a| a.try_borrow().ok().and_then(|a| a.clone())).ok().flatten();
+        let said = match app {
+            Some(app) => app.scrub(text),
+            None => feedback::scrub_text(text, Vec::new()),
+        };
+        crate::core::log::note_file(&format!("{what} showed: {}", said.replace('\n', " / ")));
+    }
+
     /// Reads the open vault's data (C#: `RequireVault().Data`): Err when Bloxkeep is locked.
     pub fn vault<R>(&self, f: impl FnOnce(&VaultData) -> R) -> Res<R> {
         let vault = self.controller.vault.borrow();

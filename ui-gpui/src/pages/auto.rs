@@ -308,7 +308,7 @@ pub fn auto(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
             let on = tab == t;
             chip(SharedString::from(format!("auto-tab-{text}")), on)
                 .h(px(TOOL_H))
-                .child(icon(mark, 15., if on { c(INK) } else { c(MUTED) }))
+                .child(icon(mark, 15., if on { crate::theme::on_text() } else { c(MUTED) }))
                 .child(text)
                 .child(chip_count(n, on))
                 .on_click(cx.listener(move |r, _, _, cx| {

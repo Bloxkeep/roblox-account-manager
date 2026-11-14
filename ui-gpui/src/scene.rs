@@ -36,6 +36,8 @@ struct Scene {
     /// or every frame started another read and decode of it.
     failed: Option<Key>,
     thumbs: HashMap<Key, Option<Arc<RenderImage>>>,
+    /// The custom theme's video playing behind the page, by its name: made once, let go with the theme.
+    video: Option<(String, gpui_kit::Entity<crate::video::Video>)>,
 }
 
 impl Global for Scene {}
@@ -44,7 +46,8 @@ impl Global for Scene {}
 /// the theme's wash over it. None on a theme without a picture (the root's own ground shows).
 pub fn layer(window: &mut Window, cx: &mut Context<Root>) -> Option<AnyElement> {
     let Some(b) = crate::theme::backdrop() else {
-        // Back to a plain theme: the picture is let go.
+        // Back to a plain theme: the picture is let go, and a video's player with it.
+        cx.default_global::<Scene>().video = None;
         if let Some((_, old, frosted)) = cx.default_global::<Scene>().shown.take() {
             cx.drop_image(old, Some(window));
             if let Some(f) = frosted {
@@ -55,12 +58,37 @@ pub fn layer(window: &mut Window, cx: &mut Context<Root>) -> Option<AnyElement> 
     };
     let key = wanted(&b, window);
     let pic = if b.file.is_empty() { None } else { picture(key, &b, window, cx) };
+    // A video behind the page: its player kept while this video is the theme's, started the first time it is drawn.
+    let clip = match &b.video {
+        Some(name) => {
+            let kept = cx.default_global::<Scene>().video.as_ref().filter(|(n, _)| n == name).map(|(_, v)| v.clone());
+            match kept {
+                Some(v) => Some(v),
+                None => match crate::images::user(name) {
+                    Some(path) => {
+                        let v = cx.new(|cx| crate::video::Video::behind(path, cx));
+                        cx.default_global::<Scene>().video = Some((name.clone(), v.clone()));
+                        Some(v)
+                    }
+                    None => {
+                        crate::net::note_failed("Theme video", name, "its file isn't in Bloxkeep's pictures folder");
+                        None
+                    }
+                },
+            }
+        }
+        None => {
+            cx.default_global::<Scene>().video = None;
+            None
+        }
+    };
     Some(
         div()
             .absolute()
             .inset_0()
             .bg(b.under)
             .when_some(pic, |d, p| d.child(img(ImageSource::Render(p)).absolute().inset_0().size_full().object_fit(ObjectFit::Cover)))
+            .when_some(clip, |d, v| d.child(div().absolute().inset_0().child(v)))
             .child(div().absolute().inset_0().bg(b.wash))
             .into_any_element(),
     )
@@ -139,6 +167,7 @@ fn picture(key: Key, b: &Backdrop, window: &mut Window, cx: &mut Context<Root>) 
                         s.shown.replace((key, Arc::new(p), f.map(Arc::new)))
                     }
                     None => {
+                        crate::net::note_failed("Theme picture", &key.file, "couldn't be read or drawn");
                         s.failed = Some(key);
                         None
                     }

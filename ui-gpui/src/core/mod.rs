@@ -54,6 +54,7 @@ pub mod roblox_flags;
 pub mod roblox_game_settings;
 pub mod roblox_home_session;
 pub mod roblox_input;
+pub mod capacity;
 pub mod roblox_installs;
 pub mod roblox_launcher;
 pub mod roblox_mods;

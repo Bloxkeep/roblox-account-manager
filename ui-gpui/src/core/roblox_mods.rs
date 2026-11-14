@@ -47,7 +47,8 @@ fn originals(build: &str) -> PathBuf {
 }
 
 fn load() -> Applied {
-    std::fs::read(note_path()).ok().and_then(|b| serde_json::from_slice(&b).ok()).unwrap_or_default()
+    // Lost, it no longer knows which of Roblox's files are a mod's: said, as mods then can't be taken out cleanly.
+    crate::net::saved("Roblox mods note", &note_path()).unwrap_or_default()
 }
 
 fn save(a: &Applied) {

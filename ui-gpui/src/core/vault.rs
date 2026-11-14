@@ -486,8 +486,7 @@ impl Vault {
         let (tx, rx) = mpsc::channel::<mpsc::SyncSender<Res<()>>>();
         let worker_shared = shared.clone();
         // The background saves' worker (C#'s ContinueWith chain): one at a time, in the order asked.
-        std::thread::Builder::new()
-            .name("vault-save".into())
+        crate::net::Named::new("vault-save".into())
             .spawn(move || {
                 for done in rx {
                     let result = write_queued(&worker_shared);

@@ -25,8 +25,12 @@ const DRAW_TIME: Duration = Duration::from_millis(400);
 
 /// How long a window shown again may take for its first frame, looked at every FRAME_WAIT; a picture
 /// still all one colour by then goes as it is (a game drawing nothing, Windows locked).
-const FIRST_FRAME_TIME: Duration = Duration::from_secs(3);
+/// (3 s wasn't enough on a PC with six windows: four of them still came out white a week after the first report,
+/// 2026-11-14. Now 8 s, with a push to draw halfway.)
+const FIRST_FRAME_TIME: Duration = Duration::from_secs(8);
 const FRAME_WAIT: Duration = Duration::from_millis(200);
+/// A window in view whose picture is all one colour is looked at again for this long (it may be mid-load).
+const IN_VIEW_TIME: Duration = Duration::from_millis(1500);
 
 /// How long a picture may take: a Roblox that stops answering meanwhile is given up on (it would hold every /pc
 /// command after it, which are answered one by one).
@@ -42,6 +46,16 @@ const PW_RENDERFULLCONTENT: u32 = 2;
 #[link(name = "user32")]
 unsafe extern "system" {
     fn PrintWindow(hwnd: HWND, hdc: *mut c_void, flags: u32) -> i32;
+    fn InvalidateRect(hwnd: HWND, rect: *const RECT, erase: i32) -> i32;
+}
+
+/// A picture for Discord, and how it was come by (for error.log: without it a white picture can't be explained).
+pub struct Shot {
+    pub jpeg: Vec<u8>,
+    /// All but black (Windows locked, say).
+    pub black: bool,
+    /// Still all one colour when the wait ended: the game drew nothing.
+    pub blank: bool,
 }
 
 fn is_window(h: isize) -> bool {
@@ -69,9 +83,14 @@ fn show_async(h: isize, command: i32) {
 
 /// The window's game as a JPEG no wider than `max_width`; None when it can't be pictured (gone, not
 /// answering, no size). `black` (the second) says the picture came out all but black (Windows locked, say). Blocking.
-pub fn capture(h: isize, max_width: i32) -> Option<(Vec<u8>, bool)> {
-    let full = client(h, false)?;
-    picture(&full, max_width)
+pub fn capture(h: isize, max_width: i32) -> (Option<Shot>, String) {
+    let (full, how) = shown_traced(h);
+    let Some(full) = full else { return (None, how) };
+    let blank = blank(&full);
+    match picture(&full, max_width) {
+        Some((jpeg, black)) => (Some(Shot { jpeg, black, blank }), how),
+        None => (None, format!("{how}; the picture couldn't be made a JPEG")),
+    }
 }
 
 /// The window's client area at full size, for a macro to look at (MacroPlayer.cs); None when it can't be pictured. A
@@ -82,14 +101,44 @@ pub fn client(h: isize, shown: bool) -> Option<Picture> {
 
 /// The client area with the window shown: unseen for the moment when it is minimized or hidden.
 fn shown_now(h: isize) -> Option<Picture> {
+    shown_traced(h).0
+}
+
+/// What a picture is, for error.log: its size and, when it is all one colour, that colour.
+fn said(p: &Picture) -> String {
+    if blank(p) {
+        let (r, g, b) = p.rgb(p.width / 80, p.height / 80);
+        format!("{}x{} all one colour #{r:02x}{g:02x}{b:02x}", p.width, p.height)
+    } else {
+        format!("{}x{} drawn", p.width, p.height)
+    }
+}
+
+/// `shown_now`, with how it went: the window's state, the looks it took and how long, and what came out.
+fn shown_traced(h: isize) -> (Option<Picture>, String) {
     // A window that isn't answering would hold whoever asks it to draw.
-    if h == 0 || !is_window(h) || is_hung(h) {
-        return None;
+    if h == 0 || !is_window(h) {
+        return (None, "no window".into());
+    }
+    if is_hung(h) {
+        return (None, "window not answering".into());
     }
     let minimized = is_iconic(h);
     let unshown = !is_visible(h);
+    let started = std::time::Instant::now();
+    let mut looks = 0;
     if !minimized && !unshown {
-        return timed(h);
+        // In view (or behind other windows): pictured as it is; all one colour, looked at again for a moment.
+        let result = loop {
+            looks += 1;
+            match timed(h) {
+                Some(p) if started.elapsed() < IN_VIEW_TIME && blank(&p) => {}
+                other => break other,
+            }
+            std::thread::sleep(FRAME_WAIT);
+        };
+        let how = format!("in view, {looks} look(s) in {} ms, {}", started.elapsed().as_millis(), result.as_ref().map(said).unwrap_or_else(|| "no picture (not answering, or no size)".into()));
+        return (result, how);
     }
     let before = anti_afk::hide(h, (0, 0), minimized);
     show_async(h, SW_SHOWNOACTIVATE);
@@ -97,17 +146,42 @@ fn shown_now(h: isize) -> Option<Picture> {
     // Shown again, Roblox needs a moment for its first frame, longer with many windows open; until then the
     // picture is all one colour (white: of six windows pictured from Discord, five came out white, the one in view whole, 2026-11-07).
     let waited = std::time::Instant::now();
+    let (mut pushed, mut shown_again) = (false, 0);
     let result = loop {
         if is_hung(h) {
             break None;
         }
+        // It went back by itself (a full-screen Roblox minimizes when it isn't in front): shown once more.
+        if (minimized && is_iconic(h) || unshown && !is_visible(h)) && shown_again < 2 {
+            shown_again += 1;
+            show_async(h, SW_SHOWNOACTIVATE);
+            std::thread::sleep(DRAW_TIME);
+        }
+        looks += 1;
         let picture = timed(h);
         match picture {
-            Some(p) if waited.elapsed() < FIRST_FRAME_TIME && blank(&p) => {}
+            Some(p) if waited.elapsed() < FIRST_FRAME_TIME && blank(&p) => {
+                // Halfway and still nothing: asked to draw itself again (posted; never waits for the window).
+                if !pushed && waited.elapsed() > FIRST_FRAME_TIME / 3 {
+                    pushed = true;
+                    // SAFETY: plain call; the whole client area, queued for the window's own thread.
+                    unsafe {
+                        InvalidateRect(hwnd(h), std::ptr::null(), 0);
+                    }
+                }
+            }
             other => break other,
         }
         std::thread::sleep(FRAME_WAIT);
     };
+    let how = format!(
+        "{}, shown unseen, {looks} look(s) in {} ms{}{}, {}",
+        if minimized { "minimized" } else { "hidden" },
+        started.elapsed().as_millis(),
+        if pushed { ", asked to draw again" } else { "" },
+        if shown_again > 0 { format!(", went back by itself {shown_again} time(s)") } else { String::new() },
+        result.as_ref().map(said).unwrap_or_else(|| "no picture (not answering, or no size)".into())
+    );
     // finally:
     if minimized {
         show_async(h, SW_SHOWMINNOACTIVE);
@@ -122,7 +196,7 @@ fn shown_now(h: isize) -> Option<Picture> {
         i += 1;
     }
     anti_afk::show(&before);
-    result
+    (result, how)
 }
 
 /// Windows with a picture worker still running. At most one per window: a window that stops answering would
@@ -155,7 +229,7 @@ fn timed(h: isize) -> Option<Picture> {
     }
     let free = Free(h);
     let (tx, rx) = mpsc::channel();
-    let spawned = std::thread::Builder::new().name("Bloxkeep window picture".into()).spawn(move || {
+    let spawned = crate::net::Named::new("Bloxkeep window picture".into()).spawn(move || {
         let _free = free;
         let _ = tx.send(take_client(h));
     });

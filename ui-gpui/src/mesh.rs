@@ -140,6 +140,22 @@ struct Mat {
     d: f32,
 }
 
+/// A triangle as it lands on the stage this picture: its corners, their depth (1/z), normals and picture places,
+/// and the rows and columns it can cover.
+struct Shown {
+    sx: [f32; 3],
+    sy: [f32; 3],
+    iz: [f32; 3],
+    nn: [V3; 3],
+    uv: [[f32; 2]; 3],
+    mat: usize,
+    area: f32,
+    x0: usize,
+    x1: usize,
+    y0: usize,
+    y1: usize,
+}
+
 struct Tri {
     p: [V3; 3],
     uv: [[f32; 2]; 3],
@@ -512,10 +528,13 @@ impl Model {
     /// The model looked at as `view` says, drawn into a square of `size` dots: BGRA, in its room (clear where the model
     /// isn't, in the clear room). Each dot is the mean of four, so edges come out smooth.
     pub fn draw(&self, view: View, size: usize) -> Vec<u8> {
+        self.draw_on(view, size, std::thread::available_parallelism().map(|c| c.get()).unwrap_or(4))
+    }
+
+    /// The same, in `cores` bands of rows at once (1: the whole stage on this thread, as it was first drawn).
+    pub fn draw_on(&self, view: View, size: usize, cores: usize) -> Vec<u8> {
         const SS: usize = 2;
         let n = size * SS;
-        let mut depth = vec![f32::MAX; n * n];
-        let mut col = vec![[0u8; 3]; n * n];
         let zoom = view.zoom.clamp(ZOOM_NEAR, ZOOM_FAR);
         // The camera circles the model's upright axis: from Roblox's own place, raised by the pitch, nearer by the
         // zoom, and looking a little higher the nearer it is (at the face, close up).
@@ -546,6 +565,7 @@ impl Model {
         // The avatar faces where it walked; the floor turns only with the camera.
         let (hs, hc) = (view.yaw + view.heading).sin_cos();
         let face = |p: V3| -> V3 { [p[0] * hc + p[2] * hs, p[1], -p[0] * hs + p[2] * hc] };
+        let mut shown: Vec<Shown> = Vec::with_capacity(self.tris.len());
         for tri in &self.tris {
             let (tp, tn) = match posed.as_ref().and_then(|p| p.0[tri.bone as usize].as_ref()) {
                 Some((at, m)) => (tri.p.map(|p| add(mv(m, sub(p, *at)), *at)), tri.n.map(|v| mv(m, v))),
@@ -582,45 +602,7 @@ impl Model {
             if x1 < 0 || y1 < 0 || x0 > x1 as usize || y0 > y1 as usize {
                 continue;
             }
-            let m = &self.mats[tri.mat.min(self.mats.len() - 1)];
-            let iz = [1. / z[0], 1. / z[1], 1. / z[2]];
-            for y in y0..=y1 as usize {
-                let py = y as f32 + 0.5;
-                for x in x0..=x1 as usize {
-                    let px = x as f32 + 0.5;
-                    // How much of the dot belongs to each corner (all of one sign: the dot is inside).
-                    let w0 = ((sx[1] - px) * (sy[2] - py) - (sx[2] - px) * (sy[1] - py)) / area;
-                    let w1 = ((sx[2] - px) * (sy[0] - py) - (sx[0] - px) * (sy[2] - py)) / area;
-                    let w2 = 1. - w0 - w1;
-                    if w0 < 0. || w1 < 0. || w2 < 0. {
-                        continue;
-                    }
-                    let inv = w0 * iz[0] + w1 * iz[1] + w2 * iz[2];
-                    let zz = 1. / inv;
-                    let at = y * n + x;
-                    if zz >= depth[at] {
-                        continue;
-                    }
-                    // (Through the depth, so a picture doesn't swim on a face seen at a slant.)
-                    let (a, b, c) = (w0 * iz[0] * zz, w1 * iz[1] * zz, w2 * iz[2] * zz);
-                    let (tu, tv) = (a * tri.uv[0][0] + b * tri.uv[1][0] + c * tri.uv[2][0], a * tri.uv[0][1] + b * tri.uv[1][1] + c * tri.uv[2][1]);
-                    let base = match &m.tex {
-                        Some(tex) => tex.at(tu, tv),
-                        None => [m.kd[0] * 255., m.kd[1] * 255., m.kd[2] * 255., 255.],
-                    };
-                    // The see-through parts (hair's strands, a decal's edges) let what is behind show.
-                    let solid = m.mask.as_ref().map(|k| k.at(tu, tv)[3]).unwrap_or(base[3]);
-                    if solid < 128. {
-                        continue;
-                    }
-                    depth[at] = zz;
-                    let nrm = norm([a * nn[0][0] + b * nn[1][0] + c * nn[2][0], a * nn[0][1] + b * nn[1][1] + c * nn[2][1], a * nn[0][2] + b * nn[1][2] + c * nn[2][2]]);
-                    // Light on both sides of a thin part (a cape, a leaf): the side facing the camera.
-                    let nrm = if dot(nrm, f) > 0. { mul(nrm, -1.) } else { nrm };
-                    let lit = 0.58 + 0.42 * dot(nrm, light).max(0.);
-                    col[at] = [(base[0] * lit).min(255.) as u8, (base[1] * lit).min(255.) as u8, (base[2] * lit).min(255.) as u8];
-                }
-            }
+            shown.push(Shown { sx, sy, iz: [1. / z[0], 1. / z[1], 1. / z[2]], nn, uv: tri.uv, mat: tri.mat.min(self.mats.len() - 1), area, x0, x1: x1 as usize, y0, y1: y1 as usize });
         }
         let room = &ROOMS[view.room.min(ROOMS.len() - 1)];
         let walled = room.wall != 0;
@@ -670,38 +652,98 @@ impl Model {
             }
             c
         };
+        // Drawn in bands of rows, one per core, each with its own depth and colours: a 560-dot stage is 1.25 million
+        // dots a picture at four per dot, which one core drew far too slowly to follow a drag or a walk (the owner,
+        // 2026-11-15: "lag kinh khủng khiếp"). The same picture as before, dot for dot.
         let mut out = vec![0u8; size * size * 4];
-        for y in 0..size {
-            for x in 0..size {
-                let (mut r, mut g, mut b, mut hit) = (0f32, 0f32, 0f32, 0u32);
-                for dy in 0..SS {
-                    for dx in 0..SS {
-                        let (sxp, syp) = (x * SS + dx, y * SS + dy);
-                        let at = syp * n + sxp;
-                        if depth[at] < f32::MAX {
-                            r += col[at][0] as f32;
-                            g += col[at][1] as f32;
-                            b += col[at][2] as f32;
-                            hit += 1;
-                        } else if walled {
-                            let c = ground(sxp, syp);
-                            r += c[0];
-                            g += c[1];
-                            b += c[2];
-                            hit += 1;
+        let cores = cores.clamp(1, 16);
+        let rows_out = size.div_ceil(cores).max(1);
+        std::thread::scope(|scope| {
+            for (i, chunk) in out.chunks_mut(rows_out * size * 4).enumerate() {
+                let (shown, ground) = (&shown, &ground);
+                scope.spawn(move || {
+                    let y_out = i * rows_out;
+                    let rows = chunk.len() / (size * 4);
+                    let (top, bottom) = (y_out * SS, (y_out + rows) * SS);
+                    let mut depth = vec![f32::MAX; (bottom - top) * n];
+                    let mut col = vec![[0u8; 3]; (bottom - top) * n];
+                    for t in shown.iter() {
+                        if t.y1 < top || t.y0 >= bottom {
+                            continue;
+                        }
+                        for y in t.y0.max(top)..=t.y1.min(bottom - 1) {
+                            let py = y as f32 + 0.5;
+                            for x in t.x0..=t.x1 {
+                                let px = x as f32 + 0.5;
+                                // How much of the dot belongs to each corner (all of one sign: the dot is inside).
+                                let w0 = ((t.sx[1] - px) * (t.sy[2] - py) - (t.sx[2] - px) * (t.sy[1] - py)) / t.area;
+                                let w1 = ((t.sx[2] - px) * (t.sy[0] - py) - (t.sx[0] - px) * (t.sy[2] - py)) / t.area;
+                                let w2 = 1. - w0 - w1;
+                                if w0 < 0. || w1 < 0. || w2 < 0. {
+                                    continue;
+                                }
+                                let inv = w0 * t.iz[0] + w1 * t.iz[1] + w2 * t.iz[2];
+                                let zz = 1. / inv;
+                                let at = (y - top) * n + x;
+                                if zz >= depth[at] {
+                                    continue;
+                                }
+                                // (Through the depth, so a picture doesn't swim on a face seen at a slant.)
+                                let (a, b, c) = (w0 * t.iz[0] * zz, w1 * t.iz[1] * zz, w2 * t.iz[2] * zz);
+                                let (tu, tv) = (a * t.uv[0][0] + b * t.uv[1][0] + c * t.uv[2][0], a * t.uv[0][1] + b * t.uv[1][1] + c * t.uv[2][1]);
+                                let base = match &self.mats[t.mat].tex {
+                                    Some(tex) => tex.at(tu, tv),
+                                    None => [self.mats[t.mat].kd[0] * 255., self.mats[t.mat].kd[1] * 255., self.mats[t.mat].kd[2] * 255., 255.],
+                                };
+                                // The see-through parts (hair's strands, a decal's edges) let what is behind show.
+                                let solid = self.mats[t.mat].mask.as_ref().map(|k| k.at(tu, tv)[3]).unwrap_or(base[3]);
+                                if solid < 128. {
+                                    continue;
+                                }
+                                depth[at] = zz;
+                                let nrm = norm([a * t.nn[0][0] + b * t.nn[1][0] + c * t.nn[2][0], a * t.nn[0][1] + b * t.nn[1][1] + c * t.nn[2][1], a * t.nn[0][2] + b * t.nn[1][2] + c * t.nn[2][2]]);
+                                // Light on both sides of a thin part (a cape, a leaf): the side facing the camera.
+                                let nrm = if dot(nrm, f) > 0. { mul(nrm, -1.) } else { nrm };
+                                let lit = 0.58 + 0.42 * dot(nrm, light).max(0.);
+                                col[at] = [(base[0] * lit).min(255.) as u8, (base[1] * lit).min(255.) as u8, (base[2] * lit).min(255.) as u8];
+                            }
                         }
                     }
-                }
-                if hit > 0 {
-                    let o = (y * size + x) * 4;
-                    let k = hit as f32;
-                    out[o] = (b / k) as u8;
-                    out[o + 1] = (g / k) as u8;
-                    out[o + 2] = (r / k) as u8;
-                    out[o + 3] = (hit * 255 / (SS * SS) as u32) as u8;
-                }
+                    let out = chunk;
+                    for y in y_out..y_out + rows {
+                        for x in 0..size {
+                            let (mut r, mut g, mut b, mut hit) = (0f32, 0f32, 0f32, 0u32);
+                            for dy in 0..SS {
+                                for dx in 0..SS {
+                                    let (sxp, syp) = (x * SS + dx, y * SS + dy);
+                                    let at = (syp - top) * n + sxp;
+                                    if depth[at] < f32::MAX {
+                                        r += col[at][0] as f32;
+                                        g += col[at][1] as f32;
+                                        b += col[at][2] as f32;
+                                        hit += 1;
+                                    } else if walled {
+                                        let c = ground(sxp, syp);
+                                        r += c[0];
+                                        g += c[1];
+                                        b += c[2];
+                                        hit += 1;
+                                    }
+                                }
+                            }
+                            if hit > 0 {
+                                let o = ((y - y_out) * size + x) * 4;
+                                let k = hit as f32;
+                                out[o] = (b / k) as u8;
+                                out[o + 1] = (g / k) as u8;
+                                out[o + 2] = (r / k) as u8;
+                                out[o + 3] = (hit * 255 / (SS * SS) as u32) as u8;
+                            }
+                        }
+                    }
+                });
             }
-        }
+        });
         out
     }
 
@@ -780,7 +822,7 @@ fn shadow_of(tris: &[Tri], center: V3, radius: f32, lo: f32, hi: f32) -> Vec<f32
 
 /// A plain avatar for checking the page without Roblox (a hidden shot, BLOXKEEP_SHOT_MODEL=blocks): six boxes in the
 /// classic colours, standing on the floor and facing -Z.
-#[cfg(feature = "shot")]
+#[cfg(any(feature = "shot", feature = "core"))]
 pub fn blocks() -> Option<Model> {
     let mut obj = String::new();
     let mut mtl = String::new();

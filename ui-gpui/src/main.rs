@@ -24,6 +24,7 @@ mod link;
 mod mesh;
 mod itemwatch;
 mod modstore;
+mod launcher_icons;
 mod net;
 mod prefs;
 mod pages;

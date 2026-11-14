@@ -125,6 +125,16 @@ pub fn engine_quality(slider: i32) -> i32 {
 /// its 30, 60, 144 and 240).
 pub const FPS_CHOICES: [i32; 8] = [15, 20, 30, 45, 60, 120, 144, 240];
 
+/// Any whole limit from 5 to 360 is taken, not only the ones offered (a user asked for 17 and 18, 2026-11-15): Roblox
+/// reads FramerateCap as a plain number.
+pub fn fps_allowed(fps: i32) -> bool {
+    (5..=360).contains(&fps) || fps == FPS_UNLIMITED
+}
+
+/// No limit: Roblox's own menu stops at 240, and a FramerateCap above that lifts the cap. 9999 is what Voidstrap's FPS
+/// unlocker writes (its Bootstrapper.cs, read 2026-11-15); the owner asked for it as Lunar Client has it.
+pub const FPS_UNLIMITED: i32 = 9999;
+
 /// What a client opens with; None: nothing of Bloxkeep's. An account's own limit (Account.fps_cap) goes over
 /// the shared setup's and works without it; light AFK stays light, so only a lower limit goes over its own.
 pub fn for_launch(shared: &RobloxConfig, afk: bool, uses_shared: bool, account_fps: i32) -> Option<RobloxConfig> {
@@ -298,7 +308,12 @@ pub fn restore(final_: bool) {
     if !final_ || !back {
         return;
     }
-    let _ = std::fs::remove_file(baseline_path());
+    match std::fs::remove_file(baseline_path()) {
+        Err(e) if e.kind() != std::io::ErrorKind::NotFound => {
+            crate::net::note_failed("Roblox settings copy", &baseline_path().to_string_lossy(), &format!("couldn't be removed: {e}"));
+        }
+        _ => {}
+    }
 }
 
 pub fn has_baseline() -> bool {

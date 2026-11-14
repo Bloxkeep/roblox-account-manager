@@ -50,7 +50,7 @@ pub fn connect(name: &str) -> anyhow::Result<(Link, mpsc::UnboundedReceiver<Even
     let up = open(&format!("{name}-up"), true)?;
     let (lines, written) = channel::<String>();
     let mut up = up;
-    std::thread::Builder::new().name("link-write".into()).spawn(move || {
+    crate::net::Named::new("link-write".into()).spawn(move || {
         for line in written {
             if writeln!(up, "{line}").and_then(|_| up.flush()).is_err() {
                 break;
@@ -60,7 +60,7 @@ pub fn connect(name: &str) -> anyhow::Result<(Link, mpsc::UnboundedReceiver<Even
     let link = Link { local: false, writer: lines, next: Arc::new(AtomicU32::new(1)), waiting: Arc::default() };
     let (tx, rx) = mpsc::unbounded();
     let waiting = link.waiting.clone();
-    std::thread::Builder::new().name("link-read".into()).spawn(move || {
+    crate::net::Named::new("link-read".into()).spawn(move || {
         for line in BufReader::new(down).lines() {
             let Ok(line) = line else { break };
             if !take(&line, &waiting, &tx) {
@@ -110,7 +110,7 @@ fn take(line: &str, waiting: &Mutex<HashMap<u32, oneshot::Sender<Reply>>>, tx: &
 #[cfg(feature = "core")]
 pub fn local() -> (Link, mpsc::UnboundedReceiver<Event>) {
     let (lines, written) = channel::<String>();
-    let _ = std::thread::Builder::new().name("link-write".into()).spawn(move || {
+    let _ = crate::net::Named::new("link-write".into()).spawn(move || {
         for line in written {
             crate::core::gpui_host::on_message(line);
         }

@@ -714,7 +714,7 @@ impl MacroPlayer {
             self.changed();
             if start_loop {
                 let me = self.clone();
-                let handle = match std::thread::Builder::new().name("Bloxkeep macros".into()).spawn(move || me.run_loop()) {
+                let handle = match crate::net::Named::new("Bloxkeep macros".into()).spawn(move || me.run_loop()) {
                     Ok(h) => h,
                     Err(e) => {
                         // No loop after all: the next run may start one.

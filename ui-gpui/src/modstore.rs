@@ -49,7 +49,7 @@ pub struct Installed {
 
 /// The list, in order: a later mod's file wins over an earlier one's.
 pub fn installed() -> Vec<Installed> {
-    std::fs::read(dir().join("mods.json")).ok().and_then(|b| serde_json::from_slice(&b).ok()).unwrap_or_default()
+    crate::net::saved("Mods list", &dir().join("mods.json")).unwrap_or_default()
 }
 
 fn save(list: &[Installed]) -> Result<(), String> {
@@ -115,7 +115,11 @@ fn agent() -> ureq::Agent {
 }
 
 fn get(url: &str) -> Result<Value, String> {
-    serde_json::from_str(&agent().get(url).call().map_err(|e| e.to_string())?.into_string().map_err(|e| e.to_string())?).map_err(|e| e.to_string())
+    let out = (|| serde_json::from_str(&agent().get(url).call().map_err(|e| e.to_string())?.into_string().map_err(|e| e.to_string())?).map_err(|e| e.to_string()))();
+    if let Err(why) = &out {
+        crate::net::note_failed("Mods", url, why);
+    }
+    out
 }
 
 fn listed(r: &Value) -> Option<Listed> {
@@ -178,6 +182,113 @@ fn url_word(s: &str) -> String {
             _ => format!("%{b:02X}"),
         })
         .collect()
+}
+
+/// A mod's own page on GameBanana: its pictures, what its maker wrote, who made it, its numbers and its files.
+#[derive(Clone, Debug, Default)]
+pub struct Profile {
+    pub pics: Vec<String>,
+    pub text: String,
+    /// Each group of credits ("Creators", "Special Thanks") and the names in it with what each did.
+    pub credits: Vec<(String, Vec<(String, String)>)>,
+    pub likes: i64,
+    pub views: i64,
+    pub downloads: i64,
+    pub added: i64,
+    pub updated: i64,
+    pub version: String,
+    pub files: Vec<(String, u64)>,
+    pub category: String,
+}
+
+/// The words of GameBanana's marked-up text: a line break where a line, paragraph, list item or heading ends, the tags
+/// dropped, the common entities read, no more than one empty line in a row.
+fn words_of(html: &str) -> String {
+    let mut out = String::with_capacity(html.len());
+    let mut tag = String::new();
+    let mut inside = false;
+    for ch in html.chars() {
+        match ch {
+            '<' => {
+                inside = true;
+                tag.clear();
+            }
+            '>' if inside => {
+                inside = false;
+                let t = tag.trim_start_matches('/').split_whitespace().next().unwrap_or_default().to_ascii_lowercase();
+                if matches!(t.as_str(), "br" | "br/" | "p" | "div" | "li" | "ul" | "ol" | "tr" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6") {
+                    out.push('\n');
+                }
+            }
+            _ if inside => tag.push(ch),
+            _ => out.push(ch),
+        }
+    }
+    let text = out.replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", "\"").replace("&#39;", "'").replace("&nbsp;", " ");
+    let mut lines: Vec<&str> = Vec::new();
+    for line in text.lines().map(str::trim) {
+        if line.is_empty() && lines.last().is_none_or(|l| l.is_empty()) {
+            continue;
+        }
+        lines.push(line);
+    }
+    lines.join("\n").trim().to_string()
+}
+
+/// A mod's page (GameBanana's ProfilePage), for showing it inside Bloxkeep.
+pub fn profile(id: i64) -> Result<Profile, String> {
+    let d = get(&format!("https://gamebanana.com/apiv11/Mod/{id}/ProfilePage"))?;
+    let text_of = |k: &str| d.get(k).and_then(Value::as_str).unwrap_or_default().to_string();
+    let int_of = |k: &str| d.get(k).and_then(Value::as_i64).unwrap_or(0);
+    let pics = d
+        .pointer("/_aPreviewMedia/_aImages")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(|i| {
+            let base = i.get("_sBaseUrl").and_then(Value::as_str).filter(|b| !b.is_empty())?;
+            let file = i.get("_sFile").and_then(Value::as_str).filter(|f| !f.is_empty())?;
+            Some(format!("{base}/{file}"))
+        })
+        .take(12)
+        .collect();
+    let credits = d
+        .get("_aCredits")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(|g| {
+            let names: Vec<(String, String)> = g
+                .get("_aAuthors")
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten()
+                .filter_map(|a| Some((a.get("_sName").and_then(Value::as_str)?.to_string(), a.get("_sRole").and_then(Value::as_str).unwrap_or_default().to_string())))
+                .collect();
+            (!names.is_empty()).then(|| (g.get("_sGroupName").and_then(Value::as_str).unwrap_or_default().to_string(), names))
+        })
+        .collect();
+    let files = d
+        .get("_aFiles")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(|f| Some((f.get("_sFile").and_then(Value::as_str)?.to_string(), f.get("_nFilesize").and_then(Value::as_u64).unwrap_or(0))))
+        .collect();
+    let written = words_of(&text_of("_sText"));
+    Ok(Profile {
+        pics,
+        text: if written.is_empty() { text_of("_sDescription") } else { written },
+        credits,
+        likes: int_of("_nLikeCount"),
+        views: int_of("_nViewCount"),
+        downloads: int_of("_nDownloadCount"),
+        added: int_of("_tsDateAdded"),
+        updated: d.get("_tsDateUpdated").or(d.get("_tsDateModified")).and_then(Value::as_i64).unwrap_or(0),
+        version: text_of("_sVersion"),
+        files,
+        category: d.pointer("/_aCategory/_sName").and_then(Value::as_str).unwrap_or_default().to_string(),
+    })
 }
 
 /// One of a mod's downloads that could be put in: many mods offer a few versions to pick one of (six Wii cursors),
@@ -376,6 +487,14 @@ pub fn import(path: &Path) -> Result<(String, usize), String> {
 }
 
 fn download(url: &str, to: &Path) -> Result<(), String> {
+    let out = download_once(url, to);
+    if let Err(why) = &out {
+        crate::net::note_failed("Mod download", url, why);
+    }
+    out
+}
+
+fn download_once(url: &str, to: &Path) -> Result<(), String> {
     let res = agent().get(url).timeout(Duration::from_secs(300)).call().map_err(|e| e.to_string())?;
     let mut body = Vec::new();
     res.into_reader().take(MOST + 1).read_to_end(&mut body).map_err(|e| e.to_string())?;

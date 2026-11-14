@@ -184,6 +184,11 @@ fn question(
     timeout: Option<Duration>,
     remember: Option<&str>,
 ) -> Question {
+    // An error or a warning the person is shown is in error.log too (names scrubbed), whichever thread asks.
+    if matches!(kind, Kind::Error | Kind::Warning) {
+        let what = if matches!(kind, Kind::Error) { "Message box (error)" } else { "Message box (warning)" };
+        crate::core::app::App::note_shown(what, &format!("{}{text}", heading.map(|h| format!("{h}: ")).unwrap_or_default()));
+    }
     Question {
         owner,
         text: text.to_string(),

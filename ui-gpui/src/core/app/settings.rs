@@ -215,7 +215,7 @@ impl App {
                 }
                 if has(rc, "fps", JsonKind::Number) {
                     let fps = i32::try_from(long_of(rc, "fps")).unwrap_or(-1);
-                    c.fps = if roblox_game_settings::FPS_CHOICES.contains(&fps) { fps } else { 0 };
+                    c.fps = if roblox_game_settings::fps_allowed(fps) { fps } else { 0 };
                 }
                 if has(rc, "volume", JsonKind::Number) {
                     c.volume = long_of(rc, "volume").clamp(-1, 100) as i32;
@@ -255,6 +255,9 @@ impl App {
             if let Some(split) = opt_bool(a, "splitCores") {
                 s.split_cores = split;
                 fx.split = true; // at once, not at the next scan
+            }
+            if has(a, "rejoinWaitSeconds", JsonKind::Number) {
+                s.rejoin_wait_seconds = long_of(a, "rejoinWaitSeconds").clamp(0, 300) as i32;
             }
             if has(a, "launchDelaySeconds", JsonKind::Number) {
                 s.launch_delay_seconds = long_of(a, "launchDelaySeconds").clamp(0, 120) as i32;
@@ -537,6 +540,22 @@ impl App {
 
     pub fn set_language(&self, language: &str) -> Value {
         l::set(language);
+        self.push_state();
+        Value::Null
+    }
+
+    /// Sync with Windows' two themes (Settings › Appearance): shown at once when Sync with Windows is the theme.
+    pub fn set_system_themes(&self, light: &str, dark: &str) -> Value {
+        {
+            let mut s = prefs::lock();
+            s.system_light = themes::plain(Some(light), "light");
+            s.system_dark = themes::plain(Some(dark), "dark");
+        }
+        prefs::save();
+        let changed = self.controller.appearance_changed.borrow().clone();
+        if let Some(changed) = changed {
+            changed();
+        }
         self.push_state();
         Value::Null
     }

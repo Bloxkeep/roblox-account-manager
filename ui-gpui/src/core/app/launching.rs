@@ -639,6 +639,7 @@ impl App {
                 {
                     // Roblox would refuse the new window (signed out, no connection): the one in the old game stays.
                     if let Some(why) = self.sign_in_refused_now(account.id, &ct).await {
+                        log::note_file(&format!("Launch: account {} not switched, was told: {}", short(account.id), self.scrub(&why)));
                         errors.push(format!("{}: {why}", self.name_text(&account)));
                         i += 1;
                         continue;
@@ -730,6 +731,8 @@ impl App {
                         } else {
                             Self::error_text(&ex)
                         };
+                        // The words the person was shown, not just the kind (names scrubbed).
+                        log::note_file(&format!("Launch: account {} was told: {}", short(account.id), self.scrub(&text)));
                         errors.push(format!("{}: {}", self.name_text(&account), text));
                         if sign_in_refused(&ex) && realm::normalize(Some(&account.realm)) != realm::VNG {
                             refused_sign_in.push(account.id);
@@ -828,6 +831,7 @@ impl App {
             Err(ex) if ct.is_cancelled() && is_fail_kind(&ex, roblox_api::TASK_CANCELED_EXCEPTION) => {}
             Err(ex) if started && roblox_api::is_expected_error(&ex) => {
                 log::note(&format!("Launch: stopped by an error ({}).", launch_fail_kind(&ex)));
+                log::note_file(&format!("Launch: was told: {}", self.scrub(&Self::error_text(&ex))));
                 errors.push(Self::error_text(&ex));
             }
             Err(ex) => thrown = Some(ex),

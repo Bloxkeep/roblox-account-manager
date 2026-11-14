@@ -37,9 +37,19 @@ pub fn with_bar<H: gpui_kit::component::scroll::ScrollbarHandle + Clone>(id: &'s
         .min_h_0()
         .size_full()
         .relative()
-        // The body stops short of the panel's foot: a row cut flush against the rounded edge, right above the status
-        // bar, looked like a scratch (the owner, Profile page, 2026-11-12).
-        .pb(px(14.))
+        // The body runs to the panel's foot and fades out over its last 28 px: a row cut flush against the rounded
+        // edge looked like a scratch (the owner, Profile page, 2026-11-12), and stopping 14 px short left an open strip
+        // under a hard cut that looked cut off too (the Roblox tab, 2026-11-15). A list's own bottom padding is under the
+        // fade at its end, so nothing of it is hidden there.
         .child(scroller)
+        .child(
+            div()
+                .absolute()
+                .left_0()
+                .right_0()
+                .bottom_0()
+                .h(px(28.))
+                .bg(linear_gradient(180., linear_color_stop(crate::theme::ca(crate::theme::PANEL, 0.), 0.), linear_color_stop(crate::theme::c(crate::theme::PANEL), 1.))),
+        )
         .child(crate::pages::auto::scroll_bar_named(SharedString::from(format!("{id}-bar")), h))
 }

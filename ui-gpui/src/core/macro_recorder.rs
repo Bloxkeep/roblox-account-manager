@@ -527,8 +527,7 @@ impl MacroRecorder {
         let (ready_tx, ready_rx) = mpsc::channel::<()>();
         let (ended_tx, ended_rx) = mpsc::channel::<()>();
         let worker = rec.clone();
-        let thread = std::thread::Builder::new()
-            .name("Bloxkeep macro recorder".into())
+        let thread = crate::net::Named::new("Bloxkeep macro recorder".into())
             .spawn(move || {
                 run(&worker, ready_tx);
                 let _ = ended_tx.send(());
@@ -976,7 +975,7 @@ fn shoot(job: ShotJob) {
         }
         shots.1 += 1;
     }
-    let spawned = std::thread::Builder::new().name("Bloxkeep click picture".into()).spawn(|| {
+    let spawned = crate::net::Named::new("Bloxkeep click picture".into()).spawn(|| {
         loop {
             let job = {
                 let mut shots = SHOTS.lock().unwrap_or_else(|e| e.into_inner());

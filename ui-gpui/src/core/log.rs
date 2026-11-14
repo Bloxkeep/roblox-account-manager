@@ -201,7 +201,7 @@ pub fn window_beat() {
 /// A thread of its own that notes when the window stops answering for 5 s or more, and for how long. A watch that
 /// itself woke late (the PC slept, or was too busy to run it) says nothing: that pause wasn't Bloxkeep's.
 pub fn watch_window() {
-    let _ = std::thread::Builder::new().name("window-watch".into()).spawn(|| {
+    let _ = crate::net::Named::new("window-watch".into()).spawn(|| {
         let mut stuck_since: Option<Instant> = None;
         let mut woke = Instant::now();
         loop {

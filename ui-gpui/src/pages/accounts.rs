@@ -941,7 +941,7 @@ fn ram_mb(root: &Root, a: &Value) -> Option<f64> {
         .flatten()
 }
 /// RAM in MB or GB, with Vietnamese's decimal comma ("1,7 GB").
-fn mb_text(mb: f64, vi: bool) -> String {
+pub(crate) fn mb_text(mb: f64, vi: bool) -> String {
     let t = if mb >= 1024. { format!("{:.1} GB", mb / 1024.) } else { format!("{mb:.0} MB") };
     if vi { t.replace('.', ",") } else { t }
 }
@@ -1520,10 +1520,10 @@ fn header(root: &Root, all: &[Value], width: f32, rows: bool, cx: &mut Context<R
             .rounded(px(R_S - 2.))
             .text_size(px(T_M))
             .font_weight(FontWeight::MEDIUM)
-            .text_color(if root.acc_win { c(INK) } else { c(TEXT_2) })
-            .child(icon("screens", 15., if root.acc_win { c(INK) } else { c(TEXT_2) }))
+            .text_color(if root.acc_win { crate::theme::on_text() } else { c(TEXT_2) })
+            .child(icon("screens", 15., if root.acc_win { crate::theme::on_text() } else { c(TEXT_2) }))
             .when(!compact, |d| d.child(root.tr("mon.title")))
-            .when(n_win > 0, |d| d.child(div().text_color(if root.acc_win { c(INK) } else { c(MUTED) }).child(n_win.to_string())))
+            .when(n_win > 0, |d| d.child(div().text_color(if root.acc_win { crate::theme::on_text() } else { c(MUTED) }).child(n_win.to_string())))
             .on_click(cx.listener(|r, _, _, cx| {
                 set_win_view(r, true);
                 cx.notify();
@@ -1576,6 +1576,10 @@ fn header(root: &Root, all: &[Value], width: f32, rows: bool, cx: &mut Context<R
     let mut summary = vec![(first, None)];
     if ram > 0. {
         summary.push((mb_text(ram, root.i18n.vietnamese), None));
+    }
+    // About how many windows this PC runs at once, measured from the person's own windows (core/capacity.rs).
+    if let Some(n) = root.metrics.pointer("/fit/max").and_then(Value::as_i64) {
+        summary.push((root.i18n.tv("cap.fits", &[("n", &n.to_string())]), None));
     }
     if dropped > 0 {
         summary.push((root.i18n.tv("ui.droppedN", &[("n", &dropped.to_string())]), None));

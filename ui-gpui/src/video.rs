@@ -26,6 +26,13 @@ const PAUSE: Duration = Duration::from_millis(800);
 const STOP: Duration = Duration::from_secs(20);
 /// The widest frame kept: a bigger clip is scaled down by Windows while it decodes (the page shows it at most ~600 px).
 const MAX_W: u32 = 960;
+/// …and for a video behind the whole window (a custom theme's): wider, as it fills the window.
+const MAX_W_BEHIND: u32 = 1600;
+
+thread_local! {
+    /// The widest frame this decoder thread keeps (set as the thread starts).
+    static WIDEST: std::cell::Cell<u32> = const { std::cell::Cell::new(MAX_W) };
+}
 
 /// One decoded picture: when it is due (in 100 ns, counting on across the loops), and its pixels in GPUI's order (BGRA).
 struct Frame {
@@ -46,6 +53,7 @@ pub struct Video {
     failed: bool,
     /// Its window's coming back into sight draws it again (a restored window needn't draw anything otherwise).
     watch: Option<Subscription>,
+    widest: u32,
 }
 
 impl EventEmitter<Failed> for Video {}
@@ -59,7 +67,14 @@ impl Video {
             }
         })
         .detach();
-        Self { path, frame: None, drawn: Instant::now(), playing: false, failed: false, watch: None }
+        Self { path, frame: None, drawn: Instant::now(), playing: false, failed: false, watch: None, widest: MAX_W }
+    }
+
+    /// The same for a video that fills the window behind the page (Settings › Appearance › Custom).
+    pub fn behind(path: PathBuf, cx: &mut Context<Self>) -> Self {
+        let mut v = Self::new(path, cx);
+        v.widest = MAX_W_BEHIND;
+        v
     }
 
     fn start(&mut self, cx: &mut Context<Self>) {
@@ -69,7 +84,12 @@ impl Video {
         let (tx, rx) = mpsc::sync_channel::<Frame>(AHEAD);
         let parts = parts(&self.path);
         // (The thread ends by itself once `rx` is gone: its next frame finds nobody to take it.)
-        if std::thread::Builder::new().name("video".into()).spawn(move || decode(&parts, &tx)).is_err() {
+        let widest = self.widest;
+        let spawned = crate::net::Named::new("video".into()).spawn(move || {
+            WIDEST.with(|w| w.set(widest));
+            decode(&parts, &tx)
+        });
+        if spawned.is_err() {
             self.failed = true;
             cx.emit(Failed);
             return;
@@ -176,7 +196,8 @@ impl Render for Video {
 /// The frame size kept for a clip of `w`×`h`: as it is, or scaled down to MAX_W wide; even, as the decoder wants.
 fn fit(w: u32, h: u32) -> (u32, u32) {
     let (w, h) = (w.max(2), h.max(2));
-    let (w, h) = if w > MAX_W { (MAX_W, ((h as u64 * MAX_W as u64) / w as u64) as u32) } else { (w, h) };
+    let most = WIDEST.with(|m| m.get());
+    let (w, h) = if w > most { (most, ((h as u64 * most as u64) / w as u64) as u32) } else { (w, h) };
     ((w & !1).max(2), (h & !1).max(2))
 }
 
@@ -260,7 +281,14 @@ unsafe fn pass(path: &Path, tx: &SyncSender<Frame>, base: i64) -> End {
             reader.SetCurrentMediaType(video, None, &want)?;
             Ok((reader, w, h))
         };
-        let Ok((reader, mut w, mut h)) = open() else { return End::Stop };
+        let (reader, mut w, mut h) = match open() {
+            Ok(x) => x,
+            Err(e) => {
+                // Said, as the tile then shows its still picture only (a Windows without the WebM decoder, a bad file).
+                crate::net::note_failed("Game clip playback", &path.to_string_lossy(), &format!("{e}"));
+                return End::Stop;
+            }
+        };
         let (mut last, mut step) = (0i64, 666_667i64);
         // (A part of an HLS clip may count on from the parts before it: its times are taken from its first frame.)
         let mut first: Option<i64> = None;

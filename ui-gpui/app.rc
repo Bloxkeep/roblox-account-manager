@@ -1,0 +1,2 @@
+// The exe's own icon (Explorer, shortcuts, the taskbar): GPUI loads icon 1 of the exe for its windows.
+1 ICON "../RobloxManager/app.ico"

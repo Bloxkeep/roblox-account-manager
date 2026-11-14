@@ -74,6 +74,14 @@ fn each<T: Send, R: Send>(things: Vec<T>, ask: impl Fn(T) -> R + Sync) -> Vec<R>
 }
 
 fn get(url: &str, cookie: Option<&str>) -> Result<Value, String> {
+    let out = get_once(url, cookie);
+    if let Err(why) = &out {
+        crate::net::note_failed("Roblox tab", url, why);
+    }
+    out
+}
+
+fn get_once(url: &str, cookie: Option<&str>) -> Result<Value, String> {
     let mut req = agent().get(url).set("Accept", "application/json");
     if let Some(c) = cookie.filter(|c| !c.is_empty()) {
         req = req.set("Cookie", &format!(".ROBLOSECURITY={c}"));
@@ -84,9 +92,22 @@ fn get(url: &str, cookie: Option<&str>) -> Result<Value, String> {
             r.into_reader().take(8 << 20).read_to_string(&mut text).map_err(|e| e.to_string())?;
             serde_json::from_str(&text).map_err(|e| e.to_string())
         }
-        Err(ureq::Error::Status(code, _)) => Err(format!("Roblox {code}")),
+        Err(ureq::Error::Status(code, r)) => Err(refused(url, code, r)),
         Err(e) => Err(e.to_string()),
     }
+}
+
+/// A call Roblox refused: "Roblox {code}" for the page, and Roblox's own words (its errors[0].message, or the start of
+/// the answer) in error.log, so a 400 says why without asking anyone for more.
+fn refused(url: &str, code: u16, r: ureq::Response) -> String {
+    let mut body = String::new();
+    let _ = r.into_reader().take(4096).read_to_string(&mut body);
+    let said = serde_json::from_str::<Value>(&body)
+        .ok()
+        .and_then(|v| v.pointer("/errors/0/message").and_then(Value::as_str).map(str::to_string))
+        .unwrap_or_else(|| body.chars().filter(|c| !c.is_control()).take(160).collect());
+    crate::net::note_failed("Roblox said", url, &format!("{code}: {}", if said.trim().is_empty() { "no reason given" } else { said.trim() }));
+    format!("Roblox {code}")
 }
 
 fn enc(s: &str) -> String {
@@ -313,9 +334,18 @@ fn is_webm(bytes: &[u8]) -> bool {
 }
 
 fn fetch(url: &str, most: u64) -> Option<Vec<u8>> {
-    let r = agent().get(url).timeout(Duration::from_secs(180)).call().ok()?;
+    let r = match agent().get(url).timeout(Duration::from_secs(180)).call() {
+        Ok(r) => r,
+        Err(e) => {
+            crate::net::note_failed("Game clip", url, &e.to_string());
+            return None;
+        }
+    };
     let mut bytes = Vec::new();
-    r.into_reader().take(most).read_to_end(&mut bytes).ok()?;
+    if let Err(e) = r.into_reader().take(most).read_to_end(&mut bytes) {
+        crate::net::note_failed("Game clip", url, &e.to_string());
+        return None;
+    }
     Some(bytes)
 }
 
@@ -432,12 +462,16 @@ fn cdn(hash: &str) -> Option<Vec<u8>> {
         return None;
     }
     let first = hash.bytes().take(38).fold(31u32, |i, b| i ^ b as u32) % 8;
-    std::iter::once(first).chain((0..8).filter(|n| *n != first)).find_map(|n| {
+    let found = std::iter::once(first).chain((0..8).filter(|n| *n != first)).find_map(|n| {
         let r = agent().get(&format!("https://t{n}.rbxcdn.com/{hash}")).call().ok()?;
         let mut out = Vec::new();
         r.into_reader().take(32 << 20).read_to_end(&mut out).ok()?;
         (!out.is_empty()).then_some(out)
-    })
+    });
+    if found.is_none() {
+        crate::net::note_failed("Avatar 3D", "https://t?.rbxcdn.com/[file]", "none of Roblox's 8 servers gave it");
+    }
+    found
 }
 
 /// A user's avatar as a model. Roblox answers only a signed-in request (403 to any other, checked 2026-11-11), so the
@@ -556,9 +590,8 @@ pub fn looks(places: &[i64]) -> HashMap<i64, Value> {
             if let Ok(text) = serde_json::to_string(&*book) {
                 let _ = std::fs::create_dir_all(&dir);
                 let temp = dir.join("ui-game-looks.json.tmp");
-                if std::fs::write(&temp, text).is_ok() {
-                    let _ = std::fs::rename(&temp, dir.join("ui-game-looks.json"));
-                }
+                let r = std::fs::write(&temp, text).and_then(|_| std::fs::rename(&temp, dir.join("ui-game-looks.json")));
+                crate::net::wrote("Game pictures list", &dir.join("ui-game-looks.json"), r);
             }
         }
     }
@@ -630,6 +663,14 @@ fn send(method: &str, url: &str, body: &Value, cookie: Option<&str>) -> Result<V
 
 /// The same write, its answer as it came (some of Roblox's answer with nothing).
 fn send_text(method: &str, url: &str, body: &Value, cookie: Option<&str>) -> Result<String, String> {
+    let out = send_text_once(method, url, body, cookie);
+    if let Err(why) = &out {
+        crate::net::note_failed(&format!("Roblox tab ({method})"), url, why);
+    }
+    out
+}
+
+fn send_text_once(method: &str, url: &str, body: &Value, cookie: Option<&str>) -> Result<String, String> {
     let send = |token: Option<&str>| {
         let mut req = agent().request(method, url).set("Accept", "application/json").set("Content-Type", "application/json");
         if let Some(c) = cookie.filter(|c| !c.is_empty()) {
@@ -644,7 +685,7 @@ fn send_text(method: &str, url: &str, body: &Value, cookie: Option<&str>) -> Res
         // A signed-in POST is refused once with the token it wants; asked again with it.
         Err(ureq::Error::Status(403, r)) => match r.header("x-csrf-token").map(str::to_string) {
             Some(t) => send(Some(&t)),
-            None => return Err("Roblox 403".into()),
+            None => return Err(refused(url, 403, r)),
         },
         other => other,
     };
@@ -654,7 +695,7 @@ fn send_text(method: &str, url: &str, body: &Value, cookie: Option<&str>) -> Res
             r.into_reader().take(8 << 20).read_to_string(&mut text).map_err(|e| e.to_string())?;
             Ok(text)
         }
-        Err(ureq::Error::Status(code, _)) => Err(format!("Roblox {code}")),
+        Err(ureq::Error::Status(code, r)) => Err(refused(url, code, r)),
         Err(e) => Err(e.to_string()),
     }
 }
@@ -1358,7 +1399,7 @@ fn keep_look(user: i64, model: &Value, pic_url: &str) -> (Vec<Look>, usize) {
         let _ = std::fs::remove_file(&old.pic);
     }
     let index: Vec<Value> = looks.iter().map(|l| serde_json::json!({ "at": l.at, "pic": std::path::Path::new(&l.pic).file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default(), "model": l.model })).collect();
-    let _ = std::fs::write(dir.join("index.json"), serde_json::to_string(&index).unwrap_or_default());
+    crate::net::wrote("Avatar looks list", &dir.join("index.json"), std::fs::write(dir.join("index.json"), serde_json::to_string(&index).unwrap_or_default()));
     (looks, 0)
 }
 
@@ -2819,12 +2860,28 @@ pub struct Notice {
     pub when: String,
 }
 
-/// The signed-in account's latest 30 notifications.
+/// The signed-in account's latest notifications: two pages of 20, as roblox.com asks for them (its notification stream's
+/// PAGE_SIZE is 20; maxRows=30 was answered 400 and the tab showed nothing, owner 2026-11-15). A short page isn't the end
+/// (Roblox filters within the window), an empty one is; a second page that fails keeps the first.
 pub fn notices(cookie: &str) -> Result<Vec<Notice>, String> {
-    let d = ask("https://notifications.roblox.com/v2/stream-notifications/get-recent?maxRows=30&startIndex=0", cookie, "notifications")?;
-    Ok(d.as_array()
-        .into_iter()
-        .flatten()
+    const PAGE: usize = 20;
+    let mut all: Vec<Value> = Vec::new();
+    for page in 0..2 {
+        let url = format!("https://notifications.roblox.com/v2/stream-notifications/get-recent?maxRows={PAGE}&startIndex={}", page * PAGE);
+        let d = match ask(&url, cookie, "notifications") {
+            Ok(d) => d,
+            Err(e) if page == 0 => return Err(e),
+            Err(_) => break,
+        };
+        let rows: Vec<Value> = d.as_array().cloned().unwrap_or_default();
+        if rows.is_empty() || cfg!(feature = "shot") {
+            all.extend(rows);
+            break;
+        }
+        all.extend(rows);
+    }
+    Ok(all
+        .iter()
         .map(|v| {
             let c = v.get("content").filter(|c| c.is_object());
             let state = c.map(|c| text(c, "currentState")).filter(|s| !s.is_empty()).unwrap_or_else(|| "default".into());
@@ -3008,14 +3065,57 @@ pub fn deals(cookie: &str, user: i64) -> Result<Vec<Deal>, String> {
     Ok(out)
 }
 
-/// Runs a call on a thread of its own; its answer comes through the channel.
-pub fn run<T: Send + 'static>(f: impl FnOnce() -> T + Send + 'static) -> oneshot::Receiver<T> {
+/// Runs a call on a thread of its own; its answer comes through the channel. A failed answer is written to error.log
+/// with the page that asked (owner, 2026-11-15: every failure a person can meet is in error.log), ids as "#".
+pub fn run<T: Answer + Send + 'static, F: FnOnce() -> T + Send + 'static>(f: F) -> oneshot::Receiver<T> {
     let (tx, rx) = oneshot::channel();
-    let _ = std::thread::Builder::new().name("roblox".into()).spawn(move || {
-        let _ = tx.send(f());
+    let _ = crate::net::Named::new("roblox".into()).spawn(move || {
+        let answer = f();
+        if let Some(why) = answer.failed() {
+            crate::net::note_failed(&asker::<F>(), "", if why.is_empty() { "no reason given" } else { why });
+        }
+        let _ = tx.send(answer);
     });
     rx
 }
+
+/// "pages::avatar::wear" from the closure's type name: which page and step asked.
+fn asker<F>() -> String {
+    let name = std::any::type_name::<F>();
+    let name = name.split_once("::").map(|x| x.1).unwrap_or(name);
+    name.split("::").filter(|p| !p.starts_with('{') && !p.starts_with('<')).collect::<Vec<_>>().join("::")
+}
+
+/// What a background call answered, as far as failing goes: a Result's Err, the first failure in a pair; the rest
+/// never fail (an empty list is an answer).
+pub trait Answer {
+    fn failed(&self) -> Option<&str> {
+        None
+    }
+}
+impl<T> Answer for Result<T, String> {
+    fn failed(&self) -> Option<&str> {
+        self.as_ref().err().map(String::as_str)
+    }
+}
+impl<A: Answer, B: Answer> Answer for (A, B) {
+    fn failed(&self) -> Option<&str> {
+        self.0.failed().or_else(|| self.1.failed())
+    }
+}
+impl<A: Answer, B: Answer, C: Answer> Answer for (A, B, C) {
+    fn failed(&self) -> Option<&str> {
+        self.0.failed().or_else(|| self.1.failed()).or_else(|| self.2.failed())
+    }
+}
+impl<T> Answer for Option<T> {}
+impl<T> Answer for Vec<T> {}
+impl<K, V, S> Answer for HashMap<K, V, S> {}
+impl Answer for Value {}
+impl Answer for bool {}
+impl Answer for () {}
+impl Answer for i64 {}
+impl Answer for String {}
 
 /// BLOXKEEP_SHOT_EXPLORE=file.json: a hidden shot's charts, { sorts: [{ sortId, sortDisplayName, games: […] }] }, since
 /// Roblox fills them only for a signed-in account.

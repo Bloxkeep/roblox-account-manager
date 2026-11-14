@@ -2,7 +2,7 @@
 // colours and picture), Custom's colours, picture, fade and blur, saving it by name, the themes kept by name, then the
 // language and hidden names. A pick shows at once (theme::preview) and is sent as the web page sent it (setTheme,
 // setCustomTheme once the dragging rests, pickThemePicture, saveTheme…); the app's next state confirms it.
-// Not here yet: the Popular group (the community's counts) and a video behind the page (its colour shows instead).
+// A video picked for Custom plays behind the page (scene.rs, video.rs).
 use std::time::{Duration, Instant};
 
 use gpui_kit::{
@@ -12,7 +12,7 @@ use gpui_kit::{
 };
 use serde_json::{Value, json};
 
-use super::{ask, b, group, ok, row, switch};
+use super::{ask, b, chips, group, ok, row, switch};
 use crate::{
     kit::*,
     shell::Root,
@@ -30,6 +30,8 @@ const READY: [u32; 16] = [0x141a26, 0x0b0d12, 0x1b2a3a, 0x2a1b3d, 0x3a1d2b, 0x12
 pub struct Boxes {
     name: Entity<InputState>,
     hex: Entity<InputState>,
+    /// A theme code pasted in (Custom › Theme code).
+    code: Entity<InputState>,
 }
 
 #[derive(Default)]
@@ -49,6 +51,8 @@ pub struct Look {
     /// The name box is to be emptied (it was saved).
     clear_name: bool,
     scale: f32,
+    /// Which rest of the mouse on a tile is the latest (a look starts a moment after it, if it is still that one).
+    peek: u64,
 }
 
 /// Each frame on Settings: the boxes made the first time, the screen's scale kept for the tiles' pictures.
@@ -76,7 +80,43 @@ pub fn settle(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
             cx.notify();
         })
         .detach();
-        r.settings.look.boxes = Some(Boxes { name, hex });
+        let code = cx.new(|cx| InputState::new(window, cx).placeholder("bloxkeep:141a26-f59e0b-45-0"));
+        cx.subscribe_in(&code, window, |r: &mut Root, _, ev: &InputEvent, _, cx| {
+            if matches!(ev, InputEvent::PressEnter { .. }) {
+                apply_code(r, cx);
+            }
+            cx.notify();
+        })
+        .detach();
+        r.settings.look.boxes = Some(Boxes { name, hex, code });
+    }
+    // BLOXKEEP_SHOT_AP=customize | surprise | code:<theme code> | peek:<theme id> | video:<user/file>: a hidden shot
+    // presses that control once, through the very code a click runs, so its result can be looked at.
+    #[cfg(feature = "shot")]
+    {
+        static PRESSED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+        if r.state.get("theme").is_some()
+            && let Ok(what) = std::env::var("BLOXKEEP_SHOT_AP")
+            && !PRESSED.swap(true, std::sync::atomic::Ordering::SeqCst)
+        {
+            if what == "customize" {
+                let from = current(r);
+                customize_from(r, &from, cx);
+            } else if what == "surprise" {
+                surprise(r, cx);
+            } else if let Some(code) = what.strip_prefix("code:") {
+                if let Some(bx) = &r.settings.look.boxes {
+                    bx.code.update(cx, |s, cx| s.set_value(code.to_string(), window, cx));
+                }
+                apply_code(r, cx);
+            } else if let Some(id) = what.strip_prefix("peek:") {
+                if let Some(id) = GROUPS.iter().flat_map(|(_, l)| l.iter()).copied().find(|k| *k == id) {
+                    hover(r, id, true, cx);
+                }
+            } else if let Some(file) = what.strip_prefix("video:") {
+                r.send("debugCustomTheme", json!({ "picture": file, "video": true }));
+            }
+        }
     }
     if r.settings.look.clear_name {
         r.settings.look.clear_name = false;
@@ -100,8 +140,92 @@ fn current(r: &Root) -> String {
     }
 }
 
+/// The theme chosen shown again (a look at another one is over).
+fn settle_look(r: &Root, cx: &mut Context<Root>) {
+    let id = current(r);
+    match id.as_str() {
+        "custom" => theme::show("custom", Some(&custom_now(r)), cx),
+        "system" => theme::show(r.state.get("themeApplied").and_then(Value::as_str).unwrap_or("dark"), None, cx),
+        _ => theme::show(&id, None, cx),
+    }
+}
+
+/// The mouse came to rest on a theme's tile, or left it: the whole window in that theme a moment later, without
+/// choosing it (VS Code shows a theme the same way while its list is walked); the chosen one again when it leaves.
+fn hover(r: &mut Root, id: &'static str, over: bool, cx: &mut Context<Root>) {
+    r.settings.look.peek += 1;
+    let round = r.settings.look.peek;
+    if !over || matches!(id, "system" | "custom") || current(r) == id {
+        if theme::unpeek() {
+            settle_look(r, cx);
+        }
+        return;
+    }
+    cx.spawn(async move |this, cx| {
+        cx.background_executor().timer(Duration::from_millis(220)).await;
+        let _ = this.update(cx, |r, cx| {
+            if r.settings.look.peek == round {
+                theme::peek(id, cx);
+            }
+        });
+    })
+    .detach();
+}
+
+/// A custom theme started from the colours of the theme in use (its page's ground and its accent), as Windows
+/// Terminal's schemes start from a copy of one.
+fn customize_from(r: &mut Root, id: &str, cx: &mut Context<Root>) {
+    let p = palette_of(id);
+    let solid = |h: Hsla| Hsla { a: 1., ..h };
+    let background = hex(solid(theme::over(p.get(PANEL), solid(p.get(GROUND)))));
+    let accent = hex(solid(p.get(FACE)));
+    r.settings.look.group = Some("custom");
+    change(r, json!({ "background": background, "accent": accent }), cx);
+    r.send("setTheme", json!({ "theme": "custom" }));
+}
+
+/// Two colours by chance: a ground of some hue, dark four times in five, and an accent from across the wheel.
+fn surprise(r: &mut Root, cx: &mut Context<Root>) {
+    let n = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_nanos()).unwrap_or(0) as u64 / 1000;
+    let hue = (n % 360) as f32 / 360.;
+    let light = (n / 360) % 5 == 0;
+    let ground = gpui_kit::hsla(hue, 0.28, if light { 0.94 } else { 0.11 }, 1.);
+    let accent = gpui_kit::hsla((hue + 0.42 + ((n / 1800) % 20) as f32 / 100.) % 1., 0.85, if light { 0.40 } else { 0.62 }, 1.);
+    change(r, json!({ "background": hex(ground), "accent": hex(accent) }), cx);
+}
+
+/// The custom look as one line to send to someone ("bloxkeep:141a26-f59e0b-45-0": ground, accent, fade, blur; a picture
+/// stays on this PC), as Slack shares a theme by its colours.
+pub(crate) fn code_of(ct: &Value) -> String {
+    let colour = |k: &str, or: &str| ct.get(k).and_then(Value::as_str).unwrap_or(or).trim_start_matches('#').to_lowercase();
+    let num = |k: &str, or: i64| ct.get(k).and_then(Value::as_f64).map(|v| v.round() as i64).unwrap_or(or);
+    format!("bloxkeep:{}-{}-{}-{}", colour("background", "141a26"), colour("accent", "f59e0b"), num("fade", 45), num("blur", 0))
+}
+
+/// The look a code says; None when it isn't one.
+pub(crate) fn look_of(code: &str) -> Option<Value> {
+    let parts: Vec<&str> = code.trim().strip_prefix("bloxkeep:")?.split('-').collect();
+    let colour = |s: &str| (s.len() == 6 && s.chars().all(|c| c.is_ascii_hexdigit())).then(|| format!("#{}", s.to_lowercase()));
+    let (background, accent) = (colour(parts.first()?)?, colour(parts.get(1)?)?);
+    let fade = parts.get(2).and_then(|s| s.parse::<i64>().ok()).unwrap_or(45).clamp(0, 90);
+    let blur = parts.get(3).and_then(|s| s.parse::<i64>().ok()).unwrap_or(0).clamp(0, 30);
+    Some(json!({ "background": background, "accent": accent, "fade": fade, "blur": blur }))
+}
+
+fn apply_code(r: &mut Root, cx: &mut Context<Root>) {
+    let typed = r.settings.look.boxes.as_ref().map(|b| b.code.read(cx).value().to_string()).unwrap_or_default();
+    match look_of(&typed) {
+        Some(look) => change(r, look, cx),
+        None => {
+            r.toast = Some((r.tr("ct.codeBad"), "warn".into()));
+            cx.notify();
+        }
+    }
+}
+
 /// A theme picked: shown at once, then sent.
 fn pick(r: &mut Root, id: &str, cx: &mut Context<Root>) {
+    theme::unpeek();
     r.settings.look.picked = Some((id.to_string(), Instant::now()));
     match id {
         "custom" => {
@@ -109,7 +233,7 @@ fn pick(r: &mut Root, id: &str, cx: &mut Context<Root>) {
             theme::preview("custom", Some(&ct), cx);
         }
         // (Follow Windows: the app works out which, its state shows it.)
-        "system" => {}
+        "system" => theme::release(),
         _ => theme::preview(id, None, cx),
     }
     r.send("setTheme", json!({ "theme": id }));
@@ -247,6 +371,28 @@ pub fn appearance(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
     // The theme: its groups as chips, its tiles under them, in a card of their own under "Theme · <the one in use>".
     let themes = div().px(px(20.)).py(px(18.)).flex().flex_col().gap(px(18.)).child(tabs).child(grid).into_any_element();
     let mut rows = vec![themes];
+    if cur == "system" {
+        // Which theme for Windows' light apps and which for its dark ones (VS Code keeps a preferred light and a
+        // preferred dark theme the same way).
+        let all: Vec<(String, String, bool)> = GROUPS
+            .iter()
+            .flat_map(|(_, l)| l.iter())
+            .filter(|id| !matches!(**id, "system" | "custom"))
+            .map(|id| (id.to_string(), root.tr(&format!("theme.{id}")), false))
+            .collect();
+        let of = |k: &str, or: &str| root.state.get(k).and_then(Value::as_str).unwrap_or(or).to_string();
+        let (light, dark) = (of("themeLight", "light"), of("themeDark", "dark"));
+        let (dark_2, light_2) = (dark.clone(), light.clone());
+        rows.push(row(root.tr("th.sysLight"), None, chips(root, cx, "ap-sys-light", all.clone(), &light, move |r, v: String, cx| ask(r, "setSystemThemes", json!({ "light": v, "dark": dark_2 }), cx, |_, _| {}))));
+        rows.push(row(root.tr("th.sysDark"), None, chips(root, cx, "ap-sys-dark", all, &dark, move |r, v: String, cx| ask(r, "setSystemThemes", json!({ "light": light_2, "dark": v }), cx, |_, _| {}))));
+    } else if cur != "custom" {
+        let from = cur.clone();
+        rows.push(row(
+            root.tr("ct.fromThis"),
+            Some(root.tr("ct.fromThisDesc")),
+            Button::new("ct-from", root.tr("ct.fromThisBtn")).small().icon("palette").on_click(cx.listener(move |r, _, _, cx| customize_from(r, &from, cx))),
+        ));
+    }
     if shown_group == "custom" {
         if cur == "custom" {
             rows.extend(custom_rows(root, cx));
@@ -355,6 +501,7 @@ fn tile(root: &Root, id: &'static str, i: usize, on: bool, uses: Option<i64>, cx
         .when(on, |d| d.child(div().absolute().top(px(-3.)).left(px(-3.)).w(px(TILE_W + 6.)).h(px(TILE_H + 6.)).rounded(px(R_M + 3.)).border_2().border_color(c(FACE))))
         .relative()
         .hover(|d| d.opacity(0.92))
+        .on_hover(cx.listener(move |r, over: &bool, _, cx| hover(r, id, *over, cx)))
         .on_click(cx.listener(move |r, _, _, cx| {
             if current(r) != id {
                 pick(r, id, cx);
@@ -390,6 +537,32 @@ fn custom_rows(root: &Root, cx: &mut Context<Root>) -> Vec<AnyElement> {
         rows.push(row(root.tr("ct.fade"), Some(root.tr("ct.fadeDesc")), slider("ct-fade", fade, 0, 90, 5, format!("{fade} %"), cx, |r, v, cx| change(r, json!({ "fade": v }), cx))));
         let blur = num("blur", 0);
         rows.push(row(root.tr("ct.blur"), Some(root.tr("ct.blurDesc")), slider("ct-blur", blur, 0, 30, 1, format!("{blur} px"), cx, |r, v, cx| change(r, json!({ "blur": v }), cx))));
+    }
+    rows.insert(
+        2,
+        row(root.tr("ct.surprise"), Some(root.tr("ct.surpriseDesc")), Button::new("ct-surprise", root.tr("ct.surpriseBtn")).small().icon("shuffle").on_click(cx.listener(|r, _, _, cx| surprise(r, cx)))),
+    );
+    if let Some(bx) = &root.settings.look.boxes {
+        let code = code_of(&ct);
+        let t = this.clone();
+        rows.push(row(
+            root.tr("ct.code"),
+            Some(root.tr("ct.codeDesc")),
+            div()
+                .flex()
+                .items_center()
+                .gap(px(8.))
+                .child(Button::new("ct-code-copy", root.tr("ct.codeCopy")).small().icon("copy").on_click(cx.listener(move |r, _, _, cx| {
+                    cx.write_to_clipboard(ClipboardItem::new_string(code.clone()));
+                    let text = r.tr("ct.codeCopied");
+                    ok(r, text);
+                    cx.notify();
+                })))
+                .child(field(&bx.code, None).w(px(230.)).h(px(34.)))
+                .child(Button::new("ct-code-apply", root.tr("ct.codeApply")).small().on_click(move |_, _, cx| {
+                    let _ = t.update(cx, |r, cx| apply_code(r, cx));
+                })),
+        ));
     }
     if let Some(bx) = &root.settings.look.boxes {
         let typed = !bx.name.read(cx).value().trim().is_empty();

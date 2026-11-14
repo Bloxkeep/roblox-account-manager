@@ -681,6 +681,10 @@ impl App {
     }
 
     pub fn toast(&self, text: &str, kind: &str) {
+        // A warning or error the person saw is in error.log too (names and ids scrubbed): reports carry it.
+        if kind == "warn" || kind == "error" {
+            log::note_file(&format!("Shown ({kind}): {}", self.scrub(text)));
+        }
         self.emit("toast", json!({ "text": text, "kind": kind }));
     }
 
@@ -750,6 +754,11 @@ impl App {
                 // An unexpected failure is logged by error_text; which command it came from goes just before it.
                 if matches!(fail, Fail::Other(_)) && !vault::is_invalid_password(&fail) {
                     log::note(&format!("Command \"{asked}\" failed:"));
+                } else if !self.withheld(&asked) {
+                    // What the person was told goes in error.log too, so a report never needs a screenshot to say why
+                    // (owner, 2026-11-15: error.log must cover every case). Names and ids scrubbed.
+                    let why = if vault::is_invalid_password(&fail) { "wrong password".to_string() } else { self.scrub(&error_text(&fail)) };
+                    log::note_file(&format!("Command \"{asked}\" refused: {why}"));
                 }
                 format!("{{\"type\":\"reply\",\"id\":{id},\"ok\":false,\"error\":{}}}", quoted(&error_text(&fail)))
             }
@@ -812,6 +821,7 @@ impl App {
             "seenWhatsNew" => done(self.seen_whats_new()),
             "setLanguage" => done(self.set_language(&str_of(a, "language"))),
             "setTheme" => done(self.set_theme(&str_of(a, "theme"))),
+            "setSystemThemes" => done(self.set_system_themes(&str_of(a, "light"), &str_of(a, "dark"))),
             "setCustomTheme" => done(self.set_custom_theme(
                 &str_of(a, "background"),
                 &str_of(a, "accent"),

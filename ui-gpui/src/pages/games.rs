@@ -316,7 +316,18 @@ fn live_part(root: &Root, cx: &mut Context<Root>) -> Option<AnyElement> {
 
 /// The capsule laid over a header row, in its middle: the row must be `.relative()`.
 pub fn island(root: &Root, cx: &mut Context<Root>) -> impl IntoElement {
+    // In a small window it stands in line (the wordmark steps aside, `brand`): centred over the header it lay over
+    // the search box and the buttons at the right (860 px wide, 2026-11-15).
+    if root.narrow.get() {
+        return div().flex_none().child(views(root, cx));
+    }
     div().absolute().inset_0().flex().items_center().justify_center().child(views(root, cx))
+}
+
+/// Roblox's wordmark at the head of its pages; not in a small window, where the view capsule needs its room.
+pub fn brand(root: &Root) -> Div {
+    let d = div().h(px(38.)).flex().items_center();
+    if root.narrow.get() { d } else { d.child(crate::kit::roblox_word(22., c(TEXT))) }
 }
 
 /// What the page asked the app for, and what it is showing.
@@ -1568,14 +1579,14 @@ fn grid(root: &Root, all: &[Game], width: f32, cx: &mut Context<Root>) -> impl I
         .flex()
         .items_center()
         .gap(px(10.))
-        .child(div().h(px(38.)).flex().items_center().child(crate::kit::roblox_word(22., c(TEXT))))
+        .child(crate::pages::games::brand(root))
         .relative().child(island(root, cx))
         // (The "Live from the games' own alerts" line was taken out: "no one needs to know", the owner, 2026-11-13.)
         .child(div().flex_1())
         .child(
             div()
                 .w(px(if width < 900. { 220. } else { 280. }))
-                .min_w(px(200.))
+                .min_w(px(150.))
                 .flex_shrink(1.)
                 .child(field(&root.game_search, Some("search"))),
         );
@@ -1863,16 +1874,20 @@ fn played(root: &Root, g: &crate::pages::home::Game) -> (String, bool) {
 /// its foot; the next three stacked at its right, each a picture and its name.
 fn spotlight(root: &Root, all: &[crate::pages::home::Game], width: f32, cx: &mut Context<Root>) -> AnyElement {
     const GAP_S: f32 = 16.;
-    let big_w = ((width - GAP_S) * 0.64).round();
-    // (A 16:9 spotlight stood taller than the window: its name and buttons fell under the fold, 2026-11-13.)
-    let big_h = (big_w * 0.42).clamp(240., 420.).round();
+    // The picture whole: Roblox's cover is 16:9 and says things at its edges (a title, a price), so the art is 16:9 too.
+    // A 3:1 band cut the top and bottom off it (owner 2026-11-15: "banner hiện còn đéo nên hồn"); a 16:9 one as wide
+    // as 64 % of the page stood taller than the window (2026-11-13), so its height is capped and its width follows.
+    const PLATE_H: f32 = 84.;
+    let art_h = ((width - GAP_S) * 0.64 * 9. / 16.).clamp(200., 420.).round();
+    let big_w = (art_h * 16. / 9.).round();
+    let big_h = art_h + PLATE_H;
     let side_w = width - big_w - GAP_S;
     let Some(g) = all.first() else { return div().into_any_element() };
     let (place, name) = (g.place, g.name.clone());
     crate::pages::clips::want(root, place, cx);
     let (sub, running) = played(root, g);
     let cover = look(root, place, "cover");
-    let picture = cover.as_deref().and_then(|u| crate::images::pic_pair(u, big_w, big_h - 84., cx));
+    let picture = cover.as_deref().and_then(|u| crate::images::pic_pair(u, big_w, art_h, cx));
     let badge = look(root, place, "icon").or(g.icon.clone()).and_then(|u| crate::images::pic_sq(&u, 44., cx));
     let n = g.accounts.len();
     let mut acts = div().flex().gap(px(8.));
@@ -1889,7 +1904,6 @@ fn spotlight(root: &Root, all: &[crate::pages::home::Game], width: f32, cx: &mut
     })));
     // One card: the picture whole at the top, its name and buttons on a quiet footer under it (no plate over the
     // picture; owner 2026-11-14: the words under the picture, "đẹp và luxury hơn").
-    const PLATE_H: f32 = 84.;
     let plate = div()
         .h(px(PLATE_H))
         .flex_none()
@@ -1958,11 +1972,19 @@ fn spotlight(root: &Root, all: &[crate::pages::home::Game], width: f32, cx: &mut
         }));
 
     // The next ones, a picture and words each, filling the spotlight's height.
-    let rows = all.len().saturating_sub(1).min(3);
+    // Two across when there is room for them (a wide window left the right half of this column empty, the spotlight
+    // being as wide as its 16:9 picture now): up to six games, three rows.
+    // (Only with more than three to show: three games stay one under the other, as before.)
+    let more = all.len().saturating_sub(1);
+    let across: usize = if side_w >= 640. && more > 3 { 2 } else { 1 };
+    let shown = more.min(3 * across);
+    let rows = shown.div_ceil(across);
     let row_h = if rows == 0 { 0. } else { ((big_h - GAP_S * (rows as f32 - 1.)) / rows as f32).min(big_h / 2.).floor() };
-    let pic_h = row_h;
-    let pic_w = (pic_h * 16. / 9.).min(side_w * 0.6).round();
-    let side = all.iter().skip(1).take(3).enumerate().map(|(i, g)| {
+    let cell_w = ((side_w - GAP_S * (across as f32 - 1.)) / across as f32).floor();
+    // The picture stays 16:9 whatever room the row has (a cover cut to a tall strip lost its words).
+    let pic_w = (row_h * 16. / 9.).min(cell_w * 0.6).round();
+    let pic_h = (pic_w * 9. / 16.).round();
+    let side = all.iter().skip(1).take(shown).enumerate().map(|(i, g)| {
         let (place, name) = (g.place, g.name.clone());
         let (sub, running) = played(root, g);
         let pic = look(root, place, "cover").and_then(|u| crate::images::pic_pair(&u, pic_w, pic_h, cx));
@@ -1983,6 +2005,7 @@ fn spotlight(root: &Root, all: &[crate::pages::home::Game], width: f32, cx: &mut
             "gs-in",
             i,
             hot(("gs-side", i))
+                .w(px(cell_w))
                 .h(px(row_h))
                 .flex()
                 .items_center()
@@ -2014,7 +2037,7 @@ fn spotlight(root: &Root, all: &[crate::pages::home::Game], width: f32, cx: &mut
         )
         .into_any_element()
     });
-    div().flex().gap(px(GAP_S)).child(big).child(div().w(px(side_w)).min_w_0().flex().flex_col().gap(px(GAP_S)).children(side)).into_any_element()
+    div().flex().gap(px(GAP_S)).child(big).child(div().w(px(side_w)).min_w_0().flex().flex_wrap().content_start().gap(px(GAP_S)).children(side)).into_any_element()
 }
 
 fn section(title: String, cards: Vec<AnyElement>) -> impl IntoElement {
@@ -2851,7 +2874,7 @@ fn tab_button(t: Tab, icon_name: &'static str, label: String, on: bool) -> Hot {
         Tab::Servers => "gt-servers",
         Tab::Wiki => "gt-wiki",
     };
-    chip(id, on).h(px(TOOL_H)).px(px(12.)).child(icon(icon_name, 15., if on { c(INK) } else { c(MUTED) })).child(label)
+    chip(id, on).h(px(TOOL_H)).px(px(12.)).child(icon(icon_name, 15., if on { crate::theme::on_text() } else { c(MUTED) })).child(label)
 }
 
 /// The open game's name, as a button to any other game (GamesView.tsx's Switcher): a list of them, found by name in a

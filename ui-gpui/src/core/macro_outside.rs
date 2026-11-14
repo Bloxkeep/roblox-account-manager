@@ -142,7 +142,7 @@ impl IMacroOutside for MacroOutside {
         ct.check()?;
         let post = post.map(str::to_string);
         let (tx, rx) = std::sync::mpsc::channel();
-        std::thread::Builder::new().name("Bloxkeep macro web".into()).spawn(move || {
+        crate::net::Named::new("Bloxkeep macro web".into()).spawn(move || {
             let _ = tx.send(web_now(&url, &host, post.as_deref()));
         })?;
         loop {
@@ -273,8 +273,7 @@ pub fn public(ip: IpAddr) -> bool {
 /// The work on a thread of its own, waited for (C# gave the clipboard an STA thread).
 /// PORT: the thread isn't marked STA: the Win32 clipboard calls used here need no COM apartment.
 fn sta<T: Send + 'static>(work: impl FnOnce() -> Res<T> + Send + 'static) -> Res<T> {
-    std::thread::Builder::new()
-        .name("Bloxkeep clipboard".into())
+    crate::net::Named::new("Bloxkeep clipboard".into())
         .spawn(work)
         .map_err(Fail::from)?
         .join()

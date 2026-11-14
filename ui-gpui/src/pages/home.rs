@@ -537,7 +537,7 @@ fn shelf(root: &Root, all: &[Game], focus: usize, width: f32, cx: &mut Context<R
             .px(px(10.))
             .gap(px(6.))
             .rounded(px(R_S - 2.))
-            .child(icon(icon_name, 14., if on { c(INK) } else { c(MUTED) }))
+            .child(icon(icon_name, 14., if on { crate::theme::on_text() } else { c(MUTED) }))
             .child(label)
             .when(n > 0, |d| d.child(div().text_size(px(T_S)).font_features(tnum()).text_color(if on { ca(INK, 0.6) } else { c(MUTED) }).child(n.to_string())))
             .on_click(cx.listener(move |r, _, _, cx| {

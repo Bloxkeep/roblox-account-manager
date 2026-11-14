@@ -1,7 +1,7 @@
 // Tests/Bloxkeep.Tests/FpsCapSuite.cs: an account's own frame rate limit in Roblox (roblox_game_settings for_launch,
 // prepare_for, restore), on a stand-in Roblox folder (never the real one): the limit goes over the shared one and works
 // without it, light AFK takes only a lower one; the file holds it for that account's opening, the next account gets the
-// person's own, and the person's own comes back even after a client saves the limit; only the choices offered are taken.
+// person's own, and the person's own comes back even after a client saves the limit; a limit is any number from 5 to 360, or 9999 for none.
 use std::path::Path;
 
 use serde_json::json;
@@ -139,8 +139,15 @@ pub async fn run(c: &mut Checks, dir: &str) {
 
     let _ = call(&app, "setFpsCap", json!({ "ids": [one_id, two_id], "fps": 20 })).await;
     c.check("a limit is set on several accounts at once", cap(one_id) == 20 && cap(two_id) == 20, (cap(one_id), cap(two_id)));
+    // Any whole limit from 5 to 360 (a user asked for 17 and 18, 2026-11-15), and 9999 for none; nothing else.
     let _ = call(&app, "setFpsCap", json!({ "ids": [one_id], "fps": 17 })).await;
-    c.check("…only the choices offered are taken", cap(one_id) == 20, cap(one_id));
+    c.check("…a limit of the person's own (17) is taken", cap(one_id) == 17, cap(one_id));
+    let _ = call(&app, "setFpsCap", json!({ "ids": [one_id], "fps": 9999 })).await;
+    c.check("…and no limit at all (9999)", cap(one_id) == 9999, cap(one_id));
+    for odd in [3, 361, 5000] {
+        let _ = call(&app, "setFpsCap", json!({ "ids": [one_id], "fps": odd })).await;
+    }
+    c.check("…a number out of range changes nothing", cap(one_id) == 9999, cap(one_id));
     let _ = call(&app, "setFpsCap", json!({ "ids": [one_id], "fps": 0 })).await;
     c.check("…and taken off one account alone", cap(one_id) == 0 && cap(two_id) == 20, (cap(one_id), cap(two_id)));
 

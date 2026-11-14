@@ -22,7 +22,7 @@ pub fn commands(password: &str, script: Option<&str>) -> i32 {
     let seen = said.clone();
     let seen2 = said.clone();
     let script = script.and_then(|file| std::fs::read_to_string(file).ok());
-    let core = std::thread::Builder::new().name("core".into()).spawn(move || {
+    let core = crate::net::Named::new("core".into()).spawn(move || {
         rt::run(move || async move {
             let app = App::start();
             app.init(0, Rc::new(move |line: &str| seen.lock().unwrap_or_else(|e| e.into_inner()).push(line.to_string())));

@@ -32,6 +32,8 @@ const sandbox = {
   location: { search: query ? `?${query}` : '' },
   document: { querySelector: () => null, querySelectorAll: () => [], hidden: false, addEventListener: () => {} },
   addEventListener: () => {}, removeEventListener: () => {},
+  // (?theme=system asks the browser which of light and dark Windows is in: dark here.)
+  matchMedia: () => ({ matches: false, addEventListener: () => {}, removeEventListener: () => {} }),
   // The preview's own files (ui/dev/wiki-sample.json…) from the repo; anything else from the web.
   fetch: async u => {
     if (typeof u === 'string' && u.startsWith('/')) {
@@ -130,6 +132,8 @@ await serve(`${name}-up`, s => {
 const args = ['--pipe', name, '--size', size, '--wait', wait];
 // --cache DIR: where the interface may keep what Roblox said (the app gives it its cache folder).
 if (opt('--cache')) args.push('--cache', opt('--cache'));
+// --pictures DIR: where the person's own pictures are (a custom theme's picture or video: its "user/…" files).
+if (opt('--pictures')) args.push('--pictures', opt('--pictures'));
 if (shot) args.push('--shot', path.resolve(shot));
 const ui = spawn(exe, args, {
   stdio: ['ignore', 'inherit', 'inherit'],

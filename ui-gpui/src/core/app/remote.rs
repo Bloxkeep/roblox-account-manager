@@ -400,6 +400,9 @@ impl App {
     /// (a launch error, a question a preset would ask) follows the app's switch, and showed real names in Discord while
     /// Discord's was on (2026-10-30 review).
     pub fn remote_say(&self, text: &str) -> Value {
+        // What Discord was told, in error.log too (names as [account]): a "couldn't" said there must be findable here.
+        let said: String = self.scrub(text).replace('\n', " / ").chars().take(300).collect();
+        log::note_file(&format!("Remote: answered: {said}"));
         let hide = self.vault(|d| d.discord.hide_names).unwrap_or(false);
         json!({ "content": if hide { self.hide_names_in(text) } else { text.to_string() } })
     }
@@ -681,11 +684,20 @@ impl App {
                 let windows = crate::core::roblox_processes::visible_windows(&[pid]);
                 let window = crate::core::roblox_processes::main_window_of(&windows.get(&pid).cloned().unwrap_or_default());
                 let width = if accounts.len() == 1 { 1920 } else { 1280 };
-                let shot = rt::blocking(move || crate::core::window_shot::capture(window, width)).await;
-                let Some((jpeg, black)) = shot else {
+                let (shot, how) = rt::blocking(move || crate::core::window_shot::capture(window, width)).await;
+                // Every picture's story in error.log: a white one can't be explained without it (a user's second
+                // report of white pictures, 2026-11-14, had nothing to go by).
+                log::note_file(&format!("Remote: /pc screenshot: account {} (Roblox {pid}): {how}.", &account.id.to_string()[..8]));
+                let Some(shot) = shot else {
                     notes.push(l::f("{0}: no picture (its window isn't answering, or Roblox is still opening).", &[&self.discord_name(account)]));
                     continue;
                 };
+                // Nothing drawn: said in words, not sent as a white square.
+                if shot.blank && !shot.black {
+                    notes.push(l::f("{0}: no picture (Roblox drew nothing in its window; try again in a moment).", &[&self.discord_name(account)]));
+                    continue;
+                }
+                let (jpeg, black) = (shot.jpeg, shot.black);
                 pictures.push(jpeg);
                 named.push(self.discord_name(account));
                 if black {
@@ -708,6 +720,9 @@ impl App {
             notes.push(l::f("{0} more not pictured: Discord shows 10 at most.", &[&(accounts.len() - MAX_SHOTS)]));
         }
         log::note(&format!("Remote: /pc screenshot: {} of {} window(s) pictured, {} note(s).", pictures.len(), accounts.len(), notes.len()));
+        for note in &notes {
+            log::note_file(&format!("Remote: /pc screenshot said: {}", self.scrub(note)));
+        }
         if pictures.is_empty() {
             return Ok(Some(self.remote_say(&notes.join("\n"))));
         }

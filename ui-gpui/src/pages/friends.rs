@@ -1016,7 +1016,7 @@ fn header(root: &Root, list: &[Friend], viewer: Option<&Value>, cx: &mut Context
                 .flex()
                 .items_center()
                 .gap(px(10.))
-                .child(div().h(px(38.)).flex().items_center().child(crate::kit::roblox_word(22., c(TEXT))))
+                .child(crate::pages::games::brand(root))
                 .relative().child(crate::pages::games::island(root, cx))
                 .child(div().flex_1())
                 .when(matches!(fr.list, Some(Ok(_))), |d| {

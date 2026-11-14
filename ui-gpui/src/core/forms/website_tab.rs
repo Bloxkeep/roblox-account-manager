@@ -822,6 +822,9 @@ impl TabCore {
     }
 
     fn say(&self, text: &str, tone: &str) {
+        if tone == "bad" {
+            crate::core::app::App::note_shown("Website tab", text);
+        }
         *self.message.borrow_mut() = text.to_string();
         *self.tone.borrow_mut() = tone.to_string();
         self.changed();

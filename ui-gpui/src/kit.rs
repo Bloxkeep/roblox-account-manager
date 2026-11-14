@@ -581,7 +581,7 @@ impl RenderOnce for Switch {
         let lit = if small { c(TEXT) } else { c(FACE) };
         let knob = div().absolute().top_0().h(px(k)).rounded_full().with_spring("knob", SpringAnimation::new(if down { SNAP } else { BOUNCE }).to(if down { 1f32 } else { 0. }), move |d, v| {
             let grow = (v * stretch).max(-2.);
-            d.w(px(k + grow)).left(px(if on { -grow } else { 0. })).bg(if on { c(INK) } else { c(KNOB) })
+            d.w(px(k + grow)).left(px(if on { -grow } else { 0. })).bg(if on { if small { crate::theme::on_text() } else { c(INK) } } else { c(KNOB) })
         });
         let slide = div().absolute().top(px((h - k) / 2. - 1.)).size(px(k)).child(knob).with_spring("slide", SpringAnimation::new(BOUNCE).to(on), move |d, p| d.left(px(3. + travel * p.0)));
         let track = div()
@@ -747,7 +747,7 @@ impl RenderOnce for Segmented {
 pub fn segment(id: impl Into<ElementId>, on: bool) -> Hot {
     let h = hot(id).flex().flex_none().items_center().rounded(px(7.)).text_size(px(T_M)).font_weight(FontWeight::SEMIBOLD);
     if on {
-        h.tones(c(TEXT), c(TEXT)).text_color(c(GROUND))
+        h.tones(c(TEXT), c(TEXT)).text_color(crate::theme::on_text())
     } else {
         h.tones(ca(WHITE, 0.), ca(WHITE, 0.05)).text_color(c(TEXT_2)).cursor_pointer().hover(|d| d.text_color(c(TEXT)))
     }
@@ -758,7 +758,7 @@ pub fn segment(id: impl Into<ElementId>, on: bool) -> Hot {
 pub fn chip(id: impl Into<ElementId>, on: bool) -> Hot {
     let h = hot(id).h(px(30.)).px(px(10.)).flex().flex_none().items_center().gap(px(7.)).rounded(px(9.)).text_size(px(T_M)).font_weight(FontWeight::SEMIBOLD).cursor_pointer();
     if on {
-        h.tones(c(TEXT), c(TEXT)).text_color(c(GROUND))
+        h.tones(c(TEXT), c(TEXT)).text_color(crate::theme::on_text())
     } else {
         h.tones(ca(WHITE, 0.), ca(WHITE, 0.07)).text_color(c(TEXT_2)).hover(|d| d.text_color(c(TEXT)))
     }
@@ -778,7 +778,14 @@ pub fn chip_count(n: usize, on: bool) -> Div {
         .text_size(px(T_S))
         .font_weight(FontWeight::SEMIBOLD)
         .font_features(tnum())
-        .map(|d| if on { d.bg(ca(GROUND, 0.14)).text_color(c(GROUND)) } else { d.bg(ca(WHITE, 0.09)).text_color(c(TEXT_2)) })
+        .map(|d| {
+            if on {
+                let ink = crate::theme::on_text();
+                d.bg(Hsla { a: 0.14, ..ink }).text_color(ink)
+            } else {
+                d.bg(ca(WHITE, 0.09)).text_color(c(TEXT_2))
+            }
+        })
         .child(n.to_string())
 }
 
@@ -787,7 +794,7 @@ pub fn chip_count(n: usize, on: bool) -> Div {
 pub fn pill(id: impl Into<ElementId>, on: bool, live: bool) -> Hot {
     let h = hot(id).h(px(30.)).px(px(12.)).flex().flex_none().items_center().rounded_full().text_size(px(T_M)).font_weight(FontWeight::MEDIUM).border_1();
     if on {
-        h.tones(c(TEXT), c(TEXT)).edge(ca(TEXT, 0.), ca(TEXT, 0.)).text_color(c(GROUND))
+        h.tones(c(TEXT), c(TEXT)).edge(ca(TEXT, 0.), ca(TEXT, 0.)).text_color(crate::theme::on_text())
     } else if live {
         h.tones(ca(WHITE, 0.04), ca(WHITE, 0.09)).edge(ca(WHITE, 0.), ca(WHITE, 0.)).text_color(c(TEXT_2)).cursor_pointer().hover(|d| d.text_color(c(TEXT)))
     } else {
@@ -1168,7 +1175,7 @@ pub fn view_switch(items: Vec<Hot>) -> Div {
 
 /// One choice of a [`view_switch`].
 pub fn view_choice(id: impl Into<ElementId>, mark: &'static str, on: bool) -> Hot {
-    segment(id, on).h(px(TOOL_H - 6.)).w(px(32.)).justify_center().rounded(px(R_S - 2.)).child(icon(mark, 15., if on { c(INK) } else { c(TEXT_2) }))
+    segment(id, on).h(px(TOOL_H - 6.)).w(px(32.)).justify_center().rounded(px(R_S - 2.)).child(icon(mark, 15., if on { crate::theme::on_text() } else { c(TEXT_2) }))
 }
 
 // ───────────────────────── motion ─────────────────────────

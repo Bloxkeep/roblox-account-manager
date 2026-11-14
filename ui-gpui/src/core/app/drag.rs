@@ -105,7 +105,7 @@ impl App {
     pub fn watch_drags(&self) {
         DISPOSED.store(false, Ordering::SeqCst);
         let (tx, rx) = std::sync::mpsc::channel::<(u32, isize)>();
-        let spawned = std::thread::Builder::new().name("drag-hook".into()).spawn(move || {
+        let spawned = crate::net::Named::new("drag-hook".into()).spawn(move || {
             // SAFETY: the hook calls `on_win_event` on this thread, out of context, for move/size start and end only; it
             // is removed below on the same thread, as UnhookWinEvent requires.
             let hook = unsafe {

@@ -6,6 +6,12 @@ fn main() {
     if std::env::var("CARGO_CFG_TARGET_ENV").as_deref() == Ok("msvc") {
         println!("cargo:rustc-link-arg-bins=/STACK:8388608");
     }
+    // The logo in the exe: without it Explorer, the desktop shortcut and the taskbar show a blank file (owner, 2026-11-15).
+    println!("cargo:rerun-if-changed=app.rc");
+    println!("cargo:rerun-if-changed=../RobloxManager/app.ico");
+    if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("windows") {
+        embed_resource::compile("app.rc", embed_resource::NONE).manifest_optional().expect("app.rc (the exe's icon) didn't compile");
+    }
     println!("cargo:rerun-if-changed=../RobloxManager/wwwroot/i18n.js");
     println!("cargo:rerun-if-changed=tools/i18n.mjs");
     match Command::new("node").arg("tools/i18n.mjs").status() {

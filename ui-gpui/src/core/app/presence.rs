@@ -331,8 +331,12 @@ impl App {
                 Ok(Some(_)) => return false,
                 Ok(None) => {}
                 Err(ex) if !ct.is_cancelled() && roblox_api::is_expected_error(&ex) => {}
-                // PORT: thrown out of the C# (a call-off, or an unexpected failure): taken as no answer.
-                Err(_) => {}
+                // PORT: thrown out of the C# (a call-off, or an unexpected failure): taken as no answer, the failure written.
+                Err(ex) => {
+                    if !ct.is_cancelled() {
+                        log::write(&ex);
+                    }
+                }
             }
         }
         true

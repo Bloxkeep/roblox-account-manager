@@ -73,7 +73,7 @@ pub fn post(f: impl FnOnce() + Send + 'static) {
 /// (a busy flag's) is let go rather than the task waiting forever.
 pub async fn blocking<T: Send + 'static>(f: impl FnOnce() -> T + Send + 'static) -> T {
     let (tx, rx) = oneshot::channel();
-    let _ = std::thread::Builder::new().name("core-work".into()).spawn(move || {
+    let _ = crate::net::Named::new("core-work".into()).spawn(move || {
         let _ = tx.send(std::panic::catch_unwind(std::panic::AssertUnwindSafe(f)));
     });
     match rx.await {
@@ -136,7 +136,7 @@ pub async fn sleep(d: Duration) {
             }
         }
     }
-    let started = *TIMER_THREAD.get_or_init(|| std::thread::Builder::new().name("core-timer".into()).spawn(timer_thread).is_ok());
+    let started = *TIMER_THREAD.get_or_init(|| crate::net::Named::new("core-timer".into()).spawn(timer_thread).is_ok());
     if !started {
         // No timer thread could be made: a thread of its own, as before.
         return blocking(move || std::thread::sleep(d)).await;

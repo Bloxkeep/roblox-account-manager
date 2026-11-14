@@ -278,7 +278,44 @@ pub async fn run(c: &mut Checks, _dir: &str) {
     until(|| app.controller.boot.borrow().is_none() && !app.controller.presence_busy.get() && !app.robux.robux_busy.get(), 30).await;
 
     body(c, &app, &roblox, &cookie, [a, b, v, s, cc, w, d]).await;
+
+    // Every refusal and warning the person sees is in error.log, names scrubbed (owner, 2026-11-15: error.log must cover
+    // every case, nobody is asked for a screenshot).
+    {
+        // (The checks above end locked: the names to scrub come from the open vault.)
+        if app.controller.vault.borrow().is_none() {
+            unlock(&app).await;
+        }
+        let error_log = std::path::Path::new(_dir).join("error.log");
+        let read = || std::fs::read_to_string(&error_log).unwrap_or_default();
+        app.handle_message(r#"{"id":901,"cmd":"loginPassword","args":{"username":"","password":"","realm":""}}"#).await;
+        let text = read();
+        c.check("a command refused with a message: the message is in error.log", text.contains("Command \"loginPassword\" refused: Enter the username and password."), last_line(&text));
+        let name = "ScrubbedPlayer".to_string();
+        let _ = app.vault_mut(|d| d.accounts.push(Account { username: name.clone(), user_id: 2099, ..Default::default() }));
+        app.toast(&format!("{name}: Roblox closed again before its window opened."), "warn");
+        let text = read();
+        c.check(
+            "a warning shown: in error.log, without the account's name",
+            !name.is_empty() && text.contains("Shown (warn): [account]: Roblox closed again") && !text.contains(&format!("{name}: Roblox closed again")),
+            last_line(&text),
+        );
+        // Locked again with its window still open: a warning about it still has the name taken out.
+        let _ = app.lock();
+        app.toast(&format!("{name}: Roblox closed while Bloxkeep was locked."), "warn");
+        let text = read();
+        c.check(
+            "…and once Bloxkeep is locked again too",
+            app.controller.vault.borrow().is_none() && text.contains("Shown (warn): [account]: Roblox closed while") && !text.contains(&format!("{name}: Roblox closed while")),
+            last_line(&text),
+        );
+    }
+
     no_network();
+}
+
+fn last_line(text: &str) -> String {
+    text.lines().filter(|l| !l.trim().is_empty()).last().unwrap_or_default().to_string()
 }
 
 async fn body(c: &mut Checks, app: &Rc<App>, roblox: &Arc<Roblox>, cookie: &dyn Fn(&str) -> String, ids: [Guid; 7]) {

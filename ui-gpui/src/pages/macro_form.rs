@@ -4137,7 +4137,7 @@ fn key_box(root: &Root, f: &Form, i: usize, path: &'static str, mouse: bool, cx:
                     .items_center()
                     .justify_center()
                     .rounded(px(7.))
-                    .map(|d| if on { d.tones(c(TEXT), c(TEXT)).text_color(c(INK)) } else { d.tones(ca(WHITE, 0.05), ca(WHITE, 0.12)).text_color(c(TEXT_2)) })
+                    .map(|d| if on { d.tones(c(TEXT), c(TEXT)).text_color(crate::theme::on_text()) } else { d.tones(ca(WHITE, 0.05), ca(WHITE, 0.12)).text_color(c(TEXT_2)) })
                     .cursor_pointer()
                     .text_size(px(T_S))
                     .font_weight(FontWeight::SEMIBOLD)
@@ -4270,7 +4270,7 @@ fn counter_pick(root: &Root, f: &Form, i: usize, path: &'static str, with_settin
             }
         })));
     }
-    row = row.child(pill("mf-ctr-new", naming, true).gap(px(6.)).child(icon("plus", 13., if naming { c(INK) } else { c(TEXT_2) })).child(t("macro.counter.new")).on_click(cx.listener(
+    row = row.child(pill("mf-ctr-new", naming, true).gap(px(6.)).child(icon("plus", 13., if naming { crate::theme::on_text() } else { c(TEXT_2) })).child(t("macro.counter.new")).on_click(cx.listener(
         move |r, _, window, cx| {
             if let Some(f) = r.auto.macro_form.as_mut() {
                 f.naming = if f.naming == Some((i, path)) { None } else { Some((i, path)) };

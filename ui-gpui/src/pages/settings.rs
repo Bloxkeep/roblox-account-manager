@@ -18,6 +18,11 @@ use crate::{kit::*, shell::Root, theme::*};
 pub mod appearance;
 mod discord;
 mod roblox;
+pub(crate) use roblox::FPS_MAX;
+/// A custom theme's code, for the checks.
+pub(crate) mod theme_code {
+    pub(crate) use super::appearance::{code_of, look_of};
+}
 
 /// Settings › Discord's text boxes, made the first time it is shown (shots open it straight away).
 pub fn ensure_discord(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
@@ -428,10 +433,12 @@ fn chips_with<T: Clone + PartialEq + 'static>(
 
 /// What stands before a choice in a menu (and on its button when chosen): one of the app's icons, or a letter for a
 /// named program that has no icon of its own here (Bloxstrap's B).
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 enum Mark {
     Icon(&'static str),
     Letter(char),
+    /// A program's own icon (launcher_icons.rs), dimmed with its row when it isn't installed.
+    Pic(std::sync::Arc<RenderImage>),
 }
 
 fn mark(m: Mark, on: bool) -> Div {
@@ -441,6 +448,7 @@ fn mark(m: Mark, on: bool) -> Div {
     match m {
         Mark::Icon(name) => tile.child(icon(name, 14., tone)),
         Mark::Letter(l) => tile.text_size(px(T_XS)).font_weight(FontWeight::SEMIBOLD).text_color(tone).child(l.to_string()),
+        Mark::Pic(p) => tile.child(img(p).size(px(16.)).flex_none()),
     }
 }
 
@@ -475,7 +483,7 @@ fn chips_marked<T: Clone + PartialEq + 'static>(
     }
     let open = root.settings.menu == Some(key);
     let label = items.iter().find(|(v, _, _)| v == current).map(|(_, l, _)| l.clone()).unwrap_or_else(|| "—".into());
-    let chosen_mark = items.iter().position(|(v, _, _)| v == current).and_then(|i| marks.get(i).copied());
+    let chosen_mark = items.iter().position(|(v, _, _)| v == current).and_then(|i| marks.get(i).cloned());
     let mut wrap = div().relative().flex_none().child(
         hot(key)
             .h(px(34.))
@@ -529,7 +537,7 @@ fn chips_marked<T: Clone + PartialEq + 'static>(
         for (i, (value, label, off)) in items.into_iter().enumerate() {
             let on = value == *current;
             let f = f.clone();
-            let m = marks.get(i).copied();
+            let m = marks.get(i).cloned();
             menu = menu.child(
                 menu_row((key, 1000 + i))
                     .text_color(if on { c(TEXT) } else { c(TEXT_2) })
@@ -1165,9 +1173,12 @@ fn launch(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
         options.push(("custom".into(), root.i18n.tv("launch.custom", &[("name", custom)]), true));
     }
     options.push(("vng".into(), "Roblox VNG".into(), has("vng")));
+    let handler_name = s(ins, "handler").to_string();
     let marks: Vec<Mark> = options
         .iter()
-        .map(|(v, words, _)| match v.as_str() {
+        .map(|(v, words, _)| match crate::launcher_icons::of(v, &handler_name, custom) {
+            Some(p) => Mark::Pic(p),
+            None => match v.as_str() {
             "auto" => Mark::Icon("link"),
             "roblox" => Mark::Icon("roblox"),
             "direct" => Mark::Icon("play"),
@@ -1175,6 +1186,7 @@ fn launch(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
             "custom" => Mark::Icon("folder"),
             "vng" => Mark::Icon("globe"),
             _ => Mark::Letter(words.chars().find(|ch| ch.is_alphanumeric()).unwrap_or('?').to_ascii_uppercase()),
+            },
         })
         .collect();
     let options: Vec<(String, String, bool)> =
@@ -1273,6 +1285,16 @@ fn perf(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
     }
     let keep = vec![
         row(root.tr("set.rejoin"), Some(root.tr("set.rejoinDesc")), rejoin_ctl),
+        row_below(root.tr("set.rejoinWait"), Some(root.tr("set.rejoinWaitDesc")), {
+            let now = st.get("rejoinWaitSeconds").and_then(Value::as_i64).unwrap_or(0);
+            let mut waits: Vec<i64> = vec![0, 10, 30, 60, 120];
+            if !waits.contains(&now) {
+                waits.push(now);
+                waits.sort_unstable();
+            }
+            let items = waits.into_iter().map(|n| (n, if n == 0 { root.tr("set.rejoinWait0") } else if n % 60 == 0 { root.i18n.tv("set.minutesN", &[("n", &(n / 60).to_string())]) } else { root.i18n.tv("set.seconds", &[("n", &n.to_string())]) }, false)).collect();
+            chips(root, cx, "s-rejoin-wait", items, &now, |r, v, cx| set(r, json!({ "rejoinWaitSeconds": v }), cx))
+        }),
         row(root.tr("set.antiAfk"), Some(root.tr("set.antiAfkDesc")), switch("s-antiafk", b(st, "antiAfk"), cx, |r, on, cx| set(r, json!({ "antiAfk": on }), cx))),
         row_below(root.tr("set.hop"), Some(root.tr("set.hopDesc")), chips(root, cx, "s-hop", hops, &hop, |r, v, cx| set(r, json!({ "hopAbovePlayers": v }), cx))),
         row(

@@ -433,7 +433,7 @@ pub fn inbox(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElemen
                 .flex()
                 .items_center()
                 .gap(px(10.))
-                .child(div().h(px(38.)).flex().items_center().child(crate::kit::roblox_word(22., c(TEXT))))
+                .child(crate::pages::games::brand(root))
                 .relative().child(crate::pages::games::island(root, cx))
                 .child(div().flex_1())
                 .when(viewer.is_some(), |d| {

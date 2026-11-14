@@ -29,6 +29,117 @@ pub fn builder() -> ureq::AgentBuilder {
     b
 }
 
+/// A call the interface made that failed, in error.log (owner, 2026-11-15: every failure a person can meet must be
+/// there): what asked, the address without its query and with ids as "#", and why. The same failure of the same
+/// address is written once every five minutes, so a page polling while offline can't flood the log.
+pub fn note_failed(what: &str, url: &str, why: &str) {
+    use std::collections::HashMap;
+    use std::sync::Mutex;
+    use std::time::{Duration, Instant};
+    static SEEN: Mutex<Option<HashMap<String, Instant>>> = Mutex::new(None);
+    let ids = |s: &str| -> String {
+        let mut out = String::new();
+        let mut run = String::new();
+        for ch in s.chars().chain(std::iter::once(' ')) {
+            if ch.is_ascii_digit() {
+                run.push(ch);
+                continue;
+            }
+            if run.len() >= 5 { out.push('#') } else { out.push_str(&run) }
+            run.clear();
+            out.push(ch);
+        }
+        out.pop();
+        out
+    };
+    // A file's path names the Windows user (C:\Users\name\…), a PC's name may be the person's.
+    let private = |s: String| -> String {
+        ["USERNAME", "COMPUTERNAME"].iter().filter_map(|v| std::env::var(v).ok()).filter(|w| w.chars().count() >= 3).fold(s, |s, w| s.replace(&w, "[user]"))
+    };
+    let place = private(ids(url.split(['?', '#']).next().unwrap_or_default()));
+    let why: String = private(ids(why)).chars().take(200).collect();
+    let line = if place.is_empty() { format!("{what} failed ({why})") } else { format!("{what}: {place} failed ({why})") };
+    {
+        let mut seen = SEEN.lock().unwrap_or_else(|e| e.into_inner());
+        let seen = seen.get_or_insert_with(HashMap::new);
+        let now = Instant::now();
+        if seen.get(&line).is_some_and(|at| now.duration_since(*at) < Duration::from_secs(300)) {
+            return;
+        }
+        if seen.len() > 200 {
+            seen.retain(|_, at| now.duration_since(*at) < Duration::from_secs(300));
+        }
+        seen.insert(line.clone(), now);
+    }
+    #[cfg(feature = "core")]
+    crate::core::log::note_file(&line);
+    #[cfg(not(feature = "core"))]
+    eprintln!("{line}");
+}
+
+/// One of Bloxkeep's own saved files read back. Missing is normal (nothing saved yet); one that can't be read, or isn't
+/// what was written (cut short, edited by hand), is in error.log, as the list then starts empty and the person sees it.
+pub fn saved<T: serde::de::DeserializeOwned>(what: &str, path: &std::path::Path) -> Option<T> {
+    let bytes = match std::fs::read(path) {
+        Ok(b) => b,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return None,
+        Err(e) => {
+            note_failed(what, &path.to_string_lossy(), &format!("couldn't be read: {e}"));
+            return None;
+        }
+    };
+    let text = String::from_utf8_lossy(&bytes);
+    match serde_json::from_str(text.trim_start_matches('\u{feff}')) {
+        Ok(v) => Some(v),
+        Err(e) => {
+            note_failed(what, &path.to_string_lossy(), &format!("isn't readable, started empty: {e}"));
+            None
+        }
+    }
+}
+
+/// A file of Bloxkeep's written (or removed): a failure is in error.log, as what it keeps is lost at the next start.
+pub fn wrote<E: std::fmt::Display>(what: &str, path: &std::path::Path, r: Result<(), E>) {
+    if let Err(e) = r {
+        note_failed(what, &path.to_string_lossy(), &format!("couldn't be written: {e}"));
+    }
+}
+
+/// A named background thread whose failure to start (Windows out of threads or memory) is in error.log: what it was for
+/// then silently doesn't happen. Used as std::thread::Builder is; spawn returns the same result.
+pub struct Named(std::thread::Builder, String);
+
+impl Named {
+    pub fn new(name: String) -> Named {
+        Named(std::thread::Builder::new().name(name.clone()), name)
+    }
+
+    pub fn stack_size(self, size: usize) -> Named {
+        Named(self.0.stack_size(size), self.1)
+    }
+
+    pub fn spawn<F, T>(self, f: F) -> std::io::Result<std::thread::JoinHandle<T>>
+    where
+        F: FnOnce() -> T + Send + 'static,
+        T: Send + 'static,
+    {
+        let name = self.1;
+        let r = self.0.spawn(f);
+        if let Err(e) = &r {
+            note_failed("Background work", "", &format!("\"{name}\" couldn't start: {e}"));
+        }
+        r
+    }
+}
+
+/// A result the interface shows: its failure written as `note_failed` does (ids as "#", once every five minutes).
+pub fn noted<T>(what: &str, r: Result<T, String>) -> Result<T, String> {
+    if let Err(why) = &r {
+        note_failed(what, "", why);
+    }
+    r
+}
+
 /// An agent builder that reaches a host the way Roblox's own client does (its HTTP is libcurl): through a proxy only when
 /// the environment names one (https_proxy, HTTPS_PROXY, all_proxy, ALL_PROXY, in libcurl's order, unless no_proxy covers
 /// the host), never through Windows' proxy, which the client doesn't read (RobloxPlayerBeta.exe 0.747 has libcurl's

@@ -12,7 +12,146 @@ fn filler(n: usize) -> String {
     (0..n).map(|i| line("10:00:30", "30.5", &format!("[FLog::Graphics] pass {} drawn", char::from(b'a' + (i % 26) as u8)))).collect()
 }
 
-pub async fn run(c: &mut Checks, _dir: &str) {
+pub async fn run(c: &mut Checks, dir: &str) {
+    // A call the interface made that failed (net::note_failed): in error.log with ids as "#", no query, no Windows user,
+    // and once, not on every poll.
+    {
+        let user = std::env::var("USERNAME").unwrap_or_default();
+        let url = "https://friends.roblox.com/v1/users/123456789/friends/find?userSort=1&cursor=abcdef";
+        let why = format!("Roblox 403 for 987654321 in C:\\Users\\{user}\\AppData");
+        crate::net::note_failed("Roblox tab", url, &why);
+        crate::net::note_failed("Roblox tab", url, &why);
+        let text = std::fs::read_to_string(std::path::Path::new(dir).join("error.log")).unwrap_or_default();
+        let lines: Vec<&str> = text.lines().filter(|l| l.contains("Roblox tab: https://friends.roblox.com")).collect();
+        c.check(
+            "a failed call of the interface is in error.log once, ids as #, without its query or the Windows user",
+            lines.len() == 1
+                && lines[0].contains("/v1/users/#/friends/find failed (Roblox 403 for # in C:\\Users\\[user]\\AppData)")
+                && !lines[0].contains("cursor")
+                && (user.chars().count() < 3 || !lines[0].contains(&user)),
+            &lines,
+        );
+    }
+
+    // The 3D avatar's picture drawn on every core is the one a single core draws, dot for dot, and sooner.
+    if let Some(model) = crate::mesh::blocks() {
+        let view = crate::mesh::View { yaw: 0.7, pitch: 0.3, zoom: 0.8, room: 4, t: 1.3, at: [0.2, -0.1], heading: 0.4, stride: 1.1, pace: 0.6 };
+        let time = |cores: usize| {
+            let started = std::time::Instant::now();
+            let mut last = Vec::new();
+            for _ in 0..5 {
+                last = model.draw_on(view, 560, cores);
+            }
+            (last, started.elapsed().as_secs_f64() * 1000. / 5.)
+        };
+        let (one, one_ms) = time(1);
+        let all = std::thread::available_parallelism().map(|c| c.get()).unwrap_or(4);
+        let (many, many_ms) = time(all);
+        let (odd, _) = time(7);
+        c.check("the avatar drawn on every core is the picture one core draws", one == many && one == odd && one.iter().any(|b| *b != 0), format!("{} bytes, {} differ", one.len(), one.iter().zip(&many).filter(|(a, b)| a != b).count()));
+        c.check("…and it is drawn sooner", all < 2 || many_ms < one_ms, format!("one core {one_ms:.1} ms, {all} cores {many_ms:.1} ms a picture"));
+        println!("avatar draw: one core {one_ms:.1} ms, {all} cores {many_ms:.1} ms a picture (560 dots)");
+    }
+
+    // Every theme, as the interface gets it (theme.rs): its words read on its page, and a block stands apart from the
+    // page it is on. A third of the themes had blocks within 2.5 L* of their page (measured 2026-11-15).
+    {
+        use crate::theme::{GROUND, MUTED, PANEL, RAISED, TEXT, contrast, lightness, over, palette_of};
+        let mut unreadable: Vec<String> = Vec::new();
+        let mut flat: Vec<String> = Vec::new();
+        let mut seen = 0;
+        for id in crate::theme_table::GROUPS.iter().flat_map(|(_, list)| list.iter()).filter(|id| !matches!(**id, "system" | "custom")) {
+            seen += 1;
+            let p = palette_of(id);
+            let solid = |h: gpui_kit::Hsla| gpui_kit::Hsla { a: 1., ..h };
+            let page = solid(over(p.get(PANEL), solid(p.get(GROUND))));
+            if contrast(p.get(TEXT), page) < 4.5 || contrast(p.get(MUTED), page) < 3. {
+                unreadable.push(format!("{id} {:.1}/{:.1}", contrast(p.get(TEXT), page), contrast(p.get(MUTED), page)));
+            }
+            let step = (lightness(solid(p.get(RAISED))) - lightness(page)).abs();
+            if step < 2.9 {
+                flat.push(format!("{id} {step:.1}"));
+            }
+        }
+        c.check("every theme's words read on its page", seen > 90 && unreadable.is_empty(), &unreadable);
+        c.check("…and its blocks stand apart from the page", flat.is_empty(), &flat);
+    }
+
+    // Sync with Windows: the theme chosen for Windows' light apps or for its dark ones, never Custom or itself.
+    {
+        use crate::core::{prefs, themes};
+        let before = {
+            let s = prefs::lock();
+            (s.theme.clone(), s.system_light.clone(), s.system_dark.clone())
+        };
+        {
+            let mut s = prefs::lock();
+            s.theme = themes::FOLLOW_WINDOWS.to_string();
+            s.system_light = "ocean".into();
+            s.system_dark = "sakura".into();
+        }
+        let shown = themes::current().id;
+        c.check("Sync with Windows shows the theme chosen for Windows' light or dark apps", shown == "ocean" || shown == "sakura", shown);
+        c.check(
+            "…and only a theme of its own can be chosen for either",
+            themes::plain(Some("custom"), "dark") == "dark" && themes::plain(Some("system"), "light") == "light" && themes::plain(Some("no-such"), "light") == "light" && themes::plain(Some("ocean"), "light") == "ocean",
+            (),
+        );
+        let mut s = prefs::lock();
+        (s.theme, s.system_light, s.system_dark) = before;
+    }
+
+    // A custom theme's code (Settings › Appearance › Custom): what is copied is what is taken back; anything else isn't.
+    {
+        use crate::pages::settings::theme_code::{code_of, look_of};
+        let look = serde_json::json!({ "background": "#1B2A3A", "accent": "#f59e0b", "fade": 60, "blur": 12, "picture": "user/x.png" });
+        let code = code_of(&look);
+        let back = look_of(&code);
+        c.check(
+            "a theme's code holds its two colours, fade and blur, and gives them back",
+            code == "bloxkeep:1b2a3a-f59e0b-60-12" && back == Some(serde_json::json!({ "background": "#1b2a3a", "accent": "#f59e0b", "fade": 60, "blur": 12 })),
+            (&code, &back),
+        );
+        let odd = ["", "hello", "bloxkeep:", "bloxkeep:12345-f59e0b", "bloxkeep:zzzzzz-f59e0b-1-1", "other:1b2a3a-f59e0b-60-12"];
+        c.check("…words that aren't a code are refused", odd.iter().all(|t| look_of(t).is_none()), odd.iter().filter(|t| look_of(t).is_some()).collect::<Vec<_>>());
+        let wild = look_of("bloxkeep:1b2a3a-f59e0b-900-77");
+        c.check("…and a fade or blur out of range is brought into it", wild == Some(serde_json::json!({ "background": "#1b2a3a", "accent": "#f59e0b", "fade": 90, "blur": 30 })), &wild);
+    }
+
+    // About how many windows the PC runs (capacity.rs): what runs out first sets it, never fewer than are open.
+    {
+        use crate::core::capacity::{Each, Now, estimate};
+        let each = Each { ram_mb: 1500., commit_mb: 2500., cpu: 6., gpu: 8. };
+        let roomy = Now { windows: 2, total_mb: 32768., available_mb: 20000., commit_limit_mb: 60000., commit_room_mb: 40000., cpu_busy: Some(20.), gpu_busy: Some(16.) };
+        // RAM (20000 - 2621) / 1500 = 11; commit 39000 / 2500 = 15; CPU 70 / 6 = 11; GPU 79 / 8 = 9.
+        let fit = estimate(&each, &roomy);
+        c.check("the GPU runs out first: two open and nine more", fit.is_some_and(|f| f.max == 11 && f.by == "gpu"), fit);
+        let small_page_file = Now { commit_room_mb: 6000., ..roomy };
+        let fit = estimate(&each, &small_page_file);
+        c.check("a small page file is what runs out first", fit.is_some_and(|f| f.max == 3 && f.by == "commit"), fit);
+        let full = Now { available_mb: 900., ..roomy };
+        let fit = estimate(&each, &full);
+        c.check("a full PC never says fewer than are open", fit.is_some_and(|f| f.max == 2 && f.by == "ram"), fit);
+        let unknown = Now { cpu_busy: None, gpu_busy: None, commit_limit_mb: 0., windows: 0, ..roomy };
+        let fit = estimate(&each, &unknown);
+        c.check("with only RAM known, RAM sets it", fit.is_some_and(|f| f.max == 11 && f.by == "ram"), fit);
+        c.check("nothing measured: nothing said", estimate(&Each::default(), &roomy).is_none(), ());
+    }
+
+    // A saved file of Bloxkeep's cut short: the list starts empty, and error.log says so; a missing one says nothing.
+    {
+        let cut = std::path::Path::new(dir).join("watch-cut.json");
+        let _ = std::fs::write(&cut, "[{\"id\": 12");
+        let read: Option<Vec<serde_json::Value>> = crate::net::saved("Watched items", &cut);
+        let none: Option<Vec<serde_json::Value>> = crate::net::saved("Missing list", &std::path::Path::new(dir).join("never-saved.json"));
+        let text = std::fs::read_to_string(std::path::Path::new(dir).join("error.log")).unwrap_or_default();
+        c.check(
+            "a saved file cut short starts empty and is in error.log; a missing one isn't",
+            read.is_none() && none.is_none() && text.contains("Watched items: ") && text.contains("isn't readable, started empty") && !text.contains("Missing list"),
+            text.lines().filter(|l| l.contains("Watched") || l.contains("Missing")).collect::<Vec<_>>(),
+        );
+    }
+
     // A teleport's join link carries the account's id and names URL-encoded, past any scrub.
     let teleport = line(
         "10:00:01",

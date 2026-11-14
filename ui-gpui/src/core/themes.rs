@@ -161,13 +161,21 @@ pub fn normalize(id: Option<&str>) -> String {
     }
 }
 
-/// The theme in use: the chosen one, or for `FOLLOW_WINDOWS` light or dark like Windows apps.
+/// A theme of its own (not Sync with Windows, not Custom), for Sync with Windows' light and dark; `or` for anything else.
+pub fn plain(id: Option<&str>, or: &str) -> String {
+    match id {
+        Some(id) if ALL.iter().any(|t| t.id == id) => id.to_string(),
+        _ => or.to_string(),
+    }
+}
+
+/// The theme in use: the chosen one, or for `FOLLOW_WINDOWS` the one chosen for Windows' light or dark apps.
 pub fn current() -> Theme {
-    let (chosen, custom) = {
+    let (chosen, custom, light, dark) = {
         let s = prefs::lock();
-        (s.theme.clone(), s.custom.clone())
+        (s.theme.clone(), s.custom.clone(), s.system_light.clone(), s.system_dark.clone())
     };
-    let id = if chosen == FOLLOW_WINDOWS { (if windows_uses_light() { "light" } else { "dark" }).to_string() } else { chosen };
+    let id = if chosen == FOLLOW_WINDOWS { if windows_uses_light() { plain(Some(&light), "light") } else { plain(Some(&dark), "dark") } } else { chosen };
     if id == CUSTOM {
         return from_custom(&custom);
     }

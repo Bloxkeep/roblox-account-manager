@@ -1157,8 +1157,7 @@ impl App {
         let (url, id) = (d.webhook_url.clone(), d.board_message_id.clone());
         // On a worker: the exit waits for it, which must not need the core's thread to finish.
         let (done, finished) = std::sync::mpsc::channel();
-        std::thread::Builder::new()
-            .name("discord-final-board".into())
+        crate::net::Named::new("discord-final-board".into())
             .spawn(move || {
                 let cancel = Cancel::new();
                 let timer = cancel.clone();
@@ -1166,7 +1165,11 @@ impl App {
                     std::thread::sleep(Duration::from_secs(5));
                     timer.cancel();
                 });
-                let _ = webhook::send(&url, &mut payload, Some(&id), false, &cancel, None);
+                match webhook::send(&url, &mut payload, Some(&id), false, &cancel, None) {
+                    Ok(r) if r.outcome == webhook::DiscordOutcome::Sent => {}
+                    Ok(r) => log::note_file(&format!("Discord: the status board's last edit wasn't made ({:?}{}).", r.outcome, r.error.map(|e| format!(": {e}")).unwrap_or_default())),
+                    Err(e) => log::note_file(&format!("Discord: the status board's last edit wasn't made ({}).", crate::core::app::controller::error_text(&e))),
+                }
                 let _ = done.send(());
             })
             .ok()

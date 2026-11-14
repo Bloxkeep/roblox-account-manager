@@ -903,8 +903,12 @@ impl App {
             .into_iter()
             .map(|(id, r)| serde_json::json!({ "id": id, "ramMb": working_sets.get(&r.0).copied().unwrap_or(0) / MB }))
             .collect();
+        // About how many windows fit on this PC, from what these take (capacity.rs).
+        let filetime_now = (std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs() as i64).unwrap_or(0) + 11_644_473_600) * 10_000_000;
+        let fit = crate::core::capacity::tick(players, memory, cpu, gpu, filetime_now);
         let json = serde_json::json!({
             "accounts": accounts,
+            "fit": fit,
             "robloxCount": players.len(),
             // The monitor tab's tiles: clients with a visible window (see monitor_clients), from this tick's window pass.
             "monitorCount": players.iter().filter(|p| windows.get(&p.pid).is_some_and(|l| !l.is_empty())).count(),

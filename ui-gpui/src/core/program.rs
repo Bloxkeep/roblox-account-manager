@@ -244,7 +244,7 @@ pub fn main_core(args: &[String]) {
     // interface can ask anything (the C# constructor set them).
     let (stop_tx, stop_rx) = oneshot::channel::<()>();
     let (ready_tx, ready_rx) = mpsc::channel::<bool>();
-    let core = std::thread::Builder::new().name("core".into()).stack_size(16 << 20).spawn(move || {
+    let core = crate::net::Named::new("core".into()).stack_size(16 << 20).spawn(move || {
         // COM for the window property stores (taskbar groups) and the shell calls made here; free-threaded, as this
         // thread pumps no messages.
         // SAFETY: once, first thing on this thread; it lives as long as the process.
@@ -280,7 +280,7 @@ pub fn main_core(args: &[String]) {
     let quit = std::sync::Arc::new(quit);
     {
         let (activate, ending) = (activate.clone(), ending.clone());
-        let _ = std::thread::Builder::new().name("activate-wait".into()).spawn(move || {
+        let _ = crate::net::Named::new("activate-wait".into()).spawn(move || {
             while !ending.load(Ordering::SeqCst) {
                 if !activate.wait(500).0 {
                     continue;
@@ -297,7 +297,7 @@ pub fn main_core(args: &[String]) {
         // A downloaded update isn't applied on that quit: the installer or uninstaller runs Velopack's Update.exe next,
         // and a second one applying the update would race it for the folder (2026-10-30 review).
         let (quit, ending) = (quit.clone(), ending.clone());
-        let _ = std::thread::Builder::new().name("quit-wait".into()).spawn(move || {
+        let _ = crate::net::Named::new("quit-wait".into()).spawn(move || {
             while !ending.load(Ordering::SeqCst) {
                 if quit.wait(500).0 {
                     app_updater::HELD_FOR_INSTALLER.store(true, Ordering::SeqCst);
@@ -498,7 +498,7 @@ fn on_unexpected(message: &str) {
     }
     // The box on its own thread: a panic on the windows thread must not wait on that thread's own messages.
     let text = l::f("Unexpected error: {0}", &[&message]);
-    if let Ok(h) = std::thread::Builder::new().name("error-box".into()).spawn(move || ui::error(None, &text)) {
+    if let Ok(h) = crate::net::Named::new("error-box".into()).spawn(move || ui::error(None, &text)) {
         *ERROR_BOX.lock().unwrap_or_else(|e| e.into_inner()) = Some(h);
     }
 }

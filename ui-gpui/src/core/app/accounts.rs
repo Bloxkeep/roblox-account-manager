@@ -121,7 +121,7 @@ impl BootProgress {
 
 /// `RobloxApi.CancelQuickLoginAsync(login)`, not waited for.
 fn cancel_quick_login_later(login: QuickLoginCode) {
-    let _ = std::thread::Builder::new().name("quick-login-cancel".into()).spawn(move || {
+    let _ = crate::net::Named::new("quick-login-cancel".into()).spawn(move || {
         let _ = roblox_api::cancel_quick_login(&login);
     });
 }
@@ -993,8 +993,8 @@ impl App {
 
     /// Each account's own limit in Roblox, from its next opening; 0 takes it off.
     pub fn set_fps_cap(&self, ids: &[Guid], fps: i32) -> Res<Value> {
-        if fps != 0 && !roblox_game_settings::FPS_CHOICES.contains(&fps) {
-            log::note(&format!("Accounts: FPS cap {fps} isn't one of the choices; nothing changed."));
+        if fps != 0 && !roblox_game_settings::fps_allowed(fps) {
+            log::note(&format!("Accounts: FPS cap {fps} isn't between 5 and 360 (or 9999, no limit); nothing changed."));
             return Ok(json!(0));
         }
         let changed = self.vault_mut(|d| {

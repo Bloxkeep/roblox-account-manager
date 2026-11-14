@@ -51,14 +51,8 @@ fn file_path() -> PathBuf {
 fn games(slot: &mut Option<HashMap<i64, Game>>) -> &mut HashMap<i64, Game> {
     if slot.is_none() {
         let path = file_path();
-        let read: Option<HashMap<i64, Option<Game>>> = if path.is_file() {
-            std::fs::read(&path).ok().and_then(|bytes| {
-                let bytes = bytes.strip_prefix(b"\xEF\xBB\xBF").unwrap_or(&bytes).to_vec();
-                serde_json::from_slice::<Option<HashMap<i64, Option<Game>>>>(&bytes).ok().flatten()
-            })
-        } else {
-            None
-        };
+        let read: Option<HashMap<i64, Option<Game>>> =
+            if path.is_file() { crate::net::saved::<Option<HashMap<i64, Option<Game>>>>("Game hours", &path).flatten() } else { None };
         // A file from another version, or edited by hand: each game with its 24 hours, no other figure.
         let games: HashMap<i64, Game> =
             read.unwrap_or_default().into_iter().filter_map(|(id, g)| g.filter(|g| g.hours.as_ref().is_some_and(|h| h.len() == 24)).map(|g| (id, g))).collect();
@@ -103,11 +97,12 @@ pub fn of(universe_id: i64) -> Option<Vec<Option<i64>>> {
 pub fn save() {
     let slot = lock(&GAMES);
     let Some(games) = slot.as_ref() else { return };
-    if std::fs::create_dir_all(vault::data_dir()).is_err() {
+    if let Err(e) = std::fs::create_dir_all(vault::data_dir()) {
+        crate::net::wrote("Game hours", &file_path(), Err(e));
         return;
     }
     if let Ok(json) = serde_json::to_string(games) {
-        let _ = durable_file::write_text(file_path(), &json);
+        crate::net::wrote("Game hours", &file_path(), durable_file::write_text(file_path(), &json).map_err(|e| format!("{e:?}")));
     }
 }
 

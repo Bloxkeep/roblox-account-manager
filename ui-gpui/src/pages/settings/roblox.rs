@@ -397,6 +397,9 @@ const LEVELS: [Level; 3] = [
     Level { id: "off", mode: "off", graphics: 0, fps: 0, volume: -1, ram: Some(0), trim: false, cores: false },
 ];
 
+/// "No limit" for Roblox's frame rate (core's FPS_UNLIMITED).
+pub(crate) const FPS_MAX: i64 = 9999;
+
 fn int(v: &Value, k: &str, d: i64) -> i64 {
     v.get(k).and_then(Value::as_i64).unwrap_or(d)
 }
@@ -540,16 +543,31 @@ pub(super) fn config(root: &Root, cx: &mut Context<Root>) -> Div {
             let keep = root.tr("rc.keep");
             let pick = |list: &[i64], v: i64| if list.contains(&v) { v } else { list[0] };
             let gl: Vec<i64> = std::iter::once(0).chain(1..=10).collect();
-            let fl: Vec<i64> = vec![0, 15, 20, 30, 45, 60, 120, 144, 240];
+            let mut fl: Vec<i64> = vec![0, 15, 20, 30, 45, 60, 120, 144, 240, FPS_MAX];
+            // A limit of the person's own (17, 18…: the − and + beside the list) is in the list while it is the one set.
+            if fps > 0 && !fl.contains(&fps) {
+                fl.push(fps);
+                fl.sort_unstable();
+            }
             let vl: Vec<i64> = vec![-1, 0, 25, 50, 75, 100];
             let g_items = gl.iter().map(|&n| (n, if n == 0 { keep.clone() } else { n.to_string() }, false)).collect();
-            let f_items = fl.iter().map(|&n| (n, if n == 0 { keep.clone() } else { format!("{n} FPS") }, false)).collect();
+            let f_items = fl.iter().map(|&n| (n, if n == 0 { keep.clone() } else if n == FPS_MAX { root.tr("rc.fpsMax") } else { format!("{n} FPS") }, false)).collect();
             let v_items = vl
                 .iter()
                 .map(|&n| (n, if n == -1 { keep.clone() } else if n == 0 { root.tr("rc.mute") } else { format!("{n}%") }, false))
                 .collect();
             rows.push(row_below(root.tr("rc.graphics"), None, chips(root, cx, "s-rc-graphics", g_items, &pick(&gl, graphics), |r, v, cx| set(r, json!({ "robloxConfig": { "graphics": v } }), cx))));
-            rows.push(row_below(root.tr("rc.fps"), None, chips(root, cx, "s-rc-fps", f_items, &pick(&fl, fps), |r, v, cx| set(r, json!({ "robloxConfig": { "fps": v } }), cx))));
+            // One frame less or more than the limit set (from 60 when none is): any number from 5 to 360.
+            let step = |by: i64| (if fps == FPS_MAX { 240 } else if fps > 0 { fps } else { 60 } + by).clamp(5, 360);
+            let (less, more) = (step(-1), step(1));
+            let fps_ctl = div()
+                .flex()
+                .items_center()
+                .gap(px(6.))
+                .child(chips(root, cx, "s-rc-fps", f_items, &pick(&fl, fps), |r, v, cx| set(r, json!({ "robloxConfig": { "fps": v } }), cx)))
+                .child(IconButton::new("s-rc-fps-less", "chevronDown").size(30.).tip(root.i18n.tv("rc.fpsTo", &[("n", &less.to_string())])).on_click(cx.listener(move |r, _, _, cx| set(r, json!({ "robloxConfig": { "fps": less } }), cx))))
+                .child(IconButton::new("s-rc-fps-more", "chevronUp").size(30.).tip(root.i18n.tv("rc.fpsTo", &[("n", &more.to_string())])).on_click(cx.listener(move |r, _, _, cx| set(r, json!({ "robloxConfig": { "fps": more } }), cx))));
+            rows.push(row_below(root.tr("rc.fps"), Some(root.tr("rc.fpsDesc")), fps_ctl));
             rows.push(row_below(root.tr("rc.volume"), None, chips(root, cx, "s-rc-volume", v_items, &pick(&vl, volume), |r, v, cx| set(r, json!({ "robloxConfig": { "volume": v } }), cx))));
         }
     }

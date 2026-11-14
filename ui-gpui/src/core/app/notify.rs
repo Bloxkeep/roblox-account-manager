@@ -68,7 +68,9 @@ impl App {
         self.notify_discord(text, r#type, account);
         self.notify_phone(text, kind, r#type);
         if toast {
-            self.toast(text, kind);
+            self.toast(text, kind); // logs a warning or error itself
+        } else if kind == "warn" || kind == "error" {
+            crate::core::log::note_file(&format!("Shown ({kind}): {}", self.scrub(text)));
         }
         // None behind the lock screen: it would show the text (an account's name) on the desktop, which the page withholds too.
         let show = self.notify.show_notification.borrow().clone();

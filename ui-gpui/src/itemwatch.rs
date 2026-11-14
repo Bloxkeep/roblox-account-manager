@@ -52,7 +52,7 @@ fn path() -> PathBuf {
 }
 
 pub fn list() -> Vec<Watched> {
-    std::fs::read_to_string(path()).ok().and_then(|t| serde_json::from_str(&t).ok()).unwrap_or_default()
+    crate::net::saved("Watched items", &path()).unwrap_or_default()
 }
 
 /// Written beside it and moved over it: a crash mid-write never leaves half a list.
@@ -96,7 +96,7 @@ pub fn seen() {
     let mut l = list();
     if l.iter().any(|w| w.fresh) {
         l.iter_mut().for_each(|w| w.fresh = false);
-        let _ = save(&l);
+        let _ = crate::net::noted("Watched items save", save(&l));
     }
 }
 
@@ -163,7 +163,7 @@ pub fn check() -> Vec<(Watched, Vec<Change>)> {
         }
     }
     if !read_now.is_empty() {
-        let _ = save(&l);
+        let _ = crate::net::noted("Watched items save", save(&l));
     }
     out
 }

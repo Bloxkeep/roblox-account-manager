@@ -569,7 +569,7 @@ pub fn profile(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElem
         .flex()
         .items_center()
         .gap(px(10.))
-        .child(div().h(px(38.)).flex().items_center().child(crate::kit::roblox_word(22., c(TEXT))))
+        .child(crate::pages::games::brand(root))
         .relative().child(crate::pages::games::island(root, cx))
         .child(div().flex_1())
         // (A community's page has its own way out to roblox.com, and nothing of the profile's to read again.)
@@ -1544,7 +1544,7 @@ pub fn shop(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
         .flex()
         .items_center()
         .gap(px(10.))
-        .child(div().h(px(38.)).flex().items_center().child(crate::kit::roblox_word(22., c(TEXT))))
+        .child(crate::pages::games::brand(root))
         .relative().child(crate::pages::games::island(root, cx))
         .child(div().flex_1())
         .when(!pf.free && pf.item.is_none(), |d| d.child(div().w(px(if width < 900. { 220. } else { 300. })).min_w(px(140.)).flex_shrink(1.).child(field(&root.shop_search, Some("search")))));

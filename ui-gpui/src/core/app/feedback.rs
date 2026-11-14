@@ -193,35 +193,31 @@ impl App {
     /// Takes out what could tell whose a text is: each account's password, cookie, names and id, any cookies and
     /// Discord links, e-mail addresses, long tokens, and the Windows user and PC names.
     pub fn scrub(&self, text: &str) -> String {
-        let mut words: Vec<(String, &'static str)> = Vec::new();
-        let mut add = |word: &str, mark: &'static str| {
-            // `word is { Length: >= 3 }`: UTF-16 units.
-            if units(word) >= 3 {
-                words.push((word.to_string(), mark));
-            }
-        };
         let accounts = self.controller.vault.borrow().as_ref().map(|v| v.data().accounts.clone()).unwrap_or_default();
+        let mut secrets: Vec<(String, &'static str)> = Vec::new();
+        let mut names: Vec<(String, &'static str)> = Vec::new();
         for account in &accounts {
-            add(&account.password, "[password]");
-            add(&account.cookie, "[cookie]");
-            add(&account.username, "[account]");
-            add(&account.display_name, "[account]");
-            add(&account.alias, "[account]");
+            secrets.push((account.password.clone(), "[password]"));
+            secrets.push((account.cookie.clone(), "[cookie]"));
+            names.push((account.username.clone(), "[account]"));
+            names.push((account.display_name.clone(), "[account]"));
+            names.push((account.alias.clone(), "[account]"));
             if account.user_id > 0 {
-                add(&account.user_id.to_string(), "[account id]");
+                names.push((account.user_id.to_string(), "[account id]"));
             }
         }
-        add(&std::env::var("USERNAME").unwrap_or_default(), "[user]");
-        add(&std::env::var("COMPUTERNAME").unwrap_or_default(), "[pc]");
-        let mut text = COOKIE_TEXT.replace_all(text, "[cookie]").into_owned();
-        text = WEBHOOK_TEXT.replace_all(&text, "[webhook]").into_owned();
-        text = EMAIL_TEXT.replace_all(&text, "[email]").into_owned();
-        // Longest first, so a name that holds a shorter one isn't left half replaced (a stable sort, as OrderByDescending).
-        words.sort_by_key(|w| std::cmp::Reverse(units(&w.0)));
-        for (word, mark) in &words {
-            text = replace_word(&text, word, mark);
+        // The names and ids seen while unlocked are kept for when the vault is locked again (a warning about a window
+        // still open then names its account, and error.log gets it too), and for other threads (a message box).
+        // Never passwords or cookies.
+        {
+            let mut seen = SEEN_NAMES.lock().unwrap_or_else(|e| e.into_inner());
+            for n in names {
+                if !seen.contains(&n) {
+                    seen.push(n);
+                }
+            }
         }
-        LONG_TOKEN.replace_all(&text, "[token]").into_owned()
+        scrub_text(text, secrets)
     }
 
     /// Exactly what Send would send, as the person reads it.
@@ -315,4 +311,37 @@ fn last_lines(text: &str, max: usize) -> String {
     }
     let end = last_units(text, max);
     after_first_line(&end).unwrap_or(end)
+}
+
+/// Names and ids of accounts seen since the start, for `scrub_text` on any thread.
+static SEEN_NAMES: std::sync::Mutex<Vec<(String, &'static str)>> = std::sync::Mutex::new(Vec::new());
+
+/// `App::scrub`'s work, on any thread: the accounts' names and ids seen so far, `more` (the open vault's passwords and
+/// cookies, from the core's thread), any cookies and Discord links, e-mail addresses, long tokens, and the Windows
+/// user and PC names.
+pub fn scrub_text(text: &str, more: Vec<(String, &'static str)>) -> String {
+    let mut words: Vec<(String, &'static str)> = Vec::new();
+    let mut add = |word: &str, mark: &'static str| {
+        // `word is { Length: >= 3 }`: UTF-16 units.
+        if units(word) >= 3 {
+            words.push((word.to_string(), mark));
+        }
+    };
+    for (word, mark) in &more {
+        add(word, mark);
+    }
+    for (word, mark) in SEEN_NAMES.lock().unwrap_or_else(|e| e.into_inner()).iter() {
+        add(word, mark);
+    }
+    add(&std::env::var("USERNAME").unwrap_or_default(), "[user]");
+    add(&std::env::var("COMPUTERNAME").unwrap_or_default(), "[pc]");
+    let mut text = COOKIE_TEXT.replace_all(text, "[cookie]").into_owned();
+    text = WEBHOOK_TEXT.replace_all(&text, "[webhook]").into_owned();
+    text = EMAIL_TEXT.replace_all(&text, "[email]").into_owned();
+    // Longest first, so a name that holds a shorter one isn't left half replaced (a stable sort, as OrderByDescending).
+    words.sort_by_key(|w| std::cmp::Reverse(units(&w.0)));
+    for (word, mark) in &words {
+        text = replace_word(&text, word, mark);
+    }
+    LONG_TOKEN.replace_all(&text, "[token]").into_owned()
 }

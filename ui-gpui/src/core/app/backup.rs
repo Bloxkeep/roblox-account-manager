@@ -37,7 +37,7 @@ impl BackupWrite {
     pub fn start(folder: PathBuf, bytes: Vec<u8>, previous_ids: Vec<String>) -> Arc<BackupWrite> {
         let task = Arc::new(BackupWrite { done: Mutex::new(None), cv: Condvar::new() });
         let t = task.clone();
-        let spawned = std::thread::Builder::new().name("backup-write".into()).spawn(move || {
+        let spawned = crate::net::Named::new("backup-write".into()).spawn(move || {
             let result = backup::write(&folder, &bytes, Some(&previous_ids)).map(|_| ());
             *t.done.lock().unwrap_or_else(|e| e.into_inner()) = Some(result);
             t.cv.notify_all();

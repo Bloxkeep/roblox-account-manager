@@ -42,6 +42,11 @@ pub struct Data {
     restoring: bool,
     /// A file from the PC being put in.
     importing: bool,
+    /// The mod whose own page is shown (a card clicked), what GameBanana said of it (None while it is read), and which
+    /// of its pictures is the big one.
+    open: Option<Listed>,
+    profile: Option<Result<modstore::Profile, String>>,
+    shot: usize,
 }
 
 impl Data {
@@ -57,6 +62,15 @@ pub fn want(r: &mut Root, cx: &mut Context<Root>) {
     }
     if r.mods.list.is_none() && !r.mods.reading {
         read(r, false, cx);
+    }
+    // BLOXKEEP_SHOT_MODS=open: a hidden shot of the first mod's own page, once the library is read.
+    #[cfg(feature = "shot")]
+    if std::env::var("BLOXKEEP_SHOT_MODS").is_ok_and(|v| v == "open") && r.mods.open.is_none() {
+        if let Some(Ok(list)) = &r.mods.list {
+            if let Some(first) = list.first().cloned() {
+                open_mod(r, first, cx);
+            }
+        }
     }
 }
 
@@ -119,6 +133,27 @@ pub fn search(r: &mut Root, cx: &mut Context<Root>) {
     cx.notify();
 }
 
+/// A mod's own page, inside Bloxkeep (the owner, 2026-11-15: a click on a mod should show its page, not only a link out).
+fn open_mod(r: &mut Root, m: Listed, cx: &mut Context<Root>) {
+    let id = m.id;
+    r.mods.open = Some(m);
+    r.mods.profile = None;
+    r.mods.shot = 0;
+    let rx = roblox::run(move || modstore::profile(id));
+    cx.spawn(async move |this, cx| {
+        let got = rx.await.unwrap_or_else(|_| Err(String::new()));
+        let _ = this.update(cx, |r, cx| {
+            // (Another mod opened, or the page left, by now.)
+            if r.mods.open.as_ref().is_some_and(|o| o.id == id) {
+                r.mods.profile = Some(got);
+                cx.notify();
+            }
+        });
+    })
+    .detach();
+    cx.notify();
+}
+
 /// Install: the mod's downloads are read first; one is put in at once, a few are shown in its card to pick from.
 fn add(r: &mut Root, m: Listed, cx: &mut Context<Root>) {
     if !r.mods.adding.insert(m.id) {
@@ -168,7 +203,7 @@ fn put_in(r: &mut Root, m: Listed, pick: Choice, cx: &mut Context<Root>) {
         let l = crate::pages::games::Live { key: live_key.clone(), pic: m.pic.clone(), round: false, icon: "layers", tone: TEXT_2, title: m.name.clone(), sub: r.tr("live.installing"), act: None, busy: true, at: std::time::Instant::now() };
         crate::pages::games::live_show(r, l, cx);
     }
-    let rx = roblox::run(move || modstore::install(&m, &pick));
+    let rx = roblox::run(move || crate::net::noted("Mod install", modstore::install(&m, &pick)));
     cx.spawn(async move |this, cx| {
         let done = rx.await.unwrap_or_else(|_| Err(String::new()));
         let _ = this.update(cx, |r, cx| {
@@ -219,7 +254,7 @@ fn reorder(r: &mut Root, id: i64, up: bool) {
     let j = if up { i.checked_sub(1) } else { Some(i + 1).filter(|j| *j < list.len()) };
     if let Some(j) = j {
         list.swap(i, j);
-        let done = modstore::reorder(list);
+        let done = crate::net::noted("Mods reorder", modstore::reorder(list));
         changed(r, done);
     }
 }
@@ -265,7 +300,7 @@ pub fn page(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
         .flex()
         .items_center()
         .gap(px(10.))
-        .child(div().h(px(38.)).flex().items_center().child(roblox_word(22., c(TEXT))))
+        .child(crate::pages::games::brand(root))
         .relative().child(crate::pages::games::island(root, cx))
         .child(div().flex_1())
         .child(div().w(px(if width < 900. { 200. } else { 260. })).min_w(px(180.)).flex_shrink(1.).child(field(&root.mods_q, Some("search"))));
@@ -297,7 +332,7 @@ pub fn page(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
     row = row.child(div().w(px(20.))).child(
         chip("mods-mine", m.mine)
             .child(root.tr("mods.mine"))
-            .when(n > 0, |d| d.child(div().text_color(if m.mine { c(GROUND) } else { c(MUTED) }).font_features(tnum()).child(n.to_string())))
+            .when(n > 0, |d| d.child(div().text_color(if m.mine { crate::theme::on_text() } else { c(MUTED) }).font_features(tnum()).child(n.to_string())))
             .on_click(cx.listener(|r, _, _, cx| {
                 r.mods.mine = true;
                 r.mods.armed = None;
@@ -325,8 +360,13 @@ pub fn page(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
     bar = bar.child(Button::new("mods-import", root.tr("mods.import")).icon("folder").disabled(m.importing).on_click(cx.listener(|r, _, window, cx| import_file(r, window, cx))));
 
     let inner = width - 48.;
-    let body = if m.mine { mine(root, inner, cx).into_any_element() } else { library(root, inner, cx).into_any_element() };
-    let content = div().px(px(24.)).pb(px(28.)).flex().flex_col().gap(px(18.)).child(bar).child(body);
+    let content = match &m.open {
+        Some(x) => div().px(px(24.)).pb(px(28.)).child(detail(root, x, inner, cx)),
+        None => {
+            let body = if m.mine { mine(root, inner, cx).into_any_element() } else { library(root, inner, cx).into_any_element() };
+            div().px(px(24.)).pb(px(28.)).flex().flex_col().gap(px(18.)).child(bar).child(body)
+        }
+    };
     shell.child(header).child(crate::scrolled::body("mods-body", content))
 }
 
@@ -342,7 +382,7 @@ fn import_file(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
             r.mods.importing = true;
             cx.notify();
         });
-        let got = cx.background_spawn(async move { modstore::import(&path) }).await;
+        let got = cx.background_spawn(async move { crate::net::noted("Mod import", modstore::import(&path)) }).await;
         let _ = this.update(cx, |r, cx| {
             r.mods.importing = false;
             r.toast = Some(match got {
@@ -391,6 +431,7 @@ fn library(root: &Root, inner: f32, cx: &mut Context<Root>) -> impl IntoElement 
         let (adding, got) = (m.adding.contains(&x.id), have.contains(&x.id));
         let why = m.refused.get(&x.id).cloned();
         let item = x.clone();
+        let (open_a, open_b) = (x.clone(), x.clone());
         let id = x.id;
         let act = if got {
             Button::new(("mod-have", i), root.tr("mods.have")).icon("check").small().disabled(true)
@@ -405,7 +446,7 @@ fn library(root: &Root, inner: f32, cx: &mut Context<Root>) -> impl IntoElement 
             .overflow_hidden()
             .flex()
             .flex_col()
-            .child(div().w_full().h(px(pic_h)).bg(c(RAISED)).overflow_hidden().flex().items_center().justify_center().map(|d| match pic {
+            .child(div().id(("mod-open-pic", i)).cursor_pointer().on_click(cx.listener(move |r, _, _, cx| open_mod(r, open_a.clone(), cx))).w_full().h(px(pic_h)).bg(c(RAISED)).overflow_hidden().flex().items_center().justify_center().map(|d| match pic {
                 Some((src, key)) => d.child(fade_in(img(src).size_full().object_fit(ObjectFit::Cover), &key)),
                 None => d.child(icon("image", 22., c(DIM))),
             }))
@@ -417,6 +458,9 @@ fn library(root: &Root, inner: f32, cx: &mut Context<Root>) -> impl IntoElement 
                     .gap(px(10.))
                     .child(
                         div()
+                            .id(("mod-open-name", i))
+                            .cursor_pointer()
+                            .on_click(cx.listener(move |r, _, _, cx| open_mod(r, open_b.clone(), cx)))
                             .flex()
                             .flex_col()
                             .gap(px(3.))
@@ -474,6 +518,150 @@ fn library(root: &Root, inner: f32, cx: &mut Context<Root>) -> impl IntoElement 
                 cx.notify();
             }))))
         })
+        .child(div().text_size(px(T_S)).text_color(c(MUTED)).child(root.tr("mods.from")))
+}
+
+/// A mod's page: its pictures (the one picked big, the rest under it), what its maker wrote, and beside them its
+/// numbers, files and credits, with Install and the way out to GameBanana at its head.
+fn detail(root: &Root, x: &Listed, inner: f32, cx: &mut Context<Root>) -> Div {
+    let m = &root.mods;
+    let vi = root.i18n.vietnamese;
+    let id = x.id;
+    let (adding, got) = (m.adding.contains(&id), m.have.iter().any(|h| h.id == id));
+    let item = x.clone();
+    let act = if got {
+        Button::new("modp-have", root.tr("mods.have")).icon("check").disabled(true)
+    } else {
+        Button::new("modp-add", root.tr(if adding { "mods.adding" } else { "mods.add" })).icon("download").primary().disabled(adding).on_click(cx.listener(move |r, _, _, cx| {
+            add(r, item.clone(), cx);
+            cx.notify();
+        }))
+    };
+    let head = div()
+        .flex()
+        .items_center()
+        .gap(px(12.))
+        .child(Button::new("modp-back", root.tr("av.back")).icon("chevronLeft").small().quiet().on_click(cx.listener(|r, _, _, cx| {
+            r.mods.open = None;
+            r.mods.profile = None;
+            cx.notify();
+        })))
+        .child(
+            div()
+                .flex_1()
+                .min_w_0()
+                .flex()
+                .flex_col()
+                .gap(px(2.))
+                .child(div().text_size(px(T_FIG)).font_weight(FontWeight::SEMIBOLD).truncate().child(x.name.clone()))
+                .child(div().text_size(px(T_M)).text_color(c(MUTED)).truncate().child(format!("{} · {}", kind_words(root, &x.kind), x.by))),
+        )
+        .child(Button::new("modp-web", root.tr("mods.onBanana")).icon("external").on_click(cx.listener(move |r, _, _, _| r.send("openModPage", json!({ "id": id })))))
+        .child(act);
+    let why = m.refused.get(&id).cloned();
+    // A few versions to pick one of, as in its card.
+    let picks = m.picking.as_ref().filter(|(of, _)| *of == id).map(|(_, list)| {
+        let rows = list.iter().enumerate().map(|(j, ch)| {
+            let (item, ch2) = (x.clone(), ch.clone());
+            let about = if ch.about.is_empty() { ch.file.clone() } else { ch.about.clone() };
+            menu_row(("modp-pick", j))
+                .gap(px(10.))
+                .child(icon("download", 13., c(MUTED)))
+                .child(div().flex_1().min_w_0().truncate().text_color(c(TEXT)).child(about))
+                .child(div().flex_none().text_size(px(T_S)).text_color(c(MUTED)).child(size_words(ch.size)))
+                .on_click(cx.listener(move |r, _, _, cx| {
+                    put_in(r, item.clone(), ch2.clone(), cx);
+                    cx.notify();
+                }))
+        });
+        div().flex().flex_col().gap(px(2.)).p(px(6.)).rounded(px(R_M)).bg(c(INSET)).border_1().border_color(c(LINE)).child(div().px(px(8.)).py(px(4.)).text_size(px(T_S)).text_color(c(MUTED)).child(root.tr("mods.pickOne"))).children(rows)
+    });
+
+    let wide = inner >= 900.;
+    let side_w = 320.;
+    let main_w = if wide { inner - side_w - 24. } else { inner };
+    let pic_h = (main_w * 9. / 16.).round().min(540.);
+    let profile = m.profile.as_ref();
+    let pics: Vec<String> = match profile {
+        Some(Ok(p)) if !p.pics.is_empty() => p.pics.clone(),
+        _ => (!x.pic.is_empty()).then(|| x.pic.clone()).into_iter().collect(),
+    };
+    let at = m.shot.min(pics.len().saturating_sub(1));
+    let big = pics.get(at).and_then(|u| images::pic_pair(u, main_w, pic_h, cx));
+    let stage = div().w(px(main_w)).h(px(pic_h)).rounded(px(R_L)).overflow_hidden().bg(c(RAISED)).flex().items_center().justify_center().map(|d| match big {
+        // (Whole, not cut to the frame: a mod's picture often shows several things side by side.)
+        Some((src, key)) => d.child(fade_in(img(src).size_full().object_fit(ObjectFit::Contain), &key)),
+        None => d.child(icon("image", 28., c(DIM))),
+    });
+    let thumbs = (pics.len() > 1).then(|| {
+        div().flex().flex_wrap().gap(px(8.)).children(pics.iter().enumerate().map(|(i, u)| {
+            let small = images::pic_pair(u, 112., 63., cx);
+            div()
+                .id(("modp-thumb", i))
+                .w(px(112.))
+                .h(px(63.))
+                .rounded(px(R_S))
+                .overflow_hidden()
+                .bg(c(RAISED))
+                .border_2()
+                .border_color(if i == at { c(FACE) } else { ca(WHITE, 0.08) })
+                .cursor_pointer()
+                .children(small.map(|(src, _)| img(src).size_full().object_fit(ObjectFit::Cover)))
+                .on_click(cx.listener(move |r, _, _, cx| {
+                    r.mods.shot = i;
+                    cx.notify();
+                }))
+        }))
+    });
+    let words = match profile {
+        None => note(root.tr("mods.reading")),
+        Some(Err(why)) => note(root.i18n.tv("mods.readFailed", &[("why", if why.is_empty() { "GameBanana" } else { why })])),
+        Some(Ok(p)) if p.text.is_empty() => div(),
+        Some(Ok(p)) => div()
+            .flex()
+            .flex_col()
+            .gap(px(6.))
+            .child(div().text_size(px(T_SEC)).font_weight(FontWeight::SEMIBOLD).child(root.tr("mods.d.about")))
+            .children(p.text.lines().map(|l| div().min_h(px(8.)).text_size(px(T_L)).line_height(px(22.)).text_color(c(TEXT_2)).child(l.to_string()))),
+    };
+    let main = div().w(px(main_w)).flex().flex_col().gap(px(14.)).child(stage).children(thumbs).child(words);
+
+    let fact = |icon_name: &'static str, name: String, value: String| {
+        div().flex().items_center().gap(px(10.)).child(icon(icon_name, 14., c(MUTED))).child(div().flex_1().text_color(c(MUTED)).child(name)).child(div().text_color(c(TEXT)).font_features(tnum()).child(value))
+    };
+    let now = crate::time::now_secs();
+    let mut side = surface().w(px(if wide { side_w } else { main_w })).flex_none().p(px(18.)).flex().flex_col().gap(px(12.)).text_size(px(T_M));
+    if let Some(Ok(p)) = profile {
+        side = side
+            .child(fact("star", root.tr("mods.d.likes"), crate::pages::games::thousands(p.likes, vi)))
+            .child(fact("eye", root.tr("mods.d.views"), crate::pages::games::thousands(p.views, vi)))
+            .child(fact("download", root.tr("mods.d.downloads"), crate::pages::games::thousands(p.downloads, vi)))
+            .when(p.added > 0, |d| d.child(fact("calendar", root.tr("mods.d.added"), age(now - p.added, vi))))
+            .when(p.updated > 0 && p.updated != p.added, |d| d.child(fact("clock", root.tr("mods.d.updated"), age(now - p.updated, vi))))
+            .when(!p.version.is_empty(), |d| d.child(fact("tag", root.tr("mods.d.version"), p.version.clone())))
+            .when(!p.category.is_empty(), |d| d.child(fact("layers", root.tr("mods.d.kind"), p.category.clone())));
+        if !p.files.is_empty() {
+            side = side.child(div().mt(px(6.)).font_weight(FontWeight::SEMIBOLD).child(root.tr("mods.d.files"))).children(
+                p.files.iter().take(8).map(|(name, size)| div().flex().items_center().gap(px(10.)).child(div().flex_1().min_w_0().truncate().text_color(c(TEXT_2)).child(name.clone())).child(div().flex_none().text_color(c(MUTED)).font_features(tnum()).child(size_words(*size)))),
+            );
+        }
+        for (group, names) in &p.credits {
+            side = side.child(div().mt(px(6.)).font_weight(FontWeight::SEMIBOLD).child(if group.is_empty() { root.tr("mods.d.credits") } else { group.clone() })).children(names.iter().take(12).map(|(name, role)| {
+                div().flex().flex_col().child(div().text_color(c(TEXT)).truncate().child(name.clone())).when(!role.is_empty(), |d| d.child(div().text_size(px(T_S)).text_color(c(MUTED)).truncate().child(role.clone())))
+            }));
+        }
+    } else {
+        side = side.child(fact("eye", root.tr("mods.d.views"), crate::pages::games::thousands(x.views, vi)));
+    }
+    let body = div().flex().items_start().gap(px(24.)).when(!wide, |d| d.flex_col()).child(main).child(side);
+    div()
+        .flex()
+        .flex_col()
+        .gap(px(18.))
+        .child(head)
+        .children(why.map(|t| div().text_size(px(T_M)).text_color(c(WARN)).child(t)))
+        .children(picks)
+        .child(body)
         .child(div().text_size(px(T_S)).text_color(c(MUTED)).child(root.tr("mods.from")))
 }
 
@@ -538,7 +726,7 @@ fn mine(root: &Root, _inner: f32, cx: &mut Context<Root>) -> impl IntoElement {
                 move |on, _, cx| {
                     let on = *on;
                     let _ = this.update(cx, |r, cx| {
-                        let done = modstore::set_on(id, on);
+                        let done = crate::net::noted("Mod switch", modstore::set_on(id, on));
                         changed(r, done);
                         cx.notify();
                     });
@@ -547,7 +735,7 @@ fn mine(root: &Root, _inner: f32, cx: &mut Context<Root>) -> impl IntoElement {
             .child(Button::new(("mod-rm", i), root.tr(if armed { "mods.removeSure" } else { "mods.remove" })).icon("trash").small().on_click(cx.listener(move |r, _, _, cx| {
                 if r.mods.armed == Some(id) {
                     r.mods.armed = None;
-                    let done = modstore::remove(id);
+                    let done = crate::net::noted("Mod remove", modstore::remove(id));
                     changed(r, done);
                 } else {
                     r.mods.armed = Some(id);

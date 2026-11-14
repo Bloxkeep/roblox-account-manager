@@ -167,7 +167,13 @@ pub fn apply(client: Option<&str>) -> bool {
             Some(before) => match serde_json::from_str::<Value>(&before) {
                 Ok(Value::Object(o)) => o,
                 Ok(_) => Map::new(),
-                Err(_) => continue, // a file of the person's that isn't JSON: left alone (Roblox wouldn't read it anyway)
+                Err(_) => {
+                    // A file of the person's that isn't JSON: left alone (Roblox wouldn't read it anyway), and said, as
+                    // Bloxkeep's own flags aren't put in that copy of Roblox.
+                    let folder = Path::new(&file).parent().and_then(|p| p.parent()).and_then(|p| p.file_name()).map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+                    log::note(&format!("Fast Flags: {folder}'s ClientAppSettings.json isn't JSON (someone else's); left alone, Bloxkeep's flags not put in there."));
+                    continue;
+                }
             },
             None => Map::new(),
         };
@@ -343,5 +349,11 @@ fn delete(file: &str) {
     if std::fs::metadata(file).is_ok_and(|m| m.permissions().readonly()) {
         return;
     }
-    let _ = std::fs::remove_file(file);
+    match std::fs::remove_file(file) {
+        Err(e) if e.kind() != std::io::ErrorKind::NotFound => {
+            // Left there, Roblox keeps reading these Fast Flags.
+            crate::net::note_failed("Fast Flags file", file, &format!("couldn't be removed: {e}"));
+        }
+        _ => {}
+    }
 }

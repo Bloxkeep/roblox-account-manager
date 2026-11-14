@@ -828,10 +828,12 @@ pub fn open(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
             .entrance(DialogEntrance::FadeSlide)
             // (Esc, or a click beside it.)
             .on_close(move |_, _, cx| {
-                let _ = closed.update(cx, |r, _| {
+                let _ = closed.update(cx, |r, cx| {
                     if r.palette.seq == seq {
                         r.palette.open = false;
                     }
+                    // (Drawn again at once: the windows' pictures come back as soon as it is gone.)
+                    cx.notify();
                 });
             })
             .child(content)

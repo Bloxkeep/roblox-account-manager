@@ -21,7 +21,6 @@ use crate::core::{
     },
     l, log,
     models::Account,
-    prefs,
     roblox_api::{self, RobloxUser, realm},
     rt,
 };
@@ -323,11 +322,10 @@ impl App {
         }
     }
 
-    /// The account's avatar on its tab; none while names are hidden (the picture would tell who it is).
+    /// The account's avatar on its tab and in the tab's account list. Shown while names are hidden too, as the main
+    /// window keeps the pictures then (the owner's call, 2026-11-07): without them two accounts shortened to "K…" can't
+    /// be told apart in the list (the owner's screenshot, 2026-11-15).
     pub fn tab_avatar(&self, account: &Account) -> Option<String> {
-        if prefs::lock().hide_names {
-            return None;
-        }
         self.controller.avatar_urls.borrow().get(&account.user_id).cloned()
     }
 }

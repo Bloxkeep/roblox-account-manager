@@ -536,8 +536,7 @@ impl RobloxLogWatcher {
         let changed = self.take_reads();
         if self.reading.is_none() && !self.tails.is_empty() {
             let wanted: Vec<(i32, u64, String, i64)> = self.tails.values().map(|t| (t.pid, t.serial, t.path.clone(), t.offset)).collect();
-            self.reading = std::thread::Builder::new()
-                .name("Bloxkeep log read".into())
+            self.reading = crate::net::Named::new("Bloxkeep log read".into())
                 .spawn(move || wanted.into_iter().map(|(pid, serial, path, offset)| (pid, serial, offset, read_chunk(&path, offset))).collect())
                 .ok();
         }
@@ -582,7 +581,7 @@ impl RobloxLogWatcher {
     fn start_search(&mut self, pids: &[i32]) {
         let wanted: HashSet<i32> = pids.iter().copied().filter(|pid| !self.tails.contains_key(pid)).collect();
         let skip: HashSet<String> = self.tails.values().map(|t| t.path.to_lowercase()).chain(self.foreign.iter().cloned()).collect();
-        self.search = std::thread::Builder::new().name("Bloxkeep log search".into()).spawn(move || find_logs(&wanted, &skip)).ok();
+        self.search = crate::net::Named::new("Bloxkeep log search".into()).spawn(move || find_logs(&wanted, &skip)).ok();
     }
 
     fn take_search(&mut self, pids: &[i32]) {

@@ -117,7 +117,7 @@ pub fn start() {
         return;
     }
     let (tx, rx) = std::sync::mpsc::channel();
-    let _ = std::thread::Builder::new().name("windows".into()).spawn(move || {
+    let _ = crate::net::Named::new("windows".into()).spawn(move || {
         let ok = attach();
         let _ = tx.send(());
         if ok {
@@ -282,7 +282,7 @@ pub async fn delay(ms: u32) {
 /// Slow work (a download, a wait for a process) on a thread of its own while the window's task waits for it.
 pub async fn blocking<T: Send + 'static>(f: impl FnOnce() -> T + Send + 'static) -> Option<T> {
     let (tx, rx) = oneshot::channel();
-    let _ = std::thread::Builder::new().name("windows-work".into()).spawn(move || {
+    let _ = crate::net::Named::new("windows-work".into()).spawn(move || {
         let _ = tx.send(f());
     });
     rx.await.ok()

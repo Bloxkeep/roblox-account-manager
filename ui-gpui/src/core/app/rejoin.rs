@@ -52,6 +52,8 @@ pub struct RejoinState {
     pub no_rejoin_told: RefCell<HashSet<i32>>,
     /// Windows whose drop was logged as not rejoined (once each).
     pub rejoin_held_noted: RefCell<HashSet<i32>>,
+    /// Windows whose wait before a rejoin was said in error.log (once each), and "back by itself" when it ends so.
+    pub rejoin_wait_noted: RefCell<HashSet<i32>>,
     pub join_checks: RefCell<HashMap<i32, JoinCheck>>,
     /// The answer that gave a client its place in a full game's line, shown until the new one.
     pub in_line: RefCell<HashMap<i32, JoinAnswer>>,
@@ -384,6 +386,7 @@ impl App {
         self.rejoin.game_ban_noted.borrow_mut().retain(|pid| alive.contains(pid));
         self.rejoin.no_rejoin_told.borrow_mut().retain(|pid| alive.contains(pid));
         self.rejoin.rejoin_held_noted.borrow_mut().retain(|pid| alive.contains(pid));
+        self.rejoin.rejoin_wait_noted.borrow_mut().retain(|pid| alive.contains(pid));
         self.rejoin.in_line.borrow_mut().retain(|pid, _| alive.contains(pid));
         let launches: Vec<Rc<PendingLaunch>> = running(self).into_iter().map(|(_, r)| r.1).collect();
         self.rejoin.join_refused.borrow_mut().retain(|l| has_launch(&launches, l));
@@ -550,7 +553,22 @@ impl App {
                 }
                 continue;
             }
-            let dropped = state.status == "disconnected" && !signed_in_elsewhere(state.reason) && now.secs_since(state.at) >= 3.0;
+            // (Still disconnected after the wait the person set, 3 s at least: a window that got into a game by itself
+            // meanwhile, as a game moving between servers does, is no longer "disconnected" and is left alone.)
+            let wait = self.vault(|d| d.settings.rejoin_wait_seconds).unwrap_or(0).max(3) as f64;
+            let waiting = state.status == "disconnected" && !signed_in_elsewhere(state.reason) && now.secs_since(state.at) < wait;
+            if waiting && wait > 3.0 && self.rejoin.rejoin_wait_noted.borrow_mut().insert(info.0) {
+                log::note(&format!(
+                    "Rejoin: window {} disconnected (code {}); waiting {} s before closing it, as set.",
+                    info.0,
+                    state.reason.map(|c| c.to_string()).unwrap_or_else(|| "none".into()),
+                    wait as i64
+                ));
+            }
+            if state.status != "disconnected" && self.rejoin.rejoin_wait_noted.borrow_mut().remove(&info.0) {
+                log::note(&format!("Rejoin: window {} is {} again by itself within the wait; left open, not rejoined.", info.0, state.status));
+            }
+            let dropped = state.status == "disconnected" && !signed_in_elsewhere(state.reason) && now.secs_since(state.at) >= wait;
             // One the person started in the window is theirs: closing it would reopen the game Bloxkeep opened instead.
             // On Roblox's home screen every game is the person's own pick, so only a drop counts there.
             let never_got_in = stuck_joining && info.1.target.is_some() && now.secs_since(state.at) >= secs(GET_IN_TIMEOUT);

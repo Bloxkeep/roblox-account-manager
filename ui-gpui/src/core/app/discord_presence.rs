@@ -36,6 +36,13 @@ impl Default for DiscordPresenceState {
     }
 }
 
+fn earliest(a: Option<Stamp>, b: Option<Stamp>) -> Option<Stamp> {
+    match (a, b) {
+        (Some(a), Some(b)) => Some(if b < a { b } else { a }),
+        (a, b) => a.or(b),
+    }
+}
+
 impl App {
     pub fn tick_discord_presence(&self, now: Stamp) {
         if now < self.discord_presence.next_discord_presence.get() {
@@ -56,11 +63,18 @@ impl App {
     pub fn presence_activity(&self) -> Activity {
         let windows = self.roblox_count();
         let runs: Vec<(i32, Rc<PendingLaunch>)> = self.controller.running.borrow().values().cloned().collect();
-        let mut games: Vec<crate::core::roblox_api::GameInfo> = Vec::new();
+        // Each game with when the first of its windows got into it: Discord's clock under a game's name reads as time in
+        // that game (owner, 2026-11-15: 17 h shown, the time Bloxkeep had been open).
+        let mut games: Vec<(crate::core::roblox_api::GameInfo, Option<Stamp>)> = Vec::new();
         for run in &runs {
             if let Some(game) = self.playing_place((run.0, &run.1)).and_then(|id| self.known_game(id)) {
-                if !game.name.is_empty() && !games.iter().any(|g| g.name == game.name) {
-                    games.push(game);
+                if game.name.is_empty() {
+                    continue;
+                }
+                let joined = self.playing_since(run.0);
+                match games.iter_mut().find(|g| g.0.name == game.name) {
+                    Some(g) => g.1 = earliest(g.1, joined),
+                    None => games.push((game, joined)),
                 }
             }
         }
@@ -79,15 +93,23 @@ impl App {
         }
         let turn = self.discord_presence.presence_turn.get();
         self.discord_presence.presence_turn.set(turn.wrapping_add(1));
-        let shown = &games[turn % games.len()];
+        let (shown, joined) = &games[turn % games.len()];
         let state = if games.len() > 1 { l::f("{0} · {1} games", &[&open, &games.len()]) } else { open };
         Activity {
             picture: shown.icon_url.clone().filter(|icon| icon.starts_with("https://")),
             picture_text: Some(shown.name.clone()),
             first_label: Some(l::t("View game")),
             first_url: Some(format!("https://www.roblox.com/games/{}", shown.place_id)),
+            start_unix: joined.map(|at| at.unix_secs()).unwrap_or(since),
             ..base(shown.name.clone(), Some(state))
         }
+    }
+
+    /// When a window joined the game it is in (its log's joining or in-game time); None without a log yet.
+    fn playing_since(&self, pid: i32) -> Option<Stamp> {
+        let logs = self.controller.logs.borrow();
+        let log = logs.state_of(pid)?;
+        (log.status == "ingame" || log.status == "joining").then_some(log.at)
     }
 
     /// The game a window is playing: none once it left for Roblox's home screen, lost its connection or was signed

@@ -487,8 +487,11 @@ impl App {
                     log::note(&format!("Crowded servers: the server list couldn't be read ({kind}); checked again later."));
                 }
             }
-            // Out of a task nobody awaited (`_ = HopCrowdedAsync(…)`): it went unseen in the C#.
-            Err(_) => {}
+            // Out of a task nobody awaited (`_ = HopCrowdedAsync(…)`): it went unseen in the C#; written here.
+            Err(ex) => {
+                log::note("Crowded servers: the check failed unexpectedly:");
+                log::write(&ex);
+            }
         }
         // finally
         self.server_hop.crowd_busy.set(false);

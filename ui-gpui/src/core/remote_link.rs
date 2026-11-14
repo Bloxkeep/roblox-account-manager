@@ -124,7 +124,7 @@ impl RemoteLink {
             out: Mutex::new(None),
         });
         let run = inner.clone();
-        std::thread::Builder::new().name("remote-link".into()).spawn(move || run_loop(&run)).expect("a thread for the remote link");
+        crate::net::Named::new("remote-link".into()).spawn(move || run_loop(&run)).expect("a thread for the remote link");
         RemoteLink { inner }
     }
 
@@ -279,7 +279,10 @@ impl RemoteLink {
             let status = match HTTP.request("PATCH", reply).set("Content-Type", &content_type).send_bytes(&body) {
                 Ok(r) => r.status(),
                 Err(ureq::Error::Status(code, _)) => code,
-                Err(_) => return false,
+                Err(e) => {
+                    log::note(&format!("Remote control: the answer to Discord didn't go ({:?}).", e.kind()));
+                    return false;
+                }
             };
             // Quicker than Discord: its "thinking…" isn't there to edit yet (once); asked too often: waited out (once).
             if attempt == 0 && (status == 404 || status == 429) {
@@ -290,6 +293,7 @@ impl RemoteLink {
                 continue;
             }
             if !(200..300).contains(&status) {
+                log::note(&format!("Remote control: Discord refused the answer (HTTP {status})."));
                 return false;
             }
             break;
@@ -470,9 +474,21 @@ fn random_ms(below: u32) -> u64 {
 
 fn run_loop(inner: &Arc<Inner>) {
     let mut wait = FIRST_RETRY;
+    // Said when it changes, not on every try (one a minute while offline).
+    let mut last_fail: Option<String> = None;
     while !inner.stop.is_cancelled() {
         let mut connected_at: Option<Instant> = None;
-        if let Ok(ws) = connect(&inner.url, &inner.secret, CONNECT_LIMIT) {
+        let attempt = connect(&inner.url, &inner.secret, CONNECT_LIMIT);
+        if let Err(e) = &attempt {
+            if last_fail.as_deref() != Some(e.as_str()) {
+                log::note(&format!("Remote control: couldn't connect to the bot ({e}); tried again, less and less often."));
+                last_fail = Some(e.clone());
+            }
+        }
+        if let Ok(ws) = attempt {
+            if last_fail.take().is_some() {
+                log::note("Remote control: connected again.");
+            }
             let (tx, rx) = mpsc::channel::<String>();
             *guard(&inner.out) = Some(tx);
             connected_at = Some(Instant::now());
@@ -551,7 +567,10 @@ fn session(inner: &Arc<Inner>, mut ws: Socket, out: &mpsc::Receiver<String>) -> 
             Ok(Message::Binary(b)) => String::from_utf8_lossy(&b).into_owned(),
             Ok(_) => continue,
             Err(tungstenite::Error::Io(e)) if matches!(e.kind(), std::io::ErrorKind::WouldBlock | std::io::ErrorKind::TimedOut) => continue,
-            Err(_) => return Ok(()),
+            Err(e) => {
+                log::note(&format!("Remote control: connection lost ({e}); connected again shortly."));
+                return Ok(());
+            }
         };
         // A message over 64 KB never gets here: the socket's own limit (see `connect`) ended the reading.
         if text != "pong" {

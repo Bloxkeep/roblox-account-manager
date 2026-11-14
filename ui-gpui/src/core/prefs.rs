@@ -153,6 +153,10 @@ pub struct WikiMark {
 pub struct State {
     /// A theme id from `themes`.
     pub theme: String,
+    /// With Sync with Windows: the theme shown while Windows' apps are light, and while they are dark (a theme id each,
+    /// never Sync with Windows or Custom; "light" and "dark" until chosen).
+    pub system_light: String,
+    pub system_dark: String,
     pub custom: CustomTheme,
     pub saved_themes: Vec<SavedTheme>,
     /// The close button hides the window to the notification area; the app quits from the tray icon.
@@ -250,6 +254,8 @@ impl Default for State {
     fn default() -> State {
         State {
             theme: themes::DEFAULT.into(),
+            system_light: "light".into(),
+            system_dark: "dark".into(),
             custom: CustomTheme { background: "#141a26".into(), accent: "#22c55e".into(), fade: 45, picture: None, blur: 0 },
             saved_themes: Vec::new(),
             close_to_tray: true,
@@ -421,7 +427,7 @@ pub fn is_vault_id(id: Option<&str>) -> bool {
 
 const KNOWN: &[&str] = &[
     "remoteGone",
-    "language", "theme", "closeToTray", "hideNames", "trayHintShown", "safeRendering", "checkUpdates", "betaUpdates", "lastVersion",
+    "language", "theme", "themeLight", "themeDark", "closeToTray", "hideNames", "trayHintShown", "safeRendering", "checkUpdates", "betaUpdates", "lastVersion",
     "notifications", "notifyOff", "backupFolder", "backupEnabled", "lastBackup", "backupPending", "dailySignInCheck", "lastSignInCheck", "miniOpen", "miniWindow", "panelWindows",
     "mainWindow", "mainMaximized", "robloxHistory", "robloxClosedAt", "robloxClosedCount", "robloxClosedNotified", "skipConfirm", "multiWorked",
     "multiRobloxAtStart", "discordPresence", "customTheme", "vaults", "lastVault", "askVault", "countOnline", "onlineId",
@@ -519,6 +525,8 @@ pub fn load() {
     if let Some(theme) = text(&root, "theme") {
         s.theme = themes::normalize(Some(theme));
     }
+    s.system_light = themes::plain(text(&root, "themeLight"), "light");
+    s.system_dark = themes::plain(text(&root, "themeDark"), "dark");
     if let Some(Value::Array(list)) = root.get("vaults") {
         for v in list {
             if !v.is_object() {
@@ -1039,6 +1047,8 @@ fn snapshot(s: &State, language: &str) -> Map<String, Value> {
     };
     put("language", json!(language));
     put("theme", json!(s.theme));
+    put("themeLight", json!(s.system_light));
+    put("themeDark", json!(s.system_dark));
     put("closeToTray", json!(s.close_to_tray));
     put("globalHotkeys", json!(s.global_hotkeys));
     put("hideNames", json!(s.hide_names));

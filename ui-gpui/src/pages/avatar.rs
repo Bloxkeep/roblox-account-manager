@@ -827,7 +827,7 @@ pub fn avatar(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoEleme
         .flex()
         .items_center()
         .gap(px(10.))
-        .child(div().h(px(38.)).flex().items_center().child(crate::kit::roblox_word(22., c(TEXT))))
+        .child(crate::pages::games::brand(root))
         .relative().child(crate::pages::games::island(root, cx))
         .child(div().flex_1())
         .when(viewer.is_some(), |d| {
@@ -886,6 +886,10 @@ fn stage(root: &Root, a: &Avatar, side: f32, cx: &mut Context<Root>) -> Stateful
         // Clicked, it takes the keys: W A S D or the arrows walk the avatar (mesh::Model::step).
         .track_focus(&root.avatar_focus)
         .on_key_down(cx.listener(|r, e: &KeyDownEvent, _, cx| {
+            if e.keystroke.key == "escape" && r.avatar.big {
+                set_big(r, false, cx);
+                return;
+            }
             let m = &e.keystroke.modifiers;
             let Some(bit) = walk_key(&e.keystroke.key).filter(|_| !m.control && !m.alt && !m.platform) else { return };
             cx.stop_propagation();
@@ -1025,7 +1029,10 @@ fn filled(root: &Root, a: &Avatar, width: f32, cx: &mut Context<Root>) -> AnyEle
     // Shown big: the avatar fills the page, its room and controls beside it (under it, in a narrow window).
     if av.big && av.frame.is_some() {
         let side_by = inner >= 760.;
-        let stage_side = if side_by { (inner - 300. - 24.).clamp(360., 780.) } else { inner.min(560.) };
+        // As wide as the page lets it, and no taller than the window shows (the feet were under the fold at 1280x800,
+        // 2026-11-15): the window's height less its bars, the tabs and this page's header.
+        let fits = (root.window_h.get() - 290.).max(280.);
+        let stage_side = if side_by { (inner - 300. - 24.).clamp(360., 780.).min(fits.max(360.)) } else { inner.min(560.).min(fits) };
         let room_word = root.tr(&format!("av3.room.{}", crate::mesh::ROOMS[room_of(av)].id));
         let panel = surface()
             .w(px(if side_by { 300. } else { stage_side }))
@@ -1039,8 +1046,10 @@ fn filled(root: &Root, a: &Avatar, width: f32, cx: &mut Context<Root>) -> AnyEle
                     .flex()
                     .items_center()
                     .gap(px(10.))
-                    .child(div().flex_1().text_size(px(T_GROUP)).font_weight(FontWeight::SEMIBOLD).child(root.tr("av3.title")))
-                    .child(IconButton::new("av3-small", "winRestore").size(32.).tip(root.tr("av3.small")).on_click(cx.listener(|r, _, _, cx| set_big(r, false, cx)))),
+                    // The way back said in words, first (an unnamed window icon at the end was missed, owner 2026-11-15);
+                    // Esc on the stage does the same.
+                    .child(Button::new("av3-small", root.tr("av.back")).icon("chevronLeft").small().quiet().on_click(cx.listener(|r, _, _, cx| set_big(r, false, cx))))
+                    .child(div().flex_1().text_size(px(T_GROUP)).font_weight(FontWeight::SEMIBOLD).child(root.tr("av3.title"))),
             )
             .child(
                 div()
@@ -1075,6 +1084,17 @@ fn filled(root: &Root, a: &Avatar, width: f32, cx: &mut Context<Root>) -> AnyEle
                     .child(Button::new("av3-reset-b", root.tr("av3.reset")).icon("refresh").on_click(cx.listener(|r, _, _, cx| reset_view(r, cx))))
                     .child(Button::new("av3-save-b", root.tr("av3.save")).icon("download").disabled(av.saving).on_click(cx.listener(|r, _, _, cx| save_picture(r, cx)))),
             )
+            // What is worn kept as an outfit on Roblox, here too (it was only under Saved outfits, out of sight in this
+            // view; owner 2026-11-15). Only signed in as this account.
+            .when(friends::signed(root).is_some_and(|(_, u, c)| !c.is_empty() && u == av.of), |d| {
+                d.child(
+                    Button::new("av3-outfit", root.tr(if av.saving_look { "av.savingLook" } else { "av.saveLook" }))
+                        .icon("plus")
+                        .primary()
+                        .disabled(av.saving_look)
+                        .on_click(cx.listener(|r, _, _, cx| save_look(r, cx))),
+                )
+            })
             .child(div().text_size(px(T_S)).line_height(px(18.)).text_color(c(MUTED)).child(root.tr("av3.howBig")));
         return crate::scrolled::body(
             "av-body-big",

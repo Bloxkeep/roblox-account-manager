@@ -796,6 +796,41 @@ async fn body(c: &mut Checks, r: &mut R) {
             && !kick_fields.iter().any(|f| f == "Reason"),
         format!("{} | {:?} | {}", kick_alert.title, kick_alert.text, kick_fields.join(",")),
     );
+    // Roblox's Error Code 256 (its plain "disconnected", the number its box shows when it names no other; people of
+    // another manager report it isn't rejoined there, 2026-11-15): logged with its number in any of the three shapes
+    // Roblox writes a reason in, it is a drop like any other and the window is closed to rejoin. Logged with nothing at
+    // all, the check further down catches it (Roblox's own status says out of a game, three checks running).
+    for line in [
+        "[FLog::Network] Disconnection Notification. Reason: 256",
+        "[FLog::Network] Disconnect reason received: 256",
+        "[DFLog::NetworkClient] setting replicator disconnect reason to 256",
+    ] {
+        let at_256 = dropped(r, &[line]);
+        let state = r.poll(|s| s.status == "disconnected" && s.at > at_256).await;
+        r.clear_closing();
+        r.told();
+        r.tick().await;
+        c.check(
+            &format!("Error 256 in the log ({}): a drop with its code, closed to rejoin", line.split("] ").nth(1).unwrap_or(line)),
+            state.as_ref().is_some_and(|s| s.reason == Some(256)) && r.closing(),
+            &state,
+        );
+    }
+    r.clear_closing();
+    r.told();
+    // A wait set before rejoining (Settings › Staying in game): a drop younger than it is left open, in case the game
+    // gets into its next server by itself; with no wait it is closed to rejoin.
+    let _ = r.app.vault_mut(|d| d.settings.rejoin_wait_seconds = 60);
+    let wait_at = dropped(r, &["[FLog::Network] Client has been disconnected with reason: You have been kicked from the game"]);
+    let _ = r.poll(|s| s.status == "disconnected" && s.at > wait_at).await;
+    r.clear_closing();
+    r.tick().await;
+    c.check("with a 60 s wait set, a window disconnected 10 s ago is left open", !r.closing(), r.state());
+    let _ = r.app.vault_mut(|d| d.settings.rejoin_wait_seconds = 0);
+    r.tick().await;
+    c.check("…and closed to rejoin once no wait is set", r.closing(), r.state());
+    r.clear_closing();
+    r.told();
     let elsewhere_at = dropped(
         r,
         &[

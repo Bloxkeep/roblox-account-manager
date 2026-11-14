@@ -207,6 +207,11 @@ pub struct Root {
     pub servers: pages::servers::Data,
     /// Quick search (Ctrl+K), Accounts' Windows menu and the selection bar's Presets menu.
     pub palette: pages::palette::Data,
+    /// The page's room is under 1000 px (set each draw): the Roblox pages' header drops its wordmark and keeps its
+    /// view capsule in line, so the capsule and the search box don't lie over each other.
+    pub narrow: std::cell::Cell<bool>,
+    /// The window's height (set each draw), for what must fit it whole (the big 3D avatar).
+    pub window_h: std::cell::Cell<f32>,
     pub snap: pages::snap::Data,
     pub preset_menu: pages::preset_menu::Data,
     /// The inbox's chat box: what to say in the open chat (Enter).
@@ -621,6 +626,8 @@ impl Root {
             sign_key: String::new(),
             servers: Default::default(),
             palette: Default::default(),
+            narrow: Default::default(),
+            window_h: Default::default(),
             snap: Default::default(),
             preset_menu: Default::default(),
             chat_box,
@@ -2425,6 +2432,8 @@ impl Root {
             .flex()
             .items_center()
             .gap(px(GAP))
+            // (A theme whose window ground can't carry these words, Retro's teal: the bar on the rail's ground.)
+            .when_some(crate::theme::bars_ground(), |d, g| d.bg(g).rounded_b(px(R_M)).px(px(8.)))
             .on_mouse_down(
                 MouseButton::Left,
                 cx.listener(|r, e: &MouseDownEvent, _, _| {
@@ -2476,6 +2485,12 @@ impl Root {
                                 .on_click(cx.listener(|r, _, window, cx| pages::palette::open(r, window, cx))),
                         )
                         .child(div().w(px(8.)))
+                    })
+                    // Report a bug or send an idea, on every place (it was only in Settings: "ai mà biết", the owner,
+                    // 2026-11-15).
+                    .when(!locked, |d| {
+                        d.child(IconButton::new("feedback-top", "message").size(32.).tip(self.tr("fb.reportTip")).on_click(cx.listener(|r, _, window, cx| pages::extras::open_feedback(r, window, cx))))
+                            .child(div().w(px(8.)))
                     })
                     // Without the accounts column (a narrow window, or another place) Add account comes up here.
                     // Accounts has its own Add (the + over its list).
@@ -2621,6 +2636,9 @@ impl Root {
         // compact: the meters lose their bars; tight (the smallest windows): Roblox's version loses its words, the mini
         // window its name and the app its number, so the bar fits (it ran off the edge at 860 and at 1200 with the GPU shown, 2026-11-12).
         let (compact, tight) = (width < 1400., width < 1360.);
+        // tiny (under 1000 px): closer together, Roblox's version only when it is out of date and Multi-Roblox's name
+        // left to its tip, so its switch isn't cut off at the window's edge (860 px, 2026-11-15).
+        let tiny = width < 1000.;
         let m = &self.metrics;
         let windows = m.get("robloxCount").and_then(Value::as_i64).unwrap_or(0);
         let ram = m.get("usedPct").and_then(Value::as_f64).unwrap_or(0.).round() as i64;
@@ -2636,8 +2654,9 @@ impl Root {
             .flex_none()
             .flex()
             .items_center()
-            .gap(px(24.))
+            .gap(px(if tiny { 12. } else { 24. }))
             .px(px(6.))
+            .when_some(crate::theme::status_ground(), |d, g| d.bg(g).rounded_t(px(R_M)).px(px(12.)))
             .text_size(px(T_M))
             .text_color(c(TEXT_2))
             .font_features(tnum())
@@ -2647,7 +2666,17 @@ impl Root {
                     .items_center()
                     .gap(px(8.))
                     .child(div().size(px(7.)).rounded(px(2.)).bg(if windows > 0 { c(OK) } else { c(DIM) }))
-                    .child(div().text_color(c(TEXT)).font_weight(FontWeight::MEDIUM).child(words))
+                    .child({
+                        // Rest the mouse on the count: about how many windows this PC runs, and what runs out first.
+                        let fit = m.get("fit").filter(|f| f.is_object());
+                        let tip: Option<SharedString> = fit.map(|f| {
+                            let by = self.tr(&format!("cap.by.{}", f.get("by").and_then(Value::as_str).unwrap_or("ram")));
+                            let each = crate::pages::accounts::mb_text(f.get("eachMb").and_then(Value::as_f64).unwrap_or(0.), self.i18n.vietnamese);
+                            self.i18n.tv("cap.tip", &[("n", &f.get("max").and_then(Value::as_i64).unwrap_or(0).to_string()), ("each", &each), ("by", &by)]).into()
+                        });
+                        div().id("sys-windows").text_color(c(TEXT)).font_weight(FontWeight::MEDIUM).child(words).when_some(tip, |d, tip| d.tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into()))
+                    })
+                    .children((!compact).then(|| m.pointer("/fit/max").and_then(Value::as_i64)).flatten().map(|n| div().text_color(c(MUTED)).child(self.i18n.tv("cap.fits", &[("n", &n.to_string())]))))
                     // Close all: every Roblox window, after a question (the old page's status card had it).
                     .when(windows > 0, |d| {
                         d.child(IconButton::new("sys-close", "power").size(26.).tip(self.tr("sys.closeAll")).on_click(cx.listener(|r, _, window, cx| r.close_all(false, window, cx))))
@@ -2674,7 +2703,7 @@ impl Root {
             .child(div().flex_1())
             // Roblox's version here and whether it is the newest (the old PC card's last line); out of date, it leads
             // to Settings › Roblox version, which says how to update.
-            .children(self.roblox_version(tight, cx))
+            .children(Some(()).filter(|_| !tiny || self.state.pointer("/robloxVersion/upToDate").and_then(Value::as_bool) == Some(false)).and_then(|_| self.roblox_version(tight, cx)))
             // The mini window: the accounts in a small window that stays over Roblox. Named, not a lone icon; open, a
             // green light in the icon's place.
             .child({
@@ -2739,7 +2768,8 @@ impl Root {
                             .when(to_updates, |d| d.text_color(c(WARN)))
                             // (A light only when it is on but not ready: on and fine, the switch already says so.)
                             .when(multi && !(armed && !to_updates), |d| d.child(div().size(px(6.)).rounded_full().bg(c(WARN))))
-                            .child(self.tr("multi.title"))
+                            .when(!tiny, |d| d.child(self.tr("multi.title")))
+                            .when(tiny, |d| d.child(icon("layers", 15., c(TEXT_2))))
                             .tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into())
                             .on_click(cx.listener(move |r, _, window, cx| {
                                 if to_updates {
@@ -2872,7 +2902,11 @@ impl Root {
                     .relative()
                     .child(self.live.cover())
                     .child(div().flex_none().child(icon(mark, 16., c(dot))))
-                    .child(div().min_w_0().line_height(px(19.)).child(text));
+                    .child(div().min_w_0().line_height(px(19.)).child(text))
+                    // Something failed: reporting it is one click away, on the notice itself.
+                    .when(matches!(kind.as_str(), "error" | "bad") && !self.locked(), |d| {
+                        d.child(Button::new("toast-report", self.tr("fb.report")).small().quiet().on_click(cx.listener(|r, _, window, cx| pages::extras::open_feedback(r, window, cx))))
+                    });
         // It slides up into place, a little past it and back, as the web page's did (kit::slide_in); a new notice
         // (other words) slides in again, the same one said again only shakes, and it sinks and fades as it leaves.
         let notice = if leaving {
@@ -3246,6 +3280,8 @@ impl Render for Root {
         // (No accounts yet: no column of them either; it stood tall and empty beside the welcome.)
         let with_side = !narrow && page == Page::Home && !locked && !lost && !self.accounts().is_empty();
         let main_w = f32::from(window.viewport_size().width) - RAIL - (GAP + 4.) - GAP - if with_side { SIDE + GAP } else { 0. };
+        self.narrow.set(main_w < 1000.);
+        self.window_h.set(f32::from(window.viewport_size().height));
         let body = if locked {
             div().size_full().child(pages::lock::lock(self, window, cx))
         } else if self.lost {
@@ -3442,9 +3478,12 @@ impl Live {
         let me = self.clone();
         canvas(
             |_, _, _| {},
-            move |_, _, window, _| {
+            move |_, _, window, cx| {
                 let n = |p: Pixels| (f64::from(f32::from(p)) * 100.).round() / 100.;
-                let msg = match *me.area.borrow() {
+                // A dialog (quick search, a form, a question) is drawn over the page, but Windows draws the pictures
+                // above the whole window: none while one is open (owner 2026-11-15: a window's picture over Ctrl+K).
+                let area = if window.has_active_dialog(cx) { None } else { *me.area.borrow() };
+                let msg = match area {
                     Some(a) => {
                         let covers = me.covers.borrow();
                         let pictures: Vec<Value> = me

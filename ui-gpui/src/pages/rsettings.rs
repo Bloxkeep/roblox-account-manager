@@ -35,7 +35,8 @@ pub struct Data {
     /// when Roblox didn't say.
     vis: Option<(String, String)>,
     /// Roblox didn't answer who sees the account (the Privacy card says so instead of "Reading" for good).
-    vis_failed: bool,
+    /// Why the visibility read failed (Roblox's code, or the network's words), shown as it is.
+    vis_failed: Option<String>,
 }
 
 const SEEN: [&str; 3] = ["AllUsers", "Friends", "NoOne"];
@@ -67,7 +68,7 @@ fn load(r: &mut Root, cx: &mut Context<Root>) {
             if r.rset.of == user {
                 match got {
                     Ok(v) => r.rset.vis = Some(v),
-                    Err(_) => r.rset.vis_failed = true,
+                    Err(e) => r.rset.vis_failed = Some(if e.is_empty() { "no answer".into() } else { e }),
                 }
                 cx.notify();
             }
@@ -302,7 +303,7 @@ pub fn page(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
         .flex()
         .items_center()
         .gap(px(10.))
-        .child(div().h(px(38.)).flex().items_center().child(crate::kit::roblox_word(22., c(TEXT))))
+        .child(crate::pages::games::brand(root))
         .relative().child(crate::pages::games::island(root, cx))
         .child(div().flex_1())
         .when(viewer.is_some(), |d| d.child(IconButton::new("rs-refresh", "refresh").size(34.).busy(rs.reading).tip(root.tr("fr.refresh")).on_click(cx.listener(|r, _, _, cx| again(r, cx)))));
@@ -432,7 +433,7 @@ fn filled(root: &Root, s: &AccountSettings, viewer: Option<&serde_json::Value>, 
         .flex()
         .flex_col()
         .map(|d| match rs.vis {
-            None => d.child(div().px(px(20.)).py(px(18.)).text_size(px(T_M)).text_color(c(MUTED)).child(root.tr(if rs.vis_failed { "rs.visFailed" } else { "vis.reading" }))),
+            None => d.child(div().px(px(20.)).py(px(18.)).text_size(px(T_M)).text_color(c(MUTED)).child(match &rs.vis_failed { Some(why) => root.i18n.tv("rs.visFailed", &[("why", why)]), None => root.tr("vis.reading") })),
             Some(_) => d
                 .child(div().px(px(20.)).pt(px(16.)).pb(px(18.)).flex().flex_col().gap(px(12.)).child(title(root.tr("rs.online"), Some(root.tr("rs.onlineSub")))).child(div().flex().child(seen(true))))
                 .child(div().px(px(20.)).pt(px(16.)).pb(px(18.)).border_t_1().border_color(c(LINE)).flex().flex_col().gap(px(12.)).child(title(root.tr("rs.join"), None)).child(div().flex().child(seen(false)))),

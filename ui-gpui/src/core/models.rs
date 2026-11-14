@@ -195,6 +195,10 @@ pub struct AppSettings {
     /// A window in a public server with more than this many other players moves to a quieter one; 0 = never.
     /// See AppController.ServerHop.cs.
     pub hop_above_players: i32,
+    /// How long a window stays disconnected before Bloxkeep closes it to rejoin, in seconds (0: at once, after the 3 s
+    /// every drop is given). A game that moves between servers can show a disconnect for a moment and get into the
+    /// next server by itself; with a wait, a window back in a game by then is left alone.
+    pub rejoin_wait_seconds: i32,
     pub roblox_config: RobloxConfig,
     pub recent_games: Vec<RecentGame>,
     pub pinned_games: Vec<RecentGame>,
@@ -247,6 +251,7 @@ impl Default for AppSettings {
             split_cores: false,
             anti_afk: false,
             hop_above_players: 0,
+            rejoin_wait_seconds: 0,
             roblox_config: RobloxConfig::default(),
             recent_games: Vec::new(),
             pinned_games: Vec::new(),

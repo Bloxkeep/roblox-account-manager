@@ -179,7 +179,7 @@ pub(crate) fn server_of(a: &Value) -> Option<(i64, String)> {
     None
 }
 
-const FPS_CAPS: [i64; 8] = [15, 20, 30, 45, 60, 120, 144, 240];
+const FPS_CAPS: [i64; 9] = [15, 20, 30, 45, 60, 120, 144, 240, crate::pages::settings::FPS_MAX];
 
 fn main_lines(root: &Root, a: &Value, ids: &[String], picked: &[&Value]) -> Vec<Option<Line>> {
     let id = id_of(a);
@@ -300,7 +300,7 @@ fn main_lines(root: &Root, a: &Value, ids: &[String], picked: &[&Value]) -> Vec<
         let mut l = line("cm-fps", Some("sliders"), root.tr("m.fps"), Go::Sub(Sub::Fps));
         let cap = a.get("fpsCap").and_then(Value::as_i64).unwrap_or(0);
         if !many && cap > 0 {
-            l.hint = Some(format!("{cap} FPS"));
+            l.hint = Some(if cap == crate::pages::settings::FPS_MAX { root.tr("rc.fpsMax") } else { format!("{cap} FPS") });
         }
         out.push(Some(l));
     }
@@ -367,11 +367,12 @@ fn fps_lines(root: &Root, ids: &[String], picked: &[&Value]) -> Vec<Option<Line>
         .enumerate()
         .map(|(i, fps)| {
             let go = ids.to_vec();
-            let text = if fps == 0 { root.tr("m.fpsNone") } else { format!("{fps} FPS") };
+            let text = if fps == 0 { root.tr("m.fpsNone") } else if fps == crate::pages::settings::FPS_MAX { root.tr("rc.fpsMax") } else { format!("{fps} FPS") };
             let mut l = line(("cm-fps-to", i), None, text, run(move |r, _, cx| {
                 act(r, "setFpsCap", json!({ "ids": go, "fps": fps }), cx, move |r, v| {
                     let k = v.as_i64().unwrap_or(0);
-                    r.toast = Some((r.i18n.tn(if fps > 0 { "t.fpsOn" } else { "t.fpsOff" }, k, &[("fps", &fps.to_string())]), "ok".into()));
+                    let said = if fps == crate::pages::settings::FPS_MAX { r.tr("t.fpsMax") } else { r.i18n.tn(if fps > 0 { "t.fpsOn" } else { "t.fpsOff" }, k, &[("fps", &fps.to_string())]) };
+                    r.toast = Some((said, "ok".into()));
                 })
             }));
             l.tick = Some(if now == Some(fps) { Tick::On } else { Tick::Off });

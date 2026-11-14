@@ -130,7 +130,7 @@ pub fn init(cx: &mut App) {
     for i in 0..WORKERS {
         let queue = queue.clone();
         let agent = agent.clone();
-        let _ = std::thread::Builder::new().name(format!("pictures-{i}")).spawn(move || {
+        let _ = crate::net::Named::new(format!("pictures-{i}")).spawn(move || {
             loop {
                 let job = {
                     let Ok(mut jobs) = queue.jobs.lock() else { break };
@@ -155,12 +155,17 @@ pub fn init(cx: &mut App) {
                         let dims = dims_of(&b);
                         Got::Bytes((b, tone, dims))
                     }
-                    Err(gone) => Got::Failed(gone),
+                    Err(gone) => {
+                        if url.starts_with("http") {
+                            crate::net::note_failed("Picture", &url, if gone { "not there or not a picture" } else { "no answer, asked again later" });
+                        }
+                        Got::Failed(gone)
+                    }
                 });
             }
         });
     }
-    let _ = std::thread::Builder::new().name("pictures-prune".into()).spawn(prune_often);
+    let _ = crate::net::Named::new("pictures-prune".into()).spawn(prune_often);
     cx.set_global(Images { slots: HashMap::new(), copies: HashMap::new(), queue });
 }
 
@@ -389,7 +394,7 @@ fn dims_of(b: &[u8]) -> Option<(u32, u32)> {
 /// pixels of the full picture, so a 150 px face shown at 45 px came out jagged): the colours weighed by their alpha, so
 /// the see-through edge round an avatar doesn't darken. Kept as GPUI keeps pictures: blue, green, red, alpha, not
 /// premultiplied.
-fn shrink(bytes: &[u8], w: u32, h: u32, sigma: f32) -> Option<RenderImage> {
+pub(crate) fn shrink(bytes: &[u8], w: u32, h: u32, sigma: f32) -> Option<RenderImage> {
     let mut decoder = image::ImageReader::new(std::io::Cursor::new(bytes)).with_guessed_format().ok()?.into_decoder().ok()?;
     let orientation = image::ImageDecoder::orientation(&mut decoder).ok()?;
     let mut picture = image::DynamicImage::from_decoder(decoder).ok()?;

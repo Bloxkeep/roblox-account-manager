@@ -209,6 +209,8 @@ impl App {
             "language": l::language(),
             "theme": theme,
             "themeApplied": themes::current().id,
+            "themeLight": prefs::lock().system_light.clone(),
+            "themeDark": prefs::lock().system_dark.clone(),
             "customTheme": App::custom_theme_dto(),
             "savedThemes": App::saved_themes_dto(),
             "closeToTray": close_to_tray,
@@ -522,6 +524,7 @@ impl App {
             "launchDelaySeconds": s.launch_delay_seconds,
             // (Missing in the C# too, whose page kept its own copy: the chips here read the state, and went back to Off.)
             "hopAbovePlayers": s.hop_above_players,
+            "rejoinWaitSeconds": s.rejoin_wait_seconds,
             "memoryWarnings": s.memory_warnings,
             "trimBackground": s.trim_background,
             "autoUpdateRoblox": s.auto_update_roblox,

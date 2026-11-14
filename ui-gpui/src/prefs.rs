@@ -16,7 +16,7 @@ static FILE: LazyLock<PathBuf> = LazyLock::new(|| {
 });
 
 static ALL: LazyLock<Mutex<Map<String, Value>>> =
-    LazyLock::new(|| Mutex::new(std::fs::read_to_string(&*FILE).ok().and_then(|t| serde_json::from_str(&t).ok()).unwrap_or_default()));
+    LazyLock::new(|| Mutex::new(crate::net::saved("Interface choices", &FILE).unwrap_or_default()));
 
 pub fn get(key: &str) -> Option<Value> {
     ALL.lock().ok()?.get(key).cloned()
@@ -33,6 +33,6 @@ pub fn set(key: &str, v: Value) {
         if let Some(dir) = FILE.parent() {
             let _ = std::fs::create_dir_all(dir);
         }
-        let _ = std::fs::write(&*FILE, text);
+        crate::net::wrote("Interface choices", &FILE, std::fs::write(&*FILE, text));
     }
 }

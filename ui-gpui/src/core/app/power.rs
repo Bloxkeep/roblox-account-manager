@@ -101,7 +101,7 @@ pub fn on_time_changed() {
 /// NetworkChange.NetworkAvailabilityChanged's watcher: a thread that waits on Windows' address-change notice and passes on
 /// each change of `is_network_available`.
 pub fn watch_network() {
-    let _ = std::thread::Builder::new().name("Bloxkeep network watch".into()).spawn(|| {
+    let _ = crate::net::Named::new("Bloxkeep network watch".into()).spawn(|| {
         let mut was = is_network_available();
         loop {
             // SAFETY: both null: the call blocks until an IPv4 address changes.

@@ -13,16 +13,20 @@
 // gold, the state colours vivid.
 use gpui_kit::{Hsla, Rgba, rgb};
 
-pub const GROUND: u32 = 0x08080a;
-pub const PANEL: u32 = 0x121317;
-pub const RAISED: u32 = 0x1b1c21;
-pub const RAISED_2: u32 = 0x27282f;
+// Dark's grounds, a step lighter each: the window, a panel on it, a block on the panel, a block on that. They were
+// near black (#08080a, #121317, #1b1c21, #27282f) and the page read as one dark mass with no blocks to tell apart
+// (the owner, 2026-11-15: "tối mù, bí bách", beside a charcoal page whose cards and buttons stand out). Black stays
+// a theme of its own for those who want it.
+pub const GROUND: u32 = 0x111215;
+pub const PANEL: u32 = 0x1a1b20;
+pub const RAISED: u32 = 0x25262c;
+pub const RAISED_2: u32 = 0x31323a;
 pub const TEXT: u32 = 0xf7f6f2;
 pub const TEXT_2: u32 = 0xc9c7c0;
 /// Meta text (times, "played 12 h"). As light as the old page's (#969cad there, neutral here): the first pick
 /// (#86868d) left most of a screen's words dim.
 pub const MUTED: u32 = 0x9a9890;
-pub const DIM: u32 = 0x5a5852;
+pub const DIM: u32 = 0x6b6963;
 pub const FACE: u32 = 0xf6c63a;
 pub const FACE_HI: u32 = 0xffd75e;
 /// The base a yellow block stands on (the main button's, pressed down onto it).
@@ -35,10 +39,10 @@ pub const ONLINE: u32 = 0x5aa2ff;
 pub const BAD: u32 = 0xff6257;
 pub const WHITE: u32 = 0xffffff;
 /// The rail's own ground, a shade off the window's, and the hairline around panels and between parts.
-pub const RAIL_BG: u32 = 0x0b0b0e;
-pub const LINE: u32 = 0x2a2b32;
+pub const RAIL_BG: u32 = 0x15161a;
+pub const LINE: u32 = 0x393a43;
 /// A text box's ground: a shade below what it sits on, so it reads as a place to type.
-pub const INSET: u32 = 0x0a0a0c;
+pub const INSET: u32 = 0x131418;
 /// The Roblox tab's view capsule: true black on every theme, as a phone's camera island is.
 pub const ISLAND: u32 = 0x000000;
 /// The face yellow pressed.
@@ -144,7 +148,7 @@ mod web {
 }
 
 /// What is behind the window on a picture theme: the file (a scene's name, or the custom theme's "user/…" picture; empty
-/// for a video, which can't play here), the colour under it, a veil over it, how much it is blurred (logical px), the
+/// for a video, which plays in its place: `video`), the colour under it, a veil over it, how much it is blurred (logical px), the
 /// theme's wash over all of it, and what the panels show of it (the web's backdrop-filter: blur in logical px and
 /// saturate, 1 = as is; None: the picture as it is).
 #[derive(Clone, Debug, PartialEq)]
@@ -155,6 +159,8 @@ pub struct Backdrop {
     pub blur: f32,
     pub wash: Hsla,
     pub frost: Option<(f32, f32)>,
+    /// A video instead of a picture (the custom theme's "user/…" .mp4 or .webm): played behind the page (scene.rs).
+    pub video: Option<String>,
 }
 
 #[derive(Clone)]
@@ -229,6 +235,34 @@ pub fn over(top: Hsla, under: Hsla) -> Hsla {
     Rgba { r: ch(t.r, u.r), g: ch(t.g, u.g), b: ch(t.b, u.b), a }.into()
 }
 
+/// How light a colour looks (CIE L*, 0 to 100).
+pub fn lightness(h: Hsla) -> f32 {
+    let c = h.to_rgb();
+    let lin = |v: f32| if v <= 0.03928 { v / 12.92 } else { ((v + 0.055) / 1.055).powf(2.4) };
+    let y = 0.2126 * lin(c.r) + 0.7152 * lin(c.g) + 0.0722 * lin(c.b);
+    if y > 0.008856 { 116. * y.cbrt() - 16. } else { 903.3 * y }
+}
+
+/// `block` at least `step` L* away from what it stands on: left as it is when it already is, else made lighter
+/// (`lighter`) or darker a little at a time, keeping its hue. (The other way when it runs out of room.)
+fn apart(block: Hsla, on: Hsla, step: f32, lighter: bool) -> Hsla {
+    let base = lightness(Hsla { a: 1., ..on });
+    let far = |h: Hsla| (lightness(Hsla { a: 1., ..h }) - base).abs() >= step;
+    if far(block) {
+        return block;
+    }
+    for way in [lighter, !lighter] {
+        let mut h = block;
+        for _ in 0..24 {
+            h.l = (h.l + if way { 0.006 } else { -0.006 }).clamp(0., 1.);
+            if far(h) {
+                return h;
+            }
+        }
+    }
+    block
+}
+
 fn darker(h: Hsla, by: f32) -> Hsla {
     over(hx((0x000000, by)), h)
 }
@@ -250,7 +284,7 @@ fn build(dark: bool, w: &[(u32, f32); web::N], tint: u32, picture: Option<(Strin
             rail = thick(v(web::BG_2));
             raised = over(v(web::RAISED), base);
             raised_2 = over(v(web::SURFACE_3), raised);
-            Some(Backdrop { file, under, veil, blur, wash: v(web::BG), frost })
+            Some(Backdrop { file, under, veil, blur, wash: v(web::BG), frost, video: None })
         }
         None => {
             ground = Hsla { a: 1., ..v(web::BG) };
@@ -261,6 +295,14 @@ fn build(dark: bool, w: &[(u32, f32); web::N], tint: u32, picture: Option<(Strin
             None
         }
     };
+    // Blocks must read as blocks on every theme: a third of the web page's themes had a block within 2.5 L* of the
+    // panel it stands on, and a fifth a panel within 2 of the window's ground (measured over all 98, 2026-11-15), so
+    // a card or a button melted into its page. Each is moved just far enough from what is under it, the way it
+    // already leans (lighter on a dark theme, darker on a light one).
+    let under_panel = over(panel, ground);
+    let raised = apart(raised, under_panel, 3., dark);
+    let raised_2 = apart(raised_2, raised, 2.5, dark);
+    let ground = if backdrop.is_none() { apart(ground, panel, 2., false) } else { ground };
     let face = v(web::ACCENT);
     for (hex, value) in [
         (GROUND, ground),
@@ -425,6 +467,9 @@ pub fn custom_palette(ct: &serde_json::Value) -> Palette {
     // (shared.js), frosted. A video can't play here (only its colour shows), so its panels keep at least half.
     let video_glass = picture.is_some() && video;
     let mut p = build(dark, &w, pack(words), picture);
+    if video_glass && let (Some(b), Some(name)) = (p.backdrop.as_mut(), ct.get("picture").and_then(|v| v.as_str())) {
+        b.video = Some(name.to_string());
+    }
     if video_glass {
         for hex in [PANEL, RAIL_BG] {
             if let Some(i) = slot(hex) {
@@ -457,15 +502,78 @@ thread_local! {
     static HELD: std::cell::Cell<Option<std::time::Instant>> = const { std::cell::Cell::new(None) };
 }
 
+thread_local! {
+    /// A theme being looked at before it is picked (the mouse resting on its tile), until then: the app's state doesn't
+    /// put the chosen one back meanwhile. It runs out by itself, so a tile left without its "left" can't hold it.
+    static PEEK: std::cell::Cell<Option<std::time::Instant>> = const { std::cell::Cell::new(None) };
+}
+
+/// Shows a theme while the mouse rests on its tile, without choosing it (as VS Code shows one while its list is walked).
+pub fn peek(id: &str, cx: &mut gpui_kit::App) {
+    PEEK.with(|p| p.set(Some(std::time::Instant::now() + std::time::Duration::from_secs(20))));
+    show(id, None, cx);
+}
+
+/// The look is over: true when one was on (the chosen theme is then shown again by the caller).
+pub fn unpeek() -> bool {
+    PEEK.with(|p| p.replace(None)).is_some()
+}
+
 /// Shows a theme at once, ahead of the app's answer (Settings › Appearance).
 pub fn preview(id: &str, custom: Option<&serde_json::Value>, cx: &mut gpui_kit::App) {
     HELD.with(|h| h.set(Some(std::time::Instant::now() + std::time::Duration::from_millis(1500))));
     show(id, custom, cx);
 }
 
+/// How far two colours stand apart (WCAG contrast, 1 to 21), see-through ones taken as solid.
+pub fn contrast(a: Hsla, b: Hsla) -> f32 {
+    let y = |h: Hsla| {
+        let c = Hsla { a: 1., ..h }.to_rgb();
+        let lin = |v: f32| if v <= 0.03928 { v / 12.92 } else { ((v + 0.055) / 1.055).powf(2.4) };
+        0.2126 * lin(c.r) + 0.7152 * lin(c.g) + 0.0722 * lin(c.b)
+    };
+    let (la, lb) = (y(a), y(b));
+    (la.max(lb) + 0.05) / (la.min(lb) + 0.05)
+}
+
+/// What is written or drawn on a chosen pill, whose ground is the theme's text colour: the page's own ground, solid;
+/// white or black instead on the rare theme where that wouldn't read.
+pub fn on_text() -> Hsla {
+    let text = c(TEXT);
+    let page = Hsla { a: 1., ..over(c(PANEL), Hsla { a: 1., ..c(GROUND) }) };
+    if contrast(page, text) >= 4.5 {
+        return page;
+    }
+    let (white, black): (Hsla, Hsla) = (rgb(0xffffff).into(), rgb(0x000000).into());
+    if contrast(white, text) >= contrast(black, text) { white } else { black }
+}
+
+/// The ground the top bar and the status bar stand on when the window's own can't carry their words (Retro's teal
+/// under grey words): the rail's, which every theme draws its icons on. None when the window's ground does.
+pub fn bars_ground() -> Option<Hsla> {
+    let ground = Hsla { a: 1., ..c(GROUND) };
+    if backdrop().is_some() || contrast(c(TEXT_2), ground) >= 4.5 {
+        return None;
+    }
+    Some(Hsla { a: 1., ..over(c(RAIL_BG), ground) })
+}
+
+/// The status bar's own ground: as `bars_ground`, and on a picture theme the rail's see-through ground, as the foot of
+/// a picture is its busiest part (Miami night's street lights ran under the CPU and RAM figures).
+pub fn status_ground() -> Option<Hsla> {
+    bars_ground().or_else(|| backdrop().map(|_| c(RAIL_BG)))
+}
+
+/// Lets the app's next state through at once (Sync with Windows: only the app knows which of light and dark it is, so
+/// nothing is shown ahead; a theme clicked a moment before must not hold its answer back, which left that theme's
+/// colours on while Sync with Windows was the one ticked).
+pub fn release() {
+    HELD.with(|h| h.set(None));
+}
+
 /// The theme the app's state says is in use (Follow Windows already worked out, as themeApplied).
 pub fn follow(state: &serde_json::Value, cx: &mut gpui_kit::App) {
-    if HELD.with(|h| h.get()).is_some_and(|t| std::time::Instant::now() < t) {
+    if HELD.with(|h| h.get()).is_some_and(|t| std::time::Instant::now() < t) || PEEK.with(|p| p.get()).is_some_and(|t| std::time::Instant::now() < t) {
         return;
     }
     let id = state.get("themeApplied").or_else(|| state.get("theme")).and_then(|v| v.as_str()).unwrap_or("dark").to_string();

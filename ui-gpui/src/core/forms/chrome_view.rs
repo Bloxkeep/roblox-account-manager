@@ -286,8 +286,7 @@ pub mod host {
     /// A window thread (WinForms' UI thread): a single-threaded apartment, as WebView2 needs; `body` makes its windows,
     /// then its message loop runs until `quit`.
     pub fn start_thread(name: &str, body: impl FnOnce() + Send + 'static) -> bool {
-        std::thread::Builder::new()
-            .name(name.to_string())
+        crate::net::Named::new(name.to_string())
             .spawn(move || {
                 // SAFETY: plain call, paired with CoUninitialize below on this same thread.
                 let hr = unsafe { CoInitializeEx(std::ptr::null(), COINIT_APARTMENTTHREADED as _) };
@@ -442,7 +441,7 @@ pub mod host {
     /// Slow work on a thread of its own; the window thread goes on meanwhile and takes its answer (None: that thread died).
     pub async fn blocking<T: Send + 'static>(f: impl FnOnce() -> T + Send + 'static) -> Option<T> {
         let (tx, rx) = oneshot::channel();
-        let _ = std::thread::Builder::new().name("form-work".into()).spawn(move || {
+        let _ = crate::net::Named::new("form-work".into()).spawn(move || {
             let _ = tx.send(f());
         });
         rx.await.ok()

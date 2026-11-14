@@ -146,8 +146,7 @@ impl WindowThumbnails {
         // take handles and may come from any thread, and every look at the pictures holds their lock. Not watching
         // (another page shown), it sleeps until woken rather than 20 times a second.
         let (i, c, s, w) = (inner.clone(), on_changed.clone(), stop.clone(), wake.clone());
-        let watch = std::thread::Builder::new()
-            .name("Bloxkeep thumbnails".into())
+        let watch = crate::net::Named::new("Bloxkeep thumbnails".into())
             .spawn(move || {
                 while !s.load(Ordering::SeqCst) {
                     {
