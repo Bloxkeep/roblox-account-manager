@@ -286,6 +286,15 @@ pub fn restore(final_: bool) {
                 let now = current(&text);
                 let mut updated = text.clone();
                 for (kind, name) in KEYS {
+                    // No limit was asked for (9999, as Voidstrap's unlocker writes it; untried on a real client when
+                    // built, 2026-11-15): what Roblox's own file says once a client has it is in error.log, so whether
+                    // Roblox keeps the number or writes its own over it can be read there.
+                    if name == "FramerateCap" && baseline.written().get(name).is_some_and(|w| w == "9999") {
+                        crate::net::note_worked(&format!(
+                            "Roblox settings: no frame rate limit asked for (FramerateCap 9999); Roblox's own file says {} now.",
+                            now.get(name).map(String::as_str).unwrap_or("nothing")
+                        ));
+                    }
                     if let (Some(mine), Some(ours)) = (baseline.values().get(name), baseline.written().get(name))
                         && now.get(name) == Some(ours)
                     {

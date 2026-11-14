@@ -2880,6 +2880,7 @@ pub fn notices(cookie: &str) -> Result<Vec<Notice>, String> {
         }
         all.extend(rows);
     }
+    crate::net::note_worked(&format!("Roblox tab: notifications read ({} at {PAGE} a page).", all.len()));
     Ok(all
         .iter()
         .map(|v| {
@@ -3152,7 +3153,15 @@ pub fn visibility(cookie: &str) -> Result<(String, String), String> {
         Some(o) => o.get("currentValue").or(o.get("value")).and_then(Value::as_str).unwrap_or_default().to_string(),
         None => String::new(),
     };
-    Ok((word("whoCanSeeMyOnlineStatus"), word("whoCanJoinMeInExperiences")))
+    let (online, join) = (word("whoCanSeeMyOnlineStatus"), word("whoCanJoinMeInExperiences"));
+    // (Which of the two Roblox's answer had, and how many settings in all: the shape was never seen signed in.)
+    crate::net::note_worked(&format!(
+        "Roblox tab: privacy settings read ({} settings; online status {}, joining {}).",
+        d.as_object().map_or(0, |o| o.len()),
+        if online.is_empty() { "missing" } else { "there" },
+        if join.is_empty() { "missing" } else { "there" }
+    ));
+    Ok((online, join))
 }
 
 /// Sets them for the account (None leaves one as it is).

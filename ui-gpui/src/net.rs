@@ -132,6 +132,24 @@ impl Named {
     }
 }
 
+/// Something that had failed before and worked now, said once a run in error.log: a later look at the log can tell
+/// "it works" from "it was never opened" (a fix to a call nobody here can make signed in is checked this way).
+pub fn note_worked(what: &str) {
+    use std::sync::Mutex;
+    static SAID: Mutex<Vec<String>> = Mutex::new(Vec::new());
+    {
+        let mut said = SAID.lock().unwrap_or_else(|e| e.into_inner());
+        if said.iter().any(|s| s == what) {
+            return;
+        }
+        said.push(what.to_string());
+    }
+    #[cfg(feature = "core")]
+    crate::core::log::note_file(what);
+    #[cfg(not(feature = "core"))]
+    eprintln!("{what}");
+}
+
 /// A result the interface shows: its failure written as `note_failed` does (ids as "#", once every five minutes).
 pub fn noted<T>(what: &str, r: Result<T, String>) -> Result<T, String> {
     if let Err(why) = &r {
