@@ -1,6 +1,6 @@
 // Every feature of Bloxkeep in one list, in English and Vietnamese: the landing page's "Every feature" section and the
-// SoftwareApplication featureList (pages.mjs), and the same list in README.md / README.vi.md (`node site/features.mjs en`
-// prints it as Markdown). Plain words people search for. Every line is something the guide (docs/guide) describes; keep
+// SoftwareApplication featureList (pages.mjs). The READMEs link here instead of copying it: Google indexed one copy of
+// each repeated text and dropped the repo's home page (2026-11-14). `node site/features.mjs en` still prints it as Markdown. Plain words people search for. Every line is something the guide (docs/guide) describes; keep
 // them in step, and never name other projects.
 export const FEATURES = {
   en: {

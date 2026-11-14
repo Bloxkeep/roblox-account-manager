@@ -467,6 +467,9 @@ ${l.faq.map(([q, a]) => `      <details><summary>${esc(q)}</summary><p>${esc(a)}
       downloadUrl: DOWNLOAD,
       url: SITE + home,
       license: `${REPO}/blob/main/LICENSE`,
+      // The repo's home page is the same thing as this page: tells Google which GitHub address is Bloxkeep's
+      // (it kept showing the old minhhoang0122/Bloxkeep file pages and never the repo's home, 2026-11-14).
+      sameAs: [REPO],
       inLanguage: lang,
       offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
       featureList: FEATURES[lang].groups.flatMap(([, items]) => items),
