@@ -21,7 +21,8 @@ const RC_LISTS: Record<string, [string, string | null][]> = {
 export function RobloxPage({ title }: { title: string }) {
   const { t, tn, lang, locale, call } = useHost();
   const [autoUpdate, setAutoUpdate] = useLocal(useAppState().settings?.autoUpdateRoblox !== false);
-  const [updateWhen, setUpdateWhen] = useLocal(useAppState().settings?.robloxUpdateWhen === 'now' ? 'now' : 'idle');
+  const when = useAppState().settings?.robloxUpdateWhen;
+  const [updateWhen, setUpdateWhen] = useLocal(when === 'now' || when === 'keep' ? when : 'idle');
   const setting = (key: string, set: (v: boolean) => void) => (v: boolean) => { set(v); call('setSettings', { [key]: v }); };
   const app = useAppState();
   const ru = app.robloxUpdates || {}, rv = app.robloxVersion || {};
@@ -89,14 +90,15 @@ export function RobloxPage({ title }: { title: string }) {
           {canUpdate ? <button type="button" className="btn sm" data-act="rbx-update" disabled={!!rv.updating}>{t(rv.updating ? 'rbx.updating' : 'rbx.update')}</button> : null}</Row>
         {rv.oldWindows ? <Row title={tn('rbx.oldWindows', rv.oldWindows)} desc={t('rbx.oldWindowsDesc')}>
           <button type="button" className="btn sm" data-act="rbx-reopen" disabled={!!rv.updating}>{t('rbx.reopen')}</button></Row> : null}
-        <Row title={t('rbx.auto')} desc={t(updateWhen === 'now' ? 'rbx.autoDescNow' : 'rbx.autoDesc')}><Switch id="s-rbx-auto" label={t('rbx.auto')} checked={autoUpdate} onChange={setting('autoUpdateRoblox', setAutoUpdate)} /></Row>
-        {/* When it goes in: once no window is open, or at once after closing them all (like Close all). */}
+        <Row title={t('rbx.auto')} desc={t(updateWhen === 'now' ? 'rbx.autoDescNow' : updateWhen === 'keep' ? 'rbx.autoDescKeep' : 'rbx.autoDesc')}><Switch id="s-rbx-auto" label={t('rbx.auto')} checked={autoUpdate} onChange={setting('autoUpdateRoblox', setAutoUpdate)} /></Row>
+        {/* When it goes in: once no window is open (accounts opened before then wait, or play on the build running), or at
+            once after closing them all (like Close all). */}
         {autoUpdate ? <Row title={t('rbx.when')}>
           <select className="select" id="s-rbx-when" aria-label={t('rbx.when')} value={updateWhen} onChange={e => {
             setUpdateWhen(e.target.value);
             call('setSettings', { robloxUpdateWhen: e.target.value });
           }}>
-            {['idle', 'now'].map(k => <option key={k} value={k}>{t(`rbx.when.${k}`)}</option>)}
+            {['idle', 'keep', 'now'].map(k => <option key={k} value={k}>{t(`rbx.when.${k}`)}</option>)}
           </select>
         </Row> : null}
       </div>

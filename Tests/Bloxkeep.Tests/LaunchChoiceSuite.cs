@@ -175,6 +175,33 @@ static class LaunchChoiceSuite
         c.Check("…in a game on the new build: it was rolled out", !AppController.NotRolledOut("version-new", Build("0.745.0.100", "VERSION-NEW"), true));
         c.Check("…its build not read: not known", !AppController.NotRolledOut("version-new", null, true));
 
+        // When: "keep": a window opened while Roblox has an update plays on the build running, from a copy without Roblox's
+        // updater (Roblox looks for it beside itself only, and without it skips the update).
+        RobloxInstalls.KeptRoot = Path.Combine(dir, "kept");
+        string keepExe = Client("Roblox", "version-keep");
+        string keepDir = Path.GetDirectoryName(keepExe)!;
+        File.WriteAllText(Path.Combine(keepDir, "RobloxPlayerInstaller.exe"), "updater");
+        Directory.CreateDirectory(Path.Combine(keepDir, "content", "fonts"));
+        File.WriteAllText(Path.Combine(keepDir, "content", "fonts", "a.ttf"), "font");
+        Directory.CreateDirectory(Path.Combine(keepDir, "ClientSettings"));
+        File.WriteAllText(Path.Combine(keepDir, "ClientSettings", "ClientAppSettings.json"), "{\"a\":1}");
+        string kept = RobloxInstalls.KeptCopy(keepExe);
+        string keptDir = Path.GetDirectoryName(kept)!;
+        c.Check("kept: Roblox's client copied outside Roblox's install", File.Exists(kept) && !RobloxInstalls.IsRobloxOwn(kept), kept);
+        c.Check("…without Roblox's updater beside it", !File.Exists(Path.Combine(keptDir, "RobloxPlayerInstaller.exe")));
+        c.Check("…with its game files", File.ReadAllText(Path.Combine(keptDir, "content", "fonts", "a.ttf")) == "font");
+        c.Check("…and its Fast Flags", File.ReadAllText(Path.Combine(keptDir, "ClientSettings", "ClientAppSettings.json")) == "{\"a\":1}");
+        File.WriteAllText(Path.Combine(keepDir, "ClientSettings", "ClientAppSettings.json"), "{\"a\":2}");
+        c.Check("the next window: the same copy, its Fast Flags as written now", RobloxInstalls.KeptCopy(keepExe) == kept
+            && File.ReadAllText(Path.Combine(keptDir, "ClientSettings", "ClientAppSettings.json")) == "{\"a\":2}");
+        c.Check("…and the Fast Flags aren't Roblox's own file (a write there stays there)",
+            File.ReadAllText(Path.Combine(keepDir, "ClientSettings", "ClientAppSettings.json")) == "{\"a\":2}");
+        c.Check("a launcher's copy has no updater beside it: started as it is", RobloxInstalls.KeptCopy(Path.Combine(dir, "Bloxstrap", "RobloxPlayerBeta.exe"))
+            == Path.Combine(dir, "Bloxstrap", "RobloxPlayerBeta.exe"));
+        RobloxInstalls.ForgetKeptCopies();
+        c.Check("no Roblox open: the kept build goes, Roblox's own stays", !Directory.Exists(RobloxInstalls.KeptRoot) && File.Exists(keepExe));
+        Directory.Delete(keepDir, recursive: true);
+
         // Only Roblox VNG left (a launcher of this PC's own may still stand ahead of it: then that one is used).
         Directory.Delete(Path.Combine(local, "Roblox"), recursive: true);
         if (RobloxInstalls.FindAnyClient() is null)

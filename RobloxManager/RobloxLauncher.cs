@@ -110,10 +110,16 @@ public static class RobloxLauncher
     /// "other:&lt;Name&gt;" and "custom" get the link as their first argument, as Windows would.</param>
     /// <returns>The link's browser tracker id, new per launch: it is on the client's command line, so its window can be
     /// told apart (<see cref="RobloxProcesses.LaunchTrackerOf"/>).</returns>
-    public static string Launch(string ticket, GameTarget? target, string launchVia, string customLauncher = "")
+    /// <param name="client">A client to start as it is, past the choice: the build the windows open run on (RobloxInstalls.KeptCopy).</param>
+    public static string Launch(string ticket, GameTarget? target, string launchVia, string customLauncher = "", string? client = null)
     {
         string tracker = NewBrowserTrackerId();
         string uri = BuildLaunchUri(ticket, target, tracker);
+        if (client is not null)
+        {
+            Start(client, uri);
+            return tracker;
+        }
         // Windows would only show its own error for a client missing its DLL: another build opens instead, or this is said.
         if (launchVia is "auto" or "" && RobloxInstalls.HandlerBroken())
         {

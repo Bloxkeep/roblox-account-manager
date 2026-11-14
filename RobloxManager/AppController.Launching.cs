@@ -725,7 +725,7 @@ public sealed partial class AppController
         // With Roblox open, asked again unless just asked: one released since would close every window as this one updates.
         if (AskLiveAgain(_latestRoblox is not null, _latestRobloxAt, DateTime.UtcNow, RobloxProcesses.GetPlayerPids().Length))
             await RefreshLatestRobloxAsync();
-        HoldForRobloxUpdate(account, launchVia, settings.CustomLauncher);
+        string? keptBuild = HoldForRobloxUpdate(account, launchVia, settings.CustomLauncher);
         // The sign-in ticket last, after every wait above: one fetched first sat through a Roblox update (RoALT gets its
         // ticket right before starting the client, too).
         string ticket = await RobloxApi.GetAuthTicketAsync(account.Cookie, ct, account.Realm);
@@ -764,9 +764,23 @@ public sealed partial class AppController
             RobloxFlags.Restore();
             _robloxFlagsPending = false;
         }
+        // The build the windows open run on, copied last so its Fast Flags are the ones just written. Not copied: it waits instead.
+        string? keptClient = null;
+        if (keptBuild is not null)
+        {
+            try
+            {
+                keptClient = await Task.Run(() => RobloxInstalls.KeptCopy(keptBuild), ct);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                Log.Note($"Roblox start: account {account.Id.ToString()[..8]} held back, its build couldn't be copied to open on: {ex.Message}");
+                throw new RobloxUpdateHold(L.T("Roblox would install an update as this window opens, and that closes every Roblox window open. Close the other Roblox windows first, or use Close, update, reopen under Settings › Roblox version."));
+            }
+        }
         // Stopped meanwhile (Stop, Close, a scheduled stop): nothing is opened.
         ct.ThrowIfCancellationRequested();
-        string tracker = RobloxLauncher.Launch(ticket, target, launchVia, _vault?.Data.Settings.CustomLauncher ?? "");
+        string tracker = RobloxLauncher.Launch(ticket, target, launchVia, _vault?.Data.Settings.CustomLauncher ?? "", keptClient);
         Log.Note($"Roblox start: account {account.Id.ToString()[..8]} via {launchVia}, {(target is null ? "home screen" : $"place {target.PlaceId}")}"
             + $"{(restart ? ", a restart" : rejoin ? ", a rejoin" : "")}{(openRetries > 0 ? $", try {openRetries + 1}" : "")}, {before.Count} Roblox already running.");
         _lastSessionStart = DateTime.UtcNow;
@@ -783,30 +797,40 @@ public sealed partial class AppController
     /// (newer than the live one Roblox serves, its live build not installed beside it, see RobloxInstalls.LiveBuild) checks the
     /// live version as it opens, runs Roblox's installer, and that ends every client (a user's PC, 2026-11-13). So does one
     /// behind a build Roblox released while windows are open, unless that build isn't rolled out to this PC (LiveNotHere). With
-    /// no Roblox open it goes on: the update closes nothing. RoALT holds the same launch ("update hold").
+    /// no Roblox open it goes on: the update closes nothing. RoALT holds the same launch ("update hold"). With the update set
+    /// to wait and play on meanwhile (<see cref="KeepsRunningBuild"/>) it isn't held: the client returned opens on the build
+    /// it has, never updating (RobloxInstalls.KeptCopy); null opens as chosen.
     /// </summary>
-    void HoldForRobloxUpdate(Account account, string launchVia, string customLauncher)
+    string? HoldForRobloxUpdate(Account account, string launchVia, string customLauncher)
     {
         if (_latestRoblox is not { } live || !live.Folder.StartsWith("version-", StringComparison.OrdinalIgnoreCase)
             || RobloxInstalls.ClientFor(launchVia, customLauncher) is not { } client || RobloxInstalls.IsVngClient(client)
             || RobloxInstalls.VersionOf(client) is not { } have || have.Folder.Equals(live.Folder, StringComparison.OrdinalIgnoreCase))
-            return;
+            return null;
         int open = RobloxProcesses.GetPlayerPids().Length;
         if (open == 0)
-            return;
+            return null;
+        bool keep = KeepsRunningBuild;
         // A Bloxstrap-style launcher behind the live build: it updates first, and its update ends every Roblox open (RoALT
         // holds this one too). Its background update, when it would take this one, leaves them.
         if (RobloxInstalls.UpdaterFor(launchVia, customLauncher) is { } launcher && !RobloxInstalls.IsOwnInstaller(launcher))
         {
             if (!RobloxInstalls.IsBehind(have, live) || RobloxInstalls.UpdatesInBackground(launcher, have, live))
-                return;
+                return null;
             string name = Path.GetFileNameWithoutExtension(launcher);
+            if (keep)
+            {
+                // Its copy started by itself, past the launcher: no updater beside it, so it plays on its build.
+                Log.Note($"Roblox start: account {account.Id.ToString()[..8]} opens on {name}'s Roblox {have.Version} ({have.Folder}) as it is, not the live "
+                    + $"{live.Version} ({live.Folder}): {open} Roblox open, and the update waits until none is.");
+                return client;
+            }
             Log.Note($"Roblox start: account {account.Id.ToString()[..8]} held back, {name}'s Roblox is {have.Version} ({have.Folder}), the live one {live.Version} "
                 + $"({live.Folder}): {name} would update it first and close the {open} Roblox open.");
             throw new RobloxUpdateHold(L.F("{0} would update Roblox as this window opens, and that closes every Roblox window open. Close the other Roblox windows first, or use Close, update, reopen under Settings › Roblox version.", name));
         }
         if (!RobloxInstalls.IsRobloxOwn(client))
-            return;
+            return null;
         if (Version.TryParse(have.Version, out var mine) && Version.TryParse(live.Version, out var served) && mine > served)
             Log.Note($"Roblox start: account {account.Id.ToString()[..8]} held back, Roblox's build {have.Version} ({have.Folder}) is another channel's, "
                 + $"the live {live.Version} ({live.Folder}) isn't installed, and opening it would update Roblox and close the {open} Roblox open.");
@@ -817,7 +841,12 @@ public sealed partial class AppController
             Log.Note($"Roblox start: account {account.Id.ToString()[..8]} held back, Roblox's build {have.Version} ({have.Folder}) is behind the live "
                 + $"{live.Version} ({live.Folder}), and opening it would update Roblox and close the {open} Roblox open.");
         else
-            return;
+            return null;
+        if (keep)
+        {
+            Log.Note($"Roblox start: account {account.Id.ToString()[..8]} opens on that build instead, from a copy without Roblox's updater; the update waits until no Roblox is open.");
+            return client;
+        }
         throw new RobloxUpdateHold(L.T("Roblox would install an update as this window opens, and that closes every Roblox window open. Close the other Roblox windows first, or use Close, update, reopen under Settings › Roblox version."));
     }
 

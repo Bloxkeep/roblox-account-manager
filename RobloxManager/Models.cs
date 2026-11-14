@@ -89,7 +89,8 @@ public sealed class AppSettings
     public bool TrimBackground { get; set; }
     /// <summary>A launcher installs Roblox's newest build by itself while no Roblox window is open.</summary>
     public bool AutoUpdateRoblox { get; set; } = true;
-    /// <summary>When that update goes in: "idle" once no Roblox window is open, "now" closing them all first (like Close all).</summary>
+    /// <summary>When that update goes in: "idle" once no Roblox window is open, "now" closing them all first (like Close all),
+    /// "keep" once none is open too, windows opened meanwhile playing on the build already running instead of waiting.</summary>
     public string RobloxUpdateWhen { get; set; } = "idle";
     /// <summary>Roblox's leanest drawing for the windows Bloxkeep opens, Light AFK presets' too. See <see cref="RobloxFlags"/>.</summary>
     public bool FastFlags { get; set; }

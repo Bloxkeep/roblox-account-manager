@@ -208,6 +208,10 @@ public sealed partial class AppController
     internal static bool NotRolledOut(string askedFor, RobloxInstalls.ClientVersion? runs, bool inGame) =>
         inGame && runs is not null && !runs.Folder.Equals(askedFor, StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>Settings › Roblox version › When: "keep": the update waits until no Roblox is open, and windows opened meanwhile
+    /// play on the build already running (HoldForRobloxUpdate) instead of waiting for it.</summary>
+    bool KeepsRunningBuild => _vault?.Data.Settings is { AutoUpdateRoblox: true, RobloxUpdateWhen: "keep" };
+
     bool LiveNotHere(RobloxInstalls.ClientVersion live) =>
         _liveNotHere is { } seen && seen.Folder.Equals(live.Folder, StringComparison.OrdinalIgnoreCase) && DateTime.UtcNow - seen.At < NotHereFor;
 
@@ -225,6 +229,19 @@ public sealed partial class AppController
         }
         foreach (int gone in _clientBuilds.Keys.Where(pid => players.All(p => p.Pid != pid)).ToList())
             _clientBuilds.Remove(gone);
+        // The builds kept to play on go once no Roblox is open or opening: the update can go in then.
+        if (players.Count == 0 && !OpeningRoblox && _pending.Count == 0 && Directory.Exists(RobloxInstalls.KeptRoot))
+        {
+            try
+            {
+                RobloxInstalls.ForgetKeptCopies();
+                Log.Note("Roblox update: no Roblox open, the build kept to play on is removed.");
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                // Something still holds a file: tried again next scan.
+            }
+        }
         foreach (var (pid, asked) in _rolloutProbes.ToList())
         {
             bool inGame = _logs.StateOf(pid) is { Status: "ingame" };

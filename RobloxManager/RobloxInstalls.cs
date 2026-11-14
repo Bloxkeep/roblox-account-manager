@@ -537,4 +537,64 @@ public static class RobloxInstalls
             ? $"0.{release}.0.{release}{build:0000}"
             : null;
     }
+    /// <summary>Where <see cref="KeptCopy"/> keeps the build the windows open run on (Settings › Roblox version › When: "keep").</summary>
+    public static string KeptRoot = Path.Combine(Local, "Bloxkeep", "Roblox kept");
+
+    /// <summary>
+    /// A copy of Roblox's own build <paramref name="exe"/> is in, without its updater: started from there, Roblox opens on that build
+    /// instead of updating, which would close every Roblox window open. Roblox looks for the updater beside itself only (the
+    /// owner's logs, 2026-11-13: "Checking if updater exists at …\version-…\RobloxPlayerInstaller.exe"), and without it says
+    /// "Updater not found. Skipping update" and plays on, as a launcher's copy does. Files are hard links where they can be (no
+    /// space taken, even after Roblox deletes its old build), its Fast Flags (ClientSettings) copied fresh each time. A launcher's
+    /// copy (no updater beside it) is started as it is.
+    /// </summary>
+    public static string KeptCopy(string exe)
+    {
+        if (!IsRobloxOwn(exe))
+            return exe;
+        string from = Path.GetDirectoryName(exe)!;
+        string to = Path.Combine(KeptRoot, Path.GetFileName(from));
+        string done = Path.Combine(to, ".complete");
+        if (!File.Exists(done))
+        {
+            string part = to + ".part";
+            foreach (string old in new[] { to, part }.Where(Directory.Exists))
+                Directory.Delete(old, recursive: true);
+            foreach (string file in Directory.EnumerateFiles(from, "*", SearchOption.AllDirectories))
+            {
+                string rel = Path.GetRelativePath(from, file);
+                if (rel.Equals(UpdaterName, StringComparison.OrdinalIgnoreCase) || rel.StartsWith(ClientSettings + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+                    continue;
+                string target = Path.Combine(part, rel);
+                Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+                if (!CreateHardLink(target, file, IntPtr.Zero))
+                    File.Copy(file, target);
+            }
+            File.WriteAllText(Path.Combine(part, ".complete"), "");
+            Directory.Move(part, to);
+        }
+        string flags = Path.Combine(to, ClientSettings);
+        if (Directory.Exists(flags))
+            Directory.Delete(flags, recursive: true);
+        if (Directory.Exists(Path.Combine(from, ClientSettings)))
+        {
+            Directory.CreateDirectory(flags);
+            foreach (string file in Directory.EnumerateFiles(Path.Combine(from, ClientSettings)))
+                File.Copy(file, Path.Combine(flags, Path.GetFileName(file)), overwrite: true);
+        }
+        return Path.Combine(to, Path.GetFileName(exe));
+    }
+
+    /// <summary>Removes the kept builds; only called with no Roblox open (a running one's files would go from under it).</summary>
+    public static void ForgetKeptCopies()
+    {
+        if (Directory.Exists(KeptRoot))
+            Directory.Delete(KeptRoot, recursive: true);
+    }
+
+    const string UpdaterName = "RobloxPlayerInstaller.exe";
+    const string ClientSettings = "ClientSettings";
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    static extern bool CreateHardLink(string fileName, string existingFileName, IntPtr securityAttributes);
 }
