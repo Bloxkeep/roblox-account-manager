@@ -224,7 +224,7 @@ const typed = (code, { guild = 'g1', user = 'u9', roles = [] } = {}) => ({
 const command = (name, { guild = 'g1', locale = 'vi', perms = '32', roles = [], sub, options = [], resolved } = {}) => ({
   type: 2, id: 'i', application_id: 'app1', token: 't', locale, guild_locale: locale,
   ...(guild ? { guild_id: guild, member: { permissions: perms, user: { id: 'u1' }, roles } } : { user: { id: 'u1' } }),
-  data: { id: 'c', name, type: 1, options: sub ? [{ type: 1, name: sub, options }] : [], ...(resolved ? { resolved } : {}) },
+  data: { id: 'c', name, type: 1, options: sub ? [{ type: 1, name: sub, options }] : options, ...(resolved ? { resolved } : {}) },
 });
 const opt = (name, value, type = 7) => ({ name, value, type });
 
@@ -281,7 +281,7 @@ try {
   await minute(3500);
   const puts = calls.filter(c => c.method === 'PUT');
   check('the commands are put in place, with the bot token', puts.length === 1 && puts[0].url === '/applications/app1/commands' && puts[0].auth === 'Bot test-token'
-    && puts[0].body.map(c => c.name).join() === 'help,download,multi,robloxstatus,notify,setup,online,board,verify,pc,feed', JSON.stringify(puts[0]?.body.map(c => c.name)));
+    && puts[0].body.map(c => c.name).join() === 'help,download,multi,robloxstatus,error,notify,setup,online,board,verify,pc,feed', JSON.stringify(puts[0]?.body.map(c => c.name)));
   check('…and the first look announces nothing', calls.filter(c => c.method === 'POST').length === 0, calls.length);
   let latestNow = await (await fetch(`http://127.0.0.1:${DEV}/latest`)).json();
   check('/latest says the newest public Bloxkeep, for the apps to update at once', latestNow.version === '1.0.7', JSON.stringify(latestNow));
@@ -309,6 +309,17 @@ try {
   check('/multi: the live build, "No change", nothing coming', mf[0]?.value === '`0.744.0.7441080`' && mf[1]?.value === '**No change**' && mf[2]?.value === 'Nothing yet', JSON.stringify(mf));
   r = await interact(command('robloxstatus', { locale: 'en-US', guild: null }));
   check('/robloxstatus works in a DM too: all working', r.json?.data.embeds[0].description === 'All of Roblox is working.', JSON.stringify(r.json?.data));
+  r = await interact(command('error', { locale: 'en-US', options: [{ type: 4, name: 'code', value: 277 }] }));
+  check('/error says what a code means, what Bloxkeep does and what to do', r.json?.data.embeds[0].title === 'Error 277 · Connection lost'
+    && r.json.data.embeds[0].fields.map(f => f.name).join() === "What Bloxkeep does,What you can do,Roblox's name for it,Guide"
+    && /Auto-rejoin/.test(r.json.data.embeds[0].fields[0].value), JSON.stringify(r.json?.data));
+  r = await interact(command('error', { locale: 'en-US', options: [{ type: 4, name: 'code', value: 276 }] }));
+  check('…a code that means the same as another answers as that one', r.json?.data.embeds[0].title === 'Error 276 · Signed in on another device', JSON.stringify(r.json?.data));
+  r = await interact(command('error', { locale: 'en-US', options: [{ type: 4, name: 'code', value: 5 }] }));
+  check("…any other code of Roblox's answers with Roblox's name for it", r.json?.data.embeds[0].title === 'Error 5 · connection blocked by Roblox'
+    && r.json.data.embeds[0].fields[0].value === '`ConnectionBanned`', JSON.stringify(r.json?.data));
+  r = await interact(command('error', { locale: 'en-US', options: [{ type: 4, name: 'code', value: 9999 }] }));
+  check("…and a number that isn't Roblox's says so", /isn't one of Roblox's error codes/.test(r.json?.data.embeds[0].description ?? ''), JSON.stringify(r.json?.data));
 
   // Settings: only for people who can manage the server, in a server.
   r = await interact(command('notify', { perms: '0', sub: 'set', options: [opt('channel', 'c1')] }));

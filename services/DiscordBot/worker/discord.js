@@ -61,6 +61,10 @@ export const COMMANDS = [
   { name: 'multi', description: 'Does Multi-Roblox work on the current Roblox, and the one coming next?', description_localizations: vi('Multi-Roblox có chạy trên bản Roblox hiện tại và bản sắp ra không') },
   { name: 'robloxstatus', description: 'Is Roblox down right now?', description_localizations: vi('Roblox có đang lỗi không') },
   {
+    name: 'error', description: 'What a Roblox error code means, and what to do about it', description_localizations: vi('Mã lỗi Roblox nghĩa là gì, và nên làm gì'),
+    options: [{ type: 4, name: 'code', description: "The number in Roblox's box, like 277", description_localizations: vi('Con số trong hộp báo lỗi của Roblox, ví dụ 277'), required: true, min_value: 1, max_value: 9999 }],
+  },
+  {
     name: 'notify', description: 'Post Roblox updates, outages and new Bloxkeep versions in a channel',
     description_localizations: vi('Đăng tin Roblox cập nhật, Roblox lỗi và Bloxkeep ra bản mới vào một kênh'),
     default_member_permissions: MANAGE_GUILD, contexts: [0],
