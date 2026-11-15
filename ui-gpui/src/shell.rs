@@ -1472,6 +1472,7 @@ impl Root {
         if self.state.is_null() || self.locked() {
             return;
         }
+        pages::games::want_wikis(self, cx);
         if self.page == Page::Games {
             pages::games::want(self, cx);
         }

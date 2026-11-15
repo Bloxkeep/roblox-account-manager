@@ -200,6 +200,28 @@ pub fn icon(name: &str, size: f32, color: Hsla) -> Svg {
     svg().path(SharedString::from(format!("icons/{name}.svg"))).size(px(size)).flex_none().text_color(color)
 }
 
+/// The icons drawn for Bloxkeep itself, in two layers (assets/icons/duo, made by dev/make_icons.py): the drawing in
+/// lines, and one small part of it apart, to be in the accent colour (a door, a knob, a face, a spark). The owner,
+/// 2026-11-15: stock icons "trông slop", beside Medal's own two-colour ones. The first of them; the rest of the set
+/// (assets/icons) is still the common one.
+const DUO: [&str; 14] = ["home", "users", "repeat", "clock", "sliders", "lock", "eye", "star", "like", "info", "moon", "download", "book", "bookmark"];
+
+/// One of those when there is one by that name (a few go by another name in the common set), else the common icon:
+/// its lines in `base`, its accent part in `accent`.
+pub fn icon2(name: &str, size: f32, base: Hsla, accent: Hsla) -> Div {
+    let duo = match name {
+        "starFill" => "star",
+        "activity" => "like",
+        n => n,
+    };
+    let frame = div().size(px(size)).flex_none().relative();
+    if !rich() || !DUO.contains(&duo) {
+        return frame.child(icon(name, size, base));
+    }
+    let layer = |file: String, col: Hsla| svg().path(SharedString::from(file)).size(px(size)).absolute().top_0().left_0().text_color(col);
+    frame.child(layer(format!("icons/duo/{duo}.svg"), base)).child(layer(format!("icons/duo/{duo}.a.svg"), accent))
+}
+
 /// "ROBLOX" as Roblox writes it (its tilted square for the first O), `h` high, in a colour: the Roblox part's title.
 pub fn roblox_word(h: f32, color: Hsla) -> Svg {
     svg().path("icons/roblox-word.svg").h(px(h)).w(px(h * 5.14)).flex_none().text_color(color)
@@ -530,7 +552,7 @@ impl RenderOnce for IconButton {
             .child(ground(radius, self.round, bg, edge, over && live, down && live, (self.size * 0.055).max(1.4)))
             .map(|d| {
                 let size = (self.size * 0.48).round().min(20.);
-                if self.busy { d.child(spinner(size, fg)) } else { d.child(icon(self.icon, size, fg)) }
+                if self.busy { d.child(spinner(size, fg)) } else { d.child(icon2(self.icon, size, fg, if self.selected { c(FACE) } else { fg })) }
             })
             .when(live, |d| sense(d, &st).cursor_pointer());
         with_tip(d, self.tip).when_some(self.on_click.filter(|_| live), |d, f| d.on_click(move |e, w, cx| f(e, w, cx)))
@@ -949,6 +971,18 @@ pub fn game_ink() -> Option<Hsla> {
     Some(Hsla { h: t.h, s: t.s.clamp(0.45, 0.9), l: if dark { t.l.clamp(0.62, 0.78) } else { t.l.clamp(0.28, 0.42) }, a: 1. })
 }
 
+/// A block that is about one game among others (an account's card while it plays): its ground, its ground under the
+/// mouse, its hairline and that under the mouse, faintly of that game's colour; the theme's own when it has none.
+pub fn toned(tone: Option<u32>) -> (Hsla, Hsla, Hsla, Hsla) {
+    match tone {
+        Some(t) => {
+            let t: Hsla = rgb(t).into();
+            (mix(c(RAISED), t, 0.12), mix(c(RAISED_2), t, 0.16), mix(c(LINE), t, 0.24), mix(c(LINE), t, 0.5))
+        }
+        None => (c(RAISED), c(RAISED_2), c(LINE), ca(WHITE, 0.17)),
+    }
+}
+
 /// A table's head on a game's page: a step above its block, more of the game's colour (the old wiki's --ws-head, 16 %).
 pub fn game_head() -> Hsla {
     match game_tint() {
@@ -957,8 +991,32 @@ pub fn game_head() -> Hsla {
     }
 }
 
+/// A colour of a game's picture made to read as words on the theme's blocks: its hue, never dull or too dark.
+pub fn ink_of(tone: u32) -> Hsla {
+    let t: Hsla = rgb(tone).into();
+    let dark = crate::theme::lightness(c(PANEL)) < 50.;
+    Hsla { h: t.h, s: t.s.clamp(0.5, 0.92), l: if dark { t.l.clamp(0.64, 0.78) } else { t.l.clamp(0.3, 0.42) }, a: 1. }
+}
+
+/// A game's name in the game's own colours (the owner, 2026-11-15: "tên trên thẻ nên để màu, vibe của game đó", beside
+/// Blox Fruits' blue and orange logo): the colours of its picture at `url` (its icon), the name in the first and, when
+/// the picture has a second colour and the name more than one word, its last word in that. One run of text, so it is
+/// cut short as any name is. A game with no picture yet, or a grey one, is written as before.
+pub fn game_name(name: impl Into<SharedString>, url: Option<&str>, cx: &mut App) -> StyledText {
+    let name: SharedString = name.into();
+    let Some(first) = url.filter(|_| rich()).and_then(|u| crate::images::tone(u, cx)) else { return StyledText::new(name) };
+    let second = url.and_then(crate::images::tone2);
+    let colour = |c: Hsla| HighlightStyle { color: Some(c), ..Default::default() };
+    let cut = name.rfind(' ').filter(|_| second.is_some()).map(|i| i + 1).unwrap_or(name.len());
+    let mut marks = vec![(0..cut, colour(ink_of(first)))];
+    if let (Some(c2), true) = (second, cut < name.len()) {
+        marks.push((cut..name.len(), colour(ink_of(c2))));
+    }
+    StyledText::new(name).with_highlights(marks)
+}
+
 /// A block's ground and hairline: the theme's, faintly of the game's colour on its page.
-fn block_tones() -> (Hsla, Hsla) {
+pub fn block_tones() -> (Hsla, Hsla) {
     match game_tint() {
         Some(t) => (mix(c(RAISED), Hsla { a: 1., ..t }, 0.11), mix(c(LINE), Hsla { a: 1., ..t }, 0.2)),
         None => (c(RAISED), c(LINE)),
@@ -984,13 +1042,13 @@ pub fn surface() -> Div {
 
 /// A figure's or a block's own mark: its icon in its colour, on a ground faintly of that colour.
 pub fn mark_chip(name: &'static str, tone: u32, size: f32) -> Div {
-    div().size(px(size)).flex_none().rounded(px((size * 0.28).round())).bg(ca(tone, 0.13)).flex().items_center().justify_center().child(icon(name, (size * 0.5).round(), c(tone)))
+    div().size(px(size)).flex_none().rounded(px((size * 0.28).round())).bg(ca(tone, 0.13)).flex().items_center().justify_center().child(icon2(name, (size * 0.56).round(), c(TEXT), c(tone)))
 }
 
 /// The same mark in the game's own colour on its page (else in `tone`): a block's head there.
 pub fn game_chip(name: &'static str, tone: u32, size: f32) -> Div {
     match game_ink() {
-        Some(ink) => div().size(px(size)).flex_none().rounded(px((size * 0.28).round())).bg(Hsla { a: 0.16, ..ink }).flex().items_center().justify_center().child(icon(name, (size * 0.5).round(), ink)),
+        Some(ink) => div().size(px(size)).flex_none().rounded(px((size * 0.28).round())).bg(Hsla { a: 0.16, ..ink }).flex().items_center().justify_center().child(icon2(name, (size * 0.56).round(), c(TEXT), ink)),
         None => mark_chip(name, tone, size),
     }
 }
@@ -1003,6 +1061,10 @@ pub fn tint_pill(text: impl Into<SharedString>, tone: u32) -> Div {
 /// A card you can press (a preset to run, a row that opens): the same card, its ground and hairline brightening
 /// under the mouse.
 pub fn card(id: impl Into<ElementId>) -> Hot {
+    if rich() {
+        let (ground, line) = block_tones();
+        return hot(id).rounded(px(R_L)).border_1().tones(ground, mix(ground, c(TEXT), 0.05)).edge(line, mix(line, c(TEXT), 0.25));
+    }
     hot(id).rounded(px(R_L)).border_1().tones(ca(WHITE, 0.045), ca(WHITE, 0.08)).edge(c(LINE), ca(WHITE, 0.17))
 }
 

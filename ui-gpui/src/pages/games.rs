@@ -657,6 +657,61 @@ fn icon_of(root: &Root, g: &Game) -> Option<String> {
     look(root, g.place, "icon").or_else(|| g.icon.clone().filter(|u| !u.is_empty()))
 }
 
+thread_local! {
+    /// Each wiki's site logo (None: it has none, or didn't say), and the wikis asked this run.
+    static LOGOS: std::cell::RefCell<HashMap<String, Option<String>>> = std::cell::RefCell::new(HashMap::new());
+    static LOGOS_ASKED: std::cell::RefCell<std::collections::HashSet<String>> = std::cell::RefCell::new(std::collections::HashSet::new());
+}
+
+/// A game's own logo, as the game draws its name: its wiki's site logo (the wiki's "File:Site-logo.png": Blox Fruits'
+/// is the game's blue and orange lettering on nothing). The owner, 2026-11-15, of the name in the game's colours:
+/// "sai rồi, thiếu vibe, tôi muốn y chang như này", with that logo. Roblox itself gives no logo, only the icon and the
+/// cover. Asked once a run per wiki; None for a game with no wiki, a wiki with no logo, or until the answer comes.
+pub fn logo_of(root: &Root, place: i64, name: &str, cx: &mut Context<Root>) -> Option<String> {
+    if !rich() {
+        return None;
+    }
+    let site = list(root).iter().find(|g| same(place, name, g.place, &g.name)).and_then(|g| g.wiki.clone()).filter(|w| !w.is_empty())?;
+    if let Some(known) = LOGOS.with(|l| l.borrow().get(&site).cloned()) {
+        return known;
+    }
+    if LOGOS_ASKED.with(|a| a.borrow_mut().insert(site.clone())) {
+        let link = root.link.clone()?;
+        cx.spawn(async move |this, cx| {
+            let d = crate::pages::wiki::api(&link, &site, json!({ "action": "query", "titles": "File:Site-logo.png", "prop": "imageinfo", "iiprop": "url|size" })).await;
+            let logo = d
+                .as_ref()
+                .and_then(|d| d.pointer("/query/pages"))
+                .and_then(Value::as_array)
+                .and_then(|l| l.first())
+                .and_then(|p| p.pointer("/imageinfo/0"))
+                // (A logo too small to read as one, a favicon-sized mark, is left for the name in words.)
+                .filter(|i| i.get("width").and_then(Value::as_i64).unwrap_or(0) >= 120)
+                .and_then(|i| i.get("url").and_then(Value::as_str))
+                .filter(|u| crate::wikitext::wiki_img(u))
+                .map(str::to_string);
+            LOGOS.with(|l| l.borrow_mut().insert(site, logo));
+            let _ = this.update(cx, |_, cx| cx.notify());
+        })
+        .detach();
+    }
+    None
+}
+
+/// That logo as a picture `h` tall (as wide as its own shape makes it, no wider than `max_w`), once it has loaded.
+pub fn logo_img(root: &Root, place: i64, name: &str, h: f32, max_w: f32, cx: &mut Context<Root>) -> Option<AnyElement> {
+    let url = logo_of(root, place, name, cx)?;
+    images::pic(&url, cx)?;
+    let (pw, ph) = images::dims(&url, cx)?;
+    let (mut w, mut tall) = (h * pw as f32 / ph.max(1) as f32, h);
+    if w > max_w {
+        tall *= max_w / w;
+        w = max_w;
+    }
+    let pic = images::pic_at(&url, w, tall, cx)?;
+    Some(img(pic).w(px(w.round())).h(px(tall.round())).object_fit(ObjectFit::Contain).flex_none().into_any_element())
+}
+
 /// The start place of the game whose page is shown, when it has one.
 pub fn shown_place(r: &Root) -> Option<i64> {
     let open = r.games.open.as_ref()?;
@@ -730,7 +785,9 @@ fn ask_again(r: &mut Root, link: &crate::link::Link, cx: &mut Context<Root>) {
 
 /// What the page needs from the app, asked once each: the bot's games, the news, the games' pictures, and for the
 /// open game its figures and its price list. Read and seen marks go back as the page shows them.
-pub fn want(r: &mut Root, cx: &mut Context<Root>) {
+/// The games that have a wiki (and which wiki), asked once: every page wants it, since a game's own logo comes from its
+/// wiki (`logo_of`) and Home shows a game first.
+pub fn want_wikis(r: &mut Root, cx: &mut Context<Root>) {
     let Some(link) = r.link.clone() else { return };
     if !r.games.asked_wiki {
         r.games.asked_wiki = true;
@@ -760,6 +817,11 @@ pub fn want(r: &mut Root, cx: &mut Context<Root>) {
         })
         .detach();
     }
+}
+
+pub fn want(r: &mut Root, cx: &mut Context<Root>) {
+    let Some(link) = r.link.clone() else { return };
+    want_wikis(r, cx);
     ask_again(r, &link, cx);
     if !r.games.asked_cards {
         r.games.asked_cards = true;
@@ -1551,7 +1613,11 @@ pub fn games(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElemen
     let all = list(root);
     let shell = div().id("games").size_full().rounded(px(R_PANEL)).bg(c(PANEL)).overflow_hidden().flex().flex_col();
     let content = match root.games.open.clone() {
-        Some(o) => shell.child(page(root, &all, o, width, cx)).into_any_element(),
+        Some(o) => {
+            let el = page(root, &all, o, width, cx);
+            let ground = game_tint().filter(|_| rich()).map(|t| mix(c(PANEL), Hsla { a: 1., ..t }, 0.06));
+            shell.when_some(ground, |d, g| d.bg(g)).child(el).into_any_element()
+        }
         None if root.games.view == View::Friends => crate::pages::friends::friends(root, width, cx).into_any_element(),
         None if root.games.view == View::Avatar => crate::pages::avatar::avatar(root, width, cx).into_any_element(),
         None if root.games.view == View::Profile => crate::pages::profile::profile(root, width, cx).into_any_element(),
@@ -1936,7 +2002,10 @@ fn spotlight(root: &Root, all: &[crate::pages::home::Game], width: f32, cx: &mut
                 .flex()
                 .flex_col()
                 .gap(px(3.))
-                .child(div().truncate().text_size(px(T_SEC + 2.)).line_height(px(26.)).font_weight(FontWeight::SEMIBOLD).child(name.clone()))
+                .child(match logo_img(root, place, &name, 40., 220., cx) {
+                    Some(logo) => div().flex().child(logo),
+                    None => div().truncate().text_size(px(T_SEC + 2.)).line_height(px(26.)).font_weight(FontWeight::SEMIBOLD).child(game_name(name.clone(), look(root, place, "icon").or(g.icon.clone()).as_deref(), cx)),
+                })
                 .child(
                     div()
                         .flex()
@@ -2024,7 +2093,7 @@ fn spotlight(root: &Root, all: &[crate::pages::home::Game], width: f32, cx: &mut
                         .flex()
                         .flex_col()
                         .gap(px(4.))
-                        .child(div().truncate().text_size(px(T_H)).font_weight(FontWeight::SEMIBOLD).child(name.clone()))
+                        .child(div().truncate().text_size(px(T_H)).font_weight(FontWeight::SEMIBOLD).child(game_name(name.clone(), look(root, place, "icon").as_deref(), cx)))
                         .child(
                             div()
                                 .flex()
@@ -2627,7 +2696,7 @@ fn card(root: &Root, g: &Game, w: f32, cx: &mut Context<Root>) -> impl IntoEleme
                         .flex()
                         .flex_col()
                         .gap(px(2.))
-                        .child(div().text_size(px(T_L)).line_height(px(19.)).font_weight(FontWeight::SEMIBOLD).truncate().child(g.name.clone()))
+                        .child(div().text_size(px(T_L)).line_height(px(19.)).font_weight(FontWeight::SEMIBOLD).truncate().child(game_name(g.name.clone(), icon_of(root, g).as_deref(), cx)))
                         .child(line),
                 )
                 .when(is_new && !follows, |d| d.child(div().flex_none().text_size(px(T_S)).font_weight(FontWeight::SEMIBOLD).text_color(c(FACE)).child(root.tr("news.new")))),
@@ -2889,7 +2958,12 @@ fn tab_button(t: Tab, icon_name: &'static str, label: String, on: bool) -> Hot {
 /// The open game's name, as a button to any other game (GamesView.tsx's Switcher): a list of them, found by name in a
 /// box above 6, the one open ticked; one picked opens. Alone (no other game), the name is only words.
 fn switcher(root: &Root, all: &[Game], open: &Open, name: &str, width: f32, cx: &mut Context<Root>) -> AnyElement {
-    let title = div().min_w_0().text_size(px(if width < 900. { 30. } else { 36. })).font_weight(FontWeight::BOLD).line_height(px(44.)).truncate().child(name.to_string());
+    // (In the game's own colours, as its logo is.)
+    let own = all.iter().find(|g| g.id == open.id).and_then(|g| icon_of(root, g)).or_else(|| look(root, open.place, "icon"));
+    let title = match logo_img(root, open.place, name, if width < 900. { 56. } else { 72. }, 320., cx) {
+        Some(logo) => div().min_w_0().flex().items_center().child(logo),
+        None => div().min_w_0().text_size(px(if width < 900. { 30. } else { 36. })).font_weight(FontWeight::BOLD).line_height(px(44.)).truncate().child(game_name(name.to_string(), own.as_deref(), cx)),
+    };
     if !all.iter().any(|g| g.id != open.id) {
         return title.into_any_element();
     }
@@ -3857,9 +3931,14 @@ fn news_card(root: &Root, card: &Value, n: usize, before: f64, w: f32, cx: &mut 
         .flex_col()
         .gap(px(10.))
         .rounded(px(R_L))
-        .bg(ca(WHITE, 0.045))
-        .border_1()
-        .border_color(if is_new { ca(TEXT, 0.25) } else { c(LINE) })
+        .map(|d| {
+            if rich() {
+                let (ground, line) = block_tones();
+                d.bg(ground).border_1().border_color(if is_new { game_ink().unwrap_or(ca(TEXT, 0.25)) } else { line }).shadow(block_edge())
+            } else {
+                d.bg(ca(WHITE, 0.045)).border_1().border_color(if is_new { ca(TEXT, 0.25) } else { c(LINE) })
+            }
+        })
         .child(
             div()
                 .flex()

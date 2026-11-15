@@ -340,7 +340,11 @@ fn stage(root: &Root, all: &[Game], focus: usize, width: f32, cx: &mut Context<R
                                         .child(img(b).size_full().object_fit(ObjectFit::Cover).rounded(px(R_L))),
                                 )
                             })
-                            .child(div().min_w_0().max_w(px(560.)).text_size(px(40.)).font_weight(FontWeight::BOLD).line_height(px(46.)).truncate().child(g.name.clone())),
+                            .child(match crate::pages::games::logo_img(root, g.place, &g.name, 96., 380., cx) {
+                                // (The game's own logo in place of its name in words, when its wiki has one.)
+                                Some(logo) => div().flex().child(logo),
+                                None => div().min_w_0().max_w(px(560.)).text_size(px(40.)).font_weight(FontWeight::BOLD).line_height(px(46.)).truncate().child(game_name(g.name.clone(), icon_url.as_deref(), cx)),
+                            }),
                     )
                     .child(facts)
                     .children(who)
@@ -665,7 +669,7 @@ pub fn cover_tile(id: (&'static str, usize), cover: Option<String>, icon_url: Op
                         .flex()
                         .flex_col()
                         .gap(px(2.))
-                        .child(div().truncate().text_size(px(T_L)).font_weight(FontWeight::SEMIBOLD).line_height(px(19.)).child(name))
+                        .child(div().truncate().text_size(px(T_L)).font_weight(FontWeight::SEMIBOLD).line_height(px(19.)).child(game_name(name, icon_url.as_deref(), cx)))
                         .child(
                             div()
                                 .flex()
@@ -714,7 +718,11 @@ fn presets(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement 
                 None => at,
             }
         });
+        // (Of its game's colour, as an account's card is of the game it plays.)
+        let (ground, ground_hot, edge, edge_hot) = toned(if rich() { p.get("iconUrl").and_then(Value::as_str).and_then(|u| images::tone(u, cx)) } else { None });
         cards = cards.child(crate::kit::block_card(("preset", i))
+                .tones(ground, ground_hot)
+                .edge(edge, edge_hot)
                 .w(px(card_w))
                 .flex_none()
                 .min_w_0()

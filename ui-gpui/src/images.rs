@@ -168,7 +168,10 @@ pub fn init(cx: &mut App) {
                 }
                 let _ = done.send(match fetch(&agent, &url) {
                     Ok(b) => {
-                        let tone = tone_of(&b);
+                        let (tone, second) = tones_of(&b);
+                        if let (Some(c2), Ok(mut book)) = (second, SECOND.lock()) {
+                            book.insert(url.clone(), c2);
+                        }
                         let dims = dims_of(&b);
                         Got::Bytes((b, tone, dims))
                     }
@@ -403,12 +406,19 @@ fn format_of(b: &[u8]) -> Option<ImageFormat> {
 /// A picture's own colour: the hue most of its vivid pixels share, at a lightness and strength that read on the dark
 /// surfaces (a game's icon gives its tiles their base). PNG or WebP (what Roblox is asked for); None for a grey picture.
 fn tone_of(b: &[u8]) -> Option<u32> {
-    let format = match format_of(b)? {
-        ImageFormat::Png => image::ImageFormat::Png,
-        ImageFormat::Webp => image::ImageFormat::WebP,
-        _ => return None,
+    tones_of(b).0
+}
+
+/// That colour, and the picture's second one: the next most voted hue at least a sixth of the wheel away, when it has
+/// a good share of the votes (a game's logo is often two colours: Blox Fruits' blue and orange). A game's name is
+/// written in them (kit::game_name).
+fn tones_of(b: &[u8]) -> (Option<u32>, Option<u32>) {
+    let format = match format_of(b) {
+        Some(ImageFormat::Png) => image::ImageFormat::Png,
+        Some(ImageFormat::Webp) => image::ImageFormat::WebP,
+        _ => return (None, None),
     };
-    let img = image::load_from_memory_with_format(b, format).ok()?.to_rgba8();
+    let Some(img) = image::load_from_memory_with_format(b, format).ok().map(|i| i.to_rgba8()) else { return (None, None) };
     let (w, h) = img.dimensions();
     let step = (w.max(h) / 48).max(1) as usize;
     // Twelve slices of the colour wheel: each pixel votes for its own with how vivid and bright it is.
@@ -431,27 +441,40 @@ fn tone_of(b: &[u8]) -> Option<u32> {
             *v = (v.0 + k, v.1 + hue.to_radians().cos() * k, v.2 + hue.to_radians().sin() * k, v.3 + spread * k);
         }
     }
-    let best = votes.iter().copied().fold((0f64, 0f64, 0f64, 0f64), |a, v| if v.0 > a.0 { v } else { a });
-    if best.0 <= 0. {
-        return None;
-    }
-    let hue = best.2.atan2(best.1).to_degrees().rem_euclid(360.);
-    let strength = (best.3 / best.0).clamp(0.45, 0.8);
-    // HSL to RGB at a fixed lightness.
-    let light = 0.56;
-    let chroma = (1. - (2. * light - 1f64).abs()) * strength;
-    let x = chroma * (1. - ((hue / 60.).rem_euclid(2.) - 1.).abs());
-    let (r, g, bl) = match (hue / 60.) as u32 {
-        0 => (chroma, x, 0.),
-        1 => (x, chroma, 0.),
-        2 => (0., chroma, x),
-        3 => (0., x, chroma),
-        4 => (x, 0., chroma),
-        _ => (chroma, 0., x),
+    let Some(first) = (0..12).max_by(|a, b| votes[*a].0.total_cmp(&votes[*b].0)).filter(|i| votes[*i].0 > 0.) else { return (None, None) };
+    let apart = |i: usize| {
+        let d = (i as i32 - first as i32).rem_euclid(12);
+        d.min(12 - d) >= 2
     };
-    let m = light - chroma / 2.;
-    let byte = |v: f64| ((v + m).clamp(0., 1.) * 255.).round() as u32;
-    Some(byte(r) << 16 | byte(g) << 8 | byte(bl))
+    let second = (0..12).filter(|i| apart(*i)).max_by(|a, b| votes[*a].0.total_cmp(&votes[*b].0)).filter(|i| votes[*i].0 >= 0.2 * votes[first].0);
+    // A slice's colour: its hue at a fixed lightness and its own strength.
+    let paint = |best: (f64, f64, f64, f64)| {
+        let hue = best.2.atan2(best.1).to_degrees().rem_euclid(360.);
+        let strength = (best.3 / best.0).clamp(0.45, 0.8);
+        let light = 0.56;
+        let chroma = (1. - (2. * light - 1f64).abs()) * strength;
+        let x = chroma * (1. - ((hue / 60.).rem_euclid(2.) - 1.).abs());
+        let (r, g, bl) = match (hue / 60.) as u32 {
+            0 => (chroma, x, 0.),
+            1 => (x, chroma, 0.),
+            2 => (0., chroma, x),
+            3 => (0., x, chroma),
+            4 => (x, 0., chroma),
+            _ => (chroma, 0., x),
+        };
+        let m = light - chroma / 2.;
+        let byte = |v: f64| ((v + m).clamp(0., 1.) * 255.).round() as u32;
+        byte(r) << 16 | byte(g) << 8 | byte(bl)
+    };
+    (Some(paint(votes[first])), second.map(|i| paint(votes[i])))
+}
+
+/// The second colours of the pictures fetched this run, by address (few and small: kept for the run).
+static SECOND: LazyLock<Mutex<HashMap<String, u32>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
+
+/// The second colour of the picture at an address, once it has loaded (see `tones_of`).
+pub fn tone2(url: &str) -> Option<u32> {
+    SECOND.lock().ok()?.get(url).copied()
 }
 
 /// A picture's size in pixels, read from its header, when a smaller copy can be made of it: not an SVG (GPUI draws

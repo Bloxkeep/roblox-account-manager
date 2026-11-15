@@ -207,7 +207,7 @@ fn view_now(d: &Data) -> View {
     d.views.last().cloned().unwrap_or(View::Home)
 }
 
-async fn api(link: &Link, site: &str, q: Value) -> Option<Value> {
+pub(crate) async fn api(link: &Link, site: &str, q: Value) -> Option<Value> {
     link.call("wikiApi", json!({ "site": site, "q": q })).await.ok().and_then(Result::ok).filter(|v| v.get("error").is_none())
 }
 
@@ -868,32 +868,74 @@ fn jump(r: &mut Root, at: usize) {
 }
 
 // ---- Drawing ----
+// The Wiki part of a game is drawn as a wiki is, not in the app's panels (the old page's app.css ".ws", read again
+// 2026-11-15 after the owner's "giao diện wiki đã đúng với bản C# cũ chưa": it was not, it had become the app's own
+// chips and blocks): a sheet of its own in the game's colour, its name and search on a head bar, its parts as words
+// with a rule under the one shown, serif headings over a rule, links in the game's colour, tables with a line on
+// every side of every cell, an item as an article with its box of facts.
+
+/// The sheet's colours (.ws's --ws-bg, --ws-box, --ws-head, --ws-line, --ws-text, --ws-dim, --ws-link and the game's
+/// own --gt): the old page's on a dark theme; the theme's own grounds, the game's colour mixed in the same shares, on a
+/// light one, where the old dark sheet's words (the theme's) would not read.
+pub(crate) struct Ws {
+    pub bg: Hsla,
+    pub boxed: Hsla,
+    pub head: Hsla,
+    pub line: Hsla,
+    pub text: Hsla,
+    pub dim: Hsla,
+    pub link: Hsla,
+    /// The game's own colour, for the rule under the part shown, a bar's fill, an infobox's title.
+    pub own: Hsla,
+}
+
+pub(crate) fn ws() -> Ws {
+    let hex = |h: u32| -> Hsla { rgb(h).into() };
+    let dark = crate::theme::lightness(c(PANEL)) < 50.;
+    let game = game_tint().map(|t| Hsla { a: 1., ..t });
+    let g = game.unwrap_or(hex(0x6b7280));
+    let solid = |col: u32| Hsla { a: 1., ..c(col) };
+    let link = if dark { mix(hex(0xffffff), game.unwrap_or(hex(0x7aa2f7)), 0.6) } else { mix(hex(0x000000), game.unwrap_or(hex(0x2f5fd0)), 0.7) };
+    if dark {
+        Ws { bg: mix(hex(0x15171c), g, 0.07), boxed: mix(hex(0x1d2027), g, 0.10), head: mix(hex(0x262a33), g, 0.16), line: hex(0x3a3f4b), text: hex(0xe6e7ea), dim: hex(0xa3a8b3), link, own: game.unwrap_or(link) }
+    } else {
+        Ws { bg: mix(solid(PANEL), g, 0.07), boxed: mix(solid(RAISED), g, 0.10), head: mix(solid(RAISED_2), g, 0.16), line: solid(LINE), text: c(TEXT), dim: c(MUTED), link, own: game.unwrap_or(link) }
+    }
+}
+
+/// The sheet's headings' letters (--ws-serif: Cambria, Georgia, Times New Roman).
+const SERIF: &str = "Cambria";
+
+/// A box on the sheet (.ws-changed-item, .ws-odds, a table's ground): the sheet's own, never the app's block.
+fn boxed() -> Div {
+    let k = ws();
+    div().rounded(px(8.)).bg(k.boxed).border_1().border_color(k.line)
+}
 
 fn note(text: String) -> Div {
-    div().py(px(28.)).text_size(px(T_M)).text_color(c(MUTED)).child(text)
+    div().py(px(28.)).text_size(px(T_M)).text_color(ws().dim).child(text)
 }
 
+/// .ws-h1: 30 px serif, not bold, over a rule.
 fn h1(text: impl Into<SharedString>) -> Div {
-    div().text_size(px(T_STAGE)).font_weight(FontWeight::BOLD).line_height(px(34.)).child(text.into())
+    div().w_full().pb(px(4.)).border_b_1().border_color(ws().line).font_family(SERIF).text_size(px(30.)).font_weight(FontWeight::NORMAL).line_height(px(38.)).child(text.into())
 }
 
+/// .ws-h2: 22 px serif over a rule; what it leaves unsaid under it, as .ws-tagline.
 fn h2(text: String, sub: Option<String>) -> Div {
+    let k = ws();
     div()
-        .pt(px(10.))
+        .pt(px(8.))
         .flex()
         .flex_col()
-        .gap(px(3.))
-        .child(div().text_size(px(T_GROUP)).font_weight(FontWeight::SEMIBOLD).child(text))
-        .when_some(sub, |d, s| d.child(div().text_size(px(T_S)).text_color(c(MUTED)).child(s)))
+        .gap(px(6.))
+        .child(div().w_full().pb(px(3.)).border_b_1().border_color(k.line).font_family(SERIF).text_size(px(22.)).font_weight(FontWeight::NORMAL).line_height(px(29.)).child(text))
+        .when_some(sub, |d, s| d.child(div().text_size(px(T_M)).text_color(k.dim).child(s)))
 }
 
 fn link_text(id: impl Into<ElementId>, text: impl Into<SharedString>) -> Stateful<Div> {
-    // (Not yellow: yellow is what is chosen and the one main button. A link is the words, underlined.)
-    // On a game's page a link is of the game's own colour, as the old wiki's were (60 % of it).
-    match game_ink() {
-        Some(ink) => focusable(div().id(id)).cursor_pointer().text_color(ink).hover(|st| st.underline()).child(text.into()),
-        None => focusable(div().id(id)).cursor_pointer().text_color(c(TEXT_2)).underline().hover(|st| st.text_color(c(TEXT))).child(text.into()),
-    }
+    // (.ws-link: the game's colour, 60 % of it; underlined under the mouse.)
+    focusable(div().id(id)).cursor_pointer().text_color(ws().link).hover(|st| st.underline()).child(text.into())
 }
 
 /// A page's picture, made at the box's pixels; a page the wiki gives no picture gets its first letter on a colour of
@@ -965,18 +1007,18 @@ pub fn view(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
         .gap(px(10.))
         .cursor_pointer()
         .map(|d| match logo {
-            Some(p) => d.child(div().h(px(32.)).max_w(px(140.)).child(img(p).h(px(32.)).object_fit(ObjectFit::Contain))),
-            None => d.child(icon("book", 18., c(FACE))),
+            Some(p) => d.child(div().h(px(24.)).max_w(px(140.)).child(img(p).h(px(24.)).object_fit(ObjectFit::Contain))),
+            None => d.child(icon("book", 16., ws().link)),
         })
-        .child(div().text_size(px(T_H)).font_weight(FontWeight::SEMIBOLD).truncate().max_w(px(260.)).child(about.name.clone()))
+        .child(div().font_family(SERIF).text_size(px(15.)).font_weight(FontWeight::BOLD).truncate().max_w(px(320.)).hover(|st| st.underline()).child(about.name.clone()))
         .on_click(cx.listener(|r, _, _, cx| {
             home(r);
             cx.notify();
         }));
     let q_now = root.wiki_q.read(cx).value().trim().to_string();
-    let mut find = div().relative().flex_1().max_w(px(460.)).child(field(&root.wiki_q, Some("search")));
+    let mut find = div().relative().w(px(340.)).flex_shrink(1.).min_w(px(180.)).child(field(&root.wiki_q, Some("search")));
     if !w.hits.is_empty() && w.hits_for == q_now {
-        let mut menu = div().w(px(440.)).p(px(6.)).rounded(px(R_L)).bg(c(RAISED_2)).border_1().border_color(ca(WHITE, 0.08)).shadow_lg().flex().flex_col();
+        let mut menu = div().w(px(440.)).p(px(6.)).rounded(px(R_L)).bg(c(RAISED_2)).border_1().border_color(ws().line).shadow_lg().flex().flex_col();
         for (i, h) in w.hits.iter().enumerate() {
             let title = h.clone();
             menu = menu.child(menu_row(("wk-hit", i)).px(px(10.)).py(px(7.)).rounded(px(R_S)).text_size(px(T_M)).child(h.clone()).on_click(cx.listener(move |r, _, window, cx| {
@@ -1003,35 +1045,46 @@ pub fn view(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
         );
         find = find.child(div().absolute().top(px(40.)).left_0().child(deferred(anchored().snap_to_window_with_margin(px(8.)).child(menu)).with_priority(1)));
     }
-    let top_bar = div().flex().items_center().gap(px(16.)).child(face).child(find).child(div().flex_1());
+    let k = ws();
+    let top_bar = div().flex().items_center().gap(px(16.)).px(px(20.)).py(px(10.)).bg(k.head).border_b_1().border_color(k.line).child(face).child(div().flex_1()).child(find);
 
-    // Its parts: home, its biggest kinds, saved.
-    let mut nav = div().flex().flex_wrap().items_center().gap(px(4.));
-    nav = nav.child(chip("wk-nav-home", now == View::Home).h(px(TOOL_H)).px(px(12.)).child(icon("home", 14., if now == View::Home { c(INK) } else { c(MUTED) })).child(root.tr("wiki.home")).on_click(cx.listener(|r, _, _, cx| {
+    // Its parts: home, its biggest kinds, saved (.ws-nav: words in the link colour; the one shown bold, in the
+    // sheet's text colour, over a 2 px rule in the game's own).
+    let part = |id: ElementId, on: bool, mark: Option<&'static str>, label: String| {
+        focusable(div().id(id))
+            .pt(px(9.))
+            .pb(px(7.))
+            .flex()
+            .items_center()
+            .gap(px(5.))
+            .border_b_2()
+            .border_color(if on { k.own } else { gpui_kit::transparent_black() })
+            .text_size(px(13.5))
+            .text_color(if on { k.text } else { k.link })
+            .when(on, |d| d.font_weight(FontWeight::BOLD))
+            .when(!on, |d| d.cursor_pointer().hover(|st| st.underline()))
+            .when_some(mark, |d, m| d.child(icon(m, 13., if on { k.text } else { k.link })))
+            .child(label)
+    };
+    let mut nav = div().flex().flex_wrap().items_center().gap_x(px(18.)).gap_y(px(2.)).px(px(20.)).border_b_1().border_color(k.line);
+    nav = nav.child(part("wk-nav-home".into(), now == View::Home, Some("home"), root.tr("wiki.home")).on_click(cx.listener(|r, _, _, cx| {
         home(r);
         cx.notify();
     })));
-    for (i, k) in kinds.iter().flatten().take(8).enumerate() {
-        let t = k.template.clone();
+    for (i, kind) in kinds.iter().flatten().take(8).enumerate() {
+        let t = kind.template.clone();
         let on = now == View::Table(t.clone());
-        nav = nav.child(chip(("wk-nav-kind", i), on).h(px(TOOL_H)).px(px(12.)).child(k.name.clone()).on_click(cx.listener(move |r, _, _, cx| {
+        nav = nav.child(part(("wk-nav-kind", i).into(), on, None, kind.name.clone()).on_click(cx.listener(move |r, _, _, cx| {
             go(r, View::Table(t.clone()));
             cx.notify();
         })));
     }
     let saved_on = now == View::Saved;
-    nav = nav.child(tool_rule()).child(
-        chip("wk-nav-saved", saved_on)
-            .h(px(TOOL_H))
-            .px(px(12.))
-            .child(icon("bookmark", 14., if saved_on { c(INK) } else { c(MUTED) }))
-            .child(root.tr("wiki.saved"))
-            .when(!saved.is_empty(), |d| d.child(chip_count(saved.len(), saved_on)))
-            .on_click(cx.listener(|r, _, _, cx| {
+    let saved_label = if saved.is_empty() { root.tr("wiki.saved") } else { format!("{} ({})", root.tr("wiki.saved"), saved.len()) };
+    nav = nav.child(part("wk-nav-saved".into(), saved_on, Some("bookmark"), saved_label).on_click(cx.listener(|r, _, _, cx| {
         go(r, View::Saved);
         cx.notify();
-    })),
-    );
+    })));
 
     let body: AnyElement = match &now {
         View::Home => home_view(root, &about, kinds.as_deref(), width, cx).into_any_element(),
@@ -1041,14 +1094,18 @@ pub fn view(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
         View::Page { title, table } => article_view(root, &about, title, table.as_deref(), width, cx),
     };
     div()
+        .mt(px(4.))
         .flex()
         .flex_col()
-        .gap(px(16.))
-        .pt(px(4.))
+        .rounded(px(6.))
+        .bg(k.bg)
+        .border_1()
+        .border_color(k.line)
+        .overflow_hidden()
+        .text_color(k.text)
         .child(top_bar)
         .child(nav)
-        .child(body)
-        .child(credit(root, &about, cx))
+        .child(div().px(px(28.)).pt(px(18.)).pb(px(22.)).flex().flex_col().gap(px(16.)).child(body).child(credit(root, &about, cx)))
         .into_any_element()
 }
 
@@ -1204,7 +1261,7 @@ fn home_view(root: &Root, about: &About, kinds: Option<&[Kind]>, width: f32, cx:
                         .child(div().w(px(18.)).text_size(px(T_S)).text_color(c(MUTED)).font_features(tnum()).child((i + 1).to_string()))
                         .child(pic_box(p.pic.as_ref(), &p.title, 32., 32., cx))
                         .child(div().w(px(260.)).text_size(px(T_M)).truncate().child(p.title.clone()))
-                        .child(div().flex_1().h(px(4.)).rounded_full().bg(c(RAISED_2)).child(div().h_full().rounded_full().bg(ca(FACE, 0.55)).w(relative((p.edits as f32 / most).clamp(0.02, 1.)))))
+                        .child(div().flex_1().h(px(4.)).rounded_full().bg(ws().boxed).child(div().h_full().rounded_full().bg(ws().own).w(relative((p.edits as f32 / most).clamp(0.02, 1.)))))
                         .child(div().w(px(90.)).text_size(px(T_S)).text_color(c(MUTED)).child(root.i18n.tv("wiki.editsN", &[("n", &p.edits.to_string())])))
                         .on_click(cx.listener(move |r, _, _, cx| {
                             go(r, View::Page { title: title.clone(), table: None });
@@ -1521,7 +1578,7 @@ fn table_view(root: &Root, template: &str, width: f32, cx: &mut Context<Root>) -
         .child(div().flex().flex_wrap().items_center().gap(px(16.)).child(div().flex().flex_col().gap(px(2.)).child(div().text_size(px(T_GROUP + 4.)).font_weight(FontWeight::BOLD).line_height(px(28.)).child(name)).child(tag)).child(div().flex_1()).child(tools));
 
     if w.filtering {
-        let mut panel = surface().p(px(14.)).flex().flex_col().gap(px(10.));
+        let mut panel = boxed().p(px(14.)).flex().flex_col().gap(px(10.));
         for (fi, l) in facets.iter().enumerate() {
             // A number line: its Min – Max boxes (WikiView.tsx 166-171).
             if l.number {
@@ -1565,7 +1622,7 @@ fn table_view(root: &Root, template: &str, width: f32, cx: &mut Context<Root>) -
     // Picked to compare: a tray, and the comparison when asked.
     let picked: Vec<&Item> = w.picked.iter().filter_map(|id| items.iter().find(|i| i.id == *id)).collect();
     if !picked.is_empty() {
-        let mut tray = surface().px(px(12.)).py(px(8.)).flex().flex_wrap().items_center().gap(px(8.));
+        let mut tray = boxed().px(px(12.)).py(px(8.)).flex().flex_wrap().items_center().gap(px(8.));
         for (i, it) in picked.iter().enumerate() {
             let id = it.id.clone();
             tray = tray.child(
@@ -1610,7 +1667,7 @@ fn table_view(root: &Root, template: &str, width: f32, cx: &mut Context<Root>) -
     // The table: pick, name, the kind's lines.
     let name_w = 260.;
     let col_w = ((width - 40. - name_w) / (columns.len().max(1) as f32 + 1.)).clamp(96., 240.);
-    let mut head = div().flex().items_center().h(px(36.)).px(px(10.)).bg(game_head()).text_size(px(T_S)).text_color(c(MUTED)).font_weight(FontWeight::SEMIBOLD).border_b_1().border_color(ca(WHITE, 0.08));
+    let mut head = div().flex().items_center().h(px(36.)).px(px(10.)).bg(ws().head).text_size(px(T_S)).text_color(c(MUTED)).font_weight(FontWeight::SEMIBOLD).border_b_1().border_color(ws().line);
     head = head.child(div().w(px(30.)).flex_none()).child(div().flex_1().min_w(px(name_w)).child(root.tr("wiki.name")));
     for (ci, l) in columns.iter().enumerate() {
         let on = w.sort.as_ref().filter(|(f, _)| *f == l.field).map(|(_, d)| *d);
@@ -1655,7 +1712,7 @@ fn table_view(root: &Root, template: &str, width: f32, cx: &mut Context<Root>) -
             .py(px(4.))
             .text_size(px(T_M))
             .border_b_1()
-            .border_color(ca(WHITE, 0.04))
+            .border_color(ws().line)
             .when(picked_on, |d| d.bg(tinted(PANEL, FACE, 0.08)))
             .child(
                 // (Its tip as WikiView.tsx's wk-check title; a full comparison takes no more, as its disabled box.)
@@ -1701,7 +1758,7 @@ fn table_view(root: &Root, template: &str, width: f32, cx: &mut Context<Root>) -
     }
     let more = shown.len().saturating_sub(ROWS_SHOWN);
     body = body.child(
-        surface()
+        boxed()
             .overflow_hidden()
             .child(head)
             .child(rows)
@@ -1747,7 +1804,7 @@ fn compare(root: &Root, items: &[&Item], cx: &mut Context<Root>) -> Div {
     let wins: Vec<usize> = items.iter().map(|i| ranked.iter().filter(|f| rank_of(f, value_of(i, f)) == best(f)).count()).collect();
     let top = wins.iter().copied().max().unwrap_or(0);
     let label_w = 170.;
-    let mut head = div().flex().gap(px(10.)).pb(px(10.)).border_b_1().border_color(ca(WHITE, 0.08)).child(div().w(px(label_w)).flex_none().text_size(px(T_H)).font_weight(FontWeight::SEMIBOLD).child(root.tr("wiki.compare")));
+    let mut head = div().flex().gap(px(10.)).pb(px(10.)).border_b_1().border_color(ws().line).child(div().w(px(label_w)).flex_none().text_size(px(T_H)).font_weight(FontWeight::SEMIBOLD).child(root.tr("wiki.compare")));
     for (n, i) in items.iter().enumerate() {
         let lead = !ranked.is_empty() && wins[n] == top;
         head = head.child(
@@ -1778,7 +1835,7 @@ fn compare(root: &Root, items: &[&Item], cx: &mut Context<Root>) -> Div {
             .gap(px(10.))
             .py(px(7.))
             .border_b_1()
-            .border_color(ca(WHITE, 0.04))
+            .border_color(ws().line)
             .text_size(px(T_M))
             .when(quiet, |d| d.opacity(0.7))
             .child(
@@ -1808,7 +1865,7 @@ fn compare(root: &Root, items: &[&Item], cx: &mut Context<Root>) -> Div {
         }
         r
     };
-    let mut panel = surface().p(px(16.)).flex().flex_col().child(head);
+    let mut panel = boxed().p(px(16.)).flex().flex_col().child(head);
     for f in ranked.iter().chain(&shared) {
         panel = panel.child(row(f, false));
     }
@@ -1990,7 +2047,7 @@ fn article_view(root: &Root, about: &About, title: &str, table: Option<&str>, wi
                 cx.notify();
             })));
         }
-        body = body.child(div().pt(px(8.)).border_t_1().border_color(ca(WHITE, 0.06)).child(cats));
+        body = body.child(div().pt(px(8.)).border_t_1().border_color(ws().line).child(cats));
     }
     body.into_any_element()
 }
@@ -2029,7 +2086,7 @@ fn contents(root: &Root, parts: &[wikihtml::Section], cx: &mut Context<Root>) ->
         );
     }
     div().flex().my(px(10.)).child(
-        surface()
+        boxed()
             .max_w(px(440.))
             .px(px(14.))
             .py(px(10.))
@@ -2046,7 +2103,7 @@ fn contents(root: &Root, parts: &[wikihtml::Section], cx: &mut Context<Root>) ->
 /// The page's box of facts as a card: its title, picture and lines.
 fn infobox_card(root: &Root, b: &Infobox, cx: &mut Context<Root>) -> Div {
     let p = b.image.as_ref().and_then(|u| images::pic(u, cx));
-    let mut card = surface().p(px(14.)).flex().flex_col().gap(px(10.));
+    let mut card = boxed().p(px(14.)).flex().flex_col().gap(px(10.));
     if let Some(t) = &b.title {
         card = card.child(div().text_size(px(T_H)).font_weight(FontWeight::SEMIBOLD).text_center().child(t.clone()));
     }
@@ -2061,7 +2118,7 @@ fn infobox_card(root: &Root, b: &Infobox, cx: &mut Context<Root>) -> Div {
                 .gap(px(10.))
                 .py(px(7.))
                 .text_size(px(T_M))
-                .when(i > 0, |d| d.border_t_1().border_color(ca(WHITE, 0.05)))
+                .when(i > 0, |d| d.border_t_1().border_color(ws().line))
                 .child(div().w(px(104.)).flex_none().text_color(c(MUTED)).child(word(root, k)))
                 .child(div().flex_1().min_w_0().text_color(c(TEXT)).child(v.replace('\n', " · "))),
         );
@@ -2076,8 +2133,8 @@ fn similar(root: &Root, lines: &[wikitext::SimLine], near: &[usize], items: &[It
         return div();
     }
     let site = root.wiki.site.clone();
-    let mut list = surface().overflow_hidden().flex().flex_col();
-    let mut head = div().flex().items_center().h(px(34.)).px(px(12.)).bg(game_head()).text_size(px(T_S)).text_color(c(MUTED)).font_weight(FontWeight::SEMIBOLD).border_b_1().border_color(ca(WHITE, 0.08)).child(div().w(px(240.)).flex_none().child(root.tr("wiki.name")));
+    let mut list = boxed().overflow_hidden().flex().flex_col();
+    let mut head = div().flex().items_center().h(px(34.)).px(px(12.)).bg(ws().head).text_size(px(T_S)).text_color(c(MUTED)).font_weight(FontWeight::SEMIBOLD).border_b_1().border_color(ws().line).child(div().w(px(240.)).flex_none().child(root.tr("wiki.name")));
     for l in lines {
         head = head.child(div().flex_1().child(word(root, &l.field)));
     }
@@ -2085,7 +2142,7 @@ fn similar(root: &Root, lines: &[wikitext::SimLine], near: &[usize], items: &[It
     for (i, p) in near.iter().enumerate() {
         let title = wiki_title_of(&p.url, &site).unwrap_or_else(|| p.name.clone());
         let tpl = table.to_string();
-        let mut row = div().flex().items_center().min_h(px(42.)).px(px(12.)).text_size(px(T_M)).border_b_1().border_color(ca(WHITE, 0.04)).child(
+        let mut row = div().flex().items_center().min_h(px(42.)).px(px(12.)).text_size(px(T_M)).border_b_1().border_color(ws().line).child(
             focusable(div().id(("wk-sim", i)))
                 .w(px(240.))
                 .flex_none()
@@ -2162,7 +2219,7 @@ fn odds(root: &Root, p: f64, cx: &mut Context<Root>) -> Div {
                 .child(div().text_size(px(T_S)).text_color(c(MUTED)).child(label)),
         );
     }
-    surface()
+    boxed()
         .p(px(16.))
         .pr(px(24.))
         .flex()

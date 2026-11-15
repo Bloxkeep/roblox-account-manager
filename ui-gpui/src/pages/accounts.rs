@@ -3051,6 +3051,11 @@ fn card(root: &Root, a: &Value, w: f32, lines: usize, cx: &mut Context<Root>) ->
     let main = action(root, a, "card", cx);
     let pick = id.clone();
     let h = card_h(lines);
+    // In a game: the card stands on a ground faintly of that game's colour, and its line starts with the game's icon
+    // (accounts in the same game read as one group at a glance; every card was the same grey).
+    let playing = game_icon(a);
+    let (ground, ground_hot, line_col, line_hot) = toned(if rich() { playing.as_deref().and_then(|u| crate::images::tone(u, cx)) } else { None });
+    let game_pic = if rich() { playing.as_deref().and_then(|u| crate::images::pic_sq(u, 18., cx)) } else { None };
     let body = hot(SharedString::from(format!("card-{id}")))
         .lift(3.)
         .child(spot(root, &id, R_CARD))
@@ -3067,7 +3072,7 @@ fn card(root: &Root, a: &Value, w: f32, lines: usize, cx: &mut Context<Root>) ->
             if on {
                 d.tones(tinted(RAISED, FACE, 0.10), tinted(RAISED_2, FACE, 0.12)).edge(ca(FACE, 0.7), ca(FACE, 0.85))
             } else {
-                d.tones(c(RAISED), c(RAISED_2)).edge(c(LINE), ca(WHITE, 0.17))
+                d.tones(ground, ground_hot).edge(line_col, line_hot)
             }
         })
         .on_click(cx.listener(move |r, e: &ClickEvent, _, cx| {
@@ -3128,6 +3133,7 @@ fn card(root: &Root, a: &Value, w: f32, lines: usize, cx: &mut Context<Root>) ->
                         .gap(px(8.))
                         .text_size(px(T_M))
                         .child(div().size(px(7.)).flex_none().rounded_full().bg(c(dot_of(a))))
+                        .when_some(game_pic, |d, p| d.child(img(p).size(px(18.)).flex_none().rounded(px(5.))))
                         .child(div().min_w_0().truncate().text_color(c(if tone == TEXT_2 || tone == OK || tone == MUTED { TEXT_2 } else { tone })).child(line)),
                 )
                 .when_some(opened, |d, t| d.child(last_line(root, a, t)))
