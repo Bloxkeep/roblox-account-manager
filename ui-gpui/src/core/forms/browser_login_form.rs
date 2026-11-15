@@ -60,6 +60,8 @@ pub struct BrowserLoginForm {
     create: bool,
     on_signed_in: Rc<dyn Fn(String) -> LocalBoxFuture<'static, Res<String>>>,
     window: Arc<Mutex<WindowSlot>>,
+    /// Never shown (the checks: the window and its browser are made as always, off the desktop).
+    unseen: bool,
 }
 
 #[derive(Default)]
@@ -73,7 +75,14 @@ impl BrowserLoginForm {
     /// `on_signed_in`: saves the account for a new session cookie and returns a short confirmation.
     /// `create`: opens Roblox's sign-up form: each account made there is saved the same way.
     pub fn new(on_signed_in: impl Fn(String) -> LocalBoxFuture<'static, Res<String>> + 'static, create: bool) -> BrowserLoginForm {
-        BrowserLoginForm { create, on_signed_in: Rc::new(on_signed_in), window: Arc::new(Mutex::new(WindowSlot::default())) }
+        BrowserLoginForm { create, on_signed_in: Rc::new(on_signed_in), window: Arc::new(Mutex::new(WindowSlot::default())), unseen: false }
+    }
+
+    /// The same window, never shown: for the checks.
+    #[cfg(any(test, feature = "core"))]
+    pub fn unseen(mut self) -> BrowserLoginForm {
+        self.unseen = true;
+        self
     }
 
     /// ShowDialog(owner): over the owner (disabled meanwhile) until closed. Each sign-in is handed to `on_signed_in`
@@ -83,7 +92,8 @@ impl BrowserLoginForm {
         let create = self.create;
         let slot = self.window.clone();
         log::note(if create { "Sign-in window: opening Roblox's sign-up form." } else { "Sign-in window: opening." });
-        let started = host::start_thread("sign-in window", move || LoginWindow::open(owner, create, tx, slot));
+        let unseen = self.unseen;
+        let started = host::start_thread("sign-in window", move || LoginWindow::open(owner, create, tx, slot, unseen));
         if !started {
             log::note("Sign-in window: its thread couldn't start.");
             return DialogResult::Cancel;
@@ -153,7 +163,7 @@ struct LoginWindow {
 }
 
 impl LoginWindow {
-    fn open(owner: isize, create: bool, to_core: mpsc::UnboundedSender<SignedIn>, slot: Arc<Mutex<WindowSlot>>) {
+    fn open(owner: isize, create: bool, to_core: mpsc::UnboundedSender<SignedIn>, slot: Arc<Mutex<WindowSlot>>, unseen: bool) {
         let theme = themes::current();
         let title = if create { l::t("Create a Roblox account") } else { l::t("Sign in to Roblox") };
         let hwnd = host::create_window(host::CLASS_FORM, &title, WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN, 0, owner, Rect::default());
@@ -240,12 +250,13 @@ impl LoginWindow {
                 }
             }
         });
+        // The window keeps its own state for as long as Windows keeps the window (the handler goes at WM_NCDESTROY).
+        // Held only by the tasks that start it, the state went as soon as the browser was up: the controller took the
+        // window for closed, and an empty frame stayed on screen that nothing answered (the owner, 2026-11-15: "browser
+        // trắng, không hiển thị gì"; error.log said "closed" in the second it opened).
         host::set_handler(hwnd, {
-            let weak = weak.clone();
-            move |h: HWND, msg: u32, w: WPARAM, l: LPARAM| {
-                let me = weak.upgrade()?;
-                me.on_message(h, msg, w, l)
-            }
+            let me = me.clone();
+            move |h: HWND, msg: u32, w: WPARAM, l: LPARAM| me.on_message(h, msg, w, l)
         });
 
         // OnHandleCreated: the themed title bar, the top's page.
@@ -265,6 +276,9 @@ impl LoginWindow {
             unsafe { EnableWindow(owner as HWND, 0) };
         }
         me.lay_out();
+        if unseen {
+            return;
+        }
         host::show(hwnd, SW_SHOW);
         log::note(&format!("Sign-in window: shown, {}.", crate::core::window_report::describe(hwnd)));
     }
@@ -360,10 +374,12 @@ impl LoginWindow {
             self.configure(&core)?;
             self.open_login_page(&core);
             self.poll.start();
+            log::note("Sign-in window: its browser is up, Roblox's page asked for.");
             Ok(())
         }
         .await;
         if let Err(e) = result {
+            log::note(&format!("Sign-in window: its browser couldn't start ({}).", e.message()));
             if host::runtime_missing(&e) {
                 ui::error(Some(self.hwnd), &l::t("Microsoft Edge WebView2 isn't installed. Install it, or add the account with a cookie."));
                 host::close(self.hwnd);

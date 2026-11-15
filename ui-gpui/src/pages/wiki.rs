@@ -889,7 +889,11 @@ fn h2(text: String, sub: Option<String>) -> Div {
 
 fn link_text(id: impl Into<ElementId>, text: impl Into<SharedString>) -> Stateful<Div> {
     // (Not yellow: yellow is what is chosen and the one main button. A link is the words, underlined.)
-    focusable(div().id(id)).cursor_pointer().text_color(c(TEXT_2)).underline().hover(|st| st.text_color(c(TEXT))).child(text.into())
+    // On a game's page a link is of the game's own colour, as the old wiki's were (60 % of it).
+    match game_ink() {
+        Some(ink) => focusable(div().id(id)).cursor_pointer().text_color(ink).hover(|st| st.underline()).child(text.into()),
+        None => focusable(div().id(id)).cursor_pointer().text_color(c(TEXT_2)).underline().hover(|st| st.text_color(c(TEXT))).child(text.into()),
+    }
 }
 
 /// A page's picture, made at the box's pixels; a page the wiki gives no picture gets its first letter on a colour of
@@ -1606,7 +1610,7 @@ fn table_view(root: &Root, template: &str, width: f32, cx: &mut Context<Root>) -
     // The table: pick, name, the kind's lines.
     let name_w = 260.;
     let col_w = ((width - 40. - name_w) / (columns.len().max(1) as f32 + 1.)).clamp(96., 240.);
-    let mut head = div().flex().items_center().h(px(36.)).px(px(10.)).text_size(px(T_S)).text_color(c(MUTED)).font_weight(FontWeight::SEMIBOLD).border_b_1().border_color(ca(WHITE, 0.08));
+    let mut head = div().flex().items_center().h(px(36.)).px(px(10.)).bg(game_head()).text_size(px(T_S)).text_color(c(MUTED)).font_weight(FontWeight::SEMIBOLD).border_b_1().border_color(ca(WHITE, 0.08));
     head = head.child(div().w(px(30.)).flex_none()).child(div().flex_1().min_w(px(name_w)).child(root.tr("wiki.name")));
     for (ci, l) in columns.iter().enumerate() {
         let on = w.sort.as_ref().filter(|(f, _)| *f == l.field).map(|(_, d)| *d);
@@ -2073,7 +2077,7 @@ fn similar(root: &Root, lines: &[wikitext::SimLine], near: &[usize], items: &[It
     }
     let site = root.wiki.site.clone();
     let mut list = surface().overflow_hidden().flex().flex_col();
-    let mut head = div().flex().items_center().h(px(34.)).px(px(12.)).text_size(px(T_S)).text_color(c(MUTED)).font_weight(FontWeight::SEMIBOLD).border_b_1().border_color(ca(WHITE, 0.08)).child(div().w(px(240.)).flex_none().child(root.tr("wiki.name")));
+    let mut head = div().flex().items_center().h(px(34.)).px(px(12.)).bg(game_head()).text_size(px(T_S)).text_color(c(MUTED)).font_weight(FontWeight::SEMIBOLD).border_b_1().border_color(ca(WHITE, 0.08)).child(div().w(px(240.)).flex_none().child(root.tr("wiki.name")));
     for l in lines {
         head = head.child(div().flex_1().child(word(root, &l.field)));
     }

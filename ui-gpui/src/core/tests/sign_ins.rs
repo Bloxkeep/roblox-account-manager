@@ -240,7 +240,36 @@ fn core_defines(name: &str) -> bool {
     walk(&Path::new(env!("CARGO_MANIFEST_DIR")).join("src").join("core"), name)
 }
 
-pub async fn run(c: &mut Checks, _dir: &str) {
+pub async fn run(c: &mut Checks, dir: &str) {
+    // The sign-in window, made as always but never shown: it stays up once its browser has started, and the
+    // controller's wait for it ends only when it is closed. (Its state went as soon as the browser was up, so the app
+    // took it for closed and an empty frame stayed: the owner's blank "Sign in to Roblox", 2026-11-15, whose
+    // error.log said "closed" in the second it opened.)
+    {
+        use crate::core::forms::browser_login_form::BrowserLoginForm;
+        let form = Rc::new(BrowserLoginForm::new(|_| Box::pin(async { Ok(String::new()) }), false).unseen());
+        let over = Rc::new(Cell::new(false));
+        let (f2, o2) = (form.clone(), over.clone());
+        rt::spawn(async move {
+            f2.show_dialog(0).await;
+            o2.set(true);
+        });
+        let log = Path::new(dir).join("error.log");
+        let said = || std::fs::read_to_string(&log).is_ok_and(|t| t.contains("Sign-in window: its browser is up"));
+        let started = Instant::now();
+        while !said() && !over.get() && started.elapsed() < Duration::from_secs(40) {
+            rt::sleep(Duration::from_millis(200)).await;
+        }
+        c.check("the sign-in window's browser starts (error.log says so)", said(), started.elapsed().as_millis());
+        rt::sleep(Duration::from_secs(4)).await;
+        c.check("…and the window is still up four seconds after, the app still waiting for it", !over.get(), ());
+        form.close();
+        let asked = Instant::now();
+        while !over.get() && asked.elapsed() < Duration::from_secs(15) {
+            rt::sleep(Duration::from_millis(100)).await;
+        }
+        c.check("…its wait ends when the window is closed", over.get(), asked.elapsed().as_millis());
+    }
     no_network();
     let mark: String = new_guid().to_string().replace('-', "")[..10].to_string();
     let roblox = Arc::new(Roblox::default());
@@ -286,7 +315,7 @@ pub async fn run(c: &mut Checks, _dir: &str) {
         if app.controller.vault.borrow().is_none() {
             unlock(&app).await;
         }
-        let error_log = std::path::Path::new(_dir).join("error.log");
+        let error_log = std::path::Path::new(dir).join("error.log");
         let read = || std::fs::read_to_string(&error_log).unwrap_or_default();
         app.handle_message(r#"{"id":901,"cmd":"loginPassword","args":{"username":"","password":"","realm":""}}"#).await;
         let text = read();

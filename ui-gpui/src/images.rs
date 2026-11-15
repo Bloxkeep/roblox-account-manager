@@ -82,6 +82,18 @@ const SUPERSEDED: Duration = Duration::from_secs(10);
 const MAX_READY: usize = 600;
 const KEEP: usize = 400;
 const IDLE: Duration = Duration::from_secs(600);
+
+/// A picture no window has drawn for this long is let go, however few are kept: its bytes, its sized copies, GPUI's
+/// decoded copy and its place on the window's atlas. Measured on the owner's PC (2026-11-15, twenty minutes of
+/// browsing the Roblox tab on the plain Dark theme): 428 MB, of which 62 atlas textures of 4 MB each and ~380 MB of
+/// heap, nearly all pictures of pages left minutes before (the same build showing one page: 98 MB, 2 textures). The
+/// count rule above only started past 600 pictures and ten minutes, so nothing was ever let go in a normal sitting.
+/// One wanted again comes back from this PC's copy (cache/pictures) in a few milliseconds.
+const AWAY: Duration = Duration::from_secs(45);
+/// How often the pictures away are looked for, and how long the windows get to draw (and so ask for what they show)
+/// before the look.
+const SWEEP_EVERY: Duration = Duration::from_secs(10);
+const SETTLE: Duration = Duration::from_millis(700);
 /// Addresses that failed, kept so they aren't asked again and again; past this many the list starts over.
 const MAX_FAILED: usize = 2000;
 
@@ -135,8 +147,13 @@ pub fn init(cx: &mut App) {
                 let job = {
                     let Ok(mut jobs) = queue.jobs.lock() else { break };
                     loop {
-                        if let Some(j) = jobs.pop() {
-                            break j;
+                        // The draw that asked last goes first (the page as it is now, not what a scroll left behind),
+                        // and within one draw the first asked first: taken from the list's end, a long table's
+                        // pictures came from its foot up, and the rows on screen got theirs last (the owner,
+                        // 2026-11-15: a wiki's item icons "hiện muộn, hiện chậm").
+                        let next = (0..jobs.len()).max_by_key(|i| (jobs[*i].2.load(Ordering::Relaxed) / 96, std::cmp::Reverse(*i)));
+                        if let Some(i) = next {
+                            break jobs.remove(i);
                         }
                         match queue.ready.wait(jobs) {
                             Ok(j) => jobs = j,
@@ -167,6 +184,62 @@ pub fn init(cx: &mut App) {
     }
     let _ = crate::net::Named::new("pictures-prune".into()).spawn(prune_often);
     cx.set_global(Images { slots: HashMap::new(), copies: HashMap::new(), queue });
+    // Every SWEEP_EVERY: when something may be away, every window is drawn once (a window standing still asks for
+    // nothing, so its pictures would look away too), and what none of them asked for in AWAY is let go. A window
+    // hidden in the tray or minimized doesn't draw: its pictures go too, and come back when it is shown.
+    cx.spawn(async move |cx| {
+        loop {
+            cx.background_executor().timer(SWEEP_EVERY).await;
+            let asked = Instant::now();
+            let some = cx.update(|cx| {
+                let some = may_be_away(cx.global::<Images>(), asked);
+                if some {
+                    cx.refresh_windows();
+                }
+                some
+            });
+            if !some {
+                continue;
+            }
+            cx.background_executor().timer(SETTLE).await;
+            cx.update(|cx| {
+                trim(cx, Some(asked));
+                // BLOXKEEP_SHOT_MEM=1: a hidden run says what is kept after each look.
+                #[cfg(feature = "shot")]
+                if std::env::var("BLOXKEEP_SHOT_MEM").is_ok() {
+                    let (n, bytes, copies, pixels) = held(cx);
+                    eprintln!("pictures kept: {n} ({} KB as fetched), {copies} sized copies ({} KB of pixels)", bytes / 1024, pixels / 1024);
+                }
+            });
+        }
+    })
+    .detach();
+}
+
+/// Whether a picture or a copy was last asked for more than AWAY before `asked`.
+fn may_be_away(images: &Images, asked: Instant) -> bool {
+    images.slots.values().any(|s| matches!(s, Slot::Ready(_, _, used, _) if *used + AWAY < asked))
+        || images.copies.values().flatten().any(|c| matches!(c.state, CopyState::Ready(_)) && c.used + AWAY < asked)
+}
+
+/// What is kept now: the pictures and their bytes as fetched, the sized copies and their pixels' bytes.
+pub fn held(cx: &App) -> (usize, u64, usize, u64) {
+    let images = cx.global::<Images>();
+    let (mut n, mut bytes, mut copies, mut pixels) = (0, 0u64, 0, 0u64);
+    for s in images.slots.values() {
+        if let Slot::Ready(i, ..) = s {
+            n += 1;
+            bytes += i.bytes.len() as u64;
+        }
+    }
+    for c in images.copies.values().flatten() {
+        if let CopyState::Ready(r) = &c.state {
+            copies += 1;
+            let size = r.size(0);
+            pixels += size.width.0.max(0) as u64 * size.height.0.max(0) as u64 * 4;
+        }
+    }
+    (n, bytes, copies, pixels)
 }
 
 /// Where pictures from the web are kept on this PC: Bloxkeep's cache folder (BLOXKEEP_KEPT or BLOXKEEP_DATA: a hidden
@@ -488,7 +561,7 @@ fn copy(url: &str, long: u32, original: &Arc<Image>, (w, h): (u32, u32), sigma: 
                         Some(r) => CopyState::Ready(Arc::new(r)),
                         None => CopyState::Failed,
                     };
-                    trim(cx);
+                    trim(cx, None);
                     cx.refresh_windows();
                 });
             })
@@ -524,8 +597,10 @@ pub fn tone(url: &str, cx: &mut App) -> Option<u32> {
 /// past MAX_FAILED; the smaller copies the same way, and also those whose picture went, and those not drawn for
 /// SUPERSEDED while another size of theirs was drawn since. Run outside any window's drawing (a picture's arrival), so
 /// every window's atlas can be reached.
-fn trim(cx: &mut App) {
+fn trim(cx: &mut App, asked: Option<Instant>) {
     let images = cx.global_mut::<Images>();
+    // (The pictures away: every window drew after `asked`, so one last asked for more than AWAY before it is on none.)
+    let away = |used: Instant| asked.is_some_and(|a| used + AWAY < a);
     let failed = images.slots.values().filter(|s| matches!(s, Slot::Failed(..))).count();
     if failed > MAX_FAILED {
         images.slots.retain(|_, s| !matches!(s, Slot::Failed(..)));
@@ -533,7 +608,16 @@ fn trim(cx: &mut App) {
     let now = Instant::now();
     let count = images.slots.values().filter(|s| matches!(s, Slot::Ready(..))).count();
     let mut gone: Vec<Arc<Image>> = Vec::new();
-    if count > MAX_READY {
+    if asked.is_some() {
+        let keys: Vec<String> = images.slots.iter().filter_map(|(k, s)| matches!(s, Slot::Ready(_, _, used, _) if away(*used)).then(|| k.clone())).collect();
+        for k in keys {
+            if let Some(Slot::Ready(i, _, _, _)) = images.slots.remove(&k) {
+                gone.push(i);
+            }
+        }
+        let kept: std::collections::HashSet<u64> = images.slots.values().filter_map(|s| if let Slot::Ready(i, _, _, _) = s { Some(i.id) } else { None }).collect();
+        gone.retain(|i| !kept.contains(&i.id));
+    } else if count > MAX_READY {
         let mut idle: Vec<(Instant, String)> = images
             .slots
             .iter()
@@ -568,7 +652,7 @@ fn trim(cx: &mut App) {
             }
             let idle = now.duration_since(c.used);
             let superseded = idle >= SUPERSEDED && latest.is_some_and(|l| l > c.used);
-            if kept && !superseded {
+            if kept && !superseded && !away(c.used) {
                 return true;
             }
             if let CopyState::Ready(r) = &c.state {
@@ -721,7 +805,7 @@ pub fn pic(url: &str, cx: &mut App) -> Option<Arc<Image>> {
                 Got::Failed(gone) => Slot::Failed(Instant::now(), fails + 1, gone),
             };
             images.slots.insert(key, slot);
-            trim(cx);
+            trim(cx, None);
             cx.refresh_windows();
         });
     })

@@ -760,12 +760,61 @@ fn block(root: &Root, id: &str, b: &Value, w: f32, cx: &mut Context<Root>) -> Op
     })
 }
 
-/// A card's blocks in order; a card Discord hides as a spoiler stays hidden until clicked.
-pub fn blocks(root: &Root, card_id: &str, list: &[Value], spoiler: bool, w: f32, cx: &mut Context<Root>) -> AnyElement {
+/// A button that is of no use in the app: one that only answers inside Discord (another bot's own button or menu), or
+/// a link that leads back into Discord (the bot's "Add me to your server", its support server).
+fn idle_button(b: &Value) -> bool {
+    match b.get("url").and_then(Value::as_str) {
+        None => true,
+        Some(u) => {
+            let host = u.strip_prefix("https://").unwrap_or(u).split(['/', '?']).next().unwrap_or_default().to_ascii_lowercase();
+            ["discord.gg", "discord.com", "discordapp.com", "top.gg", "dsc.gg"].iter().any(|d| host == *d || host.ends_with(&format!(".{d}")))
+        }
+    }
+}
+
+/// A card's blocks without what is only the bot talking about itself (the owner, 2026-11-15: the News tab "trông lộn
+/// xộn": every alert ended with the bot's own line and an "Add me to your server" button): buttons of no use here, a
+/// footer that only names the sender (the card's head has the sender and the time), and a rule left at the end or
+/// doubled by what went.
+fn tidied(list: &[Value], author: &str) -> Vec<Value> {
+    let name = author.trim().to_lowercase();
+    let mut out: Vec<Value> = Vec::new();
+    for b in list {
+        match st(b, "t") {
+            "buttons" => {
+                let kept: Vec<Value> = b.get("items").and_then(Value::as_array).into_iter().flatten().filter(|x| !idle_button(x)).cloned().collect();
+                if kept.is_empty() {
+                    continue;
+                }
+                let mut b = b.clone();
+                b["items"] = Value::Array(kept);
+                out.push(b);
+            }
+            "section" if b.get("button").is_some_and(|x| x.is_object() && idle_button(x)) && b.get("thumb").and_then(Value::as_str).is_none() => {
+                let mut b = b.clone();
+                if let Some(o) = b.as_object_mut() {
+                    o.remove("button");
+                }
+                out.push(b);
+            }
+            "footer" if st(b, "md").trim().is_empty() || (!name.is_empty() && st(b, "md").to_lowercase().contains(&name)) => continue,
+            "sep" if out.last().is_none_or(|l| st(l, "t") == "sep") => continue,
+            _ => out.push(b.clone()),
+        }
+    }
+    while out.last().is_some_and(|l| st(l, "t") == "sep") {
+        out.pop();
+    }
+    out
+}
+
+/// A card's blocks in order; a card Discord hides as a spoiler stays hidden until clicked. `author` is who sent it.
+pub fn blocks(root: &Root, card_id: &str, list: &[Value], author: &str, spoiler: bool, w: f32, cx: &mut Context<Root>) -> AnyElement {
     let key = format!("{card_id}:all");
     if spoiler && !shown(&key) {
         return hidden(root, format!("nb-{card_id}-hidden"), key, 44., cx);
     }
+    let list = &tidied(list, author);
     div()
         .flex()
         .flex_col()

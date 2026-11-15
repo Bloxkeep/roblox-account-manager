@@ -174,7 +174,34 @@ pub struct Palette {
 impl Palette {
     /// Dark: the constants as they are.
     fn own() -> Palette {
-        Palette { slots: SLOTS.map(|h| rgb(h).into()), tint: rgb(WHITE).into(), dark: true, backdrop: None }
+        #[allow(unused_mut)]
+        let mut slots: [Hsla; 21] = SLOTS.map(|h| rgb(h).into());
+        // BLOXKEEP_SHOT_TONES="ground=0c0d10,panel=121317,…": a hidden shot of Dark with other grounds and words, to
+        // lay candidates side by side before any is taken.
+        #[cfg(feature = "shot")]
+        if let Ok(list) = std::env::var("BLOXKEEP_SHOT_TONES") {
+            for part in list.split(',') {
+                let Some((k, v)) = part.split_once('=') else { continue };
+                let i = match k.trim() {
+                    "ground" => 0,
+                    "panel" => 1,
+                    "raised" => 2,
+                    "raised2" => 3,
+                    "text" => 4,
+                    "text2" => 5,
+                    "muted" => 6,
+                    "dim" => 7,
+                    "rail" => 16,
+                    "line" => 17,
+                    "inset" => 18,
+                    _ => continue,
+                };
+                if let Ok(h) = u32::from_str_radix(v.trim(), 16) {
+                    slots[i] = rgb(h).into();
+                }
+            }
+        }
+        Palette { slots, tint: rgb(WHITE).into(), dark: true, backdrop: None }
     }
 
     /// A colour of this palette (for a theme's preview tile, drawn in its own colours).

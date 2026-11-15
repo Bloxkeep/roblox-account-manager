@@ -286,6 +286,89 @@ pub(crate) fn read_private_servers(body: &str) -> (Vec<PrivateServer>, Option<St
     (list, next)
 }
 
+/// A private server an account owns, as Roblox lists them under Inventory › Private Servers (its MyPrivateServersData:
+/// create.roblox.com's "Private servers" reference). `expires` is Roblox's date text, "" when it gives none.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct OwnedServer {
+    pub id: i64,
+    pub name: String,
+    pub place_id: i64,
+    pub universe_id: i64,
+    pub game: String,
+    pub owner_id: i64,
+    pub active: bool,
+    pub price: i64,
+    pub expires: String,
+    pub renews: bool,
+}
+
+/// One page of that answer and the next page's cursor.
+pub(crate) fn read_owned_servers(body: &str) -> (Vec<OwnedServer>, Option<String>) {
+    let Ok(Value::Object(root)) = serde_json::from_str::<Value>(body) else { return (Vec::new(), None) };
+    let next = root.get("nextPageCursor").and_then(Value::as_str).filter(|n| !n.is_empty()).map(str::to_string);
+    let list = root
+        .get("data")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(|s| {
+            let num = |k: &str| s.get(k).and_then(Value::as_i64).unwrap_or(0);
+            let text = |k: &str| s.get(k).and_then(Value::as_str).unwrap_or_default().to_string();
+            let yes = |k: &str| s.get(k).and_then(Value::as_bool).unwrap_or(false);
+            let id = num("privateServerId");
+            (id > 0).then(|| OwnedServer {
+                id,
+                name: text("name"),
+                place_id: num("placeId"),
+                universe_id: num("universeId"),
+                game: text("universeName"),
+                owner_id: num("ownerId"),
+                active: yes("active"),
+                price: num("priceInRobux"),
+                expires: text("expirationDate"),
+                renews: yes("willRenew"),
+            })
+        })
+        .collect();
+    (list, next)
+}
+
+/// The private servers this account owns (GET /v1/private-servers/my-private-servers, the "MyPrivateServers" tab), 25
+/// a page as roblox.com asks, at most 12 pages; 429 and a lost sign-in fail.
+pub fn get_owned_servers(cookie: &str, ct: &Cancel) -> Res<Vec<OwnedServer>> {
+    let mut list = Vec::new();
+    let mut cursor: Option<String> = None;
+    for _page in 0..12 {
+        let url = format!(
+            "https://games.roblox.com/v1/private-servers/my-private-servers?privateServersTab=MyPrivateServers&itemsPerPage=25{}",
+            cursor.as_deref().map(|c| format!("&cursor={}", escape_data_string(c))).unwrap_or_default()
+        );
+        let req = request("GET", &url, Some(cookie), false, realm::GLOBAL);
+        let res = send(&req, ct)?;
+        if res.status == 429 {
+            return Err(rate_limited_by(&res));
+        }
+        if res.status == 401 {
+            return Err(RobloxApiException { status: 401, cookie_invalid: true, ..RobloxApiException::new(l::t("This account was signed out — sign in to it again.")) }.into());
+        }
+        if !res.is_success() {
+            return Err(RobloxApiException {
+                status: res.status,
+                server_error: res.status >= 500,
+                ..RobloxApiException::new(l::f("Roblox didn't answer (HTTP {0}).", &[&res.status]))
+            }
+            .into());
+        }
+        let (page, next) = read_owned_servers(&res.text());
+        list.extend(page);
+        cursor = next;
+        if cursor.is_none() {
+            break;
+        }
+    }
+    Ok(list)
+}
+
 /// Where a share link leads: the place, a private server's link code, an invite's server (while the invite is valid), a
 /// link's launch data. Expired links still join, as on the website.
 #[derive(Clone, Debug, Default, PartialEq)]

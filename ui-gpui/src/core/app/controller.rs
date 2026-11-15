@@ -906,6 +906,7 @@ impl App {
             "openGamePage" => done(App::open_game_page(long_of(a, "placeId"))),
             "friendServers" => done(self.friend_servers(long_of(a, "placeId"), &ids_of(a)).await),
             "privateServers" => done(self.private_servers(long_of(a, "placeId"), &ids_of(a)).await),
+            "ownedServers" => done(self.owned_servers(bool_of(a, "fresh")).await),
             "pinGame" => done(self.toggle_pin(long_of(a, "placeId"), long_of(a, "universeId"), &str_of(a, "name"))),
             "saveServer" => done(self.save_server(a)),
             "deleteServer" => done(self.delete_server(id_of(a))),
@@ -969,6 +970,7 @@ impl App {
                     let path = match kind.as_str() {
                         "bundle" => "bundles",
                         "group" => "communities",
+                        "badge" => "badges",
                         _ => "catalog",
                     };
                     format!("https://www.roblox.com/{path}/{}", long_of(a, "id"))

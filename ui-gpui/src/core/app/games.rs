@@ -16,7 +16,7 @@ use crate::core::{
     game_target::GameTarget,
     l, log,
     models::{Account, RecentGame},
-    roblox_api::{self, GameInfo, PrivateServer, RobloxUser, ServerInfo, realm},
+    roblox_api::{self, GameInfo, OwnedServer, PrivateServer, RobloxUser, ServerInfo, realm},
     rt,
 };
 
@@ -60,6 +60,11 @@ pub struct GamesState {
     pub friend_servers: RefCell<HashMap<(i64, String), (Vec<FriendFound>, i32, Stamp)>>,
     pub friend_ids: RefCell<HashMap<i64, (Vec<i64>, Stamp)>>,
     pub private_servers: RefCell<HashMap<(i64, String), (Vec<PrivateFound>, i32, bool, Stamp)>>,
+    /// The private servers the accounts own (each with its owner's account), how many accounts were asked and how
+    /// many of them couldn't be read, kept for a minute.
+    pub owned_servers: RefCell<Option<(Vec<(OwnedServer, Guid)>, i32, i32, Stamp)>>,
+    /// What the last reading of them came to: written to error.log when it changes, not on every reading.
+    pub owned_said: RefCell<String>,
 }
 
 /// A public server as the page reads it (camelCase, as the controller's JSON writes ServerInfo).
@@ -534,6 +539,109 @@ impl App {
             }
         }
         Ok(self.private_servers_dto(&servers, viewers.len() as i32, all_failed))
+    }
+
+    /// Every private server the app's accounts own, for the Roblox tab's "Private servers": Roblox lists them one
+    /// account at a time (Inventory › Private Servers), so each account is asked with its own sign-in, six at a time,
+    /// and the answers are put together by game. `fresh` reads again (the page's refresh).
+    pub async fn owned_servers(self: &Rc<Self>, fresh: bool) -> Res<Value> {
+        let vault = self.held_vault().ok_or_else(|| Fail::user(l::t("Bloxkeep is locked.")))?;
+        if !fresh {
+            if let Some((servers, asked, failed, at)) = &*self.games.owned_servers.borrow() {
+                if at.age_secs() < secs(FRIEND_SERVER_LIFETIME) {
+                    return Ok(self.owned_servers_dto(servers, *asked, *failed));
+                }
+            }
+        }
+        let owners: Vec<Account> = self.vault(|d| {
+            d.accounts.iter().filter(|a| a.user_id > 0 && a.cookie_valid != Some(false) && !a.cookie.is_empty() && a.realm == realm::GLOBAL).cloned().collect()
+        })?;
+        let asks: Vec<(Guid, i64, String)> = owners.iter().map(|a| (a.id, a.user_id, a.cookie.clone())).collect();
+        let answers: Vec<(Guid, i64, Res<Vec<OwnedServer>>)> = rt::blocking(move || {
+            let ct = Cancel::new();
+            let mut all = Vec::new();
+            for group in asks.chunks(6) {
+                let part: Vec<_> = std::thread::scope(|scope| {
+                    let handles: Vec<_> = group
+                        .iter()
+                        .map(|(id, user, cookie)| {
+                            let ct = &ct;
+                            scope.spawn(move || (*id, *user, roblox_api::get_owned_servers(cookie, ct)))
+                        })
+                        .collect();
+                    handles.into_iter().filter_map(|h| h.join().ok()).collect()
+                });
+                all.extend(part);
+            }
+            all
+        })
+        .await;
+        let mut found: Vec<(OwnedServer, Guid)> = Vec::new();
+        let (mut failed, mut failed_kind, mut others) = (0, None::<String>, 0);
+        for (account, user, answer) in answers {
+            match answer {
+                Ok(list) => {
+                    for s in list {
+                        // (Its own only: a server someone else owns and lent it is not "mine", whatever the tab gave.)
+                        if s.owner_id != 0 && s.owner_id != user {
+                            others += 1;
+                        } else if !found.iter().any(|f| f.0.id == s.id) {
+                            found.push((s, account));
+                        }
+                    }
+                }
+                Err(ex) if roblox_api::is_expected_error(&ex) => {
+                    failed += 1;
+                    failed_kind.get_or_insert_with(|| App::log_kind_of(&ex));
+                }
+                Err(ex) => return Err(ex),
+            }
+        }
+        if !same_vault(&self.held_vault(), &Some(vault)) {
+            return Err(Fail::user(l::t("Bloxkeep was locked.")));
+        }
+        // By game, then the ones still running, then by name.
+        found.sort_by(|a, b| {
+            crate::core::win_kit::culture_cmp(&a.0.game, &b.0.game)
+                .then(a.0.universe_id.cmp(&b.0.universe_id))
+                .then(b.0.active.cmp(&a.0.active))
+                .then(crate::core::win_kit::culture_cmp(&a.0.name, &b.0.name))
+        });
+        let said = format!(
+            "Owned private servers: {} read from {} account(s){}{}.",
+            found.len(),
+            owners.len(),
+            if failed > 0 { format!(", {failed} not read ({})", failed_kind.unwrap_or_default()) } else { String::new() },
+            if others > 0 { format!(", {others} of other owners left out") } else { String::new() }
+        );
+        if *self.games.owned_said.borrow() != said {
+            log::note(&said);
+            *self.games.owned_said.borrow_mut() = said;
+        }
+        let (asked, failed) = (owners.len() as i32, failed as i32);
+        // (All failed: not kept, so the next look asks again.)
+        *self.games.owned_servers.borrow_mut() = (asked == 0 || failed < asked).then(|| (found.clone(), asked, failed, Stamp::utc_now()));
+        Ok(self.owned_servers_dto(&found, asked, failed))
+    }
+
+    pub fn owned_servers_dto(&self, servers: &[(OwnedServer, Guid)], asked: i32, failed: i32) -> Value {
+        json!({
+            "asked": asked,
+            "failed": failed,
+            "servers": servers.iter().map(|(s, account)| json!({
+                "id": s.id,
+                "name": s.name,
+                "placeId": s.place_id,
+                "universeId": s.universe_id,
+                "game": s.game,
+                "active": s.active,
+                "price": s.price,
+                "expires": s.expires,
+                "renews": s.renews,
+                "account": self.find_account(*account).map(|a| self.name_text(&a)).unwrap_or_default(),
+                "accountId": account.to_string(),
+            })).collect::<Vec<_>>(),
+        })
     }
 
     pub fn private_servers_dto(&self, servers: &[PrivateFound], asked: i32, failed: bool) -> Value {

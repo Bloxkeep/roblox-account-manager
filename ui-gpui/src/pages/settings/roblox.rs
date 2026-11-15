@@ -83,18 +83,6 @@ fn update_roblox(r: &mut Root, cx: &mut Context<Root>) {
     });
 }
 
-/// A fact in the status card: its name small, its value under it.
-fn fact(name: String, value: impl IntoElement) -> Div {
-    div()
-        .flex_1()
-        .min_w_0()
-        .flex()
-        .flex_col()
-        .gap(px(6.))
-        .child(div().text_size(px(T_S)).text_color(c(MUTED)).child(name))
-        .child(div().flex().text_size(px(T_M)).font_weight(FontWeight::MEDIUM).child(value))
-}
-
 pub(super) fn roblox(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
     let st = st(root);
     let ru = root.state.get("robloxUpdates").unwrap_or(&Value::Null);
@@ -177,11 +165,11 @@ pub(super) fn roblox(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
     let word = watch_word(root, s(w, "check"), b(w, "worked"), "rw")
         .unwrap_or_else(|| (Tone::Muted, root.tr(if s(w, "readAt").is_empty() { "rbx.unknown" } else { "rw.unchecked" })));
     let head = div()
-        .p(px(20.))
+        .px(px(ROW_X))
+        .py(px(16.))
         .flex()
-        .items_start()
-        .gap(px(16.))
-        .child(div().flex_none().child(icon("gamepad", 28., c(TEXT))))
+        .items_center()
+        .gap(px(32.))
         .child(
             div()
                 .flex_1()
@@ -208,10 +196,9 @@ pub(super) fn roblox(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
                         )),
                 )
                 // (Up to date: the badge says it already, so the line under it says what that was checked against.)
-                .child(div().text_size(px(T_M)).text_color(c(TEXT_2)).child(if up_to_date == Some(true) && !updating {
-                    root.tr("set.rbx.same")
-                } else {
-                    rv_text
+                .child(div().text_size(px(T_M)).line_height(px(18.)).text_color(c(MUTED)).child({
+                    let said = if up_to_date == Some(true) && !updating { root.tr("set.rbx.same") } else { rv_text };
+                    if source.is_empty() { said } else { format!("{} · {} {source}", said.trim_end_matches('.'), root.tr("set.rbx.source")) }
                 })),
         )
         .when(can_update, |d| {
@@ -226,15 +213,7 @@ pub(super) fn roblox(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
                 })),
             )
         });
-    let facts = div()
-        .px(px(ROW_X))
-        .py(px(16.))
-        .flex()
-        .gap(px(20.))
-        .child(fact(root.tr("ru.newest"), if latest.is_empty() { root.tr("rbx.unknown") } else { latest.to_string() }))
-        .child(fact(root.tr("rw.title"), badge(word.1.clone(), grey(word.0))))
-        .child(fact(root.tr("set.rbx.source"), if source.is_empty() { "—".to_string() } else { source.to_string() }));
-    let mut card: Vec<AnyElement> = vec![head.into_any_element(), facts.into_any_element()];
+    let mut card: Vec<AnyElement> = vec![head.into_any_element()];
     // Roblox's own installer can't leave windows open: they close and open again.
     let reopens = rv.get("reopens").and_then(Value::as_i64).unwrap_or(0);
     let reopen_q = if reopens > 0 {
@@ -262,8 +241,6 @@ pub(super) fn roblox(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
             }));
         }
     }
-    out.push(group(None, card));
-
     // ── updating by itself
     let auto = st.get("autoUpdateRoblox").and_then(Value::as_bool) != Some(false);
     // When it goes in: once no window is open (accounts opened before then wait, or play on the build running), or at
@@ -286,7 +263,7 @@ pub(super) fn roblox(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
         let items = ["idle", "keep", "now"].into_iter().map(|k| (k, root.tr(&format!("rbx.when.{k}")), false)).collect();
         upd.push(row(root.tr("rbx.when"), None, chips(root, cx, "s-rbx-when", items, &when, |r, v, cx| set(r, json!({ "robloxUpdateWhen": v }), cx))));
     }
-    out.push(group(None, upd));
+    card.extend(upd);
 
     // ── the Multi-Roblox check: what it is, the next build, what to do when it warns
     let mut watch_desc = Vec::new();
@@ -301,7 +278,12 @@ pub(super) fn roblox(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
     let mut watch: Vec<AnyElement> = vec![row(
         root.tr("rw.title"),
         Some(watch_desc.join(" ")),
-        Button::new("rw-how", root.tr("rw.how")).small().quiet().icon_end("external").on_click(cx.listener(|r, _, _, _| r.send("openRobloxWatch", Value::Null))),
+        div()
+            .flex()
+            .items_center()
+            .gap(px(12.))
+            .child(badge(word.1.clone(), grey(word.0)))
+            .child(Button::new("rw-how", root.tr("rw.how")).small().quiet().icon_end("external").on_click(cx.listener(|r, _, _, _| r.send("openRobloxWatch", Value::Null)))),
     )];
     let next = w.get("next").filter(|v| v.is_object());
     if let Some((tone, words)) = next.and_then(|n| watch_word(root, s(n, "check"), false, "rw")) {
@@ -317,7 +299,8 @@ pub(super) fn roblox(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
             Button::new("rw-check2", root.tr("rw.checkBloxkeep")).small().on_click(cx.listener(|r, _, _, cx| check_bloxkeep(r, cx))),
         ));
     }
-    out.push(group(None, watch));
+    card.extend(watch);
+    out.push(group(None, card));
 
     // ── builds seen here, newest first
     let hist: Vec<Value> = ru.get("history").and_then(Value::as_array).cloned().unwrap_or_default();

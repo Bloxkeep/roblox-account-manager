@@ -30,6 +30,7 @@ pub mod home;
 pub mod import_vault;
 pub mod inbox;
 pub mod mods;
+pub mod owned;
 pub mod rsettings;
 pub mod join;
 pub mod wiki;

@@ -124,6 +124,8 @@ pub struct Root {
     pub inbox: pages::inbox::Data,
     /// The Roblox tab's Settings, and its About box.
     pub rset: pages::rsettings::Data,
+    /// The private servers the accounts own (pages/owned.rs).
+    pub owned: pages::owned::Data,
     /// Roblox › Mods, and its search box.
     pub mods: pages::mods::Data,
     pub mods_q: Entity<InputState>,
@@ -572,6 +574,7 @@ impl Root {
             shop_search,
             inbox: Default::default(),
             rset: Default::default(),
+            owned: Default::default(),
             rset_about,
             mods: Default::default(),
             mods_q,
@@ -1049,6 +1052,28 @@ impl Root {
             self.games.view = pages::games::View::Profile;
             pages::profile::shot_club(self, cx);
         }
+        // BLOXKEEP_SHOT_LEAVE=ms: a hidden run leaves its page for Settings after that long (what a page left behind
+        // still holds, measured from outside).
+        #[cfg(feature = "shot")]
+        if let Some(ms) = std::env::var("BLOXKEEP_SHOT_LEAVE").ok().and_then(|v| v.parse::<u64>().ok()) {
+            static LEFT: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+            if !LEFT.swap(true, std::sync::atomic::Ordering::Relaxed) {
+                cx.spawn(async move |this, cx| {
+                    cx.background_executor().timer(std::time::Duration::from_millis(ms)).await;
+                    let _ = this.update(cx, |r, cx| {
+                        r.games.open = None;
+                        r.go(Page::Settings);
+                        cx.notify();
+                    });
+                })
+                .detach();
+            }
+        }
+        // BLOXKEEP_SHOT_OWNED=file.json: on the accounts' own private servers, answered from that file (pages/owned.rs).
+        #[cfg(feature = "shot")]
+        if std::env::var("BLOXKEEP_SHOT_OWNED").is_ok() {
+            self.games.view = pages::games::View::Servers;
+        }
         // BLOXKEEP_SHOT_INBOX=file.json: on the inbox, answered from that file (roblox.rs); BLOXKEEP_SHOT_TAB=1|2 its tab.
         #[cfg(feature = "shot")]
         if std::env::var("BLOXKEEP_SHOT_INBOX").is_ok() {
@@ -1438,6 +1463,7 @@ impl Root {
                 pages::games::View::Inbox => pages::inbox::want(self, &link, cx),
                 pages::games::View::Settings => pages::rsettings::want(self, &link, cx),
                 pages::games::View::Mods => pages::mods::want(self, cx),
+                pages::games::View::Servers => pages::owned::want(self, &link, cx),
                 _ => {}
             }
         }

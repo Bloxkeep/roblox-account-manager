@@ -213,9 +213,11 @@ impl CaptchaWindow {
                 }
             }
         });
-        host::set_handler(hwnd, move |h: HWND, msg: u32, w: WPARAM, l: LPARAM| {
-            let me = weak.upgrade()?;
-            me.on_message(h, msg, w, l)
+        // The window keeps its own state for as long as Windows keeps the window (the handler goes at WM_NCDESTROY):
+        // held only by the task that opens the page, it went once the page was up (see the sign-in window).
+        host::set_handler(hwnd, {
+            let me = me.clone();
+            move |h: HWND, msg: u32, w: WPARAM, l: LPARAM| me.on_message(h, msg, w, l)
         });
         // OnHandleCreated: the themed title bar.
         ui::use_themed_title_bar(hwnd, &themes::current());

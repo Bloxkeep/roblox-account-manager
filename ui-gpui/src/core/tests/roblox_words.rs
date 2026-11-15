@@ -13,6 +13,15 @@ fn filler(n: usize) -> String {
 }
 
 pub async fn run(c: &mut Checks, dir: &str) {
+    // A signed-in ask of Roblox carries a browser tracker id beside the sign-in (Roblox's settings calls answer 400
+    // "Request Context BrowserTrackerID is missing or invalid" without one), the same id all run long.
+    {
+        let (a, b) = (crate::roblox::signed("abc"), crate::roblox::signed("xyz"));
+        let id = |t: &str| t.rsplit("browserid=").next().unwrap_or_default().to_string();
+        c.check("a signed-in ask carries the sign-in and a browser tracker id", a.starts_with(".ROBLOSECURITY=abc; RBXEventTrackerV2=&browserid=") && id(&a).len() == 12 && id(&a).chars().all(|c| c.is_ascii_digit()), &a.replace("abc", "…"));
+        c.check("…the same id for every account, all run long", id(&a) == id(&b) && b.starts_with(".ROBLOSECURITY=xyz; "), ());
+    }
+
     // A call the interface made that failed (net::note_failed): in error.log with ids as "#", no query, no Windows user,
     // and once, not on every poll.
     {

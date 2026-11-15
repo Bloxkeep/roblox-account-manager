@@ -553,7 +553,7 @@ fn detail(root: &Root, x: &Listed, inner: f32, cx: &mut Context<Root>) -> Div {
                 .flex()
                 .flex_col()
                 .gap(px(2.))
-                .child(div().text_size(px(T_FIG)).font_weight(FontWeight::SEMIBOLD).truncate().child(x.name.clone()))
+                .child(div().text_size(px(26.)).line_height(px(32.)).font_weight(FontWeight::BOLD).truncate().child(x.name.clone()))
                 .child(div().text_size(px(T_M)).text_color(c(MUTED)).truncate().child(format!("{} · {}", kind_words(root, &x.kind), x.by))),
         )
         .child(Button::new("modp-web", root.tr("mods.onBanana")).icon("external").on_click(cx.listener(move |r, _, _, _| r.send("openModPage", json!({ "id": id })))))
@@ -578,17 +578,20 @@ fn detail(root: &Root, x: &Listed, inner: f32, cx: &mut Context<Root>) -> Div {
     });
 
     let wide = inner >= 900.;
-    let side_w = 320.;
+    let side_w = 340.;
     let main_w = if wide { inner - side_w - 24. } else { inner };
-    let pic_h = (main_w * 9. / 16.).round().min(540.);
     let profile = m.profile.as_ref();
     let pics: Vec<String> = match profile {
         Some(Ok(p)) if !p.pics.is_empty() => p.pics.clone(),
         _ => (!x.pic.is_empty()).then(|| x.pic.clone()).into_iter().collect(),
     };
     let at = m.shot.min(pics.len().saturating_sub(1));
+    // The picture's own shape sets how tall its place is (a square one in a 16:9 box stood between two grey bands), up
+    // to 560; and the place is dark as a picture viewer's, so what is left beside a narrow one reads as its frame.
+    let shape = pics.get(at).and_then(|u| images::dims(u, cx)).map(|(w, h)| h as f32 / w.max(1) as f32).unwrap_or(9. / 16.);
+    let pic_h = (main_w * shape).round().clamp(240., 560.);
     let big = pics.get(at).and_then(|u| images::pic_pair(u, main_w, pic_h, cx));
-    let stage = div().w(px(main_w)).h(px(pic_h)).rounded(px(R_L)).overflow_hidden().bg(c(RAISED)).flex().items_center().justify_center().map(|d| match big {
+    let stage = div().w(px(main_w)).h(px(pic_h)).rounded(px(R_L)).overflow_hidden().bg(c(INSET)).border_1().border_color(c(LINE)).flex().items_center().justify_center().map(|d| match big {
         // (Whole, not cut to the frame: a mod's picture often shows several things side by side.)
         Some((src, key)) => d.child(fade_in(img(src).size_full().object_fit(ObjectFit::Contain), &key)),
         None => d.child(icon("image", 28., c(DIM))),
@@ -613,45 +616,88 @@ fn detail(root: &Root, x: &Listed, inner: f32, cx: &mut Context<Root>) -> Div {
                 }))
         }))
     });
+    // A block of the page: its mark, its name, then what it holds.
+    let block_of = |mark: &'static str, tone: u32, title: String, body: AnyElement| {
+        surface().p(px(18.)).flex().flex_col().gap(px(12.)).child(div().flex().items_center().gap(px(12.)).child(mark_chip(mark, tone, 32.)).child(div().text_size(px(T_SEC)).font_weight(FontWeight::SEMIBOLD).child(title))).child(body)
+    };
     let words = match profile {
-        None => note(root.tr("mods.reading")),
-        Some(Err(why)) => note(root.i18n.tv("mods.readFailed", &[("why", if why.is_empty() { "GameBanana" } else { why })])),
-        Some(Ok(p)) if p.text.is_empty() => div(),
-        Some(Ok(p)) => div()
-            .flex()
-            .flex_col()
-            .gap(px(6.))
-            .child(div().text_size(px(T_SEC)).font_weight(FontWeight::SEMIBOLD).child(root.tr("mods.d.about")))
-            .children(p.text.lines().map(|l| div().min_h(px(8.)).text_size(px(T_L)).line_height(px(22.)).text_color(c(TEXT_2)).child(l.to_string()))),
+        None => Some(note(root.tr("mods.reading"))),
+        Some(Err(why)) => Some(note(root.i18n.tv("mods.readFailed", &[("why", if why.is_empty() { "GameBanana" } else { why })]))),
+        Some(Ok(p)) if p.text.is_empty() => None,
+        Some(Ok(p)) => Some(block_of(
+            "book",
+            ONLINE,
+            root.tr("mods.d.about"),
+            div().flex().flex_col().gap(px(4.)).children(p.text.lines().map(|l| div().min_h(px(8.)).text_size(px(T_L)).line_height(px(23.)).text_color(c(TEXT_2)).child(l.to_string()))).into_any_element(),
+        )),
     };
-    let main = div().w(px(main_w)).flex().flex_col().gap(px(14.)).child(stage).children(thumbs).child(words);
+    let main = div().w(px(main_w)).flex().flex_col().gap(px(14.)).child(stage).children(thumbs).children(words);
 
-    let fact = |icon_name: &'static str, name: String, value: String| {
-        div().flex().items_center().gap(px(10.)).child(icon(icon_name, 14., c(MUTED))).child(div().flex_1().text_color(c(MUTED)).child(name)).child(div().text_color(c(TEXT)).font_features(tnum()).child(value))
-    };
+    // Its figures in one strip, each with its own mark: what GameBanana's page leads with.
     let now = crate::time::now_secs();
-    let mut side = surface().w(px(if wide { side_w } else { main_w })).flex_none().p(px(18.)).flex().flex_col().gap(px(12.)).text_size(px(T_M));
+    let figure = |mark: &'static str, tone: u32, name: String, value: String| {
+        div()
+            .flex_1()
+            .min_w(px(150.))
+            .px(px(16.))
+            .py(px(14.))
+            .flex()
+            .items_center()
+            .gap(px(12.))
+            .child(mark_chip(mark, tone, 36.))
+            .child(div().flex().flex_col().min_w_0().child(div().text_size(px(T_S)).text_color(c(MUTED)).truncate().child(name)).child(div().text_size(px(20.)).line_height(px(26.)).font_weight(FontWeight::BOLD).font_features(tnum()).truncate().child(value)))
+    };
+    let strip = match profile {
+        Some(Ok(p)) => {
+            let mut cells = vec![
+                figure("starFill", FACE, root.tr("mods.d.likes"), crate::pages::games::thousands(p.likes, vi)),
+                figure("eye", ONLINE, root.tr("mods.d.views"), crate::pages::games::thousands(p.views, vi)),
+                figure("download", OK, root.tr("mods.d.downloads"), crate::pages::games::thousands(p.downloads, vi)),
+            ];
+            if p.updated > 0 {
+                cells.push(figure("clock", TEXT_2, root.tr("mods.d.updated"), age(now - p.updated, vi)));
+            } else if p.added > 0 {
+                cells.push(figure("calendar", TEXT_2, root.tr("mods.d.added"), age(now - p.added, vi)));
+            }
+            if !p.version.is_empty() {
+                cells.push(figure("tag", TEXT_2, root.tr("mods.d.version"), p.version.clone()));
+            }
+            Some(surface().flex().flex_wrap().children(cells.into_iter().enumerate().map(|(i, cell)| cell.when(i > 0, |d| d.border_l_1().border_color(c(LINE))))))
+        }
+        _ => None,
+    };
+
+    let mut side = div().w(px(if wide { side_w } else { main_w })).flex_none().flex().flex_col().gap(px(14.)).text_size(px(T_M));
     if let Some(Ok(p)) = profile {
-        side = side
-            .child(fact("star", root.tr("mods.d.likes"), crate::pages::games::thousands(p.likes, vi)))
-            .child(fact("eye", root.tr("mods.d.views"), crate::pages::games::thousands(p.views, vi)))
-            .child(fact("download", root.tr("mods.d.downloads"), crate::pages::games::thousands(p.downloads, vi)))
-            .when(p.added > 0, |d| d.child(fact("calendar", root.tr("mods.d.added"), age(now - p.added, vi))))
-            .when(p.updated > 0 && p.updated != p.added, |d| d.child(fact("clock", root.tr("mods.d.updated"), age(now - p.updated, vi))))
-            .when(!p.version.is_empty(), |d| d.child(fact("tag", root.tr("mods.d.version"), p.version.clone())))
-            .when(!p.category.is_empty(), |d| d.child(fact("layers", root.tr("mods.d.kind"), p.category.clone())));
         if !p.files.is_empty() {
-            side = side.child(div().mt(px(6.)).font_weight(FontWeight::SEMIBOLD).child(root.tr("mods.d.files"))).children(
-                p.files.iter().take(8).map(|(name, size)| div().flex().items_center().gap(px(10.)).child(div().flex_1().min_w_0().truncate().text_color(c(TEXT_2)).child(name.clone())).child(div().flex_none().text_color(c(MUTED)).font_features(tnum()).child(size_words(*size)))),
-            );
+            let rows = div().flex().flex_col().children(p.files.iter().take(8).enumerate().map(|(i, (name, size))| {
+                div()
+                    .h(px(40.))
+                    .flex()
+                    .items_center()
+                    .gap(px(10.))
+                    .when(i > 0, |d| d.border_t_1().border_color(ca(WHITE, 0.05)))
+                    .child(icon("folder", 14., c(DIM)))
+                    .child(div().flex_1().min_w_0().truncate().text_color(c(TEXT)).child(name.clone()))
+                    .child(div().flex_none().text_color(c(MUTED)).font_features(tnum()).child(size_words(*size)))
+            }));
+            side = side.child(block_of("download", OK, root.tr("mods.d.files"), rows.into_any_element()));
         }
         for (group, names) in &p.credits {
-            side = side.child(div().mt(px(6.)).font_weight(FontWeight::SEMIBOLD).child(if group.is_empty() { root.tr("mods.d.credits") } else { group.clone() })).children(names.iter().take(12).map(|(name, role)| {
-                div().flex().flex_col().child(div().text_color(c(TEXT)).truncate().child(name.clone())).when(!role.is_empty(), |d| d.child(div().text_size(px(T_S)).text_color(c(MUTED)).truncate().child(role.clone())))
+            let rows = div().flex().flex_col().gap(px(10.)).children(names.iter().take(12).map(|(name, role)| {
+                let first: String = name.chars().find(|c| c.is_alphanumeric()).map(|c| c.to_uppercase().collect()).unwrap_or_else(|| "?".into());
+                div()
+                    .flex()
+                    .items_center()
+                    .gap(px(10.))
+                    .child(div().size(px(30.)).flex_none().rounded_full().bg(c(RAISED_2)).flex().items_center().justify_center().text_size(px(T_S)).font_weight(FontWeight::BOLD).text_color(c(TEXT_2)).child(first))
+                    .child(div().flex().flex_col().min_w_0().child(div().text_color(c(TEXT)).font_weight(FontWeight::MEDIUM).truncate().child(name.clone())).when(!role.is_empty(), |d| d.child(div().text_size(px(T_S)).text_color(c(MUTED)).truncate().child(role.clone()))))
             }));
+            side = side.child(block_of("users", TEXT_2, if group.is_empty() { root.tr("mods.d.credits") } else { group.clone() }, rows.into_any_element()));
         }
-    } else {
-        side = side.child(fact("eye", root.tr("mods.d.views"), crate::pages::games::thousands(x.views, vi)));
+        if !p.category.is_empty() {
+            side = side.child(div().flex().items_center().gap(px(8.)).px(px(4.)).text_color(c(MUTED)).child(icon("layers", 14., c(DIM))).child(root.tr("mods.d.kind")).child(div().text_color(c(TEXT_2)).child(p.category.clone())));
+        }
     }
     let body = div().flex().items_start().gap(px(24.)).when(!wide, |d| d.flex_col()).child(main).child(side);
     div()
@@ -661,6 +707,7 @@ fn detail(root: &Root, x: &Listed, inner: f32, cx: &mut Context<Root>) -> Div {
         .child(head)
         .children(why.map(|t| div().text_size(px(T_M)).text_color(c(WARN)).child(t)))
         .children(picks)
+        .children(strip)
         .child(body)
         .child(div().text_size(px(T_S)).text_color(c(MUTED)).child(root.tr("mods.from")))
 }

@@ -73,6 +73,19 @@ fn each<T: Send, R: Send>(things: Vec<T>, ask: impl Fn(T) -> R + Sync) -> Vec<R>
     })
 }
 
+/// The Cookie header of a signed-in ask: the account's sign-in, and a browser tracker id as roblox.com's own pages
+/// carry (the RBXEventTrackerV2 cookie's "browserid"). Roblox's settings calls refuse an ask without one: 400 "Request
+/// Context BrowserTrackerID is missing or invalid" (the owner's error.log, 2026-11-15). One id for the whole run, as
+/// one browser has one for all the accounts signed in to it.
+pub(crate) fn signed(cookie: &str) -> String {
+    static TRACKER: std::sync::OnceLock<u64> = std::sync::OnceLock::new();
+    let id = TRACKER.get_or_init(|| {
+        let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_nanos() as u64);
+        100_000_000_000 + (now ^ ((std::process::id() as u64) << 20)) % 899_999_999_999
+    });
+    format!(".ROBLOSECURITY={cookie}; RBXEventTrackerV2=&browserid={id}")
+}
+
 fn get(url: &str, cookie: Option<&str>) -> Result<Value, String> {
     let out = get_once(url, cookie);
     if let Err(why) = &out {
@@ -84,7 +97,7 @@ fn get(url: &str, cookie: Option<&str>) -> Result<Value, String> {
 fn get_once(url: &str, cookie: Option<&str>) -> Result<Value, String> {
     let mut req = agent().get(url).set("Accept", "application/json");
     if let Some(c) = cookie.filter(|c| !c.is_empty()) {
-        req = req.set("Cookie", &format!(".ROBLOSECURITY={c}"));
+        req = req.set("Cookie", &signed(c));
     }
     match req.call() {
         Ok(r) => {
@@ -674,7 +687,7 @@ fn send_text_once(method: &str, url: &str, body: &Value, cookie: Option<&str>) -
     let send = |token: Option<&str>| {
         let mut req = agent().request(method, url).set("Accept", "application/json").set("Content-Type", "application/json");
         if let Some(c) = cookie.filter(|c| !c.is_empty()) {
-            req = req.set("Cookie", &format!(".ROBLOSECURITY={c}"));
+            req = req.set("Cookie", &signed(c));
         }
         if let Some(t) = token {
             req = req.set("x-csrf-token", t);
@@ -1084,6 +1097,25 @@ pub fn inventory(cookie: &str, user: i64, kinds: &str, cursor: &str) -> Result<(
         .collect();
     let ids: Vec<i64> = list.iter().map(|o| o.id).collect();
     let got = thumbs("assets?size=150x150&assetIds=", &ids);
+    for o in &mut list {
+        o.pic = got.get(&o.id).cloned().unwrap_or_default();
+    }
+    Ok((list, text(&d, "nextPageCursor")))
+}
+
+/// A page (50) of the badges a user has won, newest first, and the mark for the next page (empty: the last): the
+/// inventory's Badges shelf (badges.roblox.com's /v1/users/{id}/badges, with the sign-in so a private inventory answers
+/// its owner).
+pub fn badges_page(cookie: &str, user: i64, cursor: &str) -> Result<(Vec<Owned>, String), String> {
+    let mut url = format!("https://badges.roblox.com/v1/users/{user}/badges?limit=50&sortOrder=Desc");
+    if !cursor.is_empty() {
+        url += &format!("&cursor={}", enc(cursor));
+    }
+    let d = get(&url, Some(cookie))?;
+    let mut list: Vec<Owned> =
+        d.get("data").and_then(Value::as_array).into_iter().flatten().filter(|v| int(v, "id") > 0).map(|v| Owned { id: int(v, "id"), name: text(v, "name").trim().to_string(), kind: "Badge".into(), pic: String::new() }).collect();
+    let ids: Vec<i64> = list.iter().map(|o| o.id).collect();
+    let got = thumbs("badges/icons?size=150x150&badgeIds=", &ids);
     for o in &mut list {
         o.pic = got.get(&o.id).cloned().unwrap_or_default();
     }
@@ -3138,8 +3170,8 @@ const USER_SETTINGS: &str = "https://apis.roblox.com/user-settings-api/v1/user-s
 
 /// Who sees the account online and who may join it in a game (Roblox's Settings › Privacy › Visibility, its help page
 /// "Online Status and Visibility"), as the website's own words: "AllUsers", "Friends", "NoOne"… Empty for one Roblox's
-/// answer lacks. The endpoint is the website's (it answers 401 without a sign-in, asked 2026-11-11); the field names
-/// are as others have written them down, not tried on a real account yet.
+/// answer lacks. The endpoint is the website's; it wants the browser tracker id every signed-in ask now carries
+/// (`signed`), and error.log says what its answer held.
 pub fn visibility(cookie: &str) -> Result<(String, String), String> {
     // (A hidden shot of the account's Settings: an answer of its own.)
     #[cfg(feature = "shot")]

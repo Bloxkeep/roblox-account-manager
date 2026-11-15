@@ -383,6 +383,7 @@ impl App {
         self.games.friend_ids.borrow_mut().clear();
         self.games.friend_servers.borrow_mut().clear();
         self.games.private_servers.borrow_mut().clear(); // their access codes are the vault's accounts'
+        *self.games.owned_servers.borrow_mut() = None; // the vault's accounts' own
         *self.game_picker.favorite_games.borrow_mut() = None;
         *self.game_picker.popular_games.borrow_mut() = None;
         self.join_player.players.borrow_mut().clear();

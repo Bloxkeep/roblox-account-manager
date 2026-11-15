@@ -468,13 +468,26 @@ impl GithubSource {
         let text = HTTP.get(address.as_str())
             .set("Accept", "application/vnd.github.v3+json")
             .call()
-            .map_err(|e| velopack::Error::Generic(e.to_string()))?
+            .map_err(|e| velopack::Error::Generic(GithubSource::why(e)))?
             .into_string()?;
         let mut releases: Vec<GithubRelease> = serde_json::from_str(&text)?;
         // OrderByDescending(PublishedAt): stable, none (a draft) last. GitHub writes every date one way, so the text sorts.
         releases.sort_by(|a, b| b.published_at.cmp(&a.published_at));
         releases.retain(|r| include_prereleases || !r.prerelease);
         Ok(releases)
+    }
+
+    /// Why GitHub refused, for error.log: its 403/429 with no asks left is the hourly limit GitHub gives one network
+    /// (60 asks without a sign-in, shared by everything on it), said as that with the minutes until it opens again.
+    fn why(e: ureq::Error) -> String {
+        if let ureq::Error::Status(code @ (403 | 429), r) = &e {
+            if r.header("x-ratelimit-remaining") == Some("0") {
+                let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs());
+                let wait = r.header("x-ratelimit-reset").and_then(|t| t.parse::<u64>().ok()).map_or(0, |at| at.saturating_sub(now).div_ceil(60));
+                return format!("GitHub's hourly limit for this network is used up (status {code}); it opens again in about {wait} min, and the next hourly update check asks again");
+            }
+        }
+        e.to_string()
     }
 
     /// GetAssetUrlFromName: the release's first asset of that name; its browser address (no access token).

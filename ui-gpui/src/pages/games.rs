@@ -60,6 +60,8 @@ pub enum View {
     Settings,
     /// Mods for the Roblox client, for every account (pages/mods.rs).
     Mods,
+    /// The private servers the accounts own, all of them together (pages/owned.rs).
+    Servers,
 }
 
 /// The header's switch between them, as one black capsule in the middle of the header (the owner, 2026-11-14:
@@ -74,13 +76,14 @@ pub fn views(root: &Root, cx: &mut Context<Root>) -> impl IntoElement {
     let unread = (root.games.corner.unread.0 + root.games.corner.unread.1).max(0) as usize;
     let fresh = root.profile.watch.iter().any(|w| w.fresh);
     // (view, icon, words, a count beside it and its colour, a dot)
-    let items: [(View, &str, &str, usize, u32, bool); 8] = [
+    let items: [(View, &str, &str, usize, u32, bool); 9] = [
         (View::Games, "grid", "news.title", 0, OK, false),
         (View::Friends, "users", "nav.friends", in_game, OK, false),
         (View::Avatar, "user", "nav.avatar", 0, OK, false),
         (View::Profile, "userGo", "nav.profile", 0, OK, false),
         (View::Shop, "tag", "nav.shop", 0, OK, fresh),
         (View::Inbox, "message", "nav.inbox", unread, FACE, false),
+        (View::Servers, "bookmark", "inv.title", 0, OK, false),
         (View::Mods, "layers", "nav.mods", 0, OK, false),
         (View::Settings, "sliders", "nav.settings", 0, OK, false),
     ];
@@ -1556,8 +1559,11 @@ pub fn games(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElemen
         None if root.games.view == View::Inbox => crate::pages::inbox::inbox(root, width, cx).into_any_element(),
         None if root.games.view == View::Settings => crate::pages::rsettings::page(root, width, cx).into_any_element(),
         None if root.games.view == View::Mods => crate::pages::mods::page(root, width, cx).into_any_element(),
+        None if root.games.view == View::Servers => crate::pages::owned::page(root, width, cx).into_any_element(),
         None => shell.child(grid(root, &all, width, cx)).into_any_element(),
     };
+    // (The page is built: what is drawn after it, a dialog or another window, is no game's.)
+    set_game_tint(None);
     // The account tabs over it all (pages/tabs.rs): what is under them is the tab shown.
     // (Robux and the bell at the strip's right, as Roblox's top bar; over the page, Roblox holding the account.)
     let top = div().flex_none().flex().items_center().gap(px(8.)).child(crate::pages::tabs::strip(root, cx)).child(div().flex_1()).children(corner(root, cx));
@@ -2633,6 +2639,9 @@ fn card(root: &Root, g: &Game, w: f32, cx: &mut Context<Root>) -> impl IntoEleme
 fn page(root: &Root, all: &[Game], open: Open, width: f32, cx: &mut Context<Root>) -> impl IntoElement {
     let game = all.iter().find(|g| g.id == open.id);
     let place = game.map(|g| g.place).filter(|p| *p > 0).unwrap_or(open.place);
+    // The game's own colour (from its icon, else its cover) for everything on its page.
+    let own = game.and_then(|g| icon_of(root, g)).or_else(|| look(root, place, "icon")).or_else(|| look(root, place, "cover"));
+    set_game_tint(own.as_deref().and_then(|u| images::tone(u, cx)));
     let details = root.games.details.get(&place);
     let name = details.map(|d| s(d, "name").to_string()).filter(|n| !n.is_empty()).map(|n| clean(&n)).unwrap_or_else(|| open.name.clone());
     let has_news = game.is_some_and(|g| g.news.is_some());
@@ -3216,14 +3225,19 @@ fn facts(root: &Root, d: &Value) -> impl IntoElement {
     let f = |k: &str| d.get(k).and_then(Value::as_f64).unwrap_or(0.);
     let vi = root.i18n.vietnamese;
     let mut cells: Vec<(String, String, Option<AnyElement>)> = Vec::new();
+    // (Each figure's mark and colour, for the fuller look: in the cells' order.)
+    let mut marks: Vec<(&'static str, u32)> = Vec::new();
     if f("playing") > 0. {
         cells.push((root.tr("gp.playing"), thousands(f("playing") as i64, vi), None));
+        marks.push(("users", OK));
     }
     if f("visits") > 0. {
         cells.push((root.tr("gp.visits"), big(root, f("visits")), None));
+        marks.push(("eye", ONLINE));
     }
     if f("favorites") > 0. {
         cells.push((root.tr("gp.favorites"), big(root, f("favorites")), None));
+        marks.push(("starFill", FACE));
     }
     if let Some(l) = d.get("likes").and_then(Value::as_f64) {
         let (up, down) = (f("upVotes"), f("downVotes"));
@@ -3237,9 +3251,37 @@ fn facts(root: &Root, d: &Value) -> impl IntoElement {
                 .into_any_element()
         });
         cells.push((root.tr("gp.likes"), format!("{l:.0}%"), bar));
+        marks.push(("activity", OK));
     }
     if let Some(u) = d.get("updated").and_then(Value::as_str).and_then(|u| ago_iso(root, u)) {
         cells.push((root.tr("gp.updated"), u, None));
+        marks.push(("clock", TEXT_2));
+    }
+    if rich() {
+        return surface().flex().flex_wrap().children(cells.into_iter().zip(marks).enumerate().map(|(i, ((label, value, under), (mark, tone)))| {
+            let wide = under.is_some();
+            div()
+                .flex_1()
+                .min_w(px(if wide { 250. } else { 180. }))
+                .px(px(18.))
+                .py(px(16.))
+                .flex()
+                .items_center()
+                .gap(px(14.))
+                .when(i > 0, |d| d.border_l_1().border_color(c(LINE)))
+                .child(mark_chip(mark, tone, 40.))
+                .child(
+                    div()
+                        .flex_1()
+                        .min_w_0()
+                        .flex()
+                        .flex_col()
+                        .gap(px(2.))
+                        .child(div().text_size(px(T_S)).font_weight(FontWeight::MEDIUM).text_color(c(MUTED)).truncate().child(label))
+                        .child(div().text_size(px(24.)).font_weight(FontWeight::BOLD).line_height(px(30.)).font_features(tnum()).text_color(c(TEXT)).truncate().child(value))
+                        .children(under),
+                )
+        }));
     }
     div().flex().flex_wrap().rounded(px(R_L)).bg(ca(WHITE, 0.03)).border_1().border_color(c(LINE)).children(cells.into_iter().enumerate().map(|(i, (label, value, under))| {
         // (The likes take a little more room, for their bar.)
@@ -3278,21 +3320,27 @@ fn day_of(root: &Root, iso: &str) -> Option<String> {
 /// out, players a server and its Place ID. Only what Roblox said.
 fn info(root: &Root, d: &Value, place: i64) -> Div {
     let mut rows: Vec<(String, String)> = Vec::new();
-    for (key, value) in [("gp.creator", s(d, "creator").to_string()), ("gp.genre", s(d, "genre").to_string())] {
+    let mut marks: Vec<&'static str> = Vec::new();
+    for (key, value, mark) in [("gp.creator", s(d, "creator").to_string(), "user"), ("gp.genre", s(d, "genre").to_string(), "tag")] {
         if !value.is_empty() {
             rows.push((root.tr(key), value));
+            marks.push(mark);
         }
     }
     if let Some(day) = d.get("created").and_then(Value::as_str).and_then(|t| day_of(root, t)) {
         rows.push((root.tr("gp.created"), day));
+        marks.push("calendar");
     }
     if int(d, "maxPlayers") > 0 {
         rows.push((root.tr("gp.maxPlayers"), int(d, "maxPlayers").to_string()));
+        marks.push("users");
     }
     if place > 0 {
         rows.push((root.tr("gp.placeId"), place.to_string()));
+        marks.push("link");
     }
-    surface().p(px(18.)).flex().flex_col().gap(px(6.)).child(heading(root.tr("gp.info"), None)).child(div().flex().flex_col().children(rows.into_iter().enumerate().map(|(i, (k, v))| {
+    let head = if rich() { heading_rich("info", TEXT_2, root.tr("gp.info"), None).into_any_element() } else { heading(root.tr("gp.info"), None).into_any_element() };
+    surface().p(px(18.)).flex().flex_col().gap(px(if rich() { 10. } else { 6. })).child(head).child(div().flex().flex_col().children(rows.into_iter().zip(marks).enumerate().map(|(i, ((k, v), mark))| {
         div()
             .h(px(38.))
             .flex()
@@ -3301,8 +3349,10 @@ fn info(root: &Root, d: &Value, place: i64) -> Div {
             .gap(px(14.))
             .text_size(px(T_M))
             .when(i > 0, |d| d.border_t_1().border_color(ca(WHITE, 0.05)))
-            .child(div().flex_none().text_color(c(MUTED)).child(k))
-            .child(div().min_w_0().truncate().font_weight(FontWeight::MEDIUM).font_features(tnum()).child(v))
+            .when(rich(), |d| d.child(icon(mark, 14., c(DIM))))
+            .when(rich(), |d| d.child(div().flex_1().min_w_0().truncate().text_color(c(MUTED)).child(k.clone())))
+            .when(!rich(), |d| d.child(div().flex_none().text_color(c(MUTED)).child(k.clone())))
+            .child(div().min_w_0().truncate().font_weight(if rich() { FontWeight::SEMIBOLD } else { FontWeight::MEDIUM }).font_features(tnum()).child(v))
     })))
 }
 
@@ -3342,6 +3392,26 @@ fn fresh(root: &Root, d: &Value) -> Option<String> {
     let local = t + crate::time::utc_offset_secs();
     let time = format!("{:02}:{:02}", local.rem_euclid(86400) / 3600, local.rem_euclid(3600) / 60);
     Some(root.i18n.tv("gp.fresh", &[("time", &time), ("ago", &crate::time::ago(age, &root.i18n))]))
+}
+
+/// A block's head in the fuller look: its mark, its name, and what the name leaves unsaid as a quiet pill at the right.
+fn heading_rich(mark: &'static str, tone: u32, title: String, sub: Option<String>) -> Div {
+    let under = sub.as_ref().is_some_and(|s| s.chars().count() > 36);
+    div()
+        .flex()
+        .items_center()
+        .gap(px(12.))
+        .child(game_chip(mark, tone, 32.))
+        .child(
+            div()
+                .flex_1()
+                .min_w_0()
+                .flex()
+                .flex_col()
+                .child(div().text_size(px(T_H)).font_weight(FontWeight::SEMIBOLD).child(title))
+                .when_some(sub.clone().filter(|_| under), |d, s| d.child(div().text_size(px(T_S)).text_color(c(MUTED)).child(s))),
+        )
+        .when_some(sub.filter(|_| !under), |d, s| d.child(div().h(px(22.)).px(px(9.)).flex().flex_none().items_center().rounded_full().bg(c(INSET)).border_1().border_color(c(LINE)).text_size(px(T_S)).text_color(c(MUTED)).child(s)))
 }
 
 fn heading(title: String, sub: Option<String>) -> impl IntoElement {
@@ -3399,6 +3469,8 @@ fn overview(root: &Root, details: Option<&Value>, place: i64, width: f32, cx: &m
         let why = s(a, "kickWhy");
         let kicks = if kicks > 0 && !why.is_empty() { format!("{kicks} · {why}") } else { kicks.to_string() };
         let now = match s(a, "now") {
+            "ingame" if rich() => div().flex().child(tint_pill(root.tr("gp.inGame"), OK)),
+            "banned" if rich() => div().flex().child(tint_pill(root.tr("gp.banned"), BAD)),
             "ingame" => div().flex().items_center().gap(px(7.)).child(div().size(px(7.)).rounded_full().bg(c(OK))).child(root.tr("gp.inGame")),
             "banned" => div().text_color(c(BAD)).child(root.tr("gp.banned")),
             _ => div().text_color(c(MUTED)).child(
@@ -3465,12 +3537,14 @@ fn overview(root: &Root, details: Option<&Value>, place: i64, width: f32, cx: &m
             })
     });
 
-    let yours = surface().p(px(18.)).flex().flex_col().gap(px(12.)).child(heading(root.tr("gp.yours"), Some(root.tr("gp.week")))).child(if accounts.is_empty() {
+    let yours_head = if rich() { heading_rich("users", ONLINE, root.tr("gp.yours"), Some(root.tr("gp.week"))).into_any_element() } else { heading(root.tr("gp.yours"), Some(root.tr("gp.week"))).into_any_element() };
+    let yours = surface().p(px(18.)).flex().flex_col().gap(px(12.)).child(yours_head).child(if accounts.is_empty() {
         div().text_size(px(T_M)).text_color(c(MUTED)).child(root.tr("gp.noneYet"))
     } else {
         table
     });
-    let hush = surface().p(px(18.)).flex().flex_col().gap(px(16.)).child(heading(root.tr("gp.quiet"), Some(root.tr("gp.quietFrom")))).child(match hours {
+    let hush_head = if rich() { heading_rich("moon", FACE, root.tr("gp.quiet"), Some(root.tr("gp.quietFrom"))).into_any_element() } else { heading(root.tr("gp.quiet"), Some(root.tr("gp.quietFrom"))).into_any_element() };
+    let hush = surface().p(px(18.)).flex().flex_col().gap(px(16.)).child(hush_head).child(match hours {
         Some(h) => quiet(root, &h).into_any_element(),
         None => div().text_size(px(T_M)).text_color(c(MUTED)).child(root.tr("gp.quietNotYet")).into_any_element(),
     });
@@ -3719,9 +3793,16 @@ fn news(root: &Root, feed: Value, width: f32, cx: &mut Context<Root>) -> impl In
         _ => NEWS_ROWS,
     };
     let more = list.len().saturating_sub(cap);
-    let mut columns: Vec<Vec<AnyElement>> = (0..cols).map(|_| Vec::new()).collect();
+    // In rows, each row's cards as tall as its tallest: dealt into columns, the cards' feet stood at every height and
+    // the page read as a jumble (the owner, 2026-11-15).
+    let mut rows: Vec<Vec<AnyElement>> = Vec::new();
     for (i, card) in list.into_iter().take(cap).enumerate() {
-        columns[i % cols].push(news_card(root, card, i, before, w, cx).into_any_element());
+        if i % cols == 0 {
+            rows.push(Vec::new());
+        }
+        if let Some(row) = rows.last_mut() {
+            row.push(news_card(root, card, i, before, w, cx).into_any_element());
+        }
     }
     div()
         .pt(px(4.))
@@ -3729,7 +3810,7 @@ fn news(root: &Root, feed: Value, width: f32, cx: &mut Context<Root>) -> impl In
         .flex_col()
         .gap(px(GAP))
         .child(tell)
-        .child(div().flex().items_start().gap(px(GAP)).children(columns.into_iter().map(|col| div().w(px(w)).flex_none().flex().flex_col().gap(px(GAP)).children(col))))
+        .children(rows.into_iter().map(|row| div().flex().items_stretch().gap(px(GAP)).children(row)))
         .when(more > 0, |d| {
             d.child(div().flex().justify_center().child(Button::new("news-more", root.tr("alog.more")).small().on_click(cx.listener(move |r, _, _, cx| {
                 *r.games.news_cap.borrow_mut() = Some((at.clone(), cap + NEWS_ROWS));
@@ -3752,7 +3833,7 @@ fn news_card(root: &Root, card: &Value, n: usize, before: f64, w: f32, cx: &mut 
     // (A card with no id goes by its place in the list: two with the same element id would mix up their clicks.)
     let card_id = Some(s(card, "id")).filter(|x| !x.is_empty()).map_or_else(|| format!("#{n}"), str::to_string);
     let parts: Option<Vec<Value>> = card.get("blocks").and_then(Value::as_array).filter(|l| !l.is_empty()).cloned();
-    let blocks = parts.as_ref().map(|l| super::blocks::blocks(root, &card_id, l, card.get("spoiler").and_then(Value::as_bool).unwrap_or(false), w - 34., cx));
+    let blocks = parts.as_ref().map(|l| super::blocks::blocks(root, &card_id, l, &author, card.get("spoiler").and_then(Value::as_bool).unwrap_or(false), w - 34., cx));
     let text = if blocks.is_some() { String::new() } else { plain(root, s(card, "text")) };
     let until = card.get("until").and_then(Value::as_f64).map(|u| (u / 1000.) as i64).filter(|u| *u > crate::time::now_secs());
     let picture = card.get("image").and_then(Value::as_str).filter(|u| super::blocks::discord_media(u) && parts.is_none()).and_then(|u| images::pic(u, cx));

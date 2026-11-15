@@ -28,6 +28,136 @@ pub struct Data {
     refused: u32,
     /// An update found before the unlock: taken (the screen shows it installing) or left for later. None until decided.
     updating: Option<bool>,
+    /// This screen played the opening (below): its card stands as it is, with no second entrance.
+    opened: std::cell::Cell<bool>,
+}
+
+// ───────────────────────── the opening ─────────────────────────
+// Opening Bloxkeep, once a run, on the first password screen: as the web page did it (app.js lockIntro, app.css
+// .lock-intro; the owner, 2026-11-08: "nảy ở giữa xong bung ra", and 2026-11-15: GPUI's "không giống bản C#", which
+// only popped the logo out on the card). The logo stands alone in the middle of the window and bounces there for a
+// second: a squash, a hop that grows it half again, a landing, a smaller hop. Then the card opens out around it from a
+// logo-sized tile while the logo flies up to its place on the card, shrinking back; the dots come up, and the lines
+// step in under the logo one after another. The same times and curves as the page's.
+
+/// The bounce, then the rest.
+const BOUNCE_MS: f32 = 1000.;
+const OPENING_MS: f32 = BOUNCE_MS + 1500.;
+/// The logo's size during the bounce's second half and until it flies (the page's BIG).
+const BIG: f32 = 1.5;
+
+static OPENING_OVER: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+static OPENING_FROM: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
+thread_local! {
+    /// The card's height as last laid out (the logo's way from the middle to its place depends on it).
+    static CARD_H: std::cell::Cell<f32> = const { std::cell::Cell::new(0.) };
+}
+
+/// How far into the opening this draw is, in ms; None when it is over (or was never to play).
+fn opening_ms(root: &Root, window: &Window) -> Option<f32> {
+    use std::sync::atomic::Ordering::Relaxed;
+    if OPENING_OVER.load(Relaxed) {
+        return None;
+    }
+    // BLOXKEEP_SHOT_INTRO=1300: a hidden shot of the opening at that moment; without it a shot has none.
+    #[cfg(feature = "shot")]
+    {
+        let at = std::env::var("BLOXKEEP_SHOT_INTRO").ok().and_then(|v| v.parse::<f32>().ok());
+        if at.is_none() {
+            OPENING_OVER.store(true, Relaxed);
+        } else if CARD_H.with(|h| h.get()) == 0. {
+            window.request_animation_frame();
+        }
+        return at;
+    }
+    #[cfg(not(feature = "shot"))]
+    {
+        let ms = OPENING_FROM.get_or_init(std::time::Instant::now).elapsed().as_secs_f32() * 1000.;
+        if ms >= OPENING_MS {
+            OPENING_OVER.store(true, Relaxed);
+            root.lock.opened.set(true);
+            return None;
+        }
+        window.request_animation_frame();
+        Some(ms)
+    }
+}
+
+/// The bouncing logo at `t` of its second: how wide and tall (1 = its own size) and how far off the ground.
+fn bounce(t: f32) -> (f32, f32, f32) {
+    // (when, wide, tall, lift, and the curve to the next: 0 the first press, 1 up, 2 down)
+    const K: [(f32, f32, f32, f32, u8); 7] = [
+        (0., 1., 1., 0., 0),
+        (0.12, 1.12, 0.86, 0., 1),
+        (0.4, BIG * 0.94, BIG * 1.06, 54., 2),
+        (0.62, BIG * 1.16, BIG * 0.82, 0., 1),
+        (0.78, BIG * 0.98, BIG * 1.03, 16., 2),
+        (0.9, BIG * 1.05, BIG * 0.95, 0., 1),
+        (1., BIG, BIG, 0., 1),
+    ];
+    let t = t.clamp(0., 1.);
+    let i = K.iter().rposition(|k| k.0 <= t).unwrap_or(0).min(K.len() - 2);
+    let (a, b) = (K[i], K[i + 1]);
+    let x = ((t - a.0) / (b.0 - a.0)).clamp(0., 1.);
+    let e = match a.4 {
+        0 => bezier(0.3, 0., 0.6, 1., x),
+        1 => bezier(0.2, 0.7, 0.35, 1., x),
+        _ => bezier(0.6, 0., 0.85, 0.45, x),
+    };
+    let mix = |p: f32, q: f32| p + (q - p) * e;
+    (mix(a.1, b.1), mix(a.2, b.2), mix(a.3, b.3))
+}
+
+/// The lock screen at `ms` of the opening: `lines` are the card's lines under the logo.
+fn opening(layer: Div, lines: Vec<AnyElement>, sign: Div, ms: f32, window: &Window) -> AnyElement {
+    const W: f32 = 456.;
+    const TILE: f32 = 112.;
+    let h = CARD_H.with(|c| c.get());
+    let after = ms - BOUNCE_MS;
+    // The card: out from a logo-sized tile round the middle (.7 s on the soft spring, never past its size).
+    let open = spring_soft((after / 700.).clamp(0., 1.)).clamp(0., 1.);
+    // The logo: its way up to its place and back to its size (.8 s on the spring).
+    let fly = if after <= 0. { 0. } else { spring((after / 800.).clamp(0., 1.)) };
+    let (wide, tall, lift) = if after < 0. { bounce(ms / BOUNCE_MS) } else { (BIG + (1. - BIG) * fly, BIG + (1. - BIG) * fly, 0.) };
+    // (Its slot's middle is 76 px under the card's top; the card's middle is the window's.)
+    let away = (h / 2. - 76.) * (1. - fly) - lift;
+    let (lw, lh) = (72. * wide, 72. * tall);
+    let logo = div().size(px(72.)).flex_none().relative().when(h > 0., |d| {
+        d.child(img(crate::crisp::logo(72. * BIG * 1.2, window)).absolute().left(px((72. - lw) / 2.)).top(px((72. - lh) / 2. + away)).w(px(lw)).h(px(lh)).object_fit(ObjectFit::Fill))
+    });
+    let (cw, ch) = (TILE + (W - TILE) * open, TILE + (h - TILE).max(0.) * open);
+    let chrome = (after >= 0. && h > 0.).then(|| {
+        div()
+            .absolute()
+            .left(px((W - cw) / 2.))
+            .top(px((h - ch) / 2.))
+            .w(px(cw))
+            .h(px(ch))
+            .rounded(px(24.))
+            .bg(c(PANEL))
+            .border_1()
+            .border_color(ca(WHITE, 0.07))
+            .shadow(menu_shadow(0.8 * open))
+    });
+    let mut card = div()
+        .relative()
+        .w(px(W))
+        .pt(px(40.))
+        .px(px(40.))
+        .pb(px(32.))
+        .flex()
+        .flex_col()
+        .items_center()
+        .child(canvas(|b, _, _| CARD_H.with(|c| c.set(f32::from(b.size.height))), |_, _, _, _| {}).absolute().inset_0())
+        .children(chrome)
+        .child(logo);
+    for (i, line) in lines.into_iter().enumerate() {
+        // Each .6 s on the soft spring, the first .22 s after the card starts, the next every .05 s (six of them).
+        let e = spring_soft(((after - 220. - 50. * i.min(5) as f32) / 600.).clamp(0., 1.));
+        card = card.child(div().w_full().flex().flex_col().items_center().relative().top(px((1. - e) * 12.)).opacity(e.clamp(0., 1.)).child(line));
+    }
+    let late = ((after - 450.) / 500.).clamp(0., 1.);
+    layer.child(div().size_full().flex().items_center().justify_center().child(card)).child(sign.opacity(late)).into_any_element()
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -383,7 +513,17 @@ fn back(root: &Root, cmd: &'static str, cx: &mut Context<Root>) -> Div {
 
 pub fn lock(root: &Root, window: &mut Window, cx: &mut Context<Root>) -> AnyElement {
     let mode = mode(root);
-    let layer = div().size_full().relative().child(dots()).child(lang_switch(root, cx));
+    // The opening plays on the first password screen only (not over the vault picker, nor an update installing).
+    let intro = if mode == Mode::Pick || root.lock.updating == Some(true) { None } else { opening_ms(root, window) };
+    let layer = match intro {
+        // (The dots come up .1 s after the card starts, over .6 s; the language switch with the last lines.)
+        Some(ms) => div()
+            .size_full()
+            .relative()
+            .child(div().absolute().top_0().left_0().size_full().opacity(((ms - BOUNCE_MS - 100.) / 600.).clamp(0., 1.)).child(dots()))
+            .child(lang_switch(root, cx).opacity(((ms - BOUNCE_MS - 450.) / 500.).clamp(0., 1.))),
+        None => div().size_full().relative().child(dots()).child(lang_switch(root, cx)),
+    };
     let v = vaults(root);
     let current = v.get("current").and_then(Value::as_str).unwrap_or_default();
     if mode == Mode::Pick {
@@ -617,10 +757,19 @@ pub fn lock(root: &Root, window: &mut Window, cx: &mut Context<Root>) -> AnyElem
         });
     }
 
-    // The logo pops out, and the lines under it come in one after another (the web page's lock-intro).
-    let mut box_ = card().child(pop_out("lock-logo", 72., |s| img("logo.svg").size(px(s)).into_any_element()));
+    if let Some(ms) = intro {
+        return opening(layer, lines, signature(root), ms, window);
+    }
+    // The screen that played the opening stands as it is (the page's .opened: no second entrance once it is over).
+    // Any later one (after a lock): the logo pops out, and the lines under it come in one after another.
+    let mut box_ = if root.lock.opened.get() {
+        card().child(img(crate::crisp::logo(72., window)).size(px(72.)))
+    } else {
+        card().child(pop_out("lock-logo", 72., |s| img("logo.svg").size(px(s)).into_any_element()))
+    };
     for (i, line) in lines.into_iter().enumerate() {
-        box_ = box_.child(line_in("lock-line", i.min(6), div().w_full().flex().flex_col().items_center().child(line)));
+        let line = div().w_full().flex().flex_col().items_center().child(line);
+        box_ = if root.lock.opened.get() { box_.child(line) } else { box_.child(line_in("lock-line", i.min(6), line)) };
     }
     layer.child(div().size_full().flex().items_center().justify_center().child(box_)).child(signature(root)).into_any_element()
 }

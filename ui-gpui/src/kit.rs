@@ -915,9 +915,89 @@ impl RenderOnce for TextArea {
     }
 }
 
+/// The fuller look of blocks, tried out (the owner, 2026-11-15: the blocks "trông đơn giản quá, kém sang": a grey
+/// film with a hairline, grey words in it): a solid block with a finished edge, each figure with its own mark and
+/// colour, states as pills. Off until the owner takes it; a hidden shot turns it on with BLOXKEEP_SHOT_CARDS=2.
+pub fn rich() -> bool {
+    // (Taken, 2026-11-15: "thẻ còn đơn điệu thì làm nó rich lên". BLOXKEEP_SHOT_CARDS=1: a hidden shot of the look before.)
+    static RICH: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *RICH.get_or_init(|| !(cfg!(feature = "shot") && std::env::var("BLOXKEEP_SHOT_CARDS").is_ok_and(|v| v == "1")))
+}
+
+thread_local! {
+    /// The colour of the game whose page is being drawn (pages/games.rs sets it for its page, and takes it off after).
+    static GAME_TINT: std::cell::Cell<Option<u32>> = const { std::cell::Cell::new(None) };
+}
+
+/// A game's own colour for what is drawn from here on: its page's blocks stand on a ground faintly of it, their heads
+/// and marks carry it, its wiki's links are of it. The old page did this everywhere a game was shown (app.css's --gt,
+/// from the game's picture: the wiki's grounds 7 to 16 % of it, its links 60 %); without it every game's page was the
+/// same grey (the owner, 2026-11-15: "các trang wiki không được màu sắc như bản cũ", the blocks "nhợt nhạt").
+pub fn set_game_tint(tone: Option<u32>) {
+    GAME_TINT.with(|t| t.set(tone));
+}
+
+/// That colour as it is.
+pub fn game_tint() -> Option<Hsla> {
+    GAME_TINT.with(|t| t.get()).map(|t| rgb(t).into())
+}
+
+/// …and made to read on a dark or a light block (a mark's colour, a link's): the same hue, never dull or too dark.
+pub fn game_ink() -> Option<Hsla> {
+    let t = game_tint()?;
+    let dark = crate::theme::lightness(c(PANEL)) < 50.;
+    Some(Hsla { h: t.h, s: t.s.clamp(0.45, 0.9), l: if dark { t.l.clamp(0.62, 0.78) } else { t.l.clamp(0.28, 0.42) }, a: 1. })
+}
+
+/// A table's head on a game's page: a step above its block, more of the game's colour (the old wiki's --ws-head, 16 %).
+pub fn game_head() -> Hsla {
+    match game_tint() {
+        Some(t) => mix(c(RAISED_2), Hsla { a: 1., ..t }, 0.18),
+        None => ca(WHITE, 0.03),
+    }
+}
+
+/// A block's ground and hairline: the theme's, faintly of the game's colour on its page.
+fn block_tones() -> (Hsla, Hsla) {
+    match game_tint() {
+        Some(t) => (mix(c(RAISED), Hsla { a: 1., ..t }, 0.11), mix(c(LINE), Hsla { a: 1., ..t }, 0.2)),
+        None => (c(RAISED), c(LINE)),
+    }
+}
+
+/// A block's finished edge: a hair of light along its top inside, a close dark line under it. No glow, no spread.
+pub fn block_edge() -> Vec<BoxShadow> {
+    vec![
+        BoxShadow { color: hsla(0., 0., 0., 0.34), offset: point(px(0.), px(1.)), blur_radius: px(2.), spread_radius: px(0.), inset: false },
+        BoxShadow { color: hsla(0., 0., 1., 0.05), offset: point(px(0.), px(1.)), blur_radius: px(0.), spread_radius: px(0.), inset: true },
+    ]
+}
+
 /// A card on a panel: barely lighter, with a hairline. Every page's cards are this one.
 pub fn surface() -> Div {
+    if rich() {
+        let (ground, line) = block_tones();
+        return div().rounded(px(R_L)).bg(ground).border_1().border_color(line).shadow(block_edge());
+    }
     div().rounded(px(R_L)).bg(ca(WHITE, 0.045)).border_1().border_color(c(LINE))
+}
+
+/// A figure's or a block's own mark: its icon in its colour, on a ground faintly of that colour.
+pub fn mark_chip(name: &'static str, tone: u32, size: f32) -> Div {
+    div().size(px(size)).flex_none().rounded(px((size * 0.28).round())).bg(ca(tone, 0.13)).flex().items_center().justify_center().child(icon(name, (size * 0.5).round(), c(tone)))
+}
+
+/// The same mark in the game's own colour on its page (else in `tone`): a block's head there.
+pub fn game_chip(name: &'static str, tone: u32, size: f32) -> Div {
+    match game_ink() {
+        Some(ink) => div().size(px(size)).flex_none().rounded(px((size * 0.28).round())).bg(Hsla { a: 0.16, ..ink }).flex().items_center().justify_center().child(icon(name, (size * 0.5).round(), ink)),
+        None => mark_chip(name, tone, size),
+    }
+}
+
+/// A state as a pill in its colour ("In game", "Banned").
+pub fn tint_pill(text: impl Into<SharedString>, tone: u32) -> Div {
+    div().h(px(22.)).px(px(9.)).flex().flex_none().items_center().gap(px(6.)).rounded_full().bg(ca(tone, 0.13)).text_color(c(tone)).text_size(px(T_S)).font_weight(FontWeight::SEMIBOLD).child(div().size(px(6.)).rounded_full().bg(c(tone))).child(text.into())
 }
 
 /// A card you can press (a preset to run, a row that opens): the same card, its ground and hairline brightening
@@ -1194,6 +1274,27 @@ fn sampled(curve: &'static [f32; 25]) -> impl Fn(f32) -> f32 {
         let i = (x.floor() as usize).min(23);
         curve[i] + (curve[i + 1] - curve[i]) * (x - i as f32)
     }
+}
+
+/// The web page's --spring at `t` of a move's time (0 to 1): past where it lands and back.
+pub fn spring(t: f32) -> f32 {
+    sampled(&SPRING)(t)
+}
+
+/// …and its --spring-soft.
+pub fn spring_soft(t: f32) -> f32 {
+    sampled(&SPRING_SOFT)(t)
+}
+
+/// CSS's cubic-bezier(x1, y1, x2, y2) at `x` of a move's time.
+pub fn bezier(x1: f32, y1: f32, x2: f32, y2: f32, x: f32) -> f32 {
+    let at = |a: f32, b: f32, s: f32| 3. * a * s * (1. - s) * (1. - s) + 3. * b * s * s * (1. - s) + s * s * s;
+    let (mut lo, mut hi) = (0f32, 1f32);
+    for _ in 0..24 {
+        let mid = (lo + hi) / 2.;
+        if at(x1, x2, mid) < x { lo = mid } else { hi = mid }
+    }
+    at(y1, y2, (lo + hi) / 2.)
 }
 
 /// A move that waits its turn: nothing for `delay`, then `curve` over `run` (both in milliseconds).
