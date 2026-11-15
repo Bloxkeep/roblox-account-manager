@@ -81,7 +81,7 @@ fn load(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
             signs
                 .into_iter()
                 .map(|(id, cookie)| match cookie.as_deref().map(roblox::visibility) {
-                    Some(Ok((online, join))) => json!({ "id": id, "ok": true, "online": online, "join": join }),
+                    Some(Ok((online, join))) => json!({ "id": id, "ok": true, "online": online.map(|c| c.now).unwrap_or_default(), "join": join.map(|c| c.now).unwrap_or_default() }),
                     Some(Err(e)) => bad_row(&id, e),
                     None => bad_row(&id, String::new()),
                 })
@@ -198,7 +198,7 @@ pub fn open(r: &mut Root, ids: Vec<String>, window: &mut Window, cx: &mut Contex
             seen.dedup();
             match seen.as_slice() {
                 [] => None,
-                [one] => Some(r.i18n.tv("vis.now", &[("v", &if VALUES.contains(one) { r.tr(&format!("vis.{one}")) } else { one.to_string() })])),
+                [one] => Some(r.i18n.tv("vis.now", &[("v", &crate::pages::rsettings::vis_word(r, one))])),
                 _ => Some(r.tr("vis.mixed")),
             }
         };

@@ -89,6 +89,9 @@ pub struct View {
     pub heading: f32,
     pub stride: f32,
     pub pace: f32,
+    /// A jump: how high off the floor it is and how fast it is going up (down when below 0), both in model units.
+    pub up: f32,
+    pub rise: f32,
 }
 
 pub const ZOOM_NEAR: f32 = 0.42;
@@ -490,7 +493,22 @@ impl Model {
 
     /// `dt` seconds of walking: `ahead` and `right` (-1 to 1) as the camera sees them (W away from you, D to your
     /// right). It walks that way at an easy pace, turning to face where it goes; let go, it slows to a stand.
-    pub fn step(&self, v: &mut View, ahead: f32, right: f32, dt: f32) {
+    /// `run`: Shift held, it runs, twice as fast with a longer, quicker stride. A jump under way (`jump` starts one
+    /// from the floor) goes up and comes back down in about two thirds of a second, as high as a third of its height.
+    pub fn step(&self, v: &mut View, ahead: f32, right: f32, run: bool, jump: bool, dt: f32) {
+        if self.rig.is_some() {
+            let fall = self.radius * 9.;
+            if jump && v.up <= 0. {
+                v.rise = self.radius * 3.3;
+            }
+            if v.up > 0. || v.rise > 0. {
+                v.up += v.rise * dt - fall * dt * dt / 2.;
+                v.rise -= fall * dt;
+                if v.up <= 0. {
+                    (v.up, v.rise) = (0., 0.);
+                }
+            }
+        }
         let start = sub(self.eye, self.center);
         let flat = {
             let f = [start[0], 0., start[2]];
@@ -504,7 +522,7 @@ impl Model {
         let len = dot(m, m).sqrt();
         if len > 1e-3 && self.rig.is_some() {
             let m = mul(m, 1. / len);
-            let speed = self.radius * 0.9;
+            let speed = self.radius * if run { 1.9 } else { 0.9 };
             v.at[0] += m[0] * speed * dt;
             v.at[1] += m[2] * speed * dt;
             // (Not off into the distance: the plate stays findable.)
@@ -518,7 +536,7 @@ impl Model {
             let pi = std::f32::consts::PI;
             let turn = (want - v.heading + pi).rem_euclid(2. * pi) - pi;
             v.heading += turn * (dt * 10.).min(1.);
-            v.stride = (v.stride + speed * dt / (self.radius * 0.42)).rem_euclid(2. * pi);
+            v.stride = (v.stride + speed * dt / (self.radius * if run { 0.6 } else { 0.42 })).rem_euclid(2. * pi);
             v.pace = (v.pace + dt * 6.).min(1.);
         } else {
             v.pace = (v.pace - dt * 5.).max(0.);
@@ -561,7 +579,7 @@ impl Model {
         let half = n as f32 / 2.;
         // Each part's turn in the idle, at this moment.
         let posed = self.rig.as_ref().filter(|_| view.t > 0. || view.pace > 0.).map(|r| r.pose(view.t, view.stride, view.pace));
-        let sink = posed.as_ref().map_or(0., |p| p.1);
+        let sink = posed.as_ref().map_or(0., |p| p.1) + view.up.max(0.);
         // The avatar faces where it walked; the floor turns only with the camera.
         let (hs, hc) = (view.yaw + view.heading).sin_cos();
         let face = |p: V3| -> V3 { [p[0] * hc + p[2] * hs, p[1], -p[0] * hs + p[2] * hc] };
@@ -646,7 +664,8 @@ impl Model {
             };
             // The floor far off goes over into the wall, as a room's far side would.
             let far = (((mx * mx + mz * mz).sqrt() - self.radius * 4.) / (self.radius * 8.)).clamp(0., 1.);
-            let dark = 1. - 0.55 * self.shade(lx, lz);
+            // (Its shadow fades as it jumps away from it.)
+            let dark = 1. - 0.55 * self.shade(lx, lz) * (1. - view.up / self.radius).clamp(0.35, 1.);
             for i in 0..3 {
                 c[i] = (c[i] * dark) * (1. - far) + wall[i] * far;
             }

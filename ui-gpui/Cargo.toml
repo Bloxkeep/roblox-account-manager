@@ -67,3 +67,8 @@ strip = true
 
 [build-dependencies]
 embed-resource = "=3.0.12"
+
+# GPUI with one fix (vendor/gpui-pre/src/window.rs, snapped_content_mask): an empty clip stays empty instead of a
+# 1-pixel row at 150 %, which leaked a line of every picture outside a scroll area (palette, status bar; 2026-11-15).
+[patch.crates-io]
+gpui-pre = { path = "vendor/gpui-pre" }

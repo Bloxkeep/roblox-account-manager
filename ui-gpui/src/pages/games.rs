@@ -362,8 +362,9 @@ pub struct Data {
     pub kind: Option<String>,
     /// A game's news: only this source's posts (none: every source).
     pub source: Option<String>,
-    /// The news read before the game was shown this time: what came after keeps its New mark while it is open.
-    pub mark: Option<(String, f64)>,
+    /// The news read before the game was shown this time, and when that was: what came after keeps its New mark for
+    /// a minute on screen; then the mark moves up to what has been read since.
+    pub mark: Option<(String, f64, std::time::Instant)>,
     /// News alerts' words box: the game it holds the words of, the words the app has saved, and (set while drawing)
     /// what it should hold next, which the frame puts in before it draws again.
     pub words_for: Option<String>,
@@ -411,6 +412,8 @@ pub struct Data {
     pub clips: crate::pages::clips::Clips,
     pub stays: HashMap<i64, Vec<Value>>,
     pub found: Option<(String, Option<Result<Vec<roblox::Game>, String>>)>,
+    /// Each change of the box's words, so a search asked while typing goes only for the last of them.
+    pub typed: u64,
     /// Play on a game's page: the game (its Open id) and the accounts ticked to join it.
     pub picking: Option<(String, HashSet<String>)>,
     /// The server Play's row joins (its Job ID), when it was opened from the Servers tab; none: any server.
@@ -426,6 +429,10 @@ pub struct Data {
     pub more_sorts: bool,
     /// Keep playing shows every game, not only the first ones.
     pub keep_all: bool,
+    /// Roblox's own "Continue" row of the account whose tab is shown (roblox::continue_games): its user, the answer,
+    /// and when it was asked (asked again after five minutes or for another account).
+    pub continued: Option<(i64, Result<Vec<roblox::Game>, String>)>,
+    pub continued_at: Option<(i64, std::time::Instant)>,
     /// The game page's switch to another game (GamesView.tsx's Switcher): open, when it was last closed by a click
     /// outside (so a click on the name closes it rather than opening it again), and its search box (made while it
     /// is open with more than 6 games; a box needs the window, so `settle_words` makes it).
@@ -963,13 +970,30 @@ pub fn want(r: &mut Root, cx: &mut Context<Root>) {
         let read = n.get("read").and_then(Value::as_f64).unwrap_or(0.);
         let follow = n.get("followed").and_then(Value::as_bool).unwrap_or(false);
         if r.games.tab == Tab::News && r.games.cards.is_some() {
-            if r.games.mark.as_ref().is_none_or(|(id, _)| *id != open.id) {
-                r.games.mark = Some((open.id.clone(), if follow { read } else { f64::INFINITY }));
+            // (Never read before: nothing is New against that, or every post was "New" at once, the owner, 2026-11-15.
+            // The mark goes when the page is left (shell), so a later visit counts from the last read.)
+            // (A game that posts every few minutes had every card "New" while its page stayed open: a card is New for
+            // its first minute on screen.)
+            let stale = r.games.mark.as_ref().is_none_or(|(id, _, at)| *id != open.id || at.elapsed().as_secs() >= 60);
+            if stale {
+                let next = if follow && read > 0. { read } else { f64::INFINITY };
+                r.games.mark = Some((open.id.clone(), next, std::time::Instant::now()));
+                // (Redrawn when the minute is up while some card shows New, so the marks go by themselves.)
+                let marked = r.games.cards.iter().flatten().any(|c| c.get("game").and_then(Value::as_str) == Some(open.id.as_str()) && c.get("at").and_then(Value::as_f64).is_some_and(|at| at > next));
+                if marked {
+                    cx.spawn(async move |this, cx| {
+                        cx.background_executor().timer(std::time::Duration::from_secs(61)).await;
+                        let _ = this.update(cx, |_, cx| cx.notify());
+                    })
+                    .detach();
+                }
             }
             if follow && int(n, "unread") > 0 && r.games.read_sent.as_deref() != Some(open.id.as_str()) {
                 r.games.read_sent = Some(open.id.clone());
                 link.send("feedRead", json!({ "game": open.id }));
             }
+        } else if r.games.tab != Tab::News {
+            r.games.mark = None;
         }
         if int(n, "unread") == 0 && r.games.read_sent.as_deref() == Some(open.id.as_str()) {
             r.games.read_sent = None;
@@ -1125,7 +1149,9 @@ fn alerts(root: &Root, feed: &Value, cx: &mut Context<Root>) -> Div {
 /// A game's events, asked once its details have named its universe and an account's sign-in is in (Roblox gives
 /// them to a signed-in account only). A refusal is in error.log (the Roblox tab's own line) and isn't asked again.
 fn want_events(r: &mut Root, place: i64, universe: i64, cx: &mut Context<Root>) {
-    let Some((_, _, cookie)) = crate::pages::friends::signed(r).filter(|s| !s.2.is_empty() || cfg!(feature = "shot")) else { return };
+    // (A hidden shot with BLOXKEEP_SHOT_EVENTS reads its file, signed in or not.)
+    let shot = cfg!(feature = "shot") && std::env::var("BLOXKEEP_SHOT_EVENTS").is_ok();
+    let Some(cookie) = crate::pages::friends::signed(r).map(|s| s.2).filter(|c| !c.is_empty()).or_else(|| shot.then(String::new)) else { return };
     if universe <= 0 || !r.games.asked_events.insert(place) {
         return;
     }
@@ -1141,39 +1167,214 @@ fn want_events(r: &mut Root, place: i64, universe: i64, cx: &mut Context<Root>) 
     .detach();
 }
 
-/// The game's events as Roblox's page lists them: each one's name, the line under it and when (on now, with its end;
-/// else its start), and a mark on one the account is going to. None when there is nothing on or to come.
-fn events_block(root: &Root, place: i64) -> Option<Div> {
+/// How long until a moment, in days and hours past a day ("2d 5h", "2 ngày 5 giờ"), else the short span.
+fn left(secs: i64, vi: bool) -> String {
+    let s = secs.max(0);
+    let (d, h) = (s / 86_400, s % 86_400 / 3_600);
+    match (d, vi) {
+        (0, _) => crate::time::span(s),
+        (_, false) if h == 0 => format!("{d}d"),
+        (_, false) => format!("{d}d {h}h"),
+        (_, true) if h == 0 => format!("{d} ngày"),
+        (_, true) => format!("{d} ngày {h} giờ"),
+    }
+}
+
+/// A word on a picture (an event's kind, its date): a solid chip on the picture, as the Home tiles' window count.
+fn photo_chip(text: String, dot: Option<u32>) -> Div {
+    div()
+        .h(px(24.))
+        .px(px(9.))
+        .flex()
+        .flex_none()
+        .items_center()
+        .gap(px(6.))
+        .rounded(px(7.))
+        .bg(ca(GROUND, 0.86))
+        .text_size(px(T_S))
+        .font_weight(FontWeight::SEMIBOLD)
+        .font_features(tnum())
+        .text_color(c(TEXT))
+        .when_some(dot, |d, tone| d.child(div().size(px(7.)).rounded_full().bg(c(tone))))
+        .child(text)
+}
+
+/// Going to an event or not, from its Notify me: shown at once, sent to Roblox, put back (with a notice) when Roblox
+/// refuses.
+fn toggle_going(r: &mut Root, place: i64, id: String, cx: &mut Context<Root>) {
+    let Some((_, _, cookie)) = crate::pages::friends::signed(r).filter(|s| !s.2.is_empty()) else { return };
+    let ask = id.clone();
+    let flip = move |r: &mut Root| -> Option<bool> {
+        let e = r.games.events.get_mut(&place)?.iter_mut().find(|e| e.id == id)?;
+        e.going = !e.going;
+        e.count = e.count.map(|n| (n + if e.going { 1 } else { -1 }).max(0));
+        Some(e.going)
+    };
+    let Some(going) = flip(r) else { return };
+    cx.notify();
+    let rx = roblox::run(move || roblox::set_going(&cookie, &ask, going));
+    cx.spawn(async move |this, cx| {
+        let got = rx.await.unwrap_or_else(|_| Err(String::new()));
+        if let Err(why) = got {
+            let _ = this.update(cx, |r, cx| {
+                crate::net::note_worked(&format!("Game events: Notify me wasn't taken ({why})."));
+                let _ = flip(r);
+                r.toast = Some((r.tr("gp.evNotTaken"), "bad".into()));
+                cx.notify();
+            });
+        }
+    })
+    .detach();
+}
+
+/// An event's page on roblox.com, from its picture or its Event page button.
+fn event_page(id: &str, cx: &mut Context<Root>) -> impl Fn(&ClickEvent, &mut Window, &mut App) + 'static {
+    let id = id.to_string();
+    cx.listener(move |r, _, _, _| r.send("openRobloxPage", json!({ "kind": "event", "id": id })))
+}
+
+/// Join from an event that is on: the game's Play row opens at the top of the page, the accounts picked on the
+/// Accounts page ticked.
+fn join_event(r: &mut Root, cx: &mut Context<Root>) {
+    let Some(open) = r.games.open.as_ref().map(|o| o.id.clone()) else { return };
+    let picked: HashSet<String> = r
+        .accounts()
+        .iter()
+        .filter(|a| crate::pages::accounts::can_play(a))
+        .filter_map(|a| a.get("id").and_then(Value::as_str))
+        .filter(|id| r.selected.contains(*id))
+        .map(str::to_string)
+        .collect();
+    r.games.picking = Some((open, picked));
+    r.games.pick_job = None;
+    r.games.pick_link = None;
+    r.games.pick_place = None;
+    r.games.page_scroll.set_offset(point(px(0.), px(0.)));
+    cx.notify();
+}
+
+/// A game's events with everything Roblox's game page shows for each (its picture, kind, name, line, the going
+/// count, Notify me or Join), and more: the one on now as a large block with its words and the time left, the rest as
+/// picture tiles with their start and how long until it. None when nothing is on or to come.
+fn events_block(root: &Root, place: i64, width: f32, cx: &mut Context<Root>) -> Option<AnyElement> {
     let list = root.games.events.get(&place).filter(|l| !l.is_empty())?;
     let now = crate::time::now_secs();
-    let mut rows = div().flex().flex_col();
-    for (i, e) in list.iter().take(6).enumerate() {
+    let vi = root.i18n.vietnamese;
+    let signed = crate::pages::friends::signed(root).is_some_and(|s| !s.2.is_empty());
+    // (The block's padding and its hairline: at width - 36 a row of two tiles was 2 px too wide and wrapped.)
+    let inner = (width - 40.).max(200.);
+    let kind_word = |k: &str| if k.is_empty() { String::new() } else { root.tr(&format!("gp.evKind.{k}")) };
+    let going_word = |n: Option<i64>| n.map(|n| root.i18n.tv("gp.evPeople", &[("n", &thousands(n, vi))]));
+    let fact = |name: &'static str, text: String| div().flex().flex_none().items_center().gap(px(6.)).child(icon(name, 14., c(TEXT_2))).child(text);
+    let picture = |e: &roblox::GameEvent, w: f32, h: f32, idx: usize, dated: bool, cx: &mut Context<Root>| {
+        let pic = (!e.pic.is_empty()).then(|| images::pic_pair(&e.pic, w, h, cx)).flatten();
         let on = e.start <= now;
-        let when = if on { root.i18n.tv("gp.evEnds", &[("t", &crate::time::day_time(e.end))]) } else { crate::time::day_time(e.start) };
-        rows = rows.child(
-            div()
-                .py(px(10.))
-                .when(i > 0, |d| d.border_t_1().border_color(c(LINE)))
-                .flex()
-                .items_center()
-                .gap(px(12.))
-                .child(
-                    div()
-                        .flex_1()
-                        .min_w_0()
-                        .flex()
-                        .flex_col()
-                        .gap(px(2.))
-                        .child(div().text_size(px(T_M)).font_weight(FontWeight::SEMIBOLD).truncate().child(e.title.clone()))
-                        .when(!e.sub.is_empty(), |d| d.child(div().text_size(px(T_S)).text_color(c(MUTED)).truncate().child(e.sub.clone()))),
-                )
-                .when(e.going, |d| d.child(tint_pill(root.tr("gp.evGoing"), OK)))
-                .when(on, |d| d.child(tint_pill(root.tr("gp.evNow"), ONLINE)))
-                .child(div().flex_none().text_size(px(T_S)).text_color(c(TEXT_2)).font_features(tnum()).child(when)),
-        );
+        let kind = kind_word(&e.kind);
+        let when = if on { root.tr("gp.evNow") } else { crate::time::day_time(e.start) };
+        div()
+            .id(("gp-ev-pic", idx))
+            .relative()
+            .w(px(w))
+            .h(px(h))
+            .flex_none()
+            .rounded(px(R_L))
+            .overflow_hidden()
+            .bg(ca(WHITE, 0.045))
+            .cursor_pointer()
+            .on_click(event_page(&e.id, cx))
+            .when_some(pic, |d, p| d.child(fade_in(img(p.0).size_full().rounded(px(R_L)).object_fit(ObjectFit::Cover), &p.1)))
+            .when(!kind.is_empty(), |d| d.child(div().absolute().left(px(10.)).top(px(10.)).child(photo_chip(kind, None))))
+            .when(dated, |d| d.child(div().absolute().left(px(10.)).bottom(px(10.)).child(photo_chip(when, Some(if on { ONLINE } else { FACE })))))
+    };
+    let notify = |e: &roblox::GameEvent, idx: usize, big: bool, cx: &mut Context<Root>| {
+        let (id, going) = (e.id.clone(), e.going);
+        let b = Button::new(("gp-ev-rsvp", idx), root.tr(if going { "gp.evGoing" } else { "gp.evNotify" })).icon(if going { "check" } else { "bell" });
+        let b = if going { b.tint() } else { b.quiet() };
+        let b = if big { b.big() } else { b.small() };
+        b.disabled(!signed).on_click(cx.listener(move |r, _, _, cx| toggle_going(r, place, id.clone(), cx)))
+    };
+
+    let (on_now, rest): (Vec<(usize, &roblox::GameEvent)>, Vec<(usize, &roblox::GameEvent)>) = list.iter().take(9).enumerate().partition(|(_, e)| e.start <= now);
+    let mut body = div().flex().flex_col().gap(px(18.));
+
+    // The one on now: large, its words in full, the time left and Join.
+    if let Some(&(idx, e)) = on_now.first() {
+        let wide = inner >= 760.;
+        let pw = if wide { (inner * 0.52).floor() } else { inner };
+        let ph = (pw * 9. / 16.).round();
+        let about = Some(e.about.clone()).filter(|a| !a.is_empty() && *a != e.sub);
+        let mut facts = div().flex().flex_wrap().items_center().gap_x(px(18.)).gap_y(px(6.)).text_size(px(T_M)).text_color(c(TEXT_2)).font_features(tnum());
+        facts = facts.child(fact("clock", root.i18n.tv("gp.evEndsIn", &[("t", &left(e.end - now, vi))])));
+        if let Some(w) = going_word(e.count) {
+            facts = facts.child(fact("users", w));
+        }
+        let words = div()
+            .flex_1()
+            .min_w_0()
+            .flex()
+            .flex_col()
+            .gap(px(10.))
+            .child(div().flex().items_center().gap(px(8.)).child(tint_pill(root.tr("gp.evNow"), ONLINE)).when(!e.kind.is_empty(), |d| d.child(div().text_size(px(T_S)).font_weight(FontWeight::SEMIBOLD).text_color(c(FACE)).child(kind_word(&e.kind)))))
+            .child(div().text_size(px(T_FIG)).line_height(px(28.)).font_weight(FontWeight::BOLD).line_clamp(2).child(e.title.clone()))
+            .when(!e.sub.is_empty(), |d| d.child(div().text_size(px(T_L)).line_height(px(20.)).text_color(c(TEXT_2)).line_clamp(2).child(e.sub.clone())))
+            .when_some(about, |d, a| d.child(div().text_size(px(T_M)).line_height(px(20.)).text_color(c(MUTED)).line_clamp(4).child(a)))
+            .child(facts)
+            .child(
+                div()
+                    .pt(px(4.))
+                    .flex()
+                    .flex_wrap()
+                    .items_center()
+                    .gap(px(8.))
+                    .child(Button::new(("gp-ev-join", idx), root.tr("gp.evJoin")).icon("play").primary().big().on_click(cx.listener(|r, _, _, cx| join_event(r, cx))))
+                    .child(Button::new(("gp-ev-page", idx), root.tr("gp.evPage")).icon_end("external").quiet().big().on_click(event_page(&e.id, cx))),
+            );
+        body = body.child(div().flex().when(wide, |d| d.flex_row().items_start()).when(!wide, |d| d.flex_col()).gap(px(20.)).child(picture(e, pw, ph, idx, false, cx)).child(words));
     }
-    let head = if rich() { heading_rich("calendar", FACE, root.tr("gp.events"), None).into_any_element() } else { heading(root.tr("gp.events"), None).into_any_element() };
-    Some(surface().p(px(18.)).flex().flex_col().gap(px(6.)).child(head).child(rows))
+
+    // The rest (or all, when none is on): picture tiles, three across on a wide page.
+    let tiles: Vec<(usize, &roblox::GameEvent)> = if on_now.is_empty() { rest } else { on_now.iter().skip(1).copied().chain(rest).collect() };
+    if !tiles.is_empty() {
+        let per = if inner >= 1000. { 3. } else if inner >= 560. { 2. } else { 1. };
+        let tw = ((inner - GAP * 1.5 * (per - 1.)) / per).floor();
+        let th = (tw * 9. / 16.).round();
+        let mut grid = div().flex().flex_wrap().gap_x(px(GAP * 1.5)).gap_y(px(20.));
+        for (idx, e) in tiles {
+            let on = e.start <= now;
+            let mut facts = div().flex().flex_wrap().items_center().gap_x(px(14.)).gap_y(px(4.)).text_size(px(T_S)).text_color(c(TEXT_2)).font_features(tnum());
+            facts = facts.child(fact("clock", if on { root.i18n.tv("gp.evEndsIn", &[("t", &left(e.end - now, vi))]) } else { root.i18n.tv("gp.evStarts", &[("t", &left(e.start - now, vi))]) }));
+            if let Some(w) = going_word(e.count) {
+                facts = facts.child(fact("users", w));
+            }
+            let sub = Some(e.sub.clone()).filter(|t| !t.is_empty()).or_else(|| Some(e.about.clone()).filter(|t| !t.is_empty()));
+            grid = grid.child(
+                div()
+                    .w(px(tw))
+                    .flex()
+                    .flex_col()
+                    .gap(px(10.))
+                    .child(picture(e, tw, th, idx, true, cx))
+                    .child(
+                        div()
+                            .flex()
+                            .flex_col()
+                            .gap(px(4.))
+                            .child(div().text_size(px(T_H)).font_weight(FontWeight::SEMIBOLD).truncate().child(e.title.clone()))
+                            .when_some(sub, |d, t| d.child(div().text_size(px(T_S)).text_color(c(MUTED)).truncate().child(t))),
+                    )
+                    .child(div().flex().items_center().justify_between().gap(px(10.)).child(facts).child(if on {
+                        Button::new(("gp-ev-join", idx), root.tr("gp.evJoin")).icon("play").primary().small().on_click(cx.listener(|r, _, _, cx| join_event(r, cx))).into_any_element()
+                    } else {
+                        notify(e, idx, false, cx).into_any_element()
+                    })),
+            );
+        }
+        body = body.child(grid);
+    }
+
+    let sub = root.i18n.tv("gp.evCount", &[("n", &list.len().min(9).to_string())]);
+    let head = if rich() { heading_rich("calendar", FACE, root.tr("gp.events"), Some(sub)).into_any_element() } else { heading(root.tr("gp.events"), Some(sub)).into_any_element() };
+    Some(surface().p(px(18.)).flex().flex_col().gap(px(16.)).child(head).child(body).into_any_element())
 }
 
 /// A game's own pictures, asked once its details have named its universe.
@@ -1293,7 +1494,31 @@ impl Data {
 }
 
 /// Roblox's charts: a sign-in from the app first, then the rows, then the row shown, then the icons of what's shown.
+/// Roblox's "Continue" row for the account whose tab is shown, asked when it changes and every five minutes.
+fn want_continue(r: &mut Root, cx: &mut Context<Root>) {
+    let Some((_, user, cookie)) = crate::pages::friends::signed(r) else { return };
+    if cookie.is_empty() || r.games.continued_at.is_some_and(|(u, t)| u == user && t.elapsed().as_secs() < 300) {
+        return;
+    }
+    r.games.continued_at = Some((user, std::time::Instant::now()));
+    let rx = roblox::run(move || roblox::continue_games(&cookie));
+    cx.spawn(async move |this, cx| {
+        let got = rx.await.unwrap_or_else(|_| Err(String::new()));
+        let _ = this.update(cx, |r, cx| {
+            let places: Vec<i64> = got.as_ref().map(|l| l.iter().map(|g| g.place).collect()).unwrap_or_default();
+            // (A failed read keeps the last good list of the same account.)
+            if got.is_ok() || r.games.continued.as_ref().is_none_or(|(u, _)| *u != user) {
+                r.games.continued = Some((user, got));
+            }
+            r.want_looks(places, cx);
+            cx.notify();
+        });
+    })
+    .detach();
+}
+
 fn want_roblox(r: &mut Root, link: &crate::link::Link, cx: &mut Context<Root>) {
+    want_continue(r, cx);
     let sign = r.games.sign_gen;
     if !r.games.asked_cookie {
         r.games.asked_cookie = true;
@@ -1442,7 +1667,36 @@ fn shown_sort(r: &Root) -> Option<roblox::Sort> {
     r.games.sort_at.as_ref().and_then(|id| sorts.iter().find(|s| s.id == *id)).or(sorts.first()).cloned()
 }
 
-/// Roblox's search for what Games' box holds (Enter).
+/// Roblox's search as the box is typed in: its words held a moment (a third of a second without a key) are asked,
+/// as Roblox's own search box does, not only on Enter (the owner, 2026-11-15: "nhấn enter mới ra các game"). Until
+/// the answer comes, the page says it is looking, not "Nothing matches".
+pub fn search_soon(r: &mut Root, cx: &mut Context<Root>) {
+    let q = r.game_search.read(cx).value().trim().to_string();
+    r.games.typed += 1;
+    if q.is_empty() {
+        r.games.found = None;
+        cx.notify();
+        return;
+    }
+    // (Shown as being looked for at once, the last answer's games kept until the new one comes.)
+    if r.games.found.as_ref().is_none_or(|(at, _)| *at != q) {
+        let kept = r.games.found.take().and_then(|(_, got)| got).filter(|g| g.as_ref().is_ok_and(|g| !g.is_empty()));
+        r.games.found = Some((q.clone(), kept));
+    }
+    cx.notify();
+    let seq = r.games.typed;
+    cx.spawn(async move |this, cx| {
+        cx.background_executor().timer(std::time::Duration::from_millis(330)).await;
+        let _ = this.update(cx, |r, cx| {
+            if r.games.typed == seq {
+                search(r, cx);
+            }
+        });
+    })
+    .detach();
+}
+
+/// Roblox's search for what Games' box holds (Enter, or a moment after the last key).
 pub fn search(r: &mut Root, cx: &mut Context<Root>) {
     let q = r.game_search.read(cx).value().trim().to_string();
     if q.is_empty() {
@@ -1944,8 +2198,34 @@ fn friends_strip(root: &Root, width: f32, cx: &mut Context<Root>) -> Option<AnyE
 
 /// The games this PC's accounts play now and played lately (Home's list), wide pictures on the page's grid (Home's
 /// tiles): a click opens the game's page. Running ones say how many windows; the others, the hours played.
+/// Keep playing's games: those running here first, then Roblox's own "Continue" row of the account whose tab is
+/// shown (every game it played, wherever), then what Bloxkeep launched for the other accounts. Hours are this PC's.
+fn keep_list(root: &Root) -> Vec<crate::pages::home::Game> {
+    use crate::pages::home::{clean, Game as HomeGame};
+    let here = crate::pages::home::games(root);
+    let hours = |place: i64| -> (f64, f64) {
+        root.played.iter().flatten().find(|p| p.get("place").and_then(Value::as_i64) == Some(place)).map_or((0., 0.), |p| (p.get("hours").and_then(Value::as_f64).unwrap_or(0.), p.get("last").and_then(Value::as_f64).unwrap_or(0.)))
+    };
+    let user = crate::pages::friends::signed(root).map(|s| s.1);
+    let Some(Ok(cont)) = root.games.continued.as_ref().filter(|(u, _)| Some(*u) == user).map(|(_, l)| l) else { return here };
+    let (running, rest): (Vec<HomeGame>, Vec<HomeGame>) = here.into_iter().partition(|g| !g.accounts.is_empty());
+    let mut out = running;
+    for g in cont {
+        if !out.iter().any(|x| x.place == g.place) {
+            let (h, last) = hours(g.place);
+            out.push(HomeGame { place: g.place, name: clean(&g.name), icon: None, accounts: Vec::new(), hours: h, last });
+        }
+    }
+    for g in rest {
+        if !out.iter().any(|x| x.place == g.place) {
+            out.push(g);
+        }
+    }
+    out
+}
+
 fn keep_playing(root: &Root, width: f32, cx: &mut Context<Root>) -> Option<AnyElement> {
-    let all = crate::pages::home::games(root);
+    let all = keep_list(root);
     if all.is_empty() {
         return None;
     }
@@ -2817,7 +3097,7 @@ fn page(root: &Root, all: &[Game], open: Open, width: f32, cx: &mut Context<Root
         }
         tabs = tabs.child(
             tab_button(t, icon_name, label, tab == t)
-                .when(count > 0, |d| d.child(chip_count(count as usize, tab == t)))
+                .when(count > 0, |d| d.child(chip_count(count as usize, false)))
                 .on_click(cx.listener(move |r, _, _, cx| {
                     r.games.tab = t;
                     cx.notify();
@@ -3020,7 +3300,11 @@ fn tab_button(t: Tab, icon_name: &'static str, label: String, on: bool) -> Hot {
         Tab::Servers => "gt-servers",
         Tab::Wiki => "gt-wiki",
     };
-    chip(id, on).h(px(TOOL_H)).px(px(12.)).child(icon(icon_name, 15., if on { crate::theme::on_text() } else { c(MUTED) })).child(label)
+    // (The tab shown: a yellow ring on a faint yellow ground, not a solid yellow block: that was Play's colour, and the
+    // two pulled at the eye together, the owner's review 2026-11-15.)
+    let base = hot(id).h(px(TOOL_H)).px(px(12.)).flex().flex_none().items_center().gap(px(8.)).rounded(px(R_M)).border_1().text_size(px(T_M)).font_weight(FontWeight::SEMIBOLD).cursor_pointer();
+    let base = if on { base.tones(ca(FACE, 0.10), ca(FACE, 0.14)).edge(c(FACE), c(FACE)).text_color(c(TEXT)) } else { base.tones(ca(WHITE, 0.), ca(WHITE, 0.06)).edge(ca(WHITE, 0.), ca(WHITE, 0.)).text_color(c(TEXT_2)) };
+    base.child(icon(icon_name, 15., if on { c(FACE) } else { c(MUTED) })).child(label)
 }
 
 /// The open game's name, as a button to any other game (GamesView.tsx's Switcher): a list of them, found by name in a
@@ -3028,9 +3312,9 @@ fn tab_button(t: Tab, icon_name: &'static str, label: String, on: bool) -> Hot {
 fn switcher(root: &Root, all: &[Game], open: &Open, name: &str, width: f32, cx: &mut Context<Root>) -> AnyElement {
     // (In the game's own colours, as its logo is.)
     let own = all.iter().find(|g| g.id == open.id).and_then(|g| icon_of(root, g)).or_else(|| look(root, open.place, "icon"));
-    let title = match logo_img(root, open.place, name, if width < 900. { 56. } else { 72. }, 320., cx) {
+    let title = match logo_img(root, open.place, name, if width < 900. { 64. } else { 96. }, 440., cx) {
         Some(logo) => div().min_w_0().flex().items_center().child(logo),
-        None => div().min_w_0().text_size(px(if width < 900. { 30. } else { 36. })).font_weight(FontWeight::BOLD).line_height(px(44.)).truncate().child(game_name(name.to_string(), own.as_deref(), cx)),
+        None => div().min_w_0().text_size(px(if width < 900. { 32. } else { 42. })).font_weight(FontWeight::BOLD).line_height(px(50.)).truncate().child(game_name(name.to_string(), own.as_deref(), cx)),
     };
     if !all.iter().any(|g| g.id != open.id) {
         return title.into_any_element();
@@ -3115,7 +3399,6 @@ fn hero(root: &Root, all: &[Game], game: Option<&Game>, details: Option<&Value>,
     // to a band, so the first screen shows more than a row of it.
     // One height on every tab (review 3b.3: the title jumped from one place to another between tabs), low enough that
     // the Overview's figures, tabs and your accounts come on the first screen (3b.1).
-    let h = ((width * 0.12).clamp(150., 200.) / 2.).round() * 2.;
     let cover = look(root, place, "cover").and_then(|u| images::pic(&u, cx));
     let badge = look(root, place, "icon")
         .or_else(|| game.and_then(|g| g.icon.clone()))
@@ -3271,7 +3554,9 @@ fn hero(root: &Root, all: &[Game], game: Option<&Game>, details: Option<&Value>,
 
     // The game's wide picture whole, beside its name (owner 2026-11-13: the old band cut a 16:9 picture to a strip and
     // darkened it, "khuất"): no crop, no fade, no words on it; the game's colour stands in until it loads.
-    let pic_h = h - 32.;
+    // (Larger than the 136 it was: the picture and the name lead the page, as on Roblox's, the owner's review
+    // 2026-11-15: "ảnh game lại nhỏ, trong khi nửa phải phần đầu còn trống".)
+    let pic_h = ((width * 0.17).clamp(150., 250.) / 2.).round() * 2.;
     let pic_w = (pic_h * 16. / 9.).round();
     let picture = look(root, place, "cover").and_then(|u| images::pic_at(&u, pic_w, pic_h, cx));
     let frame = div()
@@ -3406,12 +3691,12 @@ fn facts(root: &Root, d: &Value) -> impl IntoElement {
                 .flex_1()
                 .min_w(px(if wide { 250. } else { 180. }))
                 .px(px(18.))
-                .py(px(16.))
+                .py(px(13.))
                 .flex()
                 .items_center()
-                .gap(px(14.))
+                .gap(px(12.))
                 .when(i > 0, |d| d.border_l_1().border_color(c(LINE)))
-                .child(mark_chip(mark, tone, 40.))
+                .child(mark_chip(mark, tone, 34.))
                 .child(
                     div()
                         .flex_1()
@@ -3420,7 +3705,7 @@ fn facts(root: &Root, d: &Value) -> impl IntoElement {
                         .flex_col()
                         .gap(px(2.))
                         .child(div().text_size(px(T_S)).font_weight(FontWeight::MEDIUM).text_color(c(TEXT_2)).truncate().child(label))
-                        .child(div().text_size(px(24.)).font_weight(FontWeight::BOLD).line_height(px(30.)).font_features(tnum()).text_color(c(TEXT)).truncate().child(value))
+                        .child(div().text_size(px(19.)).font_weight(FontWeight::BOLD).line_height(px(24.)).font_features(tnum()).text_color(c(TEXT)).truncate().child(value))
                         .children(under),
                 )
         }));
@@ -3439,7 +3724,7 @@ fn facts(root: &Root, d: &Value) -> impl IntoElement {
             .gap(px(4.))
             .when(i > 0, |d| d.border_l_1().border_color(c(LINE)))
             .child(div().text_size(px(T_S)).font_weight(FontWeight::MEDIUM).text_color(c(MUTED)).truncate().child(label))
-            .child(div().text_size(px(T_FIG)).font_weight(FontWeight::SEMIBOLD).line_height(px(28.)).font_features(tnum()).truncate().child(value))
+            .child(div().text_size(px(18.)).font_weight(FontWeight::SEMIBOLD).line_height(px(24.)).font_features(tnum()).truncate().child(value))
             .children(under)
     }))
 }
@@ -3703,7 +3988,7 @@ fn overview(root: &Root, details: Option<&Value>, place: i64, width: f32, cx: &m
         .gap(px(GAP))
         .children(radar_strip(root, place, s(d, "name")))
         .child(yours)
-        .children(events_block(root, place))
+        .children(events_block(root, place, main_w, cx))
         .children(gallery(root, place, main_w, cx))
         .children(words);
     div()
@@ -3924,7 +4209,7 @@ fn news(root: &Root, feed: Value, width: f32, cx: &mut Context<Root>) -> impl In
             .child(div().text_size(px(T_H)).font_weight(FontWeight::SEMIBOLD).child(root.tr("news.nothingYet")))
             .child(div().text_size(px(T_M)).text_color(c(MUTED)).child(root.tr("news.nothingYetText")));
     }
-    let before = root.games.mark.as_ref().filter(|(g, _)| *g == id).map(|(_, r)| *r).unwrap_or(f64::INFINITY);
+    let before = root.games.mark.as_ref().filter(|(g, _, _)| *g == id).map(|(_, r, _)| *r).unwrap_or(f64::INFINITY);
     // As many columns as fit (a message reads best about 560 wide), the messages dealt across them in turn, so the
     // newest stand along the top and a wide window isn't half empty.
     let cols = ((width + GAP) / (520. + GAP)).floor().clamp(1., 3.) as usize;

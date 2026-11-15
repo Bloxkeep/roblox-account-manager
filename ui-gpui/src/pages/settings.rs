@@ -685,17 +685,15 @@ fn picker(
     cancel: impl Fn(&mut Root) + 'static,
 ) -> AnyElement {
     let toggle = std::rc::Rc::new(toggle);
-    let mut list = div().flex().flex_wrap().gap_y(px(4.));
+    let mut list = div().flex().flex_wrap().gap_y(px(8.));
     for (i, (id, label, sub)) in items.into_iter().enumerate() {
         let toggle = toggle.clone();
         let this = cx.entity().downgrade();
         list = list.child(
-            div()
-                .w(px(220.))
-                .flex()
-                .items_center()
-                .gap(px(6.))
-                .child(Check::new((key, i), ticked.contains(&id)).label(label).on_toggle(move |v, _, cx| {
+            // (Each in a cell of its own width, its name and @name on a line each, cut with … when long: side by side
+            // in 220 dots a long name was squeezed to a letter a line, the owner's shot, 2026-11-15.)
+            div().w(px(220.)).flex_none().flex().flex_col().pr(px(12.)).child({
+                let check = Check::new((key, i), ticked.contains(&id)).label(label).on_toggle(move |v, _, cx| {
                     let v = *v;
                     let id = id.clone();
                     let toggle = toggle.clone();
@@ -703,8 +701,9 @@ fn picker(
                         toggle(r, id, v);
                         cx.notify();
                     });
-                }))
-                .when(!sub.is_empty(), |d| d.child(div().text_size(px(T_S)).text_color(c(MUTED)).child(sub))),
+                });
+                if sub.is_empty() { check } else { check.sub(sub) }
+            }),
         );
     }
     div()

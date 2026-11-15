@@ -53,9 +53,14 @@ pub struct Data {
     spin: bool,
     moving: bool,
     t: f32,
-    /// Its walk (mesh::View): the keys held on the 3D box (1 W, 2 S, 4 A, 8 D), where it has walked to, the way it
-    /// faces, its stride and how much it is walking.
+    /// Its walk (mesh::View): the keys held on the 3D box (1 W, 2 S, 4 A, 8 D, 16 Shift to run), where it has walked
+    /// to, the way it faces, its stride and how much it is walking; a jump asked for (Space) and the one under way.
     keys: u8,
+    /// The look was just changed: its model is asked of Roblox again, not taken from this run's (MODELS).
+    changed_look: bool,
+    jump: bool,
+    up: f32,
+    rise: f32,
     /// "Save as outfit" on its way; the outfit whose menu is open, and the one whose Delete waits for a second click.
     saving_look: bool,
     outfit_menu: Option<i64>,
@@ -203,7 +208,14 @@ fn view_of(av: &Data) -> crate::mesh::View {
         heading: av.heading,
         stride: av.stride,
         pace: av.pace,
+        up: av.up,
+        rise: av.rise,
     }
+}
+
+/// Whether it is in the air, or about to be.
+fn airborne(av: &Data) -> bool {
+    av.jump || av.up > 0. || av.rise > 0.
 }
 
 /// Whether the avatar's model can move in its idle.
@@ -213,16 +225,17 @@ fn moves(av: &Data) -> bool {
 
 /// Whether its run should go: turning, or moving in its idle.
 fn lively(av: &Data) -> bool {
-    av.solid.is_some() && (av.spin || (moves(av) && (av.moving || av.keys != 0 || av.pace > 0.)))
+    av.solid.is_some() && (av.spin || (moves(av) && (av.moving || av.keys & 15 != 0 || av.pace > 0. || airborne(av))))
 }
 
-/// A walking key on the 3D box: its bit in `keys` (W or ↑ 1, S or ↓ 2, A or ← 4, D or → 8).
+/// A walking key on the 3D box: its bit in `keys` (W or ↑ 1, S or ↓ 2, A or ← 4, D or → 8, Shift 16: it runs).
 fn walk_key(key: &str) -> Option<u8> {
     match key {
         "w" | "up" => Some(1),
         "s" | "down" => Some(2),
         "a" | "left" => Some(4),
         "d" | "right" => Some(8),
+        "shift" => Some(16),
         _ => None,
     }
 }
@@ -233,6 +246,11 @@ const STAGE: usize = 560;
 const STAGE_BIG: usize = 1120;
 /// The side of a saved picture, in dots.
 const SAVED: usize = 1600;
+thread_local! {
+    /// Each account's avatar model read this run (by its Roblox user).
+    static MODELS: std::cell::RefCell<std::collections::HashMap<i64, std::sync::Arc<crate::mesh::Model>>> = Default::default();
+}
+
 /// How far round the avatar stands when it first shows; it turns to face you from there.
 const TURN_IN: f32 = -0.9;
 
@@ -248,7 +266,13 @@ fn solid(r: &mut Root, cx: &mut Context<Root>) {
     }
     // BLOXKEEP_SHOT_MODEL=blocks: a plain model of boxes (mesh::blocks), for a hidden shot without Roblox.
     let blocks = cfg!(feature = "shot") && std::env::var("BLOXKEEP_SHOT_MODEL").is_ok_and(|v| v == "blocks");
+    // (Each account's model is kept for the run: coming back to the page, or to the account, shows it at once; Roblox
+    // is asked again only after a change of look. "loading khá lâu", the owner, 2026-11-15.)
+    let kept = if std::mem::take(&mut r.avatar.changed_look) { None } else { MODELS.with(|m| m.borrow().get(&user).cloned()) };
     let rx = roblox::run(move || {
+        if let Some(m) = kept {
+            return Some(m);
+        }
         #[cfg(feature = "shot")]
         if blocks {
             return crate::mesh::blocks().map(std::sync::Arc::new);
@@ -276,6 +300,14 @@ fn solid(r: &mut Root, cx: &mut Context<Root>) {
                     return false;
                 }
                 let first = r.avatar.solid.is_none();
+                // (Three at most: a model holds its pictures whole, megabytes each.)
+                MODELS.with(|m| {
+                    let mut m = m.borrow_mut();
+                    if m.len() >= 3 && !m.contains_key(&user) {
+                        m.clear();
+                    }
+                    m.insert(user, model.clone());
+                });
                 r.avatar.solid = Some(model);
                 r.avatar.no_solid = false;
                 if let Some(y) = fixed {
@@ -357,14 +389,15 @@ fn start_spin(r: &mut Root, cx: &mut Context<Root>) {
                     }
                     let mut changed = false;
                     // (A hidden shot holds its stride where it was put.)
-                    if r.avatar.keys != 0 || (r.avatar.pace > 0. && !cfg!(feature = "shot")) {
+                    if r.avatar.keys & 15 != 0 || airborne(&r.avatar) || (r.avatar.pace > 0. && !cfg!(feature = "shot")) {
                         if let Some(model) = r.avatar.solid.clone() {
                             let k = r.avatar.keys;
                             let ahead = f32::from(k & 1 != 0) - f32::from(k & 2 != 0);
                             let right = f32::from(k & 8 != 0) - f32::from(k & 4 != 0);
                             let mut v = view_of(&r.avatar);
-                            model.step(&mut v, ahead, right, 0.04);
+                            model.step(&mut v, ahead, right, k & 16 != 0, std::mem::take(&mut r.avatar.jump), 0.04);
                             (r.avatar.at, r.avatar.heading, r.avatar.stride, r.avatar.pace) = (v.at, v.heading, v.stride, v.pace);
+                            (r.avatar.up, r.avatar.rise) = (v.up, v.rise);
                             changed = true;
                         }
                     }
@@ -428,6 +461,7 @@ fn reset_view(r: &mut Root, cx: &mut Context<Root>) {
     let (a0, h0) = (r.avatar.at, (r.avatar.heading + std::f32::consts::PI).rem_euclid(tau) - std::f32::consts::PI);
     r.avatar.keys = 0;
     r.avatar.pace = 0.;
+    (r.avatar.jump, r.avatar.up, r.avatar.rise) = (false, 0., 0.);
     r.avatar.spin_run += 1;
     r.avatar.spinning = false;
     cx.spawn(async move |this, cx| {
@@ -793,6 +827,7 @@ fn change(r: &mut Root, what: Change, cx: &mut Context<Root>) {
             match done {
                 Ok(()) => {
                     r.avatar.asked_solid = false;
+                    r.avatar.changed_look = true;
                     load(r, cx)
                 }
                 Err(why) => {
@@ -891,7 +926,17 @@ fn stage(root: &Root, a: &Avatar, side: f32, cx: &mut Context<Root>) -> Stateful
                 return;
             }
             let m = &e.keystroke.modifiers;
-            let Some(bit) = walk_key(&e.keystroke.key).filter(|_| !m.control && !m.alt && !m.platform) else { return };
+            if m.control || m.alt || m.platform {
+                return;
+            }
+            // Space jumps (from the floor; held, it jumps again as it lands, as in Roblox).
+            if e.keystroke.key == "space" {
+                cx.stop_propagation();
+                r.avatar.jump = true;
+                start_spin(r, cx);
+                return;
+            }
+            let Some(bit) = walk_key(&e.keystroke.key) else { return };
             cx.stop_propagation();
             if r.avatar.keys & bit == 0 {
                 r.avatar.keys |= bit;
@@ -906,6 +951,14 @@ fn stage(root: &Root, a: &Avatar, side: f32, cx: &mut Context<Root>) -> Stateful
             if let Some(bit) = walk_key(&e.keystroke.key) {
                 r.avatar.keys &= !bit;
                 cx.stop_propagation();
+            }
+        }))
+        // (Shift alone comes as a change of the held modifiers, not as a key.)
+        .on_modifiers_changed(cx.listener(|r, e: &ModifiersChangedEvent, _, _| {
+            if e.modifiers.shift {
+                r.avatar.keys |= 16;
+            } else {
+                r.avatar.keys &= !16;
             }
         }))
         .on_mouse_down(

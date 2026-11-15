@@ -289,13 +289,13 @@ impl Root {
             e
         };
         let game_search = mk("ui.findGame", window, cx);
-        // Enter asks Roblox; an empty box goes back to the charts.
+        // Typing asks Roblox a moment after the last key (Enter at once); an empty box goes back to the charts.
         cx.subscribe(&game_search, |r: &mut Root, _, e: &InputEvent, cx| match e {
-            InputEvent::PressEnter { .. } => pages::games::search(r, cx),
-            InputEvent::Change if r.game_search.read(cx).value().trim().is_empty() => {
-                r.games.found = None;
-                cx.notify();
+            InputEvent::PressEnter { .. } => {
+                r.games.typed += 1;
+                pages::games::search(r, cx)
             }
+            InputEvent::Change => pages::games::search_soon(r, cx),
             _ => {}
         })
         .detach();
@@ -1187,6 +1187,11 @@ impl Root {
                     self.settings.part = Part::Perf;
                     self.settings.rc_custom = true;
                 }
+                // (The main account's tick list open, the first account ticked.)
+                "main-pick" => {
+                    self.settings.part = Part::Perf;
+                    self.settings.main_pick = Some(self.accounts().iter().take(1).filter_map(|a| a.get("id").and_then(Value::as_str).map(str::to_string)).collect());
+                }
                 "dc-link" => {
                     self.settings.part = Part::Discord;
                     self.settings.dc_link.get_or_insert(false);
@@ -1519,6 +1524,9 @@ impl Root {
         pages::games::want_wikis(self, cx);
         if self.page == Page::Games {
             pages::games::want(self, cx);
+        } else {
+            // (News' New marks count from the read before this visit: a visit ends when the page is left.)
+            self.games.mark = None;
         }
         // Asked again on each new visit to Home or Games (at most twice a minute): they change as accounts play.
         let again = self.played_nav != self.nav

@@ -270,6 +270,35 @@ pub async fn run(c: &mut Checks, dir: &str) {
         }
         c.check("…its wait ends when the window is closed", over.get(), asked.elapsed().as_millis());
     }
+    // The captcha window: the same fault was in it (its state held only by the task that opened the page).
+    {
+        use crate::core::forms::captcha_form::CaptchaForm;
+        for (kind, form) in [("puzzle", CaptchaForm::arkose("roblox", "476068BF-9607-4799-B53D-966BE98E2B81", "")), ("press and hold", CaptchaForm::human("roblox", "00000000-0000-0000-0000-000000000000"))] {
+            let form = Rc::new(form.unseen());
+            let over = Rc::new(Cell::new(false));
+            let (f2, o2) = (form.clone(), over.clone());
+            rt::spawn(async move {
+                f2.show_dialog(0).await;
+                o2.set(true);
+            });
+            let log = Path::new(dir).join("error.log");
+            let count = || std::fs::read_to_string(&log).map(|t| t.matches("Captcha window: its browser is up").count()).unwrap_or(0);
+            let before = count();
+            let started = Instant::now();
+            while count() == before && !over.get() && started.elapsed() < Duration::from_secs(40) {
+                rt::sleep(Duration::from_millis(200)).await;
+            }
+            c.check(&format!("the captcha window ({kind}): its browser starts (error.log says so)"), count() > before, started.elapsed().as_millis());
+            rt::sleep(Duration::from_secs(4)).await;
+            c.check(&format!("…({kind}) still up four seconds after, the app still waiting for it"), !over.get(), ());
+            form.close();
+            let asked = Instant::now();
+            while !over.get() && asked.elapsed() < Duration::from_secs(15) {
+                rt::sleep(Duration::from_millis(100)).await;
+            }
+            c.check(&format!("…({kind}) its wait ends when the window is closed"), over.get(), asked.elapsed().as_millis());
+        }
+    }
     no_network();
     let mark: String = new_guid().to_string().replace('-', "")[..10].to_string();
     let roblox = Arc::new(Roblox::default());

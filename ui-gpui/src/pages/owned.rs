@@ -56,8 +56,35 @@ struct Shelf {
     asked: bool,
 }
 
-/// The shelves after the private servers: their names' keys.
-const SHELF_KEYS: [&str; 6] = ["inv.acc", "inv.clothes", "inv.body", "inv.anim", "inv.emote", "inv.badges"];
+/// The shelves after the private servers, as Roblox's inventory has them: the avatar's (roblox::SHELVES), badges,
+/// bundles, game passes, then roblox::LIBRARY's (classic faces and heads, audio, decals, models, plugins, meshes,
+/// videos). Each a name's key and where it is read from.
+#[derive(Clone, Copy, PartialEq)]
+enum From {
+    Kinds(&'static str),
+    /// A creator's things (roblox::LIBRARY): read the same way, opened on Roblox's store.
+    Library(&'static str),
+    Badges,
+    Bundles,
+    Passes,
+}
+
+fn shelves() -> Vec<(&'static str, From)> {
+    let avatar = ["inv.acc", "inv.clothes", "inv.body", "inv.anim", "inv.emote"].into_iter().zip(roblox::SHELVES).map(|(k, (_, kinds))| (k, From::Kinds(kinds)));
+    let rest = [("inv.badges", From::Badges), ("inv.bundles", From::Bundles), ("inv.passes", From::Passes)];
+    avatar.chain(rest).chain(roblox::LIBRARY.into_iter().map(|(k, kinds)| (k, if k == "inv.faces" { From::Kinds(kinds) } else { From::Library(kinds) }))).collect()
+}
+
+/// Where a shelf's thing opens on Roblox (openRobloxPage's kind).
+fn page_kind(shelf: usize) -> &'static str {
+    match shelves().get(shelf.wrapping_sub(1)).map(|s| s.1) {
+        Some(From::Badges) => "badge",
+        Some(From::Bundles) => "bundle",
+        Some(From::Passes) => "pass",
+        Some(From::Library(_)) => "library",
+        _ => "catalog",
+    }
+}
 
 fn s<'a>(v: &'a Value, k: &str) -> &'a str {
     v.get(k).and_then(Value::as_str).unwrap_or_default()
@@ -104,9 +131,12 @@ fn shelf_page(r: &mut Root, cx: &mut Context<Root>) {
     have.reading = true;
     have.asked = true;
     have.failed = None;
-    let rx = roblox::run(move || match roblox::SHELVES.get(shelf - 1) {
-        Some((_, kinds)) => roblox::inventory(&cookie, user, kinds, &cursor),
-        None => roblox::badges_page(&cookie, user, &cursor),
+    let Some((_, from)) = shelves().get(shelf - 1).copied() else { return };
+    let rx = roblox::run(move || match from {
+        From::Kinds(kinds) | From::Library(kinds) => roblox::inventory(&cookie, user, kinds, &cursor),
+        From::Badges => roblox::badges_page(&cookie, user, &cursor),
+        From::Bundles => roblox::bundles_page(&cookie, user, &cursor),
+        From::Passes => roblox::passes_page(&cookie, user, &cursor),
     });
     cx.spawn(async move |this, cx| {
         let got = rx.await.unwrap_or_else(|_| Err(String::new()));
@@ -242,7 +272,7 @@ pub fn page(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
         )
         .child(refresh);
     // The shelves: the private servers (every account's), then the things of the account whose tab is shown.
-    let shelves = div().flex().flex_wrap().gap(px(6.)).children(std::iter::once("own.title").chain(SHELF_KEYS).enumerate().map(|(i, key)| {
+    let shelves = div().flex().flex_wrap().gap(px(6.)).children(std::iter::once("own.title").chain(shelves().into_iter().map(|s| s.0)).enumerate().map(|(i, key)| {
         chip(("inv-shelf", i), o.shelf == i).child(root.tr(key)).on_click(cx.listener(move |r, _, _, cx| {
             r.owned.shelf = i;
             cx.notify();
@@ -271,7 +301,7 @@ fn things(root: &Root, inner: f32, cx: &mut Context<Root>) -> AnyElement {
             (None, false) => note(root.tr("inv.empty"), false).into_any_element(),
         };
     }
-    let badge = o.shelf > roblox::SHELVES.len();
+    let kind = page_kind(o.shelf);
     let (_, w) = grid_fit(inner, 124., GRID_GAP);
     let side = w - 18.;
     let tiles: Vec<AnyElement> = have
@@ -292,7 +322,7 @@ fn things(root: &Root, inner: f32, cx: &mut Context<Root>) -> AnyElement {
                     None => d.child(icon("image", 20., c(DIM))),
                 }))
                 .child(div().text_size(px(T_S)).line_height(px(16.)).text_color(c(TEXT_2)).line_clamp(2).child(t.name.clone()))
-                .on_click(cx.listener(move |r, _, _, _| r.send("openRobloxPage", json!({ "kind": if badge { "badge" } else { "catalog" }, "id": id }))))
+                .on_click(cx.listener(move |r, _, _, _| r.send("openRobloxPage", json!({ "kind": kind, "id": id }))))
                 .into_any_element()
         })
         .collect();

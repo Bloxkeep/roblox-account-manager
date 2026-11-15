@@ -624,12 +624,19 @@ pub struct Check {
     id: ElementId,
     checked: bool,
     label: Option<SharedString>,
+    sub: Option<SharedString>,
     on_toggle: Option<Toggle>,
 }
 
 impl Check {
     pub fn new(id: impl Into<ElementId>, checked: bool) -> Self {
-        Self { id: id.into(), checked, label: None, on_toggle: None }
+        Self { id: id.into(), checked, label: None, sub: None, on_toggle: None }
+    }
+    /// A quiet second line under the label (an account's @name). With one, each line stays on one line, cut with …
+    /// where it runs out of room (a tick list of accounts in narrow cells).
+    pub fn sub(mut self, s: impl Into<SharedString>) -> Self {
+        self.sub = Some(s.into());
+        self
     }
     pub fn label(mut self, l: impl Into<SharedString>) -> Self {
         self.label = Some(l.into());
@@ -666,6 +673,8 @@ impl RenderOnce for Check {
             .with_spring("box", SpringAnimation::new(EASE).to(checked), move |d, p| {
                 d.bg(mix(c(INSET), c(OK), p.0)).border_color(mix(if over { ca(TEXT, 0.6) } else { ca(TEXT, 0.38) }, c(OK), p.0))
             });
+        let (label, sub) = (self.label, self.sub);
+        let alone = if sub.is_none() { label.clone() } else { None };
         // A label wraps in the room it has (a long one under a dialog's edge), its first line beside the box.
         sense(focusable(div().id(self.id)), &st)
             .px(px(2.))
@@ -676,7 +685,18 @@ impl RenderOnce for Check {
             .gap(px(9.))
             .cursor_pointer()
             .child(bx)
-            .when_some(self.label, |d, l| d.child(div().min_w_0().flex_1().text_size(px(T_M)).line_height(px(19.)).text_color(if over { c(TEXT) } else { c(TEXT_2) }).child(l)))
+            .when_some(alone, |d, l| d.child(div().min_w_0().flex_1().text_size(px(T_M)).line_height(px(19.)).text_color(if over { c(TEXT) } else { c(TEXT_2) }).child(l)))
+            .when_some(sub, |d, sub| {
+                d.child(
+                    div()
+                        .min_w_0()
+                        .flex_1()
+                        .flex()
+                        .flex_col()
+                        .when_some(label, |d, l| d.child(div().truncate().text_size(px(T_M)).line_height(px(19.)).text_color(if over { c(TEXT) } else { c(TEXT_2) }).child(l)))
+                        .child(div().truncate().text_size(px(T_S)).line_height(px(16.)).text_color(c(MUTED)).child(sub)),
+                )
+            })
             .when_some(self.on_toggle, |d, f| d.on_click(move |_, w, cx| f(&!checked, w, cx)))
     }
 }

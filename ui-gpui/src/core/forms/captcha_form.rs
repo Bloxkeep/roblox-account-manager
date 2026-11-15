@@ -59,6 +59,8 @@ pub struct CaptchaForm {
     /// From opening the window to the puzzle being ready, and to it being solved: written to the log.
     clock: Instant,
     window: Arc<Mutex<Slot>>,
+    /// Never shown (the checks).
+    unseen: bool,
 }
 
 #[derive(Default)]
@@ -72,7 +74,14 @@ struct Slot {
 
 impl CaptchaForm {
     fn new(site: &str, page: String, relay_human: bool) -> CaptchaForm {
-        CaptchaForm { site: site.to_string(), page, relay_human, clock: Instant::now(), window: Arc::new(Mutex::new(Slot::default())) }
+        CaptchaForm { site: site.to_string(), page, relay_human, clock: Instant::now(), window: Arc::new(Mutex::new(Slot::default())), unseen: false }
+    }
+
+    /// The same window, never shown: for the checks.
+    #[cfg(any(test, feature = "core"))]
+    pub fn unseen(mut self) -> CaptchaForm {
+        self.unseen = true;
+        self
     }
 
     /// One kept profile for the puzzle windows, so Arkose's scripts stay cached and its "Verifying browser…" step knows the
@@ -99,8 +108,10 @@ impl CaptchaForm {
     /// ShowDialog(owner): over the owner (disabled meanwhile) until solved (Ok) or closed (Cancel).
     pub async fn show_dialog(&self, owner: isize) -> DialogResult {
         let (done_tx, done_rx) = oneshot::channel::<()>();
-        let spec = Spec { site: self.site.clone(), page: self.page.clone(), relay_human: self.relay_human, clock: self.clock, slot: self.window.clone() };
+        let spec = Spec { site: self.site.clone(), page: self.page.clone(), relay_human: self.relay_human, clock: self.clock, slot: self.window.clone(), unseen: self.unseen };
+        log::note(if self.relay_human { "Captcha window: opening (press and hold)." } else { "Captcha window: opening (puzzle)." });
         if !host::start_thread("captcha window", move || CaptchaWindow::open(owner, spec, done_tx)) {
+            log::note("Captcha window: its thread couldn't start.");
             return DialogResult::Cancel;
         }
         let _ = done_rx.await;
@@ -140,6 +151,7 @@ struct Spec {
     relay_human: bool,
     clock: Instant,
     slot: Arc<Mutex<Slot>>,
+    unseen: bool,
 }
 
 /// The window, on its own thread.
@@ -168,9 +180,11 @@ impl CaptchaWindow {
         let style = (WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN) & !(WS_MINIMIZEBOX | WS_MAXIMIZEBOX);
         let hwnd = host::create_window(host::CLASS_FORM, &l::t("Solve the puzzle"), style, 0, owner, Rect::default());
         if hwnd == 0 {
+            log::note("Captcha window: Windows didn't make the window.");
             let _ = done.send(());
             return;
         }
+        let unseen = spec.unseen;
         host::set_icon(hwnd);
         let dpi = host::dpi(if owner != 0 { owner } else { hwnd });
         let (w, h) = if spec.relay_human { (host::logical(460, dpi), host::logical(340, dpi)) } else { (host::logical(500, dpi), host::logical(640, dpi)) };
@@ -230,7 +244,11 @@ impl CaptchaWindow {
             // SAFETY: plain call; the owner is enabled again when this window closes.
             unsafe { EnableWindow(owner as HWND, 0) };
         }
-        host::show(hwnd, SW_SHOW);
+        if !unseen {
+            host::show(hwnd, SW_SHOW);
+        }
+        let r = host::window_rect(hwnd);
+        log::note(&format!("Captcha window: {}, {}×{}.", if unseen { "made (not shown)" } else { "shown" }, r.width, r.height));
     }
 
     fn on_message(self: &Rc<Self>, h: HWND, msg: u32, w: WPARAM, l: LPARAM) -> Option<isize> {
@@ -325,11 +343,13 @@ impl CaptchaWindow {
                 )?;
                 self.slow.start();
                 core.Navigate(&HSTRING::from(self.page_url.as_str()))?;
+                log::note("Captcha window: its browser is up, the puzzle page asked for.");
             }
             Ok(())
         }
         .await;
         if let Err(e) = result {
+            log::note(&format!("Captcha window: its browser couldn't start ({}).", e.message()));
             if host::runtime_missing(&e) {
                 ui::error(Some(self.hwnd), &l::t("Microsoft Edge WebView2 isn't installed. Install it, or add the account with a cookie."));
                 host::close(self.hwnd);
@@ -484,6 +504,7 @@ impl CaptchaWindow {
     }
 
     fn on_form_closed(&self) {
+        log::note(&format!("Captcha window: closed after {:.1} s.", self.clock.elapsed().as_secs_f32()));
         self.closing.set(true);
         self.slow.stop();
         self.slow.dispose();

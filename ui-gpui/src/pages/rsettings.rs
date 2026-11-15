@@ -31,15 +31,16 @@ pub struct Data {
     /// Which voice-lock countdown is the live one (a new read stops the old), and whether one runs.
     ticks: u64,
     ticking: bool,
-    /// Who sees it online and who may join it (Roblox's words: "AllUsers", "Friends", "NoOne"), None while read or
-    /// when Roblox didn't say.
-    vis: Option<(String, String)>,
+    /// Who sees it online and who may join it (Roblox's words and the choices it offers this account; each None when
+    /// Roblox has no such setting for it), None while read.
+    vis: Option<(Option<roblox::Choice>, Option<roblox::Choice>)>,
     /// Roblox didn't answer who sees the account (the Privacy card says so instead of "Reading" for good).
     /// Why the visibility read failed (Roblox's code, or the network's words), shown as it is.
     vis_failed: Option<String>,
+    /// Account status, as Roblox's own page has it: nothing against it (Ok None), a ban or a warning, or the read
+    /// failed. It was only behind the card's ⋮ menu, where the owner never found it (2026-11-15).
+    held: Option<Result<Option<roblox::Held>, String>>,
 }
-
-const SEEN: [&str; 3] = ["AllUsers", "Friends", "NoOne"];
 
 pub fn want(r: &mut Root, link: &crate::link::Link, cx: &mut Context<Root>) {
     friends::want_sign(r, link, cx);
@@ -60,6 +61,18 @@ pub fn want(r: &mut Root, link: &crate::link::Link, cx: &mut Context<Root>) {
 fn load(r: &mut Root, cx: &mut Context<Root>) {
     let Some((_, user, cookie)) = friends::signed(r) else { return };
     r.rset.reading = true;
+    let c3 = cookie.clone();
+    let held = roblox::run(move || roblox::held(&c3));
+    cx.spawn(async move |this, cx| {
+        let got = held.await.unwrap_or_else(|_| Err(String::new()));
+        let _ = this.update(cx, |r, cx| {
+            if r.rset.of == user {
+                r.rset.held = Some(got);
+                cx.notify();
+            }
+        });
+    })
+    .detach();
     let c2 = cookie.clone();
     let vis = roblox::run(move || roblox::visibility(&c2));
     cx.spawn(async move |this, cx| {
@@ -225,17 +238,17 @@ fn set_trade(r: &mut Root, privacy: bool, name: String, cx: &mut Context<Root>) 
 }
 
 /// Who sees it online (`online`) or may join it, set to Roblox's `v`: shown at once, put back when Roblox refuses.
-fn set_vis(r: &mut Root, online: bool, v: &'static str, cx: &mut Context<Root>) {
+fn set_vis(r: &mut Root, online: bool, v: String, cx: &mut Context<Root>) {
     let Some((_, user, cookie)) = friends::signed(r) else { return };
     if r.rset.saving.is_some() {
         return;
     }
     let Some(now) = r.rset.vis.as_mut() else { return };
-    let slot = if online { &mut now.0 } else { &mut now.1 };
-    let before = std::mem::replace(slot, v.to_string());
+    let Some(slot) = (if online { now.0.as_mut() } else { now.1.as_mut() }) else { return };
+    let before = std::mem::replace(&mut slot.now, v.clone());
     r.rset.saving = Some(if online { "online" } else { "join" });
     r.rset.said = None;
-    let rx = roblox::run(move || if online { roblox::set_visibility(&cookie, Some(v), None) } else { roblox::set_visibility(&cookie, None, Some(v)) });
+    let rx = roblox::run(move || if online { roblox::set_visibility(&cookie, Some(&v), None) } else { roblox::set_visibility(&cookie, None, Some(&v)) });
     cx.spawn(async move |this, cx| {
         let done = rx.await.unwrap_or_else(|_| Err(String::new()));
         let _ = this.update(cx, |r, cx| {
@@ -244,8 +257,8 @@ fn set_vis(r: &mut Root, online: bool, v: &'static str, cx: &mut Context<Root>) 
             }
             r.rset.saving = None;
             if let Err(why) = done {
-                if let Some(now) = r.rset.vis.as_mut() {
-                    *(if online { &mut now.0 } else { &mut now.1 }) = before;
+                if let Some(slot) = r.rset.vis.as_mut().and_then(|now| if online { now.0.as_mut() } else { now.1.as_mut() }) {
+                    slot.now = before;
                 }
                 r.toast = Some((r.i18n.tv("rs.failed", &[("why", if why.is_empty() { "Roblox" } else { &why })]), "bad".into()));
             }
@@ -327,6 +340,25 @@ fn filled(root: &Root, s: &AccountSettings, viewer: Option<&serde_json::Value>, 
 
     // The account: who, then what Roblox has of it.
     let mut rows: Vec<(String, AnyElement)> = Vec::new();
+    // Account status first: good standing, or what Roblox holds against it and until when, and Roblox's own page.
+    let account_id = viewer.and_then(|a| a.get("id")).and_then(serde_json::Value::as_str).unwrap_or_default().to_string();
+    let open = Button::new("rs-status-open", root.tr("rs.statusOpen")).small().quiet().icon_end("external").on_click(cx.listener(move |r, _, _, _| r.send("openAppeal", serde_json::json!({ "id": account_id }))));
+    rows.push((
+        root.tr("m.status"),
+        match &rs.held {
+            None => div().text_color(c(MUTED)).child(root.tr("vis.reading")).into_any_element(),
+            Some(Err(_)) => div().flex().items_center().gap(px(10.)).child(dash()).child(open).into_any_element(),
+            Some(Ok(None)) => div().flex().items_center().gap(px(10.)).child(badge(root.tr("rs.statusGood"), Tone::Ok)).child(open).into_any_element(),
+            Some(Ok(Some(h))) => div()
+                .flex()
+                .items_center()
+                .gap(px(10.))
+                .child(badge(if h.kind.is_empty() { root.tr("rs.statusHeld") } else { h.kind.clone() }, if h.kind.to_lowercase().contains("warn") { Tone::Warn } else { Tone::Bad }))
+                .when_some(h.ends, |d, t| d.child(div().text_color(c(MUTED)).font_features(tnum()).child(root.i18n.tv("rs.statusEnds", &[("t", &crate::time::day_time(t))]))))
+                .child(open)
+                .into_any_element(),
+        },
+    ));
     rows.push((
         root.tr("rs.email"),
         match &s.email {
@@ -412,31 +444,52 @@ fn filled(root: &Root, s: &AccountSettings, viewer: Option<&serde_json::Value>, 
         .child(div().px(px(20.)).pt(px(16.)).pb(px(18.)).flex().flex_col().gap(px(12.)).child(title(root.tr("rs.tradeWho"), None)).child(div().flex().child(choice(true))))
         .child(div().px(px(20.)).pt(px(16.)).pb(px(18.)).border_t_1().border_color(c(LINE)).flex().flex_col().gap(px(12.)).child(title(root.tr("rs.tradeValue"), Some(root.tr("rs.tradeValueSub")))).child(div().flex().child(choice(false))));
 
-    // Privacy: who sees it online ("No one" is showing offline to all) and who may join it.
-    let seen = |online: bool| {
-        let at = rs.vis.as_ref().map(|v| if online { v.0.clone() } else { v.1.clone() }).unwrap_or_default();
-        let mut seg = Segmented::new(if online { "rs-online" } else { "rs-join" }, at);
-        for v in SEEN {
-            seg = seg.item(v, root.tr(&format!("vis.{v}")));
+    // Privacy: who sees it online and who may join it, with the choices Roblox offers this account; under each, what
+    // the picked one means (the line used to explain "No one" whatever was picked, and read as if it were).
+    let seen = |online: bool, choice: &roblox::Choice| {
+        let mut seg = Segmented::new(if online { "rs-online" } else { "rs-join" }, choice.now.clone());
+        for v in &choice.options {
+            seg = seg.item(v.clone(), vis_word(root, v));
         }
         let this = cx.entity().downgrade();
         seg.on_select(move |v, _, cx| {
             if busy {
                 return;
             }
-            let Some(v) = SEEN.iter().copied().find(|k| *k == v.as_ref()) else { return };
+            let v = v.to_string();
             let _ = this.update(cx, |r, cx| set_vis(r, online, v, cx));
         })
+    };
+    let means = |online: bool, now: &str| -> Option<String> {
+        let key = format!("{}.{now}", if online { "rs.onlineIs" } else { "rs.joinIs" });
+        root.i18n.has(&key).then(|| root.tr(&key))
     };
     let privacy = surface()
         .overflow_hidden()
         .flex()
         .flex_col()
-        .map(|d| match rs.vis {
+        .map(|d| match &rs.vis {
             None => d.child(div().px(px(20.)).py(px(18.)).text_size(px(T_M)).text_color(c(MUTED)).child(match &rs.vis_failed { Some(why) => root.i18n.tv("rs.visFailed", &[("why", why)]), None => root.tr("vis.reading") })),
-            Some(_) => d
-                .child(div().px(px(20.)).pt(px(16.)).pb(px(18.)).flex().flex_col().gap(px(12.)).child(title(root.tr("rs.online"), Some(root.tr("rs.onlineSub")))).child(div().flex().child(seen(true))))
-                .child(div().px(px(20.)).pt(px(16.)).pb(px(18.)).border_t_1().border_color(c(LINE)).flex().flex_col().gap(px(12.)).child(title(root.tr("rs.join"), None)).child(div().flex().child(seen(false)))),
+            Some((online, join)) => {
+                let rows: Vec<Div> = [(true, online), (false, join)]
+                    .into_iter()
+                    .filter_map(|(o, c)| c.as_ref().filter(|c| !c.options.is_empty()).map(|c| (o, c)))
+                    .enumerate()
+                    .map(|(i, (o, ch))| {
+                        div()
+                            .px(px(20.))
+                            .pt(px(16.))
+                            .pb(px(18.))
+                            .when(i > 0, |d| d.border_t_1().border_color(c(LINE)))
+                            .flex()
+                            .flex_col()
+                            .gap(px(12.))
+                            .child(title(root.tr(if o { "rs.online" } else { "rs.join" }), means(o, &ch.now)))
+                            .child(div().flex().flex_wrap().child(seen(o, ch)))
+                    })
+                    .collect();
+                if rows.is_empty() { d.child(div().px(px(20.)).py(px(18.)).text_size(px(T_M)).text_color(c(MUTED)).child(root.tr("rs.visNone"))) } else { d.children(rows) }
+            }
         });
 
     // About me: the box, and Save when it holds something else.
@@ -501,4 +554,10 @@ fn filled(root: &Root, s: &AccountSettings, viewer: Option<&serde_json::Value>, 
         }
     });
     crate::scrolled::body("rs-body", inner)
+}
+
+/// A privacy choice in words: Roblox's word for it ("All", "FriendsAndFollowing"…), as its Settings page names it.
+pub fn vis_word(root: &Root, v: &str) -> String {
+    let key = format!("vis.{v}");
+    if root.i18n.has(&key) { root.tr(&key) } else { v.to_string() }
 }
