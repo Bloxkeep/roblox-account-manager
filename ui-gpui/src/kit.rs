@@ -202,11 +202,8 @@ pub fn icon(name: &str, size: f32, color: Hsla) -> Svg {
     svg().path(SharedString::from(file)).size(px(size)).flex_none().text_color(color)
 }
 
-/// The icons drawn for Bloxkeep itself, in two layers (assets/icons/duo, made by dev/make_icons.py; their names in
-/// duo_icons.rs): the drawing in lines, and one small part of it apart, to be in the accent colour (a door, a knob, a
-/// face, a spark, the arrow that says what it does). The owner, 2026-11-15: stock icons "trông slop", beside Medal's
-/// own two-colour ones. `icon` draws one whole in one colour; this, its lines in `base` and its accent in `accent`.
-/// A name with no drawing of its own (a plain sign, another's mark) is the common icon in `base`.
+/// Bloxkeep's rounded icon family: the silhouette in `base`, a functional detail in `accent`.
+/// Shared signs and other companies' marks use their existing drawing in `base`.
 pub fn icon2(name: &str, size: f32, base: Hsla, accent: Hsla) -> Div {
     let duo = if name == "starFill" { "star" } else { name };
     let frame = div().size(px(size)).flex_none().relative();
@@ -214,11 +211,7 @@ pub fn icon2(name: &str, size: f32, base: Hsla, accent: Hsla) -> Div {
         return frame.child(icon(name, size, base));
     }
     let layer = |file: String, col: Hsla| svg().path(SharedString::from(file)).size(px(size)).absolute().top_0().left_0().text_color(col);
-    // Behind the drawing, the logo's second block: a tilted rounded block at its upper right, faintly of the accent
-    // (the owner, 2026-11-15, of the first set: "xấu, không đặc biệt lắm": line icons with a yellow dot are anyone's).
-    // Only where an icon stands alone at a size to carry it (the rail, a block's mark), never in a line of words.
-    let echo = (size >= 18. && accent != base).then(|| layer("icons/duo/_echo.svg".into(), Hsla { a: accent.a * 0.38, ..accent }));
-    frame.children(echo).child(layer(format!("icons/duo/{duo}.svg"), base)).child(layer(format!("icons/duo/{duo}.a.svg"), accent))
+    frame.child(layer(format!("icons/duo/{duo}.svg"), base)).child(layer(format!("icons/duo/{duo}.a.svg"), accent))
 }
 
 /// "ROBLOX" as Roblox writes it (its tilted square for the first O), `h` high, in a colour: the Roblox part's title.
