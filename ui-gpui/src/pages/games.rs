@@ -2380,7 +2380,9 @@ fn board(root: &Root, list: &[roblox::Game], chart: Option<String>, width: f32, 
     let mut out = div().mx(px(-TPAD)).flex().flex_col().gap(px(TGAP));
     let mut from = 0;
     if ranked && cols >= 4 && list.len() > beside {
-        let side_w = (cols - 2) as f32 * w + (cols - 3) as f32 * TGAP;
+        // (A pixel more than the tiles need: at 150 % the layout's rounding made the last of a row not fit, and the
+        // block beside the lead showed four of its five columns, the owner's screenshot of 2026-11-15.)
+        let side_w = (cols - 2) as f32 * w + (cols - 3) as f32 * TGAP + 2.;
         let side: Vec<AnyElement> = list[1..=beside].iter().enumerate().map(|(i, g)| cascade(scope.clone(), i + 1, tile(root, i + 1, g, ranked, w, art_h, tile_h, cx)).into_any_element()).collect();
         out = out.child(
             div()

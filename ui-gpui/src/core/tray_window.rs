@@ -253,6 +253,37 @@ impl TrayWindow {
         });
     }
 
+    /// The pointer came onto the tray icon: its page starts now, so the click that likely follows finds it there (the
+    /// first click after a while waited about a second for it, the later ones none: the owner, 2026-11-15). Not
+    /// clicked, it is let go a minute later as after a close; already there, its minute starts again.
+    pub fn warm(self: &Rc<Self>) {
+        if self.disposed.get() || self.visible() || self.showing.get() {
+            return;
+        }
+        if self.browser_ready() {
+            self.release.start();
+            return;
+        }
+        if self.starting.borrow().is_some() {
+            return;
+        }
+        let me = self.clone();
+        win_form::spawn(async move {
+            match TrayWindow::ensure_browser(me.clone()).await {
+                Ok(_) => {
+                    if !me.showing.get() && !me.visible() {
+                        me.release.start();
+                    }
+                }
+                // (Said again, and Windows' own menu shown, by the click's own start.)
+                Err(e) => {
+                    log::note(&format!("Tray: its page couldn't start ahead of a click: {}", e.message()));
+                    me.release_browser();
+                }
+            }
+        });
+    }
+
     /// Open and Quit in a menu Windows draws itself, at the pointer (only when the tray's page can't start).
     fn fallback_menu(self: &Rc<Self>, at: Point) {
         // SAFETY: a popup menu made, tracked and destroyed here; the strings live for each call.

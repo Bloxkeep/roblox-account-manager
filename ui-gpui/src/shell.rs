@@ -2736,7 +2736,11 @@ impl Root {
             .items_center()
             .gap(px(if tiny { 12. } else { 24. }))
             .px(px(6.))
-            .when_some(crate::theme::status_ground(), |d, g| d.bg(g).rounded_t(px(R_M)).px(px(12.)))
+            // (A ground of its own even when it is the window's: nothing of the page drawn past its foot shows through.)
+            .map(|d| match crate::theme::status_ground() {
+                Some(g) => d.bg(g).rounded_t(px(R_M)).px(px(12.)),
+                None => d.bg(c(GROUND)),
+            })
             .text_size(px(T_M))
             .text_color(c(TEXT_2))
             .font_features(tnum())
@@ -3545,7 +3549,9 @@ impl Render for Root {
                             .min_h_0()
                             .flex()
                             .gap(px(GAP))
-                            .child(div().flex_1().min_w_0().h_full().relative().children(frost_main).child(step_in(self.shown_key(), self.step_from, body)).children(slid))
+                            // (Cut at its own edge: the Roblox tab's next row of game pictures showed as a flickering
+                            // line under the status bar while the page scrolled, the owner's OBS video, 2026-11-15.)
+                            .child(div().flex_1().min_w_0().h_full().relative().overflow_hidden().children(frost_main).child(step_in(self.shown_key(), self.step_from, body)).children(slid))
                             .when(with_side, |d| d.child(div().relative().h_full().flex_none().children(frost_side).child(self.side(cx)))),
                     )
                     .when(!locked && !lost, |d| d.child(self.status(f32::from(window.viewport_size().width), cx))),

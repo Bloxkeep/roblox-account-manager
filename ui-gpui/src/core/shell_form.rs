@@ -762,6 +762,8 @@ impl ShellForm {
         const NIN_BALLOONTIMEOUT: u32 = WM_USER + 4;
         const NIN_BALLOONUSERCLICK: u32 = WM_USER + 5;
         match event {
+            // The pointer on the icon: the tray's page starts ahead of the click (tray_window::warm).
+            WM_MOUSEMOVE => self.tray_window.warm(),
             WM_LBUTTONUP | WM_RBUTTONUP => {
                 self.tray_window.toggle(win_form::cursor_position(), if event == WM_LBUTTONUP { "panel" } else { "menu" });
             }
