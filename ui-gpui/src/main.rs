@@ -86,6 +86,16 @@ fn main() {
     if let Some(file) = arg("--core-log-words") {
         std::process::exit(core::selftest::log_words(&file));
     }
+    // --core-update-try MARK: the updater's own steps for real (check, download, install on exit, start again), on an
+    // installed copy made for the test; the copy started again writes its version to MARK (--core-version-mark).
+    #[cfg(feature = "core")]
+    if let Some(mark) = arg("--core-update-try") {
+        std::process::exit(core::selftest::update_try(&mark));
+    }
+    #[cfg(feature = "core")]
+    if let Some(mark) = arg("--core-version-mark") {
+        std::process::exit(core::selftest::version_mark(&mark));
+    }
     // --core-suite NAME DIR: one of the C# tests moved to Rust (core/tests), on the data folder DIR; --core-suites [NAME..]
     // [--online] [--timeout=MIN]: each in a child process, as Tests/Bloxkeep.Tests ran them.
     #[cfg(feature = "core")]

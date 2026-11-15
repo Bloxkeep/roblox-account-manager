@@ -280,3 +280,40 @@ pub fn codes(out: &str) -> i32 {
     println!("{} numbers", lines.len());
     0
 }
+
+/// --core-update-try MARK: what "Restart to update" does under its button, for real and with no window: the check
+/// against a feed (BLOXKEEP_UPDATE_SOURCE, a folder of vpk's files), the download, and the install once this process
+/// exits, started again with --core-version-mark MARK. For a copy of Bloxkeep installed for the test only (its own
+/// folder, its own name), on a scratch BLOXKEEP_DATA: the suites ask these decisions without acting on them, and
+/// until a real release is out nothing else runs the steps themselves on the Rust build (the owner, 2026-11-15:
+/// "chức năng đó có ổn khi qua rust chưa").
+pub fn update_try(mark: &str) -> i32 {
+    if std::env::var("BLOXKEEP_DATA").map(|d| d.is_empty()).unwrap_or(true) || std::env::var("BLOXKEEP_UPDATE_SOURCE").map(|d| d.is_empty()).unwrap_or(true) {
+        println!("BLOXKEEP_DATA (a scratch folder) and BLOXKEEP_UPDATE_SOURCE (the feed) must be set: this never runs on the real app.");
+        return 2;
+    }
+    let updater = crate::core::app_updater::AppUpdater::new();
+    if !updater.supported() {
+        println!("not an installed copy: nothing to update");
+        return 2;
+    }
+    println!("from {}", updater.current_version());
+    updater.check();
+    println!("after the check: {} {}", updater.status(), updater.new_version().unwrap_or_default());
+    if updater.status() != "ready" {
+        println!("{}", updater.error().unwrap_or_default());
+        return 1;
+    }
+    updater.apply_on_exit(Some(&["--core-version-mark".to_string(), mark.to_string()]));
+    println!("installing on exit, then starting again");
+    0
+}
+
+/// --core-version-mark MARK: the version this copy is, written to MARK (the copy `update_try` had started again).
+pub fn version_mark(mark: &str) -> i32 {
+    let updater = crate::core::app_updater::AppUpdater::new();
+    match std::fs::write(mark, updater.current_version()) {
+        Ok(()) => 0,
+        Err(_) => 1,
+    }
+}
