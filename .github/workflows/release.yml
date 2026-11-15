@@ -33,16 +33,26 @@ concurrency:
 jobs:
   release:
     runs-on: windows-2025
-    timeout-minutes: 40
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
+      # vpk (the installer and update packages) is a .NET tool.
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
-      # The interface's React parts (ui/) are built during the .NET build (RobloxManager.csproj, BuildUi).
+      # The small web pages' React parts (ui/) and assets/i18n.json (ui-gpui/build.rs) are built with Node.
       - uses: actions/setup-node@v4
         with:
           node-version: 24
+      # The app itself (ui-gpui), the same Rust as on the PC it is made on.
+      - name: Rust
+        shell: pwsh
+        run: |
+          rustup toolchain install 1.99.1 --profile minimal
+          rustup default 1.99.1
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ui-gpui
       - name: Version
         id: version
         shell: pwsh

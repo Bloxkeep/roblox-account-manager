@@ -1,5 +1,5 @@
 @echo off
-rem Builds Bloxkeep into dist\releases (needs the .NET 10 SDK; the app is self-contained, users don't need .NET):
+rem Builds Bloxkeep into dist\releases (needs Rust, Node and the .NET 10 SDK for vpk; users need none of them):
 rem   Bloxkeep-Setup.exe            installer for users: they choose the folder (any drive); installs per user without
 rem                                 admin rights, and installs WebView2 if missing. A small web installer, the same
 rem                                 file in every release (Installer\Web): it downloads the newest offline one
@@ -24,12 +24,38 @@ mkdir dist\releases
 echo [1/5] Tools...
 dotnet tool restore >nul || goto :fail
 
-rem The checks in Tests\Bloxkeep.Tests (each in its own process, with throwaway data): a failing one stops the build.
-echo [2/5] Checks...
-dotnet run --project Tests\Bloxkeep.Tests -c Release || goto :fail
+rem Since 1.1 the app is the Rust one (ui-gpui: the window drawn with GPUI, the core moved from C#), built with cargo.
+rem Its small web pages (tray, a macro's panel, mini, overlay, message box, the browser's top) are still the React ones
+rem in RobloxManager\wwwroot, built by ui\build.mjs, and sit in a wwwroot folder beside it. The version and the update
+rem repo go into the exe at build time (BLOXKEEP_VERSION, BLOXKEEP_UPDATE_REPO), and so do the notes shown after
+rem updating (RobloxManager\whatsnew.json).
+echo [2/5] App files...
+pushd ui
+if not exist node_modules\.package-lock.json call npm ci
+if errorlevel 1 (popd & goto :fail)
+node build.mjs
+if errorlevel 1 (popd & goto :fail)
+popd
+set BLOXKEEP_VERSION=%VERSION%
+set BLOXKEEP_UPDATE_REPO=%REPO%
+pushd ui-gpui
+cargo build --release --locked --features core
+if errorlevel 1 (popd & goto :fail)
+popd
+mkdir artifacts\app
+copy /y ui-gpui\target\release\bloxkeep-ui.exe artifacts\app\Bloxkeep.exe >nul || goto :fail
+rem robocopy's exit codes below 8 mean it copied.
+robocopy ui-gpui\assets artifacts\app\assets /e /xf photo-keep.jpg tray.ico /njh /njs /ndl /nfl /np >nul
+if errorlevel 8 goto :fail
+robocopy RobloxManager\wwwroot artifacts\app\wwwroot /e /njh /njs /ndl /nfl /np >nul
+if errorlevel 8 goto :fail
 
-echo [3/5] App files...
-dotnet publish RobloxManager\RobloxManager.csproj -c Release -r win-x64 --self-contained true -p:Version=%VERSION% -p:UpdateRepo=%REPO% -p:DebugType=none -p:AllowedReferenceRelatedFileExtensions=none -o artifacts\app || goto :fail
+rem The checks (ui-gpui\src\core\tests, each suite in its own process on throwaway data; the ones that need the
+rem network are left out): a failing one stops the build.
+echo [3/5] Checks and the uninstaller...
+rem Through PowerShell's pipe: the app is a Windows program, so cmd would not show what it prints.
+powershell -NoProfile -Command "& .\artifacts\app\Bloxkeep.exe --core-suites --timeout=15 | Write-Host; exit $LASTEXITCODE"
+if errorlevel 1 goto :fail
 rem Bloxkeep's own installer and uninstaller windows (Installer\Setup\Setup.cs), compiled with the C# compiler that
 rem ships with Windows (.NET Framework 4.x), so they need nothing installed. Velopack does the work underneath them.
 rem The uninstaller travels inside the app; the app points Installed apps > Uninstall at it.

@@ -1,5 +1,37 @@
 [
   {
+    "version": "1.1.0",
+    "date": "2026-11-15",
+    "new": {
+      "en": [
+        "Bloxkeep is redrawn from scratch: a new look on every page, with themes, icons and motion of its own.",
+        "Roblox inside Bloxkeep: games, friends, avatar, profile, shop and inbox for each account, every account in a tab of its own.",
+        "Each game has its own page: Roblox’s figures, events you can join or be reminded of, news, servers, and how your accounts did there this week.",
+        "Find a game as you type, even with its initials (gpo, ps99) or a typo, with Roblox’s own search below yours.",
+        "Your avatar in 3D: walk it around, run and jump.",
+        "Account status and Privacy: an account’s warnings and appeals, and Roblox’s privacy options, from Bloxkeep."
+      ],
+      "vi": [
+        "Bloxkeep được vẽ lại từ đầu: giao diện mới ở mọi trang, có chủ đề, biểu tượng và chuyển động riêng.",
+        "Roblox ngay trong Bloxkeep: game, bạn bè, avatar, hồ sơ, cửa hàng và hộp thư của từng tài khoản, mỗi tài khoản một tab.",
+        "Mỗi game có trang riêng: số liệu của Roblox, sự kiện để vào hoặc nhận nhắc, tin tức, server và thành tích tuần này của các tài khoản.",
+        "Tìm game ngay khi gõ, gõ tắt (gpo, ps99) hay gõ sai vẫn ra, kèm kết quả tìm của Roblox.",
+        "Avatar 3D: đi lại, chạy và nhảy.",
+        "Tình trạng tài khoản và Riêng tư: xem cảnh cáo, kháng nghị và chỉnh quyền riêng tư Roblox ngay trong Bloxkeep."
+      ]
+    },
+    "fixed": {
+      "en": [
+        "A teleport that never arrives is rejoined instead of staying stuck.",
+        "An account taken by another device rejoins once that device leaves (with Auto-rejoin on)."
+      ],
+      "vi": [
+        "Dịch chuyển giữa chừng mà không tới nơi thì tự vào lại, không kẹt nữa.",
+        "Tài khoản bị thiết bị khác chiếm thì tự vào lại khi thiết bị đó thoát (khi bật Tự vào lại)."
+      ]
+    }
+  },
+  {
     "version": "1.0.23",
     "date": "2026-11-14",
     "new": {
