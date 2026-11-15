@@ -1024,7 +1024,7 @@ fn tiles(root: &Root, d: &Value, w: f32) -> Div {
         div()
             .when(w >= 700., |d| d.flex_basis(px(0.)).flex_grow(if hero { 2. } else { 1. }))
             .min_w(px(if hero { 260. } else { 160. }))
-            .when(hero, |d| d.rounded(px(R_L)).bg(ca(WHITE, 0.045)).border_1().border_color(c(LINE)))
+            .when(hero, |d| d.rounded(px(R_L)).bg(block_ground()).shadow(block_edge()))
             .px(px(20.))
             .py(px(16.))
             .flex()
@@ -1076,9 +1076,10 @@ fn tiles(root: &Root, d: &Value, w: f32) -> Div {
                 .when(w >= 700., |d| d.flex_basis(px(0.)).flex_grow(3.))
                 .flex()
                 .when(w < 700., |d| d.flex_col())
+                // (No hairline: a block's ground and edge, as every block now; see kit::surface.)
                 .rounded(px(R_L))
-                .border_1()
-                .border_color(c(LINE))
+                .bg(block_ground())
+                .shadow(block_edge())
         .child(tile(
             false,
             root.tr("stats.played"),

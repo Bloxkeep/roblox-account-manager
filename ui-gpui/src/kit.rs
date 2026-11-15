@@ -989,12 +989,14 @@ pub fn toned(_tone: Option<u32>) -> (Hsla, Hsla, Hsla, Hsla) {
     // The theme's charcoal for every card, whatever game it is about (see `block_tones`): mixed with its game's
     // colour, a row of cards was a brown one, a red one and a grey one (the owner's mock-up of Accounts, 2026-11-15,
     // has them all the one charcoal). What says which game it is stays on the card: the game's own picture and name.
-    (block_ground(), c(RAISED), c(LINE), ca(WHITE, 0.17))
+    // (No hairline at rest, only under the mouse: see `surface`.)
+    (block_ground(), c(RAISED), ca(WHITE, 0.), ca(WHITE, 0.17))
 }
 
 /// The ground of a block or a card: the theme's charcoal a step above the panel (the mock-up's #202124 on #18191C).
 pub fn block_ground() -> Hsla {
-    mix(c(PANEL), c(RAISED), 0.55)
+    // (A step more than it was, 0.55: blocks have no hairline round them now, their ground alone sets them apart.)
+    mix(c(PANEL), c(RAISED), 0.8)
 }
 
 /// A table's head on a game's page: a step above its block, more of the game's colour (the old wiki's --ws-head, 16 %).
@@ -1048,9 +1050,11 @@ pub fn block_edge() -> Vec<BoxShadow> {
 
 /// A card on a panel: barely lighter, with a hairline. Every page's cards are this one.
 pub fn surface() -> Div {
+    // No hairline round it: every block of every page in a 1-px outline, boxes in boxes, read as a plain HTML page
+    // (the owner, 2026-11-15: "bớt cái kiểu html thuần giúp tao với, cả app"). Its ground a step above the panel and
+    // its finished edge (a hair of light on top, a close shadow under) set it apart.
     if rich() {
-        let (ground, line) = block_tones();
-        return div().rounded(px(R_L)).bg(ground).border_1().border_color(line).shadow(block_edge());
+        return div().rounded(px(R_L)).bg(block_ground()).shadow(block_edge());
     }
     div().rounded(px(R_L)).bg(ca(WHITE, 0.045)).border_1().border_color(c(LINE))
 }
@@ -1058,14 +1062,6 @@ pub fn surface() -> Div {
 /// A figure's or a block's own mark: its icon in its colour, on a ground faintly of that colour.
 pub fn mark_chip(name: &'static str, tone: u32, size: f32) -> Div {
     div().size(px(size)).flex_none().rounded(px((size * 0.28).round())).bg(ca(tone, 0.13)).flex().items_center().justify_center().child(icon2(name, (size * 0.56).round(), c(TEXT), c(tone)))
-}
-
-/// The same mark in the game's own colour on its page (else in `tone`): a block's head there.
-pub fn game_chip(name: &'static str, tone: u32, size: f32) -> Div {
-    match game_ink() {
-        Some(ink) => div().size(px(size)).flex_none().rounded(px((size * 0.28).round())).bg(Hsla { a: 0.16, ..ink }).flex().items_center().justify_center().child(icon2(name, (size * 0.56).round(), c(TEXT), ink)),
-        None => mark_chip(name, tone, size),
-    }
 }
 
 /// A state as a pill in its colour ("In game", "Banned").
@@ -1077,8 +1073,9 @@ pub fn tint_pill(text: impl Into<SharedString>, tone: u32) -> Div {
 /// under the mouse.
 pub fn card(id: impl Into<ElementId>) -> Hot {
     if rich() {
+        // (Its hairline only under the mouse, as the blocks have none: see `surface`.)
         let (ground, line) = block_tones();
-        return hot(id).rounded(px(R_L)).border_1().tones(ground, mix(ground, c(TEXT), 0.05)).edge(line, mix(line, c(TEXT), 0.25));
+        return hot(id).rounded(px(R_L)).border_1().tones(ground, mix(ground, c(TEXT), 0.05)).edge(Hsla { a: 0., ..line }, mix(line, c(TEXT), 0.25));
     }
     hot(id).rounded(px(R_L)).border_1().tones(ca(WHITE, 0.045), ca(WHITE, 0.08)).edge(c(LINE), ca(WHITE, 0.17))
 }
@@ -1661,6 +1658,97 @@ pub fn waiting_rows(n: usize, w: f32, h: f32, gap: f32) -> impl IntoElement {
         .with_animation("waiting-rows", Animation::new(std::time::Duration::from_millis(1300)).repeat().with_max_fps(30.).with_easing(pulsating_between(0.35, 1.)), |d, t| d.opacity(t))
 }
 
+/// How well a game's name answers what was typed, as a player types it: None when it doesn't, lower is better.
+/// The name and the words are folded and their marks (emoji, brackets, "+", "[UPD]") read as spaces, then, best first:
+/// the whole name, its start, a word's start, its initials ("gpo" Grand Piece Online, "ps99" Pet Simulator 99, "bf"
+/// Blox Fruits), anywhere in it, run together ("growagarden"), each word typed starting a word of it ("gun for"), one
+/// letter wrong in a word of 4 or more ("bloks", "simulatr"), and its letters in order ("gnfrg"). A plain "contains"
+/// found nothing for any of those (the owner, 2026-11-15: "cái search của nó ngu").
+pub fn name_match(name: &str, typed: &str) -> Option<u32> {
+    let norm = |t: &str| folded(t).chars().map(|ch| if ch.is_alphanumeric() { ch } else { ' ' }).collect::<String>().split_whitespace().collect::<Vec<_>>().join(" ");
+    let (n, q) = (norm(name), norm(typed));
+    if q.is_empty() {
+        return Some(0);
+    }
+    let words: Vec<&str> = n.split(' ').filter(|w| !w.is_empty()).collect();
+    let (compact, qc) = (n.replace(' ', ""), q.replace(' ', ""));
+    let initials: String = words.iter().map(|w| if w.chars().all(|ch| ch.is_ascii_digit()) { (*w).to_string() } else { w.chars().take(1).collect() }).collect();
+    let typed_words: Vec<&str> = q.split(' ').collect();
+    if n == q {
+        return Some(0);
+    }
+    if n.starts_with(&q) {
+        return Some(1);
+    }
+    if words.iter().any(|w| w.starts_with(&q)) {
+        return Some(2);
+    }
+    if qc.chars().count() >= 2 && initials.starts_with(&qc) {
+        return Some(3);
+    }
+    if n.contains(&q) {
+        return Some(4);
+    }
+    if compact.contains(&qc) {
+        return Some(5);
+    }
+    if typed_words.iter().all(|t| words.iter().any(|w| w.starts_with(t))) {
+        return Some(6);
+    }
+    // One letter wrong, left out or added in each word typed of 4 letters or more (shorter ones still start a word).
+    let near = |t: &str| {
+        let tl = t.chars().count();
+        words.iter().any(|w| {
+            if tl < 4 {
+                return w.starts_with(t);
+            }
+            let head: String = w.chars().take(tl).collect();
+            edits(t, w) <= 1 || edits(t, &head) <= 1 || (w.chars().count() > tl && edits(t, &w.chars().take(tl + 1).collect::<String>()) <= 1)
+        })
+    };
+    if typed_words.iter().any(|t| t.chars().count() >= 4) && typed_words.iter().all(|t| near(t)) {
+        return Some(7);
+    }
+    if qc.chars().count() >= 4 {
+        let mut letters = compact.chars();
+        if qc.chars().all(|ch| letters.any(|x| x == ch)) {
+            return Some(8);
+        }
+    }
+    None
+}
+
+/// Letters to change, add, take away or swap with the next to make one word the other (Damerau's: "grnad" is one
+/// step from "grand", as a quick hand types it).
+fn edits(a: &str, b: &str) -> usize {
+    let (a, b): (Vec<char>, Vec<char>) = (a.chars().collect(), b.chars().collect());
+    let mut d = vec![vec![0usize; b.len() + 1]; a.len() + 1];
+    for (i, row) in d.iter_mut().enumerate() {
+        row[0] = i;
+    }
+    for j in 0..=b.len() {
+        d[0][j] = j;
+    }
+    for i in 1..=a.len() {
+        for j in 1..=b.len() {
+            let cost = usize::from(a[i - 1] != b[j - 1]);
+            let mut best = (d[i - 1][j] + 1).min(d[i][j - 1] + 1).min(d[i - 1][j - 1] + cost);
+            if i > 1 && j > 1 && a[i - 1] == b[j - 2] && a[i - 2] == b[j - 1] {
+                best = best.min(d[i - 2][j - 2] + 1);
+            }
+            d[i][j] = best;
+        }
+    }
+    d[a.len()][b.len()]
+}
+
+/// The games that answer what was typed, best first (name_match), the order they had kept among equals.
+pub fn ranked<T>(items: impl IntoIterator<Item = T>, typed: &str, name: impl Fn(&T) -> &str) -> Vec<T> {
+    let mut hits: Vec<(u32, usize, T)> = items.into_iter().enumerate().filter_map(|(i, x)| name_match(name(&x), typed).map(|s| (s, i, x))).collect();
+    hits.sort_by_key(|(s, i, _)| (*s, *i));
+    hits.into_iter().map(|(_, _, x)| x).collect()
+}
+
 /// Words as a search compares them: lower case, Vietnamese accents taken off, đ as d (ui/src/text.ts's fold).
 pub fn folded(text: &str) -> String {
     const GROUPS: [(&str, char); 7] = [
@@ -1676,4 +1764,34 @@ pub fn folded(text: &str) -> String {
         .flat_map(char::to_lowercase)
         .map(|ch| if ch.is_ascii() { ch } else { GROUPS.iter().find(|(from, _)| from.contains(ch)).map_or(ch, |(_, to)| *to) })
         .collect()
+}
+
+#[cfg(test)]
+mod name_match_tests {
+    use super::name_match;
+
+    /// What a player types for the games in the owner's list (2026-11-15), and what must come of it.
+    #[test]
+    fn finds_as_players_type() {
+        let hit = |name: &str, typed: &str| name_match(name, typed).is_some();
+        assert!(hit("Grand Piece Online", "gpo"));
+        assert!(hit("Blox Fruits", "bf"));
+        assert!(hit("Pet Simulator 99", "ps99"));
+        assert!(hit("Pet Simulator 99", "pet sim"));
+        assert!(hit("Grow a Garden", "growagarden"));
+        assert!(hit("Blox Fruits", "fruts"));
+        assert!(hit("Blox Fruits", "blxo fruits"));
+        assert!(hit("Grow a Garden", "gardne"));
+        assert!(hit("Tap Simulator REBORN", "simulatr"));
+        assert!(hit("+1 Gun Forge", "gun forge"));
+        assert!(hit("+1 Gun Forge", "1 gun"));
+        assert!(hit("[🎃HALLOWEEN PT 2] Grand Piece Online", "grand piece"));
+        assert!(hit("Steal An Egg 🥚", "steal egg"));
+        assert!(hit("Bắn Cá Online", "ban ca"));
+        assert!(!hit("Adopt Me!", "blox"));
+        assert!(!hit("Murder Mystery 2", "gpo"));
+        // Best first: its start before a word's start before initials before a letter wrong.
+        assert!(name_match("Blox Fruits", "blox") < name_match("Super Blox Fight", "blox"));
+        assert!(name_match("Grand Piece Online", "gpo") < name_match("Grand Piece Online", "grnad"));
+    }
 }

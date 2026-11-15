@@ -439,6 +439,10 @@ pub struct Data {
     switching: bool,
     switch_closed: Option<std::time::Instant>,
     switch_q: Option<Entity<InputState>>,
+    /// Roblox's own search for what the switch's box holds (asked a third of a second after the last key): the
+    /// words asked and the answer, None while it comes.
+    switch_found: Option<(String, Option<Result<Vec<roblox::Game>, String>>)>,
+    switch_typed: u64,
 }
 
 /// A game card's ground reaches this far past its picture (it eases in under the mouse); cards stand so close that
@@ -1063,21 +1067,27 @@ fn settle_switch(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
     let wanted = r.games.switching && r.games.open.is_some();
     if !wanted {
         r.games.switch_q = None;
+        r.games.switch_found = None;
         return;
     }
-    if r.games.switch_q.is_some() || list(r).len() <= 6 {
+    // (Always a box now, however few games there are: it finds any game on Roblox too.)
+    if r.games.switch_q.is_some() {
         return;
     }
     let hint = r.i18n.tv("games.search", &[("n", &list(r).len().to_string())]);
     let e = cx.new(|cx| InputState::new(window, cx).placeholder(hint));
     cx.subscribe(&e, |r: &mut Root, _, ev: &InputEvent, cx| match ev {
         InputEvent::PressEnter { .. } => {
+            // The best of yours, else Roblox's first.
             if let Some(id) = switch_list(r, cx).first().map(|g| g.id.clone()) {
                 switch_to(r, &id);
+            } else if let Some(g) = switch_roblox(r).into_iter().next() {
+                r.games.switching = false;
+                open_place(r, g.place, &g.name);
             }
             cx.notify();
         }
-        InputEvent::Change => cx.notify(),
+        InputEvent::Change => switch_ask_soon(r, cx),
         _ => {}
     })
     .detach();
@@ -1085,10 +1095,60 @@ fn settle_switch(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
     r.games.switch_q = Some(e);
 }
 
-/// The games the switch lists: every game, found by the words in its box.
+/// What the switch's box holds, as typed.
+fn switch_words(root: &Root, cx: &App) -> String {
+    root.games.switch_q.as_ref().map(|e| e.read(cx).value().trim().to_string()).unwrap_or_default()
+}
+
+/// The games the switch lists: every game, the ones that answer the words in its box best first (name_match).
 fn switch_list(root: &Root, cx: &App) -> Vec<Game> {
-    let q = root.games.switch_q.as_ref().map(|e| folded(e.read(cx).value().trim())).unwrap_or_default();
-    list(root).iter().filter(|g| q.is_empty() || folded(&g.name).contains(&q)).cloned().collect()
+    let q = switch_words(root, cx);
+    ranked(list(root).iter().cloned(), &q, |g| g.name.as_str())
+}
+
+/// Roblox's games for the box's words that aren't already among yours.
+fn switch_roblox(root: &Root) -> Vec<roblox::Game> {
+    let mine: HashSet<i64> = list(root).iter().map(|g| g.place).filter(|p| *p > 0).collect();
+    match &root.games.switch_found {
+        Some((_, Some(Ok(l)))) => l.iter().filter(|g| !mine.contains(&g.place)).take(8).cloned().collect(),
+        _ => Vec::new(),
+    }
+}
+
+/// Roblox asked for the box's words a third of a second after the last key (two letters or more).
+fn switch_ask_soon(r: &mut Root, cx: &mut Context<Root>) {
+    let q = switch_words(r, cx);
+    r.games.switch_typed += 1;
+    cx.notify();
+    if q.chars().count() < 2 {
+        r.games.switch_found = None;
+        return;
+    }
+    if r.games.switch_found.as_ref().is_none_or(|(at, _)| *at != q) {
+        // (The last answer's games stay until the new one comes.)
+        let kept = r.games.switch_found.take().and_then(|(_, got)| got).filter(|g| g.as_ref().is_ok_and(|g| !g.is_empty()));
+        r.games.switch_found = Some((q.clone(), kept));
+    }
+    let seq = r.games.switch_typed;
+    cx.spawn(async move |this, cx| {
+        cx.background_executor().timer(std::time::Duration::from_millis(330)).await;
+        let go = this.update(cx, |r, _| r.games.switch_typed == seq).unwrap_or(false);
+        if !go {
+            return;
+        }
+        let ask = q.clone();
+        let got = roblox::run(move || roblox::search(&ask)).await.unwrap_or_else(|_| Err(String::new()));
+        if let Err(e) = &got {
+            crate::net::note_failed("Game switch: Roblox's search didn't answer.", "https://apis.roblox.com/search-api/omni-search", e);
+        }
+        let _ = this.update(cx, |r, cx| {
+            if r.games.switch_found.as_ref().is_some_and(|(at, _)| *at == q) {
+                r.games.switch_found = Some((q, Some(got)));
+                cx.notify();
+            }
+        });
+    })
+    .detach();
 }
 
 /// Another game picked in the switch: its page, on the same tab when it has one (the page falls back to Overview).
@@ -1217,7 +1277,7 @@ fn toggle_going(r: &mut Root, place: i64, id: String, cx: &mut Context<Root>) {
         let got = rx.await.unwrap_or_else(|_| Err(String::new()));
         if let Err(why) = got {
             let _ = this.update(cx, |r, cx| {
-                crate::net::note_worked(&format!("Game events: Notify me wasn't taken ({why})."));
+                crate::net::note_failed("Game events: Notify me wasn't taken.", "https://apis.roblox.com/virtual-events/v1/virtual-events/#/rsvps", &why);
                 let _ = flip(r);
                 r.toast = Some((r.tr("gp.evNotTaken"), "bad".into()));
                 cx.notify();
@@ -1261,8 +1321,8 @@ fn events_block(root: &Root, place: i64, width: f32, cx: &mut Context<Root>) -> 
     let now = crate::time::now_secs();
     let vi = root.i18n.vietnamese;
     let signed = crate::pages::friends::signed(root).is_some_and(|s| !s.2.is_empty());
-    // (The block's padding and its hairline: at width - 36 a row of two tiles was 2 px too wide and wrapped.)
-    let inner = (width - 40.).max(200.);
+    // (No box round it now: its tiles take the column's width, 2 px short so a row of two never wraps.)
+    let inner = (width - 2.).max(200.);
     let kind_word = |k: &str| if k.is_empty() { String::new() } else { root.tr(&format!("gp.evKind.{k}")) };
     let going_word = |n: Option<i64>| n.map(|n| root.i18n.tv("gp.evPeople", &[("n", &thousands(n, vi))]));
     let fact = |name: &'static str, text: String| div().flex().flex_none().items_center().gap(px(6.)).child(icon(name, 14., c(TEXT_2))).child(text);
@@ -1374,7 +1434,7 @@ fn events_block(root: &Root, place: i64, width: f32, cx: &mut Context<Root>) -> 
 
     let sub = root.i18n.tv("gp.evCount", &[("n", &list.len().min(9).to_string())]);
     let head = if rich() { heading_rich("calendar", FACE, root.tr("gp.events"), Some(sub)).into_any_element() } else { heading(root.tr("gp.events"), Some(sub)).into_any_element() };
-    Some(surface().p(px(18.)).flex().flex_col().gap(px(16.)).child(head).child(body).into_any_element())
+    Some(div().flex().flex_col().gap(px(16.)).child(head).child(body).into_any_element())
 }
 
 /// A game's own pictures, asked once its details have named its universe.
@@ -1602,6 +1662,9 @@ fn want_roblox(r: &mut Root, link: &crate::link::Link, cx: &mut Context<Root>) {
     }
     if let Some((_, Some(Ok(list)))) = &r.games.found {
         want.extend(list.iter().map(|g| g.universe));
+    }
+    if let Some((_, Some(Ok(list)))) = &r.games.switch_found {
+        want.extend(list.iter().take(8).map(|g| g.universe));
     }
     want.retain(|u| *u > 0 && !r.games.icons.contains_key(u) && !r.games.asked_icons.contains(u));
     want.sort_unstable();
@@ -1960,7 +2023,8 @@ fn grid(root: &Root, all: &[Game], width: f32, cx: &mut Context<Root>) -> impl I
     let inner = width - 2. * (PAD + 4.);
     // (Without accents or case, as the web page's search: "hoang" finds "Hoàng".)
     let query = folded(root.game_search.read(cx).value().trim());
-    let shown: Vec<&Game> = all.iter().filter(|g| query.is_empty() || folded(&g.name).contains(&query)).collect();
+    // (Ranked as the switch's box is: initials, a letter wrong, words run together; best first.)
+    let shown: Vec<&Game> = ranked(all.iter(), &query, |g| g.name.as_str());
     let card_w = home_fit(inner).1 + 2. * CPAD;
 
     let header = div()
@@ -2885,7 +2949,8 @@ fn radar(root: &Root, place: i64, name: &str) -> Vec<Value> {
 
 /// Those warnings for one game, on its page: what happened, to how many PCs, in how many minutes.
 fn radar_strip(root: &Root, place: i64, name: &str) -> Option<Div> {
-    radar_lines(root, radar(root, place, name), false)
+    // (On the game's page the lines stand open under its tabs, no box: one box was all its parts, the owner 2026-11-15.)
+    radar_lines(root, radar(root, place, name), false).map(|d| d.px(px(0.)).py(px(0.)).bg(gpui::transparent_black()).border_0())
 }
 
 /// All of them over the games' list, each with its game's name (GamesView.tsx's RadarStrip).
@@ -3125,28 +3190,8 @@ fn page(root: &Root, all: &[Game], open: Open, width: f32, cx: &mut Context<Root
             .when_some(root.games.picking.as_ref().filter(|(g, _)| *g == open.id).map(|(_, p)| p.clone()), |d, ticked| {
                 d.child(div().px(px(PAD + 4.)).child(join(root, place, ticked, cx)))
             })
-            // Roblox's figures belong to the Overview: on the other parts (a wiki table, the values, the servers) what is
-            // read starts right under the game's band.
-            .when_some(details.filter(|_| tab == Tab::Overview), |d, det| d.child(div().px(px(PAD + 4.)).child(facts(root, det))))
-            .when_some(details.and_then(|d| fresh(root, d)), |d, note| {
-                d.child(
-                    div()
-                        .mx(px(PAD + 4.))
-                        .px(px(14.))
-                        .py(px(10.))
-                        .flex()
-                        .items_center()
-                        .gap(px(10.))
-                        .rounded(px(R_L + 2.))
-                        .bg(tinted(PANEL, WARN, 0.07))
-                        .border_1()
-                        .border_color(ca(WARN, 0.26))
-                        .text_size(px(T_M))
-                        .text_color(c(TEXT_2))
-                        .child(icon("refresh", 15., c(WARN)).flex_none())
-                        .child(div().flex_1().min_w_0().child(note)),
-                )
-            })
+            // (Roblox's figures and the "just updated" note are in the hero now, open beside the picture: a strip of
+            // five boxed cells and a boxed note under it read as a plain HTML page, the owner 2026-11-15.)
             .when(!only_overview, |d| d.child(tabs))
             .child(div().px(px(PAD + 4.)).child(content)),
     ))
@@ -3330,7 +3375,8 @@ fn switcher(root: &Root, all: &[Game], open: &Open, name: &str, width: f32, cx: 
         .ml(px(-6.))
         .rounded(px(R_M))
         .cursor_pointer()
-        .tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into())
+        // (No "Other games" tip while the list is open: it sat on the list's search box, owner 2026-11-15.)
+        .when(!on, |d| d.tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into()))
         .child(title)
         .child(icon(if on { "chevronUp" } else { "chevronDown" }, 20., c(MUTED)))
         .on_click(cx.listener(|r, _, _, cx| {
@@ -3360,8 +3406,36 @@ fn switcher(root: &Root, all: &[Game], open: &Open, name: &str, width: f32, cx: 
                     })),
             );
         }
-        if shown.is_empty() {
-            rows = rows.child(div().px(px(10.)).py(px(8.)).text_size(px(T_M)).text_color(c(MUTED)).child(root.tr("wiki.nothing")));
+        // Roblox's own answer for the words, under yours: any game, not only the ones in the list.
+        let typed = switch_words(root, cx);
+        let theirs = switch_roblox(root);
+        let looking = root.games.switch_found.as_ref().is_some_and(|(_, got)| got.is_none());
+        let label = |t: String| div().px(px(10.)).pt(px(10.)).pb(px(4.)).text_size(px(T_S)).font_weight(FontWeight::SEMIBOLD).text_color(c(MUTED)).child(t);
+        if !theirs.is_empty() || (looking && typed.chars().count() >= 2) {
+            rows = rows.child(label(root.tr("gp.swRoblox")).flex_none());
+        }
+        for (i, g) in theirs.iter().enumerate() {
+            let (place, name) = (g.place, g.name.clone());
+            let pic = root.games.icons.get(&g.universe).cloned();
+            rows = rows.child(
+                menu_row(("gm-sw-rx", i))
+                    .flex_none()
+                    .child(div().w(px(14.)).flex_none())
+                    .child(game_icon(pic, &g.name, 22., cx))
+                    .child(div().flex_1().min_w_0().truncate().child(g.name.clone()))
+                    .when(g.playing > 0, |d| d.child(div().flex_none().text_size(px(T_S)).text_color(c(MUTED)).font_features(tnum()).child(big(root, g.playing as f64))))
+                    .on_click(cx.listener(move |r, _, _, cx| {
+                        r.games.switching = false;
+                        open_place(r, place, &name);
+                        cx.notify();
+                    })),
+            );
+        }
+        if theirs.is_empty() && looking && typed.chars().count() >= 2 {
+            rows = rows.child(div().flex_none().px(px(10.)).py(px(6.)).text_size(px(T_M)).text_color(c(MUTED)).child(root.tr("gp.swLooking")));
+        }
+        if shown.is_empty() && theirs.is_empty() && !looking {
+            rows = rows.child(div().px(px(10.)).py(px(8.)).text_size(px(T_M)).text_color(c(MUTED)).child(root.tr("gp.swNone")));
         }
         let menu = div()
             .id("gm-switch-menu")
@@ -3556,20 +3630,27 @@ fn hero(root: &Root, all: &[Game], game: Option<&Game>, details: Option<&Value>,
     // darkened it, "khuất"): no crop, no fade, no words on it; the game's colour stands in until it loads.
     // (Larger than the 136 it was: the picture and the name lead the page, as on Roblox's, the owner's review
     // 2026-11-15: "ảnh game lại nhỏ, trong khi nửa phải phần đầu còn trống".)
-    let pic_h = ((width * 0.17).clamp(150., 250.) / 2.).round() * 2.;
-    let pic_w = (pic_h * 16. / 9.).round();
+    // (The owner, 2026-11-15, again: "giống 1 trang html thuần": the picture leads now, near half the width, the
+    // name, Roblox's figures and the buttons fill the other half; on a narrow window the picture goes on top.)
+    let wide = width >= 980.;
+    let room = width - 2. * (PAD + 12.);
+    // (Narrow, it goes on top at no more than 500 wide: at the full width it was 540 high and pushed the rest down.)
+    let pic_w = if wide { (room * 0.46).clamp(380., 780.) } else { room.min(500.) }.round();
+    let pic_h = (pic_w * 9. / 16.).round();
     let picture = look(root, place, "cover").and_then(|u| images::pic_at(&u, pic_w, pic_h, cx));
     let frame = div()
         .w(px(pic_w))
         .h(px(pic_h))
         .flex_none()
-        .rounded(px(12.))
+        .rounded(px(16.))
         .overflow_hidden()
-        .border_1()
-        .border_color(c(LINE))
         .when_some(ground, |d, t| d.bg(ca(t, 0.55)))
         .when(cover.is_none() && ground.is_none(), |d| d.bg(ca(WHITE, 0.04)))
         .when_some(picture, |d, p| d.child(img(p).size_full().object_fit(ObjectFit::Cover)));
+    let numbers = details.and_then(|d| figures(root, d));
+    let note = details.and_then(|d| fresh(root, d)).map(|n| {
+        div().flex().items_start().gap(px(8.)).text_size(px(T_S)).line_height(px(18.)).text_color(c(TEXT_2)).child(icon("refresh", 14., c(WARN)).flex_none().mt(px(2.))).child(div().flex_1().min_w_0().child(n))
+    });
     div()
         .flex_none()
         .flex()
@@ -3587,8 +3668,7 @@ fn hero(root: &Root, all: &[Game], game: Option<&Game>, details: Option<&Value>,
         .child(
             div()
                 .flex()
-                .items_end()
-                .gap(px(24.))
+                .map(|d| if wide { d.items_stretch().gap(px(36.)) } else { d.flex_col().gap(px(20.)) })
                 .child(frame)
                 .child(
                     div()
@@ -3596,18 +3676,19 @@ fn hero(root: &Root, all: &[Game], game: Option<&Game>, details: Option<&Value>,
                         .min_w_0()
                         .flex()
                         .flex_col()
-                        .gap(px(10.))
+                        .gap(px(18.))
+                        .when(wide, |d| d.justify_between().py(px(4.)))
                         .child(
                             div()
                                 .flex()
-                                .items_center()
-                                .gap(px(14.))
-                                .child(game_icon(badge, name, 52., cx).border_1().border_color(c(LINE)))
-                                .child(switcher(root, all, open, name, width, cx)),
+                                .flex_col()
+                                .gap(px(10.))
+                                .child(div().flex().items_center().gap(px(14.)).child(game_icon(badge, name, 52., cx)).child(switcher(root, all, open, name, width, cx)))
+                                .child(line)
+                                .children(mine_line),
                         )
-                        .child(line)
-                        .children(mine_line)
-                        .child(div().mt(px(6.)).flex().flex_wrap().items_center().gap(px(12.)).child(acts).child(div().flex_1()).children(link_row)),
+                        .children(numbers)
+                        .child(div().flex().flex_col().gap(px(14.)).children(note).child(div().flex().flex_wrap().items_center().gap(px(12.)).child(acts).children(link_row))),
                 ),
         )
 }
@@ -3645,26 +3726,21 @@ fn ago_iso(root: &Root, iso: &str) -> Option<String> {
     crate::time::iso_secs(iso).map(|t| crate::time::ago(crate::time::now_secs() - t, &root.i18n))
 }
 
-/// What Roblox says of it in one strip, as Roblox's About lists its figures: how many play now and in all, how many
-/// keep it as a favourite, how many like it (the share drawn, thumbs up and down under it) and when it was last
-/// updated. Roblox gives the play counts only to a signed-in ask: a figure not given is left out, not shown as 0.
-fn facts(root: &Root, d: &Value) -> impl IntoElement {
+/// Roblox's figures for the game, open beside its picture: each a large number with its word under it, the likes
+/// with their bar and thumbs (no boxes, no marks: the strip of five boxed cells, each with its icon square, read as a
+/// plain HTML page, the owner 2026-11-15). A figure Roblox didn't give is left out.
+fn figures(root: &Root, d: &Value) -> Option<Div> {
     let f = |k: &str| d.get(k).and_then(Value::as_f64).unwrap_or(0.);
     let vi = root.i18n.vietnamese;
     let mut cells: Vec<(String, String, Option<AnyElement>)> = Vec::new();
-    // (Each figure's mark and colour, for the fuller look: in the cells' order.)
-    let mut marks: Vec<(&'static str, u32)> = Vec::new();
     if f("playing") > 0. {
         cells.push((root.tr("gp.playing"), thousands(f("playing") as i64, vi), None));
-        marks.push(("users", OK));
     }
     if f("visits") > 0. {
         cells.push((root.tr("gp.visits"), big(root, f("visits")), None));
-        marks.push(("eye", ONLINE));
     }
     if f("favorites") > 0. {
         cells.push((root.tr("gp.favorites"), big(root, f("favorites")), None));
-        marks.push(("starFill", FACE));
     }
     if let Some(l) = d.get("likes").and_then(Value::as_f64) {
         let (up, down) = (f("upVotes"), f("downVotes"));
@@ -3672,61 +3748,28 @@ fn facts(root: &Root, d: &Value) -> impl IntoElement {
             div()
                 .flex()
                 .flex_col()
-                .gap(px(6.))
-                .child(div().h(px(4.)).w_full().rounded_full().bg(ca(WHITE, 0.1)).child(div().h_full().w(relative((up / (up + down)) as f32)).rounded_full().bg(c(OK))))
-                .child(div().text_size(px(T_S)).text_color(c(MUTED)).font_features(tnum()).truncate().child(root.i18n.tv("gp.votes", &[("up", &big(root, up)), ("down", &big(root, down))])))
+                .gap(px(5.))
+                .child(div().w(px(116.)).h(px(3.)).rounded_full().bg(ca(WHITE, 0.1)).child(div().h_full().w(relative((up / (up + down)) as f32)).rounded_full().bg(c(OK))))
+                .child(div().text_size(px(T_S)).text_color(c(MUTED)).font_features(tnum()).child(root.i18n.tv("gp.votes", &[("up", &big(root, up)), ("down", &big(root, down))])))
                 .into_any_element()
         });
         cells.push((root.tr("gp.likes"), format!("{l:.0}%"), bar));
-        marks.push(("like", OK));
     }
     if let Some(u) = d.get("updated").and_then(Value::as_str).and_then(|u| ago_iso(root, u)) {
         cells.push((root.tr("gp.updated"), u, None));
-        marks.push(("clock", TEXT_2));
     }
-    if rich() {
-        return surface().flex().flex_wrap().children(cells.into_iter().zip(marks).enumerate().map(|(i, ((label, value, under), (mark, tone)))| {
-            let wide = under.is_some();
-            div()
-                .flex_1()
-                .min_w(px(if wide { 250. } else { 180. }))
-                .px(px(18.))
-                .py(px(13.))
-                .flex()
-                .items_center()
-                .gap(px(12.))
-                .when(i > 0, |d| d.border_l_1().border_color(c(LINE)))
-                .child(mark_chip(mark, tone, 34.))
-                .child(
-                    div()
-                        .flex_1()
-                        .min_w_0()
-                        .flex()
-                        .flex_col()
-                        .gap(px(2.))
-                        .child(div().text_size(px(T_S)).font_weight(FontWeight::MEDIUM).text_color(c(TEXT_2)).truncate().child(label))
-                        .child(div().text_size(px(19.)).font_weight(FontWeight::BOLD).line_height(px(24.)).font_features(tnum()).text_color(c(TEXT)).truncate().child(value))
-                        .children(under),
-                )
-        }));
+    if cells.is_empty() {
+        return None;
     }
-    div().flex().flex_wrap().rounded(px(R_L)).bg(ca(WHITE, 0.03)).border_1().border_color(c(LINE)).children(cells.into_iter().enumerate().map(|(i, (label, value, under))| {
-        // (The likes take a little more room, for their bar.)
-        let wide = under.is_some();
+    Some(div().flex().flex_wrap().gap_x(px(40.)).gap_y(px(16.)).children(cells.into_iter().map(|(label, value, under)| {
         div()
-            .flex_1()
-            .min_w(px(if wide { 220. } else { 150. }))
-            .px(px(18.))
-            .py(px(13.))
             .flex()
             .flex_col()
-            .justify_center()
-            .gap(px(4.))
-            .when(i > 0, |d| d.border_l_1().border_color(c(LINE)))
-            .child(div().text_size(px(T_S)).font_weight(FontWeight::MEDIUM).text_color(c(MUTED)).truncate().child(label))
-            .child(div().text_size(px(18.)).font_weight(FontWeight::SEMIBOLD).line_height(px(24.)).font_features(tnum()).truncate().child(value))
-            .children(under)
-    }))
+            .gap(px(2.))
+            .child(div().text_size(px(26.)).font_weight(FontWeight::BOLD).line_height(px(32.)).font_features(tnum()).text_color(c(TEXT)).child(value))
+            .child(div().text_size(px(T_S)).font_weight(FontWeight::MEDIUM).text_color(c(MUTED)).child(label))
+            .children(under.map(|u| div().pt(px(4.)).child(u)))
+    })))
 }
 
 /// 2019-01-16T03:29:19Z as a day: 16/01/2019, or Jan 16, 2019.
@@ -3743,43 +3786,33 @@ fn day_of(root: &Root, iso: &str) -> Option<String> {
     })
 }
 
-/// The game's details, label and value a row (as Roblox's About lists them): who makes it, its genre, when it came
+/// The game's details, each its word over its value, two to a row (as Roblox's About lists them): who makes it, its genre, when it came
 /// out, players a server and its Place ID. Only what Roblox said.
 fn info(root: &Root, d: &Value, place: i64) -> Div {
     let mut rows: Vec<(String, String)> = Vec::new();
-    let mut marks: Vec<&'static str> = Vec::new();
-    for (key, value, mark) in [("gp.creator", s(d, "creator").to_string(), "user"), ("gp.genre", s(d, "genre").to_string(), "tag")] {
+    for (key, value) in [("gp.creator", s(d, "creator").to_string()), ("gp.genre", s(d, "genre").to_string())] {
         if !value.is_empty() {
             rows.push((root.tr(key), value));
-            marks.push(mark);
         }
     }
     if let Some(day) = d.get("created").and_then(Value::as_str).and_then(|t| day_of(root, t)) {
         rows.push((root.tr("gp.created"), day));
-        marks.push("calendar");
     }
     if int(d, "maxPlayers") > 0 {
         rows.push((root.tr("gp.maxPlayers"), int(d, "maxPlayers").to_string()));
-        marks.push("users");
     }
     if place > 0 {
         rows.push((root.tr("gp.placeId"), place.to_string()));
-        marks.push("link");
     }
-    let head = if rich() { heading_rich("info", TEXT_2, root.tr("gp.info"), None).into_any_element() } else { heading(root.tr("gp.info"), None).into_any_element() };
-    surface().p(px(18.)).flex().flex_col().gap(px(if rich() { 10. } else { 6. })).child(head).child(div().flex().flex_col().children(rows.into_iter().zip(marks).enumerate().map(|(i, ((k, v), mark))| {
+    div().flex().flex_col().gap(px(14.)).child(heading(root.tr("gp.info"), None)).child(div().flex().flex_wrap().gap_y(px(16.)).children(rows.into_iter().map(|(k, v)| {
         div()
-            .h(px(38.))
+            .w(relative(0.5))
+            .pr(px(12.))
             .flex()
-            .items_center()
-            .justify_between()
-            .gap(px(14.))
-            .text_size(px(T_M))
-            .when(i > 0, |d| d.border_t_1().border_color(ca(WHITE, 0.05)))
-            .when(rich(), |d| d.child(icon(mark, 14., c(DIM))))
-            .when(rich(), |d| d.child(div().flex_1().min_w_0().truncate().text_color(c(TEXT_2)).child(k.clone())))
-            .when(!rich(), |d| d.child(div().flex_none().text_color(c(MUTED)).child(k.clone())))
-            .child(div().min_w_0().truncate().font_weight(if rich() { FontWeight::SEMIBOLD } else { FontWeight::MEDIUM }).font_features(tnum()).child(v))
+            .flex_col()
+            .gap(px(3.))
+            .child(div().text_size(px(T_S)).text_color(c(MUTED)).truncate().child(k))
+            .child(div().text_size(px(T_M)).font_weight(FontWeight::SEMIBOLD).font_features(tnum()).truncate().child(v))
     })))
 }
 
@@ -3822,33 +3855,21 @@ fn fresh(root: &Root, d: &Value) -> Option<String> {
 }
 
 /// A block's head in the fuller look: its mark, its name, and what the name leaves unsaid as a quiet pill at the right.
-fn heading_rich(mark: &'static str, tone: u32, title: String, sub: Option<String>) -> Div {
-    let under = sub.as_ref().is_some_and(|s| s.chars().count() > 36);
-    div()
-        .flex()
-        .items_center()
-        .gap(px(12.))
-        .child(game_chip(mark, tone, 32.))
-        .child(
-            div()
-                .flex_1()
-                .min_w_0()
-                .flex()
-                .flex_col()
-                .child(div().text_size(px(T_H)).font_weight(FontWeight::SEMIBOLD).child(title))
-                .when_some(sub.clone().filter(|_| under), |d, s| d.child(div().text_size(px(T_S)).text_color(c(MUTED)).child(s))),
-        )
-        .when_some(sub.filter(|_| !under), |d, s| d.child(div().h(px(22.)).px(px(9.)).flex().flex_none().items_center().rounded_full().bg(c(INSET)).border_1().border_color(c(LINE)).text_size(px(T_S)).text_color(c(MUTED)).child(s)))
+fn heading_rich(_mark: &'static str, _tone: u32, title: String, sub: Option<String>) -> Div {
+    heading(title, sub)
 }
 
-fn heading(title: String, sub: Option<String>) -> impl IntoElement {
-    // A long note goes under the title, wrapping in the card ("When it is quiet" in its narrow column ran off the
-    // card's edge on one line).
+/// A part's head on the game page: its name, large, and its note in quiet words after it (under it when long).
+/// No icon square and no pill: every block had the same square, name and pill, the owner 2026-11-15: "bố cục trông
+/// nó như nhau, dùng đi dụng lại 1 khung".
+fn heading(title: String, sub: Option<String>) -> Div {
+    // A long note goes under the title, wrapping in its column ("When it is quiet" in its narrow column ran off the
+    // edge on one line).
     let under = sub.as_ref().is_some_and(|s| s.chars().count() > 36);
     div()
         .flex()
-        .map(|d| if under { d.flex_col().gap(px(3.)) } else { d.items_baseline().gap(px(10.)) })
-        .child(div().text_size(px(T_H)).font_weight(FontWeight::SEMIBOLD).child(title))
+        .map(|d| if under { d.flex_col().gap(px(3.)) } else { d.items_baseline().gap(px(12.)) })
+        .child(div().text_size(px(19.)).font_weight(FontWeight::BOLD).line_height(px(24.)).child(title))
         .when_some(sub, |d, s| d.child(div().min_w_0().text_size(px(T_S)).text_color(c(MUTED)).child(s)))
 }
 
@@ -3860,31 +3881,28 @@ fn overview(root: &Root, details: Option<&Value>, place: i64, width: f32, cx: &m
     };
     let narrow = width < 760.;
     let accounts: Vec<Value> = root.games.stays.get(&place).cloned().unwrap_or_else(|| d.get("accounts").and_then(Value::as_array).cloned().unwrap_or_default());
-    let mut table = div().flex().flex_col();
-    let row = |cells: Vec<AnyElement>, head: bool| {
-        let mut r = div()
-            .h(px(if head { 30. } else { 44. }))
-            .flex()
-            .items_center()
-            .gap(px(12.))
-            .px(px(4.))
-            .text_size(px(if head { T_S } else { T_M }))
-            .when(head, |d| d.text_color(c(TEXT_2)).font_weight(FontWeight::MEDIUM))
-            .when(!head, |d| d.border_t_1().border_color(ca(WHITE, 0.05)));
+    // A list, not a sheet (the owner, 2026-11-15: "như exel"): no column heads and no lines between the rows; each
+    // figure carries its word under it, the rows apart by room.
+    let mut table = div().flex().flex_col().gap(px(6.));
+    let row = |cells: Vec<AnyElement>| {
+        let mut r = div().h(px(52.)).flex().items_center().gap(px(16.)).text_size(px(T_M));
         for (i, cell) in cells.into_iter().enumerate() {
             r = r.child(match i {
                 0 => div().flex_1().min_w_0().truncate().child(cell),
-                4 => div().w(px(if narrow { 96. } else { 130. })).flex_none().truncate().child(cell),
-                _ => div().w(px(if narrow { 64. } else { 96. })).flex_none().truncate().font_features(tnum()).child(cell),
+                4 => div().w(px(if narrow { 96. } else { 130. })).flex_none().flex().justify_end().child(cell),
+                _ => div().w(px(if narrow { 70. } else { 104. })).flex_none().child(cell),
             });
         }
         r
     };
-    let txt = |t: String| div().child(t).into_any_element();
-    table = table.child(row(
-        vec![txt(root.tr("gp.account")), txt(root.tr("gp.played")), txt(root.tr("gp.kicks")), txt(root.tr("gp.drops")), txt(root.tr("gp.now"))],
-        true,
-    ));
+    let fig = |value: String, word: String| {
+        div()
+            .flex()
+            .flex_col()
+            .child(div().font_weight(FontWeight::SEMIBOLD).font_features(tnum()).truncate().child(value))
+            .child(div().text_size(px(T_S)).text_color(c(MUTED)).truncate().child(word))
+            .into_any_element()
+    };
     for a in &accounts {
         let minutes = int(a, "minutes");
         let played = if minutes >= 60 {
@@ -3909,17 +3927,14 @@ fn overview(root: &Root, details: Option<&Value>, place: i64, width: f32, cx: &m
             ),
         };
         // (Its face, when the account is still in the app.)
-        let face = root.accounts().iter().find(|x| s(x, "id") == s(a, "id")).map(|x| crate::pages::accounts::avatar(x, 26., PANEL, cx));
-        table = table.child(row(
-            vec![
-                div().flex().items_center().gap(px(10.)).children(face).child(div().min_w_0().truncate().font_weight(FontWeight::MEDIUM).child(s(a, "name").to_string())).into_any_element(),
-                txt(played),
-                txt(kicks),
-                txt(int(a, "drops").to_string()),
-                now.into_any_element(),
-            ],
-            false,
-        ));
+        let face = root.accounts().iter().find(|x| s(x, "id") == s(a, "id")).map(|x| crate::pages::accounts::avatar(x, 36., PANEL, cx));
+        table = table.child(row(vec![
+            div().flex().items_center().gap(px(12.)).children(face).child(div().min_w_0().truncate().font_weight(FontWeight::SEMIBOLD).child(s(a, "name").to_string())).into_any_element(),
+            fig(played, root.tr("gp.played")),
+            fig(kicks, root.tr("gp.kicks")),
+            fig(int(a, "drops").to_string(), root.tr("gp.drops")),
+            now.into_any_element(),
+        ]));
     }
 
     let hours: Option<Vec<Option<f64>>> = d
@@ -3941,8 +3956,7 @@ fn overview(root: &Root, details: Option<&Value>, place: i64, width: f32, cx: &m
         about.clone()
     };
     let words = (!about.is_empty()).then(|| {
-        surface()
-            .p(px(18.))
+        div()
             .flex()
             .flex_col()
             .gap(px(10.))
@@ -3965,27 +3979,29 @@ fn overview(root: &Root, details: Option<&Value>, place: i64, width: f32, cx: &m
     });
 
     let yours_head = if rich() { heading_rich("users", ONLINE, root.tr("gp.yours"), Some(root.tr("gp.week"))).into_any_element() } else { heading(root.tr("gp.yours"), Some(root.tr("gp.week"))).into_any_element() };
-    let yours = surface().p(px(18.)).flex().flex_col().gap(px(12.)).child(yours_head).child(if accounts.is_empty() {
+    let yours = div().flex().flex_col().gap(px(12.)).child(yours_head).child(if accounts.is_empty() {
         div().text_size(px(T_M)).text_color(c(MUTED)).child(root.tr("gp.noneYet"))
     } else {
         table
     });
     let hush_head = if rich() { heading_rich("moon", FACE, root.tr("gp.quiet"), Some(root.tr("gp.quietFrom"))).into_any_element() } else { heading(root.tr("gp.quiet"), Some(root.tr("gp.quietFrom"))).into_any_element() };
-    let hush = surface().p(px(18.)).flex().flex_col().gap(px(16.)).child(hush_head).child(match hours {
+    let hush = div().flex().flex_col().gap(px(16.)).child(hush_head).child(match hours {
         Some(h) => quiet(root, &h).into_any_element(),
         None => div().text_size(px(T_M)).text_color(c(MUTED)).child(root.tr("gp.quietNotYet")).into_any_element(),
     });
-    let details = info(root, d, place);
+    // (Its details and quiet hours one panel beside the open main column: the one block on the page.)
+    let side_panel = surface().p(px(20.)).flex().flex_col().gap(px(30.)).child(info(root, d, place)).child(hush);
     // Wide: the pictures, the words and your accounts in the main column; its details and quiet hours beside it.
     let beside = width >= 1100.;
     let side = 380.;
     let main_w = if beside { width - side - GAP } else { width };
     // Your accounts in it first, under the alert: what this page is mostly for (C#'s Game info), it was two scrolls
     // down under the pictures (review 3b.1).
+    // (The parts apart by room, not boxes.)
     let main = div()
         .flex()
         .flex_col()
-        .gap(px(GAP))
+        .gap(px(36.))
         .children(radar_strip(root, place, s(d, "name")))
         .child(yours)
         .children(events_block(root, place, main_w, cx))
@@ -4002,9 +4018,9 @@ fn overview(root: &Root, details: Option<&Value>, place: i64, width: f32, cx: &m
                 .items_start()
                 .gap(px(GAP))
                 .child(main.w(px(main_w)).flex_none())
-                .child(div().w(px(side)).flex_none().flex().flex_col().gap(px(GAP)).child(details).child(hush))
+                .child(div().w(px(side)).flex_none().child(side_panel))
         } else {
-            main.child(details).child(hush)
+            main.child(side_panel)
         })
         .children(more_games(root, place, width, cx))
 }

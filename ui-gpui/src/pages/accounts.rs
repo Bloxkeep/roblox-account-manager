@@ -2299,7 +2299,7 @@ fn tile(root: &Root, a: &Value, w: f32, lines: usize, srv: Option<char>, cx: &mu
             } else if bad {
                 d.tones(tinted(RAISED, BAD, 0.09), tinted(RAISED_2, BAD, 0.11)).edge(ca(BAD, 0.38), ca(BAD, 0.52))
             } else {
-                d.tones(c(RAISED), c(RAISED_2)).edge(c(LINE), ca(WHITE, 0.17))
+                d.tones(c(RAISED), c(RAISED_2)).edge(ca(WHITE, 0.), ca(WHITE, 0.17))
             }
         })
         .on_click(cx.listener(move |r, e: &ClickEvent, _, cx| {
