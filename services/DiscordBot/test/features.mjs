@@ -309,17 +309,21 @@ try {
   check('/multi: the live build, "No change", nothing coming', mf[0]?.value === '`0.744.0.7441080`' && mf[1]?.value === '**No change**' && mf[2]?.value === 'Nothing yet', JSON.stringify(mf));
   r = await interact(command('robloxstatus', { locale: 'en-US', guild: null }));
   check('/robloxstatus works in a DM too: all working', r.json?.data.embeds[0].description === 'All of Roblox is working.', JSON.stringify(r.json?.data));
-  r = await interact(command('error', { locale: 'en-US', options: [{ type: 4, name: 'code', value: 277 }] }));
-  check('/error says what a code means, what Bloxkeep does and what to do', r.json?.data.embeds[0].title === 'Error 277 · Connection lost'
-    && r.json.data.embeds[0].fields.map(f => f.name).join() === "What Bloxkeep does,What you can do,Roblox's name for it,Guide"
-    && /Auto-rejoin/.test(r.json.data.embeds[0].fields[0].value), JSON.stringify(r.json?.data));
-  r = await interact(command('error', { locale: 'en-US', options: [{ type: 4, name: 'code', value: 276 }] }));
-  check('…a code that means the same as another answers as that one', r.json?.data.embeds[0].title === 'Error 276 · Signed in on another device', JSON.stringify(r.json?.data));
-  r = await interact(command('error', { locale: 'en-US', options: [{ type: 4, name: 'code', value: 5 }] }));
-  check("…any other code of Roblox's answers with Roblox's name for it", r.json?.data.embeds[0].title === 'Error 5 · connection blocked by Roblox'
-    && r.json.data.embeds[0].fields[0].value === '`ConnectionBanned`', JSON.stringify(r.json?.data));
-  r = await interact(command('error', { locale: 'en-US', options: [{ type: 4, name: 'code', value: 9999 }] }));
-  check("…and a number that isn't Roblox's says so", /isn't one of Roblox's error codes/.test(r.json?.data.embeds[0].description ?? ''), JSON.stringify(r.json?.data));
+  r = await interact(command('error', { locale: 'en-US', options: [{ type: 3, name: 'code', value: '277' }] }));
+  let e = r.json?.data.embeds[0];
+  check('/error says what a code means, what Bloxkeep does and what to do', e?.author.name === 'Roblox error 277' && e.title === 'Connection lost'
+    && e.fields.map(f => f.name).join() === 'What Bloxkeep does,What you can do' && /Auto-rejoin/.test(e.fields[0].value)
+    && e.footer.text === 'Roblox: DisconnectConnectionLost  ·  Same as 266' && r.json.data.components[0].components[0].label === 'Guide', JSON.stringify(r.json?.data));
+  r = await interact(command('error', { locale: 'en-US', options: [{ type: 3, name: 'code', value: '276' }] }));
+  check('…a code that means the same as another answers as that one', r.json?.data.embeds[0].title === 'Signed in on another device' && /Same as 273/.test(r.json.data.embeds[0].footer.text), JSON.stringify(r.json?.data));
+  r = await interact(command('error', { locale: 'en-US', options: [{ type: 3, name: 'code', value: '5' }] }));
+  check("…any other code of Roblox's answers with Roblox's name for it", r.json?.data.embeds[0].title === 'Connection blocked by Roblox'
+    && r.json.data.embeds[0].footer.text === 'Roblox: ConnectionBanned', JSON.stringify(r.json?.data));
+  r = await interact(command('error', { locale: 'en-US', options: [{ type: 3, name: 'code', value: '9999' }] }));
+  check("…and a number that isn't Roblox's says so", /isn't one of Roblox's error codes/.test(r.json?.data.embeds[0].title ?? ''), JSON.stringify(r.json?.data));
+  // While typing: suggestions straight from the worker (no reply from the bot's object needed).
+  r = await interact({ ...command('error', { locale: 'en-US', options: [{ type: 3, name: 'code', value: 'kick', focused: true }] }), type: 4 });
+  check('/error suggests codes while typing', r.json?.type === 8 && r.json.data.choices.some(c => c.value === '267' && c.name === '267 · Kicked by the game'), JSON.stringify(r.json));
 
   // Settings: only for people who can manage the server, in a server.
   r = await interact(command('notify', { perms: '0', sub: 'set', options: [opt('channel', 'c1')] }));

@@ -21,7 +21,7 @@ import { CARDS_KEPT, MAX_FEED_SOCKETS, RAW_KEPT, cardsOf, gameId, isNotice, make
 import { PRICES_EVERY, PRICES_RETRY, PRICE_SOURCES, readPrices } from './prices.js';
 import { WIKI_EVERY, WIKI_ITEMS_MAX, WIKI_REQUESTS_PER_TICK, WIKI_RETRY, WIKI_SOURCES, POPULAR_GAMES, apiOf, readBatch } from './wiki.js';
 import { setupServer } from './setup.js';
-import { errorEmbed } from './errors.js';
+import { errorChoices, errorMessage } from './errors.js';
 import { newer, readInstallDownloads, readLatestTag, readNotes, readRelease, readStatus, readWatch, release } from './sources.js';
 import {
   COUNT_CHANNEL, SITE, addressed, boardEmbed, buildMessage, captchaMessage, codeForm, countChannelName, downloadMessage, helpMessage, lang,
@@ -905,7 +905,7 @@ export class Gateway extends DurableObject {
       case 'robloxstatus':
         return reply({ embeds: [statusEmbed(l, snap.status ?? { code: 100, parts: [], incident: null })] });
       case 'error':
-        return reply({ embeds: [errorEmbed(l, i.data?.options?.find(o => o.name === 'code')?.value)] });
+        return reply(errorMessage(l, i.data?.options?.find(o => o.name === 'code')?.value));
       case 'feed':
         return this.feedCommand(i, reply);
       case 'online': { // anyone, in the channel; Bloxkeep's developers get it all, seen only by them
@@ -2221,8 +2221,11 @@ export default {
         ctx.waitUntil(gateway.noteInteraction(request.cf?.colo ?? null, i.data?.name ?? '', Date.now() - started));
         return Response.json(reply);
       }
-      if (i.type === 4) // what to suggest while someone types (/pc)
+      if (i.type === 4) { // what to suggest while someone types (/error's codes here; /pc's from its PCs)
+        if (i.data?.name === 'error')
+          return Response.json(errorChoices(lang(i.locale ?? i.guild_locale), i.data.options?.find(o => o.focused)?.value));
         return Response.json(await ask(env, g => g.pcChoices(i)));
+      }
       if (i.type === 3 || i.type === 5) { // a button pressed, a form sent (/verify)
         const started = Date.now(), { reply, png } = await ask(env, g => g.component(i));
         ctx.waitUntil(gateway.noteInteraction(request.cf?.colo ?? null, i.data?.custom_id ?? '', Date.now() - started));
