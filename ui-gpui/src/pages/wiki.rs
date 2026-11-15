@@ -1052,13 +1052,13 @@ pub fn view(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
     // sheet's text colour, over a 2 px rule in the game's own).
     let part = |id: ElementId, on: bool, mark: Option<&'static str>, label: String| {
         focusable(div().id(id))
+            .relative()
             .pt(px(9.))
-            .pb(px(7.))
+            .pb(px(8.))
             .flex()
             .items_center()
             .gap(px(5.))
-            .border_b_2()
-            .border_color(if on { k.own } else { gpui_kit::transparent_black() })
+            .when(on, |d| d.child(div().absolute().left_0().right_0().bottom(px(-1.)).h(px(2.)).bg(k.own)))
             .text_size(px(13.5))
             .text_color(if on { k.text } else { k.link })
             .when(on, |d| d.font_weight(FontWeight::BOLD))
@@ -1575,7 +1575,7 @@ fn table_view(root: &Root, template: &str, width: f32, cx: &mut Context<Root>) -
         .flex()
         .flex_col()
         .gap(px(12.))
-        .child(div().flex().flex_wrap().items_center().gap(px(16.)).child(div().flex().flex_col().gap(px(2.)).child(div().text_size(px(T_GROUP + 4.)).font_weight(FontWeight::BOLD).line_height(px(28.)).child(name)).child(tag)).child(div().flex_1()).child(tools));
+        .child(div().flex().flex_wrap().items_center().gap(px(16.)).child(div().flex().flex_col().gap(px(2.)).child(div().font_family(SERIF).text_size(px(30.)).font_weight(FontWeight::NORMAL).line_height(px(38.)).child(name)).child(tag)).child(div().flex_1()).child(tools));
 
     if w.filtering {
         let mut panel = boxed().p(px(14.)).flex().flex_col().gap(px(10.));
@@ -1667,8 +1667,10 @@ fn table_view(root: &Root, template: &str, width: f32, cx: &mut Context<Root>) -
     // The table: pick, name, the kind's lines.
     let name_w = 260.;
     let col_w = ((width - 40. - name_w) / (columns.len().max(1) as f32 + 1.)).clamp(96., 240.);
-    let mut head = div().flex().items_center().h(px(36.)).px(px(10.)).bg(ws().head).text_size(px(T_S)).text_color(c(MUTED)).font_weight(FontWeight::SEMIBOLD).border_b_1().border_color(ws().line);
-    head = head.child(div().w(px(30.)).flex_none()).child(div().flex_1().min_w(px(name_w)).child(root.tr("wiki.name")));
+    let k = ws();
+    let cell_line = k.line;
+    let mut head = div().flex().items_stretch().min_h(px(34.)).bg(k.head).text_size(px(13.5)).text_color(k.text).font_weight(FontWeight::BOLD).border_b_1().border_color(k.line);
+    head = head.child(div().w(px(34.)).flex_none()).child(div().flex_1().min_w(px(name_w)).px(px(10.)).flex().items_center().border_l_1().border_color(cell_line).child(root.tr("wiki.name")));
     for (ci, l) in columns.iter().enumerate() {
         let on = w.sort.as_ref().filter(|(f, _)| *f == l.field).map(|(_, d)| *d);
         let (field, number) = (l.field.clone(), l.number);
@@ -1679,14 +1681,16 @@ fn table_view(root: &Root, template: &str, width: f32, cx: &mut Context<Root>) -
                 .tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into())
                 .w(px(col_w))
                 .flex_none()
+                .px(px(10.))
                 .flex()
                 .items_center()
                 .gap(px(4.))
+                .border_l_1()
+                .border_color(cell_line)
                 .cursor_pointer()
-                .when(on.is_some(), |d| d.text_color(c(TEXT)))
-                .hover(|st| st.text_color(c(TEXT)))
+                .hover(|st| st.underline())
                 .child(div().truncate().child(word(root, &l.field)))
-                .child(icon(match on { Some(true) => "chevronDown", Some(false) => "chevronUp", None => "sort" }, 12., c(MUTED)))
+                .child(icon(match on { Some(true) => "chevronDown", Some(false) => "chevronUp", None => "sort" }, 12., if on.is_some() { k.link } else { Hsla { a: 0.55, ..k.text } }))
                 .on_click(cx.listener(move |r, _, _, cx| {
                     // Numbers start biggest first; a second click turns it round, a third lets go.
                     r.wiki.sort = match r.wiki.sort.take() {
@@ -1705,18 +1709,18 @@ fn table_view(root: &Root, template: &str, width: f32, cx: &mut Context<Root>) -
         let tpl = template.to_string();
         let pick_tip = SharedString::from(root.tr("wiki.compareAdd"));
         let mut row = div()
+            .id(("wk-row", ri))
             .flex()
-            .items_center()
-            .min_h(px(44.))
-            .px(px(10.))
-            .py(px(4.))
-            .text_size(px(T_M))
+            .items_stretch()
+            .min_h(px(42.))
+            .text_size(px(13.5))
             .border_b_1()
-            .border_color(ws().line)
-            .when(picked_on, |d| d.bg(tinted(PANEL, FACE, 0.08)))
+            .border_color(k.line)
+            .when(picked_on, |d| d.bg(Hsla { a: 0.12, ..k.own }))
+            .when(!picked_on, |d| d.hover(|st| st.bg(Hsla { a: 0.05, ..k.text })))
             .child(
                 // (Its tip as WikiView.tsx's wk-check title; a full comparison takes no more, as its disabled box.)
-                div().id(("wk-pick-tip", ri)).w(px(30.)).flex_none().when(full, |d| d.opacity(0.4)).tooltip(move |_, cx| cx.new(|_| Tip(pick_tip.clone())).into()).child(Check::new(("wk-pick", ri), picked_on).on_toggle({
+                div().id(("wk-pick-tip", ri)).w(px(34.)).flex_none().flex().items_center().justify_center().when(full, |d| d.opacity(0.4)).tooltip(move |_, cx| cx.new(|_| Tip(pick_tip.clone())).into()).child(Check::new(("wk-pick", ri), picked_on).on_toggle({
                     let this = cx.entity().downgrade();
                     move |_, _, cx| {
                         if full {
@@ -1738,13 +1742,18 @@ fn table_view(root: &Root, template: &str, width: f32, cx: &mut Context<Root>) -
                 focusable(div().id(("wk-item", ri)))
                     .flex_1()
                     .min_w(px(name_w))
+                    .px(px(10.))
+                    .py(px(5.))
                     .flex()
                     .items_center()
-                    .gap(px(10.))
+                    .gap(px(8.))
+                    .border_l_1()
+                    .border_color(cell_line)
                     .cursor_pointer()
+                    .text_color(k.link)
                     .hover(|st| st.underline())
-                    .child(pic_box(it.img.as_ref(), &it.name, 32., 32., cx))
-                    .child(div().min_w_0().truncate().font_weight(FontWeight::MEDIUM).child(it.name.clone()))
+                    .child(pic_box(it.img.as_ref(), &it.name, 30., 30., cx))
+                    .child(div().min_w_0().truncate().child(it.name.clone()))
                     .on_click(cx.listener(move |r, _, _, cx| {
                         go(r, View::Page { title: open_title.clone(), table: Some(tpl.clone()) });
                         cx.notify();
@@ -1752,13 +1761,17 @@ fn table_view(root: &Root, template: &str, width: f32, cx: &mut Context<Root>) -
             );
         for l in &columns {
             let v = value_of(it, &l.field).map(|v| v.lines().next().unwrap_or_default().to_string()).unwrap_or_else(|| "–".into());
-            row = row.child(div().w(px(col_w)).flex_none().pr(px(8.)).truncate().text_color(c(TEXT_2)).when(l.number, |d| d.font_features(tnum())).child(v));
+            row = row.child(div().w(px(col_w)).flex_none().px(px(10.)).flex().items_center().border_l_1().border_color(cell_line).text_color(k.text).when(l.number, |d| d.font_features(tnum())).child(div().min_w_0().truncate().child(v)));
         }
         rows = rows.child(row);
     }
     let more = shown.len().saturating_sub(ROWS_SHOWN);
     body = body.child(
-        boxed()
+        // (.ws-table: square, on the box's ground, a line all round.)
+        div()
+            .bg(k.boxed)
+            .border_1()
+            .border_color(k.line)
             .overflow_hidden()
             .child(head)
             .child(rows)
@@ -1879,6 +1892,17 @@ fn compare(root: &Root, items: &[&Item], cx: &mut Context<Root>) -> Div {
 }
 
 fn article_view(root: &Root, about: &About, title: &str, table: Option<&str>, width: f32, cx: &mut Context<Root>) -> AnyElement {
+    // The article's own words are drawn by the kit's text view, which takes its link and table-head colours from the
+    // kit's theme: set to the sheet's here (.ws-content a: the link colour; a wikitable's head on --ws-head). Nothing
+    // else in the app uses that view.
+    {
+        let k = ws();
+        gpui_kit::component::Theme::update(cx, |t| {
+            let col = &mut t.colors;
+            (col.link, col.link_hover, col.link_active) = (k.link, k.link, k.link);
+            (col.table_head, col.table_head_foreground) = (k.head, k.text);
+        });
+    }
     let w = &root.wiki;
     let site = w.site.clone();
     let page = w.pages.get(&key(&site, title));
@@ -2100,27 +2124,30 @@ fn contents(root: &Root, parts: &[wikihtml::Section], cx: &mut Context<Root>) ->
     )
 }
 
-/// The page's box of facts as a card: its title, picture and lines.
+/// The page's box of facts, as a wiki's infobox (.ws-infobox): square, a line all round; its title on the game's own
+/// colour in serif; its picture on the sheet's ground; each line its name on the head's ground (two fifths of the
+/// width, bold) and its value, a line between the lines.
 fn infobox_card(root: &Root, b: &Infobox, cx: &mut Context<Root>) -> Div {
+    let k = ws();
     let p = b.image.as_ref().and_then(|u| images::pic(u, cx));
-    let mut card = boxed().p(px(14.)).flex().flex_col().gap(px(10.));
+    let mut card = div().bg(k.boxed).border_1().border_color(k.line).flex().flex_col().text_size(px(T_M));
     if let Some(t) = &b.title {
-        card = card.child(div().text_size(px(T_H)).font_weight(FontWeight::SEMIBOLD).text_center().child(t.clone()));
+        // (--gt-ink: dark words on a light game colour, light on a dark one.)
+        let ink: Hsla = if crate::theme::lightness(k.own) > 58. { rgb(0x15171c).into() } else { rgb(0xffffff).into() };
+        card = card.child(div().px(px(10.)).py(px(7.)).bg(k.own).text_color(ink).font_family(SERIF).text_size(px(16.)).line_height(px(21.)).font_weight(FontWeight::BOLD).text_center().child(t.clone()));
     }
     if let Some(p) = p {
-        card = card.child(div().h(px(200.)).rounded(px(R_M)).bg(c(RAISED_2)).overflow_hidden().flex().items_center().justify_center().child(img(p).size_full().object_fit(ObjectFit::Contain)));
+        card = card.child(div().h(px(204.)).p(px(12.)).bg(k.bg).border_b_1().border_color(k.line).flex().items_center().justify_center().child(img(p).size_full().object_fit(ObjectFit::Contain)));
     }
     let mut rows = div().flex().flex_col();
-    for (i, (k, v)) in b.rows.iter().enumerate() {
+    for (i, (name, v)) in b.rows.iter().enumerate() {
         rows = rows.child(
             div()
                 .flex()
-                .gap(px(10.))
-                .py(px(7.))
-                .text_size(px(T_M))
-                .when(i > 0, |d| d.border_t_1().border_color(ws().line))
-                .child(div().w(px(104.)).flex_none().text_color(c(MUTED)).child(word(root, k)))
-                .child(div().flex_1().min_w_0().text_color(c(TEXT)).child(v.replace('\n', " · "))),
+                .items_stretch()
+                .when(i > 0, |d| d.border_t_1().border_color(k.line))
+                .child(div().w(relative(0.4)).flex_none().px(px(10.)).py(px(5.)).bg(k.head).font_weight(FontWeight::BOLD).child(word(root, name)))
+                .child(div().flex_1().min_w_0().px(px(10.)).py(px(5.)).text_color(k.text).child(v.replace('\n', " · "))),
         );
     }
     card.child(rows)
