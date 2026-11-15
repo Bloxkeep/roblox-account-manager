@@ -115,6 +115,13 @@ pub fn unfriend(cookie: &str, target_user_id: i64, realm: &str, answered: Option
     friend_post(&format!("{}/v1/users/{target_user_id}/unfriend", realm::api(realm, "friends")), "{}", cookie, realm, answered, "Unfriend", ct)
 }
 
+/// The signed-in account follows `target_user_id`, or stops (friends.roblox.com's /v1/users/{id}/follow and /unfollow,
+/// as Roblox's own API description gives them; a check Roblox holds it for is answered like a friend request's).
+pub fn follow_user(cookie: &str, target_user_id: i64, on: bool, realm: &str, answered: Option<&JoinChallenge>, ct: &Cancel) -> Res<FriendAnswer> {
+    let (path, what) = if on { ("follow", "Follow") } else { ("unfollow", "Unfollow") };
+    friend_post(&format!("{}/v1/users/{target_user_id}/{path}", realm::api(realm, "friends")), "{}", cookie, realm, answered, what, ct)
+}
+
 fn friend_post(url: &str, json: &str, cookie: &str, realm: &str, answered: Option<&JoinChallenge>, what: &str, ct: &Cancel) -> Res<FriendAnswer> {
     let configure = |req: &mut HttpRequest| {
         if let Some(answered) = answered {

@@ -146,6 +146,9 @@ pub struct Root {
     /// Settings › Launching: a Roblox window's own width and height, typed.
     pub win_w: Entity<InputState>,
     pub win_h: Entity<InputState>,
+    /// The frame rate limit typed (Settings › Staying in game), and the limit and language its hint was last set for.
+    pub fps_box: Entity<InputState>,
+    fps_hint: Option<(i64, bool)>,
     pub pw_cur: Entity<InputState>,
     pub pw_new: Entity<InputState>,
     pub pw_new2: Entity<InputState>,
@@ -214,6 +217,12 @@ pub struct Root {
     pub narrow: std::cell::Cell<bool>,
     /// The window's height (set each draw), for what must fit it whole (the big 3D avatar).
     pub window_h: std::cell::Cell<f32>,
+    /// Home has no accounts column beside it (a narrow window; set each draw): Home is drawn small then (a low stage,
+    /// its games in short tiles) with an Accounts button that slides the column in over the page (`side_open`; when
+    /// a click outside shut it, so a click on its own button only shuts it).
+    pub no_side: std::cell::Cell<bool>,
+    pub side_open: bool,
+    pub side_shut: Option<std::time::Instant>,
     pub snap: pages::snap::Data,
     pub preset_menu: pages::preset_menu::Data,
     /// The inbox's chat box: what to say in the open chat (Enter).
@@ -481,6 +490,14 @@ impl Root {
         };
         let win_w = size_box(window, cx);
         let win_h = size_box(window, cx);
+        // The frame rate limit typed: kept on Enter or when the box is left.
+        let fps_box = cx.new(|cx| InputState::new(window, cx));
+        cx.subscribe_in(&fps_box, window, |r: &mut Root, _, ev: &InputEvent, _, cx| {
+            if matches!(ev, InputEvent::PressEnter { .. } | InputEvent::Blur) {
+                r.save_fps(cx);
+            }
+        })
+        .detach();
         let board_hint = i18n.t("cm.namePh");
         let board_name = cx.new(|cx| InputState::new(window, cx).placeholder(board_hint));
         cx.subscribe_in(&board_name, window, |r: &mut Root, e, ev: &InputEvent, _, cx| {
@@ -590,6 +607,8 @@ impl Root {
             phone_topic,
             win_w,
             win_h,
+            fps_box,
+            fps_hint: None,
             pw_cur,
             pw_new,
             pw_new2,
@@ -633,6 +652,9 @@ impl Root {
             palette: Default::default(),
             narrow: Default::default(),
             window_h: Default::default(),
+            no_side: Default::default(),
+            side_open: false,
+            side_shut: None,
             snap: Default::default(),
             preset_menu: Default::default(),
             chat_box,
@@ -897,6 +919,21 @@ impl Root {
             let v = self.state.pointer(key).and_then(Value::as_i64).unwrap_or(or).to_string();
             if e.read(cx).value().as_ref() != v && !e.read(cx).focus_handle(cx).is_focused(window) {
                 e.update(cx, |s, cx| s.set_value(v, window, cx));
+            }
+        }
+        // The frame rate box too: its number, or empty over the words for "as Roblox has it" and for no limit at all.
+        {
+            let fps = self.state.pointer("/settings/robloxConfig/fps").and_then(Value::as_i64).unwrap_or(0);
+            let v = if fps > 0 && fps != pages::settings::FPS_MAX { fps.to_string() } else { String::new() };
+            let e = self.fps_box.clone();
+            if e.read(cx).value().as_ref() != v && !e.read(cx).focus_handle(cx).is_focused(window) {
+                e.update(cx, |s, cx| s.set_value(v, window, cx));
+            }
+            let said = (fps, self.i18n.vietnamese);
+            if self.fps_hint != Some(said) {
+                self.fps_hint = Some(said);
+                let hint = self.tr(if fps == pages::settings::FPS_MAX { "rc.fpsMax" } else { "rc.keep" });
+                e.update(cx, |s, cx| s.set_placeholder(hint, window, cx));
             }
         }
         let on_board = self.state.get("boardName").and_then(Value::as_str).unwrap_or_default().to_string();
@@ -2353,6 +2390,15 @@ impl Root {
         }
     }
 
+    /// The frame rate typed goes to the app, within what Roblox takes (5 to 360), when it isn't the limit already
+    /// kept. A box left empty, or holding no number, changes nothing: the list in the box sets "as Roblox has it".
+    fn save_fps(&mut self, cx: &mut Context<Self>) {
+        let Some(fps) = self.fps_box.read(cx).value().trim().parse::<f64>().ok().map(|v| (v.round() as i64).clamp(5, 360)) else { return };
+        if self.state.pointer("/settings/robloxConfig/fps").and_then(Value::as_i64) != Some(fps) {
+            self.send("setSettings", json!({ "robloxConfig": { "fps": fps } }));
+        }
+    }
+
     /// The open vault's name, as the app lists it.
     pub fn open_vault_name(&self) -> String {
         let open = self.state.pointer("/vaults/open").and_then(Value::as_str).unwrap_or_default();
@@ -3327,6 +3373,34 @@ impl Render for Root {
         let main_w = f32::from(window.viewport_size().width) - RAIL - (GAP + 4.) - GAP - if with_side { SIDE + GAP } else { 0. };
         self.narrow.set(main_w < 1000.);
         self.window_h.set(f32::from(window.viewport_size().height));
+        // (The column that isn't beside Home can slide in over it: see `no_side`.)
+        let can_slide = narrow && page == Page::Home && !locked && !lost && !self.accounts().is_empty();
+        self.no_side.set(can_slide);
+        // (A hidden shot of the column slid in: BLOXKEEP_SHOT_SIDE=1.)
+        #[cfg(feature = "shot")]
+        if can_slide && std::env::var("BLOXKEEP_SHOT_SIDE").as_deref() == Ok("1") {
+            self.side_open = true;
+        }
+        if !can_slide {
+            self.side_open = false;
+        }
+        let slid = (can_slide && self.side_open).then(|| {
+            div()
+                .id("side-slid")
+                .absolute()
+                .top_0()
+                .right_0()
+                .bottom_0()
+                .occlude()
+                .rounded(px(R_PANEL))
+                .shadow_lg()
+                .child(self.side(cx))
+                .on_mouse_down_out(cx.listener(|r, _, _, cx| {
+                    r.side_open = false;
+                    r.side_shut = Some(std::time::Instant::now());
+                    cx.notify();
+                }))
+        });
         let body = if locked {
             div().size_full().child(pages::lock::lock(self, window, cx))
         } else if self.lost {
@@ -3471,7 +3545,7 @@ impl Render for Root {
                             .min_h_0()
                             .flex()
                             .gap(px(GAP))
-                            .child(div().flex_1().min_w_0().h_full().relative().children(frost_main).child(step_in(self.shown_key(), self.step_from, body)))
+                            .child(div().flex_1().min_w_0().h_full().relative().children(frost_main).child(step_in(self.shown_key(), self.step_from, body)).children(slid))
                             .when(with_side, |d| d.child(div().relative().h_full().flex_none().children(frost_side).child(self.side(cx)))),
                     )
                     .when(!locked && !lost, |d| d.child(self.status(f32::from(window.viewport_size().width), cx))),

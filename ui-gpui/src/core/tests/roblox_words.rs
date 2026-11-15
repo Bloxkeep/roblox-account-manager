@@ -250,4 +250,20 @@ pub async fn run(c: &mut Checks, dir: &str) {
     text += &filler(8);
     let kept = kept_from(&text);
     c.check("the same HTTP error with other pointers is kept once", kept.iter().filter(|l| l.contains("HttpResponse")).count() == 1, &kept);
+
+    // A game's events (Roblox's virtual-events v3, the shape its own API description gives): what is on or to come,
+    // soonest first, by its name in the account's language; one that is over or not for everyone is left out.
+    let now = crate::time::iso_secs("2026-11-15T10:00:00Z").unwrap_or(0);
+    let answer = serde_json::json!({ "gameEvents": [
+        { "id": "3", "title": "Later", "startTime": "2026-11-20T10:00:00Z", "endTime": "2026-11-21T10:00:00Z", "visibility": "public", "userRsvpStatus": "going" },
+        { "id": "1", "title": "Over", "startTime": "2026-11-01T10:00:00Z", "endTime": "2026-11-02T10:00:00Z", "visibility": "public" },
+        { "id": "2", "title": "Now", "displayTitle": "Đang diễn ra", "subtitle": "Double XP", "startTime": "2026-11-15T09:00:00Z", "endTime": "2026-11-15T12:00:00Z", "visibility": "public", "userRsvpStatus": "none" },
+        { "id": "4", "title": "Hidden", "startTime": "2026-11-16T10:00:00Z", "endTime": "2026-11-17T10:00:00Z", "visibility": "private" },
+        { "id": "5", "title": "", "startTime": "2026-11-16T10:00:00Z", "endTime": "2026-11-17T10:00:00Z" },
+    ], "nextPageToken": null });
+    let events = crate::roblox::read_events(&answer, now);
+    let names: Vec<&str> = events.iter().map(|e| e.title.as_str()).collect();
+    c.check("a game's events: on now first, then to come; over, private and nameless left out", names == ["Đang diễn ra", "Later"], &names);
+    c.check("…with the line under its name, and the one the account is going to", events.first().is_some_and(|e| e.sub == "Double XP" && !e.going) && events.last().is_some_and(|e| e.going), &events);
+    c.check("…and no events at all from an answer without them", crate::roblox::read_events(&serde_json::json!({ "errors": [{ "code": 0 }] }), now).is_empty(), "");
 }

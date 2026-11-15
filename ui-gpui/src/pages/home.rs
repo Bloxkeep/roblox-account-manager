@@ -116,6 +116,18 @@ pub fn home(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
     let all = games(root);
     let focus = root.picked.and_then(|p| all.iter().position(|g| g.place == p)).unwrap_or(0);
     let inner = width - 2. * SIDE;
+    // No accounts column beside the page (a narrow window): a button at the top right slides it in over the page
+    // (the owner's mock-up, 2026-11-15: "nút Accounts 8 ở góc phải để mở danh sách tài khoản").
+    let accounts_button = root.no_side.get().then(|| {
+        div().pt(px(14.)).px(px(SIDE)).flex().justify_end().child(
+            Button::new("home-accounts", format!("{}  {}", root.tr("nav.accounts"), root.accounts().len())).icon("users").on_click(cx.listener(|r, _, _, cx| {
+                // (A click outside the open column shut it just now: this click on its own button only shuts it.)
+                let just = r.side_shut.take().is_some_and(|at| at.elapsed().as_millis() < 300);
+                r.side_open = !just && !r.side_open;
+                cx.notify();
+            })),
+        )
+    });
     div()
         .id("home")
         .size_full()
@@ -126,8 +138,9 @@ pub fn home(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
             div()
                 .flex()
                 .flex_col()
-                .gap(px(24.))
+                .gap(px(if small(root) { 14. } else { 24. }))
                 .pb(px(SECTION_GAP))
+                .children(accounts_button)
                 .child(stage(root, &all, focus, width, cx))
                 // The rows under the stage, on the page's rhythm: the figures rise over the picture's faded foot,
                 // the games and the presets a section apart.
@@ -145,6 +158,14 @@ pub fn home(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
                         .when(!root.accounts().is_empty(), |d| d.children(crate::pages::stats::recent(root, cx))),
                 ),
         )
+}
+
+/// Home drawn small: on a window too narrow for the accounts column, or a short one. Its stage is then a low band
+/// (the game's picture and the faces left out, what to do at its right) and its games stand in short tiles, so two
+/// rows of them show whole under it (the owner's mock-up of a small window, 2026-11-15: before, the stage took half
+/// the window and the second row of games was cut at the window's foot).
+fn small(root: &Root) -> bool {
+    root.no_side.get() || root.window_h.get() < 760.
 }
 
 /// How tall the game's cover stands at the stage's right: the stage is as tall as it and no taller (it kept the
@@ -165,7 +186,9 @@ pub fn playing_now(root: &Root) -> usize {
 /// The game on the stage, on its own picture: what it is doing, and what to do with it.
 fn stage(root: &Root, all: &[Game], focus: usize, width: f32, cx: &mut Context<Root>) -> impl IntoElement {
     // A row as tall as its contents: the words beside the cover, centred on it.
-    let base = div().pt(px(TOP)).px(px(SIDE)).flex().items_center().gap(px(2. * SIDE)).flex_none();
+    let compact = small(root);
+    // (Under the Accounts button, on a window without the column, the stage needs no room of its own above it.)
+    let base = div().pt(px(if root.no_side.get() { 0. } else if compact { 16. } else { TOP })).px(px(SIDE)).flex().items_center().gap(px(2. * SIDE)).flex_none();
     let none = root.accounts().is_empty();
     // No accounts: the welcome and Add account, whatever was played before (Home.tsx's focus).
     let Some(g) = all.get(focus).filter(|_| !none) else {
@@ -246,7 +269,7 @@ fn stage(root: &Root, all: &[Game], focus: usize, width: f32, cx: &mut Context<R
         }
     }
 
-    let mut acts = div().mt(px(6.)).flex().gap(px(8.));
+    let mut acts = div().when(!compact, |d| d.mt(px(6.))).flex().flex_wrap().gap(px(8.));
     if running {
         acts = acts.child(Button::new("stage-windows", root.i18n.tn("home.windowsN", n, &[])).icon("screens").primary().big().on_click(
             cx.listener(|r, _, _, cx| {
@@ -305,6 +328,48 @@ fn stage(root: &Root, all: &[Game], focus: usize, width: f32, cx: &mut Context<R
                 cx.notify();
             }))
     });
+    if compact {
+        // One low band: the game's icon, its name and what it is doing at the left, what to do at the right (wrapping
+        // under them on a very narrow window).
+        return base.child(
+            div()
+                .flex_1()
+                .min_w_0()
+                .min_h(px(104.))
+                .px(px(24.))
+                .py(px(18.))
+                .flex()
+                .flex_wrap()
+                .items_center()
+                .gap_x(px(20.))
+                .gap_y(px(12.))
+                .rounded(px(R_L))
+                // (Plain charcoal: the game's colour is on its icon and name, not the band; the owner's rule of
+                // 2026-11-15.)
+                .bg(crate::kit::block_ground())
+                .child(
+                    div()
+                        .flex_1()
+                        .min_w(px(260.))
+                        .flex()
+                        .items_center()
+                        .gap(px(16.))
+                        .when_some(badge, |d, b| {
+                            d.child(div().size(px(60.)).flex_none().rounded(px(R_L)).overflow_hidden().border_1().border_color(ca(WHITE, 0.14)).child(img(b).size_full().object_fit(ObjectFit::Cover).rounded(px(R_L))))
+                        })
+                        .child(
+                            div()
+                                .min_w_0()
+                                .flex()
+                                .flex_col()
+                                .gap(px(4.))
+                                .child(div().text_size(px(30.)).line_height(px(36.)).font_weight(FontWeight::BOLD).truncate().child(game_name(g.name.clone(), icon_url.as_deref(), cx)))
+                                .child(facts),
+                        ),
+                )
+                .child(div().flex_none().max_w_full().child(acts)),
+        );
+    }
     base.child(
         div()
             .flex_1()
@@ -453,7 +518,8 @@ fn shelf(root: &Root, all: &[Game], focus: usize, width: f32, cx: &mut Context<R
     let no_presets = root.state.pointer("/settings/presets").and_then(Value::as_array).is_none_or(|l| l.is_empty());
     // The library too, two rows while nothing plays (the figures then take a row): the owner's maximised window had its
     // lower third empty under three presets (2026-11-12).
-    let rows = if (all.is_empty() && no_presets) || playing_now(root) == 0 { 2 } else { 1 };
+    let short = small(root);
+    let rows = if short || (all.is_empty() && no_presets) || playing_now(root) == 0 { 2 } else { 1 };
     // Fewer games than the row holds: they share the whole row (three to a row at least, so one game isn't a
     // banner), rather than leaving its right part empty.
     let n_items = match tab_now {
@@ -491,7 +557,7 @@ fn shelf(root: &Root, all: &[Game], focus: usize, width: f32, cx: &mut Context<R
                 cascade(
                     "home-games",
                     i,
-                    cover_tile(("game", i), cover, icon_url, g.name.clone(), sub, g.accounts.len(), i == focus, tile_w, crate::pages::clips::tile_clip(root, place, cx), cx).on_click(cx.listener(move |r, _, _, cx| {
+                    cover_tile(("game", i), cover, icon_url, g.name.clone(), sub, g.accounts.len(), i == focus, tile_w, short, crate::pages::clips::tile_clip(root, place, cx), cx).on_click(cx.listener(move |r, _, _, cx| {
                         r.picked = Some(place);
                         cx.notify();
                     })),
@@ -520,6 +586,7 @@ fn shelf(root: &Root, all: &[Game], focus: usize, width: f32, cx: &mut Context<R
                         0,
                         false,
                         tile_w,
+                        short,
                         crate::pages::clips::tile_clip(root, place, cx),
                         cx,
                     )
@@ -577,8 +644,9 @@ pub fn see_all(id: &'static str, words: String, f: impl Fn(&ClickEvent, &mut Win
 /// icon, name and one fact under it. `windows`: its Roblox windows open now, said on the picture. The one `on` (the
 /// stage's) is ringed in yellow. Flat: no raised base under it.
 #[allow(clippy::too_many_arguments)]
-pub fn cover_tile(id: (&'static str, usize), cover: Option<String>, icon_url: Option<String>, name: String, (sub, live): (String, bool), windows: usize, on: bool, w: f32, clip: crate::pages::clips::TileClip, cx: &mut App) -> Hot {
-    let art_h = (w * 9. / 16.).round();
+pub fn cover_tile(id: (&'static str, usize), cover: Option<String>, icon_url: Option<String>, name: String, (sub, live): (String, bool), windows: usize, on: bool, w: f32, short: bool, clip: crate::pages::clips::TileClip, cx: &mut App) -> Hot {
+    // (`short`: a low picture, cut to the middle of the game's own, for a small Home's two rows.)
+    let art_h = (w * if short { 0.43 } else { 9. / 16. }).round();
     let picture = cover.as_deref().and_then(|u| images::pic_pair(u, w, art_h, cx));
     // The game's own colour, from its icon (else its cover): the ground of its picture.
     let tone = icon_url.as_deref().and_then(|u| images::tone(u, cx)).or_else(|| cover.as_deref().and_then(|u| images::tone(u, cx)));

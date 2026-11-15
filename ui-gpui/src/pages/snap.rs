@@ -120,12 +120,9 @@ pub fn picker(root: &Root, key: &'static str, value: &str, w: i64, h: i64, cols:
                 .into_any_element()
         })
         .collect();
-    let mut grid = div().flex().flex_col().gap(px(4.));
-    let mut tiles = tiles.into_iter().peekable();
-    while tiles.peek().is_some() {
-        grid = grid.child(div().flex().gap(px(4.)).children(tiles.by_ref().take(cols.max(1))));
-    }
-    grid
+    // `cols` a row at most, fewer where the room ends (a narrow window, at 200 %: the last ones ran off the edge).
+    let cols = cols.max(1) as f32;
+    div().w_full().max_w(px(cols * tile + (cols - 1.) * 4.)).flex().flex_wrap().gap(px(4.)).children(tiles)
 }
 
 /// "Arranged 3 Roblox windows: grid 2 × 2." — the layout said too: a 4 × 4 grid chosen long ago makes two windows

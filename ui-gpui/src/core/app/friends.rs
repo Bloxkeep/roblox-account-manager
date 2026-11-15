@@ -24,13 +24,15 @@ pub struct FriendsState {
     pub friending: Cell<bool>,
 }
 
-/// A friend request, an acceptance, a decline or an unfriend.
+/// A friend request, an acceptance, a decline or an unfriend; following someone, or no longer.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum FriendAct {
     Request,
     Accept,
     Decline,
     Unfriend,
+    Follow,
+    Unfollow,
 }
 
 /// One friend call, off the core's thread.
@@ -44,6 +46,8 @@ async fn friend_call(act: FriendAct, cookie: &str, user: i64, account_realm: &st
             FriendAct::Accept => roblox_api::accept_friend_request(&cookie, user, &account_realm, answered, &ct),
             FriendAct::Decline => roblox_api::decline_friend_request(&cookie, user, &account_realm, answered, &ct),
             FriendAct::Unfriend => roblox_api::unfriend(&cookie, user, &account_realm, answered, &ct),
+            FriendAct::Follow => roblox_api::follow_user(&cookie, user, true, &account_realm, answered, &ct),
+            FriendAct::Unfollow => roblox_api::follow_user(&cookie, user, false, &account_realm, answered, &ct),
         }
     })
     .await
@@ -154,7 +158,8 @@ impl App {
     }
 
     /// {id, userId, act}: one account's own move in Friends (the GPUI window's Friends): "request" asks that Roblox user to
-    /// be friends, "accept" and "decline" answer their request, "unfriend" ends it. A check Roblox holds it for is shown to
+    /// be friends, "accept" and "decline" answer their request, "unfriend" ends it, "follow" and "unfollow" a person's
+    /// profile. A check Roblox holds it for is shown to
     /// solve, then it is asked again. { ok, held (the check was closed unsolved), http, codes }; the window words it.
     pub async fn friend_act(self: &Rc<Self>, a: &Value) -> Res<Value> {
         self.vault(|_| ())?;
@@ -166,6 +171,8 @@ impl App {
             "accept" => Some(FriendAct::Accept),
             "decline" => Some(FriendAct::Decline),
             "unfriend" => Some(FriendAct::Unfriend),
+            "follow" => Some(FriendAct::Follow),
+            "unfollow" => Some(FriendAct::Unfollow),
             _ => None,
         };
         let Some(act) = act.filter(|_| user > 0 && !account.cookie.is_empty() && account.realm == realm::GLOBAL) else {

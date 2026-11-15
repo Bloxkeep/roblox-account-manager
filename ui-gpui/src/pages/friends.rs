@@ -245,6 +245,11 @@ fn tag_rows(root: &Root, user: i64, from_face: bool, close: fn(&mut Root), cx: &
             .child(root.tr("tag.new"))
             .on_click(cx.listener(move |r, _, window, cx| {
                 close(r);
+                // The labels' box is on Friends, under its Labels button: opened from a friend's face on the Roblox
+                // home (the same menu), nothing showed (the owner, 2026-11-15: "new label không hoạt động"). That
+                // page comes first, then its box, open for this friend.
+                r.games.open = None;
+                r.games.view = crate::pages::games::View::Friends;
                 r.friends.tags_open = true;
                 r.friends.tag_for = Some(user);
                 let h = r.label_box.read(cx).focus_handle(cx);

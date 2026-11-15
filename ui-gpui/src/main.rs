@@ -214,7 +214,8 @@ fn run_ui(link: Option<(link::Link, futures::channel::mpsc::UnboundedReceiver<li
             titlebar: if frame { Some(TitlebarOptions { title: Some("Bloxkeep".into()), appears_transparent: true, ..Default::default() }) } else { None },
             focus: shown,
             show: shown,
-            window_min_size: Some(size(px(860.), px(600.))),
+            // (500 high: a 1080p screen at 200 % leaves 516 above the taskbar; 600 put the window's foot under it.)
+            window_min_size: Some(size(px(860.), px(500.))),
             ..Default::default()
         };
         let shot2 = shot.clone();

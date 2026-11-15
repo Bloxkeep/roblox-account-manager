@@ -4137,7 +4137,7 @@ fn key_box(root: &Root, f: &Form, i: usize, path: &'static str, mouse: bool, cx:
                     .items_center()
                     .justify_center()
                     .rounded(px(7.))
-                    .map(|d| if on { d.tones(c(TEXT), c(TEXT)).text_color(crate::theme::on_text()) } else { d.tones(ca(WHITE, 0.05), ca(WHITE, 0.12)).text_color(c(TEXT_2)) })
+                    .map(|d| if on { d.tones(c(FACE), c(FACE_HI)).text_color(crate::theme::on_text()) } else { d.tones(ca(WHITE, 0.05), ca(WHITE, 0.12)).text_color(c(TEXT_2)) })
                     .cursor_pointer()
                     .text_size(px(T_S))
                     .font_weight(FontWeight::SEMIBOLD)

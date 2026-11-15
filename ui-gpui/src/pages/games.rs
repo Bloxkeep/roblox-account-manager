@@ -401,6 +401,9 @@ pub struct Data {
     /// has given two or more.
     pub shots: HashMap<i64, (Vec<String>, Entity<CarouselState>)>,
     asked_shots: HashSet<i64>,
+    /// A game's events that are on or to come (Roblox's Events), by place: asked once the account's sign-in is in.
+    pub events: HashMap<i64, Vec<roblox::GameEvent>>,
+    asked_events: HashSet<i64>,
     /// How often each asking that came back empty was asked again (may_retry): an empty answer can be Roblox's true
     /// one (a game with no pictures, no details), so it isn't asked forever.
     retries: HashMap<String, u8>,
@@ -882,6 +885,10 @@ pub fn want(r: &mut Root, cx: &mut Context<Root>) {
         let name = g.name.to_string();
         crate::pages::wiki::want(r, &site, &name, cx);
     }
+    // (Its events once more here: the sign-in may come after the details did.)
+    if let Some(universe) = r.games.details.get(&place).map(|v| int(v, "universe")).filter(|_| place > 0) {
+        want_events(r, place, universe, cx);
+    }
     if place > 0 && r.games.asked_details.insert(place) {
         let rx = link.call("gameDetails", json!({ "placeId": place }));
         cx.spawn(async move |this, cx| {
@@ -893,6 +900,7 @@ pub fn want(r: &mut Root, cx: &mut Context<Root>) {
                     r.games.details.insert(place, v);
                     settle_stays(r, place);
                     want_shots(r, place, universe, cx);
+                    want_events(r, place, universe, cx);
                 }
                 cx.notify();
             });
@@ -1107,6 +1115,60 @@ fn alerts(root: &Root, feed: &Value, cx: &mut Context<Root>) -> Div {
         .child(div().flex().items_center().gap(px(7.)).text_size(px(T_M)).text_color(c(TEXT_2)).child(icon("bell", 14., c(TEXT_2))).child(root.tr("news.tellMe")))
         .child(seg)
         .when(mode == "words", |d| d.child(field(&root.news_words, None).w(px(300.))))
+}
+
+/// A game's events, asked once its details have named its universe and an account's sign-in is in (Roblox gives
+/// them to a signed-in account only). A refusal is in error.log (the Roblox tab's own line) and isn't asked again.
+fn want_events(r: &mut Root, place: i64, universe: i64, cx: &mut Context<Root>) {
+    let Some((_, _, cookie)) = crate::pages::friends::signed(r).filter(|s| !s.2.is_empty() || cfg!(feature = "shot")) else { return };
+    if universe <= 0 || !r.games.asked_events.insert(place) {
+        return;
+    }
+    let rx = roblox::run(move || roblox::game_events(&cookie, universe));
+    cx.spawn(async move |this, cx| {
+        if let Ok(Ok(list)) = rx.await {
+            let _ = this.update(cx, |r, cx| {
+                r.games.events.insert(place, list);
+                cx.notify();
+            });
+        }
+    })
+    .detach();
+}
+
+/// The game's events as Roblox's page lists them: each one's name, the line under it and when (on now, with its end;
+/// else its start), and a mark on one the account is going to. None when there is nothing on or to come.
+fn events_block(root: &Root, place: i64) -> Option<Div> {
+    let list = root.games.events.get(&place).filter(|l| !l.is_empty())?;
+    let now = crate::time::now_secs();
+    let mut rows = div().flex().flex_col();
+    for (i, e) in list.iter().take(6).enumerate() {
+        let on = e.start <= now;
+        let when = if on { root.i18n.tv("gp.evEnds", &[("t", &crate::time::day_time(e.end))]) } else { crate::time::day_time(e.start) };
+        rows = rows.child(
+            div()
+                .py(px(10.))
+                .when(i > 0, |d| d.border_t_1().border_color(c(LINE)))
+                .flex()
+                .items_center()
+                .gap(px(12.))
+                .child(
+                    div()
+                        .flex_1()
+                        .min_w_0()
+                        .flex()
+                        .flex_col()
+                        .gap(px(2.))
+                        .child(div().text_size(px(T_M)).font_weight(FontWeight::SEMIBOLD).truncate().child(e.title.clone()))
+                        .when(!e.sub.is_empty(), |d| d.child(div().text_size(px(T_S)).text_color(c(MUTED)).truncate().child(e.sub.clone()))),
+                )
+                .when(e.going, |d| d.child(tint_pill(root.tr("gp.evGoing"), OK)))
+                .when(on, |d| d.child(tint_pill(root.tr("gp.evNow"), ONLINE)))
+                .child(div().flex_none().text_size(px(T_S)).text_color(c(TEXT_2)).font_features(tnum()).child(when)),
+        );
+    }
+    let head = if rich() { heading_rich("calendar", FACE, root.tr("gp.events"), None).into_any_element() } else { heading(root.tr("gp.events"), None).into_any_element() };
+    Some(surface().p(px(18.)).flex().flex_col().gap(px(6.)).child(head).child(rows))
 }
 
 /// A game's own pictures, asked once its details have named its universe.
@@ -1614,9 +1676,8 @@ pub fn games(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElemen
     let shell = div().id("games").size_full().rounded(px(R_PANEL)).bg(c(PANEL)).overflow_hidden().flex().flex_col();
     let content = match root.games.open.clone() {
         Some(o) => {
-            let el = page(root, &all, o, width, cx);
-            let ground = game_tint().filter(|_| rich()).map(|t| mix(c(PANEL), Hsla { a: 1., ..t }, 0.06));
-            shell.when_some(ground, |d, g| d.bg(g)).child(el).into_any_element()
+            // (On the panel's own ground: 6 % of the game's colour under it all turned the page brown, see kit::block_tones.)
+            shell.child(page(root, &all, o, width, cx)).into_any_element()
         }
         None if root.games.view == View::Friends => crate::pages::friends::friends(root, width, cx).into_any_element(),
         None if root.games.view == View::Avatar => crate::pages::avatar::avatar(root, width, cx).into_any_element(),
@@ -1910,7 +1971,7 @@ fn keep_playing(root: &Root, width: f32, cx: &mut Context<Root>) -> Option<AnyEl
         cascade(
             "gk-in",
             i,
-            crate::pages::home::cover_tile(("gk-tile", i), look(root, g.place, "cover"), icon_url, g.name.clone(), played(root, g), g.accounts.len(), false, w, crate::pages::clips::tile_clip(root, place, cx), cx).on_click(
+            crate::pages::home::cover_tile(("gk-tile", i), look(root, g.place, "cover"), icon_url, g.name.clone(), played(root, g), g.accounts.len(), false, w, false, crate::pages::clips::tile_clip(root, place, cx), cx).on_click(
                 cx.listener(move |r, _, _, cx| {
                     open_place(r, place, &name);
                     cx.notify();
@@ -2551,7 +2612,7 @@ fn radar_lines(root: &Root, lines: Vec<Value>, named: bool) -> Option<Div> {
     }
     // The Accounts page's calm panel for what needs a look: a faint ground of the warning's colour, the mark on its
     // own small block, the words in plain text.
-    let mut strip = div().px(px(12.)).py(px(8.)).rounded(px(R_L + 2.)).bg(tinted(PANEL, WARN, 0.07)).border_1().border_color(ca(WARN, 0.26)).flex().flex_col().gap(px(4.));
+    let mut strip = div().px(px(12.)).py(px(8.)).rounded(px(R_L + 2.)).bg(block_ground()).border_1().border_color(ca(WARN, 0.3)).flex().flex_col().gap(px(4.));
     for r in &lines {
         let mut text = root.i18n.tv(&format!("cm.radar.{}", s(r, "why")), &[("n", &int(r, "pcs").to_string()), ("m", &int(r, "minutes").to_string())]);
         if named {
@@ -3351,7 +3412,7 @@ fn facts(root: &Root, d: &Value) -> impl IntoElement {
                         .flex()
                         .flex_col()
                         .gap(px(2.))
-                        .child(div().text_size(px(T_S)).font_weight(FontWeight::MEDIUM).text_color(c(MUTED)).truncate().child(label))
+                        .child(div().text_size(px(T_S)).font_weight(FontWeight::MEDIUM).text_color(c(TEXT_2)).truncate().child(label))
                         .child(div().text_size(px(24.)).font_weight(FontWeight::BOLD).line_height(px(30.)).font_features(tnum()).text_color(c(TEXT)).truncate().child(value))
                         .children(under),
                 )
@@ -3424,7 +3485,7 @@ fn info(root: &Root, d: &Value, place: i64) -> Div {
             .text_size(px(T_M))
             .when(i > 0, |d| d.border_t_1().border_color(ca(WHITE, 0.05)))
             .when(rich(), |d| d.child(icon(mark, 14., c(DIM))))
-            .when(rich(), |d| d.child(div().flex_1().min_w_0().truncate().text_color(c(MUTED)).child(k.clone())))
+            .when(rich(), |d| d.child(div().flex_1().min_w_0().truncate().text_color(c(TEXT_2)).child(k.clone())))
             .when(!rich(), |d| d.child(div().flex_none().text_color(c(MUTED)).child(k.clone())))
             .child(div().min_w_0().truncate().font_weight(if rich() { FontWeight::SEMIBOLD } else { FontWeight::MEDIUM }).font_features(tnum()).child(v))
     })))
@@ -3516,7 +3577,7 @@ fn overview(root: &Root, details: Option<&Value>, place: i64, width: f32, cx: &m
             .gap(px(12.))
             .px(px(4.))
             .text_size(px(if head { T_S } else { T_M }))
-            .when(head, |d| d.text_color(c(MUTED)).font_weight(FontWeight::MEDIUM))
+            .when(head, |d| d.text_color(c(TEXT_2)).font_weight(FontWeight::MEDIUM))
             .when(!head, |d| d.border_t_1().border_color(ca(WHITE, 0.05)));
         for (i, cell) in cells.into_iter().enumerate() {
             r = r.child(match i {
@@ -3635,6 +3696,7 @@ fn overview(root: &Root, details: Option<&Value>, place: i64, width: f32, cx: &m
         .gap(px(GAP))
         .children(radar_strip(root, place, s(d, "name")))
         .child(yours)
+        .children(events_block(root, place))
         .children(gallery(root, place, main_w, cx))
         .children(words);
     div()

@@ -62,7 +62,7 @@
   let qlStep = 0, qlStarts = 0, qlFailed = false;
 
   let accounts = params.has('empty') ? [] : [
-    { id: id(1), userId: 5140000001, username: 'sunny_builds', displayName: 'Sunny', alias: tx('Main', 'Tài khoản chính'), label: tx('Main', 'Tài khoản chính'), group: 'Main', note: tx("My main account, don't farm on it", 'Tài khoản chơi chính, đừng dùng farm'),
+    { id: id(1), userId: 5140000001, username: 'sunny_builds', displayName: 'Sunny', isMain: params.has('main'), alias: tx('Main', 'Tài khoản chính'), label: tx('Main', 'Tài khoản chính'), group: 'Main', note: tx("My main account, don't farm on it", 'Tài khoản chơi chính, đừng dùng farm'),
       hasPassword: true, hasAuthenticator: true, cookieValid: true, robux: 12450, autoRejoin: true, lastUsed: minsAgo(3), avatarUrl: face('#2b3a55', '#f2c94c', '#3b82f6'), state: 'running',
       presence: { type: 'ingame', game: games[2753915549].name, placeId: 2753915549, iconUrl: games[2753915549].iconUrl },
       session: { pid: 1111, since: minsAgo(47), game: g(2753915549), connection: 'ingame', hidden: params.has('winhidden'), fpsLimit: Number(params.get('fps')) || 0, robloxVersion: params.has('oldwin') ? '0.742.0.7421053' : null, oldBuild: params.has('oldwin') } },

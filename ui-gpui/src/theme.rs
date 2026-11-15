@@ -563,16 +563,11 @@ pub fn contrast(a: Hsla, b: Hsla) -> f32 {
     (la.max(lb) + 0.05) / (la.min(lb) + 0.05)
 }
 
-/// What is written or drawn on a chosen pill, whose ground is the theme's text colour: the page's own ground, solid;
-/// white or black instead on the rare theme where that wouldn't read.
+/// What is written or drawn on a chosen pill (a segment's, a chip's), whose ground is Bloxkeep's yellow: the dark ink
+/// of the yellow buttons. (The chosen pill was the light one, white on charcoal; the owner, 2026-11-15: "đổi hết mấy
+/// nút kiểu này thành màu bloxkeep đi đừng để màu trắng nữa".)
 pub fn on_text() -> Hsla {
-    let text = c(TEXT);
-    let page = Hsla { a: 1., ..over(c(PANEL), Hsla { a: 1., ..c(GROUND) }) };
-    if contrast(page, text) >= 4.5 {
-        return page;
-    }
-    let (white, black): (Hsla, Hsla) = (rgb(0xffffff).into(), rgb(0x000000).into());
-    if contrast(white, text) >= contrast(black, text) { white } else { black }
+    c(INK)
 }
 
 /// The ground the top bar and the status bar stand on when the window's own can't carry their words (Retro's teal

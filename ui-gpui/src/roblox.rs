@@ -877,6 +877,62 @@ pub fn follows(cookie: &str, user: i64, which: &str) -> Result<Vec<Friend>, Stri
     Ok(dress(list))
 }
 
+/// Whether the signed-in account follows `user` (friends.roblox.com's following-exists, as Roblox's own API
+/// description gives it). BLOXKEEP_SHOT_FOLLOW=1|0: a hidden shot's answer.
+pub fn following(cookie: &str, user: i64) -> Result<bool, String> {
+    #[cfg(feature = "shot")]
+    if let Ok(v) = std::env::var("BLOXKEEP_SHOT_FOLLOW") {
+        return Ok(v == "1");
+    }
+    let d = send("POST", "https://friends.roblox.com/v1/user/following-exists", &serde_json::json!({ "targetUserIds": [user] }), Some(cookie))?;
+    Ok(d.get("followings").and_then(Value::as_array).into_iter().flatten().any(|f| int(f, "userId") == user && f.get("isFollowing").and_then(Value::as_bool) == Some(true)))
+}
+
+/// One of a game's events (Roblox's Events on a game's page): its name, the line under it, when it starts and ends
+/// (seconds), and whether the account said it is going.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct GameEvent {
+    pub id: String,
+    pub title: String,
+    pub sub: String,
+    pub start: i64,
+    pub end: i64,
+    pub going: bool,
+}
+
+/// A game's events that are on or still to come, soonest first (apis.roblox.com's virtual-events v3, as Roblox's own
+/// API description gives it; it answers a signed-in account only). BLOXKEEP_SHOT_EVENTS=file.json: a hidden shot's.
+pub fn game_events(cookie: &str, universe: i64) -> Result<Vec<GameEvent>, String> {
+    #[cfg(feature = "shot")]
+    if let Ok(path) = std::env::var("BLOXKEEP_SHOT_EVENTS") {
+        let d: Value = serde_json::from_str(&std::fs::read_to_string(path).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
+        return Ok(read_events(&d, crate::time::now_secs()));
+    }
+    let d = get(&format!("https://apis.roblox.com/virtual-events/v3/universes/{universe}/game-events?pageSize=20"), Some(cookie))?;
+    Ok(read_events(&d, crate::time::now_secs()))
+}
+
+/// Roblox's list as the page shows it: an event that is over, or not for everyone (private, held by moderation), is
+/// left out; its name in the account's language when Roblox gave one.
+pub fn read_events(d: &Value, now: i64) -> Vec<GameEvent> {
+    let pick = |v: &Value, own: &str, plain: &str| Some(text(v, own)).filter(|t| !t.is_empty()).unwrap_or_else(|| text(v, plain));
+    let mut out: Vec<GameEvent> = d
+        .get("gameEvents")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter(|v| matches!(text(v, "visibility").as_str(), "" | "public"))
+        .filter_map(|v| {
+            let start = crate::time::iso_secs(&text(v, "startTime"))?;
+            let end = crate::time::iso_secs(&text(v, "endTime")).unwrap_or(start);
+            let title = pick(v, "displayTitle", "title");
+            (end > now && !title.is_empty()).then(|| GameEvent { id: text(v, "id"), title, sub: pick(v, "displaySubtitle", "subtitle"), start, end, going: text(v, "userRsvpStatus") == "going" })
+        })
+        .collect();
+    out.sort_by_key(|e| e.start);
+    out
+}
+
 /// Roblox's people search, the one on roblox.com (no sign-in needed): the first dozen.
 pub fn people(query: &str) -> Result<Vec<Friend>, String> {
     let url = format!("https://apis.roblox.com/search-api/omni-search?verticalType=user&searchQuery={}&sessionId={}&pageType=all", enc(query), session());

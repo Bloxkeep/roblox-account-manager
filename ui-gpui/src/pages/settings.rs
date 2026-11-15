@@ -122,6 +122,8 @@ pub struct Data {
     /// Roblox settings: Custom shown though the settings match a mode; the accounts ticked while choosing them.
     pub rc_custom: bool,
     pub rc_pick: Option<HashSet<String>>,
+    /// The main accounts ticked while choosing them (Staying in game's Main account).
+    pub main_pick: Option<HashSet<String>>,
     /// Discord: its text boxes; the link shown (with the masked hint it was shown for, so a new link hides it); the
     /// paste box open (true: sending turns on once saved) and what it said was wrong; the summary's parts or accounts
     /// being ticked; a ping waiting for its ID (kind, user|role); the parts under More open; the preview's message
@@ -302,9 +304,13 @@ fn row_el(words: String, title: impl IntoElement, desc: Option<String>, ctl: imp
         .py(px(12.))
         .min_h(px(58.))
         .flex()
+        // (A control too wide to leave the words 220 px on a narrow window, at 200 % say, goes under them: the words
+        // were cut to a letter or two a line, "Taskb / ar".)
+        .flex_wrap()
         .items_center()
-        .gap(px(32.))
-        .child(row_words(title, desc))
+        .gap_x(px(32.))
+        .gap_y(px(10.))
+        .child(row_words(title, desc).min_w(px(220.)))
         .child(div().flex_none().flex().items_center().justify_end().gap(px(8.)).child(ctl))
         .into_any_element();
     found(&words, el)
@@ -504,15 +510,32 @@ fn chips_marked<T: Clone + PartialEq + 'static>(
             .child(div().flex_1().min_w_0().truncate().child(label))
             .child(icon(if open { "chevronUp" } else { "chevronDown" }, 14., c(MUTED)))
             .on_click(cx.listener(move |r, _, _, cx| {
-                // A click outside the open menu closed it just now: this click on its own button only closes it.
-                let just = r.settings.menu_closed.is_some_and(|(k, at)| k == key && at.elapsed().as_millis() < 300);
-                r.settings.menu_closed = None;
-                r.settings.menu = if just || r.settings.menu == Some(key) { None } else { Some(key) };
-                r.settings.menu_was = Some(key);
+                toggle_menu(r, key);
                 cx.notify();
             })),
     );
-    if open || root.settings.menu_was == Some(key) {
+    let f: std::rc::Rc<dyn Fn(&mut Root, T, &mut Window, &mut Context<Root>)> = f;
+    if let Some(menu) = menu_pop(root, cx, key, items, marks, current, f) {
+        wrap = wrap.child(menu);
+    }
+    wrap
+}
+
+/// The choices of a list, under what opened it (settings.menu == key): one row each, the chosen one ticked. None
+/// while it is shut and has finished closing. A list's own button shows it, and a box with a chevron of its own.
+fn menu_pop<T: Clone + PartialEq + 'static>(
+    root: &Root,
+    cx: &mut Context<Root>,
+    key: &'static str,
+    items: Vec<(T, String, bool)>,
+    marks: Vec<Mark>,
+    current: &T,
+    f: std::rc::Rc<dyn Fn(&mut Root, T, &mut Window, &mut Context<Root>)>,
+) -> Option<Div> {
+    let open = root.settings.menu == Some(key);
+    if !(open || root.settings.menu_was == Some(key)) {
+        return None;
+    }
         let mut menu = div()
             .id(SharedString::from(format!("{key}-menu")))
             .occlude()
@@ -556,9 +579,16 @@ fn chips_marked<T: Clone + PartialEq + 'static>(
                     }),
             );
         }
-        wrap = wrap.child(div().absolute().top(px(38.)).right_0().child(deferred(anchored().anchor(Anchor::TopRight).snap_to_window_with_margin(px(8.)).child(pop(SharedString::from(format!("{key}-pop")), open, menu))).with_priority(1)));
-    }
-    wrap
+        return Some(div().absolute().top(px(38.)).right_0().child(deferred(anchored().anchor(Anchor::TopRight).snap_to_window_with_margin(px(8.)).child(pop(SharedString::from(format!("{key}-pop")), open, menu))).with_priority(1)));
+}
+
+/// A click on what opens a list: it opens, or shuts (a click outside the open one shut it just now: this click on
+/// its own button only shuts it).
+fn toggle_menu(r: &mut Root, key: &'static str) {
+    let just = r.settings.menu_closed.is_some_and(|(k, at)| k == key && at.elapsed().as_millis() < 300);
+    r.settings.menu_closed = None;
+    r.settings.menu = if just || r.settings.menu == Some(key) { None } else { Some(key) };
+    r.settings.menu_was = Some(key);
 }
 
 /// "9/11" in Vietnamese, "11/9" in English.
@@ -719,6 +749,7 @@ fn open_part(r: &mut Root, p: Part, window: &mut Window, cx: &mut Context<Root>)
         r.settings.part = p;
         r.settings.asking = None;
         r.settings.rc_pick = None;
+        r.settings.main_pick = None;
         // Leaving Discord masks its link again and drops what was half done there.
         r.settings.dc_shown = None;
         r.settings.dc_link = None;

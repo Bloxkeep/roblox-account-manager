@@ -435,8 +435,8 @@ pub(super) fn config(root: &Root, cx: &mut Context<Root>) -> Div {
                                 .flex_none()
                                 .rounded_full()
                                 .border_1()
-                                .border_color(if on { c(TEXT) } else { ca(WHITE, 0.25) })
-                                .bg(if on { c(TEXT) } else { ca(WHITE, 0.) })
+                                .border_color(if on { c(FACE) } else { ca(WHITE, 0.25) })
+                                .bg(if on { c(FACE) } else { ca(WHITE, 0.) })
                                 .flex()
                                 .items_center()
                                 .justify_center()
@@ -527,7 +527,7 @@ pub(super) fn config(root: &Root, cx: &mut Context<Root>) -> Div {
             let pick = |list: &[i64], v: i64| if list.contains(&v) { v } else { list[0] };
             let gl: Vec<i64> = std::iter::once(0).chain(1..=10).collect();
             let mut fl: Vec<i64> = vec![0, 15, 20, 30, 45, 60, 120, 144, 240, FPS_MAX];
-            // A limit of the person's own (17, 18…: the − and + beside the list) is in the list while it is the one set.
+            // A limit of the person's own (17, 18…: typed in the box) is in the list while it is the one set.
             if fps > 0 && !fl.contains(&fps) {
                 fl.push(fps);
                 fl.sort_unstable();
@@ -540,21 +540,121 @@ pub(super) fn config(root: &Root, cx: &mut Context<Root>) -> Div {
                 .map(|&n| (n, if n == -1 { keep.clone() } else if n == 0 { root.tr("rc.mute") } else { format!("{n}%") }, false))
                 .collect();
             rows.push(row_below(root.tr("rc.graphics"), None, chips(root, cx, "s-rc-graphics", g_items, &pick(&gl, graphics), |r, v, cx| set(r, json!({ "robloxConfig": { "graphics": v } }), cx))));
-            // One frame less or more than the limit set (from 60 when none is): any number from 5 to 360.
-            let step = |by: i64| (if fps == FPS_MAX { 240 } else if fps > 0 { fps } else { 60 } + by).clamp(5, 360);
-            let (less, more) = (step(-1), step(1));
-            let fps_ctl = div()
-                .flex()
-                .items_center()
-                .gap(px(6.))
-                .child(chips(root, cx, "s-rc-fps", f_items, &pick(&fl, fps), |r, v, cx| set(r, json!({ "robloxConfig": { "fps": v } }), cx)))
-                .child(IconButton::new("s-rc-fps-less", "chevronDown").size(30.).tip(root.i18n.tv("rc.fpsTo", &[("n", &less.to_string())])).on_click(cx.listener(move |r, _, _, cx| set(r, json!({ "robloxConfig": { "fps": less } }), cx))))
-                .child(IconButton::new("s-rc-fps-more", "chevronUp").size(30.).tip(root.i18n.tv("rc.fpsTo", &[("n", &more.to_string())])).on_click(cx.listener(move |r, _, _, cx| set(r, json!({ "robloxConfig": { "fps": more } }), cx))));
+            // ONE box: the number is typed in it, and its chevron opens the usual ones. (A list with arrows beside it,
+            // then with a − and a + beside it, were two controls for one number: the owner, 2026-11-15, "bẩn tưởi",
+            // then "thiết kế như thế vẫn quá ngu".) What is typed is kept on Enter or on leaving the box (shell.rs).
+            let open = root.settings.menu == Some("s-rc-fps");
+            let mut fps_box = field(&root.fps_box, None).w(px(150.)).h(px(34.));
+            if fps > 0 && fps != FPS_MAX {
+                fps_box = fps_box.child(div().flex_none().text_color(c(MUTED)).child("FPS"));
+            }
+            fps_box = fps_box.child(
+                hot("s-rc-fps")
+                    .size(px(24.))
+                    .flex_none()
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .rounded(px(6.))
+                    .cursor_pointer()
+                    .child(icon(if open { "chevronUp" } else { "chevronDown" }, 14., c(MUTED)))
+                    .on_click(cx.listener(|r, _, _, cx| {
+                        toggle_menu(r, "s-rc-fps");
+                        cx.notify();
+                    })),
+            );
+            let mut fps_ctl = div().relative().flex_none().child(fps_box);
+            let chosen: std::rc::Rc<dyn Fn(&mut Root, i64, &mut Window, &mut Context<Root>)> = std::rc::Rc::new(|r, v, _, cx| set(r, json!({ "robloxConfig": { "fps": v } }), cx));
+            if let Some(menu) = menu_pop(root, cx, "s-rc-fps", f_items, Vec::new(), &pick(&fl, fps), chosen) {
+                fps_ctl = fps_ctl.child(menu);
+            }
             rows.push(row_below(root.tr("rc.fps"), Some(root.tr("rc.fpsDesc")), fps_ctl));
             rows.push(row_below(root.tr("rc.volume"), None, chips(root, cx, "s-rc-volume", v_items, &pick(&vl, volume), |r, v, cx| set(r, json!({ "robloxConfig": { "volume": v } }), cx))));
         }
     }
+    // The main account: which ones are, and a way to choose them, beside the settings that leave it out (people
+    // didn't find the ⋮ menu's line: the owner, 2026-11-15). The star on an account's card sets it too.
+    let mains: Vec<String> = root.accounts().iter().filter(|a| b(a, "isMain")).map(crate::pages::accounts::label).collect();
+    let now = if mains.is_empty() { root.tr("main.none") } else { mains.join(", ") };
+    let picking = root.settings.main_pick.is_some();
+    rows.push(row(
+        root.tr("m.main"),
+        Some(root.tr("main.desc")),
+        div()
+            .flex()
+            .items_center()
+            .gap(px(12.))
+            .child(div().max_w(px(260.)).truncate().text_size(px(T_M)).text_color(c(if mains.is_empty() { MUTED } else { TEXT_2 })).child(now))
+            .when(!picking, |d| {
+                d.child(Button::new("s-main-pick", root.tr("main.choose")).icon("star").small().on_click(cx.listener(|r, _, _, cx| {
+                    if r.accounts().is_empty() {
+                        r.toast = Some((r.tr("rc.noAccounts"), "info".into()));
+                    } else {
+                        r.settings.main_pick = Some(r.accounts().iter().filter(|a| b(a, "isMain")).map(|a| s(a, "id").to_string()).collect());
+                    }
+                    cx.notify();
+                })))
+            }),
+    ));
+    if picking {
+        rows.push(main_picker(root, cx));
+    }
     group(Some(root.tr("rc.title")), rows)
+}
+
+/// The accounts ticked as main ones, then kept (the app's setMain, the ticked on and the rest off).
+fn main_picker(root: &Root, cx: &mut Context<Root>) -> AnyElement {
+    let ticked = root.settings.main_pick.clone().unwrap_or_default();
+    let mut list: Vec<Value> = root.accounts().to_vec();
+    list.sort_by_key(|a| crate::pages::accounts::label(a).to_lowercase());
+    let all: Vec<String> = list.iter().map(|a| s(a, "id").to_string()).collect();
+    picker(
+        root,
+        "main-pick",
+        root.tr("main.pickText"),
+        list.iter().map(|a| (s(a, "id").to_string(), crate::pages::accounts::label(a), at_name(a))).collect(),
+        &ticked,
+        cx,
+        |r, id, on| {
+            if let Some(set) = r.settings.main_pick.as_mut() {
+                if on { set.insert(id) } else { set.remove(&id) };
+            }
+        },
+        vec![],
+        move |r, cx| {
+            let on: Vec<String> = r.settings.main_pick.clone().unwrap_or_default().into_iter().collect();
+            let off: Vec<String> = all.iter().filter(|id| !on.contains(id)).cloned().collect();
+            let Some(link) = r.link.clone() else { return };
+            let calls = [(on, true), (off, false)];
+            cx.spawn(async move |this, cx| {
+                for (ids, enabled) in calls {
+                    if ids.is_empty() {
+                        continue;
+                    }
+                    match link.call("setMain", json!({ "ids": ids, "on": enabled })).await {
+                        Ok(Ok(_)) => {}
+                        Ok(Err(e)) => {
+                            let _ = this.update(cx, |r, cx| {
+                                r.toast = Some((e, "bad".into()));
+                                cx.notify();
+                            });
+                            return;
+                        }
+                        // No answer (the app's pipe dropped): the picker stays open, nothing said kept.
+                        Err(_) => return,
+                    }
+                }
+                let _ = this.update(cx, |r, cx| {
+                    r.settings.main_pick = None;
+                    let text = r.tr("main.saved");
+                    ok(r, text);
+                    cx.notify();
+                });
+            })
+            .detach();
+        },
+        |r| r.settings.main_pick = None,
+    )
 }
 
 /// The accounts that get the settings, ticked in place under the row; Done saves them.

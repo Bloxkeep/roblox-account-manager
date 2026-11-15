@@ -592,10 +592,10 @@ impl RenderOnce for Switch {
         let (w, h, k) = if small { (30., 18., 12.) } else { (42., 24., 16.) };
         let travel = w - k - 8.;
         let stretch = if small { 3. } else { 5. };
-        let lit = if small { c(TEXT) } else { c(FACE) };
+        let lit = c(FACE);
         let knob = div().absolute().top_0().h(px(k)).rounded_full().with_spring("knob", SpringAnimation::new(if down { SNAP } else { BOUNCE }).to(if down { 1f32 } else { 0. }), move |d, v| {
             let grow = (v * stretch).max(-2.);
-            d.w(px(k + grow)).left(px(if on { -grow } else { 0. })).bg(if on { if small { crate::theme::on_text() } else { c(INK) } } else { c(KNOB) })
+            d.w(px(k + grow)).left(px(if on { -grow } else { 0. })).bg(if on { c(INK) } else { c(KNOB) })
         });
         let slide = div().absolute().top(px((h - k) / 2. - 1.)).size(px(k)).child(knob).with_spring("slide", SpringAnimation::new(BOUNCE).to(on), move |d, p| d.left(px(3. + travel * p.0)));
         let track = div()
@@ -757,22 +757,22 @@ impl RenderOnce for Segmented {
 }
 
 /// One choice in a row of them (a Segmented's, a strip of pills): its ground eases in under the mouse, and the chosen
-/// one is the light pill with dark words, as the web page's: the row's one bright thing.
+/// one is Bloxkeep's yellow with dark words: the row's one bright thing.
 pub fn segment(id: impl Into<ElementId>, on: bool) -> Hot {
     let h = hot(id).flex().flex_none().items_center().rounded(px(7.)).text_size(px(T_M)).font_weight(FontWeight::SEMIBOLD);
     if on {
-        h.tones(c(TEXT), c(TEXT)).text_color(crate::theme::on_text())
+        h.tones(c(FACE), c(FACE_HI)).text_color(crate::theme::on_text())
     } else {
         h.tones(ca(WHITE, 0.), ca(WHITE, 0.05)).text_color(c(TEXT_2)).cursor_pointer().hover(|d| d.text_color(c(TEXT)))
     }
 }
 
-/// A filter over a list (the web page's .chip): no track around the row; the chosen one is the light pill with dark
+/// A filter over a list (the web page's .chip): no track around the row; the chosen one is Bloxkeep's yellow with dark
 /// words, the one bright thing in the row, the others' ground eases in under the mouse.
 pub fn chip(id: impl Into<ElementId>, on: bool) -> Hot {
     let h = hot(id).h(px(30.)).px(px(10.)).flex().flex_none().items_center().gap(px(7.)).rounded(px(9.)).text_size(px(T_M)).font_weight(FontWeight::SEMIBOLD).cursor_pointer();
     if on {
-        h.tones(c(TEXT), c(TEXT)).text_color(crate::theme::on_text())
+        h.tones(c(FACE), c(FACE_HI)).text_color(crate::theme::on_text())
     } else {
         h.tones(ca(WHITE, 0.), ca(WHITE, 0.07)).text_color(c(TEXT_2)).hover(|d| d.text_color(c(TEXT)))
     }
@@ -808,7 +808,7 @@ pub fn chip_count(n: usize, on: bool) -> Div {
 pub fn pill(id: impl Into<ElementId>, on: bool, live: bool) -> Hot {
     let h = hot(id).h(px(30.)).px(px(12.)).flex().flex_none().items_center().rounded_full().text_size(px(T_M)).font_weight(FontWeight::MEDIUM).border_1();
     if on {
-        h.tones(c(TEXT), c(TEXT)).edge(ca(TEXT, 0.), ca(TEXT, 0.)).text_color(crate::theme::on_text())
+        h.tones(c(FACE), c(FACE_HI)).edge(ca(FACE, 0.), ca(FACE, 0.)).text_color(crate::theme::on_text())
     } else if live {
         h.tones(ca(WHITE, 0.04), ca(WHITE, 0.09)).edge(ca(WHITE, 0.), ca(WHITE, 0.)).text_color(c(TEXT_2)).cursor_pointer().hover(|d| d.text_color(c(TEXT)))
     } else {
@@ -965,14 +965,16 @@ pub fn game_ink() -> Option<Hsla> {
 
 /// A block that is about one game among others (an account's card while it plays): its ground, its ground under the
 /// mouse, its hairline and that under the mouse, faintly of that game's colour; the theme's own when it has none.
-pub fn toned(tone: Option<u32>) -> (Hsla, Hsla, Hsla, Hsla) {
-    match tone {
-        Some(t) => {
-            let t: Hsla = rgb(t).into();
-            (mix(c(RAISED), t, 0.12), mix(c(RAISED_2), t, 0.16), mix(c(LINE), t, 0.24), mix(c(LINE), t, 0.5))
-        }
-        None => (c(RAISED), c(RAISED_2), c(LINE), ca(WHITE, 0.17)),
-    }
+pub fn toned(_tone: Option<u32>) -> (Hsla, Hsla, Hsla, Hsla) {
+    // The theme's charcoal for every card, whatever game it is about (see `block_tones`): mixed with its game's
+    // colour, a row of cards was a brown one, a red one and a grey one (the owner's mock-up of Accounts, 2026-11-15,
+    // has them all the one charcoal). What says which game it is stays on the card: the game's own picture and name.
+    (block_ground(), c(RAISED), c(LINE), ca(WHITE, 0.17))
+}
+
+/// The ground of a block or a card: the theme's charcoal a step above the panel (the mock-up's #202124 on #18191C).
+pub fn block_ground() -> Hsla {
+    mix(c(PANEL), c(RAISED), 0.55)
 }
 
 /// A table's head on a game's page: a step above its block, more of the game's colour (the old wiki's --ws-head, 16 %).
@@ -1007,12 +1009,13 @@ pub fn game_name(name: impl Into<SharedString>, url: Option<&str>, cx: &mut App)
     StyledText::new(name).with_highlights(marks)
 }
 
-/// A block's ground and hairline: the theme's, faintly of the game's colour on its page.
+/// A block's ground and hairline, on every page: the theme's own charcoal, a step between the panel and a raised
+/// block, with the theme's hairline. Mixed with the game's colour (11 % of it, the page 6 %) an orange game's page
+/// read brown all over, its figures, its table and its side column most (the owner, 2026-11-15, with a mock-up in
+/// charcoal: page #18191C, blocks #202124). The game's colour stays where it is a colour: its picture and logo, the
+/// marks on its blocks' heads, its name, its wiki.
 pub fn block_tones() -> (Hsla, Hsla) {
-    match game_tint() {
-        Some(t) => (mix(c(RAISED), Hsla { a: 1., ..t }, 0.11), mix(c(LINE), Hsla { a: 1., ..t }, 0.2)),
-        None => (c(RAISED), c(LINE)),
-    }
+    (block_ground(), c(LINE))
 }
 
 /// A block's finished edge: a hair of light along its top inside, a close dark line under it. No glow, no spread.
@@ -1232,9 +1235,10 @@ pub fn alert_panel(tone: u32, title: impl Into<SharedString>, count: usize) -> D
         .flex_col()
         .p(px(4.))
         .rounded(px(R_L + 2.))
-        .bg(tinted(PANEL, tone, 0.07))
+        // (Its tone in its hairline and its mark, not under it all: 7 % of amber read as one more brown block.)
+        .bg(block_ground())
         .border_1()
-        .border_color(ca(tone, 0.26))
+        .border_color(ca(tone, 0.3))
         .child(
             div()
                 .h(px(44.))

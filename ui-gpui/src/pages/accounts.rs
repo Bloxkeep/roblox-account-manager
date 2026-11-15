@@ -1522,6 +1522,7 @@ fn look_row(root: &Root, a: &Value, cx: &mut Context<Root>) -> impl IntoElement 
         )
         .when(on, |d| d.child(tick_mark(22.)))
         .child(alert_fix(div().children(fix.map(no_pick))))
+        .child(main_button(root, a, "look", 28., cx))
         .child(edit_button(root, a, "look", 28., cx))
         .child(more_button(root, a, "look", 28., cx))
         // Picked: the yellow ring every picked card has (the tick alone was easy to miss on a long row).
@@ -1819,9 +1820,9 @@ fn header(root: &Root, all: &[Value], width: f32, rows: bool, cx: &mut Context<R
                     .px(px(14.))
                     .py(px(8.))
                     .rounded(px(R_M))
-                    .bg(tinted(PANEL, WARN, 0.07))
+                    .bg(block_ground())
                     .border_1()
-                    .border_color(ca(WARN, 0.26))
+                    .border_color(ca(WARN, 0.3))
                     .child(icon("alert", 16., c(WARN)))
                     .child(div().flex_1().min_w_0().text_size(px(T_M)).text_color(c(TEXT_2)).child(root.tr("mh.off")))
                     .child(Button::new("acc-multi-on", root.tr("mh.enable")).icon("layers").small().on_click(cx.listener(|r, _, window, cx| r.multi_help(window, cx)))),
@@ -2492,7 +2493,7 @@ fn tile(root: &Root, a: &Value, w: f32, lines: usize, srv: Option<char>, cx: &mu
                         .children(main.map(no_pick))
                         .child(div().flex_1())
                         .children(min_btn)
-                        .when(!other, |d| d.child(edit_button(root, a, "tile", 30., cx)).child(more_button(root, a, "tile", 30., cx)))
+                        .when(!other, |d| d.child(main_button(root, a, "tile", 30., cx)).child(edit_button(root, a, "tile", 30., cx)).child(more_button(root, a, "tile", 30., cx)))
                         // A window Bloxkeep didn't open has no account menu: its Close here (MonitorView.tsx's tile menu).
                         .when_some(hwnd.clone().filter(|_| other), |d, h| {
                             d.child(no_pick(
@@ -3043,6 +3044,31 @@ fn tags_of(root: &Root, a: &Value) -> Vec<Div> {
     out
 }
 
+/// The star: this account is a main account, or no longer (its menu's "Main account" does the same). On the card
+/// itself, since people didn't find where a main account is set (the owner, 2026-11-15: "người dùng khó biết gán main
+/// account ở đâu"); lit while it is one.
+fn main_button(root: &Root, a: &Value, at: &str, size: f32, cx: &mut Context<Root>) -> Div {
+    let id = id_of(a);
+    let on = a.get("isMain").and_then(Value::as_bool).unwrap_or(false);
+    let key = SharedString::from(format!("{at}-main-{id}"));
+    let tip: SharedString = root.tr(if on { "card.mainOn" } else { "card.mainSet" }).into();
+    // Its outline alone while it isn't one (the star's inner part left clear), all of it in the face colour once it is:
+    // drawn whole in grey, every card looked starred.
+    no_pick(
+        hot(key)
+            .size(px(size))
+            .flex_none()
+            .flex()
+            .items_center()
+            .justify_center()
+            .rounded(px(R_M + 1.))
+            .cursor_pointer()
+            .child(icon2("star", (size * 0.48).round().min(20.), c(if on { FACE } else { TEXT_2 }), if on { c(FACE) } else { ca(WHITE, 0.) }))
+            .tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into())
+            .on_click(cx.listener(move |r, _, _, _| r.send("setMain", json!({ "ids": [id.clone()], "on": !on })))),
+    )
+}
+
 /// Edit (the pencil): the account's form, as F2 and its menu's Edit open it.
 fn edit_button(root: &Root, a: &Value, at: &str, size: f32, cx: &mut Context<Root>) -> Div {
     let id = id_of(a);
@@ -3189,6 +3215,7 @@ fn card(root: &Root, a: &Value, w: f32, lines: usize, cx: &mut Context<Root>) ->
                 .gap(px(4.))
                 .children(main.map(no_pick))
                 .child(div().flex_1())
+                .child(main_button(root, a, "card", 30., cx))
                 .child(edit_button(root, a, "card", 30., cx))
                 .child(more_button(root, a, "card", 30., cx)),
         )

@@ -23,6 +23,13 @@ use crate::{
     theme::*,
 };
 
+struct Follow {
+    user: i64,
+    on: Option<bool>,
+    asked: bool,
+    busy: bool,
+}
+
 #[derive(Default)]
 pub struct Data {
     /// The Roblox user the profile is of, and the profile (None while it loads).
@@ -68,6 +75,9 @@ pub struct Data {
     /// Someone else's profile (a friend's, from their card): their Roblox id and the profile (None while it loads).
     /// Shown in the profile's place until Back; read without a sign-in, so it has no Robux and no badges.
     person: Option<(i64, Option<Result<Profile, String>>)>,
+    /// Whether the account looked through follows that person: who, Roblox's answer (None until it comes; the button
+    /// shows once it has), whether it was asked, and whether a move of the button is under way.
+    follow: Option<Follow>,
     /// Purchases under way and bought, by account (its Roblox id), thing and whether it is a bundle: kept when the thing
     /// is closed (Back), so an answer that comes meanwhile isn't lost and Buy doesn't come back while one is under way.
     buying: Vec<(i64, i64, bool)>,
@@ -162,6 +172,56 @@ pub fn want(r: &mut Root, link: &crate::link::Link, cx: &mut Context<Root>) {
     if r.profile.got.is_none() && !r.profile.loading {
         load(r, cx);
     }
+    // (A person opened before the sign-in was in: whether they are followed is asked now.)
+    ask_follow(r, cx);
+}
+
+/// Asks Roblox, once, whether the account looked through follows the person whose profile is open (never itself).
+fn ask_follow(r: &mut Root, cx: &mut Context<Root>) {
+    let Some((_, me, cookie)) = friends::signed(r).filter(|s| !s.2.is_empty() || cfg!(feature = "shot")) else { return };
+    let Some(f) = r.profile.follow.as_mut().filter(|f| !f.asked && f.user != me) else { return };
+    f.asked = true;
+    let user = f.user;
+    let rx = roblox::run(move || roblox::following(&cookie, user));
+    cx.spawn(async move |this, cx| {
+        if let Ok(Ok(on)) = rx.await {
+            let _ = this.update(cx, |r, cx| {
+                if let Some(f) = r.profile.follow.as_mut().filter(|f| f.user == user) {
+                    f.on = Some(on);
+                    cx.notify();
+                }
+            });
+        }
+    })
+    .detach();
+}
+
+/// Follows the person whose profile is open, or stops, as the account looked through (the app's friendAct: a check
+/// Roblox holds it for is shown to solve). Refused, the button stays as it was and a line says so.
+fn follow_move(r: &mut Root, user: i64, on: bool, cx: &mut Context<Root>) {
+    let (Some(link), Some((id, _, _))) = (r.link.clone(), friends::signed(r)) else { return };
+    let Some(f) = r.profile.follow.as_mut().filter(|f| f.user == user && !f.busy) else { return };
+    f.busy = true;
+    cx.notify();
+    let rx = link.call("friendAct", json!({ "id": id, "userId": user, "act": if on { "follow" } else { "unfollow" } }));
+    cx.spawn(async move |this, cx| {
+        let got = rx.await.ok().and_then(Result::ok);
+        let ok = got.as_ref().and_then(|v| v.get("ok")).and_then(serde_json::Value::as_bool).unwrap_or(false);
+        let held = got.as_ref().and_then(|v| v.get("held")).and_then(serde_json::Value::as_bool).unwrap_or(false);
+        let _ = this.update(cx, |r, cx| {
+            if let Some(f) = r.profile.follow.as_mut().filter(|f| f.user == user) {
+                f.busy = false;
+                if ok {
+                    f.on = Some(on);
+                }
+            }
+            if !ok && !held {
+                r.toast = Some((r.tr("pf.followNo"), "bad".into()));
+            }
+            cx.notify();
+        });
+    })
+    .detach();
 }
 
 fn load(r: &mut Root, cx: &mut Context<Root>) {
@@ -193,6 +253,8 @@ pub fn open_person(r: &mut Root, user: i64, cx: &mut Context<Root>) {
     r.profile.club = None;
     r.profile.folk = None;
     r.profile.person = Some((user, None));
+    r.profile.follow = Some(Follow { user, on: None, asked: false, busy: false });
+    ask_follow(r, cx);
     r.games.view = crate::pages::games::View::Profile;
     let rx = roblox::run(move || roblox::profile("", user));
     cx.spawn(async move |this, cx| {
@@ -463,13 +525,9 @@ fn club_page(root: &Root, view: &ClubView, width: f32, cx: &mut Context<Root>) -
     let vi = root.i18n.vietnamese;
     let id = view.id;
     let inner = width - 2. * (PAD + 4.);
-    let back = div().flex_none().px(px(PAD + 4.)).pb(px(14.)).flex().child(Button::new("club-back", root.tr("nav.profile")).icon("chevronLeft").small().on_click(cx.listener(|r, _, _, cx| {
-        r.profile.club = None;
-        cx.notify();
-    })));
     let club = match &view.got {
-        None => return div().flex_1().flex().flex_col().child(back).child(note(root.tr("av.reading"))).into_any_element(),
-        Some(Err(why)) => return div().flex_1().flex().flex_col().child(back).child(note(root.i18n.tv("club.failed", &[("why", if why.is_empty() { "Roblox" } else { why })]))).into_any_element(),
+        None => return div().flex_1().flex().flex_col().child(note(root.tr("av.reading"))).into_any_element(),
+        Some(Err(why)) => return div().flex_1().flex().flex_col().child(note(root.i18n.tv("club.failed", &[("why", if why.is_empty() { "Roblox" } else { why })]))).into_any_element(),
         Some(Ok(c)) => c,
     };
     let pic = (!club.pic.is_empty()).then(|| images::pic_sq(&club.pic, 72., cx)).flatten();
@@ -537,7 +595,6 @@ fn club_page(root: &Root, view: &ClubView, width: f32, cx: &mut Context<Root>) -
         .min_h_0()
         .flex()
         .flex_col()
-        .child(back)
         .child(
             crate::scrolled::body("club-body", 
                 div()
@@ -570,11 +627,35 @@ pub fn profile(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElem
         .items_center()
         .gap(px(10.))
         .child(crate::pages::games::brand(root))
+        // Back, beside the logo while a person's page or a community's is over the profile (the owner's mock-up,
+        // 2026-11-15: it was a row of its own under the header, pushing the page down).
+        .when(pf.person.is_some() || pf.club.is_some(), |d| {
+            d.child(Button::new("pf-back", root.tr("wiki.back")).icon("chevronLeft").small().on_click(cx.listener(|r, _, _, cx| {
+                // (The community first: it may have been opened from the person's page.)
+                if r.profile.club.is_some() {
+                    r.profile.club = None;
+                } else {
+                    r.profile.person = None;
+                }
+                cx.notify();
+            })))
+        })
         .relative().child(crate::pages::games::island(root, cx))
         .child(div().flex_1())
         // (A community's page has its own way out to roblox.com, and nothing of the profile's to read again.)
         .when(viewer.is_some() && pf.club.is_none() && pf.folk.is_none() && pf.person.is_none(), |d| {
             d.child(IconButton::new("pf-refresh", "refresh").size(34.).busy(pf.loading).tip(root.tr("fr.refresh")).on_click(cx.listener(|r, _, _, cx| again(r, cx))))
+        })
+        // A person's profile: follow them, or no longer (shown once Roblox said which it is).
+        .when_some(pf.follow.as_ref().filter(|f| pf.person.as_ref().is_some_and(|p| p.0 == f.user && matches!(p.1, Some(Ok(_))))).and_then(|f| f.on.map(|on| (f.user, on, f.busy))), |d, (who, on, busy)| {
+            d.child(
+                Button::new("pf-follow", root.tr(if on { "pf.followed" } else { "pf.follow" }))
+                    .icon(if on { "check" } else { "plus" })
+                    .small()
+                    .disabled(busy)
+                    .tip(root.tr(if on { "pf.unfollowTip" } else { "pf.followTip" }))
+                    .on_click(cx.listener(move |r, _, _, cx| follow_move(r, who, !on, cx))),
+            )
         })
         .when((matches!(pf.got, Some(Ok(_))) || matches!(pf.person, Some((_, Some(Ok(_)))))) && pf.club.is_none() && pf.folk.is_none(), |d| {
             d.child(IconButton::new("pf-open", "external").size(34.).tip(root.tr("shop.open")).on_click(cx.listener(move |r, _, _, _| r.send("openProfile", json!({ "userId": user })))))
@@ -585,16 +666,12 @@ pub fn profile(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElem
     } else if let Some((which, got)) = &pf.folk {
         folk_page(root, which, got, width, cx)
     } else if let Some((_, got)) = &pf.person {
-        let back = div().flex_none().px(px(PAD + 4.)).pb(px(14.)).flex().child(Button::new("person-back", root.tr("nav.profile")).icon("chevronLeft").small().on_click(cx.listener(|r, _, _, cx| {
-            r.profile.person = None;
-            cx.notify();
-        })));
         let content = match got {
             None => note(root.tr("pf.loading")).into_any_element(),
             Some(Err(why)) => note(root.i18n.tv("pf.failed", &[("why", if why.is_empty() { "Roblox" } else { why })])).into_any_element(),
             Some(Ok(p)) => filled(root, p, user, width, false, cx).into_any_element(),
         };
-        div().flex_1().min_h_0().flex().flex_col().child(back).child(content).into_any_element()
+        div().flex_1().min_h_0().flex().flex_col().child(content).into_any_element()
     } else if able.is_empty() || friends::nobody(root) {
         friends::need_account(root, "pf-add-acc", "pf.noAccount", "user", cx)
     } else {
@@ -642,29 +719,30 @@ fn filled(root: &Root, p: &Profile, user: i64, width: f32, own: bool, cx: &mut C
     // (The facts take the rest of the header's width, spread over it: at a fixed 380 px at the far right they left
     // some 600 px empty between them and the numbers, review 3e.1.)
     let wide_head = inner >= 1000.;
+    // (Two by two, beside the numbers, behind a hairline: spread in one row over the rest of the width they read as
+    // a second header; the owner's mock-up, 2026-11-15.)
     let side = wide_head.then(|| {
         div()
-            .flex_1()
-            .min_w(px(360.))
+            .flex_none()
+            .w(px(440.))
             .self_stretch()
-            .pl(px(32.))
+            .pl(px(40.))
             .border_l_1()
             .border_color(c(LINE))
             .flex()
             .flex_wrap()
-            .items_center()
             .content_center()
-            .gap_x(px(24.))
+            .gap_x(px(20.))
             .gap_y(px(18.))
             .children(known.into_iter().map(|(name, value)| {
                 div()
-                    .flex_1()
-                    .min_w(px(140.))
+                    .w(px(180.))
+                    .flex_none()
                     .flex()
                     .flex_col()
                     .gap(px(3.))
                     .child(div().text_size(px(T_S)).text_color(c(MUTED)).child(name))
-                    .child(div().text_size(px(T_L)).font_weight(FontWeight::SEMIBOLD).font_features(tnum()).truncate().child(value))
+                    .child(div().text_size(px(T_H)).font_weight(FontWeight::SEMIBOLD).font_features(tnum()).truncate().child(value))
             }))
     });
     // A banner on top (the owner's reference, 2026-11-13): a game they like, sharp, edge to edge; their face in a big
@@ -709,6 +787,8 @@ fn filled(root: &Root, p: &Profile, user: i64, width: f32, own: bool, cx: &mut C
         .line_height(px(36.))
         .when(own, |d| d.child(div().flex_none().whitespace_nowrap().child(hello)))
         .child(div().truncate().when(own, |d| d.text_color(c(FACE))).child(p.display.clone()));
+    // Their "About", its first line, under their name (Roblox has no status any more; this is theirs).
+    let about = p.about.lines().map(str::trim).find(|l| !l.is_empty()).map(str::to_string);
     let words = div()
         .when(wide_head, |d| d.flex_none().w(px(560.)))
         .when(!wide_head, |d| d.flex_1())
@@ -722,7 +802,8 @@ fn filled(root: &Root, p: &Profile, user: i64, width: f32, own: bool, cx: &mut C
                 .flex_col()
                 .gap(px(2.))
                 .child(title)
-                .child(div().text_size(px(T_M)).text_color(c(MUTED)).child(format!("@{} · {}", p.name, root.i18n.tv("pf.joined", &[("d", &day(&p.joined))])))),
+                .child(div().text_size(px(T_M)).text_color(c(MUTED)).child(format!("@{} · {}", p.name, root.i18n.tv("pf.joined", &[("d", &day(&p.joined))]))))
+                .when_some(about, |d, t| d.child(div().pt(px(4.)).text_size(px(T_M)).text_color(c(TEXT_2)).truncate().child(t))),
         )
         .child(
             div()
@@ -745,20 +826,6 @@ fn filled(root: &Root, p: &Profile, user: i64, width: f32, own: bool, cx: &mut C
                     ))
                 }),
         );
-    // Their "About", first line, as a thought beside their face (Roblox has no status any more; this is theirs).
-    let about = p.about.lines().map(str::trim).find(|l| !l.is_empty()).map(str::to_string);
-    let bubble = about.map(|t| {
-        div()
-            .absolute()
-            .left(px(28. + AV + 6.))
-            .top(px(BANNER - 52.))
-            .flex()
-            .items_center()
-            .gap(px(4.))
-            .child(div().size(px(7.)).flex_none().rounded_full().bg(c(RAISED_2)))
-            .child(div().size(px(11.)).flex_none().rounded_full().bg(c(RAISED_2)))
-            .child(div().max_w(px(440.)).h(px(38.)).px(px(16.)).flex().items_center().rounded_full().bg(c(RAISED_2)).text_size(px(T_M)).text_color(c(TEXT_2)).child(div().truncate().child(t)))
-    });
     let who = div()
         .relative()
         .rounded(px(R_L))
@@ -793,8 +860,7 @@ fn filled(root: &Root, p: &Profile, user: i64, width: f32, own: bool, cx: &mut C
                 .overflow_hidden()
                 // (GPUI cuts children to the box, not to its round corners: the picture is rounded itself.)
                 .when_some(face, |d, (src, key)| d.child(fade_in(img(src).size_full().rounded_full().object_fit(ObjectFit::Cover), &key))),
-        )
-        .children(bubble);
+        );
 
     let groups: Vec<AnyElement> = p
         .groups
