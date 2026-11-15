@@ -329,19 +329,26 @@ pub fn attach(h: isize) {
     // SAFETY: our procedure sees the window's messages first; removed at WM_NCDESTROY.
     unsafe { SetWindowSubclass(hwnd(h), Some(shell_proc), SUBCLASS_ID, 0) };
     shell.on_handle_created();
-    shell.on_load();
-    win_form::spawn({
-        let shell = shell.clone();
-        async move { shell.init().await }
+    // The window's place, its show and its Shown on a turn of their own, once the interface's start is over: put back
+    // on a screen with another scale, Windows tells the interface of the new scale there and then, and the interface,
+    // still busy starting, crashed (every start with the window saved on the owner's second screen, 2026-11-15:
+    // "RefCell already borrowed" at async_context.rs:178). Nothing is seen before: the window is still hidden.
+    win_form::invoke(|| {
+        let Some(shell) = SHELL.with(|s| s.borrow().clone()) else { return };
+        shell.on_load();
+        win_form::spawn({
+            let shell = shell.clone();
+            async move { shell.init().await }
+        });
+        note_show(&format!("attached, start hidden={}", shell.start_hidden.get()));
+        shell.set_visible(true);
+        note_show(&format!("after show: visible={}", shell.visible()));
+        // Started in the tray (Windows' sign-in, an update while hidden): the Shown event, and its entrance, wait for
+        // the first real show (set_visible), as WinForms' did.
+        if shell.visible() && !shell.shown_once.get() {
+            shell.on_shown();
+        }
     });
-    note_show(&format!("attached, start hidden={}", shell.start_hidden.get()));
-    shell.set_visible(true);
-    note_show(&format!("after show: visible={}", shell.visible()));
-    // Started in the tray (Windows' sign-in, an update while hidden): the Shown event, and its entrance, wait for the
-    // first real show (set_visible), as WinForms' did.
-    if shell.visible() && !shell.shown_once.get() {
-        shell.on_shown();
-    }
 }
 
 /// The App's side of the window (the delegates the C# constructor set on AppController): each hops to the windows
@@ -642,20 +649,29 @@ impl ShellForm {
             // Meant to open in front: a run started by Velopack's Update.exe (after an update) isn't the one the person
             // started, and Windows leaves its window behind the others, so it is brought forward (the owner,
             // 2026-11-15: "nó ko tự pop up lên nó ở đằng sau ấy lúc mới cập nhật xong"). Said in the log either way.
-            if win_form::foreground_window() != self.handle {
-                let ok = super::anti_afk::focus(self.handle);
-                log::note(&format!("Main window: opened behind another program, brought to the front: {}.", if ok { "done" } else { "Windows refused" }));
-            }
+            // (On a turn of its own: this runs inside the interface's start, and bringing the window forward makes
+            // Windows tell the interface at once that it is active, while it is still busy; 1.0.25-alpha.12 crashed so
+            // at every start on the owner's PC, 2026-11-15.)
+            let h = self.handle;
+            win_form::invoke(move || {
+                if win_form::foreground_window() != h && win_form::is_window(h) {
+                    let ok = super::anti_afk::focus(h);
+                    log::note(&format!("Main window: opened behind another program, brought to the front: {}.", if ok { "done" } else { "Windows refused" }));
+                }
+            });
         } else {
             self.show_quietly.set(false);
-            let front = self.front_at_start;
-            if front != 0 && front != self.handle && win_form::is_window(front) {
-                if win_form::foreground_window() == self.handle {
-                    win_form::set_foreground(front);
+            // (On a turn of its own too: giving the keyboard back tells the interface at once that it isn't active.)
+            let (front, h) = (self.front_at_start, self.handle);
+            win_form::invoke(move || {
+                if front != 0 && front != h && win_form::is_window(front) && win_form::is_window(h) {
+                    if win_form::foreground_window() == h {
+                        win_form::set_foreground(front);
+                    }
+                    // SAFETY: plain call on our window.
+                    unsafe { SetWindowPos(hwnd(h), hwnd(front), 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE) };
                 }
-                // SAFETY: plain call on our window.
-                unsafe { SetWindowPos(hwnd(self.handle), hwnd(front), 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE) };
-            }
+            });
         }
     }
 

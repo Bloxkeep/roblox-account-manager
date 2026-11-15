@@ -62,7 +62,8 @@ export const COMMANDS = [
   { name: 'robloxstatus', description: 'Is Roblox down right now?', description_localizations: vi('Roblox có đang lỗi không') },
   {
     name: 'error', description: 'What a Roblox error code means, and what to do about it', description_localizations: vi('Mã lỗi Roblox nghĩa là gì, và nên làm gì'),
-    options: [{ type: 4, name: 'code', description: "The number in Roblox's box, like 277", description_localizations: vi('Con số trong hộp báo lỗi của Roblox, ví dụ 277'), required: true, min_value: 1, max_value: 9999 }],
+    // (Text with suggestions as it is typed: a number, or words of what happened, "kick", "connection".)
+    options: [{ type: 3, name: 'code', description: "The number in Roblox's box, like 277, or what happened", description_localizations: vi('Con số trong hộp báo lỗi của Roblox, ví dụ 277, hoặc chuyện gì xảy ra'), required: true, autocomplete: true, max_length: 100 }],
   },
   {
     name: 'notify', description: 'Post Roblox updates, outages and new Bloxkeep versions in a channel',

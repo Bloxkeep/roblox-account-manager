@@ -103,30 +103,80 @@ const KNOWN = {
 // Codes that mean the same to the person as one written out above.
 const SAME = { 266: 277, 276: 273, 271: 288, 274: 288, 275: 288, 517: 288, 523: 524, 770: 769, 771: 769, 772: 769, 774: 769 };
 
+// How each written-out code ends for the person: Bloxkeep brings the account back by itself (green), it waits or it
+// depends (yellow), or the person has to do something first (red). The embed's colour says it before any words.
+const BACK = new Set([256, 277, 278, 279, 288, 292, 529]);
+const YOURS = new Set([264, 268, 280, 401, 403, 524, 600]);
+const tone = n => BACK.has(n) ? COLOR.green : YOURS.has(n) ? COLOR.red : COLOR.yellow;
+
+// The ones people ask about most, offered first while nothing is typed yet.
+const ASKED = [277, 267, 273, 278, 279, 268, 264, 292, 280, 529, 524, 600, 288, 256, 769, 773, 429, 403, 401, 266, 276, 274];
+
 const W = {
-  en: { error: 'Error', what: 'What Bloxkeep does', todo: 'What you can do', roblox: "Roblox's name for it", unknown: "That isn't one of Roblox's error codes I know.", unknownTodo: "Check the number in Roblox's error box (\"Error Code: 277\"), or ask in Bloxkeep's Discord with a screenshot.", other: 'Bloxkeep has no special handling for this code: a window that drops is rejoined when Auto-rejoin is on, unless Roblox refuses a reconnect after it.', guide: 'Guide' },
-  vi: { error: 'Lỗi', what: 'Bloxkeep làm gì', todo: 'Bạn làm được gì', roblox: 'Tên Roblox đặt', unknown: 'Tôi không biết mã lỗi Roblox nào như vậy.', unknownTodo: 'Xem lại con số trong hộp báo lỗi của Roblox ("Error Code: 277"), hoặc hỏi trong Discord của Bloxkeep kèm ảnh chụp.', other: 'Bloxkeep không xử lý riêng mã này: cửa sổ bị rớt sẽ được mở lại khi bật Tự vào lại, trừ khi sau mã đó Roblox từ chối kết nối lại.', guide: 'Hướng dẫn' },
+  en: { error: 'Roblox error', what: 'What Bloxkeep does', todo: 'What you can do', also: 'Same as', guide: 'Guide', unknown: "That isn't one of Roblox's error codes I know.", unknownTodo: "Check the number in Roblox's error box (\"Error Code: 277\"), or ask in Bloxkeep's Discord with a screenshot.", other: 'Bloxkeep has no special handling for this code: a window that drops is rejoined when Auto-rejoin is on, unless Roblox refuses a reconnect after it.' },
+  vi: { error: 'Lỗi Roblox', what: 'Bloxkeep làm gì', todo: 'Bạn làm được gì', also: 'Cùng nghĩa', guide: 'Hướng dẫn', unknown: 'Tôi không biết mã lỗi Roblox nào như vậy.', unknownTodo: 'Xem lại con số trong hộp báo lỗi của Roblox ("Error Code: 277"), hoặc hỏi trong Discord của Bloxkeep kèm ảnh chụp.', other: 'Bloxkeep không xử lý riêng mã này: cửa sổ bị rớt sẽ được mở lại khi bật Tự vào lại, trừ khi sau mã đó Roblox từ chối kết nối lại.' },
 };
 
-/** The answer to /error for a code, in language `l` ('en' or 'vi'). */
+/** The number in what was typed or picked ("277", "277 · Connection lost"), or NaN. */
+const codeOf = v => parseInt(String(v ?? '').trim(), 10);
+
+/** A code's short meaning in language `l`: written out, the same as one written out, or Roblox's name in Bloxkeep's words. */
+function meaning(l, n) {
+  const known = KNOWN[n] ?? KNOWN[SAME[n]];
+  if (known)
+    return (known[l] ?? known.en)[0];
+  const words = NAMES[n]?.[1];
+  return words ? words[0].toUpperCase() + words.slice(1) : null;
+}
+
+/** The answer to /error for a code, in language `l` ('en' or 'vi'): one embed. The code leads, small (the author
+ *  line), its meaning is the title, then what happened, what Bloxkeep does and what to do; Roblox's own name for it
+ *  and the codes that mean the same go in the footer. */
 export function errorEmbed(l, code) {
-  const w = W[l] ?? W.en, n = Number(code);
+  const w = W[l] ?? W.en, n = codeOf(code);
   const known = KNOWN[n] ?? KNOWN[SAME[n]];
   const name = NAMES[n]?.[0];
-  const base = { thumbnail: { url: LOGO }, footer: { text: 'Bloxkeep', icon_url: LOGO } };
+  // (The codes that mean the same: the written-out one and every code sent to it, but this one.)
+  const base = KNOWN[n] ? n : SAME[n];
+  const twins = known ? [base, ...Object.keys(SAME).map(Number).filter(c => SAME[c] === base)].filter(c => c !== n) : [];
+  const footer = [name && `Roblox: ${name}`, twins.length && `${w.also} ${twins.sort((a, b) => a - b).join(', ')}`].filter(Boolean).join('  ·  ');
+  const head = { author: { name: `${w.error} ${Number.isFinite(n) ? n : '?'}`, icon_url: LOGO }, ...(footer ? { footer: { text: footer } } : {}) };
   if (known) {
     const [title, what, does, todo] = known[l] ?? known.en;
     return {
-      ...base, color: COLOR.yellow, title: `${w.error} ${n} · ${title}`, description: what,
+      ...head, color: tone(base), title, description: what,
       fields: [
         { name: w.what, value: does },
-        { name: w.todo, value: todo.map((t, i) => (todo.length > 1 ? `${i + 1}. ${t}` : t)).join('\n') },
-        ...(name ? [{ name: w.roblox, value: `\`${name}\``, inline: true }] : []),
-        { name: w.guide, value: `[bloxkeep.github.io](${SITE})`, inline: true },
+        { name: w.todo, value: todo.map(t => (todo.length > 1 ? `• ${t}` : t)).join('\n') },
       ],
     };
   }
   if (name)
-    return { ...base, color: COLOR.grey, title: `${w.error} ${n} · ${NAMES[n][1]}`, description: w.other, fields: [{ name: w.roblox, value: `\`${name}\``, inline: true }] };
-  return { ...base, color: COLOR.grey, title: `${w.error} ${Number.isFinite(n) ? n : '?'}`, description: `${w.unknown}\n${w.unknownTodo}`, fields: [] };
+    return { ...head, color: COLOR.grey, title: meaning(l, n), description: w.other, fields: [] };
+  return { ...head, color: COLOR.grey, title: w.unknown, description: w.unknownTodo, fields: [] };
+}
+
+/** The whole reply: the embed and the guide's button under it. */
+export function errorMessage(l, code) {
+  const w = W[l] ?? W.en;
+  return { embeds: [errorEmbed(l, code)], components: [{ type: 1, components: [{ type: 2, style: 5, label: w.guide, url: SITE }] }] };
+}
+
+const fold = t => String(t).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').toLowerCase();
+
+/** What to suggest while someone types the code: "277 · Connection lost". A number finds the codes that start with
+ *  it; words find the codes whose meaning or Roblox name has them ("kick", "mất kết nối", "Timeout"). Nothing typed:
+ *  the codes people ask about most. */
+export function errorChoices(l, typed) {
+  const t = fold(String(typed ?? '').trim());
+  const all = [...new Set([...ASKED, ...Object.keys(KNOWN).map(Number), ...Object.keys(SAME).map(Number), ...Object.keys(NAMES).map(Number)])];
+  const line = n => `${n} · ${meaning(l, n) ?? ''}`.slice(0, 100);
+  let hits;
+  if (!t)
+    hits = ASKED;
+  else if (/^\d+$/.test(t))
+    hits = all.filter(n => String(n).startsWith(t)).sort((a, b) => (String(a) === t ? -1 : String(b) === t ? 1 : 0) || (ASKED.includes(b) - ASKED.includes(a)) || a - b);
+  else
+    hits = all.filter(n => fold(line(n)).includes(t) || fold(NAMES[n]?.[0] ?? '').includes(t.replace(/\s+/g, '')));
+  return { type: 8, data: { choices: hits.filter(n => meaning(l, n)).slice(0, 25).map(n => ({ name: line(n), value: String(n) })) } };
 }
