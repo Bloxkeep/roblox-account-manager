@@ -1155,7 +1155,8 @@ pub const GROUP_PIC: f32 = 44.;
 /// Facts on one line, a small dot between them, in muted tabular figures ("2 windows · 1.7 GB"); a fact with its own
 /// colour (a warning) keeps it.
 pub fn facts(parts: Vec<(String, Option<Hsla>)>) -> Div {
-    let mut d = div().flex().min_w_0().overflow_hidden().items_center().gap(px(8.)).text_size(px(T_M)).text_color(c(MUTED)).font_features(tnum()).whitespace_nowrap();
+    // (Parts that don't fit go to a second line: on a narrow window, at 200 %, the last was cut mid-word.)
+    let mut d = div().flex().flex_wrap().min_w_0().overflow_hidden().items_center().gap_x(px(8.)).gap_y(px(2.)).text_size(px(T_M)).text_color(c(MUTED)).font_features(tnum()).whitespace_nowrap();
     for (i, (text, col)) in parts.into_iter().enumerate() {
         if i > 0 {
             d = d.child(sep());

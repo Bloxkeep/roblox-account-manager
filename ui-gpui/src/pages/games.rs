@@ -688,8 +688,13 @@ pub fn logo_of(root: &Root, place: i64, name: &str, cx: &mut Context<Root>) -> O
                 .and_then(Value::as_array)
                 .and_then(|l| l.first())
                 .and_then(|p| p.pointer("/imageinfo/0"))
-                // (A logo too small to read as one, a favicon-sized mark, is left for the name in words.)
-                .filter(|i| i.get("width").and_then(Value::as_i64).unwrap_or(0) >= 120)
+                // (A logo too small to read as one, a favicon-sized mark, is left for the name in words; so is one about as
+                // tall as wide, a mascot or an egg rather than lettering: the owner's screenshot of 2026-11-15 had an egg in
+                // place of the game's name, "what ?". A name drawn in letters runs wide.)
+                .filter(|i| {
+                    let (w, h) = (i.get("width").and_then(Value::as_i64).unwrap_or(0), i.get("height").and_then(Value::as_i64).unwrap_or(0));
+                    w >= 120 && h > 0 && w as f64 >= 1.6 * h as f64
+                })
                 .and_then(|i| i.get("url").and_then(Value::as_str))
                 .filter(|u| crate::wikitext::wiki_img(u))
                 .map(str::to_string);

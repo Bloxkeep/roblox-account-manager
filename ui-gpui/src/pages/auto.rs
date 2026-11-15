@@ -345,7 +345,7 @@ pub fn auto(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
         .gap(px(12.))
         .when(tab == Tab::Presets, |d| {
             let full = presets.len() >= 50;
-            d.when(!presets.is_empty(), |d| d.child(div().w(px(if narrow { 200. } else { 280. })).min_w(px(140.)).flex_shrink(1.).child(field(&root.preset_search, Some("search")))))
+            d.when(!presets.is_empty(), |d| d.child(div().w(px(if narrow { 250. } else { 280. })).min_w(px(140.)).flex_shrink(1.).child(field(&root.preset_search, Some("search")))))
                 .when(!presets.is_empty(), |d| d.child(Button::new("pv-new", root.tr("ps.new")).icon("plus").primary().on_click(cx.listener(move |r, _, window, cx| {
                     if full {
                         r.toast = Some((r.i18n.tv("pv.full", &[("n", "50")]), "warn".into()));
