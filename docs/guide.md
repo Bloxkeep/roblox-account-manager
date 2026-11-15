@@ -4,7 +4,10 @@
 
 Short pages, one per topic. Read the first three to get going; open the others when you need them.
 
-<img src="screenshots/hero.png" width="760" alt="Bloxkeep's main window: account cards, the game bar at the bottom, Multi-Roblox on in the sidebar">
+<img src="screenshots/hero.png" width="760" alt="Bloxkeep's Home: the game being played at the top with its picture, your games and presets below, accounts on the right, Multi-Roblox on in the bar at the bottom">
+
+> [!NOTE]
+> This guide is for Bloxkeep 1.1, which was redrawn from scratch. The pages are down the left (Home, Accounts, Roblox, Automation, Statistics, Settings), and the bar along the bottom shows your Roblox windows, the PC's load, **Mini window** and the **Multi-Roblox** switch.
 
 ## Start here
 
@@ -21,7 +24,7 @@ Short pages, one per topic. Read the first three to get going; open the others w
 <tr>
 <td width="33%" valign="top"><a href="guide/getting-started.md"><img src="screenshots/lock.png" width="240" alt=""><br><b>Getting started</b></a><br>Install, master password, locking, updates.</td>
 <td width="33%" valign="top"><a href="guide/accounts.md"><img src="screenshots/accounts-list.png" width="240" alt=""><br><b>Accounts</b></a><br>Adding accounts, statuses, the ⋯ menu, saved passwords and 2FA codes.</td>
-<td width="33%" valign="top"><a href="guide/playing.md"><img src="screenshots/game-picker.png" width="240" alt=""><br><b>Playing</b></a><br>Games, servers, private servers, joining a player, the website in tabs.</td>
+<td width="33%" valign="top"><a href="guide/playing.md"><img src="screenshots/game-picker.png" width="240" alt=""><br><b>Playing</b></a><br>Games, servers, private servers, following a player, the Roblox tab.</td>
 </tr>
 <tr>
 <td valign="top"><a href="guide/multi-roblox.md"><img src="screenshots/multi-roblox-real.jpg" width="240" alt=""><br><b>Multi-Roblox</b></a><br>Several Roblox windows at once, the light, Roblox updates, Microsoft Store Roblox.</td>

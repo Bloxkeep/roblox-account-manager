@@ -4,11 +4,11 @@
 
 Preset lưu sẵn một nhóm tài khoản, một game và cách mở chúng, để bạn chạy bằng một cú bấm hoặc cho tự chạy theo lịch.
 
-<img src="../screenshots/vi/presets.png" width="760" alt="Tab Preset: ba preset, mỗi preset có game, một dòng tóm tắt, ảnh đại diện các tài khoản, công tắc Hẹn giờ và các nút Chạy hoặc Đóng, Sửa, Nhân bản, Xóa">
+<img src="../screenshots/vi/presets.png" width="760" alt="Tự động, Preset: Đang chạy với một preset hẹn giờ và các cửa sổ đang mở, rồi Không hẹn giờ với hai preset nữa, mỗi preset có game, một dòng tóm tắt, mặt các tài khoản, công tắc Hẹn giờ, Chạy hoặc Đóng, Sửa, Nhân bản và Xóa">
 
 ## Làm nhanh
 
-1. Mở tab **Preset** rồi bấm **Thêm preset**.
+1. Mở **Tự động** (hình hai mũi tên ở thanh bên trái), ở mục **Preset** bấm **Thêm Preset**.
 2. Gõ **Tên** và chọn **Game**. Để trống game thì chỉ mở màn hình chính Roblox.
 3. Chọn **Server** và tích các **Tài khoản**, theo đúng thứ tự muốn mở.
 4. Bấm **Lưu**, rồi bấm **Chạy** ở dòng của preset.
@@ -17,8 +17,8 @@ Một preset lưu sẵn các tài khoản (theo thứ tự), game, cách chọn 
 
 ## Tạo preset
 
-- Tab **Preset** › **Thêm preset**.
-- Nút **Preset** trên thanh chọn game › **Lưu thành preset…**. Preset được điền sẵn từ thanh chọn game: các tài khoản đang chọn, game, Job ID thành **Server cố định**, và tên game thành tên preset.
+- **Tự động › Preset** › **Thêm Preset**.
+- Nút **Preset** ở thanh dưới cùng của tab Tài khoản › **Lưu thành preset…**. Preset được điền sẵn từ thanh đó: các tài khoản đang chọn, game, Job ID thành **Server cố định**, và tên game thành tên preset.
 - Ctrl+K › "Lưu thành preset…".
 
 | Ô | Ý nghĩa |
@@ -98,11 +98,11 @@ Mỗi dòng hiện biểu tượng game, tên preset, game ("Màn hình chính R
 | **Nhân bản** | Tạo bản sao. Nếu preset gốc đang bật hẹn giờ thì hẹn giờ của bản sao bị tắt. |
 | **Xóa** | Có hỏi lại, có thể chọn **Không hỏi lại**. |
 
-- Tay nắm và mũi tên để đổi thứ tự (ẩn đi khi đang tìm kiếm). Menu **Preset** ở thanh dưới dùng đúng thứ tự này.
+- Tay nắm và mũi tên để đổi thứ tự (ẩn đi khi đang tìm kiếm). Menu **Preset** ở thanh dưới cùng của tab Tài khoản dùng đúng thứ tự này.
 - Phần đầu trang đếm số preset và số preset hẹn giờ, và ghi "đã đạt mức tối đa" khi đủ 50.
 - Ô **Tìm preset hoặc game** (Ctrl+F) để lọc danh sách. Preset mà mọi tài khoản đều đã bị xóa sẽ ghi **Không còn tài khoản nào**.
 
 > [!TIP]
-> Nút **Preset** ở thanh chọn game liệt kê mọi preset (bấm vào để chạy), rồi **Lưu thành preset…** và **Sửa preset…**. Trong Ctrl+K, gõ tên preset để chạy nó.
+> Nút **Preset** ở thanh dưới cùng của tab Tài khoản liệt kê mọi preset (bấm vào để chạy), rồi **Lưu thành preset…** và **Sửa preset…**. Trong Ctrl+K, gõ tên preset để chạy nó.
 
 ← [Hướng dẫn](../guide.vi.md) · Tiếp: [Giữ tài khoản trong game](staying-in-game.vi.md) →

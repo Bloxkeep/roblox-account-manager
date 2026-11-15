@@ -4,7 +4,10 @@
 
 Mỗi chủ đề một trang ngắn. Đọc ba trang đầu là dùng được ngay; các trang khác cần thì mở.
 
-<img src="screenshots/vi/hero.png" width="760" alt="Cửa sổ chính của Bloxkeep: các thẻ tài khoản, thanh chọn game ở dưới, Multi-Roblox đang bật ở thanh bên">
+<img src="screenshots/vi/hero.png" width="760" alt="Trang chủ của Bloxkeep: game đang chơi ở trên cùng kèm ảnh, game và Preset của bạn bên dưới, tài khoản bên phải, Multi-Roblox đang bật ở thanh dưới cùng">
+
+> [!NOTE]
+> Hướng dẫn này dành cho Bloxkeep 1.1, bản được vẽ lại từ đầu. Các trang nằm dọc bên trái (Trang chủ, Tài khoản, Roblox, Tự động, Thống kê, Cài đặt), còn thanh dưới cùng hiện cửa sổ Roblox, mức tải của máy, **Cửa sổ nhỏ** và công tắc **Multi-Roblox**.
 
 ## Bắt đầu từ đây
 
@@ -21,7 +24,7 @@ Mỗi chủ đề một trang ngắn. Đọc ba trang đầu là dùng được 
 <tr>
 <td width="33%" valign="top"><a href="guide/getting-started.vi.md"><img src="screenshots/vi/lock.png" width="240" alt=""><br><b>Bắt đầu</b></a><br>Cài đặt, mật khẩu chủ, khóa app, cập nhật.</td>
 <td width="33%" valign="top"><a href="guide/accounts.vi.md"><img src="screenshots/vi/accounts-list.png" width="240" alt=""><br><b>Tài khoản</b></a><br>Thêm tài khoản, trạng thái, menu ⋯, lưu mật khẩu và mã 2FA.</td>
-<td width="33%" valign="top"><a href="guide/playing.vi.md"><img src="screenshots/vi/game-picker.png" width="240" alt=""><br><b>Vào game</b></a><br>Chọn game, server, server riêng, vào cùng người chơi, trang web theo tab.</td>
+<td width="33%" valign="top"><a href="guide/playing.vi.md"><img src="screenshots/vi/game-picker.png" width="240" alt=""><br><b>Vào game</b></a><br>Chọn game, server, server riêng, theo người chơi, tab Roblox.</td>
 </tr>
 <tr>
 <td valign="top"><a href="guide/multi-roblox.vi.md"><img src="screenshots/multi-roblox-real.jpg" width="240" alt=""><br><b>Multi-Roblox</b></a><br>Nhiều cửa sổ Roblox cùng lúc, màu đèn, bản cập nhật Roblox, Roblox bản Microsoft Store.</td>

@@ -2,15 +2,15 @@
 
 # Multi-Roblox
 
-How to let several accounts play at once, what the Multi-Roblox card in the sidebar is telling you, and which program opens Roblox.
+How to let several accounts play at once, what Multi-Roblox in the bar at the bottom is telling you, and which program opens Roblox.
 
 <img src="../screenshots/multi-roblox-real.jpg" width="760" alt="A real screenshot of one Windows PC: six Roblox windows open at once, tiled side by side by Bloxkeep, all in the same game, titled Roblox - Account 1 to Roblox - Account 7">
 
 ## Quick steps
 
 1. Open Bloxkeep before Roblox. If Roblox is already open, press **Close all Roblox**.
-2. Turn on the **Multi-Roblox** switch at the bottom of the sidebar (under **Roblox on this PC**), and confirm **Turn on Multi-Roblox?**.
-3. Check that the light is green and it says **On**.
+2. Turn on the **Multi-Roblox** switch at the right end of the bar at the bottom, and confirm **Turn on Multi-Roblox?**.
+3. Check that no yellow light shows beside **Multi-Roblox** (point at it: "On: several Roblox windows can be open").
 4. Select your accounts and press **Play**. Keep Bloxkeep open while you play (the tray is fine).
 
 You can also press **Play** with Multi-Roblox off: the **Before you open** question offers **Turn on Multi-Roblox and play**.
@@ -26,17 +26,18 @@ Roblox uses a lock to allow only one window. Bloxkeep holds that lock's name fir
 > [!WARNING]
 > Roblox doesn't officially support running several clients, so use Multi-Roblox at your own risk.
 
-## The sidebar card
+## In the bar at the bottom
 
-| Light | Text | Meaning | Clicking the text |
-|---|---|---|---|
-| Grey | **Off** | Multi-Roblox is off. | Opens the details. |
-| Green | **On** | Working: several Roblox windows can be open. | Opens the details. |
-| Yellow | **Not working yet** | Roblox was open before Multi-Roblox was turned on. | Opens the details with the fix. |
-| Yellow | **Roblox closed windows** | Roblox closed a window when another one opened. | Opens **Settings › Roblox version**. |
-| Yellow | **A Roblox update may stop it — click to see** | The Multi-Roblox check found a change in the Roblox build. | Opens **Settings › Roblox version**. |
+**Multi-Roblox** and its switch sit at the right end of the bar at the bottom, on every page.
 
-Point at the text for what it means.
+| What you see | Meaning | Clicking **Multi-Roblox** |
+|---|---|---|
+| The switch off | Off: one Roblox window at a time. | Opens the details. |
+| The switch on, no light | On: several Roblox windows can be open. | Opens the details. |
+| The switch on, a yellow light | Not working yet: Roblox was open before Multi-Roblox was turned on. | Opens the details with the fix. |
+| **Multi-Roblox** in yellow | Roblox closed a window when another one opened, or the Multi-Roblox check found a change in the next Roblox build. | Opens **Settings › Roblox version**. |
+
+Point at **Multi-Roblox** for what it means.
 
 The same switch is in **Settings › Launching › Multi-Roblox**, with a pill (**Off**, **Ready**, **Not ready**) and a **Details** link.
 
@@ -44,13 +45,13 @@ The same switch is in **Settings › Launching › Multi-Roblox**, with a pill (
 
 1. **Close every Roblox**, including the one in the system tray: press **Close all Roblox**.
 2. Only if Roblox starts with Windows: press **Turn off autostart** under **Stop Roblox from starting with Windows** (it then reads "Turned off ✓").
-3. Multi-Roblox turns on by itself and the light turns green.
+3. Multi-Roblox turns on by itself and the yellow light goes.
 
 Next time, open Bloxkeep before Roblox.
 
 ## Windowed and tile
 
-While Multi-Roblox is on, its details dialog has two switches:
+While Multi-Roblox is on, its details (click **Multi-Roblox** in the bar) have two switches:
 
 <img src="../screenshots/multi-help.png" width="760" alt="The Multi-Roblox dialog: Multi-Roblox is on, with the switches Always open Roblox windowed and Tile the windows after opening">
 
@@ -65,7 +66,7 @@ While Multi-Roblox is on, its details dialog has two switches:
 
 Find it under **Settings › Roblox version › Multi-Roblox check**. Bloxkeep checks each new Roblox build for changes that could stop Multi-Roblox, usually before the build reaches your PC.
 
-<img src="../screenshots/roblox-updates.png" width="760" alt="Settings, Roblox version and graphics: the Multi-Roblox check shows Changed, may be blocked, with a what-to-do note and the update history">
+<img src="../screenshots/roblox-updates.png" width="760" alt="Settings › Roblox version: the Roblox on this PC, Update automatically and when, the Multi-Roblox check with No change found for this build and the next one, and the update history">
 
 | Result | Meaning |
 |---|---|

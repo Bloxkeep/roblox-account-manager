@@ -6,7 +6,7 @@ Mọi trang của **Cài đặt**, mỗi trang một bảng gọn: từng dòng,
 
 <img src="../screenshots/vi/settings.png" width="760" alt="Cài đặt › Khởi chạy: Multi-Roblox, tên tài khoản trên cửa sổ, kích thước và kiểu xếp cửa sổ, launcher và thời gian chờ giữa các tài khoản">
 
-**Cài đặt** ở thanh bên liệt kê các trang ở bên trái. Ô **Tìm cài đặt** ở trên cùng (Ctrl+F khi đang ở Cài đặt) tìm các dòng trên mọi trang; nhấn Esc để xóa. Chấm đỏ cạnh tên trang nghĩa là có chỗ cần xem lại: Roblox đã đóng cửa sổ hoặc có cảnh báo Multi-Roblox (trang **Phiên bản Roblox**), hoặc Discord đã ngừng gửi (trang **Discord**). Dấu gạch (—) ở cột **Mặc định** nghĩa là dòng đó là một nút bấm hoặc chỉ hiện thông tin.
+**Cài đặt** (hình thanh trượt ở cuối thanh bên trái) liệt kê các trang theo ba nhóm: **Chơi game**, **Báo tin** và **Ứng dụng**. Ô **Tìm cài đặt** ở trên cùng (Ctrl+F khi đang ở Cài đặt) tìm các dòng trên mọi trang; nhấn Esc để xóa. Chấm đỏ cạnh tên trang nghĩa là có chỗ cần xem lại: Roblox đã đóng cửa sổ hoặc có cảnh báo Multi-Roblox (trang **Phiên bản Roblox**), hoặc Discord đã ngừng gửi (trang **Discord**). Dấu gạch (—) ở cột **Mặc định** nghĩa là dòng đó là một nút bấm hoặc chỉ hiện thông tin.
 
 ## Khởi chạy
 
@@ -94,7 +94,7 @@ Từng dòng được giải thích ở [Gửi lên Discord](discord.vi.md): **H
 
 ## Giao diện
 
-<img src="../screenshots/vi/themes.png" width="760" alt="Cùng một tab Tài khoản trong sáu chủ đề: Dark, City, Aurora, Sakura, Paper và Terminal">
+<img src="../screenshots/vi/themes.png" width="760" alt="Cài đặt › Giao diện: các theme theo nhóm, đang chọn Tối, Tuỳ biến theme này, ngôn ngữ và Ẩn tên tài khoản">
 
 | Dòng | Tác dụng | Mặc định |
 |---|---|---|
@@ -152,6 +152,6 @@ Chi tiết nằm ở [Sao lưu và bảo mật](backup-and-security.vi.md).
 | **Tặng Bloxkeep một sao trên GitHub › Mở GitHub** | Mở trang GitHub của Bloxkeep. | — |
 | **Quyền riêng tư › Tính vào số người đang dùng** | Khi Bloxkeep đang mở, vài phút app báo một lần (và một lần khi tắt) để người làm Bloxkeep biết có bao nhiêu người dùng, và mọi người xem được người dùng Bloxkeep đang chơi gì. App gửi một mã tạo từ máy này (không lần ngược ra được), phiên bản, ngôn ngữ, các game tài khoản của bạn đang ở, số cửa sổ đang chạy, vì sao một tài khoản bị văng và theme bạn chọn (cho nhóm **Phổ biến** ở Giao diện); không bao giờ gửi tài khoản. Máy này cũng hiện trên bảng **Treo nhiều alt nhất** ở **Thống kê**. Tắt đi thì app báo lần cuối là bạn đã rời, sau đó không gửi gì nữa. Xem [Những gì rời khỏi máy](backup-and-security.vi.md#những-gì-rời-khỏi-máy). | Bật |
 
-Khi bản cập nhật đã sẵn sàng, nút **Khởi động lại để cập nhật** hiện ở thanh bên. Roblox vẫn chạy bình thường trong lúc Bloxkeep khởi động lại, và mục **Có gì mới** cho biết những gì đã thay đổi. Các bản vá nhỏ giữa hai phiên bản cũng tự cài như vậy, không hiện nút hay **Có gì mới**, và số phiên bản giữ nguyên.
+Khi bản cập nhật đã sẵn sàng, nút **Khởi động lại để cập nhật** hiện ở thanh dưới cùng, kèm số phiên bản mới. Roblox vẫn chạy bình thường trong lúc Bloxkeep khởi động lại, và mục **Có gì mới** cho biết những gì đã thay đổi. Các bản vá nhỏ giữa hai phiên bản cũng tự cài như vậy, không hiện nút hay **Có gì mới**, và số phiên bản giữ nguyên.
 
 ← [Hướng dẫn](../guide.vi.md) · Tiếp: [Sao lưu và bảo mật](backup-and-security.vi.md) →

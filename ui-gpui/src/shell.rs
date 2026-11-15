@@ -1215,6 +1215,10 @@ impl Root {
             if self.settings.part == Part::Discord {
                 pages::settings::ensure_discord(self, window, cx);
             }
+            // BLOXKEEP_SHOT_SETSCROLL=<px>: the part scrolled down that far (to the bottom when it is shorter).
+            if let Some(y) = std::env::var("BLOXKEEP_SHOT_SETSCROLL").ok().and_then(|v| v.parse::<f32>().ok()) {
+                self.settings.scroll.set_offset(point(px(0.), px(-y)));
+            }
         }
         // BLOXKEEP_SHOT_STATS=1|7|30 (the period) or "activity"; BLOXKEEP_SHOT_OPEN=1: the first account's timeline open.
         #[cfg(feature = "shot")]

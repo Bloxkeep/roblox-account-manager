@@ -70,7 +70,8 @@ export const FEATURES = {
         'Windows notifications, and alerts on your phone through ntfy',
       ]],
       ['Games', [
-        'A Games tab with popular games\' wikis inside Bloxkeep: search, item tables, compare, recent buffs and nerfs',
+        'Roblox inside Bloxkeep, one tab per account: games, friends, avatar, profile, shop, inbox, inventory and settings',
+        'Popular games\' wikis on their game page: search, item tables, compare, recent buffs and nerfs',
         'Live news from the games\' own alerts, such as stock and spawns, with notifications for the words you pick',
         'Blox Fruits values',
       ]],
@@ -152,7 +153,8 @@ export const FEATURES = {
         'Thông báo của Windows, và cảnh báo trên điện thoại qua ntfy',
       ]],
       ['Game', [
-        'Tab Game có wiki của các game nổi tiếng ngay trong Bloxkeep: tìm kiếm, bảng vật phẩm, so sánh, buff và nerf mới',
+        'Roblox ngay trong Bloxkeep, mỗi tài khoản một tab: game, bạn bè, nhân vật, hồ sơ, cửa hàng, hộp thư, kho đồ và cài đặt',
+        'Wiki của các game nổi tiếng ngay trên trang game: tìm kiếm, bảng vật phẩm, so sánh, buff và nerf mới',
         'Tin trực tiếp từ kênh báo của chính game, như stock và spawn, báo cho bạn khi có từ bạn chọn',
         'Bảng giá Blox Fruits',
       ]],

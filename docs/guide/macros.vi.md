@@ -13,12 +13,12 @@ Bloxkeep đưa từng cửa sổ Roblox lên trước trong giây lát, gửi ph
 
 - Macro tạm dừng khi bạn dùng chuột hay bàn phím, khi có ứng dụng toàn màn hình và khi máy khóa, rồi tự chạy tiếp.
 - Phải tắt gõ tiếng Việt (Unikey và tương tự). Dòng của macro sẽ báo và chờ.
-- **Ctrl+Alt+0** dừng mọi macro, ở bất kỳ ứng dụng nào. **Khóa app** cũng dừng.
+- **Ctrl+Alt+0** dừng mọi macro, ở bất kỳ ứng dụng nào. Khóa Bloxkeep cũng dừng.
 - Bloxkeep không đọc bộ nhớ Roblox, không sửa file hay can thiệp vào Roblox. Nó chỉ nhìn cửa sổ, như bạn.
 
 ## Tạo macro
 
-1. Mở tab **Macro**, bấm **Thêm macro**: **Ghi thao tác**, **Từ mẫu có sẵn**, **Trống** hoặc **Nhập từ file**.
+1. Mở **Tự động › Macro**, bấm **Thêm macro**: **Ghi thao tác**, **Từ mẫu có sẵn**, **Trống** hoặc **Nhập từ file**.
 2. Mỗi bước là một câu. Bấm vào bước để mở và đổi giá trị ngay trong câu. **Thêm bước** mở danh sách tìm được (gõ "chờ"), các bước **Gần đây** ở trên cùng. Trỏ vào giữa hai bước rồi bấm **+** để thêm bước vào đó.
 3. Bấm **Chạy thử**: macro chạy một lần trên một cửa sổ và cho biết từng bước ra sao.
 4. Bấm **Lưu**, rồi **Chạy** ở dòng của macro. Dòng đó cho biết từng tài khoản đang làm gì.

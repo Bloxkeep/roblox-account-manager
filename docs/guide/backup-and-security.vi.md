@@ -25,7 +25,7 @@ Lần đầu mở, Bloxkeep yêu cầu **Đặt mật khẩu chủ**. Mọi th�
 > [!WARNING]
 > Mật khẩu chủ không lấy lại được. Bloxkeep không lưu nó ở đâu cả, nên quên là mất hết tài khoản đã lưu. Cách duy nhất để lấy lại là một bản sao lưu mà bạn còn nhớ mật khẩu.
 
-<img src="../screenshots/vi/lock.png" width="420" alt="Màn hình Chào mừng trở lại: ô Mật khẩu chủ và nút Mở khóa">
+<img src="../screenshots/vi/lock.png" width="760" alt="Màn hình Chào mừng trở lại: ô Mật khẩu chủ và nút Mở khóa">
 
 ## Sao lưu tự động
 

@@ -4,7 +4,7 @@
 
 Cách thêm tài khoản, đọc thẻ tài khoản, tìm và chọn tài khoản, và dùng menu của tài khoản.
 
-<img src="../screenshots/vi/accounts-list.png" width="760" alt="Tab Tài khoản ở dạng danh sách: các nút lọc kèm số đếm, ô tìm kiếm, Nhóm và Sắp xếp, mỗi tài khoản một dòng kèm trạng thái">
+<img src="../screenshots/vi/accounts-list.png" width="760" alt="Tab Tài khoản: các nút lọc kèm số đếm, Dạng thẻ hoặc danh sách, Theo dõi game, Sắp xếp, Cửa sổ và Chọn tất cả, rồi Cần xem, Đang mở trên máy này và Chưa mở trên máy này">
 
 ## Làm nhanh
 
@@ -44,36 +44,38 @@ Thêm một tài khoản đã có trong danh sách thì không bị trùng: Blox
 
 ## Thẻ tài khoản
 
-Nhãn ở góc thẻ là **Trên máy này** (Roblox đang mở cho tài khoản ở máy này; rê chuột lên để xem PID), **Đang mở**, **Bị ban** hoặc **Cần đăng nhập lại**. Chấm tròn ở avatar cho biết trạng thái, và dòng chữ dưới tên nói rõ hơn:
+Trang chia tài khoản làm ba phần: **Cần xem** (tài khoản cần đăng nhập lại, bị ban hay đang chờ vào lại, mỗi tài khoản một dòng kèm việc cần làm), **Đang mở trên máy này** (Roblox đang mở cho tài khoản ở máy này) và **Chưa mở trên máy này**.
 
-| Chấm | Chữ dưới tên | Nghĩa là |
-|---|---|---|
-| Xanh lá | **Đang chơi**, **Đang vào game**, **Đang chờ server**, **Server đầy, đang chờ**, **Đang dịch chuyển**, **Đang chơi · thiết bị khác** | Đang ở trong game hoặc đang vào, trên máy này hoặc thiết bị khác. **Server đầy** kèm vị trí trong hàng chờ nếu Roblox cho biết. |
-| Xanh dương | **Online**, **Roblox đang mở** · Chưa vào game, **Không vào được game** | Đang trên web hoặc app Roblox, hoặc Roblox đang ở màn hình chính trên máy này (sau một lần vào game không thành hoặc bỏ chờ thì ghi rõ như vậy). |
-| Cam | **Roblox Studio** | Đang làm game. |
-| Vàng | Chính lý do, như **Bị game kick** hay **Server đã tắt** | Cửa sổ vẫn mở nhưng đã ra khỏi server. Khi Roblox không ghi lý do thì hiện **Bị văng khỏi server** · **Chưa rõ lý do**. |
-| Xám | **Offline**, **Đã đăng xuất**, **Chưa rõ trạng thái** | Không hoạt động; Roblox đang mở ở máy này nhưng không còn đăng nhập tài khoản này; hoặc chưa tải xong. |
+Chấm tròn ở avatar cho biết trạng thái, và dòng chữ dưới tên nói rõ hơn, kèm game:
+
+| Chữ dưới tên | Nghĩa là |
+|---|---|
+| **Đang chơi**, **Đang vào game**, **Đang chờ server**, **Server đầy, đang chờ**, **Đang dịch chuyển**, **Đang chơi · thiết bị khác** | Đang ở trong game hoặc đang vào, trên máy này hoặc thiết bị khác. **Server đầy** kèm vị trí trong hàng chờ nếu Roblox cho biết. |
+| **Online**, **Roblox đang mở** · Chưa vào game, **Không vào được game** | Đang trên web hoặc app Roblox, hoặc Roblox đang ở màn hình chính trên máy này (sau một lần vào game không thành hoặc bỏ chờ thì ghi rõ như vậy). |
+| **Roblox Studio** | Đang làm game. |
+| Chính lý do, như **Bị kick vì AFK**, **Bị game kick** hay **Server đã tắt** | Cửa sổ vẫn mở nhưng đã ra khỏi server. Khi Roblox không ghi lý do thì hiện **Bị văng khỏi server** · **Chưa rõ lý do**. |
+| **Offline**, **Đã đăng xuất**, **Chưa rõ trạng thái** | Không hoạt động; Roblox đang mở ở máy này nhưng không còn đăng nhập tài khoản này; hoặc chưa tải xong. |
 
 Vòng đỏ quanh avatar nghĩa là **Cần đăng nhập lại** hoặc **Bị ban**. Khi Bloxkeep đang xử lý, bạn còn thấy **Đang mở Roblox…**, **Chờ vào lại · máy này** (bấm **Hủy** để thôi) và **Đang mở lại · máy này** (preset sắp mở lại cửa sổ theo lịch).
 
-<img src="../screenshots/vi/card-rejoin.png" width="760" alt="Các thẻ tài khoản: một thẻ chờ vào lại sau 5 phút kèm nút Hủy, một thẻ bị văng vì AFK, một thẻ cần đăng nhập lại, một thẻ bị ban">
+<img src="../screenshots/vi/card-rejoin.png" width="760" alt="Tab Tài khoản: trong Cần xem, một tài khoản cần đăng nhập lại và một tài khoản vào lại sau 5 phút kèm nút Hủy vào lại; trong Đang mở trên máy này, một tài khoản bị kick vì AFK kèm nút Vào lại">
 
-Dòng phía trên các nút hiện số **Robux** của tài khoản (**R$ 1.234**), Bloxkeep đọc bằng chính đăng nhập của tài khoản đó 30 phút một lần và chỉ lưu trên máy này. Tài khoản đang mở trên máy này còn hiện **RAM đang dùng**, **Thời gian đã chơi** và **PID** (bấm để sao chép). Các nút là **Vào game** (đổi thành **Đóng** khi đang mở, **Hủy** khi đang chờ vào lại, **Đăng nhập** khi cần đăng nhập lại), **Sửa (F2)** và **⋯ Tùy chọn khác**. Trạng thái tự làm mới mỗi 30 giây; bấm **Làm mới trạng thái online** để làm mới ngay.
+Con số ở góc phải trên của thẻ là **Robux** của tài khoản, Bloxkeep đọc bằng chính đăng nhập của tài khoản đó 30 phút một lần và chỉ lưu trên máy này. Các nút là **Vào game** (đổi thành **Đóng** khi đang mở, **Vào lại** khi bị văng, **Hủy vào lại** khi đang chờ vào lại, **Đăng nhập** khi cần đăng nhập lại, **Kháng cáo** khi bị ban), ☆ để đặt làm [tài khoản chính](#menu-của-tài-khoản), ✏ **Sửa (F2)** và ⋮ để mở menu của tài khoản. Trạng thái tự làm mới mỗi 30 giây; bấm **Làm mới trạng thái online** để làm mới ngay.
 
 ## Chọn, tìm và sắp xếp
 
 - **Bấm** vào thẻ để chọn, bấm lần nữa để bỏ chọn. **Shift + bấm** chọn liền một dãy. **Bấm đúp** để vào game riêng tài khoản đó.
-- **Ctrl+A** hoặc **Chọn tất cả** chọn mọi tài khoản đang hiện. **Esc** hoặc **Bỏ chọn** bỏ chọn hết.
+- **Ctrl+A** hoặc **Chọn tất cả** chọn mọi tài khoản đang hiện. **Esc** hoặc dấu ✕ trên thanh dưới cùng bỏ chọn hết.
 - **Tìm** (Ctrl+F) theo tên, tên đăng nhập (gõ `@tên` cũng được), tên gợi nhớ, nhóm, ghi chú, game đang chơi và ID người dùng. Không cần gõ dấu.
 - **Bộ lọc** có kèm số đếm: **Tất cả**, **Cần đăng nhập lại** và **Bị ban** (chỉ hiện khi có tài khoản như vậy), **Đang chơi**, **Online**, **Offline**, **Trên máy này**.
 - **Nhóm** hiện ra khi có tài khoản được xếp nhóm (đặt ở **Sửa › Nhóm**). **Sắp xếp**: **Tên**, **Trạng thái**, **Chơi gần đây**, **Thứ tự mở**.
-- **Dạng thẻ** / **Dạng danh sách** đổi kiểu xem. Kiểu xem và cách sắp xếp được nhớ lại.
+- **Dạng thẻ** / **Dạng danh sách** đổi kiểu xem, còn **Theo dõi game** cho xem chính các cửa sổ Roblox ([Cửa sổ và thống kê](windows-and-stats.vi.md#theo-dõi-game)). Kiểu xem và cách sắp xếp được nhớ lại.
 
 Nếu ô tìm kiếm hay bộ lọc đang che bớt tài khoản đã chọn, đầu trang ghi rõ số bị ẩn. **Vào game** và **Xóa** vẫn tính cả chúng.
 
 ## Menu của tài khoản
 
-Mở bằng **⋯ Tùy chọn khác** trên thẻ, hoặc bấm chuột phải vào tài khoản. Nếu tài khoản chưa được chọn, menu chỉ áp dụng cho riêng tài khoản đó và không đổi các tài khoản bạn đang chọn; nếu nó nằm trong nhóm đang chọn, menu áp dụng cho mọi tài khoản đã chọn.
+Mở bằng ⋮ trên thẻ, hoặc bấm chuột phải vào tài khoản. Nếu tài khoản chưa được chọn, menu chỉ áp dụng cho riêng tài khoản đó và không đổi các tài khoản bạn đang chọn; nếu nó nằm trong nhóm đang chọn, menu áp dụng cho mọi tài khoản đã chọn.
 
 <img src="../screenshots/vi/account-menu.png" width="760" alt="Menu của tài khoản mở trên một thẻ: Vào game, Mở Roblox, Đóng Roblox, Buộc tắt, Sửa, Kiểm tra đăng nhập, Vào cùng server, Tự vào lại game, Trang cá nhân Roblox, Mở trang web, các mục Sao chép và Xóa">
 
@@ -85,8 +87,8 @@ Mở bằng **⋯ Tùy chọn khác** trên thẻ, hoặc bấm chuột phải v
 | **Buộc tắt** | Tắt Roblox ngay, dùng khi cửa sổ bị treo. Những gì chưa lưu trong game sẽ mất. | Giống **Đóng Roblox**. |
 | **Sửa…** (F2) | Tên gợi nhớ, nhóm, mật khẩu, khóa app xác thực, ghi chú. | Đang chọn nhiều tài khoản. |
 | **Kiểm tra đăng nhập** | Kiểm tra phiên đăng nhập đã lưu và xem Roblox có báo bị ban không. | — |
-| **Vào cùng server** | Đưa game và server (Job ID) của tài khoản này vào thanh chọn game; chọn các tài khoản khác rồi bấm **Vào game** để vào chung. | Đang chọn nhiều tài khoản, hoặc không biết server. |
-| **Ẩn cửa sổ Roblox** / **Hiện cửa sổ Roblox** | Ẩn cửa sổ và nút của nó trên thanh tác vụ, game vẫn chạy (tự vào lại và chống AFK cũng vậy). Thẻ của cửa sổ đang ẩn có hình con mắt trước PID: bấm vào để hiện lại. Nút **Cửa sổ** ở thanh dưới ẩn hoặc hiện tất cả; Ctrl+Alt+H cũng vậy. Bloxkeep tự hiện lại hết khi tắt. | Không tài khoản nào đang chơi trên máy này. |
+| **Vào cùng server** | Đưa game và server (Job ID) của tài khoản này vào thanh dưới cùng của tab Tài khoản; chọn các tài khoản khác rồi bấm **Vào game** để vào chung. | Đang chọn nhiều tài khoản, hoặc không biết server. |
+| **Ẩn cửa sổ Roblox** / **Hiện cửa sổ Roblox** | Ẩn cửa sổ và nút của nó trên thanh tác vụ, game vẫn chạy (tự vào lại và chống AFK cũng vậy). Nút **Cửa sổ** ở đầu trang ẩn hoặc hiện tất cả; Ctrl+Alt+H cũng vậy. Bloxkeep tự hiện lại hết khi tắt. | Không tài khoản nào đang chơi trên máy này. |
 | **Sang server khác** | Đóng cửa sổ rồi mở lại vào một server khác còn chỗ của cùng game. Các tài khoản cùng game đổi một lượt sẽ vào chung một server. | Không tài khoản nào đang chọn đang chơi ở server công khai trên máy này. |
 | **Xác minh không phải bot** | Chỉ hiện khi thẻ ghi **Roblox đòi xác minh không phải bot**: hiện bước xác minh của Roblox trong cửa sổ của Bloxkeep, rồi mở lại cửa sổ vào game khi Roblox cho vào. | — |
 | **Tự vào lại** | Bật hoặc tắt tự vào lại game cho các tài khoản này. | — |
@@ -96,12 +98,13 @@ Mở bằng **⋯ Tùy chọn khác** trên thẻ, hoặc bấm chuột phải v
 | **Kết bạn với nhau** | Các tài khoản đang chọn kết bạn Roblox với nhau. Nếu Roblox đòi kiểm tra, ô kiểm tra sẽ hiện ra để bạn giải. | Chỉ hiện khi chọn nhiều tài khoản; bị mờ khi có ít hơn hai tài khoản còn đăng nhập (không tính Roblox VNG). |
 | **Trang cá nhân Roblox** | Mở trang cá nhân trên roblox.com bằng trình duyệt của bạn. | Đang chọn nhiều tài khoản, hoặc không có ID người dùng. |
 | **Mở trang web** | Mở roblox.com với tài khoản này đã đăng nhập sẵn, trong cửa sổ trình duyệt của Bloxkeep. | Đang chọn nhiều tài khoản, hoặc là tài khoản Roblox VNG. |
+| **Tình trạng tài khoản** | Mở trang tình trạng tài khoản của Roblox (Vi phạm và kháng cáo) đã đăng nhập sẵn tài khoản này, trong cửa sổ trình duyệt của Bloxkeep. | Đang chọn nhiều tài khoản. |
 | **Sao chép tên đăng nhập** | Sao chép tên đăng nhập. | Đang chọn nhiều tài khoản. |
 | **Sao chép mật khẩu** | Sao chép mật khẩu đã lưu. | Đang chọn nhiều tài khoản. Chưa lưu mật khẩu thì app giải thích lý do. |
 | **Sao chép mã 2FA** | Sao chép mã 6 số hiện tại. | Đang chọn nhiều tài khoản. Chưa lưu khóa thì app giải thích lý do. |
 | **Xóa** / **Xóa N tài khoản** (Del) | Xóa tài khoản khỏi Bloxkeep sau khi hỏi lại. Không thể hoàn tác. | — |
 
-Menu **⋯ Tùy chọn khác** ở đầu trang có **Kiểm tra đăng nhập mọi tài khoản**, **Chọn tất cả**, **Xếp cửa sổ Roblox**, **Thứ tự mở tài khoản…** (cần từ 2 tài khoản; xem [Vào game](playing.vi.md#thứ-tự-mở-tài-khoản)), **Đóng tất cả Roblox**, **Buộc tắt tất cả Roblox** và **Hướng dẫn sử dụng**.
+Menu ⋮ ở đầu trang có **Kiểm tra đăng nhập mọi tài khoản**, **Thứ tự mở tài khoản…** (cần từ 2 tài khoản; xem [Vào game](playing.vi.md#thứ-tự-mở-tài-khoản)), **Đóng tất cả Roblox**, **Buộc tắt tất cả Roblox** và **Hướng dẫn sử dụng**. Nút **Cửa sổ** bên cạnh có **Chỉ mở Roblox**, ẩn hoặc hiện mọi cửa sổ Roblox, và các kiểu xếp cửa sổ ([Cửa sổ và thống kê](windows-and-stats.vi.md#xếp-cửa-sổ)).
 
 ## Sao chép mật khẩu và mã 2FA
 
@@ -124,7 +127,7 @@ Bloxkeep không giữ lại mật khẩu bạn dùng để đăng nhập. Nếu 
 | **Cần đăng nhập lại** | Roblox đã kết thúc phiên đăng nhập đã lưu: đổi mật khẩu, đăng xuất mọi phiên, hoặc một đợt kiểm tra bảo mật. | Bấm **Đăng nhập** trên thẻ và xác nhận bằng điện thoại, hoặc thêm lại tài khoản bằng cách bất kỳ (chỉ cập nhật, không tạo bản trùng). |
 | **Bị ban** | Thông tin công khai của Roblox cho biết như vậy; app đọc nó lúc kiểm tra đăng nhập. | Nút của thẻ là **Kháng cáo**: mở trang kháng cáo của Roblox trong trình duyệt của Bloxkeep, đã đăng nhập sẵn tài khoản đó (chỉ chính nó kháng cáo được). **Vào game** và preset bỏ qua tài khoản này, tự vào lại game cũng không mở lại. Hết ban thì **⋯ › Kiểm tra đăng nhập** sẽ xóa nhãn. |
 
-Bộ lọc **Cần đăng nhập lại** gom hết các tài khoản này. **Kiểm tra đăng nhập mỗi ngày** phát hiện trước khi bạn bấm **Vào game** ([Giữ tài khoản trong game](staying-in-game.vi.md)). Muốn kiểm tra ngay, dùng **⋯ › Kiểm tra đăng nhập** trên một tài khoản, hoặc **⋯ Tùy chọn khác › Kiểm tra đăng nhập mọi tài khoản**.
+Bộ lọc **Cần đăng nhập lại** gom hết các tài khoản này. **Kiểm tra đăng nhập mỗi ngày** phát hiện trước khi bạn bấm **Vào game** ([Giữ tài khoản trong game](staying-in-game.vi.md)). Muốn kiểm tra ngay, dùng **⋯ › Kiểm tra đăng nhập** trên một tài khoản, hoặc **⋮ › Kiểm tra đăng nhập mọi tài khoản** ở đầu trang.
 
 ## Nhập từ file Bloxkeep khác
 

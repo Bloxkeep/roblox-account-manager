@@ -2,15 +2,15 @@
 
 # Multi-Roblox
 
-Cách cho nhiều tài khoản chơi cùng lúc, thẻ Multi-Roblox ở thanh bên đang báo gì, và chương trình nào dùng để mở Roblox.
+Cách cho nhiều tài khoản chơi cùng lúc, Multi-Roblox ở thanh dưới cùng đang báo gì, và chương trình nào dùng để mở Roblox.
 
 <img src="../screenshots/multi-roblox-real.jpg" width="760" alt="Ảnh chụp thật trên một máy Windows: sáu cửa sổ Roblox mở cùng lúc, được Bloxkeep xếp cạnh nhau, cùng ở trong một game, tiêu đề từ Roblox - Account 1 đến Roblox - Account 7">
 
 ## Làm nhanh
 
 1. Mở Bloxkeep trước Roblox. Nếu Roblox đã mở sẵn, bấm **Đóng tất cả Roblox**.
-2. Bật công tắc **Multi-Roblox** ở cuối thanh bên (dưới **Roblox trên máy này**), rồi xác nhận **Bật Multi-Roblox?**.
-3. Kiểm tra đèn đã xanh và ghi **Đang bật**.
+2. Bật công tắc **Multi-Roblox** ở đầu bên phải thanh dưới cùng, rồi xác nhận **Bật Multi-Roblox?**.
+3. Kiểm tra cạnh chữ **Multi-Roblox** không có đèn vàng (rê chuột lên: "Đang bật: mở được nhiều cửa sổ Roblox").
 4. Chọn các tài khoản rồi bấm **Vào game**. Đừng tắt Bloxkeep trong lúc chơi (chạy ẩn dưới khay hệ thống thì được).
 
 Bạn cũng có thể bấm **Vào game** khi Multi-Roblox đang tắt: hộp thoại **Lưu ý trước khi mở** có nút **Bật Multi-Roblox rồi chơi**.
@@ -26,17 +26,18 @@ Roblox dùng một cái khóa để chỉ cho chạy một cửa sổ. Bloxkeep 
 > [!WARNING]
 > Roblox không chính thức hỗ trợ chạy nhiều client, nên bạn tự chịu rủi ro khi dùng Multi-Roblox.
 
-## Thẻ Multi-Roblox ở thanh bên
+## Ở thanh dưới cùng
 
-| Đèn | Chữ | Nghĩa là | Bấm vào chữ |
-|---|---|---|---|
-| Xám | **Đang tắt** | Multi-Roblox đang tắt. | Mở phần chi tiết. |
-| Xanh | **Đang bật** | Đang chạy tốt: mở được nhiều cửa sổ Roblox. | Mở phần chi tiết. |
-| Vàng | **Chưa chạy được** | Roblox đã mở từ trước khi bật Multi-Roblox. | Mở phần chi tiết kèm cách sửa. |
-| Vàng | **Roblox đã đóng cửa sổ** | Roblox đã đóng một cửa sổ khi cửa sổ khác mở ra. | Mở **Cài đặt › Phiên bản Roblox**. |
-| Vàng | **Bản Roblox mới có thể chặn, bấm để xem** | Kiểm tra Multi-Roblox thấy bản Roblox có thay đổi. | Mở **Cài đặt › Phiên bản Roblox**. |
+Chữ **Multi-Roblox** và công tắc của nó nằm ở đầu bên phải thanh dưới cùng, trang nào cũng có.
 
-Rê chuột lên chữ để xem giải thích.
+| Bạn thấy | Nghĩa là | Bấm vào chữ **Multi-Roblox** |
+|---|---|---|
+| Công tắc tắt | Đang tắt: mỗi lần chỉ mở một cửa sổ Roblox. | Mở phần chi tiết. |
+| Công tắc bật, không có đèn | Đang bật: mở được nhiều cửa sổ Roblox. | Mở phần chi tiết. |
+| Công tắc bật, có đèn vàng | Chưa chạy được: Roblox đã mở từ trước khi bật Multi-Roblox. | Mở phần chi tiết kèm cách sửa. |
+| Chữ **Multi-Roblox** màu vàng | Roblox đã đóng một cửa sổ khi cửa sổ khác mở ra, hoặc kiểm tra Multi-Roblox thấy bản Roblox sắp tới có thay đổi. | Mở **Cài đặt › Phiên bản Roblox**. |
+
+Rê chuột lên chữ **Multi-Roblox** để xem giải thích.
 
 Công tắc này cũng có ở **Cài đặt › Khởi chạy › Multi-Roblox**, kèm nhãn trạng thái (**Tắt**, **Sẵn sàng**, **Chưa sẵn sàng**) và link **Chi tiết**.
 
@@ -44,13 +45,13 @@ Công tắc này cũng có ở **Cài đặt › Khởi chạy › Multi-Roblox*
 
 1. **Đóng hết Roblox**, kể cả Roblox ở khay hệ thống: bấm **Đóng tất cả Roblox**.
 2. Chỉ khi Roblox tự chạy cùng Windows: bấm **Tắt tự khởi động** ở dòng **Không cho Roblox tự chạy cùng Windows** (nút đổi thành "Đã tắt ✓").
-3. Multi-Roblox sẽ tự bật và đèn chuyển xanh.
+3. Multi-Roblox sẽ tự bật và đèn vàng tắt đi.
 
 Lần sau nhớ mở Bloxkeep trước Roblox.
 
 ## Chế độ cửa sổ và xếp cửa sổ
 
-Khi Multi-Roblox đang bật, phần chi tiết có hai công tắc:
+Khi Multi-Roblox đang bật, phần chi tiết (bấm chữ **Multi-Roblox** ở thanh dưới) có hai công tắc:
 
 <img src="../screenshots/vi/multi-help.png" width="760" alt="Hộp thoại Multi-Roblox: Multi-Roblox đang bật, với hai công tắc Luôn mở Roblox ở chế độ cửa sổ và Xếp các cửa sổ cạnh nhau sau khi mở">
 
@@ -65,7 +66,7 @@ Nút **Tắt Multi-Roblox** ở cuối hộp thoại để tắt tính năng.
 
 Nằm ở **Cài đặt › Phiên bản Roblox › Kiểm tra Multi-Roblox**. Mỗi khi Roblox có bản mới, Bloxkeep xem bản đó có thay đổi gì làm Multi-Roblox ngừng chạy không, thường là trước khi bản đó về máy bạn.
 
-<img src="../screenshots/vi/roblox-updates.png" width="760" alt="Cài đặt, trang Phiên bản và đồ họa Roblox: Kiểm tra Multi-Roblox báo Có thay đổi, có thể bị chặn, kèm dòng ghi chú nên làm gì và lịch sử cập nhật">
+<img src="../screenshots/vi/roblox-updates.png" width="760" alt="Cài đặt › Phiên bản Roblox: Roblox trên máy, tự cập nhật và lúc nào, Kiểm tra Multi-Roblox báo Không có thay đổi cho bản này và bản sắp ra, cùng lịch sử cập nhật">
 
 | Kết quả | Nghĩa là |
 |---|---|

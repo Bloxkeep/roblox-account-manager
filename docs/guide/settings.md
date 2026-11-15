@@ -6,7 +6,7 @@ Every page of **Settings** as one compact table: each row, what it does and its 
 
 <img src="../screenshots/settings.png" width="760" alt="Settings › Launching: Multi-Roblox, account names on windows, window size and layout, the launcher and the wait between accounts">
 
-**Settings** in the sidebar lists its pages on the left. **Search settings** at the top (Ctrl+F while in Settings) finds rows on every page; Esc clears it. A red dot on a page means it needs a look: Roblox closed windows or a Multi-Roblox warning (**Roblox version**), or Discord stopped sending (**Discord**). A dash (—) under **Default** means the row is a button or only shows information.
+**Settings** (the sliders at the bottom of the bar on the left) lists its pages in three groups, **Playing**, **Alerts** and **App**. **Search settings** at the top (Ctrl+F while in Settings) finds rows on every page; Esc clears it. A red dot on a page means it needs a look: Roblox closed windows or a Multi-Roblox warning (**Roblox version**), or Discord stopped sending (**Discord**). A dash (—) under **Default** means the row is a button or only shows information.
 
 ## Launching
 
@@ -94,7 +94,7 @@ Every row is explained in [Sending to Discord](discord.md): **Show on my Discord
 
 ## Appearance
 
-<img src="../screenshots/themes.png" width="760" alt="The same Accounts tab in six themes: Dark, City, Aurora, Sakura, Paper and Terminal">
+<img src="../screenshots/themes.png" width="760" alt="Settings › Appearance: the themes in groups (Popular, Basic, Scenery, Colorful and more) with Dark picked, Make it yours, the language and Hide account names">
 
 | Row | What it does | Default |
 |---|---|---|
@@ -152,6 +152,6 @@ Details are in [Backup and security](backup-and-security.md).
 | **Star Bloxkeep on GitHub › Open GitHub** | Opens Bloxkeep's GitHub page. | — |
 | **Privacy › Add me to the online count** | While Bloxkeep is open, it reports in every few minutes (and once as it closes) so its maker sees how many use it, and everyone sees what Bloxkeep users play. It sends a code made from this PC (it can't be traced back), the version, the language, the games your accounts are in, how many run, why one dropped out and the theme you picked (for **Popular** in Appearance); never an account. It also puts this PC on the **Most alts now** board in **Statistics**. Off: one last note that you've gone, nothing after. See [What leaves the PC](backup-and-security.md#what-leaves-the-pc). | On |
 
-When an update is ready, **Restart to update** shows in the sidebar. Roblox keeps running while Bloxkeep restarts, and **What's new** then shows what changed. Small fixes between versions install by themselves the same way, without the button or **What's new**, and the version number stays the same.
+When an update is ready, **Restart to update** shows in the bar at the bottom, with the version it brings. Roblox keeps running while Bloxkeep restarts, and **What's new** then shows what changed. Small fixes between versions install by themselves the same way, without the button or **What's new**, and the version number stays the same.
 
 ← [User guide](../guide.md) · Next: [Backup and security](backup-and-security.md) →

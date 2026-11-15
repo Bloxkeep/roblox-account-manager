@@ -1,13 +1,12 @@
 // Builds Bloxkeep's website into site/dist for GitHub Pages (https://bloxkeep.github.io/roblox-account-manager/): the landing
 // page (pages.mjs) and the user guide made from docs/guide.md and docs/guide/*.md, in English and Vietnamese, with the
-// screenshots, a sitemap and robots.txt, and the try-it page (demo.mjs: the app's real interface on made-up accounts). The guide's Markdown stays the one source: the site is rebuilt from it on every
+// screenshots, a sitemap and robots.txt. The guide's Markdown stays the one source: the site is rebuilt from it on every
 // push (.github/workflows/pages.yml). Run: npm ci && node build.mjs, then serve site/dist.
 import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { Marked } from 'marked';
 import { SITE, REPO, DOWNLOAD, DISCORD, DISCORD_MARK, TOPICS, T, landing, whatsNew } from './pages.mjs';
-import { buildDemo } from './demo.mjs';
 
 const HERE = import.meta.dirname;
 const ROOT = path.resolve(HERE, '..');
@@ -133,7 +132,6 @@ ${jsonLd ? `<script type="application/ld+json">${JSON.stringify(jsonLd)}</script
     <a class="brand" href="${rel(url, home)}"><img src="${rel(url, 'logo.svg')}" width="28" height="28" alt=""><span>Bloxkeep</span></a>
     <nav>
       <a href="${rel(url, guide)}">${t.nav.guide}</a>
-      <a class="nav-demo" href="${rel(url, home + 'demo/')}">${t.nav.demo}</a>
       <a class="nav-news" href="${rel(url, home + 'whats-new/')}">${t.nav.news}</a>
       <a class="nav-discord" href="${DISCORD}"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="${DISCORD_MARK}"/></svg>${t.nav.discord}</a>
       <a class="nav-github" href="${REPO}">GitHub</a>
@@ -155,7 +153,6 @@ ${foot ? `<footer class="foot">
       </div>
       <div><p class="foot-head">${t.foot.get}</p><ul>
         <li><a href="${rel(url, home)}#download">${t.foot.download}</a></li>
-        <li><a href="${rel(url, home + 'demo/')}">${t.nav.demo}</a></li>
         <li><a href="${rel(url, home + 'whats-new/')}">${t.nav.news}</a></li>
         <li><a href="${REPO}/releases">${t.foot.releases}</a></li>
       </ul></div>
@@ -208,14 +205,9 @@ for (const lang of ['en', 'vi']) {
   }));
   urls.push([home + 'whats-new/', other + 'whats-new/']);
 
-  // Try it: the real interface on made-up accounts (demo.mjs), in a frame filling the window under a bar that says so.
-  const d = t.demo, demo = home + 'demo/';
-  write(demo, page({
-    lang, url: demo, alt: other + 'demo/', title: `${d.title} · Bloxkeep`, description: d.description, bodyClass: 'demo', foot: false,
-    body: `<div class="demo-bar"><div class="wrap top-in demo-bar-in"><p>${esc(d.bar)} <span class="demo-small">${esc(d.small)}</span></p><a class="btn small" href="${DOWNLOAD}">${esc(d.download)}</a></div></div>
-<div class="demo-frame"><iframe src="${rel(demo, 'demo/app/')}?lang=${lang}" title="${esc(d.frame)}"></iframe></div>`,
-  }));
-  urls.push([demo, other + 'demo/']);
+  // (No try-it page since 1.1: the app is drawn by GPUI and no longer runs in a browser; the old web page would show an
+  // interface that is gone. Its old address leads home, so links to it don't end on a missing page.)
+  write(home + 'demo/', `<!doctype html><meta charset="utf-8"><meta name="robots" content="noindex"><meta http-equiv="refresh" content="0; url=../"><link rel="canonical" href="${SITE}${home}"><a href="../">Bloxkeep</a>\n`);
 
   // The guide's front page, then one page per topic.
   const index = guideHtml(path.join(DOCS, `guide${suffix}.md`), home + 'guide/', lang);
@@ -273,6 +265,5 @@ fs.copyFileSync(path.join(DOCS, 'brand', 'social-preview.png'), path.join(OUT, '
 fs.copyFileSync(path.join(DOCS, 'brand', 'bloxkeep.png'), path.join(OUT, 'icon-128.png'));
 fs.copyFileSync(path.join(HERE, 'style.css'), path.join(OUT, 'style.css'));
 fs.cpSync(path.join(HERE, 'static'), OUT, { recursive: true });
-buildDemo(ROOT, OUT);
 
 console.log(`Built ${urls.length} pages (Bloxkeep ${version}) into ${path.relative(ROOT, OUT)}`);

@@ -13,12 +13,12 @@ Bloxkeep brings each Roblox window to the front for a moment, sends the keys and
 
 - It pauses while you use the mouse or keyboard, while a full-screen app is in front and while the PC is locked, then carries on by itself.
 - Vietnamese typing (Unikey and similar) must be off. The macro's line says so and waits.
-- **Ctrl+Alt+0** stops every macro, from any app. **Lock app** stops them too.
+- **Ctrl+Alt+0** stops every macro, from any app. Locking Bloxkeep stops them too.
 - Bloxkeep doesn't read Roblox's memory, change its files or hook into it. It only sees the window, like you do.
 
 ## Make one
 
-1. Open the **Macros** tab and press **New macro**: **Record**, **From a template**, **Blank** or **Import file**.
+1. Open **Automation › Macros** and press **New macro**: **Record**, **From a template**, **Blank** or **Import file**.
 2. Steps read as sentences. Click one to open it and change its values in place. **Add step** opens a list you can search (type "wait"), with your **Recent** steps on top. Point between two steps and press **+** to add one there.
 3. Press **Try it**: the macro runs once on one window and says what happened, step by step.
 4. Press **Save**, then **Run** on its row. The row's line says what each account is doing.

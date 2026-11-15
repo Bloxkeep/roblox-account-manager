@@ -10,11 +10,11 @@ Roblox normally allows one window on a PC: opening a second one closes the first
 
 1. [Download Bloxkeep](https://github.com/Bloxkeep/roblox-account-manager/releases/latest), run `Bloxkeep-Setup.exe`, and set a master password.
 2. Click **Add account** and sign in to each Roblox account.
-3. If Roblox is already open, press **Close all Roblox**. Then turn on the **Multi-Roblox** switch at the bottom of the sidebar.
+3. If Roblox is already open, press **Close all Roblox**. Then turn on the **Multi-Roblox** switch at the right end of the bar at the bottom.
 4. Check that the light is green and it says **On**.
 5. Pick a game, select your accounts and press **Play**. Keep Bloxkeep open while you play (the tray is fine).
 
-<img src="../screenshots/hero.png" width="760" alt="Bloxkeep's main window: account cards, the game bar at the bottom, Multi-Roblox on in the sidebar">
+<img src="../screenshots/hero.png" width="760" alt="Bloxkeep's Home: the game being played at the top, your games and presets below, accounts on the right, Multi-Roblox on in the bar at the bottom">
 
 > [!WARNING]
 > Roblox doesn't officially support running several clients, so use Multi-Roblox at your own risk. Some games also have their own rules about alt accounts.

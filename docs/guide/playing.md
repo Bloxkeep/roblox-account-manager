@@ -2,31 +2,33 @@
 
 # Playing
 
-How to pick a game and a server, open Roblox for your accounts, and use Bloxkeep's browser window for roblox.com.
+How to pick a game and a server, open Roblox for your accounts, and find your way around the Roblox tab.
 
-<img src="../screenshots/game-picker.png" width="760" alt="The game list open above the game bar, with the tabs Recent, Pinned, Roblox favorites and Popular">
+<img src="../screenshots/game-picker.png" width="760" alt="Accounts with one account selected: the bar at the bottom with its game box, and the game list open above it with the tabs Recent, Pinned, Saved, Roblox favorites and Popular">
 
 ## Quick steps
 
-1. Click the game box at the bottom (**1 Game**) and type a game's name, a Place ID or a link. Pick the game from the list.
-2. To land in one exact server, use **2 Server** (optional): a Job ID, **Browse servers** or **Join a player…**.
-3. On the **Accounts** tab, select the accounts you want to open, then press **Play** (**3 Go**). It shows how many accounts will open.
-4. If Bloxkeep asks **Before you open**, read it and press **Open anyway**.
+1. On **Accounts**, click the accounts you want to open. A bar comes up at the bottom: **2 accounts selected**.
+2. In its game box, type a game's name, a Place ID or a link, and pick the game. The arrow beside the box opens the game list.
+3. To land in one exact server (optional): **Job ID**, **Browse servers** or **Follow a player…**.
+4. Press **Play**. If Bloxkeep asks **Before you open**, read it and press **Open anyway**.
 5. To stop opening early, press **Stop**. To close Roblox, press **Close**.
 
-Until Bloxkeep has opened an account once, a **Get started** line over the list shows these steps (add an account, pick a game, select accounts and press **Play**) and ticks each one off as you do it.
+Or start from the game: open it from **Home** or the **Roblox** tab, press **Play**, tick the accounts under **Which accounts?** and press **Join**.
 
-## The game bar
+Until Bloxkeep has opened an account once, **Get started** on Home and Accounts shows these steps (add an account, pick a game, select accounts and press **Play**) and ticks each one off as you do it.
 
-The bar at the bottom of **Accounts** goes in three numbered steps, left to right:
+## The bar at the bottom of Accounts
 
-| Step | What it holds |
+It shows while accounts are selected; ✕ unselects them all and puts it away.
+
+<img src="../screenshots/game-bar.png" width="760" alt="The bar at the bottom of Accounts: 2 accounts selected, Close, Follow a player, Presets, then Blox Fruits in the game box, Job ID, Browse servers, recent games and Play">
+
+| Part | What it holds |
 |---|---|
-| **1 Game** | The game picture (**Choose a game**), the game box, and under it the game found and recent games. |
-| **2 Server** (optional) | The **Job ID** box, **Browse servers** and **Join a player…**. |
-| **3 Go** | **Play**, and under it **Presets**, **Close** and **Windows** (**Open Roblox only**, **Arrange Roblox windows**). |
-
-Every button has its name on it. In the smallest windows the step captions are left out.
+| Top row | The selected accounts' faces and how many, **Close** (with how many of them are open), **Follow a player…**, **Presets** and ⋮. |
+| Game row | The game's picture, the arrow for the game list, **Save server**, the game box, **Job ID**, **Browse servers**, recent games as pictures, and **Play**. |
+| Under the box | The game found and its maker, or a hint of what to do next. |
 
 The game box ("Search a game, or paste a link / Place ID…", Ctrl+L or `/`) takes:
 
@@ -38,50 +40,69 @@ The game box ("Search a game, or paste a link / Place ID…", Ctrl+L or `/`) tak
 | A private server share link | `roblox.com/share?…type=Server` |
 | A `roblox://` link | |
 
-Under the box you see the game's name, its creator and how many are playing. A private server shows **Private server**, a game with a Job ID shows **Specific server**, and a share link shows "Private server link — Bloxkeep opens this link when you join." Up to three recent games show as shortcuts; ✕ removes one.
+A private server shows **Private server**, a game with a Job ID shows **Specific server**, and a share link shows "Private server link — Bloxkeep opens this link when you join." Click a recent game's picture to put it back in the box.
 
-**Choosing from the list**: click the game picture, or click the empty game box. The tabs are **Recent**, **Pinned**, **Roblox favorites** (games your accounts favorited on Roblox) and **Popular** (when available). Click ☆ to pin a game.
+**The game list**: the arrow beside the box, or a click in the empty box. The tabs are **Recent**, **Pinned**, **Saved** (see [Saved servers](#saved-servers)), **Roblox favorites** (games your accounts favorited on Roblox) and **Popular** (when available). Click ☆ to pin a game, ✕ to take one off Recent.
 
-**Job ID** (step 2, optional) is the ID of one exact server (`xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`), so several accounts land together. Changing to another game clears a Job ID left from the previous one. Enter in this box presses **Play**.
+**Job ID** (optional) is the ID of one exact server (`xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`), so several accounts land together. Changing to another game clears a Job ID left from the previous one. Enter in this box presses **Play**.
 
 > [!TIP]
 > To put several accounts in one server, pick it under **Browse servers** (**Use**), or use **Join this server** on an account already there. Then select the others and press **Play**.
 
+## The Roblox tab
+
+**Roblox** in the bar on the left (Roblox's own mark) is Roblox inside Bloxkeep. Each account gets a tab of its own along the top: **+** adds one, so you can look at Roblox as any of your accounts without signing in anywhere.
+
+<img src="../screenshots/games.png" width="760" alt="The Roblox tab: Keep playing with Blox Fruits large, the games played lately beside it, Roblox charts below, and the row of pages at the top">
+
+The row at the top switches between its pages:
+
+| Page | What it has |
+|---|---|
+| **Games** | **Keep playing** (the games your accounts play, the one being played first), **Roblox charts**, and **Search Roblox games** at the top right, which finds games as you type, even short names (gpo, ps99) or a typo. |
+| **Friends** | The account's friends and where each is now (in a game, online, offline), **Join** for a friend whose server Roblox shows, friend requests and **Add friend**. |
+| **Avatar** | Its avatar (in 3D too), what it wears, its outfits and its inventory to dress it; and every look Bloxkeep has seen it in, to put on again. |
+| **Profile** | Who it is, its friends and followers, its Robux and its communities. |
+| **Marketplace** | Roblox's catalog: an item's page says which of your accounts own it already. |
+| **Inbox** | Its chats, messages, notifications, Robux lines and trades (with Accept and Decline). |
+| **Inventory** | What your accounts own, with every account's private servers together first. |
+| **Mods** | Roblox mods to put in with one click, each on or off; they apply to every account on this PC. |
+| **Settings** | The account's own Roblox settings, such as **Account status** and **Privacy**. |
+
+These use the account's own sign-in, as Roblox's app does.
+
 ## A game's page
 
-Click the game's name under the box to open its page:
+Click a game anywhere (Home, the Roblox tab, the game's name under the game box) to open its page.
+
+<img src="../screenshots/game.png" width="760" alt="Blox Fruits' page: its picture, maker and genre, Playing now, Visits, Favorites, Liked and Updated, the buttons Play, Close, Following and Wiki, a box for a server link or Job ID, then the tabs Overview, News, Values, Passes, Servers and Wiki">
 
 | Part | What it shows |
 |---|---|
-| Top | Its picture, maker and genre. **Wiki** opens the game's wiki in the [Games tab](#the-games-tab) when it is there, otherwise searches the web for one; the arrow opens it on roblox.com. |
-| Updated news | When the game was updated in the last 24 hours: Roblox may be shutting old servers down, so a window that drops now rejoins a new one. |
-| Figures | Playing now, visits, likes and when it was last updated. Roblox shows players and visits only to a signed-in account, so they need one in Bloxkeep. |
-| Your accounts here | Each account that played it in the last 7 days: for how long, kicks (by the game, or AFK for idling), other drops, and whether it's in it now or banned from it. |
-| When it is quiet | Players at each hour of the day. While Bloxkeep is open it notes how many play the games you use every half hour, so this fills in within a day or two; the quietest three hours are named, a good time for a scheduled preset. |
-| About this game | Its description, shown on a click. |
+| Top | Its picture, maker and genre; how many of your accounts play it, the hours played in 7 days and how many PCs with Bloxkeep play it now. |
+| Figures | **Playing now**, **Visits**, **Favorites**, **Liked** and **Updated**. Roblox shows players and visits only to a signed-in account, so they need one in Bloxkeep. |
+| Buttons | **Play** (asks **Which accounts?**, then **Join**), **Close** (with how many are open), **Follow** for the game's news, **Wiki**, and the arrow to open it on roblox.com. |
+| Server link or Job ID | Paste a private server link or a Job ID and press **Join** to send the accounts there. |
+| **Overview** | **Your accounts here**: each account that played it in the last 7 days, how long, kicks (by the game, or AFK for idling) and other drops, and whether it's in it now or banned from it. **Details** and **When it is quiet** (players at each hour, filled in as Bloxkeep notes the games you use every half hour; the quietest hours make a good time for a scheduled preset). |
+| **News** | Posts live from the game's own alerts, such as stock and spawns. News works in the installed Bloxkeep only. |
+| **Values**, **Passes** | Price lists (such as Blox Fruits'), and the game's passes. |
+| **Servers** | The game's servers (see [Servers](#servers)). |
+| **Wiki** | The game's wiki inside Bloxkeep: search, item tables, compare, new pages and recent buffs and nerfs. |
 
-## The Games tab
+<img src="../screenshots/game-play.png" width="760" alt="Play on a game's page: Which accounts? with an account ticked, and Join 1">
 
-**Games** in the sidebar lists popular games with their wiki or news: **Your games** (played by your accounts in the last 90 days) first, then **Popular**. **Find a game** searches them. Open one for:
-
-- **News**: posts live from the game's own alerts, such as stock and spawns. **Notify me**: **Off**, **Every post** or **Keywords** (the words you pick).
-- **Wiki**: the game's wiki inside Bloxkeep: search, item tables, compare, new pages and recent buffs and nerfs.
-- **Values**: price lists, such as Blox Fruits'.
-
-<img src="../screenshots/games.png" width="760" alt="The Games tab: Blox Fruits under Your games with its new posts, Wiki, Values, hours played and PCs playing, a radar warning above, Popular games below">
-
-A game's card also says how many PCs with Bloxkeep play it now. News works in the installed Bloxkeep only.
+When Roblox has updated the game in the last 24 hours, the page says so: Roblox may be shutting old servers down, so a window that drops now rejoins a new one.
 
 ## Servers
 
-**Browse servers** opens the game's server list. It is greyed out until a game is in the box, and for a private server.
+**Browse servers** in the bar at the bottom of Accounts opens the game's server list; so does the **Servers** tab on a game's page. It is greyed out until a game is in the box, and for a private server.
 
 <img src="../screenshots/servers.png" width="760" alt="The server list for a game: your private servers and friends in this game, each with Use server, then public servers with sort buttons, Room for 2 and Random server">
 
 - **Your private servers**: the private servers of this game that your selected accounts own or were invited to (with none selected, your first signed-in accounts), each with its owner, how many are playing and **Use**. Roblox lets only those accounts in, so a server some selected accounts can't join says "only *account* can join". **Use** puts it in the game box as a private server (`roblox://placeId=…&accessCode=…`); press **Play**, and Bloxkeep joins it the way the Join button on its Roblox page does.
 - **Friends in this game**: friends of your accounts who are in this game, each "friend of *account*", with **Use**. Their privacy settings may hide them.
 - **Public servers**: sort by **Most players**, **Fewest players**, **Lowest ping** or **Best FPS**. **Room for N** (with 2 or more accounts selected) shows only servers with room for all of them. **Random server** picks one.
-- **Use** puts that server's Job ID in the game bar ("Server chosen — select accounts and press Play."). A full server is greyed out.
+- **Use** puts that server's Job ID in the bar at the bottom of Accounts ("Server chosen — select accounts and press Play."). A full server is greyed out.
 - The ping is the average of the players in that server, not your own. When Roblox is busy, the list tries again by itself, then offers **Try again**.
 - Empty servers aren't listed: a server whose last player has left is closing, and joining it ends on "This experience has ended".
 - Several accounts sent to one server: the first one to open shows whether the server lets it in (a normal join gets a server in about a second). If it doesn't within 12 seconds (the server is full or has closed), that account and the rest go to another server with room for them all.
@@ -90,13 +111,13 @@ A game's card also says how many PCs with Bloxkeep play it now. News works in th
 
 Keep the servers you go back to in the game box's **Saved** tab.
 
-- **Save server** (under the game box) saves what the box holds: a private server's link (`privateServerLinkCode`, or a share link), or the game with the **code it asks for** when it has private servers of its own that you join by typing a code in the game. Give it a name; the same link saved again updates the one saved.
+- **Save server** (the bookmark beside the game box) saves what the box holds: a private server's link (`privateServerLinkCode`, or a share link), or the game with the **code it asks for** when it has private servers of its own that you join by typing a code in the game. Give it a name; the same link saved again updates the one saved.
 - Pick a saved server in the **Saved** tab: a link goes in the game box, so **Play** sends the selected accounts straight there. A code goes on the clipboard and its game in the box: once in the game, paste the code where the game asks for it. Bloxkeep never types your saved codes; a [macro](macros.md) types only what you put in its steps.
 - **Copy** next to a saved server copies its code again; **×** deletes it.
 
-## Join a player
+## Follow a player
 
-**Join a player…**, under the Job ID box (also in Ctrl+K). With no account selected it says to select accounts first. Type a player's **Roblox username or user ID** (a profile link works too) and press **Find and join**: the selected accounts open into the server that player is in. When that can't happen, the dialog says why:
+**Follow a player…** in the bar at the bottom of Accounts (also in Ctrl+K) opens **Join a player**. With no account selected it says to select accounts first. Type a player's **Roblox username or user ID** (a profile link works too) and press **Find and join**: the selected accounts open into the server that player is in. When that can't happen, the dialog says why:
 
 - no Roblox user has that name (it needs the username, not the display name);
 - the player is in a game but their privacy settings don't show your accounts which server;
@@ -118,7 +139,7 @@ A preset can do the same: choose **A player's server** as its server (see [Prese
 | Button | What it does |
 |---|---|
 | **Play** | Reads **Select accounts first** (greyed out) while nothing is selected. With a game in the box it reads **Play** and the number of accounts. With the game box empty it reads **Open Roblox**: each account opens Roblox's home screen. |
-| **Windows › Open Roblox only** | The same home-screen launch, whatever is in the game box. Greyed out until you select accounts. |
+| **Windows › Open Roblox only** | At the top of Accounts: the same home-screen launch, whatever is in the game box. Greyed out until you select accounts. |
 | **Close** | Greyed out unless a selected account is open on this PC. |
 | **Stop** | Replaces **Play** while accounts are opening: "Opened 2 accounts (stopped early)." |
 
@@ -132,7 +153,7 @@ How a launch goes:
 
 ## Launch order
 
-**⋯ More › Launch order…** lists every account: drag the handle or use the arrows, then press **Done**. **Play** opens the selected accounts in this order, and accounts added later go last. **Sort › Launch order** shows the list in that order. A preset keeps its own order.
+**⋮ › Launch order…** at the top of Accounts lists every account: drag the handle or use the arrows, then press **Done**. **Play** opens the selected accounts in this order, and accounts added later go last. **Sort › Launch order** shows the list in that order. A preset keeps its own order.
 
 ## Before you open
 

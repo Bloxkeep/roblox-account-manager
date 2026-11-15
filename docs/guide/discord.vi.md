@@ -4,27 +4,27 @@
 
 Bloxkeep có thể gửi tổng kết thời gian chơi, một tin trạng thái tự cập nhật và các cảnh báo vào kênh Discord của bạn. Mặc định tắt, chỉ gửi khi bạn bật.
 
-<img src="../screenshots/vi/discord.png" width="760" alt="Cài đặt › Discord: công tắc Gửi lên Discord, Link webhook với các nút Thay, Hiện và Gỡ, cùng các dòng của Tổng kết thời gian chơi">
+<img src="../screenshots/vi/discord.png" width="760" alt="Cài đặt › Discord: Đang gửi lên kênh với công tắc Gửi lên Discord, Link webhook với Đổi link, Hiện và Gỡ, nút Gửi thử, và bản xem trước của một cảnh báo">
 
 ## Làm nhanh
 
 1. Trong Discord: **Cài đặt kênh › Tích hợp › Webhook › Webhook mới › Sao chép URL webhook**.
-2. Trong Bloxkeep: **Cài đặt › Discord › Link webhook › Dán link…**, dán vào rồi bấm **Lưu**. Link đúng có dạng `https://discord.com/api/webhooks/…`.
+2. Trong Bloxkeep: **Cài đặt › Discord › Dán link…**, dán vào rồi bấm **Lưu**. Link đúng có dạng `https://discord.com/api/webhooks/…`.
 3. Bật **Gửi lên Discord**, rồi bấm **Gửi thử**: "Đã gửi tin thử. Hãy xem trong kênh."
 
 Bật **Gửi lên Discord** khi chưa có link thì app cũng hỏi link.
 
 ## Trên hồ sơ Discord của bạn
 
-**Hiện trên hồ sơ Discord** (trên cùng của Cài đặt › Discord) cho hồ sơ Discord của bạn hiện "Đang chơi Bloxkeep": số cửa sổ Roblox đang mở, tên game (hoặc số game), chơi từ lúc nào, kèm nút **Tải Bloxkeep** dẫn tới website. Không bao giờ hiện tên tài khoản. Tính năng này chạy qua app Discord đang mở trên máy, không cần webhook, và tắt cho tới khi bạn bật. Thoát Bloxkeep thì dòng này cũng mất.
+**Hiện trên hồ sơ Discord** (Cài đặt › Discord, tab **Điều khiển**) cho hồ sơ Discord của bạn hiện "Đang chơi Bloxkeep": số cửa sổ Roblox đang mở, tên game (hoặc số game), chơi từ lúc nào, kèm nút **Tải Bloxkeep** dẫn tới website. Không bao giờ hiện tên tài khoản. Tính năng này chạy qua app Discord đang mở trên máy, không cần webhook, và tắt cho tới khi bạn bật. Thoát Bloxkeep thì dòng này cũng mất.
 
 ## Điều khiển từ Discord
 
 Gõ `/pc` trong Discord để xem tài khoản đang thế nào, chạy preset, đóng cửa sổ, đổi server hay chụp màn hình trên máy, ở đâu cũng được. Mặc định tắt.
 
-<img src="../screenshots/vi/discord-control.png" width="760" alt="Cài đặt › Discord › Điều khiển từ Discord đang bật, với mã để gõ (K7MX4P), nút Mã mới và Thêm Bloxkeep vào Discord">
+<img src="../screenshots/vi/discord-control.png" width="760" alt="Cài đặt › Discord, tab Điều khiển: Điều khiển từ Discord đang bật, mã để gõ (K7MX4P) kèm Mã mới và Thêm Bloxkeep vào Discord, rồi Hiện trên hồ sơ Discord">
 
-1. Trong Bloxkeep: **Cài đặt › Discord › Điều khiển từ Discord**, bật lên. Bloxkeep hiện mã 6 ký tự, dùng được 10 phút (**Mã mới** để lấy mã khác).
+1. Trong Bloxkeep: **Cài đặt › Discord**, tab **Điều khiển**, bật **Điều khiển từ Discord**. Bloxkeep hiện mã 6 ký tự, dùng được 10 phút (**Mã mới** để lấy mã khác).
 2. Bấm **Thêm Bloxkeep vào Discord** rồi đồng ý, để gõ được `/pc` ở mọi nơi.
 3. Trong Discord, gõ `/pc link` và nhập mã.
 4. Bloxkeep hỏi có cho tài khoản Discord đó điều khiển không: bấm **Cho phép**. Chưa bấm thì chưa liên kết, nên người khác lỡ thấy mã (khi bạn stream chẳng hạn) cũng không dùng được.
@@ -68,7 +68,7 @@ Bloxkeep gửi qua webhook: một đường link cho phép chương trình gửi
 
 ## Tổng kết thời gian chơi
 
-**Cài đặt › Discord › Tổng kết thời gian chơi**:
+**Cài đặt › Discord**, tab **Tổng kết**:
 
 | Dòng | Lựa chọn |
 |---|---|

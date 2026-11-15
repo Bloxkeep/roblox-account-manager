@@ -584,7 +584,8 @@ pub fn lock(root: &Root, window: &mut Window, cx: &mut Context<Root>) -> AnyElem
     };
     let typed = root.lock_pw.read(cx).value().to_string();
     let (score, level) = strength(&typed);
-    let caps = window.capslock().on;
+    // Shots never show the PC's own Caps Lock.
+    let caps = window.capslock().on && !(cfg!(feature = "shot") && std::env::var("BLOXKEEP_KEPT").is_ok());
 
     let mut lines: Vec<AnyElement> = Vec::new();
     // Which vault this is, once there are several (or one is being added), and the way to another.

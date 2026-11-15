@@ -517,8 +517,8 @@
     // ?lockupdate=40 (with ?locked=1): an update found before the unlock, 40 % downloaded (ready: downloaded); the lock
     // screen gives it its place (AppController.UpdateOffersAtLock).
     update: lockUpdate !== null
-      ? { supported: true, current: params.get('ver') || '1.0.0', status: lockUpdate === 'ready' ? 'ready' : 'downloading', version: '1.0.1', quiet: false, progress: +lockUpdate || 0, error: null, auto: true, beta: betaUpdates, checkedAt: minsAgo(0) }
-      : { supported: true, current: params.get('ver') || '1.0.0', status: params.has('update') ? 'ready' : 'upToDate', version: params.has('update') ? (params.get('update') === 'quiet' ? '1.0.1-alpha.1' : '1.0.1') : null,
+      ? { supported: true, current: params.get('ver') || '1.0.0', status: lockUpdate === 'ready' ? 'ready' : 'downloading', version: params.get('next') || '1.0.1', quiet: false, progress: +lockUpdate || 0, error: null, auto: true, beta: betaUpdates, checkedAt: minsAgo(0) }
+      : { supported: true, current: params.get('ver') || '1.0.0', status: params.has('update') ? 'ready' : 'upToDate', version: params.has('update') ? (params.get('update') === 'quiet' ? '1.0.1-alpha.1' : params.get('next') || '1.0.1') : null,
         quiet: params.get('update') === 'quiet', progress: 0, error: null, auto: true, beta: betaUpdates, checkedAt: minsAgo(23) },
     lockUpdate: locked && !screenLock && lockUpdate !== null ? { go: lockUpdateGo } : null,
     countOnline,

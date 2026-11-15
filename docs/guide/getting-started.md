@@ -20,7 +20,7 @@ Bloxkeep runs on Windows 10 or 11, 64-bit. You don't need .NET: the installer ad
 
 | File | Use it when |
 |---|---|
-| `Bloxkeep-Setup.exe` | You want a normal install. It is a small file that downloads the newest Bloxkeep (about 60 MB). You choose the folder, on any drive. It installs for your Windows user, needs no admin rights, and adds Start menu and Desktop shortcuts. |
+| `Bloxkeep-Setup.exe` | You want a normal install. It is a small file that downloads the newest Bloxkeep (about 45 MB). You choose the folder, on any drive. It installs for your Windows user, needs no admin rights, and adds Start menu and Desktop shortcuts. |
 | `Bloxkeep-Setup-Offline.exe` | The same installer with everything inside, for a PC without internet. |
 | `Bloxkeep-Portable.zip` | You'd rather not install. Unzip and run `Bloxkeep.exe`; its data goes into a `data` folder next to it. |
 
@@ -44,7 +44,7 @@ It encrypts everything you save in Bloxkeep, so Bloxkeep asks for it the first t
 
 ## Unlock and lock
 
-Each time Bloxkeep starts it shows **Welcome back**: type the master password and press **Unlock**. A warning shows while Caps Lock is on. **Lock app** is at the bottom of the sidebar.
+Each time Bloxkeep starts it shows **Welcome back**: type the master password and press **Unlock**. A warning shows while Caps Lock is on. To lock it again, press the lock at the bottom of the bar on the left.
 
 | While locked | What happens |
 |---|---|
@@ -66,11 +66,11 @@ If something would pause (for example "Auto-rejoin for 3 accounts" or "2 schedul
 
 Bloxkeep checks GitHub for a new version as soon as it opens and every hour after. One found before you unlock is installed right there: the lock screen shows **Updating to** *version* with its progress, and Bloxkeep opens again on the new version, at the lock screen. One found later downloads in the background and installs by itself the next time you aren't using Bloxkeep, coming back in a few seconds as it was: unlocked, on the same tab. Roblox windows keep running either way.
 
-<img src="../screenshots/lock-update.png" width="760" alt="The lock screen giving its place to an update found before unlocking: Updating to 1.0.1, Downloading 40 %, and Unlock now, update later">
+<img src="../screenshots/lock-update.png" width="760" alt="The lock screen giving its place to an update found before unlocking: Updating to a new version with its progress, and Unlock now, update later">
 
-<img src="../screenshots/2-restart-to-update.png" width="760" alt="Restart to update in the sidebar, shown when an update is ready">
+<img src="../screenshots/2-restart-to-update.png" width="760" alt="Restart to update in the bar at the bottom, with the version it brings, shown when an update is ready">
 
-- **Restart to update** in the sidebar installs it right away. Quitting Bloxkeep installs it too.
+- **Restart to update** in the bar at the bottom installs it right away. Quitting Bloxkeep installs it too.
 - After an update, **What's new** shows what changed.
 - **Settings › Bloxkeep** shows the version and its state. **Check now** looks for an update. **Update automatically** is on by default; off, nothing is downloaded or installed by itself.
 - **Update automatically** is greyed out on a copy that can't update itself ("Only the installed version updates itself").

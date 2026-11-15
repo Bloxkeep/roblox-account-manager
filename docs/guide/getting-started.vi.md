@@ -20,7 +20,7 @@ Bloxkeep chạy trên Windows 10 hoặc 11, bản 64-bit. Không cần cài .NET
 
 | File | Dùng khi |
 |---|---|
-| `Bloxkeep-Setup.exe` | Cài bình thường. File nhỏ, trong lúc cài sẽ tải bản Bloxkeep mới nhất (khoảng 60 MB). Bạn chọn thư mục cài, ở ổ nào cũng được. Cài cho người dùng Windows hiện tại, không cần quyền admin, tạo shortcut ở Start Menu và Desktop. |
+| `Bloxkeep-Setup.exe` | Cài bình thường. File nhỏ, trong lúc cài sẽ tải bản Bloxkeep mới nhất (khoảng 45 MB). Bạn chọn thư mục cài, ở ổ nào cũng được. Cài cho người dùng Windows hiện tại, không cần quyền admin, tạo shortcut ở Start Menu và Desktop. |
 | `Bloxkeep-Setup-Offline.exe` | Cùng bộ cài đó nhưng có sẵn mọi thứ bên trong, dùng cho máy không có mạng. |
 | `Bloxkeep-Portable.zip` | Không muốn cài. Giải nén rồi chạy `Bloxkeep.exe`; dữ liệu nằm trong thư mục `data` bên cạnh. |
 
@@ -44,7 +44,7 @@ Mọi thứ bạn lưu trong Bloxkeep đều được mã hóa bằng mật kh�
 
 ## Mở khóa và khóa app
 
-Mỗi lần khởi động, Bloxkeep hiện **Chào mừng trở lại**: nhập mật khẩu chủ rồi bấm **Mở khóa**. Đang bật Caps Lock thì app sẽ nhắc. Nút **Khóa app** nằm cuối thanh bên.
+Mỗi lần khởi động, Bloxkeep hiện **Chào mừng trở lại**: nhập mật khẩu chủ rồi bấm **Mở khóa**. Đang bật Caps Lock thì app sẽ nhắc. Muốn khóa lại, bấm ổ khóa ở cuối thanh bên trái.
 
 | Khi đang khóa | Chuyện gì xảy ra |
 |---|---|
@@ -66,11 +66,11 @@ Nếu có thứ sẽ bị tạm dừng (ví dụ "Tự vào lại game của 3 t
 
 Bloxkeep kiểm tra bản mới trên GitHub ngay khi mở và sau đó mỗi giờ một lần. Có bản mới trước khi bạn mở khóa thì cài luôn: màn hình mở khóa hiện **Đang cập nhật lên** *phiên bản* kèm tiến độ, rồi Bloxkeep mở lại ở bản mới, ngay màn hình mở khóa. Bản tìm thấy sau đó thì tải về ở nền và tự cài vào lần tới bạn không dùng Bloxkeep; vài giây sau app quay lại y như cũ: vẫn mở khóa, đúng tab đang xem. Các cửa sổ Roblox vẫn chạy suốt.
 
-<img src="../screenshots/vi/lock-update.png" width="760" alt="Màn hình mở khóa nhường chỗ cho bản cập nhật tìm thấy trước khi mở khóa: Đang cập nhật lên 1.0.1, Đang tải 40 %, và Để sau">
+<img src="../screenshots/vi/lock-update.png" width="760" alt="Màn hình mở khóa nhường chỗ cho bản cập nhật tìm thấy trước khi mở khóa: Đang cập nhật lên bản mới kèm tiến độ, và Mở khóa trước, cập nhật sau">
 
-<img src="../screenshots/vi/2-restart-to-update.png" width="760" alt="Nút Khởi động lại để cập nhật ở thanh bên, hiện khi đã có bản mới">
+<img src="../screenshots/vi/2-restart-to-update.png" width="760" alt="Nút Khởi động lại để cập nhật ở thanh dưới cùng, ghi rõ phiên bản, hiện khi đã có bản mới">
 
-- **Khởi động lại để cập nhật** ở thanh bên cài ngay. Thoát Bloxkeep cũng sẽ cài bản mới.
+- **Khởi động lại để cập nhật** ở thanh dưới cùng cài ngay. Thoát Bloxkeep cũng sẽ cài bản mới.
 - Sau khi cập nhật, **Có gì mới** cho biết đã thay đổi những gì.
 - **Cài đặt › Bloxkeep** hiện phiên bản và trạng thái. **Kiểm tra ngay** tìm bản mới. **Tự động cập nhật** bật sẵn; tắt đi thì app không tự tải hay tự cài gì.
 - **Tự động cập nhật** bị mờ trên bản không tự cập nhật được ("Chỉ có bản cài đặt là tự cập nhật được").

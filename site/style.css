@@ -133,21 +133,12 @@ body.demo main { flex: 1; display: flex; flex-direction: column; min-height: 0; 
 .hero h1 { font-size: 3.3rem; margin: 0 0 1.1rem; letter-spacing: -.02em; }
 .lead { font-size: 1.3rem; color: var(--muted); margin: 0 auto; max-width: 620px; }
 .hero .cta { justify-content: center; }
-/* The hero: the app itself, live and big, wider than the text column (up to 1240 px, 20 px from the window's edges), and
+/* The hero: the app's Home, big, wider than the text column (up to 1240 px, 20 px from the window's edges), and
    never taller than the window under the top bar: the whole app in view at once.
    The real Roblox windows are the next section's picture. */
 .stage { position: relative; left: 50%; translate: -50% 0; width: min(1240px, calc(100vw - 40px), calc((100vh - 150px) * 1.6)); margin-top: 48px; }
 .stage figure { margin: 0; }
 .stage .shot { width: 100%; box-shadow: var(--shadow); }
-/* The app itself, live, where its screenshot was: the picture shows until the app has drawn over it. */
-.live { position: relative; aspect-ratio: 1.6; overflow: hidden; border-radius: 10px; box-shadow: var(--shadow); background: #0a0c11; }
-.stage .live .shot { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; box-shadow: none; }
-.live iframe { position: absolute; left: 0; top: 0; width: var(--w, 1232px); height: var(--h, 770px); border: 0; transform-origin: 0 0; transform: scale(var(--k, .5)); opacity: 0; transition: opacity .25s; }
-.live.on iframe { opacity: 1; }
-.live-full { position: absolute; right: 10px; bottom: 10px; padding: 5px 11px; border-radius: 8px; background: rgba(10, 12, 17, .82); color: #e9ecf3; font-size: .82rem; font-weight: 600; text-decoration: none; opacity: 0; transition: opacity .2s; }
-.live.on:hover .live-full, .live-full:focus-visible { opacity: 1; }
-.live-tap { display: none; }
-@media (max-width: 720px) { .live iframe, .live-full { display: none; } .live-tap { display: block; position: absolute; inset: 0; } }
 
 .proof figure { margin: 0; }
 .proof .shot { width: 100%; box-shadow: var(--shadow); }
@@ -343,7 +334,7 @@ td + td strong { color: var(--text); }
   .cta .btn { flex: 1 1 100%; }
 }
 @media (max-width: 640px) {
-  .top nav .nav-news, .top nav .nav-demo { display: none; }
+  .top nav .nav-news { display: none; }
   .news-list { grid-template-columns: minmax(0, 1fr); }
   .foot-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }

@@ -10,7 +10,7 @@ Trả lời ngắn cho những vấn đề hay gặp nhất, rồi đến toàn 
 
 **Đ:** Kiểm tra lần lượt:
 
-- [Multi-Roblox](multi-roblox.vi.md) đã bật chưa? Công tắc Multi-Roblox ở thanh bên ghi **Đang tắt** thì bật lên.
+- [Multi-Roblox](multi-roblox.vi.md) đã bật chưa? Công tắc **Multi-Roblox** ở thanh dưới cùng đang tắt thì bật lên.
 - Đèn vàng **Chưa chạy được**: Roblox đã mở trước Bloxkeep. Bấm vào và làm theo các bước (đóng hết Roblox, kể cả ở khay hệ thống; tắt tự khởi động nếu có). Lần sau nhớ mở Bloxkeep trước Roblox.
 - Đèn vàng **Roblox đã đóng cửa sổ** hoặc **Bản Roblox mới có thể chặn**: một bản Roblox mới có thể đã đổi cách chặn nhiều cửa sổ. Mở **Cài đặt › Phiên bản Roblox**, bấm **Kiểm tra cập nhật Bloxkeep**, và chơi từng tài khoản một cho tới khi có bản sửa.
 - Đang dùng launcher? Nếu launcher chặn mở nhiều cửa sổ, chọn **Roblox trực tiếp (không qua launcher)** ở **Cài đặt › Khởi chạy › Mở Roblox bằng**.
@@ -36,7 +36,7 @@ Chỉ bị ban trong một game ("You created or used an account to avoid an enf
 
 **Đ:**
 
-- Thanh bên báo "Hình như máy này chưa cài Roblox.": cài Roblox từ roblox.com/download.
+- Thanh dưới cùng báo "Hình như máy này chưa cài Roblox.": cài Roblox từ roblox.com/download.
 - Chỉ có Roblox bản Microsoft Store: chọn **Roblox (Microsoft Store), đang thử nghiệm** ở **Cài đặt › Khởi chạy › Mở Roblox bằng**, hoặc cài Roblox từ roblox.com.
 - Launcher nào chưa cài thì ghi "(chưa cài)" trong danh sách đó. Hãy chọn cách mở khác.
 

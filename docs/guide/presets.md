@@ -4,11 +4,11 @@
 
 A preset saves a set of accounts, a game and how to open them, so you can start it with one click or on a schedule.
 
-<img src="../screenshots/presets.png" width="760" alt="The Presets tab: three presets, each with its game, a one-line summary, the accounts' avatars, a Schedule switch and Run or Close, Edit, Duplicate and Delete buttons">
+<img src="../screenshots/presets.png" width="760" alt="Automation, Presets: Running now with one scheduled preset and its open windows, then No schedule with two more, each with its game, a one-line summary, the accounts' faces, a Schedule switch, Run or Close, Edit, Duplicate and Delete">
 
 ## Quick steps
 
-1. Open the **Presets** tab and press **New preset**.
+1. Open **Automation** (the arrows in the bar on the left), stay on **Presets** and press **New preset**.
 2. Type a **Name** and pick the **Game**. Leave the game empty to open only the Roblox home screen.
 3. Choose the **Server** and tick the **Accounts**, in the order you want them to open.
 4. Press **Save**, then **Run** on its row.
@@ -17,14 +17,14 @@ A preset keeps the accounts (in order), the game, how to pick the server, the wa
 
 ## Creating a preset
 
-- **Presets** tab › **New preset**.
-- The **Presets** button in the game bar › **Save as preset…**. It starts from what the bar holds: the selected accounts, the game, the Job ID as a **Fixed server**, and the game's name as the preset's name.
+- **Automation › Presets** › **New preset**.
+- **Presets** in the bar at the bottom of Accounts › **Save as preset…**. It starts from what the bar holds: the selected accounts, the game, the Job ID as a **Fixed server**, and the game's name as the preset's name.
 - Ctrl+K › "Save as preset…".
 
 | Field | What it means |
 |---|---|
 | **Name** | Required. |
-| **Game** | Same box as the game bar. Empty just opens Roblox. |
+| **Game** | Same box as the one at the bottom of Accounts. Empty just opens Roblox. |
 | **Server** | **Any (Roblox picks)**, **Most players**, **Fewest players**, **Lowest ping**, **Random**, **Fixed server (Job ID)**, or **A player's server**. These put all the accounts in one server. **Own server each** (fewest players, most players or random) puts every account in a public server of its own, none shared. |
 | **Job ID** | Only for **Fixed server**. |
 | **Player** | Only for **A player's server**: their username or user ID. The accounts join the server that player is in (no game needed), and each rejoin looks them up again. If the player can't be joined when the preset runs (offline, not in a game, a hidden server), it doesn't run and says why. |
@@ -98,11 +98,11 @@ Each row shows the game's icon, the preset's name, its game ("Roblox home" when 
 | **Duplicate** | Makes a copy. Its schedule is off if the original's was on. |
 | **Delete** | Asks first; **Don't ask again** is possible. |
 
-- The handle and arrows change the order (hidden while you search). The game bar's **Presets** menu uses the same order.
+- The handle and arrows change the order (hidden while you search). The **Presets** menu at the bottom of Accounts uses the same order.
 - The header counts presets and scheduled ones, and says "the most you can keep" at 50.
 - **Search presets or games** (Ctrl+F) filters the list. A preset whose accounts were all deleted shows **No accounts left**.
 
 > [!TIP]
-> The game bar's **Presets** button lists every preset (click one to run it), then **Save as preset…** and **Edit presets…**. In Ctrl+K, type a preset's name to run it.
+> **Presets** in the bar at the bottom of Accounts lists every preset (click one to run it), then **Save as preset…** and **Edit presets…**. In Ctrl+K, type a preset's name to run it.
 
 ← [User guide](../guide.md) · Next: [Staying in game](staying-in-game.md) →

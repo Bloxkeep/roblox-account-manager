@@ -10,11 +10,11 @@ Bình thường Roblox chỉ cho mở một cửa sổ trên mỗi máy: mở c�
 
 1. [Tải Bloxkeep](https://github.com/Bloxkeep/roblox-account-manager/releases/latest), chạy `Bloxkeep-Setup.exe` rồi đặt mật khẩu chính.
 2. Bấm **Thêm tài khoản** và đăng nhập từng tài khoản Roblox.
-3. Nếu Roblox đã mở sẵn, bấm **Đóng tất cả Roblox**. Sau đó bật công tắc **Multi-Roblox** ở cuối thanh bên.
+3. Nếu Roblox đã mở sẵn, bấm **Đóng tất cả Roblox**. Sau đó bật công tắc **Multi-Roblox** ở đầu bên phải thanh dưới cùng.
 4. Kiểm tra đèn đã xanh và ghi **Đang bật**.
 5. Chọn game, chọn các tài khoản rồi bấm **Vào game**. Đừng tắt Bloxkeep trong lúc chơi (chạy ẩn dưới khay hệ thống thì được).
 
-<img src="../screenshots/vi/hero.png" width="760" alt="Cửa sổ chính của Bloxkeep: các thẻ tài khoản, thanh chọn game ở dưới, Multi-Roblox đang bật ở thanh bên">
+<img src="../screenshots/vi/hero.png" width="760" alt="Trang chủ của Bloxkeep: game đang chơi ở trên cùng, game và Preset của bạn bên dưới, tài khoản bên phải, Multi-Roblox đang bật ở thanh dưới cùng">
 
 > [!WARNING]
 > Roblox không chính thức hỗ trợ chạy nhiều cửa sổ, nên bạn tự chịu rủi ro khi dùng Multi-Roblox. Một số game cũng có luật riêng về tài khoản phụ.

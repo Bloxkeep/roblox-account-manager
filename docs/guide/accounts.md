@@ -4,7 +4,7 @@
 
 How to add accounts, read their cards, find and select them, and use the account menu.
 
-<img src="../screenshots/accounts-list.png" width="760" alt="The Accounts tab as a list: filter chips with counts, search, Group and Sort, and one line per account with its status">
+<img src="../screenshots/accounts-list.png" width="760" alt="The Accounts page: filter chips with counts, Cards or List, Game monitor, Sort, Windows and Select all, then Needs a look, Open here and Not open here">
 
 ## Quick steps
 
@@ -44,36 +44,38 @@ Adding an account that is already in the list never makes a copy: its sign-in is
 
 ## The account card
 
-The badge in the card's corner is **On this PC** (Roblox is open for it here; point at it to see the PID), **Launching**, **Banned** or **Needs sign-in**. The dot on the avatar shows the status, and the text under the name says it in words:
+The page puts the accounts in three parts: **Needs a look** (an account that needs sign-in, is banned or is waiting to rejoin, one line each with what to do), **Open here** (Roblox is open for it on this PC) and **Not open here**.
 
-| Dot | Text under the name | Meaning |
-|---|---|---|
-| Green | **Playing**, **Joining**, **Waiting for a server**, **Server full, waiting**, **Teleporting**, **Playing · another device** | In a game or on the way in, on this PC or another device. **Server full** shows the place in line when Roblox gives one. |
-| Blue | **Online**, **Roblox open** · Not in a game, **Didn't get into the game** | On the Roblox website or app, or Roblox is on its home screen on this PC (after a join that failed, or a wait given up, it says so). |
-| Orange | **Roblox Studio** | Building a game. |
-| Yellow | The reason, such as **Kicked by the game** or **Server shut down** | The window is open but out of the server. When Roblox didn't log why, it says **Disconnected** · **Reason unknown**. |
-| Grey | **Offline**, **Signed out**, **Status unknown** | Not active; Roblox is open here without this account; or not loaded yet. |
+The dot on the avatar shows the status, and the line under the name says it in words with the game:
+
+| Line under the name | Meaning |
+|---|---|
+| **Playing**, **Joining**, **Waiting for a server**, **Server full, waiting**, **Teleporting**, **Playing · another device** | In a game or on the way in, on this PC or another device. **Server full** shows the place in line when Roblox gives one. |
+| **Online**, **Roblox open** · Not in a game, **Didn't get into the game** | On the Roblox website or app, or Roblox is on its home screen on this PC (after a join that failed, or a wait given up, it says so). |
+| **Roblox Studio** | Building a game. |
+| The reason, such as **Kicked for AFK**, **Kicked by the game** or **Server shut down** | The window is open but out of the server. When Roblox didn't log why, it says **Disconnected** · **Reason unknown**. |
+| **Offline**, **Signed out**, **Status unknown** | Not active; Roblox is open here without this account; or not loaded yet. |
 
 A red ring around the avatar means **Needs sign-in** or **Banned**. While Bloxkeep is working you also see **Opening Roblox…**, **Rejoining · this PC** (**Cancel** stops it) and **Restarting · this PC** (a preset's planned restart).
 
-<img src="../screenshots/card-rejoin.png" width="760" alt="Account cards: one rejoining in 5 minutes with Cancel, one disconnected for being idle, one needing sign-in, one banned">
+<img src="../screenshots/card-rejoin.png" width="760" alt="Accounts: under Needs a look, one account needing sign-in and one rejoining in 5 minutes with Cancel rejoin; under Open here, one kicked for AFK with Rejoin">
 
-The line above the buttons shows the account's **Robux** (**R$ 1,234**), read with its own sign-in every 30 minutes and kept only on this PC. An account open on this PC also shows **RAM in use**, **Play time** and **PID** (click to copy). The buttons are **Play** (**Close** while open, **Cancel** while a rejoin waits, **Sign in** when it needs sign-in), **Edit (F2)** and **⋯ More**. Status refreshes every 30 seconds; **Refresh online status** does it now.
+The number at the card's top right is the account's **Robux**, read with its own sign-in every 30 minutes and kept only on this PC. The buttons are **Play** (**Close** while open, **Rejoin** after a drop, **Cancel rejoin** while a rejoin waits, **Sign in** when it needs sign-in, **Appeal** when banned), ☆ to make it a [main account](#the-account-menu), ✏ **Edit (F2)** and ⋮ for the account menu. Status refreshes every 30 seconds; **Refresh online status** does it now.
 
 ## Select, search and sort
 
 - **Click** a card to select it, click again to unselect. **Shift+click** selects a range. **Double-click** plays that account alone.
-- **Ctrl+A** or **Select all** selects every account shown. **Esc** or **Clear** clears the selection.
+- **Ctrl+A** or **Select all** selects every account shown. **Esc** or ✕ on the bar at the bottom clears the selection.
 - **Search** (Ctrl+F) matches names, @usernames, nicknames, groups, notes, the game being played and user IDs. Accents don't matter.
 - **Filter chips** show a count: **All**, **Needs sign-in** and **Banned** (only when some accounts are), **Playing**, **Online**, **Offline**, **On this PC**.
 - **Group** appears once an account has one (set it under **Edit › Group**). **Sort**: **Name**, **Status**, **Last played**, **Launch order**.
-- **Cards** / **List** switch the layout. Layout and sort are remembered.
+- **Cards** / **List** switch the layout, and **Game monitor** shows the Roblox windows themselves ([Windows and statistics](windows-and-stats.md#game-monitor)). Layout and sort are remembered.
 
 If the search or a filter hides some selected accounts, the header says how many. **Play** and **Delete** still act on them.
 
 ## The account menu
 
-Open it with **⋯ More** on a card, or right-click the account. If the account isn't selected, the menu acts on that account alone and leaves your selection as it is; if it is in a selection, the menu acts on every selected account.
+Open it with ⋮ on a card, or right-click the account. If the account isn't selected, the menu acts on that account alone and leaves your selection as it is; if it is in a selection, the menu acts on every selected account.
 
 <img src="../screenshots/account-menu.png" width="760" alt="The account menu open on a card: Play, Open Roblox, Close Roblox, Force close, Edit, Check sign-in, Join this server, Auto-rejoin, Roblox profile, Open website, the Copy items and Delete">
 
@@ -85,8 +87,8 @@ Open it with **⋯ More** on a card, or right-click the account. If the account 
 | **Force close** | Ends Roblox at once, for a frozen window. Unsaved game progress is lost. | Same as **Close Roblox**. |
 | **Edit…** (F2) | Nickname, group, password, authenticator key, note. | Several selected. |
 | **Check sign-in** | Checks the saved sign-in and whether Roblox reports a ban. | — |
-| **Join this server** | Puts this account's game and server (Job ID) in the game bar; select others and press **Play** to land together. | Several selected, or the server isn't known. |
-| **Hide Roblox window** / **Show Roblox window** | Hides the window and its taskbar button while the game keeps running (auto-rejoin and anti-AFK too). A hidden window's card shows an eye before its PID: click it to show the window again. **Windows** in the bottom bar hides or shows them all; so does Ctrl+Alt+H. Bloxkeep shows them again when it closes. | No account playing on this PC. |
+| **Join this server** | Puts this account's game and server (Job ID) in the bar at the bottom of Accounts; select others and press **Play** to land together. | Several selected, or the server isn't known. |
+| **Hide Roblox window** / **Show Roblox window** | Hides the window and its taskbar button while the game keeps running (auto-rejoin and anti-AFK too). **Windows** at the top of the page hides or shows them all; so does Ctrl+Alt+H. Bloxkeep shows them again when it closes. | No account playing on this PC. |
 | **Switch to another server** | Closes the window and opens it again in another server of the same game with room. Accounts of the same game switched together land in the same server. | None of the selected accounts is playing in a public server on this PC. |
 | **Solve the bot check** | Only on a card that says **Roblox wants a bot check**: shows Roblox's check in Bloxkeep's own window, then opens the window again into its game once Roblox lets it in. | — |
 | **Auto-rejoin** | Turns auto-rejoin on or off for these accounts. | — |
@@ -96,12 +98,13 @@ Open it with **⋯ More** on a card, or right-click the account. If the account 
 | **Friend each other** | Makes every pair of the selected accounts Roblox friends. If Roblox asks for a check, it shows to solve. | Shown only with several selected; greyed out with fewer than two signed-in accounts (Roblox VNG not counted). |
 | **Roblox profile** | Opens the profile on roblox.com in your browser. | Several selected, or no user ID. |
 | **Open website** | Opens roblox.com signed in as this account, in the Bloxkeep browser window. | Several selected, or Roblox VNG. |
+| **Account status** | Opens Roblox's account status page (Violations & Appeals) signed in as this account, in the Bloxkeep browser window. | Several selected. |
 | **Copy username** | Copies the username. | Several selected. |
 | **Copy password** | Copies the saved password. | Several selected. No password saved: it says why. |
 | **Copy 2FA code** | Copies the current 6-digit code. | Several selected. No key saved: it says why. |
 | **Delete** / **Delete N accounts** (Del) | Removes the accounts after a confirmation. It can't be undone. | — |
 
-The **⋯ More** menu at the top of the page has **Check sign-in of all accounts**, **Select all**, **Arrange Roblox windows**, **Launch order…** (needs 2 or more accounts; see [Playing](playing.md#launch-order)), **Close all Roblox**, **Force close all Roblox** and **User guide**.
+The ⋮ menu at the top of the page has **Check sign-in of all accounts**, **Launch order…** (needs 2 or more accounts; see [Playing](playing.md#launch-order)), **Close all Roblox**, **Force close all Roblox** and **User guide**. **Windows** beside it has **Open Roblox only**, hiding or showing every Roblox window, and the window layouts ([Windows and statistics](windows-and-stats.md#arrange-windows)).
 
 ## Copy password and Copy 2FA code
 
@@ -124,7 +127,7 @@ Bloxkeep never keeps the password you sign in with. Until you save one yourself,
 | **Needs sign-in** | Roblox ended the saved sign-in: a password change, "log out of all sessions" or a security check. | Press **Sign in** on the card and confirm with your phone, or add the account again any way (it is updated, not copied). |
 | **Banned** | Roblox's public information says so; it is read during sign-in checks. | Its button is **Appeal**: Roblox's Violations & Appeals page in the Bloxkeep browser, signed in as that account (only it can appeal). **Play** and presets skip it, and auto-rejoin doesn't reopen it. When the ban is over, **⋯ › Check sign-in** clears the badge. |
 
-The **Needs sign-in** filter lists them all. **Check sign-ins every day** finds them before you press **Play** ([Staying in game](staying-in-game.md)). To check now, use **⋯ › Check sign-in** on an account, or **⋯ More › Check sign-in of all accounts**.
+The **Needs sign-in** filter lists them all. **Check sign-ins every day** finds them before you press **Play** ([Staying in game](staying-in-game.md)). To check now, use **⋯ › Check sign-in** on an account, or **⋮ › Check sign-in of all accounts** at the top of the page.
 
 ## Import from another Bloxkeep file
 

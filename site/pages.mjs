@@ -96,12 +96,9 @@ const L = {
     lead: 'Every Roblox account in one place. Pick a game, pick accounts, press Play, and each one opens in its own window.',
     download: 'Download Bloxkeep',
     portable: 'Portable ZIP',
-    tryLink: 'Or try it right here first',
-    liveTip: 'The real app on made-up accounts: click around',
-    fullScreen: 'Full screen',
     all: 'All downloads',
     meta: v => `Free and open source · Version ${v} · Windows 10 or 11, 64-bit`,
-    heroAlt: "Bloxkeep's main window: account cards, the game bar at the bottom, Multi-Roblox on in the sidebar",
+    heroAlt: "Bloxkeep's Home: the game being played at the top, your games and presets below, accounts on the right, Multi-Roblox on in the bar at the bottom",
     proofTitle: 'See it working',
     proofAlt: 'Six Roblox windows open at once on one PC, tiled three by two, titled Roblox - Account 1 to Roblox - Account 7, all in the same game',
     proofLink: 'How to turn on Multi-Roblox',
@@ -111,9 +108,9 @@ const L = {
     features: [
       ['multi-roblox', 'multi-roblox-real.jpg', 'Several Roblox windows at once', 'Turn on Multi-Roblox and every account plays in its own window, opened windowed and tiled the way you choose. Each new Roblox build is checked.'],
       ['accounts', 'accounts-list.png', 'All your accounts in one place', 'Add accounts with a code from the Roblox phone app, a password (2-step verification works), the Roblox page or a cookie. See who is online, in a game or needs to sign in.'],
-      ['playing', 'demo-servers.webp', 'Pick a game, pick a server', 'Find a game by name or link. Choose the server with the most players, the fewest, the lowest ping or room for all your accounts, or join a friend.'],
-      ['presets', 'demo-presets.webp', 'Presets and schedules', 'Save accounts, a game and a server and start them in one click, or on a schedule that also stops them, with timed restarts.'],
-      ['staying-in-game', 'demo-rejoin.webp', 'Stay in game', 'Anti-AFK keeps windows from being kicked for idling. Auto-rejoin goes back in after a disconnect, waiting a little longer each try instead of giving up.'],
+      ['playing', 'servers.png', 'Pick a game, pick a server', 'Find a game by name or link. Choose the server with the most players, the fewest, the lowest ping or room for all your accounts, or join a friend.'],
+      ['presets', 'presets.png', 'Presets and schedules', 'Save accounts, a game and a server and start them in one click, or on a schedule that also stops them, with timed restarts.'],
+      ['staying-in-game', 'card-rejoin.png', 'Stay in game', 'Anti-AFK keeps windows from being kicked for idling. Auto-rejoin goes back in after a disconnect, waiting a little longer each try instead of giving up.'],
       ['windows-and-stats#game-monitor', 'game-monitor-real.jpg', 'Game monitor', "Live pictures of every Roblox window, a mini window, and a warning before RAM or Windows' virtual memory runs out."],
       ['windows-and-stats#statistics', 'stats.png', 'Statistics', 'A timeline of what each account played, why windows dropped and how much time it cost, and play time by account and game.'],
       ['discord#control-from-discord', 'discord-control.png', 'Control from your phone', 'Type /pc in Discord to see your accounts, a picture of their Roblox windows (/pc screenshot), run a preset, close windows or switch server, from anywhere.'],
@@ -125,13 +122,13 @@ const L = {
       ['backup-and-security', 'lock.png', 'Locked with your password', 'Accounts are encrypted with your master password and stay on your PC. Back them up to a OneDrive or Google Drive folder and restore them on a new PC.'],
       ['getting-started#updates', 'lock-update.png', 'Updates itself', "New versions install by themselves while you aren't using Bloxkeep. Your Roblox windows keep running."],
       ['macros', 'macros.png', 'Macros (Beta)', 'Steps written as plain sentences: press keys, click, wait for a picture, a color or text. Record one or start from a template; a small panel sits beside the game.'],
-      ['playing#the-games-tab', 'games.png', 'Games, wikis and news', "Popular games with their wiki inside Bloxkeep, live news from the games' own alerts, and Blox Fruits prices."],
+      ['playing#the-roblox-tab', 'games.png', 'Roblox inside Bloxkeep', "Games, friends, avatar, profile, shop and inbox for each account. Popular games come with their wiki, live news from the games' own alerts, and Blox Fruits prices."],
     ],
     startTitle: 'Start in three steps',
     start: [
       ['lock.png', 'Set a master password', "It unlocks Bloxkeep and keeps your accounts encrypted. It can't be recovered, so pick one you'll remember."],
       ['add-account.png', 'Add your accounts', 'Sign in with your phone (recommended), a username and password, or a browser window.'],
-      ['game-picker.png', 'Pick a game and press Play', 'Type a game in the bar at the bottom, click accounts to choose them, press Play.'],
+      ['game-picker.png', 'Pick a game and press Play', 'On Accounts, type a game in the bar at the bottom, click accounts to choose them, press Play.'],
     ],
     startLink: 'Getting started, step by step',
     safeTitle: 'Your accounts stay yours',
@@ -185,12 +182,9 @@ const L = {
     lead: 'Mọi tài khoản Roblox ở một chỗ. Chọn game, chọn tài khoản, bấm Vào game, mỗi tài khoản mở một cửa sổ riêng.',
     download: 'Tải Bloxkeep',
     portable: 'Bản portable (ZIP)',
-    tryLink: 'Hoặc dùng thử ngay tại đây',
-    liveTip: 'App thật với tài khoản giả: cứ bấm thử',
-    fullScreen: 'Toàn màn hình',
     all: 'Tất cả bản tải',
     meta: v => `Miễn phí, mã nguồn mở · Phiên bản ${v} · Windows 10 hoặc 11, 64-bit`,
-    heroAlt: 'Cửa sổ chính của Bloxkeep: các thẻ tài khoản, thanh chọn game ở dưới, Multi-Roblox đang bật ở thanh bên',
+    heroAlt: 'Trang chủ của Bloxkeep: game đang chơi ở trên cùng, game và Preset của bạn bên dưới, tài khoản bên phải, Multi-Roblox đang bật ở thanh dưới cùng',
     proofTitle: 'Chạy thật trên một máy',
     proofAlt: 'Sáu cửa sổ Roblox mở cùng lúc trên một máy, xếp thành lưới ba nhân hai, tiêu đề từ Roblox - Account 1 đến Roblox - Account 7, cùng ở trong một game',
     proofLink: 'Cách bật Multi-Roblox',
@@ -200,9 +194,9 @@ const L = {
     features: [
       ['multi-roblox', 'multi-roblox-real.jpg', 'Nhiều cửa sổ Roblox cùng lúc', 'Bật Multi-Roblox là mỗi tài khoản chơi trong một cửa sổ riêng, mở ở chế độ cửa sổ và xếp theo ý bạn. Mỗi bản Roblox mới đều được kiểm tra.'],
       ['accounts', 'accounts-list.png', 'Mọi tài khoản ở một chỗ', 'Thêm tài khoản bằng mã từ app Roblox trên điện thoại, bằng mật khẩu (có xác minh 2 bước), qua trang Roblox hoặc bằng cookie. Xem ngay ai đang online, đang trong game hay cần đăng nhập lại.'],
-      ['playing', 'demo-servers.webp', 'Chọn game, chọn server', 'Tìm game theo tên hoặc link. Chọn server đông nhất, vắng nhất, ping thấp nhất hay đủ chỗ cho mọi tài khoản, hoặc vào cùng bạn bè.'],
-      ['presets', 'demo-presets.webp', 'Preset và hẹn giờ', 'Lưu sẵn tài khoản, game và server rồi mở bằng một cú bấm, hoặc theo lịch tự mở tự tắt, kèm khởi động lại định kỳ.'],
-      ['staying-in-game', 'demo-rejoin.webp', 'Treo game yên tâm', 'Chống AFK giữ cửa sổ khỏi bị kick vì đứng yên. Tự vào lại game sau khi bị văng, mỗi lần chờ lâu hơn một chút chứ không bỏ cuộc.'],
+      ['playing', 'servers.png', 'Chọn game, chọn server', 'Tìm game theo tên hoặc link. Chọn server đông nhất, vắng nhất, ping thấp nhất hay đủ chỗ cho mọi tài khoản, hoặc vào cùng bạn bè.'],
+      ['presets', 'presets.png', 'Preset và hẹn giờ', 'Lưu sẵn tài khoản, game và server rồi mở bằng một cú bấm, hoặc theo lịch tự mở tự tắt, kèm khởi động lại định kỳ.'],
+      ['staying-in-game', 'card-rejoin.png', 'Treo game yên tâm', 'Chống AFK giữ cửa sổ khỏi bị kick vì đứng yên. Tự vào lại game sau khi bị văng, mỗi lần chờ lâu hơn một chút chứ không bỏ cuộc.'],
       ['windows-and-stats#theo-dõi-game', 'game-monitor-real.jpg', 'Theo dõi game', 'Hình trực tiếp của mọi cửa sổ Roblox, cửa sổ nhỏ, và cảnh báo trước khi hết RAM hoặc bộ nhớ ảo của Windows.'],
       ['windows-and-stats#thống-kê', 'stats.png', 'Thống kê', 'Dòng thời gian từng tài khoản chơi gì, vì sao rớt và mất bao lâu, cùng giờ chơi theo tài khoản và game.'],
       ['discord#điều-khiển-từ-discord', 'discord-control.png', 'Điều khiển từ điện thoại', 'Gõ /pc trong Discord để xem tài khoản, ảnh cửa sổ Roblox của chúng (/pc screenshot), chạy preset, đóng cửa sổ hay đổi server, ở đâu cũng được.'],
@@ -214,13 +208,13 @@ const L = {
       ['backup-and-security', 'lock.png', 'Khóa bằng mật khẩu của bạn', 'Tài khoản được mã hóa bằng mật khẩu chủ và chỉ nằm trên máy bạn. Sao lưu vào thư mục OneDrive hoặc Google Drive, rồi khôi phục trên máy mới.'],
       ['getting-started#cập-nhật', 'lock-update.png', 'Tự cập nhật', 'Bản mới tự cài khi bạn không dùng Bloxkeep. Các cửa sổ Roblox vẫn chạy bình thường.'],
       ['macros', 'macros.png', 'Macro (Beta)', 'Các bước viết thành câu dễ hiểu: bấm phím, bấm chuột, chờ hình, màu hoặc chữ. Ghi lại thao tác hoặc dùng mẫu, kèm bảng nhỏ cạnh game.'],
-      ['playing#tab-game', 'games.png', 'Game, wiki và tin', 'Game phổ biến có sẵn wiki ngay trong Bloxkeep, tin trực tiếp từ bot của game, và bảng giá Blox Fruits.'],
+      ['playing#tab-roblox', 'games.png', 'Roblox ngay trong Bloxkeep', 'Game, bạn bè, nhân vật, hồ sơ, cửa hàng và hộp thư của từng tài khoản. Game phổ biến có sẵn wiki, tin trực tiếp từ bot của game, và bảng giá Blox Fruits.'],
     ],
     startTitle: 'Bắt đầu trong 3 bước',
     start: [
       ['lock.png', 'Đặt mật khẩu chủ', 'Dùng để mở Bloxkeep và mã hóa tài khoản. Quên là không lấy lại được, nên chọn cái bạn nhớ.'],
       ['add-account.png', 'Thêm tài khoản', 'Đăng nhập bằng điện thoại (nên dùng), tên đăng nhập và mật khẩu, hoặc cửa sổ trình duyệt.'],
-      ['game-picker.png', 'Chọn game, bấm Vào game', 'Gõ tên game ở thanh dưới, bấm vào các tài khoản để chọn, rồi bấm Vào game.'],
+      ['game-picker.png', 'Chọn game, bấm Vào game', 'Ở tab Tài khoản, gõ tên game ở thanh dưới cùng, bấm vào các tài khoản để chọn, rồi bấm Vào game.'],
     ],
     startLink: 'Xem từng bước có hình',
     safeTitle: 'Tài khoản vẫn là của bạn',
@@ -301,32 +295,14 @@ export function landing(lang, { version, rel, releases = [] }) {
       <h1>${esc(l.h1)}</h1>
       <p class="lead">${esc(l.lead)}</p>
       ${buttons}
-      <p class="try"><a href="#try">${esc(l.tryLink)} ›</a></p>
     </div>
     <div class="stage">
-      <figure class="stage-app" id="try">
-        <div class="live" title="${esc(l.liveTip)}">
-          <img class="shot" src="${shot('hero.png')}" width="1920" height="1200" alt="${esc(l.heroAlt)}">
-          <iframe src="${rel('demo/app/')}?lang=${lang}" title="${esc(l.liveTip)}"></iframe>
-          <a class="live-full" href="${rel(home + 'demo/')}">${esc(l.fullScreen)}</a>
-          <a class="live-tap" href="${rel(home + 'demo/')}" aria-label="${esc(l.fullScreen)}"></a>
-        </div></figure>
+      <figure class="stage-app">
+        <a href="${shot('hero.png')}"><img class="shot" src="${shot('hero.png')}" width="1920" height="1200" alt="${esc(l.heroAlt)}"></a>
+      </figure>
     </div>
   </div>
 </section>
-<script>{ /* The live app in the hero: drawn at least 1232 px wide (the wide sidebar), more on a big screen, and scaled to its
-  frame (up to 1.15×); shown, and clickable, the moment its first accounts are drawn. On a phone the picture opens /demo/. */
-  const live = document.querySelector('.live'), frame = live && live.querySelector('iframe');
-  if (live && frame) {
-    const fit = () => {
-      const w = live.clientWidth, inner = Math.max(1232, w / 1.15);
-      live.style.setProperty('--w', inner + 'px'); live.style.setProperty('--h', inner / 1.6 + 'px'); live.style.setProperty('--k', String(w / inner));
-    };
-    fit(); new ResizeObserver(fit).observe(live);
-    const drawn = () => { try { return !!frame.contentDocument.querySelector('#app .card'); } catch { return true; } };
-    const look = setInterval(() => { if (drawn()) { clearInterval(look); live.classList.add('on'); } }, 100);
-    setTimeout(() => { clearInterval(look); live.classList.add('on'); }, 8000);
-  } }</script>
 
 <section class="band alt proof" aria-labelledby="proof">
   <div class="wrap">

@@ -4,7 +4,7 @@
 
 Cách Bloxkeep giữ các tài khoản luôn ở trong game: Tự vào lại, Chống AFK, kiểm tra đăng nhập mỗi ngày, và các tùy chọn về RAM, nằm ở **Cài đặt › Treo máy**; chạy ẩn dưới khay hệ thống nằm ở **Cài đặt › Bloxkeep**.
 
-<img src="../screenshots/vi/settings-staying.png" width="760" alt="Cài đặt, trang Treo game: Tự vào lại game, Chống AFK, Kiểm tra đăng nhập mỗi ngày, Báo khi sắp hết RAM, Tiết kiệm RAM cho cửa sổ chạy nền và Ưu tiên cửa sổ đang chơi">
+<img src="../screenshots/vi/settings-staying.png" width="760" alt="Cài đặt › Treo game: Cấu hình Roblox (Treo máy, Vừa treo vừa chơi, Roblox gốc, Tự chỉnh), tài khoản chính, rồi Tự vào lại, Chờ trước khi vào lại, Chống AFK, Rời server đông và Kiểm tra đăng nhập mỗi ngày">
 
 ## Làm nhanh
 
@@ -23,7 +23,7 @@ Khi Roblox của một tài khoản bị văng, bị kick hoặc mất kết n�
 | Mọi tài khoản | **Cài đặt › Treo máy › Tự vào lại** (khi chỉ một số tài khoản bật sẽ ghi "3/10 tài khoản"). |
 | Cửa sổ của một preset | Tùy chọn **Tự vào lại** của preset đó (xem [Preset](presets.vi.md)). |
 
-<img src="../screenshots/vi/card-rejoin.png" width="760" alt="Các thẻ tài khoản: một thẻ đang tự vào lại game sau 5 phút kèm nút Hủy, một thẻ báo Mất kết nối vì bị kick do treo máy">
+<img src="../screenshots/vi/card-rejoin.png" width="760" alt="Tab Tài khoản: trong Cần xem, một tài khoản vào lại sau 5 phút kèm nút Hủy vào lại; trong Đang mở trên máy này, một tài khoản bị kick vì AFK kèm nút Vào lại">
 
 ### Chờ bao lâu
 
@@ -84,7 +84,7 @@ Mặc định tắt. Bật lên, cửa sổ Bloxkeep mở sẽ có trời xám, 
 
 - Mỗi ngày một lần, khoảng 45 giây sau khi bạn mở khóa, Bloxkeep kiểm tra đăng nhập của từng tài khoản, lần lượt, cách nhau 2 giây. Bloxkeep cũng xem Roblox có báo bị ban không.
 - Một thông báo duy nhất nêu tên các tài khoản cần đăng nhập lại. Dòng cài đặt có ghi "Lần kiểm tra gần nhất: …".
-- Muốn kiểm tra ngay: **⋯ › Kiểm tra đăng nhập** trên một tài khoản, hoặc **⋯ Tùy chọn khác › Kiểm tra đăng nhập mọi tài khoản**.
+- Muốn kiểm tra ngay: **⋯ › Kiểm tra đăng nhập** trên một tài khoản, hoặc **⋮ › Kiểm tra đăng nhập mọi tài khoản** ở đầu tab Tài khoản.
 
 ## Báo khi sắp hết RAM
 
@@ -93,7 +93,7 @@ Mặc định tắt. Bật lên, cửa sổ Bloxkeep mở sẽ có trời xám, 
 - Trước khi mở, hỏi lại nếu RAM trống không đủ cho các cửa sổ mới (hộp thoại **Lưu ý trước khi mở**, xem [Vào game](playing.vi.md)).
 - Trong lúc chơi, báo khi máy dùng từ 92 % RAM trở lên, tối đa 5 phút một lần.
 - Nếu RAM vẫn trống mà bộ nhớ ảo của Windows sắp đầy thì báo chuyện đó, cả trước khi mở lẫn lúc đang chơi: khi ấy cửa sổ Roblox sẽ bị văng ngay khi mở. Xem [Gỡ rối](troubleshooting.vi.md#h-cửa-sổ-roblox-bị-văng-ngay-khi-mở-memory-dump-captured-hoặc-bloxstrap-báo-roblox-failed-to-launch).
-- Hàng chấm RAM trong thẻ **Roblox trên máy này** ở thanh bên đổi sang màu cảnh báo từ 90 % (xem [Cửa sổ và thống kê](windows-and-stats.vi.md)).
+- **RAM** ở thanh dưới cùng đổi sang màu cảnh báo từ 90 % (xem [Cửa sổ và thống kê](windows-and-stats.vi.md#thanh-dưới-cùng)).
 
 ## Tiết kiệm RAM cho cửa sổ chạy nền
 

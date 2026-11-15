@@ -25,7 +25,7 @@ The first time Bloxkeep opens, it asks you to **Set a master password**. It encr
 > [!WARNING]
 > The master password can't be recovered. Bloxkeep never stores it, so if you forget it, your saved accounts are gone. The only way back is a backup whose password you remember.
 
-<img src="../screenshots/lock.png" width="420" alt="The Welcome back screen: a Master password box and the Unlock button">
+<img src="../screenshots/lock.png" width="760" alt="The Welcome back screen: a Master password box and the Unlock button">
 
 ## Automatic backups
 

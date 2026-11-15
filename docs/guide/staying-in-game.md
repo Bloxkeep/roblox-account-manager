@@ -4,7 +4,7 @@
 
 How Bloxkeep keeps accounts in their games: Auto-rejoin, Anti-AFK, the daily sign-in check, and the RAM options, on **Settings › Staying in game**; running from the tray is on **Settings › Bloxkeep**.
 
-<img src="../screenshots/settings-staying.png" width="760" alt="Settings, Staying in game page: Auto-rejoin, Anti-AFK, Check sign-ins every day, Low RAM warning, Save RAM on background windows and Put the window you play first">
+<img src="../screenshots/settings-staying.png" width="760" alt="Settings › Staying in game: Roblox settings (AFK farming, Play and farm, Roblox as is, Custom), the main account, then Auto-rejoin, Wait before rejoining, Anti-AFK, Leave crowded servers and Check sign-ins every day">
 
 ## Quick steps
 
@@ -23,7 +23,7 @@ When an account's Roblox disconnects, gets kicked or loses the connection, Bloxk
 | All accounts | **Settings › Staying in game › Auto-rejoin** (it shows "3/10 accounts" when only some have it). |
 | A preset's windows | The preset's **Auto-rejoin** option (see [Presets](presets.md)). |
 
-<img src="../screenshots/card-rejoin.png" width="760" alt="Account cards: one is rejoining in 5 minutes with a Cancel button, another shows Disconnected after being kicked for being idle">
+<img src="../screenshots/card-rejoin.png" width="760" alt="Accounts: under Needs a look, one account rejoining in 5 minutes with Cancel rejoin; under Open here, one kicked for AFK with Rejoin">
 
 ### How long it waits
 
@@ -84,7 +84,7 @@ Off by default. On: the windows Bloxkeep opens get a grey sky, no grass and the 
 
 - Once a day, about 45 seconds after you unlock, Bloxkeep checks every account's sign-in, one at a time, 2 seconds apart. It also checks whether Roblox reports a ban.
 - One notification names the accounts that need to sign in again. The row shows "Last check: …".
-- To check now: **⋯ › Check sign-in** on an account, or **⋯ More › Check sign-in of all accounts**.
+- To check now: **⋯ › Check sign-in** on an account, or **⋮ › Check sign-in of all accounts** at the top of Accounts.
 
 ## Low RAM warning
 
@@ -93,7 +93,7 @@ Off by default. On: the windows Bloxkeep opens get a grey sky, no grass and the 
 - Before opening, it asks when the free RAM can't take the new windows (the **Before you open** question, see [Playing](playing.md)).
 - While playing, it warns when the PC uses 92 % of its RAM or more, at most every 5 minutes.
 - When RAM is free but Windows' virtual memory is almost full, it says that instead, before opening and while playing: a Roblox window then crashes as it opens. See [Troubleshooting](troubleshooting.md#q-a-roblox-window-crashes-as-it-opens-memory-dump-captured-or-bloxstraps-roblox-failed-to-launch).
-- The RAM studs in the sidebar's **Roblox on this PC** card change to the warning colour from 90 % (see [Windows and statistics](windows-and-stats.md)).
+- **RAM** in the bar at the bottom changes to the warning colour from 90 % (see [Windows and statistics](windows-and-stats.md#the-bar-at-the-bottom)).
 
 ## Save RAM for background windows
 

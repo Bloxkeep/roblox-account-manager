@@ -4,27 +4,27 @@
 
 Bloxkeep can post play-time summaries, a live status message and alerts to a Discord channel of yours. It is off until you turn it on.
 
-<img src="../screenshots/discord.png" width="760" alt="Settings › Discord: the Send to Discord switch, the Webhook link with Replace, Show and Remove, and the Play time summary rows">
+<img src="../screenshots/discord.png" width="760" alt="Settings › Discord: Sending to your channel with the Send to Discord switch, the Webhook link with Change link, Show and Remove, Send test, and a preview of an alert">
 
 ## Quick steps
 
 1. In Discord: **Channel settings › Integrations › Webhooks › New Webhook › Copy Webhook URL**.
-2. In Bloxkeep: **Settings › Discord › Webhook link › Paste link…**, paste it and press **Save**. The link looks like `https://discord.com/api/webhooks/…`.
+2. In Bloxkeep: **Settings › Discord › Paste link…**, paste it and press **Save**. The link looks like `https://discord.com/api/webhooks/…`.
 3. Turn on **Send to Discord**, then press **Send test**: "Test message sent. Check the channel."
 
 Turning on **Send to Discord** without a link asks for it.
 
 ## On your Discord profile
 
-**Show on my Discord profile** (at the top of Settings › Discord) puts "Playing Bloxkeep" on your own Discord profile: how many Roblox windows are open, the game (or how many games), since when, and a **Get Bloxkeep** button to the website. It never shows an account's name. It works through the Discord app running on this PC, needs no webhook, and is off until you turn it on. Quitting Bloxkeep takes it away.
+**Show on my Discord profile** (Settings › Discord, the **Control** tab) puts "Playing Bloxkeep" on your own Discord profile: how many Roblox windows are open, the game (or how many games), since when, and a **Get Bloxkeep** button to the website. It never shows an account's name. It works through the Discord app running on this PC, needs no webhook, and is off until you turn it on. Quitting Bloxkeep takes it away.
 
 ## Control from Discord
 
 Type `/pc` in Discord to see how your accounts are doing, run a preset, close windows, switch server or see the windows on your PC, from anywhere. It is off until you turn it on.
 
-<img src="../screenshots/discord-control.png" width="760" alt="Settings › Discord › Control from Discord turned on, with the code to type (K7MX4P), New code and Add Bloxkeep to Discord">
+<img src="../screenshots/discord-control.png" width="760" alt="Settings › Discord, the Control tab: Control from Discord turned on, the code to type (K7MX4P) with New code and Add Bloxkeep to Discord, and Show on my Discord profile">
 
-1. In Bloxkeep: **Settings › Discord › Control from Discord**, turn it on. A six-letter code shows; it works for 10 minutes (**New code** for another).
+1. In Bloxkeep: **Settings › Discord**, the **Control** tab, turn on **Control from Discord**. A six-letter code shows; it works for 10 minutes (**New code** for another).
 2. Press **Add Bloxkeep to Discord** and accept, so `/pc` works in any chat.
 3. In Discord, type `/pc link` and the code.
 4. Bloxkeep asks whether to allow that Discord account: press **Allow**. Nothing is linked until you do, so a code someone else saw (on a stream, say) is no use to them.
@@ -68,7 +68,7 @@ Bloxkeep posts through a webhook: a link that lets a program post to one channel
 
 ## Play time summary
 
-**Settings › Discord › Play time summary**:
+**Settings › Discord**, the **Summary** tab:
 
 | Row | Choices |
 |---|---|

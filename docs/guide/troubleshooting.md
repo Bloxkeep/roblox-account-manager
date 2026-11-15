@@ -10,7 +10,7 @@ Short answers to the problems people meet most, then every keyboard shortcut.
 
 **A:** Check these in order:
 
-- Is [Multi-Roblox](multi-roblox.md) on? If the sidebar's Multi-Roblox switch says **Off**, turn it on.
+- Is [Multi-Roblox](multi-roblox.md) on? If the **Multi-Roblox** switch in the bar at the bottom is off, turn it on.
 - Yellow **Not working yet**: Roblox was open before Bloxkeep. Click it and follow the steps (close every Roblox, including the one in the tray; turn off autostart if offered). Open Bloxkeep before Roblox next time.
 - Yellow **Roblox closed windows** or **A Roblox update may stop it**: a Roblox update may have changed how it blocks several windows. Open **Settings › Roblox version**, press **Check for a Bloxkeep update**, and play one account at a time until an update fixes it.
 - Using a launcher? If it blocks several windows, choose **Roblox directly (no launcher)** in **Settings › Launching › Open Roblox with**.
@@ -36,7 +36,7 @@ Banned from one game only ("You created or used an account to avoid an enforceme
 
 **A:**
 
-- "Roblox doesn't seem to be installed on this PC." in the sidebar: install Roblox from roblox.com/download.
+- "Roblox doesn't seem to be installed on this PC." in the bar at the bottom: install Roblox from roblox.com/download.
 - Only Roblox from the Microsoft Store: choose **Roblox (Microsoft Store) — being tested** in **Settings › Launching › Open Roblox with**, or install Roblox from roblox.com.
 - A launcher that is missing shows "— not installed" in that list. Pick another option.
 
@@ -50,11 +50,11 @@ Banned from one game only ("You created or used an account to avoid an enforceme
 
 | Greyed out | Why |
 |---|---|
-| **Play** in the game bar ("Select accounts first") | No account is selected. |
+| **Play** at the bottom of Accounts ("Select accounts first") | No account is selected. |
 | **Play** on a card | It is launching. |
 | **Open Roblox** | No account is selected. |
 | **Browse servers** | No game is in the game box yet, or it holds a private server. |
-| **Close** in the game bar, **Close Roblox**, **Force close** | None of the selected accounts is open on this PC. |
+| **Close** at the bottom of Accounts, **Close Roblox**, **Force close** | None of the selected accounts is open on this PC. |
 | **Edit…**, **Join this server**, **Roblox profile**, **Open website**, the **Copy** items | Several accounts are selected. **Join this server** also needs a known server; **Open website** isn't available for Roblox VNG. |
 | **Run** on a preset | It has no accounts left, or another launch is running. |
 | The kinds under **Which events** | **Windows notifications** is off. |
