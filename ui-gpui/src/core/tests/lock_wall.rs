@@ -48,7 +48,8 @@ pub async fn run(c: &mut Checks, _dir: &str) {
     // The command list, as the source has it: the match in dispatch_command.
     let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("src").join("core").join("app").join("controller.rs");
     let mut commands: Vec<String> = Vec::new();
-    if let Ok(text) = std::fs::read_to_string(&source)
+    // A checkout with Windows line ends (GitHub's build machines) reads the same as one without.
+    if let Ok(text) = std::fs::read_to_string(&source).map(|t| t.replace("\r\n", "\n"))
         && let Some(start) = text.find("async fn dispatch_command(")
         && let Some(len) = text[start..].find("\n        }\n    }")
     {
