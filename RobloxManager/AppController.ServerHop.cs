@@ -70,6 +70,11 @@ public sealed partial class AppController
             Log.Note($"Switch server: {game.Count()} window(s) of place {game.Key} to a server with {chosen.Playing}/{chosen.MaxPlayers} ({fits.Count} with room).");
             foreach (var (id, run, _) in game)
             {
+                if (await SignInRefusedAsync(id) is { } why)
+                {
+                    Toast(L.F("{0} stays where it is: {1}", Name(FindAccount(id)!), why), "warn");
+                    continue;
+                }
                 if (MoveToServer(id, run, game.Key, chosen.JobId))
                     moved++;
             }
@@ -79,6 +84,27 @@ public sealed partial class AppController
                 : L.F("{0} accounts are moving to another server…", moved), "ok");
         PushState();
         return moved;
+    }
+
+    /// <summary>
+    /// Before a working window is closed to open it elsewhere: a sign-in ticket is asked for (and dropped), so an account Roblox
+    /// would refuse now (signed out, a moderation notice, no connection) keeps its window instead of losing it for nothing.
+    /// RoALT checks the same before closing. Null when Roblox signed it in; else why not, logged.
+    /// </summary>
+    async Task<string?> SignInRefusedAsync(Guid id, CancellationToken ct = default)
+    {
+        if (FindAccount(id) is not { } account)
+            return L.T("Account not found.");
+        try
+        {
+            await RobloxApi.GetAuthTicketAsync(account.Cookie, ct, account.Realm);
+            return null;
+        }
+        catch (Exception ex) when (!ct.IsCancellationRequested && RobloxApi.IsExpectedError(ex))
+        {
+            Log.Note($"Account {id.ToString()[..8]}'s window stays open: a new sign-in was refused ({LaunchFailKind(ex)}), so it isn't closed to reopen.");
+            return ErrorText(ex);
+        }
     }
 
     /// <summary>Closes the window to reopen it in that server (auto-rejoin's path); false when it closed or was replaced
@@ -243,6 +269,8 @@ public sealed partial class AppController
                         break;
                     }
                     avoid.Add(quiet.JobId);
+                    if (await SignInRefusedAsync(id) is not null)
+                        continue;
                     if (MoveToServer(id, run, game.Key, quiet.JobId))
                         moved++;
                 }

@@ -16,7 +16,7 @@ public static partial class RobloxApi
         using var res = await PostWithCsrfAsync(QuickLoginBase(realm) + "create", "", "{}", null, ct, realm);
         string body = await res.Content.ReadAsStringAsync(ct);
         if (res.StatusCode == HttpStatusCode.TooManyRequests)
-            throw new RobloxApiException(L.T("Roblox is rate-limiting requests; try again shortly."), rateLimited: true);
+            throw RateLimitedBy(res);
         if (!res.IsSuccessStatusCode)
             throw Refused("Quick Login code", res.StatusCode, body);
         using var doc = JsonDocument.Parse(body);
@@ -54,7 +54,7 @@ public static partial class RobloxApi
         if (body.Contains("\"CodeInvalid\"") || body.Contains("\"CodeNotFound\""))
             return new QuickLoginStatus("Expired", null, null);
         if (res.StatusCode == HttpStatusCode.TooManyRequests)
-            throw new RobloxApiException(L.T("Roblox is rate-limiting requests; try again shortly."), rateLimited: true);
+            throw RateLimitedBy(res);
         if (!res.IsSuccessStatusCode)
             throw Refused("Quick Login status", res.StatusCode, body);
         using var doc = JsonDocument.Parse(body);
@@ -80,7 +80,7 @@ public static partial class RobloxApi
         if (res.IsSuccessStatusCode && cookie is not null)
             return cookie;
         if (res.StatusCode == HttpStatusCode.TooManyRequests)
-            throw new RobloxApiException(L.T("Roblox is rate-limiting requests; try again shortly."), rateLimited: true);
+            throw RateLimitedBy(res);
         throw Refused("Quick Login finish", res.StatusCode, body);
     }
 

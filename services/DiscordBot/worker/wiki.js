@@ -54,6 +54,7 @@ export const POPULAR_GAMES = [
   ['tap-simulator-reborn', 'Tap Simulator REBORN', 72858262610964, 'https://tap-simulator-reborn.fandom.com'], // checked 2026-11-07: universe 10629695169, the only wiki (small)
   ['sols-rng', "Sol's RNG", 15532962292, 'https://sol-rng.fandom.com'],
   ['steal-a-brainrot', 'Steal a Brainrot', 109983668079237, 'https://stealabrainrot.fandom.com'],
+  ['steal-an-egg', 'Steal An Egg', 107778070777162, 'https://stealanegg.fandom.com'], // checked 2026-11-08: universe 10563114921; the bigger of its two wikis (303 articles)
   ['99-nights-in-the-forest', '99 Nights in the Forest', 79546208627805, 'https://99-nights-in-the-forest.fandom.com'],
   ['adopt-me', 'Adopt Me!', 920587237, 'https://adoptme.fandom.com'],
   ['dress-to-impress', 'Dress to Impress', 15101393044, 'https://dti-dress-to-impress.fandom.com'],

@@ -260,23 +260,21 @@ html [data-theme="dark" lang="vi"]
           span.wn-title
             img [alt="" src="logo.svg"]
             span "Có gì mới"
-              small "Bloxkeep 1.0.21 · 8 tháng 11, 2026"
+              small "Bloxkeep 1.0.22 · 11 tháng 11, 2026"
         button.icon-btn [title="Đóng"]
           svg.i #1tyq039
       div.modal-body
         section.improved.wn-group
           h4.wn-kind "Cải thiện"
           ul.wn-notes
-            li "Đổi tài khoản ngay trong cửa sổ web Roblox, ở góc trên bên trái."
-            li "Tài khoản bị ban có nút Kháng cáo."
-            li "Xếp cửa sổ ổn định hơn, kể cả sang màn hình khác; Ctrl+Alt+A đưa chúng lên trên mọi app."
-            li "Theo dõi game có thể đưa cửa sổ của một game lên trước hoặc xuống sau."
-            li "Cài đặt cho biết giao diện nào đang được dùng nhiều."
-            li "Mở app sinh động hơn, cửa sổ cỡ vừa không bị ẩn bớt."
+            li "Cửa sổ vào lại game về đúng chỗ cũ, không phải xếp lại."
+            li "Game mới trong tab Game tự hiện, không cần mở lại Bloxkeep."
+            li "Báo lỗi gửi kèm đủ nhật ký lỗi."
         section.fixed.wn-group
           h4.wn-kind "Đã sửa"
           ul.wn-notes
-            li "Sửa nhiều lỗi nhỏ ở cửa sổ chính, khay, cửa sổ nhỏ, Theo dõi game và tab Game."
+            li "Gõ được lại ký tự dùng AltGr (như @ trên bàn phím Pháp) khi Bloxkeep đang mở. Phím tắt trên các phím đó dùng Alt trái."
+            li "Cập nhật Roblox không còn dừng ngay với báo “Có cửa sổ Roblox chưa đóng”."
         details.wn-older
           summary "Và 2 phiên bản trước đó"
             svg.i #1g7f83q

@@ -420,7 +420,7 @@ html [data-theme="dark" lang="en"]
                 svg.i #1e3syqr
                 span "Windows"
 #layer
-  div.menu [role="menu" style="left:846.375px;top:82.7344px"]
+  div.menu [role="menu" style="left:845.811px;top:82.1699px"]
     button [role="menuitem"]
       span "Check sign-in of all accounts"
     button [role="menuitem"]

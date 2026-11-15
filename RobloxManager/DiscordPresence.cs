@@ -9,8 +9,20 @@ namespace RobloxManager;
 /// to 9), as games do. No server or token: an application id is public. Retried later while Discord isn't running.</summary>
 public sealed class DiscordPresence : IDisposable
 {
-    /// <summary>What the profile shows; the application's icon and name come with it.</summary>
-    public sealed record Activity(string Details, string? State, long StartUnix, string ButtonLabel, string ButtonUrl);
+    /// <summary>What the profile shows; the application's name comes with it, and its icon unless a picture is given.</summary>
+    public sealed record Activity(string Details, string? State, long StartUnix, string ButtonLabel, string ButtonUrl)
+    {
+        /// <summary>The big picture (an https address: the game's icon), with Bloxkeep's logo small at its corner.</summary>
+        public string? Picture { get; init; }
+        /// <summary>Said when the big picture is pointed at.</summary>
+        public string? PictureText { get; init; }
+        /// <summary>A button before <see cref="ButtonLabel"/>'s (Discord takes two): the game's page.</summary>
+        public string? FirstLabel { get; init; }
+        public string? FirstUrl { get; init; }
+    }
+
+    /// <summary>Bloxkeep's logo, as the Discord bot's and feedback's messages show it.</summary>
+    const string Logo = "https://raw.githubusercontent.com/Bloxkeep/roblox-account-manager/main/docs/brand/bloxkeep.png";
 
     /// <summary>The tests' stand-in for Discord's pipe; Discord's own otherwise.</summary>
     static readonly string? TestPipe = Environment.GetEnvironmentVariable("BLOXKEEP_DISCORD_PIPE") is { Length: > 0 } p ? p : null;
@@ -69,16 +81,24 @@ public sealed class DiscordPresence : IDisposable
         }
     }
 
-    /// <summary>The activity as Discord's SET_ACTIVITY takes it: lines of 2 to 128 characters, one link button.</summary>
+    /// <summary>The activity as Discord's SET_ACTIVITY takes it: lines of 2 to 128 characters, up to two link buttons, a
+    /// picture by its https address (Discord fetches it itself).</summary>
     internal static string ActivityJson(Activity a)
     {
         static string Fit(string s) => s.Length > 128 ? s[..127] + "…" : s.Length < 2 ? s.PadRight(2) : s;
+        static object Button(string label, string url) => new { label = label.Length > 32 ? label[..32] : label, url };
+        var buttons = new List<object>();
+        if (a is { FirstLabel.Length: > 0, FirstUrl.Length: > 0 })
+            buttons.Add(Button(a.FirstLabel, a.FirstUrl));
+        buttons.Add(Button(a.ButtonLabel, a.ButtonUrl));
         var activity = new Dictionary<string, object?>
         {
             ["details"] = Fit(a.Details),
             ["timestamps"] = new { start = a.StartUnix },
-            ["assets"] = new { large_text = "Bloxkeep" },
-            ["buttons"] = new[] { new { label = a.ButtonLabel.Length > 32 ? a.ButtonLabel[..32] : a.ButtonLabel, url = a.ButtonUrl } },
+            ["assets"] = a.Picture is { Length: > 0 } picture
+                ? (object)new { large_image = picture, large_text = Fit(a.PictureText ?? "Bloxkeep"), small_image = Logo, small_text = "Bloxkeep" }
+                : new { large_text = "Bloxkeep" },
+            ["buttons"] = buttons,
         };
         if (a.State is { Length: > 0 } state)
             activity["state"] = Fit(state);

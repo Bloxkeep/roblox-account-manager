@@ -26,12 +26,19 @@ static class MacroRecording
     /// <summary>A camera drag is cut into pieces this long at most.</summary>
     const int CameraPiece = 400;
     const int MinWait = 30;
+    /// <summary>The longest hold a key step takes (MacroRules' check of a step).</summary>
+    const int KeyStepMaxMs = 10_000;
 
     /// <summary>A step made, from when to when it plays (the waits go between), and where (a click).</summary>
     sealed record Act(int Start, int End, MacroStep Step, Point At = default);
 
     /// <param name="place">A screen point as 0..1 of the window's client area; null for one outside it.</param>
-    public static List<MacroStep> ToSteps(IReadOnlyList<MacroEvent> recorded, Func<Point, (double X, double Y)?> place)
+    public static List<MacroStep> ToSteps(IReadOnlyList<MacroEvent> recorded, Func<Point, (double X, double Y)?> place) =>
+        ToSteps(recorded, place, out _);
+
+    /// <param name="whole">How many steps the whole recording makes: more than <see cref="MacroRules.MaxSteps"/>, and its
+    /// end was left out (said, never silently: a long recording stopped short of where it was recorded to).</param>
+    public static List<MacroStep> ToSteps(IReadOnlyList<MacroEvent> recorded, Func<Point, (double X, double Y)?> place, out int whole)
     {
         var events = recorded.OrderBy(e => e.Ms).ToList();
         var actions = new List<Act>();
@@ -52,7 +59,16 @@ static class MacroRecording
                     bool alone = up > 0 && e.Key != "Alt" && events.Skip(i + 1).Take(up - i - 1).All(x => x.Kind is "move" or "pos" || (x.Kind == "keyDown" && x.Key == e.Key));
                     if (alone)
                     {
-                        actions.Add(new(e.Ms, events[up].Ms, new MacroStep { Kind = "key", Key = e.Key, Ms = Math.Clamp(events[up].Ms - e.Ms, 30, 5000) }));
+                        // Held as long as it was: a walk cut to 5 s stopped meters short (a user's report, 2026-11-13). Past a
+                        // key step's 10 s it is Hold, a wait and Release.
+                        int hold = events[up].Ms - e.Ms;
+                        if (hold <= KeyStepMaxMs)
+                            actions.Add(new(e.Ms, events[up].Ms, new MacroStep { Kind = "key", Key = e.Key, Ms = Math.Max(hold, 30) }));
+                        else
+                        {
+                            actions.Add(new(e.Ms, e.Ms, new MacroStep { Kind = "down", Key = e.Key }));
+                            actions.Add(new(events[up].Ms, events[up].Ms, new MacroStep { Kind = "up", Key = e.Key }));
+                        }
                         for (int j = i + 1; j <= up; j++)
                             used.Add(j);
                     }
@@ -149,7 +165,31 @@ static class MacroRecording
             steps.Add(a.Step);
             at = Math.Max(at, a.End);
         }
-        return steps.Count > MacroRules.MaxSteps ? steps.Take(MacroRules.MaxSteps).ToList() : steps;
+        whole = steps.Count;
+        return steps.Count > MacroRules.MaxSteps ? Cut(steps, MacroRules.MaxSteps) : steps;
+    }
+
+    /// <summary>The first steps, at most <paramref name="max"/>: keys held there let go at the end (not left held), no
+    /// wait last.</summary>
+    static List<MacroStep> Cut(List<MacroStep> steps, int max)
+    {
+        for (int n = max; n > 0; n--)
+        {
+            var kept = steps.Take(n).ToList();
+            while (kept.Count > 0 && kept[^1].Kind == "wait")
+                kept.RemoveAt(kept.Count - 1);
+            var held = new List<string>();
+            foreach (var s in kept)
+            {
+                if (s is { Kind: "down", Key: { } down })
+                    held.Add(down);
+                else if (s is { Kind: "up", Key: { } up })
+                    held.Remove(up);
+            }
+            if (kept.Count + held.Count <= max)
+                return [.. kept, .. held.Select(key => new MacroStep { Kind = "up", Key = key })];
+        }
+        return [];
     }
 
     static MacroStep Camera(int dx, int dy, int ms) =>
@@ -217,10 +257,11 @@ static class MacroRecording
     }
 
     /// <summary>A TinyTask recording as a macro (not saved), its places as parts of a 1920 × 1080 screen.</summary>
-    public static Macro FromTinyTask(byte[] file, string name)
+    /// <param name="whole">How many steps the whole recording makes (see <see cref="ToSteps(IReadOnlyList{MacroEvent}, Func{Point, ValueTuple{double, double}?}, out int)"/>).</param>
+    public static Macro FromTinyTask(byte[] file, string name, out int whole)
     {
         var frame = TinyTaskFrame;
-        var steps = ToSteps(ReadTinyTask(file), p => (p.X / (double)frame.Width, p.Y / (double)frame.Height));
+        var steps = ToSteps(ReadTinyTask(file), p => (p.X / (double)frame.Width, p.Y / (double)frame.Height), out whole);
         if (steps.Count == 0)
             throw new UserError(L.T("That recording has nothing Bloxkeep can play."));
         return new Macro { Name = name, Steps = steps, RecordedSize = new MacroSize { W = frame.Width, H = frame.Height }, JitterMs = 0, JitterPx = 0 };
@@ -277,6 +318,19 @@ sealed class MacroRecorder : IDisposable
 
     /// <summary>Roughly how many steps so far (taps, clicks, scrolls).</summary>
     public int Steps => Volatile.Read(ref _actions);
+
+    /// <summary>How many steps the recording so far makes, waits included (the limit is counted in these).</summary>
+    public int StepsNow()
+    {
+        List<MacroEvent> events;
+        lock (_events)
+            events = _events.ToList();
+        MacroRecording.ToSteps(events, _ => (0.5, 0.5), out int whole);
+        return whole;
+    }
+
+    /// <summary>Once finished: the steps past a macro's limit that were left out (none when the recording stopped at it).</summary>
+    public int LeftOut { get; private set; }
 
     public MacroRecorder(Guid accountId, int pid, IntPtr window, RobloxInput? raw)
     {
@@ -461,7 +515,8 @@ sealed class MacroRecorder : IDisposable
         lock (_events)
             events = _events.ToList();
         var client = Client;
-        var steps = MacroRecording.ToSteps(events, p => client.Contains(p) ? ((p.X - client.X) / (double)client.Width, (p.Y - client.Y) / (double)client.Height) : null);
+        var steps = MacroRecording.ToSteps(events, p => client.Contains(p) ? ((p.X - client.X) / (double)client.Width, (p.Y - client.Y) / (double)client.Height) : null, out int whole);
+        LeftOut = Math.Max(0, whole - steps.Count);
         int failed = pictures.Count(t => t.IsFaulted), unfinished = pictures.Count(t => !t.IsCompleted);
         Log.Note($"Macro recording: finished on window {_pid} with {events.Count} events, {steps.Count} steps; click pictures {pictures.Length}"
             + $"{(failed > 0 ? $", {failed} failed ({pictures.First(t => t.IsFaulted).Exception!.GetBaseException().GetType().Name})" : "")}"

@@ -136,7 +136,10 @@ html [data-theme="dark" lang="vi"]
             button.chip [aria-pressed="false"] "Online"
               i.dot [style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:"]
               em "4"
-            button.chip.more [title="Bộ lọc khác" aria-haspopup="menu"] "+2"
+            button.chip [aria-pressed="false"] "Offline"
+              i.dot [style="background-attachment:;background-clip:;background-color:;background-image:;background-origin:;background-position-x:;background-position-y:;background-repeat:;background-size:"]
+              em "3"
+            button.chip.more [title="Bộ lọc khác" aria-haspopup="menu"] "+1"
           div.seg [id="layout-seg"]
             button.on [title="Dạng thẻ" aria-label="Dạng thẻ" aria-pressed="true"]
               svg.i #19k0rtd

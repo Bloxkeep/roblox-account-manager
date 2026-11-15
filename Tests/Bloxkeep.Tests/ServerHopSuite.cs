@@ -53,9 +53,18 @@ static class ServerHopSuite
         // Roblox's list: the one they're in, one full, one with room for one, one with room for both.
         string list = """{"data":[{"id":"old-server","playing":5,"maxPlayers":20},{"id":"full","playing":20,"maxPlayers":20},{"id":"one-left","playing":19,"maxPlayers":20},{"id":"roomy","playing":3,"maxPlayers":20}],"nextPageCursor":null}""";
         int serverErrors = 0; // the next server lists Roblox answers with a 500
+        bool signedOut = false; // Roblox refuses the sign-in ticket asked before a window is closed to move
         Task<HttpResponseMessage> Roblox(HttpRequestMessage req)
         {
             var uri = req.RequestUri!;
+            if (uri.AbsolutePath.StartsWith("/v1/authentication-ticket", StringComparison.Ordinal))
+            {
+                var ticket = new HttpResponseMessage(signedOut ? HttpStatusCode.Unauthorized : HttpStatusCode.OK)
+                    { Content = new StringContent(signedOut ? """{"errors":[{"code":0,"message":"Authorization has been denied for this request."}]}""" : "{}", Encoding.UTF8, "application/json") };
+                if (!signedOut)
+                    ticket.Headers.TryAddWithoutValidation("rbx-authentication-ticket", "stand-in-ticket");
+                return Task.FromResult(ticket);
+            }
             bool servers = uri.AbsolutePath.Contains("/servers/Public");
             if (servers && serverErrors > 0)
             {
@@ -103,6 +112,15 @@ static class ServerHopSuite
             c.Check("a window that closed while Roblox answered: not closed again, not marked as moving (fails on the old code)",
                 gone is 0 && closed.Count == 0 && hopping.Count == 0 && !restarts.Contains(a1.Id), $"{gone} {string.Join(",", closed)} {hopping.Count}");
             standIn.SetValue(null, (Func<HttpRequestMessage, Task<HttpResponseMessage>>)Roblox);
+
+            // Roblox won't sign the account in again (signed out): its window stays where it is instead of closing for
+            // nothing (RoALT checks first too; before, it closed and the reopening was refused).
+            Window(a1, 823, new GameTarget(Place), "ingame", "old-server");
+            signedOut = true;
+            var refused = await Harness.Try(app, "switchServer", new { ids = new[] { a1.Id } });
+            signedOut = false;
+            c.Check("a sign-in Roblox refuses: the window isn't closed, not marked as moving (fails on the old code)",
+                refused is 0 && closed.Count == 0 && hopping.Count == 0 && !restarts.Contains(a1.Id), $"{refused} {string.Join(",", closed)} {hopping.Count}");
 
             // Locked after the switch: the reopenings went with the vault, and so do the marks.
             Window(a1, 822, new GameTarget(Place), "ingame", "old-server");

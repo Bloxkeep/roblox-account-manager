@@ -457,6 +457,24 @@ public sealed class ShellForm : Form
         (AppController.HotkeyNext, Keys.N), (AppController.HotkeyBloxkeep, Keys.B),
     ];
 
+    /// <summary>The hotkeys on keys the keyboard types with AltGr; null when there are none.</summary>
+    AltGrHotkeys? _altGrHotkeys;
+    /// <summary>The AltGr hotkeys error.log was last told of.</summary>
+    string? _altGrNoted;
+
+    /// <summary>A hotkey, from Windows (RegisterHotKey) or the AltGr hook.</summary>
+    void OnHotkey(int id)
+    {
+        // Ctrl+Alt+B: Bloxkeep itself, from the tray too (as its icon's Open does).
+        if (id == AppController.HotkeyBloxkeep)
+        {
+            Log.Note("Hotkey Ctrl+Alt+B received.");
+            ShowInFront("Ctrl+Alt+B");
+        }
+        else
+            _app.OnHotkey(id);
+    }
+
     /// <summary>The hotkeys from any app while the switch is on; one another app holds is reported in Settings.</summary>
     void RegisterHotkeys()
     {
@@ -466,23 +484,48 @@ public sealed class ShellForm : Form
             UnregisterHotKey(Handle, id);
         for (int id = AppController.HotkeyStopMacros; id <= AppController.HotkeyEndRecording; id++)
             UnregisterHotKey(Handle, id);
+        _altGrHotkeys?.Dispose();
+        _altGrHotkeys = null;
         var taken = new List<string>();
+        var typing = new List<string>();
         if (Prefs.GlobalHotkeys)
         {
-            foreach (var (id, key) in Hotkeys)
+            // AltGr is Ctrl+Alt to Windows: a hotkey on a key the keyboard types with AltGr took the character from every
+            // app (a French keyboard's @ is AltGr+0, and Ctrl+Alt+0 stops macros: a user's report, 1.0.21, 2026-11-11).
+            // Those keys go to a keyboard hook that tells the left Alt (the hotkey) from AltGr (typing).
+            var altGr = AltGrKeys.Typed();
+            var hooked = new Dictionary<Keys, int>();
+            var hookedNames = new List<string>();
+            void Add(int id, Keys key, string name)
             {
-                if (!RegisterHotKey(Handle, id, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, (int)key))
-                    taken.Add("Ctrl+Alt+" + key);
+                if (altGr.Contains(key))
+                {
+                    hooked[key] = id;
+                    hookedNames.Add(name);
+                }
+                else if (!RegisterHotKey(Handle, id, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, (int)key))
+                    taken.Add(name);
             }
+            foreach (var (id, key) in Hotkeys)
+                Add(id, key, "Ctrl+Alt+" + key);
             // Macros (Beta): Ctrl+Alt+0 stops them all; Ctrl+Alt+1…9 only for the digits a macro holds.
-            if (!RegisterHotKey(Handle, AppController.HotkeyStopMacros, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, (int)Keys.D0))
-                taken.Add("Ctrl+Alt+0");
+            Add(AppController.HotkeyStopMacros, Keys.D0, "Ctrl+Alt+0");
             foreach (int digit in _app.MacroHotkeys())
+                Add(AppController.HotkeyMacroFirst + digit - 1, Keys.D0 + digit, "Ctrl+Alt+" + digit);
+            if (hooked.Count > 0)
             {
-                if (!RegisterHotKey(Handle, AppController.HotkeyMacroFirst + digit - 1, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, (int)Keys.D0 + digit))
-                    taken.Add("Ctrl+Alt+" + digit);
+                // Posted: the hook's thread must answer Windows at once.
+                _altGrHotkeys = AltGrHotkeys.Start(hooked, id => BeginInvoke(() => OnHotkey(id)));
+                if (_altGrHotkeys is null)
+                    typing.AddRange(hookedNames); // left to the keyboard, as said in Settings
+                else if (string.Join(",", hookedNames) != _altGrNoted)
+                    Log.Note("Hotkeys on AltGr keys, with the left Alt only: " + string.Join(", ", hookedNames) + ".");
+                _altGrNoted = string.Join(",", hookedNames);
             }
         }
+        if (typing.Count > 0 && string.Join(",", typing) != string.Join(",", _app.HotkeysTyping))
+            Log.Note("Hotkeys left to the keyboard's AltGr: " + string.Join(", ", typing) + ".");
+        _app.HotkeysTyping = typing;
         // F8 ends a recording, whatever the switch says (the recorder also watches for it itself).
         if (_app.RecordingMacro)
             RegisterHotKey(Handle, AppController.HotkeyEndRecording, MOD_NOREPEAT, (int)Keys.F8);
@@ -518,14 +561,7 @@ public sealed class ShellForm : Form
         }
         if (m.Msg == WM_HOTKEY)
         {
-            // Ctrl+Alt+B: Bloxkeep itself, from the tray too (as its icon's Open does).
-            if ((int)m.WParam == AppController.HotkeyBloxkeep)
-            {
-                Log.Note("Hotkey Ctrl+Alt+B received.");
-                ShowInFront("Ctrl+Alt+B");
-            }
-            else
-                _app.OnHotkey((int)m.WParam);
+            OnHotkey((int)m.WParam);
             return;
         }
         // Coming back from the taskbar: Windows asks first, while the window is still minimised. Invisible from here, so it
@@ -1377,6 +1413,7 @@ public sealed class ShellForm : Form
     protected override void OnFormClosed(FormClosedEventArgs e)
     {
         SystemEvents.UserPreferenceChanged -= OnUserPreferenceChanged;
+        _altGrHotkeys?.Dispose();
         // A run whose page got on screen was good, even ending mid browser restart; so was one quit by the person or Windows.
         if (_pageLoaded || _quitting || e.CloseReason == CloseReason.WindowsShutDown)
             TryMarkStarting(false);

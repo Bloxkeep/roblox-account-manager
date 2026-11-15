@@ -84,6 +84,9 @@ public static class RobloxLauncher
             return $"{baseUrl}request=RequestPrivateGame&{common}&linkCode={Uri.EscapeDataString(t.LinkCode)}&joinAttemptOrigin=privateServerListJoin";
         if (t.JobId is not null)
             return $"{baseUrl}request=RequestGameJob&{common}&gameId={t.JobId}&joinAttemptOrigin=publicServerListJoin";
+        // A link's launch data goes with a plain join, before isPlayTogetherGame as the website puts it.
+        if (t.LaunchData is { Length: > 0 } data)
+            common = $"browserTrackerId={browserTrackerId}&placeId={t.PlaceId}&launchData={Uri.EscapeDataString(data)}&isPlayTogetherGame=false&joinAttemptId={Guid.NewGuid()}";
         return $"{baseUrl}request=RequestGame&{common}&joinAttemptOrigin=PlayButton";
     }
 
@@ -107,10 +110,16 @@ public static class RobloxLauncher
     /// "other:&lt;Name&gt;" and "custom" get the link as their first argument, as Windows would.</param>
     /// <returns>The link's browser tracker id, new per launch: it is on the client's command line, so its window can be
     /// told apart (<see cref="RobloxProcesses.LaunchTrackerOf"/>).</returns>
-    public static string Launch(string ticket, GameTarget? target, string launchVia, string customLauncher = "")
+    /// <param name="client">A client to start as it is, past the choice: the build the windows open run on (RobloxInstalls.KeptCopy).</param>
+    public static string Launch(string ticket, GameTarget? target, string launchVia, string customLauncher = "", string? client = null)
     {
         string tracker = NewBrowserTrackerId();
         string uri = BuildLaunchUri(ticket, target, tracker);
+        if (client is not null)
+        {
+            Start(client, uri);
+            return tracker;
+        }
         // Windows would only show its own error for a client missing its DLL: another build opens instead, or this is said.
         if (launchVia is "auto" or "" && RobloxInstalls.HandlerBroken())
         {
@@ -175,6 +184,16 @@ public static class RobloxLauncher
                     throw new FileNotFoundException(RobloxInstalls.StoreEditionInstalled()
                         ? L.T("Only Roblox from the Microsoft Store is installed. Choose it under Settings › Launching › Open Roblox with, or install Roblox from roblox.com/download.")
                         : L.T("Roblox isn't installed. Install it from roblox.com/download, then try again."));
+                }
+                // The links on another channel's build with Roblox's live one installed beside it: that one, as Windows would
+                // start the links' (RobloxInstalls.LiveBuild: the other would update and close every Roblox window open).
+                if (RobloxInstalls.UsableHandlerPath() is { } links && Path.GetFileName(links).Equals("RobloxPlayerBeta.exe", StringComparison.OrdinalIgnoreCase)
+                    && RobloxInstalls.LiveBeside(links) is { } live
+                    && !string.Equals(live, links, StringComparison.OrdinalIgnoreCase))
+                {
+                    Log.Note($"Roblox start: the links open build {Path.GetFileName(Path.GetDirectoryName(links))}; started Roblox's live build {Path.GetFileName(Path.GetDirectoryName(live))} instead.");
+                    Start(live, uri);
+                    break;
                 }
                 // Not in Bloxkeep's folder (see Program.Main): the launcher may keep running as long as Roblox does.
                 Process.Start(new ProcessStartInfo(uri) { UseShellExecute = true, WorkingDirectory = Path.GetTempPath() })?.Dispose();

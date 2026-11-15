@@ -23,6 +23,11 @@ public static class RobloxInstalls
             int end = command.IndexOf('"', 1);
             return end > 1 ? command[1..end] : null;
         }
+        // Unquoted: up to ".exe", so a folder with a space ("C:\Program Files\Fishstrap\Fishstrap.exe -player %1") isn't cut
+        // at "C:\Program" (RoALT reads it the same way).
+        int exe = command.IndexOf(".exe", StringComparison.OrdinalIgnoreCase);
+        if (exe > 0)
+            return command[..(exe + 4)];
         int space = command.IndexOf(' ');
         return space > 0 ? command[..space] : command;
     }
@@ -220,16 +225,40 @@ public static class RobloxInstalls
                 ? v : new Version(0, 0);
         bool Registered(string p) => registered is not null && IsRobloxOwn(p)
             && string.Equals(Path.GetFileName(Path.GetDirectoryName(p)), registered, StringComparison.OrdinalIgnoreCase);
-        // …\<install>\Versions\version-…\RobloxPlayerBeta.exe: one pick per Versions folder.
+        // …\<install>\Versions\version-…\RobloxPlayerBeta.exe: one pick per Versions folder. Roblox's live build first (LiveBuild).
         return paths.GroupBy(p => Path.GetDirectoryName(Path.GetDirectoryName(p)) ?? "", StringComparer.OrdinalIgnoreCase)
-            .Select(install => install.OrderByDescending(Registered).ThenByDescending(VersionNumber).ThenByDescending(File.GetLastWriteTimeUtc).First())
-            .OrderByDescending(VersionNumber)
+            .Select(install => install.OrderByDescending(IsLive).ThenByDescending(Registered).ThenByDescending(VersionNumber).ThenByDescending(File.GetLastWriteTimeUtc).First())
+            .OrderByDescending(IsLive)
+            .ThenByDescending(VersionNumber)
             .ThenByDescending(File.GetLastWriteTimeUtc)
             .FirstOrDefault();
     }
 
+    /// <summary>
+    /// The build folder ("version-…") Roblox serves everyone now (clientsettingscdn's WindowsPlayer, no channel); null until
+    /// Roblox answered. Roblox puts some accounts on a test channel and installs that channel's build next to the live one,
+    /// the roblox-player links then pointing at it. Bloxkeep's links ask for no channel, so a client on the test build finds
+    /// itself off the live one and runs Roblox's installer, which closes every Roblox window open: on a user's PC (2026-11-13,
+    /// 0.747.649 installed beside the live 0.747.0) each window opened with others running ended them all within seconds.
+    /// RoALT met it too and starts the live build's file; Bloxkeep does the same when that build is installed.
+    /// </summary>
+    public static string? LiveBuild { get; set; }
+
+    /// <summary>The client is in Roblox's live build's folder (<see cref="LiveBuild"/>).</summary>
+    static bool IsLive(string exe) =>
+        LiveBuild is { Length: > 0 } live && string.Equals(Path.GetFileName(Path.GetDirectoryName(exe)), live, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>The live build's client in the same Versions folder as this one when it is there and this is another build;
+    /// otherwise the client as given (<see cref="LiveBuild"/>).</summary>
+    public static string? LiveBeside(string? exe)
+    {
+        if (exe is null || LiveBuild is not { Length: > 0 } live || IsLive(exe) || !HasBuild(exe, live))
+            return exe;
+        return Path.Combine(Path.GetDirectoryName(Path.GetDirectoryName(exe))!, live, "RobloxPlayerBeta.exe");
+    }
+
     /// <summary>In Roblox's own install (its installer's, per user or for all), not a launcher's copy.</summary>
-    static bool IsRobloxOwn(string exe) =>
+    public static bool IsRobloxOwn(string exe) =>
         Under(exe, Path.Combine(Local, "Roblox")) || Under(exe, Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "Roblox"));
 
     /// <summary>The build folder ("version-…") Roblox's installer set the roblox-player link up for, written beside its command.</summary>
@@ -344,7 +373,7 @@ public static class RobloxInstalls
             // Whatever opens roblox-player: links (not VNG's client: see IsVngClient).
             _ => UsableHandlerPath() is { } handler
                 ? Path.GetFileName(handler).Equals("RobloxPlayerBeta.exe", StringComparison.OrdinalIgnoreCase)
-                    ? handler
+                    ? LiveBeside(handler) // what RobloxLauncher starts in the links' place (LiveBuild)
                     : Newest(ClientsIn(Path.GetDirectoryName(handler))) ?? FindAnyClient()
                 : FindAnyClient() ?? FindVngClient(),
         };
@@ -366,6 +395,34 @@ public static class RobloxInstalls
         }
         string own = Path.Combine(Path.GetDirectoryName(client) ?? "", OwnInstaller);
         return IsRobloxOwn(client) && !IsVngClient(client) && File.Exists(own) ? own : null;
+    }
+
+    /// <summary>
+    /// Whether a Bloxstrap-style launcher bringing this client up to the live build leaves the Roblox windows open. Its usual
+    /// update ends every RobloxPlayerBeta first (Bloxstrap's Bootstrapper.cs, read 2026-11-14: UpgradeRoblox calls
+    /// KillRobloxInstances); only its background update doesn't, and only when turned on (BackgroundUpdatesEnabled in its
+    /// Settings.json), at most one version behind and with 5 GB free. Unknown counts as closing them.
+    /// </summary>
+    public static bool UpdatesInBackground(string launcher, ClientVersion client, ClientVersion live)
+    {
+        try
+        {
+            string dir = Path.GetDirectoryName(launcher) ?? "";
+            string settings = Path.Combine(dir, "Settings.json");
+            if (!File.Exists(settings))
+                return false;
+            using var doc = System.Text.Json.JsonDocument.Parse(File.ReadAllText(settings));
+            if (!(doc.RootElement.ValueKind == System.Text.Json.JsonValueKind.Object
+                  && doc.RootElement.TryGetProperty("BackgroundUpdatesEnabled", out var on) && on.ValueKind == System.Text.Json.JsonValueKind.True))
+                return false;
+            if (!Version.TryParse(client.Version, out var have) || !Version.TryParse(live.Version, out var newest) || newest.Minor - have.Minor is not (0 or 1))
+                return false;
+            return new DriveInfo(Path.GetPathRoot(dir)!).AvailableFreeSpace >= 5_000_000_000;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException or ArgumentException)
+        {
+            return false;
+        }
     }
 
     /// <summary>Roblox's installer, in each build folder of its own install: run with no switches it installs the newest build
@@ -480,4 +537,64 @@ public static class RobloxInstalls
             ? $"0.{release}.0.{release}{build:0000}"
             : null;
     }
+    /// <summary>Where <see cref="KeptCopy"/> keeps the build the windows open run on (Settings › Roblox version › When: "keep").</summary>
+    public static string KeptRoot = Path.Combine(Local, "Bloxkeep", "Roblox kept");
+
+    /// <summary>
+    /// A copy of Roblox's own build <paramref name="exe"/> is in, without its updater: started from there, Roblox opens on that build
+    /// instead of updating, which would close every Roblox window open. Roblox looks for the updater beside itself only (the
+    /// owner's logs, 2026-11-13: "Checking if updater exists at …\version-…\RobloxPlayerInstaller.exe"), and without it says
+    /// "Updater not found. Skipping update" and plays on, as a launcher's copy does. Files are hard links where they can be (no
+    /// space taken, even after Roblox deletes its old build), its Fast Flags (ClientSettings) copied fresh each time. A launcher's
+    /// copy (no updater beside it) is started as it is.
+    /// </summary>
+    public static string KeptCopy(string exe)
+    {
+        if (!IsRobloxOwn(exe))
+            return exe;
+        string from = Path.GetDirectoryName(exe)!;
+        string to = Path.Combine(KeptRoot, Path.GetFileName(from));
+        string done = Path.Combine(to, ".complete");
+        if (!File.Exists(done))
+        {
+            string part = to + ".part";
+            foreach (string old in new[] { to, part }.Where(Directory.Exists))
+                Directory.Delete(old, recursive: true);
+            foreach (string file in Directory.EnumerateFiles(from, "*", SearchOption.AllDirectories))
+            {
+                string rel = Path.GetRelativePath(from, file);
+                if (rel.Equals(UpdaterName, StringComparison.OrdinalIgnoreCase) || rel.StartsWith(ClientSettings + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+                    continue;
+                string target = Path.Combine(part, rel);
+                Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+                if (!CreateHardLink(target, file, IntPtr.Zero))
+                    File.Copy(file, target);
+            }
+            File.WriteAllText(Path.Combine(part, ".complete"), "");
+            Directory.Move(part, to);
+        }
+        string flags = Path.Combine(to, ClientSettings);
+        if (Directory.Exists(flags))
+            Directory.Delete(flags, recursive: true);
+        if (Directory.Exists(Path.Combine(from, ClientSettings)))
+        {
+            Directory.CreateDirectory(flags);
+            foreach (string file in Directory.EnumerateFiles(Path.Combine(from, ClientSettings)))
+                File.Copy(file, Path.Combine(flags, Path.GetFileName(file)), overwrite: true);
+        }
+        return Path.Combine(to, Path.GetFileName(exe));
+    }
+
+    /// <summary>Removes the kept builds; only called with no Roblox open (a running one's files would go from under it).</summary>
+    public static void ForgetKeptCopies()
+    {
+        if (Directory.Exists(KeptRoot))
+            Directory.Delete(KeptRoot, recursive: true);
+    }
+
+    const string UpdaterName = "RobloxPlayerInstaller.exe";
+    const string ClientSettings = "ClientSettings";
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    static extern bool CreateHardLink(string fileName, string existingFileName, IntPtr securityAttributes);
 }

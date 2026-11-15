@@ -89,7 +89,8 @@ public sealed class AppSettings
     public bool TrimBackground { get; set; }
     /// <summary>A launcher installs Roblox's newest build by itself while no Roblox window is open.</summary>
     public bool AutoUpdateRoblox { get; set; } = true;
-    /// <summary>When that update goes in: "idle" once no Roblox window is open, "now" closing them all first (like Close all).</summary>
+    /// <summary>When that update goes in: "idle" once no Roblox window is open, "now" closing them all first (like Close all),
+    /// "keep" once none is open too, windows opened meanwhile playing on the build already running instead of waiting.</summary>
     public string RobloxUpdateWhen { get; set; } = "idle";
     /// <summary>Roblox's leanest drawing for the windows Bloxkeep opens, Light AFK presets' too. See <see cref="RobloxFlags"/>.</summary>
     public bool FastFlags { get; set; }
@@ -393,6 +394,9 @@ public sealed class GameBan
     public DateTime At { get; set; }
     /// <summary>The game's words, when it gave any ("Exploiting").</summary>
     public string? Message { get; set; }
+    /// <summary>When a timed ban ends (the ban's endTimestamp, UTC); null for a permanent ban or one whose end isn't known.
+    /// Past it, the ban no longer holds.</summary>
+    public DateTime? Until { get; set; }
 }
 
 /// <summary>A client that ended here lately, with its server and game: Roblox keeps reporting the account there for
@@ -426,4 +430,6 @@ public sealed class OpenSession
     public Guid? PresetId { get; set; }
     /// <summary>The frame rate limit Bloxkeep gave it as it opened; 0: none.</summary>
     public int FpsLimit { get; set; }
+    /// <summary>Opened by Bloxkeep on Roblox's home screen (AppController.PendingLaunch.HomeScreen).</summary>
+    public bool HomeScreen { get; set; }
 }

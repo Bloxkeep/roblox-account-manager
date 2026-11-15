@@ -48,9 +48,10 @@ static class WikiLink
     public static Uri BaseOf(string? feedsUrl) => feedsUrl is { Length: > 0 } && Uri.TryCreate(feedsUrl, UriKind.Absolute, out var u)
         ? new Uri($"{(u.Scheme == "ws" ? "http" : "https")}://{u.Authority}") : new Uri(Base);
 
-    public static async Task<List<WikiGameInfo>> GamesAsync(Uri bot)
+    /// <param name="again">Asked again past what is kept here: a game news brought has no card yet (one added since).</param>
+    public static async Task<List<WikiGameInfo>> GamesAsync(Uri bot, bool again = false)
     {
-        if (Fresh("") is List<WikiGameInfo> kept)
+        if (!again && Fresh("") is List<WikiGameInfo> kept)
             return kept;
         using var doc = await GetAsync(new Uri(bot, "/wiki"));
         var games = new List<WikiGameInfo>();

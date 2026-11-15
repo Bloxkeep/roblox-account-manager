@@ -123,6 +123,64 @@ static class PrivateServerSuite
         {
             standIn.SetValue(null, null);
         }
+        await ShareLinks(c, standIn);
+    }
+
+    /// <summary>Share links beyond private servers (RoALT reads them; Bloxkeep refused all but type=Server until 2026-11-14): a
+    /// friend's invite, a game's page, a "?v=v2" link, each read at Roblox (a stand-in here, in the website's answer shape).</summary>
+    static async Task ShareLinks(Checks c, System.Reflection.PropertyInfo standIn)
+    {
+        const string Job = "12345678-1234-4234-8234-123456789abc";
+        bool ok = GameTarget.TryParse("https://www.roblox.com/share?code=abc123&type=ExperienceInvite", "", out var invite, out string error);
+        c.Check("a friend's invite link: taken, to read at launch (was refused)", ok && invite is { ShareCode: "abc123", ShareType: "ExperienceInvite" }, invite ?? (object)error);
+        ok = GameTarget.TryParse("https://www.roblox.com/share?code=xyz&type=Server", "", out var server, out _);
+        c.Check("…a private server's: as before (no type kept)", ok && server is { ShareCode: "xyz", ShareType: null }, server);
+        ok = GameTarget.TryParse("https://www.roblox.com/share?code=v2code&v=v2", "", out var v2, out _);
+        c.Check("…a v2 link: read at deeplinks/v2", ok && v2 is { ShareCode: "v2code", ShareType: GameTarget.ShareV2 }, v2);
+        ok = GameTarget.TryParse("https://www.roblox.com/share?code=p1&type=AvatarItemDetails", "", out _, out error);
+        c.Check("…an avatar item's: refused, saying it isn't a game", !ok && error.Contains("doesn't lead to a game", StringComparison.Ordinal), error);
+
+        string status = "Valid";
+        var asked = new List<string>();
+        standIn.SetValue(null, (Func<HttpRequestMessage, Task<HttpResponseMessage>>)(async req =>
+        {
+            string path = req.RequestUri!.AbsolutePath;
+            string body = req.Content is null ? "" : await req.Content.ReadAsStringAsync();
+            asked.Add(path + " " + body);
+            if (req.Headers.Contains("x-csrf-token") is false)
+            {
+                var csrf = Json(HttpStatusCode.Forbidden, new { errors = new[] { new { code = 0, message = "Token Validation Failed" } } });
+                csrf.Headers.TryAddWithoutValidation("x-csrf-token", "t");
+                return csrf;
+            }
+            return path switch
+            {
+                "/sharelinks/v1/resolve-link" when body.Contains("ExperienceInvite") =>
+                    Json(HttpStatusCode.OK, new { experienceInviteData = new { status, placeId = Place, instanceId = Job, inviterId = 5 } }),
+                "/sharelinks/v1/resolve-link" => Json(HttpStatusCode.OK, new { experienceDetailsInviteData = new { status = "Valid", placeId = Place, launchData = "event=7" } }),
+                "/deeplinks/v2/resolve" => Json(HttpStatusCode.OK, new { linkType = "Experience", status = "Valid", targetId = Place, customData = "from-v2" }),
+                _ => Json(HttpStatusCode.NotFound, new { }),
+            };
+        }));
+        try
+        {
+            var r = await RobloxApi.ResolveShareAsync("cookie-a", "abc123", "ExperienceInvite");
+            c.Check("an invite still valid: the friend's server of that game", r is { PlaceId: Place, JobId: Job, LinkCode: null, Expired: false }, r);
+            status = "Expired";
+            r = await RobloxApi.ResolveShareAsync("cookie-a", "abc123", "ExperienceInvite");
+            c.Check("…expired: the game, not that server, and said expired (joined anyway, as the website does)", r is { PlaceId: Place, JobId: null, Expired: true }, r);
+            r = await RobloxApi.ResolveShareAsync("cookie-a", "d1", "ExperienceDetails");
+            c.Check("a game's link: the game with its launch data", r is { PlaceId: Place, JobId: null, LaunchData: "event=7" }, r);
+            r = await RobloxApi.ResolveShareAsync("cookie-a", "v2code", GameTarget.ShareV2);
+            c.Check("a v2 link: its place and custom data", r is { PlaceId: Place, LaunchData: "from-v2" } && asked.Any(a => a.StartsWith("/deeplinks/v2/resolve", StringComparison.Ordinal)), r);
+        }
+        finally
+        {
+            standIn.SetValue(null, null);
+        }
+        string link = Uri.UnescapeDataString(RobloxLauncher.BuildLaunchUri("TICKET", new GameTarget(Place) { LaunchData = "event=7" }));
+        c.Check("the launch carries the launch data in a plain join", link.Contains("request=RequestGame&", StringComparison.Ordinal)
+            && link.Contains($"&placeId={Place}&launchData=event%3D7&isPlayTogetherGame=false", StringComparison.Ordinal), link);
     }
 
     static HttpResponseMessage Json(HttpStatusCode status, object body) =>

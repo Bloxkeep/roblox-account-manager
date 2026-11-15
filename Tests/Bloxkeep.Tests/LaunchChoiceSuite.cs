@@ -94,6 +94,31 @@ static class LaunchChoiceSuite
             File.Delete(Path.Combine(local, "Roblox", "Versions", "version-other", "RobloxPlayerBeta.exe"));
         }
 
+        // A test channel's build registered and newer, Roblox's live build beside it (a user's PC, 2026-11-13: each window
+        // opened on the test build updated Roblox and closed every other): the live one is started, as RoALT does.
+        string test = Client("Roblox", "version-test"), liveBuild = Client("Roblox", "version-live2");
+        File.Copy(Path.Combine(Environment.SystemDirectory, "notepad.exe"), test, overwrite: true);
+        Registered(() => "version-test");
+        try
+        {
+            c.Check("without the live build known: the registered test build, as before", RobloxInstalls.FindOfficialClient() == test, RobloxInstalls.FindOfficialClient());
+            RobloxInstalls.LiveBuild = "version-live2";
+            c.Check("the live build known and installed: it, over the registered and higher test build", RobloxInstalls.FindOfficialClient() == liveBuild, RobloxInstalls.FindOfficialClient());
+            c.Check("…the links' test build gives way to it", RobloxInstalls.LiveBeside(test) == liveBuild, RobloxInstalls.LiveBeside(test));
+            c.Check("…the live build itself stays", RobloxInstalls.LiveBeside(liveBuild) == liveBuild);
+            File.Delete(liveBuild);
+            c.Check("the live build not installed: the test build, nothing beside it", RobloxInstalls.FindOfficialClient() == test && RobloxInstalls.LiveBeside(test) == test,
+                RobloxInstalls.FindOfficialClient());
+        }
+        finally
+        {
+            RobloxInstalls.LiveBuild = null;
+            Registered(null);
+            Directory.Delete(Path.GetDirectoryName(test)!, recursive: true);
+            if (Directory.Exists(Path.GetDirectoryName(liveBuild)))
+                Directory.Delete(Path.GetDirectoryName(liveBuild)!, recursive: true);
+        }
+
         // A build whose DLL is gone can't start (the exe names it); one from before that DLL, or with it beside, can.
         string broken = Client("Roblox", "version-broken");
         File.WriteAllBytes(broken, [.. new byte[(1 << 20) - 5], .. System.Text.Encoding.ASCII.GetBytes("RobloxPlayerBeta.dll"), 0]);
@@ -136,6 +161,46 @@ static class LaunchChoiceSuite
         c.Check("a newer number is another channel's, not behind", !RobloxInstalls.IsBehind(Build("0.746.0.100", "version-test"), newestBuild));
         c.Check("the Store's copy has no build folder: not compared", !RobloxInstalls.IsBehind(Build("2.744.1.0", ""), newestBuild));
         c.Check("newest or window not known: not behind", !RobloxInstalls.IsBehind(null, newestBuild) && !RobloxInstalls.IsBehind(newestBuild, null));
+
+        // Roblox releasing a build while windows are open (the owner's question, 2026-11-14): a launch with Roblox open asks
+        // for the live build again unless it was just asked; with none open the 30-minute check is enough.
+        var at = new DateTime(2026, 11, 14, 12, 0, 0, DateTimeKind.Utc);
+        c.Check("live build never asked: a launch asks", AppController.AskLiveAgain(false, DateTime.MinValue, at, 0));
+        c.Check("Roblox open, asked a minute ago: asked again", AppController.AskLiveAgain(true, at, at.AddMinutes(1), 3));
+        c.Check("Roblox open, just asked (a batch): not asked again", !AppController.AskLiveAgain(true, at, at.AddSeconds(10), 3));
+        c.Check("no Roblox open: the update closes nothing, not asked", !AppController.AskLiveAgain(true, at, at.AddMinutes(20), 0));
+        // A staged rollout: Roblox lists a build this PC doesn't get yet. A client started for it, in a game on its old build, shows it.
+        c.Check("asked for the new build, in a game on the old one: not rolled out here", AppController.NotRolledOut("version-new", Build("0.744.0.100", "version-old"), true));
+        c.Check("…still loading: not known yet", !AppController.NotRolledOut("version-new", Build("0.744.0.100", "version-old"), false));
+        c.Check("…in a game on the new build: it was rolled out", !AppController.NotRolledOut("version-new", Build("0.745.0.100", "VERSION-NEW"), true));
+        c.Check("…its build not read: not known", !AppController.NotRolledOut("version-new", null, true));
+
+        // When: "keep": a window opened while Roblox has an update plays on the build running, from a copy without Roblox's
+        // updater (Roblox looks for it beside itself only, and without it skips the update).
+        RobloxInstalls.KeptRoot = Path.Combine(dir, "kept");
+        string keepExe = Client("Roblox", "version-keep");
+        string keepDir = Path.GetDirectoryName(keepExe)!;
+        File.WriteAllText(Path.Combine(keepDir, "RobloxPlayerInstaller.exe"), "updater");
+        Directory.CreateDirectory(Path.Combine(keepDir, "content", "fonts"));
+        File.WriteAllText(Path.Combine(keepDir, "content", "fonts", "a.ttf"), "font");
+        Directory.CreateDirectory(Path.Combine(keepDir, "ClientSettings"));
+        File.WriteAllText(Path.Combine(keepDir, "ClientSettings", "ClientAppSettings.json"), "{\"a\":1}");
+        string kept = RobloxInstalls.KeptCopy(keepExe);
+        string keptDir = Path.GetDirectoryName(kept)!;
+        c.Check("kept: Roblox's client copied outside Roblox's install", File.Exists(kept) && !RobloxInstalls.IsRobloxOwn(kept), kept);
+        c.Check("…without Roblox's updater beside it", !File.Exists(Path.Combine(keptDir, "RobloxPlayerInstaller.exe")));
+        c.Check("…with its game files", File.ReadAllText(Path.Combine(keptDir, "content", "fonts", "a.ttf")) == "font");
+        c.Check("…and its Fast Flags", File.ReadAllText(Path.Combine(keptDir, "ClientSettings", "ClientAppSettings.json")) == "{\"a\":1}");
+        File.WriteAllText(Path.Combine(keepDir, "ClientSettings", "ClientAppSettings.json"), "{\"a\":2}");
+        c.Check("the next window: the same copy, its Fast Flags as written now", RobloxInstalls.KeptCopy(keepExe) == kept
+            && File.ReadAllText(Path.Combine(keptDir, "ClientSettings", "ClientAppSettings.json")) == "{\"a\":2}");
+        c.Check("…and the Fast Flags aren't Roblox's own file (a write there stays there)",
+            File.ReadAllText(Path.Combine(keepDir, "ClientSettings", "ClientAppSettings.json")) == "{\"a\":2}");
+        c.Check("a launcher's copy has no updater beside it: started as it is", RobloxInstalls.KeptCopy(Path.Combine(dir, "Bloxstrap", "RobloxPlayerBeta.exe"))
+            == Path.Combine(dir, "Bloxstrap", "RobloxPlayerBeta.exe"));
+        RobloxInstalls.ForgetKeptCopies();
+        c.Check("no Roblox open: the kept build goes, Roblox's own stays", !Directory.Exists(RobloxInstalls.KeptRoot) && File.Exists(keepExe));
+        Directory.Delete(keepDir, recursive: true);
 
         // Only Roblox VNG left (a launcher of this PC's own may still stand ahead of it: then that one is used).
         Directory.Delete(Path.Combine(local, "Roblox"), recursive: true);

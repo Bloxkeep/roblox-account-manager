@@ -1329,7 +1329,7 @@ html [data-theme="dark" lang="vi"]
                 svg.i #1e3syqr
                 span "Cửa sổ"
 #layer
-  div.menu [role="menu" style="left:582.328px;top:194px"]
+  div.menu [role="menu" style="left:582.114px;top:194px"]
     button [role="menuitem"]
       span "Vào game"
       kbd "Enter"

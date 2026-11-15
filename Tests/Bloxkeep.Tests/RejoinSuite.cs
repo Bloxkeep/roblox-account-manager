@@ -88,7 +88,7 @@ static class RejoinSuite
             var tail = Harness.Get<System.Collections.IDictionary>(watcher, "_tails")[me]!;
             foreach (string field in new[] { "State", "TeleportAt" })
                 tail.GetType().GetField(field)!.SetValue(tail, null);
-            foreach (string field in new[] { "OwnStart", "Leaving" })
+            foreach (string field in new[] { "OwnStart", "Leaving", "DroppedByReason" })
                 tail.GetType().GetField(field)!.SetValue(tail, false);
             tail.GetType().GetField("Connections")!.SetValue(tail, 0);
             // A new process too: nothing Bloxkeep held about the old one's id.
@@ -247,6 +247,33 @@ static class RejoinSuite
                 var ban211 = await (Task<RobloxApi.JoinAnswer?>)t.GetMethod("CheckJoinAsync", Harness.F)!.Invoke(app,
                     [account, new GameTarget(107778070777162, DeadServer), "test", CancellationToken.None])!;
                 c.Check("…a ban by the game (211) on a named server stays a ban and a refusal", ban211 is { Banned: true, ServerGone: false, Refused: true });
+                // One account opened into a chosen server that had ended (the owner's, 2026-11-14: Roblox's "This experience
+                // has ended, or the server became unavailable unexpectedly due to a system error", answered 311 at 46 s and
+                // closed only at 60 s). Asked 12 s on, and another server at once on that answer.
+                Harness.Get<System.Collections.IDictionary>(app, "_joinChecks").Remove(me);
+                partyReply = new(200, 12, "Unable to join Game 311");
+                partyAsks = 0;
+                string cookieBefore = account.Cookie;
+                account.Cookie = "test"; // asked with its own sign-in
+                NewWindow();
+                Run(new GameTarget(107778070777162, DeadServer));
+                Write(Line(DateTime.UtcNow.AddSeconds(-8), Launch));
+                Poll(s => s.Status == "joining" && s.JobId is null && DateTime.UtcNow - s.At < TimeSpan.FromSeconds(9));
+                closing.Clear();
+                Tick();
+                bool askedEarly = partyAsks > 0;
+                NewWindow();
+                Write(Line(DateTime.UtcNow.AddSeconds(-14), Launch));
+                Poll(s => s.Status == "joining" && s.JobId is null && DateTime.UtcNow - s.At > TimeSpan.FromSeconds(13));
+                Told();
+                Tick(); // asks
+                Tick(); // reads the answer
+                string? goneSaid = Told();
+                c.Check("a chosen server that ended: not asked about before 12 s, then closed for another server on Roblox's answer, not a minute on",
+                    !askedEarly && partyAsks == 1 && closing.Contains(me) && goneSaid == $"{account.Label} couldn't get into that server (full or closed) — joining another one…",
+                    $"{askedEarly} {partyAsks} {closing.Count} {goneSaid}");
+                closing.Clear();
+                account.Cookie = cookieBefore;
                 // Roblox would let it in (status 2): the join is slow, not refused. It got its server 2 s on.
                 Harness.Get<System.Collections.IDictionary>(app, "_joinChecks").Remove(me);
                 partyReply = new(200, 2, null);
@@ -518,6 +545,138 @@ static class RejoinSuite
             Tick();
             string? codeSaid = Told();
             c.Check("…one with a code Bloxkeep has no words for is said with that code", codeSaid == $"{account.Label} was disconnected (Roblox code 299) — restarting Roblox…", codeSaid);
+            // Error Code 256, "Lost connection due to an unknown error. Please reconnect." (a user's screenshot, 2026-11-11,
+            // "auto rejoin will not work"): by its code and by its words only. Without the disconnect line after too: a game
+            // that failed while loading showed Roblox's "Disconnected" box and stayed "In game" (a RoALT user's report,
+            // 2026-11-14), so a reason line is a drop by itself.
+            foreach (var (what, lines, disconnectLine) in new (string, string[], bool)[]
+            {
+                ("its code", ["[FLog::Network] Disconnect reason received: 256", "[FLog::Network] Disconnection Notification. Reason: 256"], true),
+                ("its words only", ["[FLog::Network] Client has been disconnected with reason: Lost connection due to an unknown error. Please reconnect.",
+                    "Warning [FLog::Network] Lost connection with reason : Lost connection due to an unknown error. Please reconnect."], true),
+                ("its code, no disconnect line after", ["[FLog::Network] Disconnection Notification. Reason: 256"], false),
+                ("its words, no disconnect line after", ["Warning [FLog::Network] Lost connection with reason : Lost connection to the game server, please reconnect"], false),
+            })
+            {
+                var dropAt = DateTime.UtcNow.AddSeconds(-10);
+                NewWindow();
+                droppedLaunch = Run(notBanned);
+                Write(Line(dropAt, Launch));
+                Write(Line(dropAt, Join));
+                Write(Line(dropAt, "[FLog::Network] serverId: 128.116.46.33|52353"));
+                foreach (string line in lines)
+                    Write(Line(dropAt.AddSeconds(1), line));
+                if (disconnectLine)
+                    Write(Line(dropAt.AddSeconds(2), "[FLog::Network] Time to disconnect replication data: 0.2"));
+                var dropState = Poll(s => s.Status == "disconnected" && s.At > dropAt.AddSeconds(-1));
+                closing.Clear();
+                Told();
+                Tick();
+                string? dropSaid = Told();
+                c.Check($"Error Code 256 by {what}: read as a drop and rejoined", closing.Contains(me), $"{dropState} | {dropSaid}");
+            }
+            // Roblox's "Connection Failed" box (279, no response from server) after "Joining game": the owner's test
+            // 2026-11-14, a rejoin into a server that had just run out of memory. No serverId, no disconnect line; the
+            // window sat on the box, read as joining a named server that no timeout covered. The real lines, in order.
+            {
+                var noResponseAt = DateTime.UtcNow.AddSeconds(-40);
+                NewWindow();
+                droppedLaunch = Run(notBanned);
+                Write(Line(noResponseAt, Launch));
+                Write(Line(noResponseAt, Join));
+                Write(Line(noResponseAt.AddSeconds(10), "Error [DFLog::RbxTransportDummyClient] Failed to establish connection to server at 128.116.46.33:49386, reason NoResponse: 1 (No Response)"));
+                var stillJoining = Poll(s => s.Status == "joining");
+                closing.Clear();
+                Tick();
+                c.Check("Connection Failed: RbxTransport's own failure isn't the end (RakNet is tried after it)", stillJoining is { Status: "joining" } && !closing.Contains(me), stillJoining);
+                Write(Line(noResponseAt.AddSeconds(30), "Error [DFLog::NetworkClient] Failed to connect to server at 128.116.46.33|50694, no response."));
+                Write(Line(noResponseAt.AddSeconds(30), "Info [DFLog::NetworkClient] Failed to connect to server after falling back from RbxTransport to RakNet. Disconnect code: 279. Original connection failure reason: NoResponse: 1 (No Response)"));
+                var failState = Poll(s => s.Status == "disconnected");
+                closing.Clear();
+                Told();
+                Tick();
+                string? failSaid = Told();
+                c.Check("Connection Failed (279) after Joining game: read as a drop and rejoined", failState is { Status: "disconnected", Reason: 279 } && closing.Contains(me), $"{failState} | {failSaid}");
+                c.Check("…said as a lost connection", failSaid == $"{account.Label} lost connection — restarting Roblox…", failSaid);
+            }
+            // A teleport's old server may log a reason: still a teleport, not a drop (RoALT's "instanced server" report,
+            // 2026-11-13: a move to another server of the game said "Disconnected" and was rejoined over).
+            {
+                var tpReasonAt = DateTime.UtcNow.AddSeconds(-10);
+                NewWindow();
+                droppedLaunch = Run(notBanned);
+                Write(Line(tpReasonAt, Launch));
+                Write(Line(tpReasonAt, Join));
+                Write(Line(tpReasonAt, "[FLog::Network] serverId: 128.116.46.33|52353"));
+                Write(Line(tpReasonAt.AddSeconds(5), "[FLog::UgcExperienceController] UgcExperienceController: doTeleport: url "));
+                Write(Line(tpReasonAt.AddSeconds(5.1), "[FLog::Network] Disconnection Notification. Reason: 277"));
+                Write(Line(tpReasonAt.AddSeconds(5.2), "[FLog::Network] Time to disconnect replication data: 0.2"));
+                var tpReasonState = Poll(s => s.At >= tpReasonAt.AddSeconds(5));
+                closing.Clear();
+                Tick();
+                c.Check("a teleport whose old server logs a reason: joining, left alone", tpReasonState is { Status: "joining" } && !closing.Contains(me), tpReasonState);
+                // Leaving: the client's own request is no drop.
+                NewWindow();
+                droppedLaunch = Run(notBanned);
+                Write(Line(tpReasonAt, Launch));
+                Write(Line(tpReasonAt, Join));
+                Write(Line(tpReasonAt, "[FLog::Network] serverId: 128.116.46.33|52353"));
+                Write(Line(tpReasonAt.AddSeconds(5), "[FLog::Network] Disconnection Notification. Reason: 285"));
+                var ownState = Poll(s => s.At >= tpReasonAt);
+                c.Check("…the client's own request (285) alone is no drop", ownState is { Status: "ingame" }, ownState);
+            }
+            // A window opened on Roblox's home screen, a game picked there, then Error Code 1025 ("Disconnected from the
+            // experience", the owner's PC, 2026-11-11, client 0.747's lines): it stayed on Roblox's error box, left as
+            // "opened without a game". It goes back to the game the person was in.
+            {
+                const long Picked = 98894876188248;
+                var homeAt = DateTime.UtcNow.AddSeconds(-10);
+                NewWindow();
+                object HomeRun()
+                {
+                    var opened = Run(null!);
+                    launchType.GetProperty("HomeScreen")!.SetValue(opened, true);
+                    return opened;
+                }
+                var homeLaunch = HomeRun();
+                Write(Line(homeAt, Launch));
+                Write(Line(homeAt, $"[FLog::Output] ! Joining game '14a2746a-981f-4fed-92c9-d3a998eb8f4c' place {Picked} at 128.116.54.33"));
+                Write(Line(homeAt, "[FLog::Network] serverId: 128.116.54.33|60219"));
+                Write(Line(homeAt.AddSeconds(1), "[FLog::Network] Disconnect from 1"));
+                Write(Line(homeAt.AddSeconds(1), "[FLog::Network] Client has been disconnected with reason: Disconnected from game, please reconnect"));
+                Write(Line(homeAt.AddSeconds(1), "Warning [FLog::Network] Lost connection with reason : Disconnected from game, please reconnect"));
+                Write(Line(homeAt.AddSeconds(1), "[FLog::Network] Time to disconnect replication data: 0.188800"));
+                var homeState = Poll(s => s.Status == "disconnected" && s.At > homeAt);
+                closing.Clear();
+                Told();
+                Tick();
+                c.Check("a home-screen window dropped in a game picked there (1025): closed to rejoin", closing.Contains(me), homeState);
+                Harness.Invoke(app, "OnSessionEnded", account.Id, homeLaunch, homeState);
+                var homeRequest = queue.Cast<object>().SingleOrDefault();
+                var homeTarget = homeRequest?.GetType().GetProperty("Target")!.GetValue(homeRequest) as GameTarget;
+                c.Check("…into that game, any server", homeTarget is { PlaceId: Picked, JobId: null }, homeTarget);
+                queue.Clear();
+                closing.Clear();
+                // The same drop in a window adopted from outside Bloxkeep (no game, not opened on the home screen by
+                // Bloxkeep): its server may be a private one, so it isn't rejoined into a public one (AdoptSuite, audit R9).
+                var adoptedLaunch = Run(null!);
+                Tick();
+                c.Check("…but not one adopted from outside Bloxkeep: left open", !closing.Contains(me));
+                c.Check("…nor rejoined once closed", Harness.Invoke(app, "QueueRejoin", account.Id, adoptedLaunch, homeState) is false && queue.Count == 0);
+                // Left by choice there: not rejoined; and one that never was in a game has nowhere to go back to.
+                NewWindow();
+                homeLaunch = HomeRun();
+                Write(Line(homeAt.AddSeconds(2), Launch));
+                Write(Line(homeAt.AddSeconds(2), $"[FLog::Output] ! Joining game '14a2746a-981f-4fed-92c9-d3a998eb8f4c' place {Picked} at 128.116.54.33"));
+                Write(Line(homeAt.AddSeconds(2), "[FLog::Network] serverId: 128.116.54.33|60219"));
+                Write(Line(homeAt.AddSeconds(3), Leave));
+                Write(Line(homeAt.AddSeconds(3), "[FLog::Network] Time to disconnect replication data: 0.2"));
+                homeState = Poll(s => s.Status == "left");
+                Tick();
+                c.Check("…one the person left there: not closed", !closing.Contains(me), homeState);
+                c.Check("…nor rejoined once closed", Harness.Invoke(app, "QueueRejoin", account.Id, homeLaunch, homeState) is false && queue.Count == 0);
+                c.Check("…and a home-screen window never in a game isn't rejoined", Harness.Invoke(app, "QueueRejoin", account.Id, homeLaunch, null) is false && queue.Count == 0);
+            }
             // The client's own disconnect (285), which its notification line can repeat, never over a reason known; the
             // server's code as received is.
             var ownAt = Dropped("[FLog::Network] Client has been disconnected with reason: You have been kicked from the game");
@@ -656,6 +815,91 @@ static class RejoinSuite
             Poll(s => s.Status == "ingame");
             Harness.Invoke(app, "ForgetLiftedGameBans");
             c.Check("…and once the account is in that game again, the ban is forgotten", account.GameBans.Count == 0, account.GameBans.Count);
+            // A timed ban (BanAsync with a duration): its end is in the kick line's metadata. The owner's test 2026-11-14,
+            // the exact metadata: still "banned" ten minutes after the 2-minute ban ended.
+            {
+                var realEnd = RobloxLogWatcher.BanEndOf(
+                    """{"moderatorType":"creator","durationSeconds":"120","endTimestamp":"2026-11-13T23:09:32Z","dynamicReasonTextFilterStatus":"2","beginTimestamp":"2026-11-13T23:07:32Z"}""");
+                c.Check("a timed ban's end is read from its metadata (endTimestamp, UTC)",
+                    realEnd is DateTime { Kind: DateTimeKind.Utc } e && e == new DateTime(2026, 11, 13, 23, 9, 32, DateTimeKind.Utc), realEnd);
+                var fromDuration = RobloxLogWatcher.BanEndOf(
+                    """{"moderatorType":"creator","durationSeconds":"120","beginTimestamp":"2026-11-13T23:07:32Z"}""");
+                c.Check("…or from its start and duration", fromDuration is DateTime d && d == new DateTime(2026, 11, 13, 23, 9, 32, DateTimeKind.Utc), fromDuration);
+                var permanent = RobloxLogWatcher.BanEndOf(
+                    """{"moderatorType":"creator","durationSeconds":"-1","dynamicReasonTextFilterStatus":"2","beginTimestamp":"2026-10-21T00:07:04Z"}""");
+                c.Check("…a permanent one has none", permanent is null, permanent);
+
+                foreach (var (what, endsIn) in new[] { ("still running", TimeSpan.FromMinutes(2)), ("already over", TimeSpan.FromSeconds(-30)) })
+                {
+                    account.GameBans.Clear();
+                    var ends = DateTime.UtcNow.Add(endsIn);
+                    NewWindow();
+                    Run(new GameTarget(Gpo));
+                    var timedAt = DateTime.UtcNow;
+                    Played(timedAt, "Error [FLog::CreatorError] Error: Server Kick Message: test 12: ban 2 phut; Metadata: {\"moderatorType\":\"creator\",\"durationSeconds\":\"120\",\"endTimestamp\":\""
+                        + ends.ToString("yyyy-MM-ddTHH:mm:ssZ", System.Globalization.CultureInfo.InvariantCulture)
+                        + "\",\"dynamicReasonTextFilterStatus\":\"2\",\"beginTimestamp\":\"" + ends.AddSeconds(-120).ToString("yyyy-MM-ddTHH:mm:ssZ", System.Globalization.CultureInfo.InvariantCulture) + "\"}");
+                    var timed = Poll(s => s.Status == "disconnected" && s.At >= timedAt.AddSeconds(-1));
+                    closing.Clear();
+                    Told();
+                    Tick();
+                    Told();
+                    bool banHolds = Harness.Invoke(app, "GameBanOf", account, (long?)Gpo) is not null;
+                    Harness.Invoke(app, "ForgetLiftedGameBans");
+                    if (endsIn > TimeSpan.Zero)
+                        c.Check($"a timed ban {what}: noted with its end, and it holds", timed is { BannedByGame: true, BanEnds: not null } && banHolds
+                            && account.GameBans.SingleOrDefault()?.Until is { } until && Math.Abs((until - ends).TotalSeconds) < 1.5, $"{timed} | {account.GameBans.SingleOrDefault()?.Until}");
+                    else
+                        c.Check($"a timed ban {what}: holds no longer, and is forgotten (no warning before opening)", !banHolds && account.GameBans.Count == 0, account.GameBans.Count);
+                }
+                account.GameBans.Clear();
+            }
+
+            // Its log in a game, no disconnect line, while Roblox's own status says it's out of one (Roblox's "Disconnected"
+            // box over a game that failed while loading, a RoALT user's report 2026-11-14): closed and rejoined after three
+            // checks in a row; never on Roblox's word while it says in a game, nor right after the join.
+            {
+                NewWindow();
+                var inLaunch = Activator.CreateInstance(launchType, account.Id, new HashSet<int>(), DateTime.UtcNow.AddMinutes(-5), new GameTarget(920587237), false, null)!;
+                running[account.Id] = Activator.CreateInstance(tupleType, me, inLaunch);
+                var inAt = DateTime.UtcNow.AddMinutes(-4);
+                Write(Line(inAt, Launch));
+                Write(Line(inAt, "[FLog::Output] ! Joining game 'e403336e-5756-44c9-b029-0ae6873a3d03' place 920587237 at 10.32.36.210"));
+                Write(Line(inAt, "[FLog::Network] serverId: 128.116.46.33|56123"));
+                Poll(s => s.Status == "ingame" && s.At <= inAt.AddSeconds(1));
+                var presence = Harness.Get<System.Collections.IDictionary>(app, "_presence");
+                Harness.Get<System.Collections.IDictionary>(app, "_offlineStrikes").Clear();
+                closing.Clear();
+                Told();
+                presence[21L] = new Presence(2, "Game", 920587237, null, null, null, null);
+                for (int i = 0; i < 4; i++)
+                    Harness.Invoke(app, "DetectDisconnectedSessions", new HashSet<long> { 21 });
+                c.Check("a log in a game and Roblox saying so too: left alone", !closing.Contains(me), closing.Count);
+                presence[21L] = new Presence(1, "Website", null, null, null, null, null);
+                Harness.Invoke(app, "DetectDisconnectedSessions", new HashSet<long> { 21 });
+                Harness.Invoke(app, "DetectDisconnectedSessions", new HashSet<long> { 21 });
+                bool afterTwo = closing.Contains(me);
+                Harness.Invoke(app, "DetectDisconnectedSessions", new HashSet<long>());
+                bool unreliable = closing.Contains(me);
+                Harness.Invoke(app, "DetectDisconnectedSessions", new HashSet<long> { 21 });
+                c.Check("a log in a game while Roblox's own status says out of one: closed and rejoined on the third check, not before, nor on a status not its own",
+                    !afterTwo && !unreliable && closing.Contains(me), $"{afterTwo} {unreliable} {closing.Count}");
+                // Just in: Roblox's status may not have caught up.
+                NewWindow();
+                running[account.Id] = Activator.CreateInstance(tupleType, me, inLaunch);
+                var justAt = DateTime.UtcNow.AddSeconds(-30);
+                Write(Line(justAt, Launch));
+                Write(Line(justAt, "[FLog::Output] ! Joining game 'e403336e-5756-44c9-b029-0ae6873a3d03' place 920587237 at 10.32.36.210"));
+                Write(Line(justAt, "[FLog::Network] serverId: 128.116.46.33|56123"));
+                Poll(s => s.Status == "ingame" && s.At >= justAt.AddSeconds(-1));
+                Harness.Get<System.Collections.IDictionary>(app, "_offlineStrikes").Clear();
+                closing.Clear();
+                for (int i = 0; i < 4; i++)
+                    Harness.Invoke(app, "DetectDisconnectedSessions", new HashSet<long> { 21 });
+                c.Check("…but not in its first two minutes in the game", !closing.Contains(me), closing.Count);
+                closing.Clear();
+                Told();
+            }
 
             // What a review of these found (2026-10-21), one case each.
             var noted = Harness.Get<HashSet<int>>(app, "_gameBanNoted");

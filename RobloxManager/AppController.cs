@@ -6,7 +6,11 @@ using Microsoft.Win32;
 namespace RobloxManager;
 
 /// <summary>An error whose message is shown to the user as-is.</summary>
-public sealed class UserError(string message) : Exception(message);
+public class UserError(string message) : Exception(message);
+
+/// <summary>A launch held back: Roblox would install its update as it opened, closing every Roblox window open
+/// (AppController.HoldForRobloxUpdate). A rejoin waits and tries again.</summary>
+public sealed class RobloxUpdateHold(string message) : UserError(message);
 
 /// <summary>
 /// Everything behind the web UI. The page sends {id, cmd, args}; each command gets a {type:"reply"} and state
@@ -26,6 +30,9 @@ public sealed partial class AppController : IDisposable
         public int OpenRetries { get; init; }
         /// <summary>The frame rate limit Bloxkeep gave it as it opened; 0: none. Its card says so.</summary>
         public int FpsLimit { get; init; }
+        /// <summary>Opened by Bloxkeep on Roblox's home screen: every game in it is the person's pick, and a drop goes back
+        /// to the one it was in. Not a window adopted from outside Bloxkeep, whose server may be a private one (audit R9).</summary>
+        public bool HomeScreen { get; init; }
     }
 
     /// <param name="NetworkRetries">Attempts that failed only because there was no connection.</param>
@@ -97,9 +104,12 @@ public sealed partial class AppController : IDisposable
     /// <summary>When a join not in a server yet is asked about (<see cref="CheckJoinAsync"/>). A join waiting for room logs
     /// nothing, like a refused one: on 2026-10-16 four accounts waited 17-38 s silently, then got in. Asking Roblox in that
     /// wait might upset it, so wait past the longest seen; an account the game is known to have banned is asked at once
-    /// (the owner's wish, 2026-10-21).</summary>
+    /// (the owner's wish, 2026-10-21). A chosen server is asked about as a party's is (<see cref="ServerCheck"/>): one that
+    /// had ended sat on Roblox's "This experience has ended" for a minute before another was tried (the owner's, 2026-11-14).</summary>
     TimeSpan JoinCheckAfter(Account account, GameTarget target) =>
-        GameBanOf(account, target.PlaceId) is not null ? TimeSpan.FromSeconds(5) : TimeSpan.FromSeconds(40);
+        GameBanOf(account, target.PlaceId) is not null ? TimeSpan.FromSeconds(5)
+        : target.JobId is { Length: > 0 } ? ServerCheck
+        : TimeSpan.FromSeconds(40);
     readonly Dictionary<long, string> _avatarUrls = new();
     readonly Dictionary<long, GameInfo?> _games = new();
     readonly Dictionary<long, DateTime> _gameFetchedAt = new();
@@ -531,7 +541,7 @@ public sealed partial class AppController : IDisposable
         "discordTest" => SendDiscordNowAsync(summary: false),
         "setPhone" => Done(SetPhone(a)),
         "feedCards" => Done(FeedCardsDto()),
-        "wikiGames" => WikiGamesAsync(),
+        "wikiGames" => WikiGamesAsync(Bool(a, "again")),
         "gameLooks" => GameLooksAsync(a),
         "playedGames" => Done(PlayedGames()),
         "playSessions" => Done(PlaySessionsRaw()),

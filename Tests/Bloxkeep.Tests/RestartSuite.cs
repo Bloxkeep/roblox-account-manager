@@ -17,6 +17,36 @@ static class RestartSuite
         string logs = Path.Combine(dir, "roblox-logs");
         Directory.CreateDirectory(logs);
         Environment.SetEnvironmentVariable("BLOXKEEP_ROBLOX_LOGS", logs);
+
+        // Roblox's logs older than a week go (Roblox keeps every one); the newest stay, and a clock set far ahead deletes nothing.
+        string oldLog = Path.Combine(logs, "old_Player_last.log"), newLog = Path.Combine(logs, "new_Player_last.log"), note = Path.Combine(logs, "keep.txt");
+        foreach (string f in new[] { oldLog, newLog, note })
+            File.WriteAllText(f, "x");
+        File.SetLastWriteTimeUtc(oldLog, DateTime.UtcNow.AddDays(-10));
+        File.SetLastWriteTimeUtc(note, DateTime.UtcNow.AddDays(-10));
+        c.Check("a clock set a year ahead: no Roblox log deleted", RobloxLogWatcher.CleanOldLogs(DateTime.UtcNow.AddYears(1)) == 0 && File.Exists(newLog) && File.Exists(oldLog));
+        int cleaned = RobloxLogWatcher.CleanOldLogs(DateTime.UtcNow);
+        c.Check("Roblox's logs over a week old deleted, the recent one and other files kept", cleaned == 1 && !File.Exists(oldLog) && File.Exists(newLog) && File.Exists(note), cleaned);
+        File.Delete(newLog);
+        File.Delete(note);
+
+        // A window that ended on its own: Roblox's crash reports since it opened, and Windows' record for its process id.
+        string reports = Path.Combine(logs, "crashes", "reports");
+        Directory.CreateDirectory(reports);
+        string oldDump = Path.Combine(reports, "old.dmp"), newDump = Path.Combine(reports, "new.dmp");
+        File.WriteAllText(oldDump, "x");
+        File.WriteAllText(newDump, "x");
+        File.SetLastWriteTimeUtc(oldDump, DateTime.UtcNow.AddHours(-2));
+        var dumps = RobloxCrashInfo.DumpsSince(DateTime.UtcNow.AddHours(-1));
+        c.Check("crash reports: only the ones since the window opened", dumps is ["new.dmp"], string.Join(",", dumps));
+        Directory.Delete(Path.Combine(logs, "crashes"), true);
+        const string events = "<Event xmlns='x'><System><Provider Name='Application Error'/></System><EventData><Data Name='AppName'>Other.exe</Data>"
+            + "<Data Name='ProcessId'>0x10</Data></EventData></Event><Event xmlns='x'><System/><EventData><Data Name='AppName'>RobloxPlayerBeta.exe</Data>"
+            + "<Data Name='AppVersion'>0.747.0.7471481</Data><Data Name='ModuleName'>RobloxPlayerBeta.dll</Data><Data Name='ExceptionCode'>c0000005</Data>"
+            + "<Data Name='FaultingOffset'>0000000000123abc</Data><Data Name='ProcessId'>0x950c</Data></EventData></Event>";
+        c.Check("Windows' error record found by its hex process id",
+            RobloxCrashInfo.FaultIn(events, 0x950c) is { } fault && fault.Contains("RobloxPlayerBeta.dll") && fault.Contains("c0000005")
+            && RobloxCrashInfo.FaultIn(events, 0x11) is null, RobloxCrashInfo.FaultIn(events, 0x950c));
         int me = Environment.ProcessId;
         var made = new List<FileStream>();
         string Line(DateTime at, string text) => $"{at:yyyy-MM-ddTHH:mm:ss.fff}Z,1.0,abcd,6 {text}\n";

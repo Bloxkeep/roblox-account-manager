@@ -273,7 +273,7 @@ static class SignInsSuite
         {
             try
             {
-                await (Task<(long, string)>)Harness.Invoke(app, "ResolveShareAsync", who.ToList(), "share-code", CancellationToken.None)!;
+                await (Task<RobloxApi.ShareTarget>)Harness.Invoke(app, "ResolveShareAsync", who.ToList(), "share-code", null, CancellationToken.None)!;
                 return null;
             }
             catch (Exception ex)

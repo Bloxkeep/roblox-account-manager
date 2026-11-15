@@ -120,6 +120,9 @@ export class Gateway extends DurableObject {
       ctx.storage.sql.exec('CREATE TABLE IF NOT EXISTS installs (day TEXT PRIMARY KEY, n INTEGER NOT NULL)');
       ctx.storage.sql.exec('CREATE TABLE IF NOT EXISTS ages (day TEXT NOT NULL, age TEXT NOT NULL, n INTEGER NOT NULL, PRIMARY KEY (day, age))');
       ctx.storage.sql.exec('CREATE TABLE IF NOT EXISTS removals (day TEXT NOT NULL, why TEXT NOT NULL, n INTEGER NOT NULL, PRIMARY KEY (day, why))');
+      // Removals by how long the PC had Bloxkeep (kind "age") and by the version removed ("app"), when the uninstaller says.
+      ctx.storage.sql.exec(`CREATE TABLE IF NOT EXISTS removed_from (day TEXT NOT NULL, kind TEXT NOT NULL, value TEXT NOT NULL,
+        n INTEGER NOT NULL, PRIMARY KEY (day, kind, value))`);
       // Bloxkeep on people's PCs, controlled from Discord (remote.js): each PC linked to one Discord account, and the
       // PC's name as its app last said it (to name it while it's offline).
       ctx.storage.sql.exec('CREATE TABLE IF NOT EXISTS pc_names (pc TEXT PRIMARY KEY, accounts TEXT NOT NULL, presets TEXT NOT NULL)');
@@ -1055,8 +1058,13 @@ export class Gateway extends DurableObject {
       if (this.here.delete(b.id))
         sql.exec('DELETE FROM online WHERE id = ?', b.id);
       // A removal counts once a day per PC (the day's list, under a key of its own), whatever is sent again.
-      if (b.removed && await this.notePerson('removed:' + b.id, now, false))
+      if (b.removed && await this.notePerson('removed:' + b.id, now, false)) {
         sql.exec('INSERT INTO removals (day, why, n) VALUES (?, ?, 1) ON CONFLICT (day, why) DO UPDATE SET n = n + 1', day, b.why ?? 'none');
+        for (const [kind, value] of [['age', b.age], ['app', b.app]])
+          if (value)
+            sql.exec(`INSERT INTO removed_from (day, kind, value, n) VALUES (?, ?, ?, 1)
+              ON CONFLICT (day, kind, value) DO UPDATE SET n = n + 1`, day, kind, value);
+      }
       return {};
     }
     // Counted among the day's people once (a restart forgets that it was: the day's list then says so), and only then
@@ -1192,11 +1200,17 @@ export class Gateway extends DurableObject {
       ages.set(r.day, { ...ages.get(r.day), [r.age]: r.n });
     for (const r of this.ctx.storage.sql.exec('SELECT * FROM removals WHERE day >= ?', days[0]))
       why.set(r.day, { ...why.get(r.day), [r.why]: r.n });
+    const goneAges = new Map(), goneApps = new Map();
+    for (const r of this.ctx.storage.sql.exec('SELECT * FROM removed_from WHERE day >= ?', days[0])) {
+      const into = r.kind === 'age' ? goneAges : goneApps;
+      into.set(r.day, { ...into.get(r.day), [r.value]: r.n });
+    }
     // People: none counted yet today is 0; an earlier day without a number is one from before they were counted (null).
     const today = days.at(-1);
     const shown = days.map(day => ({ day, peak: peaks.get(day)?.peak ?? 0, at: peaks.get(day)?.at ?? null,
       people: people.get(day) ?? (day === today ? 0 : null), installs: installs.get(day) ?? 0, ages: ages.get(day) ?? {},
-      removed: Object.values(why.get(day) ?? {}).reduce((a, n) => a + n, 0), why: why.get(day) ?? {} }));
+      removed: Object.values(why.get(day) ?? {}).reduce((a, n) => a + n, 0), why: why.get(day) ?? {},
+      goneAges: goneAges.get(day) ?? {}, goneApps: goneApps.get(day) ?? {} }));
     return {
       now: count, at: new Date(now).toISOString(), forMinutes: Math.round(this.onlineFor(this.beatEvery(count)) / 60_000),
       today: shown.at(-1), days: shown, apps: tally('app'), languages: tally('lang'), community: (({ ranked, ...c }) => c)(this.community(now)),
@@ -2110,6 +2124,10 @@ async function priceImage(u, env, ctx) {
   return res;
 }
 
+/** The games the list is made of, as a short word: a new game (a deploy) makes the list's cache key a new one. */
+const GAMES_KEY = [...POPULAR_GAMES, ...WIKI_SOURCES, ...PRICE_SOURCES].map(g => `${g.game}:${g.place ?? ''}:${g.wiki ?? ''}`).join()
+  .split('').reduce((h, c) => (Math.imul(h, 31) + c.charCodeAt(0)) >>> 0, 7).toString(36);
+
 /**
  * The Wiki tab's list of games (/wiki) and one game's items (/wiki/<game>): kept 10 minutes per Cloudflare location, so
  * many apps opening the tab wake the object a few times an hour (an app keeps what it got for longer).
@@ -2118,7 +2136,8 @@ async function wiki(url, env, ctx) {
   const id = url.pathname === '/wiki' ? null : decodeURIComponent(url.pathname.slice('/wiki/'.length));
   if (id !== null && !/^[a-z0-9-]{1,40}$/.test(id))
     return Response.json({ error: 'not found' }, { status: 404 });
-  const key = new Request(`https://bloxkeep-bot.invalid/wiki${id ? `/${id}` : ''}`), cache = caches.default;
+  // The list's key changes with its games, so a new game (a deploy) isn't hidden behind the old list for 10 minutes.
+  const key = new Request(`https://bloxkeep-bot.invalid/wiki${id ? `/${id}` : `?g=${GAMES_KEY}`}`), cache = caches.default;
   const hit = await cache.match(key);
   if (hit)
     return hit;

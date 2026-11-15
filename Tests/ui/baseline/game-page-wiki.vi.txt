@@ -111,4 +111,5 @@ html [data-theme="dark" lang="vi"]
   todayStrips {}
   wikiApi {"q":{"action":"query","meta":"siteinfo","siprop":"general|statistics|rightsinfo"},"site":"https://blox-fruits.fandom.com"}
   wikiApi {"q":{"action":"query","meta":"siteinfo","siprop":"general|statistics|rightsinfo"},"site":"https://blox-fruits.fandom.com"}
+  wikiGames {"again":true}
   wikiGames {}

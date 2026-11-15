@@ -107,9 +107,10 @@ namespace BloxkeepSetup
                     else if (silent)
                     {
                         bool told = Ops.CountsOnline;
+                        string age = Ops.InstallAge(), app = Ops.InstalledVersion(root);
                         code = Ops.Uninstall(root, Has(args, "--delete-data"));
                         if (code == 0 && told)
-                            Ops.SayRemoved(null);
+                            Ops.SayRemoved(null, age, app);
                     }
                     else
                     {
@@ -412,11 +413,44 @@ namespace BloxkeepSetup
             }
         }
 
+        /// <summary>How long this PC has had Bloxkeep, as the app says it in its beats (AppController.InstallAge): "new"
+        /// under a day, "week" under a week, else "old", from when the data folder was made; null without one.</summary>
+        public static string InstallAge()
+        {
+            try
+            {
+                if (!Directory.Exists(DataDir))
+                    return null;
+                double days = (DateTime.UtcNow - Directory.GetCreationTimeUtc(DataDir)).TotalDays;
+                return days < 1 ? "new" : days < 7 ? "week" : "old";
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
+        /// <summary>The version installed in a folder, as Velopack wrote it (current\sq.version); null if unread.</summary>
+        public static string InstalledVersion(string root)
+        {
+            try
+            {
+                var m = System.Text.RegularExpressions.Regex.Match(File.ReadAllText(Path.Combine(root, @"current\sq.version")),
+                    "<version>([0-9A-Za-z.+-]{1,30})</version>");
+                return m.Success ? m.Groups[1].Value : null;
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
         /// <summary>
-        /// Tells Bloxkeep's Discord bot this PC removed Bloxkeep, with the reason picked (or none): it only counts how
-        /// many, by reason, per day. Only for someone who counts online; a few seconds at most, nothing if offline.
+        /// Tells Bloxkeep's Discord bot this PC removed Bloxkeep, with the reason picked (or none), how long it had it and
+        /// the version removed (each null if unknown): it only counts how many of each per day. Only for someone who
+        /// counts online; a few seconds at most, nothing if offline.
         /// </summary>
-        public static void SayRemoved(string why)
+        public static void SayRemoved(string why, string age, string app)
         {
             string id = OnlineId();
             if (id == null)
@@ -429,7 +463,8 @@ namespace BloxkeepSetup
                 request.Method = "POST";
                 request.ContentType = "application/json";
                 request.Timeout = request.ReadWriteTimeout = 4000;
-                byte[] body = Encoding.UTF8.GetBytes("{\"id\":\"" + id + "\",\"gone\":true,\"removed\":true" + (why == null ? "" : ",\"why\":\"" + why + "\"") + "}");
+                byte[] body = Encoding.UTF8.GetBytes("{\"id\":\"" + id + "\",\"gone\":true,\"removed\":true" + (why == null ? "" : ",\"why\":\"" + why + "\"")
+                    + (age == null ? "" : ",\"age\":\"" + age + "\"") + (app == null ? "" : ",\"app\":\"" + app + "\"") + "}");
                 request.ContentLength = body.Length;
                 using (var stream = request.GetRequestStream())
                     stream.Write(body, 0, body.Length);
@@ -1128,6 +1163,8 @@ namespace BloxkeepSetup
         bool _countsOnline, _removalTold;
         /// <summary>"broken" once "It didn't work" was picked, so closing before saying what still counts it.</summary>
         string _why;
+        /// <summary>How long this PC had Bloxkeep and the version removed, read before uninstalling (which may delete both).</summary>
+        string _removedAge, _removedApp;
         Bar _bar;
         Label _status, _sub;
         /// <summary>The web installer's Cancel, while it downloads.</summary>
@@ -1773,6 +1810,8 @@ namespace BloxkeepSetup
         {
             bool delete = _deleteData;
             _countsOnline = Ops.CountsOnline;
+            _removedAge = Ops.InstallAge();
+            _removedApp = Ops.InstalledVersion(_root);
             ShowPage("removing");
             Work(delegate { return Ops.Uninstall(_root, delete); }, delegate (int code)
             {
@@ -1873,7 +1912,7 @@ namespace BloxkeepSetup
             if (_removalTold || !_countsOnline || _shooting)
                 return;
             _removalTold = true;
-            Ops.SayRemoved(why);
+            Ops.SayRemoved(why, _removedAge, _removedApp);
         }
 
         // ---- "Restart to update" ----------------------------------------------------------------------------------

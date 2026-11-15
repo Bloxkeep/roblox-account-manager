@@ -25,7 +25,8 @@ public sealed partial class RobloxLogWatcher
     /// Left before any server took it (2026-10-21: ten such launches, none logging why; Roblox's join error lines are off).
     /// </param>
     public sealed record ClientState(string Status, long? PlaceId, string? JobId, int? Reason, DateTime At, long? ChosenPlace = null,
-        bool PersonStarted = false, string? KickMessage = null, bool BannedByGame = false, DateTime? TeleportStarted = null, bool NeverJoined = false);
+        bool PersonStarted = false, string? KickMessage = null, bool BannedByGame = false, DateTime? TeleportStarted = null, bool NeverJoined = false,
+        DateTime? BanEnds = null);
 
     sealed class Tail(string path, int pid)
     {
@@ -43,6 +44,7 @@ public sealed partial class RobloxLogWatcher
         /// <summary>The game's kick line, logged before the disconnect it explains.</summary>
         public string? PendingKickMessage;
         public bool PendingBan;
+        public DateTime? PendingBanEnds;
         /// <summary>A game start that isn't the window's first: the game its "Joining game" names is one the person chose.</summary>
         public bool OwnStart;
         /// <summary>Servers connected to ("serverId:") and not yet left (a disconnect line ends one).</summary>
@@ -56,6 +58,8 @@ public sealed partial class RobloxLogWatcher
         public DateTime? UpdateHandOff;
         /// <summary>The signed-in account, from the join report (see <see cref="JoinReportMark"/>).</summary>
         public long? UserId;
+        /// <summary>Shown as a drop by a reason line (see <see cref="DropOnReason"/>): the disconnect line after it adds nothing.</summary>
+        public bool DroppedByReason;
     }
 
     /// <summary>
@@ -72,6 +76,50 @@ public sealed partial class RobloxLogWatcher
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "RobloxPCVNG", "logs"),
         ];
     internal static IReadOnlyList<string> Folders => LogDirs;
+
+    /// <summary>How long Roblox's own logs are kept: a week still holds the ones a bug report needs.</summary>
+    internal static readonly TimeSpan KeepLogs = TimeSpan.FromDays(7);
+
+    /// <summary>
+    /// Deletes Roblox's logs older than <see cref="KeepLogs"/> (its folders' own *.log files only). Roblox keeps every one, and
+    /// a PC farming with many windows writes a log per window per start (RoALT clears its after a day). One still being written
+    /// can't be deleted and stays. The number deleted.
+    /// </summary>
+    internal static int CleanOldLogs(DateTime nowUtc)
+    {
+        int removed = 0;
+        foreach (string dir in LogDirs)
+        {
+            try
+            {
+                if (!Directory.Exists(dir))
+                    continue;
+                var files = new DirectoryInfo(dir).GetFiles("*.log", SearchOption.TopDirectoryOnly);
+                // Nothing written for a week by that clock: Roblox unused since, or the clock set far ahead. Either way the
+                // newest logs would go too: left as they are.
+                if (files.Length == 0 || nowUtc - files.Max(f => f.LastWriteTimeUtc) > KeepLogs)
+                    continue;
+                foreach (var file in files)
+                {
+                    if (nowUtc - file.LastWriteTimeUtc <= KeepLogs)
+                        continue;
+                    try
+                    {
+                        file.Delete();
+                        removed++;
+                    }
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                    {
+                        // In use or not Bloxkeep's to delete: left.
+                    }
+                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+            }
+        }
+        return removed;
+    }
     // A game start, logged before "Joining game" (seen 2026-10-13 in 0.742, and in the Store edition): a launch that
     // stalls while loading never gets further, so it counts as joining from here.
     const string LaunchMark = "[FLog::SingleSurfaceApp] launchUGCGameInternal";
@@ -87,6 +135,18 @@ public sealed partial class RobloxLogWatcher
     // The server's own code, from the 0.744 client's strings; not seen in a log yet.
     [GeneratedRegex(@"\[FLog::Network\] Disconnect reason received: (\d+)", RegexOptions.CultureInvariant)]
     private static partial Regex ReceivedReasonLine();
+    // Roblox couldn't reach the server it was sent to: its "Connection Failed" box (279 "No response from server").
+    // Logged after "Joining game", with no serverId and no disconnect line after it (the owner's test 2026-11-14, 0.747,
+    // a rejoin into a server that had just run out of memory):
+    //   [DFLog::NetworkClient] Failed to connect to server at 128.116.46.33|50694, no response.
+    //   [DFLog::NetworkClient] Failed to connect to server after falling back from RbxTransport to RakNet. Disconnect code: 279. ...
+    // RbxTransport's own failure before it ("[DFLog::RbxTransportDummyClient] Failed to establish connection") is not
+    // the end: RakNet is tried after it.
+    const string ConnectFailedMark = "[DFLog::NetworkClient] Failed to connect to server";
+    [GeneratedRegex(@"Disconnect code: (\d+)", RegexOptions.CultureInvariant)]
+    private static partial Regex ConnectFailedCode();
+    /// <summary>Roblox's ConnectionError for "No response from server" (ConnectErrors 279).</summary>
+    const int NoResponse = 279;
     /// <summary>
     /// DisconnectClientRequest: the notification line can repeat it after the server's reason, so it never overrides one.
     /// </summary>
@@ -446,12 +506,13 @@ public sealed partial class RobloxLogWatcher
             // A teleport stays open: its old server's disconnect line may still come (see TeleportMark).
             tail.Leaving = false;
             tail.PendingReason = null;
-            (tail.PendingKickMessage, tail.PendingBan) = (null, false);
+            (tail.PendingKickMessage, tail.PendingBan, tail.PendingBanEnds) = (null, false, null);
             long? place = long.TryParse(join.Groups[2].Value, NumberStyles.None, CultureInfo.InvariantCulture, out long id) ? id : null;
             tail.State = new ClientState("joining", place, join.Groups[1].Value, null, TimeOf(line), tail.OwnStart ? place : tail.State?.ChosenPlace,
                 tail.State?.PersonStarted == true, TeleportStarted: tail.State?.TeleportStarted);
             tail.OwnStart = false;
             tail.JoinChallenged = null;
+            tail.DroppedByReason = false;
         }
         // The line itself: Roblox's client also has "launchUGCGameInternal: deferred download complete" and the like, no game start.
         else if (line.Contains(LaunchMark, StringComparison.Ordinal) && line.AsSpan().TrimEnd().EndsWith(LaunchMark, StringComparison.Ordinal))
@@ -459,16 +520,18 @@ public sealed partial class RobloxLogWatcher
             tail.Leaving = false;
             tail.TeleportAt = null;
             tail.PendingReason = null;
-            (tail.PendingKickMessage, tail.PendingBan) = (null, false);
+            (tail.PendingKickMessage, tail.PendingBan, tail.PendingBanEnds) = (null, false, null);
             // Bloxkeep's start is a window's first; a later one is the person picking a game on Roblox's screens after
             // leaving or a kick (seen 2026-10-19).
             tail.OwnStart = tail.State is not null;
             tail.State = new ClientState("joining", null, null, null, TimeOf(line), tail.State?.ChosenPlace, tail.OwnStart);
             tail.JoinChallenged = null;
+            tail.DroppedByReason = false;
         }
         else if (line.Contains(ConnectedMark, StringComparison.Ordinal))
         {
             tail.Connections++;
+            tail.DroppedByReason = false;
             if (tail.State is { Status: "joining" } joining)
                 tail.State = joining with { Status = "ingame", At = TimeOf(line), PersonStarted = false, TeleportStarted = null };
         }
@@ -504,24 +567,65 @@ public sealed partial class RobloxLogWatcher
         {
             string? message = kick.Groups[1].Value.Trim() is { Length: > 0 } words ? words : null;
             bool ban = IsBan(kick.Groups[2].Value);
+            DateTime? ends = ban ? BanEndOf(kick.Groups[2].Value) : null;
             // Normally before the disconnect line; one logged after it completes the state shown.
             if (tail.State is { Status: "disconnected", KickMessage: null, BannedByGame: false } shown)
-                tail.State = shown with { KickMessage = message, BannedByGame = ban };
+                tail.State = shown with { KickMessage = message, BannedByGame = ban, BanEnds = ends };
             else
-                (tail.PendingKickMessage, tail.PendingBan) = (message, ban);
+                (tail.PendingKickMessage, tail.PendingBan, tail.PendingBanEnds) = (message, ban, ends);
         }
-        else if ((line.Contains(ReasonWordsMark, StringComparison.Ordinal) || line.Contains(LostWithReasonMark, StringComparison.Ordinal))
-                 && ReasonOfWords(line) is int worded)
-            RememberReason(tail, worded, 1);
+        else if (line.Contains(ReasonWordsMark, StringComparison.Ordinal) || line.Contains(LostWithReasonMark, StringComparison.Ordinal))
+        {
+            int? worded = ReasonOfWords(line);
+            DropOnReason(tail, worded, line);
+            if (worded is int known)
+                RememberReason(tail, known, 1);
+        }
         else if (line.Contains("disconnect reason to", StringComparison.Ordinal) && ReasonLine().Match(line) is { Success: true } reason
                  && int.TryParse(reason.Groups[1].Value, NumberStyles.None, CultureInfo.InvariantCulture, out int why))
+        {
+            DropOnReason(tail, why, line);
             RememberReason(tail, why, 3);
+        }
         else if (line.Contains("Disconnect reason received", StringComparison.Ordinal) && ReceivedReasonLine().Match(line) is { Success: true } received
                  && int.TryParse(received.Groups[1].Value, NumberStyles.None, CultureInfo.InvariantCulture, out int sent))
+        {
+            DropOnReason(tail, sent, line);
             RememberReason(tail, sent, 3);
+        }
         else if (line.Contains("Disconnection Notification", StringComparison.Ordinal) && NotificationReasonLine().Match(line) is { Success: true } notified
                  && int.TryParse(notified.Groups[1].Value, NumberStyles.None, CultureInfo.InvariantCulture, out int code))
+        {
+            DropOnReason(tail, code, line);
             RememberReason(tail, code, code == ClientRequest ? 0 : 2);
+        }
+        // A join that never reached its server ends here: the window sat on Roblox's "Connection Failed" box, read as
+        // still joining a named server, which no timeout covered (see ConnectFailedMark).
+        else if (line.Contains(ConnectFailedMark, StringComparison.Ordinal))
+        {
+            if (!tail.Leaving && tail.State is { Status: "joining" } failing)
+            {
+                int failed = ConnectFailedCode().Match(line) is { Success: true } said
+                    && int.TryParse(said.Groups[1].Value, NumberStyles.None, CultureInfo.InvariantCulture, out int c) ? c : NoResponse;
+                tail.ShownReasonRank = 3;
+                tail.State = failing with { Status = "disconnected", Reason = failed, KickMessage = null, BannedByGame = false, At = TimeOf(line), TeleportStarted = null };
+                tail.TeleportAt = null;
+                tail.PendingReason = null;
+                (tail.PendingKickMessage, tail.PendingBan, tail.PendingBanEnds) = (null, false, null);
+            }
+            // The fallback line after it only sharpens the code.
+            else if (tail.State is { Status: "disconnected", Reason: NoResponse } shown && ConnectFailedCode().Match(line) is { Success: true } exact
+                     && int.TryParse(exact.Groups[1].Value, NumberStyles.None, CultureInfo.InvariantCulture, out int code2))
+                tail.State = shown with { Reason = code2 };
+        }
+        else if (line.Contains(DisconnectedMark, StringComparison.Ordinal) && tail.DroppedByReason && tail.State is { Status: "disconnected" })
+        {
+            // Already shown as a drop by its reason line: this line only ends that server.
+            tail.Connections = Math.Max(0, tail.Connections - 1);
+            tail.TeleportAt = null;
+            tail.Leaving = false;
+            tail.DroppedByReason = false;
+        }
         else if (line.Contains(DisconnectedMark, StringComparison.Ordinal) && tail.State is { } state)
         {
             var at = TimeOf(line);
@@ -539,7 +643,7 @@ public sealed partial class RobloxLogWatcher
                     tail.State = state with { Status = "joining", At = at };
                 // The old server's kick words go with it, not with the next server's disconnect.
                 tail.PendingReason = null;
-                (tail.PendingKickMessage, tail.PendingBan) = (null, false);
+                (tail.PendingKickMessage, tail.PendingBan, tail.PendingBanEnds) = (null, false, null);
                 return;
             }
             tail.ShownReasonRank = tail.Leaving ? 0 : tail.PendingReasonRank;
@@ -547,12 +651,12 @@ public sealed partial class RobloxLogWatcher
                 ? state with { Status = "left", Reason = null, At = at, TeleportStarted = null }
                 : state with
                 {
-                    Status = "disconnected", Reason = tail.PendingReason, KickMessage = tail.PendingKickMessage, BannedByGame = tail.PendingBan, At = at,
+                    Status = "disconnected", Reason = tail.PendingReason, KickMessage = tail.PendingKickMessage, BannedByGame = tail.PendingBan, BanEnds = tail.PendingBanEnds, At = at,
                     TeleportStarted = null,
                 };
             tail.Leaving = false;
             tail.PendingReason = null;
-            (tail.PendingKickMessage, tail.PendingBan) = (null, false);
+            (tail.PendingKickMessage, tail.PendingBan, tail.PendingBanEnds) = (null, false, null);
         }
         else if (line.Contains(WndCheckMark, StringComparison.Ordinal)
                  && (line.Contains(NewProcessEventMark, StringComparison.Ordinal) || line.Contains(NewProcessMutexMark, StringComparison.Ordinal)))
@@ -570,6 +674,36 @@ public sealed partial class RobloxLogWatcher
             tail.BackgroundUpdate = true;
         else if (line.Contains(UpdateThreadMark, StringComparison.Ordinal) && !tail.BackgroundUpdate)
             tail.UpdateHandOff ??= TimeOf(line);
+    }
+
+    /// <summary>
+    /// A reason line is a drop by itself: a game that fails while loading (or a server that drops it) shows Roblox's
+    /// "Disconnected" box, and its "Time to disconnect replication data" line may never come, so the window read as in
+    /// its game for good (a RoALT user's report 2026-11-14: kicked on joining, still "In game"). Not while leaving, nor
+    /// in a teleport (its old server's lines), nor a join still on its old server, nor the client's own request (285).
+    /// None of these lines is logged on a plain leave or teleport (the owner's 0.747 logs, 2026-11-12/13).
+    /// </summary>
+    static void DropOnReason(Tail tail, int? code, string line)
+    {
+        // Roblox's own network line only, never a game's output quoting one.
+        int tag = line.IndexOf('[');
+        if (tag < 0 || !(line.AsSpan(tag).StartsWith("[FLog::Network]", StringComparison.Ordinal) || line.AsSpan(tag).StartsWith("[DFLog::Network", StringComparison.Ordinal)))
+            return;
+        if (tail.Leaving || code == ClientRequest || tail.State is not { Status: "ingame" or "joining" } state
+            || state.TeleportStarted is not null || state.Status == "joining" && tail.Connections > 0)
+            return;
+        var at = TimeOf(line);
+        if (tail.TeleportAt is { } teleport && at - teleport < TeleportWindow)
+            return;
+        tail.ShownReasonRank = tail.PendingReasonRank;
+        tail.State = state with
+        {
+            Status = "disconnected", Reason = tail.PendingReason, KickMessage = tail.PendingKickMessage, BannedByGame = tail.PendingBan, BanEnds = tail.PendingBanEnds, At = at,
+            TeleportStarted = null,
+        };
+        tail.PendingReason = null;
+        (tail.PendingKickMessage, tail.PendingBan, tail.PendingBanEnds) = (null, false, null);
+        tail.DroppedByReason = true;
     }
 
     // A numeric code can arrive after the words. Replicator (3) > numeric notification (2) > mapped words (1); equal
@@ -605,6 +739,44 @@ public sealed partial class RobloxLogWatcher
         catch (System.Text.Json.JsonException)
         {
             return metadata.Contains("\"moderatorType\"", StringComparison.Ordinal);
+        }
+    }
+
+    /// <summary>
+    /// When a timed ban ends, UTC: its endTimestamp, else beginTimestamp + durationSeconds. Null for a permanent ban
+    /// (durationSeconds -1, or no end given). The owner's test 2026-11-14 (BanAsync, 120 s):
+    /// {"moderatorType":"creator","durationSeconds":"120","endTimestamp":"2026-11-13T23:09:32Z","dynamicReasonTextFilterStatus":"2","beginTimestamp":"2026-11-13T23:07:32Z"};
+    /// without it the account was still treated as banned ten minutes after the ban ended.
+    /// </summary>
+    internal static DateTime? BanEndOf(string metadata)
+    {
+        if (!metadata.TrimStart().StartsWith('{'))
+            return null;
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(metadata);
+            var root = doc.RootElement;
+            if (root.ValueKind != System.Text.Json.JsonValueKind.Object)
+                return null;
+            static string? Text(System.Text.Json.JsonElement root, string name) =>
+                root.TryGetProperty(name, out var value) ? value.ValueKind switch
+                {
+                    System.Text.Json.JsonValueKind.String => value.GetString(),
+                    System.Text.Json.JsonValueKind.Number => value.GetRawText(),
+                    _ => null,
+                } : null;
+            static DateTime? Time(string? text) =>
+                DateTime.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var at) ? at : null;
+            if (Time(Text(root, "endTimestamp")) is { } end)
+                return end;
+            if (long.TryParse(Text(root, "durationSeconds"), NumberStyles.Integer, CultureInfo.InvariantCulture, out long seconds) && seconds > 0
+                && Time(Text(root, "beginTimestamp")) is { } begin)
+                return begin.AddSeconds(seconds);
+            return null;
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return null;
         }
     }
 
