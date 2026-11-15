@@ -326,6 +326,11 @@ impl AppUpdater {
             return;
         }
         log::note(&format!("Update: {} installs once Bloxkeep exits{}.", ready.Version, if restart_args.is_none() { "" } else { ", then it restarts" }));
+        // (The restarted run may come to the front: Windows lets it only if this one passes its right on.)
+        if restart_args.is_some() {
+            // SAFETY: plain call.
+            unsafe { windows_sys::Win32::UI::WindowsAndMessaging::AllowSetForegroundWindow(u32::MAX) };
+        }
         if let Err(e) = manager.wait_exit_then_apply_updates(ready, true, restart_args.is_some(), restart_args.unwrap_or(&[])) {
             log::write(&e);
         }

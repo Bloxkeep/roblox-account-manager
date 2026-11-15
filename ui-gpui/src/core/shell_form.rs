@@ -638,7 +638,15 @@ impl ShellForm {
         }
         // Back after an update in the background while another program was in front: that one keeps the keyboard
         // (a minimised or maximised window is activated as it shows, so the keyboard goes back) and stays on top.
-        if self.show_quietly.get() {
+        if !self.show_quietly.get() {
+            // Meant to open in front: a run started by Velopack's Update.exe (after an update) isn't the one the person
+            // started, and Windows leaves its window behind the others, so it is brought forward (the owner,
+            // 2026-11-15: "nó ko tự pop up lên nó ở đằng sau ấy lúc mới cập nhật xong"). Said in the log either way.
+            if win_form::foreground_window() != self.handle {
+                let ok = super::anti_afk::focus(self.handle);
+                log::note(&format!("Main window: opened behind another program, brought to the front: {}.", if ok { "done" } else { "Windows refused" }));
+            }
+        } else {
             self.show_quietly.set(false);
             let front = self.front_at_start;
             if front != 0 && front != self.handle && win_form::is_window(front) {

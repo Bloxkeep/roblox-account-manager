@@ -149,6 +149,13 @@ pub fn main_core(args: &[String]) {
         Opened::Denied => true,    // one started as administrator
         Opened::Missing => false,
     };
+    // A downloaded update applied here restarts Bloxkeep through Velopack's Update.exe, and Windows lets the run it
+    // starts come to the front only if this one, just started by the person, passes its right on: without it the
+    // updated window opened behind the others (the owner, 2026-11-15: "nó ko tự pop up lên nó ở đằng sau").
+    if !another_runs {
+        // SAFETY: plain call.
+        unsafe { AllowSetForegroundWindow(ASFW_ANY) };
+    }
     velopack::VelopackApp::build()
         .set_auto_apply_on_startup(!another_runs)
         .on_before_uninstall_fast_callback(|_version| {
