@@ -558,6 +558,26 @@ fn until(root: &Root, iso: &str, tpl: &str, soon: &str) -> String {
     if left < 60 { root.tr(soon) } else { root.i18n.tv(tpl, &[("n", &((left + 59) / 60).to_string())]) }
 }
 
+/// What Bloxkeep does next with a window here (the app's session.next), in a few words: "rejoining in 8 s", "waits
+/// for the other device to leave", "asking Roblox".
+fn next_words(root: &Root, a: &Value) -> Option<String> {
+    let next = a.pointer("/session/next").filter(|n| n.is_object())?;
+    Some(match s(next, "kind") {
+        "rejoin" => {
+            let left = crate::time::iso_secs(s(next, "at")).map(|t| t - crate::time::now_secs()).unwrap_or(0);
+            if left > 0 { root.i18n.tv("next.rejoinIn", &[("t", &root.i18n.tv("next.sec", &[("n", &left.to_string())]))]) } else { root.tr("next.rejoinNow") }
+        }
+        "waitDevice" => root.tr("next.waitDevice"),
+        "checking" => root.tr("next.checking"),
+        _ => return None,
+    })
+}
+
+/// Whether a card counts something down now (the page is then drawn again each second).
+pub fn counting(a: &Value) -> bool {
+    a.get("rejoin").is_some_and(Value::is_object) || a.pointer("/session/next").is_some_and(Value::is_object)
+}
+
 /// What it does now, in a few words, its colour, and whether the game's name goes after it. A window here says how its
 /// join goes (the web page's Activity): teleporting, waiting for a server, a full server and its place in line, held
 /// by Roblox's bot check, didn't get in, dropped and why.
@@ -567,7 +587,15 @@ pub fn state_of(root: &Root, a: &Value) -> (String, u32, bool) {
         return (root.tr("act.opening"), WARN, false);
     }
     if let Some(rj) = rejoin_wait(a) {
-        let mut text = if rj.get("restart").and_then(Value::as_bool).unwrap_or(false) { root.tr("rj.rowRestart") } else { until(root, s(rj, "at"), "rj.rowMin", "rj.rowSoon") };
+        // (Under a minute: the seconds, counted down; the page is drawn again each second while a card counts.)
+        let left = crate::time::iso_secs(s(rj, "at")).map(|t| t - now).unwrap_or(0);
+        let mut text = if rj.get("restart").and_then(Value::as_bool).unwrap_or(false) {
+            root.tr("rj.rowRestart")
+        } else if (1..60).contains(&left) {
+            root.i18n.tv("rj.rowSec", &[("n", &left.to_string())])
+        } else {
+            until(root, s(rj, "at"), "rj.rowMin", "rj.rowSoon")
+        };
         if let Some(g) = rj.pointer("/game/name").and_then(Value::as_str).filter(|g| !g.is_empty()) {
             text = format!("{text} · {}", crate::pages::home::clean(g));
         }
@@ -584,7 +612,11 @@ pub fn state_of(root: &Root, a: &Value) -> (String, u32, bool) {
         }
         if conn(a) == "disconnected" {
             let why = a.pointer("/session/reason").and_then(Value::as_i64).map(|code| kick_words(root, code)).unwrap_or_else(|| root.tr("row.kickedUnknown"));
-            return (said(why), WARN, true);
+            // …and what comes next: "Lost connection · rejoining in 8 s".
+            return match next_words(root, a) {
+                Some(next) => (format!("{} · {next}", said(why)), WARN, false),
+                None => (said(why), WARN, true),
+            };
         }
         return match (conn(a), phase(a)) {
             // Left before any server took it (a join error's Leave, or a wait given up).
@@ -600,7 +632,11 @@ pub fn state_of(root: &Root, a: &Value) -> (String, u32, bool) {
                 };
                 (text, WARN, true)
             }
-            (_, "teleporting") => (root.tr("act.teleporting"), OK, true),
+            (_, "teleporting") => match next_words(root, a) {
+                // (Under way too long: Roblox is being asked whether the account is still in a game.)
+                Some(next) => (format!("{} · {next}", root.tr("act.teleporting")), WARN, false),
+                None => (root.tr("act.teleporting"), OK, true),
+            },
             ("joining", "waiting") => (root.tr("act.waitServer"), OK, true),
             ("ingame", _) => (root.tr("act.playingHere"), OK, true),
             _ => (root.tr("act.joiningHere"), OK, true),

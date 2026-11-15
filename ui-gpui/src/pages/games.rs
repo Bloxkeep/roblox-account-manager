@@ -3325,7 +3325,7 @@ fn facts(root: &Root, d: &Value) -> impl IntoElement {
                 .into_any_element()
         });
         cells.push((root.tr("gp.likes"), format!("{l:.0}%"), bar));
-        marks.push(("activity", OK));
+        marks.push(("like", OK));
     }
     if let Some(u) = d.get("updated").and_then(Value::as_str).and_then(|u| ago_iso(root, u)) {
         cells.push((root.tr("gp.updated"), u, None));

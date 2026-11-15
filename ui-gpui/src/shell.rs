@@ -735,7 +735,10 @@ impl Root {
             loop {
                 cx.background_executor().timer(Duration::from_secs(1)).await;
                 let alive = this.update(cx, |r, cx| {
-                    if r.page == Page::Home && r.accounts().iter().any(|a| a.get("state").and_then(Value::as_str) == Some("running")) {
+                    // (…and a card's countdown, "rejoining in 8 s", wherever cards are.)
+                    if (r.page == Page::Home && r.accounts().iter().any(|a| a.get("state").and_then(Value::as_str) == Some("running")))
+                        || (matches!(r.page, Page::Home | Page::Accounts) && r.accounts().iter().any(pages::accounts::counting))
+                    {
                         cx.notify();
                     }
                 });

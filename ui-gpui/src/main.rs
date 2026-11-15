@@ -15,6 +15,7 @@ mod calendar;
 #[cfg(feature = "core")]
 mod core;
 mod crisp;
+mod duo_icons;
 mod frame;
 mod history;
 mod i18n;

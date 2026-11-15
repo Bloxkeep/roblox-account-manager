@@ -145,6 +145,13 @@ pub const JOINING_TIMEOUT: Duration = Duration::from_secs(2 * 60);
 /// join failed). 2026-10-17 (0.743): five clients sat on "This experience has ended, or the server became unavailable…"
 /// for three minutes with no "Joining game" line.
 pub const GET_IN_TIMEOUT: Duration = Duration::from_secs(60);
+/// A teleport that hasn't reached its next server this long after it started is no longer taken as one under way:
+/// Roblox's status for the account is asked again (rejoin.rs's stuck_in_game). A teleport takes seconds; one that ends
+/// in Roblox's "Disconnected" box (Error Code 256, "Lost connection due to an unknown error") logs no arrival and often
+/// no disconnect either, and the window read as teleporting for good: nothing looked at it again.
+pub const TELEPORT_GIVE_UP: Duration = Duration::from_secs(90);
+/// …and past this long it is a failed one whatever Roblox's status says (an account whose status is hidden): rejoined.
+pub const TELEPORT_DEAD: Duration = Duration::from_secs(5 * 60);
 /// How long past its time a rejoin kept with the vault is still done after an unlock (see OnUnlocked).
 pub const WAITING_REJOIN_KEPT: Duration = Duration::from_secs(10 * 60);
 pub const MAX_ASLEEP_EVENTS: usize = 30;

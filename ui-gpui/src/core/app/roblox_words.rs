@@ -3,6 +3,7 @@
 // cover it all"). So each window that ends on its own or by the person in Roblox (not closed by Bloxkeep) and each client
 // that quits before its window gets the lines of its Roblox log that say why (roblox_log_watcher::keep_line), with
 // names, ids, tokens and the Windows user's folder taken out as a bug report's log is (feedback.rs scrub).
+use crate::core::base::{Guid, Stamp};
 use std::cell::Cell;
 use std::sync::LazyLock;
 
@@ -34,6 +35,23 @@ impl App {
             format!("Roblox's log of window {pid} ({why}):\r\n    {}", lines.join("\r\n    "))
         };
         log::note_file(&self.scrub_roblox_words(&text));
+    }
+
+    /// A drop whose window Bloxkeep is about to close itself, to rejoin, or leaves open (rejoin off): Roblox's own
+    /// lines of it, into error.log. When such a window ends its lines are skipped (the close is Bloxkeep's own), and
+    /// Bloxkeep's line alone ("code 256", "code none") never says why Roblox dropped it: with Error Code 256 the answer
+    /// is only in Roblox's lines before the drop (the owner, 2026-11-15: "error log có cover được hết không"; it didn't).
+    /// At most once in ten minutes an account: one that keeps dropping would fill the log with the same lines.
+    pub fn note_drop_lines(&self, account: Guid, pid: i32, why: &str) {
+        let now = Stamp::utc_now();
+        {
+            let mut said = self.rejoin.drop_lines_at.borrow_mut();
+            if said.get(&account).is_some_and(|at| now.secs_since(*at) < 600.0) {
+                return;
+            }
+            said.insert(account, now);
+        }
+        self.note_roblox_lines(pid, why);
     }
 
     /// A window came up: the run of quits (note_quit) is over.

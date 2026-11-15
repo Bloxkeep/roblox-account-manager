@@ -912,6 +912,13 @@ fn boxed() -> Div {
     div().rounded(px(8.)).bg(k.boxed).border_1().border_color(k.line)
 }
 
+/// A box of the sheet that can be pressed (.ws-changed-item, .ws-kind): the box's ground and line; under the mouse
+/// the head's ground and a line in the link colour.
+fn ws_tile(id: impl Into<ElementId>, radius: f32) -> Hot {
+    let k = ws();
+    hot(id).rounded(px(radius)).border_1().tones(k.boxed, k.head).edge(k.line, k.link).cursor_pointer()
+}
+
 fn note(text: String) -> Div {
     div().py(px(28.)).text_size(px(T_M)).text_color(ws().dim).child(text)
 }
@@ -1180,22 +1187,31 @@ fn home_view(root: &Root, about: &About, kinds: Option<&[Kind]>, width: f32, cx:
         body = body.child(h2(root.tr("wiki.fresh"), Some(root.i18n.tv("wiki.freshText", &[("n", &FRESH_DAYS.to_string())]))));
         if !f.added.is_empty() {
             // (As many a row as fit the page, ending where it does.)
-            let (_, card_w) = grid_fit(width, 168., GRID_GAP);
-            let mut row = grid(GRID_GAP);
+            let card_w = 132.;
+            let mut row = grid(10.);
             for (i, p) in f.added.iter().enumerate() {
                 let title = p.title.clone();
                 let last = p.title.rsplit('/').next().unwrap_or(&p.title);
                 let shown = if last.chars().all(|c| c.is_ascii_digit() || c == '.') { p.title.replace('/', " ") } else { last.to_string() };
                 row = row.child(
-                    card(("wk-fresh", i))
+                    hot(("wk-fresh", i))
                         .w(px(card_w))
-                        .p(px(8.))
                         .flex()
                         .flex_col()
-                        .gap(px(6.))
-                        .child(pic_box(p.pic.as_ref(), &p.title, card_w - 16., ((card_w - 16.) * 0.6).round(), cx))
-                        .child(div().text_size(px(T_M)).font_weight(FontWeight::MEDIUM).line_clamp(2).child(shown))
-                        .child(div().text_size(px(T_S)).text_color(c(MUTED)).child(format!("{} · {}", root.tr("wiki.freshNewOne"), crate::time::ago(crate::time::now_secs() - p.at, &root.i18n))))
+                        .gap(px(4.))
+                        .cursor_pointer()
+                        .child(div().w(px(card_w)).h(px(104.)).rounded(px(8.)).border_1().border_color(ws().line).bg(ws().boxed).overflow_hidden().child(pic_box(p.pic.as_ref(), &p.title, card_w - 2., 102., cx)))
+                        .child(div().text_size(px(13.)).line_height(px(17.)).font_weight(FontWeight::BOLD).line_clamp(2).child(shown))
+                        .child(
+                            div()
+                                .flex()
+                                .items_center()
+                                .gap(px(5.))
+                                .text_size(px(11.5))
+                                .text_color(ws().dim)
+                                .child(div().px(px(5.)).rounded(px(3.)).bg(Hsla { a: 0.3, ..ws().own }).text_color(ws().text).font_weight(FontWeight::BOLD).child(root.tr("wiki.freshNewOne")))
+                                .child(crate::time::ago(crate::time::now_secs() - p.at, &root.i18n)),
+                        )
                         .on_click(cx.listener(move |r, _, _, cx| {
                             go(r, View::Page { title: title.clone(), table: None });
                             cx.notify();
@@ -1227,7 +1243,7 @@ fn home_view(root: &Root, about: &About, kinds: Option<&[Kind]>, width: f32, cx:
                     );
                 }
                 grid = grid.child(
-                    card(("wk-changed", i))
+                    ws_tile(("wk-changed", i), 8.)
                         .w(px(col_w))
                         .p(px(10.))
                         .flex()
@@ -1284,7 +1300,7 @@ fn home_view(root: &Root, about: &About, kinds: Option<&[Kind]>, width: f32, cx:
             for (i, k) in ks.iter().enumerate() {
                 let t = k.template.clone();
                 grid = grid.child(
-                    card(("wk-kind", i))
+                    ws_tile(("wk-kind", i), 4.)
                         .w(px(tile_w))
                         .p(px(10.))
                         .flex()

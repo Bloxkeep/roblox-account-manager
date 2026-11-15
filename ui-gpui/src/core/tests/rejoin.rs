@@ -1444,6 +1444,61 @@ async fn newer_drops(c: &mut Checks, r: &mut R) {
         app.controller.presence.borrow_mut().remove(&21);
     }
 
+    // A teleport that never arrives: Roblox's "Disconnected" box, Error Code 256, in the middle of a game's move to
+    // another server (many users of several apps, 2026-11-15: "it doesn't reconnect when this disconnect prompt pops up,
+    // still flags it as in game"; games that teleport, Pet Universe). The log says a teleport started and nothing
+    // after it. While it may still be under way it is left alone; a minute and a half after, Roblox's own status
+    // decides, on three checks in a row; and never while Roblox says the account is in a game.
+    {
+        const IN_PLACE: i64 = 920587237;
+        let join_line = format!("[FLog::Output] ! Joining game 'e403336e-5756-44c9-b029-0ae6873a3d03' place {IN_PLACE} at 10.32.36.210");
+        let presence = |p: Presence| app.controller.presence.borrow_mut().insert(21, p);
+        let out = Presence { r#type: 1, location: Some("Website".into()), ..Default::default() };
+        // In the game ten minutes, then its teleport `started_ago` seconds ago, and nothing after.
+        fn moved(r: &mut R, join_line: &str, started_ago: f64) {
+            r.edit(|a| a.user_id = 21);
+            r.new_window();
+            r.run_at(game(IN_PLACE), now().plus_secs(-900.0));
+            let in_at = now().plus_secs(-600.0);
+            r.line(in_at, LAUNCH);
+            r.line(in_at, join_line);
+            r.line(in_at, "[FLog::Network] serverId: 128.116.46.33|56123");
+            r.line(now().plus_secs(-started_ago), "[FLog::UgcExperienceController] UgcExperienceController: doTeleport: url ");
+        }
+        moved(r, &join_line, 20.0);
+        r.poll(|s| s.teleport_started.is_some()).await;
+        app.controller.offline_strikes.borrow_mut().clear();
+        r.clear_closing();
+        r.told();
+        presence(out.clone());
+        for _ in 0..4 {
+            app.detect_disconnected_sessions(&HashSet::from([21i64]));
+        }
+        c.check("a teleport started twenty seconds ago, Roblox's status out of a game (it lags a move): left alone", !r.closing(), ());
+        moved(r, &join_line, 120.0);
+        r.poll(|s| s.teleport_started.is_some_and(|t| now().secs_since(t) >= 100.0)).await;
+        app.controller.offline_strikes.borrow_mut().clear();
+        r.clear_closing();
+        presence(Presence { r#type: 2, location: Some("Game".into()), place_id: Some(IN_PLACE), ..Default::default() });
+        for _ in 0..4 {
+            app.detect_disconnected_sessions(&HashSet::from([21i64]));
+        }
+        c.check("a teleport two minutes old while Roblox says the account is in a game: left alone (a slow move)", !r.closing(), ());
+        presence(out.clone());
+        app.detect_disconnected_sessions(&HashSet::from([21i64]));
+        app.detect_disconnected_sessions(&HashSet::from([21i64]));
+        let after_two = r.closing();
+        app.detect_disconnected_sessions(&HashSet::from([21i64]));
+        c.check(
+            "a teleport that never arrived (Error 256 mid-teleport) while Roblox says the account is out of a game: closed and rejoined on the third check",
+            !after_two && r.closing(),
+            format!("{after_two} {}", r.closing()),
+        );
+        r.clear_closing();
+        r.told();
+        app.controller.presence.borrow_mut().remove(&21);
+    }
+
     // A timed ban (BanAsync with a duration): its end is in the kick line's metadata. The owner's test 2026-11-14, the
     // exact metadata: still "banned" ten minutes after the 2-minute ban ended.
     {

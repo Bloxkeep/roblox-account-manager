@@ -195,31 +195,30 @@ impl RenderOnce for Hot {
 type Click = Box<dyn Fn(&ClickEvent, &mut Window, &mut App) + 'static>;
 type Toggle = Box<dyn Fn(&bool, &mut Window, &mut App) + 'static>;
 
-/// One of Bloxkeep's icons (assets/icons, the same drawings as shared.js's ICONS), in a colour.
+/// One of Bloxkeep's icons (assets/icons), in a colour.
 pub fn icon(name: &str, size: f32, color: Hsla) -> Svg {
-    svg().path(SharedString::from(format!("icons/{name}.svg"))).size(px(size)).flex_none().text_color(color)
+    // (Bloxkeep's own drawing of it when it has one, both its layers in the one colour: see `icon2`.)
+    let file = if rich() && crate::duo_icons::DUO.contains(&name) { format!("icons/duo/{name}.full.svg") } else { format!("icons/{name}.svg") };
+    svg().path(SharedString::from(file)).size(px(size)).flex_none().text_color(color)
 }
 
-/// The icons drawn for Bloxkeep itself, in two layers (assets/icons/duo, made by dev/make_icons.py): the drawing in
-/// lines, and one small part of it apart, to be in the accent colour (a door, a knob, a face, a spark). The owner,
-/// 2026-11-15: stock icons "trông slop", beside Medal's own two-colour ones. The first of them; the rest of the set
-/// (assets/icons) is still the common one.
-const DUO: [&str; 14] = ["home", "users", "repeat", "clock", "sliders", "lock", "eye", "star", "like", "info", "moon", "download", "book", "bookmark"];
-
-/// One of those when there is one by that name (a few go by another name in the common set), else the common icon:
-/// its lines in `base`, its accent part in `accent`.
+/// The icons drawn for Bloxkeep itself, in two layers (assets/icons/duo, made by dev/make_icons.py; their names in
+/// duo_icons.rs): the drawing in lines, and one small part of it apart, to be in the accent colour (a door, a knob, a
+/// face, a spark, the arrow that says what it does). The owner, 2026-11-15: stock icons "trông slop", beside Medal's
+/// own two-colour ones. `icon` draws one whole in one colour; this, its lines in `base` and its accent in `accent`.
+/// A name with no drawing of its own (a plain sign, another's mark) is the common icon in `base`.
 pub fn icon2(name: &str, size: f32, base: Hsla, accent: Hsla) -> Div {
-    let duo = match name {
-        "starFill" => "star",
-        "activity" => "like",
-        n => n,
-    };
+    let duo = if name == "starFill" { "star" } else { name };
     let frame = div().size(px(size)).flex_none().relative();
-    if !rich() || !DUO.contains(&duo) {
+    if !rich() || !crate::duo_icons::DUO.contains(&duo) {
         return frame.child(icon(name, size, base));
     }
     let layer = |file: String, col: Hsla| svg().path(SharedString::from(file)).size(px(size)).absolute().top_0().left_0().text_color(col);
-    frame.child(layer(format!("icons/duo/{duo}.svg"), base)).child(layer(format!("icons/duo/{duo}.a.svg"), accent))
+    // Behind the drawing, the logo's second block: a tilted rounded block at its upper right, faintly of the accent
+    // (the owner, 2026-11-15, of the first set: "xấu, không đặc biệt lắm": line icons with a yellow dot are anyone's).
+    // Only where an icon stands alone at a size to carry it (the rail, a block's mark), never in a line of words.
+    let echo = (size >= 18. && accent != base).then(|| layer("icons/duo/_echo.svg".into(), Hsla { a: accent.a * 0.38, ..accent }));
+    frame.children(echo).child(layer(format!("icons/duo/{duo}.svg"), base)).child(layer(format!("icons/duo/{duo}.a.svg"), accent))
 }
 
 /// "ROBLOX" as Roblox writes it (its tilted square for the first O), `h` high, in a colour: the Roblox part's title.

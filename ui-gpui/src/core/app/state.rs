@@ -326,6 +326,9 @@ impl App {
                     "oldBuild": self.runs_old_build(a, pid),
                     // The preset that opened it may turn auto-rejoin on or off for this client.
                     "autoRejoin": self.rejoin_on(a, launch.preset_id),
+                    // What Bloxkeep does next with it, and when: the card says so (the owner, 2026-11-15: "ở thẻ cần
+                    // hiển thị sẽ làm gì tiếp theo, ví dụ rejoin thì hiện thời gian đếm ngược").
+                    "next": self.next_step(a, launch, log.as_ref()),
                 })
             }
             None => Value::Null,
@@ -367,6 +370,30 @@ impl App {
             "session": session,
             "rejoin": rejoin,
         })
+    }
+
+    /// What comes next for a window, for its card: { kind: "rejoin", at } (dropped: closed and rejoined then),
+    /// "waitDevice" (another device took the account: rejoined when it leaves), "checking" (a teleport taking too
+    /// long: Roblox's status is being asked). None when nothing is planned (rejoin off, a code Roblox won't reconnect
+    /// after, a ban).
+    fn next_step(&self, a: &Account, launch: &PendingLaunch, log: Option<&crate::core::roblox_log_watcher::ClientState>) -> Option<Value> {
+        use super::rejoin::{roblox_wont_reconnect, signed_in_elsewhere};
+        let log = log?;
+        if !self.rejoin_on(a, launch.preset_id) || a.banned == Some(true) {
+            return None;
+        }
+        let moving_long = (log.status == "ingame" || log.status == "joining") && log.teleport_started.is_some_and(|t| Stamp::utc_now().secs_since(t) >= super::presets::secs(super::controller::TELEPORT_GIVE_UP));
+        if moving_long {
+            return Some(json!({ "kind": "checking" }));
+        }
+        if log.status != "disconnected" || log.banned_by_game || roblox_wont_reconnect(log.reason) {
+            return None;
+        }
+        if signed_in_elsewhere(log.reason) {
+            return Some(json!({ "kind": "waitDevice" }));
+        }
+        let wait = self.vault(|d| d.settings.rejoin_wait_seconds).unwrap_or(0).max(3) as f64;
+        Some(json!({ "kind": "rejoin", "at": log.at.plus_secs(wait).to_iso() }))
     }
 
     /// What a client here is doing: "ingame", "joining" (just started or not known), "menu" (no game, or left it),
