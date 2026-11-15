@@ -8,16 +8,18 @@
   <a href="https://github.com/Bloxkeep/roblox-account-manager/releases/latest"><img src="https://img.shields.io/github/v/release/Bloxkeep/roblox-account-manager?label=release" alt="Newest release"></a>
   <a href="https://github.com/Bloxkeep/roblox-account-manager/releases"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fbloxkeep-bot.bloxkeep-app.workers.dev%2Fbadge%2Fdownloads" alt="Downloads of the install files"></a>
   <img src="https://img.shields.io/badge/Windows-10%20%7C%2011%20(64--bit)-0078D4" alt="Windows 10 or 11, 64-bit">
-  <img src="https://img.shields.io/badge/.NET-10-512BD4" alt="Built with .NET 10">
+  <img src="https://img.shields.io/badge/Rust-GPUI-B7410E" alt="Built with Rust and GPUI">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="MIT license"></a>
   <a href="https://bloxkeep-bot.bloxkeep-app.workers.dev/discord"><img src="https://img.shields.io/badge/Discord-join_the_server-5865F2" alt="Join Bloxkeep's Discord server"></a>
 </p>
 <p align="center"><a href="https://github.com/Bloxkeep/roblox-account-manager/releases/latest/download/Bloxkeep-Setup.exe"><img src="https://img.shields.io/badge/Download_for_Windows-Bloxkeep--Setup.exe-2ea44f?style=for-the-badge" height="36" alt="Download Bloxkeep for Windows (Bloxkeep-Setup.exe, the newest version)"></a> <a href="https://bloxkeep-bot.bloxkeep-app.workers.dev/discord"><img src="https://img.shields.io/badge/Discord-Join_the_server-5865F2?style=for-the-badge&logo=discord&logoColor=white" height="36" alt="Join Bloxkeep's Discord server"></a></p>
 <p align="center"><a href="#download-and-install">Download</a> · <a href="#getting-started">Getting started</a> · <a href="https://bloxkeep.github.io/roblox-account-manager/guide/">User guide</a> · <a href="https://bloxkeep.github.io/roblox-account-manager/">Website</a> · <a href="https://bloxkeep.github.io/roblox-account-manager/whats-new/">What's new</a> · <a href="#community">Community</a> · <a href="#data-and-security">Security</a> · <a href="#faq">FAQ</a> · <a href="PRIVACY.md">Privacy</a></p>
 
-<p align="center"><img src="docs/screenshots/multi-roblox-real.jpg" width="860" alt="A real screenshot of one Windows PC: six Roblox windows open at once, tiled side by side by Bloxkeep, all in the same game, titled Roblox - Account 1 to Roblox - Account 7"></p>
+<p align="center"><img src="docs/screenshots/1.1/home.webp" width="900" alt="Bloxkeep 1.1's Home: the game being played across the top with its picture, your games below, presets and recent activity, and your accounts down the right side"></p>
 
 Keep your Roblox accounts in one place, pick a game, pick accounts, press **Play**. Everything stays on your PC, encrypted with your master password. Bloxkeep has no server of its own.
+
+**New in 1.1:** Bloxkeep is redrawn from scratch, and Roblox itself is inside it: games, friends, avatar, profile, shop and inbox for each account, every account in a tab of its own. [What's new](https://bloxkeep.github.io/roblox-account-manager/whats-new/)
 
 This repository holds Bloxkeep's source code, its releases and the issue tracker. The user guide lives on the [website](https://bloxkeep.github.io/roblox-account-manager/).
 
@@ -25,38 +27,22 @@ This repository holds Bloxkeep's source code, its releases and the issue tracker
 
 ## Features
 
-<img src="docs/screenshots/hero.png" width="860" alt="Bloxkeep main window: account cards with two accounts chosen, the game bar at the bottom, and Multi-Roblox turned on">
-
 <table>
 <tr>
-<td width="50%" valign="top"><a href="https://bloxkeep.github.io/roblox-account-manager/guide/accounts/"><img src="docs/screenshots/add-account.png" width="420" alt="Add accounts"></a><br><b>Add accounts</b><br>With your phone (code or QR), username and password (2-step verification and captchas work), a browser window, a cookie or another Bloxkeep file. <a href="https://bloxkeep.github.io/roblox-account-manager/guide/accounts/">Accounts</a></td>
-<td width="50%" valign="top"><a href="https://bloxkeep.github.io/roblox-account-manager/guide/accounts/"><img src="docs/screenshots/accounts-list.png" width="420" alt="See every account"></a><br><b>See every account</b><br>Online, in game here or on another device, why it disconnected, RAM, play time, needs sign-in, banned. Search, groups, cards or list. Mark your main account, and make your accounts Roblox friends. <a href="https://bloxkeep.github.io/roblox-account-manager/guide/accounts/">Accounts</a></td>
+<td width="50%" valign="top"><img src="docs/screenshots/1.1/roblox.webp" width="420" alt="The Roblox tab: games to keep playing, with each account in a tab of its own"><br><b>Roblox inside Bloxkeep</b><br>Games, friends, avatar (in 3D), profile, shop and inbox for each account, every account in a tab of its own. Search Roblox's games as you type, even by initials (gpo, ps99) or with a typo.</td>
+<td width="50%" valign="top"><img src="docs/screenshots/1.1/game.webp" width="420" alt="A game's page: its picture, Roblox's figures, Play, and how your accounts did there this week"><br><b>A page for every game</b><br>Roblox's figures, events, news, item values, passes, servers and the game's wiki, with how each of your accounts did there this week. <a href="https://bloxkeep.github.io/roblox-account-manager/guide/playing/">Playing</a></td>
 </tr>
 <tr>
-<td width="50%" valign="top"><a href="https://bloxkeep.github.io/roblox-account-manager/guide/playing/"><img src="docs/screenshots/demo-servers.webp" width="420" alt="Play"></a><br><b>Play</b><br>Pick a game by name, link or Place ID, and a server: most or fewest players, lowest ping, room for N accounts, your private servers, a friend's or any player's server. <a href="https://bloxkeep.github.io/roblox-account-manager/guide/playing/">Playing</a></td>
-<td width="50%" valign="top"><a href="https://bloxkeep.github.io/roblox-account-manager/guide/multi-roblox/"><img src="docs/screenshots/multi-roblox-real-detail.jpg" width="420" alt="Multi-Roblox"></a><br><b>Multi-Roblox</b><br>Several Roblox windows at once. Off until you turn it on; every new Roblox build is checked. <a href="https://bloxkeep.github.io/roblox-account-manager/guide/multi-roblox/">Multi-Roblox</a></td>
+<td width="50%" valign="top"><img src="docs/screenshots/1.1/accounts.webp" width="420" alt="Accounts: the ones that need a look first, then those open on this PC and the rest"><br><b>Every account at a glance</b><br>Add accounts with your phone, username and password (2-step and captchas work), a browser window, a cookie or another Bloxkeep file. See who is playing, where, why one dropped, who needs to sign in again or is banned. <a href="https://bloxkeep.github.io/roblox-account-manager/guide/accounts/">Accounts</a></td>
+<td width="50%" valign="top"><img src="docs/screenshots/1.1/automation.webp" width="420" alt="Automation: presets with their accounts, game, schedule and switches"><br><b>Presets and macros</b><br>Accounts, game and server saved for one click, on a schedule if you like. Macros (Beta) written as plain sentences, with a small panel beside the game. <a href="https://bloxkeep.github.io/roblox-account-manager/guide/presets/">Presets</a> · <a href="https://bloxkeep.github.io/roblox-account-manager/guide/macros/">Macros</a></td>
 </tr>
 <tr>
-<td width="50%" valign="top"><a href="https://bloxkeep.github.io/roblox-account-manager/guide/presets/"><img src="docs/screenshots/demo-presets.webp" width="420" alt="Presets"></a><br><b>Presets</b><br>Accounts, game and server saved for one click, with a schedule to start and stop. <a href="https://bloxkeep.github.io/roblox-account-manager/guide/presets/">Presets</a></td>
-<td width="50%" valign="top"><a href="https://bloxkeep.github.io/roblox-account-manager/guide/staying-in-game/"><img src="docs/screenshots/demo-rejoin.webp" width="420" alt="Stay in game"></a><br><b>Stay in game</b><br>Anti-AFK against idle kicks, auto-rejoin after a disconnect. <a href="https://bloxkeep.github.io/roblox-account-manager/guide/staying-in-game/">Staying in game</a></td>
-</tr>
-<tr>
-<td width="50%" valign="top"><a href="https://bloxkeep.github.io/roblox-account-manager/guide/macros/"><img src="docs/screenshots/macros.png" width="420" alt="Macros (Beta)"></a><br><b>Macros (Beta)</b><br>Steps written as plain sentences: press keys, click, wait for a picture, a colour or text, repeat, If. Record one or start from a template, try it, then move its points and areas right on the game. Each macro gets a small panel beside the game with tabs, switches, lists to tick and points the player sets. Stuck? It runs your recovery steps. <a href="https://bloxkeep.github.io/roblox-account-manager/guide/macros/">Macros</a></td>
-<td width="50%" valign="top"><a href="https://bloxkeep.github.io/roblox-account-manager/guide/windows-and-stats/"><img src="docs/screenshots/game-monitor-real.jpg" width="420" alt="Windows"></a><br><b>Windows</b><br>Arrange layouts picked from pictures (as Windows' snap layouts) or a size of your own, the Game monitor with a minimise button on each window, a mini window, RAM warnings. <a href="https://bloxkeep.github.io/roblox-account-manager/guide/windows-and-stats/">Windows and stats</a></td>
-</tr>
-<tr>
-<td width="50%" valign="top"><a href="https://bloxkeep.github.io/roblox-account-manager/guide/settings/"><img src="docs/screenshots/settings.png" width="420" alt="Roblox your way"></a><br><b>Roblox your way</b><br>Graphics, FPS and volume per account; open with Roblox, Bloxstrap, Fishstrap, Voidstrap or your own launcher. <a href="https://bloxkeep.github.io/roblox-account-manager/guide/settings/">Settings</a></td>
-<td width="50%" valign="top"><a href="https://bloxkeep.github.io/roblox-account-manager/guide/discord/"><img src="docs/screenshots/stats.png" width="420" alt="Stats and alerts"></a><br><b>Stats and alerts</b><br>Play time compared with the days before, a timeline of each account, why accounts dropped and the time it cost; alerts and a live status in your Discord channel or on your phone (ntfy); <code>/pc</code> in Discord to check and control your PC from anywhere, and <code>/pc screenshot</code> to see a picture of your accounts' Roblox windows. <a href="https://bloxkeep.github.io/roblox-account-manager/guide/discord/">Discord</a></td>
-</tr>
-<tr>
-<td width="50%" valign="top"><a href="https://bloxkeep.github.io/roblox-account-manager/guide/playing/#the-games-tab"><img src="docs/screenshots/games.png" width="420" alt="Games"></a><br><b>Games</b><br>Popular games with their wiki inside Bloxkeep: search, item tables, recent buffs and nerfs, live stock and spawns, Blox Fruits prices. <a href="https://bloxkeep.github.io/roblox-account-manager/guide/playing/#the-games-tab">The Games tab</a></td>
-<td width="50%" valign="top"><a href="https://bloxkeep.github.io/roblox-account-manager/guide/backup-and-security/"><img src="docs/screenshots/lock.png" width="420" alt="Safe by default"></a><br><b>Safe by default</b><br>Encrypted vault, lock, backups to a OneDrive or Google Drive folder, hide names for streams. <a href="https://bloxkeep.github.io/roblox-account-manager/guide/backup-and-security/">Backup and security</a></td>
-</tr>
-<tr>
-<td width="50%" valign="top"><img src="docs/screenshots/themes.png" width="420" alt="Yours"><br><b>Yours</b><br>98 themes, English and Vietnamese, quick search with <code>Ctrl+K</code>.</td>
-<td width="50%"></td>
+<td width="50%" valign="top"><img src="docs/screenshots/1.1/stats.webp" width="420" alt="Statistics: play time, a timeline of each account, play by hour and why accounts dropped"><br><b>Stats and alerts</b><br>Play time against the days before, each account's timeline, why accounts dropped and the time it cost. Alerts in your Discord channel or on your phone, and <code>/pc</code> in Discord to check and control your PC from anywhere. <a href="https://bloxkeep.github.io/roblox-account-manager/guide/discord/">Discord</a></td>
+<td width="50%" valign="top"><img src="docs/screenshots/1.1/settings.webp" width="420" alt="Settings, Launching: Multi-Roblox, window layouts and the launcher Roblox opens with"><br><b>Roblox your way</b><br>Multi-Roblox, window layouts, graphics, FPS and volume per account; open with Roblox, Bloxstrap, Fishstrap, Voidstrap or your own launcher. <a href="https://bloxkeep.github.io/roblox-account-manager/guide/settings/">Settings</a></td>
 </tr>
 </table>
+
+Also: anti-AFK and auto-rejoin to stay in game, the Game monitor and a mini window, an encrypted vault with backups to a OneDrive or Google Drive folder, names hidden for streams, 99 themes, English and Vietnamese.
 
 Every feature in one list, the illustrated guide and a version to try in your browser: [Bloxkeep's website](https://bloxkeep.github.io/roblox-account-manager/#all).
 
@@ -79,9 +65,7 @@ The files aren't code-signed yet, so SmartScreen warns the first time: **More in
 
 ### Updates
 
-Bloxkeep updates itself in the background and installs when you aren't using it, coming back unlocked where you left it. **Restart to update** does it now. **Settings › Bloxkeep** turns it off or adds beta versions. [Updates](https://bloxkeep.github.io/roblox-account-manager/guide/getting-started/#updates)
-
-<img src="docs/screenshots/2-restart-to-update.png" width="640" alt="Restart to update in the sidebar">
+Bloxkeep updates itself in the background and installs when you aren't using it, coming back unlocked where you left it. **Restart to update** in the bar at the bottom does it now. **Settings › Bloxkeep** turns it off or adds beta versions. [Updates](https://bloxkeep.github.io/roblox-account-manager/guide/getting-started/#updates)
 
 ### Uninstall
 
@@ -91,17 +75,7 @@ Windows **Settings › Apps › Installed apps › Bloxkeep › Uninstall**. Tic
 
 1. **Set a master password.** It unlocks Bloxkeep and **can't be recovered**. New PC? Choose **Restore from a backup**.
 2. **Add accounts.** **Add account**, then **Sign in with your phone** (recommended), username and password, or a browser window.
-3. **Play.** Type a game in the bar at the bottom, click accounts to choose them, press **Play**.
-
-<table>
-<tr>
-<td width="33%" valign="top"><img src="docs/screenshots/lock.png" width="280" alt="The lock screen"><br><b>1.</b> Master password</td>
-<td width="33%" valign="top"><img src="docs/screenshots/add-account.png" width="280" alt="Add account"><br><b>2.</b> Add accounts</td>
-<td width="33%" valign="top"><img src="docs/screenshots/game-picker.png" width="280" alt="Choosing a game"><br><b>3.</b> Pick a game, press Play</td>
-</tr>
-</table>
-
-<img src="docs/screenshots/demo.gif" width="800" alt="Choosing two accounts, switching the game, looking at the server list, then changing the theme">
+3. **Play.** Open a game from Home or the Roblox tab, choose the accounts, press **Play**.
 
 Step by step, with pictures: [Getting started](https://bloxkeep.github.io/roblox-account-manager/guide/getting-started/).
 
@@ -142,8 +116,6 @@ Never send anyone a cookie, `vault.rmv` or a backup: each is a full sign-in to y
 
 Turn on **Settings › Backup & data › Back up to a folder** and pick a OneDrive or Google Drive folder: the encrypted vault is copied there after each change. On a new PC: install, **Restore from a backup**, enter the password it was saved with. [Backups](https://bloxkeep.github.io/roblox-account-manager/guide/backup-and-security/#automatic-backups)
 
-<img src="docs/screenshots/settings-backup.png" width="640" alt="Settings, Backup and data">
-
 ## FAQ
 
 **Is this a virus?** No. New unsigned files get warnings. Compare the SHA-256 with `SHA256SUMS.txt`, read the source or [build it yourself](#build-from-source). If your antivirus removed it, report it as a false positive.
@@ -158,19 +130,19 @@ Macros in real games over many hours · auto-rejoin and **Restart Roblox** over 
 
 ## Build from source
 
-Needs Windows and the .NET 10 SDK. A C# core (.NET 10, WinForms) with an HTML/React interface in WebView2.
+Since 1.1 the app is written in Rust: its window is drawn with [GPUI](https://www.gpui.rs/), and the sign-in, captcha and a few small windows use WebView2. Needs Windows, Rust, Node.js and the .NET 10 SDK (for the installer tool).
 
 ```bat
-scripts\build.bat 1.0.1
+scripts\build.bat 1.1.0
 ```
 
-It runs the checks in `Tests\Bloxkeep.Tests` first, then puts the installers, the portable zip, the update packages and `SHA256SUMS.txt` in `dist\releases\`. Each version needs its notes, in English and Vietnamese, in `RobloxManager\whatsnew.json`. To try the interface without building, serve the repository root (`python -m http.server 5178`) and open `/ui/dev/preview.html`.
+It builds the app (`ui-gpui`), runs its checks (`Bloxkeep.exe --core-suites`), then puts the installers, the portable zip, the update packages and `SHA256SUMS.txt` in `dist\releases\`. Each version needs its notes, in English and Vietnamese, in `RobloxManager\whatsnew.json`.
 
 | Folder | What's in it |
 |---|---|
-| `RobloxManager/` | The app: C# core, `wwwroot/` interface, `whatsnew.json` |
-| `ui/` | The React parts of the interface |
-| `Tests/` | The app's checks and the interface checks |
+| `ui-gpui/` | The app: the window (`src/pages`), the core (`src/core`), its pictures and words (`assets`) |
+| `RobloxManager/` | `whatsnew.json` and the small web pages (`wwwroot`); the C# app Bloxkeep was before 1.1 |
+| `ui/` | The React parts of those small pages |
 | `services/` | The Discord bot, the feedback service, the Roblox and domain watches |
 | `site/`, `docs/` | The website and the user guide |
 
