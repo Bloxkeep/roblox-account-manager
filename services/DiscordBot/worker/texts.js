@@ -73,6 +73,7 @@ const W = {
     cmds: [
       ['/multi', 'Does Multi-Roblox work on the current Roblox, and on the one coming next'],
       ['/robloxstatus', 'Is Roblox down right now'],
+      ['/error', 'What a Roblox error code means, what Bloxkeep does about it, and what you can do'],
       ['/download', 'Get Bloxkeep'],
       ['/online', 'How many people are using Bloxkeep right now'],
       ['/pc', 'Bloxkeep on your own PC, from anywhere: which accounts are in a game, run a preset, close windows, see them (Settings › Discord › Control from Discord)'],
@@ -103,6 +104,7 @@ const W = {
     cmds: [
       ['/multi', 'Multi-Roblox có chạy trên bản Roblox hiện tại và bản sắp ra không'],
       ['/robloxstatus', 'Roblox có đang lỗi không'],
+      ['/error', 'Mã lỗi Roblox nghĩa là gì, Bloxkeep xử lý ra sao, và bạn làm được gì'],
       ['/download', 'Tải Bloxkeep'],
       ['/online', 'Bao nhiêu người đang dùng Bloxkeep lúc này'],
       ['/pc', 'Bloxkeep trên máy của bạn, ở đâu cũng dùng được: tài khoản nào đang trong game, chạy preset, đóng cửa sổ, chụp màn hình (Cài đặt › Discord › Điều khiển từ Discord)'],

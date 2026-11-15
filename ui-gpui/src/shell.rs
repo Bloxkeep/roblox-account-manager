@@ -254,6 +254,8 @@ pub struct Root {
     toast_task: Option<Task<()>>,
     /// The notice its timer was started for (its words and kind, and which showing of them).
     toast_timed: Option<((String, String), u32)>,
+    /// The last notice the app itself sent (written to error.log by the app): not written again by the page.
+    toast_core: Option<String>,
 }
 
 impl Root {
@@ -675,6 +677,7 @@ impl Root {
             tasks: Vec::new(),
             toast_task: None,
             toast_timed: None,
+            toast_core: None,
         };
         // The window's heartbeat for core/log.rs's watch: this runs on the window's own thread, so a beat that stops
         // coming means the window stopped answering (written to error.log and the Console with how long).
@@ -1379,6 +1382,7 @@ impl Root {
             "toast" => {
                 let text = data.get("text").and_then(Value::as_str).unwrap_or_default().to_string();
                 let kind = data.get("kind").and_then(Value::as_str).unwrap_or("info").to_string();
+                self.toast_core = Some(text.clone());
                 self.toast = Some((text.clone(), kind));
                 self.toast_n += 1;
                 cx.notify();
@@ -2758,7 +2762,10 @@ impl Root {
                         .primary()
                         .small()
                         .tip(self.i18n.tv(if self.state.pointer("/update/auto").and_then(Value::as_bool).unwrap_or(false) { "upd.restartTipAuto" } else { "upd.restartTip" }, &[("v", &v)]))
-                        .on_click(cx.listener(|r, _, _, _| r.send("applyUpdate", json!({})))),
+                        // (Asked, not just sent: the app can refuse (Roblox being opened, a sign-in window up, nothing
+                        // saved) and the old page said why (app.js: busy(el, () => call('applyUpdate'))). Sent only,
+                        // the button did nothing and said nothing.)
+                        .on_click(cx.listener(|r, _, _, cx| pages::settings::ask(r, "applyUpdate", json!({}), cx, |_, _| {}))),
                 )
             })
             .child(
@@ -2880,6 +2887,14 @@ impl Root {
                 let key = (now, self.toast_n);
                 if self.toast_timed.as_ref() != Some(&key) {
                     let text = key.0.0.clone();
+                    // A warning or an error the page said by itself goes to error.log here, the one place every
+                    // notice passes (the app's own are written where the app says them: `toast_core`). 43 places in
+                    // the pages set one; whether each also wrote a line was never checked one by one (the owner,
+                    // 2026-11-15: "lúc trước hỏi error log đã cover hết chưa thì cứ gật đầu").
+                    #[cfg(feature = "core")]
+                    if matches!(key.0.1.as_str(), "bad" | "warn" | "error") && self.toast_core.as_deref() != Some(text.as_str()) {
+                        crate::core::log::note_file(&format!("Shown by the page ({}): {}", key.0.1, crate::core::app::feedback::scrub_text(&text, Vec::new())));
+                    }
                     self.toast_timed = Some(key);
                     // (A shot says so: a hidden window can't show the notice leaving.)
                     #[cfg(feature = "shot")]

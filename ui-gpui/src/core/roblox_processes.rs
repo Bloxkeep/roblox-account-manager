@@ -653,6 +653,9 @@ fn start_sweeper(s: &mut ClosingState) {
 /// terminates at once. The tray copy Roblox starts as a child of the closing client is ended too. All closes share
 /// one sweep, so closing ten takes no more snapshots than one.
 pub fn close(pid: i32, force: bool) {
+    // Every window Bloxkeep closes is said here, the one place they all pass (five callers wrote no line of their
+    // own, audit 2026-11-15): with the caller's line before it, error.log shows who closed a window and why.
+    log::note_file(&format!("Roblox window {pid}: closed by Bloxkeep{}.", if force { ", at once" } else { "" }));
     // Held open until the sweep ends, so Windows can't give this pid to a new process meanwhile. None when
     // Roblox's anti-tamper refuses it.
     let keep = ProcHandle::open(SYNCHRONIZE | PROCESS_QUERY_LIMITED_INFORMATION, pid);

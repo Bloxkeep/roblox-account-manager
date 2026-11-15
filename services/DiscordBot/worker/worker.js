@@ -21,6 +21,7 @@ import { CARDS_KEPT, MAX_FEED_SOCKETS, RAW_KEPT, cardsOf, gameId, isNotice, make
 import { PRICES_EVERY, PRICES_RETRY, PRICE_SOURCES, readPrices } from './prices.js';
 import { WIKI_EVERY, WIKI_ITEMS_MAX, WIKI_REQUESTS_PER_TICK, WIKI_RETRY, WIKI_SOURCES, POPULAR_GAMES, apiOf, readBatch } from './wiki.js';
 import { setupServer } from './setup.js';
+import { errorEmbed } from './errors.js';
 import { newer, readInstallDownloads, readLatestTag, readNotes, readRelease, readStatus, readWatch, release } from './sources.js';
 import {
   COUNT_CHANNEL, SITE, addressed, boardEmbed, buildMessage, captchaMessage, codeForm, countChannelName, downloadMessage, helpMessage, lang,
@@ -900,6 +901,8 @@ export class Gateway extends DurableObject {
         return reply({ embeds: [multiEmbed(l, snap.watch)] });
       case 'robloxstatus':
         return reply({ embeds: [statusEmbed(l, snap.status ?? { code: 100, parts: [], incident: null })] });
+      case 'error':
+        return reply({ embeds: [errorEmbed(l, i.data?.options?.find(o => o.name === 'code')?.value)] });
       case 'feed':
         return this.feedCommand(i, reply);
       case 'online': { // anyone, in the channel; Bloxkeep's developers get it all, seen only by them
