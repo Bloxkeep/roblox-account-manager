@@ -37,8 +37,8 @@ const KNOWN = {
     vi: ['Bị kick vì client hoạt động bất thường', 'Server Roblox ngắt phiên vì client làm điều nó không mong đợi.', STAYS.vi, ['Gỡ mọi thứ can thiệp vào client Roblox (injector, file bị sửa), cập nhật Roblox rồi Play lại.']],
   },
   273: {
-    en: ['Signed in on another device', 'The same account joined a game from another device, which takes the place of this window.', "Bloxkeep doesn't fight the other device: rejoining would only put that one out in turn.", ['Leave the game on the other device, then press Play here.']],
-    vi: ['Đăng nhập ở thiết bị khác', 'Chính tài khoản này vào game từ thiết bị khác nên chiếm chỗ của cửa sổ này.', 'Bloxkeep không giành lại với thiết bị kia: vào lại chỉ làm bên đó bị đẩy ra theo.', ['Thoát game ở thiết bị kia rồi nhấn Play ở đây.']],
+    en: ['Signed in on another device', 'The same account joined a game from another device, which takes the place of this window.', 'Bloxkeep waits while the other device plays. For a global Roblox account with Auto-rejoin on, it can rejoin after a wait once Roblox reports that the account is no longer in a game.', ['Leave the game on the other device and keep Auto-rejoin on here. Roblox may take a while to update the account status.', 'With Auto-rejoin off, or for Roblox VNG, press Play here after leaving the other game.']],
+    vi: ['Đăng nhập ở thiết bị khác', 'Chính tài khoản này vào game từ thiết bị khác nên chiếm chỗ của cửa sổ này.', 'Bloxkeep chờ khi thiết bị kia còn chơi. Với tài khoản Roblox quốc tế đã bật Tự vào lại, ứng dụng có thể vào lại sau thời gian chờ khi Roblox báo tài khoản không còn ở trong game.', ['Thoát game ở thiết bị kia và giữ Tự vào lại bật ở đây. Roblox có thể cập nhật trạng thái tài khoản chậm.', 'Nếu tắt Tự vào lại, hoặc dùng Roblox VNG, nhấn Play ở đây sau khi thoát game bên kia.']],
   },
   277: {
     en: ['Connection lost', "The window stopped hearing from the game's server: your network, the server, or a window too starved to answer in time.", REJOINS.en, ['Check the connection if several accounts drop at once.', 'With many windows open, give them a little more FPS or CPU.']],
