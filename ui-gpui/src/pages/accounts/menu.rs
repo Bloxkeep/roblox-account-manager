@@ -332,6 +332,16 @@ fn main_lines(root: &Root, a: &Value, ids: &[String], picked: &[&Value]) -> Vec<
             l.tip = Some(root.tr("card.vngNoWebsite"));
         }
         out.push(Some(l));
+        // Roblox's own page of the account's standing (its status, violations and appeals), signed in as it: for any
+        // account, not only one Bloxkeep knows is banned (the card's Appeal button opens the same page).
+        let me = id.clone();
+        let mut l = line("cm-status", Some("shieldCheck"), root.tr("m.status"), run(move |r, _, _| r.send("openAppeal", json!({ "id": me }))));
+        l.tip = Some(root.tr("m.statusTip"));
+        if s(a, "realm") == "vng" {
+            l.off = true;
+            l.tip = Some(root.tr("card.vngNoWebsite"));
+        }
+        out.push(Some(l));
         out.push(None);
         out.push(Some(line("cm-copy", Some("copy"), root.tr("m.copy"), Go::Sub(Sub::Copy))));
     }
