@@ -245,7 +245,7 @@ fn shell_page_from_env(default: pages::Page) -> pages::Page {
     std::env::var("BLOXKEEP_UI_PAGE").ok().and_then(|k| pages::Page::from_key(&k)).unwrap_or(default)
 }
 
-fn hwnd_of(window: &Window) -> Option<isize> {
+pub fn hwnd_of(window: &Window) -> Option<isize> {
     use raw_window_handle::{HasWindowHandle, RawWindowHandle};
     match HasWindowHandle::window_handle(window).ok()?.as_raw() {
         RawWindowHandle::Win32(h) => Some(h.hwnd.get()),

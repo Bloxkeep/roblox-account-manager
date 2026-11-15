@@ -190,10 +190,53 @@ pub fn init(cx: &mut App) {
     // Every SWEEP_EVERY: when something may be away, every window is drawn once (a window standing still asks for
     // nothing, so its pictures would look away too), and what none of them asked for in AWAY is let go. A window
     // hidden in the tray or minimized doesn't draw: its pictures go too, and come back when it is shown.
+    // BLOXKEEP_SHOT_HIDE=n: a hidden run minimizes its windows after n seconds (to measure what hiding lets go).
+    #[cfg(feature = "shot")]
+    if let Some(secs) = std::env::var("BLOXKEEP_SHOT_HIDE").ok().and_then(|v| v.parse::<u64>().ok()) {
+        cx.spawn(async move |cx| {
+            cx.background_executor().timer(Duration::from_secs(secs)).await;
+            cx.update(|cx| {
+                for w in cx.windows() {
+                    let _ = w.update(cx, |_, window, _| window.minimize_window());
+                }
+                eprintln!("windows minimized");
+            });
+        })
+        .detach();
+    }
     cx.spawn(async move |cx| {
         loop {
             cx.background_executor().timer(SWEEP_EVERY).await;
             let asked = Instant::now();
+            // No window of the app on screen (in the tray, minimized): nobody sees a picture, so all go at this look,
+            // not 45 s after; they come back from this PC's copy in milliseconds when the window shows again (the
+            // owner, 2026-11-15, of 230 MB in Task Manager: "không có cách nào hài hòa à").
+            // (Those drawn in the last two seconds stay: a window Windows still draws while minimized keeps what it shows
+            // rather than fetching it again every look.)
+            let hidden = cx.update(|cx| none_on_screen(cx));
+            if !hidden {
+                HIDDEN_GIVEN.store(false, std::sync::atomic::Ordering::Relaxed);
+            }
+            if hidden {
+                cx.update(|cx| {
+                    trim(cx, Some(asked + AWAY - Duration::from_secs(2)));
+                    // Once each time the app leaves the screen: the memory it holds but isn't using (pictures let go,
+                    // pages left) goes back to Windows, for Roblox, rather than staying counted to Bloxkeep. What it
+                    // still uses comes back as it is touched. Task Manager's number was most of this (2026-11-15).
+                    if !HIDDEN_GIVEN.swap(true, std::sync::atomic::Ordering::Relaxed) {
+                        // SAFETY: plain call on this process.
+                        unsafe {
+                            windows_sys::Win32::System::ProcessStatus::K32EmptyWorkingSet(windows_sys::Win32::System::Threading::GetCurrentProcess());
+                        }
+                    }
+                    #[cfg(feature = "shot")]
+                    if std::env::var("BLOXKEEP_SHOT_MEM").is_ok() {
+                        let (n, bytes, copies, pixels) = held(cx);
+                        eprintln!("hidden: pictures kept: {n} ({} KB as fetched), {copies} sized copies ({} KB of pixels)", bytes / 1024, pixels / 1024);
+                    }
+                });
+                continue;
+            }
             let some = cx.update(|cx| {
                 let some = may_be_away(cx.global::<Images>(), asked);
                 if some {
@@ -217,6 +260,30 @@ pub fn init(cx: &mut App) {
         }
     })
     .detach();
+}
+
+/// The memory not in use was given back to Windows since the app last left the screen.
+static HIDDEN_GIVEN: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// No window of the app is on screen: each hidden or minimized (Win32's own answer, by its handle).
+fn none_on_screen(cx: &mut App) -> bool {
+    let mut any = false;
+    let mut shown = false;
+    for w in cx.windows() {
+        let _ = w.update(cx, |_, window, _| {
+            any = true;
+            if let Some(h) = crate::hwnd_of(window) {
+                let h = h as windows_sys::Win32::Foundation::HWND;
+                // SAFETY: plain queries of our own window's handle.
+                if unsafe { windows_sys::Win32::UI::WindowsAndMessaging::IsWindowVisible(h) != 0 && windows_sys::Win32::UI::WindowsAndMessaging::IsIconic(h) == 0 } {
+                    shown = true;
+                }
+            } else {
+                shown = true;
+            }
+        });
+    }
+    any && !shown
 }
 
 /// Whether a picture or a copy was last asked for more than AWAY before `asked`.
