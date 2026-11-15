@@ -3,7 +3,7 @@ name = "bloxkeep-ui"
 version = "1.1.0"
 edition = "2024"
 publish = false
-description = "Bloxkeep's window, drawn with GPUI; the C# app (RobloxManager) runs it and talks to it over named pipes."
+description = "Bloxkeep, a Roblox account manager for Windows: its window drawn with GPUI and its core."
 
 [dependencies]
 gpui-kit = "=0.9.0"

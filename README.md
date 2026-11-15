@@ -141,7 +141,7 @@ It builds the app (`ui-gpui`), runs its checks (`Bloxkeep.exe --core-suites`), t
 | Folder | What's in it |
 |---|---|
 | `ui-gpui/` | The app: the window (`src/pages`), the core (`src/core`), its pictures and words (`assets`) |
-| `RobloxManager/` | `whatsnew.json` and the small web pages (`wwwroot`); the C# app Bloxkeep was before 1.1 |
+| `RobloxManager/` | `whatsnew.json`, the icons and the small web pages (`wwwroot`) |
 | `ui/` | The React parts of those small pages |
 | `services/` | The Discord bot, the feedback service, the Roblox and domain watches |
 | `site/`, `docs/` | The website and the user guide |

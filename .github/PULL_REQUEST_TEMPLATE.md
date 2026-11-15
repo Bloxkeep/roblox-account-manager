@@ -8,9 +8,8 @@
 
 ## How it was checked
 
-- [ ] `dotnet run --project Tests\Bloxkeep.Tests` passes, with a check that fails without this change
-- [ ] `node Tests/ui/run.mjs` passes (if the interface changed)
-- [ ] New text is in both English and Vietnamese (`RobloxManager/L.cs`, `RobloxManager/wwwroot/i18n.js`)
+- [ ] `bloxkeep-ui.exe --core-suites` passes, with a check that fails without this change
+- [ ] New text is in both English and Vietnamese (`RobloxManager/wwwroot/i18n.js` or `ui-gpui/assets/words.json`)
 - [ ] Tried in the app (say how)
 
 <!-- No cookies, passwords, 2-step codes or account names in the code, the tests or screenshots. -->

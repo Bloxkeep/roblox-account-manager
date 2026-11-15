@@ -1,9 +1,9 @@
 #![recursion_limit = "512"]
-// Bloxkeep's window, drawn with GPUI (1.1). The C# app (RobloxManager) starts it with --pipe NAME and talks to it over
-// two named pipes, the same JSON messages the WebView2 page has (link.rs); the window then says its handle and the app
-// lays it inside its own window, which keeps the tray, the hotkeys and the title bar.
+// Bloxkeep (1.1): its window drawn with GPUI, and with --features core the app itself (core/, moved from the C# app it
+// was before 1.1) in the same process. Without the core, a host starts it with --pipe NAME and talks to it over two
+// named pipes, the same JSON messages (link.rs): ui-gpui/dev/mockhost.mjs, the made-up app behind the screenshots.
 //
-//   --pipe NAME     the app's pipes (without: an empty window, for looking at the frame)
+//   --pipe NAME     a host's pipes (without, and without the core: an empty window, for looking at the frame)
 //   --shot PNG      draw the window hidden, save a picture of it and quit (built with --features shot)
 //   --size WxH      the window's size, 1280x800 by default
 //   --wait MS       for --shot: how long the app's state and pictures get first, 2500 by default

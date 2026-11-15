@@ -11,7 +11,7 @@ track Roblox exploits. Nothing runs on your PC.
 
 ## What it can and can't tell
 
-- **The lock names.** Bloxkeep holds `ROBLOX_singletonEvent` (`RobloxManager/MultiInstance.cs`). If a build adds or
+- **The lock names.** Bloxkeep holds `ROBLOX_singletonEvent` (`ui-gpui/src/core/multi_instance.rs`). If a build adds or
   drops a lock name, or a name in Roblox's single-window code (`SingleInstanceGuard`, `WndProcessCheck`,
   `WindowsAppReload…`), Multi-Roblox may be blocked (`changed`, amber). If the name Bloxkeep holds is gone and exactly
   one new `ROBLOX_…singleton…` name came in its place, Roblox renamed its lock (`renamed`, amber): the build's `hold`

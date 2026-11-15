@@ -1,12 +1,10 @@
 # The checks on every pull request and every push to main, before a tag is pushed to release: until now they ran only inside
 # scripts\build.bat on the release machine (Release workflow), after the tag existed.
-#  - The React parts (ui/): packages from package-lock.json, the type check, the build.
-#  - The report of where the C# commands, the page, the fake host and the two languages disagree (Tests/ui/contract.mjs):
-#    a report, it never fails the run.
-#  - The C# checks (Tests/Bloxkeep.Tests), each suite in a process of its own with throwaway data, as build.bat runs them.
-#    Without --online: the suites that ask Roblox's servers (stats-icons, watch-online) are left out, so nothing here depends
-#    on the internet reaching Roblox, and no Roblox, Bloxkeep data or account is involved. A suite that runs over 8 minutes is
-#    stopped and counts as a failure.
+#  - The React parts of the small web pages (ui/): packages from package-lock.json, the type check, the build.
+#  - The app (ui-gpui, Rust) built as the release builds it, then its checks (Bloxkeep.exe --core-suites), each suite in a
+#    process of its own with throwaway data, as build.bat runs them. The suites that need the network are left out, so
+#    nothing here depends on the internet reaching Roblox, and no Roblox, Bloxkeep data or account is involved. A suite
+#    that runs over 15 minutes is stopped and counts as a failure.
 # Needs no secret and asks for none: a pull request from a fork runs it too. The interface checks (Tests/ui/run.mjs) stay a
 # hand-started run (Interface checks workflow, the owner's call of 2026-10-23).
 name: Tests
@@ -36,26 +34,36 @@ concurrency:
 jobs:
   tests:
     runs-on: windows-2025
-    timeout-minutes: 40
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: 10.0.x
       - uses: actions/setup-node@v4
         with:
           node-version: 24
+      - name: Rust
+        shell: pwsh
+        run: |
+          rustup toolchain install 1.99.1 --profile minimal
+          rustup default 1.99.1
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ui-gpui
       - name: React parts (ui/)
         working-directory: ui
         run: |
           npm ci
           npx --no-install tsc --noEmit
           node build.mjs
-      - name: Where the pieces disagree (report only)
-        run: node Tests/ui/contract.mjs
       - name: Sizes, gaps, corners and times come from app.css's tokens
         run: node Tests/ui/tokens.mjs --strict
       - name: Screens use the shared controls (ui/src/kit.tsx)
         run: node Tests/ui/kit.mjs
+      - name: The app
+        working-directory: ui-gpui
+        run: cargo build --release --locked --features core
+      # Through PowerShell's pipe: the app is a Windows program, so its output would not show otherwise.
       - name: Bloxkeep's checks
-        run: dotnet run --project Tests/Bloxkeep.Tests -c Release -- --timeout=8
+        shell: pwsh
+        run: |
+          & .\ui-gpui\target\release\bloxkeep-ui.exe --core-suites --timeout=15 | Write-Host
+          exit $LASTEXITCODE

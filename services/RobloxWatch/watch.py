@@ -18,7 +18,7 @@ HISTORY = 'https://setup.rbxcdn.com/DeployHistory.txt'
 FLAGS = 'https://clientsettingscdn.roblox.com/v2/settings/application/PCDesktopClient'
 CDN = 'https://setup.rbxcdn.com'
 UA = 'Bloxkeep-RobloxWatch (+https://github.com/Bloxkeep/roblox-account-manager)'
-# The name Bloxkeep takes so Roblox can't set up its single-window check (RobloxManager/MultiInstance.cs).
+# The name Bloxkeep takes so Roblox can't set up its single-window check (ui-gpui/src/core/multi_instance.rs).
 HELD = 'ROBLOX_singletonEvent'
 # No lookbehind for "a whole name": it would stop re's fast literal search (about 40 times slower on 140 MB);
 # fingerprint looks at the byte before instead.

@@ -138,7 +138,7 @@ Lệnh này build app (`ui-gpui`), chạy các bài kiểm tra của nó (`Bloxk
 | Thư mục | Chứa gì |
 |---|---|
 | `ui-gpui/` | App: giao diện (`src/pages`), phần lõi (`src/core`), hình và chữ (`assets`) |
-| `RobloxManager/` | `whatsnew.json` và các trang web nhỏ (`wwwroot`); bản C# của Bloxkeep trước 1.1 |
+| `RobloxManager/` | `whatsnew.json`, icon và các trang web nhỏ (`wwwroot`) |
 | `ui/` | Phần React của các trang nhỏ đó |
 | `services/` | Bot Discord, dịch vụ góp ý, trình theo dõi Roblox và tên miền |
 | `site/`, `docs/` | Trang web và hướng dẫn sử dụng |

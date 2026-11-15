@@ -12,7 +12,7 @@ developer, on Discord.
   tokens; the Windows user and PC names. The vault has to be unlocked for this, since the account names come from it.
 
 Nothing else: no accounts, settings or files. **See exactly what will be sent** shows all of it before it goes.
-The app sends at most one a minute (`RobloxManager/AppController.Feedback.cs`).
+The app sends at most one a minute (`ui-gpui/src/core/app/feedback.rs`).
 
 ## The way there
 
@@ -29,7 +29,7 @@ turned off, so `@everyone` in a message pings nobody. The log arrives as a file,
    account's workers.dev subdomain chosen once: Workers & Pages in the Cloudflare dashboard.
 3. Actions › **Cloudflare workers** › Run workflow (or connect the repository in Workers & Pages, root directory `services/Feedback/worker`). The feedback address is
    `https://bloxkeep-feedback.bloxkeep-app.workers.dev/feedback`.
-4. That address goes in `FeedbackUrl` (`RobloxManager/AppController.Feedback.cs`). Until then the checks
+4. That address goes in `FEEDBACK_URL` (`ui-gpui/src/core/app/feedback.rs`). Until then the checks
    (`Tests/Bloxkeep.Tests`, suite `feedback`) fail, so no build goes out with the feature pointing nowhere.
 
 To stop feedback for good or after spam, delete the webhook in Discord (the Worker then answers with an error, which the
