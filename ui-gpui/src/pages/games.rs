@@ -3633,7 +3633,8 @@ fn hero(root: &Root, all: &[Game], game: Option<&Game>, details: Option<&Value>,
     // (The owner, 2026-11-15, again: "giống 1 trang html thuần": the picture leads now, near half the width, the
     // name, Roblox's figures and the buttons fill the other half; on a narrow window the picture goes on top.)
     let wide = width >= 980.;
-    let room = width - 2. * (PAD + 12.);
+    // (At the tabs' and the parts' edge: 8 px in from them, the page's left edge was ragged.)
+    let room = width - 2. * (PAD + 4.);
     // (Narrow, it goes on top at no more than 500 wide: at the full width it was 540 high and pushed the rest down.)
     let pic_w = if wide { (room * 0.46).clamp(380., 780.) } else { room.min(500.) }.round();
     let pic_h = (pic_w * 9. / 16.).round();
@@ -3655,10 +3656,10 @@ fn hero(root: &Root, all: &[Game], game: Option<&Game>, details: Option<&Value>,
         .flex_none()
         .flex()
         .flex_col()
-        .gap(px(12.))
-        .px(px(PAD + 12.))
+        .gap(px(14.))
+        .px(px(PAD + 4.))
         .pt(px(14.))
-        .pb(px(4.))
+        .pb(px(12.))
         .child(
             div().flex().child(Button::new("gm-back", root.tr("news.title")).icon("chevronLeft").small().on_click(cx.listener(|r, _, _, cx| {
                 r.games.open = None;
@@ -3881,27 +3882,19 @@ fn overview(root: &Root, details: Option<&Value>, place: i64, width: f32, cx: &m
     };
     let narrow = width < 760.;
     let accounts: Vec<Value> = root.games.stays.get(&place).cloned().unwrap_or_else(|| d.get("accounts").and_then(Value::as_array).cloned().unwrap_or_default());
-    // A list, not a sheet (the owner, 2026-11-15: "như exel"): no column heads and no lines between the rows; each
-    // figure carries its word under it, the rows apart by room.
-    let mut table = div().flex().flex_col().gap(px(6.));
-    let row = |cells: Vec<AnyElement>| {
-        let mut r = div().h(px(52.)).flex().items_center().gap(px(16.)).text_size(px(T_M));
-        for (i, cell) in cells.into_iter().enumerate() {
-            r = r.child(match i {
-                0 => div().flex_1().min_w_0().truncate().child(cell),
-                4 => div().w(px(if narrow { 96. } else { 130. })).flex_none().flex().justify_end().child(cell),
-                _ => div().w(px(if narrow { 70. } else { 104. })).flex_none().child(cell),
-            });
-        }
-        r
-    };
+    // Each account its own row in the block: a faint ground of its own, its face, its name with how it is now under
+    // it, then its week's figures each with its word under it. No column heads or lines between rows ("như exel",
+    // 2026-11-15), and not loose on the page either: without its block the rows floated, "sát rạt trông loạn".
+    let mut table = div().flex().flex_col().gap(px(8.));
     let fig = |value: String, word: String| {
         div()
+            .w(px(if narrow { 74. } else { 112. }))
+            .flex_none()
             .flex()
             .flex_col()
-            .child(div().font_weight(FontWeight::SEMIBOLD).font_features(tnum()).truncate().child(value))
+            .gap(px(1.))
+            .child(div().text_size(px(15.)).font_weight(FontWeight::BOLD).font_features(tnum()).truncate().child(value))
             .child(div().text_size(px(T_S)).text_color(c(MUTED)).truncate().child(word))
-            .into_any_element()
     };
     for a in &accounts {
         let minutes = int(a, "minutes");
@@ -3914,27 +3907,35 @@ fn overview(root: &Root, details: Option<&Value>, place: i64, width: f32, cx: &m
         let why = s(a, "kickWhy");
         let kicks = if kicks > 0 && !why.is_empty() { format!("{kicks} · {why}") } else { kicks.to_string() };
         let now = match s(a, "now") {
-            "ingame" if rich() => div().flex().child(tint_pill(root.tr("gp.inGame"), OK)),
-            "banned" if rich() => div().flex().child(tint_pill(root.tr("gp.banned"), BAD)),
-            "ingame" => div().flex().items_center().gap(px(7.)).child(div().size(px(7.)).rounded_full().bg(c(OK))).child(root.tr("gp.inGame")),
-            "banned" => div().text_color(c(BAD)).child(root.tr("gp.banned")),
-            _ => div().text_color(c(MUTED)).child(
+            "ingame" => div().flex().child(tint_pill(root.tr("gp.inGame"), OK)),
+            "banned" => div().flex().child(tint_pill(root.tr("gp.banned"), BAD)),
+            _ => div().text_size(px(T_S)).text_color(c(MUTED)).truncate().child(
                 a.get("lastMs")
                     .and_then(Value::as_i64)
                     .map(|ms| crate::time::ago(crate::time::now_secs() - ms / 1000, &root.i18n))
                     .or_else(|| a.get("lastPlayed").and_then(Value::as_str).and_then(|t| ago_iso(root, t)))
+                    .map(|t| root.i18n.tv("gp.mineLast", &[("t", &t)]))
                     .unwrap_or_else(|| "–".into()),
             ),
         };
         // (Its face, when the account is still in the app.)
-        let face = root.accounts().iter().find(|x| s(x, "id") == s(a, "id")).map(|x| crate::pages::accounts::avatar(x, 36., PANEL, cx));
-        table = table.child(row(vec![
-            div().flex().items_center().gap(px(12.)).children(face).child(div().min_w_0().truncate().font_weight(FontWeight::SEMIBOLD).child(s(a, "name").to_string())).into_any_element(),
-            fig(played, root.tr("gp.played")),
-            fig(kicks, root.tr("gp.kicks")),
-            fig(int(a, "drops").to_string(), root.tr("gp.drops")),
-            now.into_any_element(),
-        ]));
+        let face = root.accounts().iter().find(|x| s(x, "id") == s(a, "id")).map(|x| crate::pages::accounts::avatar(x, 40., RAISED, cx));
+        table = table.child(
+            div()
+                .h(px(66.))
+                .px(px(14.))
+                .rounded(px(R_M + 2.))
+                .bg(ca(WHITE, 0.035))
+                .flex()
+                .items_center()
+                .gap(px(14.))
+                .text_size(px(T_M))
+                .children(face)
+                .child(div().flex_1().min_w_0().flex().flex_col().gap(px(4.)).child(div().min_w_0().truncate().font_weight(FontWeight::SEMIBOLD).child(s(a, "name").to_string())).child(now))
+                .child(fig(played, root.tr("gp.played")))
+                .child(fig(kicks, root.tr("gp.kicks")))
+                .child(fig(int(a, "drops").to_string(), root.tr("gp.drops"))),
+        );
     }
 
     let hours: Option<Vec<Option<f64>>> = d
@@ -3979,7 +3980,8 @@ fn overview(root: &Root, details: Option<&Value>, place: i64, width: f32, cx: &m
     });
 
     let yours_head = if rich() { heading_rich("users", ONLINE, root.tr("gp.yours"), Some(root.tr("gp.week"))).into_any_element() } else { heading(root.tr("gp.yours"), Some(root.tr("gp.week"))).into_any_element() };
-    let yours = div().flex().flex_col().gap(px(12.)).child(yours_head).child(if accounts.is_empty() {
+    // (In its block again, the owner 2026-11-15: "sao mày bỏ ô của cái tài khoản đi? làm lại ô đẹp hơn".)
+    let yours = surface().p(px(20.)).flex().flex_col().gap(px(14.)).child(yours_head).child(if accounts.is_empty() {
         div().text_size(px(T_M)).text_color(c(MUTED)).child(root.tr("gp.noneYet"))
     } else {
         table
