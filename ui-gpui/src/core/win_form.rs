@@ -740,6 +740,20 @@ pub fn is_top_most(h: isize) -> bool {
     (unsafe { GetWindowLongPtrW(hwnd(h), GWL_EXSTYLE) } as u32 & WS_EX_TOPMOST) != 0
 }
 
+/// Place the main window behind the foreground without moving it into the topmost group.
+pub(crate) fn stack_normal_behind(h: isize, front: isize) {
+    const FLAGS: u32 = SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOOWNERZORDER;
+    // A topmost foreground window is already above any normal window. Inserting after its handle could promote ours.
+    if !is_top_most(front) {
+        // SAFETY: the caller verified both window handles on the UI thread.
+        unsafe { SetWindowPos(hwnd(h), hwnd(front), 0, 0, 0, 0, FLAGS) };
+    }
+    if is_top_most(h) {
+        // The foreground could also have changed its group during the first call.
+        unsafe { SetWindowPos(hwnd(h), HWND_NOTOPMOST, 0, 0, 0, 0, FLAGS) };
+    }
+}
+
 /// The window's thread is this one (`!InvokeRequired`).
 pub fn on_own_thread(h: isize) -> bool {
     // SAFETY: plain queries.

@@ -668,8 +668,7 @@ impl ShellForm {
                     if win_form::foreground_window() == h {
                         win_form::set_foreground(front);
                     }
-                    // SAFETY: plain call on our window.
-                    unsafe { SetWindowPos(hwnd(h), hwnd(front), 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE) };
+                    win_form::stack_normal_behind(h, front);
                 }
             });
         }
