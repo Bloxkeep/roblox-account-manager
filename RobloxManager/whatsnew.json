@@ -2,6 +2,64 @@
   {
     "version": "1.1.0",
     "date": "2026-11-15",
+    "highlights": [
+      {
+        "icon": "home",
+        "go": "home",
+        "en": [
+          "A new Bloxkeep",
+          "Redrawn from scratch: a Home page with the game you play, your games and presets, and a new look on every page, with themes, icons and motion of its own.",
+          "Open Home"
+        ],
+        "vi": [
+          "Bloxkeep mới",
+          "Vẽ lại từ đầu: Trang chủ có game đang chơi, game và Preset của bạn, cùng giao diện mới ở mọi trang, có chủ đề, biểu tượng và chuyển động riêng.",
+          "Mở Trang chủ"
+        ]
+      },
+      {
+        "icon": "news",
+        "go": "news",
+        "en": [
+          "Roblox inside Bloxkeep",
+          "Games, friends, avatar (in 3D), profile, shop and inbox for each account, every account in a tab of its own.",
+          "Open Roblox"
+        ],
+        "vi": [
+          "Roblox ngay trong Bloxkeep",
+          "Game, bạn bè, avatar (3D), hồ sơ, cửa hàng và hộp thư của từng tài khoản, mỗi tài khoản một tab.",
+          "Mở Roblox"
+        ]
+      },
+      {
+        "icon": "grid",
+        "go": "news",
+        "en": [
+          "A page for each game",
+          "Roblox’s figures, events you can join or be reminded of, news, servers, its wiki, and how your accounts did there this week.",
+          "Open Roblox"
+        ],
+        "vi": [
+          "Mỗi game một trang",
+          "Số liệu của Roblox, sự kiện để vào hoặc nhận nhắc, tin tức, server, wiki và thành tích tuần này của các tài khoản.",
+          "Mở Roblox"
+        ]
+      },
+      {
+        "icon": "layers",
+        "go": "accounts",
+        "en": [
+          "Account status and Privacy",
+          "An account’s warnings and appeals, and Roblox’s privacy options, without leaving Bloxkeep.",
+          "Open Accounts"
+        ],
+        "vi": [
+          "Tình trạng tài khoản và Riêng tư",
+          "Xem cảnh cáo, kháng nghị và chỉnh quyền riêng tư Roblox ngay trong Bloxkeep.",
+          "Mở Tài khoản"
+        ]
+      }
+    ],
     "new": {
       "en": [
         "Bloxkeep is redrawn from scratch: a new look on every page, with themes, icons and motion of its own.",
