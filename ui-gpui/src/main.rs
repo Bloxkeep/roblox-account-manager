@@ -50,6 +50,14 @@ use gpui_kit::*;
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
+    #[cfg(feature = "core")]
+    if args.get(1).is_some_and(|arg| arg == "--core-monitor-frames") {
+        if let Err(error) = core::monitor_frames::run() {
+            eprintln!("{error}");
+            std::process::exit(1);
+        }
+        return;
+    }
     let arg = |k: &str| args.iter().position(|a| a == k).and_then(|i| args.get(i + 1)).cloned();
     let pipe = arg("--pipe");
     // A build with the `core` feature is the app itself (src/core, the C# app moved to Rust): no C# app, no pipes,

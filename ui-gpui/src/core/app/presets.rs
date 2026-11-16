@@ -861,7 +861,8 @@ impl App {
         for (pid, preset_id) in runs {
             let in_game = self.controller.logs.borrow().state_of(pid).is_some_and(|s| s.status == "ingame");
             let list = windows.get(&pid);
-            if self.presets.afk_minimised.borrow().contains(&pid)
+            if crate::core::live_monitor::watching(pid)
+                || self.presets.afk_minimised.borrow().contains(&pid)
                 || !in_game
                 || list.is_none_or(|l| l.is_empty())
                 || self.preset_for(preset_id).map(|p| p.profile) != Some(AFK_PROFILE.to_string())

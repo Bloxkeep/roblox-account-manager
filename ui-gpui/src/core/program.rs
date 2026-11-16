@@ -278,6 +278,7 @@ pub fn main_core(args: &[String]) {
         ui::error(None, &l::f("Unexpected error: {0}", &[&"the app could not start"]));
         return;
     }
+    super::live_monitor::start();
 
     // Listened for at once; a request that comes before the window exists waits for it (the C# listened from
     // HandleCreated: a start by hand that waited for an update's run (wait_for_update_run) asks as soon as that run
@@ -316,6 +317,8 @@ pub fn main_core(args: &[String]) {
     }
     // Application.Run(shell): the interface to its end.
     let ran = std::panic::catch_unwind(gpui_host::run);
+    super::remote_watch::stop();
+    super::live_monitor::shutdown();
     // Nobody could show them once Bloxkeep is gone.
     roblox_processes::show_windows(None);
     ending.store(true, Ordering::SeqCst);

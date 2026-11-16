@@ -49,6 +49,19 @@ robocopy ui-gpui\assets artifacts\app\assets /e /xf photo-keep.jpg tray.ico /njh
 if errorlevel 8 goto :fail
 robocopy RobloxManager\wwwroot artifacts\app\wwwroot /e /njh /njs /ndl /nfl /np >nul
 if errorlevel 8 goto :fail
+pushd remote-monitor
+call npm ci --omit=dev --ignore-scripts --no-audit --no-fund
+if errorlevel 1 (popd & goto :fail)
+popd
+set MONITOR=artifacts\app\wwwroot\remote-monitor
+robocopy remote-monitor "%MONITOR%" /e /xd node_modules /njh /njs /ndl /nfl /np >nul
+if errorlevel 8 goto :fail
+robocopy remote-monitor\node_modules\jpeg-js "%MONITOR%\node_modules\jpeg-js" /e /njh /njs /ndl /nfl /np >nul
+if errorlevel 8 goto :fail
+robocopy remote-monitor\node_modules\hls.js "%MONITOR%\node_modules\hls.js" LICENSE /njh /njs /ndl /nfl /np >nul
+if errorlevel 8 goto :fail
+robocopy remote-monitor\node_modules\hls.js\dist "%MONITOR%\node_modules\hls.js\dist" hls.light.min.mjs /njh /njs /ndl /nfl /np >nul
+if errorlevel 8 goto :fail
 
 rem The checks (ui-gpui\src\core\tests, each suite in its own process on throwaway data; the ones that need the
 rem network are left out): a failing one stops the build.

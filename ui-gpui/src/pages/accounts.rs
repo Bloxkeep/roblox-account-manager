@@ -1208,6 +1208,10 @@ pub fn accounts(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoEle
         body = body.child(steps);
     }
     if root.acc_win {
+        #[cfg(feature = "core")]
+        if crate::core::remote_watch::available() {
+            body = body.child(super::remote_watch::controls(root, cx));
+        }
         // The Roblox windows' live pictures, a block a game, with the buttons for each game's windows (the old Game
         // monitor, its own view of the page since 2026-11-13: the owner's pick over pictures above the cards).
         // Every window, whatever the filter says: with "Playing" picked, a window on Roblox's home screen (or one not

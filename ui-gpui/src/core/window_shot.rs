@@ -93,6 +93,23 @@ pub fn capture(h: isize, max_width: i32) -> (Option<Shot>, String) {
     }
 }
 
+/// Preview a visible window without showing, moving, or focusing it.
+pub(crate) fn monitor_frame(h: isize) -> Option<Vec<u8>> {
+    picture(&monitor_picture(h)?, 960).map(|(jpeg, _)| jpeg)
+}
+
+/// The visible client area before resampling or compression.
+pub(crate) fn monitor_picture(h: isize) -> Option<Picture> {
+    if h == 0 || !is_visible(h) || is_iconic(h) || is_hung(h) {
+        return None;
+    }
+    let full = timed(h)?;
+    if blank(&full) || all_but_black(&full) || !is_visible(h) || is_iconic(h) {
+        return None;
+    }
+    Some(full)
+}
+
 /// The window's client area at full size, for a macro to look at (MacroPlayer.cs); None when it can't be pictured. A
 /// minimized or hidden one is shown unseen for it, unless `shown` (a macro's turn already did). Blocking.
 pub fn client(h: isize, shown: bool) -> Option<Picture> {

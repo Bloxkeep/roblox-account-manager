@@ -4,6 +4,8 @@
 // commands and what they do) is the app's as it is.
 pub mod account_form;
 pub mod accounts;
+#[cfg(feature = "core")]
+mod remote_watch;
 pub mod auto;
 pub mod extras;
 pub mod avatar;

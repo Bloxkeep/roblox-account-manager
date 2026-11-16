@@ -345,6 +345,7 @@ impl App {
             log::note("Lock: refused, the changes couldn't be saved; Bloxkeep stays unlocked.");
             return Err(Fail::user(l::t("Couldn't save your changes, so Bloxkeep stays unlocked. Try again in a moment.")));
         }
+        crate::core::remote_watch::stop();
         if let Some(cts) = self.controller.launch_cts.borrow().as_ref() {
             cts.cancel();
         }

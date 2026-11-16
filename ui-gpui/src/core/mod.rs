@@ -90,5 +90,8 @@ pub mod window_icons;
 pub mod window_opening;
 pub mod window_report;
 pub mod window_shot;
+pub mod monitor_frames;
+mod live_monitor;
+pub mod remote_watch;
 pub mod window_size_keeper;
 pub mod window_thumbnails;

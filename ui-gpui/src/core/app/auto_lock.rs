@@ -73,6 +73,7 @@ impl App {
 
     pub fn screen_lock(&self) {
         self.auto_lock.screen_locked.set(true);
+        crate::core::remote_watch::stop();
         self.quick_login_cancel();
         self.login_cancel();
         let _ = self.drop_vault_import(false);
