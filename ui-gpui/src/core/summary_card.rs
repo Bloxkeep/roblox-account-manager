@@ -25,7 +25,7 @@ pub struct SummaryCardData {
     /// "+3 more accounts", under the rows, when not all fit.
     pub more_accounts: Option<String>,
     /// The games the colours stand for, most played first.
-    pub games: Vec<String>,
+    pub games: Vec<(String, Option<String>)>,
     pub other_games: String,
     /// Said in place of the chart when nothing was played.
     pub empty: Option<String>,
@@ -81,6 +81,7 @@ const PAD: i32 = 40;
 const CHART_HEIGHT: i32 = 230;
 const ROW_HEIGHT: i32 = 86;
 const AVATAR: i32 = 60;
+const LEGEND_ROW_HEIGHT: i32 = 56;
 
 pub(crate) static AVATARS: LazyLock<Mutex<HashMap<String, Vec<u8>>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
 
@@ -103,7 +104,9 @@ pub fn color_of(game: i32) -> Rgb {
 pub fn render(data: &SummaryCardData, ct: &Cancel) -> Res<Vec<u8>> {
     let mut pictures: HashMap<String, Pixmap> = HashMap::new();
     let mut urls: Vec<&String> = Vec::new();
-    for url in data.accounts.iter().filter_map(|a| a.avatar_url.as_ref()) {
+    let avatars = data.accounts.iter().filter_map(|a| a.avatar_url.as_ref());
+    let icons = data.games.iter().take(GAME_COLORS.len()).filter_map(|(_, icon)| icon.as_ref());
+    for url in avatars.chain(icons) {
         if !urls.contains(&url) {
             urls.push(url);
         }
@@ -379,14 +382,14 @@ fn rect_path(x: f32, y: f32, w: f32, h: f32) -> Option<tiny_skia::Path> {
 fn draw(data: &SummaryCardData, pictures: &HashMap<String, Pixmap>) -> Res<Vec<u8>> {
     let fonts = fonts()?;
     let rows = data.accounts.len() as i32;
-    let games = data.games.len() as i32;
-    let legend_rows = if games > 0 { 1 + (games + if games > GAME_COLORS.len() as i32 { 1 } else { 0 } - 1) / 3 } else { 0 };
+    let game_count = data.games.len().min(GAME_COLORS.len() + 1);
+    let legend_rows = game_count.div_ceil(3) as i32;
     let height = PAD
         + 62
         + CHART_HEIGHT
         + 46
         + if rows > 0 { 72 + rows * ROW_HEIGHT + if data.more_accounts.is_none() { 0 } else { 44 } } else { 0 }
-        + if legend_rows > 0 { 24 + legend_rows * 46 } else { 0 }
+        + if legend_rows > 0 { 24 + legend_rows * LEGEND_ROW_HEIGHT } else { 0 }
         + PAD
         - 10;
     let mut pixmap = Pixmap::new(WIDTH as u32, height as u32).ok_or_else(|| Fail::other("Summary card: no bitmap"))?;
@@ -450,16 +453,25 @@ fn draw(data: &SummaryCardData, pictures: &HashMap<String, Pixmap>) -> Res<Vec<u
 
     if legend_rows > 0 {
         y += 24.0;
-        let mut items: Vec<(String, Rgb)> = data.games.iter().take(GAME_COLORS.len()).enumerate().map(|(i, g)| (g.clone(), color_of(i as i32))).collect();
+        let mut items: Vec<_> = data.games.iter().take(GAME_COLORS.len()).map(|(game, icon)| (game.as_str(), icon.as_ref())).collect();
         if data.games.len() > GAME_COLORS.len() {
-            items.push((data.other_games.clone(), OTHER));
+            items.push((&data.other_games, None));
         }
         let column = (w - 2.0 * pad) / 3.0;
-        for (i, (game, color)) in items.iter().enumerate() {
+        for (i, (game, icon)) in items.into_iter().enumerate() {
             let x = pad + (i % 3) as f32 * column;
-            let top = y + (i / 3) as f32 * 46.0;
-            fill_path(&mut pixmap, &rounded(x, top + 7.0, 22.0, 22.0, 5.0), *color, None);
-            draw_text(&mut pixmap, fonts, label, &fit(fonts, game, label, column - 44.0), INK2, x + 32.0, top);
+            let top = y + (i / 3) as f32 * LEGEND_ROW_HEIGHT as f32;
+            let color = color_of(i as i32);
+            if let Some(picture) = icon.and_then(|url| pictures.get(url)) {
+                let clip = clip_of(&pixmap, &rounded(x, top, 42.0, 42.0, 8.0));
+                let transform = Transform::from_row(42.0 / picture.width() as f32, 0.0, 0.0, 42.0 / picture.height() as f32, x, top);
+                let paint = PixmapPaint { quality: FilterQuality::Bicubic, ..PixmapPaint::default() };
+                pixmap.draw_pixmap(0, 0, picture.as_ref(), &paint, transform, clip.as_ref());
+                fill_path(&mut pixmap, &rounded(x + 30.0, top + 30.0, 14.0, 14.0, 4.0), color, None);
+            } else {
+                fill_path(&mut pixmap, &rounded(x + 10.0, top + 10.0, 22.0, 22.0, 5.0), color, None);
+            }
+            draw_text(&mut pixmap, fonts, label, &fit(fonts, game, label, column - 64.0), INK2, x + 52.0, top + 4.0);
         }
     }
 

@@ -200,8 +200,9 @@ impl Rig {
         e[self.side] = 1.;
         let still = 1. - pace;
         let look = 0.4 + 0.6 * still;
-        let head = mm(&rot([0., 1., 0.], look * (0.2 * (t * 0.5).sin() + 0.05 * (t * 1.3 + 0.7).sin())), &rot(e, look * 0.06 * (t * 0.8 + 1.).sin()));
-        let idle = still * 0.16 * (t * 1.05).sin();
+        let head = mm(&rot([0., 1., 0.], look * (0.19 * (t * 0.72).sin() + 0.045 * (t * 1.8).sin())), &rot(e, look * 0.085 * (t * 1.55).sin()));
+        let idle_a = still * (0.22 * (t * 1.7).sin() + 0.035 * (t * 3.4).sin());
+        let idle_b = still * (-0.20 * (t * 1.7).sin() + 0.045 * (t * 2.35).sin());
         let step = pace * stride.sin();
         let (arm, leg) = (0.55 * step, 0.5 * step);
         let sink = -self.leg * (1. - leg.cos());
@@ -209,8 +210,8 @@ impl Rig {
             [
                 None,
                 Some((self.neck, head)),
-                self.shoulders[0].map(|p| (p, rot(e, idle - arm))),
-                self.shoulders[1].map(|p| (p, rot(e, -idle + arm))),
+                self.shoulders[0].map(|p| (p, rot(e, idle_a - arm))),
+                self.shoulders[1].map(|p| (p, rot(e, idle_b + arm))),
                 self.hips[0].map(|p| (p, rot(e, leg))).filter(|_| pace > 0.),
                 self.hips[1].map(|p| (p, rot(e, -leg))).filter(|_| pace > 0.),
             ],
@@ -580,6 +581,11 @@ impl Model {
         // Each part's turn in the idle, at this moment.
         let posed = self.rig.as_ref().filter(|_| view.t > 0. || view.pace > 0.).map(|r| r.pose(view.t, view.stride, view.pace));
         let sink = posed.as_ref().map_or(0., |p| p.1) + view.up.max(0.);
+        // Lean through the body while the feet stay planted. Fade the idle out into a stride or jump.
+        let sway = self.rig.as_ref().filter(|_| view.t > 0. && view.up <= 0.).map(|rig| {
+            let blend = (1. - view.pace).powi(2);
+            (rig.side, blend * (0.059 * (view.t * 1.7).sin() + 0.012 * (view.t * 3.4).sin()))
+        });
         // The avatar faces where it walked; the floor turns only with the camera.
         let (hs, hc) = (view.yaw + view.heading).sin_cos();
         let face = |p: V3| -> V3 { [p[0] * hc + p[2] * hs, p[1], -p[0] * hs + p[2] * hc] };
@@ -589,7 +595,13 @@ impl Model {
                 Some((at, m)) => (tri.p.map(|p| add(mv(m, sub(p, *at)), *at)), tri.n.map(|v| mv(m, v))),
                 None => (tri.p, tri.n),
             };
-            let tp = tp.map(|p| [p[0], p[1] + sink, p[2]]);
+            let tp = tp.map(|mut p| {
+                if let Some((side, lean)) = sway {
+                    p[side] += (p[1] - self.floor).max(0.) * lean;
+                }
+                p[1] += sink;
+                p
+            });
             let mut sx = [0f32; 3];
             let mut sy = [0f32; 3];
             let mut z = [0f32; 3];
@@ -604,7 +616,9 @@ impl Model {
                 }
                 sx[k] = half + dot(w, s) / (z[k] * t) * half;
                 sy[k] = half - dot(w, u) / (z[k] * t) * half;
-                nn[k] = face(tn[k]);
+                let mut normal = tn[k];
+                if let Some((side, lean)) = sway { normal[1] -= normal[side] * lean; }
+                nn[k] = face(normal);
             }
             if behind {
                 continue;

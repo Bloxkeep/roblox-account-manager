@@ -151,7 +151,7 @@ impl App {
         let show_games = has("games");
         let colour: HashMap<String, i32> =
             games.iter().enumerate().map(|(i, g)| (g.0.clone(), if !show_games { 0 } else if i < GAME_COLORS.len() { i as i32 } else { -1 })).collect();
-        let stay_game = |s: &PlaySession| if !s.game_name.is_empty() { s.game_name.clone() } else { self.game_name(s.place_id, None) };
+        let stay_game = |s: &PlaySession| self.game_name(s.place_id, Some(s.game_name.as_str()));
         let stay_icon = |s: &PlaySession| self.game_icon(s.place_id, s.universe_id);
 
         struct AccountRow {
@@ -286,7 +286,7 @@ impl App {
                     .enumerate()
                     .map(|(i, g)| {
                         format!(
-                            "**{}.** {} · {} · {}%",
+                            "**{}.** {} · **{}** · {}%",
                             i + 1,
                             webhook::game_link(&stay_game(&g.2), Some(g.2.place_id)),
                             self.duration(g.1 as i64),
@@ -359,7 +359,7 @@ impl App {
                 } else {
                     None
                 },
-                games: if show_games { games.iter().map(|g| stay_game(&g.2)).collect() } else { Vec::new() },
+                games: if show_games { games.iter().map(|g| (stay_game(&g.2), stay_icon(&g.2))).collect() } else { Vec::new() },
                 other_games: self.dt("Other games"),
                 empty: None,
             })

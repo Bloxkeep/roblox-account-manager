@@ -2719,25 +2719,19 @@ fn charts(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement {
                 let key = format!("rx.{}", s.id);
                 if root.i18n.has(&key) { root.tr(&key) } else { s.name.clone() }
             };
-            // One line of them. A signed-in account gets some thirty rows from Roblox, which wrapped into three
-            // lines of pills (the owner's screenshot, 2026-11-11): the ones that fit the line show, the rest are in
-            // a menu under More; the row shown always has its pill. (A pill's width is reckoned from its words.)
-            let room = width - 2. * (PAD + 4.) - 8. - 96.;
-            let wide = |s: &roblox::Sort| label(s).chars().count() as f32 * 7.4 + 24. + 2.;
-            let mut used = 0.;
+            // Leave room for a chosen category and the overflow button even when the window is narrow.
+            let active = at.as_ref().and_then(|a| sorts.iter().find(|s| s.id == a.id));
+            let cap = (width * 0.46).clamp(100., 194.);
+            let wide = |s: &roblox::Sort| (label(s).chars().count() as f32 * 8. + 26.).min(cap) + 6.;
+            let room = (width - 116.).max(0.);
+            let mut used = active.map_or(0., wide);
             let mut shown: Vec<&roblox::Sort> = Vec::new();
             for s in sorts {
-                if used + wide(s) > room {
-                    break;
-                }
-                used += wide(s);
-                shown.push(s);
-            }
-            let all_fit = shown.len() == sorts.len();
-            if let Some(a) = at.as_ref().and_then(|a| sorts.iter().find(|s| s.id == a.id)) {
-                if !shown.iter().any(|s| s.id == a.id) {
-                    shown.pop();
-                    shown.push(a);
+                if active.is_some_and(|a| a.id == s.id) {
+                    shown.push(s);
+                } else if shown.len() < 5 && used + wide(s) <= room {
+                    used += wide(s);
+                    shown.push(s);
                 }
             }
             let rest: Vec<&roblox::Sort> = sorts.iter().filter(|s| !shown.iter().any(|x| x.id == s.id)).collect();
@@ -2749,8 +2743,10 @@ fn charts(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement {
                     chip(SharedString::from(format!("rx-{}", s.id)), on)
                         .h(px(TOOL_H))
                         .px(px(12.))
+                        .max_w(px(cap))
+                        .min_w_0()
                         .cursor_pointer()
-                        .child(label(s))
+                        .child(div().truncate().child(label(s)))
                         .on_click(cx.listener(move |r, _, _, cx| {
                             r.games.sort_at = Some(id.clone());
                             r.games.more_sorts = false;
@@ -2758,8 +2754,10 @@ fn charts(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement {
                         })),
                 );
             }
-            if !all_fit && !rest.is_empty() {
+            if !rest.is_empty() {
                 let open = root.games.more_sorts;
+                let columns: f32 = if rest.len() > 10 && width >= 560. { 2. } else { 1. };
+                let menu_w = (columns * 232. + 8.).min((width - 14.).max(165.));
                 let mut more = div().relative().flex_none().child(
                     tool("rx-more", None, open)
                         .h(px(TOOL_H))
@@ -2778,7 +2776,7 @@ fn charts(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement {
                     let menu = div()
                         .id("rx-more-menu")
                         .occlude()
-                        .w(px(if rest.len() > 10 { 468. } else { 240. }))
+                        .w(px(menu_w))
                         .p(px(4.))
                         .rounded(px(R_M))
                         .bg(c(RAISED))
@@ -2794,7 +2792,7 @@ fn charts(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement {
                         .children(rest.into_iter().map(|s| {
                             let id = s.id.clone();
                             menu_row(SharedString::from(format!("rxm-{}", s.id)))
-                                .w(px(230.))
+                                .w(px(((menu_w - 10.) / columns).floor()))
                                 .child(div().truncate().child(label(s)))
                                 .on_click(cx.listener(move |r, _, _, cx| {
                                     r.games.sort_at = Some(id.clone());
@@ -2892,33 +2890,76 @@ fn board_fit(width: f32) -> (usize, f32, f32, f32) {
     (cols, w, art_h, art_h + 2. * TPAD + 46.)
 }
 
-/// Roblox's games as pictures, a board of them. A chart is numbered, and its first game leads: its picture takes two
-/// tiles by two, with its name and who plays it written on it.
+/// The leading game and the next four ranks set the pace of the chart. The rest use the search grid.
 fn board(root: &Root, list: &[roblox::Game], chart: Option<String>, width: f32, cx: &mut Context<Root>) -> AnyElement {
     let (cols, w, art_h, tile_h) = board_fit(width);
-    let list: Vec<&roblox::Game> = list.iter().take(60).collect();
+    let list = &list[..list.len().min(60)];
     let ranked = chart.is_some();
-    // (The tiles come in one after another, anew for another chart or search.)
-    let scope: SharedString = format!("rx-in-{}", chart.clone().unwrap_or_default()).into();
-    let beside = 2 * cols.saturating_sub(2);
-    let mut out = div().mx(px(-TPAD)).flex().flex_col().gap(px(TGAP));
+    let scope: SharedString = format!("rx-in-{}", chart.unwrap_or_default()).into();
+    let mut out = div().flex().flex_col().gap(px(16.));
     let mut from = 0;
-    if ranked && cols >= 4 && list.len() > beside {
-        // (A pixel more than the tiles need: at 150 % the layout's rounding made the last of a row not fit, and the
-        // block beside the lead showed four of its five columns, the owner's screenshot of 2026-11-15.)
-        let side_w = (cols - 2) as f32 * w + (cols - 3) as f32 * TGAP + 2.;
-        let side: Vec<AnyElement> = list[1..=beside].iter().enumerate().map(|(i, g)| cascade(scope.clone(), i + 1, tile(root, i + 1, g, ranked, w, art_h, tile_h, cx)).into_any_element()).collect();
-        out = out.child(
-            div()
-                .flex()
-                .gap(px(TGAP))
-                .child(cascade(scope.clone(), 0, lead(root, list[0], chart.unwrap_or_default(), 2. * w + TGAP, 2. * tile_h + TGAP, cx)))
-                .child(div().w(px(side_w)).flex_none().flex().flex_wrap().gap(px(TGAP)).children(side)),
+    if ranked && let Some(leader) = list.first() {
+        from = list.len().min(5);
+        let gap = 12.;
+        let side_by_side = width >= 868. && from > 1;
+        let hero_w = if side_by_side { (width * 0.62).floor() } else { width };
+        let hero_h = (hero_w * 9. / 16.).round().clamp(224., 372.);
+        let side_w = if side_by_side { width - hero_w - gap } else { width };
+        let rail_cols = if !side_by_side && side_w >= 560. { 2 } else { 1 };
+        let row_h = if side_by_side { ((hero_h - 8. * (from - 2) as f32) / (from - 1) as f32).clamp(55., 84.) } else { 64. };
+        let row_w = ((side_w - gap * (rail_cols - 1) as f32) / rail_cols as f32).floor();
+        let rail = div().w(px(side_w)).min_w_0().flex_none().flex().flex_col().gap(px(8.)).children(
+            list[1..from].chunks(rail_cols).enumerate().map(|(row, games)| {
+                div().flex().gap(px(gap)).children(games.iter().enumerate().map(|(col, game)| {
+                    rank_row(root, row * rail_cols + col + 2, game, row_w, row_h, cx)
+                }).collect::<Vec<_>>())
+            }).collect::<Vec<_>>(),
         );
-        from = beside + 1;
+        out = out.child(div().flex().when(!side_by_side, |d| d.flex_col()).gap(px(gap))
+            .child(lead(root, leader, hero_w, hero_h, cx))
+            .when(from > 1, |d| d.child(rail)));
     }
-    let rest: Vec<AnyElement> = list[from..].iter().enumerate().map(|(i, g)| cascade(scope.clone(), from + i, tile(root, from + i, g, ranked, w, art_h, tile_h, cx)).into_any_element()).collect();
-    out.child(div().flex().flex_wrap().gap(px(TGAP)).children(rest)).into_any_element()
+    out.child(div().mx(px(-TPAD)).flex().flex_col().gap(px(TGAP)).children(
+        list[from..].chunks(cols).enumerate().map(|(row, games)| {
+            div().flex().gap(px(TGAP)).children(games.iter().enumerate().map(|(col, game)| {
+                let i = from + row * cols + col;
+                cascade(scope.clone(), i, tile(root, i, game, ranked, w, art_h, tile_h, cx))
+            }).collect::<Vec<_>>())
+        }).collect::<Vec<_>>(),
+    )).into_any_element()
+}
+
+fn rank_row(root: &Root, rank: usize, game: &roblox::Game, width: f32, height: f32, cx: &mut Context<Root>) -> Hot {
+    let image_h = height - 14.;
+    let image_w = (image_h * 16. / 9.).min((width * 0.32).max(54.)).round();
+    let picture = art(root, game, false, image_w, image_h, cx);
+    let (place, name) = (game.place, game.name.clone());
+    hot(SharedString::from(format!("rx-rank-{rank}-{place}")))
+        .w(px(width)).h(px(height)).flex_none().rounded(px(R_L)).bg(c(RAISED))
+        .border_1().border_color(c(LINE)).hover(|d| d.bg(c(RAISED_2)))
+        .flex().items_center().gap(px(9.)).px(px(9.)).cursor_pointer()
+        .child(div().w(px(20.)).flex_none().text_size(px(T_S)).font_features(tnum()).text_color(c(MUTED)).child(rank.to_string()))
+        .child(div().w(px(image_w)).h(px(image_h)).flex_none().rounded(px(R_S)).overflow_hidden().bg(c(INSET))
+            .flex().items_center().justify_center()
+            .map(|d| match picture {
+                Some((picture, key)) => d.child(fade_in(img(picture).size_full().object_fit(ObjectFit::Cover), &key)),
+                None => d.child(letter(&game.name, 22.)),
+            }))
+        .child(div().flex_1().min_w_0().flex().flex_col().gap(px(4.))
+            .child(div().truncate().text_size(px(T_M)).font_weight(FontWeight::SEMIBOLD).child(clean(&game.name)))
+            .child(chart_stats(root, game, false)))
+        .on_click(cx.listener(move |root, _, _, cx| { open_place(root, place, &name); cx.notify(); }))
+}
+
+fn chart_stats(root: &Root, game: &roblox::Game, full: bool) -> Div {
+    let votes = game.up + game.down;
+    let players = thousands(game.playing, root.i18n.vietnamese);
+    div().flex().items_center().gap(px(7.)).text_size(px(T_S)).font_features(tnum())
+        .text_color(if full { on_picture(0.88) } else { c(MUTED) })
+        .when(game.playing > 0, |d| d.child(div().flex_none().size(px(6.)).rounded_full().bg(c(OK)))
+            .child(if full { root.i18n.tv("rx.playingN", &[("n", &players)]) } else { players }))
+        .when(game.playing > 0 && votes > 0, |d| d.child(sep()))
+        .when(votes > 0, |d| d.child(root.i18n.tv("games.likesP", &[("n", &((game.up * 100 + votes / 2) / votes).to_string())])))
 }
 
 /// A game's wide picture (its square icon until that has come), or the first letter of its name.
@@ -3026,7 +3067,7 @@ fn tile(root: &Root, i: usize, g: &roblox::Game, ranked: bool, w: f32, art_h: f3
                             .child((i + 1).to_string()),
                     )
                 })
-                .when(g.playing > 0, |d| d.child(div().absolute().left(px(8.)).bottom(px(8.)).child(playing_pill(root, g.playing)))),
+                .when(!ranked && g.playing > 0, |d| d.child(div().absolute().left(px(8.)).bottom(px(8.)).child(playing_pill(root, g.playing)))),
         )
         .child(div().mt(px(8.)).h(px(18.)).flex_none().text_size(px(T_M)).font_weight(FontWeight::SEMIBOLD).line_height(px(18.)).truncate().child(clean(&g.name)))
         .child(
@@ -3038,23 +3079,20 @@ fn tile(root: &Root, i: usize, g: &roblox::Game, ranked: bool, w: f32, art_h: f3
                 .line_height(px(15.))
                 .text_color(c(MUTED))
                 .font_features(tnum())
-                .when(votes > 0, |d| d.child(root.i18n.tv("games.likesP", &[("n", &((g.up * 100 + votes / 2) / votes).to_string())]))),
+                .when(ranked, |d| d.child(chart_stats(root, g, false)))
+                .when(!ranked && votes > 0, |d| d.child(root.i18n.tv("games.likesP", &[("n", &((g.up * 100 + votes / 2) / votes).to_string())]))),
         )
 }
 
-/// The game that leads a chart: its picture two tiles by two, and on it the chart it leads, its name, who plays it
-/// and how many like it.
-fn lead(root: &Root, g: &roblox::Game, chart: String, w: f32, h: f32, cx: &mut Context<Root>) -> Hot {
-    let image = art(root, g, true, w - 2. * TPAD, h - 2. * TPAD, cx);
-    let votes = g.up + g.down;
+fn lead(root: &Root, g: &roblox::Game, w: f32, h: f32, cx: &mut Context<Root>) -> Hot {
+    let image = art(root, g, true, w, h, cx);
     let (place, name) = (g.place, g.name.clone());
     let clip = crate::pages::clips::tile_clip(root, place, cx);
     hot(SharedString::from(format!("rxg-lead-{}", g.place)))
         .w(px(w))
         .h(px(h))
         .flex_none()
-        .p(px(TPAD))
-        .rounded(px(R_L + 4.))
+        .rounded(px(R_L))
         .cursor_pointer()
         .lift(2.)
         .on_click(cx.listener(move |r, _, _, cx| {
@@ -3084,35 +3122,21 @@ fn lead(root: &Root, g: &roblox::Game, chart: String, w: f32, h: f32, cx: &mut C
                 .child(
                     div()
                         .absolute()
-                        .left(px(20.))
-                        .right(px(20.))
-                        .bottom(px(18.))
+                        .left(px(22.))
+                        .right(px(22.))
+                        .bottom(px(20.))
                         .flex()
                         .flex_col()
                         .gap(px(8.))
-                        .child(
-                            div()
-                                .flex()
-                                .items_center()
-                                .gap(px(8.))
-                                .child(div().h(px(22.)).px(px(8.)).flex().items_center().rounded(px(7.)).bg(c(FACE)).text_size(px(T_S)).font_weight(FontWeight::BOLD).text_color(c(INK)).child("#1"))
-                                .child(div().text_size(px(T_M)).font_weight(FontWeight::SEMIBOLD).text_color(on_picture(0.82)).child(chart)),
-                        )
+                        .child(div().flex().child(div().h(px(24.)).px(px(9.)).flex().items_center()
+                            .rounded(px(R_S)).bg(c(FACE)).text_size(px(T_S)).font_weight(FontWeight::BOLD)
+                            .text_color(crate::theme::on_text()).child("#1")))
                         .child(div().text_size(px(T_STAGE)).font_weight(FontWeight::BOLD).line_height(px(33.)).text_color(on_picture(1.)).line_clamp(2).child(clean(&g.name)))
-                        .child(
-                            div()
-                                .flex()
-                                .items_center()
-                                .gap(px(8.))
-                                .text_size(px(T_M))
-                                .text_color(on_picture(0.8))
-                                .font_features(tnum())
-                                .when(g.playing > 0, |d| {
-                                    d.child(div().size(px(7.)).flex_none().rounded_full().bg(c(OK))).child(root.i18n.tv("rx.playingN", &[("n", &thousands(g.playing, root.i18n.vietnamese))]))
-                                })
-                                .when(g.playing > 0 && votes > 0, |d| d.child(sep()))
-                                .when(votes > 0, |d| d.child(root.i18n.tv("games.likesP", &[("n", &((g.up * 100 + votes / 2) / votes).to_string())]))),
-                        ),
+                        .child(chart_stats(root, g, true))
+                        .child(div().mt(px(4.)).flex().child(div().px(px(10.)).h(px(30.)).flex().items_center()
+                            .gap(px(5.)).rounded(px(R_S)).bg(ca(GROUND, 0.82))
+                            .text_size(px(T_S)).font_weight(FontWeight::SEMIBOLD).text_color(on_picture(1.))
+                            .child(root.tr("home.gamePage")).child(icon("chevronRight", 13., on_picture(0.92))))),
                 ),
         )
 }

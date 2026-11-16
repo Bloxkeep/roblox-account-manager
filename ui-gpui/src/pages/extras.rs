@@ -6,8 +6,7 @@
 //
 // What's new (ui/src/WhatsNew.tsx; app.js's showWhatsNew): the newest release first, its headline features (each may
 // lead to a place), then what is new, improved, fixed and removed; the releases skipped since fold below. Shown by
-// itself after an update (the app's state carries whatsNew once), and from Settings. The features' pictures aren't
-// drawn here yet.
+// itself after an update (the app's state carries whatsNew once), and from Settings.
 use gpui_kit::component::WindowExt as _;
 use gpui_kit::component::dialog::DialogEntrance;
 use gpui_kit::{prelude::*, *};
@@ -285,12 +284,14 @@ fn split_note(note: &str) -> (Option<String>, String) {
     }
 }
 
-fn notes(items: Vec<String>) -> Div {
-    let mut list = div().flex().flex_col().gap(px(8.));
-    for note in items {
+fn notes(items: Vec<String>, tint: u32) -> Div {
+    let mut list = div().flex().flex_col();
+    for (index, note) in items.into_iter().enumerate() {
         let (title, text) = split_note(&note);
         list = list.child(
-            div().flex().gap(px(9.)).text_size(px(T_M)).line_height(px(19.)).child(div().mt(px(7.)).size(px(5.)).flex_none().rounded_full().bg(c(DIM))).child(
+            div().flex().gap(px(12.)).py(px(10.)).text_size(px(T_M)).line_height(px(20.))
+                .when(index != 0, |d| d.border_t_1().border_color(ca(WHITE, 0.07)))
+                .child(div().mt(px(8.)).size(px(5.)).flex_none().rounded_full().bg(c(tint))).child(
                 div()
                     .min_w_0()
                     .flex_1()
@@ -307,20 +308,22 @@ fn notes(items: Vec<String>) -> Div {
 /// A release's lists: its own lines, then New, Improved, Fixed and Removed.
 fn release(root: &Root, rel: &Value, also: bool) -> Vec<Div> {
     let vi = root.i18n.vietnamese;
-    let kind = |text: String| div().pt(px(4.)).text_size(px(T_S)).font_weight(FontWeight::SEMIBOLD).text_color(c(MUTED)).child(text);
+    let section = |text: Option<String>, tint, glyph, items| {
+        surface().flex().flex_col().px(px(16.)).pt(px(9.)).pb(px(4.))
+            .when_some(text, |d, title| d.child(div().flex().items_center().gap(px(9.)).pt(px(5.)).pb(px(5.))
+                .child(icon(glyph, 15., c(tint)))
+                .child(div().text_size(px(T_L)).text_color(c(TEXT)).font_weight(FontWeight::SEMIBOLD).child(title))))
+            .child(notes(items, tint))
+    };
     let mut out = Vec::new();
     let own = pick(Some(rel), vi);
     if !own.is_empty() {
-        if also {
-            out.push(kind(root.tr("wn.also")));
-        }
-        out.push(notes(own));
+        out.push(section(also.then(|| root.tr("wn.also")), FACE, "plus", own));
     }
-    for k in ["new", "improved", "fixed", "removed"] {
+    for (k, tint, glyph) in [("new", FACE, "plus"), ("improved", ONLINE, "gauge"), ("fixed", OK, "check"), ("removed", MUTED, "x")] {
         let items = pick(rel.get(k), vi);
         if !items.is_empty() {
-            out.push(kind(root.tr(&format!("wn.kind.{k}"))));
-            out.push(notes(items));
+            out.push(section(Some(root.tr(&format!("wn.kind.{k}"))), tint, glyph, items));
         }
     }
     out
@@ -393,57 +396,52 @@ pub fn whats_new(r: &mut Root, releases: Vec<Value>, window: &mut Window, cx: &m
                 Some((p, shape))
             })
             .collect();
-        // With pictures the box is as wide as the window lets it, up to the pictures' own width (900 px): at 620 their
-        // words were 5 px and nobody could read them.
-        let wide = if pictures.iter().any(Option::is_some) { (f32::from(window.viewport_size().width) - 96.).clamp(620., 980.) } else { 620. };
+        let has_pictures = files.iter().any(|f| f[usize::from(vi)].is_some());
+        let wide = (f32::from(window.viewport_size().width) - 40.).clamp(320., if has_pictures { 920. } else { 760. });
         let r = root.read(cx);
         let older = &releases[1..];
-        // (The dialog's body scrolls by itself between its head and its foot, as the web page's .modal-body does.)
-        let mut body = div().flex().flex_col().gap(px(20.));
+        let when = day(s(latest, "date"), vi);
+        let mut body = div().flex().flex_col().gap(px(14.)).child(
+            div().flex().items_center().gap(px(16.)).rounded(px(R_L)).border_1().border_color(ca(FACE, 0.23))
+                .bg(ca(FACE, 0.07)).px(px(16.)).py(px(15.))
+                .child(div().size(px(47.)).flex_none().rounded(px(R_M)).bg(ca(FACE, 0.14)).flex().items_center()
+                    .justify_center().child(icon("news", 21., c(FACE))))
+                .child(div().min_w_0().flex().flex_col().gap(px(3.))
+                    .child(div().text_size(px(T_FIG)).font_weight(FontWeight::BOLD).child(format!("Bloxkeep {}", s(latest, "version"))))
+                    .when(!when.is_empty(), |d| d.child(div().text_size(px(T_M)).text_color(c(TEXT_2)).child(when)))),
+        );
         for (i, h) in highlights.iter().enumerate() {
             let words = pick(Some(h), vi);
             let (title, text, button) = (words.first().cloned().unwrap_or_default(), words.get(1).cloned().unwrap_or_default(), words.get(2).cloned().unwrap_or_default());
             let target = s(h, "go").to_string();
             let go = this.clone();
+            let picture = pictures.get(i).cloned().flatten();
+            let beside = wide >= 680. && picture.as_ref().is_some_and(|(_, shape)| *shape < 1.7);
+            let text = div().min_w_0().flex_1().flex().flex_col().items_start().gap(px(8.))
+                .child(div().size(px(32.)).flex_none().rounded(px(R_M)).bg(ca(FACE, 0.13)).flex().items_center()
+                    .justify_center().child(icon(if s(h, "icon").is_empty() { "news" } else { s(h, "icon") }, 16., c(FACE))))
+                .child(div().text_size(px(T_GROUP)).font_weight(FontWeight::SEMIBOLD).child(title))
+                .child(div().text_size(px(T_M)).line_height(px(20.)).text_color(c(TEXT_2)).child(text))
+                .when(!target.is_empty() && !button.is_empty(), |d| {
+                    d.child(Button::new(("wn-go", i), button).icon_end("chevronRight").small().on_click(move |_, w, cx| {
+                        w.close_dialog(cx);
+                        let _ = go.update(cx, |r, cx| {
+                            go_to(r, &target);
+                            cx.notify();
+                        });
+                    }))
+                });
             body = body.child(
-                div()
-                    .p(px(16.))
-                    .rounded(px(R_L))
-                    .bg(ca(WHITE, 0.045))
-                    .border_1()
-                    .border_color(c(LINE))
-                    .flex()
-                    .flex_col()
-                    .items_start()
-                    .gap(px(6.))
-                    // The feature's name and words first, then its picture: a card cut at the body's foot shows the
-                    // next feature's name, so it reads as the next one in the list and not as a picture spilling out.
-                    .child(div().text_size(px(T_H)).font_weight(FontWeight::SEMIBOLD).child(title))
-                    .child(div().text_size(px(T_M)).line_height(px(19.)).text_color(c(TEXT_2)).child(text))
-                    .when_some(pictures.get(i).cloned().flatten(), |d, (p, shape)| {
-                        d.child(
-                            div()
-                                .w_full()
-                                .aspect_ratio(shape)
-                                .mt(px(6.))
-                                .rounded(px(R_M))
-                                .border_1()
-                                .border_color(c(LINE))
-                                .bg(c(GROUND))
-                                // (The whole picture at the card's width and its own shape: nothing cut, no bars. Its
-                                // own corners, not a clip of the box: a box that clips, scrolled wholly out of the
-                                // body, was drawn below it over the foot.)
-                                .child(img(p).size_full().rounded(px(R_M - 1.)).object_fit(ObjectFit::Contain)),
-                        )
-                    })
-                    .when(!target.is_empty() && !button.is_empty(), |d| {
-                        d.child(div().pt(px(4.)).child(Button::new(("wn-go", i), button).icon_end("chevronRight").small().on_click(move |_, w, cx| {
-                            w.close_dialog(cx);
-                            let _ = go.update(cx, |r, cx| {
-                                go_to(r, &target);
-                                cx.notify();
-                            });
-                        })))
+                surface().p(px(16.)).flex().gap(px(16.))
+                    .when(beside, |d| d.items_center())
+                    .when(!beside, |d| d.flex_col())
+                    .child(text)
+                    .when_some(picture, |d, (p, shape)| {
+                        let cap = if beside { (wide - 82.) * 0.48 } else { wide - 82. };
+                        let picture_w = cap.min(330. * shape);
+                        d.child(div().flex_none().w(px(picture_w)).aspect_ratio(shape).rounded(px(R_M))
+                            .border_1().border_color(c(LINE)).bg(c(GROUND))
+                            .child(img(p).size_full().rounded(px(R_M - 1.)).object_fit(ObjectFit::Contain)))
                     }),
             );
         }
@@ -488,28 +486,16 @@ pub fn whats_new(r: &mut Root, releases: Vec<Value>, window: &mut Window, cx: &m
             }
         }
         let star = this.clone();
-        body = body.child(
-            div()
-                .mt(px(6.))
-                .pt(px(12.))
-                .border_t_1()
-                .border_color(c(LINE))
-                .flex()
-                .flex_wrap()
-                .items_center()
-                .gap(px(10.))
-                .child(div().flex_1().min_w(px(200.)).text_size(px(T_M)).text_color(c(MUTED)).child(r.tr("wn.star")))
-                .child(Button::new("wn-star", r.tr("star.open")).icon("star").small().on_click(move |_, _, cx| {
-                    let _ = star.update(cx, |r, _| r.send("openGitHub", json!({})));
-                })),
-        );
-        let when = day(s(latest, "date"), vi);
-        let title = if when.is_empty() { format!("Bloxkeep {}", s(latest, "version")) } else { format!("Bloxkeep {} · {when}", s(latest, "version")) };
-        framed(dialog, title, r.tr("common.close"), |_, w, cx| w.close_dialog(cx))
+        framed(dialog, r.tr("wn.heading"), r.tr("common.close"), |_, w, cx| w.close_dialog(cx))
             .w(px(wide))
             .centered()
             .entrance(DialogEntrance::FadeSlide)
             .child(dialog_body(body))
-            .footer(dialog_foot().child(Button::new("wn-ok", r.tr("wn.ok")).primary().on_click(|_, w, cx| w.close_dialog(cx))))
+            .footer(dialog_foot()
+                .child(Button::new("wn-star", r.tr("star.open")).icon("star").quiet().small().on_click(move |_, _, cx| {
+                    let _ = star.update(cx, |r, _| r.send("openGitHub", json!({})));
+                }))
+                .child(div().flex_1())
+                .child(Button::new("wn-ok", r.tr("wn.ok")).primary().on_click(|_, w, cx| w.close_dialog(cx))))
     });
 }

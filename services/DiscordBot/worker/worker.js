@@ -25,7 +25,7 @@ import { errorChoices, errorMessage } from './errors.js';
 import { newer, readInstallDownloads, readLatestTag, readNotes, readRelease, readStatus, readWatch, release } from './sources.js';
 import {
   COUNT_CHANNEL, SITE, addressed, boardEmbed, buildMessage, captchaMessage, codeForm, countChannelName, downloadMessage, helpMessage, lang,
-  multiEmbed, outageEmbed, presenceLines, releaseMessage, replies, statusEmbed, verifyPanel,
+  multiEmbed, outageMessage, presenceLines, releaseMessage, replies, statusEmbed, verifyPanel,
 } from './texts.js';
 
 const GATEWAY = 'wss://gateway.discord.gg';
@@ -1546,12 +1546,12 @@ export class Gateway extends DurableObject {
         o.down = true;
         o.since = now;
         if (prev)
-          posts.push({ kind: 'outages', make: l => ({ embeds: [outageEmbed(l, 'down', status)] }) });
+          posts.push({ kind: 'outages', make: l => outageMessage(l, 'down', status) });
       } else if (o.down && o.good >= OUTAGE_LOOKS) {
         const since = o.since;
         o.down = false;
         o.since = null;
-        posts.push({ kind: 'outages', make: l => ({ embeds: [outageEmbed(l, 'up', status, since)] }) });
+        posts.push({ kind: 'outages', make: l => outageMessage(l, 'up', status, since) });
       }
     }
     if (releaseDue)

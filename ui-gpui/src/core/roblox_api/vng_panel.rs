@@ -69,22 +69,33 @@ fn friend_row(data: &Value) -> Value {
 }
 
 fn settings(cookie: &str) -> Res<Value> {
-    let (email, about) = crate::roblox::both(
-        || read("accountsettings", "/v1/email", Some(cookie)),
-        || read("accountinformation", "/v1/description", Some(cookie)),
-    );
-    let (phone, country) = crate::roblox::both(
-        || read("accountinformation", "/v1/phone", Some(cookie)),
-        || read("accountsettings", "/v1/account/settings/account-country", Some(cookie)),
-    );
-    if email.is_err() && about.is_err() && phone.is_err() && country.is_err() {
+    let [email, about, phone, country, birth] = std::thread::scope(|scope| {
+        let requests = [
+            ("accountsettings", "/v1/email"),
+            ("accountinformation", "/v1/description"),
+            ("accountinformation", "/v1/phone"),
+            ("accountsettings", "/v1/account/settings/account-country"),
+            ("accountinformation", "/v1/birthdate"),
+        ];
+        requests.map(|(service, path)| scope.spawn(move || read(service, path, Some(cookie))))
+            .map(|job| job.join().unwrap_or_else(|_| Err(Fail::user("Roblox VNG"))))
+    });
+    if email.is_err() && about.is_err() && phone.is_err() && country.is_err() && birth.is_err() {
         return email;
     }
+    let email = email.ok();
+    let birthday = birth.ok().and_then(|data| {
+        let (day, month, year) = (data["birthDay"].as_u64()?, data["birthMonth"].as_u64()?, data["birthYear"].as_u64()?);
+        ((1..=31).contains(&day) && (1..=12).contains(&month) && (1900..=9999).contains(&year))
+            .then(|| json!({ "day": day, "month": month, "year": year }))
+    });
     // Return only the fields used by the panel. Phone numbers are represented by verification status.
     Ok(json!({
-        "email": email.ok().and_then(|data| data["emailAddress"].as_str().map(str::to_owned)),
+        "email": email.as_ref().and_then(|data| data["emailAddress"].as_str()),
+        "emailVerified": email.as_ref().and_then(|data| data["verified"].as_bool()),
         "about": about.ok().and_then(|data| data["description"].as_str().map(str::to_owned)),
         "phoneVerified": phone.ok().and_then(|data| data["isVerified"].as_bool()),
+        "birthday": birthday,
         "country": country.ok().and_then(|data| {
             data.pointer("/value/localizedName").or_else(|| data.pointer("/value/countryName"))
                 .and_then(Value::as_str).map(str::to_owned)

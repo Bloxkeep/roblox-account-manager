@@ -1,4 +1,5 @@
 use gpui_kit::{prelude::*, *};
+use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
 
 use crate::{
     core::{app::App, remote_watch::{self, Status}, rt, ui},
@@ -8,14 +9,23 @@ use crate::{
 };
 
 fn start(compat: bool, cx: &mut Context<Root>) {
-    rt::post(move || App::with(|app| {
-        if app.unlocked() && !app.controller.disposed.get() { remote_watch::start(compat); }
-    }));
+    let requested = Arc::new(AtomicBool::new(false));
+    let posted = requested.clone();
+    rt::post(move || {
+        App::with(|app| {
+            if app.unlocked() && !app.controller.disposed.get() { remote_watch::start(compat); }
+        });
+        posted.store(true, Ordering::Release);
+    });
     cx.spawn(async move |this, cx| {
+        let mut previous = Status::Idle;
         loop {
             cx.background_executor().timer(std::time::Duration::from_millis(350)).await;
-            if this.update(cx, |_, cx| cx.notify()).is_err() { break; }
-            if matches!(remote_watch::status(), Status::Idle | Status::Failed) { break; }
+            let posted = requested.load(Ordering::Acquire);
+            let current = remote_watch::status();
+            if current != previous && this.update(cx, |_, cx| cx.notify()).is_err() { break; }
+            if posted && matches!(current, Status::Idle | Status::Failed) { break; }
+            previous = current;
         }
     }).detach();
 }
@@ -26,6 +36,7 @@ pub(super) fn controls(root: &Root, cx: &mut Context<Root>) -> Div {
         Status::Idle => "mon.remote.hint",
         Status::Preparing => "mon.remote.preparing",
         Status::Connecting => "mon.remote.connecting",
+        Status::Verifying => "mon.remote.verifying",
         Status::Ready(_) => "mon.remote.ready",
         Status::Stopping => "mon.remote.stopping",
         Status::Failed => "mon.remote.failed",
@@ -47,7 +58,7 @@ pub(super) fn controls(root: &Root, cx: &mut Context<Root>) -> Div {
                     }
                 })))
             .child(stop(root, cx)),
-        Status::Preparing | Status::Connecting => div().child(stop(root, cx)),
+        Status::Preparing | Status::Connecting | Status::Verifying => div().child(stop(root, cx)),
         Status::Stopping => div(),
     };
     div().flex().flex_wrap().items_center().justify_between().gap(px(12.))

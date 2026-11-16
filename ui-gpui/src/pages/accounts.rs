@@ -1407,7 +1407,7 @@ fn monitor_grid(count: usize, width: f32, height: f32, detail_lines: usize) -> (
     let (max_cols, _) = grid_fit(width, MON_COL_MIN, GRID_GAP);
     let max_cols = max_cols.min(count).max(1);
     let minimum = width.min(MON_COL_MIN);
-    let chrome = 166. + 30. * detail_lines as f32;
+    let chrome = 175. + 30. * detail_lines as f32;
     let mut best = (max_cols, minimum);
     let mut best_fits = false;
     for cols in 1..=max_cols {
@@ -2162,7 +2162,7 @@ fn lane(root: &Root, i: usize, l: Lane, col_w: f32, span: usize, lines: usize, m
     let any_up = wins.iter().any(|(_, m)| !m);
     let tool = |k: &'static str, mark: &'static str, tip: String| IconButton::new((k, i), mark).size(30.).tip(tip);
     let mut win_tools: Vec<AnyElement> = Vec::new();
-    if !wins.is_empty() {
+    if wins.len() > 1 || (folded && !wins.is_empty()) {
         let hs: Vec<String> = wins.iter().map(|(h, _)| h.clone()).collect();
         let (front, back) = (hs.clone(), hs);
         win_tools.push(tool("lane-front", "winFront", root.tr("mon.frontAll")).on_click(cx.listener(move |r, _, _, _| r.send("monitorLane", json!({ "ids": front, "what": "front" })))).into_any_element());
@@ -2216,7 +2216,7 @@ fn lane(root: &Root, i: usize, l: Lane, col_w: f32, span: usize, lines: usize, m
                 d.child(Button::new(("lane-rejoin", i), label).icon("refresh").tint().small().on_click(cx.listener(move |r, _, _, cx| r.rejoin(&dropped, cx))))
             })
             .child(div().flex().items_center().gap(px(2.)).children(win_tools).children(win_btn))
-            .child(close_btn)
+            .when(n > 1 || folded, |d| d.child(close_btn))
             .child(fold),
     );
     if folded {
@@ -2379,9 +2379,9 @@ fn tile(root: &Root, a: &Value, w: f32, lines: usize, srv: Option<char>, cx: &mu
         )
         .child(
             div()
-                .px(px(6.))
-                .pt(px(12.))
-                .pb(px(4.))
+                .px(px(8.))
+                .pt(px(13.))
+                .pb(px(6.))
                 .flex()
                 .flex_col()
                 .gap(px(10.))
@@ -2402,13 +2402,13 @@ fn tile(root: &Root, a: &Value, w: f32, lines: usize, srv: Option<char>, cx: &mu
                                         .flex()
                                         .items_center()
                                         .gap(px(6.))
-                                        .child(div().min_w_0().text_size(px(T_L)).line_height(px(20.)).font_weight(FontWeight::SEMIBOLD).truncate().child(label(a))),
+                                        .child(div().min_w_0().text_size(px(T_L)).line_height(px(20.)).font_weight(FontWeight::BOLD).text_color(c(TEXT)).truncate().child(label(a))),
                                 )
                                 .when_some(under, |d, u| d.child(div().min_w_0().truncate().text_size(px(T_S)).line_height(px(16.)).text_color(c(MUTED)).child(u))),
                         )
                         .when_some(up_of(a), |d, t| {
                             let tip: SharedString = root.tr("card.upTip").into();
-                            d.child(div().id(SharedString::from(format!("up-{}", id_of(a)))).flex_none().text_size(px(T_M)).text_color(c(MUTED)).font_features(tnum()).child(t).tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into()))
+                            d.child(div().id(SharedString::from(format!("up-{}", id_of(a)))).flex_none().text_size(px(T_S)).text_color(c(TEXT_2)).px(px(7.)).py(px(4.)).rounded(px(R_S)).bg(c(INSET)).font_features(tnum()).child(t).tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into()))
                         })
                         // The round tick: picks the account for the bar below (a window not opened by Bloxkeep has none).
                         .when(!other, |d| {
@@ -2449,8 +2449,9 @@ fn tile(root: &Root, a: &Value, w: f32, lines: usize, srv: Option<char>, cx: &mu
                         .items_center()
                         .gap(px(8.))
                         .text_size(px(T_M))
-                        .child(div().size(px(7.)).flex_none().rounded_full().bg(c(tone)))
-                        .child(div().min_w_0().truncate().font_weight(FontWeight::MEDIUM).text_color(if tone == OK || tone == TEXT_2 { c(TEXT_2) } else { c(tone) }).child(state))
+                        .child(div().min_w_0().flex().items_center().gap(px(6.)).h(px(25.)).px(px(8.)).rounded(px(R_S)).bg(c(INSET))
+                            .child(div().size(px(6.)).flex_none().rounded_full().bg(c(tone)))
+                            .child(div().min_w_0().truncate().font_weight(FontWeight::SEMIBOLD).text_color(if tone == TEXT_2 { c(TEXT) } else { c(tone) }).child(state)))
                         .child(div().flex_1())
                         // Windows with the same letter are in the same server.
                         .when_some(srv, |d, ch| {
@@ -2470,7 +2471,7 @@ fn tile(root: &Root, a: &Value, w: f32, lines: usize, srv: Option<char>, cx: &mu
                                 .flex_none()
                                 .items_center()
                                 .gap(px(6.))
-                                .text_color(c(MUTED))
+                                .text_color(c(TEXT_2))
                                 .font_features(tnum())
                                 .when_some(ram, |d, r| {
                                     // "RAM in use", with the FPS limit it was opened with when there is one (Accounts.tsx).
@@ -2521,7 +2522,7 @@ fn tile(root: &Root, a: &Value, w: f32, lines: usize, srv: Option<char>, cx: &mu
                 // Its main button, Edit, its menu (also a right click); a window not opened by Bloxkeep keeps the room.
                 .child(
                     div()
-                        .h(px(30.))
+                        .h(px(36.)).pt(px(6.)).border_t_1().border_color(c(LINE))
                         .flex()
                         .items_center()
                         .gap(px(4.))

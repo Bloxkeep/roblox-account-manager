@@ -290,7 +290,7 @@ impl App {
         let mut alert = DiscordAlert::new(title, text, fields, color, at);
         alert.author = Some(who.name.clone());
         alert.author_icon = who.icon.clone();
-        alert.thumbnail = Some((if facts { who.game_icon.clone() } else { None }).unwrap_or_else(|| webhook::LOGO.to_string()));
+        alert.thumbnail = Some((if facts { who.game_icon } else { None }).or(who.icon).unwrap_or_else(|| webhook::LOGO.to_string()));
         threes(alert)
     }
 
@@ -477,7 +477,8 @@ impl App {
         let mut m = discord_message(self.df("{0} alerts", &[&alerts.len()]), String::new(), fields, Some(footer), top.color, Some(latest));
         m.author_icon = if one.is_none() { None } else { alerts[0].author_icon.clone() };
         m.author = one;
-        m.thumbnail = Some(webhook::LOGO.to_string());
+        let subject = top.thumbnail.as_ref().filter(|url| url.as_str() != webhook::LOGO);
+        m.thumbnail = subject.cloned().or_else(|| m.author_icon.clone()).or_else(|| Some(webhook::LOGO.to_string()));
         m
     }
 }

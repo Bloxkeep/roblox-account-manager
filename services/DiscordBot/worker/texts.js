@@ -204,16 +204,22 @@ function partFields(l, status) {
 export function statusEmbed(l, status) {
   const w = W[l], ok = status.code <= 100;
   return embed(ok ? w.status : w.down, stateColor(status.code), ok ? w.allGood : [w.downSaid, status.incident && `**${w.incident}:** ${status.incident}`].filter(Boolean).join('\n'),
-    partFields(l, status), 'Roblox status', { url: STATUS_PAGE });
+    partFields(l, status), 'Roblox status', { url: STATUS_PAGE, thumbnail: statusThumbnail(status.code) });
+}
+
+function statusThumbnail(code) {
+  const icon = code <= 100 ? 'same' : code < 400 ? 'changed' : 'gone';
+  return { url: `${ICONS}/update-${icon}.png` };
 }
 
 /** An outage starting ("down") or over ("up", with how long it lasted). */
-export function outageEmbed(l, kind, status, downSince) {
+export function outageMessage(l, kind, status, downSince) {
   const w = W[l];
-  if (kind === 'down')
-    return statusEmbed(l, status);
-  const fields = [...partFields(l, status), ...(downSince ? [{ name: w.downFor, value: duration(l, Date.now() - downSince), inline: true }] : [])];
-  return embed(w.up, COLOR.green, w.upSaid, fields, 'Roblox status', { url: STATUS_PAGE });
+  const fields = [...partFields(l, status), ...(downSince ? [{ name: w.downFor, value: `**${duration(l, Date.now() - downSince)}**`, inline: true }] : [])];
+  const card = kind === 'down' ? statusEmbed(l, status) : embed(w.up, COLOR.green, w.upSaid, fields, 'Roblox status', {
+    url: STATUS_PAGE, thumbnail: statusThumbnail(100),
+  });
+  return { embeds: [card], components: [buttons([[w.status, STATUS_PAGE]])] };
 }
 
 function duration(l, ms) {
@@ -265,7 +271,7 @@ export function boardEmbed(l, snap) {
     { name: w.status, value: status ? `**${state(l, status.code)}**` : '?', inline: true },
     { name: w.bloxkeep, value: snap.bloxkeep ? `[${code(snap.bloxkeep.version)}](${snap.bloxkeep.url})` : '?', inline: true },
     { name: w.changedAt, value: snap.changedAt ? stamp(snap.changedAt) : '?', inline: true },
-  ], 'Status board');
+  ], 'Status board', status ? { thumbnail: statusThumbnail(status.code), url: STATUS_PAGE } : {});
 }
 
 // The lines the bot's custom status moves through: Roblox and Multi-Roblox now, the build coming, Roblox's status, the

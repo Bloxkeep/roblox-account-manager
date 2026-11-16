@@ -95,6 +95,50 @@ fn line(title: String, detail: String) -> Div {
         .when(!detail.is_empty(), |d| d.child(div().text_color(c(TEXT_2)).child(detail)))
 }
 
+fn setting_row(title: String, value: impl IntoElement) -> Div {
+    div().min_w_0().px(px(16.)).py(px(12.)).border_t_1().border_color(c(LINE))
+        .flex().flex_wrap().items_center().justify_between().gap(px(8.))
+        .child(div().text_color(c(TEXT_2)).child(title))
+        .child(div().min_w_0().child(value))
+}
+
+fn settings(root: &Root, data: &Value, cx: &mut Context<Root>) -> Div {
+    let account = root.friends.account.as_deref().and_then(|id| root.accounts().iter().find(|a| words(a, "id") == id));
+    let mut profile = surface().flex().flex_col();
+    if let Some(a) = account {
+        profile = profile.child(div().p(px(16.)).child(group_head(
+            super::accounts::avatar(a, 44., RAISED, cx), super::accounts::label(a),
+            div().flex().items_center().gap(px(8.))
+                .when(!words(a, "username").is_empty(), |d| d.child(div().truncate().text_color(c(TEXT_2)).child(format!("@{}", words(a, "username")))))
+                .child(div().rounded(px(R_S)).bg(ca(ONLINE, 0.13)).px(px(8.)).py(px(3.))
+                    .text_size(px(T_S)).text_color(c(ONLINE)).font_weight(FontWeight::SEMIBOLD).child("Roblox VNG")),
+        )));
+    }
+    let value = |key| {
+        let text = words(data, key);
+        if text.is_empty() { root.tr("rs.unknown") } else { text.to_owned() }
+    };
+    let verified = |state| badge(root.tr(if state { "rs.verified" } else { "rs.unverified" }), if state { Tone::Ok } else { Tone::Muted });
+    let birthday = (|| {
+        let day = data.pointer("/birthday/day")?.as_u64()?;
+        let month = data.pointer("/birthday/month")?.as_u64()?;
+        let year = data.pointer("/birthday/year")?.as_u64()?;
+        Some(if root.i18n.vietnamese { format!("{day:02}/{month:02}/{year}") } else { format!("{year}-{month:02}-{day:02}") })
+    })();
+    let profile = profile
+        .child(setting_row(root.tr("rs.email"), div().flex().flex_wrap().gap(px(8.)).items_center()
+            .child(div().min_w_0().child(value("email")))
+            .children(data["emailVerified"].as_bool().filter(|_| !words(data, "email").is_empty()).map(verified))))
+        .child(setting_row(root.tr("rs.phone"), data["phoneVerified"].as_bool().map(verified).map(IntoElement::into_any_element)
+            .unwrap_or_else(|| div().child(root.tr("rs.unknown")).into_any_element())))
+        .child(setting_row(root.tr("rs.country"), div().child(value("country"))))
+        .when_some(birthday, |d, date| d.child(setting_row(root.tr("rs.birthday"), div().child(date))));
+    div().flex().flex_col().gap(px(12.))
+        .child(profile)
+        .when(data["about"].is_string(), |d| d.child(line(root.tr("rs.about"), value("about"))))
+        .child(div().text_size(px(T_M)).text_color(c(MUTED)).child(root.tr("tabs.vngSettingsInfo")))
+}
+
 fn details(root: &Root, data: &Value, cx: &mut Context<Root>) -> Div {
     let mut body = div().flex().flex_col().gap(px(8.));
     match root.games.view {
@@ -109,20 +153,7 @@ fn details(root: &Root, data: &Value, cx: &mut Context<Root>) -> Div {
             .when(!created.is_empty(), |d| d.child(line(root.tr("tabs.vngJoined"), created)))
             .when(!words(data, "detail").is_empty(), |d| d.child(line(root.tr("rs.about"), words(data, "detail").to_owned())));
         }
-        View::Settings => {
-            for (key, title) in [("email", "rs.email"), ("country", "rs.country"), ("about", "rs.about")] {
-                if let Some(value) = data[key].as_str() {
-                    body = body.child(line(root.tr(title), if value.is_empty() { "—".into() } else { value.to_owned() }));
-                }
-            }
-            if let Some(verified) = data["phoneVerified"].as_bool() {
-                body = body.child(line(root.tr("rs.phone"), root.tr(if verified { "rs.verified" } else { "tabs.vngUnverified" })));
-            }
-            if ["email", "phoneVerified", "country", "about"].into_iter().all(|key| data[key].is_null()) {
-                body = body.child(root.tr("tabs.vngEmpty"));
-            }
-            return body;
-        }
+        View::Settings => return settings(root, data, cx),
         View::Avatar => body = body.children(picture(data, 240., cx)),
         _ => {}
     }

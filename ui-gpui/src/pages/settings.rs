@@ -225,15 +225,14 @@ fn group(title: Option<String>, rows: Vec<AnyElement>) -> Div {
             }
         });
     }
-    div().flex().flex_col().gap(px(8.)).when_some(title, |d, t| d.child(section_head(t, None))).child(rows_card(rows))
+    div().flex().flex_col().gap(px(9.)).when_some(title, |d, t| d.child(section_head(t, None))).child(rows_card(rows))
 }
 
-/// A group's rows: no card round them any more, a hairline over each, flush with the heads' left edge (critique
-/// 2026-11-13, P2: every page was the same stack of rounded cards; Settings reads as a list now, as a settings page is).
+/// A surface per settings group, with thin separators between its rows.
 fn rows_card(rows: Vec<AnyElement>) -> Div {
-    let mut card = div().flex().flex_col();
-    for r in rows {
-        card = card.child(div().border_t_1().border_color(c(LINE)).child(r));
+    let mut card = div().rounded(px(R_L)).border_1().border_color(c(LINE)).bg(ca(WHITE, 0.026)).flex().flex_col();
+    for (index, r) in rows.into_iter().enumerate() {
+        card = card.child(div().when(index > 0, |d| d.border_t_1().border_color(c(LINE))).child(r));
     }
     card
 }
@@ -316,8 +315,7 @@ fn row_el(words: String, title: impl IntoElement, desc: Option<String>, ctl: imp
     found(&words, el)
 }
 
-/// A row's sides: none, the rows stand flush with the group's head (they sat 20 px into a card).
-const ROW_X: f32 = 0.;
+const ROW_X: f32 = 16.;
 
 /// A row's name (14 px, medium) and what it does under it in muted.
 fn row_words(title: impl IntoElement, desc: Option<String>) -> Div {
@@ -327,8 +325,8 @@ fn row_words(title: impl IntoElement, desc: Option<String>) -> Div {
         .flex()
         .flex_col()
         .gap(px(3.))
-        .child(div().text_size(px(T_L)).line_height(px(20.)).font_weight(FontWeight::MEDIUM).text_color(c(TEXT)).child(title))
-        .when_some(desc, |d, t| d.child(div().text_size(px(T_M)).line_height(px(18.)).text_color(c(MUTED)).child(t)))
+        .child(div().text_size(px(T_L)).line_height(px(20.)).font_weight(FontWeight::SEMIBOLD).text_color(c(TEXT)).child(title))
+        .when_some(desc, |d, t| d.child(div().text_size(px(T_M)).line_height(px(19.)).text_color(c(TEXT_2)).child(t)))
 }
 
 /// A setting whose control is too wide to sit beside its name (the layouts as pictures): the control under the words,
@@ -816,12 +814,12 @@ pub fn settings(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
         _ => false,
     };
     let narrow = width < 1100.;
-    let nav_w = if narrow { 208. } else { 232. };
-    // The parts in three groups under a quiet label each; the open one is the yellow block.
-    let mut nav = div().w(px(nav_w)).flex_none().flex().flex_col().gap(px(2.)).pl(px(16.)).pr(px(12.)).pb(px(24.));
+    let compact = width < 760.;
+    let nav_w = if compact { 64. } else if narrow { 198. } else { 230. };
+    let mut nav = div().w(px(nav_w)).flex_none().flex().flex_col().gap(px(4.)).px(px(10.)).pt(px(16.)).pb(px(20.));
     for (i, p) in Part::ALL.into_iter().enumerate() {
         let on = p == part && root.set_q.read(cx).value().trim().is_empty();
-        if let Some(g) = p.group_key() {
+        if let Some(g) = p.group_key().filter(|_| !compact) {
             nav = nav.child(
                 div()
                     .when(i > 0, |d| d.mt(px(18.)))
@@ -834,20 +832,27 @@ pub fn settings(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
             );
         }
         let look = needs_look(p);
+        let tip: SharedString = root.tr(p.title()).into();
         nav = nav.child(
-            segment(("set-nav", i), on)
-                .h(px(36.))
-                .px(px(12.))
-                .rounded(px(R_M))
-                .gap(px(11.))
+            menu_row(("set-nav", i)).relative()
+                .h(px(39.))
+                .w_full()
+                .px(px(if compact { 0. } else { 12. }))
+                .when(compact, |d| d.justify_center().tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into()))
+                .border_1()
+                .edge(if on { ca(FACE, 0.25) } else { ca(WHITE, 0.) }, if on { ca(FACE, 0.40) } else { ca(WHITE, 0.10) })
+                .tones(if on { ca(FACE, 0.11) } else { ca(WHITE, 0.) }, if on { ca(FACE, 0.17) } else { ca(WHITE, 0.05) })
+                .text_color(c(if on { TEXT } else { TEXT_2 }))
                 .text_size(px(T_L))
                 .font_weight(if on { FontWeight::SEMIBOLD } else { FontWeight::MEDIUM })
-                .child(icon(p.icon(), 16., if on { c(INK) } else { c(MUTED) }))
-                .child(div().flex_1().min_w_0().truncate().child(root.tr(p.title())))
+                .child(icon(p.icon(), 17., if on { c(FACE) } else { c(MUTED) }))
+                .when(!compact, |d| d.child(div().flex_1().min_w_0().truncate().child(root.tr(p.title()))))
                 .when(look, |d| {
                     // (Shell.tsx's dot says what it is under the mouse.)
                     let tip: SharedString = root.tr("set.needsLook").into();
-                    d.child(div().id(("set-look", i)).size(px(7.)).flex_none().rounded_full().bg(if on { c(INK) } else { c(WARN) }).tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into()))
+                    d.child(div().id(("set-look", i)).size(px(7.)).flex_none().rounded_full().bg(c(WARN))
+                        .when(compact, |d| d.absolute().top(px(4.)).right(px(4.)))
+                        .tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into()))
                 })
                 .when(!on, |d| d.on_click(cx.listener(move |r, _, window, cx| open_part(r, p, window, cx)))),
         );
@@ -928,17 +933,19 @@ pub fn settings(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
     } else {
         (root.tr(part.title()), Some(root.tr(&part.about())))
     };
-    let part_head = div()
-        .flex()
-        .flex_col()
-        .gap(px(4.))
-        .child(div().text_size(px(T_FIG)).line_height(px(30.)).font_weight(FontWeight::BOLD).child(part_title))
-        .when_some(part_about, |d, t| d.child(div().text_size(px(T_L)).line_height(px(20.)).text_color(c(TEXT_2)).child(t)));
+    let part_head = div().flex().items_center().gap(px(14.)).pt(px(4.)).pb(px(6.))
+        .child(div().size(px(46.)).flex_none().rounded(px(R_M)).bg(ca(FACE, 0.12)).flex().items_center().justify_center()
+            .child(icon(if searching { "search" } else { part.icon() }, 21., c(FACE))))
+        .child(div().min_w_0().flex().flex_col().gap(px(3.))
+            .child(div().text_size(px(T_FIG)).line_height(px(28.)).font_weight(FontWeight::BOLD).child(part_title))
+            .when_some(part_about, |d, t| d.child(div().text_size(px(T_M)).line_height(px(19.)).text_color(c(TEXT_2)).child(t))));
     let header = div()
         .flex_none()
         .px(px(24.))
         .pt(px(22.))
         .pb(px(22.))
+        .border_b_1()
+        .border_color(c(LINE))
         .flex()
         .items_center()
         .gap(px(16.))
@@ -952,7 +959,7 @@ pub fn settings(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
                 .child(div().text_size(px(T_TITLE)).line_height(px(38.)).font_weight(FontWeight::BOLD).child(root.tr("set.title")))
                 .child(facts(summary(root))),
         )
-        .child(div().w(px(if narrow { 240. } else { 300. })).min_w(px(160.)).flex_shrink(1.).child(field(&root.set_q, Some("search"))));
+        .child(div().w(px(if narrow { 240. } else { 300. })).min_w(px(if compact { 120. } else { 160. })).flex_shrink(1.).child(field(&root.set_q, Some("search"))));
     div()
         .id("settings")
         .size_full()
@@ -964,7 +971,8 @@ pub fn settings(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
         .flex_col()
         .child(header)
         .child(
-            div().flex_1().min_h_0().flex().child(div().id("set-nav").h_full().flex_none().overflow_y_scroll().child(nav)).child(
+            div().flex_1().min_h_0().flex().child(div().id("set-nav").h_full().flex_none().overflow_y_scroll()
+                .border_r_1().border_color(c(LINE)).bg(ca(GROUND, 0.34)).child(nav)).child(
                 // (The list stops a little above the panel's foot, so a row cut there reads as going on under the
                 // edge, not as touching the status bar: the shots had "Wait between accounts" cut flush at the foot.)
                 div()
@@ -977,10 +985,9 @@ pub fn settings(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
                     .child(
                         div().id("set-body").flex_1().min_h_0().w_full().overflow_y_scroll().track_scroll(&root.settings.scroll).child(
                             div()
-                                // As wide as the room: the cards end where the header's search ends (a cap left them
-                                // short of it on a wide window, two right edges).
-                                .pl(px(16.))
-                                .pr(px(24.))
+                                .w_full().max_w(px(1180.)).mx_auto()
+                                .px(px(if compact { 14. } else { 28. }))
+                                .pt(px(24.))
                                 .pb(px(40.))
                                 .flex()
                                 .flex_col()

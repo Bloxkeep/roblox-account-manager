@@ -1,4 +1,4 @@
-import { spawn, spawnSync } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { createInterface } from 'node:readline';
 import { setTimeout as wait } from 'node:timers/promises';
@@ -14,11 +14,16 @@ process.stdin.resume();
 async function reachable(origin, key) {
   const url = new URL('/api/frame/demo', origin);
   const options = { signal: AbortSignal.any([signal, AbortSignal.timeout(5000)]), redirect: 'error' };
-  const denied = await fetch(url, options);
+  const [denied, frame] = await Promise.all([
+    fetch(url, options),
+    fetch(url, { ...options, headers: { Authorization: `Bearer ${key}` } }),
+  ]);
   await denied.body?.cancel();
-  if (denied.status !== 401) return false;
-  const frame = await fetch(url, { ...options, headers: { Authorization: `Bearer ${key}` } });
-  return frame.ok && frame.headers.get('content-type') === 'image/jpeg' && (await frame.arrayBuffer()).byteLength > 0;
+  if (denied.status === 401 && frame.ok && frame.headers.get('content-type') === 'image/jpeg') {
+    return (await frame.arrayBuffer()).byteLength > 0;
+  }
+  await frame.body?.cancel();
+  return false;
 }
 
 let origin;
@@ -26,11 +31,6 @@ let tunnel;
 let expiration;
 const startup = setTimeout(() => abort.abort(new Error('Tunnel timeout')), 75_000).unref();
 try {
-  const probe = spawnSync(process.env.BK_MONITOR_FFMPEG, [
-    '-hide_banner', '-loglevel', 'error', '-f', 'lavfi', '-i', 'color=size=128x128',
-    '-frames:v', '1', '-c:v', 'h264_nvenc', '-f', 'null', '-',
-  ], { windowsHide: true, stdio: 'ignore', timeout: 5000 });
-  process.env.BK_MONITOR_NVENC = probe.status === 0 ? '1' : '0';
   origin = await (await import('./server.mjs')).start();
   signal.throwIfAborted();
   tunnel = spawn(process.env.BK_MONITOR_TUNNEL, [
@@ -51,6 +51,7 @@ try {
   }
   tunnel.stderr.resume();
   if (!address) throw new Error('Tunnel did not return a URL');
+  console.log('VERIFYING');
   while (!(await reachable(address, origin.key).catch(() => false))) {
     await wait(1250, undefined, { signal });
   }

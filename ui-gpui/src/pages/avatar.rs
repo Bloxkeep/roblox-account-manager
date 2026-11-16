@@ -48,6 +48,7 @@ pub struct Data {
     pitch: f32,
     near: f32,
     room: Option<usize>,
+    background: Option<Owned>,
     /// Turning by itself (kept between runs), the turning under way (its run, so an old one stops) and whether one is.
     /// The same run moves it in its idle (`moving`, kept too; `t` how far into it), when its parts were found.
     spin: bool,
@@ -202,7 +203,7 @@ fn view_of(av: &Data) -> crate::mesh::View {
         yaw: av.yaw,
         pitch: av.pitch,
         zoom: 1. - av.near,
-        room: room_of(av),
+        room: if av.background.is_some() { 0 } else { room_of(av) },
         t: if av.moving { av.t } else { 0. },
         at: av.at,
         heading: av.heading,
@@ -244,6 +245,8 @@ fn walk_key(key: &str) -> Option<u8> {
 /// shown big (up to 760 wide, 1140 dots at 150 %).
 const STAGE: usize = 560;
 const STAGE_BIG: usize = 1120;
+const STAGE_MOVING: usize = 448;
+const STAGE_BIG_MOVING: usize = 704;
 /// The side of a saved picture, in dots.
 const SAVED: usize = 1600;
 thread_local! {
@@ -363,8 +366,12 @@ fn start_spin(r: &mut Root, cx: &mut Context<Root>) {
     r.avatar.spin_run += 1;
     let (run, user) = (r.avatar.spin_run, r.avatar.of);
     cx.spawn(async move |this, cx| {
+        let mut previous = std::time::Instant::now();
         loop {
-            cx.background_executor().timer(std::time::Duration::from_millis(40)).await;
+            cx.background_executor().timer(std::time::Duration::from_millis(16)).await;
+            let now = std::time::Instant::now();
+            let dt = now.duration_since(previous).as_secs_f32().min(0.05);
+            previous = now;
             let window = this.update(cx, |_, cx| cx.windows().first().copied()).ok().flatten();
             let (active, keyed) = window
                 .and_then(|h| {
@@ -395,18 +402,18 @@ fn start_spin(r: &mut Root, cx: &mut Context<Root>) {
                             let ahead = f32::from(k & 1 != 0) - f32::from(k & 2 != 0);
                             let right = f32::from(k & 8 != 0) - f32::from(k & 4 != 0);
                             let mut v = view_of(&r.avatar);
-                            model.step(&mut v, ahead, right, k & 16 != 0, std::mem::take(&mut r.avatar.jump), 0.04);
+                            model.step(&mut v, ahead, right, k & 16 != 0, std::mem::take(&mut r.avatar.jump), dt);
                             (r.avatar.at, r.avatar.heading, r.avatar.stride, r.avatar.pace) = (v.at, v.heading, v.stride, v.pace);
                             (r.avatar.up, r.avatar.rise) = (v.up, v.rise);
                             changed = true;
                         }
                     }
                     if r.avatar.spin && r.avatar.drag.is_none() {
-                        r.avatar.yaw += 0.025;
+                        r.avatar.yaw = (r.avatar.yaw + 0.625 * dt).rem_euclid(std::f32::consts::TAU);
                         changed = true;
                     }
                     if r.avatar.moving && moves(&r.avatar) {
-                        r.avatar.t += 0.04;
+                        r.avatar.t += dt;
                         changed = true;
                     }
                     if changed {
@@ -440,6 +447,7 @@ fn set_moving(r: &mut Root, on: bool, cx: &mut Context<Root>) {
 }
 
 fn set_room(r: &mut Root, i: usize, cx: &mut Context<Root>) {
+    r.avatar.background = None;
     r.avatar.room = Some(i);
     crate::prefs::set("avatarRoom", serde_json::Value::String(crate::mesh::ROOMS[i].id.into()));
     draw(r, cx);
@@ -502,6 +510,14 @@ fn save_picture(r: &mut Root, cx: &mut Context<Root>) {
     if r.avatar.saving {
         return;
     }
+    let background = if let Some(selected) = &r.avatar.background {
+        let Some(background) = images::pic(&selected.pic, cx) else {
+            r.toast = Some((r.tr("av3.backgroundLoading"), "bad".into()));
+            cx.notify();
+            return;
+        };
+        Some(background)
+    } else { None };
     r.avatar.saving = true;
     cx.notify();
     let (view, user) = (view_of(&r.avatar), r.avatar.of);
@@ -510,7 +526,13 @@ fn save_picture(r: &mut Root, cx: &mut Context<Root>) {
         for p in dots.chunks_mut(4) {
             p.swap(0, 2);
         }
-        let picture = image::RgbaImage::from_raw(SAVED as u32, SAVED as u32, dots)?;
+        let mut picture = image::RgbaImage::from_raw(SAVED as u32, SAVED as u32, dots)?;
+        if let Some(background) = background {
+            let mut backdrop = image::load_from_memory(&background.bytes).ok()?
+                .resize_to_fill(SAVED as u32, SAVED as u32, image::imageops::FilterType::Lanczos3).to_rgba8();
+            image::imageops::overlay(&mut backdrop, &picture, 0, 0);
+            picture = backdrop;
+        }
         let dir = pictures_folder()?.join("Bloxkeep");
         std::fs::create_dir_all(&dir).ok()?;
         let secs = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
@@ -572,7 +594,13 @@ fn draw(r: &mut Root, cx: &mut Context<Root>) {
     }
     r.avatar.drawing = true;
     let (view, user) = (view_of(&r.avatar), r.avatar.of);
-    let size = if r.avatar.big { STAGE_BIG } else { STAGE };
+    // Keep full-quality stills and use fewer pixels while producing a stream of preview frames.
+    let size = match (r.avatar.big, lively(&r.avatar) || r.avatar.drag.is_some()) {
+        (true, true) => STAGE_BIG_MOVING,
+        (true, false) => STAGE_BIG,
+        (false, true) => STAGE_MOVING,
+        (false, false) => STAGE,
+    };
     let rx = roblox::run(move || model.draw(view, size));
     cx.spawn(async move |this, cx| {
         let dots = rx.await.ok();
@@ -894,7 +922,8 @@ pub fn avatar(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoEleme
 /// a double click puts it back; its controls over it), else Roblox's flat picture.
 fn stage(root: &Root, a: &Avatar, side: f32, cx: &mut Context<Root>) -> Stateful<Div> {
     let av = &root.avatar;
-    let room = &crate::mesh::ROOMS[room_of(av)];
+    let room = &crate::mesh::ROOMS[if av.background.is_some() { 0 } else { room_of(av) }];
+    let background = av.background.as_ref().and_then(|asset| images::pic_pair(&asset.pic, side, side, cx));
     let big = av.big;
     let d = div()
         .id(if big { "av-stage-big" } else { "av-stage" })
@@ -907,7 +936,9 @@ fn stage(root: &Root, a: &Avatar, side: f32, cx: &mut Context<Root>) -> Stateful
         .bg(c(if room.wall == 0 { INSET } else { room.wall }))
         .flex()
         .items_center()
-        .justify_center();
+        .justify_center()
+        .when_some(background, |d, (image, key)| d.child(div().absolute().inset_0()
+            .child(fade_in(img(image).size_full().object_fit(ObjectFit::Cover), &key))));
     let Some(frame) = av.frame.clone() else {
         // Roblox's flat picture, and while its model is on its way, a word that it is.
         let coming = !av.no_solid && friends::signed(root).is_some_and(|(_, _, c)| !c.is_empty());
@@ -1034,11 +1065,13 @@ fn stage(root: &Root, a: &Avatar, side: f32, cx: &mut Context<Root>) -> Stateful
                 div()
                     .absolute()
                     .bottom(px(12.))
-                    .left_0()
-                    .right_0()
+                    .left(px(12.))
+                    .right(px(12.))
                     .flex()
                     .justify_center()
-                    .child(div().text_size(px(T_S)).text_color(c(MUTED)).child(root.tr(if big { "av3.hintBig" } else { "av3.hint" }))),
+                    .child(div().min_w_0().max_w_full().px(px(10.)).py(px(6.)).rounded(px(R_S))
+                        .bg(ca(GROUND, 0.78)).text_center().text_size(px(T_S)).text_color(on_picture(0.92))
+                        .child(root.tr(if big { "av3.hintBig" } else { "av3.hint" }))),
             )
         })
 }
@@ -1060,7 +1093,7 @@ fn rooms_row(root: &Root, cx: &mut Context<Root>) -> Div {
             .p(px(3.))
             .rounded(px(R_S + 3.))
             .border_2()
-            .border_color(if i == picked { c(FACE) } else { gpui_kit::transparent_black() })
+            .border_color(if i == picked && root.avatar.background.is_none() { c(FACE) } else { gpui_kit::transparent_black() })
             .cursor_pointer()
             .child(swatch)
             .tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into())
@@ -1506,9 +1539,20 @@ fn shelves(root: &Root, a: &Avatar, tile_w: f32, cx: &mut Context<Root>) -> impl
                     let o = &l[n];
                     let (id, kind) = (o.id, o.kind.clone());
                     let on = a.items.iter().any(|i| i.id == id) || a.emotes.iter().any(|e| e.id == id);
+                    let background = kind == "AvatarBackground";
+                    let previewed = av.background.as_ref().is_some_and(|asset| asset.id == id);
                     tile_of(tile_w, &o.pic, o.name.clone(), busy == Some(id), cx)
                         .child(div().pb(px(4.)).h(px(34.)).flex().items_center().map(|d| {
-                            if on {
+                            if background {
+                                let asset = o.clone();
+                                d.child(Button::new(("av-background", n), root.tr(if previewed { "av3.backgroundRemove" } else { "av3.backgroundPreview" }))
+                                    .small().disabled(o.pic.is_empty()).on_click(cx.listener(move |r, _, _, cx| {
+                                        let same = r.avatar.background.as_ref().is_some_and(|current| current.id == id);
+                                        r.avatar.background = (!same).then(|| asset.clone());
+                                        draw(r, cx);
+                                        cx.notify();
+                                    })))
+                            } else if on {
                                 d.child(div().px(px(2.)).text_size(px(T_S)).text_color(c(MUTED)).child(root.tr("av.wearing")))
                             } else {
                                 d.child(Button::new(("av-on", n), root.tr("av.wear")).small().disabled(busy.is_some()).on_click(cx.listener(move |r, _, _, cx| change(r, Change::On(id, kind.clone()), cx))))
@@ -1533,7 +1577,9 @@ fn shelves(root: &Root, a: &Avatar, tile_w: f32, cx: &mut Context<Root>) -> impl
                 .into_any_element()
         }
     };
-    div().flex().flex_col().gap(px(12.)).child(section_head(root.tr("av.inventory"), None)).child(track).child(body)
+    div().flex().flex_col().gap(px(12.)).child(section_head(root.tr("av.inventory"), None)).child(track)
+        .when(roblox::SHELVES[av.shelf].0 == "background", |d| d.child(said(root.tr("av3.backgroundHint"))))
+        .child(body)
 }
 
 /// A worn thing or an outfit: its picture on a block, its name under it (two lines

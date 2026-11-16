@@ -1297,12 +1297,13 @@ pub struct Owned {
 }
 
 /// The inventory's shelves, as the avatar editor groups them: a key, and the kinds asked for together.
-pub const SHELVES: [(&str, &str); 5] = [
+pub const SHELVES: [(&str, &str); 6] = [
     ("acc", "Hat,HairAccessory,FaceAccessory,NeckAccessory,ShoulderAccessory,FrontAccessory,BackAccessory,WaistAccessory"),
     ("clothes", "Shirt,Pants,TShirt,TShirtAccessory,ShirtAccessory,PantsAccessory,JacketAccessory,SweaterAccessory,ShortsAccessory,LeftShoeAccessory,RightShoeAccessory,DressSkirtAccessory"),
     ("body", "DynamicHead,Torso,RightArm,LeftArm,LeftLeg,RightLeg"),
     ("anim", "IdleAnimation,WalkAnimation,RunAnimation,JumpAnimation,FallAnimation,ClimbAnimation,SwimAnimation,MoodAnimation"),
     ("emote", "EmoteAnimation"),
+    ("background", "AvatarBackground"),
 ];
 
 /// A page (50) of what a user owns of those kinds, newest first, and the mark for the next page (empty: the last).
@@ -1322,7 +1323,8 @@ pub fn inventory(cookie: &str, user: i64, kinds: &str, cursor: &str) -> Result<(
         .map(|v| Owned { id: int(v, "assetId"), name: text(v, "name"), kind: text(v, "assetType"), pic: String::new() })
         .collect();
     let ids: Vec<i64> = list.iter().map(|o| o.id).collect();
-    let got = thumbs("assets?size=150x150&assetIds=", &ids);
+    let size = if kinds == "AvatarBackground" { "768x432" } else { "150x150" };
+    let got = thumbs(&format!("assets?size={size}&assetIds="), &ids);
     for o in &mut list {
         o.pic = got.get(&o.id).cloned().unwrap_or_default();
     }

@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { createConnection } from 'node:net';
@@ -14,15 +14,22 @@ const sourceCodec = fullHd ? 'bmp' : 'mjpeg';
 const maxBitrate = fullHd ? '6000k' : '2200k';
 const bufferSize = fullHd ? '6000k' : '1100k';
 const segmentSeconds = fullHd ? 1 : 0.5;
-const nvenc = process.env.BK_MONITOR_NVENC === '1';
 const captureOnGpu = fullHd;
-const encoding = nvenc
-  ? ['-c:v', 'h264_nvenc', '-preset', 'p4', '-tune', 'll', '-zerolatency', '1',
-    '-rc', 'vbr', '-cq', '19', '-b:v', '0', '-bf', '0', '-no-scenecut', '1', '-forced-idr', '1']
-  : ['-c:v', 'libx264', '-preset', 'ultrafast', '-tune', 'zerolatency',
-    '-sc_threshold', '0', '-crf', fullHd ? '19' : '21'];
 const idleMs = 15_000;
 const limit = (fullHd ? 64 : 4) * 1024 * 1024;
+
+let encoderProbe;
+function hardwareEncoder() {
+  if (process.env.BK_MONITOR_NVENC !== undefined) return Promise.resolve(process.env.BK_MONITOR_NVENC === '1');
+  if (!ffmpeg) return Promise.resolve(false);
+  encoderProbe ??= new Promise((done) => {
+    execFile(ffmpeg, [
+      '-hide_banner', '-loglevel', 'error', '-f', 'lavfi', '-i', `color=size=${width}x${height}:rate=${frameRate}`,
+      '-frames:v', '1', '-c:v', 'h264_nvenc', '-f', 'null', '-',
+    ], { windowsHide: true, timeout: 5000 }, (error) => done(!error));
+  });
+  return encoderProbe;
+}
 
 async function removeMedia(folder) {
   const target = resolve(folder);
@@ -114,6 +121,8 @@ export function createLive(key, connect = attach) {
     let client;
     let folder;
     try {
+      const nvenc = await hardwareEncoder();
+      if (closed) throw new Error('The remote session ended.');
       client = await connect(source, key);
       folder = await mkdtemp(join(tmpdir(), 'bloxkeep-live-'));
       if (closed) throw new Error('The remote session ended.');
@@ -125,6 +134,11 @@ export function createLive(key, connect = attach) {
         ? ['-filter_complex', nvenc ? gpuScale : gpuScale + ',hwdownload,format=bgra,format=yuv420p', '-colorspace', 'bt709', '-color_primaries', 'bt709', '-color_trc', 'bt709']
         : ['-f', 'image2pipe', '-framerate', String(frameRate), '-c:v', sourceCodec,
           '-probesize', '16384', '-analyzeduration', '0', '-i', 'pipe:0', '-vf', cpuScale, '-pix_fmt', 'yuv420p'];
+      const encoding = nvenc
+        ? ['-c:v', 'h264_nvenc', '-preset', 'p4', '-tune', 'll', '-zerolatency', '1',
+          '-rc', 'vbr', '-cq', '19', '-b:v', '0', '-bf', '0', '-no-scenecut', '1', '-forced-idr', '1']
+        : ['-c:v', 'libx264', '-preset', 'ultrafast', '-tune', 'zerolatency',
+          '-sc_threshold', '0', '-crf', fullHd ? '19' : '21'];
       const encoder = spawn(ffmpeg, [
         '-hide_banner', '-loglevel', 'error', ...inputArgs, '-an', ...encoding, '-g', String(frameRate * segmentSeconds),
         '-maxrate', maxBitrate, '-bufsize', bufferSize,

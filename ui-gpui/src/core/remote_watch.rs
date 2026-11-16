@@ -21,11 +21,12 @@ const VIDEO_URL: &str = "https://github.com/GyanD/codexffmpeg/releases/download/
 const ARCHIVE_SHA: &str = "2711e98a2a053574be81047d37af2cc4dcec069fc3f690cd9386f93212fd6d54";
 const VIDEO_SHA: &str = "2ff6881a0012e1f59a5add38a1986c157eed4da7b2e5f6442705a55246007190";
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum Status {
     Idle,
     Preparing,
     Connecting,
+    Verifying,
     Ready(String),
     Stopping,
     Failed,
@@ -139,6 +140,8 @@ fn run(live: &Arc<AtomicBool>, compat: bool) -> io::Result<()> {
                 if let Some(link) = line.strip_prefix("READY ").filter(|link| valid_link(link)) {
                     publish(live, Status::Ready(link.to_owned()))?;
                     ready = true;
+                } else if line == "VERIFYING" && !ready {
+                    publish(live, Status::Verifying)?;
                 } else if line == "FAILED" { return Err(io::Error::other("The temporary HTTPS tunnel could not be reached")); }
             }
         }

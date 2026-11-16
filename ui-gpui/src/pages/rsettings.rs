@@ -415,7 +415,15 @@ fn filled(root: &Root, s: &AccountSettings, viewer: Option<&serde_json::Value>, 
     ));
     let who = viewer.map(|a| {
         let user = a.get("username").and_then(serde_json::Value::as_str).filter(|u| !u.is_empty()).map(|u| format!("@{u}"));
-        let said = vec![(user.unwrap_or_else(|| root.tr("rs.account")), None)];
+        let (presence, tone) = match a.pointer("/presence/type").and_then(serde_json::Value::as_str) {
+            Some("ingame") => ("rs.presence.playing", c(OK)),
+            Some("online" | "studio") => ("rs.presence.online", c(ONLINE)),
+            Some("offline") if !crate::pages::accounts::is_local(a) => ("rs.presence.offline", c(TEXT_2)),
+            Some("invisible") => ("rs.presence.invisible", c(TEXT_2)),
+            _ if crate::pages::accounts::is_local(a) => ("rs.presence.local", c(TEXT_2)),
+            _ => ("rs.presence.unknown", c(TEXT_2)),
+        };
+        let said = vec![(user.unwrap_or_else(|| root.tr("rs.account")), None), (root.tr(presence), Some(tone))];
         div().px(px(20.)).pt(px(18.)).pb(px(16.)).border_b_1().border_color(c(LINE)).child(group_head(avatar(a, GROUP_PIC, RAISED, cx), label(a), facts(said)))
     });
     let account = surface().overflow_hidden().flex().flex_col().children(who).child(div().flex().flex_col().children(rows.into_iter().enumerate().map(|(i, (k, v))| row(i, k, v))));
