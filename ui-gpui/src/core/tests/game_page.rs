@@ -2,6 +2,7 @@
 // figures (likes from the votes, the game's own last update over the universe's, nothing without a cookie but what anyone
 // sees); your accounts in it over 7 days, any of its places; the hours it's busy, noted and kept; a game Roblox doesn't know.
 use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use serde_json::{Value, json};
 
@@ -18,6 +19,7 @@ const PLACE: i64 = 2753915549;
 const OTHER_PLACE: i64 = 4442272183;
 const UNIVERSE: i64 = 994732206;
 const OTHER_GAME: i64 = 1;
+const GROUP: i64 = 4372130;
 
 pub async fn run(c: &mut Checks, dir: &str) {
     game_hours::reset();
@@ -89,12 +91,31 @@ pub async fn run(c: &mut Checks, dir: &str) {
     // ── Roblox's figures ── (set before unlocking, so nothing the unlock starts reaches the real Roblox)
     let asked: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
     let log = asked.clone();
+    let member = AtomicBool::new(false);
     *roblox_api::STAND_IN.write().unwrap() = Some(Box::new(move |req: &HttpRequest| {
         let url = req.url.clone();
         let signed_in = req.headers_named("Cookie").any(|v| v.contains("_TEST_gp_"));
         let host = url::Url::parse(&url).ok().and_then(|u| u.host_str().map(str::to_string)).unwrap_or_default();
         log.lock().unwrap().push(format!("{}{host}", if signed_in { "+" } else { "-" }));
-        let body = if url.contains("/universes/v1/places/123/") {
+        let body = if host == "groups.roblox.com" {
+            let farm = req.headers_named("Cookie").any(|v| v.contains("_TEST_gp_A"));
+            let data = match (req.method, url.split("groups.roblox.com").last().unwrap_or_default()) {
+                ("GET", "/v1/groups/4372130") => json!({"name":"Gamer Robot Inc","memberCount":100, "publicEntryAllowed":true,"owner":{"userId":4002}}),
+                ("GET", "/v2/users/4001/groups/roles") if member.load(Ordering::SeqCst) => json!({"data":[{"group":{"id":GROUP}}]}),
+                ("GET", "/v2/users/4001/groups/roles") => json!({"data":[]}),
+                ("GET", "/v1/groups/4372130/membership") if farm => json!({"isPendingJoin":false}),
+                ("POST", "/v1/groups/4372130/users") if farm => {
+                    member.store(true, Ordering::SeqCst);
+                    json!({})
+                }
+                ("DELETE", "/v1/groups/4372130/users/4001") if farm => {
+                    member.store(false, Ordering::SeqCst);
+                    json!({})
+                }
+                _ => return Ok(HttpResponse {status: 404, ..Default::default()}),
+            };
+            data.to_string()
+        } else if url.contains("/universes/v1/places/123/") {
             r#"{"universeId":0}"#.to_string()
         } else if url.contains("/universes/v1/places/") {
             format!(r#"{{"universeId":{UNIVERSE}}}"#)
@@ -104,10 +125,17 @@ pub async fn run(c: &mut Checks, dir: &str) {
             )
         } else if url.contains("/v1/games/votes") {
             format!(r#"{{"data":[{{"id":{UNIVERSE},"upVotes":900,"downVotes":100}}]}}"#)
+        } else if url.contains("/social-links/list") {
+            let farm = req.headers_named("Cookie").any(|v| v.contains("_TEST_gp_A"));
+            if farm {
+                r#"{"data":[{"type":"YouTube","url":"https://www.youtube.com/@example"},{"type":"Discord","url":"file:///ignored"}]}"#.to_string()
+            } else {
+                r#"{"data":[]}"#.to_string()
+            }
         } else if url.contains("games.roblox.com/v1/games") {
             if signed_in {
                 format!(
-                    r#"{{"data":[{{"id":{UNIVERSE},"playing":412873,"visits":48216000000,"favoritedCount":8700000,"genre":"Adventure","updated":"2026-10-28T10:00:00Z"}}]}}"#
+                    r#"{{"data":[{{"id":{UNIVERSE},"creator":{{"id":4372130,"type":"Group","name":"Gamer Robot Inc","hasVerifiedBadge":true}},"playing":412873,"visits":48216000000,"favoritedCount":8700000,"genre":"Adventure","updated":"2026-10-28T10:00:00Z"}}]}}"#
                 )
             } else {
                 r#"{"data":[{"id":0,"playing":0,"visits":0}]}"#.to_string()
@@ -122,6 +150,25 @@ pub async fn run(c: &mut Checks, dir: &str) {
 
     let (app, _said) = app();
     unlock(&app).await;
+    let group = |id, action| json!({ "groupId": GROUP, "id": id, "action": action });
+    let before = call(&app, "gameCommunity", group(farm.id, "")).await.ok();
+    let joined = call(&app, "gameCommunity", group(farm.id, "join")).await.ok();
+    let left = call(&app, "gameCommunity", group(farm.id, "leave")).await.ok();
+    c.check("the selected account joins and leaves directly through Roblox in the game page",
+        before.as_ref().is_some_and(|v| v["state"] == "join" && v["members"] == 100)
+            && joined.as_ref().is_some_and(|v| v["state"] == "member")
+            && left.as_ref().is_some_and(|v| v["state"] == "join"),
+        (&before, &joined, &left));
+    c.check("the owner cannot accidentally leave their own community",
+        user_error(&call(&app, "gameCommunity", group(main.id, "leave")).await).is_some(), ());
+    let farm_links = call(&app, "gameSocialLinks", json!({ "universeId": UNIVERSE, "id": farm.id })).await.ok();
+    let main_links = call(&app, "gameSocialLinks", json!({ "universeId": UNIVERSE, "id": main.id })).await.ok();
+    c.check(
+        "social links follow the requested account and accept HTTPS destinations",
+        farm_links == Some(json!([{ "type": "YouTube", "url": "https://www.youtube.com/@example", "title": null }]))
+            && main_links == Some(json!([])),
+        (&farm_links, &main_links),
+    );
     // In it now (1 h so far): added once unlocked, or the unlock ends it (no client of it is running here).
     let _ = app.vault_mut(|d| d.play_sessions.push(stay(&farm, PLACE, UNIVERSE, 1.0, 0.0, None, None)));
     let rows = app.game_accounts(PLACE, UNIVERSE, now).unwrap_or_default();
@@ -162,6 +209,9 @@ pub async fn run(c: &mut Checks, dir: &str) {
         "Roblox's figures: name, maker, players, visits, likes from the votes (90 %), genre",
         page["name"] == json!("Blox Fruits")
             && page["creator"] == json!("Gamer Robot Inc")
+            && page["creatorGroupId"] == json!(4372130)
+            && page["creatorVerified"] == json!(true)
+            && page["rootPlaceId"] == json!(PLACE)
             && page["playing"].as_i64() == Some(412873)
             && page["visits"].as_i64() == Some(48216000000)
             && page["likes"].as_i64() == Some(90)

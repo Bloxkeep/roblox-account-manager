@@ -1,5 +1,41 @@
 [
   {
+    "version": "1.1.1",
+    "date": "2026-11-16",
+    "new": {
+      "en": [
+        "Open a game's community in Bloxkeep, see which of your accounts and friends belong to it, and join or leave with the selected account.",
+        "Game pages show the creator's verified badge and social links when Roblox provides them. The Servers tab can open Roblox's private server setup for the account you choose."
+      ],
+      "vi": [
+        "Mở cộng đồng của game trong Bloxkeep, xem tài khoản và bạn bè nào đang tham gia, rồi tham gia hoặc rời bằng tài khoản đã chọn.",
+        "Trang game hiện dấu xác minh của nhà sáng tạo và các liên kết mạng xã hội do Roblox cung cấp. Trong tab Máy chủ, bạn có thể mở trang tạo máy chủ riêng của Roblox bằng tài khoản đã chọn."
+      ]
+    },
+    "improved": {
+      "en": [
+        "Game pages give artwork, stats, and actions more room. Account lists and window previews adapt to show more accounts without overflowing.",
+        "Search for games from Accounts using the same picker as in Roblox. Open an account's Roblox tab from the account list with one click."
+      ],
+      "vi": [
+        "Trang game bố trí lại ảnh, số liệu và nút thao tác. Danh sách tài khoản và ảnh xem trước tự điều chỉnh khi có nhiều tài khoản.",
+        "Tìm game từ mục Tài khoản bằng cùng bộ chọn với tab Roblox. Bấm một lần trong danh sách tài khoản để mở tab Roblox của tài khoản đó."
+      ]
+    },
+    "fixed": {
+      "en": [
+        "VNG accounts are available in the Roblox tab, and accounts with an open Roblox window still appear when choosing who should join a game.",
+        "Opening an account again reuses its Roblox tab. Long console lines wrap, and tooltips stay near their controls.",
+        "Keep playing and Your accounts here refresh as Bloxkeep records playtime. Short sessions display in minutes."
+      ],
+      "vi": [
+        "Tài khoản VNG xuất hiện trong tab Roblox. Tài khoản có cửa sổ Roblox đang mở vẫn hiện khi chọn tài khoản vào game.",
+        "Mở lại một tài khoản sẽ chuyển tới tab Roblox đã có. Dòng dài trong Console tự xuống hàng và chú thích nằm gần nút tương ứng.",
+        "Chơi tiếp và Tài khoản của bạn cập nhật khi Bloxkeep ghi nhận thời gian chơi. Phiên ngắn hiển thị theo phút."
+      ]
+    }
+  },
+  {
     "version": "1.1.0",
     "date": "2026-11-15",
     "highlights": [

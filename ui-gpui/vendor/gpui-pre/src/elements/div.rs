@@ -2421,7 +2421,9 @@ impl Interactivity {
                     }
                     if let Some(active_tooltip) = element_state.active_tooltip.as_ref() {
                         if self.tooltip_builder.is_some() {
-                            self.tooltip_id = set_tooltip_on_window(active_tooltip, window);
+                            let anchor = bounds.intersect(&window.content_mask().bounds);
+                            self.tooltip_id =
+                                set_tooltip_on_window(active_tooltip, Some(anchor), window);
                         } else {
                             // If there is no longer a tooltip builder, remove the active tooltip.
                             if let Some(long_press_tooltip_active) =
@@ -3759,15 +3761,21 @@ pub(crate) fn clear_active_tooltip_if_not_hoverable(
 
 pub(crate) fn set_tooltip_on_window(
     active_tooltip: &Rc<RefCell<Option<ActiveTooltip>>>,
+    anchor: Option<Bounds<Pixels>>,
     window: &mut Window,
 ) -> Option<TooltipId> {
-    let tooltip = match active_tooltip.borrow().as_ref() {
+    let id = match active_tooltip.borrow().as_ref() {
         None => return None,
         Some(ActiveTooltip::WaitingForShow { .. }) => return None,
-        Some(ActiveTooltip::Visible { tooltip, .. }) => tooltip.clone(),
-        Some(ActiveTooltip::WaitingForHide { tooltip, .. }) => tooltip.clone(),
+        Some(ActiveTooltip::Visible { tooltip, is_hoverable: false }) => {
+            window.set_tooltip_at(tooltip.clone(), anchor)
+        }
+        Some(ActiveTooltip::Visible { tooltip, .. })
+        | Some(ActiveTooltip::WaitingForHide { tooltip, .. }) => {
+            window.set_tooltip(tooltip.clone())
+        }
     };
-    Some(window.set_tooltip(tooltip))
+    Some(id)
 }
 
 pub(crate) fn register_tooltip_mouse_handlers(

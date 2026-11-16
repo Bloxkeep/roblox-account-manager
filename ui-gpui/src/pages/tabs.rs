@@ -34,18 +34,58 @@ pub struct Tab {
 pub struct Data {
     pub list: Vec<Tab>,
     pub at: usize,
+    scroll: ScrollHandle,
     /// "+"'s list of accounts is open.
     pub menu: bool,
+    pub vng: super::vng::Data,
 }
 
 impl Default for Data {
     fn default() -> Self {
-        Data { list: vec![Tab::default()], at: 0, menu: false }
+        Data { list: vec![Tab::default()], at: 0, scroll: ScrollHandle::new(), menu: false, vng: Default::default() }
+    }
+}
+
+impl Data {
+    pub fn club_left(&mut self, id: i64, user: i64) {
+        for tab in &mut self.list {
+            if let (of, Some(Ok(p))) = &mut tab.profile {
+                if *of == user {
+                    p.groups.retain(|g| g.id != id);
+                }
+            }
+        }
     }
 }
 
 fn s<'a>(v: &'a Value, k: &str) -> &'a str {
     v.get(k).and_then(Value::as_str).unwrap_or_default()
+}
+
+/// Opening a Roblox tab is also useful for VNG: game discovery and launching use the saved account.
+/// The signed-in roblox.com pages keep their separate eligibility rules in friends::able_ref.
+pub(crate) fn can_open_account(a: &Value) -> bool {
+    !s(a, "id").is_empty()
+        && matches!(s(a, "realm"), "" | "vng")
+        && a.get("cookieValid").and_then(Value::as_bool) != Some(false)
+        && a.get("userId").and_then(Value::as_i64).unwrap_or(0) > 0
+}
+
+pub fn available(root: &Root) -> Vec<&Value> {
+    root.accounts().iter().filter(|a| can_open_account(a)).collect()
+}
+
+pub fn is_vng(root: &Root) -> bool {
+    root.friends.account.as_deref().is_some_and(|id| root.accounts().iter().any(|a| s(a, "id") == id && s(a, "realm") == "vng"))
+}
+
+/// Play in a VNG tab starts with that account checked, even if Accounts has other selections.
+pub fn play_selected(root: &Root, id: &str) -> bool {
+    if is_vng(root) { root.friends.account.as_deref() == Some(id) } else { root.selected.contains(id) }
+}
+
+fn vng_badge() -> Div {
+    div().flex_none().px(px(5.)).py(px(2.)).rounded(px(4.)).bg(ca(ONLINE, 0.12)).text_color(c(ONLINE)).text_size(px(T_XS)).font_weight(FontWeight::SEMIBOLD).child("VNG")
 }
 
 /// The account of the tab shown: the one the app answered for, else the one it was opened for.
@@ -84,31 +124,59 @@ fn take_out(r: &mut Root) {
 
 pub fn switch(r: &mut Root, to: usize) {
     if to != r.tabs.at && to < r.tabs.list.len() {
+        r.tabs.vng.clear();
         put_away(r);
         r.tabs.at = to;
+        r.tabs.scroll.scroll_to_item(to);
         take_out(r);
     }
+}
+
+/// A default tab gets a stable identity when the app chooses its account. If another tab already
+/// owns that account, keep its view and discard the unbound tab.
+pub fn bind_default(r: &mut Root, id: &str) -> bool {
+    let at = r.tabs.at;
+    if let Some(existing) = r.tabs.list.iter().enumerate()
+        .position(|(i, tab)| i != at && tab.account.as_deref() == Some(id))
+    {
+        switch(r, existing);
+        close(r, at);
+        return false;
+    }
+    r.friends.account = Some(id.to_string());
+    r.tabs.list[at].account = Some(id.to_string());
+    true
 }
 
 /// A tab for that account: the one it has already, else a new one at the end, on the part being looked at now.
 pub fn open(r: &mut Root, id: String) {
     r.tabs.menu = false;
-    if shown_account(r).as_deref() == Some(id.as_str()) {
+    let shown = shown_account(r);
+    if shown.as_deref() == Some(id.as_str()) {
         return;
     }
     if let Some(i) = r.tabs.list.iter().position(|t| t.account.as_deref() == Some(id.as_str())) {
         return switch(r, i);
     }
-    let view = r.games.view;
+    let view = if r.accounts().iter().any(|a| s(a, "id") == id && s(a, "realm") == "vng") { View::Games } else { r.games.view };
+    r.tabs.vng.clear();
+    let reuse = shown.is_none() && r.tabs.list[r.tabs.at].account.is_none();
     put_away(r);
-    r.tabs.list.push(Tab { account: Some(id.clone()), view, friends: friends::Data::of(id), ..Default::default() });
-    r.tabs.at = r.tabs.list.len() - 1;
+    let tab = Tab { account: Some(id.clone()), view, friends: friends::Data::of(id), ..Default::default() };
+    if reuse {
+        r.tabs.list[r.tabs.at] = tab;
+    } else {
+        r.tabs.list.push(tab);
+        r.tabs.at = r.tabs.list.len() - 1;
+        r.tabs.scroll.scroll_to_item(r.tabs.at);
+    }
     take_out(r);
 }
 
 /// Another vault opened, or accounts deleted: the tabs of accounts no longer there go (with what was read for them);
 /// the tab shown stays, on the app's pick again if its account went.
 pub fn forget_gone(r: &mut Root) {
+    r.tabs.vng.clear();
     let ids: std::collections::HashSet<String> = r.accounts().iter().map(|a| s(a, "id").to_string()).collect();
     let gone = |t: &Tab| t.account.as_ref().is_some_and(|id| !ids.contains(id));
     let at = r.tabs.at;
@@ -147,17 +215,29 @@ pub fn close(r: &mut Root, i: usize) {
     if r.tabs.at > i {
         r.tabs.at -= 1;
     }
+    r.tabs.scroll.scroll_to_item(r.tabs.at);
 }
 
 /// The strip: a tab an account (its face and name; a cross while there is more than one), then "+".
-pub fn strip(root: &Root, cx: &mut Context<Root>) -> impl IntoElement {
-    let able = friends::able(root);
+pub fn strip(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement {
+    let able = available(root);
     let (_, active) = friends::looking(root);
     let tabs = &root.tabs;
-    let find = |id: &Option<String>| id.as_ref().and_then(|id| able.iter().find(|a| s(a, "id") == id)).cloned();
+    let find = |id: &Option<String>| id.as_ref().and_then(|id| able.iter().find(|a| s(a, "id") == id)).map(|a| (*a).clone());
     let many = tabs.list.len() > 1;
     let mut open_ids: Vec<String> = Vec::new();
-    let mut row = div().flex_none().flex().items_center().gap(px(4.)).min_w_0();
+    const TAB_WIDTH: f32 = 150.;
+    let scroll = tabs.scroll.clone();
+    let crowded = many && tabs.list.len() as f32 * (TAB_WIDTH + 4.) + 180. > width;
+    let mut row = div()
+        .id("rbx-tab-strip")
+        .flex_shrink(1.)
+        .min_w_0()
+        .flex()
+        .items_center()
+        .gap(px(4.))
+        .overflow_x_scroll()
+        .track_scroll(&scroll);
     for (i, t) in tabs.list.iter().enumerate() {
         let on = i == tabs.at;
         let acc = if on { active.clone() } else { find(&t.account) };
@@ -167,6 +247,7 @@ pub fn strip(root: &Root, cx: &mut Context<Root>) -> impl IntoElement {
         // No account to see Roblox as (none signed in, or it isn't known yet): Roblox itself, signed out, with a globe
         // in the face's place, rather than a bare "…".
         let name = acc.as_ref().map(label).unwrap_or_else(|| "Roblox".into());
+        let tip: SharedString = name.clone().into();
         row = row.child(
             hot(("rbx-tab", i))
                 .h(px(34.))
@@ -174,7 +255,8 @@ pub fn strip(root: &Root, cx: &mut Context<Root>) -> impl IntoElement {
                 .pr(px(if many { 5. } else { 12. }))
                 .flex()
                 // (One tab keeps its whole name: shrunk, the owner's showed "N…", 2026-11-12.)
-                .map(|d| if many { d.flex_shrink(1.).min_w(px(64.)) } else { d.flex_none() })
+                .flex_none()
+                .when(many, |d| d.w(px(TAB_WIDTH)))
                 .items_center()
                 .gap(px(8.))
                 .rounded(px(R_M))
@@ -187,6 +269,8 @@ pub fn strip(root: &Root, cx: &mut Context<Root>) -> impl IntoElement {
                     None => d.child(div().size(px(22.)).flex_none().rounded_full().bg(ca(WHITE, 0.06)).flex().items_center().justify_center().child(icon("globe", 13., c(MUTED)))),
                 })
                 .child(div().max_w(px(150.)).min_w_0().truncate().child(name))
+                .when(many, |d| d.tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into()))
+                .when(acc.as_ref().is_some_and(|a| s(a, "realm") == "vng"), |d| d.child(vng_badge()))
                 .when(many, |d| {
                     d.child(IconButton::new(("rbx-tab-x", i), "x").size(24.).tip(root.tr("fr.close")).on_click(cx.listener(move |r, _, _, cx| {
                         // The cross only: the tab under it isn't picked by the same press.
@@ -203,8 +287,10 @@ pub fn strip(root: &Root, cx: &mut Context<Root>) -> impl IntoElement {
     }
 
     // "+": the accounts not open yet, under it (a second click closes it).
-    let rest: Vec<Value> = able.iter().filter(|a| !open_ids.iter().any(|id| id == s(a, "id"))).cloned().collect();
-    let mut plus = div().relative().flex_none().child(IconButton::new("rbx-tab-add", "plus").size(30.).disabled(rest.is_empty()).tip(root.tr("tabs.open")).on_click(cx.listener(|r, _, _, cx| {
+    let rest: Vec<&Value> = able.into_iter().filter(|a| !open_ids.iter().any(|id| id == s(a, "id"))).collect();
+    let add = IconButton::new("rbx-tab-add", "plus").size(30.).disabled(rest.is_empty());
+    let add = if tabs.menu { add } else { add.tip(root.tr("tabs.open")) };
+    let mut plus = div().relative().flex_none().child(add.on_click(cx.listener(|r, _, _, cx| {
         r.tabs.menu = !r.tabs.menu;
         cx.notify();
     })));
@@ -236,6 +322,7 @@ pub fn strip(root: &Root, cx: &mut Context<Root>) -> impl IntoElement {
                     .px(px(8.))
                     .child(avatar(acc, 22., RAISED, cx))
                     .child(div().min_w_0().flex_1().truncate().child(label(acc)))
+                    .when(s(acc, "realm") == "vng", |d| d.child(vng_badge()))
                     .on_click(cx.listener(move |r, _, _, cx| {
                         open(r, id.clone());
                         cx.notify();
@@ -244,7 +331,25 @@ pub fn strip(root: &Root, cx: &mut Context<Root>) -> impl IntoElement {
         }
         plus = plus.child(div().absolute().top(px(36.)).left_0().child(deferred(anchored().snap_to_window_with_margin(px(8.)).child(pop("rbx-tab-pop", tabs.menu, menu))).with_priority(1)));
     }
-    row.child(plus)
+    let arrow = |id, glyph, label, direction| {
+        let scroll = scroll.clone();
+        IconButton::new(id, glyph).size(26.).tip(root.tr(label)).on_click(move |_, window, _| {
+            let jump = (scroll.bounds().size.width - px(TAB_WIDTH)).max(px(TAB_WIDTH));
+            let x = (scroll.offset().x + jump * direction).clamp(-scroll.max_offset().x, px(0.));
+            scroll.set_offset(point(x, px(0.)));
+            window.refresh();
+        })
+    };
+    div()
+        .flex()
+        .flex_shrink(1.)
+        .min_w_0()
+        .items_center()
+        .gap(px(4.))
+        .when(crowded, |d| d.child(arrow("rbx-tabs-prev", "chevronLeft", "tabs.scrollBack", 1.0)))
+        .child(row)
+        .when(crowded, |d| d.child(arrow("rbx-tabs-next", "chevronRight", "tabs.scrollNext", -1.0)))
+        .child(plus)
 }
 
 /// BLOXKEEP_SHOT_TABS=2: a hidden shot opens that many more accounts' tabs, then shows the first again.

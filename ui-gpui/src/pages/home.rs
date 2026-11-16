@@ -48,6 +48,10 @@ pub fn is_dropped(a: &Value) -> bool {
 
 /// Running games first (most accounts first), then those played lately that aren't running.
 pub fn games(root: &Root) -> Vec<Game> {
+    game_library(root, false)
+}
+
+pub(crate) fn game_library(root: &Root, full: bool) -> Vec<Game> {
     let mut now: Vec<Game> = Vec::new();
     for a in root.accounts() {
         let st = a.get("state").and_then(Value::as_str).unwrap_or_default();
@@ -87,7 +91,7 @@ pub fn games(root: &Root) -> Vec<Game> {
     recent.sort_by(|a, b| b.0.total_cmp(&a.0));
     // No play history (yet): the games put in the Play box lately instead (Home.tsx's recentGames).
     if recent.is_empty() {
-        for g in root.state.pointer("/settings/recentGames").and_then(Value::as_array).into_iter().flatten().take(8) {
+        for g in root.state.pointer("/settings/recentGames").and_then(Value::as_array).into_iter().flatten().take(if full { usize::MAX } else { 8 }) {
             let place = g.get("placeId").and_then(Value::as_i64).unwrap_or(0);
             let name = clean(g.get("name").and_then(Value::as_str).unwrap_or_default());
             if place > 0 && !name.is_empty() && !now.iter().any(|x| x.place == place || bare(&x.name) == bare(&name)) {
@@ -96,7 +100,7 @@ pub fn games(root: &Root) -> Vec<Game> {
             }
         }
     }
-    now.extend(recent.into_iter().map(|(_, g)| g).take(12));
+    now.extend(recent.into_iter().map(|(_, g)| g).take(if full { usize::MAX } else { 12 }));
     now
 }
 
@@ -152,7 +156,7 @@ pub fn home(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
                         .gap(px(SECTION_GAP))
                         // (No strip of the accounts here: the column beside the page lists them already, the owner
                         // 2026-11-13: "thừa, bên cạnh có rồi".)
-                        .child(shelf(root, &all, focus, inner, cx))
+                        .child(shelf(root, &all, focus, inner, None, cx))
                         .when(root.accounts().is_empty(), |d| d.child(get_started(root, cx)))
                         .child(presets(root, inner, cx))
                         .when(!root.accounts().is_empty(), |d| d.children(crate::pages::stats::recent(root, cx))),
@@ -260,7 +264,7 @@ fn stage(root: &Root, all: &[Game], focus: usize, width: f32, cx: &mut Context<R
         }
     } else {
         if g.hours > 0. {
-            facts = facts.child(sep()).child(root.i18n.tv("ui.playedH", &[("n", &format!("{:.0}", g.hours.max(1.)))]));
+            facts = facts.child(sep()).child(played_time(root, g.hours));
         }
         // When it was last played (Home.tsx's stage: "last 3 days ago").
         if g.last > 0. {
@@ -500,9 +504,23 @@ pub fn wash(root: &Root, cx: &mut App) -> Option<(String, std::sync::Arc<Image>)
 /// The page's side margin, the Accounts page's: the stage's words and every row under it start here.
 const SIDE: f32 = 24.;
 
+/// Show completed minutes from recorded play time, including sessions shorter than an hour.
+pub(crate) fn played_time(root: &Root, hours: f64) -> String {
+    let minutes = (hours * 3_600_000.).round() as u64 / 60_000;
+    let whole_hours = minutes / 60;
+    let rest = minutes % 60;
+    let duration = match (whole_hours, rest) {
+        (0, 0) => root.tr("ui.underMinute"),
+        (0, m) => root.i18n.tv("gp.minutes", &[("n", &m.to_string())]),
+        (h, 0) => root.i18n.tv("gp.hours", &[("n", &h.to_string())]),
+        (h, m) => format!("{} {}", root.i18n.tv("gp.hours", &[("n", &h.to_string())]), root.i18n.tv("gp.minutes", &[("n", &m.to_string())])),
+    };
+    root.i18n.tv("ui.playedTime", &[("time", &duration)])
+}
+
 /// The games, under a head with two choices: this PC's (running, then played lately) and what Bloxkeep's users play
 /// now; their wide pictures one row of the page's grid, each on its game's colour.
-fn shelf(root: &Root, all: &[Game], focus: usize, width: f32, cx: &mut Context<Root>) -> impl IntoElement {
+fn shelf(root: &Root, all: &[Game], focus: usize, width: f32, library: Option<HomeTab>, cx: &mut Context<Root>) -> impl IntoElement {
     // (220 px at least: three to a row on a 1180 window, where 236 left two big ones; still four at 1707.)
     let (cols, tile_w) = grid_fit(width, 220., GRID_GAP);
     let community: Vec<Value> = root
@@ -513,12 +531,14 @@ fn shelf(root: &Root, all: &[Game], focus: usize, width: f32, cx: &mut Context<R
         .unwrap_or_default();
     // Nothing played yet: the community's games show instead of a line saying there are none (a new user's Home was
     // one empty row, owner 2026-11-12).
-    let tab_now = if root.home_tab == HomeTab::Games && all.is_empty() && !community.is_empty() { HomeTab::Community } else { root.home_tab };
+    let tab_now = library.unwrap_or_else(|| {
+        if root.home_tab == HomeTab::Games && all.is_empty() && !community.is_empty() { HomeTab::Community } else { root.home_tab }
+    });
     // (Two rows of them then, as nothing else is under the welcome: a big window had its lower half empty.)
     let no_presets = root.state.pointer("/settings/presets").and_then(Value::as_array).is_none_or(|l| l.is_empty());
     // The library too, two rows while nothing plays (the figures then take a row): the owner's maximised window had its
     // lower third empty under three presets (2026-11-12).
-    let short = small(root);
+    let short = library.is_none() && small(root);
     let rows = if short || (all.is_empty() && no_presets) || playing_now(root) == 0 { 2 } else { 1 };
     // Fewer games than the row holds: they share the whole row (three to a row at least, so one game isn't a
     // banner), rather than leaving its right part empty.
@@ -534,6 +554,9 @@ fn shelf(root: &Root, all: &[Game], focus: usize, width: f32, cx: &mut Context<R
     };
     // Full rows only (a lone game on a second row looked dropped); the tabs count what shows, See all has the rest.
     let full_rows = |n: usize| {
+        if library.is_some() {
+            return n;
+        }
         let k = n.min(cols * rows);
         if k > cols { k - k % cols } else { k }
     };
@@ -545,10 +568,11 @@ fn shelf(root: &Root, all: &[Game], focus: usize, width: f32, cx: &mut Context<R
             .enumerate()
             .map(|(i, g)| {
                 let place = g.place;
+                let name = g.name.clone();
                 let sub = if g.accounts.is_empty() && g.hours <= 0. {
                     (root.tr("home.recent"), false)
                 } else if g.accounts.is_empty() {
-                    (root.i18n.tv("ui.playedH", &[("n", &format!("{:.0}", g.hours.max(1.)))]), false)
+                    (played_time(root, g.hours), false)
                 } else {
                     (root.tr("home.playing"), true)
                 };
@@ -557,8 +581,12 @@ fn shelf(root: &Root, all: &[Game], focus: usize, width: f32, cx: &mut Context<R
                 cascade(
                     "home-games",
                     i,
-                    cover_tile(("game", i), cover, icon_url, g.name.clone(), sub, g.accounts.len(), i == focus, tile_w, short, crate::pages::clips::tile_clip(root, place, cx), cx).on_click(cx.listener(move |r, _, _, cx| {
-                        r.picked = Some(place);
+                    cover_tile(("game", i), cover, icon_url, g.name.clone(), sub, g.accounts.len(), library.is_none() && i == focus, tile_w, short, crate::pages::clips::tile_clip(root, place, cx), cx).on_click(cx.listener(move |r, _, _, cx| {
+                        if library.is_some() {
+                            super::games::open_place(r, place, &name);
+                        } else {
+                            r.picked = Some(place);
+                        }
                         cx.notify();
                     })),
                 )
@@ -612,7 +640,12 @@ fn shelf(root: &Root, all: &[Game], focus: usize, width: f32, cx: &mut Context<R
             .child(label)
             .when(n > 0, |d| d.child(div().text_size(px(T_S)).font_features(tnum()).text_color(if on { ca(INK, 0.6) } else { c(MUTED) }).child(n.to_string())))
             .on_click(cx.listener(move |r, _, _, cx| {
-                r.home_tab = t;
+                if library.is_some() {
+                    r.games.home_library = Some(t);
+                    crate::scrolled::handle("home-library").set_offset(Point::default());
+                } else {
+                    r.home_tab = t;
+                }
                 cx.notify();
             }))
     };
@@ -623,16 +656,35 @@ fn shelf(root: &Root, all: &[Game], focus: usize, width: f32, cx: &mut Context<R
         .child(
             section_head(root.tr("home.games"), None)
                 .child(view_switch(vec![pick(HomeTab::Games, "gamepad", root.tr("ui.myGames"), games_shown, cx), pick(HomeTab::Community, "globe", root.tr("ui.community"), community_shown, cx)]))
-                .child(see_all("home-games-all", root.tr("home.all"), cx.listener(|r, _, _, cx| {
+                .when(library.is_none(), |d| d.child(see_all("home-games-all", root.tr("home.all"), cx.listener(move |r, _, _, cx| {
+                    r.games.open = None;
+                    r.games.view = super::games::View::Games;
+                    r.games.home_library = Some(tab_now);
+                    crate::scrolled::handle("home-library").set_offset(Point::default());
                     r.go(Page::Games);
                     cx.notify();
-                }))),
+                })))),
         )
         .child(if tiles.is_empty() {
             div().h(px(64.)).flex().items_center().text_size(px(T_M)).text_color(c(MUTED)).child(root.tr("home.noGameSub"))
         } else {
             grid(GRID_GAP).children(tiles)
         })
+}
+
+pub(crate) fn library(root: &Root, tab: HomeTab, width: f32, cx: &mut Context<Root>) -> impl IntoElement {
+    let all = game_library(root, true);
+    let pad = PAD + 4.;
+    let header = div().relative().flex().flex_none().items_center().gap(px(10.)).px(px(pad)).py(px(18.))
+        .child(super::games::brand(root))
+        .child(Button::new("home-library-back", root.tr("wiki.back")).icon("chevronLeft").small().on_click(cx.listener(|r, _, _, cx| {
+            r.games.home_library = None;
+            r.go(Page::Home);
+            cx.notify();
+        })))
+        .child(super::games::island(root, cx));
+    let body = div().px(px(pad)).pb(px(24.)).child(shelf(root, &all, 0, width - 2. * pad, Some(tab), cx));
+    div().size_full().flex().flex_col().child(header).child(crate::scrolled::body("home-library", body))
 }
 
 /// "See all ›": a quiet tool at the right of a row's head.

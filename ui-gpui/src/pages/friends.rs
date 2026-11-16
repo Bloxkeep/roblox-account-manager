@@ -428,7 +428,7 @@ pub fn looking(root: &Root) -> (Vec<Value>, Option<Value>) {
 
 /// `looking`, borrowed from the app's state.
 pub fn looking_ref(root: &Root) -> (Vec<&Value>, Option<&Value>) {
-    let able = able_ref(root);
+    let able = crate::pages::tabs::available(root);
     let at = root.friends.sign.as_ref().and_then(|s| s.as_ref()).map(|s| s.0.as_str()).or(root.friends.account.as_deref());
     let viewer = at.and_then(|id| able.iter().find(|a| s(a, "id") == id)).copied();
     (able, viewer)
@@ -445,6 +445,18 @@ pub fn want(r: &mut Root, link: &crate::link::Link, cx: &mut Context<Root>) {
 
 /// The sign-in of the account looked through, asked of the app once (Friends and Avatar share it).
 pub fn want_sign(r: &mut Root, link: &crate::link::Link, cx: &mut Context<Root>) {
+    // A VNG-only vault still gets its account tab. VNG cookies must never be lent to the
+    // roblox.com-only readers below; game launches use the core's realm-aware path.
+    if r.friends.account.is_none() && able_ref(r).is_empty()
+        && let Some(id) = crate::pages::tabs::available(r).first().map(|a| s(a, "id").to_string())
+    {
+        crate::pages::tabs::bind_default(r, &id);
+    }
+    if crate::pages::tabs::is_vng(r) {
+        r.friends.asked_sign = true;
+        r.friends.sign = Some(None);
+        return;
+    }
     #[cfg(feature = "shot")]
     if r.friends.sign.is_none() && (std::env::var("BLOXKEEP_SHOT_FRIENDS").is_ok() || std::env::var("BLOXKEEP_SHOT_AVATAR").is_ok() || std::env::var("BLOXKEEP_SHOT_PROFILE").is_ok() || std::env::var("BLOXKEEP_SHOT_INBOX").is_ok() || std::env::var("BLOXKEEP_SHOT_CART").is_ok()) {
         // A hidden shot: the mock's first account, with the friends from the file (roblox.rs) or the avatar of the
@@ -478,11 +490,21 @@ pub fn want_sign(r: &mut Root, link: &crate::link::Link, cx: &mut Context<Root>)
                 if r.friends.account != asked || r.friends.sign_seq != seq || matches!(r.friends.sign, Some(Some(_))) {
                     return;
                 }
-                r.friends.sign = Some(got.and_then(|v| {
+                let sign = got.and_then(|v| {
                     let cookie = s(&v, "cookie").to_string();
+                    let id = s(&v, "id").to_string();
                     let user = v.get("userId").and_then(Value::as_i64).unwrap_or(0);
-                    (!cookie.is_empty() && user > 0).then(|| (s(&v, "id").to_string(), user, cookie))
-                }));
+                    (!cookie.is_empty() && user > 0 && !id.is_empty()
+                        && asked.as_ref().is_none_or(|expected| *expected == id)).then_some((id, user, cookie))
+                });
+                if let Some((id, _, _)) = &sign
+                    && asked.is_none()
+                    && !crate::pages::tabs::bind_default(r, id)
+                {
+                    cx.notify();
+                    return;
+                }
+                r.friends.sign = Some(sign);
                 cx.notify();
             });
         })

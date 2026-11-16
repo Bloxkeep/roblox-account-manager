@@ -15,10 +15,12 @@ use crate::core::base::{Cancel, Fail, Res, Stamp, new_guid};
 use crate::core::{l, log};
 
 pub mod friends;
+pub(crate) mod community;
 pub mod login;
 pub mod lookups;
 pub mod play;
 pub mod quick_login;
+pub(crate) mod vng_panel;
 
 pub use friends::*;
 pub use login::*;
@@ -53,6 +55,8 @@ pub struct GameInfo {
 pub struct GameDetailsInfo {
     pub name: String,
     pub creator: String,
+    pub creator_group_id: Option<i64>,
+    pub creator_verified: bool,
     pub description: Option<String>,
     pub genre: Option<String>,
     pub playing: i64,
@@ -1004,6 +1008,10 @@ pub(crate) static CSRF_TOKENS: LazyLock<Mutex<HashMap<(String, u64), String>>> =
 /// any other 403 (wrong password, locked account, a check) is Roblox's answer, and repeating it could send a
 /// password twice.
 fn post_with_csrf(url: &str, cookie: &str, json_body: &str, configure: Option<&dyn Fn(&mut HttpRequest)>, ct: &Cancel, realm: &str) -> Res<HttpResponse> {
+    send_with_csrf("POST", url, cookie, Some(json_body), configure, ct, realm)
+}
+
+fn send_with_csrf(method: &'static str, url: &str, cookie: &str, json_body: Option<&str>, configure: Option<&dyn Fn(&mut HttpRequest)>, ct: &Cancel, realm: &str) -> Res<HttpResponse> {
     // The token stays valid for a while, so it is reused for the same session instead of paying the 403 each time. Calls
     // without a sign-in share one per Roblox: Quick Login's status, polled every 2.5 s, paid a 403 and a replay on each
     // (review, 2026-10-30). A stale one is only that same 403 and replay.
@@ -1011,14 +1019,16 @@ fn post_with_csrf(url: &str, cookie: &str, json_body: &str, configure: Option<&d
     let mut token = lock(&CSRF_TOKENS).get(&session).cloned();
     let mut attempt = 0;
     loop {
-        let mut req = request("POST", url, Some(cookie), true, realm);
+        let mut req = request(method, url, Some(cookie), true, realm);
         if let Some(token) = &token {
             req.add_header("x-csrf-token", token);
         }
         if let Some(configure) = configure {
             configure(&mut req);
         }
-        req.set_json_body(json_body);
+        if let Some(json_body) = json_body {
+            req.set_json_body(json_body);
+        }
         // Cancelled meanwhile: nothing more goes out; the same failure a cancelled request gives.
         if ct.is_cancelled() {
             return Err(fail_of(TASK_CANCELED_EXCEPTION, "The request was canceled."));

@@ -33,6 +33,19 @@ pub(crate) fn known_games(x: &Value) -> HashMap<i64, KnownGame> {
 }
 
 pub async fn run(c: &mut Checks, _dir: &str) {
+    let clock = 10 * 3_600_000_i64;
+    let mut stays: Vec<_> = (1..=35).map(|place| crate::history::Session {
+        place, game: format!("Older game {place}"), start: clock - 7_200_000,
+        end: Some(clock - 3_600_000), ..Default::default()
+    }).collect();
+    stays.push(crate::history::Session {
+        place: 99, game: "Newest game".into(), start: clock - 60_000, end: Some(clock), ..Default::default()
+    });
+    let recent = crate::history::recently_played(&stays, &HashMap::new(), clock);
+    c.check("a brief recent game appears ahead of older long sessions", recent.len() == 30 && recent[0].place == 99, ());
+    c.check("a one-minute session keeps its unrounded duration in the game library",
+        recent.first().is_some_and(|game| (game.hours * 60. - 1.).abs() < 0.0001), ());
+
     let doc = cases("played-games-cases.json");
     c.check("The table of cases is found", doc.is_some(), "");
     let Some(doc) = doc else { return };

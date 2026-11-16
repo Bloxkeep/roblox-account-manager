@@ -799,6 +799,7 @@ impl App {
     async fn dispatch_command(self: &Rc<Self>, cmd: &str, a: &Value) -> Res<Value> {
         match cmd {
             "getState" => done(self.initial_state()),
+            "vngPanel" => self.vng_panel(id_of(a), str_of(a, "panel")).await,
             "console" => {
                 let since = a.get("version").and_then(Value::as_u64).unwrap_or(u64::MAX);
                 Ok(match log::console_lines(since) {
@@ -909,10 +910,13 @@ impl App {
             "gameLists" => done(self.game_lists().await),
             "servers" => done(self.servers(long_of(a, "placeId"), bool_of(a, "fewest"), opt_str(a, "cursor")).await),
             "gameDetails" => done(self.game_details(long_of(a, "placeId")).await),
+            "gameSocialLinks" => done(self.game_social_links(long_of(a, "universeId"), id_of(a)).await),
             "openGameWiki" => done(App::open_game_wiki(&str_of(a, "name"))),
             "openGamePage" => done(App::open_game_page(long_of(a, "placeId"))),
             "friendServers" => done(self.friend_servers(long_of(a, "placeId"), &ids_of(a)).await),
-            "privateServers" => done(self.private_servers(long_of(a, "placeId"), &ids_of(a)).await),
+            "privateServers" => done(self.private_servers(long_of(a, "placeId"), &ids_of(a), bool_of(a, "fresh")).await),
+            "openGameServers" => done(self.open_game_servers(id_of(a), long_of(a, "placeId"))),
+            "gameCommunity" => done(self.game_community(long_of(a, "groupId"), id_of(a), &str_of(a, "action")).await),
             "ownedServers" => done(self.owned_servers(bool_of(a, "fresh")).await),
             "pinGame" => done(self.toggle_pin(long_of(a, "placeId"), long_of(a, "universeId"), &str_of(a, "name"))),
             "saveServer" => done(self.save_server(a)),

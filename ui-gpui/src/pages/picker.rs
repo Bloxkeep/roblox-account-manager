@@ -5,7 +5,7 @@
 // ("pinGame"), a recent game can be taken off ("removeRecent"), a saved server deleted ("deleteServer") or its code
 // copied ("copyServerCode": Bloxkeep never types into Roblox).
 //
-// A box at its top finds games by name (Roblox is asked from here: roblox::search_rows). Save server (the bookmark
+// The play field and the list's own field both search Roblox by name. Save server (the bookmark
 // beside the box, once it holds a game; app.js's saveServerModal) keeps a private server's link, or a game with the
 // code it asks for, under a name ("saveServer").
 use std::time::{Duration, Instant};
@@ -18,17 +18,25 @@ use serde_json::{Value, json};
 use crate::{images, kit::*, shell::Root, theme::*};
 
 const TABS: [&str; 5] = ["recent", "pinned", "saved", "favorites", "popular"];
+const TYPE_DELAY: Duration = Duration::from_millis(330);
+
+enum SearchResults {
+    Loading,
+    Games(Vec<Value>),
+    Failed,
+}
 
 #[derive(Default)]
 pub struct Data {
     pub open: bool,
+    inline: bool,
     /// A click outside closed it just now: that click on its own button only closes it.
     closed: Option<Instant>,
     tab: usize,
     lists: Option<Value>,
     loading: bool,
     /// A search by name: what was asked, and its games once Roblox has answered; and which asking is the latest.
-    found: Option<(String, Option<Vec<Value>>)>,
+    found: Option<(String, SearchResults)>,
     seq: u64,
     /// Save server: what is being saved (a link is kept, the game's place and universe, its name), what is wrong, and
     /// whether the app is being asked.
@@ -40,36 +48,69 @@ pub struct Data {
     sv_open: bool,
 }
 
-/// Enter in the list's box: the games of that name.
-pub fn search(r: &mut Root, cx: &mut Context<Root>) {
-    let query = r.picker_q.read(cx).value().trim().to_string();
-    if query.chars().count() < 2 {
+/// Leave all launch targets to the existing parser, including invalid links that need its error.
+pub fn is_game_name(input: &str) -> bool {
+    let input = input.trim();
+    if input.is_empty() || input.chars().all(|ch| ch.is_ascii_digit()) || input.parse::<i64>().is_ok() || crate::target::parse(input, "").is_ok() {
+        return false;
+    }
+    let lower = input.to_ascii_lowercase();
+    !["http://", "https://", "roblox:", "roblox-player:", "roblox.com/", "www.roblox.com/", "ro.blox.com/", "placeid="]
+        .iter().any(|prefix| lower.starts_with(prefix))
+}
+
+pub fn search_menu(r: &mut Root, immediate: bool, cx: &mut Context<Root>) {
+    if r.picker.open && !r.picker.inline {
+        let query = r.picker_q.read(cx).value().trim().to_string();
+        search(r, query, immediate, cx);
+    }
+}
+
+/// Typing in the main play field uses the same results panel as the explicit game picker.
+pub fn search_dock(r: &mut Root, immediate: bool, cx: &mut Context<Root>) -> bool {
+    let query = r.place.read(cx).value().trim().to_string();
+    let is_name = is_game_name(&query);
+    if is_name {
+        r.picker.open = true;
+        r.picker.inline = true;
+        search(r, query, immediate, cx);
+    } else if r.picker.inline {
+        close(r);
+        cx.notify();
+    }
+    is_name
+}
+
+fn search(r: &mut Root, query: String, immediate: bool, cx: &mut Context<Root>) {
+    r.picker.seq += 1;
+    if query.is_empty() {
         r.picker.found = None;
         cx.notify();
         return;
     }
-    r.picker.seq += 1;
     let mine = r.picker.seq;
-    r.picker.found = Some((query.clone(), None));
-    let ask = query.clone();
-    let rx = crate::roblox::run(move || crate::roblox::search_rows(&ask));
+    r.picker.found = Some((query.clone(), SearchResults::Loading));
     cx.notify();
     cx.spawn(async move |this, cx| {
-        let list = rx.await.unwrap_or_default();
+        if !immediate {
+            cx.background_executor().timer(TYPE_DELAY).await;
+        }
+        let Ok(Some(link)) = this.update(cx, |r, _| {
+            (r.picker.open && r.picker.seq == mine).then(|| r.link.clone()).flatten()
+        }) else { return };
+        let result = link.call("searchGames", json!({ "query": query })).await;
+        let games = match result {
+            Ok(Ok(rows)) => SearchResults::Games(rows.as_array().cloned().unwrap_or_default()),
+            _ => SearchResults::Failed,
+        };
         let _ = this.update(cx, |r, cx| {
-            if r.picker.seq == mine {
-                r.picker.found = Some((query, Some(list)));
+            if r.picker.open && r.picker.seq == mine {
+                r.picker.found = Some((query, games));
                 cx.notify();
             }
         });
     })
     .detach();
-}
-
-/// The box was emptied: back to the lists.
-pub fn cleared(r: &mut Root) {
-    r.picker.seq += 1;
-    r.picker.found = None;
 }
 
 /// Save server's button: there once the box holds a game Roblox knows.
@@ -266,19 +307,24 @@ fn load(r: &mut Root, cx: &mut Context<Root>) {
 /// The list open, its lists asked for (a shot's way in).
 pub fn open_now(r: &mut Root, cx: &mut Context<Root>) {
     r.picker.open = true;
+    r.picker.inline = false;
     load(r, cx);
+    search_menu(r, false, cx);
 }
 
-fn close(r: &mut Root) {
+pub fn close(r: &mut Root) {
     if r.picker.open {
         r.picker.open = false;
         r.picker.closed = Some(Instant::now());
     }
+    r.picker.inline = false;
+    r.picker.seq += 1;
+    r.picker.found = None;
 }
 
 /// A game, or a saved server, into the box: its picture and name are looked up as for a link typed there.
 fn pick(r: &mut Root, link: String, window: &mut Window, cx: &mut Context<Root>) {
-    r.picker.open = false;
+    close(r);
     // (Another game, or a saved server: a Job ID left in its box went with the game before, app.js's pickGame/pickSaved.)
     crate::pages::accounts::clear_job(window, cx);
     r.place.update(cx, |st, cx| st.set_value(link, window, cx));
@@ -312,10 +358,9 @@ pub fn button(root: &Root, cx: &mut Context<Root>) -> Div {
         .child(IconButton::new("bar-browse", if open { "chevronDown" } else { "chevronUp" }).size(34.).selected(open).tip(root.tr("dock.browseTip")).on_click(cx.listener(|r, _, _, cx| {
             let just = r.picker.closed.take().is_some_and(|at| at.elapsed() < Duration::from_millis(300));
             if r.picker.open {
-                r.picker.open = false;
+                close(r);
             } else if !just {
-                r.picker.open = true;
-                load(r, cx);
+                open_now(r, cx);
             }
             cx.notify();
         })))
@@ -334,7 +379,7 @@ fn list(root: &Root, cx: &mut Context<Root>) -> Stateful<Div> {
     let tabs: Vec<usize> = (0..TABS.len()).filter(|i| TABS[*i] != "popular" || !rows_of("popular").is_empty()).collect();
     let tab = if tabs.contains(&p.tab) { p.tab } else { 0 };
     // (A search's games take the lists' place until its box is emptied.)
-    let found = p.found.clone();
+    let found = p.found.as_ref();
     let key = if found.is_some() { "search" } else { TABS[tab] };
 
     // (One line always: "Popular" wrapped alone onto a second one. Longer words, as in Vietnamese, scroll sideways.)
@@ -426,13 +471,15 @@ fn list(root: &Root, cx: &mut Context<Root>) -> Stateful<Div> {
             );
         }
     } else {
-        let rows = match &found {
-            Some((_, rows)) => rows.clone().unwrap_or_default(),
+        let rows = match found {
+            Some((_, SearchResults::Games(rows))) => rows.clone(),
+            Some(_) => Vec::new(),
             None => rows_of(key),
         };
         if rows.is_empty() {
-            let text = match &found {
-                Some((_, None)) => root.tr("av.reading"),
+            let text = match found {
+                Some((_, SearchResults::Loading)) => root.tr("av.reading"),
+                Some((_, SearchResults::Failed)) => root.tr("picker.searchFailed"),
                 Some(_) => root.tr("picker.noResults"),
                 None if p.lists.is_none() => root.tr("av.reading"),
                 None => root.tr(&format!("picker.empty.{key}")),
@@ -484,8 +531,8 @@ fn list(root: &Root, cx: &mut Context<Root>) -> Stateful<Div> {
                 cx.notify();
             }
         }))
-        .child(field(&root.picker_q, Some("search")).h(px(32.)))
-        .child(match &found {
+        .when(!p.inline, |d| d.child(field(&root.picker_q, Some("search")).h(px(32.))))
+        .child(match found {
             Some((q, _)) => div().px(px(6.)).text_size(px(T_M)).text_color(c(MUTED)).child(root.i18n.tv("picker.results", &[("q", q)])).into_any_element(),
             None => head.into_any_element(),
         })

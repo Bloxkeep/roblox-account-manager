@@ -17,7 +17,7 @@ use serde_json::{json, Value};
 
 use crate::{
     kit::*,
-    pages::{accounts::can_play, friends},
+    pages::{accounts::can_join_game, friends},
     shell::Root,
     theme::*,
 };
@@ -55,6 +55,11 @@ pub struct Data {
     /// The accounts the private servers and the friends were last asked with: other accounts picked ask again at once,
     /// not a minute later.
     private_ids: Vec<String>,
+    private_fresh: bool,
+    create_private: bool,
+    vip_opening: bool,
+    vip_owner: Option<String>,
+    vip_error: Option<String>,
     friend_ids: Vec<String>,
     /// "Room for all": only servers with a seat for every account picked (Servers.tsx's room); None: on when more
     /// than one is picked.
@@ -180,14 +185,20 @@ pub fn want(r: &mut Root, place: i64, cx: &mut Context<Root>) {
     // The accounts asked: the picked ones (Servers.tsx's ids), else the signed-in ones; the app's limit of them (six).
     let able = friends::able_ref(r);
     let picked: Vec<String> = able.iter().filter(|a| r.selected.contains(s(a, "id"))).take(6).map(|a| s(a, "id").to_string()).collect();
-    let ids: Vec<String> = if picked.is_empty() { able.iter().take(6).map(|a| s(a, "id").to_string()).collect() } else { picked };
-    if r.servers.private_ids == ids && r.servers.at.is_some_and(|t| t.elapsed() < FRESH) {
+    let mut ids: Vec<String> = if picked.is_empty() { able.iter().take(6).map(|a| s(a, "id").to_string()).collect() } else { picked };
+    if let Some(owner) = r.servers.vip_owner.as_ref().filter(|id| able.iter().any(|a| s(a, "id") == *id)) {
+        ids.retain(|id| id != owner);
+        ids.insert(0, owner.clone());
+        ids.truncate(6);
+    }
+    if !r.servers.private_fresh && r.servers.private_ids == ids && r.servers.at.is_some_and(|t| t.elapsed() < FRESH) {
         return;
     }
     let Some(link) = r.link.clone() else { return };
     r.servers.loading = true;
     r.servers.private_ids = ids.clone();
-    let rx = link.call("privateServers", json!({ "placeId": place, "ids": ids }));
+    let fresh = std::mem::take(&mut r.servers.private_fresh);
+    let rx = link.call("privateServers", json!({ "placeId": place, "ids": ids, "fresh": fresh }));
     cx.spawn(async move |this, cx| {
         let got = match rx.await {
             Ok(Ok(v)) => Ok(v),
@@ -354,12 +365,76 @@ fn friends(root: &Root, width: f32, cx: &mut Context<Root>) -> (Option<usize>, A
     (Some(list.len()), grid(GRID_GAP).children(cards).into_any_element())
 }
 
-pub fn view(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
+fn open_vip_checkout(root: &mut Root, place: i64, id: String, cx: &mut Context<Root>) {
+    let Some(link) = root.link.clone() else { return };
+    if root.servers.vip_opening {
+        return;
+    }
+    let shown_place = root.servers.place;
+    root.servers.create_private = false;
+    root.servers.vip_opening = true;
+    root.servers.vip_error = None;
+    let rx = link.call("openGameServers", json!({ "placeId": place, "id": id }));
+    cx.spawn(async move |this, cx| {
+        let reply = rx.await;
+        let _ = this.update(cx, |r, cx| {
+            if r.servers.place != shown_place {
+                return;
+            }
+            r.servers.vip_opening = false;
+            match reply {
+                Ok(Ok(_)) => r.servers.vip_owner = Some(id),
+                Ok(Err(e)) => r.servers.vip_error = Some(e.to_string()),
+                Err(_) => r.servers.vip_error = Some(r.tr("gp.createPrivateError")),
+            }
+            cx.notify();
+        });
+    }).detach();
+    cx.notify();
+}
+
+pub fn view(root: &Root, root_place: i64, width: f32, cx: &mut Context<Root>) -> AnyElement {
     let (n_friends, friends_body) = friends(root, width, cx);
     let n_private = match &root.servers.got {
         Some(Ok(v)) => v.get("servers").and_then(Value::as_array).map(Vec::len),
         _ => None,
     };
+    let place = if root_place > 0 { root_place } else { root.servers.place };
+    let eligible = friends::able_ref(root);
+    let only = (eligible.len() == 1).then(|| s(eligible[0], "id").to_string());
+    let private_head = section_head(root.tr("srv.privateTitle"), n_private.filter(|n| *n > 0))
+        .flex_wrap().gap(px(8.)).when(place > 0, |head| {
+            let tip = root.tr(if eligible.is_empty() { "gp.createPrivateNoAccount" } else { "gp.createPrivateTip" });
+            head.child(div().flex().items_center().gap(px(8.))
+                .child(IconButton::new("srv-refresh-private", "refresh").size(30.)
+                    .disabled(root.servers.loading || eligible.is_empty()).tip(root.tr("gp.refreshPrivate"))
+                    .on_click(cx.listener(|r, _, _, cx| {
+                        r.servers.private_fresh = true;
+                        want(r, r.servers.place, cx);
+                        cx.notify();
+                    })))
+                .child(Button::new("srv-create-private", root.tr("gp.createPrivate")).small().icon("plus")
+                    .disabled(eligible.is_empty() || root.servers.vip_opening).tip(tip).on_click(cx.listener(move |r, _, _, cx| {
+                        if let Some(id) = only.clone() {
+                            open_vip_checkout(r, place, id, cx);
+                        } else {
+                            r.servers.create_private = !r.servers.create_private;
+                            r.servers.vip_error = None;
+                            cx.notify();
+                        }
+                    }))))
+        });
+    let picker = (root.servers.create_private && !eligible.is_empty()).then(|| {
+        let accounts = eligible.into_iter().map(|account| {
+            let id = s(account, "id").to_string();
+            Button::new(SharedString::from(format!("srv-create-{id}")), crate::pages::accounts::label(account)).small()
+                .on_click(cx.listener(move |r, _, _, cx| open_vip_checkout(r, place, id.clone(), cx)))
+        });
+        div().flex().flex_col().gap(px(8.)).p(px(12.)).rounded(px(R_M)).bg(c(PANEL))
+            .child(div().text_size(px(T_M)).font_weight(FontWeight::SEMIBOLD).child(root.tr("gp.createPrivateAccount")))
+            .child(div().flex().flex_wrap().gap(px(8.)).children(accounts))
+    });
+    let error = root.servers.vip_error.as_ref().map(|e| div().text_size(px(T_M)).text_color(c(BAD)).child(e.clone()));
     div()
         .w_full()
         .flex()
@@ -368,7 +443,7 @@ pub fn view(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
         .child(div().flex().flex_col().gap(px(12.)).child(section_head(root.tr("srv.friendsTitle"), n_friends.filter(|n| *n > 0))).child(friends_body))
         // Private before public (owner, 2026-11-13): the public list runs long with more pages on demand, and the
         // private servers under it were out of sight.
-        .child(div().flex().flex_col().gap(px(12.)).child(section_head(root.tr("srv.privateTitle"), n_private.filter(|n| *n > 0))).child(private(root, width, cx)))
+        .child(div().flex().flex_col().gap(px(12.)).child(private_head).children(picker).children(error).child(private(root, width, cx)))
         .child(public(root, width, cx))
         .into_any_element()
 }
@@ -381,7 +456,7 @@ fn public(root: &Root, width: f32, cx: &mut Context<Root>) -> Div {
         most > 0 && n >= most
     };
     // The accounts that would go in together: those picked that can play.
-    let party = root.accounts().iter().filter(|a| root.selected.contains(s(a, "id")) && crate::pages::accounts::can_play(a)).count().max(1) as i64;
+    let party = root.accounts().iter().filter(|a| crate::pages::tabs::play_selected(root, s(a, "id")) && can_join_game(a)).count().max(1) as i64;
     let room = party > 1 && sv.room.unwrap_or(true);
     let mut rows: Vec<&Value> = sv
         .rows
@@ -572,8 +647,7 @@ fn private(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
             let ids: Vec<String> = v.get("viaIds").and_then(Value::as_array).into_iter().flatten().filter_map(Value::as_str).map(str::to_string).collect();
             // A button for each account that can join: its name, and it joins.
             let joins = ids.into_iter().zip(names).enumerate().map(|(n, (id, name))| {
-                // (An account already playing, or with a sign-in that ran out, can't be started.)
-                let free = root.accounts().iter().find(|a| s(a, "id") == id).is_some_and(can_play);
+                let free = root.accounts().iter().find(|a| s(a, "id") == id).is_some_and(can_join_game);
                 let input = format!("roblox://experiences/start?placeId={place}&accessCode={code}");
                 Button::new(("ps-join", i * 16 + n), name).small().icon("play").disabled(full || !free || code.is_empty()).on_click(cx.listener(move |r, _, _, cx| {
                     r.play_at(&[id.clone()], input.clone(), cx);

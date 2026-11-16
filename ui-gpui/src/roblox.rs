@@ -2151,6 +2151,7 @@ pub struct Club {
     pub name: String,
     pub about: String,
     pub owner: String,
+    pub owner_id: i64,
     pub shout: String,
     pub members: i64,
     pub pic: String,
@@ -2193,6 +2194,7 @@ pub fn club(id: i64) -> Result<Club, String> {
         name: text(&d, "name"),
         about: text(&d, "description").trim().to_string(),
         owner: d.pointer("/owner/username").and_then(Value::as_str).unwrap_or_default().to_string(),
+        owner_id: d.pointer("/owner/userId").and_then(Value::as_i64).unwrap_or(0),
         shout: d.pointer("/shout/body").and_then(Value::as_str).unwrap_or_default().trim().to_string(),
         members: int(&d, "memberCount"),
         pic: thumbs("groups/icons?size=150x150&groupIds=", &[id]).remove(&id).unwrap_or_default(),
@@ -2205,6 +2207,14 @@ pub fn club(id: i64) -> Result<Club, String> {
 fn club_book() -> &'static std::sync::Mutex<HashMap<i64, HashMap<i64, String>>> {
     static BOOK: std::sync::OnceLock<std::sync::Mutex<HashMap<i64, HashMap<i64, String>>>> = std::sync::OnceLock::new();
     BOOK.get_or_init(Default::default)
+}
+
+pub fn club_left(id: i64, user: i64) {
+    if let Ok(mut book) = club_book().lock() {
+        if let Some(groups) = book.get_mut(&user) {
+            groups.remove(&id);
+        }
+    }
 }
 
 /// Which of these users are in a community, each with their rank's name (Roblox shows anyone's communities). Roblox's
@@ -2235,6 +2245,31 @@ pub fn club_mine(id: i64, users: &[i64]) -> Vec<(i64, String)> {
         }
     }
     out
+}
+
+/// The signed-in user's Roblox connections who joined this community.
+pub fn club_friends(group: i64, user: i64, cookie: &str) -> Result<Vec<Friend>, String> {
+    let response = get(&format!("https://groups.roblox.com/v1/users/{user}/friends/groups/roles"), Some(cookie))?;
+    let rows = response.get("data").and_then(Value::as_array).ok_or_else(String::new)?;
+    let mut members: Vec<Friend> = rows.iter().filter_map(|row| {
+        let member = row.get("user")?;
+        let id = int(member, "userId");
+        let groups = row.get("groups").and_then(Value::as_array)?;
+        if id <= 0 || !groups.iter().any(|g| g.pointer("/group/id").and_then(Value::as_i64) == Some(group)) {
+            return None;
+        }
+        let name = text(member, "username");
+        let display = text(member, "displayName");
+        let display = if !display.is_empty() { display } else if !name.is_empty() { name.clone() } else { id.to_string() };
+        Some(Friend { id, name, display, ..Default::default() })
+    }).collect();
+    let ids: Vec<i64> = members.iter().map(|f| f.id).collect();
+    let mut pictures = faces(&ids);
+    for friend in &mut members {
+        friend.face = pictures.remove(&friend.id).unwrap_or_default();
+    }
+    members.sort_by_cached_key(|f| (f.display.to_lowercase(), f.id));
+    Ok(members)
 }
 
 /// A user's profile as Roblox shows it to anyone, and what only their own sign-in gets (the Robux).

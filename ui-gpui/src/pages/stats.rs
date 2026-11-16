@@ -633,7 +633,7 @@ pub fn stats(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
         .child(header)
         .map(|d| {
             if st.tab == Tab::Console {
-                d.child(console(root, cx))
+                d.child(console(root, inner, cx))
             } else {
                 d.child(crate::scrolled::with_bar("stats-body", &st.scroll, div().id("stats-body").size_full().overflow_y_scroll().track_scroll(&st.scroll).child(div().px(px(SIDE)).pt(px(4.)).pb(px(32.)).child(body))))
             }
@@ -2163,7 +2163,7 @@ fn hh_mm(local: i64) -> String {
 /// The Console: a log as a log reads, one line each, oldest at the top and the newest at the bottom, in a monospace
 /// face on the darkest ground: `13:44:22 [Rejoin] Main: the words ×31`. A click on a [source] or an account shows only
 /// its lines.
-fn console(root: &Root, cx: &mut Context<Root>) -> Div {
+fn console(root: &Root, width: f32, cx: &mut Context<Root>) -> Div {
     let st = &root.stats;
     if !st.con_asking {
         let this = cx.entity().downgrade();
@@ -2238,70 +2238,62 @@ fn console(root: &Root, cx: &mut Context<Root>) -> Div {
         // Only the lines in view (and a little around them) are made and drawn: 1,500 lines cost what 40 do.
         let this = cx.entity().downgrade();
         let rows_for = rows.clone();
+        // Give each virtual row a definite width. An auto-sized root in GPUI's list can measure
+        // the text at its unwrapped width even when the viewport is narrower.
+        let row_width = (width - 14. - 2. - 20.).max(80.);
         let lines = list(st.con_list.clone(), move |ix, _, _| {
             let Some(row) = rows_for.get(ix) else { return div().into_any_element() };
             let id = row.id as usize;
-            let (this_src, this_acc) = (this.clone(), this.clone());
-            let (source, account) = (row.source.clone(), row.account.clone());
-            mono(div())
-                .id(("con-line", id))
-                .mx(px(10.))
-                .px(px(6.))
-                .rounded(px(4.))
-                .hover(|d| d.bg(ca(WHITE, 0.035)))
-                .flex()
-                .items_start()
-                .gap(px(8.))
-                .child(div().flex_none().text_color(c(DIM)).child(row.at.clone()))
-                .child(
-                    div()
-                        .id(("con-src", id))
-                        .flex_none()
-                        .text_color(c(row.tone))
-                        .cursor_pointer()
-                        .hover(|d| d.underline())
-                        .child(format!("[{}]", row.source))
-                        .on_click(move |_, _, cx| {
-                            let _ = this_src.update(cx, |r, cx| {
-                                r.stats.con_source = Some(source.clone());
-                                r.stats.con_list.set_follow_mode(FollowMode::Tail);
-                                cx.notify();
-                            });
-                        }),
-                )
-                .child(
-                    div()
-                        .flex_1()
-                        .min_w_0()
-                        .flex()
-                        .flex_wrap()
-                        .gap_x(px(8.))
-                        .when(!row.account.is_empty(), |d| {
-                            d.child(
-                                div()
-                                    .id(("con-acc", id))
-                                    .flex_none()
-                                    .text_color(c(TEXT))
-                                    .cursor_pointer()
-                                    .hover(|d| d.underline())
-                                    .child(format!("{}:", row.account_shown))
-                                    .on_click(move |_, _, cx| {
-                                        let _ = this_acc.update(cx, |r, cx| {
-                                            r.stats.con_account = Some(account.clone());
-                                            r.stats.con_list.set_follow_mode(FollowMode::Tail);
-                                            cx.notify();
-                                        });
-                                    }),
-                            )
-                        })
-                        .child(div().text_color(if row.bad { c(BAD) } else { c(TEXT_2) }).child(row.text.clone()))
-                        .when_some(row.again.clone(), |d, a| d.child(div().flex_none().text_color(c(WARN)).child(a))),
-                )
-                .into_any_element()
-        })
-        .size_full()
-        .py(px(10.));
-        crate::scrolled::with_bar("con-body", &st.con_list, lines).into_any_element()
+            let source = row.source.clone();
+            let account = row.account.clone();
+            let tint = |color| HighlightStyle { color: Some(c(color)), ..Default::default() };
+            let mut text = format!("{} ", row.at);
+            let mut highlights = vec![(0..row.at.len(), tint(DIM))];
+            let source_start = text.len();
+            text.push_str(&format!("[{}]", row.source));
+            let source_range = source_start..text.len();
+            highlights.push((source_range.clone(), tint(row.tone)));
+            let mut filters = vec![source_range];
+            text.push(' ');
+            if !account.is_empty() {
+                let start = text.len();
+                text.push_str(&row.account_shown);
+                text.push(':');
+                let range = start..text.len();
+                highlights.push((range.clone(), tint(TEXT)));
+                filters.push(range);
+                text.push(' ');
+            }
+            text.push_str(&row.text);
+            if let Some(again) = &row.again {
+                text.push_str("  ");
+                let start = text.len();
+                text.push_str(again);
+                highlights.push((start..text.len(), tint(WARN)));
+            }
+            let this = this.clone();
+            let words = InteractiveText::new(("con-words", id), StyledText::new(text).with_highlights(highlights))
+                .on_click(filters, move |index, _, cx| {
+                    let _ = this.update(cx, |r, cx| {
+                        if index == 0 {
+                            r.stats.con_source = Some(source.clone());
+                        } else {
+                            r.stats.con_account = Some(account.clone());
+                        }
+                        r.stats.con_list.set_follow_mode(FollowMode::Tail);
+                        cx.notify();
+                    });
+                });
+            mono(div()).id(("con-line", id))
+                .w(px(row_width)).mx(px(10.)).px(px(6.))
+                .rounded(px(4.)).hover(|d| d.bg(ca(WHITE, 0.035)))
+                .whitespace_normal().text_color(if row.bad { c(BAD) } else { c(TEXT_2) })
+                .child(words).into_any_element()
+        }).size_full().py(px(10.));
+        // Reserve the scrollbar's gutter and keep the tail fully readable.
+        div().relative().size_full().pr(px(14.)).child(lines)
+            .child(crate::pages::auto::scroll_bar_named("con-body-bar", &st.con_list))
+            .into_any_element()
     };
     div()
         .flex_1()

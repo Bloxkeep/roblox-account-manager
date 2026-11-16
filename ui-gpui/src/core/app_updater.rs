@@ -83,7 +83,8 @@ impl AppUpdater {
         } else {
             None
         };
-        let current_version = manager.as_ref().map(|m| m.get_current_version_as_string()).unwrap_or_else(|| env!("CARGO_PKG_VERSION").to_string());
+        let current_version = manager.as_ref().map(|m| m.get_current_version_as_string())
+            .unwrap_or_else(|| option_env!("BLOXKEEP_VERSION").unwrap_or(env!("CARGO_PKG_VERSION")).to_string());
         let updater = AppUpdater {
             manager,
             current_version,

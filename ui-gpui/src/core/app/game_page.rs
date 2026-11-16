@@ -49,6 +49,45 @@ pub struct GameStay {
 }
 
 impl App {
+    pub async fn game_community(&self, group: i64, id: Guid, action: &str) -> Res<Value> {
+        self.vault(|_| ())?;
+        if group <= 0 {
+            return Err(Fail::user(l::t("Invalid Roblox community.")));
+        }
+        let viewer = if id.is_nil() { None } else {
+            let account = self.account(id)?;
+            (!account.cookie.is_empty() && account.user_id > 0 && account.cookie_valid != Some(false)
+                && account.realm == roblox_api::realm::GLOBAL).then_some(account)
+        };
+        let change = match action {
+            "" => None,
+            "join" => Some(true),
+            "leave" => Some(false),
+            _ => return Err(Fail::user(l::t("Invalid Roblox community."))),
+        };
+        if change.is_some() && viewer.is_none() {
+            return Err(Fail::user(l::t("Select a signed-in Roblox Global account.")));
+        }
+        rt::blocking(move || {
+            let ct = Cancel::new();
+            let viewer = viewer.as_ref().map(|a| (a.user_id, a.cookie.as_str()));
+            if let (Some(join), Some((user, cookie))) = (change, viewer) {
+                roblox_api::community::change_group(group, user, cookie, join, &ct)
+            } else {
+                roblox_api::community::read_group(group, viewer, &ct)
+            }
+        }).await
+    }
+
+    pub async fn game_social_links(&self, universe: i64, account: Guid) -> Res<Value> {
+        self.vault(|_| ())?;
+        let Some(account) = self.find_account(account).filter(|a| {
+            universe > 0 && a.realm.is_empty() && a.cookie_valid != Some(false) && !a.cookie.is_empty()
+        }) else { return Ok(json!([])) };
+        let links = rt::blocking(move || roblox_api::get_game_social_links(universe, &account.cookie, &Cancel::new())).await?;
+        Ok(json!(links))
+    }
+
     pub async fn game_details(self: &Rc<Self>, place_id: i64) -> Res<Value> {
         self.vault(|_| ())?;
         if place_id <= 0 {
@@ -75,6 +114,7 @@ impl App {
         };
         Ok(json!({
             "placeId": place_id, "universe": universe, "name": details.name, "creator": details.creator, "genre": details.genre, "iconUrl": icon,
+            "creatorGroupId": details.creator_group_id, "creatorVerified": details.creator_verified, "rootPlaceId": details.root_place_id,
             "description": details.description, "playing": details.playing, "visits": details.visits, "favorites": details.favorites,
             "likes": details.likes_percent, "created": details.created, "updated": details.updated,
             "upVotes": details.up_votes, "downVotes": details.down_votes, "maxPlayers": details.max_players,

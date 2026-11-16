@@ -36,6 +36,7 @@ pub const STREAK_DAYS: i32 = 60;
 
 #[derive(Default)]
 pub struct StatsState {
+    pub play_revision: Cell<u64>,
     /// The open stay of each account with a client here (copies of the vault's list entries: `update_play` writes both).
     pub playing: RefCell<HashMap<Guid, PlaySession>>,
     /// Clients that quit while Bloxkeep was locked: how their stay ended, applied at the next unlock.
@@ -210,6 +211,7 @@ impl App {
                                 s.game_name = named.name.clone();
                                 s.universe_id = named.universe_id;
                             });
+                            self.bump_play_revision();
                             changed = true;
                         }
                     }
@@ -263,6 +265,7 @@ impl App {
             d.play_sessions.push(session);
             prune_play(&mut d.play_sessions, now);
         });
+        self.bump_play_revision();
         self.note_activity("joined", account_id, Some(place_id), None, Some(started_at), None, None); // Statistics › Activity
     }
 
@@ -274,10 +277,15 @@ impl App {
             s.end_reason = Some(reason.to_string());
             s.reason_code = code;
         });
+        self.bump_play_revision();
         if matches!(reason, "left" | "disconnected" | "signedout") {
             let kind = if reason == "signedout" { "signedOut" } else { reason };
             self.note_activity(kind, session.account_id, Some(session.place_id), code, Some(ended), None, None);
         }
+    }
+
+    fn bump_play_revision(&self) {
+        self.stats.play_revision.set(self.stats.play_revision.get().wrapping_add(1));
     }
 
     /// The client quit: its stay ends as its log says (a leave, a drop), else as closed. While locked the end is

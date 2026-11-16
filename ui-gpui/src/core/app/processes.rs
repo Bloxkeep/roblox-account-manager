@@ -908,6 +908,7 @@ impl App {
         let fit = crate::core::capacity::tick(players, memory, cpu, gpu, filetime_now);
         let json = serde_json::json!({
             "accounts": accounts,
+            "playRevision": self.stats.play_revision.get(),
             "fit": fit,
             "robloxCount": players.len(),
             // The monitor tab's tiles: clients with a visible window (see monitor_clients), from this tick's window pass.

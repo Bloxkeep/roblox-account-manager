@@ -296,7 +296,12 @@ const R_CARD: f32 = 18.;
 
 /// Free to join a game: not open, signed in, not banned (as the Accounts bar's Play).
 pub fn can_play(a: &Value) -> bool {
-    !is_local(a) && !launching(a) && !signed_out(a) && !banned(a)
+    !is_local(a) && can_join_game(a)
+}
+
+/// The game page can also switch a Roblox client that is already open to its chosen game.
+pub fn can_join_game(a: &Value) -> bool {
+    !launching(a) && !signed_out(a) && !banned(a)
 }
 pub fn id_of(a: &Value) -> String {
     s(a, "id").to_string()
@@ -926,9 +931,10 @@ pub fn avatar(a: &Value, size: f32, ring: u32, cx: &mut App) -> Div {
 /// One grid for the whole page: window tiles and cards share its columns (each at least this wide, the row ending
 /// where the page does), so every section lines up: four across at 1707 px, three at 1180.
 const COL_MIN: f32 = 330.;
-/// A Game monitor tile at least this wide: its live picture is what you look at there (the owner, 2026-11-13:
-/// "to tí, hơi nhỏ"; at 330 like a card, three to four a row were too small to read a window).
-const MON_COL_MIN: f32 = 470.;
+/// Monitor tiles can become compact, with room for the account details and actions below the preview.
+const MON_COL_MIN: f32 = 320.;
+const MON_COL_MAX: f32 = 560.;
+const MON_PIC_INSET: f32 = 14.;
 /// The page's sides (the header's and the body's), on the 8 px rhythm.
 const SIDE_PAD: f32 = 24.;
 /// How far a block's base shows under it.
@@ -1374,21 +1380,46 @@ fn windows(root: &Root, shown: &[Value], inner: f32, cx: &mut Context<Root>) -> 
     if let Some(solo) = root.mon_solo.as_deref().filter(|g| lanes.iter().any(|l| l.name == *g)) {
         lanes.retain(|l| l.name == solo);
     }
-    let (cols, col_w) = grid_fit(inner, MON_COL_MIN, GRID_GAP);
-    // (Every tile as tall as the fullest one: tiles side by side end on one line, review 2.3.)
+    // Every tile reserves room for the fullest account's details, so neighboring tiles end on one line.
     let tile_n = lanes.iter().flat_map(|l| l.items.iter()).map(|a| tile_lines(root, a)).max().unwrap_or(0);
+    let height = root.live.area_height().unwrap_or_else(|| (root.window_h.get() - 210.).max(0.));
+    let tile_room = (height - 112.).max(0.);
     Some(
         div().w_full().flex().flex_wrap().items_start().gap_x(px(GRID_GAP)).gap_y(px(SECTION_GAP)).children(
             lanes
                 .into_iter()
                 .enumerate()
                 .map(|(i, l)| {
-                    let span = l.items.len().clamp(1, cols);
-                    lane(root, i, l, col_w, span, tile_n, multi, cx).into_any_element()
+                    let (cols, col_w) = monitor_grid(l.items.len(), inner, tile_room, tile_n);
+                    lane(root, i, l, col_w, cols, tile_n, multi, cx).into_any_element()
                 })
                 .collect::<Vec<_>>(),
         ),
     )
+}
+
+/// Pick the largest 16:9 previews that fit the lane. If all layouts need to scroll, use the fewest rows.
+fn monitor_grid(count: usize, width: f32, height: f32, detail_lines: usize) -> (usize, f32) {
+    let (max_cols, _) = grid_fit(width, MON_COL_MIN, GRID_GAP);
+    let max_cols = max_cols.min(count).max(1);
+    let minimum = width.min(MON_COL_MIN);
+    let chrome = 166. + 30. * detail_lines as f32;
+    let mut best = (max_cols, minimum);
+    let mut best_fits = false;
+    for cols in 1..=max_cols {
+        let rows = count.max(1).div_ceil(cols) as f32;
+        let room = (height - (rows - 1.) * GRID_GAP) / rows;
+        let across = (width - (cols - 1) as f32 * GRID_GAP) / cols as f32;
+        let by_height = (room - chrome) * 16. / 9. + MON_PIC_INSET;
+        let tile = across.min(MON_COL_MAX).min(by_height.max(minimum)).floor();
+        let fits = tile <= by_height;
+        let fewer_rows = rows < count.max(1).div_ceil(best.0) as f32;
+        if fits && (!best_fits || tile > best.1 || (tile == best.1 && fewer_rows)) {
+            best = (cols, tile);
+            best_fits = true;
+        }
+    }
+    best
 }
 
 /// The cards layout: what needs a look on top, a lane for each game played here with a tile a window, then the
@@ -2243,7 +2274,7 @@ fn tile(root: &Root, a: &Value, w: f32, lines: usize, srv: Option<char>, cx: &mu
     let minimized = win.and_then(|w| w.get("minimized")).and_then(Value::as_bool).unwrap_or(false);
     let live = hwnd.clone().filter(|_| !minimized && !hidden(a));
     // (The tile's hairline is inside its width.)
-    let pic_w = w - 2. * INSET_PAD - 2.;
+    let pic_w = w - MON_PIC_INSET;
     let h = (pic_w * 9. / 16.).floor();
     // No game picture for a window back on the menu: its session still names the game it left.
     let cover = cover_of(root, if in_menu(a) { None } else { game_place(a) }).and_then(|u| images::pic_at(&u, pic_w, h, cx));

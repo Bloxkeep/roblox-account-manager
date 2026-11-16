@@ -234,7 +234,7 @@ pub async fn run(c: &mut Checks, _dir: &str) {
     );
 
     asked.lock().unwrap().clear();
-    let dto = app.private_servers(PLACE, &[a, b]).await.unwrap_or_else(|e| json!({ "error": e.to_string() }));
+    let dto = app.private_servers(PLACE, &[a, b], false).await.unwrap_or_else(|e| json!({ "error": e.to_string() }));
     let servers = dto["servers"].as_array().cloned().unwrap_or_default();
     let code = |s: &Value| s["accessCode"].as_str().unwrap_or("").to_string();
     let via = |s: &Value| {
@@ -263,14 +263,17 @@ pub async fn run(c: &mut Checks, _dir: &str) {
     c.check("…owner shown by display name", servers.first().is_some_and(|s| s["owner"] == "Alpha"), &dto);
 
     fail_b.store(true, Ordering::SeqCst);
-    app.games.private_servers.borrow_mut().clear();
-    let dto = app.private_servers(PLACE, &[a, b]).await.unwrap_or_else(|e| json!({ "error": e.to_string() }));
+    asked.lock().unwrap().clear();
+    let _ = app.private_servers(PLACE, &[a, b], false).await;
+    c.check("the regular list uses its fresh cache", asked_now().is_empty(), ());
+    let dto = app.private_servers(PLACE, &[a, b], true).await.unwrap_or_else(|e| json!({ "error": e.to_string() }));
+    c.check("manual refresh asks Roblox again after checkout", asked_now().iter().any(|q| q.starts_with("cookie-b")), asked_now());
     c.check(
         "Roblox refusing one account (429): the other's servers still listed, not marked failed",
         dto["servers"].as_array().is_some_and(|s| s.len() == 2) && dto["failed"] == false,
         &dto,
     );
-    let dto = app.private_servers(PLACE, &[b]).await.unwrap_or_else(|e| json!({ "error": e.to_string() }));
+    let dto = app.private_servers(PLACE, &[b], false).await.unwrap_or_else(|e| json!({ "error": e.to_string() }));
     c.check(
         "…only that account selected: failed, so the page says it couldn't load instead of \"none\"",
         dto["failed"] == true && dto["servers"].as_array().is_some_and(|s| s.is_empty()),

@@ -459,7 +459,7 @@ impl App {
 
     /// The game's private servers your accounts can join, for Browse servers. Roblox answers each account with its own
     /// list, so the selected accounts are asked (up to 6; none selected, 3 others), and each server lists who can join it.
-    pub async fn private_servers(self: &Rc<Self>, place_id: i64, selected: &[Guid]) -> Res<Value> {
+    pub async fn private_servers(self: &Rc<Self>, place_id: i64, selected: &[Guid], fresh: bool) -> Res<Value> {
         let vault = self.held_vault().ok_or_else(|| Fail::user(l::t("Bloxkeep is locked.")))?;
         if place_id <= 0 {
             return Err(Fail::user(l::t("Invalid Place ID.")));
@@ -472,10 +472,11 @@ impl App {
             viewers = usable.iter().take(3).cloned().collect();
         }
         let key = (place_id, viewers.iter().map(|v| v.id.to_string()).collect::<Vec<_>>().join(","));
-        if let Some((servers, asked, failed, at)) = self.games.private_servers.borrow().get(&key) {
-            if at.age_secs() < secs(FRIEND_SERVER_LIFETIME) {
-                return Ok(self.private_servers_dto(servers, *asked, *failed));
-            }
+        if !fresh
+            && let Some((servers, asked, failed, at)) = self.games.private_servers.borrow().get(&key)
+            && at.age_secs() < secs(FRIEND_SERVER_LIFETIME)
+        {
+            return Ok(self.private_servers_dto(servers, *asked, *failed));
         }
         let asks: Vec<(Guid, String)> = viewers.iter().map(|v| (v.id, v.cookie.clone())).collect();
         let answers: Vec<(Guid, Res<Vec<PrivateServer>>)> = rt::blocking(move || {

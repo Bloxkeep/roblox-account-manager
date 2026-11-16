@@ -58,7 +58,7 @@ impl App {
         Ok(())
     }
 
-    /// `fetch_icons`: false for search results: they show at once, and the page asks for the icons after.
+    /// `fetch_icons`: false when the caller already requested the icons.
     pub async fn game_rows(self: &Rc<Self>, games: &[GameSummary], fetch_icons: bool) -> Res<Vec<Value>> {
         let mut list: Vec<GameSummary> = Vec::new();
         for g in games {
@@ -88,12 +88,12 @@ impl App {
 
     pub async fn search_games(self: &Rc<Self>, query: &str) -> Res<Value> {
         let query = query.trim().to_string();
-        if query.encode_utf16().count() < 2 {
+        if query.is_empty() {
             return Ok(json!([]));
         }
         let found = rt::blocking(move || roblox_api::search_games(&query, &Cancel::new())).await?;
         let first: Vec<GameSummary> = found.into_iter().take(12).collect();
-        Ok(Value::Array(self.game_rows(&first, false).await?))
+        Ok(Value::Array(self.game_rows(&first, true).await?))
     }
 
     pub async fn game_icons(self: &Rc<Self>, a: &Value) -> Res<Value> {

@@ -14,6 +14,10 @@ use crate::{kit::*, shell::Root, theme::*};
 /// The layouts in the order the web page lists them; "custom" (a size of one's own) comes after.
 pub const LAYOUTS: [&str; 8] = ["fill", "2x1", "3x1", "2x2", "3x2", "3x3", "4x3", "4x4"];
 
+const MENU_TILE: f32 = 106.;
+// Three tiles, two gaps, shell padding/border and the picker's horizontal padding.
+const MENU_WIDTH: f32 = MENU_TILE * 3. + 4. * 2. + 6. * 2. + 2. + 2.;
+
 /// The Windows menu: open, still built while it fades out, closed by a click outside just now (that click on its own
 /// button must not open it again), and on its second step (which screen, when there are several).
 #[derive(Default)]
@@ -244,7 +248,9 @@ fn menu(root: &Root, cx: &mut Context<Root>) -> Stateful<Div> {
     let shell = div()
         .id("acc-windows-menu")
         .occlude()
-        .w(px(340.))
+        .w(px(MENU_WIDTH))
+        .max_h(px((root.window_h.get() - 16.).max(120.)))
+        .overflow_y_scroll()
         .p(px(6.))
         .rounded(px(R_L))
         .bg(c(RAISED))
@@ -313,12 +319,12 @@ fn menu(root: &Root, cx: &mut Context<Root>) -> Stateful<Div> {
     let pick: Pick = std::rc::Rc::new(|r: &mut Root, layout: &'static str, _: &mut Window, cx: &mut Context<Root>| picked(r, layout, cx));
     m.child(div().h(px(1.)).my(px(6.)).mx(px(4.)).bg(c(LINE)))
         .child(div().px(px(8.)).pt(px(2.)).pb(px(8.)).text_size(px(T_S)).text_color(c(MUTED)).child(root.tr("m.arrange")))
-        .child(div().px(px(1.)).pb(px(2.)).child(picker(root, "snap-menu", &layout, w, h, 3, 106., pick, cx)))
+        .child(div().flex_none().px(px(1.)).pb(px(2.)).child(picker(root, "snap-menu", &layout, w, h, 3, MENU_TILE, pick, cx)))
 }
 
 /// A line of the menu.
 fn row(id: impl Into<ElementId>, icon_name: &'static str, label: String) -> Hot {
-    menu_row(id).h(px(36.)).child(icon(icon_name, 15., c(TEXT_2))).child(div().flex_1().min_w_0().truncate().child(label))
+    menu_row(id).h(px(36.)).flex_none().child(icon(icon_name, 15., c(TEXT_2))).child(div().flex_1().min_w_0().truncate().child(label))
 }
 
 /// A shot opens Accounts with the Windows menu open.

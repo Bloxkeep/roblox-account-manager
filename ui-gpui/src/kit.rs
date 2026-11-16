@@ -224,12 +224,14 @@ pub fn focusable(d: Stateful<Div>) -> Stateful<Div> {
     d.tab_index(0).border_1().border_color(ca(WHITE, 0.)).focus_visible(|s| s.border_color(ca(TEXT, 0.75)))
 }
 
-/// What a button does, in words, under the mouse: icon-only buttons say it here.
+/// What a button does, in words: icon-only buttons say it here.
 pub struct Tip(pub SharedString);
 
 impl Render for Tip {
-    fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
         div()
+            .max_w(px(340.).min((window.viewport_size().width - px(16.)).max(px(1.))))
+            .whitespace_normal()
             .px(px(8.))
             .py(px(5.))
             .rounded(px(R_S))

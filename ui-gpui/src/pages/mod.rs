@@ -24,6 +24,7 @@ pub mod snap;
 pub mod stats;
 pub mod tabs;
 pub mod visibility;
+pub mod vng;
 pub mod games;
 pub mod clips;
 pub mod home;

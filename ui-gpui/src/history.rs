@@ -82,7 +82,24 @@ pub fn read(v: &Value) -> (Vec<Session>, HashMap<i64, Known>, i64) {
 /// The games played in the 90 days before `now`, most played first, thirty at most. Stays are of one game when they
 /// share a universe: a stay's own, else the one another stay of its place has, else the one the app knows for the
 /// place, else the place stands alone. A game nothing names is left out.
+#[cfg(test)]
 pub fn played(sessions: &[Session], known: &HashMap<i64, Known>, now: i64) -> Vec<Played> {
+    let mut games = played_in_order(sessions, known, now, |a, b| b.hours.total_cmp(&a.hours));
+    for g in &mut games {
+        g.hours = (g.hours * 10.).round_ties_even() / 10.;
+    }
+    games
+}
+
+/// Recently started games for Home and Keep playing. Sort before applying the history limit.
+pub fn recently_played(sessions: &[Session], known: &HashMap<i64, Known>, now: i64) -> Vec<Played> {
+    played_in_order(sessions, known, now, |a, b| b.last.cmp(&a.last))
+}
+
+fn played_in_order(
+    sessions: &[Session], known: &HashMap<i64, Known>, now: i64,
+    sort: impl FnMut(&Played, &Played) -> std::cmp::Ordering,
+) -> Vec<Played> {
     let since = now - HISTORY_MS;
     // (Of every stay, not only the 90 days'; the last one of a place tells.)
     let mut universe_of: HashMap<i64, i64> = HashMap::new();
@@ -130,12 +147,8 @@ pub fn played(sessions: &[Session], known: &HashMap<i64, Known>, now: i64) -> Ve
             (!name.is_empty()).then_some(Played { name, place, hours, last: last.start })
         })
         .collect();
-    out.sort_by(|a, b| b.hours.total_cmp(&a.hours));
+    out.sort_by(sort);
     out.truncate(30);
-    // (To a tenth of an hour, a half going to the even tenth as the app's Math.Round does.)
-    for g in &mut out {
-        g.hours = (g.hours * 10.).round_ties_even() / 10.;
-    }
     out
 }
 

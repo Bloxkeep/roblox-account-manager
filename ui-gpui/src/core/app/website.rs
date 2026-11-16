@@ -30,6 +30,13 @@ use crate::core::{
 pub const APPEAL_URL: &str = "https://www.roblox.com/report-appeals";
 pub const SETTINGS_URL: &str = "https://www.roblox.com/my/account";
 
+pub(crate) fn game_servers_url(place: i64) -> Res<String> {
+    if place <= 0 {
+        return Err(Fail::user(l::t("Invalid Place ID.")));
+    }
+    Ok(format!("https://www.roblox.com/games/{place}#!/game-instances"))
+}
+
 #[derive(Default)]
 pub struct WebsiteState {
     pub web_window: RefCell<Option<WebsiteForm>>,
@@ -40,6 +47,12 @@ pub struct WebsiteState {
 }
 
 impl App {
+    /// The selected account uses Roblox's own private-server checkout in its isolated website tab.
+    pub fn open_game_servers(self: &Rc<Self>, id: Guid, place: i64) -> Res<Value> {
+        let url = game_servers_url(place)?;
+        self.open_website(id, Some(&url))
+    }
+
     /// The website window, unless it was closed (C#: `_webWindow is { IsDisposed: false }`).
     fn open_web_window(&self) -> Option<WebsiteForm> {
         self.website.web_window.borrow().clone().filter(|w| !w.is_disposed())

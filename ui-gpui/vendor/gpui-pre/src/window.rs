@@ -51,7 +51,6 @@ use std::{
     any::{Any, TypeId},
     borrow::Cow,
     cell::{Cell, RefCell},
-    cmp,
     fmt::{Debug, Display},
     hash::{Hash, Hasher},
     marker::PhantomData,
@@ -971,6 +970,7 @@ pub(crate) struct TooltipBounds {
 pub(crate) struct TooltipRequest {
     id: TooltipId,
     tooltip: AnyTooltip,
+    anchor: Option<Bounds<Pixels>>,
 }
 
 /// The ids of the elements being drawn, root first, with the hash of every
@@ -4049,38 +4049,40 @@ impl Window {
             };
             let mut element = tooltip_request.tooltip.view.clone().into_any_element();
             let mouse_position = tooltip_request.tooltip.mouse_position;
-            let tooltip_size = element.layout_as_root(AvailableSpace::min_size(), self, cx);
-
-            let mut tooltip_bounds =
-                Bounds::new(mouse_position + point(px(1.), px(1.)), tooltip_size);
-            let window_bounds = Bounds {
-                origin: Point::default(),
-                size: self.viewport_size(),
+            let viewport = self.viewport_size();
+            let tooltip_bounds = if let Some(anchor) = tooltip_request.anchor {
+                let space = size(AvailableSpace::MaxContent, AvailableSpace::MaxContent);
+                let size = element.layout_as_root(space, self, cx);
+                let margin = px(8.);
+                let gap = px(7.);
+                let below = anchor.bottom() + gap;
+                let above = anchor.top() - gap;
+                let fits_below = below + size.height <= viewport.height - margin;
+                let space_below = viewport.height - margin - below;
+                let space_above = above - margin;
+                let y = if fits_below || space_below >= space_above { below } else { above - size.height };
+                let x = anchor.center().x - size.width / 2.;
+                Bounds::new(
+                    point(
+                        x.clamp(margin, (viewport.width - size.width - margin).max(margin)),
+                        y.clamp(margin, (viewport.height - size.height - margin).max(margin)),
+                    ),
+                    size,
+                )
+            } else {
+                // Hoverable tooltips stay adjacent to the pointer so it can move into them.
+                let size = element.layout_as_root(AvailableSpace::min_size(), self, cx);
+                let axis = |at: Pixels, length: Pixels, edge: Pixels| {
+                    let after = at + px(1.);
+                    let before = at - length - px(1.);
+                    let start = if after + length <= edge { after } else { before };
+                    start.clamp(Pixels::ZERO, (edge - length).max(Pixels::ZERO))
+                };
+                Bounds::new(point(
+                    axis(mouse_position.x, size.width, viewport.width),
+                    axis(mouse_position.y, size.height, viewport.height),
+                ), size)
             };
-
-            if tooltip_bounds.right() > window_bounds.right() {
-                let new_x = mouse_position.x - tooltip_bounds.size.width - px(1.);
-                if new_x >= Pixels::ZERO {
-                    tooltip_bounds.origin.x = new_x;
-                } else {
-                    tooltip_bounds.origin.x = cmp::max(
-                        Pixels::ZERO,
-                        tooltip_bounds.origin.x - tooltip_bounds.right() - window_bounds.right(),
-                    );
-                }
-            }
-
-            if tooltip_bounds.bottom() > window_bounds.bottom() {
-                let new_y = mouse_position.y - tooltip_bounds.size.height - px(1.);
-                if new_y >= Pixels::ZERO {
-                    tooltip_bounds.origin.y = new_y;
-                } else {
-                    tooltip_bounds.origin.y = cmp::max(
-                        Pixels::ZERO,
-                        tooltip_bounds.origin.y - tooltip_bounds.bottom() - window_bounds.bottom(),
-                    );
-                }
-            }
 
             // It's possible for an element to have an active tooltip while not being painted (e.g.
             // via the `visible_on_hover` method). Since mouse listeners are not active in this
@@ -4385,11 +4387,15 @@ impl Window {
     /// Sets a tooltip to be rendered for the upcoming frame. This method should only be called
     /// during the paint phase of element drawing.
     pub fn set_tooltip(&mut self, tooltip: AnyTooltip) -> TooltipId {
+        self.set_tooltip_at(tooltip, None)
+    }
+
+    pub(crate) fn set_tooltip_at(&mut self, tooltip: AnyTooltip, anchor: Option<Bounds<Pixels>>) -> TooltipId {
         self.invalidator.debug_assert_prepaint();
         let id = TooltipId(post_inc(&mut self.next_tooltip_id.0));
         self.next_frame
             .tooltip_requests
-            .push(Some(TooltipRequest { id, tooltip }));
+            .push(Some(TooltipRequest { id, tooltip, anchor }));
         id
     }
 

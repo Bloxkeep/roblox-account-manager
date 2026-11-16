@@ -18,6 +18,28 @@ use crate::core::roblox_api::realm;
 pub struct GpuiState {}
 
 impl App {
+    /// Keep the VNG sign-in in the core and expose only the selected panel's display data.
+    pub async fn vng_panel(&self, id: crate::core::base::Guid, panel: String) -> crate::core::base::Res<Value> {
+        use crate::core::{base::Fail, l, roblox_api::vng_panel, rt};
+        let vault = self.held_vault();
+        let account = self.account(id)?;
+        if account.realm != realm::VNG || account.user_id <= 0 {
+            return Err(Fail::user(l::t("Account not found.")));
+        }
+        if account.cookie.is_empty() || account.cookie_valid == Some(false) {
+            return Err(Fail::user(l::t("Sign in again")));
+        }
+        let value = rt::blocking(move || vng_panel::load(&panel, account.user_id, &account.cookie)).await?;
+        let same_vault = match (vault, self.held_vault()) {
+            (Some(before), Some(now)) => std::sync::Arc::ptr_eq(&before, &now),
+            _ => false,
+        };
+        if !same_vault || self.find_account(id).is_none() {
+            return Err(Fail::user(l::t("Account not found.")));
+        }
+        Ok(value)
+    }
+
     /// robloxSignIn { id }: that account's sign-in (Friends looks through one account); without it, the app's pick: the
     /// main account when it has a good sign-in, else any roblox.com account's (as the app's own calls use). Its ids go
     /// with it, so the window knows whose it holds.

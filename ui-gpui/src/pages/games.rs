@@ -1,10 +1,10 @@
 // Games: the games Bloxkeep's bot names (each with its wiki, some with news or a price list) as cards in their own
 // pictures: yours first (followed, news unread, played here), then the popular ones. Opened, a game has its page: its
-// picture with Follow, Wiki and its roblox.com page on top, Roblox's figures under it, then Overview (your accounts in it
-// over 7 days, the hours it is quiet, what it is: the old Game info), its News and its Prices. Since 2026-11-09 the
+// picture with Follow and its roblox.com page on top, Roblox's figures under it, then Overview (your accounts in it
+// over 7 days, the hours it is quiet, what it is: the old Game info), its News, Prices and Wiki. Since 2026-11-09 the
 // old Game info page lives here (Home opens a game on it). The rules are GamesView.tsx's: a game shows only with the
 // wiki the bot names; the commands are the app's (wikiGames, feedCards, playedGames, gameLooks, gameDetails, wikiGame,
-// feedFollow, feedRead, feedSeen, wikiOpen, openGameWiki, openGamePage, feedOpen, launch).
+// feedFollow, feedRead, feedSeen, wikiOpen, openGamePage, feedOpen, launch).
 use std::collections::{HashMap, HashSet};
 
 use gpui_kit::component::carousel::{Carousel, CarouselContent, CarouselItem, CarouselState};
@@ -17,7 +17,7 @@ use crate::{
     kit::*,
     pages::{Page, home::clean},
     roblox,
-    shell::Root,
+    shell::{HomeTab, Root},
     theme::*,
 };
 
@@ -73,7 +73,7 @@ pub fn views(root: &Root, cx: &mut Context<Root>) -> impl IntoElement {
         Some(Ok(l)) => l.iter().filter(|f| f.kind == 2).count(),
         _ => 0,
     };
-    let unread = (root.games.corner.unread.0 + root.games.corner.unread.1).max(0) as usize;
+    let unread = if crate::pages::tabs::is_vng(root) { 0 } else { (root.games.corner.unread.0 + root.games.corner.unread.1).max(0) as usize };
     let fresh = root.profile.watch.iter().any(|w| w.fresh);
     // (view, icon, words, a count beside it and its colour, a dot)
     let items: [(View, &str, &str, usize, u32, bool); 9] = [
@@ -122,6 +122,7 @@ pub fn views(root: &Root, cx: &mut Context<Root>) -> impl IntoElement {
                 .on_click(move |_, _, cx| {
                     let _ = this.update(cx, |r, cx| {
                         r.games.view = view;
+                        r.games.home_library = None;
                         r.friends.menu = false;
                         cx.notify();
                     });
@@ -337,6 +338,7 @@ pub fn brand(root: &Root) -> Div {
 #[derive(Default)]
 pub struct Data {
     pub view: View,
+    pub home_library: Option<HomeTab>,
     /// The capsule's open moment, if any (Live).
     pub live: Option<Live>,
     /// Over every Roblox page: the account's Robux, what is unread and whether Roblox holds it (corner, held_bar).
@@ -357,8 +359,12 @@ pub struct Data {
     pub open: Option<Open>,
     pub tab: Tab,
     pub about: bool,
+    social: Option<GameSocial>,
+    community: Option<GameCommunity>,
     /// The game page's scroll (a shot scrolls it down with BLOXKEEP_SHOT_SCROLL).
     pub page_scroll: ScrollHandle,
+    join_search: Option<Entity<InputState>>,
+    join_scroll: ScrollHandle,
     pub kind: Option<String>,
     /// A game's news: only this source's posts (none: every source).
     pub source: Option<String>,
@@ -443,6 +449,148 @@ pub struct Data {
     /// words asked and the answer, None while it comes.
     switch_found: Option<(String, Option<Result<Vec<roblox::Game>, String>>)>,
     switch_typed: u64,
+}
+
+struct GameSocial {
+    universe: i64,
+    viewer: String,
+    asked: std::time::Instant,
+    links: Vec<Value>,
+}
+
+fn social_viewer(root: &Root) -> Option<&str> {
+    let eligible = crate::pages::friends::able_ref(root);
+    match root.friends.account.as_deref() {
+        Some(id) => eligible.into_iter().find(|a| s(a, "id") == id).map(|a| s(a, "id")),
+        None => eligible.first().map(|a| s(a, "id")),
+    }
+}
+
+fn community_viewer(root: &Root) -> &str {
+    let (_, viewer) = crate::pages::friends::looking_ref(root);
+    viewer.filter(|a| s(a, "realm").is_empty()).map_or("", |a| s(a, "id"))
+}
+
+struct GameCommunity {
+    group: i64,
+    viewer: String,
+    request: std::time::Instant,
+    busy: bool,
+    data: Option<Value>,
+    error: Option<String>,
+}
+
+fn request_community(root: &mut Root, group: i64, action: &'static str, cx: &mut Context<Root>) {
+    let Some(link) = root.link.clone() else { return };
+    let viewer = community_viewer(root).to_string();
+    let data = root.games.community.take().filter(|p| p.group == group && p.viewer == viewer).and_then(|p| p.data);
+    let request = std::time::Instant::now();
+    root.games.community = Some(GameCommunity { group, viewer: viewer.clone(), request, busy: true, data, error: None });
+    let rx = link.call("gameCommunity", json!({ "id": viewer, "groupId": group, "action": action }));
+    cx.spawn(async move |this, cx| {
+        let result = rx.await;
+        let _ = this.update(cx, |r, cx| {
+            let unavailable = r.tr("gp.communityError");
+            let Some(p) = r.games.community.as_mut().filter(|p| p.request == request) else { return };
+            p.busy = false;
+            match result {
+                Ok(Ok(v)) => p.data = Some(v),
+                Ok(Err(e)) => p.error = Some(e.to_string()),
+                Err(_) => p.error = Some(unavailable),
+            }
+            cx.notify();
+        });
+    }).detach();
+    cx.notify();
+}
+
+fn open_community(root: &mut Root, group: i64, cx: &mut Context<Root>) {
+    if root.games.community.as_ref().is_some_and(|p| p.group == group && p.viewer == community_viewer(root)) {
+        root.games.community = None;
+        cx.notify();
+    } else {
+        request_community(root, group, "", cx);
+    }
+}
+
+fn community_panel(root: &Root, group: i64, cx: &mut Context<Root>) -> Option<Div> {
+    let p = root.games.community.as_ref().filter(|p| p.group == group && p.viewer == community_viewer(root))?;
+    let data = p.data.as_ref().unwrap_or(&Value::Null);
+    let title = s(data, "name");
+    let head = section_head(if title.is_empty() { root.tr("gp.communityTitle") } else { title.to_string() }, None)
+        .child(IconButton::new("gp-community-close", "x").size(30.).tip(root.tr("common.close")).on_click(cx.listener(|r, _, _, cx| {
+            r.games.community = None;
+            cx.notify();
+        })));
+    let state = s(data, "state");
+    let viewer = root.accounts().iter().find(|a| s(a, "id") == p.viewer).map(crate::pages::accounts::label);
+    let mut panel = surface().p(px(16.)).flex().flex_col().gap(px(9.)).child(head);
+    if let Some(n) = data["members"].as_i64() {
+        panel = panel.child(div().text_size(px(T_S)).text_color(c(MUTED)).child(
+            root.i18n.tv("gp.communityMembers", &[("n", &thousands(n, root.i18n.vietnamese))])));
+    }
+    if !s(data, "description").is_empty() {
+        panel = panel.child(div().text_size(px(T_M)).line_clamp(3).text_color(c(TEXT_2)).child(s(data, "description").to_string()));
+    }
+    let mut actions = div().flex().flex_wrap().items_center().gap(px(8.)).text_size(px(T_S)).text_color(c(MUTED));
+    if let Some(viewer) = viewer {
+        actions = actions.child(root.i18n.tv("gp.communityAs", &[("name", &viewer)]));
+    }
+    match state {
+        "join" => {
+            actions = actions.child(Button::new("gp-community-join", root.tr(if data["approval"] == true { "gp.communityRequest" } else { "gp.communityJoin" }))
+                .small().disabled(p.busy).on_click(cx.listener(move |r, _, _, cx| request_community(r, group, "join", cx))));
+        }
+        "member" => {
+            let group_name = title.to_string();
+            let id = p.viewer.clone();
+            actions = actions.child(Button::new("gp-community-leave", root.tr("gp.communityLeave")).small().disabled(p.busy)
+                .on_click(cx.listener(move |r, _, window, cx| {
+                    let id = id.clone();
+                    r.confirm(r.tr("gp.communityLeave"), group_name.clone(), r.tr("gp.communityLeave"), true, None, window, cx, move |r, cx| {
+                        if community_viewer(r) == id {
+                            request_community(r, group, "leave", cx);
+                        }
+                    });
+                })));
+        }
+        "pending" => actions = actions.child(root.tr("gp.communityPending")),
+        "owner" => actions = actions.child(root.tr("gp.communityOwner")),
+        "guest" => actions = actions.child(root.tr("gp.communityGuest")),
+        _ => {}
+    }
+    if p.busy {
+        actions = actions.child(spinner(13., c(MUTED))).child(root.tr("av.reading"));
+    } else if p.error.is_some() {
+        actions = actions.child(Button::new("gp-community-retry", root.tr("srv.retry")).small()
+            .on_click(cx.listener(move |r, _, _, cx| request_community(r, group, "", cx))));
+    }
+    Some(panel.child(actions).when_some(p.error.clone(), |d, text| d.child(div().text_size(px(T_S)).text_color(c(BAD)).child(text))))
+}
+
+fn want_social(r: &mut Root, universe: i64, link: &crate::link::Link, cx: &mut Context<Root>) {
+    let Some(viewer) = social_viewer(r).filter(|_| universe > 0).map(str::to_string) else { return };
+    let same = |social: &GameSocial| social.universe == universe && social.viewer == viewer;
+    if r.games.social.as_ref().is_some_and(|social| same(social) && social.asked.elapsed().as_secs() < 90) {
+        return;
+    }
+    let asked = std::time::Instant::now();
+    let links = r.games.social.take().filter(same).map_or_else(Vec::new, |social| social.links);
+    r.games.social = Some(GameSocial { universe, viewer: viewer.clone(), asked, links });
+    let generation = r.games.sign_gen;
+    let rx = link.call("gameSocialLinks", json!({ "id": viewer, "universeId": universe }));
+    cx.spawn(async move |this, cx| {
+        let links = rx.await.ok().and_then(Result::ok).and_then(|v| v.as_array().cloned());
+        let _ = this.update(cx, |r, cx| {
+            if r.games.sign_gen == generation
+                && let Some(social) = &mut r.games.social
+                && social.asked == asked
+            {
+                social.links = links.unwrap_or_default();
+                cx.notify();
+            }
+        });
+    }).detach();
 }
 
 /// A game card's ground reaches this far past its picture (it eases in under the mouse); cards stand so close that
@@ -904,6 +1052,12 @@ pub fn want(r: &mut Root, cx: &mut Context<Root>) {
     // (Its events once more here: the sign-in may come after the details did.)
     if let Some(universe) = r.games.details.get(&place).map(|v| int(v, "universe")).filter(|_| place > 0) {
         want_events(r, place, universe, cx);
+        if r.games.tab == Tab::Overview {
+            want_social(r, universe, &link, cx);
+        }
+    }
+    if place > 0 && !r.games.stays.contains_key(&place) {
+        settle_stays(r, place);
     }
     if place > 0 && r.games.asked_details.insert(place) {
         let rx = link.call("gameDetails", json!({ "placeId": place }));
@@ -929,19 +1083,6 @@ pub fn want(r: &mut Root, cx: &mut Context<Root>) {
                     }
                 });
             }
-        })
-        .detach();
-        // The stays as they are now, for the page's accounts (the list read for Home may be minutes old).
-        let rx = link.call("playSessions", json!({}));
-        cx.spawn(async move |this, cx| {
-            let got = rx.await.ok().and_then(Result::ok);
-            let _ = this.update(cx, |r, cx| {
-                if let Some(raw) = got.filter(|v| v.is_object()) {
-                    r.games.history = Some(raw);
-                    settle_stays(r, place);
-                    cx.notify();
-                }
-            });
         })
         .detach();
     }
@@ -1009,6 +1150,24 @@ pub fn want(r: &mut Root, cx: &mut Context<Root>) {
 pub fn settle_words(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
     settle_switch(r, window, cx);
     settle_link(r, window, cx);
+    if !r.games.picking.as_ref().zip(r.games.open.as_ref()).is_some_and(|((game, _), open)| *game == open.id) {
+        r.games.join_search = None;
+    } else if r.games.join_search.is_none() {
+        let search = cx.new(|cx| InputState::new(window, cx).placeholder(r.tr("gp.pickSearch")));
+        cx.subscribe(&search, |r: &mut Root, _, event: &InputEvent, cx| {
+            if matches!(event, InputEvent::Change) {
+                r.games.join_scroll.set_offset(point(px(0.), px(0.)));
+                cx.notify();
+            }
+        }).detach();
+        r.games.join_scroll.set_offset(point(px(0.), px(0.)));
+        // Hidden shots use the same editor Change event as typed input.
+        #[cfg(feature = "shot")]
+        if let Ok(query) = std::env::var("BLOXKEEP_SHOT_JOIN_QUERY") {
+            search.update(cx, |input, cx| input.replace_all(query, window, cx));
+        }
+        r.games.join_search = Some(search);
+    }
     let Some((game, words)) = r.games.words_want.borrow_mut().take() else { return };
     r.games.words_for = Some(game);
     r.games.words_saved = words.clone();
@@ -1297,15 +1456,7 @@ fn event_page(id: &str, cx: &mut Context<Root>) -> impl Fn(&ClickEvent, &mut Win
 /// Accounts page ticked.
 fn join_event(r: &mut Root, cx: &mut Context<Root>) {
     let Some(open) = r.games.open.as_ref().map(|o| o.id.clone()) else { return };
-    let picked: HashSet<String> = r
-        .accounts()
-        .iter()
-        .filter(|a| crate::pages::accounts::can_play(a))
-        .filter_map(|a| a.get("id").and_then(Value::as_str))
-        .filter(|id| r.selected.contains(*id))
-        .map(str::to_string)
-        .collect();
-    r.games.picking = Some((open, picked));
+    r.games.picking = Some((open, preselected_join_accounts(r)));
     r.games.pick_job = None;
     r.games.pick_link = None;
     r.games.pick_place = None;
@@ -1510,13 +1661,19 @@ fn gallery(root: &Root, place: i64, width: f32, cx: &mut Context<Root>) -> Optio
 /// A game's accounts over 7 days, summed here from the raw stays once both they and the game's details (which name
 /// its universe) are in: history::game_accounts, rows shaped as the app's gameDetails gave them. An account still in
 /// the app goes by its name there; one deleted, by the name its last stay kept.
+pub fn set_play_history(r: &mut Root, raw: Value) {
+    r.games.history = Some(raw);
+    r.games.stays.clear();
+    if let Some(place) = shown_place(r) {
+        settle_stays(r, place);
+    }
+}
+
 fn settle_stays(r: &mut Root, place: i64) {
-    let (Some(raw), Some(details)) = (&r.games.history, r.games.details.get(&place)) else { return };
+    let Some(raw) = &r.games.history else { return };
     let (sessions, known, now) = crate::history::read(raw);
-    let universe = match int(details, "universe") {
-        0 => crate::history::universe_of(&sessions, &known, place),
-        u => u,
-    };
+    let universe = r.games.details.get(&place).map(|d| int(d, "universe")).filter(|u| *u > 0)
+        .unwrap_or_else(|| crate::history::universe_of(&sessions, &known, place));
     let bans = crate::history::bans(raw);
     let rows: Vec<Value> = crate::history::game_accounts(&sessions, &known, place, universe, now)
         .into_iter()
@@ -1539,8 +1696,14 @@ impl Data {
     /// The vault or its accounts changed: the sign-in lent for the charts may be another vault's (or none was lent
     /// while there was no account), so it is asked again, with the rows it got.
     pub fn forget_sign_in(&mut self) {
+        self.community = None;
         // (A reply still on its way is for the sign-in before: it is dropped.)
         self.sign_gen += 1;
+        self.social = None;
+        self.history = None;
+        self.stays.clear();
+        self.continued = None;
+        self.continued_at = None;
         if !self.asked_cookie {
             return;
         }
@@ -1554,17 +1717,26 @@ impl Data {
 }
 
 /// Roblox's charts: a sign-in from the app first, then the rows, then the row shown, then the icons of what's shown.
-/// Roblox's "Continue" row for the account whose tab is shown, asked when it changes and every five minutes.
+/// Roblox's "Continue" row supplements the local history, including games played on another device.
 fn want_continue(r: &mut Root, cx: &mut Context<Root>) {
-    let Some((_, user, cookie)) = crate::pages::friends::signed(r) else { return };
-    if cookie.is_empty() || r.games.continued_at.is_some_and(|(u, t)| u == user && t.elapsed().as_secs() < 300) {
+    let Some((id, user, cookie)) = crate::pages::friends::signed(r) else { return };
+    if r.games.open.is_some() || r.games.view != View::Games || cookie.is_empty()
+        || r.games.continued_at.is_some_and(|(u, t)| u == user && t.elapsed().as_secs() < 90)
+    {
         return;
     }
-    r.games.continued_at = Some((user, std::time::Instant::now()));
+    let asked_at = std::time::Instant::now();
+    let sign_gen = r.games.sign_gen;
+    r.games.continued_at = Some((user, asked_at));
     let rx = roblox::run(move || roblox::continue_games(&cookie));
     cx.spawn(async move |this, cx| {
         let got = rx.await.unwrap_or_else(|_| Err(String::new()));
         let _ = this.update(cx, |r, cx| {
+            if r.games.sign_gen != sign_gen || r.games.continued_at != Some((user, asked_at))
+                || crate::pages::friends::signed(r).is_none_or(|(active, _, _)| active != id)
+            {
+                return;
+            }
             let places: Vec<i64> = got.as_ref().map(|l| l.iter().map(|g| g.place).collect()).unwrap_or_default();
             // (A failed read keeps the last good list of the same account.)
             if got.is_ok() || r.games.continued.as_ref().is_none_or(|(u, _)| *u != user) {
@@ -1770,6 +1942,7 @@ pub fn search(r: &mut Root, cx: &mut Context<Root>) {
     r.go(Page::Games);
     r.games.open = None;
     r.games.view = View::Games;
+    r.games.home_library = None;
     r.games.found = Some((q.clone(), None));
     cx.notify();
     let ask = q.clone();
@@ -1915,6 +2088,7 @@ fn corner(root: &Root, cx: &mut Context<Root>) -> Option<impl IntoElement> {
 /// Roblox holds the account: what and until when, the moderator's note, and what can be done from here: "I agree"
 /// when Roblox lets it back (a warning, a ban run out), else its appeal page or Roblox's own page, signed in as it.
 fn held_bar(root: &Root, cx: &mut Context<Root>) -> Option<impl IntoElement> {
+    crate::pages::friends::signed(root)?;
     let k = &root.games.corner;
     let h = k.held.as_ref()?;
     let (_, viewer) = crate::pages::friends::looking_ref(root);
@@ -2001,6 +2175,9 @@ pub fn games(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElemen
             // (On the panel's own ground: 6 % of the game's colour under it all turned the page brown, see kit::block_tones.)
             shell.child(page(root, &all, o, width, cx)).into_any_element()
         }
+        None if crate::pages::tabs::is_vng(root) && super::vng::title(root.games.view).is_some() => {
+            super::vng::page(root, cx).into_any_element()
+        }
         None if root.games.view == View::Friends => crate::pages::friends::friends(root, width, cx).into_any_element(),
         None if root.games.view == View::Avatar => crate::pages::avatar::avatar(root, width, cx).into_any_element(),
         None if root.games.view == View::Profile => crate::pages::profile::profile(root, width, cx).into_any_element(),
@@ -2009,14 +2186,19 @@ pub fn games(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElemen
         None if root.games.view == View::Settings => crate::pages::rsettings::page(root, width, cx).into_any_element(),
         None if root.games.view == View::Mods => crate::pages::mods::page(root, width, cx).into_any_element(),
         None if root.games.view == View::Servers => crate::pages::owned::page(root, width, cx).into_any_element(),
-        None => shell.child(grid(root, &all, width, cx)).into_any_element(),
+        None => match root.games.home_library {
+            Some(tab) => shell.child(super::home::library(root, tab, width, cx)).into_any_element(),
+            None => shell.child(grid(root, &all, width, cx)).into_any_element(),
+        },
     };
     // (The page is built: what is drawn after it, a dialog or another window, is no game's.)
     set_game_tint(None);
     // The account tabs over it all (pages/tabs.rs): what is under them is the tab shown.
     // (Robux and the bell at the strip's right, as Roblox's top bar; over the page, Roblox holding the account.)
-    let top = div().flex_none().flex().items_center().gap(px(8.)).child(crate::pages::tabs::strip(root, cx)).child(div().flex_1()).children(corner(root, cx));
-    div().size_full().flex().flex_col().gap(px(8.)).child(top).children(held_bar(root, cx)).child(div().flex_1().min_h_0().child(content))
+    let top = div().flex_none().flex().items_center().gap(px(8.)).child(crate::pages::tabs::strip(root, width, cx)).child(div().flex_1()).children(corner(root, cx));
+    div().size_full().flex().flex_col().gap(px(8.)).child(top)
+        .when(crate::pages::tabs::is_vng(root) && (root.games.view == View::Games || root.games.open.is_some()), |d| d.child(div().flex_none().px(px(12.)).py(px(8.)).rounded(px(R_M)).bg(ca(ONLINE, 0.08)).text_size(px(T_S)).text_color(c(TEXT_2)).child(root.tr("tabs.vngBrowse"))))
+        .children(held_bar(root, cx)).child(div().flex_1().min_h_0().child(content))
 }
 
 fn grid(root: &Root, all: &[Game], width: f32, cx: &mut Context<Root>) -> impl IntoElement {
@@ -2262,8 +2444,7 @@ fn friends_strip(root: &Root, width: f32, cx: &mut Context<Root>) -> Option<AnyE
 
 /// The games this PC's accounts play now and played lately (Home's list), wide pictures on the page's grid (Home's
 /// tiles): a click opens the game's page. Running ones say how many windows; the others, the hours played.
-/// Keep playing's games: those running here first, then Roblox's own "Continue" row of the account whose tab is
-/// shown (every game it played, wherever), then what Bloxkeep launched for the other accounts. Hours are this PC's.
+/// Keep playing shows open and recently played local games before supplementing them with Roblox's Continue list.
 fn keep_list(root: &Root) -> Vec<crate::pages::home::Game> {
     use crate::pages::home::{clean, Game as HomeGame};
     let here = crate::pages::home::games(root);
@@ -2272,8 +2453,7 @@ fn keep_list(root: &Root) -> Vec<crate::pages::home::Game> {
     };
     let user = crate::pages::friends::signed(root).map(|s| s.1);
     let Some(Ok(cont)) = root.games.continued.as_ref().filter(|(u, _)| Some(*u) == user).map(|(_, l)| l) else { return here };
-    let (running, rest): (Vec<HomeGame>, Vec<HomeGame>) = here.into_iter().partition(|g| !g.accounts.is_empty());
-    let mut out = running;
+    let (mut out, rest): (Vec<HomeGame>, Vec<HomeGame>) = here.into_iter().partition(|g| !g.accounts.is_empty() || g.last > 0.);
     for g in cont {
         if !out.iter().any(|x| x.place == g.place) {
             let (h, last) = hours(g.place);
@@ -2344,8 +2524,8 @@ fn played(root: &Root, g: &crate::pages::home::Game) -> (String, bool) {
     let running = !g.accounts.is_empty();
     let sub = if running {
         root.i18n.tv("home.runningN", &[("n", &g.accounts.len().to_string())])
-    } else if g.hours >= 1. {
-        root.i18n.tv("home.hours", &[("n", &thousands(g.hours.round() as i64, root.i18n.vietnamese))])
+    } else if g.hours > 0. {
+        crate::pages::home::played_time(root, g.hours)
     } else {
         root.tr("home.recentShort")
     };
@@ -3176,7 +3356,7 @@ fn page(root: &Root, all: &[Game], open: Open, width: f32, cx: &mut Context<Root
         Tab::News => news(root, game.and_then(|g| g.news.clone()).unwrap_or(Value::Null), inner, cx).into_any_element(),
         Tab::Prices => prices(root, &open.id, inner, cx).into_any_element(),
         Tab::Passes => crate::pages::passes::view(root, width, cx),
-        Tab::Servers => crate::pages::servers::view(root, inner, cx),
+        Tab::Servers => crate::pages::servers::view(root, details.map_or(0, |d| int(d, "rootPlaceId")), inner, cx),
         Tab::Wiki => crate::pages::wiki::view(root, inner, cx),
     };
 
@@ -3187,30 +3367,31 @@ fn page(root: &Root, all: &[Game], open: Open, width: f32, cx: &mut Context<Root
             .gap(px(18.))
             .pb(px(28.))
             .child(hero(root, all, game, details, &open, &name, place, width, cx))
+            .children(details.and_then(|d| community_panel(root, int(d, "creatorGroupId"), cx))
+                .map(|panel| div().px(px(PAD + 4.)).child(panel)))
             .when_some(root.games.picking.as_ref().filter(|(g, _)| *g == open.id).map(|(_, p)| p.clone()), |d, ticked| {
                 d.child(div().px(px(PAD + 4.)).child(join(root, place, ticked, cx)))
             })
-            // (Roblox's figures and the "just updated" note are in the hero now, open beside the picture: a strip of
-            // five boxed cells and a boxed note under it read as a plain HTML page, the owner 2026-11-15.)
             .when(!only_overview, |d| d.child(tabs))
             .child(div().px(px(PAD + 4.)).child(content)),
     ))
 }
 
-/// A server picked in the Servers tab: Play's row opens (the accounts picked on the Accounts page ticked, when they
-/// are free) and its Join goes into that server.
+fn preselected_join_accounts(root: &Root) -> HashSet<String> {
+    root.accounts()
+        .iter()
+        .filter(|account| crate::pages::accounts::can_join_game(account))
+        .filter_map(|account| account.get("id").and_then(Value::as_str))
+        .filter(|id| crate::pages::tabs::play_selected(root, id))
+        .map(str::to_owned)
+        .collect()
+}
+
+/// A server picked in the Servers tab: open Play's account picker for that server.
 pub fn pick_for_server(r: &mut Root, job: String) {
     let Some(open) = r.games.open.as_ref().map(|o| o.id.clone()) else { return };
     if !r.games.picking.as_ref().is_some_and(|(g, _)| *g == open) {
-        let picked: HashSet<String> = r
-            .accounts()
-            .iter()
-            .filter(|a| crate::pages::accounts::can_play(a))
-            .filter_map(|a| a.get("id").and_then(Value::as_str))
-            .filter(|id| r.selected.contains(*id))
-            .map(str::to_string)
-            .collect();
-        r.games.picking = Some((open, picked));
+        r.games.picking = Some((open, preselected_join_accounts(r)));
     }
     r.games.pick_job = Some(job);
     r.games.pick_place = None;
@@ -3220,22 +3401,23 @@ pub fn pick_for_server(r: &mut Root, job: String) {
 
 /// Play's row: the free accounts as ticks, then Join with those ticked.
 fn join(root: &Root, place: i64, ticked: HashSet<String>, cx: &mut Context<Root>) -> impl IntoElement {
-    use crate::pages::accounts::{avatar, can_play, label};
+    use crate::pages::accounts::{avatar, can_join_game, is_local, label};
     // Not the ones this game has banned (its Overview says Banned for them).
     let banned: HashSet<String> = root
         .games
-        .details
+        .stays
         .get(&place)
-        .and_then(|d| d.get("accounts"))
-        .and_then(Value::as_array)
         .map(|l| l.iter().filter(|a| s(a, "now") == "banned").map(|a| s(a, "id").to_string()).collect())
         .unwrap_or_default();
-    let free: Vec<Value> = root.accounts().iter().filter(|a| can_play(a) && !banned.contains(s(a, "id"))).cloned().collect();
-    let ids: Vec<String> = free.iter().filter_map(|a| a.get("id").and_then(Value::as_str)).map(str::to_string).collect();
+    let eligible: Vec<&Value> = root.accounts().iter().filter(|a| can_join_game(a) && !banned.contains(s(a, "id"))).collect();
+    let ids: Vec<String> = eligible.iter().filter_map(|a| a.get("id").and_then(Value::as_str)).map(str::to_string).collect();
     let n = ids.iter().filter(|i| ticked.contains(*i)).count();
-    let all_on = n > 0 && n == ids.len();
+    let query = root.games.join_search.as_ref().map(|search| search.read(cx).value().trim().to_string()).unwrap_or_default();
+    let rows: Vec<_> = eligible.into_iter().filter(|account| crate::pages::accounts::found(account, &query)).collect();
+    let visible: Vec<String> = rows.iter().map(|account| s(account, "id").to_string()).collect();
+    let all_on = !visible.is_empty() && visible.iter().all(|id| ticked.contains(id));
     let mut chips = div().flex().flex_wrap().gap(px(8.));
-    for (i, a) in free.iter().enumerate() {
+    for (i, a) in rows.into_iter().enumerate() {
         let id = s(a, "id").to_string();
         let on = ticked.contains(&id);
         chips = chips.child(
@@ -3252,7 +3434,9 @@ fn join(root: &Root, place: i64, ticked: HashSet<String>, cx: &mut Context<Root>
                 .border_color(if on { ca(WHITE, 0.55) } else { ca(WHITE, 0.) })
                 .bg(if on { ca(WHITE, 0.1) } else { ca(WHITE, 0.04) })
                 .child(avatar(a, 28., RAISED, cx))
-                .child(div().text_size(px(T_M)).font_weight(FontWeight::MEDIUM).text_color(if on { c(TEXT) } else { c(TEXT_2) }).child(label(a)))
+                .max_w_full()
+                .child(div().min_w_0().truncate().max_w(px(220.)).text_size(px(T_M)).font_weight(FontWeight::MEDIUM).text_color(if on { c(TEXT) } else { c(TEXT_2) }).child(label(a)))
+                .when(is_local(a), |d| d.child(icon("monitor", 14., c(ONLINE))))
                 .when(on, |d| d.child(icon("check", 14., c(TEXT))))
                 .on_click(cx.listener(move |r, _, _, cx| {
                     if let Some((_, t)) = r.games.picking.as_mut() {
@@ -3269,16 +3453,24 @@ fn join(root: &Root, place: i64, ticked: HashSet<String>, cx: &mut Context<Root>
         .items_center()
         .gap(px(12.))
         .child(div().flex_1().min_w_0().text_size(px(T_H)).font_weight(FontWeight::SEMIBOLD).child(root.tr("gp.pickWho")))
-        .when(ids.len() > 1, |d| {
-            let all = ids.clone();
-            d.child(Check::new("gm-pick-all", all_on).label(root.tr("gp.pickAll")).on_toggle({
+        .flex_wrap()
+        .when(ids.len() > 1 && !visible.is_empty(), |d| {
+            let all = visible.clone();
+            let filtered = !query.is_empty();
+            d.child(Check::new("gm-pick-all", all_on).label(root.tr(if query.is_empty() { "gp.pickAll" } else { "gp.pickMatches" })).on_toggle({
                 let this = cx.entity().downgrade();
                 move |on, _, cx| {
                     let all = all.clone();
                     let on = *on;
                     let _ = this.update(cx, |r, cx| {
                         if let Some((_, t)) = r.games.picking.as_mut() {
-                            *t = if on { all.into_iter().collect() } else { HashSet::new() };
+                            if !filtered {
+                                *t = if on { all.into_iter().collect() } else { HashSet::new() };
+                            } else if on {
+                                t.extend(all);
+                            } else {
+                                t.retain(|id| !all.contains(id));
+                            }
                         }
                         cx.notify();
                     });
@@ -3318,8 +3510,21 @@ fn join(root: &Root, place: i64, ticked: HashSet<String>, cx: &mut Context<Root>
                 },
             )))
         });
-    let body = if !ids.is_empty() {
-        chips.into_any_element()
+    let body = if !ids.is_empty() && visible.is_empty() {
+        div().text_size(px(T_M)).text_color(c(MUTED)).child(root.tr("gp.pickNoMatch")).into_any_element()
+    } else if !ids.is_empty() {
+        let scroll = &root.games.join_scroll;
+        let inner_scroll = scroll.clone();
+        div().id("gm-pick-area").relative()
+            .on_scroll(move |_, _, cx| {
+                if inner_scroll.max_offset().y > px(0.) {
+                    cx.stop_propagation();
+                }
+            })
+            .child(div().id("gm-pick-accounts").max_h(px((root.window_h.get() * 0.30).clamp(112., 208.)))
+                .overflow_y_scroll().track_scroll(scroll).pr(px(12.)).child(chips))
+            .child(crate::pages::auto::scroll_bar("gm-pick-scroll", scroll))
+            .into_any_element()
     } else if root.accounts().is_empty() {
         div()
             .flex()
@@ -3331,9 +3536,15 @@ fn join(root: &Root, place: i64, ticked: HashSet<String>, cx: &mut Context<Root>
             .child(Button::new("gm-add", root.tr("gp.addAccount")).icon("plus").small().on_click(cx.listener(|r, _, _, cx| r.add_account(cx))))
             .into_any_element()
     } else {
-        div().text_size(px(T_M)).text_color(c(MUTED)).child(root.tr("gp.allBusy")).into_any_element()
+        div().text_size(px(T_M)).text_color(c(MUTED)).child(root.tr("gp.noneCanJoin")).into_any_element()
     };
-    surface().p(px(18.)).flex().flex_col().gap(px(14.)).child(head).child(body)
+    surface().p(px(18.)).flex().flex_col().gap(px(12.)).child(head)
+        .when(ids.len() > 8 || !query.is_empty(), |d| {
+            d.children(root.games.join_search.as_ref().map(|search| {
+                div().max_w(px(320.)).w_full().child(field(search, Some("search")).h(px(34.)))
+            }))
+        })
+        .child(body)
 }
 
 fn tab_button(t: Tab, icon_name: &'static str, label: String, on: bool) -> Hot {
@@ -3355,12 +3566,10 @@ fn tab_button(t: Tab, icon_name: &'static str, label: String, on: bool) -> Hot {
 /// The open game's name, as a button to any other game (GamesView.tsx's Switcher): a list of them, found by name in a
 /// box above 6, the one open ticked; one picked opens. Alone (no other game), the name is only words.
 fn switcher(root: &Root, all: &[Game], open: &Open, name: &str, width: f32, cx: &mut Context<Root>) -> AnyElement {
-    // (In the game's own colours, as its logo is.)
+    // The title belongs to the experience, while wiki artwork belongs on its own tab.
     let own = all.iter().find(|g| g.id == open.id).and_then(|g| icon_of(root, g)).or_else(|| look(root, open.place, "icon"));
-    let title = match logo_img(root, open.place, name, if width < 900. { 64. } else { 96. }, 440., cx) {
-        Some(logo) => div().min_w_0().flex().items_center().child(logo),
-        None => div().min_w_0().text_size(px(if width < 900. { 32. } else { 42. })).font_weight(FontWeight::BOLD).line_height(px(50.)).truncate().child(game_name(name.to_string(), own.as_deref(), cx)),
-    };
+    let title = div().min_w_0().text_size(px(if width < 900. { 32. } else { 42. })).font_weight(FontWeight::BOLD)
+        .line_height(px(50.)).truncate().child(game_name(name.to_string(), own.as_deref(), cx));
     if !all.iter().any(|g| g.id != open.id) {
         return title.into_any_element();
     }
@@ -3480,22 +3689,38 @@ fn hero(root: &Root, all: &[Game], game: Option<&Game>, details: Option<&Value>,
     // While the wide picture isn't there (not loaded yet, or the game has none): the game's own colour from its icon,
     // not a blank dark band.
     let ground = if cover.is_none() { badge.as_deref().and_then(|u| images::tone(u, cx)) } else { None };
-    let mut facts: Vec<String> = Vec::new();
-    if let Some(d) = details {
-        facts.extend([s(d, "creator"), s(d, "genre")].into_iter().filter(|x| !x.is_empty()).map(str::to_string));
-    }
-    // (Only who makes it and its kind: where its news, wiki and values come from is said on their own tabs. Eight
-    // facts in a row, sources and a web address among them, read cheap: the owner, 2026-11-14.)
     let mut line = div().flex().flex_wrap().items_center().gap(px(8.)).text_size(px(T_M)).text_color(c(TEXT_2));
-    for (i, f) in facts.into_iter().enumerate() {
-        if i > 0 {
-            line = line.child(sep());
+    if let Some(d) = details {
+        let creator = s(d, "creator");
+        let genre = s(d, "genre");
+        if !creator.is_empty() {
+            let group = int(d, "creatorGroupId");
+            let author = div().flex().items_center().gap(px(5.)).child(creator.to_string())
+                .when(d.get("creatorVerified").and_then(Value::as_bool) == Some(true), |row| {
+                    let tip: SharedString = root.tr("gp.creatorVerified").into();
+                    row.child(div().id("gm-creator-verified").flex_none().size(px(16.)).flex().items_center().justify_center()
+                        .child(div().absolute().size(px(8.)).bg(c(WHITE)))
+                        .child(icon("creatorVerified", 16., rgb(0x335fff).into()))
+                        .tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into()))
+                });
+            line = if group > 0 {
+                let tip: SharedString = root.tr("gp.openCommunity").into();
+                line.child(hot("gm-creator-community").flex().items_center().gap(px(4.)).tab_index(0)
+                    .cursor_pointer().hover(|d| d.text_color(c(TEXT)))
+                    .tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into())
+                    .on_click(cx.listener(move |r, _, _, cx| open_community(r, group, cx)))
+                    .child(author).child(icon("chevronRight", 12., c(MUTED))))
+            } else {
+                line.child(author)
+            };
         }
-        line = line.child(f);
+        if !genre.is_empty() {
+            line = line.when(!creator.is_empty(), |d| d.child(sep())).child(genre.to_string());
+        }
     }
     // Yours in it, from the Overview's rows (7 days): how many play it now, your time in it, when last.
     let rows: Vec<Value> = if place > 0 {
-        root.games.stays.get(&place).cloned().unwrap_or_else(|| details.and_then(|d| d.get("accounts")).and_then(Value::as_array).cloned().unwrap_or_default())
+        root.games.stays.get(&place).cloned().unwrap_or_default()
     } else {
         Vec::new()
     };
@@ -3544,22 +3769,11 @@ fn hero(root: &Root, all: &[Game], game: Option<&Game>, details: Option<&Value>,
     let news = game.and_then(|g| g.news.clone());
     let follow_on = news.as_ref().and_then(|n| n.get("followed")).and_then(Value::as_bool).unwrap_or(false);
     let game_id = open.id.clone();
-    let wiki = game.and_then(|g| g.wiki.clone());
-    let wiki_name = name.to_string();
-    let mut acts = div().flex().flex_none().items_center().gap(px(8.));
+    let mut acts = div().flex().flex_wrap().items_center().gap(px(8.));
     if place > 0 {
         let (id, picking) = (open.id.clone(), root.games.picking.as_ref().is_some_and(|(g, _)| *g == open.id));
         acts = acts.child(Button::new("gm-play", root.tr("gp.play")).icon("play").primary().on_click(cx.listener(move |r, _, _, cx| {
-            // The accounts picked on the Accounts page start ticked, when they are free.
-            let picked: HashSet<String> = r
-                .accounts()
-                .iter()
-                .filter(|a| crate::pages::accounts::can_play(a))
-                .filter_map(|a| a.get("id").and_then(Value::as_str))
-                .filter(|id| r.selected.contains(*id))
-                .map(str::to_string)
-                .collect();
-            r.games.picking = if picking { None } else { Some((id.clone(), picked)) };
+            r.games.picking = if picking { None } else { Some((id.clone(), preselected_join_accounts(r))) };
             r.games.pick_job = None;
             r.games.pick_link = None;
             r.games.pick_place = None;
@@ -3571,7 +3785,7 @@ fn hero(root: &Root, all: &[Game], game: Option<&Game>, details: Option<&Value>,
         let n = in_now.len();
         let ids = in_now.clone();
         let game_name = name.to_string();
-        acts = acts.child(Button::new("gm-stop", format!("{} · {n}", root.tr("card.close"))).icon("power").on_click(cx.listener(move |r, _, window, cx| {
+        acts = acts.child(Button::new("gm-stop", format!("{} · {n}", root.tr("card.close"))).icon("power").quiet().on_click(cx.listener(move |r, _, window, cx| {
             let ids = ids.clone();
             let go = move |r: &mut Root, _: &mut Context<Root>| r.send("closeAccounts", json!({ "ids": ids, "force": false }));
             if n < 2 {
@@ -3583,7 +3797,7 @@ fn hero(root: &Root, all: &[Game], game: Option<&Game>, details: Option<&Value>,
         })));
     }
     if news.is_some() {
-        let b = Button::new("gm-follow", root.tr(if follow_on { "news.following" } else { "news.follow" })).icon(if follow_on { "check" } else { "plus" });
+        let b = Button::new("gm-follow", root.tr(if follow_on { "news.following" } else { "news.follow" })).icon(if follow_on { "check" } else { "bell" });
         acts = acts.child(if follow_on || place > 0 { b } else { b.primary() }.on_click(cx.listener(move |r, _, _, _| {
             r.send("feedFollow", json!({ "game": game_id, "on": !follow_on }))
         })));
@@ -3597,14 +3811,6 @@ fn hero(root: &Root, all: &[Game], game: Option<&Game>, details: Option<&Value>,
             cx.notify();
         })));
     }
-    // A wiki Bloxkeep knows opens here, on its tab; another is looked for in the browser.
-    acts = acts.child(Button::new("gm-wiki", root.tr("gp.wiki")).icon("book").on_click(cx.listener(move |r, _, _, cx| match &wiki {
-        Some(_) => {
-            r.games.tab = Tab::Wiki;
-            cx.notify();
-        }
-        None => r.send("openGameWiki", json!({ "name": wiki_name })),
-    })));
     if place > 0 {
         acts = acts.child(IconButton::new("gm-roblox", "external").size(36.).tip(root.tr("gp.roblox")).on_click(cx.listener(move |r, _, _, _| {
             r.send("openGamePage", json!({ "placeId": place }))
@@ -3616,9 +3822,10 @@ fn hero(root: &Root, all: &[Game], game: Option<&Game>, details: Option<&Value>,
         div()
             .id("gm-link")
             .flex()
+            .min_w_0()
             .items_center()
             .gap(px(8.))
-            .child(div().w(px(260.)).child(field(&e, Some("link")).h(px(36.))))
+            .child(div().w(px(260.)).min_w_0().child(field(&e, Some("link")).h(px(36.))))
             .child(Button::new("gm-link-join", root.tr("gp.linkJoin")).icon("logIn").on_click(cx.listener(|r, _, _, cx| {
                 join_link(r, cx);
                 cx.notify();
@@ -3632,11 +3839,11 @@ fn hero(root: &Root, all: &[Game], game: Option<&Game>, details: Option<&Value>,
     // 2026-11-15: "ảnh game lại nhỏ, trong khi nửa phải phần đầu còn trống".)
     // (The owner, 2026-11-15, again: "giống 1 trang html thuần": the picture leads now, near half the width, the
     // name, Roblox's figures and the buttons fill the other half; on a narrow window the picture goes on top.)
-    let wide = width >= 980.;
+    let wide = width >= 755.;
     // (At the tabs' and the parts' edge: 8 px in from them, the page's left edge was ragged.)
     let room = width - 2. * (PAD + 4.);
     // (Narrow, it goes on top at no more than 500 wide: at the full width it was 540 high and pushed the rest down.)
-    let pic_w = if wide { (room * 0.46).clamp(380., 780.) } else { room.min(500.) }.round();
+    let pic_w = if wide { (room * 0.45).clamp(315., 720.) } else { room.min(440.) }.round();
     let pic_h = (pic_w * 9. / 16.).round();
     let picture = look(root, place, "cover").and_then(|u| images::pic_at(&u, pic_w, pic_h, cx));
     let frame = div()
@@ -3648,20 +3855,33 @@ fn hero(root: &Root, all: &[Game], game: Option<&Game>, details: Option<&Value>,
         .when_some(ground, |d, t| d.bg(ca(t, 0.55)))
         .when(cover.is_none() && ground.is_none(), |d| d.bg(ca(WHITE, 0.04)))
         .when_some(picture, |d, p| d.child(img(p).size_full().object_fit(ObjectFit::Cover)));
-    let numbers = details.and_then(|d| figures(root, d));
     let note = details.and_then(|d| fresh(root, d)).map(|n| {
-        div().flex().items_start().gap(px(8.)).text_size(px(T_S)).line_height(px(18.)).text_color(c(TEXT_2)).child(icon("refresh", 14., c(WARN)).flex_none().mt(px(2.))).child(div().flex_1().min_w_0().child(n))
+        div().flex().items_start().gap(px(8.))
+            .text_size(px(T_S)).line_height(px(18.)).text_color(c(TEXT_2))
+            .child(icon("refresh", 14., c(WARN)).mt(px(2.)))
+            .child(div().flex_1().min_w_0().child(n))
+    });
+    let (engagement, activity) = details.map(|d| figures(root, d, note.is_none())).unwrap_or_default();
+    let footer = (activity.is_some() || link_row.is_some() || note.is_some()).then(|| {
+        div().flex().flex_col().gap(px(10.)).border_t_1().border_color(c(LINE)).pt(px(12.))
+            .child(div().flex().flex_wrap().items_center().justify_between().gap(px(14.))
+                .children(activity).children(link_row))
+            .children(note)
     });
     div()
         .flex_none()
         .flex()
         .flex_col()
-        .gap(px(14.))
+        .gap(px(18.))
         .px(px(PAD + 4.))
         .pt(px(14.))
         .pb(px(12.))
         .child(
-            div().flex().child(Button::new("gm-back", root.tr("news.title")).icon("chevronLeft").small().on_click(cx.listener(|r, _, _, cx| {
+            div().flex().child(Button::new("gm-back", root.tr(match root.games.home_library {
+                Some(HomeTab::Games) => "ui.myGames",
+                Some(HomeTab::Community) => "ui.community",
+                None => "news.title",
+            })).icon("chevronLeft").small().on_click(cx.listener(|r, _, _, cx| {
                 r.games.open = None;
                 cx.notify();
             }))),
@@ -3669,7 +3889,7 @@ fn hero(root: &Root, all: &[Game], game: Option<&Game>, details: Option<&Value>,
         .child(
             div()
                 .flex()
-                .map(|d| if wide { d.items_stretch().gap(px(36.)) } else { d.flex_col().gap(px(20.)) })
+                .map(|d| if wide { d.items_center().gap(px(32.)) } else { d.flex_col().gap(px(16.)) })
                 .child(frame)
                 .child(
                     div()
@@ -3677,21 +3897,23 @@ fn hero(root: &Root, all: &[Game], game: Option<&Game>, details: Option<&Value>,
                         .min_w_0()
                         .flex()
                         .flex_col()
-                        .gap(px(18.))
-                        .when(wide, |d| d.justify_between().py(px(4.)))
+                        .gap(px(20.))
                         .child(
                             div()
                                 .flex()
-                                .flex_col()
-                                .gap(px(10.))
-                                .child(div().flex().items_center().gap(px(14.)).child(game_icon(badge, name, 52., cx)).child(switcher(root, all, open, name, width, cx)))
-                                .child(line)
-                                .children(mine_line),
+                                .items_center()
+                                .gap(px(14.))
+                                .child(game_icon(badge, name, 60., cx))
+                                .child(div().flex_1().min_w_0().flex().flex_col().gap(px(3.))
+                                    .child(switcher(root, all, open, name, width, cx))
+                                    .child(line)),
                         )
-                        .children(numbers)
-                        .child(div().flex().flex_col().gap(px(14.)).children(note).child(div().flex().flex_wrap().items_center().gap(px(12.)).child(acts).children(link_row))),
+                        .child(acts)
+                        .children(engagement)
+                        .children(mine_line),
                 ),
         )
+        .children(footer)
 }
 
 pub fn thousands(n: i64, vi: bool) -> String {
@@ -3727,50 +3949,60 @@ fn ago_iso(root: &Root, iso: &str) -> Option<String> {
     crate::time::iso_secs(iso).map(|t| crate::time::ago(crate::time::now_secs() - t, &root.i18n))
 }
 
-/// Roblox's figures for the game, open beside its picture: each a large number with its word under it, the likes
-/// with their bar and thumbs (no boxes, no marks: the strip of five boxed cells, each with its icon square, read as a
-/// plain HTML page, the owner 2026-11-15). A figure Roblox didn't give is left out.
-fn figures(root: &Root, d: &Value) -> Option<Div> {
-    let f = |k: &str| d.get(k).and_then(Value::as_f64).unwrap_or(0.);
+/// The rating sits by the title. Activity figures are read in the footer beside the server field.
+fn figures(root: &Root, details: &Value, show_updated: bool) -> (Option<Div>, Option<Div>) {
+    let count = |key: &str| details.get(key).and_then(Value::as_i64).filter(|v| *v >= 0);
     let vi = root.i18n.vietnamese;
-    let mut cells: Vec<(String, String, Option<AnyElement>)> = Vec::new();
-    if f("playing") > 0. {
-        cells.push((root.tr("gp.playing"), thousands(f("playing") as i64, vi), None));
+    let mut engagement = Vec::new();
+    let mut activity = Vec::new();
+    if let Some(n) = count("favorites") {
+        engagement.push(figure_chip("star", root.tr("gp.favorites"), thousands(n, vi), false));
     }
-    if f("visits") > 0. {
-        cells.push((root.tr("gp.visits"), big(root, f("visits")), None));
+    let votes_up = count("upVotes");
+    let votes_down = count("downVotes");
+    let liked = details.get("likes").and_then(Value::as_f64).or_else(|| {
+        let (up, down) = (votes_up? as f64, votes_down? as f64);
+        (up + down > 0.).then(|| 100. * up / (up + down))
+    });
+    if votes_up.is_some() || votes_down.is_some() || liked.is_some() {
+        let rating = div().flex().items_center().gap(px(7.))
+            .when_some(votes_up, |d, n| d.child(figure_chip("like", String::new(), thousands(n, vi), true)))
+            .when_some(liked, |d, pct| d.child(div().px(px(2.)).text_size(px(T_S))
+                .font_weight(FontWeight::SEMIBOLD).font_features(tnum()).text_color(c(WARN))
+                .child(if votes_up.is_some() || votes_down.is_some() { format!("{pct:.0}%") } else { format!("{pct:.0}% {}", root.tr("gp.likes")) })))
+            .when_some(votes_down, |d, n| d.child(figure_chip("dislike", String::new(), thousands(n, vi), false)));
+        engagement.push(rating);
     }
-    if f("favorites") > 0. {
-        cells.push((root.tr("gp.favorites"), big(root, f("favorites")), None));
+    if let Some(n) = count("playing") {
+        activity.push(figure_value("users", root.tr("gp.playing"), thousands(n, vi), false));
     }
-    if let Some(l) = d.get("likes").and_then(Value::as_f64) {
-        let (up, down) = (f("upVotes"), f("downVotes"));
-        let bar = (up + down > 0.).then(|| {
-            div()
-                .flex()
-                .flex_col()
-                .gap(px(5.))
-                .child(div().w(px(116.)).h(px(3.)).rounded_full().bg(ca(WHITE, 0.1)).child(div().h_full().w(relative((up / (up + down)) as f32)).rounded_full().bg(c(OK))))
-                .child(div().text_size(px(T_S)).text_color(c(MUTED)).font_features(tnum()).child(root.i18n.tv("gp.votes", &[("up", &big(root, up)), ("down", &big(root, down))])))
-                .into_any_element()
-        });
-        cells.push((root.tr("gp.likes"), format!("{l:.0}%"), bar));
+    if let Some(n) = count("visits") {
+        activity.push(figure_value("eye", root.tr("gp.visits"), big(root, n as f64), false));
     }
-    if let Some(u) = d.get("updated").and_then(Value::as_str).and_then(|u| ago_iso(root, u)) {
-        cells.push((root.tr("gp.updated"), u, None));
+    if show_updated && let Some(when) = details.get("updated").and_then(Value::as_str).and_then(|iso| ago_iso(root, iso)) {
+        activity.push(figure_value("clock", root.tr("gp.updated"), when, false));
     }
-    if cells.is_empty() {
-        return None;
-    }
-    Some(div().flex().flex_wrap().gap_x(px(40.)).gap_y(px(16.)).children(cells.into_iter().map(|(label, value, under)| {
-        div()
-            .flex()
-            .flex_col()
-            .gap(px(2.))
-            .child(div().text_size(px(26.)).font_weight(FontWeight::BOLD).line_height(px(32.)).font_features(tnum()).text_color(c(TEXT)).child(value))
-            .child(div().text_size(px(T_S)).font_weight(FontWeight::MEDIUM).text_color(c(MUTED)).child(label))
-            .children(under.map(|u| div().pt(px(4.)).child(u)))
-    })))
+    (
+        (!engagement.is_empty()).then(|| div().flex().flex_wrap().items_center().gap(px(8.)).children(engagement)),
+        (!activity.is_empty()).then(|| div().flex().flex_wrap().items_center().gap_x(px(18.)).gap_y(px(6.)).children(activity)),
+    )
+}
+
+fn figure_chip(mark: &str, label: String, value: String, accent: bool) -> Div {
+    figure_value(mark, label, value, accent).h(px(32.)).px(px(9.))
+        .rounded(px(R_M)).border_1()
+        .border_color(if accent { ca(WARN, 0.44) } else { c(LINE) })
+        .bg(if accent { ca(WARN, 0.08) } else { ca(WHITE, 0.025) })
+}
+
+fn figure_value(mark: &str, label: String, value: String, accent: bool) -> Div {
+    let tone = if accent { WARN } else { TEXT_2 };
+    div().flex_none().flex().items_center().gap(px(6.))
+        .text_size(px(T_S)).whitespace_nowrap()
+        .child(icon(mark, 14., c(tone)))
+        .when(!label.is_empty(), |d| d.child(div().text_color(c(tone)).child(label)))
+        .child(div().font_weight(FontWeight::SEMIBOLD).font_features(tnum())
+            .text_color(c(if accent { WARN } else { TEXT })).child(value))
 }
 
 /// 2019-01-16T03:29:19Z as a day: 16/01/2019, or Jan 16, 2019.
@@ -3874,14 +4106,41 @@ fn heading(title: String, sub: Option<String>) -> Div {
         .when_some(sub, |d, s| d.child(div().min_w_0().text_size(px(T_S)).text_color(c(MUTED)).child(s)))
 }
 
+/// The social links Roblox returned for the viewer of this experience.
+fn social_media(root: &Root, universe: i64) -> Option<Div> {
+    let viewer = social_viewer(root)?;
+    let social = root.games.social.as_ref().filter(|social| {
+        social.viewer == viewer && social.universe == universe && !social.links.is_empty()
+    })?;
+    let buttons = social.links.iter().enumerate().map(|(i, link)| {
+        let (label, mark) = match s(link, "type") {
+            "Twitter" | "X" => ("X", "x"),
+            "YouTube" | "Youtube" => ("YouTube", "play"),
+            "Discord" => ("Discord", "discord"),
+            "Facebook" => ("Facebook", "external"),
+            "Twitch" => ("Twitch", "external"),
+            _ => (s(link, "title"), "external"),
+        };
+        let url = s(link, "url").to_string();
+        Button::new(("gp-social", i), if label.is_empty() { root.tr("gp.openRobloxLink") } else { label.to_string() })
+            .icon(mark).small().tip(s(link, "title").to_string())
+            .on_click(move |_, _, cx| cx.open_url(&url))
+    });
+    Some(div().flex().flex_col().gap(px(12.))
+        .child(heading(root.tr("gp.socialMedia"), None))
+        .child(div().flex().flex_wrap().gap(px(8.)).children(buttons)))
+}
+
 /// Your accounts in it over 7 days, the hours it is quiet, and what it is.
 fn overview(root: &Root, details: Option<&Value>, place: i64, width: f32, cx: &mut Context<Root>) -> impl IntoElement {
-    let Some(d) = details else {
+    let accounts = root.games.stays.get(&place);
+    if accounts.is_none() && details.is_none() {
         let key = if place > 0 { "news.connecting" } else { "gp.noneYet" };
         return div().pt(px(8.)).text_size(px(T_M)).text_color(c(MUTED)).child(root.tr(key));
-    };
+    }
+    let accounts = accounts.map(Vec::as_slice).unwrap_or_default();
+    let d = details.unwrap_or(&Value::Null);
     let narrow = width < 760.;
-    let accounts: Vec<Value> = root.games.stays.get(&place).cloned().unwrap_or_else(|| d.get("accounts").and_then(Value::as_array).cloned().unwrap_or_default());
     // Each account its own row in the block: a faint ground of its own, its face, its name with how it is now under
     // it, then its week's figures each with its word under it. No column heads or lines between rows ("như exel",
     // 2026-11-15), and not loose on the page either: without its block the rows floated, "sát rạt trông loạn".
@@ -3896,7 +4155,7 @@ fn overview(root: &Root, details: Option<&Value>, place: i64, width: f32, cx: &m
             .child(div().text_size(px(15.)).font_weight(FontWeight::BOLD).font_features(tnum()).truncate().child(value))
             .child(div().text_size(px(T_S)).text_color(c(MUTED)).truncate().child(word))
     };
-    for a in &accounts {
+    for a in accounts {
         let minutes = int(a, "minutes");
         let played = if minutes >= 60 {
             root.i18n.tv("gp.hours", &[("n", &((minutes as f64 / 60.).round() as i64).to_string())])
@@ -4008,13 +4267,16 @@ fn overview(root: &Root, details: Option<&Value>, place: i64, width: f32, cx: &m
         .child(yours)
         .children(events_block(root, place, main_w, cx))
         .children(gallery(root, place, main_w, cx))
-        .children(words);
+        .children(words)
+        .children(social_media(root, int(d, "universe")));
     div()
         .flex()
         .flex_col()
         .gap(px(GAP))
         .pt(px(4.))
-        .child(if beside {
+        .child(if details.is_none() {
+            main.child(div().text_size(px(T_M)).text_color(c(MUTED)).child(root.tr("news.connecting")))
+        } else if beside {
             div()
                 .flex()
                 .items_start()

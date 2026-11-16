@@ -7,6 +7,8 @@
 // Roblox has not, New free: the free limiteds still in stock, read again every few seconds while it is shown, each
 // with the game that gives it (Open game: that game's page here, to start it with the accounts wanted).
 // Asked from here (roblox.rs); the pages on roblox.com are opened by the app (openProfile, openRobloxPage).
+use std::collections::HashSet;
+
 use gpui_kit::{prelude::*, *};
 use serde_json::json;
 
@@ -67,6 +69,7 @@ pub struct Data {
     free_fresh: std::collections::HashSet<i64>,
     /// A community opened from the profile, shown in its place until Back.
     club: Option<ClubView>,
+    leaving_clubs: HashSet<(i64, i64)>,
     /// A thing of the Marketplace opened from its tile, shown in the catalog's place until Back.
     item: Option<ItemView>,
     /// The followers or the followed, opened from their count: which ("followers", "followings"), and the people
@@ -112,9 +115,11 @@ struct ItemView {
 /// app's accounts are in it, each with its rank's name (None while that is asked).
 struct ClubView {
     id: i64,
+    ask: u64,
     name: String,
     got: Option<Result<Club, String>>,
-    mine: Option<Vec<(String, String)>>,
+    mine: Option<Vec<(i64, String)>>,
+    friends: Option<(i64, Option<Result<Vec<Friend>, String>>)>,
 }
 
 /// The profile's share of Data, which goes away with its account's tab (pages/tabs.rs); the Marketplace's stays, being
@@ -174,6 +179,7 @@ pub fn want(r: &mut Root, link: &crate::link::Link, cx: &mut Context<Root>) {
     }
     // (A person opened before the sign-in was in: whether they are followed is asked now.)
     ask_follow(r, cx);
+    ask_club_friends(r, cx);
 }
 
 /// Asks Roblox, once, whether the account looked through follows the person whose profile is open (never itself).
@@ -377,22 +383,15 @@ fn folk_page(root: &Root, which: &str, got: &Option<Result<Vec<Friend>, String>>
 
 /// Opens a community's page in the profile's place: its page is read, then which of the app's accounts are in it.
 fn open_club(r: &mut Root, id: i64, name: String, cx: &mut Context<Root>) {
-    r.profile.club = Some(ClubView { id, name, got: None, mine: None });
+    let ask = crate::pages::avatar::ticket();
+    r.profile.club = Some(ClubView { id, ask, name, got: None, mine: None, friends: None });
     // Every account with a Roblox id, whatever its sign-in's state: membership is public.
-    let accounts: Vec<(i64, String)> = r
-        .accounts()
-        .iter()
-        .filter_map(|a| {
-            let user = a.get("userId").and_then(serde_json::Value::as_i64).filter(|u| *u > 0)?;
-            let name = ["label", "alias", "displayName", "username"].iter().filter_map(|k| a.get(*k).and_then(serde_json::Value::as_str)).find(|n| !n.is_empty()).unwrap_or_default().to_string();
-            Some((user, name))
-        })
-        .collect();
+    let users: Vec<i64> = r.accounts().iter().filter_map(|a| a["userId"].as_i64().filter(|u| *u > 0)).collect();
     let rx = roblox::run(move || roblox::club(id));
     cx.spawn(async move |this, cx| {
         let got = rx.await.unwrap_or_else(|_| Err(String::new()));
         let shown = this.update(cx, |r, cx| match &mut r.profile.club {
-            Some(c) if c.id == id => {
+            Some(c) if c.ask == ask => {
                 c.got = Some(got);
                 cx.notify();
                 true
@@ -402,16 +401,128 @@ fn open_club(r: &mut Root, id: i64, name: String, cx: &mut Context<Root>) {
         if !matches!(shown, Ok(true)) {
             return;
         }
-        let users: Vec<i64> = accounts.iter().map(|a| a.0).collect();
         let mine = roblox::run(move || roblox::club_mine(id, &users)).await.unwrap_or_default();
         let _ = this.update(cx, |r, cx| {
-            if let Some(c) = r.profile.club.as_mut().filter(|c| c.id == id) {
-                c.mine = Some(mine.into_iter().map(|(user, role)| (accounts.iter().find(|a| a.0 == user).map(|a| a.1.clone()).unwrap_or_default(), role)).collect());
+            if let Some(c) = r.profile.club.as_mut().filter(|c| c.ask == ask) {
+                c.mine = Some(mine);
                 cx.notify();
             }
         });
     })
     .detach();
+}
+
+fn ask_club_friends(root: &mut Root, cx: &mut Context<Root>) {
+    let Some((_, user, cookie)) = friends::signed(root) else { return };
+    let Some(view) = root.profile.club.as_mut().filter(|c| !c.friends.as_ref().is_some_and(|f| f.0 == user)) else { return };
+    #[cfg(feature = "shot")]
+    if std::env::var("BLOXKEEP_SHOT_CLUB_MEMBER").is_ok() {
+        view.friends = Some((user, Some(Ok(vec![Friend {
+            id: 202, name: "kiwi_runner".into(), display: "Kiwi".into(), ..Default::default()
+        }]))));
+        cx.notify();
+        return;
+    }
+    if cookie.is_empty() {
+        return;
+    }
+    let (id, ask) = (view.id, view.ask);
+    view.friends = Some((user, None));
+    let rx = roblox::run(move || roblox::club_friends(id, user, &cookie));
+    cx.spawn(async move |this, cx| {
+        let got = rx.await.unwrap_or_else(|_| Err(String::new()));
+        let _ = this.update(cx, |r, cx| {
+            if let Some(f) = r.profile.club.as_mut().filter(|c| c.ask == ask)
+                .and_then(|c| c.friends.as_mut().filter(|f| f.0 == user))
+            {
+                f.1 = Some(got);
+                cx.notify();
+            }
+        });
+    }).detach();
+}
+
+fn leave_club(root: &mut Root, id: i64, user: i64, account: &str, cx: &mut Context<Root>) {
+    let Some(link) = root.link.clone() else { return };
+    if !root.profile.leaving_clubs.insert((id, user)) {
+        return;
+    }
+    let rx = link.call("gameCommunity", json!({ "id": account, "groupId": id, "action": "leave" }));
+    cx.spawn(async move |this, cx| {
+        let result = rx.await;
+        let _ = this.update(cx, |r, cx| {
+            r.profile.leaving_clubs.remove(&(id, user));
+            match result {
+                Ok(Ok(data)) if matches!(data["state"].as_str(), Some("join" | "pending")) => {
+                    roblox::club_left(id, user);
+                    r.tabs.club_left(id, user);
+                    if r.profile.of == user {
+                        if let Some(Ok(p)) = &mut r.profile.got {
+                            p.groups.retain(|g| g.id != id);
+                        }
+                        if r.profile.loading {
+                            load(r, cx);
+                        }
+                    }
+                    if let Some((_, Some(Ok(p)))) = r.profile.person.as_mut().filter(|p| p.0 == user) {
+                        p.groups.retain(|g| g.id != id);
+                    }
+                    if let Some(view) = r.profile.club.as_mut().filter(|c| c.id == id) {
+                        if let Some((_, Some(Ok(list)))) = &mut view.friends {
+                            list.retain(|f| f.id != user);
+                        }
+                        if let Some(members) = &mut view.mine {
+                            members.retain(|(u, _)| *u != user);
+                        } else {
+                            let name = view.name.clone();
+                            open_club(r, id, name, cx);
+                        }
+                    }
+                    r.toast = Some((r.tr("club.left"), "ok".into()));
+                }
+                Ok(Err(e)) => r.toast = Some((e.to_string(), "bad".into())),
+                _ => r.toast = Some((r.tr("gp.communityError"), "bad".into())),
+            }
+            cx.notify();
+        });
+    })
+    .detach();
+    cx.notify();
+}
+
+fn club_friends(root: &Root, view: &ClubView, cx: &mut Context<Root>) -> Option<Div> {
+    let (_, user, _) = friends::signed(root)?;
+    let got = view.friends.as_ref().filter(|f| f.0 == user).and_then(|f| f.1.as_ref());
+    let count = got.and_then(|r| r.as_ref().ok()).map(Vec::len);
+    let body = match got {
+        None => note(root.tr("av.reading")).into_any_element(),
+        Some(Err(_)) => div().flex().items_center().gap(px(8.))
+            .child(note(root.tr("club.friendsError")))
+            .child(Button::new("club-friends-retry", root.tr("srv.retry")).small().on_click(cx.listener(|r, _, _, cx| {
+                if let Some(view) = &mut r.profile.club {
+                    view.friends = None;
+                }
+                ask_club_friends(r, cx);
+                cx.notify();
+            }))).into_any_element(),
+        Some(Ok(list)) if list.is_empty() => note(root.tr("club.friendsNone")).into_any_element(),
+        Some(Ok(list)) => div().flex().flex_wrap().gap(px(8.)).children(list.iter().map(|f| {
+            let face = (!f.face.is_empty()).then(|| images::pic_sq(&f.face, 24., cx)).flatten();
+            let initial = f.display.chars().next().unwrap_or('?').to_uppercase().to_string();
+            div().flex().items_center().gap(px(8.)).min_h(px(34.)).px(px(10.)).py(px(4.))
+                .rounded(px(R_M)).bg(ca(WHITE, 0.04)).border_1().border_color(c(LINE))
+                .child(
+                    div().relative().size(px(24.)).flex_none().rounded_full().overflow_hidden().bg(c(RAISED_2))
+                        .flex().items_center().justify_center().text_size(px(T_S)).child(initial)
+                        .when_some(face, |d, pic| d.child(img(pic).absolute().inset_0().size_full())),
+                )
+                .child(div().text_size(px(T_M)).font_weight(FontWeight::MEDIUM).child(f.display.clone()))
+                .when(!f.name.is_empty() && f.name != f.display, |d| {
+                    d.child(div().text_size(px(T_S)).text_color(c(MUTED)).child(format!("@{}", f.name)))
+                })
+        })).into_any_element(),
+    };
+    Some(div().flex().flex_col().gap(px(12.)).child(section_head(root.tr("club.friends"), count)).child(body))
 }
 
 /// A game's own colour for its letter tile, from its place ID (the vault faces' colours, lock.rs, with indigo for
@@ -512,7 +623,19 @@ pub fn shot_club(r: &mut Root, cx: &mut Context<Root>) {
         open_folk(r, if which == "followings" { "followings" } else { "followers" }, cx);
     }
     if let (None, Some(id)) = (&r.profile.club, std::env::var("BLOXKEEP_SHOT_CLUB").ok().and_then(|v| v.parse().ok())) {
-        open_club(r, id, String::new(), cx);
+        if let Some(member) = std::env::var("BLOXKEEP_SHOT_CLUB_MEMBER").ok().and_then(|v| v.parse::<i64>().ok()) {
+            let name = "Example Community".to_string();
+            r.profile.club = Some(ClubView {
+                id,
+                ask: crate::pages::avatar::ticket(),
+                name: name.clone(),
+                got: Some(Ok(Club { id, name, members: 84, ..Default::default() })),
+                mine: Some(vec![(member, "Member".into())]),
+                friends: None,
+            });
+        } else {
+            open_club(r, id, String::new(), cx);
+        }
     }
     if let (None, Some(id)) = (&r.profile.person, std::env::var("BLOXKEEP_SHOT_PERSON").ok().and_then(|v| v.parse().ok())) {
         open_person(r, id, cx);
@@ -559,10 +682,33 @@ fn club_page(root: &Root, view: &ClubView, width: f32, cx: &mut Context<Root>) -
             .flex()
             .flex_wrap()
             .gap(px(8.))
-            .children(l.iter().map(|(name, role)| {
-                div()
-                    .h(px(34.))
+            .children(l.iter().filter_map(|&(user, ref role)| {
+                let account = root.accounts().iter().find(|a| a["userId"].as_i64() == Some(user))?;
+                let name = super::accounts::label(account);
+                let id_in_app = super::accounts::id_of(account);
+                let can_leave = root.link.is_some()
+                    && super::tabs::can_open_account(account)
+                    && account["realm"].as_str().unwrap_or_default().is_empty()
+                    && club.owner_id != user;
+                let busy = root.profile.leaving_clubs.contains(&(id, user));
+                let action = can_leave.then(|| {
+                    let community = club.name.clone();
+                    let name = name.clone();
+                    Button::new(("club-leave", user as usize), root.tr(if busy { "club.leaving" } else { "club.leave" }))
+                        .small()
+                        .disabled(busy)
+                        .on_click(cx.listener(move |r, _, window, cx| {
+                            let message = r.i18n.tv("club.leaveConfirm", &[("account", &name), ("community", &community)]);
+                            let account = id_in_app.clone();
+                            r.confirm(r.tr("gp.communityLeave"), message, r.tr("club.leave"), true, None, window, cx, move |r, cx| {
+                                leave_club(r, id, user, &account, cx);
+                            });
+                        }))
+                });
+                Some(div()
+                    .min_h(px(34.))
                     .px(px(12.))
+                    .py(px(4.))
                     .flex()
                     .items_center()
                     .gap(px(8.))
@@ -570,8 +716,10 @@ fn club_page(root: &Root, view: &ClubView, width: f32, cx: &mut Context<Root>) -
                     .bg(ca(WHITE, 0.04))
                     .border_1()
                     .border_color(c(LINE))
-                    .child(div().text_size(px(T_M)).font_weight(FontWeight::MEDIUM).child(name.clone()))
+                    .child(super::accounts::avatar(account, 24., RAISED, cx))
+                    .child(div().text_size(px(T_M)).font_weight(FontWeight::MEDIUM).child(name))
                     .child(div().text_size(px(T_S)).text_color(c(MUTED)).child(role.clone()))
+                    .when_some(action, |d, b| d.child(b)))
             }))
             .into_any_element(),
     };
@@ -605,6 +753,7 @@ fn club_page(root: &Root, view: &ClubView, width: f32, cx: &mut Context<Root>) -
                     .gap(px(26.))
                     .child(who)
                     .child(div().flex().flex_col().gap(px(12.)).child(title("club.mine")).child(mine))
+                    .children(club_friends(root, view, cx))
                     .when(!games.is_empty(), |d| d.child(div().flex().flex_col().gap(px(12.)).child(title("news.title")).child(div().flex().flex_wrap().gap(px(GAP)).children(games))))
                     .when(!club.roles.is_empty(), |d| d.child(div().flex().flex_col().gap(px(6.)).child(title("club.roles")).child(roles))),
             ),

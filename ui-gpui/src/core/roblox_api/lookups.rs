@@ -341,9 +341,17 @@ pub fn get_game_details(universe_id: i64, cookie: Option<&str>, ct: &Cancel) -> 
     };
     let v = first(votes.as_ref());
     let (up, down) = (num(v, "upVotes")?, num(v, "downVotes")?);
+    let creator = g.and_then(|game| game.get("creator"));
     Ok(Some(GameDetailsInfo {
         name,
-        creator: text(u, "creatorName")?.unwrap_or_default(),
+        creator: text(creator, "name")?.or(text(u, "creatorName")?).unwrap_or_default(),
+        creator_group_id: if text(creator, "type")?.as_deref() == Some("Group") {
+            let id = num(creator, "id")?;
+            (id > 0).then_some(id)
+        } else {
+            None
+        },
+        creator_verified: creator.and_then(|c| c.get("hasVerifiedBadge")).and_then(Value::as_bool) == Some(true),
         description: text(u, "description")?,
         genre: text(g, "genre")?,
         playing: num(g, "playing")?,
@@ -360,6 +368,21 @@ pub fn get_game_details(universe_id: i64, cookie: Option<&str>, ct: &Cancel) -> 
         down_votes: down,
         max_players: num(g, "maxPlayers")?,
     }))
+}
+
+/// Roblox filters the links using the signed-in viewer's eligibility.
+pub fn get_game_social_links(universe: i64, cookie: &str, ct: &Cancel) -> Res<Vec<Value>> {
+    let url = format!("https://games.roblox.com/v1/games/{universe}/social-links/list");
+    let data = get_json(&url, ct, Some(cookie))?;
+    let links = data.as_ref().and_then(|value| value.get("data")).and_then(Value::as_array);
+    Ok(links.into_iter().flatten().filter_map(|link| {
+        let address = link.get("url")?.as_str()?;
+        let url = url::Url::parse(address).ok()?;
+        if url.scheme() != "https" || url.host_str().is_none() || !url.username().is_empty() || url.password().is_some() {
+            return None;
+        }
+        Some(json!({ "url": url.as_str(), "type": link.get("type"), "title": link.get("title") }))
+    }).collect())
 }
 
 /// Roblox's own game search, the same one the website's search box uses.

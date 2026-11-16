@@ -51,12 +51,11 @@ pub struct Root {
     shot_asked: bool,
     /// This window's handle, for moving the app's window from the top bar (frame.rs).
     pub hwnd: Option<isize>,
-    /// The games this PC played lately (playedGames), asked for once Home is shown.
+    /// Recent local games for Home and Roblox, derived from their shared session snapshot.
     pub played: Option<Vec<Value>>,
-    asked_played: bool,
-    /// When it was last asked and on which visit to a page: Home or Games opened again asks again (GamesView.tsx).
-    played_at: Option<std::time::Instant>,
-    played_nav: u64,
+    played_at: Option<(std::time::Instant, u64)>,
+    played_pending: bool,
+    played_gen: u64,
     /// Each game's pictures by place (gameLooks: icon, cover), and the places already asked for.
     pub looks: std::collections::HashMap<i64, Value>,
     asked_looks: std::collections::HashSet<i64>,
@@ -318,14 +317,11 @@ impl Root {
         .detach();
         let wiki_tq = mk("prices.search", window, cx);
         let set_q = mk("set.search", window, cx);
-        // The game list's own search: Enter asks Roblox; an empty box goes back to the lists.
+        // A pause while typing searches Roblox; Enter searches immediately.
         let picker_q = mk("ui.findGame", window, cx);
         cx.subscribe(&picker_q, |r: &mut Root, _, e: &InputEvent, cx| match e {
-            InputEvent::PressEnter { .. } => pages::picker::search(r, cx),
-            InputEvent::Change if r.picker_q.read(cx).value().trim().is_empty() => {
-                pages::picker::cleared(r);
-                cx.notify();
-            }
+            InputEvent::PressEnter { .. } => pages::picker::search_menu(r, true, cx),
+            InputEvent::Change => pages::picker::search_menu(r, false, cx),
             _ => {}
         })
         .detach();
@@ -539,13 +535,15 @@ impl Root {
         let pw_new2 = pw_box("set.pwNew2", window, cx);
         let place_hint = i18n.t("dock.place");
         let place = cx.new(|cx| InputState::new(window, cx).placeholder(place_hint));
-        // Enter looks the game up and, empty or holding a link / Place ID, plays the picked accounts (app.js's onPlaceKey;
-        // words aren't a game to open); any change forgets the game found before (Play then says "Open Roblox" or "Play").
+        // Names open the picker. A launch target keeps the normal Enter and Play behavior.
         cx.subscribe(&place, |r: &mut Root, _, e: &InputEvent, cx| match e {
             InputEvent::PressEnter { .. } => {
+                if pages::picker::search_dock(r, true, cx) {
+                    return;
+                }
                 let v = r.place.read(cx).value().trim().to_string();
                 r.resolve_place(cx);
-                if v.is_empty() || v.contains("roblox.com") || v.contains("roblox://") || v.chars().all(|ch| ch.is_ascii_digit()) {
+                if v.is_empty() || crate::target::parse(&v, "").is_ok() {
                     pages::accounts::play_selected(r, cx);
                 }
             }
@@ -553,6 +551,9 @@ impl Root {
                 r.game = None;
                 // (A lookup still running is for the old words: its answer is dropped, so nothing is asked now.)
                 r.place_asking = false;
+                if r.page == Page::Accounts && !r.locked() {
+                    pages::picker::search_dock(r, false, cx);
+                }
                 cx.notify();
             }
             _ => {}
@@ -576,9 +577,9 @@ impl Root {
             windows_gen: 0,
             hwnd: None,
             played: None,
-            asked_played: false,
             played_at: None,
-            played_nav: 0,
+            played_pending: false,
+            played_gen: 0,
             looks: Default::default(),
             asked_looks: Default::default(),
             look_misses: Default::default(),
@@ -982,7 +983,7 @@ impl Root {
                 self.games.forget_sign_in();
                 self.friends.forget_sign_in();
                 // Another vault's games played.
-                self.asked_played = false;
+                self.clear_play_history();
                 // Tabs of accounts no longer here go (Games' account tabs).
                 pages::tabs::forget_gone(self);
             }
@@ -995,6 +996,8 @@ impl Root {
                 // A sign-in lent before the lock is not kept behind it (the vault may not be the same one after).
                 self.games.forget_sign_in();
                 self.friends.forget_sign_in();
+                self.tabs.vng.clear();
+                self.clear_play_history();
                 for e in [&self.af_cookie, &self.af_password, &self.af_key, &self.pl_pass, &self.pl_code, &self.pw_cur, &self.pw_new, &self.pw_new2, &self.iv_pw] {
                     e.update(cx, |s, cx| s.set_value("", window, cx));
                 }
@@ -1026,6 +1029,15 @@ impl Root {
             self.acc_menu = std::env::var("BLOXKEEP_SHOT_MORE").is_ok();
             if std::env::var("BLOXKEEP_SHOT_PICKER").is_ok() && !self.picker.open {
                 pages::picker::open_now(self, cx);
+            }
+            // Hidden window input goes through the editor so the regular Change subscriptions run.
+            if self.page == Page::Accounts && !self.locked()
+                && let Ok(input) = std::env::var("BLOXKEEP_SHOT_GAME_INPUT")
+            {
+                let box_ = if std::env::var("BLOXKEEP_SHOT_PICKER").is_ok() { &self.picker_q } else { &self.place };
+                if box_.read(cx).value().is_empty() {
+                    box_.update(cx, |state, cx| state.replace_all(input, window, cx));
+                }
             }
         }
         // BLOXKEEP_SHOT_DROP=sort|group: Accounts' short list open; BLOXKEEP_SHOT_HOMETAB=community: Home's games card on
@@ -1315,13 +1327,13 @@ impl Root {
                 Ok("wiki") => pages::games::Tab::Wiki,
                 _ => pages::games::Tab::Overview,
             };
-            // BLOXKEEP_SHOT_PLAY=1: with Play's row open, the first two free accounts ticked.
+            // BLOXKEEP_SHOT_PLAY=1: with Play's row open, the first two eligible accounts ticked.
             if std::env::var("BLOXKEEP_SHOT_PLAY").is_ok() {
                 let open_id = self.games.open.as_ref().map(|o| o.id.clone()).unwrap_or_default();
                 let ticked = self
                     .accounts()
                     .iter()
-                    .filter(|a| pages::accounts::can_play(a))
+                    .filter(|a| pages::accounts::can_join_game(a))
                     .filter_map(|a| a.get("id").and_then(Value::as_str).map(str::to_string))
                     .take(2)
                     .collect();
@@ -1371,6 +1383,9 @@ impl Root {
 
     pub fn go(&mut self, p: Page) {
         if p != self.page {
+            if self.page == Page::Accounts {
+                pages::picker::close(self);
+            }
             // (A place further down the rail comes in from below, one further up from above.)
             let at = |x: Page| Page::ALL.iter().position(|y| *y == x).unwrap_or(0);
             self.step_from = if at(p) >= at(self.page) { 1. } else { -1. };
@@ -1487,6 +1502,7 @@ impl Root {
         // Games: whose the first tab is (the app's pick) is asked at once, so its tab can say.
         if self.page == Page::Games && !self.state.is_null() && !self.locked() {
             pages::friends::want_sign(self, &link, cx);
+            pages::vng::want(self, &link, cx);
             pages::games::want_corner(self, cx);
         }
         // (The Game view shows the friends' faces too, as Roblox's home does.)
@@ -1532,43 +1548,57 @@ impl Root {
             // (News' New marks count from the read before this visit: a visit ends when the page is left.)
             self.games.mark = None;
         }
-        // Asked again on each new visit to Home or Games (at most twice a minute): they change as accounts play.
-        let again = self.played_nav != self.nav
-            && matches!(self.page, Page::Home | Page::Games)
-            && self.played_at.map_or(true, |t| t.elapsed() >= Duration::from_secs(30));
-        if !self.asked_played || again {
-            self.asked_played = true;
-            self.played_at = Some(std::time::Instant::now());
-            self.played_nav = self.nav;
-            // The stays come raw from the app, and their sum is made here (history.rs; the app's playedGames command
-            // made it until 2026-11-11).
-            let rx = link.call("playSessions", json!({}));
-            let key = self.sign_key.clone();
-            cx.spawn(async move |this, cx| {
-                let got = rx.await.ok().and_then(Result::ok);
-                let _ = this.update(cx, |r, cx| {
-                    // (Another vault opened meanwhile: its own answer is asked.)
-                    if r.sign_key != key {
-                        return;
-                    }
-                    r.played = Some(match got {
-                        Some(raw) => {
-                            let (sessions, known, now) = crate::history::read(&raw);
-                            crate::history::played(&sessions, &known, now).into_iter().map(|g| json!({ "name": g.name, "place": g.place, "hours": g.hours, "last": g.last })).collect()
-                        }
-                        None => Vec::new(),
-                    });
-                    cx.notify();
-                });
-            })
-            .detach();
+        if matches!(self.page, Page::Home | Page::Games) {
+            self.want_play_history(&link, cx);
         }
-        let mut places: Vec<i64> = crate::pages::home::games(self).iter().map(|g| g.place).collect();
+        let home_games = if self.page == Page::Games && self.games.home_library == Some(HomeTab::Games) {
+            crate::pages::home::game_library(self, true)
+        } else {
+            crate::pages::home::games(self)
+        };
+        let mut places: Vec<i64> = home_games.iter().map(|g| g.place).collect();
         places.extend(self.accounts().iter().filter_map(|a| a.pointer("/session/game/placeId").and_then(Value::as_i64)));
         places.extend(
             self.state.pointer("/community/data/games").and_then(Value::as_array).into_iter().flatten().filter_map(|g| g.get("place").and_then(Value::as_i64)),
         );
         self.want_looks(places, cx);
+    }
+
+    fn clear_play_history(&mut self) {
+        self.played = None;
+        self.played_at = None;
+        self.played_pending = false;
+        self.played_gen = self.played_gen.wrapping_add(1);
+    }
+
+    fn want_play_history(&mut self, link: &crate::link::Link, cx: &mut Context<Self>) {
+        let revision = self.metrics["playRevision"].as_u64().unwrap_or_default();
+        if self.played_pending || self.played_at.is_some_and(|(at, last_revision)| {
+            last_revision == revision && at.elapsed() < Duration::from_secs(30)
+        }) {
+            return;
+        }
+        self.played_pending = true;
+        self.played_at = Some((std::time::Instant::now(), revision));
+        let generation = self.played_gen;
+        let rx = link.call("playSessions", json!({}));
+        cx.spawn(async move |this, cx| {
+            let got = rx.await.ok().and_then(Result::ok).filter(Value::is_object);
+            let _ = this.update(cx, |r, cx| {
+                if r.played_gen != generation || r.locked() {
+                    return;
+                }
+                r.played_pending = false;
+                if let Some(raw) = got {
+                    let (sessions, known, now) = crate::history::read(&raw);
+                    r.played = Some(crate::history::recently_played(&sessions, &known, now).into_iter()
+                        .map(|game| json!({ "name": game.name, "place": game.place, "hours": game.hours, "last": game.last }))
+                        .collect());
+                    pages::games::set_play_history(r, raw);
+                }
+                cx.notify();
+            });
+        }).detach();
     }
 
     /// The pictures of these games, each asked once: read from Roblox here (roblox::looks; it was the C# app's
@@ -1911,6 +1941,9 @@ impl Root {
             return;
         }
         let place = self.place.read(cx).value().trim().to_string();
+        if self.page == Page::Accounts && pages::picker::search_dock(self, true, cx) {
+            return;
+        }
         // The server in the Job ID box, as app.js's launch read #job for every Play (card, Enter, menus, palette).
         // (Not one that went with another game: a game typed and played before its lookup said so.)
         let job = crate::pages::accounts::job_for(&place, cx);
@@ -2440,7 +2473,11 @@ impl Root {
             return format!("{:?}", self.page);
         }
         let open = self.games.open.as_ref().map(|o| o.id.as_str()).unwrap_or_default();
-        format!("games-{}-{}-{}-{}", self.games.view as u8, self.tabs.at, open, self.profile.part())
+        let library = self.games.home_library.map_or("", |tab| match tab {
+            HomeTab::Games => "library",
+            HomeTab::Community => "community-games",
+        });
+        format!("games-{}-{}-{}-{}-{}", self.games.view as u8, self.tabs.at, open, self.profile.part(), library)
     }
 
     /// The app's state, come as a command's answer (the lock screen's unlock).
@@ -3118,6 +3155,8 @@ fn account_row(a: &Value, dropped: bool, root: &Root, cx: &mut Context<Root>) ->
     let game = if menu { Some(root.tr("act.menuWhere")) } else { a.pointer("/session/game/name").and_then(Value::as_str).filter(|g| !g.is_empty()).map(str::to_string) };
     let face = images::pic_sq(s("avatarUrl"), FACE, cx);
     let id = s("id").to_string();
+    let can_open = pages::tabs::can_open_account(a);
+    let open_tip: SharedString = root.tr("tabs.openAccount").into();
     let trouble = side_trouble(a);
     // (Banned: grey, not red, critique 2026-11-13: nothing to do now, Play skips it; red is for a sign-in to do.)
     let dot = match trouble { Some("chip.banned") => MUTED, Some(_) => BAD, None if dropped => WARN, None if menu => ONLINE, None if running => OK, None => DIM };
@@ -3147,7 +3186,10 @@ fn account_row(a: &Value, dropped: bool, root: &Root, cx: &mut Context<Root>) ->
     let first: String = name.chars().find(|c| c.is_alphanumeric()).map(|c| c.to_uppercase().collect()).unwrap_or_default();
     let fix: Option<AnyElement> = if dropped {
         let me = vec![a.clone()];
-        Some(Button::new(SharedString::from(format!("rejoin-{id}")), root.tr("card.rejoinNow")).small().tint().on_click(cx.listener(move |r: &mut Root, _, _, cx| r.rejoin(&me, cx))).into_any_element())
+        Some(Button::new(SharedString::from(format!("rejoin-{id}")), root.tr("card.rejoinNow")).small().tint().on_click(cx.listener(move |r: &mut Root, _, _, cx| {
+            cx.stop_propagation();
+            r.rejoin(&me, cx);
+        })).into_any_element())
     } else if trouble == Some("chip.invalid") {
         let vng = s("realm") == "vng";
         let who = name.to_string();
@@ -3164,6 +3206,13 @@ fn account_row(a: &Value, dropped: bool, root: &Root, cx: &mut Context<Root>) ->
         .gap(px(12.))
         .rounded(px(R_M))
         .tones(ca(WHITE, 0.), ca(WHITE, 0.045))
+        .when(can_open, |d| d.cursor_pointer().tab_index(0)
+            .tooltip(move |_, cx| cx.new(|_| Tip(open_tip.clone())).into())
+            .on_click(cx.listener(move |r, _, _, cx| {
+                r.go(Page::Games);
+                pages::tabs::open(r, id.clone());
+                cx.notify();
+            })))
         // No number tag here (owner 2026-11-14: "bỏ số đi"): the face's dot and the line under the name say the state.
         .child(
             div()
@@ -3522,7 +3571,7 @@ impl Render for Root {
                 // that showed only for it (Ctrl+L or "/" with none picked) goes.
                 if r.page == Page::Accounts && !r.locked() && !window.has_active_dialog(cx) && r.place.read(cx).focus_handle(cx).is_focused(window) {
                     if r.picker.open {
-                        r.picker.open = false;
+                        pages::picker::close(r);
                     } else {
                         pages::accounts::unwant_place(cx);
                         window.focus(&r.focus, cx);
@@ -3579,6 +3628,7 @@ impl Render for Root {
 /// (the toast); a box under a cover is left out. Sent only when it changed, and { hidden } once there is no area.
 #[derive(Default, Clone)]
 pub struct Live {
+    height: std::rc::Rc<std::cell::Cell<Option<f32>>>,
     area: std::rc::Rc<std::cell::RefCell<Option<Bounds<Pixels>>>>,
     boxes: std::rc::Rc<std::cell::RefCell<Vec<(String, Bounds<Pixels>)>>>,
     covers: std::rc::Rc<std::cell::RefCell<Vec<Bounds<Pixels>>>>,
@@ -3592,10 +3642,26 @@ impl Live {
         self.covers.borrow_mut().clear();
     }
 
+    pub fn area_height(&self) -> Option<f32> {
+        self.height.get()
+    }
+
     /// Fills its parent: the pictures may show there.
     pub fn area(&self) -> impl IntoElement {
         let area = self.area.clone();
-        canvas(move |b, _, _| *area.borrow_mut() = Some(b), |_, _, _, _| {}).absolute().inset_0()
+        let height = self.height.clone();
+        canvas(
+            move |b, window, _| {
+                *area.borrow_mut() = Some(b);
+                let measured = Some(f32::from(b.size.height).floor());
+                if height.replace(measured) != measured {
+                    window.refresh();
+                }
+            },
+            |_, _, _, _| {},
+        )
+        .absolute()
+        .inset_0()
     }
 
     /// Fills its parent: window id's picture goes there.

@@ -901,7 +901,15 @@ fn preset_row(root: &Root, p: &Value, i: usize, group: u8, ids: &[String], by_id
             .tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into())
     } else {
         let more = accounts.len().saturating_sub(AVATARS);
-        let tip: SharedString = accounts.iter().map(|a| crate::pages::accounts::label(a)).collect::<Vec<_>>().join(", ").into();
+        let mut names: Vec<String> = accounts.iter().take(AVATARS).map(|a| {
+            let name = crate::pages::accounts::label(a);
+            let short: String = name.chars().take(36).collect();
+            if short.len() < name.len() { format!("{short}…") } else { short }
+        }).collect();
+        if more > 0 {
+            names.push(root.i18n.tv("home.moreN", &[("n", &more.to_string())]));
+        }
+        let tip: SharedString = names.join(", ").into();
         div()
             .id(("pv-faces", i))
             .flex()

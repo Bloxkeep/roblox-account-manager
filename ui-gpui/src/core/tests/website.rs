@@ -4,18 +4,33 @@
 // addresses a tab may show.
 use serde_json::json;
 
-use super::{call, unlock, user_error, window::quiet_app as app, Checks, PASSWORD};
+use super::{call, user_error, window::quiet_app as app, Checks, PASSWORD};
 use crate::core::{
+    app::website::game_servers_url,
     base::new_guid,
     forms::website_tab::may_open_here,
     models::Account,
-    roblox_api::realm,
+    roblox_api::{HttpResponse, STAND_IN, realm},
     vault::Vault,
 };
 
 const BROWSER: &str = "opens a browser";
 
 pub async fn run(c: &mut Checks, _dir: &str) {
+    c.check("VIP checkout opens the official Servers tab for the requested game",
+        game_servers_url(2753915549).is_ok_and(|url| url == "https://www.roblox.com/games/2753915549#!/game-instances"), ());
+    c.check("VIP checkout rejects an invalid place", game_servers_url(0).is_err(), ());
+    // Native Roblox tabs can browse/launch with VNG without lending its cookie to roblox.com.
+    let native = json!({ "id": "vng-tab", "realm": "vng", "userId": 2003, "cookieValid": true });
+    c.check("VNG is available in the native Roblox tab picker", crate::pages::tabs::can_open_account(&native), ());
+    let mut candidate = native.clone();
+    candidate["realm"] = json!("");
+    c.check("global accounts remain available in the native tab picker", crate::pages::tabs::can_open_account(&candidate), ());
+    candidate["cookieValid"] = json!(false);
+    c.check("signed-out accounts are excluded from the native tab picker", !crate::pages::tabs::can_open_account(&candidate), ());
+    candidate["cookieValid"] = json!(true);
+    candidate["userId"] = json!(0);
+    c.check("unidentified accounts are excluded from the native tab picker", !crate::pages::tabs::can_open_account(&candidate), ());
     let mark = new_guid().simple().to_string()[..10].to_string();
     let seed = Vault::create(PASSWORD, None).expect("vault");
     let vng_id = {
@@ -34,10 +49,55 @@ pub async fn run(c: &mut Checks, _dir: &str) {
         d.accounts.extend([a, b, vng]);
         id
     };
-    seed.save().expect("saved");
-    drop(seed);
     let (app, _said) = app();
-    unlock(&app).await;
+    // The vault is already unlocked for this suite. Skip the startup account refresh so the HTTP
+    // stand-in below receives only calls made by the panels under test.
+    *app.controller.vault.borrow_mut() = Some(std::sync::Arc::new(seed));
+
+    c.check("native VNG tab does not receive a roblox.com cookie", app.roblox_sign_in(&json!({ "id": vng_id.to_string() }))["cookie"].is_null(), ());
+    c.check("native global tabs still receive their own sign-in", app.roblox_sign_in(&json!({}))["userId"] == json!(2001), ());
+
+    *STAND_IN.write().unwrap() = Some(Box::new(|request| {
+        let url = url::Url::parse(&request.url).expect("VNG URL");
+        let host = url.host_str().unwrap();
+        assert!(host.ends_with(".robloxapp.vnggames.com"));
+        assert_eq!(request.method, "GET");
+        let public = ["users.", "avatar.", "thumbnails."].iter().any(|prefix| host.starts_with(prefix));
+        assert_eq!(request.headers_named("Cookie").next().is_none(), public);
+        if let Some(cookie) = request.headers_named("Cookie").next() {
+            assert!(cookie.starts_with(".ROBLOSECURITY=_TEST_V_"));
+        }
+        let body = match host.split('.').next().unwrap() {
+            "friends" => json!({ "PageItems": [{ "id": 4, "name": "Friend" }] }),
+            "users" => json!({ "name": "webV", "displayName": "VNG Tester" }),
+            "avatar" => json!({ "avatarModel": { "assets": [{ "name": "VNG hat" }] } }),
+            "thumbnails" => json!({ "data": [{ "imageUrl": "https://tr.rbxcdn.com/avatar.png" }] }),
+            "privatemessages" => json!({ "collection": [{ "subject": "Test message", "sender": { "name": "Friend" } }] }),
+            "notifications" => json!([{ "content": { "states": { "default": { "visualItems": { "textBody": [{ "label": { "text": "New activity" } }] } } } } }]),
+            "accountsettings" => json!({ "emailAddress": "tester@example.invalid" }),
+            "accountinformation" => json!({ "description": "Hello", "isVerified": true, "phone": "hidden" }),
+            _ => panic!("unexpected Roblox VNG request"),
+        };
+        Ok(HttpResponse { status: 200, body: serde_json::to_vec(&body).unwrap(), ..Default::default() })
+    }));
+    for (panel, pointer, expected) in [
+        ("friends", "/rows/0/title", "Friend"),
+        ("profile", "/title", "VNG Tester"),
+        ("avatar", "/rows/0/title", "VNG hat"),
+        ("messages", "/rows/0/title", "Test message"),
+        ("notifications", "/rows/0/title", "New activity"),
+        ("settings", "/email", "tester@example.invalid"),
+    ] {
+        let result = call(&app, "vngPanel", json!({ "id": vng_id, "panel": panel })).await;
+        c.check(&format!("VNG panel {panel} returns display data"), result.is_ok_and(|v| {
+            v.pointer(pointer).and_then(serde_json::Value::as_str) == Some(expected)
+                && !v.to_string().contains("_TEST_V_") && v.get("phone").is_none()
+        }), ());
+    }
+    let global_id = app.roblox_sign_in(&json!({}))["id"].clone();
+    c.check("VNG panels reject a global account", call(&app, "vngPanel", json!({ "id": global_id, "panel": "settings" })).await.is_err(), ());
+    c.check("VNG panels reject arbitrary service names", call(&app, "vngPanel", json!({ "id": vng_id, "panel": "https://example.invalid" })).await.is_err(), ());
+    *STAND_IN.write().unwrap() = None;
 
     // Refused before any tab (or browser) is made: open_website checks the realm first.
     let refused = call(&app, "openWebsite", json!({ "id": vng_id.to_string() })).await;
@@ -46,6 +106,11 @@ pub async fn run(c: &mut Checks, _dir: &str) {
         user_error(&refused).is_some() && app.website.websites.borrow().is_empty(),
         format!("{refused:?}"),
     );
+    let refused = call(&app, "openGameServers", json!({ "id": vng_id, "placeId": 2753915549_i64 })).await;
+    c.check("VIP checkout never opens a Global website tab with a VNG account",
+        user_error(&refused).is_some() && app.website.websites.borrow().is_empty(), ());
+    let refused = call(&app, "gameCommunity", json!({ "id": vng_id, "groupId": 4372130, "action": "join" })).await;
+    c.check("A VNG account cannot change Roblox Global community membership", user_error(&refused).is_some(), ());
 
     for what in [
         "one tab per account, both in one window",
