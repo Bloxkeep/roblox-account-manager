@@ -52,6 +52,8 @@ try {
   tunnel.stderr.resume();
   if (!address) throw new Error('Tunnel did not return a URL');
   console.log('VERIFYING');
+  // Quick Tunnel can print the name before DNS publishes it. An early lookup can cache NXDOMAIN for a minute.
+  await wait(6000, undefined, { signal });
   while (!(await reachable(address, origin.key).catch(() => false))) {
     await wait(1250, undefined, { signal });
   }
