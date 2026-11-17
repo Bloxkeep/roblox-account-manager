@@ -102,7 +102,7 @@ function startDev() {
   const out = fs.openSync(path.join(PERSIST, 'wrangler-dev.log'), 'a');
   const vars = {
     OBJECT_NAME: 'bot-remote', OLD_OBJECT_NAME: '', GATEWAY_URL: `ws://127.0.0.1:${GW}`, DISCORD_TOKEN: 'test-token', DISCORD_API: `http://127.0.0.1:${REST}`,
-    DISCORD_APP_ID: 'app1', DISCORD_PUBLIC_KEY: PUBLIC_HEX, TRACE_URL: 'http://127.0.0.1:9/', ANSWER_WAIT_MS: '800', ANSWER_LATE_MS: '3000', COMMANDS_RETRY_MS: '1000', MAX_CODES: '4', MAX_UNLINKED: '6',
+    DISCORD_APP_ID: 'app1', DISCORD_PUBLIC_KEY: PUBLIC_HEX, TRACE_URL: 'http://127.0.0.1:9/', ANSWER_WAIT_MS: '800', COMMANDS_PER_MINUTE: '24', ANSWER_LATE_MS: '3000', COMMANDS_RETRY_MS: '1000', MAX_CODES: '4', MAX_UNLINKED: '6',
     WATCH_URL: 'http://127.0.0.1:9/', STATUS_URL: 'http://127.0.0.1:9/', LATEST_URL: 'http://127.0.0.1:9/', RELEASE_API_URL: 'http://127.0.0.1:9/',
     DOWNLOADS_URL: 'http://127.0.0.1:9/', RELEASE_FILE_URL: 'http://127.0.0.1:9/', NOTES_URL: 'http://127.0.0.1:9/', COMMUNITY_GUILD: 'g1',
   };
@@ -146,6 +146,7 @@ try {
     if (m.command === 'switch') return slow ? sleep(1500).then(() => ({ content: `Switched ${m.value}` })) : { content: `Switched ${m.value}` };
     if (m.command === 'close') return { content: `Closed ${m.value}` };
     if (m.command === 'screenshot') return m.value === 'Beta' ? { content: 'Beta has no Roblox window open.' } : null; // pictures go up on their own
+    if (m.command === 'watch') return m.value === 'stop' ? { content: 'Watch remotely stopped.' } : null; // its link goes up on its own
     return null;
   };
   /** The app's pictures for a screenshot, as Bloxkeep sends them: straight to the answer link it was handed (Discord's). */
@@ -282,6 +283,23 @@ try {
   for (let n = 0; n < 3; n++)
     if (/screenshots a minute at most/.test(contentOf(await interact(pc('screenshot', { account: 'Beta' }))))) shotsRefused++;
   check('more than 4 screenshots in a minute: the rest are refused', shotsRefused === 1, shotsRefused);
+
+  // ── watch ──
+  r = await interact(pc('watch', {}));
+  check('/pc watch to an app that never said it can: told to update it, nothing sent', /update it there first/.test(contentOf(r)) && r.data.flags === 64
+    && commands.at(-1)?.command !== 'watch', contentOf(r));
+  a.send({ t: 'hello', name: 'GAMING-PC', accounts: ['Alpha', 'Beta'], presets: ['Farm', 'Daily'], lang: 'en', ask: true, shots: true, watch: true });
+  await sleep(300);
+  r = await interact(pc('watch', {}));
+  const watchToken = `tok${tokenNo}`;
+  check("/pc watch: \"thinking…\" at once (seen only by them), the PC handed this answer's own link to put its link in itself", r.type === 5 && r.data?.flags === 64
+    && await waitFor(() => commands.at(-1)?.command === 'watch', 3000) && commands.at(-1).reply === `http://127.0.0.1:${REST}/webhooks/app1/${watchToken}/messages/@original`, JSON.stringify(commands.at(-1)));
+  a.send({ t: 'shown', id: commands.at(-1).id });
+  await sleep(3500);
+  check("…said done: no 'didn't answer in time' put over it later", !calls.some(c => c.url === `/webhooks/app1/${watchToken}/messages/@original` && /didn't answer/.test(c.body?.content ?? '')));
+  r = await interact(pc('watch', { action: 'stop' }));
+  check('/pc watch stop: an ordinary command, answered in words, with no link of its own', await waitFor(() => commands.at(-1)?.command === 'watch' && commands.at(-1).value === 'stop', 3000)
+    && commands.at(-1).reply === undefined && contentOf(r) === 'Watch remotely stopped.', JSON.stringify(r));
 
   // ── autocomplete ──
   r = await interact(pc('preset', { name: 'fa' }, { type: 4, focused: 'name' }));
@@ -455,9 +473,9 @@ try {
 
   // ── too many at once ──
   let refused = 0;
-  for (let n = 0; n < 22; n++)
+  for (let n = 0; n < 26; n++)
     if (/Too many commands/.test(contentOf(await interact(pc('status', {}, { user: 'u7' }))))) refused++;
-  check('more than 20 commands in a minute: the rest are refused', refused === 2, refused);
+  check('more commands in a minute than allowed (24 in this test, 20 live): the rest are refused', refused === 2, refused);
 } finally {
   stopDev();
   gw.close();

@@ -8,7 +8,8 @@
 // and presets that its app sent, for autocomplete, with the socket only (gone when it closes). Commands and answers
 // pass through without being kept. The pictures of /pc screenshot don't pass here at all: the PC is handed that one
 // command's reply link (Discord's, good for 15 minutes and for that answer only) and sends them to Discord itself, so
-// the object that keeps the bot online never holds them.
+// the object that keeps the bot online never holds them. /pc watch's link (the key to the PC's Roblox windows, live)
+// goes up the same way.
 
 // A code to link a PC: six letters and digits, no look-alikes (0/O, 1/I/L), good for ten minutes and once.
 export const CODE_FOR = 10 * 60_000;
@@ -57,12 +58,13 @@ export const PC_COMMAND = {
     { type: 1, name: 'close', description: "Close an account's Roblox window, or all of them", options: [option('account', 'The account, or "All accounts"', { required: true, autocomplete: true }), pcOption] },
     { type: 1, name: 'switch', description: 'Move an account to another server of its game, or all of them', options: [option('account', 'The account, or "All accounts"', { required: true, autocomplete: true }), pcOption] },
     { type: 1, name: 'screenshot', description: "See an account's Roblox window, or all of them", options: [option('account', 'The account, or "All accounts"', { required: true, autocomplete: true }), pcOption] },
+    { type: 1, name: 'watch', description: "Watch the PC's Roblox windows live: a private link, or stop it", options: [option('action', 'Start (when left out) or stop', { choices: [{ name: 'Start', value: 'start' }, { name: 'Stop', value: 'stop' }] }), pcOption] },
     { type: 1, name: 'unlink', description: 'Stop controlling a PC from Discord', options: [pcOption] },
   ],
 };
 
 /** The commands the app is sent (the subcommand's name), and the option each needs. */
-export const APP_COMMANDS = { status: null, preset: 'name', close: 'account', switch: 'account', screenshot: 'account' };
+export const APP_COMMANDS = { status: null, preset: 'name', close: 'account', switch: 'account', screenshot: 'account', watch: 'action' };
 
 /** The commands whose account may be "All accounts". */
 export const ALL_ACCOUNTS_COMMANDS = ['close', 'switch', 'screenshot'];
@@ -98,7 +100,7 @@ const text = (v, max) => typeof v === 'string' ? v.slice(0, max) : '';
 const list = v => Array.isArray(v) ? v.slice(0, MAX_LIST).map(x => text(x, MAX_NAME)).filter(Boolean) : [];
 
 /** What the app says about itself when it connects (and when its names change): only names, cut short. */
-export const readHello = m => ({ name: text(m.name, MAX_NAME) || 'PC', accounts: list(m.accounts), presets: list(m.presets), lang: m.lang === 'vi' ? 'vi' : 'en', ask: m.ask === true, shots: m.shots === true });
+export const readHello = m => ({ name: text(m.name, MAX_NAME) || 'PC', accounts: list(m.accounts), presets: list(m.presets), lang: m.lang === 'vi' ? 'vi' : 'en', ask: m.ask === true, shots: m.shots === true, watch: m.watch === true });
 
 /**
  * The app's answer to a command, as Discord takes it: text and embeds only (no mentions, no files, no components), seen
@@ -141,5 +143,6 @@ export const PC_TEXT = {
   tooFast: 'Too many commands in a minute. Wait a moment, then try again.',
   updateFirst: pc => `Bloxkeep on **${pc}** can't take screenshots yet: update it there first.`,
   shotsTooFast: `${SHOTS_PER_MINUTE} screenshots a minute at most. Wait a moment, then try again.`,
+  updateFirstWatch: pc => `Bloxkeep on **${pc}** can't start Watch remotely from Discord yet: update it there first.`,
   allAccounts: 'All accounts',
 };
