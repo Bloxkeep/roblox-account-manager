@@ -62,6 +62,12 @@ pub fn schedule<V: 'static>(view: WeakEntity<V>, out: PathBuf, w: f32, h: f32, w
                     cx.background_executor().timer(Duration::from_millis(150)).await;
                 }
             }
+            // BLOXKEEP_SHOT_FRAMES=<n>: a clip instead of one picture (see `frames`).
+            if let (Ok(&h), Some(n)) = (handle.as_ref(), std::env::var("BLOXKEEP_SHOT_FRAMES").ok().and_then(|v| v.parse::<usize>().ok())) {
+                frames(h, &out, n, cx).await;
+                let _ = cx.update(|cx| cx.quit());
+                return;
+            }
             let pic = handle.and_then(|h| {
                 cx.update_window(h, |_, window, cx| {
                     window.draw(cx).clear(cx);
@@ -83,6 +89,149 @@ pub fn schedule<V: 'static>(view: WeakEntity<V>, out: PathBuf, w: f32, h: f32, w
         }
         let _ = cx.update(|cx| cx.quit());
     })
+}
+
+/// One step of a clip's script (BLOXKEEP_SHOT_ACTS), at `at` ms from the clip's start.
+#[cfg(feature = "shot")]
+enum Act {
+    Move(f32, f32),
+    /// To x,y over that many ms, eased.
+    Glide(f32, f32, f32),
+    Click(f32, f32),
+    Key(String),
+    Type(String),
+    Scroll(f32),
+}
+
+/// "500:glide:640,300,600; 1200:click:640,300; 1500:type:blox; 2200:key:enter; 2600:scroll:-400" (window points).
+#[cfg(feature = "shot")]
+fn acts() -> Vec<(f32, Act)> {
+    let script = std::env::var("BLOXKEEP_SHOT_ACTS").unwrap_or_default();
+    let nums = |s: &str| s.split(',').filter_map(|n| n.trim().parse::<f32>().ok()).collect::<Vec<_>>();
+    let mut out: Vec<(f32, Act)> = script
+        .split(';')
+        .filter_map(|a| {
+            let mut p = a.trim().splitn(3, ':');
+            let at = p.next()?.trim().parse::<f32>().ok()?;
+            let kind = p.next()?.trim();
+            let arg = p.next().unwrap_or("");
+            let n = nums(arg);
+            Some((
+                at,
+                match kind {
+                    "move" if n.len() >= 2 => Act::Move(n[0], n[1]),
+                    "glide" if n.len() >= 3 => Act::Glide(n[0], n[1], n[2]),
+                    "click" if n.len() >= 2 => Act::Click(n[0], n[1]),
+                    "key" => Act::Key(arg.trim().to_string()),
+                    "type" => Act::Type(arg.to_string()),
+                    "scroll" if !n.is_empty() => Act::Scroll(n[0]),
+                    _ => return None,
+                },
+            ))
+        })
+        .collect();
+    out.sort_by(|a, b| a.0.total_cmp(&b.0));
+    out
+}
+
+/// A clip of the hidden window: `n` pictures (<out>-0000.png…), one every BLOXKEEP_SHOT_EVERY ms (40 by default), with
+/// the script's mouse and keys handed to this window only (never to the desktop), as the window's own input. Beside them,
+/// <out>.txt: per picture its time in ms and where the mouse was (x y, and 1 while pressed), for drawing a pointer later.
+#[cfg(feature = "shot")]
+async fn frames(h: AnyWindowHandle, out: &std::path::Path, n: usize, cx: &mut AsyncApp) {
+    let every = std::env::var("BLOXKEEP_SHOT_EVERY").ok().and_then(|v| v.parse::<u64>().ok()).unwrap_or(40);
+    let stem = out.with_extension("");
+    let script = acts();
+    let mut next = 0;
+    let (mut mx, mut my, mut down) = (-4000f32, -4000f32, false);
+    let mut glide: Option<(f32, f32, f32, f32, f32, f32)> = None; // from x, y, to x, y, start, length
+    let mut log = String::new();
+    // The pictures are written by a few threads of their own, so taking the next one never waits for a PNG.
+    let (tx, rx) = std::sync::mpsc::channel::<(PathBuf, image::RgbaImage)>();
+    let rx = std::sync::Arc::new(std::sync::Mutex::new(rx));
+    let writers: Vec<_> = (0..4)
+        .map(|_| {
+            let rx = rx.clone();
+            std::thread::spawn(move || loop {
+                let job = rx.lock().ok().and_then(|r| r.recv().ok());
+                let Some((p, pic)) = job else { break };
+                let _ = pic.save(&p);
+            })
+        })
+        .collect();
+    let start = std::time::Instant::now();
+    let send = |input: PlatformInput, cx: &mut AsyncApp| {
+        let _ = cx.update_window(h, |_, window, cx| window.dispatch_event(input, cx));
+    };
+    for i in 0..n {
+        let target = Duration::from_millis(every * i as u64);
+        let now = start.elapsed();
+        if target > now {
+            cx.background_executor().timer(target - now).await;
+        }
+        let t = start.elapsed().as_secs_f32() * 1000.;
+        while next < script.len() && script[next].0 <= t {
+            let (at, act) = &script[next];
+            let pos = |x: f32, y: f32| point(px(x), px(y));
+            match act {
+                Act::Move(x, y) => {
+                    (mx, my, glide) = (*x, *y, None);
+                    send(PlatformInput::MouseMove(MouseMoveEvent { position: pos(mx, my), pressed_button: None, modifiers: Modifiers::default() }), cx);
+                }
+                Act::Glide(x, y, d) => glide = Some((mx, my, *x, *y, *at, d.max(1.))),
+                Act::Click(x, y) => {
+                    (mx, my, glide) = (*x, *y, None);
+                    send(PlatformInput::MouseMove(MouseMoveEvent { position: pos(mx, my), pressed_button: None, modifiers: Modifiers::default() }), cx);
+                    send(PlatformInput::MouseDown(MouseDownEvent { button: MouseButton::Left, position: pos(mx, my), modifiers: Modifiers::default(), click_count: 1, first_mouse: false }), cx);
+                    send(PlatformInput::MouseUp(MouseUpEvent { button: MouseButton::Left, position: pos(mx, my), modifiers: Modifiers::default(), click_count: 1 }), cx);
+                    down = true;
+                }
+                Act::Key(k) => {
+                    if let Ok(stroke) = Keystroke::parse(Box::leak(k.clone().into_boxed_str())) {
+                        send(PlatformInput::KeyDown(KeyDownEvent { keystroke: stroke.clone(), is_held: false, prefer_character_input: false }), cx);
+                        send(PlatformInput::KeyUp(KeyUpEvent { keystroke: stroke }), cx);
+                    }
+                }
+                Act::Type(text) => {
+                    for ch in text.chars() {
+                        let key = if ch == ' ' { "space".to_string() } else { ch.to_lowercase().to_string() };
+                        if let Ok(mut stroke) = Keystroke::parse(Box::leak(key.into_boxed_str())) {
+                            stroke.key_char = Some(ch.to_string());
+                            let _ = cx.update_window(h, |_, window, cx| window.dispatch_keystroke(stroke, cx));
+                        }
+                    }
+                }
+                Act::Scroll(dy) => {
+                    send(PlatformInput::Scroll(ScrollEvent { position: pos(mx, my), delta: ScrollDelta::Pixels(point(px(0.), px(*dy))), ..Default::default() }), cx);
+                }
+            }
+            next += 1;
+        }
+        if let Some((fx, fy, tx2, ty, at, len)) = glide {
+            let k = ((t - at) / len).clamp(0., 1.);
+            let e = if k < 0.5 { 2. * k * k } else { 1. - (-2. * k + 2.).powi(2) / 2. };
+            (mx, my) = (fx + (tx2 - fx) * e, fy + (ty - fy) * e);
+            send(PlatformInput::MouseMove(MouseMoveEvent { position: point(px(mx), px(my)), pressed_button: None, modifiers: Modifiers::default() }), cx);
+            if k >= 1. {
+                glide = None;
+            }
+        }
+        let pic = cx.update_window(h, |_, window, cx| {
+            window.draw(cx).clear(cx);
+            window.render_to_image()
+        });
+        if let Ok(Ok(pic)) = pic {
+            let _ = tx.send((PathBuf::from(format!("{}-{i:04}.png", stem.display())), pic));
+        }
+        log.push_str(&format!("{t:.0} {mx:.1} {my:.1} {}\n", down as u8));
+        down = false;
+    }
+    drop(tx);
+    for w in writers {
+        let _ = w.join();
+    }
+    let _ = std::fs::write(stem.with_extension("txt"), log);
+    eprintln!("shot: {n} frames, {} ms", start.elapsed().as_millis());
 }
 
 /// The hidden window takes the desktop's real mouse as its own (where the cursor happens to be on the screen), so a
