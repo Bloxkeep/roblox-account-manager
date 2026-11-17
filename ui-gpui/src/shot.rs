@@ -62,9 +62,15 @@ pub fn schedule<V: 'static>(view: WeakEntity<V>, out: PathBuf, w: f32, h: f32, w
                     cx.background_executor().timer(Duration::from_millis(150)).await;
                 }
             }
+            // BLOXKEEP_SHOT_BENCH=<n>: what each frame costs, with the script's mouse (see `frames`): no pictures.
+            if let (Ok(&h), Some(n)) = (handle.as_ref(), std::env::var("BLOXKEEP_SHOT_BENCH").ok().and_then(|v| v.parse::<usize>().ok())) {
+                frames(h, &out, n, true, cx).await;
+                let _ = cx.update(|cx| cx.quit());
+                return;
+            }
             // BLOXKEEP_SHOT_FRAMES=<n>: a clip instead of one picture (see `frames`).
             if let (Ok(&h), Some(n)) = (handle.as_ref(), std::env::var("BLOXKEEP_SHOT_FRAMES").ok().and_then(|v| v.parse::<usize>().ok())) {
-                frames(h, &out, n, cx).await;
+                frames(h, &out, n, false, cx).await;
                 let _ = cx.update(|cx| cx.quit());
                 return;
             }
@@ -138,7 +144,9 @@ fn acts() -> Vec<(f32, Act)> {
 /// the script's mouse and keys handed to this window only (never to the desktop), as the window's own input. Beside them,
 /// <out>.txt: per picture its time in ms and where the mouse was (x y, and 1 while pressed), for drawing a pointer later.
 #[cfg(feature = "shot")]
-async fn frames(h: AnyWindowHandle, out: &std::path::Path, n: usize, cx: &mut AsyncApp) {
+/// `bench`: no pictures; each frame's draw (the page made and laid out) and present (handed to the graphics card) are
+/// timed, and a present with nothing redrawn after it (what GPUI does every vsync for a second after fast mouse input).
+async fn frames(h: AnyWindowHandle, out: &std::path::Path, n: usize, bench: bool, cx: &mut AsyncApp) {
     let every = std::env::var("BLOXKEEP_SHOT_EVERY").ok().and_then(|v| v.parse::<u64>().ok()).unwrap_or(40);
     let stem = out.with_extension("");
     let script = acts();
@@ -146,6 +154,7 @@ async fn frames(h: AnyWindowHandle, out: &std::path::Path, n: usize, cx: &mut As
     let (mut mx, mut my, mut down) = (-4000f32, -4000f32, false);
     let mut glide: Option<(f32, f32, f32, f32, f32, f32)> = None; // from x, y, to x, y, start, length
     let mut log = String::new();
+    let mut times: Vec<(Duration, Duration, Duration)> = Vec::new();
     // The pictures are written by a few threads of their own, so taking the next one never waits for a PNG.
     let (tx, rx) = std::sync::mpsc::channel::<(PathBuf, image::RgbaImage)>();
     let rx = std::sync::Arc::new(std::sync::Mutex::new(rx));
@@ -216,12 +225,26 @@ async fn frames(h: AnyWindowHandle, out: &std::path::Path, n: usize, cx: &mut As
                 glide = None;
             }
         }
-        let pic = cx.update_window(h, |_, window, cx| {
-            window.draw(cx).clear(cx);
-            window.render_to_image()
-        });
-        if let Ok(Ok(pic)) = pic {
-            let _ = tx.send((PathBuf::from(format!("{}-{i:04}.png", stem.display())), pic));
+        if bench {
+            let _ = cx.update_window(h, |_, window, cx| {
+                let t0 = std::time::Instant::now();
+                let clear = window.draw(cx);
+                let t1 = std::time::Instant::now();
+                window.present_for_bench();
+                let t2 = std::time::Instant::now();
+                clear.clear(cx);
+                window.present_for_bench();
+                let t3 = std::time::Instant::now();
+                times.push((t1 - t0, t2 - t1, t3 - t2));
+            });
+        } else {
+            let pic = cx.update_window(h, |_, window, cx| {
+                window.draw(cx).clear(cx);
+                window.render_to_image()
+            });
+            if let Ok(Ok(pic)) = pic {
+                let _ = tx.send((PathBuf::from(format!("{}-{i:04}.png", stem.display())), pic));
+            }
         }
         log.push_str(&format!("{t:.0} {mx:.1} {my:.1} {}\n", down as u8));
         down = false;
@@ -229,6 +252,25 @@ async fn frames(h: AnyWindowHandle, out: &std::path::Path, n: usize, cx: &mut As
     drop(tx);
     for w in writers {
         let _ = w.join();
+    }
+    if bench {
+        let ms = |d: Duration| d.as_secs_f64() * 1000.;
+        let stat = |mut v: Vec<f64>| {
+            v.sort_by(f64::total_cmp);
+            let at = |q: f64| v.get(((v.len() as f64 - 1.) * q).round() as usize).copied().unwrap_or(0.);
+            format!("median {:.2} ms, p90 {:.2} ms, max {:.2} ms", at(0.5), at(0.9), at(1.))
+        };
+        let draw = stat(times.iter().map(|t| ms(t.0)).collect());
+        let present = stat(times.iter().map(|t| ms(t.1)).collect());
+        let again = stat(times.iter().map(|t| ms(t.2)).collect());
+        let report = format!("frames: {}
+draw: {draw}
+present: {present}
+present, nothing redrawn: {again}
+", times.len());
+        eprint!("{report}");
+        let _ = std::fs::write(stem.with_extension("bench.txt"), report);
+        return;
     }
     let _ = std::fs::write(stem.with_extension("txt"), log);
     eprintln!("shot: {n} frames, {} ms", start.elapsed().as_millis());

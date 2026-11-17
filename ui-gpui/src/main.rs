@@ -17,6 +17,7 @@ mod core;
 mod crisp;
 mod duo_icons;
 mod frame;
+mod frame_tally;
 mod history;
 mod i18n;
 mod images;
@@ -172,6 +173,7 @@ fn run_ui(link: Option<(link::Link, futures::channel::mpsc::UnboundedReceiver<li
         cx.set_reduce_motion(false);
         crate::theme::dress(cx);
         images::init(cx);
+        frame_tally::start(cx);
         // The keys: Ctrl+K to the search, Tab and Shift+Tab through the controls, Alt+arrows for Back and Forward.
         cx.bind_keys([
             KeyBinding::new("ctrl-k", shell::FocusSearch, None),

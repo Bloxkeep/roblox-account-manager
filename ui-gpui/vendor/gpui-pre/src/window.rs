@@ -1323,6 +1323,64 @@ pub(crate) struct InputRateTracker {
     sustain_duration: Duration,
 }
 
+/// Bloxkeep's frame count (its error.log line, src/frame_tally.rs): what this process's windows drew and presented
+/// since the last `take_frame_tally`.
+#[doc(hidden)]
+#[derive(Clone, Copy, Debug, Default)]
+pub struct FrameTally {
+    /// Frames made again and presented, and the time their draws (making and laying out the page) took.
+    pub draws: u64,
+    pub draw_time: Duration,
+    /// Frames presented again with nothing redrawn (for a second after fast mouse input, every display refresh).
+    pub presents: u64,
+    /// Seconds with any frame, and the most frames (drawn or presented again) in one of them.
+    pub busy_secs: u64,
+    pub most_in_a_sec: u32,
+}
+
+struct FrameCount {
+    tally: FrameTally,
+    second: Option<std::time::Instant>,
+    in_second: u32,
+}
+
+static FRAME_COUNT: std::sync::Mutex<FrameCount> = std::sync::Mutex::new(FrameCount {
+    tally: FrameTally { draws: 0, draw_time: Duration::ZERO, presents: 0, busy_secs: 0, most_in_a_sec: 0 },
+    second: None,
+    in_second: 0,
+});
+
+/// One frame: drawn (and how long the draw took) or only presented again.
+fn count_frame(drawn: Option<Duration>) {
+    let now = std::time::Instant::now();
+    let mut c = FRAME_COUNT.lock().unwrap_or_else(|e| e.into_inner());
+    match drawn {
+        Some(took) => {
+            c.tally.draws += 1;
+            c.tally.draw_time += took;
+        }
+        None => c.tally.presents += 1,
+    }
+    if c.second.is_none_or(|s| now.duration_since(s) >= Duration::from_secs(1)) {
+        c.second = Some(now);
+        c.in_second = 0;
+        c.tally.busy_secs += 1;
+    }
+    c.in_second += 1;
+    c.tally.most_in_a_sec = c.tally.most_in_a_sec.max(c.in_second);
+}
+
+/// What was drawn and presented since the last call (Bloxkeep's error.log line); starts the count over.
+#[doc(hidden)]
+pub fn take_frame_tally() -> FrameTally {
+    let mut c = FRAME_COUNT.lock().unwrap_or_else(|e| e.into_inner());
+    let tally = c.tally;
+    c.tally = FrameTally::default();
+    c.second = None;
+    c.in_second = 0;
+    tally
+}
+
 const FRAME_INTERVAL_TOLERANCE: Duration = Duration::from_millis(1);
 
 /// Keeps throttled frames on a stable cadence despite callback delivery jitter.
@@ -2024,6 +2082,7 @@ impl Window {
                     || needs_present.get()
                     || high_rate_input;
                 if should_draw {
+                    let drawing = std::time::Instant::now();
                     measure("frame duration", || {
                         handle
                             .update(&mut cx, |_, window, cx| {
@@ -2047,8 +2106,10 @@ impl Window {
                                 )
                             })
                             .log_err();
-                    })
+                    });
+                    count_frame(Some(drawing.elapsed()));
                 } else if needs_present {
+                    count_frame(None);
                     handle
                         .update(&mut cx, |_, window, _| window.present())
                         .with_context(|| {
@@ -3854,6 +3915,13 @@ impl Window {
         );
         self.needs_present.set(false);
         profiling::finish_frame!();
+    }
+
+    /// Bloxkeep's frame measure (its --shot bench, BLOXKEEP_SHOT_BENCH): hands the drawn frame to the renderer now, as
+    /// a real frame request does after `draw`, or again with nothing redrawn, as fast mouse input does every vsync.
+    #[doc(hidden)]
+    pub fn present_for_bench(&mut self) {
+        self.present();
     }
 
     /// Presents the most recently drawn frame if it hasn't been presented yet.
