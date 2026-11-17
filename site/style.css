@@ -1,5 +1,11 @@
-/* Bloxkeep's website: solid colours as in the app (its Dark theme, and a light one for light systems), green for the
-   one main action as the app's Play, the logo's yellow only in the logo. Sections take turns on two solid backgrounds. */
+/* Bloxkeep's website: solid colours as in the app (its Dark theme, and a light one for light systems), the app's yellow
+   on the one main action (Download), as on the app's Play. The landing page is black whatever the system's colours, its
+   clips and pictures being of the app's dark look. The app's own font, Be Vietnam Pro (OFL, fonts/OFL.txt), cut down to
+   Latin and Vietnamese. */
+@font-face { font-family: "Be Vietnam Pro"; font-weight: 400; font-display: swap; src: url(fonts/BeVietnamPro-Regular.woff) format("woff"); }
+@font-face { font-family: "Be Vietnam Pro"; font-weight: 500; font-display: swap; src: url(fonts/BeVietnamPro-Medium.woff) format("woff"); }
+@font-face { font-family: "Be Vietnam Pro"; font-weight: 600; font-display: swap; src: url(fonts/BeVietnamPro-SemiBold.woff) format("woff"); }
+@font-face { font-family: "Be Vietnam Pro"; font-weight: 700 800; font-display: swap; src: url(fonts/BeVietnamPro-Bold.woff) format("woff"); }
 :root {
   --bg: #f6f7f9;
   --band: #ffffff;
@@ -9,9 +15,9 @@
   --text: #14171f;
   --muted: #4b5263;
   --link: #1d6fd6;
-  --accent: #16a34a;
-  --accent-hover: #15803d;
-  --accent-ink: #ffffff;
+  --accent: #f5c933;
+  --accent-hover: #e8b91c;
+  --accent-ink: #1a1504;
   --note: #1d6fd6;
   --tip: #16a34a;
   --important: #7c3aed;
@@ -29,9 +35,9 @@
     --text: #eef0f5;
     --muted: #b0b6c3;
     --link: #6cb0ff;
-    --accent: #22c55e;
-    --accent-hover: #3ad672;
-    --accent-ink: #04200d;
+    --accent: #f5c933;
+    --accent-hover: #ffd84d;
+    --accent-ink: #1a1504;
     --note: #6cb0ff;
     --tip: #34d399;
     --important: #b794f6;
@@ -47,12 +53,12 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font: 17px/1.65 "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+  font: 17px/1.65 "Be Vietnam Pro", "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 a { color: var(--link); text-decoration: none; }
 a:hover { text-decoration: underline; }
 img { max-width: 100%; height: auto; }
-h1, h2, h3 { line-height: 1.2; font-family: "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; }
+h1, h2, h3 { line-height: 1.2; font-weight: 700; }
 h2 { font-size: 2rem; margin: 0 0 .75rem; letter-spacing: -.01em; }
 h3 { font-size: 1.25rem; }
 code { font: .88em ui-monospace, "Cascadia Mono", Consolas, monospace; background: var(--surface-2); padding: .1em .35em; border-radius: 4px; }
@@ -66,7 +72,7 @@ kbd { font: .85em ui-monospace, Consolas, monospace; border: 1px solid var(--lin
 /* The bar spans the whole window: the name at the left edge, the links at the right, as an app's title bar sits */
 .wrap.top-in { max-width: none; padding: 0 clamp(20px, 2.5vw, 36px); }
 .top-in { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 60px; }
-.brand { display: flex; align-items: center; gap: 10px; color: var(--text); font-weight: 700; font-size: 1.15rem; }
+.brand { flex: none; display: flex; align-items: center; gap: 10px; color: var(--text); font-weight: 700; font-size: 1.15rem; }
 .brand:hover { text-decoration: none; }
 .top nav { display: flex; align-items: center; gap: 22px; }
 .top nav a { color: var(--muted); font-weight: 500; font-size: .95rem; white-space: nowrap; }
@@ -105,46 +111,78 @@ kbd { font: .85em ui-monospace, Consolas, monospace; border: 1px solid var(--lin
 .cta { display: flex; flex-wrap: wrap; gap: 12px; margin: 1.75rem 0 .75rem; }
 .meta, .small { color: var(--muted); font-size: .92rem; }
 .meta a { font-weight: 600; }
-.try { margin: .9rem 0 0; font-weight: 600; }
 
-/* Try it (demo/): the app in a frame filling the window under the header and a solid bar saying it's a demo. On a
-   narrow screen the frame keeps a desktop size and scrolls, as the app is made for a PC. */
-body.demo { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
-body.demo main { flex: 1; display: flex; flex-direction: column; min-height: 0; }
-.demo-bar { background: #1d6fd6; color: #fff; }
-.demo-bar-in { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 48px; padding-top: 6px; padding-bottom: 6px; }
-.demo-bar p { margin: 0; font-size: .95rem; font-weight: 500; }
-.demo-bar .btn { flex: none; background: #fff; border-color: #fff; color: #14171f; }
-.demo-bar .btn:hover { background: #e8eefb; border-color: #e8eefb; }
-.demo-small { display: none; opacity: .85; }
-.demo-frame { flex: 1; min-height: 0; overflow: auto; background: #0b0d12; }
-.demo-frame iframe { display: block; border: 0; width: 100%; height: 100%; min-width: 1024px; min-height: 620px; }
-@media (max-width: 860px) { .demo-small { display: inline; } }
-@media (max-width: 640px) { .demo-bar p { font-size: .85rem; } }
+/* Landing page: black, one big headline, the app's own clips. */
+body.home {
+  --bg: #000; --band: #000; --surface: #0e0f12; --surface-2: #17181c; --line: #23252b; --text: #f4f5f7; --muted: #a3a7b1;
+  --link: #f5c933; --accent: #f5c933; --accent-hover: #ffd84d; --accent-ink: #1a1504;
+  --shadow: none;
+  color-scheme: dark;
+}
+body.home .top { background: rgba(0, 0, 0, .86); backdrop-filter: blur(12px); border-bottom-color: #16171a; }
+body.home .foot { background: #000; border-top-color: #16171a; }
+body.home ::selection { background: #f5c933; color: #1a1504; }
+.band { padding: 96px 0; }
+.intro { color: var(--muted); font-size: 1.1rem; max-width: 720px; margin: -.25rem 0 2.25rem; }
+.more { font-weight: 600; }
+h2 { letter-spacing: -.025em; }
+body.home h2 { font-size: clamp(1.9rem, 1.2rem + 2.2vw, 3rem); margin-bottom: 1rem; }
+.btn.ghost { background: transparent; border-color: #34373f; color: var(--text); }
+.btn.ghost:hover { background: #121317; border-color: #4a4e58; }
+.btn.primary.big { padding: .95rem 1.8rem; font-size: 1.08rem; border-radius: 12px; }
+.btn.ghost.big { padding: .95rem 1.6rem; border-radius: 12px; }
+.btn:active { transform: scale(.98); }
 
-/* Landing page */
-.shot { display: block; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
-.band { padding: 80px 0; }
-.band.alt { background: var(--band); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-.intro { color: var(--muted); font-size: 1.1rem; max-width: 720px; margin: 0 0 2rem; }
+.hero { padding: 88px 0 40px; }
+.hero-text { text-align: center; }
+.badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border: 1px solid var(--line); border-radius: 999px; color: var(--text); font-size: .92rem; font-weight: 500; background: var(--surface); }
+.badge:hover { text-decoration: none; border-color: #3a3d45; }
+.hero h1 { font-size: clamp(2.4rem, 1.2rem + 4.6vw, 5.2rem); line-height: 1.04; letter-spacing: -.035em; font-weight: 800; margin: 26px auto 22px; max-width: 15ch; text-wrap: balance; }
+.lead { font-size: 1.25rem; color: var(--muted); margin: 0 auto; max-width: 600px; text-wrap: pretty; }
+.hero .cta { justify-content: center; margin-top: 2.25rem; }
+/* The app at work, as big as the window lets it be (up to 1240 px), never taller than the window under the top bar. */
+.stage { margin: 56px auto 0; width: min(100%, calc((100vh - 120px) * 1.6)); max-width: 1240px; }
+.frame { display: block; width: 100%; height: auto; border-radius: 16px; border: 1px solid #25272d; background: #0b0c0f; }
+.wrap:has(> .stage) { max-width: 1280px; }
 
-.hero { padding: 72px 0 80px; }
-.hero-text { max-width: 760px; margin: 0 auto; text-align: center; }
-.hero h1 { font-size: 3.3rem; margin: 0 0 1.1rem; letter-spacing: -.02em; }
-.lead { font-size: 1.3rem; color: var(--muted); margin: 0 auto; max-width: 620px; }
-.hero .cta { justify-content: center; }
-/* The hero: the app's Home, big, wider than the text column (up to 1240 px, 20 px from the window's edges), and
-   never taller than the window under the top bar: the whole app in view at once.
-   The real Roblox windows are the next section's picture. */
-.stage { position: relative; left: 50%; translate: -50% 0; width: min(1240px, calc(100vw - 40px), calc((100vh - 150px) * 1.6)); margin-top: 48px; }
-.stage figure { margin: 0; }
-.stage .shot { width: 100%; box-shadow: var(--shadow); }
+/* Real numbers in a row: big figures, small words under them. */
+.stats { padding: 40px 0 8px; }
+.stat-row { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); }
+.stat-row li { text-align: center; padding: 6px 12px; }
+.stat-row li + li { border-left: 1px solid var(--line); }
+.stat-row b { display: block; font-size: clamp(2rem, 1.3rem + 2.4vw, 3.4rem); font-weight: 700; letter-spacing: -.03em; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.stat-row span { color: var(--muted); font-size: .98rem; }
 
 .proof figure { margin: 0; }
-.proof .shot { width: 100%; box-shadow: var(--shadow); }
-.proof figcaption { color: var(--muted); font-size: .92rem; margin-top: 12px; }
+.proof figcaption { color: var(--muted); font-size: .92rem; margin-top: 14px; }
 
-.more { font-weight: 600; }
+/* The clips: two to a row, each a short loop of the app above its words. */
+.clips { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 56px 32px; }
+.clip h3 { font-size: 1.35rem; margin: 22px 0 8px; letter-spacing: -.01em; }
+.clip p { margin: 0 0 10px; color: var(--muted); }
+.clip-media { border-radius: 14px; overflow: hidden; border: 1px solid #25272d; background: #0b0c0f; aspect-ratio: 16 / 10; }
+.clip-media video, .clip-media img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top left; }
+
+/* The rest of what it does: small tiles, each leading to its guide page. */
+.tiles { list-style: none; margin: 8px 0 28px; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.tiles a { display: block; height: 100%; padding: 22px 22px 20px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); color: var(--text); }
+.tiles a:hover { text-decoration: none; border-color: #3a3d45; background: #131418; }
+.tiles h3 { margin: 0 0 6px; font-size: 1.08rem; }
+.tiles p { margin: 0; color: var(--muted); font-size: .95rem; line-height: 1.55; }
+
+/* The questions' tabs: pills, the chosen one filled. */
+.pills { display: inline-flex; gap: 4px; padding: 4px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); margin: .5rem 0 1rem; }
+.pills button { font: inherit; font-weight: 600; font-size: .96rem; padding: 8px 20px; border-radius: 999px; border: 0; background: transparent; color: var(--muted); cursor: pointer; }
+.pills button:hover { color: var(--text); }
+.pills button[aria-selected="true"] { background: var(--text); color: #000; }
+.faq[hidden] { display: none; }
+
+/* Download, last: one big panel. */
+.get { padding: 24px 0 112px; }
+.get-in { max-width: 980px; margin: 0 auto; text-align: center; padding: 72px 48px; border-radius: 28px; background: #0e0f12; border: 1px solid var(--line); }
+.get-in img { display: block; margin: 0 auto 18px; }
+.get .cta { justify-content: center; }
+.get .steps { max-width: 640px; margin: 2rem auto 1rem; }
 
 /* Start in three steps: three cards, a real picture on top of each, the step's number on the picture's edge. */
 .steps3 { list-style: none; padding: 0; margin: 2rem 0 1.5rem; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
@@ -155,34 +193,11 @@ body.demo main { flex: 1; display: flex; flex-direction: column; min-height: 0; 
 .steps3 h3 { margin: 0 0 6px; font-size: 1.2rem; }
 .steps3 p { margin: 0; color: var(--muted); }
 
-/* What it does: a tab per group; the group's features listed beside one big picture, the chosen one's. */
-.fx { margin-top: 1.75rem; }
-.fx-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px; }
-.fx-tabs button { font: inherit; font-weight: 600; font-size: .98rem; padding: 8px 18px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); cursor: pointer; }
-.fx-tabs button:hover { color: var(--text); }
-.fx-tabs button[aria-selected="true"] { background: var(--text); border-color: var(--text); color: var(--bg); }
-.fx-panel { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); gap: 32px; align-items: start; }
-.fx-panel[hidden] { display: none; }
-.fx-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 4px; }
-.fx-list li { border-radius: 12px; border: 1px solid transparent; }
-.fx-list li.on { background: var(--surface); border-color: var(--line); }
-.fx-item { display: block; width: 100%; text-align: left; font: inherit; color: inherit; background: none; border: 0; padding: 14px 18px 6px; cursor: pointer; }
-.fx-item b { display: block; font-size: 1.08rem; }
-.fx-item span { display: none; margin-top: 4px; color: var(--muted); font-size: .96rem; }
-.fx-list li .more { display: none; padding: 4px 18px 14px; font-size: .94rem; }
-.fx-list li:not(.on) .fx-item { padding-bottom: 14px; color: var(--muted); }
-.fx-list li:not(.on):hover .fx-item { color: var(--text); }
-.fx-list li.on .fx-item span, .fx-list li.on .more { display: block; }
-.fx-shot { margin: 0; position: sticky; top: 84px; }
-.fx-shot img { display: block; width: 100%; border-radius: 10px; box-shadow: var(--shadow); background: var(--surface-2); }
-
 .cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; margin: 1.5rem 0 20px; }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; }
 .card h3 { margin: 0 0 6px; font-size: 1.15rem; }
 .card p { margin: 0; color: var(--muted); font-size: .98rem; }
 
-.get .wrap { max-width: 820px; text-align: center; }
-.get .cta { justify-content: center; }
 .steps { list-style: none; padding: 0; margin: 1.25rem 0 0; text-align: left; display: grid; gap: 10px; }
 .steps li { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 16px 12px 44px; position: relative; color: var(--muted); }
 .steps li::before { content: "✓"; position: absolute; left: 16px; top: 12px; color: var(--accent); font-weight: 700; }
@@ -197,8 +212,7 @@ body.demo main { flex: 1; display: flex; flex-direction: column; min-height: 0; 
 .news-list p { margin: 0; color: var(--muted); font-size: .96rem; }
 
 /* Bloxkeep's Discord server: Discord's blurple, and its channels as Discord lists them */
-.community { background: #5865f2; color: #fff; padding: 88px 0; }
-.community-in { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 64px; align-items: center; }
+.community { background: #5865f2; color: #fff; border-radius: 24px; padding: 64px; display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 64px; align-items: center; }
 .discord-mark { display: block; margin-bottom: 20px; }
 .community h2 { font-size: 2.5rem; margin-bottom: 1rem; letter-spacing: -.02em; }
 .community-lead { font-size: 1.2rem; margin: 0 0 1.75rem; max-width: 34ch; }
@@ -306,22 +320,23 @@ td + td strong { color: var(--text); }
 @media (max-width: 860px) {
   body { font-size: 16px; }
   .band { padding: 56px 0; }
-  .hero { padding: 40px 0 56px; }
-  .hero h1 { font-size: 2.2rem; }
+  .hero { padding: 48px 0 56px; }
   .lead { font-size: 1.12rem; }
-  .stage { margin-top: 40px; }
+  .stage { margin-top: 36px; }
+  .clips { grid-template-columns: minmax(0, 1fr); gap: 40px; }
+  .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .stat-row { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 28px; }
+  .stat-row li + li { border-left: 0; }
+  .get-in { padding: 48px 24px; }
   .news-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .community { padding: 64px 0; }
-  .community-in { grid-template-columns: minmax(0, 1fr); gap: 40px; }
+  .community { padding: 40px 24px; grid-template-columns: minmax(0, 1fr); gap: 40px; }
   .community h2 { font-size: 1.9rem; }
   .hls { grid-template-columns: minmax(0, 1fr); }
   .foot-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .foot-brand { grid-column: 1 / -1; }
   h2 { font-size: 1.6rem; }
-  .cards, .steps3, .fx-panel { grid-template-columns: minmax(0, 1fr); }
+  .cards, .steps3 { grid-template-columns: minmax(0, 1fr); }
   .steps3 { gap: 20px; }
-  .fx-panel { gap: 20px; }
-  .fx-shot { position: static; order: -1; }
   .guide-index tr { grid-template-columns: minmax(0, 1fr); }
   .doc h1 { font-size: 1.8rem; }
   .top nav { gap: 14px; }
@@ -335,7 +350,7 @@ td + td strong { color: var(--text); }
 }
 @media (max-width: 640px) {
   .top nav .nav-news { display: none; }
-  .news-list { grid-template-columns: minmax(0, 1fr); }
+  .news-list, .tiles { grid-template-columns: minmax(0, 1fr); }
   .foot-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 420px) {
@@ -343,10 +358,3 @@ td + td strong { color: var(--text); }
   .top nav .nav-discord span { display: none; }
   .foot .brand span { display: inline; }
 }
-
-/* Every feature: the whole list, grouped, in columns. */
-.all-groups { columns: 3 300px; column-gap: 40px; margin-top: 28px; }
-.all-groups > div { break-inside: avoid; margin: 0 0 28px; }
-.all-groups h3 { font-size: 1.05rem; margin: 0 0 8px; }
-.all-groups ul { margin: 0; padding-left: 1.1em; color: var(--muted); }
-.all-groups li { margin: 0 0 6px; line-height: 1.5; }

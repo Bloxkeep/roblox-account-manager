@@ -13,6 +13,10 @@ on:
       - 'RobloxManager/whatsnew.json'
       - 'RobloxManager/wwwroot/logo.svg'
       - '.github/workflows/pages.yml'
+      - 'ui-gpui/src/core/themes.rs'
+  # Once a day as well, so the landing page's download count stays current.
+  schedule:
+    - cron: '17 3 * * *'
   workflow_dispatch:
 
 permissions:
@@ -34,6 +38,8 @@ jobs:
           node-version: 24
       - name: Build the site
         working-directory: site
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           npm ci
           node build.mjs

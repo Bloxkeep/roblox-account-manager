@@ -18,6 +18,30 @@ const releases = JSON.parse(fs.readFileSync(path.join(ROOT, 'RobloxManager', 'wh
   .filter(r => !r.version.includes('-'));
 const version = releases[0].version;
 
+// The landing page's numbers, real or left out. Downloads: what GitHub counts for the installers and the portable ZIP
+// of every release (not releases.win.json, which each copy fetches when it checks for an update).
+async function downloadCount() {
+  try {
+    const headers = { 'User-Agent': 'bloxkeep-site', ...(process.env.GITHUB_TOKEN ? { Authorization: `Bearer ${process.env.GITHUB_TOKEN}` } : {}) };
+    let total = 0;
+    for (let p = 1; p <= 10; p++) {
+      const r = await fetch(`https://api.github.com/repos/Bloxkeep/roblox-account-manager/releases?per_page=100&page=${p}`, { headers, signal: AbortSignal.timeout(15000) });
+      if (!r.ok) throw new Error(`GitHub said ${r.status}`);
+      const list = await r.json();
+      for (const rel of list)
+        for (const a of rel.assets) if (/^Bloxkeep-(Setup(-Offline)?\.exe|Portable\.zip)$/.test(a.name)) total += a.download_count;
+      if (list.length < 100) break;
+    }
+    return total || null;
+  } catch (e) {
+    console.warn(`No download count (${e.message}): the landing page leaves it out.`);
+    return null;
+  }
+}
+const downloads = await downloadCount();
+// Themes: as many as the app's own list (core/themes.rs) has.
+const themes = (fs.readFileSync(path.join(ROOT, 'ui-gpui', 'src', 'core', 'themes.rs'), 'utf8').match(/^\s*theme\("/gm) ?? []).length || null;
+
 // The stylesheet's address changes with it, so a browser never keeps last version's next to this version's pages.
 const CSS_VERSION = createHash('sha256').update(fs.readFileSync(path.join(HERE, 'style.css'))).digest('hex').slice(0, 10);
 
@@ -133,7 +157,7 @@ ${jsonLd ? `<script type="application/ld+json">${JSON.stringify(jsonLd)}</script
     <nav>
       <a href="${rel(url, guide)}">${t.nav.guide}</a>
       <a class="nav-news" href="${rel(url, home + 'whats-new/')}">${t.nav.news}</a>
-      <a class="nav-discord" href="${DISCORD}"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="${DISCORD_MARK}"/></svg>${t.nav.discord}</a>
+      <a class="nav-discord" href="${DISCORD}" aria-label="Discord"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="${DISCORD_MARK}"/></svg><span>${t.nav.discord}</span></a>
       <a class="nav-github" href="${REPO}">GitHub</a>
       <a class="lang" href="${rel(url, alt)}" hreflang="${lang === 'vi' ? 'en' : 'vi'}" lang="${lang === 'vi' ? 'en' : 'vi'}">${t.nav.other}</a>
       <a class="btn primary small" href="${rel(url, home)}#download">${t.nav.download}</a>
@@ -193,7 +217,7 @@ for (const lang of ['en', 'vi']) {
   const suffix = lang === 'vi' ? '.vi' : '';
 
   // The landing page.
-  const l = landing(lang, { version, releases, rel: to => rel(home, to) });
+  const l = landing(lang, { version, releases, downloads, themes, rel: to => rel(home, to) });
   write(home, page({ lang, url: home, alt: other, title: l.title, description: l.description, body: l.body, bodyClass: 'home', jsonLd: l.jsonLd }));
   urls.push([home, other]);
 

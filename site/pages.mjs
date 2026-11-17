@@ -102,8 +102,17 @@ const L = {
     proofTitle: 'See it working',
     proofAlt: 'Six Roblox windows open at once on one PC, tiled three by two, titled Roblox - Account 1 to Roblox - Account 7, all in the same game',
     proofLink: 'How to turn on Multi-Roblox',
-    featuresTitle: 'What it does',
-    groups: ['Play', 'Keep playing', 'Discord and news', 'Your way'],
+    badge: v => `New: Bloxkeep ${v}`,
+    heroVideo: 'Bloxkeep: two accounts picked on Accounts, Play pressed, both open in Blox Fruits',
+    stats: { downloads: 'downloads', releases: 'versions so far', themes: 'themes', free: 'free and open source', price: '$0' },
+    number: n => n.toLocaleString('en-US'),
+    clipsTitle: 'See it in action',
+    clipsLead: 'Recorded in Bloxkeep itself, with made-up accounts.',
+    clipAlt: t => `Bloxkeep: ${t}`,
+    moreTitle: 'And plenty more',
+    faqTabs: ['General', 'Technical'],
+    endTitle: 'Get Bloxkeep',
+    endLead: 'Free for Windows 10 and 11. Your accounts stay on your PC.',
     more: 'How it works',
     features: [
       ['multi-roblox', 'multi-roblox-real.jpg', 'Several Roblox windows at once', 'Turn on Multi-Roblox and every account plays in its own window, opened windowed and tiled the way you choose. Each new Roblox build is checked.'],
@@ -188,8 +197,17 @@ const L = {
     proofTitle: 'Chạy thật trên một máy',
     proofAlt: 'Sáu cửa sổ Roblox mở cùng lúc trên một máy, xếp thành lưới ba nhân hai, tiêu đề từ Roblox - Account 1 đến Roblox - Account 7, cùng ở trong một game',
     proofLink: 'Cách bật Multi-Roblox',
-    featuresTitle: 'Bloxkeep làm được gì',
-    groups: ['Vào game', 'Treo game', 'Discord và tin game', 'Theo ý bạn'],
+    badge: v => `Mới: Bloxkeep ${v}`,
+    heroVideo: 'Bloxkeep: chọn hai tài khoản ở tab Tài khoản, bấm Vào game, cả hai cùng mở Blox Fruits',
+    stats: { downloads: 'lượt tải', releases: 'phiên bản đã ra', themes: 'theme', free: 'miễn phí, mã nguồn mở', price: '0 đ' },
+    number: n => n.toLocaleString('vi-VN'),
+    clipsTitle: 'Xem Bloxkeep chạy',
+    clipsLead: 'Quay ngay trong Bloxkeep, với tài khoản giả.',
+    clipAlt: t => `Bloxkeep: ${t}`,
+    moreTitle: 'Và còn nhiều nữa',
+    faqTabs: ['Chung', 'Kỹ thuật'],
+    endTitle: 'Tải Bloxkeep',
+    endLead: 'Miễn phí cho Windows 10 và 11. Tài khoản chỉ nằm trên máy bạn.',
     more: 'Xem cách dùng',
     features: [
       ['multi-roblox', 'multi-roblox-real.jpg', 'Nhiều cửa sổ Roblox cùng lúc', 'Bật Multi-Roblox là mỗi tài khoản chơi trong một cửa sổ riêng, mở ở chế độ cửa sổ và xếp theo ý bạn. Mỗi bản Roblox mới đều được kiểm tra.'],
@@ -264,53 +282,100 @@ const L = {
 };
 
 /** Real screenshots of Roblox windows (not Bloxkeep's interface): the same picture in every language. */
-/** What it does, in four groups (l.groups): play (Multi-Roblox, accounts, servers, presets, arrange), keep playing (stay in
- * game, macros, game monitor, statistics), Discord and news (control, alerts, Games tab), your way (lock, updates, Roblox
- * settings, themes, Ctrl+K). Numbers are places in l.features. */
-const FEATURE_GROUPS = [[0, 1, 2, 3, 9], [4, 15, 5, 6], [7, 8, 16], [13, 14, 10, 12, 11]];
 const SHARED = new Set(['multi-roblox-real.jpg', 'multi-roblox-real-detail.jpg', 'game-monitor-real.jpg']);
+/** The features shown as clips (site/static/clips/<lang>/<name>.mp4, recorded in the app's hidden window with made-up
+ * accounts), by their place in l.features; one with a picture instead (img) where a clip can't show it (Discord). */
+const CLIPS = [['picker', 2], ['roblox', 16], ['presets', 3], ['stats', 6], ['themes', 12], [null, 7, 'discord-control.png']];
+/** The rest, as short tiles under the clips (Multi-Roblox has its own section, the real windows). */
+const TILES = [1, 4, 5, 15, 9, 8, 10, 13, 14];
+/** The questions in two tabs (l.faqTabs), by their place in l.faq. */
+const FAQ_TABS = [[0, 4, 3, 5, 8], [1, 2, 6, 7]];
 
 const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-/** The landing page of one language: its title and description for the head, its body, and what search engines read. */
-export function landing(lang, { version, rel, releases = [] }) {
+/** The landing page of one language: its title and description for the head, its body, and what search engines read.
+ * downloads: how many times the installers and the portable ZIP were downloaded (GitHub's own count), when known; themes:
+ * how many themes the app has (counted from its code). */
+export function landing(lang, { version, rel, releases = [], downloads = null, themes = null }) {
   const l = L[lang];
   const home = lang === 'vi' ? 'vi/' : '';
   const shot = name => rel(`screenshots/${lang === 'vi' && !SHARED.has(name) ? 'vi/' : ''}${name}`);
+  const clip = (name, ext) => rel(`clips/${lang}/${name}.${ext}`);
   const link = page => { const [topic, part] = page.split('#'); return rel(`${home}guide/${topic}/`) + (part ? `#${part}` : ''); };
   const buttons = `<div class="cta">
       <a class="btn primary big" href="${DOWNLOAD}">${esc(l.download)}</a>
-      <a class="btn big" href="${PORTABLE}">${esc(l.portable)}</a>
+      <a class="btn ghost big" href="${PORTABLE}">${esc(l.portable)}</a>
     </div>
     <p class="meta">${esc(l.meta(version))} · <a href="${REPO}/releases/latest">${esc(l.all)}</a></p>`;
   // The newest release's highlights, from the app's own What's new (whatsnew.json).
   const top = releases.find(r => r.highlights?.length);
   const news = top && { version: top.version, date: top.date, highlights: top.highlights.map(h => h[lang].slice(0, 2)) };
-  // What it does: the features in four groups (FEATURE_GROUPS, by their place in l.features), a tab each; in a group, a
-  // list of them beside one big picture, the chosen one's.
-  const groups = FEATURE_GROUPS.map((ids, g) => ({ name: l.groups[g], items: ids.map(i => l.features[i]) }));
+  // Real numbers only: one that isn't known is left out, never guessed.
+  const stats = [
+    downloads && [`${l.number(Math.floor(downloads / 100) * 100)}+`, l.stats.downloads],
+    releases.length && [String(releases.length), l.stats.releases],
+    themes && [String(themes), l.stats.themes],
+    [l.stats.price, l.stats.free],
+  ].filter(Boolean);
   const body = `<section class="hero">
+  <div class="wrap hero-text">
+    <a class="badge" href="${rel(`${home}whats-new/`)}">${esc(l.badge(version))} ›</a>
+    <h1>${esc(l.h1)}</h1>
+    <p class="lead">${esc(l.lead)}</p>
+    ${buttons}
+  </div>
   <div class="wrap">
-    <div class="hero-text">
-      <h1>${esc(l.h1)}</h1>
-      <p class="lead">${esc(l.lead)}</p>
-      ${buttons}
-    </div>
-    <div class="stage">
-      <figure class="stage-app">
-        <a href="${shot('hero.png')}"><img class="shot" src="${shot('hero.png')}" width="1920" height="1200" alt="${esc(l.heroAlt)}"></a>
-      </figure>
-    </div>
+    <figure class="stage">
+      <video class="frame" src="${clip('hero', 'mp4')}" poster="${clip('hero', 'jpg')}" width="1600" height="1000" autoplay muted loop playsinline preload="auto" aria-label="${esc(l.heroVideo)}"></video>
+    </figure>
   </div>
 </section>
 
-<section class="band alt proof" aria-labelledby="proof">
+<section class="stats" aria-label="Bloxkeep">
+  <div class="wrap">
+    <ul class="stat-row">
+${stats.map(([n, label]) => `      <li><b>${esc(n)}</b><span>${esc(label)}</span></li>`).join('\n')}
+    </ul>
+  </div>
+</section>
+
+<section class="band proof" aria-labelledby="proof">
   <div class="wrap">
     <h2 id="proof">${esc(l.proofTitle)}</h2>
     <figure>
-      <a href="${shot('multi-roblox-real.jpg')}"><img class="shot" src="${shot('multi-roblox-real.jpg')}" width="1702" height="1019" loading="lazy" decoding="async" alt="${esc(l.proofAlt)}"></a>
+      <a href="${shot('multi-roblox-real.jpg')}"><img class="frame" src="${shot('multi-roblox-real.jpg')}" width="1702" height="1019" loading="lazy" decoding="async" alt="${esc(l.proofAlt)}"></a>
       <figcaption><a href="${rel(`${home}guide/multi-roblox/`)}">${esc(l.proofLink)} ›</a></figcaption>
     </figure>
+  </div>
+</section>
+
+<section class="band" aria-labelledby="clips">
+  <div class="wrap">
+    <h2 id="clips">${esc(l.clipsTitle)}</h2>
+    <p class="intro">${esc(l.clipsLead)}</p>
+    <div class="clips">
+${CLIPS.map(([name, i, img]) => { const [page, , title, text] = l.features[i]; return `      <article class="clip">
+        <div class="clip-media">${name
+          ? `<video src="${clip(name, 'mp4')}" poster="${clip(name, 'jpg')}" width="1280" height="800" muted loop playsinline preload="none" aria-label="${esc(l.clipAlt(title))}"></video>`
+          : `<img src="${shot(img)}" loading="lazy" decoding="async" alt="">`}</div>
+        <h3>${esc(title)}</h3>
+        <p>${esc(text)}</p>
+        <a class="more" href="${link(page)}">${esc(l.more)} ›</a>
+      </article>`; }).join('\n')}
+    </div>
+  </div>
+</section>
+<script>{ /* The clips play while they are on screen and stop when scrolled away. */
+  const io = new IntersectionObserver(es => es.forEach(e => e.isIntersecting ? e.target.play().catch(() => {}) : e.target.pause()), { threshold: .35 });
+  document.querySelectorAll('.clip video').forEach(v => io.observe(v)); }</script>
+
+<section class="band more-band" aria-labelledby="more">
+  <div class="wrap">
+    <h2 id="more">${esc(l.moreTitle)}</h2>
+    <ul class="tiles">
+${TILES.map(i => { const [page, , title, text] = l.features[i]; return `      <li><a href="${link(page)}"><h3>${esc(title)}</h3><p>${esc(text)}</p></a></li>`; }).join('\n')}
+    </ul>
+    <p><a class="more" href="${rel(home + 'guide/')}">${esc(l.guideLink)} ›</a></p>
   </div>
 </section>
 
@@ -327,47 +392,6 @@ ${l.start.map(([img, title, text], i) => `      <li>
   </div>
 </section>
 
-<section class="band alt" aria-labelledby="features">
-  <div class="wrap">
-    <h2 id="features">${esc(l.featuresTitle)}</h2>
-    <div class="fx">
-      <div class="fx-tabs" role="tablist" aria-labelledby="features">
-${groups.map((g, i) => `        <button type="button" role="tab" id="fx-t${i}" aria-controls="fx-p${i}" aria-selected="${i === 0}"${i ? ' tabindex="-1"' : ''}>${esc(g.name)}</button>`).join('\n')}
-      </div>
-${groups.map((g, i) => `      <div class="fx-panel" role="tabpanel" id="fx-p${i}" aria-labelledby="fx-t${i}"${i ? ' hidden' : ''}>
-        <ul class="fx-list">
-${g.items.map(([page, img, title, text], j) => `          <li${j ? '' : ' class="on"'}>
-            <button type="button" class="fx-item" data-shot="${shot(img)}" aria-pressed="${j === 0}"><b>${esc(title)}</b><span>${esc(text)}</span></button>
-            <a class="more" href="${link(page)}">${esc(l.more)} ›</a>
-          </li>`).join('\n')}
-        </ul>
-        <figure class="fx-shot"><img src="${shot(g.items[0][1])}" loading="lazy" decoding="async" alt=""></figure>
-      </div>`).join('\n')}
-    </div>
-  </div>
-</section>
-<script>{ /* What it does: a tab shows its group; a feature in it shows its picture (arrow keys move along the tabs). */
-  const tabs = [...document.querySelectorAll('.fx-tabs [role=tab]')];
-  const pick = t => tabs.forEach(b => { const on = b === t; b.setAttribute('aria-selected', on); b.tabIndex = on ? 0 : -1;
-    document.getElementById(b.getAttribute('aria-controls')).hidden = !on; });
-  tabs.forEach((t, i) => { t.addEventListener('click', () => pick(t));
-    t.addEventListener('keydown', e => { const d = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
-      if (d) { const n = tabs[(i + d + tabs.length) % tabs.length]; pick(n); n.focus(); } }); });
-  document.querySelectorAll('.fx-panel').forEach(p => p.querySelectorAll('.fx-item').forEach(b => b.addEventListener('click', () => {
-    p.querySelectorAll('.fx-list li').forEach(li => { const on = li.contains(b); li.classList.toggle('on', on); li.querySelector('.fx-item').setAttribute('aria-pressed', on); });
-    p.querySelector('.fx-shot img').src = b.dataset.shot;
-  }))); }</script>
-
-<section class="band" aria-labelledby="all">
-  <div class="wrap">
-    <h2 id="all">${esc(FEATURES[lang].title)}</h2>
-    <p class="intro">${esc(FEATURES[lang].intro)} <a href="${rel(home + 'guide/')}">${esc(l.guideLink)} ›</a></p>
-    <div class="all-groups">
-${FEATURES[lang].groups.map(([group, items]) => `      <div><h3>${esc(group)}</h3><ul>${items.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>`).join('\n')}
-    </div>
-  </div>
-</section>
-
 ${news ? `<section class="band news" aria-labelledby="news">
   <div class="wrap">
     <div class="news-head">
@@ -381,7 +405,7 @@ ${news.highlights.map(([title, text]) => `      <li><h3>${esc(title)}</h3><p>${e
   </div>
 </section>
 
-` : ''}<section class="band alt" aria-labelledby="safe">
+` : ''}<section class="band" aria-labelledby="safe">
   <div class="wrap">
     <h2 id="safe">${esc(l.safeTitle)}</h2>
     <div class="cards">
@@ -391,44 +415,60 @@ ${l.safe.map(([title, text]) => `      <div class="card"><h3>${esc(title)}</h3><
   </div>
 </section>
 
-<section class="community" id="discord" aria-labelledby="community">
-  <div class="wrap community-in">
-    <div class="community-text">
-      <svg class="discord-mark" viewBox="0 0 24 24" width="44" height="44" aria-hidden="true"><path fill="currentColor" d="${DISCORD_MARK}"/></svg>
-      <h2 id="community">${esc(l.discord.title)}</h2>
-      <p class="community-lead">${esc(l.discord.text)}</p>
-      <a class="btn big on-blurple" href="${DISCORD}">${esc(l.discord.button)}</a>
-      <p class="community-note">${esc(l.discord.note)}</p>
-    </div>
-    <div class="server">
-      <p class="server-name"><img src="${rel('logo.svg')}" width="20" height="20" alt="">${esc(l.discord.server)}</p>
-${l.discord.groups.map(([group, chans]) => `      <p class="server-group">${esc(group)}</p>
-      <ul>
-${chans.map(([name, topic]) => `        <li><span class="hash">#</span><b>${esc(name)}</b><span>${esc(topic)}</span></li>`).join('\n')}
-      </ul>`).join('\n')}
-      <p class="server-cmd"><span class="who">${esc(l.discord.commandWho)}</span><code>${esc(l.discord.command[0])}</code><span>${esc(l.discord.command[1])}</span></p>
-    </div>
-  </div>
-</section>
-
-<section class="band get" id="download" aria-labelledby="get">
+<section class="band" id="discord" aria-labelledby="community">
   <div class="wrap">
-    <h2 id="get">${esc(l.getTitle)}</h2>
-    <ul class="steps">
-${l.getText.map(x => `      <li>${esc(x)}</li>`).join('\n')}
-    </ul>
-    ${buttons}
-    <p class="small">${esc(l.smartscreen)}</p>
+    <div class="community">
+      <div class="community-text">
+        <svg class="discord-mark" viewBox="0 0 24 24" width="44" height="44" aria-hidden="true"><path fill="currentColor" d="${DISCORD_MARK}"/></svg>
+        <h2 id="community">${esc(l.discord.title)}</h2>
+        <p class="community-lead">${esc(l.discord.text)}</p>
+        <a class="btn big on-blurple" href="${DISCORD}">${esc(l.discord.button)}</a>
+        <p class="community-note">${esc(l.discord.note)}</p>
+      </div>
+      <div class="server">
+        <p class="server-name"><img src="${rel('logo.svg')}" width="20" height="20" alt="">${esc(l.discord.server)}</p>
+${l.discord.groups.map(([group, chans]) => `        <p class="server-group">${esc(group)}</p>
+        <ul>
+${chans.map(([name, topic]) => `          <li><span class="hash">#</span><b>${esc(name)}</b><span>${esc(topic)}</span></li>`).join('\n')}
+        </ul>`).join('\n')}
+        <p class="server-cmd"><span class="who">${esc(l.discord.commandWho)}</span><code>${esc(l.discord.command[0])}</code><span>${esc(l.discord.command[1])}</span></p>
+      </div>
+    </div>
   </div>
 </section>
 
-<section class="band alt" aria-labelledby="faq">
+<section class="band" aria-labelledby="faq">
   <div class="wrap narrow">
     <h2 id="faq">${esc(l.faqTitle)}</h2>
-    <div class="faq">
-${l.faq.map(([q, a]) => `      <details><summary>${esc(q)}</summary><p>${esc(a)}</p></details>`).join('\n')}
+    <div class="pills" role="tablist" aria-labelledby="faq">
+${l.faqTabs.map((name, i) => `      <button type="button" role="tab" id="faq-t${i}" aria-controls="faq-p${i}" aria-selected="${i === 0}"${i ? ' tabindex="-1"' : ''}>${esc(name)}</button>`).join('\n')}
     </div>
-    <p><a class="btn" href="${rel(home + 'guide/')}">${esc(l.guideLink)} ›</a></p>
+${FAQ_TABS.map((ids, i) => `    <div class="faq" role="tabpanel" id="faq-p${i}" aria-labelledby="faq-t${i}"${i ? ' hidden' : ''}>
+${ids.map(j => `      <details><summary>${esc(l.faq[j][0])}</summary><p>${esc(l.faq[j][1])}</p></details>`).join('\n')}
+    </div>`).join('\n')}
+    <p><a class="more" href="${rel(home + 'guide/')}">${esc(l.guideLink)} ›</a></p>
+  </div>
+</section>
+<script>{ /* The questions' tabs (arrow keys move along them). */
+  const tabs = [...document.querySelectorAll('.pills [role=tab]')];
+  const pick = t => tabs.forEach(b => { const on = b === t; b.setAttribute('aria-selected', on); b.tabIndex = on ? 0 : -1;
+    document.getElementById(b.getAttribute('aria-controls')).hidden = !on; });
+  tabs.forEach((t, i) => { t.addEventListener('click', () => pick(t));
+    t.addEventListener('keydown', e => { const d = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+      if (d) { const n = tabs[(i + d + tabs.length) % tabs.length]; pick(n); n.focus(); } }); }); }</script>
+
+<section class="get" id="download" aria-labelledby="get">
+  <div class="wrap">
+    <div class="get-in">
+      <img src="${rel('logo.svg')}" width="72" height="72" alt="">
+      <h2 id="get">${esc(l.endTitle)}</h2>
+      <p class="lead">${esc(l.endLead)}</p>
+      ${buttons}
+      <ul class="steps">
+${l.getText.map(x => `        <li>${esc(x)}</li>`).join('\n')}
+      </ul>
+      <p class="small">${esc(l.smartscreen)}</p>
+    </div>
   </div>
 </section>`;
   const jsonLd = {
