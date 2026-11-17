@@ -45,6 +45,9 @@ fontdue = { version = "0.9", optional = true }
 zip = { version = "2", default-features = false, features = ["deflate"], optional = true }
 unicode-normalization = { version = "0.1", optional = true }
 unicode-segmentation = { version = "1", optional = true }
+# Feedback's error log: account names found in one pass (aho-corasick) and the three log files sent gzipped (flate2).
+aho-corasick = { version = "1", optional = true }
+flate2 = { version = "1", optional = true }
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_UI_WindowsAndMessaging", "Win32_UI_Input_KeyboardAndMouse", "Win32_System_Time", "Win32_Graphics_Gdi", "Win32_Graphics_Dwm", "Win32_Graphics_GdiPlus", "Win32_System_SystemInformation", "Win32_System_Threading", "Win32_System_Diagnostics_ToolHelp", "Win32_System_Diagnostics_Debug", "Win32_System_Registry", "Win32_System_LibraryLoader", "Win32_System_RemoteDesktop", "Win32_System_RestartManager", "Win32_Security", "Win32_Security_Cryptography", "Win32_Security_WinTrust", "Win32_Storage_FileSystem", "Win32_Storage_Packaging_Appx", "Win32_UI_Input", "Win32_UI_Shell", "Win32_UI_Shell_Common", "Win32_UI_HiDpi", "Win32_UI_Controls", "Win32_UI_Controls_Dialogs", "Win32_UI_Accessibility", "Win32_System_Com", "Win32_System_Com_StructuredStorage", "Win32_System_Ole", "Win32_System_DataExchange", "Win32_System_Memory", "Win32_System_Pipes", "Win32_System_IO", "Win32_System_Environment", "Win32_System_Performance", "Win32_NetworkManagement_IpHelper", "Win32_NetworkManagement_Ndis", "Win32_Networking_WinSock", "Win32_System_ProcessStatus", "Win32_System_Kernel", "Win32_System_Console", "Win32_System_Power", "Win32_System_WindowsProgramming", "Win32_Globalization"] }
@@ -55,7 +58,7 @@ gpui-pre-windows = { version = "=0.3.11", optional = true, features = ["test-sup
 
 [features]
 # The Rust core (src/core/), being joined in: `cargo check --features core`.
-core = ["dep:uuid", "dep:indexmap", "dep:rand", "dep:num-bigint", "dep:sha1_smol", "dep:sha2", "dep:aes-gcm", "dep:pbkdf2", "dep:zeroize", "dep:getrandom", "dep:tungstenite", "dep:velopack", "dep:tiny-skia", "dep:fontdue", "dep:zip", "dep:unicode-normalization", "dep:unicode-segmentation", "dep:webview2-com", "dep:windows", "serde_json/preserve_order", "image/jpeg", "image/gif", "image/bmp", "image/webp"]
+core = ["dep:uuid", "dep:indexmap", "dep:rand", "dep:num-bigint", "dep:sha1_smol", "dep:sha2", "dep:aes-gcm", "dep:pbkdf2", "dep:zeroize", "dep:getrandom", "dep:tungstenite", "dep:velopack", "dep:tiny-skia", "dep:fontdue", "dep:zip", "dep:unicode-normalization", "dep:unicode-segmentation", "dep:aho-corasick", "dep:flate2", "dep:webview2-com", "dep:windows", "serde_json/preserve_order", "image/jpeg", "image/gif", "image/bmp", "image/webp"]
 # GPUI draws the hidden window into a picture (its test support): --shot, for checking screens without showing a window.
 shot = ["dep:gpui-pre", "dep:gpui-pre-windows", "dep:windows"]
 

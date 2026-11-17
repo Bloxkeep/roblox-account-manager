@@ -729,9 +729,11 @@ name = "bloxkeep-ui"
 version = "1.1.0"
 dependencies = [
  "aes-gcm",
+ "aho-corasick",
  "anyhow",
  "base64 0.22.1",
  "embed-resource",
+ "flate2",
  "fontdue",
  "futures",
  "getrandom 0.3.4",

@@ -246,6 +246,7 @@ fn every_writer_is_covered(c: &mut Checks, data: &Path) {
     let mut made: Vec<String> = Vec::new();
     let extra = [
         "error.log.1",
+        "error.log.2",
         "prefs.json.damaged-20261101-120000",
         "roblox-flags.json.damaged-20261101-120000",
         "roblox-settings.json.damaged-20261101-120000",
@@ -262,7 +263,7 @@ fn every_writer_is_covered(c: &mut Checks, data: &Path) {
         }
     }
     // Not Bloxkeep's, though they look alike (BLOXKEEP_DATA may be a folder of the person's own).
-    let mut others = vec!["game-hours.json5", "hidden-windows.txt.bak", "my-error.log", "error.log.2", "roblox-flags.json.old", "window-icons.txt.tmp.old"];
+    let mut others = vec!["game-hours.json5", "hidden-windows.txt.bak", "my-error.log", "error.log.3", "roblox-flags.json.old", "window-icons.txt.tmp.old"];
     for name in &others {
         std::fs::write(data.join(name), "mine").expect("written");
     }
@@ -271,7 +272,7 @@ fn every_writer_is_covered(c: &mut Checks, data: &Path) {
     remains.sort();
     others.sort();
     c.check(
-        "delete everything takes a file of every writer (and its .tmp, error.log.1, the damaged copies) and no other",
+        "delete everything takes a file of every writer (and its .tmp, error.log.1 and .2, the damaged copies) and no other",
         remains == others,
         remains.join(", "),
     );
@@ -289,11 +290,13 @@ fn every_writer_is_covered(c: &mut Checks, data: &Path) {
     std::fs::create_dir_all(data).expect("folder");
 }
 
-/// error.log at its limit is kept as error.log.1 (the history a bug report needs), not deleted.
+/// error.log at its limit is kept as error.log.1, that one as error.log.2 (the history a bug report needs), the oldest let go.
 fn log_rotates(c: &mut Checks, data: &Path) {
     let log_file = data.join("error.log");
     let spare = data.join("error.log.1");
-    for i in 0..300 {
+    // (Lines of ~1 KB; the counts were made for a 256 KB limit and grow with it.)
+    let k = (log::MAX_SIZE / (256 * 1024)).max(1) as usize;
+    for i in 0..300 * k {
         log::note(&format!("line{i} {}", "a".repeat(1000)));
     }
     let kept = spare.is_file();
@@ -305,21 +308,33 @@ fn log_rotates(c: &mut Checks, data: &Path) {
     let text = std::fs::read_to_string(&log_file).unwrap_or_default();
     c.check(
         "…and the log goes on in a new error.log with the newest lines",
-        log_file.is_file() && text.contains("line299 ") && !text.contains("line0 ") && std::fs::metadata(&log_file).map(|m| m.len()).unwrap_or(u64::MAX) < 256 * 1024,
+        log_file.is_file() && text.contains(&format!("line{} ", 300 * k - 1)) && !text.contains("line0 ") && std::fs::metadata(&log_file).map(|m| m.len()).unwrap_or(u64::MAX) < log::MAX_SIZE,
         (),
     );
-    for i in 300..700 {
+    let oldest = data.join("error.log.2");
+    for i in 300 * k..700 * k {
         log::note(&format!("line{i} {}", "b".repeat(1000)));
     }
+    let read = |p: &Path| std::fs::read_to_string(p).unwrap_or_default();
     c.check(
-        "a second time the spare is replaced, not added to",
-        spare.is_file()
-            && std::fs::metadata(&spare).map(|m| m.len()).unwrap_or(u64::MAX) < 300 * 1024
-            && !std::fs::read_to_string(&spare).unwrap_or_default().contains("line0 "),
+        "a second time the spare moves down to error.log.2 and the log takes its place",
+        read(&oldest).contains("line0 ") && spare.is_file() && !read(&spare).contains("line0 "),
+        (),
+    );
+    for i in 700 * k..1100 * k {
+        log::note(&format!("line{i} {}", "c".repeat(1000)));
+    }
+    let third = data.join("error.log.3");
+    c.check(
+        "a third time the oldest goes: three files at most, none over its size",
+        !read(&oldest).contains("line0 ")
+            && !third.exists()
+            && [&log_file, &spare, &oldest].iter().all(|p| std::fs::metadata(p).map(|m| m.len()).unwrap_or(u64::MAX) < log::MAX_SIZE * 300 / 256),
         (),
     );
     let _ = std::fs::remove_file(&log_file);
     let _ = std::fs::remove_file(&spare);
+    let _ = std::fs::remove_file(&oldest);
 
     // A session cookie or a webhook link inside a message never reaches the file.
     log::note("request failed for _|WARNING:-DO-NOT-SHARE-THIS.--Sharing-this-will-allow-someone-to-log-in-as-you.|_ABC123 at https://discord.com/api/webhooks/123/abcDEF done");

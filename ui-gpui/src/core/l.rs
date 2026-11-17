@@ -351,6 +351,7 @@ static PAIRS: &[(&str, &str)] = &[
     ("Idea", "Góp ý"),
     ("Contact: {0}", "Liên hệ: {0}"),
     ("(no error log)", "(không kèm nhật ký lỗi)"),
+    ("All of it is sent ({0} KB); its last lines:", "Gửi toàn bộ ({0} KB), đây là các dòng cuối:"),
     ("Write a few words first.", "Hãy viết vài chữ trước đã."),
     ("Feedback was just sent. Wait a minute before sending more.", "Bạn vừa gửi góp ý. Chờ một phút rồi gửi tiếp."),
     ("Couldn't reach the feedback service. Check the internet connection and try again.", "Không kết nối được máy chủ góp ý. Kiểm tra mạng rồi thử lại."),

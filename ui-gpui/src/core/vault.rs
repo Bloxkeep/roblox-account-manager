@@ -201,8 +201,8 @@ pub fn delete_caches() {
 /// Every file Bloxkeep itself makes at the top of the data folder, by exact name (the one the code that
 /// writes it joins to `data_dir`). Each new one is added here, or "Delete my accounts and settings" leaves it behind and
 /// the folder stays: DataFolderSuite reads the source for the names and checks every one is covered.
-const OWN_FILES: [&str; 12] = [
-    "prefs.json", "error.log", "error.log.1", "roblox-settings.json", "roblox-flags.json", "game-hours.json", "hidden-windows.txt",
+const OWN_FILES: [&str; 13] = [
+    "prefs.json", "error.log", "error.log.1", "error.log.2", "roblox-settings.json", "roblox-flags.json", "game-hours.json", "hidden-windows.txt",
     "window-icons.txt", "starting.flag", "resume.bin", "capacity.json", "running.mark",
 ];
 
