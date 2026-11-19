@@ -1183,10 +1183,46 @@ pub fn open_place(r: &mut Root, place: i64, name: &str) {
     r.go(Page::Games);
 }
 
+/// Where a game's details from last time are kept (Roblox's public words on it; never the accounts' names): the cache
+/// folder, a hidden shot's own (BLOXKEEP_KEPT).
+fn details_file(place: i64) -> std::path::PathBuf {
+    images::kept_dir("game-details").join(format!("{place}.json"))
+}
+
+/// The details kept from last time, if any.
+fn details_kept(place: i64) -> Option<Value> {
+    let mut v: Value = crate::net::saved("Game details", &details_file(place))?;
+    // (The accounts' week on it is the vault's, asked fresh.)
+    v["accounts"] = json!([]);
+    Some(v)
+}
+
+/// Keeps a game's details for the next start, without the accounts on it (they are the vault's, and named).
+fn keep_details(place: i64, v: &Value, cx: &mut Context<Root>) {
+    let mut kept = v.clone();
+    if let Some(o) = kept.as_object_mut() {
+        o.remove("accounts");
+    }
+    let path = details_file(place);
+    cx.background_spawn(async move {
+        let r = path.parent().map_or(Ok(()), std::fs::create_dir_all).and_then(|_| std::fs::write(&path, kept.to_string()));
+        crate::net::wrote("Game details", &path, r);
+    })
+    .detach();
+}
+
 /// A game's details from Roblox (its words, players, votes, creator), asked once for `place`: its page, and Home's
 /// hero for the game on the stage.
 pub fn want_details(r: &mut Root, link: &crate::link::Link, place: i64, cx: &mut Context<Root>) {
     if place > 0 && r.games.asked_details.insert(place) {
+        // What Roblox said last time shows at once (Home's words and figures, the page's head), and Roblox's answer
+        // replaces it when it comes: it took a second or more to come each start (the owner, 2026-11-20: "có cách nào
+        // khiến nó tải ngay lập tức không").
+        if !r.games.details.contains_key(&place)
+            && let Some(v) = details_kept(place)
+        {
+            r.games.details.insert(place, v);
+        }
         let rx = link.call("gameDetails", json!({ "placeId": place }));
         cx.spawn(async move |this, cx| {
             let got = rx.await.ok().and_then(Result::ok).filter(|v| !v.is_null());
@@ -1194,6 +1230,7 @@ pub fn want_details(r: &mut Root, link: &crate::link::Link, place: i64, cx: &mut
             let _ = this.update(cx, |r, cx| {
                 if let Some(v) = got {
                     let universe = int(&v, "universe");
+                    keep_details(place, &v, cx);
                     r.games.details.insert(place, v);
                     settle_stays(r, place);
                     want_shots(r, place, universe, cx);
