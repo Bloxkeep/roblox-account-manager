@@ -55,6 +55,8 @@ struct Scene {
     video: Option<(String, gpui_kit::Entity<crate::video::Video>)>,
     /// Wallpaper Engine's wallpaper playing live (wallpaper_engine.rs), by its window: made once per window.
     live: Option<(isize, gpui_kit::Entity<crate::video::Video>)>,
+    /// What keeps an animated theme moving (live.rs), by its id: started with it, let go with it.
+    ticker: Option<(&'static str, Task<()>)>,
     /// The pictures keep their pixels in memory too: one was wanted again where it wasn't (drawn in two windows, or
     /// the graphics card started over), and letting go again would draw it again and again.
     keep_pixels: bool,
@@ -79,6 +81,9 @@ pub fn layer(window: &mut Window, cx: &mut Context<Root>) -> Option<AnyElement> 
         // Back to a plain theme: the picture is let go, and a video's player with it.
         cx.default_global::<Scene>().video = None;
         cx.default_global::<Scene>().live = None;
+        if cx.default_global::<Scene>().ticker.take().is_some() {
+            crate::live::stop();
+        }
         if let Some((_, old, frosted)) = cx.default_global::<Scene>().shown.take() {
             cx.drop_image(old, Some(window));
             if let Some(f) = frosted {
@@ -135,6 +140,13 @@ pub fn layer(window: &mut Window, cx: &mut Context<Root>) -> Option<AnyElement> 
             None
         }
     };
+    // An animated theme: its moving things over the picture, kept drawing while the window is in use.
+    let moving = crate::live::of(&b.file).filter(|_| b.video.is_none());
+    if cx.default_global::<Scene>().ticker.as_ref().map(|(id, _)| *id) != moving {
+        crate::live::stop();
+        let ticker = moving.map(|id| (id, crate::live::ticker(window, cx)));
+        cx.default_global::<Scene>().ticker = ticker;
+    }
     Some(
         div()
             .absolute()
@@ -144,6 +156,8 @@ pub fn layer(window: &mut Window, cx: &mut Context<Root>) -> Option<AnyElement> 
             .when_some(clip, |d, v| d.child(div().absolute().inset_0().child(v)))
             .when_some(live, |d, v| d.child(div().absolute().inset_0().child(v)))
             .child(div().absolute().inset_0().bg(b.wash))
+            // (Over the wash: the page's canvas was over the picture and its tint, lights stay bright.)
+            .when_some(moving, |d, id| d.child(crate::live::layer(id)))
             .into_any_element(),
     )
 }

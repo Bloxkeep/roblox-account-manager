@@ -254,7 +254,7 @@ fn turned(src: &image::RgbaImage, side: u32, angle: f32) -> image::RgbaImage {
 
 // ───────────────────────── Drawing ─────────────────────────
 
-fn col(hex: u32, a: f32) -> Hsla {
+pub(crate) fn col(hex: u32, a: f32) -> Hsla {
     let mut h: Hsla = rgb(hex).into();
     h.a = a.clamp(0., 1.);
     h
@@ -276,48 +276,48 @@ fn now() -> f32 {
 }
 
 /// Draws into a box: its top-left corner in the window, and the window.
-struct Pen<'a> {
-    w: &'a mut Window,
-    cx: &'a mut App,
-    o: Point<Pixels>,
+pub(crate) struct Pen<'a> {
+    pub(crate) w: &'a mut Window,
+    pub(crate) cx: &'a mut App,
+    pub(crate) o: Point<Pixels>,
 }
 
 impl Pen<'_> {
-    fn at(&self, x: f32, y: f32) -> Point<Pixels> {
+    pub(crate) fn at(&self, x: f32, y: f32) -> Point<Pixels> {
         point(self.o.x + px(x), self.o.y + px(y))
     }
-    fn bx(&self, x: f32, y: f32, w: f32, h: f32) -> Bounds<Pixels> {
+    pub(crate) fn bx(&self, x: f32, y: f32, w: f32, h: f32) -> Bounds<Pixels> {
         Bounds::new(self.at(x, y), size(px(w.max(0.)), px(h.max(0.))))
     }
     /// A round dot.
-    fn dot(&mut self, x: f32, y: f32, r: f32, hex: u32, a: f32) {
+    pub(crate) fn dot(&mut self, x: f32, y: f32, r: f32, hex: u32, a: f32) {
         if a > 0.01 && r > 0. {
             let b = self.bx(x - r, y - r, r * 2., r * 2.);
             self.w.paint_quad(fill(b, col(hex, a)).corner_radii(px(r)));
         }
     }
     /// A box with round ends (a bulb, a petal), centred.
-    fn pill(&mut self, x: f32, y: f32, w: f32, h: f32, hex: u32, a: f32) {
+    pub(crate) fn pill(&mut self, x: f32, y: f32, w: f32, h: f32, hex: u32, a: f32) {
         if a > 0.01 {
             let b = self.bx(x - w / 2., y - h / 2., w, h);
             self.w.paint_quad(fill(b, col(hex, a)).corner_radii(px(w.min(h) / 2.)));
         }
     }
-    fn rect(&mut self, x: f32, y: f32, w: f32, h: f32, hex: u32, a: f32) {
+    pub(crate) fn rect(&mut self, x: f32, y: f32, w: f32, h: f32, hex: u32, a: f32) {
         if a > 0.01 {
             let b = self.bx(x, y, w, h);
             self.w.paint_quad(fill(b, col(hex, a)));
         }
     }
     /// A circle's line.
-    fn circle(&mut self, x: f32, y: f32, r: f32, width: f32, hex: u32, a: f32) {
+    pub(crate) fn circle(&mut self, x: f32, y: f32, r: f32, width: f32, hex: u32, a: f32) {
         if a > 0.01 {
             let b = self.bx(x - r - width / 2., y - r - width / 2., r * 2. + width, r * 2. + width);
             self.w.paint_quad(quad(b, px(r + width / 2.), transparent_black(), px(width), col(hex, a), BorderStyle::Solid));
         }
     }
     /// A soft light round a spot (a blurred shadow of a small round box; nothing drawn of the box itself).
-    fn glow(&mut self, x: f32, y: f32, r: f32, hex: u32, a: f32) {
+    pub(crate) fn glow(&mut self, x: f32, y: f32, r: f32, hex: u32, a: f32) {
         if a > 0.01 && r > 0. {
             let s = r * 0.5;
             let b = self.bx(x - s / 2., y - s / 2., s, s);
@@ -326,7 +326,7 @@ impl Pen<'_> {
         }
     }
     /// A line through points.
-    fn line(&mut self, pts: &[(f32, f32)], width: f32, hex: u32, a: f32) {
+    pub(crate) fn line(&mut self, pts: &[(f32, f32)], width: f32, hex: u32, a: f32) {
         if pts.len() < 2 || a <= 0.01 {
             return;
         }
@@ -340,7 +340,7 @@ impl Pen<'_> {
         }
     }
     /// A filled shape.
-    fn shape(&mut self, pts: &[(f32, f32)], hex: u32, a: f32) {
+    pub(crate) fn shape(&mut self, pts: &[(f32, f32)], hex: u32, a: f32) {
         if pts.len() < 3 || a <= 0.01 {
             return;
         }
@@ -356,7 +356,7 @@ impl Pen<'_> {
     }
     /// A picture, centred on x, y, `s` across, turned by `rot` (the pictures that turn), seen at `a`, squashed to
     /// `sx`, `sy` of itself (a wing's beat, a leaf's turn).
-    fn spr(&mut self, name: &'static str, x: f32, y: f32, s: f32, rot: f32, a: f32, sx: f32, sy: f32) {
+    pub(crate) fn spr(&mut self, name: &'static str, x: f32, y: f32, s: f32, rot: f32, a: f32, sx: f32, sy: f32) {
         if a <= 0.01 || s <= 0. {
             return;
         }

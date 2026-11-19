@@ -37,6 +37,7 @@ mod pages;
 mod roblox;
 mod roblox_codes;
 mod scene;
+mod live;
 mod near;
 mod scrolled;
 mod shell;

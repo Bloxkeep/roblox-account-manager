@@ -1283,7 +1283,7 @@
     color: ['frost', 'ocean', 'teal', 'forest', 'olive', 'mocha', 'amber', 'grape', 'indigo', 'crimson', 'rose', 'lava', 'neon', 'candy', 'matcha', 'mint', 'sky', 'lavender', 'peach', 'coral', 'sakura'],
     style: ['macos', 'macosdark', 'gnome', 'ubuntu', 'kde', 'retro', 'macclassic', 'terminal', 'solarized', 'gameboy', 'arcade', 'blueprint', 'newspaper', 'notebook', 'chalkboard', 'brutal', 'cyberpunk'],
     season: ['lunar', 'valentine', 'spring', 'flametree', 'summer', 'kites', 'rainy', 'school', 'midautumn', 'autumn', 'skylanterns', 'halloween', 'winter', 'christmas', 'newyear'],
-    live: ['koipond', 'fireflies', 'rainglass', 'blockworld', 'peachfall', 'miaminight', 'nightharbour', 'lanternriver', 'deepsea', 'snowfall'],
+    live: ['koipond', 'fireflies', 'rainglass', 'blockworld', 'peachfall'],
     art: ['starrynight', 'greatwave', 'waterlilies', 'cubism', 'blocksart', 'goldleaf'],
     custom: ['custom'],
   };
