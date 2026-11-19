@@ -4302,14 +4302,30 @@ fn region_apply(r: &mut Root, place: i64, cc: &str) {
 
 /// Asks the app where this game's servers are (serverRegions); a Play waiting on it takes its server then.
 pub fn load_regions(r: &mut Root, place: i64, cx: &mut Context<Root>) {
-    let Some(link) = r.link.clone() else { return };
     if matches!(r.games.regions.get(&place), Some(None)) {
         return;
     }
     r.games.regions.insert(place, None);
+    ask_regions(r, place, 0, cx);
+}
+
+/// One round of `load_regions`: the first asks of a few servers (8, shown at once: some 3 s), each next one of more
+/// while the menu shows what is found, until all are placed or Roblox asks for a pause. Asking all 60 before showing
+/// any took half a minute (the owner, 2026-11-19: "lâu mới hiện server").
+fn ask_regions(r: &mut Root, place: i64, round: u32, cx: &mut Context<Root>) {
+    let Some(link) = r.link.clone() else { return };
     let ids: Vec<String> = r.games.picking.as_ref().map(|(_, t)| t.iter().cloned().collect()).unwrap_or_else(|| preselected_join_accounts(r).into_iter().collect());
-    let rx = link.call("serverRegions", json!({ "placeId": place, "ids": ids }));
+    let rx = link.call("serverRegions", json!({ "placeId": place, "ids": ids, "ask": if round == 0 { 8 } else { 16 } }));
     answer(rx, cx, move |r, answer, cx| {
+        // (A later round that failed keeps what the earlier ones found.)
+        if round > 0 && !matches!(answer, Ok(Ok(_))) {
+            if let Some(Some(Ok(v))) = r.games.regions.get_mut(&place) {
+                v["more"] = json!(0);
+            }
+            cx.notify();
+            return;
+        }
+        let more = matches!(&answer, Ok(Ok(v)) if int(v, "more") > 0 && v.get("busy").and_then(Value::as_bool) != Some(true));
         let got = match answer {
             Ok(Ok(v)) if v.get("busy").and_then(Value::as_bool) == Some(true) => {
                 let n = v.get("retryIn").and_then(Value::as_i64).unwrap_or(20);
@@ -4320,11 +4336,16 @@ pub fn load_regions(r: &mut Root, place: i64, cx: &mut Context<Root>) {
             Err(_) => Err(r.tr("srv.loadError")),
         };
         r.games.regions.insert(place, Some(got));
-        if r.games.region_play == Some(place) {
+        // (A Play waiting for its country takes a server as soon as one there is found, or when all are asked.)
+        if r.games.region_play == Some(place)
+            && let Some(cc) = region_pref()
+            && (!more || region_server(r, place, &cc).is_some())
+        {
             r.games.region_play = None;
-            if let Some(cc) = region_pref() {
-                region_apply(r, place, &cc);
-            }
+            region_apply(r, place, &cc);
+        }
+        if more && round < 8 {
+            ask_regions(r, place, round + 1, cx);
         }
         cx.notify();
     });
@@ -4454,6 +4475,9 @@ fn region_button(root: &Root, place: i64, cx: &mut Context<Root>) -> AnyElement 
                             cx.notify();
                         })),
                 );
+            }
+            if int(v, "more") > 0 {
+                rows = rows.child(said(root.tr("rg.findingMore")));
             }
             let unknown = int(v, "unknown");
             if unknown > 0 {
@@ -4901,6 +4925,8 @@ fn hero(root: &Root, all: &[Game], game: Option<&Game>, details: Option<&Value>,
             // A country picked: the row opens with a server there (asked first when this game's aren't known yet).
             if !picking && let Some(cc) = region_pref() {
                 match r.games.regions.get(&place) {
+                    // (Still finding the rest, none there yet: waits for them.)
+                    Some(Some(Ok(v))) if int(v, "more") > 0 && region_server(r, place, &cc).is_none() => r.games.region_play = Some(place),
                     Some(Some(Ok(_))) => region_apply(r, place, &cc),
                     Some(None) => r.games.region_play = Some(place),
                     _ => {

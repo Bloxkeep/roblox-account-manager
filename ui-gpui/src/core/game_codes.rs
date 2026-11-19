@@ -126,7 +126,9 @@ fn den(name: &str, universe: i64) -> Result<Option<(String, Vec<Code>, bool)>, S
     for words in tries.iter().filter(|w| w.chars().count() >= 2) {
         let url = format!("https://robloxden.com/api/game-codes/search?searchTerm={}", crate::core::roblox_api::escape_data_string(words));
         let answer: Value = match HTTP.get(&url).set("Accept", "application/json").call() {
-            Ok(res) => serde_json::from_str(&res.into_string().map_err(|e| e.to_string())?).map_err(|e| e.to_string())?,
+            // (Read whole, up to 64 MB: a word many games share is a big answer, "Anime" 9.8 MB, and into_string stops
+            // at 10 MB; the owner's log, 2026-11-19: "response too big for into_string", and the game had no Codes tab.)
+            Ok(res) => serde_json::from_reader(std::io::Read::take(res.into_reader(), 64 << 20)).map_err(|e| e.to_string())?,
             Err(ureq::Error::Status(code, _)) => return Err(format!("HTTP {code}")),
             Err(e) => return Err(e.to_string()),
         };

@@ -3954,7 +3954,7 @@ enum Pending {
 impl Render for Root {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         // (Settings > Appearance > "Stand still while behind": off, the motion goes on with another window in front.)
-        let away = !window.is_window_active() && crate::kit::still_behind();
+        let away = !window.is_window_active() && crate::kit::still_behind() && !crate::kit::mouse_over_lately();
         // (A hidden clip, BLOXKEEP_SHOT_FRAMES: its window is never the one in front, yet what moves is what the
         // clip is for. Left to chance, a clip showed running titles standing still on some runs, 2026-11-18.)
         #[cfg(feature = "shot")]
@@ -4335,6 +4335,7 @@ impl Render for Root {
             .children(pill_card)
             .children(tray_shot)
             .children(toast)
+            .child(crate::kit::mouse_watch())
             .child(self.live.reporter(self.link.clone()))
             // (A theme coming in: the old look over everything, fading out.)
             .children(crate::scene::fade_layer(window, cx))

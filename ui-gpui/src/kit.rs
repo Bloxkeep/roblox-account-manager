@@ -1636,6 +1636,47 @@ pub fn still_behind() -> bool {
     crate::prefs::get("stillBehind").and_then(|v| v.as_bool()).unwrap_or(true)
 }
 
+thread_local! {
+    /// When the mouse last moved over the window while another app was in front.
+    static MOUSE_OVER: std::cell::Cell<Option<std::time::Instant>> = const { std::cell::Cell::new(None) };
+}
+
+/// How long a mouse moved over the window, with another app in front, keeps what moves moving.
+const MOUSE_WAKES: std::time::Duration = std::time::Duration::from_millis(2500);
+
+/// Whether the mouse moved over the window a moment ago while another app was in front: someone is looking at it, so
+/// what moves goes on smoothly (the owner, 2026-11-20: "khi ko focus vào app thì nhìn app chuyển động khá lag": the
+/// theme and the hover motion stood still between moves and jumped on each one).
+pub fn mouse_over_lately() -> bool {
+    MOUSE_OVER.with(|m| m.get().is_some_and(|t| t.elapsed() < MOUSE_WAKES))
+}
+
+/// Watches the mouse over the whole window while another app is in front (nothing to see; the shell's last layer).
+pub fn mouse_watch() -> AnyElement {
+    canvas(
+        |_, _, _| {},
+        |_, _, window, _| {
+            if window.is_window_active() {
+                return;
+            }
+            window.on_mouse_event(|_: &MouseMoveEvent, phase, window, _| {
+                if phase != DispatchPhase::Bubble {
+                    return;
+                }
+                let was = mouse_over_lately();
+                MOUSE_OVER.with(|m| m.set(Some(std::time::Instant::now())));
+                // (Standing still: drawn again so it starts moving at once; once moving, it draws itself.)
+                if !was {
+                    window.refresh();
+                }
+            });
+        },
+    )
+    .absolute()
+    .size_0()
+    .into_any_element()
+}
+
 /// Set by the window as it draws: true while another app is in front (Roblox, mostly).
 pub fn set_away(away: bool) {
     AWAY.with(|a| a.set(away));

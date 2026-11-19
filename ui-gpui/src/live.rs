@@ -17,8 +17,6 @@ const W: f32 = 1600.;
 const H: f32 = 1000.;
 /// 30 frames a second.
 const EVERY: Duration = Duration::from_millis(33);
-/// How long a mouse moved over the window while another is in use keeps it moving.
-const WOKEN: Duration = Duration::from_millis(2500);
 
 /// The themes that move, by their picture (scene-<id>.svg).
 const MOVING: [&str; 11] = ["koipond", "fireflies", "rainglass", "blockworld", "peachfall", "starrynight", "greatwave", "waterlilies", "cubism", "blocksart", "goldleaf"];
@@ -227,8 +225,6 @@ struct Live {
 
 thread_local! {
     static LIVE: RefCell<Option<Live>> = const { RefCell::new(None) };
-    /// When a mouse last moved over the window while another window was in use.
-    static WOKEN_AT: RefCell<Option<Instant>> = const { RefCell::new(None) };
 }
 
 /// Whether the theme's things should move now: the window is seen, and in use or just woken by the mouse.
@@ -238,7 +234,7 @@ pub fn running(window: &Window) -> bool {
     if std::env::var("BLOXKEEP_SHOT_FRAMES").is_ok() || std::env::var("BLOXKEEP_SHOT_BENCH").is_ok() {
         return true;
     }
-    window.is_visible() && (window.is_window_active() || WOKEN_AT.with(|w| w.borrow().is_some_and(|t| t.elapsed() < WOKEN)))
+    window.is_visible() && (window.is_window_active() || !crate::kit::still_behind() || crate::kit::mouse_over_lately())
 }
 
 /// Keeps the window drawing 30 times a second while `running`; the task ends with the window.
@@ -279,13 +275,6 @@ pub fn layer(id: &'static str) -> AnyElement {
                     });
                 }
             });
-            if !window.is_window_active() {
-                window.on_mouse_event(|_: &MouseMoveEvent, phase, _, _| {
-                    if phase == DispatchPhase::Bubble {
-                        WOKEN_AT.with(|w| *w.borrow_mut() = Some(Instant::now()));
-                    }
-                });
-            }
             let run = running(window);
             LIVE.with(|l| {
                 let mut l = l.borrow_mut();

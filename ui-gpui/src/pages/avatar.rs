@@ -534,7 +534,7 @@ fn start_spin(r: &mut Root, cx: &mut Context<Root>) {
                         r.avatar.keys = 0;
                     }
                     // (Still while the window is behind, unless Settings says it goes on.)
-                    if !active && crate::kit::still_behind() {
+                    if !active && crate::kit::still_behind() && !crate::kit::mouse_over_lately() {
                         return true;
                     }
                     let mut changed = false;

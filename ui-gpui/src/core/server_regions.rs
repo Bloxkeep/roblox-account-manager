@@ -108,6 +108,22 @@ pub fn keep_facts(job: &str, version: i64, started_ms: i64) {
     all.insert(job.to_string(), (version, started_ms));
 }
 
+/// The servers asked about this run, placed or not: a server Roblox gave no address for isn't asked again and again
+/// while the page finds the rest a few at a time.
+static TRIED: LazyLock<Mutex<std::collections::HashSet<String>>> = LazyLock::new(|| Mutex::new(std::collections::HashSet::new()));
+
+pub fn tried(job: &str) -> bool {
+    TRIED.lock().unwrap_or_else(|p| p.into_inner()).contains(job)
+}
+
+pub fn mark_tried(job: &str) {
+    let mut all = TRIED.lock().unwrap_or_else(|p| p.into_inner());
+    if all.len() > 5000 {
+        all.clear();
+    }
+    all.insert(job.to_string());
+}
+
 pub fn keep(job: &str, at: (String, String)) {
     let mut jobs = JOBS.lock().unwrap_or_else(|p| p.into_inner());
     if jobs.len() > 5000 {

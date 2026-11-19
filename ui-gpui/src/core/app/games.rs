@@ -278,8 +278,10 @@ impl App {
 
     /// The game's public servers (two pages, fullest first) with the country and city each runs in (server_regions.rs),
     /// for the game page's country pick beside Play. Where a server is comes from one signed-in account's join answer
-    /// (the picked ones first), at most 60 servers, six at a time; a server found once is known for the run.
-    pub async fn server_regions(self: &Rc<Self>, place_id: i64, preferred: &[Guid]) -> Res<Value> {
+    /// (the picked ones first), at most 60 servers, two at a time; a server found once is known for the run. `ask`: how
+    /// many to ask about this time: the page asks a few, shows them, and asks for the rest ("more") while they show
+    /// (the owner, 2026-11-19: "lâu mới hiện server": every one of 60 was asked before the menu showed any).
+    pub async fn server_regions(self: &Rc<Self>, place_id: i64, preferred: &[Guid], ask: usize) -> Res<Value> {
         self.held_vault().ok_or_else(|| Fail::user(l::t("Bloxkeep is locked.")))?;
         if place_id <= 0 {
             return Err(Fail::user(l::t("Invalid Place ID.")));
@@ -311,15 +313,18 @@ impl App {
             let max = r.get("maxPlayers").and_then(Value::as_i64).unwrap_or(0);
             max > 0 && r.get("playing").and_then(Value::as_i64).unwrap_or(0) >= max
         };
-        let jobs: Vec<String> = rows
+        let pending: Vec<String> = rows
             .iter()
             .filter(|r| !full(r))
             .filter_map(|r| r.get("jobId").and_then(Value::as_str))
-            .filter(|j| !j.is_empty() && crate::core::server_regions::known(j).is_none())
+            .filter(|j| !j.is_empty())
             .take(60)
+            .filter(|j| crate::core::server_regions::known(j).is_none() && !crate::core::server_regions::tried(j))
             .map(str::to_string)
             .collect();
-        let stopped = ask_where(viewer.cookie.clone(), place_id, jobs).await;
+        let jobs: Vec<String> = pending.iter().take(ask.max(1)).cloned().collect();
+        let more = pending.len() - jobs.len();
+        let stopped = if jobs.is_empty() { None } else { ask_where(viewer.cookie.clone(), place_id, jobs).await };
         if let Some(why) = &stopped {
             log::write(&format!("Server regions: stopped asking where servers are for place {place_id}: {why}"));
         }
@@ -345,7 +350,7 @@ impl App {
                         None => regions.push((cc, vec![city], 1, playing)),
                     }
                 }
-                None if !full(row) => unknown += 1,
+                None if !full(row) && crate::core::server_regions::tried(&job) => unknown += 1,
                 None => {}
             }
         }
@@ -356,6 +361,7 @@ impl App {
             "unknown": if blocked { 0 } else { unknown },
             "stopped": stopped.is_some() && !blocked,
             "blocked": blocked,
+            "more": if stopped.is_some() { 0 } else { more },
         }))
     }
 
@@ -883,6 +889,7 @@ async fn ask_where(cookie: String, place_id: i64, jobs: Vec<String>) -> Option<S
                             break;
                         }
                         let Some(job) = queue.lock().unwrap_or_else(|p| p.into_inner()).next() else { break };
+                        crate::core::server_regions::mark_tried(&job);
                         loop {
                             match roblox_api::server_address(cookie, place_id, &job, ct) {
                                 Ok(Ok(join)) => {

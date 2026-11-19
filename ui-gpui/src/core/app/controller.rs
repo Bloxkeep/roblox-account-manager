@@ -927,7 +927,7 @@ impl App {
             "gameSocialLinks" => done(self.game_social_links(long_of(a, "universeId"), id_of(a)).await),
             "openGameWiki" => done(App::open_game_wiki(&str_of(a, "name"))),
             "openGamePage" => done(App::open_game_page(long_of(a, "placeId"))),
-            "serverRegions" => done(self.server_regions(long_of(a, "placeId"), &ids_of(a)).await),
+            "serverRegions" => done(self.server_regions(long_of(a, "placeId"), &ids_of(a), a.get("ask").and_then(Value::as_u64).unwrap_or(60) as usize).await),
             "serverFacts" => {
                 let jobs: Vec<String> = a.get("jobs").and_then(Value::as_array).into_iter().flatten().filter_map(|j| j.as_str().map(str::to_string)).collect();
                 done(self.server_facts(long_of(a, "placeId"), jobs, &ids_of(a)).await)
