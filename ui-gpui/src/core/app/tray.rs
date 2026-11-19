@@ -166,8 +166,15 @@ impl App {
             let _ = self.multi_only(on);
             return;
         }
-        if on || self.controller.vault.borrow().is_none() || self.auto_lock.screen_locked.get() {
-            log::note(&format!("Tray: Multi-Roblox item did nothing ({}).", if on { "turning on is asked in Bloxkeep" } else { "locked" }));
+        if self.controller.vault.borrow().is_none() || self.auto_lock.screen_locked.get() {
+            log::note("Tray: Multi-Roblox item did nothing (locked).");
+            return;
+        }
+        if on {
+            // Turning on is asked in Bloxkeep: its window is up (the tray's "multiAsk"), and the page asks Multi-Roblox's
+            // question there (or turns it on at once when the person said not to ask again).
+            log::note("Tray: Multi-Roblox turned on from the tray, asked in Bloxkeep.");
+            self.emit("askMulti", Value::Null);
             return;
         }
         // The C# let SetSettings' exception go up into the tray's click; here it is written to the log.

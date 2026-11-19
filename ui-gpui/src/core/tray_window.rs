@@ -275,6 +275,12 @@ impl TrayWindow {
                 self.hide_tray();
                 ev(&|e| if let Some(f) = &e.mini_clicked { f() });
             }
+            // Turning Multi-Roblox on with a vault: Bloxkeep comes up and asks its question there (App::tray_multi).
+            "multiAsk" => {
+                self.hide_tray();
+                ev(&|e| if let Some(f) = &e.open_clicked { f() });
+                ev(&|e| if let Some(f) = &e.multi_clicked { f(false) });
+            }
             "multi" => {
                 let on = a.get("on") == Some(&Value::Bool(true));
                 ev(&|e| if let Some(f) = &e.multi_clicked { f(on) });

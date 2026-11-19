@@ -237,26 +237,20 @@ pub fn init(cx: &mut App) {
         loop {
             cx.background_executor().timer(SWEEP_EVERY).await;
             let asked = Instant::now();
-            // No window of the app on screen (in the tray, minimized): nobody sees a picture, so all go at this look,
-            // not 45 s after; they come back from this PC's copy in milliseconds when the window shows again (the
-            // owner, 2026-11-15, of 230 MB in Task Manager: "không có cách nào hài hòa à").
-            // (Those drawn in the last two seconds stay: a window Windows still draws while minimized keeps what it shows
-            // rather than fetching it again every look.)
+            // No window of the app on screen (in the tray, minimized): the pictures it isn't showing go at this look,
+            // not 45 s after (the owner, 2026-11-15, of 230 MB in Task Manager: "không có cách nào hài hòa à").
             let hidden = cx.update(|cx| none_on_screen(cx));
-            if !hidden {
-                HIDDEN_GIVEN.store(false, std::sync::atomic::Ordering::Relaxed);
-            }
             if hidden {
                 cx.update(|cx| {
-                    trim(cx, Some(asked + AWAY - Duration::from_secs(2)));
-                    // Once each time the app leaves the screen: the memory it holds but isn't using (pictures let go,
-                    // pages left) goes back to Windows, for Roblox, rather than staying counted to Bloxkeep. What it
-                    // still uses comes back as it is touched. Task Manager's number was most of this (2026-11-15).
-                    if !HIDDEN_GIVEN.swap(true, std::sync::atomic::Ordering::Relaxed) {
-                        // SAFETY: plain call on this process.
-                        unsafe {
-                            windows_sys::Win32::System::ProcessStatus::K32EmptyWorkingSet(windows_sys::Win32::System::Threading::GetCurrentProcess());
-                        }
+                    // What the window showed when it left stays (the pictures of its last frame, drawn within a second of
+                    // the newest): it comes back at once as it was, with nothing to fetch, decode or upload again. All
+                    // the rest goes. (It used to let every picture go and push the whole process's memory out to the
+                    // page file, K32EmptyWorkingSet: Task Manager's number fell, but the memory was the same, and
+                    // bringing the window back read it all in again and made every picture again, slow and stepped;
+                    // the owner, 2026-11-19, "cải thiện độ mượt và tốc độ khi bấm lại vào app". Windows takes from a
+                    // window in the background by itself when Roblox needs the room.)
+                    if let Some(last) = last_drawn(cx.global::<Images>()) {
+                        trim(cx, Some(last + AWAY - Duration::from_secs(1)));
                     }
                     #[cfg(feature = "shot")]
                     if std::env::var("BLOXKEEP_SHOT_MEM").is_ok() {
@@ -311,8 +305,12 @@ fn lost(ids: &[gpui_kit::ImageId], cx: &mut App) {
     }
 }
 
-/// The memory not in use was given back to Windows since the app last left the screen.
-static HIDDEN_GIVEN: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+/// When the newest picture or copy was last asked for: the last frame any window drew.
+fn last_drawn(images: &Images) -> Option<Instant> {
+    let slots = images.slots.values().filter_map(|s| if let Slot::Ready(_, _, used, _) = s { Some(*used) } else { None });
+    let copies = images.copies.values().flatten().filter(|c| matches!(c.state, CopyState::Ready(_))).map(|c| c.used);
+    slots.chain(copies).max()
+}
 
 /// No window of the app is on screen: each hidden or minimized (Win32's own answer, by its handle).
 fn none_on_screen(cx: &mut App) -> bool {

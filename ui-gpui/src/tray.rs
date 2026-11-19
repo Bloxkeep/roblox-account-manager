@@ -379,7 +379,16 @@ impl Tray {
                     .child(div().text_size(px(T_S)).text_color(if multi == "ready" { tone } else { c(TEXT_2) }).child(sub)),
             )
             .child(switch_look(on, multi == "notReady"))
-            .on_click(cx.listener(move |t, _, _, _| t.act(if switchable { json!({ "what": "multi", "on": on }) } else { json!({ "what": "open" }) })));
+            .on_click(cx.listener(move |t, _, _, _| {
+                t.act(if switchable {
+                    json!({ "what": "multi", "on": on })
+                } else if !on && open {
+                    // On asks first: Bloxkeep opens with Multi-Roblox's question (owner 2026-11-19: it only opened).
+                    json!({ "what": "multiAsk" })
+                } else {
+                    json!({ "what": "open" })
+                })
+            }));
 
         let middle = if locked {
             div()
@@ -652,7 +661,9 @@ impl Tray {
                 let back = self.back("Multi-Roblox".into(), cx);
                 let fix = (multi == "notReady" && open && !multi_only).then(|| self.item("tray-fix", "wrench", self.t("tray.fix"), None, false, false, false, false, cx, |t, _| t.act(json!({ "what": "open" }))));
                 let switch = if self.can_switch(on) {
-                    self.item("tray-switch", "power", self.t(if on { "tray.turnOff" } else { "tray.turnOn" }), None, false, false, false, false, cx, move |t, _| t.act(json!({ "what": "multi", "on": on })))
+                    self.item("tray-switch", "power", self.t(if on { "tray.turnOff" } else { "tray.turnOn" }), None, false, false, false, false, cx, move |t, _| {
+                        t.act(if !on && open && !multi_only { json!({ "what": "multiAsk" }) } else { json!({ "what": "multi", "on": on }) })
+                    })
                 } else {
                     self.item("tray-switch", if !open { "lock" } else { "external" }, self.t(if !open { "tray.unlockToChange" } else { "tray.openToTurnOn" }), None, false, false, false, false, cx, |t, _| t.act(json!({ "what": "open" })))
                 };

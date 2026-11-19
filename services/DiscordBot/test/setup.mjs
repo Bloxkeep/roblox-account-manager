@@ -143,7 +143,7 @@ try {
   startDev();
   check('wrangler dev serves the worker', await devUp());
   await fetch(`http://127.0.0.1:${DEV}/__scheduled?cron=*+*+*+*+*`);
-  check('the bot connects, asking for message events (who posted where) only', await waitFor(() => identifies.length > 0, 8000) && identifies[0].intents === 512, JSON.stringify(identifies[0]?.intents));
+  check('the bot connects, asking for message events and their words (Message Content, 512 | 32768)', await waitFor(() => identifies.length > 0, 8000) && identifies[0].intents === (512 | 32768), JSON.stringify(identifies[0]?.intents));
 
   // Anyone else: refused, after "thinking…".
   let r = await setup('333', 'tok1');

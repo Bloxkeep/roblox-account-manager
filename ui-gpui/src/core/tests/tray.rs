@@ -158,6 +158,18 @@ pub async fn run(c: &mut Checks, _dir: &str) {
             (),
         );
     }
+    // Multi-Roblox turned on from the tray with a vault (owner 2026-11-19: it only opened Bloxkeep): Bloxkeep comes up
+    // and the app is asked to turn it on (it asks its question there).
+    {
+        let mut s = seen.borrow_mut();
+        s.open = false;
+        s.switched = None;
+    }
+    act(json!({ "what": "multiAsk" }));
+    c.check("…turning Multi-Roblox on from the tray opens Bloxkeep and asks the app to turn it on", {
+        let s = seen.borrow();
+        s.open && s.switched == Some(false)
+    }, ());
     seen.borrow_mut().opened = None;
     act(json!({ "what": "account", "id": "not an id" }));
     act(json!({ "what": "nothing" }));

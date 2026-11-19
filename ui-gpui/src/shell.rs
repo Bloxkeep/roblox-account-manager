@@ -1734,6 +1734,20 @@ impl Root {
                     });
                 }));
             }
+            // Multi-Roblox turned on from the tray: Settings › Launching with its question, as its switch there asks
+            // (or on at once when the person ticked not to ask again).
+            "askMulti" => {
+                let skip = self.state.get("skipConfirm").and_then(Value::as_array).is_some_and(|l| l.iter().any(|k| k.as_str() == Some("multi")));
+                if skip {
+                    self.send("setSettings", json!({ "multiInstance": true }));
+                } else {
+                    self.go(Page::Settings);
+                    self.settings.part = pages::settings::Part::Launch;
+                    self.settings.asking = Some("multi");
+                    self.settings.no_ask = false;
+                }
+                cx.notify();
+            }
             // Bloxkeep is about to install an update and start again: the new window comes back on this place.
             "saveView" => {
                 let view = json!({ "tab": self.page.key() }).to_string();
