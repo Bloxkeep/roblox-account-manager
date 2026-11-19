@@ -2216,4 +2216,65 @@ async fn memory_and_waits(c: &mut Checks, r: &mut R) {
         );
         c.check("…and once the wait is over, none go", app.controller.launch_waiting.borrow().is_none(), ());
     }
+
+    close_after_leave(c, r).await;
+}
+
+/// "Close Roblox when you leave a game": a window the person left its game in closes, as if there were no Roblox app
+/// behind the game; Bloxkeep's own closes, a setting left off and a launch still under way keep it.
+async fn close_after_leave(c: &mut Checks, r: &mut R) {
+    let app = r.app.clone();
+    let (me, id) = (r.me, r.id);
+    r.clear_queue();
+    r.clear_closing();
+    app.controller.user_closed.borrow_mut().clear();
+    // This process stands in for the client: its "close" is only noted, never done.
+    let closed: Arc<Mutex<Vec<i32>>> = Arc::new(Mutex::new(Vec::new()));
+    let real_close = app.launching.close_client.borrow().clone();
+    {
+        let closed = closed.clone();
+        *app.launching.close_client.borrow_mut() = Some(Arc::new(move |pid, _| closed.lock().unwrap().push(pid)));
+    }
+    let pids = || closed.lock().unwrap().clone();
+    let shut = || pids().contains(&me) || app.controller.user_closed.borrow().contains(&id);
+
+    let _launch = r.run(game(PLACE));
+    r.new_window();
+    r.line(now(), LAUNCH);
+    r.line(now(), JOIN);
+    r.line(now(), "[FLog::Network] serverId: 128.116.53.33|51451");
+    r.poll(|s| s.status == "ingame").await;
+    app.close_after_leave(now());
+    c.check("close after leaving: in the game, nothing closes", !shut(), ());
+
+    // Left from the game's menu: Roblox logs the leave, then the server's disconnect, and stays on its home screen.
+    r.line(now(), LEAVE);
+    r.line(now(), "[FLog::Network] Time to disconnect replication data: 0.1");
+    let left = r.poll(|s| s.status == "left").await;
+    c.check("…the person leaves the game: the log says left", left.as_ref().is_some_and(|s| s.status == "left" && !s.never_joined), &left);
+    let _ = app.vault_mut(|d| d.settings.close_after_leave = false);
+    app.close_after_leave(now());
+    c.check("…with the setting off, the window stays on Roblox's home screen", !shut(), ());
+
+    let _ = app.vault_mut(|d| d.settings.close_after_leave = true);
+    app.rejoin.closing_for_rejoin.borrow_mut().insert(me);
+    app.close_after_leave(now());
+    c.check("…a leave Bloxkeep's own close made (for a rejoin) isn't closed again", !shut(), ());
+    r.clear_closing();
+
+    app.close_after_leave(now().plus_secs(600.0));
+    c.check("…a leave from long before (one already there when Bloxkeep starts) is left alone", !shut(), ());
+
+    app.close_after_leave(now());
+    let now_closed = pids();
+    c.check("…setting on, the person's own leave: the window closes", now_closed.contains(&me), &now_closed);
+    c.check("…as the person's close (no rejoin of it)", app.controller.user_closed.borrow().contains(&id) && r.queue_len() == 0, ());
+    closed.lock().unwrap().clear();
+    app.close_after_leave(now());
+    let again = pids();
+    c.check("…and only once", again.is_empty(), &again);
+
+    let _ = app.vault_mut(|d| d.settings.close_after_leave = false);
+    *app.launching.close_client.borrow_mut() = real_close;
+    app.controller.user_closed.borrow_mut().clear();
 }

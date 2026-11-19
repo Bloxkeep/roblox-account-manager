@@ -1238,6 +1238,8 @@ fn launch(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
     if let Some(n) = store_note {
         client.push(note("info", n, TEXT_2));
     }
+    let close = flag(st, "closeAfterLeave");
+    client.push(row(root.tr("set.closeAfterLeave"), Some(root.tr("set.closeAfterLeaveDesc")), switch("s-close-leave", close, cx, |r, on, cx| set(r, json!({ "closeAfterLeave": on }), cx))));
     let own = flag(st, "ownRobloxLinks");
     client.push(row(root.tr("set.ownLinks"), Some(root.tr("set.ownLinksDesc")), switch("s-own-links", own, cx, |r, on, cx| set(r, json!({ "ownRobloxLinks": on }), cx))));
     let delay = st.get("launchDelaySeconds").and_then(Value::as_i64).unwrap_or(0);

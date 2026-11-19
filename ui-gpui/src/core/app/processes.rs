@@ -187,6 +187,41 @@ impl App {
         self.note_tick_time(start.elapsed(), parts);
     }
 
+    /// Settings › Close Roblox after leaving a game: a window whose log says its player just left its game by choice
+    /// (Leave in Roblox's menu: "left", not a drop, a kick or a sign-out) is closed, so no Roblox stays open on its home
+    /// screen (the owner, 2026-11-20: "thoát game bình thường thì ko có mở client roblox"). Not one Bloxkeep is moving
+    /// itself (a launch or rejoin of the account under way, its own close for a rejoin), one opened on the home screen
+    /// that never joined, nor a leave from before the last few minutes (one already sitting there at a start).
+    pub(crate) fn close_after_leave(&self, now: Stamp) {
+        if !vault_now(self).is_some_and(|_| self.vault(|d| d.settings.close_after_leave).unwrap_or(false)) {
+            return;
+        }
+        thread_local! {
+            /// The windows closed this way (by process id), so one isn't closed again while it goes.
+            static DONE: RefCell<HashSet<i32>> = RefCell::new(HashSet::new());
+        }
+        let busy: HashSet<Guid> = pending(self).iter().map(|p| p.account_id).chain(self.launching.late.borrow().iter().map(|p| p.account_id)).chain(self.controller.rejoin_queue.borrow().iter().map(|r| r.account_id)).collect();
+        for (id, run) in running(self) {
+            let pid = run.0;
+            if busy.contains(&id) || self.rejoin.closing_for_rejoin.borrow().contains(&pid) || DONE.with(|d| d.borrow().contains(&pid)) {
+                continue;
+            }
+            let Some(log) = log_of(self, pid) else { continue };
+            if log.status != "left" || log.never_joined || now.secs_since(log.at) > 180.0 {
+                continue;
+            }
+            DONE.with(|d| {
+                let mut d = d.borrow_mut();
+                if d.len() > 500 {
+                    d.clear();
+                }
+                d.insert(pid);
+            });
+            log::note(&format!("Close after leaving: a window left its game (place {}), closed.", log.place_id.unwrap_or(0)));
+            self.close_accounts(&[id], false);
+        }
+    }
+
     /// The clock was set back: periodic work is due now, and deadlines and start times move back by as much.
     pub(crate) fn move_clock_back(&self, now: Stamp, back: Duration) {
         if self.persist.save_due.get().is_some() {
@@ -485,6 +520,10 @@ impl App {
         });
         self.step("RejoinFromLogs", || {
             self.rejoin_from_logs();
+            Ok(())
+        });
+        self.step("CloseAfterLeave(now)", || {
+            self.close_after_leave(now);
             Ok(())
         });
         self.step("ForgetLiftedGameBans", || {

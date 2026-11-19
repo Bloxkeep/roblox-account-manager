@@ -294,6 +294,9 @@ impl App {
                     s.maximize_on_open = false;
                 }
             }
+            if let Some(close) = opt_bool(a, "closeAfterLeave") {
+                s.close_after_leave = close;
+            }
             if let Some(maximize) = opt_bool(a, "maximizeOnOpen") {
                 s.maximize_on_open = maximize;
                 if maximize {

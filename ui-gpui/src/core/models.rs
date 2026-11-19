@@ -147,6 +147,9 @@ pub struct AppSettings {
     pub multi_instance_tile: bool,
     /// Maximise each Roblox window Bloxkeep opens (still a window, not Roblox's shared fullscreen); not with `multi_instance_tile`.
     pub maximize_on_open: bool,
+    /// A window whose player leaves its game (Leave in Roblox's menu) is closed, rather than staying open on Roblox's
+    /// home screen: one Roblox per game played (the owner, 2026-11-20). Off unless turned on.
+    pub close_after_leave: bool,
     pub rename_windows: bool,
     /// The account's picture as its Roblox window's icon; None (saved before it had its own switch): as `rename_windows`.
     pub window_pictures: Option<bool>,
@@ -228,6 +231,7 @@ impl Default for AppSettings {
             multi_instance_windowed: true,
             multi_instance_tile: false,
             maximize_on_open: false,
+            close_after_leave: false,
             rename_windows: true,
             window_pictures: None,
             taskbar_groups: "roblox".into(),
