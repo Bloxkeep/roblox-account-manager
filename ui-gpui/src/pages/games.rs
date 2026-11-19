@@ -1746,6 +1746,21 @@ fn code_chip(root: &Root, id: (&'static str, usize), code: &str, works: bool, cx
         }))
 }
 
+/// The Codes table's heads, for the expired codes' table under it.
+fn heads_again(root: &Root, col: f32, added: f32, copy: f32) -> Div {
+    let head = |words: String| div().text_size(px(T_XS)).font_weight(FontWeight::SEMIBOLD).text_color(c(MUTED)).child(words.to_uppercase());
+    div()
+        .flex()
+        .items_center()
+        .gap(px(16.))
+        .px(px(16.))
+        .h(px(36.))
+        .child(head(root.tr("gc.colCode")).w(px(col)).flex_none())
+        .child(head(root.tr("gc.colReward")).flex_1().min_w_0())
+        .child(head(root.tr("gc.colAdded")).w(px(added)).flex_none())
+        .child(div().w(px(copy)).flex_none())
+}
+
 /// How many working codes show before "Show all".
 const CODES_FIRST: usize = 8;
 
@@ -1762,30 +1777,63 @@ fn codes_block(root: &Root, place: i64, cx: &mut Context<Root>) -> Option<Div> {
     let live: Vec<&Value> = list.iter().copied().filter(works).collect();
     let old: Vec<&Value> = list.iter().copied().filter(|c| !works(c)).collect();
     let now = crate::time::now_secs();
-    // The rewards in one column: the chips' column as wide as the longest code shown needs (about 8.6 px a letter,
-    // plus "Code", Copy and the room around them).
+    // A table (the owner, 2026-11-20: "sao ko làm dạng bảng đi", the chips and rewards apart read as two lists): the
+    // code, what it gives, when it was added, Copy; a line between rows, the heads small above them, as the code sites'
+    // tables. The code's column as wide as the longest code needs (about 8.4 px a letter), within reason.
     let longest = list.iter().map(|c| s(c, "code").chars().count()).max().unwrap_or(8) as f32;
-    let col = (longest * 8.6 + 128.).clamp(200., 380.);
+    let col = (longest * 8.4 + 70.).clamp(170., 340.);
+    const ADDED: f32 = 120.;
+    const COPY: f32 = 84.;
     let row = |i: usize, code: &Value, on: bool, cx: &mut Context<Root>| {
-        let new = on && crate::time::iso_secs(s(code, "added")).is_some_and(|t| now - t < 7 * 86_400);
+        let added = crate::time::iso_secs(s(code, "added"));
+        let new = on && added.is_some_and(|t| now - t < 7 * 86_400);
+        let copy = s(code, "code").to_string();
         div()
+            .id((if on { "gc-live" } else { "gc-old" }, i))
             .flex()
             .items_center()
-            .gap(px(14.))
-            .py(px(8.))
-            .child(div().w(px(col)).flex_none().flex().child(code_chip(root, (if on { "gc-live" } else { "gc-old" }, i), s(code, "code"), on, cx)))
-            .when(new, |d| {
-                d.child(div().flex_none().h(px(20.)).px(px(7.)).flex().items_center().rounded(px(5.)).bg(ca(ONLINE, 0.16)).text_color(c(ONLINE)).text_size(px(T_XS)).font_weight(FontWeight::SEMIBOLD).child(root.tr("gc.new")))
-            })
+            .gap(px(16.))
+            .px(px(16.))
+            .min_h(px(46.))
+            .py(px(6.))
+            .border_t_1()
+            .border_color(ca(WHITE, 0.06))
+            .hover(|d| d.bg(ca(WHITE, 0.03)))
+            .child(
+                div()
+                    .w(px(col))
+                    .flex_none()
+                    .min_w_0()
+                    .flex()
+                    .items_center()
+                    .gap(px(8.))
+                    .child(div().min_w_0().truncate().font_weight(FontWeight::SEMIBOLD).text_size(px(T_M)).text_color(if on { c(FACE) } else { c(MUTED) }).when(!on, |d| d.line_through()).child(copy.clone()))
+                    .when(new, |d| {
+                        d.child(div().flex_none().h(px(20.)).px(px(7.)).flex().items_center().rounded(px(5.)).bg(ca(ONLINE, 0.16)).text_color(c(ONLINE)).text_size(px(T_XS)).font_weight(FontWeight::SEMIBOLD).child(root.tr("gc.new")))
+                    }),
+            )
             .child(div().flex_1().min_w_0().text_size(px(T_M - 0.5)).line_height(px(20.)).text_color(if on { c(TEXT_2) } else { c(MUTED) }).child(s(code, "reward").to_string()))
+            .child(div().w(px(ADDED)).flex_none().text_size(px(T_S)).text_color(c(MUTED)).child(added.map(|t| crate::time::ago(now - t, &root.i18n)).unwrap_or_else(|| "—".into())))
+            .child(
+                div().w(px(COPY)).flex_none().flex().justify_end().child(
+                    Button::new(SharedString::from(format!("gc-copy-{}-{i}", if on { "l" } else { "o" })), root.tr("gp.copy"))
+                        .small()
+                        .icon("copy")
+                        .on_click(cx.listener(move |r, _, _, cx| {
+                            cx.write_to_clipboard(ClipboardItem::new_string(copy.clone()));
+                            r.toast = Some((r.i18n.tv("gp.codeCopied", &[("code", &copy)]), "ok".into()));
+                            cx.notify();
+                        })),
+                ),
+            )
     };
     let shown = if root.games.codes_all { live.len() } else { live.len().min(CODES_FIRST) };
-    let mut rows = div().flex().flex_col();
+    let mut rows = crate::kit::block().flex().flex_col().overflow_hidden().child(heads_again(root, col, ADDED, COPY));
     for (i, code) in live.iter().take(shown).enumerate() {
         rows = rows.child(row(i, code, true, cx));
     }
     if live.is_empty() {
-        rows = rows.child(div().py(px(6.)).text_size(px(T_M)).text_color(c(MUTED)).child(root.tr("gc.noneWorking")));
+        rows = rows.child(div().px(px(16.)).py(px(12.)).border_t_1().border_color(ca(WHITE, 0.06)).text_size(px(T_M)).text_color(c(MUTED)).child(root.tr("gc.noneWorking")));
     }
     let link = |id: &'static str, words: String, open: bool, cx: &mut Context<Root>, f: fn(&mut Root)| {
         div()
@@ -1814,7 +1862,7 @@ fn codes_block(root: &Root, place: i64, cx: &mut Context<Root>) -> Option<Div> {
         let open = root.games.codes_old;
         more = more.child(link("gc-old", root.i18n.tv(if open { "gc.hideOld" } else { "gc.showOld" }, &[("n", &old.len().to_string())]), open, cx, |r| r.games.codes_old = !r.games.codes_old));
     }
-    let mut olds = div().flex().flex_col();
+    let mut olds = crate::kit::block().flex().flex_col().overflow_hidden().child(heads_again(root, col, ADDED, COPY));
     if root.games.codes_old {
         for (i, code) in old.iter().enumerate() {
             olds = olds.child(row(i, code, false, cx));
@@ -4118,9 +4166,8 @@ fn page(root: &Root, all: &[Game], open: Open, width: f32, cx: &mut Context<Root
     let has_wiki = game.is_some_and(|g| g.wiki.is_some());
     let working = |v: &Value| v.get("codes").and_then(Value::as_array).map(|l| l.iter().filter(|c| c.get("works").and_then(Value::as_bool).unwrap_or(false)).count());
     let codes = root.games.codes.get(&place).and_then(Option::as_ref).filter(|v| v.get("codes").and_then(Value::as_array).is_some_and(|l| !l.is_empty()));
-    let has_codes = codes.is_some();
     let tab = match root.games.tab {
-        Tab::Codes if has_codes => Tab::Codes,
+        Tab::Codes if place > 0 => Tab::Codes,
         Tab::News if has_news => Tab::News,
         Tab::Prices if has_prices => Tab::Prices,
         Tab::Passes if place > 0 => Tab::Passes,
@@ -4153,7 +4200,9 @@ fn page(root: &Root, all: &[Game], open: Open, width: f32, cx: &mut Context<Root
             || (t == Tab::Prices && !has_prices)
             || (matches!(t, Tab::Passes | Tab::Servers) && place <= 0)
             || (t == Tab::Wiki && !has_wiki)
-            || (t == Tab::Codes && !has_codes)
+            // (Codes is there at once, as Passes and Servers: it says it is looking, then what it found; the owner,
+            // 2026-11-20: "sao ko cho nó hiện ra trước rồi nội dung trong đó load ra sau".)
+            || (t == Tab::Codes && place <= 0)
         {
             continue;
         }
@@ -4175,7 +4224,16 @@ fn page(root: &Root, all: &[Game], open: Open, width: f32, cx: &mut Context<Root
         Tab::Passes => crate::pages::passes::view(root, width, cx),
         Tab::Servers => crate::pages::servers::view(root, details.map_or(0, |d| int(d, "rootPlaceId")), inner, cx),
         Tab::Wiki => crate::pages::wiki::view(root, inner, cx),
-        Tab::Codes => codes_block(root, place, cx).unwrap_or_else(div).into_any_element(),
+        Tab::Codes => codes_block(root, place, cx)
+            .unwrap_or_else(|| {
+                let asked = root.games.codes.get(&place).is_some_and(Option::is_some);
+                div()
+                    .flex()
+                    .flex_col()
+                    .child(heading(root.tr("gc.title"), None))
+                    .child(div().mt(px(10.)).text_size(px(T_M)).text_color(c(MUTED)).child(root.tr(if asked { "gc.none" } else { "gc.finding" })))
+            })
+            .into_any_element(),
     };
 
     crate::scrolled::with_bar("game-page", &root.games.page_scroll, div().id("game-page").size_full().overflow_y_scroll().track_scroll(&root.games.page_scroll).child(

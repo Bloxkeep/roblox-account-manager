@@ -1694,6 +1694,31 @@ thread_local! {
     static MARQUEES: std::cell::RefCell<std::collections::HashMap<&'static str, (String, f32, f32)>> = Default::default();
 }
 
+thread_local! {
+    /// Each marquee's clock (by its id): the words it runs, the seconds run before, and since when it runs now.
+    static MARQUEE_CLOCKS: std::cell::RefCell<std::collections::HashMap<&'static str, (String, f32, Option<std::time::Instant>)>> = Default::default();
+}
+
+/// How long marquee `id` has run with `text` (new words start at 0), going on only while `running`.
+fn marquee_clock(id: &'static str, text: &str, running: bool) -> f32 {
+    MARQUEE_CLOCKS.with(|m| {
+        let mut m = m.borrow_mut();
+        let k = m.entry(id).or_insert_with(|| (text.to_string(), 0., None));
+        if k.0 != text {
+            *k = (text.to_string(), 0., None);
+        }
+        match (running, k.2) {
+            (true, None) => k.2 = Some(std::time::Instant::now()),
+            (false, Some(since)) => {
+                k.1 += since.elapsed().as_secs_f32();
+                k.2 = None;
+            }
+            _ => {}
+        }
+        k.1 + k.2.map_or(0., |s| s.elapsed().as_secs_f32())
+    })
+}
+
 /// Words that may be longer than their box (a song's title): still when they fit; else they run leftward, round and
 /// round, slowly, as a music player's title does (still, cut at the box's edge, while the window is behind). The
 /// box takes the width it is given; the words' size, weight and colour come from around it.
@@ -1725,11 +1750,21 @@ pub fn marquee(id: &'static str, text: String) -> Div {
         .inset_0()
     };
     let word = || div().flex_none().whitespace_nowrap().child(text.clone());
-    let runs = room > 0. && own > room + 1. && looping();
-    let row = div().flex().flex_none().gap(px(GAP)).child(word().relative().child(keep(true, text.clone()))).when(runs, |d| d.child(word()));
+    let long = room > 0. && own > room + 1.;
+    let runs = long && looping();
+    let span = own + GAP;
+    // Where the words are comes from the marquee's own clock, which stands while the window is behind and goes on from
+    // there: they stop where they are and go on from there, instead of jumping back to the start each time (the owner,
+    // 2026-11-20: "ko focus, chữ chạy spotify nó cứ lag lag": the mouse over the window and off it again started them
+    // over every few seconds).
+    let said = text.clone();
+    let at = move || (marquee_clock(id, &said, runs) * SPEED) % span;
+    let row = div().flex().flex_none().gap(px(GAP)).child(word().relative().child(keep(true, text.clone()))).when(long, |d| d.child(word()));
     let row = if runs {
-        let span = own + GAP;
-        row.with_animation(id, Animation::new(std::time::Duration::from_secs_f32(span / SPEED)).repeat().with_max_fps(30.), move |d, t| d.ml(px(-span * t))).into_any_element()
+        // (The animation only asks for a frame 30 times a second; the place is the clock's.)
+        row.with_animation(id, Animation::new(std::time::Duration::from_secs(1)).repeat().with_max_fps(30.), move |d, _| d.ml(px(-at()))).into_any_element()
+    } else if long {
+        row.ml(px(-at())).into_any_element()
     } else {
         row.into_any_element()
     };
