@@ -2580,7 +2580,7 @@ fn panels(c: &mut Checks) {
     let mut auto = HashSet::new();
     let mut closed = HashSet::new();
     let mut visible: HashSet<Guid> = HashSet::new();
-    let mut tick = |places: &[i64], auto: &mut HashSet<Guid>, closed: &mut HashSet<Guid>, visible: &mut HashSet<Guid>| {
+    let tick = |places: &[i64], auto: &mut HashSet<Guid>, closed: &mut HashSet<Guid>, visible: &mut HashSet<Guid>| {
         let played: HashSet<i64> = places.iter().copied().collect();
         let shown_now = visible.clone();
         let (show, hide) = macro_options::auto_show(&both, &played, auto, closed, &|id| shown_now.contains(&id), None, i32::MAX);

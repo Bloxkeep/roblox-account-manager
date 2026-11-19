@@ -130,8 +130,6 @@ const SPIN_FILL: f32 = 0.70;
 const STILL_SIDE: u32 = 128;
 /// The sleigh's frames, and their size.
 const SLEIGH_FRAMES: usize = 12;
-const SLEIGH_W: u32 = 320;
-const SLEIGH_H: u32 = 158;
 
 struct Pics {
     map: HashMap<&'static str, Option<Arc<RenderImage>>>,

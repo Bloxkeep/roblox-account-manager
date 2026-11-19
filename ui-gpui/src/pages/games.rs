@@ -2620,7 +2620,7 @@ pub fn want_corner(r: &mut Root, cx: &mut Context<Root>) {
         k.robux = n(0);
         k.unread = (n(1).unwrap_or(0), n(2).unwrap_or(0));
         let now = crate::time::now_secs();
-        k.held = w.get(3).map(|_| roblox::Held { kind: "Ban 3 Days".into(), began: Some(now - 3600), ends: Some(now + 3 * 86400 - 3600), note: "Bullying or harassment".into(), back: false });
+        k.held = w.get(3).map(|_| roblox::Held { kind: "Ban 3 Days".into(), ends: Some(now + 3 * 86400 - 3600), note: "Bullying or harassment".into(), back: false });
         return;
     }
     k.busy = true;

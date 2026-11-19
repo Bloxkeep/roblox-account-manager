@@ -64,6 +64,7 @@ fn opening_ms(root: &Root, window: &Window) -> Option<f32> {
     // BLOXKEEP_SHOT_INTRO=1300: a hidden shot of the opening at that moment; without it a shot has none.
     #[cfg(feature = "shot")]
     {
+        let _ = root; // a shot's opening is set by its moment, never marked opened
         let at = std::env::var("BLOXKEEP_SHOT_INTRO").ok().and_then(|v| v.parse::<f32>().ok());
         if at.is_none() {
             OPENING_OVER.store(true, Relaxed);

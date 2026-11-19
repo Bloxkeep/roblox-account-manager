@@ -14,9 +14,7 @@ use crate::kit::folded;
 pub struct Item {
     pub id: String,
     pub name: String,
-    pub cat: String,
     pub fields: Vec<(String, String)>,
-    pub lead: String,
     pub img: Option<String>,
     pub url: String,
     /// Lines the wiki writes as a short code in a template ({{Rarity|L}}): line → template, for the wiki to say in words.
@@ -25,7 +23,6 @@ pub struct Item {
 
 const FIELDS_MAX: usize = 24;
 const FIELD_MAX: usize = 500;
-const LEAD_MAX: usize = 420;
 
 fn re(s: &str) -> Regex {
     Regex::new(s).expect("wiki pattern")
@@ -70,7 +67,7 @@ fn short_label(k: &str) -> Option<&'static str> {
 
 /// A page as an item of a kind (its infobox template), or None when it has no box and no words. `page` is a page of a
 /// MediaWiki query (formatversion 2) with revisions (content), pageimages and info (url).
-pub fn item(page: &Value, cat: &str, template: &str, site: &str) -> Option<Item> {
+pub fn item(page: &Value, template: &str, site: &str) -> Option<Item> {
     let text = page.pointer("/revisions/0/slots/main/content").and_then(Value::as_str)?;
     let name = page.get("title").and_then(Value::as_str).unwrap_or_default().trim().to_string();
     if name.is_empty() || text.get(..9).is_some_and(|h| h.eq_ignore_ascii_case("#redirect")) {
@@ -108,7 +105,7 @@ pub fn item(page: &Value, cat: &str, template: &str, site: &str) -> Option<Item>
         .unwrap_or_else(|| page_url(site, &name));
     let id = page.get("pageid").map(|v| v.to_string()).filter(|v| v != "null").unwrap_or_else(|| name.clone());
     let short: String = name.rsplit('/').next().unwrap_or(&name).chars().take(100).collect();
-    Some(Item { id, name: short, cat: cat.to_string(), fields, lead: cut(&lead, LEAD_MAX), img, url, codes })
+    Some(Item { id, name: short, fields, img, url, codes })
 }
 
 /// A page's address on its wiki.

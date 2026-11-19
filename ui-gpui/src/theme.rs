@@ -645,12 +645,6 @@ pub fn frosted() -> bool {
     backdrop().is_some_and(|b| b.frost.is_some())
 }
 
-/// The status bar's own ground: as `bars_ground`, and on a picture theme the rail's see-through ground, as the foot of
-/// a picture is its busiest part (Miami night's street lights ran under the CPU and RAM figures).
-pub fn status_ground() -> Option<Hsla> {
-    bars_ground().or_else(|| backdrop().map(|_| c(RAIL_BG)))
-}
-
 /// Lets the app's next state through at once (Sync with Windows: only the app knows which of light and dark it is, so
 /// nothing is shown ahead; a theme clicked a moment before must not hold its answer back, which left that theme's
 /// colours on while Sync with Windows was the one ticked).

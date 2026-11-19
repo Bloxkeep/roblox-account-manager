@@ -216,7 +216,7 @@ impl App {
             rt::post(move || {
                 App::with(|app| {
                     app.anti_afk.last_input.borrow_mut().insert(pid, Stamp::utc_now());
-                    app.anti_afk.afk_held.borrow_mut().remove(&pid);
+                    app.anti_afk.afk_held.borrow_mut().shift_remove(&pid);
                 })
             })
         }));

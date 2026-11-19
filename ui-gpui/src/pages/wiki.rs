@@ -78,7 +78,6 @@ struct FreshPage {
 struct Fresh {
     added: Vec<FreshPage>,
     hot: Vec<FreshPage>,
-    edited: Vec<FreshPage>,
 }
 
 #[derive(Clone)]
@@ -481,7 +480,7 @@ fn load_fresh(link: Link, site: String, cx: &mut Context<Root>) {
         let mut edited: Vec<FreshPage> = count.into_iter().filter(|p| !seen.contains(&p.title) && p.title != "Main Page").collect();
         edited.sort_by(|a, b| b.edits.cmp(&a.edits));
         edited.truncate(CHANGED_PAGES);
-        let fresh = Fresh { added, hot, edited: edited.clone() };
+        let fresh = Fresh { added, hot };
         let site2 = site.clone();
         let _ = this.update(cx, |r, cx| {
             r.wiki.fresh.insert(site2, fresh);
@@ -606,7 +605,6 @@ fn attr_esc(s: &str) -> String {
 fn load_table(link: Link, site: String, template: String, mut said: HashMap<String, Option<String>>, cx: &mut Context<Root>) {
     cx.spawn(async move |this, cx| {
         let k = key(&site, &template);
-        let name = wikitext::kind_name(&template);
         let mut items: Vec<Item> = Vec::new();
         let mut seen = HashSet::new();
         let mut cont: Option<serde_json::Map<String, Value>> = Some(serde_json::Map::new());
@@ -634,7 +632,7 @@ fn load_table(link: Link, site: String, template: String, mut said: HashMap<Stri
                 return;
             };
             for p in d.pointer("/query/pages").and_then(Value::as_array).into_iter().flatten() {
-                if let Some(it) = wikitext::item(p, &name, &template, &site)
+                if let Some(it) = wikitext::item(p, &template, &site)
                     && seen.insert(it.id.clone())
                 {
                     items.push(it);

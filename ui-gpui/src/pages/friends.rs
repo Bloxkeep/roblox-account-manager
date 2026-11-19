@@ -371,7 +371,8 @@ const CARD_W: f32 = 300.;
 /// A friend's card's height (its words are one line each: the card never grows).
 const FRIEND_H: f32 = 70.;
 
-/// The accounts whose friends can be asked: signed in, on roblox.com.
+/// The accounts whose friends can be asked: signed in, on roblox.com (a shot's copy of them).
+#[cfg(feature = "shot")]
 pub fn able(root: &Root) -> Vec<Value> {
     able_ref(root).into_iter().cloned().collect()
 }

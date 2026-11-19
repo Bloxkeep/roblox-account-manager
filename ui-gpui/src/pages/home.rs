@@ -1075,13 +1075,6 @@ fn small(root: &Root) -> bool {
     root.no_side.get() || root.window_h.get() < 760.
 }
 
-/// How tall the game's cover stands at the stage's right: the stage is as tall as it and no taller (it kept the
-/// height of the edge-to-edge picture that went, and the words sat at its foot under a dark empty band, the owner
-/// 2026-11-13).
-fn cover_h(width: f32) -> f32 {
-    (width * 0.17).clamp(200., if width > 2000. { 360. } else { 300. }).round()
-}
-
 /// The stage's room above its contents, from the panel's top edge.
 const TOP: f32 = 28.;
 

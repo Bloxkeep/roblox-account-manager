@@ -2479,7 +2479,6 @@ pub struct ClubGame {
 /// many hold each (highest first) and the games it made.
 #[derive(Clone, Debug, Default)]
 pub struct Club {
-    pub id: i64,
     pub name: String,
     pub about: String,
     pub owner: String,
@@ -2523,7 +2522,6 @@ pub fn club(id: i64) -> Result<Club, String> {
         .collect();
     games.sort_by_key(|g| std::cmp::Reverse(g.visits));
     Ok(Club {
-        id,
         name: text(&d, "name"),
         about: text(&d, "description").trim().to_string(),
         owner: d.pointer("/owner/username").and_then(Value::as_str).unwrap_or_default().to_string(),
@@ -3002,7 +3000,6 @@ pub fn unread(cookie: &str) -> (i64, i64) {
 #[derive(Clone, Debug, Default)]
 pub struct Held {
     pub kind: String,
-    pub began: Option<i64>,
     pub ends: Option<i64>,
     pub note: String,
     pub back: bool,
@@ -3021,7 +3018,6 @@ pub fn held(cookie: &str) -> Result<Option<Held>, String> {
     let warn = kind.to_ascii_lowercase().starts_with("warn") || kind.to_ascii_lowercase().contains("reminder");
     Ok(Some(Held {
         back: warn || ends.is_some_and(|e| e <= now),
-        began: when("beginDate"),
         ends,
         note: d.get("messageToUser").and_then(Value::as_str).unwrap_or_default().trim().to_string(),
         kind,
@@ -3538,7 +3534,6 @@ pub struct Talk {
     pub name: String,
     pub face: String,
     pub last: String,
-    pub when: String,
     pub unread: i64,
     pub group: bool,
     pub people: HashMap<i64, String>,
@@ -3584,7 +3579,6 @@ pub fn talks(cookie: &str, me: i64) -> Result<Vec<Talk>, String> {
                 name,
                 face: String::new(),
                 last: v.pointer("/preview_message/content").and_then(Value::as_str).map(plain).unwrap_or_default(),
-                when: text(v, "updated_at"),
                 unread: int(v, "unread_message_count"),
                 group,
                 people,

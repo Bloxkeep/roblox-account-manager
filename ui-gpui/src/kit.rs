@@ -1099,14 +1099,6 @@ pub fn block_ground() -> Hsla {
     if crate::theme::light() { ca(WHITE, 0.5) } else { ca(WHITE, 0.075) }
 }
 
-/// A table's head on a game's page: a step above its block, more of the game's colour (the old wiki's --ws-head, 16 %).
-pub fn game_head() -> Hsla {
-    match game_tint() {
-        Some(t) => mix(c(RAISED_2), Hsla { a: 1., ..t }, 0.18),
-        None => ca(WHITE, 0.03),
-    }
-}
-
 /// A colour of a game's picture made to read as words on the theme's blocks: its hue, never dull or too dark.
 pub fn ink_of(tone: u32) -> Hsla {
     let t: Hsla = rgb(tone).into();

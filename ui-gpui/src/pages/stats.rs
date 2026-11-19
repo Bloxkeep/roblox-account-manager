@@ -77,7 +77,6 @@ pub struct Data {
     pub con_kind: u8,
     pub con_source: Option<String>,
     pub con_account: Option<String>,
-    pub con_minute: Option<i64>,
     /// The Console's lines as a list GPUI draws only the visible part of; it follows the newest line while it is at the
     /// bottom.
     con_list: ListState,
@@ -152,7 +151,6 @@ impl Default for Data {
             con_kind: 0,
             con_source: None,
             con_account: None,
-            con_minute: None,
             con_list: {
                 let l = ListState::new(0, ListAlignment::Top, px(400.)).with_uniform_item_height(px(20.));
                 l.set_follow_mode(FollowMode::Tail);

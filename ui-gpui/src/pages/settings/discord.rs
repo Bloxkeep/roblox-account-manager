@@ -374,25 +374,6 @@ fn time_box(e: &Entity<InputState>) -> Div {
     div().w(px(120.)).child(field(e, None))
 }
 
-/// A part that opens and closes under its title ("More").
-fn more(id: &'static str, title: String, open: bool, cx: &mut Context<Root>, f: impl Fn(&mut Root) + 'static) -> AnyElement {
-    focusable(div().id(id))
-        .px(px(16.))
-        .py(px(13.))
-        .flex()
-        .items_center()
-        .gap(px(8.))
-        .cursor_pointer()
-        .hover(|d| d.bg(ca(WHITE, 0.02)))
-        .child(div().flex_1().text_size(px(T_M)).font_weight(FontWeight::MEDIUM).child(title))
-        .child(icon(if open { "chevronUp" } else { "chevronDown" }, 16., c(MUTED)))
-        .on_click(cx.listener(move |r, _, _, cx| {
-            f(r);
-            cx.notify();
-        }))
-        .into_any_element()
-}
-
 fn ping_key(kind: &str) -> &'static str {
     match kind {
         "summary" => "dcp-summary",
@@ -450,35 +431,6 @@ fn ping(root: &Root, kind: &'static str, cx: &mut Context<Root>) -> Div {
         None
     };
     div().flex().items_center().gap(px(10.)).children(beside).child(line)
-}
-
-/// A setting with its control on the right and more under it.
-fn row_both(title: impl IntoElement, desc: Option<String>, right: impl IntoElement, below: impl IntoElement) -> AnyElement {
-    div()
-        .px(px(16.))
-        .py(px(13.))
-        .flex()
-        .flex_col()
-        .gap(px(10.))
-        .child(
-            div()
-                .flex()
-                .items_center()
-                .gap(px(16.))
-                .child(
-                    div()
-                        .flex_1()
-                        .min_w_0()
-                        .flex()
-                        .flex_col()
-                        .gap(px(3.))
-                        .child(div().text_size(px(T_M)).font_weight(FontWeight::MEDIUM).child(title))
-                        .when_some(desc, |d, t| d.child(div().text_size(px(T_S)).text_color(c(MUTED)).child(t))),
-                )
-                .child(div().flex_none().flex().items_center().gap(px(8.)).child(right)),
-        )
-        .child(below)
-        .into_any_element()
 }
 
 pub(super) fn discord(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {

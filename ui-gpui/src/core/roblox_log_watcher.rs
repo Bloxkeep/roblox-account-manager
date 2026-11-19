@@ -1058,7 +1058,7 @@ pub(crate) fn apply(tail: &mut Tail, line: &str) {
         if let Some(moving) = tail.state.as_ref().filter(|s| (s.status == "ingame" || s.status == "joining") && s.teleport_started.is_none()) {
             tail.state = Some(ClientState { teleport_started: tail.teleport_at, ..moving.clone() });
         }
-    } else if let Some(kick) = (if line.contains(KICK_MARK) { KICK_LINE.captures(line) } else { None }) {
+    } else if let Some(kick) = if line.contains(KICK_MARK) { KICK_LINE.captures(line) } else { None } {
         let words = kick[1].trim();
         let message = if words.is_empty() { None } else { Some(words.to_string()) };
         let ban = is_ban(&kick[2]);

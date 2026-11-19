@@ -244,7 +244,7 @@ async fn game_shown(c: &mut Checks, dir: &str) {
         turns.iter().map(|t| format!("{} / {:?}", t.details, t.state)).collect::<Vec<_>>().join(" | "),
     );
     c.check("…a game without an icon shows Bloxkeep's", turns.iter().find(|t| t.details == "Fruit Game").is_some_and(|t| t.picture.is_none()), ());
-    app.controller.running.borrow_mut().remove(&second_id);
+    app.controller.running.borrow_mut().shift_remove(&second_id);
 
     let stamp = {
         let c = Stamp::utc_now().utc();

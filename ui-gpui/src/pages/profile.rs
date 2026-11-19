@@ -76,7 +76,6 @@ pub struct Data {
     /// Watching, shown in place of the catalog (itemwatch.rs): the list as last read from disk.
     pub watch_view: bool,
     pub watch: Vec<crate::itemwatch::Watched>,
-    pub watch_read: bool,
     frees: Option<Result<Vec<Free>, String>>,
     free_at: Option<std::time::Instant>,
     free_reading: bool,
@@ -709,7 +708,7 @@ pub fn shot_club(r: &mut Root, cx: &mut Context<Root>) {
                 id,
                 ask: crate::pages::avatar::ticket(),
                 name: name.clone(),
-                got: Some(Ok(Club { id, name, members: 84, ..Default::default() })),
+                got: Some(Ok(Club { name, members: 84, ..Default::default() })),
                 mine: Some(vec![(member, "Member".into())]),
                 friends: None,
             });
@@ -1491,7 +1490,6 @@ pub fn save_bubble(r: &mut Root, cx: &mut Context<Root>) {
     cx.notify();
 }
 
-/// The thought bubble over their picture, two small rounds trailing down to it; its box while it is written.
 thread_local! {
     /// Banner pictures as uploaded, by id: their file once fetched (None while it comes, or when it can't be had).
     static UPLOADED: std::cell::RefCell<std::collections::HashMap<i64, Option<String>>> = Default::default();
@@ -1521,6 +1519,7 @@ fn uploaded(asset: i64, cx: &mut Context<Root>) -> Option<String> {
     None
 }
 
+/// The thought bubble over their picture, two small rounds trailing down to it; its box while it is written.
 fn bubble(root: &Root, user: i64, own: bool, banner_h: f32, avatar_size: f32, cx: &mut Context<Root>) -> Option<AnyElement> {
     let editing = own && root.profile.bubble_edit;
     let text = bubble_of(user);

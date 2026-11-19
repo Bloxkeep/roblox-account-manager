@@ -305,6 +305,27 @@ fn lost(ids: &[gpui_kit::ImageId], cx: &mut App) {
     }
 }
 
+/// What is kept now: the pictures and their bytes as fetched, the sized copies and their pixels' bytes (a shot's BLOXKEEP_SHOT_MEM).
+#[cfg(feature = "shot")]
+pub fn held(cx: &App) -> (usize, u64, usize, u64) {
+    let images = cx.global::<Images>();
+    let (mut n, mut bytes, mut copies, mut pixels) = (0, 0u64, 0, 0u64);
+    for s in images.slots.values() {
+        if let Slot::Ready(i, ..) = s {
+            n += 1;
+            bytes += i.bytes.len() as u64;
+        }
+    }
+    for c in images.copies.values().flatten() {
+        if let CopyState::Ready(r) = &c.state {
+            copies += 1;
+            let size = r.size(0);
+            pixels += size.width.0.max(0) as u64 * size.height.0.max(0) as u64 * 4;
+        }
+    }
+    (n, bytes, copies, pixels)
+}
+
 /// When the newest picture or copy was last asked for: the last frame any window drew.
 fn last_drawn(images: &Images) -> Option<Instant> {
     let slots = images.slots.values().filter_map(|s| if let Slot::Ready(_, _, used, _) = s { Some(*used) } else { None });
@@ -337,26 +358,6 @@ fn none_on_screen(cx: &mut App) -> bool {
 fn may_be_away(images: &Images, asked: Instant) -> bool {
     images.slots.values().any(|s| matches!(s, Slot::Ready(_, _, used, _) if *used + AWAY < asked))
         || images.copies.values().flatten().any(|c| matches!(c.state, CopyState::Ready(_)) && c.used + AWAY < asked)
-}
-
-/// What is kept now: the pictures and their bytes as fetched, the sized copies and their pixels' bytes.
-pub fn held(cx: &App) -> (usize, u64, usize, u64) {
-    let images = cx.global::<Images>();
-    let (mut n, mut bytes, mut copies, mut pixels) = (0, 0u64, 0, 0u64);
-    for s in images.slots.values() {
-        if let Slot::Ready(i, ..) = s {
-            n += 1;
-            bytes += i.bytes.len() as u64;
-        }
-    }
-    for c in images.copies.values().flatten() {
-        if let CopyState::Ready(r) = &c.state {
-            copies += 1;
-            let size = r.size(0);
-            pixels += size.width.0.max(0) as u64 * size.height.0.max(0) as u64 * 4;
-        }
-    }
-    (n, bytes, copies, pixels)
 }
 
 /// Where pictures from the web are kept on this PC: Bloxkeep's cache folder (BLOXKEEP_KEPT or BLOXKEEP_DATA: a hidden
@@ -520,12 +521,6 @@ fn format_of(b: &[u8]) -> Option<ImageFormat> {
         _ if b.iter().take(256).collect::<Vec<_>>().windows(4).any(|w| w == [&b'<', &b's', &b'v', &b'g']) => ImageFormat::Svg,
         _ => return None,
     })
-}
-
-/// A picture's own colour: the hue most of its vivid pixels share, at a lightness and strength that read on the dark
-/// surfaces (a game's icon gives its tiles their base). PNG or WebP (what Roblox is asked for); None for a grey picture.
-fn tone_of(b: &[u8]) -> Option<u32> {
-    tones_of(b).0
 }
 
 /// That colour, and the picture's second one: the next most voted hue at least a sixth of the wheel away, when it has

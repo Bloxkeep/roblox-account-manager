@@ -23,6 +23,7 @@ mod roblox;
 pub(crate) use roblox::{level_now, level_settings};
 pub(crate) use roblox::FPS_MAX;
 /// A custom theme's code, for the checks.
+#[cfg(feature = "core")]
 pub(crate) mod theme_code {
     pub(crate) use super::appearance::{code_of, look_of};
 }
@@ -90,6 +91,8 @@ impl Part {
             Part::Updates => "set.p.updates",
         }
     }
+    /// A part by its key (a shot opens Settings on it: BLOXKEEP_SHOT_SET).
+    #[cfg(feature = "shot")]
     pub fn from_key(k: &str) -> Option<Part> {
         Part::ALL.into_iter().find(|p| p.key() == k)
     }
@@ -137,8 +140,6 @@ pub struct Data {
     pub dc_link_err: Option<String>,
     pub dc_pick: Option<(&'static str, HashSet<String>)>,
     pub dc_ping: Option<(String, String)>,
-    pub dc_kinds: bool,
-    pub dc_look: bool,
     pub dc_board_preview: bool,
     pub dc_alerts_want: Option<bool>,
     /// Discord's tab: "summary", "alerts", "messages", "control".

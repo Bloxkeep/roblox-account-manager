@@ -495,7 +495,6 @@ static LAST_ERROR_BOX: Mutex<Option<Instant>> = Mutex::new(None);
 static ERROR_BOX: Mutex<Option<std::thread::JoinHandle<()>>> = Mutex::new(None);
 static INPUT_LANGUAGE_LOGGED: AtomicBool = AtomicBool::new(false);
 
-/// Logs the error; shows it at most every few seconds so a repeating failure can't flood the screen.
 thread_local! {
     /// How deep this thread is in catch_unwind's below: a panic there is caught and handled, not unexpected.
     static CAUGHT: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
@@ -517,6 +516,7 @@ pub fn shielded<R>(fallback: impl FnOnce() -> R, f: impl FnOnce() -> R) -> R {
     std::panic::catch_unwind(std::panic::AssertUnwindSafe(f)).unwrap_or_else(|_| fallback())
 }
 
+/// Logs the error; shows it at most every few seconds so a repeating failure can't flood the screen.
 fn on_unexpected(message: &str) {
     // PORT: the C# skipped the CultureNotFoundException WinForms raised on a keyboard-language switch (Alt+Shift) under
     // InvariantGlobalization; there is no WinForms InputLanguage here, so the case can't happen. The flag is kept for a

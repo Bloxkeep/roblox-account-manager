@@ -201,7 +201,6 @@ pub struct Root {
     pub af_group: Entity<InputState>,
     pub af_password: Entity<InputState>,
     pub af_key: Entity<InputState>,
-    pub af_note: Entity<InputState>,
     pub acc_form: pages::account_form::Data,
     /// Send feedback's message and contact boxes; its state, and What's new's.
     pub fb_text: Entity<gpui_kit::component::input::TextareaState>,
@@ -435,7 +434,6 @@ impl Root {
         let af_group = af("", false, 0, window, cx);
         let af_password = af("", true, 1, window, cx);
         let af_key = af("", true, 2, window, cx);
-        let af_note = af("", false, 0, window, cx);
         // Join a player's name: Enter looks it up; typing takes away what was said about the last one.
         let jp_hint = i18n.t("jp.placeholder");
         let jp_name = cx.new(|cx| InputState::new(window, cx).placeholder(jp_hint));
@@ -695,7 +693,6 @@ impl Root {
             af_group,
             af_password,
             af_key,
-            af_note,
             acc_form: Default::default(),
             fb_text,
             fb_contact,

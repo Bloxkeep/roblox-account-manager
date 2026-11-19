@@ -8,6 +8,9 @@
 //   --size WxH      the window's size, 1280x800 by default
 //   --wait MS       for --shot: how long the app's state and pictures get first, 2500 by default
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+// A build without the core (the shot harness, a UI-only check) leaves the parts only the core calls unused by design:
+// their warnings would hide the real ones, so only the core build (what ships) warns about unused code.
+#![cfg_attr(not(feature = "core"), allow(dead_code, unused_variables, unused_imports))]
 
 mod ask;
 mod assets;
