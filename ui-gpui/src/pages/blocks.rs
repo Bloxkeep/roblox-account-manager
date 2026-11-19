@@ -4,6 +4,7 @@
 // outside: every piece becomes GPUI's own elements, pictures come only from https (Discord's servers), and a link opens
 // through the app (feedOpen), which checks it is the news's own.
 
+use crate::threads::Hold;
 use std::collections::HashSet;
 use std::ops::Range;
 use std::sync::{LazyLock, Mutex};
@@ -13,18 +14,17 @@ use regex::Regex;
 use serde_json::{Value, json};
 
 use crate::{images, kit::*, shell::Root, theme::*};
+use crate::val::s;
 
 /// Spoilers shown (clicked) this run: "card:place".
 static SHOWN: LazyLock<Mutex<HashSet<String>>> = LazyLock::new(|| Mutex::new(HashSet::new()));
 
 fn shown(key: &str) -> bool {
-    SHOWN.lock().map(|s| s.contains(key)).unwrap_or(false)
+    SHOWN.hold().contains(key)
 }
 
 fn show(key: String) {
-    if let Ok(mut s) = SHOWN.lock() {
-        s.insert(key);
-    }
+    SHOWN.hold().insert(key);
     SHOWN_N.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
 }
 
@@ -40,13 +40,6 @@ thread_local! {
 
 /// At most this many of each kept; past it they all go and are worked out again as drawn.
 const KEPT: usize = 3000;
-
-fn hash_of(x: impl std::hash::Hash) -> u64 {
-    use std::hash::Hasher;
-    let mut h = std::collections::hash_map::DefaultHasher::new();
-    x.hash(&mut h);
-    h.finish()
-}
 
 /// A line's words and marks, worked out once (Discord's markdown is a long regex: not on every frame).
 fn run_of(root: &Root, id: &str, text: &str) -> std::rc::Rc<Run> {
@@ -79,10 +72,6 @@ fn parts_of(text: &str) -> std::rc::Rc<Vec<Part>> {
         }
         c.entry(key).or_insert_with(|| std::rc::Rc::new(parts(text))).clone()
     })
-}
-
-fn st<'a>(v: &'a Value, k: &str) -> &'a str {
-    v.get(k).and_then(Value::as_str).unwrap_or_default()
 }
 
 /// A picture's address as one to load: Discord's own servers over https only (a picture from any host would tell
@@ -508,7 +497,7 @@ fn size_text(b: f64) -> String {
 }
 
 fn button(root: &Root, id: String, b: &Value, cx: &mut Context<Root>) -> AnyElement {
-    let label = format!("{} {}", st(b, "emoji"), st(b, "label")).trim().to_string();
+    let label = format!("{} {}", s(b, "emoji"), s(b, "label")).trim().to_string();
     if let Some(url) = b.get("url").and_then(Value::as_str).filter(|u| u.starts_with("https://")).map(str::to_string) {
         return Button::new(SharedString::from(id), label).icon_end("external").quiet().small().on_click(cx.listener(move |r, _, _, _| r.send("feedOpen", json!({ "url": url })))).into_any_element();
     }
@@ -552,7 +541,7 @@ fn gallery(root: &Root, id: &str, items: &[Value], w: f32, cx: &mut Context<Root
             } else {
                 150.
             };
-            let url = st(m, "url").to_string();
+            let url = s(m, "url").to_string();
             let video = m.get("video").and_then(Value::as_bool).unwrap_or(false);
             // A picture that can't be had (offline, gone) keeps no empty slab: a quiet line says so.
             let lost = !video && media(&url).is_none_or(|u| images::failed(&u, cx));
@@ -619,7 +608,7 @@ fn fields(root: &Root, id: &str, items: &[Value], w: f32, cx: &mut Context<Root>
                 .enumerate()
                 .map(|(i, f)| {
                     let wide = f.get("inline").and_then(Value::as_bool) == Some(false);
-                    let name = st(f, "name");
+                    let name = s(f, "name");
                     let (pic, rest) = match LEAD.captures(name).filter(|_| !wide) {
                         Some(cap) => (images::pic(&emoji_url(&cap[1]), cx), &name[cap.get(0).map_or(0, |m| m.end())..]),
                         None => (None, name),
@@ -638,7 +627,7 @@ fn fields(root: &Root, id: &str, items: &[Value], w: f32, cx: &mut Context<Root>
                                 .flex_col()
                                 .gap(px(2.))
                                 .child(div().text_size(px(T_S)).font_weight(FontWeight::SEMIBOLD).text_color(c(MUTED)).child(inline(root, format!("{id}.f{i}n"), rest, cx)))
-                                .child(md(root, &format!("{id}.f{i}v"), st(f, "value"), cx).text_color(c(TEXT)).font_features(tnum())),
+                                .child(md(root, &format!("{id}.f{i}v"), s(f, "value"), cx).text_color(c(TEXT)).font_features(tnum())),
                         )
                         .into_any_element()
                 })
@@ -663,7 +652,7 @@ fn poll(root: &Root, id: &str, p: &Value, cx: &mut Context<Root>) -> AnyElement 
         .flex()
         .flex_col()
         .gap(px(6.))
-        .child(div().text_size(px(T_L)).font_weight(FontWeight::SEMIBOLD).text_color(c(TEXT)).child(inline(root, format!("{id}.q"), st(p, "q"), cx)))
+        .child(div().text_size(px(T_L)).font_weight(FontWeight::SEMIBOLD).text_color(c(TEXT)).child(inline(root, format!("{id}.q"), s(p, "q"), cx)))
         .children(
             answers
                 .iter()
@@ -671,7 +660,7 @@ fn poll(root: &Root, id: &str, p: &Value, cx: &mut Context<Root>) -> AnyElement 
                 .map(|(i, a)| {
                     let share = if total > 0. { votes(a) / total } else { 0. };
                     let win = done && top > 0. && votes(a) == top;
-                    let words = format!("{} {}", st(a, "emoji"), st(a, "text")).trim().to_string();
+                    let words = format!("{} {}", s(a, "emoji"), s(a, "text")).trim().to_string();
                     div()
                         .relative()
                         .h(px(34.))
@@ -703,8 +692,8 @@ fn poll(root: &Root, id: &str, p: &Value, cx: &mut Context<Root>) -> AnyElement 
 
 fn block(root: &Root, id: &str, b: &Value, w: f32, cx: &mut Context<Root>) -> Option<AnyElement> {
     let items = || b.get("items").and_then(Value::as_array).cloned().unwrap_or_default();
-    Some(match st(b, "t") {
-        "md" => md(root, id, st(b, "md"), cx).into_any_element(),
+    Some(match s(b, "t") {
+        "md" => md(root, id, s(b, "md"), cx).into_any_element(),
         "section" => {
             let thumb = b.get("thumb").and_then(Value::as_str).and_then(|u| picture(u, cx));
             let side: Option<AnyElement> = match (thumb, b.get("button").filter(|x| x.is_object())) {
@@ -712,7 +701,7 @@ fn block(root: &Root, id: &str, b: &Value, w: f32, cx: &mut Context<Root>) -> Op
                 (None, Some(btn)) => Some(div().flex_none().child(button(root, format!("{id}-b"), btn, cx)).into_any_element()),
                 _ => None,
             };
-            div().flex().items_start().gap(px(12.)).child(md(root, id, st(b, "md"), cx).flex_1().min_w_0()).children(side).into_any_element()
+            div().flex().items_start().gap(px(12.)).child(md(root, id, s(b, "md"), cx).flex_1().min_w_0()).children(side).into_any_element()
         }
         "fields" => fields(root, id, &items(), w, cx),
         "gallery" => gallery(root, id, &items(), w, cx),
@@ -728,7 +717,7 @@ fn block(root: &Root, id: &str, b: &Value, w: f32, cx: &mut Context<Root>) -> Op
             .border_color(c(LINE))
             .text_size(px(T_M))
             .child(icon("download", 14., c(TEXT_2)))
-            .child(div().flex_1().min_w_0().truncate().text_color(c(TEXT)).child(st(b, "name").to_string()))
+            .child(div().flex_1().min_w_0().truncate().text_color(c(TEXT)).child(s(b, "name").to_string()))
             .when_some(b.get("size").and_then(Value::as_f64), |d, s| d.child(div().text_size(px(T_S)).text_color(c(MUTED)).font_features(tnum()).child(size_text(s))))
             .into_any_element(),
         "sep" => {
@@ -740,7 +729,7 @@ fn block(root: &Root, id: &str, b: &Value, w: f32, cx: &mut Context<Root>) -> Op
         "footer" => {
             let pic = b.get("icon").and_then(Value::as_str).and_then(|u| picture(u, cx));
             let at = b.get("at").and_then(Value::as_f64).map(|ms| crate::time::day_time((ms / 1000.) as i64));
-            let words = st(b, "md");
+            let words = s(b, "md");
             div()
                 .flex()
                 .items_center()
@@ -753,7 +742,7 @@ fn block(root: &Root, id: &str, b: &Value, w: f32, cx: &mut Context<Root>) -> Op
                 .when_some(at, |d, t| d.child(div().flex_none().font_features(tnum()).child(t)))
                 .into_any_element()
         }
-        "sticker" => img(picture(st(b, "url"), cx)?).size(px(120.)).object_fit(ObjectFit::Contain).into_any_element(),
+        "sticker" => img(picture(s(b, "url"), cx)?).size(px(120.)).object_fit(ObjectFit::Contain).into_any_element(),
         "poll" => poll(root, id, b, cx),
         // A kind Discord adds later: its words, if it has some.
         _ => md(root, id, b.get("md").and_then(Value::as_str)?, cx).into_any_element(),
@@ -780,7 +769,7 @@ fn tidied(list: &[Value], author: &str) -> Vec<Value> {
     let name = author.trim().to_lowercase();
     let mut out: Vec<Value> = Vec::new();
     for b in list {
-        match st(b, "t") {
+        match s(b, "t") {
             "buttons" => {
                 let kept: Vec<Value> = b.get("items").and_then(Value::as_array).into_iter().flatten().filter(|x| !idle_button(x)).cloned().collect();
                 if kept.is_empty() {
@@ -797,12 +786,12 @@ fn tidied(list: &[Value], author: &str) -> Vec<Value> {
                 }
                 out.push(b);
             }
-            "footer" if st(b, "md").trim().is_empty() || (!name.is_empty() && st(b, "md").to_lowercase().contains(&name)) => continue,
-            "sep" if out.last().is_none_or(|l| st(l, "t") == "sep") => continue,
+            "footer" if s(b, "md").trim().is_empty() || (!name.is_empty() && s(b, "md").to_lowercase().contains(&name)) => continue,
+            "sep" if out.last().is_none_or(|l| s(l, "t") == "sep") => continue,
             _ => out.push(b.clone()),
         }
     }
-    while out.last().is_some_and(|l| st(l, "t") == "sep") {
+    while out.last().is_some_and(|l| s(l, "t") == "sep") {
         out.pop();
     }
     out

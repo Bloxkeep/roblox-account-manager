@@ -81,6 +81,8 @@ impl App {
         let app = self.clone();
         rt::spawn(async move {
             let _busy = crate::core::base::on_drop(|| app.window_icons.icons_busy.set(false));
+            // On the shared pool, not a thread per tick (the process check asks every 0.5 to 15 s: each thread leaked a
+            // little of the NVIDIA driver's memory for good).
             rt::blocking(move || {
                 window_icons::forget(&alive);
                 if !on {

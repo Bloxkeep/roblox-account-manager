@@ -9,6 +9,15 @@ const pause = element('pause');
 const refresh = element('refresh');
 const windows = element('windows');
 const signal = element('signal');
+const sharpButton = element('sharp');
+// "Sharper": the watched window made big on the PC while it is watched. Off until asked for.
+let sharp = false;
+let sharpNote;
+function renderSharp() {
+  sharpButton.textContent = sharpNote ? t('macro') : t('sharp');
+  sharpButton.title = t('sharpHelp');
+  sharpButton.setAttribute('aria-pressed', String(sharp));
+}
 const languageChoice = element('language');
 let language = localStorage.getItem('monitor-language') === 'vi' ? 'vi' : 'en';
 const t = (key, value) => {
@@ -107,6 +116,7 @@ function stopLive() {
   liveClock = undefined;
   livePlayer?.destroy();
   livePlayer = undefined;
+  sharpButton.hidden = true;
   video.hidden = true;
   video.removeAttribute('src');
   video.load();
@@ -132,8 +142,23 @@ async function startLive(item) {
     syncSelection();
     empty('opening');
     status('connecting');
-    const reply = await livePost(`start/${item.id}`);
-    const body = await reply.json();
+    // (The view before this one may still be ending on the PC: asked again a few times before saying it is in use.)
+    const path = () => `start/${item.id}${sharp ? '?sharp=1' : ''}`;
+    let reply = await livePost(path());
+    let body = await reply.json();
+    for (let i = 0; i < 6 && reply.status === 409 && body.code === 'inUse'; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 700));
+      reply = await livePost(path());
+      body = await reply.json();
+    }
+    // A macro plays on the PC: no window is resized under it. Watched as it is, and the button says why for a moment.
+    if (reply.status === 409 && body.code === 'macro' && sharp) {
+      sharp = false;
+      sharpNote = setTimeout(() => { sharpNote = undefined; renderSharp(); }, 5000);
+      renderSharp();
+      reply = await livePost(path());
+      body = await reply.json();
+    }
     if (reply.status === 401) {
       disableSession();
       return;
@@ -177,6 +202,8 @@ async function startLive(item) {
       throw new Error('hlsUnsupported');
     }
     video.hidden = false;
+    sharpButton.hidden = false;
+    renderSharp();
     element('placeholder').hidden = true;
     await video.play().catch(() => {});
   } catch (error) {
@@ -188,6 +215,13 @@ async function startLive(item) {
     opening = false;
   }
 }
+sharpButton.addEventListener('click', () => {
+  if (opening || !source || !liveClock) return;
+  sharp = !sharp;
+  renderSharp();
+  // (The same window again, with or without: the app makes it big, or puts it back, as the view starts.)
+  void startLive(source);
+});
 video.addEventListener('playing', () => { if (liveClock) status('playing', true); });
 video.addEventListener('error', lostVideo);
 

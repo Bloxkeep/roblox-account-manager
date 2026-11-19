@@ -2,6 +2,7 @@
 // of the app's accounts own it already (Roblox tells that of one account at a time) and Buy for the account whose tab
 // is shown, in two clicks, at the price shown (roblox::buy_pass). The list is Roblox's own and needs no sign-in; with
 // one it also says which the account owns.
+use crate::threads::Hold;
 use std::sync::{LazyLock, Mutex};
 
 use gpui_kit::{prelude::*, *};
@@ -9,7 +10,7 @@ use gpui_kit::{prelude::*, *};
 use crate::{
     images,
     kit::*,
-    pages::{friends, games::thousands, profile},
+    pages::{friends, profile},
     roblox::{self, Pass},
     shell::Root,
     theme::*,
@@ -64,15 +65,15 @@ struct CartItem {
 static CART: LazyLock<Mutex<Vec<CartItem>>> = LazyLock::new(|| Mutex::new(crate::prefs::get("passCart").and_then(|v| serde_json::from_value(v).ok()).unwrap_or_default()));
 
 fn cart() -> Vec<CartItem> {
-    CART.lock().map(|l| l.clone()).unwrap_or_default()
+    CART.hold().clone()
 }
 
 fn in_cart(id: i64) -> bool {
-    CART.lock().is_ok_and(|l| l.iter().any(|i| i.pass.id == id))
+    CART.hold().iter().any(|i| i.pass.id == id)
 }
 
 fn change_cart(f: impl FnOnce(&mut Vec<CartItem>)) {
-    let Ok(mut l) = CART.lock() else { return };
+    let mut l = CART.hold();
     f(&mut l);
     crate::prefs::set("passCart", serde_json::to_value(&*l).unwrap_or_default());
 }
@@ -264,7 +265,7 @@ fn cart_bar(root: &Root, cx: &mut Context<Root>) -> Option<AnyElement> {
                 Some(Err(e)) => div().text_size(px(T_S)).text_color(c(WARN)).child(match e.as_str() {
                     "price" => root.tr("shop.moved"),
                     "off" => root.tr("shop.closed"),
-                    why => root.i18n.tv("shop.refused", &[("why", if why.is_empty() { "Roblox" } else { why })]),
+                    why => root.i18n.tv("shop.refused", &[("why", crate::net::why_words(&root.i18n, why).as_str())]),
                 }).into_any_element(),
                 _ => price_of(root, &i.pass, T_M).into_any_element(),
             };
@@ -516,7 +517,7 @@ pub fn view(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
     let said = |text: String| div().w_full().py(px(28.)).flex().justify_center().rounded(px(R_L)).bg(c(PANEL)).border_1().border_color(c(LINE)).text_size(px(T_M)).text_color(c(MUTED)).child(text);
     let list = match &ps.list {
         None => return said(root.tr("av.reading")).into_any_element(),
-        Some(Err(why)) => return said(root.i18n.tv("in.failed", &[("why", if why.is_empty() { "Roblox" } else { why })])).into_any_element(),
+        Some(Err(why)) => return said(root.i18n.tv("in.failed", &[("why", crate::net::why_words(&root.i18n, why).as_str())])).into_any_element(),
         Some(Ok(l)) if l.is_empty() => return said(root.tr("pass.none")).into_any_element(),
         Some(Ok(l)) => l,
     };
@@ -688,7 +689,7 @@ fn detail(root: &Root, p: &Pass, cx: &mut Context<Root>) -> impl IntoElement {
         Some(Err(why)) => Some(match why.as_str() {
             "price" => root.tr("shop.moved"),
             "off" => root.tr("shop.closed"),
-            why => root.i18n.tv("shop.refused", &[("why", if why.is_empty() { "Roblox" } else { why })]),
+            why => root.i18n.tv("shop.refused", &[("why", crate::net::why_words(&root.i18n, why).as_str())]),
         }),
         _ => None,
     };

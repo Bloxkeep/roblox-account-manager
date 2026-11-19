@@ -199,7 +199,7 @@ pub fn get_game_info(place_id: i64, cookie: Option<&str>, ct: &Cancel) -> Res<Op
 pub fn get_games(universe_ids: impl IntoIterator<Item = i64>, cookie: Option<&str>, ct: &Cancel) -> Res<HashMap<i64, GameInfo>> {
     let mut result = HashMap::new();
     for chunk in chunks(universe_ids, 50) {
-        let (details, counts, icons) = std::thread::scope(|s| {
+        let (details, counts, icons) = crate::threads::scope(|s| {
             let details = s.spawn(|| get_universe_details(&chunk, ct));
             let counts = s.spawn(|| get_player_counts(&chunk, cookie, ct));
             let icons = s.spawn(|| get_game_icons(chunk.iter().copied(), ct));
@@ -284,7 +284,7 @@ fn get_player_counts(universe_ids: &[i64], cookie: Option<&str>, ct: &Cancel) ->
 /// since 2026; the universe's own "updated" is used then), and its likes from the votes (shown to anyone). Checked
 /// against Blox Fruits on 2026-10-29. None when Roblox doesn't know the universe.
 pub fn get_game_details(universe_id: i64, cookie: Option<&str>, ct: &Cancel) -> Res<Option<GameDetailsInfo>> {
-    let (universe, game, votes) = std::thread::scope(|s| {
+    let (universe, game, votes) = crate::threads::scope(|s| {
         let universe = s.spawn(|| get_json(&format!("https://develop.roblox.com/v1/universes/multiget?ids={universe_id}"), ct, None));
         let game = s.spawn(|| get_json(&format!("https://games.roblox.com/v1/games?universeIds={universe_id}"), ct, cookie));
         let votes = s.spawn(|| get_json(&format!("https://games.roblox.com/v1/games/votes?universeIds={universe_id}"), ct, None));
@@ -354,6 +354,7 @@ pub fn get_game_details(universe_id: i64, cookie: Option<&str>, ct: &Cancel) -> 
         creator_verified: creator.and_then(|c| c.get("hasVerifiedBadge")).and_then(Value::as_bool) == Some(true),
         description: text(u, "description")?,
         genre: text(g, "genre")?,
+        genres: ["genre_l1", "genre_l2"].iter().filter_map(|k| g.and_then(|g| g.get(*k)).and_then(Value::as_str)).map(str::trim).filter(|s| !s.is_empty()).map(str::to_string).collect(),
         playing: num(g, "playing")?,
         visits: num(g, "visits")?,
         favorites: num(g, "favoritedCount")?,
@@ -622,20 +623,25 @@ pub fn get_game_covers(universe_ids: impl IntoIterator<Item = i64>, ct: &Cancel)
     let mut result = HashMap::new();
     for chunk in chunks(universe_ids, 50) {
         let url = format!(
-            "https://thumbnails.roblox.com/v1/games/multiget/thumbnails?universeIds={}&countPerUniverse=1&defaults=true&size=768x432&format=Webp&isCircular=false",
+            "https://thumbnails.roblox.com/v1/games/multiget/thumbnails?universeIds={}&countPerUniverse=3&defaults=true&size=768x432&format=Webp&isCircular=false",
             joined(&chunk, ",")
         );
         let Some(doc) = get_json(&url, ct, None)? else { continue };
         let Some(Value::Array(data)) = try_prop(&doc, "data")? else { continue };
         for game in data {
-            if let Some(Value::Array(shots)) = try_prop(game, "thumbnails")?
-                && !shots.is_empty()
-                && let Some(state) = try_prop(&shots[0], "state")?
-                && get_str(state)?.as_deref() == Some("Completed")
-                && let Some(url) = get_str(get_prop(&shots[0], "imageUrl")?)?
-                && is_roblox_cdn(Some(&url))
-            {
-                result.insert(get_i64(get_prop(game, "universeId")?)?, url);
+            // The first picture moderation passed: a blocked one comes as Roblox's grey "unapproved" stand-in (Ryujin's
+            // first, 2026-11-19), and the first was taken or none at all.
+            let Some(Value::Array(shots)) = try_prop(game, "thumbnails")? else { continue };
+            for shot in shots {
+                if let Some(state) = try_prop(shot, "state")?
+                    && get_str(state)?.as_deref() == Some("Completed")
+                    && let Some(url) = get_str(get_prop(shot, "imageUrl")?)?
+                    && is_roblox_cdn(Some(&url))
+                    && !url.contains("/UnapprovedImage/")
+                {
+                    result.insert(get_i64(get_prop(game, "universeId")?)?, url);
+                    break;
+                }
             }
         }
     }
@@ -669,7 +675,7 @@ pub fn get_presence(cookie: Option<&str>, user_ids: &[i64], realm: &str, ct: &Ca
     let mut result = HashMap::new();
     // 50 ids per request: Roblox refuses 51 ("Too many User Ids being sent in the request.", HTTP 400, recorded by RoALT),
     // and one refused page fails the whole check, so 51 accounts or more had no status at all. The requests go out together.
-    let pages: Vec<Res<String>> = std::thread::scope(|s| {
+    let pages: Vec<Res<String>> = crate::threads::scope(|s| {
         let handles: Vec<_> = chunks(user_ids.iter().copied(), 50)
             .into_iter()
             .map(|chunk| {

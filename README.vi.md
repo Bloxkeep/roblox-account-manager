@@ -8,11 +8,11 @@
 <p align="center"><a href="https://github.com/Bloxkeep/roblox-account-manager/releases/latest/download/Bloxkeep-Setup.exe"><img src="https://img.shields.io/badge/T%E1%BA%A3i_cho_Windows-Bloxkeep--Setup.exe-2ea44f?style=for-the-badge" height="36" alt="Tải Bloxkeep cho Windows (Bloxkeep-Setup.exe, bản mới nhất)"></a> <a href="https://bloxkeep-bot.bloxkeep-app.workers.dev/discord"><img src="https://img.shields.io/badge/Discord-V%C3%A0o_server-5865F2?style=for-the-badge&logo=discord&logoColor=white" height="36" alt="Vào server Discord của Bloxkeep"></a></p>
 <p align="center"><a href="#tải-về-và-cài-đặt">Tải về</a> · <a href="#bắt-đầu">Bắt đầu</a> · <a href="https://bloxkeep.github.io/roblox-account-manager/vi/guide/">Hướng dẫn</a> · <a href="https://bloxkeep.github.io/roblox-account-manager/vi/">Trang web</a> · <a href="https://bloxkeep.github.io/roblox-account-manager/vi/whats-new/">Có gì mới</a> · <a href="#cộng-đồng">Cộng đồng</a> · <a href="#dữ-liệu-và-bảo-mật">Bảo mật</a> · <a href="#câu-hỏi-thường-gặp">Câu hỏi thường gặp</a> · <a href="PRIVACY.md">Quyền riêng tư</a></p>
 
-<p align="center"><img src="docs/screenshots/1.1/home.webp" width="900" alt="Trang chủ của Bloxkeep 1.1: game đang chơi ở trên cùng kèm ảnh, các game của bạn bên dưới, Preset, hoạt động gần đây và danh sách tài khoản bên phải"></p>
+<p align="center"><img src="docs/screenshots/1.1/home.webp" width="900" alt="Trang chủ của Bloxkeep: game đang chơi kèm ảnh và số liệu, các game và Preset bên dưới, danh sách tài khoản bên phải"></p>
 
 Giữ các tài khoản Roblox ở một chỗ, chọn game, chọn tài khoản, bấm **Vào game**. Mọi thứ nằm trên máy của bạn, được mã hóa bằng mật khẩu chủ. Bloxkeep không có máy chủ riêng.
 
-**Mới ở bản 1.1:** Bloxkeep được vẽ lại từ đầu, và có Roblox ngay bên trong: game, bạn bè, avatar, hồ sơ, cửa hàng và hộp thư của từng tài khoản, mỗi tài khoản một tab. [Có gì mới](https://bloxkeep.github.io/roblox-account-manager/vi/whats-new/)
+**Mới ở bản 1.1:** Bloxkeep được vẽ lại từ đầu, và có Roblox ngay bên trong: game, bạn bè, avatar, hồ sơ, cửa hàng và hộp thư của từng tài khoản, mỗi tài khoản một tab. Trang mỗi game giờ có giftcode, cả code dùng được lẫn hết hạn, và gõ `/pc watch` trong Discord để xem trực tiếp các cửa sổ Roblox trên máy từ điện thoại. [Có gì mới](https://bloxkeep.github.io/roblox-account-manager/vi/whats-new/)
 
 Repo này chứa mã nguồn, các bản phát hành và nơi báo lỗi của Bloxkeep. Hướng dẫn sử dụng nằm trên [trang web](https://bloxkeep.github.io/roblox-account-manager/vi/).
 
@@ -23,21 +23,21 @@ Repo này chứa mã nguồn, các bản phát hành và nơi báo lỗi của B
 <table>
 <tr>
 <td width="50%" valign="top"><img src="docs/screenshots/1.1/roblox.webp" width="420" alt="Tab Roblox: các game chơi tiếp, mỗi tài khoản một tab"><br><b>Roblox ngay trong Bloxkeep</b><br>Game, bạn bè, avatar (3D), hồ sơ, cửa hàng và hộp thư của từng tài khoản, mỗi tài khoản một tab. Tìm game Roblox ngay khi gõ, gõ tắt (gpo, ps99) hay gõ sai vẫn ra.</td>
-<td width="50%" valign="top"><img src="docs/screenshots/1.1/game.webp" width="420" alt="Trang của một game: ảnh, số liệu của Roblox, nút Vào game và thành tích tuần này của các tài khoản"><br><b>Mỗi game một trang</b><br>Số liệu của Roblox, sự kiện, tin tức, giá vật phẩm, gamepass, server và wiki của game, kèm thành tích tuần này của từng tài khoản. <a href="https://bloxkeep.github.io/roblox-account-manager/vi/guide/playing/">Chơi game</a></td>
+<td width="50%" valign="top"><img src="docs/screenshots/1.1/game.webp" width="420" alt="Trang của một game ở tab Giftcode: các code dùng được, nút Chép và phần thưởng của từng code"><br><b>Mỗi game một trang</b><br>Giftcode của mọi game, cả code dùng được lẫn hết hạn, bấm là chép. Số liệu của Roblox, clip gameplay có tiếng, sự kiện, tin tức, giá vật phẩm, gamepass, server theo quốc gia và wiki của game, kèm thành tích tuần này của từng tài khoản. <a href="https://bloxkeep.github.io/roblox-account-manager/vi/guide/playing/">Chơi game</a></td>
 </tr>
 <tr>
 <td width="50%" valign="top"><img src="docs/screenshots/1.1/accounts.webp" width="420" alt="Tài khoản: những tài khoản cần xem trước, rồi tới tài khoản đang mở trên máy này và còn lại"><br><b>Mọi tài khoản trong một màn hình</b><br>Thêm tài khoản bằng điện thoại, tên đăng nhập và mật khẩu (có xác minh 2 bước và captcha), cửa sổ trình duyệt, cookie hoặc file Bloxkeep khác. Biết ai đang chơi, chơi ở đâu, vì sao bị văng, ai cần đăng nhập lại hay bị ban. <a href="https://bloxkeep.github.io/roblox-account-manager/vi/guide/accounts/">Tài khoản</a></td>
 <td width="50%" valign="top"><img src="docs/screenshots/1.1/automation.webp" width="420" alt="Tự động: các Preset với tài khoản, game, lịch và công tắc"><br><b>Preset và macro</b><br>Lưu sẵn tài khoản, game và server để mở bằng một cú bấm, hẹn giờ nếu muốn. Macro (Beta) viết thành câu dễ hiểu, có bảng nhỏ cạnh game. <a href="https://bloxkeep.github.io/roblox-account-manager/vi/guide/presets/">Preset</a> · <a href="https://bloxkeep.github.io/roblox-account-manager/vi/guide/macros/">Macro</a></td>
 </tr>
 <tr>
-<td width="50%" valign="top"><img src="docs/screenshots/1.1/stats.webp" width="420" alt="Thống kê: giờ chơi, dòng thời gian của từng tài khoản, giờ chơi theo giờ và vì sao bị văng"><br><b>Thống kê và thông báo</b><br>Giờ chơi so với những ngày trước, dòng thời gian của từng tài khoản, vì sao rớt và mất bao lâu. Cảnh báo trong kênh Discord của bạn hoặc trên điện thoại, gõ <code>/pc</code> trong Discord để xem và điều khiển máy từ xa. <a href="https://bloxkeep.github.io/roblox-account-manager/vi/guide/discord/">Discord</a></td>
+<td width="50%" valign="top"><img src="docs/screenshots/1.1/stats.webp" width="420" alt="Thống kê: giờ chơi, dòng thời gian của từng tài khoản, giờ chơi theo giờ và vì sao bị văng"><br><b>Thống kê và thông báo</b><br>Giờ chơi so với những ngày trước, dòng thời gian của từng tài khoản, vì sao rớt và mất bao lâu. Cảnh báo trong kênh Discord của bạn hoặc trên điện thoại, gõ <code>/pc</code> trong Discord để xem và điều khiển máy từ xa: <code>/pc watch</code> cho xem trực tiếp các cửa sổ Roblox trên điện thoại. <a href="https://bloxkeep.github.io/roblox-account-manager/vi/guide/discord/">Discord</a></td>
 <td width="50%" valign="top"><img src="docs/screenshots/1.1/settings.webp" width="420" alt="Cài đặt, Mở game: Multi-Roblox, cách xếp cửa sổ và trình mở Roblox"><br><b>Roblox theo ý bạn</b><br>Multi-Roblox, cách xếp cửa sổ, đồ họa, FPS và âm lượng riêng cho từng tài khoản; mở bằng Roblox, Bloxstrap, Fishstrap, Voidstrap hoặc trình mở của bạn. <a href="https://bloxkeep.github.io/roblox-account-manager/vi/guide/settings/">Cài đặt</a></td>
 </tr>
 </table>
 
-Thêm nữa: chống AFK và tự vào lại để ở lại trong game, Theo dõi game và cửa sổ nhỏ, kho mã hóa với sao lưu vào thư mục OneDrive hoặc Google Drive, ẩn tên khi livestream, 99 giao diện, tiếng Việt và tiếng Anh.
+Thêm nữa: chống AFK và tự vào lại để ở lại trong game, Theo dõi game và cửa sổ nhỏ, nhóm tài khoản, bài hát và trang trí trên hồ sơ, chat nhóm, tự đặt quyền riêng tư theo từng game khi chơi, chọn server theo quốc gia, Thiết lập nhanh tự chỉnh Roblox cho máy, theme theo hình nền Wallpaper Engine, bài đang phát trên Spotify ở thanh trạng thái, kho mã hóa với sao lưu vào thư mục OneDrive hoặc Google Drive, ẩn tên khi livestream, 99 giao diện, tiếng Việt và tiếng Anh.
 
-Danh sách đầy đủ mọi tính năng, hướng dẫn có ảnh và bản chạy thử ngay trên trình duyệt: [trang web của Bloxkeep](https://bloxkeep.github.io/roblox-account-manager/vi/#all).
+Danh sách đầy đủ mọi tính năng và hướng dẫn có ảnh: [trang web của Bloxkeep](https://bloxkeep.github.io/roblox-account-manager/vi/#all).
 
 ## Tải về và cài đặt
 

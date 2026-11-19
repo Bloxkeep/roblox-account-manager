@@ -771,6 +771,16 @@ pub struct PaintSurface {
     pub content_mask: ContentMask<ScaledPixels>,
     #[cfg(any(target_os = "macos", target_os = "ios"))]
     pub image_buffer: objc2_core_foundation::CFRetained<objc2_core_video::CVPixelBuffer>,
+    /// (Bloxkeep, 2026-11-18) A Direct3D 11 texture another device in this process fills: its shared handle
+    /// (IDXGIResource::GetSharedHandle, made with a keyed mutex, key 0) and its size in pixels.
+    #[cfg(target_os = "windows")]
+    pub shared_texture: (isize, u32, u32),
+    /// (Bloxkeep, 2026-11-19) The part of the texture drawn (in its pixels: what of it lies inside the boxes it is
+    /// cut to) and the corners it is rounded at (the rounded boxes it lies in, as a picture is).
+    #[cfg(target_os = "windows")]
+    pub tile: Bounds<crate::DevicePixels>,
+    #[cfg(target_os = "windows")]
+    pub corner_radii: Corners<ScaledPixels>,
 }
 
 impl From<PaintSurface> for Primitive {

@@ -14,14 +14,7 @@ pub fn iso_secs(s: &str) -> Option<i64> {
     let num = |from: usize, len: usize| -> Option<i64> { s.get(from..from + len)?.parse().ok() };
     let (y, mo, d) = (num(0, 4)?, num(5, 2)?, num(8, 2)?);
     let (h, mi, sec) = (num(11, 2)?, num(14, 2)?, num(17, 2)?);
-    // Days from 1970-01-01 (Howard Hinnant's days_from_civil).
-    let y2 = if mo <= 2 { y - 1 } else { y };
-    let era = y2.div_euclid(400);
-    let yoe = y2 - era * 400;
-    let doy = (153 * (mo + if mo > 2 { -3 } else { 9 }) + 2) / 5 + d - 1;
-    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
-    let days = era * 146097 + doe - 719468;
-    let mut t = days * 86400 + h * 3600 + mi * 60 + sec;
+    let mut t = days_from_civil(y, mo, d) * 86400 + h * 3600 + mi * 60 + sec;
     // An offset after the seconds (and their fraction).
     let mut i = 19;
     while i < b.len() && (b[i] == b'.' || b[i].is_ascii_digit()) {
@@ -105,15 +98,7 @@ fn read_utc_offset() -> i64 {
 /// Seconds since 1970 as ISO 8601 in UTC: 2026-11-09T07:12:30Z.
 pub fn iso(secs: i64) -> String {
     let (days, rest) = (secs.div_euclid(86_400), secs.rem_euclid(86_400));
-    let z = days + 719_468;
-    let era = z.div_euclid(146_097);
-    let doe = z.rem_euclid(146_097);
-    let yoe = (doe - doe / 1_460 + doe / 36_524 - doe / 146_096) / 365;
-    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
-    let mp = (5 * doy + 2) / 153;
-    let d = doy - (153 * mp + 2) / 5 + 1;
-    let m = if mp < 10 { mp + 3 } else { mp - 9 };
-    let y = yoe + era * 400 + if m <= 2 { 1 } else { 0 };
+    let (y, m, d) = civil(days);
     format!("{y:04}-{m:02}-{d:02}T{:02}:{:02}:{:02}Z", rest / 3_600, rest % 3_600 / 60, rest % 60)
 }
 
@@ -157,17 +142,68 @@ pub fn dm(d: i64, m: i64) -> String {
 pub fn day_time(secs: i64) -> String {
     let t = secs + utc_offset_secs();
     let (days, rest) = (t.div_euclid(86_400), t.rem_euclid(86_400));
-    // The day of the month and the month from the days since 1970 (the civil calendar's arithmetic).
-    let z = days + 719_468;
-    let doe = z.rem_euclid(146_097);
-    let yoe = (doe - doe / 1_460 + doe / 36_524 - doe / 146_096) / 365;
-    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
-    let mp = (5 * doy + 2) / 153;
-    let d = doy - (153 * mp + 2) / 5 + 1;
-    let m = if mp < 10 { mp + 3 } else { mp - 9 };
+    let (_, m, d) = civil(days);
     if english() {
         format!("{m:02}/{d:02} {}", hm(rest / 3_600, rest % 3_600 / 60))
     } else {
         format!("{d:02}/{m:02} {:02}:{:02}", rest / 3_600, rest % 3_600 / 60)
     }
+}
+
+// ───────────── the calendar: days since 1970 and back, and the names of days and months ─────────────
+
+/// Days since 1970-01-01 of a day (Howard Hinnant's days_from_civil).
+pub fn days_from_civil(y: i64, m: i64, d: i64) -> i64 {
+    let y = if m <= 2 { y - 1 } else { y };
+    let era = y.div_euclid(400);
+    let yoe = y - era * 400;
+    let doy = (153 * (if m > 2 { m - 3 } else { m + 9 }) + 2) / 5 + d - 1;
+    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+    era * 146_097 + doe - 719_468
+}
+
+/// A day since 1970 as (year, month, day) (Howard Hinnant's civil_from_days).
+pub fn civil(days: i64) -> (i64, i64, i64) {
+    let z = days + 719_468;
+    let era = z.div_euclid(146_097);
+    let doe = z - era * 146_097;
+    let yoe = (doe - doe / 1_460 + doe / 36_524 - doe / 146_096) / 365;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = doy - (153 * mp + 2) / 5 + 1;
+    let m = if mp < 10 { mp + 3 } else { mp - 9 };
+    (yoe + era * 400 + if m <= 2 { 1 } else { 0 }, m, d)
+}
+
+/// A day since 1970's weekday: 0 Sunday … 6 Saturday (1970-01-01 was a Thursday).
+pub fn weekday(days: i64) -> i64 {
+    (days + 4).rem_euclid(7)
+}
+
+/// A weekday's short name (0 Sunday): "T2"…"T7", "CN" in Vietnamese, as the Presets tab writes them; "Mon"… in English.
+pub fn day_short(w: i64) -> String {
+    let w = w.rem_euclid(7);
+    if english() {
+        ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][w as usize].into()
+    } else if w == 0 {
+        "CN".into()
+    } else {
+        format!("T{}", w + 1)
+    }
+}
+
+/// A weekday's whole name (0 Sunday): "Thứ Hai", "Monday".
+pub fn day_long(w: i64) -> &'static str {
+    let w = w.rem_euclid(7) as usize;
+    if english() {
+        ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][w]
+    } else {
+        ["Chủ Nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"][w]
+    }
+}
+
+/// A month's English name (1 January); Vietnamese writes the number ("tháng 11").
+pub fn month_name(m: i64) -> &'static str {
+    ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+        [(m - 1).clamp(0, 11) as usize]
 }

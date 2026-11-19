@@ -11,7 +11,7 @@ use serde_json::{Value, json};
 
 use super::App;
 use super::controller::{JsonKind, has, parse_guid};
-use crate::core::roblox_api::realm;
+use crate::core::{models::Account, roblox_api::realm, vault::Vault};
 
 /// AppController.Gpui.cs declares no instance fields.
 #[derive(Default)]
@@ -20,8 +20,28 @@ pub struct GpuiState {}
 impl App {
     /// Keep the VNG sign-in in the core and expose only the selected panel's display data.
     pub async fn vng_panel(&self, id: crate::core::base::Guid, panel: String) -> crate::core::base::Res<Value> {
-        use crate::core::{base::Fail, l, roblox_api::vng_panel, rt};
+        use crate::core::{roblox_api::vng_panel, rt};
         let vault = self.held_vault();
+        let account = self.vng_account(id)?;
+        let value = rt::blocking(move || vng_panel::load(&panel, account.user_id, &account.cookie)).await?;
+        self.same_vng_vault(vault, id)?;
+        Ok(value)
+    }
+
+    /// vngSet { id, what, value }: one of a VNG account's privacy or trade settings (vng_panel::set), its sign-in
+    /// kept in the core as vngPanel keeps it.
+    pub async fn vng_set(&self, id: crate::core::base::Guid, what: String, value: String) -> crate::core::base::Res<Value> {
+        use crate::core::{roblox_api::vng_panel, rt};
+        let vault = self.held_vault();
+        let account = self.vng_account(id)?;
+        rt::blocking(move || vng_panel::set(&what, &value, &account.cookie)).await?;
+        self.same_vng_vault(vault, id)?;
+        Ok(Value::Null)
+    }
+
+    /// The VNG account `id`, with a sign-in to use.
+    fn vng_account(&self, id: crate::core::base::Guid) -> crate::core::base::Res<Account> {
+        use crate::core::{base::Fail, l};
         let account = self.account(id)?;
         if account.realm != realm::VNG || account.user_id <= 0 {
             return Err(Fail::user(l::t("Account not found.")));
@@ -29,15 +49,16 @@ impl App {
         if account.cookie.is_empty() || account.cookie_valid == Some(false) {
             return Err(Fail::user(l::t("Sign in again")));
         }
-        let value = rt::blocking(move || vng_panel::load(&panel, account.user_id, &account.cookie)).await?;
-        let same_vault = match (vault, self.held_vault()) {
-            (Some(before), Some(now)) => std::sync::Arc::ptr_eq(&before, &now),
-            _ => false,
-        };
-        if !same_vault || self.find_account(id).is_none() {
+        Ok(account)
+    }
+
+    /// The vault and the account are still the ones asked of (a vault switched meanwhile gets no answer).
+    fn same_vng_vault(&self, vault: Option<std::sync::Arc<Vault>>, id: crate::core::base::Guid) -> crate::core::base::Res<()> {
+        use crate::core::{base::Fail, l};
+        if vault.is_none() || !super::presets::same_vault(&vault, &self.held_vault()) || self.find_account(id).is_none() {
             return Err(Fail::user(l::t("Account not found.")));
         }
-        Ok(value)
+        Ok(())
     }
 
     /// robloxSignIn { id }: that account's sign-in (Friends looks through one account); without it, the app's pick: the

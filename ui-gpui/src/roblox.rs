@@ -8,10 +8,12 @@
 // account that friend lets join.
 //
 // Each call blocks, so it runs on a thread of its own and answers through a channel the window awaits.
+use crate::threads::Hold;
 use std::{collections::HashMap, io::Read, time::Duration};
 
 use futures::channel::oneshot;
 use serde_json::Value;
+use crate::val::int;
 
 /// A game in a row or a search: what the card shows.
 #[derive(Clone, Debug)]
@@ -54,7 +56,7 @@ fn agent() -> ureq::Agent {
 /// Two asks of Roblox at once. Each ask takes Roblox a quarter of a second whatever it is, so a page that asks ten
 /// things one after another makes its reader wait ten times that; what doesn't need another's answer is asked together.
 pub fn both<A: Send, B: Send>(a: impl FnOnce() -> A + Send, b: impl FnOnce() -> B + Send) -> (A, B) {
-    std::thread::scope(|s| {
+    crate::threads::scope(|s| {
         let a = s.spawn(a);
         let b = b();
         (a.join().expect("an ask of Roblox panicked"), b)
@@ -66,7 +68,7 @@ fn each<T: Send, R: Send>(things: Vec<T>, ask: impl Fn(T) -> R + Sync) -> Vec<R>
     if things.len() < 2 {
         return things.into_iter().map(ask).collect();
     }
-    std::thread::scope(|s| {
+    crate::threads::scope(|s| {
         let ask = &ask;
         let going: Vec<_> = things.into_iter().map(|t| s.spawn(move || ask(t))).collect();
         going.into_iter().map(|g| g.join().expect("an ask of Roblox panicked")).collect()
@@ -88,8 +90,11 @@ pub(crate) fn signed(cookie: &str) -> String {
 
 fn get(url: &str, cookie: Option<&str>) -> Result<Value, String> {
     let out = get_once(url, cookie);
+    // (One that got no answer is in error.log already, with its real error.)
     if let Err(why) = &out {
-        crate::net::note_failed("Roblox tab", url, why);
+        if why != crate::net::UNREACHABLE {
+            crate::net::note_failed("Roblox tab", url, why);
+        }
     }
     out
 }
@@ -106,7 +111,7 @@ fn get_once(url: &str, cookie: Option<&str>) -> Result<Value, String> {
             serde_json::from_str(&text).map_err(|e| e.to_string())
         }
         Err(ureq::Error::Status(code, r)) => Err(refused(url, code, r)),
-        Err(e) => Err(e.to_string()),
+        Err(e) => Err(crate::net::unreachable("Roblox tab", url, &e.to_string())),
     }
 }
 
@@ -131,10 +136,6 @@ fn session() -> String {
     // Any id will do: Roblox ties a page's calls together by it.
     let n = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_nanos()).unwrap_or(0);
     format!("{:08x}-{:04x}-4{:03x}-a{:03x}-{:012x}", (n >> 32) as u32, (n >> 16) as u16, (n >> 4) as u16 & 0xfff, n as u16 & 0xfff, (n as u64) & 0xffff_ffff_ffff)
-}
-
-fn int(v: &Value, k: &str) -> i64 {
-    v.get(k).and_then(Value::as_i64).unwrap_or(0)
 }
 
 fn game_of(v: &Value) -> Option<Game> {
@@ -209,8 +210,33 @@ pub fn sort_games(cookie: Option<&str>, sort: &Sort) -> Result<Vec<Game>, String
     if let Some(t) = &sort.treatment {
         url += &format!("&treatmentType={}", enc(t));
     }
-    let d = get(&url, cookie)?;
-    Ok(d.get("games").and_then(Value::as_array).into_iter().flatten().filter_map(game_of).collect())
+    // Roblox gives a chart a page at a time (nextPageToken, as its own Charts page loads more on scroll): up to four
+    // pages, about a hundred games, so the chart runs on down the page (owner 2026-11-17: "hiện nhiều hơn").
+    let mut games: Vec<Game> = Vec::new();
+    let mut token: Option<String> = None;
+    for _ in 0..4 {
+        let page = match &token {
+            Some(t) => format!("{url}&pageToken={}", enc(t)),
+            None => url.clone(),
+        };
+        let d = match get(&page, cookie) {
+            Ok(d) => d,
+            // (A later page failing keeps what came.)
+            Err(e) if games.is_empty() => return Err(e),
+            Err(_) => break,
+        };
+        let before = games.len();
+        for g in d.get("games").and_then(Value::as_array).into_iter().flatten().filter_map(game_of) {
+            if !games.iter().any(|x| x.universe == g.universe) {
+                games.push(g);
+            }
+        }
+        token = d.get("nextPageToken").and_then(Value::as_str).filter(|t| !t.is_empty() && *t != "e30=").map(str::to_string);
+        if token.is_none() || games.len() == before || games.len() >= 100 {
+            break;
+        }
+    }
+    Ok(games)
 }
 
 /// Roblox's game search, the one on roblox.com (no sign-in needed).
@@ -227,29 +253,43 @@ pub fn search(query: &str) -> Result<Vec<Game>, String> {
         .collect())
 }
 
-/// The games the account played last, wherever it played them (the Roblox app, the website, a phone, Bloxkeep), in
-/// Roblox's order: its home page's "Continue" row. omni-recommendation's Home page holds several rows; that one has
-/// topicId 100000003 (its title comes translated). Each item is a universe; their names and places come from
-/// games/v1/games. Keep playing showed only what Bloxkeep itself had launched, 12 at most (the owner, 2026-11-15:
-/// "show ko đầy đủ").
-pub fn continue_games(cookie: &str) -> Result<Vec<Game>, String> {
-    const CONTINUE: i64 = 100_000_003;
-    let text = send_text("POST", "https://apis.roblox.com/discovery-api/omni-recommendation", &serde_json::json!({ "pageType": "Home", "sessionId": session() }), Some(cookie))?;
-    let d: Value = serde_json::from_str(&text).map_err(|e| e.to_string())?;
+#[derive(Default)]
+pub struct HomeGames {
+    pub continued: Vec<Game>,
+    pub recommended: Vec<Game>,
+}
+
+fn home_universes(d: &Value, topic: i64, name: &str) -> Vec<i64> {
     let mut seen = std::collections::HashSet::new();
-    let universes: Vec<i64> = d
+    d
         .get("sorts")
         .and_then(Value::as_array)
         .into_iter()
         .flatten()
-        .filter(|s| s.get("topicId").and_then(Value::as_i64) == Some(CONTINUE))
-        .flat_map(|s| s.get("recommendationList").and_then(Value::as_array).cloned().unwrap_or_default())
+        .filter(|s| int(s, "topicId") == topic || text_of(s, "topic").eq_ignore_ascii_case(name))
+        .flat_map(|s| s.get("recommendationList").and_then(Value::as_array).into_iter().flatten())
         .filter(|i| i.get("contentType").and_then(Value::as_str) == Some("Game"))
         .filter_map(|i| i.get("contentId").and_then(Value::as_i64))
         .filter(|u| *u > 0 && seen.insert(*u))
-        .collect();
-    let mut by: HashMap<i64, Game> = HashMap::new();
-    for chunk in universes.chunks(50) {
+        .filter(|u| d["contentMetadata"]["Game"][u.to_string()]["isSponsored"].as_bool() != Some(true))
+        .collect()
+}
+
+/// The account's two personalized Home rows in the order Roblox returns them.
+pub fn home_games(cookie: &str) -> Result<HomeGames, String> {
+    let d = post("https://apis.roblox.com/discovery-api/omni-recommendation", &serde_json::json!({ "pageType": "Home", "sessionId": session() }), Some(cookie))?;
+    let continued = home_universes(&d, 100_000_003, "Continue");
+    let mut recommended = home_universes(&d, 100_000_000, "Recommended for you");
+    recommended.truncate(72);
+    let mut ids: Vec<_> = continued.iter().chain(&recommended).copied().collect();
+    ids.sort_unstable();
+    ids.dedup();
+    let mut by: HashMap<i64, Game> = ids.iter().filter_map(|&id| {
+        let game = game_of(&d["contentMetadata"]["Game"][id.to_string()])?;
+        (game.universe == id).then_some((id, game))
+    }).collect();
+    let missing: Vec<_> = ids.into_iter().filter(|id| !by.contains_key(id)).collect();
+    for chunk in missing.chunks(50) {
         let ids: Vec<String> = chunk.iter().map(i64::to_string).collect();
         let g = get(&format!("https://games.roblox.com/v1/games?universeIds={}", ids.join(",")), None)?;
         for v in g.get("data").and_then(Value::as_array).into_iter().flatten() {
@@ -259,8 +299,8 @@ pub fn continue_games(cookie: &str) -> Result<Vec<Game>, String> {
             }
         }
     }
-    crate::net::note_worked(&format!("Roblox tab: Continue read ({} games from Roblox, {} named).", universes.len(), by.len()));
-    Ok(universes.iter().filter_map(|u| by.remove(u)).collect())
+    let collect = |ids: Vec<i64>| ids.iter().filter_map(|u| by.get(u).cloned()).collect();
+    Ok(HomeGames { continued: collect(continued), recommended: collect(recommended) })
 }
 
 fn text_of(v: &Value, k: &str) -> String {
@@ -286,19 +326,29 @@ pub fn icons(universes: &[i64]) -> HashMap<i64, String> {
     out
 }
 
+/// A game's pictures that Roblox shows: those its moderation passed ("Completed"). One it blocked comes as Roblox's
+/// grey "unapproved" stand-in on a white ground (`…/UnapprovedImage/…`): Ryujin's first and last of six, the owner's
+/// game page, 2026-11-19 ("ảnh game này lỗi à"). Pending and failed ones are left out with them.
+fn shown_thumbnails(v: &Value) -> impl Iterator<Item = &Value> {
+    v.get("thumbnails").and_then(Value::as_array).into_iter().flatten().filter(|t| {
+        t.get("state").and_then(Value::as_str) == Some("Completed") && t.get("imageUrl").and_then(Value::as_str).is_some_and(|u| !u.is_empty() && !u.contains("/UnapprovedImage/"))
+    })
+}
+
 /// The games' wide pictures (16:9) by universe, in one of Roblox's sizes ("480x270", "768x432"), 50 a call. They need
 /// no sign-in (checked 2026-11-11). WebP: 33 KB a 480×270 against the PNG's 183 KB, and Roblox's picture servers take
 /// about 1.4 s for a PNG nobody near has asked for lately (measured from Vietnam, 2026-11-13); 0.8 s for the WebP.
 pub fn covers(universes: &[i64], size: &str) -> HashMap<i64, String> {
-    let kind = format!("covers-webp-{size}");
+    // (Kept by a name of its own since blocked pictures are left out: the ones learnt before may be the stand-in.)
+    let kind = format!("covers-shown-{size}");
     let (mut out, missing) = pics::known(&kind, universes);
     let mut learnt = HashMap::new();
     for chunk in missing.chunks(50) {
         let ids: Vec<String> = chunk.iter().map(i64::to_string).collect();
-        let url = format!("https://thumbnails.roblox.com/v1/games/multiget/thumbnails?universeIds={}&countPerUniverse=1&defaults=true&size={size}&format=Webp&isCircular=false", ids.join(","));
+        let url = format!("https://thumbnails.roblox.com/v1/games/multiget/thumbnails?universeIds={}&countPerUniverse=3&defaults=true&size={size}&format=Webp&isCircular=false", ids.join(","));
         let Ok(d) = get(&url, None) else { continue };
         for v in d.get("data").and_then(Value::as_array).into_iter().flatten() {
-            let pic = v.get("thumbnails").and_then(Value::as_array).and_then(|t| t.first()).and_then(|t| t.get("imageUrl")).and_then(Value::as_str).filter(|u| !u.is_empty());
+            let pic = shown_thumbnails(v).next().and_then(|t| t.get("imageUrl")).and_then(Value::as_str);
             if let Some(u) = pic {
                 learnt.insert(int(v, "universeId"), u.to_string());
             }
@@ -311,13 +361,37 @@ pub fn covers(universes: &[i64], size: &str) -> HashMap<i64, String> {
 
 /// A game's own pictures (the ones its Roblox page turns through), wide, each once. No sign-in needed.
 pub fn shots(universe: i64) -> Vec<String> {
+    shots_with_assets(universe).into_iter().map(|(u, _)| u).collect()
+}
+
+/// `shots`, each with the id of the picture as it was uploaded (0 when Roblox names none): what `uploaded_picture`
+/// fetches at its own size.
+fn shots_with_assets(universe: i64) -> Vec<(String, i64)> {
     let url = format!("https://thumbnails.roblox.com/v1/games/multiget/thumbnails?universeIds={universe}&countPerUniverse=10&defaults=true&size=768x432&format=Webp&isCircular=false");
     let Ok(d) = get(&url, None) else { return Vec::new() };
-    let mut out: Vec<String> = Vec::new();
-    for t in d.pointer("/data/0/thumbnails").and_then(Value::as_array).into_iter().flatten() {
+    let mut out: Vec<(String, i64)> = Vec::new();
+    for t in d.pointer("/data/0").into_iter().flat_map(shown_thumbnails) {
         let pic = t.get("imageUrl").and_then(Value::as_str).unwrap_or_default();
-        if !pic.is_empty() && !out.iter().any(|u| u == pic) {
-            out.push(pic.to_string());
+        if !pic.is_empty() && !out.iter().any(|(u, _)| u == pic) {
+            out.push((pic.to_string(), int(t, "targetId").max(0)));
+        }
+    }
+    out
+}
+
+/// The games' first wide pictures (768×432) by universe, each with the id of the picture as uploaded (0: none named).
+fn covers_with_assets(universes: &[i64]) -> HashMap<i64, (String, i64)> {
+    let mut out = HashMap::new();
+    for chunk in universes.chunks(50) {
+        let ids: Vec<String> = chunk.iter().map(i64::to_string).collect();
+        let url = format!("https://thumbnails.roblox.com/v1/games/multiget/thumbnails?universeIds={}&countPerUniverse=3&defaults=true&size=768x432&format=Webp&isCircular=false", ids.join(","));
+        let Ok(d) = get(&url, None) else { continue };
+        for v in d.get("data").and_then(Value::as_array).into_iter().flatten() {
+            let Some(t) = shown_thumbnails(v).next() else { continue };
+            let pic = t.get("imageUrl").and_then(Value::as_str).unwrap_or_default();
+            if !pic.is_empty() {
+                out.insert(int(v, "universeId"), (pic.to_string(), int(t, "targetId").max(0)));
+            }
         }
     }
     out
@@ -346,20 +420,28 @@ pub fn place_clip(place: i64, dir: &std::path::Path) -> Option<std::path::PathBu
     video_file(preview_video(universe)?, dir)
 }
 
-/// The clip's file on this PC (`dir`/{asset}.webm), fetched the first time: Roblox's asset delivery names where it is
-/// without a sign-in (a WebM of ~10 MB, sent gzipped). A newer clip comes as HLS instead: its parts are kept as
-/// `{asset}-N.webm` and the file handed back is `{asset}.parts`, their names a line each (video.rs plays them in turn).
-/// The folder keeps the newest clips up to CLIPS_MAX.
+/// The clip's file on this PC, fetched the first time, without a sign-in. Roblox's own page plays a clip as HLS, its
+/// best picture 1280×720: that one is kept, its parts as `{asset}-N.webm` and the file handed back `{asset}.parts`,
+/// their names a line each (video.rs plays them in turn). The plain file its asset delivery names (`{asset}.webm`) is
+/// only 640×360 (measured 2026-11-18 on three kept clips: VP9 at 640×360), soft on the Games tab's big tile; it is
+/// what plays when Roblox gives no HLS for the clip. The folder keeps the newest clips up to CLIPS_MAX.
 pub fn video_file(asset: i64, dir: &std::path::Path) -> Option<std::path::PathBuf> {
     let file = dir.join(format!("{asset}.webm"));
-    if file.metadata().is_ok_and(|m| m.len() > 0) {
-        return Some(file);
-    }
     let list = dir.join(format!("{asset}.parts"));
     if let Ok(names) = std::fs::read_to_string(&list)
         && names.lines().all(|n| dir.join(n).metadata().is_ok_and(|m| m.len() > 0))
     {
         return Some(list);
+    }
+    std::fs::create_dir_all(dir).ok()?;
+    if let Some(kept) = hls_clip(asset, dir, &list) {
+        // (The small one kept by an earlier version goes.)
+        let _ = std::fs::remove_file(&file);
+        sweep_clips(dir, &kept);
+        return Some(kept);
+    }
+    if file.metadata().is_ok_and(|m| m.len() > 0) {
+        return Some(file);
     }
     let d = get(&format!("https://assetdelivery.roblox.com/v2/assetId/{asset}"), None).ok()?;
     let at = d.pointer("/locations/0/location")?.as_str()?;
@@ -387,19 +469,67 @@ fn is_webm(bytes: &[u8]) -> bool {
 }
 
 fn fetch(url: &str, most: u64) -> Option<Vec<u8>> {
+    fetch_as("Game clip", url, most)
+}
+
+/// A file from Roblox's servers, `most` bytes of it at most; a failure is in error.log under `what`.
+fn fetch_as(what: &str, url: &str, most: u64) -> Option<Vec<u8>> {
     let r = match agent().get(url).timeout(Duration::from_secs(180)).call() {
         Ok(r) => r,
         Err(e) => {
-            crate::net::note_failed("Game clip", url, &e.to_string());
+            crate::net::note_failed(what, url, &e.to_string());
             return None;
         }
     };
     let mut bytes = Vec::new();
     if let Err(e) = r.into_reader().take(most).read_to_end(&mut bytes) {
-        crate::net::note_failed("Game clip", url, &e.to_string());
+        crate::net::note_failed(what, url, &e.to_string());
         return None;
     }
     Some(bytes)
+}
+
+/// The banner of the game at `place` as it was uploaded, its file on this PC (`dir`/{asset}.img), fetched the first
+/// time. Roblox's picture servers give a game's wide picture at 768×432 at most ("The requested size is invalid" to
+/// any more, asked 2026-11-18); asset delivery gives the picture itself without a sign-in, 1024×576 (three games
+/// asked that day): a third more dots each way, for Home's hero, where the 768 one was blown up and soft (the owner:
+/// "banner phải nét, ko mờ").
+pub fn place_banner(place: i64, dir: &std::path::Path) -> Option<std::path::PathBuf> {
+    let universe = int(&get(&format!("https://apis.roblox.com/universes/v1/places/{place}/universe"), None).ok()?, "universeId");
+    if universe <= 0 {
+        return None;
+    }
+    let d = get(&format!("https://thumbnails.roblox.com/v1/games/multiget/thumbnails?universeIds={universe}&countPerUniverse=3&defaults=true&size=768x432&format=Webp&isCircular=false"), None).ok()?;
+    let asset = shown_thumbnails(d.pointer("/data/0")?).next()?.get("targetId").and_then(Value::as_i64).filter(|id| *id > 0)?;
+    uploaded_picture(asset, dir)
+}
+
+/// A game picture as it was uploaded (its asset id, from the picture servers' `targetId`), its file on this PC
+/// (`dir`/{asset}.img), fetched the first time from asset delivery, which needs no sign-in: 1024×576 where the picture
+/// servers stop at 768×432. Kept with the others in `dir` (Home's hero and the profiles' banners), the oldest going
+/// past 150 MB (a picture is about 1 MB).
+pub fn uploaded_picture(asset: i64, dir: &std::path::Path) -> Option<std::path::PathBuf> {
+    if asset <= 0 {
+        return None;
+    }
+    let file = dir.join(format!("{asset}.img"));
+    if file.metadata().is_ok_and(|m| m.len() > 0) {
+        return Some(file);
+    }
+    let d = get(&format!("https://assetdelivery.roblox.com/v2/assetId/{asset}"), None).ok()?;
+    let at = d.pointer("/locations/0/location")?.as_str()?;
+    if !at.starts_with("https://") {
+        return None;
+    }
+    let bytes = fetch_as("Game banner", at, 16 << 20)?;
+    if !crate::images::is_picture(&bytes) {
+        crate::net::note_failed("Game banner", "https://assetdelivery.roblox.com/v2/assetId", &format!("what came isn't a picture ({} bytes)", bytes.len()));
+        return None;
+    }
+    std::fs::create_dir_all(dir).ok()?;
+    keep(dir, &file, &bytes)?;
+    sweep_kept(dir, &file, 150 << 20);
+    Some(file)
 }
 
 /// Written whole or not at all.
@@ -420,7 +550,7 @@ fn keep(dir: &std::path::Path, file: &std::path::Path, bytes: &[u8]) -> Option<(
 /// An HLS clip's parts, fetched as roblox.com's own game page does (seen 2026-11-13): asking asset delivery for the
 /// "hls" representation gives a signed link on sc*.rbxcdn.com, and every playlist and part under it takes that same
 /// signature. The plain `/v2/assetId` link (hls-segments.rbxcdn.com, unsigned) answers 403 to everyone. Each part is a
-/// whole WebM of about 6 s; the rendition kept is the biggest no taller than 720.
+/// whole WebM of about 6 s; the rendition kept is the tallest Roblox lists (1280×720 today; the owner, 2026-11-18: the highest there is).
 fn hls_clip(asset: i64, dir: &std::path::Path, list: &std::path::Path) -> Option<std::path::PathBuf> {
     // [{"format":"hls","majorVersion":"1","fidelity":"main"}], as the page sends it.
     const HLS: &str = "W3siZm9ybWF0IjoiaGxzIiwibWFqb3JWZXJzaW9uIjoiMSIsImZpZGVsaXR5IjoibWFpbiJ9XQ%3D%3D";
@@ -445,7 +575,7 @@ fn hls_clip(asset: i64, dir: &std::path::Path, list: &std::path::Path) -> Option
             .and_then(|r| r.split_once('x'))
             .and_then(|(_, h)| h.parse::<u32>().ok())
             .unwrap_or(0);
-        if tall <= 720 && best.is_none_or(|(b, _)| tall > b) {
+        if best.is_none_or(|(b, _)| tall > b) {
             best = Some((tall, uri));
         }
     }
@@ -473,7 +603,11 @@ fn hls_clip(asset: i64, dir: &std::path::Path, list: &std::path::Path) -> Option
 
 /// The oldest clips go once the folder is past its size (never the one just fetched, nor its parts).
 fn sweep_clips(dir: &std::path::Path, fresh: &std::path::Path) {
-    const CLIPS_MAX: u64 = 300 << 20;
+    sweep_kept(dir, fresh, 300 << 20)
+}
+
+/// The oldest files of a folder of kept ones go once it is past `most` bytes (never `fresh`, nor its parts).
+fn sweep_kept(dir: &std::path::Path, fresh: &std::path::Path, most: u64) {
     let stem = fresh.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default();
     let mine = |p: &std::path::Path| p == fresh || p.file_name().is_some_and(|n| n.to_string_lossy().starts_with(&format!("{stem}-")));
     let mut kept: Vec<(std::time::SystemTime, u64, std::path::PathBuf)> = std::fs::read_dir(dir)
@@ -489,7 +623,7 @@ fn sweep_clips(dir: &std::path::Path, fresh: &std::path::Path) {
     let mut total = 0u64;
     for (_, len, path) in kept {
         total += len;
-        if total > CLIPS_MAX && !mine(&path) {
+        if total > most && !mine(&path) {
             let _ = std::fs::remove_file(path);
         }
     }
@@ -505,6 +639,8 @@ pub struct Solid {
     pub eye: [f32; 3],
     pub min: [f32; 3],
     pub max: [f32; 3],
+    /// Roblox's address of this model: another look has another.
+    pub file: String,
 }
 
 /// A file of Roblox's picture servers, by its hash. Which of the eight servers holds it is reckoned from the hash, as
@@ -516,7 +652,14 @@ fn cdn(hash: &str) -> Option<Vec<u8>> {
     }
     // (A file named by its hash is the same file for ever: kept in the cache folder, the next look at the avatar reads
     // it here instead of from Roblox. Only a plain hash names a file.)
-    let kept = KEEP.get().cloned().flatten().filter(|_| hash.len() <= 64 && hash.chars().all(|c| c.is_ascii_alphanumeric())).map(|d| d.join("avatar-3d").join(hash));
+    // (Roblox's names may carry dashes and underscores ("30DAY-…"): with letters and digits only, nothing was ever kept,
+    // the owner's cache had no avatar-3d folder, 2026-11-17.)
+    let kept = KEEP
+        .get()
+        .cloned()
+        .flatten()
+        .filter(|_| hash.len() <= 96 && hash.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_'))
+        .map(|d| d.join("avatar-3d").join(hash));
     if let Some(bytes) = kept.as_ref().and_then(|p| std::fs::read(p).ok()).filter(|b| !b.is_empty()) {
         return Some(bytes);
     }
@@ -547,9 +690,12 @@ fn cdn_fetch(hash: &str) -> Option<Vec<u8>> {
 /// A user's avatar as a model. Roblox answers only a signed-in request (403 to any other, checked 2026-11-11), so the
 /// answer's shape is the DevForum's, not one seen here with a real sign-in: { state, imageUrl } and, at that address,
 /// { camera: { position }, aabb: { min, max }, obj, mtl, textures }. A model Roblox is still making (after a change)
-/// is waited for a few seconds.
-pub fn solid(cookie: &str, user: i64) -> Result<Solid, String> {
-    // BLOXKEEP_SHOT_MODEL=dir: a hidden shot's model, from model.obj, model.mtl and the pictures beside them.
+/// is waited for: with `after` (the address of the model before a change) up to 45 s for another than that one, as
+/// Roblox answers Pending while it makes the new one and, for a moment, still the one before (one took 10.7 s on the
+/// owner's PC, 2026-11-17); without it 12 s.
+pub fn solid(cookie: &str, user: i64, after: Option<&str>) -> Result<Solid, String> {
+    // BLOXKEEP_SHOT_MODEL=dir: a hidden shot's model, from model.obj, model.mtl and the pictures beside them (every
+    // other file there, by its name: Roblox's own have no ending).
     #[cfg(feature = "shot")]
     if let Ok(dir) = std::env::var("BLOXKEEP_SHOT_MODEL") {
         let dir = std::path::Path::new(&dir);
@@ -557,25 +703,41 @@ pub fn solid(cookie: &str, user: i64) -> Result<Solid, String> {
         let mut pictures = HashMap::new();
         for f in std::fs::read_dir(dir).map_err(|e| e.to_string())?.flatten() {
             let name = f.file_name().to_string_lossy().to_string();
-            if name.ends_with(".png") {
+            if name != "model.obj" && name != "model.mtl" {
                 pictures.insert(name, std::fs::read(f.path()).map_err(|e| e.to_string())?);
             }
         }
-        return Ok(Solid { obj: read("model.obj")?, mtl: read("model.mtl")?, pictures, eye: [0.; 3], min: [0.; 3], max: [0.; 3] });
+        return Ok(Solid { obj: read("model.obj")?, mtl: read("model.mtl")?, pictures, eye: [0.; 3], min: [0.; 3], max: [0.; 3], file: String::new() });
     }
     let began = std::time::Instant::now();
-    let mut file = String::new();
-    for round in 0..6 {
-        if round > 0 {
-            std::thread::sleep(Duration::from_millis(1500));
+    let patience = Duration::from_secs(if after.is_some() { 45 } else { 12 });
+    let asked = "https://thumbnails.roblox.com/v1/users/avatar-3d";
+    let (mut file, mut before) = (String::new(), String::new());
+    let state = loop {
+        let d = get(&format!("{asked}?userId={user}"), Some(cookie))?;
+        let state = text(&d, "state");
+        if state == "Completed" {
+            let url = text(&d, "imageUrl");
+            if after != Some(url.as_str()) {
+                file = url;
+                break state;
+            }
+            before = url;
+        } else if state != "Pending" {
+            // (Error, Blocked, InReview…: Roblox makes none.)
+            break state;
         }
-        let d = get(&format!("https://thumbnails.roblox.com/v1/users/avatar-3d?userId={user}"), Some(cookie))?;
-        if text(&d, "state") == "Completed" {
-            file = text(&d, "imageUrl");
-            break;
+        if began.elapsed() >= patience {
+            break state;
         }
+        std::thread::sleep(Duration::from_millis(1000));
+    };
+    // (No other model came: the change made none, and the one before stands.)
+    if file.is_empty() {
+        file = before;
     }
     if file.is_empty() {
+        crate::net::note_failed("Avatar 3D", asked, &format!("Roblox gave no model in {:.0} s; its last answer: {}", began.elapsed().as_secs_f32(), if state.is_empty() { "none" } else { &state }));
         return Err(String::new());
     }
     let d = get(&file, None)?;
@@ -584,19 +746,38 @@ pub fn solid(cookie: &str, user: i64) -> Result<Solid, String> {
         [at("x"), at("y"), at("z")]
     };
     let (obj, mtl) = both(|| cdn(&text(&d, "obj")), || cdn(&text(&d, "mtl")));
+    // The newest model's file names, beside the kept files: a look that went wrong (R15 drawn apart from R6, owner
+    // 2026-11-17) can be read back from the very files Roblox gave.
+    if let Some(dir) = KEEP.get().cloned().flatten() {
+        let _ = std::fs::write(dir.join("avatar-3d").join("last.json"), d.to_string());
+    }
     let obj = String::from_utf8_lossy(&obj.ok_or("obj")?).to_string();
     let mtl = String::from_utf8_lossy(&mtl.ok_or("mtl")?).to_string();
     // The pictures the materials name (each name is the picture's hash).
-    let mut names: Vec<String> = mtl.lines().filter(|l| l.trim_start().starts_with("map_Kd") || l.trim_start().starts_with("map_d")).filter_map(|l| l.split_whitespace().last().map(str::to_string)).collect();
+    let mut names: Vec<_> = mtl.lines().filter_map(|line| {
+        let mut words = line.split_whitespace();
+        if !matches!(words.next(), Some("map_Kd" | "map_d")) {
+            return None;
+        }
+        words.last().and_then(|path| path.rsplit(['/', '\\']).next()).map(str::to_string)
+    }).collect();
     names.sort();
     names.dedup();
     let pictures: HashMap<String, Vec<u8>> = each(names, |n| cdn(&n).map(|b| (n, b))).into_iter().flatten().collect();
+    // The shape can load even when Roblox failed to serve the clothing or face atlas.
+    if mtl.lines().filter_map(|line| {
+        let mut words = line.split_whitespace();
+        if words.next()? != "map_Kd" { return None; }
+        words.last()?.rsplit(['/', '\\']).next()
+    }).any(|name| !pictures.contains_key(name)) {
+        return Err("Avatar texture unavailable".into());
+    }
     // (How long it took, when it was slow: error.log says where the time went without asking anyone.)
     let took = began.elapsed().as_secs_f32();
     if took > 4. {
         crate::net::note_worked(&format!("Avatar 3D: slow ({took:.1} s; {} pictures).", pictures.len()));
     }
-    Ok(Solid { obj, mtl, pictures, eye: xyz("/camera/position"), min: xyz("/aabb/min"), max: xyz("/aabb/max") })
+    Ok(Solid { obj, mtl, pictures, eye: xyz("/camera/position"), min: xyz("/aabb/min"), max: xyz("/aabb/max"), file })
 }
 
 // ───────────────────────── moved here from the C# app ─────────────────────────
@@ -632,7 +813,7 @@ fn looks_book() -> &'static std::sync::Mutex<HashMap<i64, GameLook>> {
 }
 
 fn now_secs() -> u64 {
-    std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0)
+    crate::time::now_secs().max(0) as u64
 }
 
 /// How each game is drawn, by its place: its square icon and its wide picture (the C# app's gameLooks, without the
@@ -641,7 +822,7 @@ fn now_secs() -> u64 {
 pub fn looks(places: &[i64]) -> HashMap<i64, Value> {
     let now = now_secs();
     let missing: Vec<i64> = {
-        let book = looks_book().lock().unwrap();
+        let book = looks_book().hold();
         places.iter().copied().filter(|p| *p > 0 && !book.get(p).is_some_and(|l| now.saturating_sub(l.at) < LOOKS_KEPT)).collect()
     };
     if !missing.is_empty() {
@@ -652,7 +833,7 @@ pub fn looks(places: &[i64]) -> HashMap<i64, Value> {
         }
         let ids: Vec<i64> = pairs.iter().map(|x| x.1).filter(|u| *u > 0).collect();
         let (small, wide) = both(|| icons(&ids), || covers(&ids, "768x432"));
-        let mut book = looks_book().lock().unwrap();
+        let mut book = looks_book().hold();
         for (place, universe) in pairs {
             let (icon, cover) = (small.get(&universe).cloned().unwrap_or_default(), wide.get(&universe).cloned().unwrap_or_default());
             if !icon.is_empty() || !cover.is_empty() {
@@ -671,7 +852,7 @@ pub fn looks(places: &[i64]) -> HashMap<i64, Value> {
             }
         }
     }
-    let book = looks_book().lock().unwrap();
+    let book = looks_book().hold();
     places.iter().filter_map(|p| book.get(p).map(|l| (*p, serde_json::json!({ "icon": l.icon, "cover": l.cover })))).collect()
 }
 
@@ -727,6 +908,47 @@ fn post(url: &str, body: &Value, cookie: Option<&str>) -> Result<Value, String> 
     send("POST", url, body, cookie)
 }
 
+/// What the account has done with a game: favourited it, and voted it up (true) or down (None: neither). As Roblox's
+/// game page asks (games.roblox.com, both answer only a sign-in: 401 without, checked 2026-11-18).
+/// The third: whether Roblox takes a vote from the account at all (`canVote`; false with reasonForNotVoteable set when
+/// it hasn't played the game: a vote then answers 403 "Play game required", the owner's log 2026-11-19).
+pub fn game_mine(cookie: &str, universe: i64) -> Result<(Option<bool>, Option<bool>, Option<bool>), String> {
+    let base = format!("https://games.roblox.com/v1/games/{universe}");
+    let (fav, vote) = both(|| get(&format!("{base}/favorites"), Some(cookie)), || get(&format!("{base}/votes/user"), Some(cookie)));
+    let vote = vote.ok();
+    Ok((
+        fav.ok().and_then(|d| d.get("isFavorited").and_then(Value::as_bool)),
+        vote.as_ref().and_then(|d| d.get("userVote").and_then(Value::as_bool)),
+        vote.as_ref().and_then(|d| d.get("canVote").and_then(Value::as_bool)),
+    ))
+}
+
+/// Favourites the game or takes it out: the call Roblox's game page makes (its GameDetails script, read 2026-11-18).
+pub fn set_favorite(cookie: &str, universe: i64, on: bool) -> Result<(), String> {
+    post_ok(&format!("https://games.roblox.com/v1/games/{universe}/favorites"), &serde_json::json!({ "isFavorited": on }), Some(cookie))
+}
+
+/// Votes the game up or down (games.roblox.com's user-votes; it answers "XSRF token invalid" to a bare call, so it is
+/// there, but its body is from Roblox's published games API, not seen with a real sign-in yet).
+pub fn set_vote(cookie: &str, universe: i64, up: bool) -> Result<(), String> {
+    send_text("PATCH", &format!("https://games.roblox.com/v1/games/{universe}/user-votes"), &serde_json::json!({ "vote": up }), Some(cookie)).map(|_| ())
+}
+
+/// Tells Roblox the account is on its site now, as roblox.com's own pages do (their PresenceRegistration script, read
+/// 2026-11-18: this POST with these three fields every 30 s while the person is active; the interval and "enabled for
+/// everyone" from apis.roblox.com/guac-v2/v1/bundles/user-heartbeats). It is what makes an account show online on the
+/// website; the older presence.roblox.com register-app-presence is gone (404). `session` stands for the site's
+/// session id (its cookie's `sessionid`, a UUID; the site sends "unknown" without one).
+pub fn pulse(cookie: &str, session: &str) -> Result<(), String> {
+    let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(0);
+    let body = serde_json::json!({
+        "clientSideTimestampEpochMs": now,
+        "sessionInfo": { "sessionId": session },
+        "locationInfo": { "websiteLocationInfo": { "url": "https://www.roblox.com/home" } },
+    });
+    post_ok("https://apis.roblox.com/user-heartbeats-api/pulse", &body, Some(cookie))
+}
+
 /// A POST whose answer is only its status: an empty or non-JSON 2xx is done (some of Roblox's answer with nothing).
 fn post_ok(url: &str, body: &Value, cookie: Option<&str>) -> Result<(), String> {
     send_text("POST", url, body, cookie).map(|_| ())
@@ -741,7 +963,9 @@ fn send(method: &str, url: &str, body: &Value, cookie: Option<&str>) -> Result<V
 fn send_text(method: &str, url: &str, body: &Value, cookie: Option<&str>) -> Result<String, String> {
     let out = send_text_once(method, url, body, cookie);
     if let Err(why) = &out {
-        crate::net::note_failed(&format!("Roblox tab ({method})"), url, why);
+        if why != crate::net::UNREACHABLE {
+            crate::net::note_failed(&format!("Roblox tab ({method})"), url, why);
+        }
     }
     out
 }
@@ -772,7 +996,7 @@ fn send_text_once(method: &str, url: &str, body: &Value, cookie: Option<&str>) -
             Ok(text)
         }
         Err(ureq::Error::Status(code, r)) => Err(refused(url, code, r)),
-        Err(e) => Err(e.to_string()),
+        Err(e) => Err(crate::net::unreachable("Roblox tab", url, &e.to_string())),
     }
 }
 
@@ -874,17 +1098,7 @@ pub fn friends(cookie: &str, user: i64) -> Result<Vec<Friend>, String> {
         || faces(&ids),
     );
     for d in places {
-        let d = d?;
-        for v in d.get("userPresences").and_then(Value::as_array).into_iter().flatten() {
-            let id = int(v, "userId");
-            if let Some(f) = list.iter_mut().find(|f| f.id == id) {
-                f.kind = int(v, "userPresenceType");
-                f.game = if f.kind == 2 { text(v, "lastLocation") } else { String::new() };
-                f.place = if int(v, "placeId") > 0 { int(v, "placeId") } else { int(v, "rootPlaceId") };
-                f.universe = int(v, "universeId");
-                f.job = text(v, "gameId");
-            }
-        }
+        put_places(&mut list, &d?);
     }
     for d in names.into_iter().flatten() {
         for v in d.get("data").and_then(Value::as_array).into_iter().flatten() {
@@ -901,6 +1115,56 @@ pub fn friends(cookie: &str, user: i64) -> Result<Vec<Friend>, String> {
         }
     }
     Ok(dress(list))
+}
+
+/// Where presence.roblox.com says each of the people is (an answer to its users ask), into the list.
+fn put_places(list: &mut [Friend], d: &Value) {
+    for v in d.get("userPresences").and_then(Value::as_array).into_iter().flatten() {
+        let id = int(v, "userId");
+        if let Some(f) = list.iter_mut().find(|f| f.id == id) {
+            f.kind = int(v, "userPresenceType");
+            f.game = if f.kind == 2 { text(v, "lastLocation") } else { String::new() };
+            f.place = if int(v, "placeId") > 0 { int(v, "placeId") } else { int(v, "rootPlaceId") };
+            f.universe = int(v, "universeId");
+            f.job = text(v, "gameId");
+        }
+    }
+}
+
+/// Where Roblox says each of these people is now, as the signed-in account may see it (their privacy can hide the
+/// game: in one, with none named), a hundred an ask.
+fn place_people(cookie: &str, list: &mut [Friend]) -> Result<(), String> {
+    let ids: Vec<i64> = list.iter().map(|f| f.id).collect();
+    for d in each(ids.chunks(100).collect::<Vec<&[i64]>>(), |chunk| post("https://presence.roblox.com/v1/presence/users", &serde_json::json!({ "userIds": chunk }), Some(cookie))) {
+        put_places(list, &d?);
+    }
+    Ok(())
+}
+
+/// Where one person is now, for their profile's line: online, in a game (which, with its icon) or in Studio, as the
+/// signed-in account may see it. BLOXKEEP_SHOT_WHERE=kind|game|universeId|placeId: a hidden shot's answer.
+pub fn whereabouts(cookie: &str, user: i64) -> Result<Friend, String> {
+    let mut f = Friend { id: user, ..Default::default() };
+    #[cfg(feature = "shot")]
+    let shot = std::env::var("BLOXKEEP_SHOT_WHERE").ok();
+    #[cfg(not(feature = "shot"))]
+    let shot: Option<String> = None;
+    if let Some(v) = shot {
+        let p: Vec<&str> = v.split('|').collect();
+        let num = |i: usize| p.get(i).and_then(|s| s.trim().parse::<i64>().ok()).unwrap_or(0);
+        f.kind = num(0);
+        f.game = p.get(1).map(|s| s.to_string()).unwrap_or_default();
+        f.universe = num(2);
+        f.place = num(3);
+    } else {
+        place_people(cookie, std::slice::from_mut(&mut f))?;
+    }
+    if f.universe > 0 {
+        if let Some(u) = icons(&[f.universe]).remove(&f.universe) {
+            f.game_icon = u;
+        }
+    }
+    Ok(f)
 }
 
 /// The friend requests waiting for the signed-in account, newest first (the first 50).
@@ -929,7 +1193,7 @@ pub fn follows(cookie: &str, user: i64, which: &str) -> Result<Vec<Friend>, Stri
         return Ok(dress(list));
     }
     let d = get(&format!("https://friends.roblox.com/v1/users/{user}/{which}?limit=50&sortOrder=Desc"), Some(cookie))?;
-    let list = d
+    let mut list: Vec<Friend> = d
         .get("data")
         .and_then(Value::as_array)
         .into_iter()
@@ -937,6 +1201,10 @@ pub fn follows(cookie: &str, user: i64, which: &str) -> Result<Vec<Friend>, Stri
         .filter(|v| int(v, "id") > 0)
         .map(|v| Friend { id: int(v, "id"), name: text(v, "name"), display: text(v, "displayName"), ..Default::default() })
         .collect();
+    // (Where each is, as the Friends page shows it; without it they still show.)
+    if let Err(e) = place_people(cookie, &mut list) {
+        crate::net::note_worked(&format!("Roblox tab: where the {which} are not given by Roblox ({e})."));
+    }
     Ok(dress(list))
 }
 
@@ -1216,7 +1484,7 @@ const PACKS: usize = 16;
 /// what it has sold for lately (Roblox's recent average price), not what resellers ask. A thing with no price of its
 /// own (a body part, an animation): the price of the cheapest bundle it comes in, which the things worn from it share.
 pub fn worth(ids: &[i64]) -> Result<Worth, String> {
-    let mut book: Worth = price_book().lock().map(|b| b.clone()).unwrap_or_default();
+    let mut book: Worth = price_book().hold().clone();
     let ask: Vec<i64> = ids.iter().copied().filter(|id| !book.contains_key(id)).collect();
     let mut loose: Vec<i64> = Vec::new();
     for part in ask.chunks(100) {
@@ -1281,9 +1549,7 @@ pub fn worth(ids: &[i64]) -> Result<Worth, String> {
         }
     }
     let out: Worth = ids.iter().filter_map(|id| book.get(id).map(|p| (*id, *p))).collect();
-    if let Ok(mut b) = price_book().lock() {
-        b.extend(book);
-    }
+    price_book().hold().extend(book);
     Ok(out)
 }
 
@@ -1294,6 +1560,25 @@ pub struct Owned {
     pub name: String,
     pub kind: String,
     pub pic: String,
+}
+
+/// The equipped background comes from Roblox's profile, separately from the avatar's worn assets.
+pub fn profile_background(user: i64) -> Result<Option<Owned>, String> {
+    let profile = post(
+        "https://apis.roblox.com/profile-platform-api/v1/profiles/get",
+        &serde_json::json!({
+            "profileType": "User",
+            "profileId": user.to_string(),
+            "components": [{ "component": "ProfileBackground" }],
+        }),
+        None,
+    )?;
+    let components = profile.get("components").and_then(Value::as_object).ok_or("Missing profile components")?;
+    let Some(id) = components.get("ProfileBackground").and_then(|v| v.get("assetId")).and_then(Value::as_i64).filter(|id| *id > 0) else {
+        return Ok(None);
+    };
+    let pic = thumbs("assets?size=768x432&assetIds=", &[id]).remove(&id).ok_or("Background image unavailable")?;
+    Ok(Some(Owned { id, pic, ..Owned::default() }))
 }
 
 /// The inventory's shelves, as the avatar editor groups them: a key, and the kinds asked for together.
@@ -1471,6 +1756,8 @@ pub struct Avatar {
     /// each size may be and the skin colours offered.
     pub scales: [f64; 5],
     pub colour: String,
+    /// Every body part's colour (hex), the head's first: what a colour change repaints at once.
+    pub body: Vec<String>,
     pub ranges: [(f64, f64); 5],
     pub palette: Vec<String>,
     /// The avatar's history kept on this PC, newest first, and which of them is the avatar as it is now.
@@ -1672,29 +1959,67 @@ fn friends_file_lock(user: i64) -> std::sync::Arc<std::sync::Mutex<()>> {
     LOCKS.get_or_init(Default::default).lock().unwrap_or_else(|e| e.into_inner()).entry(user).or_default().clone()
 }
 
-/// What makes two looks the same one: the kind of body, its sizes and colours, and what is worn with its fitting.
+/// What makes two looks the same one: its sizes and colours, and what is worn with its fitting. Not R6 or R15: the
+/// same clothes on the other body are the same look (each switch was kept as another, the owner's "lịch sử lặp"); the
+/// look keeps the body it was last worn with.
 fn look_mark(model: &Value) -> String {
     let mut worn: Vec<String> = model.get("assets").and_then(Value::as_array).into_iter().flatten().map(|a| format!("{}{}", int(a, "id"), a.get("meta").filter(|m| !m.is_null()).map(Value::to_string).unwrap_or_default())).collect();
     worn.sort();
-    format!("{}|{}|{}|{}", text(model, "playerAvatarType"), model.get("scales").map(Value::to_string).unwrap_or_default(), model.get("bodyColors").map(Value::to_string).unwrap_or_default(), worn.join(","))
+    format!("{}|{}|{}", model.get("scales").map(Value::to_string).unwrap_or_default(), model.get("bodyColors").map(Value::to_string).unwrap_or_default(), worn.join(","))
 }
 
-fn read_looks(user: i64) -> Vec<Look> {
+impl Avatar {
+    /// What names the avatar as it is now among models kept (pages/avatar.rs): its body (R6, R15) and its look.
+    pub fn key(&self) -> Option<String> {
+        let model = &self.looks.get(self.now)?.model;
+        Some(format!("{}|{}", text(model, "playerAvatarType"), look_mark(model)))
+    }
+}
+
+/// An account's kept looks, newest first, one of each (the newest of looks kept twice before R6 and R15 were one);
+/// and whether some were twice.
+fn read_looks(user: i64) -> (Vec<Look>, bool) {
     let dir = looks_dir(user);
     let list: Vec<Value> = std::fs::read_to_string(dir.join("index.json")).ok().and_then(|t| serde_json::from_str(&t).ok()).unwrap_or_default();
-    list.iter()
+    let mut seen = std::collections::HashSet::new();
+    let mut twice = false;
+    let looks = list
+        .iter()
         .map(|v| Look { at: int(v, "at"), pic: dir.join(text(v, "pic")).to_string_lossy().replace('\\', "/"), model: v.get("model").cloned().unwrap_or(Value::Null) })
         .filter(|l| l.model.is_object())
-        .collect()
+        .filter(|l| {
+            let first = seen.insert(look_mark(&l.model));
+            if !first {
+                twice = true;
+                let _ = std::fs::remove_file(&l.pic);
+            }
+            first
+        })
+        .collect();
+    (looks, twice)
+}
+
+fn write_looks(user: i64, looks: &[Look]) {
+    let dir = looks_dir(user);
+    let index: Vec<Value> = looks.iter().map(|l| serde_json::json!({ "at": l.at, "pic": std::path::Path::new(&l.pic).file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default(), "model": l.model })).collect();
+    crate::net::wrote("Avatar looks list", &dir.join("index.json"), std::fs::write(dir.join("index.json"), serde_json::to_string(&index).unwrap_or_default()));
 }
 
 /// The avatar as it was just read joins its history when it is a look not kept yet (so one made in Roblox's own app
 /// is kept too, the next time Bloxkeep reads the avatar). Returns the history, newest first, and where this look is
 /// in it.
 fn keep_look(user: i64, model: &Value, pic_url: &str) -> (Vec<Look>, usize) {
-    let mut looks = read_looks(user);
+    let (mut looks, twice) = read_looks(user);
     let mark = look_mark(model);
     if let Some(i) = looks.iter().position(|l| look_mark(&l.model) == mark) {
+        // (Worn now on the other body: it keeps that one, to be worn back as it was.)
+        let other_body = text(&looks[i].model, "playerAvatarType") != text(model, "playerAvatarType");
+        if other_body {
+            looks[i].model = model.clone();
+        }
+        if other_body || twice {
+            write_looks(user, &looks);
+        }
         return (looks, i);
     }
     // No picture yet (Roblox is still drawing it): kept the next time, with one.
@@ -1713,8 +2038,7 @@ fn keep_look(user: i64, model: &Value, pic_url: &str) -> (Vec<Look>, usize) {
     for old in looks.drain(LOOKS.min(looks.len())..) {
         let _ = std::fs::remove_file(&old.pic);
     }
-    let index: Vec<Value> = looks.iter().map(|l| serde_json::json!({ "at": l.at, "pic": std::path::Path::new(&l.pic).file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default(), "model": l.model })).collect();
-    crate::net::wrote("Avatar looks list", &dir.join("index.json"), std::fs::write(dir.join("index.json"), serde_json::to_string(&index).unwrap_or_default()));
+    write_looks(user, &looks);
     (looks, 0)
 }
 
@@ -1820,7 +2144,7 @@ mod pics {
     use std::{
         collections::HashMap,
         sync::{LazyLock, Mutex},
-        time::{Duration, Instant, SystemTime, UNIX_EPOCH},
+        time::{Duration, Instant},
     };
 
     use serde_json::{Value, json};
@@ -1850,9 +2174,7 @@ mod pics {
         super::kept("cache").join("picture-addresses.json")
     }
 
-    fn now() -> i64 {
-        SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs() as i64).unwrap_or(0)
-    }
+    use crate::time::now_secs as now;
 
     /// How long an address of this kind is trusted.
     fn life(kind: &str) -> i64 {
@@ -2013,8 +2335,14 @@ pub fn avatar(user: i64) -> Result<Avatar, String> {
     }
     let palette = rules.get("basicBodyColorsPalette").and_then(Value::as_array).into_iter().flatten().map(|c| text(c, "hexColor").trim_start_matches('#').to_uppercase()).filter(|h| h.len() == 6).collect();
     let colour = model.pointer("/bodyColors/headColor").and_then(Value::as_str).unwrap_or_default().trim_start_matches('#').to_uppercase();
+    let body: Vec<String> = ["headColor", "torsoColor", "rightArmColor", "leftArmColor", "rightLegColor", "leftLegColor"]
+        .iter()
+        .filter_map(|k| model.pointer(&format!("/bodyColors/{k}")).and_then(Value::as_str))
+        .map(|h| h.trim_start_matches('#').to_uppercase())
+        .filter(|h| h.len() == 6)
+        .collect();
     let (looks, now) = keep_look(user, &model, &pic);
-    Ok(Avatar { pic, rig: text(&model, "playerAvatarType"), items, outfits, scales, colour, ranges, palette, looks, now, emotes })
+    Ok(Avatar { pic, rig: text(&model, "playerAvatarType"), items, outfits, scales, colour, body, ranges, palette, looks, now, emotes })
 }
 
 /// Roblox's answer to a list of things to wear: refused when it says so, or names any it would not put on.
@@ -2143,6 +2471,8 @@ pub struct ClubGame {
     pub pic: String,
     /// Its wide picture (16:9), for a shelf's tile.
     pub cover: String,
+    /// Its universe, for more of its pictures.
+    pub universe: i64,
 }
 
 /// A community's page, as Roblox shows it to anyone: who owns it, what it says of itself, its shout, its ranks with how
@@ -2183,6 +2513,7 @@ pub fn club(id: i64) -> Result<Club, String> {
         .iter()
         .filter(|v| v.pointer("/rootPlace/id").and_then(Value::as_i64).unwrap_or(0) > 0)
         .map(|v| ClubGame {
+            universe: int(v, "id"),
             place: v.pointer("/rootPlace/id").and_then(Value::as_i64).unwrap_or(0),
             name: text(v, "name").trim().to_string(),
             visits: int(v, "placeVisits"),
@@ -2212,7 +2543,8 @@ fn club_book() -> &'static std::sync::Mutex<HashMap<i64, HashMap<i64, String>>> 
 }
 
 pub fn club_left(id: i64, user: i64) {
-    if let Ok(mut book) = club_book().lock() {
+    {
+        let mut book = club_book().hold();
         if let Some(groups) = book.get_mut(&user) {
             groups.remove(&id);
         }
@@ -2224,7 +2556,7 @@ pub fn club_left(id: i64, user: i64) {
 pub fn club_mine(id: i64, users: &[i64]) -> Vec<(i64, String)> {
     let mut out = Vec::new();
     for &user in users.iter().take(40) {
-        let known = club_book().lock().ok().and_then(|b| b.get(&user).cloned());
+        let known = club_book().hold().get(&user).cloned();
         let of = match known {
             Some(of) => of,
             None => {
@@ -2236,9 +2568,7 @@ pub fn club_mine(id: i64, users: &[i64]) -> Vec<(i64, String)> {
                     .flatten()
                     .map(|v| (v.pointer("/group/id").and_then(Value::as_i64).unwrap_or(0), v.pointer("/role/name").and_then(Value::as_str).unwrap_or_default().to_string()))
                     .collect();
-                if let Ok(mut b) = club_book().lock() {
-                    b.insert(user, of.clone());
-                }
+                club_book().hold().insert(user, of.clone());
                 of
             }
         };
@@ -2295,6 +2625,13 @@ pub struct Profile {
     pub favs: Vec<ClubGame>,
     pub made: Vec<ClubGame>,
     pub badges: Vec<Badge>,
+    /// The pictures across the top of their page, sharp (768×432): the games they like, then more of the first one's
+    /// own pictures when they like few. One 480×270 cover stretched across the page came out blurred (owner,
+    /// 2026-11-17: "banner mờ câm").
+    pub banner: Vec<String>,
+    /// Each banner picture's id as uploaded (0: none), for the page to swap in the picture at 1024×576
+    /// (`uploaded_picture`) once it is fetched (owner, 2026-11-19: "khi set banner thì cố gắng làm cho nó nét nhất").
+    pub banner_assets: Vec<i64>,
 }
 
 /// A badge won in a game.
@@ -2315,6 +2652,7 @@ fn games_list(url: &str) -> Vec<ClubGame> {
     all.iter()
         .filter(|v| v.pointer("/rootPlace/id").and_then(Value::as_i64).unwrap_or(0) > 0)
         .map(|v| ClubGame {
+            universe: int(v, "id"),
             place: v.pointer("/rootPlace/id").and_then(Value::as_i64).unwrap_or(0),
             name: text(v, "name").trim().to_string(),
             visits: int(v, "placeVisits"),
@@ -2387,7 +2725,7 @@ pub fn profile(cookie: &str, user: i64) -> Result<Profile, String> {
         badges.into_iter().map(|b| b.1).collect::<Vec<Badge>>()
     };
     // Nothing here waits for anything else, so it is all asked at once (ten asks one after another took 3 s).
-    let ((d, (friends, robux)), ((groups, (favs, made)), (badges, ((face, body), (followers, following))))) = both(
+    let ((d, (friends, robux)), ((groups, (favs, made, banner)), (badges, ((face, body), (followers, following))))) = both(
         || {
             both(
                 || get(&format!("https://users.roblox.com/v1/users/{user}"), None),
@@ -2402,7 +2740,11 @@ pub fn profile(cookie: &str, user: i64) -> Result<Profile, String> {
         },
         || {
             both(
-                || both(communities, || both(favourites, creations)),
+                || {
+                    let (groups, (favs, made)) = both(communities, || both(favourites, creations));
+                    let banner = banner_pics(&favs, &made);
+                    (groups, (favs, made, banner))
+                },
                 || {
                     both(won, || {
                         both(
@@ -2430,7 +2772,40 @@ pub fn profile(cookie: &str, user: i64) -> Result<Profile, String> {
         favs,
         made,
         badges,
+        banner_assets: banner.iter().map(|b| b.1).collect(),
+        banner: banner.into_iter().map(|b| b.0).collect(),
     })
+}
+
+/// A profile's banner: the liked and made games' wide pictures at 768×432 (six at most), filled up with the first
+/// game's own pictures (its Roblox page's) when there are fewer; each with its id as uploaded (0: none), which the
+/// page fetches at 1024×576.
+fn banner_pics(favs: &[ClubGame], made: &[ClubGame]) -> Vec<(String, i64)> {
+    const MOST: usize = 6;
+    let us: Vec<i64> = favs.iter().chain(made.iter()).map(|g| g.universe).filter(|u| *u > 0).take(MOST).collect();
+    let big = covers_with_assets(&us);
+    let mut out: Vec<(String, i64)> = Vec::new();
+    let add = |out: &mut Vec<(String, i64)>, (u, a): (String, i64)| {
+        if !stand_in(&u) && !out.iter().any(|(o, _)| *o == u) {
+            out.push((u, a));
+        }
+    };
+    for u in &us {
+        if let Some(pic) = big.get(u) {
+            add(&mut out, pic.clone());
+        }
+    }
+    if out.len() < MOST {
+        if let Some(first) = us.first() {
+            for pic in shots_with_assets(*first) {
+                if out.len() >= MOST {
+                    break;
+                }
+                add(&mut out, pic);
+            }
+        }
+    }
+    out
 }
 
 /// Something in the Marketplace: an item or a bundle, who made it, and its price (None: not on sale; 0: free).
@@ -2653,6 +3028,113 @@ pub fn held(cookie: &str) -> Result<Option<Held>, String> {
     }))
 }
 
+/// One place the account is signed in: Roblox's Settings › Security › Where you're logged in, read the way its own
+/// page reads it (token-metadata-service; the page's source, account-security/sessionManagement, 2026-11-18).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Session {
+    /// What logs it out (Roblox's "token": not the sign-in itself).
+    pub token: String,
+    /// Roblox's kind of device: "App", "Browser", "Studio" or "Unknown" ("" when Roblox has none).
+    pub kind: String,
+    /// The browser ("Chrome"…) for a browser, and the system ("Windows", "Android", "Xbox"…), as Roblox names them.
+    pub app: String,
+    pub os: String,
+    /// City, region and country, the ones Roblox has (from the address: a VPN's place shows as the place).
+    pub place: Vec<String>,
+    pub ip: String,
+    /// Last used (unix seconds); None for old ones Roblox knows nothing of.
+    pub last: Option<i64>,
+    /// Bloxkeep's own sign-in for the account (Roblox's "current session": it can't be logged out from itself).
+    pub this: bool,
+    /// A device Roblox trusts more (its "Trusted" chip).
+    pub trusted: bool,
+    /// The sign-in it was made from (a Roblox window opened from a signed-in one), "" for none.
+    pub parent: String,
+}
+
+/// Every place the account is signed in, page after page (25 a page, as Roblox's page asks; at most 400).
+pub fn sessions(cookie: &str) -> Result<Vec<Session>, String> {
+    let base = "https://apis.roblox.com/token-metadata-service/v1/sessions?desiredLimit=25";
+    let mut out: Vec<Session> = Vec::new();
+    let mut cursor = String::new();
+    for _ in 0..16 {
+        let url = if cursor.is_empty() {
+            base.to_string()
+        } else {
+            format!("{base}&nextCursor={}", percent_encoding::utf8_percent_encode(&cursor, percent_encoding::NON_ALPHANUMERIC))
+        };
+        let d = ask(&url, cookie, "sessions")?;
+        let word = |v: Option<&Value>, k: &str| v.and_then(|v| v.get(k)).and_then(Value::as_str).map(str::trim).filter(|s| !s.is_empty()).map(str::to_string);
+        for s in d.get("sessions").and_then(Value::as_array).into_iter().flatten() {
+            let (agent, at) = (s.get("agent"), s.get("location"));
+            let token = word(Some(s), "token").unwrap_or_default();
+            // (A page can repeat one from the page before: Roblox's own page asks again for short pages.)
+            if token.is_empty() || out.iter().any(|o| o.token == token) {
+                continue;
+            }
+            out.push(Session {
+                token,
+                kind: word(agent, "type").unwrap_or_default(),
+                app: word(agent, "value").unwrap_or_default(),
+                os: word(agent, "os").unwrap_or_default(),
+                place: ["city", "subdivision", "country"].iter().filter_map(|k| word(at, k)).collect(),
+                ip: word(Some(s), "lastAccessedIp").unwrap_or_default(),
+                // (Milliseconds, as a string.)
+                last: s.get("lastAccessedTimestampEpochMilliseconds").and_then(|v| v.as_str().and_then(|t| t.parse::<i64>().ok()).or_else(|| v.as_i64())).filter(|ms| *ms > 0).map(|ms| ms / 1000),
+                this: s.get("isCurrentSession").and_then(Value::as_bool).unwrap_or(false),
+                trusted: s.get("isTrustedSession").and_then(Value::as_bool).unwrap_or(false),
+                parent: word(Some(s), "parentSessionToken").unwrap_or_default(),
+            });
+        }
+        cursor = word(Some(&d), "nextCursor").unwrap_or_default();
+        if !d.get("hasMore").and_then(Value::as_bool).unwrap_or(false) || cursor.is_empty() {
+            break;
+        }
+    }
+    Ok(out)
+}
+
+/// Logs the account out of one place (Roblox's "Log out of session"). Roblox refuses Bloxkeep's own.
+pub fn log_out_session(cookie: &str, token: &str) -> Result<(), String> {
+    post_ok("https://apis.roblox.com/token-metadata-service/v1/logout", &serde_json::json!({ "token": token }), Some(cookie))
+}
+
+/// The places sorted as Roblox's page shows them, and this PC's part apart from the rest.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Places {
+    /// Bloxkeep's own sign-in, and how many Roblox windows were opened from it on this PC (same address): neither is
+    /// logged out from here, so logging out every other place never closes a game being played.
+    pub this: Option<Session>,
+    pub here: usize,
+    /// The others, the latest used first.
+    pub known: Vec<Session>,
+    /// Old ones Roblox knows nothing of (no time): one row on Roblox's page, logged out together.
+    pub unknown: Vec<Session>,
+}
+
+/// Roblox's page's rules (commonHelpers.ts): one made from another at the same address, and not a different kind of
+/// device, shows once (the newer); then the latest used first, the ones with no time last.
+pub fn places(all: Vec<Session>) -> Places {
+    let this = all.iter().find(|s| s.this).cloned();
+    let (mut here, mut rest) = (0, Vec::new());
+    for s in all.into_iter().filter(|s| !s.this) {
+        match &this {
+            Some(t) if s.parent == t.token && s.ip == t.ip => here += 1,
+            _ => rest.push(s),
+        }
+    }
+    let same_kind = |a: &Session, b: &Session| a.kind.is_empty() || b.kind.is_empty() || a.kind == b.kind;
+    let gone: Vec<String> = rest
+        .iter()
+        .filter(|s| !s.parent.is_empty())
+        .filter_map(|s| rest.iter().find(|p| p.token == s.parent && p.ip == s.ip && !(p.ip.is_empty() && s.ip.is_empty()) && same_kind(p, s)).map(|p| p.token.clone()))
+        .collect();
+    rest.retain(|s| !gone.contains(&s.token));
+    let (mut known, unknown): (Vec<Session>, Vec<Session>) = rest.into_iter().partition(|s| s.last.is_some());
+    known.sort_by(|a, b| b.last.cmp(&a.last));
+    Places { this, here, known, unknown }
+}
+
 /// Takes the account back after a warning or a ban that has run out (the page's "I agree").
 pub fn reactivate(cookie: &str) -> Result<(), String> {
     send_text("POST", "https://usermoderation.roblox.com/v1/not-approved/reactivate", &serde_json::json!({}), Some(cookie)).map(|_| ())
@@ -2823,7 +3305,7 @@ pub fn free_new() -> Result<Vec<Free>, String> {
     }
     let ids: Vec<i64> = list.iter().map(|f| f.id).collect();
     let pics = thumbs("assets?size=420x420&assetIds=", &ids);
-    let (mut wheres, mut games) = free_book().lock().map(|b| b.clone()).unwrap_or_default();
+    let (mut wheres, mut games) = free_book().hold().clone();
     let mut asks = 0;
     // The ones with the most left are asked about first: those are what is worth going after.
     list.sort_by_key(|f| std::cmp::Reverse(f.left));
@@ -2866,9 +3348,7 @@ pub fn free_new() -> Result<Vec<Free>, String> {
         (f.place, f.game) = game;
         f.known = true;
     }
-    if let Ok(mut b) = free_book().lock() {
-        *b = (wheres, games);
-    }
+    *free_book().hold() = (wheres, games);
     Ok(list)
 }
 
@@ -2968,7 +3448,7 @@ pub fn account_settings(cookie: &str) -> Result<AccountSettings, String> {
         (format!("{set}/trade-value"), "tradeValue"),
         ("https://voice.roblox.com/v1/settings".to_string(), "voice"),
     ];
-    let got: Vec<Result<Value, String>> = std::thread::scope(|sc| {
+    let got: Vec<Result<Value, String>> = crate::threads::scope(|sc| {
         let jobs: Vec<_> = urls.iter().map(|(u, k)| sc.spawn(move || ask(u, cookie, k))).collect();
         jobs.into_iter().map(|j| j.join().unwrap_or_else(|_| Err(String::new()))).collect()
     });
@@ -3136,6 +3616,50 @@ pub fn lines(cookie: &str, id: &str) -> Result<Vec<Line>, String> {
     Ok(out)
 }
 
+/// A group chat of the signed-in account and `people`, named `name`: its id.
+pub fn make_group(cookie: &str, name: &str, people: &[i64]) -> Result<String, String> {
+    let url = format!("{CHAT}/create-conversations");
+    let d = post(&url, &serde_json::json!({ "conversations": [{ "type": "group", "name": name, "participant_user_ids": people }], "include_user_data": true }), Some(cookie))?;
+    chat_refused(&url, &d)?;
+    let id = d.pointer("/conversations/0/id").map(|v| v.as_str().map(str::to_string).unwrap_or_else(|| v.to_string())).unwrap_or_default();
+    if id.is_empty() {
+        let why = format!("no chat in Roblox's answer: {}", d.to_string().chars().take(300).collect::<String>());
+        crate::net::note_failed("Roblox tab (group chat)", &url, &why);
+        return Err(why);
+    }
+    Ok(id)
+}
+
+/// People added to a group chat.
+pub fn add_to_group(cookie: &str, id: &str, people: &[i64]) -> Result<(), String> {
+    let url = format!("{CHAT}/add-users");
+    chat_refused(&url, &post(&url, &serde_json::json!({ "conversation_id": id, "user_ids": people }), Some(cookie))?)
+}
+
+/// People taken out of a group chat.
+pub fn remove_from_group(cookie: &str, id: &str, people: &[i64]) -> Result<(), String> {
+    let url = format!("{CHAT}/remove-users");
+    chat_refused(&url, &post(&url, &serde_json::json!({ "conversation_id": id, "user_ids": people }), Some(cookie))?)
+}
+
+/// A group chat's new name.
+pub fn rename_group(cookie: &str, id: &str, name: &str) -> Result<(), String> {
+    let url = format!("{CHAT}/update-conversations");
+    chat_refused(&url, &post(&url, &serde_json::json!({ "conversations": [{ "id": id, "name": name }] }), Some(cookie))?)
+}
+
+/// An answer that came back fine but says no in its `status` (the chat calls answer with one): the refusal, in
+/// error.log too.
+fn chat_refused(url: &str, d: &Value) -> Result<(), String> {
+    let status = text(d, "status");
+    let low = status.to_ascii_lowercase();
+    if ["fail", "error", "denied", "invalid", "forbidden", "not"].iter().any(|w| low.contains(w)) {
+        crate::net::note_failed("Roblox tab (group chat)", url, &status);
+        return Err(status);
+    }
+    Ok(())
+}
+
 /// The signed-in account says something in a chat.
 pub fn say(cookie: &str, id: &str, words: &str) -> Result<(), String> {
     post_ok(&format!("{CHAT}/send-messages"), &serde_json::json!({ "conversation_id": id, "messages": [{ "content": words }] }), Some(cookie))
@@ -3196,6 +3720,12 @@ pub fn letters(cookie: &str) -> Result<Vec<Letter>, String> {
 }
 
 /// The signed-in account has read that message.
+/// The notifications seen: Roblox's count of unread ones (the bell's) back to 0, as its own site does when its
+/// notification list is opened (POST, as the roblox-api crate's client calls it).
+pub fn notices_seen(cookie: &str) -> Result<(), String> {
+    post_ok("https://notifications.roblox.com/v2/stream-notifications/clear-unread", &serde_json::json!({}), Some(cookie))
+}
+
 pub fn mark_read(cookie: &str, id: i64) -> Result<(), String> {
     post_ok("https://privatemessages.roblox.com/v1/messages/mark-read", &serde_json::json!({ "messageIds": [id] }), Some(cookie))
 }
@@ -3416,11 +3946,11 @@ pub fn deals(cookie: &str, user: i64) -> Result<Vec<Deal>, String> {
     Ok(out)
 }
 
-/// Runs a call on a thread of its own; its answer comes through the channel. A failed answer is written to error.log
+/// Runs a call on the shared pool (crate::threads); its answer comes through the channel. A failed answer is written to error.log
 /// with the page that asked (owner, 2026-11-15: every failure a person can meet is in error.log), ids as "#".
 pub fn run<T: Answer + Send + 'static, F: FnOnce() -> T + Send + 'static>(f: F) -> oneshot::Receiver<T> {
     let (tx, rx) = oneshot::channel();
-    let _ = crate::net::Named::new("roblox".into()).spawn(move || {
+    crate::threads::run(move || {
         let answer = f();
         if let Some(why) = answer.failed() {
             crate::net::note_failed(&asker::<F>(), "", if why.is_empty() { "no reason given" } else { why });
@@ -3509,33 +4039,13 @@ pub fn visibility(cookie: &str) -> Result<(Option<Choice>, Option<Choice>), Stri
     let both = get(&format!("{USER_SETTINGS}/settings-and-options"), Some(cookie));
     let (online, join, from) = match &both {
         Ok(d) => {
-            let one = |key: &str| -> Option<Choice> {
-                let v = d.get(key)?;
-                let now = v.get("currentValue").and_then(Value::as_str).unwrap_or_default().to_string();
-                // (An option that needs a parent's consent or an age check can't be set from here.)
-                let options: Vec<String> = v
-                    .get("options")
-                    .and_then(Value::as_array)
-                    .into_iter()
-                    .flatten()
-                    .filter(|o| !matches!(o.get("requirement").and_then(Value::as_str), Some("ParentalConsent" | "ParentConsentInherited" | "ContentAgeRestrictionVerification")))
-                    .filter_map(|o| o.pointer("/option/optionValue").or(o.get("optionValue")).and_then(Value::as_str).map(str::to_string))
-                    .collect();
-                (!now.is_empty() || !options.is_empty()).then_some(Choice { now, options })
-            };
-            (one("whoCanSeeMyOnlineStatus"), one("whoCanJoinMeInExperiences"), "settings-and-options")
+            let (online, join) = visibility_full(d);
+            (online, join, "settings-and-options")
         }
         // (That answer refused: the plain one, with the choices every account has.)
         Err(_) => {
-            let d = get(USER_SETTINGS, Some(cookie))?;
-            let one = |key: &str, options: &[&str]| -> Option<Choice> {
-                let now = match d.get(key)? {
-                    Value::String(t) => t.clone(),
-                    o => o.get("currentValue").and_then(Value::as_str).unwrap_or_default().to_string(),
-                };
-                Some(Choice { now, options: options.iter().map(|s| s.to_string()).collect() })
-            };
-            (one("whoCanSeeMyOnlineStatus", &["AllUsers", "Friends", "NoOne"]), one("whoCanJoinMeInExperiences", &["All", "Friends", "NoOne"]), "user-settings")
+            let (online, join) = visibility_plain(&get(USER_SETTINGS, Some(cookie))?);
+            (online, join, "user-settings")
         }
     };
     let said = |c: &Option<Choice>| c.as_ref().map_or("missing".to_string(), |c| format!("{} choices", c.options.len()));
@@ -3546,6 +4056,42 @@ pub fn visibility(cookie: &str) -> Result<(Option<Choice>, Option<Choice>), Stri
 /// Sets them for the account (None leaves one as it is), in Roblox's own words for each. "AllUsers" for joining, the
 /// word this used to send, is Roblox's "All".
 pub fn set_visibility(cookie: &str, online: Option<&str>, join: Option<&str>) -> Result<(), String> {
+    send_text("POST", USER_SETTINGS, &visibility_body(online, join), Some(cookie)).map(|_| ())
+}
+
+/// settings-and-options' answer: who sees the account online and who may join it, with the choices it offers.
+pub fn visibility_full(d: &Value) -> (Option<Choice>, Option<Choice>) {
+    let one = |key: &str| -> Option<Choice> {
+        let v = d.get(key)?;
+        let now = v.get("currentValue").and_then(Value::as_str).unwrap_or_default().to_string();
+        // (An option that needs a parent's consent or an age check can't be set from here.)
+        let options: Vec<String> = v
+            .get("options")
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+            .filter(|o| !matches!(o.get("requirement").and_then(Value::as_str), Some("ParentalConsent" | "ParentConsentInherited" | "ContentAgeRestrictionVerification")))
+            .filter_map(|o| o.pointer("/option/optionValue").or(o.get("optionValue")).and_then(Value::as_str).map(str::to_string))
+            .collect();
+        (!now.is_empty() || !options.is_empty()).then_some(Choice { now, options })
+    };
+    (one("whoCanSeeMyOnlineStatus"), one("whoCanJoinMeInExperiences"))
+}
+
+/// The plain user-settings answer: the same two, with the choices every account has.
+pub fn visibility_plain(d: &Value) -> (Option<Choice>, Option<Choice>) {
+    let one = |key: &str, options: &[&str]| -> Option<Choice> {
+        let now = match d.get(key)? {
+            Value::String(t) => t.clone(),
+            o => o.get("currentValue").and_then(Value::as_str).unwrap_or_default().to_string(),
+        };
+        Some(Choice { now, options: options.iter().map(|s| s.to_string()).collect() })
+    };
+    (one("whoCanSeeMyOnlineStatus", &["AllUsers", "Friends", "NoOne"]), one("whoCanJoinMeInExperiences", &["All", "Friends", "NoOne"]))
+}
+
+/// What user-settings is sent to set them (None leaves one as it is).
+pub fn visibility_body(online: Option<&str>, join: Option<&str>) -> Value {
     let mut body = serde_json::Map::new();
     if let Some(v) = online {
         body.insert("whoCanSeeMyOnlineStatus".into(), (if v == "All" { "AllUsers" } else { v }).into());
@@ -3553,5 +4099,18 @@ pub fn set_visibility(cookie: &str, online: Option<&str>, join: Option<&str>) ->
     if let Some(v) = join {
         body.insert("whoCanJoinMeInExperiences".into(), (if v == "AllUsers" { "All" } else { v }).into());
     }
-    send_text("POST", USER_SETTINGS, &Value::Object(body), Some(cookie)).map(|_| ())
+    Value::Object(body)
+}
+
+impl Choice {
+    /// As the core hands it to the window ({ now, options }), and back.
+    pub fn json(&self) -> Value {
+        serde_json::json!({ "now": self.now, "options": self.options })
+    }
+
+    pub fn from_json(v: &Value) -> Option<Choice> {
+        let now = v.get("now")?.as_str()?.to_string();
+        let options = v.get("options")?.as_array()?.iter().filter_map(Value::as_str).map(str::to_string).collect();
+        Some(Choice { now, options })
+    }
 }

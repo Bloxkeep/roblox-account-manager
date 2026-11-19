@@ -12,11 +12,14 @@ use std::collections::{HashMap, HashSet};
 use gpui_kit::component::scroll::{Scrollbar, ScrollbarMode};
 use gpui_kit::{prelude::*, *};
 use serde_json::{Value, json};
+use crate::val::s;
+use crate::val::int;
+use crate::time::{civil, day_short, dm, hm, hm_text, weekday};
+use crate::pages::macro_form::{live, step_icon};
 
 use crate::{
     images,
-    kit::*,
-    pages::accounts::avatar,
+    kit::*,
     shell::Root,
     theme::*,
 };
@@ -64,64 +67,14 @@ const AVATARS: usize = 4;
 const SIDE: f32 = 24.;
 const SHAPE_MAX: usize = 14;
 
-fn s<'a>(v: &'a Value, k: &str) -> &'a str {
-    v.get(k).and_then(Value::as_str).unwrap_or_default()
-}
-fn int(v: &Value, k: &str) -> i64 {
-    v.get(k).and_then(Value::as_i64).unwrap_or(0)
-}
 /// The app's presets or macros, as its state holds them (borrowed: the page is drawn every frame).
 fn list<'a>(root: &'a Root, k: &str) -> &'a [Value] {
     root.state.pointer(&format!("/settings/{k}")).and_then(Value::as_array).map(Vec::as_slice).unwrap_or(&[])
 }
 
-/// A command whose answer matters: what it returns goes to `done`; a refusal is said in a toast.
-fn ask(r: &mut Root, cmd: &str, args: Value, cx: &mut Context<Root>, done: impl FnOnce(&mut Root, Value) + 'static) {
-    let Some(link) = r.link.clone() else { return };
-    let rx = link.call(cmd, args);
-    cx.spawn(async move |this, cx| {
-        let answer = rx.await;
-        let _ = this.update(cx, |r, cx| {
-            match answer {
-                Ok(Ok(v)) => done(r, v),
-                Ok(Err(e)) => r.toast = Some((e, "bad".into())),
-                Err(_) => {}
-            }
-            cx.notify();
-        });
-    })
-    .detach();
-}
-
-/// `ask` for a button that must not send twice (app.js's guards): pressed again before the answer, nothing.
-fn ask_once(r: &mut Root, key: &'static str, cmd: &str, args: Value, cx: &mut Context<Root>, done: impl FnOnce(&mut Root, Value) + 'static) {
-    let Some(link) = r.link.clone() else { return };
-    if !r.in_flight.insert(key) {
-        return;
-    }
-    let rx = link.call(cmd, args);
-    cx.spawn(async move |this, cx| {
-        let answer = rx.await;
-        let _ = this.update(cx, |r, cx| {
-            r.in_flight.remove(key);
-            match answer {
-                Ok(Ok(v)) => done(r, v),
-                Ok(Err(e)) => r.toast = Some((e, "bad".into())),
-                Err(_) => {}
-            }
-            cx.notify();
-        });
-    })
-    .detach();
-}
-
 /// The Presets tab's search box is on the page (Ctrl+F goes to it; else to the accounts' search, as app.js).
 pub fn preset_search_shown(r: &Root) -> bool {
     r.auto.form.is_none() && r.auto.macro_form.is_none() && r.auto.tab == Tab::Presets && !list(r, "presets").is_empty()
-}
-
-fn ok(r: &mut Root, text: String) {
-    r.toast = Some((text, "ok".into()));
 }
 
 // ───────────────────────── times ─────────────────────────
@@ -132,63 +85,15 @@ fn local_now() -> (i64, i64) {
     (t.div_euclid(86400), t.rem_euclid(86400) / 60)
 }
 
-/// A day since 1970 as (year, month, day) (Howard Hinnant's civil_from_days).
-fn civil(days: i64) -> (i64, i64, i64) {
-    let z = days + 719468;
-    let era = z.div_euclid(146097);
-    let doe = z - era * 146097;
-    let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
-    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
-    let mp = (5 * doy + 2) / 153;
-    let d = doy - (153 * mp + 2) / 5 + 1;
-    let m = if mp < 10 { mp + 3 } else { mp - 9 };
-    (yoe + era * 400 + if m <= 2 { 1 } else { 0 }, m, d)
-}
-/// 0 Sunday … 6 Saturday (1970-01-01 was a Thursday).
-fn weekday(days: i64) -> i64 {
-    (days + 4).rem_euclid(7)
-}
-
-/// A weekday as the old Presets tab wrote it: "T2"…"T7", "CN" in Vietnamese, else its short English name.
-fn day_short(root: &Root, d: i64) -> String {
-    if root.i18n.vietnamese {
-        if d == 0 { "CN".into() } else { format!("T{}", d + 1) }
-    } else {
-        ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d.rem_euclid(7) as usize].into()
-    }
-}
-
-/// A time of day as the page writes it: "07:30" in Vietnamese, "7:30 AM" in English (app.js's clockText).
-fn clock_text(root: &Root, h: i64, m: i64) -> String {
-    if root.i18n.vietnamese {
-        format!("{h:02}:{m:02}")
-    } else {
-        format!("{}:{m:02} {}", if h % 12 == 0 { 12 } else { h % 12 }, if h < 12 { "AM" } else { "PM" })
-    }
-}
-
-/// "7:30 AM" (or "07:30") from "7:30".
-fn hhmm(root: &Root, time: &str) -> String {
-    match time.split_once(':').map(|(h, m)| (h.trim().parse::<i64>(), m.trim().parse::<i64>())) {
-        Some((Ok(h), Ok(m))) => clock_text(root, h, m),
-        _ => time.to_string(),
-    }
-}
-
-/// A day of the month: "24/12" in Vietnamese, "12/24" in English.
-fn day_month(root: &Root, m: i64, d: i64) -> String {
-    if root.i18n.vietnamese { format!("{d}/{m}") } else { format!("{m}/{d}") }
-}
-
 /// "T2–T6 20:00", "Mỗi ngày 20:00", "T4, 24/12 07:30" (a one-off), as app.js's scheduleText.
 pub(crate) fn schedule_text(root: &Root, sc: &Value) -> String {
-    let time = hhmm(root, s(sc, "time"));
+    let time = hm_text(s(sc, "time"));
     let date = s(sc, "date");
     if date.len() == 10 {
         let n = |a: usize, b: usize| date.get(a..b).and_then(|x| x.parse::<i64>().ok()).unwrap_or(0);
         let (y, m, d) = (n(0, 4), n(5, 7), n(8, 10));
         let days = crate::time::iso_secs(&format!("{y:04}-{m:02}-{d:02}T00:00:00Z")).unwrap_or(0) / 86400;
-        return format!("{}, {} {time}", day_short(root, weekday(days)), day_month(root, m, d));
+        return format!("{}, {} {time}", day_short(weekday(days)), dm(d, m));
     }
     let picked: Vec<i64> = sc.get("days").and_then(Value::as_array).map(|l| l.iter().filter_map(Value::as_i64).collect()).unwrap_or_default();
     let order = [1, 2, 3, 4, 5, 6, 0];
@@ -198,9 +103,9 @@ pub(crate) fn schedule_text(root: &Root, sc: &Value) -> String {
     let text = if days.len() == 7 {
         root.tr("pv.everyDay")
     } else if in_row {
-        format!("{}–{}", day_short(root, days[0]), day_short(root, *days.last().unwrap()))
+        format!("{}–{}", day_short(days[0]), day_short(*days.last().unwrap()))
     } else {
-        days.iter().map(|d| day_short(root, *d)).collect::<Vec<_>>().join(", ")
+        days.iter().map(|d| day_short(*d)).collect::<Vec<_>>().join(", ")
     };
     format!("{text} {time}").trim().to_string()
 }
@@ -210,14 +115,14 @@ pub(crate) fn next_text(root: &Root, p: &Value) -> Option<String> {
     let at = crate::time::iso_secs(s(p, "nextRun"))? + crate::time::utc_offset_secs();
     let (today, _) = local_now();
     let day = at.div_euclid(86400);
-    let time = clock_text(root, at.rem_euclid(86400) / 3600, at.rem_euclid(3600) / 60);
+    let time = hm(at.rem_euclid(86400) / 3600, at.rem_euclid(3600) / 60);
     let when = if day == today {
         root.tr("ps.today")
     } else if day == today + 1 {
         root.tr("ps.tomorrow")
     } else {
         let (_, m, d) = civil(day);
-        format!("{}, {}", day_short(root, weekday(day)), day_month(root, m, d))
+        format!("{}, {}", day_short(weekday(day)), dm(d, m))
     };
     Some(root.i18n.tv("ps.next", &[("when", &format!("{when} {time}"))]))
 }
@@ -360,7 +265,7 @@ pub fn auto(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
             let full = macros.len() >= 100;
             // Stop all only while something runs; Import and New only once there is a list (the empty one has both).
             d.when(any_live, |d| d.child(Button::new("mc-stop-all", root.tr("macro.stopAll")).icon("stop").tip(root.tr("macro.stopAllTip")).on_click(cx.listener(|r, _, _, cx| {
-                ask(r, "stopMacros", json!({}), cx, |r, _| ok(r, r.tr("macro.stoppedAll")))
+                r.ask("stopMacros", json!({}), cx, |r, _| r.ok(r.tr("macro.stoppedAll")))
             }))))
             .when(!macros.is_empty(), |d| d.child(Button::new("mc-import", root.tr("macro.import")).icon("folder").quiet().on_click(cx.listener(move |r, _, window, cx| {
                 if !macros_full(r, full, cx) {
@@ -405,7 +310,7 @@ pub fn auto(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
 
     let body = match tab {
         Tab::Presets => preset_list(root, &presets, narrow, wide, width, cx).into_any_element(),
-        Tab::Macros => macro_list(root, &macros, &runs, narrow, wide, cx).into_any_element(),
+        Tab::Macros => macro_list(root, &macros, &runs, narrow, wide, width, cx).into_any_element(),
     };
     // The list scrolls under the head, with a bar at its side that says there is more below.
     div()
@@ -482,60 +387,64 @@ fn import_macro(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
     .detach();
 }
 
-/// No macros yet: three ways to start, Record, From a template, Blank, and a file to import (MacrosView.tsx's
-/// mc-empty). Record needs a Roblox window open (it says so); a template is picked in the form, on its templates card.
-fn macro_start(root: &Root, cx: &mut Context<Root>) -> Div {
-    let tile = |k: usize, mark: &'static str, title: String, text: String| {
-        card(("mc-tile", k))
-            .w(px(200.))
-            .h(px(150.))
-            .px(px(16.))
-            .pt(px(22.))
-            .flex()
-            .flex_col()
-            .items_center()
-            .gap(px(6.))
-            .cursor_pointer()
-            .child(div().flex_none().mb(px(6.)).child(icon(mark, 22., c(TEXT_2))))
-            .child(div().text_size(px(T_M)).font_weight(FontWeight::SEMIBOLD).child(title))
-            .child(div().text_size(px(T_S)).line_height(px(17.)).text_color(c(MUTED)).text_center().child(text))
-    };
-    let tiles = div()
-        .mt(px(14.))
-        .flex()
-        .flex_wrap()
-        .justify_center()
-        .gap(px(12.))
-        .child(div().relative().child(tile(0, "record", root.tr("macro.record"), root.tr("macro.tile.record")).on_click(cx.listener(|r, _, window, cx| {
-            r.auto.confirm = None;
-            // Several windows: which one first (MacrosView.tsx's record menu).
-            if crate::pages::macro_form::record_windows(r).len() > 1 {
-                let just = r.auto.menu_closed.as_ref().is_some_and(|(k, at)| k == REC_MENU && at.elapsed().as_millis() < 300);
-                r.auto.menu_closed = None;
-                r.auto.menu = if just || r.auto.menu.as_deref() == Some(REC_MENU) { None } else { Some(REC_MENU.into()) };
-                cx.notify();
-            } else {
-                crate::pages::macro_form::record_new(r, window, cx);
-            }
-        }))).children(record_menu(root, cx)))
-        .child(tile(1, "layers", root.tr("macro.fromTemplate"), root.tr("macro.tile.template")).on_click(cx.listener(|r, _, window, cx| {
-            r.auto.confirm = None;
-            crate::pages::macro_form::open(r, None, window, cx);
-        })))
-        .child(tile(2, "plus", root.tr("macro.empty"), root.tr("macro.tile.blank")).on_click(cx.listener(|r, _, window, cx| {
-            r.auto.confirm = None;
-            crate::pages::macro_form::open(r, None, window, cx);
-        })));
-    let link = div()
-        .id("mc-import-link")
-        .mt(px(6.))
-        .text_size(px(T_M))
-        .text_color(c(TEXT_2))
-        .cursor_pointer()
-        .hover(|d| d.text_color(c(TEXT)))
-        .child(root.tr("macro.importLink"))
-        .on_click(cx.listener(|r, _, window, cx| import_macro(r, window, cx)));
-    empty("keyboard", root.tr("macro.emptyTitle"), root.tr("macro.emptyText")).child(tiles).child(link)
+/// No macros yet, in Home's welcome look: three ways to start as blocks, Record, From a template, Blank (each with its
+/// button), and a file to import (MacrosView.tsx's mc-empty). Record needs a Roblox window open (it says so); a
+/// template is picked in the form, on its templates card.
+fn macro_start(root: &Root, width: f32, cx: &mut Context<Root>) -> Div {
+    let wide = |b: AnyElement| div().relative().flex().flex_col().child(b);
+    let record = Button::new("mc-rec-b", root.tr("macro.record")).icon("record").small().on_click(cx.listener(|r, _, window, cx| {
+        r.auto.confirm = None;
+        // Several windows: which one first (MacrosView.tsx's record menu).
+        if crate::pages::macro_form::record_windows(r).len() > 1 {
+            let just = r.auto.menu_closed.as_ref().is_some_and(|(k, at)| k == REC_MENU && at.elapsed().as_millis() < 300);
+            r.auto.menu_closed = None;
+            r.auto.menu = if just || r.auto.menu.as_deref() == Some(REC_MENU) { None } else { Some(REC_MENU.into()) };
+            cx.notify();
+        } else {
+            crate::pages::macro_form::record_new(r, window, cx);
+        }
+    }));
+    let template = Button::new("mc-tpl-b", root.tr("macro.fromTemplate")).icon("layers").small().on_click(cx.listener(|r, _, window, cx| {
+        r.auto.confirm = None;
+        crate::pages::macro_form::open(r, None, window, cx);
+    }));
+    let blank = Button::new("mc-blank-b", root.tr("macro.empty")).icon("plus").small().on_click(cx.listener(|r, _, window, cx| {
+        r.auto.confirm = None;
+        crate::pages::macro_form::open(r, None, window, cx);
+    }));
+    let blocks = vec![
+        crate::pages::home::stage_block(
+            root.tr("macro.record").trim_end_matches(['…', '.']).to_string(),
+            crate::pages::home::block_text("record", None, root.tr("macro.tile.record"), None),
+            Some(wide(record.into_any_element()).children(record_menu(root, cx)).into_any_element()),
+            false,
+        ),
+        crate::pages::home::stage_block(
+            root.tr("macro.fromTemplate"),
+            crate::pages::home::block_text("layers", None, root.tr("macro.tile.template"), None),
+            Some(wide(template.into_any_element()).into_any_element()),
+            false,
+        ),
+        crate::pages::home::stage_block(
+            root.tr("macro.empty"),
+            crate::pages::home::block_text("plus", None, root.tr("macro.tile.blank"), None),
+            Some(wide(blank.into_any_element()).into_any_element()),
+            false,
+        ),
+    ];
+    let import = Button::new("mc-import-link", root.tr("macro.importLink")).icon("folder").quiet().small().on_click(cx.listener(|r, _, window, cx| import_macro(r, window, cx)));
+    crate::pages::home::empty_stage(
+        root,
+        3,
+        None,
+        root.tr("macro.emptyTitle"),
+        root.tr("macro.emptyText"),
+        None,
+        blocks,
+        Some(div().flex().child(import).into_any_element()),
+        width - 2. * SIDE,
+        cx,
+    )
 }
 
 const REC_MENU: &str = "\u{1}record";
@@ -578,19 +487,7 @@ fn record_menu(root: &Root, cx: &mut Context<Root>) -> Option<Div> {
                 })),
         );
     }
-    Some(div().absolute().top(relative(1.)).left_0().child(deferred(anchored().snap_to_window_with_margin(px(8.)).child(pop("mc-rec-pop", true, menu.mt(px(6.))))).with_priority(1)))
-}
-
-fn empty(icon_name: &'static str, title: String, text: String) -> Div {
-    div()
-        .pt(px(72.))
-        .flex()
-        .flex_col()
-        .items_center()
-        .gap(px(8.))
-        .child(div().flex_none().child(icon(icon_name, 28., c(MUTED))).mb(px(6.)))
-        .child(div().text_size(px(T_SEC)).font_weight(FontWeight::SEMIBOLD).child(title))
-        .child(div().max_w(px(420.)).text_size(px(T_M)).text_color(c(MUTED)).text_center().child(text))
+    Some(popup(PopAt::Under, "mc-rec-pop", true, menu.mt(px(6.))))
 }
 
 /// A list of rows on one calm panel (a section's presets or macros): rows a hairline apart, each easing in under the
@@ -676,10 +573,10 @@ fn drag_end(r: &mut Root, cx: &mut Context<Root>) {
     if before != d.order {
         if d.macros {
             if let Some(to) = d.order.iter().position(|x| *x == d.id) {
-                ask(r, "moveMacro", json!({ "id": d.id, "to": to }), cx, |_, _| {});
+                r.ask("moveMacro", json!({ "id": d.id, "to": to }), cx, |_, _| {});
             }
         } else {
-            ask(r, "setPresetOrder", json!({ "ids": d.order }), cx, |_, _| {});
+            r.ask("setPresetOrder", json!({ "ids": d.order }), cx, |_, _| {});
         }
     }
     cx.notify();
@@ -741,10 +638,26 @@ fn preset_group(p: &Value) -> u8 {
 fn preset_list(root: &Root, presets: &[Value], narrow: bool, wide: bool, width: f32, cx: &mut Context<Root>) -> Div {
     let mut body = div().flex().flex_col().gap(px(SECTION_GAP)).px(px(SIDE)).pt(px(8.)).pb(px(32.));
     if presets.is_empty() {
-        return body.child(empty("layers", root.tr("pv.emptyTitle"), root.tr("pv.emptyText")).child(
-            div().mt(px(12.)).child(Button::new("pv-new-empty", root.tr("ps.new")).icon("plus").primary().on_click(cx.listener(|r, _, window, cx| {
-                crate::pages::preset_form::open(r, None, window, cx)
-            }))),
+        // In Home's welcome look: what a preset keeps, a block each.
+        let main = Button::new("pv-new-empty", root.tr("ps.new")).icon("plus").primary().on_click(cx.listener(|r, _, window, cx| {
+            crate::pages::preset_form::open(r, None, window, cx)
+        }));
+        let blocks = vec![
+            crate::pages::home::stage_block(root.tr("nav.accounts"), crate::pages::home::block_text("users", Some(root.tr("pv.w.acc")), root.tr("pv.w.accSub"), None), None, false),
+            crate::pages::home::stage_block(root.tr("au.sec.game"), crate::pages::home::block_text("gamepad", Some(root.tr("pv.w.game")), root.tr("pv.w.gameSub"), None), None, false),
+            crate::pages::home::stage_block(root.tr("pv.w.whenHead"), crate::pages::home::block_text("clock", Some(root.tr("pv.w.when")), root.tr("pv.w.whenSub"), None), None, false),
+        ];
+        return body.child(crate::pages::home::empty_stage(
+            root,
+            2,
+            None,
+            root.tr("pv.emptyTitle"),
+            root.tr("pv.emptyText"),
+            Some(main.into_any_element()),
+            blocks,
+            None,
+            width - 2. * SIDE,
+            cx,
         ));
     }
     // The search: over each preset's name and its game (accents don't matter), as PresetsView.tsx's.
@@ -914,7 +827,7 @@ fn preset_row(root: &Root, p: &Value, i: usize, group: u8, ids: &[String], by_id
             .id(("pv-faces", i))
             .flex()
             .items_center()
-            .children(accounts.iter().take(AVATARS).enumerate().map(|(k, a)| div().when(k > 0, |d| d.ml(px(-8.))).rounded_full().child(avatar(a, 28., PANEL, cx))))
+            .children(accounts.iter().take(AVATARS).enumerate().map(|(k, a)| div().when(k > 0, |d| d.ml(px(-8.))).child(crate::pages::accounts::stacked(a, 28., PANEL, cx))))
             .when(more > 0, |d| d.child(div().ml(px(6.)).text_size(px(T_S)).text_color(c(MUTED)).font_weight(FontWeight::MEDIUM).font_features(tnum()).child(format!("+{more}"))))
             .tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into())
     };
@@ -936,8 +849,8 @@ fn preset_row(root: &Root, p: &Value, i: usize, group: u8, ids: &[String], by_id
             move |on, _, cx| {
                 let (pid, pname, on) = (pid.clone(), pname.clone(), *on);
                 let _ = this.update(cx, |r, cx| {
-                    ask(r, "setPresetSchedule", json!({ "id": pid, "enabled": on }), cx, move |r, _| {
-                        ok(r, r.i18n.tv(if on { "t.schOn" } else { "t.schOff" }, &[("name", &pname)]))
+                    r.ask("setPresetSchedule", json!({ "id": pid, "enabled": on }), cx, move |r, _| {
+                        r.ok(r.i18n.tv(if on { "t.schOn" } else { "t.schOff" }, &[("name", &pname)]))
                     })
                 });
             }
@@ -949,7 +862,7 @@ fn preset_row(root: &Root, p: &Value, i: usize, group: u8, ids: &[String], by_id
     let run = if running > 0 {
         let pid = id.clone();
         Button::new(("pv-close", i), root.tr("pv.close")).icon("power").small().tip(root.i18n.tn("pv.runningTip", running as i64, &[])).on_click(cx.listener(move |r, _, _, cx| {
-            ask(r, "closePreset", json!({ "id": pid }), cx, |r, v| {
+            r.ask("closePreset", json!({ "id": pid }), cx, |r, v| {
                 let n = v.as_i64().unwrap_or(0);
                 r.toast = Some(if n > 0 { (r.i18n.tn("t.closing", n, &[]), "ok".into()) } else { (r.tr("t.noneRunning"), "info".into()) });
             })
@@ -971,12 +884,12 @@ fn preset_row(root: &Root, p: &Value, i: usize, group: u8, ids: &[String], by_id
     let dup = {
         let (pid, was_on) = (id.clone(), sc_on);
         IconButton::new(("pv-dup", i), "copy").size(30.).tip(root.tr("pv.duplicate")).on_click(cx.listener(move |r, _, _, cx| {
-            ask_once(r, "duplicatePreset", "duplicatePreset", json!({ "id": pid }), cx, move |r, _| ok(r, r.tr(if was_on { "pv.duplicatedOff" } else { "pv.duplicated" })))
+            r.ask_once("duplicatePreset", "duplicatePreset", json!({ "id": pid }), cx, move |r, _| r.ok(r.tr(if was_on { "pv.duplicatedOff" } else { "pv.duplicated" })))
         }))
     };
     let del = {
         let pid = id.clone();
-        delete_button(root, "pv-del", i, cx, root.tr("ps.deleteTitle"), root.i18n.tv("ps.deleteQ", &[("name", s(p, "name"))]), Some("deletePreset"), move |r, cx| ask_once(r, "deletePreset", "deletePreset", json!({ "id": pid }), cx, |r, _| ok(r, r.tr("ps.deleted"))))
+        delete_button(root, "pv-del", i, cx, root.tr("ps.deleteTitle"), root.i18n.tv("ps.deleteQ", &[("name", s(p, "name"))]), Some("deletePreset"), move |r, cx| r.ask_once("deletePreset", "deletePreset", json!({ "id": pid }), cx, |r, _| r.ok(r.tr("ps.deleted"))))
     };
     // Up and Down, beside the grip (PresetsView.tsx's move): a place within its section, without dragging.
     // (Only among the rows of its own section: the sections are by state, a move across them would show nothing.)
@@ -1051,7 +964,7 @@ fn swap_presets(r: &mut Root, a: &str, b: &str, cx: &mut Context<Root>) {
     let mut order: Vec<String> = list(r, "presets").iter().map(|v| s(v, "id").to_string()).collect();
     let (Some(i), Some(j)) = (order.iter().position(|x| x == a), order.iter().position(|x| x == b)) else { return };
     order.swap(i, j);
-    ask_once(r, "setPresetOrder", "setPresetOrder", json!({ "ids": order }), cx, |_, _| {});
+    r.ask_once("setPresetOrder", "setPresetOrder", json!({ "ids": order }), cx, |_, _| {});
 }
 
 /// Today on one ruler, midnight to midnight: each preset that runs today as its game's icon at its time (those gone by
@@ -1098,7 +1011,7 @@ fn ruler(root: &Root, presets: &[Value], width: f32, cx: &mut Context<Root>) -> 
             next = Some((at, s(p, "name").to_string()));
         }
         let pic = Some(s(p, "iconUrl")).filter(|u| !u.is_empty()).and_then(|u| images::pic_sq(u, 32., cx));
-        let tip: SharedString = format!("{} · {}", s(p, "name"), clock_text(root, at / 60, at % 60)).into();
+        let tip: SharedString = format!("{} · {}", s(p, "name"), hm(at / 60, at % 60)).into();
         track = track.child(
             div()
                 .id(("pvr", k))
@@ -1143,12 +1056,12 @@ fn ruler(root: &Root, presets: &[Value], width: f32, cx: &mut Context<Root>) -> 
                 .font_weight(FontWeight::SEMIBOLD)
                 .text_color(c(ACCENT))
                 .font_features(tnum())
-                .child(clock_text(root, now / 60, now % 60)),
+                .child(hm(now / 60, now % 60)),
         );
     // The head: Today, and at its right the next run's time and name (the time now is on the ruler).
     let mut parts: Vec<(String, Option<Hsla>)> = Vec::new();
     if let Some((at, name)) = next {
-        parts.push((root.i18n.tv("ps.next", &[("when", &clock_text(root, at / 60, at % 60))]), Some(c(TEXT_2))));
+        parts.push((root.i18n.tv("ps.next", &[("when", &hm(at / 60, at % 60))]), Some(c(TEXT_2))));
         parts.push((name, None));
     }
     let head = section_head(root.tr("pv.today"), None).child(facts(parts));
@@ -1156,10 +1069,6 @@ fn ruler(root: &Root, presets: &[Value], width: f32, cx: &mut Context<Root>) -> 
 }
 
 // ───────────────────────── macros ─────────────────────────
-
-fn live(r: &Value) -> bool {
-    matches!(s(r, "status"), "waiting" | "running" | "paused")
-}
 
 /// Why a run stopped, in words: a known reason's (macro.why.*), else as it came (a Fail step's own text).
 pub(crate) fn why_text(root: &Root, reason: &str) -> String {
@@ -1233,13 +1142,13 @@ fn macro_group(m: &Value, live_runs: bool) -> u8 {
     }
 }
 
-fn macro_list(root: &Root, macros: &[Value], runs: &[Value], narrow: bool, wide: bool, cx: &mut Context<Root>) -> Div {
+fn macro_list(root: &Root, macros: &[Value], runs: &[Value], narrow: bool, wide: bool, width: f32, cx: &mut Context<Root>) -> Div {
     let mut body = div().flex().flex_col().gap(px(SECTION_GAP)).px(px(SIDE)).pt(px(8.)).pb(px(32.));
     if let Some(rec) = root.state.get("macroRecording").filter(|v| v.is_object()) {
         body = body.child(recording(root, rec, cx));
     }
     if macros.is_empty() {
-        return body.child(macro_start(root, cx));
+        return body.child(macro_start(root, width, cx));
     }
     let by_id: HashMap<&str, &Value> = root.accounts().iter().map(|a| (s(a, "id"), a)).collect();
     let panels: HashSet<&str> = root.state.get("panelsShown").and_then(Value::as_array).into_iter().flatten().filter_map(Value::as_str).collect();
@@ -1296,7 +1205,7 @@ fn recording(root: &Root, rec: &Value, cx: &mut Context<Root>) -> impl IntoEleme
         .child(div().flex_none().text_size(px(T_L)).font_weight(FontWeight::SEMIBOLD).font_features(tnum()).child(text))
         .child(div().flex_1().min_w_0().truncate().text_size(px(T_M)).text_color(c(MUTED)).child(root.tr("macro.rec.hint")))
         .child(Button::new("mc-rec-stop", root.tr("macro.rec.stop")).icon("stop").small().on_click(cx.listener(|r, _, _, cx| {
-            ask(r, "stopRecording", json!({}), cx, |_, _| {})
+            r.ask("stopRecording", json!({}), cx, |_, _| {})
         })))
 }
 
@@ -1380,7 +1289,7 @@ fn macro_row(
     // Its panel beside the game, shown or not; a narrow window keeps only its icon.
     let panel = {
         let mid = id.clone();
-        let toggle = move |r: &mut Root, cx: &mut Context<Root>| ask(r, if shown { "hidePanel" } else { "showPanel" }, json!({ "id": mid }), cx, |_, _| {});
+        let toggle = move |r: &mut Root, cx: &mut Context<Root>| r.ask(if shown { "hidePanel" } else { "showPanel" }, json!({ "id": mid }), cx, |_, _| {});
         if narrow {
             IconButton::new(("mc-panel", i), "screens")
                 .size(30.)
@@ -1403,7 +1312,7 @@ fn macro_row(
     let run = if live_runs > 0 {
         let mid = id.clone();
         Button::new(("mc-stop", i), root.tr("macro.stop")).icon("stop").small().on_click(cx.listener(move |r, _, _, cx| {
-            ask(r, "stopMacros", json!({ "id": mid }), cx, |r, _| ok(r, r.tr("macro.stopped")))
+            r.ask("stopMacros", json!({ "id": mid }), cx, |r, _| r.ok(r.tr("macro.stopped")))
         }))
     } else {
         let mid = id.clone();
@@ -1486,7 +1395,7 @@ fn more_menu(root: &Root, m: &Value, i: usize, count: usize, stopped_at: Option<
     }
     {
         let mid = id.clone();
-        items.push(Some(("copy", root.tr("macro.duplicate"), false, false, Box::new(move |r, _, cx| ask(r, "duplicateMacro", json!({ "id": mid }), cx, |r, _| ok(r, r.tr("macro.duplicated")))))));
+        items.push(Some(("copy", root.tr("macro.duplicate"), false, false, Box::new(move |r, _, cx| r.ask("duplicateMacro", json!({ "id": mid }), cx, |r, _| r.ok(r.tr("macro.duplicated")))))));
     }
     {
         let mid = id.clone();
@@ -1496,9 +1405,9 @@ fn more_menu(root: &Root, m: &Value, i: usize, count: usize, stopped_at: Option<
             false,
             false,
             Box::new(move |r, _, cx| {
-                ask(r, "exportMacro", json!({ "id": mid }), cx, |r, v| {
+                r.ask("exportMacro", json!({ "id": mid }), cx, |r, v| {
                     if v.as_bool().unwrap_or(!v.is_null()) {
-                        ok(r, r.tr("macro.exported"));
+                        r.ok(r.tr("macro.exported"));
                     }
                 })
             }),
@@ -1512,7 +1421,7 @@ fn more_menu(root: &Root, m: &Value, i: usize, count: usize, stopped_at: Option<
             root.tr(if enabled { "macro.autoPause" } else { "macro.autoResume" }),
             false,
             false,
-            Box::new(move |r, _, cx| ask(r, "saveMacro", json!({ "macro": changed }), cx, |_, _| {})),
+            Box::new(move |r, _, cx| r.ask("saveMacro", json!({ "macro": changed }), cx, |_, _| {})),
         )));
     }
     if count > 1 {
@@ -1521,7 +1430,7 @@ fn more_menu(root: &Root, m: &Value, i: usize, count: usize, stopped_at: Option<
             let mid = id.clone();
             let to = i as i32 + dir;
             let off = to < 0 || to as usize >= count;
-            items.push(Some((mark, root.tr(key), off, false, Box::new(move |r, _, cx| ask(r, "moveMacro", json!({ "id": mid, "to": to }), cx, |_, _| {})))));
+            items.push(Some((mark, root.tr(key), off, false, Box::new(move |r, _, cx| r.ask("moveMacro", json!({ "id": mid, "to": to }), cx, |_, _| {})))));
         }
     }
     items.push(None);
@@ -1536,7 +1445,7 @@ fn more_menu(root: &Root, m: &Value, i: usize, count: usize, stopped_at: Option<
             Box::new(move |r, window, cx| {
                 let mid = mid.clone();
                 let yes = r.tr("ps.delete");
-                r.confirm(title.clone(), text.clone(), yes, true, None, window, cx, move |r, cx| ask(r, "deleteMacro", json!({ "id": mid }), cx, |r, _| ok(r, r.tr("macro.deleted"))));
+                r.confirm(title.clone(), text.clone(), yes, true, None, window, cx, move |r, cx| r.ask("deleteMacro", json!({ "id": mid }), cx, |r, _| r.ok(r.tr("macro.deleted"))));
             }),
         )));
     }
@@ -1582,7 +1491,7 @@ fn more_menu(root: &Root, m: &Value, i: usize, count: usize, stopped_at: Option<
                 .into_any_element()
         });
     }
-    wrap.child(div().absolute().top(px(36.)).right_0().child(deferred(anchored().anchor(Anchor::TopRight).snap_to_window_with_margin(px(8.)).child(pop(SharedString::from(format!("mc-pop-{id}")), open, menu))).with_priority(1)))
+    wrap.child(popup(PopAt::BelowRight(36.), SharedString::from(format!("mc-pop-{id}")), open, menu))
 }
 
 /// A macro at a glance, as a track: its steps in order on one line, a key's own label, the others their mark, joined by
@@ -1715,28 +1624,3 @@ fn key_name(root: &Root, k: &str) -> String {
     k.to_string()
 }
 
-/// The steps' icons (macros.ts's STEP_ICON), the ones this page has.
-fn step_icon(kind: &str) -> &'static str {
-    match kind {
-        "key" | "down" | "up" => "keyboard",
-        "click" | "move" => "mouse",
-        "clickImage" | "waitImage" => "image",
-        "wait" | "waitStill" => "clock",
-        "waitText" => "search",
-        "if" | "else" => "branch",
-        "loop" | "loopUntil" => "repeat",
-        "stop" => "stop",
-        "rejoin" => "refresh",
-        "type" => "message",
-        "follow" => "gauge",
-        "call" => "play",
-        "alert" => "bell",
-        "setVar" | "addVar" => "tag",
-        "waitColour" | "clickColour" => "palette",
-        "scroll" => "sort",
-        "read" => "eye",
-        "write" => "edit",
-        "recover" => "wrench",
-        _ => "info",
-    }
-}

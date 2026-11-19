@@ -89,7 +89,8 @@ impl RobloxUsage {
         }
         let inner = Arc::clone(inner);
         let pids = pids.to_vec();
-        std::thread::spawn(move || {
+        // On the shared pool: a thread made per read leaked a little of the NVIDIA driver's memory each time.
+        crate::threads::run(move || {
             // The flag goes down even if the read panics.
             struct Done<'a>(&'a AtomicBool);
             impl Drop for Done<'_> {

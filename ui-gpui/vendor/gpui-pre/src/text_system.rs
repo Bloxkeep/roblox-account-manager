@@ -781,20 +781,25 @@ impl WindowTextSystem {
                 run_start += run_len_within_line;
             }
 
-            let layout = self.line_layout_cache.layout_wrapped_line(
-                &line_text,
-                font_size,
-                &font_runs,
-                wrap_width,
-                max_wrap_lines.map(|max| max.saturating_sub(wrapped_lines)),
-            );
-            wrapped_lines += layout.wrap_boundaries.len();
+            // Bloxkeep: a clamp counts every row shown, a hard line's first row too, and the lines past it are left
+            // out. Counted by wrap rows only, a text of many short lines (an event's list of what is new) showed all
+            // of them under line_clamp(4).
+            if max_wrap_lines.is_none_or(|max| wrapped_lines < max) {
+                let layout = self.line_layout_cache.layout_wrapped_line(
+                    &line_text,
+                    font_size,
+                    &font_runs,
+                    wrap_width,
+                    max_wrap_lines.map(|max| max.saturating_sub(wrapped_lines)),
+                );
+                wrapped_lines += layout.wrap_boundaries.len() + 1;
 
-            lines.push(WrappedLine {
-                layout,
-                decoration_runs,
-                text: line_text,
-            });
+                lines.push(WrappedLine {
+                    layout,
+                    decoration_runs,
+                    text: line_text,
+                });
+            }
 
             // Skip `\n` character.
             if let Some(run) = runs.peek_mut() {

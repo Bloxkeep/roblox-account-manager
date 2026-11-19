@@ -13,7 +13,7 @@ static TICK: RwLock<Option<TickFn>> = RwLock::new(None);
 
 /// DateTime.Now, unless a test swapped it.
 pub fn now() -> Stamp {
-    match NOW.read().ok().as_deref().and_then(|f| f.as_ref().map(|f| f())) {
+    match NOW.read().unwrap_or_else(|e| e.into_inner()).as_ref().map(|f| f()) {
         Some(at) => at,
         None => Stamp::now(),
     }
@@ -21,7 +21,7 @@ pub fn now() -> Stamp {
 
 /// DateTime.UtcNow, unless a test swapped it.
 pub fn utc_now() -> Stamp {
-    match UTC_NOW.read().ok().as_deref().and_then(|f| f.as_ref().map(|f| f())) {
+    match UTC_NOW.read().unwrap_or_else(|e| e.into_inner()).as_ref().map(|f| f()) {
         Some(at) => at,
         None => Stamp::utc_now(),
     }
@@ -29,7 +29,7 @@ pub fn utc_now() -> Stamp {
 
 /// Environment.TickCount64: milliseconds since Windows started, never set back.
 pub fn tick() -> i64 {
-    match TICK.read().ok().as_deref().and_then(|f| f.as_ref().map(|f| f())) {
+    match TICK.read().unwrap_or_else(|e| e.into_inner()).as_ref().map(|f| f()) {
         Some(t) => t,
         None => tick_count64(),
     }
@@ -37,21 +37,15 @@ pub fn tick() -> i64 {
 
 /// Swaps the wall clock (None: the real one again).
 pub fn set_now(f: Option<NowFn>) {
-    if let Ok(mut w) = NOW.write() {
-        *w = f;
-    }
+    *NOW.write().unwrap_or_else(|e| e.into_inner()) = f;
 }
 
 pub fn set_utc_now(f: Option<NowFn>) {
-    if let Ok(mut w) = UTC_NOW.write() {
-        *w = f;
-    }
+    *UTC_NOW.write().unwrap_or_else(|e| e.into_inner()) = f;
 }
 
 pub fn set_tick(f: Option<TickFn>) {
-    if let Ok(mut w) = TICK.write() {
-        *w = f;
-    }
+    *TICK.write().unwrap_or_else(|e| e.into_inner()) = f;
 }
 
 /// Environment.TickCount64 itself.

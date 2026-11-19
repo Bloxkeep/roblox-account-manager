@@ -55,7 +55,7 @@ impl App {
     pub fn watch_foreground(&self) {
         self.cores.core_check_off.set(false);
         let (tx, rx) = std::sync::mpsc::channel::<u32>();
-        std::thread::spawn(move || {
+        let _ = crate::threads::own("foreground-hook", move || {
             // SAFETY: plain calls; the callback is a plain function, the hook is unhooked on this same thread before it
             // ends, and the loop reads messages for this thread only.
             unsafe {

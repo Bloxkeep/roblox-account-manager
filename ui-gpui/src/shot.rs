@@ -1,5 +1,7 @@
 // --shot <png>: draws the window without ever showing it, saves the picture and quits, for checking screens on a PC
 // where nothing may pop up (built with --features shot, which brings GPUI's render_to_image).
+#[cfg(feature = "shot")]
+use crate::threads::Hold;
 use std::{path::PathBuf, time::Duration};
 
 use gpui_kit::*;
@@ -62,9 +64,15 @@ pub fn schedule<V: 'static>(view: WeakEntity<V>, out: PathBuf, w: f32, h: f32, w
                     cx.background_executor().timer(Duration::from_millis(150)).await;
                 }
             }
+            // BLOXKEEP_SHOT_BENCH=<n>: what each frame costs, with the script's mouse (see `frames`): no pictures.
+            if let (Ok(&h), Some(n)) = (handle.as_ref(), std::env::var("BLOXKEEP_SHOT_BENCH").ok().and_then(|v| v.parse::<usize>().ok())) {
+                frames(h, &out, n, true, cx).await;
+                let _ = cx.update(|cx| cx.quit());
+                return;
+            }
             // BLOXKEEP_SHOT_FRAMES=<n>: a clip instead of one picture (see `frames`).
             if let (Ok(&h), Some(n)) = (handle.as_ref(), std::env::var("BLOXKEEP_SHOT_FRAMES").ok().and_then(|v| v.parse::<usize>().ok())) {
-                frames(h, &out, n, cx).await;
+                frames(h, &out, n, false, cx).await;
                 let _ = cx.update(|cx| cx.quit());
                 return;
             }
@@ -98,12 +106,15 @@ enum Act {
     /// To x,y over that many ms, eased.
     Glide(f32, f32, f32),
     Click(f32, f32),
+    /// Pressed at x,y, slid to x2,y2 over that many ms, let go there.
+    Drag(f32, f32, f32, f32, f32),
     Key(String),
     Type(String),
     Scroll(f32),
 }
 
-/// "500:glide:640,300,600; 1200:click:640,300; 1500:type:blox; 2200:key:enter; 2600:scroll:-400" (window points).
+/// "500:glide:640,300,600; 1200:click:640,300; 1500:type:blox; 2200:key:enter; 2600:scroll:-400;
+/// 3000:drag:640,300,700,340,500" (window points).
 #[cfg(feature = "shot")]
 fn acts() -> Vec<(f32, Act)> {
     let script = std::env::var("BLOXKEEP_SHOT_ACTS").unwrap_or_default();
@@ -122,6 +133,7 @@ fn acts() -> Vec<(f32, Act)> {
                     "move" if n.len() >= 2 => Act::Move(n[0], n[1]),
                     "glide" if n.len() >= 3 => Act::Glide(n[0], n[1], n[2]),
                     "click" if n.len() >= 2 => Act::Click(n[0], n[1]),
+                    "drag" if n.len() >= 5 => Act::Drag(n[0], n[1], n[2], n[3], n[4]),
                     "key" => Act::Key(arg.trim().to_string()),
                     "type" => Act::Type(arg.to_string()),
                     "scroll" if !n.is_empty() => Act::Scroll(n[0]),
@@ -138,25 +150,30 @@ fn acts() -> Vec<(f32, Act)> {
 /// the script's mouse and keys handed to this window only (never to the desktop), as the window's own input. Beside them,
 /// <out>.txt: per picture its time in ms and where the mouse was (x y, and 1 while pressed), for drawing a pointer later.
 #[cfg(feature = "shot")]
-async fn frames(h: AnyWindowHandle, out: &std::path::Path, n: usize, cx: &mut AsyncApp) {
+/// `bench`: no pictures; each frame's draw (the page made and laid out) and present (handed to the graphics card) are
+/// timed, and a present with nothing redrawn after it (what GPUI does every vsync for a second after fast mouse input).
+async fn frames(h: AnyWindowHandle, out: &std::path::Path, n: usize, bench: bool, cx: &mut AsyncApp) {
     let every = std::env::var("BLOXKEEP_SHOT_EVERY").ok().and_then(|v| v.parse::<u64>().ok()).unwrap_or(40);
     let stem = out.with_extension("");
     let script = acts();
     let mut next = 0;
     let (mut mx, mut my, mut down) = (-4000f32, -4000f32, false);
     let mut glide: Option<(f32, f32, f32, f32, f32, f32)> = None; // from x, y, to x, y, start, length
+    let mut held = false; // the glide under way is a drag: the left button is down until it ends
     let mut log = String::new();
-    // The pictures are written by a few threads of their own, so taking the next one never waits for a PNG.
+    let mut times: Vec<(Duration, Duration, Duration)> = Vec::new();
+    // The pictures are written by four kept threads, so taking the next one never waits for a PNG.
     let (tx, rx) = std::sync::mpsc::channel::<(PathBuf, image::RgbaImage)>();
     let rx = std::sync::Arc::new(std::sync::Mutex::new(rx));
     let writers: Vec<_> = (0..4)
-        .map(|_| {
+        .filter_map(|_| {
             let rx = rx.clone();
-            std::thread::spawn(move || loop {
-                let job = rx.lock().ok().and_then(|r| r.recv().ok());
+            crate::threads::own("shot-writer", move || loop {
+                let job = rx.hold().recv().ok();
                 let Some((p, pic)) = job else { break };
                 let _ = pic.save(&p);
             })
+            .ok()
         })
         .collect();
     let start = std::time::Instant::now();
@@ -164,6 +181,11 @@ async fn frames(h: AnyWindowHandle, out: &std::path::Path, n: usize, cx: &mut As
         let _ = cx.update_window(h, |_, window, cx| window.dispatch_event(input, cx));
     };
     for i in 0..n {
+        // (A bench run says, every 250 frames, how many threads the process has started so far: none more once the
+        // page is up is what threads.rs is for; see `started`.)
+        if bench && i % 250 == 0 {
+            eprintln!("bench: frame {i}, {:.0} s, threads started {}", start.elapsed().as_secs_f32(), started::count());
+        }
         let target = Duration::from_millis(every * i as u64);
         let now = start.elapsed();
         if target > now {
@@ -185,6 +207,12 @@ async fn frames(h: AnyWindowHandle, out: &std::path::Path, n: usize, cx: &mut As
                     send(PlatformInput::MouseDown(MouseDownEvent { button: MouseButton::Left, position: pos(mx, my), modifiers: Modifiers::default(), click_count: 1, first_mouse: false }), cx);
                     send(PlatformInput::MouseUp(MouseUpEvent { button: MouseButton::Left, position: pos(mx, my), modifiers: Modifiers::default(), click_count: 1 }), cx);
                     down = true;
+                }
+                Act::Drag(x, y, x2, y2, d) => {
+                    (mx, my) = (*x, *y);
+                    send(PlatformInput::MouseMove(MouseMoveEvent { position: pos(mx, my), pressed_button: None, modifiers: Modifiers::default() }), cx);
+                    send(PlatformInput::MouseDown(MouseDownEvent { button: MouseButton::Left, position: pos(mx, my), modifiers: Modifiers::default(), click_count: 1, first_mouse: false }), cx);
+                    (glide, held) = (Some((mx, my, *x2, *y2, *at, d.max(1.))), true);
                 }
                 Act::Key(k) => {
                     if let Ok(stroke) = Keystroke::parse(Box::leak(k.clone().into_boxed_str())) {
@@ -211,17 +239,39 @@ async fn frames(h: AnyWindowHandle, out: &std::path::Path, n: usize, cx: &mut As
             let k = ((t - at) / len).clamp(0., 1.);
             let e = if k < 0.5 { 2. * k * k } else { 1. - (-2. * k + 2.).powi(2) / 2. };
             (mx, my) = (fx + (tx2 - fx) * e, fy + (ty - fy) * e);
-            send(PlatformInput::MouseMove(MouseMoveEvent { position: point(px(mx), px(my)), pressed_button: None, modifiers: Modifiers::default() }), cx);
+            send(PlatformInput::MouseMove(MouseMoveEvent { position: point(px(mx), px(my)), pressed_button: held.then_some(MouseButton::Left), modifiers: Modifiers::default() }), cx);
             if k >= 1. {
                 glide = None;
+                if std::mem::take(&mut held) {
+                    send(PlatformInput::MouseUp(MouseUpEvent { button: MouseButton::Left, position: point(px(mx), px(my)), modifiers: Modifiers::default(), click_count: 1 }), cx);
+                }
             }
+            down |= held;
         }
-        let pic = cx.update_window(h, |_, window, cx| {
-            window.draw(cx).clear(cx);
-            window.render_to_image()
-        });
-        if let Ok(Ok(pic)) = pic {
-            let _ = tx.send((PathBuf::from(format!("{}-{i:04}.png", stem.display())), pic));
+        if bench {
+            let _ = cx.update_window(h, |_, window, cx| {
+                let t0 = std::time::Instant::now();
+                let clear = window.draw(cx);
+                let t1 = std::time::Instant::now();
+                window.present_for_bench();
+                let t2 = std::time::Instant::now();
+                clear.clear(cx);
+                window.present_for_bench();
+                let t3 = std::time::Instant::now();
+                times.push((t1 - t0, t2 - t1, t3 - t2));
+            });
+        } else {
+            let pic = cx.update_window(h, |_, window, cx| {
+                // Each picture is a frame of the window's own: the hidden window gets no frames from Windows, so
+                // motion stepped frame by frame (request_animation_frame: springs, the capsule's slide and moment)
+                // would stand still in the clip where it runs on in the app.
+                window.refresh();
+                window.draw(cx).clear(cx);
+                window.render_to_image()
+            });
+            if let Ok(Ok(pic)) = pic {
+                let _ = tx.send((PathBuf::from(format!("{}-{i:04}.png", stem.display())), pic));
+            }
         }
         log.push_str(&format!("{t:.0} {mx:.1} {my:.1} {}\n", down as u8));
         down = false;
@@ -229,6 +279,25 @@ async fn frames(h: AnyWindowHandle, out: &std::path::Path, n: usize, cx: &mut As
     drop(tx);
     for w in writers {
         let _ = w.join();
+    }
+    if bench {
+        let ms = |d: Duration| d.as_secs_f64() * 1000.;
+        let stat = |mut v: Vec<f64>| {
+            v.sort_by(f64::total_cmp);
+            let at = |q: f64| v.get(((v.len() as f64 - 1.) * q).round() as usize).copied().unwrap_or(0.);
+            format!("median {:.2} ms, p90 {:.2} ms, max {:.2} ms", at(0.5), at(0.9), at(1.))
+        };
+        let draw = stat(times.iter().map(|t| ms(t.0)).collect());
+        let present = stat(times.iter().map(|t| ms(t.1)).collect());
+        let again = stat(times.iter().map(|t| ms(t.2)).collect());
+        let report = format!("frames: {}
+draw: {draw}
+present: {present}
+present, nothing redrawn: {again}
+", times.len());
+        eprint!("{report}");
+        let _ = std::fs::write(stem.with_extension("bench.txt"), report);
+        return;
     }
     let _ = std::fs::write(stem.with_extension("txt"), log);
     eprintln!("shot: {n} frames, {} ms", start.elapsed().as_millis());
@@ -240,4 +309,28 @@ async fn frames(h: AnyWindowHandle, out: &std::path::Path, n: usize, cx: &mut As
 fn away(window: &mut Window, cx: &mut App) {
     let far = MouseMoveEvent { position: point(px(-4000.), px(-4000.)), pressed_button: None, modifiers: Modifiers::default() };
     window.dispatch_event(PlatformInput::MouseMove(far), cx);
+}
+
+/// Every thread the process starts, its own and Windows' and the libraries' alike, counted as Windows starts it (a TLS
+/// callback runs for each, as a DLL's DllMain does with DLL_THREAD_ATTACH): what NVIDIA's driver keeps ~184 bytes for.
+#[cfg(feature = "shot")]
+mod started {
+    use std::sync::atomic::{AtomicU64, Ordering};
+
+    static N: AtomicU64 = AtomicU64::new(0);
+
+    unsafe extern "system" fn on_thread(_: *mut std::ffi::c_void, reason: u32, _: *mut std::ffi::c_void) {
+        // DLL_THREAD_ATTACH
+        if reason == 2 {
+            N.fetch_add(1, Ordering::Relaxed);
+        }
+    }
+
+    #[used]
+    #[unsafe(link_section = ".CRT$XLT")]
+    static CALLBACK: unsafe extern "system" fn(*mut std::ffi::c_void, u32, *mut std::ffi::c_void) = on_thread;
+
+    pub fn count() -> u64 {
+        N.load(Ordering::Relaxed)
+    }
 }

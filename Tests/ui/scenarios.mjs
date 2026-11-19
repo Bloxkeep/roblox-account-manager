@@ -939,18 +939,6 @@ export default [
 
   // ── Lock screen and first run ──
   S('unlock-wrong', 'locked=1', async s => { await s.type('wrong-one', key('lock.pw')); await s.key('Enter'); await s.wait(800); }),
-  // The tray icon's quick panel and menu (ui/src/Tray.tsx), on their own page with a fake app (ui/dev/tray-mock.js).
-  S('tray-panel', '', null, { page: 'tray-preview.html', size: [420, 520] }),
-  S('tray-panel-locked', 'locked=1', null, { page: 'tray-preview.html', size: [420, 520] }),
-  S('tray-panel-many', 'many=1&multi=notReady', null, { page: 'tray-preview.html', size: [420, 640] }),
-  S('tray-panel-play', '', async s => { await s.click(key('tray.play')); }, { page: 'tray-preview.html', size: [420, 640] }),
-  S('tray-panel-close-all', '', async s => { await s.click(key('tray.closeAll')); await s.snap('asked'); await s.click({ css: '.tray-link' }); }, { page: 'tray-preview.html', size: [420, 520] }),
-  S('tray-panel-multi', '', async s => { await s.click({ css: '.tray-multi' }); }, { page: 'tray-preview.html', size: [420, 520] }),
-  S('tray-menu', 'mode=menu', null, { page: 'tray-preview.html', size: [420, 520] }),
-  S('tray-menu-play', 'mode=menu', async s => { await s.click(key('tray.playAs')); }, { page: 'tray-preview.html', size: [420, 520] }),
-  S('tray-menu-macros', 'mode=menu&macros=1', async s => { await s.click(key('tray.macros')); }, { page: 'tray-preview.html', size: [420, 520] }),
-  S('tray-menu-multi', 'mode=menu', async s => { await s.click({ css: '[data-item=multi]' }); }, { page: 'tray-preview.html', size: [420, 520] }),
-  S('tray-menu-close', 'mode=menu', async s => { await s.click(key('tray.closeAllRoblox')); await s.click({ css: '.tray-item.danger' }); }, { page: 'tray-preview.html', size: [420, 520] }),
   S('unlock-ok', 'locked=1', async s => { await s.type('demo', key('lock.pw')); await s.key('Enter'); await s.wait(2600); }),
   // An update found before the unlock: the lock screen gives it its place (downloading, then installing), and its link
   // gives the form back. Found while a password is being typed, the form stays.

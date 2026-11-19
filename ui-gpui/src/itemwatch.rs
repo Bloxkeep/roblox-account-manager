@@ -109,9 +109,11 @@ struct Now {
 
 /// Roblox's numbers for a thing now (economy's asset details: signed-out, one request).
 fn read(id: i64) -> Result<Now, String> {
-    let v: Value = ureq::AgentBuilder::new()
-        .timeout(std::time::Duration::from_secs(15))
-        .build()
+    // One agent for every read (its connection to Roblox stays open between the things read), with Windows' proxy and
+    // certificates as every call of Bloxkeep's (net.rs): its own plain one failed behind an office proxy or an antivirus
+    // that checks HTTPS while the rest of the app worked.
+    static HTTP: std::sync::LazyLock<ureq::Agent> = std::sync::LazyLock::new(|| crate::net::builder().timeout(std::time::Duration::from_secs(15)).build());
+    let v: Value = HTTP
         .get(&format!("https://economy.roblox.com/v2/assets/{id}/details"))
         .call()
         .map_err(|e| match e {

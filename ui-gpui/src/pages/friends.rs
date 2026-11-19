@@ -5,6 +5,7 @@
 // from here (roblox.rs) with that account's own sign-in, lent by the app (robloxSignIn { id }): Roblox gives them only to
 // a signed-in request. What changes something goes through the app: friendAct (a request, its answer; the app shows
 // Roblox's check when it holds one), joinServer (the usual launch), openProfile.
+use crate::threads::Hold;
 use std::{
     collections::HashMap,
     sync::{LazyLock, Mutex},
@@ -13,6 +14,8 @@ use std::{
 
 use gpui_kit::{prelude::*, *};
 use serde_json::{Value, json};
+use crate::val::s;
+use crate::ask::reply;
 
 use crate::{
     images,
@@ -107,18 +110,18 @@ pub const LABEL_COLOURS: [u32; 8] = [0xff6257, 0xffab3d, 0xf6c63a, 0x3ddc84, 0x2
 static LABELS: LazyLock<Mutex<Labels>> = LazyLock::new(|| Mutex::new(crate::prefs::get("friendLabels").and_then(|v| serde_json::from_value(v).ok()).unwrap_or_default()));
 
 pub fn labels() -> Labels {
-    LABELS.lock().map(|l| l.clone()).unwrap_or_default()
+    LABELS.hold().clone()
 }
 
 /// A friend's labels, in the list's order.
 pub fn labels_of(user: i64) -> Vec<Label> {
-    let Ok(l) = LABELS.lock() else { return Vec::new() };
+    let l = LABELS.hold();
     let Some(ids) = l.of.get(&user) else { return Vec::new() };
     l.list.iter().filter(|x| ids.contains(&x.id)).cloned().collect()
 }
 
 fn change_labels(f: impl FnOnce(&mut Labels)) {
-    let Ok(mut l) = LABELS.lock() else { return };
+    let mut l = LABELS.hold();
     f(&mut l);
     // (A friend left with none is forgotten.)
     l.of.retain(|_, v| !v.is_empty());
@@ -168,16 +171,7 @@ pub fn add_label(r: &mut Root, cx: &mut Context<Root>) {
         r.friends.tag_colour = (r.friends.tag_colour + 1) % LABEL_COLOURS.len();
     }
     r.friends.tag_for = None;
-    // (The box is emptied just after: that needs the window.)
-    if let Some(h) = cx.windows().first().copied() {
-        let this = cx.weak_entity();
-        cx.spawn(async move |_, cx| {
-            let _ = cx.update_window(h, |_, window, cx| {
-                let _ = this.update(cx, |r, cx| r.label_box.update(cx, |s, cx| s.set_value("", window, cx)));
-            });
-        })
-        .detach();
-    }
+    empty_field(&r.label_box, cx);
     cx.notify();
 }
 
@@ -377,10 +371,6 @@ const CARD_W: f32 = 300.;
 /// A friend's card's height (its words are one line each: the card never grows).
 const FRIEND_H: f32 = 70.;
 
-fn s<'a>(v: &'a Value, k: &str) -> &'a str {
-    v.get(k).and_then(Value::as_str).unwrap_or_default()
-}
-
 /// The accounts whose friends can be asked: signed in, on roblox.com.
 pub fn able(root: &Root) -> Vec<Value> {
     able_ref(root).into_iter().cloned().collect()
@@ -437,6 +427,11 @@ pub fn looking_ref(root: &Root) -> (Vec<&Value>, Option<&Value>) {
 /// The sign-in first, then the friends; again when the answer is old.
 pub fn want(r: &mut Root, link: &crate::link::Link, cx: &mut Context<Root>) {
     want_sign(r, link, cx);
+    want_list(r, cx);
+}
+
+/// The friends' list, read when it isn't fresh (the Friends tab, Inbox's group picker).
+pub fn want_list(r: &mut Root, cx: &mut Context<Root>) {
     let old = r.friends.at.is_none_or(|t| t.elapsed() > FRESH);
     if old && !r.friends.loading {
         load(r, cx);
@@ -449,8 +444,13 @@ pub fn want_sign(r: &mut Root, link: &crate::link::Link, cx: &mut Context<Root>)
     // roblox.com-only readers below; game launches use the core's realm-aware path.
     if r.friends.account.is_none() && able_ref(r).is_empty()
         && let Some(id) = crate::pages::tabs::available(r).first().map(|a| s(a, "id").to_string())
+        && !crate::pages::tabs::picking(r)
     {
         crate::pages::tabs::bind_default(r, &id);
+    }
+    // (Several accounts and none picked for this tab: the choice is shown, tabs::picker; nobody's sign-in is asked.)
+    if crate::pages::tabs::picking(r) {
+        return;
     }
     if crate::pages::tabs::is_vng(r) {
         r.friends.asked_sign = true;
@@ -716,17 +716,7 @@ pub fn face_menu(root: &Root, cx: &mut Context<Root>) -> Option<AnyElement> {
                     cx.notify();
                 })),
         );
-    Some(deferred(anchored().position(at).snap_to_window_with_margin(px(8.)).child(pop(format!("ff-pop-{user}"), open, menu))).with_priority(2).into_any_element())
-}
-
-fn again(r: &mut Root, cx: &mut Context<Root>) {
-    if !r.friends.loading {
-        if r.friends.list.as_ref().is_some_and(|l| l.is_err()) {
-            r.friends.list = None;
-        }
-        load(r, cx);
-        cx.notify();
-    }
+    Some(at_pointer(at, pop(format!("ff-pop-{user}"), open, menu)))
 }
 
 /// Roblox's people search for the name in Add friend's box (Enter).
@@ -741,16 +731,12 @@ pub fn find(r: &mut Root, cx: &mut Context<Root>) {
     cx.notify();
     let ask = q.clone();
     let rx = roblox::run(move || roblox::people(&ask));
-    cx.spawn(async move |this, cx| {
-        let got = rx.await.unwrap_or_else(|_| Err(String::new()));
-        let _ = this.update(cx, |r, cx| {
-            if r.friends.found.as_ref().is_some_and(|(at, _)| *at == q) {
-                r.friends.found = Some((q, Some(got)));
-                cx.notify();
-            }
-        });
-    })
-    .detach();
+    reply(rx, cx, move |r, got, cx| {
+        if r.friends.found.as_ref().is_some_and(|(at, _)| *at == q) {
+            r.friends.found = Some((q, Some(got)));
+            cx.notify();
+        }
+    });
 }
 
 /// A move for the account looked through, asked of the app: "request", "accept", "decline" or "unfriend" that Roblox
@@ -780,7 +766,7 @@ fn act(r: &mut Root, user: i64, what: &'static str, cx: &mut Context<Root>) {
                     r.friends.acts.remove(&user);
                 }
                 if what == "accept" {
-                    again(r, cx);
+                    r.again(cx, |r| (r.friends.loading, &mut r.friends.list), load);
                 }
                 if what == "unfriend" {
                     if let Some(Ok(l)) = &mut r.friends.list {
@@ -836,7 +822,7 @@ pub fn friends(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElem
         need_account(root, "fr-add-acc", "fr.noAccount", "users", cx)
     } else {
         match &fr.list {
-            None => note(root.tr("fr.loading")).into_any_element(),
+            None => empty_note(root.tr("fr.loading")).into_any_element(),
             Some(Err(why)) => div()
                 .flex_1()
                 .flex()
@@ -844,8 +830,8 @@ pub fn friends(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElem
                 .items_center()
                 .justify_center()
                 .gap(px(14.))
-                .child(div().text_size(px(T_M)).text_color(c(MUTED)).child(root.i18n.tv("fr.failed", &[("why", if why.is_empty() { "Roblox" } else { why })])))
-                .child(Button::new("fr-retry", root.tr("fr.retry")).icon("refresh").on_click(cx.listener(|r, _, _, cx| again(r, cx))))
+                .child(div().text_size(px(T_M)).text_color(c(MUTED)).child(root.i18n.tv("fr.failed", &[("why", crate::net::why_words(&root.i18n, why).as_str())])))
+                .child(Button::new("fr-retry", root.tr("fr.retry")).icon("refresh").on_click(cx.listener(|r, _, _, cx| r.again(cx, |r| (r.friends.loading, &mut r.friends.list), load))))
                 .into_any_element(),
             Some(Ok(l)) => {
                 let join_as = viewer.as_ref().map(|a| s(a, "id").to_string());
@@ -970,17 +956,15 @@ pub fn friends(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElem
                     rows = rows.child(div().w_full().flex().flex_col().gap(px(SECTION_GAP)).children(blocks));
                 }
                 if !any {
-                    rows = rows.child(div().pt(px(12.)).text_size(px(T_M)).text_color(c(MUTED)).child(root.tr(if l.is_empty() { "fr.none" } else { "fr.noneHere" })));
+                    // (In the middle of the page, as every page's "nothing here": tucked at the top left it read as
+                    // left over, the owner's word for Accounts' own, 2026-11-17.)
+                    rows = rows.child(empty_note(root.tr(if l.is_empty() { "fr.none" } else { "fr.noneHere" })).w_full().py(px(96.)));
                 }
                 crate::scrolled::body("fr-body", rows).into_any_element()
             }
         }
     };
     shell.child(header(root, list, viewer, cx)).child(body)
-}
-
-fn note(text: String) -> Div {
-    div().flex_1().flex().items_center().justify_center().text_size(px(T_M)).text_color(c(MUTED)).child(text)
 }
 
 /// Add friend, open over the lists: the name box, then the people Roblox found for it.
@@ -1002,7 +986,7 @@ fn add(root: &Root, friends: &[Friend], inner: f32, cx: &mut Context<Root>) -> i
         None => {}
         Some((_, None)) => panel = panel.child(div().text_size(px(T_M)).text_color(c(MUTED)).child(root.tr("games.searching"))),
         Some((_, Some(Err(why)))) => {
-            panel = panel.child(div().text_size(px(T_M)).text_color(c(MUTED)).child(root.i18n.tv("fr.failed", &[("why", if why.is_empty() { "Roblox" } else { why })])))
+            panel = panel.child(div().text_size(px(T_M)).text_color(c(MUTED)).child(root.i18n.tv("fr.failed", &[("why", crate::net::why_words(&root.i18n, why).as_str())])))
         }
         Some((_, Some(Ok(l)))) if l.is_empty() => panel = panel.child(div().text_size(px(T_M)).text_color(c(MUTED)).child(root.tr("fr.nobody"))),
         Some((_, Some(Ok(l)))) => {
@@ -1028,7 +1012,6 @@ fn header(root: &Root, list: &[Friend], viewer: Option<&Value>, cx: &mut Context
         (Filter::Online, root.tr("chip.online"), online),
         (Filter::Offline, root.tr("chip.offline"), list.len() - online),
     ];
-
 
     div()
         .flex_none()
@@ -1057,7 +1040,7 @@ fn header(root: &Root, list: &[Friend], viewer: Option<&Value>, cx: &mut Context
                     })))
                 })
                 .when(viewer.is_some(), |d| {
-                    d.child(IconButton::new("fr-refresh", "refresh").size(34.).busy(fr.loading).tip(root.tr("fr.refresh")).on_click(cx.listener(|r, _, _, cx| again(r, cx))))
+                    d.child(IconButton::new("fr-refresh", "refresh").size(34.).busy(fr.loading).tip(root.tr("fr.refresh")).on_click(cx.listener(|r, _, _, cx| r.again(cx, |r| (r.friends.loading, &mut r.friends.list), load))))
                 }),
         )
         // The filters as the Accounts page's: no track, a dot of where they are, the count; the one shown a yellow block.
@@ -1102,7 +1085,7 @@ fn header(root: &Root, list: &[Friend], viewer: Option<&Value>, cx: &mut Context
                             cx.notify();
                         })),
                 )
-                .when(fr.tags_open, |d| d.child(div().absolute().top(px(TOOL_H + 6.)).left_0().child(deferred(anchored().snap_to_window_with_margin(px(8.)).child(tags_box(root, cx))).with_priority(2))));
+                .when(fr.tags_open, |d| d.child(float(PopAt::BelowLeft(TOOL_H + 6.), 2, tags_box(root, cx))));
             d.child(div().flex().flex_wrap().items_center().gap(px(4.)).children(chips.into_iter().enumerate().map(|(i, (f, text, count))| {
                 let on = fr.filter == f;
                 let dot = match f {
@@ -1384,7 +1367,7 @@ fn card(root: &Root, f: &Friend, w: f32, kind: Kind, cx: &mut Context<Root>) -> 
                     cx.notify();
                 }),
             ));
-        more = more.child(div().absolute().top(px(34.)).right_0().child(deferred(anchored().anchor(Anchor::TopRight).snap_to_window_with_margin(px(8.)).child(pop(format!("fr-card-pop-{user}"), root.friends.card_menu == Some(user), menu))).with_priority(1)));
+        more = more.child(popup(PopAt::BelowRight(34.), format!("fr-card-pop-{user}"), root.friends.card_menu == Some(user), menu));
     }
     with.child(more)
 }

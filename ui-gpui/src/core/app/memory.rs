@@ -71,7 +71,7 @@ pub struct RamTurn {
 impl RamTurn {
     fn start() -> RamTurn {
         let (jobs, inbox) = mpsc::channel::<RamJob>();
-        std::thread::spawn(move || {
+        let _ = crate::threads::own("ram-turn", move || {
             for job in inbox {
                 // One that panics (shown as an unexpected error) doesn't end the turn for the asks after it.
                 let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(job));

@@ -74,7 +74,7 @@ pub fn refresh_shell_icons() {
         std::env::current_exe().unwrap_or_default(),
     ];
     // Explorer handles these itself; never hold up the app's start for it.
-    let _ = crate::net::Named::new("shell-icons".into()).spawn(move || {
+    crate::threads::run(move || {
         for path in paths.iter().filter(|p| p.is_file()) {
             let w = wide(&path.to_string_lossy());
             // SAFETY: a zero-ended path, read during the call.
@@ -377,8 +377,7 @@ fn wipe_secret(mine: u64, tries: u32) {
     // clear calls that off), or it stayed on the clipboard for good.
     if !open_clipboard() {
         if tries < 10 {
-            let _ = crate::net::Named::new("clipboard-wipe".into()).spawn(move || {
-                std::thread::sleep(Duration::from_secs(3));
+            crate::threads::after(Duration::from_secs(3), move || {
                 if CLIPBOARD_TIMER.load(Ordering::SeqCst) == mine {
                     wipe_secret(mine, tries + 1);
                 }
@@ -466,9 +465,9 @@ pub fn copy_to_clipboard(text: &str, secret: bool) -> bool {
     if secret {
         *CLIPBOARD_SECRET.lock().unwrap_or_else(|e| e.into_inner()) = Some(text.to_string());
         let mine = CLIPBOARD_TIMER.fetch_add(1, Ordering::SeqCst) + 1;
-        // PORT: the WinForms Timer (30 s, on the UI thread) is a thread that sleeps; a newer copy or a clear calls it off.
-        let _ = crate::net::Named::new("clipboard-wipe".into()).spawn(move || {
-            std::thread::sleep(Duration::from_millis(30_000));
+        // PORT: the WinForms Timer (30 s, on the UI thread) is the shared timer (threads::after); a newer copy or a clear
+        // calls it off.
+        crate::threads::after(Duration::from_millis(30_000), move || {
             if CLIPBOARD_TIMER.load(Ordering::SeqCst) == mine {
                 clear_secret_clipboard();
             }

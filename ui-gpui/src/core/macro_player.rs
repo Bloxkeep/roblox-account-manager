@@ -3,7 +3,6 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use std::panic::AssertUnwindSafe;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, LazyLock, Mutex, MutexGuard, RwLock};
-use std::thread::JoinHandle;
 use std::time::Duration;
 
 use regex::Regex;
@@ -454,7 +453,7 @@ const MAX_EXPANDED: usize = 10 * crate::core::macro_model::macro_rules::MAX_STEP
 pub struct MacroPlayer {
     desk: Arc<dyn IMacroDesk>,
     state: Mutex<State>,
-    loop_thread: Mutex<Option<JoinHandle<()>>>,
+    loop_thread: Mutex<Option<std::sync::mpsc::Receiver<()>>>,
     /// Something to show changed (throttled by the app).
     pub changed: RwLock<Option<ChangedFn>>,
     /// A turn sent input to the window of this process (anti-AFK counts it).
@@ -714,15 +713,13 @@ impl MacroPlayer {
             self.changed();
             if start_loop {
                 let me = self.clone();
-                let handle = match crate::net::Named::new("Bloxkeep macros".into()).spawn(move || me.run_loop()) {
-                    Ok(h) => h,
-                    Err(e) => {
-                        // No loop after all: the next run may start one.
-                        self.st().loop_running = false;
-                        return Err(Fail::from(e));
-                    }
-                };
-                *lk(&self.loop_thread) = Some(handle);
+                // The sender drops when the loop ends (or panics), which is what `idle` waits for.
+                let (ended, ended_rx) = std::sync::mpsc::channel::<()>();
+                crate::threads::run(move || {
+                    me.run_loop();
+                    drop(ended);
+                });
+                *lk(&self.loop_thread) = Some(ended_rx);
             }
         }
         Ok(queued)
@@ -737,7 +734,7 @@ impl MacroPlayer {
     pub fn idle(&self) {
         let handle = lk(&self.loop_thread).take();
         if let Some(h) = handle {
-            let _ = h.join();
+            let _ = h.recv();
         }
     }
 

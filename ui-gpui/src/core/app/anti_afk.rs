@@ -185,6 +185,7 @@ impl App {
         let due = |pid: i32, after: Duration| -> bool {
             windows.get(&pid).is_some_and(|w| !w.is_empty())
                 && self.controller.logs.borrow().state_of(pid).is_none_or(|s| s.status == "ingame")
+                && !self.on_home_screen(pid)
                 && now.secs_since(self.last_input(pid)) >= secs(after)
         };
         let waiting = |pid: i32| -> bool { st.nudge_retry_at.borrow().get(&pid).is_some_and(|retry| now < *retry) };
@@ -253,6 +254,15 @@ impl App {
         } else {
             now.plus_secs(secs(NUDGE_RETRY))
         }
+    }
+
+    /// A window Bloxkeep opened on Roblox's home screen that has been in no game since. Roblox kicks nobody from its
+    /// home screen, so it is never nudged: the owner's sat there minimised and was brought up every 12 minutes (their
+    /// log, 2026-11-18: "tôi có đang ở trong game đâu mà anti afk vẫn chạy"). A window whose log isn't known for another
+    /// reason (open before Bloxkeep started) still counts as in a game, as before.
+    fn on_home_screen(&self, pid: i32) -> bool {
+        self.controller.running.borrow().values().any(|(of, launch)| *of == pid && launch.home_screen && launch.target.is_none())
+            && self.controller.logs.borrow().state_of(pid).is_none()
     }
 
     pub fn last_input(&self, pid: i32) -> Stamp {

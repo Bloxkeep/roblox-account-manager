@@ -246,13 +246,10 @@ fn timed(h: isize) -> Option<Picture> {
     }
     let free = Free(h);
     let (tx, rx) = mpsc::channel();
-    let spawned = crate::net::Named::new("Bloxkeep window picture".into()).spawn(move || {
+    crate::threads::run(move || {
         let _free = free;
         let _ = tx.send(take_client(h));
     });
-    if spawned.is_err() {
-        return None; // the closure, with `free`, was dropped: the window is free again
-    }
     rx.recv_timeout(deadline.saturating_duration_since(std::time::Instant::now())).ok().flatten()
 }
 

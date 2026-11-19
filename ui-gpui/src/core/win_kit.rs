@@ -12,7 +12,7 @@ use windows_sys::Win32::{
         Diagnostics::ToolHelp::{CreateToolhelp32Snapshot, PROCESSENTRY32W, Process32FirstW, Process32NextW, TH32CS_SNAPPROCESS},
         Registry::{
             HKEY, HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE, KEY_READ, KEY_WRITE, REG_BINARY, REG_EXPAND_SZ, REG_MULTI_SZ, REG_OPTION_NON_VOLATILE, REG_SZ, RegCloseKey,
-            RegCreateKeyExW, RegDeleteValueW, RegEnumValueW, RegOpenKeyExW, RegQueryValueExW, RegSetValueExW,
+            RegCreateKeyExW, RegDeleteTreeW, RegDeleteValueW, RegEnumValueW, RegOpenKeyExW, RegQueryValueExW, RegSetValueExW,
         },
     },
 };
@@ -298,6 +298,17 @@ fn hive_key(h: Hive) -> HKEY {
     match h {
         Hive::CurrentUser => HKEY_CURRENT_USER,
         Hive::LocalMachine => HKEY_LOCAL_MACHINE,
+    }
+}
+
+/// RegDeleteTree: the key and everything under it; Ok when it isn't there.
+pub fn delete_tree(hive: Hive, path: &str) -> Res<()> {
+    let p = wide(path);
+    // SAFETY: plain call, `p` is zero-ended.
+    let err = unsafe { RegDeleteTreeW(hive_key(hive), p.as_ptr()) };
+    match err {
+        0 | ERROR_FILE_NOT_FOUND => Ok(()),
+        e => Err(Fail::other(format!("registry key {path}: error {e}"))),
     }
 }
 

@@ -52,6 +52,18 @@ type StackSafe<T> = T;
 const DRAG_THRESHOLD: f64 = 2.;
 const DEFAULT_TOOLTIP_SHOW_DELAY: Duration = Duration::from_millis(500);
 const HOVERABLE_TOOLTIP_HIDE_DELAY: Duration = Duration::from_millis(500);
+/// Bloxkeep: a tooltip seen this recently makes the next one show at once (moving along a row of icon buttons, each
+/// says what it is without the wait again), as Radix's skipDelayDuration and macOS's tooltips do.
+const TOOLTIP_WARM_FOR: Duration = Duration::from_millis(300);
+
+thread_local! {
+    static TOOLTIP_SEEN_AT: Cell<Option<std::time::Instant>> = const { Cell::new(None) };
+}
+
+/// Bloxkeep: whether a tooltip was on screen within `within` (the next one shows at once, without its fade).
+pub fn tooltip_seen_within(within: Duration) -> bool {
+    TOOLTIP_SEEN_AT.with(|t| t.get()).is_some_and(|at| at.elapsed() < within)
+}
 
 /// The styling information for a given group.
 pub struct GroupStyle {
@@ -2600,8 +2612,9 @@ impl Interactivity {
                 window.with_element_opacity(style.opacity, |window| {
                     style.paint(bounds, window, cx, |window: &mut Window, cx: &mut App| {
                         window.with_text_style(style.text_style().cloned(), |window| {
-                            window.with_content_mask(
+                            window.with_rounded_content_mask(
                                 style.overflow_mask(bounds, window.rem_size()),
+                                style.corner_radii.to_pixels(window.rem_size()),
                                 |window| {
                                     window.with_tab_group(tab_group, |window| {
                                         // Register the container's own focus handle *inside* its
@@ -3775,6 +3788,8 @@ pub(crate) fn set_tooltip_on_window(
             window.set_tooltip(tooltip.clone())
         }
     };
+    // (Bloxkeep: a tooltip on screen this frame; see tooltip_seen_within.)
+    TOOLTIP_SEEN_AT.with(|t| t.set(Some(std::time::Instant::now())));
     Some(id)
 }
 
@@ -3948,6 +3963,7 @@ fn handle_tooltip_mouse_move(
             active_tooltip.borrow_mut().take();
         }
         Action::ScheduleShow => {
+            let show_delay = if tooltip_seen_within(TOOLTIP_WARM_FOR) { Duration::ZERO } else { show_delay };
             let delayed_show_task = window.spawn(cx, {
                 let weak_active_tooltip = Rc::downgrade(active_tooltip);
                 let build_tooltip = build_tooltip.clone();

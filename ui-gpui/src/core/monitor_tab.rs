@@ -7,6 +7,7 @@
 //
 // On the windows thread; the App's part (the windows open now, the event) runs on the core's thread through rt::post,
 // and the windows it listed come back here with win_form::invoke.
+use crate::threads::Hold;
 use std::{
     cell::{Cell, RefCell},
     collections::{HashMap, HashSet},
@@ -52,7 +53,8 @@ impl MonitorTab {
             failed: Cell::new(false),
         });
         // Changed comes on the pictures' watch thread: refreshed on the windows thread.
-        if let Ok(mut changed) = pictures.on_changed.lock() {
+        {
+            let mut changed = pictures.on_changed.hold();
             *changed = Some(Box::new(|| {
                 win_form::invoke(|| {
                     if let Some(m) = MonitorTab::current() {

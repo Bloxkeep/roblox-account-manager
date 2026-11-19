@@ -108,24 +108,56 @@ pub struct Hot {
     /// How far it rises under the mouse, and how far off its place it stands now (kit::cascade moves it in).
     lift: f32,
     offset: f32,
+    /// A glass block's (`hot_block`), shared with its pane.
+    glass: Option<std::rc::Rc<Glass>>,
+}
+
+/// What a pressable glass block tells its pane as it is drawn: how far under the mouse it is (0 to 2), and its plain
+/// ground at rest and under the mouse (`Hot::tones`), for where it isn't on the page (scene::on_page).
+struct Glass {
+    level: std::cell::Cell<f32>,
+    plain: std::cell::Cell<(Hsla, Hsla)>,
+}
+
+/// `hot` for a block (a card, a tile). With glass on the blocks only (theme::glass_blocks) its ground is the glass,
+/// brightening under the mouse, and its edge a light one unless `edge` gives another; `radius` is its corners'.
+pub fn hot_block(id: impl Into<ElementId>, radius: f32) -> Hot {
+    let mut it = hot(id);
+    if !crate::theme::glass_blocks() {
+        return it;
+    }
+    let ground = block_ground();
+    let glass = std::rc::Rc::new(Glass { level: std::cell::Cell::new(0.), plain: std::cell::Cell::new((ground, mix(ground, c(TEXT), 0.05))) });
+    let clear = ca(WHITE, 0.);
+    (it.rest, it.over, it.down, it.edge, it.glass) = (clear, clear, clear, Some(glass_edge()), Some(glass.clone()));
+    let (rest, over) = glass_panes();
+    it.relative().child(crate::scene::frost_lazy(Corners::all(px(radius - 1.)), move |on_page| {
+        let (a, b) = if on_page { (rest, over) } else { glass.plain.get() };
+        mix(a, b, glass.level.get().clamp(0., 1.))
+    }))
 }
 
 /// See [`Hot`]. It rests clear and takes the page's hover and pressed tints (app.css's --hover and --active).
 pub fn hot(id: impl Into<ElementId>) -> Hot {
     let id = id.into();
-    Hot { base: focusable(div().id(id.clone())), id, rest: ca(WHITE, 0.), over: ca(WHITE, 0.06), down: ca(WHITE, 0.09), edge: None, lift: 0., offset: 0. }
+    Hot { base: focusable(div().id(id.clone())), id, rest: ca(WHITE, 0.), over: ca(WHITE, 0.06), down: ca(WHITE, 0.09), edge: None, lift: 0., offset: 0., glass: None }
 }
 
 /// The same for something you only point at (a row with its own buttons): its ground eases, but it is no tab stop
 /// and takes no ring.
 pub fn hover_only(id: impl Into<ElementId>) -> Hot {
     let id = id.into();
-    Hot { base: div().id(id.clone()), id, rest: ca(WHITE, 0.), over: ca(WHITE, 0.06), down: ca(WHITE, 0.06), edge: None, lift: 0., offset: 0. }
+    Hot { base: div().id(id.clone()), id, rest: ca(WHITE, 0.), over: ca(WHITE, 0.06), down: ca(WHITE, 0.06), edge: None, lift: 0., offset: 0., glass: None }
 }
 
 impl Hot {
     /// Its ground at rest and under the mouse (pressed: a step further the same way).
     pub fn tones(mut self, rest: Hsla, over: Hsla) -> Self {
+        // (A glass block: the glass is its ground; these are kept for where it isn't on the page.)
+        if let Some(glass) = &self.glass {
+            glass.plain.set((rest, over));
+            return self;
+        }
         self.down = mix(rest, over, 1.) ;
         self.down.a = (over.a + (over.a - rest.a) * 0.5).clamp(0., 1.);
         self.rest = rest;
@@ -179,9 +211,13 @@ impl RenderOnce for Hot {
         let st = touch(&self.id, window, cx);
         let Touch { over, down } = *st.read(cx);
         let (rest, hot, deep, edge, lift, offset) = (self.rest, self.over, self.down, self.edge, self.lift, self.offset);
+        let glass = self.glass;
         // One spring for both: 0 at rest, 1 under the mouse, 2 pressed.
         sense(self.base, &st).with_spring(self.id, SpringAnimation::new(if down { SNAP } else { EASE }).to(if down { 2f32 } else if over { 1. } else { 0. }), move |d, v| {
             // Under the mouse it rises by its lift; pressed, it gives a little (the web page's translateY(1px)).
+            if let Some(glass) = &glass {
+                glass.level.set(v);
+            }
             let d = d.top(px(offset - lift * v.clamp(0., 1.) + (v - 1.).max(0.) * 1.5));
             let d = d.bg(if v <= 1. { mix(rest, hot, v) } else { mix(hot, deep, v - 1.) });
             match edge {
@@ -227,9 +263,28 @@ pub fn focusable(d: Stateful<Div>) -> Stateful<Div> {
 /// What a button does, in words: icon-only buttons say it here.
 pub struct Tip(pub SharedString);
 
+thread_local! {
+    /// The tip drawn last, whether it came in warm (another was on screen a moment before it: no fade then) and when
+    /// it was last drawn.
+    static TIP_LAST: std::cell::RefCell<Option<(SharedString, bool, std::time::Instant)>> = const { std::cell::RefCell::new(None) };
+}
+
 impl Render for Tip {
     fn render(&mut self, window: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
-        div()
+        // Moving along a row of buttons, each tip shows at once (GPUI's warm tooltips) and without a fade; the first
+        // fades in.
+        let warm = TIP_LAST.with(|l| {
+            let mut l = l.borrow_mut();
+            let now = std::time::Instant::now();
+            let warm = match l.as_ref() {
+                Some((text, warm, _)) if *text == self.0 => *warm,
+                Some((_, _, drawn)) => drawn.elapsed() < std::time::Duration::from_millis(300),
+                None => false,
+            };
+            *l = Some((self.0.clone(), warm, now));
+            warm
+        });
+        let tip = div()
             .max_w(px(340.).min((window.viewport_size().width - px(16.)).max(px(1.))))
             .whitespace_normal()
             .px(px(8.))
@@ -241,8 +296,12 @@ impl Render for Tip {
             .font_family(FONT)
             .text_size(px(T_S))
             .text_color(c(TEXT))
-            .child(self.0.clone())
-            .with_animation("tip", Animation::new(std::time::Duration::from_millis(110)), |d, t| d.opacity(t))
+            .child(self.0.clone());
+        if warm {
+            tip.into_any_element()
+        } else {
+            tip.with_animation("tip", Animation::new(std::time::Duration::from_millis(110)), |d, t| d.opacity(t)).into_any_element()
+        }
     }
 }
 
@@ -259,14 +318,15 @@ pub enum Kind {
     Primary,
     /// Every other button: a step above what it sits on.
     Ghost,
-    /// Over a picture.
-    Glass,
     /// Text only, for small acts in a row's end and "See all".
     Quiet,
     /// Deletes or stops something for good.
     Danger,
     /// Something that asks for you now (Rejoin on a dropped account): the warning orange, faint.
     Tint,
+    /// Smoked glass beside a main one on a hero: a shade darker than what it stands on, with a hairline of light (Apple's
+    /// dark glass); white glass there read a muddy grey on Sunset's purple (the owner, 2026-11-19).
+    Smoke,
 }
 
 #[derive(IntoElement)]
@@ -278,6 +338,8 @@ pub struct Button {
     icon_end: Option<&'static str>,
     small: bool,
     big: bool,
+    pill: bool,
+    wide: bool,
     disabled: bool,
     tip: Option<SharedString>,
     on_click: Option<Click>,
@@ -293,10 +355,17 @@ impl Button {
             icon_end: None,
             small: false,
             big: false,
+            pill: false,
+            wide: false,
             disabled: false,
             tip: None,
             on_click: None,
         }
+    }
+    /// As wide as the row it stands in (a card's one act across its foot, as Roblox's event tiles have Join).
+    pub fn wide(mut self) -> Self {
+        self.wide = true;
+        self
     }
     /// What it does in more words, under the mouse (none for empty words).
     pub fn tip(mut self, t: impl Into<SharedString>) -> Self {
@@ -307,16 +376,21 @@ impl Button {
         self.kind = Kind::Primary;
         self
     }
-    pub fn glass(mut self) -> Self {
-        self.kind = Kind::Glass;
-        self
-    }
     pub fn quiet(mut self) -> Self {
         self.kind = Kind::Quiet;
         self
     }
     pub fn tint(mut self) -> Self {
         self.kind = Kind::Tint;
+        self
+    }
+    pub fn smoke(mut self) -> Self {
+        self.kind = Kind::Smoke;
+        self
+    }
+    /// Round ends, as a hero's buttons (Steam's redesigned library hero, dribbble.com/shots/26698011).
+    pub fn pill(mut self) -> Self {
+        self.pill = true;
         self
     }
     pub fn danger(mut self) -> Self {
@@ -360,10 +434,10 @@ impl RenderOnce for Button {
         let (bg, edge, fg) = match self.kind {
             Kind::Primary => ((c(FACE), c(FACE_HI)), (ca(FACE, 0.), ca(FACE, 0.)), c(INK)),
             Kind::Ghost => ((c(RAISED), c(RAISED_2)), (ca(WHITE, 0.08), ca(WHITE, 0.17)), c(TEXT)),
-            Kind::Glass => ((ca(WHITE, 0.1), ca(WHITE, 0.2)), (ca(WHITE, 0.), ca(WHITE, 0.)), on_picture(1.)),
             Kind::Quiet => ((ca(WHITE, 0.), ca(WHITE, 0.07)), (ca(WHITE, 0.), ca(WHITE, 0.)), if over && live { c(TEXT) } else { c(TEXT_2) }),
             Kind::Danger => ((ca(BAD, 0.12), ca(BAD, 0.22)), (ca(BAD, 0.32), ca(BAD, 0.45)), c(BAD)),
             Kind::Tint => ((ca(WARN, 0.16), ca(WARN, 0.26)), (ca(WARN, 0.), ca(WARN, 0.)), c(WARN)),
+            Kind::Smoke => ((hsla(0., 0., 0., 0.22), hsla(0., 0., 0., 0.34)), (ca(WHITE, 0.1), ca(WHITE, 0.18)), on_picture(1.)),
         };
         // (app.css .btn: 38 high, .sm 30, .big 48; the big one here is 44, on a picture.)
         let h = if self.small { 30. } else if self.big { 44. } else { 38. };
@@ -376,16 +450,17 @@ impl RenderOnce for Button {
             .h(px(h))
             .px(px(if self.small { 10. } else if self.big { 20. } else { 14. }))
             .flex_none()
+            .when(self.wide, |d| d.flex_1().min_w_0())
             .flex()
             .items_center()
             .justify_center()
             .gap(px(if self.small { 6. } else { 8. }))
-            .rounded(px(radius + 1.))
+            .map(|d| if self.pill { d.rounded_full() } else { d.rounded(px(radius + 1.)) })
             .text_color(fg)
             .text_size(px(if self.big { T_H } else if self.small { T_S } else { T_M }))
             .font_weight(FontWeight::SEMIBOLD)
             .whitespace_nowrap()
-            .child(ground(radius, false, bg, edge, over && live, down && live, 1.6))
+            .child(ground(radius, self.pill, bg, edge, over && live, down && live, 1.6))
             .when_some(self.icon, |d, i| d.child(icon(i, size, fg)))
             .child(self.label)
             .when_some(self.icon_end, |d, i| d.child(icon(i, size - 2., fg)));
@@ -599,7 +674,7 @@ impl RenderOnce for Switch {
             let grow = (v * stretch).max(-2.);
             d.w(px(k + grow)).left(px(if on { -grow } else { 0. })).bg(if on { c(INK) } else { c(KNOB) })
         });
-        let slide = div().absolute().top(px((h - k) / 2. - 1.)).size(px(k)).child(knob).with_spring("slide", SpringAnimation::new(BOUNCE).to(on), move |d, p| d.left(px(3. + travel * p.0)));
+        let slide = div().absolute().top(px((h - k) / 2. - 1.)).size(px(k)).child(knob).with_spring("slide", SpringAnimation::new(BOUNCE).to(on), move |d, p| d.left(px(3. + travel * p.0.clamp(-0.1, 1.1))));
         let track = div()
             .relative()
             .w(px(w))
@@ -800,6 +875,16 @@ pub fn chip(id: impl Into<ElementId>, on: bool) -> Hot {
     }
 }
 
+/// Empties a text box from where no window is at hand (what Enter in it runs): just after, in the app's window.
+pub fn empty_field<T: 'static>(state: &Entity<InputState>, cx: &mut Context<T>) {
+    let Some(h) = cx.windows().first().copied() else { return };
+    let state = state.clone();
+    cx.spawn(async move |_, cx| {
+        let _ = cx.update_window(h, |_, window, cx| state.update(cx, |s, cx| s.set_value("", window, cx)));
+    })
+    .detach();
+}
+
 /// The count on a [`chip`]: a small pill, ringed on the chosen one.
 pub fn chip_count(n: usize, on: bool) -> Div {
     div()
@@ -998,7 +1083,20 @@ pub fn toned(_tone: Option<u32>) -> (Hsla, Hsla, Hsla, Hsla) {
 /// The ground of a block or a card: the theme's charcoal a step above the panel (the mock-up's #202124 on #18191C).
 pub fn block_ground() -> Hsla {
     // (A step more than it was, 0.55: blocks have no hairline round them now, their ground alone sets them apart.)
-    mix(c(PANEL), c(RAISED), 0.8)
+    let ground = mix(c(PANEL), c(RAISED), 0.8);
+    // On a picture theme the panel under it is glass already: a card nearly solid on it (the custom theme's 94 %)
+    // read as a slab laid on the glass (the owner, 2026-11-18: "khối kính hơi đặc"). It is a thin pane of light
+    // over the glass instead, as glass cards are, and the picture goes on showing through both. (A thin layer of the
+    // card's own colour was tried first: on the panel's near-same colour the card lost its shape.)
+    if crate::theme::backdrop().is_none() {
+        return ground;
+    }
+    // BLOXKEEP_SHOT_GLASS=thin: a hidden shot of that first try, to set beside this one.
+    #[cfg(feature = "shot")]
+    if std::env::var("BLOXKEEP_SHOT_GLASS").is_ok_and(|v| v == "thin") {
+        return Hsla { a: ground.a.min(0.36), ..ground };
+    }
+    if crate::theme::light() { ca(WHITE, 0.5) } else { ca(WHITE, 0.075) }
 }
 
 /// A table's head on a game's page: a step above its block, more of the game's colour (the old wiki's --ws-head, 16 %).
@@ -1055,10 +1153,51 @@ pub fn surface() -> Div {
     // No hairline round it: every block of every page in a 1-px outline, boxes in boxes, read as a plain HTML page
     // (the owner, 2026-11-15: "bớt cái kiểu html thuần giúp tao với, cả app"). Its ground a step above the panel and
     // its finished edge (a hair of light on top, a close shadow under) set it apart.
+    // Glass on the blocks only: the block is the glass itself (the frosted picture, a pane of light, a light edge).
+    if crate::theme::glass_blocks() {
+        return glass_block(div());
+    }
     if rich() {
         return div().rounded(px(R_L)).bg(block_ground()).shadow(block_edge());
     }
     div().rounded(px(R_L)).bg(ca(WHITE, 0.045)).border_1().border_color(c(LINE))
+}
+
+/// A block as frosted glass over the sharp picture (theme::glass_blocks): what it holds is laid over the glass.
+fn glass_block<E: Styled + ParentElement>(el: E) -> E {
+    el.relative().rounded(px(R_L)).border_1().border_color(glass_edge().0).child(glass_pane(R_L - 1.))
+}
+
+/// A block with a ground and a hairline of its own (a list, a sheet beside it), `radius` at its corners: `ground` and
+/// the theme's hairline, or glass with glass on the blocks only.
+pub fn block_of(radius: f32, ground: Hsla) -> Div {
+    let d = div().rounded(px(radius)).border_1();
+    if crate::theme::glass_blocks() {
+        return d.relative().border_color(glass_edge().0).child(glass_pane(radius - 1.));
+    }
+    d.bg(ground).border_color(c(LINE))
+}
+
+/// A glass block's edge: as it rests, and under the mouse.
+pub fn glass_edge() -> (Hsla, Hsla) {
+    (ca(WHITE, 0.16), ca(WHITE, 0.4))
+}
+
+/// The glass itself, to lie under what a block holds: over the page the frosted picture and a pane of light, in a box
+/// (a dialog, a menu) the block's plain ground.
+pub fn glass_pane(radius: f32) -> AnyElement {
+    glass_pane_at(Corners::all(px(radius)))
+}
+
+/// `glass_pane`, each corner with its own radius (a block that fills a panel's corner).
+pub fn glass_pane_at(corners: Corners<Pixels>) -> AnyElement {
+    let (pane, ground) = (glass_panes().0, block_ground());
+    crate::scene::frost_lazy(corners, move |glass| if glass { pane } else { ground })
+}
+
+/// A glass block's pane of light: as it rests, and under the mouse (a block that can be pressed).
+fn glass_panes() -> (Hsla, Hsla) {
+    if crate::theme::light() { (ca(WHITE, 0.42), ca(WHITE, 0.56)) } else { (ca(WHITE, 0.10), ca(WHITE, 0.18)) }
 }
 
 /// A figure's or a block's own mark: its icon in its colour, on a ground faintly of that colour.
@@ -1074,6 +1213,10 @@ pub fn tint_pill(text: impl Into<SharedString>, tone: u32) -> Div {
 /// A card you can press (a preset to run, a row that opens): the same card, its ground and hairline brightening
 /// under the mouse.
 pub fn card(id: impl Into<ElementId>) -> Hot {
+    // (Glass on the blocks only: glass too, its pane and its edge brightening under the mouse.)
+    if crate::theme::glass_blocks() {
+        return hot_block(id, R_L).rounded(px(R_L)).border_1();
+    }
     if rich() {
         // (Its hairline only under the mouse, as the blocks have none: see `surface`.)
         let (ground, line) = block_tones();
@@ -1174,15 +1317,26 @@ pub const GROUP_PIC: f32 = 44.;
 /// Facts on one line, a small dot between them, in muted tabular figures ("2 windows · 1.7 GB"); a fact with its own
 /// colour (a warning) keeps it.
 pub fn facts(parts: Vec<(String, Option<Hsla>)>) -> Div {
-    // (Parts that don't fit go to a second line: on a narrow window, at 200 %, the last was cut mid-word.)
-    let mut d = div().flex().flex_wrap().min_w_0().overflow_hidden().items_center().gap_x(px(8.)).gap_y(px(2.)).text_size(px(T_M)).text_color(c(MUTED)).font_features(tnum()).whitespace_nowrap();
-    for (i, (text, col)) in parts.into_iter().enumerate() {
-        if i > 0 {
-            d = d.child(sep());
-        }
-        d = d.child(div().flex_none().when_some(col, |d, col| d.text_color(col)).child(text));
+    dotted(parts.into_iter().map(|(text, col)| div().flex_none().when_some(col, |d, col| d.text_color(col)).child(text).into_any_element()).collect())
+        .text_size(px(T_M))
+        .text_color(c(MUTED))
+        .font_features(tnum())
+        .whitespace_nowrap()
+}
+
+/// Parts in a line with a dot between them, going to another line where they don't fit (on a narrow window, at
+/// 200 %, the last was cut mid-word). Each part carries its dot before it, in a room of its own at its left, and the
+/// row is pulled left by that room and cut there: the first part of every line shows no dot. (With the dot as a
+/// part of its own, a line that wrapped ended on a dot: "3 playing · 1.6 GB ·" / "2 need a look".)
+pub fn dotted(parts: Vec<AnyElement>) -> Div {
+    const ROOM: f32 = 19.;
+    let mut row = div().flex().flex_wrap().items_center().gap_y(px(2.)).ml(px(-ROOM));
+    for part in parts {
+        row = row.child(div().flex_none().relative().pl(px(ROOM)).flex().items_center().child(sep().absolute().left(px(8.))).child(part));
     }
-    d
+    // (Cut across only: cut both ways, a column short of room squeezed the line to half its height first, as a box
+    // that hides what overflows may be shrunk to nothing: Home's hero in a narrow panel, the shots of 2026-11-18.)
+    div().min_w_0().overflow_x_hidden().child(row)
 }
 
 /// Bloxkeep's block: `el` standing on a base of `base`, `rise` px of it showing under it (the main button's base, a
@@ -1238,12 +1392,14 @@ pub fn tinted(col: u32, tint: u32, k: f32) -> Hsla {
 /// A block to stand on a base ([`on_base`]): a [`surface`] with a solid ground, so the base under it never shows
 /// through (a see-through card on its base read as a dark card with a light top edge).
 pub fn block() -> Div {
-    div().rounded(px(R_L)).bg(c(RAISED)).border_1().border_color(c(LINE))
+    block_of(R_L, c(RAISED))
 }
 
 /// A block you can press: [`card`] with solid grounds, for standing on a base.
 pub fn block_card(id: impl Into<ElementId>) -> Hot {
-    hot(id).rounded(px(R_L)).border_1().tones(c(RAISED), c(RAISED_2)).edge(c(LINE), ca(WHITE, 0.17))
+    let it = hot_block(id, R_L).rounded(px(R_L)).border_1().tones(c(RAISED), c(RAISED_2));
+    // (Glass keeps its own light edge.)
+    if crate::theme::glass_blocks() { it } else { it.edge(c(LINE), ca(WHITE, 0.17)) }
 }
 
 /// One calm panel for what needs a hand: a ground faintly of `tone`, a head with an alert mark, the title and the
@@ -1402,6 +1558,24 @@ pub fn line_in<E: Styled + IntoElement + 'static>(scope: impl Into<SharedString>
     el.with_animation(ElementId::NamedInteger(scope.into(), i as u64), after(90. + i as f32 * 70., 600., sampled(&SPRING_SOFT)), |e, t| e.opacity(t.clamp(0., 1.)).relative().top(px((1. - t) * 12.)))
 }
 
+/// A part of the app (its top bar, the page, the status bar) as the app opens from the lock screen: after `delay` ms it
+/// fades in from `dy` px off its place, on the soft spring (the web page's intro-up). `intro` (Root::intro) counts the
+/// openings, so it plays at each and not on every draw. `fill`: the box fills its place (the page), else it keeps its
+/// own height (the bars).
+pub fn app_in(scope: &'static str, intro: u32, delay: f32, dy: f32, fill: bool, el: impl IntoElement) -> AnimationElement<Div> {
+    div().relative().map(|d| if fill { d.size_full() } else { d.flex_none() }).child(el).with_animation(ElementId::NamedInteger(scope.into(), intro as u64), after(delay, 620., sampled(&SPRING_SOFT)), move |d, t| d.opacity(t.clamp(0., 1.)).top(px((1. - t) * dy)))
+}
+
+/// A pill coming into a row of them (the status bar's Restart to update): it opens from nothing to its `width`,
+/// fading in as it does, and the `gap` after it closes with it, so the pills beside it slide over instead of jumping
+/// (it appeared in one frame, 2026-11-19). Plays each time it appears: its state goes when it isn't drawn.
+pub fn pill_in(id: &'static str, width: f32, gap: f32, el: impl IntoElement) -> AnimationElement<Div> {
+    div().flex_none().overflow_hidden().child(el).with_animation(id, after(0., 520., sampled(&SPRING_SOFT)), move |d, t| {
+        let k = t.clamp(0., 1.);
+        d.w(px(width * k)).mr(px(-gap * (1. - k))).opacity(k)
+    })
+}
+
 /// One of the rail's buttons as the window first shows: in from the left, each after the one above it (intro-tab).
 pub fn tab_in(i: usize, el: impl IntoElement) -> impl IntoElement {
     div().relative().child(el).with_animation(ElementId::NamedInteger("rail-in".into(), i as u64), after(60. + i as f32 * 45., 500., sampled(&SPRING_SOFT)), |d, t| d.opacity(t.clamp(0., 1.)).left(px((t - 1.) * 16.)))
@@ -1435,9 +1609,152 @@ pub fn shake<E: Styled + IntoElement + 'static>(times: u32, el: E) -> AnyElement
     .into_any_element()
 }
 
+/// Something pressed on a card that must not press the card too (a card that opens, a button on it that runs).
+pub fn no_pick(el: impl IntoElement) -> Div {
+    div().flex_none().on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation()).child(el)
+}
+
+thread_local! {
+    static AWAY: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+    /// The window's screen scale (1.5 at 150 %), noted once a frame by the window (`set_screen_scale`).
+    static SCALE: std::cell::Cell<f32> = const { std::cell::Cell::new(1.) };
+}
+
+/// How many of the screen's dots a point is, on the screen the window is on: for what is worked out where the window
+/// isn't at hand (whether a picture has the dots for its box).
+pub fn screen_scale() -> f32 {
+    SCALE.with(|s| s.get())
+}
+
+pub fn set_screen_scale(scale: f32) {
+    SCALE.with(|s| s.set(scale.max(0.5)));
+}
+
+/// Whether what moves stands still while Bloxkeep's window is behind another (Settings > Appearance; on unless turned
+/// off): it keeps the processor and the graphics card for the game in front.
+pub fn still_behind() -> bool {
+    crate::prefs::get("stillBehind").and_then(|v| v.as_bool()).unwrap_or(true)
+}
+
+/// Set by the window as it draws: true while another app is in front (Roblox, mostly).
+pub fn set_away(away: bool) {
+    AWAY.with(|a| a.set(away));
+}
+
+/// Whether a loop (a turning mark, breathing dots, a ring going round) runs now: only while Bloxkeep's window is in
+/// front. Every frame of a loop draws the whole window again, so with Roblox in front they stand still and Bloxkeep
+/// draws nothing for them; the window draws again as it comes back, and they go on.
+pub fn looping() -> bool {
+    !AWAY.with(|a| a.get())
+}
+
+thread_local! {
+    /// Each marquee's words, how wide they are and how wide their box is, as last drawn (by its id).
+    static MARQUEES: std::cell::RefCell<std::collections::HashMap<&'static str, (String, f32, f32)>> = Default::default();
+}
+
+/// Words that may be longer than their box (a song's title): still when they fit; else they run leftward, round and
+/// round, slowly, as a music player's title does (still, cut at the box's edge, while the window is behind). The
+/// box takes the width it is given; the words' size, weight and colour come from around it.
+pub fn marquee(id: &'static str, text: String) -> Div {
+    const GAP: f32 = 56.;
+    const SPEED: f32 = 34.;
+    let (own, room) = MARQUEES.with(|m| m.borrow().get(id).filter(|k| k.0 == text).map_or((0., 0.), |k| (k.1, k.2)));
+    // (What was drawn is kept for the next frame, and one is asked for when it differs.)
+    let keep = |own_side: bool, text: String| {
+        canvas(
+            move |bounds: Bounds<Pixels>, window, _| {
+                let w = f32::from(bounds.size.width);
+                MARQUEES.with(|m| {
+                    let mut m = m.borrow_mut();
+                    let k = m.entry(id).or_insert_with(|| (text.clone(), 0., 0.));
+                    if k.0 != text {
+                        *k = (text.clone(), 0., 0.);
+                    }
+                    let slot = if own_side { &mut k.1 } else { &mut k.2 };
+                    if (*slot - w).abs() > 0.5 {
+                        *slot = w;
+                        window.refresh();
+                    }
+                });
+            },
+            |_, _, _, _| {},
+        )
+        .absolute()
+        .inset_0()
+    };
+    let word = || div().flex_none().whitespace_nowrap().child(text.clone());
+    let runs = room > 0. && own > room + 1. && looping();
+    let row = div().flex().flex_none().gap(px(GAP)).child(word().relative().child(keep(true, text.clone()))).when(runs, |d| d.child(word()));
+    let row = if runs {
+        let span = own + GAP;
+        row.with_animation(id, Animation::new(std::time::Duration::from_secs_f32(span / SPEED)).repeat().with_max_fps(30.), move |d, t| d.ml(px(-span * t))).into_any_element()
+    } else {
+        row.into_any_element()
+    };
+    div().relative().w_full().min_w_0().overflow_hidden().flex().child(row).child(keep(false, text))
+}
+
+/// A song that plays, as music apps mark it in their lists (Spotify's, Apple Music's): four short bars rising and
+/// falling, each at its own pace. Low and still while it is paused, or the window is behind.
+pub fn playing_bars(id: &'static str, live: bool, color: Hsla) -> Div {
+    const TALL: f32 = 12.;
+    const LOW: f32 = 3.;
+    let mut row = div().h(px(TALL)).flex_none().flex().items_end().gap(px(2.));
+    for (i, (pace, phase)) in [(0.9f32, 0.0f32), (0.7, 0.35), (1.1, 0.6), (0.8, 0.15)].into_iter().enumerate() {
+        let bar = div().w(px(3.)).rounded(px(1.)).bg(color);
+        row = row.child(if live && looping() {
+            bar.with_animation((id, i), Animation::new(std::time::Duration::from_secs_f32(pace)).repeat().with_max_fps(30.), move |d, t| {
+                let wave = (std::f32::consts::TAU * (t + phase)).sin() * 0.5 + 0.5;
+                d.h(px(LOW + (TALL - LOW) * wave))
+            })
+            .into_any_element()
+        } else {
+            bar.h(px(LOW)).into_any_element()
+        });
+    }
+    row
+}
+
+/// What a game is doing, before the word for it: being played (a green dot whose ring spreads and fades, as a
+/// stream's "live" mark; still while the window is behind) or played before (a clock with its arrow back). Both were
+/// a plain dot, grey or green (the owner, 2026-11-18: "kiếm cái nào đẹp hơn"). `id` names its motion among its
+/// neighbours; `quiet` is the clock's colour.
+pub fn state_mark(id: &'static str, live: bool, size: f32, quiet: Hsla) -> AnyElement {
+    if !live {
+        return icon("history", size + 6., quiet).into_any_element();
+    }
+    let spread = size * 1.8;
+    let ring = div().absolute().rounded_full().bg(c(OK));
+    let ring = if looping() {
+        ring.with_animation(id, Animation::new(std::time::Duration::from_millis(1600)).repeat().with_max_fps(30.), move |d, t| {
+            let grow = spread * t;
+            d.size(px(size + grow)).top(px(-grow / 2.)).left(px(-grow / 2.)).opacity(0.55 * (1. - t))
+        })
+        .into_any_element()
+    } else {
+        ring.size(px(size + spread / 2.)).top(px(-spread / 4.)).left(px(-spread / 4.)).opacity(0.25).into_any_element()
+    };
+    div().relative().size(px(size)).flex_none().child(ring).child(div().absolute().inset_0().rounded_full().bg(c(OK))).into_any_element()
+}
+
 /// Something under way, as a turning mark (the web page's spin): for a button that is busy.
-pub fn spinner(size: f32, color: Hsla) -> impl IntoElement {
-    icon("refresh", size, color).with_animation("spin", Animation::new(std::time::Duration::from_millis(800)).repeat().with_max_fps(30.), |s, t| s.with_transformation(Transformation::rotate(radians(t * std::f32::consts::TAU))))
+pub fn spinner(size: f32, color: Hsla) -> AnyElement {
+    let mark = icon("refresh", size, color);
+    if !looping() {
+        return mark.into_any_element();
+    }
+    mark.with_animation("spin", Animation::new(std::time::Duration::from_millis(800)).repeat().with_max_fps(30.), |s, t| s.with_transformation(Transformation::rotate(radians(t * std::f32::consts::TAU))))
+        .into_any_element()
+}
+
+/// A loop's breathing (waiting shapes): 0.35 to 1 and back, or still at its middle while the window is behind.
+fn breathing(key: &'static str, el: Div) -> AnyElement {
+    if !looping() {
+        return el.opacity(0.6).into_any_element();
+    }
+    el.with_animation(key, Animation::new(std::time::Duration::from_millis(1300)).repeat().with_max_fps(30.).with_easing(pulsating_between(0.35, 1.)), |d, t| d.opacity(t))
+        .into_any_element()
 }
 
 /// A bar of a chart as the chart comes up: it grows to its height, each a moment after the one before (cmp-grow).
@@ -1465,10 +1782,19 @@ pub struct Pop {
     key: SharedString,
     open: bool,
     menu: AnyElement,
+    rising: bool,
 }
 
 pub fn pop(key: impl Into<SharedString>, open: bool, menu: impl IntoElement) -> Pop {
-    Pop { key: key.into(), open, menu: menu.into_any_element() }
+    Pop { key: key.into(), open, menu: menu.into_any_element(), rising: false }
+}
+
+impl Pop {
+    /// It opens over its button, so it comes up from it (and goes back down into it) instead of dropping away from it.
+    pub fn rising(mut self) -> Self {
+        self.rising = true;
+        self
+    }
 }
 
 impl RenderOnce for Pop {
@@ -1476,7 +1802,11 @@ impl RenderOnce for Pop {
         let at = present(ElementId::Name(self.key), self.open, 140, window, cx);
         // It stands off the page on the web page's menu shadow (app.css .menu: 0 18px 50px), so it reads as lying on
         // top and not as part of what is under it.
-        div().when_some(at, |d, t| d.opacity(t).mt(px((t - 1.) * 6.)).rounded(px(R_M)).shadow(menu_shadow(t)).child(self.menu))
+        let rising = self.rising;
+        div().when_some(at, |d, t| {
+            let d = if rising { d.relative().top(px((1. - t) * 6.)) } else { d.mt(px((t - 1.) * 6.)) };
+            d.opacity(t).rounded(px(R_M)).shadow(menu_shadow(t)).child(self.menu)
+        })
     }
 }
 
@@ -1641,23 +1971,13 @@ pub fn slide_in(key: impl Into<SharedString>, notice: impl IntoElement + Styled 
 }
 
 /// Tiles still on their way: the shapes they will have, breathing.
-pub fn waiting_tiles(n: usize, w: f32, gap: f32) -> impl IntoElement {
-    div()
-        .flex()
-        .flex_wrap()
-        .gap(px(gap))
-        .children((0..n).map(|_| div().w(px(w)).h(px(w + 58.)).rounded(px(R_L)).bg(ca(WHITE, 0.045))))
-        .with_animation("waiting-tiles", Animation::new(std::time::Duration::from_millis(1300)).repeat().with_max_fps(30.).with_easing(pulsating_between(0.35, 1.)), |d, t| d.opacity(t))
+pub fn waiting_tiles(n: usize, w: f32, gap: f32) -> AnyElement {
+    breathing("waiting-tiles", div().flex().flex_wrap().gap(px(gap)).children((0..n).map(|_| div().w(px(w)).h(px(w + 58.)).rounded(px(R_L)).bg(ca(WHITE, 0.045)))))
 }
 
 /// Rows still on their way (a list of people, of lines): the same, as bars.
-pub fn waiting_rows(n: usize, w: f32, h: f32, gap: f32) -> impl IntoElement {
-    div()
-        .flex()
-        .flex_wrap()
-        .gap(px(gap))
-        .children((0..n).map(|_| div().w(px(w)).h(px(h)).rounded(px(R_L)).bg(ca(WHITE, 0.045))))
-        .with_animation("waiting-rows", Animation::new(std::time::Duration::from_millis(1300)).repeat().with_max_fps(30.).with_easing(pulsating_between(0.35, 1.)), |d, t| d.opacity(t))
+pub fn waiting_rows(n: usize, w: f32, h: f32, gap: f32) -> AnyElement {
+    breathing("waiting-rows", div().flex().flex_wrap().gap(px(gap)).children((0..n).map(|_| div().w(px(w)).h(px(h)).rounded(px(R_L)).bg(ca(WHITE, 0.045)))))
 }
 
 /// How well a game's name answers what was typed, as a player types it: None when it doesn't, lower is better.
@@ -1796,4 +2116,142 @@ mod name_match_tests {
         assert!(name_match("Blox Fruits", "blox") < name_match("Super Blox Fight", "blox"));
         assert!(name_match("Grand Piece Online", "gpo") < name_match("Grand Piece Online", "grnad"));
     }
+}
+
+/// How full a figure (CPU, RAM, GPU percent) has to be to read busy, and near the limit.
+pub const LOAD_BUSY: f64 = 75.;
+pub const LOAD_FULL: f64 = 90.;
+
+/// A load figure's colour: as text until busy, then orange, then red near the limit.
+pub fn load_colour(pct: f64) -> Hsla {
+    c(if pct >= LOAD_FULL { BAD } else if pct >= LOAD_BUSY { WARN } else { TEXT_2 })
+}
+
+/// A ring filled to `pct` from the top, clockwise: a figure's gauge, `size` across, its line `width`, the filled part
+/// `tone` over a quiet track.
+pub fn ring(pct: f32, size: f32, width: f32, tone: Hsla) -> impl IntoElement {
+    let part = (pct / 100.).clamp(0., 1.);
+    canvas(
+        |_, _, _| (),
+        move |b, _, window, _| {
+            let r = (size - width) / 2.;
+            let (x0, y0) = (f32::from(b.origin.x) + size / 2., f32::from(b.origin.y) + size / 2.);
+            let at = |t: f32| {
+                let a = t * std::f32::consts::TAU - std::f32::consts::FRAC_PI_2;
+                point(px(x0 + r * a.cos()), px(y0 + r * a.sin()))
+            };
+            // An arc from one part of the ring to another, in halves (an arc of over half a turn draws wrong).
+            let arc = |window: &mut Window, to: f32, colour: Hsla| {
+                let to = to.min(0.9995);
+                let mut pb = PathBuilder::stroke(px(width));
+                pb.move_to(at(0.));
+                if to > 0.5 {
+                    pb.arc_to(point(px(r), px(r)), px(0.), false, true, at(0.5));
+                }
+                pb.arc_to(point(px(r), px(r)), px(0.), false, true, at(to));
+                if let Ok(path) = pb.build() {
+                    window.paint_path(path, colour);
+                }
+            };
+            arc(window, 1., c(LINE));
+            if part > 0.004 {
+                arc(window, part, tone);
+            }
+        },
+    )
+    .size(px(size))
+    .flex_none()
+}
+
+/// A page's word in the middle of its empty space: nothing here yet, reading…, why not.
+pub fn empty_note(text: String) -> Div {
+    div().flex_1().flex().items_center().justify_center().text_size(px(T_M)).text_color(c(MUTED)).child(text)
+}
+
+/// A quiet line under a form's field.
+pub fn small_note(text: String) -> Div {
+    div().text_size(px(T_S)).line_height(px(17.)).text_color(c(MUTED)).child(text)
+}
+
+/// A whole number with its thousands marked: 1.234 in Vietnamese, 1,234 in English.
+pub fn thousands(n: i64, vi: bool) -> String {
+    let digits = n.abs().to_string();
+    let mut out = String::new();
+    for (i, ch) in digits.chars().enumerate() {
+        if i > 0 && (digits.len() - i) % 3 == 0 {
+            out.push(if vi { '.' } else { ',' });
+        }
+        out.push(ch);
+    }
+    if n < 0 { format!("-{out}") } else { out }
+}
+
+/// A key for something worked out once and kept (a line's marks, a page's parts).
+pub fn hash_of(x: impl std::hash::Hash) -> u64 {
+    use std::hash::Hasher;
+    let mut h = std::collections::hash_map::DefaultHasher::new();
+    x.hash(&mut h);
+    h.finish()
+}
+
+/// What a box holds, trimmed.
+pub fn input_text(e: &Entity<InputState>, cx: &App) -> String {
+    e.read(cx).value().trim().to_string()
+}
+
+/// Where a pop-up opens against its button: under or over it, lined up with its right or left edge, this far off it.
+#[derive(Clone, Copy)]
+pub enum PopAt {
+    BelowRight(f32),
+    BelowLeft(f32),
+    AboveRight(f32),
+    AboveLeft(f32),
+    /// Right under the box, whatever its height, lined up with its left edge.
+    Under,
+}
+
+/// A pop-up menu or panel (`pop`'s fade) at `at` of the box it is put in (that box `.relative()`), drawn over the page
+/// and kept inside the window. One way for every page's menus (each spelled it out).
+pub fn popup(at: PopAt, key: impl Into<SharedString>, open: bool, menu: impl IntoElement) -> Div {
+    let menu = pop(key, open, menu);
+    float(at, 1, if matches!(at, PopAt::AboveRight(_) | PopAt::AboveLeft(_)) { menu.rising() } else { menu })
+}
+
+/// `popup` for a piece that brings its own fade (a panel, a box with its own `pop`); `priority` 2 puts it over the
+/// other pop-ups (a menu opened from inside one).
+pub fn float(at: PopAt, priority: usize, el: impl IntoElement) -> Div {
+    let (spot, anchor) = match at {
+        PopAt::BelowRight(y) => (div().absolute().top(px(y)).right_0(), Anchor::TopRight),
+        PopAt::BelowLeft(y) => (div().absolute().top(px(y)).left_0(), Anchor::TopLeft),
+        PopAt::AboveRight(y) => (div().absolute().bottom(px(y)).right_0(), Anchor::BottomRight),
+        PopAt::AboveLeft(y) => (div().absolute().bottom(px(y)).left_0(), Anchor::BottomLeft),
+        PopAt::Under => (div().absolute().top(relative(1.)).left_0(), Anchor::TopLeft),
+    };
+    // Only while the spot it hangs from is in what the page shows of itself: kept inside the window as it is, a menu
+    // whose button had scrolled away stood at the window's top over whatever was there (the owner's server-country and
+    // privacy menus over the account tabs, 2026-11-18: "khả năng cao là dính hết").
+    let seen = std::rc::Rc::new(std::cell::Cell::new(true));
+    let mark = seen.clone();
+    let el = anchored().anchor(anchor).snap_to_window_with_margin(px(8.)).child(el).into_any_element();
+    spot.child(canvas(move |bounds: Bounds<Pixels>, window, _| mark.set(window.content_mask().bounds.contains(&bounds.origin)), |_, _, _, _| {}).absolute().size_0())
+        .child(
+            deferred(canvas(
+                move |bounds: Bounds<Pixels>, window, cx| {
+                    let mut el = Some(el).filter(|_| seen.get())?;
+                    el.prepaint_as_root(bounds.origin, AvailableSpace::min_size(), window, cx);
+                    Some(el)
+                },
+                |_, el: Option<AnyElement>, window, cx| {
+                    if let Some(mut el) = el {
+                        el.paint(window, cx);
+                    }
+                },
+            ))
+            .with_priority(priority),
+        )
+}
+
+/// A right-click menu where the pointer is, over every other pop-up.
+pub fn at_pointer(at: Point<Pixels>, el: impl IntoElement) -> AnyElement {
+    deferred(anchored().position(at).snap_to_window_with_margin(px(8.)).child(el)).with_priority(2).into_any_element()
 }

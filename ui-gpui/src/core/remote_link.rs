@@ -124,7 +124,7 @@ impl RemoteLink {
             out: Mutex::new(None),
         });
         let run = inner.clone();
-        crate::net::Named::new("remote-link".into()).spawn(move || run_loop(&run)).expect("a thread for the remote link");
+        crate::threads::own("remote-link", move || run_loop(&run)).expect("a thread for the remote link");
         RemoteLink { inner }
     }
 
@@ -170,6 +170,8 @@ impl RemoteLink {
         m.insert("ask".into(), json!(true));
         // It answers /pc screenshot (the bot tells whoever asks an older one to update it).
         m.insert("shots".into(), json!(true));
+        // It answers /pc watch (Watch remotely started from Discord).
+        m.insert("watch".into(), json!(true));
         m.insert("accounts".into(), json!(account_names));
         m.insert("presets".into(), json!(preset_names));
         let hello = to_net_json_string(&Value::Object(m)).unwrap_or_default();
@@ -300,6 +302,12 @@ impl RemoteLink {
         }
         send(&self.inner, to_net_json_string(&json!({ "t": "shown", "id": command.id })).unwrap_or_default());
         true
+    }
+
+    /// Words put in place of Discord's "thinking…" by this PC itself, as `shot` puts pictures: for what must not pass
+    /// through the bot (Watch remotely's link). False when they didn't get there.
+    pub fn say_own(&self, command: &RemoteCommand, content: &str) -> bool {
+        self.shot(command, content, &[])
     }
 
     pub fn dispose(&self) {
@@ -627,7 +635,7 @@ fn on_message(inner: &Arc<Inner>, text: &str) -> Res<()> {
             if let (Some(id), Some(name)) = (str_of(m, "id").filter(|i| !i.is_empty()), str_of(m, "command").filter(|c| !c.is_empty())) {
                 let command = RemoteCommand { id, name, value: str_of(m, "value"), reply: str_of(m, "reply") };
                 let run = inner.clone();
-                std::thread::spawn(move || run_command(&run, command));
+                crate::threads::run(move || run_command(&run, command));
             }
         }
         _ => {}

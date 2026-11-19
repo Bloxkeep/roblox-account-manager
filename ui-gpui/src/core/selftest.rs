@@ -22,7 +22,7 @@ pub fn commands(password: &str, script: Option<&str>) -> i32 {
     let seen = said.clone();
     let seen2 = said.clone();
     let script = script.and_then(|file| std::fs::read_to_string(file).ok());
-    let core = crate::net::Named::new("core".into()).spawn(move || {
+    let core = crate::threads::own("core", move || {
         rt::run(move || async move {
             let app = App::start();
             app.init(0, Rc::new(move |line: &str| seen.lock().unwrap_or_else(|e| e.into_inner()).push(line.to_string())));
@@ -146,6 +146,22 @@ pub fn checks(tests_dir: &str) -> i32 {
             println!("FAIL {name}: {got}");
         }
     };
+
+    // A request with no answer, in error.log: its cause from ureq's words, never the address before them.
+    for (message, want) in [
+        ("https://users.roblox.com/v1/users/123: Dns Failed: resolve dns name 'users.roblox.com:443': No such host is known. (os error 11001)", "name lookup failed"),
+        ("https://bloxkeep-bot.bloxkeep-app.workers.dev/online/community: Connection Failed: tls connection init failed: invalid peer certificate: UnknownIssuer", "secure connection failed"),
+        ("https://x.roblox.com/v1/password-reset: Network Error: An existing connection was forcibly closed by the remote host. (os error 10054)", "connection reset by the other side"),
+        ("https://x.roblox.com/: Network Error: An established connection was aborted by the software in your host machine. (os error 10053)", "connection aborted on this PC"),
+        ("https://x.roblox.com/: Connection Failed: Connect error: No connection could be made because the target machine actively refused it. (os error 10061)", "connection refused"),
+        ("https://x.roblox.com/: Proxy failed to connect: Connection refused", "proxy failed"),
+        ("https://x.roblox.com/tls-reset/: Connection Failed: Connect error: A socket operation was attempted to an unreachable network. (os error 10051)", "network unreachable"),
+        ("unexpected end of file", "connection closed early"),
+        ("https://x.roblox.com/: Network Error", "cause not given"),
+    ] {
+        let got = crate::core::app::sign_ins::network_reason(message);
+        check(&format!("network reason of \"{message}\""), got == want, got.to_string());
+    }
 
     // The game box.
     let table = std::fs::read_to_string(std::path::Path::new(tests_dir).join("game-target-cases.json")).unwrap_or_default();

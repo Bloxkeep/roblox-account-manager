@@ -84,6 +84,8 @@ pub const R_S: f32 = 8.;
 pub const R_M: f32 = 10.;
 pub const R_L: f32 = 12.;
 pub const R_PANEL: f32 = 16.;
+/// A page's big blocks (the profile's header and its song): rounder than its small cards.
+pub const R_HERO: f32 = 22.;
 
 // ───────────────────────── the theme in use ─────────────────────────
 //
@@ -217,10 +219,44 @@ thread_local! {
 }
 
 pub fn c(hex: u32) -> Hsla {
+    // (Glass on the blocks only: the panels and the rail are clear, the picture shows sharp between the blocks.)
+    if (hex == PANEL || hex == RAIL_BG) && BLOCKS.with(|b| b.get()) {
+        return Hsla { a: 0., ..PAL.with(|p| p.borrow().slots[slot(hex).unwrap_or(0)]) };
+    }
     match slot(hex) {
         Some(i) => PAL.with(|p| p.borrow().slots[i]),
         None => rgb(hex).into(),
     }
+}
+
+thread_local! {
+    /// Glass on the blocks only, for this frame (`set_glass_blocks`).
+    static BLOCKS: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// The picture theme in use is shown with glass on its blocks only (Settings > Appearance; a hidden shot:
+/// BLOXKEEP_SHOT_GLASS=blocks). Worked out once a frame by the window (`set_glass_blocks`).
+pub fn glass_blocks() -> bool {
+    BLOCKS.with(|b| b.get())
+}
+
+/// The picture themes shown with glass on the blocks until the person sets the switch.
+pub const GLASS_FIRST: [&str; 2] = ["sunset", "aurora"];
+
+/// Glass on the blocks only is asked for (the switch, whatever the picture lets it do). Until the person sets the
+/// switch it is on with Sunset, the default theme (the owner, 2026-11-18: "bật luôn kính trên khối mặc định với
+/// sunset"), and Aurora (2026-11-19: "aurora theme cũng đẹp nha, nên đưa nó vào dạng đặc biệt"), off with every other.
+pub fn glass_blocks_asked() -> bool {
+    let asked = crate::prefs::get("glassBlocks").and_then(|v| v.as_bool()).unwrap_or_else(|| SHOWN.with(|s| GLASS_FIRST.iter().any(|t| s.borrow().starts_with(&format!("{t}|")))));
+    #[cfg(feature = "shot")]
+    let asked = asked || std::env::var("BLOXKEEP_SHOT_GLASS").is_ok_and(|v| v == "blocks");
+    asked
+}
+
+/// `carries_words`: the words outside the blocks read on the picture itself (scene::carries_words). Where they don't
+/// (white words on a sunlit wallpaper; the owner's screenshot, 2026-11-18: "mù mắt"), the panels keep their glass.
+pub fn set_glass_blocks(carries_words: bool) {
+    BLOCKS.with(|b| b.set(glass_blocks_asked() && frosted() && carries_words));
 }
 
 /// A colour at `a`. White under a half is a faint ground or hairline: the theme's tint (dark on a light theme).
@@ -504,16 +540,37 @@ pub fn custom_palette(ct: &serde_json::Value) -> Palette {
             }
         }
     }
+    // (No floor for the panels here, following Wallpaper Engine or not: the glass takes what its words need from the
+    // picture itself as it is drawn, scene::reading_veil. A fixed 65 %, then 50 %, stood here on 2026-11-18: too thick
+    // on a dark wallpaper, the owner the same day.)
     p
+}
+
+/// The custom theme is the one shown now (picked, or being looked at while it is changed).
+pub fn showing_custom() -> bool {
+    SHOWN.with(|s| s.borrow().starts_with("custom|"))
+}
+
+/// Settings › Appearance › Follow Wallpaper Engine is on.
+fn following_wallpaper_engine() -> bool {
+    crate::prefs::get("followWallpaperEngine").and_then(|v| v.as_bool()).unwrap_or(false)
 }
 
 /// Shows a theme: its colours on every slot, GPUI Component's parts dressed in them, every window drawn again.
 pub fn show(id: &str, custom: Option<&serde_json::Value>, cx: &mut gpui_kit::App) {
-    let key = format!("{id}|{}", if id == "custom" { custom.map(|c| c.to_string()).unwrap_or_default() } else { String::new() });
+    let key = format!("{id}|{}|{}", if id == "custom" { custom.map(|c| c.to_string()).unwrap_or_default() } else { String::new() }, id == "custom" && following_wallpaper_engine());
     if SHOWN.with(|s| *s.borrow() == key) {
         return;
     }
     SHOWN.with(|s| *s.borrow_mut() = key);
+    // A theme coming in over another fades in (the window takes the old look as its next frame begins: `take_fade`),
+    // as the C# app's page did: not the first theme of a start, and not the custom look while its colours, fade or
+    // blur are being changed (the same picture under it).
+    let picture = custom.filter(|_| id == "custom").and_then(|c| c.get("picture")).and_then(|v| v.as_str()).unwrap_or_default().to_string();
+    let was = LOOK.with(|l| l.replace((id.to_string(), picture.clone())));
+    if !was.0.is_empty() && !(was.0 == "custom" && id == "custom" && was.1 == picture) {
+        FADE_DUE.with(|f| f.set(true));
+    }
     let p = match (id, custom) {
         ("custom", Some(ct)) => custom_palette(ct),
         _ => palette_of(id),
@@ -524,26 +581,22 @@ pub fn show(id: &str, custom: Option<&serde_json::Value>, cx: &mut gpui_kit::App
 }
 
 thread_local! {
-    /// A theme shown before the app has said so (a tile clicked, a colour being dragged): until then, a state that
-    /// still has the old one doesn't put it back.
-    static HELD: std::cell::Cell<Option<std::time::Instant>> = const { std::cell::Cell::new(None) };
+    /// The theme shown and, for the custom one, its picture: what `show` compares the next one with.
+    static LOOK: std::cell::RefCell<(String, String)> = const { std::cell::RefCell::new((String::new(), String::new())) };
+    /// A theme came in over another since the window last asked (`take_fade`).
+    static FADE_DUE: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// Whether a theme came in over another since the last call: the window then keeps its old look to fade out over the
+/// new one (scene::fade_from).
+pub fn take_fade() -> bool {
+    FADE_DUE.with(|f| f.replace(false))
 }
 
 thread_local! {
-    /// A theme being looked at before it is picked (the mouse resting on its tile), until then: the app's state doesn't
-    /// put the chosen one back meanwhile. It runs out by itself, so a tile left without its "left" can't hold it.
-    static PEEK: std::cell::Cell<Option<std::time::Instant>> = const { std::cell::Cell::new(None) };
-}
-
-/// Shows a theme while the mouse rests on its tile, without choosing it (as VS Code shows one while its list is walked).
-pub fn peek(id: &str, cx: &mut gpui_kit::App) {
-    PEEK.with(|p| p.set(Some(std::time::Instant::now() + std::time::Duration::from_secs(20))));
-    show(id, None, cx);
-}
-
-/// The look is over: true when one was on (the chosen theme is then shown again by the caller).
-pub fn unpeek() -> bool {
-    PEEK.with(|p| p.replace(None)).is_some()
+    /// A theme shown before the app has said so (a tile clicked, a colour being dragged): until then, a state that
+    /// still has the old one doesn't put it back.
+    static HELD: std::cell::Cell<Option<std::time::Instant>> = const { std::cell::Cell::new(None) };
 }
 
 /// Shows a theme at once, ahead of the app's answer (Settings › Appearance).
@@ -580,6 +633,18 @@ pub fn bars_ground() -> Option<Hsla> {
     Some(Hsla { a: 1., ..over(c(RAIL_BG), ground) })
 }
 
+/// A panel's ground made solid, for a window of its own with no picture under it (the tray's panel and menu): the
+/// theme's panel colour on its window colour, whatever glass the main window shows.
+pub fn solid_panel() -> Hsla {
+    let panel = PAL.with(|p| p.borrow().slots[slot(PANEL).unwrap_or(0)]);
+    Hsla { a: 1., ..over(panel, Hsla { a: 1., ..c(GROUND) }) }
+}
+
+/// The theme has a picture its panels are frosted glass over (scene::frost).
+pub fn frosted() -> bool {
+    backdrop().is_some_and(|b| b.frost.is_some())
+}
+
 /// The status bar's own ground: as `bars_ground`, and on a picture theme the rail's see-through ground, as the foot of
 /// a picture is its busiest part (Miami night's street lights ran under the CPU and RAM figures).
 pub fn status_ground() -> Option<Hsla> {
@@ -595,7 +660,7 @@ pub fn release() {
 
 /// The theme the app's state says is in use (Follow Windows already worked out, as themeApplied).
 pub fn follow(state: &serde_json::Value, cx: &mut gpui_kit::App) {
-    if HELD.with(|h| h.get()).is_some_and(|t| std::time::Instant::now() < t) || PEEK.with(|p| p.get()).is_some_and(|t| std::time::Instant::now() < t) {
+    if HELD.with(|h| h.get()).is_some_and(|t| std::time::Instant::now() < t) {
         return;
     }
     let id = state.get("themeApplied").or_else(|| state.get("theme")).and_then(|v| v.as_str()).unwrap_or("dark").to_string();

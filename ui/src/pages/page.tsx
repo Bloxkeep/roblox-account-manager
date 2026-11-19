@@ -1,4 +1,4 @@
-// The one glue of the app's small pages, each a small window's whole face or top: the tray's (tray.html, TrayWindow.cs),
+// The one glue of the app's small pages, each a small window's whole face or top:
 // a macro's panel (panel.html, PanelWindow.cs), the mini window (mini.html, MiniWindow.cs), the overlay (overlay.html,
 // OverlayWindow.cs), the message box (dialog.html, Forms/Dialog.cs) and the top of the browser windows (browser.html,
 // Forms/WebsiteForm.cs, BrowserLoginForm.cs). Each page has a bundle of its own (ui/build.mjs: ui-<page>.js, from

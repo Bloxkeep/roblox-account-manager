@@ -453,8 +453,8 @@ pub fn place(root: &Root, a: &Value, button: bool, cx: &mut Context<Root>) -> Op
     let key = SharedString::from(format!("cm-pop-{}-{}", m.id, if button { "b" } else { "p" }));
     let menu = pop(key, m.open, body(root, a, &m, cx));
     Some(match m.at {
-        None => div().absolute().top(px(32.)).right_0().child(deferred(anchored().anchor(Anchor::TopRight).snap_to_window_with_margin(px(8.)).child(menu)).with_priority(2)).into_any_element(),
-        Some(at) => deferred(anchored().position(at).snap_to_window_with_margin(px(8.)).child(menu)).with_priority(2).into_any_element(),
+        None => float(PopAt::BelowRight(32.), 2, menu).into_any_element(),
+        Some(at) => at_pointer(at, menu),
     })
 }
 

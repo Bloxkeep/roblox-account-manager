@@ -1,6 +1,6 @@
 use serde_json::{Value, json};
 
-use super::{Cancel, Fail, Res, realm, request, send};
+use super::{Cancel, Fail, Res, post_with_csrf, realm, request, send};
 
 fn read(service: &str, path: &str, cookie: Option<&str>) -> Res<Value> {
     let url = format!("{}{path}", realm::api(realm::VNG, service));
@@ -69,13 +69,16 @@ fn friend_row(data: &Value) -> Value {
 }
 
 fn settings(cookie: &str) -> Res<Value> {
-    let [email, about, phone, country, birth] = std::thread::scope(|scope| {
+    let [email, about, phone, country, birth, privacy, trade, value] = crate::threads::scope(|scope| {
         let requests = [
             ("accountsettings", "/v1/email"),
             ("accountinformation", "/v1/description"),
             ("accountinformation", "/v1/phone"),
             ("accountsettings", "/v1/account/settings/account-country"),
             ("accountinformation", "/v1/birthdate"),
+            ("apis", "/user-settings-api/v1/user-settings/settings-and-options"),
+            ("accountsettings", "/v1/trade-privacy"),
+            ("accountsettings", "/v1/trade-value"),
         ];
         requests.map(|(service, path)| scope.spawn(move || read(service, path, Some(cookie))))
             .map(|job| job.join().unwrap_or_else(|_| Err(Fail::user("Roblox VNG"))))
@@ -84,6 +87,12 @@ fn settings(cookie: &str) -> Res<Value> {
         return email;
     }
     let email = email.ok();
+    // Who sees it online and who may join it, as roblox.rs reads them for a roblox.com account (the plain answer when
+    // settings-and-options refuses).
+    let (online, join) = match privacy {
+        Ok(data) => crate::roblox::visibility_full(&data),
+        Err(_) => read("apis", "/user-settings-api/v1/user-settings", Some(cookie)).map(|d| crate::roblox::visibility_plain(&d)).unwrap_or_default(),
+    };
     let birthday = birth.ok().and_then(|data| {
         let (day, month, year) = (data["birthDay"].as_u64()?, data["birthMonth"].as_u64()?, data["birthYear"].as_u64()?);
         ((1..=31).contains(&day) && (1..=12).contains(&month) && (1900..=9999).contains(&year))
@@ -96,11 +105,40 @@ fn settings(cookie: &str) -> Res<Value> {
         "about": about.ok().and_then(|data| data["description"].as_str().map(str::to_owned)),
         "phoneVerified": phone.ok().and_then(|data| data["isVerified"].as_bool()),
         "birthday": birthday,
+        "online": online.as_ref().map(crate::roblox::Choice::json),
+        "join": join.as_ref().map(crate::roblox::Choice::json),
+        "tradePrivacy": trade.ok().and_then(|data| data["tradePrivacy"].as_str().map(str::to_owned)),
+        "tradeValue": value.ok().and_then(|data| data["tradeValue"].as_str().map(str::to_owned)),
         "country": country.ok().and_then(|data| {
             data.pointer("/value/localizedName").or_else(|| data.pointer("/value/countryName"))
                 .and_then(Value::as_str).map(str::to_owned)
         }),
     }))
+}
+
+/// One of VNG's privacy or trade settings, set as roblox.rs sets it for a roblox.com account: `what` is "online",
+/// "join", "trade" or "value", `value` Roblox's word for the choice.
+pub(crate) fn set(what: &str, value: &str, cookie: &str) -> Res<()> {
+    use crate::roblox::{TRADE_PRIVACY, TRADE_VALUE, visibility_body};
+    if value.is_empty() || !value.chars().all(|c| c.is_ascii_alphanumeric()) {
+        return Err(Fail::user("Roblox VNG"));
+    }
+    let number = |list: &[(&str, i64)]| list.iter().find(|(k, _)| *k == value).map(|(_, n)| *n).ok_or_else(|| Fail::user("Roblox VNG"));
+    let (service, path, body) = match what {
+        "online" => ("apis", "/user-settings-api/v1/user-settings", visibility_body(Some(value), None)),
+        "join" => ("apis", "/user-settings-api/v1/user-settings", visibility_body(None, Some(value))),
+        "trade" => ("accountsettings", "/v1/trade-privacy", json!({ "tradePrivacy": number(&TRADE_PRIVACY)? })),
+        "value" => ("accountsettings", "/v1/trade-value", json!({ "tradeValue": number(&TRADE_VALUE)? })),
+        _ => return Err(Fail::user("Roblox VNG")),
+    };
+    let url = format!("{}{path}", realm::api(realm::VNG, service));
+    let response = post_with_csrf(&url, cookie, &body.to_string(), None, &Cancel::new(), realm::VNG)?;
+    if !response.is_success() {
+        let (_, said) = super::errors(&response.text());
+        let said = if said.is_empty() { String::new() } else { format!(": {said}") };
+        return Err(Fail::user(format!("Roblox VNG · {what} · HTTP {}{said}", response.status)));
+    }
+    Ok(())
 }
 
 pub(crate) fn load(panel: &str, user: i64, cookie: &str) -> Res<Value> {

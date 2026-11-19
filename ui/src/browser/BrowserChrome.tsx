@@ -3,7 +3,7 @@
 // another saved account), back, forward, reload, the site, the tab's status line, Retry and Save to Bloxkeep; Forms/BrowserLoginForm.cs's bar (the site, what to do, Retry, Done).
 // It is told only what it draws (names as the app shows them, the site's host name, the status words); the roblox.com
 // pages, their cookies and what is typed there never come here. Until 2026-11 it was WinForms.
-import { useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type KeyboardEvent, type Ref } from 'react';
+import { useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent, type Ref } from 'react';
 import { Icon, useHost } from '../host';
 
 import { Button, IconButton } from '../kit';
@@ -53,7 +53,7 @@ export interface BrowserData {
 }
 
 export interface BrowserOn {
-  /** select {id}, close {id}, newTab, back, forward, reload, retry, save, done, account {account}. */
+  /** select {id}, close {id}, move {id, to}, newTab, back, forward, reload, retry, save, done, account {account}. */
   act(what: string, args?: Record<string, unknown>): void;
   /** Its height in CSS pixels (the window gives it that much room above the page). */
   size(width: number, height: number): void;
@@ -107,13 +107,68 @@ export function BrowserChrome({ d, on }: { d: BrowserData; on: BrowserOn }) {
   </div>;
 }
 
-/** The tab strip: wide tabs when few, narrower when many (then avatars only), + right after the last one. */
-function Tabs({ tabs, on }: { tabs: BrowserTab[]; on: BrowserOn }) {
+/** The tab strip: wide tabs when few, narrower when many (then avatars only), + right after the last one. A tab is
+ * dragged to another place as in a browser: it follows the pointer, the others make room, and it lands where it is let
+ * go (move {id, to}). */
+function Tabs({ tabs: given, on }: { tabs: BrowserTab[]; on: BrowserOn }) {
   const { t } = useHost();
   const strip = useRef<HTMLDivElement>(null);
+  // A move asked for and not yet back from the app: shown in its new order meanwhile (no jump back for a moment).
+  const [order, setOrder] = useState<string[] | null>(null);
+  useEffect(() => setOrder(null), [given]);
+  const tabs = order ? order.map(id => given.find(x => x.id === id)).filter((x): x is BrowserTab => !!x) : given;
+  const [drag, setDrag] = useState<{ id: string; dx: number; to: number } | null>(null);
+  const press = useRef<{ id: string; x: number; from: number; lefts: number[]; widths: number[]; moved: boolean } | null>(null);
   const chosen = tabs.find(x => x.selected)?.id;
   useEffect(() => { (strip.current?.querySelector('.bw-tab.on') as HTMLElement | null)?.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }, [chosen, tabs.length]);
-  return <div className="bw-tabs"><div ref={strip} className="bw-list" role="tablist" aria-label={t('bw.tabs')}
+
+  const down = (e: ReactPointerEvent<HTMLDivElement>, id: string) => {
+    if (e.button !== 0 || (e.target as Element).closest('.bw-x') || tabs.length < 2) return;
+    const els = [...(strip.current?.querySelectorAll<HTMLElement>('.bw-tab') ?? [])];
+    press.current = { id, x: e.clientX, from: tabs.findIndex(x => x.id === id), lefts: els.map(el => el.offsetLeft), widths: els.map(el => el.offsetWidth), moved: false };
+  };
+  const move = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const p = press.current;
+    if (!p) return;
+    const dx = e.clientX - p.x;
+    if (!p.moved) {
+      if (Math.abs(dx) < 5) return;
+      p.moved = true;
+      e.currentTarget.setPointerCapture(e.pointerId);
+    }
+    // Where its middle is now: past another tab's middle, it takes that tab's place.
+    const mid = p.lefts[p.from] + p.widths[p.from] / 2 + dx;
+    let to = p.from;
+    for (let i = 0; i < p.lefts.length; i++) {
+      const m = p.lefts[i] + p.widths[i] / 2;
+      if (i < p.from && mid < m) { to = i; break; }
+      if (i > p.from && mid > m) to = i;
+    }
+    setDrag({ id: p.id, dx, to });
+  };
+  const up = () => {
+    const p = press.current;
+    press.current = null;
+    if (!p?.moved) return;
+    const to = drag?.id === p.id ? drag.to : p.from;
+    setDrag(null);
+    if (to === p.from) return;
+    const ids = tabs.map(x => x.id);
+    ids.splice(to, 0, ...ids.splice(p.from, 1));
+    setOrder(ids);
+    on.act('move', { id: p.id, to });
+  };
+  // While one is dragged: how far each tab stands aside (the dragged one's width, plus the gap between tabs).
+  const aside = (i: number) => {
+    const p = press.current;
+    if (!drag || !p) return 0;
+    const room = p.widths[p.from] + (p.lefts[1] !== undefined ? p.lefts[1] - p.lefts[0] - p.widths[0] : 0);
+    if (i > p.from && i <= drag.to) return -room;
+    if (i < p.from && i >= drag.to) return room;
+    return 0;
+  };
+
+  return <div className="bw-tabs"><div ref={strip} className={`bw-list${drag ? ' dragging' : ''}`} role="tablist" aria-label={t('bw.tabs')}
     onWheel={e => { if (strip.current && !e.shiftKey) strip.current.scrollLeft += e.deltaY; }}
     onKeyDown={e => {
       const i = tabs.findIndex(x => x.selected);
@@ -124,16 +179,21 @@ function Tabs({ tabs, on }: { tabs: BrowserTab[]; on: BrowserOn }) {
       on.act('select', { id: next.id });
       requestAnimationFrame(() => (strip.current?.querySelector(`[data-id="${next.id}"] .bw-pick`) as HTMLElement | null)?.focus());
     }}>
-    {tabs.map(x => <div key={x.id} data-id={x.id} className={`bw-tab${x.selected ? ' on' : ''}`}
-      onMouseDown={e => { if (e.button === 1) e.preventDefault(); }}
-      onAuxClick={e => { if (e.button === 1) on.act('close', { id: x.id }); }}>
-      <button type="button" role="tab" className="bw-pick" aria-selected={x.selected} tabIndex={x.selected ? 0 : -1} title={x.title}
-        onClick={() => on.act('select', { id: x.id })}>
-        <Avatar tab={x} />
-        <span className="bw-name">{x.title}</span>
-      </button>
-      <button type="button" className="bw-x" tabIndex={-1} title={t('bw.close')} aria-label={t('bw.close')} onClick={() => on.act('close', { id: x.id })}><Icon name="x" /></button>
-    </div>)}
+    {tabs.map((x, i) => {
+      const held = drag?.id === x.id;
+      return <div key={x.id} data-id={x.id} className={`bw-tab${x.selected ? ' on' : ''}${held ? ' held' : ''}`}
+        style={drag ? { transform: `translateX(${held ? drag.dx : aside(i)}px)` } : undefined}
+        onPointerDown={e => down(e, x.id)} onPointerMove={move} onPointerUp={up} onPointerCancel={up}
+        onMouseDown={e => { if (e.button === 1) e.preventDefault(); }}
+        onAuxClick={e => { if (e.button === 1) on.act('close', { id: x.id }); }}>
+        <button type="button" role="tab" className="bw-pick" aria-selected={x.selected} tabIndex={x.selected ? 0 : -1} title={x.title}
+          onClick={() => on.act('select', { id: x.id })}>
+          <Avatar tab={x} />
+          <span className="bw-name">{x.title}</span>
+        </button>
+        <button type="button" className="bw-x" tabIndex={-1} title={t('bw.close')} aria-label={t('bw.close')} onClick={() => on.act('close', { id: x.id })}><Icon name="x" /></button>
+      </div>;
+    })}
     </div>
     <IconButton icon="plus" type="button" className="bw-new" title={t('bw.newTip')} aria-label={t('bw.new')} onClick={() => on.act('newTab')} />
   </div>;
@@ -144,7 +204,7 @@ function Avatar({ tab }: { tab: BrowserTab }) {
   const [failed, setFailed] = useState(false);
   useEffect(() => setFailed(false), [tab.avatar]);
   return <span className="bw-av">
-    {tab.avatar && !failed ? <img src={tab.avatar} alt="" onError={() => setFailed(true)} /> : <Icon name={tab.saved ? 'user' : 'globe'} />}
+    {tab.avatar && !failed ? <img src={tab.avatar} alt="" draggable={false} onError={() => setFailed(true)} /> : <Icon name={tab.saved ? 'user' : 'globe'} />}
   </span>;
 }
 

@@ -59,6 +59,9 @@ pub struct GameDetailsInfo {
     pub creator_verified: bool,
     pub description: Option<String>,
     pub genre: Option<String>,
+    /// Roblox's newer genre and subgenre (games API `genre_l1`, `genre_l2`, e.g. "Roleplay & Avatar Sim", "Pet Care";
+    /// only to a signed-in ask), the ones its own page shows; the old `genre` is "All" for most games.
+    pub genres: Vec<String>,
     pub playing: i64,
     pub visits: i64,
     pub favorites: i64,
@@ -907,6 +910,74 @@ pub fn join_check(cookie: &str, place_id: i64, job_id: Option<&str>, realm: &str
         }
     }
     Ok(JoinAnswer { http: res.status as i32, status, message, data, queue_position: queue, challenge, server_gone: false })
+}
+
+/// A public server's address (joinScript › UdmuxEndpoints › Address, else MachineAddress), from the join answer
+/// roblox.com gets before it opens that server (server_regions.rs): nothing is joined, and the answer's ticket is
+/// neither kept nor written anywhere. None when Roblox gave no address (the server full or gone, a check asked, the
+/// account not let in); Err when it refused the asking itself (too many at once, the sign-in gone).
+/// `Err` when Roblox stops answering (too many, signed out); `Ok(Err(why))` when it answered without an address, in a few
+/// words for the log: the HTTP status, or the join answer's own status and message (its bot check, a server closing).
+/// What gamejoin says of one server: its address, the game version it runs (`PlaceVersion`) and when it started
+/// (`ServerClaimedTime`, Unix ms; 0 when Roblox doesn't say, about one in four).
+#[derive(Clone, Debug)]
+pub struct ServerJoin {
+    pub address: String,
+    pub version: i64,
+    pub started_ms: i64,
+}
+
+pub fn server_address(cookie: &str, place_id: i64, job_id: &str, ct: &Cancel) -> Res<Result<ServerJoin, String>> {
+    // Asked as roblox.com asks, every server answers "join status 12 Unable to join Game 311" (the owner's 60 of 60,
+    // error.log 2026-11-19; "chưa bao giờ chọn được server luôn"). Asked as Roblox's own client asks, the same sign-in
+    // got the address (status 2), "full" (22), or the real reason (12 "This game is unavailable in your region to
+    // comply with regulations.", Blox Fruits and Jailbreak from Vietnam): measured that evening on 7 games.
+    server_address_as(cookie, place_id, job_id, ct, true)
+}
+
+/// Roblox doesn't open this game where the account is (its gamejoin's own words): no server of it will be placed.
+pub fn is_region_blocked(why: &str) -> bool {
+    why.contains("unavailable in your region")
+}
+
+/// gamejoin's join-game-instance for one server: its address, or why there is none. `as_client`: asked with Roblox's own
+/// client's user agent and no website Origin/Referer, as RobloxPlayerBeta asks it.
+fn server_address_as(cookie: &str, place_id: i64, job_id: &str, ct: &Cancel, as_client: bool) -> Res<Result<ServerJoin, String>> {
+    let url = format!("{}/v1/join-game-instance", realm::api(realm::GLOBAL, "gamejoin"));
+    let body = json!({ "placeId": place_id, "gameId": job_id, "isTeleport": false, "gameJoinAttemptId": new_guid().to_string() });
+    let client = |req: &mut HttpRequest| {
+        req.headers.retain(|(n, _)| !matches!(n.to_ascii_lowercase().as_str(), "user-agent" | "origin" | "referer"));
+        req.add_header("User-Agent", "Roblox/WinInet");
+    };
+    let res = post_with_csrf(&url, cookie, &body.to_string(), as_client.then_some(&client as &dyn Fn(&mut HttpRequest)), ct, realm::GLOBAL)?;
+    if res.status == 429 || res.status == 401 {
+        return Err(Fail::other(format!("gamejoin answered HTTP {} to a server's address", res.status)));
+    }
+    if !res.is_success() {
+        let check = res.headers_named("rblx-challenge-type").next().map(|t| format!(", check {t}")).unwrap_or_default();
+        return Ok(Err(format!("HTTP {}{check}", res.status)));
+    }
+    let Ok(root) = serde_json::from_str::<Value>(&res.text()) else { return Ok(Err("an answer that isn't JSON".into())) };
+    let script = root.get("joinScript");
+    let address = script
+        .and_then(|s| s.get("UdmuxEndpoints"))
+        .and_then(Value::as_array)
+        .and_then(|l| l.first())
+        .and_then(|e| e.get("Address"))
+        .and_then(Value::as_str)
+        .or_else(|| script.and_then(|s| s.get("MachineAddress")).and_then(Value::as_str))
+        .filter(|a| !a.is_empty());
+    let num = |k: &str| script.and_then(|s| s.get(k)).and_then(Value::as_i64).unwrap_or(0);
+    Ok(address.map(|a| ServerJoin { address: a.to_string(), version: num("PlaceVersion"), started_ms: num("ServerClaimedTime") }).ok_or_else(|| {
+        let status = root.get("status").map(|s| s.to_string()).unwrap_or_else(|| "none".into());
+        let message: String = root.get("message").and_then(Value::as_str).unwrap_or_default().chars().take(80).collect();
+        format!("join status {status} {message}").trim().to_string()
+    }))
+}
+
+/// A plain GET of an address that isn't Roblox's, with no sign-in (server_regions.rs asks ipinfo.io this way).
+pub fn get_plain(url: &str, ct: &Cancel) -> Res<HttpResponse> {
+    send(&request("GET", url, None, false, realm::GLOBAL), ct)
 }
 
 /// The check on a join (rblx-challenge-* headers): id, kind ("captcha", "captchav2", "proofofwork"…), metadata JSON.

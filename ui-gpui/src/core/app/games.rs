@@ -1,4 +1,5 @@
 // AppController.Games.cs: the game box: what a link, Place ID or name stands for, and the games kept (recent, pinned, saved).
+use crate::threads::Hold;
 use std::{
     cell::{Cell, RefCell},
     collections::{HashMap, HashSet},
@@ -147,18 +148,18 @@ impl App {
             let queue = Mutex::new(unknown.into_iter());
             let answers: Mutex<Vec<(i64, i64)>> = Mutex::new(Vec::new());
             let failure: Mutex<Option<Fail>> = Mutex::new(None);
-            std::thread::scope(|scope| {
+            crate::threads::scope(|scope| {
                 for _ in 0..4 {
                     scope.spawn(|| {
                         loop {
-                            let next = queue.lock().ok().and_then(|mut q| q.next());
+                            let next = queue.hold().next();
                             let Some(place) = next else {
                                 break;
                             };
                             match roblox_api::get_universe_id(place, &ct) {
-                                Ok(universe) => answers.lock().expect("answers").push((place, universe)),
+                                Ok(universe) => answers.hold().push((place, universe)),
                                 Err(e) => {
-                                    let mut f = failure.lock().expect("failure");
+                                    let mut f = failure.hold();
                                     if f.is_none() {
                                         *f = Some(e);
                                     }
@@ -275,6 +276,122 @@ impl App {
         }
     }
 
+    /// The game's public servers (two pages, fullest first) with the country and city each runs in (server_regions.rs),
+    /// for the game page's country pick beside Play. Where a server is comes from one signed-in account's join answer
+    /// (the picked ones first), at most 60 servers, six at a time; a server found once is known for the run.
+    pub async fn server_regions(self: &Rc<Self>, place_id: i64, preferred: &[Guid]) -> Res<Value> {
+        self.held_vault().ok_or_else(|| Fail::user(l::t("Bloxkeep is locked.")))?;
+        if place_id <= 0 {
+            return Err(Fail::user(l::t("Invalid Place ID.")));
+        }
+        let mut viewers: Vec<Account> = self.vault(|d| {
+            d.accounts.iter().filter(|a| a.user_id > 0 && a.cookie_valid != Some(false) && !a.cookie.is_empty() && a.realm == realm::GLOBAL).cloned().collect()
+        })?;
+        viewers.sort_by_key(|a| if preferred.contains(&a.id) { 0 } else { 1 });
+        let Some(viewer) = viewers.into_iter().next() else {
+            return Err(Fail::user(l::t("Add an account first: Roblox says where a server is only to a signed-in account.")));
+        };
+        let first = self.servers(place_id, false, None).await?;
+        if first.get("busy").and_then(Value::as_bool) == Some(true) {
+            return Ok(json!({ "busy": true, "retryIn": first.get("retryIn").cloned().unwrap_or(json!(20)) }));
+        }
+        let list = |v: &Value| v.get("servers").and_then(Value::as_array).cloned().unwrap_or_default();
+        let mut rows = list(&first);
+        if let Some(next) = first.get("next").and_then(Value::as_str).filter(|n| !n.is_empty()).map(str::to_string)
+            && let Ok(more) = self.servers(place_id, false, Some(next)).await
+        {
+            for r in list(&more) {
+                if !rows.iter().any(|o| o.get("jobId") == r.get("jobId")) {
+                    rows.push(r);
+                }
+            }
+        }
+        // A full server only answers "full" (gamejoin status 22) with no address, so it isn't asked.
+        let full = |r: &Value| {
+            let max = r.get("maxPlayers").and_then(Value::as_i64).unwrap_or(0);
+            max > 0 && r.get("playing").and_then(Value::as_i64).unwrap_or(0) >= max
+        };
+        let jobs: Vec<String> = rows
+            .iter()
+            .filter(|r| !full(r))
+            .filter_map(|r| r.get("jobId").and_then(Value::as_str))
+            .filter(|j| !j.is_empty() && crate::core::server_regions::known(j).is_none())
+            .take(60)
+            .map(str::to_string)
+            .collect();
+        let stopped = ask_where(viewer.cookie.clone(), place_id, jobs).await;
+        if let Some(why) = &stopped {
+            log::write(&format!("Server regions: stopped asking where servers are for place {place_id}: {why}"));
+        }
+        let blocked = stopped.as_deref().is_some_and(roblox_api::is_region_blocked);
+        // Each server with its place, then the countries: how many servers and players in each, most servers first.
+        let mut regions: Vec<(String, Vec<String>, i64, i64)> = Vec::new();
+        let mut unknown = 0;
+        for row in rows.iter_mut() {
+            let job = row.get("jobId").and_then(Value::as_str).unwrap_or_default().to_string();
+            match crate::core::server_regions::known(&job) {
+                Some((cc, city)) => {
+                    let playing = row.get("playing").and_then(Value::as_i64).unwrap_or(0);
+                    row["cc"] = json!(cc);
+                    row["city"] = json!(city);
+                    match regions.iter_mut().find(|r| r.0 == cc) {
+                        Some(r) => {
+                            if !r.1.contains(&city) {
+                                r.1.push(city);
+                            }
+                            r.2 += 1;
+                            r.3 += playing;
+                        }
+                        None => regions.push((cc, vec![city], 1, playing)),
+                    }
+                }
+                None if !full(row) => unknown += 1,
+                None => {}
+            }
+        }
+        regions.sort_by(|a, b| b.2.cmp(&a.2).then(a.0.cmp(&b.0)));
+        Ok(json!({
+            "servers": rows,
+            "regions": regions.iter().map(|(cc, cities, n, players)| json!({ "cc": cc, "cities": cities, "servers": n, "players": players })).collect::<Vec<_>>(),
+            "unknown": if blocked { 0 } else { unknown },
+            "stopped": stopped.is_some() && !blocked,
+            "blocked": blocked,
+        }))
+    }
+
+    /// The Servers tab's servers (`jobs`, the ones on screen): each one's country and city, game version and start,
+    /// asked of gamejoin for those not known yet (at most 40 a time). `newest`: the highest version seen, so a server
+    /// still on an older one can be told apart.
+    pub async fn server_facts(self: &Rc<Self>, place_id: i64, jobs: Vec<String>, preferred: &[Guid]) -> Res<Value> {
+        self.held_vault().ok_or_else(|| Fail::user(l::t("Bloxkeep is locked.")))?;
+        if place_id <= 0 {
+            return Err(Fail::user(l::t("Invalid Place ID.")));
+        }
+        let mut viewers: Vec<Account> = self.vault(|d| {
+            d.accounts.iter().filter(|a| a.user_id > 0 && a.cookie_valid != Some(false) && !a.cookie.is_empty() && a.realm == realm::GLOBAL).cloned().collect()
+        })?;
+        viewers.sort_by_key(|a| if preferred.contains(&a.id) { 0 } else { 1 });
+        let Some(viewer) = viewers.into_iter().next() else {
+            return Err(Fail::user(l::t("Add an account first: Roblox says where a server is only to a signed-in account.")));
+        };
+        let ask: Vec<String> = jobs.iter().filter(|j| !j.is_empty() && crate::core::server_regions::facts(j).is_none()).take(40).cloned().collect();
+        let stopped = if ask.is_empty() { None } else { ask_where(viewer.cookie.clone(), place_id, ask).await };
+        if let Some(why) = &stopped {
+            log::write(&format!("Server facts: stopped asking for place {place_id}: {why}"));
+        }
+        let blocked = stopped.as_deref().is_some_and(roblox_api::is_region_blocked);
+        let rows: Vec<Value> = jobs
+            .iter()
+            .filter_map(|j| {
+                let (version, started) = crate::core::server_regions::facts(j)?;
+                let at = crate::core::server_regions::known(j);
+                Some(json!({ "jobId": j, "version": version, "started": started, "cc": at.as_ref().map(|a| a.0.clone()), "city": at.map(|a| a.1) }))
+            })
+            .collect();
+        let newest = rows.iter().filter_map(|r| r.get("version").and_then(Value::as_i64)).max().unwrap_or(0);
+        Ok(json!({ "facts": rows, "newest": newest, "blocked": blocked, "stopped": stopped.is_some() && !blocked }))
+    }
+
     pub async fn friend_ids(self: &Rc<Self>, user_id: i64) -> Res<Vec<i64>> {
         if let Some((ids, at)) = self.games.friend_ids.borrow().get(&user_id) {
             if at.age_secs() < secs(FRIEND_IDS_LIFETIME) {
@@ -317,7 +434,7 @@ impl App {
         type Answer = (Guid, i64, Option<Vec<i64>>, Res<Vec<(i64, String, i64)>>);
         let answers: Vec<Answer> = rt::blocking(move || {
             let ct = Cancel::new();
-            std::thread::scope(|scope| {
+            crate::threads::scope(|scope| {
                 let handles: Vec<_> = asks
                     .iter()
                     .map(|(viewer, cached)| {
@@ -394,7 +511,7 @@ impl App {
             let asked = ids.clone();
             let extras: Res<(HashMap<i64, RobloxUser>, HashMap<i64, String>)> = rt::blocking(move || {
                 let ct = Cancel::new();
-                std::thread::scope(|scope| {
+                crate::threads::scope(|scope| {
                     let named = scope.spawn(|| roblox_api::get_users(asked.clone(), &ct, false));
                     let pictured = scope.spawn(|| roblox_api::get_headshot_urls(asked.clone(), &ct));
                     let users = named.join().unwrap_or_else(|_| Err(Fail::other("names thread died")))?;
@@ -481,7 +598,7 @@ impl App {
         let asks: Vec<(Guid, String)> = viewers.iter().map(|v| (v.id, v.cookie.clone())).collect();
         let answers: Vec<(Guid, Res<Vec<PrivateServer>>)> = rt::blocking(move || {
             let ct = Cancel::new();
-            std::thread::scope(|scope| {
+            crate::threads::scope(|scope| {
                 let handles: Vec<_> = asks
                     .iter()
                     .map(|(id, cookie)| {
@@ -562,7 +679,7 @@ impl App {
             let ct = Cancel::new();
             let mut all = Vec::new();
             for group in asks.chunks(6) {
-                let part: Vec<_> = std::thread::scope(|scope| {
+                let part: Vec<_> = crate::threads::scope(|scope| {
                     let handles: Vec<_> = group
                         .iter()
                         .map(|(id, user, cookie)| {
@@ -740,4 +857,71 @@ impl App {
         self.push_state();
         Ok(())
     }
+}
+
+/// Asks gamejoin where each of `jobs` runs, as Roblox's own client asks (two at a time with a pause; Roblox's "too many"
+/// waited out a few times), and keeps each one's place and facts (server_regions.rs). Why it stopped early, if it did:
+/// Roblox's 429 for good, or the game blocked where the account is (roblox_api::is_region_blocked).
+async fn ask_where(cookie: String, place_id: i64, jobs: Vec<String>) -> Option<String> {
+    rt::blocking(move || {
+        let ct = Cancel::new();
+        let queue = Mutex::new(jobs.into_iter());
+        let stop: Mutex<Option<String>> = Mutex::new(None);
+        // Two at a time with a pause between, and Roblox's "too many" (HTTP 429) waited out a few times before giving
+        // up: six at once with no pause were refused at once and none of 99 servers was placed (the owner's log,
+        // 2026-11-18). What was placed is kept either way.
+        let waits = std::sync::atomic::AtomicU32::new(0);
+        // Why a server got no place, counted for the log: none of 98 was placed and the log said nothing (the
+        // owner, 2026-11-19: "ko biết do roblox hay do app").
+        let missed: Mutex<HashMap<String, u32>> = Mutex::new(HashMap::new());
+        crate::threads::scope(|scope| {
+            for _ in 0..2 {
+                let (queue, stop, cookie, ct, waits, missed) = (&queue, &stop, &cookie, &ct, &waits, &missed);
+                scope.spawn(move || {
+                    'jobs: loop {
+                        if stop.lock().unwrap_or_else(|p| p.into_inner()).is_some() {
+                            break;
+                        }
+                        let Some(job) = queue.lock().unwrap_or_else(|p| p.into_inner()).next() else { break };
+                        loop {
+                            match roblox_api::server_address(cookie, place_id, &job, ct) {
+                                Ok(Ok(join)) => {
+                                    crate::core::server_regions::keep_facts(&job, join.version, join.started_ms);
+                                    match crate::core::server_regions::region_of(&join.address) {
+                                        Some(at) => crate::core::server_regions::keep(&job, at),
+                                        None => *missed.lock().unwrap_or_else(|p| p.into_inner()).entry("an address no table or ipinfo.io places".into()).or_insert(0) += 1,
+                                    }
+                                }
+                                Ok(Err(why)) if roblox_api::is_region_blocked(&why) => {
+                                    // (Every server of the game answers the same: not asked further.)
+                                    *stop.lock().unwrap_or_else(|p| p.into_inner()) = Some(why);
+                                    break 'jobs;
+                                }
+                                Ok(Err(why)) => *missed.lock().unwrap_or_else(|p| p.into_inner()).entry(why).or_insert(0) += 1,
+                                Err(e) if e.to_string().contains("HTTP 429") && waits.fetch_add(1, std::sync::atomic::Ordering::Relaxed) < 4 => {
+                                    std::thread::sleep(Duration::from_secs(6));
+                                    continue;
+                                }
+                                Err(e) => {
+                                    *stop.lock().unwrap_or_else(|p| p.into_inner()) = Some(e.to_string());
+                                    break 'jobs;
+                                }
+                            }
+                            break;
+                        }
+                        std::thread::sleep(Duration::from_millis(250));
+                    }
+                });
+            }
+        });
+        let missed = missed.into_inner().unwrap_or_else(|p| p.into_inner());
+        if !missed.is_empty() {
+            let mut why: Vec<(String, u32)> = missed.into_iter().collect();
+            why.sort_by(|a, b| b.1.cmp(&a.1));
+            let said: Vec<String> = why.iter().map(|(w, n)| format!("{n} × {w}")).collect();
+            log::write(&format!("Server regions: place {place_id}: servers with no place: {}", said.join("; ")));
+        }
+        stop.into_inner().unwrap_or_else(|p| p.into_inner())
+    })
+    .await
 }

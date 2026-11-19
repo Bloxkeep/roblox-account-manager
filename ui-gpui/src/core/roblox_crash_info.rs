@@ -66,10 +66,11 @@ fn fault_of(pid: i32, within: Duration) -> Option<String> {
         .spawn()
         .ok()?;
     let mut out = run.stdout.take()?;
-    let reader = std::thread::spawn(move || {
+    let (reader_tx, reader) = std::sync::mpsc::channel();
+    crate::threads::run(move || {
         let mut bytes = Vec::new();
         let _ = out.read_to_end(&mut bytes);
-        bytes
+        let _ = reader_tx.send(bytes);
     });
     let until = Instant::now() + Duration::from_secs(5);
     loop {
@@ -83,7 +84,7 @@ fn fault_of(pid: i32, within: Duration) -> Option<String> {
             }
         }
     }
-    let bytes = reader.join().ok()?;
+    let bytes = reader.recv_timeout(Duration::from_secs(10)).ok()?;
     // Redirected, it may write UTF-16 (every second byte 0) or the console's code page.
     let xml = if bytes.len() >= 2 && bytes[1] == 0 {
         String::from_utf16_lossy(&bytes.chunks_exact(2).map(|c| u16::from_le_bytes([c[0], c[1]])).collect::<Vec<_>>())

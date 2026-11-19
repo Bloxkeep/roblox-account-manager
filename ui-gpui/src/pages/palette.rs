@@ -11,6 +11,7 @@ use gpui_kit::component::dialog::DialogEntrance;
 use gpui_kit::component::input::{InputEvent, InputState};
 use gpui_kit::{prelude::*, *};
 use serde_json::{Value, json};
+use crate::val::s;
 
 use crate::{
     kit::*,
@@ -155,10 +156,6 @@ pub struct Data {
     index: usize,
     pointer: Option<Point<Pixels>>,
     scroll: ScrollHandle,
-}
-
-fn s<'a>(v: &'a Value, k: &str) -> &'a str {
-    v.get(k).and_then(Value::as_str).unwrap_or_default()
 }
 
 // ───────────────────────── matching ─────────────────────────
@@ -426,24 +423,6 @@ fn build(r: &Root, set_words: &[(Part, Vec<String>)]) -> Vec<Entry> {
 
 // ───────────────────────── running ─────────────────────────
 
-/// A command whose answer matters: what it returns goes to `done`; a refusal is said in a toast.
-fn ask(r: &mut Root, cmd: &str, args: Value, cx: &mut Context<Root>, done: impl FnOnce(&mut Root, Value) + 'static) {
-    let Some(link) = r.link.clone() else { return };
-    let rx = link.call(cmd, args);
-    cx.spawn(async move |this, cx| {
-        let answer = rx.await;
-        let _ = this.update(cx, |r, cx| {
-            match answer {
-                Ok(Ok(v)) => done(r, v),
-                Ok(Err(e)) => r.toast = Some((e, "bad".into())),
-                Err(_) => {}
-            }
-            cx.notify();
-        });
-    })
-    .detach();
-}
-
 /// An account brought into view on Accounts: a filter, a group or a search that hides it is put aside, and the search
 /// then names it (the cards don't scroll to one by themselves here).
 fn reveal(r: &mut Root, id: &str, window: &mut Window, cx: &mut Context<Root>) {
@@ -464,7 +443,7 @@ fn perform(r: &mut Root, run: Run, window: &mut Window, cx: &mut Context<Root>) 
         }
         Run::Add => r.add_account(cx),
         // How many are signed in, how many need signing in again, how many couldn't be asked (app.js's checkAccounts).
-        Run::CheckAll => ask(r, "checkAccounts", json!({ "ids": [] }), cx, |r, v| {
+        Run::CheckAll => r.ask("checkAccounts", json!({ "ids": [] }), cx, |r, v| {
             if !v.is_object() {
                 return;
             }
@@ -478,7 +457,7 @@ fn perform(r: &mut Root, run: Run, window: &mut Window, cx: &mut Context<Root>) 
             r.toast = Some((text, if bad > 0 || refused > 0 { "warn" } else { "ok" }.into()));
         }),
         // Done shows on the cards themselves; only a click that did nothing is said.
-        Run::Refresh => ask(r, "refreshPresence", json!({}), cx, |r, v| {
+        Run::Refresh => r.ask("refreshPresence", json!({}), cx, |r, v| {
             if v.get("skipped").and_then(Value::as_bool) == Some(true) {
                 r.toast = Some((r.tr("t.refreshBusy"), "info".into()));
             }
@@ -498,12 +477,12 @@ fn perform(r: &mut Root, run: Run, window: &mut Window, cx: &mut Context<Root>) 
             r.go(Page::Auto);
             pages::macro_form::open(r, None, window, cx);
         }
-        Run::StopMacros => ask(r, "stopMacros", json!({}), cx, |r, _| r.toast = Some((r.tr("macro.stoppedAll"), "ok".into()))),
-        Run::Backup(true) => ask(r, "backupNow", json!({}), cx, |r, _| r.toast = Some((r.tr("bk.done"), "ok".into()))),
+        Run::StopMacros => r.ask("stopMacros", json!({}), cx, |r, _| r.toast = Some((r.tr("macro.stoppedAll"), "ok".into()))),
+        Run::Backup(true) => r.ask("backupNow", json!({}), cx, |r, _| r.toast = Some((r.tr("bk.done"), "ok".into()))),
         Run::Backup(false) => perform(r, Run::Settings(Part::Backup), window, cx),
         Run::Updates => {
             perform(r, Run::Settings(Part::Updates), window, cx);
-            ask(r, "checkUpdates", json!({}), cx, |_, _| {});
+            r.ask("checkUpdates", json!({}), cx, |_, _| {});
         }
         Run::Feedback => pages::extras::open_feedback(r, window, cx),
         // (The list may not be loaded yet: the app knows the events.)
@@ -534,7 +513,7 @@ fn perform(r: &mut Root, run: Run, window: &mut Window, cx: &mut Context<Root>) 
         }
         Run::Reveal(id) => reveal(r, &id, window, cx),
         Run::ShowWindow(id) => r.send("showWindows", json!({ "ids": [id] })),
-        Run::Close(id) => ask(r, "closeAccounts", json!({ "ids": [id], "force": false }), cx, |r, v| {
+        Run::Close(id) => r.ask("closeAccounts", json!({ "ids": [id], "force": false }), cx, |r, v| {
             let n = v.as_i64().unwrap_or(0);
             r.toast = Some(if n > 0 { (r.i18n.tn("t.closing", n, &[("n", &n.to_string())]), "ok".into()) } else { (r.tr("t.noneRunning"), "info".into()) });
         }),

@@ -12,7 +12,8 @@ use gpui_kit::{
 };
 use serde_json::{Value, json};
 
-use super::{ask, b, chips, group, ok, row, switch};
+use super::{chips, flag, group, row, switch};
+use crate::ask::answer;
 use crate::{
     kit::*,
     shell::Root,
@@ -51,8 +52,6 @@ pub struct Look {
     /// The name box is to be emptied (it was saved).
     clear_name: bool,
     scale: f32,
-    /// Which rest of the mouse on a tile is the latest (a look starts a moment after it, if it is still that one).
-    peek: u64,
 }
 
 /// Each frame on Settings: the boxes made the first time, the screen's scale kept for the tiles' pictures.
@@ -90,7 +89,7 @@ pub fn settle(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
         .detach();
         r.settings.look.boxes = Some(Boxes { name, hex, code });
     }
-    // BLOXKEEP_SHOT_AP=customize | surprise | code:<theme code> | peek:<theme id> | video:<user/file>: a hidden shot
+    // BLOXKEEP_SHOT_AP=customize | surprise | code:<theme code> | video:<user/file>: a hidden shot
     // presses that control once, through the very code a click runs, so its result can be looked at.
     #[cfg(feature = "shot")]
     {
@@ -109,10 +108,6 @@ pub fn settle(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
                     bx.code.update(cx, |s, cx| s.set_value(code.to_string(), window, cx));
                 }
                 apply_code(r, cx);
-            } else if let Some(id) = what.strip_prefix("peek:") {
-                if let Some(id) = GROUPS.iter().flat_map(|(_, l)| l.iter()).copied().find(|k| *k == id) {
-                    hover(r, id, true, cx);
-                }
             } else if let Some(file) = what.strip_prefix("video:") {
                 r.send("debugCustomTheme", json!({ "picture": file, "video": true }));
             }
@@ -132,44 +127,12 @@ fn custom_now(r: &Root) -> Value {
 }
 
 /// The theme chosen (Follow Windows is "system"), a pick not yet confirmed included.
-fn current(r: &Root) -> String {
+pub(crate) fn current(r: &Root) -> String {
     let said = r.state.get("theme").and_then(Value::as_str).unwrap_or("dark");
     match &r.settings.look.picked {
         Some((id, at)) if id != said && at.elapsed() < Duration::from_secs(2) => id.clone(),
         _ => said.to_string(),
     }
-}
-
-/// The theme chosen shown again (a look at another one is over).
-fn settle_look(r: &Root, cx: &mut Context<Root>) {
-    let id = current(r);
-    match id.as_str() {
-        "custom" => theme::show("custom", Some(&custom_now(r)), cx),
-        "system" => theme::show(r.state.get("themeApplied").and_then(Value::as_str).unwrap_or("dark"), None, cx),
-        _ => theme::show(&id, None, cx),
-    }
-}
-
-/// The mouse came to rest on a theme's tile, or left it: the whole window in that theme a moment later, without
-/// choosing it (VS Code shows a theme the same way while its list is walked); the chosen one again when it leaves.
-fn hover(r: &mut Root, id: &'static str, over: bool, cx: &mut Context<Root>) {
-    r.settings.look.peek += 1;
-    let round = r.settings.look.peek;
-    if !over || matches!(id, "system" | "custom") || current(r) == id {
-        if theme::unpeek() {
-            settle_look(r, cx);
-        }
-        return;
-    }
-    cx.spawn(async move |this, cx| {
-        cx.background_executor().timer(Duration::from_millis(220)).await;
-        let _ = this.update(cx, |r, cx| {
-            if r.settings.look.peek == round {
-                theme::peek(id, cx);
-            }
-        });
-    })
-    .detach();
 }
 
 /// A custom theme started from the colours of the theme in use (its page's ground and its accent), as Windows
@@ -225,7 +188,6 @@ fn apply_code(r: &mut Root, cx: &mut Context<Root>) {
 
 /// A theme picked: shown at once, then sent.
 fn pick(r: &mut Root, id: &str, cx: &mut Context<Root>) {
-    theme::unpeek();
     r.settings.look.picked = Some((id.to_string(), Instant::now()));
     match id {
         "custom" => {
@@ -263,20 +225,16 @@ fn change(r: &mut Root, patch: Value, cx: &mut Context<Root>) {
             let field = |k: &str| c.get(k).cloned().unwrap_or(Value::Null);
             let Some(link) = r.link.clone() else { return };
             let rx = link.call("setCustomTheme", json!({ "background": field("background"), "accent": field("accent"), "fade": field("fade"), "blur": field("blur") }));
-            cx.spawn(async move |this, cx| {
-                let answer = rx.await;
-                let _ = this.update(cx, |r, cx| {
-                    // Kept or refused, the look shown is the app's again (a refused one doesn't stay as if saved).
-                    if let Ok(Err(e)) = &answer {
-                        r.toast = Some((e.clone(), "bad".into()));
-                    }
-                    if r.settings.look.round == round {
-                        r.settings.look.preview = None;
-                    }
-                    cx.notify();
-                });
-            })
-            .detach();
+            answer(rx, cx, move |r, answer, cx| {
+                // Kept or refused, the look shown is the app's again (a refused one doesn't stay as if saved).
+                if let Ok(Err(e)) = &answer {
+                    r.toast = Some((e.clone(), "bad".into()));
+                }
+                if r.settings.look.round == round {
+                    r.settings.look.preview = None;
+                }
+                cx.notify();
+            });
         });
     })
     .detach();
@@ -289,10 +247,10 @@ fn save(r: &mut Root, cx: &mut Context<Root>) {
     if name.is_empty() {
         return;
     }
-    ask(r, "saveTheme", json!({ "name": name }), cx, move |r, _| {
+    r.ask("saveTheme", json!({ "name": name }), cx, move |r, _| {
         r.settings.look.clear_name = true;
         let text = r.i18n.tv("ct.savedToast", &[("name", &name)]);
-        ok(r, text);
+        r.ok(text);
     });
 }
 
@@ -383,8 +341,8 @@ pub fn appearance(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
         let of = |k: &str, or: &str| root.state.get(k).and_then(Value::as_str).unwrap_or(or).to_string();
         let (light, dark) = (of("themeLight", "light"), of("themeDark", "dark"));
         let (dark_2, light_2) = (dark.clone(), light.clone());
-        rows.push(row(root.tr("th.sysLight"), None, chips(root, cx, "ap-sys-light", all.clone(), &light, move |r, v: String, cx| ask(r, "setSystemThemes", json!({ "light": v, "dark": dark_2 }), cx, |_, _| {}))));
-        rows.push(row(root.tr("th.sysDark"), None, chips(root, cx, "ap-sys-dark", all, &dark, move |r, v: String, cx| ask(r, "setSystemThemes", json!({ "light": light_2, "dark": v }), cx, |_, _| {}))));
+        rows.push(row(root.tr("th.sysLight"), None, chips(root, cx, "ap-sys-light", all.clone(), &light, move |r, v: String, cx| r.ask("setSystemThemes", json!({ "light": v, "dark": dark_2 }), cx, |_, _| {}))));
+        rows.push(row(root.tr("th.sysDark"), None, chips(root, cx, "ap-sys-dark", all, &dark, move |r, v: String, cx| r.ask("setSystemThemes", json!({ "light": light_2, "dark": v }), cx, |_, _| {}))));
     } else if cur != "custom" {
         let from = cur.clone();
         rows.push(row(
@@ -394,6 +352,23 @@ pub fn appearance(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
         ));
     }
     if shown_group == "custom" {
+        // Follow Wallpaper Engine (wallpaper_engine.rs): only on a PC that has it. On, the theme becomes the custom one
+        // with the wallpaper's picture (or video) and colour, again each time Wallpaper Engine's wallpaper changes.
+        if crate::wallpaper_engine::config().is_some() {
+            let on = crate::prefs::get("followWallpaperEngine").and_then(|v| v.as_bool()).unwrap_or(false);
+            rows.push(row(
+                root.tr("we.follow"),
+                Some(root.tr("we.followDesc")),
+                switch("we-follow", on, cx, |r, v, cx| {
+                    crate::prefs::set("followWallpaperEngine", json!(v));
+                    // (Read again at once: on, the wallpaper shown now is taken without waiting for a change, and from
+                    // another theme too.)
+                    r.we_last = None;
+                    r.we_wake = v;
+                    cx.notify();
+                }),
+            ));
+        }
         if cur == "custom" {
             rows.extend(custom_rows(root, cx));
         }
@@ -412,18 +387,42 @@ pub fn appearance(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
             }
         }
     });
-    let hide = b(&root.state, "hideNames");
+    let hide = flag(&root.state, "hideNames");
     let mut more = vec![row(root.tr("set.language"), None, langs)];
     more.push(row(
         root.tr("set.hideNames"),
         Some(root.tr("set.hideNamesDesc")),
-        switch("s-hidenames", hide, cx, |r, on, cx| ask(r, "setHideNames", json!({ "enabled": on }), cx, |_, _| {})),
+        switch("s-hidenames", hide, cx, |r, on, cx| r.ask("setHideNames", json!({ "enabled": on }), cx, |_, _| {})),
+    ));
+    // Only where there is a picture to see through: glass on everything (the panels), or on the blocks alone.
+    if crate::theme::frosted() {
+        // (As the theme reads it: on with Sunset until the person sets it.)
+        let on = crate::theme::glass_blocks_asked();
+        // (On, and the picture too light or too dark for the words outside the blocks: said, as nothing changes.)
+        let held = on && !crate::theme::glass_blocks();
+        more.push(row(
+            root.tr("set.glassBlocks"),
+            Some(root.tr(if held { "set.glassBlocksHeld" } else { "set.glassBlocksDesc" })),
+            switch("s-glass-blocks", on, cx, |_, on, cx| {
+                crate::prefs::set("glassBlocks", json!(on));
+                cx.notify();
+            }),
+        ));
+    }
+    let still = crate::kit::still_behind();
+    more.push(row(
+        root.tr("set.stillBehind"),
+        Some(root.tr("set.stillBehindDesc")),
+        switch("s-still", still, cx, |_, on, cx| {
+            crate::prefs::set("stillBehind", json!(on));
+            cx.notify();
+        }),
     ));
     vec![div().flex().flex_col().gap(px(8.)).child(theme_head).child(super::rows_card(rows)), group(None, more)]
 }
 
 /// A theme's tile: a small window in its colours (its picture behind), a line of words and its accent, its name under.
-fn tile(root: &Root, id: &'static str, i: usize, on: bool, uses: Option<i64>, cx: &mut Context<Root>) -> impl IntoElement {
+pub(crate) fn tile(root: &Root, id: &'static str, i: usize, on: bool, uses: Option<i64>, cx: &mut Context<Root>) -> impl IntoElement {
     let scale = if root.settings.look.scale > 0. { root.settings.look.scale } else { 1. };
     let (w, h) = ((TILE_W * scale).round() as u32, (TILE_H * scale).round() as u32);
     // A little window of the theme; `half` is one of Sync with Windows' two: its own whole window in half the tile (cut
@@ -501,7 +500,12 @@ fn tile(root: &Root, id: &'static str, i: usize, on: bool, uses: Option<i64>, cx
         .when(on, |d| d.child(div().absolute().top(px(-3.)).left(px(-3.)).w(px(TILE_W + 6.)).h(px(TILE_H + 6.)).rounded(px(R_M + 3.)).border_2().border_color(c(FACE))))
         .relative()
         .hover(|d| d.opacity(0.92))
-        .on_hover(cx.listener(move |r, over: &bool, _, cx| hover(r, id, *over, cx)))
+        // (Its picture drawn ahead while the mouse rests here: the pick then shows it at once.)
+        .on_hover(cx.listener(move |r, over: &bool, window, cx| {
+            if *over && current(r) != id {
+                crate::scene::warm(id, window, cx);
+            }
+        }))
         .on_click(cx.listener(move |r, _, _, cx| {
             if current(r) != id {
                 pick(r, id, cx);
@@ -529,7 +533,7 @@ fn custom_rows(root: &Root, cx: &mut Context<Root>) -> Vec<AnyElement> {
     }
     let t = this.clone();
     pic_btns = pic_btns.child(Button::new("ct-pick", root.tr(if has_pic { "ct.change" } else { "ct.pick" })).small().icon("image").on_click(move |_, _, cx| {
-        let _ = t.update(cx, |r, cx| ask(r, "pickThemePicture", json!({}), cx, |_, _| {}));
+        let _ = t.update(cx, |r, cx| r.ask("pickThemePicture", json!({}), cx, |_, _| {}));
     }));
     rows.push(row(root.tr("ct.picture"), Some(root.tr("ct.pictureDesc")), pic_btns));
     if has_pic {
@@ -555,7 +559,7 @@ fn custom_rows(root: &Root, cx: &mut Context<Root>) -> Vec<AnyElement> {
                 .child(Button::new("ct-code-copy", root.tr("ct.codeCopy")).small().icon("copy").on_click(cx.listener(move |r, _, _, cx| {
                     cx.write_to_clipboard(ClipboardItem::new_string(code.clone()));
                     let text = r.tr("ct.codeCopied");
-                    ok(r, text);
+                    r.ok(text);
                     cx.notify();
                 })))
                 .child(field(&bx.code, None).w(px(230.)).h(px(34.)))
@@ -588,7 +592,7 @@ fn saved_rows(root: &Root, cx: &mut Context<Root>) -> Vec<AnyElement> {
         root.tr("ct.yours"),
         Some(root.tr(if saved.is_empty() { "ct.yoursNone" } else { "ct.yoursDesc" })),
         Button::new("ct-import", root.tr("ct.import")).small().icon("folder").on_click(move |_, _, cx| {
-            let _ = t.update(cx, |r, cx| ask(r, "importTheme", json!({}), cx, |_, _| {}));
+            let _ = t.update(cx, |r, cx| r.ask("importTheme", json!({}), cx, |_, _| {}));
         }),
     )];
     if saved.is_empty() {
@@ -649,10 +653,10 @@ fn saved_rows(root: &Root, cx: &mut Context<Root>) -> Vec<AnyElement> {
                 .child(IconButton::new(("ct-export", i), "download").tip(root.tr("ct.export")).on_click(move |_, _, cx| {
                     let id = ex_id.clone();
                     let _ = t.update(cx, |r, cx| {
-                        ask(r, "exportTheme", json!({ "id": id }), cx, |r, v| {
+                        r.ask("exportTheme", json!({ "id": id }), cx, |r, v| {
                             if let Some(file) = v.get("saved").and_then(Value::as_str) {
                                 let text = r.i18n.tv("ct.exported", &[("file", file)]);
-                                ok(r, text);
+                                r.ok(text);
                             }
                         })
                     });
@@ -755,7 +759,7 @@ fn colour_field(root: &Root, which: &'static str, value: &str, cx: &mut Context<
                 cx.notify();
             }
         }));
-    wrap = wrap.child(div().absolute().top(px(38.)).right_0().child(deferred(anchored().anchor(Anchor::TopRight).snap_to_window_with_margin(px(8.)).child(panel)).with_priority(1)));
+    wrap = wrap.child(float(PopAt::BelowRight(38.), 1, panel));
     wrap
 }
 

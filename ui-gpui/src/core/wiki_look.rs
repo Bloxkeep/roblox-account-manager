@@ -95,7 +95,7 @@ pub fn of(places: impl IntoIterator<Item = i64>) -> Res<HashMap<i64, WikiLookInf
         // Four at a time, as Games looks them up (SemaphoreSlim(4)), not a thread per place (up to ~100).
         let queue = Mutex::new(missing.iter().copied().enumerate());
         let answers: Mutex<Vec<Option<Res<i64>>>> = Mutex::new(vec![None; missing.len()]);
-        std::thread::scope(|s| {
+        crate::threads::scope(|s| {
             for _ in 0..4 {
                 s.spawn(|| {
                     loop {
@@ -110,7 +110,7 @@ pub fn of(places: impl IntoIterator<Item = i64>) -> Res<HashMap<i64, WikiLookInf
         let answers = answers.into_inner().unwrap_or_else(|e| e.into_inner());
         let universes: Vec<(i64, i64)> = missing.iter().zip(answers).map(|(&p, got)| got.unwrap_or(Ok(0)).map(|u| (p, u))).collect::<Res<Vec<_>>>()?;
         let ids: Vec<i64> = universes.iter().map(|u| u.1).filter(|u| *u > 0).collect();
-        let (icons, covers) = std::thread::scope(|s| {
+        let (icons, covers) = crate::threads::scope(|s| {
             let icons = s.spawn(|| try_or(api::get_game_icons(ids.clone(), ct), HashMap::new()));
             let covers = s.spawn(|| try_or(api::get_game_covers(ids.clone(), ct), HashMap::new()));
             (icons.join().unwrap_or(Ok(HashMap::new())), covers.join().unwrap_or(Ok(HashMap::new())))
@@ -144,7 +144,7 @@ pub fn of(places: impl IntoIterator<Item = i64>) -> Res<HashMap<i64, WikiLookInf
             .collect()
     };
     if !untinted.is_empty() {
-        std::thread::spawn(move || tint_all(untinted));
+        crate::threads::run(move || tint_all(untinted));
     }
     let known = lock(&KNOWN);
     Ok(wanted
@@ -158,7 +158,7 @@ pub fn of(places: impl IntoIterator<Item = i64>) -> Res<HashMap<i64, WikiLookInf
 /// The icons' colours, a few at a time, kept as each is worked out.
 fn tint_all(icons: Vec<(i64, String)>) {
     let queue = Mutex::new(icons);
-    std::thread::scope(|s| {
+    crate::threads::scope(|s| {
         for _ in 0..6 {
             s.spawn(|| {
                 loop {

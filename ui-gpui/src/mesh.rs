@@ -9,6 +9,24 @@
 // the head the closer it comes).
 use std::collections::HashMap;
 
+/// The most bands a picture is drawn in at once.
+const BAND_THREADS: usize = 16;
+
+/// One band of a picture being drawn, borrowing the stage it reads and the rows it writes.
+type Band<'a> = Box<dyn FnOnce() + Send + 'a>;
+
+/// Runs the bands at once on the shared pool (threads.rs) and returns when every one is done; a band that panics
+/// panics here once all are. A thread made and ended for every band of every picture left ~184 bytes behind in
+/// NVIDIA's graphics driver each time, never given back: 16 threads a picture, 30 pictures a second while the avatar
+/// moves, and Bloxkeep passed 1 GB within the hour (the owner, 2026-11-19: "sao kinh dị vậy").
+fn run_bands(bands: Vec<Band<'_>>) {
+    crate::threads::scope(|s| {
+        for band in bands {
+            s.spawn(band);
+        }
+    });
+}
+
 type V3 = [f32; 3];
 
 fn sub(a: V3, b: V3) -> V3 {
@@ -99,6 +117,7 @@ pub const ZOOM_FAR: f32 = 1.35;
 pub const PITCH_LOW: f32 = -0.1;
 pub const PITCH_HIGH: f32 = 1.05;
 
+#[derive(Clone)]
 struct Tex {
     w: usize,
     h: usize,
@@ -134,6 +153,7 @@ impl Tex {
     }
 }
 
+#[derive(Clone)]
 struct Mat {
     kd: [f32; 3],
     tex: Option<Tex>,
@@ -159,6 +179,7 @@ struct Shown {
     y1: usize,
 }
 
+#[derive(Clone)]
 struct Tri {
     p: [V3; 3],
     uv: [[f32; 2]; 3],
@@ -179,6 +200,7 @@ const LEG_A: u8 = 4;
 /// for R6, fifteen for R15) and each worn thing another (Handle1…); which part is which is found from where it is,
 /// not its number: the head the highest, an arm far out to one side. `side` is the axis across the shoulders (0 = X,
 /// 2 = Z); the neck and each shoulder are where those turn.
+#[derive(Clone)]
 struct Rig {
     side: usize,
     neck: V3,
@@ -311,6 +333,7 @@ fn rig_of(tris: &mut [Tri], names: &[String]) -> Option<Rig> {
 /// The shadow's map: how dark the floor is under the model, over a square of the floor around its middle.
 const SH: usize = 128;
 
+#[derive(Clone)]
 pub struct Model {
     tris: Vec<Tri>,
     mats: Vec<Mat>,
@@ -325,6 +348,8 @@ pub struct Model {
     shadow: Vec<f32>,
     /// How it moves in its idle; None: it stands still.
     rig: Option<Rig>,
+    /// The materials of the body's own parts (the OBJ's Player groups), whose skin a colour change repaints.
+    body: Vec<usize>,
 }
 
 impl Model {
@@ -334,17 +359,20 @@ impl Model {
         let mut mats: Vec<Mat> = Vec::new();
         let mut names: HashMap<String, usize> = HashMap::new();
         // (The name is the last word: options may stand before it. A path's last part is the name.)
-        let picture = |it: std::str::SplitWhitespace| -> Option<Tex> {
+        let named = |it: std::str::SplitWhitespace| -> String {
             let name = it.last().unwrap_or_default();
-            let name = name.rsplit(['/', '\\']).next().unwrap_or(name);
-            pictures.get(name).and_then(|b| Tex::of(b))
+            name.rsplit(['/', '\\']).next().unwrap_or(name).to_string()
         };
+        let picture = |name: &str| -> Option<Tex> { pictures.get(name).and_then(|b| Tex::of(b)) };
+        // The colour picture of the material being read, by name: its mask is often that same file.
+        let mut colours = String::new();
         for line in mtl.lines() {
             let mut it = line.split_whitespace();
             match it.next() {
                 Some("newmtl") => {
                     names.insert(it.next().unwrap_or_default().to_string(), mats.len());
                     mats.push(Mat { kd: [0.8; 3], tex: None, mask: None, d: 1. });
+                    colours.clear();
                 }
                 Some("Kd") => {
                     let v: Vec<f32> = it.filter_map(|t| t.parse().ok()).collect();
@@ -353,25 +381,33 @@ impl Model {
                     }
                 }
                 Some("d") => {
-                    if let (Some(m), Some(d)) = (mats.last_mut(), it.next().and_then(|t| t.parse::<f32>().ok())) {
-                        m.d = d;
+                    if let (Some(m), Some(d)) = (mats.last_mut(), it.next().and_then(|t| t.parse::<f32>().ok()).filter(|v| v.is_finite())) {
+                        m.d = d.clamp(0., 1.);
                     }
                 }
                 Some("Tr") => {
-                    if let (Some(m), Some(tr)) = (mats.last_mut(), it.next().and_then(|t| t.parse::<f32>().ok())) {
-                        m.d = 1. - tr;
+                    if let (Some(m), Some(tr)) = (mats.last_mut(), it.next().and_then(|t| t.parse::<f32>().ok()).filter(|v| v.is_finite())) {
+                        m.d = 1. - tr.clamp(0., 1.);
                     }
                 }
                 Some("map_Kd") => {
-                    let tex = picture(it);
                     if let Some(m) = mats.last_mut() {
-                        m.tex = tex;
+                        colours = named(it);
+                        // A missing or unreadable colour atlas would leave the face or clothing blank.
+                        m.tex = Some(picture(&colours)?);
                     }
                 }
                 Some("map_d") => {
-                    let mask = picture(it).map(|mut t| {
-                        // A map with no alpha of its own says it in grey.
-                        if t.rgba.chunks(4).all(|p| p[3] == 255) {
+                    let name = named(it);
+                    // Roblox names the colour picture itself as every material's mask: its own alpha is the mask
+                    // then, and a picture without any is solid. Read as grey (below), a dark worn thing went
+                    // see-through: on R15, where each worn thing has a picture of its own, black sunglasses and a
+                    // dark scarf were not there at all, while R6's one shared picture (with alpha) drew them (the
+                    // owner's two models, read from the files Roblox gave, 2026-11-18).
+                    let own = name == colours;
+                    let mask = picture(&name).map(|mut t| {
+                        // A map of its own with no alpha says it in grey.
+                        if !own && t.rgba.chunks(4).all(|p| p[3] == 255) {
                             for p in t.rgba.chunks_mut(4) {
                                 p[3] = p[0];
                             }
@@ -484,7 +520,33 @@ impl Model {
         let plate = (reach * 1.15).clamp(radius * 0.45, radius * 0.95);
         let shadow = shadow_of(&tris, center, radius, olo[1], ohi[1]);
         let rig = rig_of(&mut tris, &group_names);
-        Some(Model { tris, mats, center, radius, eye, floor: olo[1], plate, shadow, rig })
+        let mut body: Vec<usize> = tris.iter().filter(|t| group_names.get(t.group as usize).is_some_and(|g| g.to_ascii_lowercase().starts_with("player"))).map(|t| t.mat).collect();
+        body.sort_unstable();
+        body.dedup();
+        Some(Model { tris, mats, center, radius, eye, floor: olo[1], plate, shadow, rig, body })
+    }
+
+    /// The model with its skin in another colour, at once: on the body's parts, the dots and material colours that are
+    /// one of the old skin colours (within a few steps) become the new one; what is worn over the skin keeps its own.
+    /// Roblox takes seconds to make the new model after a change (owner, 2026-11-17: "đổi skin color… load khá lâu"):
+    /// this one shows meanwhile, and Roblox's replaces it when it comes.
+    pub fn recoloured(&self, from: &[[u8; 3]], to: [u8; 3]) -> Model {
+        let mut m = self.clone();
+        let near = |r: i32, g: i32, b: i32| from.iter().any(|f| (f[0] as i32 - r).abs() <= 6 && (f[1] as i32 - g).abs() <= 6 && (f[2] as i32 - b).abs() <= 6);
+        for &i in &self.body {
+            let Some(mat) = m.mats.get_mut(i) else { continue };
+            if near((mat.kd[0] * 255.).round() as i32, (mat.kd[1] * 255.).round() as i32, (mat.kd[2] * 255.).round() as i32) {
+                mat.kd = [to[0] as f32 / 255., to[1] as f32 / 255., to[2] as f32 / 255.];
+            }
+            if let Some(t) = mat.tex.as_mut() {
+                for p in t.rgba.chunks_mut(4) {
+                    if p[3] > 0 && near(p[0] as i32, p[1] as i32, p[2] as i32) {
+                        p[..3].copy_from_slice(&to);
+                    }
+                }
+            }
+        }
+        m
     }
 
     /// Whether it can move (its parts were found).
@@ -590,6 +652,7 @@ impl Model {
         let (hs, hc) = (view.yaw + view.heading).sin_cos();
         let face = |p: V3| -> V3 { [p[0] * hc + p[2] * hs, p[1], -p[0] * hs + p[2] * hc] };
         let mut shown: Vec<Shown> = Vec::with_capacity(self.tris.len());
+        let mut transparent = Vec::new();
         for tri in &self.tris {
             let (tp, tn) = match posed.as_ref().and_then(|p| p.0[tri.bone as usize].as_ref()) {
                 Some((at, m)) => (tri.p.map(|p| add(mv(m, sub(p, *at)), *at)), tri.n.map(|v| mv(m, v))),
@@ -634,8 +697,17 @@ impl Model {
             if x1 < 0 || y1 < 0 || x0 > x1 as usize || y0 > y1 as usize {
                 continue;
             }
-            shown.push(Shown { sx, sy, iz: [1. / z[0], 1. / z[1], 1. / z[2]], nn, uv: tri.uv, mat: tri.mat.min(self.mats.len() - 1), area, x0, x1: x1 as usize, y0, y1: y1 as usize });
+            let mat = tri.mat.min(self.mats.len() - 1);
+            let projected = Shown { sx, sy, iz: [1. / z[0], 1. / z[1], 1. / z[2]], nn, uv: tri.uv, mat, area, x0, x1: x1 as usize, y0, y1: y1 as usize };
+            if self.mats[mat].d < 1. {
+                transparent.push(projected);
+            } else {
+                shown.push(projected);
+            }
         }
+        // Draw opaque depth first, then blend translucent triangles from far to near.
+        transparent.sort_by(|a, b| a.iz.iter().sum::<f32>().total_cmp(&b.iz.iter().sum::<f32>()));
+        shown.extend(transparent);
         let room = &ROOMS[view.room.min(ROOMS.len() - 1)];
         let walled = room.wall != 0;
         // The room where the model isn't: the floor where a dot's line of sight comes down to it, else the wall.
@@ -687,23 +759,26 @@ impl Model {
         };
         // Drawn in bands of rows, one per core, each with its own depth and colours: a 560-dot stage is 1.25 million
         // dots a picture at four per dot, which one core drew far too slowly to follow a drag or a walk (the owner,
-        // 2026-11-15: "lag kinh khủng khiếp"). The same picture as before, dot for dot.
+        // 2026-11-15: "lag kinh khủng khiếp"). The same picture as before, dot for dot. The bands run on threads kept
+        // for them (`run_bands`), not threads made for each picture.
         let mut out = vec![0u8; size * size * 4];
-        let cores = cores.clamp(1, 16);
+        let cores = cores.clamp(1, BAND_THREADS);
         let rows_out = size.div_ceil(cores).max(1);
-        std::thread::scope(|scope| {
+        {
+            let mut bands: Vec<Band<'_>> = Vec::new();
             for (i, chunk) in out.chunks_mut(rows_out * size * 4).enumerate() {
                 let (shown, ground) = (&shown, &ground);
-                scope.spawn(move || {
+                bands.push(Box::new(move || {
                     let y_out = i * rows_out;
                     let rows = chunk.len() / (size * 4);
                     let (top, bottom) = (y_out * SS, (y_out + rows) * SS);
                     let mut depth = vec![f32::MAX; (bottom - top) * n];
-                    let mut col = vec![[0u8; 3]; (bottom - top) * n];
+                    let mut col = vec![[0u8; 4]; (bottom - top) * n];
                     for t in shown.iter() {
                         if t.y1 < top || t.y0 >= bottom {
                             continue;
                         }
+                        let material = &self.mats[t.mat];
                         for y in t.y0.max(top)..=t.y1.min(bottom - 1) {
                             let py = y as f32 + 0.5;
                             for x in t.x0..=t.x1 {
@@ -724,59 +799,71 @@ impl Model {
                                 // (Through the depth, so a picture doesn't swim on a face seen at a slant.)
                                 let (a, b, c) = (w0 * t.iz[0] * zz, w1 * t.iz[1] * zz, w2 * t.iz[2] * zz);
                                 let (tu, tv) = (a * t.uv[0][0] + b * t.uv[1][0] + c * t.uv[2][0], a * t.uv[0][1] + b * t.uv[1][1] + c * t.uv[2][1]);
-                                let base = match &self.mats[t.mat].tex {
+                                let base = match &material.tex {
                                     Some(tex) => tex.at(tu, tv),
-                                    None => [self.mats[t.mat].kd[0] * 255., self.mats[t.mat].kd[1] * 255., self.mats[t.mat].kd[2] * 255., 255.],
+                                    None => [material.kd[0] * 255., material.kd[1] * 255., material.kd[2] * 255., 255.],
                                 };
                                 // The see-through parts (hair's strands, a decal's edges) let what is behind show.
-                                let solid = self.mats[t.mat].mask.as_ref().map(|k| k.at(tu, tv)[3]).unwrap_or(base[3]);
+                                let solid = material.mask.as_ref().map(|k| k.at(tu, tv)[3]).unwrap_or(base[3]);
                                 if solid < 128. {
                                     continue;
                                 }
-                                depth[at] = zz;
                                 let nrm = norm([a * t.nn[0][0] + b * t.nn[1][0] + c * t.nn[2][0], a * t.nn[0][1] + b * t.nn[1][1] + c * t.nn[2][1], a * t.nn[0][2] + b * t.nn[1][2] + c * t.nn[2][2]]);
                                 // Light on both sides of a thin part (a cape, a leaf): the side facing the camera.
                                 let nrm = if dot(nrm, f) > 0. { mul(nrm, -1.) } else { nrm };
                                 let lit = 0.58 + 0.42 * dot(nrm, light).max(0.);
-                                col[at] = [(base[0] * lit).min(255.) as u8, (base[1] * lit).min(255.) as u8, (base[2] * lit).min(255.) as u8];
+                                if material.d >= 1. {
+                                    depth[at] = zz;
+                                    col[at] = [(base[0] * lit).min(255.) as u8, (base[1] * lit).min(255.) as u8, (base[2] * lit).min(255.) as u8, 255];
+                                } else {
+                                    let alpha = material.d;
+                                    let under = 1. - alpha;
+                                    let pixel = &mut col[at];
+                                    for channel in 0..3 {
+                                        pixel[channel] = ((base[channel] * lit).min(255.) * alpha + pixel[channel] as f32 * under).round() as u8;
+                                    }
+                                    pixel[3] = (255. * alpha + pixel[3] as f32 * under).round() as u8;
+                                }
                             }
                         }
                     }
                     let out = chunk;
                     for y in y_out..y_out + rows {
                         for x in 0..size {
-                            let (mut r, mut g, mut b, mut hit) = (0f32, 0f32, 0f32, 0u32);
+                            let (mut r, mut g, mut b, mut hit) = (0f32, 0f32, 0f32, 0f32);
                             for dy in 0..SS {
                                 for dx in 0..SS {
                                     let (sxp, syp) = (x * SS + dx, y * SS + dy);
                                     let at = (syp - top) * n + sxp;
-                                    if depth[at] < f32::MAX {
-                                        r += col[at][0] as f32;
-                                        g += col[at][1] as f32;
-                                        b += col[at][2] as f32;
-                                        hit += 1;
-                                    } else if walled {
+                                    let [red, green, blue, alpha] = col[at];
+                                    let covered = alpha as f32 / 255.;
+                                    r += red as f32;
+                                    g += green as f32;
+                                    b += blue as f32;
+                                    hit += covered;
+                                    if walled && alpha < 255 {
                                         let c = ground(sxp, syp);
-                                        r += c[0];
-                                        g += c[1];
-                                        b += c[2];
-                                        hit += 1;
+                                        let uncovered = 1. - covered;
+                                        r += c[0] * uncovered;
+                                        g += c[1] * uncovered;
+                                        b += c[2] * uncovered;
+                                        hit += uncovered;
                                     }
                                 }
                             }
-                            if hit > 0 {
+                            if hit > 0. {
                                 let o = ((y - y_out) * size + x) * 4;
-                                let k = hit as f32;
-                                out[o] = (b / k) as u8;
-                                out[o + 1] = (g / k) as u8;
-                                out[o + 2] = (r / k) as u8;
-                                out[o + 3] = (hit * 255 / (SS * SS) as u32) as u8;
+                                out[o] = (b / hit) as u8;
+                                out[o + 1] = (g / hit) as u8;
+                                out[o + 2] = (r / hit) as u8;
+                                out[o + 3] = (hit * 255. / (SS * SS) as f32) as u8;
                             }
                         }
                     }
-                });
+                }));
             }
-        });
+            run_bands(bands);
+        }
         out
     }
 

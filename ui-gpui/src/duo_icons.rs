@@ -1,5 +1,5 @@
 //! The names of Bloxkeep's own two-layer icons (assets/icons/duo). Written by dev/make_icons.py: not edited by hand.
-pub const DUO: [&str; 62] = [
+pub const DUO: [&str; 63] = [
     "activity",
     "alert",
     "bell",
@@ -22,6 +22,7 @@ pub const DUO: [&str; 62] = [
     "folder",
     "gamepad",
     "gauge",
+    "gift",
     "globe",
     "grid",
     "history",

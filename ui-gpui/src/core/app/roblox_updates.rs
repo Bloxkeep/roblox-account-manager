@@ -428,6 +428,10 @@ impl App {
         {
             log::note("Roblox update: no Roblox open, the build kept to play on is removed.");
         }
+        // The mods' copies of old builds, likewise (roblox_mods).
+        if players.is_empty() && !self.opening_roblox() && self.controller.pending.borrow().is_empty() {
+            crate::core::roblox_mods::forget_old_copies();
+        }
         let probes: Vec<(i32, String)> = self.roblox_updates.rollout_probes.borrow().iter().map(|(p, f)| (*p, f.clone())).collect();
         for (pid, asked) in probes {
             let in_game = self.controller.logs.borrow().state_of(pid).is_some_and(|s| s.status == "ingame");
@@ -704,7 +708,7 @@ impl App {
             let (via, custom) = self.launch_option();
             let read_before = self.controller.installs_read_at.get();
             let (tx, rx) = std::sync::mpsc::channel::<InstallsRead>();
-            std::thread::spawn(move || {
+            crate::threads::run(move || {
                 let (installs, updater) = read_installs(&via, &custom);
                 let _ = tx.send((installs, updater, read_before, Stamp::utc_now()));
             });

@@ -146,31 +146,33 @@ impl WindowThumbnails {
         // take handles and may come from any thread, and every look at the pictures holds their lock. Not watching
         // (another page shown), it sleeps until woken rather than 20 times a second.
         let (i, c, s, w) = (inner.clone(), on_changed.clone(), stop.clone(), wake.clone());
-        let watch = crate::net::Named::new("Bloxkeep thumbnails".into())
-            .spawn(move || {
-                while !s.load(Ordering::SeqCst) {
-                    {
-                        let mut g = i.lock().unwrap_or_else(|e| e.into_inner());
-                        while !g.watching && !s.load(Ordering::SeqCst) {
-                            g = w.wait(g).unwrap_or_else(|e| e.into_inner());
-                        }
-                    }
-                    std::thread::sleep(WATCH_EVERY);
-                    let minimized = {
-                        let mut g = i.lock().unwrap_or_else(|e| e.into_inner());
-                        if !g.watching || s.load(Ordering::SeqCst) {
-                            continue;
-                        }
-                        follow(&mut g)
-                    };
-                    if minimized {
-                        if let Some(f) = c.lock().unwrap_or_else(|e| e.into_inner()).as_ref() {
-                            f();
-                        }
-                    }
+        // One round a look (threads::keep: one that panics doesn't end the watching for the rest of the run).
+        let watch = crate::threads::keep("Bloxkeep thumbnails", move || {
+            if s.load(Ordering::SeqCst) {
+                return false;
+            }
+            {
+                let mut g = i.lock().unwrap_or_else(|e| e.into_inner());
+                while !g.watching && !s.load(Ordering::SeqCst) {
+                    g = w.wait(g).unwrap_or_else(|e| e.into_inner());
                 }
-            })
-            .ok();
+            }
+            std::thread::sleep(WATCH_EVERY);
+            let minimized = {
+                let mut g = i.lock().unwrap_or_else(|e| e.into_inner());
+                if !g.watching || s.load(Ordering::SeqCst) {
+                    return true;
+                }
+                follow(&mut g)
+            };
+            if minimized {
+                if let Some(f) = c.lock().unwrap_or_else(|e| e.into_inner()).as_ref() {
+                    f();
+                }
+            }
+            true
+        })
+        .ok();
         WindowThumbnails { inner, on_changed, stop, wake, watch }
     }
 

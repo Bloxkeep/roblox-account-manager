@@ -9,6 +9,7 @@
 // reached from every network.
 import fs from 'node:fs';
 import net from 'node:net';
+import os from 'node:os';
 import path from 'node:path';
 import vm from 'node:vm';
 import { spawn } from 'node:child_process';
@@ -42,6 +43,8 @@ const sandbox = {
     }
     return fetch(u);
   },
+  // A repo file read at once (the mock's state is built before any fetch answers): ?whatsnew=real.
+  readRepo: p => fs.readFileSync(path.join(repo, p), 'utf8'),
 };
 sandbox.window = sandbox;
 vm.createContext(sandbox);
@@ -137,6 +140,13 @@ if (opt('--pictures')) args.push('--pictures', opt('--pictures'));
 if (shot) args.push('--shot', path.resolve(shot));
 const ui = spawn(exe, args, {
   stdio: ['ignore', 'inherit', 'inherit'],
-  env: { ...process.env, BLOXKEEP_UI_ASSETS: path.join(repo, 'ui-gpui/assets'), ...(page ? { BLOXKEEP_UI_PAGE: page } : {}) },
+  // BLOXKEEP_KEPT: the shot's own interface choices (ui-prefs.json), pictures and per-account files, never this PC's
+  // real Bloxkeep's (a shot of Game privacy once left a made-up account there for the real app to put back).
+  env: {
+    ...process.env,
+    BLOXKEEP_KEPT: process.env.BLOXKEEP_KEPT || path.join(os.tmpdir(), 'bloxkeep-shot-kept'),
+    BLOXKEEP_UI_ASSETS: path.join(repo, 'ui-gpui/assets'),
+    ...(page ? { BLOXKEEP_UI_PAGE: page } : {}),
+  },
 });
 ui.on('exit', code => process.exit(code ?? 0));

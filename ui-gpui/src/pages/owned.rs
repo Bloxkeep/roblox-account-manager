@@ -15,10 +15,13 @@ use std::{
 
 use gpui_kit::{prelude::*, *};
 use serde_json::{json, Value};
+use crate::val::s;
+use crate::val::{flag, int};
+use crate::ask::reply;
 
 use crate::{
     kit::*,
-    pages::games::{self, thousands},
+    pages::games,
     roblox,
     shell::Root,
     theme::*,
@@ -86,18 +89,6 @@ fn page_kind(shelf: usize) -> &'static str {
     }
 }
 
-fn s<'a>(v: &'a Value, k: &str) -> &'a str {
-    v.get(k).and_then(Value::as_str).unwrap_or_default()
-}
-
-fn n(v: &Value, k: &str) -> i64 {
-    v.get(k).and_then(Value::as_i64).unwrap_or(0)
-}
-
-fn on(v: &Value, k: &str) -> bool {
-    v.get(k).and_then(Value::as_bool).unwrap_or(false)
-}
-
 pub fn want(r: &mut Root, link: &crate::link::Link, cx: &mut Context<Root>) {
     // BLOXKEEP_SHOT_OWNED's second word picks the shelf of a hidden shot ("file.json,2").
     if r.owned.shelf == 0 {
@@ -138,22 +129,18 @@ fn shelf_page(r: &mut Root, cx: &mut Context<Root>) {
         From::Bundles => roblox::bundles_page(&cookie, user, &cursor),
         From::Passes => roblox::passes_page(&cookie, user, &cursor),
     });
-    cx.spawn(async move |this, cx| {
-        let got = rx.await.unwrap_or_else(|_| Err(String::new()));
-        let _ = this.update(cx, |r, cx| {
-            let Some(have) = r.owned.things.get_mut(&key) else { return };
-            have.reading = false;
-            match got {
-                Ok((page, next)) => {
-                    have.list.extend(page);
-                    have.next = next;
-                }
-                Err(why) => have.failed = Some(if why.is_empty() { "Roblox".into() } else { why }),
+    reply(rx, cx, move |r, got, cx| {
+        let Some(have) = r.owned.things.get_mut(&key) else { return };
+        have.reading = false;
+        match got {
+            Ok((page, next)) => {
+                have.list.extend(page);
+                have.next = next;
             }
-            cx.notify();
-        });
-    })
-    .detach();
+            Err(why) => have.failed = Some(if why.is_empty() { "Roblox".into() } else { why }),
+        }
+        cx.notify();
+    });
 }
 
 fn load(r: &mut Root, fresh: bool, cx: &mut Context<Root>) {
@@ -191,7 +178,7 @@ fn load(r: &mut Root, fresh: bool, cx: &mut Context<Root>) {
 /// The pictures of the games not asked for yet.
 fn pictures(r: &mut Root, cx: &mut Context<Root>) {
     let Some(Ok(v)) = &r.owned.got else { return };
-    let mut ids: Vec<i64> = v.get("servers").and_then(Value::as_array).into_iter().flatten().map(|x| n(x, "universeId")).filter(|u| *u > 0 && !r.owned.asked.contains(u)).collect();
+    let mut ids: Vec<i64> = v.get("servers").and_then(Value::as_array).into_iter().flatten().map(|x| int(x, "universeId")).filter(|u| *u > 0 && !r.owned.asked.contains(u)).collect();
     ids.sort_unstable();
     ids.dedup();
     if ids.is_empty() {
@@ -352,11 +339,11 @@ fn servers(root: &Root, inner: f32, cx: &mut Context<Root>) -> AnyElement {
         _ => Vec::new(),
     };
     let (asked, failed) = match &o.got {
-        Some(Ok(v)) => (n(v, "asked"), n(v, "failed")),
+        Some(Ok(v)) => (int(v, "asked"), int(v, "failed")),
         _ => (0, 0),
     };
-    let running: Vec<&Value> = all.iter().filter(|x| on(x, "active")).collect();
-    let ended: Vec<&Value> = all.iter().filter(|x| !on(x, "active")).collect();
+    let running: Vec<&Value> = all.iter().filter(|x| flag(x, "active")).collect();
+    let ended: Vec<&Value> = all.iter().filter(|x| !flag(x, "active")).collect();
     let shown: &Vec<&Value> = if o.ended { &ended } else { &running };
     let half = |id: &'static str, key: &str, count: usize, which: bool| {
         segment(id, o.ended == which).h(px(28.)).px(px(12.)).gap(px(7.)).child(root.tr(key)).child(div().font_features(tnum()).opacity(0.6).child(count.to_string())).on_click(cx.listener(move |r, _, _, cx| {
@@ -366,15 +353,16 @@ fn servers(root: &Root, inner: f32, cx: &mut Context<Root>) -> AnyElement {
     };
     let halves = (!all.is_empty()).then(|| div().flex().flex_none().p(px(3.)).gap(px(2.)).rounded(px(10.)).bg(c(INSET)).border_1().border_color(c(LINE)).child(half("own-on", "own.running", running.len(), false)).child(half("own-off", "own.ended", ended.len(), true)));
     // What they come to: how many renew, what that costs a month, and the next one due.
-    let renewing: Vec<&&Value> = running.iter().filter(|x| on(x, "renews") && n(x, "price") > 0).collect();
-    let monthly: i64 = renewing.iter().map(|x| n(x, "price")).sum();
+    let renewing: Vec<&&Value> = running.iter().filter(|x| flag(x, "renews") && int(x, "price") > 0).collect();
+    let monthly: i64 = renewing.iter().map(|x| int(x, "price")).sum();
     let next = renewing.iter().filter(|x| !s(x, "expires").is_empty()).min_by_key(|x| s(x, "expires").to_string());
-    let soon = running.iter().filter(|x| !on(x, "renews") && days_to(s(x, "expires")).is_some_and(|d| (0..=7).contains(&d))).count();
-    let summary = (!running.is_empty()).then(|| {
-        surface()
-            .w_full()
-            .px(px(20.))
-            .py(px(16.))
+    let soon = running.iter().filter(|x| !flag(x, "renews") && days_to(s(x, "expires")).is_some_and(|d| (0..=7).contains(&d))).count();
+    let summary = if o.ended {
+        Some(figure(root.tr("own.ended"), div().font_features(tnum()).child(thousands(ended.len() as i64, vi))))
+    } else if running.is_empty() {
+        None
+    } else {
+        Some(div()
             .flex()
             .flex_wrap()
             .items_center()
@@ -391,13 +379,14 @@ fn servers(root: &Root, inner: f32, cx: &mut Context<Root>) -> AnyElement {
                 line
             }))
             .child(figure(root.tr("own.f.month"), div().flex().items_center().gap(px(5.)).font_features(tnum()).child(icon("robux", 15., c(TEXT))).child(thousands(monthly, vi))))
-            .when_some(next, |d, x| d.child(figure(root.tr("own.f.next"), div().flex().items_center().gap(px(8.)).child(day(s(x, "expires"), vi)).child(div().text_color(c(MUTED)).font_weight(FontWeight::NORMAL).child(s(x, "game").to_string())))))
-    });
-    let bar = (summary.is_some() || halves.is_some()).then(|| div().flex().flex_wrap().items_center().gap(px(16.)).child(div().flex_1().min_w(px(280.)).children(summary)).children(halves));
+            .when_some(next, |d, x| d.child(figure(root.tr("own.f.next"), div().flex().items_center().gap(px(8.)).child(day(s(x, "expires"), vi)).child(div().text_color(c(MUTED)).font_weight(FontWeight::NORMAL).child(s(x, "game").to_string()))))))
+    };
+    let bar = (!all.is_empty()).then(|| surface().px(px(16.)).py(px(12.)).flex().flex_wrap().items_center().justify_between().gap(px(12.))
+        .children(summary).children(halves));
 
     let body: AnyElement = match &o.got {
         None => note(root.tr("own.reading"), true).into_any_element(),
-        Some(Err(why)) => note(root.i18n.tv("own.failed", &[("why", if why.is_empty() { "Roblox" } else { why })]), false).into_any_element(),
+        Some(Err(why)) => note(root.i18n.tv("own.failed", &[("why", crate::net::why_words(&root.i18n, why).as_str())]), false).into_any_element(),
         Some(Ok(_)) if asked == 0 => note(root.tr("own.noAccount"), false).into_any_element(),
         Some(Ok(_)) if all.is_empty() => note(root.tr("own.none"), false).into_any_element(),
         Some(Ok(_)) if shown.is_empty() => note(root.tr(if o.ended { "own.noneEnded" } else { "own.noneRunning" }), false).into_any_element(),
@@ -405,19 +394,20 @@ fn servers(root: &Root, inner: f32, cx: &mut Context<Root>) -> AnyElement {
             // Under each game, its servers (the list comes sorted by game).
             let mut groups: Vec<(i64, Vec<&Value>)> = Vec::new();
             for x in shown.iter().copied() {
-                let u = n(x, "universeId");
+                let u = int(x, "universeId");
                 match groups.last_mut() {
                     Some((last, rows)) if *last == u => rows.push(x),
                     _ => groups.push((u, vec![x])),
                 }
             }
-            let (_, card_w) = grid_fit(inner, 340., GRID_GAP);
+            let (cols, _) = grid_fit(inner, 370., GRID_GAP);
+            let cols = cols.min(3).min(groups.len()).max(1);
+            let card_w = ((inner - GRID_GAP * (cols - 1) as f32) / cols as f32).floor();
             let mut i = 0;
-            let cards: Vec<AnyElement> = groups
-                .into_iter()
-                .map(|(universe, rows)| {
+            let mut columns: Vec<(usize, Vec<AnyElement>)> = (0..cols).map(|_| (0, Vec::new())).collect();
+            for (universe, rows) in groups {
                     let first = rows[0];
-                    let (place, game) = (n(first, "placeId"), s(first, "game").to_string());
+                    let (place, game) = (int(first, "placeId"), s(first, "game").to_string());
                     let pic = o.icons.get(&universe).filter(|u| !u.is_empty()).and_then(|u| crate::images::pic_sq(u, 44., cx));
                     let (g2, count) = (game.clone(), rows.len());
                     let top = hot(("own-game", universe as usize))
@@ -451,14 +441,14 @@ fn servers(root: &Root, inner: f32, cx: &mut Context<Root>) -> AnyElement {
                         }));
                     let lines = rows.into_iter().map(|x| {
                         i += 1;
-                        let (price, renews, expires) = (n(x, "price"), on(x, "renews"), s(x, "expires"));
+                        let (price, renews, expires) = (int(x, "price"), flag(x, "renews"), s(x, "expires"));
                         let left = days_to(expires);
                         let cost = if price > 0 {
                             div().flex().flex_none().items_center().gap(px(4.)).font_features(tnum()).text_color(c(TEXT)).child(icon("robux", 12., c(TEXT))).child(thousands(price, vi)).child(div().text_color(c(MUTED)).child(root.tr("own.aMonth")))
                         } else {
                             div().flex_none().text_color(c(OK)).child(root.tr("shop.free"))
                         };
-                        let (when, tone) = match (expires.is_empty(), on(x, "active"), renews) {
+                        let (when, tone) = match (expires.is_empty(), flag(x, "active"), renews) {
                             (true, _, _) => (root.tr("own.noEnd"), MUTED),
                             (_, false, _) => (root.i18n.tv("own.endedOn", &[("d", &day(expires, vi))]), MUTED),
                             (_, true, true) => (root.i18n.tv("own.renewsOn", &[("d", &day(expires, vi))]), MUTED),
@@ -482,15 +472,19 @@ fn servers(root: &Root, inner: f32, cx: &mut Context<Root>) -> AnyElement {
                                     .flex()
                                     .flex_col()
                                     .gap(px(2.))
-                                    .child(div().text_color(c(TEXT)).truncate().child(if name.is_empty() { format!("#{}", n(x, "id")) } else { name.to_string() }))
+                                    .child(div().text_color(c(TEXT)).truncate().child(if name.is_empty() { format!("#{}", int(x, "id")) } else { name.to_string() }))
                                     .child(div().flex().items_center().gap(px(6.)).text_size(px(T_S)).text_color(c(MUTED)).child(icon("user", 11., c(MUTED))).child(div().min_w_0().truncate().child(s(x, "account").to_string()))),
                             )
                             .child(div().flex().flex_col().flex_none().items_end().gap(px(2.)).child(cost).child(div().text_size(px(T_S)).text_color(c(tone)).child(when)))
                     });
-                    surface().w(px(card_w)).p(px(4.)).flex().flex_col().child(top).children(lines.collect::<Vec<_>>()).into_any_element()
-                })
-                .collect();
-            grid(GRID_GAP).children(cards).into_any_element()
+                    let col = columns.iter_mut().min_by_key(|(height, _)| *height).expect("one column");
+                    col.0 += count + 1;
+                    col.1.push(surface().w_full().p(px(4.)).flex().flex_col().child(top)
+                        .children(lines.collect::<Vec<_>>()).into_any_element());
+            }
+            div().flex().items_start().gap(px(GRID_GAP)).children(columns.into_iter().map(|(_, cards)| {
+                div().w(px(card_w)).flex_none().flex().flex_col().gap(px(GRID_GAP)).children(cards)
+            })).into_any_element()
         }
     };
     let missed = (failed > 0).then(|| div().text_size(px(T_S)).text_color(c(WARN)).child(root.i18n.tv("own.missed", &[("n", &failed.to_string()), ("of", &asked.to_string())])));

@@ -26,7 +26,10 @@
       <section class="viewer" aria-labelledby="active-source">
         <div class="viewer-bar">
           <h2 id="active-source">No window selected</h2>
-          <span class="signal" id="signal" aria-live="polite"><i></i><span>Waiting</span></span>
+          <div class="viewer-tools">
+            <button id="sharp" type="button" class="quiet" aria-pressed="false" hidden>Sharper</button>
+            <span class="signal" id="signal" aria-live="polite"><i></i><span>Waiting</span></span>
+          </div>
         </div>
         <div class="screen">
           <div id="placeholder" class="placeholder">

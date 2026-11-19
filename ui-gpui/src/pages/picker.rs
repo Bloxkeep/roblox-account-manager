@@ -16,6 +16,9 @@ use gpui_kit::{prelude::*, *};
 use serde_json::{Value, json};
 
 use crate::{images, kit::*, shell::Root, theme::*};
+use crate::val::s;
+use crate::val::int;
+use crate::ask::answer;
 
 const TABS: [&str; 5] = ["recent", "pinned", "saved", "favorites", "popular"];
 const TYPE_DELAY: Duration = Duration::from_millis(330);
@@ -260,14 +263,6 @@ pub fn save_server(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
     .detach();
 }
 
-fn s<'a>(v: &'a Value, k: &str) -> &'a str {
-    v.get(k).and_then(Value::as_str).unwrap_or_default()
-}
-
-fn int(v: &Value, k: &str) -> i64 {
-    v.get(k).and_then(Value::as_i64).unwrap_or(0)
-}
-
 /// 412873 as "412,873" ("412.873" in Vietnamese).
 fn grouped(n: i64, vi: bool) -> String {
     let digits = n.to_string();
@@ -289,19 +284,15 @@ fn load(r: &mut Root, cx: &mut Context<Root>) {
     }
     r.picker.loading = true;
     let rx = link.call("gameLists", json!({}));
-    cx.spawn(async move |this, cx| {
-        let answer = rx.await;
-        let _ = this.update(cx, |r, cx| {
-            r.picker.loading = false;
-            if let Ok(Ok(v)) = answer {
-                if v.is_object() {
-                    r.picker.lists = Some(v);
-                }
+    answer(rx, cx, move |r, answer, cx| {
+        r.picker.loading = false;
+        if let Ok(Ok(v)) = answer {
+            if v.is_object() {
+                r.picker.lists = Some(v);
             }
-            cx.notify();
-        });
-    })
-    .detach();
+        }
+        cx.notify();
+    });
 }
 
 /// The list open, its lists asked for (a shot's way in).
@@ -335,18 +326,14 @@ fn pick(r: &mut Root, link: String, window: &mut Window, cx: &mut Context<Root>)
 fn tell(r: &mut Root, cmd: &'static str, args: Value, cx: &mut Context<Root>, done: impl FnOnce(&mut Root, Value, &mut Context<Root>) + 'static) {
     let Some(link) = r.link.clone() else { return };
     let rx = link.call(cmd, args);
-    cx.spawn(async move |this, cx| {
-        let answer = rx.await;
-        let _ = this.update(cx, |r, cx| {
-            match answer {
-                Ok(Ok(v)) => done(r, v, cx),
-                Ok(Err(e)) => r.toast = Some((e.to_string(), "error".into())),
-                Err(_) => {}
-            }
-            cx.notify();
-        });
-    })
-    .detach();
+    answer(rx, cx, move |r, answer, cx| {
+        match answer {
+            Ok(Ok(v)) => done(r, v, cx),
+            Ok(Err(e)) => r.toast = Some((e.to_string(), "error".into())),
+            Err(_) => {}
+        }
+        cx.notify();
+    });
 }
 
 /// The button beside the game box, with its list.
@@ -366,7 +353,7 @@ pub fn button(root: &Root, cx: &mut Context<Root>) -> Div {
         })))
         // (The list built while open or fading out only, not every frame after its first opening.)
         .when(crate::pages::accounts::pop_alive("picker-pop", open), |d| {
-            d.child(div().absolute().bottom(px(42.)).left_0().child(deferred(anchored().anchor(Anchor::BottomLeft).snap_to_window_with_margin(px(8.)).child(pop("picker-pop", open, list(root, cx)))).with_priority(1)))
+            d.child(popup(PopAt::AboveLeft(42.), "picker-pop", open, list(root, cx)))
         })
 }
 

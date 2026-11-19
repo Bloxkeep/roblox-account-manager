@@ -70,9 +70,6 @@ pub struct Boxes {
 fn dc(root: &Root) -> &Value {
     root.state.get("discord").unwrap_or(&Value::Null)
 }
-fn text(e: &Entity<InputState>, cx: &App) -> String {
-    e.read(cx).value().trim().to_string()
-}
 fn put(e: &Entity<InputState>, v: &str, window: &mut Window, cx: &mut Context<Root>) {
     let v = v.to_string();
     e.update(cx, |st, cx| st.set_value(v, window, cx));
@@ -188,7 +185,7 @@ fn commit(r: &mut Root, which: &'static str, window: &mut Window, cx: &mut Conte
     let Some(bx) = r.settings.dc.as_ref() else { return };
     let (from_box, to_box) = (bx.from.clone(), bx.to.clone());
     let e = box_for(bx, which);
-    let v = text(&e, cx);
+    let v = input_text(&e, cx);
     let was = saved(r, which);
     match which {
         "name" | "avatar" => {
@@ -218,7 +215,7 @@ fn commit(r: &mut Root, which: &'static str, window: &mut Window, cx: &mut Conte
                     };
                     ask_box(r, which, json!({ key: t }), window, cx);
                     // From and To the same never applies: said so when it happens.
-                    let other = if which == "from" { text(&to_box, cx) } else if which == "to" { text(&from_box, cx) } else { String::new() };
+                    let other = if which == "from" { input_text(&to_box, cx) } else if which == "to" { input_text(&from_box, cx) } else { String::new() };
                     if !other.is_empty() && parse_time(&other) == Ok(Some(t.clone())) {
                         r.toast = Some((r.tr("dc.quietSame"), "warn".into()));
                     }
@@ -234,7 +231,7 @@ fn commit(r: &mut Root, which: &'static str, window: &mut Window, cx: &mut Conte
 /// A ping for "alerts" is the same ping for every kind of alert, sent one at a time.
 fn set_ping(r: &mut Root, kind: &str, value: String, cx: &mut Context<Root>) {
     if kind != "alerts" {
-        ask(r, "setDiscord", json!({ "ping": { "kind": kind, "value": value } }), cx, |_, _| {});
+        r.ask("setDiscord", json!({ "ping": { "kind": kind, "value": value } }), cx, |_, _| {});
         return;
     }
     let Some(link) = r.link.clone() else { return };
@@ -256,7 +253,7 @@ fn set_ping(r: &mut Root, kind: &str, value: String, cx: &mut Context<Root>) {
 fn commit_ping(r: &mut Root, left: bool, cx: &mut Context<Root>) {
     let Some((kind, mode)) = r.settings.dc_ping.clone() else { return };
     let Some(bx) = r.settings.dc.as_ref() else { return };
-    let v = text(&bx.ping_id, cx);
+    let v = input_text(&bx.ping_id, cx);
     if v.is_empty() {
         if left {
             r.settings.dc_ping = None;
@@ -320,7 +317,7 @@ fn open_link(r: &mut Root, then_on: bool, window: &mut Window, cx: &mut Context<
 
 fn save_link(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
     let (Some(then_on), Some(bx)) = (r.settings.dc_link, r.settings.dc.as_ref()) else { return };
-    let url = text(&bx.link, cx);
+    let url = input_text(&bx.link, cx);
     if !webhook_ok(&url) {
         r.settings.dc_link_err = Some(r.tr("dc.badLink"));
         cx.notify();
@@ -365,7 +362,7 @@ fn save_link(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
             match on_failed {
                 // The link is kept; only turning sending on failed.
                 Some(e) => r.toast = Some((e, "bad".into())),
-                None => ok(r, r.tr(if then_on { "dc.savedOn" } else { "dc.saved" })),
+                None => r.ok(r.tr(if then_on { "dc.savedOn" } else { "dc.saved" })),
             }
             cx.notify();
         });
@@ -484,19 +481,10 @@ fn row_both(title: impl IntoElement, desc: Option<String>, right: impl IntoEleme
         .into_any_element()
 }
 
-fn weekday_name(vi: bool, w: i64) -> &'static str {
-    let w = w.rem_euclid(7) as usize;
-    if vi {
-        ["Chủ Nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"][w]
-    } else {
-        ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][w]
-    }
-}
-
 pub(super) fn discord(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
     let d = dc(root);
-    let has_hook = b(d, "hasWebhook");
-    let on = b(d, "enabled");
+    let has_hook = flag(d, "hasWebhook");
+    let on = flag(d, "enabled");
     let hint = s(d, "webhookHint").to_string();
     let Some(bx) = root.settings.dc.as_ref() else { return vec![] };
     let mut out = Vec::new();
@@ -547,10 +535,10 @@ pub(super) fn discord(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
                 d.child(div().flex_none().flex().items_center().gap(px(10.)).child(div().text_size(px(T_M)).font_weight(FontWeight::MEDIUM).text_color(c(TEXT_2)).child(root.tr("dc.on"))).child(Switch::new("s-dc-on", on).on_toggle(move |v, window, cx| {
                     let v = *v;
                     let _ = this.update(cx, |r, cx| {
-                        if v && !b(dc(r), "hasWebhook") {
+                        if v && !flag(dc(r), "hasWebhook") {
                             open_link(r, true, window, cx);
                         } else {
-                            ask(r, "setDiscord", json!({ "enabled": v }), cx, |_, _| {});
+                            r.ask("setDiscord", json!({ "enabled": v }), cx, |_, _| {});
                         }
                     });
                 })))
@@ -622,7 +610,7 @@ pub(super) fn discord(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
         if root.settings.asking == Some("dc-remove") {
             card.push(question(root, "dc-remove-q", root.tr("dc.removeTitle"), root.tr("dc.removeConfirm"), root.tr("dc.remove"), true, cx, |r, cx| {
                 r.settings.dc_shown = None;
-                ask(r, "setDiscordWebhook", json!({ "url": "" }), cx, |_, _| {});
+                r.ask("setDiscordWebhook", json!({ "url": "" }), cx, |_, _| {});
             }));
         }
     } else if !pasting {
@@ -679,7 +667,7 @@ pub(super) fn discord(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
             .when(!err.is_empty(), |w| w.child(desc_t(err.to_string(), BAD)))
             .when(queued > 0, |w| w.child(desc_t(root.i18n.tv("dc.queued", &[("n", &queued.to_string())]), MUTED)));
         let ctl = div().child(Button::new("s-dc-test", root.tr("dc.test")).small().icon("message").disabled(busy("test")).on_click(cx.listener(|r, _, _, cx| {
-            ask_busy(r, "test", "discordTest", Value::Null, cx, |r, _| ok(r, r.tr("dc.testOk")));
+            ask_busy(r, "test", "discordTest", Value::Null, cx, |r, _| r.ok(r.tr("dc.testOk")));
         })));
         card.push(found(&root.tr("dc.test"), line(words, ctl).into_any_element()));
     }
@@ -734,7 +722,7 @@ pub(super) fn discord(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
 fn summary_tab(root: &Root, bx: &Boxes, cx: &mut Context<Root>) -> Vec<Div> {
     let d = dc(root);
     let sm = d.get("summary").unwrap_or(&Value::Null);
-    let (daily, weekly) = (b(sm, "daily"), b(sm, "weekly"));
+    let (daily, weekly) = (flag(sm, "daily"), flag(sm, "weekly"));
     let when = match (daily, weekly) {
         (true, true) => "both",
         (true, false) => "daily",
@@ -746,7 +734,7 @@ fn summary_tab(root: &Root, bx: &Boxes, cx: &mut Context<Root>) -> Vec<Div> {
         root.tr("dc.sendAuto"),
         None,
         chips(root, cx, "s-dc-when", whens, &when, |r, v, cx| {
-            ask(r, "setDiscord", json!({ "summaryDaily": v == "daily" || v == "both", "summaryWeekly": v == "weekly" || v == "both" }), cx, |_, _| {});
+            r.ask("setDiscord", json!({ "summaryDaily": v == "daily" || v == "both", "summaryWeekly": v == "weekly" || v == "both" }), cx, |_, _| {});
         }),
     )];
     if daily {
@@ -754,7 +742,7 @@ fn summary_tab(root: &Root, bx: &Boxes, cx: &mut Context<Root>) -> Vec<Div> {
     }
     if weekly {
         let wd = sm.get("weekday").and_then(Value::as_i64).unwrap_or(0);
-        let days = [1, 2, 3, 4, 5, 6, 0].into_iter().map(|n| (n, weekday_name(root.i18n.vietnamese, n).to_string(), false)).collect();
+        let days = [1, 2, 3, 4, 5, 6, 0].into_iter().map(|n| (n, crate::time::day_long(n).to_string(), false)).collect();
         sched.push(row(
             root.tr("dc.weeklyAt"),
             None,
@@ -762,14 +750,14 @@ fn summary_tab(root: &Root, bx: &Boxes, cx: &mut Context<Root>) -> Vec<Div> {
                 .flex()
                 .items_center()
                 .gap(px(8.))
-                .child(chips(root, cx, "s-dc-weekday", days, &wd, |r, v, cx| ask(r, "setDiscord", json!({ "summaryWeekday": v }), cx, |_, _| {})))
+                .child(chips(root, cx, "s-dc-weekday", days, &wd, |r, v, cx| r.ask("setDiscord", json!({ "summaryWeekday": v }), cx, |_, _| {})))
                 .child(time_box(&bx.weekly)),
         ));
     }
     sched.push(row(
         root.tr("dc.after"),
         Some(root.tr("dc.afterDesc")),
-        switch("s-dc-after", b(sm, "afterSchedule"), cx, |r, on, cx| ask(r, "setDiscord", json!({ "summaryAfterSchedule": on }), cx, |_, _| {})),
+        switch("s-dc-after", flag(sm, "afterSchedule"), cx, |r, on, cx| r.ask("setDiscord", json!({ "summaryAfterSchedule": on }), cx, |_, _| {})),
     ));
 
     let period = sm.get("days").and_then(Value::as_i64).unwrap_or(1);
@@ -777,7 +765,7 @@ fn summary_tab(root: &Root, bx: &Boxes, cx: &mut Context<Root>) -> Vec<Div> {
     let mut what: Vec<AnyElement> = vec![row(
         root.tr("dc.period"),
         Some(root.tr("dc.periodDesc")),
-        chips(root, cx, "s-dc-days", periods, &period, |r, v, cx| ask(r, "setDiscord", json!({ "summaryDays": v }), cx, |_, _| {})),
+        chips(root, cx, "s-dc-days", periods, &period, |r, v, cx| r.ask("setDiscord", json!({ "summaryDays": v }), cx, |_, _| {})),
     )];
     let parts: Vec<String> = sm.get("parts").and_then(Value::as_array).map(|l| l.iter().filter_map(Value::as_str).map(str::to_string).collect()).unwrap_or_default();
     let picking = root.settings.dc_pick.as_ref().map(|(k, _)| *k);
@@ -819,7 +807,7 @@ fn summary_tab(root: &Root, bx: &Boxes, cx: &mut Context<Root>) -> Vec<Div> {
         root.tr("dc.sendNow"),
         Some(root.tr("dc.sendNowDesc")),
         Button::new("s-dc-now", root.tr("dc.sendNowBtn")).small().icon("message").disabled(busy("now")).on_click(cx.listener(|r, _, _, cx| {
-            ask_busy(r, "now", "discordSummaryNow", Value::Null, cx, |r, _| ok(r, r.tr("dc.sentOk")));
+            ask_busy(r, "now", "discordSummaryNow", Value::Null, cx, |r, _| r.ok(r.tr("dc.sentOk")));
         })),
     ));
     vec![group(None, sched), group(Some(root.tr("dc.summary")), what)]
@@ -875,7 +863,7 @@ fn alerts_tab(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
                 .items_center()
                 .gap(px(14.))
                 .child(div().when(!on, |d| d.opacity(0.45)).child(ping(root, k, cx)))
-                .child(switch(id, on, cx, move |r, on, cx| ask(r, "setDiscord", json!({ "event": { "kind": k, "enabled": on } }), cx, |_, _| {}))),
+                .child(switch(id, on, cx, move |r, on, cx| r.ask("setDiscord", json!({ "event": { "kind": k, "enabled": on } }), cx, |_, _| {}))),
         ));
     }
     kinds.push(note("info", root.tr("dc.idHelp"), MUTED));
@@ -901,8 +889,8 @@ fn messages_tab(root: &Root, bx: &Boxes, cx: &mut Context<Root>) -> Vec<Div> {
                     .flex()
                     .items_center()
                     .gap(px(14.))
-                    .child(chips(root, cx, "s-dc-minutes", every, &minutes, |r, v, cx| ask(r, "setDiscord", json!({ "boardMinutes": v }), cx, |_, _| {})))
-                    .child(switch("s-dc-board", b(board, "enabled"), cx, |r, on, cx| ask(r, "setDiscord", json!({ "board": on }), cx, |_, _| {}))),
+                    .child(chips(root, cx, "s-dc-minutes", every, &minutes, |r, v, cx| r.ask("setDiscord", json!({ "boardMinutes": v }), cx, |_, _| {})))
+                    .child(switch("s-dc-board", flag(board, "enabled"), cx, |r, on, cx| r.ask("setDiscord", json!({ "board": on }), cx, |_, _| {}))),
             ),
             row(
                 root.tr("dc.quietOn"),
@@ -915,7 +903,7 @@ fn messages_tab(root: &Root, bx: &Boxes, cx: &mut Context<Root>) -> Vec<Div> {
                     .child(div().text_color(c(MUTED)).child("–"))
                     .child(time_box(&bx.to))
                     .child(div().w(px(6.)))
-                    .child(switch("s-dc-quiet", b(quiet, "enabled"), cx, |r, on, cx| ask(r, "setDiscord", json!({ "quiet": on }), cx, |_, _| {}))),
+                    .child(switch("s-dc-quiet", flag(quiet, "enabled"), cx, |r, on, cx| r.ask("setDiscord", json!({ "quiet": on }), cx, |_, _| {}))),
             ),
         ],
     ));
@@ -928,12 +916,12 @@ fn messages_tab(root: &Root, bx: &Boxes, cx: &mut Context<Root>) -> Vec<Div> {
         vec![
             row(root.tr("dc.name"), Some(root.tr("dc.nameDesc")), div().w(px(220.)).child(field(&bx.name, None))),
             row(root.tr("dc.avatar"), Some(root.tr("dc.avatarDesc")), div().w(px(220.)).child(field(&bx.avatar, None))),
-            row(root.tr("dc.lang"), None, chips(root, cx, "s-dc-lang", langs, &lang, |r, v, cx| ask(r, "setDiscord", json!({ "language": v }), cx, |_, _| {}))),
-            row(root.tr("dc.style"), Some(root.tr("dc.styleDesc")), chips(root, cx, "s-dc-style", styles, &style, |r, v, cx| ask(r, "setDiscord", json!({ "style": v }), cx, |_, _| {}))),
+            row(root.tr("dc.lang"), None, chips(root, cx, "s-dc-lang", langs, &lang, |r, v, cx| r.ask("setDiscord", json!({ "language": v }), cx, |_, _| {}))),
+            row(root.tr("dc.style"), Some(root.tr("dc.styleDesc")), chips(root, cx, "s-dc-style", styles, &style, |r, v, cx| r.ask("setDiscord", json!({ "style": v }), cx, |_, _| {}))),
             row(
                 root.tr("dc.hideNames"),
                 Some(root.tr("dc.hideNamesDesc")),
-                switch("s-dc-hidenames", b(d, "hideNames"), cx, |r, on, cx| ask(r, "setDiscord", json!({ "hideNames": on }), cx, |_, _| {})),
+                switch("s-dc-hidenames", flag(d, "hideNames"), cx, |r, on, cx| r.ask("setDiscord", json!({ "hideNames": on }), cx, |_, _| {})),
             ),
         ],
     ));
@@ -944,11 +932,11 @@ fn messages_tab(root: &Root, bx: &Boxes, cx: &mut Context<Root>) -> Vec<Div> {
 fn control_tab(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
     let d = dc(root);
     let mut rows = remote(root, cx);
-    if b(d, "presenceReady") {
+    if flag(d, "presenceReady") {
         rows.push(row(
             root.tr("dc.presence"),
             Some(root.tr("dc.presenceDesc")),
-            switch("s-dc-presence", b(d, "presence"), cx, |r, on, cx| ask(r, "setDiscordPresence", json!({ "enabled": on }), cx, |_, _| {})),
+            switch("s-dc-presence", flag(d, "presence"), cx, |r, on, cx| r.ask("setDiscordPresence", json!({ "enabled": on }), cx, |_, _| {})),
         ));
     }
     vec![group(None, rows)]
@@ -1000,7 +988,7 @@ fn preview(root: &Root, cx: &mut Context<Root>) -> Div {
         _ => root.i18n.vietnamese,
     };
     let w = |k: &str| root.i18n.t_in(vi, &format!("dcv.{k}"));
-    let hide = b(d, "hideNames");
+    let hide = flag(d, "hideNames");
     let who = |n: i64| if hide { root.i18n.t_in(vi, "hide.account").replace("{n}", &n.to_string()) } else { format!("Player_0{n}") };
     let board = root.settings.dc_board_preview;
     let plain = s(d, "style") == "plain";
@@ -1149,15 +1137,15 @@ fn preview(root: &Root, cx: &mut Context<Root>) -> Div {
 /// Control from Discord: on, this PC takes /pc commands from the Discord account that typed its code into /pc link.
 fn remote(root: &Root, cx: &mut Context<Root>) -> Vec<AnyElement> {
     let r = root.state.get("remote").unwrap_or(&Value::Null);
-    let on = b(r, "on");
+    let on = flag(r, "on");
     let mut rows = vec![row(
         root.tr("dc.remote"),
         Some(root.tr("dc.remoteDesc")),
-        switch("s-dc-remote", on, cx, |r, on, cx| ask(r, "setRemote", json!({ "enabled": on }), cx, |_, _| {})),
+        switch("s-dc-remote", on, cx, |r, on, cx| r.ask("setRemote", json!({ "enabled": on }), cx, |_, _| {})),
     )];
     if on {
-        let connected = b(r, "connected");
-        let linked = b(r, "linked");
+        let connected = flag(r, "connected");
+        let linked = flag(r, "linked");
         let code = s(r, "code");
         let until = r.get("codeUntil").and_then(Value::as_i64).unwrap_or(0);
         let left = if until > 0 { ((until - crate::time::now_secs() * 1000) as f64 / 60_000.).ceil().max(0.) as i64 } else { 0 };
@@ -1194,7 +1182,7 @@ fn remote(root: &Root, cx: &mut Context<Root>) -> Vec<AnyElement> {
                 .child(dsc(root.i18n.tv("dc.remoteCodeHelp", &[("n", &left.to_string())]), MUTED));
         } else {
             lines = lines.child(t(root.tr("dc.remoteNoCode")));
-            if b(r, "busy") {
+            if flag(r, "busy") {
                 lines = lines.child(dsc(root.tr("dc.remoteBusy"), WARN));
             }
         }

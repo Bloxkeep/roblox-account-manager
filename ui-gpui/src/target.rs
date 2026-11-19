@@ -59,7 +59,8 @@ fn has(text: &str, part: &str) -> bool {
     text.to_ascii_lowercase().contains(part)
 }
 
-fn unescape(s: &str) -> String {
+/// A link's %-escapes undone.
+pub fn unescape(s: &str) -> String {
     percent_encoding::percent_decode_str(s).decode_utf8_lossy().into_owned()
 }
 

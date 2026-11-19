@@ -116,7 +116,7 @@ impl AltGrHotkeys {
     pub fn start(keys: HashMap<u32, i32>, fire: impl Fn(i32) + Send + Sync + 'static) -> Option<AltGrHotkeys> {
         let hook = Arc::new(Hook { keys, held: Mutex::new(HashSet::new()), fire: Box::new(fire) });
         let (ready, ready_rx) = mpsc::channel::<(u32, u32)>();
-        let spawned = crate::net::Named::new("Bloxkeep AltGr hotkeys".into()).spawn(move || run(hook, ready));
+        let spawned = crate::threads::own("Bloxkeep AltGr hotkeys", move || run(hook, ready));
         if spawned.is_err() {
             log::note("Hotkeys: the keyboard hook for AltGr keys was refused (no thread).");
             return None;

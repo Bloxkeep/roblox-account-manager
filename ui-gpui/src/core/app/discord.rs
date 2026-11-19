@@ -1157,23 +1157,27 @@ impl App {
         let (url, id) = (d.webhook_url.clone(), d.board_message_id.clone());
         // On a worker: the exit waits for it, which must not need the core's thread to finish.
         let (done, finished) = std::sync::mpsc::channel();
-        crate::net::Named::new("discord-final-board".into())
-            .spawn(move || {
+        crate::threads::run(move || {
                 let cancel = Cancel::new();
                 let timer = cancel.clone();
-                std::thread::spawn(move || {
-                    std::thread::sleep(Duration::from_secs(5));
-                    timer.cancel();
+                // The five seconds are kept on a pool thread of their own: the core's timers wouldn't fire while it waits
+                // on this edit. Called off as soon as the edit is done, so that thread is free again at once.
+                let finished_early = Cancel::new();
+                let ended = finished_early.clone();
+                crate::threads::run(move || {
+                    if ended.sleep(Duration::from_secs(5)) {
+                        timer.cancel();
+                    }
                 });
                 match webhook::send(&url, &mut payload, Some(&id), false, &cancel, None) {
                     Ok(r) if r.outcome == webhook::DiscordOutcome::Sent => {}
                     Ok(r) => log::note_file(&format!("Discord: the status board's last edit wasn't made ({:?}{}).", r.outcome, r.error.map(|e| format!(": {e}")).unwrap_or_default())),
                     Err(e) => log::note_file(&format!("Discord: the status board's last edit wasn't made ({}).", crate::core::app::controller::error_text(&e))),
                 }
+                finished_early.cancel();
                 let _ = done.send(());
-            })
-            .ok()
-            .map(|_| finished)
+            });
+        Some(finished)
     }
 
     /// Discord says the webhook no longer exists (deleted, or its link reset): sending stops until a new link.

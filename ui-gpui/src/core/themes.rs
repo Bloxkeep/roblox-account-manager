@@ -149,7 +149,10 @@ static ALL: &[Theme] = &[
 
 /// Follows the Windows "app mode" (light or dark).
 pub const FOLLOW_WINDOWS: &str = "system";
-pub const DEFAULT: &str = "dark";
+/// The theme of a new Bloxkeep: Sunset (the owner, 2026-11-18: "đặt sunset mặc định đi"). It was Dark
+/// (`OLD_DEFAULT`): whoever still had that at the update is moved over once (prefs::State::sunset_default).
+pub const DEFAULT: &str = "sunset";
+pub const OLD_DEFAULT: &str = "dark";
 /// The person's own colours and picture (`prefs::State::custom`); the page works out the rest (app.js customVars).
 pub const CUSTOM: &str = "custom";
 

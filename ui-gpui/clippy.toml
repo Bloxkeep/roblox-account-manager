@@ -1,0 +1,9 @@
+# Threads are made in one place only, src/threads.rs (its pool for work, `own` for threads that live as long as the
+# app or hold a hook/window/COM apartment). NVIDIA's driver keeps ~184 bytes for every thread the process ever starts,
+# so a thread made per frame, poll or web call grew Bloxkeep past 1 GB (2026-11-19).
+disallowed-methods = [
+    { path = "std::thread::spawn", reason = "use crate::threads (run, call, scope or own)" },
+    { path = "std::thread::scope", reason = "use crate::threads::scope" },
+    { path = "std::thread::Builder::spawn", reason = "use crate::threads::own" },
+    { path = "std::thread::Builder::spawn_scoped", reason = "use crate::threads::scope" },
+]

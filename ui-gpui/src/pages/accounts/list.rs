@@ -22,36 +22,129 @@ struct Cols {
     /// The name's column, and the button's.
     name: f32,
     button: f32,
+    gap: f32,
+    /// The list is cut into a part a group: a line says no group (its part's head does).
+    sectioned: bool,
 }
 
-/// `narrow`: short of room (a window about 1180 wide), the status keeps its room: the name's and the button's columns
-/// give some, and the PID (on the window's tile and in the menu too) goes.
-pub fn rows(root: &Root, shown: &[&Value], narrow: bool, cx: &mut Context<Root>) -> Div {
+/// Keep the status and row actions visible as the pane narrows. Secondary details are still available per account.
+fn cols_of(root: &Root, shown: &[&Value], width: f32, sectioned: bool) -> Cols {
     let longest = shown.iter().map(|a| s(a, "group").chars().count()).max().unwrap_or(0);
-    let cols = Cols {
-        robux: shown.iter().any(|a| robux_of(root, a).is_some()),
-        // (About a letter's width each, the tag's sides, at most a short word's room: a longer one is cut with "…".)
-        group: if longest > 0 { (longest as f32 * 7.2 + 16.).min(130.) } else { 0. },
-        rejoin: shown.iter().any(|a| rejoin_on(a)),
-        pid: !narrow && shown.iter().any(|a| is_local(a) && super::pid_of(a).is_some()),
-        ram: shown.iter().any(|a| is_local(a)),
-        name: if narrow { 190. } else { 230. },
-        button: if narrow { 112. } else { 132. },
-    };
+    let (name, button, gap) = ((width * 0.24).clamp(112., 230.), (width * 0.14).clamp(88., 132.), if width < 880. { 10. } else { 14. });
+    // (About a letter's width each, the tag's sides, at most a short word's room: a longer one is cut with "…".)
+    let group = if longest > 0 && !sectioned { (longest as f32 * 7.2 + 16.).min(130.) } else { 0. };
+    // The columns beside the name, the status and the button, least needed first: the PID, the rejoin mark, the
+    // memory, the group, the Robux. Each is given up, in that order, until the status has room for its words: a width
+    // of its own decided each before, and at about 900 px they all stood while the status read "Pla…" (the shots of
+    // every size, 2026-11-18).
+    const STATUS: f32 = 220.;
+    let mut on = [
+        shown.iter().any(|a| is_local(a) && super::pid_of(a).is_some()),
+        shown.iter().any(|a| rejoin_on(a)),
+        shown.iter().any(|a| is_local(a)),
+        group > 0.,
+        shown.iter().any(|a| robux_of(root, a).is_some()),
+    ];
+    let takes = [84., 26., 78., group, 92.];
+    // (The line's sides, the tick, the face, the name, the button and ⋮, with the gaps between them.)
+    let fixed = 20. + 30. + 46. + name + button + 40. + gap * 5.;
+    let left = |on: &[bool; 5]| width - fixed - on.iter().zip(takes).filter(|(o, _)| **o).map(|(_, w)| w + gap).sum::<f32>();
+    for i in 0..on.len() {
+        if left(&on) >= STATUS {
+            break;
+        }
+        on[i] = false;
+    }
+    Cols { pid: on[0], rejoin: on[1], ram: on[2], group: if on[3] { group } else { 0. }, robux: on[4], name, button, gap, sectioned }
+}
+
+/// The accounts as a list. With groups among them, a part a group (the owner, 2026-11-18: "chia ngăn"): its head
+/// (folds it; its name, how many; select all of it), then its own lines; the accounts in no group last. `shown` comes
+/// ordered by group (accounts::shown_accounts). Every part has the same columns.
+pub fn rows(root: &Root, shown: &[&Value], width: f32, cx: &mut Context<Root>) -> Div {
+    let sectioned = shown.iter().any(|a| !s(a, "group").is_empty());
+    let cols = cols_of(root, shown, width, sectioned);
+    if !sectioned {
+        return block(root, "acc-rows", shown, &cols, cx);
+    }
+    let mut col = div().w_full().flex().flex_col().gap(px(14.));
+    let mut from = 0;
+    while from < shown.len() {
+        let group = s(shown[from], "group");
+        let to = from + shown[from..].iter().take_while(|a| s(a, "group") == group).count();
+        col = col.child(part(root, group, &shown[from..to], &cols, cx));
+        from = to;
+    }
+    col
+}
+
+/// One group's part of the list.
+fn part(root: &Root, group: &str, members: &[&Value], cols: &Cols, cx: &mut Context<Root>) -> Div {
+    let shut = root.acc_fold.contains(group);
+    let ids: Vec<String> = members.iter().map(|a| id_of(a)).collect();
+    let all_on = ids.iter().all(|i| root.selected.contains(i));
+    let name = if group.is_empty() { root.tr("grp.none") } else { group.to_string() };
+    let key = group.to_string();
+    let words: SharedString = crate::pages::lock::plain(root.tr(if all_on { "acc.selectNone" } else { "acc.selectAll" })).into();
+    let head = div()
+        .w_full()
+        .h(px(32.))
+        .flex()
+        .items_center()
+        .gap(px(8.))
+        .child(
+            div()
+                .id(SharedString::from(format!("grp-head-{group}")))
+                .flex_1()
+                .min_w_0()
+                .h_full()
+                .flex()
+                .items_center()
+                .gap(px(8.))
+                .cursor_pointer()
+                .child(icon(if shut { "chevronRight" } else { "chevronDown" }, 14., c(MUTED)))
+                .child(div().min_w_0().truncate().text_size(px(T_SEC)).font_weight(FontWeight::SEMIBOLD).text_color(c(if group.is_empty() { TEXT_2 } else { TEXT })).child(name))
+                .child(div().flex_none().text_size(px(T_SEC)).text_color(c(MUTED)).font_features(tnum()).child(members.len().to_string()))
+                .on_click(cx.listener(move |r, _, _, cx| {
+                    super::groups::fold(r, &key);
+                    cx.notify();
+                })),
+        )
+        .child(tool(SharedString::from(format!("grp-pick-{group}")), Some(if all_on { "x" } else { "check" }), false).child(words).on_click(cx.listener(move |r, _, _, cx| {
+            if all_on {
+                for id in &ids {
+                    r.selected.remove(id);
+                }
+            } else {
+                r.selected.extend(ids.iter().cloned());
+            }
+            cx.notify();
+        })));
+    let col = div().w_full().flex().flex_col().gap(px(6.)).child(head);
+    if shut {
+        return col;
+    }
+    // (A long part draws only its lines near the view, under an id of its own.)
+    let long = members.len() >= crate::near::FROM;
+    col.child(block(root, if long { crate::near::named("acc-rows:", group) } else { "acc-rows" }, members, cols, cx))
+}
+
+/// The lines of `shown` in one box.
+fn block(root: &Root, id: &'static str, shown: &[&Value], cols: &Cols, cx: &mut Context<Root>) -> Div {
     // One surface, a line an account with a hairline between (a card a line read as a stack of buttons), each line
     // as tall, its columns as wide in every line.
     // A long list: only the lines near the view are made (crate::near), each line and its hairline 57 px.
     let n = shown.len();
     let must = super::revealed_in(root, shown);
-    let near = crate::near::Near::new(n >= crate::near::FROM, "acc-rows", n, ROW_H, 1., must);
-    let mut list = div().w_full().p(px(4.)).flex().flex_col().rounded(px(R_L + 2.)).bg(c(RAISED)).border_1().border_color(c(LINE));
+    let near = crate::near::Near::new(n >= crate::near::FROM, id, n, ROW_H, 1., must);
+    let mut list = crate::kit::block_of(R_L + 2., c(RAISED)).w_full().p(px(4.)).flex().flex_col();
     list = list.children(near.mark());
     for part in near.parts {
         match part {
             crate::near::Part::Space(h) => list = list.child(crate::near::space(h)),
             crate::near::Part::Rows(r) => {
                 for i in r.clone() {
-                    list = list.child(row(root, shown[i], &cols, cx));
+                    list = list.child(row(root, shown[i], cols, cx));
                     // (A hairline between lines; none under a part's last: the room after it counts it.)
                     if i + 1 < r.end {
                         list = list.child(div().h(px(1.)).mx(px(12.)).flex_none().bg(c(LINE)));
@@ -76,6 +169,7 @@ fn row(root: &Root, a: &Value, cols: &Cols, cx: &mut Context<Root>) -> impl Into
     let up = (local && tone == OK).then(|| up_of(a)).flatten();
     let robux = robux_of(root, a).map(|r| robux_el(root, &id, r));
     let group = s(a, "group").to_string();
+    let compact_group = !cols.sectioned && cols.group == 0. && !group.is_empty();
     let ram = local.then(|| ram_mb(root, a)).flatten().map(|m| mb_text(m, root.i18n.vietnamese));
     let pid = local.then(|| pid_el(root, a, cx)).flatten();
     let pick = id.clone();
@@ -93,7 +187,7 @@ fn row(root: &Root, a: &Value, cols: &Cols, cx: &mut Context<Root>) -> impl Into
         .pr(px(6.))
         .flex()
         .items_center()
-        .gap(px(14.))
+        .gap(px(cols.gap))
         .rounded(px(R_M))
         .cursor_pointer()
         .map(|d| {
@@ -152,12 +246,15 @@ fn row(root: &Root, a: &Value, cols: &Cols, cx: &mut Context<Root>) -> impl Into
                 .flex_none()
                 .min_w_0()
                 .flex()
-                .items_baseline()
-                .gap(px(8.))
+                .when(compact_group, |d| d.flex_col().gap(px(2.)))
+                .when(!compact_group, |d| d.items_baseline().gap(px(8.)))
                 // The name keeps its room and the @username gives way first: both shrinking, a long username cut the
                 // name to one letter ("C…" on the owner's real list, 2026-11-12).
                 .child(div().flex_shrink_0().max_w(px(cols.name)).truncate().text_size(px(T_L)).font_weight(FontWeight::SEMIBOLD).child(label(a)))
-                .when(!s(a, "username").is_empty(), |d| d.child(div().min_w_0().flex_shrink(1.).truncate().text_size(px(T_S)).text_color(c(MUTED)).child(format!("@{}", s(a, "username"))))),
+                .when(!compact_group && !s(a, "username").is_empty(), |d| d.child(div().min_w_0().flex_shrink(1.).truncate().text_size(px(T_S)).text_color(c(MUTED)).child(format!("@{}", s(a, "username")))))
+                .when(compact_group, |d| d.child(div().flex().min_w_0().items_center().gap(px(5.))
+                    .child(div().flex_none().child(icon("users", 11., c(MUTED))))
+                    .child(div().min_w_0().truncate().text_size(px(T_S)).text_color(c(TEXT_2)).child(group.clone())))),
         )
         .child(
             div()
@@ -222,17 +319,13 @@ pub fn detail(root: &Root, a: &Value, cx: &mut Context<Root>) -> Div {
     let main = action(root, a, "detail", cx);
     let fact = |mark: &'static str, text: String| small_line(mark, text).h(px(22.)).text_size(px(T_M)).text_color(c(TEXT_2));
     let hair = || div().h(px(1.)).flex_none().bg(c(LINE));
-    div()
+    crate::kit::block_of(R_L + 2., c(RAISED))
         .w(px(340.))
         .flex_none()
         .p(px(18.))
         .flex()
         .flex_col()
         .gap(px(14.))
-        .rounded(px(R_L + 2.))
-        .bg(c(RAISED))
-        .border_1()
-        .border_color(c(LINE))
         // Who: the face large, the number and name, @username, Robux.
         .child(
             div()

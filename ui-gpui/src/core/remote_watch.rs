@@ -53,7 +53,7 @@ pub fn start(compat: bool) {
     if state.1.is_some() || !available() { return; }
     let live = Arc::new(AtomicBool::new(true));
     *state = (Status::Preparing, Some(live.clone()));
-    if crate::net::Named::new("remote-watch".into()).spawn(move || {
+    if crate::threads::own("remote-watch", move || {
         let result = run(&live, compat);
         let running = live.swap(false, Ordering::AcqRel);
         let mut state = watch();
@@ -61,6 +61,7 @@ pub fn start(compat: bool) {
             super::log::note(&format!("Remote viewing: {error}"));
             *state = (Status::Failed, None);
         } else {
+            super::log::note("Remote viewing: stopped.");
             *state = (Status::Idle, None);
         }
     }).is_err() {
@@ -122,13 +123,12 @@ fn run(live: &Arc<AtomicBool>, compat: bool) -> io::Result<()> {
         .stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::null()).creation_flags(NO_WINDOW).spawn()?;
     let stdout = child.stdout.take().expect("piped output");
     let (tx, rx) = mpsc::channel();
-    let drain = crate::net::Named::new("remote-watch-status".into()).spawn(move || {
+    crate::threads::run(move || {
         for line in BufReader::new(stdout).lines().map_while(Result::ok) {
             if tx.send(line).is_err() { break; }
         }
     });
     let result = (|| {
-        drain?;
         let limit = Instant::now() + Duration::from_secs(85);
         let mut ready = false;
         while live.load(Ordering::Acquire) {
@@ -139,6 +139,9 @@ fn run(live: &Arc<AtomicBool>, compat: bool) -> io::Result<()> {
             if let Ok(line) = rx.recv_timeout(Duration::from_millis(80)) {
                 if let Some(link) = line.strip_prefix("READY ").filter(|link| valid_link(link)) {
                     publish(live, Status::Ready(link.to_owned()))?;
+                    // (Said without the link: it is the key to the screen. A run that worked left no line at all, so
+                    // error.log could not say whether it ever had.)
+                    super::log::note("Remote viewing: link ready (the tunnel answered with the session's key).");
                     ready = true;
                 } else if line == "VERIFYING" && !ready {
                     publish(live, Status::Verifying)?;
@@ -171,7 +174,8 @@ fn prepare(path: &Path, url: &str, sha: &str, live: &AtomicBool) -> io::Result<(
     if has_sha(path, sha) { return Ok(()); }
     let tmp = path.with_extension("download");
     let result = (|| {
-        let response = ureq::AgentBuilder::new().timeout_connect(Duration::from_secs(12))
+        // (net.rs: Windows' proxy and certificates, as every call of Bloxkeep's.)
+        let response = crate::net::builder().timeout_connect(Duration::from_secs(12))
             .timeout_read(Duration::from_secs(16)).build().get(url).call()
             .map_err(|_| io::Error::other("Could not download a remote viewing component"))?;
         let mut body = response.into_reader().take(125 * 1024 * 1024);

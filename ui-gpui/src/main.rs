@@ -9,6 +9,7 @@
 //   --wait MS       for --shot: how long the app's state and pictures get first, 2500 by default
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod ask;
 mod assets;
 mod calendar;
 // The C# app moved to Rust (src/core/), compiled only with `--features core` until it is joined to the window.
@@ -17,11 +18,15 @@ mod core;
 mod crisp;
 mod duo_icons;
 mod frame;
+mod frame_tally;
 mod history;
 mod i18n;
 mod images;
 mod kit;
 mod link;
+mod media;
+mod wallpaper_engine;
+mod window_capture;
 mod mesh;
 mod itemwatch;
 mod modstore;
@@ -39,7 +44,11 @@ mod shot;
 mod target;
 mod theme;
 mod theme_table;
+mod threads;
 mod time;
+mod toolpage;
+mod tray;
+mod val;
 mod video;
 mod wikihtml;
 mod wikitext;
@@ -72,6 +81,15 @@ fn main() {
         images::keep_user(arg("--pictures").map(PathBuf::from));
     }
     let shot = arg("--shot").map(PathBuf::from);
+    // BLOXKEEP_SHOT_WE=<file>: what Follow Wallpaper Engine reads from this PC's Wallpaper Engine (its config, the
+    // wallpaper on show, its picture and colour), written to that file: the reading checked on a real install with
+    // nothing asked of Wallpaper Engine itself (no live copy played).
+    #[cfg(feature = "shot")]
+    if let (Some(_), Some(out)) = (&shot, std::env::var_os("BLOXKEEP_SHOT_WE")) {
+        let config = wallpaper_engine::config();
+        let got = wallpaper_engine::check(None, None);
+        let _ = std::fs::write(out, format!("config: {config:?}\nchecked: {got:?}\n"));
+    }
     let (w, h) = arg("--size")
         .and_then(|s| s.split_once('x').and_then(|(a, b)| Some((a.parse::<f32>().ok()?, b.parse::<f32>().ok()?))))
         .unwrap_or((1280., 800.));
@@ -79,6 +97,46 @@ fn main() {
     let base = std::env::current_exe().ok().and_then(|p| p.parent().map(|p| p.to_path_buf())).unwrap_or_default();
     let assets = std::env::var("BLOXKEEP_UI_ASSETS").map(PathBuf::from).unwrap_or_else(|_| base.join("assets"));
 
+    // --tray-window-check OUT: the tray's real window, cloaked, checked on this PC (tray.rs › window_check).
+    #[cfg(feature = "core")]
+    if let Some(out) = arg("--tray-window-check") {
+        tray::window_check(PathBuf::from(out), assets);
+        return;
+    }
+    // --codes-check NAME UNIVERSE: a game's codes as its page gets them (core/game_codes.rs), printed.
+    #[cfg(feature = "core")]
+    if let Some(name) = arg("--codes-check") {
+        let universe = arg("--universe").and_then(|s| s.parse().ok()).unwrap_or(0);
+        match core::game_codes::codes(&name, universe, 0, &core::base::Cancel::new()) {
+            Ok(v) => println!("{}", serde_json::to_string_pretty(&v).unwrap_or_default()),
+            Err(e) => println!("codes-check failed: {}", e.message()),
+        }
+        return;
+    }
+    // --clip-sound-check FILE [--seconds N]: that clip's sound decoded and fed as silence, to prove it plays (video.rs).
+    #[cfg(feature = "core")]
+    if let Some(file) = arg("--clip-sound-check") {
+        video::clip_sound_check(std::path::Path::new(&file), arg("--seconds").and_then(|s| s.parse().ok()).unwrap_or(10));
+        return;
+    }
+    // --clip-window-check FILE [--seconds N]: that clip shown in a cloaked real window, to measure (video.rs).
+    #[cfg(feature = "core")]
+    if let Some(file) = arg("--clip-window-check") {
+        video::clip_window_check(file, arg("--seconds").and_then(|s| s.parse().ok()).unwrap_or(30));
+        return;
+    }
+    // --clip-check FILE [--seconds N]: a game clip decoded as a tile plays it, to measure (video.rs).
+    #[cfg(any(feature = "core", feature = "shot"))]
+    if let Some(file) = arg("--clip-check") {
+        video::clip_check(std::path::Path::new(&file), arg("--seconds").and_then(|s| s.parse().ok()).unwrap_or(30));
+        return;
+    }
+    // --tool-window-check DIR: the small windows' faces in real windows, cloaked, checked on this PC (toolpage/check.rs).
+    #[cfg(feature = "core")]
+    if let Some(out) = arg("--tool-window-check") {
+        toolpage::window_check(PathBuf::from(out), assets);
+        return;
+    }
     // --core-vault-test PATH --password PW: the port's own check of the vault file, on made-up data (core/selftest.rs).
     #[cfg(feature = "core")]
     if let (Some(path), Some(password)) = (arg("--core-vault-test"), arg("--password")) {
@@ -180,6 +238,7 @@ fn run_ui(link: Option<(link::Link, futures::channel::mpsc::UnboundedReceiver<li
         cx.set_reduce_motion(false);
         crate::theme::dress(cx);
         images::init(cx);
+        frame_tally::start(cx);
         // The keys: Ctrl+K to the search, Tab and Shift+Tab through the controls, Alt+arrows for Back and Forward.
         cx.bind_keys([
             KeyBinding::new("ctrl-k", shell::FocusSearch, None),
@@ -227,7 +286,7 @@ fn run_ui(link: Option<(link::Link, futures::channel::mpsc::UnboundedReceiver<li
             ..Default::default()
         };
         let shot2 = shot.clone();
-        gpui_kit::open_window(options, cx, move |window, cx| {
+        let main = gpui_kit::open_window(options, cx, move |window, cx| {
             let hwnd = hwnd_of(window);
             if let (Some((l, _)), Some(h)) = (&link, hwnd) {
                 l.hello(h);
@@ -245,6 +304,18 @@ fn run_ui(link: Option<(link::Link, futures::channel::mpsc::UnboundedReceiver<li
             root
         })
         .expect("open the window");
+        // The main window closed: Bloxkeep ends, whatever else is still made (the tray's menu and panel, the mini
+        // window, an overlay: GPUI windows since 2026-11-19, put away hidden). GPUI on Windows ends only when its last
+        // window closes, so with one of those hidden the process stayed on after Quit, still holding the
+        // single-instance mutex: every start after just asked it to come forward, and nothing came (the owner,
+        // 2026-11-19 17:10 and 18:46: "bloxkeep mở không lên nữa").
+        let main_id = main.0.window_id();
+        cx.on_window_closed(move |cx, id| {
+            if id == main_id {
+                cx.quit();
+            }
+        })
+        .detach();
     });
 }
 

@@ -1,4 +1,10 @@
-//! Roblox mods (modstore.rs) laid into Roblox's builds before a window opens, and taken out again.
+//! Roblox mods (modstore.rs) for the windows Bloxkeep opens, and taken out again.
+//!
+//! Since 2026-11-17 (the owner's "làm cái số 2", after RoALT's way) Roblox's own folder is never written: a window with
+//! mods opens from Bloxkeep's own copy of Roblox's build (`mod_copy`, %LOCALAPPDATA%\Bloxkeep\Roblox mods\<build>),
+//! which shares Roblox's files by hard links and has the mods as new files over them. Mods an older Bloxkeep laid into
+//! Roblox's builds are taken back out at the next window (Roblox's files back, byte for byte). The notes below still
+//! serve those, and the copies (as kept copies, `match_kept`).
 //!
 //! What each build was given is noted (mods\applied.json), with Roblox's own file kept aside first
 //! (mods\.originals\<build>\…): a mod turned off, removed, or overridden by another gets Roblox's file back, byte for
@@ -16,6 +22,7 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 
 use crate::core::log;
+use crate::core::roblox_installs as installs;
 use crate::modstore;
 
 /// Per build folder: each file given, and whether Roblox had its own there (kept aside) or not (taken out on undo).
@@ -98,15 +105,68 @@ pub fn applies_to(launch_via: &str) -> bool {
     !matches!(launch_via, "bloxstrap" | "fishstrap" | "voidstrap" | "custom" | "store" | "vng") && crate::core::roblox_launcher::other_name(launch_via).is_none()
 }
 
-/// Before a window opens: every build beside `client` given the mods that are on, and what is no longer wanted put
-/// back. True when anything changed.
-pub fn apply(client: Option<&str>) -> bool {
-    let Some(client) = client else { return false };
-    if !crate::core::roblox_installs::is_roblox_own(client) {
-        return false;
+/// Before a window opens: the client to start it from when mods are on, Bloxkeep's own copy of Roblox's build with the
+/// mods over it; Roblox's own builds get back any mod an older Bloxkeep put in them. None: no mods on, not Roblox's own
+/// build, a build behind Roblox's live one (it updates itself first; mods from the next window), or the copy couldn't
+/// be made (said in error.log; the window opens without mods).
+pub fn mod_copy(client: Option<&str>) -> Option<String> {
+    let client = client?;
+    if !installs::is_roblox_own(client) {
+        return None;
     }
-    let builds = builds_beside(client);
-    sync(&builds, &modstore::wanted())
+    sync(&builds_beside(client), &BTreeMap::new());
+    let want = modstore::wanted();
+    if want.is_empty() {
+        return None;
+    }
+    let source = Path::new(client).parent()?.to_string_lossy().into_owned();
+    let folder = Path::new(&source).file_name()?.to_string_lossy().into_owned();
+    if let Some(live) = installs::live_build().filter(|l| !l.eq_ignore_ascii_case(&folder)) {
+        log::note(&format!("Roblox mods: not on this window, its build {} is behind Roblox's live {live} (Roblox updates it first).", short(&source)));
+        return None;
+    }
+    // (Two windows opening at once would make the same copy together.)
+    let _held = COPIES.lock().unwrap_or_else(|e| e.into_inner());
+    match installs::copy_build(client, &installs::mods_root()) {
+        Ok(exe) => {
+            let dir = Path::new(&exe).parent()?.to_string_lossy().into_owned();
+            match_kept(&dir, &source, &want);
+            Some(exe)
+        }
+        Err(e) => {
+            log::note(&format!("Roblox mods: Bloxkeep's copy of build {} couldn't be made ({e}); this window opens without mods.", short(&source)));
+            None
+        }
+    }
+}
+
+/// Held while a copy is made or removed.
+static COPIES: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+/// With no Roblox open: the copies of builds other than Roblox's live one go (their notes with them, `sync`). Runs at
+/// every scan: skipped while a copy is being made, a copy that can't be removed said once.
+pub fn forget_old_copies() {
+    static SAID: std::sync::Mutex<std::collections::BTreeSet<String>> = std::sync::Mutex::new(std::collections::BTreeSet::new());
+    let Some(live) = installs::live_build() else { return };
+    let Ok(dirs) = std::fs::read_dir(installs::mods_root()) else { return };
+    let _held = match COPIES.try_lock() {
+        Ok(g) => g,
+        Err(std::sync::TryLockError::Poisoned(p)) => p.into_inner(),
+        Err(std::sync::TryLockError::WouldBlock) => return,
+    };
+    for e in dirs.flatten() {
+        let name = e.file_name().to_string_lossy().into_owned();
+        if e.path().is_dir() && !name.eq_ignore_ascii_case(&live) {
+            match std::fs::remove_dir_all(e.path()) {
+                Ok(()) => log::note(&format!("Roblox mods: the copy of an old build ({name}) is removed.")),
+                Err(err) => {
+                    if SAID.lock().unwrap_or_else(|e| e.into_inner()).insert(name.clone()) {
+                        log::note(&format!("Roblox mods: the copy of an old build ({name}) couldn't be removed ({err})."));
+                    }
+                }
+            }
+        }
+    }
 }
 
 /// The kept copy a window opens on (`kept`, a folder made from Roblox's build `source` by hard links) made to match:
@@ -288,4 +348,46 @@ fn sync(builds: &[String], want: &BTreeMap<String, PathBuf>) -> bool {
 
 fn short(build: &str) -> String {
     Path::new(build).file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default()
+}
+
+#[cfg(test)]
+mod copy_tests {
+    use std::collections::BTreeMap;
+    use std::path::PathBuf;
+
+    use crate::core::roblox_installs as installs;
+
+    /// A made-up build copied as a window with mods opens on it: the mod is in the copy, Roblox's own file untouched,
+    /// no updater in the copy, its Fast Flags fresh.
+    #[test]
+    fn mods_go_into_the_copy_never_into_roblox() {
+        let base = std::env::temp_dir().join(format!("bk-modcopy-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&base);
+        let build = base.join("Versions").join("version-0123456789abcdef");
+        std::fs::create_dir_all(build.join("content").join("textures")).unwrap();
+        std::fs::create_dir_all(build.join("ClientSettings")).unwrap();
+        std::fs::write(build.join("RobloxPlayerBeta.exe"), b"exe").unwrap();
+        std::fs::write(build.join("RobloxPlayerInstaller.exe"), b"updater").unwrap();
+        std::fs::write(build.join("content").join("textures").join("cursor.png"), b"roblox's own").unwrap();
+        std::fs::write(build.join("ClientSettings").join("ClientAppSettings.json"), b"{}").unwrap();
+        let modded = base.join("mod-cursor.png");
+        std::fs::write(&modded, b"the mod").unwrap();
+
+        let root = base.join("Roblox mods");
+        let exe = installs::copy_build(&build.join("RobloxPlayerBeta.exe").to_string_lossy(), &root.to_string_lossy()).unwrap();
+        let copy = PathBuf::from(&exe).parent().unwrap().to_path_buf();
+        let want: BTreeMap<String, PathBuf> = [("content\\textures\\cursor.png".to_string(), modded.clone())].into_iter().collect();
+        super::match_kept(&copy.to_string_lossy(), &build.to_string_lossy(), &want);
+
+        assert_eq!(std::fs::read(copy.join("content").join("textures").join("cursor.png")).unwrap(), b"the mod");
+        assert_eq!(std::fs::read(build.join("content").join("textures").join("cursor.png")).unwrap(), b"roblox's own");
+        assert!(!copy.join("RobloxPlayerInstaller.exe").exists());
+        assert!(copy.join("ClientSettings").join("ClientAppSettings.json").is_file());
+
+        // The mod turned off: Roblox's file back in the copy, still untouched in Roblox's build.
+        super::match_kept(&copy.to_string_lossy(), &build.to_string_lossy(), &BTreeMap::new());
+        assert_eq!(std::fs::read(copy.join("content").join("textures").join("cursor.png")).unwrap(), b"roblox's own");
+        assert_eq!(std::fs::read(build.join("content").join("textures").join("cursor.png")).unwrap(), b"roblox's own");
+        let _ = std::fs::remove_dir_all(&base);
+    }
 }

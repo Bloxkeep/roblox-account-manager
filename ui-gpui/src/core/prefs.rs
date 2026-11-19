@@ -153,6 +153,11 @@ pub struct WikiMark {
 pub struct State {
     /// A theme id from `themes`.
     pub theme: String,
+    /// The default theme's change from Dark to Sunset has been seen to here: a prefs.json from before it that still
+    /// said Dark was moved to Sunset, once (the owner, 2026-11-18: "những ai đang để theme default là qua sunset
+    /// hết"). Kept, so Dark picked again after that stays Dark. A file can't say whether its Dark was picked or
+    /// only never changed: both are moved that once.
+    pub sunset_default: bool,
     /// With Sync with Windows: the theme shown while Windows' apps are light, and while they are dark (a theme id each,
     /// never Sync with Windows or Custom; "light" and "dark" until chosen).
     pub system_light: String,
@@ -254,6 +259,8 @@ impl Default for State {
     fn default() -> State {
         State {
             theme: themes::DEFAULT.into(),
+            // (A new Bloxkeep starts on Sunset: nothing to move.)
+            sunset_default: true,
             system_light: "light".into(),
             system_dark: "dark".into(),
             custom: CustomTheme { background: "#141a26".into(), accent: "#22c55e".into(), fade: 45, picture: None, blur: 0 },
@@ -427,7 +434,7 @@ pub fn is_vault_id(id: Option<&str>) -> bool {
 
 const KNOWN: &[&str] = &[
     "remoteGone",
-    "language", "theme", "themeLight", "themeDark", "closeToTray", "hideNames", "trayHintShown", "safeRendering", "checkUpdates", "betaUpdates", "lastVersion",
+    "language", "theme", "sunsetDefault", "themeLight", "themeDark", "closeToTray", "hideNames", "trayHintShown", "safeRendering", "checkUpdates", "betaUpdates", "lastVersion",
     "notifications", "notifyOff", "backupFolder", "backupEnabled", "lastBackup", "backupPending", "dailySignInCheck", "lastSignInCheck", "miniOpen", "miniWindow", "panelWindows",
     "mainWindow", "mainMaximized", "robloxHistory", "robloxClosedAt", "robloxClosedCount", "robloxClosedNotified", "skipConfirm", "multiWorked",
     "multiRobloxAtStart", "discordPresence", "customTheme", "vaults", "lastVault", "askVault", "countOnline", "onlineId",
@@ -525,6 +532,13 @@ pub fn load() {
     if let Some(theme) = text(&root, "theme") {
         s.theme = themes::normalize(Some(theme));
     }
+    // A file from before Sunset became the default: its Dark, the default it was written under, becomes Sunset, this
+    // once (the mark goes into the file at its next save, and is in the state from here on).
+    if !is_true(&root, "sunsetDefault") && s.theme == themes::OLD_DEFAULT {
+        s.theme = themes::DEFAULT.into();
+        crate::core::log::note("Settings: the theme was the old default (Dark); it is Sunset now, the new default. Dark can be picked again in Settings › Appearance.");
+    }
+    s.sunset_default = true;
     s.system_light = themes::plain(text(&root, "themeLight"), "light");
     s.system_dark = themes::plain(text(&root, "themeDark"), "dark");
     if let Some(Value::Array(list)) = root.get("vaults") {
@@ -1047,6 +1061,7 @@ fn snapshot(s: &State, language: &str) -> Map<String, Value> {
     };
     put("language", json!(language));
     put("theme", json!(s.theme));
+    put("sunsetDefault", json!(s.sunset_default));
     put("themeLight", json!(s.system_light));
     put("themeDark", json!(s.system_dark));
     put("closeToTray", json!(s.close_to_tray));

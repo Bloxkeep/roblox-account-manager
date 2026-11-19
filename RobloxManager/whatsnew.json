@@ -1,5 +1,99 @@
 [
   {
+    "version": "1.1.2",
+    "date": "2026-11-19",
+    "highlights": [
+      {
+        "icon": "gift",
+        "en": [
+          "Codes for every game",
+          "Open a game and its Codes tab lists the codes that work and the ones that expired, with what each gives. One click copies it."
+        ],
+        "vi": [
+          "Giftcode cho mọi game",
+          "Mở một game, tab Giftcode có các code dùng được và code đã hết hạn, kèm phần thưởng của từng code. Bấm là chép."
+        ]
+      },
+      {
+        "icon": "monitor",
+        "go": "monitor",
+        "image": "whatsnew/1.1.2-watch.{lang}.webp",
+        "en": [
+          "Watch your PC from your phone",
+          "Type /pc watch in Discord and open the link: every Roblox window on your PC, live. The link is yours alone and lasts 2 hours.",
+          "Open Game monitor"
+        ],
+        "vi": [
+          "Xem máy từ điện thoại",
+          "Gõ /pc watch trong Discord rồi mở link: xem trực tiếp mọi cửa sổ Roblox trên máy. Link chỉ của riêng bạn, dùng được 2 giờ.",
+          "Mở Theo dõi game"
+        ]
+      }
+    ],
+    "new": {
+      "en": [
+        "Codes tab on every game's page: working and expired codes, what each gives, Copy.",
+        "Watch remotely (Preview): see the PC's Roblox windows live from your phone, started from Game monitor or with /pc watch in Discord.",
+        "Gameplay clips play with sound, with a button to turn it off.",
+        "Pick a server's country beside Play.",
+        "Favorite, like or dislike a game from its page.",
+        "Each game's privacy set for you while you play it, put back when you leave.",
+        "Account groups on the Accounts page; drag account tabs to reorder them.",
+        "Your profile: a profile song (Spotify or a file), decorations, a moving picture and a banner you can move.",
+        "Roblox group chats: start one, add or remove people, rename it.",
+        "A theme that follows your Wallpaper Engine wallpaper.",
+        "Easy setup: Roblox tuned for your PC."
+      ],
+      "vi": [
+        "Tab Giftcode ở trang mỗi game: code dùng được và hết hạn, phần thưởng, nút Chép.",
+        "Xem từ xa (Thử nghiệm): xem trực tiếp các cửa sổ Roblox trên máy từ điện thoại, bật trong Theo dõi game hoặc gõ /pc watch trong Discord.",
+        "Clip gameplay có tiếng, kèm nút tắt tiếng.",
+        "Chọn quốc gia của server ngay cạnh nút Chơi.",
+        "Yêu thích, thích hay không thích game ngay trên trang game.",
+        "Tự đặt quyền riêng tư theo từng game khi chơi, thoát game thì trả lại như cũ.",
+        "Nhóm tài khoản trong trang Tài khoản; kéo để đổi thứ tự tab tài khoản.",
+        "Hồ sơ của bạn: bài hát (Spotify hoặc file), đồ trang trí, ảnh động và ảnh bìa kéo được.",
+        "Chat nhóm Roblox: tạo nhóm, thêm bớt người, đổi tên.",
+        "Theme theo hình nền Wallpaper Engine.",
+        "Thiết lập nhanh: tự chỉnh Roblox cho vừa máy."
+      ]
+    },
+    "improved": {
+      "en": [
+        "Sunset is the new default theme, with glass blocks; every theme change fades.",
+        "A new Home: a big banner and the game being played.",
+        "The status bar as cards, with the song playing on Spotify.",
+        "A game's About is shorter, with Show more.",
+        "New icons on a game page's tabs.",
+        "The tray and small windows are drawn again, lighter.",
+        "Hide account names also covers your profile, email and birthday."
+      ],
+      "vi": [
+        "Theme mặc định giờ là Sunset, khối kính trong; đổi theme có hiệu ứng mờ dần.",
+        "Trang chủ mới: banner lớn và game đang chơi.",
+        "Thanh trạng thái dạng thẻ, hiện bài đang phát trên Spotify.",
+        "Phần Giới thiệu của game gọn hơn, có nút Xem thêm.",
+        "Icon mới ở hàng tab trang game.",
+        "Khay hệ thống và các cửa sổ nhỏ vẽ lại, nhẹ hơn.",
+        "Ẩn tên tài khoản giờ che cả hồ sơ, email và ngày sinh."
+      ]
+    },
+    "fixed": {
+      "en": [
+        "Bloxkeep could close by itself right as it opened.",
+        "After Exit, Bloxkeep could stay running and not open again.",
+        "The 3D avatar froze after switching R6/R15; dark accessories vanished on R15.",
+        "Anti-AFK no longer touches a window sitting on Roblox's home screen."
+      ],
+      "vi": [
+        "Bloxkeep có lúc tự tắt ngay khi vừa mở.",
+        "Bấm Thoát xong Bloxkeep vẫn chạy ngầm và không mở lại được.",
+        "Avatar 3D đứng hình sau khi đổi R6/R15; đồ đeo tối màu biến mất trên R15.",
+        "Anti-AFK không còn chạm vào cửa sổ đang ở màn hình chính Roblox."
+      ]
+    }
+  },
+  {
     "version": "1.1.1",
     "date": "2026-11-16",
     "new": {

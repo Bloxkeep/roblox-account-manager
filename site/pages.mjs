@@ -106,6 +106,14 @@ const L = {
     heroVideo: 'Bloxkeep: two accounts picked on Accounts, Play pressed, both open in Blox Fruits',
     stats: { downloads: 'downloads', releases: 'versions so far', themes: 'themes', free: 'free and open source', price: '$0' },
     number: n => n.toLocaleString('en-US'),
+    firstTitle: 'Your first minute',
+    firstLead: 'Three questions on the first open set Bloxkeep up for how you play and what your PC can hold.',
+    first: [
+      ['setup-use.png', 'What will you use it for?', 'Several accounts at once, AFK farming, or both: Bloxkeep turns on what that needs.'],
+      ['setup-pc.png', 'How many at once?', 'Bloxkeep reads your PC and says how many Roblox windows it can hold.'],
+      ['setup-theme.png', 'Pick a look', 'Choose a theme to start with. There are nearly 100, and you can change it any time.'],
+      ['home-hero.png', 'Then pick a game', 'Before your first game, Home suggests one to try and shows how many people play with Bloxkeep right now.'],
+    ],
     clipsTitle: 'See it in action',
     clipsLead: 'Recorded in Bloxkeep itself, with made-up accounts.',
     clipAlt: t => `Bloxkeep: ${t}`,
@@ -132,6 +140,15 @@ const L = {
       ['getting-started#updates', 'lock-update.png', 'Updates itself', "New versions install by themselves while you aren't using Bloxkeep. Your Roblox windows keep running."],
       ['macros', 'macros.png', 'Macros (Beta)', 'Steps written as plain sentences: press keys, click, wait for a picture, a color or text. Record one or start from a template; a small panel sits beside the game.'],
       ['playing#the-roblox-tab', 'games.png', 'Roblox inside Bloxkeep', "Games, friends, avatar, profile, shop and inbox for each account. Popular games come with their wiki, live news from the games' own alerts, and Blox Fruits prices."],
+      ['playing', 'codes.webp', 'Codes for every game', "Open a game and its Codes tab lists the codes that work and the ones that expired, with what each gives. One click copies it."],
+      ['discord#control-from-discord', 'watch.webp', 'Watch your PC from your phone', 'Type /pc watch in Discord and open the link: every Roblox window on your PC, live. The link is yours alone and lasts 2 hours.'],
+      ['playing', '', 'Servers by country', 'Pick the country beside Play and your accounts join a server there, read from where Roblox really put each server.'],
+      ['accounts', '', 'Account groups', 'Sort accounts into groups like Farm or Main, fold a group away and pick all of it at once.'],
+      ['playing', '', 'Privacy for each game', 'Who can join you and who can message you, set for each game while you play it and put back when you leave.'],
+      ['playing#the-roblox-tab', '', 'Your profile, your way', 'A profile song from Spotify or a file of your own, decorations, a moving picture and a banner you can move.'],
+      ['playing#the-roblox-tab', '', 'Group chats', 'Start a group chat with your Roblox friends, add or remove people and rename it, without opening Roblox.'],
+      ['settings', '', 'Easy setup', 'Bloxkeep looks at your PC and sets Roblox up for it: graphics, FPS and how many windows it can hold.'],
+      ['settings#appearance', '', 'Follows Wallpaper Engine', "Your Wallpaper Engine wallpaper behind Bloxkeep, live, and Spotify's song in the status bar."],
     ],
     startTitle: 'Start in three steps',
     start: [
@@ -201,6 +218,14 @@ const L = {
     heroVideo: 'Bloxkeep: chọn hai tài khoản ở tab Tài khoản, bấm Vào game, cả hai cùng mở Blox Fruits',
     stats: { downloads: 'lượt tải', releases: 'phiên bản đã ra', themes: 'theme', free: 'miễn phí, mã nguồn mở', price: '0 đ' },
     number: n => n.toLocaleString('vi-VN'),
+    firstTitle: 'Phút đầu tiên',
+    firstLead: 'Lần đầu mở, Bloxkeep hỏi ba câu để chỉnh theo cách bạn chơi và sức máy của bạn.',
+    first: [
+      ['setup-use.png', 'Bạn dùng để làm gì?', 'Chơi nhiều tài khoản, treo AFK hay cả hai: Bloxkeep bật sẵn những gì cần.'],
+      ['setup-pc.png', 'Mở được bao nhiêu?', 'Bloxkeep xem cấu hình máy rồi cho biết máy chạy được bao nhiêu cửa sổ Roblox.'],
+      ['setup-theme.png', 'Chọn giao diện', 'Chọn một theme để bắt đầu. Có gần 100 theme, đổi lúc nào cũng được.'],
+      ['home-hero.png', 'Rồi chọn game', 'Chưa chơi game nào thì trang chủ gợi ý game để thử và cho biết lúc này bao nhiêu người đang chơi bằng Bloxkeep.'],
+    ],
     clipsTitle: 'Xem Bloxkeep chạy',
     clipsLead: 'Quay ngay trong Bloxkeep, với tài khoản giả.',
     clipAlt: t => `Bloxkeep: ${t}`,
@@ -227,6 +252,15 @@ const L = {
       ['getting-started#cập-nhật', 'lock-update.png', 'Tự cập nhật', 'Bản mới tự cài khi bạn không dùng Bloxkeep. Các cửa sổ Roblox vẫn chạy bình thường.'],
       ['macros', 'macros.png', 'Macro (Beta)', 'Các bước viết thành câu dễ hiểu: bấm phím, bấm chuột, chờ hình, màu hoặc chữ. Ghi lại thao tác hoặc dùng mẫu, kèm bảng nhỏ cạnh game.'],
       ['playing#tab-roblox', 'games.png', 'Roblox ngay trong Bloxkeep', 'Game, bạn bè, nhân vật, hồ sơ, cửa hàng và hộp thư của từng tài khoản. Game phổ biến có sẵn wiki, tin trực tiếp từ bot của game, và bảng giá Blox Fruits.'],
+      ['playing', 'codes.webp', 'Giftcode của mọi game', 'Mở một game, tab Giftcode có các code dùng được và code đã hết hạn, kèm phần thưởng của từng code. Bấm là chép.'],
+      ['discord#điều-khiển-từ-discord', 'watch.webp', 'Xem máy từ điện thoại', 'Gõ /pc watch trong Discord rồi mở link: xem trực tiếp mọi cửa sổ Roblox trên máy. Link chỉ của riêng bạn, dùng được 2 giờ.'],
+      ['playing', '', 'Server theo quốc gia', 'Chọn quốc gia cạnh nút Chơi, tài khoản sẽ vào server ở đó, theo nơi Roblox thật sự đặt từng server.'],
+      ['accounts', '', 'Nhóm tài khoản', 'Xếp tài khoản vào nhóm như Farm hay Main, thu gọn từng nhóm và chọn cả nhóm một lần.'],
+      ['playing', '', 'Quyền riêng tư theo game', 'Ai được vào cùng, ai được nhắn tin: đặt riêng cho từng game khi đang chơi, thoát game thì trả lại như cũ.'],
+      ['playing#tab-roblox', '', 'Hồ sơ theo ý bạn', 'Bài hát trên hồ sơ từ Spotify hoặc file của bạn, đồ trang trí, ảnh động và ảnh bìa kéo được.'],
+      ['playing#tab-roblox', '', 'Chat nhóm', 'Tạo nhóm chat với bạn bè Roblox, thêm bớt người và đổi tên nhóm mà không cần mở Roblox.'],
+      ['settings', '', 'Thiết lập nhanh', 'Bloxkeep xem cấu hình máy rồi chỉnh Roblox cho vừa: đồ họa, FPS và số cửa sổ máy chạy được.'],
+      ['settings#giao-diện', '', 'Theo Wallpaper Engine', 'Hình nền Wallpaper Engine chạy ngay sau Bloxkeep, và bài đang phát trên Spotify ở thanh trạng thái.'],
     ],
     startTitle: 'Bắt đầu trong 3 bước',
     start: [
@@ -285,9 +319,9 @@ const L = {
 const SHARED = new Set(['multi-roblox-real.jpg', 'multi-roblox-real-detail.jpg', 'game-monitor-real.jpg']);
 /** The features shown as clips (site/static/clips/<lang>/<name>.mp4, recorded in the app's hidden window with made-up
  * accounts), by their place in l.features; one with a picture instead (img) where a clip can't show it (Discord). */
-const CLIPS = [['picker', 2], ['roblox', 16], ['presets', 3], ['stats', 6], ['themes', 12], [null, 7, 'discord-control.png']];
+const CLIPS = [['picker', 2], [null, 17, 'codes.webp'], ['roblox', 16], [null, 18, 'watch.webp'], ['presets', 3], ['stats', 6], ['themes', 12], [null, 7, 'discord-control.png']];
 /** The rest, as short tiles under the clips (Multi-Roblox has its own section, the real windows). */
-const TILES = [1, 4, 5, 15, 9, 8, 10, 13, 14];
+const TILES = [1, 19, 20, 21, 22, 23, 24, 25, 4, 5, 15, 9, 8, 10, 13, 14];
 /** The questions in two tabs (l.faqTabs), by their place in l.faq. */
 const FAQ_TABS = [[0, 4, 3, 5, 8], [1, 2, 6, 7]];
 
@@ -346,6 +380,20 @@ ${stats.map(([n, label]) => `      <li><b>${esc(n)}</b><span>${esc(label)}</span
       <a href="${shot('multi-roblox-real.jpg')}"><img class="frame" src="${shot('multi-roblox-real.jpg')}" width="1702" height="1019" loading="lazy" decoding="async" alt="${esc(l.proofAlt)}"></a>
       <figcaption><a href="${rel(`${home}guide/multi-roblox/`)}">${esc(l.proofLink)} ›</a></figcaption>
     </figure>
+  </div>
+</section>
+
+<section class="band" aria-labelledby="first">
+  <div class="wrap">
+    <h2 id="first">${esc(l.firstTitle)}</h2>
+    <p class="intro">${esc(l.firstLead)}</p>
+    <div class="clips">
+${l.first.map(([img, title, text]) => `      <article class="clip">
+        <div class="clip-media"><img src="${shot(img)}" width="1920" height="1200" loading="lazy" decoding="async" alt="${esc(title)}"></div>
+        <h3>${esc(title)}</h3>
+        <p>${esc(text)}</p>
+      </article>`).join('\n')}
+    </div>
   </div>
 </section>
 

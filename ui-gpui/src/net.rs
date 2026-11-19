@@ -20,6 +20,12 @@ static TLS: LazyLock<Arc<rustls::ClientConfig>> = LazyLock::new(|| {
     Arc::new(config)
 });
 
+/// An agent builder with Windows' certificates and no proxy at all: for a call that must reach its host itself (a
+/// macro's web step, whose host is checked to be public: through a proxy only the proxy's address would be).
+pub fn builder_direct() -> ureq::AgentBuilder {
+    ureq::AgentBuilder::new().tls_config(TLS.clone())
+}
+
 /// An agent builder with Windows' proxy and certificates; the caller adds its timeouts and the rest.
 pub fn builder() -> ureq::AgentBuilder {
     let mut b = ureq::AgentBuilder::new().tls_config(TLS.clone());
@@ -102,33 +108,6 @@ pub fn saved<T: serde::de::DeserializeOwned>(what: &str, path: &std::path::Path)
 pub fn wrote<E: std::fmt::Display>(what: &str, path: &std::path::Path, r: Result<(), E>) {
     if let Err(e) = r {
         note_failed(what, &path.to_string_lossy(), &format!("couldn't be written: {e}"));
-    }
-}
-
-/// A named background thread whose failure to start (Windows out of threads or memory) is in error.log: what it was for
-/// then silently doesn't happen. Used as std::thread::Builder is; spawn returns the same result.
-pub struct Named(std::thread::Builder, String);
-
-impl Named {
-    pub fn new(name: String) -> Named {
-        Named(std::thread::Builder::new().name(name.clone()), name)
-    }
-
-    pub fn stack_size(self, size: usize) -> Named {
-        Named(self.0.stack_size(size), self.1)
-    }
-
-    pub fn spawn<F, T>(self, f: F) -> std::io::Result<std::thread::JoinHandle<T>>
-    where
-        F: FnOnce() -> T + Send + 'static,
-        T: Send + 'static,
-    {
-        let name = self.1;
-        let r = self.0.spawn(f);
-        if let Err(e) = &r {
-            note_failed("Background work", "", &format!("\"{name}\" couldn't start: {e}"));
-        }
-        r
     }
 }
 
@@ -242,4 +221,81 @@ fn proxy_setting() -> Option<String> {
 #[cfg(not(windows))]
 fn proxy_setting() -> Option<String> {
     None
+}
+
+/// Whether this PC can reach the internet now, for the "No connection" notice (as Discord's and Facebook's say it).
+/// Windows' own answer first (GetNetworkConnectivityHint: no network at all means offline at once; its "local only"
+/// is left to the tries below, as Windows says it wrongly where its own test address is blocked); then a
+/// plain TCP connect to two public resolvers on 443 (no data sent), and to the proxy when one is set, so a PC whose
+/// only way out is a proxy isn't called offline. Any one that answers in 2 s means online. Blocking: a background
+/// thread calls it.
+pub fn online_now() -> bool {
+    use std::net::{TcpStream, ToSocketAddrs};
+    use std::time::Duration;
+    #[cfg(windows)]
+    {
+        use windows_sys::Win32::NetworkManagement::IpHelper::GetNetworkConnectivityHint;
+        use windows_sys::Win32::Networking::WinSock::{NL_NETWORK_CONNECTIVITY_HINT, NetworkConnectivityLevelHintNone};
+        // SAFETY: fills the struct it is given.
+        let mut hint: NL_NETWORK_CONNECTIVITY_HINT = unsafe { std::mem::zeroed() };
+        if unsafe { GetNetworkConnectivityHint(&mut hint) } == 0 && hint.ConnectivityLevel == NetworkConnectivityLevelHintNone {
+            return false;
+        }
+    }
+    let mut places: Vec<String> = vec!["1.1.1.1:443".into(), "8.8.8.8:443".into()];
+    if let Some(p) = proxy_host_port() {
+        places.insert(0, p);
+    }
+    places.iter().any(|place| {
+        place.to_socket_addrs().ok().and_then(|mut a| a.next()).is_some_and(|addr| TcpStream::connect_timeout(&addr, Duration::from_secs(2)).is_ok())
+    })
+}
+
+/// The proxy's "host:port" (Windows' setting, else the environment's), for `online_now`.
+fn proxy_host_port() -> Option<String> {
+    let raw = proxy_setting()
+        .map(|s| s.split(';').find_map(|p| p.split_once('=').map(|(_, v)| v.to_string())).unwrap_or(s))
+        .or_else(|| env_proxy_for("roblox.com", |n| std::env::var(n).ok()))?;
+    let after = raw.trim().rsplit("://").next().unwrap_or_default();
+    let host = after.rsplit('@').next().unwrap_or_default().trim_end_matches('/');
+    (!host.is_empty() && host.contains(':')).then(|| host.to_string())
+}
+
+/// What a call to Roblox that never got an answer (no connection, or the connection cut: Roblox blocked on this network)
+/// gives the page instead of the transport's own words; the real error is in error.log. Pages show it in the reader's
+/// language (`why_words`), and the title bar's notice (shell) looks again at once.
+pub const UNREACHABLE: &str = "Roblox can't be reached";
+
+static ROBLOX_FAILED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// A call to Roblox got no answer: written to error.log with its real error, and the connection looked at again soon.
+pub fn unreachable(what: &str, url: &str, why: &str) -> String {
+    note_failed(what, url, why);
+    ROBLOX_FAILED.store(true, std::sync::atomic::Ordering::Relaxed);
+    UNREACHABLE.to_string()
+}
+
+/// Whether a call to Roblox got no answer since this was last asked.
+pub fn take_roblox_failed() -> bool {
+    ROBLOX_FAILED.swap(false, std::sync::atomic::Ordering::Relaxed)
+}
+
+/// Whether Roblox answers at all (any answer, an error code too, means it is reached), through the same proxy as
+/// every other call. Blocking.
+pub fn roblox_reachable() -> bool {
+    use std::time::Duration;
+    static AGENT: std::sync::OnceLock<ureq::Agent> = std::sync::OnceLock::new();
+    let agent = AGENT.get_or_init(|| builder().timeout(Duration::from_secs(6)).user_agent("Bloxkeep").build());
+    ["https://www.roblox.com/", "https://apis.roblox.com/"].iter().any(|u| matches!(agent.head(u).call(), Ok(_) | Err(ureq::Error::Status(..))))
+}
+
+/// A page's "why" in its reader's words: Roblox's name for an empty one, the reader's language for `UNREACHABLE`.
+pub fn why_words(i18n: &crate::i18n::I18n, why: &str) -> String {
+    if why.is_empty() {
+        "Roblox".into()
+    } else if why == UNREACHABLE {
+        i18n.t("net.unreachableWhy")
+    } else {
+        why.to_string()
+    }
 }

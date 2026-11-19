@@ -32,6 +32,8 @@ export const words = {
     window: 'Cửa sổ Roblox không còn mở.',
     bridgeUnavailable: 'Không kết nối được với Bloxkeep.',
     inUse: 'Đang có phiên xem live.',
+    sharp: 'Nét hơn', sharpHelp: 'Phóng to cửa sổ Roblox trên PC trong lúc xem, xem xong trả về như cũ',
+    macro: 'Đang chạy macro: không phóng to',
   },
   en: {
     language: 'Language', title: 'Game Monitor', lan: 'Local network', remote: 'Remote viewing',
@@ -66,5 +68,7 @@ export const words = {
     window: 'The Roblox window is no longer open.',
     bridgeUnavailable: 'Could not connect to Bloxkeep.',
     inUse: 'A live session is already active.',
+    sharp: 'Sharper', sharpHelp: 'Makes the Roblox window big on the PC while you watch, and puts it back after',
+    macro: 'A macro is running: not made bigger',
   },
 };

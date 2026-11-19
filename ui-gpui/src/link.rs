@@ -2,7 +2,7 @@
 // one-way named pipes made by the app: `<name>` brings its messages, `<name>-up` takes ours. (One two-way pipe opened
 // for synchronous use would hold a write until the pending read finished.)
 //
-// Ours are written by a thread of their own, never by the one that draws: a write to a pipe waits for the app to read
+// Ours are written by one thread kept for the life of the line, never by the one that draws: a write to a pipe waits for the app to read
 // it, and the app, laying this window inside its own, waits for this window to answer (2026-11-11: each waited for
 // the other, and both stood still).
 //
@@ -10,6 +10,7 @@
 //         {"type":"hello","hwnd":123}                       once, so the app can put this window inside its own
 // Theirs: {"type":"reply","id":1,"ok":true,"result":…}     or ok:false with "error"
 //         {"type":"event","name":"state","data":…}         the whole state, metrics, toasts, progress…
+use crate::threads::Hold;
 use std::{
     collections::HashMap,
     fs::{File, OpenOptions},
@@ -50,7 +51,7 @@ pub fn connect(name: &str) -> anyhow::Result<(Link, mpsc::UnboundedReceiver<Even
     let up = open(&format!("{name}-up"), true)?;
     let (lines, written) = channel::<String>();
     let mut up = up;
-    crate::net::Named::new("link-write".into()).spawn(move || {
+    crate::threads::own("link-write", move || {
         for line in written {
             if writeln!(up, "{line}").and_then(|_| up.flush()).is_err() {
                 break;
@@ -60,7 +61,7 @@ pub fn connect(name: &str) -> anyhow::Result<(Link, mpsc::UnboundedReceiver<Even
     let link = Link { local: false, writer: lines, next: Arc::new(AtomicU32::new(1)), waiting: Arc::default() };
     let (tx, rx) = mpsc::unbounded();
     let waiting = link.waiting.clone();
-    crate::net::Named::new("link-read".into()).spawn(move || {
+    crate::threads::own("link-read", move || {
         for line in BufReader::new(down).lines() {
             let Ok(line) = line else { break };
             if !take(&line, &waiting, &tx) {
@@ -68,7 +69,8 @@ pub fn connect(name: &str) -> anyhow::Result<(Link, mpsc::UnboundedReceiver<Even
             }
         }
         // The app went away: whatever waits gets an error, and the window closes (main.rs).
-        if let Ok(mut m) = waiting.lock() {
+        {
+            let mut m = waiting.hold();
             for (_, w) in m.drain() {
                 let _ = w.send(Err("Can't reach the app.".into()));
             }
@@ -89,7 +91,8 @@ fn take(line: &str, waiting: &Mutex<HashMap<u32, oneshot::Sender<Reply>>>, tx: &
             } else {
                 Err(msg.get("error").and_then(Value::as_str).unwrap_or("Unknown error").to_string())
             };
-            if let Some(w) = waiting.lock().ok().and_then(|mut m| m.remove(&id)) {
+            let w = waiting.hold().remove(&id);
+            if let Some(w) = w {
                 let _ = w.send(reply);
             }
         }
@@ -110,7 +113,7 @@ fn take(line: &str, waiting: &Mutex<HashMap<u32, oneshot::Sender<Reply>>>, tx: &
 #[cfg(feature = "core")]
 pub fn local() -> (Link, mpsc::UnboundedReceiver<Event>) {
     let (lines, written) = channel::<String>();
-    let _ = crate::net::Named::new("link-write".into()).spawn(move || {
+    let _ = crate::threads::own("link-write", move || {
         for line in written {
             crate::core::gpui_host::on_message(line);
         }
@@ -133,9 +136,7 @@ impl Link {
     pub fn call(&self, cmd: &str, args: Value) -> oneshot::Receiver<Reply> {
         let id = self.next.fetch_add(1, Ordering::Relaxed);
         let (tx, rx) = oneshot::channel();
-        if let Ok(mut m) = self.waiting.lock() {
-            m.insert(id, tx);
-        }
+        self.waiting.hold().insert(id, tx);
         self.write(&json!({ "id": id, "cmd": cmd, "args": args }));
         rx
     }

@@ -51,18 +51,8 @@ impl ureq::Resolver for PublicResolver {
 }
 
 /// Without the system proxy: through one, ureq resolves only the proxy's address, so PublicResolver would check the
-/// proxy and never the step's own host. Trusts the same roots as net.rs (public ones and Windows' store).
-static HTTP: LazyLock<ureq::Agent> = LazyLock::new(|| {
-    let mut roots = rustls::RootCertStore::empty();
-    roots.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
-    let _ = roots.add_parsable_certificates(rustls_native_certs::load_native_certs().certs);
-    let provider = std::sync::Arc::new(rustls::crypto::ring::default_provider());
-    let mut b = ureq::AgentBuilder::new();
-    if let Ok(tls) = rustls::ClientConfig::builder_with_provider(provider).with_safe_default_protocol_versions() {
-        b = b.tls_config(std::sync::Arc::new(tls.with_root_certificates(roots).with_no_client_auth()));
-    }
-    b.redirects(0).timeout(Duration::from_secs(8)).resolver(PublicResolver).build()
-});
+/// proxy and never the step's own host. Trusts the same roots as every call (net.rs: public ones and Windows' store).
+static HTTP: LazyLock<ureq::Agent> = LazyLock::new(|| crate::net::builder_direct().redirects(0).timeout(Duration::from_secs(8)).resolver(PublicResolver).build());
 
 /// Documents\Bloxkeep.
 pub fn folder() -> PathBuf {
@@ -131,7 +121,7 @@ impl IMacroOutside for MacroOutside {
         Ok(())
     }
 
-    /// On a worker, waited for with the token: the address's name lookup has no timeout of its own, and the turn (keys
+    /// On a pool worker, waited for with the token: the address's name lookup has no timeout of its own, and the turn (keys
     /// held, the window in front) must stop at once when the run is stopped or Bloxkeep closes. A worker left behind
     /// ends on its own (the 8 s timeout, or the lookup giving up).
     fn web(&self, url: &str, post: Option<&str>, ct: &Cancel) -> Res<Option<String>> {
@@ -142,9 +132,9 @@ impl IMacroOutside for MacroOutside {
         ct.check()?;
         let post = post.map(str::to_string);
         let (tx, rx) = std::sync::mpsc::channel();
-        crate::net::Named::new("Bloxkeep macro web".into()).spawn(move || {
+        crate::threads::run(move || {
             let _ = tx.send(web_now(&url, &host, post.as_deref()));
-        })?;
+        });
         loop {
             match rx.recv_timeout(Duration::from_millis(50)) {
                 Ok(answer) => {
@@ -270,14 +260,10 @@ pub fn public(ip: IpAddr) -> bool {
     }
 }
 
-/// The work on a thread of its own, waited for (C# gave the clipboard an STA thread).
+/// The work on a pool thread, waited for (C# gave the clipboard an STA thread).
 /// PORT: the thread isn't marked STA: the Win32 clipboard calls used here need no COM apartment.
 fn sta<T: Send + 'static>(work: impl FnOnce() -> Res<T> + Send + 'static) -> Res<T> {
-    crate::net::Named::new("Bloxkeep clipboard".into())
-        .spawn(work)
-        .map_err(Fail::from)?
-        .join()
-        .unwrap_or_else(|_| Err(Fail::other("The clipboard thread stopped.")))
+    crate::threads::scope(|s| s.spawn(work).join()).unwrap_or_else(|_| Err(Fail::other("The clipboard thread stopped.")))
 }
 
 /// The first `max` UTF-16 units of a text, as .NET's [..max] (a character isn't cut in half here).

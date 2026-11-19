@@ -110,10 +110,11 @@ pub(super) async fn delay(ct: &Cancel, d: Duration) -> Res<()> {
 pub(super) fn linked(parent: &Cancel, limit: Duration) -> Cancel {
     let child = Cancel::new();
     let (p, c) = (parent.clone(), child.clone());
-    std::thread::spawn(move || {
+    // On the core's timers (no thread): every caller is a task of the core's.
+    rt::spawn(async move {
         let until = Instant::now() + limit;
         while Instant::now() < until && !p.is_cancelled() && !c.is_cancelled() {
-            std::thread::sleep(Duration::from_millis(25));
+            rt::sleep(Duration::from_millis(25)).await;
         }
         c.cancel();
     });
@@ -596,7 +597,7 @@ impl App {
                 ),
             };
             log::note(&format!(
-                "Launch: {} account(s), {where_to}{}, via {}, Multi-Roblox {}{}{}.",
+                "Launch: {} account(s), {where_to}{}, via {}, Multi-Roblox {}{}{}; windows after opening: {}.",
                 accounts.len(),
                 preset_id.map(|p| format!(", preset {}", short(p))).unwrap_or_default(),
                 s.launch_via,
@@ -608,7 +609,17 @@ impl App {
                     "off"
                 },
                 if !switching.is_empty() { format!(", {} switching", switching.len()) } else { String::new() },
-                if force { ", confirmed" } else { "" }
+                if force { ", confirmed" } else { "" },
+                // What Settings' "When a Roblox window opens" (or the preset) says, so error.log shows why windows were
+                // or weren't arranged: the owner's came up maximised and unarranged with no line to say which was set
+                // (2026-11-18).
+                match self.preset_for(preset_id).and_then(|p| p.arrange) {
+                    Some(true) => "arranged (the preset)",
+                    Some(false) => "left as they open (the preset)",
+                    None if s.multi_instance && s.multi_instance_tile => "arranged",
+                    None if s.maximize_on_open => "maximised",
+                    None => "left as Roblox opens them",
+                }
             ));
             self.push_state();
             self.wait_for_sweep(&ct).await?;
@@ -1046,7 +1057,7 @@ impl App {
                     l::f("Waiting for Roblox to open {0}… (Roblox may be updating)", &[&n])
                 }));
             }
-            delay(ct, Duration::from_millis(500)).await?;
+            delay(ct, Duration::from_millis(150)).await?;
         }
         if waiting_for_it(self) {
             log::note(&format!(
@@ -1510,10 +1521,12 @@ impl App {
             self.controller.roblox_flags_pending.set(false);
         }
         // Mods (Roblox › Mods) laid into Roblox's own builds, and the ones turned off taken out (core/roblox_mods.rs).
+        // (Roblox's own folder is never written: a window with mods opens from Bloxkeep's copy of the build.)
         let mods = super::super::roblox_mods::applies_to(&launch_via);
-        if mods {
+        let mut mod_client = None;
+        if mods && kept_build.is_none() {
             let client = roblox_installs::client_for(&launch_via, &settings.custom_launcher);
-            let _ = rt::blocking(move || super::super::roblox_mods::apply(client.as_deref())).await;
+            mod_client = rt::blocking(move || super::super::roblox_mods::mod_copy(client.as_deref())).await;
         }
         // The build the windows open run on, copied last so its Fast Flags are the ones just written. Not copied: it waits instead.
         let mut kept_client = None;
@@ -1537,7 +1550,7 @@ impl App {
         // Stopped meanwhile (Stop, Close, a scheduled stop): nothing is opened.
         ct.check()?;
         let custom = self.vault(|d| d.settings.custom_launcher.clone()).unwrap_or_default();
-        let tracker = roblox_launcher::launch(&ticket, target.as_ref(), &launch_via, &custom, kept_client.as_deref())?;
+        let tracker = roblox_launcher::launch(&ticket, target.as_ref(), &launch_via, &custom, kept_client.as_deref().or(mod_client.as_deref()))?;
         log::note(&format!(
             "Roblox start: account {} via {launch_via}, {}{}{}, {} Roblox already running.",
             short(account.id),
@@ -1556,6 +1569,8 @@ impl App {
             before.len()
         ));
         self.controller.last_session_start.set(Stamp::utc_now());
+        // (Its window is looked for at once, not after the idle check's seconds.)
+        self.controller.proc_interval_ms.set(500);
         self.controller.user_closed.borrow_mut().remove(&account.id);
         self.forget_late(account.id); // opened again: a window of the earlier try is not this one's
         let place = target.as_ref().map(|t| t.place_id);

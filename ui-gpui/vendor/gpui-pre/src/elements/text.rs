@@ -664,8 +664,14 @@ impl TextLayout {
                     None
                 };
 
+                // Bloxkeep: a clamp alone ends its last row with "…", as CSS line-clamp does. Without it the rest of
+                // the text stayed on that row, past the box, and was cut through a word at its edge (Home's game words).
+                let text_overflow = text_style
+                    .text_overflow
+                    .clone()
+                    .or_else(|| text_style.line_clamp.map(|_| TextOverflow::Truncate("…".into())));
                 let (truncate_width, truncation_affix, truncate_from) =
-                    if let Some(text_overflow) = text_style.text_overflow.clone() {
+                    if let Some(text_overflow) = text_overflow {
                         let width = known_dimensions.width.or(match available_space.width {
                             crate::AvailableSpace::Definite(x) => match text_style.line_clamp {
                                 Some(max_lines) => Some(x * max_lines),

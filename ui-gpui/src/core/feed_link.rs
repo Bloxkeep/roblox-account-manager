@@ -150,7 +150,8 @@ impl FeedLink {
             connected: AtomicBool::new(false),
         });
         let run = Arc::clone(&shared);
-        std::thread::spawn(move || run_link(&run));
+        // The link's loop lives as long as the link, so it has a thread of its own, not a pool one.
+        let _ = crate::threads::own("feed-link", move || run_link(&run));
         FeedLink { shared }
     }
 

@@ -110,7 +110,8 @@ async function handle(req, res) {
   const open = req.method === 'POST' && /^\/api\/live\/start\/(\d{1,10}-\d{1,19})$/.exec(path);
   if (open) {
     try {
-      const id = await live.start(open[1]);
+      const sharp = new URL(req.url, 'http://localhost').searchParams.get('sharp') === '1';
+      const id = await live.start(open[1], sharp);
       const secure = req.headers['x-forwarded-proto'] === 'https' ? '; Secure' : '';
       res.setHeader('Set-Cookie', `bk_live=${id}; Path=/api/live; HttpOnly; SameSite=Strict${secure}`);
       reply(res, 200, 'application/json', JSON.stringify({ playlist: '/api/live/index.m3u8' }));

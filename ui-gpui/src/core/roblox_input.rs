@@ -77,7 +77,7 @@ impl RobloxInput {
         let (ready_tx, ready_rx) = mpsc::channel::<()>();
         let (s, t, wk) = (shared.clone(), thread_id.clone(), working.clone());
         // PORT: the C# thread was STA for its WinForms NativeWindow; a plain Win32 message-only window needs no COM apartment.
-        let thread = crate::net::Named::new("Bloxkeep input".into()).spawn(move || run(s, t, wk, ready_tx)).ok();
+        let thread = crate::threads::own("Bloxkeep input", move || run(s, t, wk, ready_tx)).ok();
         let _ = ready_rx.recv_timeout(Duration::from_secs(5));
         RobloxInput { shared, thread, thread_id, working, listening: true, listen_fail_noted: false }
     }

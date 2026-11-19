@@ -19,9 +19,15 @@ use crate::core::{l, rt, vault};
 pub const FEEDBACK_URL: &str = "https://bloxkeep-feedback.bloxkeep-app.workers.dev/feedback";
 pub const FEEDBACK_TEXT_MAX: usize = 2000;
 pub const FEEDBACK_CONTACT_MAX: usize = 100;
-/// About all of error.log (it starts over at 256 KB): 12 000 characters cut off a rejoin's first tries and the start of
-/// what went wrong (a report of 2026-11-11 began at "try 4").
-pub const FEEDBACK_LOG_MAX: usize = 200_000;
+/// All of error.log.2, error.log.1 and error.log (1 MB each at most, a little over with the last line): trouble from early
+/// in the week reported at its end still has its lines (owner, 2026-11-17). Sent gzipped as `logGz`.
+pub const FEEDBACK_LOG_MAX: usize = 3_600_000;
+/// The plain `log` sent beside it, what the feedback service took before `logGz` (its end, 200 000 characters): a service
+/// from before still gets that much. 12 000 characters cut off a rejoin's first tries and the start of what went wrong
+/// (a report of 2026-11-11 began at "try 4").
+pub const FEEDBACK_LOG_PLAIN_MAX: usize = 200_000;
+/// Lines of the log shown in Preview (each is a line on screen): the rest is counted above them.
+pub const FEEDBACK_PREVIEW_LINES: usize = 400;
 /// What a feedback service from before the longer log takes: the log is cut to this and sent again.
 pub const FEEDBACK_LOG_OLD_MAX: usize = 12_000;
 pub const FEEDBACK_GAP: Duration = Duration::from_secs(60);
@@ -166,22 +172,19 @@ impl App {
         })
     }
 
-    /// The end of error.log (whole lines) with what could tell who someone is taken out; None when there's none.
+    /// error.log.2, error.log.1 and error.log, oldest first (whole lines, FEEDBACK_LOG_MAX at most) with what could tell
+    /// who someone is taken out; None when there's none.
     pub fn scrubbed_log(&self) -> Option<String> {
-        let path = vault::data_dir().join("error.log");
-        let older = vault::data_dir().join("error.log.1");
-        // IOException, UnauthorizedAccessException: no log.
-        let mut text = if path.is_file() { read_all_text(&path).ok()? } else { String::new() };
-        // A log that has just started over (error.log.1 holds the one before) would send next to nothing: the end of the
-        // earlier one fills the rest.
-        if units(&text) < FEEDBACK_LOG_MAX && older.is_file() {
-            let mut before = read_all_text(&older).ok()?;
-            let room = FEEDBACK_LOG_MAX - units(&text);
-            if units(&before) > room {
-                // Whole lines only.
-                before = after_first_line(&last_units(&before, room)).unwrap_or_default();
+        let dir = vault::data_dir();
+        let mut text = String::new();
+        for name in ["error.log.2", "error.log.1", "error.log"] {
+            let path = dir.join(name);
+            // IOException, UnauthorizedAccessException: that file left out (error.log's own failure: no log, as before).
+            match read_all_text(&path) {
+                Ok(part) => text += &part,
+                Err(_) if name == "error.log" && path.is_file() => return None,
+                Err(_) => {}
             }
-            text = before + &text;
         }
         if text.is_empty() {
             return None;
@@ -239,7 +242,19 @@ impl App {
         lines += nl;
         match &f.log {
             None => lines += &l::t("(no error log)"),
-            Some(log) => lines += &format!("── error-log.txt ──{nl}{}", log.trim_end()),
+            Some(log) => {
+                // Thousands of lines don't fit a preview (each is drawn on screen): how much goes, then its end.
+                let all: Vec<&str> = log.trim_end().lines().collect();
+                let shown = all.len().saturating_sub(FEEDBACK_PREVIEW_LINES);
+                lines += "── error-log.txt ──";
+                lines += nl;
+                if shown > 0 {
+                    let kb = (log.len() / 1024).max(1).to_string();
+                    lines += &l::f("All of it is sent ({0} KB); its last lines:", &[&kb]);
+                    lines += nl;
+                }
+                lines += &all[shown..].join(nl);
+            }
         }
         lines += nl;
         Ok(json!({ "preview": lines.trim_end() }))
@@ -262,17 +277,23 @@ impl App {
 
     pub async fn post_feedback(self: &Rc<Self>, f: Feedback) -> Res<()> {
         let url = std::env::var("BLOXKEEP_FEEDBACK_URL").ok().filter(|u| !u.is_empty()).unwrap_or_else(|| FEEDBACK_URL.to_string());
-        let post = |log: Option<String>| {
+        // The whole log gzipped (logGz, a service from 2026-11-17 on); the plain end beside it for one from before.
+        let gz = {
+            let log = f.log.clone();
+            rt::blocking(move || log.as_deref().and_then(gzip_base64)).await
+        };
+        let post = |log: Option<String>, gz: Option<String>| {
             // The C#'s anonymous object, its names in this order; a missing log is written as null.
             let body = format!(
-                "{{\"kind\":{},\"text\":{},\"contact\":{},\"app\":{},\"windows\":{},\"language\":{},\"log\":{}}}",
+                "{{\"kind\":{},\"text\":{},\"contact\":{},\"app\":{},\"windows\":{},\"language\":{},\"log\":{},\"logGz\":{}}}",
                 json!(f.kind),
                 json!(f.text),
                 json!(f.contact),
                 json!(f.app),
                 json!(f.windows),
                 json!(f.language),
-                json!(log)
+                json!(log),
+                json!(gz)
             );
             let url = url.clone();
             async move {
@@ -286,12 +307,13 @@ impl App {
                 answer.map_err(|_| Fail::user(l::t("Couldn't reach the feedback service. Check the internet connection and try again.")))
             }
         };
-        let mut status = post(f.log.clone()).await?;
+        let plain = f.log.as_deref().map(|l| last_lines(l, FEEDBACK_LOG_PLAIN_MAX));
+        let mut status = post(plain, gz).await?;
         // A service from before the longer log refuses it as too large: the report still goes, with the log's end.
         if status == 413
             && let Some(log) = f.log.as_deref().filter(|l| units(l) > FEEDBACK_LOG_OLD_MAX)
         {
-            status = post(Some(last_lines(log, FEEDBACK_LOG_OLD_MAX))).await?;
+            status = post(Some(last_lines(log, FEEDBACK_LOG_OLD_MAX)), None).await?;
         }
         if status == 429 {
             return Err(Fail::user(l::t("A lot of feedback is arriving right now. Try again in a minute.")));
@@ -302,6 +324,37 @@ impl App {
         self.feedback.feedback_sent_at.set(Stamp::utc_now());
         Ok(())
     }
+}
+
+/// Which of `words` may be in `text` (replace_word's ignore-case match, its word edges left to it). ASCII words are
+/// looked for together, ignoring ASCII case; a word with any other letter is always kept (Unicode case rules aren't
+/// ASCII's, and missing one would let a name through). Overlapping finds count, so a name inside a longer one is seen.
+/// (Regex's ignore-case also matches 'K' for k and 'ſ' for s: a log written by Bloxkeep holds neither in a name.)
+fn present_words(text: &str, words: &[(String, &'static str)]) -> Vec<bool> {
+    let mut present: Vec<bool> = words.iter().map(|(w, _)| !w.is_ascii()).collect();
+    let ascii: Vec<usize> = (0..words.len()).filter(|&i| words[i].0.is_ascii()).collect();
+    if ascii.is_empty() {
+        return present;
+    }
+    let Ok(finder) = aho_corasick::AhoCorasick::builder().ascii_case_insensitive(true).build(ascii.iter().map(|&i| words[i].0.as_bytes()))
+    else {
+        return vec![true; words.len()];
+    };
+    for m in finder.find_overlapping_iter(text) {
+        present[ascii[m.pattern().as_usize()]] = true;
+    }
+    present
+}
+
+/// `logGz`: the log gzipped, in base64 (a text log shrinks to about a tenth); None if that failed (the plain end still goes).
+fn gzip_base64(log: &str) -> Option<String> {
+    use base64::Engine;
+    use std::io::Write;
+    let mut gz = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::default());
+    gz.write_all(log.as_bytes()).ok()?;
+    let text = base64::engine::general_purpose::STANDARD.encode(gz.finish().ok()?);
+    // The worker takes up to 1.6 MB of it (a real log packs ~6×, so 3 full files are ~600 KB); past that only the plain end goes.
+    (text.len() <= 1_600_000).then_some(text)
 }
 
 /// The end of `text`, at most `max` characters (UTF-16 units, as the C#'s), whole lines only.
@@ -340,8 +393,13 @@ pub fn scrub_text(text: &str, more: Vec<(String, &'static str)>) -> String {
     text = EMAIL_TEXT.replace_all(&text, "[email]").into_owned();
     // Longest first, so a name that holds a shorter one isn't left half replaced (a stable sort, as OrderByDescending).
     words.sort_by_key(|w| std::cmp::Reverse(units(&w.0)));
-    for (word, mark) in &words {
-        text = replace_word(&text, word, mark);
+    // Only the words the text holds are replaced, found in one pass: a word at a time read the whole text once per
+    // account name (hundreds of accounts × 3 MB of log, 2026-11-17). What is replaced, and in what order, is as before.
+    let present = present_words(&text, &words);
+    for (i, (word, mark)) in words.iter().enumerate() {
+        if present[i] {
+            text = replace_word(&text, word, mark);
+        }
     }
     LONG_TOKEN.replace_all(&text, "[token]").into_owned()
 }

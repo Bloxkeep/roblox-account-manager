@@ -14,6 +14,8 @@ use std::time::{Duration, Instant};
 
 use gpui_kit::{prelude::*, *};
 use serde_json::{json, Value};
+use crate::val::s;
+use crate::ask::answer;
 
 use crate::{
     kit::*,
@@ -21,10 +23,6 @@ use crate::{
     shell::Root,
     theme::*,
 };
-
-fn s<'a>(v: &'a Value, k: &str) -> &'a str {
-    v.get(k).and_then(Value::as_str).unwrap_or_default()
-}
 
 /// How old the list may get while its tab is shown.
 const FRESH: Duration = Duration::from_secs(60);
@@ -69,11 +67,77 @@ pub struct Data {
     /// How many more lists Roblox gives this minute (None: not known): a page for ping or FPS only while one is left
     /// for the next click (Servers.tsx's spare).
     left: Option<i64>,
+    /// What gamejoin said of each server shown ("serverFacts"): country and city, game version, start (Unix ms), by
+    /// Job ID (Null: asked, no answer); whether an asking is on its way; the newest version seen; whether Roblox
+    /// blocks the game where the account is, or asked to pause (no more asking then until the list is loaded again);
+    /// the country picked (None: all).
+    facts: std::collections::HashMap<String, Value>,
+    facts_asking: bool,
+    newest: i64,
+    facts_blocked: bool,
+    facts_paused: bool,
+    country: Option<String>,
 }
 
-/// Ping and FPS are sorted here, over the rows loaded.
+/// Ping, FPS and newest are sorted here, over the rows loaded.
 fn local(sort: &str) -> bool {
-    sort == "ping" || sort == "fps"
+    sort == "ping" || sort == "fps" || sort == "new"
+}
+
+/// Where each server shown runs, the game version it is on and when it started: asked of gamejoin as Roblox's own
+/// client asks (the address gives the country; RoValra shows the same on Roblox's page), 40 at a time, the next 40
+/// once these are in, the full ones never (gamejoin gives a full server no address).
+fn want_facts(r: &mut Root, cx: &mut Context<Root>) {
+    if r.servers.facts_asking || r.servers.facts_blocked || r.servers.facts_paused {
+        return;
+    }
+    let Some(link) = r.link.clone() else { return };
+    let jobs: Vec<String> = r
+        .servers
+        .rows
+        .iter()
+        .filter(|v| {
+            let most = v.get("maxPlayers").and_then(Value::as_i64).unwrap_or(0);
+            most == 0 || v.get("playing").and_then(Value::as_i64).unwrap_or(0) < most
+        })
+        .map(|v| s(v, "jobId").to_string())
+        .filter(|j| !j.is_empty() && !r.servers.facts.contains_key(j))
+        .take(40)
+        .collect();
+    if jobs.is_empty() {
+        return;
+    }
+    let place = r.servers.place;
+    let ids: Vec<String> = r.selected.iter().cloned().collect();
+    r.servers.facts_asking = true;
+    let rx = link.call("serverFacts", json!({ "placeId": place, "jobs": jobs, "ids": ids }));
+    cx.spawn(async move |this, cx| {
+        let answer = rx.await;
+        let _ = this.update(cx, |r, cx| {
+            if r.servers.place != place {
+                return;
+            }
+            r.servers.facts_asking = false;
+            match answer {
+                Ok(Ok(v)) => {
+                    for f in v.get("facts").and_then(Value::as_array).into_iter().flatten() {
+                        r.servers.facts.insert(s(f, "jobId").to_string(), f.clone());
+                    }
+                    // (Asked once each: one that got no answer isn't asked again and again.)
+                    for j in &jobs {
+                        r.servers.facts.entry(j.clone()).or_insert(Value::Null);
+                    }
+                    r.servers.newest = r.servers.newest.max(v.get("newest").and_then(Value::as_i64).unwrap_or(0));
+                    r.servers.facts_blocked = v.get("blocked").and_then(Value::as_bool).unwrap_or(false);
+                    r.servers.facts_paused = v.get("stopped").and_then(Value::as_bool).unwrap_or(false);
+                    want_facts(r, cx);
+                }
+                _ => r.servers.facts_paused = true,
+            }
+            cx.notify();
+        });
+    })
+    .detach();
 }
 
 fn spare(r: &Root) -> bool {
@@ -134,6 +198,10 @@ fn load_public(r: &mut Root, more: bool, cx: &mut Context<Root>) {
                     got.retain(|n| !r.servers.rows.iter().any(|o| o.get("jobId") == n.get("jobId")));
                     r.servers.rows.extend(got);
                     r.servers.next = v.get("next").and_then(Value::as_str).filter(|n| !n.is_empty()).map(str::to_string);
+                    if !more {
+                        r.servers.facts_paused = false;
+                    }
+                    want_facts(r, cx);
                     // Ping and FPS: the first page and one more, so the order is over more than one page's servers.
                     if !more && local(r.servers.sort) && r.servers.next.is_some() && spare(r) {
                         load_public(r, true, cx);
@@ -375,21 +443,18 @@ fn open_vip_checkout(root: &mut Root, place: i64, id: String, cx: &mut Context<R
     root.servers.vip_opening = true;
     root.servers.vip_error = None;
     let rx = link.call("openGameServers", json!({ "placeId": place, "id": id }));
-    cx.spawn(async move |this, cx| {
-        let reply = rx.await;
-        let _ = this.update(cx, |r, cx| {
-            if r.servers.place != shown_place {
-                return;
-            }
-            r.servers.vip_opening = false;
-            match reply {
-                Ok(Ok(_)) => r.servers.vip_owner = Some(id),
-                Ok(Err(e)) => r.servers.vip_error = Some(e.to_string()),
-                Err(_) => r.servers.vip_error = Some(r.tr("gp.createPrivateError")),
-            }
-            cx.notify();
-        });
-    }).detach();
+    answer(rx, cx, move |r, reply, cx| {
+        if r.servers.place != shown_place {
+            return;
+        }
+        r.servers.vip_opening = false;
+        match reply {
+            Ok(Ok(_)) => r.servers.vip_owner = Some(id),
+            Ok(Err(e)) => r.servers.vip_error = Some(e.to_string()),
+            Err(_) => r.servers.vip_error = Some(r.tr("gp.createPrivateError")),
+        }
+        cx.notify();
+    });
     cx.notify();
 }
 
@@ -469,13 +534,22 @@ fn public(root: &Root, width: f32, cx: &mut Context<Root>) -> Div {
     if sort == "fps" {
         rows.sort_by(|a, b| b.get("fps").and_then(Value::as_f64).unwrap_or(0.).total_cmp(&a.get("fps").and_then(Value::as_f64).unwrap_or(0.)));
     }
+    let fact = |v: &Value| sv.facts.get(s(v, "jobId")).filter(|f| f.is_object());
+    if sort == "new" {
+        // (A server whose start Roblox didn't say goes after those it did.)
+        rows.sort_by_key(|v| std::cmp::Reverse(fact(v).and_then(|f| f.get("started")).and_then(Value::as_i64).unwrap_or(0)));
+    }
+    // The country picked: only its servers.
+    if let Some(cc) = &sv.country {
+        rows.retain(|v| fact(v).is_some_and(|f| s(f, "cc") == cc));
+    }
     // Full servers can't be joined: they go last (the sort keeps the rest in order).
     rows.sort_by_key(|v| full(v));
     let waiting = sv.wait_until.map(|t| t.saturating_duration_since(Instant::now()).as_secs().max(1));
 
     // The sorts as the page's filters: no track, the one used a yellow block.
     let mut sorts = div().flex().flex_wrap().items_center().gap(px(4.));
-    for key in ["most", "fewest", "ping", "fps"] {
+    for key in ["most", "fewest", "ping", "fps", "new"] {
         sorts = sorts.child(
             chip(SharedString::from(format!("srv-sort-{key}")), sort == key)
                 .h(px(TOOL_H))
@@ -504,6 +578,51 @@ fn public(root: &Root, width: f32, cx: &mut Context<Root>) -> Div {
                 })),
         );
     }
+    // The countries the servers loaded run in, most servers first: a chip each (its flag and name) to see only those.
+    let mut lands: Vec<(String, usize)> = Vec::new();
+    for f in sv.facts.values().filter(|f| f.is_object()) {
+        let cc = s(f, "cc");
+        if cc.is_empty() {
+            continue;
+        }
+        match lands.iter_mut().find(|l| l.0 == cc) {
+            Some(l) => l.1 += 1,
+            None => lands.push((cc.to_string(), 1)),
+        }
+    }
+    lands.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(&b.0)));
+    let countries = (lands.len() > 1 || sv.country.is_some()).then(|| {
+        let mut row = div().flex().flex_wrap().items_center().gap(px(4.)).child(
+            chip("srv-cc-any", sv.country.is_none())
+                .h(px(TOOL_H))
+                .px(px(12.))
+                .cursor_pointer()
+                .child(root.tr("srv.anyCountry"))
+                .on_click(cx.listener(|r, _, _, cx| {
+                    r.servers.country = None;
+                    cx.notify();
+                })),
+        );
+        for (i, (cc, n)) in lands.iter().enumerate() {
+            let on = sv.country.as_deref() == Some(cc.as_str());
+            let to = cc.clone();
+            row = row.child(
+                chip(("srv-cc", i), on)
+                    .h(px(TOOL_H))
+                    .px(px(10.))
+                    .gap(px(6.))
+                    .cursor_pointer()
+                    .child(crate::pages::games::flag(cc, 18., cx))
+                    .child(crate::pages::games::country(root, cc))
+                    .child(div().font_features(tnum()).text_color(c(if on { INK } else { MUTED })).child(n.to_string()))
+                    .on_click(cx.listener(move |r, _, _, cx| {
+                        r.servers.country = if r.servers.country.as_deref() == Some(to.as_str()) { None } else { Some(to.clone()) };
+                        cx.notify();
+                    })),
+            );
+        }
+        row
+    });
     let open: Vec<String> = rows.iter().filter(|v| !full(v)).map(|v| s(v, "jobId").to_string()).filter(|j| !j.is_empty()).collect();
     let head = section_head(root.tr("srv.publicTitle"), (!rows.is_empty()).then_some(rows.len())).flex_wrap().gap(px(12.)).child(sorts).child(
         // A server with room, any of them.
@@ -542,7 +661,19 @@ fn public(root: &Root, width: f32, cx: &mut Context<Root>) -> Div {
                 let fps = v.get("fps").and_then(Value::as_f64).unwrap_or(0.);
                 let job = s(v, "jobId").to_string();
                 let here = friends_in(sv, &job);
+                let f = sv.facts.get(&job).filter(|f| f.is_object());
+                let cc = f.map(|f| s(f, "cc").to_string()).filter(|c| !c.is_empty());
+                let city = f.map(|f| s(f, "city").to_string()).unwrap_or_default();
+                let started = f.and_then(|f| f.get("started")).and_then(Value::as_i64).filter(|t| *t > 0);
+                let old = f.and_then(|f| f.get("version")).and_then(Value::as_i64).is_some_and(|n| n > 0 && sv.newest > n);
                 let mut line: Vec<(String, Option<Hsla>)> = Vec::new();
+                if let Some(t) = started {
+                    let secs = (crate::time::now_secs() * 1000 - t) / 1000;
+                    line.push((root.i18n.tv("srv.age", &[("t", &crate::time::span(secs))]), None));
+                }
+                if old {
+                    line.push((root.tr("srv.old"), Some(c(WARN))));
+                }
                 if ping > 0 {
                     line.push((root.i18n.tv("srv.ping", &[("ms", &ping.to_string())]), None));
                 }
@@ -565,6 +696,11 @@ fn public(root: &Root, width: f32, cx: &mut Context<Root>) -> Div {
                                 .child(div().text_size(px(T_FIG)).line_height(px(28.)).font_weight(FontWeight::SEMIBOLD).font_features(tnum()).text_color(c(if is_full { WARN } else { TEXT })).child(n.to_string()))
                                 .when(most > 0, |d| d.child(div().text_size(px(T_M)).font_features(tnum()).text_color(c(MUTED)).child(format!("/ {most}"))))
                                 .child(div().flex_1())
+                                // Where it runs: the flag and the city (the country when there is no city).
+                                .when_some(cc.clone(), |d, cc| {
+                                    let name = if city.is_empty() { crate::pages::games::country(root, &cc) } else { city.clone() };
+                                    d.child(div().flex_none().max_w(px(120.)).flex().items_center().gap(px(6.)).child(crate::pages::games::flag(&cc, 18., cx)).child(div().min_w_0().truncate().text_size(px(T_S)).text_color(c(MUTED)).child(name)))
+                                })
                                 // Your friends in this server, how many.
                                 .when(here > 0, |d| {
                                     let tip: SharedString = root.tr("srv.friendsHere").into();
@@ -589,8 +725,10 @@ fn public(root: &Root, width: f32, cx: &mut Context<Root>) -> Div {
                                 }),
                         )
                         .child(bar(("srv-fill", i), if most > 0 { n as f32 / most as f32 } else { 0. }, None))
+                        // (Two lines high whether the facts take one or two: Join sits level across the cards.)
                         .child(
                             div()
+                                .h(px(40.))
                                 .flex()
                                 .items_center()
                                 .gap(px(10.))
@@ -618,14 +756,16 @@ fn public(root: &Root, width: f32, cx: &mut Context<Root>) -> Div {
         };
         div().pt(px(4.)).flex().justify_center().child(Button::new("srv-more", label).small().disabled(waiting.is_some() || sv.more).on_click(cx.listener(|r, _, _, cx| load_public(r, true, cx))))
     });
-    div().flex().flex_col().gap(px(12.)).child(head).child(body).children(more)
+    // Roblox blocks the game where the account is: no server's country can be told (said once, under the head).
+    let blocked = sv.facts_blocked.then(|| said(root.tr("rg.blocked"), false));
+    div().flex().flex_col().gap(px(12.)).child(head).children(countries).children(blocked).child(body).children(more)
 }
 
 fn private(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
     let sv = &root.servers;
     let answer = match &sv.got {
         None => return said(root.tr("av.reading"), true).into_any_element(),
-        Some(Err(why)) => return said(root.i18n.tv("in.failed", &[("why", if why.is_empty() { "Roblox" } else { why })]), false).into_any_element(),
+        Some(Err(why)) => return said(root.i18n.tv("in.failed", &[("why", crate::net::why_words(&root.i18n, why).as_str())]), false).into_any_element(),
         Some(Ok(v)) => v,
     };
     let list = answer.get("servers").and_then(Value::as_array).cloned().unwrap_or_default();

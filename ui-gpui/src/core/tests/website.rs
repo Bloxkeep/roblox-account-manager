@@ -76,6 +76,8 @@ pub async fn run(c: &mut Checks, _dir: &str) {
             "notifications" => json!([{ "content": { "states": { "default": { "visualItems": { "textBody": [{ "label": { "text": "New activity" } }] } } } } }]),
             "accountsettings" => json!({ "emailAddress": "tester@example.invalid" }),
             "accountinformation" => json!({ "description": "Hello", "isVerified": true, "phone": "hidden" }),
+            // Settings' privacy (who sees it online, who may join), read as for a roblox.com account.
+            "apis" => json!({}),
             _ => panic!("unexpected Roblox VNG request"),
         };
         Ok(HttpResponse { status: 200, body: serde_json::to_vec(&body).unwrap(), ..Default::default() })

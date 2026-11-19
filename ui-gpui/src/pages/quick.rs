@@ -11,6 +11,7 @@ use gpui_kit::{prelude::*, *};
 use serde_json::{Value, json};
 
 use crate::{images, kit::*, link::Reply, shell::Root, theme::*};
+use crate::val::s;
 
 #[derive(Clone, Copy, PartialEq, Default)]
 enum Phase {
@@ -46,10 +47,6 @@ pub struct Data {
     for_name: String,
     /// Which opening this is: the countdown loop of one closed and opened again at once stops (two ran side by side).
     opened: u64,
-}
-
-fn s<'a>(v: &'a Value, k: &str) -> &'a str {
-    v.get(k).and_then(Value::as_str).unwrap_or_default()
 }
 
 /// A code that is gone can't be used any more: it goes, so nobody types it in.

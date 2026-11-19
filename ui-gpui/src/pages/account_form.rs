@@ -14,6 +14,8 @@ use gpui_kit::{prelude::*, *};
 use serde_json::{Value, json};
 
 use crate::{kit::*, shell::Root, theme::*};
+use crate::val::s;
+use crate::val::flag;
 
 #[derive(Default)]
 pub struct Data {
@@ -42,14 +44,6 @@ pub struct Data {
     note: Option<Entity<TextareaState>>,
     /// The nickname, group and note as the form opened with them: Cancel or × asks first once one has changed.
     start: [String; 3],
-}
-
-fn s<'a>(v: &'a Value, k: &str) -> &'a str {
-    v.get(k).and_then(Value::as_str).unwrap_or_default()
-}
-
-fn flag(v: &Value, k: &str) -> bool {
-    v.get(k).and_then(Value::as_bool).unwrap_or(false)
 }
 
 fn account(r: &Root) -> Option<Value> {

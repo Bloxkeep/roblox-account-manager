@@ -13,6 +13,8 @@ use gpui_kit::{prelude::*, *};
 use serde_json::{Value, json};
 
 use crate::{kit::*, shell::Root, theme::*};
+use crate::val::s;
+use crate::val::flag;
 
 #[derive(Default)]
 pub struct Data {
@@ -34,14 +36,6 @@ pub struct Data {
     opened: u64,
 }
 
-fn s<'a>(v: &'a Value, k: &str) -> &'a str {
-    v.get(k).and_then(Value::as_str).unwrap_or_default()
-}
-
-fn flag(v: &Value, k: &str) -> bool {
-    v.get(k).and_then(Value::as_bool).unwrap_or(false)
-}
-
 fn accounts(r: &Root) -> Vec<Value> {
     r.import.preview.as_ref().and_then(|p| p.get("accounts")).and_then(Value::as_array).cloned().unwrap_or_default()
 }
@@ -58,7 +52,7 @@ fn wait_left(r: &Root) -> Option<u64> {
 /// Names hidden (Settings): the file's accounts too, by their first letter as the page's are (no numbers).
 fn shown_name(root: &Root, a: &Value) -> String {
     let name = s(a, "label");
-    if flag(&root.state, "hideNames") { name.trim().chars().next().map(|c| format!("{c}…")).unwrap_or_else(|| "…".into()) } else { name.to_string() }
+    if flag(&root.state, "hideNames") { crate::val::first_only(name) } else { name.to_string() }
 }
 
 /// A long file name with its middle left out, so its start and its ".rmv" both show.

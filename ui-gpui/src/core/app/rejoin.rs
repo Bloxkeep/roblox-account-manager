@@ -714,15 +714,15 @@ impl App {
         if !self.has_game(place_id, false) {
             // LoadGamesAsync(...).WaitAsync(limit): given up on (not called off) when the limit comes first.
             let load = self.load_games(vec![(place_id, 0)], false);
-            // Told to stop once the game is in, so the waiting thread doesn't spin on until the limit for nothing.
+            // Told to stop once the game is in, so the waiting task doesn't go on polling until the limit for nothing.
             let loaded = Cancel::new();
             let wait = {
                 let (l2, loaded) = (limit.clone(), loaded.clone());
-                rt::blocking(move || {
+                async move {
                     while !l2.is_cancelled() && !loaded.is_cancelled() {
-                        std::thread::sleep(Duration::from_millis(25));
+                        rt::sleep(Duration::from_millis(25)).await;
                     }
-                })
+                }
             };
             futures::pin_mut!(load);
             futures::pin_mut!(wait);

@@ -10,6 +10,7 @@ use gpui_kit::{prelude::*, *};
 use serde_json::{Value, json};
 
 use crate::{kit::*, shell::Root, theme::*};
+use crate::ask::answer;
 
 /// The layouts in the order the web page lists them; "custom" (a size of one's own) comes after.
 pub const LAYOUTS: [&str; 8] = ["fill", "2x1", "3x1", "2x2", "3x2", "3x3", "4x3", "4x4"];
@@ -149,21 +150,17 @@ fn arranged_text(r: &Root, n: i64, layout: &str) -> String {
 pub fn arrange(r: &mut Root, monitor: i64, layout: String, cx: &mut Context<Root>) {
     let Some(link) = r.link.clone() else { return };
     let rx = link.call("arrangeWindows", json!({ "monitor": monitor }));
-    cx.spawn(async move |this, cx| {
-        let answer = rx.await;
-        let _ = this.update(cx, |r, cx| {
-            match answer {
-                Ok(Ok(v)) => {
-                    let n = v.as_i64().unwrap_or(0);
-                    r.toast = Some(if n > 0 { (arranged_text(r, n, &layout), "ok".into()) } else { (r.tr("t.noWindows"), "info".into()) });
-                }
-                Ok(Err(e)) => r.toast = Some((e, "bad".into())),
-                Err(_) => {}
+    answer(rx, cx, move |r, answer, cx| {
+        match answer {
+            Ok(Ok(v)) => {
+                let n = v.as_i64().unwrap_or(0);
+                r.toast = Some(if n > 0 { (arranged_text(r, n, &layout), "ok".into()) } else { (r.tr("t.noWindows"), "info".into()) });
             }
-            cx.notify();
-        });
-    })
-    .detach();
+            Ok(Err(e)) => r.toast = Some((e, "bad".into())),
+            Err(_) => {}
+        }
+        cx.notify();
+    });
 }
 
 /// Every Roblox window laid out on the main screen with the layout kept (the palette's Arrange, app.js's arrange(null)).
@@ -239,7 +236,7 @@ pub fn button(root: &Root, compact: bool, cx: &mut Context<Root>) -> Div {
     );
     // (Built while open or fading out only, not every frame after its first opening.)
     if crate::pages::accounts::pop_alive("acc-windows-pop", open) {
-        wrap = wrap.child(div().absolute().top(px(TOOL_H + 4.)).right_0().child(deferred(anchored().anchor(Anchor::TopRight).snap_to_window_with_margin(px(8.)).child(pop("acc-windows-pop", open, menu(root, cx)))).with_priority(1)));
+        wrap = wrap.child(popup(PopAt::BelowRight(TOOL_H + 4.), "acc-windows-pop", open, menu(root, cx)));
     }
     wrap
 }

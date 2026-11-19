@@ -1241,6 +1241,8 @@ pub struct Window {
     pub(crate) element_offset_stack: Vec<Point<Pixels>>,
     pub(crate) element_opacity: f32,
     pub(crate) content_mask_stack: Vec<ContentMask<Pixels>>,
+    /// Bloxkeep: the rounded boxes with overflow hidden being painted, their masks and corners (`paint_image`).
+    pub(crate) rounded_clip_stack: Vec<(Bounds<Pixels>, Corners<Pixels>)>,
     pub(crate) requested_autoscroll: Option<Bounds<Pixels>>,
     /// The [`TextInputConfiguration`] most recently forwarded to the platform
     /// window, so that only actual changes are forwarded (reconfiguring a live
@@ -1321,6 +1323,97 @@ pub(crate) struct InputRateTracker {
     inputs_per_second: u32,
     sustain_until: Instant,
     sustain_duration: Duration,
+}
+
+/// Bloxkeep's frame count (its error.log line, src/frame_tally.rs): what this process's windows drew and presented
+/// since the last `take_frame_tally`.
+#[doc(hidden)]
+#[derive(Clone, Copy, Debug, Default)]
+pub struct FrameTally {
+    /// Frames made again and presented, and the time their draws (making and laying out the page) took.
+    pub draws: u64,
+    pub draw_time: Duration,
+    /// Frames presented again with nothing redrawn (for a second after fast mouse input, every display refresh).
+    pub presents: u64,
+    /// Seconds with any frame, and the most frames (drawn or presented again) in one of them.
+    pub busy_secs: u64,
+    pub most_in_a_sec: u32,
+}
+
+struct FrameCount {
+    tally: FrameTally,
+    second: Option<std::time::Instant>,
+    in_second: u32,
+}
+
+static FRAME_COUNT: std::sync::Mutex<FrameCount> = std::sync::Mutex::new(FrameCount {
+    tally: FrameTally { draws: 0, draw_time: Duration::ZERO, presents: 0, busy_secs: 0, most_in_a_sec: 0 },
+    second: None,
+    in_second: 0,
+});
+
+/// One frame: drawn (and how long the draw took) or only presented again.
+fn count_frame(drawn: Option<Duration>) {
+    let now = std::time::Instant::now();
+    let mut c = FRAME_COUNT.lock().unwrap_or_else(|e| e.into_inner());
+    match drawn {
+        Some(took) => {
+            c.tally.draws += 1;
+            c.tally.draw_time += took;
+        }
+        None => c.tally.presents += 1,
+    }
+    if c.second.is_none_or(|s| now.duration_since(s) >= Duration::from_secs(1)) {
+        c.second = Some(now);
+        c.in_second = 0;
+        c.tally.busy_secs += 1;
+    }
+    c.in_second += 1;
+    c.tally.most_in_a_sec = c.tally.most_in_a_sec.max(c.in_second);
+}
+
+/// Bloxkeep: the window messages that came while the app was inside an update (`when_free`), by name, since the last
+/// `take_late_window_messages`.
+static LATE: std::sync::Mutex<Vec<&'static str>> = std::sync::Mutex::new(Vec::new());
+
+fn note_late(what: &'static str) {
+    let mut late = LATE.lock().unwrap_or_else(|e| e.into_inner());
+    if late.len() < 64 {
+        late.push(what);
+    }
+}
+
+/// The window messages that came while the app was inside an update, and were done after it (or let go: "input",
+/// "request_frame"), since the last call: for Bloxkeep's error.log.
+#[doc(hidden)]
+pub fn take_late_window_messages() -> Vec<&'static str> {
+    std::mem::take(&mut *LATE.lock().unwrap_or_else(|e| e.into_inner()))
+}
+
+/// Bloxkeep: runs a window message's work with the app now, or, when the message came while the app is already
+/// inside an update, in its turn on the app's thread. Windows hands some messages (a new size or place, another
+/// screen's scale, the window made active) straight to the window from inside a call the app itself made, even while
+/// the app starts; updating the app there again crashed every start on the owner's PC ("RefCell already borrowed" at
+/// async_context.rs:178, 2026-11-15 and again 2026-11-18). GPUI defers the appearance change the same way.
+fn when_free(cx: &crate::AsyncApp, what: &'static str, work: impl FnOnce(&mut crate::AsyncApp) + 'static) {
+    let mut cx = cx.clone();
+    if cx.is_free() {
+        work(&mut cx);
+        return;
+    }
+    note_late(what);
+    cx.foreground_executor().clone().spawn(async move { work(&mut cx) }).detach();
+}
+
+/// What was drawn and presented since the last call (Bloxkeep's error.log line); starts the count over.
+#[doc(hidden)]
+pub fn take_frame_tally() -> FrameTally {
+    let mut c = FRAME_COUNT.lock().unwrap_or_else(|e| e.into_inner());
+    let tally = c.tally;
+    c.tally = FrameTally::default();
+    c.second = None;
+    c.in_second = 0;
+    tally
 }
 
 const FRAME_INTERVAL_TOLERANCE: Duration = Duration::from_millis(1);
@@ -1913,7 +2006,12 @@ impl Window {
                 // but calling it would hit the App borrow panic above, and this
                 // branch is unreachable there in practice: only Windows pumps
                 // platform events (and thus requests frames) mid-draw.
-                if draw_in_progress() {
+                // (Bloxkeep: or while the app is inside any other update, as when it starts: see `when_free`.)
+                let busy = !draw_in_progress() && !cx.is_free();
+                if busy {
+                    note_late("request_frame");
+                }
+                if draw_in_progress() || busy {
                     log::debug!("deferring re-entrant window draw request");
                     deferred_force_render |= request_frame_options.force_render;
                     #[cfg(feature = "profiler")]
@@ -2024,6 +2122,7 @@ impl Window {
                     || needs_present.get()
                     || high_rate_input;
                 if should_draw {
+                    let drawing = std::time::Instant::now();
                     measure("frame duration", || {
                         handle
                             .update(&mut cx, |_, window, cx| {
@@ -2047,8 +2146,10 @@ impl Window {
                                 )
                             })
                             .log_err();
-                    })
+                    });
+                    count_frame(Some(drawing.elapsed()));
                 } else if needs_present {
+                    count_frame(None);
                     handle
                         .update(&mut cx, |_, window, _| window.present())
                         .with_context(|| {
@@ -2093,51 +2194,59 @@ impl Window {
         }));
         invalidator.set_platform_waker(platform_window.frame_waker());
         platform_window.on_visual_viewport_changed(Box::new({
-            let mut cx = cx.to_async();
+            let cx = cx.to_async();
             move || {
-                handle
-                    .update(&mut cx, |_, window, _| window.refresh())
-                    .with_context(|| {
-                        format!(
-                            "handling visual viewport change for window {:?}",
-                            handle.window_id()
-                        )
-                    })
-                    .log_err();
+                when_free(&cx, "visual_viewport_changed", move |cx| {
+                    handle
+                        .update(cx, |_, window, _| window.refresh())
+                        .with_context(|| {
+                            format!(
+                                "handling visual viewport change for window {:?}",
+                                handle.window_id()
+                            )
+                        })
+                        .log_err();
+                });
             }
         }));
         platform_window.on_insets_changed(Box::new({
-            let mut cx = cx.to_async();
+            let cx = cx.to_async();
             move |_| {
-                handle
-                    .update(&mut cx, |_, window, _| window.refresh())
-                    .with_context(|| {
-                        format!("handling insets change for window {:?}", handle.window_id())
-                    })
-                    .log_err();
+                when_free(&cx, "insets_changed", move |cx| {
+                    handle
+                        .update(cx, |_, window, _| window.refresh())
+                        .with_context(|| {
+                            format!("handling insets change for window {:?}", handle.window_id())
+                        })
+                        .log_err();
+                });
             }
         }));
         platform_window.on_resize(Box::new({
-            let mut cx = cx.to_async();
+            let cx = cx.to_async();
             move |_, _| {
-                handle
-                    .update(&mut cx, |_, window, cx| window.bounds_changed(cx))
-                    .with_context(|| format!("handling resize for window {:?}", handle.window_id()))
-                    .log_err();
+                when_free(&cx, "resize", move |cx| {
+                    handle
+                        .update(cx, |_, window, cx| window.bounds_changed(cx))
+                        .with_context(|| format!("handling resize for window {:?}", handle.window_id()))
+                        .log_err();
+                });
             }
         }));
         platform_window.on_moved(Box::new({
-            let mut cx = cx.to_async();
+            let cx = cx.to_async();
             move || {
-                handle
-                    .update(&mut cx, |_, window, cx| window.bounds_changed(cx))
-                    .with_context(|| format!("handling move for window {:?}", handle.window_id()))
-                    .log_err();
+                when_free(&cx, "moved", move |cx| {
+                    handle
+                        .update(cx, |_, window, cx| window.bounds_changed(cx))
+                        .with_context(|| format!("handling move for window {:?}", handle.window_id()))
+                        .log_err();
+                });
             }
         }));
         platform_window.on_display_changed(Box::new({
             let cx = cx.to_async();
-            move || cx.update(|cx| Window::display_changed(handle, cx))
+            move || when_free(&cx, "display_changed", move |cx| cx.update(|cx| Window::display_changed(handle, cx)))
         }));
         platform_window.on_appearance_changed(Box::new({
             let cx = cx.to_async();
@@ -2162,82 +2271,95 @@ impl Window {
             }
         }));
         platform_window.on_button_layout_changed(Box::new({
-            let mut cx = cx.to_async();
+            let cx = cx.to_async();
             move || {
-                handle
-                    .update(&mut cx, |_, window, cx| window.button_layout_changed(cx))
-                    .with_context(|| {
-                        format!(
-                            "handling button layout change for window {:?}",
-                            handle.window_id()
-                        )
-                    })
-                    .log_err();
+                when_free(&cx, "button_layout_changed", move |cx| {
+                    handle
+                        .update(cx, |_, window, cx| window.button_layout_changed(cx))
+                        .with_context(|| {
+                            format!(
+                                "handling button layout change for window {:?}",
+                                handle.window_id()
+                            )
+                        })
+                        .log_err();
+                });
             }
         }));
         platform_window.on_active_status_change(Box::new({
-            let mut cx = cx.to_async();
+            let cx = cx.to_async();
             move |active| {
-                handle
-                    .update(&mut cx, |_, window, cx| {
-                        window.active.set(active);
-                        window.modifiers = window.platform_window.modifiers();
-                        window.capslock = window.platform_window.capslock();
-                        window
-                            .activation_observers
-                            .clone()
-                            .retain(|callback| callback(window, cx));
+                when_free(&cx, "active_status_change", move |cx| {
+                    handle
+                        .update(cx, |_, window, cx| {
+                            window.active.set(active);
+                            window.modifiers = window.platform_window.modifiers();
+                            window.capslock = window.platform_window.capslock();
+                            window
+                                .activation_observers
+                                .clone()
+                                .retain(|callback| callback(window, cx));
 
-                        window.bounds_changed(cx);
-                        window.refresh();
+                            window.bounds_changed(cx);
+                            window.refresh();
 
-                        SystemWindowTabController::update_last_active(cx, window.handle.id);
-                    })
-                    .with_context(|| {
-                        format!(
-                            "handling active status change for window {:?}",
-                            handle.window_id()
-                        )
-                    })
-                    .log_err();
+                            SystemWindowTabController::update_last_active(cx, window.handle.id);
+                        })
+                        .with_context(|| {
+                            format!(
+                                "handling active status change for window {:?}",
+                                handle.window_id()
+                            )
+                        })
+                        .log_err();
+                });
             }
         }));
         platform_window.on_visibility_change(Box::new({
-            let mut cx = cx.to_async();
+            let cx = cx.to_async();
             move |_| {
-                handle
-                    .update(&mut cx, |_, window, cx| {
-                        window.refresh_visibility(cx);
-                    })
-                    .with_context(|| {
-                        format!(
-                            "handling visibility change for window {:?}",
-                            handle.window_id()
-                        )
-                    })
-                    .log_err();
+                when_free(&cx, "visibility_change", move |cx| {
+                    handle
+                        .update(cx, |_, window, cx| {
+                            window.refresh_visibility(cx);
+                        })
+                        .with_context(|| {
+                            format!(
+                                "handling visibility change for window {:?}",
+                                handle.window_id()
+                            )
+                        })
+                        .log_err();
+                });
             }
         }));
         platform_window.on_hover_status_change(Box::new({
-            let mut cx = cx.to_async();
+            let cx = cx.to_async();
             move |active| {
-                handle
-                    .update(&mut cx, |_, window, _| {
-                        window.hovered.set(active);
-                        window.refresh();
-                    })
-                    .with_context(|| {
-                        format!(
-                            "handling hover status change for window {:?}",
-                            handle.window_id()
-                        )
-                    })
-                    .log_err();
+                when_free(&cx, "hover_status_change", move |cx| {
+                    handle
+                        .update(cx, |_, window, _| {
+                            window.hovered.set(active);
+                            window.refresh();
+                        })
+                        .with_context(|| {
+                            format!(
+                                "handling hover status change for window {:?}",
+                                handle.window_id()
+                            )
+                        })
+                        .log_err();
+                });
             }
         }));
         platform_window.on_input({
             let mut cx = cx.to_async();
             Box::new(move |event| {
+                // (Bloxkeep: not while the app is inside an update, see `when_free`; the event goes unhandled.)
+                if !cx.is_free() {
+                    note_late("input");
+                    return DispatchEventResult::default();
+                }
                 handle
                     .update(&mut cx, |_, window, cx| window.dispatch_event(event, cx))
                     .with_context(|| {
@@ -2250,6 +2372,9 @@ impl Window {
         platform_window.on_hit_test_window_control({
             let mut cx = cx.to_async();
             Box::new(move || {
+                if !cx.is_free() {
+                    return None;
+                }
                 handle
                     .update(&mut cx, |_, window, _cx| {
                         for (area, hitbox) in &window.rendered_frame.window_control_hitboxes {
@@ -2367,6 +2492,7 @@ impl Window {
             rendered_entity_stack: Vec::new(),
             element_offset_stack: Vec::new(),
             content_mask_stack: Vec::new(),
+            rounded_clip_stack: Vec::new(),
             element_opacity: 1.0,
             requested_autoscroll: None,
             last_text_input_configuration: None,
@@ -3088,7 +3214,6 @@ impl Window {
     /// Renders the current frame's scene to a texture and returns the pixel data as an RGBA image.
     /// This does not present the frame to screen - useful for visual testing where we want
     /// to capture what would be rendered without displaying it or requiring the window to be visible.
-    #[cfg(any(test, feature = "test-support"))]
     pub fn render_to_image(&self) -> anyhow::Result<image::RgbaImage> {
         self.platform_window
             .render_to_image(&self.rendered_frame.scene)
@@ -3856,6 +3981,13 @@ impl Window {
         profiling::finish_frame!();
     }
 
+    /// Bloxkeep's frame measure (its --shot bench, BLOXKEEP_SHOT_BENCH): hands the drawn frame to the renderer now, as
+    /// a real frame request does after `draw`, or again with nothing redrawn, as fast mouse input does every vsync.
+    #[doc(hidden)]
+    pub fn present_for_bench(&mut self) {
+        self.present();
+    }
+
     /// Presents the most recently drawn frame if it hasn't been presented yet.
     #[cfg(all(test, feature = "profiler"))]
     pub fn present_if_needed(&mut self) {
@@ -4062,6 +4194,9 @@ impl Window {
                 let space_above = above - margin;
                 let y = if fits_below || space_below >= space_above { below } else { above - size.height };
                 let x = anchor.center().x - size.width / 2.;
+                // Bloxkeep: a button of the rail down the window's left edge says what it is to its right, level with
+                // it (as Discord's and VS Code's rails do); under it, the tip lay over the next button.
+                let (x, y) = if anchor.right() <= px(96.) { (anchor.right() + gap, anchor.center().y - size.height / 2.) } else { (x, y) };
                 Bounds::new(
                     point(
                         x.clamp(margin, (viewport.width - size.width - margin).max(margin)),
@@ -4421,6 +4556,50 @@ impl Window {
         }
     }
 
+    /// Bloxkeep: `with_content_mask` for a box rounded `radii`: the pictures painted inside are cut to its rounding
+    /// too (`paint_image`). The mask alone is square, so every rounded box with overflow hidden showed the square
+    /// corners of the pictures in it, a game clip's frames included (the owner, 2026-11-17), unless each page
+    /// rounded each picture itself.
+    pub fn with_rounded_content_mask<R>(
+        &mut self,
+        mask: Option<ContentMask<Pixels>>,
+        radii: Corners<Pixels>,
+        f: impl FnOnce(&mut Self) -> R,
+    ) -> R {
+        let round = radii.top_left > Pixels::ZERO
+            || radii.top_right > Pixels::ZERO
+            || radii.bottom_right > Pixels::ZERO
+            || radii.bottom_left > Pixels::ZERO;
+        let clip = mask.as_ref().filter(|_| round).map(|m| (m.bounds, radii));
+        let pushed = clip.is_some();
+        if let Some(clip) = clip {
+            self.rounded_clip_stack.push(clip);
+        }
+        let result = self.with_content_mask(mask, f);
+        if pushed {
+            self.rounded_clip_stack.pop();
+        }
+        result
+    }
+
+    /// Bloxkeep: `own` corners of something painted at `rect`, rounded as the rounded boxes it lies in where its
+    /// corner is theirs (with_rounded_content_mask).
+    fn rounded_by_clips(&self, rect: Bounds<Pixels>, own: Corners<Pixels>) -> Corners<Pixels> {
+        if self.rounded_clip_stack.is_empty() {
+            return own;
+        }
+        let mut r = [own.top_left, own.top_right, own.bottom_right, own.bottom_left];
+        for (i, r) in r.iter_mut().enumerate() {
+            for (clip, radii) in &self.rounded_clip_stack {
+                let theirs = [radii.top_left, radii.top_right, radii.bottom_right, radii.bottom_left][i];
+                if theirs > *r && near(corner_at(&rect, i), corner_at(clip, i)) {
+                    *r = theirs;
+                }
+            }
+        }
+        Corners { top_left: r[0], top_right: r[1], bottom_right: r[2], bottom_left: r[3] }
+    }
+
     /// Updates the global element offset relative to the current offset. This is used to implement
     /// scrolling. This method should only be called during the prepaint phase of element drawing.
     pub fn with_element_offset<R>(
@@ -4453,7 +4632,8 @@ impl Window {
         result
     }
 
-    pub(crate) fn with_element_opacity<R>(
+    /// (Bloxkeep) Draws what `f` draws at `opacity` of itself (pages/deco.rs fades its pictures).
+    pub fn with_element_opacity<R>(
         &mut self,
         opacity: Option<f32>,
         f: impl FnOnce(&mut Self) -> R,
@@ -4937,7 +5117,7 @@ impl Window {
             content_mask: self.snapped_content_mask(),
             background: quad.background.opacity(opacity),
             border_color: quad.border_color.opacity(opacity),
-            corner_radii: quad.corner_radii.scale(self.scale_factor()),
+            corner_radii: self.rounded_by_clips(quad.bounds, quad.corner_radii).scale(self.scale_factor()),
             border_widths: snapped_border_widths,
             border_style: quad.border_style,
         };
@@ -5305,10 +5485,26 @@ impl Window {
     ) -> Result<()> {
         self.invalidator.debug_assert_paint();
 
-        let visible_bounds = bounds.intersect(&image_bounds);
+        let fitted = bounds.intersect(&image_bounds);
+        // Bloxkeep: cut to the rounded boxes it lies in (with_rounded_content_mask), rounded where its corner is
+        // theirs; its own rounding stays only where its corner is still its own (not cut off by a box or a scroll).
+        let mut visible_bounds = fitted;
+        for (clip, _) in &self.rounded_clip_stack {
+            visible_bounds = visible_bounds.intersect(clip);
+        }
         if visible_bounds.size.width <= Pixels::ZERO || visible_bounds.size.height <= Pixels::ZERO {
             return Ok(());
         }
+        let corner_radii = {
+            let own = [corner_radii.top_left, corner_radii.top_right, corner_radii.bottom_right, corner_radii.bottom_left];
+            let mut r = [Pixels::ZERO; 4];
+            for i in 0..4 {
+                if near(corner_at(&visible_bounds, i), corner_at(&fitted, i)) {
+                    r[i] = own[i];
+                }
+            }
+            self.rounded_by_clips(visible_bounds, Corners { top_left: r[0], top_right: r[1], bottom_right: r[2], bottom_left: r[3] })
+        };
         if image_bounds.size.width <= Pixels::ZERO || image_bounds.size.height <= Pixels::ZERO {
             return Ok(());
         }
@@ -5318,18 +5514,15 @@ impl Window {
             frame_index,
         };
 
-        let tile = self
-            .sprite_atlas
-            .get_or_insert_with(params.into(), &mut || {
-                Ok(Some((
-                    data.size(frame_index),
-                    Cow::Borrowed(
-                        data.as_bytes(frame_index)
-                            .expect("It's the caller's job to pass a valid frame index"),
-                    ),
-                )))
-            })?
-            .expect("Callback above only returns Some");
+        // (Bloxkeep) None: its pixels were given to another atlas and let go (RenderImage::discard_after_upload);
+        // not drawn this frame, and said, so the app makes it again.
+        let Some(tile) = self.sprite_atlas.get_or_insert_with(params.into(), &mut || {
+            Ok(data.bytes_for_upload(frame_index).map(|bytes| (data.size(frame_index), Cow::Owned(bytes))))
+        })?
+        else {
+            crate::assets::note_lost_image(data.id);
+            return Ok(());
+        };
 
         let visible_bounds_snapped = self.snap_bounds(visible_bounds);
 
@@ -5412,6 +5605,55 @@ impl Window {
             bounds,
             content_mask,
             image_buffer,
+        });
+    }
+
+    /// (Bloxkeep, 2026-11-18) Paints a Direct3D 11 texture filled on the GPU by another device in this process,
+    /// stretched over `bounds` (clipped as everything else): its shared handle (made with a keyed mutex, key 0) and
+    /// size. Each frame the renderer copies its latest content (skipping a frame while the filler holds it), so a live
+    /// picture never travels through memory.
+    ///
+    /// This method should only be called as part of the paint phase of element drawing.
+    #[cfg(target_os = "windows")]
+    pub fn paint_shared_texture(&mut self, bounds: Bounds<Pixels>, handle: isize, width: u32, height: u32) {
+        use crate::PaintSurface;
+
+        self.invalidator.debug_assert_paint();
+
+        // (Bloxkeep, 2026-11-19) Cut to the rounded boxes it lies in and rounded at their corners, as paint_image does
+        // a picture: a clip filling a tile with round corners was drawn square over them (owner's screenshot).
+        let mut visible = bounds;
+        for (clip, _) in &self.rounded_clip_stack {
+            visible = visible.intersect(clip);
+        }
+        visible = visible.intersect(&self.content_mask().bounds);
+        if visible.size.width <= Pixels::ZERO || visible.size.height <= Pixels::ZERO || bounds.size.width <= Pixels::ZERO || bounds.size.height <= Pixels::ZERO {
+            return;
+        }
+        let corner_radii = self
+            .rounded_by_clips(visible, Corners::default())
+            .clamp_radii_for_quad_size(visible.size)
+            .scale(self.scale_factor());
+        let (fx, fy) = ((visible.origin.x - bounds.origin.x) / bounds.size.width, (visible.origin.y - bounds.origin.y) / bounds.size.height);
+        let (fw, fh) = (visible.size.width / bounds.size.width, visible.size.height / bounds.size.height);
+        let (tw, th) = (width as f32, height as f32);
+        let x = ((fx * tw).round() as i32).clamp(0, width as i32);
+        let y = ((fy * th).round() as i32).clamp(0, height as i32);
+        let w = ((fw * tw).round() as i32).clamp(0, width as i32 - x);
+        let h = ((fh * th).round() as i32).clamp(0, height as i32 - y);
+        if w <= 0 || h <= 0 {
+            return;
+        }
+        let tile = Bounds { origin: point(DevicePixels(x), DevicePixels(y)), size: size(DevicePixels(w), DevicePixels(h)) };
+        let bounds = self.snap_bounds(visible);
+        let content_mask = self.snapped_content_mask();
+        self.next_frame.scene.insert_primitive(PaintSurface {
+            order: 0,
+            bounds,
+            content_mask,
+            shared_texture: (handle, width, height),
+            tile,
+            corner_radii,
         });
     }
 
@@ -10587,4 +10829,19 @@ mod inspector_tests {
         })
         .expect("closed inspector has no bookkeeping and no style overrides");
     }
+}
+
+/// Bloxkeep: a rectangle's corner, top left first, clockwise.
+fn corner_at(b: &Bounds<Pixels>, i: usize) -> Point<Pixels> {
+    match i {
+        0 => b.origin,
+        1 => b.top_right(),
+        2 => b.bottom_right(),
+        _ => b.bottom_left(),
+    }
+}
+
+/// Bloxkeep: two points within half a pixel.
+fn near(a: Point<Pixels>, b: Point<Pixels>) -> bool {
+    (a.x - b.x).0.abs() < 0.5 && (a.y - b.y).0.abs() < 0.5
 }

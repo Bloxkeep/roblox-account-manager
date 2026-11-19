@@ -5,6 +5,7 @@
 // Made quick (the owner, 2026-11-12: slow everywhere, avatars, items): a picture from the web is kept on this PC too
 // (cache/pictures), so the next run draws it at once; the last asked is fetched first (what the page shows now, not
 // what scrolled past); and the workers keep their connections to each server open between pictures.
+use crate::threads::Hold;
 use std::{
     collections::HashMap,
     io::Read,
@@ -121,6 +122,9 @@ pub struct Images {
     slots: HashMap<String, Slot>,
     /// Each picture's smaller copies, by its address.
     copies: HashMap<String, Vec<Smaller>>,
+    /// Pictures whose copies keep their pixels in memory: one was wanted again where it wasn't (drawn in two windows,
+    /// or the graphics card started over), and letting go again would make it again and again.
+    keep_pixels: std::collections::HashSet<String>,
     queue: Arc<Queue>,
 }
 
@@ -142,10 +146,12 @@ pub fn init(cx: &mut App) {
     for i in 0..WORKERS {
         let queue = queue.clone();
         let agent = agent.clone();
-        let _ = crate::net::Named::new(format!("pictures-{i}")).spawn(move || {
-            loop {
+        // One round a picture (threads::keep: a picture whose bytes panic a decoder costs that picture, not the loader).
+        let _ = crate::threads::keep(&format!("pictures-{i}"), move || {
+            {
                 let job = {
-                    let Ok(mut jobs) = queue.jobs.lock() else { break };
+                    // (A lock a panicking round held is taken over as it was left: the list is whole between rounds.)
+                    let mut jobs = queue.jobs.lock().unwrap_or_else(|e| e.into_inner());
                     loop {
                         // The draw that asked last goes first (the page as it is now, not what a scroll left behind),
                         // and within one draw the first asked first: taken from the list's end, a long table's
@@ -155,21 +161,23 @@ pub fn init(cx: &mut App) {
                         if let Some(i) = next {
                             break jobs.remove(i);
                         }
-                        match queue.ready.wait(jobs) {
-                            Ok(j) => jobs = j,
-                            Err(_) => return,
-                        }
+                        jobs = queue.ready.wait(jobs).unwrap_or_else(|e| e.into_inner());
                     }
                 };
                 let (url, done, asked) = job;
                 if ms_now().saturating_sub(asked.load(Ordering::Relaxed)) > STALE.as_millis() as u64 {
                     let _ = done.send(Got::Dropped);
-                    continue;
+                    return true;
                 }
                 let _ = done.send(match fetch(&agent, &url) {
                     Ok(b) => {
                         let (tone, second) = tones_of(&b);
-                        if let (Some(c2), Ok(mut book)) = (second, SECOND.lock()) {
+                        if let Some(c2) = second {
+                            let mut book = SECOND.lock().unwrap_or_else(|e| e.into_inner());
+                            // (Past this many the book starts over: a picture drawn again is read again from the PC's copy.)
+                            if book.len() >= 4000 {
+                                book.clear();
+                            }
                             book.insert(url.clone(), c2);
                         }
                         let dims = dims_of(&b);
@@ -183,10 +191,11 @@ pub fn init(cx: &mut App) {
                     }
                 });
             }
+            true
         });
     }
-    let _ = crate::net::Named::new("pictures-prune".into()).spawn(prune_often);
-    cx.set_global(Images { slots: HashMap::new(), copies: HashMap::new(), queue });
+    let _ = crate::threads::own("pictures-prune", prune_often);
+    cx.set_global(Images { slots: HashMap::new(), copies: HashMap::new(), keep_pixels: Default::default(), queue });
     // Every SWEEP_EVERY: when something may be away, every window is drawn once (a window standing still asks for
     // nothing, so its pictures would look away too), and what none of them asked for in AWAY is let go. A window
     // hidden in the tray or minimized doesn't draw: its pictures go too, and come back when it is shown.
@@ -204,6 +213,26 @@ pub fn init(cx: &mut App) {
         })
         .detach();
     }
+    // Pictures wanted where their pixels aren't any more (RenderImage::discard_after_upload): made again, and the
+    // windows drawn with them.
+    cx.spawn(async move |cx| {
+        loop {
+            cx.background_executor().timer(Duration::from_millis(250)).await;
+            cx.update(|cx| {
+                crate::crisp::retired(cx);
+                crate::pages::deco::sweep(cx);
+            });
+            let lost = gpui_kit::take_lost_images();
+            if !lost.is_empty() {
+                cx.update(|cx| {
+                    self::lost(&lost, cx);
+                    crate::scene::lost(&lost, cx);
+                    cx.refresh_windows();
+                });
+            }
+        }
+    })
+    .detach();
     cx.spawn(async move |cx| {
         loop {
             cx.background_executor().timer(SWEEP_EVERY).await;
@@ -260,6 +289,26 @@ pub fn init(cx: &mut App) {
         }
     })
     .detach();
+}
+
+/// Sized copies whose pixels went to the graphics card and are wanted again where they aren't (another window, or the
+/// card started over): let go everywhere, made again as the window next asks.
+fn lost(ids: &[gpui_kit::ImageId], cx: &mut App) {
+    let mut gone = Vec::new();
+    let images = cx.global_mut::<Images>();
+    for (url, list) in images.copies.iter_mut() {
+        list.retain(|c| match &c.state {
+            CopyState::Ready(r) if ids.contains(&r.id) => {
+                gone.push(r.clone());
+                images.keep_pixels.insert(url.clone());
+                false
+            }
+            _ => true,
+        });
+    }
+    for r in gone {
+        cx.drop_image(r, None);
+    }
 }
 
 /// The memory not in use was given back to Windows since the app last left the screen.
@@ -458,6 +507,11 @@ fn fetch_now(agent: &ureq::Agent, url: &str) -> Result<Vec<u8>, bool> {
     std::fs::read(url.strip_prefix("file:///").unwrap_or(url)).map_err(|_| true)
 }
 
+/// Whether these bytes are a picture this app reads.
+pub fn is_picture(b: &[u8]) -> bool {
+    format_of(b).is_some()
+}
+
 fn format_of(b: &[u8]) -> Option<ImageFormat> {
     Some(match b {
         [0x89, b'P', b'N', b'G', ..] => ImageFormat::Png,
@@ -541,7 +595,7 @@ static SECOND: LazyLock<Mutex<HashMap<String, u32>>> = LazyLock::new(|| Mutex::n
 
 /// The second colour of the picture at an address, once it has loaded (see `tones_of`).
 pub fn tone2(url: &str) -> Option<u32> {
-    SECOND.lock().ok()?.get(url).copied()
+    SECOND.hold().get(url).copied()
 }
 
 /// A picture's size in pixels, read from its header, when a smaller copy can be made of it: not an SVG (GPUI draws
@@ -637,6 +691,7 @@ fn copy(url: &str, long: u32, original: &Arc<Image>, (w, h): (u32, u32), sigma: 
         }
         None => {
             copies.push(Smaller { long, state: CopyState::Loading, used: now });
+            let discard = !images.keep_pixels.contains(url);
             let bytes = original.clone();
             let (cw, ch) = copy_dims(w, h, long);
             let made = cx.background_executor().spawn(async move { shrink(&bytes.bytes, cw, ch, sigma) });
@@ -648,7 +703,9 @@ fn copy(url: &str, long: u32, original: &Arc<Image>, (w, h): (u32, u32), sigma: 
                     // Let go meanwhile (its picture was): dropped with it.
                     let Some(c) = images.copies.get_mut(&key).and_then(|l| l.iter_mut().find(|c| c.long == long)) else { return };
                     c.state = match made {
-                        Some(r) => CopyState::Ready(Arc::new(r)),
+                        // (Its pixels go once they are on the graphics card: kept there, not twice; `lost` if wanted
+                        // again where they aren't.)
+                        Some(r) => CopyState::Ready(Arc::new(if discard { r.discard_after_upload() } else { r })),
                         None => CopyState::Failed,
                     };
                     trim(cx, None);
@@ -805,10 +862,10 @@ pub fn pic_at(url: &str, w: f32, h: f32, cx: &mut App) -> Option<ImageSource> {
     let key = url.to_string();
     let load = move |window: &mut Window, cx: &mut App| -> Option<Result<Arc<RenderImage>, ImageCacheError>> {
         let scale = window.scale_factor();
-        let made = match copy_long(dims.0, dims.1, w * scale, h * scale) {
-            Some(long) => copy(&key, long, &original, dims, 0., cx),
-            None => Use::Original,
-        };
+        // (A picture shown at about its own size gets a copy at that size too, not GPUI's own decoded picture: a copy's
+        // pixels leave memory once on the graphics card, GPUI's stay.)
+        let long = copy_long(dims.0, dims.1, w * scale, h * scale).unwrap_or(dims.0.max(dims.1));
+        let made = copy(&key, long, &original, dims, 0., cx);
         match made {
             Use::Copy(r) => Some(Ok(r)),
             Use::Original => original.clone().use_render_image(window, cx).map(Ok),
@@ -873,9 +930,7 @@ pub fn pic(url: &str, cx: &mut App) -> Option<Arc<Image>> {
     let asked = Arc::new(AtomicU64::new(ms_now()));
     images.slots.insert(url.to_string(), Slot::Loading(fails, asked.clone()));
     let (tx, rx) = oneshot::channel();
-    if let Ok(mut jobs) = images.queue.jobs.lock() {
-        jobs.push((url.to_string(), tx, asked));
-    }
+    images.queue.jobs.hold().push((url.to_string(), tx, asked));
     images.queue.ready.notify_one();
     let key = url.to_string();
     cx.spawn(async move |cx| {

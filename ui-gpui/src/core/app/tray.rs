@@ -82,6 +82,12 @@ fn is_io_exception(fail: &Fail) -> bool {
     ["IOException", "FileNotFoundException", "DirectoryNotFoundException", "PathTooLongException"].iter().any(|k| is_fail_kind(fail, k))
 }
 
+/// Multi-Roblox turned on while a Roblox client runs: Roblox already holds the name Multi-Roblox needs, so it starts
+/// only once every client is closed (the process check takes it then). Many didn't know (the owner, 2026-11-19: "người
+/// dùng … ko biết là muốn chạy multi là phải tắt hết client roblox đang mở trước"); said as a toast and a Windows
+/// notification, since someone using only their browser may never look at Bloxkeep.
+pub const MULTI_CLOSE_FIRST: &str = "Roblox is open, so Multi-Roblox can't start yet. Close every Roblox window (and Roblox in the tray): it turns on by itself.";
+
 impl App {
     pub fn tray_state(&self) -> TrayInfo {
         let vault = if self.auto_lock.screen_locked.get() { None } else { self.controller.vault.borrow().clone() };
@@ -185,6 +191,9 @@ impl App {
             multi_instance::disable();
         }
         self.controller.last_armed.set(multi_instance::armed());
+        if on && !multi_instance::armed() {
+            self.warn(&l::t(MULTI_CLOSE_FIRST));
+        }
         self.push_state();
         Ok(Value::Null)
     }

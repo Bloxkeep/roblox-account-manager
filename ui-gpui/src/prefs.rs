@@ -2,6 +2,7 @@
 //! rm.statsDays…): a little JSON file in this PC's Bloxkeep folder, never in the vault. A file that can't be read or
 //! written just means the defaults.
 
+use crate::threads::Hold;
 use std::path::PathBuf;
 use std::sync::{LazyLock, Mutex};
 
@@ -19,12 +20,12 @@ static ALL: LazyLock<Mutex<Map<String, Value>>> =
     LazyLock::new(|| Mutex::new(crate::net::saved("Interface choices", &FILE).unwrap_or_default()));
 
 pub fn get(key: &str) -> Option<Value> {
-    ALL.lock().ok()?.get(key).cloned()
+    ALL.hold().get(key).cloned()
 }
 
 /// Keeps it, written at once (these change only on a click).
 pub fn set(key: &str, v: Value) {
-    let Ok(mut all) = ALL.lock() else { return };
+    let mut all = ALL.hold();
     if all.get(key) == Some(&v) {
         return;
     }

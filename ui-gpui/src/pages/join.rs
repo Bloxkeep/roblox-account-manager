@@ -11,6 +11,7 @@ use gpui_kit::{prelude::*, *};
 use serde_json::{Value, json};
 
 use crate::{kit::*, shell::Root, theme::*};
+use crate::val::s;
 
 #[derive(Default)]
 pub struct Data {
@@ -26,10 +27,6 @@ pub struct Data {
     /// it, Cancel) or opened again since does nothing (gpui's close_dialog shuts the newest box, not a given one).
     seq: u64,
     open: bool,
-}
-
-fn s<'a>(v: &'a Value, k: &str) -> &'a str {
-    v.get(k).and_then(Value::as_str).unwrap_or_default()
 }
 
 fn launching(r: &Root) -> bool {

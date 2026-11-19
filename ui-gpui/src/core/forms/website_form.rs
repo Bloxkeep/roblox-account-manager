@@ -561,13 +561,20 @@ impl FormCore {
             return;
         }
         *self.selected.borrow_mut() = Some(tab.clone());
-        for (other, _) in self.tabs.borrow().iter() {
-            if !Rc::ptr_eq(other, tab) {
-                other.control().set_visible(false);
-            }
-        }
+        // The chosen page shown over the one before, which is hidden only a moment later: hidden first, the window's
+        // empty ground showed between the two (the owner, 2026-11-18: "nhấp nháy" on every switch).
         tab.control().set_visible(true);
         tab.control().bring_to_front();
+        let me = self.clone();
+        host::spawn(async move {
+            host::delay(std::time::Duration::from_millis(150)).await;
+            let Some(now) = me.selected.borrow().clone() else { return };
+            for (other, _) in me.tabs.borrow().iter() {
+                if !Rc::ptr_eq(other, &now) {
+                    other.control().set_visible(false);
+                }
+            }
+        });
         self.mirror();
         self.sync_title();
         self.push();
@@ -680,6 +687,28 @@ impl FormCore {
                     let me = self.clone();
                     let handle = tab.handle();
                     host::spawn(async move { me.close_tab(&handle).await });
+                }
+            }
+            // A tab dragged to another place in the strip (as a browser's): `to` its place among the tabs now.
+            "move" => {
+                let to = args.get("to").and_then(Value::as_u64).map(|t| t as usize);
+                if let (Some(tab), Some(to)) = (by_key, to) {
+                    let moved = {
+                        let mut tabs = self.tabs.borrow_mut();
+                        match tabs.iter().position(|(t, _)| Rc::ptr_eq(t, &tab)) {
+                            Some(from) if from != to.min(tabs.len() - 1) => {
+                                let item = tabs.remove(from);
+                                let to = to.min(tabs.len());
+                                tabs.insert(to, item);
+                                true
+                            }
+                            _ => false,
+                        }
+                    };
+                    if moved {
+                        self.mirror();
+                        self.push();
+                    }
                 }
             }
             "newTab" => self.new_blank_tab(),

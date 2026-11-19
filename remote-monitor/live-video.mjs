@@ -39,7 +39,7 @@ async function removeMedia(folder) {
   await rm(target, { recursive: true, force: true, maxRetries: 3, retryDelay: 120 });
 }
 
-async function attach(id, key) {
+async function attach(id, key, sharp = false) {
   const socket = createConnection({ host: '127.0.0.1', port: Number(process.env.BK_MONITOR_VIDEO_PORT) });
   let receive;
   let closed = false;
@@ -93,12 +93,14 @@ async function attach(id, key) {
   });
   try {
     const mode = captureOnGpu ? ' direct' : '';
-    const answer = await ask(`${key}\n${id.replace('-', ' ')}${mode}\n`);
+    // " sharp": the app makes the window big on the PC while it is watched (the page's "Sharper").
+    const answer = await ask(`${key}\n${id.replace('-', ' ')}${mode}${sharp ? ' sharp' : ''}\n`);
     const result = answer?.toString();
     const window = captureOnGpu ? /^ok ([1-9]\d*)$/.exec(result ?? '')?.[1] : undefined;
     if (captureOnGpu ? !window : result !== 'ok') {
       const messages = { busy: 'Bloxkeep đang thao tác với cửa sổ. Thử lại sau.',
-        locked: 'Mở khóa Bloxkeep trên PC để xem live.', window: 'Cửa sổ Roblox không còn mở.' };
+        locked: 'Mở khóa Bloxkeep trên PC để xem live.', window: 'Cửa sổ Roblox không còn mở.',
+        macro: 'Đang chạy macro trên PC.' };
       const code = Object.hasOwn(messages, result) ? result : 'bridgeUnavailable';
       throw Object.assign(new Error(messages[code] ?? 'Không kết nối được với Bloxkeep.'), { code });
     }
@@ -113,9 +115,14 @@ export function createLive(key, connect = attach) {
   let current;
   let starting = false;
   let stopping = false;
+  let stopped = Promise.resolve();
   let closed = false;
 
-  async function start(source) {
+  async function start(source, sharp = false) {
+    // Switching windows stops one view and starts the next at once: the old encoder takes a moment to end, and the
+    // new view was refused as "already active" whenever it had not yet (the owner's third window, 2026-11-18). It
+    // waits for that end instead (a few seconds at most).
+    if (stopping && !closed && !current && !starting) await Promise.race([stopped, sleep(5000)]);
     if (closed || current || starting || stopping) throw Object.assign(new Error('Another live viewer is active.'), { code: 'inUse' });
     starting = true;
     let client;
@@ -123,7 +130,7 @@ export function createLive(key, connect = attach) {
     try {
       const nvenc = await hardwareEncoder();
       if (closed) throw new Error('The remote session ended.');
-      client = await connect(source, key);
+      client = await connect(source, key, sharp);
       folder = await mkdtemp(join(tmpdir(), 'bloxkeep-live-'));
       if (closed) throw new Error('The remote session ended.');
       const session = { id: randomBytes(24).toString('hex'), client, folder, seen: Date.now(), frame: null, stopped: false };
@@ -203,6 +210,8 @@ export function createLive(key, connect = attach) {
     if (!session || session.stopped) return;
     session.stopped = true;
     stopping = true;
+    let ended;
+    stopped = new Promise((resolve) => { ended = resolve; });
     current = undefined;
     clearInterval(session.clock);
     if (!session.client.window) session.client.close();
@@ -215,6 +224,7 @@ export function createLive(key, connect = attach) {
         await removeMedia(session.folder).catch((error) => console.error(error.message));
       } finally {
         stopping = false;
+        ended();
       }
     };
     if (session.encoder.exitCode !== null || session.encoder.signalCode !== null) void clean();

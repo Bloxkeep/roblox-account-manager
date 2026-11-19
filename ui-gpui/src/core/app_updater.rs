@@ -217,7 +217,7 @@ impl AppUpdater {
             log::note(&format!("Update: {version} found, downloading."));
             self.set("downloading");
             let (tx, rx) = std::sync::mpsc::channel::<i16>();
-            let downloaded = std::thread::scope(|scope| {
+            let downloaded = crate::threads::scope(|scope| {
                 scope.spawn(|| {
                     for percent in rx {
                         self.on_progress(percent as i32);

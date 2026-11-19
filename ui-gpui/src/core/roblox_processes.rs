@@ -645,7 +645,7 @@ const SWEEP_TICK: Duration = Duration::from_millis(500);
 fn start_sweeper(s: &mut ClosingState) {
     if !s.sweeping {
         s.sweeping = true;
-        std::thread::spawn(sweep_closing);
+        crate::threads::run(sweep_closing);
     }
 }
 
@@ -838,7 +838,7 @@ pub fn focus(pid: i32) {
     let place = if is_plain_window(h) { window_rect(h) } else { None };
     set_foreground(h);
     if let Some(before) = place {
-        std::thread::spawn(move || keep_place(h, before));
+        crate::threads::run(move || keep_place(h, before));
     }
 }
 

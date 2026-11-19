@@ -37,14 +37,11 @@ impl BackupWrite {
     pub fn start(folder: PathBuf, bytes: Vec<u8>, previous_ids: Vec<String>) -> Arc<BackupWrite> {
         let task = Arc::new(BackupWrite { done: Mutex::new(None), cv: Condvar::new() });
         let t = task.clone();
-        let spawned = crate::net::Named::new("backup-write".into()).spawn(move || {
+        crate::threads::run(move || {
             let result = backup::write(&folder, &bytes, Some(&previous_ids)).map(|_| ());
             *t.done.lock().unwrap_or_else(|e| e.into_inner()) = Some(result);
             t.cv.notify_all();
         });
-        if let Err(e) = spawned {
-            *task.done.lock().unwrap_or_else(|e| e.into_inner()) = Some(Err(Fail::from(e)));
-        }
         task
     }
 
@@ -59,10 +56,15 @@ impl BackupWrite {
         guard.clone()
     }
 
-    pub fn wait(&self) -> Res<()> {
-        let guard = self.done.lock().unwrap_or_else(|e| e.into_inner());
-        let guard = self.cv.wait_while(guard, |d| d.is_none()).unwrap_or_else(|e| e.into_inner());
-        guard.clone().unwrap_or(Ok(()))
+    /// Waited for without a thread: the write is a pool job, and a pool job waiting for it could wait for ever when the
+    /// pool is full.
+    pub async fn wait_async(&self) -> Res<()> {
+        loop {
+            if let Some(r) = self.done.lock().unwrap_or_else(|e| e.into_inner()).clone() {
+                return r;
+            }
+            rt::sleep(Duration::from_millis(20)).await;
+        }
     }
 }
 
@@ -190,6 +192,8 @@ pub mod folder_dialog {
     use windows_sys::Win32::UI::Shell::{BIF_NEWDIALOGSTYLE, BIF_RETURNONLYFSDIRS, BROWSEINFOW, SHBrowseForFolderW, SHGetPathFromIDListW};
     use windows_sys::Win32::UI::WindowsAndMessaging::{SendMessageW, WM_USER};
 
+    /// CoInitializeEx: the thread is already in the other kind of apartment.
+    const RPC_E_CHANGED_MODE: i32 = 0x8001_0106u32 as i32;
     const BFFM_INITIALIZED: u32 = 1;
     const BFFM_SETSELECTIONW: u32 = WM_USER + 103;
 
@@ -209,6 +213,12 @@ pub mod folder_dialog {
     pub fn pick(owner: isize, description: &str, initial_dir: &str) -> Option<String> {
         // SAFETY: plain call, paired with CoUninitialize below on this same thread when it succeeded.
         let hr = unsafe { CoInitializeEx(std::ptr::null(), COINIT_APARTMENTTHREADED as _) };
+        if hr == RPC_E_CHANGED_MODE {
+            // This pool thread was left in a multithreaded apartment by an earlier job and can't start the single-threaded
+            // one the dialog needs: a thread of its own (a rare click).
+            let (description, initial_dir) = (description.to_string(), initial_dir.to_string());
+            return crate::threads::own("folder-dialog", move || pick(owner, &description, &initial_dir)).ok().and_then(|h| h.join().ok()).flatten();
+        }
         let chosen = browse(owner, description, initial_dir);
         if hr >= 0 {
             // SAFETY: CoInitializeEx succeeded on this thread.
@@ -516,7 +526,7 @@ impl App {
         let lingering = self.backup.backup_write.borrow().clone();
         if let Some(lingering) = lingering.filter(|w| !w.is_completed()) {
             // That copy failed: this one is made anyway.
-            let _ = rt::blocking(move || lingering.wait()).await;
+            let _ = lingering.wait_async().await;
         }
         // A change still waiting to be saved (or saving in the background) goes into the file first, so copy and hash match.
         let saving = self.vault_ref().is_some_and(|v: Arc<Vault>| v.saving_in_background());
@@ -537,7 +547,7 @@ impl App {
         *self.backup.backup_write.borrow_mut() = Some(write.clone());
         // Any reason, not only a file Windows refused: a folder setting that isn't a usable path would otherwise stop
         // the copies without a word (the reason shows in Settings › Backup and goes to the log).
-        match rt::blocking(move || write.wait()).await {
+        match write.wait_async().await {
             Ok(()) => {
                 let same = match (&vault, &*self.controller.vault.borrow()) {
                     (Some(a), Some(b)) => Arc::ptr_eq(a, b),
@@ -625,7 +635,9 @@ impl App {
         let initial = current.filter(|c| Path::new(c).is_dir()).unwrap_or_else(user_profile);
         let owner = self.controller.owner.get();
         let description = l::t("Choose a folder for backups");
-        // On a worker thread, so the core keeps answering (the window's Quit, timers) while the dialog is open.
+        // On a worker thread, so the core keeps answering (the window's Quit, timers) while the dialog is open; `pick`
+        // starts the single-threaded COM apartment the dialog needs and ends it, or uses a thread of its own when the
+        // worker is already in a multithreaded one.
         let chosen = rt::blocking(move || ui::modal(|| folder_dialog::pick(owner, &description, &initial))).await;
         if let Some(chosen) = chosen {
             self.use_backup_folder(&chosen)?;

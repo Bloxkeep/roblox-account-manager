@@ -79,6 +79,9 @@ pub fn failure_of(kind: COREWEBVIEW2_PROCESS_FAILED_KIND) -> BrowserFailure {
 }
 
 const BALLOON_MS: u32 = 8000;
+/// How long Bloxkeep may still run after its main window closed before the exit guard ends it (see on_form_closed). The
+/// clean-up (Roblox's flags put back, Discord told) takes a few seconds; on Windows shutting down it is given 5 s.
+const EXIT_GUARD: std::time::Duration = std::time::Duration::from_secs(30);
 const WM_TRAY: u32 = WM_APP + 0x41;
 const TRAY_ID: u32 = 1;
 const VK_H: u32 = 0x48;
@@ -328,13 +331,21 @@ pub fn attach(h: isize) {
     }
     // SAFETY: our procedure sees the window's messages first; removed at WM_NCDESTROY.
     unsafe { SetWindowSubclass(hwnd(h), Some(shell_proc), SUBCLASS_ID, 0) };
-    shell.on_handle_created();
-    // The window's place, its show and its Shown on a turn of their own, once the interface's start is over: put back
+    // A check of GPUI's `when_free` (BLOXKEEP_TRY_EARLY_RESIZE=1, never set outside a test): the window given a new size
+    // here, inside the interface's start, where such a message from Windows crashed it. error.log then says the message
+    // was done after the start.
+    if std::env::var_os("BLOXKEEP_TRY_EARLY_RESIZE").is_some() {
+        // SAFETY: plain call on our own window.
+        unsafe { SetWindowPos(hwnd(h), std::ptr::null_mut(), 0, 0, 1000, 700, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE) };
+    }
+    // The window's look, its place, its show and its Shown on a turn of their own, once the interface's start is over: put back
     // on a screen with another scale, Windows tells the interface of the new scale there and then, and the interface,
     // still busy starting, crashed (every start with the window saved on the owner's second screen, 2026-11-15:
     // "RefCell already borrowed" at async_context.rs:178). Nothing is seen before: the window is still hidden.
     win_form::invoke(|| {
         let Some(shell) = SHELL.with(|s| s.borrow().clone()) else { return };
+        // (Its title bar's colours too: nothing is asked of the window while the interface starts.)
+        shell.on_handle_created();
         shell.on_load();
         win_form::spawn({
             let shell = shell.clone();
@@ -717,7 +728,7 @@ impl ShellForm {
     }
 
     fn create_tray_icon(self: &Rc<Self>) {
-        // The quick panel (a left click) and the menu (a right click), drawn by the tray's page (tray_window).
+        // The quick panel (a left click) and the menu (a right click), drawn by the interface (tray_window, ui tray.rs).
         let tw = &self.tray_window;
         let me = Rc::downgrade(self);
         *tw.mini_open.borrow_mut() = Some(Box::new({
@@ -777,8 +788,6 @@ impl ShellForm {
         const NIN_BALLOONTIMEOUT: u32 = WM_USER + 4;
         const NIN_BALLOONUSERCLICK: u32 = WM_USER + 5;
         match event {
-            // The pointer on the icon: the tray's page starts ahead of the click (tray_window::warm).
-            WM_MOUSEMOVE => self.tray_window.warm(),
             WM_LBUTTONUP | WM_RBUTTONUP => {
                 self.tray_window.toggle(win_form::cursor_position(), if event == WM_LBUTTONUP { "panel" } else { "menu" });
             }
@@ -1374,7 +1383,7 @@ impl ShellForm {
         }
     }
 
-    /// No saved place (a first start, or a lost screen): the screen with the mouse, fitted. On a 1366×768 or 1080p laptop
+    /// No saved place (a first start, or a lost screen): maximised on the screen with the mouse, its restored size fitted. On a 1366×768 or 1080p laptop
     /// at 125–150 % the preferred size would put the launch dock under the taskbar. Only now, with the window real and
     /// moved there first: sized at the main screen's scale, a window opening on a 150 % screen beside a 100 % main one was
     /// fitted at 100 % and then scaled up past the taskbar (review 2026-10-30).
@@ -1387,9 +1396,9 @@ impl ShellForm {
         self.minimum_size.set(fit(Size::new(self.ldu(980), self.ldu(620)), area.size()));
         let size = fit(preferred, area.size());
         win_form::set_bounds(self.handle, Rect::new(area.left() + (area.width - size.width) / 2, area.top() + (area.height - size.height) / 2, size.width, size.height));
-        if preferred.width > area.width || preferred.height > area.height {
-            self.set_window_state(WindowState::Maximized);
-        }
+        // A first start opens maximised on every screen (the owner, 2026-11-19: "tôi muốn nó mở full màn hình luôn"); the
+        // fitted size above is where Restore takes it. Later starts open as the person left it (restore_place).
+        self.set_window_state(WindowState::Maximized);
     }
 
     fn restore_place(&self) {
@@ -1472,6 +1481,18 @@ impl ShellForm {
         if self.closed.replace(true) {
             return;
         }
+        // The main window is gone, so Bloxkeep is ending. If anything keeps the process alive past EXIT_GUARD (a hidden
+        // window, a thread that never returns), it would still hold the single-instance mutex, and every start after
+        // would only ask this dead one to come forward. Nothing would show. 2026-11-19, the owner: "bloxkeep mở không
+        // lên nữa"; the hidden GPUI tool windows had kept it alive. So it is ended here, whatever the cause.
+        let _ = crate::threads::own("exit-guard", || {
+            std::thread::sleep(EXIT_GUARD);
+            log::note(&format!(
+                "Bloxkeep was still running {} s after its window closed; ended it so the next start can open.",
+                EXIT_GUARD.as_secs()
+            ));
+            std::process::exit(0);
+        });
         self.alt_gr_hotkeys.borrow_mut().take();
         // A run whose interface got on screen was good; so was one quit by the person or Windows.
         if self.page_loaded.get() || self.quitting.get() || shutting_down {

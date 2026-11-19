@@ -108,6 +108,8 @@ pub struct Listed {
     pub by: String,
     pub views: i64,
     pub updated: i64,
+    /// When it was put up (unix seconds): All's order for Newest.
+    pub added: i64,
 }
 
 fn agent() -> ureq::Agent {
@@ -150,6 +152,7 @@ fn listed(r: &Value) -> Option<Listed> {
         by: r.pointer("/_aSubmitter/_sName").and_then(Value::as_str).unwrap_or_default().to_string(),
         views: r.get("_nViewCount").and_then(Value::as_i64).unwrap_or(0),
         updated: r.get("_tsDateUpdated").or(r.get("_tsDateModified")).or(r.get("_tsDateAdded")).and_then(Value::as_i64).unwrap_or(0),
+        added: r.get("_tsDateAdded").and_then(Value::as_i64).unwrap_or(0),
     })
 }
 
@@ -159,16 +162,54 @@ pub fn browse(kind: i64, sort: &str, words: &str, page: u32) -> Result<(Vec<List
     let url = if !words.trim().is_empty() {
         let q: String = url_word(words.trim());
         format!("https://gamebanana.com/apiv11/Util/Search/Results?_sModelName=Mod&_sOrder=best_match&_idGameRow={GAME}&_sSearchString={q}&_nPage={page}")
+    } else if kind > 0 {
+        return index(kind, sort, page, 30);
     } else {
-        let sort = match sort {
-            "new" => "Generic_Newest",
-            "updated" => "Generic_LatestUpdated",
-            _ => "Generic_MostDownloaded",
-        };
-        let kind = if kind > 0 { format!("&_aFilters%5BGeneric_Category%5D={kind}") } else { String::new() };
-        format!("https://gamebanana.com/apiv11/Mod/Index?_nPage={page}&_nPerpage=30&_aFilters%5BGeneric_Game%5D={GAME}{kind}&_sSort={sort}")
+        // All: each kind shown asked on its own and the four put together. Asked as one, GameBanana's newest Roblox
+        // mods are mostly the kinds left out (Fleasion, Game Files: 27 of 30 on 2026-11-17), so a page showed 3.
+        let got: Vec<Result<(Vec<Listed>, bool), String>> = crate::threads::scope(|s| {
+            let asks: Vec<_> = KINDS.iter().map(|(k, _)| s.spawn(move || index(*k, sort, page, 15))).collect();
+            asks.into_iter().map(|a| a.join().unwrap_or_else(|_| Err("stopped".into()))).collect()
+        });
+        if got.iter().all(Result::is_err) {
+            return got.into_iter().next().unwrap_or_else(|| Err(String::new()));
+        }
+        let more = got.iter().any(|g| g.as_ref().is_ok_and(|(_, m)| *m));
+        let lists: Vec<Vec<Listed>> = got.into_iter().filter_map(Result::ok).map(|(l, _)| l).collect();
+        let mut all: Vec<Listed> = Vec::new();
+        match sort {
+            "new" | "updated" => {
+                all = lists.into_iter().flatten().collect();
+                if sort == "new" {
+                    all.sort_by_key(|x| std::cmp::Reverse(x.added));
+                } else {
+                    all.sort_by_key(|x| std::cmp::Reverse(x.updated));
+                }
+            }
+            // Most downloaded: GameBanana's lists don't carry the count, so each kind's order is kept, taken in turn.
+            _ => {
+                let longest = lists.iter().map(Vec::len).max().unwrap_or(0);
+                for i in 0..longest {
+                    all.extend(lists.iter().filter_map(|l| l.get(i).cloned()));
+                }
+            }
+        }
+        return Ok((all, more));
     };
     let d = get(&url)?;
+    let more = !d.pointer("/_aMetadata/_bIsComplete").and_then(Value::as_bool).unwrap_or(true);
+    let list = d.get("_aRecords").and_then(Value::as_array).into_iter().flatten().filter_map(listed).collect();
+    Ok((list, more))
+}
+
+/// A page of one kind of mod in `sort`'s order, `per` to a page.
+fn index(kind: i64, sort: &str, page: u32, per: u32) -> Result<(Vec<Listed>, bool), String> {
+    let sort = match sort {
+        "new" => "Generic_Newest",
+        "updated" => "Generic_LatestUpdated",
+        _ => "Generic_MostDownloaded",
+    };
+    let d = get(&format!("https://gamebanana.com/apiv11/Mod/Index?_nPage={page}&_nPerpage={per}&_aFilters%5BGeneric_Game%5D={GAME}&_aFilters%5BGeneric_Category%5D={kind}&_sSort={sort}"))?;
     let more = !d.pointer("/_aMetadata/_bIsComplete").and_then(Value::as_bool).unwrap_or(true);
     let list = d.get("_aRecords").and_then(Value::as_array).into_iter().flatten().filter_map(listed).collect();
     Ok((list, more))

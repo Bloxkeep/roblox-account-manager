@@ -286,20 +286,18 @@ pub mod host {
     /// A window thread (WinForms' UI thread): a single-threaded apartment, as WebView2 needs; `body` makes its windows,
     /// then its message loop runs until `quit`.
     pub fn start_thread(name: &str, body: impl FnOnce() + Send + 'static) -> bool {
-        crate::net::Named::new(name.to_string())
-            .spawn(move || {
-                // SAFETY: plain call, paired with CoUninitialize below on this same thread.
-                let hr = unsafe { CoInitializeEx(std::ptr::null(), COINIT_APARTMENTTHREADED as _) };
-                let _ = here();
-                body();
-                run_loop(None);
-                shut_down();
-                if hr >= 0 {
-                    // SAFETY: CoInitializeEx succeeded on this thread.
-                    unsafe { CoUninitialize() };
-                }
-            })
-            .is_ok()
+        crate::threads::own(name, move || {
+            // SAFETY: plain call, paired with CoUninitialize below on this same thread.
+            let hr = unsafe { CoInitializeEx(std::ptr::null(), COINIT_APARTMENTTHREADED as _) };
+            let _ = here();
+            body();
+            run_loop(None);
+            shut_down();
+            if hr >= 0 {
+                // SAFETY: CoInitializeEx succeeded on this thread.
+                unsafe { CoUninitialize() };
+            }
+        }).is_ok()
     }
 
     /// The message loop; with `until`, a nested one (ShowDialog's) that ends when it says so. False when WM_QUIT came
@@ -438,13 +436,9 @@ pub mod host {
         });
     }
 
-    /// Slow work on a thread of its own; the window thread goes on meanwhile and takes its answer (None: that thread died).
+    /// Slow work on a pool thread; the window thread goes on meanwhile and takes its answer (None: the work panicked).
     pub async fn blocking<T: Send + 'static>(f: impl FnOnce() -> T + Send + 'static) -> Option<T> {
-        let (tx, rx) = oneshot::channel();
-        let _ = crate::net::Named::new("form-work".into()).spawn(move || {
-            let _ = tx.send(f());
-        });
-        rx.await.ok()
+        crate::threads::call(f).await.ok().and_then(|answer| answer.ok())
     }
 
     // ───────── System.Windows.Forms.Timer ─────────

@@ -6,6 +6,7 @@ use std::collections::{HashMap, HashSet};
 
 use gpui_kit::{prelude::*, *};
 use serde_json::{Value, json};
+use crate::ask::reply;
 
 use crate::{
     images,
@@ -89,36 +90,32 @@ fn read(r: &mut Root, next: bool, cx: &mut Context<Root>) {
     }
     let (kind, sort, words) = (m.kind, m.sort, m.words.clone());
     let rx = roblox::run(move || modstore::browse(kind, sort, &words, page));
-    cx.spawn(async move |this, cx| {
-        let got = rx.await.unwrap_or_else(|_| Err(String::new()));
-        let _ = this.update(cx, |r, cx| {
-            let m = &mut r.mods;
-            if m.ask != ask {
-                return;
-            }
-            m.reading = false;
-            match got {
-                Ok((list, more)) => {
-                    m.page = page;
-                    m.more = more;
-                    match (next, m.list.as_mut()) {
-                        (true, Some(Ok(l))) => {
-                            for x in list {
-                                if !l.iter().any(|y| y.id == x.id) {
-                                    l.push(x);
-                                }
+    reply(rx, cx, move |r, got, cx| {
+        let m = &mut r.mods;
+        if m.ask != ask {
+            return;
+        }
+        m.reading = false;
+        match got {
+            Ok((list, more)) => {
+                m.page = page;
+                m.more = more;
+                match (next, m.list.as_mut()) {
+                    (true, Some(Ok(l))) => {
+                        for x in list {
+                            if !l.iter().any(|y| y.id == x.id) {
+                                l.push(x);
                             }
                         }
-                        _ => m.list = Some(Ok(list)),
                     }
+                    _ => m.list = Some(Ok(list)),
                 }
-                Err(e) if !next => m.list = Some(Err(e)),
-                Err(_) => m.more = false,
             }
-            cx.notify();
-        });
-    })
-    .detach();
+            Err(e) if !next => m.list = Some(Err(e)),
+            Err(_) => m.more = false,
+        }
+        cx.notify();
+    });
 }
 
 /// Enter in the search box: those words searched (an empty box: the list again).
@@ -140,17 +137,13 @@ fn open_mod(r: &mut Root, m: Listed, cx: &mut Context<Root>) {
     r.mods.profile = None;
     r.mods.shot = 0;
     let rx = roblox::run(move || modstore::profile(id));
-    cx.spawn(async move |this, cx| {
-        let got = rx.await.unwrap_or_else(|_| Err(String::new()));
-        let _ = this.update(cx, |r, cx| {
-            // (Another mod opened, or the page left, by now.)
-            if r.mods.open.as_ref().is_some_and(|o| o.id == id) {
-                r.mods.profile = Some(got);
-                cx.notify();
-            }
-        });
-    })
-    .detach();
+    reply(rx, cx, move |r, got, cx| {
+        // (Another mod opened, or the page left, by now.)
+        if r.mods.open.as_ref().is_some_and(|o| o.id == id) {
+            r.mods.profile = Some(got);
+            cx.notify();
+        }
+    });
     cx.notify();
 }
 
@@ -163,33 +156,29 @@ fn add(r: &mut Root, m: Listed, cx: &mut Context<Root>) {
     r.mods.picking = None;
     let id = m.id;
     let rx = roblox::run(move || modstore::choices(id));
-    cx.spawn(async move |this, cx| {
-        let got = rx.await.unwrap_or_else(|_| Err(String::new()));
-        let _ = this.update(cx, |r, cx| {
-            match got {
-                Ok(list) if list.len() == 1 => {
-                    r.mods.adding.remove(&id);
-                    put_in(r, m, list[0].clone(), cx);
-                }
-                Ok(list) if list.len() > 1 => {
-                    r.mods.adding.remove(&id);
-                    r.mods.picking = Some((id, list));
-                }
-                Ok(_) => {
-                    r.mods.adding.remove(&id);
-                    let said = r.tr("mods.noFile");
-                    r.mods.refused.insert(id, said);
-                }
-                Err(why) => {
-                    r.mods.adding.remove(&id);
-                    let said = r.i18n.tv("mods.failed", &[("why", if why.is_empty() { "GameBanana" } else { &why })]);
-                    r.mods.refused.insert(id, said);
-                }
+    reply(rx, cx, move |r, got, cx| {
+        match got {
+            Ok(list) if list.len() == 1 => {
+                r.mods.adding.remove(&id);
+                put_in(r, m, list[0].clone(), cx);
             }
-            cx.notify();
-        });
-    })
-    .detach();
+            Ok(list) if list.len() > 1 => {
+                r.mods.adding.remove(&id);
+                r.mods.picking = Some((id, list));
+            }
+            Ok(_) => {
+                r.mods.adding.remove(&id);
+                let said = r.tr("mods.noFile");
+                r.mods.refused.insert(id, said);
+            }
+            Err(why) => {
+                r.mods.adding.remove(&id);
+                let said = r.i18n.tv("mods.failed", &[("why", if why.is_empty() { "GameBanana" } else { &why })]);
+                r.mods.refused.insert(id, said);
+            }
+        }
+        cx.notify();
+    });
 }
 
 fn put_in(r: &mut Root, m: Listed, pick: Choice, cx: &mut Context<Root>) {
@@ -204,40 +193,36 @@ fn put_in(r: &mut Root, m: Listed, pick: Choice, cx: &mut Context<Root>) {
         crate::pages::games::live_show(r, l, cx);
     }
     let rx = roblox::run(move || crate::net::noted("Mod install", modstore::install(&m, &pick)));
-    cx.spawn(async move |this, cx| {
-        let done = rx.await.unwrap_or_else(|_| Err(String::new()));
-        let _ = this.update(cx, |r, cx| {
-            r.mods.adding.remove(&id);
-            match &done {
-                Ok(n) => {
-                    let sub = r.i18n.tv("mods.added", &[("n", &n.to_string())]);
-                    crate::pages::games::live_done(r, &live_key, "check", OK, sub, Some(crate::pages::games::LiveAct::Mods), cx);
-                }
-                Err(_) => {
-                    let sub = r.tr("live.failed");
-                    crate::pages::games::live_done(r, &live_key, "x", BAD, sub, None, cx);
-                }
+    reply(rx, cx, move |r, done, cx| {
+        r.mods.adding.remove(&id);
+        match &done {
+            Ok(n) => {
+                let sub = r.i18n.tv("mods.added", &[("n", &n.to_string())]);
+                crate::pages::games::live_done(r, &live_key, "check", OK, sub, Some(crate::pages::games::LiveAct::Mods), cx);
             }
-            match done {
-                Ok(n) => {
-                    r.mods.have = modstore::installed();
-                    r.toast = Some((r.i18n.tv("mods.added", &[("n", &n.to_string())]), "ok".into()));
-                }
-                Err(why) => {
-                    let said = match why.as_str() {
-                        "none" => r.tr("mods.none"),
-                        "nofile" => r.tr("mods.noFile"),
-                        "big" => r.tr("mods.big"),
-                        "unpack" => r.tr("mods.unpack"),
-                        _ => r.i18n.tv("mods.failed", &[("why", if why.is_empty() { "GameBanana" } else { &why })]),
-                    };
-                    r.mods.refused.insert(id, said);
-                }
+            Err(_) => {
+                let sub = r.tr("live.failed");
+                crate::pages::games::live_done(r, &live_key, "x", BAD, sub, None, cx);
             }
-            cx.notify();
-        });
-    })
-    .detach();
+        }
+        match done {
+            Ok(n) => {
+                r.mods.have = modstore::installed();
+                r.toast = Some((r.i18n.tv("mods.added", &[("n", &n.to_string())]), "ok".into()));
+            }
+            Err(why) => {
+                let said = match why.as_str() {
+                    "none" => r.tr("mods.none"),
+                    "nofile" => r.tr("mods.noFile"),
+                    "big" => r.tr("mods.big"),
+                    "unpack" => r.tr("mods.unpack"),
+                    _ => r.i18n.tv("mods.failed", &[("why", if why.is_empty() { "GameBanana" } else { &why })]),
+                };
+                r.mods.refused.insert(id, said);
+            }
+        }
+        cx.notify();
+    });
 }
 
 fn changed(r: &mut Root, done: Result<(), String>) {
@@ -472,7 +457,7 @@ fn library(root: &Root, inner: f32, cx: &mut Context<Root>) -> impl IntoElement 
                             .flex()
                             .items_center()
                             .gap(px(8.))
-                            .child(div().flex_1().min_w_0().overflow_hidden().flex().items_center().gap(px(5.)).text_size(px(T_S)).text_color(c(MUTED)).font_features(tnum()).child(icon("eye", 12., c(MUTED))).child(crate::pages::games::thousands(x.views, vi)).when(x.updated > 0, |d| d.child(div().w(px(6.))).child(icon("clock", 12., c(MUTED))).child(div().min_w_0().truncate().child(age(crate::time::now_secs() - x.updated, vi)))))
+                            .child(div().flex_1().min_w_0().overflow_hidden().flex().items_center().gap(px(5.)).text_size(px(T_S)).text_color(c(MUTED)).font_features(tnum()).child(icon("eye", 12., c(MUTED))).child(crate::kit::thousands(x.views, vi)).when(x.updated > 0, |d| d.child(div().w(px(6.))).child(icon("clock", 12., c(MUTED))).child(div().min_w_0().truncate().child(age(crate::time::now_secs() - x.updated, vi)))))
                             .child(IconButton::new(("mod-web", i), "external").size(30.).tip(root.tr("mods.onBanana")).on_click(cx.listener(move |r, _, _, _| r.send("openModPage", json!({ "id": id })))))
                             .child(act),
                     )
@@ -650,9 +635,9 @@ fn detail(root: &Root, x: &Listed, inner: f32, cx: &mut Context<Root>) -> Div {
     let strip = match profile {
         Some(Ok(p)) => {
             let mut cells = vec![
-                figure("starFill", FACE, root.tr("mods.d.likes"), crate::pages::games::thousands(p.likes, vi)),
-                figure("eye", ONLINE, root.tr("mods.d.views"), crate::pages::games::thousands(p.views, vi)),
-                figure("download", OK, root.tr("mods.d.downloads"), crate::pages::games::thousands(p.downloads, vi)),
+                figure("starFill", FACE, root.tr("mods.d.likes"), crate::kit::thousands(p.likes, vi)),
+                figure("eye", ONLINE, root.tr("mods.d.views"), crate::kit::thousands(p.views, vi)),
+                figure("download", OK, root.tr("mods.d.downloads"), crate::kit::thousands(p.downloads, vi)),
             ];
             if p.updated > 0 {
                 cells.push(figure("clock", TEXT_2, root.tr("mods.d.updated"), age(now - p.updated, vi)));

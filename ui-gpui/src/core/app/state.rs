@@ -555,6 +555,7 @@ impl App {
             "memoryWarnings": s.memory_warnings,
             "trimBackground": s.trim_background,
             "autoUpdateRoblox": s.auto_update_roblox,
+            "ownRobloxLinks": crate::core::roblox_links::shown(),
             "robloxUpdateWhen": s.roblox_update_when,
             "fastFlags": s.fast_flags,
             "ramLimitMb": s.ram_limit_mb,

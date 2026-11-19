@@ -1,5 +1,5 @@
 // Builds ui/src into RobloxManager/wwwroot: ui.js, which the app's page loads before app.js, and one bundle per small
-// page (ui-tray.js, ui-panel.js, ui-mini.js, ui-overlay.js, ui-dialog.js, ui-browser.js from ui/src/pages), so a small
+// page (ui-panel.js, ui-mini.js, ui-overlay.js, ui-dialog.js, ui-browser.js from ui/src/pages), so a small
 // window parses only its own part and not the whole app. A small page gets its own words and stylesheet too:
 //   - ui-<page>.js starts with the words of wwwroot/i18n.js its code can ask for (pages/page.tsx loads all of i18n.js
 //     if one is ever missing);
@@ -23,7 +23,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const APP = path.join(HERE, '..', 'RobloxManager');
 const WWW = path.join(APP, 'wwwroot');
 /** The small pages: wwwroot/<page>.html loads ui-<page>.js and ui-<page>.css, built from ui/src/pages/<page>.tsx. */
-const PAGES = ['tray', 'panel', 'mini', 'overlay', 'dialog', 'browser'];
+const PAGES = ['panel', 'mini', 'overlay', 'dialog', 'browser'];
 const BANNER = '/* Bloxkeep: built from ui/src by ui/build.mjs. Edit the source, not this file. */';
 const CSS_BANNER = '/* Bloxkeep: built from wwwroot/app.css by ui/build.mjs. Edit app.css, not this file. */';
 

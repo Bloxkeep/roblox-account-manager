@@ -11,6 +11,8 @@ use gpui_kit::component::WindowExt as _;
 use gpui_kit::component::dialog::DialogEntrance;
 use gpui_kit::{prelude::*, *};
 use serde_json::{Value, json};
+use crate::val::s;
+use crate::ask::answer;
 
 use crate::{
     kit::*,
@@ -31,10 +33,6 @@ pub struct Data {
     busy: bool,
     /// What's new: the releases before the newest are unfolded.
     older: bool,
-}
-
-fn s<'a>(v: &'a Value, k: &str) -> &'a str {
-    v.get(k).and_then(Value::as_str).unwrap_or_default()
 }
 
 // ───────────────────────── feedback ─────────────────────────
@@ -253,11 +251,10 @@ fn go_to(r: &mut Root, target: &str) {
 fn day(date: &str, vi: bool) -> String {
     let mut parts = date.split('-').filter_map(|p| p.parse::<usize>().ok());
     let (Some(y), Some(m), Some(d)) = (parts.next(), parts.next(), parts.next()) else { return String::new() };
-    const MONTHS: [&str; 12] = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
     if !(1..=12).contains(&m) {
         return String::new();
     }
-    if vi { format!("{d} tháng {m}, {y}") } else { format!("{} {d}, {y}", MONTHS[m - 1]) }
+    if vi { format!("{d} tháng {m}, {y}") } else { format!("{} {d}, {y}", crate::time::month_name(m as i64)) }
 }
 
 /// A release's lines in the language shown (English where there is no translation).
@@ -284,46 +281,51 @@ fn split_note(note: &str) -> (Option<String>, String) {
     }
 }
 
-fn notes(items: Vec<String>, tint: u32) -> Div {
-    let mut list = div().flex().flex_col();
-    for (index, note) in items.into_iter().enumerate() {
+/// A kind's notes: a bullet each, its short title (when it has one) before its words. `quiet`: in the second colour
+/// (what was fixed reads after what is new).
+fn notes(items: Vec<String>, quiet: bool) -> Div {
+    let mut list = div().flex().flex_col().gap(px(6.));
+    for note in items {
         let (title, text) = split_note(&note);
         list = list.child(
-            div().flex().gap(px(12.)).py(px(10.)).text_size(px(T_M)).line_height(px(20.))
-                .when(index != 0, |d| d.border_t_1().border_color(ca(WHITE, 0.07)))
-                .child(div().mt(px(8.)).size(px(5.)).flex_none().rounded_full().bg(c(tint))).child(
-                div()
-                    .min_w_0()
-                    .flex_1()
-                    .flex()
-                    .flex_col()
-                    .when_some(title, |d, t| d.child(div().font_weight(FontWeight::SEMIBOLD).text_color(c(TEXT)).child(t)))
-                    .child(div().text_color(c(TEXT_2)).child(text)),
-            ),
+            div().flex().gap(px(10.)).text_size(px(T_M)).line_height(px(20.))
+                .child(div().mt(px(8.)).size(px(4.)).flex_none().rounded_full().bg(c(if quiet { MUTED } else { TEXT_2 })))
+                .child(
+                    div()
+                        .min_w_0()
+                        .flex_1()
+                        .flex()
+                        .flex_col()
+                        .when_some(title, |d, t| d.child(div().font_weight(FontWeight::SEMIBOLD).text_color(c(TEXT)).child(t)))
+                        .child(div().text_color(c(if quiet { TEXT_2 } else { TEXT })).child(text)),
+                ),
         );
     }
     list
 }
 
-/// A release's lists: its own lines, then New, Improved, Fixed and Removed.
+/// A release's lists: its own lines, then New, Improved, Fixed and Removed, each under its small tag.
 fn release(root: &Root, rel: &Value, also: bool) -> Vec<Div> {
     let vi = root.i18n.vietnamese;
-    let section = |text: Option<String>, tint, glyph, items| {
-        surface().flex().flex_col().px(px(16.)).pt(px(9.)).pb(px(4.))
-            .when_some(text, |d, title| d.child(div().flex().items_center().gap(px(9.)).pt(px(5.)).pb(px(5.))
-                .child(icon(glyph, 15., c(tint)))
-                .child(div().text_size(px(T_L)).text_color(c(TEXT)).font_weight(FontWeight::SEMIBOLD).child(title))))
-            .child(notes(items, tint))
+    let section = |text: Option<String>, tint: Option<u32>, items| {
+        let tag = |title: String| {
+            let (ground, words) = match tint {
+                Some(t) => (ca(t, 0.14), c(t)),
+                None => (ca(WHITE, 0.07), c(TEXT_2)),
+            };
+            div().flex().child(div().h(px(22.)).px(px(10.)).flex().items_center().rounded(px(R_S)).bg(ground).text_size(px(T_S)).font_weight(FontWeight::SEMIBOLD).text_color(words).child(title))
+        };
+        div().flex().flex_col().gap(px(8.)).when_some(text, |d, title| d.child(tag(title))).child(notes(items, tint.is_none()))
     };
     let mut out = Vec::new();
     let own = pick(Some(rel), vi);
     if !own.is_empty() {
-        out.push(section(also.then(|| root.tr("wn.also")), FACE, "plus", own));
+        out.push(section(also.then(|| root.tr("wn.also")), Some(FACE), own));
     }
-    for (k, tint, glyph) in [("new", FACE, "plus"), ("improved", ONLINE, "gauge"), ("fixed", OK, "check"), ("removed", MUTED, "x")] {
+    for (k, tint) in [("new", Some(OK)), ("improved", Some(ONLINE)), ("fixed", None), ("removed", None)] {
         let items = pick(rel.get(k), vi);
         if !items.is_empty() {
-            out.push(section(Some(root.tr(&format!("wn.kind.{k}"))), tint, glyph, items));
+            out.push(section(Some(root.tr(&format!("wn.kind.{k}"))), tint, items));
         }
     }
     out
@@ -333,19 +335,15 @@ fn release(root: &Root, rel: &Value, also: bool) -> Vec<Div> {
 pub fn ask_whats_new(r: &mut Root, cx: &mut Context<Root>) {
     let Some(link) = r.link.clone() else { return };
     let rx = link.call("whatsNew", json!({}));
-    cx.spawn(async move |this, cx| {
-        let answer = rx.await;
-        let _ = this.update(cx, |r, cx| {
-            match answer {
-                Ok(Ok(Value::Array(list))) if !list.is_empty() => r.show_whats_new(list),
-                Ok(Ok(_)) => r.toast = Some((r.tr("wn.none"), "info".into())),
-                Ok(Err(e)) => r.toast = Some((e.to_string(), "error".into())),
-                Err(_) => {}
-            }
-            cx.notify();
-        });
-    })
-    .detach();
+    answer(rx, cx, move |r, answer, cx| {
+        match answer {
+            Ok(Ok(Value::Array(list))) if !list.is_empty() => r.show_whats_new(list),
+            Ok(Ok(_)) => r.toast = Some((r.tr("wn.none"), "info".into())),
+            Ok(Err(e)) => r.toast = Some((e.to_string(), "error".into())),
+            Err(_) => {}
+        }
+        cx.notify();
+    });
 }
 
 /// A feature's picture ("whatsnew/1.0.16-macros.{lang}.webp") as a file: in the "wwwroot" folder beside the program
@@ -397,77 +395,64 @@ pub fn whats_new(r: &mut Root, releases: Vec<Value>, window: &mut Window, cx: &m
             })
             .collect();
         let has_pictures = files.iter().any(|f| f[usize::from(vi)].is_some());
-        let wide = (f32::from(window.viewport_size().width) - 40.).clamp(320., if has_pictures { 920. } else { 760. });
+        // (A reading column, as the mock-up: 560 of words, wider only for its pictures.)
+        let wide = (f32::from(window.viewport_size().width) - 40.).clamp(320., if has_pictures { 680. } else { 560. });
         let r = root.read(cx);
         let older = &releases[1..];
         let when = day(s(latest, "date"), vi);
-        let mut body = div().flex().flex_col().gap(px(14.)).child(
-            div().flex().items_center().gap(px(16.)).rounded(px(R_L)).border_1().border_color(ca(FACE, 0.23))
-                .bg(ca(FACE, 0.07)).px(px(16.)).py(px(15.))
-                .child(div().size(px(47.)).flex_none().rounded(px(R_M)).bg(ca(FACE, 0.14)).flex().items_center()
-                    .justify_center().child(icon("news", 21., c(FACE))))
-                .child(div().min_w_0().flex().flex_col().gap(px(3.))
-                    .child(div().text_size(px(T_FIG)).font_weight(FontWeight::BOLD).child(format!("Bloxkeep {}", s(latest, "version"))))
-                    .when(!when.is_empty(), |d| d.child(div().text_size(px(T_M)).text_color(c(TEXT_2)).child(when)))),
-        );
+        let mut body = div().flex().flex_col().gap(px(16.));
         for (i, h) in highlights.iter().enumerate() {
             let words = pick(Some(h), vi);
             let (title, text, button) = (words.first().cloned().unwrap_or_default(), words.get(1).cloned().unwrap_or_default(), words.get(2).cloned().unwrap_or_default());
             let target = s(h, "go").to_string();
             let go = this.clone();
             let picture = pictures.get(i).cloned().flatten();
-            let beside = wide >= 680. && picture.as_ref().is_some_and(|(_, shape)| *shape < 1.7);
-            let text = div().min_w_0().flex_1().flex().flex_col().items_start().gap(px(8.))
-                .child(div().size(px(32.)).flex_none().rounded(px(R_M)).bg(ca(FACE, 0.13)).flex().items_center()
-                    .justify_center().child(icon(if s(h, "icon").is_empty() { "news" } else { s(h, "icon") }, 16., c(FACE))))
+            // The picture leads, whole and at the card's width; its words under it, plain.
+            let text = div().min_w_0().flex().flex_col().items_start().gap(px(6.))
                 .child(div().text_size(px(T_GROUP)).font_weight(FontWeight::SEMIBOLD).child(title))
                 .child(div().text_size(px(T_M)).line_height(px(20.)).text_color(c(TEXT_2)).child(text))
                 .when(!target.is_empty() && !button.is_empty(), |d| {
-                    d.child(Button::new(("wn-go", i), button).icon_end("chevronRight").small().on_click(move |_, w, cx| {
+                    d.child(div().pt(px(4.)).child(Button::new(("wn-go", i), button).icon_end("chevronRight").small().on_click(move |_, w, cx| {
                         w.close_dialog(cx);
                         let _ = go.update(cx, |r, cx| {
                             go_to(r, &target);
                             cx.notify();
                         });
-                    }))
+                    })))
                 });
             body = body.child(
-                surface().p(px(16.)).flex().gap(px(16.))
-                    .when(beside, |d| d.items_center())
-                    .when(!beside, |d| d.flex_col())
-                    .child(text)
+                div().flex().flex_col().gap(px(12.))
                     .when_some(picture, |d, (p, shape)| {
-                        let cap = if beside { (wide - 82.) * 0.48 } else { wide - 82. };
-                        let picture_w = cap.min(330. * shape);
-                        d.child(div().flex_none().w(px(picture_w)).aspect_ratio(shape).rounded(px(R_M))
-                            .border_1().border_color(c(LINE)).bg(c(GROUND))
-                            .child(img(p).size_full().rounded(px(R_M - 1.)).object_fit(ObjectFit::Contain)))
-                    }),
+                        d.child(div().w_full().aspect_ratio(shape).rounded(px(R_M)).border_1().border_color(c(LINE)).bg(c(GROUND)).overflow_hidden()
+                            .child(img(p).size_full().object_fit(ObjectFit::Contain)))
+                    })
+                    .child(text),
             );
         }
         for part in release(r, latest, !highlights.is_empty()) {
             body = body.child(part);
         }
+        // (Older versions fold from the foot, beside Got it.)
+        let open = r.extras.older;
+        let fold = this.clone();
+        let n = older.len() as i64;
+        let older_fold = (!older.is_empty()).then(|| {
+            focusable(div().id("wn-older"))
+                .flex()
+                .items_center()
+                .gap(px(6.))
+                .text_size(px(T_M))
+                .text_color(c(TEXT_2))
+                .cursor_pointer()
+                .hover(|st| st.text_color(c(TEXT)))
+                .child(icon(if open { "chevronUp" } else { "chevronDown" }, 14., c(MUTED)))
+                .child(r.i18n.tv("wn.olderN", &[("n", &n.to_string())]))
+                .on_click(move |_, w, cx| {
+                    let _ = fold.update(cx, |r, _| r.extras.older = !r.extras.older);
+                    w.refresh();
+                })
+        });
         if !older.is_empty() {
-            let open = r.extras.older;
-            let fold = this.clone();
-            let n = older.len() as i64;
-            body = body.child(div().pt(px(6.)).flex().child(
-                focusable(div().id("wn-older"))
-                    .flex()
-                    .items_center()
-                    .gap(px(6.))
-                    .text_size(px(T_M))
-                    .text_color(c(TEXT_2))
-                    .cursor_pointer()
-                    .hover(|st| st.text_color(c(TEXT)))
-                    .child(icon(if open { "chevronDown" } else { "chevronRight" }, 14., c(MUTED)))
-                    .child(r.i18n.tn("wn.older", n, &[("n", &n.to_string())]))
-                    .on_click(move |_, w, cx| {
-                        let _ = fold.update(cx, |r, _| r.extras.older = !r.extras.older);
-                        w.refresh();
-                    }),
-            ));
             if open {
                 for rel in older {
                     body = body.child(
@@ -486,16 +471,25 @@ pub fn whats_new(r: &mut Root, releases: Vec<Value>, window: &mut Window, cx: &m
             }
         }
         let star = this.clone();
-        framed(dialog, r.tr("wn.heading"), r.tr("common.close"), |_, w, cx| w.close_dialog(cx))
+        // The head: what this is, its version and day, the × at its end.
+        let version = if when.is_empty() { r.i18n.tv("wn.version", &[("v", s(latest, "version"))]) } else { format!("{} · {when}", r.i18n.tv("wn.version", &[("v", s(latest, "version"))])) };
+        let head = div().w_full().px(px(22.)).pt(px(20.)).pb(px(14.)).flex().items_center().gap(px(12.))
+            .child(div().size(px(40.)).flex_none().rounded(px(R_M)).bg(ca(FACE, 0.14)).flex().items_center().justify_center().child(icon("news", 20., c(FACE))))
+            .child(div().min_w_0().flex_1().flex().flex_col().gap(px(2.))
+                .child(div().text_size(px(T_GROUP)).line_height(px(24.)).font_weight(FontWeight::SEMIBOLD).text_color(c(TEXT)).child(r.tr("wn.title")))
+                .child(div().text_size(px(T_M)).font_weight(FontWeight::NORMAL).text_color(c(TEXT_2)).child(version)))
+            .child(dialog_x(r.tr("common.close"), |_, w, cx| w.close_dialog(cx)));
+        dialog.close_button(false).p_0().gap_0().title(head)
             .w(px(wide))
             .centered()
             .entrance(DialogEntrance::FadeSlide)
             .child(dialog_body(body))
             .footer(dialog_foot()
+                .children(older_fold)
+                .child(div().flex_1())
                 .child(Button::new("wn-star", r.tr("star.open")).icon("star").quiet().small().on_click(move |_, _, cx| {
                     let _ = star.update(cx, |r, _| r.send("openGitHub", json!({})));
                 }))
-                .child(div().flex_1())
                 .child(Button::new("wn-ok", r.tr("wn.ok")).primary().on_click(|_, w, cx| w.close_dialog(cx))))
     });
 }

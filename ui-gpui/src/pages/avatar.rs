@@ -5,11 +5,12 @@
 // with that account's own sign-in, lent by the app. Roblox draws the new picture a moment after a change, so the
 // avatar is read again then.
 use gpui_kit::{prelude::*, *};
+use crate::ask::{found, reply};
 
 use crate::{
     images,
     kit::*,
-    pages::{friends, games::thousands},
+    pages::friends,
     roblox::{self, Avatar, Owned, Price, Worth},
     shell::Root,
     theme::*,
@@ -39,6 +40,7 @@ pub struct Data {
     /// of it, whether one is being drawn (and another is wanted after it), and a drag under way (where it began, and
     /// the turn then).
     asked_solid: bool,
+    solid_ask: u64,
     solid: Option<std::sync::Arc<crate::mesh::Model>>,
     /// Roblox gave no model (no sign-in, or it failed): the flat picture stays.
     no_solid: bool,
@@ -49,6 +51,10 @@ pub struct Data {
     near: f32,
     room: Option<usize>,
     background: Option<Owned>,
+    profile_background: Option<Owned>,
+    profile_background_checked: bool,
+    profile_background_ask: Option<u64>,
+    studio_override: bool,
     /// Turning by itself (kept between runs), the turning under way (its run, so an old one stops) and whether one is.
     /// The same run moves it in its idle (`moving`, kept too; `t` how far into it), when its parts were found.
     spin: bool,
@@ -57,8 +63,6 @@ pub struct Data {
     /// Its walk (mesh::View): the keys held on the 3D box (1 W, 2 S, 4 A, 8 D, 16 Shift to run), where it has walked
     /// to, the way it faces, its stride and how much it is walking; a jump asked for (Space) and the one under way.
     keys: u8,
-    /// The look was just changed: its model is asked of Roblox again, not taken from this run's (MODELS).
-    changed_look: bool,
     jump: bool,
     up: f32,
     rise: f32,
@@ -79,8 +83,14 @@ pub struct Data {
     /// A picture of it being saved.
     saving: bool,
     frame: Option<std::sync::Arc<RenderImage>>,
+    /// What `frame` shows (the view, its size, the model): a draw asked for the same is skipped.
+    frame_of: Option<(crate::mesh::View, usize, usize)>,
     drawing: bool,
     stale: bool,
+    /// The model shown is the one before a change: Roblox's new one is on its way.
+    swapping: bool,
+    /// Roblox's address of the model shown (empty when not known): after a change, the one not to take again.
+    solid_file: String,
     /// A drag under way: where it began, and the turn and the camera's height then.
     drag: Option<(f32, f32, f32, f32)>,
     /// One thing changed in many saved outfits at once (open under Saved outfits).
@@ -103,6 +113,12 @@ impl Data {
         self.loading = false;
         self.busy = None;
         self.reading = None;
+        self.profile_background_ask = None;
+        self.solid_ask = 0;
+        // (So is a model awaited after a change: the one before it would stay up for good.)
+        if (self.solid.is_none() && !self.no_solid) || self.swapping {
+            self.asked_solid = false;
+        }
         self.pricing = false;
         // (A picture being drawn is dropped too: another is drawn when the tab is back; so is the turning.)
         self.drawing = false;
@@ -144,6 +160,9 @@ pub fn want(r: &mut Root, link: &crate::link::Link, cx: &mut Context<Root>) {
     if r.avatar.got.is_none() && !r.avatar.loading {
         load(r, cx);
     }
+    if !r.avatar.profile_background_checked && r.avatar.profile_background_ask.is_none() {
+        load_profile_background(r, cx);
+    }
     if r.avatar.of == user && r.avatar.owned.is_none() && r.avatar.reading.is_none() {
         shelf_page(r, cx);
     }
@@ -175,8 +194,43 @@ pub fn want(r: &mut Root, link: &crate::link::Link, cx: &mut Context<Root>) {
             }
         }
     }
-    if r.avatar.of == user && matches!(r.avatar.got, Some(Ok(_))) && !r.avatar.asked_solid {
+    // (The model is asked beside the avatar's read, not after it: the 3D box was the last thing in, seconds late.)
+    if r.avatar.of == user && !r.avatar.asked_solid && !matches!(r.avatar.got, Some(Err(_))) {
         solid(r, cx);
+    }
+    // BLOXKEEP_SHOT_SWAP=1: a hidden shot goes through what a change does (R6 to R15): with a picture on its way, the
+    // model is asked for again and replaced, and four seconds on the box must still take a new picture. What it finds
+    // is printed ("[swap] ..."): the box froze here from 1.1.2-alpha.9 to alpha.12.
+    #[cfg(feature = "shot")]
+    if std::env::var("BLOXKEEP_SHOT_SWAP").is_ok() && r.avatar.solid.is_some() && r.avatar.frame.is_some() && !r.avatar.drawing {
+        static ONCE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+        if !ONCE.swap(true, std::sync::atomic::Ordering::Relaxed) {
+            r.avatar.yaw += 0.5;
+            draw(r, cx);
+            MODELS.with(|m| m.borrow_mut().remove(&user));
+            r.avatar.asked_solid = true;
+            r.avatar.solid_ask = 0;
+            r.avatar.swapping = true;
+            after_change(r, false, cx);
+            cx.spawn(async move |this, cx| {
+                cx.background_executor().timer(std::time::Duration::from_secs(4)).await;
+                let before = this.update(cx, |r, cx| {
+                    let before = r.avatar.frame.clone();
+                    r.avatar.yaw += 0.7;
+                    draw(r, cx);
+                    before
+                });
+                cx.background_executor().timer(std::time::Duration::from_secs(2)).await;
+                let _ = this.update(cx, |r, _| {
+                    let new_picture = match (before.ok().flatten(), r.avatar.frame.as_ref()) {
+                        (Some(a), Some(b)) => !std::sync::Arc::ptr_eq(&a, b),
+                        _ => false,
+                    };
+                    eprintln!("[swap] drawing still set: {}; still swapping: {}; model there: {}; a new picture drawn after the swap: {new_picture}", r.avatar.drawing, r.avatar.swapping, r.avatar.solid.is_some());
+                });
+            })
+            .detach();
+        }
     }
     // Back on the tab: the picture it dropped is drawn again, and the turning goes on.
     if r.avatar.solid.is_some() && r.avatar.frame.is_none() && !r.avatar.drawing {
@@ -198,12 +252,39 @@ fn room_of(av: &Data) -> usize {
     av.room.unwrap_or(1).min(crate::mesh::ROOMS.len() - 1)
 }
 
+fn background_of(av: &Data) -> Option<&Owned> {
+    av.background.as_ref().or(av.profile_background.as_ref().filter(|_| !av.studio_override))
+}
+
+fn load_profile_background(r: &mut Root, cx: &mut Context<Root>) {
+    let user = r.avatar.of;
+    let ask = ticket();
+    r.avatar.profile_background_ask = Some(ask);
+    let rx = roblox::run(move || roblox::profile_background(user));
+    found(rx, cx, move |r, background, cx| {
+        let av = &mut r.avatar;
+        if av.of != user || av.profile_background_ask != Some(ask) {
+            return;
+        }
+        av.profile_background_ask = None;
+        av.profile_background_checked = true;
+        let before = background_of(av).map(|asset| asset.id);
+        if let Some(background) = background {
+            av.profile_background = background;
+        }
+        if before != background_of(av).map(|asset| asset.id) {
+            draw(r, cx);
+        }
+        cx.notify();
+    });
+}
+
 fn view_of(av: &Data) -> crate::mesh::View {
     crate::mesh::View {
         yaw: av.yaw,
         pitch: av.pitch,
         zoom: 1. - av.near,
-        room: if av.background.is_some() { 0 } else { room_of(av) },
+        room: if background_of(av).is_some() { 0 } else { room_of(av) },
         t: if av.moving { av.t } else { 0. },
         at: av.at,
         heading: av.heading,
@@ -250,8 +331,53 @@ const STAGE_BIG_MOVING: usize = 704;
 /// The side of a saved picture, in dots.
 const SAVED: usize = 1600;
 thread_local! {
-    /// Each account's avatar model read this run (by its Roblox user).
-    static MODELS: std::cell::RefCell<std::collections::HashMap<i64, std::sync::Arc<crate::mesh::Model>>> = Default::default();
+    /// Each account's avatar model read this run (by its Roblox user), with Roblox's address of it.
+    static MODELS: std::cell::RefCell<std::collections::HashMap<i64, Kept>> = Default::default();
+    /// The last models by what they are of (the user, and roblox::Avatar::key: body and look): R6 to R15 and back, or
+    /// a look worn again, shows at once instead of waiting for Roblox to make the same model anew.
+    static LOOK_MODELS: std::cell::RefCell<Vec<(i64, String, Kept)>> = Default::default();
+}
+
+/// A model and Roblox's address of it.
+type Kept = (std::sync::Arc<crate::mesh::Model>, String);
+
+/// How many models LOOK_MODELS keeps (each holds its pictures whole, megabytes).
+const LOOK_MODELS_KEPT: usize = 4;
+
+/// The model shown is the avatar's as read: kept under what it is of.
+fn remember(r: &Root) {
+    let av = &r.avatar;
+    let (Some(model), Some(Ok(a)), false) = (&av.solid, &av.got, av.swapping) else { return };
+    let Some(key) = a.key() else { return };
+    LOOK_MODELS.with(|l| {
+        let mut l = l.borrow_mut();
+        l.retain(|(user, k, _)| !(*user == av.of && *k == key));
+        l.push((av.of, key, (model.clone(), av.solid_file.clone())));
+        if l.len() > LOOK_MODELS_KEPT {
+            l.remove(0);
+        }
+    });
+}
+
+/// The avatar was read after a change: its model is one kept (shown at once), or Roblox is asked for it.
+fn after_change(r: &mut Root, read: bool, cx: &mut Context<Root>) {
+    let user = r.avatar.of;
+    let key = r.avatar.got.as_ref().and_then(|g| g.as_ref().ok()).filter(|_| read).and_then(|a| a.key());
+    let kept = key.and_then(|key| LOOK_MODELS.with(|l| l.borrow().iter().find(|(u, k, _)| *u == user && *k == key).map(|(_, _, kept)| kept.clone())));
+    let Some((model, file)) = kept else {
+        solid(r, cx);
+        return;
+    };
+    MODELS.with(|m| m.borrow_mut().insert(user, (model.clone(), file.clone())));
+    r.avatar.solid = Some(model);
+    r.avatar.solid_file = file;
+    r.avatar.solid_ask = 0;
+    r.avatar.no_solid = false;
+    r.avatar.swapping = false;
+    draw(r, cx);
+    if lively(&r.avatar) && !r.avatar.spinning {
+        start_spin(r, cx);
+    }
 }
 
 /// How far round the avatar stands when it first shows; it turns to face you from there.
@@ -262,6 +388,8 @@ const TURN_IN: f32 = -0.9;
 fn solid(r: &mut Root, cx: &mut Context<Root>) {
     let Some((_, user, cookie)) = friends::signed(r) else { return };
     r.avatar.asked_solid = true;
+    let ask = ticket();
+    r.avatar.solid_ask = ask;
     let shot = cfg!(feature = "shot") && std::env::var("BLOXKEEP_SHOT_MODEL").is_ok();
     if cookie.is_empty() && !shot {
         r.avatar.no_solid = true;
@@ -271,23 +399,34 @@ fn solid(r: &mut Root, cx: &mut Context<Root>) {
     let blocks = cfg!(feature = "shot") && std::env::var("BLOXKEEP_SHOT_MODEL").is_ok_and(|v| v == "blocks");
     // (Each account's model is kept for the run: coming back to the page, or to the account, shows it at once; Roblox
     // is asked again only after a change of look. "loading khá lâu", the owner, 2026-11-15.)
-    let kept = if std::mem::take(&mut r.avatar.changed_look) { None } else { MODELS.with(|m| m.borrow().get(&user).cloned()) };
-    let rx = roblox::run(move || {
+    let kept = MODELS.with(|m| m.borrow().get(&user).cloned());
+    // (After a change: the model before it, not to be taken for the new one.)
+    let after = Some(r.avatar.solid_file.clone()).filter(|f| r.avatar.swapping && !f.is_empty());
+    let rx = roblox::run(move || -> Option<Kept> {
         if let Some(m) = kept {
             return Some(m);
         }
         #[cfg(feature = "shot")]
         if blocks {
-            return crate::mesh::blocks().map(std::sync::Arc::new);
+            return crate::mesh::blocks().map(|m| (std::sync::Arc::new(m), String::new()));
         }
         let _ = blocks;
-        let s = roblox::solid(&cookie, user).ok()?;
-        crate::mesh::Model::parse(&s.obj, &s.mtl, &s.pictures, s.eye, s.min, s.max).map(std::sync::Arc::new)
+        let s = roblox::solid(&cookie, user, after.as_deref()).ok()?;
+        let model = crate::mesh::Model::parse(&s.obj, &s.mtl, &s.pictures, s.eye, s.min, s.max);
+        if model.is_none() {
+            crate::net::note_failed("Avatar 3D", &s.file, &format!("Roblox's model couldn't be read ({} bytes, {} pictures)", s.obj.len(), s.pictures.len()));
+        }
+        Some((std::sync::Arc::new(model?), s.file))
     });
     cx.spawn(async move |this, cx| {
-        let Some(model) = rx.await.ok().flatten() else {
+        let Some((model, file)) = rx.await.ok().flatten() else {
             let _ = this.update(cx, |r, cx| {
-                if r.avatar.of == user && r.avatar.solid.is_none() {
+                if r.avatar.of == user && r.avatar.solid_ask == ask {
+                    // (After a change, the model before it would show a look no longer worn.)
+                    if std::mem::take(&mut r.avatar.swapping) {
+                        reload_model(r, cx);
+                        r.avatar.asked_solid = true;
+                    }
                     r.avatar.no_solid = true;
                     cx.notify();
                 }
@@ -299,7 +438,7 @@ fn solid(r: &mut Root, cx: &mut Context<Root>) {
         // A model that replaces one (after a change) stands as the old one did; the first turns in to face you.
         let first = this
             .update(cx, |r, cx| {
-                if r.avatar.of != user {
+                if r.avatar.of != user || r.avatar.solid_ask != ask {
                     return false;
                 }
                 let first = r.avatar.solid.is_none();
@@ -309,10 +448,13 @@ fn solid(r: &mut Root, cx: &mut Context<Root>) {
                     if m.len() >= 3 && !m.contains_key(&user) {
                         m.clear();
                     }
-                    m.insert(user, model.clone());
+                    m.insert(user, (model.clone(), file.clone()));
                 });
                 r.avatar.solid = Some(model);
+                r.avatar.solid_file = file;
                 r.avatar.no_solid = false;
+                r.avatar.swapping = false;
+                remember(r);
                 if let Some(y) = fixed {
                     r.avatar.yaw = y;
                 } else if first {
@@ -334,7 +476,7 @@ fn solid(r: &mut Root, cx: &mut Context<Root>) {
             let k = i as f32 / 26.;
             let on = this
                 .update(cx, |r, cx| {
-                    if r.avatar.of != user || r.avatar.drag.is_some() {
+                    if r.avatar.of != user || r.avatar.solid_ask != ask || r.avatar.drag.is_some() {
                         return false;
                     }
                     r.avatar.yaw = TURN_IN * (1. - k).powi(3);
@@ -347,7 +489,7 @@ fn solid(r: &mut Root, cx: &mut Context<Root>) {
             }
         }
         let _ = this.update(cx, |r, cx| {
-            if r.avatar.of == user && lively(&r.avatar) {
+            if r.avatar.of == user && r.avatar.solid_ask == ask && lively(&r.avatar) {
                 start_spin(r, cx);
             }
         });
@@ -391,7 +533,8 @@ fn start_spin(r: &mut Root, cx: &mut Context<Root>) {
                     if !keyed && r.avatar.keys != 0 {
                         r.avatar.keys = 0;
                     }
-                    if !active {
+                    // (Still while the window is behind, unless Settings says it goes on.)
+                    if !active && crate::kit::still_behind() {
                         return true;
                     }
                     let mut changed = false;
@@ -448,6 +591,7 @@ fn set_moving(r: &mut Root, on: bool, cx: &mut Context<Root>) {
 
 fn set_room(r: &mut Root, i: usize, cx: &mut Context<Root>) {
     r.avatar.background = None;
+    r.avatar.studio_override = true;
     r.avatar.room = Some(i);
     crate::prefs::set("avatarRoom", serde_json::Value::String(crate::mesh::ROOMS[i].id.into()));
     draw(r, cx);
@@ -510,7 +654,7 @@ fn save_picture(r: &mut Root, cx: &mut Context<Root>) {
     if r.avatar.saving {
         return;
     }
-    let background = if let Some(selected) = &r.avatar.background {
+    let background = if let Some(selected) = background_of(&r.avatar) {
         let Some(background) = images::pic(&selected.pic, cx) else {
             r.toast = Some((r.tr("av3.backgroundLoading"), "bad".into()));
             cx.notify();
@@ -584,6 +728,17 @@ fn pictures_folder() -> Option<std::path::PathBuf> {
     std::env::var("HOME").ok().map(|h| std::path::PathBuf::from(h).join("Pictures"))
 }
 
+/// Runs one drawing on the shared pool (threads.rs): a thread made for each picture (up to sixty a second while the
+/// avatar turns or is dragged) leaks a little memory in the NVIDIA driver for every thread made, and that adds up to
+/// hundreds of megabytes in an hour. A drawing that panics answers Err, as a failed thread did.
+fn draw_worker(job: impl FnOnce() -> Vec<u8> + Send + 'static) -> futures::channel::oneshot::Receiver<Vec<u8>> {
+    let (tx, rx) = futures::channel::oneshot::channel();
+    crate::threads::run(move || {
+        let _ = tx.send(job());
+    });
+    rx
+}
+
 /// Draws the model as it is looked at now, off the window's thread. One picture at a time: a turn asked for while one
 /// is being drawn is drawn after it.
 fn draw(r: &mut Root, cx: &mut Context<Root>) {
@@ -592,8 +747,7 @@ fn draw(r: &mut Root, cx: &mut Context<Root>) {
         r.avatar.stale = true;
         return;
     }
-    r.avatar.drawing = true;
-    let (view, user) = (view_of(&r.avatar), r.avatar.of);
+    let (view, user, ask) = (view_of(&r.avatar), r.avatar.of, r.avatar.solid_ask);
     // Keep full-quality stills and use fewer pixels while producing a stream of preview frames.
     let size = match (r.avatar.big, lively(&r.avatar) || r.avatar.drag.is_some()) {
         (true, true) => STAGE_BIG_MOVING,
@@ -601,7 +755,14 @@ fn draw(r: &mut Root, cx: &mut Context<Root>) {
         (false, true) => STAGE_MOVING,
         (false, false) => STAGE,
     };
-    let rx = roblox::run(move || model.draw(view, size));
+    // Only drawn when what it shows changes: the window drawn again (a live wallpaper behind, 30 times a second) shows
+    // the picture it has, and a draw asked for the same view of the same model is not made again.
+    let of = (view, size, std::sync::Arc::as_ptr(&model) as usize);
+    if r.avatar.frame.is_some() && r.avatar.frame_of == Some(of) {
+        return;
+    }
+    r.avatar.drawing = true;
+    let rx = draw_worker(move || model.draw(view, size));
     cx.spawn(async move |this, cx| {
         let dots = rx.await.ok();
         let _ = this.update(cx, |r, cx| {
@@ -611,12 +772,22 @@ fn draw(r: &mut Root, cx: &mut Context<Root>) {
                 return;
             }
             r.avatar.drawing = false;
+            // The model was replaced while this picture of the one before it was drawn (after a change: R6 to R15):
+            // the picture is dropped and the new model drawn. Returning here with `drawing` still set let no picture
+            // be drawn ever again, and the box stood frozen on the old body though the new model had come (the owner,
+            // 2026-11-18: "R6 qua R15 vẫn freeze"; since 1.1.2-alpha.9, when a change stopped emptying the box).
+            if r.avatar.solid_ask != ask {
+                r.avatar.stale = false;
+                draw(r, cx);
+                return;
+            }
             if let Some(buffer) = dots.and_then(|dots| image::RgbaImage::from_raw(size as u32, size as u32, dots)) {
                 let new = std::sync::Arc::new(RenderImage::new(vec![image::Frame::new(buffer)]));
                 // (The picture it replaces is taken off the graphics card: a drag draws many.)
                 if let Some(old) = r.avatar.frame.replace(new) {
                     cx.drop_image(old, None);
                 }
+                r.avatar.frame_of = Some(of);
             }
             if r.avatar.stale {
                 r.avatar.stale = false;
@@ -669,37 +840,33 @@ fn shelf_page(r: &mut Root, cx: &mut Context<Root>) {
     let ask = ticket();
     r.avatar.shelf_ask = ask;
     let rx = roblox::run(move || roblox::inventory(&cookie, user, kinds, &cursor));
-    cx.spawn(async move |this, cx| {
-        let got = rx.await.unwrap_or_else(|_| Err(String::new()));
-        let _ = this.update(cx, |r, cx| {
-            // A page for a shelf or an account no longer shown, or overtaken by a newer ask, is dropped.
-            if r.avatar.of != user || r.avatar.reading != Some(shelf) || r.avatar.shelf_ask != ask {
-                return;
+    reply(rx, cx, move |r, got, cx| {
+        // A page for a shelf or an account no longer shown, or overtaken by a newer ask, is dropped.
+        if r.avatar.of != user || r.avatar.reading != Some(shelf) || r.avatar.shelf_ask != ask {
+            return;
+        }
+        r.avatar.reading = None;
+        if r.avatar.shelf != shelf {
+            return;
+        }
+        match (got, &mut r.avatar.owned) {
+            (Ok((page, next)), Some(Ok(have))) => {
+                have.extend(page);
+                r.avatar.next = next;
             }
-            r.avatar.reading = None;
-            if r.avatar.shelf != shelf {
-                return;
+            (Ok((page, next)), _) => {
+                #[cfg(feature = "shot")]
+                let mut page = page;
+                #[cfg(feature = "shot")]
+                crate::near::shot_many(&mut page);
+                r.avatar.owned = Some(Ok(page));
+                r.avatar.next = next;
             }
-            match (got, &mut r.avatar.owned) {
-                (Ok((page, next)), Some(Ok(have))) => {
-                    have.extend(page);
-                    r.avatar.next = next;
-                }
-                (Ok((page, next)), _) => {
-                    #[cfg(feature = "shot")]
-                    let mut page = page;
-                    #[cfg(feature = "shot")]
-                    crate::near::shot_many(&mut page);
-                    r.avatar.owned = Some(Ok(page));
-                    r.avatar.next = next;
-                }
-                (Err(e), Some(Ok(_))) => r.avatar.refused = Some(if e.is_empty() { "Roblox".into() } else { e }),
-                (Err(e), _) => r.avatar.owned = Some(Err(e)),
-            }
-            cx.notify();
-        });
-    })
-    .detach();
+            (Err(e), Some(Ok(_))) => r.avatar.refused = Some(if e.is_empty() { "Roblox".into() } else { e }),
+            (Err(e), _) => r.avatar.owned = Some(Err(e)),
+        }
+        cx.notify();
+    });
 }
 
 fn pick_shelf(r: &mut Root, shelf: usize, cx: &mut Context<Root>) {
@@ -723,24 +890,20 @@ fn outfit_do(r: &mut Root, id: i64, delete: bool, cx: &mut Context<Root>) {
     r.avatar.busy = Some(id);
     cx.notify();
     let rx = roblox::run(move || if delete { roblox::delete_outfit(&cookie, id) } else { roblox::update_outfit(&cookie, id) });
-    cx.spawn(async move |this, cx| {
-        let done = rx.await.unwrap_or_else(|_| Err(String::new()));
-        let _ = this.update(cx, |r, cx| {
-            if r.avatar.of != user {
-                return;
+    reply(rx, cx, move |r, done, cx| {
+        if r.avatar.of != user {
+            return;
+        }
+        r.avatar.busy = None;
+        match done {
+            Ok(()) => {
+                r.toast = Some((r.tr(if delete { "av.outfitDeleted" } else { "av.outfitUpdated" }), "ok".into()));
+                load(r, cx);
             }
-            r.avatar.busy = None;
-            match done {
-                Ok(()) => {
-                    r.toast = Some((r.tr(if delete { "av.outfitDeleted" } else { "av.outfitUpdated" }), "ok".into()));
-                    load(r, cx);
-                }
-                Err(why) => r.toast = Some((r.i18n.tv("rs.failed", &[("why", if why.is_empty() { "Roblox" } else { &why })]), "bad".into())),
-            }
-            cx.notify();
-        });
-    })
-    .detach();
+            Err(why) => r.toast = Some((r.i18n.tv("rs.failed", &[("why", if why.is_empty() { "Roblox" } else { &why })]), "bad".into())),
+        }
+        cx.notify();
+    });
 }
 
 fn save_look(r: &mut Root, cx: &mut Context<Root>) {
@@ -751,24 +914,20 @@ fn save_look(r: &mut Root, cx: &mut Context<Root>) {
     r.avatar.saving_look = true;
     let name = format!("{} {}", r.tr("av.lookName"), crate::time::day_time(crate::time::now_secs()));
     let rx = roblox::run(move || roblox::save_outfit(&cookie, &name));
-    cx.spawn(async move |this, cx| {
-        let done = rx.await.unwrap_or_else(|_| Err(String::new()));
-        let _ = this.update(cx, |r, cx| {
-            if r.avatar.of != user {
-                return;
+    reply(rx, cx, move |r, done, cx| {
+        if r.avatar.of != user {
+            return;
+        }
+        r.avatar.saving_look = false;
+        match done {
+            Ok(()) => {
+                r.toast = Some((r.tr("av.lookSaved"), "ok".into()));
+                load(r, cx);
             }
-            r.avatar.saving_look = false;
-            match done {
-                Ok(()) => {
-                    r.toast = Some((r.tr("av.lookSaved"), "ok".into()));
-                    load(r, cx);
-                }
-                Err(why) => r.toast = Some((r.i18n.tv("rs.failed", &[("why", if why.is_empty() { "Roblox" } else { &why })]), "bad".into())),
-            }
-            cx.notify();
-        });
-    })
-    .detach();
+            Err(why) => r.toast = Some((r.i18n.tv("rs.failed", &[("why", if why.is_empty() { "Roblox" } else { &why })]), "bad".into())),
+        }
+        cx.notify();
+    });
 }
 
 fn load(r: &mut Root, cx: &mut Context<Root>) {
@@ -777,22 +936,43 @@ fn load(r: &mut Root, cx: &mut Context<Root>) {
     let ask = ticket();
     r.avatar.load_ask = ask;
     let rx = roblox::run(move || roblox::avatar(user));
-    cx.spawn(async move |this, cx| {
-        let got = rx.await.unwrap_or_else(|_| Err(String::new()));
-        let _ = this.update(cx, |r, cx| {
-            if r.avatar.of == user && r.avatar.load_ask == ask {
-                // A read that fails after a change keeps what was shown.
-                if got.is_ok() || !matches!(r.avatar.got, Some(Ok(_))) {
-                    r.avatar.got = Some(got);
-                }
-                r.avatar.loading = false;
-                r.avatar.busy = None;
-                price(r, cx);
-                cx.notify();
+    reply(rx, cx, move |r, got, cx| {
+        if r.avatar.of == user && r.avatar.load_ask == ask {
+            // A read that fails after a change keeps what was shown.
+            let read = got.is_ok();
+            if read || !matches!(r.avatar.got, Some(Ok(_))) {
+                r.avatar.got = Some(got);
             }
-        });
-    })
-    .detach();
+            r.avatar.loading = false;
+            r.avatar.busy = None;
+            // (After a change the model waits for this read: the look may be one whose model is kept.)
+            if r.avatar.swapping {
+                after_change(r, read, cx);
+            } else {
+                remember(r);
+            }
+            price(r, cx);
+            cx.notify();
+        }
+    });
+}
+
+fn reload_model(r: &mut Root, cx: &mut Context<Root>) {
+    let avatar = &mut r.avatar;
+    MODELS.with(|models| models.borrow_mut().remove(&avatar.of));
+    LOOK_MODELS.with(|l| l.borrow_mut().retain(|(user, ..)| *user != avatar.of));
+    avatar.solid_file.clear();
+    avatar.asked_solid = false;
+    avatar.solid_ask = 0;
+    avatar.no_solid = false;
+    avatar.solid = None;
+    avatar.drawing = false;
+    avatar.stale = false;
+    avatar.spin_run += 1;
+    avatar.spinning = false;
+    if let Some(old) = avatar.frame.take() {
+        cx.drop_image(old, None);
+    }
 }
 
 fn again(r: &mut Root, cx: &mut Context<Root>) {
@@ -806,7 +986,9 @@ fn again(r: &mut Root, cx: &mut Context<Root>) {
             r.avatar.next.clear();
         }
         r.avatar.worth_of.clear();
+        reload_model(r, cx);
         load(r, cx);
+        load_profile_background(r, cx);
         cx.notify();
     }
 }
@@ -829,6 +1011,26 @@ fn change(r: &mut Root, what: Change, cx: &mut Context<Root>) {
         _ => None,
     };
     r.avatar.refused = None;
+    // A new skin shows at once on the model already here (mesh::Model::recoloured), the swatch picked with it; Roblox's
+    // own model of it replaces this one when it is made (seconds later).
+    let recolour = matches!(what, Change::Colour(_));
+    let mut repainted = None;
+    if let (Change::Colour(hex), Some(Ok(a))) = (&what, r.avatar.got.as_mut()) {
+        let rgb = |h: &str| u32::from_str_radix(h, 16).ok().map(|v| [(v >> 16) as u8, (v >> 8) as u8, v as u8]);
+        let mut from: Vec<[u8; 3]> = a.body.iter().filter_map(|h| rgb(h)).collect();
+        from.extend(rgb(&a.colour));
+        if let (Some(to), Some(model)) = (rgb(hex), r.avatar.solid.clone()) {
+            let new = std::sync::Arc::new(model.recoloured(&from, to));
+            MODELS.with(|m| m.borrow_mut().insert(user, (new.clone(), r.avatar.solid_file.clone())));
+            repainted = Some(new);
+        }
+        a.colour = hex.clone();
+        a.body = vec![hex.clone(); 6];
+    }
+    if let Some(new) = repainted {
+        r.avatar.solid = Some(new);
+        draw(r, cx);
+    }
     cx.notify();
     let rx = roblox::run(move || {
         let done = match &what {
@@ -846,31 +1048,33 @@ fn change(r: &mut Root, what: Change, cx: &mut Context<Root>) {
         }
         done
     });
-    cx.spawn(async move |this, cx| {
-        let done = rx.await.unwrap_or_else(|_| Err(String::new()));
-        let _ = this.update(cx, |r, cx| {
-            if r.avatar.of != user {
-                return;
+    reply(rx, cx, move |r, done, cx| {
+        if r.avatar.of != user {
+            return;
+        }
+        match done {
+            // The model on screen stays (a new skin already repainted on it) while Roblox's new one is asked for, and
+            // is replaced in place, turned as it stood: emptying the box first made R6/R15 and every change blink.
+            // (The new model is asked for once the avatar is read again, load: after_change.)
+            Ok(()) => {
+                MODELS.with(|m| m.borrow_mut().remove(&user));
+                r.avatar.asked_solid = true;
+                r.avatar.solid_ask = 0;
+                r.avatar.swapping = true;
+                load(r, cx)
             }
-            match done {
-                Ok(()) => {
-                    r.avatar.asked_solid = false;
-                    r.avatar.changed_look = true;
-                    load(r, cx)
-                }
-                Err(why) => {
-                    r.avatar.busy = None;
-                    r.avatar.refused = Some(if why.is_empty() { "Roblox".into() } else { why });
+            Err(why) => {
+                r.avatar.busy = None;
+                r.avatar.refused = Some(if why.is_empty() { "Roblox".into() } else { why });
+                // (The skin shown at once wasn't taken: Roblox's own look again.)
+                if recolour {
+                    reload_model(r, cx);
+                    load(r, cx);
                 }
             }
-            cx.notify();
-        });
-    })
-    .detach();
-}
-
-fn note(text: String) -> Div {
-    div().flex_1().flex().items_center().justify_center().text_size(px(T_M)).text_color(c(MUTED)).child(text)
+        }
+        cx.notify();
+    });
 }
 
 pub fn picture(url: &str, cx: &mut App) -> Option<std::sync::Arc<Image>> {
@@ -901,7 +1105,7 @@ pub fn avatar(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoEleme
         friends::need_account(root, "av-add-acc", "av.noAccount", "user", cx)
     } else {
         match &av.got {
-            None => note(root.tr("av.loading")).into_any_element(),
+            None => empty_note(root.tr("av.loading")).into_any_element(),
             Some(Err(why)) => div()
                 .flex_1()
                 .flex()
@@ -909,7 +1113,7 @@ pub fn avatar(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoEleme
                 .items_center()
                 .justify_center()
                 .gap(px(14.))
-                .child(div().text_size(px(T_M)).text_color(c(MUTED)).child(root.i18n.tv("av.failed", &[("why", if why.is_empty() { "Roblox" } else { why })])))
+                .child(div().text_size(px(T_M)).text_color(c(MUTED)).child(root.i18n.tv("av.failed", &[("why", crate::net::why_words(&root.i18n, why).as_str())])))
                 .child(Button::new("av-retry", root.tr("fr.retry")).icon("refresh").on_click(cx.listener(|r, _, _, cx| again(r, cx))))
                 .into_any_element(),
             Some(Ok(a)) => filled(root, a, width, cx).into_any_element(),
@@ -919,11 +1123,31 @@ pub fn avatar(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoEleme
 }
 
 /// The avatar's square: with depth once Roblox's model is in (a drag turns and tilts it, the wheel brings it nearer,
+/// A word over the stage's corner: its model on its way (with a turning mark), or none to be had.
+fn stage_note(words: String, coming: bool) -> Div {
+    div()
+        .absolute()
+        .top(px(12.))
+        .left(px(12.))
+        .flex()
+        .items_center()
+        .gap(px(6.))
+        .px(px(8.))
+        .py(px(4.))
+        .rounded(px(R_S))
+        .bg(ca(GROUND, 0.74))
+        .text_size(px(T_S))
+        .text_color(on_picture(0.92))
+        .when(coming, |d| d.child(spinner(12., on_picture(0.92))))
+        .child(words)
+}
+
 /// a double click puts it back; its controls over it), else Roblox's flat picture.
 fn stage(root: &Root, a: &Avatar, side: f32, cx: &mut Context<Root>) -> Stateful<Div> {
     let av = &root.avatar;
-    let room = &crate::mesh::ROOMS[if av.background.is_some() { 0 } else { room_of(av) }];
-    let background = av.background.as_ref().and_then(|asset| images::pic_pair(&asset.pic, side, side, cx));
+    let selected = background_of(av);
+    let room = &crate::mesh::ROOMS[if selected.is_some() { 0 } else { room_of(av) }];
+    let background = selected.and_then(|asset| images::pic_pair(&asset.pic, side, side, cx));
     let big = av.big;
     let d = div()
         .id(if big { "av-stage-big" } else { "av-stage" })
@@ -942,13 +1166,14 @@ fn stage(root: &Root, a: &Avatar, side: f32, cx: &mut Context<Root>) -> Stateful
     let Some(frame) = av.frame.clone() else {
         // Roblox's flat picture, and while its model is on its way, a word that it is.
         let coming = !av.no_solid && friends::signed(root).is_some_and(|(_, _, c)| !c.is_empty());
-        return d.bg(c(INSET)).when_some(picture(&a.pic, cx), |d, p| d.child(fade_in(img(p.clone()).h_full().object_fit(ObjectFit::Contain), &p))).when(coming, |d| {
-            d.child(div().absolute().top(px(12.)).left(px(14.)).text_size(px(T_S)).text_color(c(MUTED)).child(root.tr("av3.loading")))
-        });
+        return d.bg(c(INSET)).when_some(picture(&a.pic, cx), |d, p| d.child(fade_in(img(p.clone()).h_full().object_fit(ObjectFit::Contain), &p)))
+            .when(coming || av.no_solid, |d| d.child(stage_note(root.tr(if coming { "av3.loading" } else { "av3.fallback" }), coming)));
     };
     let glass = |id: &'static str, icon: &'static str, tip: String| IconButton::new(id, icon).size(30.).glass().tip(tip);
     d.cursor(if av.drag.is_some() { CursorStyle::ClosedHand } else { CursorStyle::OpenHand })
         .child(img(frame).size_full().object_fit(ObjectFit::Contain))
+        // (After a change the model before it stays up until Roblox's new one replaces it: said here.)
+        .when(av.swapping, |d| d.child(stage_note(root.tr("av3.loading"), true)))
         // Clicked, it takes the keys: W A S D or the arrows walk the avatar (mesh::Model::step).
         .track_focus(&root.avatar_focus)
         .on_key_down(cx.listener(|r, e: &KeyDownEvent, _, cx| {
@@ -1078,8 +1303,21 @@ fn stage(root: &Root, a: &Avatar, side: f32, cx: &mut Context<Root>) -> Stateful
 
 /// The rooms to stand the avatar in, each a little picture of its wall over its floor; the picked one ringed yellow.
 fn rooms_row(root: &Root, cx: &mut Context<Root>) -> Div {
-    let picked = room_of(&root.avatar);
-    div().flex().flex_wrap().gap(px(6.)).children(crate::mesh::ROOMS.iter().enumerate().map(|(i, room)| {
+    let av = &root.avatar;
+    let picked = room_of(av);
+    let roblox_background = av.background.is_none() && !av.studio_override;
+    div().flex().flex_wrap().items_center().gap(px(6.))
+        .when(av.profile_background.is_some(), |d| d.child(
+            chip("av3-profile-background", roblox_background).h(px(30.))
+                .child(root.tr("av3.profileBackground"))
+                .on_click(cx.listener(|r, _, _, cx| {
+                    r.avatar.background = None;
+                    r.avatar.studio_override = false;
+                    draw(r, cx);
+                    cx.notify();
+                }))
+        ))
+        .children(crate::mesh::ROOMS.iter().enumerate().map(|(i, room)| {
         let tip: SharedString = root.tr(&format!("av3.room.{}", room.id)).into();
         let swatch = div().size_full().rounded(px(R_S)).overflow_hidden().border_1().border_color(c(LINE)).flex().flex_col().map(|d| {
             if room.wall == 0 {
@@ -1093,7 +1331,7 @@ fn rooms_row(root: &Root, cx: &mut Context<Root>) -> Div {
             .p(px(3.))
             .rounded(px(R_S + 3.))
             .border_2()
-            .border_color(if i == picked && root.avatar.background.is_none() { c(FACE) } else { gpui_kit::transparent_black() })
+            .border_color(if i == picked && background_of(av).is_none() { c(FACE) } else { gpui_kit::transparent_black() })
             .cursor_pointer()
             .child(swatch)
             .tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into())
@@ -1119,7 +1357,11 @@ fn filled(root: &Root, a: &Avatar, width: f32, cx: &mut Context<Root>) -> AnyEle
         // 2026-11-15): the window's height less its bars, the tabs and this page's header.
         let fits = (root.window_h.get() - 290.).max(280.);
         let stage_side = if side_by { (inner - 300. - 24.).clamp(360., 780.).min(fits.max(360.)) } else { inner.min(560.).min(fits) };
-        let room_word = root.tr(&format!("av3.room.{}", crate::mesh::ROOMS[room_of(av)].id));
+        let room_word = match background_of(av) {
+            Some(_) if av.background.is_none() => root.tr("av3.profileBackground"),
+            Some(owned) => owned.name.clone(),
+            None => root.tr(&format!("av3.room.{}", crate::mesh::ROOMS[room_of(av)].id)),
+        };
         let panel = surface()
             .w(px(if side_by { 300. } else { stage_side }))
             .flex_none()
@@ -1205,7 +1447,7 @@ fn filled(root: &Root, a: &Avatar, width: f32, cx: &mut Context<Root>) -> AnyEle
         .flex_col()
         .gap(px(12.))
         .child(div().w_full().flex().justify_center().child(stage(root, a, if wide { side - 28. } else { (side - 28.).min(420.) }, cx)))
-        .when(av.frame.is_some(), |d| d.child(div().flex().items_center().gap(px(10.)).child(div().text_size(px(T_S)).text_color(c(MUTED)).child(root.tr("av3.rooms"))).child(rooms_row(root, cx))))
+        .when(av.frame.is_some(), |d| d.child(div().flex().flex_wrap().items_center().gap(px(8.)).child(div().text_size(px(T_S)).text_color(c(MUTED)).child(root.tr("av3.rooms"))).child(rooms_row(root, cx))))
         .children(worth(root, a))
         .child(body(root, a, cx));
 
@@ -1314,7 +1556,7 @@ fn filled(root: &Root, a: &Avatar, width: f32, cx: &mut Context<Root>) -> AnyEle
                                         }
                                     })),
                             );
-                        more = more.child(div().absolute().top(px(30.)).right_0().child(deferred(anchored().snap_to_window_with_margin(px(8.)).child(pop(format!("av-of-pop-{id}"), open, menu))).with_priority(1)));
+                        more = more.child(popup(PopAt::BelowRight(30.), format!("av-of-pop-{id}"), open, menu));
                     }
                     d.child(more)
                 })
@@ -1531,7 +1773,7 @@ fn shelves(root: &Root, a: &Avatar, tile_w: f32, cx: &mut Context<Root>) -> impl
     let said = |text: String| div().text_size(px(T_M)).text_color(c(MUTED)).child(text);
     let body: AnyElement = match &av.owned {
         None => waiting_tiles(10, tile_w, TGAP).into_any_element(),
-        Some(Err(why)) => said(root.i18n.tv("av.shelfFailed", &[("why", if why.is_empty() { "Roblox" } else { why })])).into_any_element(),
+        Some(Err(why)) => said(root.i18n.tv("av.shelfFailed", &[("why", crate::net::why_words(&root.i18n, why).as_str())])).into_any_element(),
         Some(Ok(l)) if l.is_empty() => said(root.tr("av.shelfEmpty")).into_any_element(),
         Some(Ok(l)) => {
             let key = crate::near::sig((av.shelf, l.len(), l.first().map(|o| o.id)));
@@ -1627,7 +1869,6 @@ fn frame(w: f32, name: String, busy: bool, fill: impl FnOnce(Div) -> Div) -> Div
         .child(div().flex_1())
 }
 
-
 // ───────────────────────── one thing changed in many outfits ─────────────────────────
 
 /// Changing one thing in many saved outfits: the outfits' things (read when it opens), the thing to change, what goes
@@ -1655,19 +1896,15 @@ fn open_swap(r: &mut Root, cx: &mut Context<Root>) {
     r.avatar.swap = Some(Swap::default());
     cx.notify();
     let rx = roblox::run(move || roblox::outfit_parts(&cookie, &outfits));
-    cx.spawn(async move |this, cx| {
-        let got = rx.await.unwrap_or_else(|_| Err(String::new()));
-        let _ = this.update(cx, |r, cx| {
-            if r.avatar.of != user {
-                return;
-            }
-            if let Some(sw) = r.avatar.swap.as_mut() {
-                sw.parts = Some(got);
-                cx.notify();
-            }
-        });
-    })
-    .detach();
+    reply(rx, cx, move |r, got, cx| {
+        if r.avatar.of != user {
+            return;
+        }
+        if let Some(sw) = r.avatar.swap.as_mut() {
+            sw.parts = Some(got);
+            cx.notify();
+        }
+    });
 }
 
 /// The thing to change is picked: what else of its kind is owned is asked, and every outfit with it is ticked.
@@ -1683,16 +1920,12 @@ fn pick_from(r: &mut Root, id: i64, kind: i64, cx: &mut Context<Root>) {
     sw.skip.clear();
     cx.notify();
     let rx = roblox::run(move || roblox::owned_of_kind(&cookie, user, kind));
-    cx.spawn(async move |this, cx| {
-        let got = rx.await.unwrap_or_else(|_| Err(String::new()));
-        let _ = this.update(cx, |r, cx| {
-            if let Some(sw) = r.avatar.swap.as_mut().filter(|sw| sw.from == Some(id)) {
-                sw.owned = Some(got);
-                cx.notify();
-            }
-        });
-    })
-    .detach();
+    reply(rx, cx, move |r, got, cx| {
+        if let Some(sw) = r.avatar.swap.as_mut().filter(|sw| sw.from == Some(id)) {
+            sw.owned = Some(got);
+            cx.notify();
+        }
+    });
 }
 
 /// The change made in every ticked outfit with the thing, one after another (Roblox's limits), then the avatar read
@@ -1882,7 +2115,7 @@ fn swap_panel(root: &Root, w: f32, cx: &mut Context<Root>) -> impl IntoElement {
         );
     let parts = match &sw.parts {
         None => return panel.child(div().text_size(px(T_M)).text_color(c(MUTED)).child(root.tr("sw.reading"))),
-        Some(Err(why)) => return panel.child(div().text_size(px(T_M)).text_color(c(WARN)).child(root.i18n.tv("av.failed", &[("why", if why.is_empty() { "Roblox" } else { why })]))),
+        Some(Err(why)) => return panel.child(div().text_size(px(T_M)).text_color(c(WARN)).child(root.i18n.tv("av.failed", &[("why", crate::net::why_words(&root.i18n, why).as_str())]))),
         Some(Ok(p)) => p,
     };
     // 1: the things the outfits hold, each once, those in the most outfits first.

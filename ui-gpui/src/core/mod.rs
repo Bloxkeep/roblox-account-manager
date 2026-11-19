@@ -57,11 +57,14 @@ pub mod roblox_input;
 pub mod capacity;
 pub mod roblox_installs;
 pub mod roblox_launcher;
+pub mod roblox_links;
 pub mod roblox_mods;
 pub mod roblox_crash_info;
 pub mod roblox_log_watcher;
 pub mod roblox_processes;
 pub mod roblox_usage;
+pub mod server_regions;
+pub mod game_codes;
 pub mod roblox_watch;
 pub mod rt;
 pub mod selftest;
@@ -71,9 +74,12 @@ pub mod start_with_windows;
 pub mod summary_card;
 pub mod system_memory;
 pub mod taskbar_groups;
+// (The suites make threads of their own on purpose: test servers, a second program waiting; clippy.toml.)
+#[allow(clippy::disallowed_methods)]
 pub mod tests;
 pub mod themes;
 pub mod totp;
+pub mod tool_page;
 pub mod tray_window;
 pub mod ui;
 pub mod vault;

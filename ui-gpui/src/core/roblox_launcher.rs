@@ -233,53 +233,156 @@ pub fn launch(ticket: &str, target: Option<&GameTarget>, launch_via: &str, custo
             start_in_store_package(&exe, &uri)?;
         }
         _ => {
-            if !links_open() {
-                // No handler, yet a client may remain: another Roblox's uninstaller takes the links with it (seen
-                // 2026-10-19: VNG installed over Bloxstrap, then removed). Whatever is left opens it.
-                if let Some((exe, args)) = fallback_launcher() {
-                    log::note(&format!(
-                        "Roblox start: no usable roblox-player link handler; opened with {} ({}) instead.",
-                        file_name(&exe),
-                        file_name(&dir_name(&exe).unwrap_or_default())
-                    ));
-                    let mut all: Vec<&str> = args.iter().map(String::as_str).collect();
-                    all.push(&uri);
-                    start(&exe, &all)?;
-                    return Ok(tracker);
-                }
-                // A FileNotFoundException, like the other options' "not installed": its sentence is shown as it is.
-                if let Some(vng) = installs::protocol_handler_path()
-                    && installs::is_vng_client(&vng)
-                {
-                    return Err(not_found(l::t(
-                        "Only Roblox VNG is installed. Choose Roblox VNG under Settings › Launching › Open Roblox with, or install Roblox from roblox.com/download.",
-                    )));
-                }
-                return Err(not_found(if installs::store_edition_installed() {
-                    l::t("Only Roblox from the Microsoft Store is installed. Choose it under Settings › Launching › Open Roblox with, or install Roblox from roblox.com/download.")
-                } else {
-                    l::t("Roblox isn't installed. Install it from roblox.com/download, then try again.")
-                }));
-            }
-            // The links on another channel's build with Roblox's live one installed beside it: that one, as Windows would
-            // start the links' (roblox_installs::LIVE_BUILD: the other would update and close every Roblox window open).
-            if let Some(links) = installs::usable_handler_path().filter(|h| eq_ci(&file_name(h), "RobloxPlayerBeta.exe"))
-                && let Some(live) = installs::live_beside(Some(links.clone())).filter(|live| !eq_ci(live, &links))
-            {
-                log::note(&format!(
-                    "Roblox start: the links open build {}; started Roblox's live build {} instead.",
-                    file_name(&dir_name(&links).unwrap_or_default()),
-                    file_name(&dir_name(&live).unwrap_or_default())
-                ));
-                start(&live, &[&uri])?;
-                return Ok(tracker);
-            }
-            note_links();
-            // Not in Bloxkeep's folder (see Program.Main): the launcher may keep running as long as Roblox does.
-            shell_open(&uri)?;
+            open_auto(&uri)?;
         }
     }
     Ok(tracker)
+}
+
+/// Default: whatever Windows opens roblox-player: links with. Returns the program's name (for error.log).
+fn open_auto(uri: &str) -> Res<String> {
+        if !links_open() {
+            // No handler, yet a client may remain: another Roblox's uninstaller takes the links with it (seen
+            // 2026-10-19: VNG installed over Bloxstrap, then removed). Whatever is left opens it.
+            if let Some((exe, args)) = fallback_launcher() {
+                log::note(&format!(
+                    "Roblox start: no usable roblox-player link handler; opened with {} ({}) instead.",
+                    file_name(&exe),
+                    file_name(&dir_name(&exe).unwrap_or_default())
+                ));
+                let mut all: Vec<&str> = args.iter().map(String::as_str).collect();
+                all.push(uri);
+                start(&exe, &all)?;
+                return Ok(file_name(&exe));
+            }
+            // A FileNotFoundException, like the other options' "not installed": its sentence is shown as it is.
+            if let Some(vng) = installs::protocol_handler_path()
+                && installs::is_vng_client(&vng)
+            {
+                return Err(not_found(l::t(
+                    "Only Roblox VNG is installed. Choose Roblox VNG under Settings › Launching › Open Roblox with, or install Roblox from roblox.com/download.",
+                )));
+            }
+            return Err(not_found(if installs::store_edition_installed() {
+                l::t("Only Roblox from the Microsoft Store is installed. Choose it under Settings › Launching › Open Roblox with, or install Roblox from roblox.com/download.")
+            } else {
+                l::t("Roblox isn't installed. Install it from roblox.com/download, then try again.")
+            }));
+        }
+        // The links on another channel's build with Roblox's live one installed beside it: that one, as Windows would
+        // start the links' (roblox_installs::LIVE_BUILD: the other would update and close every Roblox window open).
+        if let Some(links) = installs::usable_handler_path().filter(|h| eq_ci(&file_name(h), "RobloxPlayerBeta.exe"))
+            && let Some(live) = installs::live_beside(Some(links.clone())).filter(|live| !eq_ci(live, &links))
+        {
+            log::note(&format!(
+                "Roblox start: the links open build {}; started Roblox's live build {} instead.",
+                file_name(&dir_name(&links).unwrap_or_default()),
+                file_name(&dir_name(&live).unwrap_or_default())
+            ));
+            start(&live, &[uri])?;
+            return Ok(file_name(&live));
+        }
+    // Bloxkeep holds the links (roblox_links): the program it replaced, never the link again (that would start Bloxkeep).
+    if crate::core::roblox_links::held() {
+        return start_before(uri);
+    }
+    note_links();
+    // Not in Bloxkeep's folder (see Program.Main): the launcher may keep running as long as Roblox does.
+    shell_open(uri)?;
+    Ok("the link's handler".into())
+}
+
+/// A link from the website, Bloxkeep holding the links (roblox_links::open): Roblox opens the way Default opens it,
+/// a handler missing its DLL passed over as a launch does. Returns the program's name (for error.log).
+pub fn open_link(uri: &str) -> Res<String> {
+    if installs::handler_broken()
+        && let Some(exe) = installs::find_any_client()
+    {
+        log::note("Roblox start: the link handler's Roblox is missing RobloxPlayerBeta.dll; opened directly instead.");
+        start(&exe, &[uri])?;
+        return Ok(file_name(&exe));
+    }
+    if let Some(exe) = link_mods_client() {
+        start(&exe, &[uri])?;
+        return Ok(format!("Bloxkeep's copy with the mods ({})", file_name(&exe)));
+    }
+    open_auto(uri)
+}
+
+/// A link from the website with mods on (Roblox › Mods): Bloxkeep's copy of Roblox's build with them, as the windows
+/// Bloxkeep opens get. Only when the links were Roblox's own before (a Bloxstrap-style launcher lays its own mods), and
+/// only on Roblox's live build, asked from Roblox now (the copy has no updater: a build behind would never update).
+/// Unanswered, or Roblox's build behind: Roblox opens as before and updates itself; the mods come with the next link.
+/// Fast Flags: none of Bloxkeep's, as the main account (the person plays this one); their own file comes along.
+fn link_mods_client() -> Option<String> {
+    if crate::modstore::wanted().is_empty() {
+        return None;
+    }
+    let before = crate::core::roblox_links::before()?;
+    if !installs::is_roblox_own(&installs::exe_of_command(&before)?) {
+        return None;
+    }
+    let live = match crate::core::roblox_api::get_latest_client_version(&crate::core::base::Cancel::new()) {
+        Ok(Some(v)) if !v.folder.is_empty() => v.folder,
+        Ok(_) => {
+            log::note("Roblox links: Roblox didn't say its live build; this link opens without mods.");
+            return None;
+        }
+        Err(e) => {
+            log::note(&format!("Roblox links: Roblox's live build couldn't be asked ({e}); this link opens without mods."));
+            return None;
+        }
+    };
+    installs::set_live_build(Some(live));
+    let client = installs::live_beside(installs::find_official_client());
+    crate::core::roblox_mods::mod_copy(client.as_deref())
+}
+
+/// The command Bloxkeep replaced, run for the link as Windows would have run it ("%1" the link); with none, whatever
+/// Roblox is left here.
+fn start_before(uri: &str) -> Res<String> {
+    let parts = crate::core::roblox_links::before().and_then(|c| split_command(&c)).filter(|(exe, _)| installs::file_exists(exe));
+    let (exe, args) = match parts {
+        Some(p) => p,
+        None => {
+            let (exe, mut args) = fallback_launcher().ok_or_else(|| not_found(l::t("Roblox isn't installed. Install it from roblox.com/download, then try again.")))?;
+            args.push("%1".into());
+            (exe, args)
+        }
+    };
+    let args: Vec<String> = args.into_iter().map(|a| a.replace("%1", uri)).collect();
+    let refs: Vec<&str> = args.iter().map(String::as_str).collect();
+    start(&exe, &refs)?;
+    Ok(file_name(&exe))
+}
+
+/// A registry command as its program and its arguments, quotes taken off ("\"C:\…\Bloxstrap.exe\" -player \"%1\"").
+fn split_command(command: &str) -> Option<(String, Vec<String>)> {
+    let exe = installs::exe_of_command(command)?;
+    let rest = command.trim();
+    let rest = if let Some(r) = rest.strip_prefix('"') { &r[r.find('"')? + 1..] } else { &rest[exe.len().min(rest.len())..] };
+    let mut args = Vec::new();
+    let mut cur = String::new();
+    let (mut quoted, mut any) = (false, false);
+    for ch in rest.chars() {
+        match ch {
+            '"' => {
+                quoted = !quoted;
+                any = true;
+            }
+            c if c.is_whitespace() && !quoted => {
+                if any || !cur.is_empty() {
+                    args.push(std::mem::take(&mut cur));
+                }
+                any = false;
+            }
+            c => cur.push(c),
+        }
+    }
+    if any || !cur.is_empty() {
+        args.push(cur);
+    }
+    Some((exe, args))
 }
 
 // ───────── Starts through the links ─────────
@@ -389,7 +492,7 @@ fn start_in_store_package(exe: &str, uri: &str) -> Res<()> {
     let mut shell = cmd.spawn().map_err(|_| not_found(l::t("Couldn't start Roblox from the Microsoft Store.")))?;
     // Not waited for (a second or two): a failure goes to the log, and the window that doesn't come is reported as usual.
     let stderr = shell.stderr.take();
-    std::thread::spawn(move || {
+    crate::threads::run(move || {
         let mut error = String::new();
         if let Some(stderr) = stderr {
             for line in std::io::BufReader::new(stderr).lines().map_while(Result::ok) {
@@ -417,4 +520,34 @@ fn system_directory() -> String {
         return r"C:\Windows\System32".into();
     }
     String::from_utf16_lossy(&buf[..n as usize])
+}
+
+#[cfg(test)]
+mod link_tests {
+    use super::split_command;
+    use crate::core::roblox_links::{is_ours, valid};
+
+    #[test]
+    fn commands_split_as_windows_runs_them() {
+        let (exe, args) = split_command(r#""C:\Users\A B\AppData\Local\Bloxstrap\Bloxstrap.exe" -player "%1""#).unwrap();
+        assert_eq!(exe, r"C:\Users\A B\AppData\Local\Bloxstrap\Bloxstrap.exe");
+        assert_eq!(args, vec!["-player", "%1"]);
+        let (exe, args) = split_command(r#""C:\R\Versions\version-1\RobloxPlayerBeta.exe" %1"#).unwrap();
+        assert_eq!(exe, r"C:\R\Versions\version-1\RobloxPlayerBeta.exe");
+        assert_eq!(args, vec!["%1"]);
+        let (exe, args) = split_command(r"C:\Program Files\Fishstrap\Fishstrap.exe -player %1").unwrap();
+        assert_eq!(exe, r"C:\Program Files\Fishstrap\Fishstrap.exe");
+        assert_eq!(args, vec!["-player", "%1"]);
+    }
+
+    #[test]
+    fn only_website_links_are_taken() {
+        assert!(valid("roblox-player:1+launchmode:play+gameinfo:abc+launchtime:1+placelauncherurl:https%3A%2F%2Fx"));
+        assert!(!valid("roblox:experiences/start?placeId=1"));
+        assert!(!valid("roblox-player:1 --evil"));
+        assert!(!valid("roblox-player:1\"x"));
+        assert!(!valid(&format!("roblox-player:{}", "a".repeat(9000))));
+        assert!(is_ours(r#""C:\B\Bloxkeep.exe" --roblox-link "%1""#));
+        assert!(!is_ours(r#""C:\R\RobloxPlayerBeta.exe" %1"#));
+    }
 }

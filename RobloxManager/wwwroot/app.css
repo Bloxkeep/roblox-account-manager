@@ -6535,6 +6535,9 @@ body.browser-page { background: linear-gradient(var(--bg), var(--bg)), linear-gr
 .bw-list { display: flex; align-items: flex-end; gap: var(--sp-1); flex: 0 1 auto; min-width: 0; height: 100%; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
 .bw-tab { position: relative; display: flex; align-items: center; flex: 0 1 auto; width: 220px; min-width: 48px; height: 34px; border-radius: var(--r-sm) var(--r-sm) 0 0; color: var(--text-2); container: bw-tab / inline-size; }
 .bw-tab:hover { background: var(--hover); color: var(--text); }
+.bw-tab { user-select: none; touch-action: none; }
+.bw-list.dragging .bw-tab { transition: transform 150ms ease; }
+.bw-list.dragging .bw-tab.held { transition: none; z-index: 1; }
 .bw-tab.on { flex-shrink: 0; min-width: 132px; background: var(--bw-bar); color: var(--text); box-shadow: inset 1px 1px 0 var(--line-2), inset -1px 0 0 var(--line-2); }
 .bw-pick { display: flex; align-items: center; gap: var(--sp-3); flex: 1; min-width: 0; height: 100%; padding: 0 30px 0 10px; border: 0; border-radius: inherit; background: none; color: inherit; text-align: left; cursor: default; }
 .bw-av { display: grid; place-items: center; width: 20px; height: 20px; flex: none; overflow: hidden; border-radius: 50%; background: var(--surface-3); color: var(--muted); }

@@ -569,7 +569,18 @@ impl App {
             let app = self.clone();
             rt::spawn(async move {
                 loop {
-                    rt::sleep(Duration::from_millis(app.controller.proc_interval_ms.get())).await;
+                    // Waited in short steps: the time between checks may be shortened meanwhile (a launch starts
+                    // while the app idles at 4 s, and its window must not wait those out).
+                    let mut waited = 0u64;
+                    loop {
+                        let want = app.controller.proc_interval_ms.get();
+                        if waited >= want {
+                            break;
+                        }
+                        let step = (want - waited).min(250);
+                        rt::sleep(Duration::from_millis(step)).await;
+                        waited += step;
+                    }
                     if app.controller.disposed.get() {
                         break;
                     }
@@ -800,6 +811,7 @@ impl App {
         match cmd {
             "getState" => done(self.initial_state()),
             "vngPanel" => self.vng_panel(id_of(a), str_of(a, "panel")).await,
+            "vngSet" => self.vng_set(id_of(a), str_of(a, "what"), str_of(a, "value")).await,
             "console" => {
                 let since = a.get("version").and_then(Value::as_u64).unwrap_or(u64::MAX);
                 Ok(match log::console_lines(since) {
@@ -838,6 +850,7 @@ impl App {
             )),
             "pickThemePicture" => done(self.pick_theme_picture().await),
             "clearThemePicture" => done(self.clear_theme_picture()),
+            "useWallpaperEngine" => done(self.use_wallpaper_engine(&str_of(a, "path"), &str_of(a, "accent"))),
             "saveTheme" => done(self.save_theme(&str_of(a, "name"))),
             "useSavedTheme" => done(self.use_saved_theme(&str_of(a, "id"))),
             "deleteSavedTheme" => done(self.delete_saved_theme(&str_of(a, "id"))),
@@ -890,6 +903,7 @@ impl App {
             "cancelRejoin" => done(self.cancel_rejoin(id_of(a))),
             "setUseRobloxConfig" => done(self.set_use_roblox_config(&ids_of(a), bool_of(a, "enabled"))),
             "setFpsCap" => done(self.set_fps_cap(&ids_of(a), long_of(a, "fps").clamp(0, i32::MAX as i64) as i32)),
+            "setGroup" => done(self.set_group(&ids_of(a), &str_of(a, "group"))),
             "setMain" => done(self.set_main(&ids_of(a), bool_of(a, "on"))),
             "makeFriends" => done(self.make_friends(&ids_of(a)).await),
             "friendAct" => done(self.friend_act(a).await),
@@ -913,6 +927,15 @@ impl App {
             "gameSocialLinks" => done(self.game_social_links(long_of(a, "universeId"), id_of(a)).await),
             "openGameWiki" => done(App::open_game_wiki(&str_of(a, "name"))),
             "openGamePage" => done(App::open_game_page(long_of(a, "placeId"))),
+            "serverRegions" => done(self.server_regions(long_of(a, "placeId"), &ids_of(a)).await),
+            "serverFacts" => {
+                let jobs: Vec<String> = a.get("jobs").and_then(Value::as_array).into_iter().flatten().filter_map(|j| j.as_str().map(str::to_string)).collect();
+                done(self.server_facts(long_of(a, "placeId"), jobs, &ids_of(a)).await)
+            }
+            "gameCodes" => {
+                let (name, universe, place) = (str_of(a, "name"), long_of(a, "universe"), long_of(a, "placeId"));
+                done(crate::core::rt::blocking(move || crate::core::game_codes::codes(&name, universe, place, &crate::core::base::Cancel::new())).await)
+            }
             "friendServers" => done(self.friend_servers(long_of(a, "placeId"), &ids_of(a)).await),
             "privateServers" => done(self.private_servers(long_of(a, "placeId"), &ids_of(a), bool_of(a, "fresh")).await),
             "openGameServers" => done(self.open_game_servers(id_of(a), long_of(a, "placeId"))),

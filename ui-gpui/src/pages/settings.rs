@@ -14,10 +14,13 @@ use gpui_kit::{prelude::*, *};
 use serde_json::{Value, json};
 
 use crate::{kit::*, shell::Root, theme::*};
+use crate::val::s;
+use crate::val::flag;
 
 pub mod appearance;
 mod discord;
 mod roblox;
+pub(crate) use roblox::{level_now, level_settings};
 pub(crate) use roblox::FPS_MAX;
 /// A custom theme's code, for the checks.
 pub(crate) mod theme_code {
@@ -151,12 +154,6 @@ pub struct Data {
     pub here: bool,
 }
 
-fn s<'a>(v: &'a Value, k: &str) -> &'a str {
-    v.get(k).and_then(Value::as_str).unwrap_or_default()
-}
-fn b(v: &Value, k: &str) -> bool {
-    v.get(k).and_then(Value::as_bool).unwrap_or(false)
-}
 fn st(root: &Root) -> &Value {
     root.state.get("settings").unwrap_or(&Value::Null)
 }
@@ -182,30 +179,9 @@ pub fn on_leave(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
     r.settings.dc_shown = None;
 }
 
-/// A command whose answer matters: what it returns goes to `done`; a refusal is said in a toast.
-pub(crate) fn ask(r: &mut Root, cmd: &str, args: Value, cx: &mut Context<Root>, done: impl FnOnce(&mut Root, Value) + 'static) {
-    let Some(link) = r.link.clone() else { return };
-    let rx = link.call(cmd, args);
-    cx.spawn(async move |this, cx| {
-        let answer = rx.await;
-        let _ = this.update(cx, |r, cx| {
-            match answer {
-                Ok(Ok(v)) => done(r, v),
-                Ok(Err(e)) => r.toast = Some((e, "bad".into())),
-                Err(_) => {}
-            }
-            cx.notify();
-        });
-    })
-    .detach();
-}
-fn ok(r: &mut Root, text: String) {
-    r.toast = Some((text, "ok".into()));
-}
-
 /// A setting sent as it is (setSettings), the app's next state shows it.
 fn set(r: &mut Root, v: Value, cx: &mut Context<Root>) {
-    ask(r, "setSettings", v, cx, |_, _| {});
+    r.ask("setSettings", v, cx, |_, _| {});
 }
 
 // ───────────────────────── parts of a page ─────────────────────────
@@ -230,7 +206,8 @@ fn group(title: Option<String>, rows: Vec<AnyElement>) -> Div {
 
 /// A surface per settings group, with thin separators between its rows.
 fn rows_card(rows: Vec<AnyElement>) -> Div {
-    let mut card = div().rounded(px(R_L)).border_1().border_color(c(LINE)).bg(ca(WHITE, 0.026)).flex().flex_col();
+    // (Glass with glass on the blocks only: its faint tint alone left the sharp picture under every row.)
+    let mut card = crate::kit::block_of(R_L, ca(WHITE, 0.026)).flex().flex_col();
     for (index, r) in rows.into_iter().enumerate() {
         card = card.child(div().when(index > 0, |d| d.border_t_1().border_color(c(LINE))).child(r));
     }
@@ -443,6 +420,8 @@ enum Mark {
     Letter(char),
     /// A program's own icon (launcher_icons.rs), dimmed with its row when it isn't installed.
     Pic(std::sync::Arc<RenderImage>),
+    /// Bloxkeep's own mark.
+    Logo,
 }
 
 fn mark(m: Mark, on: bool) -> Div {
@@ -453,6 +432,7 @@ fn mark(m: Mark, on: bool) -> Div {
         Mark::Icon(name) => tile.child(icon(name, 14., tone)),
         Mark::Letter(l) => tile.text_size(px(T_XS)).font_weight(FontWeight::SEMIBOLD).text_color(tone).child(l.to_string()),
         Mark::Pic(p) => tile.child(img(p).size(px(16.)).flex_none()),
+        Mark::Logo => tile.child(crate::crisp::mark(16.)),
     }
 }
 
@@ -577,7 +557,7 @@ fn menu_pop<T: Clone + PartialEq + 'static>(
                     }),
             );
         }
-        return Some(div().absolute().top(px(38.)).right_0().child(deferred(anchored().anchor(Anchor::TopRight).snap_to_window_with_margin(px(8.)).child(pop(SharedString::from(format!("{key}-pop")), open, menu))).with_priority(1)));
+        return Some(popup(PopAt::BelowRight(38.), SharedString::from(format!("{key}-pop")), open, menu));
 }
 
 /// A click on what opens a list: it opens, or shuts (a click outside the open one shut it just now: this click on
@@ -590,29 +570,9 @@ fn toggle_menu(r: &mut Root, key: &'static str) {
 }
 
 /// "9/11" in Vietnamese, "11/9" in English.
-fn civil_dm(days: i64, vi: bool) -> String {
-    let z = days + 719468;
-    let era = z.div_euclid(146097);
-    let doe = z - era * 146097;
-    let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
-    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
-    let mp = (5 * doy + 2) / 153;
-    let d = doy - (153 * mp + 2) / 5 + 1;
-    let m = if mp < 10 { mp + 3 } else { mp - 9 };
-    if vi { format!("{d}/{m}") } else { format!("{m}/{d}") }
-}
-
-/// A day since 1970 as (year, month, day).
-fn civil(days: i64) -> (i64, i64, i64) {
-    let z = days + 719468;
-    let era = z.div_euclid(146097);
-    let doe = z - era * 146097;
-    let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
-    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
-    let mp = (5 * doy + 2) / 153;
-    let d = doy - (153 * mp + 2) / 5 + 1;
-    let m = if mp < 10 { mp + 3 } else { mp - 9 };
-    (yoe + era * 400 + if m <= 2 { 1 } else { 0 }, m, d)
+fn civil_dm(days: i64) -> String {
+    let (_, m, d) = crate::time::civil(days);
+    crate::time::dm(d, m)
 }
 
 /// Words under the mouse, when there are any.
@@ -779,9 +739,9 @@ fn summary(root: &Root) -> Vec<(String, Option<Hsla>)> {
     });
     let d = root.state.get("discord").unwrap_or(&Value::Null);
     let stopped = !s(d, "stopped").is_empty() || !s(d, "error").is_empty();
-    let state = if !b(d, "hasWebhook") {
+    let state = if !flag(d, "hasWebhook") {
         "set.dc.state.none"
-    } else if b(d, "enabled") {
+    } else if flag(d, "enabled") {
         "set.dc.state.on"
     } else {
         "set.dc.state.off"
@@ -944,8 +904,9 @@ pub fn settings(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
         .px(px(24.))
         .pt(px(22.))
         .pb(px(22.))
-        .border_b_1()
-        .border_color(c(LINE))
+        // (With glass on the blocks only the head stands on the picture itself: no line across it there, the owner
+        // 2026-11-18.)
+        .when(!crate::theme::glass_blocks(), |d| d.border_b_1().border_color(c(LINE)))
         .flex()
         .items_center()
         .gap(px(16.))
@@ -960,6 +921,23 @@ pub fn settings(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
                 .child(facts(summary(root))),
         )
         .child(div().w(px(if narrow { 240. } else { 300. })).min_w(px(if compact { 120. } else { 160. })).flex_shrink(1.).child(field(&root.set_q, Some("search"))));
+    // The list of parts: the panel's left column, its own ground to the panel's foot. With glass on the blocks only it
+    // is a block of its own, as tall as its list and no more, a gap round it: the whole column as one pane of glass
+    // ran on empty to the panel's foot (the owner, 2026-11-18: "layout này là bạn làm có chủ đích hay sao").
+    let nav_col = if crate::theme::glass_blocks() {
+        div()
+            .h_full()
+            .flex_none()
+            .flex()
+            .flex_col()
+            .pl(px(12.))
+            .pt(px(12.))
+            .pb(px(16.))
+            .child(crate::kit::block_of(R_L, ca(GROUND, 0.34)).min_h_0().flex().flex_col().overflow_hidden().child(div().id("set-nav").min_h_0().overflow_y_scroll().child(nav)))
+            .into_any_element()
+    } else {
+        div().id("set-nav").h_full().flex_none().overflow_y_scroll().border_r_1().border_color(c(LINE)).bg(ca(GROUND, 0.34)).child(nav).into_any_element()
+    };
     div()
         .id("settings")
         .size_full()
@@ -971,8 +949,7 @@ pub fn settings(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
         .flex_col()
         .child(header)
         .child(
-            div().flex_1().min_h_0().flex().child(div().id("set-nav").h_full().flex_none().overflow_y_scroll()
-                .border_r_1().border_color(c(LINE)).bg(ca(GROUND, 0.34)).child(nav)).child(
+            div().flex_1().min_h_0().flex().child(nav_col).child(
                 // (The list stops a little above the panel's foot, so a row cut there reads as going on under the
                 // edge, not as touching the status bar: the shots had "Wait between accounts" cut flush at the foot.)
                 div()
@@ -1028,10 +1005,10 @@ fn launch(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
     let st = st(root);
     let m = root.state.get("multi").unwrap_or(&Value::Null);
     let ins = root.state.get("installs").unwrap_or(&Value::Null);
-    let multi_on = b(m, "enabled");
+    let multi_on = flag(m, "enabled");
     let (pill, tone) = if !multi_on {
         ("pill.off", Tone::Muted)
-    } else if b(m, "armed") {
+    } else if flag(m, "armed") {
         ("pill.ready", Tone::Ok)
     } else {
         ("pill.notReady", Tone::Warn)
@@ -1059,6 +1036,10 @@ fn launch(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
             .child(Button::new("s-multi-help", root.tr("set.details")).small().quiet().on_click(cx.listener(|r, _, window, cx| r.multi_help(window, cx))))
             .child(multi),
     )];
+    // On, but Roblox was open first: said here at once, with the button, not only behind Details.
+    if multi_on && !flag(m, "armed") && !asking {
+        windows.push(root.multi_blocked_note(cx).px(px(ROW_X)).py(px(12.)).bg(ca(WARN, 0.06)).into_any_element());
+    }
     if asking {
         let no_ask = root.settings.no_ask;
         windows.push(
@@ -1102,7 +1083,7 @@ fn launch(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
                 .into_any_element(),
         );
     }
-    let rename = b(st, "renameWindows");
+    let rename = flag(st, "renameWindows");
     windows.push(row(root.tr("set.rename"), Some(root.tr("set.renameDesc")), switch("s-rename", rename, cx, |r, on, cx| set(r, json!({ "renameWindows": on }), cx))));
     let pictures = st.get("windowPictures").and_then(Value::as_bool).unwrap_or(rename);
     windows.push(row(root.tr("set.pictures"), Some(root.tr("set.picturesDesc")), switch("s-pictures", pictures, cx, |r, on, cx| set(r, json!({ "windowPictures": on }), cx))));
@@ -1119,7 +1100,7 @@ fn launch(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
             |r, v, cx| set(r, json!({ "taskbarGroups": v }), cx),
         ),
     ));
-    let open_as = if b(m, "tile") { "tile" } else if b(st, "maximizeOnOpen") { "maximize" } else { "roblox" }.to_string();
+    let open_as = if flag(m, "tile") { "tile" } else if flag(st, "maximizeOnOpen") { "maximize" } else { "roblox" }.to_string();
     windows.push(row_below(
         root.tr("set.openAs"),
         Some(root.tr("set.openAsDesc")),
@@ -1179,12 +1160,16 @@ fn launch(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
     windows.push(row_wide(root.tr("set.winLayout"), Some(root.tr("set.winLayoutDesc")), layout_ctl));
 
     // What opens Roblox: other Bloxstrap-style launchers only when found here (or still the one chosen); VNG always last.
-    let has = |k: &str| b(ins, k);
+    let has = |k: &str| flag(ins, k);
     let mut options: Vec<(String, String, bool)> = vec![(
         "auto".into(),
         if s(ins, "handler").is_empty() { root.tr("launch.autoNone") } else { root.i18n.tv("launch.auto", &[("name", s(ins, "handler"))]) },
         true,
     )];
+    // Bloxkeep itself, by name and first among the launchers: it starts Roblox's client with no other program between
+    // (the same choice that read "Roblox directly (no launcher)"; the owner, 2026-11-18: "trong đây vẫn chưa có
+    // bloxkeep à").
+    options.push(("direct".into(), root.tr("launch.direct"), has("direct")));
     for (k, n) in [("bloxstrap", "Bloxstrap"), ("fishstrap", "Fishstrap"), ("voidstrap", "Voidstrap")] {
         options.push((k.into(), n.into(), has(k)));
     }
@@ -1201,7 +1186,6 @@ fn launch(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
         options.push((format!("other:{n}"), n, ok));
     }
     options.push(("roblox".into(), root.tr("launch.roblox"), has("roblox")));
-    options.push(("direct".into(), root.tr("launch.direct"), has("direct")));
     if has("store") || via_saved == "store" {
         options.push(("store".into(), root.tr("launch.storeName"), has("store")));
     }
@@ -1214,11 +1198,11 @@ fn launch(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
     let marks: Vec<Mark> = options
         .iter()
         .map(|(v, words, _)| match crate::launcher_icons::of(v, &handler_name, custom) {
+            _ if v == "direct" => Mark::Logo,
             Some(p) => Mark::Pic(p),
             None => match v.as_str() {
             "auto" => Mark::Icon("link"),
             "roblox" => Mark::Icon("roblox"),
-            "direct" => Mark::Icon("play"),
             "store" => Mark::Icon("download"),
             "custom" => Mark::Icon("folder"),
             "vng" => Mark::Icon("globe"),
@@ -1248,12 +1232,14 @@ fn launch(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
             .child(chips_marked(root, cx, "s-launch", options, marks, &via, |r, v, _, cx| set(r, json!({ "launchVia": v }), cx)))
             // After the choices and in words ("Other launcher…"): a bare folder before them said nothing (review 7.3).
             .child(Button::new("s-pick-launcher", root.tr("launch.pickBtn")).icon("folder").small().quiet().on_click(cx.listener(|r, _, _, cx| {
-                ask(r, "pickLauncher", json!({}), cx, |_, _| {})
+                r.ask("pickLauncher", json!({}), cx, |_, _| {})
             }))),
     )];
     if let Some(n) = store_note {
         client.push(note("info", n, TEXT_2));
     }
+    let own = flag(st, "ownRobloxLinks");
+    client.push(row(root.tr("set.ownLinks"), Some(root.tr("set.ownLinksDesc")), switch("s-own-links", own, cx, |r, on, cx| set(r, json!({ "ownRobloxLinks": on }), cx))));
     let delay = st.get("launchDelaySeconds").and_then(Value::as_i64).unwrap_or(0);
     let mut delays: Vec<i64> = DELAYS.to_vec();
     if !delays.contains(&delay) {
@@ -1281,14 +1267,14 @@ fn perf(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
     let st = st(root);
     let accounts = root.accounts();
     let total = accounts.len();
-    let on_n = accounts.iter().filter(|a| b(a, "autoRejoin")).count();
+    let on_n = accounts.iter().filter(|a| flag(a, "autoRejoin")).count();
     let all_on = total > 0 && on_n == total;
     let ids: Vec<String> = accounts.iter().map(|a| s(a, "id").to_string()).collect();
     let rejoin = switch("s-rejoin", all_on, cx, move |r, on, cx| {
-        ask(r, "setAutoRejoin", json!({ "ids": ids.clone(), "enabled": on }), cx, move |r, v| {
+        r.ask("setAutoRejoin", json!({ "ids": ids.clone(), "enabled": on }), cx, move |r, v| {
             let n = v.as_i64().unwrap_or(0);
             let text = r.i18n.tn(if on { "t.rejoinOn" } else { "t.rejoinOff" }, n, &[]);
-            ok(r, text);
+            r.ok(text);
         })
     })
     .disabled(total == 0);
@@ -1315,7 +1301,7 @@ fn perf(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
             hm
         } else {
             let t = local.div_euclid(86400) * 86400;
-            let date = civil_dm(t / 86400, root.i18n.vietnamese);
+            let date = civil_dm(t / 86400);
             format!("{date} {hm}")
         };
         daily_desc = format!("{daily_desc} {}", root.i18n.tv("set.dailyLast", &[("t", &when)]));
@@ -1332,12 +1318,12 @@ fn perf(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
             let items = waits.into_iter().map(|n| (n, if n == 0 { root.tr("set.rejoinWait0") } else if n % 60 == 0 { root.i18n.tv("set.minutesN", &[("n", &(n / 60).to_string())]) } else { root.i18n.tv("set.seconds", &[("n", &n.to_string())]) }, false)).collect();
             chips(root, cx, "s-rejoin-wait", items, &now, |r, v, cx| set(r, json!({ "rejoinWaitSeconds": v }), cx))
         }),
-        row(root.tr("set.antiAfk"), Some(root.tr("set.antiAfkDesc")), switch("s-antiafk", b(st, "antiAfk"), cx, |r, on, cx| set(r, json!({ "antiAfk": on }), cx))),
+        row(root.tr("set.antiAfk"), Some(root.tr("set.antiAfkDesc")), switch("s-antiafk", flag(st, "antiAfk"), cx, |r, on, cx| set(r, json!({ "antiAfk": on }), cx))),
         row_below(root.tr("set.hop"), Some(root.tr("set.hopDesc")), chips(root, cx, "s-hop", hops, &hop, |r, v, cx| set(r, json!({ "hopAbovePlayers": v }), cx))),
         row(
             root.tr("set.daily"),
             Some(daily_desc),
-            switch("s-daily", daily, cx, |r, on, cx| ask(r, "setDailySignInCheck", json!({ "enabled": on }), cx, |_, _| {})),
+            switch("s-daily", daily, cx, |r, on, cx| r.ask("setDailySignInCheck", json!({ "enabled": on }), cx, |_, _| {})),
         ),
     ];
     let ram = st.get("ramLimitMb").and_then(Value::as_i64).unwrap_or(0);
@@ -1356,17 +1342,17 @@ fn perf(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
         heavies.push((g * 1024, root.i18n.tv("set.heavyAbove", &[("n", &g.to_string())]), false));
     }
     let cores = st.get("cores").unwrap_or(&Value::Null);
-    let cores_desc = if b(cores, "hybrid") {
+    let cores_desc = if flag(cores, "hybrid") {
         root.i18n.tv("set.coresDesc", &[("e", &cores.get("efficient").and_then(Value::as_i64).unwrap_or(0).to_string())])
     } else {
         root.tr("set.coresDescOne")
     };
     let memory = vec![
-        row(root.tr("set.memWarn"), Some(root.tr("set.memWarnDesc")), switch("s-memwarn", b(st, "memoryWarnings"), cx, |r, on, cx| set(r, json!({ "memoryWarnings": on }), cx))),
-        row(root.tr("set.trim"), Some(root.tr("set.trimDesc")), switch("s-trim", b(st, "trimBackground"), cx, |r, on, cx| set(r, json!({ "trimBackground": on }), cx))),
+        row(root.tr("set.memWarn"), Some(root.tr("set.memWarnDesc")), switch("s-memwarn", flag(st, "memoryWarnings"), cx, |r, on, cx| set(r, json!({ "memoryWarnings": on }), cx))),
+        row(root.tr("set.trim"), Some(root.tr("set.trimDesc")), switch("s-trim", flag(st, "trimBackground"), cx, |r, on, cx| set(r, json!({ "trimBackground": on }), cx))),
         row_below(root.tr("set.ramLimit"), Some(root.tr("set.ramLimitDesc")), chips(root, cx, "s-ram", rams, &ram, |r, v, cx| set(r, json!({ "ramLimitMb": v }), cx))),
         row_below(root.tr("set.heavy"), Some(root.tr("set.heavyDesc")), chips(root, cx, "s-heavy", heavies, &heavy, |r, v, cx| set(r, json!({ "restartAboveMb": v }), cx))),
-        row(root.tr("set.cores"), Some(cores_desc), switch("s-cores", b(st, "splitCores"), cx, |r, on, cx| set(r, json!({ "splitCores": on }), cx))),
+        row(root.tr("set.cores"), Some(cores_desc), switch("s-cores", flag(st, "splitCores"), cx, |r, on, cx| set(r, json!({ "splitCores": on }), cx))),
     ];
     vec![roblox::config(root, cx), group(Some(root.tr("set.g.keep")), keep), group(Some(root.tr("set.g.memory")), memory)]
 }
@@ -1381,7 +1367,7 @@ fn notify(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
     let main = vec![row(
         root.tr("set.notify"),
         Some(root.tr("set.notifyDesc")),
-        switch("s-notify", on, cx, |r, on, cx| ask(r, "setNotifications", json!({ "enabled": on }), cx, |_, _| {})),
+        switch("s-notify", on, cx, |r, on, cx| r.ask("setNotifications", json!({ "enabled": on }), cx, |_, _| {})),
     )];
     let kinds: Vec<AnyElement> = NOTIFY_KINDS
         .iter()
@@ -1392,18 +1378,18 @@ fn notify(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
                 let this = cx.entity().downgrade();
                 move |v, _, cx| {
                     let (v, kind) = (*v, kind.clone());
-                    let _ = this.update(cx, |r, cx| ask(r, "setNotifications", json!({ "kind": kind, "enabled": v }), cx, |_, _| {}));
+                    let _ = this.update(cx, |r, cx| r.ask("setNotifications", json!({ "kind": kind, "enabled": v }), cx, |_, _| {}));
                 }
             });
             div().when(!on, |d| d.opacity(0.5)).child(row(root.tr(&format!("set.notify.{k}")), None, sw)).into_any_element()
         })
         .collect();
     let phone = root.state.get("phone").unwrap_or(&Value::Null);
-    let phone_on = b(phone, "enabled");
+    let phone_on = flag(phone, "enabled");
     let mut phone_rows = vec![row(
         root.tr("set.phoneOn"),
         Some(root.tr("set.phoneDesc")),
-        switch("s-phone", phone_on, cx, |r, on, cx| ask(r, "setPhone", json!({ "enabled": on }), cx, |_, _| {})),
+        switch("s-phone", phone_on, cx, |r, on, cx| r.ask("setPhone", json!({ "enabled": on }), cx, |_, _| {})),
     )];
     let topic = s(phone, "topic").to_string();
     if phone_on && !topic.is_empty() {
@@ -1423,11 +1409,11 @@ fn notify(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
                 .child(div().w(px(240.)).child(crate::kit::field(&root.phone_topic, None)))
                 .child(Button::new("s-phone-copy", root.tr("set.phoneCopy")).icon("copy").small().quiet().on_click(cx.listener(move |r, _, _, cx| {
                     cx.write_to_clipboard(ClipboardItem::new_string(copy.clone()));
-                    ok(r, r.tr("set.phoneCopied"));
+                    r.ok(r.tr("set.phoneCopied"));
                     cx.notify();
                 })))
                 .child(Button::new("s-phone-test", root.tr("set.phoneTest")).small().on_click(cx.listener(|r, _, _, cx| {
-                    ask(r, "phoneTest", json!({}), cx, |r, _| ok(r, r.tr("set.phoneSent")))
+                    r.ask("phoneTest", json!({}), cx, |r, _| r.ok(r.tr("set.phoneSent")))
                 }))),
         ));
     }
@@ -1436,7 +1422,7 @@ fn notify(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
         root.tr("set.asks"),
         Some(if skipped > 0 { root.i18n.tn("set.asksN", skipped, &[]) } else { root.tr("set.asksNone") }),
         Button::new("s-asks", root.tr("set.asksBtn")).small().disabled(skipped == 0).on_click(cx.listener(|r, _, _, cx| {
-            ask(r, "resetSkipConfirm", json!({}), cx, |r, _| ok(r, r.tr("set.asksDone")))
+            r.ask("resetSkipConfirm", json!({}), cx, |r, _| r.ok(r.tr("set.asksDone")))
         })),
     )];
     vec![group(None, main), group(Some(root.tr("set.notifyKinds")), kinds), group(Some(root.tr("set.phone")), phone_rows), group(Some(root.tr("set.g.asks")), asks)]
@@ -1526,15 +1512,15 @@ fn security(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
                         .gap(px(8.))
                         .child(crate::pages::lock::face(open, &name, picture, 32., R_S, 14.))
                         .when(picture.is_some(), |d| {
-                            d.child(Button::new("s-vault-pic-x", root.tr("vault.pictureRemove")).small().on_click(cx.listener(move |r, _, _, cx| ask(r, "clearVaultPicture", json!({ "id": id }), cx, |_, _| {}))))
+                            d.child(Button::new("s-vault-pic-x", root.tr("vault.pictureRemove")).small().on_click(cx.listener(move |r, _, _, cx| r.ask("clearVaultPicture", json!({ "id": id }), cx, |_, _| {}))))
                         })
-                        .child(Button::new("s-vault-pic", root.tr("vault.pick")).icon("image").small().on_click(cx.listener(move |r, _, _, cx| ask(r, "pickVaultPicture", json!({ "id": id2 }), cx, |_, _| {}))))
+                        .child(Button::new("s-vault-pic", root.tr("vault.pick")).icon("image").small().on_click(cx.listener(move |r, _, _, cx| r.ask("pickVaultPicture", json!({ "id": id2 }), cx, |_, _| {}))))
                 }),
-                row(root.tr("vault.ask"), None, switch("s-vault-ask", b(vaults, "ask"), cx, |r, on, cx| ask(r, "setAskVault", json!({ "enabled": on }), cx, |_, _| {}))),
+                row(root.tr("vault.ask"), None, switch("s-vault-ask", flag(vaults, "ask"), cx, |r, on, cx| r.ask("setAskVault", json!({ "enabled": on }), cx, |_, _| {}))),
                 row(
                     root.tr("vault.switch"),
                     Some(root.tr("vault.switchDesc")),
-                    Button::new("s-vault-pick", root.tr("vault.switch")).icon("repeat").small().on_click(cx.listener(|r, _, _, cx| ask(r, "pickVault", json!({}), cx, |_, _| {}))),
+                    Button::new("s-vault-pick", root.tr("vault.switch")).icon("repeat").small().on_click(cx.listener(|r, _, _, cx| r.ask("pickVault", json!({}), cx, |_, _| {}))),
                 ),
             ],
         ));
@@ -1607,9 +1593,9 @@ fn backup(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
         Some(root.tr("bk.onDesc")),
         switch("s-bk-on", on, cx, move |r, v, cx| {
             if v && !has_folder {
-                ask(r, "pickBackupFolder", json!({}), cx, |_, _| {});
+                r.ask("pickBackupFolder", json!({}), cx, |_, _| {});
             } else {
-                ask(r, "setBackup", json!({ "enabled": v }), cx, |_, _| {});
+                r.ask("setBackup", json!({ "enabled": v }), cx, |_, _| {});
             }
         }),
     )];
@@ -1620,14 +1606,14 @@ fn backup(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
     let mut ctl = div().flex().items_center().gap(px(8.));
     for (i, (p, n)) in suggested.into_iter().enumerate() {
         ctl = ctl.child(Button::new(("s-bk-use", i), root.i18n.tv("bk.use", &[("name", &n)])).small().quiet().icon("cloud").on_click(cx.listener(move |r, _, _, cx| {
-            ask(r, "setBackup", json!({ "folder": p.clone() }), cx, |_, _| {})
+            r.ask("setBackup", json!({ "folder": p.clone() }), cx, |_, _| {})
         })));
     }
     ctl = ctl
         .when(has_folder, |d| {
             d.child(IconButton::new("s-bk-open", "folder").tip(root.tr("set.openFolder")).on_click(cx.listener(|r, _, _, _| r.send("openBackupFolder", json!({})))))
         })
-        .child(Button::new("s-bk-pick", root.tr("bk.choose")).small().on_click(cx.listener(|r, _, _, cx| ask(r, "pickBackupFolder", json!({}), cx, |_, _| {}))));
+        .child(Button::new("s-bk-pick", root.tr("bk.choose")).small().on_click(cx.listener(|r, _, _, cx| r.ask("pickBackupFolder", json!({}), cx, |_, _| {}))));
     rows.push(row_el(
         root.tr("bk.folder"),
         div()
@@ -1641,7 +1627,7 @@ fn backup(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
         None,
         ctl,
     ));
-    if b(bk, "cloud") && b(bk, "weakPassword") {
+    if flag(bk, "cloud") && flag(bk, "weakPassword") {
         rows.push(note("alert", root.tr("bk.weak"), WARN));
     }
     let last = bk.get("lastBackup").and_then(Value::as_str).and_then(crate::time::iso_secs);
@@ -1653,7 +1639,7 @@ fn backup(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
         status,
         Some(s(bk, "error").to_string()).filter(|e| !e.is_empty()),
         Button::new("s-bk-now", root.tr("bk.now")).small().disabled(!has_folder).tip(if has_folder { String::new() } else { root.tr("bk.needFolder") }).on_click(cx.listener(|r, _, _, cx| {
-            ask(r, "backupNow", json!({}), cx, |r, _| ok(r, r.tr("bk.done")))
+            r.ask("backupNow", json!({}), cx, |r, _| r.ok(r.tr("bk.done")))
         })),
     ));
 
@@ -1688,7 +1674,7 @@ fn backup(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
                         })))
                         .child(Button::new("s-bk-yes", root.tr("bk.restoreBtn")).small().danger().on_click(cx.listener(|r, _, _, cx| {
                             r.settings.asking = None;
-                            ask(r, "restoreBackup", json!({}), cx, |_, _| {});
+                            r.ask("restoreBackup", json!({}), cx, |_, _| {});
                         }))),
                 )
                 .into_any_element(),
@@ -1731,7 +1717,7 @@ const HOTKEYS: [(&str, &str); 5] = [("H", "set.hk.hide"), ("M", "set.hk.min"), (
 
 fn updates(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
     let u = root.state.get("update").unwrap_or(&Value::Null);
-    let supported = b(u, "supported");
+    let supported = flag(u, "supported");
     let status = s(u, "status");
     let v = s(u, "version");
     // The time; on another day than today, the date too (UpdatesPage.tsx).
@@ -1739,7 +1725,7 @@ fn updates(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
         let l = at + crate::time::utc_offset_secs();
         let hm = format!("{:02}:{:02}", l.rem_euclid(86400) / 3600, l.rem_euclid(3600) / 60);
         let today = (crate::time::now_secs() + crate::time::utc_offset_secs()).div_euclid(86400);
-        if l.div_euclid(86400) == today { hm } else { format!("{} {hm}", civil_dm(l.div_euclid(86400), root.i18n.vietnamese)) }
+        if l.div_euclid(86400) == today { hm } else { format!("{} {hm}", civil_dm(l.div_euclid(86400))) }
     });
     let text = if !supported {
         root.tr("upd.unsupported")
@@ -1747,35 +1733,35 @@ fn updates(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
         match status {
             "checking" => root.tr("upd.checking"),
             "downloading" => root.i18n.tv("upd.downloading", &[("v", v), ("p", &u.get("progress").map(|p| p.to_string()).unwrap_or_default())]),
-            "ready" if b(u, "quiet") => root.tr("upd.readyQuiet"),
-            "ready" => root.i18n.tv(if b(u, "auto") { "upd.readyAuto" } else { "upd.ready" }, &[("v", v)]),
+            "ready" if flag(u, "quiet") => root.tr("upd.readyQuiet"),
+            "ready" => root.i18n.tv(if flag(u, "auto") { "upd.readyAuto" } else { "upd.ready" }, &[("v", v)]),
             "upToDate" => root.tr("upd.latest") + &when.map(|w| format!(" · {}", root.i18n.tv("upd.checkedAt", &[("t", &w)]))).unwrap_or_default(),
             "error" if !s(u, "error").is_empty() => format!("{}: {}", root.tr("upd.error"), s(u, "error")),
             "error" => root.tr("upd.error"),
-            _ if b(u, "auto") => root.tr("upd.idle"),
+            _ if flag(u, "auto") => root.tr("upd.idle"),
             _ => root.tr("upd.off"),
         }
     };
-    let ready = status == "ready" && !b(u, "quiet");
+    let ready = status == "ready" && !flag(u, "quiet");
     let ctl: AnyElement = if !supported {
         div().into_any_element()
     } else if ready {
-        Button::new("s-upd-apply", root.tr("upd.restart")).icon("refresh").small().primary().on_click(cx.listener(|r, _, _, cx| ask(r, "applyUpdate", json!({}), cx, |_, _| {}))).into_any_element()
+        Button::new("s-upd-apply", root.tr("upd.restart")).icon("refresh").small().primary().on_click(cx.listener(|r, _, _, cx| r.ask("applyUpdate", json!({}), cx, |_, _| {}))).into_any_element()
     } else {
         Button::new("s-upd-check", root.tr("upd.check"))
             .icon("refresh")
             .small()
             .disabled(matches!(status, "checking" | "downloading" | "ready"))
-            .on_click(cx.listener(|r, _, _, cx| ask(r, "checkUpdates", json!({}), cx, |_, _| {})))
+            .on_click(cx.listener(|r, _, _, cx| r.ask("checkUpdates", json!({}), cx, |_, _| {})))
             .into_any_element()
     };
     let upd = vec![
         row(format!("Bloxkeep {}", s(u, "current")), Some(text), ctl),
-        row(root.tr("upd.auto"), None, switch("s-autoupd", b(u, "auto"), cx, |r, on, cx| ask(r, "setAutoUpdate", json!({ "enabled": on }), cx, |_, _| {})).disabled(!supported)),
+        row(root.tr("upd.auto"), None, switch("s-autoupd", flag(u, "auto"), cx, |r, on, cx| r.ask("setAutoUpdate", json!({ "enabled": on }), cx, |_, _| {})).disabled(!supported)),
         row(
             root.tr("upd.beta"),
             Some(root.tr("upd.betaDesc")),
-            switch("s-betaupd", b(u, "beta"), cx, |r, on, cx| ask(r, "setBetaUpdates", json!({ "enabled": on }), cx, |_, _| {})).disabled(!supported),
+            switch("s-betaupd", flag(u, "beta"), cx, |r, on, cx| r.ask("setBetaUpdates", json!({ "enabled": on }), cx, |_, _| {})).disabled(!supported),
         ),
     ];
 
@@ -1797,13 +1783,13 @@ fn updates(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
         row(
             root.tr("set.boot"),
             Some(root.tr("set.bootDesc")),
-            switch("s-boot", b(&root.state, "startWithWindows"), cx, |r, on, cx| ask(r, "setStartWithWindows", json!({ "enabled": on }), cx, |_, _| {})),
+            switch("s-boot", flag(&root.state, "startWithWindows"), cx, |r, on, cx| r.ask("setStartWithWindows", json!({ "enabled": on }), cx, |_, _| {})),
         ),
         row(
             root.tr("set.tray"),
             Some(root.tr("set.trayDesc")),
             switch("s-tray", root.state.get("closeToTray").and_then(Value::as_bool).unwrap_or(true), cx, |r, on, cx| {
-                ask(r, "setCloseToTray", json!({ "enabled": on }), cx, |_, _| {})
+                r.ask("setCloseToTray", json!({ "enabled": on }), cx, |_, _| {})
             }),
         ),
         div()
@@ -1828,14 +1814,14 @@ fn updates(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
                         d.child(div().text_size(px(T_S)).text_color(c(WARN)).child(root.i18n.tv("set.hotkeysTyping", &[("keys", &typing.join(", "))])))
                     }),
             )
-            .child(switch("s-hotkeys", keys_on, cx, |r, on, cx| ask(r, "setHotkeys", json!({ "enabled": on }), cx, |_, _| {})))
+            .child(switch("s-hotkeys", keys_on, cx, |r, on, cx| r.ask("setHotkeys", json!({ "enabled": on }), cx, |_, _| {})))
             .into_any_element(),
         // Hardware acceleration of the windows still drawn as web pages (mini window, macro panel, sign-in browser):
         // off is the safe rendering WebView2 starts with (UpdatesPage.tsx's s-gpu).
         row(
             root.tr("set.gpu"),
             Some(root.tr("set.gpuDesc")),
-            switch("s-gpu", !b(&root.state, "safeRendering"), cx, |r, on, cx| ask(r, "setRendering", json!({ "gpu": on }), cx, |_, _| {})),
+            switch("s-gpu", !flag(&root.state, "safeRendering"), cx, |r, on, cx| r.ask("setRendering", json!({ "gpu": on }), cx, |_, _| {})),
         ),
     ];
     let link = |id: &'static str, icon_name: &'static str, label: String, cmd: &'static str| {
@@ -1861,7 +1847,7 @@ fn updates(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
     let privacy = vec![row(
         root.tr("onl.title"),
         Some(root.tr("onl.desc")),
-        switch("s-online", counted, cx, |r, on, cx| ask(r, "setCountOnline", json!({ "enabled": on }), cx, |_, _| {})),
+        switch("s-online", counted, cx, |r, on, cx| r.ask("setCountOnline", json!({ "enabled": on }), cx, |_, _| {})),
     )];
     vec![
         group(Some(root.tr("upd.title")), upd),

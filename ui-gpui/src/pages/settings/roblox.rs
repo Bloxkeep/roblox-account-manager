@@ -3,6 +3,7 @@
 // it opens (RobloxConfig), shown at the top of Staying in game. A question the old page asked in a box (update with
 // windows open) is asked in place under its row; the accounts picker opens under its row too.
 use super::*;
+use crate::time::civil;
 
 /// Roblox's id for a build ("version-cec3ad5889b447cf"), its first 8 characters.
 fn short_build(b: &str) -> String {
@@ -53,17 +54,17 @@ pub(super) fn link_text(id: impl Into<ElementId>, text: String, cx: &mut Context
 
 /// Check for a Bloxkeep update, from the Multi-Roblox check: the answer is said in a toast.
 fn check_bloxkeep(r: &mut Root, cx: &mut Context<Root>) {
-    ask(r, "checkUpdates", Value::Null, cx, |r, _| {
+    r.ask("checkUpdates", Value::Null, cx, |r, _| {
         let u = r.state.get("update").cloned().unwrap_or(Value::Null);
         let v = s(&u, "version").to_string();
         let p = u.get("progress").map(|p| p.to_string()).unwrap_or_default();
-        let (key, tone) = if !b(&u, "supported") {
+        let (key, tone) = if !flag(&u, "supported") {
             ("upd.unsupported", "info")
         } else {
             match s(&u, "status") {
                 "upToDate" => ("upd.latest", "info"),
-                "ready" if b(&u, "quiet") => ("upd.readyQuiet", "info"),
-                "ready" if b(&u, "auto") => ("upd.readyAuto", "info"),
+                "ready" if flag(&u, "quiet") => ("upd.readyQuiet", "info"),
+                "ready" if flag(&u, "auto") => ("upd.readyAuto", "info"),
                 "ready" => ("upd.ready", "info"),
                 "downloading" => ("upd.downloading", "info"),
                 "error" => ("upd.error", "warn"),
@@ -77,7 +78,7 @@ fn check_bloxkeep(r: &mut Root, cx: &mut Context<Root>) {
 
 fn update_roblox(r: &mut Root, cx: &mut Context<Root>) {
     let l = r.state.pointer("/robloxVersion/updater").and_then(Value::as_str).unwrap_or_default().to_string();
-    ask(r, "updateRoblox", Value::Null, cx, move |r, _| {
+    r.ask("updateRoblox", Value::Null, cx, move |r, _| {
         let text = r.i18n.tv("rbx.updateStarted", &[("l", &l)]);
         r.toast = Some((text, "info".into()));
     });
@@ -92,7 +93,7 @@ pub(super) fn roblox(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
     let latest = s(rv, "latest");
     let up_to_date = rv.get("upToDate").and_then(Value::as_bool);
     let updater = s(rv, "updater");
-    let updating = b(rv, "updating");
+    let updating = flag(rv, "updating");
     let can_update = up_to_date == Some(false) && !updater.is_empty();
     let n_open = root.metrics.get("robloxCount").and_then(Value::as_i64).unwrap_or(0);
     let rv_text = if updating && !updater.is_empty() {
@@ -102,7 +103,7 @@ pub(super) fn roblox(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
     } else if can_update {
         root.i18n.tv("rbx.outdatedUpdate", &[("v", latest), ("l", updater)])
     } else if up_to_date == Some(false) {
-        let k = if b(rv, "store") { "rbx.outdatedStore" } else if b(rv, "direct") { "rbx.outdatedDirect" } else { "rbx.outdated" };
+        let k = if flag(rv, "store") { "rbx.outdatedStore" } else if flag(rv, "direct") { "rbx.outdatedDirect" } else { "rbx.outdated" };
         root.i18n.tv(k, &[("v", latest)])
     } else if up_to_date == Some(true) {
         root.tr("rbx.latest")
@@ -162,7 +163,7 @@ pub(super) fn roblox(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
     };
     let build_tip = (!s(inst, "build").is_empty()).then(|| root.i18n.tv("ru.build", &[("b", &short_build(s(inst, "build")))]));
     let w = ru.get("watch").unwrap_or(&Value::Null);
-    let word = watch_word(root, s(w, "check"), b(w, "worked"), "rw")
+    let word = watch_word(root, s(w, "check"), flag(w, "worked"), "rw")
         .unwrap_or_else(|| (Tone::Muted, root.tr(if s(w, "readAt").is_empty() { "rbx.unknown" } else { "rw.unchecked" })));
     let head = div()
         .px(px(ROW_X))
@@ -237,7 +238,7 @@ pub(super) fn roblox(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
         ));
         if asking == Some("rbx-reopen") {
             card.push(question(root, "rbx-reopen-q", root.tr("rbx.reopenTitle"), reopen_q, root.tr("rbx.reopenOk"), false, cx, |r, cx| {
-                ask(r, "updateAndReopen", Value::Null, cx, |_, _| {})
+                r.ask("updateAndReopen", Value::Null, cx, |_, _| {})
             }));
         }
     }
@@ -267,7 +268,7 @@ pub(super) fn roblox(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
 
     // ── the Multi-Roblox check: what it is, the next build, what to do when it warns
     let mut watch_desc = Vec::new();
-    if b(w, "updatesFirst") && !s(w, "version").is_empty() {
+    if flag(w, "updatesFirst") && !s(w, "version").is_empty() {
         watch_desc.push(root.i18n.tv("rw.updatesTo", &[("v", s(w, "version"))]));
     }
     watch_desc.push(root.tr("rw.desc"));
@@ -290,7 +291,7 @@ pub(super) fn roblox(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
         let v = next.map(|n| s(n, "version")).unwrap_or_default();
         watch.push(row(root.tr("rw.next"), Some(root.i18n.tv("rw.nextDesc", &[("v", v)])), badge(words, grey(tone))));
     }
-    let warns = ["changed", "renamed", "gone"].contains(&s(w, "check")) && !b(w, "worked");
+    let warns = ["changed", "renamed", "gone"].contains(&s(w, "check")) && !flag(w, "worked");
     if warns && closed.is_none() {
         watch.push(row_el(
             root.tr("rw.todo"),
@@ -307,14 +308,14 @@ pub(super) fn roblox(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
     let mut list: Vec<AnyElement> = Vec::new();
     for (i, h) in hist.iter().enumerate() {
         let older = hist.get(i + 1);
-        let note_word = if b(h, "first") {
+        let note_word = if flag(h, "first") {
             root.tr("ru.first")
         } else if older.is_some_and(|o| s(o, "version") == s(h, "version")) {
             root.tr("ru.sameVersion")
         } else {
             String::new()
         };
-        let check = watch_word(root, s(h, "check"), b(h, "worked"), "rw.h");
+        let check = watch_word(root, s(h, "check"), flag(h, "worked"), "rw.h");
         let mut sub = when_text(root, s(h, "at"));
         if !s(h, "source").is_empty() {
             sub = format!("{sub} · {}", s(h, "source"));
@@ -380,6 +381,36 @@ const LEVELS: [Level; 3] = [
     Level { id: "off", mode: "off", graphics: 0, fps: 0, volume: -1, ram: Some(0), trim: false, cores: false },
 ];
 
+/// The mode the settings match now ("light", "medium", "off"); None for the person's own (Easy setup reads it too).
+pub(crate) fn level_now(st: &Value) -> Option<&'static str> {
+    let rc = st.get("robloxConfig").cloned().unwrap_or(json!({ "mode": "off", "graphics": 0, "fps": 0, "volume": -1 }));
+    let mode = { let m = s(&rc, "mode"); if m.is_empty() { "off" } else { m } }.to_string();
+    let (graphics, fps, volume) = (int(&rc, "graphics", 0), int(&rc, "fps", 0), int(&rc, "volume", -1));
+    LEVELS
+        .iter()
+        .find(|l| {
+            let rc_same = if l.mode == "off" { mode == "off" && !flag(st, "fastFlags") } else { mode == l.mode && graphics == l.graphics && fps == l.fps && volume == l.volume };
+            rc_same && l.ram.is_none_or(|r| int(st, "ramLimitMb", 0) == r) && flag(st, "trimBackground") == l.trim && flag(st, "splitCores") == l.cores
+        })
+        .map(|l| l.id)
+}
+
+/// What picking a mode sends (setSettings), as its card does.
+pub(crate) fn level_settings(id: &str) -> Option<Value> {
+    let l = LEVELS.iter().find(|l| l.id == id)?;
+    let mut v = json!({
+        "robloxConfig": { "mode": l.mode, "graphics": l.graphics, "fps": l.fps, "volume": l.volume },
+        "trimBackground": l.trim, "splitCores": l.cores,
+    });
+    if let Some(ram) = l.ram {
+        v["ramLimitMb"] = json!(ram);
+    }
+    if l.id == "off" {
+        v["fastFlags"] = json!(false);
+    }
+    Some(v)
+}
+
 /// "No limit" for Roblox's frame rate (core's FPS_UNLIMITED).
 pub(crate) const FPS_MAX: i64 = 9999;
 
@@ -394,13 +425,13 @@ pub(super) fn config(root: &Root, cx: &mut Context<Root>) -> Div {
     let mode = { let m = s(&rc, "mode"); if m.is_empty() { "off" } else { m } }.to_string();
     let (graphics, fps, volume) = (int(&rc, "graphics", 0), int(&rc, "fps", 0), int(&rc, "volume", -1));
     let accounts = root.accounts();
-    let chosen = accounts.iter().filter(|a| b(a, "useRobloxConfig")).count() as i64;
+    let chosen = accounts.iter().filter(|a| flag(a, "useRobloxConfig")).count() as i64;
     let own_fps = accounts.iter().filter(|a| int(a, "fpsCap", 0) > 0).count() as i64;
     let level = LEVELS
         .iter()
         .find(|l| {
-            let rc_same = if l.mode == "off" { mode == "off" && !b(st, "fastFlags") } else { mode == l.mode && graphics == l.graphics && fps == l.fps && volume == l.volume };
-            rc_same && l.ram.is_none_or(|r| int(st, "ramLimitMb", 0) == r) && b(st, "trimBackground") == l.trim && b(st, "splitCores") == l.cores
+            let rc_same = if l.mode == "off" { mode == "off" && !flag(st, "fastFlags") } else { mode == l.mode && graphics == l.graphics && fps == l.fps && volume == l.volume };
+            rc_same && l.ram.is_none_or(|r| int(st, "ramLimitMb", 0) == r) && flag(st, "trimBackground") == l.trim && flag(st, "splitCores") == l.cores
         })
         .map(|l| l.id);
     // Custom is shown on request, or by itself once the settings match no mode.
@@ -470,7 +501,16 @@ pub(super) fn config(root: &Root, cx: &mut Context<Root>) -> Div {
                 })),
         );
     }
-    let mut notes = div().px(px(ROW_X)).pb(px(16.)).flex().flex_col().gap(px(3.)).text_size(px(T_S)).text_color(c(MUTED)).child(root.tr("rc.reopen"));
+    let mut notes = div()
+        .px(px(ROW_X))
+        .pb(px(16.))
+        .flex()
+        .flex_col()
+        .gap(px(3.))
+        .text_size(px(T_S))
+        .text_color(c(MUTED))
+        .child(root.tr("rc.reopen"))
+        .child(div().flex().child(link_text("rc-easy", root.tr("es.open"), cx, |r, window, cx| crate::pages::easy_setup::open(r, window, cx))));
     if own_fps > 0 {
         notes = notes.child(root.i18n.tn("rc.ownFps", own_fps, &[]));
     }
@@ -483,7 +523,7 @@ pub(super) fn config(root: &Root, cx: &mut Context<Root>) -> Div {
     if overridden {
         flags_desc = format!("{flags_desc} {}", root.i18n.tv("rc.flagsOver", &[("l", updater)]));
     }
-    let flags = |cx: &mut Context<Root>| row(root.tr("rc.flags"), Some(flags_desc.clone()), switch("s-rc-flags", b(st, "fastFlags"), cx, |r, on, cx| set(r, json!({ "fastFlags": on }), cx)));
+    let flags = |cx: &mut Context<Root>| row(root.tr("rc.flags"), Some(flags_desc.clone()), switch("s-rc-flags", flag(st, "fastFlags"), cx, |r, on, cx| set(r, json!({ "fastFlags": on }), cx)));
     if shown != "own" {
         if mode != "off" {
             rows.push(flags(cx));
@@ -501,7 +541,7 @@ pub(super) fn config(root: &Root, cx: &mut Context<Root>) -> Div {
                 if r.accounts().is_empty() {
                     r.toast = Some((r.tr("rc.noAccounts"), "info".into()));
                 } else {
-                    r.settings.rc_pick = Some(r.accounts().iter().filter(|a| b(a, "useRobloxConfig")).map(|a| s(a, "id").to_string()).collect());
+                    r.settings.rc_pick = Some(r.accounts().iter().filter(|a| flag(a, "useRobloxConfig")).map(|a| s(a, "id").to_string()).collect());
                 }
                 cx.notify();
             })
@@ -574,7 +614,7 @@ pub(super) fn config(root: &Root, cx: &mut Context<Root>) -> Div {
     }
     // The main account: which ones are, and a way to choose them, beside the settings that leave it out (people
     // didn't find the ⋮ menu's line: the owner, 2026-11-15). The star on an account's card sets it too.
-    let mains: Vec<String> = root.accounts().iter().filter(|a| b(a, "isMain")).map(crate::pages::accounts::label).collect();
+    let mains: Vec<String> = root.accounts().iter().filter(|a| flag(a, "isMain")).map(crate::pages::accounts::label).collect();
     let now = if mains.is_empty() { root.tr("main.none") } else { mains.join(", ") };
     let picking = root.settings.main_pick.is_some();
     rows.push(row(
@@ -590,7 +630,7 @@ pub(super) fn config(root: &Root, cx: &mut Context<Root>) -> Div {
                     if r.accounts().is_empty() {
                         r.toast = Some((r.tr("rc.noAccounts"), "info".into()));
                     } else {
-                        r.settings.main_pick = Some(r.accounts().iter().filter(|a| b(a, "isMain")).map(|a| s(a, "id").to_string()).collect());
+                        r.settings.main_pick = Some(r.accounts().iter().filter(|a| flag(a, "isMain")).map(|a| s(a, "id").to_string()).collect());
                     }
                     cx.notify();
                 })))
@@ -647,7 +687,7 @@ fn main_picker(root: &Root, cx: &mut Context<Root>) -> AnyElement {
                 let _ = this.update(cx, |r, cx| {
                     r.settings.main_pick = None;
                     let text = r.tr("main.saved");
-                    ok(r, text);
+                    r.ok(text);
                     cx.notify();
                 });
             })
@@ -703,7 +743,7 @@ fn rc_picker(root: &Root, cx: &mut Context<Root>) -> AnyElement {
                 let _ = this.update(cx, |r, cx| {
                     r.settings.rc_pick = None;
                     let text = r.i18n.tn("rc.picked", n, &[]);
-                    ok(r, text);
+                    r.ok(text);
                     cx.notify();
                 });
             })

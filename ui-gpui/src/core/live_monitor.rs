@@ -22,6 +22,38 @@ struct Target {
     pid: i32,
     hwnd: isize,
     opened: bool,
+    /// Where it stood before it was made big for a sharper view ("Sharper" on the viewer's page); None when it wasn't.
+    before: Option<super::win_kit::Rect>,
+}
+
+/// The window of `pid` is made big for a sharper view just now: where it stands isn't its own place (not to be
+/// remembered as the account's, rejoin_place.rs).
+pub fn sharp(pid: i32) -> bool {
+    ACTIVE.lock().unwrap_or_else(|e| e.into_inner()).is_some_and(|target| target.pid == pid && target.before.is_some())
+}
+
+/// A macro plays or is being recorded: it presses by position, so no window is resized under it.
+fn macros_busy() -> bool {
+    let (tx, rx) = mpsc::sync_channel(1);
+    rt::post(move || App::with(|app| {
+        let _ = tx.send(app.macros_playing());
+    }));
+    rx.recv_timeout(Duration::from_millis(900)).unwrap_or(true)
+}
+
+/// The window over its screen's whole working area, without coming to the front; where it stood before. None when it
+/// is big already (maximised, full screen, or nearly the screen's size).
+fn enlarge(hwnd: isize) -> Option<super::win_kit::Rect> {
+    if !players::is_plain_window(hwnd) {
+        return None;
+    }
+    let before = players::window_rect(hwnd)?;
+    let area = super::win_kit::screen_from_handle(hwnd).working_area;
+    if before.width * 10 >= area.width * 9 && before.height * 10 >= area.height * 9 {
+        return None;
+    }
+    players::place_window(hwnd, area);
+    Some(before)
 }
 
 pub fn watching(pid: i32) -> bool {
@@ -53,17 +85,23 @@ pub(super) fn listeners(video_port: u16, roster_port: u16, key: String, live: Ar
 
 fn listen(listener: TcpListener, name: &str, key: String, live: Arc<AtomicBool>, handler: fn(TcpStream, &str, &AtomicBool) -> io::Result<()>) -> io::Result<()> {
     listener.set_nonblocking(true)?;
-    crate::net::Named::new(name.into()).spawn(move || {
-        while listening(&live) {
-            match listener.accept() {
-                Ok((stream, _)) => {
-                    if stream.set_nonblocking(false).is_ok() {
-                        let _ = handler(stream, &key, &live);
-                    }
+    // One round a connection (threads::keep: a request that panics its handler costs that request, not the monitor).
+    crate::threads::keep(name, move || {
+        if !listening(&live) {
+            return false;
+        }
+        match listener.accept() {
+            Ok((stream, _)) => {
+                if stream.set_nonblocking(false).is_ok() {
+                    let _ = handler(stream, &key, &live);
                 }
-                Err(error) if error.kind() == io::ErrorKind::WouldBlock => std::thread::sleep(Duration::from_millis(40)),
-                Err(_) => break,
+                true
             }
+            Err(error) if error.kind() == io::ErrorKind::WouldBlock => {
+                std::thread::sleep(Duration::from_millis(40));
+                true
+            }
+            Err(_) => false,
         }
     })?;
     Ok(())
@@ -148,11 +186,18 @@ fn serve(mut stream: TcpStream, key: &str, live: &AtomicBool) -> io::Result<()> 
         return Ok(());
     }
     let line = receive(&mut reader)?;
+    let (line, sharp) = match line.strip_suffix(" sharp") {
+        Some(rest) => (rest.to_string(), true),
+        None => (line, false),
+    };
     let direct = line.strip_suffix(" direct");
     let Some((pid, created)) = direct.unwrap_or(&line).split_once(' ') else { return send(&mut stream, b"window") };
     let direct = direct.is_some();
     if !allowed(live) {
         return send(&mut stream, b"locked");
+    }
+    if sharp && macros_busy() {
+        return send(&mut stream, b"macro");
     }
     let Some(turn) = input_turn::try_enter("live-open") else { return send(&mut stream, b"busy") };
     if !allowed(live) {
@@ -161,7 +206,7 @@ fn serve(mut stream: TcpStream, key: &str, live: &AtomicBool) -> io::Result<()> 
     let (Ok(pid_number), Some(hwnd)) = (pid.parse(), monitor_frames::window(pid, created)) else {
         return send(&mut stream, b"window");
     };
-    let target = Target { pid: pid_number, hwnd, opened: players::is_minimised(hwnd) };
+    let target = Target { pid: pid_number, hwnd, opened: players::is_minimised(hwnd), before: None };
     {
         let mut current = ACTIVE.lock().unwrap_or_else(|e| e.into_inner());
         if current.is_some() {
@@ -177,6 +222,15 @@ fn serve(mut stream: TcpStream, key: &str, live: &AtomicBool) -> io::Result<()> 
                 break;
             }
             std::thread::sleep(Duration::from_millis(30));
+        }
+    }
+    if sharp && !players::is_minimised(hwnd) {
+        let before = enlarge(hwnd);
+        if before.is_some() {
+            log::note(&format!("Live view: Roblox window {} made big for a sharper view; put back when the view ends.", target.pid));
+        }
+        if let Some(current) = ACTIVE.lock().unwrap_or_else(|e| e.into_inner()).as_mut() {
+            current.before = before;
         }
     }
     drop(turn);
@@ -267,9 +321,17 @@ impl Drop for Stop {
 
 fn put_back() {
     let target = ACTIVE.lock().unwrap_or_else(|e| e.into_inner()).take();
-    if let Some(target) = target.filter(|target| target.opened) {
+    if let Some(target) = target {
         if players::still_of(target.hwnd, target.pid) && !players::is_hidden(target.hwnd) {
-            players::minimise(target.hwnd);
+            // (Only while it is still the plain window it was made: maximised or made full screen by hand since, it
+            // is the person's own doing and stays.)
+            if let Some(before) = target.before.filter(|_| players::is_plain_window(target.hwnd)) {
+                players::place_window(target.hwnd, before);
+                log::note(&format!("Live view: Roblox window {} put back where it stood.", target.pid));
+            }
+            if target.opened {
+                players::minimise(target.hwnd);
+            }
         }
     }
 }

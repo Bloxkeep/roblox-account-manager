@@ -28,6 +28,16 @@ fn at(id: &'static str) -> Rc<Cell<(f32, f32)>> {
     AT.with(|m| m.borrow_mut().entry(id).or_insert_with(|| Rc::new(Cell::new((0., 0.)))).clone())
 }
 
+/// The id of a run named after something of the person's (a group of accounts): `prefix` and the name, kept for the
+/// program's life, once a name (a run's id is `&'static`; there are as many as names ever seen, a handful).
+pub fn named(prefix: &str, name: &str) -> &'static str {
+    thread_local! {
+        static NAMES: RefCell<HashMap<String, &'static str>> = RefCell::new(HashMap::new());
+    }
+    let key = format!("{prefix}{name}");
+    NAMES.with(|m| *m.borrow_mut().entry(key.clone()).or_insert_with(|| Box::leak(key.into_boxed_str())))
+}
+
 /// A part of a run: rows drawn, or the room of rows not drawn.
 pub enum Part {
     Rows(Range<usize>),

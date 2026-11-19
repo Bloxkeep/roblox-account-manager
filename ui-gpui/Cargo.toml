@@ -24,6 +24,8 @@ markup5ever_rcdom = "0.3"
 image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp"] }
 # The logo drawn at its exact pixels (crisp.rs); the version GPUI already brings.
 resvg = { version = "=0.46.0", default-features = false }
+# The master password's strength (Dropbox's estimator: common passwords, words, keyboard runs, dates, repeats).
+zxcvbn = { version = "=3.1.1", default-features = false }
 raw-window-handle = "0.6"
 # The core (src/core/): the C# app moved to Rust. Compiled only with the `core` feature until it is joined to the window.
 uuid = { version = "1", features = ["v4", "serde"], optional = true }
@@ -45,19 +47,23 @@ fontdue = { version = "0.9", optional = true }
 zip = { version = "2", default-features = false, features = ["deflate"], optional = true }
 unicode-normalization = { version = "0.1", optional = true }
 unicode-segmentation = { version = "1", optional = true }
+# Feedback's error log: account names found in one pass (aho-corasick) and the three log files sent gzipped (flate2).
+aho-corasick = { version = "1", optional = true }
+flate2 = { version = "1", optional = true }
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_UI_WindowsAndMessaging", "Win32_UI_Input_KeyboardAndMouse", "Win32_System_Time", "Win32_Graphics_Gdi", "Win32_Graphics_Dwm", "Win32_Graphics_GdiPlus", "Win32_System_SystemInformation", "Win32_System_Threading", "Win32_System_Diagnostics_ToolHelp", "Win32_System_Diagnostics_Debug", "Win32_System_Registry", "Win32_System_LibraryLoader", "Win32_System_RemoteDesktop", "Win32_System_RestartManager", "Win32_Security", "Win32_Security_Cryptography", "Win32_Security_WinTrust", "Win32_Storage_FileSystem", "Win32_Storage_Packaging_Appx", "Win32_UI_Input", "Win32_UI_Shell", "Win32_UI_Shell_Common", "Win32_UI_HiDpi", "Win32_UI_Controls", "Win32_UI_Controls_Dialogs", "Win32_UI_Accessibility", "Win32_System_Com", "Win32_System_Com_StructuredStorage", "Win32_System_Ole", "Win32_System_DataExchange", "Win32_System_Memory", "Win32_System_Pipes", "Win32_System_IO", "Win32_System_Environment", "Win32_System_Performance", "Win32_NetworkManagement_IpHelper", "Win32_NetworkManagement_Ndis", "Win32_Networking_WinSock", "Win32_System_ProcessStatus", "Win32_System_Kernel", "Win32_System_Console", "Win32_System_Power", "Win32_System_WindowsProgramming", "Win32_Globalization"] }
 webview2-com = { version = "0.38", optional = true }
-windows = { version = "0.61", optional = true, features = ["Foundation", "Foundation_Collections", "Globalization", "Graphics_Imaging", "Media_Ocr", "Security_Cryptography", "Storage_Streams", "Win32_Foundation", "Win32_System_WinRT", "Win32_System_Com", "Win32_System_Com_StructuredStorage", "Win32_UI_Shell", "Win32_Graphics_Gdi", "Win32_UI_WindowsAndMessaging", "Win32_Media_MediaFoundation"] }
+windows = { version = "0.61", optional = true, features = ["Foundation", "Foundation_Collections", "Globalization", "Graphics_Imaging", "Media_Ocr", "Security_Cryptography", "Storage_Streams", "Win32_Foundation", "Win32_System_WinRT", "Win32_System_Com", "Win32_System_Com_StructuredStorage", "Win32_System_Variant", "Win32_UI_Shell", "Win32_Graphics_Gdi", "Win32_UI_WindowsAndMessaging", "Win32_Media_MediaFoundation", "Win32_Media_Audio", "Media", "Media_Control", "Graphics", "Graphics_Capture", "Graphics_DirectX", "Graphics_DirectX_Direct3D11", "Win32_Graphics_Direct3D", "Win32_Graphics_Direct3D11", "Win32_Graphics_Dxgi", "Win32_Graphics_Dxgi_Common", "Win32_System_WinRT_Direct3D11", "Win32_System_WinRT_Graphics_Capture"] }
 gpui-pre = { version = "=0.3.11", optional = true, features = ["test-support"] }
-gpui-pre-windows = { version = "=0.3.11", optional = true, features = ["test-support"] }
+# (Always: video.rs's frames are drawn on its Direct3D device, gpui_windows::d3d11_device.)
+gpui-pre-windows = { version = "=0.3.11" }
 
 [features]
 # The Rust core (src/core/), being joined in: `cargo check --features core`.
-core = ["dep:uuid", "dep:indexmap", "dep:rand", "dep:num-bigint", "dep:sha1_smol", "dep:sha2", "dep:aes-gcm", "dep:pbkdf2", "dep:zeroize", "dep:getrandom", "dep:tungstenite", "dep:velopack", "dep:tiny-skia", "dep:fontdue", "dep:zip", "dep:unicode-normalization", "dep:unicode-segmentation", "dep:webview2-com", "dep:windows", "serde_json/preserve_order", "image/jpeg", "image/gif", "image/bmp", "image/webp"]
+core = ["dep:uuid", "dep:indexmap", "dep:rand", "dep:num-bigint", "dep:sha1_smol", "dep:sha2", "dep:aes-gcm", "dep:pbkdf2", "dep:zeroize", "dep:getrandom", "dep:tungstenite", "dep:velopack", "dep:tiny-skia", "dep:fontdue", "dep:zip", "dep:unicode-normalization", "dep:unicode-segmentation", "dep:aho-corasick", "dep:flate2", "dep:webview2-com", "dep:windows", "serde_json/preserve_order", "image/jpeg", "image/gif", "image/bmp", "image/webp"]
 # GPUI draws the hidden window into a picture (its test support): --shot, for checking screens without showing a window.
-shot = ["dep:gpui-pre", "dep:gpui-pre-windows", "dep:windows"]
+shot = ["dep:gpui-pre", "gpui-pre-windows/test-support", "dep:windows"]
 
 [profile.release]
 opt-level = 3
@@ -70,5 +76,13 @@ embed-resource = "=3.0.12"
 
 # GPUI with one fix (vendor/gpui-pre/src/window.rs, snapped_content_mask): an empty clip stays empty instead of a
 # 1-pixel row at 150 %, which leaked a line of every picture outside a scroll area (palette, status bar; 2026-11-15).
+# And line_clamp as CSS has it (src/text_system.rs shape_text, src/elements/text.rs): every hard line counts, the last
+# row ends in "…"; an event's 17-line list showed whole and Home's game words were cut through a word (2026-11-19).
 [patch.crates-io]
 gpui-pre = { path = "vendor/gpui-pre" }
+# GPUI's Windows renderer with surfaces drawn (vendor/gpui-pre-windows/src/directx_renderer.rs, draw_surfaces): a
+# Direct3D texture another device fills, shared by handle, so Wallpaper Engine's live wallpaper goes from its capture
+# to the screen without passing through memory (window_capture.rs › run_shared; 2026-11-18).
+# And a pop-up window made WS_POPUP, without the caption frame style 0 gave it (vendor/gpui-pre-windows/src/window.rs;
+# the tray, 2026-11-19).
+gpui-pre-windows = { path = "vendor/gpui-pre-windows" }

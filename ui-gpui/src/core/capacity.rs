@@ -80,9 +80,16 @@ struct Kept {
     saved: Option<Each>,
     /// GetSystemTimes at the last look: (idle, kernel + user).
     cpu_before: Option<(u64, u64)>,
+    /// The whole PC's CPU in use at the last tick, percent.
+    busy: Option<f64>,
 }
 
-static KEPT: Mutex<Kept> = Mutex::new(Kept { each: None, read: false, saved: None, cpu_before: None });
+static KEPT: Mutex<Kept> = Mutex::new(Kept { each: None, read: false, saved: None, cpu_before: None, busy: None });
+
+/// The whole PC's CPU in use at the last tick, percent (the Game monitor's load).
+pub fn pc_busy() -> Option<f64> {
+    KEPT.lock().unwrap_or_else(|e| e.into_inner()).busy
+}
 
 fn file() -> std::path::PathBuf {
     vault::data_dir().join("capacity.json")
@@ -117,6 +124,7 @@ pub fn tick(players: &[PlayerProcess], memory: &MemoryStatus, cpu: Option<i32>, 
         kept.saved = kept.each;
     }
     let busy = cpu_busy(&mut kept);
+    kept.busy = busy;
     // What the settled windows take each, eased into what is kept (a window changing games doesn't swing the number).
     let settled: Vec<&PlayerProcess> = players.iter().filter(|p| p.created == 0 || (now_filetime - p.created) / 10_000_000 >= SETTLED_SECS).collect();
     if !settled.is_empty() {

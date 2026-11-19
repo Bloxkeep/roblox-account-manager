@@ -60,7 +60,9 @@ button:disabled { cursor: default; opacity: 0.48; }
   min-height: 48px;
 }
 .source-button:hover, .quiet:not(:disabled):hover { background: #2a2c33; }
-.source-button[aria-pressed="true"] { border-color: #f9c64b; background: #342c19; }
+.source-button[aria-pressed="true"], .quiet[aria-pressed="true"] { border-color: #f9c64b; background: #342c19; }
+.quiet[aria-pressed="true"] { color: #ffd46e; }
+.viewer-tools { display: flex; align-items: center; gap: 12px; }
 .source-button[aria-pressed="true"] strong { color: #ffd46e; }
 .source-button small { display: block; font-size: 0.76rem; margin-top: 2px; }
 .window-list { display: grid; gap: 8px; margin-bottom: 9px; }

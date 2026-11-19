@@ -272,4 +272,32 @@ pub async fn run(c: &mut Checks, dir: &str) {
         saved() == saved_before,
         saved().iter().map(|t| format!("{t:?}")).collect::<Vec<_>>().join(", "),
     );
+
+    // The default theme became Sunset (2026-11-18): a prefs.json from before that, still on Dark, opens on Sunset,
+    // once; Dark picked after that stays Dark.
+    let file = crate::core::vault::data_dir().join("prefs.json");
+    let kept = std::fs::read_to_string(&file).unwrap_or_default();
+    let before: String = serde_json::from_str::<serde_json::Value>(&kept)
+        .ok()
+        .map(|mut v| {
+            if let Some(o) = v.as_object_mut() {
+                o.remove("sunsetDefault");
+                o.insert("theme".into(), "dark".into());
+            }
+            v.to_string()
+        })
+        .unwrap_or_default();
+    let _ = std::fs::write(&file, before);
+    prefs::load();
+    let moved = theme();
+    prefs::lock().theme = "dark".into();
+    prefs::save();
+    prefs::load();
+    c.check(
+        "a prefs.json from before Sunset was the default, still on Dark, opens on Sunset once; Dark picked after that stays",
+        moved == "sunset" && theme() == "dark",
+        format!("{moved}, then {}", theme()),
+    );
+    let _ = std::fs::write(&file, kept);
+    prefs::load();
 }

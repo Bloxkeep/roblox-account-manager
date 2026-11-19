@@ -5,6 +5,8 @@
 // window. All of it answers only that account's own sign-in, lent by the app; asked from here (roblox.rs).
 use gpui_kit::{prelude::*, *};
 use serde_json::json;
+use crate::time::now_secs as now;
+use crate::ask::reply;
 
 use crate::{
     kit::*,
@@ -40,6 +42,11 @@ pub struct Data {
     /// Account status, as Roblox's own page has it: nothing against it (Ok None), a ban or a warning, or the read
     /// failed. It was only behind the card's ⋮ menu, where the owner never found it (2026-11-15).
     held: Option<Result<Option<roblox::Held>, String>>,
+    /// Where the account is signed in (Roblox's Settings › Security › Where you're logged in), None while read; every
+    /// one shown or the first ten (Roblox's page shows ten, then Show more); the places being logged out now.
+    places: Option<Result<roblox::Places, String>>,
+    places_all: bool,
+    leaving: Vec<String>,
 }
 
 pub fn want(r: &mut Root, link: &crate::link::Link, cx: &mut Context<Root>) {
@@ -63,52 +70,44 @@ fn load(r: &mut Root, cx: &mut Context<Root>) {
     r.rset.reading = true;
     let c3 = cookie.clone();
     let held = roblox::run(move || roblox::held(&c3));
-    cx.spawn(async move |this, cx| {
-        let got = held.await.unwrap_or_else(|_| Err(String::new()));
-        let _ = this.update(cx, |r, cx| {
-            if r.rset.of == user {
-                r.rset.held = Some(got);
-                cx.notify();
-            }
-        });
-    })
-    .detach();
+    reply(held, cx, move |r, got, cx| {
+        if r.rset.of == user {
+            r.rset.held = Some(got);
+            cx.notify();
+        }
+    });
+    let c4 = cookie.clone();
+    let places = roblox::run(move || roblox::sessions(&c4).map(roblox::places));
+    reply(places, cx, move |r, got, cx| {
+        if r.rset.of == user {
+            r.rset.places = Some(got);
+            cx.notify();
+        }
+    });
     let c2 = cookie.clone();
     let vis = roblox::run(move || roblox::visibility(&c2));
-    cx.spawn(async move |this, cx| {
-        let got = vis.await.unwrap_or_else(|_| Err(String::new()));
-        let _ = this.update(cx, |r, cx| {
-            if r.rset.of == user {
-                match got {
-                    Ok(v) => r.rset.vis = Some(v),
-                    Err(e) => r.rset.vis_failed = Some(if e.is_empty() { "no answer".into() } else { e }),
-                }
-                cx.notify();
+    reply(vis, cx, move |r, got, cx| {
+        if r.rset.of == user {
+            match got {
+                Ok(v) => r.rset.vis = Some(v),
+                Err(e) => r.rset.vis_failed = Some(if e.is_empty() { "no answer".into() } else { e }),
             }
-        });
-    })
-    .detach();
+            cx.notify();
+        }
+    });
     let rx = roblox::run(move || roblox::account_settings(&cookie));
-    cx.spawn(async move |this, cx| {
-        let got = rx.await.unwrap_or_else(|_| Err(String::new()));
-        let _ = this.update(cx, |r, cx| {
-            if r.rset.of == user {
-                r.rset.fill = Some(got.as_ref().ok().and_then(|s| s.about.clone()).unwrap_or_default());
-                let until = got.as_ref().ok().and_then(|s| s.voice.as_ref()).filter(|v| v.banned).and_then(|v| v.until);
-                r.rset.got = Some(got);
-                r.rset.reading = false;
-                if let Some(until) = until {
-                    tick_voice(r, user, until, cx);
-                }
-                cx.notify();
+    reply(rx, cx, move |r, got, cx| {
+        if r.rset.of == user {
+            r.rset.fill = Some(got.as_ref().ok().and_then(|s| s.about.clone()).unwrap_or_default());
+            let until = got.as_ref().ok().and_then(|s| s.voice.as_ref()).filter(|v| v.banned).and_then(|v| v.until);
+            r.rset.got = Some(got);
+            r.rset.reading = false;
+            if let Some(until) = until {
+                tick_voice(r, user, until, cx);
             }
-        });
-    })
-    .detach();
-}
-
-fn now() -> i64 {
-    std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs() as i64)
+            cx.notify();
+        }
+    });
 }
 
 /// A voice lock's countdown, redrawn every 20 s while these settings are shown; at its end Roblox is asked again.
@@ -164,8 +163,80 @@ fn again(r: &mut Root, cx: &mut Context<Root>) {
     }
     r.rset.got = None;
     r.rset.said = None;
+    r.rset.places = None;
     load(r, cx);
     cx.notify();
+}
+
+/// Logs the account out of these places (Roblox's Log out, one after another), after asking: `title` and `text` say
+/// which. Each gone one leaves the list; one Roblox refused stays, and why is said.
+fn log_out(r: &mut Root, tokens: Vec<String>, title: String, text: String, window: &mut Window, cx: &mut Context<Root>) {
+    if tokens.is_empty() || !r.rset.leaving.is_empty() {
+        return;
+    }
+    r.confirm(title, text, r.tr("rs.logOut"), true, None, window, cx, move |r, cx| {
+        let Some((_, user, cookie)) = friends::signed(r) else { return };
+        r.rset.leaving = tokens.clone();
+        cx.notify();
+        let list = tokens.clone();
+        let rx = roblox::run(move || list.into_iter().map(|t| { let done = roblox::log_out_session(&cookie, &t); (t, done) }).collect::<Vec<_>>());
+        cx.spawn(async move |this, cx| {
+            let Ok(done) = rx.await else { return };
+            let _ = this.update(cx, |r, cx| {
+                if r.rset.of != user {
+                    return;
+                }
+                r.rset.leaving.clear();
+                let gone: Vec<&String> = done.iter().filter(|(_, d)| d.is_ok()).map(|(t, _)| t).collect();
+                if let Some(Ok(p)) = r.rset.places.as_mut() {
+                    p.known.retain(|s| !gone.contains(&&s.token));
+                    p.unknown.retain(|s| !gone.contains(&&s.token));
+                }
+                let failed = done.iter().filter_map(|(_, d)| d.as_ref().err()).count();
+                r.toast = Some(match done.iter().find_map(|(_, d)| d.as_ref().err()) {
+                    None => (r.i18n.tn("rs.loggedOut", gone.len() as i64, &[]), "ok".into()),
+                    Some(why) => (
+                        r.i18n.tv("rs.logOutFailed", &[("n", &failed.to_string()), ("why", crate::net::why_words(&r.i18n, why).as_str())]),
+                        "bad".into(),
+                    ),
+                });
+                cx.notify();
+            });
+        })
+        .detach();
+    });
+}
+
+/// A place's device in words, as Roblox's page names it (getDeviceDetails): the Roblox app or Studio on a system, a
+/// browser on a system, or an unknown device.
+fn device(root: &Root, s: &roblox::Session) -> String {
+    let on = |what: String| if s.os.is_empty() { what } else { format!("{what} · {}", s.os) };
+    match s.kind.as_str() {
+        "App" => on(root.tr("rs.robloxApp")),
+        "Studio" => on("Roblox Studio".into()),
+        "Browser" => on(if s.app.is_empty() { root.tr("rs.browser") } else { s.app.clone() }),
+        _ if !s.os.is_empty() => on(root.tr("rs.robloxApp")),
+        _ => root.tr("rs.unknownDevice"),
+    }
+}
+
+/// The mark beside a place: a console, a browser, the Roblox app, or a PC.
+fn device_mark(s: &roblox::Session) -> &'static str {
+    let os = s.os.to_ascii_lowercase();
+    if os.contains("xbox") || os.contains("playstation") {
+        "gamepad"
+    } else if s.kind == "Browser" {
+        "globe"
+    } else if s.kind == "App" {
+        "roblox"
+    } else {
+        "monitor"
+    }
+}
+
+/// Where, roughly (Roblox's city, region, country), or that Roblox doesn't know.
+fn place(root: &Root, s: &roblox::Session) -> String {
+    if s.place.is_empty() { root.tr("rs.unknownPlace") } else { s.place.join(", ") }
 }
 
 /// The About words in the box, saved; the box then holds them as Roblox kept them.
@@ -178,27 +249,23 @@ fn save_about(r: &mut Root, cx: &mut Context<Root>) {
     r.rset.saving = Some("about");
     r.rset.said = None;
     let rx = roblox::run(move || roblox::set_about(&cookie, &words));
-    cx.spawn(async move |this, cx| {
-        let done = rx.await.unwrap_or_else(|_| Err(String::new()));
-        let _ = this.update(cx, |r, cx| {
-            if r.rset.of != user {
-                return;
-            }
-            r.rset.saving = None;
-            match done {
-                Ok(kept) => {
-                    if let Some(Ok(s)) = r.rset.got.as_mut() {
-                        s.about = Some(kept.clone());
-                    }
-                    r.rset.fill = Some(kept);
-                    r.rset.said = Some(Ok(()));
+    reply(rx, cx, move |r, done, cx| {
+        if r.rset.of != user {
+            return;
+        }
+        r.rset.saving = None;
+        match done {
+            Ok(kept) => {
+                if let Some(Ok(s)) = r.rset.got.as_mut() {
+                    s.about = Some(kept.clone());
                 }
-                Err(why) => r.rset.said = Some(Err(why)),
+                r.rset.fill = Some(kept);
+                r.rset.said = Some(Ok(()));
             }
-            cx.notify();
-        });
-    })
-    .detach();
+            Err(why) => r.rset.said = Some(Err(why)),
+        }
+        cx.notify();
+    });
 }
 
 /// Who may trade (`privacy`) or the least a trade must be worth, set to Roblox's `name` for it: shown at once, put
@@ -216,25 +283,21 @@ fn set_trade(r: &mut Root, privacy: bool, name: String, cx: &mut Context<Root>) 
     r.rset.saving = Some(if privacy { "trade" } else { "value" });
     r.rset.said = None;
     let rx = roblox::run(move || if privacy { roblox::set_trade_privacy(&cookie, n) } else { roblox::set_trade_value(&cookie, n) });
-    cx.spawn(async move |this, cx| {
-        let done = rx.await.unwrap_or_else(|_| Err(String::new()));
-        let _ = this.update(cx, |r, cx| {
-            if r.rset.of != user {
-                return;
+    reply(rx, cx, move |r, done, cx| {
+        if r.rset.of != user {
+            return;
+        }
+        r.rset.saving = None;
+        if let Err(why) = done {
+            if let Some(Ok(s)) = r.rset.got.as_mut() {
+                *(if privacy { &mut s.trade_privacy } else { &mut s.trade_value }) = before;
             }
-            r.rset.saving = None;
-            if let Err(why) = done {
-                if let Some(Ok(s)) = r.rset.got.as_mut() {
-                    *(if privacy { &mut s.trade_privacy } else { &mut s.trade_value }) = before;
-                }
-                r.rset.said = Some(Err(why));
-            } else {
-                r.rset.said = Some(Ok(()));
-            }
-            cx.notify();
-        });
-    })
-    .detach();
+            r.rset.said = Some(Err(why));
+        } else {
+            r.rset.said = Some(Ok(()));
+        }
+        cx.notify();
+    });
 }
 
 /// Who sees it online (`online`) or may join it, set to Roblox's `v`: shown at once, put back when Roblox refuses.
@@ -249,27 +312,19 @@ fn set_vis(r: &mut Root, online: bool, v: String, cx: &mut Context<Root>) {
     r.rset.saving = Some(if online { "online" } else { "join" });
     r.rset.said = None;
     let rx = roblox::run(move || if online { roblox::set_visibility(&cookie, Some(&v), None) } else { roblox::set_visibility(&cookie, None, Some(&v)) });
-    cx.spawn(async move |this, cx| {
-        let done = rx.await.unwrap_or_else(|_| Err(String::new()));
-        let _ = this.update(cx, |r, cx| {
-            if r.rset.of != user {
-                return;
+    reply(rx, cx, move |r, done, cx| {
+        if r.rset.of != user {
+            return;
+        }
+        r.rset.saving = None;
+        if let Err(why) = done {
+            if let Some(slot) = r.rset.vis.as_mut().and_then(|now| if online { now.0.as_mut() } else { now.1.as_mut() }) {
+                slot.now = before;
             }
-            r.rset.saving = None;
-            if let Err(why) = done {
-                if let Some(slot) = r.rset.vis.as_mut().and_then(|now| if online { now.0.as_mut() } else { now.1.as_mut() }) {
-                    slot.now = before;
-                }
-                r.toast = Some((r.i18n.tv("rs.failed", &[("why", if why.is_empty() { "Roblox" } else { &why })]), "bad".into()));
-            }
-            cx.notify();
-        });
-    })
-    .detach();
-}
-
-fn note(text: String) -> Div {
-    div().flex_1().flex().items_center().justify_center().text_size(px(T_M)).text_color(c(MUTED)).child(text)
+            r.toast = Some((r.i18n.tv("rs.failed", &[("why", if why.is_empty() { "Roblox" } else { &why })]), "bad".into()));
+        }
+        cx.notify();
+    });
 }
 
 /// A name (14 px, medium) and what it is under it in muted, as Settings' rows have them.
@@ -300,7 +355,7 @@ fn row(i: usize, what: String, value: AnyElement) -> Div {
 }
 
 /// A section: its head (kit::section_head), then its card.
-fn section(head: impl Into<SharedString>, card: impl IntoElement) -> Div {
+pub(super) fn section(head: impl Into<SharedString>, card: impl IntoElement) -> Div {
     div().flex().flex_col().gap(px(8.)).child(section_head(head, None)).child(card)
 }
 
@@ -325,8 +380,8 @@ pub fn page(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
         friends::need_account(root, "rs-add-acc", "rs.noAccount", "sliders", cx)
     } else {
         match &rs.got {
-            None => note(root.tr("rs.loading")).into_any_element(),
-            Some(Err(why)) => note(root.i18n.tv("rs.readFailed", &[("why", if why.is_empty() { "Roblox" } else { why })])).into_any_element(),
+            None => empty_note(root.tr("rs.loading")).into_any_element(),
+            Some(Err(why)) => empty_note(root.i18n.tv("rs.readFailed", &[("why", crate::net::why_words(&root.i18n, why).as_str())])).into_any_element(),
             Some(Ok(s)) => filled(root, s, viewer, width, cx).into_any_element(),
         }
     };
@@ -362,6 +417,8 @@ fn filled(root: &Root, s: &AccountSettings, viewer: Option<&serde_json::Value>, 
     rows.push((
         root.tr("rs.email"),
         match &s.email {
+            // (Names hidden: an email names its owner as a name does.)
+            Some((mail, _)) if !mail.is_empty() && root.hides_names() => badge(root.tr("rs.hidden"), Tone::Muted).into_any_element(),
             Some((mail, ok)) if !mail.is_empty() => div()
                 .flex()
                 .items_center()
@@ -384,6 +441,7 @@ fn filled(root: &Root, s: &AccountSettings, viewer: Option<&serde_json::Value>, 
     rows.push((
         root.tr("rs.birthday"),
         match s.birthday {
+            Some(_) if root.hides_names() => badge(root.tr("rs.hidden"), Tone::Muted).into_any_element(),
             Some((d, m, y)) if root.i18n.vietnamese => words(format!("{d:02}/{m:02}/{y}")),
             Some((d, m, y)) => words(format!("{y}-{m:02}-{d:02}")),
             None => dash(),
@@ -415,90 +473,17 @@ fn filled(root: &Root, s: &AccountSettings, viewer: Option<&serde_json::Value>, 
     ));
     let who = viewer.map(|a| {
         let user = a.get("username").and_then(serde_json::Value::as_str).filter(|u| !u.is_empty()).map(|u| format!("@{u}"));
-        let (presence, tone) = match a.pointer("/presence/type").and_then(serde_json::Value::as_str) {
-            Some("ingame") => ("rs.presence.playing", c(OK)),
-            Some("online" | "studio") => ("rs.presence.online", c(ONLINE)),
-            Some("offline") if !crate::pages::accounts::is_local(a) => ("rs.presence.offline", c(TEXT_2)),
-            Some("invisible") => ("rs.presence.invisible", c(TEXT_2)),
-            _ if crate::pages::accounts::is_local(a) => ("rs.presence.local", c(TEXT_2)),
-            _ => ("rs.presence.unknown", c(TEXT_2)),
-        };
-        let said = vec![(user.unwrap_or_else(|| root.tr("rs.account")), None), (root.tr(presence), Some(tone))];
+        let (presence, tone) = roblox_presence(a);
+        let said = vec![(user.unwrap_or_else(|| root.tr("rs.account")), None), (root.tr(presence), Some(c(tone)))];
         div().px(px(20.)).pt(px(18.)).pb(px(16.)).border_b_1().border_color(c(LINE)).child(group_head(avatar(a, GROUP_PIC, RAISED, cx), label(a), facts(said)))
     });
-    let account = surface().overflow_hidden().flex().flex_col().children(who).child(div().flex().flex_col().children(rows.into_iter().enumerate().map(|(i, (k, v))| row(i, k, v))));
+    let account = surface().overflow_hidden().flex().flex_col().children(who)
+        .child(div().flex().flex_col().children(rows.into_iter().enumerate().map(|(i, (k, v))| row(i, k, v))));
 
-    // Trades: two choices, each a row of Roblox's settings.
     let busy = rs.saving.is_some();
-    let choice = |privacy: bool| {
-        let (list, at): (&[(&str, i64)], &Option<String>) = if privacy { (&TRADE_PRIVACY, &s.trade_privacy) } else { (&TRADE_VALUE, &s.trade_value) };
-        let mut seg = Segmented::new(if privacy { "rs-tp" } else { "rs-tv" }, at.clone().unwrap_or_default());
-        for (name, _) in list {
-            seg = seg.item(*name, root.tr(&format!("{}.{name}", if privacy { "rs.tp" } else { "rs.tv" })));
-        }
-        let this = cx.entity().downgrade();
-        seg.on_select(move |v, _, cx| {
-            if busy {
-                return;
-            }
-            let name = v.to_string();
-            let _ = this.update(cx, |r, cx| set_trade(r, privacy, name, cx));
-        })
-    };
-    let trades = surface()
-        .overflow_hidden()
-        .flex()
-        .flex_col()
-        .child(div().px(px(20.)).pt(px(16.)).pb(px(18.)).flex().flex_col().gap(px(12.)).child(title(root.tr("rs.tradeWho"), None)).child(div().flex().child(choice(true))))
-        .child(div().px(px(20.)).pt(px(16.)).pb(px(18.)).border_t_1().border_color(c(LINE)).flex().flex_col().gap(px(12.)).child(title(root.tr("rs.tradeValue"), Some(root.tr("rs.tradeValueSub")))).child(div().flex().child(choice(false))));
-
-    // Privacy: who sees it online and who may join it, with the choices Roblox offers this account; under each, what
-    // the picked one means (the line used to explain "No one" whatever was picked, and read as if it were).
-    let seen = |online: bool, choice: &roblox::Choice| {
-        let mut seg = Segmented::new(if online { "rs-online" } else { "rs-join" }, choice.now.clone());
-        for v in &choice.options {
-            seg = seg.item(v.clone(), vis_word(root, v));
-        }
-        let this = cx.entity().downgrade();
-        seg.on_select(move |v, _, cx| {
-            if busy {
-                return;
-            }
-            let v = v.to_string();
-            let _ = this.update(cx, |r, cx| set_vis(r, online, v, cx));
-        })
-    };
-    let means = |online: bool, now: &str| -> Option<String> {
-        let key = format!("{}.{now}", if online { "rs.onlineIs" } else { "rs.joinIs" });
-        root.i18n.has(&key).then(|| root.tr(&key))
-    };
-    let privacy = surface()
-        .overflow_hidden()
-        .flex()
-        .flex_col()
-        .map(|d| match &rs.vis {
-            None => d.child(div().px(px(20.)).py(px(18.)).text_size(px(T_M)).text_color(c(MUTED)).child(match &rs.vis_failed { Some(why) => root.i18n.tv("rs.visFailed", &[("why", why)]), None => root.tr("vis.reading") })),
-            Some((online, join)) => {
-                let rows: Vec<Div> = [(true, online), (false, join)]
-                    .into_iter()
-                    .filter_map(|(o, c)| c.as_ref().filter(|c| !c.options.is_empty()).map(|c| (o, c)))
-                    .enumerate()
-                    .map(|(i, (o, ch))| {
-                        div()
-                            .px(px(20.))
-                            .pt(px(16.))
-                            .pb(px(18.))
-                            .when(i > 0, |d| d.border_t_1().border_color(c(LINE)))
-                            .flex()
-                            .flex_col()
-                            .gap(px(12.))
-                            .child(title(root.tr(if o { "rs.online" } else { "rs.join" }), means(o, &ch.now)))
-                            .child(div().flex().flex_wrap().child(seen(o, ch)))
-                    })
-                    .collect();
-                if rows.is_empty() { d.child(div().px(px(20.)).py(px(18.)).text_size(px(T_M)).text_color(c(MUTED)).child(root.tr("rs.visNone"))) } else { d.children(rows) }
-            }
-        });
+    let trades = trades_card(root, s.trade_privacy.as_deref(), s.trade_value.as_deref(), busy, set_trade, cx);
+    let vis = rs.vis.as_ref().map(|(o, j)| (o.as_ref(), j.as_ref()));
+    let privacy = privacy_card(root, vis, rs.vis_failed.as_deref(), busy, set_vis, cx);
 
     // About me: the box, and Save when it holds something else.
     let typed = root.rset_about.read(cx).value().to_string();
@@ -525,7 +510,7 @@ fn filled(root: &Root, s: &AccountSettings, viewer: Option<&serde_json::Value>, 
                     .gap(px(12.))
                     .child(div().flex_1().min_w_0().map(|d| match said {
                         Some(Ok(())) => d.child(div().flex().child(badge(root.tr("rs.saved"), Tone::Ok))),
-                        Some(Err(why)) => d.text_size(px(T_S)).text_color(c(BAD)).child(root.i18n.tv("rs.failed", &[("why", if why.is_empty() { "Roblox" } else { why })])),
+                        Some(Err(why)) => d.text_size(px(T_S)).text_color(c(BAD)).child(root.i18n.tv("rs.failed", &[("why", crate::net::why_words(&root.i18n, why).as_str())])),
                         None => d.text_size(px(T_M)).text_color(c(MUTED)).child(root.tr("rs.unsaved")),
                     }))
                     .when(changed, |d| d.child(Button::new("rs-save", root.tr("rs.save")).primary().small().disabled(busy).on_click(cx.listener(|r, _, _, cx| save_about(r, cx))))),
@@ -545,6 +530,7 @@ fn filled(root: &Root, s: &AccountSettings, viewer: Option<&serde_json::Value>, 
         .child(Button::new("rs-web", root.tr("rs.open")).icon("external").small().on_click(cx.listener(move |r, _, _, _| r.send("openWebsite", json!({ "id": id, "page": "settings" })))));
 
     let account = section(root.tr("rs.account"), account);
+    let places = section(root.tr("rs.places"), places_card(root, cx));
     let trades = section(root.tr("rs.trades"), trades);
     let privacy = section(root.tr("rs.privacy"), privacy);
     let about = section(root.tr("rs.about"), about);
@@ -555,13 +541,228 @@ fn filled(root: &Root, s: &AccountSettings, viewer: Option<&serde_json::Value>, 
         if two {
             d.items_start()
                 .gap(px(24.))
-                .child(div().flex_1().min_w_0().flex().flex_col().gap(px(SECTION_GAP)).child(account).child(trades))
+                .child(div().flex_1().min_w_0().flex().flex_col().gap(px(SECTION_GAP)).child(account).child(places).child(trades))
                 .child(div().flex_1().min_w_0().flex().flex_col().gap(px(SECTION_GAP)).child(privacy).child(about).child(more))
         } else {
-            d.flex_col().gap(px(SECTION_GAP)).child(account).child(privacy).child(about).child(trades).child(more)
+            d.flex_col().gap(px(SECTION_GAP)).child(account).child(places).child(privacy).child(about).child(trades).child(more)
         }
     });
     crate::scrolled::body("rs-body", inner)
+}
+
+/// A place's row: its mark, what it is over where and when (the place cut short when long, never the time), and what
+/// can be done to it.
+fn place_row(i: usize, mark: &'static str, what: String, sub: (String, Option<String>), end: Option<AnyElement>) -> AnyElement {
+    let (at, when) = sub;
+    div()
+        .min_h(px(62.))
+        .px(px(20.))
+        .py(px(11.))
+        .flex()
+        .items_center()
+        .gap(px(14.))
+        .when(i > 0, |d| d.border_t_1().border_color(c(LINE)))
+        .child(div().flex_none().child(icon(mark, 19., c(TEXT_2))))
+        .child(
+            div()
+                .flex_1()
+                .min_w_0()
+                .flex()
+                .flex_col()
+                .gap(px(3.))
+                .child(div().truncate().text_size(px(T_L)).line_height(px(20.)).font_weight(FontWeight::MEDIUM).child(what))
+                .child(
+                    div()
+                        .min_w_0()
+                        .flex()
+                        .text_size(px(T_M))
+                        .line_height(px(18.))
+                        .text_color(c(MUTED))
+                        .font_features(tnum())
+                        .child(div().min_w_0().truncate().child(at))
+                        .when_some(when, |d, w| d.child(div().flex_none().whitespace_nowrap().child(format!(" · {w}")))),
+                ),
+        )
+        .children(end.map(|e| div().flex_none().flex().items_center().gap(px(10.)).child(e)))
+        .into_any_element()
+}
+
+/// Where the account is signed in, as Roblox's Settings › Security has it and Discord's Devices lays it out: this PC
+/// first (Bloxkeep's own sign-in, with the Roblox windows opened from it: never logged out from here), then every other
+/// place, the latest used first (ten, then Show more), each with Log out; old ones Roblox knows nothing of as one row;
+/// at the foot, Log out of every other place.
+fn places_card(root: &Root, cx: &mut Context<Root>) -> Div {
+    let rs = &root.rset;
+    let note = |text: String| div().px(px(20.)).py(px(18.)).text_size(px(T_M)).text_color(c(MUTED)).child(text);
+    let card = surface().overflow_hidden().flex().flex_col();
+    let p = match &rs.places {
+        None => return card.child(note(root.tr("vis.reading"))),
+        Some(Err(why)) => return card.child(note(root.i18n.tv("rs.placesFailed", &[("why", crate::net::why_words(&root.i18n, why).as_str())]))),
+        Some(Ok(p)) => p,
+    };
+    let leaving = !rs.leaving.is_empty();
+    let now = now();
+    let mut rows: Vec<AnyElement> = Vec::new();
+    if let Some(t) = &p.this {
+        let sub = (place(root, t), (p.here > 0).then(|| root.i18n.tn("rs.thisWindows", p.here as i64, &[])));
+        rows.push(place_row(rows.len(), "monitor", root.tr("rs.thisDevice"), sub, Some(badge(root.tr("rs.inUse"), Tone::Ok).into_any_element())));
+    }
+    let shown = if rs.places_all { p.known.len() } else { p.known.len().min(10) };
+    for (i, s) in p.known.iter().take(shown).enumerate() {
+        let (what, at) = (device(root, s), place(root, s));
+        let sub = (at.clone(), Some(crate::time::ago(now - s.last.unwrap_or(now), &root.i18n)));
+        let token = s.token.clone();
+        let title = root.tr("rs.logOutOneTitle");
+        let text = root.i18n.tv("rs.logOutOne", &[("device", &what), ("place", &at)]);
+        let out = Button::new(("rs-out", i), root.tr("rs.logOut"))
+            .small()
+            .quiet()
+            .disabled(leaving)
+            .on_click(cx.listener(move |r, _, window, cx| log_out(r, vec![token.clone()], title.clone(), text.clone(), window, cx)));
+        let end = div().flex().items_center().gap(px(10.)).when(s.trusted, |d| d.child(badge(root.tr("rs.trusted"), Tone::Muted))).child(out);
+        rows.push(place_row(rows.len(), device_mark(s), what, sub, Some(end.into_any_element())));
+    }
+    if p.known.len() > shown {
+        let more = Button::new("rs-places-more", root.i18n.tv("rs.placesMore", &[("n", &(p.known.len() - shown).to_string())]))
+            .small()
+            .quiet()
+            .icon_end("chevronDown")
+            .on_click(cx.listener(|r, _, _, cx| {
+                r.rset.places_all = true;
+                cx.notify();
+            }));
+        rows.push(div().px(px(20.)).py(px(10.)).border_t_1().border_color(c(LINE)).flex().justify_center().child(more).into_any_element());
+    }
+    if !p.unknown.is_empty() {
+        let n = p.unknown.len();
+        let tokens: Vec<String> = p.unknown.iter().map(|s| s.token.clone()).collect();
+        let title = root.i18n.tn("rs.logOutManyTitle", n as i64, &[]);
+        let text = root.tr("rs.logOutUnknown");
+        let out = Button::new("rs-out-unknown", root.tr("rs.logOut"))
+            .small()
+            .quiet()
+            .disabled(leaving)
+            .on_click(cx.listener(move |r, _, window, cx| log_out(r, tokens.clone(), title.clone(), text.clone(), window, cx)));
+        rows.push(place_row(rows.len(), "monitor", root.i18n.tn("rs.unknownCount", n as i64, &[]), (root.tr("rs.unknownSub"), None), Some(out.into_any_element())));
+    }
+    let others: Vec<String> = p.known.iter().chain(&p.unknown).map(|s| s.token.clone()).collect();
+    if rows.is_empty() {
+        return card.child(note(root.tr("rs.placesNone")));
+    }
+    let foot = if others.is_empty() {
+        div().px(px(20.)).py(px(14.)).border_t_1().border_color(c(LINE)).text_size(px(T_M)).text_color(c(MUTED)).child(root.tr("rs.onlyHere"))
+    } else {
+        let n = others.len();
+        let title = root.i18n.tn("rs.logOutManyTitle", n as i64, &[]);
+        let text = root.tr("rs.logOutOthers");
+        div()
+            .min_h(px(56.))
+            .px(px(20.))
+            .py(px(12.))
+            .border_t_1()
+            .border_color(c(LINE))
+            .flex()
+            .items_center()
+            .gap(px(12.))
+            .child(div().flex_1().min_w_0().text_size(px(T_M)).line_height(px(18.)).text_color(c(MUTED)).child(root.tr("rs.othersNote")))
+            .child(
+                Button::new("rs-out-others", root.tr("rs.logOutAll"))
+                    .small()
+                    .danger()
+                    .disabled(leaving)
+                    .on_click(cx.listener(move |r, _, window, cx| log_out(r, others.clone(), title.clone(), text.clone(), window, cx))),
+            )
+    };
+    card.children(rows).child(foot)
+}
+
+/// Sets one of the account's choices: privacy or not (trades: who or the least worth; privacy: online or joining),
+/// to Roblox's word for it.
+pub(super) type Pick = fn(&mut Root, bool, String, &mut Context<Root>);
+
+/// Trades: who may send them and the least one must be worth (Roblox's words for each now, None unknown).
+pub(super) fn trades_card(root: &Root, privacy: Option<&str>, value: Option<&str>, busy: bool, pick: Pick, cx: &mut Context<Root>) -> Div {
+    let choice = |is_privacy: bool| {
+        let (list, at): (&[(&str, i64)], Option<&str>) = if is_privacy { (&TRADE_PRIVACY, privacy) } else { (&TRADE_VALUE, value) };
+        let mut seg = Segmented::new(if is_privacy { "rs-tp" } else { "rs-tv" }, at.unwrap_or_default().to_string());
+        for (name, _) in list {
+            seg = seg.item(*name, root.tr(&format!("{}.{name}", if is_privacy { "rs.tp" } else { "rs.tv" })));
+        }
+        let this = cx.entity().downgrade();
+        seg.on_select(move |v, _, cx| {
+            if busy {
+                return;
+            }
+            let name = v.to_string();
+            let _ = this.update(cx, |r, cx| pick(r, is_privacy, name, cx));
+        })
+    };
+    surface()
+        .overflow_hidden()
+        .flex()
+        .flex_col()
+        .child(div().px(px(20.)).pt(px(16.)).pb(px(18.)).flex().flex_col().gap(px(12.)).child(title(root.tr("rs.tradeWho"), None)).child(div().flex().child(choice(true))))
+        .child(div().px(px(20.)).pt(px(16.)).pb(px(18.)).border_t_1().border_color(c(LINE)).flex().flex_col().gap(px(12.)).child(title(root.tr("rs.tradeValue"), Some(root.tr("rs.tradeValueSub")))).child(div().flex().child(choice(false))))
+}
+
+/// Privacy: who sees it online and who may join it, with the choices Roblox offers this account (None while read,
+/// `failed` why the read failed); under each, what the picked one means (the line used to explain "No one" whatever
+/// was picked, and read as if it were).
+pub(super) fn privacy_card(root: &Root, vis: Option<(Option<&roblox::Choice>, Option<&roblox::Choice>)>, failed: Option<&str>, busy: bool, pick: Pick, cx: &mut Context<Root>) -> Div {
+    let seen = |online: bool, choice: &roblox::Choice| {
+        let mut seg = Segmented::new(if online { "rs-online" } else { "rs-join" }, choice.now.clone());
+        for v in &choice.options {
+            seg = seg.item(v.clone(), vis_word(root, v));
+        }
+        let this = cx.entity().downgrade();
+        seg.on_select(move |v, _, cx| {
+            if busy {
+                return;
+            }
+            let v = v.to_string();
+            let _ = this.update(cx, |r, cx| pick(r, online, v, cx));
+        })
+    };
+    let means = |online: bool, now: &str| -> Option<String> {
+        let key = format!("{}.{now}", if online { "rs.onlineIs" } else { "rs.joinIs" });
+        root.i18n.has(&key).then(|| root.tr(&key))
+    };
+    let note = |text: String| div().px(px(20.)).py(px(18.)).text_size(px(T_M)).text_color(c(MUTED)).child(text);
+    surface().overflow_hidden().flex().flex_col().map(|d| match vis {
+        None => d.child(note(match failed { Some(why) => root.i18n.tv("rs.visFailed", &[("why", why)]), None => root.tr("vis.reading") })),
+        Some((online, join)) => {
+            let rows: Vec<Div> = [(true, online), (false, join)]
+                .into_iter()
+                .filter_map(|(o, c)| c.filter(|c| !c.options.is_empty()).map(|c| (o, c)))
+                .enumerate()
+                .map(|(i, (o, ch))| {
+                    div()
+                        .px(px(20.))
+                        .pt(px(16.))
+                        .pb(px(18.))
+                        .when(i > 0, |d| d.border_t_1().border_color(c(LINE)))
+                        .flex()
+                        .flex_col()
+                        .gap(px(12.))
+                        .child(title(root.tr(if o { "rs.online" } else { "rs.join" }), means(o, &ch.now)))
+                        .child(div().flex().flex_wrap().child(seen(o, ch)))
+                })
+                .collect();
+            if rows.is_empty() { d.child(note(root.tr("rs.visNone"))) } else { d.children(rows) }
+        }
+    })
+}
+
+/// The account's status as Roblox shows it to others (its presence): the words' key and their colour.
+pub(super) fn roblox_presence(a: &serde_json::Value) -> (&'static str, u32) {
+    match a.pointer("/presence/type").and_then(serde_json::Value::as_str) {
+        Some("ingame") => ("rs.presence.playing", OK),
+        Some("online" | "studio") => ("rs.presence.online", ONLINE),
+        Some("offline") if !crate::pages::accounts::is_local(a) => ("rs.presence.offline", TEXT_2),
+        Some("invisible") => ("rs.presence.invisible", TEXT_2),
+        _ if crate::pages::accounts::is_local(a) => ("rs.presence.local", TEXT_2),
+        _ => ("rs.presence.unknown", TEXT_2),
+    }
 }
 
 /// A privacy choice in words: Roblox's word for it ("All", "FriendsAndFollowing"…), as its Settings page names it.

@@ -527,11 +527,10 @@ impl MacroRecorder {
         let (ready_tx, ready_rx) = mpsc::channel::<()>();
         let (ended_tx, ended_rx) = mpsc::channel::<()>();
         let worker = rec.clone();
-        let thread = crate::net::Named::new("Bloxkeep macro recorder".into())
-            .spawn(move || {
-                run(&worker, ready_tx);
-                let _ = ended_tx.send(());
-            });
+        let thread = crate::threads::own("Bloxkeep macro recorder", move || {
+            run(&worker, ready_tx);
+            let _ = ended_tx.send(());
+        });
         let thread = match thread {
             Ok(thread) => thread,
             Err(e) => {
@@ -965,7 +964,7 @@ type ShotJob = Box<dyn FnOnce() + Send>;
 /// Click pictures waiting, and how many threads take them now.
 static SHOTS: Mutex<(std::collections::VecDeque<ShotJob>, usize)> = Mutex::new((std::collections::VecDeque::new(), 0));
 
-/// A click picture taken on one of at most SHOTS_AT_ONCE threads, in order.
+/// A click picture taken on one of at most SHOTS_AT_ONCE pool threads, in order.
 fn shoot(job: ShotJob) {
     {
         let mut shots = SHOTS.lock().unwrap_or_else(|e| e.into_inner());
@@ -975,7 +974,7 @@ fn shoot(job: ShotJob) {
         }
         shots.1 += 1;
     }
-    let spawned = crate::net::Named::new("Bloxkeep click picture".into()).spawn(|| {
+    crate::threads::run(|| {
         loop {
             let job = {
                 let mut shots = SHOTS.lock().unwrap_or_else(|e| e.into_inner());
@@ -990,8 +989,4 @@ fn shoot(job: ShotJob) {
             job(); // catches its own panics
         }
     });
-    if spawned.is_err() {
-        // No thread: the picture waits for the next one (or counts as not done when the recording ends).
-        SHOTS.lock().unwrap_or_else(|e| e.into_inner()).1 -= 1;
-    }
 }

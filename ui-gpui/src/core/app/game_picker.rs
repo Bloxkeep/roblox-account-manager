@@ -153,12 +153,12 @@ impl App {
         type Lists = (Vec<GameSummary>, Vec<GameSummary>, Vec<String>, bool, bool);
         let lists: Res<Lists> = rt::blocking(move || {
             let ct = Cancel::new();
-            std::thread::scope(|scope| {
+            crate::threads::scope(|scope| {
                 let fav = scope.spawn(|| -> Res<(Vec<GameSummary>, Vec<String>)> {
                     if let Some(g) = fav_kept {
                         return Ok((g, Vec::new()));
                     }
-                    let lists: Vec<Res<(Vec<GameSummary>, Option<String>)>> = std::thread::scope(|inner| {
+                    let lists: Vec<Res<(Vec<GameSummary>, Option<String>)>> = crate::threads::scope(|inner| {
                         let handles: Vec<_> = users
                             .iter()
                             .map(|user| {

@@ -8,9 +8,14 @@
 use std::time::{Duration, Instant};
 
 use gpui_kit::{prelude::*, *};
+use gpui_kit::component::input::{InputEvent, InputState};
 use serde_json::{Value, json};
 
 use crate::{images, kit::*, shell::Root, theme::*};
+use crate::val::s;
+use crate::val::arr;
+use crate::time::{civil, day_long, day_short, dm, month_name, weekday};
+use crate::ask::answer;
 
 #[derive(Clone, Copy, PartialEq, Eq, Default)]
 pub enum Tab {
@@ -47,6 +52,7 @@ pub struct Data {
     limit: i64,
     /// The account filter's menu is open.
     pub menu: bool,
+    account_query: Option<Entity<InputState>>,
     /// Today's clock: the account pointed at (its ring stands out, the middle says its time).
     active: Option<String>,
     last: Option<Instant>,
@@ -56,6 +62,8 @@ pub struct Data {
     /// Home's "Recent activity": the newest events of every account, when they were asked, and Hide names then.
     home_log: Option<Value>,
     home_at: Option<Instant>,
+    /// Home's events are to be asked again shortly (a state came right after the last asking).
+    home_due: bool,
     home_hid: Option<bool>,
     /// Home's asking now: an older one's late reply is dropped.
     home_seq: u64,
@@ -127,12 +135,14 @@ impl Default for Data {
             group: String::new(),
             limit: PAGE,
             menu: false,
+            account_query: None,
             active: None,
             last: None,
             hid: None,
             scroll: ScrollHandle::new(),
             home_log: None,
             home_at: None,
+            home_due: false,
             home_hid: None,
             home_seq: 0,
             exporting: false,
@@ -153,14 +163,8 @@ impl Default for Data {
     }
 }
 
-fn s<'a>(v: &'a Value, k: &str) -> &'a str {
-    v.get(k).and_then(Value::as_str).unwrap_or_default()
-}
 fn int(v: &Value, k: &str) -> i64 {
     v.get(k).and_then(Value::as_f64).map(|x| x.round() as i64).unwrap_or(0)
-}
-fn arr<'a>(v: &'a Value, k: &str) -> &'a [Value] {
-    v.get(k).and_then(Value::as_array).map(Vec::as_slice).unwrap_or(&[])
 }
 fn secs(v: &Value, k: &str) -> i64 {
     crate::time::iso_secs(s(v, k)).unwrap_or(0)
@@ -191,7 +195,30 @@ pub fn want(r: &mut Root, cx: &mut Context<Root>) {
 
 /// The figures for the period (and game) picked; a reply to an older request is dropped, a failed one keeps the figures
 /// already shown.
-/// Home's newest events (every account, every kind), asked when Home opens and every 30 s while it is shown.
+/// The app sent a new state (a window opened, joined, dropped, closed): Home's newest events are asked again instead
+/// of waiting out their half minute (the owner, 2026-11-18: "recent activity update hơi chậm"), two seconds apart at
+/// the least, as states come in bursts.
+pub fn state_changed(r: &mut Root, cx: &mut Context<Root>) {
+    const APART: Duration = Duration::from_secs(2);
+    let Some(since) = r.stats.home_at.map(|t| t.elapsed()) else { return };
+    if since >= APART {
+        r.stats.home_at = None;
+    } else if !r.stats.home_due {
+        r.stats.home_due = true;
+        cx.spawn(async move |this, cx| {
+            cx.background_executor().timer(APART - since).await;
+            let _ = this.update(cx, |r, cx| {
+                r.stats.home_due = false;
+                r.stats.home_at = None;
+                cx.notify();
+            });
+        })
+        .detach();
+    }
+}
+
+/// Home's newest events (every account, every kind), asked when Home opens, when the app's state changes and every
+/// 30 s while it is shown.
 pub fn want_home(r: &mut Root, cx: &mut Context<Root>) {
     let hide = r.state.get("hideNames").and_then(Value::as_bool).unwrap_or(false);
     if r.stats.home_hid != Some(hide) {
@@ -243,8 +270,6 @@ pub fn recent(root: &Root, cx: &mut Context<Root>) -> Option<AnyElement> {
             "bad" => c(BAD),
             _ => c(DIM),
         };
-        let account = s(e, "account").to_string();
-        let acc = Some(s(e, "accountId")).filter(|x| !x.is_empty()).and_then(|id| root.accounts().iter().find(|a| s(a, "id") == id));
         let when = if local_day(at) == today { crate::time::ago(now - at, &root.i18n) } else { format!("{} · {}", day_heading(root, local_day(at), today), clock_at(root, at)) };
         list = list.child(
             div()
@@ -255,20 +280,7 @@ pub fn recent(root: &Root, cx: &mut Context<Root>) -> Option<AnyElement> {
                 .min_h(px(38.))
                 .when(i > 0, |d| d.border_t_1().border_color(c(LINE)))
                 .child(div().size(px(7.)).flex_none().rounded_full().bg(tone))
-                .child(
-                    div()
-                        .w(px(150.))
-                        .flex_none()
-                        .flex()
-                        .items_center()
-                        .gap(px(8.))
-                        .min_w_0()
-                        .when(account.is_empty(), |d| d.text_size(px(T_M)).font_weight(FontWeight::MEDIUM).text_color(c(MUTED)).child("Bloxkeep"))
-                        .when(!account.is_empty(), |d| {
-                            d.when_some(acc, |d, a| d.child(face(a, 20., cx)))
-                                .child(div().min_w_0().truncate().text_size(px(T_M)).font_weight(FontWeight::MEDIUM).child(account.clone()))
-                        }),
-                )
+                .child(who(root, e, 150., cx))
                 .child(div().flex_1().min_w_0().truncate().text_size(px(T_M)).text_color(c(TEXT_2)).child(s(e, "text").to_string()))
                 .child(div().flex_none().text_size(px(T_S)).font_features(tnum()).text_color(c(MUTED)).child(when)),
         );
@@ -297,28 +309,24 @@ fn load_stats(r: &mut Root, cx: &mut Context<Root>) {
     r.stats.seq += 1;
     let mine = r.stats.seq;
     let rx = link.call("playStats", json!({ "days": r.stats.days, "game": r.stats.game }));
-    cx.spawn(async move |this, cx| {
-        let got = rx.await;
-        let _ = this.update(cx, |r, cx| {
-            if r.stats.seq != mine {
-                return;
-            }
-            match got {
-                Ok(Ok(v)) if v.is_object() => {
-                    r.stats.data = Some(v);
-                    r.stats.failed = false;
-                    // BLOXKEEP_SHOT_SCROLL=900: a shot of the page scrolled down that far, once there is something to scroll.
-                    #[cfg(feature = "shot")]
-                    if let Ok(y) = std::env::var("BLOXKEEP_SHOT_SCROLL").map(|v| v.parse::<f32>().unwrap_or(0.)) {
-                        r.stats.scroll.set_offset(point(px(0.), px(-y)));
-                    }
+    answer(rx, cx, move |r, got, cx| {
+        if r.stats.seq != mine {
+            return;
+        }
+        match got {
+            Ok(Ok(v)) if v.is_object() => {
+                r.stats.data = Some(v);
+                r.stats.failed = false;
+                // BLOXKEEP_SHOT_SCROLL=900: a shot of the page scrolled down that far, once there is something to scroll.
+                #[cfg(feature = "shot")]
+                if let Ok(y) = std::env::var("BLOXKEEP_SHOT_SCROLL").map(|v| v.parse::<f32>().unwrap_or(0.)) {
+                    r.stats.scroll.set_offset(point(px(0.), px(-y)));
                 }
-                _ => r.stats.failed = true,
             }
-            cx.notify();
-        });
-    })
-    .detach();
+            _ => r.stats.failed = true,
+        }
+        cx.notify();
+    });
 }
 
 fn load_log(r: &mut Root, cx: &mut Context<Root>) {
@@ -327,28 +335,24 @@ fn load_log(r: &mut Root, cx: &mut Context<Root>) {
     let mine = r.stats.log_seq;
     let opt = |v: &str| if v.is_empty() { Value::Null } else { json!(v) };
     let rx = link.call("activity", json!({ "account": opt(&r.stats.account), "group": opt(&r.stats.group), "limit": r.stats.limit }));
-    cx.spawn(async move |this, cx| {
-        let got = rx.await;
-        let _ = this.update(cx, |r, cx| {
-            if r.stats.log_seq != mine {
-                return;
-            }
-            match got {
-                Ok(Ok(v)) if v.is_object() => {
-                    r.stats.log = Some(v);
-                    // BLOXKEEP_SHOT_SCROLL=900: a shot of the list scrolled down that far.
-                    #[cfg(feature = "shot")]
-                    if let Ok(y) = std::env::var("BLOXKEEP_SHOT_SCROLL").map(|v| v.parse::<f32>().unwrap_or(0.)) {
-                        r.stats.scroll.set_offset(point(px(0.), px(-y)));
-                    }
-                    r.stats.log_failed = false;
+    answer(rx, cx, move |r, got, cx| {
+        if r.stats.log_seq != mine {
+            return;
+        }
+        match got {
+            Ok(Ok(v)) if v.is_object() => {
+                r.stats.log = Some(v);
+                // BLOXKEEP_SHOT_SCROLL=900: a shot of the list scrolled down that far.
+                #[cfg(feature = "shot")]
+                if let Ok(y) = std::env::var("BLOXKEEP_SHOT_SCROLL").map(|v| v.parse::<f32>().unwrap_or(0.)) {
+                    r.stats.scroll.set_offset(point(px(0.), px(-y)));
                 }
-                _ => r.stats.log_failed = true,
+                r.stats.log_failed = false;
             }
-            cx.notify();
-        });
-    })
-    .detach();
+            _ => r.stats.log_failed = true,
+        }
+        cx.notify();
+    });
 }
 
 pub fn export(r: &mut Root, cx: &mut Context<Root>) {
@@ -359,40 +363,23 @@ pub fn export(r: &mut Root, cx: &mut Context<Root>) {
     r.stats.exporting = true;
     let opt = |v: &str| if v.is_empty() { Value::Null } else { json!(v) };
     let rx = link.call("exportActivity", json!({ "account": opt(&r.stats.account), "group": opt(&r.stats.group) }));
-    cx.spawn(async move |this, cx| {
-        let got = rx.await;
-        let _ = this.update(cx, |r, cx| {
-            r.stats.exporting = false;
-            match got {
-                Ok(Ok(v)) => {
-                    let n = v.as_i64().unwrap_or(0);
-                    if n > 0 {
-                        r.toast = Some((r.i18n.tn("alog.exported", n, &[("n", &num(n, r.i18n.vietnamese))]), "ok".into()));
-                    }
+    answer(rx, cx, move |r, got, cx| {
+        r.stats.exporting = false;
+        match got {
+            Ok(Ok(v)) => {
+                let n = v.as_i64().unwrap_or(0);
+                if n > 0 {
+                    r.toast = Some((r.i18n.tn("alog.exported", n, &[("n", &thousands(n, r.i18n.vietnamese))]), "ok".into()));
                 }
-                Ok(Err(e)) => r.toast = Some((e, "bad".into())),
-                Err(_) => {}
             }
-            cx.notify();
-        });
-    })
-    .detach();
+            Ok(Err(e)) => r.toast = Some((e, "bad".into())),
+            Err(_) => {}
+        }
+        cx.notify();
+    });
 }
 
 // ───────────────────────── words for numbers and times ─────────────────────────
-
-/// 1.234 in Vietnamese, 1,234 in English.
-fn num(n: i64, vi: bool) -> String {
-    let digits = n.abs().to_string();
-    let mut out = String::new();
-    for (i, ch) in digits.chars().enumerate() {
-        if i > 0 && (digits.len() - i) % 3 == 0 {
-            out.push(if vi { '.' } else { ',' });
-        }
-        out.push(ch);
-    }
-    if n < 0 { format!("-{out}") } else { out }
-}
 
 /// "35 phút", "2 giờ 5 phút", "2 giờ" (the old page's playedText).
 pub fn played(root: &Root, seconds: i64) -> String {
@@ -401,9 +388,9 @@ pub fn played(root: &Root, seconds: i64) -> String {
     if m < 60 {
         root.i18n.tv("dur.min", &[("m", &m.to_string())])
     } else if m % 60 > 0 {
-        root.i18n.tv("dur.hour", &[("h", &num(h, root.i18n.vietnamese)), ("m", &(m % 60).to_string())])
+        root.i18n.tv("dur.hour", &[("h", &thousands(h, root.i18n.vietnamese)), ("m", &(m % 60).to_string())])
     } else {
-        root.i18n.tv("dur.hours", &[("h", &num(h, root.i18n.vietnamese))])
+        root.i18n.tv("dur.hours", &[("h", &thousands(h, root.i18n.vietnamese))])
     }
 }
 
@@ -435,35 +422,13 @@ fn local_day(at: i64) -> i64 {
     (at + offset()).div_euclid(86400)
 }
 
-/// A day since 1970 as (year, month, day).
-fn civil(days: i64) -> (i64, i64, i64) {
-    let z = days + 719468;
-    let era = z.div_euclid(146097);
-    let doe = z - era * 146097;
-    let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
-    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
-    let mp = (5 * doy + 2) / 153;
-    let d = doy - (153 * mp + 2) / 5 + 1;
-    let m = if mp < 10 { mp + 3 } else { mp - 9 };
-    (yoe + era * 400 + if m <= 2 { 1 } else { 0 }, m, d)
-}
-fn weekday(days: i64) -> usize {
-    (days + 4).rem_euclid(7) as usize
-}
-
 /// A day's short name under a bar: "T2"…"CN" / "Mon"…; or its date ("9/11", "11/9") when the period is long.
-fn day_label(root: &Root, day: i64, many: bool) -> String {
-    let vi = root.i18n.vietnamese;
+fn day_label(day: i64, many: bool) -> String {
     if many {
         let (_, m, d) = civil(day);
-        return if vi { format!("{d}/{m}") } else { format!("{m}/{d}") };
+        return dm(d, m);
     }
-    let w = weekday(day);
-    if vi {
-        if w == 0 { "CN".into() } else { format!("T{}", w + 1) }
-    } else {
-        ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][w].into()
-    }
+    day_short(weekday(day))
 }
 
 /// An Activity day's heading: Today, Yesterday, "Thứ Hai, 9 tháng 11", "Monday, November 9" (the year when not this one).
@@ -476,14 +441,11 @@ fn day_heading(root: &Root, day: i64, today: i64) -> String {
     }
     let (y, m, d) = civil(day);
     let (ty, _, _) = civil(today);
-    let w = weekday(day);
+    let name = day_long(weekday(day));
     if root.i18n.vietnamese {
-        let name = ["Chủ Nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"][w];
         if y != ty { format!("{name}, {d} tháng {m}, {y}") } else { format!("{name}, {d} tháng {m}") }
     } else {
-        let name = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][w];
-        let month = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
-            [(m - 1).clamp(0, 11) as usize];
+        let month = month_name(m);
         if y != ty { format!("{name}, {month} {d}, {y}") } else { format!("{name}, {month} {d}") }
     }
 }
@@ -674,6 +636,24 @@ fn name_of(root: &Root, a: &Value) -> String {
     shown.filter(|n| !n.is_empty()).unwrap_or_else(|| root.tr("stats.deleted"))
 }
 
+/// Who an activity line is about, `w` wide: the account's face and name; for a line about no account (an update, a
+/// backup, the vault) Bloxkeep's own mark and name; an account no longer in the vault gets a plain face. No line
+/// stands without one (the owner, 2026-11-18: "bổ sung icon cho mấy cái ko có icon").
+fn who(root: &Root, e: &Value, w: f32, cx: &mut App) -> Div {
+    const FACE: f32 = 20.;
+    let account = s(e, "account");
+    let cell = div().w(px(w)).flex_none().flex().items_center().gap(px(8.)).min_w_0().text_size(px(T_M)).font_weight(FontWeight::MEDIUM);
+    if account.is_empty() {
+        return cell.text_color(c(MUTED)).child(crate::crisp::mark(FACE)).child("Bloxkeep");
+    }
+    let acc = Some(s(e, "accountId")).filter(|x| !x.is_empty()).and_then(|id| root.accounts().iter().find(|a| s(a, "id") == id));
+    let pic = match acc {
+        Some(a) => face(a, FACE, cx),
+        None => div().size(px(FACE)).flex_none().rounded_full().bg(ca(WHITE, 0.06)).flex().items_center().justify_center().child(icon("user", 12., c(MUTED))),
+    };
+    cell.child(pic).child(div().min_w_0().truncate().child(account.to_string()))
+}
+
 /// An account's picture; a deleted account's is a plain figure (its old picture may be someone else's by now).
 fn face(a: &Value, size: f32, cx: &mut App) -> Div {
     let deleted = a.get("deleted").and_then(Value::as_bool).unwrap_or(false);
@@ -732,8 +712,33 @@ fn figures(root: &Root, w: f32, cx: &mut Context<Root>) -> Div {
         if st.game.is_some() {
             return e.child(div().mt(px(8.)).child(Button::new("st-all", root.tr("stats.allGames")).on_click(cx.listener(|r, _, _, cx| pick_game(r, None, cx)))));
         }
-        // Nothing yet: the way to the first play from here (an account first, then a game).
+        // Nothing ever played: in Home's welcome look, the way to the first play (an account first, then a game) and
+        // what this page will show, a block each.
         let none = root.accounts().is_empty();
+        if !recorded {
+            let main = Button::new("st-first", root.tr(if none { "acc.add" } else { "home.pickGame" })).icon(if none { "plus" } else { "gamepad" }).primary().on_click(cx.listener(move |r, _, _, cx| {
+                if none {
+                    r.add_account(cx);
+                } else {
+                    r.go(crate::pages::Page::Games);
+                }
+                cx.notify();
+            }));
+            let tab_button = |id: &'static str, label: String, t: Tab, name: &'static str, cx: &mut Context<Root>| {
+                div().flex().flex_col().child(Button::new(id, label).small().on_click(cx.listener(move |r, _, _, cx| {
+                    crate::prefs::set("statsTab", json!(name));
+                    r.stats.tab = t;
+                    r.stats.menu = false;
+                    cx.notify();
+                }))).into_any_element()
+            };
+            let blocks = vec![
+                crate::pages::home::stage_block(root.tr("st.w.time"), crate::pages::home::block_text("clock", None, root.tr("st.w.timeSub"), None), None, false),
+                crate::pages::home::stage_block(root.tr("alog.title"), crate::pages::home::block_text("activity", None, root.tr("alog.note"), None), Some(tab_button("st-w-act", root.tr("alog.title"), Tab::Activity, "activity", cx)), false),
+                crate::pages::home::stage_block(root.tr("con.title"), crate::pages::home::block_text("code", None, root.tr("con.note"), None), Some(tab_button("st-w-con", root.tr("con.title"), Tab::Console, "console", cx)), false),
+            ];
+            return div().pt(px(8.)).child(crate::pages::home::empty_stage(root, 4, None, root.tr("stats.emptyTitle"), root.tr("stats.emptyText"), Some(main.into_any_element()), blocks, None, w, cx));
+        }
         return e.when(!recorded, |e| {
             e.child(div().mt(px(10.)).child(Button::new("st-first", root.tr(if none { "acc.add" } else { "home.pickGame" })).icon(if none { "plus" } else { "gamepad" }).primary().on_click(cx.listener(move |r, _, _, cx| {
                 if none {
@@ -849,7 +854,7 @@ fn alts_board(root: &Root, w: f32, cx: &mut Context<Root>) -> Div {
                 .child(div().text_size(px(T_XS)).text_color(c(MUTED)).child(label))
         };
         head = head.child(div().flex_1()).child(
-            div().flex().flex_wrap().gap(px(8.)).child(fact(num(alts, vi), root.tr("cm.accounts"))).child(fact(num(pcs, vi), root.tr("cm.pcs"))).child(fact(per, root.tr("cm.perPc"))),
+            div().flex().flex_wrap().gap(px(8.)).child(fact(thousands(alts, vi), root.tr("cm.accounts"))).child(fact(thousands(pcs, vi), root.tr("cm.pcs"))).child(fact(per, root.tr("cm.perPc"))),
         );
     }
     let mut card = card().child(head);
@@ -899,7 +904,7 @@ fn alts_board(root: &Root, w: f32, cx: &mut Context<Root>) -> Div {
                 .justify_end()
                 .gap(px(4.))
                 .font_features(tnum())
-                .child(div().text_size(px(if first { T_L } else { T_M })).font_weight(FontWeight::SEMIBOLD).child(num(alts, vi)))
+                .child(div().text_size(px(if first { T_L } else { T_M })).font_weight(FontWeight::SEMIBOLD).child(thousands(alts, vi)))
                 .child(div().text_size(px(T_XS)).text_color(c(MUTED)).child(root.tr("cm.alts")));
             rows = rows.child(
                 div()
@@ -927,9 +932,9 @@ fn alts_board(root: &Root, w: f32, cx: &mut Context<Root>) -> Div {
         let on_board = !name.is_empty() && rank > 0 && rank as usize <= board.len();
         let mine = if on_board { int(&board[rank as usize - 1], "alts") } else { root.accounts().iter().filter(|a| s(a, "state") == "running").count() as i64 };
         let line = if on_board {
-            Some(root.i18n.tv("cm.youLine", &[("name", &name), ("r", &rank.to_string()), ("n", &num(of, vi)), ("a", &num(mine, vi))]))
+            Some(root.i18n.tv("cm.youLine", &[("name", &name), ("r", &rank.to_string()), ("n", &thousands(of, vi)), ("a", &thousands(mine, vi))]))
         } else if !name.is_empty() && rank > 0 {
-            Some(root.i18n.tv("cm.yourRank", &[("r", &rank.to_string()), ("n", &num(of, vi))]))
+            Some(root.i18n.tv("cm.yourRank", &[("r", &rank.to_string()), ("n", &thousands(of, vi))]))
         } else if !name.is_empty() && cm.is_some_and(|c| c.get("you").is_some_and(|y| !y.is_null())) {
             Some(root.tr("cm.notYet"))
         } else {
@@ -988,18 +993,20 @@ fn tiles(root: &Root, d: &Value, w: f32) -> Div {
         let before = before.filter(|b| *b > 0)?;
         let pct = ((now - before) as f64 / before as f64 * 100.).round() as i64;
         let vs = root.tr(&format!("stats.vs.{period}"));
-        let line = div().flex().items_center().gap(px(5.)).text_size(px(T_S));
+        // (Cut where its tile is narrow: see the three tiles' panel below.)
+        let line = div().min_w_0().flex().items_center().gap(px(5.)).text_size(px(T_S));
         Some(if pct == 0 {
-            line.text_color(c(MUTED)).child(root.tr("stats.noChange")).child(vs)
+            line.text_color(c(MUTED)).child(div().min_w_0().truncate().child(format!("{} {vs}", root.tr("stats.noChange"))))
         } else {
             let good = (pct > 0) == more_is_good;
             line.child(
                 div()
                     .font_weight(FontWeight::SEMIBOLD)
                     .text_color(c(if good { OK } else { BAD }))
-                    .child(format!("{} {} %", if pct > 0 { "↑" } else { "↓" }, num(pct.abs(), vi))),
+                    .flex_none()
+                    .child(format!("{} {} %", if pct > 0 { "↑" } else { "↓" }, thousands(pct.abs(), vi))),
             )
-            .child(div().text_color(c(MUTED)).child(vs))
+            .child(div().min_w_0().truncate().text_color(c(MUTED)).child(vs))
         })
     };
     let all = root.accounts().len() as i64;
@@ -1017,7 +1024,7 @@ fn tiles(root: &Root, d: &Value, w: f32) -> Div {
             .flex_col()
             .justify_between()
             .gap(px(6.))
-            .child(div().text_size(px(T_M)).font_weight(FontWeight::MEDIUM).text_color(c(MUTED)).child(label))
+            .child(div().text_size(px(T_M)).font_weight(FontWeight::MEDIUM).text_color(c(MUTED)).truncate().child(label))
             .child(value.text_size(px(if hero { T_TITLE + 6. } else { T_FIG + 2. })).line_height(px(if hero { 42. } else { 30. })).font_weight(FontWeight::BOLD).font_features(tnum()).truncate())
             .child(sub.unwrap_or_else(|| div().text_size(px(T_S)).child(" ")));
         // Only the lead is a panel of its own; the other three share one (below), so the row isn't four equal boxes.
@@ -1074,6 +1081,13 @@ fn tiles(root: &Root, d: &Value, w: f32) -> Div {
         .child(
             div()
                 .when(w >= 700., |d| d.flex_basis(px(0.)).flex_grow(3.))
+                // Its three tiles' least widths, said for the panel itself: where the row can't hold the lead tile and
+                // that (a window 860 px wide), the panel goes to a line of its own under it, as wide as the page.
+                // Without it the panel was squeezed beside the lead tile, its tiles kept their least widths, and the
+                // third ran out past the page's edge ("4 giờ 55", the shots of every size, 2026-11-18).
+                // (210 a tile: "4 giờ 55 phút" whole, with the tile's sides.)
+                .min_w(px(if w >= 700. { 630. } else { 0. }))
+                .max_w_full()
                 .flex()
                 .when(w < 700., |d| d.flex_col())
                 // (No hairline: a block's ground and edge, as every block now; see kit::surface.)
@@ -1083,14 +1097,14 @@ fn tiles(root: &Root, d: &Value, w: f32) -> Div {
         .child(tile(
             false,
             root.tr("stats.played"),
-            div().flex().items_baseline().child(num(played_n, vi)).child(div().text_size(px(T_H)).text_color(c(MUTED)).child(format!("/{}", num(all, vi)))),
+            div().flex().items_baseline().child(thousands(played_n, vi)).child(div().text_size(px(T_H)).text_color(c(MUTED)).child(format!("/{}", thousands(all, vi)))),
             (all > 0).then(|| {
                 let idle = (all - played_n).max(0);
-                div().text_size(px(T_S)).text_color(c(MUTED)).truncate().child(if idle == 0 { root.tr("stats.allPlayed") } else { root.i18n.tv("stats.idleN", &[("n", &num(idle, vi))]) })
+                div().text_size(px(T_S)).text_color(c(MUTED)).truncate().child(if idle == 0 { root.tr("stats.allPlayed") } else { root.i18n.tv("stats.idleN", &[("n", &thousands(idle, vi))]) })
             }),
             None,
         ))
-        .child(tile(false, root.tr("stats.kicks"), div().child(num(kicks, vi)), change(kicks, prev.map(|p| int(p, "kicks")), false), None))
+        .child(tile(false, root.tr("stats.kicks"), div().child(thousands(kicks, vi)), change(kicks, prev.map(|p| int(p, "kicks")), false), None))
         .child(tile(false, root.tr("stats.longest"), div().child(longest.map(|l| played(root, int(l, "seconds"))).unwrap_or("—".into())), long_sub, None)),
         )
 }
@@ -1189,7 +1203,7 @@ fn timeline(root: &Root, d: &Value, only: Option<&str>, w: f32, cx: &mut Context
         if n % every != 0 || at(start) > 0.95 {
             continue;
         }
-        let label = if hourly { hour_mark(root, (start + offset()).rem_euclid(86400) / 3600) } else { day_label(root, local_day(start), every > 1) };
+        let label = if hourly { hour_mark(root, (start + offset()).rem_euclid(86400) / 3600) } else { day_label(local_day(start), every > 1) };
         axis = axis.child(div().absolute().left(px(at(start) * track_w)).top_0().text_size(px(T_S)).text_color(c(MUTED)).child(label));
     }
     rows.child(axis).when(any_drop, |d| {
@@ -1471,7 +1485,7 @@ fn clock(root: &Root, d: &Value, w: f32, cx: &mut Context<Root>) -> Div {
 
 /// A stay's ends: the time today; its weekday and time over 7 and 30 days.
 fn stay_clock(root: &Root, hourly: bool, at: i64) -> String {
-    if hourly { clock_at(root, at) } else { format!("{} {}", day_label(root, local_day(at), false), clock_at(root, at)) }
+    if hourly { clock_at(root, at) } else { format!("{} {}", day_label(local_day(at), false), clock_at(root, at)) }
 }
 
 /// The average play time a day over the period: from the first day played when the period starts before the records
@@ -1517,7 +1531,7 @@ fn heat(root: &Root, d: &Value, w: f32) -> Div {
     grid = grid.child(hours);
     for (i, row) in heat.iter().enumerate() {
         let day = first_day + i as i64;
-        let day_text: SharedString = if i == last { root.tr("alog.today") } else { day_label(root, day, many) }.into();
+        let day_text: SharedString = if i == last { root.tr("alog.today") } else { day_label(day, many) }.into();
         let shown = !many || (last - i) % 5 == 0;
         let mut line = div().h(px(cell_h)).flex().items_center().gap(px(8.)).child(
             div()
@@ -1581,7 +1595,7 @@ fn drops(root: &Root, d: &Value, cx: &mut Context<Root>) -> Option<Div> {
             "other" if arr(l, "accounts").iter().filter_map(Value::as_str).any(|id| root.accounts().iter().any(|a| s(a, "id") == id && a.get("autoRejoin").and_then(Value::as_bool) == Some(false))) => Some("stats.do.rejoin"),
             _ => None,
         };
-        let detail = [root.i18n.tn("stats.timesN", times, &[("n", &num(times, vi))]), names.join(", ")].into_iter().filter(|x| !x.is_empty()).collect::<Vec<_>>().join(" · ");
+        let detail = [root.i18n.tn("stats.timesN", times, &[("n", &thousands(times, vi))]), names.join(", ")].into_iter().filter(|x| !x.is_empty()).collect::<Vec<_>>().join(" · ");
         list = list.child(
             div()
                 .flex()
@@ -1679,7 +1693,7 @@ fn game_list(root: &Root, d: &Value, cols: u16, cx: &mut Context<Root>) -> Div {
                                 .items_baseline()
                                 .gap(px(10.))
                                 .child(div().flex_1().min_w_0().truncate().text_size(px(T_M)).font_weight(FontWeight::SEMIBOLD).child(s(g, "name").to_string()))
-                                .child(div().flex_none().text_size(px(T_S)).text_color(c(TEXT_2)).font_features(tnum()).child(format!("{} · {} %", played(root, int(g, "seconds")), num(share, vi)))),
+                                .child(div().flex_none().text_size(px(T_S)).text_color(c(TEXT_2)).font_features(tnum()).child(format!("{} · {} %", played(root, int(g, "seconds")), thousands(share, vi)))),
                         )
                         .child(div().h(px(4.)).rounded_full().bg(c(RAISED_2)).child(grow_bar(i, part, game_color(&key)))),
                 )
@@ -1823,7 +1837,7 @@ fn by_preset(root: &Root, d: &Value, cx: &mut Context<Root>) -> Option<Div> {
         let detail = [
             root.i18n.tn("stats.accountsN", int(p, "accounts"), &[]),
             if kicks > 0 { root.i18n.tn("stats.kicksN", kicks, &[]) } else { String::new() },
-            format!("{} %", num(share, vi)),
+            format!("{} %", thousands(share, vi)),
         ]
         .into_iter()
         .filter(|x| !x.is_empty())
@@ -1869,27 +1883,46 @@ fn by_preset(root: &Root, d: &Value, cx: &mut Context<Root>) -> Option<Div> {
 fn activity(root: &Root, cx: &mut Context<Root>) -> Div {
     let st = &root.stats;
     let log = st.log.as_ref();
-    let named: Vec<(String, String)> = log.map(|l| arr(l, "accounts").iter().map(|a| (s(a, "id").to_string(), s(a, "label").to_string())).collect()).unwrap_or_default();
+    let mut seen = std::collections::HashSet::new();
+    let named: Vec<_> = log.into_iter().flat_map(|l| arr(l, "accounts")).filter_map(|a| {
+        let id = s(a, "id");
+        (!id.is_empty() && seen.insert(id)).then(|| (id, s(a, "label")))
+    }).collect();
 
     // The account filter: a button with a small list under it (a second click closes it).
     let current = if st.account.is_empty() {
         root.tr("alog.allAccounts")
     } else {
-        named.iter().find(|(id, _)| *id == st.account).map(|(_, l)| l.clone()).unwrap_or_else(|| root.tr("alog.allAccounts"))
+        named.iter().find(|(id, _)| *id == st.account).map(|(_, l)| l.to_string()).unwrap_or_else(|| root.tr("alog.allAccounts"))
     };
+    let trigger = std::rc::Rc::new(std::cell::Cell::new(None::<Bounds<Pixels>>));
+    let at = trigger.clone();
     let mut picker = div().relative().flex_none().child(
-        tool("al-acc", Some("user"), st.menu).child(tool_words(None, current)).child(tool_chev()).on_click(cx.listener(|r, _, _, cx| {
+        tool("al-acc", Some("user"), st.menu).child(div().max_w(px(180.)).truncate().child(current)).child(tool_chev()).on_click(cx.listener(|r, _, window, cx| {
             r.stats.menu = !r.stats.menu;
+            r.stats.account_query = r.stats.menu.then(|| {
+                let hint = r.tr("ui.accSearch");
+                let input = cx.new(|cx| InputState::new(window, cx).placeholder(hint));
+                cx.subscribe(&input, |_, _, _: &InputEvent, cx| cx.notify()).detach();
+                input
+            });
             cx.notify();
         })),
-    );
-    {
+    ).child(canvas(move |bounds, _, _| at.set(Some(bounds)), |_, _, _, _| {}).absolute().inset_0());
+    if crate::pages::accounts::pop_alive("al-acc-pop", st.menu) {
+        let accounts: std::collections::HashMap<_, _> = root.accounts().iter().map(|a| (s(a, "id"), a)).collect();
+        let query = st.account_query.as_ref().map(|q| folded(q.read(cx).value().trim())).unwrap_or_default();
+        let mut items = vec![(String::new(), root.tr("alog.allAccounts"), None)];
+        items.extend(named.iter().filter_map(|&(id, label)| {
+            let account = accounts.get(id).copied();
+            let username = account.map(|a| s(a, "username")).unwrap_or_default();
+            let matches = query.is_empty() || folded(label).contains(query.as_str()) || folded(username).contains(query.as_str());
+            matches.then(|| (id.to_string(), label.to_string(), Some(account.cloned().unwrap_or_else(|| json!({ "deleted": true })))))
+        }));
         let mut menu = div()
             .id("al-acc-menu")
             .occlude()
             .w(px(240.))
-            .max_h(px(320.))
-            .overflow_y_scroll()
             .p(px(4.))
             .rounded(px(R_M))
             .bg(c(RAISED))
@@ -1898,37 +1931,44 @@ fn activity(root: &Root, cx: &mut Context<Root>) -> Div {
             .shadow_lg()
             .flex()
             .flex_col()
-            .on_mouse_down_out(cx.listener(|r, _, _, cx| {
-                r.stats.menu = false;
-                cx.notify();
+            .on_mouse_down_out(cx.listener(move |r, event: &MouseDownEvent, _, cx| {
+                if r.stats.menu && !trigger.get().is_some_and(|b| b.contains(&event.position)) {
+                    r.stats.menu = false;
+                    r.stats.account_query = None;
+                    cx.notify();
+                }
             }));
-        // Each account with its face (a deleted one's a plain figure), everyone's with the people mark.
-        let mut items: Vec<(String, String, Option<Value>)> = vec![(String::new(), root.tr("alog.allAccounts"), None)];
-        items.extend(named.iter().map(|(id, l)| (id.clone(), l.clone(), Some(root.accounts().iter().find(|a| s(a, "id") == id).cloned().unwrap_or_else(|| json!({ "deleted": true }))))));
-        for (i, (id, label, who)) in items.into_iter().enumerate() {
-            let on = id == st.account;
-            let lead = match &who {
+        if named.len() > 12 {
+            menu = menu.children(st.account_query.as_ref().map(|input| div().p(px(4.)).child(field(input, Some("search")))));
+        }
+        let this = cx.weak_entity();
+        let selected = st.account.clone();
+        let height = (items.len() as f32 * 34.).min(306.);
+        let rows = uniform_list(SharedString::from(format!("al-accounts-{query}")), items.len(), move |range, _, cx| range.map(|i| {
+            let (id, label, who) = &items[i];
+            let on = *id == selected;
+            let lead = match who {
                 Some(a) => face(a, 22., cx),
                 None => div().size(px(22.)).flex_none().rounded_full().bg(c(RAISED_2)).flex().items_center().justify_center().child(icon("users", 12., c(TEXT_2))),
             };
-            menu = menu.child(
-                menu_row(("al-acc-i", i))
-                    .h(px(34.))
-                    .gap(px(10.))
-                    .text_color(if on { c(TEXT) } else { c(TEXT_2) })
-                    .child(lead)
-                    .child(div().min_w_0().flex_1().truncate().child(label))
-                    .when(on, |d| d.child(icon("check", 13., c(TEXT))))
-                    .on_click(cx.listener(move |r, _, _, cx| {
+            let (id, this) = (id.clone(), this.clone());
+            menu_row(("al-acc-i", i)).w_full().h(px(34.)).gap(px(10.))
+                .text_color(if on { c(TEXT) } else { c(TEXT_2) })
+                .child(lead).child(div().min_w_0().flex_1().truncate().child(label.clone()))
+                .when(on, |d| d.child(icon("check", 13., c(TEXT))))
+                .on_click(move |_, _, cx| {
+                    let _ = this.update(cx, |r, cx| {
                         r.stats.menu = false;
+                        r.stats.account_query = None;
                         r.stats.account = id.clone();
                         r.stats.limit = PAGE;
                         load_log(r, cx);
                         cx.notify();
-                    })),
-            );
-        }
-        picker = picker.child(div().absolute().top(px(34.)).left_0().child(deferred(anchored().snap_to_window_with_margin(px(8.)).child(pop("al-acc-pop", st.menu, menu))).with_priority(1)));
+                    });
+                })
+        }).collect::<Vec<_>>()).h(px(height)).w_full();
+        menu = menu.child(div().h(px(height)).overflow_hidden().child(rows));
+        picker = picker.child(popup(PopAt::BelowLeft(34.), "al-acc-pop", st.menu, menu));
     }
 
     // The kinds, as the Accounts page's filters (the chosen one the yellow block).
@@ -2013,8 +2053,6 @@ fn log_list(root: &Root, cx: &mut Context<Root>) -> Div {
             "bad" => c(BAD),
             _ => c(DIM),
         };
-        let account = s(e, "account").to_string();
-        let acc = Some(s(e, "accountId")).filter(|x| !x.is_empty()).and_then(|id| root.accounts().iter().find(|a| s(a, "id") == id));
         let tip: SharedString = if day == today { format!("{} · {}", crate::time::ago(now - at, &root.i18n), clock_at(root, at)) } else { clock_at(root, at) }.into();
         list = list.child(
             div()
@@ -2037,22 +2075,7 @@ fn log_list(root: &Root, cx: &mut Context<Root>) -> Div {
                         .child(clock_at(root, at))
                         .tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into()),
                 )
-                .child(
-                    div()
-                        .w(px(140.))
-                        .flex_none()
-                        .flex()
-                        .items_center()
-                        .gap(px(8.))
-                        .min_w_0()
-                        // A line about no account is the app's own (an update, a backup, the vault): it says so, where
-                        // a lone dash left the column empty (review 6.2).
-                        .when(account.is_empty(), |d| d.text_size(px(T_M)).font_weight(FontWeight::MEDIUM).text_color(c(MUTED)).child(div().size(px(20.)).flex_none().rounded(px(6.)).bg(ca(WHITE, 0.06)).flex().items_center().justify_center().child(icon("monitor", 12., c(MUTED)))).child("Bloxkeep"))
-                        .when(!account.is_empty(), |d| {
-                            d.when_some(acc, |d, a| d.child(face(a, 20., cx)))
-                                .child(div().min_w_0().truncate().text_size(px(T_M)).font_weight(FontWeight::MEDIUM).child(account.clone()))
-                        }),
-                )
+                .child(who(root, e, 140., cx))
                 .child(div().flex_1().min_w_0().py(px(6.)).text_size(px(T_M)).text_color(c(TEXT_2)).child(s(e, "text").to_string())),
         );
         list.into_any_element()
@@ -2071,7 +2094,7 @@ fn log_list(root: &Root, cx: &mut Context<Root>) -> Div {
                     load_log(r, cx);
                     cx.notify();
                 })))
-                .child(div().text_size(px(T_S)).text_color(c(MUTED)).child(root.i18n.tv("alog.shown", &[("n", &num(entries.len() as i64, vi)), ("total", &num(total, vi))]))),
+                .child(div().text_size(px(T_S)).text_color(c(MUTED)).child(root.i18n.tv("alog.shown", &[("n", &thousands(entries.len() as i64, vi)), ("total", &thousands(total, vi))]))),
         );
     }
     list
@@ -2212,7 +2235,7 @@ fn console(root: &Root, width: f32, cx: &mut Context<Root>) -> Div {
             let text: Vec<String> = all.iter().map(|l| plain_line(l, &masks)).collect();
             cx.write_to_clipboard(ClipboardItem::new_string(text.join("\n")));
             let n = text.len() as i64;
-            r.toast = Some((r.i18n.tn("con.copied", n, &[("n", &num(n, r.i18n.vietnamese))]), "ok".into()));
+            r.toast = Some((r.i18n.tn("con.copied", n, &[("n", &thousands(n, r.i18n.vietnamese))]), "ok".into()));
             cx.notify();
         })),
     );

@@ -161,7 +161,7 @@ pub async fn run(c: &mut Checks, _dir: &str) {
     seen.borrow_mut().opened = None;
     act(json!({ "what": "account", "id": "not an id" }));
     act(json!({ "what": "nothing" }));
-    window.on_message("not json");
+    act(json!("not an object"));
     c.check("…anything else it sends does nothing", seen.borrow().opened.is_none(), ());
     window.dispose();
 

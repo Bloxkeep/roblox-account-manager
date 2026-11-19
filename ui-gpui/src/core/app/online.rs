@@ -118,7 +118,7 @@ fn read_answer(answer: Result<ureq::Response, ureq::Error>) -> Res<(u16, String)
 /// waited for.
 pub fn say_offline(id: String) -> std::sync::mpsc::Receiver<()> {
     let (done, wait) = std::sync::mpsc::channel();
-    let _ = crate::net::Named::new("online-goodbye".into()).spawn(move || {
+    crate::threads::run(move || {
         // Counted until its last beat is too old (a quarter of an hour at most).
         let _ = post_online(&json!({ "id": id, "gone": true }));
         let _ = done.send(());

@@ -32,6 +32,20 @@ use super::{
 const ACTIVATE_EVENT: &str = r"Local\Bloxkeep.Activate";
 const QUIT_EVENT: &str = r"Local\Bloxkeep.Quit";
 const SINGLE_INSTANCE_MUTEX: &str = r"Local\Bloxkeep.SingleInstance";
+
+/// `base` for this run: with its own data folder (BLOXKEEP_DATA, a test copy run on an empty folder to try the first
+/// start) a Bloxkeep is an instance of its own, beside the everyday one rather than giving way to it (the owner,
+/// 2026-11-19: "cho tôi thử 1 bản build không có dữ liệu để test onboarding").
+fn instance_name(base: &str) -> String {
+    match std::env::var("BLOXKEEP_DATA").ok().filter(|d| !d.is_empty()) {
+        Some(dir) => {
+            // (FNV-1a of the folder, lower-cased: the same folder is the same instance.)
+            let hash = dir.to_lowercase().bytes().fold(0xcbf29ce484222325u64, |h, b| (h ^ b as u64).wrapping_mul(0x100000001b3));
+            format!("{base}.{hash:016x}")
+        }
+        None => base.to_string(),
+    }
+}
 /// How long a start by hand waits for the run an update is starting; after that it starts as usual.
 const UPDATE_RUN_WAIT: Duration = Duration::from_secs(90);
 const ASFW_ANY: u32 = u32::MAX;
@@ -139,12 +153,21 @@ pub fn main_core(args: &[String]) {
     // Out of the program folder first: programs Bloxkeep starts inherit it, and one still running (Bloxstrap stays
     // while Roblox does) made updates fail, as Velopack can't move a folder a process is in. No relative paths here.
     let _ = std::env::set_current_dir(std::env::temp_dir());
+    // Started by Windows for a roblox-player: link (Bloxkeep holds them, roblox_links): Roblox opens, nothing else.
+    if let Some(at) = args.iter().position(|a| a == super::roblox_links::ARG) {
+        let link = args.get(at + 1).cloned();
+        std::panic::set_hook(Box::new(|info| {
+            super::log::note(&format!("Roblox links: Bloxkeep stopped on a link: {}", super::roblox_launcher::hide_ticket(&info.to_string())));
+        }));
+        let _ = std::panic::catch_unwind(move || super::roblox_links::open(link.as_deref()));
+        return;
+    }
     // Install/update/uninstall steps from Velopack are handled (and exit) before anything else. Uninstalling keeps
     // the accounts and settings in %LOCALAPPDATA%\Bloxkeep unless the person chooses otherwise.
     // A downloaded update is applied at start (Velopack's default) only when no Bloxkeep runs: a second start (the
     // shortcut clicked to bring the window forward) would otherwise apply it, and its Update.exe kills the running one
     // mid-launch, unsaved (2026-10-30 review). That one applies it itself, at a quiet moment or on quitting.
-    let another_runs = match open_mutex(SINGLE_INSTANCE_MUTEX) {
+    let another_runs = match open_mutex(&instance_name(SINGLE_INSTANCE_MUTEX)) {
         Opened::Handle(_) => true, // dropped (closed) at once
         Opened::Denied => true,    // one started as administrator
         Opened::Missing => false,
@@ -163,6 +186,8 @@ pub fn main_core(args: &[String]) {
             // answered by 22 s, which leaves time to delete the data (2026-10-30 review: 50 s were planned).
             let deadline = Instant::now() + Duration::from_secs(22);
             close_running_app();
+            // The Roblox links back to the program Bloxkeep took them from.
+            super::roblox_links::turn_off();
             // Sign-in and captcha browser profiles in %TEMP%, normally removed at the next start that never comes.
             BrowserLoginForm::cleanup_leftover_profiles();
             CaptchaForm::cleanup_leftover_profiles();
@@ -192,6 +217,8 @@ pub fn main_core(args: &[String]) {
     std::panic::set_hook(Box::new(|info| {
         // Which thread: "core", "main" (the window), a watcher's own; the panic's words name only the line.
         let text = format!("{info} (thread \"{}\")", std::thread::current().name().unwrap_or("unnamed"));
+        // (The calls that led to it, for error.log only: the box shows the words.)
+        log::write(&format!("Panic{}", log::stack_here()));
         if CAUGHT.with(|c| c.get() > 0) {
             log::write(&text);
         } else {
@@ -206,11 +233,11 @@ pub fn main_core(args: &[String]) {
 
     // A second launch just brings the running window to the front.
     // One started as administrator owns these names, and a normal start can't open them: it says so rather than crash.
-    let activate = guarded(|| create_event(ACTIVATE_EVENT, false));
-    let quit = guarded(|| create_event(QUIT_EVENT, true));
+    let activate = guarded(|| create_event(&instance_name(ACTIVATE_EVENT), false));
+    let quit = guarded(|| create_event(&instance_name(QUIT_EVENT), true));
     let mut first = false;
     let single = guarded(|| {
-        let (opened, created) = create_mutex(SINGLE_INSTANCE_MUTEX);
+        let (opened, created) = create_mutex(&instance_name(SINGLE_INSTANCE_MUTEX));
         first = created;
         opened
     });
@@ -251,7 +278,7 @@ pub fn main_core(args: &[String]) {
     // interface can ask anything (the C# constructor set them).
     let (stop_tx, stop_rx) = oneshot::channel::<()>();
     let (ready_tx, ready_rx) = mpsc::channel::<bool>();
-    let core = crate::net::Named::new("core".into()).stack_size(16 << 20).spawn(move || {
+    let core = crate::threads::own_with_stack("core", 16 << 20, move || {
         // COM for the window property stores (taskbar groups) and the shell calls made here; free-threaded, as this
         // thread pumps no messages.
         // SAFETY: once, first thing on this thread; it lives as long as the process.
@@ -288,7 +315,7 @@ pub fn main_core(args: &[String]) {
     let quit = std::sync::Arc::new(quit);
     {
         let (activate, ending) = (activate.clone(), ending.clone());
-        let _ = crate::net::Named::new("activate-wait".into()).spawn(move || {
+        let _ = crate::threads::own("activate-wait", move || {
             while !ending.load(Ordering::SeqCst) {
                 if !activate.wait(500).0 {
                     continue;
@@ -305,7 +332,7 @@ pub fn main_core(args: &[String]) {
         // A downloaded update isn't applied on that quit: the installer or uninstaller runs Velopack's Update.exe next,
         // and a second one applying the update would race it for the folder (2026-10-30 review).
         let (quit, ending) = (quit.clone(), ending.clone());
-        let _ = crate::net::Named::new("quit-wait".into()).spawn(move || {
+        let _ = crate::threads::own("quit-wait", move || {
             while !ending.load(Ordering::SeqCst) {
                 if quit.wait(500).0 {
                     app_updater::HELD_FOR_INSTALLER.store(true, Ordering::SeqCst);
@@ -319,6 +346,8 @@ pub fn main_core(args: &[String]) {
     let ran = std::panic::catch_unwind(gpui_host::run);
     super::remote_watch::stop();
     super::live_monitor::shutdown();
+    // Wallpaper Engine's second copy of the wallpaper (wallpaper_engine.rs › keep_live) plays for Bloxkeep's page only.
+    crate::wallpaper_engine::stop_live();
     // Nobody could show them once Bloxkeep is gone.
     roblox_processes::show_windows(None);
     ending.store(true, Ordering::SeqCst);
@@ -364,7 +393,7 @@ pub(crate) fn wait_for_update_run(limit: Duration) {
 /// processes in the program folder; this covers one it couldn't see (running elevated): that one can't be asked either
 /// (no access), and the uninstall goes on without it.
 fn close_running_app() {
-    close_running_app_with(|| open_event(QUIT_EVENT), || open_mutex(SINGLE_INSTANCE_MUTEX));
+    close_running_app_with(|| open_event(&instance_name(QUIT_EVENT)), || open_mutex(&instance_name(SINGLE_INSTANCE_MUTEX)));
 }
 
 pub fn close_running_app_with(open_quit: impl FnOnce() -> Opened, open_single: impl FnOnce() -> Opened) {
@@ -506,9 +535,10 @@ fn on_unexpected(message: &str) {
         }
         *last = Some(Instant::now());
     }
-    // The box on its own thread: a panic on the windows thread must not wait on that thread's own messages.
+    // The box on its own thread (it stays up until it is answered): a panic on the windows thread must not wait on that
+    // thread's own messages.
     let text = l::f("Unexpected error: {0}", &[&message]);
-    if let Ok(h) = crate::net::Named::new("error-box".into()).spawn(move || ui::error(None, &text)) {
+    if let Ok(h) = crate::threads::own("error-box", move || ui::error(None, &text)) {
         *ERROR_BOX.lock().unwrap_or_else(|e| e.into_inner()) = Some(h);
     }
 }

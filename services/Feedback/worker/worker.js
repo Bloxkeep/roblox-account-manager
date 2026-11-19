@@ -1,12 +1,16 @@
 // Takes "Send feedback" from Bloxkeep (an idea or a bug report, ui-gpui/src/core/app/feedback.rs) and posts it to
 // the developer's Discord channel. The webhook stays here (secret FEEDBACK_WEBHOOK), out of the app, so nobody can
-// post to the channel directly. What anyone can send here is kept small: one JSON body of a few hundred kilobytes at most
-// (about all of error.log, which starts over at 256 KB), a few sends a minute from one address and a few dozen from
-// everyone, and no pings whatever the text says.
-const MAX_BODY = 1_200_000; // the log's characters, some escaped in JSON (× is ×)
+// post to the channel directly. What anyone can send here is kept small: one JSON body of a couple of megabytes at most,
+// a few sends a minute from one address and a few dozen from everyone, and no pings whatever the text says.
+const MAX_BODY = 2_000_000; // the plain log's characters (some escaped in JSON: × is ×) and the gzipped one in base64
 const MAX_TEXT = 2000;
 const MAX_CONTACT = 100;
+// `log`: the plain end of error.log, all an app before 2026-11-17 sends (and newer ones send beside `logGz`).
 const MAX_LOG = 200_000;
+// `logGz`: error.log.2, error.log.1 and error.log (1 MB each) gzipped, in base64; unpacked here, at most this many characters
+// (its end), so a bug from early in the week reported at its end still has its lines.
+const MAX_LOG_GZ = 1_600_000;
+const MAX_LOG_FULL = 4_000_000;
 // How it looks: docs/discord-style.md.
 const LOGO = 'https://raw.githubusercontent.com/Bloxkeep/roblox-account-manager/main/docs/brand/bloxkeep.png';
 const COLORS = { bug: 0xED4245, idea: 0x5865F2 };
@@ -45,7 +49,8 @@ export default {
     const app = typeof body.app === 'string' && /^\d+\.\d+\.\d+(?:-[0-9A-Za-z]+(?:\.[0-9A-Za-z]+)*)?$/.test(body.app) && body.app.length <= 40 ? body.app : '?';
     const windows = short(body.windows, 80) || '?';
     const language = body.language === 'vi' ? 'Tiếng Việt' : 'English';
-    const log = short(body.log, MAX_LOG);
+    // The whole log when it came and unpacks; else the plain end, as before.
+    const log = (await unpack(body.logGz)) || short(body.log, MAX_LOG);
 
     const fields = [
       { name: 'Bloxkeep', value: app === '?' ? '?' : `\`${app}\``, inline: true },
@@ -101,6 +106,38 @@ export default {
     return reply({ ok: true }, 200);
   },
 };
+
+/** `logGz` unpacked: its text (its end past MAX_LOG_FULL characters), or '' when missing or broken. */
+async function unpack(value) {
+  if (typeof value !== 'string' || !value || value.length > MAX_LOG_GZ)
+    return '';
+  try {
+    const bytes = Uint8Array.from(atob(value), c => c.charCodeAt(0));
+    const reader = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip')).getReader();
+    // Read in pieces and stopped at a limit: a small body can unpack into something huge.
+    const decoder = new TextDecoder();
+    let text = '';
+    for (;;) {
+      const { done, value: piece } = await reader.read();
+      if (done)
+        break;
+      text += decoder.decode(piece, { stream: true });
+      if (text.length > MAX_LOG_FULL * 2) {
+        await reader.cancel();
+        break;
+      }
+    }
+    text = (text + decoder.decode()).trim();
+    if (text.length > MAX_LOG_FULL) {
+      text = text.slice(-MAX_LOG_FULL);
+      // From a whole line.
+      text = text.slice(text.indexOf('\n') + 1);
+    }
+    return text;
+  } catch {
+    return '';
+  }
+}
 
 function reply(value, status) {
   return new Response(JSON.stringify(value), { status, headers: { 'Content-Type': 'application/json' } });

@@ -124,9 +124,9 @@ pub fn run_when_free(who: &str, action: impl FnOnce() + Send + 'static) {
         drop(lease);
         return;
     }
-    // PORT: the C# continued on the window's thread once the turn came; here the wait and the action run on a thread of their own.
+    // PORT: the C# continued on the window's thread once the turn came; here the wait and the action run on a pool thread.
     let who = who.to_string();
-    std::thread::spawn(move || match enter(&who, None) {
+    crate::threads::run(move || match enter(&who, None) {
         Ok(lease) => {
             action();
             drop(lease);

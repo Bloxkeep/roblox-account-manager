@@ -1,10 +1,9 @@
-// WebToolWindow.cs: a small borderless window whose whole face is one of the app's pages (wwwroot/<page>.html, drawing
-// window.BloxkeepUI.<page>(...) from its own ui-<page>.js bundle, ui/build.mjs): the macro panel beside the game today,
-// the mini window (mini_window), the game overlay and colour picker (overlay_window), the dialogs (forms::dialog);
-// tray_window still has its own copy of this host (the owner's rule of 2026-11-03: nothing the user sees drawn in
-// WinForms). The window is only the host: a tool window (not in Alt+Tab), Windows 11's rounded corners in the theme's
-// line colour, the browser of the main window's profile (one shared environment, so one browser and GPU process while
-// the main window's is alive) started on first show and let go a while after the window hides.
+// WebToolWindow.cs: a small borderless window whose whole face is one of the app's pages: the macro panel beside the
+// game today, the mini window (mini_window), the game overlay and colour picker (overlay_window) (the owner's rule of
+// 2026-11-03: nothing the user sees drawn in WinForms). The window is only the host: a tool window (not in Alt+Tab),
+// Windows 11's rounded corners in the theme's line colour. Its page was a WebView2 browser (ui/'s <page>.html) until
+// 2026-11-19; now the interface draws it, in a window of its own put inside this one (tool_page,
+// ui-gpui/src/toolpage.rs), made on the first show and let go a while after the window hides.
 //
 // The page and the host talk in the app page's own messages: the page posts { cmd, args } ("ready", "size" with its
 // size in CSS pixels, "act" with what was clicked, "drag" to move the window, "resize" to make it taller or shorter by
@@ -15,39 +14,46 @@
 // `WebTool` (its overrides); the base calls the subclass through that trait, as the C# virtual methods did.
 use std::{
     cell::{Cell, RefCell},
+    collections::HashMap,
     rc::{Rc, Weak},
     sync::atomic::Ordering,
     time::Duration,
 };
 
 use futures::{
-    FutureExt,
     channel::oneshot,
-    future::{LocalBoxFuture, Shared},
+    future::{Either, select},
 };
-use serde_json::{Value, json};
+use serde_json::Value;
 use windows_sys::Win32::{
     Foundation::RECT,
-    Graphics::Gdi::{CreateSolidBrush, DeleteObject, FillRect, HDC},
+    Graphics::{
+        Dwm::{DWMWA_CLOAK, DwmSetWindowAttribute},
+        Gdi::{CreateSolidBrush, DeleteObject, FillRect, HDC},
+    },
     UI::{
-        Input::KeyboardAndMouse::ReleaseCapture,
+        Input::KeyboardAndMouse::{ReleaseCapture, SetFocus},
         WindowsAndMessaging::{
-            CS_DROPSHADOW, DefWindowProcW, GetClientRect, HTBOTTOM, HTCAPTION, MA_ACTIVATE, SendMessageW, WA_INACTIVE, WM_ACTIVATE, WM_CLOSE, WM_DESTROY, WM_DPICHANGED,
-            WM_ENDSESSION, WM_ERASEBKGND, WM_GETMINMAXINFO, WM_MOUSEACTIVATE, WM_NCLBUTTONDOWN, WM_QUERYENDSESSION, WM_SIZE, WS_CLIPCHILDREN, WS_CLIPSIBLINGS,
-            WS_EX_CONTROLPARENT, WS_EX_TOOLWINDOW, WS_EX_TOPMOST, WS_POPUP,
+            CS_DROPSHADOW, DefWindowProcW, GetClientRect, HTBOTTOM, HTCAPTION, MA_ACTIVATE, SW_HIDE, SendMessageW, ShowWindow, WA_INACTIVE, WM_ACTIVATE, WM_CLOSE,
+            WM_DESTROY, WM_DPICHANGED, WM_ENDSESSION, WM_ERASEBKGND, WM_GETMINMAXINFO, WM_MOUSEACTIVATE, WM_NCLBUTTONDOWN, WM_QUERYENDSESSION, WM_SIZE,
+            WS_CLIPCHILDREN, WS_CLIPSIBLINGS, WS_EX_CONTROLPARENT, WS_EX_NOREDIRECTIONBITMAP, WS_EX_TOOLWINDOW, WS_EX_TOPMOST, WS_POPUP,
         },
     },
 };
 
 use super::{
-    app_pages,
-    base::{Cancel, Fail, Res},
-    log, shell_form, themes,
+    log, themes,
     themes::Color,
+    tool_page::{self, FromPage},
     ui,
     win_form::{self, CloseReason, FormRef, Timer, colorref},
     win_kit::{Point, Rect, Size, hwnd},
 };
+
+/// How long a shown window waits, unseen, for its page to draw at its size before it comes on screen anyway (logged).
+const DRAWN_WITHIN_MS: u32 = 300;
+/// How long the interface may take to make a page.
+const MADE_WITHIN_MS: u32 = 15_000;
 
 /// The overrides of a page's window (the C# virtual and abstract members).
 pub trait WebTool: 'static {
@@ -55,17 +61,17 @@ pub trait WebTool: 'static {
     fn tool(&self) -> &WebToolWindow;
     /// GetType().Name, for error.log.
     fn type_name(&self) -> &'static str;
-    /// The page's file in wwwroot ("panel.html").
+    /// The page's file in wwwroot ("panel.html"); the interface's page of that name ("panel") draws it now.
     fn page_file(&self) -> &'static str;
     /// Always on top, set in the window's style from its first moment (setting TopMost before Show activates it).
     fn starts_top_most(&self) -> bool {
         false
     }
-    /// How long the browser is kept after the window hid; shown again meanwhile, it is there at once.
+    /// How long the page is kept after the window hid; shown again meanwhile, it is there at once.
     fn keep_browser(&self) -> Duration {
         Duration::from_secs(60)
     }
-    /// While true the browser is kept even though the window is hidden.
+    /// While true the page is kept even though the window is hidden.
     fn hold_browser(&self) -> bool {
         false
     }
@@ -77,6 +83,11 @@ pub trait WebTool: 'static {
     fn shadow(&self) -> bool {
         true
     }
+    /// Nothing of its own drawn under the page (no redirection surface): where the page draws see-through, what is
+    /// behind the window shows (the overlay's dimmed game), while every click still lands on the window.
+    fn see_through(&self) -> bool {
+        false
+    }
     /// The colour shown before the page draws, and under a page that is see-through.
     fn backdrop(&self) -> Color {
         themes::current().surface
@@ -85,13 +96,13 @@ pub trait WebTool: 'static {
     fn activate_on_click(&self) -> bool {
         true
     }
-    /// The page has loaded (also again after a crash): push what it draws.
+    /// The page is there (also again after it went): push what it draws.
     fn on_page_ready(&self) {}
     /// The page's size changed (CSS pixels); `args` has the rest of what it said.
     fn on_page_size(&self, _css: Size, _args: &Value) {}
     /// Something clicked on the page.
     fn on_act(&self, what: &str, args: &Value);
-    /// The page crashed: hidden, and started again on the next show.
+    /// The page went: hidden, and made again on the next show.
     fn on_browser_failed(&self) {
         self.tool().browser_failed_base(self.type_name());
     }
@@ -121,39 +132,22 @@ pub trait WebTool: 'static {
     fn on_disposing(&self) {}
 }
 
-/// TaskCompletionSource for "the page answered".
-struct Ready {
-    done: Cell<bool>,
-    tx: RefCell<Option<oneshot::Sender<()>>>,
+thread_local! {
+    /// The pages of this thread's windows, by id (what the interface says about one is handed to its window).
+    static PAGES: RefCell<HashMap<u64, Weak<dyn WebTool>>> = RefCell::new(HashMap::new());
 }
-
-impl Ready {
-    fn new() -> (Rc<Ready>, oneshot::Receiver<()>) {
-        let (tx, rx) = oneshot::channel();
-        (Rc::new(Ready { done: Cell::new(false), tx: RefCell::new(Some(tx)) }), rx)
-    }
-    fn try_set_result(&self) {
-        self.done.set(true);
-        if let Some(tx) = self.tx.borrow_mut().take() {
-            let _ = tx.send(());
-        }
-    }
-}
-
-type Starting = Shared<LocalBoxFuture<'static, Res<()>>>;
 
 /// The base part of a page's window.
 pub struct WebToolWindow {
     me: RefCell<Option<Weak<dyn WebTool>>>,
     form: FormRef,
     release: Timer,
-    web: RefCell<Option<Rc<browser::Browser>>>,
-    /// Which browser start is the one that counts (0: none, let go).
-    web_gen: Cell<u64>,
-    next_gen: Cell<u64>,
-    starting: RefCell<Option<(u64, Starting)>>,
-    start_cancel: RefCell<Option<Cancel>>,
-    ready: RefCell<Option<Rc<Ready>>>,
+    /// The page asked of the interface (0: none).
+    page_id: Cell<u64>,
+    /// The page's window, inside this one, once made (0: not yet).
+    child: Cell<isize>,
+    /// Who waits for the page to be made.
+    waits: RefCell<Vec<oneshot::Sender<()>>>,
     activate: Cell<bool>,
     /// The page's size in its own (CSS) pixels, as it last said.
     page: Cell<Size>,
@@ -164,6 +158,12 @@ pub struct WebToolWindow {
     opacity: Cell<f64>,
     minimum_size: Cell<Size>,
     maximum_size: Cell<Size>,
+    /// Shown but kept unseen (DWM's cloak) until its page drew at its size.
+    cloaked: Cell<bool>,
+    /// Which showing the page is to draw for (it says it back with its size).
+    wake_seq: Cell<u64>,
+    /// Shows it anyway when the drawing doesn't come.
+    reveal_late: Timer,
 }
 
 impl Default for WebToolWindow {
@@ -178,12 +178,9 @@ impl WebToolWindow {
             me: RefCell::new(None),
             form: FormRef::default(),
             release: Timer::new(60_000),
-            web: RefCell::new(None),
-            web_gen: Cell::new(0),
-            next_gen: Cell::new(1),
-            starting: RefCell::new(None),
-            start_cancel: RefCell::new(None),
-            ready: RefCell::new(None),
+            page_id: Cell::new(0),
+            child: Cell::new(0),
+            waits: RefCell::new(Vec::new()),
             activate: Cell::new(true),
             page: Cell::new(Size::default()),
             // Text = Ui.Title.
@@ -194,6 +191,9 @@ impl WebToolWindow {
             opacity: Cell::new(1.0),
             minimum_size: Cell::new(Size::default()),
             maximum_size: Cell::new(Size::default()),
+            cloaked: Cell::new(false),
+            wake_seq: Cell::new(0),
+            reveal_late: Timer::new(DRAWN_WITHIN_MS),
         }
     }
 
@@ -205,6 +205,14 @@ impl WebToolWindow {
             self.release.on_tick(move || {
                 if let Some(o) = weak.upgrade() {
                     o.tool().release_browser(false);
+                }
+            });
+            let weak = me.clone();
+            self.reveal_late.on_tick(move || {
+                if let Some(o) = weak.upgrade() {
+                    let t = o.tool();
+                    let c = t.client_css();
+                    t.reveal(Some(format!("{}: shown though its page hadn't drawn at the window's {}×{} within {DRAWN_WITHIN_MS} ms.", o.type_name(), c.width, c.height)));
                 }
             });
         }
@@ -258,6 +266,9 @@ impl WebToolWindow {
         if owner.starts_top_most() {
             ex |= WS_EX_TOPMOST;
         }
+        if owner.see_through() {
+            ex |= WS_EX_NOREDIRECTIONBITMAP;
+        }
         let (class, class_style) = if owner.shadow() { ("Bloxkeep.ToolShadow", CS_DROPSHADOW) } else { ("Bloxkeep.Tool", 0) };
         let weak = self.me.borrow().clone().expect("bound");
         let handler: win_form::Handler = Rc::new(move |h, msg, wparam, lparam| {
@@ -284,6 +295,7 @@ impl WebToolWindow {
 
     fn message(&self, owner: &Rc<dyn WebTool>, h: isize, msg: u32, wparam: usize, lparam: isize) -> Option<isize> {
         match msg {
+            WM_ERASEBKGND if owner.see_through() => Some(1),
             WM_ERASEBKGND => {
                 // BackColor painted under the page.
                 // SAFETY: the DC is Windows' for this message; the brush is made and freed here.
@@ -298,10 +310,7 @@ impl WebToolWindow {
             }
             WM_SIZE => {
                 // Dock = Fill.
-                let web = self.web.borrow().clone();
-                if let Some(web) = web {
-                    web.set_bounds(win_form::client_size(h));
-                }
+                tool_page::fit(h, self.child.get(), false);
                 None
             }
             WM_MOUSEACTIVATE => {
@@ -310,6 +319,13 @@ impl WebToolWindow {
                 Some(if owner.activate_on_click() { MA_ACTIVATE as isize } else { r })
             }
             WM_ACTIVATE => {
+                // The page's window is told too: a child window gets no WM_ACTIVATE of its own, and the interface takes
+                // the keyboard on it then (its keys, Esc, Tab).
+                let child = self.child.get();
+                if child != 0 {
+                    // SAFETY: a plain message to the page's window, on this same thread.
+                    unsafe { SendMessageW(hwnd(child), WM_ACTIVATE, wparam & 0xFFFF, 0) };
+                }
                 if (wparam & 0xFFFF) as u32 != WA_INACTIVE {
                     owner.on_activated();
                 } else {
@@ -348,13 +364,25 @@ impl WebToolWindow {
         win_form::is_visible(self.form.handle())
     }
 
-    /// Show(): without the keyboard when ActivateOnShow says so (a game keeps it).
+    /// Show(): without the keyboard when ActivateOnShow says so (a game keeps it). With its page made, the window is
+    /// shown unseen (DWM's cloak) until the page has drawn at its size: GPUI draws a shown window only, and the first
+    /// moment would otherwise show nothing, or the page as it was when the window last hid.
     pub fn show(&self) {
         let h = self.handle();
         if h == 0 || self.visible() {
             return;
         }
-        win_form::show(h, self.activate.get());
+        if self.child.get() != 0 {
+            self.cloak(true);
+            win_form::show(h, false);
+            let seq = self.wake_seq.get() + 1;
+            self.wake_seq.set(seq);
+            self.reveal_late.stop();
+            self.reveal_late.start();
+            tool_page::wake(self.page_id.get(), seq);
+        } else {
+            win_form::show(h, self.activate.get());
+        }
         if let Some(o) = self.owner() {
             o.on_visible_changed();
         }
@@ -366,9 +394,47 @@ impl WebToolWindow {
             return;
         }
         win_form::hide(h);
+        self.reveal_late.stop();
+        if self.cloaked.get() {
+            self.cloak(false);
+        }
         if let Some(o) = self.owner() {
             o.on_visible_changed();
         }
+    }
+
+    fn cloak(&self, on: bool) {
+        self.cloaked.set(on);
+        let h = self.form.handle();
+        if h == 0 {
+            return;
+        }
+        let value: i32 = on as i32;
+        // SAFETY: plain call on our own window with an int on the stack.
+        unsafe { DwmSetWindowAttribute(hwnd(h), DWMWA_CLOAK as u32, &value as *const i32 as *const _, 4) };
+    }
+
+    /// The cloak off: the window is seen (and takes the keyboard when it is to). `late`: why it wasn't waited for.
+    fn reveal(&self, late: Option<String>) {
+        self.reveal_late.stop();
+        if !self.cloaked.get() {
+            return;
+        }
+        self.cloak(false);
+        if let Some(why) = late {
+            log::note(&why);
+        }
+        if self.activate.get() && self.visible() {
+            self.activate();
+        }
+    }
+
+    /// The window's inside in the page's pixels (its screen's scale taken off).
+    fn client_css(&self) -> Size {
+        let h = self.form.handle();
+        let c = win_form::client_size(h);
+        let dpi = win_form::device_dpi(h).max(96) as f32;
+        Size::new((c.width as f32 * 96.0 / dpi).round() as i32, (c.height as f32 * 96.0 / dpi).round() as i32)
     }
 
     /// Activate().
@@ -413,15 +479,8 @@ impl WebToolWindow {
             owner.on_disposing();
         }
         self.release.dispose();
-        let web = self.web.borrow_mut().take();
-        if let Some(web) = web {
-            web.close();
-        }
-        self.web_gen.set(0);
-        *self.starting.borrow_mut() = None;
-        if let Some(c) = self.start_cancel.borrow_mut().take() {
-            c.cancel();
-        }
+        self.reveal_late.dispose();
+        self.let_page_go();
         let h = self.form.hwnd.swap(0, Ordering::SeqCst);
         win_form::destroy(h);
     }
@@ -477,9 +536,9 @@ impl WebToolWindow {
         self.page.get()
     }
 
-    /// The page has started and answered.
+    /// The page is made and in the window.
     pub fn browser_ready(&self) -> bool {
-        self.web.borrow().is_some() && self.ready.borrow().as_ref().is_some_and(|r| r.done.get())
+        self.child.get() != 0
     }
 
     /// Whether the next show takes the keyboard.
@@ -491,215 +550,140 @@ impl WebToolWindow {
         self.activate.set(value);
     }
 
-    // ───────────────────────── the browser ─────────────────────────
+    // ───────────────────────── the page ─────────────────────────
 
-    /// Starts the page (once); false when it couldn't (logged; the window stays hidden) or the window went meanwhile.
+    /// Has the interface make the page (once) and waits for it; false when it couldn't (logged; the window stays
+    /// hidden) or the window went meanwhile.
     pub async fn ensure_browser(me: Rc<dyn WebTool>) -> bool {
         let t = me.tool();
         t.release.stop();
-        while !t.browser_ready() {
+        loop {
             if t.is_disposed() {
                 return false;
             }
-            if t.starting.borrow().is_none() {
-                let cancel = Cancel::new();
-                *t.start_cancel.borrow_mut() = Some(cancel.clone());
-                let id = t.next_gen.get();
-                t.next_gen.set(id + 1);
-                let fut: LocalBoxFuture<'static, Res<()>> = WebToolWindow::start_browser(me.clone(), cancel).boxed_local();
-                *t.starting.borrow_mut() = Some((id, fut.shared()));
+            if t.child.get() != 0 {
+                return true;
             }
-            let Some((id, starting)) = t.starting.borrow().clone() else { return false };
-            let result = starting.await;
-            let current = t.starting.borrow().as_ref().map(|(i, _)| *i);
-            if let Err(e) = result {
-                if current == Some(id) {
-                    log::write(&e);
-                    t.release_browser(true);
+            if t.page_id.get() == 0 {
+                let h = t.handle();
+                if h == 0 {
                     return false;
                 }
-            }
-            // Let go while it started (the window disposed, its page failed): the start that came after, if any, is the
-            // one that counts. Never this one's failure taking that one's browser down with it.
-            if current != Some(id) {
-                if current.is_none() {
-                    return false;
-                }
-                continue;
-            }
-            if !t.browser_ready() {
-                log::note(&format!("{}: its page started but never said it was ready; the window stays hidden.", me.type_name()));
-                *t.starting.borrow_mut() = None;
-                return false;
-            }
-        }
-        true
-    }
-
-    /// `cancel`: called off when the window lets this start go (`release_browser`, Dispose).
-    async fn start_browser(me: Rc<dyn WebTool>, cancel: Cancel) -> Res<()> {
-        let env = win_form::wait_for(app_pages::create_environment(), u32::MAX, &cancel).await??;
-        let t = me.tool();
-        if t.is_disposed() {
-            return Err(Fail::other(format!("Cannot access a disposed object. Object name: '{}'.", me.type_name())));
-        }
-        let generation = t.next_gen.get();
-        t.next_gen.set(generation + 1);
-        t.web_gen.set(generation);
-        // The browser starts once its control has a window, and a hidden form's controls get none by themselves.
-        let h = t.handle();
-        let web = win_form::wait_for(browser::Browser::create(h, &env, generation), u32::MAX, &cancel).await??;
-        let web = Rc::new(web);
-        // Disposed or let go while the browser started: nothing of this start is used.
-        if t.is_disposed() || t.web_gen.get() != generation {
-            web.close();
-            return Err(Fail::other(format!("Cannot access a disposed object. Object name: '{}'.", me.type_name())));
-        }
-        web.set_background(me.backdrop());
-        web.set_bounds(win_form::client_size(h));
-        *t.web.borrow_mut() = Some(web.clone());
-        app_pages::configure(web.core(), &env)?;
-        let weak = Rc::downgrade(&me);
-        // Loaded: its first "ready" can come before the page is listened to, so the load itself counts as ready too.
-        web.on_navigation_completed({
-            let weak = weak.clone();
-            move |ok| {
-                if !ok {
-                    return;
-                }
-                if let Some(o) = weak.upgrade() {
-                    let ready = o.tool().ready.borrow().clone();
-                    if let Some(r) = ready {
-                        r.try_set_result();
-                    }
-                }
-            }
-        });
-        // Its page gone (the renderer crashed or hung, the browser gone): the next show starts it again. Not for a GPU
-        // process restart, which the page lives through (shell_form::failure_of).
-        web.on_process_failed({
-            let weak = weak.clone();
-            move |kind| {
-                let failure = shell_form::failure_of(kind);
-                if !matches!(failure, shell_form::BrowserFailure::ReloadPage | shell_form::BrowserFailure::BrowserGone) {
-                    return;
-                }
-                let Some(o) = weak.upgrade() else { return };
-                if !o.tool().is_handle_created() || o.tool().is_disposed() {
-                    return;
-                }
-                let weak = weak.clone();
-                win_form::spawn(async move {
-                    if let Some(o) = weak.upgrade() {
-                        if o.tool().web_gen.get() == generation {
-                            o.on_browser_failed();
+                let id = tool_page::register(|id, m| {
+                    win_form::invoke(move || {
+                        let owner = PAGES.with(|p| p.borrow().get(&id).and_then(Weak::upgrade));
+                        match owner {
+                            Some(o) => o.tool().from_page(&o, id, m),
+                            None => {
+                                if matches!(m, FromPage::Attached(_)) {
+                                    tool_page::close(id);
+                                }
+                            }
                         }
-                    }
+                    })
                 });
+                PAGES.with(|p| p.borrow_mut().insert(id, Rc::downgrade(&me)));
+                t.page_id.set(id);
+                let kind = me.page_file().trim_end_matches(".html");
+                if !tool_page::open(id, kind, h) {
+                    log::note(&format!("{}: no interface to draw its page; the window stays hidden.", me.type_name()));
+                    t.let_page_go();
+                    return false;
+                }
             }
-        });
-        web.on_web_message({
-            let weak = weak.clone();
-            move |json| {
-                let weak = weak.clone();
-                win_form::spawn(async move {
-                    if let Some(o) = weak.upgrade() {
-                        o.tool().on_message(&o, &json);
+            let (tx, rx) = oneshot::channel();
+            t.waits.borrow_mut().push(tx);
+            let id = t.page_id.get();
+            match select(rx, Box::pin(win_form::delay(MADE_WITHIN_MS))).await {
+                Either::Left(_) => continue,
+                Either::Right(_) => {
+                    if t.page_id.get() == id && t.child.get() == 0 {
+                        log::note(&format!("{}: the interface didn't make its page within {} s; the window stays hidden.", me.type_name(), MADE_WITHIN_MS / 1000));
+                        t.let_page_go();
+                        return false;
                     }
-                });
+                }
             }
-        });
-        let (ready, rx) = Ready::new();
-        *t.ready.borrow_mut() = Some(ready);
-        web.navigate(&format!("{}{}", app_pages::ORIGIN, me.page_file()))?;
-        win_form::wait_for(rx, 15_000, &cancel).await?.map_err(|_| Fail::other("cancelled"))?;
-        Ok(())
+        }
     }
 
-    /// The page crashed: hidden, and started again on the next show.
+    /// What the interface says about this window's page.
+    fn from_page(&self, owner: &Rc<dyn WebTool>, id: u64, m: FromPage) {
+        if id != self.page_id.get() || self.is_disposed() {
+            if matches!(m, FromPage::Attached(_)) {
+                tool_page::close(id);
+            }
+            return;
+        }
+        match m {
+            FromPage::Attached(child) => {
+                self.child.set(child);
+                tool_page::fit(self.form.handle(), child, false);
+                for tx in self.waits.borrow_mut().drain(..) {
+                    let _ = tx.send(());
+                }
+                owner.on_page_ready();
+            }
+            FromPage::Message(v) => self.on_message(owner, &v),
+            FromPage::Gone => {
+                if self.child.get() != 0 {
+                    owner.on_browser_failed();
+                }
+            }
+        }
+    }
+
+    /// The page went without being asked: hidden, and made again on the next show.
     pub fn browser_failed_base(&self, type_name: &str) {
         log::note(&format!(
-            "{type_name}: its page crashed; hidden ({}), started again on the next show.",
+            "{type_name}: its page went; hidden ({}), made again on the next show.",
             if self.visible() { "was shown" } else { "was hidden" }
         ));
         self.hide();
         self.release_browser(true);
     }
 
-    /// The browser goes (its memory with it) unless the window is shown or holds it; the next show starts it again.
-    /// A start under way is let go too.
+    /// The page goes (its memory with it) unless the window is shown or holds it; the next show makes it again.
     pub fn release_browser(&self, force: bool) {
         self.release.stop();
         let hold = self.owner().is_some_and(|o| o.hold_browser());
         if !force && (self.visible() || hold) {
             return;
         }
-        *self.ready.borrow_mut() = None;
-        *self.starting.borrow_mut() = None;
-        let cancel = self.start_cancel.borrow_mut().take();
-        self.web_gen.set(0);
-        let web = self.web.borrow_mut().take();
-        if let Some(web) = web {
-            web.close();
-        }
-        if let Some(c) = cancel {
-            c.cancel();
-        }
+        self.let_page_go();
     }
 
-    /// OnVisibleChanged's base part.
-    pub fn visible_changed_base(&self) {
-        // The browser follows its window, as the WinForms WebView2 control did (it set IsVisible on VisibleChanged):
-        // shown, it is visible and awake; hidden, it is told so (the sleep below needs that). Without it the mini
-        // window could come back as an empty dark box (owner, 2026-11-12): put to sleep while it was hidden, nothing
-        // woke the page when the window showed again.
-        let web = self.web.borrow().clone();
-        if let Some(web) = &web {
-            web.set_visible(self.visible());
-            if self.visible() && web.is_suspended() {
-                if let Err(e) = web.resume() {
-                    log::write(&e);
-                }
-            }
+    /// The page and its window go; who waited for it wakes and finds it gone.
+    fn let_page_go(&self) {
+        let id = self.page_id.replace(0);
+        let child = self.child.replace(0);
+        if child != 0 {
+            // Out of sight at once; the interface closes it on its own turn.
+            // SAFETY: plain call on the page's window.
+            unsafe { ShowWindow(hwnd(child), SW_HIDE) };
         }
+        if id != 0 {
+            tool_page::unregister(id);
+            PAGES.with(|p| p.borrow_mut().remove(&id));
+            tool_page::close(id);
+        }
+        self.waits.borrow_mut().clear();
+    }
+
+    /// OnVisibleChanged's base part: hidden, the page is let go after keep_browser (unless shown again meanwhile).
+    pub fn visible_changed_base(&self) {
         if self.visible() {
             self.release.stop();
-        } else if web.is_some() && !self.is_disposed() {
+        } else if self.page_id.get() != 0 && !self.is_disposed() {
             let Some(owner) = self.owner() else { return };
             self.release.set_interval(owner.keep_browser().as_millis().max(1000) as u32);
             self.release.start();
-            win_form::spawn(WebToolWindow::sleep(owner));
         }
     }
 
-    /// A hidden page that is kept a while sleeps meanwhile (TrySuspend: its timers and drawing stop), as the main
-    /// page does. Showing it wakes it; so does an event sent to it (`send_event`), and it then sleeps again.
-    async fn sleep(me: Rc<dyn WebTool>) {
-        if me.keep_browser() < Duration::from_secs(2) {
-            return; // let go almost at once anyway
-        }
-        // The browser hears it is hidden on a later turn of the message loop; asked to sleep before that, it refuses.
-        win_form::delay(300).await;
-        let t = me.tool();
-        let web = t.web.borrow().clone();
-        let Some(web) = web else { return };
-        if t.visible() || t.is_disposed() || web.is_suspended() {
-            return;
-        }
-        // Shown again meanwhile, or the browser went: nothing to put to sleep.
-        let _ = web.try_suspend().await;
-        // Shown while it went to sleep: woken at once (the show's own wake came before the sleep took).
-        if t.visible() && web.is_suspended() {
-            web.set_visible(true);
-            if let Err(e) = web.resume() {
-                log::write(&e);
-            }
-        }
-    }
-
-    /// The browser is let go after keep_browser again (after hold_browser turned false).
+    /// The page is let go after keep_browser again (after hold_browser turned false).
     pub fn release_later(&self) {
-        if !self.visible() && self.web.borrow().is_some() && !self.is_disposed() {
+        if !self.visible() && self.page_id.get() != 0 && !self.is_disposed() {
             let Some(owner) = self.owner() else { return };
             self.release.set_interval(owner.keep_browser().as_millis().max(1000) as u32);
             self.release.start();
@@ -708,58 +692,44 @@ impl WebToolWindow {
 
     /// The page takes the keyboard (the window was activated: its keys go to the page, not the window).
     pub fn focus_page(&self) {
-        let web = self.web.borrow().clone();
-        if let Some(web) = web {
-            web.focus();
+        let child = self.child.get();
+        if child != 0 {
+            // SAFETY: plain call; the page's window is on this thread.
+            unsafe { SetFocus(hwnd(child)) };
         }
     }
 
     // ───────────────────────── messages ─────────────────────────
 
-    /// An event to the page, as the app's page gets them: { type: "event", name, data }.
+    /// An event to the page, as the app's page got them: by name, with its data.
     pub fn send_event(&self, name: &str, data: Value) {
-        let web = self.web.borrow().clone();
-        let Some(web) = web else { return };
-        let result = (|| -> Res<()> {
-            if web.is_suspended() {
-                web.resume()?;
-                if !self.visible() {
-                    if let Some(o) = self.owner() {
-                        win_form::spawn(WebToolWindow::sleep(o));
-                    }
-                }
-            }
-            web.post_json(&json!({ "type": "event", "name": name, "data": data }).to_string())
-        })();
-        if let Err(e) = result {
-            log::write(&e);
+        let id = self.page_id.get();
+        if id == 0 || self.child.get() == 0 {
+            return;
         }
+        tool_page::event(id, name, data);
     }
 
-    /// The page's messages: { id, cmd, args }.
-    fn on_message(&self, owner: &Rc<dyn WebTool>, json: &str) {
+    /// The page's messages: { cmd, args }.
+    fn on_message(&self, owner: &Rc<dyn WebTool>, root: &Value) {
         if self.is_disposed() {
             return;
         }
-        let Ok(root) = serde_json::from_str::<Value>(json) else {
-            log::note(&format!("{}: a message from its page couldn't be read.", owner.type_name()));
-            return;
-        };
         let cmd = root.get("cmd").and_then(Value::as_str).unwrap_or("");
         let args = root.get("args").filter(|a| a.is_object()).cloned().unwrap_or(Value::Null);
         match cmd {
-            "ready" => {
-                let ready = self.ready.borrow().clone();
-                if let Some(r) = ready {
-                    r.try_set_result();
-                }
-                owner.on_page_ready();
-            }
             "size" if args.is_object() => {
-                let (w, h) = (num(&args, "w"), num(&args, "h"));
+                let (w, h, vw, vh, seq) = tool_page::drawn(&args);
                 if w > 0 && h > 0 {
+                    // (Every report, as the page's were: one comes after each event it was sent, and a window that
+                    // waits to show shows on it.)
                     self.page.set(Size::new(w, h));
                     owner.on_page_size(self.page.get(), &args);
+                    // Drawn for this showing at the window's size: on screen.
+                    let c = self.client_css();
+                    if self.cloaked.get() && seq == self.wake_seq.get() && (c.width - vw).abs() <= 1 && (c.height - vh).abs() <= 1 {
+                        self.reveal(None);
+                    }
                 }
             }
             "drag" => self.begin_drag(owner),
@@ -771,9 +741,7 @@ impl WebToolWindow {
 
     // ───────────────────────── moving and sizing ─────────────────────────
 
-    /// The page's title row pressed and moved: Windows moves the window with the pointer, as by a title bar. (Not CSS
-    /// app-region: a drag region swallows the row's right-click, which opens the page's own menu, and a double-click on
-    /// it would maximise the borderless window.)
+    /// The page's title row pressed and moved: Windows moves the window with the pointer, as by a title bar.
     fn begin_drag(&self, owner: &Rc<dyn WebTool>) {
         if !self.visible() || !win_form::left_button_down() {
             return;
@@ -828,10 +796,6 @@ impl WebToolWindow {
     fn frame_with(&self, owner: &dyn WebTool) {
         let back = owner.backdrop();
         self.back.set(back);
-        let web = self.web.borrow().clone();
-        if let Some(web) = web {
-            web.set_background(back);
-        }
         let h = self.form.handle();
         if h != 0 {
             win_form::invalidate(h);
@@ -863,201 +827,4 @@ pub fn scale_at(p: Point) -> f32 {
 /// The DPI of the monitor nearest a point (96 when Windows can't say).
 pub fn dpi_at(p: Point) -> u32 {
     win_form::dpi_at(p)
-}
-
-/// One browser on a window of ours (the WebView2 WinForms control's part): webview2-com's controller and its page.
-pub mod browser {
-    use std::cell::RefCell;
-
-    use futures::channel::oneshot;
-    use webview2_com::{
-        CreateCoreWebView2ControllerCompletedHandler, Microsoft::Web::WebView2::Win32::*, NavigationCompletedEventHandler, ProcessFailedEventHandler,
-        TrySuspendCompletedHandler, WebMessageReceivedEventHandler, take_pwstr,
-    };
-    use windows::{
-        Win32::Foundation::{HWND, RECT},
-        core::{BOOL, HSTRING, Interface, PCWSTR, PWSTR},
-    };
-
-    use crate::core::{
-        base::{Fail, Res},
-        themes::Color,
-        win_kit::Size,
-    };
-
-    fn fail(e: windows::core::Error) -> Fail {
-        Fail::other(e.message())
-    }
-
-    pub struct Browser {
-        controller: ICoreWebView2Controller,
-        core: ICoreWebView2,
-        /// Which start made it (to tell two browsers of one window apart).
-        pub id: u64,
-        tokens: RefCell<Vec<i64>>,
-    }
-
-    impl Browser {
-        /// EnsureCoreWebView2Async on `parent` with the shared environment.
-        pub async fn create(parent: isize, env: &ICoreWebView2Environment, id: u64) -> Res<Browser> {
-            let (tx, rx) = oneshot::channel::<Res<ICoreWebView2Controller>>();
-            let tx = RefCell::new(Some(tx));
-            let handler = CreateCoreWebView2ControllerCompletedHandler::create(Box::new(move |result: windows::core::Result<()>, controller: Option<ICoreWebView2Controller>| {
-                let out = match (result, controller) {
-                    (Ok(()), Some(c)) => Ok(c),
-                    (Err(e), _) => Err(fail(e)),
-                    (Ok(()), None) => Err(Fail::other("WebView2 gave no controller")),
-                };
-                if let Some(tx) = tx.borrow_mut().take()
-                    && let Err(Ok(orphan)) = tx.send(out)
-                {
-                    // The start was called off meanwhile (released, disposed): nobody takes this browser, so it is
-                    // closed here, or it stayed hidden in the window with its renderer until the app quit.
-                    // SAFETY: a plain COM call on the windows thread.
-                    let _ = unsafe { orphan.Close() };
-                }
-                Ok(())
-            }));
-            // SAFETY: a COM call on the windows thread (STA); the handler is kept alive by COM until it is called.
-            unsafe { env.CreateCoreWebView2Controller(HWND(parent as *mut _), &handler) }.map_err(fail)?;
-            let controller = rx.await.map_err(|_| Fail::other("WebView2 never answered"))??;
-            // SAFETY: a plain COM getter.
-            let core = unsafe { controller.CoreWebView2() }.map_err(fail)?;
-            Ok(Browser { controller, core, id, tokens: RefCell::new(Vec::new()) })
-        }
-
-        pub fn core(&self) -> &ICoreWebView2 {
-            &self.core
-        }
-
-        /// Dock = Fill: the browser over the whole client area.
-        pub fn set_bounds(&self, size: Size) {
-            // SAFETY: plain COM call.
-            let _ = unsafe { self.controller.SetBounds(RECT { left: 0, top: 0, right: size.width, bottom: size.height }) };
-        }
-
-        pub fn set_visible(&self, visible: bool) {
-            // SAFETY: plain COM call.
-            let _ = unsafe { self.controller.SetIsVisible(visible.into()) };
-        }
-
-        /// DefaultBackgroundColor.
-        pub fn set_background(&self, c: Color) {
-            if let Ok(c2) = self.controller.cast::<ICoreWebView2Controller2>() {
-                // SAFETY: plain COM call.
-                let _ = unsafe { c2.SetDefaultBackgroundColor(COREWEBVIEW2_COLOR { A: 255, R: c.r, G: c.g, B: c.b }) };
-            }
-        }
-
-        pub fn navigate(&self, url: &str) -> Res<()> {
-            let url = HSTRING::from(url);
-            // SAFETY: the string lives for the call.
-            unsafe { self.core.Navigate(PCWSTR(url.as_ptr())) }.map_err(fail)
-        }
-
-        /// PostWebMessageAsJson.
-        pub fn post_json(&self, json: &str) -> Res<()> {
-            let json = HSTRING::from(json);
-            // SAFETY: the string lives for the call.
-            unsafe { self.core.PostWebMessageAsJson(PCWSTR(json.as_ptr())) }.map_err(fail)
-        }
-
-        /// Focus(): the keyboard to the page.
-        pub fn focus(&self) {
-            // SAFETY: plain COM call.
-            let _ = unsafe { self.controller.MoveFocus(COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC) };
-        }
-
-        /// IsSuspended (false where the runtime can't say).
-        pub fn is_suspended(&self) -> bool {
-            let Ok(c3) = self.core.cast::<ICoreWebView2_3>() else { return false };
-            let mut b = BOOL::default();
-            // SAFETY: plain COM getter into a BOOL on the stack.
-            unsafe { c3.IsSuspended(&mut b) }.is_ok() && b.as_bool()
-        }
-
-        /// TrySuspendAsync: whether it went to sleep.
-        pub async fn try_suspend(&self) -> Res<bool> {
-            let c3 = self.core.cast::<ICoreWebView2_3>().map_err(fail)?;
-            let (tx, rx) = oneshot::channel::<Res<bool>>();
-            let tx = RefCell::new(Some(tx));
-            let handler = TrySuspendCompletedHandler::create(Box::new(move |result: windows::core::Result<()>, ok: bool| {
-                if let Some(tx) = tx.borrow_mut().take() {
-                    let _ = tx.send(result.map(|_| ok).map_err(fail));
-                }
-                Ok(())
-            }));
-            // SAFETY: COM call on the windows thread; the handler is kept by COM until called.
-            unsafe { c3.TrySuspend(&handler) }.map_err(fail)?;
-            rx.await.map_err(|_| Fail::other("cancelled"))?
-        }
-
-        pub fn resume(&self) -> Res<()> {
-            let c3 = self.core.cast::<ICoreWebView2_3>().map_err(fail)?;
-            // SAFETY: plain COM call.
-            unsafe { c3.Resume() }.map_err(fail)
-        }
-
-        /// NavigationCompleted: whether it loaded.
-        pub fn on_navigation_completed(&self, f: impl Fn(bool) + 'static) {
-            let handler = NavigationCompletedEventHandler::create(Box::new(move |_sender, args: Option<ICoreWebView2NavigationCompletedEventArgs>| {
-                let mut ok = BOOL::default();
-                if let Some(args) = args {
-                    // SAFETY: plain COM getter.
-                    let _ = unsafe { args.IsSuccess(&mut ok) };
-                }
-                f(ok.as_bool());
-                Ok(())
-            }));
-            let mut token = 0i64;
-            // SAFETY: COM registration; the token is kept so nothing else needs it.
-            if unsafe { self.core.add_NavigationCompleted(&handler, &mut token) }.is_ok() {
-                self.tokens.borrow_mut().push(token);
-            }
-        }
-
-        /// ProcessFailed: which process.
-        pub fn on_process_failed(&self, f: impl Fn(COREWEBVIEW2_PROCESS_FAILED_KIND) + 'static) {
-            let handler = ProcessFailedEventHandler::create(Box::new(move |_sender, args: Option<ICoreWebView2ProcessFailedEventArgs>| {
-                if let Some(args) = args {
-                    let mut kind = COREWEBVIEW2_PROCESS_FAILED_KIND::default();
-                    // SAFETY: plain COM getter.
-                    if unsafe { args.ProcessFailedKind(&mut kind) }.is_ok() {
-                        f(kind);
-                    }
-                }
-                Ok(())
-            }));
-            let mut token = 0i64;
-            // SAFETY: COM registration.
-            if unsafe { self.core.add_ProcessFailed(&handler, &mut token) }.is_ok() {
-                self.tokens.borrow_mut().push(token);
-            }
-        }
-
-        /// WebMessageReceived: the message as JSON (WebMessageAsJson).
-        pub fn on_web_message(&self, f: impl Fn(String) + 'static) {
-            let handler = WebMessageReceivedEventHandler::create(Box::new(move |_sender, args: Option<ICoreWebView2WebMessageReceivedEventArgs>| {
-                if let Some(args) = args {
-                    let mut json = PWSTR::null();
-                    // SAFETY: COM getter; the string is freed by take_pwstr.
-                    if unsafe { args.WebMessageAsJson(&mut json) }.is_ok() {
-                        f(take_pwstr(json));
-                    }
-                }
-                Ok(())
-            }));
-            let mut token = 0i64;
-            // SAFETY: COM registration.
-            if unsafe { self.core.add_WebMessageReceived(&handler, &mut token) }.is_ok() {
-                self.tokens.borrow_mut().push(token);
-            }
-        }
-
-        /// web.Dispose(): the browser closes.
-        pub fn close(&self) {
-            // SAFETY: plain COM call; nothing uses the controller afterwards.
-            let _ = unsafe { self.controller.Close() };
-        }
-    }
 }

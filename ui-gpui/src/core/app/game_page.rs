@@ -113,7 +113,7 @@ impl App {
             Err(ex) => return Err(ex),
         };
         Ok(json!({
-            "placeId": place_id, "universe": universe, "name": details.name, "creator": details.creator, "genre": details.genre, "iconUrl": icon,
+            "placeId": place_id, "universe": universe, "name": details.name, "creator": details.creator, "genre": details.genre, "genres": details.genres, "iconUrl": icon,
             "creatorGroupId": details.creator_group_id, "creatorVerified": details.creator_verified, "rootPlaceId": details.root_place_id,
             "description": details.description, "playing": details.playing, "visits": details.visits, "favorites": details.favorites,
             "likes": details.likes_percent, "created": details.created, "updated": details.updated,

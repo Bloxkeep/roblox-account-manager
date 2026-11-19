@@ -171,6 +171,12 @@ impl AsyncApp {
         &self.foreground_executor
     }
 
+    /// Bloxkeep: whether the app can be updated now. False inside an update already under way: `update` would panic
+    /// there ("RefCell already borrowed"), as for a window message Windows handed over from within a call the app made.
+    pub(crate) fn is_free(&self) -> bool {
+        self.app.upgrade().is_some_and(|app| app.try_borrow_mut().is_ok())
+    }
+
     /// Invoke the given function in the context of the app, then flush any effects produced during its invocation.
     #[inline(always)]
     pub fn update<R>(&self, f: impl FnOnce(&mut App) -> R) -> R {

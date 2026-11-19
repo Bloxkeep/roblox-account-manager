@@ -8,6 +8,7 @@ use gpui_kit::{prelude::*, *};
 use serde_json::{Value, json};
 
 use crate::{kit::*, roblox, shell::Root, theme::*};
+use crate::val::s;
 
 const VALUES: [&str; 3] = ["AllUsers", "Friends", "NoOne"];
 
@@ -28,15 +29,6 @@ pub struct Data {
     seq: u64,
     open: bool,
     asked: u64,
-}
-
-fn s<'a>(v: &'a Value, k: &str) -> &'a str {
-    v.get(k).and_then(Value::as_str).unwrap_or_default()
-}
-
-/// An account's name by its id.
-fn name_of(r: &Root, id: &str) -> String {
-    r.accounts().iter().find(|a| s(a, "id") == id).map(crate::pages::accounts::label).unwrap_or_default()
 }
 
 /// Why an account couldn't be read or set, in words.
@@ -152,7 +144,7 @@ fn apply(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
                     r.vis.open = false;
                     r.toast = Some((text, "ok".into()));
                 } else {
-                    let names: Vec<String> = failed.iter().map(|f| format!("{} ({})", name_of(r, s(f, "id")), why(r, f))).collect();
+                    let names: Vec<String> = failed.iter().map(|f| format!("{} ({})", crate::pages::accounts::label_by_id(r, s(f, "id")).unwrap_or_default(), why(r, f))).collect();
                     text = format!("{text} {}", r.i18n.tv("vis.failed", &[("n", &failed.len().to_string()), ("names", &names.join(", "))]));
                     r.vis.said = Some((text, true));
                     // (What the ones that went through have now.)
@@ -187,7 +179,7 @@ pub fn open(r: &mut Root, ids: Vec<String>, window: &mut Window, cx: &mut Contex
         let r = root.read(cx);
         let d = &r.vis;
         let n = d.ids.len();
-        let note = if n == 1 { r.i18n.tv("vis.note1", &[("name", &name_of(r, &d.ids[0]))]) } else { r.i18n.tv("vis.noteN", &[("n", &n.to_string())]) };
+        let note = if n == 1 { r.i18n.tv("vis.note1", &[("name", &crate::pages::accounts::label_by_id(r, &d.ids[0]).unwrap_or_default())]) } else { r.i18n.tv("vis.noteN", &[("n", &n.to_string())]) };
         let mut body = div().flex().flex_col().gap(px(16.)).child(div().text_size(px(T_M)).line_height(px(20.)).text_color(c(TEXT_2)).child(note));
 
         // What the accounts have now, said under each setting: one value when they agree.
@@ -236,7 +228,7 @@ pub fn open(r: &mut Root, ids: Vec<String>, window: &mut Window, cx: &mut Contex
             body = body.child(div().flex().items_center().gap(px(8.)).text_size(px(T_S)).text_color(c(MUTED)).child(spinner(13., c(MUTED))).child(r.tr("vis.reading")));
         }
         // The accounts Roblox couldn't be asked for.
-        let skipped: Vec<String> = d.rows.iter().flatten().filter(|row| row.get("ok").and_then(Value::as_bool) != Some(true)).map(|row| format!("{} ({})", name_of(r, s(row, "id")), why(r, row))).collect();
+        let skipped: Vec<String> = d.rows.iter().flatten().filter(|row| row.get("ok").and_then(Value::as_bool) != Some(true)).map(|row| format!("{} ({})", crate::pages::accounts::label_by_id(r, s(row, "id")).unwrap_or_default(), why(r, row))).collect();
         if !skipped.is_empty() && d.said.is_none() {
             body = body.child(div().flex().gap(px(8.)).text_size(px(T_S)).line_height(px(17.)).text_color(c(WARN)).child(div().mt(px(1.)).flex_none().child(icon("alert", 13., c(WARN)))).child(div().min_w_0().flex_1().child(skipped.join(", "))));
         }

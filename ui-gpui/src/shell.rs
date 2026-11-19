@@ -9,6 +9,9 @@ use gpui_kit::component::input::{InputEvent, InputState};
 use gpui_kit::component::WindowExt as _;
 use gpui_kit::{prelude::*, *};
 use serde_json::{Value, json};
+use crate::ask::answer;
+
+mod capsule;
 
 use crate::{
     i18n::I18n,
@@ -33,6 +36,8 @@ pub enum HomeTab {
 pub struct Root {
     pub link: Option<Link>,
     pub i18n: I18n,
+    /// The faces of the core's small windows (mini window, dialogs, macro panels, overlays): toolpage.rs.
+    pub tool_pages: crate::toolpage::Pages,
     /// The app's whole state (AppController.BuildState), as it sent it last.
     pub state: Value,
     /// Roblox's and the PC's figures, every 1.5 s.
@@ -44,7 +49,23 @@ pub struct Root {
     /// The accounts column's own search (names, groups, notes).
     pub acc_search: Entity<InputState>,
     pub progress: Option<String>,
+    /// What Spotify plays (media.rs), for the status bar; None when it is closed or plays nothing.
+    pub music: Option<crate::media::Playing>,
+    /// The internet or Roblox can't be reached (failed twice running): the notice's words, in the title bar until it
+    /// can again.
+    pub offline: Option<&'static str>,
+    /// Wallpaper Engine's config.json time and wallpaper last read (wallpaper_engine.rs); None reads it again.
+    pub we_last: Option<(std::time::SystemTime, String)>,
+    /// A still of the wallpaper just handed to the theme: the wallpaper's file and the theme's picture before it. Once
+    /// the theme's picture is another (the still, taken in), the two are kept (`wallpaperEngineStill`).
+    pub we_still: Option<(String, String)>,
+    /// Follow Wallpaper Engine was just turned on (its switch): the wallpaper is taken at once, whatever the theme.
+    pub we_wake: bool,
     pub toast: Option<(String, String)>,
+    /// The status bar's pill opened into its card (capsule.rs), if one is.
+    pub pill: Option<capsule::Pill>,
+    /// The tray icon's panel and menu, in a window of their own once first opened (tray.rs).
+    pub tray: Option<WindowHandle<crate::tray::Tray>>,
     /// The notice last shown and the count it came with (drawn while it leaves), and how many were said so far.
     toast_was: ((String, String), u32),
     toast_n: u32,
@@ -65,6 +86,10 @@ pub struct Root {
     /// The game on Home's stage, picked from its games.
     /// Which way the place shown came in: 1. from below, -1. from above (kit::step_in).
     pub step_from: f32,
+    /// Counts the times the app was opened from the lock screen (a password made or typed): the app's parts come in
+    /// anew each time (kit::app_in), as the web page's intro did. With none, the app was there at once, in one frame
+    /// (the owner, 2026-11-19: "lúc đăng ký xong ko có motion hiển thị trang chủ, kiểu nó đập thẳng vào mặt").
+    pub intro: u32,
     /// Counts the page changes (go, Back, Forward): what was asked "for this page" (Ctrl+L's bar) is stale after one.
     pub nav: u64,
     /// Counts the app's states taken in (what is worked out from the accounts once per state is kept by it).
@@ -161,6 +186,8 @@ pub struct Root {
     pub acc_drop_closed: Option<(&'static str, std::time::Instant)>,
     /// Accounts: only this group's (none: every group).
     pub acc_group: Option<String>,
+    /// Accounts' list: the groups whose part is folded ("": the accounts in none). Kept (prefs' accFold).
+    pub acc_fold: std::collections::HashSet<String>,
     /// Launch order's box: the accounts' ids in the order being put together.
     pub order_edit: Vec<String>,
     /// Multi-Roblox's box has been opened: it shows the app's state, so the window is drawn again as that changes.
@@ -186,6 +213,8 @@ pub struct Root {
     pub picker_q: Entity<InputState>,
     pub sv_name: Entity<InputState>,
     pub sv_code: Entity<InputState>,
+    /// The profile's thought bubble, as it is written (pages/profile.rs).
+    pub pf_bubble: Entity<InputState>,
     /// Sign in with your phone: the code on show and how it goes.
     pub quick: pages::quick::Data,
     /// Add account's sign-in screen: its state, and its boxes (username, password, 2-step code).
@@ -202,6 +231,10 @@ pub struct Root {
     pub join: pages::join::Data,
     /// Visibility on Roblox: its box's state.
     pub vis: pages::visibility::Data,
+    /// Privacy for one game (beside Play): its menu and the put-back.
+    pub gpv: pages::game_privacy::Data,
+    /// Easy setup's box (pages/easy_setup.rs).
+    pub easy: pages::easy_setup::Data,
     /// Boxes to open once there is a window to open them in (a launch's answer, a remote-control request).
     pending: Vec<Pending>,
     /// The remote-control request already asked about (its id, user and who it replaces).
@@ -226,6 +259,11 @@ pub struct Root {
     pub preset_menu: pages::preset_menu::Data,
     /// The inbox's chat box: what to say in the open chat (Enter).
     pub chat_box: Entity<InputState>,
+    /// Inbox › Chat: a group's name (made or renamed) and the friends picked for it, found by name.
+    pub group_name: Entity<InputState>,
+    pub group_q: Entity<InputState>,
+    /// The search of Roblox's choice of account (pages/tabs.rs `picker`).
+    pub pick_q: Entity<InputState>,
     /// Games' account tabs: each an account with what was read for it; the one shown lives in the fields above.
     pub tabs: pages::tabs::Data,
     /// Settings: the part picked and a question asked in place.
@@ -248,6 +286,8 @@ pub struct Root {
     pub friend_search: Entity<InputState>,
     /// Friends' labels: a new label's name, added on Enter.
     pub label_box: Entity<InputState>,
+    /// Accounts' Group box: a new group's name, given to the selected accounts on Enter.
+    pub group_box: Entity<InputState>,
     pub home_tab: HomeTab,
     /// Where the left button went down on the top bar; moving a few pixels from there moves the window.
     drag_from: Option<Point<Pixels>>,
@@ -345,6 +385,13 @@ impl Root {
         // Save server's boxes: Enter saves.
         let sv_name = mk("sv.name", window, cx);
         let sv_code = mk("sv.codeHint", window, cx);
+        let pf_bubble = mk("pf.bubble.ph", window, cx);
+        cx.subscribe_in(&pf_bubble, window, |r: &mut Root, _, ev: &InputEvent, _, cx| {
+            if matches!(ev, InputEvent::PressEnter { .. }) {
+                pages::profile::save_bubble(r, cx);
+            }
+        })
+        .detach();
         for e in [&sv_name, &sv_code] {
             cx.subscribe_in(e, window, |r: &mut Root, _, ev: &InputEvent, window, cx| {
                 if matches!(ev, InputEvent::PressEnter { .. }) {
@@ -420,6 +467,9 @@ impl Root {
             }
         })
         .detach();
+        let group_name = mk("in.groupName", window, cx);
+        let group_q = mk("in.findFriend", window, cx);
+        let pick_q = mk("ui.accSearch", window, cx);
         let shop_search = mk("shop.find", window, cx);
         cx.subscribe(&shop_search, |r: &mut Root, _, e: &InputEvent, cx| match e {
             InputEvent::PressEnter { .. } => pages::profile::shop_find(r, cx),
@@ -431,6 +481,13 @@ impl Root {
         cx.subscribe(&label_box, |r: &mut Root, _, e: &InputEvent, cx| {
             if matches!(e, InputEvent::PressEnter { .. }) {
                 pages::friends::add_label(r, cx);
+            }
+        })
+        .detach();
+        let group_box = mk("grp.name", window, cx);
+        cx.subscribe(&group_box, |r: &mut Root, _, e: &InputEvent, cx| {
+            if matches!(e, InputEvent::PressEnter { .. }) {
+                pages::accounts::groups::add(r, cx);
             }
         })
         .detach();
@@ -511,7 +568,7 @@ impl Root {
             if matches!(ev, InputEvent::PressEnter { .. } | InputEvent::Blur) {
                 let topic: String = e.read(cx).value().trim().chars().take(200).collect();
                 if topic != r.state.pointer("/phone/topic").and_then(Value::as_str).unwrap_or_default() {
-                    pages::settings::ask(r, "setPhone", json!({ "topic": topic }), cx, |_, _| {});
+                    r.ask("setPhone", json!({ "topic": topic }), cx, |_, _| {});
                 }
             }
         })
@@ -562,16 +619,27 @@ impl Root {
         let mut root = Self {
             link: None,
             i18n,
+            tool_pages: Default::default(),
             state: Value::Null,
             metrics: Value::Null,
             page: Page::Home,
             acc_search,
             progress: None,
+            music: crate::media::shot_stand_in(),
+            offline: None,
+            we_last: None,
+            we_still: None,
+            we_wake: false,
+            gpv: Default::default(),
+            easy: Default::default(),
             toast: None,
+            pill: None,
+            tray: None,
             toast_was: Default::default(),
             toast_n: 0,
             shot_asked: false,
             step_from: 1.,
+            intro: 0,
             nav: 0,
             state_gen: 0,
             windows_gen: 0,
@@ -618,6 +686,7 @@ impl Root {
             acc_drop: None,
             acc_drop_closed: None,
             acc_group: None,
+            acc_fold: crate::prefs::get("accFold").and_then(|v| v.as_array().map(|l| l.iter().filter_map(|x| x.as_str().map(str::to_string)).collect())).unwrap_or_default(),
             order_edit: Vec::new(),
             help_open: false,
             jp_name,
@@ -635,6 +704,7 @@ impl Root {
             picker_q,
             sv_name,
             sv_code,
+            pf_bubble,
             quick: Default::default(),
             pwl: Default::default(),
             pl_user,
@@ -659,6 +729,9 @@ impl Root {
             snap: Default::default(),
             preset_menu: Default::default(),
             chat_box,
+            group_name,
+            group_q,
+            pick_q,
             tabs: Default::default(),
             stats: Default::default(),
             settings: Default::default(),
@@ -673,6 +746,7 @@ impl Root {
             community_at: None,
             friend_search,
             label_box,
+            group_box,
             selected: Default::default(),
             acc_anchor: None,
             was_local: Default::default(),
@@ -756,6 +830,155 @@ impl Root {
                 cx.background_executor().timer(crate::itemwatch::EVERY).await;
             }
         }));
+        // Spotify's song for the status bar and the profile's song card, read every second off the window (Windows'
+        // media controls answer in a few ms; every second, as the card shows where the song is).
+        #[cfg(not(feature = "shot"))]
+        root.tasks.push(cx.spawn(async move |this, cx| {
+            loop {
+                let now = cx.background_executor().spawn(async { crate::media::now() }).await;
+                let alive = this.update(cx, |r, cx| {
+                    if r.music != now {
+                        r.music = now;
+                        cx.notify();
+                    }
+                });
+                if alive.is_err() {
+                    break;
+                }
+                cx.background_executor().timer(Duration::from_secs(1)).await;
+            }
+        }));
+        // The connection, as Discord's and Facebook's notice says it: the internet (every 4 s, net::online_now) and
+        // Roblox itself (every 15 s, and at once when a call to it got no answer): with a VPN turned off, the internet
+        // works and Roblox is blocked, which said nothing before (the owner, 2026-11-19). Lost after two failed looks
+        // in a row, so one slow answer (waking from sleep, a VPN switching) says nothing; back at the first good one,
+        // and what failed to load meanwhile is read again. (A shot shows the notice with BLOXKEEP_SHOT_OFFLINE=1 or
+        // =roblox, without looking.)
+        root.tasks.push(cx.spawn(async move |this, cx| {
+            #[cfg(feature = "shot")]
+            if let Ok(v) = std::env::var("BLOXKEEP_SHOT_OFFLINE") {
+                let _ = this.update(cx, |r, cx| {
+                    r.offline = Some(if v == "roblox" { "net.roblox" } else { "net.lost" });
+                    cx.notify();
+                });
+                return;
+            }
+            let (mut failed, mut since_roblox) = (0u32, u32::MAX);
+            loop {
+                let urgent = crate::net::take_roblox_failed();
+                let ask_roblox = urgent || failed > 0 || since_roblox >= 15;
+                let now = cx.background_executor().spawn(async move {
+                    if !crate::net::online_now() {
+                        Some("net.lost")
+                    } else if ask_roblox && !crate::net::roblox_reachable() {
+                        Some("net.roblox")
+                    } else {
+                        None
+                    }
+                }).await;
+                since_roblox = if ask_roblox { 0 } else { since_roblox.saturating_add(2) };
+                failed = if now.is_some() { failed + 1 } else { 0 };
+                let alive = this.update(cx, |r, cx| {
+                    let shown = if failed >= 2 { now } else if failed == 0 { None } else { r.offline };
+                    if shown != r.offline {
+                        let was = r.offline;
+                        r.offline = shown;
+                        #[cfg(feature = "core")]
+                        crate::core::log::note_file(match shown {
+                            Some("net.lost") => "Connection: the internet can't be reached (no answer twice running)",
+                            Some(_) => "Connection: the internet works but Roblox can't be reached (twice running; blocked on this network?)",
+                            None => "Connection: back",
+                        });
+                        if shown.is_none() && was.is_some() {
+                            let text = r.tr("net.back");
+                            r.toast = Some((text, "ok".into()));
+                            r.toast_n += 1;
+                            pages::inbox::forget_failed(r);
+                        }
+                        cx.notify();
+                    }
+                });
+                if alive.is_err() {
+                    break;
+                }
+                cx.background_executor().timer(Duration::from_secs(2)).await;
+            }
+        }));
+        // Follow Wallpaper Engine (Settings › Appearance): its config.json looked at every 3 s while on; a new wallpaper
+        // becomes the custom theme's picture or video and accent (the core's useWallpaperEngine).
+        #[cfg(not(feature = "shot"))]
+        root.tasks.push(cx.spawn(async move |this, cx| {
+            loop {
+                // (Not before the app's state is here: which picture the theme has is read from it below, and a look
+                // without it handed the wallpaper's preview over again.)
+                let Ok(ready) = this.update(cx, |r, _| r.state.get("theme").is_some()) else { break };
+                if !ready {
+                    cx.background_executor().timer(Duration::from_millis(200)).await;
+                    continue;
+                }
+                // (The custom theme's picture now, while Custom is the theme.)
+                let picture = |r: &Root| r.state.get("theme").and_then(Value::as_str).filter(|t| *t == "custom").and_then(|_| r.state.pointer("/customTheme/picture")).and_then(Value::as_str).unwrap_or_default().to_string();
+                let Ok((on, last, kept)) = this.update(cx, |r, _| {
+                    let now = picture(r);
+                    // A still handed over has become the theme's picture: kept with its wallpaper for the next start.
+                    if r.we_still.as_ref().is_some_and(|(_, before)| !now.is_empty() && now != *before) {
+                        let (file, _) = r.we_still.take().unwrap_or_default();
+                        crate::prefs::set("wallpaperEngineStill", json!({ "file": file, "picture": now }));
+                    }
+                    // The wallpaper whose still is the theme's picture already (see wallpaper_engine::check); not when
+                    // the switch was just turned on: the wallpaper is handed over then, which makes Custom the theme.
+                    let kept = crate::prefs::get("wallpaperEngineStill").filter(|k| !r.we_wake && !now.is_empty() && k.get("picture").and_then(Value::as_str) == Some(now.as_str())).and_then(|k| k.get("file").and_then(Value::as_str).map(str::to_string));
+                    // The following is the custom theme's: with another theme in use it rests (no look at Wallpaper
+                    // Engine, no second copy of the wallpaper playing), until Custom is the theme again or its switch
+                    // is turned on anew. A new wallpaper pulled the app back to Custom otherwise.
+                    let custom = r.state.get("theme").and_then(Value::as_str) == Some("custom");
+                    let on = crate::prefs::get("followWallpaperEngine").and_then(|v| v.as_bool()).unwrap_or(false) && (custom || r.we_wake);
+                    (on, r.we_last.clone(), kept)
+                }) else { break };
+                if on {
+                    let got = cx.background_executor().spawn(async move { crate::wallpaper_engine::check(last.as_ref(), kept.as_deref()) }).await;
+                    if let Some((key, wall)) = got {
+                        let alive = this.update(cx, |r, _| {
+                            if let Some(w) = wall {
+                                if crate::wallpaper_engine::is_still(&w.media) {
+                                    r.we_still = Some((key.1.clone(), picture(r)));
+                                }
+                                r.send("useWallpaperEngine", json!({ "path": w.media.to_string_lossy(), "accent": w.accent.unwrap_or_default() }));
+                            }
+                            r.we_wake = false;
+                            r.we_last = Some(key);
+                        });
+                        if alive.is_err() {
+                            break;
+                        }
+                    }
+                    // The wallpaper itself, live, while Wallpaper Engine runs (wallpaper_engine.rs › keep_live).
+                    let Ok(file) = this.update(cx, |r, _| r.we_last.as_ref().map(|k| k.1.clone()).unwrap_or_default()) else { break };
+                    let was = crate::wallpaper_engine::live();
+                    cx.background_executor().spawn(async move { crate::wallpaper_engine::keep_live(&file) }).await;
+                    if crate::wallpaper_engine::live() != was && this.update(cx, |_, cx| cx.notify()).is_err() {
+                        break;
+                    }
+                } else if crate::wallpaper_engine::live().is_some() {
+                    cx.background_executor().spawn(async { crate::wallpaper_engine::stop_live() }).await;
+                    if this.update(cx, |_, cx| cx.notify()).is_err() {
+                        break;
+                    }
+                }
+                cx.background_executor().timer(Duration::from_secs(3)).await;
+            }
+        }));
+        // Privacy for one game (pages/game_privacy.rs): accounts that have left the game they were set for get their own
+        // settings back, looked at every 10 s.
+        #[cfg(not(feature = "shot"))]
+        root.tasks.push(cx.spawn(async move |this, cx| {
+            loop {
+                cx.background_executor().timer(Duration::from_secs(10)).await;
+                if this.update(cx, |r, cx| crate::pages::game_privacy::tick(r, cx)).is_err() {
+                    break;
+                }
+            }
+        }));
         // The playing times count up each second while someone plays.
         root.tasks.push(cx.spawn(async move |this, cx| {
             loop {
@@ -812,7 +1035,7 @@ impl Root {
                 self.price_search.update(cx, |s, cx| s.set_placeholder(p, window, cx));
                 let p = self.i18n.t("jp.placeholder");
                 self.jp_name.update(cx, |s, cx| s.set_placeholder(p, window, cx));
-                for (key, e) in [("ui.findGame", self.picker_q.clone()), ("acc.search", self.iv_q.clone()), ("cm.namePh", self.board_name.clone()), ("wiki.searchWiki", self.wiki_q.clone()), ("prices.search", self.wiki_tq.clone()), ("set.search", self.set_q.clone())] {
+                for (key, e) in [("ui.findGame", self.picker_q.clone()), ("acc.search", self.iv_q.clone()), ("cm.namePh", self.board_name.clone()), ("wiki.searchWiki", self.wiki_q.clone()), ("prices.search", self.wiki_tq.clone()), ("set.search", self.set_q.clone()), ("in.groupName", self.group_name.clone()), ("in.findFriend", self.group_q.clone()), ("ui.accSearch", self.pick_q.clone())] {
                     let p = self.i18n.t(key);
                     e.update(cx, |s, cx| s.set_placeholder(p, window, cx));
                 }
@@ -828,6 +1051,8 @@ impl Root {
                 self.friend_search.update(cx, |s, cx| s.set_placeholder(p, window, cx));
                 let p = self.i18n.t("tag.name");
                 self.label_box.update(cx, |s, cx| s.set_placeholder(p, window, cx));
+                let p = self.i18n.t("grp.name");
+                self.group_box.update(cx, |s, cx| s.set_placeholder(p, window, cx));
                 let p = self.i18n.t("lock.pw");
                 self.lock_pw.update(cx, |s, cx| s.set_placeholder(p, window, cx));
                 let p = self.i18n.t("lock.pw2");
@@ -844,8 +1069,12 @@ impl Root {
         let was_adding = pages::lock::adding(self);
         self.state = state;
         self.state_gen += 1;
+        // (Home's newest events follow the app's states, not only its half-minute clock.)
+        pages::stats::state_changed(self, cx);
         // Try it's log follows every state the app sends, not only the ones a frame draws.
         pages::macro_form::on_state(self);
+        // (The first question's auto-rejoin, put on the first accounts once they are here.)
+        pages::home::setup_follow(self, cx);
         // The theme it says is in use (Settings › Appearance): its colours, and the picture behind the window.
         crate::theme::follow(&self.state, cx);
         // Names hidden (Settings › Appearance): every account goes by its first letter everywhere, as the web page
@@ -1013,6 +1242,7 @@ impl Root {
             self.lock = Default::default();
             if !self.locked() {
                 window.focus(&self.focus, cx);
+                self.intro += 1;
             }
         }
         // BLOXKEEP_SHOT_PICK="Farm 1,Night Owl": a hidden shot starts with those accounts picked (by name).
@@ -1053,6 +1283,8 @@ impl Root {
                 }
                 Ok("sort") => self.acc_drop = Some("acc-sort"),
                 Ok("group") => self.acc_drop = Some("acc-group"),
+                Ok("bargroup") => self.acc_drop = Some("bar-group"),
+                Ok("load") => self.acc_drop = Some("mon-load"),
                 _ => {}
             }
             if std::env::var("BLOXKEEP_SHOT_HOMETAB").as_deref() == Ok("community") {
@@ -1083,6 +1315,17 @@ impl Root {
         if let (Some(place), None) = (std::env::var("BLOXKEEP_SHOT_PASSES").ok().and_then(|v| v.parse().ok()), &self.games.open) {
             pages::games::open_place(self, place, "");
             self.games.tab = pages::games::Tab::Passes;
+        }
+        // BLOXKEEP_SHOT_GAMEPAGE=2753915549: on that game's page, its Overview (with BLOXKEEP_SHOT_EVENTS: its events).
+        #[cfg(feature = "shot")]
+        if let (Some(place), None) = (std::env::var("BLOXKEEP_SHOT_GAMEPAGE").ok().and_then(|v| v.parse().ok()), &self.games.open) {
+            pages::games::open_place(self, place, "");
+        }
+        // BLOXKEEP_SHOT_CODES=2753915549: on that game's codes.
+        #[cfg(feature = "shot")]
+        if let (Some(place), None) = (std::env::var("BLOXKEEP_SHOT_CODES").ok().and_then(|v| v.parse().ok()), &self.games.open) {
+            pages::games::open_place(self, place, "");
+            self.games.tab = pages::games::Tab::Codes;
         }
         // BLOXKEEP_SHOT_SERVERS=2753915549: on that game's private servers.
         #[cfg(feature = "shot")]
@@ -1146,18 +1389,33 @@ impl Root {
                 self.profile.watch = crate::itemwatch::list();
             }
         }
-        // BLOXKEEP_SHOT_LIVE=friend|item|mod|done: the capsule open for a made-up moment.
+        // BLOXKEEP_SHOT_LIVE=friend|item|mod|done: the capsule open for a made-up moment; with BLOXKEEP_SHOT_LIVE_SHUT=a-b
+        // (ms) it opens a ms after the first drawing and ends at b (a clip of it opening and closing).
         #[cfg(feature = "shot")]
         if let Ok(kind) = std::env::var("BLOXKEEP_SHOT_LIVE") {
-            if self.games.live.is_none() {
-                let join = pages::games::LiveAct::Join { acc: String::new(), place: 2753915549, job: "x".into(), user: 1, name: "minh".into() };
-                let (icon, tone, title, sub, act, busy) = match kind.as_str() {
-                    "friend" => ("users", OK, "Minh".to_string(), self.i18n.tv("live.inGame", &[("game", "Blox Fruits")]), Some(join), false),
-                    "item" => ("tag", OK, "Valkyrie Helm".to_string(), "1,200 \u{2192} 950 R$".to_string(), Some(pages::games::LiveAct::Watching), false),
-                    "done" => ("check", OK, "Skybox Collection".to_string(), self.i18n.tv("mods.added", &[("n", "54")]), Some(pages::games::LiveAct::Mods), false),
-                    _ => ("layers", TEXT_2, "Skybox Collection".to_string(), self.tr("live.installing"), None, true),
-                };
-                self.games.live = Some(pages::games::Live { key: "shot".into(), pic: std::env::var("BLOXKEEP_SHOT_LIVE_PIC").unwrap_or_default(), round: kind == "friend", icon, tone, title, sub, act, busy, at: std::time::Instant::now() });
+            static ONCE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+            let when = std::env::var("BLOXKEEP_SHOT_LIVE_SHUT").ok().and_then(|v| {
+                let (a, b) = v.split_once('-')?;
+                Some((a.parse::<u64>().ok()?, b.parse::<u64>().ok()?))
+            });
+            match when {
+                Some((open, shut)) if !ONCE.swap(true, std::sync::atomic::Ordering::Relaxed) => {
+                    cx.spawn(async move |this, cx| {
+                        cx.background_executor().timer(std::time::Duration::from_millis(open)).await;
+                        let _ = this.update(cx, |r, cx| {
+                            r.games.live = Some(shot_live(r, &kind));
+                            cx.notify();
+                        });
+                        cx.background_executor().timer(std::time::Duration::from_millis(shut.saturating_sub(open))).await;
+                        let _ = this.update(cx, |r, cx| {
+                            r.games.live = None;
+                            cx.notify();
+                        });
+                    })
+                    .detach();
+                }
+                None if self.games.live.is_none() => self.games.live = Some(shot_live(self, &kind)),
+                _ => {}
             }
         }
         // BLOXKEEP_SHOT_MODS=1|mine: on Roblox › Mods (its library, or the ones put in).
@@ -1173,6 +1431,14 @@ impl Root {
         if let (Ok(q), true) = (std::env::var("BLOXKEEP_SHOT_FIND"), self.games.found.is_none()) {
             self.game_search.update(cx, |s, cx| s.set_value(q, window, cx));
             pages::games::search(self, cx);
+        }
+        // BLOXKEEP_SHOT_EASY=1: Easy setup's box open.
+        #[cfg(feature = "shot")]
+        if std::env::var("BLOXKEEP_SHOT_EASY").is_ok() {
+            static OPENED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+            if !OPENED.swap(true, std::sync::atomic::Ordering::Relaxed) {
+                pages::easy_setup::open(self, window, cx);
+            }
         }
         // BLOXKEEP_SHOT_SETQ="discord": Settings searched for those words.
         #[cfg(feature = "shot")]
@@ -1339,6 +1605,15 @@ impl Root {
                     .collect();
                 self.games.picking = Some((open_id, ticked));
             }
+            // BLOXKEEP_SHOT_REGION=JP: that country picked and the country menu beside Play open.
+            if let Ok(cc) = std::env::var("BLOXKEEP_SHOT_REGION") {
+                crate::prefs::set("serverRegion", json!(cc));
+                self.games.region_menu = true;
+                pages::games::load_regions(self, place, cx);
+            }
+            if std::env::var("BLOXKEEP_SHOT_PRIVACY").is_ok() {
+                pages::game_privacy::shot_open(self, place, cx);
+            }
         }
         cx.notify();
     }
@@ -1421,6 +1696,8 @@ impl Root {
     fn on_event(&mut self, name: &str, data: Value, window: &mut Window, cx: &mut Context<Self>) {
         match name {
             "state" => self.set_state(data, window, cx),
+            "tray" => crate::tray::show(self, &data, cx),
+            "toolPage" => crate::toolpage::on_event(&mut self.tool_pages, &self.i18n, &data, cx),
             "macroRecorded" | "macroSeen" | "onGameEdit" => pages::macro_form::on_event(self, name, &data, window, cx),
             "metrics" => {
                 self.metrics = data;
@@ -1502,6 +1779,7 @@ impl Root {
         // Games: whose the first tab is (the app's pick) is asked at once, so its tab can say.
         if self.page == Page::Games && !self.state.is_null() && !self.locked() {
             pages::friends::want_sign(self, &link, cx);
+            pages::tabs::pulse(self, cx);
             pages::vng::want(self, &link, cx);
             pages::games::want_corner(self, cx);
         }
@@ -1550,6 +1828,12 @@ impl Root {
         }
         if matches!(self.page, Page::Home | Page::Games) {
             self.want_play_history(&link, cx);
+        }
+        // The stage's game's words and figures from Roblox, for Home's hero (its description, players, votes).
+        if self.page == Page::Home
+            && let Some(place) = crate::pages::home::hero_place(self)
+        {
+            pages::games::want_details(self, &link, place, cx);
         }
         let home_games = if self.page == Page::Games && self.games.home_library == Some(HomeTab::Games) {
             crate::pages::home::game_library(self, true)
@@ -1679,23 +1963,19 @@ impl Root {
         let Some(link) = self.link.clone() else { return };
         args["force"] = force.into();
         let rx = link.call("launch", args.clone());
-        cx.spawn(async move |this, cx| {
-            let answer = rx.await;
-            let _ = this.update(cx, |r, cx| {
-                let rest = match answer {
-                    Ok(Ok(v)) => r.launch_done("launch", args, v, rest),
-                    // (Refused: the rest are left, as before.)
-                    Ok(Err(e)) => {
-                        r.toast = Some((e.to_string(), "error".into()));
-                        Vec::new()
-                    }
-                    Err(_) => Vec::new(),
-                };
-                r.rejoin_next(rest, cx);
-                cx.notify();
-            });
-        })
-        .detach();
+        answer(rx, cx, move |r, answer, cx| {
+            let rest = match answer {
+                Ok(Ok(v)) => r.launch_done("launch", args, v, rest),
+                // (Refused: the rest are left, as before.)
+                Ok(Err(e)) => {
+                    r.toast = Some((e.to_string(), "error".into()));
+                    Vec::new()
+                }
+                Err(_) => Vec::new(),
+            };
+            r.rejoin_next(rest, cx);
+            cx.notify();
+        });
     }
 
     /// What's new, for these releases (newest first): opened once there is a window to open it in.
@@ -1969,10 +2249,16 @@ impl Root {
         if !self.in_flight.insert(busy) {
             return;
         }
+        // A game with its own privacy (beside Play): set on the accounts first (not again for the forced second try).
+        let privacy = if cmd == "launch" && !force { crate::pages::game_privacy::before_launch(&args) } else { None };
         args["force"] = force.into();
-        let rx = link.call(cmd, args.clone());
+        let sent = args.clone();
         cx.spawn(async move |this, cx| {
-            let answer = rx.await;
+            if let Some((ids, place, pick)) = privacy {
+                let got = crate::pages::game_privacy::apply(link.clone(), ids, place, pick).await;
+                let _ = this.update(cx, |r, _| crate::pages::game_privacy::applied(r, got));
+            }
+            let answer = link.call(cmd, sent).await;
             let _ = this.update(cx, |r, cx| {
                 r.in_flight.remove(busy);
                 match answer {
@@ -2316,25 +2602,40 @@ impl Root {
     }
 
     /// Closes every Roblox window now and says how many (the question, where one is asked, came before).
+    /// Multi-Roblox is on but Roblox got there first: why, and the button that fixes it, where it is turned on (Settings,
+    /// the lock screen's "Just use Multi-Roblox") rather than only behind Details, which few opened (the owner,
+    /// 2026-11-19: many didn't know every Roblox has to be closed first).
+    pub fn multi_blocked_note(&self, cx: &mut Context<Self>) -> Div {
+        let text = |key: &str| div().text_size(px(T_M)).line_height(px(19.)).text_color(c(TEXT_2)).child(pages::lock::plain(self.tr(key)));
+        div()
+            .flex()
+            .items_center()
+            .gap(px(12.))
+            .child(icon("alert", 16., c(WARN)))
+            .child(div().min_w_0().flex_1().flex().flex_col().gap(px(2.)).child(text("mh.bad").text_color(c(TEXT))).child(text("mh.s1")))
+            .child(
+                Button::new("multi-close-all", self.tr("mh.s1btn"))
+                    .icon("power")
+                    .small()
+                    .on_click(cx.listener(|r, _, _, cx| r.close_all_now(false, cx))),
+            )
+    }
+
     fn close_all_now(&mut self, force: bool, cx: &mut Context<Self>) {
         let Some(link) = self.link.clone() else { return };
         let rx = link.call("closeAll", json!({ "force": force }));
-        cx.spawn(async move |this, cx| {
-            let answer = rx.await;
-            let _ = this.update(cx, |r, cx| {
-                r.toast = Some(match answer {
-                    Ok(Ok(n)) => match n.as_i64().unwrap_or(0) {
-                        0 => (r.tr("t.noRoblox"), "ok".into()),
-                        n => (r.i18n.tn(if force { "t.killing" } else { "t.closingAll" }, n, &[("n", &n.to_string())]), "ok".into()),
-                    },
-                    Ok(Err(e)) => (e.to_string(), "error".into()),
-                    Err(_) => return,
-                });
-                r.toast_n += 1;
-                cx.notify();
+        answer(rx, cx, move |r, answer, cx| {
+            r.toast = Some(match answer {
+                Ok(Ok(n)) => match n.as_i64().unwrap_or(0) {
+                    0 => (r.tr("t.noRoblox"), "ok".into()),
+                    n => (r.i18n.tn(if force { "t.killing" } else { "t.closingAll" }, n, &[("n", &n.to_string())]), "ok".into()),
+                },
+                Ok(Err(e)) => (e.to_string(), "error".into()),
+                Err(_) => return,
             });
-        })
-        .detach();
+            r.toast_n += 1;
+            cx.notify();
+        });
     }
 
     /// Close every Roblox window (or end them, forced), after the question (app.js's closeAll).
@@ -2386,38 +2687,40 @@ impl Root {
         let asked = self.resolve_game(input.clone());
         self.place_asking = true;
         cx.notify();
-        cx.spawn(async move |this, cx| {
-            let got = asked.await;
-            let _ = this.update(cx, |r, cx| {
-                // (An answer for words no longer in the box is dropped.)
-                if r.place.read(cx).value().trim() != input {
-                    return;
-                }
-                r.place_asking = false;
-                let Some(g) = got else {
-                    cx.notify();
-                    return;
-                };
-                let g = r.worded(g);
-                // A Job ID that went with another game is emptied (app.js's resolveGame and S.jobPlace).
-                if let Some(p) = g.get("placeId").and_then(Value::as_i64).filter(|p| *p > 0) {
-                    pages::accounts::game_known(p, cx);
-                }
-                if g.get("ok").and_then(Value::as_bool) == Some(false) {
-                    let why = g.get("error").and_then(Value::as_str).unwrap_or_default().to_string();
-                    if !why.is_empty() {
-                        r.toast = Some((why, "warn".into()));
-                    }
-                }
-                r.game = Some(g);
+        answer(asked, cx, move |r, got, cx| {
+            // (An answer for words no longer in the box is dropped.)
+            if r.place.read(cx).value().trim() != input {
+                return;
+            }
+            r.place_asking = false;
+            let Some(g) = got else {
                 cx.notify();
-            });
-        })
-        .detach();
+                return;
+            };
+            let g = r.worded(g);
+            // A Job ID that went with another game is emptied (app.js's resolveGame and S.jobPlace).
+            if let Some(p) = g.get("placeId").and_then(Value::as_i64).filter(|p| *p > 0) {
+                pages::accounts::game_known(p, cx);
+            }
+            if g.get("ok").and_then(Value::as_bool) == Some(false) {
+                let why = g.get("error").and_then(Value::as_str).unwrap_or_default().to_string();
+                if !why.is_empty() {
+                    r.toast = Some((why, "warn".into()));
+                }
+            }
+            r.game = Some(g);
+            cx.notify();
+        });
     }
 
     fn dropped(&self) -> Vec<Value> {
         self.accounts().iter().filter(|a| pages::home::is_dropped(a)).cloned().collect()
+    }
+
+    /// Settings › Appearance › Hide account names is on: what names an account (on Roblox's own pages too) is shown
+    /// by its first letter, or not at all.
+    pub fn hides_names(&self) -> bool {
+        self.state.get("hideNames").and_then(Value::as_bool).unwrap_or(false)
     }
 
     pub fn accounts(&self) -> &[Value] {
@@ -2477,7 +2780,12 @@ impl Root {
             HomeTab::Games => "library",
             HomeTab::Community => "community-games",
         });
-        format!("games-{}-{}-{}-{}-{}", self.games.view as u8, self.tabs.at, open, self.profile.part(), library)
+        // (Not the view: switching it in the header's capsule changes the page under a capsule that stays and slides
+        // its yellow along; stepping the whole page in faded the capsule out and in with it.)
+        // (The tab by its account, not its place: a tab dragged to another place is the same page, and stepping the
+        // page in again at each move faded it in and out, the owner's OBS video, 2026-11-19.)
+        let tab = self.tabs.list.get(self.tabs.at).and_then(|t| t.account.clone()).unwrap_or_else(|| format!("#{}", self.tabs.at));
+        format!("games-{tab}-{open}-{}-{library}", self.profile.part())
     }
 
     /// The app's state, come as a command's answer (the lock screen's unlock).
@@ -2499,7 +2807,9 @@ impl Root {
             .border_r_1()
             .border_color(c(LINE))
             // The logo has its own colours, so it is a picture, not an icon (an icon takes one colour).
-            .child(div().h(px(TOP)).flex_none().flex().items_center().child(crate::crisp::blocks(34.)))
+            // (It pops out as the window opens and each time it is unlocked, as the C# app's page had it, logo-pop: the
+            // port stood it there at once; the owner asked what differed, 2026-11-18.)
+            .child(div().h(px(TOP)).flex_none().flex().items_center().child(pop_out("rail-logo", 34., |side| crate::crisp::blocks(side).into_any_element())))
             .child(div().mt(px(14.)).flex().flex_col().gap(px(6.)).children(
                 {
                     // (As the window first shows, and each time it is unlocked, they come in from the left one after
@@ -2528,7 +2838,9 @@ impl Root {
             .child(div().flex_1())
             // Switch vault (its face) whenever one is open, as Sidebar.tsx: with one vault it is the way to the lock screen's
             // picker and its Create a new vault. The open vault locks only when another is picked.
-            .when(self.state.pointer("/vaults/open").and_then(Value::as_str).is_some_and(|o| !o.is_empty()), |d| {
+            // (The rail's foot rises into place a moment after the buttons above it came in: the page's intro-up.)
+            .child(line_in("rail-foot", 3, div().flex().flex_col().items_center()
+                .when(self.state.pointer("/vaults/open").and_then(Value::as_str).is_some_and(|o| !o.is_empty()), |d| {
                 let v = self.state.get("vaults").cloned().unwrap_or(Value::Null);
                 let (id, name) = (v.get("current").and_then(Value::as_str).unwrap_or_default().to_string(), v.get("name").and_then(Value::as_str).unwrap_or_default().to_string());
                 let tip: SharedString = self.i18n.tv("vault.switchTip", &[("name", &name)]).into();
@@ -2546,7 +2858,7 @@ impl Root {
                         .on_click(cx.listener(|r, _, _, _| r.send("pickVault", json!({})))),
                 )
             })
-            .child(IconButton::new("lock", "lock").size(42.).tip(self.tr("side.lockTip")).on_click(cx.listener(|r, _, window, cx| r.lock_app(window, cx))))
+                .child(IconButton::new("lock", "lock").size(42.).tip(self.tr("side.lockTip")).on_click(cx.listener(|r, _, window, cx| r.lock_app(window, cx))))))
     }
 
     /// The top bar, which is the window's title bar too: pressing and moving on its empty part moves the window, a double
@@ -2563,6 +2875,8 @@ impl Root {
             .gap(px(GAP))
             // (A theme whose window ground can't carry these words, Retro's teal: the bar on the rail's ground.)
             .when_some(crate::theme::bars_ground(), |d, g| d.bg(g).rounded_b(px(R_M)).px(px(8.)))
+            // (A picture too light along its top for them: the bar is glass there, laid under it where it is placed.)
+            .when(!locked && !crate::scene::top_reads(cx), |d| d.px(px(8.)))
             .on_mouse_down(
                 MouseButton::Left,
                 cx.listener(|r, e: &MouseDownEvent, _, _| {
@@ -2628,7 +2942,9 @@ impl Root {
                             .child(div().w(px(8.)))
                     }),
             )
-            .child(own(div().flex().items_center().gap(px(2.))).children([
+            // (The lock screen over a picture too light along its top: the window's buttons on the ground the language
+            // switch under them has. Unlocked, the whole bar is glass there: scene::top_glass.)
+            .child(own(div().flex().items_center().gap(px(2.))).when(locked && !crate::scene::top_reads(cx), |d| d.p(px(3.)).rounded(px(R_M)).bg(c(RAISED))).children([
                 window_button("win-min", WinGlyph::Minimize, cx.listener(|r, _, _, _| r.send("window", json!({ "action": "minimize" })))),
                 window_button("win-zoom", WinGlyph::Maximize, cx.listener(|r, _, _, _| r.send("window", json!({ "action": "zoom" })))),
                 window_button("win-close", WinGlyph::Close, cx.listener(|r, _, _, _| r.send("window", json!({ "action": "close" })))),
@@ -2759,225 +3075,439 @@ impl Root {
         )
     }
 
-    /// The bar along the foot. `compact` (a window under 1400 px): the meters say their figure without their bar, so
-    /// CPU, RAM and GPU still fit beside Roblox's version and the mini window (at 1180 the row ran off the right).
-    fn status(&self, width: f32, cx: &mut Context<Self>) -> impl IntoElement {
-        // compact: the meters lose their bars; tight (the smallest windows): Roblox's version loses its words, the mini
-        // window its name and the app its number, so the bar fits (it ran off the edge at 860 and at 1200 with the GPU shown, 2026-11-12).
-        let (compact, tight) = (width < 1400., width < 1360.);
-        // tiny (under 1000 px): closer together, Roblox's version only when it is out of date and Multi-Roblox's name
-        // left to its tip, so its switch isn't cut off at the window's edge (860 px, 2026-11-15).
-        let tiny = width < 1000.;
+    /// The bar along the foot: three pills on the page (the owner's "Thon" mock-up, 2026-11-19, after the Stats menu
+    /// bar app and Apple's Dynamic Island): Roblox's windows and the PC's figures on the left, Spotify's song in the
+    /// middle while it plays, Roblox's version, the mini window and Multi-Roblox on the right. Each thing is a small
+    /// faint name in capitals and its value, on one line; no lights. The bar is measured every frame: when it is too
+    /// narrow, things leave in one fixed order (BAR_LEVELS) until all three fit, so two pills never overlap.
+    fn status(&self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let m = &self.metrics;
         let windows = m.get("robloxCount").and_then(Value::as_i64).unwrap_or(0);
         let ram = m.get("usedPct").and_then(Value::as_f64).unwrap_or(0.).round() as i64;
-        let cpu = m.get("cpuPct").and_then(Value::as_f64).unwrap_or(0.).round() as i64;
+        // The whole PC's CPU, as RAM beside it is the whole PC's (the owner, 2026-11-19: "không có CPU à" with no Roblox
+        // open: Roblox's own share was shown, so it went with the windows). GPU stays Roblox's own (Windows gives no
+        // whole-PC figure here), shown while a window is open.
+        let cpu = m.get("pcCpuPct").and_then(Value::as_f64).unwrap_or(0.).round() as i64;
+        let gpu = m.get("gpuPct").and_then(Value::as_f64).filter(|_| windows > 0).map(|g| g.round() as i64);
         let multi = self.state.pointer("/multi/enabled").and_then(Value::as_bool).unwrap_or(false);
         let version = self.state.pointer("/update/current").and_then(Value::as_str).unwrap_or_default().to_string();
-        let words = if windows == 0 { self.tr("sys.none") } else { self.i18n.tn("ui.robloxWindows", windows, &[]) };
-        // An update is in and waits for a restart (not a quiet fix, which goes in by itself). Its button says the new
-        // version, so the app's own number at the end steps aside while it shows: the bar ran off the window's edge.
+        let words = if windows == 0 { self.tr("bar.none") } else { self.i18n.tn("bar.windows", windows, &[]) };
+        // An update is in and waits for a restart (not a quiet fix, which goes in by itself).
         let ready = self.state.pointer("/update/status").and_then(Value::as_str) == Some("ready") && !self.state.pointer("/update/quiet").and_then(Value::as_bool).unwrap_or(false);
+        let no_roblox = self.state.get("robloxInstalled").and_then(Value::as_bool) == Some(false);
+        let rbx = (!no_roblox).then(|| self.roblox_version_words()).flatten();
+        let mini_open = self.state.get("miniOpen").and_then(Value::as_bool).unwrap_or(false);
+        // Multi-Roblox's state, as Sidebar.tsx's MultiCard: Roblox closed windows, or the watch found the lock changed
+        // in the next build: orange, and a click leads to Settings › Roblox updates instead of its box.
+        let on = |p: &str| self.state.pointer(p).and_then(Value::as_bool).unwrap_or(false);
+        let armed = on("/multi/armed");
+        let closed = multi && on("/robloxUpdates/closed");
+        let check = self.state.pointer("/robloxUpdates/watch/check").and_then(Value::as_str).unwrap_or_default();
+        let watched = multi && armed && !closed && ["changed", "renamed", "gone"].contains(&check) && !on("/robloxUpdates/watch/worked");
+        let to_updates = closed || watched;
+        // (On but not ready: its name in orange says so, where a light was.)
+        let multi_warn = to_updates || (multi && !armed);
+        let privacy = crate::pages::game_privacy::chip(self);
+        let song = bar_song(self.music.as_ref());
+        let upd_words = self.tr("bar.update");
+        capsule::note_ram(&self.metrics);
+        // (The song's pill casts a faint shadow of its cover's colour, as Dynamic Island's does.)
+        let music_shade = song.as_ref().and_then(|(s, _)| s.cover.as_deref()).and_then(|p| images::tone(p, cx)).map(|t| ca(t, 0.38));
+
+        // ── Measuring ─────────────────────────────────────────────────────────────────────────────────────────────
+        // Each pill's width at each level, from its words' real widths (the font the bar draws them in).
+        let tw = |s: &str, size: f32, w: FontWeight| bar_text_w(&*window, s, size, w);
+        let label_w = |s: &str| tw(&s.to_uppercase(), BAR_LABEL, FontWeight::SEMIBOLD);
+        let value_w = |s: &str| tw(s, BAR_VALUE, FontWeight::SEMIBOLD);
+        let pct_w = value_w("88%");
+        let pair_w = |l: &str, v: f32| label_w(l) + 5. + v;
+        let row_gap = |items: &[f32], pad_l: f32, pad_r: f32, gap: f32| {
+            let shown: Vec<f32> = items.iter().copied().filter(|w| *w > 0.).collect();
+            pad_l + pad_r + shown.iter().sum::<f32>() + gap * shown.len().saturating_sub(1) as f32
+        };
+        let row = |items: &[f32], pad_l: f32, pad_r: f32| row_gap(items, pad_l, pad_r, BAR_PILL_GAP);
+        // (No "ROBLOX" word and no lines between the groups: its mark says it, as the right pill's do.)
+        let head_w = 13. + 6. + value_w(&words);
+        let cpu_w = pair_w("CPU", pct_w);
+        let ram_w = pair_w("RAM", pct_w);
+        let gpu_w = gpu.map_or(0., |_| pair_w("GPU", pct_w));
+        let progress_w = self.progress.as_deref().map_or(0., |p| tw(p, BAR_VALUE, FontWeight::NORMAL));
+        let no_roblox_w = if no_roblox { 14. + 6. + tw(&self.tr("side.noRoblox"), BAR_VALUE, FontWeight::NORMAL) } else { 0. };
+        let privacy_w = if privacy.is_some() { 14. + 6. + tw(&self.tr("gpv.chip"), BAR_VALUE, FontWeight::NORMAL) } else { 0. };
+        let left_w = |l: u8| {
+            let (c, r, g) = (if l < 2 { cpu_w } else { 0. }, if l < 10 { ram_w } else { 0. }, if windows > 0 && l < 2 { gpu_w } else { 0. });
+            row_gap(&[head_w, c, r, g, if windows > 0 { BAR_KEY } else { 0. }, progress_w, no_roblox_w, privacy_w], BAR_PAD, if windows > 0 { 6. } else { BAR_PAD }, BAR_GROUP_GAP)
+        };
+        let (title_w, artist_w, cover) = match &song {
+            Some((s, _)) => (
+                value_w(&s.title),
+                if s.artist.trim().is_empty() { 0. } else { tw(&format!("· {}", s.artist), 12., FontWeight::NORMAL).min(BAR_ARTIST_MAX) },
+                s.cover.as_deref().and_then(|p| crate::images::pic_sq(p, 18., cx)),
+            ),
+            None => (0., 0., None),
+        };
+        let music_w = |l: u8| {
+            if song.is_none() {
+                return 0.;
+            }
+            let title = if l < 8 { title_w.min(if l >= 4 { 110. } else { 190. }) } else { 0. };
+            let artist = if l < 5 && l < 8 { artist_w } else { 0. };
+            let words = if title > 0. { title + if artist > 0. { 6. + artist } else { 0. } } else { 0. };
+            let keys = if l < 3 { 3. } else { 2. };
+            row(&[if cover.is_some() { 18. } else { 15. }, words, keys * BAR_KEY + (keys - 1.) * 2.], 12., 4.)
+        };
+        let chip_w = |l: u8| if ready { 8. + 13. + if l < 9 { 5. + tw(&upd_words, 11.5, FontWeight::SEMIBOLD) } else { 0. } + 8. } else { 0. };
+        // (The right pill's groups open with their mark, not a word: Roblox's, Multi's, Bloxkeep's.)
+        let rbx_w = rbx.as_ref().map_or(0., |(v, _, _)| BAR_MARK + 5. + value_w(v));
+        let multi_label_w = BAR_MARK + 6.;
+        let app_w = if version.is_empty() { 0. } else { BAR_MARK + 5. + value_w(&version) };
+        let right_w = |l: u8| {
+            let r = if l < 7 || rbx.as_ref().is_some_and(|(_, old, _)| *old) { rbx_w } else { 0. };
+            let a = if l < 1 { app_w } else { 0. };
+            row_gap(
+                // (No lines between the groups: each opens with its mark, and the room between groups is wider than
+                // inside one (owner 2026-11-19, from the macOS menu bar / iStat Menus: "3, biểu tượng"). The small
+                // switch is 36 wide with the room around its track, not the track's 30: measured at 30, the pill came
+                // 6 short and the last words sat against its edge.)
+                &[chip_w(l), r, BAR_KEY, if l < 6 || multi_warn { multi_label_w } else { 0. } + 36., a],
+                if ready { 4. } else { BAR_PAD },
+                BAR_PAD,
+                BAR_GROUP_GAP,
+            )
+        };
+        let room = BAR_W.with(|w| w.get());
+        let room = if room > 0. { room } else { f32::from(window.viewport_size().width) - 120. };
+        let live_song = song.as_ref().is_some_and(|(_, live)| *live);
+        let need = |l: u8| left_w(l) + right_w(l) + if live_song { music_w(l) + 2. * BAR_GAP } else { BAR_GAP };
+        let level = (0..=BAR_LEVELS).find(|l| need(*l) <= room).unwrap_or(BAR_LEVELS);
+        let pill_w = chip_w(level);
+        let (lw, mw, rw) = (left_w(level), music_w(level), right_w(level));
+
+        // ── Motion ────────────────────────────────────────────────────────────────────────────────────────────────
+        // Apple's springs (WWDC23 "Animate with springs"): the side pills give way first, then the song's pill grows
+        // out of a small round one with a little bounce; going, it shrinks and fades at once, nothing left behind.
+        let lw_now = bar_tween("bar-left", lw, lw, 0.42, 0., 0., window);
+        let rw_now = bar_tween("bar-right", rw, rw, 0.42, 0., 0., window);
+        let (mw_now, m_fade, m_words) = if live_song {
+            (bar_tween("bar-music", mw, BAR_PILL_H, 0.5, 0.15, 0.12, window), bar_tween("bar-music-a", 1., 0., 0.18, 0., 0.08, window), bar_tween("bar-music-in", 1., 0., 0.2, 0., 0.3, window))
+        } else {
+            (bar_tween("bar-music", 0., 0., 0.26, 0., 0., window), bar_tween("bar-music-a", 0., 0., 0.16, 0., 0.06, window), bar_tween("bar-music-in", 0., 0., 0.09, 0., 0., window))
+        };
+        // (Gone a moment ago: drawn once more after its last frame, so it is not left at its last width.)
+        if song.as_ref().is_some_and(|(_, live)| !live) && !BAR_LEAVE_ASKED.with(|a| a.replace(true)) {
+            cx.spawn(async move |this, cx| {
+                cx.background_executor().timer(BAR_LEAVE).await;
+                this.update(cx, |_, cx| cx.notify()).ok();
+            })
+            .detach();
+        }
+
+        // ── Drawing ───────────────────────────────────────────────────────────────────────────────────────────────
+        // Three levels only (Apple HIG's label, secondary and tertiary): the figures white, the marks at 60 %, the
+        // small words (CPU, RAM, GPU) at 30 %.
+        let label = |s: &str| div().flex_none().text_size(px(BAR_LABEL)).font_weight(FontWeight::SEMIBOLD).text_color(ca(TEXT, 0.32)).mt(px(1.)).child(s.to_uppercase());
+        let value = |s: String| div().flex_none().text_size(px(BAR_VALUE)).font_weight(FontWeight::SEMIBOLD).text_color(c(TEXT)).child(s);
+        // (A figure that changes rolls its digits, as Apple's numericText does.)
+        let figure = |id: &'static str, name: &str, pct: i64, tip: String, window: &mut Window| {
+            let tip: SharedString = tip.into();
+            let tone = if pct as f64 >= LOAD_BUSY { load_colour(pct as f64) } else { c(TEXT) };
+            div()
+                .id(id)
+                .flex()
+                .flex_none()
+                .items_center()
+                .gap(px(5.))
+                .child(label(name))
+                .child(div().min_w(px(pct_w)).text_size(px(BAR_VALUE)).font_weight(FontWeight::SEMIBOLD).text_color(tone).child(capsule::roll(id, format!("{pct}%"), 16., window)))
+                .tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into())
+        };
+
+        let left = {
+            // Rest the mouse on the count: about how many windows this PC runs, and what runs out first.
+            let fit = m.get("fit").filter(|f| f.is_object());
+            let tip: Option<SharedString> = fit.map(|f| {
+                let by = self.tr(&format!("cap.by.{}", f.get("by").and_then(Value::as_str).unwrap_or("ram")));
+                let each = crate::pages::accounts::mb_text(f.get("eachMb").and_then(Value::as_f64).unwrap_or(0.), self.i18n.vietnamese);
+                self.i18n.tv("cap.tip", &[("n", &f.get("max").and_then(Value::as_i64).unwrap_or(0).to_string()), ("each", &each), ("by", &by)]).into()
+            });
+            let free = m.get("availableMb").and_then(Value::as_f64).map(|mb| if mb >= 1024. { format!("{:.1} GB", mb / 1024.) } else { format!("{mb:.0} MB") }).unwrap_or_default();
+            let (show_cpu, show_ram) = (level < 2, level < 10);
+            let cpu_el = show_cpu.then(|| figure("bar-cpu", "CPU", cpu, self.i18n.tv("bar.cpuTip", &[("pct", &cpu.to_string())]), window));
+            let ram_el = show_ram.then(|| figure("bar-ram", "RAM", ram, self.i18n.tv("sys.used", &[("pct", &ram.to_string()), ("free", &free)]), window));
+            let gpu_el = gpu.filter(|_| show_cpu && windows > 0).map(|g| figure("bar-gpu", "GPU", g, self.tr("sys.usageTip"), window));
+            div()
+                .flex()
+                .items_center()
+                .gap(px(BAR_GROUP_GAP))
+                .child(
+                    div()
+                        .id("sys-windows")
+                        .flex()
+                        .flex_none()
+                        .items_center()
+                        .gap(px(6.))
+                        .child(icon("roblox", 13., ca(TEXT, 0.6)))
+                        .child(value(words).when(windows == 0, |d| d.text_color(ca(TEXT, 0.6))))
+                        .when_some(tip, |d, tip| d.tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into())),
+                )
+                // CPU and RAM are the whole PC's; GPU is Roblox's own share (sys.usageTip), only while a window is open.
+                .children(cpu_el)
+                .children(ram_el)
+                .children(gpu_el)
+                // Close all: every Roblox window, after a question. (Its own click: not the pill's, which opens it.)
+                .when(windows > 0, |d| d.child(no_pick(IconButton::new("sys-close", "power").size(BAR_KEY).tip(self.tr("sys.closeAll")).on_click(cx.listener(|r, _, window, cx| r.close_all(false, window, cx))))))
+                .when_some(self.progress.clone(), |d, p| d.child(div().flex_none().text_color(c(TEXT_2)).child(p)))
+                // Nothing can be opened without it: said where it is seen on every page.
+                .when(no_roblox, |d| d.child(div().flex().flex_none().items_center().gap(px(6.)).text_color(c(WARN)).child(icon("alert", 14., c(WARN))).child(self.tr("side.noRoblox"))))
+                .children(privacy.map(no_pick))
+        };
+
+        let music = song.map(|(s, _)| {
+            let tip: SharedString = format!("{}: {}{}", s.player.name(), s.title, if s.artist.trim().is_empty() { String::new() } else { format!(" · {}", s.artist) }).into();
+            let (title_room, artist_on, back_on) = (if level >= 4 { 110f32 } else { 190. }.min(title_w), level < 5 && artist_w > 0., level < 3);
+            let press = |id: &'static str, name: &'static str, tip: String, act: crate::media::Act, cx: &mut Context<Self>| music_press(id, name, tip, act, cx).size(BAR_KEY);
+            div()
+                .flex()
+                .items_center()
+                .gap(px(BAR_PILL_GAP))
+                // The album's picture with the music app's mark in its corner (Spotify, Apple Music, YouTube Music);
+                // no picture, the mark alone.
+                .child(match cover {
+                    Some(src) => div()
+                        .relative()
+                        .size(px(18.))
+                        .flex_none()
+                        .child(img(src).size(px(18.)).rounded(px(4.)).object_fit(ObjectFit::Cover))
+                        .child(div().absolute().right(px(-4.)).bottom(px(-4.)).size(px(12.)).rounded_full().bg(c(PANEL)).flex().items_center().justify_center().child(icon(s.player.icon(), 8., c(s.player.colour()))))
+                        .into_any_element(),
+                    // (The mark in its own colour, Spotify's green: the owner, 2026-11-19, "logo của spotify màu xanh".)
+                    None => icon(s.player.icon(), 15., c(s.player.colour())).into_any_element(),
+                })
+                .when(level < 8, |d| {
+                    d.child(
+                        div()
+                            .id("music-now")
+                            .flex()
+                            .flex_none()
+                            .items_center()
+                            .gap(px(6.))
+                            .opacity(m_words * if s.playing { 1. } else { 0.55 })
+                            // (Longer than its room: the title runs, as a player's does, kit::marquee.)
+                            .child(div().w(px(title_room)).flex_none().text_size(px(BAR_VALUE)).font_weight(FontWeight::SEMIBOLD).text_color(c(TEXT)).child(marquee("music-status", s.title.clone())))
+                            .when(artist_on, |d| d.child(div().max_w(px(BAR_ARTIST_MAX)).flex_none().truncate().text_size(px(12.)).text_color(c(MUTED)).child(format!("· {}", s.artist))))
+                            .tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into()),
+                    )
+                })
+                .child(no_pick(
+                    div()
+                        .flex()
+                        .flex_none()
+                        .items_center()
+                        .gap(px(2.))
+                        .opacity(m_words)
+                        .when(back_on, |d| d.child(press("music-back", "skipBack", self.tr("music.back"), crate::media::Act::Back, cx)))
+                        .child(press("music-play", if s.playing { "pause" } else { "play" }, self.tr(if s.playing { "music.pause" } else { "music.play" }), crate::media::Act::Toggle, cx))
+                        .child(press("music-next", "skipNext", self.tr("music.next"), crate::media::Act::Next, cx)),
+                ))
+        });
+
+        let right = {
+            let rbx_on = level < 7 || rbx.as_ref().is_some_and(|(_, old, _)| *old);
+            let multi_tip: SharedString = {
+                let page = self.tr("set.p.roblox");
+                format!(
+                    "{}: {}",
+                    self.tr("multi.title"),
+                    if closed {
+                        self.i18n.tv("multi.closedTip", &[("page", &page)])
+                    } else if watched {
+                        self.i18n.tv("multi.watchTip", &[("page", &page)])
+                    } else {
+                        self.tr(if !multi { "multi.offTip" } else if armed { "multi.readyTip" } else { "multi.notReadyTip" })
+                    }
+                )
+                .into()
+            };
+            let mini_tip = self.tr(if mini_open { "sys.miniHide" } else { "sys.mini" });
+            div()
+                .flex()
+                .items_center()
+                .gap(px(BAR_GROUP_GAP))
+                // The one coloured thing in the bar: the app's update, waiting for a restart. Asked, not just sent:
+                // the app can refuse (Roblox being opened, a sign-in window up) and says why.
+                .when(ready, |d| {
+                    let v = self.state.pointer("/update/version").and_then(Value::as_str).unwrap_or_default().to_string();
+                    let tip: SharedString = self.i18n.tv(if self.state.pointer("/update/auto").and_then(Value::as_bool).unwrap_or(false) { "upd.restartTipAuto" } else { "upd.restartTip" }, &[("v", &v)]).into();
+                    d.child(pill_in("apply-update-in", pill_w, BAR_GROUP_GAP, no_pick(
+                        hot("apply-update")
+                            // (Its ground through `tones`: a hot block paints its own, over any `bg`.)
+                            .tones(c(FACE), c(FACE_HI))
+                            .h(px(20.))
+                            .px(px(8.))
+                            .flex()
+                            .flex_none()
+                            .items_center()
+                            .gap(px(5.))
+                            .rounded(px(10.))
+                            .cursor_pointer()
+                            .text_size(px(11.5))
+                            .font_weight(FontWeight::SEMIBOLD)
+                            .text_color(c(INK))
+                            .child(icon("refresh", 13., c(INK)))
+                            .when(level < 9, |d| d.child(upd_words.clone()))
+                            .tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into())
+                            .on_click(cx.listener(|r, _, _, cx| r.ask("applyUpdate", json!({}), cx, |_, _| {}))),
+                    )))
+                })
+                // Roblox's version; out of date it is orange with what is newer, and leads to Settings › Roblox
+                // version, which says how to update.
+                .when_some(rbx.filter(|_| rbx_on), |d, (v, old, tip)| {
+                    let tip: SharedString = tip.into();
+                    d.child(
+                        // (Its ground under the mouse is a rounded one with room around the words, as the bar's
+                        // other keys have; the margin gives that room back, so the pill's measure stays the same.)
+                        // (Plain: a click opens the pill's card, whose Roblox tile leads on to Settings › Roblox.)
+                        div()
+                            .id("sys-rbx-ver")
+                            .flex()
+                            .flex_none()
+                            .items_center()
+                            .gap(px(5.))
+                            .child(icon("roblox", BAR_MARK, ca(TEXT, 0.6)))
+                            .child(value(v).when(old, |d| d.text_color(c(WARN))))
+                            .tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into()),
+                    )
+                })
+                // The mini window: the accounts in a small window that stays over Roblox; open, its button is lit.
+                .child(no_pick(IconButton::new("sys-mini", "screens").size(BAR_KEY).on(mini_open).tip(mini_tip).on_click(cx.listener(|r, _, _, _| r.send("toggleMini", json!({}))))))
+                .child(
+                    div()
+                        .flex()
+                        .flex_none()
+                        .items_center()
+                        .gap(px(6.))
+                        .when(level < 6 || multi_warn, |d| {
+                            d.child(
+                                focusable(div().id("multi-help"))
+                                    .cursor_pointer()
+                                    .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
+                                    .child(icon("layers", BAR_MARK, if multi_warn { c(WARN) } else { ca(TEXT, 0.6) }))
+                                    .tooltip(move |_, cx| cx.new(|_| Tip(multi_tip.clone())).into())
+                                    .on_click(cx.listener(move |r, _, window, cx| {
+                                        if to_updates {
+                                            r.settings.part = pages::settings::Part::Roblox;
+                                            r.go(Page::Settings);
+                                            cx.notify();
+                                        } else {
+                                            r.multi_help(window, cx)
+                                        }
+                                    })),
+                            )
+                        })
+                        .child(no_pick(Switch::new("multi", multi).small().on_toggle(cx.listener(move |r, on: &bool, window, cx| {
+                            // Like app.js's setMulti: turning it on asks first (Roblox's rules); the state that comes
+                            // back moves the switch.
+                            if *on {
+                                r.confirm(r.tr("set.multiConfirmTitle"), r.tr("set.multiConfirm"), r.tr("set.multiOk"), false, Some("multi"), window, cx, |r, _| {
+                                    r.send("setSettings", json!({ "multiInstance": true }))
+                                });
+                            } else {
+                                r.send("setSettings", json!({ "multiInstance": false }));
+                            }
+                            cx.notify();
+                        })))),
+                )
+                .when(level < 1 && !version.is_empty(), |d| d.child(div().flex().flex_none().items_center().gap(px(5.)).child(div().flex_none().size(px(BAR_MARK)).child(crate::crisp::blocks(BAR_MARK))).child(value(version.clone()))))
+        };
+
         div()
-            .h(px(44.))
+            .relative()
             .flex_none()
+            .pt(px(8.))
+            .pb(px(10.))
             .flex()
             .items_center()
-            .gap(px(if tiny { 12. } else { 24. }))
-            .px(px(6.))
-            // (A ground of its own even when it is the window's: nothing of the page drawn past its foot shows through.)
-            .map(|d| match crate::theme::status_ground() {
-                Some(g) => d.bg(g).rounded_t(px(R_M)).px(px(12.)),
-                None => d.bg(c(GROUND)),
-            })
-            .text_size(px(T_M))
-            .text_color(c(TEXT_2))
+            .gap(px(BAR_GAP))
             .font_features(tnum())
+            .text_size(px(BAR_VALUE))
+            .text_color(c(TEXT_2))
+            // (The pills are glass over the theme's picture as the blocks are: they count as on the page.)
+            .child(crate::scene::on_page(true))
+            // (Its width, kept for the next frame's measuring.)
             .child(
-                div()
-                    .flex()
-                    .items_center()
-                    .gap(px(8.))
-                    .child(div().size(px(7.)).rounded(px(2.)).bg(if windows > 0 { c(OK) } else { c(DIM) }))
-                    .child({
-                        // Rest the mouse on the count: about how many windows this PC runs, and what runs out first.
-                        let fit = m.get("fit").filter(|f| f.is_object());
-                        let tip: Option<SharedString> = fit.map(|f| {
-                            let by = self.tr(&format!("cap.by.{}", f.get("by").and_then(Value::as_str).unwrap_or("ram")));
-                            let each = crate::pages::accounts::mb_text(f.get("eachMb").and_then(Value::as_f64).unwrap_or(0.), self.i18n.vietnamese);
-                            self.i18n.tv("cap.tip", &[("n", &f.get("max").and_then(Value::as_i64).unwrap_or(0).to_string()), ("each", &each), ("by", &by)]).into()
-                        });
-                        div().id("sys-windows").text_color(c(TEXT)).font_weight(FontWeight::MEDIUM).child(words).when_some(tip, |d, tip| d.tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into()))
-                    })
-                    .children((!compact).then(|| m.pointer("/fit/max").and_then(Value::as_i64)).flatten().map(|n| div().text_color(c(MUTED)).child(self.i18n.tv("cap.fits", &[("n", &n.to_string())]))))
-                    // Close all: every Roblox window, after a question (the old page's status card had it).
-                    .when(windows > 0, |d| {
-                        d.child(IconButton::new("sys-close", "power").size(26.).tip(self.tr("sys.closeAll")).on_click(cx.listener(|r, _, window, cx| r.close_all(false, window, cx))))
-                    }),
-            )
-            // (On every page: Home's CPU and RAM cards gave way to its account strip, critique 2026-11-13.)
-            .map(|d| {
-                // (What each counts, as the old PC card's titles said; space between them, no rules.)
-                d.child(meter("chip", self.tr("ui.cpu"), cpu, !compact, self.tr("sys.usageTip")))
-                    .child(meter("gauge", self.tr("ui.ram"), ram, !compact, {
-                        let free = m.get("availableMb").and_then(Value::as_f64).map(|mb| if mb >= 1024. { format!("{:.1} GB", mb / 1024.) } else { format!("{mb:.0} MB") }).unwrap_or_default();
-                        self.i18n.tv("sys.used", &[("pct", &ram.to_string()), ("free", &free)])
-                    }))
-                    // The GPU too while Roblox runs (the old PC card's "GPU 34 %").
-                    .when_some(m.get("gpuPct").and_then(Value::as_f64).filter(|_| windows > 0), |d, g| {
-                        d.child(meter("monitor", "GPU".into(), g.round() as i64, !compact, self.tr("sys.usageTip")))
-                    })
-            })
-            .when_some(self.progress.clone(), |d, p| d.child(div().text_color(c(TEXT_2)).child(p)))
-            // Nothing can be opened without it: said where it is seen on every place.
-            .when(self.state.get("robloxInstalled").and_then(Value::as_bool) == Some(false), |d| {
-                d.child(div().min_w_0().flex().items_center().gap(px(6.)).text_color(c(WARN)).child(icon("alert", 14., c(WARN))).child(div().truncate().child(self.tr("side.noRoblox"))))
-            })
-            .child(div().flex_1())
-            // Roblox's version here and whether it is the newest (the old PC card's last line); out of date, it leads
-            // to Settings › Roblox version, which says how to update.
-            .children(Some(()).filter(|_| !tiny || self.state.pointer("/robloxVersion/upToDate").and_then(Value::as_bool) == Some(false)).and_then(|_| self.roblox_version(tight, cx)))
-            // The mini window: the accounts in a small window that stays over Roblox. Named, not a lone icon; open, a
-            // green light in the icon's place.
-            .child({
-                let on = self.state.get("miniOpen").and_then(Value::as_bool).unwrap_or(false);
-                let tip: SharedString = self.tr(if on { "sys.miniHide" } else { "sys.mini" }).into();
-                tool("sys-mini", (!on).then_some("screens"), false)
-                    .h(px(28.))
-                    .px(px(8.))
-                    .text_size(px(T_M))
-                    .when(on, |d| d.child(div().size(px(7.)).rounded_full().bg(c(OK))))
-                    .when(!tight, |d| d.child(self.tr("sys.mini")))
-                    .tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into())
-                    .on_click(cx.listener(|r, _, _, _| r.send("toggleMini", json!({}))))
-            })
-            .when(ready, |d| {
-                let v = self.state.pointer("/update/version").and_then(Value::as_str).unwrap_or_default().to_string();
-                // (On a narrow window only "Restart to update"; its version is in Settings › Updates.)
-                let label = if compact || v.is_empty() { self.tr("upd.restart") } else { format!("{} · {}", self.tr("upd.restart"), self.i18n.tv("upd.versionN", &[("v", &v)])) };
-                d.child(
-                    Button::new("apply-update", label)
-                        .icon("refresh")
-                        .primary()
-                        .small()
-                        .tip(self.i18n.tv(if self.state.pointer("/update/auto").and_then(Value::as_bool).unwrap_or(false) { "upd.restartTipAuto" } else { "upd.restartTip" }, &[("v", &v)]))
-                        // (Asked, not just sent: the app can refuse (Roblox being opened, a sign-in window up, nothing
-                        // saved) and the old page said why (app.js: busy(el, () => call('applyUpdate'))). Sent only,
-                        // the button did nothing and said nothing.)
-                        .on_click(cx.listener(|r, _, _, cx| pages::settings::ask(r, "applyUpdate", json!({}), cx, |_, _| {}))),
-                )
-            })
-            .child(
-                div()
-                    .flex()
-                    .items_center()
-                    .gap(px(8.))
-                    // Its light (off, working, or on but blocked) and its name open its box (MultiHelp).
-                    .child({
-                        // As Sidebar.tsx's MultiCard: Roblox closed windows, or the watch found the lock changed in the
-                        // next build: orange, and the click leads to Settings › Roblox updates instead of the box.
-                        let on = |p: &str| self.state.pointer(p).and_then(Value::as_bool).unwrap_or(false);
-                        let armed = on("/multi/armed");
-                        let closed = multi && on("/robloxUpdates/closed");
-                        let check = self.state.pointer("/robloxUpdates/watch/check").and_then(Value::as_str).unwrap_or_default();
-                        let watched = multi && armed && !closed && ["changed", "renamed", "gone"].contains(&check) && !on("/robloxUpdates/watch/worked");
-                        let page = self.tr("set.p.roblox");
-                        let tip: SharedString = format!(
-                            "{}: {}",
-                            self.tr("multi.title"),
-                            if closed {
-                                self.i18n.tv("multi.closedTip", &[("page", &page)])
-                            } else if watched {
-                                self.i18n.tv("multi.watchTip", &[("page", &page)])
-                            } else {
-                                self.tr(if !multi { "multi.offTip" } else if armed { "multi.readyTip" } else { "multi.notReadyTip" })
-                            }
-                        )
-                        .into();
-                        let to_updates = closed || watched;
-                        focusable(div().id("multi-help"))
-                            .flex()
-                            .items_center()
-                            .gap(px(7.))
-                            .cursor_pointer()
-                            .hover(|s| s.text_color(c(TEXT)))
-                            .when(to_updates, |d| d.text_color(c(WARN)))
-                            // (A light only when it is on but not ready: on and fine, the switch already says so.)
-                            .when(multi && !(armed && !to_updates), |d| d.child(div().size(px(6.)).rounded_full().bg(c(WARN))))
-                            .when(!tiny, |d| d.child(self.tr("multi.title")))
-                            .when(tiny, |d| d.child(icon("layers", 15., c(TEXT_2))))
-                            .tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into())
-                            .on_click(cx.listener(move |r, _, window, cx| {
-                                if to_updates {
-                                    r.settings.part = pages::settings::Part::Roblox;
-                                    r.go(Page::Settings);
-                                    cx.notify();
-                                } else {
-                                    r.multi_help(window, cx)
-                                }
-                            }))
-                    })
-                    .child(Switch::new("multi", multi).small().on_toggle(
-                    cx.listener(move |r, on: &bool, window, cx| {
-                        // Like app.js's setMulti: turning it on asks first (Roblox's rules; "Don't ask again" is the
-                        // app's to keep); the state that comes back moves the switch.
-                        if *on {
-                            r.confirm(r.tr("set.multiConfirmTitle"), r.tr("set.multiConfirm"), r.tr("set.multiOk"), false, Some("multi"), window, cx, |r, _| {
-                                r.send("setSettings", json!({ "multiInstance": true }))
-                            });
-                        } else {
-                            r.send("setSettings", json!({ "multiInstance": false }));
+                canvas(
+                    |b, window, _| {
+                        let w = f32::from(b.size.width);
+                        if BAR_W.with(|k| (k.replace(w) - w).abs() > 0.5) {
+                            window.refresh();
                         }
-                        cx.notify();
-                    }),
-                )),
+                    },
+                    |_, _, _, _| {},
+                )
+                .absolute()
+                .inset_0(),
             )
-            .when(!version.is_empty() && !ready && !tight, |d| d.child(div().flex_none().pl(px(4.)).text_color(c(DIM)).child(format!("v{version}"))))
+            // (A click on a pill's empty part opens its card, capsule.rs; its buttons keep their own clicks.)
+            .child(bar_pill("bar-left", lw_now, lw, BAR_PAD, if windows > 0 { 6. } else { BAR_PAD }, 1., None, left.into_any_element()).on_click(cx.listener(|r, _, _, cx| r.pill_toggle(capsule::Pill::Left, cx))))
+            .child(div().flex_1().min_w_0().flex().justify_center().children(music.map(|d| {
+                bar_pill("bar-music", mw_now, mw, 12., 4., m_fade, music_shade, d.into_any_element()).on_click(cx.listener(|r, _, _, cx| r.pill_toggle(capsule::Pill::Music, cx)))
+            })))
+            .child(bar_pill("bar-right", rw_now, rw, if ready { 4. } else { BAR_PAD }, BAR_PAD, 1., None, right.into_any_element()).on_click(cx.listener(|r, _, _, cx| r.pill_toggle(capsule::Pill::Right, cx))))
+            .child(crate::scene::on_page(false))
     }
 
-    /// "● Roblox 0.742 · up to date" in the status bar (Sidebar.tsx's sys-ver): green when it is the newest, orange
-    /// with what is newer (a click opens Settings › Roblox version) when not; nothing while it isn't installed or known.
-    fn roblox_version(&self, tight: bool, cx: &mut Context<Self>) -> Option<AnyElement> {
-        if self.state.get("robloxInstalled").and_then(Value::as_bool) == Some(false) {
-            return None;
-        }
+    /// Roblox's version for the status bar: its words ("0.742", or "0.742 → 0.743" when a newer one is out), whether
+    /// it is out of date, and its tip (the full build). None while it isn't known.
+    fn roblox_version_words(&self) -> Option<(String, bool, String)> {
         let rv = self.state.get("robloxVersion")?;
         let installed = rv.get("installed").and_then(Value::as_str).filter(|v| !v.is_empty())?.to_string();
         let latest = rv.get("latest").and_then(Value::as_str).unwrap_or_default();
-        let up = rv.get("upToDate").and_then(Value::as_bool);
         let short = |v: &str| v.split('.').take(2).collect::<Vec<_>>().join(".");
-        let (dot, words) = match up {
-            Some(false) => {
-                let more = if short(latest) == short(&installed) { self.tr("rbx.newBuild") } else { self.i18n.tv("rbx.available", &[("v", &short(latest))]) };
-                (c(WARN), format!("Roblox {} · {more}", short(&installed)))
-            }
-            Some(true) => (c(OK), format!("Roblox {} · {}", short(&installed), self.tr("rbx.latestShort"))),
-            None => (c(DIM), format!("Roblox {}", short(&installed))),
+        let old = rv.get("upToDate").and_then(Value::as_bool) == Some(false);
+        let words = if old && !latest.is_empty() && short(latest) != short(&installed) { format!("{} → {}", short(&installed), short(latest)) } else { short(&installed) };
+        let tip = if old {
+            let more = if short(latest) == short(&installed) { self.tr("rbx.newBuild") } else { self.i18n.tv("rbx.available", &[("v", &short(latest))]) };
+            format!("Roblox {installed} · {more}")
+        } else if rv.get("upToDate").and_then(Value::as_bool) == Some(true) {
+            format!("Roblox {installed} · {}", self.tr("rbx.latestShort"))
+        } else {
+            format!("Roblox {installed}")
         };
-        let words = if tight { format!("Roblox {}", short(&installed)) } else { words };
-        let tip: SharedString = format!("Roblox {installed}").into();
-        Some(
-            tool("sys-rbx-ver", None, false)
-                .h(px(28.))
-                .px(px(8.))
-                .text_size(px(T_M))
-                .font_features(tnum())
-                .text_color(c(MUTED))
-                .when(up == Some(false), |d| d.text_color(c(WARN)))
-                // A light only when something is to be done (newer Roblox): up to date is the quiet case.
-                .when(up != Some(true), |d| d.child(div().size(px(6.)).flex_none().rounded_full().bg(dot)))
-                .child(words)
-                .tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into())
-                .on_click(cx.listener(|r, _, _, cx| {
-                    r.settings.part = pages::settings::Part::Roblox;
-                    r.go(Page::Settings);
-                    cx.notify();
-                }))
-                .into_any_element(),
-        )
+        Some((words, old, tip))
+    }
+
+    /// Spotify's back, play/pause and next for a place that shows its song (the status bar, the profile's song).
+    pub fn music_keys(&self, ids: [&'static str; 3], cx: &mut Context<Self>) -> Option<[IconButton; 3]> {
+        let playing = self.music.as_ref()?.playing;
+        use crate::media::Act;
+        Some([
+            music_press(ids[0], "skipBack", self.tr("music.back"), Act::Back, cx),
+            music_press(ids[1], if playing { "pause" } else { "play" }, self.tr(if playing { "music.pause" } else { "music.play" }), Act::Toggle, cx),
+            music_press(ids[2], "skipNext", self.tr("music.next"), Act::Next, cx),
+        ])
     }
 
     fn toast_layer(&mut self, window: &mut Window, cx: &mut Context<Self>) -> Option<AnyElement> {
+        // No connection: its notice holds the place until the connection is back (no other notice shows meanwhile).
+        if let Some(words) = self.offline {
+            let notice = div()
+                .max_w(px(480.))
+                .pl(px(14.))
+                .pr(px(16.))
+                .py(px(11.))
+                .flex()
+                .items_center()
+                .gap(px(11.))
+                .rounded(px(R_L))
+                .bg(c(RAISED_2))
+                .border_1()
+                .border_color(ca(WHITE, 0.1))
+                .shadow_lg()
+                .text_size(px(T_M))
+                .child(div().flex_none().child(crate::kit::spinner(16., c(WARN))))
+                .child(div().min_w_0().line_height(px(19.)).child(self.tr(words)));
+            return Some(div().absolute().top(px(((TOP - 44.) / 2.).max(0.))).left_0().right_0().flex().justify_center().child(slide_in("net-lost".to_string(), notice)).into_any_element());
+        }
         // Every notice goes away by itself after 5 s, whoever said it. Only the app's own "toast" event started a
         // timer, so one a page set itself ("Opened 1 account.", "Select accounts first") stayed for good (owner, on
         // the real app, 2026-11-13). The timer starts here, where every notice passes; a newer notice drops it.
@@ -3079,20 +3609,155 @@ fn nav_button(p: Page, page: Page, i18n: &I18n, cx: &mut Context<Root>) -> AnyEl
         .into_any_element()
 }
 
-/// A figure in the status bar: its icon, name, percent and a short bar that turns orange, then red, as it fills.
-fn meter(icon_name: &'static str, name: String, pct: i64, with_bar: bool, tip: String) -> impl IntoElement {
-    let tip: SharedString = tip.into();
+// ── The status bar's pills ─────────────────────────────────────────────────────────────────────────────────────
+const BAR_PILL_H: f32 = 28.;
+const BAR_PAD: f32 = 13.;
+const BAR_PILL_GAP: f32 = 11.;
+/// The room between the right pill's groups (each opens with its mark, no lines between them), and the marks' size.
+const BAR_GROUP_GAP: f32 = 15.;
+const BAR_MARK: f32 = 14.;
+const BAR_GAP: f32 = 12.;
+const BAR_LABEL: f32 = 9.5;
+const BAR_VALUE: f32 = 12.5;
+const BAR_KEY: f32 = 24.;
+const BAR_ARTIST_MAX: f32 = 140.;
+/// How long a song's pill is drawn after the song stopped, while it shrinks away.
+const BAR_LEAVE: Duration = Duration::from_millis(420);
+/// What leaves when the bar is too narrow, in this order: 1 the app's number, 2 CPU and GPU, 3 the song's back
+/// button, 4 a shorter title, 5 the artist, 6 Multi-Roblox's name (its switch stays), 7 Roblox's version (unless it
+/// is out of date), 8 the song's words (its icon and buttons stay), 9 the update's word (its icon stays), 10 RAM.
+const BAR_LEVELS: u8 = 10;
+
+thread_local! {
+    static BAR_W: std::cell::Cell<f32> = const { std::cell::Cell::new(0.) };
+    static BAR_LEAVE_ASKED: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+    static BAR_TWEENS: std::cell::RefCell<std::collections::HashMap<&'static str, BarTween>> = std::cell::RefCell::new(std::collections::HashMap::new());
+    static BAR_SONG: std::cell::RefCell<Option<(crate::media::Playing, Option<std::time::Instant>)>> = const { std::cell::RefCell::new(None) };
+}
+
+/// A width or a fade on its way somewhere.
+#[derive(Clone, Copy)]
+struct BarTween {
+    from: f32,
+    to: f32,
+    at: std::time::Instant,
+    dur: f32,
+    bounce: f32,
+    delay: f32,
+}
+
+impl BarTween {
+    fn value(&self, now: std::time::Instant) -> (f32, bool) {
+        let s = now.saturating_duration_since(self.at).as_secs_f32() - self.delay;
+        if s >= self.dur * 1.6 {
+            return (self.to, true);
+        }
+        (self.from + (self.to - self.from) * apple_spring(s.max(0.), self.dur, self.bounce), false)
+    }
+}
+
+/// Apple's spring (WWDC23 "Animate with springs"): stiffness (2π/duration)², damping 4π(1 − bounce)/duration, so
+/// a damping ratio of 1 − bounce; from 0 at the start towards 1.
+fn apple_spring(t: f32, dur: f32, bounce: f32) -> f32 {
+    if t <= 0. {
+        return 0.;
+    }
+    let w = std::f32::consts::TAU / dur;
+    let z = (1. - bounce).clamp(0.05, 1.);
+    if z >= 0.999 {
+        1. - (-w * t).exp() * (1. + w * t)
+    } else {
+        let wd = w * (1. - z * z).sqrt();
+        1. - (-z * w * t).exp() * ((wd * t).cos() + z * w / wd * (wd * t).sin())
+    }
+}
+
+/// `key`'s value on its way to `to`: a new `to` starts a spring from where it is now (from `first` when it was at
+/// nothing: a pill coming back grows from a small round one). Frames are asked for while it moves.
+fn bar_tween(key: &'static str, to: f32, first: f32, dur: f32, bounce: f32, delay: f32, window: &mut Window) -> f32 {
+    let now = std::time::Instant::now();
+    let (v, done) = BAR_TWEENS.with(|m| {
+        let mut m = m.borrow_mut();
+        let t = m.entry(key).or_insert(BarTween { from: first, to: first, at: now, dur, bounce, delay: 0. });
+        if (t.to - to).abs() > 0.01 {
+            let from = if t.to.abs() < 0.01 && to > 0. { first } else { t.value(now).0 };
+            *t = BarTween { from, to, at: now, dur, bounce, delay };
+        }
+        t.value(now)
+    });
+    if !done {
+        window.request_animation_frame();
+    }
+    v
+}
+
+/// The song for the bar's middle pill: the one playing (live), or the last one for a moment after it stopped, while
+/// its pill goes.
+fn bar_song(now: Option<&crate::media::Playing>) -> Option<(crate::media::Playing, bool)> {
+    BAR_SONG.with(|s| {
+        let mut s = s.borrow_mut();
+        match now {
+            Some(p) => {
+                BAR_LEAVE_ASKED.with(|a| a.set(false));
+                *s = Some((p.clone(), None));
+                Some((p.clone(), true))
+            }
+            None => {
+                let (p, gone) = s.as_mut()?;
+                let at = *gone.get_or_insert_with(std::time::Instant::now);
+                if at.elapsed() < BAR_LEAVE {
+                    Some((p.clone(), false))
+                } else {
+                    *s = None;
+                    None
+                }
+            }
+        }
+    })
+}
+
+/// How wide `s` is drawn in the bar's font at `size`.
+fn bar_text_w(window: &Window, s: &str, size: f32, weight: FontWeight) -> f32 {
+    if s.is_empty() {
+        return 0.;
+    }
+    let mut f = gpui_kit::font(FONT);
+    f.weight = weight;
+    f.features = tnum();
+    let run = TextRun { len: s.len(), font: f, color: c(TEXT), background_color: None, underline: None, strikethrough: None };
+    f32::from(window.text_system().shape_line(SharedString::from(s.to_string()), px(size), &[run], None).width).ceil()
+}
+
+/// One of the bar's pills, `now` wide on its way to `to`: its things laid out at `to` (so they don't move while it
+/// grows or shrinks; the pill's edge shows or hides them), on glass over the picture or the theme's block ground.
+/// Its edge is lit from above (a top rim brighter than the faint ring round it, brighter still under the mouse) and
+/// it sits on a soft shadow, `shade` when it has its own colour (the song's cover): the premium look the owner
+/// approved on 2026-11-19 (artifacts/mock/con-nhong.html, "Con nhộng sang hơn").
+fn bar_pill(id: &'static str, now: f32, to: f32, pad_l: f32, pad_r: f32, alpha: f32, shade: Option<Hsla>, inner: AnyElement) -> Stateful<Div> {
+    let light = crate::theme::light();
+    let ring = if light { c(LINE) } else { ca(WHITE, 0.06) };
+    let group = SharedString::from(format!("{id}-g"));
+    let r = BAR_PILL_H / 2.;
     div()
-        .id(SharedString::from(format!("meter-tip-{icon_name}")))
-        .tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into())
-        .flex()
-        .items_center()
-        .gap(px(7.))
-        // Its name small and quiet, its figure in the words' light, a hairline of a bar: no icon (three icons in a row
-        // with names beside them said everything twice).
-        .child(div().text_size(px(T_S)).text_color(c(MUTED)).child(name))
-        .child(div().w(px(32.)).text_color(c(TEXT)).font_weight(FontWeight::MEDIUM).font_features(tnum()).child(format!("{pct}%")))
-        .when(with_bar, |d| d.child(bar(SharedString::from(format!("meter-{icon_name}")), pct as f32 / 100., Some(44.)).h(px(2.))))
+        .id(id)
+        .group(group.clone())
+        .relative()
+        .flex_none()
+        .w(px(now.max(0.)))
+        .h(px(BAR_PILL_H))
+        .rounded(px(r))
+        .overflow_hidden()
+        .opacity(if capsule::covers(id) { 0. } else { alpha })
+        .cursor_pointer()
+        .shadow(vec![
+            BoxShadow { color: hsla(0., 0., 0., if light { 0.12 } else { 0.3 }), offset: point(px(0.), px(1.)), blur_radius: px(1.5), spread_radius: px(0.), inset: false },
+            BoxShadow { color: shade.unwrap_or(hsla(0., 0., 0., if light { 0.18 } else { 0.45 })), offset: point(px(0.), px(8.)), blur_radius: px(22.), spread_radius: px(-8.), inset: false },
+        ])
+        .child(capsule::note_at(id))
+        .child(div().absolute().inset_0().child(crate::kit::glass_pane(r)))
+        .child(div().absolute().inset_0().rounded(px(r)).border_1().border_color(ring).group_hover(group.clone(), |s| s.border_color(if light { ca(TEXT, 0.2) } else { ca(WHITE, 0.11) })))
+        .when(!light, |d| d.child(div().absolute().inset_0().rounded(px(r)).border_t_1().border_color(ca(WHITE, 0.14)).group_hover(group, |s| s.border_color(ca(WHITE, 0.26)))))
+        .child(div().absolute().top_0().left_0().h_full().w(px(to)).pl(px(pad_l)).pr(px(pad_r)).flex().items_center().child(inner))
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -3274,8 +3939,26 @@ enum Pending {
 
 impl Render for Root {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        // (Settings > Appearance > "Stand still while behind": off, the motion goes on with another window in front.)
+        let away = !window.is_window_active() && crate::kit::still_behind();
+        // (A hidden clip, BLOXKEEP_SHOT_FRAMES: its window is never the one in front, yet what moves is what the
+        // clip is for. Left to chance, a clip showed running titles standing still on some runs, 2026-11-18.)
+        #[cfg(feature = "shot")]
+        let away = away && std::env::var_os("BLOXKEEP_SHOT_FRAMES").is_none();
+        crate::kit::set_away(away);
+        // (A theme came in over another: the frame last drawn, the old look, is kept to fade out over this one.)
+        if crate::theme::take_fade() {
+            crate::scene::fade_from(window, cx);
+        }
+        crate::theme::set_glass_blocks(crate::scene::carries_words(cx));
+        crate::kit::set_screen_scale(window.scale_factor());
         self.live.start();
         let toast = self.toast_layer(window, cx);
+        let pill_card = self.pill_layer(window, cx);
+        #[cfg(feature = "shot")]
+        let tray_shot = crate::tray::shot_layer(self, window, cx);
+        #[cfg(not(feature = "shot"))]
+        let tray_shot: Option<AnyElement> = None;
         pages::lock::settle(self, cx);
         pages::games::settle_words(self, window, cx);
         pages::rsettings::settle(self, window, cx);
@@ -3493,9 +4176,18 @@ impl Render for Root {
         };
         let strip = if with_side || self.locked() || self.lost { None } else { self.drop_strip(cx) };
         // A theme whose web page frosted its panels: the picture behind each, frosted, under its see-through fill (scene.rs).
-        let frost_main = if locked { None } else { crate::scene::frost(R_PANEL, window, cx) };
-        let frost_side = if with_side { crate::scene::frost(R_PANEL, window, cx) } else { None };
-        let frost_rail = if locked || lost { None } else { crate::scene::frost(0., window, cx) };
+        // (Glass on the blocks only: nothing frosted behind the panels and the rail, each block is its own glass.)
+        let blocks = crate::theme::glass_blocks();
+        let frost_main = if locked || blocks { None } else { crate::scene::frost(R_PANEL, window, cx) };
+        // (The side panel holds the accounts: with glass on the blocks only it is one of the blocks.)
+        let frost_side = match (with_side, blocks) {
+            (true, false) => crate::scene::frost(R_PANEL, window, cx),
+            (true, true) => Some(crate::kit::glass_pane(R_PANEL)),
+            _ => None,
+        };
+        let frost_rail = if locked || lost || blocks { None } else { crate::scene::frost(0., window, cx) };
+        // (The top bar's glass, where the picture is too light along its top for the bar's words: scene::top_glass.)
+        let top_glass = if locked || lost { None } else { crate::scene::top_glass(window, cx) };
         div()
             .id("root")
             .track_focus(&self.focus)
@@ -3557,6 +4249,11 @@ impl Render for Root {
             .on_action(cx.listener(|r, _: &EditPicked, window, cx| Self::acc_key(r, pages::accounts::Key::Edit, window, cx)))
             .on_action(cx.listener(|r, _: &PlayPicked, window, cx| Self::acc_key(r, pages::accounts::Key::Play, window, cx)))
             .on_action(cx.listener(|r, _: &ClearPicked, window, cx| {
+                // Esc with a status-bar pill open: it closes first.
+                if r.pill.is_some() {
+                    r.pill = None;
+                    return cx.notify();
+                }
                 // Esc in a preset's or a macro's form: leaving it, asking first when something would be lost (app.js's
                 // askClose).
                 if r.page == Page::Auto && !r.locked() && !window.has_active_dialog(cx) {
@@ -3602,7 +4299,7 @@ impl Render for Root {
                     .pr(px(GAP))
                     // (No status bar under it when the line is lost: the panel keeps its gap from the window's foot.)
                     .when(lost, |d| d.pb(px(GAP)))
-                    .child(self.top(with_side, locked || lost, cx))
+                    .child(div().relative().flex_none().when(top_glass.is_some(), |d| d.mb(px(GAP))).children(top_glass).child(app_in("app-in-top", self.intro, 60., -10., false, self.top(with_side, locked || lost, cx))))
                     .children(strip)
                     .child(
                         div()
@@ -3610,15 +4307,23 @@ impl Render for Root {
                             .min_h_0()
                             .flex()
                             .gap(px(GAP))
+                            // (Glass blocks know they are on the page, the picture behind them, by these two marks.)
+                            .child(crate::scene::on_page(true))
                             // (Cut at its own edge: the Roblox tab's next row of game pictures showed as a flickering
                             // line under the status bar while the page scrolled, the owner's OBS video, 2026-11-15.)
-                            .child(div().flex_1().min_w_0().h_full().relative().overflow_hidden().children(frost_main).child(step_in(self.shown_key(), self.step_from, body)).children(slid))
-                            .when(with_side, |d| d.child(div().relative().h_full().flex_none().children(frost_side).child(self.side(cx)))),
+                            .child(div().flex_1().min_w_0().h_full().relative().overflow_hidden().children(frost_main).child(app_in("app-in-page", self.intro, 140., 26., true, step_in(self.shown_key(), self.step_from, body))).children(slid))
+                            .when(with_side, |d| d.child(div().relative().h_full().flex_none().children(frost_side).child(self.side(cx))))
+                            .child(crate::scene::on_page(false)),
                     )
-                    .when(!locked && !lost, |d| d.child(self.status(f32::from(window.viewport_size().width), cx))),
+                    // (Glass: the gutter the panels keep between them, above it too.)
+                    .when(!locked && !lost, |d| d.child(app_in("app-in-status", self.intro, 260., 18., false, self.status(window, cx)))),
             )
+            .children(pill_card)
+            .children(tray_shot)
             .children(toast)
             .child(self.live.reporter(self.link.clone()))
+            // (A theme coming in: the old look over everything, fading out.)
+            .children(crate::scene::fade_layer(window, cx))
     }
 }
 
@@ -3712,4 +4417,51 @@ impl Live {
         .absolute()
         .size_0()
     }
+}
+
+
+/// A made-up moment for the capsule in a shot (BLOXKEEP_SHOT_LIVE).
+#[cfg(feature = "shot")]
+fn shot_live(r: &Root, kind: &str) -> pages::games::Live {
+    let join = pages::games::LiveAct::Join { acc: String::new(), place: 2753915549, job: "x".into(), user: 1, name: "minh".into() };
+    let (icon, tone, title, sub, act, busy) = match kind {
+        "friend" => ("users", OK, "Minh".to_string(), r.i18n.tv("live.inGame", &[("game", "Blox Fruits")]), Some(join), false),
+        "item" => ("tag", OK, "Valkyrie Helm".to_string(), "1,200 \u{2192} 950 R$".to_string(), Some(pages::games::LiveAct::Watching), false),
+        "done" => ("check", OK, "Skybox Collection".to_string(), r.i18n.tv("mods.added", &[("n", "54")]), Some(pages::games::LiveAct::Mods), false),
+        _ => ("layers", TEXT_2, "Skybox Collection".to_string(), r.tr("live.installing"), None, true),
+    };
+    pages::games::Live { key: "shot".into(), pic: std::env::var("BLOXKEEP_SHOT_LIVE_PIC").unwrap_or_default(), round: kind == "friend", icon, tone, title, sub, act, busy, at: std::time::Instant::now() }
+}
+
+
+/// One of Spotify's controls: sent to Spotify, and the play mark follows at once (the next read says what Spotify
+/// really did).
+fn music_press(id: &'static str, name: &'static str, tip: String, act: crate::media::Act, cx: &mut Context<Root>) -> IconButton {
+    IconButton::new(id, name).tip(tip).on_click(cx.listener(move |r, _, _, cx| music_go(r, act, cx)))
+}
+
+/// Sends a music key, then reads the song again at once and twice more shortly after: Spotify takes a moment to say
+/// its next song, and the card waited for the regular look (up to 2 s; the owner, 2026-11-18: "hơi chậm").
+fn music_go(r: &mut Root, act: crate::media::Act, cx: &mut Context<Root>) {
+    cx.spawn(async move |this, cx| {
+        cx.background_executor().spawn(async move { crate::media::act(act) }).await;
+        for wait in [120u64, 350, 700] {
+            cx.background_executor().timer(Duration::from_millis(wait)).await;
+            let now = cx.background_executor().spawn(async { crate::media::now() }).await;
+            let alive = this.update(cx, |r, cx| {
+                if r.music != now {
+                    r.music = now;
+                    cx.notify();
+                }
+            });
+            if alive.is_err() {
+                break;
+            }
+        }
+    })
+    .detach();
+    if let (crate::media::Act::Toggle, Some(m)) = (act, r.music.as_mut()) {
+        m.playing = !m.playing;
+    }
+    cx.notify();
 }

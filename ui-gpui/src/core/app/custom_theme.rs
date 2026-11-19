@@ -308,6 +308,25 @@ impl App {
         Ok(self.use_custom_theme())
     }
 
+    /// Follow Wallpaper Engine (the window's wallpaper_engine.rs found a new wallpaper): its picture or video copied in
+    /// as the custom theme's, its scheme colour as the accent when it has a usable one; the theme becomes the custom one.
+    pub fn use_wallpaper_engine(&self, path: &str, accent: &str) -> Res<Value> {
+        let kind = extension_lower(path);
+        let length = std::fs::metadata(path).map_err(|e| Fail::other(format!("Wallpaper Engine's {path}: {e}")))?.len();
+        check_theme_media(&kind, length)?;
+        let name = new_media_name(&kind)?;
+        std::fs::copy(path, vault::pictures_dir().join(&name)).map_err(|e| Fail::other(format!("Copying Wallpaper Engine's {path}: {e}")))?;
+        {
+            let mut p = prefs::lock();
+            p.custom.picture = Some(name);
+            if let Some(a) = themes::hex(Some(accent)) {
+                p.custom.accent = a;
+            }
+        }
+        delete_theme_pictures();
+        Ok(self.use_custom_theme())
+    }
+
     pub fn clear_theme_picture(&self) -> Value {
         prefs::lock().custom.picture = None;
         delete_theme_pictures();

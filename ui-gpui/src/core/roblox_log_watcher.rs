@@ -9,7 +9,6 @@ use std::{
         LazyLock, OnceLock,
         atomic::{AtomicU64, Ordering},
     },
-    thread::JoinHandle,
 };
 
 use regex::Regex;
@@ -355,9 +354,9 @@ pub struct RobloxLogWatcher {
     /// (FirstSeen, NextTry, Wait in seconds).
     unmatched: HashMap<i32, (Stamp, Stamp, f64)>,
     /// On a worker: asking Windows who holds a file open takes 15-50 ms a file (up to 40 logs right after a start).
-    search: Option<JoinHandle<LogSearch>>,
+    search: Option<std::sync::mpsc::Receiver<std::thread::Result<LogSearch>>>,
     /// Each log with the offset read from, the new one and the text (None: nothing new).
-    reading: Option<JoinHandle<Vec<Chunk>>>,
+    reading: Option<std::sync::mpsc::Receiver<Vec<Chunk>>>,
     /// Clients gone (pid, when, their kept lines): one that quit before Bloxkeep took its window still has its words.
     ended: VecDeque<Ended>,
     /// Clients whose lines already went to error.log (App::note_roblox_lines): not written again for a launch's quit.
@@ -536,28 +535,32 @@ impl RobloxLogWatcher {
         let changed = self.take_reads();
         if self.reading.is_none() && !self.tails.is_empty() {
             let wanted: Vec<(i32, u64, String, i64)> = self.tails.values().map(|t| (t.pid, t.serial, t.path.clone(), t.offset)).collect();
-            self.reading = crate::net::Named::new("Bloxkeep log read".into())
-                .spawn(move || wanted.into_iter().map(|(pid, serial, path, offset)| (pid, serial, offset, read_chunk(&path, offset))).collect())
-                .ok();
+            // On the shared pool: a thread made per poll leaked a little of the NVIDIA driver's memory each time.
+            let (tx, rx) = std::sync::mpsc::channel();
+            crate::threads::run(move || {
+                let _ = tx.send(wanted.into_iter().map(|(pid, serial, path, offset)| (pid, serial, offset, read_chunk(&path, offset))).collect());
+            });
+            self.reading = Some(rx);
         }
         changed
     }
 
     /// Skips a log dropped or followed anew meanwhile, or read since on the window's thread (`last_state_of`).
     fn take_reads(&mut self) -> bool {
-        if !self.reading.as_ref().is_some_and(|r| r.is_finished()) {
-            return false;
-        }
-        let Some(reading) = self.reading.take() else {
+        let Some(reading) = self.reading.as_ref() else {
             return false;
         };
-        let result = match reading.join() {
+        let result = match reading.try_recv() {
             Ok(result) => result,
-            Err(_) => {
+            Err(std::sync::mpsc::TryRecvError::Empty) => return false,
+            Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                // The read panicked: its sender was dropped unanswered.
+                self.reading = None;
                 log::note("Roblox logs: a log read failed.");
                 return false;
             }
         };
+        self.reading = None;
         let mut changed = false;
         for (pid, serial, from, (offset, text)) in result {
             let Some(tail) = self.tails.get_mut(&pid) else {
@@ -581,17 +584,24 @@ impl RobloxLogWatcher {
     fn start_search(&mut self, pids: &[i32]) {
         let wanted: HashSet<i32> = pids.iter().copied().filter(|pid| !self.tails.contains_key(pid)).collect();
         let skip: HashSet<String> = self.tails.values().map(|t| t.path.to_lowercase()).chain(self.foreign.iter().cloned()).collect();
-        self.search = crate::net::Named::new("Bloxkeep log search".into()).spawn(move || find_logs(&wanted, &skip)).ok();
+        let (tx, rx) = std::sync::mpsc::channel();
+        crate::threads::run(move || {
+            let _ = tx.send(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| find_logs(&wanted, &skip))));
+        });
+        self.search = Some(rx);
     }
 
     fn take_search(&mut self, pids: &[i32]) {
-        if !self.search.as_ref().is_some_and(|s| s.is_finished()) {
-            return;
-        }
-        let Some(search) = self.search.take() else {
+        let Some(search) = self.search.as_ref() else {
             return;
         };
-        let result = match search.join() {
+        let answer = match search.try_recv() {
+            Ok(answer) => answer,
+            Err(std::sync::mpsc::TryRecvError::Empty) => return,
+            Err(std::sync::mpsc::TryRecvError::Disconnected) => Err(Box::new("the search ended without an answer") as Box<dyn std::any::Any + Send>),
+        };
+        self.search = None;
+        let result = match answer {
             Ok(result) => result,
             Err(_) => {
                 log::note("Roblox logs: the search for logs failed.");

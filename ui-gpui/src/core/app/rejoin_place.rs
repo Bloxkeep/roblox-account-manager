@@ -72,6 +72,10 @@ impl App {
             if main == 0 {
                 continue;
             }
+            // (Made big for a sharper live view just now: not where the account's window stands.)
+            if crate::core::live_monitor::sharp(pid) {
+                continue;
+            }
             // A rejoin's new window: first seen, it takes the place the account's last window had.
             if rejoin && !st.place_noted.borrow().contains(&pid) && !st.going_back.borrow().contains_key(&pid) {
                 let last = st.last_place.borrow().get(&id).copied();

@@ -17,13 +17,15 @@ use crate::{
     kit::*,
     pages::{
         avatar::tile_said,
+        deco,
         friends,
-        games::thousands,
     },
     roblox::{self, Club, Free, Friend, Offer, Profile, Ware},
     shell::Root,
     theme::*,
 };
+use super::profile_media::{self, Kind as MediaKind};
+use crate::ask::{answer, reply};
 
 struct Follow {
     user: i64,
@@ -38,6 +40,19 @@ pub struct Data {
     of: i64,
     pub got: Option<Result<Profile, String>>,
     loading: bool,
+    pub(super) song: Option<profile_media::Player>,
+    /// The banner picture is being moved (its Move button): where it is held meanwhile, and the grab under way (where
+    /// the mouse took it, and where it was held then).
+    pub(super) banner_move: bool,
+    pub(super) banner_at: Option<[f32; 2]>,
+    pub(super) banner_grab: Option<(f32, f32, [f32; 2])>,
+    pub(super) song_menu: Option<i64>,
+    /// The thought bubble over their picture being written (own profile, kept in Bloxkeep only).
+    pub(crate) bubble_edit: bool,
+    /// The decorations' panel is open (own profile), and when a click outside last shut it (so the click on its button
+    /// that shut it doesn't open it again).
+    pub(super) deco_open: bool,
+    pub(super) deco_closed: Option<std::time::Instant>,
     /// The tickets (avatar::ticket) of the profile's read and the Marketplace's page under way: an answer with
     /// another is old.
     load_ask: u64,
@@ -72,9 +87,16 @@ pub struct Data {
     leaving_clubs: HashSet<(i64, i64)>,
     /// A thing of the Marketplace opened from its tile, shown in the catalog's place until Back.
     item: Option<ItemView>,
-    /// The followers or the followed, opened from their count: which ("followers", "followings"), and the people
-    /// (None while they load). Shown in the profile's place until Back.
+    /// The friends, the followers or the followed, opened from their count: which ("friends", "followers",
+    /// "followings"), and the people with where each is (None while they load); whose they are (the account's, or the
+    /// person's whose profile is open). Shown in the profile's place until Back.
     folk: Option<(&'static str, Option<Result<Vec<Friend>, String>>)>,
+    folk_of: i64,
+    /// Where the person whose profile is open is now (the line under their name): Roblox's answer, by whom it is of;
+    /// when it was asked last, of whom, and whether an ask is under way. Asked again every WHERE_FRESH while shown.
+    whereabouts: Option<(i64, Friend)>,
+    where_at: Option<(i64, std::time::Instant)>,
+    where_busy: bool,
     /// Someone else's profile (a friend's, from their card): their Roblox id and the profile (None while it loads).
     /// Shown in the profile's place until Back; read without a sign-in, so it has no Robux and no badges.
     person: Option<(i64, Option<Result<Profile, String>>)>,
@@ -85,6 +107,12 @@ pub struct Data {
     /// is closed (Back), so an answer that comes meanwhile isn't lost and Buy doesn't come back while one is under way.
     buying: Vec<(i64, i64, bool)>,
     bought: Vec<(i64, i64, bool)>,
+}
+
+impl Data {
+    pub(super) fn showing_own(&self, user: i64) -> bool {
+        self.of == user && self.club.is_none() && self.folk.is_none() && self.person.is_none()
+    }
 }
 
 /// The thing shown: what its maker sells it for (None while that is asked), the account the rest was asked for (its
@@ -160,6 +188,8 @@ const SGAP: f32 = 2.;
 const GAP: f32 = 14.;
 /// How old New free's list may get while it is shown.
 const FREE_FRESH: std::time::Duration = std::time::Duration::from_secs(10);
+/// How old where the person whose profile is open is may get while it is shown.
+const WHERE_FRESH: std::time::Duration = std::time::Duration::from_secs(30);
 
 // ───────────────────────── profile ─────────────────────────
 
@@ -180,6 +210,38 @@ pub fn want(r: &mut Root, link: &crate::link::Link, cx: &mut Context<Root>) {
     // (A person opened before the sign-in was in: whether they are followed is asked now.)
     ask_follow(r, cx);
     ask_club_friends(r, cx);
+    if let Some(user) = r.profile.person.as_ref().map(|p| p.0) {
+        ask_where(r, user, cx);
+    }
+}
+
+/// Where the person whose profile is open is now, unless it was asked of them lately or an ask is under way. The
+/// answer wakes the page again once it is old, so it is asked anew while the page is shown (and only then).
+fn ask_where(r: &mut Root, user: i64, cx: &mut Context<Root>) {
+    if r.profile.where_busy || r.profile.where_at.is_some_and(|(u, at)| u == user && at.elapsed() < WHERE_FRESH) {
+        return;
+    }
+    let Some((_, _, cookie)) = friends::signed(r).filter(|s| !s.2.is_empty() || cfg!(feature = "shot")) else { return };
+    r.profile.where_busy = true;
+    r.profile.where_at = Some((user, std::time::Instant::now()));
+    let rx = roblox::run(move || roblox::whereabouts(&cookie, user));
+    reply(rx, cx, move |r, got, cx| {
+        r.profile.where_busy = false;
+        // (A failed ask leaves what was known, and is asked again when it is old.)
+        if let Ok(f) = got {
+            r.profile.whereabouts = Some((user, f));
+        }
+        cx.notify();
+        cx.spawn(async move |this, cx| {
+            cx.background_executor().timer(WHERE_FRESH + std::time::Duration::from_millis(200)).await;
+            let _ = this.update(cx, |r, cx| {
+                if r.page == crate::pages::Page::Games && r.games.view == crate::pages::games::View::Profile && r.profile.person.as_ref().is_some_and(|p| p.0 == user) {
+                    cx.notify();
+                }
+            });
+        })
+        .detach();
+    });
 }
 
 /// Asks Roblox, once, whether the account looked through follows the person whose profile is open (never itself).
@@ -236,19 +298,15 @@ fn load(r: &mut Root, cx: &mut Context<Root>) {
     let ask = crate::pages::avatar::ticket();
     r.profile.load_ask = ask;
     let rx = roblox::run(move || roblox::profile(&cookie, user));
-    cx.spawn(async move |this, cx| {
-        let got = rx.await.unwrap_or_else(|_| Err(String::new()));
-        let _ = this.update(cx, |r, cx| {
-            // Overtaken (another account, or asked again since): dropped.
-            if r.profile.load_ask != ask || r.profile.of != user {
-                return;
-            }
-            r.profile.loading = false;
-            r.profile.got = Some(got);
-            cx.notify();
-        });
-    })
-    .detach();
+    reply(rx, cx, move |r, got, cx| {
+        // Overtaken (another account, or asked again since): dropped.
+        if r.profile.load_ask != ask || r.profile.of != user {
+            return;
+        }
+        r.profile.loading = false;
+        r.profile.got = Some(got);
+        cx.notify();
+    });
 }
 
 /// Opens a Roblox user's profile in the Roblox tab's Hồ sơ (a friend's, from their card), over the account's own.
@@ -263,31 +321,13 @@ pub fn open_person(r: &mut Root, user: i64, cx: &mut Context<Root>) {
     ask_follow(r, cx);
     r.games.view = crate::pages::games::View::Profile;
     let rx = roblox::run(move || roblox::profile("", user));
-    cx.spawn(async move |this, cx| {
-        let got = rx.await.unwrap_or_else(|_| Err(String::new()));
-        let _ = this.update(cx, |r, cx| {
-            if let Some(p) = r.profile.person.as_mut().filter(|p| p.0 == user) {
-                p.1 = Some(got);
-                cx.notify();
-            }
-        });
-    })
-    .detach();
-    cx.notify();
-}
-
-fn again(r: &mut Root, cx: &mut Context<Root>) {
-    if !r.profile.loading {
-        if r.profile.got.as_ref().is_some_and(|g| g.is_err()) {
-            r.profile.got = None;
+    reply(rx, cx, move |r, got, cx| {
+        if let Some(p) = r.profile.person.as_mut().filter(|p| p.0 == user) {
+            p.1 = Some(got);
+            cx.notify();
         }
-        load(r, cx);
-        cx.notify();
-    }
-}
-
-fn note(text: String) -> Div {
-    div().flex_1().flex().items_center().justify_center().text_size(px(T_M)).text_color(c(MUTED)).child(text)
+    });
+    cx.notify();
 }
 
 /// 2006-03-08T… as 08/03/2006.
@@ -296,23 +336,41 @@ pub fn day(iso: &str) -> String {
     if d.len() == 3 { format!("{}/{}/{}", d[2], d[1], d[0]) } else { String::new() }
 }
 
-/// Opens the followers or the followed of the account whose tab is shown, in the profile's place.
-fn open_folk(r: &mut Root, which: &'static str, cx: &mut Context<Root>) {
-    let Some((_, user, cookie)) = friends::signed(r) else { return };
+/// Opens the friends, the followers or the followed of `of` (the account whose tab is shown, or the person whose
+/// profile is open), in the profile's place: those in a game first, then those online, as Roblox's own list has them.
+fn open_folk(r: &mut Root, which: &'static str, of: i64, cx: &mut Context<Root>) {
+    let Some((_, _, cookie)) = friends::signed(r) else { return };
     r.profile.folk = Some((which, None));
-    let rx = roblox::run(move || roblox::follows(&cookie, user, which));
-    cx.spawn(async move |this, cx| {
-        let got = rx.await.unwrap_or_else(|_| Err(String::new()));
-        let _ = this.update(cx, |r, cx| {
-            if r.profile.of == user {
-                if let Some(f) = r.profile.folk.as_mut().filter(|f| f.0 == which) {
-                    f.1 = Some(got);
-                    cx.notify();
-                }
-            }
+    r.profile.folk_of = of;
+    let rx = roblox::run(move || {
+        let mut l = if which == "friends" { roblox::friends(&cookie, of)? } else { roblox::follows(&cookie, of, which)? };
+        l.sort_by_key(|f| match f.kind {
+            2 => 0,
+            1 | 3 => 1,
+            _ => 2,
         });
-    })
-    .detach();
+        Ok(l)
+    });
+    reply(rx, cx, move |r, got, cx| {
+        if r.profile.folk_of == of {
+            if let Some(f) = r.profile.folk.as_mut().filter(|f| f.0 == which) {
+                f.1 = Some(got);
+                cx.notify();
+            }
+        }
+    });
+}
+
+/// Where someone is, in a few words and the tone of the Friends page's ring (green in a game, blue online): the game's
+/// name when Roblox gives it (their privacy can hide it).
+fn where_words(root: &Root, kind: i64, game: &str) -> Option<(String, u32)> {
+    match kind {
+        2 if !game.is_empty() => Some((crate::pages::home::clean(game), OK)),
+        2 => Some((root.tr("chip.ingame"), OK)),
+        3 => Some((root.tr("fr.studio"), ONLINE)),
+        1 => Some((root.tr("chip.online"), ONLINE)),
+        _ => None,
+    }
 }
 
 /// The followers or the followed: each a card that opens their profile on roblox.com.
@@ -320,7 +378,11 @@ fn folk_page(root: &Root, which: &str, got: &Option<Result<Vec<Friend>, String>>
     let inner = width - 2. * (PAD + 4.);
     let cols = ((inner + GAP) / (260. + GAP)).floor().max(1.);
     let card_w = ((inner - GAP * (cols - 1.)) / cols).floor();
-    let title = root.tr(if which == "followers" { "pf.followers" } else { "pf.following" });
+    let title = root.tr(match which {
+        "friends" => "nav.friends",
+        "followers" => "pf.followers",
+        _ => "pf.following",
+    });
     let back = div()
         .flex_none()
         .px(px(PAD + 4.))
@@ -337,16 +399,24 @@ fn folk_page(root: &Root, which: &str, got: &Option<Result<Vec<Friend>, String>>
             _ => title,
         }));
     let body: AnyElement = match got {
-        None => note(root.tr("av.reading")).into_any_element(),
-        Some(Err(why)) => note(root.i18n.tv("in.failed", &[("why", if why.is_empty() { "Roblox" } else { why })])).into_any_element(),
-        Some(Ok(l)) if l.is_empty() => note(root.tr("pf.nobody")).into_any_element(),
+        None => empty_note(root.tr("av.reading")).into_any_element(),
+        Some(Err(why)) => empty_note(root.i18n.tv("in.failed", &[("why", crate::net::why_words(&root.i18n, why).as_str())])).into_any_element(),
+        Some(Ok(l)) if l.is_empty() => empty_note(root.tr("pf.nobody")).into_any_element(),
         Some(Ok(l)) => {
             let cards: Vec<AnyElement> = l
                 .iter()
                 .enumerate()
                 .map(|(n, f)| {
                     let user = f.id;
-                    let face = (!f.face.is_empty()).then(|| images::pic_sq(&f.face, 38., cx)).flatten();
+                    let face = (!f.face.is_empty()).then(|| images::pic_sq(&f.face, 34., cx)).flatten();
+                    let here = where_words(root, f.kind, &f.game);
+                    let game_pic = (f.kind == 2 && !f.game_icon.is_empty()).then(|| images::pic_sq(&f.game_icon, 14., cx)).flatten();
+                    // (The face in a ring of where they are, as the Friends page's cards have it.)
+                    let ring = match f.kind {
+                        2 => c(OK),
+                        1 | 3 => c(ONLINE),
+                        _ => ca(WHITE, 0.12),
+                    };
                     hot(("folk", n))
                         .w(px(card_w))
                         .h(px(60.))
@@ -359,8 +429,8 @@ fn folk_page(root: &Root, which: &str, got: &Option<Result<Vec<Friend>, String>>
                         .border_1()
                         .border_color(c(LINE))
                         .cursor_pointer()
-                        .on_click(cx.listener(move |r, _, _, _| r.send("openProfile", json!({ "userId": user }))))
-                        .child(div().relative().size(px(38.)).flex_none().rounded_full().bg(c(RAISED_2)).overflow_hidden().when_some(face, |d, p| d.child(img(p).absolute().inset_0().size_full().rounded_full())))
+                        .on_click(cx.listener(move |r, _, _, cx| open_person(r, user, cx)))
+                        .child(div().size(px(38.)).flex_none().rounded_full().p(px(2.)).bg(ring).child(div().relative().size_full().rounded_full().bg(c(RAISED_2)).overflow_hidden().when_some(face, |d, p| d.child(img(p).absolute().inset_0().size_full().rounded_full()))))
                         .child(
                             div()
                                 .flex_1()
@@ -369,9 +439,21 @@ fn folk_page(root: &Root, which: &str, got: &Option<Result<Vec<Friend>, String>>
                                 .flex_col()
                                 .gap(px(2.))
                                 .child(div().truncate().text_size(px(T_M)).font_weight(FontWeight::MEDIUM).child(f.display.clone()))
-                                .when(!f.name.is_empty(), |d| d.child(div().truncate().text_size(px(T_S)).text_color(c(MUTED)).child(format!("@{}", f.name)))),
+                                .map(|d| match here {
+                                    Some((words, tone)) => d.child(
+                                        div()
+                                            .min_w_0()
+                                            .flex()
+                                            .items_center()
+                                            .gap(px(5.))
+                                            .when_some(game_pic, |d, p| d.child(img(p).size(px(14.)).flex_none().rounded(px(3.))))
+                                            .child(div().truncate().text_size(px(T_S)).text_color(c(tone)).child(words)),
+                                    ),
+                                    None if !f.name.is_empty() => d.child(div().truncate().text_size(px(T_S)).text_color(c(MUTED)).child(format!("@{}", f.name))),
+                                    None => d,
+                                }),
                         )
-                        .child(icon("external", 14., c(DIM)))
+                        .child(icon("chevronRight", 14., c(DIM)))
                         .into_any_element()
                 })
                 .collect();
@@ -429,17 +511,14 @@ fn ask_club_friends(root: &mut Root, cx: &mut Context<Root>) {
     let (id, ask) = (view.id, view.ask);
     view.friends = Some((user, None));
     let rx = roblox::run(move || roblox::club_friends(id, user, &cookie));
-    cx.spawn(async move |this, cx| {
-        let got = rx.await.unwrap_or_else(|_| Err(String::new()));
-        let _ = this.update(cx, |r, cx| {
-            if let Some(f) = r.profile.club.as_mut().filter(|c| c.ask == ask)
-                .and_then(|c| c.friends.as_mut().filter(|f| f.0 == user))
-            {
-                f.1 = Some(got);
-                cx.notify();
-            }
-        });
-    }).detach();
+    reply(rx, cx, move |r, got, cx| {
+        if let Some(f) = r.profile.club.as_mut().filter(|c| c.ask == ask)
+            .and_then(|c| c.friends.as_mut().filter(|f| f.0 == user))
+        {
+            f.1 = Some(got);
+            cx.notify();
+        }
+    });
 }
 
 fn leave_club(root: &mut Root, id: i64, user: i64, account: &str, cx: &mut Context<Root>) {
@@ -448,45 +527,41 @@ fn leave_club(root: &mut Root, id: i64, user: i64, account: &str, cx: &mut Conte
         return;
     }
     let rx = link.call("gameCommunity", json!({ "id": account, "groupId": id, "action": "leave" }));
-    cx.spawn(async move |this, cx| {
-        let result = rx.await;
-        let _ = this.update(cx, |r, cx| {
-            r.profile.leaving_clubs.remove(&(id, user));
-            match result {
-                Ok(Ok(data)) if matches!(data["state"].as_str(), Some("join" | "pending")) => {
-                    roblox::club_left(id, user);
-                    r.tabs.club_left(id, user);
-                    if r.profile.of == user {
-                        if let Some(Ok(p)) = &mut r.profile.got {
-                            p.groups.retain(|g| g.id != id);
-                        }
-                        if r.profile.loading {
-                            load(r, cx);
-                        }
-                    }
-                    if let Some((_, Some(Ok(p)))) = r.profile.person.as_mut().filter(|p| p.0 == user) {
+    answer(rx, cx, move |r, result, cx| {
+        r.profile.leaving_clubs.remove(&(id, user));
+        match result {
+            Ok(Ok(data)) if matches!(data["state"].as_str(), Some("join" | "pending")) => {
+                roblox::club_left(id, user);
+                r.tabs.club_left(id, user);
+                if r.profile.of == user {
+                    if let Some(Ok(p)) = &mut r.profile.got {
                         p.groups.retain(|g| g.id != id);
                     }
-                    if let Some(view) = r.profile.club.as_mut().filter(|c| c.id == id) {
-                        if let Some((_, Some(Ok(list)))) = &mut view.friends {
-                            list.retain(|f| f.id != user);
-                        }
-                        if let Some(members) = &mut view.mine {
-                            members.retain(|(u, _)| *u != user);
-                        } else {
-                            let name = view.name.clone();
-                            open_club(r, id, name, cx);
-                        }
+                    if r.profile.loading {
+                        load(r, cx);
                     }
-                    r.toast = Some((r.tr("club.left"), "ok".into()));
                 }
-                Ok(Err(e)) => r.toast = Some((e.to_string(), "bad".into())),
-                _ => r.toast = Some((r.tr("gp.communityError"), "bad".into())),
+                if let Some((_, Some(Ok(p)))) = r.profile.person.as_mut().filter(|p| p.0 == user) {
+                    p.groups.retain(|g| g.id != id);
+                }
+                if let Some(view) = r.profile.club.as_mut().filter(|c| c.id == id) {
+                    if let Some((_, Some(Ok(list)))) = &mut view.friends {
+                        list.retain(|f| f.id != user);
+                    }
+                    if let Some(members) = &mut view.mine {
+                        members.retain(|(u, _)| *u != user);
+                    } else {
+                        let name = view.name.clone();
+                        open_club(r, id, name, cx);
+                    }
+                }
+                r.toast = Some((r.tr("club.left"), "ok".into()));
             }
-            cx.notify();
-        });
-    })
-    .detach();
+            Ok(Err(e)) => r.toast = Some((e.to_string(), "bad".into())),
+            _ => r.toast = Some((r.tr("gp.communityError"), "bad".into())),
+        }
+        cx.notify();
+    });
     cx.notify();
 }
 
@@ -495,9 +570,9 @@ fn club_friends(root: &Root, view: &ClubView, cx: &mut Context<Root>) -> Option<
     let got = view.friends.as_ref().filter(|f| f.0 == user).and_then(|f| f.1.as_ref());
     let count = got.and_then(|r| r.as_ref().ok()).map(Vec::len);
     let body = match got {
-        None => note(root.tr("av.reading")).into_any_element(),
+        None => empty_note(root.tr("av.reading")).into_any_element(),
         Some(Err(_)) => div().flex().items_center().gap(px(8.))
-            .child(note(root.tr("club.friendsError")))
+            .child(empty_note(root.tr("club.friendsError")))
             .child(Button::new("club-friends-retry", root.tr("srv.retry")).small().on_click(cx.listener(|r, _, _, cx| {
                 if let Some(view) = &mut r.profile.club {
                     view.friends = None;
@@ -505,7 +580,7 @@ fn club_friends(root: &Root, view: &ClubView, cx: &mut Context<Root>) -> Option<
                 ask_club_friends(r, cx);
                 cx.notify();
             }))).into_any_element(),
-        Some(Ok(list)) if list.is_empty() => note(root.tr("club.friendsNone")).into_any_element(),
+        Some(Ok(list)) if list.is_empty() => empty_note(root.tr("club.friendsNone")).into_any_element(),
         Some(Ok(list)) => div().flex().flex_wrap().gap(px(8.)).children(list.iter().map(|f| {
             let face = (!f.face.is_empty()).then(|| images::pic_sq(&f.face, 24., cx)).flatten();
             let initial = f.display.chars().next().unwrap_or('?').to_uppercase().to_string();
@@ -620,7 +695,12 @@ fn game_tiles(root: &Root, games: &[roblox::ClubGame], inner: f32, key: &'static
 #[cfg(feature = "shot")]
 pub fn shot_club(r: &mut Root, cx: &mut Context<Root>) {
     if let (None, Ok(which), true) = (&r.profile.folk, std::env::var("BLOXKEEP_SHOT_FOLK"), friends::signed(r).is_some()) {
-        open_folk(r, if which == "followings" { "followings" } else { "followers" }, cx);
+        let of = r.profile.of;
+        open_folk(r, match which.as_str() {
+            "followings" => "followings",
+            "friends" => "friends",
+            _ => "followers",
+        }, of, cx);
     }
     if let (None, Some(id)) = (&r.profile.club, std::env::var("BLOXKEEP_SHOT_CLUB").ok().and_then(|v| v.parse().ok())) {
         if let Some(member) = std::env::var("BLOXKEEP_SHOT_CLUB_MEMBER").ok().and_then(|v| v.parse::<i64>().ok()) {
@@ -649,8 +729,8 @@ fn club_page(root: &Root, view: &ClubView, width: f32, cx: &mut Context<Root>) -
     let id = view.id;
     let inner = width - 2. * (PAD + 4.);
     let club = match &view.got {
-        None => return div().flex_1().flex().flex_col().child(note(root.tr("av.reading"))).into_any_element(),
-        Some(Err(why)) => return div().flex_1().flex().flex_col().child(note(root.i18n.tv("club.failed", &[("why", if why.is_empty() { "Roblox" } else { why })]))).into_any_element(),
+        None => return div().flex_1().flex().flex_col().child(empty_note(root.tr("av.reading"))).into_any_element(),
+        Some(Err(why)) => return div().flex_1().flex().flex_col().child(empty_note(root.i18n.tv("club.failed", &[("why", crate::net::why_words(&root.i18n, why).as_str())]))).into_any_element(),
         Some(Ok(c)) => c,
     };
     let pic = (!club.pic.is_empty()).then(|| images::pic_sq(&club.pic, 72., cx)).flatten();
@@ -783,6 +863,8 @@ pub fn profile(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElem
                 // (The community first: it may have been opened from the person's page.)
                 if r.profile.club.is_some() {
                     r.profile.club = None;
+                } else if r.profile.folk.is_some() {
+                    r.profile.folk = None;
                 } else {
                     r.profile.person = None;
                 }
@@ -793,7 +875,7 @@ pub fn profile(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElem
         .child(div().flex_1())
         // (A community's page has its own way out to roblox.com, and nothing of the profile's to read again.)
         .when(viewer.is_some() && pf.club.is_none() && pf.folk.is_none() && pf.person.is_none(), |d| {
-            d.child(IconButton::new("pf-refresh", "refresh").size(34.).busy(pf.loading).tip(root.tr("fr.refresh")).on_click(cx.listener(|r, _, _, cx| again(r, cx))))
+            d.child(IconButton::new("pf-refresh", "refresh").size(34.).busy(pf.loading).tip(root.tr("fr.refresh")).on_click(cx.listener(|r, _, _, cx| r.again(cx, |r| (r.profile.loading, &mut r.profile.got), load))))
         })
         // A person's profile: follow them, or no longer (shown once Roblox said which it is).
         .when_some(pf.follow.as_ref().filter(|f| pf.person.as_ref().is_some_and(|p| p.0 == f.user && matches!(p.1, Some(Ok(_))))).and_then(|f| f.on.map(|on| (f.user, on, f.busy))), |d, (who, on, busy)| {
@@ -816,8 +898,8 @@ pub fn profile(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElem
         folk_page(root, which, got, width, cx)
     } else if let Some((_, got)) = &pf.person {
         let content = match got {
-            None => note(root.tr("pf.loading")).into_any_element(),
-            Some(Err(why)) => note(root.i18n.tv("pf.failed", &[("why", if why.is_empty() { "Roblox" } else { why })])).into_any_element(),
+            None => empty_note(root.tr("pf.loading")).into_any_element(),
+            Some(Err(why)) => empty_note(root.i18n.tv("pf.failed", &[("why", crate::net::why_words(&root.i18n, why).as_str())])).into_any_element(),
             Some(Ok(p)) => filled(root, p, user, width, false, cx).into_any_element(),
         };
         div().flex_1().min_h_0().flex().flex_col().child(content).into_any_element()
@@ -825,7 +907,7 @@ pub fn profile(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElem
         friends::need_account(root, "pf-add-acc", "pf.noAccount", "user", cx)
     } else {
         match &pf.got {
-            None => note(root.tr("pf.loading")).into_any_element(),
+            None => empty_note(root.tr("pf.loading")).into_any_element(),
             Some(Err(why)) => div()
                 .flex_1()
                 .flex()
@@ -833,8 +915,8 @@ pub fn profile(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElem
                 .items_center()
                 .justify_center()
                 .gap(px(14.))
-                .child(div().text_size(px(T_M)).text_color(c(MUTED)).child(root.i18n.tv("pf.failed", &[("why", if why.is_empty() { "Roblox" } else { why })])))
-                .child(Button::new("pf-retry", root.tr("fr.retry")).icon("refresh").on_click(cx.listener(|r, _, _, cx| again(r, cx))))
+                .child(div().text_size(px(T_M)).text_color(c(MUTED)).child(root.i18n.tv("pf.failed", &[("why", crate::net::why_words(&root.i18n, why).as_str())])))
+                .child(Button::new("pf-retry", root.tr("fr.retry")).icon("refresh").on_click(cx.listener(|r, _, _, cx| r.again(cx, |r| (r.profile.loading, &mut r.profile.got), load))))
                 .into_any_element(),
             Some(Ok(p)) => filled(root, p, pf.of, width, true, cx).into_any_element(),
         }
@@ -842,7 +924,57 @@ pub fn profile(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElem
     shell.child(header).child(body)
 }
 
-/// A profile: the account's own (`own`: its follow counts open their lists, its Robux shows), or someone else's.
+/// Where the profile's user is now, under their name: in a game (its icon and name, which opens its page here), online
+/// or in Studio; offline when Roblox says so. The account's own is what the app keeps of it (its Accounts card's);
+/// a person's is asked of Roblox while their profile is shown. Nothing while it isn't known.
+fn here_line(root: &Root, user: i64, own: bool, cx: &mut Context<Root>) -> Option<AnyElement> {
+    let (kind, game, place, pic) = if own {
+        let a = friends::looking_ref(root).1?;
+        use crate::pages::accounts as ac;
+        let kind = if ac::in_game(a) {
+            2
+        } else if ac::presence(a) == "studio" {
+            3
+        } else if ac::is_online(a) {
+            1
+        } else if ac::presence(a) == "offline" {
+            0
+        } else {
+            return None;
+        };
+        (kind, if kind == 2 { ac::game_name(a).unwrap_or_default() } else { String::new() }, ac::game_place(a).unwrap_or(0), ac::game_icon(a).unwrap_or_default())
+    } else {
+        let (_, f) = root.profile.whereabouts.as_ref().filter(|w| w.0 == user)?;
+        (f.kind, f.game.clone(), f.place, f.game_icon.clone())
+    };
+    let row = div().pt(px(6.)).flex().items_center().gap(px(8.)).text_size(px(T_M));
+    let Some((words, tone)) = where_words(root, kind, &game) else {
+        return Some(row.child(div().text_color(c(MUTED)).child(root.tr("chip.offline"))).into_any_element());
+    };
+    if kind != 2 || game.is_empty() {
+        return Some(row.child(div().font_weight(FontWeight::MEDIUM).text_color(c(tone)).child(words)).into_any_element());
+    }
+    // In a game: "Playing" and the game, its icon and name, which opens the game's page here.
+    let pic = (!pic.is_empty()).then(|| images::pic_sq(&pic, 20., cx)).flatten();
+    let name = game.clone();
+    Some(
+        row.child(div().flex_none().font_weight(FontWeight::MEDIUM).text_color(c(OK)).child(root.tr("chip.ingame")))
+            .child(
+                focusable(div().id("pf-here-game"))
+                    .min_w_0()
+                    .flex()
+                    .items_center()
+                    .gap(px(6.))
+                    .rounded(px(R_S))
+                    .when(place > 0, |d| d.cursor_pointer().hover(|d| d.opacity(0.8)).on_click(cx.listener(move |r, _, _, _| open_game(r, place, &name))))
+                    .when_some(pic, |d, p| d.child(img(p).size(px(20.)).flex_none().rounded(px(5.))))
+                    .child(div().truncate().font_weight(FontWeight::MEDIUM).text_color(c(TEXT)).child(words)),
+            )
+            .into_any_element(),
+    )
+}
+
+/// A profile: the account's own (`own`: its Robux shows), or someone else's.
 fn filled(root: &Root, p: &Profile, user: i64, width: f32, own: bool, cx: &mut Context<Root>) -> impl IntoElement {
     let vi = root.i18n.vietnamese;
     let inner = width - 2. * (PAD + 4.);
@@ -858,7 +990,8 @@ fn filled(root: &Root, p: &Profile, user: i64, width: f32, own: bool, cx: &mut C
         let age = if days >= 365 { root.i18n.tn("pf.years", days / 365, &[]) } else { root.i18n.tn("pf.months", (days / 30).max(1), &[]) };
         known.push((root.tr("pf.age"), age));
     }
-    if user > 0 {
+    // (Names hidden: the account's own number names it as well as its name does.)
+    if user > 0 && !(own && root.hides_names()) {
         known.push((root.tr("pf.id"), user.to_string()));
     }
     if !p.made.is_empty() {
@@ -867,13 +1000,13 @@ fn filled(root: &Root, p: &Profile, user: i64, width: f32, own: bool, cx: &mut C
     known.push((root.tr("pf.groups"), p.groups.len().to_string()));
     // (The facts take the rest of the header's width, spread over it: at a fixed 380 px at the far right they left
     // some 600 px empty between them and the numbers, review 3e.1.)
-    let wide_head = inner >= 1000.;
+    let wide_head = inner >= 1100.;
     // (Two by two, beside the numbers, behind a hairline: spread in one row over the rest of the width they read as
     // a second header; the owner's mock-up, 2026-11-15.)
     let side = wide_head.then(|| {
         div()
             .flex_none()
-            .w(px(440.))
+            .w(px(380.))
             .self_stretch()
             .pl(px(40.))
             .border_l_1()
@@ -885,7 +1018,7 @@ fn filled(root: &Root, p: &Profile, user: i64, width: f32, own: bool, cx: &mut C
             .gap_y(px(18.))
             .children(known.into_iter().map(|(name, value)| {
                 div()
-                    .w(px(180.))
+                    .w(px(140.))
                     .flex_none()
                     .flex()
                     .flex_col()
@@ -894,33 +1027,71 @@ fn filled(root: &Root, p: &Profile, user: i64, width: f32, own: bool, cx: &mut C
                     .child(div().text_size(px(T_H)).font_weight(FontWeight::SEMIBOLD).font_features(tnum()).truncate().child(value))
             }))
     });
-    // A banner on top (the owner's reference, 2026-11-13): a game they like, sharp, edge to edge; their face in a big
-    // ring over its foot; their words in a bubble beside it; under it a greeting with their name, then the figures.
-    const BANNER: f32 = 190.;
-    const AV: f32 = 148.;
-    // The games they like side by side, each near its own size (one game's cover stretched across the whole width
-    // came out smeared, 2026-11-13); with none, the page's game.
-    let mut covers: Vec<String> = p.favs.iter().chain(p.made.iter()).map(|g| g.cover.clone()).filter(|u| !u.is_empty()).collect();
-    covers.dedup();
-    if covers.is_empty() {
-        covers.extend(crate::pages::home::wash(root, cx).map(|(u, _)| u));
-    }
-    let k = covers.len().min((inner / (BANNER * 16. / 9.)).ceil().max(1.) as usize).max(1);
-    let tile_w = ((inner - 2. * (k as f32 - 1.)) / k as f32).floor();
-    let banner: Vec<AnyElement> = covers
+    let banner_h = (inner * 0.25).clamp(162., 290.);
+    let avatar_size = if inner < 620. { 92. } else { 136. };
+    // Their decorations (own profile): the theme over the banner and the ring round the picture (pages/deco.rs).
+    let (deco_theme, deco_ring) = if own { deco::shown(user) } else { ("none", "none") };
+    #[cfg(feature = "shot")]
+    let deco_open = own && (root.profile.deco_open || std::env::var("BLOXKEEP_SHOT_DECO_OPEN").is_ok());
+    #[cfg(not(feature = "shot"))]
+    let deco_open = own && root.profile.deco_open;
+    let local_banner = own.then(|| profile_media::path(MediaKind::Banner, user)).flatten();
+    // Their own moving banner or picture (a GIF, which GPUI's picture element plays), on their own profile only.
+    let gif = |p: &str| p.to_ascii_lowercase().ends_with(".gif") && std::path::Path::new(p).is_file();
+    let banner_gif = local_banner.clone().filter(|p| gif(p));
+    let own_face = own.then(|| profile_media::path(MediaKind::Face, user)).flatten().filter(|p| std::path::Path::new(p).is_file());
+    let face_set = own_face.is_some();
+    let banner = local_banner.as_deref().filter(|path| std::path::Path::new(path).is_file()).map(str::to_string)
+        .or_else(|| p.favs.iter().chain(p.made.iter()).find(|g| !g.cover.is_empty()).map(|g| g.cover.clone()))
+        .or_else(|| crate::pages::home::wash(root, cx).map(|(u, _)| u));
+    // The song's picture when its file carries none: the banner, else their face.
+    let song_art = banner.clone().or_else(|| [&p.face, &p.body].into_iter().find(|u| !u.is_empty()).cloned());
+    // (In the header only where the name, the card and the facts all have their room.)
+    let song_in_head = own && inner >= 1380.;
+    // Their own picture fills the banner; Roblox's game pictures go side by side instead, each near its own size: one
+    // 480×270 cover stretched across the page came out blurred ("banner mờ câm", owner 2026-11-17). The profile's
+    // banner pictures are sharp (768×432) and filled up with the first game's own pictures when they like few.
+    // None is wider than its own 16:9 at the banner's height: one picture alone was still blown up across the whole
+    // page (owner, 2026-11-19, a 768 one 1.6× over 1220 px), so too few sit at the right at their size and the
+    // ground shows at the left. Each is swapped for the picture as uploaded (1024×576) once that is fetched.
+    let tiles: Vec<(String, i64)> = if local_banner.as_deref().is_some_and(|path| std::path::Path::new(path).is_file()) {
+        Vec::new()
+    } else {
+        p.banner.iter().enumerate().map(|(i, u)| (u.clone(), p.banner_assets.get(i).copied().unwrap_or(0))).collect()
+    };
+    let slot = banner_h * 16. / 9.;
+    let k = tiles.len().min((inner / slot).ceil().max(1.) as usize);
+    let tile_w = if k > 0 { ((inner - 2. * (k as f32 - 1.)) / k as f32).floor().min(slot.ceil()) } else { inner };
+    let tiles: Vec<AnyElement> = tiles
         .iter()
         .take(k)
-        .map(|u| {
+        .map(|(u, asset)| {
+            let sharp = uploaded(*asset, cx).and_then(|f| images::pic_pair(&f, tile_w, banner_h, cx));
+            // (The smaller one stays under it while it fades in, then goes, so nothing blinks and it isn't kept twice.)
+            let under = match &sharp {
+                Some(_) => SHARP_SINCE.with(|s| *s.borrow_mut().entry(*asset).or_insert_with(std::time::Instant::now)).elapsed() < std::time::Duration::from_millis(1500),
+                None => true,
+            };
             div()
-                .flex_1()
+                .relative()
+                .w(px(tile_w))
+                .flex_none()
                 .h_full()
                 .overflow_hidden()
                 .bg(c(RAISED_2))
-                .children(images::pic_pair(u, tile_w, BANNER, cx).map(|(src, key)| fade_in(img(src).size_full().object_fit(ObjectFit::Cover), &key).into_any_element()))
+                .children(under.then(|| images::pic_pair(u, tile_w, banner_h, cx)).flatten().map(|(src, key)| fade_in(img(src).size_full().object_fit(ObjectFit::Cover), &key).into_any_element()))
+                .children(sharp.map(|(src, key)| div().absolute().inset_0().child(fade_in(img(src).size_full().object_fit(ObjectFit::Cover), &key)).into_any_element()))
                 .into_any_element()
         })
         .collect();
-    let face = [&p.face, &p.body].into_iter().find(|u| !u.is_empty()).and_then(|u| images::pic_pair(u, AV, AV, cx));
+    // Their own picture is laid as they placed it (profile_media::placed_banner), at its own cover size.
+    let placed = local_banner.as_deref().filter(|path| tiles.is_empty() && banner_gif.is_none() && std::path::Path::new(path).is_file())
+        .and_then(|u| profile_media::placed_banner(root, u, user, inner, banner_h, cx));
+    let moving = root.profile.banner_move && placed.is_some();
+    let can_move = placed.is_some();
+    let (over, small) = placed.as_ref().map_or(((0., 0.), None), |p| (p.over, p.small));
+    let banner = if tiles.is_empty() && banner_gif.is_none() && placed.is_none() { banner.as_deref().and_then(|u| images::pic_pair(u, inner, banner_h, cx)) } else { None };
+    let face = [&p.face, &p.body].into_iter().find(|u| !u.is_empty()).and_then(|u| images::pic_pair(u, avatar_size, avatar_size, cx));
     let hour = ((crate::time::now_secs() + crate::time::utc_offset_secs()).rem_euclid(86_400)) / 3600;
     let hello = root.tr(match hour {
         5..=11 => "pf.hiMorning",
@@ -928,19 +1099,17 @@ fn filled(root: &Root, p: &Profile, user: i64, width: f32, own: bool, cx: &mut C
         _ => "pf.hiEvening",
     });
     let title = div()
-        .flex()
-        .items_baseline()
         .min_w_0()
         .text_size(px(T_STAGE))
         .font_weight(FontWeight::BOLD)
         .line_height(px(36.))
-        .when(own, |d| d.child(div().flex_none().whitespace_nowrap().child(hello)))
-        .child(div().truncate().when(own, |d| d.text_color(c(FACE))).child(p.display.clone()));
+        // (Names hidden, Settings › Appearance: the account's own profile goes by its first letter too, and without
+        // its @name: only the names in the app's own list were shortened, the owner 2026-11-18.)
+        .truncate().child(if own && root.hides_names() { crate::val::first_only(&p.display) } else { p.display.clone() });
     // Their "About", its first line, under their name (Roblox has no status any more; this is theirs).
     let about = p.about.lines().map(str::trim).find(|l| !l.is_empty()).map(str::to_string);
     let words = div()
-        .when(wide_head, |d| d.flex_none().w(px(560.)))
-        .when(!wide_head, |d| d.flex_1())
+        .flex_1()
         .min_w_0()
         .flex()
         .flex_col()
@@ -950,8 +1119,10 @@ fn filled(root: &Root, p: &Profile, user: i64, width: f32, own: bool, cx: &mut C
                 .flex()
                 .flex_col()
                 .gap(px(2.))
+                .when(own, |d| d.child(div().text_size(px(T_S)).font_weight(FontWeight::SEMIBOLD).text_color(c(FACE)).child(hello.trim_end_matches([',', ' ']).to_string())))
                 .child(title)
-                .child(div().text_size(px(T_M)).text_color(c(MUTED)).child(format!("@{} · {}", p.name, root.i18n.tv("pf.joined", &[("d", &day(&p.joined))]))))
+                .child(div().text_size(px(T_M)).text_color(c(MUTED)).child(if own && root.hides_names() { root.i18n.tv("pf.joined", &[("d", &day(&p.joined))]) } else { format!("@{} · {}", p.name, root.i18n.tv("pf.joined", &[("d", &day(&p.joined))])) }))
+                .when_some(here_line(root, user, own, cx), |d, l| d.child(l))
                 .when_some(about, |d, t| d.child(div().pt(px(4.)).text_size(px(T_M)).text_color(c(TEXT_2)).truncate().child(t))),
         )
         .child(
@@ -962,13 +1133,10 @@ fn filled(root: &Root, p: &Profile, user: i64, width: f32, own: bool, cx: &mut C
                 .gap_x(px(40.))
                 .gap_y(px(10.))
                 // (Roblox counts someone else's friends only for a signed-in ask: 0 is left out.)
-                .when(own || p.friends > 0, |d| d.child(figure(root.tr("nav.friends"), thousands(p.friends, vi))))
-                // (The account's two counts open their lists.)
-                .when(own, |d| {
-                    d.child(focusable(div().id("pf-followers")).cursor_pointer().rounded(px(R_S)).hover(|d| d.opacity(0.8)).on_click(cx.listener(|r, _, _, cx| open_folk(r, "followers", cx))).child(figure(root.tr("pf.followers"), thousands(p.followers, vi))))
-                        .child(focusable(div().id("pf-following")).cursor_pointer().rounded(px(R_S)).hover(|d| d.opacity(0.8)).on_click(cx.listener(|r, _, _, cx| open_folk(r, "followings", cx))).child(figure(root.tr("pf.following"), thousands(p.following, vi))))
-                })
-                .when(!own, |d| d.child(figure(root.tr("pf.followers"), thousands(p.followers, vi))).child(figure(root.tr("pf.following"), thousands(p.following, vi))))
+                // (Each count opens its list, where each one is shown with where they are.)
+                .when(own || p.friends > 0, |d| d.child(focusable(div().id("pf-friends")).cursor_pointer().rounded(px(R_S)).hover(|d| d.opacity(0.8)).on_click(cx.listener(move |r, _, _, cx| open_folk(r, "friends", user, cx))).child(figure(root.tr("nav.friends"), thousands(p.friends, vi)))))
+                .child(focusable(div().id("pf-followers")).cursor_pointer().rounded(px(R_S)).hover(|d| d.opacity(0.8)).on_click(cx.listener(move |r, _, _, cx| open_folk(r, "followers", user, cx))).child(figure(root.tr("pf.followers"), thousands(p.followers, vi))))
+                .child(focusable(div().id("pf-following")).cursor_pointer().rounded(px(R_S)).hover(|d| d.opacity(0.8)).on_click(cx.listener(move |r, _, _, cx| open_folk(r, "followings", user, cx))).child(figure(root.tr("pf.following"), thousands(p.following, vi))))
                 .when_some(p.robux, |d, r| {
                     d.child(div().flex().flex_col().gap(px(2.)).child(div().text_size(px(T_S)).text_color(c(MUTED)).child("Robux")).child(
                         div().flex().items_center().gap(px(6.)).child(icon("robux", 18., c(TEXT))).child(div().text_size(px(T_FIG)).line_height(px(28.)).font_weight(FontWeight::SEMIBOLD).font_features(tnum()).child(thousands(r, vi))),
@@ -977,39 +1145,100 @@ fn filled(root: &Root, p: &Profile, user: i64, width: f32, own: bool, cx: &mut C
         );
     let who = div()
         .relative()
-        .rounded(px(R_L))
+        .rounded(px(R_HERO))
         .overflow_hidden()
         .bg(c(RAISED))
         .border_1()
         .border_color(c(LINE))
-        .child(div().w_full().h(px(BANNER)).flex().gap(px(2.)).bg(c(RAISED)).overflow_hidden().children(banner))
+        .child(div().relative().w_full().h(px(banner_h)).overflow_hidden()
+            .bg(c(RAISED_2))
+            .when_some(banner, |d, (src, key)| d.child(fade_in(img(src).size_full().object_fit(ObjectFit::Cover), &key)))
+            .when_some(placed, |d, p| d.child(p.el))
+            // Being moved: a drag slides the picture under the banner, as far as it runs past it each way.
+            .when(moving, |d| {
+                d.cursor(if root.profile.banner_grab.is_some() { CursorStyle::ClosedHand } else { CursorStyle::OpenHand })
+                    .on_mouse_down(MouseButton::Left, cx.listener(move |r, e: &MouseDownEvent, _, _| {
+                        let at = profile_media::banner_at(r, user);
+                        r.profile.banner_grab = Some((f32::from(e.position.x), f32::from(e.position.y), at));
+                    }))
+                    .on_mouse_move(cx.listener(move |r, e: &MouseMoveEvent, _, cx| {
+                        let Some((x0, y0, held)) = r.profile.banner_grab else { return };
+                        if e.pressed_button != Some(MouseButton::Left) {
+                            r.profile.banner_grab = None;
+                            return;
+                        }
+                        let slide = |held: f32, moved: f32, over: f32| if over > 0.5 { (held - moved / over).clamp(0., 1.) } else { held };
+                        r.profile.banner_at = Some([slide(held[0], f32::from(e.position.x) - x0, over.0), slide(held[1], f32::from(e.position.y) - y0, over.1)]);
+                        cx.notify();
+                    }))
+                    .on_mouse_up(MouseButton::Left, cx.listener(|r, _, _, cx| {
+                        r.profile.banner_grab = None;
+                        cx.notify();
+                    }))
+                    .child(div().absolute().left_0().right_0().bottom(px(12.)).flex().justify_center().child(
+                        div().flex().items_center().gap(px(10.)).pl(px(12.)).pr(px(6.)).py(px(6.)).rounded(px(R_M)).bg(ca(GROUND, 0.78)).text_size(px(T_S)).text_color(on_picture(0.92))
+                            .child(icon("grip", 14., on_picture(0.92)))
+                            .child(match small {
+                                Some((w, h)) => root.i18n.tv("pf.media.small", &[("w", &w.to_string()), ("h", &h.to_string()), ("nw", &((inner * crate::kit::screen_scale()).round() as i64).to_string()), ("nh", &((banner_h * crate::kit::screen_scale()).round() as i64).to_string())]),
+                                None => root.tr("pf.media.moveHint"),
+                            })
+                            .child(Button::new("pf-move-done", root.tr("common.done")).small().primary().on_click(cx.listener(move |r, _, _, cx| {
+                                profile_media::keep_banner_at(r, user);
+                                r.profile.banner_move = false;
+                                cx.notify();
+                            }))),
+                    ))
+            })
+            .when_some(banner_gif, |d, path| d.child(img(std::path::PathBuf::from(path)).size_full().object_fit(ObjectFit::Cover)))
+            .when(!tiles.is_empty(), |d| d.child(div().absolute().inset_0().flex().justify_end().gap(px(2.)).children(tiles)))
+            .when(deco_theme != "none", |d| d.child(deco::theme("pf-deco-banner", deco_theme, 0.)))
+            .when(deco_theme != "none" || deco_ring != "none" || deco_open, |d| d.child(deco::clock("pf-deco-clock")))
+            .when(own, |d| d.child(div().absolute().right(px(12.)).top(px(12.)).flex().gap(px(6.))
+                .when(can_move && !moving, |d| d.child(IconButton::new("pf-move-banner", "grip").glass().tip(root.tr("pf.media.move"))
+                    .on_click(cx.listener(move |r, _, _, cx| { r.profile.banner_move = true; cx.notify(); }))))
+                .when(local_banner.is_some(), |d| d.child(IconButton::new("pf-default-cover", "refresh").glass().tip(root.tr("pf.media.coverReset"))
+                    .on_click(cx.listener(move |_, _, _, cx| { profile_media::clear(MediaKind::Banner, user); cx.notify(); }))))
+                .child(IconButton::new("pf-bubble", "message").glass().tip(root.tr("pf.bubble.tip"))
+                    .on_click(cx.listener(move |r, _, window, cx| edit_bubble(r, user, window, cx))))
+                .child(deco_button(root, user, deco_open, cx))
+                .when(face_set, |d| d.child(IconButton::new("pf-face-reset", "x").glass().tip(root.tr("pf.media.faceReset"))
+                    .on_click(cx.listener(move |_, _, _, cx| { profile_media::clear(MediaKind::Face, user); cx.notify(); }))))
+                .child(IconButton::new("pf-pick-face", "user").glass().tip(root.tr("pf.media.face"))
+                    .on_click(cx.listener(move |r, _, _, cx| profile_media::choose(r, MediaKind::Face, user, cx))))
+                .child(IconButton::new("pf-pick-banner", "image").glass().tip(root.tr("pf.media.banner"))
+                    .on_click(cx.listener(move |r, _, _, cx| profile_media::choose(r, MediaKind::Banner, user, cx)))))))
         .child(
             div()
-                .pl(px(28. + AV + 24.))
+                .pl(px(24. + avatar_size + 20.))
                 .pr(px(24.))
                 .pt(px(14.))
                 .pb(px(22.))
-                .min_h(px(AV * 0.45 + 40.))
+                .min_h(px(avatar_size * 0.45 + 40.))
                 .flex()
                 .items_start()
                 .gap(px(24.))
                 .child(words)
+                .when(song_in_head, |d| d.child(profile_media::card(root, user, 400., PANEL, song_art.clone(), cx)))
                 .children(side),
         )
+        .when(deco_ring != "none", |d| d.child(ring_box(deco_ring, banner_h, avatar_size, false)))
         .child(
             div()
                 .absolute()
-                .left(px(28.))
-                .top(px(BANNER - AV * 0.55))
-                .size(px(AV))
+                .left(px(22.))
+                .top(px(banner_h - avatar_size * 0.60))
+                .size(px(avatar_size))
                 .rounded_full()
                 .border_4()
                 .border_color(c(RAISED))
                 .bg(c(RAISED_2))
                 .overflow_hidden()
                 // (GPUI cuts children to the box, not to its round corners: the picture is rounded itself.)
-                .when_some(face, |d, (src, key)| d.child(fade_in(img(src).size_full().rounded_full().object_fit(ObjectFit::Cover), &key))),
-        );
+                .when_some(own_face.clone(), |d, path| d.child(img(std::path::PathBuf::from(path)).size_full().rounded_full().object_fit(ObjectFit::Cover)))
+                .when_some(face.filter(|_| own_face.is_none()), |d, (src, key)| d.child(fade_in(img(src).size_full().rounded_full().object_fit(ObjectFit::Cover), &key))),
+        )
+        .when(deco_ring != "none", |d| d.child(ring_box(deco_ring, banner_h, avatar_size, true)))
+        .children(bubble(root, user, own, banner_h, avatar_size, cx));
 
     let groups: Vec<AnyElement> = p
         .groups
@@ -1089,7 +1318,8 @@ fn filled(root: &Root, p: &Profile, user: i64, width: f32, own: bool, cx: &mut C
             .flex()
             .flex_col()
             .gap(px(SECTION_GAP))
-            .child(who)
+            .child(div().flex().flex_col().gap(px(12.)).child(who)
+                .when(own && !song_in_head, |d| d.child(profile_media::row(root, user, inner, song_art, cx))))
             .child(
                 div()
                     .flex()
@@ -1107,6 +1337,227 @@ fn filled(root: &Root, p: &Profile, user: i64, width: f32, own: bool, cx: &mut C
 // ───────────────────────── Marketplace ─────────────────────────
 
 /// The front shelf when nothing was asked yet.
+/// A ring's part (behind the picture or over it) in a box round the picture, roomy enough for what flies round it.
+fn ring_box(id: &'static str, banner_h: f32, avatar_size: f32, front: bool) -> AnyElement {
+    let room = avatar_size * 0.6;
+    div()
+        .absolute()
+        .left(px(22. - room))
+        .top(px(banner_h - avatar_size * 0.60 - room))
+        .size(px(avatar_size + room * 2.))
+        .child(deco::ring(id, avatar_size / 2., front))
+        .into_any_element()
+}
+
+/// The decorations' button on the banner and its panel (the owner's approved mock-up, 2026-11-19): the banner's theme
+/// (each one playing in its tile), the ring round the picture, and following the season. A theme picked brings its
+/// ring; a pick by hand stops following the season.
+fn deco_button(root: &Root, user: i64, open: bool, cx: &mut Context<Root>) -> AnyElement {
+    let picked = deco::pick(user);
+    let title = |key: &str| div().text_size(px(T_S)).font_weight(FontWeight::SEMIBOLD).text_color(c(MUTED)).mb(px(8.)).child(root.tr(key));
+    let line = || div().h(px(1.)).bg(c(LINE)).my(px(12.));
+    let themes: Vec<AnyElement> = deco::THEMES.iter().enumerate().map(|(i, &(id, ring))| {
+        let on = picked.theme == id && !picked.season;
+        div()
+            .id(("pf-deco-theme", i))
+            .w(px(128.))
+            .p(px(4.))
+            .pb(px(6.))
+            .rounded(px(R_M))
+            .border_1()
+            .border_color(if on { c(FACE) } else { ca(FACE, 0.) })
+            .bg(if on { ca(FACE, 0.08) } else { ca(WHITE, 0.04) })
+            .hover(|d| d.bg(ca(WHITE, 0.08)))
+            .cursor_pointer()
+            .child(div().relative().w_full().h(px(60.)).rounded(px(R_S)).overflow_hidden().bg(rgb(0x221d29)).child(deco::theme(format!("pf-deco-mini-{id}"), id, 0.42)))
+            .child(div().mt(px(6.)).mx(px(2.)).text_size(px(T_S)).font_weight(FontWeight::SEMIBOLD).truncate().child(root.tr(&format!("pf.deco.t.{id}"))))
+            .on_click(cx.listener(move |_, _, _, cx| {
+                deco::keep(user, deco::Pick { theme: id, ring, season: false });
+                cx.notify();
+            }))
+            .into_any_element()
+    }).collect();
+    let rings: Vec<AnyElement> = deco::RINGS.iter().enumerate().map(|(i, &id)| {
+        let on = picked.ring == id && !picked.season;
+        div()
+            .id(("pf-deco-ring", i))
+            .w(px(62.))
+            .py(px(5.))
+            .flex()
+            .flex_col()
+            .items_center()
+            .gap(px(4.))
+            .rounded(px(R_M))
+            .border_1()
+            .border_color(if on { c(FACE) } else { ca(FACE, 0.) })
+            .bg(if on { ca(FACE, 0.08) } else { ca(WHITE, 0.) })
+            .hover(|d| d.bg(ca(WHITE, 0.06)))
+            .cursor_pointer()
+            .child(div().relative().size(px(52.)).child(deco::ring_tile(id)))
+            .child(div().text_size(px(11.)).text_color(c(if on { TEXT } else { MUTED })).truncate().child(root.tr(&format!("pf.deco.r.{id}"))))
+            .on_click(cx.listener(move |_, _, _, cx| {
+                deco::keep(user, deco::Pick { ring: id, season: false, ..deco::pick(user) });
+                cx.notify();
+            }))
+            .into_any_element()
+    }).collect();
+    let menu = div()
+        .id("pf-deco-menu")
+        .occlude()
+        .w(px(436.))
+        .px(px(16.))
+        .pt(px(14.))
+        .pb(px(16.))
+        .rounded(px(R_PANEL))
+        .bg(c(RAISED_2))
+        .border_1()
+        .border_color(ca(WHITE, 0.1))
+        .shadow_lg()
+        .on_mouse_down_out(cx.listener(|r, _, _, cx| {
+            if r.profile.deco_open {
+                r.profile.deco_open = false;
+                r.profile.deco_closed = Some(std::time::Instant::now());
+                cx.notify();
+            }
+        }))
+        .child(title("pf.deco.themes"))
+        .child(div().flex().flex_wrap().gap(px(8.)).children(themes))
+        .child(line())
+        .child(title("pf.deco.rings"))
+        .child(div().flex().flex_wrap().gap(px(4.)).children(rings))
+        .child(line())
+        .child(
+            div()
+                .flex()
+                .items_center()
+                .gap(px(12.))
+                .child(
+                    div()
+                        .flex_1()
+                        .min_w_0()
+                        .flex()
+                        .flex_col()
+                        .gap(px(2.))
+                        .child(div().text_size(px(T_M)).child(root.tr("pf.deco.season")))
+                        .child(div().text_size(px(T_S)).text_color(c(MUTED)).child(root.tr("pf.deco.seasonSub"))),
+                )
+                .child(Switch::new("pf-deco-season", picked.season).on_toggle(move |on, _, cx| {
+                    deco::keep(user, deco::Pick { season: *on, ..deco::pick(user) });
+                    cx.refresh_windows();
+                })),
+        );
+    div()
+        .relative()
+        .child(IconButton::new("pf-deco", "palette").glass().on(open).tip(root.tr("pf.deco.tip")).on_click(cx.listener(|r, _, _, cx| {
+            // (The click outside that shut it was this one.)
+            if r.profile.deco_closed.is_some_and(|t| t.elapsed().as_millis() < 300) {
+                return;
+            }
+            r.profile.deco_open = !r.profile.deco_open;
+            cx.notify();
+        })))
+        .child(popup(PopAt::BelowRight(40.), "pf-deco-pop", open, menu))
+        .into_any_element()
+}
+
+/// Their thought bubble's words (kept in Bloxkeep, never sent to Roblox).
+fn bubble_of(user: i64) -> String {
+    #[cfg(feature = "shot")]
+    if let Ok(t) = std::env::var("BLOXKEEP_SHOT_BUBBLE") {
+        return t;
+    }
+    crate::prefs::get(&format!("profileBubble:{user}")).and_then(|v| v.as_str().map(str::to_string)).unwrap_or_default()
+}
+
+fn edit_bubble(r: &mut Root, user: i64, window: &mut Window, cx: &mut Context<Root>) {
+    r.profile.bubble_edit = true;
+    let text = bubble_of(user);
+    r.pf_bubble.update(cx, |s, cx| {
+        s.set_value(text, window, cx);
+        s.focus(window, cx);
+    });
+    cx.notify();
+}
+
+/// Enter in the bubble's box (or its tick): kept; empty words take the bubble away.
+pub fn save_bubble(r: &mut Root, cx: &mut Context<Root>) {
+    if !r.profile.bubble_edit {
+        return;
+    }
+    let user = r.profile.of;
+    let text: String = r.pf_bubble.read(cx).value().trim().chars().take(90).collect();
+    crate::prefs::set(&format!("profileBubble:{user}"), if text.is_empty() { serde_json::Value::Null } else { json!(text) });
+    r.profile.bubble_edit = false;
+    cx.notify();
+}
+
+/// The thought bubble over their picture, two small rounds trailing down to it; its box while it is written.
+thread_local! {
+    /// Banner pictures as uploaded, by id: their file once fetched (None while it comes, or when it can't be had).
+    static UPLOADED: std::cell::RefCell<std::collections::HashMap<i64, Option<String>>> = Default::default();
+    /// When each was first drawn, for the smaller one under it to go once it has faded in.
+    static SHARP_SINCE: std::cell::RefCell<std::collections::HashMap<i64, std::time::Instant>> = Default::default();
+}
+
+/// A banner picture as it was uploaded (1024×576, roblox::uploaded_picture) once it is on this PC, asked for the
+/// first time it is wanted; None meanwhile (the 768×432 one shows) or when Roblox names none.
+fn uploaded(asset: i64, cx: &mut Context<Root>) -> Option<String> {
+    if asset <= 0 {
+        return None;
+    }
+    if let Some(known) = UPLOADED.with(|u| u.borrow().get(&asset).cloned()) {
+        return known;
+    }
+    UPLOADED.with(|u| u.borrow_mut().insert(asset, None));
+    let dir = images::kept_dir("banners");
+    let rx = crate::roblox::run(move || crate::roblox::uploaded_picture(asset, &dir));
+    cx.spawn(async move |this, cx| {
+        if let Some(file) = rx.await.ok().flatten() {
+            UPLOADED.with(|u| u.borrow_mut().insert(asset, Some(file.to_string_lossy().replace('\\', "/"))));
+            let _ = this.update(cx, |_, cx| cx.notify());
+        }
+    })
+    .detach();
+    None
+}
+
+fn bubble(root: &Root, user: i64, own: bool, banner_h: f32, avatar_size: f32, cx: &mut Context<Root>) -> Option<AnyElement> {
+    let editing = own && root.profile.bubble_edit;
+    let text = bubble_of(user);
+    if !own || (!editing && text.is_empty()) {
+        return None;
+    }
+    let dot = |size: f32| div().absolute().size(px(size)).rounded_full().bg(c(RAISED)).border_1().border_color(c(LINE));
+    let pill = div()
+        .id("pf-bubble-text")
+        .max_w(px(320.))
+        .px(px(16.))
+        .py(px(9.))
+        .rounded(px(20.))
+        .bg(c(RAISED))
+        .border_1()
+        .border_color(c(LINE))
+        .text_size(px(T_M))
+        .line_height(px(19.))
+        .text_color(c(TEXT))
+        .text_center();
+    let pill = if editing {
+        pill.w(px(300.)).flex().items_center().gap(px(6.)).child(div().flex_1().min_w_0().child(gpui_kit::component::input::Input::new(&root.pf_bubble).appearance(false))).child(
+            IconButton::new("pf-bubble-save", "check").size(24.).tip(root.tr("pf.bubble.save")).on_click(cx.listener(|r, _, _, cx| save_bubble(r, cx))),
+        )
+    } else {
+        pill.cursor_pointer().child(text).on_click(cx.listener(move |r, _, window, cx| edit_bubble(r, user, window, cx)))
+    };
+    Some(
+        div()
+            .absolute()
+            .left(px(22. + avatar_size * 0.82))
+            .top(px((banner_h - avatar_size * 0.60 - 66.).max(8.)))
+            .child(div().relative().child(pill).child(dot(10.).left(px(8.)).bottom(px(-13.))).child(dot(6.).left(px(-1.)).bottom(px(-22.))))
+            .into_any_element(),
+    )
+}
+
 pub fn want_shop(r: &mut Root, cx: &mut Context<Root>) {
     // An open thing: who owns it and the buyer's Robux, asked for the account whose tab is shown (again for another).
     if let Some(item) = &r.profile.item {
@@ -1161,16 +1612,12 @@ fn open_item(r: &mut Root, ware: Ware, cx: &mut Context<Root>) {
         return;
     }
     let rx = roblox::run(move || roblox::offer(&collectible));
-    cx.spawn(async move |this, cx| {
-        let got = rx.await.unwrap_or_else(|_| Err(String::new()));
-        let _ = this.update(cx, |r, cx| {
-            if let Some(i) = r.profile.item.as_mut().filter(|i| i.ware.id == id) {
-                i.offer = Some(got);
-                cx.notify();
-            }
-        });
-    })
-    .detach();
+    reply(rx, cx, move |r, got, cx| {
+        if let Some(i) = r.profile.item.as_mut().filter(|i| i.ware.id == id) {
+            i.offer = Some(got);
+            cx.notify();
+        }
+    });
 }
 
 /// For the thing shown and the account whose tab is shown: that account's Robux, and which accounts own the thing.
@@ -1287,17 +1734,13 @@ fn try_on(r: &mut Root, cx: &mut Context<Root>) {
     item.on_me = true;
     item.tried = None;
     let rx = roblox::run(move || roblox::try_on(&cookie, id));
-    cx.spawn(async move |this, cx| {
-        let got = rx.await.unwrap_or_else(|_| Err(String::new()));
-        let _ = this.update(cx, |r, cx| {
-            if let Some(i) = r.profile.item.as_mut().filter(|i| i.ware.id == id) {
-                i.trying = false;
-                i.tried = Some(got);
-                cx.notify();
-            }
-        });
-    })
-    .detach();
+    reply(rx, cx, move |r, got, cx| {
+        if let Some(i) = r.profile.item.as_mut().filter(|i| i.ware.id == id) {
+            i.trying = false;
+            i.tried = Some(got);
+            cx.notify();
+        }
+    });
 }
 
 fn item_page(root: &Root, view: &ItemView, inner: f32, cx: &mut Context<Root>) -> AnyElement {
@@ -1382,7 +1825,7 @@ fn item_page(root: &Root, view: &ItemView, inner: f32, cx: &mut Context<Root>) -
                 Some(Err(why)) => Some(match why.as_str() {
                     "price" => root.tr("shop.moved"),
                     "off" => root.tr("shop.closed"),
-                    why => root.i18n.tv("shop.refused", &[("why", if why.is_empty() { "Roblox" } else { why })]),
+                    why => root.i18n.tv("shop.refused", &[("why", crate::net::why_words(&root.i18n, why).as_str())]),
                 }),
                 _ => None,
             };
@@ -1674,44 +2117,40 @@ fn page(r: &mut Root, cx: &mut Context<Root>) {
     let (cat, sort) = (r.profile.cat, r.profile.sort);
     let by = filters(cat, sort, !q.is_empty());
     let rx = roblox::run(move || roblox::catalog(&ask, &cursor, &by));
-    cx.spawn(async move |this, cx| {
-        let got = rx.await.unwrap_or_else(|_| Err(String::new()));
-        let _ = this.update(cx, |r, cx| {
-            // A page for words, or filters, no longer asked is dropped; so is one overtaken by a newer ask (the same
-            // words asked again after others: their first page would come twice).
-            if r.profile.asked.as_deref() != Some(q.as_str()) || (r.profile.cat, r.profile.sort) != (cat, sort) || r.profile.page_ask != ticket {
-                return;
+    reply(rx, cx, move |r, got, cx| {
+        // A page for words, or filters, no longer asked is dropped; so is one overtaken by a newer ask (the same
+        // words asked again after others: their first page would come twice).
+        if r.profile.asked.as_deref() != Some(q.as_str()) || (r.profile.cat, r.profile.sort) != (cat, sort) || r.profile.page_ask != ticket {
+            return;
+        }
+        r.profile.reading = false;
+        match (got, &mut r.profile.wares) {
+            (Ok((more, next)), Some(Ok(have))) => {
+                have.extend(more);
+                r.profile.next = next;
             }
-            r.profile.reading = false;
-            match (got, &mut r.profile.wares) {
-                (Ok((more, next)), Some(Ok(have))) => {
-                    have.extend(more);
-                    r.profile.next = next;
+            (Ok((first, next)), _) => {
+                // BLOXKEEP_SHOT_ITEM=1: a hidden shot opens the first thing that has a price (the first of
+                // all when none has).
+                #[cfg(feature = "shot")]
+                let shown = std::env::var("BLOXKEEP_SHOT_ITEM").ok().and_then(|_| first.iter().find(|w| w.price.is_some_and(|p| p > 0) && !w.collectible.is_empty()).or(first.iter().find(|w| !w.collectible.is_empty())).cloned());
+                #[cfg(feature = "shot")]
+                let mut first = first;
+                #[cfg(feature = "shot")]
+                crate::near::shot_many(&mut first);
+                r.profile.wares = Some(Ok(first));
+                r.profile.next = next;
+                #[cfg(feature = "shot")]
+                if let Some(w) = shown {
+                    open_item(r, w, cx);
                 }
-                (Ok((first, next)), _) => {
-                    // BLOXKEEP_SHOT_ITEM=1: a hidden shot opens the first thing that has a price (the first of
-                    // all when none has).
-                    #[cfg(feature = "shot")]
-                    let shown = std::env::var("BLOXKEEP_SHOT_ITEM").ok().and_then(|_| first.iter().find(|w| w.price.is_some_and(|p| p > 0) && !w.collectible.is_empty()).or(first.iter().find(|w| !w.collectible.is_empty())).cloned());
-                    #[cfg(feature = "shot")]
-                    let mut first = first;
-                    #[cfg(feature = "shot")]
-                    crate::near::shot_many(&mut first);
-                    r.profile.wares = Some(Ok(first));
-                    r.profile.next = next;
-                    #[cfg(feature = "shot")]
-                    if let Some(w) = shown {
-                        open_item(r, w, cx);
-                    }
-                }
-                // A later page that fails leaves what is shown; More asks for it again.
-                (Err(_), Some(Ok(_))) => {}
-                (Err(e), _) => r.profile.wares = Some(Err(e)),
             }
-            cx.notify();
-        });
-    })
-    .detach();
+            // A later page that fails leaves what is shown; More asks for it again.
+            (Err(_), Some(Ok(_))) => {}
+            (Err(e), _) => r.profile.wares = Some(Err(e)),
+        }
+        cx.notify();
+    });
 }
 
 /// How the Marketplace's tiles fit a width: how many a row, and a tile's width (with its padding).
@@ -1833,8 +2272,8 @@ pub fn shop(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
     let body: AnyElement = match &pf.wares {
         _ if held => div().flex_1().px(px(PAD + 4.)).child(waiting_tiles(cols as usize * 2, tile_w - 12., 14.)).into_any_element(),
         None => div().flex_1().px(px(PAD + 4.)).child(waiting_tiles(cols as usize * 2, tile_w - 12., 14.)).into_any_element(),
-        Some(Err(why)) => note(root.i18n.tv("shop.failed", &[("why", if why.is_empty() { "Roblox" } else { why })])).into_any_element(),
-        Some(Ok(l)) if l.is_empty() => note(root.tr("shop.none")).into_any_element(),
+        Some(Err(why)) => empty_note(root.i18n.tv("shop.failed", &[("why", crate::net::why_words(&root.i18n, why).as_str())])).into_any_element(),
+        Some(Ok(l)) if l.is_empty() => empty_note(root.tr("shop.none")).into_any_element(),
         Some(Ok(l)) => {
             // (Only the lines near the view are made once there are many: each More adds a page of Roblox's.)
             let key = crate::near::sig((l.len(), l.first().map(|w| w.id)));
@@ -1902,13 +2341,7 @@ fn sort_drop(root: &Root, cx: &mut Context<Root>) -> Div {
                 })),
         );
     }
-    div().relative().flex_none().child(button).child(
-        div()
-            .absolute()
-            .top(px(TOOL_H + 4.))
-            .right_0()
-            .child(deferred(anchored().anchor(Anchor::TopRight).snap_to_window_with_margin(px(8.)).child(pop("shop-sort-pop", open, menu))).with_priority(1)),
-    )
+    div().relative().flex_none().child(button).child(popup(PopAt::BelowRight(TOOL_H + 4.), "shop-sort-pop", open, menu))
 }
 
 /// The game that gives a free thing, opened on its page here (Games' own view), where it is started with the accounts
@@ -1924,8 +2357,8 @@ fn frees(root: &Root, tile_w: f32, cx: &mut Context<Root>) -> AnyElement {
     let pf = &root.profile;
     let list = match &pf.frees {
         None => return div().flex_1().px(px(PAD + 4.)).child(waiting_tiles(14, tile_w - 12., 14.)).into_any_element(),
-        Some(Err(why)) => return note(root.i18n.tv("shop.failed", &[("why", if why.is_empty() { "Roblox" } else { why })])).into_any_element(),
-        Some(Ok(l)) if l.is_empty() => return note(root.tr("shop.freeNone")).into_any_element(),
+        Some(Err(why)) => return empty_note(root.i18n.tv("shop.failed", &[("why", crate::net::why_words(&root.i18n, why).as_str())])).into_any_element(),
+        Some(Ok(l)) if l.is_empty() => return empty_note(root.tr("shop.freeNone")).into_any_element(),
         Some(Ok(l)) => l,
     };
     let key = crate::near::sig((list.len(), list.first().map(|f| f.id)));

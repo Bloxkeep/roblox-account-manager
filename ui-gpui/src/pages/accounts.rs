@@ -3,6 +3,7 @@
 // opened by Bloxkeep too), then the accounts not open. Any tile or card is a tick box;
 // the bar at the foot plays, rejoins or closes those picked. The commands are the app's (launch, closeAccounts,
 // hideWindows, showWindows, monitorAct, cancelRejoin, resolveGame, openProfile, openAppeal), as the web page sends them.
+use crate::threads::Hold;
 use gpui_kit::{prelude::*, *};
 use serde_json::{Value, json};
 
@@ -10,7 +11,9 @@ use crate::{images, kit::*, shell::Root, theme::*};
 
 // The list layout, the account menu (its state and the page's other state Root doesn't hold), and the start for new
 // users (no accounts yet, or none opened yet).
+pub(crate) mod groups;
 mod list;
+mod load;
 pub(crate) mod menu;
 mod start;
 
@@ -28,9 +31,6 @@ pub enum Filter {
     Local,
 }
 
-fn s<'a>(a: &'a Value, k: &str) -> &'a str {
-    a.get(k).and_then(Value::as_str).unwrap_or_default()
-}
 fn conn(a: &Value) -> &str {
     a.pointer("/session/connection").and_then(Value::as_str).unwrap_or_default()
 }
@@ -271,13 +271,13 @@ fn launching(a: &Value) -> bool {
 pub fn is_kicked(a: &Value) -> bool {
     is_local(a) && (conn(a) == "disconnected" || a.pointer("/session/bannedByGame").and_then(Value::as_bool).unwrap_or(false))
 }
-fn presence(a: &Value) -> &str {
+pub(crate) fn presence(a: &Value) -> &str {
     a.pointer("/presence/type").and_then(Value::as_str).unwrap_or_default()
 }
-fn in_game(a: &Value) -> bool {
+pub(crate) fn in_game(a: &Value) -> bool {
     (is_local(a) && !matches!(conn(a), "disconnected" | "menu" | "signedout")) || presence(a) == "ingame"
 }
-fn is_online(a: &Value) -> bool {
+pub(crate) fn is_online(a: &Value) -> bool {
     is_local(a) || matches!(presence(a), "online" | "ingame" | "studio")
 }
 fn signed_out(a: &Value) -> bool {
@@ -447,6 +447,8 @@ struct ShownKey {
     filter: Option<Filter>,
     group: Option<String>,
     sort: String,
+    /// Ordered by group first (the list layout: a part a group).
+    grouped: bool,
 }
 
 thread_local! {
@@ -464,6 +466,7 @@ fn shown_key(root: &Root, query: String, filter: Option<Filter>, group: Option<S
         filter,
         group,
         sort: root.state.pointer("/settings/sort").and_then(Value::as_str).unwrap_or("name").to_string(),
+        grouped: false,
     }
 }
 
@@ -512,17 +515,17 @@ fn dot_of(a: &Value) -> u32 {
     }
 }
 
-fn game_name(a: &Value) -> Option<String> {
+pub(crate) fn game_name(a: &Value) -> Option<String> {
     a.pointer("/session/game/name")
         .and_then(Value::as_str)
         .filter(|g| !g.is_empty())
         .or_else(|| (presence(a) == "ingame").then(|| a.pointer("/presence/game").and_then(Value::as_str)).flatten())
         .map(crate::pages::home::clean)
 }
-fn game_place(a: &Value) -> Option<i64> {
+pub(crate) fn game_place(a: &Value) -> Option<i64> {
     a.pointer("/session/game/placeId").and_then(Value::as_i64).or_else(|| a.pointer("/presence/placeId").and_then(Value::as_i64)).filter(|p| *p > 0)
 }
-fn game_icon(a: &Value) -> Option<String> {
+pub(crate) fn game_icon(a: &Value) -> Option<String> {
     a.pointer("/session/game/iconUrl")
         .and_then(Value::as_str)
         .or_else(|| a.pointer("/presence/iconUrl").and_then(Value::as_str))
@@ -712,7 +715,7 @@ fn line_of(root: &Root, a: &Value) -> (String, u32) {
 /// The Robux on an account ("…" while the first count is on its way).
 fn robux_of(root: &Root, a: &Value) -> Option<String> {
     match a.get("robux").and_then(Value::as_i64) {
-        Some(n) => Some(crate::pages::games::thousands(n, root.i18n.vietnamese)),
+        Some(n) => Some(crate::kit::thousands(n, root.i18n.vietnamese)),
         None => a.get("robuxWait").and_then(Value::as_bool).filter(|w| *w).map(|_| "…".to_string()),
     }
 }
@@ -832,10 +835,9 @@ fn action(root: &Root, a: &Value, at: &str, cx: &mut Context<Root>) -> Option<Bu
     Some(b.small())
 }
 
-/// Something pressed on a card that must not pick the card too.
-fn no_pick(el: impl IntoElement) -> Div {
-    div().flex_none().on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation()).child(el)
-}
+use crate::kit::no_pick;
+use crate::val::s;
+use crate::ask::answer;
 
 /// An account's ⋮: its menu, under it.
 fn more_button(root: &Root, a: &Value, at: &str, size: f32, cx: &mut Context<Root>) -> Div {
@@ -886,13 +888,25 @@ fn ring_of(a: &Value) -> Hsla {
 /// of the surface between them, and the state's dot at the corner; its first letter on a colour of its own while it
 /// has no picture. `ring` is the surface it sits on.
 pub fn avatar(a: &Value, size: f32, ring: u32, cx: &mut App) -> Div {
+    let d = (size * 0.26).clamp(9., 14.);
+    face(a, size, c(ring), cx).child(div().absolute().right(px(-2.)).bottom(px(-2.)).size(px(d)).rounded(px(d * 0.35)).border_2().border_color(c(ring)).bg(c(dot_of(a))))
+}
+
+/// An account's face in a row of faces, each over the one before: no state mark (caught under the next face's edge it
+/// read as a grey chip between them; the owner, 2026-11-18: "cấn cấn"), and its edge solid, so the face before doesn't
+/// show through it where the surface `ring` is see-through (a picture theme).
+pub fn stacked(a: &Value, size: f32, ring: u32, cx: &mut App) -> Div {
+    face(a, size, crate::theme::over(c(ring), Hsla { a: 1., ..c(GROUND) }), cx)
+}
+
+/// The face itself: the picture (or the first letter) inside the ring of its state, an edge of `ring` between them.
+fn face(a: &Value, size: f32, ring: Hsla, cx: &mut App) -> Div {
     let pad = if size >= 34. { 2. } else { 1.5 };
     let edge = if size >= 34. { 2. } else { 1.5 };
     let inner = size - 2. * pad - 2. * edge;
     let url = s(a, "avatarUrl");
     let face = images::pic_sq(url, inner, cx);
     let r = (size * 0.3).round();
-    let d = (size * 0.26).clamp(9., 14.);
     let letter = (url.is_empty()).then(|| {
         let name = label(a);
         let first: String = name.trim().chars().next().map(|c| c.to_uppercase().collect()).unwrap_or_else(|| "?".into());
@@ -912,7 +926,7 @@ pub fn avatar(a: &Value, size: f32, ring: u32, cx: &mut App) -> Div {
                 .size_full()
                 .rounded(px((r - pad).max(2.)))
                 .border(px(edge))
-                .border_color(c(ring))
+                .border_color(ring)
                 .bg(c(RAISED_2))
                 .flex()
                 .items_center()
@@ -925,7 +939,6 @@ pub fn avatar(a: &Value, size: f32, ring: u32, cx: &mut App) -> Div {
                     (None, None) => x,
                 }),
         )
-        .child(div().absolute().right(px(-2.)).bottom(px(-2.)).size(px(d)).rounded(px(d * 0.35)).border_2().border_color(c(ring)).bg(c(dot_of(a))))
 }
 
 /// One grid for the whole page: window tiles and cards share its columns (each at least this wide, the row ending
@@ -933,6 +946,10 @@ pub fn avatar(a: &Value, size: f32, ring: u32, cx: &mut App) -> Div {
 const COL_MIN: f32 = 330.;
 /// Monitor tiles can become compact, with room for the account details and actions below the preview.
 const MON_COL_MIN: f32 = 320.;
+/// With many windows open (a farm, past MON_MANY), tiles as narrow as this and pared down (`tile`'s `compact`): six
+/// in a row at a common window's width instead of four (the owner, 2026-11-17: 30 windows in eight rows).
+const MON_COL_COMPACT: f32 = 228.;
+const MON_MANY: usize = 12;
 const MON_COL_MAX: f32 = 560.;
 const MON_PIC_INSET: f32 = 14.;
 /// The page's sides (the header's and the body's), on the 8 px rhythm.
@@ -1079,13 +1096,23 @@ fn lanes(root: &Root, shown: &[Value]) -> Vec<Lane> {
 /// The cards the page shows: the search, the filter and the group applied, sorted, other PCs' after.
 fn shown_accounts(root: &Root, cx: &App) -> std::rc::Rc<Vec<Value>> {
     let query = root.acc_search.read(cx).value().to_string();
-    let key = shown_key(root, query.clone(), Some(root.acc_filter), root.acc_group.clone());
+    // The list layout is a part a group: the accounts go by group first, those in none last, each group in the order
+    // picked. So the arrow keys and a range picked with Shift go the way the page reads.
+    let grouped = cx.try_global::<menu::Ui>().and_then(|u| u.list).unwrap_or_else(|| root.state.pointer("/settings/layout").and_then(Value::as_str) != Some("cards"));
+    let key = ShownKey { grouped, ..shown_key(root, query.clone(), Some(root.acc_filter), root.acc_group.clone()) };
     cached(&SHOWN, key, || {
         let all = root.accounts();
         // (A group picked that no account is in any more counts as none.)
         let group = root.acc_group.clone().filter(|g| all.iter().any(|a| s(a, "group") == g));
         let mut shown: Vec<Value> = all.iter().filter(|a| passes(a, root.acc_filter, &query)).filter(|a| group.as_deref().is_none_or(|g| s(a, "group") == g)).cloned().collect();
         sort(root, &mut shown);
+        if grouped {
+            // (Keeps the order within a group: this sort is stable.)
+            shown.sort_by_cached_key(|a| {
+                let g = s(a, "group");
+                (g.is_empty(), Natural(folded(g)), g.to_string())
+            });
+        }
         shown.extend(others(root).into_iter().filter(|a| passes(a, root.acc_filter, &query)));
         shown
     })
@@ -1118,7 +1145,9 @@ pub fn key(r: &mut Root, k: Key, window: &mut Window, cx: &mut Context<Root>) ->
                 return false;
             }
             let farm: Vec<String> = shown.iter().filter(|a| !a.get("isMain").and_then(Value::as_bool).unwrap_or(false)).map(id_of).collect();
-            r.selected = if farm.is_empty() { shown.iter().map(id_of).collect() } else { farm.into_iter().collect() };
+            let all: std::collections::HashSet<String> = if farm.is_empty() { shown.iter().map(id_of).collect() } else { farm.into_iter().collect() };
+            // (Again with all of them picked: none.)
+            r.selected = if r.selected == all { Default::default() } else { all };
         }
         Key::Clear => {
             if menu::is_open(cx) {
@@ -1220,7 +1249,16 @@ pub fn accounts(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoEle
         let every = every_sorted(root);
         body = match windows(root, &every, inner, cx) {
             // (What a picture does, as the old monitor's head said.)
-            Some(w) => body.child(div().text_size(px(T_S)).text_color(c(MUTED)).child(root.tr("mon.hint"))).child(w),
+            Some(w) => body
+                .child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap(px(12.))
+                        .child(div().flex_1().min_w_0().text_size(px(T_S)).text_color(c(MUTED)).child(root.tr("mon.hint")))
+                        .child(load::strip(root, cx)),
+                )
+                .child(w),
             None => body.child(
                 div()
                     .py(px(56.))
@@ -1249,11 +1287,11 @@ pub fn accounts(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoEle
                         .flex()
                         .items_start()
                         .gap(px(16.))
-                        .child(div().flex_1().min_w_0().child(list::rows(root, &own, width < 1760., cx)))
+                        .child(div().flex_1().min_w_0().child(list::rows(root, &own, inner - 356., cx)))
                         .child(list::detail(root, focus, cx)),
                 );
             } else {
-                body = body.child(list::rows(root, &own, width < 1300., cx));
+                body = body.child(list::rows(root, &own, inner, cx));
             }
         }
     } else {
@@ -1261,16 +1299,21 @@ pub fn accounts(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoEle
     }
     if shown.is_empty() && !all.is_empty() && !root.acc_win {
         body = body.child(
+            // In the middle of the page (the owner, 2026-11-17: tucked at the top left it read as left over).
             div()
-                .pt(px(24.))
+                .w_full()
+                .pt(px(120.))
+                .pb(px(40.))
                 .flex()
                 .flex_col()
-                .gap(px(4.))
-                .child(div().text_size(px(T_M)).text_color(c(TEXT_2)).child(root.tr("nores.title")))
-                .child(div().text_size(px(T_S)).text_color(c(MUTED)).child(root.tr("nores.text")))
+                .items_center()
+                .gap(px(6.))
+                .child(div().size(px(52.)).mb(px(8.)).rounded_full().bg(c(RAISED)).border_1().border_color(c(LINE)).flex().items_center().justify_center().child(icon("search", 20., c(MUTED))))
+                .child(div().text_size(px(T_H)).font_weight(FontWeight::SEMIBOLD).child(root.tr("nores.title")))
+                .child(div().text_size(px(T_M)).text_color(c(MUTED)).child(root.tr("nores.text")))
                 // Clear search with a search typed, else Show all; either puts the search, filter and group aside
                 // (Accounts.tsx's clear-search).
-                .child(div().pt(px(8.)).flex().child(
+                .child(div().pt(px(12.)).flex().child(
                     Button::new("nores-clear", root.tr(if root.acc_search.read(cx).value().trim().is_empty() { "nores.all" } else { "nores.clear" })).on_click(cx.listener(
                         |r, _, window, cx| {
                             r.acc_filter = Filter::All;
@@ -1287,6 +1330,11 @@ pub fn accounts(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoEle
         );
     }
 
+    // A low window (the smallest is 500 px high): the header goes with the list, a scroll away. Held in place it took
+    // most of the page, and with the selected accounts' bar up no line of the list was left to see (the shots of
+    // every size, 2026-11-18).
+    let head = header(root, all, width, rows, cx).into_any_element();
+    let (fixed_head, body) = if root.window_h.get() < 620. && !all.is_empty() { (None, div().flex().flex_col().child(head).child(body)) } else { (Some(head), body) };
     div()
         .size_full()
         .rounded(px(R_PANEL))
@@ -1295,9 +1343,9 @@ pub fn accounts(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoEle
         .relative()
         .flex()
         .flex_col()
-        .child(header(root, all, width, rows, cx))
+        .children(fixed_head)
         .child(if all.is_empty() {
-            start::empty(root, cx).into_any_element()
+            start::empty(root, width, cx).into_any_element()
         } else {
             // The live pictures show only inside the scrolling part (never over the header or the bar).
             div()
@@ -1384,8 +1432,10 @@ fn windows(root: &Root, shown: &[Value], inner: f32, cx: &mut Context<Root>) -> 
     if let Some(solo) = root.mon_solo.as_deref().filter(|g| lanes.iter().any(|l| l.name == *g)) {
         lanes.retain(|l| l.name == solo);
     }
-    // Every tile reserves room for the fullest account's details, so neighboring tiles end on one line.
-    let tile_n = lanes.iter().flat_map(|l| l.items.iter()).map(|a| tile_lines(root, a)).max().unwrap_or(0);
+    // Every tile reserves room for the fullest account's details, so neighboring tiles end on one line (pared-down
+    // tiles show none of them).
+    let many = lanes.iter().map(|l| l.items.len()).sum::<usize>() > MON_MANY;
+    let tile_n = if many { 0 } else { lanes.iter().flat_map(|l| l.items.iter()).map(|a| tile_lines(root, a)).max().unwrap_or(0) };
     let height = root.live.area_height().unwrap_or_else(|| (root.window_h.get() - 210.).max(0.));
     let tile_room = (height - 112.).max(0.);
     Some(
@@ -1394,8 +1444,8 @@ fn windows(root: &Root, shown: &[Value], inner: f32, cx: &mut Context<Root>) -> 
                 .into_iter()
                 .enumerate()
                 .map(|(i, l)| {
-                    let (cols, col_w) = monitor_grid(l.items.len(), inner, tile_room, tile_n);
-                    lane(root, i, l, col_w, cols, tile_n, multi, cx).into_any_element()
+                    let (cols, col_w) = monitor_grid(l.items.len(), inner, tile_room, tile_n, many);
+                    lane(root, i, l, col_w, cols, tile_n, multi, many, cx).into_any_element()
                 })
                 .collect::<Vec<_>>(),
         ),
@@ -1403,12 +1453,16 @@ fn windows(root: &Root, shown: &[Value], inner: f32, cx: &mut Context<Root>) -> 
 }
 
 /// Pick the largest 16:9 previews that fit the lane. If all layouts need to scroll, use the fewest rows.
-fn monitor_grid(count: usize, width: f32, height: f32, detail_lines: usize) -> (usize, f32) {
-    let (max_cols, _) = grid_fit(width, MON_COL_MIN, GRID_GAP);
+fn monitor_grid(count: usize, width: f32, height: f32, detail_lines: usize, many: bool) -> (usize, f32) {
+    let narrowest = if many { MON_COL_COMPACT } else { MON_COL_MIN };
+    let (max_cols, _) = grid_fit(width, narrowest, GRID_GAP);
     let max_cols = max_cols.min(count).max(1);
-    let minimum = width.min(MON_COL_MIN);
-    let chrome = 175. + 30. * detail_lines as f32;
-    let mut best = (max_cols, minimum);
+    let minimum = width.min(narrowest);
+    let chrome = if many { 110. } else { 175. + 30. * detail_lines as f32 };
+    // When no layout fits the screen (30 windows of a farm), the most columns, the tiles across the whole width: they
+    // stayed at their smallest and left a band empty at the right (the owner, 2026-11-17).
+    let across_all = ((width - (max_cols - 1) as f32 * GRID_GAP) / max_cols as f32).min(MON_COL_MAX).max(minimum).floor();
+    let mut best = (max_cols, across_all);
     let mut best_fits = false;
     for cols in 1..=max_cols {
         let rows = count.max(1).div_ceil(cols) as f32;
@@ -1659,10 +1713,8 @@ fn header(root: &Root, all: &[Value], width: f32, rows: bool, cx: &mut Context<R
     if look > 0 {
         summary.push((root.i18n.tn("acc.sum.look", look as i64, &[]), None));
     }
-    // The accounts' groups, when they have any: one of them alone.
-    let mut names: Vec<String> = all.iter().map(|a| s(a, "group").to_string()).filter(|g| !g.is_empty()).collect();
-    names.sort_by_key(|g| folded(g));
-    names.dedup();
+    // The group shown, when the accounts have any (picked in the Group tool beside Sort: pages/accounts/groups.rs).
+    let names = groups::names(all);
     let now = root.acc_group.clone().filter(|g| names.contains(g));
     // The order: kept by the app, so it is the same next time; under it, the order Play opens the picked accounts in.
     let how = root.state.pointer("/settings/sort").and_then(Value::as_str).unwrap_or("name").to_string();
@@ -1684,23 +1736,7 @@ fn header(root: &Root, all: &[Value], width: f32, rows: bool, cx: &mut Context<R
         .collect();
     items.push((LINE_ITEM.to_string(), false, std::rc::Rc::new(|_, _, _| {})));
     items.push((root.tr("lo.edit"), false, std::rc::Rc::new(|r, window, cx| open_order(r, window, cx))));
-    // The groups, when the accounts have any, in the same list under their own head (one menu for how the page is
-    // shown: Group and Sort were two tools side by side, critique 2026-11-13, P1).
-    if !names.is_empty() {
-        items.insert(0, (format!("{HEAD_ITEM}{}", root.tr("sort.label")), false, std::rc::Rc::new(|_, _, _| {})));
-        items.push((LINE_ITEM.to_string(), false, std::rc::Rc::new(|_, _, _| {})));
-        items.push((format!("{HEAD_ITEM}{}", root.tr("grp.label")), false, std::rc::Rc::new(|_, _, _| {})));
-        for key in std::iter::once(None).chain(names.iter().cloned().map(Some)) {
-            let on = key == now;
-            let text = key.clone().unwrap_or_else(|| root.tr("chip.all"));
-            let f: DropAct = std::rc::Rc::new(move |r, _, _| r.acc_group = key.clone());
-            items.push((text, on, f));
-        }
-    }
-    let shown = match &now {
-        Some(g) => format!("{} · {g}", root.tr(&format!("sort.{how}"))),
-        None => root.tr(&format!("sort.{how}")),
-    };
+    let shown = root.tr(&format!("sort.{how}"));
     let sorts = drop_list(root, "acc-sort", "sort", Some(root.tr("sort.label")), shown, items, cx);
     // Select all: the ones shown; the main accounts (the ones played on) are left out, unless they are all there is.
     let query = root.acc_search.read(cx).value().to_string();
@@ -1709,13 +1745,15 @@ fn header(root: &Root, all: &[Value], width: f32, rows: bool, cx: &mut Context<R
     let pickable: Vec<String> = if farm.is_empty() { seen.iter().map(|a| id_of(a)).collect() } else { farm };
     let none = pickable.is_empty();
     // (Named at every width: short of room the tools take a line of their own under the filters, review 2.5.)
-    let all_words: SharedString = crate::pages::lock::plain(root.tr("acc.selectAll")).into();
-    let pick_all = tool("acc-pick-all", Some("check"), false).child(all_words).map(|d| {
+    // (With all of them picked it unpicks them, and says so.)
+    let all_picked = !none && pickable.len() == root.selected.len() && pickable.iter().all(|id| root.selected.contains(id));
+    let all_words: SharedString = crate::pages::lock::plain(root.tr(if all_picked { "acc.selectNone" } else { "acc.selectAll" })).into();
+    let pick_all = tool("acc-pick-all", Some(if all_picked { "x" } else { "check" }), false).child(all_words).map(|d| {
         if none {
             d.opacity(0.45).cursor_default()
         } else {
-            d.on_click(cx.listener(move |r, _, _, cx| {
-                r.selected = pickable.iter().cloned().collect();
+            d.on_click(cx.listener(|r, _, window, cx| {
+                key(r, Key::All, window, cx);
                 cx.notify();
             }))
         }
@@ -1728,6 +1766,8 @@ fn header(root: &Root, all: &[Value], width: f32, rows: bool, cx: &mut Context<R
         .child(layout)
         .child(tool_rule())
         .child(sorts)
+        // Which group shows, and the group the selected accounts go in (pages/accounts/groups.rs).
+        .child(groups::button(root, all, cx))
         // Windows: Open Roblox only, hide or show them all, and Arrange's layouts as pictures (pages/snap.rs).
         .child(crate::pages::snap::button(root, false, cx))
         .child(tool_rule())
@@ -1760,7 +1800,9 @@ fn header(root: &Root, all: &[Value], width: f32, rows: bool, cx: &mut Context<R
                                 .child(div().text_size(px(T_TITLE)).line_height(px(38.)).font_weight(FontWeight::BOLD).child(root.tr("acc.title")))
                                 .child(div().text_size(px(T_TITLE)).line_height(px(38.)).text_color(c(MUTED)).font_features(tnum()).child(all.len().to_string())),
                         )
-                        .when(!all.is_empty(), |d| d.child(facts(summary))),
+                        // (Not in a low window while the selected accounts' bar is up: its three lines were the
+                        // list's last room, 860×500.)
+                        .when(!all.is_empty() && (root.window_h.get() >= 620. || root.selected.is_empty()), |d| d.child(facts(summary))),
                 )
                 .child(
                     div()
@@ -1873,19 +1915,15 @@ fn refresh(r: &mut Root, cx: &mut Context<Root>) {
     let Some(link) = r.link.clone() else { return };
     cx.default_global::<menu::Ui>().refreshing = true;
     let rx = link.call("refreshPresence", json!({}));
-    cx.spawn(async move |this, cx| {
-        let answer = rx.await;
-        let _ = this.update(cx, |r, cx| {
-            cx.default_global::<menu::Ui>().refreshing = false;
-            match answer {
-                Ok(Ok(v)) if v.get("skipped").and_then(Value::as_bool) == Some(true) => r.toast = Some((r.tr("t.refreshBusy"), "info".into())),
-                Ok(Err(e)) => r.toast = Some((e.to_string(), "error".into())),
-                _ => {}
-            }
-            cx.notify();
-        });
-    })
-    .detach();
+    answer(rx, cx, move |r, answer, cx| {
+        cx.default_global::<menu::Ui>().refreshing = false;
+        match answer {
+            Ok(Ok(v)) if v.get("skipped").and_then(Value::as_bool) == Some(true) => r.toast = Some((r.tr("t.refreshBusy"), "info".into())),
+            Ok(Err(e)) => r.toast = Some((e.to_string(), "error".into())),
+            _ => {}
+        }
+        cx.notify();
+    });
     cx.notify();
 }
 
@@ -1939,7 +1977,7 @@ fn icon_menu(root: &Root, key: &'static str, button: IconButton, width: f32, lin
                 None => row.opacity(0.45).cursor_default(),
             });
         }
-        wrap = wrap.child(div().absolute().top(px(42.)).right_0().child(deferred(anchored().anchor(Anchor::TopRight).snap_to_window_with_margin(px(8.)).child(pop(SharedString::from(format!("{key}-pop")), open, menu))).with_priority(1)));
+        wrap = wrap.child(popup(PopAt::BelowRight(42.), SharedString::from(format!("{key}-pop")), open, menu));
     }
     wrap
 }
@@ -2043,7 +2081,7 @@ pub(crate) fn drop_list(root: &Root, key: &'static str, mark: &'static str, name
                     })),
             );
         }
-        wrap = wrap.child(div().absolute().top(px(TOOL_H + 4.)).right_0().child(deferred(anchored().anchor(Anchor::TopRight).snap_to_window_with_margin(px(8.)).child(pop(SharedString::from(format!("{key}-pop")), open, menu))).with_priority(1)));
+        wrap = wrap.child(popup(PopAt::BelowRight(TOOL_H + 4.), SharedString::from(format!("{key}-pop")), open, menu));
     }
     wrap
 }
@@ -2058,7 +2096,7 @@ fn trouble(a: &Value) -> bool {
 /// on the game's own colour, its name, how many windows and their RAM, and the buttons for all of them at its right
 /// edge), then its windows, each tile standing on the game's colour.
 #[allow(clippy::too_many_arguments)]
-fn lane(root: &Root, i: usize, l: Lane, col_w: f32, span: usize, lines: usize, multi: bool, cx: &mut Context<Root>) -> impl IntoElement {
+fn lane(root: &Root, i: usize, l: Lane, col_w: f32, span: usize, lines: usize, multi: bool, compact: bool, cx: &mut Context<Root>) -> impl IntoElement {
     // As wide as its columns; one column wide, its buttons are icons (their words the tips).
     let w = span as f32 * col_w + (span as f32 - 1.) * GRID_GAP;
     let tight = span < 2;
@@ -2162,7 +2200,9 @@ fn lane(root: &Root, i: usize, l: Lane, col_w: f32, span: usize, lines: usize, m
     let any_up = wins.iter().any(|(_, m)| !m);
     let tool = |k: &'static str, mark: &'static str, tip: String| IconButton::new((k, i), mark).size(30.).tip(tip);
     let mut win_tools: Vec<AnyElement> = Vec::new();
-    if wins.len() > 1 || (folded && !wins.is_empty()) {
+    // The same buttons folded or not, whenever a window of the game is open: with one of two windows still joining
+    // (no window yet), they showed only once the game was folded (the owner, 2026-11-17).
+    if !wins.is_empty() {
         let hs: Vec<String> = wins.iter().map(|(h, _)| h.clone()).collect();
         let (front, back) = (hs.clone(), hs);
         win_tools.push(tool("lane-front", "winFront", root.tr("mon.frontAll")).on_click(cx.listener(move |r, _, _, _| r.send("monitorLane", json!({ "ids": front, "what": "front" })))).into_any_element());
@@ -2216,7 +2256,7 @@ fn lane(root: &Root, i: usize, l: Lane, col_w: f32, span: usize, lines: usize, m
                 d.child(Button::new(("lane-rejoin", i), label).icon("refresh").tint().small().on_click(cx.listener(move |r, _, _, cx| r.rejoin(&dropped, cx))))
             })
             .child(div().flex().items_center().gap(px(2.)).children(win_tools).children(win_btn))
-            .when(n > 1 || folded, |d| d.child(close_btn))
+            .when(n > 0, |d| d.child(close_btn))
             .child(fold),
     );
     if folded {
@@ -2234,7 +2274,7 @@ fn lane(root: &Root, i: usize, l: Lane, col_w: f32, span: usize, lines: usize, m
                 game_base
             };
             let srv = job_of(root, a).and_then(|j| letters.iter().find(|(k, _)| *k == j).map(|(_, ch)| *ch));
-            on_base(base, RISE, R_CARD + 1., tile(root, a, col_w, lines, srv, cx)).w(px(col_w)).into_any_element()
+            on_base(base, RISE, R_CARD + 1., tile(root, a, col_w, lines, srv, compact, cx)).w(px(col_w)).into_any_element()
         })
         .collect();
     div().w(px(w)).flex_none().flex().flex_col().gap(px(16.)).child(head).child(grid(GRID_GAP).pb(px(RISE)).children(tiles))
@@ -2265,8 +2305,11 @@ fn job_of(root: &Root, a: &Value) -> Option<String> {
 /// Server colours for the letters, as app.css's .mon-srv s0–s3.
 const SRV_TONES: [u32; 4] = [0x60a5fa, 0xf472b6, 0x34d399, 0xfbbf24];
 
-fn tile(root: &Root, a: &Value, w: f32, lines: usize, srv: Option<char>, cx: &mut Context<Root>) -> impl IntoElement {
+/// `compact`: one of many windows (MON_MANY): the picture, the name, the state, the RAM and Close with the menu; the
+/// handle, playing time, PID, chips, note, day strip, Main and Edit go (Edit stays in the menu).
+fn tile(root: &Root, a: &Value, w: f32, lines: usize, srv: Option<char>, compact: bool, cx: &mut Context<Root>) -> impl IntoElement {
     const INSET_PAD: f32 = 6.;
+    let lines = if compact { 0 } else { lines };
     want_strips(root, cx);
     let id = id_of(a);
     let other = foreign(a);
@@ -2286,12 +2329,14 @@ fn tile(root: &Root, a: &Value, w: f32, lines: usize, srv: Option<char>, cx: &mu
     // dropped or held on Roblox's bot check; then Edit and its menu (review 2.2: a playing tile had no Edit).
     let main = action(root, a, "tile", cx);
     let ram = ram_mb(root, a).map(|m| mb_text(m, root.i18n.vietnamese));
-    let pid = pid_el(root, a, cx);
+    let pid = (!compact).then(|| pid_el(root, a, cx)).flatten();
+    // A pared-down tile keeps its PID too, in the room beside Close (farms tell windows apart by it).
+    let pid_foot = compact.then(|| pid_el(root, a, cx)).flatten();
     let both = ram.is_some() && pid.is_some();
     let old = old_build(a).then(|| old_tag(root, a, cx));
     let fps = fps_limit(a);
     // Who it is and what it holds (a window not opened by Bloxkeep is no account: none of these).
-    let under = (!other).then(|| handle_of(a)).flatten();
+    let under = (!other && !compact).then(|| handle_of(a)).flatten();
     let tags = if other { Vec::new() } else { tags_of(root, a) };
     let robux = (!other).then(|| robux_of(root, a).map(|r| robux_el(root, &id, r))).flatten();
     let note = (!other).then(|| note_of(a)).flatten();
@@ -2317,7 +2362,7 @@ fn tile(root: &Root, a: &Value, w: f32, lines: usize, srv: Option<char>, cx: &mu
         )
     });
     let group = SharedString::from(format!("tile-{id}"));
-    hot(group.clone())
+    hot_block(group.clone(), R_CARD)
         .lift(3.)
         .group(group.clone())
         .child(spot(root, &id, R_CARD))
@@ -2329,10 +2374,14 @@ fn tile(root: &Root, a: &Value, w: f32, lines: usize, srv: Option<char>, cx: &mu
         .cursor_pointer()
         .map(|d| {
             if on {
-                // (Solid grounds: the tile stands on a base that must not show through it.)
-                d.tones(tinted(RAISED, FACE, 0.10), tinted(RAISED_2, FACE, 0.12)).edge(ca(FACE, 0.7), ca(FACE, 0.85))
+                // (The plain ground and the yellow ring: yellow mixed into the ground read olive, the owner's rule
+                // of 2026-11-15 against tinted grounds.)
+                d.tones(c(RAISED), c(RAISED_2)).edge(c(FACE), c(FACE))
             } else if bad {
                 d.tones(tinted(RAISED, BAD, 0.09), tinted(RAISED_2, BAD, 0.11)).edge(ca(BAD, 0.38), ca(BAD, 0.52))
+            } else if crate::theme::glass_blocks() {
+                // (A glass tile keeps the glass's own light edge.)
+                d.tones(c(RAISED), c(RAISED_2))
             } else {
                 d.tones(c(RAISED), c(RAISED_2)).edge(ca(WHITE, 0.), ca(WHITE, 0.17))
             }
@@ -2379,18 +2428,18 @@ fn tile(root: &Root, a: &Value, w: f32, lines: usize, srv: Option<char>, cx: &mu
         )
         .child(
             div()
-                .px(px(8.))
-                .pt(px(13.))
-                .pb(px(6.))
+                .px(px(if compact { 4. } else { 8. }))
+                .pt(px(if compact { 10. } else { 13. }))
+                .pb(px(if compact { 2. } else { 6. }))
                 .flex()
                 .flex_col()
-                .gap(px(10.))
+                .gap(px(if compact { 8. } else { 10. }))
                 .child(
                     div()
                         .flex()
                         .items_center()
-                        .gap(px(10.))
-                        .child(avatar(a, 36., RAISED, cx))
+                        .gap(px(if compact { 8. } else { 10. }))
+                        .child(avatar(a, if compact { 28. } else { 36. }, RAISED, cx))
                         .child(
                             div()
                                 .flex_1()
@@ -2402,11 +2451,11 @@ fn tile(root: &Root, a: &Value, w: f32, lines: usize, srv: Option<char>, cx: &mu
                                         .flex()
                                         .items_center()
                                         .gap(px(6.))
-                                        .child(div().min_w_0().text_size(px(T_L)).line_height(px(20.)).font_weight(FontWeight::BOLD).text_color(c(TEXT)).truncate().child(label(a))),
+                                        .child(div().min_w_0().text_size(px(if compact { T_M } else { T_L })).line_height(px(20.)).font_weight(FontWeight::BOLD).text_color(c(TEXT)).truncate().child(label(a))),
                                 )
                                 .when_some(under, |d, u| d.child(div().min_w_0().truncate().text_size(px(T_S)).line_height(px(16.)).text_color(c(MUTED)).child(u))),
                         )
-                        .when_some(up_of(a), |d, t| {
+                        .when_some(up_of(a).filter(|_| !compact), |d, t| {
                             let tip: SharedString = root.tr("card.upTip").into();
                             d.child(div().id(SharedString::from(format!("up-{}", id_of(a)))).flex_none().text_size(px(T_S)).text_color(c(TEXT_2)).px(px(7.)).py(px(4.)).rounded(px(R_S)).bg(c(INSET)).font_features(tnum()).child(t).tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into()))
                         })
@@ -2518,7 +2567,7 @@ fn tile(root: &Root, a: &Value, w: f32, lines: usize, srv: Option<char>, cx: &mu
                     )
                 })
                 // Today, as a strip (a window not opened by Bloxkeep: its room, empty).
-                .child(if other { div().h(px(12.)).into_any_element() } else { day_strip(root, &id).into_any_element() })
+                .when(!compact, |d| d.child(if other { div().h(px(12.)).into_any_element() } else { day_strip(root, &id).into_any_element() }))
                 // Its main button, Edit, its menu (also a right click); a window not opened by Bloxkeep keeps the room.
                 .child(
                     div()
@@ -2527,9 +2576,10 @@ fn tile(root: &Root, a: &Value, w: f32, lines: usize, srv: Option<char>, cx: &mu
                         .items_center()
                         .gap(px(4.))
                         .children(main.map(no_pick))
-                        .child(div().flex_1())
+                        .child(div().flex_1().min_w_0().overflow_hidden().pl(px(6.)).text_size(px(T_S)).children(pid_foot))
                         .children(min_btn)
-                        .when(!other, |d| d.child(main_button(root, a, "tile", 30., cx)).child(edit_button(root, a, "tile", 30., cx)).child(more_button(root, a, "tile", 30., cx)))
+                        .when(!other && !compact, |d| d.child(main_button(root, a, "tile", 30., cx)).child(edit_button(root, a, "tile", 30., cx)))
+                        .when(!other, |d| d.child(more_button(root, a, "tile", 30., cx)))
                         // A window Bloxkeep didn't open has no account menu: its Close here (MonitorView.tsx's tile menu).
                         .when_some(hwnd.clone().filter(|_| other), |d, h| {
                             d.child(no_pick(
@@ -2547,18 +2597,14 @@ fn tile(root: &Root, a: &Value, w: f32, lines: usize, srv: Option<char>, cx: &mu
 fn act(r: &mut Root, cmd: &'static str, args: Value, cx: &mut Context<Root>, done: impl FnOnce(&mut Root, Value) + 'static) {
     let Some(link) = r.link.clone() else { return };
     let rx = link.call(cmd, args);
-    cx.spawn(async move |this, cx| {
-        let answer = rx.await;
-        let _ = this.update(cx, |r, cx| {
-            match answer {
-                Ok(Ok(v)) => done(r, v),
-                Ok(Err(e)) => r.toast = Some((e.to_string(), "error".into())),
-                Err(_) => {}
-            }
-            cx.notify();
-        });
-    })
-    .detach();
+    answer(rx, cx, move |r, answer, cx| {
+        match answer {
+            Ok(Ok(v)) => done(r, v),
+            Ok(Err(e)) => r.toast = Some((e.to_string(), "error".into())),
+            Err(_) => {}
+        }
+        cx.notify();
+    });
 }
 
 /// Launch order (app.js's launchOrderModal): every account, moved up or down into the order Play opens them in; Done
@@ -2888,7 +2934,7 @@ fn more(root: &Root, picked: &[Value], cx: &mut Context<Root>) -> Div {
             r.acc_menu = !r.acc_menu;
             cx.notify();
         })))
-        .child(div().absolute().bottom(px(38.)).right_0().child(deferred(anchored().anchor(Anchor::BottomRight).snap_to_window_with_margin(px(8.)).child(pop("acc-more-pop", open, menu))).with_priority(1)))
+        .child(popup(PopAt::AboveRight(38.), "acc-more-pop", open, menu))
 }
 
 /// Today's stays of every account (todayStrips: since local midnight), asked once a minute while cards show, and when.
@@ -2898,17 +2944,15 @@ static STRIPS_ASKED: std::sync::Mutex<Option<std::time::Instant>> = std::sync::M
 
 fn want_strips(root: &Root, cx: &mut Context<Root>) {
     let Some(link) = root.link.clone() else { return };
-    let Ok(mut asked) = STRIPS_ASKED.lock() else { return };
+    let mut asked = STRIPS_ASKED.hold();
     if asked.is_some_and(|t| t.elapsed() < std::time::Duration::from_secs(60)) {
         return;
     }
     *asked = Some(std::time::Instant::now());
     let rx = link.call("todayStrips", json!({}));
     cx.spawn(async move |_, cx| {
-        if let Some(d) = rx.await.ok().and_then(Result::ok)
-            && let Ok(mut s) = STRIPS.lock()
-        {
-            *s = Some((std::sync::Arc::new(d), std::time::Instant::now()));
+        if let Some(d) = rx.await.ok().and_then(Result::ok) {
+            *STRIPS.hold() = Some((std::sync::Arc::new(d), std::time::Instant::now()));
             let _ = cx.update(|cx| cx.refresh_windows());
         }
     })
@@ -2918,7 +2962,7 @@ fn want_strips(root: &Root, cx: &mut Context<Root>) {
 /// Today on an account's card, in words (the old DayStrip's thin bar read as noise): how long it played since
 /// midnight and how often it dropped, only when it played at all ("Played 2 h 10 min today · 1 drop").
 fn day_line(root: &Root, id: &str) -> Option<String> {
-    let (d, _) = STRIPS.lock().ok()?.clone()?;
+    let (d, _) = STRIPS.hold().clone()?;
     let stays: Vec<(f64, bool)> = d
         .pointer(&format!("/rows/{id}"))
         .and_then(Value::as_array)
@@ -2946,7 +2990,7 @@ fn day_line(root: &Root, id: &str) -> Option<String> {
 /// glow. Its words ("Today: played 2 h · cut off once") are its tip. Every card and tile has one, so they line up.
 fn day_strip(root: &Root, id: &str) -> Stateful<Div> {
     const DAY: f32 = 86400.;
-    let data = STRIPS.lock().ok().and_then(|s| s.clone()).map(|(d, _)| d);
+    let data = STRIPS.hold().clone().map(|(d, _)| d);
     let mut stays: Vec<(f32, f32, bool)> = Vec::new();
     let mut now = None;
     if let Some(d) = data.as_ref() {
@@ -3060,8 +3104,10 @@ fn tags_of(root: &Root, a: &Value) -> Vec<Div> {
             out.push(tag(v.split('.').take(2).collect::<Vec<_>>().join("."), MUTED));
         }
     }
+    // (Its group gives way where the line is short, cut with "…": a long one, at its own width, squeezed the
+    // account's name to nothing and pushed its Robux out past the card's edge: the shots with long names, 2026-11-18.)
     if let Some(g) = Some(s(a, "group").trim()).filter(|g| !g.is_empty()) {
-        out.push(tag(g.to_string(), TEXT_2));
+        out.push(tag("", TEXT_2).flex_shrink(1.).min_w(px(36.)).max_w(px(140.)).child(div().min_w_0().truncate().child(g.to_string())));
     }
     // Auto-rejoin on: its mark beside the chips, as the web page's card has (review 2.1).
     if rejoin_on(a) {
@@ -3154,7 +3200,7 @@ fn card(root: &Root, a: &Value, w: f32, lines: usize, cx: &mut Context<Root>) ->
     let playing = game_icon(a);
     let (ground, ground_hot, line_col, line_hot) = toned(if rich() { playing.as_deref().and_then(|u| crate::images::tone(u, cx)) } else { None });
     let game_pic = if rich() { playing.as_deref().and_then(|u| crate::images::pic_sq(u, 18., cx)) } else { None };
-    let body = hot(SharedString::from(format!("card-{id}")))
+    let body = hot_block(SharedString::from(format!("card-{id}")), R_CARD)
         .lift(3.)
         .child(spot(root, &id, R_CARD))
         .w(px(w))
@@ -3168,7 +3214,10 @@ fn card(root: &Root, a: &Value, w: f32, lines: usize, cx: &mut Context<Root>) ->
         .cursor_pointer()
         .map(|d| {
             if on {
-                d.tones(tinted(RAISED, FACE, 0.10), tinted(RAISED_2, FACE, 0.12)).edge(ca(FACE, 0.7), ca(FACE, 0.85))
+                d.tones(ground, ground_hot).edge(c(FACE), c(FACE))
+            } else if crate::theme::glass_blocks() {
+                // (A glass card keeps the glass's own light edge.)
+                d.tones(ground, ground_hot)
             } else {
                 d.tones(ground, ground_hot).edge(line_col, line_hot)
             }
@@ -3205,10 +3254,11 @@ fn card(root: &Root, a: &Value, w: f32, lines: usize, cx: &mut Context<Root>) ->
                                 .flex()
                                 .items_center()
                                 .gap(px(6.))
-                                .child(div().min_w_0().flex_shrink(1.).text_size(px(T_L)).font_weight(FontWeight::SEMIBOLD).truncate().child(label(a)))
+                                // (The name keeps a few letters at least; its tags give way before it does.)
+                                .child(div().min_w(px(64.)).flex_shrink(1.).text_size(px(T_L)).font_weight(FontWeight::SEMIBOLD).truncate().child(label(a)))
                                 .children(tags)
                                 .child(div().flex_1())
-                                .children(robux),
+                                .children(robux.map(|r| div().flex_none().child(r))),
                         )
                         .when_some(under, |d, u| d.child(div().min_w_0().truncate().text_size(px(T_S)).text_color(c(MUTED)).child(u))),
                 )
@@ -3259,7 +3309,6 @@ fn card(root: &Root, a: &Value, w: f32, lines: usize, cx: &mut Context<Root>) ->
         .relative();
     on_base(if on { c(FACE_BASE) } else { base_dark() }, RISE, R_CARD + 1., body).w(px(w))
 }
-
 
 /// Play for the picked accounts that are free (Root::play reads the Job ID box, as every Play does).
 fn play_picked(r: &mut Root, ids: &[String], cx: &mut Context<Root>) {
@@ -3474,7 +3523,7 @@ fn bar(root: &Root, picked: &[Value], width: f32, cx: &mut Context<Root>) -> imp
         .items_center()
         .gap(px(12.))
         .child(div().flex().children(picked.iter().take(4).enumerate().map(|(i, a)| {
-            div().when(i > 0, |d| d.ml(px(-10.))).rounded_full().p(px(2.)).bg(c(RAISED)).child(avatar(a, 28., RAISED, cx))
+            div().when(i > 0, |d| d.ml(px(-10.))).child(stacked(a, 28., RAISED, cx))
         })))
         .child(div().text_size(px(T_M)).font_weight(FontWeight::SEMIBOLD).child(root.i18n.tv("ui.nPicked", &[("n", &n.to_string())])))
         .when_some(profile, |d, user_id| {
@@ -3578,6 +3627,8 @@ fn bar(root: &Root, picked: &[Value], width: f32, cx: &mut Context<Root>) -> imp
             }
         })
         // The presets to run, and Save as preset… with these accounts (pages/preset_menu.rs).
+        // (Named while there is any room: as an icon among the others nobody found it, the owner, 2026-11-18.)
+        .child(groups::bar_button(root, width < 880., cx))
         .child(crate::pages::preset_menu::button(root, !compact, cx))
         .child(more(root, picked, cx))
         .child(IconButton::new("bar-clear", "x").size(32.).tip(root.tr("ui.clearPick")).on_click(cx.listener(|r, _, _, cx| {
@@ -3587,7 +3638,9 @@ fn bar(root: &Root, picked: &[Value], width: f32, cx: &mut Context<Root>) -> imp
 
     // What the game box holds (Accounts.tsx's DockInfo): looking it up, why not, a private-server link, or the game's
     // name (its page on a click), the kind of server, its maker and how many play it.
-    let info = (k > 0 || opening || wanted).then(|| dock_info(root, has_game, cx));
+    // (In a low window the line that only says how to use the box is left out: the bar took what was left of the
+    // list's room, 860×500 with accounts selected.)
+    let info = (k > 0 || opening || wanted).then(|| dock_info(root, has_game, cx)).filter(|_| has_game || root.window_h.get() >= 620.);
     // Two lines at any width: who and what to do with them, then where to play (one line ran out of room).
     div()
         .flex_none()
@@ -3652,6 +3705,11 @@ fn dock_info(root: &Root, has_game: bool, cx: &mut Context<Root>) -> Div {
     .when(kind == "server", |d| d.child(tag(root.tr("dock.server"), FACE)))
     .when(!s(g, "creator").is_empty(), |d| d.child(div().flex_none().text_color(c(MUTED)).child(root.i18n.tv("dock.by", &[("c", s(g, "creator"))]))))
     .when_some(g.get("playing").and_then(Value::as_i64).filter(|n| *n > 0), |d, n| {
-        d.child(div().flex_none().text_color(c(MUTED)).child(root.i18n.tv("dock.playing", &[("n", &crate::pages::games::thousands(n, root.i18n.vietnamese))])))
+        d.child(div().flex_none().text_color(c(MUTED)).child(root.i18n.tv("dock.playing", &[("n", &crate::kit::thousands(n, root.i18n.vietnamese))])))
     })
+}
+
+/// An account's name as the page shows it, by its id (None when it is gone).
+pub(crate) fn label_by_id(root: &Root, id: &str) -> Option<String> {
+    root.accounts().iter().find(|a| s(a, "id") == id).map(label)
 }

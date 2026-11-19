@@ -2,23 +2,15 @@
 use std::{
     cell::{Cell, RefCell},
     rc::Rc,
-    sync::atomic::{AtomicBool, AtomicU64, Ordering},
+    sync::{
+        Arc, Mutex,
+        atomic::{AtomicU64, Ordering},
+    },
     time::{Duration, Instant},
 };
 
-use futures::{
-    channel::oneshot,
-    future::{Either, select},
-};
+use futures::channel::oneshot;
 use serde_json::{Value, json};
-use webview2_com::{
-    BrowserProcessExitedEventHandler,
-    Microsoft::Web::WebView2::Win32::{
-        COREWEBVIEW2_PROCESS_FAILED_KIND, GetAvailableCoreWebView2BrowserVersionString, ICoreWebView2_2, ICoreWebView2Environment, ICoreWebView2Environment5,
-    },
-    NavigationCompletedEventHandler, ProcessFailedEventHandler, WebMessageReceivedEventHandler,
-};
-use windows::core::{HSTRING, Interface, PCWSTR, PWSTR};
 use windows_sys::Win32::{
     Foundation::{HWND, LPARAM, LRESULT, POINT, WPARAM},
     Graphics::Dwm::DwmSetWindowAttribute,
@@ -27,24 +19,20 @@ use windows_sys::Win32::{
             TASKDIALOG_BUTTON, TASKDIALOGCONFIG, TDF_ALLOW_DIALOG_CANCELLATION, TDF_CALLBACK_TIMER, TDF_POSITION_RELATIVE_TO_WINDOW, TDF_SIZE_TO_CONTENT,
             TDF_USE_COMMAND_LINKS, TDM_CLICK_BUTTON, TDN_TIMER, TaskDialogIndirect,
         },
-        Input::KeyboardAndMouse::{EnableWindow, GetAsyncKeyState, ReleaseCapture, SetActiveWindow, VK_LBUTTON},
+        Input::KeyboardAndMouse::{EnableWindow, GetAsyncKeyState, ReleaseCapture, SetActiveWindow, SetFocus, VK_LBUTTON},
         WindowsAndMessaging::{
-            DestroyWindow, DispatchMessageW, EnumWindows, GetCursorPos, GetWindowThreadProcessId, IDCANCEL, IsWindowVisible, MA_ACTIVATE,
-            MSG, PM_REMOVE, PeekMessageW, PostMessageW, SW_SHOW, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, SendMessageW, SetForegroundWindow, SetWindowPos,
-            TranslateMessage, WM_CLOSE, WM_DESTROY, WM_DPICHANGED, WM_ERASEBKGND, WM_MOUSEACTIVATE, WM_NCLBUTTONDOWN, WM_SIZE, WS_CLIPCHILDREN,
-            WS_EX_APPWINDOW, WS_EX_TOOLWINDOW, WS_POPUP,
+            DestroyWindow, GetCursorPos, IDCANCEL, MA_ACTIVATE, PostMessageW, SW_HIDE, SW_SHOW, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, SendMessageW,
+            SetForegroundWindow, SetWindowPos, ShowWindowAsync, WM_ACTIVATE, WM_APP, WM_CLOSE, WM_DESTROY, WM_DPICHANGED, WM_ERASEBKGND, WM_MOUSEACTIVATE,
+            WM_NCLBUTTONDOWN, WM_SIZE, WS_CLIPCHILDREN, WS_EX_APPWINDOW, WS_EX_TOOLWINDOW, WS_POPUP,
         },
     },
 };
 
-use super::chrome_view::{
-    host::{self, Timer, WebHost},
-    page_look,
-};
+use super::chrome_view::host::{self, Timer};
 use crate::core::{
-    app_pages, l, log,
-    shell_form::{self, BrowserFailure},
-    themes, ui,
+    l, log, themes,
+    tool_page::{self, FromPage},
+    ui,
     win_kit::{Point, Rect, Size, screen_from_rect},
 };
 
@@ -87,11 +75,6 @@ pub fn start_limit() -> Duration {
 pub fn set_start_limit(limit: Duration) {
     START_LIMIT_MS.store(limit.as_millis() as u64, Ordering::Relaxed);
 }
-
-/// How long the browser is kept after the window hid (WebToolWindow.KeepBrowser): the dialog's goes with it.
-pub const KEEP_BROWSER: Duration = Duration::from_secs(1);
-/// The page's file in wwwroot.
-pub const PAGE_FILE: &str = "dialog.html";
 const DWMWA_CLOAK: u32 = 13;
 const HTCAPTION: usize = 2;
 const HTBOTTOM: usize = 15;
@@ -238,10 +221,10 @@ async fn ask_async(q: Question) -> (i32, bool) {
         None => plain(&q),
     }
 }
-
-/// On a window thread: the page's dialog, modal (a nested loop), or Windows' own when the page can't be shown.
+/// On a window thread: the app's dialog, modal (a nested loop), or Windows' own when it can't be drawn.
 fn ask_here(q: Question) -> (i32, bool) {
-    if !web_view2_installed() {
+    // (No interface to draw it: the uninstaller's question, a start that failed before the window.)
+    if !tool_page::interface_there() {
         return plain(&q);
     }
     let asked = Instant::now();
@@ -271,20 +254,18 @@ fn ask_here(q: Question) -> (i32, bool) {
     let failed = dialog.failed.get();
     let why = dialog.fail_why.borrow().clone();
     let answer = (dialog.picked.get(), dialog.remembered.get());
-    let env = dialog.env.borrow_mut().take();
     dialog.dispose();
     drop(dialog);
     if failed {
         log::note(&format!(
             "Message box: {} ({} ms); Windows' dialog asked instead.",
-            why.as_deref().unwrap_or("its page didn't start"),
+            why.as_deref().unwrap_or("its face didn't start"),
             asked.elapsed().as_millis()
         ));
         let mut rest = q.clone();
         rest.timeout = remaining(q.timeout, asked.elapsed());
         return plain(&rest);
     }
-    wait_for_browser_exit(env);
     answer
 }
 
@@ -297,82 +278,6 @@ const FALLBACK_LEAST: Duration = Duration::from_secs(3);
 pub fn remaining(timeout: Option<Duration>, elapsed: Duration) -> Option<Duration> {
     timeout.map(|total| total.saturating_sub(elapsed).max(FALLBACK_LEAST))
 }
-
-static HAS_WEB_VIEW2: AtomicBool = AtomicBool::new(false);
-
-fn web_view2_installed() -> bool {
-    if HAS_WEB_VIEW2.load(Ordering::Relaxed) {
-        return true;
-    }
-    let mut version = PWSTR::null();
-    // SAFETY: plain call; the string it gives is freed by take_pwstr.
-    let found = unsafe { GetAvailableCoreWebView2BrowserVersionString(PCWSTR::null(), &mut version) }.is_ok() && !webview2_com::take_pwstr(version).is_empty();
-    HAS_WEB_VIEW2.store(found, Ordering::Relaxed);
-    found
-}
-
-/// Asked with no other window of the app open (the uninstaller's question, a failed start): its browser is let finish
-/// exiting, a moment at most, so what comes next (deleting the app's data) finds no file of it held open.
-fn wait_for_browser_exit(env: Option<ICoreWebView2Environment>) {
-    let Some(env) = env else { return };
-    if app_windows_open() {
-        return;
-    }
-    let exited = Rc::new(Cell::new(false));
-    let flag = exited.clone();
-    let mut token = 0i64;
-    // SAFETY: COM calls on this window thread; the handler runs here, inside the loop below.
-    let subscribed = unsafe {
-        env.cast::<ICoreWebView2Environment5>().and_then(|env5| {
-            env5.add_BrowserProcessExited(
-                &BrowserProcessExitedEventHandler::create(Box::new(move |_, _| {
-                    flag.set(true);
-                    Ok(())
-                })),
-                &mut token,
-            )
-        })
-    };
-    if subscribed.is_err() {
-        return;
-    }
-    let clock = Instant::now();
-    while !exited.get() && clock.elapsed() < Duration::from_millis(3000) {
-        // Application.DoEvents.
-        // SAFETY: plain calls on this thread's queue.
-        unsafe {
-            let mut msg: MSG = std::mem::zeroed();
-            while PeekMessageW(&mut msg, std::ptr::null_mut(), 0, 0, PM_REMOVE) != 0 {
-                TranslateMessage(&msg);
-                DispatchMessageW(&msg);
-            }
-        }
-        std::thread::sleep(Duration::from_millis(20));
-    }
-}
-
-/// Application.OpenForms.Count > 0.
-// PORT: WinForms counted the app's forms; here any visible top-level window of this process counts (the main window
-// is GPUI's), so a main window hidden in the tray no longer counts and the wait (3 s at most) runs then too.
-fn app_windows_open() -> bool {
-    unsafe extern "system" fn each(hwnd: HWND, found: LPARAM) -> i32 {
-        let mut pid = 0u32;
-        // SAFETY: plain calls; `found` is the bool below, alive for the whole enumeration.
-        unsafe {
-            GetWindowThreadProcessId(hwnd, &mut pid);
-            if pid == std::process::id() && IsWindowVisible(hwnd) != 0 {
-                *(found as *mut bool) = true;
-                return 0;
-            }
-        }
-        1
-    }
-    let mut found = false;
-    // SAFETY: the callback only writes `found`, which outlives the call.
-    unsafe { EnumWindows(Some(each), &mut found as *mut bool as LPARAM) };
-    found
-}
-
 /// The same question in Windows' own task dialog, for when the page can't be shown.
 fn plain(q: &Question) -> (i32, bool) {
     struct TimerData {
@@ -453,20 +358,20 @@ fn plain(q: &Question) -> (i32, bool) {
 fn host_wide(s: &str) -> Vec<u16> {
     crate::core::win_kit::wide(s)
 }
-
 // ───────────────────────── the window ─────────────────────────
 
-/// The app's own message box: dialog.html (ui/src/dialog/DialogView.tsx), the page's .modal in a small window of its own,
-/// in the app's theme (until 2026-11 hand-drawn WinForms). Buttons side by side, or stacked when they are choices
-/// (`Choice::detail`). Enter presses the default; Esc, ✕, Alt+F4 and the timeout pick the cancel one (the last by
-/// default). `ui::modal` shows it above the always-on-top windows.
+/// The app's own message box: its window here, its face the interface's (ui-gpui/src/toolpage/dialog.rs, drawn in a
+/// window of the interface's own put inside this one: core/tool_page.rs), in the app's theme. Buttons side by side, or
+/// stacked when they are choices (`Choice::detail`). Enter presses the default; Esc, ✕, Alt+F4 and the timeout pick the
+/// cancel one (the last by default). `ui::modal` shows it above the always-on-top windows.
 ///
-/// It waits unseen (cloaked) until its page has drawn, so it never flashes empty. Where the page can't start (no
-/// WebView2 yet: the question that offers to install it; a browser that won't start), Windows' own task dialog asks the
-/// same question instead.
-// PORT: Dialog was a WebToolWindow (WebToolWindow.cs, not in this package); the parts of that base a dialog uses (the
-// borderless tool window with Windows' shadow and rounded corners, the page of the app's profile, its messages, the
-// drag and resize by the page, the scale change) are written out here.
+/// It waits unseen (cloaked) until its face has drawn at the window's size, so it never flashes empty. Where it can't be
+/// drawn (no interface: the uninstaller's question, a failed start; the interface not answering in time), Windows' own
+/// task dialog asks the same question instead.
+///
+/// It runs on a thread of its own ("message box"), not the interface's: what the face says comes to it through a small
+/// queue and a posted message (WM_FACE), and the face's window, a child of this one, is moved only with
+/// SWP_ASYNCWINDOWPOS. Until 2026-11-19 its face was dialog.html in a WebView2 browser of its own.
 struct DialogWindow {
     hwnd: isize,
     /// Shown with an owner: a tool window (not on the taskbar).
@@ -475,16 +380,22 @@ struct DialogWindow {
     center: Point,
     data: Value,
     limit: Rc<Timer>,
+    /// Drawn but not yet at the window's size after this long: shown anyway (logged).
+    reveal_late: Rc<Timer>,
     picked: Cell<i32>,
     remembered: Cell<bool>,
+    /// Sized and placed for its face (still cloaked until the face has drawn at that size).
+    placed: Cell<bool>,
     shown: Cell<bool>,
     failed: Cell<bool>,
-    /// Why the page gave up, for error.log.
+    /// Why the face gave up, for error.log.
     fail_why: RefCell<Option<String>>,
-    env: RefCell<Option<ICoreWebView2Environment>>,
-    web: RefCell<Option<Rc<WebHost>>>,
-    ready: RefCell<Option<oneshot::Sender<()>>>,
-    /// The page's size in its own (CSS) pixels, as it last said.
+    /// The face: its id with the interface (0: none) and its window (0: not yet in this one).
+    page_id: Cell<u64>,
+    child: Cell<isize>,
+    /// What the face said, waiting for this thread's turn.
+    inbox: Arc<Mutex<Vec<FromPage>>>,
+    /// The face's size in its own (CSS) pixels, as it last said.
     page: Cell<Size>,
     closed: Cell<bool>,
     /// The owner `show_dialog` disabled (0: none): enabled again before the window goes, so Windows gives it the focus
@@ -494,6 +405,9 @@ struct DialogWindow {
     /// The timeout's timer, started when the window shows (dialog.Shown += timer.Start).
     on_shown_extra: RefCell<Option<std::rc::Weak<Timer>>>,
 }
+
+/// Posted to the dialog's window when the face said something (the inbox has it).
+const WM_FACE: u32 = WM_APP + 0x2B;
 
 impl DialogWindow {
     fn create(q: &Question) -> Rc<DialogWindow> {
@@ -511,13 +425,11 @@ impl DialogWindow {
             "cancel": q.cancel_index,
             "footnote": q.footnote,
             "remember": q.remember,
-            "theme": page_look::theme(),
-            "customTheme": page_look::custom_theme(),
             "language": l::language(),
         });
         // Without an owner (the uninstaller's question) it is a window of its own on the taskbar, so it can't get lost.
         let ex_style = if owned { WS_EX_TOOLWINDOW } else { WS_EX_APPWINDOW };
-        // Unseen and tiny until the page has said its size; there already, so it starts at that monitor's scale.
+        // Unseen and tiny until the face has said its size; there already, so it starts at that monitor's scale.
         let hwnd = host::create_window(host::CLASS_SHADOW, ui::TITLE, WS_POPUP | WS_CLIPCHILDREN, ex_style, owner.unwrap_or(0), Rect::new(center.x, center.y, 1, 1));
         let me = Rc::new(DialogWindow {
             hwnd,
@@ -525,14 +437,16 @@ impl DialogWindow {
             center,
             data,
             limit: Timer::new(start_limit().as_millis().max(1) as u32),
+            reveal_late: Timer::new(300),
             picked: Cell::new(q.cancel_index),
             remembered: Cell::new(false),
+            placed: Cell::new(false),
             shown: Cell::new(false),
             failed: Cell::new(false),
             fail_why: RefCell::new(None),
-            env: RefCell::new(None),
-            web: RefCell::new(None),
-            ready: RefCell::new(None),
+            page_id: Cell::new(0),
+            child: Cell::new(0),
+            inbox: Arc::new(Mutex::new(Vec::new())),
             page: Cell::new(Size::default()),
             closed: Cell::new(false),
             owner_off: Cell::new(0),
@@ -550,7 +464,18 @@ impl DialogWindow {
                 let Some(me) = weak.upgrade() else { return };
                 me.limit.stop();
                 if !me.shown.get() {
-                    me.fail(&format!("its page hadn't drawn after {:.0} s", start_limit().as_secs_f64()));
+                    me.fail(&format!("its face hadn't drawn after {:.0} s", start_limit().as_secs_f64()));
+                }
+            }
+        });
+        me.reveal_late.on_tick({
+            let weak = weak.clone();
+            move || {
+                let Some(me) = weak.upgrade() else { return };
+                me.reveal_late.stop();
+                if me.placed.get() && !me.shown.get() {
+                    log::note("Message box: its face hadn't drawn at the window's size after 300 ms; shown anyway.");
+                    me.reveal();
                 }
             }
         });
@@ -568,16 +493,36 @@ impl DialogWindow {
         match msg {
             WM_ERASEBKGND => Some(host::fill_background(h, w, themes::current().surface)),
             WM_SIZE => {
-                if let Some(web) = self.web.borrow().as_ref() {
-                    let s = host::client_size(self.hwnd);
-                    web.set_bounds(Rect::new(0, 0, s.width, s.height));
+                if self.child.get() != 0 {
+                    tool_page::fit(self.hwnd, self.child.get(), true);
                 }
                 Some(0)
             }
-            // A click on the page takes the keyboard (it needs it for typing, keys and Esc).
+            WM_FACE => {
+                let said = std::mem::take(&mut *self.inbox.lock().unwrap_or_else(|e| e.into_inner()));
+                for m in said {
+                    self.from_face(m);
+                }
+                Some(0)
+            }
+            // The face's window (another thread's) is told it has the keyboard: its keys (Enter, Esc, Tab) are its own.
+            WM_ACTIVATE => {
+                let child = self.child.get();
+                if child != 0 {
+                    // SAFETY: plain calls on the face's window; posted, never waited for across threads.
+                    unsafe {
+                        PostMessageW(child as HWND, WM_ACTIVATE, w & 0xFFFF, 0);
+                        if (w & 0xFFFF) != 0 {
+                            SetFocus(child as HWND);
+                        }
+                    }
+                }
+                None
+            }
+            // A click on the face takes the keyboard.
             WM_MOUSEACTIVATE => Some(MA_ACTIVATE as LRESULT),
             // Dragged onto a monitor of another scale: Windows' suggested place is taken, then only the size is set
-            // again from the page's size at the new scale (never the current size times the ratio).
+            // again from the face's size at the new scale (never the current size times the ratio).
             WM_DPICHANGED => {
                 // SAFETY: lparam is the RECT Windows suggests for the new scale.
                 let r = unsafe { &*(l as *const windows_sys::Win32::Foundation::RECT) };
@@ -594,6 +539,7 @@ impl DialogWindow {
             }
             WM_CLOSE => {
                 self.owner_back();
+                self.let_face_go();
                 // SAFETY: plain call on this window.
                 unsafe { DestroyWindow(h) };
                 Some(0)
@@ -602,6 +548,7 @@ impl DialogWindow {
                 self.owner_back();
                 self.closed.set(true);
                 self.limit.stop();
+                self.reveal_late.stop();
                 host::wake();
                 Some(0)
             }
@@ -638,179 +585,50 @@ impl DialogWindow {
         }
     }
 
+    /// Shown (cloaked): the interface is asked for its face, inside this window.
     fn on_shown(self: &Rc<Self>) {
         self.limit.start();
         let extra = self.on_shown_extra.borrow().as_ref().and_then(|w| w.upgrade());
         if let Some(timer) = extra {
             timer.start();
         }
-        let me = self.clone();
-        host::spawn(async move {
-            if !me.ensure_browser().await || me.closed.get() {
-                me.fail("its browser didn't start");
-                return;
-            }
-            let env = me.web.borrow().as_ref().and_then(|w| w.core()).and_then(|core| {
-                // SAFETY: plain COM call on this window thread.
-                unsafe { core.cast::<ICoreWebView2_2>().and_then(|c| c.Environment()).ok() }
-            });
-            *me.env.borrow_mut() = env;
-            let data = me.data.clone();
-            me.send_event("dialog", &data);
+        let (inbox, hwnd) = (self.inbox.clone(), self.hwnd);
+        let id = tool_page::register(move |_, m| {
+            inbox.lock().unwrap_or_else(|e| e.into_inner()).push(m);
+            // SAFETY: plain call; a window gone meanwhile just doesn't get it (the inbox goes with the dialog).
+            unsafe { PostMessageW(hwnd as HWND, WM_FACE, 0, 0) };
         });
-    }
-
-    /// Starts the page; false when it couldn't (logged).
-    async fn ensure_browser(self: &Rc<Self>) -> bool {
-        let env = match app_pages::create_environment().await {
-            Ok(env) => env,
-            Err(e) => {
-                log::write(&e);
-                return false;
-            }
-        };
-        if self.closed.get() {
-            return false;
-        }
-        let web = WebHost::new(self.hwnd, themes::current().surface);
-        let s = host::client_size(self.hwnd);
-        web.set_bounds(Rect::new(0, 0, s.width, s.height));
-        *self.web.borrow_mut() = Some(web.clone());
-        let core = match web.ensure(&env, None).await {
-            Ok(core) => core,
-            Err(e) => {
-                log::write(&e);
-                self.release_browser();
-                return false;
-            }
-        };
-        if self.closed.get() || web.is_disposed() {
-            return false;
-        }
-        if let Err(e) = app_pages::configure(&core, &env) {
-            log::write(&e);
-            self.release_browser();
-            return false;
-        }
-        let (tx, rx) = oneshot::channel::<()>();
-        *self.ready.borrow_mut() = Some(tx);
-        let weak = Rc::downgrade(self);
-        let mut token = 0i64;
-        // SAFETY: COM calls on this window thread; the handlers run here too.
-        let added: host::WinResult<()> = unsafe {
-            (|| {
-                // Loaded: its first "ready" can come before the page is listened to, so the load itself counts as ready too.
-                let w = weak.clone();
-                core.add_NavigationCompleted(
-                    &NavigationCompletedEventHandler::create(Box::new(move |_, args| {
-                        let (Some(me), Some(args)) = (w.upgrade(), args) else { return Ok(()) };
-                        if host::flag(|b| args.IsSuccess(b)) {
-                            if let Some(tx) = me.ready.borrow_mut().take() {
-                                let _ = tx.send(());
-                            }
-                        }
-                        Ok(())
-                    })),
-                    &mut token,
-                )?;
-                // Its page gone (the renderer crashed or hung, the browser gone). Not for a GPU process restart, which the
-                // page lives through (ShellForm.FailureOf).
-                let w = weak.clone();
-                let this_web = Rc::downgrade(&web);
-                core.add_ProcessFailed(
-                    &ProcessFailedEventHandler::create(Box::new(move |_, args| {
-                        let Some(args) = args else { return Ok(()) };
-                        let mut kind = COREWEBVIEW2_PROCESS_FAILED_KIND::default();
-                        args.ProcessFailedKind(&mut kind)?;
-                        if matches!(shell_form::failure_of(kind), BrowserFailure::ReloadPage | BrowserFailure::BrowserGone) {
-                            let (w, this_web) = (w.clone(), this_web.clone());
-                            host::defer(move || {
-                                let Some(me) = w.upgrade() else { return };
-                                let same = matches!((me.web.borrow().as_ref(), this_web.upgrade()), (Some(a), Some(b)) if Rc::ptr_eq(a, &b));
-                                if same && !me.closed.get() {
-                                    me.on_browser_failed();
-                                }
-                            });
-                        }
-                        Ok(())
-                    })),
-                    &mut token,
-                )?;
-                let w = weak.clone();
-                core.add_WebMessageReceived(
-                    &WebMessageReceivedEventHandler::create(Box::new(move |_, args| {
-                        let Some(args) = args else { return Ok(()) };
-                        let json = host::text(|p| args.WebMessageAsJson(p));
-                        let w = w.clone();
-                        host::defer(move || {
-                            if let Some(me) = w.upgrade() {
-                                me.on_message(&json);
-                            }
-                        });
-                        Ok(())
-                    })),
-                    &mut token,
-                )?;
-                core.Navigate(&HSTRING::from(format!("{}{}", app_pages::ORIGIN, PAGE_FILE)))?;
-                Ok(())
-            })()
-        };
-        if let Err(e) = added {
-            log::write(&e);
-            self.release_browser();
-            return false;
-        }
-        match select(rx, Box::pin(host::delay(Duration::from_secs(15)))).await {
-            Either::Left((Ok(()), _)) => true,
-            _ => {
-                log::note("Dialog: its page started but never said it was ready; the window stays hidden.");
-                self.release_browser();
-                false
-            }
+        self.page_id.set(id);
+        if !tool_page::open(id, "dialog", self.hwnd) {
+            self.fail("the interface wasn't there");
         }
     }
 
-    fn release_browser(&self) {
-        self.ready.borrow_mut().take();
-        if let Some(web) = self.web.borrow_mut().take() {
-            web.dispose();
-        }
-    }
-
-    /// An event to the page, as the app's page gets them: { type: "event", name, data }.
-    fn send_event(&self, name: &str, data: &Value) {
-        let core = self.web.borrow().as_ref().and_then(|w| w.core());
-        let Some(core) = core else { return };
-        let message = json!({ "type": "event", "name": name, "data": data }).to_string();
-        // SAFETY: plain COM call on this window thread.
-        if let Err(e) = unsafe { core.PostWebMessageAsJson(&HSTRING::from(message)) } {
-            log::write(&e);
-        }
-    }
-
-    /// The page's messages: { id, cmd, args }.
-    fn on_message(self: &Rc<Self>, json: &str) {
+    fn from_face(self: &Rc<Self>, m: FromPage) {
         if self.closed.get() {
             return;
         }
-        let Ok(root) = serde_json::from_str::<Value>(json) else {
-            log::note("Dialog: a message from its page couldn't be read.");
-            return;
-        };
+        match m {
+            FromPage::Attached(child) => {
+                self.child.set(child);
+                tool_page::fit(self.hwnd, child, true);
+                tool_page::event(self.page_id.get(), "dialog", self.data.clone());
+            }
+            FromPage::Message(root) => self.on_message(&root),
+            FromPage::Gone => self.fail("its face went"),
+        }
+    }
+
+    /// The face's messages: { cmd, args }.
+    fn on_message(self: &Rc<Self>, root: &Value) {
         let cmd = root.get("cmd").and_then(Value::as_str).unwrap_or("");
         let args = root.get("args").filter(|a| a.is_object());
         match (cmd, args) {
-            ("ready", _) => {
-                if let Some(tx) = self.ready.borrow_mut().take() {
-                    let _ = tx.send(());
-                }
-                self.on_page_ready();
-            }
             ("size", Some(args)) => {
-                let (w, h) = (num(args, "w"), num(args, "h"));
+                let (w, h, vw, vh, _) = tool_page::drawn(args);
                 if w > 0 && h > 0 {
                     self.page.set(Size::new(w, h));
-                    self.on_page_size(Size::new(w, h));
+                    self.on_page_size(Size::new(w, h), vw, vh);
                 }
             }
             ("drag", _) => self.begin_drag(HTCAPTION),
@@ -823,14 +641,9 @@ impl DialogWindow {
         }
     }
 
-    fn on_page_ready(&self) {
-        if !self.closed.get() && !self.failed.get() {
-            self.send_event("dialog", &self.data);
-        }
-    }
-
-    /// The page has drawn: sized to it (never taller than the screen; the text then scrolls), centred, shown.
-    fn on_page_size(&self, css: Size) {
+    /// The face has drawn: sized to it (never taller than the screen; the text then scrolls) and centred, still unseen;
+    /// shown once it has drawn at that size.
+    fn on_page_size(&self, css: Size, vw: i32, vh: i32) {
         if self.failed.get() || self.closed.get() {
             return;
         }
@@ -839,31 +652,40 @@ impl DialogWindow {
         let mut size = scaled(css, scale);
         size.width = size.width.min(work.width - (16.0 * scale) as i32);
         size.height = size.height.min(work.height - (40.0 * scale) as i32);
-        if self.shown.get() {
-            if host::window_rect(self.hwnd).size() != size {
-                // SAFETY: plain call.
-                unsafe { SetWindowPos(self.hwnd as HWND, std::ptr::null_mut(), 0, 0, size.width, size.height, SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOMOVE) };
+        if !self.placed.get() {
+            let at = ui::inside(Rect::new(self.center.x - size.width / 2, self.center.y - size.height / 2, size.width, size.height), work, 0);
+            // The place first, then the size (TrayWindow, 2026-10-30: set together on a screen at another scale, Windows
+            // resized it again by the ratio).
+            // SAFETY: plain calls.
+            unsafe {
+                SetWindowPos(self.hwnd as HWND, std::ptr::null_mut(), at.x, at.y, 0, 0, SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOSIZE);
             }
+            host::set_bounds(self.hwnd, Rect::new(at.x, at.y, size.width, size.height));
+            self.placed.set(true);
+            self.reveal_late.start();
+        } else if host::window_rect(self.hwnd).size() != size {
+            // SAFETY: plain call.
+            unsafe { SetWindowPos(self.hwnd as HWND, std::ptr::null_mut(), 0, 0, size.width, size.height, SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOMOVE) };
+        }
+        // Drawn at the window's own size (in the face's pixels, a pixel either way): on screen.
+        let client = host::client_size(self.hwnd);
+        let (cw, ch) = ((client.width as f32 / scale).round() as i32, (client.height as f32 / scale).round() as i32);
+        if !self.shown.get() && (cw - vw).abs() <= 1 && (ch - vh).abs() <= 1 {
+            self.reveal();
+        }
+    }
+
+    fn reveal(&self) {
+        if self.shown.replace(true) {
             return;
         }
-        let at = ui::inside(Rect::new(self.center.x - size.width / 2, self.center.y - size.height / 2, size.width, size.height), work, 0);
-        // The place first, then the size (TrayWindow, 2026-10-30: set together on a screen at another scale, Windows
-        // resized it again by the ratio).
-        // SAFETY: plain calls.
-        unsafe {
-            SetWindowPos(self.hwnd as HWND, std::ptr::null_mut(), at.x, at.y, 0, 0, SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOSIZE);
-        }
-        host::set_bounds(self.hwnd, Rect::new(at.x, at.y, size.width, size.height));
-        self.shown.set(true);
         self.limit.stop();
+        self.reveal_late.stop();
         self.cloak(false);
-        // SAFETY: plain calls (Activate()).
+        // SAFETY: plain calls (Activate()); the face's window gets the keyboard through WM_ACTIVATE.
         unsafe {
             SetForegroundWindow(self.hwnd as HWND);
             SetActiveWindow(self.hwnd as HWND);
-        }
-        if let Some(web) = self.web.borrow().as_ref() {
-            web.focus();
         }
     }
 
@@ -883,11 +705,6 @@ impl DialogWindow {
         }
     }
 
-    /// Its page crashed: Windows' own dialog asks the question instead.
-    fn on_browser_failed(&self) {
-        self.fail("its page crashed");
-    }
-
     fn fail(&self, why: &str) {
         if self.failed.get() || self.closed.get() {
             return;
@@ -897,7 +714,7 @@ impl DialogWindow {
         host::close(self.hwnd);
     }
 
-    /// The page's title row pressed and moved (or its bottom grip): Windows moves (sizes) the window with the pointer,
+    /// The face's title row pressed and moved (or its bottom grip): Windows moves (sizes) the window with the pointer,
     /// as by a title bar (a sizing border).
     fn begin_drag(&self, hit: usize) {
         // SAFETY: plain calls; the high bit says the button is down.
@@ -910,12 +727,28 @@ impl DialogWindow {
         }
     }
 
+    /// The face out of sight at once and closed by the interface on its own turn (before this window goes, so Windows
+    /// doesn't destroy another thread's window with it).
+    fn let_face_go(&self) {
+        let id = self.page_id.replace(0);
+        let child = self.child.replace(0);
+        if child != 0 {
+            // SAFETY: plain call on the face's window; not waited for across threads.
+            unsafe { ShowWindowAsync(child as HWND, SW_HIDE) };
+        }
+        if id != 0 {
+            tool_page::unregister(id);
+            tool_page::close(id);
+        }
+    }
+
     fn dispose(&self) {
         if self.disposed.replace(true) {
             return;
         }
         self.limit.dispose();
-        self.release_browser();
+        self.reveal_late.dispose();
+        self.let_face_go();
         if host::is_window(self.hwnd) {
             self.owner_back();
             // SAFETY: plain call on this window.

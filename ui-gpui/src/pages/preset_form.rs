@@ -9,6 +9,9 @@ use std::collections::HashSet;
 use gpui_kit::component::input::{InputEvent, InputState};
 use gpui_kit::{prelude::*, *};
 use serde_json::{Value, json};
+use crate::val::s;
+use crate::time::{civil, day_short};
+use crate::ask::answer;
 
 use crate::{
     images,
@@ -23,6 +26,7 @@ const SERVERS_EACH: [(&str, &str); 3] = [("eachFewest", "fewest"), ("eachMost", 
 const RESTART_HOURS: [i64; 5] = [0, 2, 4, 6, 12];
 const DELAYS: [i64; 9] = [0, 5, 10, 15, 30, 45, 60, 90, 120];
 const WEEK: [i64; 7] = [1, 2, 3, 4, 5, 6, 0];
+const ACCOUNT_PAGE: usize = 40;
 
 pub struct Form {
     id: String,
@@ -47,6 +51,9 @@ pub struct Form {
     /// Every account, the ticked first in their launch order.
     order: Vec<String>,
     ticked: HashSet<String>,
+    account_query: Entity<InputState>,
+    account_scope: &'static str,
+    account_limit: usize,
     gone: usize,
     afk: Option<bool>,
     rejoin: Option<bool>,
@@ -78,12 +85,6 @@ pub struct Form {
     held: Option<String>,
 }
 
-fn s<'a>(v: &'a Value, k: &str) -> &'a str {
-    v.get(k).and_then(Value::as_str).unwrap_or_default()
-}
-fn text(e: &Entity<InputState>, cx: &App) -> String {
-    e.read(cx).value().trim().to_string()
-}
 /// A link to a game or a Place ID (the box looks it up rather than searching for it).
 fn looks_like_target(v: &str) -> bool {
     let v = v.trim();
@@ -252,6 +253,13 @@ pub fn open(r: &mut Root, p: Option<Value>, window: &mut Window, cx: &mut Contex
         format!("{y:04}-{m:02}-{d:02}")
     };
     let name = mk(r.tr("ps.namePh"), s(&base, "name"), window, cx);
+    let account_query = cx.new(|cx| InputState::new(window, cx).placeholder(r.tr("ps.acc.search")));
+    cx.subscribe(&account_query, |r, _, event: &InputEvent, cx| {
+        if matches!(event, InputEvent::Change) && let Some(form) = r.auto.form.as_mut() {
+            form.account_limit = ACCOUNT_PAGE;
+            cx.notify();
+        }
+    }).detach();
     let place = mk(r.tr("ps.gamePh"), s(&base, "placeInput"), window, cx);
     let job = mk("xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx".into(), s(&base, "jobId"), window, cx);
     let follow = mk(r.tr("jp.placeholder"), s(&base, "followPlayer"), window, cx);
@@ -303,6 +311,9 @@ pub fn open(r: &mut Root, p: Option<Value>, window: &mut Window, cx: &mut Contex
         delay: base.get("delaySeconds").and_then(Value::as_i64),
         order,
         ticked,
+        account_query,
+        account_scope: "all",
+        account_limit: ACCOUNT_PAGE,
         gone,
         afk: tri_of(&base, "antiAfk"),
         rejoin: tri_of(&base, "autoRejoin"),
@@ -337,7 +348,7 @@ pub fn open(r: &mut Root, p: Option<Value>, window: &mut Window, cx: &mut Contex
         hours,
         dc_link,
     };
-    let start = text(&form.place, cx);
+    let start = input_text(&form.place, cx);
     r.auto.form = Some(form);
     // BLOXKEEP_SHOT_CAL=1: a shot with the schedule on, set to a date, and the date's calendar open.
     #[cfg(feature = "shot")]
@@ -345,25 +356,13 @@ pub fn open(r: &mut Root, p: Option<Value>, window: &mut Window, cx: &mut Contex
         if let Some(f) = r.auto.form.as_mut() {
             f.sch_on = true;
             f.once = true;
-            f.cal = Some(crate::calendar::start_month(parse_date(&text(&f.date, cx)).ok().flatten().as_deref()));
+            f.cal = Some(crate::calendar::start_month(parse_date(&input_text(&f.date, cx)).ok().flatten().as_deref()));
         }
     }
     if looks_like_target(&start) {
         resolve(r, start, cx);
     }
     cx.notify();
-}
-
-fn civil(days: i64) -> (i64, i64, i64) {
-    let z = days + 719468;
-    let era = z.div_euclid(146097);
-    let doe = z - era * 146097;
-    let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
-    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
-    let mp = (5 * doy + 2) / 153;
-    let d = doy - (153 * mp + 2) / 5 + 1;
-    let m = if mp < 10 { mp + 3 } else { mp - 9 };
-    (yoe + era * 400 + if m <= 2 { 1 } else { 0 }, m, d)
 }
 
 /// Looks the box's link or Place ID up (resolveGame): its name and icon under the box.
@@ -426,7 +425,7 @@ fn choose(r: &mut Root, g: Value, window: &mut Window, cx: &mut Context<Root>) {
     let place = g.get("placeId").and_then(Value::as_i64).unwrap_or(0);
     let name = s(&g, "name").to_string();
     let (place_box, name_box) = (f.place.clone(), f.name.clone());
-    let typed = text(&name_box, cx);
+    let typed = input_text(&name_box, cx);
     let follow_name = typed.is_empty() || typed == f.auto_name;
     if follow_name {
         f.auto_name = name.clone();
@@ -445,25 +444,25 @@ fn choose(r: &mut Root, g: Value, window: &mut Window, cx: &mut Context<Root>) {
 /// What Save sends (savePreset's args), or why it can't.
 fn collect(r: &Root, f: &Form, cx: &App) -> Result<Value, String> {
     // (A game looked up without its link in the box, as a shot's: its link.)
-    let place = match (text(&f.place, cx), f.game.as_ref().and_then(|g| g.get("placeId")).and_then(Value::as_i64)) {
+    let place = match (input_text(&f.place, cx), f.game.as_ref().and_then(|g| g.get("placeId")).and_then(Value::as_i64)) {
         (p, Some(id)) if p.is_empty() => format!("https://www.roblox.com/games/{id}"),
         (p, _) => p,
     };
     let server = if !place.is_empty() || f.server == "follow" { f.server.clone() } else { "any".into() };
     let example = |kind: &str| if kind == "time" { "20:00".to_string() } else if r.i18n.vietnamese { "24/12/2026".into() } else { "2026-12-24".into() };
     let bad = |kind: &str| r.i18n.tv(if kind == "time" { "tf.badTime" } else { "tf.badDate" }, &[("example", &example(kind))]);
-    let tm = parse_time(&text(&f.time, cx)).map_err(|_| bad("time"));
-    let dt = parse_date(&text(&f.date, cx)).map_err(|_| bad("date"));
-    let st = parse_time(&text(&f.stop_time, cx)).map_err(|_| bad("time"));
+    let tm = parse_time(&input_text(&f.time, cx)).map_err(|_| bad("time"));
+    let dt = parse_date(&input_text(&f.date, cx)).map_err(|_| bad("date"));
+    let st = parse_time(&input_text(&f.stop_time, cx)).map_err(|_| bad("time"));
     let tm = if f.sch_on { tm? } else { tm.unwrap_or(None) };
     let dt = if f.sch_on && f.once { dt? } else { dt.unwrap_or(None) };
     let st = if f.sch_on && f.stop == "at" { st? } else { st.unwrap_or(None) };
-    let hours: f64 = text(&f.hours, cx).replace(',', ".").parse().unwrap_or(-1.);
+    let hours: f64 = input_text(&f.hours, cx).replace(',', ".").parse().unwrap_or(-1.);
     if f.sch_on && f.stop == "after" && !((0.5..=168.).contains(&hours) && (hours * 2.).fract() == 0.) {
         return Err(r.tr("ps.schHoursBad"));
     }
     // Its own Discord channel: none keeps the saved link, "" goes back to Settings' channel, a link replaces it.
-    let link = text(&f.dc_link, cx);
+    let link = input_text(&f.dc_link, cx);
     let discord = if !f.dc_own {
         f.saved_discord.as_ref().map(|_| json!(""))
     } else if !link.is_empty() {
@@ -490,7 +489,7 @@ fn collect(r: &Root, f: &Form, cx: &App) -> Result<Value, String> {
         })
     };
     let mut args = json!({
-        "id": f.id, "name": text(&f.name, cx), "placeInput": place, "server": server, "jobId": text(&f.job, cx), "followPlayer": text(&f.follow, cx),
+        "id": f.id, "name": input_text(&f.name, cx), "placeInput": place, "server": server, "jobId": input_text(&f.job, cx), "followPlayer": input_text(&f.follow, cx),
         "ids": ids, "delaySeconds": f.delay, "antiAfk": f.afk, "autoRejoin": f.rejoin, "rejoinWith": with, "profile": f.profile,
         "restartHours": f.restart, "arrange": f.arrange, "schedule": schedule,
     });
@@ -522,27 +521,23 @@ fn save(r: &mut Root, cx: &mut Context<Root>) {
     }
     let rx = link.call("savePreset", args);
     cx.notify();
-    cx.spawn(async move |this, cx| {
-        let answer = rx.await;
-        let _ = this.update(cx, |r, cx| {
-            match answer {
-                Ok(Ok(_)) => r.auto.form = None,
-                Ok(Err(e)) => {
-                    if let Some(f) = r.auto.form.as_mut() {
-                        f.saving = false;
-                        f.error = Some(e);
-                    }
-                }
-                Err(_) => {
-                    if let Some(f) = r.auto.form.as_mut() {
-                        f.saving = false;
-                    }
+    answer(rx, cx, move |r, answer, cx| {
+        match answer {
+            Ok(Ok(_)) => r.auto.form = None,
+            Ok(Err(e)) => {
+                if let Some(f) = r.auto.form.as_mut() {
+                    f.saving = false;
+                    f.error = Some(e);
                 }
             }
-            cx.notify();
-        });
-    })
-    .detach();
+            Err(_) => {
+                if let Some(f) = r.auto.form.as_mut() {
+                    f.saving = false;
+                }
+            }
+        }
+        cx.notify();
+    });
 }
 
 // ───────────────────────── drawing ─────────────────────────
@@ -606,10 +601,6 @@ fn tri(root: &Root, cx: &mut Context<Root>, key: &'static str, v: Option<bool>, 
 
 fn labelled(label: String, body: impl IntoElement) -> Div {
     div().flex().flex_col().gap(px(8.)).child(div().text_size(px(T_M)).font_weight(FontWeight::MEDIUM).text_color(c(TEXT_2)).child(label)).child(body)
-}
-
-fn note(t: String) -> Div {
-    div().text_size(px(T_S)).line_height(px(17.)).text_color(c(MUTED)).child(t)
 }
 
 fn boxed(e: &Entity<InputState>) -> Field {
@@ -713,7 +704,7 @@ fn select(
             });
         }
     }
-    wrap.child(div().absolute().top(px(44.)).left_0().child(deferred(anchored().anchor(Anchor::TopLeft).snap_to_window_with_margin(px(8.)).child(pop(SharedString::from(format!("{key}-pop")), open, menu))).with_priority(1)))
+    wrap.child(popup(PopAt::BelowLeft(44.), SharedString::from(format!("{key}-pop")), open, menu))
 }
 
 /// The one-off date: typed, or picked from Bloxkeep's own calendar under the box's calendar button (TimeField.tsx's
@@ -723,13 +714,13 @@ fn date_box(root: &Root, f: &Form, cx: &mut Context<Root>) -> Div {
         if let Some(f) = r.auto.form.as_mut() {
             let just = f.cal_closed.is_some_and(|at| at.elapsed().as_millis() < 300);
             f.cal_closed = None;
-            f.cal = if just || f.cal.is_some() { None } else { Some(crate::calendar::start_month(parse_date(&text(&f.date, cx)).ok().flatten().as_deref())) };
+            f.cal = if just || f.cal.is_some() { None } else { Some(crate::calendar::start_month(parse_date(&input_text(&f.date, cx)).ok().flatten().as_deref())) };
         }
         cx.notify();
     }));
     let wrap = div().relative().w(px(180.)).child(boxed(&f.date).child(button));
     let Some(shown) = f.cal else { return wrap };
-    let chosen = parse_date(&text(&f.date, cx)).ok().flatten();
+    let chosen = parse_date(&input_text(&f.date, cx)).ok().flatten();
     let panel = crate::calendar::panel("ps-cal", &root.i18n, shown, chosen.as_deref(), true, cx, |r: &mut Root, act, window, cx| {
         let Some(f) = r.auto.form.as_mut() else { return };
         match act {
@@ -799,12 +790,13 @@ pub fn form(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
     };
     // (A setting's name beside its choice where the column has room for both.)
     let stacked = col_w < 480.;
-    let place = text(&f.place, cx);
+    let place = input_text(&f.place, cx);
     // (A game looked up counts as set, its link or not in the box.)
     let place_set = !place.is_empty() || f.game.is_some();
     let server = if place_set || f.server == "follow" { f.server.clone() } else { "any".into() };
     let accounts = root.accounts();
-    let by_id = |id: &str| accounts.iter().find(|a| s(a, "id") == id);
+    let accounts_by_id: std::collections::HashMap<_, _> = accounts.iter().map(|a| (s(a, "id"), a)).collect();
+    let by_id = |id: &str| accounts_by_id.get(id).copied();
 
     // Name and game.
     let game_line = f.game.as_ref().map(|g| {
@@ -881,11 +873,11 @@ pub fn form(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
         row
     };
     let game_extra = match &f.found {
-        Some((_, None)) => note(root.tr("games.searching")).into_any_element(),
-        Some((_, Some(list))) if list.is_empty() => note(root.tr("picker.noResults")).into_any_element(),
+        Some((_, None)) => small_note(root.tr("games.searching")).into_any_element(),
+        Some((_, Some(list))) if list.is_empty() => small_note(root.tr("picker.noResults")).into_any_element(),
         Some((_, Some(list))) => found_list(list.iter().take(8).cloned().collect(), cx).into_any_element(),
         None if place.is_empty() && f.game.is_none() && !recent.is_empty() => {
-            div().flex().flex_col().gap(px(8.)).child(note(root.tr("picker.recent"))).child(pick_row(recent, "ps-recent", cx)).into_any_element()
+            div().flex().flex_col().gap(px(8.)).child(small_note(root.tr("picker.recent"))).child(pick_row(recent, "ps-recent", cx)).into_any_element()
         }
         None => div().into_any_element(),
     };
@@ -916,6 +908,42 @@ pub fn form(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
     // Accounts: ticked first in launch order (their place a number); a ticked one's grip drags it among them, its
     // arrows move it a place.
     let ticked_n = f.ticked.len();
+    let query = input_text(&f.account_query, cx);
+    let query_folded = folded(&query);
+    let matching: Vec<_> = f.order.iter().enumerate().filter_map(|(i, id)| {
+        let a = by_id(id)?;
+        let matches = match f.account_scope {
+            "group" => !s(a, "group").is_empty() && folded(s(a, "group")).contains(&query_folded),
+            "label" => !label(a).is_empty() && folded(&label(a)).contains(&query_folded),
+            _ => crate::pages::accounts::found(a, &query),
+        };
+        matches.then_some((i, id, a))
+    }).collect();
+    let scope = ["all", "group", "label"].into_iter().fold(Segmented::new("ps-acc-scope", f.account_scope), |choices, scope| {
+        choices.item(scope, root.tr(&format!("ps.acc.{scope}")))
+    }).on_select({
+        let this = cx.weak_entity();
+        move |key, _, cx| {
+            let _ = this.update(cx, |r, cx| {
+                if let Some(f) = r.auto.form.as_mut() {
+                    f.account_scope = match key.as_ref() { "group" => "group", "label" => "label", _ => "all" };
+                    f.account_limit = ACCOUNT_PAGE;
+                    cx.notify();
+                }
+            });
+        }
+    });
+    let select_ids: Vec<_> = matching.iter().filter(|(_, id, _)| !f.ticked.contains(*id)).map(|(_, id, _)| (*id).clone()).collect();
+    let count_to_select = select_ids.len();
+    let filter = div().flex().flex_col().gap(px(8.))
+        .child(scope)
+        .child(field(&f.account_query, Some("search")))
+        .when(!matching.is_empty(), |d| d.child(Button::new("ps-match-accounts",
+            root.i18n.tv("ps.acc.pick", &[("n", &count_to_select.to_string())])).small().disabled(count_to_select == 0)
+            .on_click(edit(cx, move |f| {
+                f.ticked.extend(select_ids.iter().cloned());
+                f.order.sort_by_key(|id| !f.ticked.contains(id));
+            }))));
     let mut acc_list = div()
         .flex()
         .flex_col()
@@ -923,15 +951,15 @@ pub fn form(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
         .on_mouse_up(MouseButton::Left, cx.listener(|r, _, _, cx| drop_held(r, cx)))
         .on_mouse_up_out(MouseButton::Left, cx.listener(|r, _, _, cx| drop_held(r, cx)));
     let ticked_order: Vec<String> = f.order.iter().filter(|id| f.ticked.contains(*id)).cloned().collect();
-    for (i, id) in f.order.iter().enumerate() {
-        let Some(a) = by_id(id) else { continue };
+    for &(i, id, a) in matching.iter().take(f.account_limit) {
         let on = f.ticked.contains(id);
-        let at = ticked_order.iter().position(|x| x == id);
+        let at = on.then_some(i);
         let held = f.held.as_deref() == Some(id.as_str());
         let (up_id, down_id) = (id.clone(), id.clone());
         let up = edit(cx, move |f| move_in(f, &up_id, -1));
         let down = edit(cx, move |f| move_in(f, &down_id, 1));
         let user = s(a, "username");
+        let group = s(a, "group");
         let handle = if on && ticked_n > 1 {
             let hid = id.clone();
             let tip: SharedString = root.tr("lo.drag").into();
@@ -991,7 +1019,12 @@ pub fn form(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
                         .flex_col()
                         .gap(px(1.))
                         .child(div().truncate().text_size(px(T_M)).font_weight(FontWeight::SEMIBOLD).text_color(if on { c(TEXT) } else { c(TEXT_2) }).child(label(a)))
-                        .when(!user.is_empty(), |d| d.child(div().truncate().text_size(px(T_S)).text_color(c(MUTED)).child(format!("@{user}")))),
+                        .when(!user.is_empty() || !group.is_empty(), |d| d.child(div().truncate().text_size(px(T_S)).text_color(c(MUTED))
+                            .child(match (group.is_empty(), user.is_empty()) {
+                                (false, false) => format!("{group} · @{user}"),
+                                (false, true) => group.to_string(),
+                                _ => format!("@{user}"),
+                            }))),
                 )
                 .when_some(at, |d, k| {
                     // (No place numbers: owner 2026-11-14, no numbers on accounts.)
@@ -1081,7 +1114,7 @@ pub fn form(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
         ))
         .child(setting(root.tr("ps.opt.restart"), stacked, false, restart_box))
         .child(setting(root.tr("ps.opt.arrange"), stacked, false, tri(root, cx, "ps-arrange", f.arrange, follow_set(tile_on), |f, v| f.arrange = v)))
-        .when(!opt_notes.is_empty(), |d| d.child(div().pt(px(4.)).flex().flex_col().gap(px(6.)).children(opt_notes.into_iter().map(note))));
+        .when(!opt_notes.is_empty(), |d| d.child(div().pt(px(4.)).flex().flex_col().gap(px(6.)).children(opt_notes.into_iter().map(small_note))));
 
     // Discord.
     let dc_on = root.state.pointer("/discord/enabled").and_then(Value::as_bool).unwrap_or(false);
@@ -1104,25 +1137,21 @@ pub fn form(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
             let pid = f.id.clone();
             d.child(div().flex().items_center().gap(px(8.)).child(div().flex_1().min_w_0().child(boxed(&f.dc_link))).child(Button::new("ps-dc-test", root.tr("dc.test")).on_click(
                 cx.listener(move |r, _, _, cx| {
-                    let url = r.auto.form.as_ref().map(|f| text(&f.dc_link, cx)).unwrap_or_default();
+                    let url = r.auto.form.as_ref().map(|f| input_text(&f.dc_link, cx)).unwrap_or_default();
                     let Some(link) = r.link.clone() else { return };
                     let rx = link.call("presetDiscordTest", json!({ "id": pid, "url": url }));
-                    cx.spawn(async move |this, cx| {
-                        let answer = rx.await;
-                        let _ = this.update(cx, |r, cx| {
-                            r.toast = Some(match answer {
-                                Ok(Ok(_)) => (r.tr("dc.testOk"), "ok".into()),
-                                Ok(Err(e)) => (e, "bad".into()),
-                                Err(_) => return,
-                            });
-                            cx.notify();
+                    answer(rx, cx, move |r, answer, cx| {
+                        r.toast = Some(match answer {
+                            Ok(Ok(_)) => (r.tr("dc.testOk"), "ok".into()),
+                            Ok(Err(e)) => (e, "bad".into()),
+                            Err(_) => return,
                         });
-                    })
-                    .detach();
+                        cx.notify();
+                    });
                 }),
             )))
         })
-        .child(note(dc_note.join("\n")))
+        .child(small_note(dc_note.join("\n")))
         .when(!dc_on, |d| d.child(div().flex().items_start().gap(px(8.)).text_size(px(T_S)).line_height(px(17.)).text_color(c(WARN)).child(icon("info", 14., c(WARN)).mt(px(1.))).child(root.tr("ps.dc.off"))));
 
     // Schedule.
@@ -1152,7 +1181,7 @@ pub fn form(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
                         .justify_center()
                         .rounded(px(R_S))
                         .when(!on, |s| s.bg(ca(WHITE, 0.04)))
-                        .child(day_name(root, d))
+                        .child(day_short(d))
                         .on_click(edit(cx, move |f| {
                             if let Some(k) = f.days.iter().position(|x| *x == d) {
                                 f.days.remove(k);
@@ -1176,7 +1205,7 @@ pub fn form(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
                 .when(f.stop == "after", |d| d.child(div().flex().items_center().gap(px(10.)).child(div().w(px(100.)).child(boxed(&f.hours))).child(div().text_size(px(T_M)).text_color(c(MUTED)).child(root.tr("ps.schHours")))))
                 .when(f.stop == "at", |d| d.child(div().flex().items_center().gap(px(10.)).child(div().w(px(120.)).child(boxed(&f.stop_time))).child(div().text_size(px(T_M)).text_color(c(MUTED)).child(root.tr("ps.schStopTime"))))),
         ))
-        .child(note(root.tr("ps.schNote")));
+        .child(small_note(root.tr("ps.schNote")));
     let sch_switch = Switch::new("ps-sch-on", f.sch_on)
         .on_toggle({
             let this = cx.entity().downgrade();
@@ -1230,7 +1259,16 @@ pub fn form(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
         root.tr("ps.accounts"),
         Some(root.tr("ps.order")),
         Some(div().text_size(px(T_SEC)).text_color(c(MUTED)).font_features(tnum()).child(format!("{ticked_n}/{}", accounts.len())).into_any_element()),
-        div().flex().flex_col().gap(px(10.)).children(gone).child(acc_list),
+        div().flex().flex_col().gap(px(10.)).children(gone).child(filter)
+            .when(matching.is_empty(), |d| d.child(small_note(root.tr("tabs.noMatches"))))
+            .child(acc_list)
+            .when(matching.len() > f.account_limit, |d| d.child(Button::new("ps-more-accounts", root.tr("ps.acc.more")).quiet()
+                .on_click(cx.listener(|r, _, _, cx| {
+                    if let Some(f) = r.auto.form.as_mut() {
+                        f.account_limit += ACCOUNT_PAGE;
+                        cx.notify();
+                    }
+                })))),
     );
 
     let general = section(
@@ -1245,7 +1283,7 @@ pub fn form(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
             .child(labelled(root.tr("ps.game"), div().flex().flex_col().gap(px(10.)).child(boxed(&f.place)).children(game_line).child(game_extra)))
             .child(choices)
             .when(server == "job", |d| d.child(labelled(root.tr("ps.job"), boxed(&f.job))))
-            .when(server == "follow", |d| d.child(labelled(root.tr("ps.follow"), div().flex().flex_col().gap(px(6.)).child(boxed(&f.follow)).child(note(root.tr("ps.followNote")))))),
+            .when(server == "follow", |d| d.child(labelled(root.tr("ps.follow"), div().flex().flex_col().gap(px(6.)).child(boxed(&f.follow)).child(small_note(root.tr("ps.followNote")))))),
     );
     let windows = section(root.tr("ps.opts"), Some(root.tr("ps.optsDesc")), None, opts);
     let discord = section("Discord".into(), None, None, dc);
@@ -1261,7 +1299,7 @@ pub fn form(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
     });
 
     // The head: back to the list, the preset's name as it is typed, and under it what it does at a glance.
-    let typed = text(&f.name, cx);
+    let typed = input_text(&f.name, cx);
     let title = if !typed.is_empty() {
         typed
     } else {
@@ -1270,7 +1308,7 @@ pub fn form(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
     let mut summary: Vec<(String, Option<Hsla>)> = Vec::new();
     summary.push((
         match (&f.game, server.as_str()) {
-            (_, "follow") => root.i18n.tv("ps.following", &[("name", &text(&f.follow, cx))]),
+            (_, "follow") => root.i18n.tv("ps.following", &[("name", &input_text(&f.follow, cx))]),
             (Some(g), _) => crate::pages::home::clean(s(g, "name")),
             (None, _) if !place.is_empty() => place.clone(),
             _ => root.tr("ps.noGame"),
@@ -1283,8 +1321,8 @@ pub fn form(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
     }
     if f.sch_on {
         let days: Vec<i64> = WEEK.iter().copied().filter(|d| f.days.contains(d)).collect();
-        let time = parse_time(&text(&f.time, cx)).ok().flatten().unwrap_or_default();
-        let date = if f.once { parse_date(&text(&f.date, cx)).ok().flatten().unwrap_or_default() } else { String::new() };
+        let time = parse_time(&input_text(&f.time, cx)).ok().flatten().unwrap_or_default();
+        let date = if f.once { parse_date(&input_text(&f.date, cx)).ok().flatten().unwrap_or_default() } else { String::new() };
         summary.push((crate::pages::auto::schedule_text(root, &json!({ "time": time, "days": days, "date": date })), Some(c(TEXT_2))));
     } else {
         summary.push((root.tr("au.noSchedule"), None));
@@ -1319,21 +1357,17 @@ pub fn form(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
             r.confirm(r.tr("ps.deleteTitle"), r.i18n.tv("ps.deleteQ", &[("name", &name.unwrap_or_default())]), r.tr("ps.delete"), true, Some("deletePreset"), window, cx, move |r, cx| {
                 let Some(link) = r.link.clone() else { return };
                 let rx = link.call("deletePreset", json!({ "id": pid }));
-                cx.spawn(async move |this, cx| {
-                    let answer = rx.await;
-                    let _ = this.update(cx, |r, cx| {
-                        match answer {
-                            Ok(Ok(_)) => {
-                                r.auto.form = None;
-                                r.toast = Some((r.tr("ps.deleted"), "ok".into()));
-                            }
-                            Ok(Err(e)) => r.toast = Some((e, "bad".into())),
-                            Err(_) => {}
+                answer(rx, cx, move |r, answer, cx| {
+                    match answer {
+                        Ok(Ok(_)) => {
+                            r.auto.form = None;
+                            r.toast = Some((r.tr("ps.deleted"), "ok".into()));
                         }
-                        cx.notify();
-                    });
-                })
-                .detach();
+                        Ok(Err(e)) => r.toast = Some((e, "bad".into())),
+                        Err(_) => {}
+                    }
+                    cx.notify();
+                });
             });
         }))
     });
@@ -1394,14 +1428,6 @@ fn move_in(f: &mut Form, id: &str, dir: i32) {
     let j = i as i32 + dir;
     if j >= 0 && (j as usize) < f.ticked.len() {
         f.order.swap(i, j as usize);
-    }
-}
-
-fn day_name(root: &Root, d: i64) -> String {
-    if root.i18n.vietnamese {
-        if d == 0 { "CN".into() } else { format!("T{}", d + 1) }
-    } else {
-        ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d.rem_euclid(7) as usize].into()
     }
 }
 

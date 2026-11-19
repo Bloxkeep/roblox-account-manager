@@ -72,8 +72,8 @@ unsafe extern "system" fn on_win_event(_hook: HWINEVENTHOOK, event_type: u32, hw
     }
     DRAG.with(|d| d.set(None));
     if let Some(release) = cursor_pos() {
-        // Not waited for (`_ = KeepDraggedSizeAsync(…)`): its waits run on a thread of their own.
-        std::thread::spawn(move || keep_dragged_size(drag.0, drag.1, drag.2, release));
+        // Not waited for (`_ = KeepDraggedSizeAsync(…)`): its waits run on a pool thread.
+        crate::threads::run(move || keep_dragged_size(drag.0, drag.1, drag.2, release));
     }
 }
 
@@ -105,7 +105,7 @@ impl App {
     pub fn watch_drags(&self) {
         DISPOSED.store(false, Ordering::SeqCst);
         let (tx, rx) = std::sync::mpsc::channel::<(u32, isize)>();
-        let spawned = crate::net::Named::new("drag-hook".into()).spawn(move || {
+        let spawned = crate::threads::own("drag-hook", move || {
             // SAFETY: the hook calls `on_win_event` on this thread, out of context, for move/size start and end only; it
             // is removed below on the same thread, as UnhookWinEvent requires.
             let hook = unsafe {

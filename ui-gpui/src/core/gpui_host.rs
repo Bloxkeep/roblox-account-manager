@@ -59,6 +59,11 @@ pub fn set_receiver(f: impl Fn(String) + Send + Sync + 'static) {
     *RECEIVER.lock().unwrap_or_else(|e| e.into_inner()) = Some(Box::new(f));
 }
 
+/// Whether the interface listens (it has started: set_receiver was called).
+pub fn listening() -> bool {
+    RECEIVER.lock().unwrap_or_else(|e| e.into_inner()).is_some()
+}
+
 /// A message for the interface (AppController's postJson); in order, from any thread.
 pub fn post(json: String) {
     if let Some(f) = RECEIVER.lock().unwrap_or_else(|e| e.into_inner()).as_ref() {

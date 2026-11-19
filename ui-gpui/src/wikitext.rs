@@ -436,17 +436,13 @@ static NOT_HERE: LazyLock<Regex> = LazyLock::new(|| {
     re(r"(?i)^(File|Image|User|User talk|Special|Talk|Message Wall|Board|Thread|MediaWiki|Template|Module|Help|Forum|Blog|User blog)( talk)?:")
 });
 
-fn decode(s: &str) -> String {
-    percent_encoding::percent_decode_str(s).decode_utf8_lossy().into_owned()
-}
-
 /// What a page's link does, by where it points.
 pub fn link_of(href: &str, site: &str) -> Option<Link> {
     if href.is_empty() {
         return None;
     }
     if let Some(a) = href.strip_prefix('#') {
-        return Some(Link::Anchor(decode(a)));
+        return Some(Link::Anchor(crate::target::unescape(a)));
     }
     let base = url::Url::parse(&format!("{site}/")).ok()?;
     let u = base.join(href).ok()?;
@@ -460,10 +456,10 @@ pub fn link_of(href: &str, site: &str) -> Option<Link> {
     let lang = base.path().trim_end_matches('/').to_string();
     let prefix = format!("{lang}/wiki/");
     if u.host_str() == base.host_str() && u.path().starts_with(&prefix) {
-        let title = decode(&u.path()[prefix.len()..]).replace('_', " ");
+        let title = crate::target::unescape(&u.path()[prefix.len()..]).replace('_', " ");
         // Its own pages open here; files, users, specials and talk open on the wiki.
         if !title.is_empty() && !NOT_HERE.is_match(&title) && u.query().is_none() {
-            return Some(Link::Page { title, anchor: u.fragment().map(decode) });
+            return Some(Link::Page { title, anchor: u.fragment().map(crate::target::unescape) });
         }
     }
     let out = u.to_string();

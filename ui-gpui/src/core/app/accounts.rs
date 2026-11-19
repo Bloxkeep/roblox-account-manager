@@ -121,7 +121,7 @@ impl BootProgress {
 
 /// `RobloxApi.CancelQuickLoginAsync(login)`, not waited for.
 fn cancel_quick_login_later(login: QuickLoginCode) {
-    let _ = crate::net::Named::new("quick-login-cancel".into()).spawn(move || {
+    crate::threads::run(move || {
         let _ = roblox_api::cancel_quick_login(&login);
     });
 }
@@ -1001,6 +1001,23 @@ impl App {
             let mut changed = 0;
             for account in d.accounts.iter_mut().filter(|a| ids.contains(&a.id)) {
                 account.fps_cap = fps;
+                changed += 1;
+            }
+            changed
+        })?;
+        self.persist();
+        self.push_state();
+        Ok(json!(changed))
+    }
+
+    /// Puts the accounts in a group ("": out of theirs). The group alone: the edit form's command writes the note
+    /// and the name with it, for one account.
+    pub fn set_group(&self, ids: &[Guid], group: &str) -> Res<Value> {
+        let group = group.trim().to_string();
+        let changed = self.vault_mut(|d| {
+            let mut changed = 0;
+            for account in d.accounts.iter_mut().filter(|a| ids.contains(&a.id)) {
+                account.group = group.clone();
                 changed += 1;
             }
             changed

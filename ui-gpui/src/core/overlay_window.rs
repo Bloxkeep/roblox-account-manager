@@ -7,7 +7,9 @@
 // - Pick: the window's picture as it was a moment ago, frozen, with a magnifier; a click takes the place and its colour.
 // - Screen: Pick with no game, over the monitor under the pointer (`screen_picker`); the colour only.
 // A bar at its top says what it is for, with Done (or Cancel); Esc or Enter ends it too. It ends by itself when the
-// window goes. The dimming is the window's own opacity: a see-through colour key would let clicks through to the game.
+// window goes. The dimming is the page's own see-through black over the game (the window has no surface of its own:
+// `see_through`), not a see-through colour key, which would let clicks through to the game; until 2026-11-19 it was the
+// whole window's opacity, which dimmed the dots, boxes and bar with it.
 // The page only says where things went (parts of the picture area); the colour of a click is read here, from the
 // picture itself.
 use std::{
@@ -116,10 +118,6 @@ impl OverlayWindow {
         });
         me.tool.bind(Rc::downgrade(&me) as Weak<dyn WebTool>);
         me.tool.set_text(super::ui::TITLE);
-        // Editing: the game shows through, dimmed. Picking: the frozen picture covers it whole.
-        if matches!(mode, Mode::Edit | Mode::Areas) {
-            me.tool.set_opacity(0.62);
-        }
         if let Some(s) = screen {
             me.client.set(s);
             me.tool.set_bounds(s);
@@ -312,6 +310,9 @@ impl WebTool for OverlayWindow {
     }
     fn rounded(&self) -> bool {
         false
+    }
+    fn see_through(&self) -> bool {
+        true
     }
     fn shadow(&self) -> bool {
         false

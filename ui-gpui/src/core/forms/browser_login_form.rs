@@ -584,7 +584,7 @@ impl LoginWindow {
             web.dispose();
         }
         if let Some(dir) = self.profile_dir.borrow_mut().take() {
-            std::thread::spawn(move || delete_profile(&dir));
+            crate::threads::run(move || delete_profile(&dir));
         }
     }
 

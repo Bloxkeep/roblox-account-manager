@@ -6,6 +6,7 @@
 use std::collections::HashMap;
 
 use serde_json::Value;
+use crate::val::int;
 
 /// A stay of an account in a game (times in milliseconds since 1970).
 #[derive(Debug, Clone, Default)]
@@ -44,10 +45,6 @@ pub struct Played {
 
 /// How far back the history is counted.
 pub const HISTORY_MS: i64 = 90 * 24 * 3600 * 1000;
-
-fn int(v: &Value, k: &str) -> i64 {
-    v.get(k).and_then(Value::as_i64).unwrap_or(0)
-}
 
 /// The app's "playSessions" answer, read: the stays, the games it knows, and its clock.
 pub fn read(v: &Value) -> (Vec<Session>, HashMap<i64, Known>, i64) {

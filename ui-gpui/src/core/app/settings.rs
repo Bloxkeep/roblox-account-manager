@@ -10,6 +10,7 @@ use super::controller::{JsonKind, error_text, has, int32_of, long_of, opt_bool, 
 use super::memory::RAM_LIMIT_CHOICES;
 use super::presets::RESTART_ABOVE_CHOICES;
 use super::server_hop::HOP_ABOVE_CHOICES;
+use super::tray::MULTI_CLOSE_FIRST;
 use crate::core::base::{Fail, Res, Stamp};
 use crate::core::{
     anti_afk, l, log, multi_instance, prefs, roblox_flags, roblox_game_settings, roblox_installs, roblox_launcher, roblox_processes, start_with_windows, themes,
@@ -143,6 +144,16 @@ impl App {
         let mut fx = Effects::default();
         // The disk scan for other launchers before the vault's lock, not under it: every other command would wait on it.
         let others: Option<Vec<String>> = opt_str(a, "launchVia").and_then(|v| roblox_launcher::other_name(&v)).map(|_| roblox_installs::find_other_bootstrappers());
+        // Roblox links: one switch for the PC, in the registry with the links, not in the vault (roblox_links).
+        if let Some(own) = opt_bool(a, "ownRobloxLinks") {
+            if !own {
+                crate::core::roblox_links::turn_off();
+            } else if let Err(e) = crate::core::roblox_links::turn_on() {
+                log::note(&format!("Roblox links: couldn't take them ({e})."));
+                self.push_state();
+                return Err(Fail::user(l::f("Couldn't turn it on: {0}", &[&error_text(&e)])));
+            }
+        }
         self.vault_mut(|d| {
             let s = &mut d.settings;
             if let Some(place) = opt_str(a, "lastPlaceInput") {
@@ -316,6 +327,9 @@ impl App {
             }
             self.controller.last_armed.set(multi_instance::armed());
             log::note(&format!("Settings: Multi-Roblox turned {} (armed now: {}).", if multi { "on" } else { "off" }, if multi_instance::armed() { "True" } else { "False" }));
+            if multi && !multi_instance::armed() {
+                self.warn(&l::t(MULTI_CLOSE_FIRST));
+            }
             App::keep_multi_at_start(multi);
         }
         self.persist();

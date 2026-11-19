@@ -10,6 +10,8 @@ use serde_json::{Value, json};
 use gpui_kit::component::input::{Input, InputState};
 
 use crate::{kit::*, shell::Root, theme::*};
+use crate::val::flag;
+use crate::ask::answer;
 
 #[derive(Default)]
 pub struct Data {
@@ -134,7 +136,7 @@ fn opening(layer: Div, lines: Vec<AnyElement>, sign: Div, ms: f32, window: &Wind
             .w(px(cw))
             .h(px(ch))
             .rounded(px(24.))
-            .bg(c(PANEL))
+            .map(card_ground)
             .border_1()
             .border_color(ca(WHITE, 0.07))
             .shadow(menu_shadow(0.8 * open))
@@ -157,7 +159,7 @@ fn opening(layer: Div, lines: Vec<AnyElement>, sign: Div, ms: f32, window: &Wind
         card = card.child(div().w_full().flex().flex_col().items_center().relative().top(px((1. - e) * 12.)).opacity(e.clamp(0., 1.)).child(line));
     }
     let late = ((after - 450.) / 500.).clamp(0., 1.);
-    layer.child(div().size_full().flex().items_center().justify_center().child(card)).child(sign.opacity(late)).into_any_element()
+    layer.child(middle(card)).child(sign.opacity(late)).into_any_element()
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -171,10 +173,6 @@ static NONE: Value = Value::Null;
 
 fn vaults(r: &Root) -> &Value {
     r.state.get("vaults").unwrap_or(&NONE)
-}
-
-fn flag(v: &Value, k: &str) -> bool {
-    v.get(k).and_then(Value::as_bool).unwrap_or(false)
 }
 
 /// A vault is being added: the form asks its name too.
@@ -308,19 +306,25 @@ pub fn plain(text: String) -> String {
     out
 }
 
-/// A master password's strength (app.js strengthScore / strengthLevel): only a guide, any 6+ characters do.
+/// Words people here build passwords from that the estimator's English lists don't hold: Vietnamese favourites and
+/// the app's and Roblox's own names.
+const OWN_WORDS: &[&str] = &[
+    "bloxkeep", "roblox", "blox", "robux", "matkhau", "anhyeuem", "emyeuanh", "yeuem", "yeuanh", "iloveyou", "vietnam", "saigon", "hanoi", "conmeo",
+    "concho", "deptrai", "xinhgai", "minhanh", "hoang", "nguyen", "tran", "pham", "huynh", "phan", "trang", "linh", "huong", "tuan", "dung", "khanh",
+];
+
+/// A master password's strength: 0 to 4 (zxcvbn's score: how many guesses it would take, from common passwords,
+/// dictionary words, keyboard runs, dates and repeats, not from which kinds of characters it has) and its word. Only a
+/// guide: any 6+ characters do. The old count of character kinds called "Password1!" strong and a long phrase of plain
+/// words weak (the owner, 2026-11-19: "detect mật khẩu mạnh hay yếu chính xác hơn").
 pub fn strength(v: &str) -> (usize, &'static str) {
-    let n = v.chars().count();
-    let score = [
-        n >= 8,
-        n >= 12,
-        v.chars().any(|c| c.is_ascii_lowercase()) && v.chars().any(|c| c.is_ascii_uppercase()),
-        v.chars().any(|c| c.is_ascii_digit()),
-        v.chars().any(|c| !c.is_ascii_alphanumeric()),
-    ]
-    .iter()
-    .filter(|x| **x)
-    .count();
+    if v.is_empty() {
+        return (0, "weak");
+    }
+    // (The estimator is slow past a hundred characters and sure by then.)
+    let head: String = v.chars().take(100).collect();
+    let score = u8::from(zxcvbn::zxcvbn(&head, OWN_WORDS).score()) as usize;
+    // (Strong only at the top: a 3 still fell to names and years, "minhhoang123", "trangxinhgai99".)
     (score, if score <= 1 { "weak" } else if score <= 3 { "ok" } else { "strong" })
 }
 
@@ -473,6 +477,14 @@ fn link(id: &'static str, label: String) -> Stateful<Div> {
     focusable(div().id(id)).text_size(px(T_M)).text_color(c(TEXT_2)).cursor_pointer().hover(|s| s.text_color(c(TEXT))).child(label)
 }
 
+/// What the lock screen shows, in the middle of its room. Where the window is too low for it (the smallest, 500 px
+/// high: the new vault's card is taller than its room), it starts at the top and the rest is a scroll away: laid in
+/// the middle whatever its height, its top and its foot were cut with no way to reach them (the shots of every size,
+/// 2026-11-18).
+fn middle(el: impl IntoElement) -> Stateful<Div> {
+    div().id("lock-middle").size_full().overflow_y_scroll().flex().flex_col().items_center().child(div().flex_none().my_auto().py(px(12.)).child(el))
+}
+
 fn card() -> Div {
     div()
         .w(px(456.))
@@ -483,20 +495,44 @@ fn card() -> Div {
         .flex_col()
         .items_center()
         .rounded(px(24.))
-        .bg(c(PANEL))
+        .relative()
+        .map(card_ground)
+        // (How tall it stands, for what is laid round it: `signature`.)
+        .child(canvas(|b, _, _| CARD_H.with(|c| c.set(f32::from(b.size.height))), |_, _, _, _| {}).absolute().inset_0())
         .border_1()
         .border_color(ca(WHITE, 0.07))
         .shadow(menu_shadow(0.8))
 }
 
+/// The card's ground: the panel's fill, and on a theme that frosts its picture the frosted picture under it with what
+/// the card's words need of the theme's ground (scene::frost_lazy). The fill alone, thin on a custom theme at a low
+/// fade, let the sharp picture through behind the words (the owner, 2026-11-18, over a light wallpaper).
+fn card_ground(card: Div) -> Div {
+    if !crate::theme::frosted() {
+        return card.bg(c(PANEL));
+    }
+    // (Its place is the caller's: the card as it opens is laid by hand, absolute, and a `relative` here put it in the
+    // card's own flow instead, where it pushed the card's lines out and grew with the card it measures: the opening
+    // showed a tall empty pane for its few seconds, alpha.22, the owner's screenshot 2026-11-18.)
+    card.child(crate::scene::frost_lazy(Corners::all(px(23.)), |_| c(PANEL)))
+}
+
 /// Under the card, near the foot of the window: whose screen this is, quietly (Bloxkeep, what it is, its version).
-fn signature(root: &Root) -> Div {
+fn signature(root: &Root, cx: &App) -> Div {
     let version = root.state.pointer("/update/current").and_then(Value::as_str).unwrap_or_default();
     let mut parts = vec![("Bloxkeep".to_string(), None), (root.tr("brand.sub"), None)];
     if !version.is_empty() {
         parts.push((format!("v{version}"), None));
     }
-    div().absolute().bottom(px(26.)).left_0().right_0().flex().justify_center().child(facts(parts).text_size(px(T_M)).text_color(c(MUTED)))
+    // No room for it under the card (the smallest window, 500 px high): left out, it lay over the card's last line.
+    let room = (root.window_h.get() - CARD_H.with(|c| c.get())) / 2.;
+    if room < 64. {
+        return div();
+    }
+    // (On a picture too light along its foot for these words: on the ground the language switch has, as a pill.)
+    let line = facts(parts).text_size(px(T_M)).text_color(c(MUTED));
+    let line = if crate::scene::foot_reads(cx) { line } else { div().h(px(30.)).px(px(14.)).flex().items_center().rounded_full().bg(c(RAISED)).child(line.text_color(c(TEXT_2))) };
+    div().absolute().bottom(px(if crate::scene::foot_reads(cx) { 26. } else { 20. })).left_0().right_0().flex().justify_center().child(line)
 }
 
 /// The main button of the card, full width and flat (the raised base under it was taken out, 2026-11-12).
@@ -529,13 +565,13 @@ pub fn lock(root: &Root, window: &mut Window, cx: &mut Context<Root>) -> AnyElem
     if mode == Mode::Pick {
         return layer
             .when(!current.is_empty(), |d| d.child(back(root, "closeVaultPicker", cx)))
-            .child(div().size_full().flex().items_center().justify_center().child(picker(root, window, cx)))
+            .child(middle(picker(root, window, cx)))
             .into_any_element();
     }
     let adding = adding(root);
     let layer = layer.when(adding, |d| d.child(back(root, "cancelAddVault", cx)));
     if root.lock.updating == Some(true) {
-        return layer.child(div().size_full().flex().items_center().justify_center().child(update(root, window, cx))).child(signature(root)).into_any_element();
+        return layer.child(middle(update(root, window, cx))).child(signature(root, cx)).into_any_element();
     }
 
     let create = mode == Mode::Create;
@@ -651,7 +687,7 @@ pub fn lock(root: &Root, window: &mut Window, cx: &mut Context<Root>) -> AnyElem
     }
     stack = stack.child(boxed(&root.lock_pw, root.lock.wrong == 1).child(eye));
     if create {
-        let part = if typed.is_empty() { 0. } else { (score as f32 * 0.2).max(0.12) };
+        let part = if typed.is_empty() { 0. } else { (score as f32 + 1.) * 0.2 };
         let tone = match level {
             "weak" => BAD,
             "ok" => WARN,
@@ -728,8 +764,11 @@ pub fn lock(root: &Root, window: &mut Window, cx: &mut Context<Root>) -> AnyElem
     if create && !adding {
         let on = flag(&root.state, "multiAtStart");
         let line = div().mt(px(16.)).flex().flex_col().items_center().gap(px(8.));
+        let armed = root.state.pointer("/multi/armed").and_then(Value::as_bool).unwrap_or(false);
         lines.push(if on {
-            line.child(div().text_size(px(T_M)).line_height(px(17.)).text_color(c(TEXT_2)).text_center().child(root.tr("lock.multiOnlyOn")))
+            line.when(armed, |d| d.child(div().text_size(px(T_M)).line_height(px(17.)).text_color(c(TEXT_2)).text_center().child(root.tr("lock.multiOnlyOn"))))
+                // Roblox was open when it was turned on: it starts once every Roblox is closed.
+                .when(!armed, |d| d.child(root.multi_blocked_note(cx).max_w(px(460.)).px(px(14.)).py(px(10.)).rounded(px(R_M)).bg(ca(WARN, 0.1))))
                 .child(link("lock-multi-off", root.tr("lock.multiOnlyOff")).on_click(cx.listener(|r, _, _, cx| run(r, "multiOnly", json!({ "on": false }), cx))))
                 .when(flag(&root.state, "closeToTray"), |d| {
                     d.child(Button::new("lock-close", root.tr("lock.closeWin")).on_click(cx.listener(|r, _, _, _| r.send("window", json!({ "action": "close" })))))
@@ -740,18 +779,14 @@ pub fn lock(root: &Root, window: &mut Window, cx: &mut Context<Root>) -> AnyElem
                 r.confirm(r.tr("set.multiConfirmTitle"), r.tr("set.multiConfirm"), r.tr("set.multiOk"), false, None, window, cx, |r, cx| {
                     let Some(link) = r.link.clone() else { return };
                     let rx = link.call("multiOnly", json!({ "on": true }));
-                    cx.spawn(async move |this, cx| {
-                        let answer = rx.await;
-                        let _ = this.update(cx, |r, cx| {
-                            r.toast = Some(match answer {
-                                Ok(Ok(_)) => (r.tr("lock.multiOnlyDone"), "ok".into()),
-                                Ok(Err(why)) => (why.to_string(), "bad".into()),
-                                Err(_) => return,
-                            });
-                            cx.notify();
+                    answer(rx, cx, move |r, answer, cx| {
+                        r.toast = Some(match answer {
+                            Ok(Ok(_)) => (r.tr("lock.multiOnlyDone"), "ok".into()),
+                            Ok(Err(why)) => (why.to_string(), "bad".into()),
+                            Err(_) => return,
                         });
-                    })
-                    .detach();
+                        cx.notify();
+                    });
                 });
             })))
             .into_any_element()
@@ -759,7 +794,7 @@ pub fn lock(root: &Root, window: &mut Window, cx: &mut Context<Root>) -> AnyElem
     }
 
     if let Some(ms) = intro {
-        return opening(layer, lines, signature(root), ms, window);
+        return opening(layer, lines, signature(root, cx), ms, window);
     }
     // The screen that played the opening stands as it is (the page's .opened: no second entrance once it is over).
     // Any later one (after a lock): the logo pops out, and the lines under it come in one after another.
@@ -772,7 +807,7 @@ pub fn lock(root: &Root, window: &mut Window, cx: &mut Context<Root>) -> AnyElem
         let line = div().w_full().flex().flex_col().items_center().child(line);
         box_ = if root.lock.opened.get() { box_.child(line) } else { box_.child(line_in("lock-line", i.min(6), line)) };
     }
-    layer.child(div().size_full().flex().items_center().justify_center().child(box_)).child(signature(root)).into_any_element()
+    layer.child(middle(box_)).child(signature(root, cx)).into_any_element()
 }
 
 /// An update found before the unlock, installing: its bar, and the way to unlock now instead (Lock.tsx's lock-update).

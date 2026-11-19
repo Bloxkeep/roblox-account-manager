@@ -329,7 +329,7 @@ impl App {
             }
         } else if let Some(link) = self.remote.remote.borrow_mut().take() {
             // The bot forgets the link before the connection closes.
-            std::thread::spawn(move || {
+            crate::threads::run(move || {
                 link.unlink();
                 link.dispose();
             });
@@ -410,7 +410,7 @@ impl App {
     /// A command from Discord, on the core's thread: its answer (an error is said, never thrown); None when it was
     /// answered already (the pictures of /pc screenshot go up on their own).
     pub async fn remote_command(self: &Rc<Self>, c: RemoteCommand) -> Option<Value> {
-        let cmd = if matches!(c.name.as_str(), "status" | "preset" | "close" | "switch" | "screenshot") { c.name.as_str() } else { "unknown" };
+        let cmd = if matches!(c.name.as_str(), "status" | "preset" | "close" | "switch" | "screenshot" | "watch") { c.name.as_str() } else { "unknown" };
         log::note(&format!("Remote: /pc {cmd} received."));
         // Another vault open (the link's own is closed a moment later): as locked, nothing of it said.
         if !self.remote_open() {
@@ -424,6 +424,7 @@ impl App {
             "close" => self.remote_close(c.value.as_deref().unwrap_or("")).map(Some),
             "switch" => self.remote_switch(c.value.as_deref().unwrap_or("")).await.map(Some),
             "screenshot" => self.remote_screenshot(&c).await,
+            "watch" => self.remote_watch(&c).await,
             _ => Ok(Some(self.remote_say("?"))),
         };
         match answer {
@@ -629,6 +630,78 @@ impl App {
     /// /pc screenshot: a picture of one account's Roblox window, or of each (10 at most), sent to Discord by this PC
     /// (RemoteLink's shot), seen there only by who asked. What can't be pictured is said under them. One at a time,
     /// `SHOT_GAP` apart; the person at the PC is told each time.
+    /// /pc watch: Watch remotely (Accounts' own button) started from Discord, or stopped ("stop"). Its link is the
+    /// key to this PC's Roblox windows, live: it goes up as the command's own answer from this PC (as a screenshot's
+    /// pictures do), seen only by who asked, and is neither handed to the bot nor written in error.log.
+    pub async fn remote_watch(self: &Rc<Self>, c: &RemoteCommand) -> Res<Option<Value>> {
+        use crate::core::remote_watch::{self as watch, Status};
+        if c.value.as_deref().is_some_and(|v| v.eq_ignore_ascii_case("stop")) {
+            let on = !matches!(watch::status(), Status::Idle | Status::Failed);
+            watch::stop();
+            log::note(&format!("Remote: /pc watch stop: {}.", if on { "stopped" } else { "it wasn't on" }));
+            return Ok(Some(self.remote_say(&if on { l::t("Watch remotely stopped: its link no longer works.") } else { l::t("Watch remotely isn't on.") })));
+        }
+        if !watch::available() {
+            log::note("Remote: /pc watch: its files aren't beside the app.");
+            return Ok(Some(self.remote_say(&l::t("Watch remotely isn't in this copy of Bloxkeep."))));
+        }
+        let Some(link) = self.remote.remote.borrow().clone() else {
+            log::note("Remote: /pc watch dropped: the link to the bot is gone.");
+            return Ok(None);
+        };
+        if !matches!(watch::status(), Status::Ready(_)) {
+            let who = link.user().unwrap_or_else(|| "Discord".to_string());
+            self.notify(&l::f("{0} started Watch remotely on this PC from Discord.", &[&who]), "info", "remote", Guid::nil(), true, None);
+            watch::start(false);
+            // (Said at once: the link takes up to a minute and a half, and the bot would say the PC didn't answer.)
+            let (first, command) = (link.clone(), c.clone());
+            let words = l::t("Starting Watch remotely on this PC. The link shows here in about a minute.");
+            rt::blocking(move || first.say_own(&command, &words)).await;
+        }
+        // The link goes up from a task of its own: this command's answer is waited for on the link's own thread, which
+        // must not be held for the minute and a half the tunnel may take.
+        let (app, command) = (self.clone(), c.clone());
+        rt::spawn(async move { app.remote_watch_link(command, link).await });
+        Ok(None)
+    }
+
+    /// Waits for Watch remotely's link and puts it in the command's answer (see `remote_watch`).
+    async fn remote_watch_link(self: Rc<Self>, c: RemoteCommand, link: Arc<RemoteLink>) {
+        use crate::core::remote_watch::{self as watch, Status};
+        let say = |words: String| {
+            let (link, command) = (link.clone(), c.clone());
+            rt::blocking(move || link.say_own(&command, &words))
+        };
+        let began = std::time::Instant::now();
+        let ready = loop {
+            match watch::status() {
+                Status::Ready(url) => break Some(url),
+                Status::Failed => break None,
+                // (Stopped at the PC meanwhile.)
+                Status::Idle if began.elapsed() > Duration::from_secs(3) => break None,
+                _ => {}
+            }
+            if began.elapsed() > Duration::from_secs(110) {
+                break None;
+            }
+            // Locked, or turned off, since it was asked: no link goes out.
+            if !self.remote_open() {
+                watch::stop();
+                log::note("Remote: /pc watch stopped: locked meanwhile, no link sent.");
+                return;
+            }
+            rt::sleep(Duration::from_millis(500)).await;
+        };
+        let Some(url) = ready else {
+            log::note("Remote: /pc watch: Watch remotely didn't start (its own line above says why).");
+            say(l::t("Watch remotely couldn't start on this PC. Try again in a moment.")).await;
+            return;
+        };
+        // (Never through the bot, and never by `remote_say`, which writes what it says in error.log.)
+        let sent = say(l::f("Watch remotely is on. This link shows this PC's Roblox windows, to whoever has it: keep it to yourself. It works for 2 hours, or until `/pc watch action:Stop`.\n{0}", &[&url])).await;
+        log::note(&format!("Remote: /pc watch: link {} to Discord.", if sent { "sent" } else { "not sent (Discord refused it)" }));
+    }
+
     pub async fn remote_screenshot(self: &Rc<Self>, c: &RemoteCommand) -> Res<Option<Value>> {
         let now = Stamp::utc_now();
         let picturing = self.remote.picturing.get();

@@ -376,7 +376,7 @@ impl App {
                     let pid = info.0;
                     let ran_for = Duration::from_secs_f64(now.secs_since(info.1.started_at.get()).max(0.0));
                     let last = log.as_ref().map(|l| l.status.clone()).unwrap_or_else(|| "no log".into());
-                    std::thread::spawn(move || {
+                    crate::threads::run(move || {
                         let found = crate::core::roblox_crash_info::describe(pid, ran_for);
                         log::note(&format!(
                             "Window {pid} ended on its own (last log: {last}): {}.",
@@ -554,7 +554,14 @@ impl App {
             });
         }
 
-        if vault_now(self).is_some() && self.vault(|d| d.settings.multi_instance).unwrap_or(false) && scan && pids.is_empty() {
+        // Wanted: the open vault's setting, else the one kept for start-up ("Just use Multi-Roblox", no vault; or the
+        // lock screen). Without a vault it was never taken again: turned on while Roblox was open, Multi-Roblox stayed
+        // off until Bloxkeep restarted (2026-11-19).
+        let multi_wanted = match vault_now(self) {
+            Some(_) => self.vault(|d| d.settings.multi_instance).unwrap_or(false),
+            None => prefs::lock().multi_roblox_at_start,
+        };
+        if multi_wanted && scan && pids.is_empty() {
             self.step("MultiInstance.Enable()", || {
                 self.apply_watch_names();
                 if !multi_instance::armed() || multi_instance::stale() {
@@ -575,7 +582,13 @@ impl App {
         }
 
         let active = !pids.is_empty() || pending_count(self) > 0 || !self.controller.rejoin_queue.borrow().is_empty() || now < self.controller.sweep_background_until.get();
-        let interval: u64 = if self.controller.background.get() {
+        // While a window is awaited (a launch, a rejoin) the check comes every half second, whatever else: the next
+        // account of a launch starts when the one before has its window, and that window was noticed up to 1.5 s late,
+        // 5 s with Bloxkeep's own window minimised (the owner, 2026-11-18: opening Roblox "cảm giác hơi lâu").
+        let awaited = pending_count(self) > 0 || !self.controller.rejoin_queue.borrow().is_empty();
+        let interval: u64 = if awaited {
+            500
+        } else if self.controller.background.get() {
             5000
         } else if active {
             1500
@@ -589,7 +602,7 @@ impl App {
 
         if now >= self.updates.next_log_clean.get() {
             self.updates.next_log_clean.set(now.plus_secs(24.0 * 3600.0));
-            std::thread::spawn(|| {
+            crate::threads::run(|| {
                 let removed = crate::core::roblox_log_watcher::clean_old_logs(std::time::SystemTime::now());
                 if removed > 0 {
                     log::note(&format!("Roblox logs: {removed} older than {} days deleted.", crate::core::roblox_log_watcher::KEEP_LOGS.as_secs() / 86400));
@@ -691,6 +704,8 @@ impl App {
             self.step("NoteClientBuilds, AutoUpdateRoblox", || {
                 self.note_client_builds(&players);
                 self.auto_update_roblox(&players);
+                // Roblox's installer takes the links back at every update: taken again while the switch is on.
+                crate::core::roblox_links::watch();
                 Ok(())
             });
         }
@@ -919,6 +934,9 @@ impl App {
             "usedPct": memory.load_percent,
             "cpuPct": cpu,
             "gpuPct": gpu,
+            // The whole PC's CPU, and the memory Windows has handed out (the Game monitor's load).
+            "pcCpuPct": crate::core::capacity::pc_busy().map(|b| b.round()),
+            "commitMb": (memory.commit_limit_mb - memory.commit_available_mb).max(0) / 128 * 128,
         })
         .to_string();
         if self.controller.last_metrics.borrow().as_deref() == Some(json.as_str()) {

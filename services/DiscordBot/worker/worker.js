@@ -772,7 +772,7 @@ export class Gateway extends DurableObject {
     this.names.set(user.id, user.global_name || user.username || null);
     this.handles.set(user.id, handleOf(user));
     const times = (this.sent.get(user.id) ?? []).filter(t => t > now - 60_000);
-    if (times.length >= COMMANDS_PER_MINUTE)
+    if (times.length >= Number(this.env.COMMANDS_PER_MINUTE ?? COMMANDS_PER_MINUTE))
       return mine({ content: PC_TEXT.tooFast });
     this.sent.set(user.id, [...times, now]);
     if (sub?.name === 'link') {
@@ -835,10 +835,14 @@ export class Gateway extends DurableObject {
       return mine({ content: PC_TEXT.offline(pc.label) });
     // A screenshot is always "thinking…" first: the PC is handed this answer's own link (replyUrl) and edits its
     // pictures in itself, so they never pass through here. Fewer of them a minute than other commands.
-    const shot = sub.name === 'screenshot';
-    if (shot && !app.hello?.shots)
+    // So is starting Watch remotely: its link is the key to the PC's screen, and the PC puts it in itself.
+    const watch = sub.name === 'watch' && opt('action') !== 'stop';
+    if (sub.name === 'watch' && !app.hello?.watch)
+      return mine({ content: PC_TEXT.updateFirstWatch(pc.label) });
+    const shot = sub.name === 'screenshot' || watch;
+    if (sub.name === 'screenshot' && !app.hello?.shots)
       return mine({ content: PC_TEXT.updateFirst(pc.label) });
-    if (shot) {
+    if (shot && !watch) {
       const shots = (this.shots.get(user.id) ?? []).filter(t => t > now - 60_000);
       if (shots.length >= SHOTS_PER_MINUTE)
         return mine({ content: PC_TEXT.shotsTooFast });

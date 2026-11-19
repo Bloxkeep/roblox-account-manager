@@ -192,6 +192,13 @@ pub(crate) mod registry {
 pub fn protocol_handler_path() -> Option<String> {
     let key = registry::classes_root(PROTOCOL_COMMAND_KEY)?;
     let command = key.string(None)?;
+    // (Bloxkeep holding the links: the program it replaced, see roblox_links.)
+    let command = if crate::core::roblox_links::is_ours(&command) { crate::core::roblox_links::before()? } else { command };
+    exe_of_command(&command)
+}
+
+/// The program a link command starts: the quoted path, else up to ".exe", else up to the first space.
+pub fn exe_of_command(command: &str) -> Option<String> {
     let command = command.trim();
     if let Some(rest) = command.strip_prefix('"') {
         let end = rest.find('"')?;
@@ -712,12 +719,23 @@ const CLIENT_SETTINGS: &str = "ClientSettings";
 /// taken, even after Roblox deletes its old build), its Fast Flags (ClientSettings) copied fresh each time. A launcher's
 /// copy (no updater beside it) is started as it is.
 pub fn kept_copy(exe: &str) -> std::io::Result<String> {
-    use std::path::{Path, PathBuf};
     if !is_roblox_own(exe) {
         return Ok(exe.to_string());
     }
+    copy_build(exe, &kept_root())
+}
+
+/// Where roblox_mods keeps its copies of Roblox's build with the mods over them.
+pub fn mods_root() -> String {
+    combine(&combine(&local(), "Bloxkeep"), "Roblox mods")
+}
+
+/// The build `exe` is in, copied under `root` as `kept_copy` does it (hard links, no updater, its Fast Flags fresh);
+/// made once, its Fast Flags each time. Returns the copy's client.
+pub fn copy_build(exe: &str, root: &str) -> std::io::Result<String> {
+    use std::path::{Path, PathBuf};
     let from = PathBuf::from(dir_name(exe).unwrap_or_default());
-    let to = Path::new(&kept_root()).join(from.file_name().unwrap_or_default());
+    let to = Path::new(root).join(from.file_name().unwrap_or_default());
     if !to.join(".complete").exists() {
         let part = PathBuf::from(format!("{}.part", to.display()));
         for old in [&to, &part] {

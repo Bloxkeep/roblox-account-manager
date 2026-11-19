@@ -5,11 +5,14 @@
 // All of it answers only that account's own sign-in, lent by the app; asked from here (roblox.rs). Nothing is spent
 // from here. Chat isn't live: Refresh reads it again, as does saying something.
 use gpui_kit::{prelude::*, *};
+use crate::ask::reply;
+
+use std::collections::HashSet;
 
 use crate::{
     kit::*,
     images,
-    pages::{friends, games::thousands, profile::day},
+    pages::{friends, profile::day},
     roblox::{self, Deal, Letter, Line, Notice, Talk, Trade, TradeDetail, TradeSide},
     shell::Root,
     theme::*,
@@ -30,6 +33,14 @@ pub struct Data {
     peek: bool,
     lines: Option<Result<Vec<Line>, String>>,
     saying: bool,
+    /// A group being made, or people being added to the open one.
+    making: Option<Making>,
+    /// The open group's members beside its lines, its name being changed, the member whose Remove waits for a second
+    /// click, and a change of the group under way.
+    members: bool,
+    renaming: bool,
+    armed: Option<i64>,
+    group_busy: bool,
     letters: Option<Result<Vec<Letter>, String>>,
     notices: Option<Result<Vec<Notice>, String>>,
     deals: Option<Result<Vec<Deal>, String>>,
@@ -47,11 +58,23 @@ pub struct Data {
     trade_said: Option<String>,
 }
 
+/// Friends being picked for a group: who, the group they go into (None: a new one), and whether Roblox is being asked.
+#[derive(Default)]
+pub struct Making {
+    picked: Vec<i64>,
+    to: Option<String>,
+    busy: bool,
+}
+
 impl Data {
     /// Put away with its tab (pages/tabs.rs): nothing is on its way any more, so what is missing is asked again.
     pub fn rest(&mut self) {
         self.reading = [false; 5];
         self.saying = false;
+        self.group_busy = false;
+        if let Some(m) = &mut self.making {
+            m.busy = false;
+        }
         self.trade_busy = false;
         self.trade_armed = false;
         // The open trade's sides are read again when the tab comes back, should their answer have been dropped.
@@ -63,6 +86,16 @@ impl Data {
             self.talk_at = None;
         }
     }
+}
+
+/// The connection is back: each part that failed to load is read again the next time it is shown.
+pub fn forget_failed(r: &mut Root) {
+    let inbox = &mut r.inbox;
+    if matches!(inbox.talks, Some(Err(_))) { inbox.talks = None; }
+    if matches!(inbox.letters, Some(Err(_))) { inbox.letters = None; }
+    if matches!(inbox.notices, Some(Err(_))) { inbox.notices = None; }
+    if matches!(inbox.deals, Some(Err(_))) { inbox.deals = None; }
+    if matches!(inbox.trades, Some(Err(_))) { inbox.trades = None; }
 }
 
 pub fn want(r: &mut Root, link: &crate::link::Link, cx: &mut Context<Root>) {
@@ -87,6 +120,22 @@ pub fn want(r: &mut Root, link: &crate::link::Link, cx: &mut Context<Root>) {
     if let (Ok(id), None, Some(Ok(_))) = (std::env::var("BLOXKEEP_SHOT_CHAT"), &r.inbox.talk_at, &r.inbox.talks) {
         open_talk(r, id, cx);
     }
+    // BLOXKEEP_SHOT_GROUP=new|members: a hidden shot shows the group picker (two friends ticked) or the open group's
+    // members.
+    #[cfg(feature = "shot")]
+    if let (Ok(kind), Some(Ok(l))) = (std::env::var("BLOXKEEP_SHOT_GROUP"), &r.friends.list) {
+        static ONCE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+        if !ONCE.swap(true, std::sync::atomic::Ordering::Relaxed) {
+            match kind.as_str() {
+                "new" => r.inbox.making = Some(Making { picked: l.iter().take(2).map(|f| f.id).collect(), ..Default::default() }),
+                _ => r.inbox.members = true,
+            }
+        }
+    }
+    #[cfg(feature = "shot")]
+    if std::env::var("BLOXKEEP_SHOT_GROUP").is_ok() {
+        friends::want_list(r, cx);
+    }
 }
 
 fn load(r: &mut Root, tab: usize, cx: &mut Context<Root>) {
@@ -96,49 +145,65 @@ fn load(r: &mut Root, tab: usize, cx: &mut Context<Root>) {
     macro_rules! read {
         ($call:expr, $field:ident) => {{
             let rx = roblox::run(move || $call);
-            cx.spawn(async move |this, cx| {
-                let got = rx.await.unwrap_or_else(|_| Err(String::new()));
-                let _ = this.update(cx, |r, cx| {
-                    if r.inbox.of == user {
-                        r.inbox.$field = Some(got);
-                        r.inbox.reading[tab] = false;
-                        peek(r, cx);
-                        cx.notify();
-                    }
-                });
-            })
-            .detach();
+            reply(rx, cx, move |r, got, cx| {
+                if r.inbox.of == user {
+                    r.inbox.$field = Some(got);
+                    r.inbox.reading[tab] = false;
+                    peek(r, cx);
+                    cx.notify();
+                }
+            });
         }};
     }
     match tab {
         0 => read!(roblox::talks(&cookie, user), talks),
         1 => read!(roblox::letters(&cookie), letters),
-        2 => read!(roblox::notices(&cookie), notices),
+        // Shown: seen, at Roblox too (its bell's count back to 0, as roblox.com does when its list opens); the bell
+        // kept counting them however many were read (the owner, 2026-11-19: "chuông thông báo vẫn 20").
+        2 => {
+            let rx = roblox::run(move || {
+                let got = roblox::notices(&cookie)?;
+                Ok::<_, String>((got, roblox::notices_seen(&cookie)))
+            });
+            reply(rx, cx, move |r, both: Result<(Vec<roblox::Notice>, Result<(), String>), String>, cx| {
+                if r.inbox.of == user {
+                    let (got, seen) = match both {
+                        Ok((l, seen)) => (Ok(l), Some(seen)),
+                        Err(e) => (Err(e), None),
+                    };
+                    r.inbox.notices = Some(got);
+                    r.inbox.reading[2] = false;
+                    match seen {
+                        Some(Ok(())) => crate::pages::games::notes_seen(r, user),
+                        Some(Err(why)) => crate::net::note_failed("Marking Roblox notifications seen", "", &why),
+                        _ => {}
+                    }
+                    peek(r, cx);
+                    cx.notify();
+                }
+            });
+        }
         3 => read!(roblox::deals(&cookie, user), deals),
         _ => {
             // (An answer for a list no longer shown is dropped.)
             let list = r.inbox.trade_list.min(roblox::TRADES.len() - 1);
             let rx = roblox::run(move || roblox::trades(&cookie, roblox::TRADES[list]));
-            cx.spawn(async move |this, cx| {
-                let got = rx.await.unwrap_or_else(|_| Err(String::new()));
-                let _ = this.update(cx, |r, cx| {
-                    if r.inbox.of == user && r.inbox.trade_list == list {
-                        r.inbox.trades = Some(got);
-                        r.inbox.reading[4] = false;
-                        // BLOXKEEP_SHOT_TRADE=1: a hidden shot opens the first trade (=armed: after Accept's
-                        // first click; nothing is accepted).
-                        #[cfg(feature = "shot")]
-                        if let (Ok(how), Some(Ok(l))) = (std::env::var("BLOXKEEP_SHOT_TRADE"), &r.inbox.trades) {
-                            if let Some(first) = l.first().map(|t| t.id) {
-                                open_trade(r, first, cx);
-                                r.inbox.trade_armed = how == "armed";
-                            }
+            reply(rx, cx, move |r, got, cx| {
+                if r.inbox.of == user && r.inbox.trade_list == list {
+                    r.inbox.trades = Some(got);
+                    r.inbox.reading[4] = false;
+                    // BLOXKEEP_SHOT_TRADE=1: a hidden shot opens the first trade (=armed: after Accept's
+                    // first click; nothing is accepted).
+                    #[cfg(feature = "shot")]
+                    if let (Ok(how), Some(Ok(l))) = (std::env::var("BLOXKEEP_SHOT_TRADE"), &r.inbox.trades) {
+                        if let Some(first) = l.first().map(|t| t.id) {
+                            open_trade(r, first, cx);
+                            r.inbox.trade_armed = how == "armed";
                         }
-                        cx.notify();
                     }
-                });
-            })
-            .detach();
+                    cx.notify();
+                }
+            });
         }
     }
 }
@@ -174,16 +239,12 @@ fn open_trade(r: &mut Root, id: i64, cx: &mut Context<Root>) {
     };
     r.inbox.trade_at = Some(id);
     let rx = roblox::run(move || roblox::trade(&cookie, id, with));
-    cx.spawn(async move |this, cx| {
-        let got = rx.await.unwrap_or_else(|_| Err(String::new()));
-        let _ = this.update(cx, |r, cx| {
-            if r.inbox.of == user && r.inbox.trade_at == Some(id) {
-                r.inbox.trade = Some(got);
-                cx.notify();
-            }
-        });
-    })
-    .detach();
+    reply(rx, cx, move |r, got, cx| {
+        if r.inbox.of == user && r.inbox.trade_at == Some(id) {
+            r.inbox.trade = Some(got);
+            cx.notify();
+        }
+    });
 }
 
 /// Accept (the second click) or decline the open trade; then its list is read again.
@@ -197,28 +258,24 @@ fn trade_act(r: &mut Root, accept: bool, cx: &mut Context<Root>) {
     r.inbox.trade_armed = false;
     r.inbox.trade_said = None;
     let rx = roblox::run(move || roblox::trade_act(&cookie, id, accept));
-    cx.spawn(async move |this, cx| {
-        let done = rx.await.unwrap_or_else(|_| Err(String::new()));
-        let _ = this.update(cx, |r, cx| {
-            if r.inbox.of != user {
-                return;
-            }
-            r.inbox.trade_busy = false;
-            match done {
-                Ok(()) => {
-                    r.inbox.trade_at = None;
-                    r.inbox.trade = None;
-                    r.inbox.trades = None;
-                    if !r.inbox.reading[4] {
-                        load(r, 4, cx);
-                    }
+    reply(rx, cx, move |r, done, cx| {
+        if r.inbox.of != user {
+            return;
+        }
+        r.inbox.trade_busy = false;
+        match done {
+            Ok(()) => {
+                r.inbox.trade_at = None;
+                r.inbox.trade = None;
+                r.inbox.trades = None;
+                if !r.inbox.reading[4] {
+                    load(r, 4, cx);
                 }
-                Err(why) => r.inbox.trade_said = Some(if why.is_empty() { "Roblox".into() } else { why }),
             }
-            cx.notify();
-        });
-    })
-    .detach();
+            Err(why) => r.inbox.trade_said = Some(if why.is_empty() { "Roblox".into() } else { why }),
+        }
+        cx.notify();
+    });
 }
 
 fn again(r: &mut Root, cx: &mut Context<Root>) {
@@ -328,19 +385,15 @@ fn read_lines(r: &mut Root, cx: &mut Context<Root>) {
     let (Some(id), Some((_, user, cookie))) = (r.inbox.talk_at.clone(), friends::signed(r)) else { return };
     let ask = id.clone();
     let rx = roblox::run(move || roblox::lines(&cookie, &ask));
-    cx.spawn(async move |this, cx| {
-        let got = rx.await.unwrap_or_else(|_| Err(String::new()));
-        let _ = this.update(cx, |r, cx| {
-            if r.inbox.of == user && r.inbox.talk_at.as_deref() == Some(id.as_str()) {
-                // Lines that fail to come again leave the ones shown.
-                if got.is_ok() || !matches!(r.inbox.lines, Some(Ok(_))) {
-                    r.inbox.lines = Some(got);
-                }
-                cx.notify();
+    reply(rx, cx, move |r, got, cx| {
+        if r.inbox.of == user && r.inbox.talk_at.as_deref() == Some(id.as_str()) {
+            // Lines that fail to come again leave the ones shown.
+            if got.is_ok() || !matches!(r.inbox.lines, Some(Ok(_))) {
+                r.inbox.lines = Some(got);
             }
-        });
-    })
-    .detach();
+            cx.notify();
+        }
+    });
 }
 
 /// What the box holds is said in the open chat (Enter); said, the box empties and the lines are read again.
@@ -381,6 +434,138 @@ pub fn say(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
     .detach();
 }
 
+/// The picker opens: for a new group (`to` None), or for people to add to group `to`.
+fn start_making(r: &mut Root, to: Option<String>, window: &mut Window, cx: &mut Context<Root>) {
+    if to.is_none() {
+        r.group_name.update(cx, |s, cx| s.set_value("", window, cx));
+    }
+    r.group_q.update(cx, |s, cx| s.set_value("", window, cx));
+    r.inbox.making = Some(Making { to, ..Default::default() });
+    friends::want_list(r, cx);
+    cx.notify();
+}
+
+fn toggle_pick(r: &mut Root, id: i64, cx: &mut Context<Root>) {
+    if let Some(m) = r.inbox.making.as_mut().filter(|m| !m.busy) {
+        match m.picked.iter().position(|p| *p == id) {
+            Some(i) => {
+                m.picked.remove(i);
+            }
+            None => m.picked.push(id),
+        }
+        cx.notify();
+    }
+}
+
+/// A friend's name as shown, else "?" (one no longer a friend).
+fn friend_name(r: &Root, id: i64) -> String {
+    match &r.friends.list {
+        Some(Ok(l)) => l.iter().find(|f| f.id == id).map(|f| if f.display.is_empty() { f.name.clone() } else { f.display.clone() }).unwrap_or_else(|| "?".into()),
+        _ => "?".into(),
+    }
+}
+
+/// The picked are made a group (named, else by the first three of them, as Roblox names one) or added to theirs; the
+/// group opens, and the chats are read again.
+fn finish_making(r: &mut Root, cx: &mut Context<Root>) {
+    let Some((_, user, cookie)) = friends::signed(r).filter(|s| !s.2.is_empty()) else { return };
+    let typed = r.group_name.read(cx).value().trim().to_string();
+    let Some(m) = r.inbox.making.as_ref().filter(|m| !m.busy && !m.picked.is_empty()) else { return };
+    let (picked, to) = (m.picked.clone(), m.to.clone());
+    let name = if typed.is_empty() { picked.iter().take(3).map(|id| friend_name(r, *id)).collect::<Vec<_>>().join(", ") } else { typed };
+    if let Some(m) = r.inbox.making.as_mut() {
+        m.busy = true;
+    }
+    cx.notify();
+    let rx = roblox::run(move || match &to {
+        Some(id) => roblox::add_to_group(&cookie, id, &picked).map(|()| id.clone()),
+        None => roblox::make_group(&cookie, &name, &picked),
+    });
+    reply(rx, cx, move |r, got, cx| {
+        if r.inbox.of != user {
+            return;
+        }
+        match got {
+            Ok(id) => {
+                r.inbox.making = None;
+                r.inbox.peek = false;
+                if r.inbox.talk_at.as_deref() != Some(id.as_str()) {
+                    r.inbox.talk_at = Some(id);
+                    r.inbox.lines = None;
+                }
+                load(r, 0, cx);
+                read_lines(r, cx);
+            }
+            Err(why) => {
+                if let Some(m) = r.inbox.making.as_mut() {
+                    m.busy = false;
+                }
+                r.toast = Some((if why.is_empty() { "Roblox".into() } else { why }, "bad".into()));
+            }
+        }
+        cx.notify();
+    });
+}
+
+/// A change of the open group (its name, someone out): done, the chats are read again; refused, a toast says why.
+fn group_change(r: &mut Root, call: impl FnOnce(&str, &str) -> Result<(), String> + Send + 'static, then: impl FnOnce(&mut Root) + 'static, cx: &mut Context<Root>) {
+    let (Some(id), Some((_, user, cookie))) = (r.inbox.talk_at.clone(), friends::signed(r).filter(|s| !s.2.is_empty())) else { return };
+    if r.inbox.group_busy {
+        return;
+    }
+    r.inbox.group_busy = true;
+    cx.notify();
+    let rx = roblox::run(move || call(&cookie, &id));
+    reply(rx, cx, move |r, done, cx| {
+        if r.inbox.of != user {
+            return;
+        }
+        r.inbox.group_busy = false;
+        match done {
+            Ok(()) => {
+                then(r);
+                load(r, 0, cx);
+            }
+            Err(why) => r.toast = Some((if why.is_empty() { "Roblox".into() } else { why }, "bad".into())),
+        }
+        cx.notify();
+    });
+}
+
+fn rename(r: &mut Root, cx: &mut Context<Root>) {
+    let name = r.group_name.read(cx).value().trim().to_string();
+    if name.is_empty() {
+        return;
+    }
+    let shown = name.clone();
+    group_change(r, move |cookie, id| roblox::rename_group(cookie, id, &name), move |r| {
+        r.inbox.renaming = false;
+        // (Renamed at once here; the chats read again say it too.)
+        if let (Some(Ok(l)), Some(at)) = (&mut r.inbox.talks, &r.inbox.talk_at) {
+            if let Some(t) = l.iter_mut().find(|t| t.id == *at) {
+                t.name = shown;
+            }
+        }
+    }, cx);
+}
+
+/// Someone out of the open group: a first click arms it, the second takes them out.
+fn remove_member(r: &mut Root, who: i64, cx: &mut Context<Root>) {
+    if r.inbox.armed != Some(who) {
+        r.inbox.armed = Some(who);
+        cx.notify();
+        return;
+    }
+    r.inbox.armed = None;
+    group_change(r, move |cookie, id| roblox::remove_from_group(cookie, id, &[who]), move |r| {
+        if let (Some(Ok(l)), Some(at)) = (&mut r.inbox.talks, &r.inbox.talk_at) {
+            if let Some(t) = l.iter_mut().find(|t| t.id == *at) {
+                t.people.remove(&who);
+            }
+        }
+    }, cx);
+}
+
 /// A message opens in place (a second click closes it); one not read yet is marked read, here and at Roblox.
 fn open(r: &mut Root, id: i64, cx: &mut Context<Root>) {
     r.inbox.open = Some(id);
@@ -391,16 +576,14 @@ fn open(r: &mut Root, id: i64, cx: &mut Context<Root>) {
                 m.read = true;
             }
         }
+        // The bell counts it no more, at once (it asked Roblox again only a minute or more later).
+        crate::pages::games::letter_read(r);
         // A hidden shot's messages aren't Roblox's to mark (no sign-in there).
         if !cookie.is_empty() {
             drop(roblox::run(move || roblox::mark_read(&cookie, id)));
         }
     }
     cx.notify();
-}
-
-fn note(text: String) -> Div {
-    div().flex_1().flex().items_center().justify_center().text_size(px(T_M)).text_color(c(MUTED)).child(text)
 }
 
 pub fn inbox(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement {
@@ -455,7 +638,7 @@ pub fn inbox(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElemen
                 }))
         }))));
 
-    let failed = |why: &String| note(root.i18n.tv("in.failed", &[("why", if why.is_empty() { "Roblox" } else { why })]));
+    let failed = |why: &String| empty_note(root.i18n.tv("in.failed", &[("why", crate::net::why_words(&root.i18n, why).as_str())]));
     let body: AnyElement = if able.is_empty() || friends::nobody(root) {
         friends::need_account(root, "in-add-acc", "in.noAccount", "message", cx)
     } else {
@@ -463,19 +646,18 @@ pub fn inbox(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElemen
             0 => match &ib.talks {
                 None => Ok(None),
                 Some(Err(e)) => Err(failed(e).into_any_element()),
-                Some(Ok(l)) if l.is_empty() => Err(note(root.tr("in.noChats")).into_any_element()),
                 Some(Ok(l)) => Err(chat(root, l, cx).into_any_element()),
             },
             1 => match &ib.letters {
                 None => Ok(None),
                 Some(Err(e)) => Err(failed(e).into_any_element()),
-                Some(Ok(l)) if l.is_empty() => Err(note(root.tr("in.noMessages")).into_any_element()),
+                Some(Ok(l)) if l.is_empty() => Err(empty_note(root.tr("in.noMessages")).into_any_element()),
                 Some(Ok(l)) => Err(letters(root, l, cx).into_any_element()),
             },
             2 => match &ib.notices {
                 None => Ok(None),
                 Some(Err(e)) => Err(failed(e).into_any_element()),
-                Some(Ok(l)) if l.is_empty() => Err(note(root.tr("in.noNotices")).into_any_element()),
+                Some(Ok(l)) if l.is_empty() => Err(empty_note(root.tr("in.noNotices")).into_any_element()),
                 Some(Ok(l)) => {
                     // Newest first, whatever order they came in.
                     let mut by: Vec<&Notice> = l.iter().collect();
@@ -495,7 +677,7 @@ pub fn inbox(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElemen
             3 => match &ib.deals {
                 None => Ok(None),
                 Some(Err(e)) => Err(failed(e).into_any_element()),
-                Some(Ok(l)) if l.is_empty() => Err(note(root.tr("in.noDeals")).into_any_element()),
+                Some(Ok(l)) if l.is_empty() => Err(empty_note(root.tr("in.noDeals")).into_any_element()),
                 Some(Ok(l)) => {
                     // The same purchase or sale several times on one day is one row: how many times, and what they come to.
                     let mut rows: Vec<(&Deal, usize)> = Vec::new();
@@ -512,7 +694,7 @@ pub fn inbox(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElemen
         };
         match rows {
             Err(e) => e,
-            Ok(None) => note(root.tr("in.loading")).into_any_element(),
+            Ok(None) => empty_note(root.tr("in.loading")).into_any_element(),
             Ok(Some(rows)) => {
                 let lists = surface().w_full().flex().flex_col().overflow_hidden().children(rows);
                 crate::scrolled::body("in-body", div().px(px(PAD + 4.)).pt(px(4.)).pb(px(24.)).child(lists)).into_any_element()
@@ -527,7 +709,7 @@ fn chat(root: &Root, talks: &[Talk], cx: &mut Context<Root>) -> impl IntoElement
     let ib = &root.inbox;
     let me = ib.of;
     let open = ib.talk_at.as_ref().and_then(|id| talks.iter().find(|t| t.id == *id));
-    let list = div().id("in-talks").w(px(340.)).flex_none().h_full().overflow_y_scroll().flex().flex_col().gap(px(2.)).children(talks.iter().enumerate().map(|(i, t)| {
+    let list = div().id("in-talks").flex_1().min_h_0().overflow_y_scroll().flex().flex_col().gap(px(2.)).children(talks.iter().enumerate().map(|(i, t)| {
         let id = t.id.clone();
         let on = ib.talk_at.as_deref() == Some(t.id.as_str());
         let face = (!t.face.is_empty()).then(|| images::pic(&t.face, cx)).flatten();
@@ -555,10 +737,29 @@ fn chat(root: &Root, talks: &[Talk], cx: &mut Context<Root>) -> impl IntoElement
             .when(t.unread > 0, |d| d.child(div().size(px(8.)).flex_none().rounded_full().bg(c(FACE))))
     }));
 
+    let making = ib.making.is_some();
+    let list = div()
+        .w(px(340.))
+        .flex_none()
+        .h_full()
+        .flex()
+        .flex_col()
+        .gap(px(8.))
+        .child(
+            Button::new("in-new-group", root.tr("in.newGroup"))
+                .icon("users")
+                .small()
+                .disabled(making)
+                .on_click(cx.listener(|r, _, window, cx| start_making(r, None, window, cx))),
+        )
+        .child(list);
+
     let pane: AnyElement = match (open, &ib.lines) {
-        (None, _) => note(root.tr("in.pickChat")).into_any_element(),
-        (Some(_), None) => note(root.tr("in.loading")).into_any_element(),
-        (Some(_), Some(Err(why))) => note(root.i18n.tv("in.failed", &[("why", if why.is_empty() { "Roblox" } else { why })])).into_any_element(),
+        _ if making => composer(root, open, cx).into_any_element(),
+        (None, _) if talks.is_empty() => empty_note(root.tr("in.noChats")).into_any_element(),
+        (None, _) => empty_note(root.tr("in.pickChat")).into_any_element(),
+        (Some(_), None) => empty_note(root.tr("in.loading")).into_any_element(),
+        (Some(_), Some(Err(why))) => empty_note(root.i18n.tv("in.failed", &[("why", crate::net::why_words(&root.i18n, why).as_str())])).into_any_element(),
         (Some(t), Some(Ok(lines))) => {
             let bubbles = lines.iter().map(|l| {
                 let mine = l.sender == me;
@@ -588,14 +789,228 @@ fn chat(root: &Root, talks: &[Talk], cx: &mut Context<Root>) -> impl IntoElement
                         .items_center()
                         .gap(px(12.))
                         .child(round_face((!t.face.is_empty()).then(|| images::pic(&t.face, cx)).flatten(), &t.name, 36.))
-                        .child(div().flex_1().min_w_0().text_size(px(T_GROUP)).font_weight(FontWeight::SEMIBOLD).truncate().child(t.name.clone())),
+                        .child(div().flex_1().min_w_0().text_size(px(T_GROUP)).font_weight(FontWeight::SEMIBOLD).truncate().child(t.name.clone()))
+                        .when(t.group, |d| {
+                            d.child(
+                                IconButton::new("in-members", "users")
+                                    .size(32.)
+                                    .when(ib.members, |b| b.filled())
+                                    .tip(root.tr("in.members"))
+                                    .on_click(cx.listener(|r, _, _, cx| {
+                                        r.inbox.members = !r.inbox.members;
+                                        r.inbox.armed = None;
+                                        cx.notify();
+                                    })),
+                            )
+                        }),
                 )
-                .child(crate::scrolled::body("in-lines", div().px(px(18.)).py(px(14.)).flex().flex_col().gap(px(8.)).children(bubbles)))
-                .child(div().flex_none().p(px(12.)).border_t_1().border_color(c(LINE)).when(ib.saying, |d| d.opacity(0.6)).child(field(&root.chat_box, Some("message")).h(px(40.)).px(px(14.))))
+                .child(
+                    div()
+                        .flex_1()
+                        .min_h_0()
+                        .flex()
+                        .child(
+                            div()
+                                .flex_1()
+                                .min_w_0()
+                                .h_full()
+                                .flex()
+                                .flex_col()
+                                .child(crate::scrolled::body("in-lines", div().px(px(18.)).py(px(14.)).flex().flex_col().gap(px(8.)).children(bubbles)))
+                                .child(div().flex_none().p(px(12.)).border_t_1().border_color(c(LINE)).when(ib.saying, |d| d.opacity(0.6)).child(field(&root.chat_box, Some("message")).h(px(40.)).px(px(14.)))),
+                        )
+                        .when(t.group && ib.members, |d| d.child(members(root, t, cx))),
+                )
                 .into_any_element()
         }
     };
     div().flex_1().min_h_0().px(px(PAD + 4.)).pb(px(18.)).flex().gap(px(14.)).child(list).child(surface().flex_1().min_w_0().h_full().overflow_hidden().flex().flex_col().child(pane))
+}
+
+/// The picker in the chat's place: friends to tick (found by name), and for a new group its name; then Create (two
+/// friends at least: one is a chat, not a group) or Add.
+fn composer(root: &Root, open: Option<&Talk>, cx: &mut Context<Root>) -> impl IntoElement {
+    let Some(m) = &root.inbox.making else { return div() };
+    let adding = m.to.is_some();
+    let members: HashSet<i64> = if adding { open.map(|t| t.people.keys().copied().collect()).unwrap_or_default() } else { HashSet::new() };
+    let need = if adding { 1 } else { 2 };
+    let q = root.group_q.read(cx).value().trim().to_lowercase();
+    let picks: AnyElement = match &root.friends.list {
+        None => empty_note(root.tr("in.loading")).into_any_element(),
+        Some(Err(why)) => empty_note(root.i18n.tv("in.failed", &[("why", crate::net::why_words(&root.i18n, why).as_str())])).into_any_element(),
+        Some(Ok(l)) => {
+            let rows: Vec<AnyElement> = l
+                .iter()
+                .filter(|f| !members.contains(&f.id))
+                .filter(|f| q.is_empty() || f.display.to_lowercase().contains(&q) || f.name.to_lowercase().contains(&q))
+                .enumerate()
+                .map(|(i, f)| {
+                    let on = m.picked.contains(&f.id);
+                    let id = f.id;
+                    let shown = if f.display.is_empty() { f.name.clone() } else { f.display.clone() };
+                    hot(("in-pick", i))
+                        .h(px(52.))
+                        .px(px(10.))
+                        .flex()
+                        .items_center()
+                        .gap(px(12.))
+                        .rounded(px(R_M))
+                        .cursor_pointer()
+                        .map(|d| if on { d.tones(tinted(PANEL, FACE, 0.12), tinted(PANEL, FACE, 0.16)) } else { d.tones(ca(WHITE, 0.), ca(WHITE, 0.05)) })
+                        .child(round_face((!f.face.is_empty()).then(|| images::pic(&f.face, cx)).flatten(), &shown, 36.))
+                        .child(
+                            div()
+                                .flex_1()
+                                .min_w_0()
+                                .flex()
+                                .flex_col()
+                                .child(div().truncate().text_size(px(T_M)).font_weight(FontWeight::MEDIUM).child(shown))
+                                .child(div().truncate().text_size(px(T_S)).text_color(c(MUTED)).child(format!("@{}", f.name))),
+                        )
+                        .child(if on { tick_mark(20.) } else { div().size(px(20.)).flex_none().rounded(px(6.)).border_1().border_color(ca(TEXT, 0.3)) })
+                        .on_click(cx.listener(move |r, _, _, cx| toggle_pick(r, id, cx)))
+                        .into_any_element()
+                })
+                .collect();
+            if rows.is_empty() {
+                empty_note(root.tr("in.noFriends")).into_any_element()
+            } else {
+                crate::scrolled::body("in-picks", div().px(px(8.)).py(px(6.)).flex().flex_col().gap(px(2.)).children(rows)).into_any_element()
+            }
+        }
+    };
+    let n = m.picked.len();
+    let title = match (adding, open) {
+        (true, Some(t)) => root.i18n.tv("in.addTo", &[("name", &t.name)]),
+        _ => root.tr("in.newGroup"),
+    };
+    div()
+        .size_full()
+        .flex()
+        .flex_col()
+        .when(m.busy, |d| d.opacity(0.7))
+        .child(
+            div()
+                .flex_none()
+                .px(px(18.))
+                .pt(px(14.))
+                .pb(px(12.))
+                .border_b_1()
+                .border_color(c(LINE))
+                .flex()
+                .flex_col()
+                .gap(px(10.))
+                .child(div().text_size(px(T_GROUP)).font_weight(FontWeight::SEMIBOLD).truncate().child(title))
+                .when(!adding, |d| d.child(field(&root.group_name, Some("edit")).h(px(40.)).px(px(14.))))
+                .child(field(&root.group_q, Some("search")).h(px(40.)).px(px(14.))),
+        )
+        .child(div().flex_1().min_h_0().child(picks))
+        .child(
+            div()
+                .flex_none()
+                .p(px(12.))
+                .border_t_1()
+                .border_color(c(LINE))
+                .flex()
+                .items_center()
+                .gap(px(8.))
+                .child(div().flex_1().min_w_0().truncate().text_size(px(T_S)).text_color(c(MUTED)).when(n < need, |d| d.child(root.tr(if adding { "in.pickOne" } else { "in.pickTwo" }))))
+                .child(Button::new("in-make-cancel", root.tr("gp.cancel")).quiet().on_click(cx.listener(|r, _, _, cx| {
+                    r.inbox.making = None;
+                    cx.notify();
+                })))
+                .child(
+                    Button::new("in-make-go", format!("{} ({n})", root.tr(if adding { "in.add" } else { "in.create" })))
+                        .primary()
+                        .disabled(n < need || m.busy)
+                        .on_click(cx.listener(|r, _, _, cx| finish_making(r, cx))),
+                ),
+        )
+}
+
+/// A group's members beside its lines: its name (changed here), Add people, and each member (a second click on the
+/// mark beside one takes them out).
+fn members(root: &Root, t: &Talk, cx: &mut Context<Root>) -> impl IntoElement {
+    let ib = &root.inbox;
+    let me = ib.of;
+    let faces: std::collections::HashMap<i64, String> = match &root.friends.list {
+        Some(Ok(l)) => l.iter().map(|f| (f.id, f.face.clone())).collect(),
+        _ => Default::default(),
+    };
+    let mut people: Vec<(i64, String)> = t.people.iter().map(|(id, n)| (*id, n.clone())).collect();
+    // You first, then by name.
+    people.sort_by(|a, b| (a.0 != me).cmp(&(b.0 != me)).then_with(|| a.1.to_lowercase().cmp(&b.1.to_lowercase())));
+    let name_row = if ib.renaming {
+        div()
+            .flex()
+            .flex_col()
+            .gap(px(8.))
+            .child(field(&root.group_name, Some("edit")).h(px(36.)).px(px(12.)))
+            .child(
+                div()
+                    .flex()
+                    .gap(px(6.))
+                    .child(Button::new("in-rename-go", root.tr("rs.save")).primary().small().disabled(ib.group_busy).on_click(cx.listener(|r, _, _, cx| rename(r, cx))))
+                    .child(Button::new("in-rename-no", root.tr("gp.cancel")).quiet().small().on_click(cx.listener(|r, _, _, cx| {
+                        r.inbox.renaming = false;
+                        cx.notify();
+                    }))),
+            )
+    } else {
+        let now = t.name.clone();
+        div()
+            .flex()
+            .items_center()
+            .gap(px(6.))
+            .child(div().flex_1().min_w_0().truncate().text_size(px(T_M)).font_weight(FontWeight::SEMIBOLD).child(t.name.clone()))
+            .child(IconButton::new("in-rename", "edit").size(28.).tip(root.tr("in.rename")).on_click(cx.listener(move |r, _, window, cx| {
+                let now = now.clone();
+                r.group_name.update(cx, |s, cx| s.set_value(now, window, cx));
+                r.inbox.renaming = true;
+                cx.notify();
+            })))
+    };
+    let id = t.id.clone();
+    let rows = people.into_iter().enumerate().map(|(i, (who, name))| {
+        let face = faces.get(&who).filter(|f| !f.is_empty()).and_then(|f| images::pic(f, cx));
+        let armed = ib.armed == Some(who);
+        div()
+            .h(px(44.))
+            .flex()
+            .items_center()
+            .gap(px(10.))
+            .child(round_face(face, &name, 30.))
+            .child(div().flex_1().min_w_0().truncate().text_size(px(T_M)).child(name))
+            .when(who == me, |d| d.child(div().flex_none().text_size(px(T_S)).text_color(c(MUTED)).child(root.tr("in.you"))))
+            .when(who != me, |d| {
+                d.child(if armed {
+                    Button::new(("in-out-sure", i), root.tr("in.removeSure")).danger().small().disabled(ib.group_busy).on_click(cx.listener(move |r, _, _, cx| remove_member(r, who, cx))).into_any_element()
+                } else {
+                    IconButton::new(("in-out", i), "x").size(26.).tip(root.tr("in.remove")).on_click(cx.listener(move |r, _, _, cx| remove_member(r, who, cx))).into_any_element()
+                })
+            })
+    }).collect::<Vec<_>>();
+    div()
+        .w(px(270.))
+        .flex_none()
+        .h_full()
+        .border_l_1()
+        .border_color(c(LINE))
+        .flex()
+        .flex_col()
+        .when(ib.group_busy, |d| d.opacity(0.7))
+        .child(
+            div()
+                .flex_none()
+                .p(px(14.))
+                .flex()
+                .flex_col()
+                .gap(px(12.))
+                .child(name_row)
+                .child(Button::new("in-add-people", root.tr("in.addPeople")).icon("userPlus").small().on_click(cx.listener(move |r, _, window, cx| start_making(r, Some(id.clone()), window, cx))))
+                .child(div().text_size(px(T_S)).text_color(c(MUTED)).child(format!("{} \u{00b7} {}", root.tr("in.members"), t.people.len()))),
+        )
+        .child(crate::scrolled::body("in-members-list", div().px(px(14.)).pb(px(12.)).flex().flex_col().children(rows)))
 }
 
 /// Trades: the four lists Roblox keeps, and under them the list shown; a trade opens in its row.
@@ -606,9 +1021,9 @@ fn trades(root: &Root, cx: &mut Context<Root>) -> AnyElement {
         chip(("in-trades", i), list == i).h(px(TOOL_H)).px(px(12.)).cursor_pointer().child(root.tr(&format!("in.tr.{i}"))).on_click(cx.listener(move |r, _, _, cx| pick_trades(r, i, cx)))
     }));
     let body: AnyElement = match &ib.trades {
-        None => note(root.tr("in.loading")).into_any_element(),
-        Some(Err(why)) => note(root.i18n.tv("in.failed", &[("why", if why.is_empty() { "Roblox" } else { why })])).into_any_element(),
-        Some(Ok(l)) if l.is_empty() => note(root.tr("in.noTrades")).into_any_element(),
+        None => empty_note(root.tr("in.loading")).into_any_element(),
+        Some(Err(why)) => empty_note(root.i18n.tv("in.failed", &[("why", crate::net::why_words(&root.i18n, why).as_str())])).into_any_element(),
+        Some(Ok(l)) if l.is_empty() => empty_note(root.tr("in.noTrades")).into_any_element(),
         Some(Ok(l)) => {
             let rows: Vec<AnyElement> = l.iter().enumerate().map(|(i, t)| trade(root, i, t, list, cx).into_any_element()).collect();
             crate::scrolled::body("in-trades-body", div().px(px(PAD + 4.)).pt(px(4.)).pb(px(24.)).flex().flex_col().gap(px(GRID_GAP)).children(rows))
@@ -725,7 +1140,7 @@ fn trade(root: &Root, i: usize, t: &Trade, list: usize, cx: &mut Context<Root>) 
 
     let detail: Option<Div> = open.then(|| match &ib.trade {
         None => div().text_size(px(T_M)).text_color(c(MUTED)).child(root.tr("in.loading")),
-        Some(Err(why)) => div().text_size(px(T_M)).text_color(c(MUTED)).child(root.i18n.tv("in.failed", &[("why", if why.is_empty() { "Roblox" } else { why })])),
+        Some(Err(why)) => div().text_size(px(T_M)).text_color(c(MUTED)).child(root.i18n.tv("in.failed", &[("why", crate::net::why_words(&root.i18n, why).as_str())])),
         Some(Ok(d)) => {
             let gain = worth(&d.theirs) - worth(&d.mine);
             let verdict = match gain {

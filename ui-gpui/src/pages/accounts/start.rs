@@ -8,17 +8,6 @@ use serde_json::{Value, json};
 use super::{is_local, launching};
 use crate::{kit::*, shell::Root, theme::*};
 
-/// The logo at the exact pixels it takes (crisp.rs needs the window, which only a drawing gets).
-#[derive(IntoElement)]
-struct Logo(f32);
-
-impl RenderOnce for Logo {
-    fn render(self, window: &mut Window, _: &mut App) -> impl IntoElement {
-        let _ = window;
-        crate::crisp::mark(self.0)
-    }
-}
-
 /// Getting started: add an account, pick a game, select accounts then Play. None once any account has been opened
 /// (its "last opened" is set) or is open. `boxed`: in its own box over the cards, with its title.
 pub fn steps(root: &Root, boxed: bool) -> Option<Div> {
@@ -91,55 +80,44 @@ pub fn steps(root: &Root, boxed: bool) -> Option<Div> {
     })
 }
 
-/// No accounts yet: a title, the steps, the three ways to add the first one side by side, the other ways in a line.
-/// Laid out to fit the smallest window (860×600) without scrolling, and centred in the page when there is room
-/// (owner 2026-11-12: the stacked rows overflowed a 1280×800 window and showed a scroll bar).
-pub fn empty(root: &Root, cx: &mut Context<Root>) -> impl IntoElement {
-    let way = |key: &'static str, mark: &'static str, title: String, sub: String, rec: Option<String>, cx: &mut Context<Root>| {
-        // A flat card: the way we'd pick first has the yellow ring and a yellow icon block.
-        let first = rec.is_some();
-        hot(key)
-            .flex_1()
-            .min_w_0()
-            .min_h(px(150.))
-            .p(px(18.))
-            .flex()
-            .flex_col()
-            .gap(px(12.))
-            .rounded(px(R_L))
-            .border_1()
-            .cursor_pointer()
-            .map(|d| if first { d.tones(tinted(RAISED, FACE, 0.07), tinted(RAISED_2, FACE, 0.10)).edge(ca(FACE, 0.75), c(FACE)) } else { d.tones(c(RAISED), c(RAISED_2)).edge(c(LINE), ca(WHITE, 0.17)) })
-            .child(
-                div()
-                    .flex()
-                    .items_center()
-                    .justify_between()
-                    .child(
-                        div()
-                            .flex_none()
-                            // The mark alone; the suggested way says so in words beside it, not with a yellow block.
-                            .child(icon(mark, 24., if first { c(TEXT) } else { c(TEXT_2) })),
-                    )
-                    .when_some(rec, |d, r| d.child(div().text_color(c(OK)).text_size(px(T_S)).font_weight(FontWeight::SEMIBOLD).child(r))),
-            )
-            .child(
-                div()
-                    .flex()
-                    .flex_col()
-                    .gap(px(4.))
-                    .child(div().text_size(px(T_L)).font_weight(FontWeight::SEMIBOLD).text_color(c(TEXT)).child(title))
-                    .child(div().text_size(px(T_S)).line_height(px(18.)).text_color(c(MUTED)).child(sub)),
-            )
+/// No accounts yet, in Home's welcome look (home::empty_stage): a game's picture with the title, a line and the way we
+/// would pick first; the three ways to add the first account as blocks under it, each with its button; the other ways
+/// in a line under them.
+pub fn empty(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement {
+    let go = |key: &'static str, label: String, main: bool, cx: &mut Context<Root>| {
+        Button::new(key, label)
+            .map(|b| if main { b.primary().icon("qr") } else { b.small() })
             .on_click(cx.listener(move |r, _, window, cx| {
                 match key {
-                    "start-phone" => crate::pages::quick::open(r, false, window, cx),
+                    "start-phone" | "start-phone-b" => crate::pages::quick::open(r, false, window, cx),
                     "start-pw" => crate::pages::password::open(r, window, cx),
                     _ => r.add_browser(cx),
                 }
                 cx.notify();
             }))
+            .into_any_element()
     };
+    let wide = |b: AnyElement| div().flex().flex_col().child(b).into_any_element();
+    let blocks = vec![
+        crate::pages::home::stage_block(
+            root.tr("start.rec"),
+            crate::pages::home::block_text("qr", Some(root.tr("start.phone")), root.tr("start.phoneSub"), None),
+            Some(wide(go("start-phone-b", root.tr("acc.w.use"), false, cx))),
+            false,
+        ),
+        crate::pages::home::stage_block(
+            root.tr("acc.w.pwHead"),
+            crate::pages::home::block_text("key", Some(root.tr("start.pw")), root.tr("start.pwSub"), None),
+            Some(wide(go("start-pw", root.tr("acc.w.use"), false, cx))),
+            false,
+        ),
+        crate::pages::home::stage_block(
+            root.tr("acc.w.webHead"),
+            crate::pages::home::block_text("globe", Some(root.tr("start.browser")), root.tr("start.browserSub"), None),
+            Some(wide(go("start-browser", root.tr("acc.w.use"), false, cx))),
+            false,
+        ),
+    ];
     let r_tip = (root.tr("pw.createTip"), root.tr("start.vaultTip"), root.tr("start.webTip"));
     let other = |key: &'static str, text: String, cx: &mut Context<Root>| {
         // What each other way does, under the mouse (Accounts.tsx's start screen).
@@ -159,64 +137,31 @@ pub fn empty(root: &Root, cx: &mut Context<Root>) -> impl IntoElement {
             cx.notify();
         }))
     };
+    let others = div()
+        .flex()
+        .flex_wrap()
+        .items_center()
+        .gap(px(4.))
+        .child(div().mr(px(6.)).text_size(px(T_S)).text_color(c(MUTED)).child(root.tr("start.more").trim_end_matches([':', '：']).to_string()))
+        .child(other("start-create", root.tr("pw.create"), cx))
+        .child(other("start-cookie", root.tr("start.cookie"), cx))
+        .child(other("start-vault", root.tr("start.vault"), cx))
+        .child(other("start-web", root.tr("start.web"), cx));
+    let main = go("start-phone", root.tr("start.phone"), true, cx);
+    let pad = 24.;
     div().flex_1().min_h_0().child(crate::scrolled::body(
         "acc-start",
-        div()
-            .w_full()
-            .min_h(relative(1.))
-            .px(px(PAD))
-            .py(px(24.))
-            .flex()
-            .flex_col()
-            .items_center()
-            .justify_center()
-            .child(
-                div()
-                    .w(px(760.))
-                    .max_w_full()
-                    .flex()
-                    .flex_col()
-                    .gap(px(22.))
-                    .child(
-                        div()
-                            .flex()
-                            .items_center()
-                            .gap(px(16.))
-                            .child(Logo(48.))
-                            .child(
-                                div()
-                                    .flex()
-                                    .flex_col()
-                                    .gap(px(2.))
-                                    .child(div().text_size(px(T_FIG)).font_weight(FontWeight::BOLD).child(root.tr("empty.title")))
-                                    .child(div().text_size(px(T_M)).text_color(c(TEXT_2)).child(root.tr("empty.text"))),
-                            ),
-                    )
-                    .children(steps(root, false))
-                    .child(
-                        div()
-                            .w_full()
-                            .flex()
-                            .gap(px(12.))
-                            .child(way("start-phone", "qr", root.tr("start.phone"), root.tr("start.phoneSub"), Some(root.tr("start.rec")), cx))
-                            .child(way("start-pw", "key", root.tr("start.pw"), root.tr("start.pwSub"), None, cx))
-                            .child(way("start-browser", "globe", root.tr("start.browser"), root.tr("start.browserSub"), None, cx)),
-                    )
-                    .child(
-                        div()
-                            .pt(px(14.))
-                            .border_t_1()
-                            .border_color(c(LINE))
-                            .flex()
-                            .flex_wrap()
-                            .items_center()
-                            .gap(px(4.))
-                            .child(div().mr(px(6.)).text_size(px(T_S)).text_color(c(MUTED)).child(root.tr("start.more").trim_end_matches([':', '：']).to_string()))
-                            .child(other("start-create", root.tr("pw.create"), cx))
-                            .child(other("start-cookie", root.tr("start.cookie"), cx))
-                            .child(other("start-vault", root.tr("start.vault"), cx))
-                            .child(other("start-web", root.tr("start.web"), cx)),
-                    ),
-            ),
+        div().w_full().px(px(pad)).pt(px(8.)).pb(px(24.)).child(crate::pages::home::empty_stage(
+            root,
+            1,
+            None,
+            root.tr("empty.title"),
+            root.tr("empty.text"),
+            Some(main),
+            blocks,
+            Some(others.into_any_element()),
+            width - 2. * pad,
+            cx,
+        )),
     ))
 }

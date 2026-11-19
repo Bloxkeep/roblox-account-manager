@@ -8,6 +8,7 @@
 //   await Task.Delay(d)                  rt::sleep(d).await
 //   _ = FooAsync();  (not waited for)    rt::spawn(async move { app.foo().await; })
 //   BeginInvoke(() => …) from a thread   rt::post(move || …)   (runs on the core's thread)
+use crate::threads::Hold;
 use std::{
     cell::RefCell,
     cmp::Reverse,
@@ -63,23 +64,19 @@ pub fn spawn(f: impl Future<Output = ()> + 'static) {
 
 /// From any thread: runs `f` on the core's thread, in its turn (a watcher's event, a window's click).
 pub fn post(f: impl FnOnce() + Send + 'static) {
-    if let Some(tx) = POSTS.get().and_then(|m| m.lock().ok()) {
+    if let Some(tx) = POSTS.get().map(|m| m.hold()) {
         let _ = tx.unbounded_send(Box::new(f));
     }
 }
 
-/// Slow work on a thread of its own; the task goes on with its answer. Should the work panic, the panic goes on in the
-/// waiting task (no second error box), which ends there as `spawn` says: its values are dropped, so a guard it holds
-/// (a busy flag's) is let go rather than the task waiting forever.
+/// Slow work on a pool thread (threads.rs); the task goes on with its answer. Should the work panic, the panic goes on
+/// in the waiting task (no second error box), which ends there as `spawn` says: its values are dropped, so a guard it
+/// holds (a busy flag's) is let go rather than the task waiting forever.
 pub async fn blocking<T: Send + 'static>(f: impl FnOnce() -> T + Send + 'static) -> T {
-    let (tx, rx) = oneshot::channel();
-    let _ = crate::net::Named::new("core-work".into()).spawn(move || {
-        let _ = tx.send(std::panic::catch_unwind(std::panic::AssertUnwindSafe(f)));
-    });
-    match rx.await {
+    match crate::threads::call(f).await {
         Ok(Ok(v)) => v,
         Ok(Err(panic)) => std::panic::resume_unwind(panic),
-        // No thread for it (none could be made): nothing will answer.
+        // No pool thread could ever be made: nothing will answer.
         Err(_) => std::future::pending().await,
     }
 }
@@ -136,7 +133,7 @@ pub async fn sleep(d: Duration) {
             }
         }
     }
-    let started = *TIMER_THREAD.get_or_init(|| crate::net::Named::new("core-timer".into()).spawn(timer_thread).is_ok());
+    let started = *TIMER_THREAD.get_or_init(|| crate::threads::own("core-timer", timer_thread).is_ok());
     if !started {
         // No timer thread could be made: a thread of its own, as before.
         return blocking(move || std::thread::sleep(d)).await;

@@ -1063,7 +1063,7 @@ impl TabCore {
                     // The last tab: the shared browser exits a moment after, and its folder goes with it.
                     ENV.with(|e| *e.borrow_mut() = None);
                     ENV_DIR.with(|d| *d.borrow_mut() = None);
-                    std::thread::spawn(move || delete_folder(&dir));
+                    crate::threads::run(move || delete_folder(&dir));
                 }
             }
         }

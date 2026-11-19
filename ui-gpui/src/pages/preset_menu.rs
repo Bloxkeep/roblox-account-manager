@@ -5,6 +5,7 @@ use std::time::Instant;
 
 use gpui_kit::{prelude::*, *};
 use serde_json::{Value, json};
+use crate::val::s;
 
 use crate::{
     images,
@@ -47,10 +48,6 @@ fn shut(r: &mut Root, cx: &mut Context<Root>) {
         });
     })
     .detach();
-}
-
-fn s<'a>(v: &'a Value, k: &str) -> &'a str {
-    v.get(k).and_then(Value::as_str).unwrap_or_default()
 }
 
 fn presets(root: &Root) -> &[Value] {
@@ -105,7 +102,7 @@ pub fn button(root: &Root, labelled: bool, cx: &mut Context<Root>) -> Div {
     };
     let mut wrap = div().relative().flex_none().child(trigger);
     if open || root.preset_menu.was {
-        wrap = wrap.child(div().absolute().bottom(px(38.)).right_0().child(deferred(anchored().anchor(Anchor::BottomRight).snap_to_window_with_margin(px(8.)).child(pop("bar-presets-pop", open, menu(root, cx)))).with_priority(1)));
+        wrap = wrap.child(popup(PopAt::AboveRight(38.), "bar-presets-pop", open, menu(root, cx)));
     }
     wrap
 }

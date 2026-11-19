@@ -109,6 +109,18 @@
         session: b.session && { ...b.session, pid: 20000 + i } });
     }
   }
+  // ?farm=30: that many Roblox windows open at once, the extra ones farm accounts in the main account's game (the Game
+  // monitor with a big farm), some of them on a second server and a few still joining.
+  if (params.has('farm')) {
+    const want = Math.min(200, Number(params.get('farm')) || 30), b = accounts[0];
+    const open = accounts.filter(a => a.state === 'running').length;
+    for (let i = 0; i < want - open; i++) {
+      const n = String(i + 2).padStart(2, '0');
+      accounts.push({ ...b, id: '00000000-0000-4000-9000-' + String(i).padStart(12, '0'), userId: 5140200000 + i, isMain: false, label: `Farm ${n}`, alias: `Farm ${n}`,
+        username: `farm_alt_${n}`, displayName: `farm_alt_${n}`, group: 'Farm', note: '', robux: 10 * i, autoRejoin: true,
+        session: { ...b.session, pid: 30000 + i * 4, since: minsAgo(5 + i * 3), connection: i % 9 === 4 ? 'joining' : 'ingame', jobId: i % 2 ? 'job-b' : 'job-a' } });
+    }
+  }
   if (LONG) {
     const longs = [['Sunny_The_Builder_Of_Many_Worlds_2010', 'SunnyTheBuilderOfManyWorlds2010', 'Main accounts and everything else'],
       ['pixelfarmer01_with_a_very_long_alias', 'pixelfarmer01_very_long_username', 'Farm farm farm farm farm farm farm'],
@@ -144,9 +156,10 @@
     return { list: params.has('guardfail') ? 5 : vaultList, current: cur?.id || null, name: cur?.name || null, picture: vaultAdding ? null : cur?.picture || null,
       open: locked ? null : vaultCurrent, pick: vaultPick, adding: !!vaultAdding, ask: askVault };
   };
-  // Settings › Appearance › Custom (?theme=custom; ?ctpicture=1 with a picture, a scenery theme's standing in).
-  let customTheme = { background: params.has('ctbg') ? '#' + params.get('ctbg') : '#1b2a3a', accent: '#f59e0b', fade: 45, blur: +(params.get('ctblur') || 0),
-    picture: params.has('ctpicture') ? 'scene-halong.svg' : null, video: false };
+  // Settings › Appearance › Custom (?theme=custom; ?ctpicture=1 with a picture, a scenery theme's standing in, or
+  // ?ctpicture=scene-snow.svg for that one; ?ctfade=0 for its fade).
+  let customTheme = { background: params.has('ctbg') ? '#' + params.get('ctbg') : '#1b2a3a', accent: '#f59e0b', fade: +(params.get('ctfade') ?? 45), blur: +(params.get('ctblur') || 0),
+    picture: params.has('ctpicture') ? (params.get('ctpicture').includes('.') ? params.get('ctpicture') : 'scene-halong.svg') : null, video: false };
   // Your themes (?saved=1): a few kept by name, one of them the theme in use.
   let savedThemes = params.has('saved') ? [
     { id: 't1', name: 'Night drive', look: { background: '#141a26', accent: '#22c55e', fade: 45, blur: 0, picture: null, video: false } },
@@ -273,8 +286,8 @@
     memoryWarnings: true, trimBackground: false, autoUpdateRoblox: true, robloxUpdateWhen: 'idle', antiAfk: false,
     // The fast cores for the window played; ?cpuone=1: a CPU with one kind of core (only power saving to give).
     splitCores: false, cores: params.has('cpuone') ? { hybrid: false, efficient: 0, logical: 8 } : { hybrid: true, efficient: 16, logical: 32 }, robloxConfig: { mode: params.has('rc') ? 'marked' : 'off', graphics: 1, fps: 30, volume: 0 },
-    // ?layout=list: the accounts page as a list.
-    layout: params.get('layout') || 'cards',
+    // The accounts page as a list, as the app has it by default; ?layout=cards: as cards.
+    layout: params.get('layout') || 'list',
     recentGames: params.has('norecent') ? [] : [2753915549, 920587237, 4924922222].map(p => ({ placeId: p, name: games[p].name, iconUrl: games[p].iconUrl })),
     // Saved servers (the game picker's Saved tab): a private server's link, and a game's own code; ?nosaved=1: none.
     savedServers: params.has('nosaved') ? [] : [
@@ -491,7 +504,9 @@
   let emit = () => {};
   const state = () => ({
     multiAtStart, language, theme, themeApplied: themeApplied(), customTheme, savedThemes, closeToTray, startWithWindows, phone, feeds: feedsState(), wikis: wikiPrefs, hideNames, notifications, notifyOff, dailySignInCheck, lastSignInCheck, skipConfirm, miniOpen, backup, boot: boot(), vaultExists, vaults: vaultsState(), locked, screenLock,
-    whatsNew: params.has('whatsnew') ? { from: '1.0.0', releases: [{ version: '1.0.1', date: '2026-10-19', en: ['Faster sign-in check: six accounts at a time.', 'Shows the version on the update button.'], vi: ['Kiểm tra đăng nhập nhanh hơn: 6 tài khoản một lúc.', 'Nút cập nhật ghi rõ phiên bản.'] }] } : null,
+    // ?whatsnew=real: the newest release of the real notes (whatsnew.json), as after updating to it (the shot host only).
+    whatsNew: params.get('whatsnew') === 'real' && typeof readRepo === 'function' ? { from: '1.1.1', releases: JSON.parse(readRepo('RobloxManager/whatsnew.json')).slice(0, 1) }
+      : params.has('whatsnew') ? { from: '1.0.0', releases: [{ version: '1.0.1', date: '2026-10-19', en: ['Faster sign-in check: six accounts at a time.', 'Shows the version on the update button.'], vi: ['Kiểm tra đăng nhập nhanh hơn: 6 tài khoản một lúc.', 'Nút cập nhật ghi rõ phiên bản.'] }] } : null,
     // ?noroblox=1: no Roblox installed, so no version of it (the app's RobloxVersionDto with no client).
     robloxVersion: { installed: NO_ROBLOX ? null : '0.742.0.7421053', latest: params.has('rbxold') ? '0.743.0.7430112' : '0.742.0.7421053', upToDate: NO_ROBLOX ? null : !params.has('rbxold'), direct: false, store: settings.launchVia === 'store',
       updater: settings.launchVia === 'store' || NO_ROBLOX ? null : 'Bloxstrap', updating: robloxUpdating, oldWindows: params.has('oldwin') ? 1 : 0, reopens: params.has('oldwin') ? 1 : 0 },
@@ -523,7 +538,8 @@
     lockUpdate: locked && !screenLock && lockUpdate !== null ? { go: lockUpdateGo } : null,
     countOnline,
     boardName,
-    community: { data: community(), at: Date.now() },
+    // ?nocommunity: the bot's sums not here yet (offline, before the first beat).
+    community: params.has('nocommunity') ? null : { data: community(), at: Date.now() },
     remote,
     installs: NO_ROBLOX ? { handler: null, bloxstrap: false, fishstrap: false, voidstrap: false, others: [], roblox: false, direct: false, store: false, vng: params.has('vng') }
       : { handler: 'Bloxstrap', bloxstrap: true, fishstrap: false, voidstrap: params.has('voidstrap'), others: params.has('others') ? ['Otherstrap'] : [], roblox: false, direct: true, store: params.has('store'), vng: params.has('vng') },
@@ -539,10 +555,14 @@
   let wikiFails = 0;
   let orphans = Number(params.get('others')) || 0; // ?others=1: a Roblox window Bloxkeep didn't open
   const metrics = () => ({
-    accounts: accounts.filter(a => a.state === 'running').map((a, i) => ({ id: a.id, ramMb: 780 + i * 140 + Math.round(Math.random() * 30) })),
+    // (Each window 780–1080 MB, as Roblox takes: with ?farm=30 the RAM added up past the PC's.)
+    accounts: accounts.filter(a => a.state === 'running').map((a, i) => ({ id: a.id, ramMb: 780 + (i % 6) * 60 + Math.round(Math.random() * 30) })),
     robloxCount: accounts.filter(a => a.state === 'running').length + orphans,
     monitorCount: accounts.filter(a => a.state === 'running').length + orphans,
-    totalMb: 1750 + Math.round(Math.random() * 40), systemMb: 32 * 1024, usedPct: 63, availableMb: 12 * 1024, cpuPct: 12, gpuPct: 34,
+    ...(params.has('farm') ? { totalMb: 27900 + Math.round(Math.random() * 200), systemMb: 64 * 1024, usedPct: 58, availableMb: 27 * 1024, cpuPct: 61, gpuPct: 47, pcCpuPct: 78, commitMb: 52 * 1024 }
+      : { totalMb: 1750 + Math.round(Math.random() * 40), systemMb: 32 * 1024, usedPct: 63, availableMb: 12 * 1024, cpuPct: 12, gpuPct: 34, pcCpuPct: 41, commitMb: 27 * 1024 }),
+    // (?nofit: no window measured yet, as on a first run.)
+    fit: params.has('nofit') ? null : params.has('farm') ? { max: 34, by: 'cpu', eachMb: 930 } : { max: 9, by: 'ram', eachMb: 1100 },
   });
   // The panel's numbers go with every change to the cards, not only on the next 1.5 s tick: a window opened or closed
   // is then counted in the sidebar as soon as its card says so, and Tests/ui doesn't write down one or the other by
@@ -578,7 +598,8 @@
             placeId: a.placeId, universe: Number(params.get('gpuniverse')) || 994732206, name: 'Blox Fruits', creator: 'Gamer Robot Inc', genre: params.get('lang') === 'vi' ? 'Phiêu lưu' : 'Adventure',
             iconUrl: null, playing: 412873, visits: 48216000000, favorites: 8700000, likes: 92, upVotes: 12853413, downVotes: 1071858, maxPlayers: 12,
             created: '2019-01-16T03:29:19Z', updated: params.has('gpnew') ? h(1) : h(30),
-            description: 'Train with swords or fruits, sail between islands and take on bosses with friends.\n\nWhat is new:\n- A harbour town on the third sea\n- Two new bosses and their drops\n- Faster ships and a shared map\n\nTips:\n- Fruits appear on the map every hour\n- The dealer changes his stock every 4 hours\n- Join a crew to share quests and rewards',
+            genres: ['Action', 'Open World'],
+            description: 'Train with swords or fruits, sail between islands and take on bosses with friends.\nUse code: SEAKING200 for 200 gems!\n\nWhat is new:\n- A harbour town on the third sea\n- Two new bosses and their drops\n- Faster ships and a shared map\n\nTips:\n- Fruits appear on the map every hour\n- The dealer changes his stock every 4 hours\n- Join a crew to share quests and rewards',
             accounts: [
               { id: id(2), name: 'Farm 1', minutes: 1860, kicks: 2, kickWhy: 'AFK', drops: 1, now: 'ingame' },
               { id: id(3), name: 'Farm 2', minutes: 1740, kicks: 0, drops: 3, now: 'ingame' },
@@ -1069,6 +1090,39 @@
           push();
           return null;
         case 'closeAll': return 2;
+        case 'serverRegions': {
+          await wait(300);
+          const at = [['JP', 'Tokyo'], ['SG', 'Singapore'], ['US', 'Los Angeles'], ['HK', 'Hong Kong'], ['AU', 'Sydney'], ['US', 'Seattle'], ['DE', 'Frankfurt']];
+          const servers = Array.from({ length: 30 }, (_, i) => ({ jobId: `00000000-0000-0000-0000-${String(i).padStart(12, '0')}`, playing: 12 - (i % 12), maxPlayers: 12, ping: 60 + i * 4, fps: 59, ...(i < 27 ? { cc: at[i % 7][0], city: at[i % 7][1] } : {}) }));
+          const regions = [];
+          for (const s of servers) if (s.cc) { let g = regions.find(r => r.cc === s.cc); if (!g) regions.push(g = { cc: s.cc, cities: [], servers: 0, players: 0 }); if (!g.cities.includes(s.city)) g.cities.push(s.city); g.servers++; g.players += s.playing; }
+          regions.sort((a, b) => b.servers - a.servers);
+          return { servers, regions, unknown: 3, stopped: false };
+        }
+        // A game's codes (Roblox Den + its wiki): made-up ones, two of them new, a few expired. ?nocodes=1: none.
+        case 'gameCodes': {
+          await wait(300);
+          if (params.has('nocodes')) return { codes: [] };
+          const d = n => new Date(Date.now() - n * 86400e3).toISOString();
+          const live = [['SEAKING200', '200 Gems', d(1)], ['HARBOURTOWN', '20 minutes of 2x Experience', d(3)], ['KITTGAMING', '20 Minute 2x XP Boost', d(40)], ['SUB2FER999', '20 Minute 2x XP Boost', d(60)],
+            ['MAGICBUS', '20 Minute 2x XP Boost', d(90)], ['JCWK', '20 Minute 2x XP Boost', d(120)], ['Sub2UncleKizaru', 'Free Stat Reset', d(200)], ['fudd10', '$1 Money', d(300)], ['BIGNEWS', 'The title "Big News"', d(400)], ['Chandler', '$0 Money', d(500)]];
+          const old = [['STAFFBATTLE', '20 Minute 2x XP Boost'], ['GAMERROBOT_YT', '20 Minute 2x XP Boost'], ['ADMINGIVEAWAY', '20 Minute 2x XP Boost'], ['NOOB_REFUND', 'Free Stat Reset']];
+          return {
+            codes: [...live.map(([code, reward, added]) => ({ code, reward, works: true, added })), ...old.map(([code, reward]) => ({ code, reward, works: false, added: '' }))],
+            sources: [{ name: 'Roblox Den', page: 'https://robloxden.com/game-codes/blox-fruits' }, { name: 'Blox Fruits Wiki', page: 'https://blox-fruits.fandom.com/wiki/Codes' }],
+            caseSensitive: false,
+          };
+        }
+        // The Servers tab's facts for the servers shown: a country and city, the version (every fifth one older) and
+        // a start some hours back (Roblox doesn't say for about one in four). ?srvblocked=1: the game blocked there.
+        case 'serverFacts': {
+          await wait(400);
+          if (params.has('srvblocked')) return { facts: [], newest: 0, blocked: true, stopped: false };
+          const at = [['JP', 'Tokyo'], ['SG', 'Singapore'], ['US', 'Los Angeles'], ['HK', 'Hong Kong'], ['JP', 'Tokyo'], ['US', 'Seattle'], ['DE', 'Frankfurt']];
+          const facts = (a?.jobs || []).map((jobId, i) => ({ jobId, cc: at[i % 7][0], city: at[i % 7][1], version: i % 5 === 3 ? 3810 : 3814,
+            started: i % 4 === 1 ? 0 : Date.now() - (i * 37 + 12) * 60000 }));
+          return { facts, newest: 3814, blocked: false, stopped: false };
+        }
         case 'friendServers': await wait(600); if (params.has('friendsfail')) throw new Error('HTTP 500'); return { asked: 2, friends: params.has('nofriends') ? [] : [
           { userId: 5140000101, name: LONG ? 'kiwi_runner_kiwi_runner_kiwi' : 'kiwi_runner', displayName: LONG ? 'Kiwi The Fastest Runner In The World' : 'Kiwi', avatarUrl: null, jobId: '00000000-0000-0000-0000-000000000002', placeId: 2753915549, via: hideNames ? 'Account 1' : LONG ? 'Sunny_The_Builder_Of_Many_Worlds_2010' : tx('Main', 'Tài khoản chính') },
           { userId: 5140000102, name: 'mochi_cat', displayName: 'Mochi', avatarUrl: null, jobId: '00000000-0000-0000-0000-000000000002', placeId: 2753915549, via: hideNames ? 'Account 2' : 'Farm 1' }] };
@@ -1145,6 +1199,10 @@
           return a.ids.length;
         case 'setFpsCap':
           accounts.forEach(x => { if (a.ids.includes(x.id)) x.fpsCap = a.fps; });
+          push();
+          return a.ids.length;
+        case 'setGroup':
+          accounts.forEach(x => { if (a.ids.includes(x.id)) x.group = (a.group || '').trim(); });
           push();
           return a.ids.length;
         case 'setAutoRejoin':
@@ -1547,7 +1605,7 @@
   if (!base || !params.has('tiles')) return;
   const vi = params.get('lang') === 'vi';
   const long = params.has('long'), hide = params.has('hide');
-  const count = Math.max(0, Math.min(24, Number(params.get('tiles')) || 0));
+  const count = Math.max(0, Math.min(60, Number(params.get("tiles")) || 0));
   /** A blocky game scene in the colours given: what a Roblox window might show. */
   const scene = (sky, ground, a, b) => 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
     <rect width="1280" height="440" fill="${sky}"/><rect y="440" width="1280" height="280" fill="${ground}"/>

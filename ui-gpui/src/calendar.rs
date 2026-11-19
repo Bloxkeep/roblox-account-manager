@@ -19,29 +19,14 @@ pub enum Act {
 
 const CELL: f32 = 36.;
 const GAP: f32 = 2.;
-const MONTHS: [&str; 12] = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-
-/// Days since 1970-01-01 of a day (Howard Hinnant's days_from_civil).
+/// time.rs's arithmetic in the calendar's types.
 fn days_from_civil(y: i32, m: u32, d: u32) -> i64 {
-    let y = i64::from(y) - i64::from(m <= 2);
-    let era = y.div_euclid(400);
-    let yoe = y - era * 400;
-    let m = i64::from(m);
-    let doy = (153 * (if m > 2 { m - 3 } else { m + 9 }) + 2) / 5 + i64::from(d) - 1;
-    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
-    era * 146097 + doe - 719468
+    crate::time::days_from_civil(y.into(), m.into(), d.into())
 }
 
 fn civil_from_days(days: i64) -> (i32, u32, u32) {
-    let z = days + 719468;
-    let era = z.div_euclid(146097);
-    let doe = z - era * 146097;
-    let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
-    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
-    let mp = (5 * doy + 2) / 153;
-    let d = doy - (153 * mp + 2) / 5 + 1;
-    let m = if mp < 10 { mp + 3 } else { mp - 9 };
-    ((yoe + era * 400 + i64::from(m <= 2)) as i32, m as u32, d as u32)
+    let (y, m, d) = crate::time::civil(days);
+    (y as i32, m as u32, d as u32)
 }
 
 fn iso(y: i32, m: u32, d: u32) -> String {
@@ -75,15 +60,6 @@ fn days_in((y, m): (i32, u32)) -> u32 {
     (days_from_civil(ny, nm, 1) - days_from_civil(y, m, 1)) as u32
 }
 
-/// A weekday's short name (0 Sunday): "T2"…"T7", "CN" in Vietnamese, as the Presets tab writes them.
-fn weekday(vietnamese: bool, d: u32) -> String {
-    if vietnamese {
-        if d == 0 { "CN".into() } else { format!("T{}", d + 1) }
-    } else {
-        ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][(d % 7) as usize].into()
-    }
-}
-
 fn id(key: &str, part: &str, n: u64) -> ElementId {
     ElementId::NamedInteger(SharedString::from(format!("{key}-{part}")), n)
 }
@@ -108,7 +84,7 @@ pub fn panel<V: 'static>(
     let lead = ((days_from_civil(y, m, 1) + 4).rem_euclid(7) as u32 + 7 - first) % 7;
     let count = days_in(shown);
 
-    let title = i18n.tv("tf.monthYear", &[("month", MONTHS[(m - 1) as usize]), ("n", &m.to_string()), ("year", &y.to_string())]);
+    let title = i18n.tv("tf.monthYear", &[("month", crate::time::month_name(m.into())), ("n", &m.to_string()), ("year", &y.to_string())]);
     let step = |n: i32, icon_name: &'static str, tip: String, cx: &mut Context<V>| {
         let act = act.clone();
         IconButton::new(id(key, "step", (n + 1) as u64), icon_name).size(28.).tip(tip).on_click(cx.listener(move |v, _, w, cx| act(v, Act::Shift(n), w, cx)))
@@ -126,7 +102,7 @@ pub fn panel<V: 'static>(
     let blank = || div().size(px(CELL)).flex_none();
     let mut names = row();
     for i in 0..7 {
-        names = names.child(div().w(px(CELL)).h(px(24.)).flex_none().flex().items_center().justify_center().text_size(px(T_XS)).font_weight(FontWeight::MEDIUM).text_color(c(MUTED)).child(weekday(vi, (i + first) % 7)));
+        names = names.child(div().w(px(CELL)).h(px(24.)).flex_none().flex().items_center().justify_center().text_size(px(T_XS)).font_weight(FontWeight::MEDIUM).text_color(c(MUTED)).child(crate::time::day_short(((i + first) % 7).into())));
     }
     let mut grid = div().flex().flex_col().gap(px(GAP)).child(names);
     let mut week = row();
@@ -207,7 +183,7 @@ pub fn panel<V: 'static>(
 /// The panel laid over the page under its box, its right edge on the box's (TimeField.tsx's Popup), `top` below the
 /// top of the box's wrapper (which is `relative`).
 pub fn popover(key: &'static str, top: f32, panel: Stateful<Div>) -> Div {
-    div().absolute().top(px(top)).right_0().child(deferred(anchored().anchor(Anchor::TopRight).snap_to_window_with_margin(px(8.)).child(pop(SharedString::from(format!("{key}-pop")), true, panel))).with_priority(1))
+    popup(PopAt::BelowRight(top), SharedString::from(format!("{key}-pop")), true, panel)
 }
 
 #[cfg(test)]

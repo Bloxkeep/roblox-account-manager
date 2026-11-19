@@ -1,6 +1,6 @@
 //! Unexpected errors go to error.log in the data folder instead of crashing the app.
-//! Only exception details are written — never account data. At 256 KB the log moves to error.log.1 (the earlier one of
-//! those is replaced), so a bug report still has the lines from before.
+//! Only exception details are written — never account data. At 1 MB the log moves to error.log.1 and the one there to
+//! error.log.2 (the one there goes), so a bug report still has days of lines from before (3 MB in all).
 //!
 //! The same lines, and what Bloxkeep does for each account (activity.rs), are also kept in memory for Statistics ›
 //! Console: the last CONSOLE_MOST of them, a line said again folded into the one before it ("×12").
@@ -14,7 +14,10 @@ use std::{
 use regex::Regex;
 use serde::Serialize;
 
-const MAX_SIZE: u64 = 256 * 1024;
+/// error.log's size before it moves to error.log.1: 1 MB each, about a week of the owner's log (256 KB held about a day
+/// and a half, 2026-11-17). Only appended to and its size looked at while the app runs; a bug report sends the end
+/// (FEEDBACK_LOG_MAX), so a bigger file costs nothing there.
+pub const MAX_SIZE: u64 = 1024 * 1024;
 static SYNC: Mutex<()> = Mutex::new(());
 
 /// Log.Write(Exception): the error's words (the C# wrote the exception's type and stack too; a Fail has its sentence).
@@ -88,12 +91,20 @@ fn put(text: &str) {
         let dir = crate::core::vault::data_dir();
         std::fs::create_dir_all(&dir)?;
         let path = dir.join("error.log");
-        // At the limit the log is kept as error.log.1 (the one before replaced): a report needs the lines from before it.
+        // At the limit the log moves down one: error.log.1 becomes error.log.2 (the one before that goes) and the log
+        // becomes error.log.1, so a report sent days after the trouble still has its lines (owner, 2026-11-17: "lỡ người ta
+        // bị đầu tuần mà cuối tuần mới report").
         if let Ok(meta) = std::fs::metadata(&path) {
-            // Not a reason to stop logging: error.log.1 held open (read, scanned) makes the rename fail, and the line is
-            // still written; if the log can't be moved aside it starts over, so it can't grow without end either.
-            if meta.len() > MAX_SIZE && std::fs::rename(&path, dir.join("error.log.1")).is_err() {
-                let _ = std::fs::File::create(&path);
+            // Not a reason to stop logging: a file held open (read, scanned) makes a rename fail, and the line is still
+            // written; if the log can't be moved aside it starts over, so it can't grow without end either.
+            if meta.len() > MAX_SIZE {
+                let (older, oldest) = (dir.join("error.log.1"), dir.join("error.log.2"));
+                if older.is_file() {
+                    let _ = std::fs::rename(&older, &oldest);
+                }
+                if std::fs::rename(&path, &older).is_err() {
+                    let _ = std::fs::File::create(&path);
+                }
             }
         }
         let c = super::base::Stamp::now().local();
@@ -183,6 +194,32 @@ pub fn catch_crashes() {
     }
 }
 
+/// Where the code is now, as the calls that led here: each one's place in Bloxkeep.exe (" stack: +0x1A2B3C +0x…"),
+/// the nearest first. A panic's own words name only the line that gave up (GPUI's, say), not Bloxkeep's call that led
+/// to it: a start that crashed every time (2026-11-18) could not be traced from error.log. The numbers are read back
+/// with the build's bloxkeep_ui.pdb (kept beside each test build).
+#[cfg(windows)]
+pub fn stack_here() -> String {
+    use windows_sys::Win32::System::Diagnostics::Debug::RtlCaptureStackBackTrace;
+    let mut frames = [std::ptr::null_mut::<core::ffi::c_void>(); 48];
+    // SAFETY: fills at most 48 entries of this array; the first two frames (this function, the hook) are skipped.
+    let n = unsafe { RtlCaptureStackBackTrace(2, frames.len() as u32, frames.as_mut_ptr(), std::ptr::null_mut()) } as usize;
+    let base = module_base();
+    let mut out = String::from(" stack:");
+    for at in frames.iter().take(n).map(|f| *f as usize) {
+        // (Only Bloxkeep's own code: Windows' frames between say nothing without Windows' symbols.)
+        if at >= base && at - base < 0x2000_0000 {
+            out.push_str(&format!(" +0x{:X}", at - base));
+        }
+    }
+    out
+}
+
+#[cfg(not(windows))]
+pub fn stack_here() -> String {
+    String::new()
+}
+
 #[cfg(windows)]
 fn module_base() -> usize {
     // SAFETY: a null name asks for this process's own exe, which stays loaded.
@@ -198,10 +235,10 @@ pub fn window_beat() {
     *BEAT.lock().unwrap_or_else(|e| e.into_inner()) = Some(Instant::now());
 }
 
-/// A thread of its own that notes when the window stops answering for 5 s or more, and for how long. A watch that
+/// A thread of its own, for as long as the app runs, that notes when the window stops answering for 5 s or more, and for how long. A watch that
 /// itself woke late (the PC slept, or was too busy to run it) says nothing: that pause wasn't Bloxkeep's.
 pub fn watch_window() {
-    let _ = crate::net::Named::new("window-watch".into()).spawn(|| {
+    let _ = crate::threads::own("window-watch", || {
         let mut stuck_since: Option<Instant> = None;
         let mut woke = Instant::now();
         loop {

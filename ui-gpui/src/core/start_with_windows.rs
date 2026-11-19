@@ -44,6 +44,9 @@ pub fn is_on() -> bool {
 }
 
 pub fn set(on: bool) -> Res<()> {
+    if std::env::var("BLOXKEEP_DATA").is_ok_and(|d| !d.is_empty()) {
+        return Err(crate::core::base::Fail::other("a test copy on its own data folder (BLOXKEEP_DATA) leaves starting with Windows to the installed Bloxkeep".to_string()));
+    }
     {
         let run = RegKey::create(Hive::CurrentUser, RUN_KEY)?;
         if on {
@@ -62,6 +65,10 @@ pub fn set(on: bool) -> Res<()> {
 /// At each start: an entry left pointing at a copy that isn't there any more (a moved portable copy) points
 /// at this one. One pointing at another copy that is there stays as it is.
 pub fn keep_path_current() {
+    // (A test copy on its own data folder, BLOXKEEP_DATA, leaves the installed Bloxkeep's entry alone.)
+    if std::env::var("BLOXKEEP_DATA").is_ok_and(|d| !d.is_empty()) {
+        return;
+    }
     let fix = || -> Res<()> {
         let Some(run) = RegKey::open(Hive::CurrentUser, RUN_KEY, true)? else {
             return Ok(());

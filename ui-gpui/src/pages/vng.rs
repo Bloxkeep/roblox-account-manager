@@ -3,6 +3,7 @@ use serde_json::{Value, json};
 
 use super::games::{self, View};
 use crate::{i18n::plain, images, kit::*, link::Link, shell::Root, theme::*};
+use crate::ask::reply;
 
 #[derive(Default)]
 pub struct Data {
@@ -11,6 +12,8 @@ pub struct Data {
     result: Option<Result<Value, String>>,
     notices: bool,
     expanded: Option<usize>,
+    /// A privacy or trade choice on its way to VNG.
+    saving: bool,
 }
 
 impl Data {
@@ -64,20 +67,17 @@ pub fn want(root: &mut Root, link: &Link, cx: &mut Context<Root>) {
     state.expanded = None;
     let revision = state.revision;
     let rx = link.call("vngPanel", json!({ "id": key.0, "panel": key.1 }));
-    cx.spawn(async move |this, cx| {
-        let result = rx.await.unwrap_or_else(|_| Err(String::new()));
-        let _ = this.update(cx, |root, cx| {
-            if !root.locked() && root.tabs.vng.revision == revision
-                && root.friends.account.as_deref() == Some(key.0.as_str())
-                && panel_key(root) == Some(key.1)
-            {
-                root.tabs.vng.result = Some(result);
-                cx.notify();
-            } else if root.tabs.vng.revision == revision {
-                root.tabs.vng.clear();
-            }
-        });
-    }).detach();
+    reply(rx, cx, move |root, result, cx| {
+        if !root.locked() && root.tabs.vng.revision == revision
+            && root.friends.account.as_deref() == Some(key.0.as_str())
+            && panel_key(root) == Some(key.1)
+        {
+            root.tabs.vng.result = Some(result);
+            cx.notify();
+        } else if root.tabs.vng.revision == revision {
+            root.tabs.vng.clear();
+        }
+    });
 }
 
 fn words<'a>(value: &'a Value, key: &str) -> &'a str {
@@ -133,21 +133,67 @@ fn settings(root: &Root, data: &Value, cx: &mut Context<Root>) -> Div {
             .unwrap_or_else(|| div().child(root.tr("rs.unknown")).into_any_element())))
         .child(setting_row(root.tr("rs.country"), div().child(value("country"))))
         .when_some(birthday, |d, date| d.child(setting_row(root.tr("rs.birthday"), div().child(date))));
+    // Privacy and trades: the cards a roblox.com account's Settings has, set on VNG's own servers (vngSet).
+    let busy = root.tabs.vng.saving;
+    let online = data.get("online").and_then(crate::roblox::Choice::from_json);
+    let join = data.get("join").and_then(crate::roblox::Choice::from_json);
+    let privacy = super::rsettings::privacy_card(root, Some((online.as_ref(), join.as_ref())), None, busy, |r, online, v, cx| set(r, if online { "online" } else { "join" }, v, cx), cx);
+    let trades = super::rsettings::trades_card(root, data["tradePrivacy"].as_str(), data["tradeValue"].as_str(), busy, |r, privacy, v, cx| set(r, if privacy { "trade" } else { "value" }, v, cx), cx);
     div().flex().flex_col().gap(px(12.))
         .child(profile)
+        .child(super::rsettings::section(root.tr("rs.privacy"), privacy))
+        .child(super::rsettings::section(root.tr("rs.trades"), trades))
         .when(data["about"].is_string(), |d| d.child(line(root.tr("rs.about"), value("about"))))
         .child(div().text_size(px(T_M)).text_color(c(MUTED)).child(root.tr("tabs.vngSettingsInfo")))
+}
+
+/// One of the account's privacy or trade choices (`what`: "online", "join", "trade", "value") set to Roblox's word
+/// `v`: shown at once, put back with Roblox's reason when VNG refuses.
+fn set(r: &mut Root, what: &'static str, v: String, cx: &mut Context<Root>) {
+    let (Some(id), Some(link)) = (r.friends.account.clone(), r.link.clone()) else { return };
+    if r.tabs.vng.saving {
+        return;
+    }
+    let path = match what {
+        "online" => "/online/now",
+        "join" => "/join/now",
+        "trade" => "/tradePrivacy",
+        _ => "/tradeValue",
+    };
+    let Some(Ok(data)) = r.tabs.vng.result.as_mut() else { return };
+    let Some(slot) = data.pointer_mut(path) else { return };
+    let before = std::mem::replace(slot, Value::String(v.clone()));
+    r.tabs.vng.saving = true;
+    let revision = r.tabs.vng.revision;
+    let rx = link.call("vngSet", json!({ "id": id, "what": what, "value": v }));
+    reply(rx, cx, move |r, done, cx| {
+        if r.tabs.vng.revision != revision {
+            return;
+        }
+        r.tabs.vng.saving = false;
+        if let Err(why) = done {
+            if let Some(Ok(data)) = r.tabs.vng.result.as_mut()
+                && let Some(slot) = data.pointer_mut(path)
+            {
+                *slot = before;
+            }
+            r.toast = Some((r.i18n.tv("rs.failed", &[("why", if why.is_empty() { "Roblox VNG" } else { &why })]), "bad".into()));
+        }
+        cx.notify();
+    });
 }
 
 fn details(root: &Root, data: &Value, cx: &mut Context<Root>) -> Div {
     let mut body = div().flex().flex_col().gap(px(8.));
     match root.games.view {
         View::Profile => {
-            let username = words(data, "username");
+            // (Names hidden: by its first letter, and no @name, as everywhere.)
+            let hide = root.hides_names();
+            let username = if hide { "" } else { words(data, "username") };
             let created: String = words(data, "created").chars().take(10).collect();
             return body.child(div().flex().items_center().gap(px(16.)).children(picture(data, 104., cx)).child(
                 div().min_w_0().flex().flex_col().gap(px(6.))
-                    .child(div().text_size(px(T_TITLE)).font_weight(FontWeight::SEMIBOLD).child(words(data, "title").to_owned()))
+                    .child(div().text_size(px(T_TITLE)).font_weight(FontWeight::SEMIBOLD).child(if hide { crate::val::first_only(words(data, "title")) } else { words(data, "title").to_owned() }))
                     .when(!username.is_empty(), |d| d.child(div().text_color(c(MUTED)).child(format!("@{username}")))),
             ))
             .when(!created.is_empty(), |d| d.child(line(root.tr("tabs.vngJoined"), created)))

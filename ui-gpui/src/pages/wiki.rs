@@ -4,6 +4,7 @@
 // for, pages seen and saved), its search as typed, every article drawn here with its box of facts as a card and its
 // links opening here, and each kind as a table to search, filter, sort and compare, with the items most like one and
 // the odds of a drop. Text and pictures are the wiki's (CC BY-SA): every page names and links it.
+use crate::threads::Hold;
 use std::{
     cell::RefCell,
     collections::{HashMap, HashSet},
@@ -16,6 +17,7 @@ use gpui_kit::component::input::{InputEvent, InputState};
 use gpui_kit::component::text::TextView;
 use gpui_kit::{prelude::*, *};
 use serde_json::{Value, json};
+use crate::val::string;
 
 use crate::{
     images,
@@ -127,13 +129,6 @@ struct ArtFound {
     sim: Rc<(Vec<wikitext::SimLine>, Vec<usize>)>,
 }
 
-fn hash_of(x: impl std::hash::Hash) -> u64 {
-    use std::hash::Hasher;
-    let mut h = std::collections::hash_map::DefaultHasher::new();
-    x.hash(&mut h);
-    h.finish()
-}
-
 /// What the tab has read (kept while the app runs, by wiki) and what it shows.
 #[derive(Default)]
 pub struct Data {
@@ -211,10 +206,6 @@ pub(crate) async fn api(link: &Link, site: &str, q: Value) -> Option<Value> {
     link.call("wikiApi", json!({ "site": site, "q": q })).await.ok().and_then(Result::ok).filter(|v| v.get("error").is_none())
 }
 
-fn s(v: &Value, k: &str) -> String {
-    v.get(k).and_then(Value::as_str).unwrap_or_default().to_string()
-}
-
 fn stamp(iso: &str) -> i64 {
     crate::time::iso_secs(iso).unwrap_or(0)
 }
@@ -284,12 +275,12 @@ pub fn want(r: &mut Root, site: &str, game: &str, cx: &mut Context<Root>) {
                 let logo = g.get("logo").and_then(Value::as_str).map(|l| if l.starts_with("//") { format!("https:{l}") } else { l.to_string() }).filter(|l| wikitext::wiki_img(l));
                 let r = d.pointer("/query/rightsinfo");
                 Some(About {
-                    name: s(g, "sitename"),
+                    name: string(g, "sitename"),
                     articles: d.pointer("/query/statistics/articles").and_then(Value::as_i64).unwrap_or(0),
-                    main_page: Some(s(g, "mainpage")).filter(|m| !m.is_empty()).unwrap_or_else(|| "Main Page".into()),
+                    main_page: Some(string(g, "mainpage")).filter(|m| !m.is_empty()).unwrap_or_else(|| "Main Page".into()),
                     logo,
                     rights: r.and_then(|r| {
-                        let (t, u) = (s(r, "text"), s(r, "url"));
+                        let (t, u) = (string(r, "text"), string(r, "url"));
                         (!t.is_empty() && u.starts_with("https://")).then_some((t, u))
                     }),
                 })
@@ -342,7 +333,7 @@ pub fn want(r: &mut Root, site: &str, game: &str, cx: &mut Context<Root>) {
                             d.pointer("/query/search")?
                                 .as_array()?
                                 .iter()
-                                .map(|h| (s(h, "title"), wikihtml::words_of(&s(h, "snippet"))))
+                                .map(|h| (string(h, "title"), wikihtml::words_of(&string(h, "snippet"))))
                                 .filter(|(t, _)| !t.is_empty())
                                 .collect::<Vec<_>>(),
                         )
@@ -378,14 +369,14 @@ fn load_kinds(link: Link, site: String, cx: &mut Context<Root>) {
         );
         let mut counts: HashMap<String, i64> = HashMap::new();
         for r in used.as_ref().and_then(|u| u.pointer("/query/querypage/results")).and_then(Value::as_array).into_iter().flatten() {
-            let t = s(r, "title");
+            let t = string(r, "title");
             if let Some(name) = t.strip_prefix("Template:") {
                 counts.insert(fold(&name.replace('_', " ")), r.get("value").and_then(|v| v.as_i64().or_else(|| v.as_str().and_then(|x| x.parse().ok()))).unwrap_or(0));
             }
         }
         let mut all: Vec<Kind> = Vec::new();
         for b in boxes.as_ref().and_then(|b| b.pointer("/query/allinfoboxes")).and_then(Value::as_array).into_iter().flatten() {
-            let title = s(b, "title").replace('_', " ");
+            let title = string(b, "title").replace('_', " ");
             let low = title.to_lowercase();
             if title.is_empty() || ["user", "test", "sandbox", "tabber", "navbox"].iter().any(|w| low.contains(w)) || low.ends_with("doc") || low.starts_with('.') || low.contains('/') {
                 continue;
@@ -453,20 +444,20 @@ fn load_fresh(link: Link, site: String, cx: &mut Context<Root>) {
         let mut added: Vec<FreshPage> = Vec::new();
         let mut seen = HashSet::new();
         for c in rows(&made) {
-            let t = s(&c, "title");
+            let t = string(&c, "title");
             if !t.is_empty() && seen.insert(t.clone()) {
-                added.push(FreshPage { title: t, at: stamp(&s(&c, "timestamp")), edits: 0, pic: None });
+                added.push(FreshPage { title: t, at: stamp(&string(&c, "timestamp")), edits: 0, pic: None });
             }
         }
         let mut count: Vec<FreshPage> = Vec::new();
         for c in rows(&edits) {
-            let t = s(&c, "title");
+            let t = string(&c, "title");
             if t.is_empty() {
                 continue;
             }
             match count.iter_mut().find(|p| p.title == t) {
                 Some(p) => p.edits += 1,
-                None => count.push(FreshPage { title: t, at: stamp(&s(&c, "timestamp")), edits: 1, pic: None }),
+                None => count.push(FreshPage { title: t, at: stamp(&string(&c, "timestamp")), edits: 1, pic: None }),
             }
         }
         let mut hot: Vec<FreshPage> = count.iter().filter(|p| p.edits >= 3 && p.title != "Main Page").cloned().collect();
@@ -482,7 +473,7 @@ fn load_fresh(link: Link, site: String, cx: &mut Context<Root>) {
         if !wanted.is_empty() {
             let d = api(&link, &site, json!({ "action": "query", "titles": wanted.iter().take(50).cloned().collect::<Vec<_>>().join("|"), "prop": "pageimages", "piprop": "thumbnail", "pithumbsize": 160 })).await;
             let pics: HashMap<String, String> =
-                d.as_ref().and_then(|d| d.pointer("/query/pages")).and_then(Value::as_array).into_iter().flatten().filter_map(|p| Some((s(p, "title"), thumb(p)?))).collect();
+                d.as_ref().and_then(|d| d.pointer("/query/pages")).and_then(Value::as_array).into_iter().flatten().filter_map(|p| Some((string(p, "title"), thumb(p)?))).collect();
             for p in added.iter_mut().chain(hot.iter_mut()) {
                 p.pic = pics.get(&p.title).cloned();
             }
@@ -517,7 +508,7 @@ fn load_fresh(link: Link, site: String, cx: &mut Context<Root>) {
         )
         .await;
         let now: HashMap<String, (String, Option<String>)> =
-            d.as_ref().and_then(|d| d.pointer("/query/pages")).and_then(Value::as_array).into_iter().flatten().filter_map(|p| Some((s(p, "title"), (text(p)?, thumb(p))))).collect();
+            d.as_ref().and_then(|d| d.pointer("/query/pages")).and_then(Value::as_array).into_iter().flatten().filter_map(|p| Some((string(p, "title"), (text(p)?, thumb(p))))).collect();
         let todo: Vec<&FreshPage> = edited.iter().filter(|p| now.contains_key(&p.title)).collect();
         let mut out: Vec<Changed> = Vec::new();
         for part in todo.chunks(4) {
@@ -547,7 +538,7 @@ fn load_page(link: Link, site: String, title: String, cx: &mut Context<Root>) {
         let k = key(&site, &title);
         let page = if title.to_lowercase().starts_with("category:") {
             api(&link, &site, json!({ "action": "query", "list": "categorymembers", "cmtitle": title, "cmlimit": 500, "cmnamespace": "0|14", "cmprop": "title" })).await.map(|d| {
-                let list: Vec<String> = d.pointer("/query/categorymembers").and_then(Value::as_array).into_iter().flatten().map(|m| s(m, "title")).filter(|t| !t.is_empty()).collect();
+                let list: Vec<String> = d.pointer("/query/categorymembers").and_then(Value::as_array).into_iter().flatten().map(|m| string(m, "title")).filter(|t| !t.is_empty()).collect();
                 let mut html = String::from("<ul>");
                 for name in &list {
                     let shown = name.strip_prefix("Category:").unwrap_or(name);
@@ -573,11 +564,11 @@ fn load_page(link: Link, site: String, title: String, cx: &mut Context<Root>) {
                         .into_iter()
                         .flatten()
                         .filter(|c| !c.get("hidden").and_then(Value::as_bool).unwrap_or(false))
-                        .map(|c| s(c, "category").replace('_', " "))
+                        .map(|c| string(c, "category").replace('_', " "))
                         .filter(|c| !c.is_empty())
                         .take(30)
                         .collect();
-                    Some(Article { title: Some(s(p, "title")).filter(|t| !t.is_empty()).unwrap_or(title.clone()), html: clean.html.into(), infobox: clean.infobox, images: clean.images, cats, missing: false, sections: clean.sections })
+                    Some(Article { title: Some(string(p, "title")).filter(|t| !t.is_empty()).unwrap_or(title.clone()), html: clean.html.into(), infobox: clean.infobox, images: clean.images, cats, missing: false, sections: clean.sections })
                 }),
                 None => None,
             }
@@ -762,7 +753,7 @@ pub fn typed(r: &mut Root, cx: &mut Context<Root>) {
             return;
         }
         let d = api(&link, &site, json!({ "action": "query", "list": "prefixsearch", "pssearch": q, "pslimit": 8, "psnamespace": 0 })).await;
-        let hits: Vec<String> = d.as_ref().and_then(|d| d.pointer("/query/prefixsearch")).and_then(Value::as_array).into_iter().flatten().map(|p| s(p, "title")).filter(|t| !t.is_empty()).collect();
+        let hits: Vec<String> = d.as_ref().and_then(|d| d.pointer("/query/prefixsearch")).and_then(Value::as_array).into_iter().flatten().map(|p| string(p, "title")).filter(|t| !t.is_empty()).collect();
         let _ = this.update(cx, |r, cx| {
             if r.wiki.typed == n {
                 r.wiki.hits = hits;
@@ -790,7 +781,7 @@ pub fn search(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
 /// A link clicked in an article: its own pages open here, the rest in the browser.
 pub fn settle(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
     boxes(r, window, cx);
-    let Some(href) = CLICKED.lock().ok().and_then(|mut c| c.take()) else { return };
+    let Some(href) = CLICKED.hold().take() else { return };
     if let Some(anchor) = href.strip_prefix(wikihtml::ANCHOR) {
         // A place in this page: its part scrolled to, when it is one of its Contents (WikiSite.tsx's jump).
         let same = |a: &str| a.replace(' ', "_").to_lowercase();
@@ -860,7 +851,7 @@ fn boxes(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
 
 /// Scrolls the page to a part of the shown article (its place in the Contents), where it was last drawn.
 fn jump(r: &mut Root, at: usize) {
-    let Some(top) = PART_TOPS.lock().ok().and_then(|m| m.get(&at).copied()) else { return };
+    let Some(top) = PART_TOPS.hold().get(&at).copied() else { return };
     let s = &r.games.page_scroll;
     let mut off = s.offset();
     off.y = (off.y + s.bounds().top() + px(12.) - top).min(px(0.)).max(-s.max_offset().y);
@@ -976,7 +967,7 @@ fn word(root: &Root, f: &str) -> String {
 }
 
 fn n_text(root: &Root, n: i64) -> String {
-    crate::pages::games::thousands(n, root.i18n.vietnamese)
+    crate::kit::thousands(n, root.i18n.vietnamese)
 }
 
 /// The Wiki tab: the wiki's bar (its name, the search, its parts) over the view shown.
@@ -1050,7 +1041,7 @@ pub fn view(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
                 .child(all)
                 .on_click(cx.listener(|r, _, window, cx| search(r, window, cx))),
         );
-        find = find.child(div().absolute().top(px(40.)).left_0().child(deferred(anchored().snap_to_window_with_margin(px(8.)).child(menu)).with_priority(1)));
+        find = find.child(float(PopAt::BelowLeft(40.), 1, menu));
     }
     let k = ws();
     let top_bar = div().flex().items_center().gap(px(16.)).px(px(20.)).py(px(10.)).bg(k.head).border_b_1().border_color(k.line).child(face).child(div().flex_1()).child(find);
@@ -1123,8 +1114,8 @@ fn marks(root: &Root, list: &str) -> Vec<String> {
         .and_then(Value::as_array)
         .into_iter()
         .flatten()
-        .filter(|m| s(m, "site") == root.wiki.site)
-        .map(|m| s(m, "title"))
+        .filter(|m| string(m, "site") == root.wiki.site)
+        .map(|m| string(m, "title"))
         .filter(|t| !t.is_empty())
         .collect()
 }
@@ -2009,7 +2000,8 @@ fn article_view(root: &Root, about: &About, title: &str, table: Option<&str>, wi
     }
 
     // The words, drawn by GPUI's text view; pictures handed to it as they load.
-    if let Ok(mut loaded) = LOADED.lock() {
+    {
+        let mut loaded = LOADED.hold();
         // Only this article's: one article shows at a time, and the ones read before don't stay in memory.
         let wanted: std::collections::HashSet<&String> = article.images.iter().take(80).collect();
         loaded.retain(|k, _| wanted.contains(k));
@@ -2026,19 +2018,15 @@ fn article_view(root: &Root, about: &About, title: &str, table: Option<&str>, wi
             .selectable(true)
             .image_source(|uri| {
                 let u = uri.to_string();
-                ImageSource::Image(LOADED.lock().ok().and_then(|m| m.get(&u).cloned()).unwrap_or_else(|| BLANK.clone()))
+                ImageSource::Image(LOADED.hold().get(&u).cloned().unwrap_or_else(|| BLANK.clone()))
             })
             .on_link_click(|href, _, _, cx| {
-                if let Ok(mut c) = CLICKED.lock() {
-                    *c = Some(href.to_string());
-                }
+                *CLICKED.hold() = Some(href.to_string());
                 cx.refresh_windows();
             })
     };
     let art_id = format!("wk-art-{}", key(&site, &article.title));
-    if let Ok(mut tops) = PART_TOPS.lock() {
-        tops.clear();
-    }
+    PART_TOPS.hold().clear();
     let mut text = div().min_w_0().flex_1().text_size(px(T_L)).text_color(c(TEXT)).line_height(px(22.));
     // Contents with 3 or more parts (WikiSite.tsx's loadPage, wikiText.ts's ws-toc): after the first words, before the
     // first heading. GPUI's text view can't scroll its HTML to a heading, so the words are drawn a part at a time
@@ -2059,9 +2047,7 @@ fn article_view(root: &Root, about: &About, title: &str, table: Option<&str>, wi
                 div()
                     .relative()
                     .child(canvas(move |b, _, _| {
-                        if let Ok(mut tops) = PART_TOPS.lock() {
-                            tops.insert(k, b.origin.y);
-                        }
+                        PART_TOPS.hold().insert(k, b.origin.y);
                     }, |_, _, _, _| {}).absolute().inset_0())
                     .child(words(format!("{art_id}-{k}"), chunk)),
             );
