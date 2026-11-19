@@ -6536,7 +6536,7 @@ body.browser-page { background: linear-gradient(var(--bg), var(--bg)), linear-gr
 .bw-tab { position: relative; display: flex; align-items: center; flex: 0 1 auto; width: 220px; min-width: 48px; height: 34px; border-radius: var(--r-sm) var(--r-sm) 0 0; color: var(--text-2); container: bw-tab / inline-size; }
 .bw-tab:hover { background: var(--hover); color: var(--text); }
 .bw-tab { user-select: none; touch-action: none; }
-.bw-list.dragging .bw-tab { transition: transform 150ms ease; }
+.bw-list.dragging .bw-tab { transition: transform var(--dur-2) ease; }
 .bw-list.dragging .bw-tab.held { transition: none; z-index: 1; }
 .bw-tab.on { flex-shrink: 0; min-width: 132px; background: var(--bw-bar); color: var(--text); box-shadow: inset 1px 1px 0 var(--line-2), inset -1px 0 0 var(--line-2); }
 .bw-pick { display: flex; align-items: center; gap: var(--sp-3); flex: 1; min-width: 0; height: 100%; padding: 0 30px 0 10px; border: 0; border-radius: inherit; background: none; color: inherit; text-align: left; cursor: default; }
