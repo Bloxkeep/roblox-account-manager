@@ -1,7 +1,7 @@
 [
   {
     "version": "1.1.2",
-    "date": "2026-11-19",
+    "date": "2026-11-20",
     "highlights": [
       {
         "icon": "gift",
@@ -32,7 +32,7 @@
     ],
     "new": {
       "en": [
-        "Codes tab on every game's page: working and expired codes, what each gives, Copy.",
+        "Codes tab on every game's page: working and expired codes in a table, what each gives, Copy.",
         "Watch remotely (Preview): see the PC's Roblox windows live from your phone, started from Game monitor or with /pc watch in Discord.",
         "Gameplay clips play with sound, with a button to turn it off.",
         "Pick a server's country beside Play.",
@@ -42,10 +42,11 @@
         "Your profile: a profile song (Spotify or a file), decorations, a moving picture and a banner you can move.",
         "Roblox group chats: start one, add or remove people, rename it.",
         "A theme that follows your Wallpaper Engine wallpaper.",
-        "Easy setup: Roblox tuned for your PC."
+        "Easy setup: Roblox tuned for your PC.",
+        "Close Roblox when you leave a game (Settings › Launching): no Roblox home screen left open."
       ],
       "vi": [
-        "Tab Giftcode ở trang mỗi game: code dùng được và hết hạn, phần thưởng, nút Chép.",
+        "Tab Giftcode ở trang mỗi game: bảng code dùng được và hết hạn, phần thưởng, nút Chép.",
         "Xem từ xa (Thử nghiệm): xem trực tiếp các cửa sổ Roblox trên máy từ điện thoại, bật trong Theo dõi game hoặc gõ /pc watch trong Discord.",
         "Clip gameplay có tiếng, kèm nút tắt tiếng.",
         "Chọn quốc gia của server ngay cạnh nút Chơi.",
@@ -55,7 +56,8 @@
         "Hồ sơ của bạn: bài hát (Spotify hoặc file), đồ trang trí, ảnh động và ảnh bìa kéo được.",
         "Chat nhóm Roblox: tạo nhóm, thêm bớt người, đổi tên.",
         "Theme theo hình nền Wallpaper Engine.",
-        "Thiết lập nhanh: tự chỉnh Roblox cho vừa máy."
+        "Thiết lập nhanh: tự chỉnh Roblox cho vừa máy.",
+        "Đóng Roblox khi rời game (Cài đặt › Khởi chạy): không còn màn hình chính Roblox mở sau khi thoát game."
       ]
     },
     "improved": {
@@ -66,7 +68,12 @@
         "A game's About is shorter, with Show more.",
         "New icons on a game page's tabs.",
         "The tray and small windows are drawn again, lighter.",
-        "Hide account names also covers your profile, email and birthday."
+        "Hide account names also covers your profile, email and birthday.",
+        "The animated themes move again (koi pond, rain on glass, starry night and the rest).",
+        "A game's page and Home's game info show at once, without waiting for Roblox.",
+        "Server countries show in about 3 seconds; more come in while the menu is open.",
+        "Motion and the scrolling song title stay smooth while Bloxkeep isn't the active window.",
+        "Bloxkeep comes back from the tray faster, with its pictures already there."
       ],
       "vi": [
         "Theme mặc định giờ là Sunset, khối kính trong; đổi theme có hiệu ứng mờ dần.",
@@ -75,7 +82,12 @@
         "Phần Giới thiệu của game gọn hơn, có nút Xem thêm.",
         "Icon mới ở hàng tab trang game.",
         "Khay hệ thống và các cửa sổ nhỏ vẽ lại, nhẹ hơn.",
-        "Ẩn tên tài khoản giờ che cả hồ sơ, email và ngày sinh."
+        "Ẩn tên tài khoản giờ che cả hồ sơ, email và ngày sinh.",
+        "Các theme động chuyển động trở lại (hồ cá koi, mưa trên kính, đêm đầy sao…).",
+        "Trang game và thông tin game ở Trang chủ hiện ngay, không phải chờ Roblox.",
+        "Quốc gia server hiện sau khoảng 3 giây, phần còn lại hiện dần khi menu đang mở.",
+        "Chuyển động và tên bài hát chạy chữ vẫn mượt khi không bấm vào Bloxkeep.",
+        "Mở lại Bloxkeep từ khay nhanh hơn, hình ảnh có sẵn."
       ]
     },
     "fixed": {
@@ -83,13 +95,17 @@
         "Bloxkeep could close by itself right as it opened.",
         "After Exit, Bloxkeep could stay running and not open again.",
         "The 3D avatar froze after switching R6/R15; dark accessories vanished on R15.",
-        "Anti-AFK no longer touches a window sitting on Roblox's home screen."
+        "Anti-AFK no longer touches a window sitting on Roblox's home screen.",
+        "Codes didn't show for some big games.",
+        "Turning Multi-Roblox on from the tray didn't open its question."
       ],
       "vi": [
         "Bloxkeep có lúc tự tắt ngay khi vừa mở.",
         "Bấm Thoát xong Bloxkeep vẫn chạy ngầm và không mở lại được.",
         "Avatar 3D đứng hình sau khi đổi R6/R15; đồ đeo tối màu biến mất trên R15.",
-        "Anti-AFK không còn chạm vào cửa sổ đang ở màn hình chính Roblox."
+        "Anti-AFK không còn chạm vào cửa sổ đang ở màn hình chính Roblox.",
+        "Giftcode không hiện ở một số game lớn.",
+        "Bật Multi-Roblox từ khay không mở câu hỏi của nó."
       ]
     }
   },
