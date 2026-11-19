@@ -18,8 +18,9 @@ const releases = JSON.parse(fs.readFileSync(path.join(ROOT, 'RobloxManager', 'wh
   .filter(r => !r.version.includes('-'));
 const version = releases[0].version;
 
-// The landing page's numbers, real or left out. Downloads: what GitHub counts for the installers and the portable ZIP
-// of every release (not releases.win.json, which each copy fetches when it checks for an update).
+// The landing page's numbers, real or left out. Downloads: counted as the README's badge counts them (roblox-watch.yml),
+// what GitHub counts for Bloxkeep-Setup.exe and the portable ZIP of every release. Not Bloxkeep-Setup-Offline.exe, which
+// Bloxkeep-Setup.exe downloads as it installs (each install would count twice), nor releases.win.json (update checks).
 async function downloadCount() {
   try {
     const headers = { 'User-Agent': 'bloxkeep-site', ...(process.env.GITHUB_TOKEN ? { Authorization: `Bearer ${process.env.GITHUB_TOKEN}` } : {}) };
@@ -29,7 +30,7 @@ async function downloadCount() {
       if (!r.ok) throw new Error(`GitHub said ${r.status}`);
       const list = await r.json();
       for (const rel of list)
-        for (const a of rel.assets) if (/^Bloxkeep-(Setup(-Offline)?\.exe|Portable\.zip)$/.test(a.name)) total += a.download_count;
+        for (const a of rel.assets) if (/^Bloxkeep-(Setup\.exe|Portable\.zip)$/.test(a.name)) total += a.download_count;
       if (list.length < 100) break;
     }
     return total || null;
