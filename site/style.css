@@ -358,3 +358,9 @@ td + td strong { color: var(--text); }
   .top nav .nav-discord span { display: none; }
   .foot .brand span { display: inline; }
 }
+
+/* A picture opened large (the script at the end of each page). */
+.zoomable { cursor: zoom-in; }
+.zoom { padding: 0; border: 0; background: transparent; max-width: 96vw; max-height: 94vh; overflow: visible; cursor: zoom-out; }
+.zoom::backdrop { background: rgb(0 0 0 / .86); }
+.zoom img, .zoom video { display: block; max-width: 96vw; max-height: 94vh; width: auto; height: auto; border-radius: 12px; }

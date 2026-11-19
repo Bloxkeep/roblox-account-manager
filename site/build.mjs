@@ -196,6 +196,23 @@ ${foot ? `<footer class="foot">
     <p class="foot-legal">${t.foot.disclaimer}</p>
   </div>
 </footer>` : ''}
+<script>{ /* A picture or clip of the app opens large on a click (the owner, 2026-11-19: small ones were hard to read);
+  a click anywhere or Esc closes it. Pictures inside a link, the logo and small ones stay as they are. */
+  const d = document.createElement('dialog'); d.className = 'zoom'; document.body.append(d);
+  const can = el => el.closest('main') && !el.closest('a, header, footer, dialog') && (el.tagName === 'VIDEO' || el.naturalWidth >= 400);
+  const mark = el => can(el) && el.classList.add('zoomable');
+  document.querySelectorAll('main img, main video').forEach(mark);
+  document.addEventListener('load', e => e.target.tagName === 'IMG' && mark(e.target), true);
+  d.addEventListener('click', () => d.close());
+  d.addEventListener('close', () => d.replaceChildren());
+  document.addEventListener('click', e => {
+    const el = e.target.closest('.zoomable'); if (!el) return;
+    let big;
+    if (el.tagName === 'VIDEO') { big = document.createElement('video'); Object.assign(big, { src: el.currentSrc || el.src, muted: true, loop: true, autoplay: true, playsInline: true }); }
+    else { big = document.createElement('img'); big.src = el.currentSrc || el.src; big.alt = el.alt; }
+    d.replaceChildren(big); d.showModal();
+  });
+}</script>
 </body>
 </html>
 `;
