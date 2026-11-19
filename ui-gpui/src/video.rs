@@ -144,6 +144,13 @@ impl Video {
         v
     }
 
+    /// A clip shown without sound at a page's width (What's new's demos): drawn as a game's clip is, never heard.
+    pub fn quiet(path: PathBuf, cx: &mut Context<Self>) -> Self {
+        let mut v = Self::new(path, cx);
+        v.sound = false;
+        v
+    }
+
     /// A window's live picture behind the page (Wallpaper Engine's, wallpaper_engine.rs), drawn as a video is.
     pub fn live(hwnd: isize, cx: &mut Context<Self>) -> Self {
         let mut v = Self::behind(PathBuf::new(), cx);

@@ -365,6 +365,13 @@ fn wn_picture(rel: &str, vi: bool) -> Option<String> {
     roots.into_iter().map(|r| r.join(&rel)).find(|f| f.is_file()).map(|f| f.to_string_lossy().into_owned())
 }
 
+/// A feature's demo as a clip: the MP4 beside its picture ("….webp" → "….mp4"), played by the video player. GPUI
+/// draws an animated WebP as its first frame only (it decodes every frame of a GIF alone), and all of a demo's frames
+/// held at once would be ~370 MB (184 at 900×562); the player keeps a few frames ahead and stops when not drawn.
+fn wn_clip(rel: &str, vi: bool) -> Option<String> {
+    rel.strip_suffix(".webp").and_then(|stem| wn_picture(&format!("{stem}.mp4"), vi))
+}
+
 pub fn whats_new(r: &mut Root, releases: Vec<Value>, window: &mut Window, cx: &mut Context<Root>) {
     if releases.is_empty() {
         return;
@@ -375,6 +382,30 @@ pub fn whats_new(r: &mut Root, releases: Vec<Value>, window: &mut Window, cx: &m
         .get("highlights")
         .and_then(Value::as_array)
         .map(|l| l.iter().map(|h| [wn_picture(s(h, "image"), false), wn_picture(s(h, "image"), true)]).collect())
+        .unwrap_or_default();
+    // Each demo's clip in both languages, made once as the box opens; none plays until drawn, and they go with the box.
+    // One that can't play on this PC (no decoder) leaves its picture in its place.
+    let failed: std::rc::Rc<std::cell::RefCell<std::collections::HashSet<String>>> = Default::default();
+    let clips: Vec<[Option<(String, Entity<crate::video::Video>)>; 2]> = releases[0]
+        .get("highlights")
+        .and_then(Value::as_array)
+        .map(|l| {
+            l.iter()
+                .map(|h| {
+                    [false, true].map(|vi| {
+                        let path = wn_clip(s(h, "image"), vi)?;
+                        let video = cx.new(|cx| crate::video::Video::quiet(std::path::PathBuf::from(&path), cx));
+                        let (gone, key) = (failed.clone(), path.clone());
+                        cx.subscribe(&video, move |_, _, _: &crate::video::Failed, cx| {
+                            gone.borrow_mut().insert(key.clone());
+                            cx.notify();
+                        })
+                        .detach();
+                        Some((path, video))
+                    })
+                })
+                .collect()
+        })
         .unwrap_or_default();
     let this = cx.weak_entity();
     window.open_dialog(cx, move |dialog, window, cx| {
@@ -407,26 +438,35 @@ pub fn whats_new(r: &mut Root, releases: Vec<Value>, window: &mut Window, cx: &m
             let target = s(h, "go").to_string();
             let go = this.clone();
             let picture = pictures.get(i).cloned().flatten();
-            // The picture leads, whole and at the card's width; its words under it, plain.
-            let text = div().min_w_0().flex().flex_col().items_start().gap(px(6.))
+            let clip = clips
+                .get(i)
+                .and_then(|c| c[usize::from(vi)].clone())
+                .filter(|(path, _)| !failed.borrow().contains(path))
+                .map(|(_, v)| (v, picture.as_ref().map(|(_, shape)| *shape).unwrap_or(16. / 10.)));
+            // Its name and words, then its picture or clip whole at the card's width, then its button. (The picture used to
+            // lead; after a feature without one it read as the one above's, the owner's shot of 1.1.2, 2026-11-20.)
+            let words = div().min_w_0().flex().flex_col().items_start().gap(px(6.))
                 .child(div().text_size(px(T_GROUP)).font_weight(FontWeight::SEMIBOLD).child(title))
-                .child(div().text_size(px(T_M)).line_height(px(20.)).text_color(c(TEXT_2)).child(text))
-                .when(!target.is_empty() && !button.is_empty(), |d| {
-                    d.child(div().pt(px(4.)).child(Button::new(("wn-go", i), button).icon_end("chevronRight").small().on_click(move |_, w, cx| {
-                        w.close_dialog(cx);
-                        let _ = go.update(cx, |r, cx| {
-                            go_to(r, &target);
-                            cx.notify();
-                        });
-                    })))
-                });
+                .child(div().text_size(px(T_M)).line_height(px(20.)).text_color(c(TEXT_2)).child(text));
             body = body.child(
-                div().flex().flex_col().gap(px(12.))
-                    .when_some(picture, |d, (p, shape)| {
+                div().flex().flex_col().items_start().gap(px(12.))
+                    .child(words)
+                    .when_some(clip.clone(), |d, (video, shape)| {
+                        d.child(div().w_full().aspect_ratio(shape).rounded(px(R_M)).border_1().border_color(c(LINE)).bg(c(GROUND)).overflow_hidden().child(video))
+                    })
+                    .when_some(picture.filter(|_| clip.is_none()), |d, (p, shape)| {
                         d.child(div().w_full().aspect_ratio(shape).rounded(px(R_M)).border_1().border_color(c(LINE)).bg(c(GROUND)).overflow_hidden()
                             .child(img(p).size_full().object_fit(ObjectFit::Contain)))
                     })
-                    .child(text),
+                    .when(!target.is_empty() && !button.is_empty(), |d| {
+                        d.child(Button::new(("wn-go", i), button).icon_end("chevronRight").small().on_click(move |_, w, cx| {
+                            w.close_dialog(cx);
+                            let _ = go.update(cx, |r, cx| {
+                                go_to(r, &target);
+                                cx.notify();
+                            });
+                        }))
+                    }),
             );
         }
         for part in release(r, latest, !highlights.is_empty()) {
