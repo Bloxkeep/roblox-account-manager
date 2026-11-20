@@ -228,7 +228,7 @@ fn note(text: String, looking: bool) -> Div {
 pub fn page(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement {
     let o = &root.owned;
     let inner = (width - 48.).max(320.);
-    let top = div().flex_none().px(px(24.)).pt(px(22.)).pb(px(16.)).flex().items_center().gap(px(10.)).child(games::brand(root)).relative().child(games::island(root, cx)).child(div().flex_1());
+    let top = div().flex_none().px(px(PAGE_X)).pt(px(22.)).pb(px(16.)).flex().items_center().gap(px(10.)).child(games::brand(root)).relative().child(games::island(root, cx)).child(div().flex_1());
     let reading = if o.shelf == 0 {
         o.loading
     } else {
@@ -266,7 +266,7 @@ pub fn page(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
         }))
     }));
     let body = if o.shelf == 0 { servers(root, inner, cx) } else { things(root, inner, cx) };
-    let content = div().w_full().px(px(24.)).pb(px(28.)).flex().flex_col().gap(px(18.)).child(head).child(shelves).child(body);
+    let content = div().w_full().px(px(PAGE_X)).pb(px(28.)).flex().flex_col().gap(px(18.)).child(head).child(shelves).child(body);
     div().id("owned").relative().size_full().rounded(px(R_PANEL)).bg(c(PANEL)).overflow_hidden().flex().flex_col().child(top).child(crate::scrolled::body("owned-body", content))
 }
 

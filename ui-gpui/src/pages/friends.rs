@@ -801,7 +801,7 @@ fn shown(f: &Friend, fr: &Data, lb: &Labels) -> bool {
 
 pub fn friends(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement {
     let fr = &root.friends;
-    let inner = width - 2. * (PAD + 4.);
+    let inner = width - 2. * (PAGE_X);
     let (cols, card_w) = grid_fit(inner, CARD_W, GRID_GAP);
     // BLOXKEEP_SHOT_SCROLL=<px>: a shot of the page scrolled down that far (asked again until the page is long enough).
     #[cfg(feature = "shot")]
@@ -836,7 +836,7 @@ pub fn friends(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElem
                 .into_any_element(),
             Some(Ok(l)) => {
                 let join_as = viewer.as_ref().map(|a| s(a, "id").to_string());
-                let mut rows = div().flex().flex_col().gap(px(SECTION_GAP)).px(px(PAD + 4.)).pt(px(4.)).pb(px(24.));
+                let mut rows = div().flex().flex_col().gap(px(SECTION_GAP)).px(px(PAGE_X)).pt(px(4.)).pb(px(24.));
                 if fr.adding {
                     rows = rows.child(add(root, l, inner, cx));
                 }
@@ -1016,7 +1016,7 @@ fn header(root: &Root, list: &[Friend], viewer: Option<&Value>, cx: &mut Context
 
     div()
         .flex_none()
-        .px(px(PAD + 4.))
+        .px(px(PAGE_X))
         .pt(px(18.))
         .pb(px(18.))
         .flex()

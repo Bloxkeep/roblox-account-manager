@@ -148,7 +148,7 @@ pub fn empty(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElemen
         .child(other("start-vault", root.tr("start.vault"), cx))
         .child(other("start-web", root.tr("start.web"), cx));
     let main = go("start-phone", root.tr("start.phone"), true, cx);
-    let pad = 24.;
+    let pad = PAGE_X;
     div().flex_1().min_h_0().child(crate::scrolled::body(
         "acc-start",
         div().w_full().px(px(pad)).pt(px(8.)).pb(px(24.)).child(crate::pages::home::empty_stage(

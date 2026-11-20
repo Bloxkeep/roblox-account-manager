@@ -2838,7 +2838,7 @@ pub fn games(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElemen
 }
 
 fn grid(root: &Root, all: &[Game], width: f32, cx: &mut Context<Root>) -> impl IntoElement {
-    let inner = width - 2. * (PAD + 4.);
+    let inner = width - 2. * (PAGE_X);
     // (Without accents or case, as the web page's search: "hoang" finds "Hoàng".)
     let query = folded(root.game_search.read(cx).value().trim());
     // (Ranked as the switch's box is: initials, a letter wrong, words run together; best first.)
@@ -2847,7 +2847,7 @@ fn grid(root: &Root, all: &[Game], width: f32, cx: &mut Context<Root>) -> impl I
 
     let header = div()
         .flex_none()
-        .px(px(PAD + 4.))
+        .px(px(PAGE_X))
         .pt(px(18.))
         .pb(px(16.))
         .flex()
@@ -2866,7 +2866,7 @@ fn grid(root: &Root, all: &[Game], width: f32, cx: &mut Context<Root>) -> impl I
                 .child(field(&root.game_search, Some("search"))),
         );
 
-    let mut body = div().flex().flex_col().gap(px(28.)).px(px(PAD + 4.)).pt(px(4.)).pb(px(24.));
+    let mut body = div().flex().flex_col().gap(px(28.)).px(px(PAGE_X)).pt(px(4.)).pb(px(24.));
     // A search sent to Roblox (Enter): its games first, the bot's that match after.
     if let Some((q, got)) = &root.games.found {
         body = body.child(roblox_section(root, root.i18n.tv("games.results", &[("q", q)]), None, None, got.as_ref(), inner, cx));
@@ -4212,7 +4212,7 @@ fn page(root: &Root, all: &[Game], open: Open, width: f32, cx: &mut Context<Root
         Tab::Wiki if has_wiki => Tab::Wiki,
         _ => Tab::Overview,
     };
-    let inner = width - 2. * (PAD + 4.);
+    let inner = width - 2. * (PAGE_X);
     // BLOXKEEP_SHOT_SCROLL=700: a shot's page scrolled down that far (asked again until the page is long enough).
     #[cfg(feature = "shot")]
     if let Ok(y) = std::env::var("BLOXKEEP_SHOT_SCROLL").map(|v| v.parse::<f32>().unwrap_or(0.)) {
@@ -4223,7 +4223,7 @@ fn page(root: &Root, all: &[Game], open: Open, width: f32, cx: &mut Context<Root
 
     // The page's parts as a row of choices at a toolbar's height, the one shown a yellow block (the Accounts page's
     // filters): no underline under a tab.
-    let mut tabs = div().mx(px(PAD + 4.)).flex().flex_wrap().items_center().gap(px(4.));
+    let mut tabs = div().mx(px(PAGE_X)).flex().flex_wrap().items_center().gap(px(4.));
     for (t, icon_name, label, count) in [
         (Tab::Overview, "info", root.tr("gp.overview"), 0),
         (Tab::News, "news", root.tr("games.news"), game.map(unread).unwrap_or(0)),
@@ -4281,12 +4281,12 @@ fn page(root: &Root, all: &[Game], open: Open, width: f32, cx: &mut Context<Root
             .pb(px(28.))
             .child(hero(root, all, game, details, &open, &name, place, width, cx))
             .children(details.and_then(|d| community_panel(root, int(d, "creatorGroupId"), cx))
-                .map(|panel| div().px(px(PAD + 4.)).child(panel)))
+                .map(|panel| div().px(px(PAGE_X)).child(panel)))
             .when_some(root.games.picking.as_ref().filter(|(g, _)| *g == open.id).map(|(_, p)| p.clone()), |d, ticked| {
-                d.child(div().px(px(PAD + 4.)).child(join(root, place, ticked, inner, cx)))
+                d.child(div().px(px(PAGE_X)).child(join(root, place, ticked, inner, cx)))
             })
             .when(!only_overview, |d| d.child(tabs))
-            .child(div().px(px(PAD + 4.)).child(content)),
+            .child(div().px(px(PAGE_X)).child(content)),
     ))
 }
 
@@ -5104,7 +5104,7 @@ fn hero(root: &Root, all: &[Game], game: Option<&Game>, details: Option<&Value>,
     // name, Roblox's figures and the buttons fill the other half; on a narrow window the picture goes on top.)
     let wide = width >= 755.;
     // (At the tabs' and the parts' edge: 8 px in from them, the page's left edge was ragged.)
-    let room = width - 2. * (PAD + 4.);
+    let room = width - 2. * (PAGE_X);
     // (Narrow, it goes on top at no more than 500 wide: at the full width it was 540 high and pushed the rest down.)
     let pic_w = if wide { (room * 0.45).clamp(315., 720.) } else { room.min(440.) }.round();
     let pic_h = (pic_w * 9. / 16.).round();
@@ -5136,7 +5136,7 @@ fn hero(root: &Root, all: &[Game], game: Option<&Game>, details: Option<&Value>,
         .flex()
         .flex_col()
         .gap(px(18.))
-        .px(px(PAD + 4.))
+        .px(px(PAGE_X))
         .pt(px(14.))
         .pb(px(12.))
         .child(

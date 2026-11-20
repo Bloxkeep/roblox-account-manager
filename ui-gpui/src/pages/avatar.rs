@@ -1088,7 +1088,7 @@ pub fn avatar(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoEleme
 
     let header = div()
         .flex_none()
-        .px(px(PAD + 4.))
+        .px(px(PAGE_X))
         .pt(px(18.))
         .pb(px(18.))
         .flex()
@@ -1342,7 +1342,7 @@ fn rooms_row(root: &Root, cx: &mut Context<Root>) -> Div {
 /// The picture on the left (above, in a narrow window), what it wears and the saved outfits beside it.
 fn filled(root: &Root, a: &Avatar, width: f32, cx: &mut Context<Root>) -> AnyElement {
     let av = &root.avatar;
-    let inner = width - 2. * (PAD + 4.);
+    let inner = width - 2. * (PAGE_X);
     let wide = inner >= 760.;
     let side = if wide { 340. } else { inner };
     let lists_w = if wide { inner - side - 24. } else { inner };
@@ -1427,7 +1427,7 @@ fn filled(root: &Root, a: &Avatar, width: f32, cx: &mut Context<Root>) -> AnyEle
         return crate::scrolled::body(
             "av-body-big",
             div()
-                .px(px(PAD + 4.))
+                .px(px(PAGE_X))
                 .pt(px(4.))
                 .pb(px(24.))
                 .flex()
@@ -1596,7 +1596,7 @@ fn filled(root: &Root, a: &Avatar, width: f32, cx: &mut Context<Root>) -> AnyEle
         .child(shelves(root, a, tile_w, cx));
 
     crate::scrolled::body("av-body", 
-        div().px(px(PAD + 4.)).pt(px(4.)).pb(px(24.)).flex().items_start().gap(px(24.)).when(!wide, |d| d.flex_col()).child(portrait).child(lists),
+        div().px(px(PAGE_X)).pt(px(4.)).pb(px(24.)).flex().items_start().gap(px(24.)).when(!wide, |d| d.flex_col()).child(portrait).child(lists),
     )
     .into_any_element()
 }

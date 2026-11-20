@@ -1461,7 +1461,7 @@ pub fn wash(root: &Root, cx: &mut App) -> Option<(String, std::sync::Arc<Image>)
 }
 
 /// The page's side margin, the Accounts page's: the stage's words and every row under it start here.
-const SIDE: f32 = 24.;
+const SIDE: f32 = PAGE_X;
 
 /// Show completed minutes from recorded play time, including sessions shorter than an hour.
 pub(crate) fn played_time(root: &Root, hours: f64) -> String {
@@ -1635,7 +1635,7 @@ fn shelf(root: &Root, all: &[Game], focus: usize, width: f32, library: Option<Ho
 
 pub(crate) fn library(root: &Root, tab: HomeTab, width: f32, cx: &mut Context<Root>) -> impl IntoElement {
     let all = game_library(root, true);
-    let pad = PAD + 4.;
+    let pad = PAGE_X;
     let header = div().relative().flex().flex_none().items_center().gap(px(10.)).px(px(pad)).py(px(18.))
         .child(super::games::brand(root))
         .child(Button::new("home-library-back", root.tr("wiki.back")).icon("chevronLeft").small().on_click(cx.listener(|r, _, _, cx| {

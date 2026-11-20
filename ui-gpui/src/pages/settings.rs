@@ -956,7 +956,7 @@ pub fn settings(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
             .when_some(part_about, |d, t| d.child(div().text_size(px(T_M)).line_height(px(19.)).text_color(c(TEXT_2)).child(t))));
     let header = div()
         .flex_none()
-        .px(px(24.))
+        .px(px(PAGE_X))
         .pt(px(22.))
         .pb(px(22.))
         // (With glass on the blocks only the head stands on the picture itself: no line across it there, the owner
@@ -985,13 +985,15 @@ pub fn settings(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
             .flex_none()
             .flex()
             .flex_col()
-            .pl(px(12.))
+            // (Its block's edge on the page's margin, under the title, as every page's blocks are.)
+            .pl(px(PAGE_X))
             .pt(px(12.))
             .pb(px(16.))
             .child(crate::kit::block_of(R_L, ca(GROUND, 0.34)).min_h_0().flex().flex_col().overflow_hidden().child(div().id("set-nav").min_h_0().overflow_y_scroll().child(nav)))
             .into_any_element()
     } else {
-        div().id("set-nav").h_full().flex_none().overflow_y_scroll().border_r_1().border_color(c(LINE)).bg(ca(GROUND, 0.34)).child(nav).into_any_element()
+        // (Its rows' grounds start on the page's margin, under the title: the list keeps 10 of its own.)
+        div().id("set-nav").h_full().flex_none().overflow_y_scroll().border_r_1().border_color(c(LINE)).bg(ca(GROUND, 0.34)).pl(px(PAGE_X - 10.)).child(nav).into_any_element()
     };
     div()
         .id("settings")
@@ -1017,8 +1019,10 @@ pub fn settings(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
                     .child(
                         div().id("set-body").flex_1().min_h_0().w_full().overflow_y_scroll().track_scroll(&root.settings.scroll).child(
                             div()
-                                .w_full().max_w(px(1180.)).mx_auto()
-                                .px(px(if compact { 14. } else { 28. }))
+                                // (The page's margin on both sides, as every page has: capped at 1180 and centred, its
+                                // right edge sat 75 px in from the search box over it.)
+                                .w_full()
+                                .px(px(PAGE_X))
                                 .pt(px(24.))
                                 .pb(px(40.))
                                 .flex()

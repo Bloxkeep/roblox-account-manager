@@ -248,7 +248,7 @@ pub fn page(root: &Root, cx: &mut Context<Root>) -> impl IntoElement {
         None => div().text_color(c(MUTED)).child(root.tr("in.loading")),
     };
     div().size_full().flex().flex_col().rounded(px(R_PANEL)).bg(c(PANEL)).overflow_hidden()
-        .child(div().relative().flex().items_center().flex_none().px(px(PAD + 4.)).py(px(16.))
+        .child(div().relative().flex().items_center().flex_none().px(px(PAGE_X)).py(px(16.))
             .child(games::brand(root)).child(games::island(root, cx)))
         .child(div().id("vng-panel-scroll").flex_1().min_h_0().overflow_y_scroll()
             .child(div().w_full().max_w(px(780.)).mx_auto().px(px(16.)).pb(px(24.)).flex().flex_col().gap(px(12.))

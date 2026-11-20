@@ -64,7 +64,7 @@ const ACCENT: u32 = 0x22c55e;
 
 const AVATARS: usize = 4;
 /// The page's sides (the Accounts page's).
-const SIDE: f32 = 24.;
+const SIDE: f32 = PAGE_X;
 const SHAPE_MAX: usize = 14;
 
 /// The app's presets or macros, as its state holds them (borrowed: the page is drawn every frame).

@@ -365,7 +365,7 @@ pub fn page(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
     let shell = div().id("rsettings").relative().size_full().rounded(px(R_PANEL)).bg(c(PANEL)).overflow_hidden().flex().flex_col();
     let header = div()
         .flex_none()
-        .px(px(24.))
+        .px(px(PAGE_X))
         .pt(px(22.))
         .pb(px(20.))
         .flex()
@@ -537,7 +537,7 @@ fn filled(root: &Root, s: &AccountSettings, viewer: Option<&serde_json::Value>, 
     let more = section(root.tr("rs.moreHead"), more);
     // Wide: the account and its trades beside its About words, the whole width; narrow: one under another.
     let two = width >= 1000.;
-    let inner = div().px(px(24.)).pb(px(32.)).w_full().flex().map(|d| {
+    let inner = div().px(px(PAGE_X)).pb(px(32.)).w_full().flex().map(|d| {
         if two {
             d.items_start()
                 .gap(px(24.))

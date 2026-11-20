@@ -374,7 +374,7 @@ fn where_words(root: &Root, kind: i64, game: &str) -> Option<(String, u32)> {
 
 /// The followers or the followed: each a card that opens their profile on roblox.com.
 fn folk_page(root: &Root, which: &str, got: &Option<Result<Vec<Friend>, String>>, width: f32, cx: &mut Context<Root>) -> AnyElement {
-    let inner = width - 2. * (PAD + 4.);
+    let inner = width - 2. * (PAGE_X);
     let cols = ((inner + GAP) / (260. + GAP)).floor().max(1.);
     let card_w = ((inner - GAP * (cols - 1.)) / cols).floor();
     let title = root.tr(match which {
@@ -384,7 +384,7 @@ fn folk_page(root: &Root, which: &str, got: &Option<Result<Vec<Friend>, String>>
     });
     let back = div()
         .flex_none()
-        .px(px(PAD + 4.))
+        .px(px(PAGE_X))
         .pb(px(14.))
         .flex()
         .items_center()
@@ -456,7 +456,7 @@ fn folk_page(root: &Root, which: &str, got: &Option<Result<Vec<Friend>, String>>
                         .into_any_element()
                 })
                 .collect();
-            crate::scrolled::body("folk-body", div().px(px(PAD + 4.)).pb(px(24.)).flex().flex_wrap().gap(px(GAP)).children(cards)).into_any_element()
+            crate::scrolled::body("folk-body", div().px(px(PAGE_X)).pb(px(24.)).flex().flex_wrap().gap(px(GAP)).children(cards)).into_any_element()
         }
     };
     div().flex_1().min_h_0().flex().flex_col().child(back).child(body).into_any_element()
@@ -726,7 +726,7 @@ pub fn shot_club(r: &mut Root, cx: &mut Context<Root>) {
 fn club_page(root: &Root, view: &ClubView, width: f32, cx: &mut Context<Root>) -> AnyElement {
     let vi = root.i18n.vietnamese;
     let id = view.id;
-    let inner = width - 2. * (PAD + 4.);
+    let inner = width - 2. * (PAGE_X);
     let club = match &view.got {
         None => return div().flex_1().flex().flex_col().child(empty_note(root.tr("av.reading"))).into_any_element(),
         Some(Err(why)) => return div().flex_1().flex().flex_col().child(empty_note(root.i18n.tv("club.failed", &[("why", crate::net::why_words(&root.i18n, why).as_str())]))).into_any_element(),
@@ -825,7 +825,7 @@ fn club_page(root: &Root, view: &ClubView, width: f32, cx: &mut Context<Root>) -
         .child(
             crate::scrolled::body("club-body", 
                 div()
-                    .px(px(PAD + 4.))
+                    .px(px(PAGE_X))
                     .pb(px(24.))
                     .flex()
                     .flex_col()
@@ -848,7 +848,7 @@ pub fn profile(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElem
     let shell = div().id("profile").relative().size_full().rounded(px(R_PANEL)).bg(c(PANEL)).overflow_hidden().flex().flex_col();
     let header = div()
         .flex_none()
-        .px(px(PAD + 4.))
+        .px(px(PAGE_X))
         .pt(px(18.))
         .pb(px(18.))
         .flex()
@@ -976,7 +976,7 @@ fn here_line(root: &Root, user: i64, own: bool, cx: &mut Context<Root>) -> Optio
 /// A profile: the account's own (`own`: its Robux shows), or someone else's.
 fn filled(root: &Root, p: &Profile, user: i64, width: f32, own: bool, cx: &mut Context<Root>) -> impl IntoElement {
     let vi = root.i18n.vietnamese;
-    let inner = width - 2. * (PAD + 4.);
+    let inner = width - 2. * (PAGE_X);
     // (Wide enough for a rank and a member count side by side: "ROBLOX Staff · 303,126 members".)
     let (_, card_w) = grid_fit(inner, 360., GRID_GAP);
     let figure = |label: String, value: String| div().flex().flex_col().gap(px(2.)).child(div().text_size(px(T_S)).text_color(c(MUTED)).child(label)).child(div().text_size(px(T_FIG)).line_height(px(28.)).font_weight(FontWeight::SEMIBOLD).font_features(tnum()).child(value));
@@ -1311,7 +1311,7 @@ fn filled(root: &Root, p: &Profile, user: i64, width: f32, own: bool, cx: &mut C
 
     crate::scrolled::body("pf-body", 
         div()
-            .px(px(PAD + 4.))
+            .px(px(PAGE_X))
             .pt(px(4.))
             .pb(px(24.))
             .flex()
@@ -1746,7 +1746,7 @@ fn item_page(root: &Root, view: &ItemView, inner: f32, cx: &mut Context<Root>) -
     let vi = root.i18n.vietnamese;
     let w = &view.ware;
     let (id, kind) = (w.id, if w.bundle { "bundle" } else { "asset" });
-    let back = div().flex_none().px(px(PAD + 4.)).pb(px(14.)).flex().child(Button::new("item-back", root.tr("nav.shop")).icon("chevronLeft").small().on_click(cx.listener(|r, _, _, cx| {
+    let back = div().flex_none().px(px(PAGE_X)).pb(px(14.)).flex().child(Button::new("item-back", root.tr("nav.shop")).icon("chevronLeft").small().on_click(cx.listener(|r, _, _, cx| {
         r.profile.item = None;
         cx.notify();
     })));
@@ -1969,7 +1969,7 @@ fn item_page(root: &Root, view: &ItemView, inner: f32, cx: &mut Context<Root>) -
         .child(
             crate::scrolled::body("item-body", 
                 div()
-                    .px(px(PAD + 4.))
+                    .px(px(PAGE_X))
                     .pb(px(24.))
                     .flex()
                     .flex_col()
@@ -2186,12 +2186,12 @@ fn ware_tile(root: &Root, key: &'static str, n: usize, w: &Ware, tile_w: f32, cx
 
 pub fn shop(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement {
     let pf = &root.profile;
-    let inner = width - 2. * (PAD + 4.);
+    let inner = width - 2. * (PAGE_X);
     let (cols, tile_w) = ware_fit(inner);
     let shell = div().id("shop").relative().size_full().rounded(px(R_PANEL)).bg(c(PANEL)).overflow_hidden().flex().flex_col();
     let header = div()
         .flex_none()
-        .px(px(PAD + 4.))
+        .px(px(PAGE_X))
         .pt(px(18.))
         .pb(px(18.))
         .flex()
@@ -2207,7 +2207,7 @@ pub fn shop(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
     let sort = pf.sort;
     let kinds = div()
         .flex_none()
-        .px(px(PAD + 4.))
+        .px(px(PAGE_X))
         .pb(px(16.))
         .flex()
         .items_center()
@@ -2269,8 +2269,8 @@ pub fn shop(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
     #[cfg(not(feature = "shot"))]
     let held = false;
     let body: AnyElement = match &pf.wares {
-        _ if held => div().flex_1().px(px(PAD + 4.)).child(waiting_tiles(cols as usize * 2, tile_w - 12., 14.)).into_any_element(),
-        None => div().flex_1().px(px(PAD + 4.)).child(waiting_tiles(cols as usize * 2, tile_w - 12., 14.)).into_any_element(),
+        _ if held => div().flex_1().px(px(PAGE_X)).child(waiting_tiles(cols as usize * 2, tile_w - 12., 14.)).into_any_element(),
+        None => div().flex_1().px(px(PAGE_X)).child(waiting_tiles(cols as usize * 2, tile_w - 12., 14.)).into_any_element(),
         Some(Err(why)) => empty_note(root.i18n.tv("shop.failed", &[("why", crate::net::why_words(&root.i18n, why).as_str())])).into_any_element(),
         Some(Ok(l)) if l.is_empty() => empty_note(root.tr("shop.none")).into_any_element(),
         Some(Ok(l)) => {
@@ -2278,7 +2278,7 @@ pub fn shop(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
             let key = crate::near::sig((l.len(), l.first().map(|w| w.id)));
             let tiles = crate::near::tiles("shop-wares", l.len(), tile_w, SGAP, key, false, tile_w + 80., |n| ware_tile(root, "shop-ware", n, &l[n], tile_w, cx));
             crate::scrolled::body("shop-body", 
-                    div().px(px(PAD + 4.)).pt(px(4.)).pb(px(24.)).flex().flex_col().gap(px(18.)).child(div().mx(px(-6.)).child(tiles)).when(!pf.next.is_empty(), |d| {
+                    div().px(px(PAGE_X)).pt(px(4.)).pb(px(24.)).flex().flex_col().gap(px(18.)).child(div().mx(px(-6.)).child(tiles)).when(!pf.next.is_empty(), |d| {
                         d.child(div().flex().child(Button::new("shop-more", root.tr("av.more")).disabled(pf.reading).on_click(cx.listener(|r, _, _, cx| {
                             if !r.profile.reading {
                                 page(r, cx);
@@ -2355,7 +2355,7 @@ fn open_game(r: &mut Root, place: i64, game: &str) {
 fn frees(root: &Root, tile_w: f32, cx: &mut Context<Root>) -> AnyElement {
     let pf = &root.profile;
     let list = match &pf.frees {
-        None => return div().flex_1().px(px(PAD + 4.)).child(waiting_tiles(14, tile_w - 12., 14.)).into_any_element(),
+        None => return div().flex_1().px(px(PAGE_X)).child(waiting_tiles(14, tile_w - 12., 14.)).into_any_element(),
         Some(Err(why)) => return empty_note(root.i18n.tv("shop.failed", &[("why", crate::net::why_words(&root.i18n, why).as_str())])).into_any_element(),
         Some(Ok(l)) if l.is_empty() => return empty_note(root.tr("shop.freeNone")).into_any_element(),
         Some(Ok(l)) => l,
@@ -2408,7 +2408,7 @@ fn frees(root: &Root, tile_w: f32, cx: &mut Context<Root>) -> AnyElement {
                 .into_any_element()
         };
     let tiles = crate::near::tiles("free-tiles", list.len(), tile_w, SGAP, key, false, tile_w + 90., tile);
-    crate::scrolled::body("free-body", div().px(px(PAD + 4. - 6.)).pt(px(4.)).pb(px(24.)).child(tiles))
+    crate::scrolled::body("free-body", div().px(px(PAGE_X - 6.)).pt(px(4.)).pb(px(24.)).child(tiles))
         .into_any_element()
 }
 
@@ -2435,7 +2435,7 @@ fn watch_list(root: &Root, inner: f32, cx: &mut Context<Root>) -> AnyElement {
     if list.is_empty() {
         return div()
             .flex_1()
-            .px(px(PAD + 4.))
+            .px(px(PAGE_X))
             .py(px(60.))
             .flex()
             .flex_col()
@@ -2510,7 +2510,7 @@ fn watch_list(root: &Root, inner: f32, cx: &mut Context<Root>) -> AnyElement {
     crate::scrolled::body(
         "watch-body",
         div()
-            .px(px(PAD + 4.))
+            .px(px(PAGE_X))
             .pt(px(4.))
             .pb(px(24.))
             .flex()

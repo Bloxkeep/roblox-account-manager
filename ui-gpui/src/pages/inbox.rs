@@ -605,7 +605,7 @@ pub fn inbox(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElemen
     let tabs = [(root.tr("in.chat"), waiting), (root.tr("in.messages"), unread), (root.tr("in.notices"), 0), (root.tr("in.deals"), 0), (root.tr("in.trades"), 0)];
     let header = div()
         .flex_none()
-        .px(px(PAD + 4.))
+        .px(px(PAGE_X))
         .pt(px(18.))
         .pb(px(18.))
         .flex()
@@ -697,7 +697,7 @@ pub fn inbox(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElemen
             Ok(None) => empty_note(root.tr("in.loading")).into_any_element(),
             Ok(Some(rows)) => {
                 let lists = surface().w_full().flex().flex_col().overflow_hidden().children(rows);
-                crate::scrolled::body("in-body", div().px(px(PAD + 4.)).pt(px(4.)).pb(px(24.)).child(lists)).into_any_element()
+                crate::scrolled::body("in-body", div().px(px(PAGE_X)).pt(px(4.)).pb(px(24.)).child(lists)).into_any_element()
             }
         }
     };
@@ -824,7 +824,7 @@ fn chat(root: &Root, talks: &[Talk], cx: &mut Context<Root>) -> impl IntoElement
                 .into_any_element()
         }
     };
-    div().flex_1().min_h_0().px(px(PAD + 4.)).pb(px(18.)).flex().gap(px(14.)).child(list).child(surface().flex_1().min_w_0().h_full().overflow_hidden().flex().flex_col().child(pane))
+    div().flex_1().min_h_0().px(px(PAGE_X)).pb(px(18.)).flex().gap(px(14.)).child(list).child(surface().flex_1().min_w_0().h_full().overflow_hidden().flex().flex_col().child(pane))
 }
 
 /// The picker in the chat's place: friends to tick (found by name), and for a new group its name; then Create (two
@@ -1026,11 +1026,11 @@ fn trades(root: &Root, cx: &mut Context<Root>) -> AnyElement {
         Some(Ok(l)) if l.is_empty() => empty_note(root.tr("in.noTrades")).into_any_element(),
         Some(Ok(l)) => {
             let rows: Vec<AnyElement> = l.iter().enumerate().map(|(i, t)| trade(root, i, t, list, cx).into_any_element()).collect();
-            crate::scrolled::body("in-trades-body", div().px(px(PAD + 4.)).pt(px(4.)).pb(px(24.)).flex().flex_col().gap(px(GRID_GAP)).children(rows))
+            crate::scrolled::body("in-trades-body", div().px(px(PAGE_X)).pt(px(4.)).pb(px(24.)).flex().flex_col().gap(px(GRID_GAP)).children(rows))
                 .into_any_element()
         }
     };
-    div().flex_1().min_h_0().flex().flex_col().child(div().flex_none().px(px(PAD + 4.)).pb(px(14.)).flex().child(kinds)).child(body).into_any_element()
+    div().flex_1().min_h_0().flex().flex_col().child(div().flex_none().px(px(PAGE_X)).pb(px(14.)).flex().child(kinds)).child(body).into_any_element()
 }
 
 /// What a side is worth: its things by RAP, and its Robux.
@@ -1270,7 +1270,7 @@ fn letters(root: &Root, list: &[Letter], cx: &mut Context<Root>) -> impl IntoEle
                 .into_any_element()
         }
     };
-    div().flex_1().min_h_0().px(px(PAD + 4.)).pb(px(18.)).flex().gap(px(14.)).child(rows).child(surface().flex_1().min_w_0().h_full().overflow_hidden().child(pane))
+    div().flex_1().min_h_0().px(px(PAGE_X)).pb(px(18.)).flex().gap(px(14.)).child(rows).child(surface().flex_1().min_w_0().h_full().overflow_hidden().child(pane))
 }
 
 /// A message in the list: who it is from (a face), when, its subject and how it begins. Unread: a dot, the name bold.

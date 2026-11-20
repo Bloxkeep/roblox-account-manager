@@ -61,6 +61,9 @@ pub const TOP: f32 = 52.;
 pub const GAP: f32 = 12.;
 pub const SIDE: f32 = 300.;
 pub const PAD: f32 = 16.;
+/// A page's left and right margin inside its panel, the same on every page and every Roblox tab part (they were 20
+/// on some, 24 on others: the owner, 2026-11-20, "như căn lề trong Word, mỗi trang một khác").
+pub const PAGE_X: f32 = 24.;
 /// Below this width the accounts column folds away; a strip on top of the place then says who dropped.
 pub const NARROW: f32 = 1080.;
 

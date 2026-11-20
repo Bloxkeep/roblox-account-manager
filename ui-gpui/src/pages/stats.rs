@@ -602,7 +602,7 @@ pub fn stats(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
 }
 
 /// The page's sides (the Accounts page's).
-const SIDE: f32 = 24.;
+const SIDE: f32 = PAGE_X;
 
 /// A section of the page: a calm panel, a hairline round it.
 fn card() -> Div {

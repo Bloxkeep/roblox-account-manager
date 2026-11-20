@@ -953,7 +953,7 @@ const MON_MANY: usize = 12;
 const MON_COL_MAX: f32 = 560.;
 const MON_PIC_INSET: f32 = 14.;
 /// The page's sides (the header's and the body's), on the 8 px rhythm.
-const SIDE_PAD: f32 = 24.;
+const SIDE_PAD: f32 = PAGE_X;
 /// How far a block's base shows under it.
 const RISE: f32 = 4.;
 

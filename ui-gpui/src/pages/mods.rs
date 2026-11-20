@@ -279,7 +279,7 @@ pub fn page(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
     let shell = div().id("mods").relative().size_full().rounded(px(R_PANEL)).bg(c(PANEL)).overflow_hidden().flex().flex_col();
     let header = div()
         .flex_none()
-        .px(px(24.))
+        .px(px(PAGE_X))
         .pt(px(22.))
         .pb(px(16.))
         .flex()
@@ -346,10 +346,10 @@ pub fn page(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
 
     let inner = width - 48.;
     let content = match &m.open {
-        Some(x) => div().px(px(24.)).pb(px(28.)).child(detail(root, x, inner, cx)),
+        Some(x) => div().px(px(PAGE_X)).pb(px(28.)).child(detail(root, x, inner, cx)),
         None => {
             let body = if m.mine { mine(root, inner, cx).into_any_element() } else { library(root, inner, cx).into_any_element() };
-            div().px(px(24.)).pb(px(28.)).flex().flex_col().gap(px(18.)).child(bar).child(body)
+            div().px(px(PAGE_X)).pb(px(28.)).flex().flex_col().gap(px(18.)).child(bar).child(body)
         }
     };
     shell.child(header).child(crate::scrolled::body("mods-body", content))
