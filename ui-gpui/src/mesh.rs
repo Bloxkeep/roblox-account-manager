@@ -220,11 +220,28 @@ impl Rig {
     fn pose(&self, t: f32, stride: f32, pace: f32) -> ([Option<(V3, M3)>; 6], f32) {
         let mut e = [0.; 3];
         e[self.side] = 1.;
+        // The axis it faces along (the other level one): an arm turned about it swings out from the body.
+        let mut fwd = [0.; 3];
+        fwd[2 - self.side] = 1.;
         let still = 1. - pace;
+        // Standing, it breathes (about 3 s a breath): the arms open a little from the body and close, the head lifts a
+        // touch. The body itself stands straight: it was sheared from side to side over its planted feet, and leaned
+        // as if about to fall (the owner, 2026-11-20).
+        let breath = (t * 2.1).sin();
+        // And it looks round now and then, as someone waiting does, not all the time: straight ahead a while, a look to
+        // one side, held, to the other, held, and back (`glance`).
+        let (gaze, tilt) = glance(t);
         let look = 0.4 + 0.6 * still;
-        let head = mm(&rot([0., 1., 0.], look * (0.19 * (t * 0.72).sin() + 0.045 * (t * 1.8).sin())), &rot(e, look * 0.085 * (t * 1.55).sin()));
-        let idle_a = still * (0.22 * (t * 1.7).sin() + 0.035 * (t * 3.4).sin());
-        let idle_b = still * (-0.20 * (t * 1.7).sin() + 0.045 * (t * 2.35).sin());
+        let head = mm(&rot([0., 1., 0.], look * (gaze + 0.025 * (t * 0.9).sin())), &mm(&rot(e, look * 0.03 * breath), &rot(fwd, still * tilt)));
+        // Out from the body, for each arm: the way that turns its hand away from the neck.
+        let out = |p: V3| {
+            let probe = mv(&rot(fwd, 0.1), [0., -1., 0.])[self.side];
+            let away = p[self.side] - self.neck[self.side];
+            if probe * away >= 0. { 1. } else { -1. }
+        };
+        let open = still * (0.045 + 0.03 * breath);
+        let hang_a = still * 0.04 * (t * 1.05).sin();
+        let hang_b = still * 0.04 * (t * 1.05 + 1.9).sin();
         let step = pace * stride.sin();
         let (arm, leg) = (0.55 * step, 0.5 * step);
         let sink = -self.leg * (1. - leg.cos());
@@ -232,14 +249,37 @@ impl Rig {
             [
                 None,
                 Some((self.neck, head)),
-                self.shoulders[0].map(|p| (p, rot(e, idle_a - arm))),
-                self.shoulders[1].map(|p| (p, rot(e, idle_b + arm))),
+                self.shoulders[0].map(|p| (p, mm(&rot(e, hang_a - arm), &rot(fwd, out(p) * open)))),
+                self.shoulders[1].map(|p| (p, mm(&rot(e, hang_b + arm), &rot(fwd, out(p) * open)))),
                 self.hips[0].map(|p| (p, rot(e, leg))).filter(|_| pace > 0.),
                 self.hips[1].map(|p| (p, rot(e, -leg))).filter(|_| pace > 0.),
             ],
             sink,
         )
     }
+}
+
+/// Where the head looks at `t` seconds of the idle (a turn about the up axis), and how it tips as it turns: an 11 s
+/// round of looking ahead, then a look to one side, held, a look to the other, held, and back, each move eased in and
+/// out; every other round it looks the other way first.
+fn glance(t: f32) -> (f32, f32) {
+    const ROUND: f32 = 11.;
+    let c = t.rem_euclid(ROUND);
+    let first = if (t / ROUND).floor() as i64 % 2 == 0 { 1. } else { -1. };
+    let ease = |x: f32| {
+        let x = x.clamp(0., 1.);
+        x * x * (3. - 2. * x)
+    };
+    // (from, to, start, length): the moves of a round; between them the head holds.
+    let moves = [(0., 0.36, 5.0, 0.7), (0.36, -0.28, 7.2, 0.9), (-0.28, 0., 9.4, 0.8)];
+    let mut at = 0.;
+    for (from, to, start, len) in moves {
+        if c >= start {
+            at = from + (to - from) * ease((c - start) / len);
+        }
+    }
+    let gaze = first * at;
+    (gaze, -0.12 * gaze)
 }
 
 /// The rig of a model whose groups are named as Roblox's are; None when they aren't (it then stands still).
@@ -643,11 +683,6 @@ impl Model {
         // Each part's turn in the idle, at this moment.
         let posed = self.rig.as_ref().filter(|_| view.t > 0. || view.pace > 0.).map(|r| r.pose(view.t, view.stride, view.pace));
         let sink = posed.as_ref().map_or(0., |p| p.1) + view.up.max(0.);
-        // Lean through the body while the feet stay planted. Fade the idle out into a stride or jump.
-        let sway = self.rig.as_ref().filter(|_| view.t > 0. && view.up <= 0.).map(|rig| {
-            let blend = (1. - view.pace).powi(2);
-            (rig.side, blend * (0.059 * (view.t * 1.7).sin() + 0.012 * (view.t * 3.4).sin()))
-        });
         // The avatar faces where it walked; the floor turns only with the camera.
         let (hs, hc) = (view.yaw + view.heading).sin_cos();
         let face = |p: V3| -> V3 { [p[0] * hc + p[2] * hs, p[1], -p[0] * hs + p[2] * hc] };
@@ -659,9 +694,6 @@ impl Model {
                 None => (tri.p, tri.n),
             };
             let tp = tp.map(|mut p| {
-                if let Some((side, lean)) = sway {
-                    p[side] += (p[1] - self.floor).max(0.) * lean;
-                }
                 p[1] += sink;
                 p
             });
@@ -679,8 +711,7 @@ impl Model {
                 }
                 sx[k] = half + dot(w, s) / (z[k] * t) * half;
                 sy[k] = half - dot(w, u) / (z[k] * t) * half;
-                let mut normal = tn[k];
-                if let Some((side, lean)) = sway { normal[1] -= normal[side] * lean; }
+                let normal = tn[k];
                 nn[k] = face(normal);
             }
             if behind {
