@@ -934,6 +934,16 @@ pub fn set_vote(cookie: &str, universe: i64, up: bool) -> Result<(), String> {
     send_text("PATCH", &format!("https://games.roblox.com/v1/games/{universe}/user-votes"), &serde_json::json!({ "vote": up }), Some(cookie)).map(|_| ())
 }
 
+/// Takes the account's vote on a game back. Roblox's own game page does it by voting again with "null": a second click
+/// on the thumb already chosen posts /voting/vote?assetId=<place>&vote=null (its GameDetails script, read 2026-11-20).
+/// That call first; www.roblox.com is out of reach in some countries (Vietnam), so the games API's user-votes with a
+/// null vote after it. What Roblox then holds is read back by the caller, so a wrong answer can't stay on screen.
+pub fn clear_vote(cookie: &str, universe: i64, place: i64) -> Result<(), String> {
+    post_ok(&format!("https://www.roblox.com/voting/vote?assetId={place}&vote=null"), &serde_json::json!({}), Some(cookie)).or_else(|first| {
+        send_text("PATCH", &format!("https://games.roblox.com/v1/games/{universe}/user-votes"), &serde_json::json!({ "vote": null }), Some(cookie)).map(|_| ()).map_err(|_| first)
+    })
+}
+
 /// Tells Roblox the account is on its site now, as roblox.com's own pages do (their PresenceRegistration script, read
 /// 2026-11-18: this POST with these three fields every 30 s while the person is active; the interval and "enabled for
 /// everyone" from apis.roblox.com/guac-v2/v1/bundles/user-heartbeats). It is what makes an account show online on the

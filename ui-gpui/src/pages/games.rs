@@ -790,8 +790,8 @@ fn want_mine(r: &mut Root, universe: i64, cx: &mut Context<Root>) {
 }
 
 /// Favourite (`vote` None) or vote the game up or down as the account looked through: shown at once with its count,
-/// put back with Roblox's reason when it refuses. A vote already given the same way stays (Roblox's games API takes
-/// up or down, not "none").
+/// put back with Roblox's reason when it refuses. A click on the thumb already chosen takes the vote back, as Roblox's
+/// own page does (it said "a vote given stays", and nothing could be unliked: the owner, 2026-11-20).
 fn set_mine(r: &mut Root, place: i64, universe: i64, vote: Option<bool>, cx: &mut Context<Root>) {
     let Some((_, user, cookie)) = crate::pages::friends::signed(r).filter(|(_, _, c)| !c.is_empty()) else {
         r.toast = Some((r.tr("gp.needSign"), "bad".into()));
@@ -799,10 +799,12 @@ fn set_mine(r: &mut Root, place: i64, universe: i64, vote: Option<bool>, cx: &mu
         return;
     };
     let before = r.games.mine.get(&universe).copied().filter(|m| m.of == user).unwrap_or(Mine { of: user, asked: true, ..Default::default() });
-    if before.busy || (vote.is_some() && before.vote == vote) {
+    // (The same thumb again: the vote taken back.)
+    let again = vote.is_some() && before.vote == vote;
+    if before.busy {
         return;
     }
-    if vote.is_some() && before.no_vote {
+    if vote.is_some() && before.no_vote && !again {
         r.toast = Some((r.tr("gp.votePlayFirst"), "bad".into()));
         cx.notify();
         return;
@@ -811,7 +813,7 @@ fn set_mine(r: &mut Root, place: i64, universe: i64, vote: Option<bool>, cx: &mu
     let fav_to = !before.fav.unwrap_or(false);
     match vote {
         None => now.fav = Some(fav_to),
-        Some(up) => now.vote = Some(up),
+        Some(up) => now.vote = if again { None } else { Some(up) },
     }
     r.games.mine.insert(universe, now);
     // The counts follow at once (and go back with the rest when Roblox refuses).
@@ -825,7 +827,9 @@ fn set_mine(r: &mut Root, place: i64, universe: i64, vote: Option<bool>, cx: &mu
         match vote {
             None => add("favorites", if fav_to { 1 } else { -1 }),
             Some(up) => {
-                add(if up { "upVotes" } else { "downVotes" }, 1);
+                if !again {
+                    add(if up { "upVotes" } else { "downVotes" }, 1);
+                }
                 if let Some(was) = before.vote {
                     add(if was { "upVotes" } else { "downVotes" }, -1);
                 }
@@ -834,15 +838,17 @@ fn set_mine(r: &mut Root, place: i64, universe: i64, vote: Option<bool>, cx: &mu
     };
     counts(r, false);
     cx.notify();
+    let cookie_back = cookie.clone();
     let rx = roblox::run(move || match vote {
         None => roblox::set_favorite(&cookie, universe, fav_to),
+        Some(_) if again => roblox::clear_vote(&cookie, universe, place),
         Some(up) => roblox::set_vote(&cookie, universe, up),
     });
     crate::ask::reply(rx, cx, move |r, done, cx| {
         let ours = r.games.mine.get(&universe).is_some_and(|m| m.of == user);
         if let Err(why) = done {
             // (A vote's 403 is Roblox's "Play game required": the account hasn't played it.)
-            let play_first = vote.is_some() && why.contains("403");
+            let play_first = vote.is_some() && !again && why.contains("403");
             if ours {
                 r.games.mine.insert(universe, Mine { no_vote: before.no_vote || play_first, ..before });
                 counts(r, true);
@@ -854,6 +860,20 @@ fn set_mine(r: &mut Root, place: i64, universe: i64, vote: Option<bool>, cx: &mu
             });
         } else if let Some(m) = r.games.mine.get_mut(&universe).filter(|_| ours) {
             m.busy = false;
+            // A vote taken back: what Roblox holds now, read back, so the thumbs show its answer, not a guess.
+            if again {
+                let rx = roblox::run(move || roblox::game_mine(&cookie_back, universe));
+                crate::ask::reply(rx, cx, move |r, got, cx| {
+                    if let (Ok((_, held, _)), Some(m)) = (got, r.games.mine.get_mut(&universe).filter(|m| m.of == user && !m.busy)) {
+                        m.vote = held;
+                        // (Roblox kept the vote after all: its count back too.)
+                        if held.is_some() && held == before.vote {
+                            counts(r, true);
+                        }
+                        cx.notify();
+                    }
+                });
+            }
         }
         cx.notify();
     });
@@ -5233,11 +5253,11 @@ fn figures(root: &Root, details: &Value, place: i64, show_updated: bool, cx: &mu
     });
     if votes_up.is_some() || votes_down.is_some() || liked.is_some() {
         let rating = div().flex().items_center().gap(px(7.))
-            .when_some(votes_up, |d, n| d.child(press("gp-like", figure_chip("like", String::new(), thousands(n, vi), mine.vote == Some(true)), root.tr("gp.like"), Some(true), cx)))
+            .when_some(votes_up, |d, n| d.child(press("gp-like", figure_chip("like", String::new(), thousands(n, vi), mine.vote == Some(true)), root.tr(if mine.vote == Some(true) { "gp.unlike" } else { "gp.like" }), Some(true), cx)))
             .when_some(liked, |d, pct| d.child(div().px(px(2.)).text_size(px(T_S))
                 .font_weight(FontWeight::SEMIBOLD).font_features(tnum()).text_color(c(TEXT_2))
                 .child(if votes_up.is_some() || votes_down.is_some() { format!("{pct:.0}%") } else { format!("{pct:.0}% {}", root.tr("gp.likes")) })))
-            .when_some(votes_down, |d, n| d.child(press("gp-dislike", figure_chip("dislike", String::new(), thousands(n, vi), mine.vote == Some(false)), root.tr("gp.dislike"), Some(false), cx)));
+            .when_some(votes_down, |d, n| d.child(press("gp-dislike", figure_chip("dislike", String::new(), thousands(n, vi), mine.vote == Some(false)), root.tr(if mine.vote == Some(false) { "gp.undislike" } else { "gp.dislike" }), Some(false), cx)));
         engagement.push(rating.into_any_element());
     }
     if let Some(n) = count("playing") {
