@@ -81,8 +81,11 @@ impl RenderImage {
     pub fn new(data: impl Into<SmallVec<[Frame; 1]>>) -> Self {
         static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
         let data: SmallVec<[Frame; 1]> = data.into();
+        let id = ImageId(NEXT_ID.fetch_add(1, SeqCst));
+        let first = data.first().map(|f| f.buffer().dimensions()).unwrap_or_default();
+        held_add(id, first, data.len(), data.iter().map(|f| f.buffer().as_raw().len()).sum());
         Self {
-            id: ImageId(NEXT_ID.fetch_add(1, SeqCst)),
+            id,
             scale_factor: 1.0,
             sizes: data.iter().map(|f| f.buffer().dimensions()).collect(),
             delays: data.iter().map(|f| f.delay()).collect(),
@@ -109,7 +112,9 @@ impl RenderImage {
         }
         if self.discard {
             let empty = Frame::new(image::RgbaImage::new(0, 0));
-            Some(std::mem::replace(frame, empty).into_buffer().into_raw())
+            let raw = std::mem::replace(frame, empty).into_buffer().into_raw();
+            held_less(self.id, raw.len());
+            Some(raw)
         } else {
             Some(frame.buffer().as_raw().clone())
         }
@@ -148,6 +153,77 @@ impl RenderImage {
     pub fn frame_count(&self) -> usize {
         self.sizes.len()
     }
+}
+
+impl Drop for RenderImage {
+    fn drop(&mut self) {
+        if let Some(held) = HELD.lock().as_mut() {
+            held.remove(&self.id.0);
+        }
+    }
+}
+
+/// (Bloxkeep) The pixels every live RenderImage holds (decoded pictures, their smaller copies, the theme's pictures,
+/// clip frames, the 3D avatar...), by image: its first frame's size, frames, and bytes still held (0 once given to the
+/// GPU, see `discard_after_upload`). For error.log's memory line.
+static HELD: parking_lot::Mutex<Option<std::collections::HashMap<usize, ((u32, u32), usize, usize)>>> = parking_lot::Mutex::new(None);
+
+fn held_add(id: ImageId, size: (u32, u32), frames: usize, bytes: usize) {
+    HELD.lock().get_or_insert_with(Default::default).insert(id.0, (size, frames, bytes));
+}
+
+fn held_less(id: ImageId, bytes: usize) {
+    if let Some(e) = HELD.lock().as_mut().and_then(|h| h.get_mut(&id.0)) {
+        e.2 = e.2.saturating_sub(bytes);
+    }
+}
+
+/// (Bloxkeep) What the live pictures hold as pixels in this process's memory.
+#[derive(Debug, Default, Clone)]
+pub struct HeldPictures {
+    /// Live images.
+    pub images: usize,
+    /// Those of them still holding pixels here.
+    pub holding: usize,
+    /// Those pixels' bytes.
+    pub bytes: usize,
+    /// The biggest holders: first frame's size, frames, bytes; biggest first.
+    pub biggest: Vec<((u32, u32), usize, usize)>,
+}
+
+/// (Bloxkeep) The pixels the live pictures hold now, with the `top` biggest.
+#[doc(hidden)]
+pub fn held_pictures(top: usize) -> HeldPictures {
+    let held = HELD.lock();
+    let Some(held) = held.as_ref() else { return HeldPictures::default() };
+    let mut all: Vec<((u32, u32), usize, usize)> = held.values().copied().filter(|e| e.2 > 0).collect();
+    let bytes = all.iter().map(|e| e.2).sum();
+    let holding = all.len();
+    all.sort_unstable_by(|a, b| b.2.cmp(&a.2));
+    all.truncate(top);
+    HeldPictures { images: held.len(), holding, bytes, biggest: all }
+}
+
+/// (Bloxkeep) The graphics card's picture atlas: textures made and their bytes, kept by the platform's atlas.
+static ATLAS: parking_lot::Mutex<(usize, usize)> = parking_lot::Mutex::new((0, 0));
+
+/// (Bloxkeep) An atlas texture of `bytes` made (`made`) or let go.
+#[doc(hidden)]
+pub fn note_atlas_texture(bytes: usize, made: bool) {
+    let mut a = ATLAS.lock();
+    if made {
+        a.0 += 1;
+        a.1 += bytes;
+    } else {
+        a.0 = a.0.saturating_sub(1);
+        a.1 = a.1.saturating_sub(bytes);
+    }
+}
+
+/// (Bloxkeep) The atlas textures alive now and their bytes (on the graphics card, every window's).
+#[doc(hidden)]
+pub fn atlas_textures() -> (usize, usize) {
+    *ATLAS.lock()
 }
 
 impl fmt::Debug for RenderImage {

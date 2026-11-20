@@ -23,6 +23,8 @@ mod crisp;
 mod duo_icons;
 mod frame;
 mod frame_tally;
+mod heap;
+mod mem_tally;
 mod history;
 mod i18n;
 mod images;
@@ -61,6 +63,10 @@ mod wikitext;
 use std::{borrow::Cow, path::PathBuf, time::Duration};
 
 use gpui_kit::*;
+
+/// Rust's heap, counted for error.log's memory line (heap.rs).
+#[global_allocator]
+static ALLOC: heap::Counted = heap::Counted;
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -244,6 +250,7 @@ fn run_ui(link: Option<(link::Link, futures::channel::mpsc::UnboundedReceiver<li
         crate::theme::dress(cx);
         images::init(cx);
         frame_tally::start(cx);
+        mem_tally::start(cx);
         // The keys: Ctrl+K to the search, Tab and Shift+Tab through the controls, Alt+arrows for Back and Forward.
         cx.bind_keys([
             KeyBinding::new("ctrl-k", shell::FocusSearch, None),

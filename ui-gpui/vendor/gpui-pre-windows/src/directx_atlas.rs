@@ -30,6 +30,14 @@ struct DirectXAtlasTexture {
     texture: ID3D11Texture2D,
     view: [Option<ID3D11ShaderResourceView>; 1],
     live_atlas_keys: u32,
+    /// (Bloxkeep) Its size on the graphics card, counted for error.log's memory line while it lives.
+    bytes: usize,
+}
+
+impl Drop for DirectXAtlasTexture {
+    fn drop(&mut self) {
+        gpui::note_atlas_texture(self.bytes, false);
+    }
 }
 
 impl DirectXAtlas {
@@ -240,7 +248,9 @@ impl DirectXAtlasTextures {
             texture,
             view,
             live_atlas_keys: 0,
+            bytes: size.width.0 as usize * size.height.0 as usize * bytes_per_pixel as usize,
         };
+        gpui::note_atlas_texture(atlas_texture.bytes, true);
         if let Some(ix) = index {
             texture_list.textures[ix] = Some(atlas_texture);
             texture_list.textures.get_mut(ix).unwrap().as_mut()

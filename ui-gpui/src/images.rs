@@ -724,6 +724,20 @@ fn copy(url: &str, long: u32, original: &Arc<Image>, (w, h): (u32, u32), sigma: 
     }
 }
 
+/// For error.log's memory line: the pictures kept, their files' bytes (as fetched, not decoded), and the smaller
+/// copies made of them.
+pub fn kept(cx: &App) -> (usize, usize, usize) {
+    let Some(images) = cx.try_global::<Images>() else { return (0, 0, 0) };
+    let (mut n, mut bytes) = (0, 0);
+    for s in images.slots.values() {
+        if let Slot::Ready(image, ..) = s {
+            n += 1;
+            bytes += image.bytes.len();
+        }
+    }
+    (n, bytes, images.copies.values().map(Vec::len).sum())
+}
+
 /// The own colour of the picture at an address, once it has loaded (asking starts the load).
 pub fn tone(url: &str, cx: &mut App) -> Option<u32> {
     pic(url, cx)?;
