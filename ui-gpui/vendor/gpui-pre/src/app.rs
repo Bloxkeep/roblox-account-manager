@@ -1460,15 +1460,14 @@ impl App {
         &mut self,
         callback: impl FnOnce(&mut App) -> R,
     ) -> (R, FxHashSet<EntityId>) {
-        let accessed_entities_start = self.entities.accessed_entities.get_mut().clone();
+        // (Bloxkeep) Every entity the callback reads, those read before it in the frame too: a cached view keeps them
+        // as what it depends on. Taken as the ones new in the callback, a view reading the entity whose render drew it
+        // (Chrome reading Root, shell.rs) never depended on it, and Root's changes made from a task (a 3D avatar
+        // frame, a clock, a load coming in) stood unseen under a moving theme until the mouse moved (2026-11-20).
+        let before = std::mem::take(self.entities.accessed_entities.get_mut());
         let result = callback(self);
-        let entities_accessed_in_callback = self
-            .entities
-            .accessed_entities
-            .get_mut()
-            .difference(&accessed_entities_start)
-            .copied()
-            .collect::<FxHashSet<EntityId>>();
+        let entities_accessed_in_callback = std::mem::replace(self.entities.accessed_entities.get_mut(), before);
+        self.entities.extend_accessed(&entities_accessed_in_callback);
         (result, entities_accessed_in_callback)
     }
 

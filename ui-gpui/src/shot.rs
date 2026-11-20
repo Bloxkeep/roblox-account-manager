@@ -277,7 +277,13 @@ async fn frames(h: AnyWindowHandle, out: &std::path::Path, n: usize, bench: bool
                 // Each picture is a frame of the window's own: the hidden window gets no frames from Windows, so
                 // motion stepped frame by frame (request_animation_frame: springs, the capsule's slide and moment)
                 // would stand still in the clip where it runs on in the app.
-                window.refresh();
+                // (BLOXKEEP_SHOT_CACHED=1: drawn as the app's frames are, the views kept where nothing they read
+                // changed; else every view is made anew.)
+                if std::env::var("BLOXKEEP_SHOT_CACHED").is_ok() {
+                    window.redraw();
+                } else {
+                    window.refresh();
+                }
                 window.draw(cx).clear(cx);
                 window.render_to_image()
             });
