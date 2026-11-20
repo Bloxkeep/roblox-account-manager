@@ -1,5 +1,29 @@
 [
   {
+    "version": "1.1.3",
+    "date": "2026-11-20",
+    "new": {
+      "en": [
+        "Anti-AFK: pick how often it presses, every 5 to 18 minutes.",
+        "Anti-AFK: pick its key. F15 by default, Space to jump for games that want you to move, or any other key."
+      ],
+      "vi": [
+        "Chống AFK: chọn bao lâu bấm một lần, từ 5 đến 18 phút.",
+        "Chống AFK: chọn phím bấm. Mặc định F15, Space để nhảy cho game bắt phải cử động, hoặc phím khác."
+      ]
+    },
+    "improved": {
+      "en": [
+        "Anti-AFK presses on time even while you use the PC, in a short pause from typing, so games that kick sooner than Roblox don't get there first.",
+        "Clips in What's new play, under their own heading."
+      ],
+      "vi": [
+        "Chống AFK bấm đúng giờ cả khi bạn đang dùng máy, lúc bạn ngừng gõ, nên game kick sớm hơn Roblox không kịp đá ra.",
+        "Clip trong Có gì mới chạy được, nằm ngay dưới tiêu đề của nó."
+      ]
+    }
+  },
+  {
     "version": "1.1.2",
     "date": "2026-11-20",
     "highlights": [
