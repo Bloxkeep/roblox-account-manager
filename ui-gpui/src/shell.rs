@@ -1450,6 +1450,8 @@ impl Root {
             use pages::settings::Part;
             match v.as_str() {
                 "multi" => self.settings.asking = Some("multi"),
+                // (Anti-AFK's Other key grid open.)
+                "afk-keys" => self.settings.afk_keys = true,
                 "restore" => {
                     self.settings.part = Part::Backup;
                     self.settings.asking = Some("restore");

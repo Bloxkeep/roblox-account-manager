@@ -680,7 +680,7 @@ fn afk_key(root: &Root, st: &Value, cx: &mut Context<Root>) -> AnyElement {
         }
         grid
     });
-    div().flex().flex_col().gap(px(10.)).child(row).children(grid).into_any_element()
+    div().w_full().flex().flex_col().gap(px(10.)).child(row).children(grid.map(|g| g.w_full())).into_any_element()
 }
 
 /// A list to tick in place under its row (accounts, parts of a message): Done saves it, Cancel leaves it.
@@ -1386,7 +1386,7 @@ fn perf(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
             let items = every.into_iter().map(|n| (n, root.i18n.tv("set.minutesN", &[("n", &n.to_string())]), false)).collect();
             chips(root, cx, "s-afk-every", items, &now, |r, v, cx| set(r, json!({ "antiAfkMinutes": v }), cx))
         }),
-        row_below(root.tr("set.antiAfkKey"), Some(root.tr("set.antiAfkKeyDesc")), afk_key(root, st, cx)),
+        row_wide(root.tr("set.antiAfkKey"), Some(root.tr("set.antiAfkKeyDesc")), afk_key(root, st, cx)),
         row_below(root.tr("set.hop"), Some(root.tr("set.hopDesc")), chips(root, cx, "s-hop", hops, &hop, |r, v, cx| set(r, json!({ "hopAbovePlayers": v }), cx))),
         row(
             root.tr("set.daily"),
