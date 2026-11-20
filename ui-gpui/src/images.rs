@@ -73,6 +73,8 @@ struct Smaller {
 /// A copy not drawn for this long while another size of the same picture was drawn after it is let go (a window
 /// dragged wider makes a new size every few pixels; the old ones are off screen).
 const SUPERSEDED: Duration = Duration::from_secs(10);
+/// A copy far out of view this long, its pixels still held, goes (`drop_far`).
+const FAR: Duration = Duration::from_secs(20);
 
 /// Past this many pictures kept, the ones no draw has asked for in IDLE are let go (their decoded copy in GPUI's cache
 /// and their place on each window's atlas too), oldest first, down to KEEP. A picture asked for lately is never let go,
@@ -125,6 +127,9 @@ pub struct Images {
     /// Pictures whose copies keep their pixels in memory: one was wanted again where it wasn't (drawn in two windows,
     /// or the graphics card started over), and letting go again would make it again and again.
     keep_pixels: std::collections::HashSet<String>,
+    /// Where each picture drawn from a copy was last painted: in or near the part of the window it shows in, or far out
+    /// of it (a tile scrolled far away); since when it is so, and when it was last painted (see `copy`).
+    seen: HashMap<String, (bool, Instant, Instant)>,
     queue: Arc<Queue>,
 }
 
@@ -195,7 +200,7 @@ pub fn init(cx: &mut App) {
         });
     }
     let _ = crate::threads::own("pictures-prune", prune_often);
-    cx.set_global(Images { slots: HashMap::new(), copies: HashMap::new(), keep_pixels: Default::default(), queue });
+    cx.set_global(Images { slots: HashMap::new(), copies: HashMap::new(), keep_pixels: Default::default(), seen: HashMap::new(), queue });
     // Every SWEEP_EVERY: when something may be away, every window is drawn once (a window standing still asks for
     // nothing, so its pictures would look away too), and what none of them asked for in AWAY is let go. A window
     // hidden in the tray or minimized doesn't draw: its pictures go too, and come back when it is shown.
@@ -227,6 +232,8 @@ pub fn init(cx: &mut App) {
                 cx.update(|cx| {
                     self::lost(&lost, cx);
                     crate::scene::lost(&lost, cx);
+                    // (Drawn from a file or address, `img(path)`: gpui's img.rs.)
+                    gpui_kit::forget_lost_resources(&lost, cx);
                     cx.refresh_windows();
                 });
             }
@@ -237,6 +244,7 @@ pub fn init(cx: &mut App) {
         loop {
             cx.background_executor().timer(SWEEP_EVERY).await;
             let asked = Instant::now();
+            cx.update(|cx| drop_far(cx));
             // No window of the app on screen (in the tray, minimized): the pictures it isn't showing go at this look,
             // not 45 s after (the owner, 2026-11-15, of 230 MB in Task Manager: "không có cách nào hài hòa à").
             let hidden = cx.update(|cx| none_on_screen(cx));
@@ -746,9 +754,29 @@ enum Use {
 
 /// The copy of the picture at `url` whose longer side is `long` pixels: made off the UI thread the first time, and
 /// meanwhile the nearest size already made (else nothing, for a moment, rather than the jagged original).
-fn copy(url: &str, long: u32, original: &Arc<Image>, (w, h): (u32, u32), sigma: f32, cx: &mut App) -> Use {
+///
+/// `near`: as it is painted, whether its box is in or near the part of the window it shows in (None as it is laid out).
+/// A copy is made only for a picture painted near view: one far out of it (a tile of a long list scrolled far away)
+/// waits until it comes near. Made for every tile of a list, the copies of those never drawn kept their pixels, as only
+/// a drawn one gives them to the graphics card: on the owner's PC, 491 copies and 79 MB of pixels after a few pages of
+/// games (error.log, 2026-11-20).
+fn copy(url: &str, long: u32, original: &Arc<Image>, (w, h): (u32, u32), sigma: f32, near: Option<bool>, cx: &mut App) -> Use {
     let now = Instant::now();
     let images = cx.global_mut::<Images>();
+    if let Some(near) = near {
+        match images.seen.get_mut(url) {
+            Some(s) if s.0 == near => s.2 = now,
+            Some(s) => *s = (near, now, now),
+            None => {
+                images.seen.insert(url.to_string(), (near, now, now));
+            }
+        }
+    }
+    // (Laid out: near when painted near the last time.)
+    let may_make = near.unwrap_or_else(|| images.seen.get(url).is_some_and(|s| s.0));
+    // (A shot comparing with copies made for every picture, near or not: BLOXKEEP_SHOT_ALL_COPIES.)
+    #[cfg(feature = "shot")]
+    let may_make = may_make || std::env::var_os("BLOXKEEP_SHOT_ALL_COPIES").is_some();
     if !images.copies.contains_key(url) {
         images.copies.insert(url.to_string(), Vec::new());
     }
@@ -762,7 +790,7 @@ fn copy(url: &str, long: u32, original: &Arc<Image>, (w, h): (u32, u32), sigma: 
                 CopyState::Loading => {}
             }
         }
-        None => {
+        None if may_make => {
             copies.push(Smaller { long, state: CopyState::Loading, used: now });
             let discard = !images.keep_pixels.contains(url);
             let bytes = original.clone();
@@ -790,6 +818,7 @@ fn copy(url: &str, long: u32, original: &Arc<Image>, (w, h): (u32, u32), sigma: 
             })
             .detach();
         }
+        None => {}
     }
     let copies = cx.global_mut::<Images>().copies.get_mut(url);
     let nearest = copies.and_then(|l| {
@@ -939,6 +968,51 @@ fn trim(cx: &mut App, asked: Option<Instant>) {
     }
 }
 
+/// Whether a box is in or near the part of the window it shows in: within that part's own width and height of it.
+fn near_view(at: gpui_kit::Bounds<gpui_kit::Pixels>, shown: gpui_kit::Bounds<gpui_kit::Pixels>) -> bool {
+    let around = gpui_kit::Bounds::new(shown.origin - gpui_kit::point(shown.size.width, shown.size.height), gpui_kit::size(shown.size.width * 3., shown.size.height * 3.));
+    at.intersects(&around)
+}
+
+/// Copies of pictures far out of view for `FAR` that still hold their pixels (never drawn, so never given to the
+/// graphics card) go; made again as their picture comes near (`copy`).
+fn drop_far(cx: &mut App) {
+    #[cfg(feature = "shot")]
+    if std::env::var_os("BLOXKEEP_SHOT_ALL_COPIES").is_some() {
+        return;
+    }
+    let now = Instant::now();
+    let images = cx.global_mut::<Images>();
+    let mut gone: Vec<Arc<RenderImage>> = Vec::new();
+    for (url, list) in images.copies.iter_mut() {
+        // (Far for FAR and still painted lately: on the page, out of view. Not painted at all: the sweep's own rules.)
+        let Some(&(false, since, last)) = images.seen.get(url.as_str()) else { continue };
+        if now.duration_since(since) < FAR || now.duration_since(last) > FAR {
+            continue;
+        }
+        list.retain(|c| match &c.state {
+            CopyState::Ready(r) if r.holds_pixels() => {
+                gone.push(r.clone());
+                false
+            }
+            _ => true,
+        });
+    }
+    images.copies.retain(|_, l| !l.is_empty());
+    // (Places not painted for a long time: forgotten.)
+    images.seen.retain(|_, s| now.duration_since(s.2) < Duration::from_secs(600));
+    if gone.is_empty() {
+        return;
+    }
+    for window in cx.windows() {
+        let _ = window.update(cx, |_, window, _| {
+            for r in &gone {
+                let _ = window.drop_image(r.clone());
+            }
+        });
+    }
+}
+
 /// The picture at an address for a box of `w`×`h` logical px that it fills (ObjectFit::Cover; a square box for a
 /// face or an icon), once it has loaded; asking starts the load. A picture much bigger than the box's pixels on this
 /// window's screen is drawn from a copy made at those pixels (see `shrink`), kept per size; one near its size as it is.
@@ -955,7 +1029,8 @@ pub fn pic_at(url: &str, w: f32, h: f32, cx: &mut App) -> Option<ImageSource> {
         // (A picture shown at about its own size gets a copy at that size too, not GPUI's own decoded picture: a copy's
         // pixels leave memory once on the graphics card, GPUI's stay.)
         let long = copy_long(dims.0, dims.1, w * scale, h * scale).unwrap_or(dims.0.max(dims.1));
-        let made = copy(&key, long, &original, dims, 0., cx);
+        let near = gpui_kit::painting_view().map(|(at, shown)| near_view(at, shown));
+        let made = copy(&key, long, &original, dims, 0., near, cx);
         match made {
             Use::Copy(r) => Some(Ok(r)),
             Use::Original => original.clone().use_render_image(window, cx).map(Ok),

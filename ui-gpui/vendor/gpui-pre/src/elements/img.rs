@@ -477,13 +477,18 @@ impl Element for Img {
             window,
             cx,
             |style, window, cx| {
-                if let Some(Ok(data)) = source.use_data(
+                // (Bloxkeep: a custom source learns where it is drawn, `painting_view`.)
+                let mask = window.content_mask().bounds;
+                PAINTING.with(|p| p.set(Some((bounds, mask))));
+                let data = source.use_data(
                     self.image_cache
                         .clone()
                         .or_else(|| window.image_cache_stack.last().cloned()),
                     window,
                     cx,
-                ) {
+                );
+                PAINTING.with(|p| p.set(None));
+                if let Some(Ok(data)) = data {
                     if data.frame_count() == 0 {
                         return;
                     }
@@ -508,6 +513,17 @@ impl Element for Img {
             },
         )
     }
+}
+
+thread_local! {
+    static PAINTING: std::cell::Cell<Option<(Bounds<Pixels>, Bounds<Pixels>)>> = const { std::cell::Cell::new(None) };
+}
+
+/// Bloxkeep (src/images.rs): while an `img` is painted and asks its custom source for the picture, the box it is drawn
+/// in and the part of the window it may show in (its content mask): a source can leave a picture far out of view
+/// unmade. None when asked for the picture otherwise (as the element is laid out).
+pub fn painting_view() -> Option<(Bounds<Pixels>, Bounds<Pixels>)> {
+    PAINTING.with(|p| p.get())
 }
 
 impl Styled for Img {
@@ -630,7 +646,9 @@ impl Asset for ImageAssetLoader {
         // let scale_factor = cx.scale_factor();
         let svg_renderer = cx.svg_renderer();
         let asset_source = cx.asset_source().clone();
-        async move {
+        // (Bloxkeep) Its pixels go once on the graphics card, as other pictures' do (crate::for_drawing_resource).
+        let from = source.clone();
+        let decoded = async move {
             let bytes = match source.clone() {
                 Resource::Path(uri) => fs::read(uri.as_ref())?,
                 Resource::Uri(uri) => {
@@ -742,7 +760,29 @@ impl Asset for ImageAssetLoader {
                     .render_single_frame(&bytes, 1.0)
                     .map_err(Into::into)
             }
-        }
+        };
+        async move { decoded.await.map(|r| crate::assets::for_drawing_resource(&from, r)) }
+    }
+}
+
+/// (Bloxkeep) Pictures drawn from a file or address (`img(path)`) among those reported lost (`take_lost_images`): let
+/// go in every window and from the asset cache, so the next draw decodes them again, keeping their pixels from then on.
+pub fn forget_lost_resources(lost: &[crate::ImageId], cx: &mut App) {
+    let resources = crate::assets::lost_resources(lost);
+    if resources.is_empty() {
+        return;
+    }
+    for handle in cx.windows() {
+        let _ = handle.update(cx, |_, window, cx| {
+            for r in &resources {
+                if let Some(Ok(drawn)) = window.get_asset::<ImgResourceLoader>(r, cx) {
+                    let _ = window.drop_image(drawn);
+                }
+            }
+        });
+    }
+    for r in &resources {
+        cx.remove_asset::<ImgResourceLoader>(r);
     }
 }
 

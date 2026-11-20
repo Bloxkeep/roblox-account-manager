@@ -78,12 +78,17 @@ impl Eq for RenderImage {}
 
 impl RenderImage {
     /// Create a new image from the given data.
+    ///
+    /// (Bloxkeep: labelled with where it was made, file and line, until `label_picture` names it: error.log's Memory
+    /// line names every picture holding pixels, not only those given a name.)
+    #[track_caller]
     pub fn new(data: impl Into<SmallVec<[Frame; 1]>>) -> Self {
         static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
         let data: SmallVec<[Frame; 1]> = data.into();
         let id = ImageId(NEXT_ID.fetch_add(1, SeqCst));
         let first = data.first().map(|f| f.buffer().dimensions()).unwrap_or_default();
         held_add(id, first, data.len(), data.iter().map(|f| f.buffer().as_raw().len()).sum());
+        label_picture(id, made_at(std::panic::Location::caller()));
         Self {
             id,
             scale_factor: 1.0,
@@ -164,6 +169,9 @@ impl Drop for RenderImage {
         if let Some(from) = FROM.lock().as_mut() {
             from.remove(&self.id.0);
         }
+        if let Some(from) = RESOURCE_FROM.lock().as_mut() {
+            from.remove(&self.id.0);
+        }
         if let Some(labels) = LABELS.lock().as_mut() {
             labels.remove(&self.id.0);
         }
@@ -197,6 +205,41 @@ pub(crate) fn for_drawing(image: u64, decoded: std::sync::Arc<RenderImage>) -> s
     }
 }
 
+/// (Bloxkeep) Pictures decoded from a file, an address or the app's own files (img's ImageAssetLoader, `img(path)`)
+/// whose pixels are let go after their upload: by the RenderImage, where it came from. GPUI kept them whole for the
+/// rest of the run (a 2560×1494 vault picture shown as a 30 px face held 14.6 MB, the owner's error.log 2026-11-20).
+static RESOURCE_FROM: parking_lot::Mutex<Option<std::collections::HashMap<usize, crate::Resource>>> = parking_lot::Mutex::new(None);
+/// (Bloxkeep) Those whose pictures keep their pixels: wanted where their upload wasn't (`forget_lost_resources`).
+static RESOURCE_KEEP: parking_lot::Mutex<Option<std::collections::HashSet<crate::Resource>>> = parking_lot::Mutex::new(None);
+
+/// (Bloxkeep) `for_drawing` for a picture decoded from `resource`.
+pub(crate) fn for_drawing_resource(resource: &crate::Resource, decoded: std::sync::Arc<RenderImage>) -> std::sync::Arc<RenderImage> {
+    if RESOURCE_KEEP.lock().as_ref().is_some_and(|k| k.contains(resource)) {
+        return decoded;
+    }
+    match std::sync::Arc::try_unwrap(decoded) {
+        Ok(r) => {
+            let r = r.discard_after_upload();
+            label_picture(r.id, "picture from a file");
+            RESOURCE_FROM.lock().get_or_insert_with(Default::default).insert(r.id.0, resource.clone());
+            std::sync::Arc::new(r)
+        }
+        Err(shared) => shared,
+    }
+}
+
+/// (Bloxkeep) Of pictures reported lost (`take_lost_images`), those decoded from a file or address (`img(path)`): kept
+/// whole from now on, and handed back to be let go everywhere and decoded again.
+pub(crate) fn lost_resources(lost: &[ImageId]) -> Vec<crate::Resource> {
+    let from = RESOURCE_FROM.lock();
+    let Some(from) = from.as_ref() else { return Vec::new() };
+    let found: Vec<crate::Resource> = lost.iter().filter_map(|id| from.get(&id.0).cloned()).collect();
+    if !found.is_empty() {
+        RESOURCE_KEEP.lock().get_or_insert_with(Default::default).extend(found.iter().cloned());
+    }
+    found
+}
+
 /// (Bloxkeep) Of pictures reported lost (`take_lost_images`), the `Image`s they were decoded from by img's loader:
 /// those to decode again (their asset removed), now kept (`keep_pixels_of`).
 pub fn lost_sources(lost: &[ImageId]) -> Vec<u64> {
@@ -224,6 +267,24 @@ static LABELS: parking_lot::Mutex<Option<std::collections::HashMap<usize, &'stat
 
 /// (Bloxkeep) Names what a picture is, for error.log's memory line (`held_pictures`).
 #[doc(hidden)]
+/// "file.rs:line" for where a picture was made, made once per place.
+fn made_at(at: &'static std::panic::Location<'static>) -> &'static str {
+    static SITES: parking_lot::Mutex<Option<std::collections::HashMap<(&'static str, u32), &'static str>>> = parking_lot::Mutex::new(None);
+    let mut sites = SITES.lock();
+    *sites.get_or_insert_with(Default::default).entry((at.file(), at.line())).or_insert_with(|| {
+        let file = at.file().rsplit(['/', '\\']).next().unwrap_or(at.file());
+        Box::leak(format!("made at {file}:{}", at.line()).into_boxed_str())
+    })
+}
+
+impl RenderImage {
+    /// Whether this picture still holds its pixels in memory (not yet given to the graphics card, or kept).
+    pub fn holds_pixels(&self) -> bool {
+        self.data.lock().iter().any(|f| !f.buffer().as_raw().is_empty())
+    }
+}
+
+/// Names a picture for error.log's Memory line.
 pub fn label_picture(id: ImageId, label: &'static str) {
     LABELS.lock().get_or_insert_with(Default::default).insert(id.0, label);
 }

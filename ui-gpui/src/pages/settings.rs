@@ -1582,7 +1582,7 @@ fn security(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
                         .flex()
                         .items_center()
                         .gap(px(8.))
-                        .child(crate::pages::lock::face(open, &name, picture, 32., R_S, 14.))
+                        .child(crate::pages::lock::face(open, &name, picture, 32., R_S, 14., cx))
                         .when(picture.is_some(), |d| {
                             d.child(Button::new("s-vault-pic-x", root.tr("vault.pictureRemove")).small().on_click(cx.listener(move |r, _, _, cx| r.ask("clearVaultPicture", json!({ "id": id }), cx, |_, _| {}))))
                         })

@@ -147,6 +147,8 @@
   let vaultList = params.has('new') ? [] : params.has('vaults')
     ? [{ id: 'a1b2c3d4', name: 'Main', picture: null }, { id: 'b2c3d4e5', name: 'Farm', picture: 'scene-halong.svg' }, { id: 'c3d4e5f6', name: 'Alt', picture: null }]
     : [{ id: 'a1b2c3d4', name: 'Vault 1', picture: null }];
+  // ?vaultpic=FILE: the first vault's picture is that file of the person's pictures (--pictures).
+  if (params.get('vaultpic') && vaultList[0]) vaultList[0].picture = params.get('vaultpic');
   let vaultCurrent = vaultList[0]?.id || null, vaultPick = params.has('vaultpick'), vaultAdding = null, askVault = params.has('vaultpick'), vaultAddFromPick = false;
   // ?guardfail=1: the vault list is a number, so the sidebar (which reads it as a list) fails to draw and Guard shows its
   // note. The failure is the point of the scenario: Guard and React report it with console.error, which Tests/ui counts.

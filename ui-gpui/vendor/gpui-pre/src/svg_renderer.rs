@@ -192,6 +192,7 @@ impl SvgRenderer {
     }
 
     /// Rasterizes a previously parsed SVG into an image buffer.
+    #[track_caller]
     pub fn render_parsed(
         &self,
         svg: &ParsedSvg,
@@ -219,6 +220,7 @@ impl SvgRenderer {
     }
 
     /// Renders the given bytes into an image buffer.
+    #[track_caller]
     pub fn render_single_frame(
         &self,
         bytes: &[u8],

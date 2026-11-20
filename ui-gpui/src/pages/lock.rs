@@ -342,7 +342,11 @@ fn auto_text(root: &Root, minutes: i64) -> String {
 
 /// A vault's face: its picture, or the first letter of its name on a colour of its own (the same one every time:
 /// Vaults.tsx's FNV-1a over its id).
-pub fn face(id: &str, name: &str, picture: Option<&str>, size: f32, radius: f32, letter: f32) -> Div {
+///
+/// The picture is drawn from a copy at the box's pixels (images::pic_sq), as other pictures are: drawn from its file
+/// (GPUI's `img(path)`), it was decoded whole and its pixels kept for the rest of the run, the owner's 2560×1494 vault
+/// picture 14.6 MB in memory and as much again on the graphics card for a 30 px face (error.log, 2026-11-20).
+pub fn face(id: &str, name: &str, picture: Option<&str>, size: f32, radius: f32, letter: f32, cx: &mut App) -> Div {
     const COLORS: [u32; 8] = [0x2563eb, 0x15803d, 0xb45309, 0xdc2626, 0x7c3aed, 0x0e7490, 0xbe185d, 0x0f766e];
     let mut h: u32 = 2166136261;
     for u in id.encode_utf16() {
@@ -352,8 +356,12 @@ pub fn face(id: &str, name: &str, picture: Option<&str>, size: f32, radius: f32,
     h = h.wrapping_mul(0x45d9f3b);
     h ^= h >> 16;
     let base = div().size(px(size)).flex_none().rounded(px(radius)).overflow_hidden().flex().items_center().justify_center();
-    match picture.and_then(crate::images::user) {
-        Some(file) => base.child(img(file).size_full().object_fit(ObjectFit::Cover)),
+    let file = picture.and_then(crate::images::user);
+    match file {
+        Some(file) => {
+            let url = format!("file:///{}", file.display());
+            base.when_some(crate::images::pic_sq(&url, size, cx), |d, p| d.child(img(p).size_full().object_fit(ObjectFit::Cover)))
+        }
         None => {
             let first: String = name.trim().chars().next().map(|c| c.to_uppercase().collect()).unwrap_or_else(|| "?".into());
             base.bg(c(COLORS[(h % 8) as usize])).text_color(c(WHITE)).text_size(px(letter)).font_weight(FontWeight::BOLD).child(first)
@@ -642,7 +650,7 @@ pub fn lock(root: &Root, window: &mut Window, cx: &mut Context<Root>) -> AnyElem
                 .bg(ca(WHITE, 0.045))
                 .border_1()
                 .border_color(c(LINE))
-                .child(face(current, &name, v.get("picture").and_then(Value::as_str), 30., R_S, 14.))
+                .child(face(current, &name, v.get("picture").and_then(Value::as_str), 30., R_S, 14., cx))
                 .child(div().max_w(px(180.)).truncate().text_size(px(T_L)).font_weight(FontWeight::SEMIBOLD).child(name))
                 .when(!adding && !screen_lock, |d| {
                     d.child(div().w(px(1.)).h(px(14.)).bg(c(LINE))).child(link("lock-switch", root.tr("vault.switch")).on_click(cx.listener(|r, _, _, cx| run(r, "pickVault", json!({}), cx))))
@@ -884,7 +892,7 @@ fn picker(root: &Root, window: &Window, cx: &mut Context<Root>) -> Div {
             .cursor_pointer()
             .child(match scene_pic {
                 Some(p) => div().size(px(128.)).bg(c(RAISED_2)).child(img(ImageSource::Render(p)).size_full().object_fit(ObjectFit::Cover)),
-                None => face(&id, &name, picture, 128., 0., 56.),
+                None => face(&id, &name, picture, 128., 0., 56., cx),
             })
             .on_click(cx.listener(move |r, _, _, cx| run(r, "selectVault", json!({ "id": pick }), cx)));
         // Not the vault open behind the picker: switch away from it first.

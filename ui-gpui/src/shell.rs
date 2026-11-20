@@ -2872,7 +2872,7 @@ impl Root {
                         .items_center()
                         .justify_center()
                         .cursor_pointer()
-                        .child(pages::lock::face(&id, &name, v.get("picture").and_then(Value::as_str), 24., 6., 12.))
+                        .child(pages::lock::face(&id, &name, v.get("picture").and_then(Value::as_str), 24., 6., 12., cx))
                         .tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into())
                         .on_click(cx.listener(|r, _, _, _| r.send("pickVault", json!({})))),
                 )
