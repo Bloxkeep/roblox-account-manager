@@ -563,6 +563,8 @@
     monitorCount: accounts.filter(a => a.state === 'running').length + orphans,
     ...(params.has('farm') ? { totalMb: 27900 + Math.round(Math.random() * 200), systemMb: 64 * 1024, usedPct: 58, availableMb: 27 * 1024, cpuPct: 61, gpuPct: 47, pcCpuPct: 78, commitMb: 52 * 1024 }
       : { totalMb: 1750 + Math.round(Math.random() * 40), systemMb: 32 * 1024, usedPct: 63, availableMb: 12 * 1024, cpuPct: 12, gpuPct: 34, pcCpuPct: 41, commitMb: 27 * 1024 }),
+    // (?jitter: the PC's figures change every tick, 1-digit to 100, for the top bar's pill: its length must not move.)
+    ...(params.has('jitter') ? { usedPct: [3, 59, 100, 8, 71, 11][Math.floor(Date.now() / 1500) % 6], pcCpuPct: [100, 7, 23, 88, 1, 45][Math.floor(Date.now() / 1500) % 6], gpuPct: [9, 100, 38, 4, 77, 11][Math.floor(Date.now() / 1500) % 6] } : {}),
     // (?nofit: no window measured yet, as on a first run.)
     fit: params.has('nofit') ? null : params.has('farm') ? { max: 34, by: 'cpu', eachMb: 930 } : { max: 9, by: 'ram', eachMb: 1100 },
   });
@@ -585,6 +587,8 @@
       // get ready (Tests/ui settled-ready). Not otherwise: the commands it brings would land in every scenario.
       if (params.has('settled')) setTimeout(() => !locked && emit('settled', null), 300);
       setInterval(() => !locked && emit('metrics', metrics()), 1500);
+      // ?busy=1: an account being opened, its words in the top bar's pill (as a join says), for looking at that pill.
+      if (params.has('busy')) setTimeout(() => emit('progress', { text: language === 'vi' ? 'Đang mở Farm 1…' : 'Opening Farm 1…' }), 200);
     },
     async call(cmd, a) {
       await wait(120);

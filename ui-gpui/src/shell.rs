@@ -3140,7 +3140,10 @@ impl Root {
         let tw = |s: &str, size: f32, w: FontWeight| bar_text_w(&*window, s, size, w);
         let label_w = |s: &str| tw(&s.to_uppercase(), BAR_LABEL, FontWeight::SEMIBOLD);
         let value_w = |s: &str| tw(s, BAR_VALUE, FontWeight::SEMIBOLD);
-        let pct_w = value_w("88%");
+        // (Room for the widest figure, "100%", in equal-width digits, and every figure drawn in exactly that room: the
+        // digits drawn proportional and the room only a least, a figure's change made the pill longer or shorter, the
+        // owner 2026-11-20.)
+        let pct_w = value_w("100%");
         let pair_w = |l: &str, v: f32| label_w(l) + 5. + v;
         let row_gap = |items: &[f32], pad_l: f32, pad_r: f32, gap: f32| {
             let shown: Vec<f32> = items.iter().copied().filter(|w| *w > 0.).collect();
@@ -3155,9 +3158,12 @@ impl Root {
         let progress_w = self.progress.as_deref().map_or(0., |p| tw(p, BAR_VALUE, FontWeight::NORMAL));
         let no_roblox_w = if no_roblox { 14. + 6. + tw(&self.tr("side.noRoblox"), BAR_VALUE, FontWeight::NORMAL) } else { 0. };
         let privacy_w = if privacy.is_some() { 14. + 6. + tw(&self.tr("gpv.chip"), BAR_VALUE, FontWeight::NORMAL) } else { 0. };
+        // (The close button's round ground makes its own room: a narrower end when it is last. Words after it, a join's
+        // "Opening…", end at the usual room: they sat against the pill's edge, the owner 2026-11-20.)
+        let left_pad_r = if windows > 0 && progress_w == 0. && no_roblox_w == 0. && privacy_w == 0. { 6. } else { BAR_PAD };
         let left_w = |l: u8| {
             let (c, r, g) = (if l < 2 { cpu_w } else { 0. }, if l < 10 { ram_w } else { 0. }, if windows > 0 && l < 2 { gpu_w } else { 0. });
-            row_gap(&[head_w, c, r, g, if windows > 0 { BAR_KEY } else { 0. }, progress_w, no_roblox_w, privacy_w], BAR_PAD, if windows > 0 { 6. } else { BAR_PAD }, BAR_GROUP_GAP)
+            row_gap(&[head_w, c, r, g, if windows > 0 { BAR_KEY } else { 0. }, progress_w, no_roblox_w, privacy_w], BAR_PAD, left_pad_r, BAR_GROUP_GAP)
         };
         let (title_w, artist_w, cover) = match &song {
             Some((s, _)) => (
@@ -3244,7 +3250,7 @@ impl Root {
                 .items_center()
                 .gap(px(5.))
                 .child(label(name))
-                .child(div().min_w(px(pct_w)).text_size(px(BAR_VALUE)).font_weight(FontWeight::SEMIBOLD).text_color(tone).child(capsule::roll(id, format!("{pct}%"), 16., window)))
+                .child(div().w(px(pct_w)).flex_none().text_size(px(BAR_VALUE)).font_weight(FontWeight::SEMIBOLD).font_features(tnum()).text_color(tone).child(capsule::roll(id, format!("{pct}%"), 16., window)))
                 .tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into())
         };
 
@@ -3282,7 +3288,7 @@ impl Root {
                 .children(gpu_el)
                 // Close all: every Roblox window, after a question. (Its own click: not the pill's, which opens it.)
                 .when(windows > 0, |d| d.child(no_pick(IconButton::new("sys-close", "power").size(BAR_KEY).tip(self.tr("sys.closeAll")).on_click(cx.listener(|r, _, window, cx| r.close_all(false, window, cx))))))
-                .when_some(self.progress.clone(), |d, p| d.child(div().flex_none().text_color(c(TEXT_2)).child(p)))
+                .when_some(self.progress.clone(), |d, p| d.child(div().flex_none().text_size(px(BAR_VALUE)).font_weight(FontWeight::NORMAL).text_color(c(TEXT_2)).child(p)))
                 // Nothing can be opened without it: said where it is seen on every page.
                 .when(no_roblox, |d| d.child(div().flex().flex_none().items_center().gap(px(6.)).text_color(c(WARN)).child(icon("alert", 14., c(WARN))).child(self.tr("side.noRoblox"))))
                 .children(privacy.map(no_pick))
@@ -3475,7 +3481,7 @@ impl Root {
                 .inset_0(),
             )
             // (A click on a pill's empty part opens its card, capsule.rs; its buttons keep their own clicks.)
-            .child(bar_pill("bar-left", lw_now, lw, BAR_PAD, if windows > 0 { 6. } else { BAR_PAD }, 1., None, left.into_any_element()).on_click(cx.listener(|r, _, _, cx| r.pill_toggle(capsule::Pill::Left, cx))))
+            .child(bar_pill("bar-left", lw_now, lw, BAR_PAD, left_pad_r, 1., None, left.into_any_element()).on_click(cx.listener(|r, _, _, cx| r.pill_toggle(capsule::Pill::Left, cx))))
             .child(div().flex_1().min_w_0().flex().justify_center().children(music.map(|d| {
                 bar_pill("bar-music", mw_now, mw, 12., 4., m_fade, music_shade, d.into_any_element()).on_click(cx.listener(|r, _, _, cx| r.pill_toggle(capsule::Pill::Music, cx)))
             })))

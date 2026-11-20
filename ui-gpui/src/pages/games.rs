@@ -593,6 +593,9 @@ pub struct Data {
     news_cap: std::cell::RefCell<Option<(String, usize)>>,
     pub icons: HashMap<i64, String>,
     asked_icons: HashSet<i64>,
+    /// The games whose wide picture was asked for (apart from the icon: a game first seen square, its icon only, then
+    /// shown wide got none and its 150 px icon was blown up over the wide tile, blurred, the owner 2026-11-20).
+    asked_covers: HashSet<i64>,
     /// Their wide pictures, for the board's tiles; and a sharper one for the game that leads a chart.
     pub covers: HashMap<i64, String>,
     pub covers_big: HashMap<i64, String>,
@@ -2491,41 +2494,68 @@ fn want_roblox(r: &mut Root, link: &crate::link::Link, cx: &mut Context<Root>) {
             wide.extend(list.iter().map(|g| g.universe));
         }
     }
+    // (The search's results are shown wide, and so are the first games of the chart shown, under a game's page.)
     if let Some((_, Some(Ok(list)))) = &r.games.found {
         want.extend(list.iter().map(|g| g.universe));
+        wide.extend(list.iter().map(|g| g.universe));
+    }
+    if let Some(Ok(list)) = shown_sort(r).and_then(|s| r.games.rows.get(&s.id)) {
+        want.extend(list.iter().take(12).map(|g| g.universe));
+        wide.extend(list.iter().take(12).map(|g| g.universe));
     }
     if let Some((_, Some(Ok(list)))) = &r.games.switch_found {
         want.extend(list.iter().take(8).map(|g| g.universe));
     }
+    // (Wide pictures for what is shown wide: the first row, a chart picked in the filter, the search, Home's picks; the
+    // other rows are squares. Asked for apart from the icons, so a game once shown square gets its wide one when shown
+    // wide.)
+    let squares_only: HashSet<i64> = match &r.games.sorts {
+        Some(Ok(sorts)) => sorts.iter().take(CHART_ROWS).skip(1).filter_map(|s| r.games.rows.get(&s.id)).filter_map(|l| l.as_ref().ok()).flatten().map(|g| g.universe).collect(),
+        _ => HashSet::new(),
+    };
+    let mut covers_for: Vec<i64> = want
+        .iter()
+        .copied()
+        .filter(|u| *u > 0 && (wide.contains(u) || !squares_only.contains(u)) && !r.games.covers.contains_key(u) && !r.games.asked_covers.contains(u))
+        .collect();
+    covers_for.sort_unstable();
+    covers_for.dedup();
     want.retain(|u| *u > 0 && !r.games.icons.contains_key(u) && !r.games.asked_icons.contains(u));
     want.sort_unstable();
     want.dedup();
-    if !want.is_empty() {
+    if !want.is_empty() || !covers_for.is_empty() {
         r.games.asked_icons.extend(want.iter().copied());
+        r.games.asked_covers.extend(covers_for.iter().copied());
         let asked = want.clone();
-        // (Wide pictures for what is shown wide: the first row, the search, Home's picks; the other rows are squares.)
-        let squares_only: HashSet<i64> = match &r.games.sorts {
-            Some(Ok(sorts)) => sorts.iter().take(CHART_ROWS).skip(1).filter_map(|s| r.games.rows.get(&s.id)).filter_map(|l| l.as_ref().ok()).flatten().map(|g| g.universe).collect(),
-            _ => HashSet::new(),
-        };
-        let covers_for: Vec<i64> = want.iter().copied().filter(|u| wide.contains(u) || !squares_only.contains(u)).collect();
-        let rx = roblox::run(move || roblox::both(|| roblox::icons(&want), || if covers_for.is_empty() { Default::default() } else { roblox::covers(&covers_for, "480x270") }));
+        let asked_wide = covers_for.clone();
+        let rx = roblox::run(move || {
+            roblox::both(
+                || if want.is_empty() { Default::default() } else { roblox::icons(&want) },
+                || if covers_for.is_empty() { Default::default() } else { roblox::covers(&covers_for, "480x270") },
+            )
+        });
         cx.spawn(async move |this, cx| {
             let (icons, covers) = rx.await.unwrap_or_default();
             // (Roblox answers every game, a placeholder for one without an icon: one left out wasn't answered.)
             let missed: Vec<i64> = asked.into_iter().filter(|u| !icons.contains_key(u)).collect();
+            let missed_wide: Vec<i64> = asked_wide.into_iter().filter(|u| !covers.contains_key(u)).collect();
             let _ = this.update(cx, |r, cx| {
                 // (Icons are the same whoever is signed in: one asked before a vault switch is still right.)
                 r.games.icons.extend(icons);
                 r.games.covers.extend(covers);
                 cx.notify();
             });
-            if !missed.is_empty() {
+            if !missed.is_empty() || !missed_wide.is_empty() {
                 cx.background_executor().timer(RETRY).await;
                 let _ = this.update(cx, |r, cx| {
                     for u in &missed {
                         if may_retry(r, format!("icon:{u}")) {
                             r.games.asked_icons.remove(u);
+                        }
+                    }
+                    for u in &missed_wide {
+                        if may_retry(r, format!("cover:{u}")) {
+                            r.games.asked_covers.remove(u);
                         }
                     }
                     cx.notify();
