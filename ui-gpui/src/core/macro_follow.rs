@@ -224,9 +224,6 @@ impl Pd {
         (u * GAIN).clamp(0.0, 1.0) * frame_ms
     }
 
-    pub fn reset(&mut self) {
-        self.last_error = None;
-    }
 }
 
 /// The marker's speed (px a frame) from its last places, and where it will be after LEAD_FRAMES.

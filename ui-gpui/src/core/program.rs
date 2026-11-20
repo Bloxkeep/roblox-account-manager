@@ -58,9 +58,6 @@ unsafe impl Send for Named {}
 unsafe impl Sync for Named {}
 
 impl Named {
-    pub fn raw(&self) -> HANDLE {
-        self.0
-    }
 
     /// EventWaitHandle.Set.
     pub fn set(&self) {

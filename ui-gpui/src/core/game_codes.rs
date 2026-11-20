@@ -261,15 +261,7 @@ pub fn from_html(html: &str) -> Vec<Code> {
 /// A bit of the page's HTML as plain words.
 fn words(html: &str) -> String {
     let text = TAG.replace_all(html, " ");
-    let text = text
-        .replace("&nbsp;", " ")
-        .replace("&#160;", " ")
-        .replace("&quot;", "\"")
-        .replace("&#39;", "'")
-        .replace("&#039;", "'")
-        .replace("&lt;", "<")
-        .replace("&gt;", ">")
-        .replace("&amp;", "&");
+    let text = crate::val::entities(&text);
     let text = text.replace('[', " [").replace("[ ]", "").replace("[]", "");
     SPACE.replace_all(text.trim(), " ").replace(" ,", ",").replace(" .", ".")
 }

@@ -16,9 +16,6 @@ use crate::core::models::Account;
 /// A stay that ended this recently is the one an event (a drop, a kick) is about.
 pub const RECENT_STAY: Duration = Duration::from_secs(3 * 60);
 
-#[derive(Default)]
-pub struct DiscordAlertsState {}
-
 /// An event as Discord shows it; `author` is the account's name (not escaped).
 #[derive(Clone, Debug)]
 pub struct DiscordAlert {

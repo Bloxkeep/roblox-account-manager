@@ -19,9 +19,6 @@ pub const MAX_CARD_ACCOUNTS: usize = 12;
 pub const MAX_BLOCK_ACCOUNTS: usize = 15;
 pub const SUMMARY_PICTURE: &str = "bloxkeep-summary.png";
 
-#[derive(Default)]
-pub struct DiscordSummaryState {}
-
 /// The part of a stay inside the period, and the game it counts for ("u<universe>", else "p<place>").
 /// `index`: the stay's place in the vault's list (C# told stays apart by reference).
 #[derive(Clone, Debug)]

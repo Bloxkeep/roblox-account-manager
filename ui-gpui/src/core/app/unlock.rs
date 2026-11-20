@@ -18,9 +18,6 @@ use crate::core::models::{EndedSession, OpenSession, WaitingRejoin};
 use crate::core::vault::{self, Vault};
 use crate::core::{backup, l, log, multi_instance, prefs, roblox_launcher, roblox_processes, rt, ui, vaults};
 
-#[derive(Default)]
-pub struct UnlockState {}
-
 /// Leeway between a launch's time and its client's start, for picking saved clients up again.
 pub const ADOPT_SLACK: Duration = Duration::from_secs(2 * 60);
 

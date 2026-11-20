@@ -215,8 +215,6 @@ impl std::fmt::Debug for RenewedCookie {
 #[derive(Clone, Debug, Default)]
 pub struct RobloxApiException {
     pub message: String,
-    /// The HTTP status it came with (0: none known); not on the C# exception, filled for `Fail::Roblox`.
-    pub status: u16,
     pub cookie_invalid: bool,
     /// Roblox refused a password sign-in (wrong password, a locked account…): that attempt can't go on, only start over.
     pub attempt_over: bool,
@@ -243,7 +241,6 @@ impl From<RobloxApiException> for Fail {
     fn from(e: RobloxApiException) -> Fail {
         Fail::Roblox {
             message: e.message,
-            status: e.status,
             rate_limited: e.rate_limited,
             cookie_invalid: e.cookie_invalid,
             server_error: e.server_error,
@@ -267,7 +264,6 @@ pub(crate) fn rate_limit_wait(res: &HttpResponse) -> Duration {
 fn rate_limited_by(res: &HttpResponse) -> Fail {
     RobloxApiException {
         rate_limited: true,
-        status: 429,
         retry_after: Some(rate_limit_wait(res)),
         ..RobloxApiException::new(l::t("Roblox is rate-limiting requests; try again shortly."))
     }
@@ -670,14 +666,12 @@ fn refused(what: &str, status: u16, body: &str, cookie_invalid: bool) -> Fail {
     log::note(&format!("{what}: HTTP {code}, errors {}", errors(body).1));
     if is_moderated(status, body) {
         return RobloxApiException {
-            status,
             moderated: true,
             ..RobloxApiException::new(l::t("Roblox has a notice on this account to accept first. Open its roblox.com and accept it."))
         }
         .into();
     }
     RobloxApiException {
-        status,
         cookie_invalid,
         server_error: code >= 500,
         ..RobloxApiException::new(if code >= 500 {
@@ -718,7 +712,7 @@ fn login_refused(step: &str, status: u16, body: &str) -> Fail {
     } else {
         l::f("Roblox didn't accept the sign-in (HTTP {0}). Try again, or sign in with your phone or the browser.", &[&code])
     };
-    RobloxApiException { status, rate_limited: too_many, server_error: server, attempt_over: true, ..RobloxApiException::new(message) }.into()
+    RobloxApiException { rate_limited: too_many, server_error: server, attempt_over: true, ..RobloxApiException::new(message) }.into()
 }
 
 /// None when Roblox rejects the cookie (expired, logged out, or invalid).

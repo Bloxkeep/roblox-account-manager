@@ -54,7 +54,6 @@ const WM_APP_WAKE: u32 = WM_APP + 0x32;
 /// The hidden window the windows thread gets `invoke`s, task wake-ups and timers through (0: no windows thread yet).
 static INVOKE_HWND: AtomicIsize = AtomicIsize::new(0);
 static WINDOWS_THREAD: AtomicU64 = AtomicU64::new(0);
-static STARTING: AtomicBool = AtomicBool::new(false);
 
 type Task = Pin<Box<dyn Future<Output = ()>>>;
 type Posted = Box<dyn FnOnce() + Send + 'static>;
@@ -111,34 +110,6 @@ pub fn attach() -> bool {
     true
 }
 
-/// A windows thread of its own, pumping messages, when none is attached yet (a dialog before the interface).
-pub fn start() {
-    if INVOKE_HWND.load(Ordering::SeqCst) != 0 || STARTING.swap(true, Ordering::SeqCst) {
-        return;
-    }
-    let (tx, rx) = std::sync::mpsc::channel();
-    let _ = crate::threads::own("windows", move || {
-        let ok = attach();
-        let _ = tx.send(());
-        if ok {
-            pump();
-        }
-    });
-    let _ = rx.recv();
-}
-
-/// Application.Run's loop: until WM_QUIT.
-pub fn pump() {
-    // SAFETY: the standard message loop over a zeroed MSG.
-    unsafe {
-        let mut msg: MSG = std::mem::zeroed();
-        while GetMessageW(&mut msg, std::ptr::null_mut(), 0, 0) > 0 {
-            TranslateMessage(&msg);
-            DispatchMessageW(&msg);
-        }
-    }
-}
-
 /// Waits for `rx`'s answer while this thread's windows go on getting their messages (a modal wait, as ShowDialog's loop
 /// was): for the windows thread waiting on another thread that may send to its windows (an owner disabled by a dialog
 /// on a thread of its own). None when the sender went away.
@@ -182,11 +153,6 @@ pub fn wait_pumping_for<T>(rx: &std::sync::mpsc::Receiver<T>, limit: Option<std:
 pub fn is_windows_thread() -> bool {
     // SAFETY: plain query.
     WINDOWS_THREAD.load(Ordering::SeqCst) == unsafe { GetCurrentThreadId() } as u64
-}
-
-/// The windows thread is there.
-pub fn ready() -> bool {
-    INVOKE_HWND.load(Ordering::SeqCst) != 0
 }
 
 /// BeginInvoke: `f` runs on the windows thread, in its turn. Dropped when there is no windows thread.
@@ -277,31 +243,6 @@ pub async fn delay(ms: u32) {
         SetTimer(hwnd(h), id, ms.max(1), None);
     }
     let _ = rx.await;
-}
-
-/// Slow work (a download, a wait for a process) on a pool thread while the window's task waits for it.
-pub async fn blocking<T: Send + 'static>(f: impl FnOnce() -> T + Send + 'static) -> Option<T> {
-    crate::threads::call(f).await.ok().and_then(|answer| answer.ok())
-}
-
-/// Done when `cancel` is called off (looked at every 50 ms), for racing against a wait.
-pub async fn cancelled(cancel: super::base::Cancel) {
-    while !cancel.is_cancelled() {
-        delay(50).await;
-    }
-}
-
-/// A wait for `f` with a time limit and a token (WaitAsync(timeout, token)): Err "timed out" or "cancelled".
-pub async fn wait_for<T>(f: impl Future<Output = T>, timeout_ms: u32, cancel: &super::base::Cancel) -> Res<T> {
-    use futures::FutureExt;
-    let mut f = Box::pin(f.fuse());
-    let mut limit = Box::pin(delay(timeout_ms).fuse());
-    let mut stop = Box::pin(cancelled(cancel.clone()).fuse());
-    futures::select! {
-        v = f => Ok(v),
-        _ = limit => Err(Fail::other("The operation has timed out.")),
-        _ = stop => Err(Fail::other("cancelled")),
-    }
 }
 
 fn next_timer_id() -> usize {
@@ -395,9 +336,6 @@ impl Timer {
     pub fn set_enabled(&self, on: bool) {
         if on { self.start() } else { self.stop() }
     }
-    pub fn interval(&self) -> u32 {
-        self.0.interval.get()
-    }
     /// Interval = ms: a running timer starts counting again, as WinForms' does.
     pub fn set_interval(&self, ms: u32) {
         self.0.interval.set(ms.max(1));
@@ -417,11 +355,9 @@ impl Timer {
 /// Why a form is closing (FormClosingEventArgs.CloseReason).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CloseReason {
-    None,
     /// The person (the X, Alt+F4) or the app's own Close().
     UserClosing,
     WindowsShutDown,
-    TaskManagerClosing,
 }
 
 /// A window's message handler: Some(result) when handled, None for the default handling.

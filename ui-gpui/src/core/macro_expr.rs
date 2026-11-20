@@ -51,33 +51,6 @@ pub fn problem(text: &str) -> Option<String> {
     parse(text).err()
 }
 
-/// The names a formula reads (counters, settings).
-pub fn names(text: &str) -> Vec<String> {
-    fn walk(n: &Node, found: &mut Vec<String>) {
-        match n {
-            Node::Ref(name) => found.push(name.clone()),
-            Node::Neg(x) | Node::Not(x) => walk(x, found),
-            Node::Bin(_, l, r) | Node::Cmp(_, l, r) => {
-                walk(l, found);
-                walk(r, found);
-            }
-            Node::Call(_, args) => args.iter().for_each(|a| walk(a, found)),
-            Node::Num(_) => {}
-        }
-    }
-    let mut found = Vec::new();
-    if let Ok(tree) = parse(text) {
-        walk(&tree, &mut found);
-    }
-    let mut distinct: Vec<String> = Vec::new();
-    for name in found {
-        if !distinct.contains(&name) {
-            distinct.push(name);
-        }
-    }
-    distinct
-}
-
 /// Works the formula out; `value` gives a name's number (an error when there's none: the caller's own kind, which
 /// takes a MacroExprError too). `random`: None for the thread's own.
 pub fn eval<E: From<MacroExprError>>(text: &str, value: &mut dyn FnMut(&str) -> Result<f64, E>, random: Option<&mut dyn RngCore>) -> Result<f64, E> {

@@ -282,11 +282,6 @@ impl App {
         n
     }
 
-    /// The vault open now, for the panels (OpenVault).
-    pub fn open_vault(&self) -> Option<Arc<crate::core::vault::Vault>> {
-        self.open()
-    }
-
     /// Open?.Data.Settings.Macros.FirstOrDefault(id), a copy.
     pub(crate) fn open_macro(&self, id: Guid) -> Option<Macro> {
         let vault = self.open()?;

@@ -28,11 +28,9 @@ pub type Extra = serde_json::Map<String, Json>;
 pub enum Fail {
     /// Said to the person as it is (C#'s UserError): already in their language.
     User(String),
-    /// Roblox refused, or couldn't be reached (C#'s RobloxApiException, flag for flag): `message` is for the person;
-    /// `status` is the HTTP status (0: no answer came).
+    /// Roblox refused, or couldn't be reached (C#'s RobloxApiException, flag for flag): `message` is for the person.
     Roblox {
         message: String,
-        status: u16,
         /// Roblox answered 429: wait a little and try again.
         rate_limited: bool,
         cookie_invalid: bool,
@@ -89,13 +87,6 @@ impl Fail {
         match self {
             Fail::Roblox { retry_after, .. } => *retry_after,
             _ => None,
-        }
-    }
-    /// The HTTP status Roblox answered with (0: none, or not Roblox's refusal).
-    pub fn status(&self) -> u16 {
-        match self {
-            Fail::Roblox { status, .. } => *status,
-            _ => 0,
         }
     }
 }
@@ -421,10 +412,6 @@ impl Stamp {
     /// ToUniversalTime(): the same moment, written as UTC.
     pub fn to_utc(self) -> Stamp {
         Stamp { ticks: self.ticks, kind: Kind::Utc }
-    }
-    /// ToLocalTime(): the same moment, written by this PC's clock.
-    pub fn to_local(self) -> Stamp {
-        Stamp { ticks: self.ticks, kind: Kind::Local(offset_at(self.unix_secs())) }
     }
     /// The moment `secs` later (earlier when negative): AddSeconds, AddMinutes(m) is `plus_secs(m * 60.)`…
     pub fn plus_secs(self, secs: f64) -> Stamp {

@@ -2,9 +2,6 @@
 use super::App;
 use crate::core::models::Account;
 
-#[derive(Default)]
-pub struct ClaimCheckState {}
-
 impl App {
     /// False when the window's log names another signed-in user than `account` (its join report, see
     /// RobloxLogWatcher::user_id_of): a late launch mustn't take a window started by hand as someone else (audit R11).

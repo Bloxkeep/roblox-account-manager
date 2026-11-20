@@ -131,11 +131,15 @@ pub fn views(root: &Root, cx: &mut Context<Root>) -> impl IntoElement {
         Some(Ok(l)) => l.iter().filter(|f| f.kind == 2).count(),
         _ => 0,
     };
-    let unread = if crate::pages::tabs::is_vng(root) { 0 } else { (root.games.corner.unread.0 + root.games.corner.unread.1).max(0) as usize };
+    // Each count stands in one place only, as on roblox.com: the unread messages here, the notifications on the bell, the
+    // games' unread news on the games; the rail's Roblox button adds them up (shell.rs). The messages used to be
+    // counted on the bell and here at once, and the news only on the rail, found nowhere inside (owner, 2026-11-20).
+    let unread = if crate::pages::tabs::is_vng(root) { 0 } else { root.games.corner.unread.1.max(0) as usize };
+    let news = root.state.pointer("/feeds/unread").and_then(Value::as_i64).unwrap_or(0).max(0) as usize;
     let fresh = root.profile.watch.iter().any(|w| w.fresh);
     // (view, icon, words, a count beside it and its colour, a dot)
     let items: [(View, &str, &str, usize, u32, bool); 9] = [
-        (View::Games, "grid", "news.title", 0, OK, false),
+        (View::Games, "grid", "news.title", news, FACE, false),
         (View::Friends, "users", "nav.friends", in_game, OK, false),
         (View::Avatar, "user", "nav.avatar", 0, OK, false),
         (View::Profile, "userGo", "nav.profile", 0, OK, false),
@@ -1436,6 +1440,12 @@ pub fn want(r: &mut Root, cx: &mut Context<Root>) {
         settle_stays(r, place);
     }
     want_details(r, &link, place, cx);
+    // The countries its servers run in, asked as soon as its page shows, once a run (the owner, 2026-11-20: not only
+    // when the country menu beside Play is opened). Each round shows what it found at once, so the menu fills while
+    // the rest are asked; a failed or cut-short asking is asked again when the menu opens.
+    if place > 0 && r.games.view == View::Games && !r.games.regions.contains_key(&place) {
+        load_regions(r, place, cx);
+    }
     if game.is_some_and(|g| g.prices) && r.games.asked_prices.insert(open.id.clone()) {
         let rx = link.call("wikiGame", json!({ "id": open.id }));
         let id = open.id.clone();
@@ -2613,7 +2623,7 @@ pub fn search(r: &mut Root, cx: &mut Context<Root>) {
 pub struct Corner {
     of: i64,
     robux: Option<i64>,
-    unread: (i64, i64),
+    pub(crate) unread: (i64, i64),
     held: Option<roblox::Held>,
     asked: Option<std::time::Instant>,
     busy: bool,
@@ -2710,14 +2720,13 @@ fn corner(root: &Root, cx: &mut Context<Root>) -> Option<impl IntoElement> {
             to_inbox(r, 3);
             cx.notify();
         }));
-    let (notes, letters) = k.unread;
-    let n = notes + letters;
+    // The bell counts the notifications only, as Roblox's own does: the messages have their count on the inbox.
+    let n = k.unread.0;
     let bell = div()
         .relative()
         .flex_none()
         .child(IconButton::new("rbx-bell", "bell").size(34.).tip(root.tr("rb.bellTip")).on_click(cx.listener(move |r, _, _, cx| {
-            // (To the messages when only they are unread.)
-            to_inbox(r, if notes == 0 && letters > 0 { 1 } else { 2 });
+            to_inbox(r, 2);
             cx.notify();
         })))
         .when(n > 0, |d| {
@@ -4337,36 +4346,14 @@ pub fn region_pref() -> Option<String> {
     crate::prefs::get("serverRegion").and_then(|v| v.as_str().map(str::to_string)).filter(|s| s.len() == 2)
 }
 
-/// A country's name for the menu (the countries Roblox's sites are in; any other by its code).
+/// A country's name for the menu (every ISO code, countries.rs; a code not there by itself).
 pub(crate) fn country(root: &Root, cc: &str) -> String {
-    let vi = root.i18n.vietnamese;
-    let (en, v) = match cc {
-        "US" => ("United States", "Hoa Kỳ"),
-        "GB" => ("United Kingdom", "Anh"),
-        "NL" => ("Netherlands", "Hà Lan"),
-        "FR" => ("France", "Pháp"),
-        "DE" => ("Germany", "Đức"),
-        "PL" => ("Poland", "Ba Lan"),
-        "IN" => ("India", "Ấn Độ"),
-        "JP" => ("Japan", "Nhật Bản"),
-        "SG" => ("Singapore", "Singapore"),
-        "AU" => ("Australia", "Úc"),
-        "HK" => ("Hong Kong", "Hồng Kông"),
-        "BR" => ("Brazil", "Brazil"),
-        "KR" => ("South Korea", "Hàn Quốc"),
-        "CA" => ("Canada", "Canada"),
-        _ => return cc.to_string(),
-    };
-    (if vi { v } else { en }).to_string()
+    crate::countries::name(cc, root.i18n.vietnamese).map(str::to_string).unwrap_or_else(|| cc.to_string())
 }
 
 /// A country's English name (a city of the same name is left out beside it).
 fn country_en(cc: &str) -> &'static str {
-    match cc {
-        "HK" => "Hong Kong",
-        "SG" => "Singapore",
-        _ => "",
-    }
+    crate::countries::english(cc).unwrap_or("")
 }
 
 /// A country's flag (flagcdn.com's picture of it), `w` wide at a flag's 4:3; a grey stand-in while it loads.

@@ -19,7 +19,7 @@ use windows_sys::Win32::{
     Foundation::{GetLastError, HWND, LPARAM, LRESULT, POINT, WPARAM},
     System::{LibraryLoader::GetModuleHandleW, Threading::GetCurrentThreadId},
     UI::{
-        Input::{GetRawInputData, GetRegisteredRawInputDevices, HRAWINPUT, RAWINPUTDEVICE, RAWINPUTHEADER, RegisterRawInputDevices},
+        Input::{GetRawInputData, HRAWINPUT, RAWINPUTDEVICE, RAWINPUTHEADER, RegisterRawInputDevices},
         WindowsAndMessaging::{
             CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, GWLP_USERDATA, GetCursorPos, GetMessageW, GetWindowLongPtrW, GetWindowThreadProcessId,
             HWND_MESSAGE, MSG, PostThreadMessageW, RegisterClassW, SetWindowLongPtrW, WNDCLASSW, WindowFromPoint,
@@ -104,18 +104,6 @@ impl RobloxInput {
         }
     }
 
-    /// When a person last used a keyboard or mouse anywhere (UTC), or None: macros wait while they do.
-    pub fn person_at(&self) -> Option<Stamp> {
-        let ms = self.shared.person_at.load(Ordering::SeqCst);
-        if ms > 0 { Some(Stamp::from_unix_ms(ms)) } else { None }
-    }
-
-    /// While set (a macro being recorded), each relative mouse move of a person's mouse (x, y, raw units), on
-    /// this thread: Roblox keeps the pointer still while the camera turns, so where the pointer goes says nothing.
-    pub fn set_mouse_moved(&self, moved: Option<MovedFn>) {
-        *self.shared.mouse_moved.lock().unwrap_or_else(|e| e.into_inner()) = moved;
-    }
-
     /// When the person's own input last reached this process's window (UTC), or None.
     pub fn reached_at(&self, pid: i32) -> Option<Stamp> {
         self.shared.reached.lock().unwrap_or_else(|e| e.into_inner()).get(&pid).copied()
@@ -170,16 +158,6 @@ impl Drop for RobloxInput {
     fn drop(&mut self) {
         self.dispose();
     }
-}
-
-/// How many kinds of input (mouse, keyboard) this process takes from Windows now: for the checks.
-pub fn registered() -> i32 {
-    let mut count = 0u32;
-    // SAFETY: with no buffer Windows only writes the count.
-    unsafe {
-        GetRegisteredRawInputDevices(std::ptr::null_mut(), &mut count, std::mem::size_of::<RAWINPUTDEVICE>() as u32);
-    }
-    count as i32
 }
 
 /// The process an input reached, or 0: a key goes to the window in front, the mouse only when the pointer is

@@ -252,7 +252,6 @@ fn send_login(username: &str, password: &str, realm: &str, configure: Option<&dy
         {
             return Err(RobloxApiException {
                 attempt_over: true,
-                status: res.status,
                 ..RobloxApiException::new(l::t("Roblox reports a problem with this account (it may be restricted or banned). Check it on roblox.com."))
             }
             .into());
@@ -818,7 +817,7 @@ pub fn send_two_step_code(prompt: &TwoStepPrompt, method: &str, ct: &Cancel) -> 
 fn two_step_refused(what: &str, status: u16, body: &str) -> Fail {
     let (codes, _) = errors(body);
     if status == 429 || codes.contains(&5) {
-        return RobloxApiException { status, rate_limited: true, ..RobloxApiException::new(l::t("Too many sign-in attempts. Wait a few minutes and try again.")) }.into();
+        return RobloxApiException { rate_limited: true, ..RobloxApiException::new(l::t("Too many sign-in attempts. Wait a few minutes and try again.")) }.into();
     }
     if codes.contains(&10) {
         return Fail::user(l::t("That verification code is wrong or expired."));
@@ -828,7 +827,7 @@ fn two_step_refused(what: &str, status: u16, body: &str) -> Fail {
     }
     if codes.contains(&1) {
         log::note(&format!("{what}: HTTP {status}, the challenge expired"));
-        return RobloxApiException { status, attempt_over: true, ..RobloxApiException::new(l::t("This sign-in has expired. Sign in again.")) }.into();
+        return RobloxApiException { attempt_over: true, ..RobloxApiException::new(l::t("This sign-in has expired. Sign in again.")) }.into();
     }
     refused(what, status, body, false)
 }
@@ -850,7 +849,6 @@ pub fn verify_two_step(prompt: &mut TwoStepPrompt, method: &str, code: &str, ct:
             let Some(verified) = field(answer.as_ref(), "verificationToken").filter(|v| !v.is_empty()) else {
                 return Err(RobloxApiException {
                     attempt_over: true,
-                    status: res.status,
                     ..RobloxApiException::new(unsupported("two-step verify", &prompt.realm, Some(&res), answer.as_ref(), None))
                 }
                 .into());
@@ -891,7 +889,7 @@ pub fn verify_two_step(prompt: &mut TwoStepPrompt, method: &str, code: &str, ct:
     // 400: the ticket (1, 5) or the verification (10) is no longer good; only a new sign-in helps.
     if done.status == 400 {
         log::note(&format!("Sign-in refused at login after two-step: HTTP 400, errors {}", errors(&done_body).1));
-        return Err(RobloxApiException { status: 400, attempt_over: true, ..RobloxApiException::new(l::t("This sign-in has expired. Sign in again.")) }.into());
+        return Err(RobloxApiException { attempt_over: true, ..RobloxApiException::new(l::t("This sign-in has expired. Sign in again.")) }.into());
     }
     Err(login_refused("login after two-step", done.status, &done_body))
 }

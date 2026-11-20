@@ -398,17 +398,6 @@ impl App {
         Ok(json!({ "facts": rows, "newest": newest, "blocked": blocked, "stopped": stopped.is_some() && !blocked }))
     }
 
-    pub async fn friend_ids(self: &Rc<Self>, user_id: i64) -> Res<Vec<i64>> {
-        if let Some((ids, at)) = self.games.friend_ids.borrow().get(&user_id) {
-            if at.age_secs() < secs(FRIEND_IDS_LIFETIME) {
-                return Ok(ids.clone());
-            }
-        }
-        let ids = rt::blocking(move || roblox_api::get_friend_ids(user_id, &Cancel::new())).await?;
-        self.games.friend_ids.borrow_mut().insert(user_id, (ids.clone(), Stamp::utc_now()));
-        Ok(ids)
-    }
-
     /// Friends of your accounts playing this game, with their server. Each account asks with its own cookie: Roblox gives
     /// the server only when that friend's privacy lets them join. At most 3 accounts (selected first) to keep requests few.
     pub async fn friend_servers(self: &Rc<Self>, place_id: i64, preferred: &[Guid]) -> Res<Value> {

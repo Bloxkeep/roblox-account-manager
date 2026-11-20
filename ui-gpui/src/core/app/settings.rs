@@ -17,10 +17,6 @@ use crate::core::{
     vault, win_kit,
 };
 
-/// AppController.Settings.cs declares no instance fields.
-#[derive(Default)]
-pub struct SettingsState {}
-
 // ───────── Windows' own pieces the C# had from WinForms and .NET ─────────
 
 pub const CSIDL_MYDOCUMENTS: i32 = 0x0005;

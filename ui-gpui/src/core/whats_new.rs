@@ -54,11 +54,6 @@ static RELEASES: LazyLock<Vec<Release>> = LazyLock::new(|| match serde_json::fro
     }
 });
 
-/// The releases, newest first.
-pub fn releases() -> &'static [Release] {
-    &RELEASES
-}
-
 /// System.Version: 2 to 4 numbers; a part not given is -1 (so 1.2 < 1.2.0), and versions compare part by part.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Version {

@@ -153,13 +153,6 @@ impl PanelHandle {
         self.shared.suspended.load(Ordering::SeqCst)
     }
 
-    pub fn set_suspended(&self, value: bool) {
-        self.shared.suspended.store(value, Ordering::SeqCst);
-        if !value {
-            self.on_window(|p| p.tool.release_later());
-        }
-    }
-
     /// The window in front before this one took the keyboard (a Roblox window the focus may go back to).
     pub fn before(&self) -> isize {
         self.shared.before.load(Ordering::SeqCst)

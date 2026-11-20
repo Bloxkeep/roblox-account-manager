@@ -1145,6 +1145,7 @@ fn card(root: &Root, f: &Friend, w: f32, kind: Kind, cx: &mut Context<Root>) -> 
         _ => DIM,
     };
     let line = match f.kind {
+        _ if matches!(kind, Kind::Request) => format!("@{}", f.name),
         2 if in_lane => format!("@{}", f.name),
         2 if !f.game.is_empty() && f.since > 0 => format!("{} · {}", f.game, crate::time::span(crate::time::now_secs() - f.since)),
         2 if !f.game.is_empty() => f.game.clone(),
@@ -1271,7 +1272,11 @@ fn card(root: &Root, f: &Friend, w: f32, kind: Kind, cx: &mut Context<Root>) -> 
                         .text_color(c(MUTED))
                         .when_some(mark, |d, col| d.child(div().size(px(7.)).flex_none().rounded_full().bg(c(col))))
                         .when_some(game_pic, |d, p| d.child(img(p).size(px(14.)).flex_none().rounded(px(3.))))
-                        .child(div().min_w_0().truncate().child(line)),
+                        .child(div().min_w_0().truncate().child(line))
+                        // A request: how long ago it was sent, after the @name and never cut.
+                        .when(matches!(kind, Kind::Request) && f.sent > 0, |d| {
+                            d.child(div().flex_none().child(format!("· {}", crate::time::ago_far(crate::time::now_secs() - f.sent, &root.i18n))))
+                        }),
                 )
                 .when(request_buttons, |d| {
                     d.child(

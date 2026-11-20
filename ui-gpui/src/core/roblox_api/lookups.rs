@@ -183,16 +183,6 @@ pub fn get_universe_id(place_id: i64, ct: &Cancel) -> Res<i64> {
     })
 }
 
-/// Game details for previews: name, creator, live player count and icon.
-pub fn get_game_info(place_id: i64, cookie: Option<&str>, ct: &Cancel) -> Res<Option<GameInfo>> {
-    let universe_id = get_universe_id(place_id, ct)?;
-    if universe_id == 0 {
-        return Ok(None);
-    }
-    let mut games = get_games([universe_id], cookie, ct)?;
-    Ok(games.remove(&universe_id).map(|info| GameInfo { place_id, ..info }))
-}
-
 /// Many games' details, keyed by universe, three requests per 50 games. Since 2026 games.roblox.com hides titles
 /// from anonymous callers, so names come from develop.roblox.com and the player count needs a cookie. Games without
 /// a name are left out (and asked again later).
@@ -512,7 +502,6 @@ fn rate_limited_for(wait: Duration) -> Fail {
     RobloxApiException {
         rate_limited: true,
         retry_after: Some(wait),
-        status: 429,
         ..RobloxApiException::new(l::t("Roblox is rate-limiting requests; try again shortly."))
     }
     .into()
@@ -558,7 +547,7 @@ pub fn get_servers(place_id: i64, fewest_first: bool, cursor: Option<&str>, ct: 
     // A failed answer is said, not read as "no servers": the server window kept that empty list a minute after a one-off
     // 500, and a preset told "no server has room" (review, 2026-10-30).
     if !res.is_success() {
-        return Err(RobloxApiException { status: res.status, server_error: res.status >= 500, ..RobloxApiException::new(l::t("Couldn't load the server list. Try again in a moment.")) }
+        return Err(RobloxApiException { server_error: res.status >= 500, ..RobloxApiException::new(l::t("Couldn't load the server list. Try again in a moment.")) }
             .into());
     }
     let doc = parse_json(&res.text())?;
@@ -689,7 +678,6 @@ pub fn get_presence(cookie: Option<&str>, user_ids: &[i64], realm: &str, ct: &Ca
                     // 401 with a cookie: that sign-in is dead (flagged, so the caller can mark it and ask with another).
                     if !res.is_success() {
                         return Err(RobloxApiException {
-                            status: res.status,
                             cookie_invalid: res.status == 401 && cookie.is_some_and(|c| !c.is_empty()),
                             ..RobloxApiException::new(l::f("Roblox refused the request (HTTP {0}). Try again in a moment.", &[&res.status]))
                         }

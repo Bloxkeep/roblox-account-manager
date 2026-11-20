@@ -155,17 +155,4 @@ impl App {
         order
     }
 
-    /// The Roblox windows on screen (not the hidden ones), the accounts' in the list's order first, then any other.
-    /// `pids`: the clients; every one running when None (the checks pass a window of their own).
-    pub fn shown_roblox_windows(&self, pids: Option<&[i32]>) -> Vec<(i32, isize)> {
-        shown_roblox_windows_by(pids, &self.window_order())
-    }
-
-    pub fn minimize_or_restore_all(&self, pids: Option<&[i32]>) {
-        minimize_or_restore_all_by(pids, &self.window_order());
-    }
-
-    pub fn focus_next_window(&self, pids: Option<&[i32]>) {
-        focus_next_window_by(pids, &self.window_order());
-    }
 }

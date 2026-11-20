@@ -1092,8 +1092,9 @@
         case 'closeAll': return 2;
         case 'serverRegions': {
           await wait(300);
-          const at = [['JP', 'Tokyo'], ['SG', 'Singapore'], ['US', 'Los Angeles'], ['HK', 'Hong Kong'], ['AU', 'Sydney'], ['US', 'Seattle'], ['DE', 'Frankfurt']];
-          const servers = Array.from({ length: 30 }, (_, i) => ({ jobId: `00000000-0000-0000-0000-${String(i).padStart(12, '0')}`, playing: 12 - (i % 12), maxPlayers: 12, ping: 60 + i * 4, fps: 59, ...(i < 27 ? { cc: at[i % 7][0], city: at[i % 7][1] } : {}) }));
+          // (Malaysia, Mexico and Indonesia: countries outside Roblox's own site list, named all the same; Indonesia has one server.)
+          const at = [['JP', 'Tokyo'], ['SG', 'Singapore'], ['US', 'Los Angeles'], ['HK', 'Hong Kong'], ['MY', 'Kuala Lumpur'], ['US', 'Seattle'], ['MX', 'Querétaro']];
+          const servers = Array.from({ length: 30 }, (_, i) => ({ jobId: `00000000-0000-0000-0000-${String(i).padStart(12, '0')}`, playing: 12 - (i % 12), maxPlayers: 12, ping: 60 + i * 4, fps: 59, ...(i < 26 ? { cc: at[i % 7][0], city: at[i % 7][1] } : i === 26 ? { cc: 'ID', city: 'Jakarta' } : {}) }));
           const regions = [];
           for (const s of servers) if (s.cc) { let g = regions.find(r => r.cc === s.cc); if (!g) regions.push(g = { cc: s.cc, cities: [], servers: 0, players: 0 }); if (!g.cities.includes(s.city)) g.cities.push(s.city); g.servers++; g.players += s.playing; }
           regions.sort((a, b) => b.servers - a.servers);

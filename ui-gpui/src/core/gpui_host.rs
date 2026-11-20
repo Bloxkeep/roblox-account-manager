@@ -8,7 +8,7 @@ use std::sync::{Mutex, OnceLock};
 
 use windows_sys::Win32::UI::{
     HiDpi::{GetDpiForWindow, GetSystemMetricsForDpi},
-    WindowsAndMessaging::{SM_CXPADDEDBORDER, SM_CYSIZEFRAME, SWP_FRAMECHANGED, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, SetWindowPos},
+    WindowsAndMessaging::{SM_CXPADDEDBORDER, SM_CYSIZEFRAME},
 };
 
 use super::{app::App, log, rt, shell_form, vault, win_kit::hwnd};
@@ -91,20 +91,6 @@ pub fn on_message(line: String) {
 /// hotkeys, the start cover). From the interface's thread, which then is the windows thread.
 pub fn window_made(h: isize) {
     shell_form::attach(h);
-}
-
-/// The interface closed its window or quit (the old "Gone"): the app quits, as nothing else can show it.
-pub fn gone(why: &str) {
-    log::note(why);
-    shell_form::with(|shell| shell.quit());
-}
-
-/// Has Windows measure the window's frame again (after the title bar goes or comes back).
-pub fn frame_changed(form: isize) {
-    // SAFETY: plain call on our own window.
-    unsafe {
-        SetWindowPos(hwnd(form), std::ptr::null_mut(), 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
-    }
 }
 
 /// How far a maximised window's frame reaches past the screen's edge, at the window's scale.

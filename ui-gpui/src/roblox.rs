@@ -1032,6 +1032,14 @@ pub struct Friend {
     pub usual: String,
     /// In a game: since when this PC has seen them in it (0: not in one). Roblox doesn't say when they joined.
     pub since: i64,
+    /// A friend request: when it was sent (unix seconds, 0: not known).
+    pub sent: i64,
+}
+
+/// When a request was sent: its friendRequest.sentAt ("2024-03-24T02:25:33.095Z"), as Roblox's own friends
+/// store keeps it.
+fn sent_at(v: &Value) -> i64 {
+    v.pointer("/friendRequest/sentAt").and_then(Value::as_str).and_then(crate::time::iso_secs).unwrap_or(0)
 }
 
 fn text(v: &Value, k: &str) -> String {
@@ -1190,7 +1198,7 @@ pub fn requests(cookie: &str) -> Result<Vec<Friend>, String> {
         .into_iter()
         .flatten()
         .filter(|v| int(v, "id") > 0)
-        .map(|v| Friend { id: int(v, "id"), name: text(v, "name"), display: text(v, "displayName"), ..Default::default() })
+        .map(|v| Friend { id: int(v, "id"), name: text(v, "name"), display: text(v, "displayName"), sent: sent_at(v), ..Default::default() })
         .collect();
     Ok(dress(list))
 }
@@ -1451,6 +1459,7 @@ fn fixture_people(key: &str) -> Option<Vec<Friend>> {
                 job: text(v, "jobId"),
                 game_icon: text(v, "gameIcon"),
                 // (In a game for a while: a shot's own spread of times, by id.)
+                sent: sent_at(v),
                 since: if int(v, "kind") == 2 { crate::time::now_secs() - 60 * (int(v, "id").rem_euclid(150) + 1) } else { 0 },
                 ..Default::default()
             })
@@ -3534,7 +3543,7 @@ fn plain(s: &str) -> String {
             _ => out.push(ch),
         }
     }
-    out.replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", "\"").replace("&#39;", "'").replace("&nbsp;", " ").trim().to_string()
+    crate::val::entities(&out).trim().to_string()
 }
 
 /// A chat: who it is with (its name, or the other person's), its last words, and the names of those in it.

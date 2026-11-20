@@ -18,10 +18,6 @@ pub const LAUNCH_OPTIONS: [&str; 9] = ["auto", "bloxstrap", "fishstrap", "voidst
 
 pub(crate) const OTHER_PREFIX: &str = "other:";
 
-pub fn other(name: &str) -> String {
-    format!("{OTHER_PREFIX}{name}")
-}
-
 /// The launcher's name for an "other:<Name>" option, else None.
 pub fn other_name(launch_via: &str) -> Option<String> {
     launch_via.strip_prefix(OTHER_PREFIX).filter(|n| !n.is_empty()).map(str::to_string)

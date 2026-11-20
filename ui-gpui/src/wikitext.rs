@@ -394,7 +394,7 @@ pub fn clean(s: &str, prose: bool) -> String {
     t = BARE_OUT.replace_all(&t, "").into_owned();
     t = QUOTES.replace_all(&t, "").into_owned();
     t = TAG.replace_all(&t, "").into_owned();
-    t = t.replace("&nbsp;", " ").replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", "\"");
+    t = crate::val::entities(&t);
     let lines: Vec<String> = t
         .split('\n')
         .map(|l| {

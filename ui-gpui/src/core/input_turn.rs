@@ -62,7 +62,7 @@ fn gate() -> std::sync::MutexGuard<'static, Gate> {
 fn new_lease(g: &mut Gate, who: &str) -> Lease {
     let id = SERIAL.fetch_add(1, Ordering::Relaxed);
     g.holder = Some((id, who.to_string()));
-    Lease { id, who: who.to_string(), done: AtomicBool::new(false) }
+    Lease { id, done: AtomicBool::new(false) }
 }
 
 /// A window is someone's right now (or someone waits for one).
@@ -104,7 +104,7 @@ pub fn enter(who: &str, ct: Option<&Cancel>) -> Res<Lease> {
     let mut a = ready.answer.lock().unwrap_or_else(|e| e.into_inner());
     loop {
         match *a {
-            Answer::Granted(id) => return Ok(Lease { id, who: who.to_string(), done: AtomicBool::new(false) }),
+            Answer::Granted(id) => return Ok(Lease { id, done: AtomicBool::new(false) }),
             Answer::Cancelled => return Err(Fail::other("cancelled")),
             Answer::Pending => {}
         }
@@ -165,14 +165,10 @@ pub fn reset() {
 /// The turn, held until dropped (IDisposable).
 pub struct Lease {
     id: u64,
-    who: String,
     done: AtomicBool,
 }
 
 impl Lease {
-    pub fn who(&self) -> &str {
-        &self.who
-    }
     /// Dispose: hands the turn on (once).
     pub fn dispose(&self) {
         if !self.done.swap(true, Ordering::SeqCst) {

@@ -245,15 +245,6 @@ impl WebToolWindow {
         }
     }
 
-    /// Opacity = …
-    pub fn set_opacity(&self, opacity: f64) {
-        self.opacity.set(opacity);
-        let h = self.form.handle();
-        if h != 0 {
-            win_form::set_opacity(h, opacity);
-        }
-    }
-
     /// The window's handle, made now when it has none (`Handle`).
     pub fn handle(&self) -> isize {
         let h = self.form.handle();
@@ -531,11 +522,6 @@ impl WebToolWindow {
         self.maximum_size.set(s);
     }
 
-    /// The page's last size in CSS pixels (empty until it has said).
-    pub fn page_size(&self) -> Size {
-        self.page.get()
-    }
-
     /// The page is made and in the window.
     pub fn browser_ready(&self) -> bool {
         self.child.get() != 0
@@ -804,10 +790,6 @@ impl WebToolWindow {
             }
         }
     }
-}
-
-pub fn num(o: &Value, name: &str) -> i32 {
-    o.get(name).and_then(Value::as_f64).map(|v| v.ceil() as i32).unwrap_or(0)
 }
 
 pub fn str_of(o: &Value, name: &str) -> String {

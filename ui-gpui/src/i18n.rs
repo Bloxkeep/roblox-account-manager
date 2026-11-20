@@ -123,5 +123,6 @@ pub fn plain(s: &str) -> String {
             _ => {}
         }
     }
-    out.replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">").replace("&nbsp;", "\u{a0}")
+    // (Our own words keep a no-break space a no-break space.)
+    crate::val::entities(&out.replace("&nbsp;", "\u{a0}"))
 }

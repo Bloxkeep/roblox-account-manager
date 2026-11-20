@@ -133,7 +133,6 @@ pub mod host {
     /// What ShowDialog returned.
     #[derive(Clone, Copy, Debug, PartialEq, Eq)]
     pub enum DialogResult {
-        None,
         Ok,
         Cancel,
     }
@@ -463,10 +462,6 @@ pub mod host {
         /// Tick += f.
         pub fn on_tick(&self, f: impl Fn() + 'static) {
             self.host.timers.borrow_mut().insert(self.id, Rc::new(f));
-        }
-
-        pub fn interval(&self) -> u32 {
-            self.interval.get()
         }
 
         /// Interval = ms: a running timer starts its wait again.
@@ -954,34 +949,12 @@ pub mod host {
             }
         }
 
-        pub fn bounds(&self) -> Rect {
-            let parent_origin = {
-                let mut p = windows_sys::Win32::Foundation::POINT { x: 0, y: 0 };
-                // SAFETY: plain call mapping the child's top left into its parent.
-                unsafe {
-                    windows_sys::Win32::Graphics::Gdi::MapWindowPoints(
-                        self.hwnd as HWND,
-                        windows_sys::Win32::UI::WindowsAndMessaging::GetParent(self.hwnd as HWND),
-                        &mut p,
-                        1,
-                    )
-                };
-                p
-            };
-            let s = client_size(self.hwnd);
-            Rect::new(parent_origin.x, parent_origin.y, s.width, s.height)
-        }
-
         pub fn set_bounds(&self, r: Rect) {
             if self.disposed.get() {
                 return;
             }
             set_bounds(self.hwnd, r);
             self.fit();
-        }
-
-        pub fn visible(&self) -> bool {
-            is_visible(self.hwnd)
         }
 
         pub fn set_visible(&self, on: bool) {

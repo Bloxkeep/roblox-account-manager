@@ -1,6 +1,5 @@
 // The core: the C# app (RobloxManager/*.cs) moved to Rust file by file, under the same names (see base.rs).
 // Joined to the window through `app::App` (the old AppController) on the core's own thread (rt.rs).
-#![allow(dead_code)]
 
 pub mod altgr_hotkeys;
 pub mod anti_afk;

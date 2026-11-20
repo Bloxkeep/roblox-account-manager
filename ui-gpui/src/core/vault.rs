@@ -427,14 +427,6 @@ impl SaveTask {
     pub fn wait(&self) -> Res<()> {
         self.0.recv().unwrap_or_else(|_| Err(Fail::other("The vault's save worker stopped.")))
     }
-    /// Waits up to `timeout`; None when still running then.
-    pub fn wait_timeout(&self, timeout: Duration) -> Option<Res<()>> {
-        match self.0.recv_timeout(timeout) {
-            Ok(r) => Some(r),
-            Err(mpsc::RecvTimeoutError::Timeout) => None,
-            Err(mpsc::RecvTimeoutError::Disconnected) => Some(Err(Fail::other("The vault's save worker stopped."))),
-        }
-    }
 }
 
 /// One write to the vault file at a time: a save in the background and one made now never interleave.

@@ -70,14 +70,6 @@ pub struct WikiGame {
     pub prices: Vec<FeedPriceItem>,
 }
 
-/// Where a game's prices come from: the website's name and address (shown and linked under the list).
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "PascalCase", default)]
-pub struct FeedPriceSource {
-    pub name: String,
-    pub url: String,
-}
-
 /// An item in a game's price list (services/DiscordBot/worker/prices.js): its name, kind, picture (through Bloxkeep's
 /// bot), value and permanent value, demand of 10 and trend, prices in Beli and Robux, and its page on the website.
 // PORT: read with the bot's camelCase names (System.Text.Json matched them ignoring case), written PascalCase.

@@ -85,17 +85,6 @@ fn is_empty(r: &RectangleF) -> bool {
     r.width <= 0.0 || r.height <= 0.0
 }
 
-/// Windows can read text here (some editions lack every recognition language).
-pub fn available() -> bool {
-    match engines() {
-        Ok(e) => !e.is_empty(),
-        Err(_) => {
-            log::note("Macro text reading: Windows' text recognition didn't start (COMException).");
-            false
-        }
-    }
-}
-
 /// The lines read in `area` of `picture` by each language's engine, boxes in the
 /// picture's pixels; None when Windows has no text recognition. Small text is enlarged first (it reads better).
 pub fn read(picture: &Bitmap, area: Rectangle) -> Res<Option<Vec<Vec<Line>>>> {

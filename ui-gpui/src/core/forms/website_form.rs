@@ -135,11 +135,6 @@ impl WebsiteForm {
         })
     }
 
-    /// The window's handle (its place, the owner of a question asked over it).
-    pub fn hwnd(&self) -> isize {
-        self.0.hwnd
-    }
-
     /// NewBlankTab: opens a blank tab in this window (the + button, Ctrl+T); set by the app, which keeps the list of tabs.
     pub fn set_new_blank_tab(&self, f: impl Fn() + 'static) {
         let id = host::keep_on_core::<NewBlankTabFn>(Box::new(f));
@@ -168,14 +163,6 @@ impl WebsiteForm {
     pub fn on_form_closed(&self, f: impl Fn() + 'static) {
         let id = host::keep_on_core::<FormClosedFn>(Box::new(f));
         self.mirror().form_closed.push(id);
-    }
-
-    pub fn tabs(&self) -> Vec<WebsiteTab> {
-        self.mirror().tabs.clone()
-    }
-
-    pub fn selected_tab(&self) -> Option<WebsiteTab> {
-        self.mirror().selected.clone()
     }
 
     pub fn is_disposed(&self) -> bool {
@@ -252,11 +239,6 @@ impl WebsiteForm {
         self.on_form(|me| me.close_now());
     }
 
-    /// Close(): as the title bar's X (each saved account's session is read once more first).
-    pub fn close(&self) {
-        let hwnd = self.0.hwnd;
-        self.on_form(move |_| host::close(hwnd));
-    }
 }
 
 /// The window itself, on its thread.

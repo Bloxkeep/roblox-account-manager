@@ -924,16 +924,6 @@ impl App {
         node
     }
 
-    /// A macro from a file, not saved: the editor opens it, and Save checks it.
-    pub fn read_macro_file(path: &str) -> Res<Macro> {
-        App::read_macro_file_whole(path).map(|(m, _)| m)
-    }
-
-    /// As read_macro_file, with the steps a TinyTask recording longer than a macro holds left out (0 for none).
-    pub fn read_macro_file_whole(path: &str) -> Res<(Macro, usize)> {
-        App::read_macro_file_full(path).map(|(m, n, _)| (m, n))
-    }
-
     /// As read_macro_file_whole, with a Python script's lines that were left out ("12: if hp < 50:").
     pub fn read_macro_file_full(path: &str) -> Res<(Macro, usize, Vec<String>)> {
         if path.to_lowercase().ends_with(".exe") {

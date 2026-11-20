@@ -15,9 +15,6 @@ use crate::core::models::Account;
 use crate::core::roblox_api::{self, RenewedCookie, RobloxUser, realm};
 use crate::core::{log, rt};
 
-#[derive(Default)]
-pub struct SignInsState {}
-
 /// Tries at asking Roblox whose a renewed cookie is, before it is let go.
 pub const RENEWED_CHECK_TRIES: i32 = 4;
 

@@ -27,10 +27,6 @@ pub const VIDEO_TYPES: &[&str] = &[".mp4", ".webm"];
 pub const THEME_FILE_TYPE: &str = ".bloxkeeptheme";
 pub const MAX_THEME_JSON: usize = 16 * 1024;
 
-/// AppController.CustomTheme.cs declares no instance fields.
-#[derive(Default)]
-pub struct CustomThemeState {}
-
 /// Path.GetExtension, lower-cased (".png"), "" when there is none.
 pub fn extension_lower(path: &str) -> String {
     let name = path.rsplit(['\\', '/']).next().unwrap_or(path);

@@ -538,11 +538,6 @@ fn get_title(h: isize) -> String {
     }
 }
 
-/// Renames the client's "Roblox" window so several clients can be told apart in the taskbar.
-pub fn set_window_title(pid: i32, title: &str) {
-    set_windows_title(&top_level_windows(pid), title);
-}
-
 pub fn set_windows_title(windows: &[isize], title: &str) {
     let text: Vec<u16> = title.encode_utf16().chain(std::iter::once(0)).collect();
     for &h in windows {

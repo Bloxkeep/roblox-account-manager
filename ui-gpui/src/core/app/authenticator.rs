@@ -10,9 +10,6 @@ use crate::core::roblox_api::{TwoStepPrompt, realm};
 use crate::core::totp::{self, TotpKey, TotpProblem};
 use crate::core::l;
 
-#[derive(Default)]
-pub struct AuthenticatorState {}
-
 impl App {
     /// A key typed in the edit form, as kept; a typo is refused with what's wrong rather than kept to make wrong codes.
     pub fn parse_authenticator(input: &str) -> Res<TotpKey> {

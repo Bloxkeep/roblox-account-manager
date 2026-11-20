@@ -24,10 +24,6 @@ use crate::core::{
     rt, wiki_link, wiki_look, wiki_net,
 };
 
-/// The C# declares no fields here (WikiBot is worked out each time).
-#[derive(Default)]
-pub struct WikiState {}
-
 /// A game the app has looked up, as the stays' sums need it: its universe, name and start place.
 #[derive(Clone, Debug, PartialEq)]
 pub struct KnownGame {

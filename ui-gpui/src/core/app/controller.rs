@@ -445,15 +445,9 @@ pub fn parse_guid(text: &str) -> Option<Guid> {
 pub fn id_of(a: &Value) -> Guid {
     parse_guid(&str_of(a, "id")).unwrap_or(Guid::nil())
 }
-pub fn id(a: &Value) -> Guid {
-    id_of(a)
-}
 
 pub fn ids_of(a: &Value) -> Vec<Guid> {
     guid_list(a, "ids")
-}
-pub fn ids(a: &Value) -> Vec<Guid> {
-    ids_of(a)
 }
 
 /// The array's Guids, each once in its order; an entry that isn't one is left out.
@@ -539,20 +533,12 @@ impl App {
         ids_of(a)
     }
 
-    pub fn id_of(a: &Value) -> Guid {
-        id_of(a)
-    }
-
     pub fn bool_of(a: &Value, name: &str) -> bool {
         bool_of(a, name)
     }
 
     pub fn str_of(a: &Value, name: &str) -> String {
         str_of(a, name)
-    }
-
-    pub fn long_of(a: &Value, name: &str) -> i64 {
-        long_of(a, name)
     }
 
     pub fn error_text(fail: &Fail) -> String {
@@ -624,26 +610,6 @@ impl App {
     /// The idle lock screen counts as locked (2026-10-30 review: the mini window offered "Close all" behind it).
     pub fn unlocked(&self) -> bool {
         self.open().is_some()
-    }
-
-    pub fn page_asleep(&self) -> bool {
-        self.controller.page_asleep.get()
-    }
-
-    pub fn set_page_asleep(&self, value: bool) {
-        if self.controller.page_asleep.get() == value {
-            return;
-        }
-        self.controller.page_asleep.set(value);
-        if value {
-            return;
-        }
-        let missed: Vec<String> = std::mem::take(&mut *self.controller.asleep_events.borrow_mut());
-        for json in missed {
-            self.post(&json);
-        }
-        *self.controller.last_metrics.borrow_mut() = None; // sent again at the next look, though unchanged
-        self.push_state();
     }
 
     /// The sleeping page went (the browser closed, or a new page): what waited for it goes too.

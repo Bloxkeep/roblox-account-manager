@@ -148,7 +148,7 @@ fn friend_post(url: &str, json: &str, cookie: &str, realm: &str, answered: Optio
         if res.is_success() { String::new() } else { format!(", errors {summary}") }
     ));
     if res.status == 401 {
-        return Err(RobloxApiException { status: 401, cookie_invalid: true, ..RobloxApiException::new(l::t("This account was signed out — sign in to it again.")) }.into());
+        return Err(RobloxApiException { cookie_invalid: true, ..RobloxApiException::new(l::t("This account was signed out — sign in to it again.")) }.into());
     }
     if res.status == 429 && challenge.is_none() {
         return Err(rate_limited_by(&res));

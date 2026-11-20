@@ -622,13 +622,16 @@ fn places_card(root: &Root, cx: &mut Context<Root>) -> Div {
         let end = div().flex().items_center().gap(px(10.)).when(s.trusted, |d| d.child(badge(root.tr("rs.trusted"), Tone::Muted))).child(out);
         rows.push(place_row(rows.len(), device_mark(s), what, sub, Some(end.into_any_element())));
     }
-    if p.known.len() > shown {
-        let more = Button::new("rs-places-more", root.i18n.tv("rs.placesMore", &[("n", &(p.known.len() - shown).to_string())]))
+    // Show more, and once all are out Show less (it folds back to the first 10).
+    if p.known.len() > 10 {
+        let all = rs.places_all;
+        let words = if all { root.tr("gp.less") } else { root.i18n.tv("rs.placesMore", &[("n", &(p.known.len() - shown).to_string())]) };
+        let more = Button::new("rs-places-more", words)
             .small()
             .quiet()
-            .icon_end("chevronDown")
-            .on_click(cx.listener(|r, _, _, cx| {
-                r.rset.places_all = true;
+            .icon_end(if all { "chevronUp" } else { "chevronDown" })
+            .on_click(cx.listener(move |r, _, _, cx| {
+                r.rset.places_all = !all;
                 cx.notify();
             }));
         rows.push(div().px(px(20.)).py(px(10.)).border_t_1().border_color(c(LINE)).flex().justify_center().child(more).into_any_element());

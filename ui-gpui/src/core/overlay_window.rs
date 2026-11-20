@@ -132,10 +132,6 @@ impl OverlayWindow {
         me
     }
 
-    pub fn tool(&self) -> &WebToolWindow {
-        &self.tool
-    }
-
     /// Starts the page, then shows over the game and takes the keyboard (Esc and Enter are its own, not the
     /// game's). A page that can't start ends it, as Esc would.
     pub async fn open(self: Rc<Self>) {

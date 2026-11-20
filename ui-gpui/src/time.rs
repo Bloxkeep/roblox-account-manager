@@ -63,6 +63,18 @@ pub fn ago(secs: i64, i18n: &I18n) -> String {
     }
 }
 
+/// How long ago, for what can be months or years old (a friend request): as ago() within a week, then weeks,
+/// months and years, as Facebook says it.
+pub fn ago_far(secs: i64, i18n: &I18n) -> String {
+    let d = secs.max(0) / 86400;
+    match d {
+        0..7 => ago(secs, i18n),
+        7..30 => i18n.tn("time.week", d / 7, &[]),
+        30..365 => i18n.tn("time.month", d / 30, &[]),
+        _ => i18n.tn("time.year", d / 365, &[]),
+    }
+}
+
 /// The PC's clock ahead of UTC, in seconds (+25200 in Vietnam), summer time included.
 pub fn utc_offset_secs() -> i64 {
     // Asked hundreds of times a frame by Statistics: Windows is read at most once a second.

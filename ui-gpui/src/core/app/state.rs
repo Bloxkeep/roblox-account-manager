@@ -132,14 +132,6 @@ impl App {
         Value::Null
     }
 
-    /// The window came back with its page still open: what the page kept is out of date from here on.
-    pub fn drop_kept_view(&self) {
-        // Not before any page has come: a view handed over by an update is for the first one.
-        if self.controller.page_attached.get() {
-            *self.controller.page_view.borrow_mut() = None;
-        }
-    }
-
     pub fn page_busy(&self) -> bool {
         self.state.page_busy.get()
     }
@@ -147,22 +139,6 @@ impl App {
     pub fn set_page_busy(&self, busy: bool) -> Value {
         self.state.page_busy.set(busy);
         Value::Null
-    }
-
-    /// The page is going away (browser released or recreated): nothing it was doing survives, least of all a
-    /// sign-in prompt holding a password or a Quick Login code waiting for approval.
-    pub fn page_gone(&self) {
-        self.controller.page_attached.set(false); // the next page asks for everything with getState
-        self.forget_sleep();
-        self.state.page_busy.set(false);
-        // The next page says again where its monitor tab is, if it shows it.
-        let set_area = self.monitor.set_monitor_area.borrow().clone();
-        if let Some(set_area) = set_area {
-            set_area(None);
-        }
-        let _ = self.login_cancel();
-        let _ = self.quick_login_cancel();
-        let _ = self.drop_vault_import(false);
     }
 
     /// Answered once the window's cover is off (the start logo between hops): the page's opening starts then.

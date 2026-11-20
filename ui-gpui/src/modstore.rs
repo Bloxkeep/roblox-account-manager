@@ -265,7 +265,7 @@ fn words_of(html: &str) -> String {
             _ => out.push(ch),
         }
     }
-    let text = out.replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", "\"").replace("&#39;", "'").replace("&nbsp;", " ");
+    let text = crate::val::entities(&out);
     let mut lines: Vec<&str> = Vec::new();
     for line in text.lines().map(str::trim) {
         if line.is_empty() && lines.last().is_none_or(|l| l.is_empty()) {

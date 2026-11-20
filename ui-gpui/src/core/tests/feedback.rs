@@ -31,7 +31,6 @@ use crate::core::{
 #[derive(Clone, Debug)]
 pub(crate) struct Got {
     pub method: String,
-    pub path: String,
     pub headers: Vec<(String, String)>,
     pub body: Vec<u8>,
 }
@@ -39,9 +38,6 @@ pub(crate) struct Got {
 impl Got {
     pub fn header(&self, name: &str) -> Option<&str> {
         self.headers.iter().find(|(n, _)| n.eq_ignore_ascii_case(name)).map(|(_, v)| v.as_str())
-    }
-    pub fn text(&self) -> String {
-        String::from_utf8_lossy(&self.body).into_owned()
     }
     /// The body read as Latin-1 (each byte one character), as the C#'s StreamReader(Encoding.Latin1) did.
     pub fn latin1(&self) -> String {
@@ -126,7 +122,7 @@ pub(crate) fn read_request(stream: &mut TcpStream) -> Option<Got> {
     let mut lines = head.split("\r\n");
     let mut first = lines.next()?.split(' ');
     let method = first.next()?.to_string();
-    let path = first.next()?.to_string();
+    first.next()?;
     let headers: Vec<(String, String)> =
         lines.filter_map(|l| l.split_once(':').map(|(n, v)| (n.trim().to_string(), v.trim().to_string()))).collect();
     let length: usize = headers.iter().find(|(n, _)| n.eq_ignore_ascii_case("content-length")).and_then(|(_, v)| v.parse().ok()).unwrap_or(0);
@@ -139,7 +135,7 @@ pub(crate) fn read_request(stream: &mut TcpStream) -> Option<Got> {
         body.extend_from_slice(&chunk[..n]);
     }
     body.truncate(length);
-    Some(Got { method, path, headers, body })
+    Some(Got { method, headers, body })
 }
 
 pub(crate) fn write_response(stream: &mut TcpStream, status: u16, body: &str) {

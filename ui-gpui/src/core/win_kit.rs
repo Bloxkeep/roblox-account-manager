@@ -3,7 +3,6 @@
 // process list (System.Diagnostics.Process by name or id). No C# file of its own: these were .NET's.
 #![allow(clippy::missing_safety_doc)]
 
-use std::ffi::c_void;
 
 use windows_sys::Win32::{
     Foundation::{CloseHandle, ERROR_FILE_NOT_FOUND, HWND, INVALID_HANDLE_VALUE, LPARAM, RECT},
@@ -500,9 +499,4 @@ pub fn pids_by_name(name: &str) -> Option<Vec<i32>> {
 /// %LOCALAPPDATA% (Environment.SpecialFolder.LocalApplicationData).
 pub fn local_app_data() -> std::path::PathBuf {
     std::env::var_os("LOCALAPPDATA").map(std::path::PathBuf::from).unwrap_or_default()
-}
-
-/// Opaque pointer helper for calls that take `void*`.
-pub fn void<T>(x: &mut T) -> *mut c_void {
-    x as *mut T as *mut c_void
 }

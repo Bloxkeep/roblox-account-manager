@@ -13,10 +13,6 @@ use super::App;
 use super::controller::{JsonKind, has, parse_guid};
 use crate::core::{models::Account, roblox_api::realm, vault::Vault};
 
-/// AppController.Gpui.cs declares no instance fields.
-#[derive(Default)]
-pub struct GpuiState {}
-
 impl App {
     /// Keep the VNG sign-in in the core and expose only the selected panel's display data.
     pub async fn vng_panel(&self, id: crate::core::base::Guid, panel: String) -> crate::core::base::Res<Value> {

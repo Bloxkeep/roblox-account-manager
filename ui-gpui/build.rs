@@ -4,6 +4,7 @@ use std::process::Command;
 fn main() {
     one_thread_maker();
     one_web_door();
+    one_entity_reader();
     no_dead_locks();
     // The window's thread gets 8 MB of stack, not Windows' 1 MB: a deep page is laid out by recursion.
     if std::env::var("CARGO_CFG_TARGET_ENV").as_deref() == Ok("msvc") {
@@ -67,6 +68,16 @@ fn one_web_door() {
         panic!("a web agent made outside src/net.rs (start from crate::net::builder, builder_direct or builder_like_roblox_client):
 {}", found.join("
 "));
+    }
+}
+
+/// HTML's character references are read by crate::val::entities only: the build stops on a page reading `&amp;` and
+/// its kin with replace() calls of its own. Each such list was short, and none read the numbered ones: Roblox's
+/// messages showed "&#224;" where "à" was (found 2026-11-20).
+fn one_entity_reader() {
+    let found = lines_with(&["replace(\"&amp;\"", "replace(\"&#39;\"", "replace(\"&quot;\"", "replace(\"&lt;\""], "src/val.rs");
+    if !found.is_empty() {
+        panic!("HTML entities read outside src/val.rs (use crate::val::entities):\n{}", found.join("\n"));
     }
 }
 

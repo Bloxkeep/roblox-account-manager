@@ -2828,8 +2828,11 @@ impl Root {
                     // (As the window first shows, and each time it is unlocked, they come in from the left one after
                     // another: the rail isn't drawn while locked.)
                     let mut items = Vec::new();
-                    // Games carries how much news hasn't been read (99+ at most), or a dot when some is fresh.
-                    let unread = self.state.pointer("/feeds/unread").and_then(Value::as_i64).unwrap_or(0);
+                    // Roblox carries the sum of the counts inside it (99+ at most): the games' unread news, and the
+                    // account's notifications (the bell) and unread messages (the inbox); a dot when news is fresh.
+                    let news = self.state.pointer("/feeds/unread").and_then(Value::as_i64).unwrap_or(0).max(0);
+                    let (notes, letters) = if crate::pages::tabs::is_vng(self) { (0, 0) } else { self.games.corner.unread };
+                    let unread = news + notes.max(0) + letters.max(0);
                     let fresh = self.state.pointer("/feeds/fresh").and_then(Value::as_i64).unwrap_or(0) > 0; // (a count, not a flag)
                     for (i, p) in Page::ALL.into_iter().filter(|p| *p != Page::Settings).enumerate() {
                         let mark = (p == Page::Games && (unread > 0 || fresh)).then(|| {

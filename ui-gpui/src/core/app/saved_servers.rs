@@ -18,10 +18,6 @@ pub const MAX_SAVED_SERVERS: usize = 100;
 pub const MAX_SERVER_NAME: usize = 60;
 pub const MAX_SERVER_CODE: usize = 100;
 
-/// The C# declares no fields here.
-#[derive(Default)]
-pub struct SavedServersState {}
-
 impl App {
     pub fn saved_server_dto(&self, s: &SavedServer) -> Value {
         let icon = self

@@ -121,10 +121,6 @@ pub fn engine_quality(slider: i32) -> i32 {
     if slider >= 10 { 21 } else { slider * 2 - 1 }
 }
 
-/// The frame rate limits offered, for the shared setup and each account (written like Roblox's own menu writes
-/// its 30, 60, 144 and 240).
-pub const FPS_CHOICES: [i32; 8] = [15, 20, 30, 45, 60, 120, 144, 240];
-
 /// Any whole limit from 5 to 360 is taken, not only the ones offered (a user asked for 17 and 18, 2026-11-15): Roblox
 /// reads FramerateCap as a plain number.
 pub fn fps_allowed(fps: i32) -> bool {

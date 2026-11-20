@@ -11,7 +11,6 @@ use crate::core::macro_model::{Macro, MacroStep};
 #[derive(Clone, Debug)]
 pub struct Template {
     pub id: String,
-    pub name: String,
     pub about: String,
     /// A plain word the page draws an icon for: keyboard, pointer, bar, rejoin, blank.
     pub icon: String,
@@ -46,10 +45,6 @@ fn todo(step: &mut MacroStep, fields: &[&str]) {
 /// Why a step is there, shown under it in the editor.
 fn note(step: &mut MacroStep, note: String) {
     step.extra.insert("note".into(), Json::String(note));
-}
-
-pub fn find(id: Option<&str>) -> Res<Option<Template>> {
-    Ok(build()?.into_iter().find(|t| Some(t.id.as_str()) == id))
 }
 
 /// Built each time (names in the language now; nothing shared to change by mistake).
@@ -107,7 +102,7 @@ fn keys() -> Res<Template> {
     )?;
     note(&mut m.steps[1], l::t("Roblox kicks idle players after 20 minutes; this presses a key before that."));
     note(&mut m.steps[2], l::t("The player can change how long on the panel"));
-    Ok(Template { id: "keys".into(), name, about: l::t("Presses a key now and then, so the game doesn't take you for away."), icon: "keyboard".into(), r#macro: m })
+    Ok(Template { id: "keys".into(), about: l::t("Presses a key now and then, so the game doesn't take you for away."), icon: "keyboard".into(), r#macro: m })
 }
 
 fn click() -> Res<Template> {
@@ -148,7 +143,6 @@ fn click() -> Res<Template> {
     note(&mut m.steps[3], l::t("Counts the clicks, shown on the panel"));
     Ok(Template {
         id: "click".into(),
-        name,
         about: l::t("Waits for a button of a color to show up in an area, clicks it, and waits for the next one."),
         icon: "pointer".into(),
         r#macro: m,
@@ -229,7 +223,6 @@ pub fn cast_with(p: &CastParams) -> Res<Template> {
     note(&mut m.steps[4], l::t("A short break before the next cast"));
     Ok(Template {
         id: "cast".into(),
-        name,
         about: l::t("Holds the mouse to cast, waits for the bar, then keeps the marker on the target until the bar goes."),
         icon: "bar".into(),
         r#macro: m,
@@ -258,10 +251,10 @@ fn rejoin() -> Res<Template> {
     note(&mut m.steps[1], l::t("Walks forward for 2 s: change it to your way back"));
     note(&mut m.steps[2], l::t("Stops for a moment"));
     note(&mut m.steps[3], l::t("Uses what is there"));
-    Ok(Template { id: "rejoin".into(), name, about: l::t("After a rejoin, waits for the game to load, walks back and presses E."), icon: "rejoin".into(), r#macro: m })
+    Ok(Template { id: "rejoin".into(), about: l::t("After a rejoin, waits for the game to load, walks back and presses E."), icon: "rejoin".into(), r#macro: m })
 }
 
 fn blank() -> Template {
     let m = Macro { name: l::t("New macro"), targets: "selected".into(), ..Macro::default() };
-    Template { id: "blank".into(), name: l::t("Blank"), about: l::t("Start from nothing and build your own."), icon: "blank".into(), r#macro: m }
+    Template { id: "blank".into(), about: l::t("Start from nothing and build your own."), icon: "blank".into(), r#macro: m }
 }

@@ -121,7 +121,7 @@ pub fn get_auth_ticket(cookie: &str, ct: &Cancel, realm: &str) -> Res<String> {
         return Ok(ticket);
     }
     if res.status == 401 {
-        return Err(RobloxApiException { status: 401, cookie_invalid: true, ..RobloxApiException::new(l::t("This account was signed out — sign in to it again.")) }.into());
+        return Err(RobloxApiException { cookie_invalid: true, ..RobloxApiException::new(l::t("This account was signed out — sign in to it again.")) }.into());
     }
     if res.status == 429 {
         return Err(rate_limited_by(&res));
@@ -132,7 +132,6 @@ pub fn get_auth_ticket(cookie: &str, ct: &Cancel, realm: &str) -> Res<String> {
     // roblox.com shows the account why.
     if res.status >= 500 {
         return Err(RobloxApiException {
-            status: res.status,
             server_error: true,
             ..RobloxApiException::new(l::f("Couldn't get a sign-in ticket (HTTP {0}). Try again in a moment.", &[&res.status]))
         }
@@ -140,7 +139,6 @@ pub fn get_auth_ticket(cookie: &str, ct: &Cancel, realm: &str) -> Res<String> {
     }
     if is_moderated(res.status, &text) {
         return Err(RobloxApiException {
-            status: res.status,
             sign_in_refused: true,
             moderated: true,
             ..RobloxApiException::new(l::t("Roblox has a notice on this account to accept first. Open its roblox.com and accept it."))
@@ -148,7 +146,6 @@ pub fn get_auth_ticket(cookie: &str, ct: &Cancel, realm: &str) -> Res<String> {
         .into());
     }
     Err(RobloxApiException {
-        status: res.status,
         sign_in_refused: true,
         ..RobloxApiException::new(l::f("Roblox refused to sign this account in (HTTP {0}). Open its roblox.com to see why.", &[&res.status]))
     }
@@ -221,11 +218,10 @@ pub fn get_private_servers(cookie: &str, place_id: i64, ct: &Cancel) -> Res<Vec<
             return Err(rate_limited_by(&res));
         }
         if res.status == 401 {
-            return Err(RobloxApiException { status: 401, cookie_invalid: true, ..RobloxApiException::new(l::t("This account was signed out — sign in to it again.")) }.into());
+            return Err(RobloxApiException { cookie_invalid: true, ..RobloxApiException::new(l::t("This account was signed out — sign in to it again.")) }.into());
         }
         if !res.is_success() {
             return Err(RobloxApiException {
-                status: res.status,
                 server_error: res.status >= 500,
                 ..RobloxApiException::new(l::f("Roblox didn't answer (HTTP {0}).", &[&res.status]))
             }
@@ -349,11 +345,10 @@ pub fn get_owned_servers(cookie: &str, ct: &Cancel) -> Res<Vec<OwnedServer>> {
             return Err(rate_limited_by(&res));
         }
         if res.status == 401 {
-            return Err(RobloxApiException { status: 401, cookie_invalid: true, ..RobloxApiException::new(l::t("This account was signed out — sign in to it again.")) }.into());
+            return Err(RobloxApiException { cookie_invalid: true, ..RobloxApiException::new(l::t("This account was signed out — sign in to it again.")) }.into());
         }
         if !res.is_success() {
             return Err(RobloxApiException {
-                status: res.status,
                 server_error: res.status >= 500,
                 ..RobloxApiException::new(l::f("Roblox didn't answer (HTTP {0}).", &[&res.status]))
             }
@@ -405,7 +400,7 @@ pub fn resolve_share(cookie: &str, share_code: &str, share_type: Option<&str>, c
     let res = post_with_csrf(url, cookie, &json, None, ct, realm::GLOBAL)?;
     let body = res.text();
     if res.status == 401 {
-        return Err(RobloxApiException { status: 401, cookie_invalid: true, ..RobloxApiException::new(l::t("This account was signed out — sign in to it again.")) }.into());
+        return Err(RobloxApiException { cookie_invalid: true, ..RobloxApiException::new(l::t("This account was signed out — sign in to it again.")) }.into());
     }
     if res.status == 429 {
         return Err(rate_limited_by(&res));
@@ -413,7 +408,6 @@ pub fn resolve_share(cookie: &str, share_code: &str, share_type: Option<&str>, c
     if !res.is_success() {
         log::note(&format!("Share link ({kind}): HTTP {}, errors {}", res.status, errors(&body).1));
         return Err(RobloxApiException {
-            status: res.status,
             ..RobloxApiException::new(l::f("Couldn't open the share link (HTTP {0}). Check the link, or try again in a moment.", &[&res.status]))
         }
         .into());

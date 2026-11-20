@@ -175,18 +175,8 @@ impl WebsiteTab {
         self.mirror().account_id
     }
 
-    /// What the tab shows: the account's name (or whoever signed in on a blank tab), else Roblox.
-    pub fn title(&self) -> String {
-        self.mirror().title.clone()
-    }
-
     pub fn is_closed(&self) -> bool {
         self.mirror().torn_down
-    }
-
-    /// The account's Roblox avatar for its tab (none while names are hidden); set by the app.
-    pub fn avatar(&self) -> Option<String> {
-        self.mirror().avatar.clone()
     }
 
     pub fn set_avatar(&self, value: Option<String>) {
@@ -246,16 +236,6 @@ impl WebsiteTab {
     /// Closes without the last read of the session (the vault is locking, or the app quitting).
     pub fn close_now(&self) {
         self.on_tab(|t| t.close_now());
-    }
-
-    /// For the checks: who a session cookie is, instead of asking Roblox.
-    pub fn set_identify(&self, identify: Identify) {
-        self.mirror().identify = identify;
-    }
-
-    /// For the checks: the question after a stopped sign-out (true: close the tab).
-    pub fn set_ask_close_on_logout(&self, ask: fn(isize) -> bool) {
-        self.mirror().ask_close_on_logout = ask;
     }
 
     /// Removes folders left behind if the app was closed before deletion finished.
@@ -421,10 +401,6 @@ impl TabCore {
 
     pub(super) fn avatar(&self) -> Option<String> {
         self.avatar.borrow().clone()
-    }
-
-    pub(super) fn is_closed(&self) -> bool {
-        self.torn_down.get()
     }
 
     fn set_account(&self, id: Option<Guid>) {

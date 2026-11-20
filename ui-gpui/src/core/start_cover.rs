@@ -87,10 +87,6 @@ impl StartCover {
         Ok(h)
     }
 
-    pub fn handle(&self) -> isize {
-        self.handle.get()
-    }
-
     /// The parent was resized (Dock = Fill, ResizeRedraw).
     pub fn fit(&self, parent: isize) {
         let h = self.handle.get();

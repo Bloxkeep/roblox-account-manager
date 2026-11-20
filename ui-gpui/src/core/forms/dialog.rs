@@ -9,7 +9,6 @@ use std::{
     time::{Duration, Instant},
 };
 
-use futures::channel::oneshot;
 use serde_json::{Value, json};
 use windows_sys::Win32::{
     Foundation::{HWND, LPARAM, LRESULT, POINT, WPARAM},
@@ -72,9 +71,6 @@ pub fn start_limit() -> Duration {
     Duration::from_millis(START_LIMIT_MS.load(Ordering::Relaxed))
 }
 
-pub fn set_start_limit(limit: Duration) {
-    START_LIMIT_MS.store(limit.as_millis() as u64, Ordering::Relaxed);
-}
 const DWMWA_CLOAK: u32 = 13;
 const HTCAPTION: usize = 2;
 const HTBOTTOM: usize = 15;
@@ -112,41 +108,8 @@ pub fn show(
     ask(question(owner, text, heading, kind, choices, default_index, cancel_index.unwrap_or(choices.len() as i32 - 1), footnote, timeout, None)).0
 }
 
-/// `show` from the core's thread: the question gets a window thread of its own and the core goes on meanwhile.
-#[allow(clippy::too_many_arguments)]
-pub async fn show_async(
-    owner: Option<isize>,
-    text: &str,
-    heading: Option<&str>,
-    kind: Kind,
-    choices: &[Choice],
-    default_index: i32,
-    cancel_index: Option<i32>,
-    footnote: Option<&str>,
-    timeout: Option<Duration>,
-) -> i32 {
-    ask_async(question(owner, text, heading, kind, choices, default_index, cancel_index.unwrap_or(choices.len() as i32 - 1), footnote, timeout, None)).await.0
-}
-
 pub fn error(owner: Option<isize>, text: &str) {
     show(owner, text, None, Kind::Error, &[Choice::new(l::t("OK"))], 0, None, None, None);
-}
-
-/// `confirm` with a "Don't ask again" box; Remember is true only with a yes.
-pub fn confirm_remember(owner: Option<isize>, text: &str, yes: &str, no: &str, danger: bool) -> (bool, bool) {
-    let (picked, remember) = ask(question(
-        owner,
-        text,
-        None,
-        if danger { Kind::Warning } else { Kind::Info },
-        &[Choice::danger(yes, danger), Choice::new(no)],
-        if danger { 1 } else { 0 },
-        1,
-        None,
-        None,
-        Some(&l::t("Don't ask again")),
-    ));
-    (picked == 0, picked == 0 && remember)
 }
 
 /// Yes or no; with `danger` the "yes" is red and Enter means "no".
@@ -209,18 +172,6 @@ fn ask(q: Question) -> (i32, bool) {
     ask_here(q)
 }
 
-async fn ask_async(q: Question) -> (i32, bool) {
-    let (tx, rx) = oneshot::channel();
-    let asked = q.clone();
-    let started = host::start_thread("message box", move || {
-        let _ = tx.send(ask_here(asked));
-        host::quit();
-    });
-    match if started { rx.await.ok() } else { None } {
-        Some(answer) => answer,
-        None => plain(&q),
-    }
-}
 /// On a window thread: the app's dialog, modal (a nested loop), or Windows' own when it can't be drawn.
 fn ask_here(q: Question) -> (i32, bool) {
     // (No interface to draw it: the uninstaller's question, a start that failed before the window.)
@@ -775,8 +726,4 @@ fn center_for(owner: Option<isize>) -> Point {
 /// A size in CSS pixels as screen pixels on a monitor of this scale.
 fn scaled(css: Size, scale: f32) -> Size {
     Size::new((css.width as f32 * scale).ceil() as i32, (css.height as f32 * scale).ceil() as i32)
-}
-
-fn num(o: &Value, name: &str) -> i32 {
-    o.get(name).and_then(Value::as_f64).map(|v| v.ceil() as i32).unwrap_or(0)
 }

@@ -142,13 +142,6 @@ impl AppUpdater {
     pub fn new_version(&self) -> Option<String> {
         guard(&self.state).new_version.clone()
     }
-    pub fn progress(&self) -> i32 {
-        guard(&self.state).progress
-    }
-    /// When the last check got its answer (or failed); None before the first.
-    pub fn checked_at(&self) -> Option<Stamp> {
-        guard(&self.state).checked_at
-    }
 
     /// Why the last check failed, in the app's language at the time it is asked for; the details are in the log.
     pub fn error(&self) -> Option<String> {

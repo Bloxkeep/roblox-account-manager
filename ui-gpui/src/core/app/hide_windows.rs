@@ -7,9 +7,6 @@ use serde_json::{Value, json};
 use super::{App, launching::running};
 use crate::core::{base::Guid, input_turn, log, roblox_processes, rt};
 
-#[derive(Default)]
-pub struct HideWindowsState {}
-
 /// The answer the turn's action leaves: Some(count) once it ran.
 type Slot = Arc<Mutex<Option<i32>>>;
 
