@@ -71,6 +71,13 @@ use gpui_kit::*;
 static ALLOC: heap::Counted = heap::Counted;
 
 fn main() {
+    // (Where the heap goes, in error.log: always in the app, in a shot when asked.)
+    #[cfg(feature = "core")]
+    heap::sites::start();
+    #[cfg(all(feature = "shot", not(feature = "core")))]
+    if std::env::var_os("BLOXKEEP_SHOT_SITES").is_some() {
+        heap::sites::start();
+    }
     let args: Vec<String> = std::env::args().collect();
     #[cfg(feature = "core")]
     if args.get(1).is_some_and(|arg| arg == "--core-monitor-frames") {

@@ -746,6 +746,7 @@ dependencies = [
  "aes-gcm",
  "aho-corasick",
  "anyhow",
+ "backtrace",
  "base64 0.22.1",
  "embed-resource",
  "flate2",

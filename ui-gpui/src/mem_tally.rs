@@ -45,6 +45,10 @@ pub fn start(cx: &mut App) {
 fn line(why: &str, cx: &mut App) -> usize {
     let (private, private_working, working, peak_working) = process();
     let heap = crate::heap::in_use();
+    #[cfg(feature = "shot")]
+    if let Ok(to) = std::env::var("BLOXKEEP_SHOT_SITES") {
+        crate::heap::sites::report(&to, heap);
+    }
     let heap_peak = crate::heap::take_peak();
     let pics = gpui_kit::held_pictures(6);
     let (textures, atlas) = gpui_kit::atlas_textures();
@@ -86,6 +90,8 @@ fn line(why: &str, cx: &mut App) -> usize {
         mb(other_committed),
         mb(other_used),
     ));
+    #[cfg(feature = "core")]
+    write(&crate::heap::sites::holders(12));
     private_working
 }
 
