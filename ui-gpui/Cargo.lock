@@ -774,6 +774,7 @@ dependencies = [
  "sha1_smol",
  "sha2 0.10.9",
  "tiny-skia",
+ "ttf-parser",
  "tungstenite",
  "unicode-normalization",
  "unicode-segmentation",

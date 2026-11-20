@@ -1,6 +1,7 @@
 // SummaryCard.cs: a play-time summary's picture for Discord. The C# drew it with GDI+ (System.Drawing); here it is drawn
 // off-screen with tiny-skia (shapes, clips, the avatars) and fontdue (text, from Windows' own Segoe UI files), at the same
 // sizes, colours and layout, and written out as PNG.
+use std::cell::OnceCell;
 use std::collections::HashMap;
 use std::sync::{LazyLock, Mutex};
 use std::time::Duration;
@@ -172,14 +173,33 @@ fn decode(bytes: &[u8]) -> Option<Pixmap> {
 
 // ───────────────────────────── text (GDI+'s DrawString / MeasureString) ─────────────────────────────
 
+// The fonts are read for each card and let go after it: fontdue turns every letter of a font into shapes as it reads
+// it, and kept for good they held 400 MB after one summary (the owner's error.log, 2026-11-20: Segoe UI 17 MB, its
+// Semibold 16, Symbol 43, Emoji 56, Microsoft YaHei 142, Malgun Gothic 119, Arial 12). A fallback font is read only
+// when the card has a letter Segoe UI lacks and that font has (asked of the file itself, without reading it whole).
 struct Fonts {
     regular: Font,
     semibold: Font,
-    /// Where a character Segoe UI lacks is looked for (GDI+ falls back to other fonts by itself).
-    fallback: Vec<Font>,
+    /// Where a character Segoe UI lacks is looked for (GDI+ falls back to other fonts by itself), in this order.
+    fallback: Vec<Fallback>,
 }
 
-static FONTS: LazyLock<Result<Fonts, String>> = LazyLock::new(|| {
+struct Fallback {
+    path: String,
+    bytes: OnceCell<Option<Vec<u8>>>,
+    font: OnceCell<Option<Font>>,
+}
+
+impl Fallback {
+    /// The font, when it has `c`: read the first time it is needed.
+    fn with(&self, c: char) -> Option<&Font> {
+        let bytes = self.bytes.get_or_init(|| std::fs::read(&self.path).ok()).as_ref()?;
+        ttf_parser::Face::parse(bytes, 0).ok()?.glyph_index(c)?;
+        self.font.get_or_init(|| Font::from_bytes(&bytes[..], FontSettings::default()).ok()).as_ref()
+    }
+}
+
+fn load_fonts() -> Result<Fonts, String> {
     let dir = std::env::var("WINDIR").map(|w| format!("{w}\\Fonts")).unwrap_or_else(|_| "C:\\Windows\\Fonts".into());
     let load = |file: &str| -> Result<Font, String> {
         let bytes = std::fs::read(format!("{dir}\\{file}")).map_err(|e| format!("{file}: {e}"))?;
@@ -188,9 +208,12 @@ static FONTS: LazyLock<Result<Fonts, String>> = LazyLock::new(|| {
     let regular = load("segoeui.ttf")?;
     // "Segoe UI Semibold" is its own file; without it the regular face stands in (GDI+ would do the same).
     let semibold = load("seguisb.ttf").or_else(|_| load("segoeui.ttf"))?;
-    let fallback = ["seguisym.ttf", "seguiemj.ttf", "msyh.ttc", "malgun.ttf", "arial.ttf"].iter().filter_map(|f| load(f).ok()).collect();
+    let fallback = ["seguisym.ttf", "seguiemj.ttf", "msyh.ttc", "malgun.ttf", "arial.ttf"]
+        .iter()
+        .map(|f| Fallback { path: format!("{dir}\\{f}"), bytes: OnceCell::new(), font: OnceCell::new() })
+        .collect();
     Ok(Fonts { regular, semibold, fallback })
-});
+}
 
 #[derive(Clone, Copy)]
 struct TextFont {
@@ -207,8 +230,8 @@ const fn semibold(size: f32) -> TextFont {
     TextFont { semibold: true, size }
 }
 
-fn fonts() -> Res<&'static Fonts> {
-    FONTS.as_ref().map_err(|e| Fail::other(format!("Summary card fonts: {e}")))
+fn fonts() -> Res<Fonts> {
+    load_fonts().map_err(|e| Fail::other(format!("Summary card fonts: {e}")))
 }
 
 fn face<'a>(fonts: &'a Fonts, f: TextFont, c: char) -> &'a Font {
@@ -216,7 +239,7 @@ fn face<'a>(fonts: &'a Fonts, f: TextFont, c: char) -> &'a Font {
     if primary.lookup_glyph_index(c) != 0 || c.is_whitespace() {
         return primary;
     }
-    fonts.fallback.iter().find(|font| font.lookup_glyph_index(c) != 0).unwrap_or(primary)
+    fonts.fallback.iter().find_map(|f| f.with(c)).unwrap_or(primary)
 }
 
 /// The line's height as GDI+ measures it (Segoe UI's ascent + descent + gap).
@@ -380,7 +403,7 @@ fn rect_path(x: f32, y: f32, w: f32, h: f32) -> Option<tiny_skia::Path> {
 // ───────────────────────────── the picture ─────────────────────────────
 
 fn draw(data: &SummaryCardData, pictures: &HashMap<String, Pixmap>) -> Res<Vec<u8>> {
-    let fonts = fonts()?;
+    let fonts = &fonts()?;
     let rows = data.accounts.len() as i32;
     let game_count = data.games.len().min(GAME_COLORS.len() + 1);
     let legend_rows = game_count.div_ceil(3) as i32;
