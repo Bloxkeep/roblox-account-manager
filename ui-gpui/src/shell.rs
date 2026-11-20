@@ -3091,7 +3091,9 @@ impl Root {
     /// middle while it plays, Roblox's version, the mini window and Multi-Roblox on the right. Each thing is a small
     /// faint name in capitals and its value, on one line; no lights. The bar is measured every frame: when it is too
     /// narrow, things leave in one fixed order (BAR_LEVELS) until all three fit, so two pills never overlap.
-    fn status(&self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    /// `with_side`: the accounts column stands over the bar's right end (Home), and the right pill is made as wide as
+    /// it (owner 2026-11-20: a pill 45 px short of the column over it looked like a slip).
+    fn status(&self, with_side: bool, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let m = &self.metrics;
         let windows = m.get("robloxCount").and_then(Value::as_i64).unwrap_or(0);
         let ram = m.get("usedPct").and_then(Value::as_f64).unwrap_or(0.).round() as i64;
@@ -3189,10 +3191,15 @@ impl Root {
         let room = BAR_W.with(|w| w.get());
         let room = if room > 0. { room } else { f32::from(window.viewport_size().width) - 120. };
         let live_song = song.as_ref().is_some_and(|(_, live)| *live);
-        let need = |l: u8| left_w(l) + right_w(l) + if live_song { music_w(l) + 2. * BAR_GAP } else { BAR_GAP };
+        // (Under the accounts column the right pill is at least the column's width, as Discord's account panel is
+        // its sidebar's; wider only while its content needs more, the update waiting.)
+        let right_room = |l: u8| if with_side { right_w(l).max(SIDE) } else { right_w(l) };
+        let need = |l: u8| left_w(l) + right_room(l) + if live_song { music_w(l) + 2. * BAR_GAP } else { BAR_GAP };
         let level = (0..=BAR_LEVELS).find(|l| need(*l) <= room).unwrap_or(BAR_LEVELS);
         let pill_w = chip_w(level);
-        let (lw, mw, rw) = (left_w(level), music_w(level), right_w(level));
+        let (lw, mw, rw) = (left_w(level), music_w(level), right_room(level));
+        // (Made wider than its content: the groups spread over it, no empty end.)
+        let spread = rw > right_w(level) + 0.5;
 
         // ── Motion ────────────────────────────────────────────────────────────────────────────────────────────────
         // Apple's springs (WWDC23 "Animate with springs"): the side pills give way first, then the song's pill grows
@@ -3344,6 +3351,7 @@ impl Root {
                 .flex()
                 .items_center()
                 .gap(px(BAR_GROUP_GAP))
+                .when(spread, |d| d.w_full().justify_between())
                 // The one coloured thing in the bar: the app's update, waiting for a restart. Asked, not just sent:
                 // the app can refuse (Roblox being opened, a sign-in window up) and says why.
                 .when(ready, |d| {
@@ -4327,7 +4335,7 @@ impl Render for Root {
                             .child(crate::scene::on_page(false)),
                     )
                     // (Glass: the gutter the panels keep between them, above it too.)
-                    .when(!locked && !lost, |d| d.child(app_in("app-in-status", self.intro, 260., 18., false, self.status(window, cx)))),
+                    .when(!locked && !lost, |d| d.child(app_in("app-in-status", self.intro, 260., 18., false, self.status(with_side, window, cx)))),
             )
             .children(pill_card)
             .children(tray_shot)
