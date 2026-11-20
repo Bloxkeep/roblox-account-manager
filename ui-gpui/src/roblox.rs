@@ -532,6 +532,24 @@ pub fn uploaded_picture(asset: i64, dir: &std::path::Path) -> Option<std::path::
     Some(file)
 }
 
+/// An emote's motion file (its KeyframeSequence, a binary Roblox file, rbxm.rs): the emote's own asset holds an
+/// Animation whose AnimationId names it. Asset delivery gives both without a sign-in (measured 2026-11-20: the Salute
+/// emote, 3360689775, and its motion, 10714389988: 89 keyframes of the R15 joints).
+pub fn emote_motion(emote: i64) -> Result<Vec<u8>, String> {
+    let one = |asset: i64| -> Result<Vec<u8>, String> {
+        let d = get(&format!("https://assetdelivery.roblox.com/v2/assetId/{asset}"), None)?;
+        let at = d.pointer("/locations/0/location").and_then(|v| v.as_str()).filter(|a| a.starts_with("https://")).ok_or("Roblox gave no file")?;
+        fetch_as("Emote", at, 8 << 20).ok_or_else(|| "the file didn't come".to_string())
+    };
+    let first = one(emote)?;
+    let doc = crate::rbxm::read(&first)?;
+    if !doc.all("KeyframeSequence").is_empty() {
+        return Ok(first);
+    }
+    let motion = doc.all("Animation").into_iter().find_map(|a| doc.text(a, "AnimationId").and_then(crate::rbxm::asset_id)).ok_or("no animation in it")?;
+    one(motion)
+}
+
 /// Written whole or not at all.
 fn keep(dir: &std::path::Path, file: &std::path::Path, bytes: &[u8]) -> Option<()> {
     // A temp name of its own: two fetches of the same clip at once (Home and Games, a hover again) wrote one temp file,

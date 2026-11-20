@@ -110,6 +110,8 @@ pub struct View {
     /// A jump: how high off the floor it is and how fast it is going up (down when below 0), both in model units.
     pub up: f32,
     pub rise: f32,
+    /// What it does besides (gestures, looking, sitting…).
+    pub act: Act,
 }
 
 pub const ZOOM_NEAR: f32 = 0.42;
@@ -208,54 +210,457 @@ struct Rig {
     /// Each hip (a leg's top) and how high the hips stand over the feet.
     hips: [Option<V3>; 2],
     leg: f32,
+    /// By OBJ group, a worn thing that hangs (hair, a cape, a tail): the point it hangs from (the top of it) and how
+    /// much it swings (0 for a small thing, a hat; 1 for one as long as the head is high and more).
+    hang: Vec<Option<(V3, f32)>>,
+}
+
+/// What the avatar does besides standing and walking, as avatar.rs drives it: a gesture under way, where it looks,
+/// sitting, what hangs from it swung out of place, its mood, and a worn thing it is shown.
+#[derive(Clone, Copy, PartialEq, Default)]
+pub struct Act {
+    /// The gesture (WAVE…) and how far into it, in seconds.
+    pub kind: u8,
+    pub g: f32,
+    /// Where the mouse is over the box (-1 to 1 each way: right, up) and how much it looks there (0 to 1).
+    pub mouse: [f32; 2],
+    pub mouse_w: f32,
+    /// Sat on the floor: 0 standing, 1 sat.
+    pub sit: f32,
+    /// What hangs from it swung out of place (radians: to its side, to its front).
+    pub swing: [f32; 2],
+    /// Sleepy (late at night), 0 to 1.
+    pub sleepy: f32,
+    /// A worn thing it is shown (the mouse on it in the list): the head's turn and nod (down +), a bow, a twist of the
+    /// body, an arm raised (+ its right, - its left); and how much, 0 to 1.
+    pub focus: [f32; 5],
+    pub focus_w: f32,
+    /// The emote played (EMOTE): its asset on Roblox, whose motion is kept (`keep_motion`).
+    pub emote: i64,
+}
+
+/// The gestures: a wave, both arms up, a look down at itself and a turn to show a new thing, a stretch, a yawn, a dance.
+pub const WAVE: u8 = 1;
+pub const CHEER: u8 = 2;
+pub const ADMIRE: u8 = 3;
+pub const STRETCH: u8 = 4;
+pub const YAWN: u8 = 5;
+pub const DANCE: u8 = 6;
+/// One of the account's own emotes, as Roblox plays it (its motion read from Roblox: `motion_of`).
+pub const EMOTE: u8 = 7;
+
+/// How long a gesture lasts, in seconds.
+pub fn gesture_length(kind: u8) -> f32 {
+    match kind {
+        WAVE => 2.4,
+        CHEER => 1.5,
+        ADMIRE => 2.9,
+        STRETCH => 3.4,
+        YAWN => 3.0,
+        DANCE => 3.8,
+        _ => 0.,
+    }
+}
+
+/// How long the gesture under way lasts (an emote: its motion's length; 0 when its motion isn't here).
+pub fn act_length(a: &Act) -> f32 {
+    if a.kind == EMOTE { motion(a.emote).map_or(0., |m| m.length) } else { gesture_length(a.kind) }
+}
+
+/// An emote's motion, from Roblox's KeyframeSequence: for each joint that moves the parts of this rig (the lower and
+/// upper torso, the head, each upper arm and upper leg; R6's Torso and limbs too) its turns and shifts at the
+/// keyframes' times. The hands, lower arms and lower legs are left out: here an arm or a leg is one piece.
+pub struct Motion {
+    pub length: f32,
+    tracks: [Vec<(f32, [f32; 4], V3)>; 7],
+}
+
+/// A turn as a unit quaternion (w, x, y, z), and back.
+fn quat(m: &M3) -> [f32; 4] {
+    let t = m[0][0] + m[1][1] + m[2][2];
+    let q = if t > 0. {
+        let s = (t + 1.).sqrt() * 2.;
+        [0.25 * s, (m[2][1] - m[1][2]) / s, (m[0][2] - m[2][0]) / s, (m[1][0] - m[0][1]) / s]
+    } else if m[0][0] > m[1][1] && m[0][0] > m[2][2] {
+        let s = (1. + m[0][0] - m[1][1] - m[2][2]).sqrt() * 2.;
+        [(m[2][1] - m[1][2]) / s, 0.25 * s, (m[0][1] + m[1][0]) / s, (m[0][2] + m[2][0]) / s]
+    } else if m[1][1] > m[2][2] {
+        let s = (1. + m[1][1] - m[0][0] - m[2][2]).sqrt() * 2.;
+        [(m[0][2] - m[2][0]) / s, (m[0][1] + m[1][0]) / s, 0.25 * s, (m[1][2] + m[2][1]) / s]
+    } else {
+        let s = (1. + m[2][2] - m[0][0] - m[1][1]).sqrt() * 2.;
+        [(m[1][0] - m[0][1]) / s, (m[0][2] + m[2][0]) / s, (m[1][2] + m[2][1]) / s, 0.25 * s]
+    };
+    let l = q.iter().map(|x| x * x).sum::<f32>().sqrt().max(1e-9);
+    q.map(|x| x / l)
+}
+
+fn mat(q: [f32; 4]) -> M3 {
+    let [w, x, y, z] = q;
+    [
+        [1. - 2. * (y * y + z * z), 2. * (x * y - z * w), 2. * (x * z + y * w)],
+        [2. * (x * y + z * w), 1. - 2. * (x * x + z * z), 2. * (y * z - x * w)],
+        [2. * (x * z - y * w), 2. * (y * z + x * w), 1. - 2. * (x * x + y * y)],
+    ]
+}
+
+/// Between two turns, `k` of the way (the short way round).
+fn nlerp(a: [f32; 4], b: [f32; 4], k: f32) -> [f32; 4] {
+    let sign = if a.iter().zip(&b).map(|(x, y)| x * y).sum::<f32>() < 0. { -1. } else { 1. };
+    let q = [0, 1, 2, 3].map(|i| a[i] * (1. - k) + b[i] * sign * k);
+    let l = q.iter().map(|x| x * x).sum::<f32>().sqrt().max(1e-9);
+    q.map(|x| x / l)
+}
+
+/// Turn `a` brought `k` of the way to `b`.
+fn mix(a: &M3, b: &M3, k: f32) -> M3 {
+    if k <= 0. {
+        *a
+    } else {
+        mat(nlerp(quat(a), quat(b), k.min(1.)))
+    }
+}
+
+const IDENTITY: M3 = [[1., 0., 0.], [0., 1., 0.], [0., 0., 1.]];
+
+/// An emote's motion from its KeyframeSequence file; None when it has no keyframes of the joints above.
+pub fn motion_of(bytes: &[u8]) -> Option<Motion> {
+    let doc = crate::rbxm::read(bytes).ok()?;
+    let mut tracks: [Vec<(f32, [f32; 4], V3)>; 7] = Default::default();
+    for p in doc.all("Pose") {
+        if doc.float(p, "Weight").is_some_and(|w| w <= 0.) {
+            continue;
+        }
+        let Some(name) = doc.text(p, "Name") else { continue };
+        let track = match name {
+            b"LowerTorso" | b"Torso" => 0,
+            b"UpperTorso" => 1,
+            b"Head" => 2,
+            b"LeftUpperArm" | b"Left Arm" => 3,
+            b"RightUpperArm" | b"Right Arm" => 4,
+            b"LeftUpperLeg" | b"Left Leg" => 5,
+            b"RightUpperLeg" | b"Right Leg" => 6,
+            _ => continue,
+        };
+        // (Its keyframe: up the tree of poses.)
+        let mut at = p;
+        let mut time = None;
+        for _ in 0..64 {
+            let Some(&up) = doc.parent.get(&at) else { break };
+            if doc.class.get(&up).is_some_and(|c| c == "Keyframe") {
+                time = Some(doc.float(up, "Time").unwrap_or(0.));
+                break;
+            }
+            at = up;
+        }
+        let (Some(time), Some((r, shift))) = (time, doc.frame(p, "CFrame")) else { continue };
+        let m: M3 = [[r[0], r[1], r[2]], [r[3], r[4], r[5]], [r[6], r[7], r[8]]];
+        tracks[track].push((time, quat(&m), shift));
+    }
+    for t in &mut tracks {
+        t.sort_by(|a, b| a.0.total_cmp(&b.0));
+    }
+    let length = tracks.iter().filter_map(|t| t.last().map(|k| k.0)).fold(0f32, f32::max);
+    (length > 0.05 && tracks.iter().any(|t| t.len() > 1)).then_some(Motion { length, tracks })
+}
+
+impl Motion {
+    /// Each joint's turn and shift at `t` seconds (between the keyframes either side).
+    fn at(&self, t: f32) -> [(M3, V3); 7] {
+        std::array::from_fn(|i| {
+            let k = &self.tracks[i];
+            if k.is_empty() {
+                return (IDENTITY, [0.; 3]);
+            }
+            let n = k.partition_point(|x| x.0 <= t);
+            if n == 0 {
+                return (mat(k[0].1), k[0].2);
+            }
+            if n >= k.len() {
+                let l = &k[k.len() - 1];
+                return (mat(l.1), l.2);
+            }
+            let (a, b) = (&k[n - 1], &k[n]);
+            let f = ((t - a.0) / (b.0 - a.0).max(1e-6)).clamp(0., 1.);
+            (mat(nlerp(a.1, b.1, f)), add(mul(a.2, 1. - f), mul(b.2, f)))
+        })
+    }
+}
+
+static MOTIONS: std::sync::Mutex<Vec<(i64, std::sync::Arc<Motion>)>> = std::sync::Mutex::new(Vec::new());
+
+/// Keeps an emote's motion for `motion` (the last 16 played).
+pub fn keep_motion(emote: i64, m: Motion) {
+    use crate::threads::Hold;
+    let mut l = MOTIONS.hold();
+    l.retain(|(id, _)| *id != emote);
+    if l.len() >= 16 {
+        l.remove(0);
+    }
+    l.push((emote, std::sync::Arc::new(m)));
+}
+
+/// An emote's motion, when kept.
+pub fn motion(emote: i64) -> Option<std::sync::Arc<Motion>> {
+    use crate::threads::Hold;
+    MOTIONS.hold().iter().find(|(id, _)| *id == emote).map(|(_, m)| m.clone())
+}
+
+/// How far a gesture has turned the avatar about (ADMIRE turns it once round to show a new thing), in radians.
+pub fn twirl(a: &Act) -> f32 {
+    if a.kind == ADMIRE { std::f32::consts::TAU * ease((a.g - 1.1) / 1.25) } else { 0. }
+}
+
+/// Eased 0 to 1 (and held at either end).
+fn ease(x: f32) -> f32 {
+    let x = x.clamp(0., 1.);
+    x * x * (3. - 2. * x)
+}
+
+/// How much of a gesture shows at `g` seconds: in over `inn`, held until `hold`, out by `end`.
+fn env(g: f32, inn: f32, hold: f32, end: f32) -> f32 {
+    if g < 0. {
+        0.
+    } else if g < inn {
+        ease(g / inn)
+    } else if g < hold {
+        1.
+    } else {
+        1. - ease((g - hold) / (end - hold).max(1e-3))
+    }
+}
+
+/// The parts as posed: for each (the body, the head, each arm, each leg) the point it turns about, the turn, and how
+/// far it then moves; how far everything sinks (the walk's spread legs); and a whole turn of it about its upright
+/// axis (a gesture's twirl).
+struct Posed {
+    bones: [Option<(V3, M3, V3)>; 6],
+    sink: f32,
+    twirl: f32,
 }
 
 impl Rig {
-    /// The turn of each part at `t` seconds, with the point it turns about: a slow idle, the head looking a little
-    /// round and nodding, the arms swinging gently against each other. Small, so a worn thing that isn't quite where
-    /// it was found to be (a long cape) never shows a gap.
+    /// The pose at this moment: the idle (breathing, looking round now and then, the weight moving from foot to foot),
+    /// the walk, and what `act` adds; `look` the way to the mouse from the head, in the model's own frame.
     ///
-    /// Walking (`pace` of it, at `stride`), the legs step against each other and each arm swings against its own side's
-    /// leg; the body sinks as the legs spread, so the foot in front stays on the floor (the second value: how far).
-    fn pose(&self, t: f32, stride: f32, pace: f32) -> ([Option<(V3, M3)>; 6], f32) {
+    /// The parts hang together: the head and the arms go with the body (its bow, twist, lean and shift), the legs hold
+    /// their feet on the floor while the hips move over them, or swing from the hips (walking, sitting).
+    fn pose(&self, v: &View, look: Option<V3>) -> Posed {
+        let (t, a) = (v.t, &v.act);
+        let up = [0., 1., 0.];
         let mut e = [0.; 3];
         e[self.side] = 1.;
         // The axis it faces along (the other level one): an arm turned about it swings out from the body.
         let mut fwd = [0.; 3];
         fwd[2 - self.side] = 1.;
-        let still = 1. - pace;
-        // Standing, it breathes (about 3 s a breath): the arms open a little from the body and close, the head lifts a
-        // touch. The body itself stands straight: it was sheared from side to side over its planted feet, and leaned
-        // as if about to fall (the owner, 2026-11-20).
-        let breath = (t * 2.1).sin();
-        // And it looks round now and then, as someone waiting does, not all the time: straight ahead a while, a look to
-        // one side, held, to the other, held, and back (`glance`).
-        let (gaze, tilt) = glance(t);
-        let look = 0.4 + 0.6 * still;
-        let head = mm(&rot([0., 1., 0.], look * (gaze + 0.025 * (t * 0.9).sin())), &mm(&rot(e, look * 0.03 * breath), &rot(fwd, still * tilt)));
-        // Out from the body, for each arm: the way that turns its hand away from the neck.
+        // Where it faces in its own frame (Roblox's models face -Z), and the turns that tip a part toward it (`fs`)
+        // and lean the body toward its own +side (`rs`).
+        let facing: V3 = if self.side == 0 { [0., 0., -1.] } else { [-1., 0., 0.] };
+        let fs = if dot(mv(&rot(e, 0.1), [0., -1., 0.]), facing) >= 0. { 1. } else { -1. };
+        let rs = if mv(&rot(fwd, 0.1), up)[self.side] >= 0. { 1. } else { -1. };
         let out = |p: V3| {
             let probe = mv(&rot(fwd, 0.1), [0., -1., 0.])[self.side];
-            let away = p[self.side] - self.neck[self.side];
-            if probe * away >= 0. { 1. } else { -1. }
+            if probe * (p[self.side] - self.neck[self.side]) >= 0. { 1. } else { -1. }
         };
-        let open = still * (0.045 + 0.03 * breath);
-        let hang_a = still * 0.04 * (t * 1.05).sin();
-        let hang_b = still * 0.04 * (t * 1.05 + 1.9).sin();
-        let step = pace * stride.sin();
-        let (arm, leg) = (0.55 * step, 0.5 * step);
-        let sink = -self.leg * (1. - leg.cos());
-        (
-            [
-                None,
-                Some((self.neck, head)),
-                self.shoulders[0].map(|p| (p, mm(&rot(e, hang_a - arm), &rot(fwd, out(p) * open)))),
-                self.shoulders[1].map(|p| (p, mm(&rot(e, hang_b + arm), &rot(fwd, out(p) * open)))),
-                self.hips[0].map(|p| (p, rot(e, leg))).filter(|_| pace > 0.),
-                self.hips[1].map(|p| (p, rot(e, -leg))).filter(|_| pace > 0.),
-            ],
+        let pace = v.pace;
+        let still = 1. - pace;
+        let sat = ease(a.sit);
+        // Standing and doing nothing else: what the idle moves.
+        let calm = still * (1. - sat);
+        let sleepy = a.sleepy;
+        let (mut hy, mut hn, mut hr) = (0f32, 0f32, 0f32);
+        let (mut bow, mut twist, mut lean, mut shift, mut lift) = (0f32, 0f32, 0f32, 0f32, 0f32);
+        let mut fw = [0f32; 2];
+        let mut twirl = 0.;
+
+        // It breathes (about 3 s a breath, slower when sleepy): the arms open a little from the body and close, the
+        // head lifts a touch. The body stands straight; it was sheared from side to side over its planted feet and
+        // leaned as if about to fall (the owner, 2026-11-20).
+        let breath = (t * (2.1 - 0.7 * sleepy)).sin();
+        // It looks round now and then, as someone waiting does (`glance`).
+        let (gaze, tilt) = glance(t);
+        let looks = (0.4 + 0.6 * still) * (1. - 0.6 * sleepy);
+        hy += looks * (gaze + 0.025 * (t * 0.9).sin());
+        hn += -looks * 0.03 * breath + 0.13 * sleepy;
+        hr += still * tilt;
+        let open = still * (0.045 + 0.03 * breath) * (1. - 0.4 * sleepy);
+        let mut ow = [open, open];
+        fw[0] += still * 0.04 * (t * 1.05).sin();
+        fw[1] += still * 0.04 * (t * 1.05 + 1.9).sin();
+        // Its weight goes from one foot to the other and back, slowly (about 15 s): the hips move over the feet, the
+        // body leans the other way a little to stay over them, the head stays level.
+        let sway = (t * 0.42).sin();
+        shift += calm * self.leg * 0.045 * sway;
+        lean -= calm * 0.03 * sway;
+        hr += calm * 0.025 * sway;
+
+        // Walking: the legs step against each other, each arm swings against its own side's leg.
+        let step = pace * v.stride.sin();
+        fw[0] -= 0.55 * step;
+        fw[1] += 0.55 * step;
+        let swing_leg = 0.5 * step;
+
+        // The mouse over the box: it looks at it, the body turning a little with the head; not behind it.
+        if let Some(d) = look.filter(|_| a.mouse_w > 0.) {
+            let flat = [d[0], 0., d[2]];
+            let yaw = cross(facing, flat)[1].atan2(dot(facing, flat));
+            let nod = -(d[1] / dot(d, d).sqrt().max(1e-6)).asin();
+            let w = a.mouse_w * still * ((2.0 - yaw.abs()) / 0.8).clamp(0., 1.);
+            let body = (yaw * 0.25).clamp(-0.25, 0.25);
+            twist += w * body;
+            hy += w * ((yaw - body).clamp(-1.05, 1.05) - hy);
+            hn += w * (nod.clamp(-0.4, 0.45) - hn);
+            hr *= 1. - 0.5 * w;
+        }
+
+        // A worn thing it is shown: it looks at where it wears it (up at a hat, down at shoes, over its shoulder at
+        // what is on its back), an arm out for what is worn on an arm.
+        if a.focus_w > 0. {
+            let w = a.focus_w * still;
+            let f = a.focus;
+            hy += w * (f[0] - hy);
+            hn += w * (f[1] - hn);
+            bow += w * f[2];
+            twist += w * f[3];
+            let arm = usize::from(f[4] > 0.);
+            ow[arm] += w * f[4].abs();
+        }
+
+        // The gestures, over the idle.
+        let g = a.g;
+        let gw = still;
+        match a.kind {
+            WAVE => {
+                let w = gw * env(g, 0.35, 1.9, 2.4);
+                ow[1] += w * (2.5 + 0.3 * ((g - 0.35).max(0.) * 11.).sin());
+                fw[1] += w * 0.25;
+                hr += w * 0.12;
+                hn -= w * 0.06;
+            }
+            CHEER => {
+                let w = gw * env(g, 0.2, 1.0, 1.5);
+                ow[0] += w * 2.8;
+                ow[1] += w * 2.8;
+                bow -= w * 0.1;
+                hn -= w * 0.25;
+                lift += w * self.leg * 0.14 * (std::f32::consts::PI * (g / 0.95).clamp(0., 1.)).sin();
+            }
+            ADMIRE => {
+                // A look down at itself, arms a little out, then a turn about to show it all, and a look up.
+                let down = gw * env(g, 0.4, 1.0, 1.4);
+                hn += down * 0.45;
+                bow += down * 0.1;
+                ow[0] += down * 0.35;
+                ow[1] += down * 0.35;
+                twirl = self::twirl(a);
+                let after = gw * env(g - 2.35, 0.15, 0.3, 0.55);
+                hn -= after * 0.15;
+                hr += after * 0.1;
+            }
+            STRETCH => {
+                let w = gw * env(g, 0.9, 2.2, 3.4);
+                ow[0] += w * 2.75;
+                ow[1] += w * 2.75;
+                fw[0] += w * 0.15;
+                fw[1] += w * 0.15;
+                bow -= w * 0.14;
+                hn -= w * 0.3;
+                lift += w * self.leg * 0.03;
+            }
+            YAWN => {
+                let w = gw * env(g, 0.6, 1.9, 3.0);
+                hn -= w * 0.4;
+                hr += w * 0.1;
+                fw[1] += w * 2.3;
+                ow[1] -= w * 0.5;
+                ow[0] += w * 0.15;
+                bow -= w * 0.06;
+            }
+            DANCE => {
+                let w = gw * env(g, 0.3, 3.3, 3.8);
+                let beat = g * 7.;
+                fw[0] += w * (1.0 + 0.7 * beat.sin());
+                fw[1] += w * (1.0 - 0.7 * beat.sin());
+                ow[0] += w * 0.35;
+                ow[1] += w * 0.35;
+                twist += w * 0.3 * (beat / 2.).sin();
+                shift += w * self.leg * 0.06 * (beat / 2.).sin();
+                lift += w * self.leg * 0.05 * beat.sin().abs();
+                hn += w * 0.12 * beat.sin();
+            }
+            _ => {}
+        }
+
+        // Sitting on the floor: the legs out in front from the hips, the body down onto the floor, leaning back on its
+        // hands a little.
+        lift -= sat * self.leg * 0.78;
+        bow -= sat * 0.12;
+        fw[0] -= sat * 0.45;
+        fw[1] -= sat * 0.45;
+        ow[0] += sat * 0.2;
+        ow[1] += sat * 0.2;
+
+        // The body turns about its hips' middle.
+        let hip_y = {
+            let ys: Vec<f32> = self.hips.iter().flatten().map(|h| h[1]).collect();
+            if ys.is_empty() { self.neck[1] - self.leg } else { ys.iter().sum::<f32>() / ys.len() as f32 }
+        };
+        let root = [self.neck[0], hip_y, self.neck[2]];
+        let mut body = mm(&rot(up, twist), &mm(&rot(e, -fs * bow), &rot(fwd, rs * lean)));
+        let mut moved = add(mul(e, shift), [0., lift, 0.]);
+        // An emote: Roblox's own motion, eased in and out over what is above. (Its joints turn in Roblox's frame, the
+        // model's own when it faces -Z with its right at +X: a model turned the other way plays none.)
+        let emote = (a.kind == EMOTE && self.side == 0).then(|| motion(a.emote)).flatten().map(|m| {
+            let w = still * (1. - sat) * env(g, 0.2, m.length - 0.25, m.length);
+            (m.at(g.min(m.length)), w)
+        });
+        // (The lower torso's own turn, which the legs go with.)
+        let mut lower = IDENTITY;
+        if let Some((j, w)) = &emote {
+            lower = mix(&IDENTITY, &j[0].0, *w);
+            body = mix(&body, &mm(&j[0].0, &j[1].0), *w);
+            moved = add(moved, mul(j[0].1, *w));
+        }
+        // A part hung on the body: its own turn about `at`, then the body's.
+        let on_body = |at: V3, own: M3| -> (V3, M3, V3) {
+            let m = mm(&body, &own);
+            let tr = add(sub(add(mv(&body, sub(at, root)), root), at), moved);
+            (at, m, tr)
+        };
+        let mut head = mm(&rot(up, hy), &mm(&rot(e, -fs * hn), &rot(fwd, hr)));
+        if let Some((j, w)) = &emote {
+            head = mix(&head, &j[2].0, *w);
+        }
+        let arm = |i: usize| {
+            self.shoulders[i].map(|p| {
+                let own = mm(&rot(e, fs * fw[i]), &rot(fwd, out(p) * ow[i]));
+                on_body(p, emote.as_ref().map_or(own, |(j, w)| mix(&own, &j[3 + i].0, *w)))
+            })
+        };
+        // A leg: standing, its foot stays where it is and its top goes with the hips; else it swings from the hip.
+        let leg = |i: usize, swing: f32| {
+            self.hips[i].map(|h| {
+                if let Some((j, w)) = emote.as_ref().filter(|(_, w)| *w > 0.) {
+                    // (With the lower torso, from the hip.)
+                    let own = mix(&rot(e, swing), &j[5 + i].0, *w);
+                    let tr = add(sub(add(mv(&lower, sub(h, root)), root), h), moved);
+                    return (h, mm(&lower, &own), tr);
+                }
+                if pace <= 0. && sat <= 0.001 {
+                    let foot = [h[0], h[1] - self.leg, h[2]];
+                    let tip = (shift / self.leg.max(1e-3)).clamp(-0.5, 0.5).asin();
+                    (foot, rot(fwd, rs * tip), [0., lift, 0.])
+                } else {
+                    (h, rot(e, swing + fs * 1.45 * sat), moved)
+                }
+            })
+        };
+        let sink = -self.leg * (1. - swing_leg.cos());
+        Posed {
+            bones: [Some((root, body, moved)), Some(on_body(self.neck, head)), arm(0), arm(1), leg(0, swing_leg), leg(1, -swing_leg)],
             sink,
-        )
+            twirl,
+        }
     }
 }
 
@@ -367,7 +772,17 @@ fn rig_of(tris: &mut [Tri], names: &[String]) -> Option<Rig> {
     for t in tris.iter_mut() {
         t.bone = bone[t.group as usize];
     }
-    Some(Rig { side, neck: [hc[0], lo[head][1], hc[2]], shoulders: [tops[0].map(shoulder), tops[1].map(shoulder)], hips: [hips[0].map(hip), hips[1].map(hip)], leg })
+    // What hangs (long hair, a cape, a tail) swings from its top; a short thing (a hat, a cap of hair) not at all.
+    let hang = (0..n)
+        .map(|g| {
+            if !used(g) || body.contains(&g) {
+                return None;
+            }
+            let w = ((hi[g][1] - lo[g][1] - 0.15 * h) / (0.25 * h)).clamp(0., 1.);
+            (w > 0.).then(|| ([c(g)[0], hi[g][1], c(g)[2]], w))
+        })
+        .collect();
+    Some(Rig { side, neck: [hc[0], lo[head][1], hc[2]], shoulders: [tops[0].map(shoulder), tops[1].map(shoulder)], hips: [hips[0].map(hip), hips[1].map(hip)], leg, hang })
 }
 
 /// The shadow's map: how dark the floor is under the model, over a square of the floor around its middle.
@@ -680,19 +1095,49 @@ impl Model {
         // The light: from over the viewer's left shoulder, and from above.
         let light = norm(add(add(mul(f, -0.7), mul(u, 0.6)), mul(s, -0.35)));
         let half = n as f32 / 2.;
-        // Each part's turn in the idle, at this moment.
-        let posed = self.rig.as_ref().filter(|_| view.t > 0. || view.pace > 0.).map(|r| r.pose(view.t, view.stride, view.pace));
-        let sink = posed.as_ref().map_or(0., |p| p.1) + view.up.max(0.);
-        // The avatar faces where it walked; the floor turns only with the camera.
-        let (hs, hc) = (view.yaw + view.heading).sin_cos();
-        let face = |p: V3| -> V3 { [p[0] * hc + p[2] * hs, p[1], -p[0] * hs + p[2] * hc] };
+        let turn = |p: V3, s: f32, c: f32| -> V3 { [p[0] * c + p[2] * s, p[1], -p[0] * s + p[2] * c] };
+        // Where the mouse is, as a way to look from the head in the model's own frame: at the point under the mouse
+        // as deep as the head is, and toward the viewer (the mouse on the head: it looks out at you).
+        let look = self.rig.as_ref().filter(|_| view.act.mouse_w > 0.).map(|r| {
+            let (s0, c0) = (view.yaw + view.heading).sin_cos();
+            let head = add(turn(sub(r.neck, self.center), s0, c0), self.center);
+            let zh = dot(sub(head, eye), f).max(1e-3);
+            let ray = add(add(f, mul(s, view.act.mouse[0] * t)), mul(u, view.act.mouse[1] * t));
+            let w = add(sub(add(eye, mul(ray, zh)), head), mul(norm(sub(eye, head)), self.radius * 0.9));
+            turn(w, -s0, c0)
+        });
+        // Each part's turn at this moment.
+        let moving = view.t > 0. || view.pace > 0. || view.act != Act::default();
+        let posed = self.rig.as_ref().filter(|_| moving).map(|r| r.pose(&view, look));
+        let sink = posed.as_ref().map_or(0., |p| p.sink) + view.up.max(0.);
+        // What hangs from it, swung out of place.
+        let hang = self.rig.as_ref().filter(|_| view.act.swing != [0., 0.]).map(|r| {
+            let (mut e, mut fwd) = ([0.; 3], [0.; 3]);
+            e[r.side] = 1.;
+            fwd[2 - r.side] = 1.;
+            // (Its front swing turns about `e` the way that takes the bottom forward, as the pose's `fs`.)
+            let facing: V3 = if r.side == 0 { [0., 0., -1.] } else { [-1., 0., 0.] };
+            let fs = if dot(mv(&rot(e, 0.1), [0., -1., 0.]), facing) >= 0. { 1. } else { -1. };
+            (r, [view.act.swing[0], fs * view.act.swing[1]], e, fwd)
+        });
+        // The avatar faces where it walked (and turns about in a gesture); the floor turns only with the camera.
+        let (hs, hc) = (view.yaw + view.heading + posed.as_ref().map_or(0., |p| p.twirl)).sin_cos();
+        let face = |p: V3| -> V3 { turn(p, hs, hc) };
         let mut shown: Vec<Shown> = Vec::with_capacity(self.tris.len());
         let mut transparent = Vec::new();
         for tri in &self.tris {
-            let (tp, tn) = match posed.as_ref().and_then(|p| p.0[tri.bone as usize].as_ref()) {
-                Some((at, m)) => (tri.p.map(|p| add(mv(m, sub(p, *at)), *at)), tri.n.map(|v| mv(m, v))),
-                None => (tri.p, tri.n),
-            };
+            let (mut tp, mut tn) = (tri.p, tri.n);
+            if let Some((r, sw, e, fwd)) = hang.as_ref() {
+                if let Some(Some((at, w))) = r.hang.get(tri.group as usize) {
+                    let m = mm(&rot(*fwd, sw[0] * w), &rot(*e, sw[1] * w));
+                    tp = tp.map(|p| add(mv(&m, sub(p, *at)), *at));
+                    tn = tn.map(|v| mv(&m, v));
+                }
+            }
+            if let Some((at, m, tr)) = posed.as_ref().and_then(|p| p.bones[tri.bone as usize].as_ref()) {
+                tp = tp.map(|p| add(add(mv(m, sub(p, *at)), *at), *tr));
+                tn = tn.map(|v| mv(m, v));
+            }
             let tp = tp.map(|mut p| {
                 p[1] += sink;
                 p

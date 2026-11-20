@@ -66,6 +66,22 @@ pub struct Data {
     jump: bool,
     up: f32,
     rise: f32,
+    /// What it does besides (mesh::Act, stepped by `behave`): where the mouse is over the box and whether it is on
+    /// it; the worn thing whose tile the mouse is on (its id) and where the avatar looks for it; how long nothing has
+    /// moved in the window (the mouse where it was, `still_at`) and the idle gestures done since; how fast what hangs
+    /// from it swings and the turn and walk a moment ago (what swings it); the gesture the next click plays; whether
+    /// the morning stretch has been done.
+    act: crate::mesh::Act,
+    mouse_to: [f32; 2],
+    over: bool,
+    focus_to: Option<(i64, [f32; 5])>,
+    still_for: f32,
+    still_at: Option<(f32, f32)>,
+    idle_did: u8,
+    swing_v: [f32; 2],
+    was: Option<(f32, f32)>,
+    poke: u8,
+    woke: bool,
     /// "Save as outfit" on its way; the outfit whose menu is open, and the one whose Delete waits for a second click.
     saving_look: bool,
     outfit_menu: Option<i64>,
@@ -189,6 +205,43 @@ pub fn want(r: &mut Root, link: &crate::link::Link, cx: &mut Context<Root>) {
                     }
                     "heading" => r.avatar.heading = x.parse().unwrap_or(0.),
                     "still" => r.avatar.moving = false,
+                    // act=wave g=1.2 sit=1 mouse=0.8,0.3 focus=46 swing=0.3,0 sleepy=1: caught in a gesture, looking…
+                    "act" => {
+                        use crate::mesh::*;
+                        r.avatar.act.kind = match x {
+                            "wave" => WAVE,
+                            "cheer" => CHEER,
+                            "admire" => ADMIRE,
+                            "stretch" => STRETCH,
+                            "yawn" => YAWN,
+                            "dance" => DANCE,
+                            _ => 0,
+                        };
+                    }
+                    "g" => r.avatar.act.g = x.parse().unwrap_or(0.),
+                    // emote=FILE: a KeyframeSequence file played (as an emote of the wheel would be).
+                    "emote" => {
+                        if let Some(m) = std::fs::read(x).ok().and_then(|b| crate::mesh::motion_of(&b)) {
+                            crate::mesh::keep_motion(1, m);
+                            (r.avatar.act.kind, r.avatar.act.emote) = (crate::mesh::EMOTE, 1);
+                        }
+                    }
+                    "sit" => r.avatar.act.sit = x.parse().unwrap_or(1.),
+                    "sleepy" => r.avatar.act.sleepy = x.parse().unwrap_or(1.),
+                    "mouse" => {
+                        let v: Vec<f32> = x.split(',').filter_map(|n| n.parse().ok()).collect();
+                        r.avatar.act.mouse = [v.first().copied().unwrap_or(0.), v.get(1).copied().unwrap_or(0.)];
+                        r.avatar.act.mouse_w = 1.;
+                    }
+                    "focus" => {
+                        if let Some(f) = focus_of(x.parse().unwrap_or(0)) {
+                            (r.avatar.act.focus, r.avatar.act.focus_w) = (f, 1.);
+                        }
+                    }
+                    "swing" => {
+                        let v: Vec<f32> = x.split(',').filter_map(|n| n.parse().ok()).collect();
+                        r.avatar.act.swing = [v.first().copied().unwrap_or(0.), v.get(1).copied().unwrap_or(0.)];
+                    }
                     _ => {}
                 }
             }
@@ -297,6 +350,7 @@ fn view_of(av: &Data) -> crate::mesh::View {
         pace: av.pace,
         up: av.up,
         rise: av.rise,
+        act: av.act,
     }
 }
 
@@ -312,7 +366,191 @@ fn moves(av: &Data) -> bool {
 
 /// Whether its run should go: turning, or moving in its idle.
 fn lively(av: &Data) -> bool {
-    av.solid.is_some() && (av.spin || (moves(av) && (av.moving || av.keys & 15 != 0 || av.pace > 0. || airborne(av))))
+    av.solid.is_some() && (av.spin || (moves(av) && (av.moving || av.keys & 15 != 0 || av.pace > 0. || airborne(av) || av.act != crate::mesh::Act::default())))
+}
+
+/// The hour on the PC's clock (0 to 23).
+fn hour_now() -> i64 {
+    (crate::time::now_secs() + crate::time::utc_offset_secs()).rem_euclid(86400) / 3600
+}
+
+/// Eases `v` toward `to` at `rate` (per second) over `dt`, landing on it when near.
+fn ease_to(v: &mut f32, to: f32, rate: f32, dt: f32) {
+    *v += (to - *v) * (1. - (-rate * dt).exp());
+    if (to - *v).abs() < 0.002 {
+        *v = to;
+    }
+}
+
+/// What the avatar does besides standing and walking, `dt` seconds on: the gesture under way ends when it has
+/// played; with its idle on, it looks at the mouse on the box and is sleepy late at night (22:00 to 5:00), and when
+/// nothing has moved in the window for a while (the mouse where it was, no key) it stretches or yawns (after 30 s, then
+/// every 50 s) and then sits down on the floor (after 2 minutes, 1 at night) until something moves; soon after the box
+/// first shows in the morning (5:00 to 9:00), it stretches. A worn thing whose tile the mouse is on, it looks at
+/// (`focus_of`). What hangs from it (hair, a cape) swings on a spring, pushed out of place as it turns and starts or
+/// stops walking. Whether anything changed.
+fn behave(av: &mut Data, dt: f32, mouse: (f32, f32), hour: i64) -> bool {
+    use crate::mesh::*;
+    let before = av.act;
+    let alive = av.moving;
+    let night = !(5..22).contains(&hour);
+    // (Nothing moving: the window's mouse where it was, no key held, no drag.)
+    let still = av.still_at.is_some_and(|p| (p.0 - mouse.0).abs() + (p.1 - mouse.1).abs() < 1.) && av.keys == 0 && av.drag.is_none() && av.pace <= 0.;
+    if still {
+        av.still_for += dt;
+    } else {
+        (av.still_for, av.idle_did, av.still_at) = (0., 0, Some(mouse));
+    }
+    if av.act.kind != 0 {
+        av.act.g += dt;
+        if av.act.g >= act_length(&av.act) {
+            (av.act.kind, av.act.g) = (0, 0.);
+        }
+    }
+    let sit_after = if night { 60. } else { 120. };
+    if alive && av.act.kind == 0 {
+        let due = 30. + 50. * f32::from(av.idle_did);
+        if av.still_for >= due && av.still_for < sit_after {
+            av.act.kind = if night || av.idle_did % 2 == 1 { YAWN } else { STRETCH };
+            av.idle_did += 1;
+        } else if !av.woke && av.t > 1.5 {
+            av.woke = true;
+            if (5..9).contains(&hour) {
+                av.act.kind = STRETCH;
+            }
+        }
+    }
+    let sitting = alive && av.still_for >= sit_after;
+    let a = &mut av.act;
+    let sit_rate = if sitting { 1.6 } else { 3.5 };
+    ease_to(&mut a.sit, if sitting { 1. } else { 0. }, sit_rate, dt);
+    ease_to(&mut a.sleepy, if alive && night { 1. } else { 0. }, 0.5, dt);
+    ease_to(&mut a.mouse_w, if alive && av.over { 1. } else { 0. }, 5., dt);
+    for k in 0..2 {
+        let to = if a.mouse_w > 0. { av.mouse_to[k] } else { 0. };
+        ease_to(&mut a.mouse[k], to, 9., dt);
+    }
+    match av.focus_to {
+        Some((_, f)) => {
+            for k in 0..5 {
+                if a.focus_w <= 0. {
+                    a.focus[k] = f[k];
+                } else {
+                    ease_to(&mut a.focus[k], f[k], 7., dt);
+                }
+            }
+            ease_to(&mut a.focus_w, 1., 6., dt);
+        }
+        None => {
+            ease_to(&mut a.focus_w, 0., 5., dt);
+            if a.focus_w <= 0. {
+                a.focus = [0.; 5];
+            }
+        }
+    }
+    // What hangs: a spring (about 1.4 swings a second, lightly damped) toward where the turn and the walk push it: out
+    // against the turn, back while walking.
+    let turn = av.yaw + av.heading + twirl(a);
+    let (w_turn, w_pace) = match av.was {
+        Some((t0, p0)) if dt > 0. => ((turn - t0) / dt, (av.pace - p0) / dt),
+        _ => (0., 0.),
+    };
+    av.was = Some((turn, av.pace));
+    let target = [(-0.1 * w_turn).clamp(-0.35, 0.35), (-0.22 * av.pace - 0.08 * w_pace).clamp(-0.4, 0.4)];
+    let (k, d) = (77., 3.2);
+    for i in 0..2 {
+        let v = &mut av.swing_v[i];
+        *v += (k * (target[i] - a.swing[i]) - d * *v) * dt;
+        a.swing[i] += *v * dt;
+        if (a.swing[i] - target[i]).abs() < 1e-3 && v.abs() < 1e-2 && target[i] == 0. {
+            (a.swing[i], *v) = (0., 0.);
+        }
+    }
+    av.act != before
+}
+
+/// Where the avatar looks for a worn thing, by its kind (Roblox's asset type): the head's turn and nod (down +), a
+/// bow, a twist of the body, an arm out (+ its right, - its left). Up at a hat or hair, down at a shirt, lower at
+/// trousers, at its feet for shoes, over its shoulder at what is on its back, an arm out for what is worn on the
+/// shoulder or held; None for what is not worn on a place (a face is where it already looks).
+fn focus_of(kind: i64) -> Option<[f32; 5]> {
+    Some(match kind {
+        8 | 41 => [0., -0.38, 0., 0., 0.],
+        2 | 11 | 43 | 45 | 64 | 65 | 67 | 68 => [0., 0.38, 0.05, 0., 0.],
+        12 | 66 | 69 | 72 => [0., 0.5, 0.12, 0., 0.],
+        70 | 71 => [0., 0.62, 0.2, 0., 0.],
+        47 => [0., 0.45, 0.08, 0., 0.],
+        46 => [0.95, 0.15, 0., 0.4, 0.],
+        44 => [-0.75, 0.15, 0., -0.1, 0.55],
+        19 => [-0.5, 0.25, 0., 0., 0.7],
+        _ => return None,
+    })
+}
+
+/// A click on the avatar (not a drag): it waves, jumps, cheers or dances, in turn, and between them plays the
+/// emotes on its wheel, one after another.
+fn poke(r: &mut Root, cx: &mut Context<Root>) {
+    use crate::mesh::*;
+    let av = &mut r.avatar;
+    if av.act.kind != 0 || airborne(av) || av.pace > 0. || !moves(av) {
+        return;
+    }
+    (av.still_for, av.idle_did) = (0., 0);
+    let emotes: Vec<i64> = match &av.got {
+        Some(Ok(a)) => a.emotes.iter().map(|e| e.id).collect(),
+        _ => Vec::new(),
+    };
+    let n = av.poke;
+    av.poke = av.poke.wrapping_add(1);
+    if !emotes.is_empty() && n % 2 == 1 {
+        play_emote(r, emotes[usize::from(n / 2) % emotes.len()], cx);
+        return;
+    }
+    let av = &mut r.avatar;
+    match (if emotes.is_empty() { n } else { n / 2 }) % 4 {
+        0 => av.act.kind = WAVE,
+        1 => av.jump = true,
+        2 => av.act.kind = CHEER,
+        _ => av.act.kind = DANCE,
+    }
+    av.act.g = 0.;
+    start_spin(r, cx);
+}
+
+/// Plays one of the account's emotes on the 3D avatar, as Roblox does: its motion is read from Roblox the first time
+/// (roblox::emote_motion; kept while the app runs), then played.
+fn play_emote(r: &mut Root, emote: i64, cx: &mut Context<Root>) {
+    use crate::mesh::*;
+    let go = move |r: &mut Root, cx: &mut Context<Root>| {
+        let av = &mut r.avatar;
+        if av.act.kind != 0 && av.act.kind != EMOTE || !moves(av) {
+            return;
+        }
+        (av.act.kind, av.act.emote, av.act.g) = (EMOTE, emote, 0.);
+        (av.still_for, av.idle_did) = (0., 0);
+        start_spin(r, cx);
+    };
+    if motion(emote).is_some() {
+        go(r, cx);
+        return;
+    }
+    let user = r.avatar.of;
+    let rx = roblox::run(move || roblox::emote_motion(emote).and_then(|b| motion_of(&b).ok_or_else(|| "no motion in it".to_string())));
+    cx.spawn(async move |this, cx| {
+        match rx.await {
+            Ok(Ok(m)) => {
+                keep_motion(emote, m);
+                let _ = this.update(cx, |r, cx| {
+                    if r.avatar.of == user {
+                        go(r, cx);
+                    }
+                });
+            }
+            Ok(Err(e)) => crate::net::note_failed("Emote", &format!("asset {emote}"), &e),
+            Err(_) => {}
+        }
+    })
+    .detach();
 }
 
 /// A walking key on the 3D box: its bit in `keys` (W or ↑ 1, S or ↓ 2, A or ← 4, D or → 8, Shift 16: it runs).
@@ -336,6 +574,8 @@ const STAGE_BIG_MOVING: usize = 704;
 /// The side of a saved picture, in dots.
 const SAVED: usize = 1600;
 thread_local! {
+    /// Where the 3D box was last laid out in the window (the mouse over it is read against it).
+    static STAGE_AT: std::cell::Cell<Option<Bounds<Pixels>>> = const { std::cell::Cell::new(None) };
     /// Each account's avatar model read this run (by its Roblox user), with Roblox's address of it.
     static MODELS: std::cell::RefCell<std::collections::HashMap<i64, Kept>> = Default::default();
     /// The last models by what they are of (the user, and roblox::Avatar::key: body and look): R6 to R15 and back, or
@@ -447,6 +687,10 @@ fn solid(r: &mut Root, cx: &mut Context<Root>) {
                     return false;
                 }
                 let first = r.avatar.solid.is_none();
+                // (A model after a change: the avatar looks down at itself and turns about to show it.)
+                if r.avatar.swapping && !first && r.avatar.moving && model.moves() {
+                    (r.avatar.act.kind, r.avatar.act.g) = (crate::mesh::ADMIRE, 0.);
+                }
                 // (Three at most: a model holds its pictures whole, megabytes each.)
                 MODELS.with(|m| {
                     let mut m = m.borrow_mut();
@@ -541,12 +785,16 @@ fn start_spin(r: &mut Root, cx: &mut Context<Root>) {
             let window = this.update(cx, |_, cx| cx.windows().first().copied()).ok().flatten();
             // (Moving now: as the animated themes, live::running, the window seen and in use, or Settings says it goes
             // on behind.)
-            let (moving, keyed) = window
+            let (moving, keyed, mouse) = window
                 .and_then(|h| {
                     let me = this.clone();
-                    cx.update_window(h, move |_, w, cx| (crate::live::running(w), me.read_with(cx, |r, _| r.avatar_focus.is_focused(w)).unwrap_or(false))).ok()
+                    cx.update_window(h, move |_, w, cx| {
+                        let m = w.mouse_position();
+                        (crate::live::running(w), me.read_with(cx, |r, _| r.avatar_focus.is_focused(w)).unwrap_or(false), (f32::from(m.x), f32::from(m.y)))
+                    })
+                    .ok()
                 })
-                .unwrap_or((true, true));
+                .unwrap_or((true, true, (0., 0.)));
             let on = this
                 .update(cx, |r, cx| {
                     if r.avatar.of != user || r.avatar.spin_run != run || !lively(&r.avatar) || !on_view(r) {
@@ -585,6 +833,11 @@ fn start_spin(r: &mut Root, cx: &mut Context<Root>) {
                     if r.avatar.moving && moves(&r.avatar) {
                         r.avatar.t += dt;
                         changed = true;
+                    }
+                    // (A hidden shot can hold what it was set to: BLOXKEEP_SHOT_HOLD.)
+                    let held = cfg!(feature = "shot") && std::env::var("BLOXKEEP_SHOT_HOLD").is_ok();
+                    if moves(&r.avatar) && !held {
+                        changed |= behave(&mut r.avatar, dt, mouse, hour_now());
                     }
                     if changed {
                         draw(r, cx);
@@ -1257,7 +1510,23 @@ fn stage(root: &Root, a: &Avatar, side: f32, cx: &mut Context<Root>) -> Stateful
                 cx.notify();
             }),
         )
+        .child(canvas(|bounds: Bounds<Pixels>, _, _| STAGE_AT.set(Some(bounds)), |_, _, _, _| {}).absolute().inset_0())
+        .on_hover(cx.listener(|r, over: &bool, _, cx| {
+            r.avatar.over = *over;
+            start_spin(r, cx);
+        }))
         .on_mouse_move(cx.listener(|r, e: &MouseMoveEvent, _, cx| {
+            // Where the mouse is over the box (-1 to 1 each way, right and up): it looks there.
+            if let Some(b) = STAGE_AT.get() {
+                let (w, h) = (f32::from(b.size.width).max(1.), f32::from(b.size.height).max(1.));
+                let x = (f32::from(e.position.x) - f32::from(b.origin.x)) / w * 2. - 1.;
+                let y = 1. - (f32::from(e.position.y) - f32::from(b.origin.y)) / h * 2.;
+                r.avatar.mouse_to = [x.clamp(-1., 1.), y.clamp(-1., 1.)];
+                if !r.avatar.over {
+                    r.avatar.over = true;
+                    start_spin(r, cx);
+                }
+            }
             if e.pressed_button != Some(MouseButton::Left) {
                 if r.avatar.drag.take().is_some() {
                     cx.notify();
@@ -1272,8 +1541,13 @@ fn stage(root: &Root, a: &Avatar, side: f32, cx: &mut Context<Root>) -> Stateful
                 draw(r, cx);
             }
         }))
-        .on_mouse_up(MouseButton::Left, cx.listener(|r, _, _, cx| {
-            r.avatar.drag = None;
+        .on_mouse_up(MouseButton::Left, cx.listener(|r, e: &MouseUpEvent, _, cx| {
+            // (A click, not a drag: it does something.)
+            if let Some((x0, y0, _, _)) = r.avatar.drag.take() {
+                if (f32::from(e.position.x) - x0).abs() + (f32::from(e.position.y) - y0).abs() < 5. {
+                    poke(r, cx);
+                }
+            }
             cx.notify();
         }))
         .on_mouse_up_out(MouseButton::Left, cx.listener(|r, _, _, cx| {
@@ -1491,8 +1765,20 @@ fn filled(root: &Root, a: &Avatar, width: f32, cx: &mut Context<Root>) -> AnyEle
         .items
         .iter()
         .map(|it| {
-            let id = it.id;
+            let (id, focus) = (it.id, focus_of(it.kind_id()));
             tile_of(tile_w, &it.pic, it.name.clone(), busy == Some(id), cx)
+                .id(("av-worn", id as u64 as usize))
+                // The mouse on it: the avatar looks at where it wears it.
+                .when_some(focus, |d, f| {
+                    d.on_hover(cx.listener(move |r, over: &bool, _, cx| {
+                        if *over {
+                            r.avatar.focus_to = Some((id, f));
+                        } else if r.avatar.focus_to.is_some_and(|(i, _)| i == id) {
+                            r.avatar.focus_to = None;
+                        }
+                        start_spin(r, cx);
+                    }))
+                })
                 .child(price_row(root, av.worth.as_ref().and_then(|w| w.get(&id)).copied()))
                 .child(
                     div().absolute().top(px(6.)).right(px(6.)).child(
@@ -1514,6 +1800,10 @@ fn filled(root: &Root, a: &Avatar, width: f32, cx: &mut Context<Root>) -> AnyEle
         .map(|e| {
             let (id, slot) = (e.id, e.slot);
             tile_of(tile_w, &e.pic, e.name.clone(), busy == Some(id), cx)
+                // Clicked: the 3D avatar plays it.
+                .id(("av-emote", slot as usize))
+                .cursor_pointer()
+                .on_click(cx.listener(move |r, _, _, cx| play_emote(r, id, cx)))
                 .child(div().absolute().top(px(8.)).left(px(8.)).size(px(22.)).flex().items_center().justify_center().rounded_full().bg(c(RAISED_2)).text_size(px(T_S)).font_weight(FontWeight::SEMIBOLD).text_color(c(TEXT)).child(slot.to_string()))
                 .child(
                     div().absolute().top(px(6.)).right(px(6.)).child(
