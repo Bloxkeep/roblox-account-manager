@@ -95,10 +95,11 @@ impl RenderImage {
     }
 
     /// (Bloxkeep) Its pixels are let go here once the first atlas has them on the GPU: a picture is then kept once, on
-    /// the graphics card, not twice (a still image only; a moving one's frames are uploaded one by one as they play).
-    /// An atlas asking for it again later gets nothing and says so (`take_lost_images`).
+    /// the graphics card, not twice. A moving one's frames go one by one, each after its own upload as it first plays
+    /// (a turning decoration's 24 frames held 4.6 MB here for as long as it was kept). An atlas asking for one again
+    /// later gets nothing and says so (`take_lost_images`).
     pub fn discard_after_upload(mut self) -> Self {
-        self.discard = self.sizes.len() == 1;
+        self.discard = true;
         self
     }
 
@@ -160,7 +161,53 @@ impl Drop for RenderImage {
         if let Some(held) = HELD.lock().as_mut() {
             held.remove(&self.id.0);
         }
+        if let Some(from) = FROM.lock().as_mut() {
+            from.remove(&self.id.0);
+        }
+        if let Some(labels) = LABELS.lock().as_mut() {
+            labels.remove(&self.id.0);
+        }
     }
+}
+
+/// (Bloxkeep) Pictures decoded for drawing (img's ImageDecoder) whose pixels are let go after their upload: by the
+/// RenderImage, the `Image` it was decoded from. GPUI kept every decoded picture's pixels here as well as on the
+/// graphics card, for as long as its asset was cached (a game's cover 1.3 MB, a theme's picture 15 MB).
+static FROM: parking_lot::Mutex<Option<std::collections::HashMap<usize, u64>>> = parking_lot::Mutex::new(None);
+/// (Bloxkeep) Images whose decoded pixels stay: wanted where their upload wasn't (another window's atlas, or one made
+/// again after the graphics device was lost), see `lost_sources`.
+static KEEP: parking_lot::Mutex<Option<std::collections::HashSet<u64>>> = parking_lot::Mutex::new(None);
+
+/// (Bloxkeep) A picture just decoded for drawing from `image`: its pixels let go after the upload unless that image's
+/// are kept (`keep_pixels_of`).
+pub(crate) fn for_drawing(image: u64, decoded: std::sync::Arc<RenderImage>) -> std::sync::Arc<RenderImage> {
+    if KEEP.lock().as_ref().is_some_and(|k| k.contains(&image)) {
+        return decoded;
+    }
+    match std::sync::Arc::try_unwrap(decoded) {
+        Ok(r) => {
+            let r = r.discard_after_upload();
+            label_picture(r.id, "picture");
+            if r.discard {
+                FROM.lock().get_or_insert_with(Default::default).insert(r.id.0, image);
+            }
+            std::sync::Arc::new(r)
+        }
+        Err(shared) => shared,
+    }
+}
+
+/// (Bloxkeep) Of pictures reported lost (`take_lost_images`), the `Image`s they were decoded from by img's loader:
+/// those to decode again (their asset removed), now kept (`keep_pixels_of`).
+pub fn lost_sources(lost: &[ImageId]) -> Vec<u64> {
+    let from = FROM.lock();
+    let Some(from) = from.as_ref() else { return Vec::new() };
+    lost.iter().filter_map(|id| from.get(&id.0).copied()).collect()
+}
+
+/// (Bloxkeep) This image's pictures decoded from now on keep their pixels (see `lost_sources`).
+pub fn keep_pixels_of(image: u64) {
+    KEEP.lock().get_or_insert_with(Default::default).insert(image);
 }
 
 /// (Bloxkeep) The pixels every live RenderImage holds (decoded pictures, their smaller copies, the theme's pictures,
@@ -170,6 +217,15 @@ static HELD: parking_lot::Mutex<Option<std::collections::HashMap<usize, ((u32, u
 
 fn held_add(id: ImageId, size: (u32, u32), frames: usize, bytes: usize) {
     HELD.lock().get_or_insert_with(Default::default).insert(id.0, (size, frames, bytes));
+}
+
+/// (Bloxkeep) What each picture is, as the app named it (`label_picture`), for the memory line.
+static LABELS: parking_lot::Mutex<Option<std::collections::HashMap<usize, &'static str>>> = parking_lot::Mutex::new(None);
+
+/// (Bloxkeep) Names what a picture is, for error.log's memory line (`held_pictures`).
+#[doc(hidden)]
+pub fn label_picture(id: ImageId, label: &'static str) {
+    LABELS.lock().get_or_insert_with(Default::default).insert(id.0, label);
 }
 
 fn held_less(id: ImageId, bytes: usize) {
@@ -187,8 +243,8 @@ pub struct HeldPictures {
     pub holding: usize,
     /// Those pixels' bytes.
     pub bytes: usize,
-    /// The biggest holders: first frame's size, frames, bytes; biggest first.
-    pub biggest: Vec<((u32, u32), usize, usize)>,
+    /// The biggest holders: first frame's size, frames, bytes, what it is (`label_picture`, "" unnamed); biggest first.
+    pub biggest: Vec<((u32, u32), usize, usize, &'static str)>,
 }
 
 /// (Bloxkeep) The pixels the live pictures hold now, with the `top` biggest.
@@ -196,7 +252,12 @@ pub struct HeldPictures {
 pub fn held_pictures(top: usize) -> HeldPictures {
     let held = HELD.lock();
     let Some(held) = held.as_ref() else { return HeldPictures::default() };
-    let mut all: Vec<((u32, u32), usize, usize)> = held.values().copied().filter(|e| e.2 > 0).collect();
+    let labels = LABELS.lock();
+    let mut all: Vec<((u32, u32), usize, usize, &'static str)> = held
+        .iter()
+        .filter(|(_, e)| e.2 > 0)
+        .map(|(id, e)| (e.0, e.1, e.2, labels.as_ref().and_then(|l| l.get(id).copied()).unwrap_or("")))
+        .collect();
     let bytes = all.iter().map(|e| e.2).sum();
     let holding = all.len();
     all.sort_unstable_by(|a, b| b.2.cmp(&a.2));

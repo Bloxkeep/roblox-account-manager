@@ -60,6 +60,8 @@ struct Scene {
     /// The pictures keep their pixels in memory too: one was wanted again where it wasn't (drawn in two windows, or
     /// the graphics card started over), and letting go again would draw it again and again.
     keep_pixels: bool,
+    /// A picture of the theme was wanted again where its pixels weren't, once (see `lost`).
+    lost_once: bool,
 }
 
 impl Global for Scene {}
@@ -173,7 +175,13 @@ pub fn lost(ids: &[gpui_kit::ImageId], cx: &mut App) {
         return;
     }
     let s = cx.default_global::<Scene>();
-    s.keep_pixels = true;
+    // (Lost once, as when the graphics card starts over, it is drawn again and lets go of its pixels again: kept for
+    // good from the first loss, the theme's picture held 14.6 MB at 2560 px for the rest of the run, the owner's
+    // error.log 2026-11-20. Lost again, it is wanted in two places, and kept.)
+    if s.lost_once {
+        s.keep_pixels = true;
+    }
+    s.lost_once = true;
     let mut gone = Vec::new();
     if backdrop {
         if let Some((_, p, f)) = s.shown.take() {
@@ -208,6 +216,7 @@ pub fn fade_from(window: &mut Window, cx: &mut App) {
         dot.swap(0, 2);
     }
     let pic = Arc::new(RenderImage::new(vec![image::Frame::new(frame)]));
+    gpui_kit::label_picture(pic.id, "theme fade");
     if let Some((old, ..)) = cx.default_global::<Scene>().fade.replace((pic, std::time::Instant::now(), None)) {
         cx.drop_image(old, Some(window));
     }
@@ -634,7 +643,10 @@ fn draw_task(key: Key, under: Hsla, veil: Option<Hsla>, cx: &mut Context<Root>) 
     let user = if crate::theme::scene_bytes(&key.file).is_none() { crate::images::user(&key.file) } else { None };
     let (under, veil) = (under.to_rgb(), veil.map(|v| v.to_rgb()));
     let keep = cx.default_global::<Scene>().keep_pixels;
-    let done = move |r: RenderImage| if keep { r } else { r.discard_after_upload() };
+    let done = move |r: RenderImage, what: &'static str| {
+        gpui_kit::label_picture(r.id, what);
+        if keep { r } else { r.discard_after_upload() }
+    };
     cx.background_executor().spawn(async move {
         #[cfg(feature = "core")]
         let started = std::time::Instant::now();
@@ -652,8 +664,8 @@ fn draw_task(key: Key, under: Hsla, veil: Option<Hsla>, cx: &mut Context<Root>) 
         }
         // (Their pixels go once they are on the graphics card: kept there, not twice. Lost there, `lost` draws them again.)
         Some((
-            done(RenderImage::new(vec![image::Frame::new(pic)])),
-            frosted.map(|f| done(RenderImage::new(vec![image::Frame::new(f)]))),
+            done(RenderImage::new(vec![image::Frame::new(pic)]), if keep { "theme picture (kept)" } else { "theme picture" }),
+            frosted.map(|f| done(RenderImage::new(vec![image::Frame::new(f)]), if keep { "theme frost (kept)" } else { "theme frost" })),
             extremes,
         ))
     })

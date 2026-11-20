@@ -34,6 +34,7 @@ mod media;
 mod wallpaper_engine;
 mod window_capture;
 mod mesh;
+mod motion;
 mod itemwatch;
 mod modstore;
 mod launcher_icons;

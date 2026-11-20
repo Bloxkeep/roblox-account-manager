@@ -64,6 +64,18 @@ pub fn schedule<V: 'static>(view: WeakEntity<V>, out: PathBuf, w: f32, h: f32, w
                     cx.background_executor().timer(Duration::from_millis(150)).await;
                 }
             }
+            // BLOXKEEP_SHOT_TALLY=<s>: the window left to draw as it would on screen (a frame whenever something asks,
+            // at most every 4 ms, a 240 Hz screen), for 3 counts of s seconds (frame_tally.rs prints them).
+            if let (Ok(&h), Some(s)) = (handle.as_ref(), std::env::var("BLOXKEEP_SHOT_TALLY").ok().and_then(|v| v.parse::<u64>().ok())) {
+                let _ = gpui_kit::take_frame_tally();
+                let until = std::time::Instant::now() + Duration::from_secs(s * 3 + 1);
+                while std::time::Instant::now() < until {
+                    let _ = cx.update_window(h, |_, window, cx| window.vsync_for_shot(cx));
+                    cx.background_executor().timer(Duration::from_millis(4)).await;
+                }
+                let _ = cx.update(|cx| cx.quit());
+                return;
+            }
             // BLOXKEEP_SHOT_BENCH=<n>: what each frame costs, with the script's mouse (see `frames`): no pictures.
             if let (Ok(&h), Some(n)) = (handle.as_ref(), std::env::var("BLOXKEEP_SHOT_BENCH").ok().and_then(|v| v.parse::<usize>().ok())) {
                 frames(h, &out, n, true, cx).await;

@@ -52,14 +52,16 @@ fn line(why: &str, cx: &mut App) -> usize {
     let biggest: Vec<String> = pics
         .biggest
         .iter()
-        .map(|((w, h), frames, bytes)| {
+        .map(|((w, h), frames, bytes, what)| {
             let size = *bytes as f64 / 1048576.;
-            if *frames > 1 { format!("{w}x{h} x{frames} frames {size:.1} MB") } else { format!("{w}x{h} {size:.1} MB") }
+            let what = if what.is_empty() { String::new() } else { format!(" {what}") };
+            if *frames > 1 { format!("{w}x{h} x{frames} frames{what} {size:.1} MB") } else { format!("{w}x{h}{what} {size:.1} MB") }
         })
         .collect();
     let (card, system) = gpu();
+    let ((own_committed, own_used), (other_committed, other_used, other_count)) = heaps();
     write(&format!(
-        "Memory ({why}): private {} MB, in RAM {} MB (Task Manager's number), working set {} MB (peak {} MB); Rust heap {} MB (peak {} MB since the last line), of it picture pixels {} MB in {} of {} pictures (biggest: {}); graphics card atlas {} textures, {} MB; pictures kept {} ({} MB as files, {} smaller copies); graphics memory this process uses {} MB on the card, {} MB in system memory; not in Rust's heap (Windows, graphics driver, freed heap): {} MB.",
+        "Memory ({why}): private {} MB, in RAM {} MB (Task Manager's number), working set {} MB (peak {} MB); Rust heap {} MB (peak {} MB since the last line), of it picture pixels {} MB in {} of {} pictures (biggest: {}); graphics card atlas {} textures, {} MB; pictures kept {} ({} MB as files, {} smaller copies); graphics memory this process uses {} MB on the card, {} MB in system memory; not in Rust's heap (Windows, graphics driver, freed heap): {} MB; Windows heaps: the app's {} MB kept, {} MB of it in use; {} others (graphics driver, Windows) {} MB kept, {} MB in use.",
         mb(private),
         mb(private_working),
         mb(working),
@@ -78,6 +80,11 @@ fn line(why: &str, cx: &mut App) -> usize {
         mb(card),
         mb(system),
         mb(private.saturating_sub(heap)),
+        mb(own_committed),
+        mb(own_used),
+        other_count,
+        mb(other_committed),
+        mb(other_used),
     ));
     private_working
 }
@@ -112,6 +119,40 @@ fn gpu() -> (usize, usize) {
         }
         (card as usize, system as usize)
     }
+}
+
+/// The process's heaps as Windows keeps them (HeapSummary): memory kept for each (committed) and what of it is in use,
+/// for the app's own heap (Rust's allocations) and for the others together (the graphics driver's, Windows'). Kept and
+/// not in use is freed memory the heap holds on to.
+#[cfg(windows)]
+fn heaps() -> ((usize, usize), (usize, usize, usize)) {
+    use windows_sys::Win32::{
+        Foundation::HANDLE,
+        System::Memory::{GetProcessHeap, GetProcessHeaps, HEAP_SUMMARY, HeapSummary},
+    };
+    let summary = |h: HANDLE| {
+        let mut s = HEAP_SUMMARY { cb: std::mem::size_of::<HEAP_SUMMARY>() as u32, cbAllocated: 0, cbCommitted: 0, cbReserved: 0, cbMaxReserve: 0 };
+        // SAFETY: h is one of this process's heaps; s is this frame's own, its size in cb.
+        if unsafe { HeapSummary(h, 0, &mut s) } == 0 { (0, 0) } else { (s.cbCommitted, s.cbAllocated) }
+    };
+    let mut all: Vec<HANDLE> = vec![std::ptr::null_mut(); 256];
+    // SAFETY: the buffer holds as many handles as it says; the call writes at most that many.
+    let n = (unsafe { GetProcessHeaps(all.len() as u32, all.as_mut_ptr()) } as usize).min(all.len());
+    // SAFETY: no arguments; the process heap of this process.
+    let own = unsafe { GetProcessHeap() };
+    let mut others = (0, 0, 0);
+    for &h in &all[..n] {
+        if h != own {
+            let (k, u) = summary(h);
+            others = (others.0 + k, others.1 + u, others.2 + 1);
+        }
+    }
+    (summary(own), others)
+}
+
+#[cfg(not(windows))]
+fn heaps() -> ((usize, usize), (usize, usize, usize)) {
+    ((0, 0), (0, 0, 0))
 }
 
 /// This process's private bytes, private working set (Task Manager's "Memory"), working set and peak working set.

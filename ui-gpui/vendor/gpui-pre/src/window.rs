@@ -1257,6 +1257,10 @@ pub struct Window {
     pub(crate) tooltip_bounds: Option<TooltipBounds>,
     pub(crate) next_frame_callbacks: Rc<RefCell<Vec<FrameCallback>>>,
     pub(crate) dirty_views: FxHashSet<EntityId>,
+    /// Bloxkeep: every entity notified since the last frame, views or not. A cached view whose render read one of them
+    /// is drawn again (view.rs): its view isn't marked dirty when the entity read isn't itself a view under it (a
+    /// model, the window's root view, a text box's state read by an element).
+    pub(crate) notified: FxHashSet<EntityId>,
     focus_listeners: SingleSubscriberSet<AnyWindowFocusListener>,
     pub(crate) focus_lost_listeners: SingleSubscriberSet<AnyObserver>,
     focus_lost_path: SmallVec<[FocusId; 8]>,
@@ -1403,6 +1407,53 @@ fn when_free(cx: &crate::AsyncApp, what: &'static str, work: impl FnOnce(&mut cr
     }
     note_late(what);
     cx.foreground_executor().clone().spawn(async move { work(&mut cx) }).detach();
+}
+
+/// Bloxkeep: how long until the next step of a clock shared by the whole process, `interval` apart. Everything that
+/// moves now and then (repeating animations capped with `with_max_fps`, the animated theme's frames) waits for it, so
+/// their frames land on the same steps and are drawn together: on clocks of their own, each started from its own
+/// draw, they drifted apart and the window was drawn for each (the owner's error.log, 2026-11-20: 66 a second for two
+/// things at 30).
+#[doc(hidden)]
+pub fn frame_grid_wait(interval: Duration) -> Duration {
+    static START: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
+    let every = interval.as_nanos().max(1);
+    let since = START.get_or_init(std::time::Instant::now).elapsed().as_nanos();
+    let left = every - since % every;
+    // (A step a moment away, after a draw for something else: the one after it, not two draws back to back.)
+    Duration::from_nanos(if left < every / 8 { left + every } else { left } as u64)
+}
+
+thread_local! {
+    /// What waits for the next step of the shared clock, by its step (µs).
+    static FRAME_STEPS: std::cell::RefCell<FxHashMap<u64, Vec<Box<dyn FnOnce(&mut App)>>>> = std::cell::RefCell::new(FxHashMap::default());
+}
+
+/// Bloxkeep: runs `f` at the next step of the shared clock (`frame_grid_wait`), together with everything else waiting
+/// for that step, in one update: what they ask to be drawn is then drawn in one frame. One timer per step for all of
+/// them: timers of their own, even aimed at the same moment, fire a few ms apart on Windows, often a display refresh
+/// apart, and each was drawn on its own.
+#[doc(hidden)]
+pub fn on_frame_step(cx: &mut App, interval: Duration, f: impl FnOnce(&mut App) + 'static) {
+    let key = interval.as_micros() as u64;
+    let first = FRAME_STEPS.with(|s| {
+        let mut s = s.borrow_mut();
+        let due = s.entry(key).or_default();
+        due.push(Box::new(f));
+        due.len() == 1
+    });
+    if first {
+        cx.spawn(async move |cx| {
+            cx.background_executor().timer(frame_grid_wait(interval)).await;
+            let due = FRAME_STEPS.with(|s| s.borrow_mut().remove(&key)).unwrap_or_default();
+            cx.update(|cx| {
+                for f in due {
+                    f(cx);
+                }
+            });
+        })
+        .detach();
+    }
 }
 
 /// What was drawn and presented since the last call (Bloxkeep's error.log line); starts the count over.
@@ -2504,6 +2555,7 @@ impl Window {
             next_tooltip_id: TooltipId::default(),
             tooltip_bounds: None,
             dirty_views: FxHashSet::default(),
+            notified: FxHashSet::default(),
             focus_listeners: SingleSubscriberSet::new(),
             focus_lost_listeners: SingleSubscriberSet::new(),
             focus_lost_path: SmallVec::new(),
@@ -2708,6 +2760,14 @@ impl Window {
     /// Obtain a handle to the window that belongs to this context.
     pub fn window_handle(&self) -> AnyWindowHandle {
         self.handle
+    }
+
+    /// Bloxkeep: the window drawn again on the next frame with its cached views kept (`refresh` draws every one anew):
+    /// what is drawn outside them (an animated theme's layer) moves while the page under it is reused.
+    pub fn redraw(&mut self) {
+        if self.invalidator.not_drawing() {
+            self.invalidator.set_dirty(true);
+        }
     }
 
     /// Mark the window as dirty, scheduling it to be redrawn on the next frame.
@@ -3835,6 +3895,7 @@ impl Window {
             }
         }
         self.dirty_views.clear();
+        self.notified.clear();
         self.next_frame.window_active = self.active.get();
 
         // Register requested input handler with the platform window.
@@ -3957,7 +4018,9 @@ impl Window {
 
     fn invalidate_entities(&mut self) {
         let mut views = self.invalidator.take_views();
+        self.notified.clear();
         for entity in views.drain() {
+            self.notified.insert(entity);
             self.mark_view_dirty(entity);
         }
         self.invalidator.replace_views(views);
@@ -3986,6 +4049,31 @@ impl Window {
     #[doc(hidden)]
     pub fn present_for_bench(&mut self) {
         self.present();
+    }
+
+    /// Bloxkeep (src/motion.rs): whether the mouse would reach hitbox `id` at `at` in the frame being drawn, nothing
+    /// that blocks the mouse over it there (a dialog's backdrop, a menu): whether what is under it is seen.
+    #[doc(hidden)]
+    pub fn hitbox_reached(&self, id: HitboxId, at: Point<Pixels>) -> bool {
+        self.next_frame.hit_test(at).ids.contains(&id)
+    }
+
+    /// Bloxkeep's frame count for a hidden --shot window (BLOXKEEP_SHOT_TALLY): one display refresh as a frame request
+    /// makes it (the next-frame callbacks, then a draw and present only when something asked for one), counted in the
+    /// frame tally as a real one is.
+    #[doc(hidden)]
+    pub fn vsync_for_shot(&mut self, cx: &mut App) {
+        let callbacks = self.next_frame_callbacks.take();
+        for callback in callbacks {
+            callback(self, cx);
+        }
+        if self.invalidator.is_dirty() {
+            let drawing = std::time::Instant::now();
+            let clear = self.draw(cx);
+            self.present();
+            clear.clear(cx);
+            count_frame(Some(drawing.elapsed()));
+        }
     }
 
     /// Presents the most recently drawn frame if it hasn't been presented yet.
@@ -4726,7 +4814,8 @@ impl Window {
     /// Obtain the current element opacity. This method should only be called during the
     /// prepaint phase of element drawing.
     #[inline]
-    pub(crate) fn element_opacity(&self) -> f32 {
+    /// (Bloxkeep: public, for src/motion.rs.)
+    pub fn element_opacity(&self) -> f32 {
         self.invalidator.debug_assert_paint_or_prepaint();
         self.element_opacity
     }

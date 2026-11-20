@@ -608,7 +608,8 @@ impl Asset for ImageDecoder {
         cx: &mut App,
     ) -> impl Future<Output = Self::Output> + Send + 'static {
         let renderer = cx.svg_renderer();
-        async move { source.to_image_data(renderer).map_err(Into::into) }
+        // (Bloxkeep) Its pixels go once on the graphics card, as the app's own copies' do (crate::for_drawing).
+        async move { source.to_image_data(renderer).map(|r| crate::assets::for_drawing(source.id, r)).map_err(Into::into) }
     }
 }
 

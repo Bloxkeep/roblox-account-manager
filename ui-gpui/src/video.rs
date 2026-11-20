@@ -354,6 +354,7 @@ async fn play(this: WeakEntity<Video>, rx: mpsc::Receiver<Frame>, stop: StopOnDr
         }
         let Some(pixels) = image::RgbaImage::from_raw(frame.w, frame.h, frame.bgra) else { continue };
         let shown = Arc::new(RenderImage::new(vec![image::Frame::new(pixels)]));
+        gpui_kit::label_picture(shown.id, "video frame");
         shown_any = true;
         let alive = this.update(cx, |v, cx| {
             if let Some(old) = v.frame.replace(shown) {

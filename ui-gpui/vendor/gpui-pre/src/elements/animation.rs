@@ -455,14 +455,13 @@ impl<E: IntoElement + 'static> Element for AnimationElement<E> {
                             state.delayed_frame_pending.set(true);
                             let delayed_frame_pending = state.delayed_frame_pending.clone();
                             let view = window.current_view();
+                            // (Bloxkeep: on the process's shared clock, so all of them, and the animated
+                            // theme, are drawn in the same frames; see `on_frame_step`.)
                             let interval = Duration::from_secs_f32(1.0 / max_fps);
-                            window
-                                .spawn(cx, async move |cx| {
-                                    cx.background_executor().timer(interval).await;
-                                    delayed_frame_pending.set(false);
-                                    cx.update(move |_, cx| cx.notify(view)).ok();
-                                })
-                                .detach();
+                            crate::on_frame_step(cx, interval, move |cx| {
+                                delayed_frame_pending.set(false);
+                                cx.notify(view);
+                            });
                         }
                     }
                     _ => window.request_animation_frame(),

@@ -21,8 +21,13 @@ pub fn start(cx: &mut App) {
     })
     .detach();
     cx.spawn(async move |cx| {
+        // (A shot's count, BLOXKEEP_SHOT_TALLY=<s>: every s seconds, to compare builds.)
+        #[cfg(feature = "shot")]
+        let every = std::env::var("BLOXKEEP_SHOT_TALLY").ok().and_then(|v| v.parse().ok()).map_or(EVERY, Duration::from_secs);
+        #[cfg(not(feature = "shot"))]
+        let every = EVERY;
         loop {
-            cx.background_executor().timer(EVERY).await;
+            cx.background_executor().timer(every).await;
             late_messages("in the last 10 min");
             let t = gpui_kit::take_frame_tally();
             let cpu = ui_thread_cpu();

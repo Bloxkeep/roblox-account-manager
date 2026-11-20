@@ -285,9 +285,59 @@ pub fn init(cx: &mut App) {
     .detach();
 }
 
+thread_local! {
+    /// Pictures the app draws itself (the logo, the Home banner, decorations, the 3D avatar: `made`), by image: what
+    /// kind, and the picture while it lives.
+    static MADE: std::cell::RefCell<HashMap<gpui_kit::ImageId, (&'static str, std::sync::Weak<RenderImage>)>> = Default::default();
+    /// Kinds of those that were wanted again where their pixels weren't: made keeping them from then on.
+    static MADE_KEEP: std::cell::RefCell<std::collections::HashSet<&'static str>> = Default::default();
+    /// Those wanted again where their pixels weren't: made again by whoever keeps them (`made_lost`).
+    static MADE_LOST: std::cell::RefCell<std::collections::HashSet<gpui_kit::ImageId>> = Default::default();
+}
+
+/// A picture the app drew itself (`kind` names what it is): its pixels leave memory once on the graphics card, as the
+/// pictures from the web do. Every such picture kept its pixels here as well, for as long as it was shown (the Home
+/// banner 1.9 MB, a decoration's frames 4.6 MB, each picture of the 3D avatar up to 5 MB). Wanted again where they
+/// aren't (another window, or the graphics card started over), it is `made_lost` and that kind keeps them from then on.
+pub fn made(kind: &'static str, picture: RenderImage) -> Arc<RenderImage> {
+    gpui_kit::label_picture(picture.id, kind);
+    if MADE_KEEP.with(|k| k.borrow().contains(kind)) {
+        return Arc::new(picture);
+    }
+    let picture = Arc::new(picture.discard_after_upload());
+    MADE.with(|m| {
+        let mut m = m.borrow_mut();
+        if m.len() >= 256 {
+            m.retain(|_, (_, p)| p.strong_count() > 0);
+        }
+        m.insert(picture.id, (kind, Arc::downgrade(&picture)));
+    });
+    picture
+}
+
+/// Whether this picture `made` was wanted where its pixels weren't: whoever keeps it makes it again.
+pub fn made_lost(picture: &Arc<RenderImage>) -> bool {
+    MADE_LOST.with(|l| !l.borrow().is_empty() && l.borrow().contains(&picture.id))
+}
+
 /// Sized copies whose pixels went to the graphics card and are wanted again where they aren't (another window, or the
 /// card started over): let go everywhere, made again as the window next asks.
 fn lost(ids: &[gpui_kit::ImageId], cx: &mut App) {
+    // (The app's own pictures among them: off every window, and made again, keeping their pixels, where they are kept.)
+    let mut own = Vec::new();
+    MADE.with(|m| {
+        let m = m.borrow();
+        for id in ids {
+            if let Some((kind, p)) = m.get(id) {
+                MADE_KEEP.with(|k| k.borrow_mut().insert(*kind));
+                MADE_LOST.with(|l| l.borrow_mut().insert(*id));
+                own.extend(p.upgrade());
+            }
+        }
+    });
+    for p in own {
+        cx.drop_image(p, None);
+    }
     let mut gone = Vec::new();
     let images = cx.global_mut::<Images>();
     for (url, list) in images.copies.iter_mut() {
@@ -302,6 +352,36 @@ fn lost(ids: &[gpui_kit::ImageId], cx: &mut App) {
     }
     for r in gone {
         cx.drop_image(r, None);
+    }
+    // The pictures themselves, as GPUI decoded them to draw: their pixels go once on the graphics card too
+    // (gpui assets.rs, for_drawing). Wanted where they aren't: decoded again, keeping them from now on.
+    let sources = gpui_kit::lost_sources(ids);
+    if sources.is_empty() {
+        return;
+    }
+    for id in &sources {
+        gpui_kit::keep_pixels_of(*id);
+    }
+    let originals: Vec<Arc<Image>> = cx
+        .global::<Images>()
+        .slots
+        .values()
+        .filter_map(|s| match s {
+            Slot::Ready(i, ..) if sources.contains(&i.id) => Some(i.clone()),
+            _ => None,
+        })
+        .collect();
+    for window in cx.windows() {
+        let _ = window.update(cx, |_, window, cx| {
+            for i in &originals {
+                if let Some(drawn) = i.clone().get_render_image(window, cx) {
+                    let _ = window.drop_image(drawn);
+                }
+            }
+        });
+    }
+    for i in originals {
+        i.remove_asset(cx);
     }
 }
 
@@ -698,7 +778,10 @@ fn copy(url: &str, long: u32, original: &Arc<Image>, (w, h): (u32, u32), sigma: 
                     c.state = match made {
                         // (Its pixels go once they are on the graphics card: kept there, not twice; `lost` if wanted
                         // again where they aren't.)
-                        Some(r) => CopyState::Ready(Arc::new(if discard { r.discard_after_upload() } else { r })),
+                        Some(r) => {
+                            gpui_kit::label_picture(r.id, if discard { "copy" } else { "copy (kept)" });
+                            CopyState::Ready(Arc::new(if discard { r.discard_after_upload() } else { r }))
+                        }
                         None => CopyState::Failed,
                     };
                     trim(cx, None);

@@ -167,7 +167,11 @@ fn pic(name: &'static str, cx: &App) -> Option<Arc<RenderImage>> {
     PICS.with(|p| {
         let mut p = p.borrow_mut();
         p.last = Some(Instant::now());
-        p.map.entry(name).or_insert_with(|| make(name, cx).map(Arc::new)).clone()
+        // (One whose frames were wanted where they weren't is made again: images::made.)
+        if p.map.get(name).is_some_and(|v| v.as_ref().is_some_and(crate::images::made_lost)) {
+            p.map.remove(name);
+        }
+        p.map.entry(name).or_insert_with(|| make(name, cx).map(|r| crate::images::made("decoration", r))).clone()
     })
 }
 

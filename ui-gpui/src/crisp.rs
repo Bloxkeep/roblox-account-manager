@@ -98,19 +98,20 @@ fn back_block() -> u32 {
 
 /// The logo's picture at `dots` pixels a side: kept, or drawn now.
 fn picture(dots: u32) -> Option<Arc<RenderImage>> {
-    let kept = DRAWN.with(|d| d.borrow().get(&dots).cloned());
+    // (One whose pixels were wanted where they weren't is drawn again: images::made.)
+    let kept = DRAWN.with(|d| d.borrow().get(&dots).cloned()).filter(|p| !crate::images::made_lost(p));
     if kept.is_some() {
         return kept;
     }
     if DRAWN.with(|d| d.borrow().len() >= MAX_KEPT) {
-        if let Some(near) = DRAWN.with(|d| nearest(&d.borrow(), dots)) {
+        if let Some(near) = DRAWN.with(|d| nearest(&d.borrow(), dots)).filter(|p| !crate::images::made_lost(p)) {
             return Some(near);
         }
     }
-    let pic = Arc::new(draw(LOGO, dots)?);
+    let pic = crate::images::made("logo", draw(LOGO, dots)?);
     DRAWN.with(|d| {
         let mut d = d.borrow_mut();
-        if d.len() < MAX_KEPT {
+        if d.len() < MAX_KEPT || d.contains_key(&dots) {
             d.insert(dots, pic.clone());
         }
     });
@@ -131,18 +132,18 @@ pub fn logo(size: f32, window: &Window) -> ImageSource {
 pub fn blocks(side: f32) -> impl IntoElement {
     let back = back_block();
     snapped(side, move |dots| {
-        let kept = MARKS.with(|d| d.borrow().get(&(dots, back)).cloned());
+        let kept = MARKS.with(|d| d.borrow().get(&(dots, back)).cloned()).filter(|p| !crate::images::made_lost(p));
         kept.or_else(|| {
             // (All the places taken: the nearest size of this colour is shown, not a new picture each frame.)
             let full = MARKS.with(|d| d.borrow().len() >= MAX_KEPT * 2);
             if full {
                 let same: HashMap<u32, Arc<RenderImage>> = MARKS.with(|d| d.borrow().iter().filter(|((_, b), _)| *b == back).map(|((n, _), p)| (*n, p.clone())).collect());
-                if let Some(near) = nearest(&same, dots) {
+                if let Some(near) = nearest(&same, dots).filter(|p| !crate::images::made_lost(p)) {
                     return Some(near);
                 }
             }
             let svg = if dots < SMALL_BELOW { small_mark(dots, back) } else { String::from_utf8_lossy(MARK).replace("#3b4250", &format!("#{back:06x}")) };
-            let pic = Arc::new(draw(svg.as_bytes(), dots)?);
+            let pic = crate::images::made("logo", draw(svg.as_bytes(), dots)?);
             MARKS.with(|d| {
                 let mut d = d.borrow_mut();
                 if d.len() >= MAX_KEPT * 2 {
@@ -151,7 +152,7 @@ pub fn blocks(side: f32) -> impl IntoElement {
                     let old: Vec<(u32, u32)> = d.keys().filter(|(_, b)| *b != back).copied().collect();
                     RETIRED.with(|r| r.borrow_mut().extend(old.iter().filter_map(|k| d.remove(k))));
                 }
-                if d.len() < MAX_KEPT * 2 {
+                if d.len() < MAX_KEPT * 2 || d.contains_key(&(dots, back)) {
                     d.insert((dots, back), pic.clone());
                 }
             });
@@ -205,11 +206,11 @@ pub fn hero(w: f32, h: f32) -> Option<ImageSource> {
     let accent = c(FACE);
     let scale = crate::kit::screen_scale().max(1.);
     let key = ((w * scale).round().clamp(1., 4096.) as u32, (h * scale).round().clamp(1., 4096.) as u32, hex_of(ground), hex_of(accent));
-    if let Some(pic) = KEPT.with(|k| k.borrow().as_ref().filter(|(at, _)| *at == key).map(|(_, p)| p.clone())) {
+    if let Some(pic) = KEPT.with(|k| k.borrow().as_ref().filter(|(at, p)| *at == key && !crate::images::made_lost(p)).map(|(_, p)| p.clone())) {
         return Some(ImageSource::Render(pic));
     }
     // Fitted, never cropped: the whole scene shows even where the box is shorter than 16:9.
-    let pic = Arc::new(draw_fit(hero_svg(ground, accent).as_bytes(), key.0, key.1, false)?);
+    let pic = crate::images::made("banner", draw_fit(hero_svg(ground, accent).as_bytes(), key.0, key.1, false)?);
     if let Some((_, old)) = KEPT.with(|k| k.borrow_mut().replace((key, pic.clone()))) {
         RETIRED.with(|r| r.borrow_mut().push(old));
     }

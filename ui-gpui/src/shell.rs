@@ -303,6 +303,8 @@ pub struct Root {
     toast_timed: Option<((String, String), u32)>,
     /// The last notice the app itself sent (written to error.log by the app): not written again by the page.
     toast_core: Option<String>,
+    /// The app over the theme, kept between frames (`Chrome`); made at the first frame.
+    chrome: Option<Entity<Chrome>>,
 }
 
 impl Root {
@@ -772,6 +774,7 @@ impl Root {
             toast_task: None,
             toast_timed: None,
             toast_core: None,
+            chrome: None,
         };
         // The window's heartbeat for core/log.rs's watch: this runs on the window's own thread, so a beat that stops
         // coming means the window stopped answering (written to error.log and the Console with how long).
@@ -3970,6 +3973,7 @@ impl Render for Root {
         #[cfg(feature = "shot")]
         let away = away && std::env::var_os("BLOXKEEP_SHOT_FRAMES").is_none();
         crate::kit::set_away(away);
+        crate::motion::main_window(window);
         // (A theme came in over another: the frame last drawn, the old look, is kept to fade out over this one.)
         if crate::theme::take_fade() {
             crate::scene::fade_from(window, cx);
@@ -3977,12 +3981,6 @@ impl Render for Root {
         crate::theme::set_glass_blocks(crate::scene::carries_words(cx));
         crate::kit::set_screen_scale(window.scale_factor());
         self.live.start();
-        let toast = self.toast_layer(window, cx);
-        let pill_card = self.pill_layer(window, cx);
-        #[cfg(feature = "shot")]
-        let tray_shot = crate::tray::shot_layer(self, window, cx);
-        #[cfg(not(feature = "shot"))]
-        let tray_shot: Option<AnyElement> = None;
         pages::lock::settle(self, cx);
         pages::games::settle_words(self, window, cx);
         pages::rsettings::settle(self, window, cx);
@@ -4135,83 +4133,15 @@ impl Render for Root {
                 pages::lock::submit(self, window, cx);
             }
         }
-        let narrow = window.viewport_size().width < px(NARROW);
-        let page = self.page;
-        // (Line lost: nothing of the app is left but the words saying so; the accounts' column, the rail and the status
-        // bar would show the last figures as if they were live.)
-        let lost = self.lost && !locked;
-        // (No accounts yet: no column of them either; it stood tall and empty beside the welcome.)
-        let with_side = !narrow && page == Page::Home && !locked && !lost && !self.accounts().is_empty();
-        let main_w = f32::from(window.viewport_size().width) - RAIL - (GAP + 4.) - GAP - if with_side { SIDE + GAP } else { 0. };
-        self.narrow.set(main_w < 1000.);
-        self.window_h.set(f32::from(window.viewport_size().height));
-        // (The column that isn't beside Home can slide in over it: see `no_side`.)
-        let can_slide = narrow && page == Page::Home && !locked && !lost && !self.accounts().is_empty();
-        self.no_side.set(can_slide);
-        // (A hidden shot of the column slid in: BLOXKEEP_SHOT_SIDE=1.)
-        #[cfg(feature = "shot")]
-        if can_slide && std::env::var("BLOXKEEP_SHOT_SIDE").as_deref() == Ok("1") {
-            self.side_open = true;
-        }
-        if !can_slide {
-            self.side_open = false;
-        }
-        let slid = (can_slide && self.side_open).then(|| {
-            div()
-                .id("side-slid")
-                .absolute()
-                .top_0()
-                .right_0()
-                .bottom_0()
-                .occlude()
-                .rounded(px(R_PANEL))
-                .shadow_lg()
-                .child(self.side(cx))
-                .on_mouse_down_out(cx.listener(|r, _, _, cx| {
-                    r.side_open = false;
-                    r.side_shut = Some(std::time::Instant::now());
-                    cx.notify();
-                }))
-        });
-        let body = if locked {
-            div().size_full().child(pages::lock::lock(self, window, cx))
-        } else if self.lost {
-            panel().size_full().flex().flex_col().items_center().justify_center().gap(px(10.)).child(
-                icon("power", 30., c(WARN)).flex_none().mb(px(6.)),
-            )
-            .child(div().text_size(px(T_GROUP)).font_weight(FontWeight::SEMIBOLD).child(self.tr("ui.lost")))
-            .child(div().text_size(px(T_L)).text_color(c(MUTED)).child(self.tr("ui.lostSub")))
-        } else {
-            if page == Page::Home {
-                div().size_full().child(pages::home::home(self, main_w, cx))
-            } else if page == Page::Accounts {
-                div().size_full().child(pages::accounts::accounts(self, main_w, cx))
-            } else if page == Page::Games {
-                div().size_full().child(pages::games::games(self, main_w, cx))
-            } else if page == Page::Auto {
-                div().size_full().child(pages::auto::auto(self, main_w, cx))
-            } else if page == Page::Stats {
-                div().size_full().child(pages::stats::stats(self, main_w, cx))
-            } else if page == Page::Settings {
-                div().size_full().child(pages::settings::settings(self, main_w, cx))
-            } else {
-                panel().size_full().overflow_hidden().child(pages::not_yet(self, page))
+        let chrome = match &self.chrome {
+            Some(c) => c.clone(),
+            None => {
+                let root = cx.weak_entity();
+                let c = cx.new(|_| Chrome { root });
+                self.chrome = Some(c.clone());
+                c
             }
         };
-        let strip = if with_side || self.locked() || self.lost { None } else { self.drop_strip(cx) };
-        // A theme whose web page frosted its panels: the picture behind each, frosted, under its see-through fill (scene.rs).
-        // (Glass on the blocks only: nothing frosted behind the panels and the rail, each block is its own glass.)
-        let blocks = crate::theme::glass_blocks();
-        let frost_main = if locked || blocks { None } else { crate::scene::frost(R_PANEL, window, cx) };
-        // (The side panel holds the accounts: with glass on the blocks only it is one of the blocks.)
-        let frost_side = match (with_side, blocks) {
-            (true, false) => crate::scene::frost(R_PANEL, window, cx),
-            (true, true) => Some(crate::kit::glass_pane(R_PANEL)),
-            _ => None,
-        };
-        let frost_rail = if locked || lost || blocks { None } else { crate::scene::frost(0., window, cx) };
-        // (The top bar's glass, where the picture is too light along its top for the bar's words: scene::top_glass.)
-        let top_glass = if locked || lost { None } else { crate::scene::top_glass(window, cx) };
         div()
             .id("root")
             .track_focus(&self.focus)
@@ -4310,43 +4240,12 @@ impl Render for Root {
             .font_family(FONT)
             .text_color(c(TEXT))
             .text_size(px(T_M))
-            // (Locked: only the lock screen and the window's own buttons; nothing of the app to click.)
-            .when(!locked && !lost, |d| d.child(div().relative().h_full().flex_none().children(frost_rail).child(self.rail(window, cx))))
-            .child(
-                div()
-                    .flex_1()
-                    .min_w_0()
-                    .h_full()
-                    .flex()
-                    .flex_col()
-                    .pl(px(GAP + 4.))
-                    .pr(px(GAP))
-                    // (No status bar under it when the line is lost: the panel keeps its gap from the window's foot.)
-                    .when(lost, |d| d.pb(px(GAP)))
-                    .child(div().relative().flex_none().when(top_glass.is_some(), |d| d.mb(px(GAP))).children(top_glass).child(app_in("app-in-top", self.intro, 60., -10., false, self.top(with_side, locked || lost, cx))))
-                    .children(strip)
-                    .child(
-                        div()
-                            .flex_1()
-                            .min_h_0()
-                            .flex()
-                            .gap(px(GAP))
-                            // (Glass blocks know they are on the page, the picture behind them, by these two marks.)
-                            .child(crate::scene::on_page(true))
-                            // (Cut at its own edge: the Roblox tab's next row of game pictures showed as a flickering
-                            // line under the status bar while the page scrolled, the owner's OBS video, 2026-11-15.)
-                            .child(div().flex_1().min_w_0().h_full().relative().overflow_hidden().children(frost_main).child(app_in("app-in-page", self.intro, 140., 26., true, step_in(self.shown_key(), self.step_from, body))).children(slid))
-                            .when(with_side, |d| d.child(div().relative().h_full().flex_none().children(frost_side).child(self.side(cx))))
-                            .child(crate::scene::on_page(false)),
-                    )
-                    // (Glass: the gutter the panels keep between them, above it too.)
-                    .when(!locked && !lost, |d| d.child(app_in("app-in-status", self.intro, 260., 18., false, self.status(with_side, window, cx)))),
-            )
-            .children(pill_card)
-            .children(tray_shot)
-            .children(toast)
-            .child(crate::kit::mouse_watch())
-            .child(self.live.reporter(self.link.clone()))
+            // Everything of the app over the theme, drawn again only when something in it changed: an animated
+            // theme's layer under it moves 30 times a second, and the whole page was laid out and drawn anew for each
+            // of those frames (4.3 of the 6.1 ms each took on Home: about 13 % of a core for a page that didn't change).
+            .child(chrome.cached(StyleRefinement::default().size_full()))
+            // (What moves inside it, drawn over it at every frame: motion.rs.)
+            .child(crate::motion::layer())
             // (A theme coming in: the old look over everything, fading out.)
             .children(crate::scene::fade_layer(window, cx))
     }
@@ -4489,4 +4388,148 @@ fn music_go(r: &mut Root, act: crate::media::Act, cx: &mut Context<Root>) {
         m.playing = !m.playing;
     }
     cx.notify();
+}
+
+/// What Root draws over the theme (all of the app but the scene and the fade), as a view of its own so it can be kept
+/// from frame to frame: `Root::chrome` builds it. Drawn again when Root (or anything else it read) is notified.
+pub struct Chrome {
+    root: WeakEntity<Root>,
+}
+
+impl Render for Chrome {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        self.root.update(cx, |r, cx| r.chrome(window, cx)).unwrap_or_else(|_| div().into_any_element())
+    }
+}
+
+impl Root {
+    fn chrome(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+        crate::motion::app_made();
+        let toast = self.toast_layer(window, cx);
+        let pill_card = self.pill_layer(window, cx);
+        #[cfg(feature = "shot")]
+        let tray_shot = crate::tray::shot_layer(self, window, cx);
+        #[cfg(not(feature = "shot"))]
+        let tray_shot: Option<AnyElement> = None;
+        let locked = pages::lock::up(self) && !self.lost;
+        let narrow = window.viewport_size().width < px(NARROW);
+        let page = self.page;
+        // (Line lost: nothing of the app is left but the words saying so; the accounts' column, the rail and the status
+        // bar would show the last figures as if they were live.)
+        let lost = self.lost && !locked;
+        // (No accounts yet: no column of them either; it stood tall and empty beside the welcome.)
+        let with_side = !narrow && page == Page::Home && !locked && !lost && !self.accounts().is_empty();
+        let main_w = f32::from(window.viewport_size().width) - RAIL - (GAP + 4.) - GAP - if with_side { SIDE + GAP } else { 0. };
+        self.narrow.set(main_w < 1000.);
+        self.window_h.set(f32::from(window.viewport_size().height));
+        // (The column that isn't beside Home can slide in over it: see `no_side`.)
+        let can_slide = narrow && page == Page::Home && !locked && !lost && !self.accounts().is_empty();
+        self.no_side.set(can_slide);
+        // (A hidden shot of the column slid in: BLOXKEEP_SHOT_SIDE=1.)
+        #[cfg(feature = "shot")]
+        if can_slide && std::env::var("BLOXKEEP_SHOT_SIDE").as_deref() == Ok("1") {
+            self.side_open = true;
+        }
+        if !can_slide {
+            self.side_open = false;
+        }
+        let slid = (can_slide && self.side_open).then(|| {
+            div()
+                .id("side-slid")
+                .absolute()
+                .top_0()
+                .right_0()
+                .bottom_0()
+                .occlude()
+                .rounded(px(R_PANEL))
+                .shadow_lg()
+                .child(self.side(cx))
+                .on_mouse_down_out(cx.listener(|r, _, _, cx| {
+                    r.side_open = false;
+                    r.side_shut = Some(std::time::Instant::now());
+                    cx.notify();
+                }))
+        });
+        let body = if locked {
+            div().size_full().child(pages::lock::lock(self, window, cx))
+        } else if self.lost {
+            panel().size_full().flex().flex_col().items_center().justify_center().gap(px(10.)).child(
+                icon("power", 30., c(WARN)).flex_none().mb(px(6.)),
+            )
+            .child(div().text_size(px(T_GROUP)).font_weight(FontWeight::SEMIBOLD).child(self.tr("ui.lost")))
+            .child(div().text_size(px(T_L)).text_color(c(MUTED)).child(self.tr("ui.lostSub")))
+        } else {
+            if page == Page::Home {
+                div().size_full().child(pages::home::home(self, main_w, cx))
+            } else if page == Page::Accounts {
+                div().size_full().child(pages::accounts::accounts(self, main_w, cx))
+            } else if page == Page::Games {
+                div().size_full().child(pages::games::games(self, main_w, cx))
+            } else if page == Page::Auto {
+                div().size_full().child(pages::auto::auto(self, main_w, cx))
+            } else if page == Page::Stats {
+                div().size_full().child(pages::stats::stats(self, main_w, cx))
+            } else if page == Page::Settings {
+                div().size_full().child(pages::settings::settings(self, main_w, cx))
+            } else {
+                panel().size_full().overflow_hidden().child(pages::not_yet(self, page))
+            }
+        };
+        let strip = if with_side || self.locked() || self.lost { None } else { self.drop_strip(cx) };
+        // A theme whose web page frosted its panels: the picture behind each, frosted, under its see-through fill (scene.rs).
+        // (Glass on the blocks only: nothing frosted behind the panels and the rail, each block is its own glass.)
+        let blocks = crate::theme::glass_blocks();
+        let frost_main = if locked || blocks { None } else { crate::scene::frost(R_PANEL, window, cx) };
+        // (The side panel holds the accounts: with glass on the blocks only it is one of the blocks.)
+        let frost_side = match (with_side, blocks) {
+            (true, false) => crate::scene::frost(R_PANEL, window, cx),
+            (true, true) => Some(crate::kit::glass_pane(R_PANEL)),
+            _ => None,
+        };
+        let frost_rail = if locked || lost || blocks { None } else { crate::scene::frost(0., window, cx) };
+        // (The top bar's glass, where the picture is too light along its top for the bar's words: scene::top_glass.)
+        let top_glass = if locked || lost { None } else { crate::scene::top_glass(window, cx) };
+        div()
+            .size_full()
+            .relative()
+            .flex()
+            // (Locked: only the lock screen and the window's own buttons; nothing of the app to click.)
+            .when(!locked && !lost, |d| d.child(div().relative().h_full().flex_none().children(frost_rail).child(self.rail(window, cx))))
+            .child(
+                div()
+                    .flex_1()
+                    .min_w_0()
+                    .h_full()
+                    .flex()
+                    .flex_col()
+                    .pl(px(GAP + 4.))
+                    .pr(px(GAP))
+                    // (No status bar under it when the line is lost: the panel keeps its gap from the window's foot.)
+                    .when(lost, |d| d.pb(px(GAP)))
+                    .child(div().relative().flex_none().when(top_glass.is_some(), |d| d.mb(px(GAP))).children(top_glass).child(app_in("app-in-top", self.intro, 60., -10., false, self.top(with_side, locked || lost, cx))))
+                    .children(strip)
+                    .child(
+                        div()
+                            .flex_1()
+                            .min_h_0()
+                            .flex()
+                            .gap(px(GAP))
+                            // (Glass blocks know they are on the page, the picture behind them, by these two marks.)
+                            .child(crate::scene::on_page(true))
+                            // (Cut at its own edge: the Roblox tab's next row of game pictures showed as a flickering
+                            // line under the status bar while the page scrolled, the owner's OBS video, 2026-11-15.)
+                            .child(div().flex_1().min_w_0().h_full().relative().overflow_hidden().children(frost_main).child(app_in("app-in-page", self.intro, 140., 26., true, step_in(self.shown_key(), self.step_from, body))).children(slid))
+                            .when(with_side, |d| d.child(div().relative().h_full().flex_none().children(frost_side).child(self.side(cx))))
+                            .child(crate::scene::on_page(false)),
+                    )
+                    // (Glass: the gutter the panels keep between them, above it too.)
+                    .when(!locked && !lost, |d| d.child(app_in("app-in-status", self.intro, 260., 18., false, self.status(with_side, window, cx)))),
+            )
+            .children(pill_card)
+            .children(tray_shot)
+            .children(toast)
+            .child(crate::kit::mouse_watch())
+            .child(self.live.reporter(self.link.clone()))
+            .into_any_element()
+    }
 }

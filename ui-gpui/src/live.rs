@@ -15,8 +15,8 @@ use crate::pages::deco::{Pen, col};
 
 const W: f32 = 1600.;
 const H: f32 = 1000.;
-/// 30 frames a second.
-const EVERY: Duration = Duration::from_millis(33);
+/// 30 frames a second, as the page's own motion asks for them (`with_max_fps(30.)`): the same step of the shared clock.
+const STEP: Duration = Duration::from_nanos(1_000_000_000 / 30);
 
 /// The themes that move, by their picture (scene-<id>.svg).
 const MOVING: [&str; 11] = ["koipond", "fireflies", "rainglass", "blockworld", "peachfall", "starrynight", "greatwave", "waterlilies", "cubism", "blocksart", "goldleaf"];
@@ -231,19 +231,33 @@ thread_local! {
 pub fn running(window: &Window) -> bool {
     // (A hidden shot's clip: its window is never seen, and moves all the same.)
     #[cfg(feature = "shot")]
-    if std::env::var("BLOXKEEP_SHOT_FRAMES").is_ok() || std::env::var("BLOXKEEP_SHOT_BENCH").is_ok() {
+    if std::env::var("BLOXKEEP_SHOT_FRAMES").is_ok() || std::env::var("BLOXKEEP_SHOT_BENCH").is_ok() || std::env::var("BLOXKEEP_SHOT_TALLY").is_ok() {
         return true;
     }
     window.is_visible() && (window.is_window_active() || !crate::kit::still_behind() || crate::kit::mouse_over_lately())
 }
 
-/// Keeps the window drawing 30 times a second while `running`; the task ends with the window.
+/// Keeps the window drawing 30 times a second while `running`; the task ends with the window. Only the theme's layer
+/// is drawn anew (`redraw`): the app over it is kept (shell.rs, Chrome) unless something in it changed.
+///
+/// Its frames are on the process's shared clock (`on_frame_step`), the one the page's own motion waits for too (the
+/// playing bars on Home, 30 a second on theirs), so both are drawn in the same frames. On a clock of its own the two
+/// drifted apart and the window was drawn about 60 times a second, each time the whole page (the owner's error.log,
+/// 2026-11-20: 66 a second).
 pub fn ticker(window: &mut Window, cx: &mut Context<crate::shell::Root>) -> Task<()> {
-    cx.spawn_in(window, async move |this, cx| loop {
-        cx.background_executor().timer(EVERY).await;
-        if this.update_in(cx, |_, window, _| if running(window) { window.refresh() }).is_err() {
-            break;
-        }
+    // (Each step asks for the next; the chain ends when the task is let go, or with the window.)
+    fn step(handle: AnyWindowHandle, alive: std::rc::Weak<()>, cx: &mut App) {
+        on_frame_step(cx, STEP, move |cx| {
+            if alive.upgrade().is_some() && handle.update(cx, |_, window, _| if running(window) { window.redraw() }).is_ok() {
+                step(handle, alive, cx);
+            }
+        });
+    }
+    let alive = std::rc::Rc::new(());
+    step(window.window_handle(), std::rc::Rc::downgrade(&alive), cx);
+    cx.foreground_executor().spawn(async move {
+        let _alive = alive;
+        std::future::pending::<()>().await
     })
 }
 

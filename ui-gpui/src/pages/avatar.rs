@@ -232,6 +232,11 @@ pub fn want(r: &mut Root, link: &crate::link::Link, cx: &mut Context<Root>) {
             .detach();
         }
     }
+    // (Its picture wanted where its pixels weren't, images::made: drawn again.)
+    if r.avatar.frame.as_ref().is_some_and(crate::images::made_lost) {
+        r.avatar.frame = None;
+        r.avatar.frame_of = None;
+    }
     // Back on the tab: the picture it dropped is drawn again, and the turning goes on.
     if r.avatar.solid.is_some() && r.avatar.frame.is_none() && !r.avatar.drawing {
         draw(r, cx);
@@ -497,9 +502,26 @@ fn solid(r: &mut Root, cx: &mut Context<Root>) {
     .detach();
 }
 
+/// Whether the 3D box is on screen: Games, on Avatar, no game page or account picker over it, not a VNG account's
+/// (whose Avatar is its own page), the app not locked.
+fn on_view(r: &Root) -> bool {
+    r.page == crate::pages::Page::Games
+        && r.games.view == crate::pages::games::View::Avatar
+        && r.games.open.is_none()
+        && !crate::pages::tabs::picking(r)
+        && !crate::pages::tabs::is_vng(r)
+        && !r.locked()
+}
+
 /// Turns the avatar by itself, a full turn in about ten seconds, while `spin` is on and the tab shows it (a drag holds
 /// it), and moves it in its idle while `moving` is. Off the window's thread like any picture of it, one at a time;
 /// none is drawn while Bloxkeep's window isn't the one in use (Roblox played beside it keeps the processor).
+///
+/// It ends when the box isn't on screen any more (`want` starts it again when it is): it went on drawing after the
+/// page was left, 30 to 60 pictures a second of an avatar nobody saw, on every core, for the rest of the run (the
+/// owner's Bloxkeep at two cores while on Home, 2026-11-20; measured: 123 % of a core with Settings shown). Nor is
+/// one drawn while the window is hidden or minimized. With nothing pressed (the idle or the slow turn) it draws 30
+/// a second, as the animated themes do; walking and jumping keep 60.
 fn start_spin(r: &mut Root, cx: &mut Context<Root>) {
     if r.avatar.spinning || !lively(&r.avatar) {
         return;
@@ -509,21 +531,25 @@ fn start_spin(r: &mut Root, cx: &mut Context<Root>) {
     let (run, user) = (r.avatar.spin_run, r.avatar.of);
     cx.spawn(async move |this, cx| {
         let mut previous = std::time::Instant::now();
+        // (How long until the next step: 16 ms while walking, 33 ms in the idle, 250 ms while nothing may move.)
+        let mut wait = 16;
         loop {
-            cx.background_executor().timer(std::time::Duration::from_millis(16)).await;
+            cx.background_executor().timer(std::time::Duration::from_millis(wait)).await;
             let now = std::time::Instant::now();
             let dt = now.duration_since(previous).as_secs_f32().min(0.05);
             previous = now;
             let window = this.update(cx, |_, cx| cx.windows().first().copied()).ok().flatten();
-            let (active, keyed) = window
+            // (Moving now: as the animated themes, live::running, the window seen and in use, or Settings says it goes
+            // on behind.)
+            let (moving, keyed) = window
                 .and_then(|h| {
                     let me = this.clone();
-                    cx.update_window(h, move |_, w, cx| (w.is_window_active(), me.read_with(cx, |r, _| r.avatar_focus.is_focused(w)).unwrap_or(false))).ok()
+                    cx.update_window(h, move |_, w, cx| (crate::live::running(w), me.read_with(cx, |r, _| r.avatar_focus.is_focused(w)).unwrap_or(false))).ok()
                 })
                 .unwrap_or((true, true));
             let on = this
                 .update(cx, |r, cx| {
-                    if r.avatar.of != user || r.avatar.spin_run != run || !lively(&r.avatar) {
+                    if r.avatar.of != user || r.avatar.spin_run != run || !lively(&r.avatar) || !on_view(r) {
                         if r.avatar.spin_run == run {
                             r.avatar.spinning = false;
                         }
@@ -533,10 +559,11 @@ fn start_spin(r: &mut Root, cx: &mut Context<Root>) {
                     if !keyed && r.avatar.keys != 0 {
                         r.avatar.keys = 0;
                     }
-                    // (Still while the window is behind, unless Settings says it goes on.)
-                    if !active && crate::kit::still_behind() && !crate::kit::mouse_over_lately() {
+                    if !moving {
+                        wait = 250;
                         return true;
                     }
+                    wait = if r.avatar.keys & 15 != 0 || airborne(&r.avatar) || r.avatar.pace > 0. { 16 } else { 33 };
                     let mut changed = false;
                     // (A hidden shot holds its stride where it was put.)
                     if r.avatar.keys & 15 != 0 || airborne(&r.avatar) || (r.avatar.pace > 0. && !cfg!(feature = "shot")) {
@@ -782,7 +809,7 @@ fn draw(r: &mut Root, cx: &mut Context<Root>) {
                 return;
             }
             if let Some(buffer) = dots.and_then(|dots| image::RgbaImage::from_raw(size as u32, size as u32, dots)) {
-                let new = std::sync::Arc::new(RenderImage::new(vec![image::Frame::new(buffer)]));
+                let new = crate::images::made("avatar 3D", RenderImage::new(vec![image::Frame::new(buffer)]));
                 // (The picture it replaces is taken off the graphics card: a drag draws many.)
                 if let Some(old) = r.avatar.frame.replace(new) {
                     cx.drop_image(old, None);

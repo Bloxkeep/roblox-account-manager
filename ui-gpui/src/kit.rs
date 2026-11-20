@@ -1764,21 +1764,26 @@ pub fn marquee(id: &'static str, text: String) -> Div {
 }
 
 /// A song that plays, as music apps mark it in their lists (Spotify's, Apple Music's): four short bars rising and
-/// falling, each at its own pace. Low and still while it is paused, or the window is behind.
-pub fn playing_bars(id: &'static str, live: bool, color: Hsla) -> Div {
+/// falling, each at its own pace. Low and still while it is paused, or the window is behind. They move in the motion
+/// layer over the app (motion.rs), so their frames don't make the page over again.
+pub fn playing_bars(_id: &'static str, live: bool, color: Hsla) -> Div {
     const TALL: f32 = 12.;
     const LOW: f32 = 3.;
+    const BARS: [(f32, f32); 4] = [(0.9, 0.0), (0.7, 0.35), (1.1, 0.6), (0.8, 0.15)];
     let mut row = div().h(px(TALL)).flex_none().flex().items_end().gap(px(2.));
-    for (i, (pace, phase)) in [(0.9f32, 0.0f32), (0.7, 0.35), (1.1, 0.6), (0.8, 0.15)].into_iter().enumerate() {
-        let bar = div().w(px(3.)).rounded(px(1.)).bg(color);
-        row = row.child(if live && looping() {
-            bar.with_animation((id, i), Animation::new(std::time::Duration::from_secs_f32(pace)).repeat().with_max_fps(30.), move |d, t| {
-                let wave = (std::f32::consts::TAU * (t + phase)).sin() * 0.5 + 0.5;
-                d.h(px(LOW + (TALL - LOW) * wave))
+    for (pace, phase) in BARS {
+        row = row.child(if live {
+            // (Each bar in the place the row gives it, a column as tall as the row: laid out as the bars always were.)
+            crate::motion::spot(3., TALL, move |b, t, window, _| {
+                let h = t.map_or(LOW, |t| {
+                    let wave = (std::f32::consts::TAU * ((t / pace).fract() + phase)).sin() * 0.5 + 0.5;
+                    LOW + (TALL - LOW) * wave
+                });
+                let bar = Bounds::new(point(b.origin.x, b.bottom() - px(h)), size(b.size.width, px(h)));
+                crate::motion::fill_round(window, bar, 1., color);
             })
-            .into_any_element()
         } else {
-            bar.h(px(LOW)).into_any_element()
+            div().w(px(3.)).h(px(LOW)).rounded(px(1.)).bg(color)
         });
     }
     row
@@ -1787,23 +1792,23 @@ pub fn playing_bars(id: &'static str, live: bool, color: Hsla) -> Div {
 /// What a game is doing, before the word for it: being played (a green dot whose ring spreads and fades, as a
 /// stream's "live" mark; still while the window is behind) or played before (a clock with its arrow back). Both were
 /// a plain dot, grey or green (the owner, 2026-11-18: "kiếm cái nào đẹp hơn"). `id` names its motion among its
-/// neighbours; `quiet` is the clock's colour.
-pub fn state_mark(id: &'static str, live: bool, size: f32, quiet: Hsla) -> AnyElement {
+/// neighbours; `quiet` is the clock's colour. The ring moves in the motion layer over the app (motion.rs).
+pub fn state_mark(_id: &'static str, live: bool, size: f32, quiet: Hsla) -> AnyElement {
     if !live {
         return icon("history", size + 6., quiet).into_any_element();
     }
     let spread = size * 1.8;
-    let ring = div().absolute().rounded_full().bg(c(OK));
-    let ring = if looping() {
-        ring.with_animation(id, Animation::new(std::time::Duration::from_millis(1600)).repeat().with_max_fps(30.), move |d, t| {
-            let grow = spread * t;
-            d.size(px(size + grow)).top(px(-grow / 2.)).left(px(-grow / 2.)).opacity(0.55 * (1. - t))
-        })
-        .into_any_element()
-    } else {
-        ring.size(px(size + spread / 2.)).top(px(-spread / 4.)).left(px(-spread / 4.)).opacity(0.25).into_any_element()
-    };
-    div().relative().size(px(size)).flex_none().child(ring).child(div().absolute().inset_0().rounded_full().bg(c(OK))).into_any_element()
+    let ring = crate::motion::spot(size, size, move |b, t, window, _| {
+        // (Still: half spread, faint.)
+        let (grow, alpha) = t.map_or((spread / 2., 0.25), |t| {
+            let k = (t / 1.6).fract();
+            (spread * k, 0.55 * (1. - k))
+        });
+        let d = size + grow;
+        let at = point(b.origin.x - px(grow / 2.), b.origin.y - px(grow / 2.));
+        crate::motion::fill_round(window, Bounds::new(at, gpui_kit::size(px(d), px(d))), d / 2., c(OK).opacity(alpha));
+    });
+    div().relative().size(px(size)).flex_none().child(div().absolute().inset_0().rounded_full().bg(c(OK))).child(ring.absolute().inset_0()).into_any_element()
 }
 
 /// Something under way, as a turning mark (the web page's spin): for a button that is busy.
