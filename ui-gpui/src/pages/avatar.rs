@@ -82,6 +82,10 @@ pub struct Data {
     was: Option<(f32, f32)>,
     poke: u8,
     woke: bool,
+    /// The animation pack worn (idle, walk, jump, fall: Roblox's assets, 0 for none) whose motions are here, and the
+    /// one whose motions were asked for.
+    pack: [i64; 4],
+    pack_asked: [i64; 4],
     /// "Save as outfit" on its way; the outfit whose menu is open, and the one whose Delete waits for a second click.
     saving_look: bool,
     outfit_menu: Option<i64>,
@@ -176,6 +180,7 @@ pub fn want(r: &mut Root, link: &crate::link::Link, cx: &mut Context<Root>) {
     if r.avatar.got.is_none() && !r.avatar.loading {
         load(r, cx);
     }
+    want_pack(r, cx);
     if !r.avatar.profile_background_checked && r.avatar.profile_background_ask.is_none() {
         load_profile_background(r, cx);
     }
@@ -351,7 +356,58 @@ fn view_of(av: &Data) -> crate::mesh::View {
         up: av.up,
         rise: av.rise,
         act: av.act,
+        pack: av.pack,
     }
+}
+
+/// The animation pack worn, as Roblox's kinds of it (51 idle, 55 walk, or 53 run when no walk, 52 jump, 50 fall).
+fn pack_worn(av: &Data) -> [i64; 4] {
+    // BLOXKEEP_SHOT_PACK=idle,walk,jump,fall: a hidden shot's pack (Roblox's assets, read from Roblox).
+    #[cfg(feature = "shot")]
+    if let Ok(v) = std::env::var("BLOXKEEP_SHOT_PACK") {
+        let n: Vec<i64> = v.split(',').filter_map(|x| x.trim().parse().ok()).collect();
+        return std::array::from_fn(|i| n.get(i).copied().unwrap_or(0));
+    }
+    let Some(Ok(a)) = &av.got else { return [0; 4] };
+    let of = |k: i64| a.items.iter().find(|i| i.kind_id() == k).map_or(0, |i| i.id);
+    let walk = of(55);
+    [of(51), if walk != 0 { walk } else { of(53) }, of(52), of(50)]
+}
+
+/// The avatar moves as its animation pack does (idle, walk, jump, fall), as in Roblox: their motions are read from
+/// Roblox (as an emote's are) when what is worn changes, and used once all have come; none worn, it moves as before.
+fn want_pack(r: &mut Root, cx: &mut Context<Root>) {
+    let worn = pack_worn(&r.avatar);
+    if worn == r.avatar.pack_asked {
+        return;
+    }
+    r.avatar.pack_asked = worn;
+    let user = r.avatar.of;
+    let missing: Vec<i64> = worn.iter().copied().filter(|&id| id != 0 && crate::mesh::motion(id).is_none()).collect();
+    if missing.is_empty() {
+        r.avatar.pack = worn;
+        draw(r, cx);
+        return;
+    }
+    let rx = roblox::run(move || -> Result<Vec<(i64, Vec<u8>)>, String> {
+        Ok(missing.into_iter().filter_map(|id| roblox::emote_motion(id).ok().map(|b| (id, b))).collect())
+    });
+    cx.spawn(async move |this, cx| {
+        let Ok(Ok(got)) = rx.await else { return };
+        for (id, bytes) in got {
+            match crate::mesh::motion_of(&bytes) {
+                Some(m) => crate::mesh::keep_motion(id, m),
+                None => crate::net::note_failed("Animation pack", &format!("asset {id}"), "no motion in it"),
+            }
+        }
+        let _ = this.update(cx, |r, cx| {
+            if r.avatar.of == user && r.avatar.pack_asked == worn {
+                r.avatar.pack = worn.map(|id| if crate::mesh::motion(id).is_some() { id } else { 0 });
+                draw(r, cx);
+            }
+        });
+    })
+    .detach();
 }
 
 /// Whether it is in the air, or about to be.

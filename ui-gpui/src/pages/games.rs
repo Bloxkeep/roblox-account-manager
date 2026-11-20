@@ -246,6 +246,11 @@ pub fn views(root: &Root, cx: &mut Context<Root>) -> impl IntoElement {
                 .when(!on, |d| d.tooltip(move |_, cx| cx.new(|_| Tip(name.clone())).into()))
                 .on_click(move |_, _, cx| {
                     let _ = this.update(cx, |r, cx| {
+                        // The inbox's count is its unread messages: it opens on them, not on the chats it was last
+                        // on (the owner, 2026-11-20: "it shows 7 and inside there is nothing", on Chat).
+                        if view == View::Inbox && n > 0 {
+                            r.inbox.tab = 1;
+                        }
                         r.games.view = view;
                         r.games.home_library = None;
                         r.friends.menu = false;

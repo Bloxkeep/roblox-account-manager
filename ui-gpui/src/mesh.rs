@@ -112,6 +112,9 @@ pub struct View {
     pub rise: f32,
     /// What it does besides (gestures, looking, sitting…).
     pub act: Act,
+    /// The animation pack it wears (Roblox's assets, 0 for none, their motions kept by `keep_motion`): idle, walk,
+    /// jump, fall.
+    pub pack: [i64; 4],
 }
 
 pub const ZOOM_NEAR: f32 = 0.42;
@@ -210,9 +213,10 @@ struct Rig {
     /// Each hip (a leg's top) and how high the hips stand over the feet.
     hips: [Option<V3>; 2],
     leg: f32,
-    /// By OBJ group, a worn thing that hangs (hair, a cape, a tail): the point it hangs from (the top of it) and how
+    /// By OBJ group, a worn thing that hangs (long hair below the neck, a cape): the point it hangs from, how far it
+    /// hangs below it (it bends: nothing at that point, all of the swing at its bottom) and how
     /// much it swings (0 for a small thing, a hat; 1 for one as long as the head is high and more).
-    hang: Vec<Option<(V3, f32)>>,
+    hang: Vec<Option<(V3, f32, f32)>>,
 }
 
 /// What the avatar does besides standing and walking, as avatar.rs drives it: a gesture under way, where it looks,
@@ -608,18 +612,49 @@ impl Rig {
         let root = [self.neck[0], hip_y, self.neck[2]];
         let mut body = mm(&rot(up, twist), &mm(&rot(e, -fs * bow), &rot(fwd, rs * lean)));
         let mut moved = add(mul(e, shift), [0., lift, 0.]);
-        // An emote: Roblox's own motion, eased in and out over what is above. (Its joints turn in Roblox's frame, the
-        // model's own when it faces -Z with its right at +X: a model turned the other way plays none.)
-        let emote = (a.kind == EMOTE && self.side == 0).then(|| motion(a.emote)).flatten().map(|m| {
-            let w = still * (1. - sat) * env(g, 0.2, m.length - 0.25, m.length);
-            (m.at(g.min(m.length)), w)
-        });
+        // Roblox's own motions, each eased in over what is under it: the account's animation pack as it wears it (its
+        // idle while it stands, its walk while it walks, its jump going up and its fall coming down), then an emote.
+        // Each layer: every joint's turn and shift, how much of it over the body and limbs, and over the head (less
+        // while it looks at the mouse or at a worn thing). Their joints turn in Roblox's frame, the model's own when
+        // it faces -Z with its right at +X: a model turned the other way plays none.
+        let mut layers: Vec<([(M3, V3); 7], f32, f32)> = Vec::new();
+        if self.side == 0 {
+            let aim = a.mouse_w.max(a.focus_w);
+            let gesture = if a.kind != 0 && a.kind != EMOTE {
+                let l = gesture_length(a.kind);
+                env(g, 0.3, l - 0.3, l)
+            } else {
+                0.
+            };
+            let air = v.up > 0. || v.rise > 0.;
+            if !air {
+                if let Some(m) = motion(v.pack[0]) {
+                    let w = calm * (1. - gesture);
+                    layers.push((m.at(t.rem_euclid(m.length)), w, w * (1. - aim)));
+                }
+                if let Some(m) = motion(v.pack[1]) {
+                    // (One walk round is one round of the stride.)
+                    let at = (v.stride / std::f32::consts::TAU).rem_euclid(1.) * m.length;
+                    layers.push((m.at(at), pace, pace));
+                }
+            } else if let Some(m) = motion(v.pack[if v.rise > 0. { 2 } else { 3 }]) {
+                let at = if v.rise > 0. { 0.5 * m.length } else { t.rem_euclid(m.length) };
+                layers.push((m.at(at), 1., 1.));
+            }
+            if a.kind == EMOTE {
+                if let Some(m) = motion(a.emote) {
+                    let w = still * (1. - sat) * env(g, 0.2, m.length - 0.25, m.length);
+                    layers.push((m.at(g.min(m.length)), w, w));
+                }
+            }
+            layers.retain(|l| l.1 > 0. || l.2 > 0.);
+        }
         // (The lower torso's own turn, which the legs go with.)
         let mut lower = IDENTITY;
-        if let Some((j, w)) = &emote {
-            lower = mix(&IDENTITY, &j[0].0, *w);
+        for (j, w, _) in &layers {
+            lower = mix(&lower, &j[0].0, *w);
             body = mix(&body, &mm(&j[0].0, &j[1].0), *w);
-            moved = add(moved, mul(j[0].1, *w));
+            moved = add(mul(moved, 1. - w), mul(add([0., lift.min(0.), 0.], j[0].1), *w));
         }
         // A part hung on the body: its own turn about `at`, then the body's.
         let on_body = |at: V3, own: M3| -> (V3, M3, V3) {
@@ -628,21 +663,27 @@ impl Rig {
             (at, m, tr)
         };
         let mut head = mm(&rot(up, hy), &mm(&rot(e, -fs * hn), &rot(fwd, hr)));
-        if let Some((j, w)) = &emote {
+        for (j, _, w) in &layers {
             head = mix(&head, &j[2].0, *w);
         }
         let arm = |i: usize| {
             self.shoulders[i].map(|p| {
-                let own = mm(&rot(e, fs * fw[i]), &rot(fwd, out(p) * ow[i]));
-                on_body(p, emote.as_ref().map_or(own, |(j, w)| mix(&own, &j[3 + i].0, *w)))
+                let mut own = mm(&rot(e, fs * fw[i]), &rot(fwd, out(p) * ow[i]));
+                for (j, w, _) in &layers {
+                    own = mix(&own, &j[3 + i].0, *w);
+                }
+                on_body(p, own)
             })
         };
         // A leg: standing, its foot stays where it is and its top goes with the hips; else it swings from the hip.
         let leg = |i: usize, swing: f32| {
             self.hips[i].map(|h| {
-                if let Some((j, w)) = emote.as_ref().filter(|(_, w)| *w > 0.) {
+                if !layers.is_empty() {
                     // (With the lower torso, from the hip.)
-                    let own = mix(&rot(e, swing), &j[5 + i].0, *w);
+                    let mut own = rot(e, swing + fs * 1.45 * sat);
+                    for (j, w, _) in &layers {
+                        own = mix(&own, &j[5 + i].0, *w);
+                    }
                     let tr = add(sub(add(mv(&lower, sub(h, root)), root), h), moved);
                     return (h, mm(&lower, &own), tr);
                 }
@@ -655,7 +696,7 @@ impl Rig {
                 }
             })
         };
-        let sink = -self.leg * (1. - swing_leg.cos());
+        let sink = if motion(v.pack[1]).is_some() && self.side == 0 { 0. } else { -self.leg * (1. - swing_leg.cos()) };
         Posed {
             bones: [Some((root, body, moved)), Some(on_body(self.neck, head)), arm(0), arm(1), leg(0, swing_leg), leg(1, -swing_leg)],
             sink,
@@ -760,26 +801,48 @@ fn rig_of(tris: &mut [Tri], names: &[String]) -> Option<Rig> {
         p
     };
     let leg = hips.iter().flatten().map(|&g| hi[g][1] - blo[1]).fold(0f32, f32::max);
-    // A worn thing goes with the head when it reaches over the head's middle, above it: a hat, hair (long hair too).
+    // A worn thing goes with the head when it reaches over the head's middle, above it: a hat, glasses, hair. One that
+    // also reaches well down below the neck goes with it only when it covers the top of the head (long hair): a scarf
+    // reaches just over the head's middle and turned with the head (the owner's avatar, 2026-11-20).
     let hc = c(head);
     let reach = (hi[head][0] - lo[head][0]).max(hi[head][2] - lo[head][2]) * 1.5;
+    let head_h = hi[head][1] - lo[head][1];
     for g in (0..n).filter(|&g| used(g) && !body.contains(&g)) {
         let k = c(g);
-        if hi[g][1] > hc[1] && (k[0] - hc[0]).abs() < reach && (k[2] - hc[2]).abs() < reach {
+        let near = (k[0] - hc[0]).abs() < reach && (k[2] - hc[2]).abs() < reach;
+        let on_head = lo[g][1] >= lo[head][1] - 0.05 * h || hi[g][1] >= hi[head][1] - 0.1 * head_h;
+        if hi[g][1] > hc[1] && near && on_head {
             bone[g] = HEAD;
         }
     }
     for t in tris.iter_mut() {
         t.bone = bone[t.group as usize];
     }
-    // What hangs (long hair, a cape, a tail) swings from its top; a short thing (a hat, a cap of hair) not at all.
+    // What hangs swings: hair as far as it hangs below the neck, and a cape (a thin sheet behind the body). Glasses, a
+    // hat, a scarf, wings or a sword on the back are held fast, as in Roblox: they swung about their tops and came off
+    // the avatar (the owner's avatar, 2026-11-20).
+    let neck_y = lo[head][1];
+    let fb = 2 - side;
     let hang = (0..n)
         .map(|g| {
             if !used(g) || body.contains(&g) {
                 return None;
             }
-            let w = ((hi[g][1] - lo[g][1] - 0.15 * h) / (0.25 * h)).clamp(0., 1.);
-            (w > 0.).then(|| ([c(g)[0], hi[g][1], c(g)[2]], w))
+            let k = c(g);
+            let (top, len) = if bone[g] == HEAD {
+                (neck_y, neck_y - lo[g][1])
+            } else {
+                let deep = hi[g][fb] - lo[g][fb];
+                let tall = hi[g][1] - lo[g][1];
+                // (Behind: on the side away from where it faces, -Z, as Roblox's models do.)
+                let behind = if side == 0 { k[2] > mid[2] } else { k[0] > mid[0] };
+                if deep > 0.35 * tall || !behind {
+                    return None;
+                }
+                (hi[g][1], tall)
+            };
+            let w = ((len - 0.1 * h) / (0.25 * h)).clamp(0., 1.);
+            (w > 0.).then(|| ([k[0], top, k[2]], w, len.max(1e-3)))
         })
         .collect();
     Some(Rig { side, neck: [hc[0], lo[head][1], hc[2]], shoulders: [tops[0].map(shoulder), tops[1].map(shoulder)], hips: [hips[0].map(hip), hips[1].map(hip)], leg, hang })
@@ -1107,7 +1170,7 @@ impl Model {
             turn(w, -s0, c0)
         });
         // Each part's turn at this moment.
-        let moving = view.t > 0. || view.pace > 0. || view.act != Act::default();
+        let moving = view.t > 0. || view.pace > 0. || view.up > 0. || view.rise > 0. || view.act != Act::default();
         let posed = self.rig.as_ref().filter(|_| moving).map(|r| r.pose(&view, look));
         let sink = posed.as_ref().map_or(0., |p| p.sink) + view.up.max(0.);
         // What hangs from it, swung out of place.
@@ -1128,10 +1191,17 @@ impl Model {
         for tri in &self.tris {
             let (mut tp, mut tn) = (tri.p, tri.n);
             if let Some((r, sw, e, fwd)) = hang.as_ref() {
-                if let Some(Some((at, w))) = r.hang.get(tri.group as usize) {
-                    let m = mm(&rot(*fwd, sw[0] * w), &rot(*e, sw[1] * w));
-                    tp = tp.map(|p| add(mv(&m, sub(p, *at)), *at));
-                    tn = tn.map(|v| mv(&m, v));
+                if let Some(Some((at, w, len))) = r.hang.get(tri.group as usize) {
+                    // (It bends: the further below where it hangs from, the more it swings; above it, not at all.)
+                    let mut bent = [IDENTITY; 3];
+                    for k in 0..3 {
+                        let f = w * ((at[1] - tp[k][1]) / len).clamp(0., 1.);
+                        bent[k] = mm(&rot(*fwd, sw[0] * f), &rot(*e, sw[1] * f));
+                    }
+                    for k in 0..3 {
+                        tp[k] = add(mv(&bent[k], sub(tp[k], *at)), *at);
+                        tn[k] = mv(&bent[k], tn[k]);
+                    }
                 }
             }
             if let Some((at, m, tr)) = posed.as_ref().and_then(|p| p.bones[tri.bone as usize].as_ref()) {
