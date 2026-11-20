@@ -21,7 +21,7 @@ use windows_sys::Win32::{
         Threading::GetCurrentThreadId,
     },
     UI::{
-        Input::KeyboardAndMouse::{GetLastInputInfo, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYEVENTF_KEYUP, LASTINPUTINFO, MAPVK_VK_TO_VSC, MapVirtualKeyW, SendInput},
+        Input::KeyboardAndMouse::{GetLastInputInfo, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYEVENTF_EXTENDEDKEY, KEYEVENTF_KEYUP, LASTINPUTINFO, MAPVK_VK_TO_VSC, MapVirtualKeyW, SendInput},
         Shell::SHQueryUserNotificationState,
         WindowsAndMessaging::{
             BringWindowToTop, GetClassNameW, GetForegroundWindow, GetLayeredWindowAttributes, GetShellWindow, GetWindow, GetWindowLongW, GetWindowThreadProcessId,
@@ -485,19 +485,39 @@ fn is_desktop(h: isize) -> bool {
     }
 }
 
-fn key_input(scan: u16, flags: u32) -> INPUT {
-    INPUT { r#type: INPUT_KEYBOARD, Anonymous: INPUT_0 { ki: KEYBDINPUT { wVk: NUDGE_KEY, wScan: scan, dwFlags: flags, time: 0, dwExtraInfo: 0 } } }
+fn key_input(vk: u16, scan: u16, flags: u32) -> INPUT {
+    INPUT { r#type: INPUT_KEYBOARD, Anonymous: INPUT_0 { ki: KEYBDINPUT { wVk: vk, wScan: scan, dwFlags: flags, time: 0, dwExtraInfo: 0 } } }
 }
 
 fn press_key(_: isize) {
+    // SAFETY: plain Windows call.
+    let scan = unsafe { MapVirtualKeyW(NUDGE_KEY as u32, MAPVK_VK_TO_VSC) } as u16;
+    press(NUDGE_KEY, scan, false);
+}
+
+fn press(vk: u16, scan: u16, extended: bool) {
+    let ext = if extended { KEYEVENTF_EXTENDEDKEY } else { 0 };
     // SAFETY: SendInput gets one INPUT of Windows' own layout and its size.
     unsafe {
-        let scan = MapVirtualKeyW(NUDGE_KEY as u32, MAPVK_VK_TO_VSC) as u16;
-        let down = [key_input(scan, 0)];
+        let down = [key_input(vk, scan, ext)];
         SendInput(1, down.as_ptr(), input_size());
         std::thread::sleep(Duration::from_millis(30)); // held for a moment, like a real key
-        let up = [key_input(scan, KEYEVENTF_KEYUP)];
+        let up = [key_input(vk, scan, ext | KEYEVENTF_KEYUP)];
         SendInput(1, up.as_ptr(), input_size());
+    }
+}
+
+/// A key Settings may give anti-AFK: F15, or a keyboard key macros press (not a mouse button).
+pub fn key_ok(name: &str) -> bool {
+    name == "F15" || super::macro_model::macro_keys::contains(name)
+}
+
+/// Presses Settings' key (`key_ok`; anything else is F15) in the window given the keyboard: Space makes the character
+/// jump, for a game that wants it to move (a Pet Simulator 99 player, 2026-11-20).
+pub fn press_named(name: &str) {
+    match super::macro_model::macro_keys::get(name).filter(|_| name != "F15") {
+        Some(k) => press(k.vk, k.scan, k.extended),
+        None => press_key(0),
     }
 }
 

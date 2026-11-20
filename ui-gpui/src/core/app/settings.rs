@@ -215,6 +215,12 @@ impl App {
             if let Some(anti_afk) = opt_bool(a, "antiAfk") {
                 s.anti_afk = anti_afk;
             }
+            if let Some(m) = a.get("antiAfkMinutes").and_then(Value::as_i64) {
+                s.anti_afk_minutes = m.clamp(5, 18) as i32;
+            }
+            if let Some(k) = a.get("antiAfkKey").and_then(Value::as_str) {
+                s.anti_afk_key = if anti_afk::key_ok(k) { k.to_string() } else { "F15".into() };
+            }
             if has(a, "robloxConfig", JsonKind::Object) {
                 let rc = &a["robloxConfig"];
                 let c = &mut s.roblox_config;

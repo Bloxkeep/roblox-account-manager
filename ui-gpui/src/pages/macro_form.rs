@@ -3637,12 +3637,12 @@ pub(crate) fn key_cap(k: &str) -> String {
     }
 }
 
-fn key_name(root: &Root, k: &str) -> String {
+pub(crate) fn key_name(root: &Root, k: &str) -> String {
     if MOUSE_KEYS.contains(&k) { root.tr(&format!("macro.mk.{k}")) } else { key_cap(k) }
 }
 
 /// The keys a step may press (macros.ts's KEYS).
-fn all_keys() -> Vec<String> {
+pub(crate) fn all_keys() -> Vec<String> {
     let mut v: Vec<String> = ('A'..='Z').map(|ch| ch.to_string()).collect();
     v.extend((0..=9).map(|n| n.to_string()));
     v.extend((1..=12).map(|n| format!("F{n}")));

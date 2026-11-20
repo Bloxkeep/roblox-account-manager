@@ -564,6 +564,8 @@ impl App {
             "splitCores": s.split_cores,
             "cores": App::cores_dto(),
             "antiAfk": s.anti_afk,
+            "antiAfkMinutes": s.anti_afk_minutes,
+            "antiAfkKey": s.anti_afk_key,
             "robloxConfig": { "mode": c.mode, "graphics": c.graphics, "fps": c.fps, "volume": c.volume },
             "recentGames": s.recent_games.iter().map(|g| self.saved_game_dto(g)).collect::<Vec<_>>(),
             "pinnedGames": s.pinned_games.iter().map(|g| self.saved_game_dto(g)).collect::<Vec<_>>(),

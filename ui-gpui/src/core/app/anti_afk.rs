@@ -85,9 +85,8 @@ fn hh_mm_ss(at: Stamp) -> String {
 }
 
 impl App {
-    /// After `anti_afk::INTERVAL` without input (or since joining), nudges every in-server Roblox window, also ones opened
-    /// outside Bloxkeep, at the first idle minute; from `anti_afk::LAST_CHANCE`, in a short pause even while the PC is in
-    /// use. A preset's own option decides for its windows (`anti_afk_on`).
+    /// After Settings' minutes without input (`afk_every`, or since joining), nudges every in-server Roblox window, also
+    /// ones opened outside Bloxkeep: at once while the PC is idle, else in a short pause of the person's typing. A preset's own option decides for its windows (`anti_afk_on`).
     pub fn run_anti_afk(self: &Rc<Self>, now: Stamp, windows: &HashMap<i32, Vec<isize>>) {
         let st = &self.anti_afk;
         st.last_input.borrow_mut().retain(|pid, _| windows.contains_key(pid));
@@ -182,6 +181,7 @@ impl App {
         full_screen: &dyn Fn() -> bool,
     ) -> Vec<i32> {
         let st = &self.anti_afk;
+        let every = self.afk_every();
         let due = |pid: i32, after: Duration| -> bool {
             windows.get(&pid).is_some_and(|w| !w.is_empty())
                 && self.controller.logs.borrow().state_of(pid).is_none_or(|s| s.status == "ingame")
@@ -191,7 +191,7 @@ impl App {
         let waiting = |pid: i32| -> bool { st.nudge_retry_at.borrow().get(&pid).is_some_and(|retry| now < *retry) };
         // Locked: no window can come to the front (a minimised one would be restored and minimised for nothing).
         if locked {
-            for &pid in on.iter().filter(|pid| due(**pid, INTERVAL)) {
+            for &pid in on.iter().filter(|pid| due(**pid, every)) {
                 st.afk_held.borrow_mut().insert(pid, AfkHeld::Locked);
             }
             return Vec::new();
@@ -215,12 +215,13 @@ impl App {
         }
         drop(reached_at);
         if idle >= USER_IDLE_NEEDED {
-            return on.iter().copied().filter(|pid| due(*pid, INTERVAL) && !waiting(*pid)).collect();
+            return on.iter().copied().filter(|pid| due(*pid, every) && !waiting(*pid)).collect();
         }
-        // PC in use: one about to be kicked goes in a two-second pause (mid-typing, a key would reach Roblox), unless a
-        // full-screen app is in front.
-        let last: HashSet<i32> = on.iter().copied().filter(|pid| due(*pid, LAST_CHANCE)).collect();
-        for &pid in on.iter().filter(|pid| due(**pid, INTERVAL)) {
+        // PC in use: a due window goes all the same, in a two-second pause (mid-typing, a key would reach Roblox), unless a
+        // full-screen app is in front. (It used to wait for an idle minute until 18 minutes: a game that kicks sooner than
+        // Roblox, Pet Simulator 99 at about 15, took the window first; a player's log, 2026-11-20.)
+        let last: HashSet<i32> = on.iter().copied().filter(|pid| due(*pid, every)).collect();
+        for &pid in on.iter().filter(|pid| due(**pid, every)) {
             st.afk_held.borrow_mut().insert(pid, AfkHeld::InUse);
         }
         // The next idle spell tries every other window again from the start.
@@ -239,6 +240,12 @@ impl App {
             return Vec::new();
         }
         last.into_iter().filter(|pid| !waiting(*pid)).collect()
+    }
+
+    /// How long a window goes without input before it is pressed for: Settings' 5 to 18 minutes (12 before a vault).
+    pub fn afk_every(&self) -> Duration {
+        let minutes = self.vault(|d| d.settings.anti_afk_minutes).unwrap_or(INTERVAL.as_secs() as i32 / 60);
+        Duration::from_secs(minutes.clamp(5, 18) as u64 * 60)
     }
 
     /// 1 min, doubling to 15, but never past the window's last chance.
@@ -341,7 +348,8 @@ impl App {
             let handles: Vec<isize> = clients.iter().map(|c| c.1).collect();
             let reached = {
                 let keep = keep.clone();
-                rt::blocking(move || anti_afk::nudge(&handles, &|| keep.load(Ordering::SeqCst), None)).await
+                let key = self.vault(|d| d.settings.anti_afk_key.clone()).unwrap_or_default();
+                rt::blocking(move || anti_afk::nudge(&handles, &|| keep.load(Ordering::SeqCst), Some(&|_| anti_afk::press_named(&key)))).await
             };
             drop(finish);
             for (pid, window) in &clients {

@@ -90,26 +90,26 @@ pub async fn run(c: &mut Checks, _dir: &str) {
     let r = decide(secs(90), false, OTHER, false, None);
     c.check("away: windows idle 12+ min nudged, the 5-min one not", r == [B, C], list(&r));
     let r = decide(secs(20), false, OTHER, false, None);
-    c.check("in use, 20 s since input: the window about to be kicked goes, the 13-min one waits", r == [C], list(&r));
+    c.check("in use, 20 s since input: every due window goes (12 min by default), not only the one about to be kicked", r == [B, C], list(&r));
     c.check(
         "in use: due windows noted as held (PC in use)",
         held(B) == "InUse" && held(C) == "InUse" && held(A) == "-",
         format!("{} {} {}", held(A), held(B), held(C)),
     );
-    let r = decide(secs(20), false, OTHER, false, Some(HashSet::from([A, B])));
-    c.check("in use, nothing near its kick: nothing nudged", r.is_empty(), list(&r));
-    c.check("no last-chance window: full-screen state not asked", !full_asked.get(), ());
+    let r = decide(secs(20), false, OTHER, false, Some(HashSet::from([A, D])));
+    c.check("in use, nothing due: nothing nudged", r.is_empty(), list(&r));
+    c.check("nothing due: full-screen state not asked", !full_asked.get(), ());
     let r = decide(secs(1), false, OTHER, false, None);
-    c.check("in use, 1 s pause: last-chance window waits", r.is_empty(), list(&r));
+    c.check("in use, 1 s pause: due windows wait", r.is_empty(), list(&r));
     let r = decide(secs(3), false, OTHER, false, None);
-    c.check("in use, 3 s pause: only the window about to be kicked", r == [C], list(&r));
+    c.check("in use, 3 s pause: the due windows", r == [B, C], list(&r));
     c.check("full-screen state asked only when it matters", full_asked.get(), ());
     let r = decide(secs(3), false, OTHER, true, None);
     c.check("full-screen app in front: not interrupted", r.is_empty() && held(C) == "FullScreen", format!("{} {}", list(&r), held(C)));
     let r = decide(secs(3), false, D, true, None);
     c.check(
-        "a Roblox window in front (even full screen): the other one about to be kicked goes",
-        r == [C] && !full_asked.get(),
+        "a Roblox window in front (even full screen): the other due ones go",
+        r == [B, C] && !full_asked.get(),
         format!("{} asked={}", list(&r), full_asked.get()),
     );
     c.check(
@@ -123,6 +123,24 @@ pub async fn run(c: &mut Checks, _dir: &str) {
         r.is_empty() && held(B) == "Locked" && held(C) == "Locked",
         format!("{} {} {}", list(&r), held(B), held(C)),
     );
+    // Settings' minutes (5 to 18): a game that kicks sooner than Roblox's 20 (Pet Simulator 99, about 15) is pressed for
+    // in time, the PC in use or not.
+    let _ = app.vault_mut(|d| d.settings.anti_afk_minutes = 5);
+    let r = decide(secs(3), false, OTHER, false, None);
+    c.check("every 5 minutes, in use: the 5-minute window goes too", r == [A, B, C], list(&r));
+    let _ = app.vault_mut(|d| d.settings.anti_afk_minutes = 13);
+    let r = decide(secs(90), false, OTHER, false, None);
+    c.check("every 13 minutes, away: the 13-minute window goes, the 5-minute one not", r == [B, C], list(&r));
+    let _ = app.vault_mut(|d| d.settings.anti_afk_minutes = 40);
+    c.check("a time past 18 minutes is read as 18 (Roblox kicks at 20)", app.afk_every() == Duration::from_secs(18 * 60), app.afk_every());
+    let _ = app.vault_mut(|d| d.settings.anti_afk_minutes = 12);
+    // Settings' key: F15 by default, Space to jump, any macro key; not a mouse button or a made-up name.
+    c.check("the key is F15 unless picked", app.vault(|d| d.settings.anti_afk_key.clone()).ok().as_deref() == Some("F15"), ());
+    c.check(
+        "F15, Space and other keyboard keys can be picked; a mouse button or an unknown name can't",
+        anti_afk::key_ok("F15") && anti_afk::key_ok("Space") && anti_afk::key_ok("E") && !anti_afk::key_ok("MouseLeft") && !anti_afk::key_ok("Nope"),
+        (),
+    );
 
     // A refused window waits before its next try, but not past its last chance.
     let at0 = Stamp::utc_now();
@@ -132,15 +150,15 @@ pub async fn run(c: &mut Checks, _dir: &str) {
     c.check("past the last chance: tried again within a minute", (within(9, 19.0) - 1.0).abs() < 0.01, within(9, 19.0));
     c.check("long run of misses early on: 15 min at most", (within(5, 2.0) - 15.0).abs() < 0.01, within(5, 2.0));
 
-    // A last-chance window keeps its wait while the PC is in use; the others' waits are cleared.
+    // A due window keeps its wait while the PC is in use; the others' waits are cleared.
     clear();
     let t1 = Stamp::utc_now();
-    st.last_input.borrow_mut().insert(B, t1.plus_secs(-mins(13.0)));
+    st.last_input.borrow_mut().insert(B, t1.plus_secs(-mins(10.0)));
     st.last_input.borrow_mut().insert(C, t1.plus_secs(-mins(19.0)));
     st.nudge_retry_at.borrow_mut().insert(B, t1.plus_secs(mins(3.0)));
     st.nudge_retry_at.borrow_mut().insert(C, t1.plus_secs(40.0));
     let rw = app.anti_afk_due(t1, &HashSet::from([B, C]), &wins, false, secs(3), OTHER, &|| false);
-    c.check("last-chance window still waiting: not tried yet", rw.is_empty(), list(&rw));
+    c.check("due window still waiting: not tried yet", rw.is_empty(), list(&rw));
     let keys: Vec<i32> = st.nudge_retry_at.borrow().keys().copied().collect();
     c.check(
         "in use clears the other windows' waits only",

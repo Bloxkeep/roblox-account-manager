@@ -195,6 +195,12 @@ pub struct AppSettings {
     pub split_cores: bool,
     /// Off until the user opts in: it briefly brings Roblox windows to the front while the PC is idle.
     pub anti_afk: bool,
+    /// Minutes without input before anti-AFK presses for a window (5 to 18): then, even while the PC is in use, in a pause.
+    /// Roblox kicks at 20; some games sooner (a Pet Simulator 99 player's, 2026-11-20, about 15).
+    pub anti_afk_minutes: i32,
+    /// The key anti-AFK presses: F15 (on no keyboard, used by no game), or one of the macro keys (Space jumps, for a game
+    /// that wants the character to move).
+    pub anti_afk_key: String,
     /// A window in a public server with more than this many other players moves to a quieter one; 0 = never.
     /// See AppController.ServerHop.cs.
     pub hop_above_players: i32,
@@ -254,6 +260,8 @@ impl Default for AppSettings {
             restart_above_mb: 0,
             split_cores: false,
             anti_afk: false,
+            anti_afk_minutes: 12,
+            anti_afk_key: "F15".into(),
             hop_above_players: 0,
             rejoin_wait_seconds: 0,
             roblox_config: RobloxConfig::default(),

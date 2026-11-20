@@ -141,6 +141,8 @@ pub struct Data {
     pub dc_pick: Option<(&'static str, HashSet<String>)>,
     pub dc_ping: Option<(String, String)>,
     pub dc_board_preview: bool,
+    /// Anti-AFK's key list open under its row (Other key).
+    pub afk_keys: bool,
     pub dc_alerts_want: Option<bool>,
     /// Discord's tab: "summary", "alerts", "messages", "control".
     pub dc_tab: &'static str,
@@ -627,6 +629,58 @@ fn question(
                 }))),
         )
         .into_any_element()
+}
+
+/// Anti-AFK's key: F15 (the default), Space to jump, or any other from the macro keys' list, opened under it.
+fn afk_key(root: &Root, st: &Value, cx: &mut Context<Root>) -> AnyElement {
+    let now = st.get("antiAfkKey").and_then(Value::as_str).filter(|k| !k.is_empty()).unwrap_or("F15").to_string();
+    let other = now != "F15" && now != "Space";
+    let mut items: Vec<(String, String, bool)> = vec![("F15".into(), "F15".into(), false), ("Space".into(), root.tr("set.antiAfkJump"), false)];
+    if other {
+        items.push((now.clone(), crate::pages::macro_form::key_name(root, &now), false));
+    }
+    let open = root.settings.afk_keys;
+    let row = div()
+        .flex()
+        .flex_wrap()
+        .items_center()
+        .gap(px(8.))
+        .child(chips(root, cx, "s-afk-key", items, &now, |r, v: String, cx| {
+            r.settings.afk_keys = false;
+            set(r, json!({ "antiAfkKey": v }), cx)
+        }))
+        .child(Button::new("s-afk-key-other", root.tr("set.antiAfkKeyOther")).small().quiet().icon(if open { "chevronUp" } else { "chevronDown" }).on_click(cx.listener(|r, _, _, cx| {
+            r.settings.afk_keys = !r.settings.afk_keys;
+            cx.notify();
+        })));
+    let grid = open.then(|| {
+        let mut grid = div().flex().flex_wrap().gap(px(4.));
+        for (n, k) in crate::pages::macro_form::all_keys().into_iter().enumerate() {
+            let on = k == now;
+            let label = crate::pages::macro_form::key_name(root, &k);
+            grid = grid.child(
+                hot(("s-afk-k", n))
+                    .h(px(30.))
+                    .min_w(px(34.))
+                    .px(px(8.))
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .rounded(px(7.))
+                    .map(|d| if on { d.tones(c(FACE), c(FACE_HI)).text_color(crate::theme::on_text()) } else { d.tones(ca(WHITE, 0.05), ca(WHITE, 0.12)).text_color(c(TEXT_2)) })
+                    .cursor_pointer()
+                    .text_size(px(T_S))
+                    .font_weight(FontWeight::SEMIBOLD)
+                    .child(label)
+                    .on_click(cx.listener(move |r, _, _, cx| {
+                        r.settings.afk_keys = false;
+                        set(r, json!({ "antiAfkKey": k.clone() }), cx);
+                    })),
+            );
+        }
+        grid
+    });
+    div().flex().flex_col().gap(px(10.)).child(row).children(grid).into_any_element()
 }
 
 /// A list to tick in place under its row (accounts, parts of a message): Done saves it, Cancel leaves it.
@@ -1322,6 +1376,17 @@ fn perf(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
             chips(root, cx, "s-rejoin-wait", items, &now, |r, v, cx| set(r, json!({ "rejoinWaitSeconds": v }), cx))
         }),
         row(root.tr("set.antiAfk"), Some(root.tr("set.antiAfkDesc")), switch("s-antiafk", flag(st, "antiAfk"), cx, |r, on, cx| set(r, json!({ "antiAfk": on }), cx))),
+        row_below(root.tr("set.antiAfkEvery"), Some(root.tr("set.antiAfkEveryDesc")), {
+            let now = st.get("antiAfkMinutes").and_then(Value::as_i64).unwrap_or(12);
+            let mut every: Vec<i64> = vec![5, 8, 10, 12, 15, 18];
+            if !every.contains(&now) {
+                every.push(now);
+                every.sort_unstable();
+            }
+            let items = every.into_iter().map(|n| (n, root.i18n.tv("set.minutesN", &[("n", &n.to_string())]), false)).collect();
+            chips(root, cx, "s-afk-every", items, &now, |r, v, cx| set(r, json!({ "antiAfkMinutes": v }), cx))
+        }),
+        row_below(root.tr("set.antiAfkKey"), Some(root.tr("set.antiAfkKeyDesc")), afk_key(root, st, cx)),
         row_below(root.tr("set.hop"), Some(root.tr("set.hopDesc")), chips(root, cx, "s-hop", hops, &hop, |r, v, cx| set(r, json!({ "hopAbovePlayers": v }), cx))),
         row(
             root.tr("set.daily"),
