@@ -20,8 +20,9 @@ use std::{
 
 use gpui_kit::{prelude::*, AsyncApp, Context, EventEmitter, ImageSource, ObjectFit, RenderImage, Subscription, WeakEntity, Window, div, img};
 
-/// Frames decoded ahead of the one on screen.
-const AHEAD: usize = 4;
+/// Frames decoded ahead of the one on screen: two (each up to 960 or 1600 pixels wide, 2-6 MB; four held 12 MB for
+/// a clip, the owner's error.log 2026-11-20); a frame decodes in a few ms, far within one frame's time.
+const AHEAD: usize = 2;
 /// Not drawn for this long: the clock stops and the decoder is let go (the page went, or the window is hidden); drawn
 /// again, the clip starts over.
 const PAUSE: Duration = Duration::from_millis(800);

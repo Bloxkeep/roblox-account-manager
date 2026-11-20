@@ -628,7 +628,9 @@ pub fn lock(root: &Root, window: &mut Window, cx: &mut Context<Root>) -> AnyElem
         None
     };
     let typed = root.lock_pw.read(cx).value().to_string();
-    let (score, level) = strength(&typed);
+    // (Only while a new password is made: unlocking, the estimator ran on every redraw as the password was typed and
+    // kept its 3 MB of word lists for good, the owner's error.log, 2026-11-20.)
+    let (score, level) = if create { strength(&typed) } else { (0, "weak") };
     // Shots never show the PC's own Caps Lock.
     let caps = window.capslock().on && !(cfg!(feature = "shot") && std::env::var("BLOXKEEP_KEPT").is_ok());
 
