@@ -17,6 +17,7 @@ pub mod feed_link;
 pub mod forms;
 pub mod game_hours;
 pub mod game_target;
+pub mod hidden_stills;
 pub mod gpui_host;
 pub mod input_turn;
 pub mod l;

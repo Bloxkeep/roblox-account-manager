@@ -81,6 +81,18 @@ fn show_async(h: isize, command: i32) {
     }
 }
 
+/// The window's game no wider than `max_width`, for its tile while it is hidden or minimized (hidden_stills.rs), with
+/// how it went; None when nothing came of it (not answering, all one colour, all but black). Blocking.
+pub(crate) fn still(h: isize, max_width: i32) -> (Option<Picture>, String) {
+    let (full, how) = shown_traced(h);
+    let Some(full) = full.filter(|p| !blank(p) && !all_but_black(p)) else { return (None, how) };
+    let scale = 1f64.min(max_width as f64 / full.width as f64);
+    if scale >= 1.0 {
+        return (Some(full), how);
+    }
+    (Some(shrink(&full, (full.width as f64 * scale).round() as i32, (full.height as f64 * scale).round() as i32)), how)
+}
+
 /// The window's game as a JPEG no wider than `max_width`; None when it can't be pictured (gone, not
 /// answering, no size). `black` (the second) says the picture came out all but black (Windows locked, say). Blocking.
 pub fn capture(h: isize, max_width: i32) -> (Option<Shot>, String) {

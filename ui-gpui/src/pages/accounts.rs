@@ -2280,12 +2280,66 @@ fn lane(root: &Root, i: usize, l: Lane, col_w: f32, span: usize, lines: usize, m
     div().w(px(w)).flex_none().flex().flex_col().gap(px(16.)).child(head).child(grid(GRID_GAP).pb(px(RISE)).children(tiles))
 }
 
-/// One Roblox window. Its picture first, across the top at 16:9: the live one the app lays there (Windows draws it
-/// over this window, so nothing of ours goes on it), the game's own under it while there's none (minimised, hidden,
-/// opening, or not sent yet). Under it the face, name and time on one line, then a line of facts: the state's dot and
-/// words at the left, RAM and PID at the right; its chips and note, today's strip, then its main button (Close, or the
-/// way back in: Rejoin, Verify), Edit and its menu at the foot. A click brings the window to the
-/// front, as the old Game monitor did; the round tick (or Ctrl+click) picks the account for the bar.
+thread_local! {
+    /// The pictures of hidden and minimized windows drawn last, by window: the core's serial, the picture, when asked.
+    static STILLS: std::cell::RefCell<std::collections::HashMap<isize, (u64, std::sync::Arc<RenderImage>, std::time::Instant)>> = Default::default();
+}
+
+/// Window `h`'s latest picture while it is hidden or minimized (asking keeps it pictured); None until the first.
+#[cfg(feature = "core")]
+fn still_of(h: &str, cx: &mut Context<Root>) -> Option<std::sync::Arc<RenderImage>> {
+    let h: isize = h.parse().ok()?;
+    let now = std::time::Instant::now();
+    let fresh = crate::core::hidden_stills::want(h);
+    STILLS.with(|m| {
+        let mut m = m.borrow_mut();
+        // (Windows no tile asked for lately: their pictures off the graphics card.)
+        m.retain(|k, (_, p, at)| {
+            let keep = *k == h || now.duration_since(*at).as_secs() < 10;
+            if !keep {
+                cx.drop_image(p.clone(), None);
+            }
+            keep
+        });
+        let fresh = fresh?;
+        let made = m.get(&h).filter(|(serial, p, _)| *serial == fresh.serial && !images::made_lost(p)).map(|(_, p, _)| p.clone());
+        let pic = match made {
+            Some(p) => p,
+            None => {
+                let (w, h2) = (fresh.picture.width as u32, fresh.picture.height as u32);
+                // (Picture's pixels are 0xAARRGGBB: as bytes blue, green, red, alpha, what GPUI keeps.)
+                let bytes: Vec<u8> = fresh.picture.pixels.iter().flat_map(|p| p.to_le_bytes()).collect();
+                let buffer = image::RgbaImage::from_raw(w, h2, bytes)?;
+                let p = images::made("window still", RenderImage::new(vec![image::Frame::new(buffer)]));
+                if let Some((_, old, _)) = m.insert(h, (fresh.serial, p.clone(), now)) {
+                    cx.drop_image(old, None);
+                }
+                p
+            }
+        };
+        if let Some(e) = m.get_mut(&h) {
+            e.2 = now;
+        }
+        Some(pic)
+    })
+}
+
+/// A shot: the picture in BLOXKEEP_SHOT_STILL for every hidden or minimized window.
+#[cfg(not(feature = "core"))]
+fn still_of(_h: &str, _cx: &mut Context<Root>) -> Option<std::sync::Arc<RenderImage>> {
+    thread_local! {
+        static SHOT: Option<std::sync::Arc<RenderImage>> = std::env::var("BLOXKEEP_SHOT_STILL").ok().and_then(|f| {
+            let mut rgba = image::open(f).ok()?.into_rgba8();
+            // (GPUI keeps blue, green, red, alpha.)
+            for p in rgba.pixels_mut() {
+                p.0.swap(0, 2);
+            }
+            Some(std::sync::Arc::new(RenderImage::new(vec![image::Frame::new(rgba)])))
+        });
+    }
+    SHOT.with(Clone::clone)
+}
+
 /// The lines of facts a tile has under its state: its chips and Robux, its note.
 fn tile_lines(root: &Root, a: &Value) -> usize {
     if foreign(a) {
@@ -2305,6 +2359,12 @@ fn job_of(root: &Root, a: &Value) -> Option<String> {
 /// Server colours for the letters, as app.css's .mon-srv s0–s3.
 const SRV_TONES: [u32; 4] = [0x60a5fa, 0xf472b6, 0x34d399, 0xfbbf24];
 
+/// One Roblox window. Its picture first, across the top at 16:9: the live one the app lays there (Windows draws it
+/// over this window, so nothing of ours goes on it), for a hidden or minimised window its picture taken every
+/// half minute, else the game's own while there's none (opening, or not sent yet). Under it the face, name and time on one line, then a line of facts: the state's dot and
+/// words at the left, RAM and PID at the right; its chips and note, today's strip, then its main button (Close, or the
+/// way back in: Rejoin, Verify), Edit and its menu at the foot. A click brings the window to the
+/// front, as the old Game monitor did; the round tick (or Ctrl+click) picks the account for the bar.
 /// `compact`: one of many windows (MON_MANY): the picture, the name, the state, the RAM and Close with the menu; the
 /// handle, playing time, PID, chips, note, day strip, Main and Edit go (Edit stays in the menu).
 fn tile(root: &Root, a: &Value, w: f32, lines: usize, srv: Option<char>, compact: bool, cx: &mut Context<Root>) -> impl IntoElement {
@@ -2320,6 +2380,8 @@ fn tile(root: &Root, a: &Value, w: f32, lines: usize, srv: Option<char>, compact
     let hwnd = win.map(|w| s(w, "id").to_string()).filter(|h| !h.is_empty());
     let minimized = win.and_then(|w| w.get("minimized")).and_then(Value::as_bool).unwrap_or(false);
     let live = hwnd.clone().filter(|_| !minimized && !hidden(a));
+    // A hidden or minimized window: its picture taken every half minute (hidden_stills.rs), instead of the game's only.
+    let still = (minimized || hidden(a)).then(|| still_of(hwnd.as_deref().unwrap_or_default(), cx)).flatten();
     // (The tile's hairline is inside its width.)
     let pic_w = w - MON_PIC_INSET;
     let h = (pic_w * 9. / 16.).floor();
@@ -2407,8 +2469,30 @@ fn tile(root: &Root, a: &Value, w: f32, lines: usize, srv: Option<char>, compact
                 .overflow_hidden()
                 .bg(ca(WHITE, 0.05))
                 .when_some(cover, |d, p| d.child(div().absolute().inset_0().child(img(p).size_full().object_fit(ObjectFit::Cover))))
-                .when(why.is_some() || launching(a) || conn(a) == "menu", |d| d.child(div().absolute().inset_0().bg(ca(GROUND, 0.6))))
-                .when_some(why, |d, (glyph, text)| {
+                .when_some(still.clone(), |d, p| d.child(div().absolute().inset_0().child(img(ImageSource::Render(p)).size_full().object_fit(ObjectFit::Cover))))
+                .when(still.is_none() && (why.is_some() || launching(a) || conn(a) == "menu"), |d| d.child(div().absolute().inset_0().bg(ca(GROUND, 0.6))))
+                // (Over its picture, why it isn't live: a small label in the corner.)
+                .when_some(why.clone().filter(|_| still.is_some()), |d, (glyph, text)| {
+                    d.child(
+                        div()
+                            .absolute()
+                            .left(px(8.))
+                            .bottom(px(8.))
+                            .max_w(px(pic_w - 16.))
+                            .px(px(8.))
+                            .py(px(3.))
+                            .rounded(px(R_M))
+                            .bg(ca(GROUND, 0.78))
+                            .flex()
+                            .items_center()
+                            .gap(px(5.))
+                            .text_size(px(T_S))
+                            .text_color(c(TEXT_2))
+                            .child(icon(glyph, 13., c(TEXT_2)))
+                            .child(div().truncate().child(text)),
+                    )
+                })
+                .when_some(why.filter(|_| still.is_none()), |d, (glyph, text)| {
                     d.child(
                         div()
                             .absolute()
