@@ -21,6 +21,8 @@ pub mod lock;
 pub mod macro_form;
 pub mod palette;
 pub mod passes;
+pub mod badges;
+pub mod price_chart;
 pub mod password;
 pub mod picker;
 pub mod servers;

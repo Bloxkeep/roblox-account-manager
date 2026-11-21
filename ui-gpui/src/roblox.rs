@@ -2660,6 +2660,8 @@ pub struct Profile {
     pub favs: Vec<ClubGame>,
     pub made: Vec<ClubGame>,
     pub badges: Vec<Badge>,
+    /// The things they show off on their page (Roblox's Collections: up to six, chosen by them).
+    pub collection: Vec<Ware>,
     /// The pictures across the top of their page, sharp (768×432): the games they like, then more of the first one's
     /// own pictures when they like few. One 480×270 cover stretched across the page came out blurred (owner,
     /// 2026-11-17: "banner mờ câm").
@@ -2739,7 +2741,7 @@ pub fn profile(cookie: &str, user: i64) -> Result<Profile, String> {
         made.truncate(SHELF);
         made
     };
-    let won = || {
+    let won_badges = || {
         if !signed {
             return Vec::new();
         }
@@ -2759,8 +2761,9 @@ pub fn profile(cookie: &str, user: i64) -> Result<Profile, String> {
         }
         badges.into_iter().map(|b| b.1).collect::<Vec<Badge>>()
     };
+    let won = || both(won_badges, || collection(user));
     // Nothing here waits for anything else, so it is all asked at once (ten asks one after another took 3 s).
-    let ((d, (friends, robux)), ((groups, (favs, made, banner)), (badges, ((face, body), (followers, following))))) = both(
+    let ((d, (friends, robux)), ((groups, (favs, made, banner)), ((badges, collection), ((face, body), (followers, following))))) = both(
         || {
             both(
                 || get(&format!("https://users.roblox.com/v1/users/{user}"), None),
@@ -2807,6 +2810,7 @@ pub fn profile(cookie: &str, user: i64) -> Result<Profile, String> {
         favs,
         made,
         badges,
+        collection,
         banner_assets: banner.iter().map(|b| b.1).collect(),
         banner: banner.into_iter().map(|b| b.0).collect(),
     })
@@ -4144,4 +4148,258 @@ impl Choice {
         let options = v.get("options")?.as_array()?.iter().filter_map(Value::as_str).map(str::to_string).collect();
         Some(Choice { now, options })
     }
+}
+
+// ───────────────────────── a game's badges ─────────────────────────
+
+/// A game's badge as Roblox's game page lists it: what it is, its picture, and its figures (badges v1's statistics:
+/// the share of the game's players who won it, as a fraction, how many won it yesterday and ever).
+#[derive(Clone, Debug)]
+pub struct GameBadge {
+    pub id: i64,
+    pub name: String,
+    pub about: String,
+    pub pic: String,
+    pub rate: f64,
+    pub yesterday: i64,
+    pub ever: i64,
+}
+
+/// A game's badges, every page of them, the ones it has switched off left out (Roblox's page doesn't show them). No
+/// sign-in needed (badges v1 universes/{id}/badges, checked 2026-11-21).
+pub fn badges(place: i64) -> Result<Vec<GameBadge>, String> {
+    let universe = int(&get(&format!("https://apis.roblox.com/universes/v1/places/{place}/universe"), None)?, "universeId");
+    if universe == 0 {
+        return Err("Roblox".into());
+    }
+    let mut list: Vec<GameBadge> = Vec::new();
+    let mut cursor = String::new();
+    for _ in 0..10 {
+        let mut url = format!("https://badges.roblox.com/v1/universes/{universe}/badges?limit=100&sortOrder=Asc");
+        if !cursor.is_empty() {
+            url += &format!("&cursor={}", enc(&cursor));
+        }
+        let d = match get(&url, None) {
+            Ok(d) => d,
+            Err(e) if list.is_empty() => return Err(e),
+            Err(_) => break,
+        };
+        for v in d.get("data").and_then(Value::as_array).into_iter().flatten() {
+            if v.get("enabled").and_then(Value::as_bool) == Some(false) || int(v, "id") <= 0 {
+                continue;
+            }
+            let pick = |a: &str, b: &str| [text(v, a), text(v, b)].into_iter().find(|t| !t.trim().is_empty()).unwrap_or_default().trim().to_string();
+            let st = v.get("statistics").cloned().unwrap_or_default();
+            list.push(GameBadge {
+                id: int(v, "id"),
+                name: pick("displayName", "name"),
+                about: pick("displayDescription", "description"),
+                pic: String::new(),
+                rate: st.get("winRatePercentage").and_then(Value::as_f64).unwrap_or(0.),
+                yesterday: int(&st, "pastDayAwardedCount"),
+                ever: int(&st, "awardedCount"),
+            });
+        }
+        cursor = text(&d, "nextPageCursor");
+        if cursor.is_empty() {
+            break;
+        }
+    }
+    let ids: Vec<i64> = list.iter().map(|b| b.id).collect();
+    let pics = thumbs("badges/icons?size=150x150&badgeIds=", &ids);
+    for b in &mut list {
+        b.pic = pics.get(&b.id).cloned().unwrap_or_default();
+    }
+    Ok(list)
+}
+
+/// Which of the badges each account has won, and when (seconds; 0 when Roblox said only that it has it). Asked with
+/// the signed-in account's sign-in, 100 badges a call (badges v1 users/{id}/badges/awarded-dates, which refuses a call
+/// that isn't signed in: "Request Context Failure", checked 2026-11-21); for an account it refuses, or with no sign-in,
+/// the inventory's is-owned is asked of its first 40 badges (an open inventory answers it to anyone). An account
+/// Roblox answered nothing for is left out: unknown, not "has none".
+pub fn badge_owners(ids: &[i64], users: &[i64], cookie: Option<&str>) -> HashMap<i64, HashMap<i64, i64>> {
+    let users: Vec<i64> = users.iter().take(40).copied().collect();
+    let ids = ids.to_vec();
+    let mut out = HashMap::new();
+    for group in users.chunks(6) {
+        let got = each(group.to_vec(), |user| {
+            let dated = cookie.filter(|c| !c.is_empty()).and_then(|ck| {
+                let mut won = HashMap::new();
+                for chunk in ids.chunks(100) {
+                    let list: Vec<String> = chunk.iter().map(i64::to_string).collect();
+                    let d = get_once(&format!("https://badges.roblox.com/v1/users/{user}/badges/awarded-dates?badgeIds={}", list.join(",")), Some(ck)).ok()?;
+                    for v in d.get("data").and_then(Value::as_array).into_iter().flatten() {
+                        won.insert(int(v, "badgeId"), crate::time::iso_secs(&text(v, "awardedDate")).unwrap_or(0));
+                    }
+                }
+                Some(won)
+            });
+            if let Some(won) = dated {
+                return (user, Some(won));
+            }
+            let asked: Vec<(i64, Option<bool>)> = ids
+                .iter()
+                .take(40)
+                .copied()
+                .collect::<Vec<_>>()
+                .chunks(8)
+                .flat_map(|c| each(c.to_vec(), |id| (id, get_once(&format!("https://inventory.roblox.com/v1/users/{user}/items/Badge/{id}/is-owned"), None).ok().and_then(|v| v.as_bool()))))
+                .collect();
+            if asked.iter().all(|a| a.1.is_none()) {
+                return (user, None);
+            }
+            (user, Some(asked.into_iter().filter(|a| a.1 == Some(true)).map(|a| (a.0, 0)).collect()))
+        });
+        for (user, won) in got {
+            if let Some(w) = won {
+                out.insert(user, w);
+            }
+        }
+    }
+    out
+}
+
+/// The things a user shows off on their profile (Roblox's Collections, showcases-api: public, checked 2026-11-21), as
+/// the Marketplace lists them (its maker, price and id to buy it by come from catalog's items/details), with their
+/// pictures at 420 px (the showcase's own are 140).
+pub fn collection(user: i64) -> Vec<Ware> {
+    let Ok(d) = get(&format!("https://apis.roblox.com/showcases-api/v1/users/profile/robloxcollections-json?userId={user}"), None) else { return Vec::new() };
+    let mut list: Vec<Ware> = d
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter(|v| int(v, "id") > 0)
+        .take(12)
+        .map(|v| Ware {
+            id: int(v, "id"),
+            bundle: false,
+            name: text(v, "name").trim().to_string(),
+            maker: String::new(),
+            price: None,
+            pic: v.pointer("/thumbnail/url").and_then(Value::as_str).unwrap_or_default().to_string(),
+            about: text(v, "description").trim().to_string(),
+            collectible: String::new(),
+        })
+        .collect();
+    if list.is_empty() {
+        return list;
+    }
+    let ids: Vec<i64> = list.iter().map(|w| w.id).collect();
+    let items: Vec<Value> = ids.iter().map(|id| serde_json::json!({ "itemType": "Asset", "id": id })).collect();
+    let (details, pics) = both(|| post("https://catalog.roblox.com/v1/catalog/items/details", &serde_json::json!({ "items": items }), None).ok(), || thumbs("assets?size=420x420&assetIds=", &ids));
+    for v in details.as_ref().and_then(|d| d.get("data")).and_then(Value::as_array).into_iter().flatten() {
+        if let Some(w) = list.iter_mut().find(|w| w.id == int(v, "id")) {
+            let status = text(v, "priceStatus").replace(' ', "").to_lowercase();
+            w.price = match status.as_str() {
+                "free" => Some(0),
+                "offsale" | "noresellers" => None,
+                _ => Some(if int(v, "lowestPrice") > 0 { int(v, "lowestPrice") } else { int(v, "price") }).filter(|p| *p > 0),
+            };
+            w.maker = text(v, "creatorName");
+            w.collectible = text(v, "collectibleItemId");
+        }
+    }
+    for w in &mut list {
+        if let Some(p) = pics.get(&w.id) {
+            w.pic = p.clone();
+        }
+    }
+    list
+}
+
+/// A resold thing's sales by day, as Roblox's own item page and its chart read them (marketplace-sales v1
+/// item/{collectibleItemId}/resale-data: no sign-in, checked 2026-11-21; economy v1's assets/{id}/resale-data, the old
+/// one, stopped at early 2025): Roblox's recent average price, and each day's average price and number sold, oldest
+/// first (seconds, price, sold).
+#[derive(Clone, Debug, Default)]
+pub struct Resale {
+    pub rap: i64,
+    pub days: Vec<(i64, i64, i64)>,
+}
+
+/// The sales of a thing on the Marketplace, by its asset id (its id as a collectible is asked of the catalog when the
+/// page doesn't have it). Ok(None): it isn't resold (not a Limited, or no sale yet).
+pub fn resale(asset: i64, collectible: &str) -> Result<Option<Resale>, String> {
+    let id = if collectible.is_empty() {
+        let d = post("https://catalog.roblox.com/v1/catalog/items/details", &serde_json::json!({ "items": [{ "itemType": "Asset", "id": asset }] }), None)?;
+        let v = d.pointer("/data/0").cloned().unwrap_or_default();
+        let limited = v.get("itemRestrictions").and_then(Value::as_array).is_some_and(|l| l.iter().filter_map(Value::as_str).any(|r| r.starts_with("Limited") || r == "Collectible"));
+        if !limited {
+            return Ok(None);
+        }
+        text(&v, "collectibleItemId")
+    } else {
+        collectible.to_string()
+    };
+    if id.is_empty() {
+        return Ok(None);
+    }
+    let d = match get_once(&format!("https://apis.roblox.com/marketplace-sales/v1/item/{}/resale-data", enc(&id)), None) {
+        Ok(d) => d,
+        Err(e) if e == "Roblox 400" || e == "Roblox 404" => return Ok(None),
+        Err(e) => return Err(e),
+    };
+    let when = |v: &Value| crate::time::iso_secs(&text(v, "date")).unwrap_or(0);
+    let sold: HashMap<i64, i64> = d.get("volumeDataPoints").and_then(Value::as_array).into_iter().flatten().map(|v| (when(v), int(v, "value"))).collect();
+    let mut days: Vec<(i64, i64, i64)> = d
+        .get("priceDataPoints")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .map(|v| (when(v), int(v, "value")))
+        .filter(|(t, p)| *t > 0 && *p > 0)
+        .map(|(t, p)| (t, p, sold.get(&t).copied().unwrap_or(0)))
+        .collect();
+    days.sort_by_key(|d| d.0);
+    days.dedup_by_key(|d| d.0);
+    let rap = d.get("recentAveragePrice").and_then(Value::as_f64).unwrap_or(0.).round() as i64;
+    if days.is_empty() && rap <= 0 {
+        return Ok(None);
+    }
+    Ok(Some(Resale { rap, days }))
+}
+
+// ───────────────────────── blocked people ─────────────────────────
+// Roblox's user-blocking-api, as its own pages call it (Roblox's friends-common userBlocking service and RoSeal's
+// users service, read 2026-11-21): every call answers only a sign-in (401 / 403 XSRF without one).
+
+/// The people the account has blocked (Roblox's Settings › Privacy › Blocked users), with their names and faces.
+pub fn blocked(cookie: &str) -> Result<Vec<Friend>, String> {
+    #[cfg(feature = "shot")]
+    if let Ok(v) = std::env::var("BLOXKEEP_SHOT_BLOCKED") {
+        return Ok(dress(v.split(',').filter_map(|x| x.trim().parse().ok()).map(|id| Friend { id, ..Default::default() }).collect()));
+    }
+    let mut ids: Vec<i64> = Vec::new();
+    let mut cursor = String::new();
+    for _ in 0..10 {
+        let mut url = String::from("https://apis.roblox.com/user-blocking-api/v1/users/get-blocked-users?count=50");
+        if !cursor.is_empty() {
+            url += &format!("&cursor={}", enc(&cursor));
+        }
+        let d = get(&url, Some(cookie))?;
+        let data = d.get("data").cloned().unwrap_or_default();
+        ids.extend(data.get("blockedUserIds").and_then(Value::as_array).into_iter().flatten().filter_map(Value::as_i64).filter(|id| *id > 0));
+        cursor = text(&data, "cursor");
+        if cursor.is_empty() {
+            break;
+        }
+    }
+    ids.dedup();
+    Ok(dress(ids.into_iter().map(|id| Friend { id, ..Default::default() }).collect()))
+}
+
+/// Whether the account has blocked this person.
+pub fn is_blocked(cookie: &str, user: i64) -> Result<bool, String> {
+    #[cfg(feature = "shot")]
+    if let Ok(v) = std::env::var("BLOXKEEP_SHOT_ISBLOCKED") {
+        return Ok(v == "1");
+    }
+    let d = get(&format!("https://apis.roblox.com/user-blocking-api/v1/users/{user}/is-blocked"), Some(cookie))?;
+    Ok(d.as_bool().unwrap_or(false))
+}
+
+/// Blocks the person, or unblocks them.
+pub fn set_blocked(cookie: &str, user: i64, on: bool) -> Result<(), String> {
+    post_ok(&format!("https://apis.roblox.com/user-blocking-api/v1/users/{user}/{}", if on { "block-user" } else { "unblock-user" }), &serde_json::json!({}), Some(cookie))
 }

@@ -155,6 +155,7 @@ pub struct Root {
     pub mods_q: Entity<InputState>,
     pub rset_about: Entity<gpui_kit::component::input::TextareaState>,
     pub passes: pages::passes::Data,
+    pub badges: pages::badges::Data,
     /// The lock screen (pages/lock.rs), and its two password boxes (the second only when a vault is set up).
     pub lock: pages::lock::Data,
     pub lock_pw: Entity<InputState>,
@@ -667,6 +668,7 @@ impl Root {
             mods: Default::default(),
             mods_q,
             passes: Default::default(),
+            badges: Default::default(),
             lock: Default::default(),
             lock_pw,
             lock_pw2,
@@ -1316,6 +1318,12 @@ impl Root {
             pages::games::open_place(self, place, "");
             self.games.tab = pages::games::Tab::Passes;
         }
+        // BLOXKEEP_SHOT_BADGES=2753915549: a shot's Games opens on that game's page, on its badges.
+        #[cfg(feature = "shot")]
+        if let (Some(place), None) = (std::env::var("BLOXKEEP_SHOT_BADGES").ok().and_then(|v| v.parse().ok()), &self.games.open) {
+            pages::games::open_place(self, place, "");
+            self.games.tab = pages::games::Tab::Badges;
+        }
         // BLOXKEEP_SHOT_GAMEPAGE=2753915549: on that game's page, its Overview (with BLOXKEEP_SHOT_EVENTS: its events).
         #[cfg(feature = "shot")]
         if let (Some(place), None) = (std::env::var("BLOXKEEP_SHOT_GAMEPAGE").ok().and_then(|v| v.parse().ok()), &self.games.open) {
@@ -1811,6 +1819,12 @@ impl Root {
         if self.page == Page::Games && self.games.tab == pages::games::Tab::Passes && !self.state.is_null() && !self.locked() {
             if let Some(place) = pages::games::shown_place(self) {
                 pages::passes::want(self, place, cx);
+            }
+        }
+        // Its badges, likewise.
+        if self.page == Page::Games && self.games.tab == pages::games::Tab::Badges && !self.state.is_null() && !self.locked() {
+            if let Some(place) = pages::games::shown_place(self) {
+                pages::badges::want(self, place, cx);
             }
         }
         // Its private servers, likewise.

@@ -102,6 +102,8 @@ pub struct Data {
     /// Whether the account looked through follows that person: who, Roblox's answer (None until it comes; the button
     /// shows once it has), whether it was asked, and whether a move of the button is under way.
     follow: Option<Follow>,
+    /// Whether the account looked through has blocked the person whose profile is open (Roblox's Block on a profile).
+    block: Option<Follow>,
     /// Purchases under way and bought, by account (its Roblox id), thing and whether it is a bundle: kept when the thing
     /// is closed (Back), so an answer that comes meanwhile isn't lost and Buy doesn't come back while one is under way.
     buying: Vec<(i64, i64, bool)>,
@@ -136,6 +138,8 @@ struct ItemView {
     on_me: bool,
     /// On the Watching list.
     watched: bool,
+    /// A resold thing's sales by day (None while asked; Ok(None): it isn't resold), for its price chart.
+    resale: Option<Result<Option<roblox::Resale>, String>>,
 }
 
 /// The community shown: its id and name (known before it loads), its page (None while it loads), and which of the
@@ -206,8 +210,9 @@ pub fn want(r: &mut Root, link: &crate::link::Link, cx: &mut Context<Root>) {
     if r.profile.got.is_none() && !r.profile.loading {
         load(r, cx);
     }
-    // (A person opened before the sign-in was in: whether they are followed is asked now.)
+    // (A person opened before the sign-in was in: whether they are followed, or blocked, is asked now.)
     ask_follow(r, cx);
+    ask_block(r, cx);
     ask_club_friends(r, cx);
     if let Some(user) = r.profile.person.as_ref().map(|p| p.0) {
         ask_where(r, user, cx);
@@ -261,6 +266,54 @@ fn ask_follow(r: &mut Root, cx: &mut Context<Root>) {
         }
     })
     .detach();
+}
+
+/// Asks Roblox, once, whether the account looked through has blocked the person whose profile is open.
+fn ask_block(r: &mut Root, cx: &mut Context<Root>) {
+    let Some((_, me, cookie)) = friends::signed(r).filter(|s| !s.2.is_empty() || cfg!(feature = "shot")) else { return };
+    let Some(f) = r.profile.block.as_mut().filter(|f| !f.asked && f.user != me) else { return };
+    f.asked = true;
+    let user = f.user;
+    let rx = roblox::run(move || roblox::is_blocked(&cookie, user));
+    reply(rx, cx, move |r, got, cx| {
+        if let (Ok(on), Some(f)) = (got, r.profile.block.as_mut().filter(|f| f.user == user)) {
+            f.on = Some(on);
+            cx.notify();
+        }
+    });
+}
+
+/// Blocks the person whose profile is open, or unblocks them, after Roblox's own question (its profile asks first too).
+fn block_move(r: &mut Root, user: i64, on: bool, name: String, window: &mut Window, cx: &mut Context<Root>) {
+    if r.profile.block.as_ref().is_none_or(|f| f.user != user || f.busy) {
+        return;
+    }
+    let (title, text, ok) = if on {
+        (r.i18n.tv("blk.askTitle", &[("name", &name)]), r.tr("blk.askText"), r.tr("blk.block"))
+    } else {
+        (r.i18n.tv("blk.unTitle", &[("name", &name)]), r.tr("blk.unText"), r.tr("blk.unblock"))
+    };
+    r.confirm(title, text, ok, on, None, window, cx, move |r, cx| {
+        let Some((_, _, cookie)) = friends::signed(r) else { return };
+        let Some(f) = r.profile.block.as_mut().filter(|f| f.user == user && !f.busy) else { return };
+        f.busy = true;
+        cx.notify();
+        let rx = roblox::run(move || roblox::set_blocked(&cookie, user, on));
+        reply(rx, cx, move |r, got, cx| {
+            if let Some(f) = r.profile.block.as_mut().filter(|f| f.user == user) {
+                f.busy = false;
+                if got.is_ok() {
+                    f.on = Some(on);
+                }
+            }
+            r.toast = Some(match got {
+                Ok(()) => (r.tr(if on { "blk.done" } else { "blk.undone" }), "ok".into()),
+                Err(why) => (r.i18n.tv("blk.failed", &[("why", crate::net::why_words(&r.i18n, &why).as_str())]), "bad".into()),
+            });
+            r.rset.forget_blocked();
+            cx.notify();
+        });
+    });
 }
 
 /// Follows the person whose profile is open, or stops, as the account looked through (the app's friendAct: a check
@@ -318,6 +371,8 @@ pub fn open_person(r: &mut Root, user: i64, cx: &mut Context<Root>) {
     r.profile.person = Some((user, None));
     r.profile.follow = Some(Follow { user, on: None, asked: false, busy: false });
     ask_follow(r, cx);
+    r.profile.block = Some(Follow { user, on: None, asked: false, busy: false });
+    ask_block(r, cx);
     r.games.view = crate::pages::games::View::Profile;
     let rx = roblox::run(move || roblox::profile("", user));
     reply(rx, cx, move |r, got, cx| {
@@ -887,6 +942,22 @@ pub fn profile(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElem
                     .on_click(cx.listener(move |r, _, _, cx| follow_move(r, who, !on, cx))),
             )
         })
+        // And block them, or unblock (Roblox asks first; so does this).
+        .when_some(pf.block.as_ref().filter(|f| pf.person.as_ref().is_some_and(|p| p.0 == f.user && matches!(p.1, Some(Ok(_))))).and_then(|f| f.on.map(|on| (f.user, on, f.busy))), |d, (who, on, busy)| {
+            let name = match &pf.person {
+                Some((_, Some(Ok(p)))) => if p.display.is_empty() { p.name.clone() } else { p.display.clone() },
+                _ => String::new(),
+            };
+            d.child(
+                Button::new("pf-block", root.tr(if on { "blk.blocked" } else { "blk.block" }))
+                    .icon(if on { "check" } else { "eyeOff" })
+                    .small()
+                    .quiet()
+                    .disabled(busy)
+                    .tip(root.tr(if on { "blk.unTip" } else { "blk.tip" }))
+                    .on_click(cx.listener(move |r, _, window, cx| block_move(r, who, !on, name.clone(), window, cx))),
+            )
+        })
         .when((matches!(pf.got, Some(Ok(_))) || matches!(pf.person, Some((_, Some(Ok(_)))))) && pf.club.is_none() && pf.folk.is_none(), |d| {
             d.child(IconButton::new("pf-open", "external").size(34.).tip(root.tr("shop.open")).on_click(cx.listener(move |r, _, _, _| r.send("openProfile", json!({ "userId": user })))))
         });
@@ -1309,6 +1380,11 @@ fn filled(root: &Root, p: &Profile, user: i64, width: f32, own: bool, cx: &mut C
         })
         .collect();
 
+    // Their Collections (what they show off, as Roblox's profile has it between their friends and communities): each
+    // thing as the Marketplace's tile; a press opens its page in the Marketplace here.
+    let (_, ware_w) = ware_fit(inner);
+    let collection: Vec<AnyElement> = p.collection.iter().enumerate().map(|(n, w)| collected_tile(root, n, w, ware_w, cx)).collect();
+
     crate::scrolled::body("pf-body", 
         div()
             .px(px(PAGE_X))
@@ -1319,6 +1395,7 @@ fn filled(root: &Root, p: &Profile, user: i64, width: f32, own: bool, cx: &mut C
             .gap(px(SECTION_GAP))
             .child(div().flex().flex_col().gap(px(12.)).child(who)
                 .when(own && !song_in_head, |d| d.child(profile_media::row(root, user, inner, song_art, cx))))
+            .when(!collection.is_empty(), |d| d.child(shelf("pf.collection", p.collection.len(), collection)))
             .child(
                 div()
                     .flex()
@@ -1606,7 +1683,20 @@ fn open_item(r: &mut Root, ware: Ware, cx: &mut Context<Root>) {
     let (id, collectible) = (ware.id, ware.collectible.clone());
     // (An old kind has no offer to ask for: it opens on roblox.com.)
     let offer = collectible.is_empty().then(|| Err(String::new()));
-    r.profile.item = Some(ItemView { ware, offer, me: 0, robux: None, owners: None, mine: None, armed: false, busy: false, done: None, tried: None, trying: false, on_me: false, watched: crate::itemwatch::watching(id) });
+    r.profile.item = Some(ItemView { ware, offer, me: 0, robux: None, owners: None, mine: None, armed: false, busy: false, done: None, tried: None, trying: false, on_me: false, watched: crate::itemwatch::watching(id), resale: None });
+    // Its price history, when it is resold (a Limited): Roblox's own, for the chart under the card.
+    if !r.profile.item.as_ref().is_some_and(|i| i.ware.bundle) {
+        let c2 = collectible.clone();
+        let rx = roblox::run(move || roblox::resale(id, &c2));
+        reply(rx, cx, move |r, got, cx| {
+            if let Some(i) = r.profile.item.as_mut().filter(|i| i.ware.id == id && !i.ware.bundle) {
+                i.resale = Some(got);
+                cx.notify();
+            }
+        });
+    } else if let Some(i) = r.profile.item.as_mut() {
+        i.resale = Some(Ok(None));
+    }
     if collectible.is_empty() {
         return;
     }
@@ -1975,6 +2065,7 @@ fn item_page(root: &Root, view: &ItemView, inner: f32, cx: &mut Context<Root>) -
                     .flex_col()
                     .gap(px(SECTION_GAP))
                     .child(card)
+                    .when_some(view.resale.as_ref().and_then(|r| r.as_ref().ok()).and_then(Option::as_ref), |d, sales| d.child(crate::pages::price_chart::view(root, sales, inner, cx)))
                     .when(signed.is_some(), |d| d.child(div().flex().flex_col().gap(px(12.)).child(section_head(root.tr("shop.owners"), None)).child(have)))
                     .when(!more.is_empty(), |d| {
                         d.child(
@@ -2132,7 +2223,11 @@ fn page(r: &mut Root, cx: &mut Context<Root>) {
                 // BLOXKEEP_SHOT_ITEM=1: a hidden shot opens the first thing that has a price (the first of
                 // all when none has).
                 #[cfg(feature = "shot")]
-                let shown = std::env::var("BLOXKEEP_SHOT_ITEM").ok().and_then(|_| first.iter().find(|w| w.price.is_some_and(|p| p > 0) && !w.collectible.is_empty()).or(first.iter().find(|w| !w.collectible.is_empty())).cloned());
+                // (BLOXKEEP_SHOT_ITEM=<asset id>: that one, e.g. 1365767, a Limited with a price history.)
+                #[cfg(feature = "shot")]
+                let picked = std::env::var("BLOXKEEP_SHOT_ITEM").ok().and_then(|v| v.parse::<i64>().ok()).filter(|id| *id > 1);
+                #[cfg(feature = "shot")]
+                let shown = picked.map(|id| Ware { id, name: "Valkyrie Helm".into(), maker: "Roblox".into(), ..Default::default() }).or_else(|| std::env::var("BLOXKEEP_SHOT_ITEM").ok().and_then(|_| first.iter().find(|w| w.price.is_some_and(|p| p > 0) && !w.collectible.is_empty()).or(first.iter().find(|w| !w.collectible.is_empty())).cloned()));
                 #[cfg(feature = "shot")]
                 let mut first = first;
                 #[cfg(feature = "shot")]
@@ -2156,6 +2251,31 @@ fn page(r: &mut Root, cx: &mut Context<Root>) {
 fn ware_fit(inner: f32) -> (f32, f32) {
     let cols = ((inner + 12. + SGAP) / (TILE + 12. + SGAP)).floor().max(1.);
     (cols, ((inner + 12. - SGAP * (cols - 1.)) / cols).floor())
+}
+
+/// A thing of a profile's Collections, as the Marketplace's tile: a press opens its page in the Marketplace.
+fn collected_tile(root: &Root, n: usize, w: &Ware, tile_w: f32, cx: &mut Context<Root>) -> AnyElement {
+    let ware = w.clone();
+    let price = match w.price {
+        None => div().text_color(c(MUTED)).child(root.tr("shop.off")),
+        Some(0) => div().text_color(c(OK)).child(root.tr("shop.free")),
+        Some(r) => div().flex().items_center().gap(px(5.)).text_color(c(TEXT)).font_features(tnum()).child(icon("robux", 13., c(TEXT))).child(thousands(r, root.i18n.vietnamese)),
+    };
+    hot(("pf-col", n))
+        .w(px(tile_w))
+        .p(px(6.))
+        .cursor_pointer()
+        .rounded(px(R_L + 4.))
+        .lift(2.)
+        .flex()
+        .flex_col()
+        .on_click(cx.listener(move |r, _, _, cx| {
+            r.games.view = crate::pages::games::View::Shop;
+            open_item(r, ware.clone(), cx);
+            cx.notify();
+        }))
+        .child(crate::pages::avatar::tile_zoomed(tile_w - 14., &w.pic, w.name.clone(), false, Some(root.tr("news.noPicture").into()), 1., cx).flex_1().child(div().px(px(2.)).pb(px(4.)).text_size(px(T_M)).font_weight(FontWeight::MEDIUM).child(price)))
+        .into_any_element()
 }
 
 /// A thing on sale as a tile: its picture, name and price. A press opens its page here.

@@ -47,6 +47,20 @@ pub struct Data {
     places: Option<Result<roblox::Places, String>>,
     places_all: bool,
     leaving: Vec<String>,
+    /// The people the account has blocked (Roblox's Settings › Privacy › Blocked users), None while not asked; read
+    /// while `reading_blocked`; the ones being unblocked now.
+    blocked: Option<Result<Vec<roblox::Friend>, String>>,
+    reading_blocked: bool,
+    unblocking: Vec<i64>,
+}
+
+impl Data {
+    /// The blocked list is read again next time (someone was blocked or unblocked elsewhere in the app).
+    pub fn forget_blocked(&mut self) {
+        if !self.reading_blocked {
+            self.blocked = None;
+        }
+    }
 }
 
 pub fn want(r: &mut Root, link: &crate::link::Link, cx: &mut Context<Root>) {
@@ -57,6 +71,9 @@ pub fn want(r: &mut Root, link: &crate::link::Link, cx: &mut Context<Root>) {
     }
     if r.rset.got.is_none() && !r.rset.reading {
         load(r, cx);
+    }
+    if r.rset.blocked.is_none() && !r.rset.reading_blocked {
+        load_blocked(r, cx);
     }
     // A voice lock's countdown, again on coming back.
     let until = r.rset.got.as_ref().and_then(|g| g.as_ref().ok()).and_then(|s| s.voice.as_ref()).filter(|v| v.banned).and_then(|v| v.until);
@@ -111,6 +128,86 @@ fn load(r: &mut Root, cx: &mut Context<Root>) {
 }
 
 /// A voice lock's countdown, redrawn every 20 s while these settings are shown; at its end Roblox is asked again.
+/// The people the account has blocked.
+fn load_blocked(r: &mut Root, cx: &mut Context<Root>) {
+    let Some((_, user, cookie)) = friends::signed(r) else { return };
+    r.rset.reading_blocked = true;
+    let rx = roblox::run(move || roblox::blocked(&cookie));
+    reply(rx, cx, move |r, got, cx| {
+        if r.rset.of == user {
+            r.rset.reading_blocked = false;
+            r.rset.blocked = Some(got);
+            cx.notify();
+        }
+    });
+}
+
+/// Unblocks one of them, after the question Roblox's own list asks.
+fn unblock(r: &mut Root, who: i64, name: String, window: &mut Window, cx: &mut Context<Root>) {
+    if r.rset.unblocking.contains(&who) {
+        return;
+    }
+    let title = r.i18n.tv("blk.unTitle", &[("name", &name)]);
+    let (text, ok) = (r.tr("blk.unText"), r.tr("blk.unblock"));
+    r.confirm(title, text, ok, false, None, window, cx, move |r, cx| {
+        let Some((_, user, cookie)) = friends::signed(r) else { return };
+        r.rset.unblocking.push(who);
+        cx.notify();
+        let rx = roblox::run(move || roblox::set_blocked(&cookie, who, false));
+        reply(rx, cx, move |r, got, cx| {
+            if r.rset.of != user {
+                return;
+            }
+            r.rset.unblocking.retain(|u| *u != who);
+            match got {
+                Ok(()) => {
+                    if let Some(Ok(l)) = r.rset.blocked.as_mut() {
+                        l.retain(|f| f.id != who);
+                    }
+                    r.toast = Some((r.tr("blk.undone"), "ok".into()));
+                }
+                Err(why) => r.toast = Some((r.i18n.tv("blk.failed", &[("why", crate::net::why_words(&r.i18n, &why).as_str())]), "bad".into())),
+            }
+            cx.notify();
+        });
+    });
+}
+
+/// The blocked people as Roblox's Settings › Privacy lists them: each face, name and @name, with Unblock.
+fn blocked_card(root: &Root, cx: &mut Context<Root>) -> Div {
+    let rs = &root.rset;
+    let note = |text: String| div().px(px(20.)).py(px(18.)).text_size(px(T_M)).text_color(c(MUTED)).child(text);
+    let card = surface().overflow_hidden().flex().flex_col();
+    let list = match &rs.blocked {
+        None => return card.child(note(root.tr("vis.reading"))),
+        Some(Err(why)) => return card.child(note(root.i18n.tv("blk.listFailed", &[("why", crate::net::why_words(&root.i18n, why).as_str())]))),
+        Some(Ok(l)) if l.is_empty() => return card.child(note(root.tr("blk.none"))),
+        Some(Ok(l)) => l,
+    };
+    let rows: Vec<AnyElement> = list
+        .iter()
+        .enumerate()
+        .map(|(i, f)| {
+            let pic = (!f.face.is_empty()).then(|| crate::images::pic(&f.face, cx)).flatten();
+            let shown = if f.display.is_empty() { f.name.clone() } else { f.display.clone() };
+            let (who, name) = (f.id, shown.clone());
+            div()
+                .min_h(px(60.))
+                .px(px(20.))
+                .py(px(10.))
+                .flex()
+                .items_center()
+                .gap(px(12.))
+                .when(i > 0, |d| d.border_t_1().border_color(c(LINE)))
+                .child(face(&shown, pic, 40.))
+                .child(title(shown, (!f.name.is_empty()).then(|| format!("@{}", f.name))))
+                .child(Button::new(("blk-un", i), root.tr("blk.unblock")).small().quiet().disabled(rs.unblocking.contains(&who)).on_click(cx.listener(move |r, _, window, cx| unblock(r, who, name.clone(), window, cx))))
+                .into_any_element()
+        })
+        .collect();
+    card.children(rows)
+}
+
 fn tick_voice(r: &mut Root, user: i64, until: i64, cx: &mut Context<Root>) {
     r.rset.ticks += 1;
     r.rset.ticking = true;
@@ -535,6 +632,7 @@ fn filled(root: &Root, s: &AccountSettings, viewer: Option<&serde_json::Value>, 
     let privacy = section(root.tr("rs.privacy"), privacy);
     let about = section(root.tr("rs.about"), about);
     let more = section(root.tr("rs.moreHead"), more);
+    let blocked = section(root.tr("blk.title"), blocked_card(root, cx));
     // Wide: the account and its trades beside its About words, the whole width; narrow: one under another.
     let two = width >= 1000.;
     let inner = div().px(px(PAGE_X)).pb(px(32.)).w_full().flex().map(|d| {
@@ -542,9 +640,9 @@ fn filled(root: &Root, s: &AccountSettings, viewer: Option<&serde_json::Value>, 
             d.items_start()
                 .gap(px(24.))
                 .child(div().flex_1().min_w_0().flex().flex_col().gap(px(SECTION_GAP)).child(account).child(places).child(trades))
-                .child(div().flex_1().min_w_0().flex().flex_col().gap(px(SECTION_GAP)).child(privacy).child(about).child(more))
+                .child(div().flex_1().min_w_0().flex().flex_col().gap(px(SECTION_GAP)).child(privacy).child(blocked).child(about).child(more))
         } else {
-            d.flex_col().gap(px(SECTION_GAP)).child(account).child(places).child(privacy).child(about).child(trades).child(more)
+            d.flex_col().gap(px(SECTION_GAP)).child(account).child(places).child(privacy).child(blocked).child(about).child(trades).child(more)
         }
     });
     crate::scrolled::body("rs-body", inner)

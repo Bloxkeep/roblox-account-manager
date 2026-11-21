@@ -32,6 +32,8 @@ pub enum Tab {
     Prices,
     /// The game's passes (pages/passes.rs).
     Passes,
+    /// Its badges, and which accounts have them (pages/badges.rs).
+    Badges,
     /// Its private servers the accounts can join (pages/servers.rs).
     Servers,
     /// Its wiki, read here (pages/wiki.rs).
@@ -4272,6 +4274,7 @@ fn page(root: &Root, all: &[Game], open: Open, width: f32, cx: &mut Context<Root
         Tab::News if has_news => Tab::News,
         Tab::Prices if has_prices => Tab::Prices,
         Tab::Passes if place > 0 => Tab::Passes,
+        Tab::Badges if place > 0 => Tab::Badges,
         Tab::Servers if place > 0 => Tab::Servers,
         Tab::Wiki if has_wiki => Tab::Wiki,
         _ => Tab::Overview,
@@ -4293,13 +4296,14 @@ fn page(root: &Root, all: &[Game], open: Open, width: f32, cx: &mut Context<Root
         (Tab::News, "news", root.tr("games.news"), game.map(unread).unwrap_or(0)),
         (Tab::Prices, "tag", root.tr("prices.tab"), 0),
         (Tab::Passes, "key", root.tr("gp.passes"), 0),
+        (Tab::Badges, "award", root.tr("bd.title"), 0),
         (Tab::Servers, "server", root.tr("gp.servers"), 0),
         (Tab::Codes, "gift", root.tr("gc.title"), codes.and_then(working).unwrap_or(0) as i64),
         (Tab::Wiki, "book", root.tr("gp.wiki"), 0),
     ] {
         if (t == Tab::News && !has_news)
             || (t == Tab::Prices && !has_prices)
-            || (matches!(t, Tab::Passes | Tab::Servers) && place <= 0)
+            || (matches!(t, Tab::Passes | Tab::Badges | Tab::Servers) && place <= 0)
             || (t == Tab::Wiki && !has_wiki)
             // (Codes is there at once, as Passes and Servers: it says it is looking, then what it found; the owner,
             // 2026-11-20: "sao ko cho nó hiện ra trước rồi nội dung trong đó load ra sau".)
@@ -4323,6 +4327,7 @@ fn page(root: &Root, all: &[Game], open: Open, width: f32, cx: &mut Context<Root
         Tab::News => news(root, game.and_then(|g| g.news.clone()).unwrap_or(Value::Null), inner, cx).into_any_element(),
         Tab::Prices => prices(root, &open.id, inner, cx).into_any_element(),
         Tab::Passes => crate::pages::passes::view(root, width, cx),
+        Tab::Badges => crate::pages::badges::view(root, width, cx),
         Tab::Servers => crate::pages::servers::view(root, details.map_or(0, |d| int(d, "rootPlaceId")), inner, cx),
         Tab::Wiki => crate::pages::wiki::view(root, inner, cx),
         Tab::Codes => codes_block(root, place, cx)
@@ -4337,6 +4342,14 @@ fn page(root: &Root, all: &[Game], open: Open, width: f32, cx: &mut Context<Root
             .into_any_element(),
     };
 
+    // BLOXKEEP_SHOT_BODY=game-page with BLOXKEEP_SHOT_SCROLL=<px>: a hidden shot of the game page scrolled down that far.
+    #[cfg(feature = "shot")]
+    if std::env::var("BLOXKEEP_SHOT_BODY").is_ok_and(|b| b == "game-page")
+        && let Ok(y) = std::env::var("BLOXKEEP_SHOT_SCROLL").map(|v| v.parse::<f32>().unwrap_or(0.))
+        && (root.games.page_scroll.offset().y + px(y)).abs() > px(1.)
+    {
+        root.games.page_scroll.set_offset(point(px(0.), px(-y)));
+    }
     crate::scrolled::with_bar("game-page", &root.games.page_scroll, div().id("game-page").size_full().overflow_y_scroll().track_scroll(&root.games.page_scroll).child(
         div()
             .flex()
@@ -4830,6 +4843,7 @@ fn tab_button(t: Tab, icon_name: &'static str, label: String, on: bool) -> Hot {
         Tab::News => "gt-news",
         Tab::Prices => "gt-prices",
         Tab::Passes => "gt-passes",
+        Tab::Badges => "gt-badges",
         Tab::Servers => "gt-servers",
         Tab::Wiki => "gt-wiki",
         Tab::Codes => "gt-codes",
