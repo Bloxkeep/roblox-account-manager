@@ -46,6 +46,155 @@ pub struct Data {
     shelf: usize,
     /// The things on the shelves read so far, by (the Roblox user, the shelf).
     things: HashMap<(i64, usize), Shelf>,
+    /// The list is asked again, fresh, next time it is shown (a server was bought or changed here).
+    refresh: bool,
+    /// The private server whose settings are open under its line (Roblox's Configure page).
+    edit: Option<Edit>,
+}
+
+/// A private server's settings: the server, the account that owns it and its sign-in (None while asked), what Roblox
+/// says of it (None while asked), a change on its way.
+struct Edit {
+    id: i64,
+    account: String,
+    cookie: Option<String>,
+    info: Option<Result<roblox::PsInfo, String>>,
+    busy: bool,
+}
+
+impl Data {
+    /// The list is read again, fresh, when it is next shown.
+    pub fn forget(&mut self) {
+        self.at = None;
+        self.refresh = true;
+    }
+}
+
+/// Opens a server's settings (or closes them, clicked again): its owner's sign-in, then what Roblox says of it.
+fn open_edit(r: &mut Root, id: i64, account: String, name: String, window: &mut Window, cx: &mut Context<Root>) {
+    if r.owned.edit.as_ref().is_some_and(|e| e.id == id) {
+        r.owned.edit = None;
+        cx.notify();
+        return;
+    }
+    let Some(link) = r.link.clone() else { return };
+    r.owned.edit = Some(Edit { id, account: account.clone(), cookie: None, info: None, busy: false });
+    r.ps_name.update(cx, |s, cx| s.set_value(name, window, cx));
+    cx.notify();
+    let rx = link.call("robloxSignIn", json!({ "id": account }));
+    crate::ask::answer(rx, cx, move |r, got, cx| {
+        let cookie = got.ok().and_then(Result::ok).map(|v| s(&v, "cookie").to_string()).unwrap_or_default();
+        let unsigned = r.tr("ps.noSign");
+        let Some(e) = r.owned.edit.as_mut().filter(|e| e.id == id) else { return };
+        if cookie.is_empty() && !cfg!(feature = "shot") {
+            e.info = Some(Err(unsigned));
+            cx.notify();
+            return;
+        }
+        e.cookie = Some(cookie.clone());
+        let rx = roblox::run(move || roblox::ps_details(&cookie, id));
+        reply(rx, cx, move |r, got, cx| {
+            if let Some(e) = r.owned.edit.as_mut().filter(|e| e.id == id) {
+                e.info = Some(got);
+                cx.notify();
+            }
+        });
+    });
+}
+
+/// A change to the open server: its name, whether it runs, a new invite link, or its renewal.
+#[derive(Clone)]
+enum Change {
+    Name(String),
+    Active(bool),
+    NewLink,
+    Renew(bool),
+}
+
+fn change(r: &mut Root, what: Change, cx: &mut Context<Root>) {
+    let Some(e) = r.owned.edit.as_mut().filter(|e| !e.busy) else { return };
+    let Some(cookie) = e.cookie.clone() else { return };
+    let id = e.id;
+    e.busy = true;
+    cx.notify();
+    let w = what.clone();
+    let rx = roblox::run(move || match w {
+        Change::Name(n) => roblox::ps_update(&cookie, id, json!({ "name": n })).map(Some),
+        Change::Active(on) => roblox::ps_update(&cookie, id, json!({ "active": on })).map(Some),
+        Change::NewLink => roblox::ps_update(&cookie, id, json!({ "newJoinCode": true })).map(Some),
+        Change::Renew(on) => roblox::ps_renew(&cookie, id, on).map(|_| None),
+    });
+    reply(rx, cx, move |r, got, cx| {
+        let Some(e) = r.owned.edit.as_mut().filter(|e| e.id == id) else { return };
+        e.busy = false;
+        match got {
+            Ok(info) => {
+                if let Some(Ok(old)) = e.info.as_mut() {
+                    match (info, &what) {
+                        (Some(new), _) => *old = new,
+                        (None, Change::Renew(on)) => old.renews = *on,
+                        _ => {}
+                    }
+                }
+                r.toast = Some((r.tr(match what {
+                    Change::Name(_) => "ps.renamed",
+                    Change::Active(true) => "ps.started",
+                    Change::Active(false) => "ps.stopped",
+                    Change::NewLink => "ps.newLinkDone",
+                    Change::Renew(true) => "ps.renewOn",
+                    Change::Renew(false) => "ps.renewOff",
+                }), "ok".into()));
+                // The list (names, running or ended, renewing) read again.
+                r.owned.forget();
+                load(r, true, cx);
+            }
+            Err(why) => r.toast = Some((r.i18n.tv("blk.failed", &[("why", crate::net::why_words(&r.i18n, &why).as_str())]), "bad".into())),
+        }
+        cx.notify();
+    });
+}
+
+/// A private server's settings, as Roblox's Configure page has them: its name, its invite link (copy, or a new one
+/// that stops the old), whether it runs, and whether its subscription renews.
+fn edit_panel(root: &Root, e: &Edit, cx: &mut Context<Root>) -> Div {
+    let vi = root.i18n.vietnamese;
+    let shell = div().px(px(12.)).py(px(12.)).border_t_1().border_color(c(LINE)).bg(ca(WHITE, 0.03)).flex().flex_col().gap(px(10.)).text_size(px(T_M));
+    let info = match &e.info {
+        None => return shell.child(div().text_color(c(MUTED)).child(root.tr("av.reading"))),
+        Some(Err(why)) => return shell.child(div().text_color(c(BAD)).child(root.i18n.tv("ps.readFailed", &[("why", crate::net::why_words(&root.i18n, why).as_str())]))),
+        Some(Ok(i)) => i,
+    };
+    let row = |label: String, body: AnyElement| div().flex().items_center().gap(px(10.)).min_h(px(32.)).child(div().w(px(96.)).flex_none().text_color(c(MUTED)).child(label)).child(div().flex_1().min_w_0().flex().items_center().gap(px(8.)).child(body));
+    let link = info.link.clone();
+    let renew_note = if info.expires.is_empty() {
+        String::new()
+    } else {
+        root.i18n.tv(if info.renews { "own.renewsOn" } else { "own.endsOn" }, &[("d", &day(&info.expires, vi))])
+    };
+    let (active, renews) = (info.active, info.renews);
+    shell
+        .child(row(root.tr("ps.name"), div().flex_1().flex().items_center().gap(px(8.))
+            .child(div().flex_1().min_w_0().child(field(&root.ps_name, None)))
+            .child(Button::new("ps-save-name", root.tr("rs.save")).small().disabled(e.busy).on_click(cx.listener(|r, _, _, cx| {
+                let n = r.ps_name.read(cx).value().trim().to_string();
+                if !n.is_empty() {
+                    change(r, Change::Name(n), cx);
+                }
+            }))).into_any_element()))
+        .child(row(root.tr("ps.link"), div().flex_1().min_w_0().flex().items_center().gap(px(8.))
+            .child(div().flex_1().min_w_0().truncate().text_color(if link.is_empty() { c(MUTED) } else { c(TEXT_2) }).child(if link.is_empty() { root.tr("ps.noLink") } else { link.clone() }))
+            .when(!link.is_empty(), |d| d.child(Button::new("ps-copy", root.tr("ps.copy")).small().quiet().icon("copy").on_click(cx.listener(move |r, _, _, cx| {
+                cx.write_to_clipboard(ClipboardItem::new_string(link.clone()));
+                r.toast = Some((r.tr("ps.copied"), "ok".into()));
+                cx.notify();
+            }))))
+            .child(Button::new("ps-new-link", root.tr(if info.link.is_empty() { "ps.makeLink" } else { "ps.newLink" })).small().quiet().icon("refresh").disabled(e.busy).tip(root.tr("ps.newLinkTip")).on_click(cx.listener(|r, _, _, cx| change(r, Change::NewLink, cx)))).into_any_element()))
+        .child(row(root.tr("ps.active"), div().flex().items_center().gap(px(10.))
+            .child(Switch::new("ps-active", active).disabled(e.busy).on_toggle(cx.listener(|r, on: &bool, _, cx| change(r, Change::Active(*on), cx))))
+            .child(div().text_color(c(MUTED)).child(root.tr(if active { "ps.activeOn" } else { "ps.activeOff" }))).into_any_element()))
+        .child(row(root.tr("ps.renew"), div().flex().items_center().gap(px(10.))
+            .child(Switch::new("ps-renew", renews).disabled(e.busy).on_toggle(cx.listener(|r, on: &bool, _, cx| change(r, Change::Renew(*on), cx))))
+            .child(div().text_color(c(MUTED)).child(renew_note)).into_any_element()))
 }
 
 /// A shelf of one account's: its things so far, the mark for the next page (empty: no more), whether a page is on its
@@ -95,7 +244,8 @@ pub fn want(r: &mut Root, link: &crate::link::Link, cx: &mut Context<Root>) {
         if r.owned.loading || r.owned.at.is_some_and(|t| t.elapsed() < FRESH) {
             return;
         }
-        load(r, false, cx);
+        let fresh = std::mem::take(&mut r.owned.refresh);
+        load(r, fresh, cx);
         return;
     }
     crate::pages::friends::want_sign(r, link, cx);
@@ -149,6 +299,16 @@ fn load(r: &mut Root, fresh: bool, cx: &mut Context<Root>) {
     if let Ok(path) = std::env::var("BLOXKEEP_SHOT_OWNED") {
         r.owned.got = std::fs::read_to_string(path).ok().and_then(|t| serde_json::from_str(&t).ok()).map(Ok);
         r.owned.at = Some(Instant::now());
+        // BLOXKEEP_SHOT_PS=1: the first server's settings open under it.
+        if std::env::var("BLOXKEEP_SHOT_PS").is_ok() {
+            let first = match &r.owned.got {
+                Some(Ok(v)) => v.get("servers").and_then(Value::as_array).and_then(|l| l.first()).map(|x| (int(x, "id"), s(x, "accountId").to_string())),
+                _ => None,
+            };
+            if let Some((id, account)) = first {
+                r.owned.edit = Some(Edit { id, account, cookie: Some(String::new()), info: roblox::ps_details("", id).ok().map(Ok), busy: false });
+            }
+        }
         pictures(r, cx);
         return;
     }
@@ -455,7 +615,14 @@ fn servers(root: &Root, inner: f32, cx: &mut Context<Root>) -> AnyElement {
                             (_, true, false) => (root.i18n.tv("own.endsOn", &[("d", &day(expires, vi))]), if left.is_some_and(|d| d <= 7) { WARN } else { MUTED }),
                         };
                         let name = s(x, "name");
-                        div()
+                        let (sid, owner_app, shown_name) = (int(x, "id"), s(x, "accountId").to_string(), name.to_string());
+                        let open = o.edit.as_ref().filter(|e| e.id == sid && e.account == owner_app);
+                        let line = div()
+                            .id(("own-ps", i as usize))
+                            .cursor_pointer()
+                            .hover(|d| d.bg(ca(WHITE, 0.04)))
+                            .when(open.is_some(), |d| d.bg(ca(WHITE, 0.04)))
+                            .on_click(cx.listener(move |r, _, window, cx| open_edit(r, sid, owner_app.clone(), shown_name.clone(), window, cx)))
                             .w_full()
                             .px(px(12.))
                             .py(px(10.))
@@ -476,6 +643,8 @@ fn servers(root: &Root, inner: f32, cx: &mut Context<Root>) -> AnyElement {
                                     .child(div().flex().items_center().gap(px(6.)).text_size(px(T_S)).text_color(c(MUTED)).child(icon("user", 11., c(MUTED))).child(div().min_w_0().truncate().child(s(x, "account").to_string()))),
                             )
                             .child(div().flex().flex_col().flex_none().items_end().gap(px(2.)).child(cost).child(div().text_size(px(T_S)).text_color(c(tone)).child(when)))
+                            .child(icon(if open.is_some() { "chevronUp" } else { "chevronDown" }, 14., c(MUTED)));
+                        div().w_full().flex().flex_col().child(line).children(open.map(|e| edit_panel(root, e, cx)))
                     });
                     let col = columns.iter_mut().min_by_key(|(height, _)| *height).expect("one column");
                     col.0 += count + 1;

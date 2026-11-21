@@ -58,6 +58,10 @@ pub struct Data {
     vip_opening: bool,
     vip_owner: Option<String>,
     vip_error: Option<String>,
+    /// Create Private Server in the app, as Roblox's own box has it: the account it is bought for, the game's universe
+    /// and price a month (None while asked; Some(None): the game sells none), Buy clicked once (a second click buys),
+    /// a buying on its way.
+    buy: Option<Buy>,
     friend_ids: Vec<String>,
     /// "Room for all": only servers with a seat for every account picked (Servers.tsx's room); None: on when more
     /// than one is picked.
@@ -77,6 +81,157 @@ pub struct Data {
     facts_blocked: bool,
     facts_paused: bool,
     country: Option<String>,
+}
+
+struct Buy {
+    account: String,
+    place: i64,
+    universe: i64,
+    price: Option<Result<Option<i64>, String>>,
+    armed: bool,
+    busy: bool,
+}
+
+/// Opens Create Private Server for this account: the name box empty, the game's price asked.
+fn start_buy(r: &mut Root, place: i64, account: String, window: &mut Window, cx: &mut Context<Root>) {
+    r.ps_name.update(cx, |s, cx| s.set_value("", window, cx));
+    begin_buy(r, place, account, cx);
+}
+
+fn begin_buy(r: &mut Root, place: i64, account: String, cx: &mut Context<Root>) {
+    r.servers.create_private = false;
+    r.servers.vip_error = None;
+    r.servers.buy = Some(Buy { account, place, universe: 0, price: None, armed: false, busy: false });
+    let rx = crate::roblox::run(move || crate::roblox::ps_price(place));
+    crate::ask::reply(rx, cx, move |r, got, cx| {
+        if let Some(b) = r.servers.buy.as_mut().filter(|b| b.place == place) {
+            match got {
+                Ok((universe, price)) => {
+                    b.universe = universe;
+                    b.price = Some(Ok(price));
+                }
+                Err(why) => b.price = Some(Err(why)),
+            }
+            cx.notify();
+        }
+    });
+    cx.notify();
+}
+
+/// Buy: the first click arms it (the price on the button), the second buys with the account's own sign-in.
+fn buy(r: &mut Root, cx: &mut Context<Root>) {
+    let Some(link) = r.link.clone() else { return };
+    let name = r.ps_name.read(cx).value().trim().to_string();
+    let Some(b) = r.servers.buy.as_mut().filter(|b| !b.busy && b.universe > 0) else { return };
+    let Some(Ok(Some(price))) = b.price.clone() else { return };
+    if !b.armed {
+        b.armed = true;
+        cx.notify();
+        return;
+    }
+    b.busy = true;
+    let (account, universe, place) = (b.account.clone(), b.universe, b.place);
+    cx.notify();
+    // The account's own sign-in (the one Roblox charges), as the app holds it.
+    let rx = link.call("robloxSignIn", json!({ "id": account }));
+    answer(rx, cx, move |r, got, cx| {
+        let cookie = got.ok().and_then(Result::ok).map(|v| s(&v, "cookie").to_string()).unwrap_or_default();
+        if cookie.is_empty() {
+            if let Some(b) = r.servers.buy.as_mut().filter(|b| b.place == place) {
+                b.busy = false;
+                b.armed = false;
+            }
+            r.toast = Some((r.tr("ps.noSign"), "bad".into()));
+            cx.notify();
+            return;
+        }
+        let name = if name.is_empty() { r.tr("ps.defaultName") } else { name };
+        let rx = crate::roblox::run(move || crate::roblox::ps_create(&cookie, universe, &name, price));
+        crate::ask::reply(rx, cx, move |r, got, cx| {
+            match got {
+                Ok(()) => {
+                    r.servers.buy = None;
+                    r.toast = Some((r.tr("ps.bought"), "ok".into()));
+                    // The new one in the list at once.
+                    r.servers.private_fresh = true;
+                    if r.servers.place == place {
+                        want(r, place, cx);
+                    }
+                    r.owned.forget();
+                }
+                Err(why) => {
+                    if let Some(b) = r.servers.buy.as_mut().filter(|b| b.place == place) {
+                        b.busy = false;
+                        b.armed = false;
+                    }
+                    r.toast = Some((r.i18n.tv("ps.buyFailed", &[("why", crate::net::why_words(&r.i18n, &why).as_str())]), "bad".into()));
+                }
+            }
+            cx.notify();
+        });
+    });
+}
+
+/// Roblox's Create Private Server box: for which account, a name, what it costs a month (it renews by itself until
+/// cancelled), Buy (twice) and Cancel; buying on Roblox's own page stays one click away.
+fn buy_box(root: &Root, b: &Buy, cx: &mut Context<Root>) -> Div {
+    let vi = root.i18n.vietnamese;
+    let who = root.accounts().iter().find(|a| s(a, "id") == b.account).map(crate::pages::accounts::label).unwrap_or_default();
+    let price_line: AnyElement = match &b.price {
+        None => div().text_color(c(MUTED)).child(root.tr("av.reading")).into_any_element(),
+        Some(Err(why)) => div().text_color(c(BAD)).child(root.i18n.tv("ps.priceFailed", &[("why", crate::net::why_words(&root.i18n, why).as_str())])).into_any_element(),
+        Some(Ok(None)) => div().text_color(c(MUTED)).child(root.tr("ps.notSold")).into_any_element(),
+        Some(Ok(Some(0))) => div().text_color(c(OK)).font_weight(FontWeight::SEMIBOLD).child(root.tr("shop.free")).into_any_element(),
+        Some(Ok(Some(p))) => div()
+            .flex()
+            .items_center()
+            .gap(px(5.))
+            .font_weight(FontWeight::SEMIBOLD)
+            .font_features(tnum())
+            .child(icon("robux", 14., c(TEXT)))
+            .child(thousands(*p, vi))
+            .child(div().font_weight(FontWeight::NORMAL).text_color(c(MUTED)).child(root.tr("own.aMonth")))
+            .into_any_element(),
+    };
+    let can_buy = matches!(b.price, Some(Ok(Some(_)))) && b.universe > 0;
+    let buy_words = match (&b.price, b.armed, b.busy) {
+        (_, _, true) => root.tr("ps.buying"),
+        (Some(Ok(Some(p))), true, _) if *p > 0 => root.i18n.tv("ps.confirm", &[("n", &thousands(*p, vi))]),
+        (_, true, _) => root.tr("ps.confirmFree"),
+        _ => root.tr("ps.buy"),
+    };
+    let (place, account) = (b.place, b.account.clone());
+    let row = |label: String, body: AnyElement| {
+        div().flex().items_center().gap(px(12.)).child(div().w(px(110.)).flex_none().text_size(px(T_M)).text_color(c(MUTED)).child(label)).child(div().flex_1().min_w_0().text_size(px(T_M)).child(body))
+    };
+    surface()
+        .p(px(16.))
+        .max_w(px(560.))
+        .flex()
+        .flex_col()
+        .gap(px(12.))
+        .child(div().text_size(px(T_L)).font_weight(FontWeight::SEMIBOLD).child(root.tr("ps.title")))
+        .child(row(root.tr("ps.account"), div().font_weight(FontWeight::MEDIUM).child(who).into_any_element()))
+        .child(row(root.tr("ps.name"), field(&root.ps_name, None).into_any_element()))
+        .child(row(root.tr("ps.price"), price_line))
+        .child(div().text_size(px(T_S)).text_color(c(MUTED)).child(root.tr("ps.renewNote")))
+        .child(
+            div()
+                .flex()
+                .flex_wrap()
+                .items_center()
+                .gap(px(8.))
+                .child(Button::new("ps-buy", buy_words).primary().small().disabled(!can_buy || b.busy).on_click(cx.listener(|r, _, _, cx| buy(r, cx))))
+                .child(Button::new("ps-cancel", root.tr("gp.cancel")).small().quiet().disabled(b.busy).on_click(cx.listener(|r, _, _, cx| {
+                    r.servers.buy = None;
+                    cx.notify();
+                })))
+                .child(div().flex_1())
+                .child(Button::new("ps-on-roblox", root.tr("ps.onRoblox")).small().quiet().icon("external").on_click(cx.listener(move |r, _, _, cx| {
+                    r.servers.buy = None;
+                    open_vip_checkout(r, place, account.clone(), cx);
+                }))),
+        )
 }
 
 /// Ping, FPS and newest are sorted here, over the rows loaded.
@@ -247,6 +402,17 @@ pub fn want(r: &mut Root, place: i64, cx: &mut Context<Root>) {
         }
     }
     want_friends(r, place, cx);
+    // BLOXKEEP_SHOT_PS=1 with BLOXKEEP_SHOT_SERVERS: a hidden shot opens Create Private Server for the first account
+    // (=armed: after Buy's first click; nothing is bought).
+    #[cfg(feature = "shot")]
+    if let (Ok(how), None, true) = (std::env::var("BLOXKEEP_SHOT_PS"), &r.servers.buy, std::env::var("BLOXKEEP_SHOT_SERVERS").is_ok()) {
+        if let Some(first) = r.accounts().first().map(|a| s(a, "id").to_string()) {
+            begin_buy(r, place, first, cx);
+            if let Some(b) = r.servers.buy.as_mut() {
+                b.armed = how == "armed";
+            }
+        }
+    }
     if r.servers.loading {
         return;
     }
@@ -479,9 +645,9 @@ pub fn view(root: &Root, root_place: i64, width: f32, cx: &mut Context<Root>) ->
                         cx.notify();
                     })))
                 .child(Button::new("srv-create-private", root.tr("gp.createPrivate")).small().icon("plus")
-                    .disabled(eligible.is_empty() || root.servers.vip_opening).tip(tip).on_click(cx.listener(move |r, _, _, cx| {
+                    .disabled(eligible.is_empty() || root.servers.vip_opening).tip(tip).on_click(cx.listener(move |r, _, window, cx| {
                         if let Some(id) = only.clone() {
-                            open_vip_checkout(r, place, id, cx);
+                            start_buy(r, place, id, window, cx);
                         } else {
                             r.servers.create_private = !r.servers.create_private;
                             r.servers.vip_error = None;
@@ -493,13 +659,14 @@ pub fn view(root: &Root, root_place: i64, width: f32, cx: &mut Context<Root>) ->
         let accounts = eligible.into_iter().map(|account| {
             let id = s(account, "id").to_string();
             Button::new(SharedString::from(format!("srv-create-{id}")), crate::pages::accounts::label(account)).small()
-                .on_click(cx.listener(move |r, _, _, cx| open_vip_checkout(r, place, id.clone(), cx)))
+                .on_click(cx.listener(move |r, _, window, cx| start_buy(r, place, id.clone(), window, cx)))
         });
         div().flex().flex_col().gap(px(8.)).p(px(12.)).rounded(px(R_M)).bg(c(PANEL))
             .child(div().text_size(px(T_M)).font_weight(FontWeight::SEMIBOLD).child(root.tr("gp.createPrivateAccount")))
             .child(div().flex().flex_wrap().gap(px(8.)).children(accounts))
     });
     let error = root.servers.vip_error.as_ref().map(|e| div().text_size(px(T_M)).text_color(c(BAD)).child(e.clone()));
+    let buying = root.servers.buy.as_ref().filter(|b| b.place == place).map(|b| buy_box(root, b, cx));
     div()
         .w_full()
         .flex()
@@ -508,7 +675,7 @@ pub fn view(root: &Root, root_place: i64, width: f32, cx: &mut Context<Root>) ->
         .child(div().flex().flex_col().gap(px(12.)).child(section_head(root.tr("srv.friendsTitle"), n_friends.filter(|n| *n > 0))).child(friends_body))
         // Private before public (owner, 2026-11-13): the public list runs long with more pages on demand, and the
         // private servers under it were out of sight.
-        .child(div().flex().flex_col().gap(px(12.)).child(private_head).children(picker).children(error).child(private(root, width, cx)))
+        .child(div().flex().flex_col().gap(px(12.)).child(private_head).children(picker).children(buying).children(error).child(private(root, width, cx)))
         .child(public(root, width, cx))
         .into_any_element()
 }

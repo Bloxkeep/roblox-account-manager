@@ -56,6 +56,260 @@ pub struct Data {
     trade_armed: bool,
     trade_busy: bool,
     trade_said: Option<String>,
+    /// A trade being made, or a counter to one (Roblox's trade window).
+    compose: Option<Compose>,
+}
+
+/// Roblox's trade window: who with (and the trade countered, if one is), both sides' tradable things (None while
+/// read), the copies picked each side (up to four, Roblox's limit) with the Robux a countered trade carried, whether
+/// the two can trade (Roblox's reason when not), Send armed by its first click, a sending on its way.
+pub struct Compose {
+    with: i64,
+    name: String,
+    counter: Option<i64>,
+    mine: Option<Result<Vec<roblox::Tradable>, String>>,
+    theirs: Option<Result<Vec<roblox::Tradable>, String>>,
+    give: Vec<String>,
+    take: Vec<String>,
+    robux: (i64, i64),
+    can: Option<(bool, String)>,
+    armed: bool,
+    busy: bool,
+}
+
+/// Roblox takes at most four things a side.
+const TRADE_MAX: usize = 4;
+
+/// A trade with this person, from their profile: the Inbox's Trades with the trade window open.
+pub fn trade_with(r: &mut Root, user: i64, name: String, cx: &mut Context<Root>) {
+    r.games.view = crate::pages::games::View::Inbox;
+    r.inbox.tab = 4;
+    start_compose(r, user, name, None, cx);
+}
+
+/// Opens the trade window: both sides' things and whether they can trade are read; a counter starts from the trade's
+/// own two sides.
+fn start_compose(r: &mut Root, with: i64, name: String, counter: Option<(i64, TradeDetail)>, cx: &mut Context<Root>) {
+    let Some((_, me, cookie)) = friends::signed(r) else { return };
+    let (give, take, robux) = match &counter {
+        Some((_, d)) => (
+            d.mine.items.iter().map(|i| i.instance.clone()).filter(|i| !i.is_empty()).collect(),
+            d.theirs.items.iter().map(|i| i.instance.clone()).filter(|i| !i.is_empty()).collect(),
+            (d.mine.robux, d.theirs.robux),
+        ),
+        None => (Vec::new(), Vec::new(), (0, 0)),
+    };
+    r.inbox.compose = Some(Compose { with, name, counter: counter.map(|c| c.0), mine: None, theirs: None, give, take, robux, can: None, armed: false, busy: false });
+    cx.notify();
+    for (user, theirs) in [(me, false), (with, true)] {
+        let c = cookie.clone();
+        let rx = roblox::run(move || roblox::tradables(&c, user));
+        reply(rx, cx, move |r, got, cx| {
+            if let Some(t) = r.inbox.compose.as_mut().filter(|t| t.with == with) {
+                if theirs { t.theirs = Some(got) } else { t.mine = Some(got) }
+                cx.notify();
+            }
+        });
+    }
+    let rx = roblox::run(move || roblox::can_trade_with(&cookie, with));
+    reply(rx, cx, move |r, got, cx| {
+        if let (Ok(can), Some(t)) = (got, r.inbox.compose.as_mut().filter(|t| t.with == with)) {
+            t.can = Some(can);
+            cx.notify();
+        }
+    });
+}
+
+/// Picks a copy for one side, or puts it back.
+fn trade_pick(r: &mut Root, theirs: bool, instance: String, cx: &mut Context<Root>) {
+    let Some(t) = r.inbox.compose.as_mut().filter(|t| !t.busy) else { return };
+    t.armed = false;
+    let side = if theirs { &mut t.take } else { &mut t.give };
+    if let Some(at) = side.iter().position(|i| *i == instance) {
+        side.remove(at);
+    } else if side.len() < TRADE_MAX {
+        side.push(instance);
+    }
+    cx.notify();
+}
+
+/// Send: the first click arms it, the second sends (or counters).
+fn trade_send(r: &mut Root, cx: &mut Context<Root>) {
+    let Some((_, me, cookie)) = friends::signed(r) else { return };
+    let Some(t) = r.inbox.compose.as_mut().filter(|t| !t.busy && !t.give.is_empty() && !t.take.is_empty()) else { return };
+    if !t.armed {
+        t.armed = true;
+        cx.notify();
+        return;
+    }
+    t.busy = true;
+    let (with, give, take, robux, counter) = (t.with, t.give.clone(), t.take.clone(), t.robux, t.counter);
+    cx.notify();
+    let rx = roblox::run(move || roblox::trade_send(&cookie, me, with, (give, robux.0), (take, robux.1), counter));
+    reply(rx, cx, move |r, got, cx| {
+        if r.inbox.of != me {
+            return;
+        }
+        match got {
+            Ok(_) => {
+                r.inbox.compose = None;
+                r.toast = Some((r.tr(if counter.is_some() { "trd.countered" } else { "trd.sent" }), "ok".into()));
+                // Where it now is: the account's sent trades.
+                r.inbox.trade_at = None;
+                r.inbox.trade = None;
+                r.inbox.trade_list = 1;
+                r.inbox.trades = None;
+                r.inbox.reading[4] = false;
+                load(r, 4, cx);
+            }
+            Err(why) => {
+                if let Some(t) = r.inbox.compose.as_mut() {
+                    t.busy = false;
+                    t.armed = false;
+                }
+                r.toast = Some((r.i18n.tv("blk.failed", &[("why", crate::net::why_words(&r.i18n, &why).as_str())]), "bad".into()));
+            }
+        }
+        cx.notify();
+    });
+}
+
+/// The picked copies of one side, as a trade's side is drawn.
+fn picked_side(list: &Option<Result<Vec<roblox::Tradable>, String>>, picked: &[String], robux: i64) -> TradeSide {
+    let all = match list {
+        Some(Ok(l)) => l.as_slice(),
+        _ => &[],
+    };
+    TradeSide {
+        robux,
+        items: picked
+            .iter()
+            .filter_map(|p| all.iter().find(|t| t.instance == *p))
+            .map(|t| roblox::TradeItem { instance: t.instance.clone(), name: t.name.clone(), serial: t.serial, rap: t.rap, pic: t.pic.clone() })
+            .collect(),
+    }
+}
+
+/// One side's things to pick from, as Roblox's trade window lists an inventory: each copy's picture, name, RAP and
+/// serial; a picked one in the yellow ring, one on hold dimmed and not pickable.
+fn stock(root: &Root, theirs: bool, list: &Option<Result<Vec<roblox::Tradable>, String>>, picked: &[String], width: f32, cx: &mut Context<Root>) -> AnyElement {
+    let vi = root.i18n.vietnamese;
+    let l = match list {
+        None => return empty_note(root.tr("in.loading")).into_any_element(),
+        Some(Err(why)) => return empty_note(root.i18n.tv("in.failed", &[("why", crate::net::why_words(&root.i18n, why).as_str())])).into_any_element(),
+        Some(Ok(l)) if l.is_empty() => return empty_note(root.tr("trd.none")).into_any_element(),
+        Some(Ok(l)) => l,
+    };
+    let full = picked.len() >= TRADE_MAX;
+    let (_, w) = grid_fit(width, 128., 10.);
+    div()
+        .flex()
+        .flex_wrap()
+        .gap(px(10.))
+        .children(l.iter().enumerate().map(|(n, t)| {
+            let on = picked.contains(&t.instance);
+            let usable = !t.hold && (on || !full);
+            let pic = (!t.pic.is_empty()).then(|| images::pic_sq(&t.pic, w - 16., cx)).flatten();
+            let instance = t.instance.clone();
+            let tile = hot((if theirs { "trd-their" } else { "trd-mine" }, n))
+                .w(px(w))
+                .p(px(8.))
+                .rounded(px(R_L))
+                .tones(c(INSET), ca(WHITE, 0.06))
+                .flex()
+                .flex_col()
+                .gap(px(4.))
+                .when(!usable, |d| d.opacity(0.45))
+                .when(usable, |d| d.cursor_pointer().on_click(cx.listener(move |r, _, _, cx| trade_pick(r, theirs, instance.clone(), cx))))
+                .child(div().w_full().h(px(w - 16.)).rounded(px(R_M)).overflow_hidden().bg(c(RAISED_2)).flex().items_center().justify_center().map(|d| match pic {
+                    Some(p) => d.child(img(p).size_full().object_fit(ObjectFit::Contain)),
+                    None => d.child(icon("tag", 18., c(MUTED))),
+                }))
+                .child(div().truncate().text_size(px(T_S)).font_weight(FontWeight::MEDIUM).text_color(c(TEXT)).child(t.name.clone()))
+                .child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .justify_between()
+                        .gap(px(4.))
+                        .text_size(px(T_XS))
+                        .font_features(tnum())
+                        .child(div().flex().items_center().gap(px(3.)).text_color(c(TEXT_2)).child(icon("robux", 11., c(TEXT_2))).child(thousands(t.rap, vi)))
+                        .child(div().text_color(c(MUTED)).child(if t.hold { root.tr("trd.hold") } else if t.serial > 0 { format!("#{}", t.serial) } else { String::new() })),
+                );
+            on_base(if on { c(FACE_BASE) } else { c(SHADE) }, 0., R_L, tile).into_any_element()
+        }))
+        .into_any_element()
+}
+
+/// Roblox's trade window: what the account gives and what it gets (each side's picks and what they come to by RAP,
+/// as an open trade shows them), who comes out ahead, Send (twice), and both inventories to pick from.
+fn trade_window(root: &Root, t: &Compose, cx: &mut Context<Root>) -> AnyElement {
+    let vi = root.i18n.vietnamese;
+    let give = picked_side(&t.mine, &t.give, t.robux.0);
+    let get = picked_side(&t.theirs, &t.take, t.robux.1);
+    let gain = worth(&get) - worth(&give);
+    let ready = !t.give.is_empty() && !t.take.is_empty();
+    let verdict = if !ready {
+        div().text_color(c(MUTED)).child(root.tr("trd.pickBoth"))
+    } else {
+        match gain {
+            0 => div().text_color(c(TEXT_2)).child(root.tr("in.tr.even")),
+            g if g > 0 => div().text_color(c(OK)).child(root.i18n.tv("in.tr.win", &[("n", &thousands(g, vi))])),
+            g => div().text_color(c(WARN)).child(root.i18n.tv("in.tr.lose", &[("n", &thousands(-g, vi))])),
+        }
+    };
+    let blocked = t.can.as_ref().filter(|can| !can.0).map(|can| {
+        let key = format!("trd.why.{}", can.1);
+        let said = root.tr(&key);
+        div().text_size(px(T_M)).text_color(c(WARN)).child(if said == key { root.tr("trd.cant") } else { said })
+    });
+    let send_words = match (t.busy, t.armed) {
+        (true, _) => root.tr("trd.sending"),
+        (_, true) => root.tr("trd.confirm"),
+        _ => root.tr(if t.counter.is_some() { "trd.counter" } else { "trd.send" }),
+    };
+    let can_send = ready && !t.busy && t.can.as_ref().is_none_or(|can| can.0);
+    let head = div()
+        .flex()
+        .items_center()
+        .gap(px(10.))
+        .child(Button::new("trd-close", root.tr("gp.cancel")).small().quiet().icon("chevronLeft").on_click(cx.listener(|r, _, _, cx| {
+            r.inbox.compose = None;
+            cx.notify();
+        })))
+        .child(div().text_size(px(T_H)).font_weight(FontWeight::SEMIBOLD).child(root.i18n.tv(if t.counter.is_some() { "trd.counterWith" } else { "trd.with" }, &[("name", &t.name)])));
+    let col_w = 420.;
+    let column = |title: String, theirs: bool, list: &Option<Result<Vec<roblox::Tradable>, String>>, picked: &[String], cx: &mut Context<Root>| {
+        div()
+            .flex_1()
+            .min_w(px(300.))
+            .flex()
+            .flex_col()
+            .gap(px(10.))
+            .child(section_head(title, list.as_ref().and_then(|l| l.as_ref().ok()).map(Vec::len)))
+            .child(stock(root, theirs, list, picked, col_w, cx))
+    };
+    let body = div()
+        .px(px(PAGE_X))
+        .pt(px(4.))
+        .pb(px(24.))
+        .flex()
+        .flex_col()
+        .gap(px(16.))
+        .child(head)
+        .child(div().flex().flex_wrap().items_stretch().gap(px(GRID_GAP))
+            .child(side(root, root.i18n.tv("trd.give", &[("n", &t.give.len().to_string())]), &give, cx))
+            .child(side(root, root.i18n.tv("trd.get", &[("n", &t.take.len().to_string())]), &get, cx)))
+        .child(div().flex().flex_wrap().items_center().gap(px(14.))
+            .child(verdict.text_size(px(T_L)).font_weight(FontWeight::SEMIBOLD))
+            .child(div().flex_1())
+            .child(Button::new("trd-send", send_words).primary().icon("repeat").disabled(!can_send).on_click(cx.listener(|r, _, _, cx| trade_send(r, cx)))))
+        .children(blocked)
+        .child(div().flex().flex_wrap().items_start().gap(px(GRID_GAP * 2.))
+            .child(column(root.tr("trd.yours"), false, &t.mine, &t.give, cx))
+            .child(column(root.i18n.tv("trd.theirs", &[("name", &t.name)]), true, &t.theirs, &t.take, cx)));
+    crate::scrolled::body("trd-body", body).into_any_element()
 }
 
 /// Friends being picked for a group: who, the group they go into (None: a new one), and whether Roblox is being asked.
@@ -199,6 +453,18 @@ fn load(r: &mut Root, tab: usize, cx: &mut Context<Root>) {
                         if let Some(first) = l.first().map(|t| t.id) {
                             open_trade(r, first, cx);
                             r.inbox.trade_armed = how == "armed";
+                        }
+                    }
+                    // BLOXKEEP_SHOT_COMPOSE=them[,pick]: the trade window with that person (",pick": two things a side
+                    // already picked).
+                    #[cfg(feature = "shot")]
+                    if let (Ok(v), None) = (std::env::var("BLOXKEEP_SHOT_COMPOSE"), &r.inbox.compose) {
+                        if let Some(them) = v.split(',').next().and_then(|x| x.parse().ok()) {
+                            start_compose(r, them, "Builderman".into(), None, cx);
+                            if let (true, Some(t)) = (v.ends_with(",pick"), r.inbox.compose.as_mut()) {
+                                t.give = vec!["i1365767".into(), "i1191125008".into()];
+                                t.take = vec!["i1029025".into(), "i20573078".into()];
+                            }
                         }
                     }
                     cx.notify();
@@ -1016,6 +1282,9 @@ fn members(root: &Root, t: &Talk, cx: &mut Context<Root>) -> impl IntoElement {
 /// Trades: the four lists Roblox keeps, and under them the list shown; a trade opens in its row.
 fn trades(root: &Root, cx: &mut Context<Root>) -> AnyElement {
     let ib = &root.inbox;
+    if let Some(t) = &ib.compose {
+        return div().flex_1().min_h_0().flex().flex_col().child(trade_window(root, t, cx)).into_any_element();
+    }
     let list = ib.trade_list.min(roblox::TRADES.len() - 1);
     let kinds = div().flex().flex_wrap().items_center().gap(px(4.)).children((0..roblox::TRADES.len()).map(|i| {
         chip(("in-trades", i), list == i).h(px(TOOL_H)).px(px(12.)).cursor_pointer().child(root.tr(&format!("in.tr.{i}"))).on_click(cx.listener(move |r, _, _, cx| pick_trades(r, i, cx)))
@@ -1174,6 +1443,11 @@ fn trade(root: &Root, i: usize, t: &Trade, list: usize, cx: &mut Context<Root>) 
                             cx.notify();
                         })))
                         .child(Button::new("tr-decline", root.tr("in.tr.decline")).on_click(cx.listener(|r, _, _, cx| trade_act(r, false, cx))))
+                        // Counter: the trade window with this trade's two sides in it (Roblox's own Counter).
+                        .child(Button::new("tr-counter", root.tr("trd.counter")).quiet().icon("repeat").on_click(cx.listener({
+                            let (who, name, detail) = (t.who_id, t.who.clone(), d.clone());
+                            move |r, _, _, cx| start_compose(r, who, name.clone(), Some((id, detail.clone())), cx)
+                        })))
                 }
             });
             // Turned down (Roblox may want its own check first): said, with the way to its page.

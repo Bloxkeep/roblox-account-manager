@@ -151,6 +151,19 @@ struct ClubView {
     got: Option<Result<Club, String>>,
     mine: Option<Vec<(i64, String)>>,
     friends: Option<(i64, Option<Result<Vec<Friend>, String>>)>,
+    /// What the account looked through is to it (Roblox's own Join button), for that account.
+    me: Option<ClubMe>,
+}
+
+/// An account's standing in a community as Roblox's community page shows it to that account: "join", "pending",
+/// "member" or "owner" (empty while asked), whether joining needs the owner's yes, whether it is the account's primary
+/// community (Make Primary in the page's menu; None while asked), and a change on its way.
+struct ClubMe {
+    user: i64,
+    state: String,
+    approval: bool,
+    primary: Option<bool>,
+    busy: bool,
 }
 
 /// The profile's share of Data, which goes away with its account's tab (pages/tabs.rs); the Marketplace's stays, being
@@ -214,6 +227,7 @@ pub fn want(r: &mut Root, link: &crate::link::Link, cx: &mut Context<Root>) {
     ask_follow(r, cx);
     ask_block(r, cx);
     ask_club_friends(r, cx);
+    ask_club_me(r, cx);
     if let Some(user) = r.profile.person.as_ref().map(|p| p.0) {
         ask_where(r, user, cx);
     }
@@ -520,7 +534,8 @@ fn folk_page(root: &Root, which: &str, got: &Option<Result<Vec<Friend>, String>>
 /// Opens a community's page in the profile's place: its page is read, then which of the app's accounts are in it.
 fn open_club(r: &mut Root, id: i64, name: String, cx: &mut Context<Root>) {
     let ask = crate::pages::avatar::ticket();
-    r.profile.club = Some(ClubView { id, ask, name, got: None, mine: None, friends: None });
+    r.profile.club = Some(ClubView { id, ask, name, got: None, mine: None, friends: None, me: None });
+    ask_club_me(r, cx);
     // Every account with a Roblox id, whatever its sign-in's state: membership is public.
     let users: Vec<i64> = r.accounts().iter().filter_map(|a| a["userId"].as_i64().filter(|u| *u > 0)).collect();
     let rx = roblox::run(move || roblox::club(id));
@@ -546,6 +561,203 @@ fn open_club(r: &mut Root, id: i64, name: String, cx: &mut Context<Root>) {
         });
     })
     .detach();
+}
+
+/// A community's page opened from elsewhere (the Roblox tab's search): over the profile, as its Communities shelf opens it.
+pub fn show_club(r: &mut Root, id: i64, name: String, cx: &mut Context<Root>) {
+    r.games.open = None;
+    r.games.view = crate::pages::games::View::Profile;
+    r.profile.person = None;
+    r.profile.folk = None;
+    open_club(r, id, name, cx);
+    cx.notify();
+}
+
+/// Asks, once for each account looked through, what that account is to the community open (member, a request
+/// waiting, free to join) and whether it is its primary one.
+fn ask_club_me(r: &mut Root, cx: &mut Context<Root>) {
+    let Some((app, user, _)) = friends::signed(r) else { return };
+    let Some(link) = r.link.clone() else { return };
+    let Some(view) = r.profile.club.as_mut().filter(|c| !c.me.as_ref().is_some_and(|m| m.user == user)) else { return };
+    let (id, ask) = (view.id, view.ask);
+    view.me = Some(ClubMe { user, state: String::new(), approval: false, primary: None, busy: false });
+    // BLOXKEEP_SHOT_CLUB_STATE=join|pending|member: a hidden shot's answer.
+    #[cfg(feature = "shot")]
+    if let Ok(state) = std::env::var("BLOXKEEP_SHOT_CLUB_STATE") {
+        if let Some(m) = view.me.as_mut() {
+            m.state = state;
+        }
+    }
+    #[cfg(feature = "shot")]
+    let asked_state = std::env::var("BLOXKEEP_SHOT_CLUB_STATE").is_err();
+    #[cfg(not(feature = "shot"))]
+    let asked_state = true;
+    if asked_state {
+        let rx = link.call("gameCommunity", json!({ "id": app, "groupId": id, "action": "" }));
+        answer(rx, cx, move |r, result, cx| {
+            let Some(m) = r.profile.club.as_mut().filter(|c| c.ask == ask).and_then(|c| c.me.as_mut().filter(|m| m.user == user)) else { return };
+            if let Ok(Ok(v)) = result {
+                m.state = v["state"].as_str().unwrap_or_default().to_string();
+                m.approval = v["approval"] == true;
+                cx.notify();
+            }
+        });
+    }
+    let rx = roblox::run(move || roblox::primary_club(user));
+    reply(rx, cx, move |r, got, cx| {
+        let Some(m) = r.profile.club.as_mut().filter(|c| c.ask == ask).and_then(|c| c.me.as_mut().filter(|m| m.user == user)) else { return };
+        if let Ok(p) = got {
+            m.primary = Some(p == Some(id));
+            cx.notify();
+        }
+    });
+}
+
+/// Joins the community open with the account looked through (or asks to, where its owner says yes first), as
+/// Roblox's Join Community button does.
+fn join_club(r: &mut Root, cx: &mut Context<Root>) {
+    let Some((app, user, _)) = friends::signed(r) else { return };
+    let Some(link) = r.link.clone() else { return };
+    let Some(view) = r.profile.club.as_mut() else { return };
+    let (id, ask) = (view.id, view.ask);
+    let Some(m) = view.me.as_mut().filter(|m| m.user == user && !m.busy && m.state == "join") else { return };
+    m.busy = true;
+    cx.notify();
+    let users: Vec<i64> = r.accounts().iter().filter_map(|a| a["userId"].as_i64().filter(|u| *u > 0)).collect();
+    let rx = link.call("gameCommunity", json!({ "id": app, "groupId": id, "action": "join" }));
+    answer(rx, cx, move |r, result, cx| {
+        let Some(view) = r.profile.club.as_mut().filter(|c| c.ask == ask) else { return };
+        if let Some(m) = view.me.as_mut().filter(|m| m.user == user) {
+            m.busy = false;
+            if let Ok(Ok(v)) = &result {
+                m.state = v["state"].as_str().unwrap_or_default().to_string();
+            }
+        }
+        let state = view.me.as_ref().map(|m| m.state.clone()).unwrap_or_default();
+        r.toast = Some(match result {
+            Ok(Ok(_)) if state == "member" => (r.tr("club.joined"), "ok".into()),
+            Ok(Ok(_)) if state == "pending" => (r.tr("club.requested"), "ok".into()),
+            Ok(Ok(_)) => (r.tr("gp.communityError"), "bad".into()),
+            Ok(Err(e)) => (e.to_string(), "bad".into()),
+            Err(_) => (r.tr("gp.communityError"), "bad".into()),
+        });
+        cx.notify();
+        // Your accounts in it, read again with the one just in.
+        if state == "member" {
+            let rx = roblox::run(move || roblox::club_mine(id, &users));
+            answer(rx, cx, move |r, mine, cx| {
+                if let (Ok(mine), Some(view)) = (mine, r.profile.club.as_mut().filter(|c| c.ask == ask)) {
+                    view.mine = Some(mine);
+                    cx.notify();
+                }
+            });
+        }
+    });
+}
+
+/// Makes the community open the account's primary one, or stops (Roblox's Make Primary / Remove Primary).
+fn primary_move(r: &mut Root, on: bool, cx: &mut Context<Root>) {
+    let Some((_, user, cookie)) = friends::signed(r) else { return };
+    let Some(view) = r.profile.club.as_mut() else { return };
+    let (id, ask) = (view.id, view.ask);
+    let Some(m) = view.me.as_mut().filter(|m| m.user == user && !m.busy) else { return };
+    m.busy = true;
+    cx.notify();
+    let rx = roblox::run(move || roblox::set_primary_club(&cookie, on.then_some(id)));
+    reply(rx, cx, move |r, got, cx| {
+        if let Some(m) = r.profile.club.as_mut().filter(|c| c.ask == ask).and_then(|c| c.me.as_mut().filter(|m| m.user == user)) {
+            m.busy = false;
+            if got.is_ok() {
+                m.primary = Some(on);
+            }
+        }
+        r.toast = Some(match got {
+            Ok(()) => (r.tr(if on { "club.primarySet" } else { "club.primaryOff" }), "ok".into()),
+            Err(why) => (r.i18n.tv("blk.failed", &[("why", crate::net::why_words(&r.i18n, &why).as_str())]), "bad".into()),
+        });
+        cx.notify();
+    });
+}
+
+/// The community page's own buttons for the account looked through, where Roblox's page has them: Join (or Request
+/// to join, or the request waiting), and for a member Make primary (Primary: click to stop).
+fn club_actions(root: &Root, view: &ClubView, cx: &mut Context<Root>) -> Option<Div> {
+    let (_, user, _) = friends::signed(root)?;
+    let m = view.me.as_ref().filter(|m| m.user == user)?;
+    let row = div().flex_none().flex().items_center().gap(px(8.));
+    let join = match m.state.as_str() {
+        "join" => Some(
+            Button::new("club-join", root.tr(if m.approval { "gp.communityRequest" } else { "gp.communityJoin" }))
+                .primary()
+                .small()
+                .icon("plus")
+                .disabled(m.busy)
+                .on_click(cx.listener(|r, _, _, cx| join_club(r, cx)))
+                .into_any_element(),
+        ),
+        "pending" => Some(badge(root.tr("gp.communityPending"), Tone::Warn).into_any_element()),
+        _ => None,
+    };
+    let primary = matches!(m.state.as_str(), "member" | "owner").then_some(m.primary).flatten().map(|on| {
+        Button::new("club-primary", root.tr(if on { "club.isPrimary" } else { "club.primary" }))
+            .small()
+            .quiet()
+            .icon(if on { "check" } else { "star" })
+            .disabled(m.busy)
+            .tip(root.tr(if on { "club.unprimaryTip" } else { "club.primaryTip" }))
+            .on_click(cx.listener(move |r, _, _, cx| primary_move(r, !on, cx)))
+            .into_any_element()
+    });
+    (join.is_some() || primary.is_some()).then(|| row.children(join).children(primary))
+}
+
+/// The communities a search found (the Roblox tab's search, as Roblox's Search › Communities lists them), as the
+/// profile's Communities shelf draws its cards: the icon, the name with Roblox's verified mark, the members and its words.
+pub fn club_hits(root: &Root, hits: &[roblox::ClubHit], inner: f32, cx: &mut Context<Root>) -> Div {
+    let vi = root.i18n.vietnamese;
+    let (_, card_w) = grid_fit(inner, 360., GRID_GAP);
+    div().flex().flex_wrap().gap(px(GRID_GAP)).children(hits.iter().map(|h| {
+        let (id, name) = (h.id, h.name.clone());
+        let pic = (!h.pic.is_empty()).then(|| images::pic_sq(&h.pic, 44., cx)).flatten();
+        let about = h.about.split_whitespace().collect::<Vec<_>>().join(" ");
+        block_card(("club-hit", id as usize))
+            .w(px(card_w))
+            .h(px(68.))
+            .px(px(12.))
+            .flex()
+            .items_center()
+            .gap(px(12.))
+            .cursor_pointer()
+            .on_click(cx.listener(move |r, _, _, cx| show_club(r, id, name.clone(), cx)))
+            .child(div().size(px(44.)).flex_none().rounded(px(R_M)).bg(c(RAISED_2)).overflow_hidden().map(|d| match pic {
+                Some(f) => d.child(img(f).size_full().object_fit(ObjectFit::Cover)),
+                None => d.flex().items_center().justify_center().child(icon("users", 18., c(MUTED))),
+            }))
+            .child(
+                div()
+                    .flex_1()
+                    .min_w_0()
+                    .flex()
+                    .flex_col()
+                    .gap(px(2.))
+                    .child(
+                        div()
+                            .flex()
+                            .items_center()
+                            .gap(px(5.))
+                            .min_w_0()
+                            .child(div().min_w_0().text_size(px(T_L)).font_weight(FontWeight::SEMIBOLD).truncate().child(h.name.clone()))
+                            .when(h.verified, |d| d.child(icon("creatorVerified", 14., rgb(0x335fff).into()))),
+                    )
+                    .child(div().text_size(px(T_S)).text_color(c(MUTED)).truncate().child(if about.is_empty() {
+                        root.i18n.tv("pf.members", &[("n", &thousands(h.members, vi))])
+                    } else {
+                        format!("{} · {}", root.i18n.tv("pf.members", &[("n", &thousands(h.members, vi))]), about)
+                    })),
+            )
+            .child(icon("chevronRight", 14., c(DIM)))
+            .into_any_element()
+    }))
 }
 
 fn ask_club_friends(root: &mut Root, cx: &mut Context<Root>) {
@@ -766,6 +978,7 @@ pub fn shot_club(r: &mut Root, cx: &mut Context<Root>) {
                 got: Some(Ok(Club { name, members: 84, ..Default::default() })),
                 mine: Some(vec![(member, "Member".into())]),
                 friends: None,
+                me: None,
             });
         } else {
             open_club(r, id, String::new(), cx);
@@ -807,6 +1020,7 @@ fn club_page(root: &Root, view: &ClubView, width: f32, cx: &mut Context<Root>) -
                 .when(!club.about.is_empty(), |d| d.child(div().max_h(px(80.)).overflow_hidden().text_size(px(T_M)).text_color(c(TEXT_2)).line_height(px(20.)).child(club.about.clone())))
                 .when(!club.shout.is_empty(), |d| d.child(div().mt(px(4.)).px(px(12.)).py(px(9.)).rounded(px(R_M)).bg(c(INSET)).text_size(px(T_M)).text_color(c(TEXT)).line_height(px(20.)).child(club.shout.clone()))),
         )
+        .children(club_actions(root, view, cx))
         .child(IconButton::new("club-open", "external").size(34.).tip(root.tr("shop.open")).on_click(cx.listener(move |r, _, _, _| r.send("openRobloxPage", json!({ "kind": "group", "id": id })))));
 
     let mine: AnyElement = match &view.mine {
@@ -940,6 +1154,20 @@ pub fn profile(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElem
                     .disabled(busy)
                     .tip(root.tr(if on { "pf.unfollowTip" } else { "pf.followTip" }))
                     .on_click(cx.listener(move |r, _, _, cx| follow_move(r, who, !on, cx))),
+            )
+        })
+        // Trade with them (Roblox's profile menu has Trade Items): the Inbox's trade window.
+        .when_some(pf.person.as_ref().filter(|p| matches!(p.1, Some(Ok(_))) && friends::signed(root).is_some_and(|s| s.1 != p.0)).map(|p| p.0), |d, who| {
+            let name = match &pf.person {
+                Some((_, Some(Ok(p)))) => if p.display.is_empty() { p.name.clone() } else { p.display.clone() },
+                _ => String::new(),
+            };
+            d.child(
+                Button::new("pf-trade", root.tr("trd.open"))
+                    .icon("repeat")
+                    .small()
+                    .quiet()
+                    .on_click(cx.listener(move |r, _, _, cx| crate::pages::inbox::trade_with(r, who, name.clone(), cx))),
             )
         })
         // And block them, or unblock (Roblox asks first; so does this).

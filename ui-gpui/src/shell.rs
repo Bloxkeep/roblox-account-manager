@@ -144,6 +144,8 @@ pub struct Root {
     /// Profile and Marketplace (inside Games): that account's profile, and the shelf or search the Marketplace shows.
     pub profile: pages::profile::Data,
     pub shop_search: Entity<InputState>,
+    /// A private server's name: the one being bought (pages/servers.rs) or renamed (pages/owned.rs).
+    pub ps_name: Entity<InputState>,
     /// Inbox (inside Games): that account's messages, notifications and Robux lines.
     pub inbox: pages::inbox::Data,
     /// The Roblox tab's Settings, and its About box.
@@ -478,6 +480,7 @@ impl Root {
             _ => {}
         })
         .detach();
+        let ps_name = mk("ps.namePlaceholder", window, cx);
         let label_box = mk("tag.name", window, cx);
         cx.subscribe(&label_box, |r: &mut Root, _, e: &InputEvent, cx| {
             if matches!(e, InputEvent::PressEnter { .. }) {
@@ -661,6 +664,7 @@ impl Root {
             avatar: Default::default(),
             profile: Default::default(),
             shop_search,
+            ps_name,
             inbox: Default::default(),
             rset: Default::default(),
             owned: Default::default(),
@@ -1049,6 +1053,8 @@ impl Root {
                 self.chat_box.update(cx, |s, cx| s.set_placeholder(p, window, cx));
                 let p = self.i18n.t("shop.find");
                 self.shop_search.update(cx, |s, cx| s.set_placeholder(p, window, cx));
+                let p = self.i18n.t("ps.namePlaceholder");
+                self.ps_name.update(cx, |s, cx| s.set_placeholder(p, window, cx));
                 let p = self.i18n.t("fr.find");
                 self.friend_search.update(cx, |s, cx| s.set_placeholder(p, window, cx));
                 let p = self.i18n.t("tag.name");

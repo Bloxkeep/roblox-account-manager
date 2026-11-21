@@ -628,6 +628,8 @@ pub struct Data {
     region_play: Option<i64>,
     region_note: Option<String>,
     pub found: Option<(String, Option<Result<Vec<roblox::Game>, String>>)>,
+    /// The communities the same search found (Roblox's Search › Communities), under its games.
+    pub clubs_found: Option<(String, Option<Result<Vec<roblox::ClubHit>, String>>)>,
     /// Each change of the box's words, so a search asked while typing goes only for the last of them.
     pub typed: u64,
     /// Play on a game's page: the game (its Open id) and the accounts ticked to join it.
@@ -2641,7 +2643,16 @@ pub fn search(r: &mut Root, cx: &mut Context<Root>) {
     r.games.view = View::Games;
     r.games.home_library = None;
     r.games.found = Some((q.clone(), None));
+    r.games.clubs_found = Some((q.clone(), None));
     cx.notify();
+    let (ask, q2) = (q.clone(), q.clone());
+    let rx = roblox::run(move || roblox::club_search(&ask));
+    reply(rx, cx, move |r, got, cx| {
+        if r.games.clubs_found.as_ref().is_some_and(|(at, _)| *at == q2) {
+            r.games.clubs_found = Some((q2, Some(got)));
+            cx.notify();
+        }
+    });
     let ask = q.clone();
     let rx = roblox::run(move || roblox::search(&ask));
     reply(rx, cx, move |r, got, cx| {
@@ -2936,6 +2947,17 @@ fn grid(root: &Root, all: &[Game], width: f32, cx: &mut Context<Root>) -> impl I
     // A search sent to Roblox (Enter): its games first, the bot's that match after.
     if let Some((q, got)) = &root.games.found {
         body = body.child(roblox_section(root, root.i18n.tv("games.results", &[("q", q)]), None, None, got.as_ref(), inner, cx));
+        // Its communities (only when there are some: a search for a game rarely wants them, so no empty heading).
+        if let Some((_, Some(Ok(hits)))) = root.games.clubs_found.as_ref().filter(|(at, _)| at == q).filter(|f| f.1.as_ref().is_some_and(|g| g.as_ref().is_ok_and(|l| !l.is_empty()))) {
+            body = body.child(
+                div()
+                    .flex()
+                    .flex_col()
+                    .gap(px(12.))
+                    .child(section_head(root.tr("gp.communityTitle"), Some(hits.len())))
+                    .child(crate::pages::profile::club_hits(root, hits, inner, cx)),
+            );
+        }
         if !shown.is_empty() {
             body = body.child(
                 div()

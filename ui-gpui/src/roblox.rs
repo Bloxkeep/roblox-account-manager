@@ -3845,6 +3845,8 @@ pub struct Trade {
 /// One thing in a trade: its serial number when it has one (0: none), and what it has sold for lately (RAP).
 #[derive(Clone, Debug, Default)]
 pub struct TradeItem {
+    /// The copy as a trade names it (a counter puts the same ones back in).
+    pub instance: String,
     pub name: String,
     pub serial: i64,
     pub rap: i64,
@@ -3908,7 +3910,7 @@ pub fn trade(cookie: &str, id: i64, with: i64) -> Result<TradeDetail, String> {
             .map(|i| {
                 let asset = if i.pointer("/itemTarget/itemType").and_then(Value::as_str) == Some("Asset") { i.pointer("/itemTarget/targetId").and_then(Value::as_str).and_then(|t| t.parse().ok()).unwrap_or(0) } else { 0 };
                 assets.push(asset);
-                TradeItem { name: text(i, "itemName"), serial: int(i, "serialNumber"), rap: int(i, "recentAveragePrice"), pic: String::new() }
+                TradeItem { instance: text(i, "collectibleItemInstanceId"), name: text(i, "itemName"), serial: int(i, "serialNumber"), rap: int(i, "recentAveragePrice"), pic: String::new() }
             })
             .collect();
         sides.push((o.pointer("/user/id").and_then(Value::as_i64).unwrap_or(0), TradeSide { robux: int(o, "robux"), items }, assets));
@@ -3923,7 +3925,7 @@ pub fn trade(cookie: &str, id: i64, with: i64) -> Result<TradeDetail, String> {
                 .flatten()
                 .map(|i| {
                     assets.push(int(i, "assetId"));
-                    TradeItem { name: text(i, "name"), serial: int(i, "serialNumber"), rap: int(i, "recentAveragePrice"), pic: String::new() }
+                    TradeItem { instance: String::new(), name: text(i, "name"), serial: int(i, "serialNumber"), rap: int(i, "recentAveragePrice"), pic: String::new() }
                 })
                 .collect();
             sides.push((o.pointer("/user/id").and_then(Value::as_i64).unwrap_or(0), TradeSide { robux: int(o, "robux"), items }, assets));
@@ -4402,4 +4404,224 @@ pub fn is_blocked(cookie: &str, user: i64) -> Result<bool, String> {
 /// Blocks the person, or unblocks them.
 pub fn set_blocked(cookie: &str, user: i64, on: bool) -> Result<(), String> {
     post_ok(&format!("https://apis.roblox.com/user-blocking-api/v1/users/{user}/{}", if on { "block-user" } else { "unblock-user" }), &serde_json::json!({}), Some(cookie))
+}
+
+// ───────────────────────── communities: search, primary ─────────────────────────
+// Roblox's Search › Communities and a community page's Make Primary (groups v1, read 2026-11-21: groups/search is
+// public; users/{id}/groups/primary/role is public and answers null without one; user/groups/primary needs a sign-in).
+
+/// A community found by words, as Roblox's search lists it.
+#[derive(Clone, Debug, Default)]
+pub struct ClubHit {
+    pub id: i64,
+    pub name: String,
+    pub about: String,
+    pub members: i64,
+    pub pic: String,
+    pub verified: bool,
+}
+
+/// The communities Roblox finds for these words (its first page of 10, as its search shows them), with their icons.
+pub fn club_search(words: &str) -> Result<Vec<ClubHit>, String> {
+    let d = get(&format!("https://groups.roblox.com/v1/groups/search?keyword={}&limit=10&prioritizeExactMatch=true", enc(words)), None)?;
+    let mut hits: Vec<ClubHit> = d
+        .get("data")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .map(|v| ClubHit {
+            id: int(v, "id"),
+            name: text(v, "name"),
+            about: text(v, "description"),
+            members: int(v, "memberCount"),
+            pic: String::new(),
+            verified: v.get("hasVerifiedBadge").and_then(Value::as_bool).unwrap_or(false),
+        })
+        .filter(|h| h.id > 0)
+        .collect();
+    let ids: Vec<i64> = hits.iter().map(|h| h.id).collect();
+    let pics = thumbs("groups/icons?size=150x150&groupIds=", &ids);
+    for h in &mut hits {
+        h.pic = pics.get(&h.id).cloned().unwrap_or_default();
+    }
+    Ok(hits)
+}
+
+/// The community this person shows as their primary one (None: none).
+pub fn primary_club(user: i64) -> Result<Option<i64>, String> {
+    #[cfg(feature = "shot")]
+    if let Ok(v) = std::env::var("BLOXKEEP_SHOT_PRIMARY") {
+        return Ok(v.parse().ok());
+    }
+    let d = get(&format!("https://groups.roblox.com/v1/users/{user}/groups/primary/role"), None)?;
+    Ok(d.pointer("/group/id").and_then(Value::as_i64).filter(|id| *id > 0))
+}
+
+/// Makes this community the account's primary one, or (None) shows none.
+pub fn set_primary_club(cookie: &str, group: Option<i64>) -> Result<(), String> {
+    match group {
+        Some(id) => post_ok("https://groups.roblox.com/v1/user/groups/primary", &serde_json::json!({ "groupId": id }), Some(cookie)),
+        None => send_text("DELETE", "https://groups.roblox.com/v1/user/groups/primary", &serde_json::json!({}), Some(cookie)).map(|_| ()),
+    }
+}
+
+// ───────────────────────── private servers: create, configure ─────────────────────────
+// Roblox's Create Private Server box and its Configure page (games v1 and private-servers-api, shapes as RoSeal's
+// privateServers.ts calls them, read 2026-11-21; the price call is public, the rest need the owner's sign-in).
+
+/// The game's universe, and what a private server of it costs a month (Robux; 0: free), or None when it sells none.
+pub fn ps_price(place: i64) -> Result<(i64, Option<i64>), String> {
+    let universe = int(&get(&format!("https://apis.roblox.com/universes/v1/places/{place}/universe"), None)?, "universeId");
+    let d = get(&format!("https://apis.roblox.com/private-servers-api/Universe-Private-Server-Settings?universeId={universe}"), None)?;
+    let p = d.get("privateServerData").cloned().unwrap_or_default();
+    Ok((universe, (p.get("isAvailable").and_then(Value::as_bool) == Some(true)).then(|| int(&p, "price"))))
+}
+
+/// Buys a private server of this game for the account: `price` is what was shown, so Roblox refuses if it changed.
+pub fn ps_create(cookie: &str, universe: i64, name: &str, price: i64) -> Result<(), String> {
+    #[cfg(feature = "shot")]
+    if std::env::var("BLOXKEEP_SHOT_PS").is_ok() {
+        return Ok(());
+    }
+    post(
+        &format!("https://games.roblox.com/v1/games/vip-servers/{universe}"),
+        &serde_json::json!({ "name": name, "expectedPrice": price, "isPurchaseConfirmed": true }),
+        Some(cookie),
+    )
+    .map(|_| ())
+}
+
+/// A private server as its Configure page shows it to its owner.
+#[derive(Clone, Debug, Default)]
+pub struct PsInfo {
+    pub active: bool,
+    /// Its invite link (empty: none made yet).
+    pub link: String,
+    /// The subscription renews by itself; when it ends or renews.
+    pub renews: bool,
+    pub expires: String,
+}
+
+fn ps_info(d: &Value) -> PsInfo {
+    let sub = d.get("subscription").cloned().unwrap_or_default();
+    PsInfo {
+        active: d.get("active").and_then(Value::as_bool).unwrap_or(false),
+        link: text(d, "link"),
+        renews: sub.get("active").and_then(Value::as_bool).unwrap_or(false),
+        expires: text(&sub, "expirationDate"),
+    }
+}
+
+pub fn ps_details(cookie: &str, id: i64) -> Result<PsInfo, String> {
+    #[cfg(feature = "shot")]
+    if std::env::var("BLOXKEEP_SHOT_PS").is_ok() {
+        return Ok(PsInfo { active: true, link: "https://www.roblox.com/share?code=4f1c0e7d2a&type=Server".into(), renews: true, expires: "2026-12-04T10:00:00Z".into() });
+    }
+    get(&format!("https://games.roblox.com/v1/vip-servers/{id}"), Some(cookie)).map(|d| ps_info(&d))
+}
+
+/// Changes a private server: its name, whether it runs, a new invite link (`body` as Roblox takes it).
+pub fn ps_update(cookie: &str, id: i64, body: Value) -> Result<PsInfo, String> {
+    send("PATCH", &format!("https://games.roblox.com/v1/vip-servers/{id}"), &body, Some(cookie)).map(|d| ps_info(&d))
+}
+
+/// Turns a private server's renewal on or off.
+pub fn ps_renew(cookie: &str, id: i64, on: bool) -> Result<(), String> {
+    send_text("PATCH", &format!("https://games.roblox.com/v1/vip-servers/{id}/subscription"), &serde_json::json!({ "active": on }), Some(cookie)).map(|_| ())
+}
+
+// ───────────────────────── trades: make one, counter one ─────────────────────────
+// Roblox's trade window (trades v2, shapes as Roblox's OpenAPI gives them through RoZod's tradesv2.ts, read
+// 2026-11-21): each side's tradable collectibles, whether the two can trade, and send or counter with the item
+// instances each side puts in.
+
+/// One copy of a collectible a person can put in a trade.
+#[derive(Clone, Debug, Default)]
+pub struct Tradable {
+    pub instance: String,
+    pub asset: i64,
+    pub name: String,
+    pub rap: i64,
+    pub serial: i64,
+    /// On hold (just bought or traded): Roblox doesn't let it be traded yet.
+    pub hold: bool,
+    pub pic: String,
+}
+
+/// What this person can trade, most valuable first (up to 200 copies).
+pub fn tradables(cookie: &str, user: i64) -> Result<Vec<Tradable>, String> {
+    let mut out: Vec<Tradable> = Vec::new();
+    #[cfg(feature = "shot")]
+    // BLOXKEEP_SHOT_COMPOSE=them[,pick]: a hidden shot's trade window with that person, both sides made up here.
+    if let Ok(v) = std::env::var("BLOXKEEP_SHOT_COMPOSE") {
+        let mine = v.split(',').next().and_then(|x| x.parse::<i64>().ok()) != Some(user);
+        let made: &[(i64, &str, i64, i64, bool)] = if mine {
+            &[(1365767, "Valkyrie Helm", 300161, 412, false), (1031429, "Domino Crown", 1180000, 77, false), (16630147, "Bluesteel Swordpack", 9200, 1630, true), (1191125008, "Dark Lord of SQL", 54000, 9, false)]
+        } else {
+            &[(21070012, "Dominus Empyreus", 6100000, 18, false), (1029025, "The Classic ROBLOX Fedora", 64000, 2201, false), (20573078, "Shaggy", 39000, 902, false)]
+        };
+        out = made.iter().map(|&(asset, name, rap, serial, hold)| Tradable { instance: format!("i{asset}"), asset, name: name.into(), rap, serial, hold, pic: String::new() }).collect();
+    }
+    #[cfg(feature = "shot")]
+    let shot = std::env::var("BLOXKEEP_SHOT_COMPOSE").is_ok();
+    #[cfg(not(feature = "shot"))]
+    let shot = false;
+    let mut cursor = String::new();
+    while !shot && out.len() < 200 {
+        let mut url = format!("https://trades.roblox.com/v2/users/{user}/tradableItems?limit=50&sortOrder=Desc");
+        if !cursor.is_empty() {
+            url += &format!("&cursor={}", enc(&cursor));
+        }
+        let d = get(&url, Some(cookie))?;
+        for item in d.get("items").and_then(Value::as_array).into_iter().flatten() {
+            let asset = item.pointer("/itemTarget/targetId").and_then(Value::as_str).and_then(|t| t.parse().ok()).unwrap_or(0);
+            for i in item.get("instances").and_then(Value::as_array).into_iter().flatten() {
+                out.push(Tradable {
+                    instance: text(i, "collectibleItemInstanceId"),
+                    asset,
+                    name: [text(i, "itemName"), text(item, "itemName")].into_iter().find(|n| !n.is_empty()).unwrap_or_default(),
+                    rap: [int(i, "recentAveragePrice"), int(item, "recentAveragePrice")].into_iter().max().unwrap_or(0),
+                    serial: int(i, "serialNumber"),
+                    hold: i.get("isOnHold").and_then(Value::as_bool).unwrap_or(false),
+                    pic: String::new(),
+                });
+            }
+        }
+        cursor = text(&d, "nextPageCursor");
+        if cursor.is_empty() {
+            break;
+        }
+    }
+    out.retain(|t| !t.instance.is_empty());
+    out.sort_by(|a, b| b.rap.cmp(&a.rap));
+    let assets: Vec<i64> = out.iter().map(|t| t.asset).filter(|a| *a > 0).collect();
+    let pics = thumbs("assets?size=150x150&assetIds=", &assets);
+    for t in &mut out {
+        t.pic = pics.get(&t.asset).cloned().unwrap_or_default();
+    }
+    Ok(out)
+}
+
+/// Whether the signed-in account and this person can trade (Roblox's reason when not: its own word for it).
+pub fn can_trade_with(cookie: &str, user: i64) -> Result<(bool, String), String> {
+    #[cfg(feature = "shot")]
+    if std::env::var("BLOXKEEP_SHOT_COMPOSE").is_ok() {
+        return Ok((true, String::new()));
+    }
+    let d = get(&format!("https://trades.roblox.com/v2/users/{user}/can-trade-with"), Some(cookie))?;
+    Ok((d.get("canTrade").and_then(Value::as_bool).unwrap_or(false), text(&d, "mutualTradeEligibility")))
+}
+
+/// Sends a trade (or, with `counter`, counters that one): what the account puts in and what it asks for, each as
+/// item instances and Robux. Roblox's new trade's id.
+pub fn trade_send(cookie: &str, me: i64, them: i64, give: (Vec<String>, i64), get_back: (Vec<String>, i64), counter: Option<i64>) -> Result<i64, String> {
+    let body = serde_json::json!({
+        "senderOffer": { "userId": me, "robux": give.1, "collectibleItemInstanceIds": give.0 },
+        "recipientOffer": { "userId": them, "robux": get_back.1, "collectibleItemInstanceIds": get_back.0 },
+    });
+    let url = match counter {
+        Some(id) => format!("https://trades.roblox.com/v2/trades/{id}/counter"),
+        None => "https://trades.roblox.com/v2/trades/send".to_string(),
+    };
+    post(&url, &body, Some(cookie)).map(|d| int(&d, "tradeId"))
 }
