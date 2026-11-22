@@ -1424,6 +1424,44 @@ pub fn frame_grid_wait(interval: Duration) -> Duration {
     Duration::from_nanos(if left < every / 8 { left + every } else { left } as u64)
 }
 
+/// Bloxkeep: Windows' timers go off on its clock's tick, 15.6 ms by default, so a step of the shared clock came up to a
+/// tick late: 30 a second came 31 and 47 ms apart, about 24 a second and uneven (the owner's error.log, 2026-11-21:
+/// "most in one second 24"; "motion cứ 30fps kiểu gì ấy"). While anything moves on the clock, the tick is 1 ms (as a
+/// browser does while it animates); a second after the last step it is let go, so a still app wakes Windows no oftener.
+/// Also asked by what moves on timers of its own (a playing clip, the 3D avatar), at each of its frames.
+#[doc(hidden)]
+pub fn fine_timers(cx: &mut App) {
+    thread_local! {
+        static FINE: std::cell::RefCell<Option<(crate::TimerResolutionGuard, Instant)>> = const { std::cell::RefCell::new(None) };
+    }
+    let start = FINE.with(|f| {
+        let mut f = f.borrow_mut();
+        match f.as_mut() {
+            Some((_, last)) => {
+                *last = Instant::now();
+                false
+            }
+            None => {
+                *f = Some((cx.background_executor().dispatcher().increase_timer_resolution(), Instant::now()));
+                true
+            }
+        }
+    });
+    if start {
+        cx.spawn(async move |cx| {
+            loop {
+                cx.background_executor().timer(Duration::from_secs(1)).await;
+                let idle = FINE.with(|f| f.borrow().as_ref().is_none_or(|(_, last)| last.elapsed() >= Duration::from_secs(1)));
+                if idle {
+                    FINE.with(|f| f.borrow_mut().take());
+                    break;
+                }
+            }
+        })
+        .detach();
+    }
+}
+
 thread_local! {
     /// What waits for the next step of the shared clock, by its step (µs).
     static FRAME_STEPS: std::cell::RefCell<FxHashMap<u64, Vec<Box<dyn FnOnce(&mut App)>>>> = std::cell::RefCell::new(FxHashMap::default());
@@ -1443,6 +1481,7 @@ pub fn on_frame_step(cx: &mut App, interval: Duration, f: impl FnOnce(&mut App) 
         due.len() == 1
     });
     if first {
+        fine_timers(cx);
         cx.spawn(async move |cx| {
             cx.background_executor().timer(frame_grid_wait(interval)).await;
             let due = FRAME_STEPS.with(|s| s.borrow_mut().remove(&key)).unwrap_or_default();
@@ -4668,6 +4707,12 @@ impl Window {
             self.rounded_clip_stack.pop();
         }
         result
+    }
+
+    /// Bloxkeep (2026-11-21): the rounded boxes being painted in now, outermost first, for something painted later
+    /// elsewhere (the motion layer) to be rounded as it would be here: each given again to with_rounded_content_mask.
+    pub fn rounded_clips(&self) -> Vec<(Bounds<Pixels>, Corners<Pixels>)> {
+        self.rounded_clip_stack.clone()
     }
 
     /// Bloxkeep: `own` corners of something painted at `rect`, rounded as the rounded boxes it lies in where its

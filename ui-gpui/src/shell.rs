@@ -3160,9 +3160,10 @@ impl Root {
         let tw = |s: &str, size: f32, w: FontWeight| bar_text_w(&*window, s, size, w);
         let label_w = |s: &str| tw(&s.to_uppercase(), BAR_LABEL, FontWeight::SEMIBOLD);
         let value_w = |s: &str| tw(s, BAR_VALUE, FontWeight::SEMIBOLD);
-        // (Room for the widest figure, "100%", in equal-width digits, and every figure drawn in exactly that room: the
-        // digits drawn proportional and the room only a least, a figure's change made the pill longer or shorter, the
-        // owner 2026-11-20.)
+        // (The pill keeps room for each figure at its widest, "100%", in equal-width digits: a figure's change made the
+        // pill longer or shorter, the owner 2026-11-20. Each figure hugs its label, the groups an even gap apart, and
+        // what a smaller figure leaves is spare room before the close button: kept in each figure, it made the gaps
+        // uneven, a wide one after "5%" and none after the window count, the owner 2026-11-21.)
         let pct_w = value_w("100%");
         let pair_w = |l: &str, v: f32| label_w(l) + 5. + v;
         let row_gap = |items: &[f32], pad_l: f32, pad_r: f32, gap: f32| {
@@ -3270,7 +3271,7 @@ impl Root {
                 .items_center()
                 .gap(px(5.))
                 .child(label(name))
-                .child(div().w(px(pct_w)).flex_none().text_size(px(BAR_VALUE)).font_weight(FontWeight::SEMIBOLD).font_features(tnum()).text_color(tone).child(capsule::roll(id, format!("{pct}%"), 16., window)))
+                .child(div().flex_none().text_size(px(BAR_VALUE)).font_weight(FontWeight::SEMIBOLD).font_features(tnum()).text_color(tone).child(capsule::roll(id, format!("{pct}%"), 16., window)))
                 .tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into())
         };
 
@@ -3288,6 +3289,8 @@ impl Root {
             let ram_el = show_ram.then(|| figure("bar-ram", "RAM", ram, self.i18n.tv("sys.used", &[("pct", &ram.to_string()), ("free", &free)]), window));
             let gpu_el = gpu.filter(|_| show_cpu && windows > 0).map(|g| figure("bar-gpu", "GPU", g, self.tr("sys.usageTip"), window));
             div()
+                .flex_1()
+                .min_w_0()
                 .flex()
                 .items_center()
                 .gap(px(BAR_GROUP_GAP))
@@ -3307,7 +3310,8 @@ impl Root {
                 .children(ram_el)
                 .children(gpu_el)
                 // Close all: every Roblox window, after a question. (Its own click: not the pill's, which opens it.)
-                .when(windows > 0, |d| d.child(no_pick(IconButton::new("sys-close", "power").size(BAR_KEY).tip(self.tr("sys.closeAll")).on_click(cx.listener(|r, _, window, cx| r.close_all(false, window, cx))))))
+                // (Pushed to the pill's end: the spare room a smaller figure leaves sits before it.)
+                .when(windows > 0, |d| d.child(div().ml_auto().flex_none().child(no_pick(IconButton::new("sys-close", "power").size(BAR_KEY).tip(self.tr("sys.closeAll")).on_click(cx.listener(|r, _, window, cx| r.close_all(false, window, cx)))))))
                 .when_some(self.progress.clone(), |d, p| d.child(div().flex_none().text_size(px(BAR_VALUE)).font_weight(FontWeight::NORMAL).text_color(c(TEXT_2)).child(p)))
                 // Nothing can be opened without it: said where it is seen on every page.
                 .when(no_roblox, |d| d.child(div().flex().flex_none().items_center().gap(px(6.)).text_color(c(WARN)).child(icon("alert", 14., c(WARN))).child(self.tr("side.noRoblox"))))

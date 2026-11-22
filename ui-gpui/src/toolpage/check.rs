@@ -428,6 +428,32 @@ pub fn window_check(out: PathBuf, assets: PathBuf) {
                     }
                     say(acts.first().map(String::as_str) == Some(want), format!("{what} said {acts:?} to the core (want {want:?})"), &mut lines);
                 }
+                if matches!(case.kind, "mini" | "panel") && !case.other_thread {
+                    // Hidden, then opened again with its page kept (the core lets it go a minute after hiding): the
+                    // owner's "mini window hỏng rồi, ko on/off được" (2026-11-21) was a reopen whose page never said its
+                    // size, so the window waited for good. A hidden window isn't drawn: sending it news says nothing;
+                    // shown under the cloak and woken, as WebToolWindow::show does, it draws and says its size.
+                    // SAFETY: plain calls on our own window.
+                    unsafe { ShowWindow(parent as HWND, windows_sys::Win32::UI::WindowsAndMessaging::SW_HIDE) };
+                    cx.background_executor().timer(Duration::from_millis(150)).await;
+                    read(&inbox, &mut child, &mut sizes, &mut acts);
+                    sizes.clear();
+                    let _ = cx.update(|cx| super::on_event(&mut pages, &words, &json!({ "op": "event", "id": id, "name": case.kind, "data": case.data }), cx));
+                    cx.background_executor().timer(Duration::from_millis(700)).await;
+                    read(&inbox, &mut child, &mut sizes, &mut acts);
+                    lines.push(format!("  (hidden, sent its data again: {} size reports in 700 ms)", sizes.len()));
+                    sizes.clear();
+                    // SAFETY: as make() shows it: cloaked already, without the keyboard.
+                    unsafe { ShowWindow(parent as HWND, SW_SHOWNOACTIVATE) };
+                    let _ = cx.update(|cx| super::on_event(&mut pages, &words, &json!({ "op": "wake", "id": id, "seq": 2 }), cx));
+                    let mut ms = 0;
+                    while ms < 2000 && sizes.is_empty() {
+                        cx.background_executor().timer(Duration::from_millis(25)).await;
+                        ms += 25;
+                        read(&inbox, &mut child, &mut sizes, &mut acts);
+                    }
+                    say(!sizes.is_empty(), format!("shown again under the cloak with its page kept: its size said after {ms} ms: {:?}", sizes.last()), &mut lines);
+                }
                 let _ = cx.update(|cx| super::on_event(&mut pages, &words, &json!({ "op": "close", "id": id }), cx));
                 tool_page::unregister(id);
                 // SAFETY: our own windows; the other thread's goes on its own thread.

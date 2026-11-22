@@ -776,9 +776,11 @@ fn solid(r: &mut Root, cx: &mut Context<Root>) {
         if !first {
             return;
         }
-        for i in 1..=26 {
-            cx.background_executor().timer(std::time::Duration::from_millis(22)).await;
-            let k = i as f32 / 26.;
+        // (60 steps a second, on Windows' fine tick: about 0.6 s.)
+        for i in 1..=36 {
+            let _ = cx.update(|cx| fine_timers(cx));
+            cx.background_executor().timer(std::time::Duration::from_millis(16)).await;
+            let k = i as f32 / 36.;
             let on = this
                 .update(cx, |r, cx| {
                     if r.avatar.of != user || r.avatar.solid_ask != ask || r.avatar.drag.is_some() {
@@ -831,9 +833,13 @@ fn start_spin(r: &mut Root, cx: &mut Context<Root>) {
     let (run, user) = (r.avatar.spin_run, r.avatar.of);
     cx.spawn(async move |this, cx| {
         let mut previous = std::time::Instant::now();
-        // (How long until the next step: 16 ms while walking, 33 ms in the idle, 250 ms while nothing may move.)
+        // (How long until the next step: 16 ms (60 a second, on Windows' fine tick) while it moves, walking or in the
+        // idle (33 ms there looked stepped: the owner, 2026-11-21, "chuyển hết lên 60fps"); 250 ms while nothing may move.)
         let mut wait = 16;
         loop {
+            if wait < 100 {
+                let _ = cx.update(|cx| fine_timers(cx));
+            }
             cx.background_executor().timer(std::time::Duration::from_millis(wait)).await;
             let now = std::time::Instant::now();
             let dt = now.duration_since(previous).as_secs_f32().min(0.05);
@@ -867,7 +873,7 @@ fn start_spin(r: &mut Root, cx: &mut Context<Root>) {
                         wait = 250;
                         return true;
                     }
-                    wait = if r.avatar.keys & 15 != 0 || airborne(&r.avatar) || r.avatar.pace > 0. { 16 } else { 33 };
+                    wait = 16;
                     let mut changed = false;
                     // (A hidden shot holds its stride where it was put.)
                     if r.avatar.keys & 15 != 0 || airborne(&r.avatar) || (r.avatar.pace > 0. && !cfg!(feature = "shot")) {
@@ -954,6 +960,7 @@ fn reset_view(r: &mut Root, cx: &mut Context<Root>) {
     r.avatar.spinning = false;
     cx.spawn(async move |this, cx| {
         for i in 1..=18 {
+            let _ = cx.update(|cx| fine_timers(cx));
             cx.background_executor().timer(std::time::Duration::from_millis(16)).await;
             let k = 1. - (1. - i as f32 / 18.).powi(3);
             let on = this

@@ -527,6 +527,11 @@ impl WebToolWindow {
         self.child.get() != 0
     }
 
+    /// What the page last said it drew, in its own pixels (0 × 0 before it said anything).
+    pub fn page_size(&self) -> Size {
+        self.page.get()
+    }
+
     /// Whether the next show takes the keyboard.
     pub fn activate_on_show(&self) -> bool {
         self.activate.get()

@@ -16,8 +16,9 @@ use std::{
 
 use gpui_kit::*;
 
-/// 30 frames a second, the step of the shared clock the page's other motion and the animated theme use.
-const STEP: Duration = Duration::from_nanos(1_000_000_000 / 30);
+/// 60 frames a second, the step of the shared clock the page's other motion and the animated theme use (30 looked
+/// stepped on a fast screen: the owner, 2026-11-21, "motion cứ 30fps kiểu gì ấy").
+const STEP: Duration = Duration::from_nanos(1_000_000_000 / 60);
 
 /// How a place's motion is drawn: in its bounds, at `t` seconds of the motion's clock, or standing still (`None`: the
 /// window behind, or motion turned down in Windows).
@@ -27,8 +28,12 @@ struct Place {
     bounds: Bounds<Pixels>,
     mask: ContentMask<Pixels>,
     opacity: f32,
+    /// The rounded boxes it lies in (a tile's round corners), rounded again when the layer draws it.
+    rounded: Vec<(Bounds<Pixels>, Corners<Pixels>)>,
     hitbox: HitboxId,
     paint: Paint,
+    /// Moves on the shared clock (the layer asks for its frames); false: asks for its own (a playing clip, video.rs).
+    clocked: bool,
 }
 
 thread_local! {
@@ -51,10 +56,25 @@ pub fn app_made() {
     PLACES.with(|p| p.borrow_mut().clear());
 }
 
+/// Whether `window` is the main one (the one with the layer).
+pub fn is_main(window: &Window) -> bool {
+    MAIN.with(|m| m.get()) == Some(window.window_handle().window_id())
+}
+
 /// A place `w` × `h` whose motion `paint` draws (see `Paint`).
 pub fn spot(w: f32, h: f32, paint: impl Fn(Bounds<Pixels>, Option<f32>, &mut Window, &mut App) + 'static) -> Div {
-    let paint: Paint = Rc::new(paint);
-    div().w(px(w)).h(px(h)).flex_none().child(
+    div().w(px(w)).h(px(h)).flex_none().child(placed(Rc::new(paint), true))
+}
+
+/// A place filling its box, drawn by the layer whenever the window is drawn but not moved on by its clock: what it
+/// shows asks for frames itself (`Window::redraw`, which keeps the app as drawn). A playing clip's frames: each made the
+/// whole app over again inside it (88 frames a second at 6 ms each for a 60 fps clip on Home, 2026-11-21).
+pub fn place(paint: impl Fn(Bounds<Pixels>, Option<f32>, &mut Window, &mut App) + 'static) -> Div {
+    div().size_full().child(placed(Rc::new(paint), false))
+}
+
+fn placed(paint: Paint, clocked: bool) -> impl IntoElement {
+    {
         canvas(
             |bounds, window, _| window.insert_hitbox(bounds, HitboxBehavior::Normal),
             move |bounds, hitbox, window, cx| {
@@ -68,12 +88,12 @@ pub fn spot(w: f32, h: f32, paint: impl Fn(Bounds<Pixels>, Option<f32>, &mut Win
                     paint(bounds, now(cx), window, cx);
                     return;
                 }
-                let place = Place { bounds, mask: window.content_mask(), opacity: window.element_opacity(), hitbox: hitbox.id, paint: paint.clone() };
+                let place = Place { bounds, mask: window.content_mask(), opacity: window.element_opacity(), rounded: window.rounded_clips(), hitbox: hitbox.id, paint: paint.clone(), clocked };
                 PLACES.with(|p| p.borrow_mut().push(place));
             },
         )
-        .size_full(),
-    )
+        .size_full()
+    }
 }
 
 /// The layer over the app that draws every place's motion (see the top of the file).
@@ -83,14 +103,17 @@ pub fn layer() -> impl IntoElement {
         |_, _, window, cx| {
             let t = now(cx);
             let moving = t.is_some();
-            let places: Vec<_> = PLACES.with(|p| p.borrow().iter().map(|p| (p.bounds, p.mask.clone(), p.opacity, p.hitbox, p.paint.clone())).collect());
-            for (bounds, mask, opacity, hitbox, paint) in &places {
+            let places: Vec<_> = PLACES.with(|p| p.borrow().iter().map(|p| (p.bounds, p.mask.clone(), p.opacity, p.rounded.clone(), p.hitbox, p.paint.clone())).collect());
+            let clocked = PLACES.with(|p| p.borrow().iter().any(|p| p.clocked));
+            for (bounds, mask, opacity, rounded, hitbox, paint) in &places {
                 if !window.hitbox_reached(*hitbox, bounds.center()) {
                     continue;
                 }
-                window.with_content_mask(Some(mask.clone()), |window| window.with_element_opacity(Some(*opacity), |window| paint(*bounds, t, window, cx)));
+                window.with_content_mask(Some(mask.clone()), |window| {
+                    within_rounded(window, rounded, &mut |window| window.with_element_opacity(Some(*opacity), |window| paint(*bounds, t, window, cx)))
+                });
             }
-            if moving && !places.is_empty() && !ASKED.with(|a| a.replace(true)) {
+            if moving && clocked && !ASKED.with(|a| a.replace(true)) {
                 let handle = window.window_handle();
                 on_frame_step(cx, STEP, move |cx| {
                     ASKED.with(|a| a.set(false));
@@ -101,6 +124,14 @@ pub fn layer() -> impl IntoElement {
     )
     .absolute()
     .inset_0()
+}
+
+/// `f` painted inside each of `rounded` (outermost first), as it would be where its place lies.
+fn within_rounded(window: &mut Window, rounded: &[(Bounds<Pixels>, Corners<Pixels>)], f: &mut dyn FnMut(&mut Window)) {
+    match rounded.split_first() {
+        None => f(window),
+        Some(((bounds, radii), rest)) => window.with_rounded_content_mask(Some(ContentMask { bounds: *bounds }), *radii, |window| within_rounded(window, rest, f)),
+    }
 }
 
 /// The motion's clock now, in seconds; `None` while it stands still (the window behind, or motion turned down).

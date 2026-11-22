@@ -9,7 +9,9 @@
 // mouse left the tile, or the window is minimized, hidden in the tray or covered) the clock stops and the decoder is let
 // go, and a while later its last frame; the next draw in a seen window starts it again.
 use std::{
+    cell::Cell,
     path::{Path, PathBuf},
+    rc::Rc,
     sync::{
         Arc,
         atomic::{AtomicBool, Ordering},
@@ -18,7 +20,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use gpui_kit::{prelude::*, AsyncApp, Context, EventEmitter, ImageSource, ObjectFit, RenderImage, Subscription, WeakEntity, Window, div, img};
+use gpui_kit::{prelude::*, AnyWindowHandle, AsyncApp, Context, EventEmitter, ImageSource, ObjectFit, RenderImage, Subscription, WeakEntity, Window, div, img};
 
 /// Frames decoded ahead of the one on screen: two (each up to 960 or 1600 pixels wide, 2-6 MB; four held 12 MB for
 /// a clip, the owner's error.log 2026-11-20); a frame decodes in a few ms, far within one frame's time.
@@ -72,7 +74,26 @@ struct Frame {
     /// A live picture kept on the GPU instead (window_capture.rs â€º run_shared): the shared texture's handle, `bgra`
     /// empty; 0 for pixels.
     shared: isize,
+    /// A frame decoded on the graphics card, left there (`bgra` empty): copied on the card into the clip's texture.
+    card: Option<OnCard>,
 }
+
+/// A decoded frame on the graphics card (NV12): its texture (on GPUI's device) and slice, held with its sample so the
+/// decoder doesn't write over it before it is converted.
+#[cfg(all(windows, any(feature = "core", feature = "shot")))]
+struct OnCard {
+    texture: windows::Win32::Graphics::Direct3D11::ID3D11Texture2D,
+    sub: u32,
+    _sample: windows::Win32::Media::MediaFoundation::IMFSample,
+}
+
+// SAFETY: Direct3D 11 resources and Media Foundation samples are free-threaded (the device is guarded for use from many
+// threads, gpui-pre-windows â€º directx_devices); the frame is only handed from the decoder's thread to the window's.
+#[cfg(all(windows, any(feature = "core", feature = "shot")))]
+unsafe impl Send for OnCard {}
+
+#[cfg(not(all(windows, any(feature = "core", feature = "shot"))))]
+struct OnCard;
 
 /// The clip could not be played (no decoder on this PC, a damaged file): its place in the gallery goes.
 pub struct Failed;
@@ -80,7 +101,16 @@ pub struct Failed;
 pub struct Video {
     path: PathBuf,
     frame: Option<Arc<RenderImage>>,
-    drawn: Instant,
+    /// When it was last drawn in a seen window: by its view, or by the motion layer each frame (`layered`).
+    drawn: Rc<Cell<Instant>>,
+    /// A game's clip: its frames drawn by the motion layer over the app (motion::place), each new one asking only for
+    /// the window to be shown again (the app kept as drawn), not for the app to be made over. A theme's video behind
+    /// the page is drawn in the theme's own layer, as before.
+    in_layer: bool,
+    /// Drawn that way now (in the main window, its frames on the card), and the texture the layer draws.
+    layered: bool,
+    on_card: Rc<Cell<Option<(isize, u32, u32)>>>,
+    window: Option<AnyWindowHandle>,
     playing: bool,
     failed: bool,
     /// Its window's coming back into sight draws it again (a restored window needn't draw anything otherwise).
@@ -116,7 +146,11 @@ impl Video {
         Self {
             path,
             frame: None,
-            drawn: Instant::now(),
+            drawn: Rc::new(Cell::new(Instant::now())),
+            in_layer: true,
+            layered: false,
+            on_card: Rc::new(Cell::new(None)),
+            window: None,
             playing: false,
             failed: false,
             watch: None,
@@ -142,6 +176,7 @@ impl Video {
         let mut v = Self::new(path, cx);
         v.widest = MAX_W_BEHIND;
         v.sound = false;
+        v.in_layer = false;
         v
     }
 
@@ -195,12 +230,12 @@ impl Video {
                     let mut sent = false;
                     let on_gpu = crate::window_capture::run_shared(hwnd, &stopped, |handle, w, h| {
                         sent = true;
-                        tx.send(Frame { at: (begun.elapsed().as_nanos() / 100) as i64, w, h, bgra: Vec::new(), shared: handle }).is_ok()
+                        tx.send(Frame { at: (begun.elapsed().as_nanos() / 100) as i64, w, h, bgra: Vec::new(), shared: handle, card: None }).is_ok()
                     });
                     match on_gpu {
                         Err(why) if !sent => {
                             crate::net::note_failed("Wallpaper Engine live picture on the GPU (drawn through memory instead)", "", &why);
-                            if let Err(why) = crate::window_capture::run(hwnd, widest, &stopped, |at, w, h, bgra| tx.send(Frame { at, w, h, bgra, shared: 0 }).is_ok()) {
+                            if let Err(why) = crate::window_capture::run(hwnd, widest, &stopped, |at, w, h, bgra| tx.send(Frame { at, w, h, bgra, shared: 0, card: None }).is_ok()) {
                                 crate::net::note_failed("Wallpaper Engine live picture", "", &why);
                             }
                         }
@@ -225,6 +260,32 @@ impl Drop for StopOnDrop {
     }
 }
 
+impl Video {
+    /// A frame now in the texture on the card (`handle`): the view is told when it changes what it draws (the first
+    /// frame, a new texture, not drawn by the layer); otherwise the window to draw again, which keeps the app as it was
+    /// drawn and only the layer draws anew (motion.rs).
+    fn show_on_card(&mut self, handle: (isize, u32, u32), cx: &mut Context<Self>) -> Option<AnyWindowHandle> {
+        let changed = self.shared != Some(handle);
+        self.shared = Some(handle);
+        self.on_card.set(Some(handle));
+        if let Some(old) = self.frame.take() {
+            cx.drop_image(old, None);
+        }
+        if changed || !self.layered {
+            cx.notify();
+            return None;
+        }
+        self.window
+    }
+}
+
+/// The window drawn again for a clip's new frame (Video::show_on_card).
+fn redraw(window: Option<AnyWindowHandle>, cx: &mut AsyncApp) {
+    if let Some(w) = window {
+        let _ = cx.update(|cx| w.update(cx, |_, window, _| window.redraw()));
+    }
+}
+
 /// Shows each frame when its time comes, and stops as `Video` says.
 async fn play(this: WeakEntity<Video>, rx: mpsc::Receiver<Frame>, stop: StopOnDrop, cx: &mut AsyncApp) {
     let mut clock: Option<(Instant, i64)> = None;
@@ -234,11 +295,12 @@ async fn play(this: WeakEntity<Video>, rx: mpsc::Receiver<Frame>, stop: StopOnDr
     // threads), the capture at once. The last frame stays on screen until STOP.
     let (mut rx, mut stop) = (Some(rx), Some(stop));
     loop {
-        let Ok(idle) = this.update(cx, |v, _| v.drawn.elapsed()) else { return };
+        let Ok(idle) = this.update(cx, |v, _| v.drawn.get().elapsed()) else { return };
         if idle >= STOP {
             let _ = this.update(cx, |v, cx| {
                 v.playing = false;
                 v.shared = None;
+                v.on_card.set(None);
                 #[cfg(all(windows, any(feature = "core", feature = "shot")))]
                 {
                     v.gpu = None;
@@ -291,16 +353,13 @@ async fn play(this: WeakEntity<Video>, rx: mpsc::Receiver<Frame>, stop: StopOnDr
                 }
             },
         };
+        // (Its waits to each frame's time come on Windows' fine tick while it plays, not 15.6 ms late: frame_step.)
+        let _ = cx.update(|cx| gpui_kit::fine_timers(cx));
         if frame.shared != 0 {
             // On the GPU: the texture already holds this frame; the window only needs drawing again.
             shown_any = true;
-            let alive = this.update(cx, |v, cx| {
-                v.shared = Some((frame.shared, frame.w, frame.h));
-                cx.notify();
-            });
-            if alive.is_err() {
-                return;
-            }
+            let Ok(again) = this.update(cx, |v, cx| v.show_on_card((frame.shared, frame.w, frame.h), cx)) else { return };
+            redraw(again, cx);
             continue;
         }
         let now = Instant::now();
@@ -316,12 +375,42 @@ async fn play(this: WeakEntity<Video>, rx: mpsc::Receiver<Frame>, stop: StopOnDr
             // Fell behind (the window was busy): the clock starts again from this frame rather than racing to catch up.
             clock = Some((now, frame.at));
         }
+        // Decoded on the card: turned there into the clip's one texture by the card's video processor. Where it can't,
+        // the decoder is told to go on by the processor (CARD_BROKEN), its next frames coming as pixels.
+        #[cfg(all(windows, any(feature = "core", feature = "shot")))]
+        if let Some(card) = frame.card.as_ref() {
+            let put = this.update(cx, |v, cx| {
+                if v.gpu.as_ref().is_none_or(|g| g.size() != (frame.w, frame.h) || g.stale()) {
+                    v.gpu = crate::window_capture::SharedFrame::new(frame.w, frame.h).map_err(|why| card_broken(&why)).ok();
+                }
+                let g = v.gpu.as_ref()?;
+                match g.convert_from(&card.texture, card.sub, frame.w, frame.h) {
+                    Ok(true) => {}
+                    Ok(false) => return Some(None),
+                    Err(why) => {
+                        card_broken(&why);
+                        return None;
+                    }
+                }
+                let handle = g.handle();
+                Some(v.show_on_card(handle, cx))
+            });
+            match put {
+                Ok(Some(again)) => {
+                    shown_any = true;
+                    redraw(again, cx);
+                }
+                Ok(None) => {}
+                Err(_) => return,
+            }
+            continue;
+        }
         // On the GPU: written over the last frame in the clip's one texture (no new picture each frame).
         #[cfg(all(windows, any(feature = "core", feature = "shot")))]
         {
             let put = this.update(cx, |v, cx| {
                 if v.gpu_failed || v.live.is_some() {
-                    return false;
+                    return None;
                 }
                 if v.gpu.as_ref().is_none_or(|g| g.size() != (frame.w, frame.h) || g.stale()) {
                     match crate::window_capture::SharedFrame::new(frame.w, frame.h) {
@@ -330,26 +419,24 @@ async fn play(this: WeakEntity<Video>, rx: mpsc::Receiver<Frame>, stop: StopOnDr
                             crate::net::note_failed("Video frames on the GPU (drawn as pictures instead)", "", &why);
                             v.gpu_failed = true;
                             v.gpu = None;
-                            return false;
+                            return None;
                         }
                     }
                 }
-                let Some(g) = v.gpu.as_ref() else { return false };
-                if g.put(&frame.bgra) {
-                    v.shared = Some(g.handle());
-                    if let Some(old) = v.frame.take() {
-                        cx.drop_image(old, None);
-                    }
-                    cx.notify();
+                let g = v.gpu.as_ref()?;
+                if !g.put(&frame.bgra) {
+                    return Some(None);
                 }
-                true
+                let handle = g.handle();
+                Some(v.show_on_card(handle, cx))
             });
             match put {
-                Ok(true) => {
+                Ok(Some(again)) => {
                     shown_any = true;
+                    redraw(again, cx);
                     continue;
                 }
-                Ok(false) => {}
+                Ok(None) => {}
                 Err(_) => return,
             }
         }
@@ -380,12 +467,33 @@ impl Render for Video {
             }));
         }
         // (A minimized or covered window may still be drawn: that isn't watching. A hidden shot's window counts as seen.)
+        self.window = Some(window.window_handle());
         if window.is_visible() || cfg!(feature = "shot") {
-            self.drawn = Instant::now();
+            self.drawn.set(Instant::now());
             self.seen.store(now_ms(), Ordering::Relaxed);
             if !self.playing && !self.failed {
                 self.start(cx);
             }
+        }
+        // A game's clip in the main window: drawn by the motion layer (see `in_layer`), from the texture it reads each
+        // time; drawing it there says it is still seen.
+        self.layered = self.in_layer && self.shared.is_some() && crate::motion::is_main(window);
+        #[cfg(windows)]
+        if self.layered {
+            let (on_card, drawn, seen) = (self.on_card.clone(), self.drawn.clone(), self.seen.clone());
+            return div()
+                .size_full()
+                .overflow_hidden()
+                .child(crate::motion::place(move |bounds, _, window, _| {
+                    if window.is_visible() || cfg!(feature = "shot") {
+                        drawn.set(Instant::now());
+                        seen.store(now_ms(), Ordering::Relaxed);
+                    }
+                    if let Some((handle, w, h)) = on_card.get() {
+                        paint_cover(window, bounds, handle, w, h);
+                    }
+                }))
+                .into_any_element();
         }
         #[cfg(windows)]
         if let Some((handle, w, h)) = self.shared {
@@ -396,13 +504,7 @@ impl Render for Video {
                 .child(
                     gpui_kit::canvas(
                         |_, _, _| (),
-                        move |bounds, _, window, _| {
-                            let (bw, bh) = (f32::from(bounds.size.width), f32::from(bounds.size.height));
-                            let k = (bw / w.max(1) as f32).max(bh / h.max(1) as f32);
-                            let (sw, sh) = (w as f32 * k, h as f32 * k);
-                            let at = gpui_kit::point(bounds.origin.x + gpui_kit::px((bw - sw) / 2.), bounds.origin.y + gpui_kit::px((bh - sh) / 2.));
-                            window.paint_shared_texture(gpui_kit::Bounds { origin: at, size: gpui_kit::size(gpui_kit::px(sw), gpui_kit::px(sh)) }, handle, w, h);
-                        },
+                        move |bounds, _, window, _| paint_cover(window, bounds, handle, w, h),
                     )
                     .size_full(),
                 )
@@ -410,6 +512,18 @@ impl Render for Video {
         }
         div().size_full().when_some(self.frame.clone(), |d, f| d.child(img(ImageSource::Render(f)).size_full().object_fit(ObjectFit::Cover))).into_any_element()
     }
+}
+
+/// The texture `handle` (`w`×`h`) filling `bounds` as ObjectFit::Cover does, the overflow cut off by the box's clip.
+#[cfg(windows)]
+fn paint_cover(window: &mut Window, bounds: gpui_kit::Bounds<gpui_kit::Pixels>, handle: isize, w: u32, h: u32) {
+    let (bw, bh) = (f32::from(bounds.size.width), f32::from(bounds.size.height));
+    let k = (bw / w.max(1) as f32).max(bh / h.max(1) as f32);
+    let (sw, sh) = (w as f32 * k, h as f32 * k);
+    let at = gpui_kit::point(bounds.origin.x + gpui_kit::px((bw - sw) / 2.), bounds.origin.y + gpui_kit::px((bh - sh) / 2.));
+    window.with_content_mask(Some(gpui_kit::ContentMask { bounds }), |window| {
+        window.paint_shared_texture(gpui_kit::Bounds { origin: at, size: gpui_kit::size(gpui_kit::px(sw), gpui_kit::px(sh)) }, handle, w, h)
+    });
 }
 
 /// The frame size kept for a clip of `w`Ã—`h`: as it is, or scaled down to MAX_W wide; even, as the decoder wants.
@@ -488,12 +602,13 @@ fn decode(parts: &[PathBuf], tx: &SyncSender<Frame>) {
     unsafe {
         let com = CoInitializeEx(None, COINIT_MULTITHREADED).is_ok();
         if mf_started() {
+            let mut card = on_card();
             let mut base = 0i64;
             // (A clip that ends before its first frame isn't started again and again.)
             'clip: loop {
                 let start = base;
                 for part in parts {
-                    match pass(part, tx, base) {
+                    match pass(part, tx, base, &mut card) {
                         End::Again(next) if next > base => base = next,
                         End::Again(_) => {}
                         End::Stop => break 'clip,
@@ -512,6 +627,77 @@ fn decode(parts: &[PathBuf], tx: &SyncSender<Frame>) {
 
 #[cfg(not(all(windows, any(feature = "core", feature = "shot"))))]
 fn decode(_: &[PathBuf], _: &SyncSender<Frame>) {}
+
+/// Decoding on the card failed to start (said once a run): clips are decoded by the processor instead.
+#[cfg(all(windows, any(feature = "core", feature = "shot")))]
+fn note_card_failed(why: &str) {
+    static SAID: AtomicBool = AtomicBool::new(false);
+    if !SAID.swap(true, Ordering::Relaxed) {
+        crate::net::note_failed("Game clip decoding on the graphics card (decoded by the processor instead)", "", why);
+    }
+}
+
+/// The card couldn't show a frame decoded on it (no video processor for it, a lost device): the clips go on decoded by
+/// the processor, for the rest of the run.
+#[cfg(all(windows, any(feature = "core", feature = "shot")))]
+static CARD_BROKEN: AtomicBool = AtomicBool::new(false);
+
+#[cfg(all(windows, any(feature = "core", feature = "shot")))]
+fn card_broken(why: &str) {
+    CARD_BROKEN.store(true, Ordering::Relaxed);
+    note_card_failed(why);
+}
+
+/// GPUI's device handed to Media Foundation, so a clip is decoded on the graphics card (DXVA) and its frames stay
+/// there; None where the device has no video decoder (gpui-pre-windows makes it with one where it can), outside GPUI's
+/// process (--clip-check), or when the manager can't be made: decoded by the processor then, as before.
+#[cfg(all(windows, any(feature = "core", feature = "shot")))]
+fn on_card() -> Option<windows::Win32::Media::MediaFoundation::IMFDXGIDeviceManager> {
+    use windows::{
+        Win32::{Graphics::Direct3D11::ID3D11VideoDevice, Media::MediaFoundation::MFCreateDXGIDeviceManager},
+        core::Interface,
+    };
+    if CARD_BROKEN.load(Ordering::Relaxed) {
+        return None;
+    }
+    let device = match crate::window_capture::SharedFrame::gpui_device() {
+        Some(d) => d,
+        None => check_device()?,
+    };
+    device.cast::<ID3D11VideoDevice>().ok()?;
+    // SAFETY: plain Media Foundation calls with valid out-pointers; the device is GPUI's, guarded for many threads.
+    unsafe {
+        let (mut token, mut manager) = (0u32, None);
+        MFCreateDXGIDeviceManager(&mut token, &mut manager).ok()?;
+        let manager = manager?;
+        manager.ResetDevice(&device, token).ok()?;
+        Some(manager)
+    }
+}
+
+/// --clip-check only, with BLOXKEEP_CLIP_CARD set: a device of its own with a video decoder, to measure decoding on the
+/// card outside GPUI.
+#[cfg(all(windows, any(feature = "core", feature = "shot")))]
+fn check_device() -> Option<windows::Win32::Graphics::Direct3D11::ID3D11Device> {
+    use windows::{
+        Win32::{
+            Foundation::HMODULE,
+            Graphics::{
+                Direct3D::D3D_DRIVER_TYPE_HARDWARE,
+                Direct3D11::{D3D11_CREATE_DEVICE_BGRA_SUPPORT, D3D11_CREATE_DEVICE_VIDEO_SUPPORT, D3D11_SDK_VERSION, D3D11CreateDevice, ID3D11Multithread},
+            },
+        },
+        core::Interface,
+    };
+    std::env::var("BLOXKEEP_CLIP_CARD").ok()?;
+    let (mut device, mut context) = (None, None);
+    // SAFETY: plain Direct3D calls with valid out-pointers.
+    unsafe {
+        D3D11CreateDevice(None, D3D_DRIVER_TYPE_HARDWARE, HMODULE::default(), D3D11_CREATE_DEVICE_BGRA_SUPPORT | D3D11_CREATE_DEVICE_VIDEO_SUPPORT, None, D3D11_SDK_VERSION, Some(&mut device), None, Some(&mut context)).ok()?;
+        let _ = context?.cast::<ID3D11Multithread>().ok()?.SetMultithreadProtected(true);
+    }
+    device
+}
 
 /// Media Foundation, started once for the app and never stopped: stopping it with each clip ended its work threads, and
 /// the next clip made them again (NVIDIA's driver keeps ~184 bytes for every thread ever made, threads.rs).
@@ -684,15 +870,17 @@ unsafe fn sound_passes(parts: &[PathBuf], stop: &AtomicBool, heard: &AtomicBool,
 
 /// One pass through the file: its frames, their times moved on by `base`.
 #[cfg(all(windows, any(feature = "core", feature = "shot")))]
-unsafe fn pass(path: &Path, tx: &SyncSender<Frame>, base: i64) -> End {
+unsafe fn pass(path: &Path, tx: &SyncSender<Frame>, base: i64, card: &mut Option<windows::Win32::Media::MediaFoundation::IMFDXGIDeviceManager>) -> End {
     use windows::{
         Win32::Media::MediaFoundation::{
-            IMFAttributes, IMFSample, IMFSourceReader, MF_MT_DEFAULT_STRIDE, MF_MT_FRAME_SIZE, MF_MT_MAJOR_TYPE, MF_MT_SUBTYPE,
-            MF_SOURCE_READER_ALL_STREAMS, MF_SOURCE_READER_ENABLE_VIDEO_PROCESSING, MF_SOURCE_READER_FIRST_VIDEO_STREAM,
+            IMFAttributes, IMFDXGIBuffer, IMFDXGIDeviceManager, IMFSample, IMFSourceReader, MF_MT_DEFAULT_STRIDE, MF_MT_FRAME_SIZE, MF_MT_MAJOR_TYPE,
+            MF_MT_SUBTYPE, MF_READWRITE_ENABLE_HARDWARE_TRANSFORMS, MF_SOURCE_READER_ALL_STREAMS, MF_SOURCE_READER_D3D_MANAGER,
+            MF_SOURCE_READER_ENABLE_VIDEO_PROCESSING, MF_SOURCE_READER_FIRST_VIDEO_STREAM,
             MF_SOURCE_READERF_CURRENTMEDIATYPECHANGED, MF_SOURCE_READERF_ENDOFSTREAM, MF_SOURCE_READERF_ERROR, MFCreateAttributes,
-            MFCreateMediaType, MFCreateSourceReaderFromURL, MFMediaType_Video, MFVideoFormat_RGB32,
+            MFCreateMediaType, MFCreateSourceReaderFromURL, MFMediaType_Video, MFVideoFormat_NV12, MFVideoFormat_RGB32,
         },
-        core::HSTRING,
+        Win32::Graphics::Direct3D11::{D3D11_TEXTURE2D_DESC, ID3D11Texture2D},
+        core::{HSTRING, Interface},
     };
     let video = MF_SOURCE_READER_FIRST_VIDEO_STREAM.0 as u32;
     // The decoded frame's size and the bytes from one row to the next (below 0: the rows come bottom first).
@@ -709,25 +897,43 @@ unsafe fn pass(path: &Path, tx: &SyncSender<Frame>, base: i64) -> End {
     // SAFETY: Media Foundation calls on objects made here; the buffer's bytes are read only between Lock and Unlock, and
     // no further than the length Lock gives.
     unsafe {
-        let open = || -> windows::core::Result<(IMFSourceReader, u32, u32, i32)> {
+        let open = |card: Option<&IMFDXGIDeviceManager>| -> windows::core::Result<(IMFSourceReader, u32, u32, i32)> {
             let mut attributes: Option<IMFAttributes> = None;
-            MFCreateAttributes(&mut attributes, 1)?;
+            MFCreateAttributes(&mut attributes, 3)?;
             let attributes = attributes.ok_or_else(windows::core::Error::empty)?;
-            // Windows only converts to plain pixels; the frame is made smaller here (`shrink`). Its "advanced" processing,
-            // which scales too, cost 27 MB and 10 threads more for each 1280x720 clip than the decoder itself (19 MB),
-            // measured 2026-11-19: the home page's clip grew Bloxkeep by tens of MB for each clip playing.
-            attributes.SetUINT32(&MF_SOURCE_READER_ENABLE_VIDEO_PROCESSING, 1)?;
+            if let Some(manager) = card {
+                // On the graphics card: decoded there (DXVA), the frames left there as the decoder gives them (NV12) and
+                // turned into pixels by the card's video processor as they are shown (SharedFrame::convert_from), as a
+                // browser plays Roblox's clips. Not through Media Foundation's converter (its "advanced" processing):
+                // it gave only every other frame of a 60 fps clip and kept 25 MB more (--clip-check, 2026-11-21).
+                attributes.SetUnknown(&MF_SOURCE_READER_D3D_MANAGER, manager)?;
+                attributes.SetUINT32(&MF_READWRITE_ENABLE_HARDWARE_TRANSFORMS, 1)?;
+            } else {
+                // Windows only converts to plain pixels; the frame is made smaller here (`shrink`). Its "advanced"
+                // processing, which scales too, cost 27 MB and 10 threads more for each 1280x720 clip than the decoder
+                // itself (19 MB) when done by the processor, measured 2026-11-19: the home page's clip grew Bloxkeep by
+                // tens of MB for each clip playing.
+                attributes.SetUINT32(&MF_SOURCE_READER_ENABLE_VIDEO_PROCESSING, 1)?;
+            }
             let reader = MFCreateSourceReaderFromURL(&HSTRING::from(path.as_os_str()), &attributes)?;
             reader.SetStreamSelection(MF_SOURCE_READER_ALL_STREAMS.0 as u32, false)?;
             reader.SetStreamSelection(video, true)?;
             let want = MFCreateMediaType()?;
             want.SetGUID(&MF_MT_MAJOR_TYPE, &MFMediaType_Video)?;
-            want.SetGUID(&MF_MT_SUBTYPE, &MFVideoFormat_RGB32)?;
+            // (By the processor: RGB32, its fourth byte unused and made opaque by `shrink`.)
+            want.SetGUID(&MF_MT_SUBTYPE, if card.is_some() { &MFVideoFormat_NV12 } else { &MFVideoFormat_RGB32 })?;
             reader.SetCurrentMediaType(video, None, &want)?;
             let (w, h, stride) = layout(&reader)?;
             Ok((reader, w, h, stride))
         };
-        let (reader, mut sw, mut sh, mut stride) = match open() {
+        // (Not on the card where it can't be opened so: by the processor, and so for the rest of this clip.)
+        let mut opened = card.as_ref().map(|m| open(Some(m)));
+        if let Some(Err(e)) = &opened {
+            note_card_failed(&format!("{e}"));
+            *card = None;
+            opened = None;
+        }
+        let (reader, mut sw, mut sh, mut stride) = match opened.unwrap_or_else(|| open(None)) {
             Ok(x) => x,
             Err(e) => {
                 // Said, as the tile then shows its still picture only (a Windows without the WebM decoder, a bad file).
@@ -753,6 +959,34 @@ unsafe fn pass(path: &Path, tx: &SyncSender<Frame>, base: i64) -> End {
                 }
             }
             let Some(sample) = sample else { continue };
+            if card.is_some() && CARD_BROKEN.load(Ordering::Relaxed) {
+                // (The card can't show its frames: the rest by the processor, from the next part or the clip's start.)
+                *card = None;
+                return End::Again(base + last + step);
+            }
+            // Left on the card: its texture handed on with the sample, copied on the card when its time comes.
+            if card.is_some()
+                && let Ok(buffer) = sample.GetBufferByIndex(0)
+                && let Ok(on) = buffer.cast::<IMFDXGIBuffer>()
+            {
+                let mut texture: Option<ID3D11Texture2D> = None;
+                let got = on.GetResource(&ID3D11Texture2D::IID, &mut texture as *mut _ as *mut _).is_ok();
+                if let (true, Some(texture), Ok(sub)) = (got, texture, on.GetSubresourceIndex()) {
+                    let mut desc = D3D11_TEXTURE2D_DESC::default();
+                    texture.GetDesc(&mut desc);
+                    let (w, h) = (sw.min(desc.Width), sh.min(desc.Height));
+                    let at = at - *first.get_or_insert(at);
+                    if at > last {
+                        step = (at - last).clamp(1, 10_000_000);
+                    }
+                    last = at;
+                    let frame = OnCard { texture, sub, _sample: sample };
+                    if tx.send(Frame { at: base + at, w, h, bgra: Vec::new(), shared: 0, card: Some(frame) }).is_err() {
+                        return End::Stop;
+                    }
+                    continue;
+                }
+            }
             let Ok(buffer) = sample.ConvertToContiguousBuffer() else { return End::Stop };
             let (mut bytes, mut len) = (std::ptr::null_mut::<u8>(), 0u32);
             if buffer.Lock(&mut bytes, None, Some(&mut len)).is_err() {
@@ -770,7 +1004,7 @@ unsafe fn pass(path: &Path, tx: &SyncSender<Frame>, base: i64) -> End {
                 step = (at - last).clamp(1, 10_000_000);
             }
             last = at;
-            if tx.send(Frame { at: base + at, w, h, bgra, shared: 0 }).is_err() {
+            if tx.send(Frame { at: base + at, w, h, bgra, shared: 0, card: None }).is_err() {
                 return End::Stop;
             }
         }

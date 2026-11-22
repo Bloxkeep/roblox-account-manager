@@ -1754,7 +1754,7 @@ pub fn marquee(id: &'static str, text: String) -> Div {
     let row = div().flex().flex_none().gap(px(GAP)).child(word().relative().child(keep(true, text.clone()))).when(long, |d| d.child(word()));
     let row = if runs {
         // (The animation only asks for a frame 30 times a second; the place is the clock's.)
-        row.with_animation(id, Animation::new(std::time::Duration::from_secs(1)).repeat().with_max_fps(30.), move |d, _| d.ml(px(-at()))).into_any_element()
+        row.with_animation(id, Animation::new(std::time::Duration::from_secs(1)).repeat().with_max_fps(60.), move |d, _| d.ml(px(-at()))).into_any_element()
     } else if long {
         row.ml(px(-at())).into_any_element()
     } else {
@@ -1817,7 +1817,7 @@ pub fn spinner(size: f32, color: Hsla) -> AnyElement {
     if !looping() {
         return mark.into_any_element();
     }
-    mark.with_animation("spin", Animation::new(std::time::Duration::from_millis(800)).repeat().with_max_fps(30.), |s, t| s.with_transformation(Transformation::rotate(radians(t * std::f32::consts::TAU))))
+    mark.with_animation("spin", Animation::new(std::time::Duration::from_millis(800)).repeat().with_max_fps(60.), |s, t| s.with_transformation(Transformation::rotate(radians(t * std::f32::consts::TAU))))
         .into_any_element()
 }
 
@@ -1826,7 +1826,7 @@ fn breathing(key: &'static str, el: Div) -> AnyElement {
     if !looping() {
         return el.opacity(0.6).into_any_element();
     }
-    el.with_animation(key, Animation::new(std::time::Duration::from_millis(1300)).repeat().with_max_fps(30.).with_easing(pulsating_between(0.35, 1.)), |d, t| d.opacity(t))
+    el.with_animation(key, Animation::new(std::time::Duration::from_millis(1300)).repeat().with_max_fps(60.).with_easing(pulsating_between(0.35, 1.)), |d, t| d.opacity(t))
         .into_any_element()
 }
 

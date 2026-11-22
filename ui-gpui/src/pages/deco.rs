@@ -1039,7 +1039,7 @@ pub fn ring_tile(id: &'static str) -> AnyElement {
 pub fn clock(id: &'static str) -> AnyElement {
     let d = div().absolute().size_0();
     if crate::kit::looping() {
-        d.with_animation(id, Animation::new(std::time::Duration::from_secs(1)).repeat().with_max_fps(30.), |d, _| d).into_any_element()
+        d.with_animation(id, Animation::new(std::time::Duration::from_secs(1)).repeat().with_max_fps(60.), |d, _| d).into_any_element()
     } else {
         d.into_any_element()
     }

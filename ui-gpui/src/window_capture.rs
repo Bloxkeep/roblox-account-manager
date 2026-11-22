@@ -1,7 +1,7 @@
 // A window's live picture, frame by frame, through Windows' own capture (Windows.Graphics.Capture, Windows 10 1903+):
 // used for Wallpaper Engine's wallpaper played in a window of its own (wallpaper_engine.rs), shown behind the page as
 // a video is (video.rs). Each frame's inside (no title bar or edges) is copied out of the GPU into memory (BGRA), at
-// most about 30 a second, and handed on until nobody takes them any more or the window is gone.
+// most about 60 a second, and handed on until nobody takes them any more or the window is gone.
 #![cfg(all(windows, any(feature = "core", feature = "shot")))]
 
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -18,7 +18,11 @@ use windows::{
             Direct3D::D3D_DRIVER_TYPE_HARDWARE,
             Direct3D11::{
                 D3D11_BIND_RENDER_TARGET, D3D11_BIND_SHADER_RESOURCE, D3D11_BOX, D3D11_CPU_ACCESS_READ, D3D11_CREATE_DEVICE_BGRA_SUPPORT, D3D11_MAP_READ, D3D11_MAPPED_SUBRESOURCE, D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX,
-                D3D11_SDK_VERSION, D3D11_TEXTURE2D_DESC, D3D11_USAGE_DEFAULT, D3D11_USAGE_STAGING, D3D11CreateDevice, ID3D11Device, ID3D11DeviceContext, ID3D11Texture2D,
+                D3D11_SDK_VERSION, D3D11_TEX2D_VPIV, D3D11_TEX2D_VPOV, D3D11_TEXTURE2D_DESC, D3D11_USAGE_DEFAULT, D3D11_USAGE_STAGING, D3D11_VIDEO_FRAME_FORMAT_PROGRESSIVE,
+                D3D11_VIDEO_PROCESSOR_COLOR_SPACE, D3D11_VIDEO_PROCESSOR_CONTENT_DESC, D3D11_VIDEO_PROCESSOR_INPUT_VIEW_DESC, D3D11_VIDEO_PROCESSOR_INPUT_VIEW_DESC_0,
+                D3D11_VIDEO_PROCESSOR_OUTPUT_VIEW_DESC, D3D11_VIDEO_PROCESSOR_OUTPUT_VIEW_DESC_0, D3D11_VIDEO_PROCESSOR_STREAM, D3D11_VIDEO_USAGE_PLAYBACK_NORMAL,
+                D3D11_VPIV_DIMENSION_TEXTURE2D, D3D11_VPOV_DIMENSION_TEXTURE2D, D3D11CreateDevice, ID3D11Device, ID3D11DeviceContext, ID3D11Texture2D, ID3D11VideoContext,
+                ID3D11VideoDevice, ID3D11VideoProcessor, ID3D11VideoProcessorEnumerator, ID3D11VideoProcessorOutputView,
             },
             Dxgi::{IDXGIDevice, IDXGIKeyedMutex, IDXGIResource},
         },
@@ -218,8 +222,8 @@ fn run_to(hwnd: isize, widest: u32, stop: &AtomicBool, until: Option<Instant>, m
                     break;
                 }
             }
-            // About 30 a second at most.
-            std::thread::sleep(Duration::from_millis(30));
+            // About 60 a second at most (on the fine tick the playing video holds, vendor fine_timers).
+            std::thread::sleep(Duration::from_millis(16));
         }
         let _ = session.Close();
         let _ = pool.Close();
@@ -291,6 +295,19 @@ pub struct SharedFrame {
     /// The device it was made on: GPUI makes a new one after a lost device, and the texture is made again then.
     device: ID3D11Device,
     context: ID3D11DeviceContext,
+    /// The card's video processor writing a clip's decoded frames in (`convert_from`), made at its first frame.
+    convert: std::cell::RefCell<Option<Convert>>,
+}
+
+/// A video processor turning frames decoded on the card (NV12) into this texture's pixels, scaled to its size.
+struct Convert {
+    video: ID3D11VideoDevice,
+    context: ID3D11VideoContext,
+    list: ID3D11VideoProcessorEnumerator,
+    processor: ID3D11VideoProcessor,
+    view: ID3D11VideoProcessorOutputView,
+    /// The decoded frames' size it was made for.
+    from: (u32, u32),
 }
 
 impl SharedFrame {
@@ -321,7 +338,7 @@ impl SharedFrame {
             let resource: IDXGIResource = texture.cast().map_err(e("shared texture's handle"))?;
             let handle = resource.GetSharedHandle().map_err(e("shared texture's handle"))?.0 as isize;
             let context = Self::device().map(|d| d.1).ok_or("no Direct3D device")?;
-            Ok(Self { out: SharedOut { texture, mutex, handle, w, h }, device, context })
+            Ok(Self { out: SharedOut { texture, mutex, handle, w, h }, device, context, convert: Default::default() })
         }
     }
 
@@ -344,6 +361,87 @@ impl SharedFrame {
 
     pub fn size(&self) -> (u32, u32) {
         (self.out.w, self.out.h)
+    }
+
+    /// A frame decoded on the graphics card (slice `sub` of the decoder's `from`, on this same device, its top left
+    /// `fw`×`fh` the picture) turned into this texture's pixels by the card's video processor, as a browser shows a
+    /// clip: Media Foundation's own converter (MF_SOURCE_READER_ENABLE_ADVANCED_VIDEO_PROCESSING) gave only every other
+    /// frame of a 60 fps clip and kept 25 MB more (measured with --clip-check, 2026-11-21). Ok(false): GPUI held the
+    /// texture past a tenth of a second (the frame is skipped); Err: the card can't convert (decoded by the processor
+    /// then).
+    pub fn convert_from(&self, from: &ID3D11Texture2D, sub: u32, fw: u32, fh: u32) -> Result<bool, String> {
+        fn e(what: &'static str) -> impl Fn(windows::core::Error) -> String {
+            move |err| format!("{what}: {err}")
+        }
+        let (w, h) = (self.out.w, self.out.h);
+        let mut slot = self.convert.borrow_mut();
+        if slot.as_ref().is_none_or(|c| c.from != (fw, fh)) {
+            *slot = None;
+            // SAFETY: plain Direct3D video calls on this device with valid descriptions and out-pointers.
+            unsafe {
+                let video: ID3D11VideoDevice = self.device.cast().map_err(e("video device"))?;
+                let context: ID3D11VideoContext = self.context.cast().map_err(e("video context"))?;
+                let rate = windows::Win32::Graphics::Dxgi::Common::DXGI_RATIONAL { Numerator: 60, Denominator: 1 };
+                let content = D3D11_VIDEO_PROCESSOR_CONTENT_DESC {
+                    InputFrameFormat: D3D11_VIDEO_FRAME_FORMAT_PROGRESSIVE,
+                    InputFrameRate: rate,
+                    InputWidth: fw,
+                    InputHeight: fh,
+                    OutputFrameRate: rate,
+                    OutputWidth: w,
+                    OutputHeight: h,
+                    Usage: D3D11_VIDEO_USAGE_PLAYBACK_NORMAL,
+                };
+                let list = video.CreateVideoProcessorEnumerator(&content).map_err(e("video processor list"))?;
+                let processor = video.CreateVideoProcessor(&list, 0).map_err(e("video processor"))?;
+                let out = D3D11_VIDEO_PROCESSOR_OUTPUT_VIEW_DESC {
+                    ViewDimension: D3D11_VPOV_DIMENSION_TEXTURE2D,
+                    Anonymous: D3D11_VIDEO_PROCESSOR_OUTPUT_VIEW_DESC_0 { Texture2D: D3D11_TEX2D_VPOV { MipSlice: 0 } },
+                };
+                let mut view = None;
+                video.CreateVideoProcessorOutputView(&self.out.texture, &list, &out, Some(&mut view)).map_err(e("video processor output"))?;
+                let view = view.ok_or("no video processor output")?;
+                // Roblox's clips: BT.709 at video levels (16-235) in, full-range RGB out; one picture, no fields.
+                context.VideoProcessorSetStreamFrameFormat(&processor, 0, D3D11_VIDEO_FRAME_FORMAT_PROGRESSIVE);
+                // (Bits: YCbCr_Matrix 1 = BT.709 at 1 << 2, Nominal_Range 16-235 = 1 at bits 4-5.)
+                context.VideoProcessorSetStreamColorSpace(&processor, 0, &D3D11_VIDEO_PROCESSOR_COLOR_SPACE { _bitfield: (1 << 2) | (1 << 4) });
+                context.VideoProcessorSetOutputColorSpace(&processor, &D3D11_VIDEO_PROCESSOR_COLOR_SPACE { _bitfield: 0 });
+                let src = windows::Win32::Foundation::RECT { left: 0, top: 0, right: fw as i32, bottom: fh as i32 };
+                let dst = windows::Win32::Foundation::RECT { left: 0, top: 0, right: w as i32, bottom: h as i32 };
+                context.VideoProcessorSetStreamSourceRect(&processor, 0, true, Some(&src));
+                context.VideoProcessorSetStreamDestRect(&processor, 0, true, Some(&dst));
+                context.VideoProcessorSetOutputTargetRect(&processor, true, Some(&dst));
+                *slot = Some(Convert { video, context, list, processor, view, from: (fw, fh) });
+            }
+        }
+        let Some(c) = slot.as_ref() else { return Err("no video processor".into()) };
+        // SAFETY: the decoder's texture and ours are on this device; ours is written only while its key is held.
+        unsafe {
+            let desc = D3D11_VIDEO_PROCESSOR_INPUT_VIEW_DESC {
+                FourCC: 0,
+                ViewDimension: D3D11_VPIV_DIMENSION_TEXTURE2D,
+                Anonymous: D3D11_VIDEO_PROCESSOR_INPUT_VIEW_DESC_0 { Texture2D: D3D11_TEX2D_VPIV { MipSlice: 0, ArraySlice: sub } },
+            };
+            let mut input = None;
+            c.video.CreateVideoProcessorInputView(from, &c.list, &desc, Some(&mut input)).map_err(e("video processor input"))?;
+            let held = (Interface::vtable(&self.out.mutex).AcquireSync)(Interface::as_raw(&self.out.mutex), 0, 100) == windows::Win32::Foundation::S_OK;
+            if !held {
+                return Ok(false);
+            }
+            let mut streams = [D3D11_VIDEO_PROCESSOR_STREAM { Enable: true.into(), pInputSurface: std::mem::ManuallyDrop::new(input), ..Default::default() }];
+            let done = c.context.VideoProcessorBlt(&c.processor, &c.view, 0, &streams);
+            // (The input view let go: the stream holds it by hand.)
+            std::mem::ManuallyDrop::drop(&mut streams[0].pInputSurface);
+            let _ = self.out.mutex.ReleaseSync(0);
+            self.context.Flush();
+            done.map_err(e("video processor"))?;
+        }
+        Ok(true)
+    }
+
+    /// The device GPUI draws with (for decoding on it), None outside GPUI's process (--clip-check) or before it drew.
+    pub fn gpui_device() -> Option<ID3D11Device> {
+        Self::device().map(|(d, _)| d)
     }
 
     /// The frame's pixels (BGRA, rows packed, its size) written in; false when GPUI held the texture past a tenth of a

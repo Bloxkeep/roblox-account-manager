@@ -334,6 +334,9 @@ impl PanelWindow {
         }
         self.tool.set_activate_on_show(activate);
         self.set_showing(true);
+        // A page kept from the last showing (let go a while after hiding) sits in a hidden window, which GPUI doesn't
+        // draw, so it never says its size again: placed and shown (unseen until drawn) at the size it last said.
+        let kept = self.tool.browser_ready();
         let me: Rc<dyn WebTool> = self.clone();
         if !WebToolWindow::ensure_browser(me).await || self.tool.is_disposed() {
             if !self.tool.is_disposed() {
@@ -343,6 +346,14 @@ impl PanelWindow {
             return;
         }
         self.push(); // the page answers with its size, and the window shows then (on_page_size)
+        let css = self.tool.page_size();
+        if kept && css.width > 0 && css.height > 0 {
+            to_app(&self.shared, move |app, h| {
+                let game = app.panel_game_rect(h.macro_id());
+                let others = app.panels_shown_besides(h);
+                h.on_window(move |p| p.size_to(css, game, others));
+            });
+        }
     }
 
     /// Push from the window's side: the App makes the message.

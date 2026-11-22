@@ -203,6 +203,13 @@ impl MiniWindow {
         }
         *self.sent.borrow_mut() = Some(json);
         self.tool.send_event("mini", message);
+        // Opening: shown (unseen until its page has drawn, WebToolWindow::show) once the page has what to draw, not
+        // when the page says its size. A page kept from the last showing sits in a hidden window, which GPUI doesn't
+        // draw, so it never said it: opened again within a minute of hiding, the window stayed away and the button
+        // stuck on "on" (the owner, 2026-11-21: "mini window hỏng rồi, ko on/off được").
+        if self.showing.get() && !self.tool.visible() {
+            self.place_and_show();
+        }
     }
 
     /// Only the height changes, between its least and the screen's.
@@ -251,6 +258,39 @@ impl MiniWindow {
         self.height.set(MIN_HEIGHT.max((b.height as f32 / self.tool.scale_now()).round() as i32));
         prefs::lock().mini_window = Some(format!("{},{},{},{}", b.x, b.y, PAGE_WIDTH, self.height.get()));
     }
+
+    /// Shown where it was left (or at the bottom right of the main screen), once, while it opens.
+    fn place_and_show(&self) {
+        if !self.showing.get() || self.tool.visible() {
+            return;
+        }
+        self.showing.set(false);
+        let at = self.saved_place().unwrap_or_else(|| self.default_place());
+        let scale = scale_at(at.location());
+        self.limits(scale);
+        let area = win_form::screen_from_point(at.location()).working_area;
+        let size = Size::new(scaled(Size::new(PAGE_WIDTH, 1), scale).width, scaled(Size::new(1, self.height.get()), scale).height.min(area.height));
+        // The place first, then the size: set together on a screen at another scale, Windows' scale change resized it
+        // again by the ratio (TrayWindow, 2026-10-30).
+        let location = super::ui::inside(Rect::at(at.location(), size), area, 0);
+        self.tool.set_location(location);
+        self.tool.set_bounds(Rect::at(location, size));
+        self.placed.set(true);
+        self.tool.show();
+        let activated = self.tool.activate_on_show();
+        if activated {
+            self.tool.activate();
+        }
+        if let Some(f) = self.on_shown.borrow().as_ref() {
+            f();
+        }
+        log::note(&format!(
+            "Mini window: shown always on top{}, {}.",
+            if activated { " and activated" } else { " without the keyboard (reopened at start)" },
+            window_report::describe(self.tool.handle())
+        ));
+    }
+
 }
 
 impl WebTool for MiniWindow {
@@ -288,34 +328,7 @@ impl WebTool for MiniWindow {
 
     /// The page has drawn: shown now, where it was left (or at the bottom right of the main screen).
     fn on_page_size(&self, _css: Size, _args: &Value) {
-        if !self.showing.get() || self.tool.visible() {
-            return;
-        }
-        self.showing.set(false);
-        let at = self.saved_place().unwrap_or_else(|| self.default_place());
-        let scale = scale_at(at.location());
-        self.limits(scale);
-        let area = win_form::screen_from_point(at.location()).working_area;
-        let size = Size::new(scaled(Size::new(PAGE_WIDTH, 1), scale).width, scaled(Size::new(1, self.height.get()), scale).height.min(area.height));
-        // The place first, then the size: set together on a screen at another scale, Windows' scale change resized it
-        // again by the ratio (TrayWindow, 2026-10-30).
-        let location = super::ui::inside(Rect::at(at.location(), size), area, 0);
-        self.tool.set_location(location);
-        self.tool.set_bounds(Rect::at(location, size));
-        self.placed.set(true);
-        self.tool.show();
-        let activated = self.tool.activate_on_show();
-        if activated {
-            self.tool.activate();
-        }
-        if let Some(f) = self.on_shown.borrow().as_ref() {
-            f();
-        }
-        log::note(&format!(
-            "Mini window: shown always on top{}, {}.",
-            if activated { " and activated" } else { " without the keyboard (reopened at start)" },
-            window_report::describe(self.tool.handle())
-        ));
+        self.place_and_show();
     }
 
     /// Moved to a screen with another scale: the same page size there (the base takes Windows' place).

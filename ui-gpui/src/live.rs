@@ -1,6 +1,6 @@
 //! The animated themes (the C# app's page drew them with livescene.js; the port showed only their still picture): what
 //! moves over a theme's picture, drawn in the picture's own 1600 × 1000 space, fitted like the picture (cover, centred).
-//! It runs at 30 frames a second only while the window is seen and in use: never in the tray, minimized or behind
+//! It runs at 60 frames a second only while the window is seen and in use: never in the tray, minimized or behind
 //! Roblox, so it costs nothing while accounts play. A mouse moved over it while another window is in use wakes it for a
 //! moment. Each moves as the page's did, from the same numbers (the same seeds give the same fish, flies and petals).
 use std::{
@@ -15,8 +15,8 @@ use crate::pages::deco::{Pen, col};
 
 const W: f32 = 1600.;
 const H: f32 = 1000.;
-/// 30 frames a second, as the page's own motion asks for them (`with_max_fps(30.)`): the same step of the shared clock.
-const STEP: Duration = Duration::from_nanos(1_000_000_000 / 30);
+/// 60 frames a second, as the page's own motion asks for them (`with_max_fps(60.)`): the same step of the shared clock.
+const STEP: Duration = Duration::from_nanos(1_000_000_000 / 60);
 
 /// The themes that move, by their picture (scene-<id>.svg).
 const MOVING: [&str; 11] = ["koipond", "fireflies", "rainglass", "blockworld", "peachfall", "starrynight", "greatwave", "waterlilies", "cubism", "blocksart", "goldleaf"];
@@ -237,21 +237,36 @@ pub fn running(window: &Window) -> bool {
     window.is_visible() && (window.is_window_active() || !crate::kit::still_behind() || crate::kit::mouse_over_lately())
 }
 
-/// Keeps the window drawing 30 times a second while `running`; the task ends with the window. Only the theme's layer
+/// Keeps the window drawing 60 times a second while `running`; the task ends with the window. Only the theme's layer
 /// is drawn anew (`redraw`): the app over it is kept (shell.rs, Chrome) unless something in it changed.
 ///
 /// Its frames are on the process's shared clock (`on_frame_step`), the one the page's own motion waits for too (the
-/// playing bars on Home, 30 a second on theirs), so both are drawn in the same frames. On a clock of its own the two
+/// playing bars on Home, 60 a second on theirs), so both are drawn in the same frames. On a clock of its own the two
 /// drifted apart and the window was drawn about 60 times a second, each time the whole page (the owner's error.log,
 /// 2026-11-20: 66 a second).
 pub fn ticker(window: &mut Window, cx: &mut Context<crate::shell::Root>) -> Task<()> {
     // (Each step asks for the next; the chain ends when the task is let go, or with the window.)
+    // (Not moving (the window behind, hidden, in the tray): looked at again 4 times a second, off the shared clock, so
+    // the fine timer tick it holds is let go (on_frame_step) and Windows isn't woken 30 times a second for nothing.)
     fn step(handle: AnyWindowHandle, alive: std::rc::Weak<()>, cx: &mut App) {
-        on_frame_step(cx, STEP, move |cx| {
-            if alive.upgrade().is_some() && handle.update(cx, |_, window, _| if running(window) { window.redraw() }).is_ok() {
-                step(handle, alive, cx);
-            }
-        });
+        let moving = handle.update(cx, |_, window, _| running(window)).unwrap_or(false);
+        if moving {
+            on_frame_step(cx, STEP, move |cx| {
+                if alive.upgrade().is_some() && handle.update(cx, |_, window, _| if running(window) { window.redraw() }).is_ok() {
+                    step(handle, alive, cx);
+                }
+            });
+        } else {
+            cx.spawn(async move |cx| {
+                cx.background_executor().timer(Duration::from_millis(250)).await;
+                let _ = cx.update(|cx| {
+                    if alive.upgrade().is_some() {
+                        step(handle, alive, cx);
+                    }
+                });
+            })
+            .detach();
+        }
     }
     let alive = std::rc::Rc::new(());
     step(window.window_handle(), std::rc::Rc::downgrade(&alive), cx);

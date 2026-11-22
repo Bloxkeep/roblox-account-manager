@@ -411,7 +411,7 @@ fn live_part(root: &Root, cx: &mut Context<Root>) -> Option<AnyElement> {
                 if !looping() {
                     return dot.opacity(0.6).into_any_element();
                 }
-                dot.with_animation(("live-dot", k as usize), Animation::new(std::time::Duration::from_millis(900)).repeat().with_max_fps(30.), move |d, t| {
+                dot.with_animation(("live-dot", k as usize), Animation::new(std::time::Duration::from_millis(900)).repeat().with_max_fps(60.), move |d, t| {
                     let p = ((t + k as f32 / 3.) % 1.) * std::f32::consts::TAU;
                     d.opacity(0.25 + 0.75 * (0.5 + 0.5 * p.sin()))
                 })
@@ -595,9 +595,11 @@ pub struct Data {
     news_cap: std::cell::RefCell<Option<(String, usize)>>,
     pub icons: HashMap<i64, String>,
     asked_icons: HashSet<i64>,
-    /// The games whose wide picture was asked for (apart from the icon: a game first seen square, its icon only, then
-    /// shown wide got none and its 150 px icon was blown up over the wide tile, blurred, the owner 2026-11-20).
+    /// The games whose wide picture was asked for, and those drawn wide (art) with none yet, noted while drawing:
+    /// ask_covers asks Roblox for them once the frame is made. What is drawn decides: a list kept apart from the drawing
+    /// left games shown wide with their 150 px icon blown up, blurred (Throw a Seed, the owner 2026-11-20 and -21).
     asked_covers: HashSet<i64>,
+    need_covers: std::cell::RefCell<HashSet<i64>>,
     /// Their wide pictures, for the board's tiles; and a sharper one for the game that leads a chart.
     pub covers: HashMap<i64, String>,
     pub covers_big: HashMap<i64, String>,
@@ -2480,86 +2482,51 @@ fn want_roblox(r: &mut Root, link: &crate::link::Link, cx: &mut Context<Root>) {
         want.extend(home.recommended.iter().map(|g| g.universe));
     }
     // A row's pictures as far as its next page (24 at least): the rest come as it is stepped through.
-    let mut wide: Vec<i64> = Vec::new();
+    // (Icons only: a tile drawn wide asks for its own wide picture as it is drawn, art and ask_covers.)
     if let Some(Ok(sorts)) = &r.games.sorts {
-        for (k, sort) in sorts.iter().take(CHART_ROWS).enumerate() {
+        for sort in sorts.iter().take(CHART_ROWS) {
             if let Some(Ok(list)) = r.games.rows.get(&sort.id) {
                 let at = r.games.row_at.get(&sort.id).map_or(0, |a| a.0);
                 let upto = (at + 24).min(list.len());
                 want.extend(list[..upto].iter().map(|g| g.universe));
-                if k == 0 {
-                    wide.extend(list[..upto].iter().map(|g| g.universe));
-                }
             }
         }
-        // (A chart picked in the filter shows all its games, wide.)
         if let Some(Ok(list)) = r.games.sort_at.as_ref().and_then(|id| r.games.rows.get(id)) {
             want.extend(list.iter().map(|g| g.universe));
-            wide.extend(list.iter().map(|g| g.universe));
         }
     }
-    // (The search's results are shown wide, and so are the first games of the chart shown, under a game's page.)
     if let Some((_, Some(Ok(list)))) = &r.games.found {
         want.extend(list.iter().map(|g| g.universe));
-        wide.extend(list.iter().map(|g| g.universe));
     }
+    // (The first games of the chart shown, under a game's page.)
     if let Some(Ok(list)) = shown_sort(r).and_then(|s| r.games.rows.get(&s.id)) {
         want.extend(list.iter().take(12).map(|g| g.universe));
-        wide.extend(list.iter().take(12).map(|g| g.universe));
     }
     if let Some((_, Some(Ok(list)))) = &r.games.switch_found {
         want.extend(list.iter().take(8).map(|g| g.universe));
     }
-    // (Wide pictures for what is shown wide: the first row, a chart picked in the filter, the search, Home's picks; the
-    // other rows are squares. Asked for apart from the icons, so a game once shown square gets its wide one when shown
-    // wide.)
-    let squares_only: HashSet<i64> = match &r.games.sorts {
-        Some(Ok(sorts)) => sorts.iter().take(CHART_ROWS).skip(1).filter_map(|s| r.games.rows.get(&s.id)).filter_map(|l| l.as_ref().ok()).flatten().map(|g| g.universe).collect(),
-        _ => HashSet::new(),
-    };
-    let mut covers_for: Vec<i64> = want
-        .iter()
-        .copied()
-        .filter(|u| *u > 0 && (wide.contains(u) || !squares_only.contains(u)) && !r.games.covers.contains_key(u) && !r.games.asked_covers.contains(u))
-        .collect();
-    covers_for.sort_unstable();
-    covers_for.dedup();
     want.retain(|u| *u > 0 && !r.games.icons.contains_key(u) && !r.games.asked_icons.contains(u));
     want.sort_unstable();
     want.dedup();
-    if !want.is_empty() || !covers_for.is_empty() {
+    if !want.is_empty() {
         r.games.asked_icons.extend(want.iter().copied());
-        r.games.asked_covers.extend(covers_for.iter().copied());
         let asked = want.clone();
-        let asked_wide = covers_for.clone();
-        let rx = roblox::run(move || {
-            roblox::both(
-                || if want.is_empty() { Default::default() } else { roblox::icons(&want) },
-                || if covers_for.is_empty() { Default::default() } else { roblox::covers(&covers_for, "480x270") },
-            )
-        });
+        let rx = roblox::run(move || roblox::icons(&want));
         cx.spawn(async move |this, cx| {
-            let (icons, covers) = rx.await.unwrap_or_default();
+            let icons = rx.await.unwrap_or_default();
             // (Roblox answers every game, a placeholder for one without an icon: one left out wasn't answered.)
             let missed: Vec<i64> = asked.into_iter().filter(|u| !icons.contains_key(u)).collect();
-            let missed_wide: Vec<i64> = asked_wide.into_iter().filter(|u| !covers.contains_key(u)).collect();
             let _ = this.update(cx, |r, cx| {
                 // (Icons are the same whoever is signed in: one asked before a vault switch is still right.)
                 r.games.icons.extend(icons);
-                r.games.covers.extend(covers);
                 cx.notify();
             });
-            if !missed.is_empty() || !missed_wide.is_empty() {
+            if !missed.is_empty() {
                 cx.background_executor().timer(RETRY).await;
                 let _ = this.update(cx, |r, cx| {
                     for u in &missed {
                         if may_retry(r, format!("icon:{u}")) {
                             r.games.asked_icons.remove(u);
-                        }
-                    }
-                    for u in &missed_wide {
-                        if may_retry(r, format!("cover:{u}")) {
-                            r.games.asked_covers.remove(u);
                         }
                     }
                     cx.notify();
@@ -3919,11 +3886,63 @@ fn chart_stats(root: &Root, game: &roblox::Game, full: bool) -> Div {
 
 /// A game's wide picture (its square icon until that has come), or the first letter of its name.
 /// (Made at the `w`×`h` it is shown at, and with the picture itself, which keys its fade-in.)
-fn art(root: &Root, g: &roblox::Game, sharp: bool, w: f32, h: f32, cx: &mut App) -> Option<(ImageSource, std::sync::Arc<Image>)> {
+fn art(root: &Root, g: &roblox::Game, sharp: bool, w: f32, h: f32, cx: &mut Context<Root>) -> Option<(ImageSource, std::sync::Arc<Image>)> {
     let u = &g.universe;
     let wide = if sharp { root.games.covers_big.get(u).or_else(|| root.games.covers.get(u)) } else { root.games.covers.get(u) };
+    if wide.is_none() {
+        need_cover(root, *u, cx);
+    }
     let pic = wide.or_else(|| root.games.icons.get(u)).cloned().or_else(|| crate::pages::home::look(root, g.place, "icon").map(str::to_string));
     pic.as_deref().and_then(|u| images::pic_pair(u, w, h, cx))
+}
+
+/// Notes a game drawn wide with no cover yet. The first one noted in a frame asks for all of them once the frame is
+/// made (one call to Roblox for the frame's tiles). Until it comes, the tile shows the icon (150×150) as a stand-in.
+fn need_cover(root: &Root, universe: i64, cx: &mut Context<Root>) {
+    if universe <= 0 || root.games.asked_covers.contains(&universe) {
+        return;
+    }
+    let mut need = root.games.need_covers.borrow_mut();
+    let first = need.is_empty();
+    if need.insert(universe) && first {
+        cx.spawn(async move |this, cx| {
+            let _ = this.update(cx, |r, cx| ask_covers(r, cx));
+        })
+        .detach();
+    }
+}
+
+/// The wide pictures (480×270) of the games noted by need_cover, once each; one Roblox didn't answer is let go after a
+/// while, so it is noted again if it is still drawn.
+fn ask_covers(r: &mut Root, cx: &mut Context<Root>) {
+    let need = r.games.need_covers.take();
+    let mut want: Vec<i64> = need.into_iter().filter(|u| !r.games.covers.contains_key(u)).collect();
+    want.retain(|u| r.games.asked_covers.insert(*u));
+    if want.is_empty() {
+        return;
+    }
+    let asked = want.clone();
+    let rx = roblox::run(move || roblox::covers(&want, "480x270"));
+    cx.spawn(async move |this, cx| {
+        let covers = rx.await.unwrap_or_default();
+        let missed: Vec<i64> = asked.into_iter().filter(|u| !covers.contains_key(u)).collect();
+        let _ = this.update(cx, |r, cx| {
+            r.games.covers.extend(covers);
+            cx.notify();
+        });
+        if !missed.is_empty() {
+            cx.background_executor().timer(RETRY).await;
+            let _ = this.update(cx, |r, cx| {
+                for u in &missed {
+                    if may_retry(r, format!("cover:{u}")) {
+                        r.games.asked_covers.remove(u);
+                    }
+                }
+                cx.notify();
+            });
+        }
+    })
+    .detach();
 }
 
 /// A chart game's own colour, from its icon (else its cover): the ground of its picture.

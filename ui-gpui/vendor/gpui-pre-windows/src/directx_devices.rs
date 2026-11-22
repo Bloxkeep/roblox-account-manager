@@ -9,7 +9,8 @@ use windows::Win32::{
             D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_11_1,
         },
         Direct3D11::{
-            D3D11_CREATE_DEVICE_BGRA_SUPPORT, D3D11_CREATE_DEVICE_DEBUG,
+            D3D11_CREATE_DEVICE_BGRA_SUPPORT, D3D11_CREATE_DEVICE_DEBUG, D3D11_CREATE_DEVICE_FLAG,
+            D3D11_CREATE_DEVICE_VIDEO_SUPPORT, ID3D11Multithread, ID3D11VideoDevice,
             D3D11_FEATURE_D3D10_X_HARDWARE_OPTIONS, D3D11_FEATURE_DATA_D3D10_X_HARDWARE_OPTIONS,
             D3D11_SDK_VERSION, D3D11CreateDevice, ID3D11Device, ID3D11DeviceContext,
         },
@@ -63,6 +64,15 @@ impl DirectXDevices {
             _ => unreachable!(),
         }
 
+        // (Bloxkeep, 2026-11-21) A device with a video decoder is guarded for use from more than one thread: Media
+        // Foundation decodes a clip on it from threads of its own (as Chromium shares ANGLE's device with its decoder).
+        if device.cast::<ID3D11VideoDevice>().is_ok() {
+            if let Ok(guard) = device_context.cast::<ID3D11Multithread>() {
+                unsafe {
+                    let _ = guard.SetMultithreadProtected(true);
+                }
+            }
+        }
         share(&device, &device_context);
         Ok(Self {
             adapter,
@@ -183,12 +193,16 @@ fn get_device(
     } else {
         D3D11_CREATE_DEVICE_BGRA_SUPPORT
     };
-    unsafe {
+    // (Bloxkeep, 2026-11-21) With the graphics card's video decoder where it has one, so a game clip is decoded on the
+    // card (Media Foundation's DXVA, on this same device: no device of its own) as a browser does: decoded by the
+    // processor, a 1280×720 clip at 60 frames a second took 76 % of a core (measured). A card or driver without it
+    // makes the device as before.
+    let make = |flags: D3D11_CREATE_DEVICE_FLAG, device: &mut Option<ID3D11Device>| unsafe {
         D3D11CreateDevice(
             adapter,
             D3D_DRIVER_TYPE_UNKNOWN,
             HMODULE::default(),
-            device_flags,
+            flags,
             // 4x MSAA is required for Direct3D Feature Level 10.1 or better
             Some(&[
                 D3D_FEATURE_LEVEL_11_1,
@@ -196,10 +210,14 @@ fn get_device(
                 D3D_FEATURE_LEVEL_10_1,
             ]),
             D3D11_SDK_VERSION,
-            Some(&mut device),
+            Some(device),
             feature_level,
             context,
-        )?;
+        )
+    };
+    if make(device_flags | D3D11_CREATE_DEVICE_VIDEO_SUPPORT, &mut device).is_err() || device.is_none() {
+        device = None;
+        make(device_flags, &mut device)?;
     }
     let device = device.unwrap();
     let mut data = D3D11_FEATURE_DATA_D3D10_X_HARDWARE_OPTIONS::default();
