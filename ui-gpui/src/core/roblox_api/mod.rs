@@ -407,9 +407,7 @@ fn http() -> &'static ureq::Agent {
         crate::net::builder()
             .redirects(0)
             .timeout(Duration::from_secs(20))
-            // Connect over IPv4 only. An auth ticket is bound to the IP that requested it; the Roblox client redeems it
-            // over IPv4, so if this app fetched it over IPv6 the IPs wouldn't match and the redeem would be rejected.
-            .resolver(|netloc: &str| -> std::io::Result<Vec<SocketAddr>> { Ok(netloc.to_socket_addrs()?.filter(|a| a.is_ipv4()).collect()) })
+            .resolver(like_roblox_client)
             .build()
     })
 }
@@ -420,9 +418,21 @@ fn http_like_roblox_client(url: &str) -> ureq::Agent {
     crate::net::builder_like_roblox_client(&host)
         .redirects(0)
         .timeout(Duration::from_secs(20))
-        .resolver(|netloc: &str| -> std::io::Result<Vec<SocketAddr>> { Ok(netloc.to_socket_addrs()?.filter(|a| a.is_ipv4()).collect()) })
+        .resolver(like_roblox_client)
         .build()
 }
+
+/// A host's addresses in the order Windows gives them, tried in that order, as Roblox's client (libcurl) tries them: a
+/// sign-in ticket is bound to the address that asks for it, so it must leave the way the client's redeem will. IPv4
+/// only, as before, made every launch fail on a network where Roblox is reached over IPv6 through NAT64 (a user's
+/// error.log, 2026-11-22: Roblox's client redeemed at 64:ff9b::8074:7803 and got 403 every time, while the ticket was
+/// asked at 128.116.120.3). Where roblox.com has no IPv6 address (most networks) both go over IPv4 still.
+fn like_roblox_client(netloc: &str) -> std::io::Result<Vec<SocketAddr>> {
+    Ok(netloc.to_socket_addrs()?.collect())
+}
+
+/// Where the last request sent the client's way went (send_on): error.log says it with the ticket.
+pub(crate) static LAST_CLIENT_WAY: Mutex<Option<SocketAddr>> = Mutex::new(None);
 
 /// One request on an agent, its answer read whole: any HTTP status is an answer; no answer is an HttpRequestException
 /// (or a TaskCanceledException when it timed out), as HttpClient threw them.
@@ -436,8 +446,12 @@ pub fn send_on(agent: &ureq::Agent, req: &HttpRequest) -> Res<HttpResponse> {
         None => r.call(),
     };
     let res = match result {
-        Ok(res) => res,
-        Err(ureq::Error::Status(_, res)) => res,
+        Ok(res) | Err(ureq::Error::Status(_, res)) => {
+            if req.like_roblox_client {
+                *lock(&LAST_CLIENT_WAY) = Some(res.remote_addr());
+            }
+            res
+        }
         Err(ureq::Error::Transport(t)) => {
             let text = t.to_string();
             let timed_out = t.kind() == ureq::ErrorKind::Io && (text.contains("timed out") || text.contains("timeout"));

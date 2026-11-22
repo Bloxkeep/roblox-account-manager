@@ -118,6 +118,16 @@ pub fn get_auth_ticket(cookie: &str, ct: &Cancel, realm: &str) -> Res<String> {
     };
 
     if let Some(ticket) = header(&res, "rbx-authentication-ticket").filter(|t| !t.is_empty()) {
+        // (Which way it went, once a run per way: a 403 at the client's redeem is read against it.)
+        if like_client && let Some(at) = super::lock(&super::LAST_CLIENT_WAY).take() {
+            static SAID: std::sync::Mutex<Vec<bool>> = std::sync::Mutex::new(Vec::new());
+            let v6 = at.is_ipv6();
+            let mut said = super::lock(&SAID);
+            if !said.contains(&v6) {
+                said.push(v6);
+                log::note(&format!("Sign-in ticket: asked over {} at {}.", if v6 { "IPv6" } else { "IPv4" }, at.ip()));
+            }
+        }
         return Ok(ticket);
     }
     if res.status == 401 {
