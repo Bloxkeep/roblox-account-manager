@@ -679,6 +679,64 @@ pub fn tone2(url: &str) -> Option<u32> {
     SECOND.hold().get(url).copied()
 }
 
+/// `image`'s CatmullRom resize, a row at a time: `image` first fills a float copy as wide as the picture and as tall as
+/// the result (16 bytes a pixel), 29 MB for one big game picture halved, and several were made at once: Rust's heap
+/// went 88 -> 129 MB at the owner's start (alpha.16, 2026-11-22). Here only one float row is kept. The same weights as
+/// `image` (each output pixel weighs the input pixels its widened kernel covers).
+fn catmull_rom(src: &image::RgbaImage, w: u32, h: u32) -> image::RgbaImage {
+    // Per output pixel along one side: the first input pixel and the weights from it on, summing to 1.
+    fn weights(from: u32, to: u32) -> Vec<(usize, Vec<f32>)> {
+        let ratio = from as f32 / to as f32;
+        let scale = ratio.max(1.);
+        let support = 2. * scale;
+        let kernel = |x: f32| {
+            let a = x.abs();
+            (if a < 1. { 9. * a * a * a - 15. * a * a + 6. } else if a < 2. { -3. * a * a * a + 15. * a * a - 24. * a + 12. } else { 0. }) / 6.
+        };
+        (0..to)
+            .map(|o| {
+                let centre = (o as f32 + 0.5) * ratio;
+                let left = ((centre - support).floor().max(0.) as usize).min(from as usize - 1);
+                let right = ((centre + support).ceil() as usize).min(from as usize).max(left + 1);
+                let mut ws: Vec<f32> = (left..right).map(|i| kernel((i as f32 - centre + 0.5) / scale)).collect();
+                let sum: f32 = ws.iter().sum();
+                if sum.abs() > f32::EPSILON {
+                    ws.iter_mut().for_each(|v| *v /= sum);
+                }
+                (left, ws)
+            })
+            .collect()
+    }
+    let (sw, sh) = src.dimensions();
+    let (w, h) = (w.max(1), h.max(1));
+    let across = weights(sw, w);
+    let down = weights(sh, h);
+    let raw = src.as_raw();
+    let stride = sw as usize * 4;
+    let mut row = vec![0f32; stride];
+    let mut out = image::RgbaImage::new(w, h);
+    for (y, (top, wy)) in down.iter().enumerate() {
+        row.iter_mut().for_each(|v| *v = 0.);
+        for (k, &f) in wy.iter().enumerate() {
+            let line = &raw[(top + k) * stride..(top + k + 1) * stride];
+            for (acc, &v) in row.iter_mut().zip(line) {
+                *acc += f * v as f32;
+            }
+        }
+        for (x, (left, wx)) in across.iter().enumerate() {
+            let mut px = [0f32; 4];
+            for (j, &f) in wx.iter().enumerate() {
+                let at = (left + j) * 4;
+                for c in 0..4 {
+                    px[c] += f * row[at + c];
+                }
+            }
+            out.put_pixel(x as u32, y as u32, image::Rgba(px.map(|v| v.round().clamp(0., 255.) as u8)));
+        }
+    }
+    out
+}
+
 /// A picture's size in pixels, read from its header, when a smaller copy can be made of it: not an SVG (GPUI draws
 /// those at their size) nor a GIF (a copy would stop it moving).
 fn dims_of(b: &[u8]) -> Option<(u32, u32)> {
@@ -712,7 +770,7 @@ pub(crate) fn shrink(bytes: &[u8], w: u32, h: u32, sigma: f32) -> Option<RenderI
     if sw > w * 3 && sh > h * 3 {
         rgba = image::imageops::thumbnail(&rgba, w * 2, h * 2);
     }
-    let mut out = image::imageops::resize(&rgba, w, h, image::imageops::FilterType::CatmullRom);
+    let mut out = catmull_rom(&rgba, w, h);
     // A blurred copy (sigma above 0): blurred while its colours are still weighed by their alpha.
     if sigma > 0. {
         out = image::imageops::fast_blur(&out, sigma);
