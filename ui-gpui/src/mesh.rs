@@ -7,7 +7,7 @@
 // the camera Roblox would look through. The camera here starts where Roblox's does and circles the model: the avatar
 // and the floor it stands on turn together (yaw), the camera rises or sinks (pitch) and comes closer (zoom, nearer
 // the head the closer it comes).
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 /// The most bands a picture is drawn in at once.
 const BAND_THREADS: usize = 16;
@@ -161,9 +161,11 @@ impl Tex {
 #[derive(Clone)]
 struct Mat {
     kd: [f32; 3],
-    tex: Option<Tex>,
+    /// (Shared: the materials of one model, and its mask, mostly name the same picture, and each kept its own copy:
+    /// a model held 9.5 MB of pictures, the owner's error.log of alpha.15, 2026-11-22.)
+    tex: Option<Arc<Tex>>,
     /// The see-through map (map_d): its alpha, or its grey where it has none.
-    mask: Option<Tex>,
+    mask: Option<Arc<Tex>>,
     /// How solid the whole material is (d); a material all but invisible isn't drawn.
     d: f32,
 }
@@ -881,7 +883,11 @@ impl Model {
             let name = it.last().unwrap_or_default();
             name.rsplit(['/', '\\']).next().unwrap_or(name).to_string()
         };
-        let picture = |name: &str| -> Option<Tex> { pictures.get(name).and_then(|b| Tex::of(b)) };
+        // Each picture read once, however many materials name it.
+        let mut read: HashMap<String, Option<Arc<Tex>>> = HashMap::new();
+        let mut picture = |name: &str| -> Option<Arc<Tex>> {
+            read.entry(name.to_string()).or_insert_with(|| pictures.get(name).and_then(|b| Tex::of(b)).map(Arc::new)).clone()
+        };
         // The colour picture of the material being read, by name: its mask is often that same file.
         let mut colours = String::new();
         for line in mtl.lines() {
@@ -923,14 +929,17 @@ impl Model {
                     // dark scarf were not there at all, while R6's one shared picture (with alpha) drew them (the
                     // owner's two models, read from the files Roblox gave, 2026-11-18).
                     let own = name == colours;
-                    let mask = picture(&name).map(|mut t| {
-                        // A map of its own with no alpha says it in grey.
+                    let mask = picture(&name).map(|t| {
+                        // A map of its own with no alpha says it in grey (a copy: the picture may be a colour too).
                         if !own && t.rgba.chunks(4).all(|p| p[3] == 255) {
-                            for p in t.rgba.chunks_mut(4) {
+                            let mut g = (*t).clone();
+                            for p in g.rgba.chunks_mut(4) {
                                 p[3] = p[0];
                             }
+                            Arc::new(g)
+                        } else {
+                            t
                         }
-                        t
                     });
                     if let Some(m) = mats.last_mut() {
                         m.mask = mask;
@@ -1050,6 +1059,8 @@ impl Model {
     /// this one shows meanwhile, and Roblox's replaces it when it comes.
     pub fn recoloured(&self, from: &[[u8; 3]], to: [u8; 3]) -> Model {
         let mut m = self.clone();
+        // A picture several body parts share is repainted once, and they keep sharing it.
+        let mut done: Vec<(*const Tex, Arc<Tex>)> = Vec::new();
         let near = |r: i32, g: i32, b: i32| from.iter().any(|f| (f[0] as i32 - r).abs() <= 6 && (f[1] as i32 - g).abs() <= 6 && (f[2] as i32 - b).abs() <= 6);
         for &i in &self.body {
             let Some(mat) = m.mats.get_mut(i) else { continue };
@@ -1057,11 +1068,19 @@ impl Model {
                 mat.kd = [to[0] as f32 / 255., to[1] as f32 / 255., to[2] as f32 / 255.];
             }
             if let Some(t) = mat.tex.as_mut() {
-                for p in t.rgba.chunks_mut(4) {
+                let was = Arc::as_ptr(t);
+                if let Some((_, new)) = done.iter().find(|d| d.0 == was) {
+                    *t = new.clone();
+                    continue;
+                }
+                let mut new = (**t).clone();
+                for p in new.rgba.chunks_mut(4) {
                     if p[3] > 0 && near(p[0] as i32, p[1] as i32, p[2] as i32) {
                         p[..3].copy_from_slice(&to);
                     }
                 }
+                *t = Arc::new(new);
+                done.push((was, t.clone()));
             }
         }
         m

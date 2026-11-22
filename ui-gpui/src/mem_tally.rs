@@ -22,10 +22,21 @@ pub fn start(cx: &mut App) {
         #[cfg(not(feature = "shot"))]
         let first = FIRST;
         cx.background_executor().timer(first).await;
+        #[cfg(windows)]
+        let _ = cx.background_executor().spawn(async { crate::mem_regions::news() }).await;
         let mut last = cx.update(|cx| line("a minute after the start", cx));
         let mut at = Instant::now();
         loop {
             cx.background_executor().timer(LOOK).await;
+            // What came meanwhile: a big block outside Rust's heap, Rust's heap's holders at a peak.
+            #[cfg(windows)]
+            if let Some(news) = cx.background_executor().spawn(async { crate::mem_regions::news() }).await {
+                write(&news);
+            }
+            #[cfg(any(feature = "shot", feature = "core"))]
+            if let Some(spike) = crate::heap::sites::spike() {
+                write(&spike);
+            }
             let ram = process().1;
             let why = if at.elapsed() >= EVERY {
                 "every 10 min".to_string()
@@ -50,6 +61,9 @@ fn line(why: &str, cx: &mut App) -> usize {
         crate::heap::sites::report(&to, heap);
     }
     let heap_peak = crate::heap::take_peak();
+    // A peak 48 MB past this has its holders taken as it comes.
+    #[cfg(any(feature = "shot", feature = "core"))]
+    crate::heap::sites::watch_above(heap + (48 << 20));
     let pics = gpui_kit::held_pictures(6);
     let (textures, atlas) = gpui_kit::atlas_textures();
     let (kept, files, copies) = crate::images::kept(cx);

@@ -11,11 +11,16 @@ pub struct Counted;
 
 static IN_USE: AtomicUsize = AtomicUsize::new(0);
 static PEAK: AtomicUsize = AtomicUsize::new(0);
+/// The same since the last short look (mem_regions::news, every 10 s).
+static PEAK_LOOK: AtomicUsize = AtomicUsize::new(0);
 
 fn more(n: usize) {
     let now = IN_USE.fetch_add(n, Relaxed) + n;
     if now > PEAK.load(Relaxed) {
         PEAK.fetch_max(now, Relaxed);
+    }
+    if now > PEAK_LOOK.load(Relaxed) {
+        PEAK_LOOK.fetch_max(now, Relaxed);
     }
 }
 
@@ -81,6 +86,11 @@ pub fn take_peak() -> usize {
     PEAK.swap(IN_USE.load(Relaxed), Relaxed)
 }
 
+/// As take_peak, for the short looks.
+pub fn take_look_peak() -> usize {
+    PEAK_LOOK.swap(IN_USE.load(Relaxed), Relaxed)
+}
+
 /// Where Rust's heap goes (the owner, 2026-11-20: 52-70 MB held, of it 2-5 MB pictures, and nothing said of the rest).
 /// About one allocation in every 256 KB asked for (32 KB in a shot) is kept with the calls that asked for it, until it
 /// is given back; error.log's memory line is followed by the biggest holders, as addresses in the exe (read with the
@@ -109,6 +119,10 @@ pub mod sites {
 
     static ON: AtomicBool = AtomicBool::new(false);
     static BASE: AtomicUsize = AtomicUsize::new(0);
+    /// Past this many bytes in Rust's heap the holders are taken at once (a peak lasts moments: the owner's alpha.15
+    /// went 70 MB -> 132 and 143 MB and back between two memory lines, 2026-11-22, with nothing saying what).
+    static SPIKE_AT: AtomicUsize = AtomicUsize::new(96 << 20);
+    static SPIKE: Mutex<Option<String>> = Mutex::new(None);
     /// Per bucket of addresses, how many kept allocations are in it: freeing anything else stops at one load.
     static COUNT: [AtomicU16; BUCKETS] = [const { AtomicU16::new(0) }; BUCKETS];
     static STATE: Mutex<Option<State>> = Mutex::new(None);
@@ -128,6 +142,11 @@ pub mod sites {
         #[cfg(windows)]
         // SAFETY: the exe's own module handle (its load address); nothing is handed over.
         BASE.store(unsafe { windows_sys::Win32::System::LibraryLoader::GetModuleHandleW(std::ptr::null()) } as usize, Relaxed);
+        // (A shot's peak is small: BLOXKEEP_SHOT_SPIKE_MB says where its holders are taken, to try it.)
+        #[cfg(feature = "shot")]
+        if let Some(mb) = std::env::var("BLOXKEEP_SHOT_SPIKE_MB").ok().and_then(|v| v.parse::<usize>().ok()) {
+            SPIKE_AT.store(mb << 20, Relaxed);
+        }
         ON.store(true, Relaxed);
     }
 
@@ -181,7 +200,45 @@ pub mod sites {
             if st.held.insert(p as usize, (id, size.max(RATE as usize))).is_none() {
                 COUNT[bucket(p as usize)].fetch_add(1, Relaxed);
             }
+            let now = super::in_use();
+            if now > SPIKE_AT.load(Relaxed) {
+                // Again only 32 MB higher; the memory line sets it anew.
+                SPIKE_AT.store(now + (32 << 20), Relaxed);
+                let list: Vec<String> = rows(st).iter().take(8).map(|(ips, w)| format!("{:.1} MB [{}]", *w as f64 / 1048576., calls(ips))).collect();
+                *SPIKE.hold() = Some(format!("Rust heap at {:.0} MB, its holders then: {}", now as f64 / 1048576., list.join("; ")));
+            }
         });
+    }
+
+    /// The holders are taken when Rust's heap passes `bytes` (once, until set again).
+    pub fn watch_above(bytes: usize) {
+        SPIKE_AT.store(bytes, Relaxed);
+    }
+
+    /// The holders taken at the last peak, once.
+    pub fn spike() -> Option<String> {
+        let _ = BUSY.try_with(|b| b.set(true));
+        let out = SPIKE.hold().take();
+        let _ = BUSY.try_with(|b| b.set(false));
+        out
+    }
+
+    /// The kept allocations' bytes by the calls that asked, the biggest first.
+    fn rows(st: &State) -> Vec<(Stack, usize)> {
+        let mut sum: HashMap<u32, usize> = HashMap::new();
+        for &(id, w) in st.held.values() {
+            *sum.entry(id).or_default() += w;
+        }
+        let mut out: Vec<(Stack, usize)> = sum.into_iter().map(|(id, w)| (st.stacks[id as usize], w)).collect();
+        out.sort_by(|a, b| b.1.cmp(&a.1));
+        out
+    }
+
+    /// A stack's calls as offsets in the exe (x: outside it).
+    fn calls(ips: &Stack) -> String {
+        let base = BASE.load(Relaxed);
+        let list: Vec<String> = ips.iter().filter(|&&ip| ip != 0).map(|&ip| if ip > base && ip - base < 1 << 30 { format!("{:x}", ip - base) } else { "x".into() }).collect();
+        list.join(",")
     }
 
     pub(super) fn gave(p: *mut u8) {
@@ -200,17 +257,8 @@ pub mod sites {
     /// The bytes the kept allocations stand for, by the calls that asked for them, the biggest first.
     fn by_stack() -> (Vec<(Stack, usize)>, usize) {
         let _ = BUSY.try_with(|b| b.set(true));
-        let mut sum: HashMap<u32, usize> = HashMap::new();
-        let mut all = 0;
-        let mut out = Vec::new();
-        if let Some(st) = STATE.hold().as_ref() {
-            for &(id, w) in st.held.values() {
-                *sum.entry(id).or_default() += w;
-                all += w;
-            }
-            out = sum.into_iter().map(|(id, w)| (st.stacks[id as usize], w)).collect();
-        }
-        out.sort_by(|a, b| b.1.cmp(&a.1));
+        let out = STATE.hold().as_ref().map(rows).unwrap_or_default();
+        let all = out.iter().map(|r| r.1).sum();
         let _ = BUSY.try_with(|b| b.set(false));
         (out, all)
     }
@@ -261,17 +309,8 @@ pub mod sites {
         if !ON.load(Relaxed) {
             return String::new();
         }
-        let base = BASE.load(Relaxed);
         let (stacks, all) = by_stack();
-        let list: Vec<String> = stacks
-            .iter()
-            .take(top)
-            .map(|(ips, w)| {
-                let calls: Vec<String> =
-                    ips.iter().filter(|&&ip| ip != 0).map(|&ip| if ip > base && ip - base < 1 << 30 { format!("{:x}", ip - base) } else { "x".into() }).collect();
-                format!("{:.1} MB [{}]", *w as f64 / 1048576., calls.join(","))
-            })
-            .collect();
+        let list: Vec<String> = stacks.iter().take(top).map(|(ips, w)| format!("{:.1} MB [{}]", *w as f64 / 1048576., calls(ips))).collect();
         format!(
             "Heap holders (one sample per {} KB asked for, {:.0} MB sampled, exe build {}): {}",
             RATE / 1024,

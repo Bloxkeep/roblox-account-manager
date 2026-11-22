@@ -6,13 +6,17 @@
 // every block's header and brought every page of the heap back into RAM (a shot: 49 MB in RAM before, 243 after).
 #![cfg(windows)]
 
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Mutex,
+};
 
 use windows_sys::Win32::{
     System::{
         Memory::{GetProcessHeap, MEM_COMMIT, MEM_PRIVATE, MEMORY_BASIC_INFORMATION, PAGE_GUARD, VirtualQuery},
-        ProcessStatus::{K32QueryWorkingSetEx, PSAPI_WORKING_SET_EX_INFORMATION},
+        ProcessStatus::{K32EnumProcessModules, K32GetModuleBaseNameW, K32QueryWorkingSetEx, PSAPI_WORKING_SET_EX_INFORMATION},
         Threading::GetCurrentProcess,
+        Diagnostics::Debug::ReadProcessMemory,
     },
 };
 
@@ -130,4 +134,141 @@ pub fn line() -> String {
         started.elapsed().as_millis(),
         walked.as_millis(),
     )
+}
+
+/// A block at least this big, new and not Rust's heap, is told when it comes.
+const BIG: usize = 24 << 20;
+
+/// The big blocks and the modules seen at the last look.
+static SEEN: Mutex<Option<(HashSet<usize>, HashSet<String>)>> = Mutex::new(None);
+
+/// The allocations holding Rust's memory now (where its samples lie), and the process heap.
+fn own_allocations() -> HashSet<usize> {
+    let mut own = HashSet::new();
+    #[cfg(any(feature = "shot", feature = "core"))]
+    for p in crate::heap::sites::addresses() {
+        if let Some(m) = query(p) {
+            own.insert(m.AllocationBase as usize);
+        }
+    }
+    // SAFETY: no arguments; this process's own heap.
+    own.insert(unsafe { GetProcessHeap() } as usize);
+    own
+}
+
+/// The names of the modules (DLLs) loaded now.
+fn modules() -> HashSet<String> {
+    let mut list = vec![std::ptr::null_mut(); 1024];
+    let mut needed = 0u32;
+    // SAFETY: the buffer holds as many handles as it says in bytes; the call writes at most that many.
+    let ok = unsafe { K32EnumProcessModules(GetCurrentProcess(), list.as_mut_ptr(), (list.len() * std::mem::size_of::<usize>()) as u32, &mut needed) } != 0;
+    if !ok {
+        return HashSet::new();
+    }
+    list.truncate((needed as usize / std::mem::size_of::<usize>()).min(1024));
+    list.iter()
+        .filter_map(|&m| {
+            let mut name = [0u16; 260];
+            // SAFETY: m is one of this process's modules; the name buffer holds as many as it says.
+            let n = unsafe { K32GetModuleBaseNameW(GetCurrentProcess(), m, name.as_mut_ptr(), name.len() as u32) } as usize;
+            (n > 0).then(|| String::from_utf16_lossy(&name[..n]))
+        })
+        .collect()
+}
+
+/// For error.log, every 10 s or so: a big block that came since the last look and isn't Rust's heap (the owner's alpha.15,
+/// 2026-11-22: 55 MB, all zero, all in RAM, came between two memory lines 10 minutes apart, with nothing to say whose),
+/// with the modules loaded meanwhile, how much of it is in RAM and whether what is in RAM is all zero. None when nothing
+/// came; the first look only takes note. A walk of the address space: about a millisecond.
+pub fn news() -> Option<String> {
+    let peak = crate::heap::take_look_peak();
+    let own = own_allocations();
+    let mut size_of: HashMap<usize, usize> = HashMap::new();
+    let mut at = 0usize;
+    let mut stacks = HashSet::new();
+    while let Some(m) = query(at) {
+        let size = m.RegionSize;
+        if m.State == MEM_COMMIT && m.Type == MEM_PRIVATE {
+            *size_of.entry(m.AllocationBase as usize).or_default() += size;
+            if m.Protect & PAGE_GUARD != 0 {
+                stacks.insert(m.AllocationBase as usize);
+            }
+        }
+        let next = (m.BaseAddress as usize).saturating_add(size);
+        if size == 0 || next <= at {
+            break;
+        }
+        at = next;
+    }
+    // (A shot has no big block: BLOXKEEP_SHOT_BIG_MB makes smaller ones count, to try it.)
+    #[cfg(feature = "shot")]
+    let big_at = std::env::var("BLOXKEEP_SHOT_BIG_MB").ok().and_then(|v| v.parse::<usize>().ok()).map_or(BIG, |mb| mb << 20);
+    #[cfg(not(feature = "shot"))]
+    let big_at = BIG;
+    let big: HashSet<usize> = size_of.iter().filter(|(b, n)| **n >= big_at && !own.contains(*b) && !stacks.contains(*b)).map(|(b, _)| *b).collect();
+    let mods = modules();
+    let mut g = SEEN.lock().unwrap_or_else(|e| e.into_inner());
+    let Some((seen, seen_mods)) = g.as_mut() else {
+        *g = Some((big, mods));
+        return None;
+    };
+    let new: Vec<usize> = big.iter().filter(|b| !seen.contains(b)).copied().collect();
+    let mut loaded: Vec<String> = mods.difference(seen_mods).cloned().collect();
+    loaded.sort();
+    *seen = big;
+    *seen_mods = mods;
+    if new.is_empty() {
+        return None;
+    }
+    let told: Vec<String> = new
+        .iter()
+        .map(|&b| {
+            let size = size_of[&b];
+            let (resident, zero) = look_at(b, size);
+            format!("{b:#x} {:.1} MB, {:.1} MB of it in RAM{}", size as f64 / 1048576., resident as f64 / 1048576., if resident == 0 { "" } else if zero { ", all zero" } else { ", with data" })
+        })
+        .collect();
+    Some(format!(
+        "Memory: a new block outside Rust's heap: {}; modules loaded since the last look (10 s): {}; Rust's heap {:.0} MB, at most {:.0} MB meanwhile.",
+        told.join("; "),
+        if loaded.is_empty() { "none".to_string() } else { loaded.join(", ") },
+        crate::heap::in_use() as f64 / 1048576.,
+        peak as f64 / 1048576.,
+    ))
+}
+
+/// How much of the block is in RAM, and whether those pages are all zero (only pages already in RAM are read).
+fn look_at(base: usize, size: usize) -> (usize, bool) {
+    let pages = size / 4096;
+    let mut info: Vec<PSAPI_WORKING_SET_EX_INFORMATION> = (0..pages)
+        .map(|p| {
+            // SAFETY: a plain struct of an address and its attributes, filled in by the call below.
+            let mut i: PSAPI_WORKING_SET_EX_INFORMATION = unsafe { std::mem::zeroed() };
+            i.VirtualAddress = (base + p * 4096) as *mut _;
+            i
+        })
+        .collect();
+    // SAFETY: the buffer holds `info.len()` entries and says so in bytes; the call fills in their attributes.
+    if info.is_empty() || unsafe { K32QueryWorkingSetEx(GetCurrentProcess(), info.as_mut_ptr().cast(), (info.len() * std::mem::size_of::<PSAPI_WORKING_SET_EX_INFORMATION>()) as u32) } == 0 {
+        return (0, false);
+    }
+    let mut resident = 0;
+    let mut zero = true;
+    for (p, i) in info.iter().enumerate() {
+        // SAFETY: the union's Flags is the whole attribute word: bit 0 Valid.
+        if unsafe { i.VirtualAttributes.Flags } & 1 == 0 {
+            continue;
+        }
+        resident += 4096;
+        // (Every 16th page in RAM is read: in RAM already, so reading it brings nothing in.)
+        if zero && p % 16 == 0 {
+            // (ReadProcessMemory, not a plain read: a block given back meanwhile fails the call instead of the app.)
+            let mut words = [0u64; 512];
+            let mut got = 0usize;
+            // SAFETY: reads this process's own memory into this frame's buffer, at most its size; fails if unmapped.
+            let ok = unsafe { ReadProcessMemory(GetCurrentProcess(), (base + p * 4096) as *const _, words.as_mut_ptr().cast(), 4096, &mut got) } != 0;
+            zero = !ok || got != 4096 || words.iter().all(|&w| w == 0);
+        }
+    }
+    (resident, zero)
 }

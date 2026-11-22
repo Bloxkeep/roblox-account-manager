@@ -35,6 +35,9 @@ pub struct TaffyLayoutEngine {
     absolute_outer_origins: FxHashMap<LayoutId, Point<f32>>,
     computed_layouts: FxHashSet<LayoutId>,
     layout_bounds_scratch_space: Vec<LayoutId>,
+    /// The most nodes the tree had room made for since it was made (its slots stay when it is cleared).
+    kept: usize,
+    high_water: crate::arena::HighWater,
 }
 
 const EXPECT_MESSAGE: &str = "we should avoid taffy layout errors by construction if possible";
@@ -49,14 +52,28 @@ impl TaffyLayoutEngine {
             absolute_outer_origins: FxHashMap::default(),
             computed_layouts: FxHashSet::default(),
             layout_bounds_scratch_space: Vec::new(),
+            kept: 0,
+            high_water: Default::default(),
         }
     }
 
     pub fn clear(&mut self) {
+        let used = self.taffy.total_node_count();
+        self.kept = self.kept.max(used);
         self.taffy.clear();
         self.absolute_layout_bounds.clear();
         self.absolute_outer_origins.clear();
         self.computed_layouts.clear();
+        // (A small page after a long one: the tree made anew, as big as needed.)
+        if let Some(room) = self.high_water.note(used, self.kept, 1024) {
+            self.taffy = TaffyTree::with_capacity(room);
+            self.taffy.disable_rounding();
+            self.kept = room;
+            self.absolute_layout_bounds.shrink_to(room);
+            self.absolute_outer_origins.shrink_to(room);
+            self.computed_layouts.shrink_to(room);
+            self.layout_bounds_scratch_space.shrink_to(64);
+        }
     }
 
     pub fn request_layout(

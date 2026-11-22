@@ -5,7 +5,41 @@ use std::{
     ops::{Deref, DerefMut},
     ptr::{self, NonNull},
     rc::Rc,
+    time::{Duration, Instant},
 };
+
+/// Storage made for each frame (the element arena, the layout tree) grows to the biggest frame drawn and kept that size
+/// all run: one long page seen once left 9 MB of arena and 10 MB of layout tree in RAM (Bloxkeep's heap report, the
+/// owner's alpha.15, 2026-11-22). This tells when to make it smaller again: after frames that used under a quarter of
+/// it for QUIET, to twice the most any of them used.
+#[derive(Default)]
+pub(crate) struct HighWater {
+    most: usize,
+    since: Option<Instant>,
+}
+
+impl HighWater {
+    const QUIET: Duration = Duration::from_secs(20);
+
+    /// A frame used `used` of the `kept` it has (never shrunk below `floor`): the size to make it now, if any.
+    pub(crate) fn note(&mut self, used: usize, kept: usize, floor: usize) -> Option<usize> {
+        if kept <= floor || used.saturating_mul(4) > kept {
+            self.since = None;
+            return None;
+        }
+        let Some(since) = self.since else {
+            self.since = Some(Instant::now());
+            self.most = used;
+            return None;
+        };
+        self.most = self.most.max(used);
+        if since.elapsed() < Self::QUIET {
+            return None;
+        }
+        self.since = None;
+        Some(self.most.saturating_mul(2).max(floor))
+    }
+}
 
 struct ArenaElement {
     value: *mut u8,
@@ -85,6 +119,7 @@ pub struct Arena {
     current_chunk_index: usize,
     chunk_size: NonZeroUsize,
     scope_depth: usize,
+    high_water: HighWater,
 }
 
 impl Drop for Arena {
@@ -103,6 +138,7 @@ impl Arena {
             current_chunk_index: 0,
             chunk_size,
             scope_depth: 0,
+            high_water: HighWater::default(),
         }
     }
 
@@ -153,6 +189,10 @@ impl Arena {
         self.elements.clear();
         for chunk_index in 0..=self.current_chunk_index {
             self.chunks[chunk_index].reset();
+        }
+        if let Some(keep) = self.high_water.note(self.current_chunk_index + 1, self.chunks.len(), 1) {
+            self.chunks.truncate(keep);
+            self.elements.shrink_to(self.elements.capacity() / 2);
         }
         self.current_chunk_index = 0;
     }
