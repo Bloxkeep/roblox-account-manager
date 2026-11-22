@@ -612,7 +612,8 @@
               { id: id(4), name: 'Night Owl', minutes: 720, kicks: 1, drops: 0, now: 'banned' },
               { id: id(1), name: 'Main', minutes: 240, kicks: 0, drops: 0, now: '', lastPlayed: h(2) },
             ],
-            hours: params.has('gpempty') ? null : [30, 22, 15, 10, 8, 9, 12, 20, 32, 40, 48, 52, 58, 60, 62, 66, 72, 85, 92, 100, 98, 90, 70, 45].map(v => v * 4200),
+            // ?gphours=a,b,…: the 24 hours' figures as given (a narrow column's quiet and busy hours close together).
+            hours: params.has('gpempty') ? null : params.get('gphours') ? params.get('gphours').split(',').map(Number) : [30, 22, 15, 10, 8, 9, 12, 20, 32, 40, 48, 52, 58, 60, 62, 66, 72, 85, 92, 100, 98, 90, 70, 45].map(v => v * 4200),
           };
         }
         // A custom theme as given (a video's address, say): __mockBridge.call('debugCustomTheme', { picture, video: true })

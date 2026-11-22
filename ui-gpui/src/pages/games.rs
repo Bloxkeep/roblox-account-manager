@@ -5855,7 +5855,17 @@ fn quiet(root: &Root, h: &[Option<f64>]) -> impl IntoElement {
                 place.left(relative(at)).ml(px(-80.)).w(px(160.)).justify_center().child(words)
             }
         };
-        div().relative().h(px(18.)).text_size(px(T_S)).text_color(c(TEXT_2)).font_features(tnum()).child(mark(l, "gp.quietEnd", c(OK))).child(mark(hi, "gp.busyEnd", c(TEXT)))
+        // (Ten hours apart or more they share one line; closer, each has its own line: under 10 hours apart in a
+        // narrow column, "quiet 5,387" at 17h and "busy 8,879" at 22h were drawn over each other, the owner 2026-11-22.)
+        let row = || div().relative().h(px(18.));
+        let quiet_mark = mark(l, "gp.quietEnd", c(OK));
+        let busy_mark = mark(hi, "gp.busyEnd", c(TEXT));
+        let marks = div().flex().flex_col().text_size(px(T_S)).text_color(c(TEXT_2)).font_features(tnum());
+        if l.0.abs_diff(hi.0) >= 10 {
+            marks.child(row().child(quiet_mark).child(busy_mark))
+        } else {
+            marks.child(row().child(quiet_mark)).child(row().child(busy_mark))
+        }
     });
     div()
         .flex()
