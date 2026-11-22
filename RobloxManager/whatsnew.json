@@ -1,5 +1,63 @@
 [
   {
+    "version": "1.1.4",
+    "date": "2026-11-22",
+    "new": {
+      "en": [
+        "Roblox tab: communities, private servers and trades, as on Roblox's own pages.",
+        "Roblox tab: a game's badges, a profile's collections, a Limited's price history, and Block / Unblock.",
+        "The 3D avatar comes alive: it looks at your mouse, moves as its animation pack does and plays its emotes. Click it to wave, jump or dance.",
+        "Accounts' windows view: a hidden or minimized Roblox window shows a picture of its game, taken again every half minute.",
+        "Click Like or Dislike again to take your vote back."
+      ],
+      "vi": [
+        "Tab Roblox: cộng đồng, server riêng và giao dịch, giống trang của Roblox.",
+        "Tab Roblox: huy hiệu của game, bộ sưu tập trong hồ sơ, lịch sử giá đồ Limited, Chặn và Bỏ chặn.",
+        "Avatar 3D sống động: nhìn theo chuột, cử động theo gói animation đang mặc, diễn emote. Bấm vào để vẫy tay, bật nhảy hoặc nhảy múa.",
+        "Xem cửa sổ ở trang Tài khoản: cửa sổ Roblox đang ẩn hoặc thu nhỏ hiện ảnh chụp game, chụp lại mỗi nửa phút.",
+        "Bấm Thích hoặc Không thích lần nữa để bỏ bình chọn."
+      ]
+    },
+    "improved": {
+      "en": [
+        "Uses far less memory and CPU, most of all with animated themes, game pictures and the 3D avatar.",
+        "Motion runs at 60 frames a second.",
+        "Gameplay clips are decoded on the graphics card: smoother and lighter.",
+        "Wide game tiles show Roblox's wide picture instead of a blurred icon.",
+        "Server country menu: every country named, and the scan starts as the game page opens.",
+        "Friend requests say when they were sent.",
+        "The top bar's figures keep their width, and the status bar's groups sit evenly apart.",
+        "Every page has the same margin.",
+        "Send feedback includes more of the log, so a problem from days earlier can still be found."
+      ],
+      "vi": [
+        "Tốn ít RAM và CPU hơn hẳn, nhất là với theme động, ảnh game và avatar 3D.",
+        "Hiệu ứng chạy 60 khung hình/giây.",
+        "Clip gameplay giải mã bằng card đồ hoạ: mượt và nhẹ hơn.",
+        "Ô game rộng hiện ảnh ngang của Roblox, không còn icon bị mờ.",
+        "Menu quốc gia server: đủ tên mọi nước, quét ngay khi mở trang game.",
+        "Lời mời kết bạn có ghi thời gian gửi.",
+        "Số liệu trên thanh trên cùng giữ nguyên độ rộng, các nhóm ở thanh trạng thái cách đều.",
+        "Mọi trang có cùng lề.",
+        "Gửi góp ý kèm nhiều log hơn, lỗi từ mấy ngày trước vẫn tìm được."
+      ]
+    },
+    "fixed": {
+      "en": [
+        "Error 403 on every join on networks that reach Roblox over IPv6, while Roblox in the browser worked.",
+        "Roblox crashing at once on every open while a Roblox with no window was left running: Bloxkeep now closes that one.",
+        "The Mini window and macro panels opened blank after being closed once.",
+        "Anti-AFK's Other key list fits inside its card."
+      ],
+      "vi": [
+        "Lỗi 403 mỗi lần vào game trên mạng kết nối Roblox qua IPv6, trong khi Roblox trên trình duyệt vẫn chạy.",
+        "Roblox văng ngay mỗi lần mở khi còn một Roblox không cửa sổ chạy ngầm: Bloxkeep giờ tự đóng nó.",
+        "Cửa sổ nhỏ và bảng macro mở ra trống trơn sau lần đóng đầu.",
+        "Danh sách Phím khác của Chống AFK nằm gọn trong thẻ."
+      ]
+    }
+  },
+  {
     "version": "1.1.3",
     "date": "2026-11-20",
     "new": {
