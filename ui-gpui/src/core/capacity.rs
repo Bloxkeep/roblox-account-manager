@@ -167,12 +167,14 @@ pub fn tick(players: &[PlayerProcess], memory: &MemoryStatus, cpu: Option<i32>, 
     };
     match estimate(&each, &now) {
         Some(fit) => {
-            // Said once a change, so a report shows what the number came from.
-            // (At most every ten minutes, or when another thing runs out first: the number itself wobbles by one.)
-            static SAID: Mutex<Option<(&'static str, std::time::Instant)>> = Mutex::new(None);
+            // Said when the number changes (at most once a minute: it can wobble by one) and every ten minutes, so a
+            // report shows what it came from. Not when only "what runs out first" changes: with the PC full, RAM, CPU
+            // and GPU are all past their top and the first of them swaps from tick to tick, which wrote this line every
+            // two seconds for hours (a person's error.log, 2026-11-21: 2,694 of its 9,741 lines).
+            static SAID: Mutex<Option<(i64, std::time::Instant)>> = Mutex::new(None);
             let mut said = SAID.lock().unwrap_or_else(|e| e.into_inner());
-            if said.is_none_or(|(by, at)| by != fit.by || at.elapsed().as_secs() >= 600) {
-                *said = Some((fit.by, std::time::Instant::now()));
+            if said.is_none_or(|(max, at)| (max != fit.max && at.elapsed().as_secs() >= 60) || at.elapsed().as_secs() >= 600) {
+                *said = Some((fit.max, std::time::Instant::now()));
                 log::note_file(&format!(
                     "Capacity: about {} window(s) fit ({} first): each takes {:.0} MB RAM, {:.0} MB promised, {:.1} % CPU, {:.1} % GPU; the PC has {:.0} of {:.0} MB RAM free, {:.0} MB left to promise, CPU {} % busy.",
                     fit.max,

@@ -175,6 +175,15 @@ pub async fn run(c: &mut Checks, dir: &str) {
     let kept = kept_from(&(output + &filler(8)));
     c.check("the game's own output is never kept", kept.iter().all(|l| !l.contains("SomeoneElse")), &kept);
 
+    // Roblox's own hand-over of a start to a Roblox already running is said only in that channel; the crash after it
+    // (SingleInstanceGuard) means nothing without it (a person's error.log, 2026-11-21).
+    let handoff = line("10:00:03", "3.0", "[FLog::Output] NoReload Detector: WebPlay NoReload with Tray only!")
+        + &line("10:00:03", "3.1", "[LOGCHANNELS + 1] RBXCRASH: UnhandledException (class wil::ResultException SingleInstanceGuard.cpp(146) Failed to send message ID 49684, result: 0, error: 1400)")
+        + &line("10:00:04", "4.0", "[FLog::Output] NoReload Detector: Players.SomeoneElse username");
+    let kept = kept_from(&(filler(8) + &handoff));
+    c.check("Roblox's NoReload line in the output channel is kept, before its crash", kept.iter().any(|l| l.contains("WebPlay NoReload with Tray only")) && kept.iter().any(|l| l.contains("SingleInstanceGuard")), &kept);
+    c.check("…but not one of them naming a player", kept.iter().all(|l| !l.contains("SomeoneElse")), &kept);
+
     // Uptime 403.97 s must not read as HTTP 403.
     let uptime = line("10:06:43", "403.979248", "[FLog::Graphics] quality level 5");
     let kept = kept_from(&(uptime + &filler(8)));

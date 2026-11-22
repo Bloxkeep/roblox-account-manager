@@ -839,10 +839,21 @@ struct Kept {
 static NEVER_KEPT: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r#"(?i)joinscripturl|ticket=|ticket"|gameinfo:|username|displayname|user_?id|\[FLog::(?:Output|CreatorError)\]"#).expect("never-kept pattern")
 });
+/// NEVER_KEPT's words alone (not its channels): what a kept Roblox output line must not have either.
+static NEVER_KEPT_WORDS: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r#"(?i)joinscripturl|ticket=|ticket"|gameinfo:|username|displayname|user_?id"#).expect("never-kept words pattern")
+});
+/// Roblox's own words in the game-output channel, kept all the same: its start handing the launch to a Roblox already
+/// running ("NoReload Detector: WebPlay NoReload with Tray only!") is said only there, and that is what a client that
+/// crashes at once in SingleInstanceGuard was doing (the owner's Roblox log, 2026-11-13). A person's error.log
+/// (2026-11-16 to 11-21, nine such crashes) had the crash with the line before it cut.
+static ROBLOX_OUTPUT: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"\[FLog::Output\] (?:NoReload Detector|App NoReload)").expect("roblox-output pattern")
+});
 /// Roblox's own account of a session: its network, joins, leaves, updater and crash lines, and words that say why.
 static SAYS_WHY: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(
-        r"(?i)\[D?FLog::(?:Network|NetworkClient|SessionTransitionFSM|UpdateController|CrashReportLog|Teleport\w*|GameJoin\w*|PlaceLauncher\w*)\]|disconnect|kick|\bban(?:ned)?\b|authenticat|unauthori|forbidden|denied|lost connection|shut ?down|leaveUGCGame|not.?approved|moderat|WebLogin|authentication-ticket|NoReload|singleton|\b40[13]\b|\b429\b|\[D?FLog::HttpTraceError\].*roblox\.com",
+        r"(?i)\[D?FLog::(?:Network|NetworkClient|SessionTransitionFSM|UpdateController|CrashReportLog|Teleport\w*|GameJoin\w*|PlaceLauncher\w*)\]|disconnect|kick|\bban(?:ned)?\b|authenticat|unauthori|forbidden|denied|lost connection|shut ?down|leaveUGCGame|not.?approved|moderat|WebLogin|authentication-ticket|NoReload|singleton|systray|\b40[13]\b|\b429\b|\[D?FLog::HttpTraceError\].*roblox\.com",
     )
     .expect("says-why pattern")
 });
@@ -899,7 +910,7 @@ fn push_kept(ring: &mut VecDeque<Kept>, kept: Kept, most: usize) {
 }
 
 fn keep_line(tail: &mut Tail, line: &str) {
-    if line.trim().is_empty() || NEVER_KEPT.is_match(line) {
+    if line.trim().is_empty() || (NEVER_KEPT.is_match(line) && !(ROBLOX_OUTPUT.is_match(line) && !NEVER_KEPT_WORDS.is_match(line))) {
         return;
     }
     tail.lines_read += 1;

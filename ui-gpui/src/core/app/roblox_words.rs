@@ -62,8 +62,9 @@ impl App {
     /// A launch's client quit before its window: its Roblox log's lines (followed, or found afterwards by when it began).
     /// Returns how many quit in a row with other Roblox windows open, counting this one (0 with none open). A user's log
     /// (2026-11-10 to 11-14, five times): once that starts, every new client quits for any account until all windows are
-    /// closed; closing them all is the only recovery the log shows.
-    pub fn note_quit(&self, launch: &PendingLaunch) -> u32 {
+    /// closed; closing them all is the only recovery the log shows. Also whether it crashed in Roblox's SingleInstanceGuard
+    /// (handing its launch to a Roblox already running, see end_handoff_targets).
+    pub fn note_quit(&self, launch: &PendingLaunch) -> (u32, bool) {
         let others_open = !self.controller.running.borrow().is_empty();
         let in_a_row = QUITS_IN_A_ROW.with(|q| {
             q.set(if others_open { q.get() + 1 } else { 0 });
@@ -84,6 +85,7 @@ impl App {
         if found.is_empty() {
             log::note_file("Roblox's log of the client that quit: none found (no Player log begun since the start).");
         }
+        let handoff = found.iter().any(|(_, lines)| lines.iter().any(|l| l.contains("SingleInstanceGuard")));
         for (what, lines) in found {
             let text = if lines.is_empty() {
                 format!("Roblox's log of {what}, which quit before its window: nothing in it.")
@@ -92,6 +94,6 @@ impl App {
             };
             log::note_file(&self.scrub_roblox_words(&text));
         }
-        in_a_row
+        (in_a_row, handoff)
     }
 }

@@ -1248,7 +1248,8 @@ impl App {
                         continue;
                     }
                     log::note(&format!("Launch: account {}'s Roblox quit before its window came.", short(launch.account_id)));
-                    let in_a_row = self.note_quit(&launch);
+                    let (in_a_row, handoff) = self.note_quit(&launch);
+                    let cleared = handoff && self.end_handoff_targets() > 0;
                     // Opened by hand: said. "Opened 1 account." was the last word with no window to show for it (the
                     // owner's run, 2026-11-13). A rejoin has its own words (drop_pending), a handed-over one its session's end.
                     if !launch.rejoin
@@ -1257,7 +1258,7 @@ impl App {
                         && let Some(account) = self.find_account(launch.account_id)
                     {
                         let n = self.name(&account);
-                        let said = if in_a_row >= 2 {
+                        let said = if in_a_row >= 2 && !cleared {
                             l::f("{0}: Roblox closed again before its window opened. If it keeps happening, close all Roblox windows, then open them again.", &[&n])
                         } else {
                             l::f("{0}: Roblox closed before its window opened. Try again.", &[&n])
@@ -1623,6 +1624,47 @@ impl App {
         delay(ct, Duration::from_millis(500)).await?;
         self.arm_multi_if_free(&roblox_processes::get_player_pids());
         Ok(true)
+    }
+
+    /// A new client crashed at once in Roblox's SingleInstanceGuard ("Failed to send message …, error: 1400"): it found
+    /// a Roblox already running and handed its launch to it ("NoReload Detector: WebPlay NoReload with Tray only!", the
+    /// owner's Roblox log, 2026-11-13), whose window wasn't there to take it. Every start after it crashed the same way
+    /// until that Roblox was gone: a person's error.log, 2026-11-16 to 11-21, nine crashes in four runs, each with "1
+    /// Roblox already running" and each over once Close all ended it. So the Roblox with no window that no account
+    /// owns and no launch under way may be starting is ended now, and the next start opens. Each is said, with what it
+    /// was, so the next report shows it. The number ended.
+    pub fn end_handoff_targets(&self) -> usize {
+        let players = roblox_processes::get_players();
+        let windows = roblox_processes::visible_windows(&players.iter().map(|p| p.pid).collect::<Vec<_>>());
+        let owned: HashSet<i32> = self.controller.running.borrow().values().map(|(pid, _)| *pid).collect();
+        // (A launch under way may own any Roblox started since it began, its window still to come.)
+        let opening_since = pending(self).iter().map(|l| l.started_at.get()).min();
+        let mut ended = 0;
+        for p in &players {
+            let has_window = windows.get(&p.pid).is_some_and(|w| !w.is_empty());
+            let started = if p.created > 0 { Some(win_kit::filetime_to_stamp(p.created)) } else { None };
+            let maybe_opening = match (opening_since, started) {
+                (Some(since), Some(at)) => at >= since,
+                (Some(_), None) => true,
+                (None, _) => false,
+            };
+            if has_window || owned.contains(&p.pid) || maybe_opening {
+                continue;
+            }
+            let tray = roblox_processes::is_tray_copy(p.pid, p.created);
+            log::note(&format!(
+                "Launch: Roblox {} (no window, {}, started {}) ended: a new Roblox crashed handing its launch to it.",
+                p.pid,
+                if tray { "its notification-area copy" } else { "no account's" },
+                started.map_or("when not known".to_string(), |at| format!("{:.0} s ago", Stamp::utc_now().secs_since(at)))
+            ));
+            roblox_processes::kill(p.pid);
+            ended += 1;
+        }
+        if ended == 0 {
+            log::note("Launch: a new Roblox crashed handing its launch to a Roblox already running; none without a window to end (each has an account's window, or may be a launch's).");
+        }
+        ended
     }
 
     /// Multi-Roblox takes Roblox's name when it is on and not holding it yet, and no Roblox runs to hold it instead.
