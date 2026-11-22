@@ -24,6 +24,7 @@ mod duo_icons;
 mod frame;
 mod frame_tally;
 mod heap;
+mod mem_regions;
 mod mem_tally;
 mod history;
 mod i18n;

@@ -215,6 +215,47 @@ pub mod sites {
         (out, all)
     }
 
+    /// The addresses of the allocations kept now (where Rust's heap has memory: mem_regions.rs).
+    pub fn addresses() -> Vec<usize> {
+        let _ = BUSY.try_with(|b| b.set(true));
+        let out = STATE.hold().as_ref().map(|st| st.held.keys().copied().collect()).unwrap_or_default();
+        let _ = BUSY.try_with(|b| b.set(false));
+        out
+    }
+
+    /// Every kept stack, the biggest first: what its samples stand for, how many, and its calls as offsets in the exe
+    /// (x: outside it), one a line, for heap-sites.txt beside error.log (read with the build's .pdb: E:/Rust/pdb/rva.py).
+    #[cfg(feature = "core")]
+    pub fn dump() -> String {
+        if !ON.load(Relaxed) {
+            return String::new();
+        }
+        let base = BASE.load(Relaxed);
+        let _ = BUSY.try_with(|b| b.set(true));
+        let mut sum: HashMap<u32, (usize, usize)> = HashMap::new();
+        let mut rows: Vec<(Stack, usize, usize)> = Vec::new();
+        let mut all = 0;
+        if let Some(st) = STATE.hold().as_ref() {
+            for &(id, w) in st.held.values() {
+                let e = sum.entry(id).or_default();
+                e.0 += w;
+                e.1 += 1;
+                all += w;
+            }
+            rows = sum.into_iter().map(|(id, (w, n))| (st.stacks[id as usize], w, n)).collect();
+        }
+        rows.sort_by(|a, b| b.1.cmp(&a.1));
+        let mut out = format!("# Heap sites: one sample per {} KB asked for, {} bytes sampled, exe build {}
+", RATE / 1024, all, env!("CARGO_PKG_VERSION"));
+        for (ips, w, n) in rows {
+            let calls: Vec<String> = ips.iter().filter(|&&ip| ip != 0).map(|&ip| if ip > base && ip - base < 1 << 30 { format!("{:x}", ip - base) } else { "x".into() }).collect();
+            out += &format!("{w}	{n}	{}
+", calls.join(","));
+        }
+        let _ = BUSY.try_with(|b| b.set(false));
+        out
+    }
+
     /// For error.log: the `top` biggest holders, each its MB and its calls as offsets in the exe (x: outside it).
     pub fn holders(top: usize) -> String {
         if !ON.load(Relaxed) {

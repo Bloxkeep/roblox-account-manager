@@ -90,8 +90,14 @@ fn line(why: &str, cx: &mut App) -> usize {
         mb(other_committed),
         mb(other_used),
     ));
+    #[cfg(windows)]
+    write(&crate::mem_regions::line());
     #[cfg(feature = "core")]
-    write(&crate::heap::sites::holders(12));
+    {
+        write(&crate::heap::sites::holders(12));
+        // Every holder, for reading with the build's .pdb (the line above has only the biggest).
+        let _ = std::fs::write(crate::core::vault::data_dir().join("heap-sites.txt"), crate::heap::sites::dump());
+    }
     private_working
 }
 
