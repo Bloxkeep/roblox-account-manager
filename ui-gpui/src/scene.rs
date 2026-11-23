@@ -694,7 +694,7 @@ fn draw(bytes: &[u8], svg: bool, whole: bool, w: u32, h: u32, blur: u32, under: 
         let (w, h) = drawn(size.width(), size.height(), s);
         let mut pixmap = resvg::tiny_skia::Pixmap::new(w, h)?;
         let (dx, dy) = ((w as f32 - size.width() * s) / 2., (h as f32 - size.height() * s) / 2.);
-        resvg::render(&tree, resvg::tiny_skia::Transform::from_row(s, 0., 0., s, dx, dy), &mut pixmap.as_mut());
+        paint_svg(tree.root(), resvg::tiny_skia::Transform::from_row(s, 0., 0., s, dx, dy), &mut pixmap);
         // tiny-skia's pixels are premultiplied: back to straight alpha.
         let mut dots = pixmap.take();
         for p in dots.chunks_exact_mut(4) {
@@ -741,6 +741,59 @@ fn draw(bytes: &[u8], svg: bool, whole: bool, w: u32, h: u32, blur: u32, under: 
         *p = image::Rgba([px[2].round() as u8, px[1].round() as u8, px[0].round() as u8, 255]);
     }
     Some(pic)
+}
+
+/// The SVG drawn as resvg::render draws it, but a group under a strong blur drawn small and stretched to size. resvg
+/// blurs a group in three copies of the blur's whole area, past the window's own size: Space's glow (a blur of 70 on a
+/// 200 % area) took 3 x 81.5 MB at 2861x1465 for a moment, and Rust's heap went to 198 MB as the theme was drawn (the
+/// owner's "vào trang AVT nó tăng phát lên 200MB", error.log 2026-11-23 23:41). A blur that strong has no detail a
+/// smaller copy loses; what is sharp (Space's stars) is still drawn at full size, in its place in the order.
+fn paint_svg(group: &resvg::usvg::Group, t: resvg::tiny_skia::Transform, pixmap: &mut resvg::tiny_skia::Pixmap) {
+    use resvg::{tiny_skia::{FilterQuality, Pixmap, PixmapPaint, Transform}, usvg::Node};
+    for node in group.children() {
+        // (resvg::render_node places a node by its box, moved there first: moved back, it lands where render puts it.)
+        let Some(b) = node.abs_layer_bounding_box() else { continue };
+        let back = |t: Transform| t.pre_translate(b.x(), b.y());
+        if let Node::Group(g) = node {
+            // A group drawn as its children are (no opacity, clip, mask, filter, blend): its blurred ones looked at.
+            if g.filters().is_empty() && g.opacity().get() >= 1. && g.clip_path().is_none() && g.mask().is_none() && g.blend_mode() == resvg::usvg::BlendMode::Normal && !g.isolate() && blurs_inside(g) {
+                paint_svg(g, t.pre_concat(g.transform()), pixmap);
+                continue;
+            }
+            if let Some(f) = blur_shrink(g, t) {
+                let Some(mut small) = Pixmap::new(pixmap.width().div_ceil(f), pixmap.height().div_ceil(f)) else { continue };
+                let k = 1. / f as f32;
+                resvg::render_node(node, back(Transform::from_scale(k, k).pre_concat(t)), &mut small.as_mut());
+                let paint = PixmapPaint { quality: FilterQuality::Bilinear, ..Default::default() };
+                pixmap.draw_pixmap(0, 0, small.as_ref(), &paint, Transform::from_scale(f as f32, f as f32), None);
+                continue;
+            }
+        }
+        resvg::render_node(node, back(t), &mut pixmap.as_mut());
+    }
+}
+
+/// Whether a group under `g` has a filter.
+fn blurs_inside(g: &resvg::usvg::Group) -> bool {
+    g.children().iter().any(|n| matches!(n, resvg::usvg::Node::Group(c) if !c.filters().is_empty() || blurs_inside(c)))
+}
+
+/// How many times smaller group `g` may be drawn (drawn with `t`): its filters are blurs only, the weakest at least
+/// 12 px on the screen (at most 8 times: the blur stays 6 px or more where it is drawn); clipped or masked, its edges
+/// would soften, and it is drawn at full size.
+fn blur_shrink(g: &resvg::usvg::Group, t: resvg::tiny_skia::Transform) -> Option<u32> {
+    use resvg::usvg::filter::Kind;
+    if g.filters().is_empty() || g.clip_path().is_some() || g.mask().is_some() {
+        return None;
+    }
+    let mut weakest = f32::MAX;
+    for p in g.filters().iter().flat_map(|f| f.primitives()) {
+        let Kind::GaussianBlur(b) = p.kind() else { return None };
+        weakest = weakest.min(b.std_dev_x().get().min(b.std_dev_y().get()));
+    }
+    let (sx, sy) = t.pre_concat(g.transform()).get_scale();
+    let f = (weakest * sx.min(sy) / 6.).floor().min(8.);
+    (f >= 2.).then_some(f as u32)
 }
 
 /// The drawn picture as the web's backdrop-filter shows it through a panel: blurred (`sigma` device px, CSS blur's
