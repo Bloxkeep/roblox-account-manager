@@ -10,15 +10,17 @@ const refresh = element('refresh');
 const windows = element('windows');
 const signal = element('signal');
 const sharpButton = element('sharp');
+const fullscreenButton = element('fullscreen');
+const screen = element('screen');
 // "Sharper": the watched window made big on the PC while it is watched. Off until asked for.
 let sharp = false;
 let sharpNote;
 function renderSharp() {
-  sharpButton.textContent = sharpNote ? t('macro') : t('sharp');
+  sharpButton.lastElementChild.textContent = sharpNote ? t('macro') : t('sharp');
   sharpButton.title = t('sharpHelp');
   sharpButton.setAttribute('aria-pressed', String(sharp));
 }
-const languageChoice = element('language');
+const languageButtons = [...element('language').querySelectorAll('button[data-lang]')];
 let language = localStorage.getItem('monitor-language') === 'vi' ? 'vi' : 'en';
 const t = (key, value) => {
   const text = words[language][key];
@@ -47,6 +49,11 @@ let detail = ['loadingWindows'];
 let messageKey = 'choose';
 let statusKey = 'waiting';
 let statusLive = false;
+// Pictures of the windows for their tiles: taken one window at a time, a few seconds apart, while the page is shown.
+const thumbs = new Map();
+let thumbTimer;
+let thumbTurn = 0;
+let listing = false;
 
 function setDetail(key, value) {
   detail = [key, value];
@@ -59,6 +66,38 @@ function sourceLabel(item) {
   return item.label || t('unknownWindow', item.ordinal);
 }
 
+const pillWords = { live: 'tileLive', seen: 'tileSeen', none: 'tileNone', waiting: 'tileWaiting' };
+
+function tileState(item) {
+  if (source?.id === item.id && (liveClock || running)) return 'live';
+  const thumb = thumbs.get(item.id);
+  if (!thumb) return 'waiting';
+  return thumb.url ? 'seen' : 'none';
+}
+
+const corners = () => ['tl', 'tr', 'bl', 'br'].map((at) => {
+  const mark = document.createElement('span');
+  mark.className = `corner ${at}`;
+  mark.setAttribute('aria-hidden', 'true');
+  return mark;
+});
+
+// The window's last picture, or its name's first letter, large and quiet, while there is none.
+function tilePicture(item, name) {
+  const url = thumbs.get(item.id)?.url;
+  if (url) {
+    const picture = document.createElement('img');
+    picture.alt = '';
+    picture.src = url;
+    return picture;
+  }
+  const initial = document.createElement('span');
+  initial.className = 'tile-initial';
+  initial.setAttribute('aria-hidden', 'true');
+  initial.textContent = [...name.trim()][0]?.toUpperCase() ?? '';
+  return initial;
+}
+
 function renderWindows() {
   const note = element('window-note');
   const items = data?.windows ?? [];
@@ -68,27 +107,90 @@ function renderWindows() {
   note.textContent = noteKey ? t(noteKey) : '';
   windows.replaceChildren(...items.map((item) => {
     const button = document.createElement('button');
-    const label = document.createElement('span');
-    const title = document.createElement('strong');
-    const action = document.createElement('small');
+    const text = document.createElement('span');
+    const title = document.createElement('span');
+    const pill = document.createElement('span');
+    const dot = document.createElement('i');
+    const words = document.createElement('span');
+    const state = tileState(item);
+    const name = sourceLabel(item);
     button.type = 'button';
-    button.className = 'source-button';
+    button.className = 'tile';
     button.dataset.source = item.id;
-    label.className = 'window-label';
-    title.textContent = sourceLabel(item);
-    action.textContent = t(videoView ? 'watch' : 'preview');
-    label.append(title, action);
-    button.append(label);
+    button.setAttribute('aria-label', `${name} · ${t(videoView ? 'watch' : 'preview')}`);
+    button.append(tilePicture(item, name));
+    text.className = 'tile-text';
+    title.className = 'tile-name';
+    title.textContent = name;
+    pill.className = 'pill';
+    pill.dataset.state = state;
+    words.textContent = t(pillWords[state]);
+    pill.append(dot, words);
+    text.append(title, pill);
+    button.append(...corners(), text);
     button.addEventListener('click', () => setSource(item));
     return button;
   }));
+  syncSelection();
+}
+
+function stopThumbs() {
+  clearTimeout(thumbTimer);
+  thumbTimer = undefined;
+}
+
+function nextThumb(delay) {
+  stopThumbs();
+  thumbTimer = setTimeout(takeThumb, delay);
+}
+
+// One window's picture at a time, round the windows (the one watched live left out): every window about every 6 s.
+async function takeThumb() {
+  thumbTimer = undefined;
+  const items = (data?.windows ?? []).filter((item) => !(liveClock && item.id === source?.id));
+  if (!key || document.hidden || !items.length) return;
+  if (listing) {
+    nextThumb(1000);
+    return;
+  }
+  const item = items[thumbTurn++ % items.length];
+  let wait = Math.max(1200, 6000 / items.length);
+  try {
+    const response = await fetch(`/api/thumb/${item.id}`, { headers });
+    if (response.status === 401) {
+      disableSession();
+      return;
+    }
+    const previous = thumbs.get(item.id)?.url;
+    if (response.status === 200) {
+      const blob = await response.blob();
+      thumbs.set(item.id, { url: URL.createObjectURL(blob) });
+      if (previous) URL.revokeObjectURL(previous);
+    } else if (response.status === 204) {
+      thumbs.set(item.id, {});
+      if (previous) URL.revokeObjectURL(previous);
+    } else {
+      wait = 2500;
+    }
+    // (Only that tile's picture changes, so a tile in focus or under the finger stays as it is.)
+    const tile = [...windows.querySelectorAll('.tile')].find((node) => node.dataset.source === item.id);
+    if (tile) {
+      tile.firstElementChild.replaceWith(tilePicture(item, sourceLabel(item)));
+      syncSelection();
+    }
+  } catch {
+    wait = 4000;
+  }
+  if (!document.hidden && key && data && !thumbTimer) nextThumb(wait);
 }
 
 function renderLanguage() {
   document.documentElement.lang = language;
   document.title = t('title') + ' · Bloxkeep';
-  languageChoice.value = language;
-  languageChoice.setAttribute('aria-label', t('language'));
+  for (const button of languageButtons) button.setAttribute('aria-pressed', String(button.dataset.lang === language));
+  element('language').setAttribute('aria-label', t('language'));
+  fullscreenButton.title = t('fullscreen');
+  sample.title = t('demoHelp');
   frame.alt = t('stillAlt');
   video.setAttribute('aria-label', t('videoLabel'));
   for (const node of document.querySelectorAll('[data-i18n]')) {
@@ -99,14 +201,16 @@ function renderLanguage() {
   message.textContent = t(messageKey);
   status(statusKey, statusLive);
   renderWindows();
-  syncSelection();
+  renderSharp();
 }
 
-languageChoice.addEventListener('change', () => {
-  language = languageChoice.value === 'en' ? 'en' : 'vi';
-  localStorage.setItem('monitor-language', language);
-  renderLanguage();
-});
+for (const button of languageButtons) {
+  button.addEventListener('click', () => {
+    language = button.dataset.lang === 'vi' ? 'vi' : 'en';
+    localStorage.setItem('monitor-language', language);
+    renderLanguage();
+  });
+}
 
 const livePost = (path) => fetch(`/api/live/${path}`, { method: 'POST', headers, keepalive: true });
 
@@ -257,8 +361,32 @@ function syncSelection() {
   }
   element('active-source').textContent = sourceLabel(source);
   pause.disabled = !source || (videoView && source.id !== 'demo' && !liveClock);
-  pause.textContent = t(liveClock ? 'stop' : running ? 'pause' : 'resume');
+  const does = liveClock ? 'stop' : running || !source ? 'pause' : 'resume';
+  screen.dataset.empty = String(!source);
+  pause.dataset.does = does;
+  element('pause-label').textContent = t(does);
+  fullscreenButton.disabled = !source;
+  for (const tile of windows.querySelectorAll('.tile')) {
+    const item = data?.windows?.find((w) => w.id === tile.dataset.source);
+    const pill = tile.querySelector('.pill');
+    if (!item || !pill) continue;
+    const state = tileState(item);
+    if (pill.dataset.state !== state) {
+      pill.dataset.state = state;
+      pill.lastElementChild.textContent = t(pillWords[state]);
+    }
+  }
 }
+
+fullscreenButton.addEventListener('click', () => {
+  if (document.fullscreenElement) {
+    void document.exitFullscreen();
+    return;
+  }
+  // (iPhone Safari has no full screen for a page, only its video player's own.)
+  if (screen.requestFullscreen) void screen.requestFullscreen().catch(() => {});
+  else if (!video.hidden && video.webkitEnterFullscreen) video.webkitEnterFullscreen();
+});
 
 function setSource(next) {
   if (opening) return;
@@ -280,6 +408,7 @@ function setSource(next) {
 function disableSession() {
   void stopLive();
   stopPoll();
+  stopThumbs();
   running = false;
   source = undefined;
   syncSelection();
@@ -346,6 +475,7 @@ async function updateFrame() {
 
 async function loadWindows() {
   refresh.disabled = true;
+  listing = true;
   setDetail('loadingWindows');
   try {
     const response = await fetch('/api/windows', { headers });
@@ -357,6 +487,11 @@ async function loadWindows() {
     data = await response.json();
     videoView = Boolean(data.video);
     data.windows = data.windows.map((item, index) => ({ ...item, ordinal: index + 1 }));
+    for (const [id, thumb] of thumbs) {
+      if (data.windows.some((item) => item.id === id)) continue;
+      if (thumb.url) URL.revokeObjectURL(thumb.url);
+      thumbs.delete(id);
+    }
     if (source && source.id !== 'demo') {
       const current = data.windows.find((item) => item.id === source.id);
       source = current ?? { id: source.id, ordinal: source.ordinal };
@@ -369,7 +504,9 @@ async function loadWindows() {
   } catch {
     setDetail('windowsFailed');
   } finally {
+    listing = false;
     if (!sample.disabled) refresh.disabled = false;
+    if (data && !thumbTimer) nextThumb(300);
   }
 }
 
@@ -395,8 +532,11 @@ document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
     if (liveClock) lostVideo();
     stopPoll();
+    stopThumbs();
+  } else {
+    if (running) updateFrame();
+    if (data && key) nextThumb(300);
   }
-  else if (running) updateFrame();
 });
 window.addEventListener('pagehide', stopLive);
 

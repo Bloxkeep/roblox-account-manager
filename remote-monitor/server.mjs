@@ -11,6 +11,14 @@ const key = randomBytes(24).toString('hex');
 const expected = Buffer.from(`Bearer ${key}`);
 const bridgeKey = process.env.BK_MONITOR_KEY;
 const capture = createCapture(process.env.BK_MONITOR_APP);
+// The capture worker answers one command at a time (a second one while it works gets nothing): the window list and the
+// tiles' pictures wait their turn.
+let captureTurn = Promise.resolve();
+function inTurn(command) {
+  const asked = captureTurn.then(() => capture.call(command));
+  captureTurn = asked.catch(() => {});
+  return asked;
+}
 const live = createLive(bridgeKey);
 const web = new Map();
 for (const [path, file, type] of [
@@ -94,7 +102,7 @@ async function handle(req, res) {
   }
   if (path === '/api/windows') {
     const [body, roster] = await Promise.all([
-      capture.call('list'),
+      inTurn('list'),
       loadRoster(bridgeKey),
     ]);
     if (!body) {
@@ -124,6 +132,14 @@ async function handle(req, res) {
     const matched = live.heartbeat(videoId);
     if (path.endsWith('/stop') && matched) live.stop();
     res.writeHead(matched ? 204 : 404).end();
+    return;
+  }
+  // A tile's picture of a window: what it shows now, read only (a minimized or hidden window has none, never shown for it).
+  const thumb = /^\/api\/thumb\/(\d{1,10})-(\d{1,19})$/.exec(path);
+  if (thumb) {
+    const body = await inTurn(`frame ${thumb[1]} ${thumb[2]}`);
+    if (body?.length) reply(res, 200, 'image/jpeg', body);
+    else res.writeHead(body ? 204 : 503).end();
     return;
   }
   if (path === '/api/frame/demo') {

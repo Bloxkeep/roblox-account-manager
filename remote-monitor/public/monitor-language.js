@@ -34,6 +34,7 @@ export const words = {
     inUse: 'Đang có phiên xem live.',
     sharp: 'Nét hơn', sharpHelp: 'Phóng to cửa sổ Roblox trên PC trong lúc xem, xem xong trả về như cũ',
     macro: 'Đang chạy macro: không phóng to',
+    fullscreen: 'Toàn màn hình', tileLive: 'Đang live', tileSeen: 'Đang hiện', tileNone: 'Thu nhỏ hoặc ẩn', tileWaiting: 'Đang lấy hình',
   },
   en: {
     language: 'Language', title: 'Game Monitor', lan: 'Local network', remote: 'Remote viewing',
@@ -70,5 +71,6 @@ export const words = {
     inUse: 'A live session is already active.',
     sharp: 'Sharper', sharpHelp: 'Makes the Roblox window big on the PC while you watch, and puts it back after',
     macro: 'A macro is running: not made bigger',
+    fullscreen: 'Full screen', tileLive: 'Live', tileSeen: 'On screen', tileNone: 'Minimized or hidden', tileWaiting: 'Getting a picture',
   },
 };
