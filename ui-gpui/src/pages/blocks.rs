@@ -43,7 +43,7 @@ const KEPT: usize = 3000;
 
 /// A line's words and marks, worked out once (Discord's markdown is a long regex: not on every frame).
 fn run_of(root: &Root, id: &str, text: &str) -> std::rc::Rc<Run> {
-    let stamp = hash_of((crate::time::now_secs() / 30, root.i18n.vietnamese, SHOWN_N.load(std::sync::atomic::Ordering::Relaxed)));
+    let stamp = hash_of((crate::time::now_secs() / 30, root.i18n.lang, SHOWN_N.load(std::sync::atomic::Ordering::Relaxed)));
     let key = hash_of((id, text));
     RUNS.with(|c| {
         let mut c = c.borrow_mut();

@@ -102,12 +102,11 @@ pub fn strip(root: &Root, cx: &mut Context<Root>) -> Div {
 
 /// What's behind the figures.
 fn panel(root: &Root, load: &Load, cx: &mut Context<Root>) -> Stateful<Div> {
-    let vi = root.i18n.vietnamese;
     let (word, tone) = load.state(root);
     let together = root.i18n.tv("mon.load.together", &[("n", &load.windows.to_string())]);
     let ram_words = root.i18n.tv(
         "mon.load.ram",
-        &[("used", &mb_text(load.ram_mb, vi)), ("total", &mb_text(load.system_mb, vi)), ("commit", &mb_text(load.commit_mb, vi))],
+        &[("used", &mb_text(load.ram_mb)), ("total", &mb_text(load.system_mb)), ("commit", &mb_text(load.commit_mb))],
     );
     let row = |name: &'static str, v: Option<f64>, words: String| {
         div()

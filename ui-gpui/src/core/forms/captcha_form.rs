@@ -619,7 +619,11 @@ fn escape_data_string(s: &str) -> String {
 }
 
 fn lang() -> &'static str {
-    if l::language() == "vi" { "vi" } else { "en" }
+    match crate::lang::known(&l::language()) {
+        // (Arkose names Brazilian Portuguese so.)
+        "pt" => "pt-br",
+        code => code,
+    }
 }
 
 fn hex(c: Color) -> String {

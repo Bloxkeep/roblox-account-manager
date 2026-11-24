@@ -224,7 +224,7 @@ thread_local! {
     /// While searched in Vietnamese: each text's English words, so "proxy" or "backup" finds its row too.
     static EN: std::cell::RefCell<Option<std::rc::Rc<std::collections::HashMap<String, String>>>> = const { std::cell::RefCell::new(None) };
     /// That map, made once (the words don't change while the app runs): the search used to make it again every frame.
-    static EN_MADE: std::cell::RefCell<Option<std::rc::Rc<std::collections::HashMap<String, String>>>> = const { std::cell::RefCell::new(None) };
+    static EN_MADE: std::cell::RefCell<Option<(&'static str, std::rc::Rc<std::collections::HashMap<String, String>>)>> = const { std::cell::RefCell::new(None) };
     /// While searched: the names of the groups the part being built has.
     static TITLES: std::cell::RefCell<Option<Vec<String>>> = const { std::cell::RefCell::new(None) };
     /// While the palette reads the parts: every row's words and group's name of the part being built.
@@ -318,12 +318,20 @@ fn row_wide(title: impl Into<SharedString>, desc: Option<String>, ctl: impl Into
     found(&words, el)
 }
 
-/// Each Vietnamese text's English (I18n::en_by_vi) while the page is in Vietnamese, made the first time it is asked.
+/// Each text's English (I18n::en_by_own) while the page is in another language, made the first time it is asked (and
+/// again for another language).
 fn en_of(root: &Root) -> Option<std::rc::Rc<std::collections::HashMap<String, String>>> {
-    if !root.i18n.vietnamese {
+    if root.i18n.lang == "en" {
         return None;
     }
-    Some(EN_MADE.with(|m| m.borrow_mut().get_or_insert_with(|| std::rc::Rc::new(root.i18n.en_by_vi())).clone()))
+    let lang = root.i18n.lang;
+    Some(EN_MADE.with(|m| {
+        let mut m = m.borrow_mut();
+        if m.as_ref().is_none_or(|(l, _)| *l != lang) {
+            *m = Some((lang, std::rc::Rc::new(root.i18n.en_by_own())));
+        }
+        m.as_ref().map(|(_, words)| words.clone()).unwrap_or_default()
+    }))
 }
 
 /// A row's words, and while searched in Vietnamese the English of its name and description too.
@@ -392,7 +400,7 @@ fn switch(id: &'static str, on: bool, cx: &mut Context<Root>, f: impl Fn(&mut Ro
 
 /// A choice: up to three short words side by side (one chosen), more as a menu under a compact button. `off` ones are
 /// dimmed and can't be picked.
-fn chips<T: Clone + PartialEq + 'static>(
+pub(crate) fn chips<T: Clone + PartialEq + 'static>(
     root: &Root,
     cx: &mut Context<Root>,
     key: &'static str,

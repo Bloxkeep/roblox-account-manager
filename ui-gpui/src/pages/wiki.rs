@@ -961,11 +961,15 @@ fn pic_box(url: Option<&String>, letter: &str, w: f32, h: f32, cx: &mut App) -> 
 }
 
 fn word(root: &Root, f: &str) -> String {
-    if root.i18n.vietnamese { wikitext::vi_word(f).map(str::to_string).unwrap_or_else(|| f.to_string()) } else { f.to_string() }
+    if root.i18n.vietnamese {
+        wikitext::vi_word(f).map(str::to_string).unwrap_or_else(|| f.to_string())
+    } else {
+        root.i18n.own_word(&format!("wikiw.{f}")).map_or_else(|| f.to_string(), str::to_string)
+    }
 }
 
-fn n_text(root: &Root, n: i64) -> String {
-    crate::kit::thousands(n, root.i18n.vietnamese)
+fn n_text(n: i64) -> String {
+    crate::kit::thousands(n)
 }
 
 /// The Wiki tab: the wiki's bar (its name, the search, its parts) over the view shown.
@@ -1161,7 +1165,7 @@ fn home_view(root: &Root, about: &About, kinds: Option<&[Kind]>, width: f32, cx:
         .gap(px(8.))
         .text_size(px(T_M))
         .text_color(c(MUTED))
-        .child(root.i18n.tv("wiki.articles", &[("n", &n_text(root, about.articles))]))
+        .child(root.i18n.tv("wiki.articles", &[("n", &n_text(about.articles))]))
         .child("·")
         .child(link_text("wk-main", root.tr("wiki.mainPage")).on_click(cx.listener(move |r, _, _, cx| {
             go(r, View::Page { title: main.clone(), table: None });
@@ -1303,7 +1307,7 @@ fn home_view(root: &Root, about: &About, kinds: Option<&[Kind]>, width: f32, cx:
                                 .flex_col()
                                 .gap(px(2.))
                                 .child(div().text_size(px(T_M)).font_weight(FontWeight::SEMIBOLD).truncate().child(k.name.clone()))
-                                .child(div().text_size(px(T_S)).text_color(c(MUTED)).child(root.i18n.tv("wiki.pagesN", &[("n", &n_text(root, k.count))]))),
+                                .child(div().text_size(px(T_S)).text_color(c(MUTED)).child(root.i18n.tv("wiki.pagesN", &[("n", &n_text(k.count))]))),
                         )
                         .on_click(cx.listener(move |r, _, _, cx| {
                             go(r, View::Table(t.clone()));
@@ -1545,10 +1549,10 @@ fn table_view(root: &Root, template: &str, width: f32, cx: &mut Context<Root>) -
     let loading = if table.failed {
         Some(root.tr("wiki.offline"))
     } else {
-        (!table.done).then(|| root.i18n.tv("wiki.loadingN", &[("n", &n_text(root, items.len() as i64))]))
+        (!table.done).then(|| root.i18n.tv("wiki.loadingN", &[("n", &n_text(items.len() as i64))]))
     };
     let filtered = w.filters.iter().filter(|(_, v)| !v.is_empty()).count() + ranges.len();
-    let mut tag = div().flex().flex_wrap().items_center().gap(px(10.)).text_size(px(T_M)).text_color(c(MUTED)).child(root.i18n.tv("wiki.pagesN", &[("n", &n_text(root, shown.len() as i64))]));
+    let mut tag = div().flex().flex_wrap().items_center().gap(px(10.)).text_size(px(T_M)).text_color(c(MUTED)).child(root.i18n.tv("wiki.pagesN", &[("n", &n_text(shown.len() as i64))]));
     if let Some(l) = loading {
         tag = tag.child("·").child(l);
     }
@@ -2214,7 +2218,7 @@ fn odds(root: &Root, p: f64, cx: &mut Context<Root>) -> Div {
     let marks: Vec<(f64, i64)> = [0.5, 0.9, 0.99].iter().map(|c| (*c, wikitext::tries_for(p, *c))).collect();
     let end = marks[2].1.max(1) as f32;
     let pct = format!("{}%", trim_num(p * 100.));
-    let each = root.i18n.tv("wiki.oddsEach", &[("p", &pct), ("n", &n_text(root, (1. / p).round() as i64))]);
+    let each = root.i18n.tv("wiki.oddsEach", &[("p", &pct), ("n", &n_text((1. / p).round() as i64))]);
     let tried_box = root.wiki.tried.as_ref().map(|(_, e)| e.clone());
     // Its digits only, at most 8 of them (the old box's maxLength), as at most ten million tries.
     let n: i64 = tried_box
@@ -2242,7 +2246,7 @@ fn odds(root: &Root, p: f64, cx: &mut Context<Root>) -> Div {
                 .gap(px(4.))
                 .w(px(116.))
                 .child(div().when(i == 2, |d| d.mr(px(0.))).size(px(12.)).rounded_full().bg(c(FACE)).border_2().border_color(c(PANEL)).mt(px(6.)))
-                .child(div().text_size(px(T_M)).font_weight(FontWeight::SEMIBOLD).font_features(tnum()).child(n_text(root, *n)))
+                .child(div().text_size(px(T_M)).font_weight(FontWeight::SEMIBOLD).font_features(tnum()).child(n_text(*n)))
                 .child(div().text_size(px(T_S)).text_color(c(MUTED)).child(label)),
         );
     }

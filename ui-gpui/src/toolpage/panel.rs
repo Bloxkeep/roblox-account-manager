@@ -289,7 +289,7 @@ impl Num {
     fn value_at(&self, by: i64) -> f64 {
         self.at(by).clamp(self.min, self.max)
     }
-    fn fmt(&self, v: f64, vi: bool) -> String {
+    fn fmt(&self, v: f64) -> String {
         let mut t = format!("{:.2}", v / self.scale);
         while t.contains('.') && (t.ends_with('0') || t.ends_with('.')) {
             t.pop();
@@ -297,10 +297,7 @@ impl Num {
         if t == "-0" {
             t = "0".into();
         }
-        if vi {
-            t = t.replace('.', ",");
-        }
-        t + &self.suffix
+        crate::lang::cur().decimal(&t) + &self.suffix
     }
 }
 
@@ -1225,7 +1222,7 @@ fn stepper(t: &ToolPage, p: &Panel, o: &Value, cx: &mut Context<ToolPage>) -> An
     let name = s(o, "name");
     let n = Num::of(o);
     let moved = p.moved.get(&name).copied().unwrap_or(0);
-    let shown = if moved != 0 { n.fmt(n.value_at(moved), t.i18n.vietnamese) } else { s(o, "shown") };
+    let shown = if moved != 0 { n.fmt(n.value_at(moved)) } else { s(o, "shown") };
     let now = if moved != 0 { n.value_at(moved) } else { n.raw };
     let range = (o.get("minShown").and_then(Value::as_str).is_some_and(|x| !x.is_empty()) && o.get("maxShown").and_then(Value::as_str).is_some_and(|x| !x.is_empty())).then(|| {
         let min = s(o, "minShown");

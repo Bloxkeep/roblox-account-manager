@@ -157,7 +157,6 @@ fn change(r: &mut Root, what: Change, cx: &mut Context<Root>) {
 /// A private server's settings, as Roblox's Configure page has them: its name, its invite link (copy, or a new one
 /// that stops the old), whether it runs, and whether its subscription renews.
 fn edit_panel(root: &Root, e: &Edit, cx: &mut Context<Root>) -> Div {
-    let vi = root.i18n.vietnamese;
     let shell = div().px(px(12.)).py(px(12.)).border_t_1().border_color(c(LINE)).bg(ca(WHITE, 0.03)).flex().flex_col().gap(px(10.)).text_size(px(T_M));
     let info = match &e.info {
         None => return shell.child(div().text_color(c(MUTED)).child(root.tr("av.reading"))),
@@ -169,7 +168,7 @@ fn edit_panel(root: &Root, e: &Edit, cx: &mut Context<Root>) -> Div {
     let renew_note = if info.expires.is_empty() {
         String::new()
     } else {
-        root.i18n.tv(if info.renews { "own.renewsOn" } else { "own.endsOn" }, &[("d", &day(&info.expires, vi))])
+        root.i18n.tv(if info.renews { "own.renewsOn" } else { "own.endsOn" }, &[("d", &day(&info.expires))])
     };
     let (active, renews) = (info.active, info.renews);
     shell
@@ -357,17 +356,17 @@ fn pictures(r: &mut Root, cx: &mut Context<Root>) {
 }
 
 /// 2026-12-08T… as "8 Dec" ("8/12" in Vietnamese); with the year when it isn't this one.
-fn day(iso: &str, vi: bool) -> String {
+fn day(iso: &str) -> String {
     let d: Vec<i64> = iso.get(..10).unwrap_or_default().split('-').filter_map(|p| p.parse().ok()).collect();
     let [y, m, dd] = d[..] else { return String::new() };
-    const MONTHS: [&str; 12] = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     let this_year = crate::time::iso(crate::time::now_secs()).get(..4).and_then(|t| t.parse::<i64>().ok()) == Some(y);
-    let month = MONTHS.get((m - 1).clamp(0, 11) as usize).copied().unwrap_or_default();
-    match (vi, this_year) {
-        (true, true) => format!("{dd}/{m}"),
-        (true, false) => format!("{dd}/{m}/{y}"),
-        (false, true) => format!("{dd} {month}"),
-        (false, false) => format!("{dd} {month} {y}"),
+    let l = crate::lang::cur();
+    let year = (!this_year).then_some(y);
+    match l.code {
+        "vi" => if this_year { format!("{dd}/{m}") } else { format!("{dd}/{m}/{y}") },
+        // (English as it was: "8 Dec".)
+        "en" => format!("{dd} {}{}", l.months_short[(m - 1).clamp(0, 11) as usize], year.map(|y| format!(" {y}")).unwrap_or_default()),
+        _ => l.date_short(dd, m, year),
     }
 }
 
@@ -492,7 +491,6 @@ fn things(root: &Root, inner: f32, cx: &mut Context<Root>) -> AnyElement {
 
 /// The private servers of every account: what they come to, then each game with its servers.
 fn servers(root: &Root, inner: f32, cx: &mut Context<Root>) -> AnyElement {
-    let vi = root.i18n.vietnamese;
     let o = &root.owned;
     let all: Vec<Value> = match &o.got {
         Some(Ok(v)) => v.get("servers").and_then(Value::as_array).cloned().unwrap_or_default(),
@@ -518,7 +516,7 @@ fn servers(root: &Root, inner: f32, cx: &mut Context<Root>) -> AnyElement {
     let next = renewing.iter().filter(|x| !s(x, "expires").is_empty()).min_by_key(|x| s(x, "expires").to_string());
     let soon = running.iter().filter(|x| !flag(x, "renews") && days_to(s(x, "expires")).is_some_and(|d| (0..=7).contains(&d))).count();
     let summary = if o.ended {
-        Some(figure(root.tr("own.ended"), div().font_features(tnum()).child(thousands(ended.len() as i64, vi))))
+        Some(figure(root.tr("own.ended"), div().font_features(tnum()).child(thousands(ended.len() as i64))))
     } else if running.is_empty() {
         None
     } else {
@@ -538,8 +536,8 @@ fn servers(root: &Root, inner: f32, cx: &mut Context<Root>) -> AnyElement {
                 }
                 line
             }))
-            .child(figure(root.tr("own.f.month"), div().flex().items_center().gap(px(5.)).font_features(tnum()).child(icon("robux", 15., c(TEXT))).child(thousands(monthly, vi))))
-            .when_some(next, |d, x| d.child(figure(root.tr("own.f.next"), div().flex().items_center().gap(px(8.)).child(day(s(x, "expires"), vi)).child(div().text_color(c(MUTED)).font_weight(FontWeight::NORMAL).child(s(x, "game").to_string()))))))
+            .child(figure(root.tr("own.f.month"), div().flex().items_center().gap(px(5.)).font_features(tnum()).child(icon("robux", 15., c(TEXT))).child(thousands(monthly))))
+            .when_some(next, |d, x| d.child(figure(root.tr("own.f.next"), div().flex().items_center().gap(px(8.)).child(day(s(x, "expires"))).child(div().text_color(c(MUTED)).font_weight(FontWeight::NORMAL).child(s(x, "game").to_string()))))))
     };
     let bar = (!all.is_empty()).then(|| surface().px(px(16.)).py(px(12.)).flex().flex_wrap().items_center().justify_between().gap(px(12.))
         .children(summary).children(halves));
@@ -604,15 +602,15 @@ fn servers(root: &Root, inner: f32, cx: &mut Context<Root>) -> AnyElement {
                         let (price, renews, expires) = (int(x, "price"), flag(x, "renews"), s(x, "expires"));
                         let left = days_to(expires);
                         let cost = if price > 0 {
-                            div().flex().flex_none().items_center().gap(px(4.)).font_features(tnum()).text_color(c(TEXT)).child(icon("robux", 12., c(TEXT))).child(thousands(price, vi)).child(div().text_color(c(MUTED)).child(root.tr("own.aMonth")))
+                            div().flex().flex_none().items_center().gap(px(4.)).font_features(tnum()).text_color(c(TEXT)).child(icon("robux", 12., c(TEXT))).child(thousands(price)).child(div().text_color(c(MUTED)).child(root.tr("own.aMonth")))
                         } else {
                             div().flex_none().text_color(c(OK)).child(root.tr("shop.free"))
                         };
                         let (when, tone) = match (expires.is_empty(), flag(x, "active"), renews) {
                             (true, _, _) => (root.tr("own.noEnd"), MUTED),
-                            (_, false, _) => (root.i18n.tv("own.endedOn", &[("d", &day(expires, vi))]), MUTED),
-                            (_, true, true) => (root.i18n.tv("own.renewsOn", &[("d", &day(expires, vi))]), MUTED),
-                            (_, true, false) => (root.i18n.tv("own.endsOn", &[("d", &day(expires, vi))]), if left.is_some_and(|d| d <= 7) { WARN } else { MUTED }),
+                            (_, false, _) => (root.i18n.tv("own.endedOn", &[("d", &day(expires))]), MUTED),
+                            (_, true, true) => (root.i18n.tv("own.renewsOn", &[("d", &day(expires))]), MUTED),
+                            (_, true, false) => (root.i18n.tv("own.endsOn", &[("d", &day(expires))]), if left.is_some_and(|d| d <= 7) { WARN } else { MUTED }),
                         };
                         let name = s(x, "name");
                         let (sid, owner_app, shown_name) = (int(x, "id"), s(x, "accountId").to_string(), name.to_string());

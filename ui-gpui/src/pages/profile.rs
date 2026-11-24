@@ -716,7 +716,6 @@ fn club_actions(root: &Root, view: &ClubView, cx: &mut Context<Root>) -> Option<
 /// The communities a search found (the Roblox tab's search, as Roblox's Search › Communities lists them), as the
 /// profile's Communities shelf draws its cards: the icon, the name with Roblox's verified mark, the members and its words.
 pub fn club_hits(root: &Root, hits: &[roblox::ClubHit], inner: f32, cx: &mut Context<Root>) -> Div {
-    let vi = root.i18n.vietnamese;
     let (_, card_w) = grid_fit(inner, 360., GRID_GAP);
     div().flex().flex_wrap().gap(px(GRID_GAP)).children(hits.iter().map(|h| {
         let (id, name) = (h.id, h.name.clone());
@@ -752,9 +751,9 @@ pub fn club_hits(root: &Root, hits: &[roblox::ClubHit], inner: f32, cx: &mut Con
                             .when(h.verified, |d| d.child(icon("creatorVerified", 14., rgb(0x335fff).into()))),
                     )
                     .child(div().text_size(px(T_S)).text_color(c(MUTED)).truncate().child(if about.is_empty() {
-                        root.i18n.tv("pf.members", &[("n", &thousands(h.members, vi))])
+                        root.i18n.tv("pf.members", &[("n", &thousands(h.members))])
                     } else {
-                        format!("{} · {}", root.i18n.tv("pf.members", &[("n", &thousands(h.members, vi))]), about)
+                        format!("{} · {}", root.i18n.tv("pf.members", &[("n", &thousands(h.members))]), about)
                     })),
             )
             .child(icon("chevronRight", 14., c(DIM)))
@@ -891,7 +890,6 @@ fn game_board(root: &Root, games: &[roblox::ClubGame], inner: f32, key: &'static
     if games.is_empty() {
         return Vec::new();
     }
-    let vi = root.i18n.vietnamese;
     let outer = inner + 2. * PADT;
     let cols = ((outer + GAPT) / (232. + 2. * PADT + GAPT)).floor().max(2.);
     let w = ((outer - GAPT * (cols - 1.)) / cols).floor();
@@ -962,7 +960,7 @@ fn game_board(root: &Root, games: &[roblox::ClubGame], inner: f32, key: &'static
                         }),
                 )
                 .child(div().mt(px(8.)).h(px(18.)).flex_none().text_size(px(T_M)).font_weight(FontWeight::SEMIBOLD).line_height(px(18.)).truncate().child(g.name.clone()))
-                .child(div().mt(px(3.)).h(px(15.)).flex_none().text_size(px(T_S)).line_height(px(15.)).text_color(c(MUTED)).font_features(tnum()).child(root.i18n.tv("club.visits", &[("n", &thousands(g.visits, vi))])))
+                .child(div().mt(px(3.)).h(px(15.)).flex_none().text_size(px(T_S)).line_height(px(15.)).text_color(c(MUTED)).font_features(tnum()).child(root.i18n.tv("club.visits", &[("n", &thousands(g.visits))])))
                 .into_any_element()
         })
         .collect();
@@ -1006,7 +1004,6 @@ pub fn shot_club(r: &mut Root, cx: &mut Context<Root>) {
 /// A community's page: what it is, which of the app's accounts are in it (Roblox's page tells that of one account at
 /// a time), the games it made (Open game: the game's page here) and its ranks.
 fn club_page(root: &Root, view: &ClubView, width: f32, cx: &mut Context<Root>) -> AnyElement {
-    let vi = root.i18n.vietnamese;
     let id = view.id;
     let inner = width - 2. * (PAGE_X);
     let club = match &view.got {
@@ -1030,7 +1027,7 @@ fn club_page(root: &Root, view: &ClubView, width: f32, cx: &mut Context<Root>) -
                 .flex_col()
                 .gap(px(6.))
                 .child(div().text_size(px(T_TITLE)).font_weight(FontWeight::BOLD).truncate().child(club.name.clone()))
-                .child(div().text_size(px(T_M)).text_color(c(MUTED)).truncate().child(if club.owner.is_empty() { root.i18n.tv("pf.members", &[("n", &thousands(club.members, vi))]) } else { format!("@{} · {}", club.owner, root.i18n.tv("pf.members", &[("n", &thousands(club.members, vi))])) }))
+                .child(div().text_size(px(T_M)).text_color(c(MUTED)).truncate().child(if club.owner.is_empty() { root.i18n.tv("pf.members", &[("n", &thousands(club.members))]) } else { format!("@{} · {}", club.owner, root.i18n.tv("pf.members", &[("n", &thousands(club.members))])) }))
                 .when(!club.about.is_empty(), |d| d.child(div().max_h(px(80.)).overflow_hidden().text_size(px(T_M)).text_color(c(TEXT_2)).line_height(px(20.)).child(club.about.clone())))
                 .when(!club.shout.is_empty(), |d| d.child(div().mt(px(4.)).px(px(12.)).py(px(9.)).rounded(px(R_M)).bg(c(INSET)).text_size(px(T_M)).text_color(c(TEXT)).line_height(px(20.)).child(club.shout.clone()))),
         )
@@ -1098,7 +1095,7 @@ fn club_page(root: &Root, view: &ClubView, width: f32, cx: &mut Context<Root>) -
             .border_b_1()
             .border_color(c(LINE))
             .child(div().text_size(px(T_M)).text_color(c(TEXT_2)).truncate().child(name.clone()))
-            .child(div().text_size(px(T_M)).text_color(c(MUTED)).font_features(tnum()).child(thousands(*count, vi)))
+            .child(div().text_size(px(T_M)).text_color(c(MUTED)).font_features(tnum()).child(thousands(*count)))
     }));
 
     div()
@@ -1308,7 +1305,6 @@ fn here_line(root: &Root, user: i64, own: bool, cx: &mut Context<Root>) -> Optio
 
 /// A profile: the account's own (`own`: its Robux shows), or someone else's.
 fn filled(root: &Root, p: &Profile, user: i64, width: f32, own: bool, cx: &mut Context<Root>) -> impl IntoElement {
-    let vi = root.i18n.vietnamese;
     let inner = width - 2. * (PAGE_X);
     // (Wide enough for a rank and a member count side by side: "ROBLOX Staff · 303,126 members".)
     let (_, card_w) = grid_fit(inner, 360., GRID_GAP);
@@ -1327,7 +1323,7 @@ fn filled(root: &Root, p: &Profile, user: i64, width: f32, own: bool, cx: &mut C
         known.push((root.tr("pf.id"), user.to_string()));
     }
     if !p.made.is_empty() {
-        known.push((root.tr("pf.visits"), thousands(p.made.iter().map(|g| g.visits).sum(), vi)));
+        known.push((root.tr("pf.visits"), thousands(p.made.iter().map(|g| g.visits).sum())));
     }
     known.push((root.tr("pf.groups"), p.groups.len().to_string()));
     // (The facts take the rest of the header's width, spread over it: at a fixed 380 px at the far right they left
@@ -1466,12 +1462,12 @@ fn filled(root: &Root, p: &Profile, user: i64, width: f32, own: bool, cx: &mut C
                 .gap_y(px(10.))
                 // (Roblox counts someone else's friends only for a signed-in ask: 0 is left out.)
                 // (Each count opens its list, where each one is shown with where they are.)
-                .when(own || p.friends > 0, |d| d.child(focusable(div().id("pf-friends")).cursor_pointer().rounded(px(R_S)).hover(|d| d.opacity(0.8)).on_click(cx.listener(move |r, _, _, cx| open_folk(r, "friends", user, cx))).child(figure(root.tr("nav.friends"), thousands(p.friends, vi)))))
-                .child(focusable(div().id("pf-followers")).cursor_pointer().rounded(px(R_S)).hover(|d| d.opacity(0.8)).on_click(cx.listener(move |r, _, _, cx| open_folk(r, "followers", user, cx))).child(figure(root.tr("pf.followers"), thousands(p.followers, vi))))
-                .child(focusable(div().id("pf-following")).cursor_pointer().rounded(px(R_S)).hover(|d| d.opacity(0.8)).on_click(cx.listener(move |r, _, _, cx| open_folk(r, "followings", user, cx))).child(figure(root.tr("pf.following"), thousands(p.following, vi))))
+                .when(own || p.friends > 0, |d| d.child(focusable(div().id("pf-friends")).cursor_pointer().rounded(px(R_S)).hover(|d| d.opacity(0.8)).on_click(cx.listener(move |r, _, _, cx| open_folk(r, "friends", user, cx))).child(figure(root.tr("nav.friends"), thousands(p.friends)))))
+                .child(focusable(div().id("pf-followers")).cursor_pointer().rounded(px(R_S)).hover(|d| d.opacity(0.8)).on_click(cx.listener(move |r, _, _, cx| open_folk(r, "followers", user, cx))).child(figure(root.tr("pf.followers"), thousands(p.followers))))
+                .child(focusable(div().id("pf-following")).cursor_pointer().rounded(px(R_S)).hover(|d| d.opacity(0.8)).on_click(cx.listener(move |r, _, _, cx| open_folk(r, "followings", user, cx))).child(figure(root.tr("pf.following"), thousands(p.following))))
                 .when_some(p.robux, |d, r| {
                     d.child(div().flex().flex_col().gap(px(2.)).child(div().text_size(px(T_S)).text_color(c(MUTED)).child("Robux")).child(
-                        div().flex().items_center().gap(px(6.)).child(icon("robux", 18., c(TEXT))).child(div().text_size(px(T_FIG)).line_height(px(28.)).font_weight(FontWeight::SEMIBOLD).font_features(tnum()).child(thousands(r, vi))),
+                        div().flex().items_center().gap(px(6.)).child(icon("robux", 18., c(TEXT))).child(div().text_size(px(T_FIG)).line_height(px(28.)).font_weight(FontWeight::SEMIBOLD).font_features(tnum()).child(thousands(r))),
                     ))
                 }),
         );
@@ -1602,7 +1598,7 @@ fn filled(root: &Root, p: &Profile, user: i64, width: f32, own: bool, cx: &mut C
                         .flex_col()
                         .gap(px(2.))
                         .child(div().text_size(px(T_L)).font_weight(FontWeight::SEMIBOLD).truncate().child(g.name.clone()))
-                        .child(div().text_size(px(T_S)).text_color(c(MUTED)).truncate().child(format!("{} · {}", g.role, root.i18n.tv("pf.members", &[("n", &thousands(g.members, vi))])))),
+                        .child(div().text_size(px(T_S)).text_color(c(MUTED)).truncate().child(format!("{} · {}", g.role, root.i18n.tv("pf.members", &[("n", &thousands(g.members))])))),
                 )
                 .child(icon("chevronRight", 14., c(DIM)))
                 .into_any_element()
@@ -2115,7 +2111,6 @@ fn try_on(r: &mut Root, cx: &mut Context<Root>) {
 }
 
 fn item_page(root: &Root, view: &ItemView, inner: f32, cx: &mut Context<Root>) -> AnyElement {
-    let vi = root.i18n.vietnamese;
     let w = &view.ware;
     let (id, kind) = (w.id, if w.bundle { "bundle" } else { "asset" });
     let back = div().flex_none().px(px(PAGE_X)).pb(px(14.)).flex().child(Button::new("item-back", root.tr("nav.shop")).icon("chevronLeft").small().on_click(cx.listener(|r, _, _, cx| {
@@ -2133,7 +2128,7 @@ fn item_page(root: &Root, view: &ItemView, inner: f32, cx: &mut Context<Root>) -
         if p == 0 {
             div().text_size(px(T_STAGE)).font_weight(FontWeight::BOLD).text_color(c(OK)).child(root.tr("shop.free"))
         } else {
-            div().flex().items_center().gap(px(7.)).child(icon("robux", 18., c(TEXT))).child(div().text_size(px(T_TITLE)).font_weight(FontWeight::BOLD).font_features(tnum()).child(thousands(p, vi)))
+            div().flex().items_center().gap(px(7.)).child(icon("robux", 18., c(TEXT))).child(div().text_size(px(T_TITLE)).font_weight(FontWeight::BOLD).font_features(tnum()).child(thousands(p)))
         }
     };
     let buying: Div = match &view.offer {
@@ -2158,10 +2153,10 @@ fn item_page(root: &Root, view: &ItemView, inner: f32, cx: &mut Context<Root>) -
             } else if view.busy {
                 div().flex().child(Button::new("item-buying", root.tr("shop.buying")).primary().disabled(true))
             } else if short {
-                div().child(said(WARN, root.i18n.tv("shop.short", &[("n", &thousands(view.robux.unwrap_or(0), vi))])))
+                div().child(said(WARN, root.i18n.tv("shop.short", &[("n", &thousands(view.robux.unwrap_or(0)))])))
             } else if view.armed {
-                let whose = if price == 0 { root.i18n.tv("shop.chargeFree", &[("who", &my_name)]) } else { root.i18n.tv("shop.charge", &[("n", &thousands(price, vi)), ("who", &my_name)]) };
-                let after = view.robux.filter(|_| price > 0).map(|r| root.i18n.tv("shop.after", &[("n", &thousands(r - price, vi))]));
+                let whose = if price == 0 { root.i18n.tv("shop.chargeFree", &[("who", &my_name)]) } else { root.i18n.tv("shop.charge", &[("n", &thousands(price)), ("who", &my_name)]) };
+                let after = view.robux.filter(|_| price > 0).map(|r| root.i18n.tv("shop.after", &[("n", &thousands(r - price))]));
                 div()
                     .flex()
                     .flex_col()
@@ -2541,7 +2536,7 @@ fn collected_tile(root: &Root, n: usize, w: &Ware, tile_w: f32, cx: &mut Context
     let price = match w.price {
         None => div().text_color(c(MUTED)).child(root.tr("shop.off")),
         Some(0) => div().text_color(c(OK)).child(root.tr("shop.free")),
-        Some(r) => div().flex().items_center().gap(px(5.)).text_color(c(TEXT)).font_features(tnum()).child(icon("robux", 13., c(TEXT))).child(thousands(r, root.i18n.vietnamese)),
+        Some(r) => div().flex().items_center().gap(px(5.)).text_color(c(TEXT)).font_features(tnum()).child(icon("robux", 13., c(TEXT))).child(thousands(r)),
     };
     hot(("pf-col", n))
         .w(px(tile_w))
@@ -2566,7 +2561,7 @@ fn ware_tile(root: &Root, key: &'static str, n: usize, w: &Ware, tile_w: f32, cx
     let price = match w.price {
         None => div().text_color(c(MUTED)).child(root.tr("shop.off")),
         Some(0) => div().text_color(c(OK)).child(root.tr("shop.free")),
-        Some(r) => div().flex().items_center().gap(px(5.)).text_color(c(TEXT)).font_features(tnum()).child(icon("robux", 13., c(TEXT))).child(thousands(r, root.i18n.vietnamese)),
+        Some(r) => div().flex().items_center().gap(px(5.)).text_color(c(TEXT)).font_features(tnum()).child(icon("robux", 13., c(TEXT))).child(thousands(r)),
     };
     // (Its own padding is the ground that comes up under the mouse; the focus ring takes a pixel each side.)
     hot((key, n))
@@ -2767,7 +2762,7 @@ fn frees(root: &Root, tile_w: f32, cx: &mut Context<Root>) -> AnyElement {
             let f = &list[n];
             let id = f.id;
             let few = f.left * 4 <= f.total || f.left <= 2;
-            let left = root.i18n.tv("shop.left", &[("n", &thousands(f.left, root.i18n.vietnamese)), ("m", &thousands(f.total, root.i18n.vietnamese))]);
+            let left = root.i18n.tv("shop.left", &[("n", &thousands(f.left)), ("m", &thousands(f.total))]);
             // Its Marketplace page gives it too, or Roblox names no game for it: its page on roblox.com.
             let act = if f.shop || (f.known && f.place == 0) {
                 Button::new(("free-shop", n), root.tr("shop.open")).small().on_click(cx.listener(move |r, _, _, cx| {
@@ -2816,8 +2811,7 @@ fn frees(root: &Root, tile_w: f32, cx: &mut Context<Root>) -> AnyElement {
 
 /// A change to a watched thing in words: "Cheaper: 120 → 90 R$".
 pub fn change_words(root: &Root, ch: &crate::itemwatch::Change) -> String {
-    let vi = root.i18n.vietnamese;
-    let n = |x: i64| thousands(x, vi);
+    let n = |x: i64| thousands(x);
     match ch.kind.as_str() {
         "sale" if ch.to == 0 => root.tr("watch.c.saleFree"),
         "sale" => root.i18n.tv("watch.c.sale", &[("to", &n(ch.to))]),
@@ -2848,7 +2842,6 @@ fn watch_list(root: &Root, inner: f32, cx: &mut Context<Root>) -> AnyElement {
             .child(div().max_w(px(420.)).text_center().text_size(px(T_M)).text_color(c(MUTED)).child(root.tr("watch.emptySub")))
             .into_any_element();
     }
-    let vi = root.i18n.vietnamese;
     let robux: Vec<i64> = root.accounts().iter().filter_map(|a| a.get("robux").and_then(serde_json::Value::as_i64)).collect();
     let now = crate::time::now_secs();
     let rows = list.iter().enumerate().map(|(i, w)| {
@@ -2859,7 +2852,7 @@ fn watch_list(root: &Root, inner: f32, cx: &mut Context<Root>) -> AnyElement {
         };
         let state = match cost {
             Some(0) => div().text_color(c(OK)).child(root.tr("shop.free")),
-            Some(p) => div().flex().items_center().gap(px(5.)).font_features(tnum()).child(icon("robux", 13., c(TEXT))).child(thousands(p, vi)),
+            Some(p) => div().flex().items_center().gap(px(5.)).font_features(tnum()).child(icon("robux", 13., c(TEXT))).child(thousands(p)),
             None => div().text_color(c(MUTED)).child(root.tr("shop.off")),
         };
         let can = cost.filter(|p| *p > 0).map(|p| robux.iter().filter(|r| **r >= p).count());
@@ -2891,7 +2884,7 @@ fn watch_list(root: &Root, inner: f32, cx: &mut Context<Root>) -> AnyElement {
                     .child(div().text_size(px(T_L)).font_weight(FontWeight::SEMIBOLD).truncate().child(w.name.clone()))
                     .child(div().text_size(px(T_S)).text_color(if w.fresh { c(OK) } else { c(MUTED) }).truncate().child(last.unwrap_or_else(|| root.tr("watch.noChange")))),
             )
-            .children(w.left.map(|n| div().flex_none().text_size(px(T_S)).text_color(c(MUTED)).font_features(tnum()).child(root.i18n.tv("watch.left", &[("n", &thousands(n, vi))]))))
+            .children(w.left.map(|n| div().flex_none().text_size(px(T_S)).text_color(c(MUTED)).font_features(tnum()).child(root.i18n.tv("watch.left", &[("n", &thousands(n))]))))
             .children(can.filter(|_| !robux.is_empty()).map(|n| {
                 div().flex_none().text_size(px(T_S)).text_color(if n > 0 { c(TEXT_2) } else { c(MUTED) }).child(if n > 0 { root.i18n.tv("watch.canPay", &[("n", &n.to_string())]) } else { root.tr("watch.nonePay") })
             }))

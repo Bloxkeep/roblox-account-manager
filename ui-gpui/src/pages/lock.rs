@@ -457,28 +457,13 @@ fn dots() -> impl IntoElement {
     .size_full()
 }
 
-/// EN | VI, top right: the language, before anything is unlocked.
+/// The language, top right, before anything is unlocked: the list Settings › Appearance has.
 fn lang_switch(root: &Root, cx: &mut Context<Root>) -> Div {
-    let vi = root.i18n.vietnamese;
-    let mut row = div().absolute().top(px(18.)).right(px(22.)).flex().gap(px(2.)).p(px(3.)).rounded(px(R_M)).bg(c(RAISED));
-    for (lang, label, on) in [("en", "EN", !vi), ("vi", "VI", vi)] {
-        row = row.child(
-            segment(SharedString::from(format!("lock-lang-{lang}")), on)
-                .h(px(26.))
-                .px(px(10.))
-                .text_size(px(T_S))
-                .font_weight(FontWeight::SEMIBOLD)
-                .cursor_pointer()
-                .child(label)
-                .on_click(cx.listener(move |r, _, _, cx| {
-                    if r.i18n.vietnamese != (lang == "vi") {
-                        r.send("setLanguage", json!({ "language": lang }));
-                    }
-                    cx.notify();
-                })),
-        );
-    }
-    row
+    let pick = super::settings::chips(root, cx, "lock-lang", crate::lang::picker_items(), &root.i18n.lang, |r, v, cx| {
+        r.send("setLanguage", json!({ "language": v }));
+        cx.notify();
+    });
+    div().absolute().top(px(18.)).right(px(22.)).child(pick)
 }
 
 /// A link in the card's last lines.

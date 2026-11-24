@@ -193,7 +193,6 @@ fn picked_side(list: &Option<Result<Vec<roblox::Tradable>, String>>, picked: &[S
 /// One side's things to pick from, as Roblox's trade window lists an inventory: each copy's picture, name, RAP and
 /// serial; a picked one in the yellow ring, one on hold dimmed and not pickable.
 fn stock(root: &Root, theirs: bool, list: &Option<Result<Vec<roblox::Tradable>, String>>, picked: &[String], width: f32, cx: &mut Context<Root>) -> AnyElement {
-    let vi = root.i18n.vietnamese;
     let l = match list {
         None => return empty_note(root.tr("in.loading")).into_any_element(),
         Some(Err(why)) => return empty_note(root.i18n.tv("in.failed", &[("why", crate::net::why_words(&root.i18n, why).as_str())])).into_any_element(),
@@ -234,7 +233,7 @@ fn stock(root: &Root, theirs: bool, list: &Option<Result<Vec<roblox::Tradable>, 
                         .gap(px(4.))
                         .text_size(px(T_XS))
                         .font_features(tnum())
-                        .child(div().flex().items_center().gap(px(3.)).text_color(c(TEXT_2)).child(icon("robux", 11., c(TEXT_2))).child(thousands(t.rap, vi)))
+                        .child(div().flex().items_center().gap(px(3.)).text_color(c(TEXT_2)).child(icon("robux", 11., c(TEXT_2))).child(thousands(t.rap)))
                         .child(div().text_color(c(MUTED)).child(if t.hold { root.tr("trd.hold") } else if t.serial > 0 { format!("#{}", t.serial) } else { String::new() })),
                 );
             on_base(if on { c(FACE_BASE) } else { c(SHADE) }, 0., R_L, tile).into_any_element()
@@ -245,7 +244,6 @@ fn stock(root: &Root, theirs: bool, list: &Option<Result<Vec<roblox::Tradable>, 
 /// Roblox's trade window: what the account gives and what it gets (each side's picks and what they come to by RAP,
 /// as an open trade shows them), who comes out ahead, Send (twice), and both inventories to pick from.
 fn trade_window(root: &Root, t: &Compose, cx: &mut Context<Root>) -> AnyElement {
-    let vi = root.i18n.vietnamese;
     let give = picked_side(&t.mine, &t.give, t.robux.0);
     let get = picked_side(&t.theirs, &t.take, t.robux.1);
     let gain = worth(&get) - worth(&give);
@@ -255,8 +253,8 @@ fn trade_window(root: &Root, t: &Compose, cx: &mut Context<Root>) -> AnyElement 
     } else {
         match gain {
             0 => div().text_color(c(TEXT_2)).child(root.tr("in.tr.even")),
-            g if g > 0 => div().text_color(c(OK)).child(root.i18n.tv("in.tr.win", &[("n", &thousands(g, vi))])),
-            g => div().text_color(c(WARN)).child(root.i18n.tv("in.tr.lose", &[("n", &thousands(-g, vi))])),
+            g if g > 0 => div().text_color(c(OK)).child(root.i18n.tv("in.tr.win", &[("n", &thousands(g))])),
+            g => div().text_color(c(WARN)).child(root.i18n.tv("in.tr.lose", &[("n", &thousands(-g))])),
         }
     };
     let blocked = t.can.as_ref().filter(|can| !can.0).map(|can| {
@@ -1309,7 +1307,6 @@ fn worth(s: &TradeSide) -> i64 {
 
 /// One side of a trade: each thing with its serial number and RAP, the Robux put in, and what it all comes to.
 fn side(root: &Root, title: String, s: &TradeSide, cx: &mut Context<Root>) -> Div {
-    let vi = root.i18n.vietnamese;
     let amount = |n: i64, strong: bool| {
         div()
             .flex_none()
@@ -1321,7 +1318,7 @@ fn side(root: &Root, title: String, s: &TradeSide, cx: &mut Context<Root>) -> Di
             .text_color(c(if strong { TEXT } else { TEXT_2 }))
             .when(strong, |d| d.font_weight(FontWeight::SEMIBOLD))
             .child(icon("robux", 13., c(if strong { TEXT } else { TEXT_2 })))
-            .child(thousands(n, vi))
+            .child(thousands(n))
     };
     let items: Vec<Div> = s
         .items
@@ -1369,7 +1366,6 @@ fn side(root: &Root, title: String, s: &TradeSide, cx: &mut Context<Root>) -> Di
 /// still open Accept (a first click arms it) and Decline, or for one the account sent, taking it back.
 fn trade(root: &Root, i: usize, t: &Trade, list: usize, cx: &mut Context<Root>) -> impl IntoElement {
     let ib = &root.inbox;
-    let vi = root.i18n.vietnamese;
     let id = t.id;
     let open = ib.trade_at == Some(id);
     let face = (!t.face.is_empty()).then(|| images::pic(&t.face, cx)).flatten();
@@ -1414,8 +1410,8 @@ fn trade(root: &Root, i: usize, t: &Trade, list: usize, cx: &mut Context<Root>) 
             let gain = worth(&d.theirs) - worth(&d.mine);
             let verdict = match gain {
                 0 => div().text_color(c(TEXT_2)).child(root.tr("in.tr.even")),
-                g if g > 0 => div().text_color(c(OK)).child(root.i18n.tv("in.tr.win", &[("n", &thousands(g, vi))])),
-                g => div().text_color(c(WARN)).child(root.i18n.tv("in.tr.lose", &[("n", &thousands(-g, vi))])),
+                g if g > 0 => div().text_color(c(OK)).child(root.i18n.tv("in.tr.win", &[("n", &thousands(g))])),
+                g => div().text_color(c(WARN)).child(root.i18n.tv("in.tr.lose", &[("n", &thousands(-g))])),
             };
             // Only a trade still open can be answered: one that came in, or one this account sent (taken back).
             let live = t.status == "Open" && list < 2;
@@ -1635,9 +1631,8 @@ fn times_pill(times: usize) -> Div {
 }
 
 fn deal(root: &Root, i: usize, d: &Deal, times: usize) -> impl IntoElement {
-    let vi = root.i18n.vietnamese;
     let sum = d.amount * times as i64;
-    let amount = format!("{}{}", if sum > 0 { "+" } else { "" }, thousands(sum, vi));
+    let amount = format!("{}{}", if sum > 0 { "+" } else { "" }, thousands(sum));
     let income = d.amount > 0;
     row(i)
         .flex()

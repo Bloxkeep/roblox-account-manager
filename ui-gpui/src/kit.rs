@@ -2247,16 +2247,8 @@ pub fn small_note(text: String) -> Div {
 }
 
 /// A whole number with its thousands marked: 1.234 in Vietnamese, 1,234 in English.
-pub fn thousands(n: i64, vi: bool) -> String {
-    let digits = n.abs().to_string();
-    let mut out = String::new();
-    for (i, ch) in digits.chars().enumerate() {
-        if i > 0 && (digits.len() - i) % 3 == 0 {
-            out.push(if vi { '.' } else { ',' });
-        }
-        out.push(ch);
-    }
-    if n < 0 { format!("-{out}") } else { out }
+pub fn thousands(n: i64) -> String {
+    crate::lang::cur().thousands(n)
 }
 
 /// A key for something worked out once and kept (a line's marks, a page's parts).

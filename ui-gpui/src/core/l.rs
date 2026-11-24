@@ -10,8 +10,23 @@ pub fn language() -> String {
 }
 
 pub fn set(language: &str) {
-    crate::core::prefs::set_language(if language == "vi" { "vi" } else { "en" });
+    crate::core::prefs::set_language(crate::lang::known(language));
     crate::core::prefs::save();
+}
+
+/// The languages added after Vietnamese (lang.rs): English sentence -> theirs, from assets/lang/<code>.json's "core".
+static MORE: LazyLock<std::sync::RwLock<HashMap<&'static str, HashMap<String, String>>>> = LazyLock::new(Default::default);
+
+/// Reads every added language's sentences from the app's assets folder (once, at the start).
+pub fn load_more(assets: &std::path::Path) {
+    let mut more = MORE.write().unwrap_or_else(|e| e.into_inner());
+    for l in crate::lang::ALL.iter().filter(|l| !matches!(l.code, "en" | "vi")) {
+        let Ok(text) = std::fs::read_to_string(assets.join(format!("lang/{}.json", l.code))) else { continue };
+        let Ok(v) = serde_json::from_str::<serde_json::Value>(&text) else { continue };
+        if let Some(core) = v.get("core").and_then(|c| serde_json::from_value::<HashMap<String, String>>(c.clone()).ok()) {
+            more.insert(l.code, core);
+        }
+    }
 }
 
 /// `L.T(english)`: in the app's language.
@@ -25,6 +40,10 @@ pub fn t_in(english: &str, language: &str) -> String {
         if let Some(vi) = VI.get(english) {
             return (*vi).to_string();
         }
+    } else if language != "en"
+        && let Some(own) = MORE.read().unwrap_or_else(|e| e.into_inner()).get(crate::lang::known(language)).and_then(|m| m.get(english))
+    {
+        return own.clone();
     }
     english.to_string()
 }
@@ -52,15 +71,26 @@ pub fn made(text: &str) -> Option<(String, Vec<String>)> {
     LAST_FORMAT.with(|last| last.borrow().as_ref().filter(|(english, args)| format(&t(english), args) == text).cloned())
 }
 
-/// `text` in English and Vietnamese when the last `f` made it or it is a sentence here; otherwise as it is, twice. The
-/// activity log keeps notifications this way.
-pub fn both(text: &str) -> (String, String) {
+/// `text` in English and in every other language (lang.rs's order) when the last `f` made it or it is a sentence
+/// here; otherwise as it is in each. The activity log keeps notifications this way.
+pub fn each(text: &str) -> (String, Vec<(&'static str, String)>) {
+    let others = || crate::lang::ALL.iter().map(|l| l.code).filter(|c| *c != "en");
     if let Some((english, args)) = made(text) {
-        return (format(&english, &args), format(&t_in(&english, "vi"), &args));
+        let all = others().map(|c| (c, format(&t_in(&english, c), &args))).collect();
+        return (format(&english, &args), all);
     }
-    let english = if language() == "vi" { PAIRS.iter().find(|p| p.1 == text).map(|p| p.0.to_string()).unwrap_or_else(|| text.to_string()) } else { text.to_string() };
-    let vi = t_in(&english, "vi");
-    (english, vi)
+    let english = match language().as_str() {
+        "en" => text.to_string(),
+        "vi" => PAIRS.iter().find(|p| p.1 == text).map(|p| p.0.to_string()).unwrap_or_else(|| text.to_string()),
+        own => MORE
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .get(crate::lang::known(own))
+            .and_then(|m| m.iter().find(|(_, v)| *v == text).map(|(k, _)| k.clone()))
+            .unwrap_or_else(|| text.to_string()),
+    };
+    let all = others().map(|c| (c, t_in(&english, c))).collect();
+    (english, all)
 }
 
 /// .NET's string.Format over values already written as text: "{0}", "{1,5}" (right-aligned in 5), "{1,-5}" (left), "{{"

@@ -539,7 +539,7 @@ fn filled(root: &Root, s: &AccountSettings, viewer: Option<&serde_json::Value>, 
         root.tr("rs.birthday"),
         match s.birthday {
             Some(_) if root.hides_names() => badge(root.tr("rs.hidden"), Tone::Muted).into_any_element(),
-            Some((d, m, y)) if root.i18n.vietnamese => words(format!("{d:02}/{m:02}/{y}")),
+            Some((d, m, y)) if root.i18n.lang != "en" => words(crate::lang::cur().dmy(d as i64, m as i64, y as i64)),
             Some((d, m, y)) => words(format!("{y}-{m:02}-{d:02}")),
             None => dash(),
         },

@@ -26,16 +26,16 @@ const BARS: f32 = 0.24;
 fn short_day(secs: i64) -> String {
     let (y, m, d) = crate::time::civil(secs.div_euclid(86_400));
     let _ = d;
-    if crate::time::english() { format!("{} '{:02}", &crate::time::month_name(m)[..3], y % 100) } else { format!("{m}/{y}") }
+    crate::lang::cur().month_year(m, y)
 }
 
 fn long_day(secs: i64) -> String {
     let (y, m, d) = crate::time::civil(secs.div_euclid(86_400));
-    if crate::time::english() { format!("{} {d}, {y}", &crate::time::month_name(m)[..3]) } else { format!("{d}/{m}/{y}") }
+    let l = crate::lang::cur();
+    if l.code == "vi" { format!("{d}/{m}/{y}") } else { l.date_short(d, m, Some(y)) }
 }
 
 pub fn view(root: &Root, data: &Resale, width: f32, cx: &mut Context<Root>) -> AnyElement {
-    let vi = root.i18n.vietnamese;
     let span = SPAN.with(Cell::get).min(SPANS.len() - 1);
     let last = data.days.last().map(|d| d.0).unwrap_or(0);
     let from = match SPANS[span].0 {
@@ -60,7 +60,7 @@ pub fn view(root: &Root, data: &Resale, width: f32, cx: &mut Context<Root>) -> A
         })));
     }
 
-    let robux = |n: i64| div().flex().items_center().gap(px(6.)).child(icon("robux", 15., c(TEXT))).child(thousands(n, vi));
+    let robux = |n: i64| div().flex().items_center().gap(px(6.)).child(icon("robux", 15., c(TEXT))).child(thousands(n));
     let tile = |key: &str, value: AnyElement| {
         div()
             .flex_1()
@@ -79,7 +79,7 @@ pub fn view(root: &Root, data: &Resale, width: f32, cx: &mut Context<Root>) -> A
     };
     let pct = |p: f64| {
         let t = format!("{}{:.1}%", if p > 0. { "+" } else { "" }, p);
-        div().text_color(c(if p > 0.05 { OK } else if p < -0.05 { BAD } else { TEXT })).child(if vi { t.replace('.', ",") } else { t })
+        div().text_color(c(if p > 0.05 { OK } else if p < -0.05 { BAD } else { TEXT })).child(crate::lang::cur().decimal(&t))
     };
     let tiles = div()
         .flex()
@@ -88,7 +88,7 @@ pub fn view(root: &Root, data: &Resale, width: f32, cx: &mut Context<Root>) -> A
         .child(tile("pc.rap", robux(data.rap).into_any_element()))
         .child(tile("pc.latest", latest.map(|p| robux(p).into_any_element()).unwrap_or_else(|| div().child("—").into_any_element())))
         .child(tile("pc.change", change.map(|p| pct(p).into_any_element()).unwrap_or_else(|| div().child("—").into_any_element())))
-        .child(tile("pc.sold", div().child(thousands(sold, vi)).into_any_element()));
+        .child(tile("pc.sold", div().child(thousands(sold)).into_any_element()));
 
     if days.len() < 2 {
         return div().flex().flex_col().gap(px(12.)).child(head).child(tiles).child(empty_note(root.tr("pc.few"))).into_any_element();
@@ -181,8 +181,8 @@ pub fn view(root: &Root, data: &Resale, width: f32, cx: &mut Context<Root>) -> A
             .gap(px(3.))
             .text_size(px(T_S))
             .child(div().text_color(c(MUTED)).child(long_day(d.0)))
-            .child(div().flex().items_center().gap(px(5.)).font_weight(FontWeight::SEMIBOLD).font_features(tnum()).text_color(c(TEXT)).child(icon("robux", 12., c(TEXT))).child(thousands(d.1, vi)))
-            .child(div().text_color(c(TEXT_2)).font_features(tnum()).child(root.i18n.tv("pc.soldDay", &[("n", &thousands(d.2, vi))])))
+            .child(div().flex().items_center().gap(px(5.)).font_weight(FontWeight::SEMIBOLD).font_features(tnum()).text_color(c(TEXT)).child(icon("robux", 12., c(TEXT))).child(thousands(d.1)))
+            .child(div().text_color(c(TEXT_2)).font_features(tnum()).child(root.i18n.tv("pc.soldDay", &[("n", &thousands(d.2))])))
     });
 
     // The dates under it: five, spread along.
@@ -201,8 +201,8 @@ pub fn view(root: &Root, data: &Resale, width: f32, cx: &mut Context<Root>) -> A
         .child(plot)
         .children(label)
         // The highest and lowest price of the span, quietly in the corners.
-        .child(div().absolute().top(px(0.)).right(px(0.)).text_size(px(T_XS)).text_color(c(MUTED)).font_features(tnum()).child(thousands(hi, vi)))
-        .child(div().absolute().top(px(CHART_H * (1. - BARS) - 26.)).right(px(0.)).text_size(px(T_XS)).text_color(c(MUTED)).font_features(tnum()).child(thousands(lo, vi)))
+        .child(div().absolute().top(px(0.)).right(px(0.)).text_size(px(T_XS)).text_color(c(MUTED)).font_features(tnum()).child(thousands(hi)))
+        .child(div().absolute().top(px(CHART_H * (1. - BARS) - 26.)).right(px(0.)).text_size(px(T_XS)).text_color(c(MUTED)).font_features(tnum()).child(thousands(lo)))
         .on_mouse_move(cx.listener(move |_, e: &MouseMoveEvent, _, cx| {
             let (x0, _, w, _) = AREA.with(Cell::get);
             if w <= 0. {

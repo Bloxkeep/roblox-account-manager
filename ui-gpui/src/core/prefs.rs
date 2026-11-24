@@ -24,7 +24,7 @@ fn prefs_path() -> PathBuf {
 
 static LANGUAGE: LazyLock<RwLock<String>> = LazyLock::new(|| RwLock::new("en".into()));
 
-/// "en" or "vi".
+/// "en", "vi" or another of lang.rs's codes.
 pub fn language() -> String {
     LANGUAGE.read().unwrap_or_else(|e| e.into_inner()).clone()
 }
@@ -526,8 +526,8 @@ pub fn load() {
             s.extra.insert(name.clone(), value.clone());
         }
     }
-    if text(&root, "language") == Some("vi") {
-        set_language("vi");
+    if let Some(l) = text(&root, "language").and_then(crate::lang::by_code) {
+        set_language(l.code);
     }
     if let Some(theme) = text(&root, "theme") {
         s.theme = themes::normalize(Some(theme));

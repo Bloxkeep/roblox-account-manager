@@ -230,7 +230,7 @@ impl App {
         let mut lines = String::new();
         lines += &(if f.kind == "bug" { l::t("Bug report") } else { l::t("Idea") });
         lines += nl;
-        lines += &format!("Bloxkeep {} · {} · {}", f.app, f.windows, if f.language == "vi" { "Tiếng Việt" } else { "English" });
+        lines += &format!("Bloxkeep {} · {} · {}", f.app, f.windows, crate::lang::by_code(&f.language).unwrap_or(&crate::lang::ALL[0]).name);
         lines += nl;
         if !f.contact.is_empty() {
             lines += &l::f("Contact: {0}", &[&f.contact]);

@@ -288,7 +288,6 @@ fn build(r: &Root, set_words: &[(Part, Vec<String>)]) -> Vec<Entry> {
     let robloxes = r.metrics.get("robloxCount").and_then(Value::as_i64).unwrap_or(0);
     let live_macros = r.state.get("macroRuns").and_then(Value::as_array).is_some_and(|l| l.iter().any(|m| matches!(s(m, "status"), "waiting" | "running" | "paused")))
         || !r.state.get("macroRecording").is_none_or(Value::is_null);
-    let vi = r.i18n.vietnamese;
     let a = |icon: &'static str, key: &str, keys: &[&str], run: Run| entry(Kind::Action, Lead::Icon(icon), r.tr(key), String::new(), keys, run);
     // The app's own actions, as its menus and buttons have them; "off" ones (nothing to act on) aren't offered.
     let mut out = vec![a("userGo", "jp.button", &["follow", "player", "username", "server"], Run::Join), a("userPlus", "acc.add", &["sign in", "login", "cookie"], Run::Add)];
@@ -320,14 +319,10 @@ fn build(r: &Root, set_words: &[(Part, Vec<String>)]) -> Vec<Entry> {
     out.push(a("star", "star.title", &["github", "star", "sao", "open source", "mã nguồn"], Run::Send("openGitHub")));
     out.push(a("discord", "dc.title", &["discord", "community", "server", "chat", "cộng đồng", "hỏi đáp"], Run::Send("openDiscord")));
     out.push(a("history", "pal.exportActivity", &["csv", "log"], Run::Export));
-    out.push(entry(
-        Kind::Action,
-        Lead::Icon("languages"),
-        (if vi { "Switch to English" } else { "Chuyển sang tiếng Việt" }).to_string(),
-        String::new(),
-        &["language", "ngôn ngữ"],
-        Run::Lang(if vi { "en" } else { "vi" }),
-    ));
+    // Each other language by its own name ("Español"), found by the word "language" in English and its own.
+    for l in crate::lang::ALL.iter().filter(|l| l.code != r.i18n.lang) {
+        out.push(entry(Kind::Action, Lead::Icon("languages"), l.name.to_string(), r.tr("set.language"), &["language", "ngôn ngữ", l.code, l.word], Run::Lang(l.code)));
+    }
     out.push(a("lock", "side.lock", &["password"], Run::Lock));
 
     // The places, as the rail has them (Automation's two parts each its own), and Statistics' Activity.

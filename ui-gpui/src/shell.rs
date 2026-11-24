@@ -175,7 +175,7 @@ pub struct Root {
     pub win_h: Entity<InputState>,
     /// The frame rate limit typed (Settings › Staying in game), and the limit and language its hint was last set for.
     pub fps_box: Entity<InputState>,
-    fps_hint: Option<(i64, bool)>,
+    fps_hint: Option<(i64, &'static str)>,
     pub pw_cur: Entity<InputState>,
     pub pw_new: Entity<InputState>,
     pub pw_new2: Entity<InputState>,
@@ -1027,7 +1027,7 @@ impl Root {
 
     fn set_state(&mut self, state: Value, window: &mut Window, cx: &mut Context<Self>) {
         if let Some(lang) = state.get("language").and_then(Value::as_str) {
-            if (lang == "vi") != self.i18n.vietnamese {
+            if crate::lang::known(lang) != self.i18n.lang {
                 self.i18n.set_language(lang);
                 let p = self.i18n.t("ui.accSearch");
                 self.acc_search.update(cx, |s, cx| s.set_placeholder(p, window, cx));
@@ -1167,7 +1167,7 @@ impl Root {
             if e.read(cx).value().as_ref() != v && !e.read(cx).focus_handle(cx).is_focused(window) {
                 e.update(cx, |s, cx| s.set_value(v, window, cx));
             }
-            let said = (fps, self.i18n.vietnamese);
+            let said = (fps, self.i18n.lang);
             if self.fps_hint != Some(said) {
                 self.fps_hint = Some(said);
                 let hint = self.tr(if fps == pages::settings::FPS_MAX { "rc.fpsMax" } else { "rc.keep" });
@@ -3280,7 +3280,7 @@ impl Root {
             let fit = m.get("fit").filter(|f| f.is_object());
             let tip: Option<SharedString> = fit.map(|f| {
                 let by = self.tr(&format!("cap.by.{}", f.get("by").and_then(Value::as_str).unwrap_or("ram")));
-                let each = crate::pages::accounts::mb_text(f.get("eachMb").and_then(Value::as_f64).unwrap_or(0.), self.i18n.vietnamese);
+                let each = crate::pages::accounts::mb_text(f.get("eachMb").and_then(Value::as_f64).unwrap_or(0.));
                 self.i18n.tv("cap.tip", &[("n", &f.get("max").and_then(Value::as_i64).unwrap_or(0).to_string()), ("each", &each), ("by", &by)]).into()
             });
             let free = m.get("availableMb").and_then(Value::as_f64).map(|mb| if mb >= 1024. { format!("{:.1} GB", mb / 1024.) } else { format!("{mb:.0} MB") }).unwrap_or_default();
@@ -3902,7 +3902,8 @@ fn account_row(a: &Value, dropped: bool, root: &Root, cx: &mut Context<Root>) ->
     });
     let game = game.or_else(|| Some(root.tr(if a.get("lastUsed").and_then(Value::as_str).is_some_and(|t| !t.is_empty()) { "chip.offline" } else { "card.never" })));
     let (sub, sub_col) = match trouble {
-        Some(k) => (Some(root.tr(k)), c(if k == "chip.banned" { MUTED } else { BAD })),
+        // (One account: the card's words, not the filter chip's: Spanish and Portuguese say the chip's in the plural.)
+        Some(k) => (Some(root.tr(if k == "chip.banned" { "card.banned" } else { "card.expired" })), c(if k == "chip.banned" { MUTED } else { BAD })),
         None => (game, if dropped { c(WARN) } else { c(MUTED) }),
     };
     let first: String = name.chars().find(|c| c.is_alphanumeric()).map(|c| c.to_uppercase().collect()).unwrap_or_default();

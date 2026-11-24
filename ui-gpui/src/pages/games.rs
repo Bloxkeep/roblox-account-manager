@@ -750,7 +750,7 @@ fn community_panel(root: &Root, group: i64, cx: &mut Context<Root>) -> Option<Di
     let mut panel = surface().p(px(16.)).flex().flex_col().gap(px(9.)).child(head);
     if let Some(n) = data["members"].as_i64() {
         panel = panel.child(div().text_size(px(T_S)).text_color(c(MUTED)).child(
-            root.i18n.tv("gp.communityMembers", &[("n", &thousands(n, root.i18n.vietnamese))])));
+            root.i18n.tv("gp.communityMembers", &[("n", &thousands(n))])));
     }
     if !s(data, "description").is_empty() {
         panel = panel.child(div().text_size(px(T_M)).line_clamp(3).text_color(c(TEXT_2)).child(s(data, "description").to_string()));
@@ -1975,15 +1975,15 @@ fn codes_block(root: &Root, place: i64, cx: &mut Context<Root>) -> Option<Div> {
 }
 
 /// How long until a moment, in days and hours past a day ("2d 5h", "2 ngày 5 giờ"), else the short span.
-fn left(secs: i64, vi: bool) -> String {
+fn left(secs: i64) -> String {
     let s = secs.max(0);
     let (d, h) = (s / 86_400, s % 86_400 / 3_600);
-    match (d, vi) {
-        (0, _) => crate::time::span(s),
-        (_, false) if h == 0 => format!("{d}d"),
-        (_, false) => format!("{d}d {h}h"),
-        (_, true) if h == 0 => format!("{d} ngày"),
-        (_, true) => format!("{d} ngày {h} giờ"),
+    let l = crate::lang::cur();
+    let (day, hour) = (l.day_abbr, if l.code == "en" { "h" } else { l.units.2 });
+    match d {
+        0 => crate::time::span(s),
+        _ if h == 0 => format!("{d}{day}"),
+        _ => format!("{d}{day} {h}{hour}"),
     }
 }
 
@@ -2058,7 +2058,6 @@ fn join_event(r: &mut Root, cx: &mut Context<Root>) {
 fn events_block(root: &Root, place: i64, width: f32, cx: &mut Context<Root>) -> Option<AnyElement> {
     let list = root.games.events.get(&place).filter(|l| !l.is_empty())?;
     let now = crate::time::now_secs();
-    let vi = root.i18n.vietnamese;
     let signed = crate::pages::friends::signed(root).is_some_and(|s| !s.2.is_empty());
     // (No box round it now: its tiles take the column's width, 2 px short so a row of two never wraps.)
     let inner = (width - 2.).max(200.);
@@ -2085,7 +2084,7 @@ fn events_block(root: &Root, place: i64, width: f32, cx: &mut Context<Root>) -> 
             out
         }
     };
-    let going_word = |n: Option<i64>| n.map(|n| root.i18n.tv("gp.evPeople", &[("n", &thousands(n, vi))]));
+    let going_word = |n: Option<i64>| n.map(|n| root.i18n.tv("gp.evPeople", &[("n", &thousands(n))]));
     let fact = |name: &'static str, text: String| div().flex().flex_none().items_center().gap(px(6.)).child(icon(name, 14., c(TEXT_2))).child(text);
     let picture = |e: &roblox::GameEvent, w: f32, h: f32, idx: usize, dated: bool, cx: &mut Context<Root>| {
         let pic = (!e.pic.is_empty()).then(|| images::pic_pair(&e.pic, w, h, cx)).flatten();
@@ -2124,9 +2123,9 @@ fn events_block(root: &Root, place: i64, width: f32, cx: &mut Context<Root>) -> 
     let status = |e: &roblox::GameEvent, size: f32| {
         let on = e.start <= now;
         let (state, when) = if on {
-            (root.tr("gp.evNow"), root.i18n.tv("gp.evEndsIn", &[("t", &left(e.end - now, vi))]))
+            (root.tr("gp.evNow"), root.i18n.tv("gp.evEndsIn", &[("t", &left(e.end - now))]))
         } else {
-            (root.tr("gp.evSoon"), root.i18n.tv("gp.evStarts", &[("t", &left(e.start - now, vi))]))
+            (root.tr("gp.evSoon"), root.i18n.tv("gp.evStarts", &[("t", &left(e.start - now))]))
         };
         div()
             .flex()
@@ -2206,7 +2205,7 @@ fn events_block(root: &Root, place: i64, width: f32, cx: &mut Context<Root>) -> 
                             .items_center()
                             .gap(px(12.))
                             .child(act(e, idx, false, cx).wide())
-                            .when_some(e.count, |d, n| d.child(div().flex_none().text_size(px(T_S)).text_color(c(TEXT_2)).font_features(tnum()).child(fact("users", thousands(n, vi))))),
+                            .when_some(e.count, |d, n| d.child(div().flex_none().text_size(px(T_S)).text_color(c(TEXT_2)).font_features(tnum()).child(fact("users", thousands(n))))),
                     ),
             );
         }
@@ -2719,7 +2718,6 @@ fn to_inbox(r: &mut Root, tab: usize) {
 fn corner(root: &Root, cx: &mut Context<Root>) -> Option<impl IntoElement> {
     crate::pages::friends::signed(root)?;
     let k = &root.games.corner;
-    let vi = root.i18n.vietnamese;
     let robux = hot("rbx-robux")
         .h(px(34.))
         .px(px(11.))
@@ -2730,7 +2728,7 @@ fn corner(root: &Root, cx: &mut Context<Root>) -> Option<impl IntoElement> {
         .tones(ca(WHITE, 0.), ca(WHITE, 0.06))
         .cursor_pointer()
         .child(icon("robux", 16., c(TEXT)))
-        .child(div().text_size(px(T_M)).font_weight(FontWeight::SEMIBOLD).font_features(tnum()).child(k.robux.map(|n| thousands(n, vi)).unwrap_or_else(|| "–".into())))
+        .child(div().text_size(px(T_M)).font_weight(FontWeight::SEMIBOLD).font_features(tnum()).child(k.robux.map(|n| thousands(n)).unwrap_or_else(|| "–".into())))
         .on_click(cx.listener(|r, _, _, cx| {
             to_inbox(r, 3);
             cx.notify();
@@ -3875,7 +3873,7 @@ fn rank_row(root: &Root, rank: usize, game: &roblox::Game, width: f32, height: f
 
 fn chart_stats(root: &Root, game: &roblox::Game, full: bool) -> Div {
     let votes = game.up + game.down;
-    let players = thousands(game.playing, root.i18n.vietnamese);
+    let players = thousands(game.playing);
     div().flex().items_center().gap(px(7.)).text_size(px(T_S)).font_features(tnum())
         .text_color(if full { on_picture(0.88) } else { c(MUTED) })
         .when(game.playing > 0, |d| d.child(div().flex_none().size(px(6.)).rounded_full().bg(c(OK)))
@@ -3958,7 +3956,7 @@ fn letter(name: &str, size: f32) -> Div {
 }
 
 /// Who plays it now, on its picture: a green dot and the number.
-fn playing_pill(root: &Root, n: i64) -> Div {
+fn playing_pill(n: i64) -> Div {
     div()
         .h(px(22.))
         .px(px(8.))
@@ -3972,7 +3970,7 @@ fn playing_pill(root: &Root, n: i64) -> Div {
         .text_color(c(TEXT))
         .font_features(tnum())
         .child(div().size(px(6.)).flex_none().rounded_full().bg(c(OK)))
-        .child(thousands(n, root.i18n.vietnamese))
+        .child(thousands(n))
 }
 
 /// One of Roblox's games on the board: its picture with its place in the chart and who plays it now on it, its name,
@@ -4041,7 +4039,7 @@ fn tile(root: &Root, i: usize, g: &roblox::Game, ranked: bool, w: f32, art_h: f3
                             .child((i + 1).to_string()),
                     )
                 })
-                .when(!ranked && g.playing > 0, |d| d.child(div().absolute().left(px(8.)).bottom(px(8.)).child(playing_pill(root, g.playing)))),
+                .when(!ranked && g.playing > 0, |d| d.child(div().absolute().left(px(8.)).bottom(px(8.)).child(playing_pill(g.playing)))),
         )
         .child(div().mt(px(8.)).h(px(18.)).flex_none().text_size(px(T_M)).font_weight(FontWeight::SEMIBOLD).line_height(px(18.)).truncate().child(clean(&g.name)))
         .child(
@@ -4437,7 +4435,9 @@ pub fn region_pref() -> Option<String> {
 
 /// A country's name for the menu (every ISO code, countries.rs; a code not there by itself).
 pub(crate) fn country(root: &Root, cc: &str) -> String {
-    crate::countries::name(cc, root.i18n.vietnamese).map(str::to_string).unwrap_or_else(|| cc.to_string())
+    // (The languages after Vietnamese have the names Windows' own ICU gives, in assets/lang/<code>.json.)
+    let own = root.i18n.own_word(&format!("country.{}", cc.trim().to_ascii_uppercase())).map(str::to_string);
+    own.or_else(|| crate::countries::name(cc, root.i18n.vietnamese).map(str::to_string)).unwrap_or_else(|| cc.to_string())
 }
 
 /// A country's English name (a city of the same name is left out beside it).
@@ -5278,18 +5278,16 @@ fn hero(root: &Root, all: &[Game], game: Option<&Game>, details: Option<&Value>,
 
 /// 48.2 billion, 8.7 million, 412,873 (in the app's words for billion and million).
 fn big(root: &Root, n: f64) -> String {
-    let vi = root.i18n.vietnamese;
     let one = |x: f64| {
         let t = format!("{:.1}", x);
-        let t = t.trim_end_matches(".0").to_string();
-        if vi { t.replace('.', ",") } else { t }
+        crate::lang::cur().decimal(t.trim_end_matches(".0"))
     };
     if n >= 1e9 {
         format!("{} {}", one(n / 1e9), root.tr("gp.billion"))
     } else if n >= 1e6 {
         format!("{} {}", one(n / 1e6), root.tr("gp.million"))
     } else {
-        thousands(n.round() as i64, vi)
+        thousands(n.round() as i64)
     }
 }
 
@@ -5300,7 +5298,6 @@ fn ago_iso(root: &Root, iso: &str) -> Option<String> {
 /// The rating sits by the title. Activity figures are read in the footer beside the server field.
 fn figures(root: &Root, details: &Value, place: i64, show_updated: bool, cx: &mut Context<Root>) -> (Option<Div>, Option<Div>) {
     let count = |key: &str| details.get(key).and_then(Value::as_i64).filter(|v| *v >= 0);
-    let vi = root.i18n.vietnamese;
     let mut engagement = Vec::new();
     let mut activity = Vec::new();
     // Favourite, Like and Dislike are the account's own, pressed here (they looked like buttons and weren't; the
@@ -5319,7 +5316,7 @@ fn figures(root: &Root, details: &Value, place: i64, show_updated: bool, cx: &mu
     };
     if let Some(n) = count("favorites") {
         let on = mine.fav == Some(true);
-        let chip = figure_chip(if on { "starFill" } else { "star" }, root.tr("gp.favorites"), thousands(n, vi), on);
+        let chip = figure_chip(if on { "starFill" } else { "star" }, root.tr("gp.favorites"), thousands(n), on);
         engagement.push(press("gp-fav", chip, root.tr(if on { "gp.unfavorite" } else { "gp.favorite" }), None, cx).into_any_element());
     }
     let votes_up = count("upVotes");
@@ -5330,15 +5327,15 @@ fn figures(root: &Root, details: &Value, place: i64, show_updated: bool, cx: &mu
     });
     if votes_up.is_some() || votes_down.is_some() || liked.is_some() {
         let rating = div().flex().items_center().gap(px(7.))
-            .when_some(votes_up, |d, n| d.child(press("gp-like", figure_chip("like", String::new(), thousands(n, vi), mine.vote == Some(true)), root.tr(if mine.vote == Some(true) { "gp.unlike" } else { "gp.like" }), Some(true), cx)))
+            .when_some(votes_up, |d, n| d.child(press("gp-like", figure_chip("like", String::new(), thousands(n), mine.vote == Some(true)), root.tr(if mine.vote == Some(true) { "gp.unlike" } else { "gp.like" }), Some(true), cx)))
             .when_some(liked, |d, pct| d.child(div().px(px(2.)).text_size(px(T_S))
                 .font_weight(FontWeight::SEMIBOLD).font_features(tnum()).text_color(c(TEXT_2))
                 .child(if votes_up.is_some() || votes_down.is_some() { format!("{pct:.0}%") } else { format!("{pct:.0}% {}", root.tr("gp.likes")) })))
-            .when_some(votes_down, |d, n| d.child(press("gp-dislike", figure_chip("dislike", String::new(), thousands(n, vi), mine.vote == Some(false)), root.tr(if mine.vote == Some(false) { "gp.undislike" } else { "gp.dislike" }), Some(false), cx)));
+            .when_some(votes_down, |d, n| d.child(press("gp-dislike", figure_chip("dislike", String::new(), thousands(n), mine.vote == Some(false)), root.tr(if mine.vote == Some(false) { "gp.undislike" } else { "gp.dislike" }), Some(false), cx)));
         engagement.push(rating.into_any_element());
     }
     if let Some(n) = count("playing") {
-        activity.push(figure_value("users", root.tr("gp.playing"), thousands(n, vi), false));
+        activity.push(figure_value("users", root.tr("gp.playing"), thousands(n), false));
     }
     if let Some(n) = count("visits") {
         activity.push(figure_value("eye", root.tr("gp.visits"), big(root, n as f64), false));
@@ -5375,12 +5372,10 @@ fn day_of(root: &Root, iso: &str) -> Option<String> {
     if !(1..=12).contains(&m) || y.starts_with("000") {
         return None;
     }
-    Some(if root.i18n.vietnamese {
-        format!("{d}/{m:02}/{y}")
-    } else {
-        const MONTHS: [&str; 12] = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-        format!("{} {}, {y}", MONTHS[m - 1], d.trim_start_matches('0'))
-    })
+    let (y, d) = (y.parse::<i64>().ok()?, d.parse::<i64>().ok()?);
+    let _ = root;
+    let l = crate::lang::cur();
+    Some(if l.code == "vi" { format!("{d}/{m:02}/{y}") } else { l.date_short(d, m as i64, Some(y)) })
 }
 
 /// The game's details, each its word over its value, two to a row (as Roblox's About lists them): who makes it, its genre, when it came
@@ -5844,7 +5839,7 @@ fn quiet(root: &Root, h: &[Option<f64>]) -> impl IntoElement {
                 .gap(px(4.))
                 .whitespace_nowrap()
                 .child(div().font_weight(FontWeight::SEMIBOLD).text_color(tone).child(root.tr(key)))
-                .child(thousands(v.round() as i64, root.i18n.vietnamese));
+                .child(thousands(v.round() as i64));
             // (Near an end it keeps inside the chart; elsewhere centred on its bar.)
             let place = div().absolute().top_0().flex();
             if i < 3 {

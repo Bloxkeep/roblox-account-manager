@@ -16,13 +16,10 @@ pub(super) fn when_text(root: &Root, iso: &str) -> String {
     let local = at + crate::time::utc_offset_secs();
     let (y, m, d) = civil(local.div_euclid(86400));
     let (h, min) = (local.rem_euclid(86400) / 3600, local.rem_euclid(3600) / 60);
-    if root.i18n.vietnamese {
-        format!("{d:02}/{m:02}/{y}, {h:02}:{min:02}")
-    } else {
-        let month = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][(m - 1).clamp(0, 11) as usize];
-        let (h12, am) = (if h % 12 == 0 { 12 } else { h % 12 }, if h < 12 { "AM" } else { "PM" });
-        format!("{month} {d}, {y}, {h12}:{min:02} {am}")
-    }
+    let _ = root;
+    let l = crate::lang::cur();
+    let day = if l.code == "vi" { l.dmy(d, m, y) } else { l.date_short(d, m, Some(y)) };
+    format!("{day}, {}", l.hm(h, min))
 }
 
 /// The watch's word on a build: (tone, words); two windows having played together on it here outweigh it; None if unchecked.

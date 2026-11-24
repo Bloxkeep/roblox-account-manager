@@ -1986,7 +1986,6 @@ fn filled(root: &Root, a: &Avatar, width: f32, cx: &mut Context<Root>) -> AnyEle
 /// count). Nothing until Roblox has said, or when nothing worn has a price.
 fn worth(root: &Root, a: &Avatar) -> Option<Div> {
     let w = root.avatar.worth.as_ref()?;
-    let vi = root.i18n.vietnamese;
     let known: Vec<Option<Price>> = a.items.iter().filter_map(|i| w.get(&i.id).copied()).collect();
     let counted = known.iter().flatten().count();
     if counted == 0 {
@@ -2013,7 +2012,7 @@ fn worth(root: &Root, a: &Avatar) -> Option<Div> {
             .gap(px(10.))
             .child(
                 div().flex().flex_col().gap(px(2.)).child(div().text_size(px(T_S)).text_color(c(MUTED)).child(root.tr("av.worth"))).child(
-                    div().flex().items_center().gap(px(7.)).child(icon("robux", 18., c(TEXT))).child(div().text_size(px(T_TITLE)).font_weight(FontWeight::BOLD).font_features(tnum()).child(thousands(sum, vi))),
+                    div().flex().items_center().gap(px(7.)).child(icon("robux", 18., c(TEXT))).child(div().text_size(px(T_TITLE)).font_weight(FontWeight::BOLD).font_features(tnum()).child(thousands(sum))),
                 ),
             )
             .child(div().pb(px(4.)).text_size(px(T_S)).text_color(c(MUTED)).child(note)),
@@ -2023,7 +2022,6 @@ fn worth(root: &Root, a: &Avatar) -> Option<Div> {
 /// Under a worn thing's name: what it is worth, or that it is free or has no price; a Limited says so, and a part of
 /// a bundle that the price is the bundle's. Empty (the same height) until Roblox has said.
 fn price_row(root: &Root, known: Option<Option<Price>>) -> Div {
-    let vi = root.i18n.vietnamese;
     let row = div().px(px(2.)).pb(px(4.)).h(px(22.)).flex().items_center().gap(px(5.)).text_size(px(T_S)).font_features(tnum());
     match known {
         None => row,
@@ -2032,7 +2030,7 @@ fn price_row(root: &Root, known: Option<Option<Price>>) -> Div {
         Some(Some(p)) => row
             .text_color(c(TEXT))
             .child(icon("robux", 12., c(TEXT)))
-            .child(div().font_weight(FontWeight::MEDIUM).child(thousands(p.robux, vi)))
+            .child(div().font_weight(FontWeight::MEDIUM).child(thousands(p.robux)))
             .when(p.limited, |d| d.child(div().text_color(c(WARN)).child("Limited")))
             .when(p.pack != 0, |d| d.child(div().text_color(c(MUTED)).child(root.tr("av.pack")))),
     }

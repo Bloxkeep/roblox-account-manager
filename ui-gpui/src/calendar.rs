@@ -76,10 +76,10 @@ pub fn panel<V: 'static>(
     act: impl Fn(&mut V, Act, &mut Window, &mut Context<V>) + 'static,
 ) -> Stateful<Div> {
     let act = std::rc::Rc::new(act);
-    let vi = i18n.vietnamese;
     let (y, m) = shown;
     let today = today();
-    let first = if vi { 1 } else { 0 };
+    // (The week starts on Monday but in English.)
+    let first = if i18n.lang == "en" { 0 } else { 1 };
     // (1970-01-01 was a Thursday.)
     let lead = ((days_from_civil(y, m, 1) + 4).rem_euclid(7) as u32 + 7 - first) % 7;
     let count = days_in(shown);

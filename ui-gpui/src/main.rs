@@ -28,6 +28,7 @@ mod mem_regions;
 mod mem_tally;
 mod history;
 mod i18n;
+mod lang;
 mod images;
 mod kit;
 mod link;
@@ -117,6 +118,9 @@ fn main() {
     let wait = Duration::from_millis(arg("--wait").and_then(|s| s.parse().ok()).unwrap_or(2500));
     let base = std::env::current_exe().ok().and_then(|p| p.parent().map(|p| p.to_path_buf())).unwrap_or_default();
     let assets = std::env::var("BLOXKEEP_UI_ASSETS").map(PathBuf::from).unwrap_or_else(|_| base.join("assets"));
+    // The core's sentences in the languages after Vietnamese (assets/lang/<code>.json).
+    #[cfg(feature = "core")]
+    core::l::load_more(&assets);
 
     // --tray-window-check OUT: the tray's real window, cloaked, checked on this PC (tray.rs › window_check).
     #[cfg(feature = "core")]
@@ -292,8 +296,7 @@ fn run_ui(link: Option<(link::Link, futures::channel::mpsc::UnboundedReceiver<li
             .map(Cow::Owned)
             .collect::<Vec<_>>();
         cx.text_system().add_fonts(fonts).ok();
-        let mut words = i18n::I18n::load(&std::fs::read_to_string(assets.join("i18n.json")).unwrap_or_default());
-        words.add(&std::fs::read_to_string(assets.join("words.json")).unwrap_or_default());
+        let words = i18n::I18n::from_assets(&assets);
 
         let options = WindowOptions {
             window_bounds: Some(WindowBounds::Windowed(Bounds { origin: point(px(120.), px(60.)), size: size(px(w), px(h)) })),

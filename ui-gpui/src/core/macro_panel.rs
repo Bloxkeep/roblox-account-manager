@@ -468,7 +468,7 @@ pub mod macro_options {
     /// globalization, where asking for vi-VN throws.
     fn number(d: f64) -> String {
         let text = two_places(d);
-        if l::language() == "vi" { text.replace('.', ",") } else { text }
+        crate::lang::by_code(&l::language()).map_or(text.clone(), |l| l.decimal(&text))
     }
 
     /// A number as the panel shows it, with its unit ("0.5 s", "120 px"; "0,5 giây" in Vietnamese).

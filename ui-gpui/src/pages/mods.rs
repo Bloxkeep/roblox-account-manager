@@ -410,7 +410,6 @@ fn library(root: &Root, inner: f32, cx: &mut Context<Root>) -> impl IntoElement 
     let w = ((inner - 16. * (cols - 1.)) / cols).floor();
     let pic_h = (w * 9. / 16.).round();
     let have: HashSet<i64> = m.have.iter().map(|x| x.id).collect();
-    let vi = root.i18n.vietnamese;
     let cards = list.iter().enumerate().map(|(i, x)| {
         let pic = (!x.pic.is_empty()).then(|| images::pic_pair(&x.pic, w, pic_h, cx)).flatten();
         let (adding, got) = (m.adding.contains(&x.id), have.contains(&x.id));
@@ -457,7 +456,7 @@ fn library(root: &Root, inner: f32, cx: &mut Context<Root>) -> impl IntoElement 
                             .flex()
                             .items_center()
                             .gap(px(8.))
-                            .child(div().flex_1().min_w_0().overflow_hidden().flex().items_center().gap(px(5.)).text_size(px(T_S)).text_color(c(MUTED)).font_features(tnum()).child(icon("eye", 12., c(MUTED))).child(crate::kit::thousands(x.views, vi)).when(x.updated > 0, |d| d.child(div().w(px(6.))).child(icon("clock", 12., c(MUTED))).child(div().min_w_0().truncate().child(age(crate::time::now_secs() - x.updated, vi)))))
+                            .child(div().flex_1().min_w_0().overflow_hidden().flex().items_center().gap(px(5.)).text_size(px(T_S)).text_color(c(MUTED)).font_features(tnum()).child(icon("eye", 12., c(MUTED))).child(crate::kit::thousands(x.views)).when(x.updated > 0, |d| d.child(div().w(px(6.))).child(icon("clock", 12., c(MUTED))).child(div().min_w_0().truncate().child(age(crate::time::now_secs() - x.updated)))))
                             .child(IconButton::new(("mod-web", i), "external").size(30.).tip(root.tr("mods.onBanana")).on_click(cx.listener(move |r, _, _, _| r.send("openModPage", json!({ "id": id })))))
                             .child(act),
                     )
@@ -510,7 +509,6 @@ fn library(root: &Root, inner: f32, cx: &mut Context<Root>) -> impl IntoElement 
 /// numbers, files and credits, with Install and the way out to GameBanana at its head.
 fn detail(root: &Root, x: &Listed, inner: f32, cx: &mut Context<Root>) -> Div {
     let m = &root.mods;
-    let vi = root.i18n.vietnamese;
     let id = x.id;
     let (adding, got) = (m.adding.contains(&id), m.have.iter().any(|h| h.id == id));
     let item = x.clone();
@@ -635,14 +633,14 @@ fn detail(root: &Root, x: &Listed, inner: f32, cx: &mut Context<Root>) -> Div {
     let strip = match profile {
         Some(Ok(p)) => {
             let mut cells = vec![
-                figure("starFill", FACE, root.tr("mods.d.likes"), crate::kit::thousands(p.likes, vi)),
-                figure("eye", ONLINE, root.tr("mods.d.views"), crate::kit::thousands(p.views, vi)),
-                figure("download", OK, root.tr("mods.d.downloads"), crate::kit::thousands(p.downloads, vi)),
+                figure("starFill", FACE, root.tr("mods.d.likes"), crate::kit::thousands(p.likes)),
+                figure("eye", ONLINE, root.tr("mods.d.views"), crate::kit::thousands(p.views)),
+                figure("download", OK, root.tr("mods.d.downloads"), crate::kit::thousands(p.downloads)),
             ];
             if p.updated > 0 {
-                cells.push(figure("clock", TEXT_2, root.tr("mods.d.updated"), age(now - p.updated, vi)));
+                cells.push(figure("clock", TEXT_2, root.tr("mods.d.updated"), age(now - p.updated)));
             } else if p.added > 0 {
-                cells.push(figure("calendar", TEXT_2, root.tr("mods.d.added"), age(now - p.added, vi)));
+                cells.push(figure("calendar", TEXT_2, root.tr("mods.d.added"), age(now - p.added)));
             }
             if !p.version.is_empty() {
                 cells.push(figure("tag", TEXT_2, root.tr("mods.d.version"), p.version.clone()));
@@ -816,9 +814,7 @@ fn kind_words(root: &Root, kind: &str) -> String {
     if root.i18n.raw(&key).is_some() { root.tr(&key) } else { kind.to_string() }
 }
 
-/// How old, short: "3d", "5mo", "2y" ("3 ngày", "5 tháng", "2 năm").
-fn age(secs: i64, vi: bool) -> String {
-    let d = secs.max(0) / 86400;
-    let (n, en, v) = if d < 30 { (d.max(1), "d", " ngày") } else if d < 365 { (d / 30, "mo", " tháng") } else { (d / 365, "y", " năm") };
-    format!("{n}{}", if vi { v } else { en })
+/// How old, short: "3d", "5mo", "2y" ("3 ngày", "5 tháng", "2 năm"; lang.rs's Lang::age).
+fn age(secs: i64) -> String {
+    crate::lang::cur().age(secs.max(0) / 86400)
 }

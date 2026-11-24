@@ -264,16 +264,8 @@ pub fn save_server(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
 }
 
 /// 412873 as "412,873" ("412.873" in Vietnamese).
-fn grouped(n: i64, vi: bool) -> String {
-    let digits = n.to_string();
-    let mut out = String::new();
-    for (i, ch) in digits.chars().enumerate() {
-        if i > 0 && (digits.len() - i) % 3 == 0 {
-            out.push(if vi { '.' } else { ',' });
-        }
-        out.push(ch);
-    }
-    out
+fn grouped(n: i64) -> String {
+    crate::kit::thousands(n)
 }
 
 /// The lists as they are now (asked again each time the list opens, and after a pin or a removal).
@@ -359,7 +351,6 @@ pub fn button(root: &Root, cx: &mut Context<Root>) -> Div {
 
 fn list(root: &Root, cx: &mut Context<Root>) -> Stateful<Div> {
     let p = &root.picker;
-    let vi = root.i18n.vietnamese;
     let rows_of = |key: &str| p.lists.as_ref().and_then(|l| l.get(key)).and_then(Value::as_array).cloned().unwrap_or_default();
     let saved: Vec<Value> = root.state.pointer("/settings/savedServers").and_then(Value::as_array).cloned().unwrap_or_default();
     // (Popular is left out when Roblox gave none.)
@@ -477,7 +468,7 @@ fn list(root: &Root, cx: &mut Context<Root>) -> Stateful<Div> {
             let (place, universe, name) = (int(g, "placeId"), int(g, "universeId"), s(g, "name").to_string());
             let playing = int(g, "playing");
             let pinned = g.get("pinned").and_then(Value::as_bool).unwrap_or(key == "pinned");
-            let under = if playing > 0 { root.i18n.tv("dock.playing", &[("n", &grouped(playing, vi))]) } else { root.i18n.tv("dock.placeN", &[("id", &place.to_string())]) };
+            let under = if playing > 0 { root.i18n.tv("dock.playing", &[("n", &grouped(playing))]) } else { root.i18n.tv("dock.placeN", &[("id", &place.to_string())]) };
             let pic = Some(s(g, "iconUrl")).filter(|u| !u.is_empty()).and_then(|u| images::pic(u, cx));
             let pin_name = name.clone();
             body = body.child(

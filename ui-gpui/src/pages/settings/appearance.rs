@@ -376,17 +376,7 @@ pub fn appearance(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
     }
     let theme_head = section_head(root.tr("set.theme"), None).child(div().text_size(px(T_SEC)).text_color(c(MUTED)).child(root.tr(&format!("theme.{cur}"))));
     let theme_head = if super::finding() { div() } else { theme_head };
-    let lang = if root.i18n.vietnamese { "vi" } else { "en" };
-    let langs = Segmented::new("s-lang", lang).item("en", "English").item("vi", "Tiếng Việt").on_select({
-        let this = cx.entity().downgrade();
-        let cur = lang.to_string();
-        move |v, _, cx| {
-            if v.as_ref() != cur {
-                let v = v.to_string();
-                let _ = this.update(cx, |r, _| r.send("setLanguage", json!({ "language": v })));
-            }
-        }
-    });
+    let langs = super::chips(root, cx, "s-lang", crate::lang::picker_items(), &root.i18n.lang, |r, v, _| r.send("setLanguage", json!({ "language": v })));
     let hide = flag(&root.state, "hideNames");
     let mut more = vec![row(root.tr("set.language"), None, langs)];
     more.push(row(

@@ -5616,7 +5616,7 @@ fn form_problems(root: &Root, f: &Form, saved: &[Value], cx: &App) -> Rc<Vec<Pro
     let mut h = std::collections::hash_map::DefaultHasher::new();
     crate::pages::games::sig_of(&f.m, &mut h);
     saved.iter().for_each(|x| crate::pages::games::sig_of(x, &mut h));
-    (&name, root.i18n.vietnamese).hash(&mut h);
+    (&name, root.i18n.lang).hash(&mut h);
     let key = h.finish();
     if let Some((k, p)) = f.probs.borrow().as_ref()
         && *k == key

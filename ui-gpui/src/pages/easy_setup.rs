@@ -179,7 +179,7 @@ fn plan(r: &Root, target: i64) -> Plan {
     if tight && restart == 0 && each > 0. {
         let at = (((each * 2.5) / 500.).ceil() * 500.).max(2500.) as i64;
         patch["restartAboveMb"] = json!(at);
-        rows.push(r.i18n.tv("es.do.restart", &[("v", &crate::pages::accounts::mb_text(at as f64, r.i18n.vietnamese))]));
+        rows.push(r.i18n.tv("es.do.restart", &[("v", &crate::pages::accounts::mb_text(at as f64))]));
     }
     let multi_off = target > 1 && st.get("multiInstance").and_then(Value::as_bool) == Some(false);
     Plan { best, mode, flags, patch, rows, over, multi_off }
@@ -209,7 +209,7 @@ pub fn facts(r: &Root, target: i64) -> Facts {
     let fit = m.get("fit").filter(|f| f.is_object()).map(|f| {
         (
             f.get("max").and_then(Value::as_i64).unwrap_or(0),
-            crate::pages::accounts::mb_text(f.get("eachMb").and_then(Value::as_f64).unwrap_or(0.), r.i18n.vietnamese),
+            crate::pages::accounts::mb_text(f.get("eachMb").and_then(Value::as_f64).unwrap_or(0.)),
             r.tr(&format!("cap.by.{}", f.get("by").and_then(Value::as_str).unwrap_or("ram"))),
         )
     });
@@ -273,7 +273,7 @@ pub fn open(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
             Some(f) => {
                 let n = f.get("max").and_then(Value::as_i64).unwrap_or(0);
                 let by = r.tr(&format!("cap.by.{}", f.get("by").and_then(Value::as_str).unwrap_or("ram")));
-                let each = crate::pages::accounts::mb_text(f.get("eachMb").and_then(Value::as_f64).unwrap_or(0.), r.i18n.vietnamese);
+                let each = crate::pages::accounts::mb_text(f.get("eachMb").and_then(Value::as_f64).unwrap_or(0.));
                 div()
                     .p(px(14.))
                     .rounded(px(R_M))

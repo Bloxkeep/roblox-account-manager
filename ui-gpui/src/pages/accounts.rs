@@ -713,9 +713,9 @@ fn line_of(root: &Root, a: &Value) -> (String, u32) {
 }
 
 /// The Robux on an account ("…" while the first count is on its way).
-fn robux_of(root: &Root, a: &Value) -> Option<String> {
+fn robux_of(a: &Value) -> Option<String> {
     match a.get("robux").and_then(Value::as_i64) {
-        Some(n) => Some(crate::kit::thousands(n, root.i18n.vietnamese)),
+        Some(n) => Some(crate::kit::thousands(n)),
         None => a.get("robuxWait").and_then(Value::as_bool).filter(|w| *w).map(|_| "…".to_string()),
     }
 }
@@ -999,10 +999,10 @@ fn ram_mb(root: &Root, a: &Value) -> Option<f64> {
         .then(|| root.metrics.get("accounts").and_then(Value::as_array).and_then(|l| l.iter().find(|m| s(m, "id") == id)).and_then(|m| m.get("ramMb")?.as_f64()))
         .flatten()
 }
-/// RAM in MB or GB, with Vietnamese's decimal comma ("1,7 GB").
-pub(crate) fn mb_text(mb: f64, vi: bool) -> String {
+/// RAM in MB or GB, with the language's decimal mark ("1,7 GB").
+pub(crate) fn mb_text(mb: f64) -> String {
     let t = if mb >= 1024. { format!("{:.1} GB", mb / 1024.) } else { format!("{mb:.0} MB") };
-    if vi { t.replace('.', ",") } else { t }
+    crate::lang::cur().decimal(&t)
 }
 fn hidden(a: &Value) -> bool {
     a.pointer("/session/hidden").and_then(Value::as_bool).unwrap_or(false)
@@ -1701,7 +1701,7 @@ fn header(root: &Root, all: &[Value], width: f32, rows: bool, cx: &mut Context<R
     };
     let mut summary = vec![(first, None)];
     if ram > 0. {
-        summary.push((mb_text(ram, root.i18n.vietnamese), None));
+        summary.push((mb_text(ram), None));
     }
     // About how many windows this PC runs at once, measured from the person's own windows (core/capacity.rs).
     if let Some(n) = root.metrics.pointer("/fit/max").and_then(Value::as_i64) {
@@ -2111,7 +2111,7 @@ fn lane(root: &Root, i: usize, l: Lane, col_w: f32, span: usize, lines: usize, m
     let game_base = l.icon.as_deref().and_then(|u| images::tone(u, cx)).map(|t| base_of(c(t))).unwrap_or_else(base_dark);
     let mut meta = vec![(root.i18n.tn("mon.windows", n as i64, &[]), None)];
     if l.ram > 0. {
-        meta.push((mb_text(l.ram, root.i18n.vietnamese), None));
+        meta.push((mb_text(l.ram), None));
     }
     if l.kicked > 0 {
         meta.push((root.i18n.tn("mon.nBad", l.kicked as i64, &[]), Some(c(WARN))));
@@ -2345,7 +2345,7 @@ fn tile_lines(root: &Root, a: &Value) -> usize {
     if foreign(a) {
         return 0;
     }
-    let chips = !tags_of(root, a).is_empty() || old_build(a) || fps_limit(a).is_some() || robux_of(root, a).is_some();
+    let chips = !tags_of(root, a).is_empty() || old_build(a) || fps_limit(a).is_some() || robux_of(a).is_some();
     chips as usize + note_of(a).is_some() as usize
 }
 
@@ -2390,7 +2390,7 @@ fn tile(root: &Root, a: &Value, w: f32, lines: usize, srv: Option<char>, compact
     // Its main button at the foot, as a not-open card has Play there: Close, or the way back in (Rejoin, Verify) when
     // dropped or held on Roblox's bot check; then Edit and its menu (review 2.2: a playing tile had no Edit).
     let main = action(root, a, "tile", cx);
-    let ram = ram_mb(root, a).map(|m| mb_text(m, root.i18n.vietnamese));
+    let ram = ram_mb(root, a).map(|m| mb_text(m));
     let pid = (!compact).then(|| pid_el(root, a, cx)).flatten();
     // A pared-down tile keeps its PID too, in the room beside Close (farms tell windows apart by it).
     let pid_foot = compact.then(|| pid_el(root, a, cx)).flatten();
@@ -2400,7 +2400,7 @@ fn tile(root: &Root, a: &Value, w: f32, lines: usize, srv: Option<char>, compact
     // Who it is and what it holds (a window not opened by Bloxkeep is no account: none of these).
     let under = (!other && !compact).then(|| handle_of(a)).flatten();
     let tags = if other { Vec::new() } else { tags_of(root, a) };
-    let robux = (!other).then(|| robux_of(root, a).map(|r| robux_el(root, &id, r))).flatten();
+    let robux = (!other).then(|| robux_of(a).map(|r| robux_el(root, &id, r))).flatten();
     let note = (!other).then(|| note_of(a)).flatten();
     // Over the game's picture while there is no live one: why not.
     let why = if hidden(a) {
@@ -3273,7 +3273,7 @@ fn card(root: &Root, a: &Value, w: f32, lines: usize, cx: &mut Context<Root>) ->
     let id = id_of(a);
     let on = root.selected.contains(&id);
     let (line, tone, opened, note) = card_facts(root, a);
-    let robux = robux_of(root, a).map(|r| robux_el(root, &id, r));
+    let robux = robux_of(a).map(|r| robux_el(root, &id, r));
     let tags = tags_of(root, a);
     let under = handle_of(a);
     let main = action(root, a, "card", cx);
@@ -3789,7 +3789,7 @@ fn dock_info(root: &Root, has_game: bool, cx: &mut Context<Root>) -> Div {
     .when(kind == "server", |d| d.child(tag(root.tr("dock.server"), FACE)))
     .when(!s(g, "creator").is_empty(), |d| d.child(div().flex_none().text_color(c(MUTED)).child(root.i18n.tv("dock.by", &[("c", s(g, "creator"))]))))
     .when_some(g.get("playing").and_then(Value::as_i64).filter(|n| *n > 0), |d, n| {
-        d.child(div().flex_none().text_color(c(MUTED)).child(root.i18n.tv("dock.playing", &[("n", &crate::kit::thousands(n, root.i18n.vietnamese))])))
+        d.child(div().flex_none().text_color(c(MUTED)).child(root.i18n.tv("dock.playing", &[("n", &crate::kit::thousands(n))])))
     })
 }
 

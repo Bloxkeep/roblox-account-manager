@@ -35,19 +35,19 @@ pub fn clock(secs: i64) -> String {
     format!("{}:{:02}:{:02}", s / 3600, s / 60 % 60, s % 60)
 }
 
-/// A short span for a small place: "40s", "17m", "1h 20m" ("17p", "1g20" in Vietnamese, as people write it).
+/// A short span for a small place: "40s", "17m", "1h 20m" ("17p", "1g20" in Vietnamese, as people write it; "1 h
+/// 20 min", "1 Std. 20 Min." in the others).
 pub fn span(secs: i64) -> String {
     let s = secs.max(0);
     let (h, m) = (s / 3600, s / 60 % 60);
-    match (s, english()) {
-        (0..60, true) => format!("{s}s"),
-        (0..60, false) => format!("{s} giây"),
-        (60..3600, true) => format!("{m}m"),
-        (60..3600, false) => format!("{m}p"),
-        (_, true) if m == 0 => format!("{h}h"),
-        (_, true) => format!("{h}h {m}m"),
-        (_, false) if m == 0 => format!("{h} giờ"),
-        (_, false) => format!("{h}g{m:02}"),
+    let l = crate::lang::cur();
+    let (us, um, uh) = l.units;
+    match (s, l.code) {
+        (0..60, _) => format!("{s}{us}"),
+        (60..3600, _) => format!("{m}{um}"),
+        (_, _) if m == 0 => format!("{h}{uh}"),
+        (_, "vi") => format!("{h}g{m:02}"),
+        (_, _) => format!("{h}{uh} {m}{um}"),
     }
 }
 
@@ -114,27 +114,15 @@ pub fn iso(secs: i64) -> String {
     format!("{y:04}-{m:02}-{d:02}T{:02}:{:02}:{:02}Z", rest / 3_600, rest % 3_600 / 60, rest % 60)
 }
 
-/// Whether times and dates are written the English way (the interface's language; i18n.rs sets it).
-static ENGLISH: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
-
-pub fn set_english(on: bool) {
-    ENGLISH.store(on, std::sync::atomic::Ordering::Relaxed);
-}
-
+/// Whether times and dates are written the English way (the interface's language: lang.rs).
 pub fn english() -> bool {
-    ENGLISH.load(std::sync::atomic::Ordering::Relaxed)
+    crate::lang::cur().code == "en"
 }
 
 /// An hour and minute of the day as the interface writes it: "7:30 AM", "12:00 PM" in English (the web page's
-/// toLocaleTimeString), "07:30" in Vietnamese.
+/// toLocaleTimeString), "07:30" in Vietnamese (lang.rs: each language's way).
 pub fn hm(h: i64, m: i64) -> String {
-    let (h, m) = (h.rem_euclid(24), m.rem_euclid(60));
-    if english() {
-        let twelve = if h % 12 == 0 { 12 } else { h % 12 };
-        format!("{twelve}:{m:02} {}", if h < 12 { "AM" } else { "PM" })
-    } else {
-        format!("{h:02}:{m:02}")
-    }
+    crate::lang::cur().hm(h, m)
 }
 
 /// "07:30" or "7:30" (a preset's time as kept) the interface's way; the words as they are when they aren't a time.
@@ -145,9 +133,10 @@ pub fn hm_text(time: &str) -> String {
     }
 }
 
-/// A day of a month: "12/24" in English (month first, as the web page wrote it), "24/12" in Vietnamese.
+/// A day of a month: "12/24" in English (month first, as the web page wrote it), "24/12" in Vietnamese, "24.12." in
+/// German.
 pub fn dm(d: i64, m: i64) -> String {
-    if english() { format!("{m}/{d}") } else { format!("{d}/{m}") }
+    crate::lang::cur().dm(d, m)
 }
 
 /// A moment as the day and the time on this PC's clock: 10/11 14:32 (in English 11/10 2:32 PM).
@@ -155,11 +144,14 @@ pub fn day_time(secs: i64) -> String {
     let t = secs + utc_offset_secs();
     let (days, rest) = (t.div_euclid(86_400), t.rem_euclid(86_400));
     let (_, m, d) = civil(days);
-    if english() {
-        format!("{m:02}/{d:02} {}", hm(rest / 3_600, rest % 3_600 / 60))
-    } else {
-        format!("{d:02}/{m:02} {:02}:{:02}", rest / 3_600, rest % 3_600 / 60)
-    }
+    let l = crate::lang::cur();
+    let s = l.date_sep;
+    let day = match (l.day_first, s) {
+        (false, _) => format!("{m:02}{s}{d:02}"),
+        (true, '.') => format!("{d:02}.{m:02}."),
+        (true, _) => format!("{d:02}{s}{m:02}"),
+    };
+    format!("{day} {}", hm(rest / 3_600, rest % 3_600 / 60))
 }
 
 // ───────────── the calendar: days since 1970 and back, and the names of days and months ─────────────
@@ -194,28 +186,15 @@ pub fn weekday(days: i64) -> i64 {
 
 /// A weekday's short name (0 Sunday): "T2"…"T7", "CN" in Vietnamese, as the Presets tab writes them; "Mon"… in English.
 pub fn day_short(w: i64) -> String {
-    let w = w.rem_euclid(7);
-    if english() {
-        ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][w as usize].into()
-    } else if w == 0 {
-        "CN".into()
-    } else {
-        format!("T{}", w + 1)
-    }
+    crate::lang::cur().days_short[w.rem_euclid(7) as usize].into()
 }
 
 /// A weekday's whole name (0 Sunday): "Thứ Hai", "Monday".
 pub fn day_long(w: i64) -> &'static str {
-    let w = w.rem_euclid(7) as usize;
-    if english() {
-        ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][w]
-    } else {
-        ["Chủ Nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"][w]
-    }
+    crate::lang::cur().days_long[w.rem_euclid(7) as usize]
 }
 
-/// A month's English name (1 January); Vietnamese writes the number ("tháng 11").
+/// A month's name in the language shown (1 January; "tháng 11" in Vietnamese).
 pub fn month_name(m: i64) -> &'static str {
-    ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
-        [(m - 1).clamp(0, 11) as usize]
+    crate::lang::cur().months[(m - 1).clamp(0, 11) as usize]
 }

@@ -861,7 +861,8 @@ fn messages_tab(root: &Root, bx: &Boxes, cx: &mut Context<Root>) -> Vec<Div> {
     ));
     let lang = { let l = s(d, "language"); if l.is_empty() { "app" } else { l } }.to_string();
     let style = { let l = s(d, "style"); if l.is_empty() { "embed" } else { l } }.to_string();
-    let langs = vec![("app".to_string(), root.tr("dc.lang.app"), false), ("en".into(), "English".into(), false), ("vi".into(), "Tiếng Việt".into(), false)];
+    let mut langs = vec![("app".to_string(), root.tr("dc.lang.app"), false)];
+    langs.extend(crate::lang::picker_items().into_iter().map(|(code, name, off)| (code.to_string(), name, off)));
     let styles = ["embed", "plain"].into_iter().map(|v| (v.to_string(), root.tr(&format!("dc.style.{v}")), false)).collect();
     out.push(group(
         Some(root.tr("dc.look")),
@@ -934,14 +935,10 @@ fn dc_picker(root: &Root, cx: &mut Context<Root>) -> AnyElement {
 fn preview(root: &Root, cx: &mut Context<Root>) -> Div {
     let d = dc(root);
     let lang = s(d, "language");
-    let vi = match lang {
-        "en" => false,
-        "vi" => true,
-        _ => root.i18n.vietnamese,
-    };
-    let w = |k: &str| root.i18n.t_in(vi, &format!("dcv.{k}"));
+    let lang = if crate::lang::by_code(lang).is_some() { crate::lang::known(lang) } else { root.i18n.lang };
+    let w = |k: &str| root.i18n.t_in(lang, &format!("dcv.{k}"));
     let hide = flag(d, "hideNames");
-    let who = |n: i64| if hide { root.i18n.t_in(vi, "hide.account").replace("{n}", &n.to_string()) } else { format!("Player_0{n}") };
+    let who = |n: i64| if hide { root.i18n.t_in(lang, "hide.account").replace("{n}", &n.to_string()) } else { format!("Player_0{n}") };
     let board = root.settings.dc_board_preview;
     let plain = s(d, "style") == "plain";
     let minutes = d.pointer("/board/minutes").and_then(Value::as_i64).filter(|m| *m > 0).unwrap_or(5);
@@ -981,7 +978,7 @@ fn preview(root: &Root, cx: &mut Context<Root>) -> Div {
             _ => None,
         }
     };
-    let at = if root.i18n.vietnamese { "14:30" } else { "2:30 PM" };
+    let at = crate::lang::cur().hm(14, 30);
     let name = { let n = s(d, "username"); if n.is_empty() { "Bloxkeep" } else { n } }.to_string();
     // The sender's picture: the one linked once it has loaded, else Bloxkeep's logo (as Discord shows it then).
     let avatar = s(d, "avatarUrl").to_string();

@@ -123,7 +123,7 @@ fn settings(root: &Root, data: &Value, cx: &mut Context<Root>) -> Div {
         let day = data.pointer("/birthday/day")?.as_u64()?;
         let month = data.pointer("/birthday/month")?.as_u64()?;
         let year = data.pointer("/birthday/year")?.as_u64()?;
-        Some(if root.i18n.vietnamese { format!("{day:02}/{month:02}/{year}") } else { format!("{year}-{month:02}-{day:02}") })
+        Some(if root.i18n.lang != "en" { crate::lang::cur().dmy(day as i64, month as i64, year as i64) } else { format!("{year}-{month:02}-{day:02}") })
     })();
     let profile = profile
         .child(setting_row(root.tr("rs.email"), div().flex().flex_wrap().gap(px(8.)).items_center()

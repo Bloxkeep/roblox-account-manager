@@ -217,7 +217,7 @@ impl ToolPage {
             window.focus(&self.focus, cx);
         }
         if let Some(l) = data.get("language").and_then(Value::as_str) {
-            self.i18n.vietnamese = l == "vi";
+            self.i18n.set_language(l);
         }
         match (self.kind.as_str(), name) {
             ("mini", "mini") => match &mut self.body {

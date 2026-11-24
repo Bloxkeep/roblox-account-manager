@@ -19,7 +19,8 @@ use crate::pages::macro_form::{live, step_icon};
 
 use crate::{
     images,
-    kit::*,
+    kit::*,
+
     shell::Root,
     theme::*,
 };
@@ -991,13 +992,14 @@ fn ruler(root: &Root, presets: &[Value], width: f32, cx: &mut Context<Root>) -> 
         gap > -(48. + 28. + 6.) && gap < 28. + 6.
     };
     for h in [0, 3, 6, 9, 12, 15, 18, 21] {
-        let mark = if root.i18n.vietnamese { format!("{h:02}:00") } else { format!("{} {}", if h % 12 == 0 { 12 } else { h % 12 }, if h < 12 { "AM" } else { "PM" }) };
+        let mark = crate::lang::cur().hour(h);
         track = track
             .child(div().absolute().left(pct(h * 60)).top(px(34.)).w(px(1.)).h(px(8.)).bg(ca(WHITE, 0.12)))
             .when(!near_now(h * 60), |d| d.child(div().absolute().left(pct(h * 60)).top(px(56.)).text_size(px(T_S)).text_color(c(MUTED)).font_features(tnum()).child(mark)));
     }
     // (The day's end, so the ruler doesn't stop at 9 PM.)
-    let end = if root.i18n.vietnamese { "24:00".to_string() } else { "12 AM".to_string() };
+    let l = crate::lang::cur();
+    let end = if l.meridiem.is_some() { l.hour(0) } else { format!("24{}00", l.time_sep) };
     track = track
         .child(div().absolute().right_0().top(px(34.)).w(px(1.)).h(px(8.)).bg(ca(WHITE, 0.12)))
         .when((1440 - now) as f32 * per_min > 48. + 28. + 6., |d| d.child(div().absolute().right_0().top(px(56.)).text_size(px(T_S)).text_color(c(MUTED)).font_features(tnum()).child(end)));

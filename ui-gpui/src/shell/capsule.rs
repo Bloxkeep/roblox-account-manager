@@ -312,7 +312,6 @@ impl Root {
         let open: Vec<Value> = self.accounts().iter().filter(|a| pages::accounts::is_local(a)).cloned().collect();
         let since = open.iter().filter_map(|a| a.pointer("/session/since").and_then(Value::as_str).and_then(crate::time::iso_secs)).min();
         let ram_of = |id: &str| m.get("accounts").and_then(Value::as_array).and_then(|l| l.iter().find(|x| x.get("id").and_then(Value::as_str) == Some(id))).and_then(|x| x.get("ramMb")?.as_f64());
-        let vi = self.i18n.vietnamese;
         let tones = [0x4db8ffu32, 0xb388ff, 0x3ddc84, 0xffb547];
         let gauge = |name: &str, pct: f64, tone: u32| {
             let col = if pct >= LOAD_FULL { c(BAD) } else if pct >= LOAD_BUSY { c(WARN) } else { c(tone) };
@@ -354,7 +353,7 @@ impl Root {
             let thumb = icon_url.and_then(|u| images::pic(&u, cx));
             let samples = RAM_HISTORY.with(|h| h.borrow().get(&acc_id).map(|(_, s)| s.iter().copied().collect::<Vec<f32>>()).unwrap_or_default());
             let tone = c(tones[i % tones.len()]);
-            let ram_words = ram_of(&acc_id).map(|mb| pages::accounts::mb_text(mb, vi)).unwrap_or_default();
+            let ram_words = ram_of(&acc_id).map(|mb| pages::accounts::mb_text(mb)).unwrap_or_default();
             list = list.child(
                 div()
                     .id(SharedString::from(format!("pill-win-{i}")))

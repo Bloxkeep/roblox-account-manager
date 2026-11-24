@@ -974,10 +974,9 @@ fn setup_theme(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
 /// The welcome: Home before any account.
 fn welcome(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement {
     let list = community_games(root);
-    let vi = root.i18n.vietnamese;
     let facts: Vec<(String, String)> = [("pcs", "home.w.pcs"), ("alts", "home.w.alts")]
         .iter()
-        .filter_map(|(key, words)| community_sum(root, key).map(|n| (root.tr(words), crate::kit::thousands(n, vi))))
+        .filter_map(|(key, words)| community_sum(root, key).map(|n| (root.tr(words), crate::kit::thousands(n))))
         .collect();
     // The panel's height: the hero at its top, the blocks at its foot.
     let page_h = (root.window_h.get() - 110.).max(520.);
@@ -1296,7 +1295,6 @@ fn stage(root: &Root, all: &[Game], focus: usize, width: f32, cx: &mut Context<R
 /// A game's figures under its words on the hero: players now, the share that likes it, its maker. Each only when
 /// Roblox gave it.
 fn hero_figures(root: &Root, d: &Value) -> Vec<Div> {
-    let vi = root.i18n.vietnamese;
     let count = |k: &str| d.get(k).and_then(Value::as_i64).filter(|v| *v >= 0);
     let liked = d.get("likes").and_then(Value::as_f64).filter(|v| *v > 0.).or_else(|| {
         let (up, down) = (count("upVotes")? as f64, count("downVotes")? as f64);
@@ -1305,7 +1303,7 @@ fn hero_figures(root: &Root, d: &Value) -> Vec<Div> {
     let maker = d.get("creator").and_then(Value::as_str).map(str::trim).filter(|s| !s.is_empty());
     let mut out = Vec::new();
     if let Some(n) = count("playing").filter(|n| *n > 0) {
-        out.push(hero_figure(root.tr("home.fig.playing"), crate::kit::thousands(n, vi)));
+        out.push(hero_figure(root.tr("home.fig.playing"), crate::kit::thousands(n)));
     }
     if let Some(p) = liked {
         out.push(hero_figure(root.tr("home.fig.liked"), format!("{}%", p.round() as i64)));
@@ -1390,10 +1388,9 @@ fn hero_h(root: &Root, width: f32) -> f32 {
 /// own, 2026-11-18), Bloxkeep's mark and name in capitals, what to do first, and Bloxkeep now in two figures (Nexus'
 /// figures under its buttons, dribbble.com/shots/27766654).
 fn bloxkeep_hero(root: &Root, width: f32, cx: &mut Context<Root>) -> Div {
-    let vi = root.i18n.vietnamese;
     let figures: Vec<Div> = [("pcs", "home.w.pcs"), ("alts", "home.w.alts")]
         .iter()
-        .filter_map(|(key, words)| community_sum(root, key).map(|n| figure(root.tr(words), crate::kit::thousands(n, vi))))
+        .filter_map(|(key, words)| community_sum(root, key).map(|n| figure(root.tr(words), crate::kit::thousands(n))))
         .collect();
     let pick = Button::new("stage-pick", root.tr("home.pickGame")).icon("gamepad").primary().big().on_click(cx.listener(|r, _, _, cx| {
         r.go(Page::Games);

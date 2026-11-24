@@ -175,7 +175,6 @@ fn buy(r: &mut Root, cx: &mut Context<Root>) {
 /// Roblox's Create Private Server box: for which account, a name, what it costs a month (it renews by itself until
 /// cancelled), Buy (twice) and Cancel; buying on Roblox's own page stays one click away.
 fn buy_box(root: &Root, b: &Buy, cx: &mut Context<Root>) -> Div {
-    let vi = root.i18n.vietnamese;
     let who = root.accounts().iter().find(|a| s(a, "id") == b.account).map(crate::pages::accounts::label).unwrap_or_default();
     let price_line: AnyElement = match &b.price {
         None => div().text_color(c(MUTED)).child(root.tr("av.reading")).into_any_element(),
@@ -189,14 +188,14 @@ fn buy_box(root: &Root, b: &Buy, cx: &mut Context<Root>) -> Div {
             .font_weight(FontWeight::SEMIBOLD)
             .font_features(tnum())
             .child(icon("robux", 14., c(TEXT)))
-            .child(thousands(*p, vi))
+            .child(thousands(*p))
             .child(div().font_weight(FontWeight::NORMAL).text_color(c(MUTED)).child(root.tr("own.aMonth")))
             .into_any_element(),
     };
     let can_buy = matches!(b.price, Some(Ok(Some(_)))) && b.universe > 0;
     let buy_words = match (&b.price, b.armed, b.busy) {
         (_, _, true) => root.tr("ps.buying"),
-        (Some(Ok(Some(p))), true, _) if *p > 0 => root.i18n.tv("ps.confirm", &[("n", &thousands(*p, vi))]),
+        (Some(Ok(Some(p))), true, _) if *p > 0 => root.i18n.tv("ps.confirm", &[("n", &thousands(*p))]),
         (_, true, _) => root.tr("ps.confirmFree"),
         _ => root.tr("ps.buy"),
     };

@@ -14,7 +14,7 @@ use serde_json::{Value, json};
 use crate::{images, kit::*, shell::Root, theme::*};
 use crate::val::s;
 use crate::val::arr;
-use crate::time::{civil, day_long, day_short, dm, month_name, weekday};
+use crate::time::{civil, day_long, day_short, dm, weekday};
 use crate::ask::answer;
 
 #[derive(Clone, Copy, PartialEq, Eq, Default)]
@@ -367,7 +367,7 @@ pub fn export(r: &mut Root, cx: &mut Context<Root>) {
             Ok(Ok(v)) => {
                 let n = v.as_i64().unwrap_or(0);
                 if n > 0 {
-                    r.toast = Some((r.i18n.tn("alog.exported", n, &[("n", &thousands(n, r.i18n.vietnamese))]), "ok".into()));
+                    r.toast = Some((r.i18n.tn("alog.exported", n, &[("n", &thousands(n))]), "ok".into()));
                 }
             }
             Ok(Err(e)) => r.toast = Some((e, "bad".into())),
@@ -386,9 +386,9 @@ pub fn played(root: &Root, seconds: i64) -> String {
     if m < 60 {
         root.i18n.tv("dur.min", &[("m", &m.to_string())])
     } else if m % 60 > 0 {
-        root.i18n.tv("dur.hour", &[("h", &thousands(h, root.i18n.vietnamese)), ("m", &(m % 60).to_string())])
+        root.i18n.tv("dur.hour", &[("h", &thousands(h)), ("m", &(m % 60).to_string())])
     } else {
-        root.i18n.tv("dur.hours", &[("h", &thousands(h, root.i18n.vietnamese))])
+        root.i18n.tv("dur.hours", &[("h", &thousands(h))])
     }
 }
 
@@ -400,20 +400,14 @@ fn offset() -> i64 {
 fn clock_at(root: &Root, at: i64) -> String {
     let t = (at + offset()).rem_euclid(86400);
     let (h, m) = (t / 3600, t / 60 % 60);
-    if root.i18n.vietnamese {
-        format!("{h:02}:{m:02}")
-    } else {
-        format!("{}:{m:02} {}", if h % 12 == 0 { 12 } else { h % 12 }, if h < 12 { "AM" } else { "PM" })
-    }
+    let _ = root;
+    crate::lang::cur().hm(h, m)
 }
 
 /// Hour h as a mark on a scale: "07:00", "7 AM".
 fn hour_mark(root: &Root, h: i64) -> String {
-    if root.i18n.vietnamese {
-        format!("{h:02}:00")
-    } else {
-        format!("{} {}", if h % 12 == 0 { 12 } else { h % 12 }, if h < 12 { "AM" } else { "PM" })
-    }
+    let _ = root;
+    crate::lang::cur().hour(h)
 }
 
 fn local_day(at: i64) -> i64 {
@@ -440,12 +434,10 @@ fn day_heading(root: &Root, day: i64, today: i64) -> String {
     let (y, m, d) = civil(day);
     let (ty, _, _) = civil(today);
     let name = day_long(weekday(day));
-    if root.i18n.vietnamese {
-        if y != ty { format!("{name}, {d} tháng {m}, {y}") } else { format!("{name}, {d} tháng {m}") }
-    } else {
-        let month = month_name(m);
-        if y != ty { format!("{name}, {month} {d}, {y}") } else { format!("{name}, {month} {d}") }
-    }
+    let l = crate::lang::cur();
+    let date = if y != ty { l.date_long(d, m, y) } else { l.day_month(d, m) };
+    // (French writes no comma after the day's name: "lundi 9 novembre".)
+    if l.code == "fr" { format!("{name} {date}") } else { format!("{name}, {date}") }
 }
 
 // ───────────────────────── colours ─────────────────────────
@@ -807,7 +799,6 @@ fn alt_head(size: f32, tone: Hsla) -> Div {
 /// is a row with a bar of its accounts against the leader's: the block head stays as the board's mark (a row of up to
 /// 200 little heads each was noise, review 6.2).
 fn alts_board(root: &Root, w: f32, cx: &mut Context<Root>) -> Div {
-    let vi = root.i18n.vietnamese;
     let cm = root.state.pointer("/community/data").filter(|v| v.is_object());
     let counted = root.state.get("countOnline").and_then(Value::as_bool) != Some(false);
     let name = s(&root.state, "boardName").to_string();
@@ -837,7 +828,7 @@ fn alts_board(root: &Root, w: f32, cx: &mut Context<Root>) -> Div {
     if let Some(data) = cm {
         let (alts, pcs) = (int(data, "alts"), int(data, "pcs"));
         let per = if pcs > 0 { format!("{:.1}", alts as f64 / pcs as f64) } else { "0".into() };
-        let per = if vi { per.replace('.', ",") } else { per };
+        let per = crate::lang::cur().decimal(&per);
         let fact = |n: String, label: String| {
             div()
                 .min_w(px(84.))
@@ -852,7 +843,7 @@ fn alts_board(root: &Root, w: f32, cx: &mut Context<Root>) -> Div {
                 .child(div().text_size(px(T_XS)).text_color(c(MUTED)).child(label))
         };
         head = head.child(div().flex_1()).child(
-            div().flex().flex_wrap().gap(px(8.)).child(fact(thousands(alts, vi), root.tr("cm.accounts"))).child(fact(thousands(pcs, vi), root.tr("cm.pcs"))).child(fact(per, root.tr("cm.perPc"))),
+            div().flex().flex_wrap().gap(px(8.)).child(fact(thousands(alts), root.tr("cm.accounts"))).child(fact(thousands(pcs), root.tr("cm.pcs"))).child(fact(per, root.tr("cm.perPc"))),
         );
     }
     let mut card = card().child(head);
@@ -902,7 +893,7 @@ fn alts_board(root: &Root, w: f32, cx: &mut Context<Root>) -> Div {
                 .justify_end()
                 .gap(px(4.))
                 .font_features(tnum())
-                .child(div().text_size(px(if first { T_L } else { T_M })).font_weight(FontWeight::SEMIBOLD).child(thousands(alts, vi)))
+                .child(div().text_size(px(if first { T_L } else { T_M })).font_weight(FontWeight::SEMIBOLD).child(thousands(alts)))
                 .child(div().text_size(px(T_XS)).text_color(c(MUTED)).child(root.tr("cm.alts")));
             rows = rows.child(
                 div()
@@ -930,9 +921,9 @@ fn alts_board(root: &Root, w: f32, cx: &mut Context<Root>) -> Div {
         let on_board = !name.is_empty() && rank > 0 && rank as usize <= board.len();
         let mine = if on_board { int(&board[rank as usize - 1], "alts") } else { root.accounts().iter().filter(|a| s(a, "state") == "running").count() as i64 };
         let line = if on_board {
-            Some(root.i18n.tv("cm.youLine", &[("name", &name), ("r", &rank.to_string()), ("n", &thousands(of, vi)), ("a", &thousands(mine, vi))]))
+            Some(root.i18n.tv("cm.youLine", &[("name", &name), ("r", &rank.to_string()), ("n", &thousands(of)), ("a", &thousands(mine))]))
         } else if !name.is_empty() && rank > 0 {
-            Some(root.i18n.tv("cm.yourRank", &[("r", &rank.to_string()), ("n", &thousands(of, vi))]))
+            Some(root.i18n.tv("cm.yourRank", &[("r", &rank.to_string()), ("n", &thousands(of))]))
         } else if !name.is_empty() && cm.is_some_and(|c| c.get("you").is_some_and(|y| !y.is_null())) {
             Some(root.tr("cm.notYet"))
         } else {
@@ -983,7 +974,6 @@ fn pick_game(r: &mut Root, key: Option<String>, cx: &mut Context<Root>) {
 
 /// Play time, accounts played, drops, the longest stay; the first and third with the change from the period before.
 fn tiles(root: &Root, d: &Value, w: f32) -> Div {
-    let vi = root.i18n.vietnamese;
     let hourly = d.get("hourly").and_then(Value::as_bool).unwrap_or(false);
     let period = if hourly { 1 } else { Some(int(d, "days")).filter(|n| *n > 0).unwrap_or(arr(d, "buckets").len() as i64) };
     let prev = d.get("previous").filter(|p| p.is_object());
@@ -1002,7 +992,7 @@ fn tiles(root: &Root, d: &Value, w: f32) -> Div {
                     .font_weight(FontWeight::SEMIBOLD)
                     .text_color(c(if good { OK } else { BAD }))
                     .flex_none()
-                    .child(format!("{} {} %", if pct > 0 { "↑" } else { "↓" }, thousands(pct.abs(), vi))),
+                    .child(format!("{} {} %", if pct > 0 { "↑" } else { "↓" }, thousands(pct.abs()))),
             )
             .child(div().min_w_0().truncate().text_color(c(MUTED)).child(vs))
         })
@@ -1095,14 +1085,14 @@ fn tiles(root: &Root, d: &Value, w: f32) -> Div {
         .child(tile(
             false,
             root.tr("stats.played"),
-            div().flex().items_baseline().child(thousands(played_n, vi)).child(div().text_size(px(T_H)).text_color(c(MUTED)).child(format!("/{}", thousands(all, vi)))),
+            div().flex().items_baseline().child(thousands(played_n)).child(div().text_size(px(T_H)).text_color(c(MUTED)).child(format!("/{}", thousands(all)))),
             (all > 0).then(|| {
                 let idle = (all - played_n).max(0);
-                div().text_size(px(T_S)).text_color(c(MUTED)).truncate().child(if idle == 0 { root.tr("stats.allPlayed") } else { root.i18n.tv("stats.idleN", &[("n", &thousands(idle, vi))]) })
+                div().text_size(px(T_S)).text_color(c(MUTED)).truncate().child(if idle == 0 { root.tr("stats.allPlayed") } else { root.i18n.tv("stats.idleN", &[("n", &thousands(idle))]) })
             }),
             None,
         ))
-        .child(tile(false, root.tr("stats.kicks"), div().child(thousands(kicks, vi)), change(kicks, prev.map(|p| int(p, "kicks")), false), None))
+        .child(tile(false, root.tr("stats.kicks"), div().child(thousands(kicks)), change(kicks, prev.map(|p| int(p, "kicks")), false), None))
         .child(tile(false, root.tr("stats.longest"), div().child(longest.map(|l| played(root, int(l, "seconds"))).unwrap_or("—".into())), long_sub, None)),
         )
 }
@@ -1502,7 +1492,6 @@ fn avg_day(d: &Value) -> i64 {
 /// 7 and 30 days by hour: a row a day (today last), a cell an hour, the brighter the more windows ran in it.
 fn heat(root: &Root, d: &Value, w: f32) -> Div {
     let heat = arr(d, "heat");
-    let vi = root.i18n.vietnamese;
     let most = heat.iter().flat_map(|r| r.as_array().into_iter().flatten()).filter_map(Value::as_f64).fold(0.01_f64, f64::max);
     let first_day = local_day(secs(d, "since"));
     let last = heat.len().saturating_sub(1);
@@ -1552,7 +1541,7 @@ fn heat(root: &Root, d: &Value, w: f32) -> Div {
                     .rounded(px(2.))
                     .map(|d| if i == last && h as i64 > now_hour { d.border_1().border_color(ca(WHITE, 0.06)) } else { d.bg(tone(level(v))) })
                     .tooltip(move |_, cx| {
-                        let n = format!("{}", (v * 10.).round() / 10.).replace('.', if vi { "," } else { "." });
+                        let n = crate::lang::cur().decimal(&format!("{}", (v * 10.).round() / 10.));
                         let tip = words.replace("{d}", &day).replace("{h}", marks.get(h).map_or("", String::as_str)).replace("{n}", &n);
                         cx.new(|_| Tip(tip.into())).into()
                     }),
@@ -1575,7 +1564,6 @@ fn drops(root: &Root, d: &Value, cx: &mut Context<Root>) -> Option<Div> {
     if losses.is_empty() {
         return None;
     }
-    let vi = root.i18n.vietnamese;
     let total: i64 = losses.iter().map(|l| int(l, "seconds")).sum();
     let accounts = arr(d, "accounts");
     let mut list = div().flex().flex_col();
@@ -1593,7 +1581,7 @@ fn drops(root: &Root, d: &Value, cx: &mut Context<Root>) -> Option<Div> {
             "other" if arr(l, "accounts").iter().filter_map(Value::as_str).any(|id| root.accounts().iter().any(|a| s(a, "id") == id && a.get("autoRejoin").and_then(Value::as_bool) == Some(false))) => Some("stats.do.rejoin"),
             _ => None,
         };
-        let detail = [root.i18n.tn("stats.timesN", times, &[("n", &thousands(times, vi))]), names.join(", ")].into_iter().filter(|x| !x.is_empty()).collect::<Vec<_>>().join(" · ");
+        let detail = [root.i18n.tn("stats.timesN", times, &[("n", &thousands(times))]), names.join(", ")].into_iter().filter(|x| !x.is_empty()).collect::<Vec<_>>().join(" · ");
         list = list.child(
             div()
                 .flex()
@@ -1645,7 +1633,6 @@ fn drops(root: &Root, d: &Value, cx: &mut Context<Root>) -> Option<Div> {
 /// and share, and a bar of its share in its colour; `cols` side by side on a wide page. A click counts only that game
 /// in every figure on the page; the row again, or the chip by the title, counts all again.
 fn game_list(root: &Root, d: &Value, cols: u16, cx: &mut Context<Root>) -> Div {
-    let vi = root.i18n.vietnamese;
     let games: Vec<&Value> = arr(d, "games").iter().filter(|g| int(g, "seconds") > 0).collect();
     let total = d.get("gamesSeconds").and_then(Value::as_i64).unwrap_or(int(d, "totalSeconds")).max(1);
     let most = games.iter().map(|g| int(g, "seconds")).max().unwrap_or(1).max(1);
@@ -1691,7 +1678,7 @@ fn game_list(root: &Root, d: &Value, cols: u16, cx: &mut Context<Root>) -> Div {
                                 .items_baseline()
                                 .gap(px(10.))
                                 .child(div().flex_1().min_w_0().truncate().text_size(px(T_M)).font_weight(FontWeight::SEMIBOLD).child(s(g, "name").to_string()))
-                                .child(div().flex_none().text_size(px(T_S)).text_color(c(TEXT_2)).font_features(tnum()).child(format!("{} · {} %", played(root, int(g, "seconds")), thousands(share, vi)))),
+                                .child(div().flex_none().text_size(px(T_S)).text_color(c(TEXT_2)).font_features(tnum()).child(format!("{} · {} %", played(root, int(g, "seconds")), thousands(share)))),
                         )
                         .child(div().h(px(4.)).rounded_full().bg(c(RAISED_2)).child(grow_bar(i, part, game_color(&key)))),
                 )
@@ -1824,7 +1811,6 @@ fn by_preset(root: &Root, d: &Value, cx: &mut Context<Root>) -> Option<Div> {
     if presets.is_empty() {
         return None;
     }
-    let vi = root.i18n.vietnamese;
     let total = int(d, "totalSeconds").max(1);
     let mut list = div().flex().flex_col().gap(px(4.));
     for (i, p) in presets.iter().enumerate() {
@@ -1835,7 +1821,7 @@ fn by_preset(root: &Root, d: &Value, cx: &mut Context<Root>) -> Option<Div> {
         let detail = [
             root.i18n.tn("stats.accountsN", int(p, "accounts"), &[]),
             if kicks > 0 { root.i18n.tn("stats.kicksN", kicks, &[]) } else { String::new() },
-            format!("{} %", thousands(share, vi)),
+            format!("{} %", thousands(share)),
         ]
         .into_iter()
         .filter(|x| !x.is_empty())
@@ -2004,7 +1990,6 @@ fn activity(root: &Root, cx: &mut Context<Root>) -> Div {
 
 fn log_list(root: &Root, cx: &mut Context<Root>) -> Div {
     let st = &root.stats;
-    let vi = root.i18n.vietnamese;
     let note = |t: String| div().py(px(24.)).text_center().text_size(px(T_M)).text_color(c(MUTED)).child(t);
     let Some(log) = st.log.as_ref() else {
         if st.log_failed {
@@ -2065,7 +2050,7 @@ fn log_list(root: &Root, cx: &mut Context<Root>) -> Div {
                 .child(
                     div()
                         .id(("al-t", i))
-                        .w(px(if vi { 40. } else { 62. }))
+                        .w(px(if crate::lang::cur().meridiem.is_some() { 66. } else { 40. }))
                         .flex_none()
                         .text_size(px(T_S))
                         .font_features(tnum())
@@ -2092,7 +2077,7 @@ fn log_list(root: &Root, cx: &mut Context<Root>) -> Div {
                     load_log(r, cx);
                     cx.notify();
                 })))
-                .child(div().text_size(px(T_S)).text_color(c(MUTED)).child(root.i18n.tv("alog.shown", &[("n", &thousands(entries.len() as i64, vi)), ("total", &thousands(total, vi))]))),
+                .child(div().text_size(px(T_S)).text_color(c(MUTED)).child(root.i18n.tv("alog.shown", &[("n", &thousands(entries.len() as i64)), ("total", &thousands(total))]))),
         );
     }
     list
@@ -2233,7 +2218,7 @@ fn console(root: &Root, width: f32, cx: &mut Context<Root>) -> Div {
             let text: Vec<String> = all.iter().map(|l| plain_line(l, &masks)).collect();
             cx.write_to_clipboard(ClipboardItem::new_string(text.join("\n")));
             let n = text.len() as i64;
-            r.toast = Some((r.i18n.tn("con.copied", n, &[("n", &thousands(n, r.i18n.vietnamese))]), "ok".into()));
+            r.toast = Some((r.i18n.tn("con.copied", n, &[("n", &thousands(n))]), "ok".into()));
             cx.notify();
         })),
     );

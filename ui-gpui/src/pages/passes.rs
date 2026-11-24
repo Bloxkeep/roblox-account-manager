@@ -213,7 +213,6 @@ fn cart_bar(root: &Root, cx: &mut Context<Root>) -> Option<AnyElement> {
     if items.is_empty() && cr.said.is_empty() {
         return None;
     }
-    let vi = root.i18n.vietnamese;
     let total: i64 = items.iter().filter_map(|i| i.pass.price).sum();
     let games = {
         let mut g: Vec<i64> = items.iter().map(|i| i.place).collect();
@@ -244,7 +243,7 @@ fn cart_bar(root: &Root, cx: &mut Context<Root>) -> Option<AnyElement> {
                 .child(div().text_size(px(T_S)).text_color(c(MUTED)).child(summary)),
         )
         .when(total > 0, |d| {
-            d.child(div().flex().items_center().gap(px(5.)).text_size(px(T_H)).font_weight(FontWeight::SEMIBOLD).font_features(tnum()).child(icon("robux", 14., c(TEXT))).child(thousands(total, vi)))
+            d.child(div().flex().items_center().gap(px(5.)).text_size(px(T_H)).font_weight(FontWeight::SEMIBOLD).font_features(tnum()).child(icon("robux", 14., c(TEXT))).child(thousands(total)))
         })
         .child(Button::new("cart-open", root.tr(if cr.open { "cart.hide" } else { "cart.show" })).icon_end(if cr.open { "chevronUp" } else { "chevronDown" }).on_click(cx.listener(|r, _, _, cx| {
             open_cart(r, cx);
@@ -306,17 +305,17 @@ fn cart_bar(root: &Root, cx: &mut Context<Root>) -> Option<AnyElement> {
         (Some((d, t)), _) => foot.child(div().flex_1().text_size(px(T_M)).text_color(c(TEXT_2)).child(root.i18n.tv("cart.buying", &[("d", &d.to_string()), ("t", &t.to_string())]))).child(Button::new("cart-wait", root.tr("shop.buying")).primary().disabled(true)),
         (None, false) => foot.child(div().flex_1().text_size(px(T_M)).text_color(c(MUTED)).child(root.tr("shop.noAccount"))),
         (None, true) if items.is_empty() => foot.child(div().flex_1().text_size(px(T_M)).text_color(c(OK)).child(root.i18n.tv("cart.boughtN", &[("n", &bought.to_string())]))),
-        (None, true) if short => foot.child(div().flex_1().text_size(px(T_M)).text_color(c(WARN)).child(root.i18n.tv("shop.short", &[("n", &thousands(cr.robux.unwrap_or(0), vi))]))),
+        (None, true) if short => foot.child(div().flex_1().text_size(px(T_M)).text_color(c(WARN)).child(root.i18n.tv("shop.short", &[("n", &thousands(cr.robux.unwrap_or(0)))]))),
         (None, true) if cr.armed => {
             let who = profile::buyer(root);
-            let after = cr.robux.map(|r| root.i18n.tv("shop.after", &[("n", &thousands(r - total, vi))]));
+            let after = cr.robux.map(|r| root.i18n.tv("shop.after", &[("n", &thousands(r - total))]));
             foot.child(
                 div()
                     .flex_1()
                     .flex()
                     .flex_col()
                     .gap(px(2.))
-                    .child(div().text_size(px(T_M)).child(root.i18n.tv("cart.charge", &[("n", &thousands(total, vi)), ("who", &who), ("k", &items.iter().filter(|i| i.pass.price.is_some()).count().to_string())])))
+                    .child(div().text_size(px(T_M)).child(root.i18n.tv("cart.charge", &[("n", &thousands(total)), ("who", &who), ("k", &items.iter().filter(|i| i.pass.price.is_some()).count().to_string())])))
                     .children(after.map(|a| div().text_size(px(T_S)).text_color(c(MUTED)).child(a))),
             )
             .child(Button::new("cart-cancel", root.tr("gp.cancel")).on_click(cx.listener(|r, _, _, cx| {
@@ -551,7 +550,7 @@ fn price_of(root: &Root, p: &Pass, size: f32) -> Div {
             .font_features(tnum())
             .text_color(c(TEXT))
             .child(icon("robux", (size - 1.).max(12.), c(TEXT)))
-            .child(thousands(n, root.i18n.vietnamese)),
+            .child(thousands(n)),
     }
 }
 
@@ -626,7 +625,6 @@ fn tile(root: &Root, i: usize, p: &Pass, w: f32, cx: &mut Context<Root>) -> impl
 /// The pass open: what it gives, which accounts own it, and Buy for the account whose tab is shown (two clicks).
 fn detail(root: &Root, p: &Pass, cx: &mut Context<Root>) -> impl IntoElement {
     let ps = &root.passes;
-    let vi = root.i18n.vietnamese;
     let id = p.id;
     let pic = (!p.pic.is_empty()).then(|| images::pic_sq(&p.pic, 72., cx)).flatten();
     let tone = (!p.pic.is_empty()).then(|| images::tone(&p.pic, cx)).flatten();
@@ -653,11 +651,11 @@ fn detail(root: &Root, p: &Pass, cx: &mut Context<Root>) -> impl IntoElement {
         } else if ps.busy {
             div().flex().child(Button::new("pass-buying", root.tr("shop.buying")).primary().disabled(true))
         } else if short {
-            line(WARN, root.i18n.tv("shop.short", &[("n", &thousands(ps.robux.unwrap_or(0), vi))]))
+            line(WARN, root.i18n.tv("shop.short", &[("n", &thousands(ps.robux.unwrap_or(0)))]))
         } else if ps.armed {
             let who = profile::buyer(root);
-            let whose = if cost == 0 { root.i18n.tv("shop.chargeFree", &[("who", &who)]) } else { root.i18n.tv("shop.charge", &[("n", &thousands(cost, vi)), ("who", &who)]) };
-            let after = ps.robux.filter(|_| cost > 0).map(|r| root.i18n.tv("shop.after", &[("n", &thousands(r - cost, vi))]));
+            let whose = if cost == 0 { root.i18n.tv("shop.chargeFree", &[("who", &who)]) } else { root.i18n.tv("shop.charge", &[("n", &thousands(cost)), ("who", &who)]) };
+            let after = ps.robux.filter(|_| cost > 0).map(|r| root.i18n.tv("shop.after", &[("n", &thousands(r - cost))]));
             div()
                 .flex()
                 .flex_col()

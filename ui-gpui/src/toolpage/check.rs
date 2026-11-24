@@ -275,8 +275,7 @@ pub fn window_check(out: PathBuf, assets: PathBuf) {
             .map(std::borrow::Cow::Owned)
             .collect::<Vec<_>>();
         cx.text_system().add_fonts(fonts).ok();
-        let mut words = I18n::load(&std::fs::read_to_string(assets.join("i18n.json")).unwrap_or_default());
-        words.add(&std::fs::read_to_string(assets.join("words.json")).unwrap_or_default());
+        let words = I18n::from_assets(&assets);
         let here_class = class("BloxkeepToolCheck", here_proc);
         // A hidden window of the interface's own kept open all along (the app's main window, here): GPUI ends its loop
         // when its last window goes, and each face's window goes after its case.

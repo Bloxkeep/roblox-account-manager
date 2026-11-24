@@ -755,6 +755,9 @@ pub struct ActivityEntry {
     /// A notification's own sentence, in English and in Vietnamese, so it shows in the language chosen later.
     pub text: Option<String>,
     pub text_vi: Option<String>,
+    /// The same in the languages added after Vietnamese, by code ("es", "pt", …; lang.rs).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub text_in: Option<std::collections::BTreeMap<String, String>>,
     /// The accounts `text` names, in the order of its placeholders (U+E000, the number, U+E001), filled in when shown
     /// with each one's name then, so a sentence never holds a name. None in entries without names and in older ones
     /// (which hold the names themselves).
@@ -778,6 +781,7 @@ impl Default for ActivityEntry {
             code: None,
             text: None,
             text_vi: None,
+            text_in: None,
             names: None,
             tone: None,
             extra: Extra::new(),

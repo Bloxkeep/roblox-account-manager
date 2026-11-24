@@ -483,9 +483,7 @@ impl App {
 
     /// The picture's columns: whole clock hours over the period (or days), each split by game.
     pub fn buckets(&self, parts: &[StayPart], from: Stamp, to: Stamp, hourly: bool, colour: &HashMap<String, i32>) -> Vec<SummaryCardBucket> {
-        // Invariant culture: its English names suit the labels.
-        const MONTHS: [&str; 12] = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-        let vi = self.discord_language() == "vi";
+        let lang = crate::lang::by_code(&self.discord_language()).unwrap_or(&crate::lang::ALL[0]);
         let first_hour = from.local().hour;
         let at_step = |k: i64| if hourly { local_day_hour(from, 0, first_hour + k as u32) } else { local_day(from, k) };
         let mut buckets = Vec::new();
@@ -509,17 +507,18 @@ impl App {
             }
             let c = at.local();
             let label = if hourly {
-                if vi {
-                    format!("{}h", c.hour)
-                } else {
+                match lang.code {
                     // "h tt", lower case, no space: "1am", "12pm".
-                    let h12 = if c.hour % 12 == 0 { 12 } else { c.hour % 12 };
-                    format!("{h12}{}", if c.hour < 12 { "am" } else { "pm" })
+                    "en" => format!("{}{}", if c.hour % 12 == 0 { 12 } else { c.hour % 12 }, if c.hour < 12 { "am" } else { "pm" }),
+                    "vi" => format!("{}h", c.hour),
+                    _ => lang.hour(c.hour as i64),
                 }
-            } else if vi {
-                format!("{:02}/{:02}", c.day, c.month)
             } else {
-                format!("{} {}", MONTHS[(c.month - 1) as usize], c.day)
+                match lang.code {
+                    "en" => format!("{} {}", lang.months_short[(c.month - 1) as usize], c.day),
+                    "vi" => format!("{:02}/{:02}", c.day, c.month),
+                    _ => lang.dm(c.day as i64, c.month as i64),
+                }
             };
             buckets.push(SummaryCardBucket::new(label, split));
             k += 1;

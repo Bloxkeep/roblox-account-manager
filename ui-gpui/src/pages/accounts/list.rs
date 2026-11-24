@@ -28,7 +28,7 @@ struct Cols {
 }
 
 /// Keep the status and row actions visible as the pane narrows. Secondary details are still available per account.
-fn cols_of(root: &Root, shown: &[&Value], width: f32, sectioned: bool) -> Cols {
+fn cols_of(shown: &[&Value], width: f32, sectioned: bool) -> Cols {
     let longest = shown.iter().map(|a| s(a, "group").chars().count()).max().unwrap_or(0);
     let (name, button, gap) = ((width * 0.24).clamp(112., 230.), (width * 0.14).clamp(88., 132.), if width < 880. { 10. } else { 14. });
     // (About a letter's width each, the tag's sides, at most a short word's room: a longer one is cut with "…".)
@@ -43,7 +43,7 @@ fn cols_of(root: &Root, shown: &[&Value], width: f32, sectioned: bool) -> Cols {
         shown.iter().any(|a| rejoin_on(a)),
         shown.iter().any(|a| is_local(a)),
         group > 0.,
-        shown.iter().any(|a| robux_of(root, a).is_some()),
+        shown.iter().any(|a| robux_of(a).is_some()),
     ];
     let takes = [84., 26., 78., group, 92.];
     // (The line's sides, the tick, the face, the name, the button and ⋮, with the gaps between them.)
@@ -63,7 +63,7 @@ fn cols_of(root: &Root, shown: &[&Value], width: f32, sectioned: bool) -> Cols {
 /// ordered by group (accounts::shown_accounts). Every part has the same columns.
 pub fn rows(root: &Root, shown: &[&Value], width: f32, cx: &mut Context<Root>) -> Div {
     let sectioned = shown.iter().any(|a| !s(a, "group").is_empty());
-    let cols = cols_of(root, shown, width, sectioned);
+    let cols = cols_of(shown, width, sectioned);
     if !sectioned {
         return block(root, "acc-rows", shown, &cols, cx);
     }
@@ -167,10 +167,10 @@ fn row(root: &Root, a: &Value, cols: &Cols, cx: &mut Context<Root>) -> impl Into
     // A ban or a lost sign-in is the red pill, in the line's place (its words would only say it again).
     let pill = !local && !launching(a) && (banned(a) || signed_out(a)) && tone == BAD;
     let up = (local && tone == OK).then(|| up_of(a)).flatten();
-    let robux = robux_of(root, a).map(|r| robux_el(root, &id, r));
+    let robux = robux_of(a).map(|r| robux_el(root, &id, r));
     let group = s(a, "group").to_string();
     let compact_group = !cols.sectioned && cols.group == 0. && !group.is_empty();
-    let ram = local.then(|| ram_mb(root, a)).flatten().map(|m| mb_text(m, root.i18n.vietnamese));
+    let ram = local.then(|| ram_mb(root, a)).flatten().map(|m| mb_text(m));
     let pid = local.then(|| pid_el(root, a, cx)).flatten();
     let pick = id.clone();
     let tick_id = id.clone();
@@ -307,11 +307,11 @@ pub fn detail(root: &Root, a: &Value, cx: &mut Context<Root>) -> Div {
     let local = is_local(a);
     let (line, tone) = line_of(root, a);
     let line_said = line.clone();
-    let robux = robux_of(root, a).map(|r| robux_el(root, &id, r));
+    let robux = robux_of(a).map(|r| robux_el(root, &id, r));
     let game = game_name(a);
     let pic = game_icon(a).and_then(|u| crate::images::pic_sq(&u, 40., cx));
     let up = up_of(a);
-    let ram = local.then(|| ram_mb(root, a)).flatten().map(|m| mb_text(m, root.i18n.vietnamese));
+    let ram = local.then(|| ram_mb(root, a)).flatten().map(|m| mb_text(m));
     let pid = local.then(|| pid_el(root, a, cx)).flatten();
     let opened = opened_of(root, a);
     let today = day_line(root, &id);

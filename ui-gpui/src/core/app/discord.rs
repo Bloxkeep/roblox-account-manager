@@ -207,10 +207,9 @@ fn is_https_link(text: &str) -> bool {
 
 impl App {
     pub fn discord_language(&self) -> String {
-        match self.vault(|d| d.discord.language.clone()).ok().as_deref() {
-            Some("en") => "en".into(),
-            Some("vi") => "vi".into(),
-            _ => l::language(),
+        match self.vault(|d| d.discord.language.clone()).ok().and_then(|l| crate::lang::by_code(&l)) {
+            Some(l) => l.code.into(),
+            None => l::language(),
         }
     }
 
@@ -301,7 +300,7 @@ impl App {
             }
         }
         let language = opt_str("language");
-        if !matches!(language.as_deref(), None | Some("app" | "en" | "vi")) {
+        if !language.as_deref().is_none_or(|l| l == "app" || crate::lang::by_code(l).is_some()) {
             return Err(Fail::user(l::t("Unknown language.")));
         }
         let style = opt_str("style");

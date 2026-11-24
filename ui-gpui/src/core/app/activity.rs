@@ -231,9 +231,11 @@ impl App {
             ..ActivityEntry::default()
         };
         if let Some(text) = text {
-            let (english, vietnamese, names) = self.activity_sentences(text);
+            let (english, others, names) = self.activity_sentences(text);
             entry.text = Some(english);
-            entry.text_vi = Some(vietnamese);
+            entry.text_vi = others.iter().find(|(l, _)| *l == "vi").map(|(_, t)| t.clone());
+            let more: std::collections::BTreeMap<String, String> = others.into_iter().filter(|(l, _)| *l != "vi").map(|(l, t)| (l.to_string(), t)).collect();
+            entry.text_in = (!more.is_empty()).then_some(more);
             entry.names = names;
         }
         {
@@ -279,7 +281,7 @@ impl App {
     /// A notification's sentence in English and Vietnamese. Account names L.F put in (Name, Names)
     /// become placeholders, so the log keeps no name: one hidden then would stay "Account 1" for good, one shown then would
     /// show while hidden.
-    pub fn activity_sentences(&self, text: &str) -> (String, String, Option<Vec<ActivityName>>) {
+    pub fn activity_sentences(&self, text: &str) -> (String, Vec<(&'static str, String)>, Option<Vec<ActivityName>>) {
         // PORT: C# told a name apart by its type (Shown); `l::made` gives every value as text, so a value is taken for
         // names when it reads as one account's name as the app writes it now (`name_text`), or a ", " list of them.
         let made = l::made(text);
@@ -296,8 +298,8 @@ impl App {
             arg.split(", ").map(one).collect::<Option<Vec<Account>>>()
         };
         let Some((english, args)) = made.filter(|(_, args)| args.iter().any(|a| as_names(a).is_some())) else {
-            let (english, vietnamese) = l::both(text);
-            return (english, vietnamese, None);
+            let (english, others) = l::each(text);
+            return (english, others, None);
         };
         let mut names: Vec<ActivityName> = Vec::new();
         let mut placeholder = |account: &Account| -> String {
@@ -319,7 +321,8 @@ impl App {
             .collect();
         // PORT: the words that come with the names (" and 2 more") were written in the app's language by L.F already.
         let in_language = |language: &str| l::format(&l::t_in(&english, language), &written);
-        (in_language("en"), in_language("vi"), Some(names))
+        let others = crate::lang::ALL.iter().map(|l| l.code).filter(|c| *c != "en").map(|c| (c, in_language(c))).collect();
+        (in_language("en"), others, Some(names))
     }
 
     /// Entries noted while locked join the vault now open, its own accounts only (it may be another vault: a restored backup).
@@ -574,8 +577,12 @@ impl App {
     /// The entry as a sentence in the app's language (the account is shown beside it).
     pub fn activity_text(&self, e: &ActivityEntry) -> String {
         if let Some(text) = &e.text {
-            return match &e.text_vi {
-                Some(vi) if l::language() == "vi" && !vi.is_empty() => vi.clone(),
+            let lang = l::language();
+            let own = if lang == "vi" { e.text_vi.as_ref() } else { e.text_in.as_ref().and_then(|m| m.get(&lang)) };
+            return match own {
+                Some(own) if !own.is_empty() => own.clone(),
+                // (Noted before this language came: a plain sentence of the app's is still said in it.)
+                _ if lang != "en" => l::t(text),
                 _ => text.clone(),
             };
         }

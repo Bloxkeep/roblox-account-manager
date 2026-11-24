@@ -449,7 +449,7 @@ fn collect(r: &Root, f: &Form, cx: &App) -> Result<Value, String> {
         (p, _) => p,
     };
     let server = if !place.is_empty() || f.server == "follow" { f.server.clone() } else { "any".into() };
-    let example = |kind: &str| if kind == "time" { "20:00".to_string() } else if r.i18n.vietnamese { "24/12/2026".into() } else { "2026-12-24".into() };
+    let example = |kind: &str| if kind == "time" { "20:00".to_string() } else if r.i18n.lang != "en" { crate::lang::cur().dmy(24, 12, 2026) } else { "2026-12-24".into() };
     let bad = |kind: &str| r.i18n.tv(if kind == "time" { "tf.badTime" } else { "tf.badDate" }, &[("example", &example(kind))]);
     let tm = parse_time(&input_text(&f.time, cx)).map_err(|_| bad("time"));
     let dt = parse_date(&input_text(&f.date, cx)).map_err(|_| bad("date"));

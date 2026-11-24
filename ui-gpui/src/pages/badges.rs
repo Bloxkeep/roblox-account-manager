@@ -117,16 +117,15 @@ fn difficulty(rate: f64) -> &'static str {
 }
 
 /// The share as Roblox writes it: one decimal, "< 0.1%" for what rounds to nothing.
-fn share(rate: f64, vi: bool) -> String {
+fn share(rate: f64) -> String {
     let p = rate * 100.;
     let t = if p > 0. && p < 0.1 || p == 0. { "< 0.1".to_string() } else { format!("{p:.1}") };
-    let t = if vi { t.replace('.', ",") } else { t };
+    let t = crate::lang::cur().decimal(&t);
     format!("{t}%")
 }
 
 pub fn view(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
     let bd = &root.badges;
-    let vi = root.i18n.vietnamese;
     let said = |text: String| div().w_full().py(px(28.)).flex().justify_center().rounded(px(R_L)).bg(c(PANEL)).border_1().border_color(c(LINE)).text_size(px(T_M)).text_color(c(MUTED)).child(text);
     let list = match &bd.list {
         None => return said(root.tr("av.reading")).into_any_element(),
@@ -221,13 +220,13 @@ pub fn view(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
         Order::Rare => shown.sort_by(|a, b| a.rate.partial_cmp(&b.rate).unwrap_or(std::cmp::Ordering::Equal).then(a.ever.cmp(&b.ever))),
     }
     let wide = width >= 900.;
-    let rows: Vec<AnyElement> = shown.iter().enumerate().map(|(i, b)| row(root, i, b, &accounts, wide, vi, cx).into_any_element()).collect();
+    let rows: Vec<AnyElement> = shown.iter().enumerate().map(|(i, b)| row(root, i, b, &accounts, wide, cx).into_any_element()).collect();
     let body: AnyElement = if rows.is_empty() { said(root.tr("bd.allWon")).into_any_element() } else { div().flex().flex_col().gap(px(8.)).children(rows).into_any_element() };
     div().w_full().flex().flex_col().gap(px(16.)).child(head).children(progress).child(body).into_any_element()
 }
 
 /// One badge: picture, name and what it is for, who of the app's accounts has it, then Roblox's three figures.
-fn row(root: &Root, i: usize, b: &Badge, accounts: &[(i64, String)], wide: bool, vi: bool, cx: &mut Context<Root>) -> impl IntoElement {
+fn row(root: &Root, i: usize, b: &Badge, accounts: &[(i64, String)], wide: bool, cx: &mut Context<Root>) -> impl IntoElement {
     let bd = &root.badges;
     let pic = (!b.pic.is_empty()).then(|| images::pic_sq(&b.pic, 64., cx)).flatten();
     let tone = (!b.pic.is_empty()).then(|| images::tone(&b.pic, cx)).flatten();
@@ -274,9 +273,9 @@ fn row(root: &Root, i: usize, b: &Badge, accounts: &[(i64, String)], wide: bool,
         .flex()
         .flex_none()
         .gap(px(12.))
-        .child(figure("bd.rarity", share(b.rate, vi), Some(root.tr(difficulty(b.rate)))))
-        .child(figure("bd.yesterday", thousands(b.yesterday, vi), None))
-        .child(figure("bd.ever", thousands(b.ever, vi), None));
+        .child(figure("bd.rarity", share(b.rate), Some(root.tr(difficulty(b.rate)))))
+        .child(figure("bd.yesterday", thousands(b.yesterday), None))
+        .child(figure("bd.ever", thousands(b.ever), None));
     let words = div()
         .flex_1()
         .min_w(px(220.))

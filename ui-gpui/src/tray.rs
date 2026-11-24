@@ -45,16 +45,16 @@ pub fn show(r: &mut Root, data: &Value, cx: &mut Context<Root>) {
     let opened = data.get("opened").and_then(Value::as_i64).unwrap_or(0);
     let state = data.get("state").cloned().unwrap_or(Value::Null);
     // (Its words in the language the core says; the app's own words, copied once, when the window is made.)
-    let vietnamese = data.get("language").and_then(Value::as_str).map_or(r.i18n.vietnamese, |l| l == "vi");
+    let lang = data.get("language").and_then(Value::as_str).map_or(r.i18n.lang, crate::lang::known);
     if let Some(h) = r.tray {
         let (m, s) = (mode.clone(), state.clone());
-        if h.update(cx, move |t, window, cx| t.set(vietnamese, m, opened, s, window, cx)).is_ok() {
+        if h.update(cx, move |t, window, cx| t.set(lang, m, opened, s, window, cx)).is_ok() {
             return;
         }
         r.tray = None;
     }
     let mut i18n = r.i18n.clone();
-    i18n.vietnamese = vietnamese;
+    i18n.set_language(lang);
     let options = window_options();
     match cx.open_window(options, move |window, cx| {
         let view = cx.new(|cx| Tray::new(i18n, mode, opened, state, window, cx));
@@ -124,12 +124,12 @@ impl Tray {
     }
 
     /// What the core sent: a new opening starts on the first page; the refresh keeps the page, unless its list emptied.
-    fn set(&mut self, vietnamese: bool, mode: String, opened: i64, state: Value, window: &mut Window, cx: &mut Context<Self>) {
+    fn set(&mut self, lang: &str, mode: String, opened: i64, state: Value, window: &mut Window, cx: &mut Context<Self>) {
         if opened != self.opened || mode != self.mode {
             self.page = Page::Home;
             self.confirm_until = None;
         }
-        self.i18n.vietnamese = vietnamese;
+        self.i18n.set_language(lang);
         self.mode = mode;
         self.opened = opened;
         self.state = state;
@@ -886,8 +886,7 @@ pub fn window_check(out: std::path::PathBuf, assets: std::path::PathBuf) {
             .map(std::borrow::Cow::Owned)
             .collect::<Vec<_>>();
         cx.text_system().add_fonts(fonts).ok();
-        let mut words = I18n::load(&std::fs::read_to_string(assets.join("i18n.json")).unwrap_or_default());
-        words.add(&std::fs::read_to_string(assets.join("words.json")).unwrap_or_default());
+        let words = I18n::from_assets(&assets);
         CHECK.with(|c| *c.borrow_mut() = Some(Vec::new()));
         let state = json!({
             "open": true, "multi": "ready", "multiOnly": false, "robloxCount": 2, "ramMb": 2140, "miniOpen": false,

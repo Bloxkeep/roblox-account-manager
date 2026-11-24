@@ -247,14 +247,14 @@ fn go_to(r: &mut Root, target: &str) {
     }
 }
 
-/// "2026-11-08" as "November 8, 2026" or "8 tháng 11, 2026".
-fn day(date: &str, vi: bool) -> String {
-    let mut parts = date.split('-').filter_map(|p| p.parse::<usize>().ok());
+/// "2026-11-08" as "November 8, 2026", "8 tháng 11, 2026", "8 de noviembre de 2026".
+fn day(date: &str) -> String {
+    let mut parts = date.split('-').filter_map(|p| p.parse::<i64>().ok());
     let (Some(y), Some(m), Some(d)) = (parts.next(), parts.next(), parts.next()) else { return String::new() };
     if !(1..=12).contains(&m) {
         return String::new();
     }
-    if vi { format!("{d} tháng {m}, {y}") } else { format!("{} {d}, {y}", crate::time::month_name(m as i64)) }
+    crate::lang::cur().date_long(d, m, y)
 }
 
 /// A release's lines in the language shown (English where there is no translation).
@@ -430,7 +430,7 @@ pub fn whats_new(r: &mut Root, releases: Vec<Value>, window: &mut Window, cx: &m
         let wide = (f32::from(window.viewport_size().width) - 40.).clamp(320., if has_pictures { 680. } else { 560. });
         let r = root.read(cx);
         let older = &releases[1..];
-        let when = day(s(latest, "date"), vi);
+        let when = day(s(latest, "date"));
         let mut body = div().flex().flex_col().gap(px(16.));
         for (i, h) in highlights.iter().enumerate() {
             let words = pick(Some(h), vi);
@@ -502,7 +502,7 @@ pub fn whats_new(r: &mut Root, releases: Vec<Value>, window: &mut Window, cx: &m
                             .items_center()
                             .gap(px(8.))
                             .child(div().text_size(px(T_M)).font_weight(FontWeight::SEMIBOLD).child(s(rel, "version").to_string()))
-                            .child(div().text_size(px(T_S)).text_color(c(MUTED)).child(day(s(rel, "date"), vi))),
+                            .child(div().text_size(px(T_S)).text_color(c(MUTED)).child(day(s(rel, "date")))),
                     );
                     for part in release(r, rel, false) {
                         body = body.child(part);
