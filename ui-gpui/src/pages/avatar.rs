@@ -115,6 +115,8 @@ pub struct Data {
     drag: Option<(f32, f32, f32, f32)>,
     /// One thing changed in many saved outfits at once (open under Saved outfits).
     swap: Option<Swap>,
+    /// What is worn being moved, turned and sized (Adjust accessories, open over the page).
+    fit: Option<FitView>,
     /// The ticket of the avatar's read and of the shelf's page under way (`ticket`): an answer with another is old.
     load_ask: u64,
     shelf_ask: u64,
@@ -303,6 +305,33 @@ pub fn want(r: &mut Root, link: &crate::link::Link, cx: &mut Context<Root>) {
         start_spin(r, cx);
     }
     price(r, cx);
+    // BLOXKEEP_SHOT_FIT="way=1 v=10,0,-5": a hidden shot opens Adjust accessories once the avatar and its model are in,
+    // the first thing's way shown and set so (as its sliders were moved); "shut" leaves it shut, its button shown.
+    #[cfg(feature = "shot")]
+    if let Ok(v) = std::env::var("BLOXKEEP_SHOT_FIT") {
+        static ONCE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+        let ready = matches!(r.avatar.got, Some(Ok(_))) && (r.avatar.solid.is_some() || r.avatar.no_solid);
+        if ready && v != "shut" && r.avatar.fit.is_none() && !ONCE.swap(true, std::sync::atomic::Ordering::Relaxed) {
+            open_fit(r, cx);
+            let mut way = 0;
+            let mut values: Vec<f64> = Vec::new();
+            for w in v.split_whitespace() {
+                match w.split_once('=') {
+                    Some(("way", x)) => way = x.parse().unwrap_or(0),
+                    Some(("v", x)) => values = x.split(',').filter_map(|n| n.parse().ok()).collect(),
+                    _ => {}
+                }
+            }
+            if let Some(id) = r.avatar.fit.as_mut().map(|f| {
+                f.way = way;
+                f.pick
+            }).flatten() {
+                for (axis, x) in values.into_iter().enumerate() {
+                    set_fit(r, id, way, axis, x, cx);
+                }
+            }
+        }
+    }
 }
 
 /// The room picked last time (ROOMS' id), else the studio.
@@ -676,6 +705,7 @@ fn after_change(r: &mut Root, read: bool, cx: &mut Context<Root>) {
     r.avatar.no_solid = false;
     r.avatar.swapping = false;
     draw(r, cx);
+    fit_model_came(r, cx);
     if lively(&r.avatar) && !r.avatar.spinning {
         start_spin(r, cx);
     }
@@ -744,7 +774,7 @@ fn solid(r: &mut Root, cx: &mut Context<Root>) {
                 }
                 let first = r.avatar.solid.is_none();
                 // (A model after a change: the avatar looks down at itself and turns about to show it.)
-                if r.avatar.swapping && !first && r.avatar.moving && model.moves() {
+                if r.avatar.swapping && !first && r.avatar.moving && model.moves() && r.avatar.fit.is_none() {
                     (r.avatar.act.kind, r.avatar.act.g) = (crate::mesh::ADMIRE, 0.);
                 }
                 // (Three at most: a model holds its pictures whole, megabytes each.)
@@ -760,6 +790,7 @@ fn solid(r: &mut Root, cx: &mut Context<Root>) {
                 r.avatar.no_solid = false;
                 r.avatar.swapping = false;
                 remember(r);
+                fit_model_came(r, cx);
                 if let Some(y) = fixed {
                     r.avatar.yaw = y;
                 } else if first {
@@ -1520,6 +1551,10 @@ fn stage(root: &Root, a: &Avatar, side: f32, cx: &mut Context<Root>) -> Stateful
         // Clicked, it takes the keys: W A S D or the arrows walk the avatar (mesh::Model::step).
         .track_focus(&root.avatar_focus)
         .on_key_down(cx.listener(|r, e: &KeyDownEvent, _, cx| {
+            if e.keystroke.key == "escape" && r.avatar.fit.is_some() {
+                close_fit(r, cx);
+                return;
+            }
             if e.keystroke.key == "escape" && r.avatar.big {
                 set_big(r, false, cx);
                 return;
@@ -1713,6 +1748,31 @@ fn filled(root: &Root, a: &Avatar, width: f32, cx: &mut Context<Root>) -> AnyEle
     let cols = ((lists_w + TGAP) / (TILE + TGAP)).floor().max(1.);
     let tile_w = ((lists_w - TGAP * (cols - 1.)) / cols).floor();
     let busy = av.busy;
+
+    // Fitting what is worn: the avatar big (as below), the things to fit beside it (under it, in a narrow window).
+    if av.fit.is_some() {
+        // Side by side down to the narrowest window (at 860 the list went under the avatar and its sliders under the
+        // fold, so the thing moved where it couldn't be seen): the list as narrow as 320, the avatar 360 at least.
+        const PANEL_W: f32 = 320.;
+        let side_by = inner >= PANEL_W + 24. + 360.;
+        let tall = (root.window_h.get() - 290.).max(280.);
+        let stage_side = if side_by { (inner - PANEL_W - 24.).clamp(360., 780.).min(tall.max(360.)) } else { inner.min(560.).min(tall) };
+        return crate::scrolled::body(
+            "av-body-fit",
+            div()
+                .px(px(PAGE_X))
+                .pt(px(4.))
+                .pb(px(24.))
+                .flex()
+                // (The two together in the middle of the page, the list a little wider where there is room: at 1707
+                // they sat on the left with a third of the page empty beside them.)
+                .when(side_by, |d| d.items_start().justify_center().gap(px(24.)))
+                .when(!side_by, |d| d.flex_col().items_center().gap(px(16.)))
+                .child(stage(root, a, stage_side, cx))
+                .child(fit_panel(root, a, if side_by { (inner - stage_side - 24.).clamp(PANEL_W, 420.) } else { stage_side }, cx)),
+        )
+        .into_any_element();
+    }
 
     // Shown big: the avatar fills the page, its room and controls beside it (under it, in a narrow window).
     if av.big && av.frame.is_some() {
@@ -1963,13 +2023,28 @@ fn filled(root: &Root, a: &Avatar, width: f32, cx: &mut Context<Root>) -> AnyEle
         .when(av.swap.is_some(), |d| d.child(swap_panel(root, lists_w, cx)))
         .map(|d| if outfits.is_empty() { d.child(div().text_size(px(T_M)).text_color(c(MUTED)).child(root.tr("av.noOutfits"))) } else { d.child(div().flex().flex_wrap().gap(px(TGAP)).children(outfits)) });
 
+    // What it wears, with "Adjust accessories" in its head when something worn can be (signed in as it).
+    let fit_here = can_fit(root) && !fittable(a).is_empty();
+    let wearing = if fit_here {
+        div()
+            .flex()
+            .flex_col()
+            .gap(px(12.))
+            .child(
+                section_head(root.tr("av.wearing"), Some(a.items.len()))
+                    .child(Button::new("av-fit", root.tr("av.fit.open")).icon("sliders").small().disabled(busy.is_some()).on_click(cx.listener(|r, _, _, cx| open_fit(r, cx)))),
+            )
+            .child(div().flex().flex_wrap().gap(px(TGAP)).children(worn))
+    } else {
+        section(root.tr("av.wearing"), Some(a.items.len()), worn, "av.nothing")
+    };
     let lists = div()
         .w(px(lists_w))
         .flex()
         .flex_col()
         .gap(px(SECTION_GAP))
         .when_some(av.refused.clone(), |d, why| d.child(div().text_size(px(T_M)).text_color(c(WARN)).child(root.i18n.tv("av.refused", &[("why", &why)]))))
-        .child(section(root.tr("av.wearing"), Some(a.items.len()), worn, "av.nothing"))
+        .child(wearing)
         .when(!a.emotes.is_empty(), |d| d.child(section(format!("Emote  {}/{}", a.emotes.len(), roblox::EMOTES), None, wheel, "av.nothing")))
         .when(a.looks.len() > 1, |d| d.child(history(root, a, tile_w, cx)))
         .child(outfits_section)
@@ -2640,3 +2715,549 @@ fn swap_panel(root: &Root, w: f32, cx: &mut Context<Root>) -> impl IntoElement {
     panel.child(foot)
 }
 
+
+// Fitting what is worn: Roblox's accessory adjustment.
+
+/// Moving, turning and sizing what is worn, as Roblox's own avatar editor lets ("Adjust accessories": hats and face,
+/// neck, shoulder, front and back accessories, as far as Roblox's avatar rules say). The avatar shows big with the
+/// worn things that can be fitted listed beside it; the one picked opens its three ways (place, turn, size), a slider
+/// for each axis, its middle where Roblox puts the thing on. A slider let go saves to Roblox (the thing's meta, sent
+/// with what is worn), and Roblox's own model of the avatar replaces the one shown seconds later. Meanwhile the thing
+/// moves on the model as the slider is dragged, once it was found among the model's parts: by the faces of its own
+/// model (Roblox's 3D picture of it alone), or, after a save, as the part that moved.
+pub struct FitView {
+    /// The thing picked (its asset) and which of its ways shows (0 place, 1 turn, 2 size).
+    pick: Option<i64>,
+    way: usize,
+    /// Each thing that can be fitted: as Roblox has it, as set here (what the sliders show), and as the model shown was
+    /// drawn by Roblox (`base`).
+    saved: Vec<(i64, roblox::Fitting)>,
+    set: Vec<(i64, roblox::Fitting)>,
+    drawn: Vec<(i64, roblox::Fitting)>,
+    /// A slider held; a save on its way, what it sends, and another wanted after it.
+    held: bool,
+    saving: bool,
+    sending: Vec<(i64, roblox::Fitting)>,
+    again: bool,
+    /// When Roblox last took a save (said for a moment).
+    saved_at: Option<std::time::Instant>,
+    /// Roblox's model as drawn with `drawn`, and which of its parts (OBJ groups) is which thing; the asking for them
+    /// under way.
+    base: Option<std::sync::Arc<crate::mesh::Model>>,
+    groups: std::collections::HashMap<i64, String>,
+    finding: bool,
+    /// "Reset all" clicked once: a second click does it.
+    armed: bool,
+    /// Shown big before this opened: what Back goes back to.
+    was_big: bool,
+}
+
+/// The worn things Roblox lets be fitted, each with how far it may be.
+fn fittable(a: &Avatar) -> Vec<(&roblox::Item, &roblox::FitRule)> {
+    a.items.iter().filter_map(|i| a.fits.iter().find(|f| f.kind == i.kind_id()).map(|f| (i, f))).collect()
+}
+
+/// Whether the avatar can be fitted from here: signed in as this very account (a hidden shot, BLOXKEEP_SHOT_FIT, too).
+fn can_fit(root: &Root) -> bool {
+    let shot = cfg!(feature = "shot") && std::env::var("BLOXKEEP_SHOT_FIT").is_ok();
+    shot || friends::signed(root).is_some_and(|(_, u, c)| !c.is_empty() && u == root.avatar.of)
+}
+
+/// The fittings of the things that can be fitted, as Roblox has them now.
+fn fittings(a: &Avatar) -> Vec<(i64, roblox::Fitting)> {
+    fittable(a).into_iter().map(|(i, _)| (i.id, i.fitting())).collect()
+}
+
+fn open_fit(r: &mut Root, cx: &mut Context<Root>) {
+    let Some(Ok(a)) = &r.avatar.got else { return };
+    let saved = fittings(a);
+    if saved.is_empty() {
+        return;
+    }
+    r.avatar.fit = Some(FitView {
+        pick: saved.first().map(|s| s.0),
+        way: 0,
+        set: saved.clone(),
+        drawn: saved.clone(),
+        saved,
+        held: false,
+        saving: false,
+        sending: Vec::new(),
+        again: false,
+        saved_at: None,
+        base: r.avatar.solid.clone(),
+        groups: Default::default(),
+        finding: false,
+        armed: false,
+        was_big: r.avatar.big,
+    });
+    r.avatar.big = true;
+    find_parts(r, cx);
+    draw(r, cx);
+    cx.notify();
+}
+
+/// Back to the page as it was (big or not). A slider moved and not yet saved is saved first.
+fn close_fit(r: &mut Root, cx: &mut Context<Root>) {
+    save_fit(r, cx);
+    let Some(f) = r.avatar.fit.take() else { return };
+    r.avatar.big = f.was_big;
+    draw(r, cx);
+    cx.notify();
+}
+
+/// Finds which part of the model shown each thing is, by the faces of the thing's own model: asked once per thing
+/// (kept for the run, roblox::item_faces), all at once. What it finds is in error.log, so whether the model moves as
+/// the sliders are dragged on the owner's PC shows there.
+fn find_parts(r: &mut Root, cx: &mut Context<Root>) {
+    let Some(f) = r.avatar.fit.as_mut() else { return };
+    let Some(base) = f.base.clone() else { return };
+    let ids: Vec<i64> = f.saved.iter().map(|s| s.0).filter(|id| !f.groups.contains_key(id)).collect();
+    if ids.is_empty() || f.finding {
+        return;
+    }
+    // BLOXKEEP_SHOT_HAT=1: the blocks' hat (mesh::blocks) is the first thing listed.
+    #[cfg(feature = "shot")]
+    if std::env::var("BLOXKEEP_SHOT_HAT").is_ok() {
+        f.groups.insert(ids[0], "Handle1".into());
+        return;
+    }
+    let Some((_, user, cookie)) = friends::signed(r).filter(|(_, u, c)| !c.is_empty() && *u == r.avatar.of) else { return };
+    let Some(f) = r.avatar.fit.as_mut() else { return };
+    f.finding = true;
+    let rx = roblox::run(move || -> Vec<(i64, Option<usize>, Option<String>)> {
+        crate::threads::scope(|s| {
+            let asks: Vec<_> = ids
+                .iter()
+                .map(|&id| {
+                    let (cookie, base) = (&cookie, &base);
+                    s.spawn(move || {
+                        let faces = roblox::item_faces(cookie, id);
+                        (id, faces, faces.and_then(|n| base.handle_with(n)))
+                    })
+                })
+                .collect();
+            asks.into_iter().filter_map(|a| a.join().ok()).collect()
+        })
+    });
+    cx.spawn(async move |this, cx| {
+        let got = rx.await.unwrap_or_default();
+        let _ = this.update(cx, |r, cx| {
+            if r.avatar.of != user {
+                return;
+            }
+            let Some(f) = r.avatar.fit.as_mut() else { return };
+            f.finding = false;
+            let found = got.iter().filter(|g| g.2.is_some()).count();
+            let said: Vec<String> = got.iter().map(|(id, n, g)| format!("{id}: {} faces, {}", n.map_or("no model".into(), |n| n.to_string()), g.as_deref().unwrap_or("not found"))).collect();
+            crate::net::note_worked(&format!("Avatar fit: {found} of {} worn things found in the model by their own model's faces ({}).", got.len(), said.join("; ")));
+            for (id, _, g) in got {
+                if let Some(g) = g {
+                    f.groups.insert(id, g);
+                }
+            }
+            preview(r, cx);
+        });
+    })
+    .detach();
+}
+
+/// Roblox's model came (after a save, or when the page opened): it is what the things are drawn on from now. The thing
+/// whose fitting changed since the one before is the part that moved between the two, when just one did each.
+fn fit_model_came(r: &mut Root, cx: &mut Context<Root>) {
+    let (Some(model), Some(Ok(a))) = (r.avatar.solid.clone(), &r.avatar.got) else { return };
+    let now = fittings(a);
+    let Some(f) = r.avatar.fit.as_mut() else { return };
+    if let Some(old) = &f.base {
+        let changed: Vec<i64> = now.iter().filter(|(id, fit)| f.drawn.iter().any(|d| d.0 == *id && d.1 != *fit)).map(|n| n.0).collect();
+        let moved = old.moved(&model);
+        if let ([id], [group]) = (changed.as_slice(), moved.as_slice()) {
+            if f.groups.get(id) != Some(group) {
+                crate::net::note_worked(&format!("Avatar fit: {id} found in the model as the part that moved ({group})."));
+                f.groups.insert(*id, group.clone());
+            }
+        }
+    }
+    let first = f.base.is_none();
+    f.base = Some(model);
+    f.drawn = now;
+    if first {
+        find_parts(r, cx);
+    }
+    preview(r, cx);
+}
+
+/// The model shown with each thing as set here (from Roblox's, moved by what the sliders say since it was drawn).
+fn preview(r: &mut Root, cx: &mut Context<Root>) {
+    let Some(f) = &r.avatar.fit else { return };
+    let Some(base) = f.base.clone() else { return };
+    let as_mesh = |v: roblox::Fitting| crate::mesh::Fit {
+        at: [v[0][0] as f32, v[0][1] as f32, v[0][2] as f32],
+        turn: [v[1][0] as f32, v[1][1] as f32, v[1][2] as f32],
+        size: v[2][0] as f32,
+    };
+    let mut model: Option<crate::mesh::Model> = None;
+    for (id, to) in &f.set {
+        let (Some(from), Some(group)) = (f.drawn.iter().find(|d| d.0 == *id).map(|d| d.1), f.groups.get(id)) else { continue };
+        if from != *to {
+            model = Some(model.as_ref().unwrap_or(&base).fitted(group, as_mesh(from), as_mesh(*to)));
+        }
+    }
+    let shown = model.map(std::sync::Arc::new).unwrap_or(base);
+    if !r.avatar.solid.as_ref().is_some_and(|s| std::sync::Arc::ptr_eq(s, &shown)) {
+        r.avatar.solid = Some(shown);
+        draw(r, cx);
+    }
+    cx.notify();
+}
+
+/// A slider moved: the thing's way (0 place, 1 turn, 2 size: the same for all three axes) on one axis, to `v`.
+fn set_fit(r: &mut Root, id: i64, way: usize, axis: usize, v: f64, cx: &mut Context<Root>) {
+    let Some(f) = r.avatar.fit.as_mut() else { return };
+    let Some(s) = f.set.iter_mut().find(|s| s.0 == id) else { return };
+    if way == 2 {
+        s.1[2] = [v; 3];
+    } else {
+        s.1[way][axis] = v;
+    }
+    f.armed = false;
+    preview(r, cx);
+}
+
+/// Things back as Roblox puts them on (one, or all), saved at once.
+fn reset_fit(r: &mut Root, only: Option<i64>, cx: &mut Context<Root>) {
+    let Some(f) = r.avatar.fit.as_mut() else { return };
+    for s in f.set.iter_mut().filter(|s| only.is_none_or(|id| s.0 == id)) {
+        s.1 = roblox::FIT_NONE;
+    }
+    f.armed = false;
+    preview(r, cx);
+    save_fit(r, cx);
+}
+
+/// Saves to Roblox the things set otherwise than Roblox has them: one save at a time, another after it when a slider
+/// was let go meanwhile. Roblox's new model is then asked for, as after any change (`load`, after_change).
+fn save_fit(r: &mut Root, cx: &mut Context<Root>) {
+    let Some((_, user, cookie)) = friends::signed(r) else { return };
+    if user != r.avatar.of || cookie.is_empty() {
+        return;
+    }
+    let Some(f) = r.avatar.fit.as_mut() else { return };
+    let changed: Vec<(i64, roblox::Fitting)> = f.set.iter().filter(|(id, s)| f.saved.iter().any(|x| x.0 == *id && x.1 != *s)).cloned().collect();
+    if changed.is_empty() {
+        return;
+    }
+    if f.saving {
+        f.again = true;
+        return;
+    }
+    f.saving = true;
+    f.again = false;
+    f.sending = changed.clone();
+    r.avatar.refused = None;
+    cx.notify();
+    let rx = roblox::run(move || {
+        let done = roblox::set_fits(&cookie, user, &changed);
+        // (Roblox has started on the new picture by then.)
+        if done.is_ok() {
+            std::thread::sleep(std::time::Duration::from_millis(1200));
+        }
+        done
+    });
+    reply(rx, cx, move |r, done, cx| {
+        if r.avatar.of != user {
+            return;
+        }
+        let ok = done.is_ok();
+        let again = match r.avatar.fit.as_mut() {
+            Some(f) => {
+                f.saving = false;
+                for (id, s) in std::mem::take(&mut f.sending) {
+                    if let (true, Some(x)) = (ok, f.saved.iter_mut().find(|x| x.0 == id)) {
+                        x.1 = s;
+                    }
+                }
+                if ok {
+                    f.saved_at = Some(std::time::Instant::now());
+                }
+                std::mem::take(&mut f.again)
+            }
+            None => false,
+        };
+        match done {
+            Ok(()) => {
+                MODELS.with(|m| m.borrow_mut().remove(&user));
+                r.avatar.asked_solid = true;
+                r.avatar.solid_ask = 0;
+                r.avatar.swapping = true;
+                load(r, cx);
+                // ("Saved" goes after a moment.)
+                cx.spawn(async move |this, cx| {
+                    cx.background_executor().timer(std::time::Duration::from_millis(2600)).await;
+                    let _ = this.update(cx, |_, cx| cx.notify());
+                })
+                .detach();
+            }
+            Err(why) => r.avatar.refused = Some(if why.is_empty() { "Roblox".into() } else { why }),
+        }
+        if again {
+            save_fit(r, cx);
+        }
+        cx.notify();
+    });
+}
+
+/// A slider's place (-1 to 1, its middle where Roblox puts the thing on) for a value, and the value for a place:
+/// each half runs to its own end (Roblox's lower and upper bounds), as Roblox's own sliders do; some axes run the
+/// other way, so that a slider moved right moves the thing to the right as the avatar is seen (Roblox's editor
+/// inverts X and Z of the place and X of the turn).
+fn slider_at(v: f64, lo: f64, mid: f64, hi: f64, inverted: bool) -> f32 {
+    let s = if v >= mid { (v - mid) / (hi - mid).max(1e-9) } else { -(mid - v) / (mid - lo).max(1e-9) };
+    (if inverted { -s } else { s }).clamp(-1., 1.) as f32
+}
+
+fn slider_value(s: f32, lo: f64, mid: f64, hi: f64, inverted: bool) -> f64 {
+    let s = if inverted { -s as f64 } else { s as f64 };
+    if s >= 0. { mid + s * (hi - mid) } else { mid + s * (mid - lo) }
+}
+
+/// The axes Roblox's editor runs the other way (place X and Z, turn X).
+fn inverted(way: usize, axis: usize) -> bool {
+    matches!((way, axis), (0, 0) | (0, 2) | (1, 0))
+}
+
+/// Steps each way from a slider's middle (Roblox's own: 50, a step of 2 in -100 to 100).
+const FIT_STEPS: i32 = 50;
+
+/// One axis: its letter in Roblox's colour for it (X red, Y green, Z blue, as its editor's), the track with its middle
+/// marked and the part from the middle filled, and the value in words. Pressed or dragged anywhere on the track, the
+/// knob goes there; let go, it is saved.
+fn fit_slider(id: usize, letter: Option<&'static str>, tone: u32, s: f32, shown: String, cx: &mut Context<Root>, set: impl Fn(&mut Root, f32, &mut Context<Root>) + 'static) -> Div {
+    let set = std::rc::Rc::new(set);
+    let mut zones = div().absolute().inset_0().flex();
+    for i in -FIT_STEPS..=FIT_STEPS {
+        let at = i as f32 / FIT_STEPS as f32;
+        let (a, b) = (set.clone(), set.clone());
+        zones = zones.child(
+            div()
+                .id(("fit-z", id * 1000 + (i + FIT_STEPS) as usize))
+                .flex_1()
+                .h_full()
+                .cursor_pointer()
+                .on_mouse_down(MouseButton::Left, cx.listener(move |r, _, _, cx| {
+                    if let Some(f) = r.avatar.fit.as_mut() {
+                        f.held = true;
+                    }
+                    a(r, at, cx);
+                }))
+                .on_mouse_move(cx.listener(move |r, e: &MouseMoveEvent, _, cx| {
+                    if e.pressed_button == Some(MouseButton::Left) && r.avatar.fit.as_ref().is_some_and(|f| f.held) {
+                        b(r, at, cx);
+                    }
+                })),
+        );
+    }
+    let part = (s + 1.) / 2.;
+    let fill = if s >= 0. { (0.5, part - 0.5) } else { (part, 0.5 - part) };
+    let let_go = |r: &mut Root, cx: &mut Context<Root>| {
+        if r.avatar.fit.as_mut().is_some_and(|f| std::mem::take(&mut f.held)) {
+            save_fit(r, cx);
+        }
+    };
+    div()
+        .flex()
+        .items_center()
+        .gap(px(10.))
+        .child(match letter {
+            Some(l) => div().size(px(20.)).flex_none().rounded_full().bg(c(tone)).flex().items_center().justify_center().text_size(px(11.)).font_weight(FontWeight::BOLD).text_color(c(WHITE)).child(l),
+            None => div().size(px(20.)).flex_none().flex().items_center().justify_center().child(icon("focus", 14., c(TEXT_2))),
+        })
+        .child(
+            div()
+                .id(("fit-track", id))
+                .relative()
+                .flex_1()
+                .h(px(24.))
+                .child(
+                    // (The knob's half reaches past each end: the track runs between its middles.)
+                    div()
+                        .absolute()
+                        .top_0()
+                        .bottom_0()
+                        .left(px(8.))
+                        .right(px(8.))
+                        .child(div().absolute().left_0().right_0().top(px(10.)).h(px(4.)).rounded_full().bg(ca(WHITE, 0.12)))
+                        .child(div().absolute().left(relative(0.5)).top(px(6.)).w(px(2.)).h(px(12.)).ml(px(-1.)).rounded_full().bg(ca(WHITE, 0.28)))
+                        .child(div().absolute().left(relative(fill.0)).w(relative(fill.1)).top(px(10.)).h(px(4.)).rounded_full().bg(c(FACE)))
+                        .child(div().absolute().left(relative(part)).top(px(4.)).size(px(16.)).ml(px(-8.)).rounded_full().bg(c(FACE)).border_2().border_color(c(INK))),
+                )
+                .child(zones)
+                .on_mouse_up(MouseButton::Left, cx.listener(move |r, _, _, cx| let_go(r, cx)))
+                .on_mouse_up_out(MouseButton::Left, cx.listener(move |r, _, _, cx| let_go(r, cx))),
+        )
+        .child(div().w(px(52.)).flex_none().text_right().text_size(px(T_S)).font_features(tnum()).text_color(c(TEXT_2)).child(shown))
+}
+
+/// A value in words: a place in studs with its sign, a turn in degrees, a size in per cent.
+fn fit_words(way: usize, v: f64) -> String {
+    match way {
+        0 if v.abs() < 0.005 => "0.00".into(),
+        0 => format!("{v:+.2}"),
+        1 if v.abs() < 0.5 => "0°".into(),
+        1 => format!("{v:+.0}°"),
+        _ => format!("{:.0}%", v * 100.),
+    }
+}
+
+/// Beside the big avatar: Back and the title, what saving is doing, each thing that can be fitted (the picked one
+/// opened: its three ways and their sliders, Reset this one), how saving works and Reset all.
+fn fit_panel(root: &Root, a: &Avatar, w: f32, cx: &mut Context<Root>) -> Div {
+    let av = &root.avatar;
+    let Some(f) = &av.fit else { return div() };
+    let list = fittable(a);
+    let status: Option<Div> = if f.saving {
+        Some(div().flex().items_center().gap(px(6.)).text_size(px(T_S)).text_color(c(TEXT_2)).child(spinner(12., c(TEXT_2))).child(root.tr("av.fit.saving")))
+    } else if f.saved_at.is_some_and(|t| t.elapsed().as_secs_f32() < 2.5) {
+        Some(div().flex().items_center().gap(px(6.)).text_size(px(T_S)).text_color(c(OK)).child(icon("check", 13., c(OK))).child(root.tr("av.fit.saved")))
+    } else {
+        None
+    };
+    let mut rows: Vec<Div> = Vec::new();
+    for (it, rule) in &list {
+        let id = it.id;
+        let n = (id as u64 % 1_000_000_007) as usize;
+        let picked = f.pick == Some(id);
+        let set = f.set.iter().find(|s| s.0 == id).map(|s| s.1).unwrap_or(roblox::FIT_NONE);
+        let fitted = set != roblox::FIT_NONE;
+        let head = div()
+            .id(("fit-row", n))
+            .flex()
+            .items_center()
+            .gap(px(10.))
+            .cursor_pointer()
+            .child(
+                div().size(px(44.)).flex_none().rounded(px(R_S)).overflow_hidden().bg(c(RAISED_2)).flex().items_center().justify_center()
+                    .when_some(picture(&it.pic, cx), |d, p| d.child(img(p).size_full().object_fit(ObjectFit::Contain))),
+            )
+            .child(
+                div()
+                    .flex_1()
+                    .min_w_0()
+                    .flex()
+                    .flex_col()
+                    .gap(px(2.))
+                    .child(div().text_size(px(T_M)).font_weight(FontWeight::SEMIBOLD).text_color(c(TEXT)).truncate().child(it.name.clone()))
+                    .child(
+                        div()
+                            .flex()
+                            .items_center()
+                            .gap(px(6.))
+                            .text_size(px(T_S))
+                            .text_color(c(MUTED))
+                            .child(root.tr(&format!("av.fit.kind.{}", rule.kind)))
+                            .when(fitted, |d| d.child(sep()).child(div().text_color(c(FACE)).child(root.tr("av.fit.adjusted")))),
+                    ),
+            )
+            .child(icon(if picked { "chevronUp" } else { "chevronDown" }, 14., c(MUTED)))
+            .on_click(cx.listener(move |r, _, _, cx| {
+                if let Some(f) = r.avatar.fit.as_mut() {
+                    f.pick = if f.pick == Some(id) { None } else { Some(id) };
+                    f.armed = false;
+                }
+                cx.notify();
+            }));
+        let mut row = div()
+            .p(px(10.))
+            .rounded(px(R_M))
+            .border_1()
+            .border_color(if picked { c(FACE) } else { c(LINE) })
+            .bg(ca(WHITE, if picked { 0.05 } else { 0.025 }))
+            .flex()
+            .flex_col()
+            .gap(px(14.))
+            .child(head);
+        if picked {
+            let way = f.way;
+            let this = cx.entity().downgrade();
+            let ways = Segmented::new("fit-way", way.to_string())
+                .item("0", root.tr("av.fit.position"))
+                .item("1", root.tr("av.fit.rotation"))
+                .item("2", root.tr("av.fit.size"))
+                .on_select(move |v, _, cx| {
+                    let way: usize = v.parse().unwrap_or(0);
+                    let _ = this.update(cx, |r, cx| {
+                        if let Some(f) = r.avatar.fit.as_mut() {
+                            f.way = way;
+                        }
+                        cx.notify();
+                    });
+                });
+            // (Roblox's editor colours its axes so: X red, Y green, Z blue.)
+            const TONES: [u32; 3] = [0xf24044, 0x0b9758, 0x567afc];
+            let axes: Vec<usize> = if way == 2 { vec![0] } else { vec![0, 1, 2] };
+            let mid = if way == 2 { 1. } else { 0. };
+            let mut sliders = div().flex().flex_col().gap(px(10.));
+            for axis in axes {
+                let (lo, hi, v) = (rule.lo[way][axis], rule.hi[way][axis], set[way][axis]);
+                let inv = inverted(way, axis);
+                let letter = (way != 2).then(|| ["X", "Y", "Z"][axis]);
+                // (The number goes the way the knob does: on an axis Roblox runs the other way it is said with its
+                // sign turned, so a knob right of the middle never reads as minus.)
+                sliders = sliders.child(fit_slider(way * 3 + axis, letter, TONES[axis], slider_at(v, lo, mid, hi, inv), fit_words(way, if inv { -v } else { v }), cx, move |r, s, cx| {
+                    set_fit(r, id, way, axis, slider_value(s, lo, mid, hi, inv), cx)
+                }));
+            }
+            row = row.child(div().flex().child(ways)).child(sliders).child(
+                div()
+                    .flex()
+                    .items_center()
+                    .justify_between()
+                    .gap(px(10.))
+                    .child(div().flex_1().min_w_0().text_size(px(T_S)).text_color(c(MUTED)).child(root.tr(match way {
+                        0 => "av.fit.howPosition",
+                        1 => "av.fit.howRotation",
+                        _ => "av.fit.howSize",
+                    })))
+                    .child(Button::new(("fit-reset-one", n), root.tr("av.fit.resetOne")).icon("refresh").small().quiet().disabled(!fitted).on_click(cx.listener(move |r, _, _, cx| reset_fit(r, Some(id), cx)))),
+            );
+        }
+        rows.push(row);
+    }
+    let any_fitted = f.set.iter().any(|s| s.1 != roblox::FIT_NONE);
+    let armed = f.armed;
+    surface()
+        .w(px(w))
+        .flex_none()
+        .p(px(18.))
+        .flex()
+        .flex_col()
+        .gap(px(14.))
+        .child(
+            div()
+                .flex()
+                .items_center()
+                .gap(px(10.))
+                .child(Button::new("fit-back", root.tr("av.back")).icon("chevronLeft").small().quiet().on_click(cx.listener(|r, _, _, cx| close_fit(r, cx))))
+                .child(div().flex_1().min_w_0().truncate().text_size(px(T_GROUP)).font_weight(FontWeight::SEMIBOLD).child(root.tr("av.fit.open")))
+                .children(status),
+        )
+        .when_some(av.refused.clone(), |d, why| d.child(div().text_size(px(T_S)).text_color(c(WARN)).child(root.i18n.tv("av.refused", &[("why", &why)]))))
+        .children(rows)
+        .child(div().text_size(px(T_S)).line_height(px(18.)).text_color(c(MUTED)).child(root.tr("av.fit.which")))
+        .child(
+            div()
+                .flex()
+                .items_center()
+                .justify_between()
+                .gap(px(10.))
+                .child(div().flex_1().min_w_0().text_size(px(T_S)).line_height(px(18.)).text_color(c(MUTED)).child(root.tr("av.fit.how")))
+                .child(Button::new("fit-reset-all", root.tr(if armed { "av.fit.resetAllSure" } else { "av.fit.resetAll" })).small().disabled(!any_fitted).on_click(cx.listener(|r, _, _, cx| {
+                    if r.avatar.fit.as_ref().is_some_and(|f| f.armed) {
+                        reset_fit(r, None, cx);
+                    } else if let Some(f) = r.avatar.fit.as_mut() {
+                        f.armed = true;
+                        cx.notify();
+                    }
+                }))),
+        )
+}

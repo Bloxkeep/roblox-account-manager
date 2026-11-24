@@ -1802,6 +1802,8 @@ pub struct Avatar {
     pub now: usize,
     /// The emotes on its wheel (eight places at most), by place.
     pub emotes: Vec<Emote>,
+    /// The kinds of worn things Roblox lets be fitted, and how far (avatar rules).
+    pub fits: Vec<FitRule>,
 }
 
 /// An emote on the wheel: its place there (1 to 8).
@@ -2005,6 +2007,21 @@ fn look_mark(model: &Value) -> String {
     format!("{}|{}|{}", model.get("scales").map(Value::to_string).unwrap_or_default(), model.get("bodyColors").map(Value::to_string).unwrap_or_default(), worn.join(","))
 }
 
+/// A look's mark without its things' fittings (moved, turned, sized): two looks the same but for those have the same.
+fn unfitted_mark(model: &Value) -> String {
+    let mut m = model.clone();
+    for a in m.get_mut("assets").and_then(Value::as_array_mut).into_iter().flatten() {
+        let Some(meta) = a.get_mut("meta").and_then(Value::as_object_mut) else { continue };
+        for key in FIT_KEYS.iter().chain(&["version"]) {
+            meta.remove(*key);
+        }
+        if meta.is_empty() {
+            a["meta"] = Value::Null;
+        }
+    }
+    format!("{}|{}", text(&m, "playerAvatarType"), look_mark(&m))
+}
+
 impl Avatar {
     /// What names the avatar as it is now among models kept (pages/avatar.rs): its body (R6, R15) and its look.
     pub fn key(&self) -> Option<String> {
@@ -2065,6 +2082,11 @@ fn keep_look(user: i64, model: &Value, pic_url: &str) -> (Vec<Look>, usize) {
         r.into_reader().take(8 << 20).read_to_end(&mut b).ok().map(|_| b)
     });
     let Some(bytes) = bytes.filter(|b| !b.is_empty()) else { return (looks, usize::MAX) };
+    // Only the fittings changed since the newest look (a worn thing nudged, avatar.rs): that look, refitted, takes its
+    // place, not one more look in the history for every nudge.
+    if looks.first().is_some_and(|l| unfitted_mark(&l.model) == unfitted_mark(model)) {
+        let _ = std::fs::remove_file(&looks.remove(0).pic);
+    }
     let dir = looks_dir(user);
     let at = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs() as i64).unwrap_or(0);
     let name = format!("{at}.png");
@@ -2379,7 +2401,8 @@ pub fn avatar(user: i64) -> Result<Avatar, String> {
         .filter(|h| h.len() == 6)
         .collect();
     let (looks, now) = keep_look(user, &model, &pic);
-    Ok(Avatar { pic, rig: text(&model, "playerAvatarType"), items, outfits, scales, colour, body, ranges, palette, looks, now, emotes })
+    let fits = fit_rules(&rules);
+    Ok(Avatar { pic, rig: text(&model, "playerAvatarType"), items, outfits, scales, colour, body, ranges, palette, looks, now, emotes, fits })
 }
 
 /// Roblox's answer to a list of things to wear: refused when it says so, or names any it would not put on.
@@ -2438,6 +2461,117 @@ impl Item {
     pub fn kind_id(&self) -> i64 {
         self.kind
     }
+
+    /// How it is fitted where it is worn (its meta's position, rotation and scale; as Roblox puts it on when it has none).
+    pub fn fitting(&self) -> Fitting {
+        let mut f = FIT_NONE;
+        let Some(m) = &self.meta else { return f };
+        for (t, key) in FIT_KEYS.iter().enumerate() {
+            for (a, axis) in ["X", "Y", "Z"].iter().enumerate() {
+                if let Some(v) = m.pointer(&format!("/{key}/{axis}")).and_then(Value::as_f64) {
+                    f[t][a] = v;
+                }
+            }
+        }
+        f
+    }
+}
+
+/// How a worn thing is fitted where it is worn (Roblox's accessory adjustment: the meta's position in studs, rotation
+/// in degrees, scale), each X, Y, Z.
+pub type Fitting = [[f64; 3]; 3];
+
+/// Not moved, not turned, its own size.
+pub const FIT_NONE: Fitting = [[0.; 3], [0.; 3], [1.; 3]];
+
+/// The meta's names for a fitting's three parts.
+const FIT_KEYS: [&str; 3] = ["position", "rotation", "scale"];
+
+/// A kind of worn thing Roblox lets be fitted, and how far each way (avatar-rules: accessoryRefinementTypes and the
+/// lower and upper bounds by the kind's name; read 2026-11-24: hats and face, neck, shoulder, front and back
+/// accessories, ±0.25 studs, ±30°, 80 to 120 %).
+#[derive(Clone, Debug)]
+pub struct FitRule {
+    pub kind: i64,
+    pub lo: Fitting,
+    pub hi: Fitting,
+}
+
+/// The kinds Roblox's avatar rules let be fitted.
+fn fit_rules(rules: &Value) -> Vec<FitRule> {
+    let name_of = |kind: i64| {
+        rules.get("wearableAssetTypes").and_then(Value::as_array).into_iter().flatten().find(|t| int(t, "id") == kind).map(|t| text(t, "name").replace([' ', '-'], ""))
+    };
+    let bound = |b: Option<&Value>| -> Option<Fitting> {
+        let b = b?;
+        let mut f = FIT_NONE;
+        for (t, (key, word)) in [("position", "Position"), ("rotation", "Rotation"), ("scale", "Scale")].iter().enumerate() {
+            for (a, axis) in ["x", "y", "z"].iter().enumerate() {
+                f[t][a] = b.pointer(&format!("/{key}/{axis}{word}"))?.as_f64()?;
+            }
+        }
+        Some(f)
+    };
+    rules
+        .get("accessoryRefinementTypes")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(Value::as_i64)
+        .filter_map(|kind| {
+            let name = name_of(kind)?;
+            let lo = bound(rules.pointer(&format!("/accessoryRefinementLowerBounds/{name}")))?;
+            let hi = bound(rules.pointer(&format!("/accessoryRefinementUpperBounds/{name}")))?;
+            Some(FitRule { kind, lo, hi })
+        })
+        .collect()
+}
+
+/// The signed-in account's worn things fitted anew (Roblox's accessory adjustment): what it wears now, read again, with
+/// those things' fittings set in their meta (what else the meta holds, a layer's order, kept) and set again.
+pub fn set_fits(cookie: &str, user: i64, fits: &[(i64, Fitting)]) -> Result<(), String> {
+    let d = get(&format!("https://avatar.roblox.com/v4/avatar/users/{user}"), Some(cookie))?;
+    // (No model in the answer: setting the list from nothing would take everything off.)
+    let mut items = items_of(d.get("avatarModel").filter(|m| m.is_object()).ok_or("Roblox")?);
+    // (Rounded as Roblox's own editor's steps are fine: hundredths of a stud, of a degree, of the size.)
+    let round = |v: f64| (v * 1000.).round() / 1000.;
+    for it in &mut items {
+        let Some((_, f)) = fits.iter().find(|(id, _)| *id == it.id) else { continue };
+        let mut m = it.meta.clone().filter(Value::is_object).unwrap_or_else(|| serde_json::json!({}));
+        for (t, key) in FIT_KEYS.iter().enumerate() {
+            m[*key] = serde_json::json!({ "X": round(f[t][0]), "Y": round(f[t][1]), "Z": round(f[t][2]) });
+        }
+        if m.get("version").is_none_or(Value::is_null) {
+            m["version"] = serde_json::json!(1);
+        }
+        it.meta = Some(m);
+    }
+    worn(&post("https://avatar.roblox.com/v2/avatar/set-wearing-assets", &serde_json::json!({ "assets": wear_list(&items) }), Some(cookie))?)
+}
+
+/// How many faces one worn thing's own model has: Roblox's 3D picture of the thing alone (assets-thumbnail-3d, a
+/// signed-in ask as avatar-3d is), counted from its OBJ. It finds the thing among the avatar model's parts
+/// (mesh::Model::handle_with). Kept for the run; None when Roblox gives none in a few seconds.
+pub fn item_faces(cookie: &str, asset: i64) -> Option<usize> {
+    static KEPT: std::sync::OnceLock<std::sync::Mutex<HashMap<i64, usize>>> = std::sync::OnceLock::new();
+    let kept = KEPT.get_or_init(Default::default);
+    if let Some(n) = kept.hold().get(&asset).copied() {
+        return Some(n);
+    }
+    let began = std::time::Instant::now();
+    let file = loop {
+        let d = get(&format!("https://thumbnails.roblox.com/v1/assets-thumbnail-3d?assetId={asset}"), Some(cookie)).ok()?;
+        match text(&d, "state").as_str() {
+            "Completed" => break text(&d, "imageUrl"),
+            "Pending" if began.elapsed() < Duration::from_secs(10) => std::thread::sleep(Duration::from_millis(800)),
+            _ => return None,
+        }
+    };
+    let d = get(&file, None).ok()?;
+    let obj = cdn(&text(&d, "obj"))?;
+    let n = obj.split(|b| *b == b'\n').filter(|line| line.starts_with(b"f ")).count();
+    kept.hold().insert(asset, n);
+    (n > 0).then_some(n)
 }
 
 /// The name Roblox's inventory and avatar rules give a kind (avatar-rules, spaces taken out), by its number.

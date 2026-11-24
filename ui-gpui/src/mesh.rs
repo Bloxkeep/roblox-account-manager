@@ -870,9 +870,108 @@ pub struct Model {
     rig: Option<Rig>,
     /// The materials of the body's own parts (the OBJ's Player groups), whose skin a colour change repaints.
     body: Vec<usize>,
+    /// The OBJ's groups by name (a triangle's `group` is its place here) and how many faces each has in the OBJ: what
+    /// finds one worn thing among them (`handle_with`, `moved`).
+    groups: Vec<String>,
+    faces: Vec<u32>,
+}
+
+/// How a worn thing sits where it is worn (Roblox's accessory adjustment): moved (studs, the avatar's own way: it faces
+/// -Z), turned (degrees about X, then Y, then Z, as Roblox's CFrame.Angles) and sized (one for all three ways).
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub struct Fit {
+    pub at: V3,
+    pub turn: V3,
+    pub size: f32,
+}
+
+impl Fit {
+    fn turning(&self) -> M3 {
+        let r = |d: f32| d.to_radians();
+        mm(&mm(&rot([1., 0., 0.], r(self.turn[0])), &rot([0., 1., 0.], r(self.turn[1]))), &rot([0., 0., 1.], r(self.turn[2])))
+    }
+}
+
+/// A worn thing's OBJ group (Roblox names them Handle1, Handle2…; the body's are Player…).
+fn is_handle(group: &str) -> bool {
+    group.get(..6).is_some_and(|h| h.eq_ignore_ascii_case("handle"))
+}
+
+/// A turn undone: the transpose of one.
+fn back(m: &M3) -> M3 {
+    [[m[0][0], m[1][0], m[2][0]], [m[0][1], m[1][1], m[2][1]], [m[0][2], m[1][2], m[2][2]]]
 }
 
 impl Model {
+    /// The OBJ group of a worn thing (Handle1…) with just `faces` faces, when only one has that many: the worn thing
+    /// whose own model (Roblox's 3D picture of it alone) has them. None when none has, or several do.
+    pub fn handle_with(&self, faces: usize) -> Option<String> {
+        let mut found = self.groups.iter().zip(&self.faces).filter(|(g, n)| is_handle(g) && **n as usize == faces);
+        let first = found.next()?;
+        found.next().is_none().then(|| first.0.clone())
+    }
+
+    /// The worn things (OBJ groups named Handle…) that stand elsewhere in `newer`: after one thing's fitting was changed,
+    /// the group that moved is that thing's. A group of another size there (another thing under the same name) is not
+    /// compared.
+    pub fn moved(&self, newer: &Model) -> Vec<String> {
+        let a = self.boxes();
+        let b = newer.boxes();
+        let mut out = Vec::new();
+        for (i, name) in self.groups.iter().enumerate() {
+            let Some(j) = newer.groups.iter().position(|g| g == name) else { continue };
+            if !is_handle(name) || self.faces.get(i) != newer.faces.get(j) {
+                continue;
+            }
+            let (Some(Some((alo, ahi))), Some(Some((blo, bhi)))) = (a.get(i), b.get(j)) else { continue };
+            if (0..3).any(|k| (alo[k] - blo[k]).abs() > 0.003 || (ahi[k] - bhi[k]).abs() > 0.003) {
+                out.push(name.clone());
+            }
+        }
+        out
+    }
+
+    /// Each group's box (least and most corner), by its place in `groups`; None for one with no triangle drawn.
+    fn boxes(&self) -> Vec<Option<(V3, V3)>> {
+        let mut out: Vec<Option<(V3, V3)>> = vec![None; self.groups.len()];
+        for t in &self.tris {
+            let Some(slot) = out.get_mut(t.group as usize) else { continue };
+            let (mut lo, mut hi) = slot.unwrap_or(([f32::MAX; 3], [f32::MIN; 3]));
+            for p in t.p {
+                for k in 0..3 {
+                    lo[k] = lo[k].min(p[k]);
+                    hi[k] = hi[k].max(p[k]);
+                }
+            }
+            *slot = Some((lo, hi));
+        }
+        out
+    }
+
+    /// The model with one worn thing (its OBJ group) set from the fitting it was drawn with to another, at once: while
+    /// a slider is dragged (avatar.rs), before Roblox makes its own model of it (seconds later), which then replaces
+    /// this one. It is turned and sized about its own middle (Roblox does it about where it is attached: close, and
+    /// put right by Roblox's model).
+    pub fn fitted(&self, group: &str, from: Fit, to: Fit) -> Model {
+        let mut m = self.clone();
+        let Some(g) = self.groups.iter().position(|n| n == group) else { return m };
+        let Some(Some((lo, hi))) = self.boxes().get(g).copied() else { return m };
+        let mid = mul(add(lo, hi), 0.5);
+        let turn = mm(&to.turning(), &back(&from.turning()));
+        let grow = to.size / from.size.max(0.01);
+        let shift = sub(to.at, from.at);
+        for t in m.tris.iter_mut().filter(|t| t.group as usize == g) {
+            for k in 0..3 {
+                t.p[k] = add(add(mid, shift), mul(mv(&turn, sub(t.p[k], mid)), grow));
+                t.n[k] = norm(mv(&turn, t.n[k]));
+            }
+        }
+        // (What hangs from where it is worn hangs from where it is now.)
+        if let Some(Some(h)) = m.rig.as_mut().and_then(|r| r.hang.get_mut(g)) {
+            h.0 = add(h.0, shift);
+        }
+        m
+    }
     /// Reads the OBJ and its MTL. `pictures` are the MTL's pictures by the names it gives them; `eye` is the camera's
     /// place and `min`/`max` the model's box, as Roblox says them. None when there is nothing to draw.
     pub fn parse(obj: &str, mtl: &str, pictures: &HashMap<String, Vec<u8>>, eye: V3, min: V3, max: V3) -> Option<Model> {
@@ -956,6 +1055,7 @@ impl Model {
         let mut mat = 0;
         // The groups, by name (a body part, a worn thing); before any, the nameless one.
         let mut group_names: Vec<String> = vec![String::new()];
+        let mut faces: Vec<u32> = vec![0];
         let mut group = 0u16;
         // An OBJ counts from 1, and from the end when the number is below zero.
         let pick = |i: i64, len: usize| -> Option<usize> {
@@ -990,12 +1090,16 @@ impl Model {
                         Some(i) => i as u16,
                         None if group_names.len() < u16::MAX as usize => {
                             group_names.push(name);
+                            faces.push(0);
                             (group_names.len() - 1) as u16
                         }
                         None => 0,
                     };
                 }
                 Some("f") => {
+                    if let Some(n) = faces.get_mut(group as usize) {
+                        *n += 1;
+                    }
                     // Each corner is place/picture/normal; the last two may be missing.
                     let corners: Vec<(V3, [f32; 2], Option<V3>)> = it
                         .filter_map(|t| {
@@ -1050,7 +1154,7 @@ impl Model {
         let mut body: Vec<usize> = tris.iter().filter(|t| group_names.get(t.group as usize).is_some_and(|g| g.to_ascii_lowercase().starts_with("player"))).map(|t| t.mat).collect();
         body.sort_unstable();
         body.dedup();
-        Some(Model { tris, mats, center, radius, eye, floor: olo[1], plate, shadow, rig, body })
+        Some(Model { tris, mats, center, radius, eye, floor: olo[1], plate, shadow, rig, body, groups: group_names, faces })
     }
 
     /// The model with its skin in another colour, at once: on the body's parts, the dots and material colours that are
@@ -1520,10 +1624,16 @@ pub fn blocks() -> Option<Model> {
         ("lleg", [-1., 0., -0.5], [0., 2., 0.5], [0.64, 0.75, 0.29]),
         ("rleg", [0., 0., -0.5], [1., 2., 0.5], [0.64, 0.75, 0.29]),
     ];
-    for (name, lo, hi, kd) in parts {
+    // BLOXKEEP_SHOT_HAT=1: a flat hat on it too, a worn thing as Roblox's model has one (group Handle1), to adjust.
+    let hat = (cfg!(feature = "shot") && std::env::var("BLOXKEEP_SHOT_HAT").is_ok()).then_some(("hat", [-0.85, 5.7, -0.85], [0.85, 5.95, 0.85], [0.55, 0.12, 0.14]));
+    for (name, lo, hi, kd) in parts.into_iter().chain(hat) {
         mtl.push_str(&format!("newmtl {name}\nKd {} {} {}\n", kd[0], kd[1], kd[2]));
-        // (Named as Roblox names a body part's group, so it moves as one.)
-        obj.push_str(&format!("g Player{}\nusemtl {name}\n", base / 8 + 1));
+        // (Named as Roblox names a body part's group, so it moves as one; a worn thing as Roblox names one.)
+        if name == "hat" {
+            obj.push_str("g Handle1\nusemtl hat\n");
+        } else {
+            obj.push_str(&format!("g Player{}\nusemtl {name}\n", base / 8 + 1));
+        }
         for i in 0..8 {
             let x = if i & 1 == 0 { lo[0] } else { hi[0] };
             let y = if i & 2 == 0 { lo[1] } else { hi[1] };
