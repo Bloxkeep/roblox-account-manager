@@ -1377,6 +1377,34 @@ async fn newer_drops(c: &mut Checks, r: &mut R) {
             state.as_ref().is_some_and(|s| s.status == "joining") && !r.closing(),
             &state,
         );
+        // The move failing after the old server is gone: Roblox's "Disconnected" box, Error Code 256 mid-teleport, its
+        // words logged (as the owner's three windows logged them, 2026-11-18). A drop at once, closed to rejoin.
+        for failed in [
+            "[FLog::Network] Client has been disconnected with reason: Disconnected from game, please reconnect",
+            "Warning [FLog::Network] Lost connection with reason : Lost connection due to an unknown error. Please reconnect.",
+            "[FLog::Network] Disconnection Notification. Reason: 256",
+        ] {
+            r.new_window();
+            r.run(not_banned.clone());
+            r.line(at, LAUNCH);
+            r.line(at, JOIN);
+            r.line(at, "[FLog::Network] serverId: 128.116.46.33|52353");
+            r.line(at.plus_secs(5.0), "[FLog::UgcExperienceController] UgcExperienceController: doTeleport: url ");
+            r.line(at.plus_secs(5.2), "[FLog::Network] Time to disconnect replication data: 0.2");
+            r.line(at.plus_secs(5.3), "[FLog::SessionTransitionFSM] Teleported.");
+            r.line(at.plus_secs(6.0), failed);
+            let state = r.poll(|s| s.status == "disconnected" && s.at >= at.plus_secs(5.0)).await;
+            r.clear_closing();
+            r.told();
+            r.tick().await;
+            c.check(
+                &format!("a teleport failing after its old server is gone ({}): Error 256, closed to rejoin at once", failed.split("] ").nth(1).unwrap_or(failed)),
+                state.as_ref().is_some_and(|s| s.reason == Some(256)) && r.closing(),
+                &state,
+            );
+        }
+        r.clear_closing();
+        r.told();
         // Leaving: the client's own request is no drop.
         r.new_window();
         r.run(not_banned.clone());
@@ -1447,8 +1475,8 @@ async fn newer_drops(c: &mut Checks, r: &mut R) {
     // A teleport that never arrives: Roblox's "Disconnected" box, Error Code 256, in the middle of a game's move to
     // another server (many users of several apps, 2026-11-15: "it doesn't reconnect when this disconnect prompt pops up,
     // still flags it as in game"; games that teleport, Pet Universe). The log says a teleport started and nothing
-    // after it. While it may still be under way it is left alone; a minute and a half after, Roblox's own status
-    // decides, on three checks in a row; and never while Roblox says the account is in a game.
+    // after it. While it may still be under way it is left alone; 45 s after, Roblox's own status decides, on two
+    // checks in a row; and never while Roblox says the account is in a game.
     {
         const IN_PLACE: i64 = 920587237;
         let join_line = format!("[FLog::Output] ! Joining game 'e403336e-5756-44c9-b029-0ae6873a3d03' place {IN_PLACE} at 10.32.36.210");
@@ -1486,13 +1514,12 @@ async fn newer_drops(c: &mut Checks, r: &mut R) {
         c.check("a teleport two minutes old while Roblox says the account is in a game: left alone (a slow move)", !r.closing(), ());
         presence(out.clone());
         app.detect_disconnected_sessions(&HashSet::from([21i64]));
-        app.detect_disconnected_sessions(&HashSet::from([21i64]));
-        let after_two = r.closing();
+        let after_one = r.closing();
         app.detect_disconnected_sessions(&HashSet::from([21i64]));
         c.check(
-            "a teleport that never arrived (Error 256 mid-teleport) while Roblox says the account is out of a game: closed and rejoined on the third check",
-            !after_two && r.closing(),
-            format!("{after_two} {}", r.closing()),
+            "a teleport that never arrived (Error 256 mid-teleport) while Roblox says the account is out of a game: closed and rejoined on the second check",
+            !after_one && r.closing(),
+            format!("{after_one} {}", r.closing()),
         );
         r.clear_closing();
         r.told();

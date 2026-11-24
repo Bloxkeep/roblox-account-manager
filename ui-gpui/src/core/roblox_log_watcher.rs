@@ -245,7 +245,12 @@ const LOST_WITH_REASON_MARK: &str = "[FLog::Network] Lost connection with reason
 /// describes. Words not listed leave the reason unknown.
 pub static REASON_WORDS: LazyLock<HashMap<&'static str, i32>> = LazyLock::new(|| {
     HashMap::from([
-        ("Protocol mismatch, please reconnect", 259),                                              // DisconnectProtocolMismatch
+        // DisconnectErrors: Roblox's box says "Lost connection due to an unknown error. Please reconnect. (Error Code:
+        // 256)" (its CoreScriptLocalization key InGame.ConnectionError.DisconnectErrors); the client logs its own words
+        // for it (the owner's error.log 2026-11-18: three windows dropped in the same second, logged with no number).
+        ("Disconnected from game, please reconnect", 256),
+        ("Lost connection due to an unknown error. Please reconnect.", 256),
+        ("Protocol mismatch, please reconnect", 259),                                            // DisconnectProtocolMismatch
         ("Error while receiving data, please reconnect", 260),                                     // DisconnectReceivePacketError
         ("Error while streaming data, please reconnect", 261),                                     // DisconnectReceivePacketStreamError
         ("Error while sending data, please reconnect", 262),                                       // DisconnectSendPacketError
@@ -971,16 +976,17 @@ fn drop_on_reason(tail: &mut Tail, code: Option<i32>, line: &str) {
         return;
     }
     let Some(state) = tail.state.clone() else { return };
+    let at = time_of(line);
+    let moving = state.teleport_started.is_some() || tail.teleport_at.is_some_and(|teleport| at.secs_since(teleport) < TELEPORT_WINDOW_SECS);
+    // In a teleport, a reason while the old server is still connected is that server's own (RoALT's "instanced server"
+    // report, 2026-11-13: a 277 before the old server's disconnect line, and the teleport went on). One after the old
+    // server is gone is the move failing: Roblox's "Disconnected" box, Error Code 256 mid-teleport. A teleport that
+    // goes through logs no reason at all (the owner's 0.748 logs, 2026-11-19).
     if tail.leaving
         || code == Some(CLIENT_REQUEST)
         || !(state.status == "ingame" || state.status == "joining")
-        || state.teleport_started.is_some()
-        || (state.status == "joining" && tail.connections > 0)
+        || tail.connections > 0 && (moving || state.status == "joining")
     {
-        return;
-    }
-    let at = time_of(line);
-    if tail.teleport_at.is_some_and(|teleport| at.secs_since(teleport) < TELEPORT_WINDOW_SECS) {
         return;
     }
     tail.shown_reason_rank = tail.pending_reason_rank;

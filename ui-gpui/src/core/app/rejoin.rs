@@ -107,6 +107,9 @@ fn ban_time(at: Stamp) -> String {
 }
 /// Status checks in a row that must say out of a game before a window whose log says in one is closed.
 const STUCK_IN_GAME_STRIKES: i32 = 3;
+/// …and for a window whose log says a teleport under way past TELEPORT_GIVE_UP: a move that long is a failed one
+/// (Error Code 256 mid-teleport), so two checks are enough, as for a window with no log.
+const TELEPORT_STRIKES: i32 = 2;
 /// How long anti-AFK waits after a window was held on Roblox's bot check (its nudges would take the front).
 pub const BOT_CHECK_HOLD: Duration = Duration::from_secs(5 * 60);
 /// Roblox's code for "the same account joined from another device": never fight that with a rejoin.
@@ -600,7 +603,7 @@ impl App {
                 && self.rejoin.join_checks.borrow().get(&info.0).is_some_and(|gone| {
                     gone.answer.borrow().as_ref().is_some_and(|a| a.as_ref().is_some_and(|a| a.ended() || (a.full() && !a.queue_position.is_some_and(|q| q > 0))))
                 });
-            // A teleport that started five minutes ago and never arrived: failed, whatever Roblox's status says.
+            // A teleport that started three minutes ago (TELEPORT_DEAD) and never arrived: failed, whatever Roblox's status says.
             let teleport_dead = (state.status == "ingame" || state.status == "joining") && state.teleport_started.is_some_and(|t| now.secs_since(t) >= secs(TELEPORT_DEAD));
             if teleport_dead && self.rejoin.rejoin_cause_noted.borrow_mut().insert(info.0) {
                 log::note(&format!("Rejoin: window {} started a teleport {} s ago and never reached a server; taken as dropped.", info.0, secs(TELEPORT_DEAD) as i64));
@@ -1477,13 +1480,13 @@ impl App {
                 s.insert(id, n);
                 n
             };
-            if strikes < if stuck_in_game { STUCK_IN_GAME_STRIKES } else { 2 } {
+            let moving = self.controller.logs.borrow().state_of(info.0).is_some_and(|s| s.teleport_started.is_some());
+            if strikes < if stuck_in_game && moving { TELEPORT_STRIKES } else if stuck_in_game { STUCK_IN_GAME_STRIKES } else { 2 } {
                 continue;
             }
             self.controller.offline_strikes.borrow_mut().remove(&id);
-            let moving = self.controller.logs.borrow().state_of(info.0).is_some_and(|s| s.teleport_started.is_some());
             log::note(&if stuck_in_game && moving {
-                format!("Rejoin: closing window {} to rejoin, its log says a teleport under way for over {} s but its account was out of a game on {STUCK_IN_GAME_STRIKES} status checks.", info.0, secs(TELEPORT_GIVE_UP) as i64)
+                format!("Rejoin: closing window {} to rejoin, its log says a teleport under way for over {} s but its account was out of a game on {TELEPORT_STRIKES} status checks.", info.0, secs(TELEPORT_GIVE_UP) as i64)
             } else if stuck_in_game {
                 format!("Rejoin: closing window {} to rejoin, its log says in a game but its account was out of one on {STUCK_IN_GAME_STRIKES} status checks.", info.0)
             } else {

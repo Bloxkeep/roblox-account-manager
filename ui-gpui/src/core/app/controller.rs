@@ -149,9 +149,11 @@ pub const GET_IN_TIMEOUT: Duration = Duration::from_secs(60);
 /// Roblox's status for the account is asked again (rejoin.rs's stuck_in_game). A teleport takes seconds; one that ends
 /// in Roblox's "Disconnected" box (Error Code 256, "Lost connection due to an unknown error") logs no arrival and often
 /// no disconnect either, and the window read as teleporting for good: nothing looked at it again.
-pub const TELEPORT_GIVE_UP: Duration = Duration::from_secs(90);
+/// A real teleport reaches its next server in about a second (the owner's 0.748 logs, 2026-11-19: doTeleport to the
+/// new serverId in 0.5 s and 2 s), so 45 s leaves a slow one plenty.
+pub const TELEPORT_GIVE_UP: Duration = Duration::from_secs(45);
 /// …and past this long it is a failed one whatever Roblox's status says (an account whose status is hidden): rejoined.
-pub const TELEPORT_DEAD: Duration = Duration::from_secs(5 * 60);
+pub const TELEPORT_DEAD: Duration = Duration::from_secs(3 * 60);
 /// How long past its time a rejoin kept with the vault is still done after an unlock (see OnUnlocked).
 pub const WAITING_REJOIN_KEPT: Duration = Duration::from_secs(10 * 60);
 pub const MAX_ASLEEP_EVENTS: usize = 30;
