@@ -101,14 +101,16 @@ pub struct Failed;
 pub struct Video {
     path: PathBuf,
     frame: Option<Arc<RenderImage>>,
-    /// When it was last drawn in a seen window: by its view, or by the motion layer each frame (`layered`).
+    /// When it was last drawn in a seen window: by its view, or where it lies at each frame (`in_place`).
     drawn: Rc<Cell<Instant>>,
-    /// A game's clip: its frames drawn by the motion layer over the app (motion::place), each new one asking only for
-    /// the window to be shown again (the app kept as drawn), not for the app to be made over. A theme's video behind
-    /// the page is drawn in the theme's own layer, as before.
-    in_layer: bool,
-    /// Drawn that way now (in the main window, its frames on the card), and the texture the layer draws.
-    layered: bool,
+    /// A game's clip: its texture painted where it lies at every frame the window draws (motion::here), under what lies
+    /// over it in its tile (the sound button, the chosen one's ring), its part kept as drawn; each new frame into the
+    /// texture asks only for the window to be shown again, not for the part to be made over (88 frames a second at
+    /// 6 ms each for a 60 fps clip on Home, made over inside the app). A theme's video behind the page is drawn in the
+    /// theme's own layer, as before.
+    kept: bool,
+    /// Drawn that way now (in the main window, its frames on the card), and the texture painted there.
+    in_place: bool,
     on_card: Rc<Cell<Option<(isize, u32, u32)>>>,
     window: Option<AnyWindowHandle>,
     playing: bool,
@@ -147,8 +149,8 @@ impl Video {
             path,
             frame: None,
             drawn: Rc::new(Cell::new(Instant::now())),
-            in_layer: true,
-            layered: false,
+            kept: true,
+            in_place: false,
             on_card: Rc::new(Cell::new(None)),
             window: None,
             playing: false,
@@ -176,7 +178,7 @@ impl Video {
         let mut v = Self::new(path, cx);
         v.widest = MAX_W_BEHIND;
         v.sound = false;
-        v.in_layer = false;
+        v.kept = false;
         v
     }
 
@@ -262,8 +264,8 @@ impl Drop for StopOnDrop {
 
 impl Video {
     /// A frame now in the texture on the card (`handle`): the view is told when it changes what it draws (the first
-    /// frame, a new texture, not drawn by the layer); otherwise the window to draw again, which keeps the app as it was
-    /// drawn and only the layer draws anew (motion.rs).
+    /// frame, a new texture, not painted in place); otherwise the window to draw again, which keeps the app as it was
+    /// drawn and paints the texture anew where it lies (motion::here).
     fn show_on_card(&mut self, handle: (isize, u32, u32), cx: &mut Context<Self>) -> Option<AnyWindowHandle> {
         let changed = self.shared != Some(handle);
         self.shared = Some(handle);
@@ -271,7 +273,7 @@ impl Video {
         if let Some(old) = self.frame.take() {
             cx.drop_image(old, None);
         }
-        if changed || !self.layered {
+        if changed || !self.in_place {
             cx.notify();
             return None;
         }
@@ -475,24 +477,28 @@ impl Render for Video {
                 self.start(cx);
             }
         }
-        // A game's clip in the main window: drawn by the motion layer (see `in_layer`), from the texture it reads each
-        // time; drawing it there says it is still seen.
-        self.layered = self.in_layer && self.shared.is_some() && crate::motion::is_main(window);
+        // A game's clip in the main window: painted where it lies (see `kept`), from the texture it reads each time;
+        // painted where nothing covers it (a dialog's backdrop over it, as the motion layer hid it), it is still seen.
+        self.in_place = self.kept && self.shared.is_some() && crate::motion::is_main(window);
         #[cfg(windows)]
-        if self.layered {
+        if self.in_place {
             let (on_card, drawn, seen) = (self.on_card.clone(), self.drawn.clone(), self.seen.clone());
             return div()
                 .size_full()
                 .overflow_hidden()
-                .child(crate::motion::place(move |bounds, _, window, _| {
-                    if window.is_visible() || cfg!(feature = "shot") {
-                        drawn.set(Instant::now());
-                        seen.store(now_ms(), Ordering::Relaxed);
-                    }
-                    if let Some((handle, w, h)) = on_card.get() {
-                        paint_cover(window, bounds, handle, w, h);
-                    }
-                }))
+                .child(
+                    crate::motion::here(move |bounds, open, window, _| {
+                        if open && (window.is_visible() || cfg!(feature = "shot")) {
+                            drawn.set(Instant::now());
+                            seen.store(now_ms(), Ordering::Relaxed);
+                        }
+                        if let Some((handle, w, h)) = on_card.get() {
+                            paint_cover(window, bounds, handle, w, h);
+                        }
+                        false
+                    })
+                    .size_full(),
+                )
                 .into_any_element();
         }
         #[cfg(windows)]

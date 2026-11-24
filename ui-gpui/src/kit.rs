@@ -1879,10 +1879,45 @@ pub fn grow_in(scope: impl Into<SharedString>, i: usize, part: f32, bar: Div) ->
     bar.with_animation(ElementId::NamedInteger(scope.into(), i as u64), after(80. + i as f32 * 18., 600., ease_out_quint()), move |b, t| b.h(relative((part * t).max(0.02))))
 }
 
-/// A picture that has just loaded fades in (once: the key is the picture itself).
-pub fn fade_in(picture: Img, of: &std::sync::Arc<Image>) -> impl IntoElement {
-    let key = std::sync::Arc::as_ptr(of) as *const () as usize as u64;
-    picture.with_animation(ElementId::Integer(key), Animation::new(std::time::Duration::from_millis(220)).with_easing(ease_out_quint()), |i, t| i.opacity(t))
+/// A picture that has just loaded fades in, once: the key is the picture itself, and a picture that has faded in is
+/// drawn as it is from then on (`FADED`). The fade's clock is the element's own, which goes when it isn't drawn for a
+/// frame: a tile cut from a long list while it was out of view (near.rs) faded in again each time it came back.
+pub fn fade_in(picture: Img, of: &std::sync::Arc<Image>) -> AnyElement {
+    let key = std::sync::Arc::as_ptr(of) as *const () as usize;
+    if faded(key, of) {
+        return picture.into_any_element();
+    }
+    let weak = std::sync::Arc::downgrade(of);
+    picture
+        .with_animation(ElementId::Integer(key as u64), Animation::new(std::time::Duration::from_millis(220)).with_easing(ease_out_quint()), move |i, t| {
+            if t >= 1. {
+                faded_in(key, &weak);
+            }
+            i.opacity(t)
+        })
+        .into_any_element()
+}
+
+thread_local! {
+    /// The pictures that have faded in (fade_in), by their address, each held weakly: one let go (images.rs drops
+    /// pictures not drawn for a while) no longer counts, and another picture later made at its address fades in as new.
+    static FADED: std::cell::RefCell<(std::collections::HashMap<usize, std::sync::Weak<Image>>, usize)> = Default::default();
+}
+
+fn faded(key: usize, of: &std::sync::Arc<Image>) -> bool {
+    FADED.with(|f| f.borrow().0.get(&key).and_then(std::sync::Weak::upgrade).is_some_and(|p| std::sync::Arc::ptr_eq(&p, of)))
+}
+
+fn faded_in(key: usize, of: &std::sync::Weak<Image>) {
+    FADED.with(|f| {
+        let (map, room) = &mut *f.borrow_mut();
+        map.insert(key, of.clone());
+        // (Those let go are swept as the list doubles: what stays is about what the pictures' cache holds.)
+        if map.len() > (*room).max(256) {
+            map.retain(|_, p| p.strong_count() > 0);
+            *room = map.len() * 2;
+        }
+    });
 }
 
 /// How far in something that comes and goes is: None once it has gone, 0..1 on its way in or out, 1 while it stays.

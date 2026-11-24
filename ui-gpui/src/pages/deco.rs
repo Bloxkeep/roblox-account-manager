@@ -6,7 +6,11 @@
 //
 // GPUI turns no picture, so each one that spins is made once in 24 turns (one picture of 24 frames, frame_index);
 // nothing is made per frame. The pictures are let go 45 s after the last frame that drew any (`sweep`). It moves at
-// 30 frames a second at most, only while the window is in front (kit::looping), else it stands still.
+// 60 frames a second at most, only while the window is in front (kit::looping), else it stands still.
+//
+// Each box is painted where it lies (motion::here), under the banner's buttons and the picture it rings, anew at each
+// frame while the page is kept as drawn: its frames draw the window again, not the page (the profile's page was made
+// and laid out over again 60 times a second while a theme played).
 use std::{cell::RefCell, collections::HashMap, f32::consts::{PI, TAU}, sync::Arc, time::Instant};
 
 use gpui_kit::{prelude::*, *};
@@ -832,9 +836,9 @@ fn draw(theme: &str, s: &mut Sim, p: &mut Pen, t: f32, dt: f32, w: f32, h: f32, 
 /// by `key` between frames.
 pub fn theme(key: impl Into<SharedString>, theme: &'static str, k: f32) -> AnyElement {
     let key: SharedString = key.into();
-    canvas(|_, _, _| {}, move |bounds: Bounds<Pixels>, _, window, cx| {
+    crate::motion::here(move |bounds, _, window, cx| {
         if theme == "none" {
-            return;
+            return false;
         }
         let (w, h) = (f32::from(bounds.size.width), f32::from(bounds.size.height));
         let t = now();
@@ -852,6 +856,7 @@ pub fn theme(key: impl Into<SharedString>, theme: &'static str, k: f32) -> AnyEl
                 draw(theme, &mut surf.sim, &mut pen, t, dt, w, h, k);
             });
         });
+        crate::kit::looping()
     })
     .absolute()
     .inset_0()
@@ -1006,13 +1011,14 @@ fn ring_part(id: &str, p: &mut Pen, t: f32, r: f32, front: bool) {
 
 /// A ring's part round a picture `r` in radius, laid over a box centred on the picture (any size: nothing is cut).
 pub fn ring(id: &'static str, r: f32, front: bool) -> AnyElement {
-    canvas(|_, _, _| {}, move |bounds: Bounds<Pixels>, _, window, cx| {
+    crate::motion::here(move |bounds, _, window, cx| {
         if id == "none" {
-            return;
+            return false;
         }
         let mid = bounds.center();
         let mut pen = Pen { w: window, cx, o: mid };
         ring_part(id, &mut pen, now(), r, front);
+        crate::kit::looping()
     })
     .absolute()
     .inset_0()
@@ -1021,7 +1027,7 @@ pub fn ring(id: &'static str, r: f32, front: bool) -> AnyElement {
 
 /// The picker's small round: a grey face with the ring round it, both parts.
 pub fn ring_tile(id: &'static str) -> AnyElement {
-    canvas(|_, _, _| {}, move |bounds: Bounds<Pixels>, _, window, cx| {
+    crate::motion::here(move |bounds, _, window, cx| {
         let mid = bounds.center();
         let r = f32::from(bounds.size.width) / 3.4;
         let mut pen = Pen { w: window, cx, o: mid };
@@ -1029,18 +1035,9 @@ pub fn ring_tile(id: &'static str) -> AnyElement {
         ring_part(id, &mut pen, t, r, false);
         pen.dot(0., 0., r, 0x4a4352, 1.);
         ring_part(id, &mut pen, t, r, true);
+        crate::kit::looping()
     })
     .absolute()
     .inset_0()
     .into_any_element()
-}
-
-/// Keeps the window drawing 30 times a second while something here moves and the window is in front.
-pub fn clock(id: &'static str) -> AnyElement {
-    let d = div().absolute().size_0();
-    if crate::kit::looping() {
-        d.with_animation(id, Animation::new(std::time::Duration::from_secs(1)).repeat().with_max_fps(60.), |d, _| d).into_any_element()
-    } else {
-        d.into_any_element()
-    }
 }

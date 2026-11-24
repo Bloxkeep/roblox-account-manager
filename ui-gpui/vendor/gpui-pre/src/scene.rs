@@ -144,8 +144,43 @@ impl Scene {
                 PaintOperation::Primitive(primitive) => self.insert_primitive(primitive.clone()),
                 PaintOperation::StartLayer(bounds) => self.push_layer(*bounds),
                 PaintOperation::EndLayer => self.pop_layer(),
+                // (Never in a range replayed: Window::reuse_paint paints each live paint anew between ranges.)
+                PaintOperation::StartLive(_) | PaintOperation::EndLive => {}
             }
         }
+    }
+
+    /// (Bloxkeep) What a live paint paints (Window::paint_live) follows, up to `end_live`.
+    pub(crate) fn start_live(&mut self, live: std::rc::Rc<LivePaint>) {
+        self.paint_operations.push(PaintOperation::StartLive(live));
+    }
+
+    pub(crate) fn end_live(&mut self) {
+        self.paint_operations.push(PaintOperation::EndLive);
+    }
+
+    /// (Bloxkeep) The first live paint in `range`: where it starts, it, and where what it painted ends (just past its
+    /// `EndLive`; a live paint painted inside it is part of it).
+    pub(crate) fn next_live(&self, range: Range<usize>) -> Option<(usize, std::rc::Rc<LivePaint>, usize)> {
+        let ops = &self.paint_operations[range.clone()];
+        let first = ops.iter().position(|op| matches!(op, PaintOperation::StartLive(_)))?;
+        let PaintOperation::StartLive(live) = &ops[first] else { return None };
+        let mut depth = 0usize;
+        let mut end = ops.len();
+        for (i, op) in ops.iter().enumerate().skip(first) {
+            match op {
+                PaintOperation::StartLive(_) => depth += 1,
+                PaintOperation::EndLive => {
+                    depth -= 1;
+                    if depth == 0 {
+                        end = i + 1;
+                        break;
+                    }
+                }
+                _ => {}
+            }
+        }
+        Some((range.start + first, live.clone(), range.start + end))
     }
 
     pub fn finish(&mut self) {
@@ -215,6 +250,20 @@ pub(crate) enum PaintOperation {
     Primitive(Primitive),
     StartLayer(Bounds<ScaledPixels>),
     EndLayer,
+    /// (Bloxkeep) What follows, up to its `EndLive`, was painted by a live paint (Window::paint_live): painted anew,
+    /// not replayed, when the view it is in is kept as it was.
+    StartLive(std::rc::Rc<LivePaint>),
+    EndLive,
+}
+
+/// (Bloxkeep) Something painted at every frame where it lies in the order of what is painted round it, even while the
+/// view it is in is kept as it was (Window::paint_live): what paints it, and the clip, rounded boxes and opacity it was
+/// first painted in, which it is painted in again.
+pub(crate) struct LivePaint {
+    pub(crate) paint: std::rc::Rc<dyn Fn(&mut crate::Window, &mut crate::App)>,
+    pub(crate) content_mask: ContentMask<Pixels>,
+    pub(crate) opacity: f32,
+    pub(crate) rounded: Vec<(Bounds<Pixels>, Corners<Pixels>)>,
 }
 
 #[derive(Clone)]

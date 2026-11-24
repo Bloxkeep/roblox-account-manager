@@ -8,6 +8,10 @@
 //! how faded. The layer (`layer`, in the root over the app) draws them all at every frame, at the time of that frame,
 //! and asks for the next frame on the shared clock (`on_frame_step`), with the animated theme's. What covers a place (a
 //! dialog, a menu over it: something that keeps the mouse from it) hides its motion too.
+//!
+//! What lies under other things in its part (a profile's decorations under the banner's buttons, a game's clip under
+//! its sound button) can't be drawn over the app: it is painted where it lies instead (`here`), anew at every frame
+//! while its part is kept as drawn (Window::paint_live), asking for its frames on the same clock.
 use std::{
     cell::{Cell, RefCell},
     rc::Rc,
@@ -32,7 +36,8 @@ struct Place {
     rounded: Vec<(Bounds<Pixels>, Corners<Pixels>)>,
     hitbox: HitboxId,
     paint: Paint,
-    /// Moves on the shared clock (the layer asks for its frames); false: asks for its own (a playing clip, video.rs).
+    /// Moves on the shared clock (the layer asks for its frames); false: moved on by what asks for frames for the
+    /// rest (the marquee's words, kit.rs).
     clocked: bool,
     /// The part of the app it was painted in (shell/parts.rs): kept while that part is, cleared when it is painted
     /// anew. None: painted outside the parts (a dialog), anew at every frame, so it is drawn once and dropped.
@@ -44,8 +49,8 @@ thread_local! {
     static PLACES: RefCell<Vec<Place>> = const { RefCell::new(Vec::new()) };
     /// The main window (the one with the layer); a place in another window draws itself still.
     static MAIN: Cell<Option<WindowId>> = const { Cell::new(None) };
-    /// A frame is asked for at the next step.
-    static ASKED: Cell<bool> = const { Cell::new(false) };
+    /// The windows a frame is asked for at the next step.
+    static ASKED: RefCell<Vec<WindowId>> = const { RefCell::new(Vec::new()) };
     static START: Cell<Option<Instant>> = const { Cell::new(None) };
 }
 
@@ -86,11 +91,47 @@ pub fn spot(w: f32, h: f32, paint: impl Fn(Bounds<Pixels>, Option<f32>, &mut Win
     div().w(px(w)).h(px(h)).flex_none().child(placed(Rc::new(paint), true))
 }
 
-/// A place filling its box, drawn by the layer whenever the window is drawn but not moved on by its clock: what it
-/// shows asks for frames itself (`Window::redraw`, which keeps the app as drawn). A playing clip's frames: each made the
-/// whole app over again inside it (88 frames a second at 6 ms each for a 60 fps clip on Home, 2026-11-21).
+/// A place filling its box, drawn by the layer whenever the window is drawn but not moved on by its clock.
 pub fn place(paint: impl Fn(Bounds<Pixels>, Option<f32>, &mut Window, &mut App) + 'static) -> Div {
     div().size_full().child(placed(Rc::new(paint), false))
+}
+
+/// A box whose `paint` paints it where it lies, in the order of what is painted round it in its part (what lies over
+/// it there stays over it), at every frame the window draws: its part kept as drawn, it is painted anew alone
+/// (Window::paint_live). `paint` is given the box, whether it is seen (nothing that keeps the mouse from it over its
+/// middle: a dialog's backdrop, a menu) and says whether it moves on: then the next frame is asked for at the next
+/// step of the shared clock, which draws the window again, not its part. A clip's texture (video.rs) asks for its own.
+pub fn here(paint: impl Fn(Bounds<Pixels>, bool, &mut Window, &mut App) -> bool + 'static) -> Canvas<Hitbox> {
+    let paint = Rc::new(paint);
+    canvas(
+        |bounds, window, _| window.insert_hitbox(bounds, HitboxBehavior::Normal),
+        move |bounds, hitbox, window, cx| {
+            let (paint, id) = (paint.clone(), hitbox.id);
+            window.paint_live(
+                Rc::new(move |window, cx| {
+                    let seen = window.hitbox_reached(id, bounds.center());
+                    if paint(bounds, seen, window, cx) {
+                        ask_step(window, cx);
+                    }
+                }),
+                cx,
+            );
+        },
+    )
+}
+
+/// The next frame of `window` asked for at the next step of the shared clock (once, however many ask).
+fn ask_step(window: &Window, cx: &mut App) {
+    let handle = window.window_handle();
+    let id = handle.window_id();
+    if ASKED.with(|a| a.borrow().contains(&id)) {
+        return;
+    }
+    ASKED.with(|a| a.borrow_mut().push(id));
+    on_frame_step(cx, STEP, move |cx| {
+        ASKED.with(|a| a.borrow_mut().retain(|w| *w != id));
+        let _ = handle.update(cx, |_, window, _| window.redraw());
+    });
 }
 
 fn placed(paint: Paint, clocked: bool) -> impl IntoElement {
@@ -135,12 +176,8 @@ pub fn layer() -> impl IntoElement {
             }
             // (Those painted outside the parts are painted again before the next frame's layer.)
             PLACES.with(|p| p.borrow_mut().retain(|p| p.owner.is_some()));
-            if moving && clocked && !ASKED.with(|a| a.replace(true)) {
-                let handle = window.window_handle();
-                on_frame_step(cx, STEP, move |cx| {
-                    ASKED.with(|a| a.set(false));
-                    let _ = handle.update(cx, |_, window, _| window.redraw());
-                });
+            if moving && clocked {
+                ask_step(window, cx);
             }
         },
     )
