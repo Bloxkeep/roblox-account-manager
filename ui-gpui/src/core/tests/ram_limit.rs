@@ -7,7 +7,9 @@ use serde_json::json;
 
 use super::{call, cores::memory_priority, unlock, user_error, window::quiet_app as app, Checks, PASSWORD};
 use crate::core::{
+    app::memory::settling,
     base::Stamp,
+    roblox_log_watcher::ClientState,
     roblox_processes::{self, PlayerProcess},
     system_memory::MemoryStatus,
     vault::Vault,
@@ -20,6 +22,23 @@ pub async fn run(c: &mut Checks, _dir: &str) {
         roblox_processes::limit_ram(me, Some(512)) && roblox_processes::has_ram_limit(me) && roblox_processes::limit_ram(me, None) && !roblox_processes::has_ram_limit(me),
         (),
     );
+    // A user's 4 minimized windows held at 512 MB froze in a teleport and all dropped (2026-11-24): no limit while moving.
+    let now = Stamp::utc_now();
+    let ago = |s: f64| now.plus_secs(-s);
+    let state = |status: &str, at: f64, teleport: Option<f64>| ClientState { teleport_started: teleport.map(ago), ..ClientState::new(status, Some(1), None, None, ago(at)) };
+    for (what, s, want) in [
+        ("in a game for 10 min: limited", Some(state("ingame", 600., None)), false),
+        ("a teleport begun: not limited", Some(state("ingame", 600., Some(5.))), true),
+        ("joining the next server: not limited", Some(state("joining", 3., Some(8.))), true),
+        ("on the new server 20 s: not yet limited", Some(state("ingame", 20., None)), true),
+        ("on the new server 2 min: limited again", Some(state("ingame", 120., None)), false),
+        ("a join stuck 6 min: limited again", Some(state("joining", 360., None)), false),
+        ("dropped: limited", Some(state("disconnected", 5., None)), false),
+        ("no log read: limited", None, false),
+    ] {
+        c.check(what, settling(s.as_ref(), now) == want, s.map(|s| (s.status, now.secs_since(s.at))));
+    }
+
     for what in [
         "the stand-in holds its 800 MB",
         "another process limited to 256 MB: its RAM stays there while it keeps working",

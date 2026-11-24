@@ -17,12 +17,32 @@ use crate::core::{
     base::{Guid, Stamp},
     l, log,
     models::stamp_min,
+    roblox_log_watcher::ClientState,
     roblox_processes::{self, PlayerProcess},
     rt,
     system_memory::MemoryStatus,
 };
 
 pub const EMPTY_RAM_RESTED: Duration = Duration::from_secs(60);
+
+/// A window moving to a server (a teleport, a join) loads the new place and needs its whole RAM back for a while: a
+/// user's 4 minimized windows held at 512 MB froze 17–27 s in a teleport and all 4 dropped with "Disconnected from game,
+/// please reconnect" (their log, 2026-11-24; back at 1.4–1.5 GB each after the rejoin). No limit and no emptying from
+/// the teleport's start until `SETTLE_AFTER_JOIN` after the new server is reached; a join that hangs longer than
+/// `SETTLE_LONGEST` is left to the limit again.
+pub const SETTLE_AFTER_JOIN: Duration = Duration::from_secs(90);
+pub const SETTLE_LONGEST: Duration = Duration::from_secs(5 * 60);
+
+/// Whether a window is moving to a server, or reached one under `SETTLE_AFTER_JOIN` ago (see that).
+pub fn settling(state: Option<&ClientState>, now: Stamp) -> bool {
+    let Some(s) = state else { return false };
+    let recent = |at: Stamp, within: Duration| now.secs_since(at) < secs(within);
+    match s.status.as_str() {
+        "joining" => recent(s.at, SETTLE_LONGEST),
+        "ingame" => recent(s.at, SETTLE_AFTER_JOIN) || s.teleport_started.is_some_and(|t| recent(t, SETTLE_LONGEST)),
+        _ => false,
+    }
+}
 
 /// The choices of Settings › Staying in game › RAM limit for resting windows, in MB (0 = off).
 pub const RAM_LIMIT_CHOICES: [i32; 7] = [0, RAM_LIMIT_AUTO, 512, 768, 1024, 1536, 2048];
@@ -225,7 +245,12 @@ impl App {
         let main = self.main_pids();
         for p in players {
             let window = windows.get(&p.pid).map_or(0, |list| roblox_processes::main_window_of(list));
-            if p.pid == front || main.contains(&p.pid) || window == 0 || !(roblox_processes::is_minimised(window) || roblox_processes::is_hidden(window)) {
+            if p.pid == front
+                || main.contains(&p.pid)
+                || window == 0
+                || !(roblox_processes::is_minimised(window) || roblox_processes::is_hidden(window))
+                || settling(self.controller.logs.borrow().state_of(p.pid).as_ref(), now)
+            {
                 self.memory.resting_since.borrow_mut().remove(&p.pid);
                 self.memory.ram_emptied.borrow_mut().remove(&p.pid);
                 continue;
@@ -276,11 +301,13 @@ impl App {
         let main = self.main_pids();
         for p in players {
             let window = windows.get(&p.pid).map_or(0, |list| roblox_processes::main_window_of(list));
+            let moving = settling(self.controller.logs.borrow().state_of(p.pid).as_ref(), now);
             let resting = setting != 0
                 && p.pid != front
                 && !main.contains(&p.pid)
                 && window != 0
-                && (roblox_processes::is_minimised(window) || roblox_processes::is_hidden(window));
+                && (roblox_processes::is_minimised(window) || roblox_processes::is_hidden(window))
+                && !moving;
             let want: Option<i64> = if !resting {
                 None
             } else if setting == RAM_LIMIT_AUTO as i64 {
@@ -304,7 +331,13 @@ impl App {
                     log::note(&format!(
                         "RAM limit: lifted for Roblox window {} ({}).",
                         p.pid,
-                        if resting { "auto left it alone" } else { "shown, in front, or the option off" }
+                        if resting {
+                            "auto left it alone"
+                        } else if moving {
+                            "moving to a server"
+                        } else {
+                            "shown, in front, or the option off"
+                        }
                     ));
                 }
                 _ => {}

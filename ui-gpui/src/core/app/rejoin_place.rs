@@ -1,7 +1,8 @@
 // AppController.RejoinPlace.cs: a rejoin's window goes back where the account's last one was. A window arranged into a
 // tile that crashed, was kicked or lost its connection came back at Roblox's own size (or maximised) over the others, and
 // had to be arranged again (a user's request, 2026-11-11). Each account's window place is noted while it is an ordinary
-// window; a maximised one is left to Roblox and Settings' Maximise.
+// window; a maximised one is left to Roblox and Settings' Maximise. A window that was minimised is minimised again once
+// its rejoin is in the game (a user's 4 minimised windows came back open after a drop, 2026-11-24).
 use std::{
     cell::RefCell,
     collections::{HashMap, HashSet},
@@ -38,6 +39,10 @@ pub struct RejoinPlaceState {
     place_noted: RefCell<HashSet<i32>>,
     /// When each window going back was first seen in its game (it settles a moment first).
     in_game_since: RefCell<HashMap<i32, Stamp>>,
+    /// Accounts whose window was minimised when last seen (not one Bloxkeep hid: hidden rejoins keep their own way).
+    last_minimised: RefCell<HashSet<Guid>>,
+    /// Rejoins' windows (by process id) to minimise once in their game, and when each was first seen.
+    to_minimise: RefCell<HashMap<i32, Stamp>>,
 }
 
 fn secs(d: Duration) -> f64 {
@@ -57,6 +62,7 @@ impl App {
         let st = &self.rejoin_place;
         st.going_back.borrow_mut().retain(|pid, _| windows.contains_key(pid));
         st.place_noted.borrow_mut().retain(|pid| windows.contains_key(pid));
+        st.to_minimise.borrow_mut().retain(|pid, _| windows.contains_key(pid));
         {
             let going = st.going_back.borrow();
             st.in_game_since.borrow_mut().retain(|pid, _| going.contains_key(pid));
@@ -78,6 +84,9 @@ impl App {
             }
             // A rejoin's new window: first seen, it takes the place the account's last window had.
             if rejoin && !st.place_noted.borrow().contains(&pid) && !st.going_back.borrow().contains_key(&pid) {
+                if st.last_minimised.borrow().contains(&id) {
+                    st.to_minimise.borrow_mut().insert(pid, now);
+                }
                 let last = st.last_place.borrow().get(&id).copied();
                 match last.filter(|p| on_a_screen(*p)) {
                     Some(place) => {
@@ -94,9 +103,21 @@ impl App {
                 self.go_back(pid, main, back, now);
                 continue;
             }
+            let seen = st.to_minimise.borrow().get(&pid).copied();
+            if let Some(seen) = seen {
+                self.minimise_again(pid, main, seen, now);
+            }
             st.place_noted.borrow_mut().insert(pid);
-            if roblox_processes::is_hidden(main) || roblox_processes::is_minimised(main) {
+            if roblox_processes::is_hidden(main) {
                 continue; // put away: the place it had stays
+            }
+            if roblox_processes::is_minimised(main) {
+                st.last_minimised.borrow_mut().insert(id);
+                continue;
+            }
+            // (Still to be minimised again: that is what the account's window is.)
+            if !st.to_minimise.borrow().contains_key(&pid) {
+                st.last_minimised.borrow_mut().remove(&id);
             }
             match roblox_processes::window_rect(main).filter(|_| roblox_processes::is_plain_window(main)) {
                 Some(rect) => {
@@ -165,6 +186,25 @@ impl App {
             if in_game { String::new() } else { format!(" (not in its game after {} s)", GO_BACK_WITHOUT_GAME.as_secs()) }
         ));
         st.going_back.borrow_mut().insert(pid, Back { put_at: Some(now), ..back });
+    }
+
+    /// A rejoin's window whose account's last window was minimised: minimised too once it settled in its game (or after
+    /// `GO_BACK_WITHOUT_GAME` without one), as going back does. One already put away is left so.
+    fn minimise_again(&self, pid: i32, main: isize, seen: Stamp, now: Stamp) {
+        let st = &self.rejoin_place;
+        let settled = self.controller.logs.borrow().state_of(pid).is_some_and(|s| s.status == "ingame" && now.secs_since(s.at) >= secs(GO_BACK_SETTLE));
+        if !settled && now.secs_since(seen) < secs(GO_BACK_WITHOUT_GAME) {
+            return;
+        }
+        st.to_minimise.borrow_mut().remove(&pid);
+        if roblox_processes::is_hidden(main) || roblox_processes::is_minimised(main) {
+            return;
+        }
+        roblox_processes::minimise(main);
+        log::note(&format!(
+            "Rejoin place: window {pid} minimised again, as the account's last window was{}.",
+            if settled { String::new() } else { format!(" (not in its game after {} s)", GO_BACK_WITHOUT_GAME.as_secs()) }
+        ));
     }
 
     /// A rejoin's window going back to its account's place: Settings' Maximise leaves it alone.
