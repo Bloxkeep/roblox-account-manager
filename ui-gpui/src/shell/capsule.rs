@@ -128,7 +128,8 @@ pub(super) fn roll(key: &'static str, text: String, h: f32, window: &mut Window)
     // One box per character, rolling or still: one run of text is laid out a few pixels narrower (its kerning and
     // sub-pixel places), so going back to it when the roll ended moved everything after the number again (owner's
     // OBS clip, 2026-11-19: 2–3 px at 0.67 s after each change).
-    let mut row = div().flex().flex_none();
+    // Rolling or still, every character is laid out on one h line, so nothing about the row changes during a roll.
+    let mut row = div().flex().flex_none().line_height(px(h));
     if !moving {
         for n in text.chars() {
             row = row.child(div().flex_none().child(n.to_string()));
@@ -143,13 +144,16 @@ pub(super) fn roll(key: &'static str, text: String, h: f32, window: &mut Window)
             row = row.child(div().flex_none().child(n.to_string()));
             continue;
         }
+        // The new character stays in place unseen, so the box keeps the still text's size and baseline (the figure row
+        // lines the number up with its "%" by baseline: a box whose text moved gave another one, and the whole number
+        // sat 4–5 px low until the roll ended); the two that roll are drawn over it.
         row = row.child(
             div()
                 .relative()
                 .flex_none()
-                .h(px(h))
                 .overflow_hidden()
-                .child(div().relative().top(px((1. - p) * h * dir)).opacity(p.clamp(0., 1.)).child(n.to_string()))
+                .child(div().opacity(0.).child(n.to_string()))
+                .child(div().absolute().left_0().top(px((1. - p) * h * dir)).opacity(p.clamp(0., 1.)).child(n.to_string()))
                 .child(div().absolute().left_0().top(px(-p * h * dir)).opacity((1. - p).clamp(0., 1.)).child(o.to_string())),
         );
     }
