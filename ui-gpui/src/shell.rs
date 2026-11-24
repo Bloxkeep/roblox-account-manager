@@ -3158,14 +3158,16 @@ impl Root {
         // ── Measuring ─────────────────────────────────────────────────────────────────────────────────────────────
         // Each pill's width at each level, from its words' real widths (the font the bar draws them in).
         let tw = |s: &str, size: f32, w: FontWeight| bar_text_w(&*window, s, size, w);
-        let label_w = |s: &str| tw(&s.to_uppercase(), BAR_LABEL, FontWeight::SEMIBOLD);
         let value_w = |s: &str| tw(s, BAR_VALUE, FontWeight::SEMIBOLD);
         // (The pill keeps room for each figure at its widest, "100%", in equal-width digits: a figure's change made the
-        // pill longer or shorter, the owner 2026-11-20. Each figure hugs its label, the groups an even gap apart, and
-        // what a smaller figure leaves is spare room before the close button: kept in each figure, it made the gaps
-        // uneven, a wide one after "5%" and none after the window count, the owner 2026-11-21.)
-        let pct_w = value_w("100%");
-        let pair_w = |l: &str, v: f32| label_w(l) + 5. + v;
+        // pill longer or shorter, the owner 2026-11-20. Each figure hugs its label, and what a smaller figure leaves is
+        // shared out evenly between the groups: kept in each figure, it made the gaps uneven, a wide one after "5%" and
+        // none after the window count, the owner 2026-11-21; all of it before the close button set that far off, 11-24.)
+        // (A figure: its tag (the word on its own colour, as the FPS-monitoring HUD's RAM / GPU / CPU tags, Dribbble
+        // 27365272), then the number, then a smaller, dimmer "%" just after it.)
+        let chip_label_w = |s: &str| tw(&s.to_uppercase(), BAR_CHIP, FontWeight::BOLD) + 2. * BAR_CHIP_PAD;
+        let pct_w = tw("100", BAR_FIGURE, FontWeight::SEMIBOLD) + 1. + tw("%", BAR_UNIT, FontWeight::MEDIUM);
+        let pair_w = |l: &str, v: f32| chip_label_w(l) + 6. + v;
         let row_gap = |items: &[f32], pad_l: f32, pad_r: f32, gap: f32| {
             let shown: Vec<f32> = items.iter().copied().filter(|w| *w > 0.).collect();
             pad_l + pad_r + shown.iter().sum::<f32>() + gap * shown.len().saturating_sub(1) as f32
@@ -3184,7 +3186,7 @@ impl Root {
         let left_pad_r = if windows > 0 && progress_w == 0. && no_roblox_w == 0. && privacy_w == 0. { 6. } else { BAR_PAD };
         let left_w = |l: u8| {
             let (c, r, g) = (if l < 2 { cpu_w } else { 0. }, if l < 10 { ram_w } else { 0. }, if windows > 0 && l < 2 { gpu_w } else { 0. });
-            row_gap(&[head_w, c, r, g, if windows > 0 { BAR_KEY } else { 0. }, progress_w, no_roblox_w, privacy_w], BAR_PAD, left_pad_r, BAR_GROUP_GAP)
+            row_gap(&[head_w, c, r, g, if windows > 0 { BAR_KEY - BAR_CLOSE_IN } else { 0. }, progress_w, no_roblox_w, privacy_w], BAR_PAD, left_pad_r, BAR_GROUP_GAP)
         };
         let (title_w, artist_w, cover) = match &song {
             Some((s, _)) => (
@@ -3256,12 +3258,12 @@ impl Root {
         }
 
         // ── Drawing ───────────────────────────────────────────────────────────────────────────────────────────────
-        // Three levels only (Apple HIG's label, secondary and tertiary): the figures white, the marks at 60 %, the
-        // small words (CPU, RAM, GPU) at 30 %.
-        let label = |s: &str| div().flex_none().text_size(px(BAR_LABEL)).font_weight(FontWeight::SEMIBOLD).text_color(ca(TEXT, 0.32)).mt(px(1.)).child(s.to_uppercase());
+        // The figures white, the marks at 60 %; CPU, RAM and GPU on their coloured tags (Dribbble 27365272), each "%"
+        // smaller and at half strength.
         let value = |s: String| div().flex_none().text_size(px(BAR_VALUE)).font_weight(FontWeight::SEMIBOLD).text_color(c(TEXT)).child(s);
         // (A figure that changes rolls its digits, as Apple's numericText does.)
-        let figure = |id: &'static str, name: &str, pct: i64, tip: String, window: &mut Window| {
+        // (Each figure's tag in its own colour, the expanded card's (capsule.rs): CPU blue, RAM violet, GPU green.)
+        let figure = |id: &'static str, name: &str, chip_tone: u32, pct: i64, tip: String, window: &mut Window| {
             let tip: SharedString = tip.into();
             let tone = if pct as f64 >= LOAD_BUSY { load_colour(pct as f64) } else { c(TEXT) };
             div()
@@ -3269,9 +3271,31 @@ impl Root {
                 .flex()
                 .flex_none()
                 .items_center()
-                .gap(px(5.))
-                .child(label(name))
-                .child(div().flex_none().text_size(px(BAR_VALUE)).font_weight(FontWeight::SEMIBOLD).font_features(tnum()).text_color(tone).child(capsule::roll(id, format!("{pct}%"), 16., window)))
+                .gap(px(6.))
+                .child(
+                    div()
+                        .flex_none()
+                        .h(px(14.))
+                        .px(px(BAR_CHIP_PAD))
+                        .rounded(px(3.))
+                        .bg(c(chip_tone))
+                        .flex()
+                        .items_center()
+                        .text_size(px(BAR_CHIP))
+                        .font_weight(FontWeight::BOLD)
+                        .text_color(c(BAR_CHIP_TEXT))
+                        .child(name.to_uppercase()),
+                )
+                .child(
+                    div()
+                        .flex()
+                        .flex_none()
+                        .items_baseline()
+                        .gap(px(1.))
+                        .text_color(tone)
+                        .child(div().flex_none().text_size(px(BAR_FIGURE)).font_weight(FontWeight::SEMIBOLD).font_features(tnum()).child(capsule::roll(id, pct.to_string(), 17., window)))
+                        .child(div().flex_none().text_size(px(BAR_UNIT)).font_weight(FontWeight::MEDIUM).opacity(0.5).child("%")),
+                )
                 .tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into())
         };
 
@@ -3285,14 +3309,17 @@ impl Root {
             });
             let free = m.get("availableMb").and_then(Value::as_f64).map(|mb| crate::lang::cur().mb(mb)).unwrap_or_default();
             let (show_cpu, show_ram) = (level < 2, level < 10);
-            let cpu_el = show_cpu.then(|| figure("bar-cpu", "CPU", cpu, self.i18n.tv("bar.cpuTip", &[("pct", &cpu.to_string())]), window));
-            let ram_el = show_ram.then(|| figure("bar-ram", "RAM", ram, self.i18n.tv("sys.used", &[("pct", &ram.to_string()), ("free", &free)]), window));
-            let gpu_el = gpu.filter(|_| show_cpu && windows > 0).map(|g| figure("bar-gpu", "GPU", g, self.tr("sys.usageTip"), window));
+            let cpu_el = show_cpu.then(|| figure("bar-cpu", "CPU", capsule::TONES[0], cpu, self.i18n.tv("bar.cpuTip", &[("pct", &cpu.to_string())]), window));
+            let ram_el = show_ram.then(|| figure("bar-ram", "RAM", capsule::TONES[1], ram, self.i18n.tv("sys.used", &[("pct", &ram.to_string()), ("free", &free)]), window));
+            let gpu_el = gpu.filter(|_| show_cpu && windows > 0).map(|g| figure("bar-gpu", "GPU", capsule::TONES[2], g, self.tr("sys.usageTip"), window));
             div()
                 .flex_1()
                 .min_w_0()
                 .flex()
                 .items_center()
+                // (The spare room smaller figures leave is shared out between the groups, the close button among them:
+                // at the end alone it left the close button far from the figures, the owner 2026-11-24.)
+                .justify_between()
                 .gap(px(BAR_GROUP_GAP))
                 .child(
                     div()
@@ -3310,8 +3337,7 @@ impl Root {
                 .children(ram_el)
                 .children(gpu_el)
                 // Close all: every Roblox window, after a question. (Its own click: not the pill's, which opens it.)
-                // (Pushed to the pill's end: the spare room a smaller figure leaves sits before it.)
-                .when(windows > 0, |d| d.child(div().ml_auto().flex_none().child(no_pick(IconButton::new("sys-close", "power").size(BAR_KEY).tip(self.tr("sys.closeAll")).on_click(cx.listener(|r, _, window, cx| r.close_all(false, window, cx)))))))
+                .when(windows > 0, |d| d.child(div().flex_none().ml(px(-BAR_CLOSE_IN)).child(no_pick(IconButton::new("sys-close", "power").size(BAR_KEY).tip(self.tr("sys.closeAll")).on_click(cx.listener(|r, _, window, cx| r.close_all(false, window, cx)))))))
                 .when_some(self.progress.clone(), |d, p| d.child(div().flex_none().text_size(px(BAR_VALUE)).font_weight(FontWeight::NORMAL).text_color(c(TEXT_2)).child(p)))
                 // Nothing can be opened without it: said where it is seen on every page.
                 .when(no_roblox, |d| d.child(div().flex().flex_none().items_center().gap(px(6.)).text_color(c(WARN)).child(icon("alert", 14., c(WARN))).child(self.tr("side.noRoblox"))))
@@ -3674,9 +3700,17 @@ const BAR_PILL_GAP: f32 = 11.;
 const BAR_GROUP_GAP: f32 = 15.;
 const BAR_MARK: f32 = 14.;
 const BAR_GAP: f32 = 12.;
-const BAR_LABEL: f32 = 9.5;
 const BAR_VALUE: f32 = 12.5;
+/// A load figure's number and its "%" (smaller, dimmer), and its coloured tag: words, side room, words' colour.
+const BAR_FIGURE: f32 = 13.5;
+const BAR_UNIT: f32 = 10.;
+const BAR_CHIP: f32 = 8.5;
+const BAR_CHIP_PAD: f32 = 4.;
+const BAR_CHIP_TEXT: u32 = 0x0b0d12;
 const BAR_KEY: f32 = 24.;
+/// How far the close-all button sits into the room before it: its round ground is wider than its mark, so at the
+/// groups' even gap its mark looked further off than the figures from each other (owner 2026-11-24).
+const BAR_CLOSE_IN: f32 = 7.;
 const BAR_ARTIST_MAX: f32 = 140.;
 /// How long a song's pill is drawn after the song stopped, while it shrinks away.
 const BAR_LEAVE: Duration = Duration::from_millis(420);

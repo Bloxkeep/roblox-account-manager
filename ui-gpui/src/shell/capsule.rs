@@ -107,6 +107,9 @@ struct Roll {
 
 const ROLL_DUR: f32 = 0.42;
 
+/// The figures' own colours, here and on the bar's tags: CPU, RAM, GPU, then a fourth.
+pub(super) const TONES: [u32; 4] = [0x4db8ff, 0xb388ff, 0x3ddc84, 0xffb547];
+
 /// `text` drawn with its changed digits rolling (`key` is the figure's own; one row high, `h`).
 pub(super) fn roll(key: &'static str, text: String, h: f32, window: &mut Window) -> Div {
     let now = Instant::now();
@@ -312,7 +315,7 @@ impl Root {
         let open: Vec<Value> = self.accounts().iter().filter(|a| pages::accounts::is_local(a)).cloned().collect();
         let since = open.iter().filter_map(|a| a.pointer("/session/since").and_then(Value::as_str).and_then(crate::time::iso_secs)).min();
         let ram_of = |id: &str| m.get("accounts").and_then(Value::as_array).and_then(|l| l.iter().find(|x| x.get("id").and_then(Value::as_str) == Some(id))).and_then(|x| x.get("ramMb")?.as_f64());
-        let tones = [0x4db8ffu32, 0xb388ff, 0x3ddc84, 0xffb547];
+        let tones = TONES;
         let gauge = |name: &str, pct: f64, tone: u32| {
             let col = if pct >= LOAD_FULL { c(BAD) } else if pct >= LOAD_BUSY { c(WARN) } else { c(tone) };
             div()
