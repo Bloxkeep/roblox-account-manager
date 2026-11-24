@@ -2610,7 +2610,7 @@ pub fn shop(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
         .items_center()
         .gap(px(8.))
         .child(
-            div()
+            crate::kit::slide("shop-cats", div()
                 .flex_1()
                 .min_w_0()
                 .flex()
@@ -2647,7 +2647,7 @@ pub fn shop(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
                             crate::itemwatch::seen();
                             cx.notify();
                         }))
-                }),
+                })),
         )
         .when(!pf.free && !pf.watch_view, |d| d.child(sort_drop(root, cx)));
     if let Some(view) = &pf.item {

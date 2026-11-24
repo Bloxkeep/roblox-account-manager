@@ -1713,7 +1713,7 @@ fn alerts(root: &Root, feed: &Value, cx: &mut Context<Root>) -> Div {
         let this = cx.entity();
         cx.defer(move |cx| this.update(cx, |_, cx| cx.notify()));
     }
-    let mut seg = div().flex().gap(px(2.)).p(px(3.)).rounded(px(R_M)).bg(c(RAISED));
+    let mut seg = crate::kit::slide("news-tell", div().flex().gap(px(2.)).p(px(3.)).rounded(px(R_M)).bg(c(RAISED)));
     for m in ["off", "all", "words"] {
         let game = id.clone();
         seg = seg.child(
@@ -3501,7 +3501,7 @@ fn chart_pills(root: &Root, sorts: &[roblox::Sort], width: f32, cx: &mut Context
             cx.notify();
         }
     };
-    let mut row = div().flex().flex_none().items_center().gap(px(4.));
+    let mut row = crate::kit::slide("rx-sorts", div().flex().flex_none().items_center().gap(px(4.)));
     row = row.child(
         chip("rx-all", picked.is_none())
             .h(px(TOOL_H))
@@ -5971,7 +5971,7 @@ fn news(root: &Root, feed: Value, width: f32, cx: &mut Context<Root>) -> impl In
     list.sort_by(|a, b| b.get("at").and_then(Value::as_f64).unwrap_or(0.).total_cmp(&a.get("at").and_then(Value::as_f64).unwrap_or(0.)));
     let mut tell = div().flex().flex_wrap().items_center().gap(px(16.)).child(alerts(root, &feed, cx));
     if sources.len() > 1 {
-        let mut seg = div().flex().flex_wrap().gap(px(2.)).p(px(3.)).rounded(px(R_M)).bg(c(RAISED));
+        let mut seg = crate::kit::slide("news-src", div().flex().flex_wrap().gap(px(2.)).p(px(3.)).rounded(px(R_M)).bg(c(RAISED)));
         let all: Vec<(Option<String>, String)> = std::iter::once((None, root.tr("news.all"))).chain(sources.iter().map(|(i, t)| (Some(i.clone()), t.clone()))).collect();
         for (n, (key, title)) in all.into_iter().enumerate() {
             let on = key == source;
@@ -6213,7 +6213,7 @@ fn prices(root: &Root, id: &str, width: f32, cx: &mut Context<Root>) -> impl Int
             cx.notify();
         }))
     };
-    let mut chips = div().flex().flex_wrap().items_center().gap(px(4.)).child(pick(None, root.tr("news.all"), kind.is_none(), count(None), cx));
+    let mut chips = crate::kit::slide("pk-kinds", div().flex().flex_wrap().items_center().gap(px(4.)).child(pick(None, root.tr("news.all"), kind.is_none(), count(None), cx)));
     for k in &kinds {
         chips = chips.child(pick(Some(k.clone()), k.clone(), kind.as_deref() == Some(k), count(Some(k)), cx));
     }

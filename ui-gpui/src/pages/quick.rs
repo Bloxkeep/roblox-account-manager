@@ -235,7 +235,7 @@ pub fn open_for(r: &mut Root, vng: bool, for_name: String, window: &mut Window, 
         let q = &r.quick;
         let dead = matches!(q.phase, Phase::Cancelled | Phase::Expired | Phase::Failed);
         // Roblox's accounts, or Roblox VNG's (each confirms in its own app).
-        let mut realm = div().flex().gap(px(2.)).p(px(3.)).rounded(px(R_M)).bg(c(INSET));
+        let mut realm = crate::kit::slide("quick-realm", div().flex().gap(px(2.)).p(px(3.)).rounded(px(R_M)).bg(c(INSET)));
         for (label, vng) in [("Roblox", false), ("Roblox VNG", true)] {
             let this = this.clone();
             realm = realm.child(segment(label, q.vng == vng).flex_1().h(px(28.)).justify_center().text_size(px(T_M)).cursor_pointer().child(label).on_click(move |_, w, cx| {

@@ -1087,7 +1087,7 @@ fn header(root: &Root, list: &[Friend], viewer: Option<&Value>, cx: &mut Context
                         })),
                 )
                 .when(fr.tags_open, |d| d.child(float(PopAt::BelowLeft(TOOL_H + 6.), 2, tags_box(root, cx))));
-            d.child(div().flex().flex_wrap().items_center().gap(px(4.)).children(chips.into_iter().enumerate().map(|(i, (f, text, count))| {
+            d.child(crate::kit::slide("fr-chips", div().flex().flex_wrap().items_center().gap(px(4.)).children(chips.into_iter().enumerate().map(|(i, (f, text, count))| {
                 let on = fr.filter == f;
                 let dot = match f {
                     Filter::All => None,
@@ -1108,7 +1108,7 @@ fn header(root: &Root, list: &[Friend], viewer: Option<&Value>, cx: &mut Context
             })
             .chain(has_tags.then(|| div().w(px(1.)).h(px(18.)).mx(px(6.)).bg(c(LINE)).into_any_element()))
             .chain(tag_chips)
-            .chain(std::iter::once(div().ml(px(4.)).child(tags_button).into_any_element()))))
+            .chain(std::iter::once(div().ml(px(4.)).child(tags_button).into_any_element())))))
         })
 }
 

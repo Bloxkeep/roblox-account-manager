@@ -926,7 +926,7 @@ pub fn render(t: &ToolPage, window: &mut Window, cx: &mut Context<ToolPage>) -> 
     });
 
     let tab_row = (!tabs.is_empty()).then(|| {
-        div().id("pn-tabs").w_full().h(px(32.)).flex().gap(px(2.)).p(px(2.)).rounded(px(R_M)).bg(c(INSET)).border_1().border_color(c(LINE)).overflow_x_scroll().children(tabs.iter().enumerate().map(|(i, x)| {
+        crate::kit::slide("pn-tabs", div().id("pn-tabs").w_full().h(px(32.)).flex().gap(px(2.)).p(px(2.)).rounded(px(R_M)).bg(c(INSET)).border_1().border_color(c(LINE)).overflow_x_scroll().children(tabs.iter().enumerate().map(|(i, x)| {
             let on = Some(x) == shown_tab.as_ref();
             let pick = x.clone();
             let tip: SharedString = x.clone().into();
@@ -946,7 +946,7 @@ pub fn render(t: &ToolPage, window: &mut Window, cx: &mut Context<ToolPage>) -> 
                     cx.notify();
                 }))
         }))
-    });
+    )});
 
     let top = div().flex_none().flex().flex_col().gap(px(8.)).pt(px(12.)).px(px(12.)).pb(px(6.)).child(run_button(t, p, true, cx)).child(status).children(chips).children(tab_row);
 

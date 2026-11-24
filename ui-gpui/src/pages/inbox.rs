@@ -887,7 +887,7 @@ pub fn inbox(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElemen
                     d.child(IconButton::new("in-refresh", "refresh").size(34.).busy(ib.reading[tab]).tip(root.tr("fr.refresh")).on_click(cx.listener(|r, _, _, cx| again(r, cx))))
                 }),
         )
-        .when(!(able.is_empty() || friends::nobody(root)), |d| d.child(div().flex().flex_wrap().items_center().gap(px(4.)).children(tabs.into_iter().enumerate().map(|(i, (text, count))| {
+        .when(!(able.is_empty() || friends::nobody(root)), |d| d.child(crate::kit::slide("in-tabs", div().flex().flex_wrap().items_center().gap(px(4.)).children(tabs.into_iter().enumerate().map(|(i, (text, count))| {
             let on = tab == i;
             chip(("in-tab", i), on)
                 .h(px(TOOL_H))
@@ -900,7 +900,7 @@ pub fn inbox(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElemen
                     r.inbox.tab = i;
                     cx.notify();
                 }))
-        }))));
+        })))));
 
     let failed = |why: &String| empty_note(root.i18n.tv("in.failed", &[("why", crate::net::why_words(&root.i18n, why).as_str())]));
     let body: AnyElement = if able.is_empty() || friends::nobody(root) {
@@ -1284,9 +1284,9 @@ fn trades(root: &Root, cx: &mut Context<Root>) -> AnyElement {
         return div().flex_1().min_h_0().flex().flex_col().child(trade_window(root, t, cx)).into_any_element();
     }
     let list = ib.trade_list.min(roblox::TRADES.len() - 1);
-    let kinds = div().flex().flex_wrap().items_center().gap(px(4.)).children((0..roblox::TRADES.len()).map(|i| {
+    let kinds = crate::kit::slide("in-trades", div().flex().flex_wrap().items_center().gap(px(4.)).children((0..roblox::TRADES.len()).map(|i| {
         chip(("in-trades", i), list == i).h(px(TOOL_H)).px(px(12.)).cursor_pointer().child(root.tr(&format!("in.tr.{i}"))).on_click(cx.listener(move |r, _, _, cx| pick_trades(r, i, cx)))
-    }));
+    })));
     let body: AnyElement = match &ib.trades {
         None => empty_note(root.tr("in.loading")).into_any_element(),
         Some(Err(why)) => empty_note(root.i18n.tv("in.failed", &[("why", crate::net::why_words(&root.i18n, why).as_str())])).into_any_element(),

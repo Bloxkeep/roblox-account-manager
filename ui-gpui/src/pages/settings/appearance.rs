@@ -308,7 +308,7 @@ pub fn appearance(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
     let shown_group = asked
         .filter(|g| groups.contains(g))
         .unwrap_or_else(|| if cur == crate::theme::KEEP.id { "scenery" } else { GROUPS.iter().find(|(_, l)| l.contains(&cur.as_str())).map(|(g, _)| *g).unwrap_or("basic") });
-    let mut tabs = div().flex().flex_wrap().gap(px(4.));
+    let mut tabs = crate::kit::slide("ap-groups", div().flex().flex_wrap().gap(px(4.)));
     for (i, g) in groups.iter().copied().enumerate() {
         tabs = tabs.child(chip(("ap-group", i), g == shown_group).child(root.tr(&format!("theme.group.{g}"))).on_click(cx.listener(move |r, _, _, cx| {
             r.settings.look.group = Some(g);

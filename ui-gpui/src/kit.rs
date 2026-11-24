@@ -110,6 +110,9 @@ pub struct Hot {
     offset: f32,
     /// A glass block's (`hot_block`), shared with its pane.
     glass: Option<std::rc::Rc<Glass>>,
+    /// One choice of a row of them (`segment`, `chip`), and whether it is the chosen one: in a [`slide`] row the
+    /// mark under the chosen one slides, and the choice draws no ground of its own.
+    choice: Option<bool>,
 }
 
 /// What a pressable glass block tells its pane as it is drawn: how far under the mouse it is (0 to 2), and its plain
@@ -140,14 +143,14 @@ pub fn hot_block(id: impl Into<ElementId>, radius: f32) -> Hot {
 /// See [`Hot`]. It rests clear and takes the page's hover and pressed tints (app.css's --hover and --active).
 pub fn hot(id: impl Into<ElementId>) -> Hot {
     let id = id.into();
-    Hot { base: focusable(div().id(id.clone())), id, rest: ca(WHITE, 0.), over: ca(WHITE, 0.06), down: ca(WHITE, 0.09), edge: None, lift: 0., offset: 0., glass: None }
+    Hot { base: focusable(div().id(id.clone())), id, rest: ca(WHITE, 0.), over: ca(WHITE, 0.06), down: ca(WHITE, 0.09), edge: None, lift: 0., offset: 0., glass: None, choice: None }
 }
 
 /// The same for something you only point at (a row with its own buttons): its ground eases, but it is no tab stop
 /// and takes no ring.
 pub fn hover_only(id: impl Into<ElementId>) -> Hot {
     let id = id.into();
-    Hot { base: div().id(id.clone()), id, rest: ca(WHITE, 0.), over: ca(WHITE, 0.06), down: ca(WHITE, 0.06), edge: None, lift: 0., offset: 0., glass: None }
+    Hot { base: div().id(id.clone()), id, rest: ca(WHITE, 0.), over: ca(WHITE, 0.06), down: ca(WHITE, 0.06), edge: None, lift: 0., offset: 0., glass: None, choice: None }
 }
 
 impl Hot {
@@ -210,10 +213,27 @@ impl RenderOnce for Hot {
     fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
         let st = touch(&self.id, window, cx);
         let Touch { over, down } = *st.read(cx);
-        let (rest, hot, deep, edge, lift, offset) = (self.rest, self.over, self.down, self.edge, self.lift, self.offset);
+        let (mut rest, mut hot, mut deep, edge, lift, offset) = (self.rest, self.over, self.down, self.edge, self.lift, self.offset);
+        let mut base = self.base;
+        // A choice in a sliding row: the row's mark is its ground, and its words turn as the mark comes or goes.
+        if let Some(on) = self.choice {
+            let key = choice_key(&self.id);
+            if CLAIMED.with(|c| c.borrow().contains(&key)) {
+                if on {
+                    (rest, hot, deep) = (ca(WHITE, 0.), ca(WHITE, 0.10), ca(WHITE, 0.16));
+                }
+                let shown = shows_chosen(&self.id, on);
+                if shown != on {
+                    base = base.text_color(if shown { crate::theme::on_text() } else { c(TEXT_2) });
+                }
+            }
+            let r = base.style().corner_radii.top_left.map(|r| r.to_pixels(window.rem_size())).unwrap_or(px(7.));
+            // (Pinned to its corner: an absolute box with no place given stands where the padding puts the words.)
+            base = base.child(canvas(move |b, _, _| note_choice(key, b, on, r), |_, _, _, _| {}).absolute().top_0().left_0().size_full());
+        }
         let glass = self.glass;
         // One spring for both: 0 at rest, 1 under the mouse, 2 pressed.
-        sense(self.base, &st).with_spring(self.id, SpringAnimation::new(if down { SNAP } else { EASE }).to(if down { 2f32 } else if over { 1. } else { 0. }), move |d, v| {
+        sense(base, &st).with_spring(self.id, SpringAnimation::new(if down { SNAP } else { EASE }).to(if down { 2f32 } else if over { 1. } else { 0. }), move |d, v| {
             // Under the mouse it rises by its lift; pressed, it gives a little (the web page's translateY(1px)).
             if let Some(glass) = &glass {
                 glass.level.set(v);
@@ -842,21 +862,24 @@ impl Segmented {
 impl RenderOnce for Segmented {
     fn render(self, _: &mut Window, _: &mut App) -> impl IntoElement {
         let f = self.on_select.map(std::rc::Rc::new);
-        div().id(self.id).flex().flex_none().gap(px(2.)).p(px(3.)).rounded(px(R_M)).bg(c(INSET)).border_1().border_color(c(LINE)).children(self.items.into_iter().enumerate().map(
+        let key = SharedString::from(format!("seg-{:?}", self.id));
+        let row = div().flex().flex_none().gap(px(2.)).p(px(3.)).rounded(px(R_M)).bg(c(INSET)).border_1().border_color(c(LINE)).children(self.items.into_iter().enumerate().map(
             |(i, (value, label))| {
                 let on = value == self.selected;
                 let f = f.clone();
-                segment(i, on).h(px(30.)).px(px(14.)).child(label)
+                segment((key.clone(), i), on).h(px(30.)).px(px(14.)).child(label)
                     .when_some(f, move |d, f| d.on_click(move |_, w, cx| f(&value, w, cx)))
             },
-        ))
+        ));
+        div().id(self.id).flex_none().child(slide(key.clone(), row))
     }
 }
 
 /// One choice in a row of them (a Segmented's, a strip of pills): its ground eases in under the mouse, and the chosen
 /// one is Bloxkeep's yellow with dark words: the row's one bright thing.
 pub fn segment(id: impl Into<ElementId>, on: bool) -> Hot {
-    let h = hot(id).flex().flex_none().items_center().rounded(px(7.)).text_size(px(T_M)).font_weight(FontWeight::SEMIBOLD);
+    let mut h = hot(id).flex().flex_none().items_center().rounded(px(7.)).text_size(px(T_M)).font_weight(FontWeight::SEMIBOLD);
+    h.choice = Some(on);
     if on {
         h.tones(c(FACE), c(FACE_HI)).text_color(crate::theme::on_text())
     } else {
@@ -867,7 +890,8 @@ pub fn segment(id: impl Into<ElementId>, on: bool) -> Hot {
 /// A filter over a list (the web page's .chip): no track around the row; the chosen one is Bloxkeep's yellow with dark
 /// words, the one bright thing in the row, the others' ground eases in under the mouse.
 pub fn chip(id: impl Into<ElementId>, on: bool) -> Hot {
-    let h = hot(id).h(px(30.)).px(px(10.)).flex().flex_none().items_center().gap(px(7.)).rounded(px(9.)).text_size(px(T_M)).font_weight(FontWeight::SEMIBOLD).cursor_pointer();
+    let mut h = hot(id).h(px(30.)).px(px(10.)).flex().flex_none().items_center().gap(px(7.)).rounded(px(9.)).text_size(px(T_M)).font_weight(FontWeight::SEMIBOLD).cursor_pointer();
+    h.choice = Some(on);
     if on {
         h.tones(c(FACE), c(FACE_HI)).text_color(crate::theme::on_text())
     } else {
@@ -1476,13 +1500,212 @@ pub fn tool_rule() -> Div {
 /// A view switch at a toolbar's height (cards | list): its [`view_choice`]s, icons only, each with its tip and click
 /// given by the caller; the chosen one is the yellow block.
 pub fn view_switch(items: Vec<Hot>) -> Div {
-    div().h(px(TOOL_H)).flex().flex_none().items_center().gap(px(2.)).p(px(2.)).rounded(px(R_S + 1.)).bg(c(INSET)).border_1().border_color(c(LINE)).children(items)
+    let key = SharedString::from(format!("vs-{}", items.first().map(|h| choice_key(&h.id)).unwrap_or_default()));
+    slide(key, div().h(px(TOOL_H)).flex().flex_none().items_center().gap(px(2.)).p(px(2.)).rounded(px(R_S + 1.)).bg(c(INSET)).border_1().border_color(c(LINE)).children(items))
 }
 
 /// One choice of a [`view_switch`].
 pub fn view_choice(id: impl Into<ElementId>, mark: &'static str, on: bool) -> Hot {
-    segment(id, on).h(px(TOOL_H - 6.)).w(px(32.)).justify_center().rounded(px(R_S - 2.)).child(icon(mark, 15., if on { crate::theme::on_text() } else { c(TEXT_2) }))
+    let id = id.into();
+    let shown = shows_chosen(&id, on);
+    segment(id, on).h(px(TOOL_H - 6.)).w(px(32.)).justify_center().rounded(px(R_S - 2.)).child(icon(mark, 15., if shown { crate::theme::on_text() } else { c(TEXT_2) }))
 }
+
+// ───────────────────────── a sliding choice ─────────────────────────
+// A row of choices where one is chosen (a Segmented, a view switch, a strip of chips): the chosen one's yellow is a
+// mark of the row's own, drawn under the choices, that slides to the new one on a spring with a light bounce
+// (owner's pick, 2026-11-24: motion.dev's Smooth Tabs, its pill moving between tabs, over SmoothUI's plain 200 ms).
+// The choices say where they are as they are laid out (`note_choice`); the row's mark reads them as it is drawn.
+
+/// How long the mark takes to settle.
+const SLIDE_MS: f32 = 340.;
+
+/// The mark's way at `t` of its time: a spring damped to pass its place by about 2 % and come back (the soft
+/// spring's 8 % carried a mark sent across a row of chips 30 px past it, and 4 % crept back too slowly).
+fn slide_curve(t: f32) -> f32 {
+    if t >= 1. {
+        return 1.;
+    }
+    const DAMP: f32 = 0.78;
+    const W: f32 = 9.;
+    let wd = W * (1. - DAMP * DAMP).sqrt();
+    1. - (-DAMP * W * t).exp() * ((wd * t).cos() + DAMP * W / wd * (wd * t).sin())
+}
+
+/// A choice as laid out: where it stands, whether it is the chosen one, and its corners.
+struct Spot {
+    key: String,
+    at: Bounds<Pixels>,
+    on: bool,
+    r: Pixels,
+}
+
+/// A row's mark: where it stood when it set off and where it goes (relative to the row), where it is now, when it
+/// set off, and the choices it leaves and goes to.
+struct Mark {
+    from: Bounds<Pixels>,
+    to: Bounds<Pixels>,
+    now: Bounds<Pixels>,
+    start: std::time::Instant,
+    from_key: String,
+    to_key: String,
+}
+
+thread_local! {
+    /// The sliding row being laid out now and where it is: the choices laid out inside it are its.
+    static ROW_NOW: std::cell::RefCell<Option<(SharedString, Bounds<Pixels>)>> = const { std::cell::RefCell::new(None) };
+    static ROW_SPOTS: std::cell::RefCell<std::collections::HashMap<SharedString, Vec<Spot>>> = std::cell::RefCell::new(Default::default());
+    static MARKS: std::cell::RefCell<std::collections::HashMap<SharedString, Mark>> = std::cell::RefCell::new(Default::default());
+    /// Choices whose ground a row's mark draws.
+    static CLAIMED: std::cell::RefCell<std::collections::HashSet<String>> = std::cell::RefCell::new(Default::default());
+    /// While a mark moves: the choices it leaves and goes to, and whether each one's words show it chosen yet.
+    static SHOWN: std::cell::RefCell<std::collections::HashMap<String, bool>> = std::cell::RefCell::new(Default::default());
+    /// The choices the rows' marks stand under (or are on their way to).
+    static TARGETS: std::cell::RefCell<std::collections::HashSet<String>> = std::cell::RefCell::new(Default::default());
+}
+
+fn choice_key(id: &ElementId) -> String {
+    format!("{id:?}")
+}
+
+/// Whether a choice's words show it chosen now: its own state, unless the mark is still on its way to it or away.
+fn shows_chosen(id: &ElementId, on: bool) -> bool {
+    let key = choice_key(id);
+    if let Some(shown) = SHOWN.with(|s| s.borrow().get(&key).copied()) {
+        return shown;
+    }
+    // Chosen a moment ago, before its row's mark has set off: the words wait for it (dark words on the dark row).
+    if CLAIMED.with(|c| c.borrow().contains(&key)) {
+        return TARGETS.with(|t| t.borrow().contains(&key));
+    }
+    on
+}
+
+fn note_choice(key: String, at: Bounds<Pixels>, on: bool, r: Pixels) {
+    // (The choice's border is clear but takes a pixel: its ground covers it, so the mark does too.)
+    let at = at.dilate(px(1.));
+    ROW_NOW.with(|n| {
+        if let Some((row, b)) = n.borrow().as_ref()
+            && b.contains(&at.center())
+        {
+            ROW_SPOTS.with(|s| s.borrow_mut().entry(row.clone()).or_default().push(Spot { key, at, on, r }));
+        }
+    });
+}
+
+/// `row` with a mark under its chosen choice that slides when another is chosen. `key` names the row (fixed for the
+/// place it is in). A row with more than one chosen (days of a week) keeps its choices' own grounds.
+pub fn slide<R: UnderRow>(key: impl Into<SharedString>, row: R) -> R {
+    let key = key.into();
+    let (k1, k2) = (key.clone(), key);
+    row.relative().put_under(
+        canvas(
+            move |b, _, _| {
+                ROW_NOW.with(|n| *n.borrow_mut() = Some((k1.clone(), b)));
+                ROW_SPOTS.with(|s| s.borrow_mut().insert(k1, Vec::new()));
+            },
+            move |row, _, window, _| paint_mark(k2, row, window),
+        )
+        .absolute()
+        .top_0()
+        .left_0()
+        .size_full(),
+    )
+}
+
+/// A row a sliding mark can go under (a plain one, or one that scrolls).
+pub trait UnderRow: Styled + Sized {
+    fn put_under(self, el: impl IntoElement) -> Self;
+}
+impl UnderRow for Div {
+    fn put_under(self, el: impl IntoElement) -> Self {
+        self.child_under(el)
+    }
+}
+impl UnderRow for Stateful<Div> {
+    fn put_under(self, el: impl IntoElement) -> Self {
+        self.child_under(el)
+    }
+}
+
+fn paint_mark(key: SharedString, row: Bounds<Pixels>, window: &mut Window) {
+    let spots = ROW_SPOTS.with(|s| s.borrow_mut().remove(&key)).unwrap_or_default();
+    ROW_NOW.with(|n| {
+        let mine = n.borrow().as_ref().is_some_and(|(k, _)| *k == key);
+        if mine {
+            *n.borrow_mut() = None;
+        }
+    });
+    let chosen: Vec<&Spot> = spots.iter().filter(|s| s.on).collect();
+    let [one] = chosen.as_slice() else {
+        // None chosen, or many: each draws its own ground.
+        let was = CLAIMED.with(|c| {
+            let mut c = c.borrow_mut();
+            spots.iter().fold(false, |was, s| c.remove(&s.key) || was)
+        });
+        if let Some(mark) = MARKS.with(|m| m.borrow_mut().remove(&key)) {
+            TARGETS.with(|t| t.borrow_mut().remove(&mark.to_key));
+        }
+        if was {
+            window.request_animation_frame();
+        }
+        return;
+    };
+    let fresh = CLAIMED.with(|c| {
+        let mut c = c.borrow_mut();
+        spots.iter().fold(false, |fresh, s| c.insert(s.key.clone()) || fresh)
+    });
+    let to = Bounds { origin: one.at.origin - row.origin, size: one.at.size };
+    let now = std::time::Instant::now();
+    let r = one.r + px(1.);
+    let (at, moving) = MARKS.with(|m| {
+        let mut m = m.borrow_mut();
+        let mark = m.entry(key.clone()).or_insert_with(|| {
+            TARGETS.with(|t| t.borrow_mut().insert(one.key.clone()));
+            Mark { from: to, to, now: to, start: now, from_key: one.key.clone(), to_key: one.key.clone() }
+        });
+        if mark.to_key != one.key {
+            // Another chosen: off from where the mark stands now (mid-way, if it was still moving). From a choice no
+            // longer in the row (a page shown anew), it is put there at once.
+            let came = spots.iter().any(|s| s.key == mark.to_key);
+            mark.from_key = std::mem::replace(&mut mark.to_key, one.key.clone());
+            TARGETS.with(|t| {
+                let mut t = t.borrow_mut();
+                t.remove(&mark.from_key);
+                t.insert(mark.to_key.clone());
+            });
+            (mark.from, mark.to, mark.start) = (if came { mark.now } else { to }, to, now);
+        } else if mark.to != to {
+            // The same one, moved or resized (the row laid out anew): it follows at once.
+            (mark.from, mark.to) = (to, to);
+        }
+        let t = (mark.start.elapsed().as_secs_f32() * 1000. / SLIDE_MS).clamp(0., 1.);
+        let e = slide_curve(t);
+        let lerp = |a: Pixels, b: Pixels, e: f32| a + (b - a) * e;
+        // (Its size goes straight to the new one's: a mark that grew past it looked swollen.)
+        mark.now = Bounds {
+            origin: point(lerp(mark.from.origin.x, mark.to.origin.x, e), lerp(mark.from.origin.y, mark.to.origin.y, e)),
+            size: size(lerp(mark.from.size.width, mark.to.size.width, e.min(1.)), lerp(mark.from.size.height, mark.to.size.height, e.min(1.))),
+        };
+        // The words turn as the mark is 40 % of the way: before that the new one's would be dark on the dark row.
+        SHOWN.with(|s| {
+            let mut s = s.borrow_mut();
+            if t < 1. && mark.from_key != mark.to_key {
+                s.insert(mark.to_key.clone(), t >= 0.4);
+                s.insert(mark.from_key.clone(), t < 0.4);
+            } else {
+                s.remove(&mark.to_key);
+                s.remove(&mark.from_key);
+            }
+        });
+        (mark.now, t < 1.)
+    });
+    window.paint_quad(fill(Bounds { origin: row.origin + at.origin, size: at.size }, c(FACE)).corner_radii(r));
+    if moving || fresh {
+        window.request_animation_frame();
+    }
+}
+
 
 // ───────────────────────── motion ─────────────────────────
 // What moves, and how: a place steps in (a short rise and fade) when it replaces another, a picture fades in when it

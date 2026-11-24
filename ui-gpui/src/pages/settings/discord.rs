@@ -636,7 +636,7 @@ pub(super) fn discord(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
     let tab = if tab.is_empty() { "summary" } else { tab };
     // (The app's one way of picking a part of a page: the chosen one the yellow block, as Appearance's and the
     // Inbox's are; an underline here was a second style for the same control.)
-    let mut strip = div().w_full().flex().flex_wrap().items_center().gap(px(4.));
+    let mut strip = crate::kit::slide("s-dc-tabs", div().w_full().flex().flex_wrap().items_center().gap(px(4.)));
     for (i, (key, mark)) in [("summary", "activity"), ("alerts", "bell"), ("messages", "message"), ("control", "monitor")].into_iter().enumerate() {
         let picked = key == tab;
         strip = strip.child(chip(("s-dc-tab", i), picked).h(px(TOOL_H)).px(px(12.)).child(icon(mark, 15., c(if picked { INK } else { MUTED }))).child(root.tr(&format!("set.dc.tab.{key}"))).when(!picked, |d| {

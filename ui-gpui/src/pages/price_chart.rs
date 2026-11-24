@@ -51,7 +51,7 @@ pub fn view(root: &Root, data: &Resale, width: f32, cx: &mut Context<Root>) -> A
     };
 
     // The span's choices at the head's right.
-    let mut head = section_head(root.tr("pc.title"), None);
+    let mut head = crate::kit::slide("pc-span", section_head(root.tr("pc.title"), None));
     for (i, (_, key)) in SPANS.iter().enumerate() {
         head = head.child(chip(("pc-span", i), span == i).child(root.tr(key)).on_click(cx.listener(move |_, _, _, cx| {
             SPAN.with(|s| s.set(i));

@@ -1860,7 +1860,7 @@ fn header(root: &Root, all: &[Value], width: f32, rows: bool, cx: &mut Context<R
                     .when(compact, |d| d.flex_col().items_start().gap(px(10.)))
                     .when(!compact, |d| d.items_center().gap(px(12.)))
                     .child(
-                        div().when(compact, |d| d.w_full()).when(!compact, |d| d.flex_1()).min_w_0().flex().flex_wrap().items_center().gap(px(if compact { 2. } else { 4. })).children(chips.into_iter().map(|(f, text, count)| {
+                        crate::kit::slide("acc-chips", div().when(compact, |d| d.w_full()).when(!compact, |d| d.flex_1()).min_w_0().flex().flex_wrap().items_center().gap(px(if compact { 2. } else { 4. })).children(chips.into_iter().map(|(f, text, count)| {
                             let on = root.acc_filter == f;
                             let dot = match f {
                                 Filter::All => None,
@@ -1881,7 +1881,7 @@ fn header(root: &Root, all: &[Value], width: f32, rows: bool, cx: &mut Context<R
                                     r.acc_filter = f;
                                     cx.notify();
                                 }))
-                        })),
+                        }))),
                     )
                     .child(tools),
             )

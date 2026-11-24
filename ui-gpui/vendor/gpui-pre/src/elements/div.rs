@@ -1873,6 +1873,16 @@ pub struct Div {
 }
 
 impl Div {
+    /// Bloxkeep: a child put before the others, so it is drawn under them (a mark that slides behind a row's
+    /// choices: kit::slide).
+    pub fn child_under(mut self, child: impl IntoElement) -> Self {
+        #[cfg(feature = "stacker")]
+        self.children.insert(0, StackSafe::new(child.into_any_element()));
+        #[cfg(not(feature = "stacker"))]
+        self.children.insert(0, child.into_any_element());
+        self
+    }
+
     /// Add a listener to be called when the children of this `Div` are prepainted.
     /// This allows you to store the [`Bounds`] of the children for later use.
     pub fn on_children_prepainted(
@@ -4174,6 +4184,14 @@ impl GroupHitboxes {
 /// A wrapper around an element that can store state, produced after assigning an ElementId.
 pub struct Stateful<E> {
     pub(crate) element: E,
+}
+
+impl Stateful<Div> {
+    /// Bloxkeep: see [`Div::child_under`].
+    pub fn child_under(mut self, child: impl IntoElement) -> Self {
+        self.element = self.element.child_under(child);
+        self
+    }
 }
 
 impl<E> Styled for Stateful<E>
