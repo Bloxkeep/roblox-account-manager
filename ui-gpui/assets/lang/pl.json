@@ -417,6 +417,7 @@
   "con.accounts": "Konta",
   "con.all": "Wszystko",
   "con.clear": "Wyczyść",
+  "con.search": "Szukaj w dzienniku",
   "con.copied": "Skopiowano {n} wierszy, nazwy ukryte",
   "con.copied#few": "Skopiowano {n} wiersze, nazwy ukryte",
   "con.copied#one": "Skopiowano {n} wiersz, nazwy ukryte",

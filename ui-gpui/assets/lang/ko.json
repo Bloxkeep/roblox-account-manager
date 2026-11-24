@@ -386,6 +386,7 @@
   "con.accounts": "계정",
   "con.all": "전체",
   "con.clear": "지우기",
+  "con.search": "로그 검색",
   "con.copied": "{n}줄 복사함, 이름은 가림",
   "con.copy": "복사",
   "con.emptyNote": "이번 실행의 시작, 튕김, 재참가, 오류가 여기에 표시돼요.",

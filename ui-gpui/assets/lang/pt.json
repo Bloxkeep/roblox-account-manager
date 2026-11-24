@@ -408,6 +408,7 @@
   "con.accounts": "Contas",
   "con.all": "Tudo",
   "con.clear": "Limpar",
+  "con.search": "Pesquisar no registro",
   "con.copied": "{n} linhas copiadas, nomes ocultos",
   "con.copied#one": "{n} linha copiada, nomes ocultos",
   "con.copied1": "1 linha copiada, nomes ocultos",

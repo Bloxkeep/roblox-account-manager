@@ -386,6 +386,7 @@
   "con.accounts": "アカウント",
   "con.all": "すべて",
   "con.clear": "クリア",
+  "con.search": "ログを検索",
   "con.copied": "{n}行をコピーしました(名前は非表示)",
   "con.copy": "コピー",
   "con.emptyNote": "今回の起動、切断、再参加、エラーがここに表示されます。",

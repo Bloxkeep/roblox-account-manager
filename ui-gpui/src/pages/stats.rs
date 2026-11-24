@@ -92,6 +92,8 @@ struct ConKey {
     source: Option<String>,
     account: Option<String>,
     hide: bool,
+    /// The search's words, folded (kit::folded).
+    q: String,
 }
 
 /// One Console line ready to draw.
@@ -2216,7 +2218,7 @@ fn console(root: &Root, width: f32, cx: &mut Context<Root>) -> Div {
             cx.notify();
         })));
     }
-    row = row.child(div().flex_1()).child(
+    row = row.child(div().flex_1()).child(div().w(px(if width < 760. { 180. } else { 260. })).flex_shrink(1.).min_w(px(120.)).child(field(&root.con_q, Some("search")))).child(
         tool("con-copy", Some("copy"), false).child(root.tr("con.copy")).on_click(cx.listener(|r, _, _, cx| {
             let Some(all) = r.stats.con.as_ref() else { return };
             // Always without names: a copy goes into bug reports and Discord.
@@ -2237,7 +2239,8 @@ fn console(root: &Root, width: f32, cx: &mut Context<Root>) -> Div {
         cx.notify();
     })));
 
-    let rows = con_rows(st, all, &masks, hide);
+    let q = folded(root.con_q.read(cx).value().trim());
+    let rows = con_rows(st, all, &masks, hide, &q);
     let mono = |d: Div| d.font_family("Consolas").text_size(px(12.5)).line_height(px(20.));
     let log = if st.con.is_none() || rows.is_empty() {
         let words = if st.con.is_none() {
@@ -2250,6 +2253,7 @@ fn console(root: &Root, width: f32, cx: &mut Context<Root>) -> Div {
         // Only the lines in view (and a little around them) are made and drawn: 1,500 lines cost what 40 do.
         let this = cx.entity().downgrade();
         let rows_for = rows.clone();
+        let q_marks = q.clone();
         // Give each virtual row a definite width. An auto-sized root in GPUI's list can measure
         // the text at its unwrapped width even when the viewport is narrower.
         let row_width = (width - 14. - 2. - 20.).max(80.);
@@ -2276,7 +2280,13 @@ fn console(root: &Root, width: f32, cx: &mut Context<Root>) -> Div {
                 filters.push(range);
                 text.push(' ');
             }
+            let words_at = text.len();
             text.push_str(&row.text);
+            // The searched words marked in the line's words, as a browser's find does (the [source] and the name keep
+            // their own colours: a text's marks may not overlap).
+            for range in found(&row.text, &q_marks) {
+                highlights.push((words_at + range.start..words_at + range.end, HighlightStyle { background_color: Some(ca(FACE, 0.3)), color: Some(c(TEXT)), ..Default::default() }));
+            }
             if let Some(again) = &row.again {
                 text.push_str("  ");
                 let start = text.len();
@@ -2321,8 +2331,8 @@ fn console(root: &Root, width: f32, cx: &mut Context<Root>) -> Div {
 
 /// The lines to show, made again only when the lines, the filters or Hide names changed. The list is told: following
 /// the newest line it goes on following; read further up it stays on the line it was showing.
-fn con_rows(st: &Data, all: &[Value], masks: &Masks, hide: bool) -> std::rc::Rc<Vec<ConRow>> {
-    let key = ConKey { ver: st.con_ver, kind: st.con_kind, source: st.con_source.clone(), account: st.con_account.clone(), hide };
+fn con_rows(st: &Data, all: &[Value], masks: &Masks, hide: bool, q: &str) -> std::rc::Rc<Vec<ConRow>> {
+    let key = ConKey { ver: st.con_ver, kind: st.con_kind, source: st.con_source.clone(), account: st.con_account.clone(), hide, q: q.to_string() };
     let mut cache = st.con_rows.borrow_mut();
     if cache.0.as_ref() == Some(&key) {
         return cache.1.clone();
@@ -2337,6 +2347,8 @@ fn con_rows(st: &Data, all: &[Value], masks: &Masks, hide: bool) -> std::rc::Rc<
         })
         .filter(|l| st.con_source.as_deref().is_none_or(|v| s(l, "source") == v))
         .filter(|l| st.con_account.as_deref().is_none_or(|v| s(l, "account") == v))
+        // (Searched as the line reads: its [source], the account's name as shown and its words.)
+        .filter(|l| q.is_empty() || folded(&format!("[{}] {} {}", s(l, "source"), masks.name(s(l, "account")), masks.words(s(l, "text")))).contains(q))
         .map(|l| {
             let t = int(l, "at") + off;
             let times = int(l, "times");
@@ -2355,7 +2367,7 @@ fn con_rows(st: &Data, all: &[Value], masks: &Masks, hide: bool) -> std::rc::Rc<
         })
         .collect();
     let list = &st.con_list;
-    let same_view = cache.0.as_ref().is_some_and(|k| k.kind == key.kind && k.source == key.source && k.account == key.account);
+    let same_view = cache.0.as_ref().is_some_and(|k| k.kind == key.kind && k.source == key.source && k.account == key.account && k.q == key.q);
     if same_view && !list.is_following_tail() {
         // Read further up: the line at the top stays at the top (lines come at the end, old ones go at the start).
         let top = list.logical_scroll_top();
@@ -2370,6 +2382,27 @@ fn con_rows(st: &Data, all: &[Value], masks: &Masks, hide: bool) -> std::rc::Rc<
     let rows = std::rc::Rc::new(rows);
     *cache = (Some(key), rows.clone());
     rows
+}
+
+/// Where `q` (folded, kit::folded) is found in `text`, compared folded as the search is, as byte ranges of `text`.
+fn found(text: &str, q: &str) -> Vec<std::ops::Range<usize>> {
+    let q: Vec<char> = q.chars().collect();
+    if q.is_empty() {
+        return Vec::new();
+    }
+    // Each character folded on its own, with where it starts and ends in `text`.
+    let chars: Vec<(usize, usize, char)> = text.char_indices().map(|(i, ch)| (i, i + ch.len_utf8(), folded(&ch.to_string()).chars().next().unwrap_or(ch))).collect();
+    let mut out = Vec::new();
+    let mut i = 0;
+    while i + q.len() <= chars.len() {
+        if chars[i..i + q.len()].iter().zip(&q).all(|(c, w)| c.2 == *w) {
+            out.push(chars[i].0..chars[i + q.len() - 1].1);
+            i += q.len();
+        } else {
+            i += 1;
+        }
+    }
+    out
 }
 
 /// One line as copied: `13:44:22 [Rejoin] Account 1: the words (×31)`.

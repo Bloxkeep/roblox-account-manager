@@ -408,6 +408,7 @@
   "con.accounts": "Comptes",
   "con.all": "Tout",
   "con.clear": "Effacer",
+  "con.search": "Rechercher dans le journal",
   "con.copied": "{n} lignes copiées, noms masqués",
   "con.copied#one": "{n} ligne copiée, noms masqués",
   "con.copied1": "1 ligne copiée, noms masqués",

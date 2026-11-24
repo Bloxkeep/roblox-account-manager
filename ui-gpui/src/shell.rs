@@ -278,6 +278,8 @@ pub struct Root {
     pub wiki_tq: Entity<InputState>,
     /// Settings' search over every part's rows.
     pub set_q: Entity<InputState>,
+    /// Statistics › Console's search: only the lines with these words show.
+    pub con_q: Entity<InputState>,
     /// Presets: the search over their names and games.
     pub preset_search: Entity<InputState>,
     /// A game's news: the words to be told about.
@@ -361,6 +363,13 @@ impl Root {
         .detach();
         let wiki_tq = mk("prices.search", window, cx);
         let set_q = mk("set.search", window, cx);
+        let con_q = mk("con.search", window, cx);
+        cx.subscribe(&con_q, |_: &mut Root, _, e: &InputEvent, cx| {
+            if matches!(e, InputEvent::Change) {
+                cx.notify();
+            }
+        })
+        .detach();
         // A pause while typing searches Roblox; Enter searches immediately.
         let picker_q = mk("ui.findGame", window, cx);
         cx.subscribe(&picker_q, |r: &mut Root, _, e: &InputEvent, cx| match e {
@@ -746,6 +755,7 @@ impl Root {
             wiki_q,
             wiki_tq,
             set_q,
+            con_q,
             wiki: Default::default(),
             news_words,
             community_at: None,
@@ -1041,7 +1051,7 @@ impl Root {
                 self.price_search.update(cx, |s, cx| s.set_placeholder(p, window, cx));
                 let p = self.i18n.t("jp.placeholder");
                 self.jp_name.update(cx, |s, cx| s.set_placeholder(p, window, cx));
-                for (key, e) in [("ui.findGame", self.picker_q.clone()), ("acc.search", self.iv_q.clone()), ("cm.namePh", self.board_name.clone()), ("wiki.searchWiki", self.wiki_q.clone()), ("prices.search", self.wiki_tq.clone()), ("set.search", self.set_q.clone()), ("in.groupName", self.group_name.clone()), ("in.findFriend", self.group_q.clone()), ("ui.accSearch", self.pick_q.clone())] {
+                for (key, e) in [("ui.findGame", self.picker_q.clone()), ("acc.search", self.iv_q.clone()), ("cm.namePh", self.board_name.clone()), ("wiki.searchWiki", self.wiki_q.clone()), ("prices.search", self.wiki_tq.clone()), ("set.search", self.set_q.clone()), ("con.search", self.con_q.clone()), ("in.groupName", self.group_name.clone()), ("in.findFriend", self.group_q.clone()), ("ui.accSearch", self.pick_q.clone())] {
                     let p = self.i18n.t(key);
                     e.update(cx, |s, cx| s.set_placeholder(p, window, cx));
                 }
@@ -1458,6 +1468,11 @@ impl Root {
         #[cfg(feature = "shot")]
         if let (Ok(q), true) = (std::env::var("BLOXKEEP_SHOT_SETQ"), self.set_q.read(cx).value().is_empty()) {
             self.set_q.update(cx, |s, cx| s.set_value(q, window, cx));
+        }
+        // BLOXKEEP_SHOT_CONQ="anti": Statistics › Console searched for those words.
+        #[cfg(feature = "shot")]
+        if let (Ok(q), true) = (std::env::var("BLOXKEEP_SHOT_CONQ"), self.con_q.read(cx).value().is_empty()) {
+            self.con_q.update(cx, |s, cx| s.set_value(q, window, cx));
         }
         // BLOXKEEP_SHOT_SET=perf (a part's key): Settings open on it; "multi" asks Multi-Roblox's question, "restore" Restore's;
         // "rbx-update" asks Roblox's update question, "rc-own" shows Custom Roblox settings; "dc-link" opens Discord's
