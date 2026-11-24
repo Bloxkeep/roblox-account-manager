@@ -143,6 +143,7 @@ pub struct Root {
     pub avatar: pages::avatar::Data,
     /// Profile and Marketplace (inside Games): that account's profile, and the shelf or search the Marketplace shows.
     pub profile: pages::profile::Data,
+    pub collection: pages::collection::Data,
     pub shop_search: Entity<InputState>,
     /// A private server's name: the one being bought (pages/servers.rs) or renamed (pages/owned.rs).
     pub ps_name: Entity<InputState>,
@@ -214,6 +215,9 @@ pub struct Root {
     /// The game list's search box; Save server's name and code.
     pub picker_q: Entity<InputState>,
     pub sv_name: Entity<InputState>,
+    /// Game collection's boxes: Add game's search, the favourite's note.
+    pub gc_q: Entity<InputState>,
+    pub gc_note: Entity<InputState>,
     pub sv_code: Entity<InputState>,
     /// The profile's thought bubble, as it is written (pages/profile.rs).
     pub pf_bubble: Entity<InputState>,
@@ -397,6 +401,21 @@ impl Root {
         let (pl_user, pl_pass, pl_code) = pages::password::boxes(window, cx);
         // Save server's boxes: Enter saves.
         let sv_name = mk("sv.name", window, cx);
+        // Game collection: Add game's search (a pause while typing asks Roblox, Enter at once), the note (Enter keeps it).
+        let gc_q = mk("gcol.search", window, cx);
+        cx.subscribe_in(&gc_q, window, |r: &mut Root, _, ev: &InputEvent, window, cx| match ev {
+            InputEvent::PressEnter { .. } => pages::collection::typed(r, true, window, cx),
+            InputEvent::Change => pages::collection::typed(r, false, window, cx),
+            _ => {}
+        })
+        .detach();
+        let gc_note = mk("gcol.notePh", window, cx);
+        cx.subscribe_in(&gc_note, window, |r: &mut Root, _, ev: &InputEvent, _, cx| {
+            if matches!(ev, InputEvent::PressEnter { .. }) {
+                pages::collection::save_note(r, cx);
+            }
+        })
+        .detach();
         let sv_code = mk("sv.codeHint", window, cx);
         let pf_bubble = mk("pf.bubble.ph", window, cx);
         cx.subscribe_in(&pf_bubble, window, |r: &mut Root, _, ev: &InputEvent, _, cx| {
@@ -672,6 +691,7 @@ impl Root {
             friends: Default::default(),
             avatar: Default::default(),
             profile: Default::default(),
+            collection: Default::default(),
             shop_search,
             ps_name,
             inbox: Default::default(),
@@ -717,6 +737,8 @@ impl Root {
             picker: Default::default(),
             picker_q,
             sv_name,
+            gc_q,
+            gc_note,
             sv_code,
             pf_bubble,
             quick: Default::default(),
@@ -1051,7 +1073,7 @@ impl Root {
                 self.price_search.update(cx, |s, cx| s.set_placeholder(p, window, cx));
                 let p = self.i18n.t("jp.placeholder");
                 self.jp_name.update(cx, |s, cx| s.set_placeholder(p, window, cx));
-                for (key, e) in [("ui.findGame", self.picker_q.clone()), ("acc.search", self.iv_q.clone()), ("cm.namePh", self.board_name.clone()), ("wiki.searchWiki", self.wiki_q.clone()), ("prices.search", self.wiki_tq.clone()), ("set.search", self.set_q.clone()), ("con.search", self.con_q.clone()), ("in.groupName", self.group_name.clone()), ("in.findFriend", self.group_q.clone()), ("ui.accSearch", self.pick_q.clone())] {
+                for (key, e) in [("ui.findGame", self.picker_q.clone()), ("acc.search", self.iv_q.clone()), ("cm.namePh", self.board_name.clone()), ("wiki.searchWiki", self.wiki_q.clone()), ("prices.search", self.wiki_tq.clone()), ("set.search", self.set_q.clone()), ("con.search", self.con_q.clone()), ("in.groupName", self.group_name.clone()), ("in.findFriend", self.group_q.clone()), ("ui.accSearch", self.pick_q.clone()), ("gcol.search", self.gc_q.clone()), ("gcol.notePh", self.gc_note.clone())] {
                     let p = self.i18n.t(key);
                     e.update(cx, |s, cx| s.set_placeholder(p, window, cx));
                 }
@@ -4146,6 +4168,10 @@ impl Render for Root {
                             "launch" => return r.launch("launch", json!({ "ids": idle }), false, cx),
                             "launcherr" => return r.launch("launch", json!({ "ids": idle.into_iter().take(1).chain(banned).collect::<Vec<_>>() }), false, cx),
                             "saveserver" => return pages::picker::shot_save(r, window, cx),
+                            // (=gcadd: Game collection's Add game, for the section BLOXKEEP_SHOT_GC_ADD names.)
+                            "gcadd" => return pages::collection::shot_add(r, 0, window, cx),
+                            // (=ram: the Clean RAM panel.)
+                            "ram" => return crate::clean_ram::shot_open(r, window, cx),
                             _ => {}
                         }
                         if let Some(cmd) = which.strip_prefix("send:") {

@@ -400,6 +400,14 @@ pub fn open_person(r: &mut Root, user: i64, cx: &mut Context<Root>) {
     cx.notify();
 }
 
+/// The Roblox tab's profile of the account its tab looks through, not a person's or a community's over it.
+pub fn show_own(r: &mut Root) {
+    r.profile.person = None;
+    r.profile.club = None;
+    r.profile.folk = None;
+    r.games.view = crate::pages::games::View::Profile;
+}
+
 /// 2006-03-08T… as 08/03/2006.
 pub fn day(iso: &str) -> String {
     let d: Vec<&str> = iso.get(..10).unwrap_or_default().split('-').collect();
@@ -1673,6 +1681,8 @@ fn filled(root: &Root, p: &Profile, user: i64, width: f32, own: bool, cx: &mut C
             .gap(px(SECTION_GAP))
             .child(div().flex().flex_col().gap(px(12.)).child(who)
                 .when(own && !song_in_head, |d| d.child(profile_media::row(root, user, inner, song_art, cx))))
+            // Their game collection (own profile; kept in Bloxkeep: pages/collection.rs).
+            .when(own, |d| d.child(crate::pages::collection::section(root, user, inner, cx)))
             .when(!collection.is_empty(), |d| d.child(shelf("pf.collection", p.collection.len(), collection)))
             .child(
                 div()

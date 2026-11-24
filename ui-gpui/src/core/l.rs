@@ -247,6 +247,8 @@ static VI: LazyLock<HashMap<&'static str, &'static str>> = LazyLock::new(|| PAIR
 /// English → Vietnamese, in the C# table's order (`both` looks a Vietnamese sentence up by the first pair that has it).
 #[rustfmt::skip]
 static PAIRS: &[(&str, &str)] = &[
+    ("RAM was at {0}%. Bloxkeep cleaned it and freed {1}.", "RAM đã lên {0}%. Bloxkeep đã dọn và lấy lại được {1}."),
+    ("Auto clean RAM is off: its task in Task Scheduler is gone. Turn it on again in Settings › RAM & CPU.", "Đã tắt tự dọn RAM vì tác vụ của nó trong Task Scheduler không còn. Bật lại ở Cài đặt › RAM & CPU."),
     ("Wrong master password.", "Sai mật khẩu chủ."),
     ("The launcher you picked is gone. Choose it again under Settings › Launching › Open Roblox with.", "Không tìm thấy launcher đã chọn. Chọn lại ở Cài đặt › Khởi chạy › Mở Roblox bằng."),
     ("Choose the program that opens Roblox", "Chọn launcher để mở Roblox"),

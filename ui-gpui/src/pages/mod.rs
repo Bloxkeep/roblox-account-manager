@@ -25,6 +25,7 @@ pub mod badges;
 pub mod price_chart;
 pub mod password;
 pub mod picker;
+pub mod collection;
 pub mod servers;
 pub mod snap;
 pub mod stats;

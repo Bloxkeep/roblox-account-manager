@@ -396,9 +396,17 @@ pub fn forget_gone(r: &mut Root) {
     r.tabs.at = before.min(r.tabs.list.len().saturating_sub(1));
 }
 
-/// A tab closes; the last one stays. Closing the one shown shows its neighbour.
+/// A tab closes. Closing the one shown shows its neighbour; the last one, as a browser's last tab, becomes a new
+/// one: no account, so Roblox asks who to open it as again (the owner, 2026-11-25: "nếu chỉ có 1 cái thì vẫn nên có
+/// dấu X để tắt chứ").
 pub fn close(r: &mut Root, i: usize) {
-    if r.tabs.list.len() < 2 || i >= r.tabs.list.len() {
+    if i >= r.tabs.list.len() {
+        return;
+    }
+    if r.tabs.list.len() == 1 {
+        put_away(r);
+        r.tabs.list[0] = Tab::default();
+        take_out(r);
         return;
     }
     if i == r.tabs.at {
@@ -412,13 +420,16 @@ pub fn close(r: &mut Root, i: usize) {
     r.tabs.scroll.scroll_to_item(r.tabs.at);
 }
 
-/// The strip: a tab an account (its face and name; a cross while there is more than one), then "+".
+/// The strip: a tab an account (its face and name, its cross), then "+".
 pub fn strip(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement {
     let able = available(root);
     let (_, active) = friends::looking(root);
     let tabs = &root.tabs;
     let find = |id: &Option<String>| id.as_ref().and_then(|id| able.iter().find(|a| s(a, "id") == id)).map(|a| (*a).clone());
     let many = tabs.list.len() > 1;
+    // A lone tab has its cross too while there are other accounts to pick instead (with one, it would open again as
+    // the same at once).
+    let closable = many || (able.len() > 1 && (tabs.list[0].account.is_some() || friends::signed(root).is_some()));
     let mut open_ids = std::collections::HashSet::new();
     const TAB_WIDTH: f32 = 150.;
     let scroll = tabs.scroll.clone();
@@ -471,7 +482,7 @@ pub fn strip(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElemen
             hot(SharedString::from(format!("rbx-tab-{key}")))
                 .h(px(34.))
                 .pl(px(8.))
-                .pr(px(if many { 5. } else { 12. }))
+                .pr(px(if closable { 5. } else { 12. }))
                 .flex()
                 // (One tab keeps its whole name: shrunk, the owner's showed "N…", 2026-11-12.)
                 .flex_none()
@@ -492,7 +503,7 @@ pub fn strip(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElemen
                 .child(div().max_w(px(150.)).min_w_0().truncate().child(name))
                 .tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into())
                 .when(acc.as_ref().is_some_and(|a| s(a, "realm") == "vng"), |d| d.child(vng_badge()))
-                .when(many, |d| {
+                .when(closable, |d| {
                     // (Pressed, the cross neither shows its tab nor starts a drag.)
                     d.child(div().flex_none().on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation()).child(IconButton::new(SharedString::from(format!("rbx-tab-x-{key}")), "x").size(24.).tip(root.tr("fr.close")).on_click(cx.listener(move |r, _, _, cx| {
                         // The cross only: the tab under it isn't picked by the same press.

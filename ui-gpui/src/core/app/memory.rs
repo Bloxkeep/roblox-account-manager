@@ -25,6 +25,12 @@ use crate::core::{
 
 pub const EMPTY_RAM_RESTED: Duration = Duration::from_secs(60);
 
+/// Auto clean above a RAM level runs at most this often: a PC that stays above it after a clean isn't cleaned over and
+/// over.
+pub const AUTO_CLEAN_GAP: Duration = Duration::from_secs(10 * 60);
+/// An auto clean above the level that freed less says nothing (only the log has it). A timed one never says anything.
+const AUTO_CLEAN_SAID_MB: u64 = 200;
+
 /// A window moving to a server (a teleport, a join) loads the new place and needs its whole RAM back for a while: a
 /// user's 4 minimized windows held at 512 MB froze 17–27 s in a teleport and all 4 dropped with "Disconnected from game,
 /// please reconnect" (their log, 2026-11-24; back at 1.4–1.5 GB each after the rejoin). From the teleport's start until
@@ -155,6 +161,7 @@ impl App {
     pub fn guard_resources(&self, players: &[PlayerProcess], memory: &MemoryStatus, now: Stamp) {
         // PORT: `_vault!.Data.Settings` threw when locked; the caller runs it only while unlocked, so locked does nothing.
         let Ok((memory_warnings, trim_background)) = self.vault(|d| (d.settings.memory_warnings, d.settings.trim_background)) else { return };
+        self.auto_clean(memory, now);
         let warned_lately = now.secs_since(self.controller.last_memory_warning.get()) <= secs(MEMORY_WARNING_INTERVAL);
         if memory_warnings && !players.is_empty() && memory.load_percent >= MEMORY_WARNING_LOAD && !warned_lately {
             self.controller.last_memory_warning.set(now);
@@ -394,6 +401,60 @@ impl App {
                 log::note(&format!("Save RAM: Roblox window {pid} emptied once, it held {held_mb} MB."));
             }
         });
+    }
+
+    /// Auto clean RAM (clean_ram.rs), as Mem Reduct cleans by itself: above the RAM level picked, at most every
+    /// `AUTO_CLEAN_GAP`, and every so many minutes if that is picked too.
+    fn auto_clean(&self, memory: &MemoryStatus, now: Stamp) {
+        let Ok((at, every, areas)) = self.vault(|d| (d.settings.auto_clean_at, d.settings.auto_clean_every, d.settings.clean_areas)) else { return };
+        let c = &self.controller;
+        if every <= 0 {
+            c.auto_clean_since.set(stamp_min());
+        } else if c.auto_clean_since.get() == stamp_min() {
+            c.auto_clean_since.set(now);
+        }
+        let since_last = now.secs_since(c.last_auto_clean.get());
+        let above = at > 0 && memory.load_percent >= at && since_last >= secs(AUTO_CLEAN_GAP);
+        let timed = every > 0
+            && now.secs_since(c.auto_clean_since.get()) >= secs(Duration::from_secs(every as u64 * 60))
+            && since_last >= secs(Duration::from_secs(every as u64 * 60));
+        if !(above || timed) || crate::clean_ram::running() {
+            return;
+        }
+        c.last_auto_clean.set(now);
+        let load = memory.load_percent;
+        let got = crate::threads::call(move || crate::clean_ram::auto_clean(areas));
+        rt::spawn(async move {
+            let got = got.await.ok().and_then(|r| r.ok());
+            App::with(|app| app.auto_cleaned(load, above, got));
+        });
+    }
+
+    /// An auto clean is over: a toast when one above the level freed enough; both turned off when the task is gone
+    /// (Windows would have to ask again, which only Settings does).
+    fn auto_cleaned(&self, load: i32, above: bool, got: Option<crate::clean_ram::Cleaned>) {
+        use crate::clean_ram::Cleaned;
+        match got {
+            Some(Cleaned::Freed(bytes)) => {
+                let mb = bytes / MB as u64;
+                log::note(&format!("Auto clean RAM ({}): RAM at {load}%, {mb} MB freed.", if above { "above the level" } else { "timed" }));
+                if above && mb >= AUTO_CLEAN_SAID_MB {
+                    self.toast(&l::f("RAM was at {0}%. Bloxkeep cleaned it and freed {1}.", &[&load, &crate::lang::cur().mb(mb as f64)]), "info");
+                }
+            }
+            Some(Cleaned::Gone) => {
+                log::note("Auto clean RAM: its task is gone; turned off.");
+                let _ = self.vault_mut(|d| {
+                    d.settings.auto_clean_at = 0;
+                    d.settings.auto_clean_every = 0;
+                });
+                self.persist_soon();
+                self.push_state();
+                self.toast(&l::t("Auto clean RAM is off: its task in Task Scheduler is gone. Turn it on again in Settings › RAM & CPU."), "warn");
+            }
+            Some(Cleaned::Failed(why)) => log::note(&format!("Auto clean RAM failed: {why}.")),
+            Some(Cleaned::Refused) | None => {}
+        }
     }
 
     /// A refused limit is forgotten, so the next look asks again.

@@ -423,6 +423,7 @@ impl Root {
                 r.go(Page::Stats);
                 cx.notify();
             }))))
+            .child(no_pick(Button::new("pill-clean-ram", self.tr("ram.clean")).icon("shield").small().pill().disabled(crate::clean_ram::running()).tip(self.tr("ram.cleanDesc")).on_click(cx.listener(|r, _, w, cx| crate::clean_ram::open(r, w, cx)))))
             .when(windows > 0, |d| {
                 d.child(no_pick(Button::new("pill-close-all", self.tr("sys.closeAll")).icon("power").small().pill().on_click(cx.listener(|r, _, window, cx| {
                     r.pill = None;

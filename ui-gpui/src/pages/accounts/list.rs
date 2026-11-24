@@ -404,6 +404,17 @@ pub fn detail(root: &Root, a: &Value, cx: &mut Context<Root>) -> Div {
                 .when_some(note, |d, n| d.child(fact("message", n))),
         )
         .child(day_strip(root, &id))
+        // Its game collection (Discord's row on a small profile: the name and a few pictures); a press opens its
+        // profile in the Roblox tab, where the collection is.
+        .children(a.get("userId").and_then(Value::as_i64).filter(|u| *u > 0).and_then(|user| {
+            let acc = id.clone();
+            crate::pages::collection::row(root, user, cx, move |r, cx| {
+                r.go(crate::pages::Page::Games);
+                crate::pages::tabs::open(r, acc.clone());
+                crate::pages::profile::show_own(r);
+                cx.notify();
+            })
+        }))
         // Its main button wide, then Edit.
         .child(
             div()

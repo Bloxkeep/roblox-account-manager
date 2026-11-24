@@ -1430,6 +1430,7 @@ fn perf(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
     let memory = vec![
         row(root.tr("set.memWarn"), Some(root.tr("set.memWarnDesc")), switch("s-memwarn", flag(st, "memoryWarnings"), cx, |r, on, cx| set(r, json!({ "memoryWarnings": on }), cx))),
         row(root.tr("set.trim"), Some(root.tr("set.trimDesc")), switch("s-trim", flag(st, "trimBackground"), cx, |r, on, cx| set(r, json!({ "trimBackground": on }), cx))),
+        row(root.tr("ram.clean"), Some(root.tr("ram.cleanDesc")), Button::new("s-clean-ram", root.tr("ram.open")).icon("shield").small().on_click(cx.listener(|r, _, w, cx| crate::clean_ram::open(r, w, cx)))),
         row_below(root.tr("set.ramLimit"), Some(root.tr("set.ramLimitDesc")), chips(root, cx, "s-ram", rams, &ram, |r, v, cx| set(r, json!({ "ramLimitMb": v }), cx))),
         row_below(root.tr("set.heavy"), Some(root.tr("set.heavyDesc")), chips(root, cx, "s-heavy", heavies, &heavy, |r, v, cx| set(r, json!({ "restartAboveMb": v }), cx))),
         row(root.tr("set.cores"), Some(cores_desc), switch("s-cores", flag(st, "splitCores"), cx, |r, on, cx| set(r, json!({ "splitCores": on }), cx))),

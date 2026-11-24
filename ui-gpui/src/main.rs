@@ -54,6 +54,7 @@ mod near;
 mod scrolled;
 mod shell;
 mod shot;
+mod clean_ram;
 mod target;
 mod theme;
 mod theme_table;
@@ -75,6 +76,14 @@ use gpui_kit::*;
 static ALLOC: heap::Counted = heap::Counted;
 
 fn main() {
+    // The copies Clean RAM starts as an administrator (clean_ram.rs): one cleans, one adds auto clean's task; each
+    // leaves before anything else.
+    if std::env::args().nth(1).as_deref() == Some(clean_ram::ARG) {
+        std::process::exit(clean_ram::run_as_admin());
+    }
+    if std::env::args().nth(1).as_deref() == Some(clean_ram::SETUP_ARG) {
+        std::process::exit(clean_ram::set_up_task());
+    }
     // (Where the heap goes, in error.log: always in the app, in a shot when asked.)
     #[cfg(feature = "core")]
     heap::sites::start();

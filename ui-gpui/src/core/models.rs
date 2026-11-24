@@ -176,6 +176,12 @@ pub struct AppSettings {
     pub auto_lock_minutes: i32,
     pub memory_warnings: bool,
     pub trim_background: bool,
+    /// Clean RAM's areas (clean_ram.rs, one bit each).
+    pub clean_areas: u32,
+    /// Auto clean: when the PC's RAM use (%) goes above this; 0 off.
+    pub auto_clean_at: i32,
+    /// Auto clean: every so many minutes; 0 off.
+    pub auto_clean_every: i32,
     /// A launcher installs Roblox's newest build by itself while no Roblox window is open.
     pub auto_update_roblox: bool,
     /// When that update goes in: "idle" once no Roblox window is open, "now" closing them all first (like Close all).
@@ -253,6 +259,9 @@ impl Default for AppSettings {
             auto_lock_minutes: 0,
             memory_warnings: true,
             trim_background: false,
+            clean_areas: crate::clean_ram::DEFAULT_AREAS,
+            auto_clean_at: 0,
+            auto_clean_every: 0,
             auto_update_roblox: true,
             roblox_update_when: "idle".into(),
             fast_flags: false,

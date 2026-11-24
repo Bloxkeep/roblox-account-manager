@@ -77,7 +77,7 @@ pub fn render(t: &ToolPage, _window: &mut Window, cx: &mut Context<ToolPage>) ->
             .gap(px(12.))
             .text_size(px(T_H))
             .font_weight(FontWeight::SEMIBOLD)
-            .child(div().size(px(22.)).flex_none().rounded(px(5.)).overflow_hidden().child(crate::crisp::blocks(22.)))
+            .child(div().size(px(22.)).flex_none().child(crate::crisp::mark(22.)))
             .child("Bloxkeep"),
     };
     let head = div()

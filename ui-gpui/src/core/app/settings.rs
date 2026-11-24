@@ -234,6 +234,15 @@ impl App {
                     c.volume = long_of(rc, "volume").clamp(-1, 100) as i32;
                 }
             }
+            if let Some(areas) = a.get("cleanAreas").and_then(Value::as_u64).map(|v| v as u32 & crate::clean_ram::ALL_AREAS).filter(|v| *v != 0) {
+                s.clean_areas = areas;
+            }
+            if let Some(at) = a.get("autoCleanAt").and_then(Value::as_i64) {
+                s.auto_clean_at = if (50..=95).contains(&at) { at as i32 } else { 0 };
+            }
+            if let Some(every) = a.get("autoCleanEvery").and_then(Value::as_i64) {
+                s.auto_clean_every = if (5..=240).contains(&every) { every as i32 } else { 0 };
+            }
             if let Some(trim) = opt_bool(a, "trimBackground") {
                 s.trim_background = trim;
                 fx.trim_reset = true;

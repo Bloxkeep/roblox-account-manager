@@ -124,7 +124,7 @@ pub fn render(t: &ToolPage, _window: &mut Window, cx: &mut Context<ToolPage>) ->
         .pr(px(4.))
         .border_b_1()
         .border_color(c(LINE))
-        .child(div().size(px(18.)).flex_none().child(crate::crisp::blocks(18.)))
+        .child(div().size(px(18.)).flex_none().child(crate::crisp::mark(18.)))
         .child(div().flex_1().min_w_0().truncate().text_size(px(T_L)).font_weight(FontWeight::SEMIBOLD).child("Bloxkeep"))
         .when(unlocked && n > 0, |d| {
             d.child(

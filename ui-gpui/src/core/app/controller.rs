@@ -218,6 +218,10 @@ pub struct ControllerState {
     pub next_presence: Cell<Stamp>,
     pub last_full_presence: Cell<Stamp>,
     pub last_memory_warning: Cell<Stamp>,
+    /// Auto clean RAM's last run, either kind (memory.rs).
+    pub last_auto_clean: Cell<Stamp>,
+    /// When the timed auto clean started counting (the first look with it on).
+    pub auto_clean_since: Cell<Stamp>,
     pub installs_read_at: Cell<Stamp>,
     pub sweep_background_until: Cell<Stamp>,
     pub resumed_at: Cell<Stamp>,
@@ -291,6 +295,8 @@ impl Default for ControllerState {
             next_presence: Cell::new(min),
             last_full_presence: Cell::new(min),
             last_memory_warning: Cell::new(min),
+            last_auto_clean: Cell::new(min),
+            auto_clean_since: Cell::new(min),
             installs_read_at: Cell::new(min),
             sweep_background_until: Cell::new(min),
             resumed_at: Cell::new(min),
