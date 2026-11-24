@@ -1455,6 +1455,17 @@ impl Model {
             let (hs, hc) = view.heading.sin_cos();
             let (lx, lz) = (mx * hc - mz * hs, mx * hs + mz * hc);
             let rho = (wx * wx + wz * wz).sqrt();
+            if !walled {
+                // No room, over the page or Roblox's background: only the tiles' lines, faint and dark, and gone far
+                // off, so a walk or a run shows going by (owner 2026-11-24: Shift's run didn't show at all).
+                let tile = self.radius * 0.6;
+                let near = |v: f32| {
+                    let f = (v / tile).rem_euclid(1.);
+                    f.min(1. - f) * tile < self.radius * 0.007
+                };
+                let far = (((mx * mx + mz * mz).sqrt() - self.radius * 2.) / (self.radius * 6.)).clamp(0., 1.);
+                return [0., 0., if near(wx) || near(wz) { 0.16 * (1. - far) } else { 0. }];
+            }
             let mut c = if rho < self.plate {
                 plate
             } else if rho < self.plate + self.radius * 0.035 {
@@ -1565,7 +1576,11 @@ impl Model {
                                     g += green as f32;
                                     b += blue as f32;
                                     hit += covered;
-                                    if walled && alpha < 255 {
+                                    if !walled && alpha < 255 {
+                                        // (The clear room's lines: black over what is under, by how much they show.)
+                                        let mark = ground(sxp, syp)[2] * (1. - covered);
+                                        hit += mark;
+                                    } else if walled && alpha < 255 {
                                         let c = ground(sxp, syp);
                                         let uncovered = 1. - covered;
                                         r += c[0] * uncovered;
