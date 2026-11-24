@@ -99,8 +99,10 @@ impl BrowserLoginForm {
             return DialogResult::Cancel;
         }
         // Ends when the window is gone (its sender with it), also when its thread ended early (a failure there).
+        let mut saved = 0;
         while let Some((cookie, reply)) = rx.next().await {
             let answer = (self.on_signed_in)(cookie).await;
+            saved += answer.is_ok() as u32;
             let _ = reply.send(answer);
         }
         // The app is usable again however the window went: it was disabled while the window was up, and a window
@@ -109,7 +111,8 @@ impl BrowserLoginForm {
             // SAFETY: plain call; enabling an enabled window does nothing.
             unsafe { EnableWindow(owner as HWND, 1) };
         }
-        log::note("Sign-in window: closed.");
+        // "Couldn't sign in" from an uninstaller is read against this: closed with none saved is the case to look into.
+        log::note(&format!("Sign-in window: closed, {saved} account{} saved.", if saved == 1 { "" } else { "s" }));
         DialogResult::Cancel
     }
 
@@ -246,7 +249,7 @@ impl LoginWindow {
             move || {
                 if let Some(me) = weak.upgrade() {
                     me.slow.stop();
-                    me.show_unreachable();
+                    me.show_unreachable(&format!("no answer in {} s", SLOW_AFTER.as_secs()));
                 }
             }
         });
@@ -476,7 +479,7 @@ impl LoginWindow {
                         return Ok(());
                     }
                     me.slow.stop();
-                    me.show_unreachable();
+                    me.show_unreachable(&format!("WebView2 error {}", status.0));
                     Ok(())
                 })),
                 &mut token,
@@ -504,10 +507,11 @@ impl LoginWindow {
         }
     }
 
-    fn show_unreachable(&self) {
+    fn show_unreachable(&self, why: &str) {
         if self.closing.get() {
             return;
         }
+        log::note(&format!("Sign-in window: Roblox's page didn't load ({why}); Retry shown."));
         self.retry.set(true);
         self.say(&l::t("Can't reach roblox.com. Check your internet connection, then press Retry."), "bad");
     }
@@ -549,7 +553,10 @@ impl LoginWindow {
         let result = if sent { answer.await.ok() } else { None };
         let (message, ok) = match result {
             Some(Ok(message)) => (message, true),
-            Some(Err(ex)) if matches!(ex, Fail::User(_)) || roblox_api::is_expected_error(&ex) => (ex.message().to_string(), false),
+            Some(Err(ex)) if matches!(ex, Fail::User(_)) || roblox_api::is_expected_error(&ex) => {
+                log::note(&format!("Sign-in window: the account wasn't saved: {}", ex.message()));
+                (ex.message().to_string(), false)
+            }
             Some(Err(ex)) => {
                 // PORT: the C# let any other exception escape the timer's async handler (the app's crash handler took
                 // it); here it is logged and shown as this sign-in's failure.
