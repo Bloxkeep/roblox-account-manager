@@ -458,10 +458,10 @@ thread_local! {
     static EVERY: std::cell::RefCell<Option<(ShownKey, std::rc::Rc<Vec<Value>>)>> = const { std::cell::RefCell::new(None) };
 }
 
-fn shown_key(root: &Root, query: String, filter: Option<Filter>, group: Option<String>) -> ShownKey {
+fn shown_key(root: &Root, query: String, filter: Option<Filter>, group: Option<String>, cx: &App) -> ShownKey {
     ShownKey {
         state: root.state_gen,
-        windows: root.windows_gen,
+        windows: root.windows_gen(cx),
         query,
         filter,
         group,
@@ -484,11 +484,11 @@ fn cached(
 }
 
 /// Every account sorted, other PCs' windows after: the windows view shows them all, whatever the filter says.
-fn every_sorted(root: &Root) -> std::rc::Rc<Vec<Value>> {
-    cached(&EVERY, shown_key(root, String::new(), None, None), || {
+fn every_sorted(root: &Root, cx: &App) -> std::rc::Rc<Vec<Value>> {
+    cached(&EVERY, shown_key(root, String::new(), None, None, cx), || {
         let mut every = root.accounts().to_vec();
         sort(root, &mut every);
-        every.extend(others(root));
+        every.extend(others(root, cx));
         every
     })
 }
@@ -964,20 +964,20 @@ fn foreign(a: &Value) -> bool {
 }
 
 /// The window the app last sent for this account (by its process), or the foreign one itself.
-fn window_of<'a>(root: &'a Root, a: &Value) -> Option<&'a Value> {
+fn window_of<'a>(windows: &'a [Value], a: &Value) -> Option<&'a Value> {
     if foreign(a) {
         let h = s(a, "hwnd");
-        return root.windows.iter().find(|w| s(w, "id") == h);
+        return windows.iter().find(|w| s(w, "id") == h);
     }
     let pid = a.pointer("/session/pid").and_then(Value::as_i64).filter(|p| *p > 0)?;
-    root.windows.iter().find(|w| w.get("pid").and_then(Value::as_i64) == Some(pid))
+    windows.iter().find(|w| w.get("pid").and_then(Value::as_i64) == Some(pid))
 }
 
 /// The windows Bloxkeep didn't open, as accounts of their own (named as the app names them, "Roblox"), so they sit in
 /// their game's lane; "No game" is the Roblox menu.
-fn others(root: &Root) -> Vec<Value> {
+fn others(root: &Root, cx: &App) -> Vec<Value> {
     let no_game = root.tr("mon.noGame");
-    root.windows
+    root.windows(cx)
         .iter()
         .filter(|w| w.get("ours").and_then(Value::as_bool) == Some(false))
         .map(|w| {
@@ -992,7 +992,7 @@ fn others(root: &Root) -> Vec<Value> {
 }
 
 fn ram_mb(root: &Root, a: &Value, cx: &App) -> Option<f64> {
-    if let Some(mb) = window_of(root, a).and_then(|w| w.get("ramMb")).and_then(Value::as_f64).filter(|m| *m > 0.) {
+    if let Some(mb) = window_of(&root.windows(cx), a).and_then(|w| w.get("ramMb")).and_then(Value::as_f64).filter(|m| *m > 0.) {
         return Some(mb);
     }
     let id = s(a, "id");
@@ -1099,7 +1099,7 @@ fn shown_accounts(root: &Root, cx: &App) -> std::rc::Rc<Vec<Value>> {
     // The list layout is a part a group: the accounts go by group first, those in none last, each group in the order
     // picked. So the arrow keys and a range picked with Shift go the way the page reads.
     let grouped = cx.try_global::<menu::Ui>().and_then(|u| u.list).unwrap_or_else(|| root.state.pointer("/settings/layout").and_then(Value::as_str) != Some("cards"));
-    let key = ShownKey { grouped, ..shown_key(root, query.clone(), Some(root.acc_filter), root.acc_group.clone()) };
+    let key = ShownKey { grouped, ..shown_key(root, query.clone(), Some(root.acc_filter), root.acc_group.clone(), cx) };
     cached(&SHOWN, key, || {
         let all = root.accounts();
         // (A group picked that no account is in any more counts as none.)
@@ -1113,7 +1113,7 @@ fn shown_accounts(root: &Root, cx: &App) -> std::rc::Rc<Vec<Value>> {
                 (g.is_empty(), Natural(folded(g)), g.to_string())
             });
         }
-        shown.extend(others(root).into_iter().filter(|a| passes(a, root.acc_filter, &query)));
+        shown.extend(others(root, cx).into_iter().filter(|a| passes(a, root.acc_filter, &query)));
         shown
     })
 }
@@ -1246,7 +1246,7 @@ pub fn accounts(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoEle
         // Every window, whatever the filter says: with "Playing" picked, a window on Roblox's home screen (or one not
         // opened by Bloxkeep) went, and the view said "Open a game…" under a tab that counted 1, with "No matching
         // accounts" under that (the owner's screenshot, 2026-11-13).
-        let every = every_sorted(root);
+        let every = every_sorted(root, cx);
         body = match windows(root, &every, inner, cx) {
             // (What a picture does, as the old monitor's head said.)
             Some(w) => body
@@ -1641,8 +1641,8 @@ thread_local! {
     static TALLY: std::cell::RefCell<Option<(ShownKey, std::rc::Rc<Tally>)>> = const { std::cell::RefCell::new(None) };
 }
 
-fn tally(root: &Root, all: &[Value], typed: String) -> std::rc::Rc<Tally> {
-    let key = shown_key(root, typed, Some(root.acc_filter), root.acc_group.clone());
+fn tally(root: &Root, all: &[Value], typed: String, cx: &App) -> std::rc::Rc<Tally> {
+    let key = shown_key(root, typed, Some(root.acc_filter), root.acc_group.clone(), cx);
     if let Some(t) = TALLY.with(|c| c.borrow().as_ref().filter(|(k, _)| *k == key).map(|(_, t)| t.clone())) {
         return t;
     }
@@ -1651,7 +1651,7 @@ fn tally(root: &Root, all: &[Value], typed: String) -> std::rc::Rc<Tally> {
     // wrong); in a group, empty ones go.
     let picked_group = root.acc_group.clone().filter(|g| all.iter().any(|a| s(a, "group") == g));
     let grouped: Vec<&Value> = all.iter().filter(|a| picked_group.as_deref().is_none_or(|g| s(a, "group") == g) && found(a, typed)).collect();
-    let strays = others(root);
+    let strays = others(root, cx);
     let open = all.iter().filter(|a| is_local(a)).count() + strays.len();
     let names = groups::names(all);
     let now = root.acc_group.clone().filter(|g| names.contains(g));
@@ -1683,7 +1683,8 @@ fn tally(root: &Root, all: &[Value], typed: String) -> std::rc::Rc<Tally> {
 fn ram_total<'a>(root: &Root, accounts: impl Iterator<Item = &'a Value>, cx: &App) -> f64 {
     let mut by_id: std::collections::HashMap<&str, &Value> = std::collections::HashMap::new();
     let mut by_pid: std::collections::HashMap<i64, &Value> = std::collections::HashMap::new();
-    for w in &root.windows {
+    let windows = root.windows(cx);
+    for w in windows.iter() {
         by_id.entry(s(w, "id")).or_insert(w);
         if let Some(p) = w.get("pid").and_then(Value::as_i64) {
             by_pid.entry(p).or_insert(w);
@@ -1714,7 +1715,7 @@ fn header(root: &Root, all: &[Value], width: f32, rows: bool, cx: &mut Context<R
     let compact = width < 1300.;
     // Cards or a list (the web page's layout switch): kept by the app with the sort, so it is the same next time.
     // Cards, a list, or the Roblox windows (the Game monitor): the windows one named, with how many are open.
-    let n_win = root.windows.len();
+    let n_win = root.windows(cx).len();
     let mut views: Vec<Hot> = [("cards", "grid", false), ("list", "rows", true)]
         .into_iter()
         .map(|(key, mark, list)| {
@@ -1746,7 +1747,7 @@ fn header(root: &Root, all: &[Value], width: f32, rows: bool, cx: &mut Context<R
     );
     let layout = view_switch(views);
     let typed = root.acc_search.read(cx).value().to_string();
-    let t = tally(root, all, typed);
+    let t = tally(root, all, typed, cx);
     let playing = t.playing;
     let mut chips = vec![(Filter::All, root.tr("chip.all"), t.grouped)];
     for (f, key, n) in [(Filter::Playing, "chip.ingame", t.in_game), (Filter::Online, "chip.online", t.online), (Filter::Offline, "chip.offline", t.grouped - t.online)] {
@@ -2173,6 +2174,7 @@ fn lane(root: &Root, i: usize, l: Lane, col_w: f32, span: usize, lines: usize, m
     let w = span as f32 * col_w + (span as f32 - 1.) * GRID_GAP;
     let tight = span < 2;
     let n = l.items.len();
+    let windows = root.windows(cx);
     // Bloxkeep's accounts by id; the other windows by their handle (closed one by one, as the Game monitor did).
     let ids: Vec<String> = l.items.iter().filter(|a| !foreign(a)).map(id_of).collect();
     let strays: Vec<String> = l.items.iter().filter(|a| foreign(a)).map(|a| s(a, "hwnd").to_string()).collect();
@@ -2189,7 +2191,7 @@ fn lane(root: &Root, i: usize, l: Lane, col_w: f32, span: usize, lines: usize, m
         meta.push((root.i18n.tn("mon.nBad", l.kicked as i64, &[]), Some(c(WARN))));
     }
     // How its windows are doing (the old monitor's lane head): still joining, playing.
-    let how = |a: &Value| if foreign(a) { window_of(root, a).map(|w| s(w, "status").to_string()).unwrap_or_default() } else { conn(a).to_string() };
+    let how = |a: &Value| if foreign(a) { window_of(&windows, a).map(|w| s(w, "status").to_string()).unwrap_or_default() } else { conn(a).to_string() };
     let joining = l.items.iter().filter(|a| how(a) == "joining").count();
     let playing = l.items.iter().filter(|a| how(a) == "ingame").count();
     if joining > 0 {
@@ -2201,7 +2203,7 @@ fn lane(root: &Root, i: usize, l: Lane, col_w: f32, span: usize, lines: usize, m
     // A letter for each server two or more of its windows share (MonitorView.tsx's lanes()).
     let mut seen: Vec<(String, usize)> = Vec::new();
     for a in &l.items {
-        if let Some(j) = job_of(root, a) {
+        if let Some(j) = job_of(&windows, a) {
             match seen.iter_mut().find(|(k, _)| *k == j) {
                 Some(e) => e.1 += 1,
                 None => seen.push((j, 1)),
@@ -2265,7 +2267,7 @@ fn lane(root: &Root, i: usize, l: Lane, col_w: f32, span: usize, lines: usize, m
     let wins: Vec<(String, bool)> = l
         .items
         .iter()
-        .filter_map(|a| window_of(root, a))
+        .filter_map(|a| window_of(&windows, a))
         .map(|w| (s(w, "id").to_string(), w.get("minimized").and_then(Value::as_bool).unwrap_or(false)))
         .filter(|(h, _)| !h.is_empty())
         .collect();
@@ -2345,7 +2347,7 @@ fn lane(root: &Root, i: usize, l: Lane, col_w: f32, span: usize, lines: usize, m
             } else {
                 game_base
             };
-            let srv = job_of(root, a).and_then(|j| letters.iter().find(|(k, _)| *k == j).map(|(_, ch)| *ch));
+            let srv = job_of(&windows, a).and_then(|j| letters.iter().find(|(k, _)| *k == j).map(|(_, ch)| *ch));
             on_base(base, RISE, R_CARD + 1., tile(root, a, col_w, lines, srv, compact, cx)).w(px(col_w)).into_any_element()
         })
         .collect();
@@ -2423,8 +2425,8 @@ fn tile_lines(root: &Root, a: &Value) -> usize {
 
 /// `lines`: the most lines of facts a tile on the page has (`tile_lines`), so all of them are one height.
 /// The server a window is in (Roblox's job id), from its log for an account, from the window list for another window.
-fn job_of(root: &Root, a: &Value) -> Option<String> {
-    let j = if foreign(a) { window_of(root, a).and_then(|w| w.get("jobId")).and_then(Value::as_str) } else { a.pointer("/session/jobId").and_then(Value::as_str) };
+fn job_of(windows: &[Value], a: &Value) -> Option<String> {
+    let j = if foreign(a) { window_of(windows, a).and_then(|w| w.get("jobId")).and_then(Value::as_str) } else { a.pointer("/session/jobId").and_then(Value::as_str) };
     j.filter(|j| !j.is_empty()).map(str::to_string)
 }
 
@@ -2448,7 +2450,8 @@ fn tile(root: &Root, a: &Value, w: f32, lines: usize, srv: Option<char>, compact
     let on = root.selected.contains(&id);
     let bad = trouble(a);
     let (state, tone, _) = state_of(root, a);
-    let win = window_of(root, a);
+    let windows = root.windows(cx);
+    let win = window_of(&windows, a);
     let hwnd = win.map(|w| s(w, "id").to_string()).filter(|h| !h.is_empty());
     let minimized = win.and_then(|w| w.get("minimized")).and_then(Value::as_bool).unwrap_or(false);
     let live = hwnd.clone().filter(|_| !minimized && !hidden(a));

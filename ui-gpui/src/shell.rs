@@ -45,6 +45,14 @@ pub struct Metrics(std::rc::Rc<Value>);
 /// profile's song card).
 pub struct Music(Option<crate::media::Playing>);
 
+/// The Roblox windows as the app sent them last ("monitor": every 1.5 s while Accounts shows their pictures), in a model
+/// of their own as `Metrics` is: what reads them (the Accounts page) is drawn again when they change, not the app.
+pub struct Windows {
+    list: std::rc::Rc<Vec<Value>>,
+    /// Counts the changes, so lists made from the windows know when to be made again.
+    changes: u64,
+}
+
 pub struct Root {
     pub link: Option<Link>,
     pub i18n: I18n,
@@ -137,11 +145,9 @@ pub struct Root {
     pub acc_filter: pages::accounts::Filter,
     pub place: Entity<InputState>,
     pub game: Option<Value>,
-    /// Accounts' live pictures: the Roblox windows as the app sent them last ("monitor": every 1.5 s while the page
-    /// says where their pictures go), and that report, gathered while the window is laid out each frame.
-    pub windows: Vec<Value>,
-    /// Counts the "monitor" reports, so lists made from the windows know when to be made again.
-    pub windows_gen: u64,
+    /// Accounts' live pictures: the Roblox windows as the app sent them last (`Windows`, read with `Root::windows`),
+    /// and the report of where their pictures go, gathered while the window is laid out each frame.
+    pub windows: Entity<Windows>,
     pub live: Live,
     /// Games: what it asked the app for and the game open on it, and its two search boxes (games, a price list's items).
     pub games: pages::games::Data,
@@ -700,7 +706,6 @@ impl Root {
             intro: 0,
             nav: 0,
             state_gen: 0,
-            windows_gen: 0,
             hwnd: None,
             played: None,
             played_at: None,
@@ -710,7 +715,7 @@ impl Root {
             asked_looks: Default::default(),
             look_misses: Default::default(),
             picked: None,
-            windows: Vec::new(),
+            windows: cx.new(|_| Windows { list: std::rc::Rc::new(Vec::new()), changes: 0 }),
             live: Live::default(),
             games: Default::default(),
             auto: Default::default(),
@@ -1187,7 +1192,7 @@ impl Root {
                 }
             }
         }
-        self.prune_selected();
+        self.prune_selected(cx);
         if self.help_open {
             window.refresh();
         }
@@ -1748,16 +1753,17 @@ impl Root {
     /// Opens a page and remembers the one it leaves for Back.
     /// The picked ones that are gone (an account deleted, another program's window closed) are dropped: else Esc was
     /// taken by a selection nothing on the page shows.
-    fn prune_selected(&mut self) {
+    fn prune_selected(&mut self, cx: &App) {
         if self.selected.is_empty() {
             return;
         }
+        let windows = self.windows(cx);
         let ids: std::collections::HashSet<String> = self
             .accounts()
             .iter()
             .filter_map(|a| a.get("id").and_then(Value::as_str).map(str::to_string))
             // (Another program's window goes by "win-" and its id, as accounts::others names it.)
-            .chain(self.windows.iter().map(|w| format!("win-{}", w.get("id").and_then(Value::as_str).unwrap_or_default())))
+            .chain(windows.iter().map(|w| format!("win-{}", w.get("id").and_then(Value::as_str).unwrap_or_default())))
             .collect();
         self.selected.retain(|id| ids.contains(id));
     }
@@ -1803,6 +1809,17 @@ impl Root {
     /// new figures come.
     pub fn metrics(&self, cx: &App) -> std::rc::Rc<Value> {
         self.metrics.read(cx).0.clone()
+    }
+
+    /// The Roblox windows as the app sent them last (`Windows`). Read while a part is drawn, that part is drawn again
+    /// when they change.
+    pub fn windows(&self, cx: &App) -> std::rc::Rc<Vec<Value>> {
+        self.windows.read(cx).list.clone()
+    }
+
+    /// Counts the changes to the windows (`Windows`), for what is made from them and kept.
+    pub fn windows_gen(&self, cx: &App) -> u64 {
+        self.windows.read(cx).changes
     }
 
     /// What Spotify plays (`Music`). Read while a part is drawn, that part is drawn again when it changes.
@@ -1868,10 +1885,22 @@ impl Root {
                 cx.notify();
             }
             "monitor" => {
-                self.windows = data.get("tiles").and_then(Value::as_array).cloned().unwrap_or_default();
-                self.windows_gen += 1;
-                self.prune_selected();
-                cx.notify();
+                let list = data.get("tiles").and_then(Value::as_array).cloned().unwrap_or_default();
+                // (The app sends them at each look, changed or not: the same windows draw nothing again.)
+                if *self.windows.read(cx).list == list {
+                    return;
+                }
+                self.windows.update(cx, |w, cx| {
+                    w.list = std::rc::Rc::new(list);
+                    w.changes += 1;
+                    cx.notify();
+                });
+                // (A window gone takes its pick with it: the picks are Root's.)
+                let picked = self.selected.len();
+                self.prune_selected(cx);
+                if self.selected.len() != picked {
+                    cx.notify();
+                }
             }
             "progress" => {
                 self.progress = data.get("text").and_then(Value::as_str).map(str::to_string);
