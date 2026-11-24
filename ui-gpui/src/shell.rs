@@ -892,37 +892,32 @@ impl Root {
         root.tasks.push(cx.spawn(async move |this, cx| {
             loop {
                 let now = cx.background_executor().spawn(async { crate::media::now() }).await;
-                let alive = this.update(cx, |r, cx| {
-                    if r.music != now {
-                        // While a song plays each reading says a later place in it (media::position counts on from
-                        // when Spotify said it): that alone changes only where the song is, which shows on the
-                        // profile's song card (and the status bar's song card, which asks for its own part each
-                        // second, capsule.rs). Only the page is drawn again then, on the profile; the whole app was,
-                        // each second a song played.
-                        let moved_on = match (&r.music, &now) {
-                            (Some(was), Some(is)) => {
-                                let mut was = was.clone();
-                                was.position = is.position;
-                                was == *is
-                            }
-                            _ => false,
-                        };
-                        r.music = now;
-                        if !moved_on {
-                            cx.notify();
-                        } else if r.page == Page::Games && r.games.view == pages::games::View::Profile
-                            && let Some(page) = r.parts.as_ref().map(|p| p.page.entity_id())
-                        {
-                            App::notify(cx, page);
-                        }
-                    }
-                });
-                if alive.is_err() {
+                if this.update(cx, |r, cx| r.take_music(now, cx)).is_err() {
                     break;
                 }
                 cx.background_executor().timer(Duration::from_secs(1)).await;
             }
         }));
+        // BLOXKEEP_SHOT_NEXT_SONG=<ms>: every that many ms the shot's stand-in song (BLOXKEEP_SHOT_MUSIC) is followed by
+        // another, as Spotify's next song comes in.
+        #[cfg(feature = "shot")]
+        if let Some(every) = std::env::var("BLOXKEEP_SHOT_NEXT_SONG").ok().and_then(|v| v.parse::<u64>().ok()) {
+            root.tasks.push(cx.spawn(async move |this, cx| {
+                for n in 1u32.. {
+                    cx.background_executor().timer(Duration::from_millis(every)).await;
+                    let alive = this.update(cx, |r, cx| {
+                        let mut now = crate::media::shot_stand_in();
+                        if let Some(m) = now.as_mut().filter(|_| n % 2 == 1) {
+                            m.title = format!("{} II", m.title);
+                        }
+                        r.take_music(now, cx);
+                    });
+                    if alive.is_err() {
+                        break;
+                    }
+                }
+            }));
+        }
         // The connection, as Discord's and Facebook's notice says it: the internet (every 4 s, net::online_now) and
         // Roblox itself (every 15 s, and at once when a call to it got no answer): with a VPN turned off, the internet
         // works and Roblox is blocked, which said nothing before (the owner, 2026-11-19). Lost after two failed looks
@@ -1789,6 +1784,33 @@ impl Root {
         if let Some(key) = view.get("tab").and_then(Value::as_str) {
             if let Some(p) = Page::from_key(key) {
                 self.page = p;
+            }
+        }
+    }
+
+    /// What Spotify plays now, as read (every second, or after a key: media::now).
+    fn take_music(&mut self, now: Option<crate::media::Playing>, cx: &mut Context<Self>) {
+        if self.music != now {
+            // While a song plays each reading says a later place in it (media::position counts on from
+            // when Spotify said it): that alone changes only where the song is, which shows on the
+            // profile's song card (and the status bar's song card, which asks for its own part each
+            // second, capsule.rs). Only the page is drawn again then, on the profile; the whole app was,
+            // each second a song played.
+            let moved_on = match (&self.music, &now) {
+                (Some(was), Some(is)) => {
+                    let mut was = was.clone();
+                    was.position = is.position;
+                    was == *is
+                }
+                _ => false,
+            };
+            self.music = now;
+            if !moved_on {
+                cx.notify();
+            } else if self.page == Page::Games && self.games.view == pages::games::View::Profile
+                && let Some(page) = self.parts.as_ref().map(|p| p.page.entity_id())
+            {
+                App::notify(cx, page);
             }
         }
     }

@@ -36,6 +36,8 @@ macro_rules! part {
 
         impl Render for $name {
             fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+                #[cfg(feature = "shot")]
+                DRAWN.with(|d| d.borrow_mut().push(stringify!($name)));
                 let me = cx.entity_id();
                 self.root.update(cx, |r, cx| r.$draw(me, window, cx)).unwrap_or_else(|_| div().into_any_element())
             }
@@ -55,6 +57,15 @@ thread_local! {
     static NOW: Cell<Option<EntityId>> = const { Cell::new(None) };
     /// Every part's view, to tell a part from another view.
     static IDS: RefCell<Vec<EntityId>> = const { RefCell::new(Vec::new()) };
+    /// The parts made anew since `take_drawn` was last called (a shot's bench says them for each frame).
+    #[cfg(feature = "shot")]
+    static DRAWN: RefCell<Vec<&'static str>> = const { RefCell::new(Vec::new()) };
+}
+
+/// The parts made anew (not put down again as they were) since this was last called, by name.
+#[cfg(feature = "shot")]
+pub fn take_drawn() -> Vec<&'static str> {
+    DRAWN.with(|d| std::mem::take(&mut *d.borrow_mut()))
 }
 
 /// Root's parts, made at its first frame.
