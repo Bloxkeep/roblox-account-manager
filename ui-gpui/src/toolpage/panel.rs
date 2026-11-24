@@ -1159,7 +1159,7 @@ fn row(t: &ToolPage, p: &Panel, o: &Value, first: bool, window: &mut Window, cx:
                 } else {
                     st.insert(key.clone());
                 }
-                window.refresh();
+                window.request_animation_frame();
             }
         },
         |_, _, _, _| {},

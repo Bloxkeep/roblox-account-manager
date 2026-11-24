@@ -1740,7 +1740,7 @@ pub fn marquee(id: &'static str, text: String) -> Div {
                     let slot = if own_side { &mut k.1 } else { &mut k.2 };
                     if (*slot - w).abs() > 0.5 {
                         *slot = w;
-                        window.refresh();
+                        window.request_animation_frame();
                     }
                 });
             },
