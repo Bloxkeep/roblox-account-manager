@@ -3693,7 +3693,10 @@ fn nav_button(p: Page, page: Page, i18n: &I18n, cx: &mut Context<Root>) -> AnyEl
 }
 
 // ── The status bar's pills ─────────────────────────────────────────────────────────────────────────────────────
-const BAR_PILL_H: f32 = 28.;
+/// The pills' height (32 since 2026-11-24: 28 read thin beside the reference's thick glass), and how dark the body
+/// over their glass is in the dark themes.
+const BAR_PILL_H: f32 = 32.;
+const BAR_BODY: f32 = 0.38;
 const BAR_PAD: f32 = 13.;
 const BAR_PILL_GAP: f32 = 11.;
 /// The room between the right pill's groups (each opens with its mark, no lines between them), and the marks' size.
@@ -3846,9 +3849,35 @@ fn bar_pill(id: &'static str, now: f32, to: f32, pad_l: f32, pad_r: f32, alpha: 
         ])
         .child(capsule::note_at(id))
         .child(div().absolute().inset_0().child(crate::kit::glass_pane(r)))
-        .child(div().absolute().inset_0().rounded(px(r)).border_1().border_color(ring).group_hover(group.clone(), |s| s.border_color(if light { ca(TEXT, 0.2) } else { ca(WHITE, 0.11) })))
-        .when(!light, |d| d.child(div().absolute().inset_0().rounded(px(r)).border_t_1().border_color(ca(WHITE, 0.14)).group_hover(group, |s| s.border_color(ca(WHITE, 0.26)))))
+        // (2026-11-24, "chưa đủ sang": made as the dark half of an iOS 26 Liquid Glass button, Dribbble 26133226: a deep,
+        // near-black body over the glass, and thick glass's edge: a bright line where the light comes in at the top, a
+        // fainter one where it leaves at the bottom, a soft light just inside the rim.)
+        // (Stronger, the owner the same day: the rim lines brighter, a second softer light under the top one, and the
+        // upper half of the body faintly lit, as the reference's glass is lighter where the light falls.)
+        .when(!light, |d| d.child(div().absolute().inset_0().rounded(px(r)).bg(hsla(0., 0., 0., BAR_BODY))))
+        .when(light, |d| d.child(div().absolute().inset_0().rounded(px(r)).bg(hsla(0., 0., 1., 0.35))))
+        .child(div().absolute().inset_0().rounded(px(r)).bg(linear_gradient(
+            180.,
+            linear_color_stop(hsla(0., 0., 1., if light { 0.4 } else { 0.08 }), 0.),
+            linear_color_stop(hsla(0., 0., 1., 0.), 0.6),
+        )))
+        .child(div().absolute().inset_0().rounded(px(r)).shadow(if light {
+            vec![bar_inset(hsla(0., 0., 1., 1.), 1., 0.), bar_inset(hsla(0., 0., 1., 0.6), 2., 3.), bar_inset(hsla(0., 0., 0., 0.1), -1., 0.)]
+        } else {
+            vec![
+                bar_inset(hsla(0., 0., 1., 0.34), 1., 0.),
+                bar_inset(hsla(0., 0., 1., 0.1), 2., 3.),
+                bar_inset(hsla(0., 0., 1., 0.16), -1., 0.),
+                bar_inset(hsla(0., 0., 1., 0.08), 0., 12.),
+            ]
+        }))
+        .child(div().absolute().inset_0().rounded(px(r)).border_1().border_color(ring).group_hover(group, |s| s.border_color(if light { ca(TEXT, 0.2) } else { ca(WHITE, 0.14) })))
         .child(div().absolute().top_0().left_0().h_full().w(px(to)).pl(px(pad_l)).pr(px(pad_r)).flex().items_center().child(inner))
+}
+
+/// A light (or shade) inside a pill's rim, `y` down from the top edge (up from the bottom when below 0).
+fn bar_inset(color: Hsla, y: f32, blur: f32) -> BoxShadow {
+    BoxShadow { color, offset: point(px(0.), px(y)), blur_radius: px(blur), spread_radius: px(0.), inset: true }
 }
 
 #[derive(Clone, Copy, PartialEq)]
