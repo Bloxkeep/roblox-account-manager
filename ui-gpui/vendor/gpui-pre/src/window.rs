@@ -4090,6 +4090,13 @@ impl Window {
         self.present();
     }
 
+    /// Bloxkeep's frame measure: whether something since the last frame asked for a new one (a view notified, a
+    /// refresh): what the app's window would draw on, where the bench draws every frame regardless.
+    #[doc(hidden)]
+    pub fn dirty_for_bench(&self) -> bool {
+        self.invalidator.is_dirty()
+    }
+
     /// Bloxkeep (src/motion.rs): whether the mouse would reach hitbox `id` at `at` in the frame being drawn, nothing
     /// that blocks the mouse over it there (a dialog's backdrop, a menu): whether what is under it is seen.
     #[doc(hidden)]

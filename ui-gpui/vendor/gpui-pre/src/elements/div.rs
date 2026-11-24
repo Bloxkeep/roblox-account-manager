@@ -2930,17 +2930,28 @@ impl Interactivity {
                     .cloned()
             });
             let current_view = window.current_view();
+            // Bloxkeep: an element with a hover style and no id has no element state to keep its hover in, and the
+            // mouse crossing it asked for no frame: its hover showed only when something else redrew the window (the
+            // status bar's figures, ~1.5 s later). Such an element is redrawn when the mouse's hover differs from the
+            // one it was painted with, as one with an id is.
+            let painted_hovered = (self.hover_style.is_some() && hover_state.is_none())
+                .then(|| !window.last_input_was_touch() && hitbox.is_hovered(window));
 
             window.on_mouse_event(move |_: &MouseMoveEvent, phase, window, cx| {
                 let hovered = hitbox.is_hovered(window);
-                let was_hovered = hover_state
-                    .as_ref()
-                    .is_some_and(|state| state.borrow().element);
-                if phase == DispatchPhase::Capture && hovered != was_hovered {
-                    if let Some(hover_state) = &hover_state {
+                if phase != DispatchPhase::Capture {
+                    return;
+                }
+                if let Some(hover_state) = &hover_state {
+                    let was_hovered = hover_state.borrow().element;
+                    if hovered != was_hovered {
                         hover_state.borrow_mut().element = hovered;
                         cx.notify(current_view);
                     }
+                } else if let Some(painted) = painted_hovered
+                    && (!window.last_input_was_touch() && hovered) != painted
+                {
+                    cx.notify(current_view);
                 }
             });
         }

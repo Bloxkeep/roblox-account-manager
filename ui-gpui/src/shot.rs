@@ -174,6 +174,7 @@ async fn frames(h: AnyWindowHandle, out: &std::path::Path, n: usize, bench: bool
     let mut held = false; // the glide under way is a drag: the left button is down until it ends
     let mut log = String::new();
     let mut times: Vec<(Duration, Duration, Duration)> = Vec::new();
+    let mut asked: Vec<bool> = Vec::new();
     // The pictures are written by four kept threads, so taking the next one never waits for a PNG.
     let (tx, rx) = std::sync::mpsc::channel::<(PathBuf, image::RgbaImage)>();
     let rx = std::sync::Arc::new(std::sync::Mutex::new(rx));
@@ -262,6 +263,8 @@ async fn frames(h: AnyWindowHandle, out: &std::path::Path, n: usize, bench: bool
         }
         if bench {
             let _ = cx.update_window(h, |_, window, cx| {
+                // (Whether anything since the last frame asked for this one: the app's window draws only then.)
+                asked.push(window.dirty_for_bench());
                 let t0 = std::time::Instant::now();
                 let clear = window.draw(cx);
                 let t1 = std::time::Instant::now();
@@ -291,7 +294,7 @@ async fn frames(h: AnyWindowHandle, out: &std::path::Path, n: usize, bench: bool
                 let _ = tx.send((PathBuf::from(format!("{}-{i:04}.png", stem.display())), pic));
             }
         }
-        log.push_str(&format!("{t:.0} {mx:.1} {my:.1} {}\n", down as u8));
+        log.push_str(&format!("{t:.0} {mx:.1} {my:.1} {}{}\n", down as u8, if bench { format!(" {}", asked.last().copied().unwrap_or(false) as u8) } else { String::new() }));
         down = false;
     }
     drop(tx);
@@ -312,9 +315,11 @@ async fn frames(h: AnyWindowHandle, out: &std::path::Path, n: usize, bench: bool
 draw: {draw}
 present: {present}
 present, nothing redrawn: {again}
-", times.len());
+asked for (the app's window would draw): {} of {}
+", times.len(), asked.iter().filter(|a| **a).count(), asked.len());
         eprint!("{report}");
         let _ = std::fs::write(stem.with_extension("bench.txt"), report);
+        let _ = std::fs::write(stem.with_extension("bench-frames.txt"), log);
         return;
     }
     let _ = std::fs::write(stem.with_extension("txt"), log);
