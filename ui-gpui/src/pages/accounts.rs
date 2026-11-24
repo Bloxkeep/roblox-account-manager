@@ -656,7 +656,8 @@ pub fn state_of(root: &Root, a: &Value) -> (String, u32, bool) {
     } else if presence(a) == "ingame" {
         (root.tr("row.elsewhere"), TEXT_2, true)
     } else if presence(a) == "online" {
-        (root.tr("act.online"), TEXT_2, false)
+        // Roblox's own blue for online (as Friends shows it): grey words made a dot hardly seen (owner, 2026-11-24).
+        (root.tr("act.online"), ONLINE, false)
     } else if presence(a) == "studio" {
         (root.tr("act.studio"), TEXT_2, false)
     } else if banned(a) {
@@ -3367,7 +3368,7 @@ fn card(root: &Root, a: &Value, w: f32, lines: usize, cx: &mut Context<Root>) ->
                         .text_size(px(T_M))
                         .child(div().size(px(7.)).flex_none().rounded_full().bg(c(dot_of(a))))
                         .when_some(game_pic, |d, p| d.child(img(p).size(px(18.)).flex_none().rounded(px(5.))))
-                        .child(div().min_w_0().truncate().text_color(c(if tone == TEXT_2 || tone == OK || tone == MUTED { TEXT_2 } else { tone })).child(line)),
+                        .child(div().min_w_0().truncate().text_color(c(if tone == TEXT_2 || tone == OK || tone == ONLINE || tone == MUTED { TEXT_2 } else { tone })).child(line)),
                 )
                 .when_some(opened, |d, t| d.child(last_line(root, a, t)))
                 .when_some(note, |d, n| d.child(small_line("message", n)))

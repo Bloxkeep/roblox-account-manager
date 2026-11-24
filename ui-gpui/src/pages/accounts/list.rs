@@ -276,7 +276,7 @@ fn row(root: &Root, a: &Value, cols: &Cols, cx: &mut Context<Root>) -> impl Into
                 // The state's dot and words (words in the state's colour only when it isn't fine), then the time.
                 .when(!pill, |d| {
                     d.child(div().size(px(7.)).flex_none().rounded_full().bg(c(if tone == MUTED { DIM } else { tone })))
-                        .child(div().min_w_0().flex_shrink(1.).truncate().text_color(c(if tone == OK { TEXT_2 } else { tone })).child(line))
+                        .child(div().min_w_0().flex_shrink(1.).truncate().text_color(c(if tone == OK || tone == ONLINE { TEXT_2 } else { tone })).child(line))
                 })
                 .when_some(up, |d, t| d.child(div().flex_none().text_color(c(MUTED)).font_features(tnum()).child(t)))
                 .when(old_build(a), |d| d.child(old_tag(root, a, cx)))
@@ -373,7 +373,7 @@ pub fn detail(root: &Root, a: &Value, cx: &mut Context<Root>) -> Div {
                 .gap(px(8.))
                 .text_size(px(T_M))
                 .child(div().size(px(8.)).flex_none().rounded_full().bg(c(dot_of(a))))
-                .child(div().min_w_0().flex_1().text_color(c(if tone == OK || tone == MUTED { TEXT } else { tone })).child(line)),
+                .child(div().min_w_0().flex_1().text_color(c(if tone == OK || tone == ONLINE || tone == MUTED { TEXT } else { tone })).child(line)),
         )
         .when_some(game, |d, g| {
             d.child(
