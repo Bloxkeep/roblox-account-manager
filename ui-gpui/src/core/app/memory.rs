@@ -27,11 +27,14 @@ pub const EMPTY_RAM_RESTED: Duration = Duration::from_secs(60);
 
 /// A window moving to a server (a teleport, a join) loads the new place and needs its whole RAM back for a while: a
 /// user's 4 minimized windows held at 512 MB froze 17–27 s in a teleport and all 4 dropped with "Disconnected from game,
-/// please reconnect" (their log, 2026-11-24; back at 1.4–1.5 GB each after the rejoin). No limit and no emptying from
-/// the teleport's start until `SETTLE_AFTER_JOIN` after the new server is reached; a join that hangs longer than
-/// `SETTLE_LONGEST` is left to the limit again.
+/// please reconnect" (their log, 2026-11-24; back at 1.4–1.5 GB each after the rejoin). From the teleport's start until
+/// `SETTLE_AFTER_JOIN` after the new server is reached its limit is `MOVING_LIMIT_MB` (or the chosen one, if higher) and
+/// it isn't emptied; a join that hangs longer than `SETTLE_LONGEST` is left to the chosen limit again.
 pub const SETTLE_AFTER_JOIN: Duration = Duration::from_secs(90);
 pub const SETTLE_LONGEST: Duration = Duration::from_secs(5 * 60);
+/// A moving window's limit: room for the new place, but not all the RAM it likes (the owner, 2026-11-24: "phải có ngưỡng
+/// nào đó chứ, lỡ tràn ram"). Above the 1.4–1.5 GB those 4 windows held after joining, the most measured there.
+pub const MOVING_LIMIT_MB: i64 = 2048;
 
 /// Whether a window is moving to a server, or reached one under `SETTLE_AFTER_JOIN` ago (see that).
 pub fn settling(state: Option<&ClientState>, now: Stamp) -> bool {
@@ -301,14 +304,18 @@ impl App {
         let main = self.main_pids();
         for p in players {
             let window = windows.get(&p.pid).map_or(0, |list| roblox_processes::main_window_of(list));
-            let moving = settling(self.controller.logs.borrow().state_of(p.pid).as_ref(), now);
-            let resting = setting != 0
+            let put_away = setting != 0
                 && p.pid != front
                 && !main.contains(&p.pid)
                 && window != 0
-                && (roblox_processes::is_minimised(window) || roblox_processes::is_hidden(window))
-                && !moving;
-            let want: Option<i64> = if !resting {
+                && (roblox_processes::is_minimised(window) || roblox_processes::is_hidden(window));
+            let moving = put_away && settling(self.controller.logs.borrow().state_of(p.pid).as_ref(), now);
+            let resting = put_away && !moving;
+            let want: Option<i64> = if moving {
+                // (Auto's own limit, raised for a game that needed more, stays if it is higher.)
+                let auto = self.memory.auto_ram.borrow().get(&p.pid).map_or(0, |a| a.cap_mb);
+                Some(MOVING_LIMIT_MB.max(setting).max(auto))
+            } else if !resting {
                 None
             } else if setting == RAM_LIMIT_AUTO as i64 {
                 self.auto_limit(p, now, memory)
@@ -322,7 +329,14 @@ impl App {
             match (want, had) {
                 (Some(limit), had) if had != Some(limit) => {
                     self.memory.ram_limited.borrow_mut().insert(p.pid, limit);
-                    self.set_ram_limit(p.pid, limit, if setting == RAM_LIMIT_AUTO as i64 { "auto" } else { "chosen" }, p.ram() / MB);
+                    let why = if moving {
+                        "moving to a server"
+                    } else if setting == RAM_LIMIT_AUTO as i64 {
+                        "auto"
+                    } else {
+                        "chosen"
+                    };
+                    self.set_ram_limit(p.pid, limit, why, p.ram() / MB);
                 }
                 (None, Some(_)) => {
                     // C#: `_ = LimitRamInTurn(p.Pid, null)`: asked in turn, its answer not awaited.
@@ -331,13 +345,7 @@ impl App {
                     log::note(&format!(
                         "RAM limit: lifted for Roblox window {} ({}).",
                         p.pid,
-                        if resting {
-                            "auto left it alone"
-                        } else if moving {
-                            "moving to a server"
-                        } else {
-                            "shown, in front, or the option off"
-                        }
+                        if resting { "auto left it alone" } else { "shown, in front, or the option off" }
                     ));
                 }
                 _ => {}
