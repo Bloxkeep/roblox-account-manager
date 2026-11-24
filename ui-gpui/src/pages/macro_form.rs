@@ -5937,7 +5937,7 @@ pub fn form(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
                     let now = (f32::from(b.origin.y), f32::from(window.viewport_size().height));
                     at.set(now);
                     if (now.0 - old_top).abs() > NEAR_PX / 3. || now.1 != old_view {
-                        window.refresh();
+                        window.request_animation_frame();
                     }
                 },
                 |_, _, _, _| {},

@@ -3698,7 +3698,7 @@ impl Root {
                     |b, window, _| {
                         let w = f32::from(b.size.width);
                         if BAR_W.with(|k| (k.replace(w) - w).abs() > 0.5) {
-                            window.refresh();
+                            window.request_animation_frame();
                         }
                     },
                     |_, _, _, _| {},
@@ -4594,7 +4594,7 @@ impl Live {
                 *area.borrow_mut() = Some((parts::owner(window), b));
                 let measured = Some(f32::from(b.size.height).floor());
                 if height.replace(measured) != measured {
-                    window.refresh();
+                    window.request_animation_frame();
                 }
             },
             |_, _, _, _| {},

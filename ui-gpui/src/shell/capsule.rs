@@ -70,7 +70,7 @@ pub(super) fn note_at(id: &'static str) -> impl IntoElement {
         move |b, window, _| {
             let moved = PILL_AT.with(|m| m.borrow_mut().insert(id, b).is_none_or(|old| old != b));
             if moved && SHOWN.with(|s| s.get()).is_some() {
-                window.refresh();
+                super::parts::over_next_frame(window);
             }
         },
         |_, _, _, _| {},
