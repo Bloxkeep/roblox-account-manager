@@ -2525,6 +2525,43 @@ pub struct Club {
     pub pic: String,
     pub roles: Vec<(String, i64)>,
     pub games: Vec<ClubGame>,
+    /// Its games that aren't public (private, or not open yet), which Roblox's community page leaves out but its games
+    /// list gives anyone (accessFilter=1, "All"; checked 2026-11-24: one community 22 games of which 6 public, another
+    /// 36 of which 2). Their names, pictures and visits come; who plays them and their game page don't.
+    pub hidden: Vec<ClubGame>,
+}
+
+/// Games as games.roblox.com lists them (a community's, a user's), each with its icon and wide picture.
+fn listed_games(all: &[Value]) -> Vec<ClubGame> {
+    let universes: Vec<i64> = all.iter().map(|v| int(v, "id")).filter(|u| *u > 0).collect();
+    let (pics, wide) = both(|| icons(&universes), || covers(&universes, "480x270"));
+    all.iter()
+        .filter(|v| v.pointer("/rootPlace/id").and_then(Value::as_i64).unwrap_or(0) > 0)
+        .map(|v| ClubGame {
+            universe: int(v, "id"),
+            place: v.pointer("/rootPlace/id").and_then(Value::as_i64).unwrap_or(0),
+            name: text(v, "name").trim().to_string(),
+            visits: int(v, "placeVisits"),
+            pic: pics.get(&int(v, "id")).cloned().filter(|u| !stand_in(u)).unwrap_or_default(),
+            cover: wide.get(&int(v, "id")).cloned().filter(|u| !stand_in(u)).unwrap_or_default(),
+        })
+        .collect()
+}
+
+/// A games list's pages (games.roblox.com, `url` without its cursor), `pages` at most; and whether it goes on past them.
+fn games_pages(url: &str, pages: usize) -> (Vec<Value>, bool) {
+    let mut out = Vec::new();
+    let mut cursor = String::new();
+    for _ in 0..pages {
+        let page = if cursor.is_empty() { url.to_string() } else { format!("{url}&cursor={cursor}") };
+        let Ok(d) = get(&page, None) else { return (out, false) };
+        out.extend(d.get("data").and_then(Value::as_array).cloned().unwrap_or_default());
+        cursor = text(&d, "nextPageCursor");
+        if cursor.is_empty() {
+            break;
+        }
+    }
+    (out, !cursor.is_empty())
 }
 
 pub fn club(id: i64) -> Result<Club, String> {
@@ -2539,25 +2576,17 @@ pub fn club(id: i64) -> Result<Club, String> {
         .map(|v| (int(v, "rank"), text(v, "name"), int(v, "memberCount")))
         .collect();
     roles.sort_by_key(|r| std::cmp::Reverse(r.0));
-    let made = get(&format!("https://games.roblox.com/v2/groups/{id}/gamesV2?accessFilter=2&limit=50&sortOrder=Desc"), None)
-        .ok()
-        .and_then(|d| d.get("data").and_then(Value::as_array).cloned())
-        .unwrap_or_default();
-    let universes: Vec<i64> = made.iter().map(|v| int(v, "id")).filter(|u| *u > 0).collect();
-    let (pics, wide) = both(|| icons(&universes), || covers(&universes, "480x270"));
-    let mut games: Vec<ClubGame> = made
-        .iter()
-        .filter(|v| v.pointer("/rootPlace/id").and_then(Value::as_i64).unwrap_or(0) > 0)
-        .map(|v| ClubGame {
-            universe: int(v, "id"),
-            place: v.pointer("/rootPlace/id").and_then(Value::as_i64).unwrap_or(0),
-            name: text(v, "name").trim().to_string(),
-            visits: int(v, "placeVisits"),
-            pic: pics.get(&int(v, "id")).cloned().filter(|u| !stand_in(u)).unwrap_or_default(),
-            cover: wide.get(&int(v, "id")).cloned().filter(|u| !stand_in(u)).unwrap_or_default(),
-        })
-        .collect();
+    // The public ones and all of them, asked at once; the rest of "all" is what isn't public. (Two lists, not one:
+    // "all" in pages of 100 could leave a public one out past the pages read.)
+    let (public, every) = both(
+        || games_pages(&format!("https://games.roblox.com/v2/groups/{id}/gamesV2?accessFilter=2&limit=50&sortOrder=Desc"), 1).0,
+        || games_pages(&format!("https://games.roblox.com/v2/groups/{id}/gamesV2?accessFilter=1&limit=100&sortOrder=Desc"), 2).0,
+    );
+    let shown: std::collections::HashSet<i64> = public.iter().map(|v| int(v, "id")).collect();
+    let others: Vec<Value> = every.into_iter().filter(|v| !shown.contains(&int(v, "id"))).collect();
+    let (mut games, mut hidden) = both(|| listed_games(&public), || listed_games(&others));
     games.sort_by_key(|g| std::cmp::Reverse(g.visits));
+    hidden.sort_by_key(|g| std::cmp::Reverse(g.visits));
     Ok(Club {
         name: text(&d, "name"),
         about: text(&d, "description").trim().to_string(),
@@ -2568,6 +2597,7 @@ pub fn club(id: i64) -> Result<Club, String> {
         pic: thumbs("groups/icons?size=150x150&groupIds=", &[id]).remove(&id).unwrap_or_default(),
         roles: roles.into_iter().map(|r| (r.1, r.2)).collect(),
         games,
+        hidden,
     })
 }
 
@@ -2655,10 +2685,13 @@ pub struct Profile {
     pub following: i64,
     pub robux: Option<i64>,
     pub groups: Vec<Group>,
-    /// The games they marked as favourites (newest first) and the ones they made (most played first), as Roblox shows
+    /// The games they marked as favourites (newest first) and all public ones they made (most played first: the page
+    /// shows a shelf of them, See all the rest), as Roblox shows
     /// anyone; and their newest badges, which Roblox gives only to a signed-in request.
     pub favs: Vec<ClubGame>,
     pub made: Vec<ClubGame>,
+    /// They made more than `made` holds (Roblox's list goes on past the pages read).
+    pub made_more: bool,
     pub badges: Vec<Badge>,
     /// The things they show off on their page (Roblox's Collections: up to six, chosen by them).
     pub collection: Vec<Ware>,
@@ -2679,24 +2712,11 @@ pub struct Badge {
 }
 
 /// How many games or badges a profile's shelf shows.
-const SHELF: usize = 14;
+pub const SHELF: usize = 14;
 
 /// A list of games as games.roblox.com gives one (a user's favourites, the ones they made), with their icons.
 fn games_list(url: &str) -> Vec<ClubGame> {
-    let all = get(url, None).ok().and_then(|d| d.get("data").and_then(Value::as_array).cloned()).unwrap_or_default();
-    let universes: Vec<i64> = all.iter().map(|v| int(v, "id")).filter(|u| *u > 0).collect();
-    let (pics, wide) = both(|| icons(&universes), || covers(&universes, "480x270"));
-    all.iter()
-        .filter(|v| v.pointer("/rootPlace/id").and_then(Value::as_i64).unwrap_or(0) > 0)
-        .map(|v| ClubGame {
-            universe: int(v, "id"),
-            place: v.pointer("/rootPlace/id").and_then(Value::as_i64).unwrap_or(0),
-            name: text(v, "name").trim().to_string(),
-            visits: int(v, "placeVisits"),
-            pic: pics.get(&int(v, "id")).cloned().filter(|u| !stand_in(u)).unwrap_or_default(),
-            cover: wide.get(&int(v, "id")).cloned().filter(|u| !stand_in(u)).unwrap_or_default(),
-        })
-        .collect()
+    listed_games(&games_pages(url, 1).0)
 }
 
 /// Roblox's grey stand-in for a game that has no picture of its own (its address names "GameIcon<n>" or
@@ -2735,11 +2755,13 @@ pub fn profile(cookie: &str, user: i64) -> Result<Profile, String> {
         favs.truncate(SHELF);
         favs
     };
+    // All their public games (two pages of 50), most played first: the page shows a shelf of them and the rest on See
+    // all. Roblox's own profile shows only the ones they added to it, so the others read as hidden there.
     let creations = || {
-        let mut made = games_list(&format!("https://games.roblox.com/v2/users/{user}/games?accessFilter=2&limit=25&sortOrder=Desc"));
+        let (all, more) = games_pages(&format!("https://games.roblox.com/v2/users/{user}/games?accessFilter=2&limit=50&sortOrder=Desc"), 2);
+        let mut made = listed_games(&all);
         made.sort_by_key(|g| std::cmp::Reverse(g.visits));
-        made.truncate(SHELF);
-        made
+        (made, more)
     };
     let won_badges = || {
         if !signed {
@@ -2763,7 +2785,7 @@ pub fn profile(cookie: &str, user: i64) -> Result<Profile, String> {
     };
     let won = || both(won_badges, || collection(user));
     // Nothing here waits for anything else, so it is all asked at once (ten asks one after another took 3 s).
-    let ((d, (friends, robux)), ((groups, (favs, made, banner)), ((badges, collection), ((face, body), (followers, following))))) = both(
+    let ((d, (friends, robux)), ((groups, (favs, made, made_more, banner)), ((badges, collection), ((face, body), (followers, following))))) = both(
         || {
             both(
                 || get(&format!("https://users.roblox.com/v1/users/{user}"), None),
@@ -2779,9 +2801,9 @@ pub fn profile(cookie: &str, user: i64) -> Result<Profile, String> {
         || {
             both(
                 || {
-                    let (groups, (favs, made)) = both(communities, || both(favourites, creations));
+                    let (groups, (favs, (made, made_more))) = both(communities, || both(favourites, creations));
                     let banner = banner_pics(&favs, &made);
-                    (groups, (favs, made, banner))
+                    (groups, (favs, made, made_more, banner))
                 },
                 || {
                     both(won, || {
@@ -2809,6 +2831,7 @@ pub fn profile(cookie: &str, user: i64) -> Result<Profile, String> {
         groups,
         favs,
         made,
+        made_more,
         badges,
         collection,
         banner_assets: banner.iter().map(|b| b.1).collect(),

@@ -108,6 +108,8 @@ pub struct Data {
     /// is closed (Back), so an answer that comes meanwhile isn't lost and Buy doesn't come back while one is under way.
     buying: Vec<(i64, i64, bool)>,
     bought: Vec<(i64, i64, bool)>,
+    /// Whose games made are all shown (See all on their Creations): the shelf shows the first SHELF otherwise.
+    made_all: Option<i64>,
 }
 
 impl Data {
@@ -878,6 +880,12 @@ fn letter_colour(place: i64) -> u32 {
 /// Games as a board of their wide pictures (the Games tab's board, games.rs): the picture, the name, how often it was
 /// played. A press opens the game's page here. `inner` is the width the board has.
 fn game_tiles(root: &Root, games: &[roblox::ClubGame], inner: f32, key: &'static str, cx: &mut Context<Root>) -> Vec<AnyElement> {
+    game_board(root, games, inner, key, false, cx)
+}
+
+/// `game_tiles`; `locked`: games that aren't public (a community's private ones), each with a lock on its picture and
+/// no press (they have no game page to open).
+fn game_board(root: &Root, games: &[roblox::ClubGame], inner: f32, key: &'static str, locked: bool, cx: &mut Context<Root>) -> Vec<AnyElement> {
     const PADT: f32 = 6.;
     const GAPT: f32 = 6.;
     if games.is_empty() {
@@ -907,14 +915,17 @@ fn game_tiles(root: &Root, games: &[roblox::ClubGame], inner: f32, key: &'static
                 .flex()
                 .flex_col()
                 .rounded(px(R_L + 4.))
-                .cursor_pointer()
-                .lift(2.)
-                .on_click(cx.listener(move |r, _, _, cx| {
-                    open_game(r, place, &name);
-                    cx.notify();
-                }))
+                .map(|d| if locked {
+                    d.tones(ca(WHITE, 0.), ca(WHITE, 0.))
+                } else {
+                    d.cursor_pointer().lift(2.).on_click(cx.listener(move |r, _, _, cx| {
+                        open_game(r, place, &name);
+                        cx.notify();
+                    }))
+                })
                 .child(
                     div()
+                        .relative()
                         .w_full()
                         .h(px(art_h))
                         .flex_none()
@@ -945,6 +956,9 @@ fn game_tiles(root: &Root, games: &[roblox::ClubGame], inner: f32, key: &'static
                                     .child(icon("gamepad", 22., mix(c(col), c(WHITE), 0.45)))
                                     .child(div().max_h(px(44.)).overflow_hidden().text_center().text_size(px(T_L)).line_height(px(22.)).font_weight(FontWeight::SEMIBOLD).text_color(mix(c(col), c(WHITE), 0.6)).child(g.name.clone()))
                             }
+                        })
+                        .when(locked, |d| {
+                            d.child(div().absolute().top(px(8.)).left(px(8.)).size(px(26.)).rounded(px(R_M)).bg(c(PANEL)).border_1().border_color(c(LINE)).flex().items_center().justify_center().child(icon("lock", 13., c(TEXT_2))))
                         }),
                 )
                 .child(div().mt(px(8.)).h(px(18.)).flex_none().text_size(px(T_M)).font_weight(FontWeight::SEMIBOLD).line_height(px(18.)).truncate().child(g.name.clone()))
@@ -1073,6 +1087,7 @@ fn club_page(root: &Root, view: &ClubView, width: f32, cx: &mut Context<Root>) -
     };
 
     let games = game_tiles(root, &club.games, inner, "club-game", cx);
+    let hidden = game_board(root, &club.hidden, inner, "club-hidden", true, cx);
 
     let roles = div().flex().flex_col().children(club.roles.iter().map(|(name, count)| {
         div()
@@ -1103,6 +1118,25 @@ fn club_page(root: &Root, view: &ClubView, width: f32, cx: &mut Context<Root>) -
                     .child(div().flex().flex_col().gap(px(12.)).child(title("club.mine")).child(mine))
                     .children(club_friends(root, view, cx))
                     .when(!games.is_empty(), |d| d.child(div().flex().flex_col().gap(px(12.)).child(title("news.title")).child(div().flex().flex_wrap().gap(px(GAP)).children(games))))
+                    // Its games that aren't public: Roblox's community page leaves them out (RoValra and others show
+                    // them the same way, from the same list).
+                    .when(!hidden.is_empty(), |d| {
+                        d.child(
+                            div()
+                                .flex()
+                                .flex_col()
+                                .gap(px(12.))
+                                .child(
+                                    div()
+                                        .flex()
+                                        .flex_col()
+                                        .gap(px(2.))
+                                        .child(div().flex().items_center().gap(px(8.)).child(title("club.hidden")).child(div().text_size(px(T_H)).text_color(c(MUTED)).font_features(tnum()).child(club.hidden.len().to_string())))
+                                        .child(div().text_size(px(T_M)).text_color(c(MUTED)).child(root.tr("club.hiddenNote"))),
+                                )
+                                .child(div().flex().flex_wrap().gap(px(GAP)).children(hidden)),
+                        )
+                    })
                     .when(!club.roles.is_empty(), |d| d.child(div().flex().flex_col().gap(px(6.)).child(title("club.roles")).child(roles))),
             ),
         )
@@ -1585,7 +1619,27 @@ fn filled(root: &Root, p: &Profile, user: i64, width: f32, own: bool, cx: &mut C
             .child(div().flex().flex_wrap().gap(px(GRID_GAP)).children(tiles))
     };
     let favs = game_tiles(root, &p.favs, inner, "pf-fav", cx);
-    let made = game_tiles(root, &p.made, inner, "pf-made", cx);
+    // Their games made: a shelf of the most played, See all for the rest (all their public ones, also those Roblox's
+    // profile doesn't show because they didn't add them to it).
+    let made_all = root.profile.made_all == Some(user);
+    let made = game_tiles(root, if made_all { &p.made } else { &p.made[..p.made.len().min(roblox::SHELF)] }, inner, "pf-made", cx);
+    // (The count as the shelves' heads have it, with a + when Roblox's list goes on past what was read.)
+    let made_count = format!("{}{}", p.made.len(), if p.made_more { "+" } else { "" });
+    let made_head = div()
+        .w_full()
+        .min_h(px(32.))
+        .flex()
+        .items_center()
+        .gap(px(8.))
+        .child(div().flex_none().text_size(px(T_SEC)).font_weight(FontWeight::SEMIBOLD).text_color(c(TEXT)).child(root.tr("pf.made")))
+        .child(div().flex_none().text_size(px(T_SEC)).text_color(c(MUTED)).font_features(tnum()).child(made_count))
+        .child(div().flex_1().min_w_0())
+        .when(p.made.len() > roblox::SHELF, |d| {
+        d.child(Button::new("pf-made-all", root.tr(if made_all { "gp.less" } else { "games.keepAll" })).small().on_click(cx.listener(move |r, _, _, cx| {
+            r.profile.made_all = if r.profile.made_all == Some(user) { None } else { Some(user) };
+            cx.notify();
+        })))
+    });
     let badges: Vec<AnyElement> = p
         .badges
         .iter()
@@ -1633,7 +1687,7 @@ fn filled(root: &Root, p: &Profile, user: i64, width: f32, own: bool, cx: &mut C
                     .map(|d| if groups.is_empty() { d.child(div().text_size(px(T_M)).text_color(c(MUTED)).child(root.tr("pf.noGroups"))) } else { d.child(div().flex().flex_wrap().gap(px(GRID_GAP)).children(groups)) }),
             )
             .when(!favs.is_empty(), |d| d.child(shelf("pf.favs", p.favs.len(), favs)))
-            .when(!made.is_empty(), |d| d.child(shelf("pf.made", p.made.len(), made)))
+            .when(!made.is_empty(), |d| d.child(div().flex().flex_col().gap(px(12.)).child(made_head).child(div().flex().flex_wrap().gap(px(GRID_GAP)).children(made))))
             .when(!badges.is_empty(), |d| d.child(shelf("pf.badges", p.badges.len(), badges))),
     )
 }
