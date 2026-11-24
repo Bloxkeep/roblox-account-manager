@@ -3515,7 +3515,7 @@ impl Root {
                             cx.notify();
                         })))),
                 )
-                .when(level < 1 && !version.is_empty(), |d| d.child(div().flex().flex_none().items_center().gap(px(5.)).child(div().flex_none().size(px(BAR_MARK)).child(crate::crisp::blocks(BAR_MARK))).child(value(version.clone()))))
+                .when(level < 1 && !version.is_empty(), |d| d.child(div().flex().flex_none().items_center().gap(px(5.)).child(div().flex_none().size(px(BAR_MARK)).child(crate::crisp::mark(BAR_MARK))).child(value(version.clone()))))
         };
 
         div()

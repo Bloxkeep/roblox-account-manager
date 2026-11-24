@@ -612,7 +612,9 @@ impl Root {
             .on_click(cx.listener(|r, _, _, _| r.send("toggleMini", json!({}))));
         // Bloxkeep's version: What's new; an update in and waiting, Update (it restarts the app, asked first).
         let app = tile("pill-app", false)
-            .child(div().size(px(30.)).rounded_full().bg(ca(WHITE, 0.1)).flex().items_center().justify_center().child(div().size(px(15.)).child(crate::crisp::blocks(15.))))
+            // (Bloxkeep's own logo, tile and all, as logo.svg has it: the small upright blocks read as another face, the owner,
+            // 2026-11-24 "không giống logo bloxkeep".)
+            .child(div().flex_none().size(px(30.)).child(crate::crisp::mark(30.)))
             .child(big(if version.is_empty() { "Bloxkeep".into() } else { version }))
             .child(sub(if ready { self.tr("bar.update") } else { format!("Bloxkeep · {}", self.tr("pill.news")) }, false, false).when(ready, |d| d.text_color(c(FACE))))
             .on_click(cx.listener(move |r, _, _, cx| {
