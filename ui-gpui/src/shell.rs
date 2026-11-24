@@ -157,6 +157,8 @@ pub struct Root {
     pub mods: pages::mods::Data,
     pub mods_q: Entity<InputState>,
     pub rset_about: Entity<gpui_kit::component::input::TextareaState>,
+    /// Roblox › Settings' account PIN box (its settings locked until it is typed; Enter unlocks).
+    pub rs_pin: Entity<InputState>,
     pub passes: pages::passes::Data,
     pub badges: pages::badges::Data,
     /// The lock screen (pages/lock.rs), and its two password boxes (the second only when a vault is set up).
@@ -399,6 +401,14 @@ impl Root {
         })
         .detach();
         let (pl_user, pl_pass, pl_code) = pages::password::boxes(window, cx);
+        let rs_pin = mk("rs.pinHint", window, cx);
+        rs_pin.update(cx, |s, cx| s.set_masked(true, window, cx));
+        cx.subscribe_in(&rs_pin, window, |r: &mut Root, _, ev: &InputEvent, window, cx| {
+            if matches!(ev, InputEvent::PressEnter { .. }) {
+                pages::rsettings::unlock_pin(r, window, cx);
+            }
+        })
+        .detach();
         // Save server's boxes: Enter saves.
         let sv_name = mk("sv.name", window, cx);
         // Game collection: Add game's search (a pause while typing asks Roblox, Enter at once), the note (Enter keeps it).
@@ -698,6 +708,7 @@ impl Root {
             rset: Default::default(),
             owned: Default::default(),
             rset_about,
+            rs_pin,
             mods: Default::default(),
             mods_q,
             passes: Default::default(),
@@ -1266,7 +1277,7 @@ impl Root {
                 self.games.forget_sign_in();
                 self.friends.forget_sign_in();
                 self.clear_play_history();
-                for e in [&self.af_cookie, &self.af_password, &self.af_key, &self.pl_pass, &self.pl_code, &self.pw_cur, &self.pw_new, &self.pw_new2, &self.iv_pw] {
+                for e in [&self.af_cookie, &self.af_password, &self.af_key, &self.pl_pass, &self.pl_code, &self.pw_cur, &self.pw_new, &self.pw_new2, &self.iv_pw, &self.rs_pin] {
                     e.update(cx, |s, cx| s.set_value("", window, cx));
                 }
             }

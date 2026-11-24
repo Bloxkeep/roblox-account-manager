@@ -88,6 +88,17 @@ pub struct Data {
     blocked: Option<Result<Vec<roblox::Friend>, String>>,
     reading_blocked: bool,
     unblocking: Vec<i64>,
+    /// Content maturity (Roblox's Settings › Privacy & content maturity), None while read; the level picked that needs
+    /// what Bloxkeep can't do (an age check, a parent), said under the levels.
+    maturity: Option<Result<Option<roblox::Maturity>, String>>,
+    gated: Option<(String, String)>,
+    /// The age group Roblox has for the account (Account info › Age group), and its account PIN: on, and unlocked for
+    /// how long (Settings can't be changed while it is locked); an Unlock on its way and Roblox's word on the last.
+    age: Option<roblox::Age>,
+    pin: Option<roblox::Pin>,
+    pin_at: Option<std::time::Instant>,
+    unlocking: bool,
+    pin_said: Option<String>,
 }
 
 impl Data {
@@ -144,6 +155,18 @@ fn load(r: &mut Root, cx: &mut Context<Root>) {
     reply(places, cx, move |r, got, cx| {
         if r.rset.of == user {
             r.rset.places = Some(got);
+            cx.notify();
+        }
+    });
+    let c5 = cookie.clone();
+    let more = roblox::run(move || (roblox::maturity(&c5), roblox::age(&c5), roblox::pin(&c5)));
+    crate::ask::answer(more, cx, move |r, got, cx| {
+        let Ok((maturity, age, pin)) = got else { return };
+        if r.rset.of == user {
+            r.rset.maturity = Some(maturity);
+            r.rset.age = age.ok();
+            r.rset.pin = pin.ok();
+            r.rset.pin_at = Some(std::time::Instant::now());
             cx.notify();
         }
     });
@@ -470,6 +493,84 @@ fn set_vis(r: &mut Root, online: bool, v: String, cx: &mut Context<Root>) {
     });
 }
 
+/// Content maturity set to Roblox's `level`: shown at once, put back when Roblox refuses. A level that needs an age
+/// check or a parent first isn't sent: what it needs is said under the levels, with Roblox's own page.
+fn set_maturity(r: &mut Root, level: String, cx: &mut Context<Root>) {
+    let Some((_, user, cookie)) = friends::signed(r) else { return };
+    if r.rset.saving.is_some() {
+        return;
+    }
+    let Some(Ok(Some(m))) = r.rset.maturity.as_mut() else { return };
+    if let Some(need) = m.options.iter().find(|(v, _)| *v == level).and_then(|(_, need)| need.clone()) {
+        r.rset.gated = Some((level, need));
+        cx.notify();
+        return;
+    }
+    r.rset.gated = None;
+    let before = std::mem::replace(&mut m.now, level.clone());
+    r.rset.saving = Some("maturity");
+    let rx = roblox::run(move || roblox::set_maturity(&cookie, &level));
+    reply(rx, cx, move |r, done, cx| {
+        if r.rset.of != user {
+            return;
+        }
+        r.rset.saving = None;
+        if let Err(why) = done {
+            if let Some(Ok(Some(m))) = r.rset.maturity.as_mut() {
+                m.now = before;
+            }
+            r.toast = Some((r.i18n.tv("rs.failed", &[("why", if why.is_empty() { "Roblox" } else { &why })]), "bad".into()));
+        }
+        cx.notify();
+    });
+}
+
+/// The settings unlocked with the PIN typed (Roblox's "Account PIN Required" › Unlock).
+pub fn unlock_pin(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
+    let Some((_, user, cookie)) = friends::signed(r) else { return };
+    let pin: String = r.rs_pin.read(cx).value().trim().to_string();
+    if r.rset.unlocking || pin.is_empty() {
+        return;
+    }
+    r.rset.unlocking = true;
+    r.rset.pin_said = None;
+    r.rs_pin.update(cx, |s, cx| s.set_value("", window, cx));
+    let rx = roblox::run(move || roblox::unlock_pin(&cookie, &pin));
+    reply(rx, cx, move |r, done, cx| {
+        if r.rset.of != user {
+            return;
+        }
+        r.rset.unlocking = false;
+        match done {
+            Ok(p) => {
+                r.rset.pin = Some(p);
+                r.rset.pin_at = Some(std::time::Instant::now());
+            }
+            Err(why) => r.rset.pin_said = Some(if why.contains("403") || why.to_lowercase().contains("incorrect") { r.tr("rs.pinWrong") } else { r.i18n.tv("rs.failed", &[("why", if why.is_empty() { "Roblox" } else { &why })]) }),
+        }
+        cx.notify();
+    });
+}
+
+/// Locked again before the unlock runs out (Roblox's padlock).
+fn lock_pin(r: &mut Root, cx: &mut Context<Root>) {
+    let Some((_, user, cookie)) = friends::signed(r) else { return };
+    let rx = roblox::run(move || roblox::lock_pin(&cookie));
+    reply(rx, cx, move |r, done, cx| {
+        if r.rset.of == user && done.is_ok() {
+            r.rset.pin = Some(roblox::Pin { on: true, left: None });
+            cx.notify();
+        }
+    });
+}
+
+/// The seconds the PIN's unlock still lasts now (None locked or off).
+fn pin_left(rs: &Data) -> Option<i64> {
+    let p = rs.pin.filter(|p| p.on)?;
+    let gone = rs.pin_at.map_or(0, |t| t.elapsed().as_secs() as i64);
+    p.left.map(|l| l - gone).filter(|l| *l > 0)
+}
+
 /// A name (14 px, medium) and what it is under it in muted, as Settings' rows have them.
 fn title(text: String, sub: Option<String>) -> Div {
     div()
@@ -658,6 +759,18 @@ fn filled(root: &Root, s: &AccountSettings, viewer: Option<&serde_json::Value>, 
             None => dash(),
         },
     ));
+    if let Some(a) = rs.age.as_ref().filter(|a| !roblox::age_words(&a.group).is_empty()) {
+        rows.push((
+            root.tr("rs.ageGroup"),
+            div()
+                .flex()
+                .items_center()
+                .gap(px(10.))
+                .child(words(roblox::age_words(&a.group)))
+                .when(a.checked, |d| d.child(badge(root.tr("rs.ageChecked"), Tone::Ok)))
+                .into_any_element(),
+        ));
+    }
     rows.push((root.tr("rs.country"), s.country.clone().map(words).unwrap_or_else(dash)));
     // Voice chat: on, off (why), or locked: how long is left and when it ends, or for good.
     rows.push((
@@ -682,6 +795,23 @@ fn filled(root: &Root, s: &AccountSettings, viewer: Option<&serde_json::Value>, 
             Some(_) => badge(root.tr("rs.voiceNo"), Tone::Muted).into_any_element(),
         },
     ));
+    // The account PIN: off, locked, or unlocked and for how long (Lock locks it again).
+    if let Some(p) = rs.pin {
+        rows.push((
+            root.tr("rs.pin"),
+            match pin_left(rs) {
+                _ if !p.on => badge(root.tr("rs.pinOff"), Tone::Muted).into_any_element(),
+                None => badge(root.tr("rs.pinLocked"), Tone::Warn).into_any_element(),
+                Some(l) => div()
+                    .flex()
+                    .items_center()
+                    .gap(px(10.))
+                    .child(badge(root.i18n.tv("rs.pinOpen", &[("t", &left(root, l))]), Tone::Ok))
+                    .child(Button::new("rs-pin-lock", root.tr("rs.pinLock")).small().quiet().icon("lock").on_click(cx.listener(|r, _, _, cx| lock_pin(r, cx))))
+                    .into_any_element(),
+            },
+        ));
+    }
     let who = viewer.map(|a| {
         let user = a.get("username").and_then(serde_json::Value::as_str).filter(|u| !u.is_empty()).map(|u| format!("@{u}"));
         let (presence, tone) = roblox_presence(a);
@@ -695,6 +825,24 @@ fn filled(root: &Root, s: &AccountSettings, viewer: Option<&serde_json::Value>, 
     let trades = trades_card(root, s.trade_privacy.as_deref(), s.trade_value.as_deref(), busy, set_trade, cx);
     let vis = rs.vis.as_ref().map(|(o, j)| (o.as_ref(), j.as_ref()));
     let privacy = privacy_card(root, vis, rs.vis_failed.as_deref(), busy, set_vis, cx);
+    let maturity = maturity_card(root, busy, viewer, cx);
+    // Settings locked by the account PIN: Roblox refuses every change until it is typed (its "Account PIN Required").
+    let locked = rs.pin.is_some_and(|p| p.on) && pin_left(rs).is_none();
+    let pin_bar = locked.then(|| {
+        surface()
+            .border_1()
+            .border_color(ca(WARN, 0.55))
+            .px(px(20.))
+            .py(px(14.))
+            .flex()
+            .flex_wrap()
+            .items_center()
+            .gap(px(14.))
+            .child(icon("lock", 19., c(WARN)))
+            .child(title(root.tr("rs.pinBar"), Some(rs.pin_said.clone().unwrap_or_else(|| root.tr("rs.pinSub")))))
+            .child(div().w(px(150.)).child(field(&root.rs_pin, Some("key"))))
+            .child(Button::new("rs-pin-unlock", root.tr("rs.pinUnlock")).primary().small().disabled(rs.unlocking).on_click(cx.listener(|r, _, window, cx| unlock_pin(r, window, cx))))
+    });
 
     // About me: the box, and Save when it holds something else.
     let typed = root.rset_about.read(cx).value().to_string();
@@ -743,10 +891,10 @@ fn filled(root: &Root, s: &AccountSettings, viewer: Option<&serde_json::Value>, 
     // The part picked: its head, its card, and what goes with it (About me with the account, the blocked people with
     // privacy).
     let part = rs.part;
-    let mut inner = div().px(px(PAGE_X)).pt(px(12.)).pb(px(32.)).w_full().flex().flex_col().gap(px(SECTION_GAP)).child(part_head(root, part));
+    let mut inner = div().px(px(PAGE_X)).pt(px(12.)).pb(px(32.)).w_full().flex().flex_col().gap(px(SECTION_GAP)).child(part_head(root, part)).children(pin_bar);
     inner = match part {
         Part::Account => inner.child(account).child(section(root.tr("rs.about"), about)),
-        Part::Privacy => inner.child(privacy).child(section(root.tr("blk.title"), blocked_card(root, cx))),
+        Part::Privacy => inner.child(privacy).child(section(root.tr("rs.maturity"), maturity)).child(section(root.tr("blk.title"), blocked_card(root, cx))),
         Part::Places => inner.child(places_card(root, cx)),
         Part::Trades => inner.child(trades),
         Part::More => inner.child(more),
@@ -958,6 +1106,64 @@ pub(super) fn privacy_card(root: &Root, vis: Option<(Option<&roblox::Choice>, Op
             if rows.is_empty() { d.child(note(root.tr("rs.visNone"))) } else { d.children(rows) }
         }
     })
+}
+
+/// Content maturity as Roblox's Settings has it: the four levels (the ones Roblox offers this account), what the one
+/// picked may contain, and, when a level needs an age check or a parent, that said with Roblox's own page. Where the
+/// place's own age ratings decide (Vietnam), only Roblox's note.
+fn maturity_card(root: &Root, busy: bool, viewer: Option<&serde_json::Value>, cx: &mut Context<Root>) -> Div {
+    let rs = &root.rset;
+    let note = |text: String| div().px(px(20.)).py(px(18.)).text_size(px(T_M)).text_color(c(MUTED)).child(text);
+    let card = surface().overflow_hidden().flex().flex_col();
+    let m = match &rs.maturity {
+        None => return card.child(note(root.tr("vis.reading"))),
+        Some(Err(why)) => return card.child(note(root.i18n.tv("rs.matFailed", &[("why", crate::net::why_words(&root.i18n, why).as_str())]))),
+        Some(Ok(None)) => return card.child(note(root.tr("rs.matNone"))),
+        Some(Ok(Some(m))) => m,
+    };
+    if m.local {
+        return card.child(note(root.tr("rs.matLocal")));
+    }
+    let mut seg = Segmented::new("rs-maturity", m.now.clone());
+    for (v, _) in &m.options {
+        seg = seg.item(v.clone(), root.tr(&format!("rs.mat.{v}")));
+    }
+    let this = cx.entity().downgrade();
+    let seg = seg.on_select(move |v, _, cx| {
+        if busy {
+            return;
+        }
+        let v = v.to_string();
+        let _ = this.update(cx, |r, cx| set_maturity(r, v, cx));
+    });
+    let means = format!("rs.matIs.{}", m.now);
+    let id = viewer.and_then(|a| a.get("id")).and_then(serde_json::Value::as_str).unwrap_or_default().to_string();
+    let gate = rs.gated.as_ref().map(|(_, need)| {
+        let words = if need.contains("Parent") || need == "Inherited" { root.tr("rs.matParent") } else { root.tr("rs.matVerify") };
+        div()
+            .px(px(20.))
+            .py(px(12.))
+            .border_t_1()
+            .border_color(c(LINE))
+            .flex()
+            .items_center()
+            .gap(px(12.))
+            .child(div().flex_1().min_w_0().text_size(px(T_M)).line_height(px(18.)).text_color(c(WARN)).child(words))
+            .child(Button::new("rs-mat-verify", root.tr("rs.verify")).small().icon("external").on_click(cx.listener(move |r, _, _, _| r.send("openWebsite", json!({ "id": id, "page": "settings" })))))
+    });
+    card.child(
+        div()
+            .px(px(20.))
+            .pt(px(16.))
+            .pb(px(18.))
+            .flex()
+            .flex_col()
+            .gap(px(12.))
+            .child(title(root.tr("rs.matLevel"), Some(root.tr("rs.maturitySub"))))
+            .child(div().flex().flex_wrap().child(seg))
+            .when(root.i18n.has(&means), |d| d.child(div().text_size(px(T_M)).line_height(px(18.)).text_color(c(TEXT_2)).child(root.tr(&means)))),
+    )
+    .children(gate)
 }
 
 /// The account's status as Roblox shows it to others (its presence): the words' key and their colour.

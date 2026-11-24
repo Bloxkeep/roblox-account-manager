@@ -2644,13 +2644,52 @@ pub struct Corner {
     /// "I agree" on its way, and why Roblox turned the last one down.
     waking: bool,
     refused: Option<String>,
+    /// What else Roblox's own pages would stop the account with (notice_bars): agreements waiting for its "I Agree",
+    /// a reminder of the rules, an age check Roblox wants by a day. Read every ten minutes at most.
+    deals: Vec<roblox::Agreement>,
+    remind: Option<roblox::Reminder>,
+    age: Option<roblox::Age>,
+    noticed: Option<std::time::Instant>,
+    agreeing: bool,
 }
+
+/// Reminders read with "I understand" (Roblox asks nothing more: its page only counts the click), not shown again.
+static REMINDED: std::sync::Mutex<Vec<String>> = std::sync::Mutex::new(Vec::new());
 
 pub fn want_corner(r: &mut Root, cx: &mut Context<Root>) {
     let Some((_, user, cookie)) = crate::pages::friends::signed(r) else { return };
     let k = &mut r.games.corner;
     if k.of != user {
         *k = Corner { of: user, ..Default::default() };
+    }
+    // Roblox's notices, every ten minutes (they change seldom; the corner's figures every minute).
+    if !k.noticed.is_some_and(|t| t.elapsed().as_secs() < 600) {
+        k.noticed = Some(std::time::Instant::now());
+        let c2 = cookie.clone();
+        let rx = roblox::run(move || (roblox::agreements(&c2), roblox::reminder(&c2), roblox::age(&c2)));
+        cx.spawn(async move |this, cx| {
+            let Ok((deals, remind, age)) = rx.await else { return };
+            let _ = this.update(cx, |r, cx| {
+                let k = &mut r.games.corner;
+                if k.of != user {
+                    return;
+                }
+                // (A read that failed keeps what was known. The agreements only with the age read: Roblox answers a
+                // sign-in it doesn't take as nobody's, with every agreement there is, which would ask for an
+                // "I Agree" that isn't owed; the age needs the sign-in.)
+                if let (Ok(d), true) = (deals, age.is_ok()) {
+                    k.deals = d;
+                }
+                if let Ok(m) = remind {
+                    k.remind = m;
+                }
+                if let Ok(a) = age {
+                    k.age = Some(a);
+                }
+                cx.notify();
+            });
+        })
+        .detach();
     }
     if k.busy || k.asked.is_some_and(|t| t.elapsed().as_secs() < 60) {
         return;
@@ -2815,6 +2854,145 @@ fn held_bar(root: &Root, cx: &mut Context<Root>) -> Option<impl IntoElement> {
     )
 }
 
+/// What Roblox's own pages would stop the account with, as bars over the page in held_bar's look, each with what
+/// Roblox's own window offers: its updated agreements and "I Agree" (site-status' UserAgreementsChecker), its reminder
+/// of the rules and "I understand" (reminderOfNorms), the age check it wants by a day (account info's AgeGroup).
+fn notice_bars(root: &Root, cx: &mut Context<Root>) -> Vec<AnyElement> {
+    let mut bars = Vec::new();
+    if crate::pages::friends::signed(root).is_none() {
+        return bars;
+    }
+    let k = &root.games.corner;
+    let (_, viewer) = crate::pages::friends::looking_ref(root);
+    let id = viewer.and_then(|a| a.get("id")).and_then(Value::as_str).unwrap_or_default().to_string();
+    let bar = |key: &'static str, mark: &'static str, tone: u32, head: String, sub: AnyElement| {
+        div()
+            .id(key)
+            .flex_none()
+            .px(px(16.))
+            .py(px(12.))
+            .rounded(px(R_PANEL))
+            .bg(c(PANEL))
+            .border_1()
+            .border_color(ca(tone, 0.55))
+            .flex()
+            .items_center()
+            .gap(px(14.))
+            .child(icon(mark, 20., c(tone)).flex_none())
+            .child(div().flex_1().min_w_0().flex().flex_col().gap(px(2.)).child(div().text_size(px(T_L)).font_weight(FontWeight::SEMIBOLD).child(head)).child(sub))
+    };
+    let muted = |t: String| div().text_size(px(T_M)).line_height(px(18.)).text_color(c(MUTED)).child(t).into_any_element();
+    if !k.deals.is_empty() {
+        // Roblox's words over the list when it sends them (English only: in another language, ours), then each
+        // agreement to read, opened in the browser as Roblox's links open.
+        let said = k.deals.iter().find_map(|d| d.text.clone()).filter(|_| root.i18n.lang == "en").unwrap_or_else(|| root.tr("rn.agreeBody"));
+        let mut links = div().flex().flex_wrap().gap_x(px(14.)).gap_y(px(2.)).text_size(px(T_M));
+        for (i, d) in k.deals.iter().enumerate() {
+            let key = format!("rn.doc.{}", d.kind);
+            let name = if root.i18n.has(&key) { root.tr(&key) } else { d.kind.clone() };
+            let url = d.url.clone();
+            links = links.child(
+                div()
+                    .id(("rn-doc", i))
+                    .cursor_pointer()
+                    .text_color(c(FACE))
+                    .hover(|d| d.underline())
+                    .child(name)
+                    .when(url.starts_with("https://"), |d| d.on_click(move |_, _, cx| cx.open_url(&url))),
+            );
+        }
+        let sub = div().flex().flex_col().gap(px(4.)).child(muted(said)).child(links).into_any_element();
+        bars.push(
+            bar("rn-agree-bar", "book", WARN, root.tr("rn.agreeTitle"), sub)
+                .child(Button::new("rn-agree", root.tr("rn.agreeBtn")).icon("check").primary().small().disabled(k.agreeing).on_click(cx.listener(|r, _, _, cx| accept_deals(r, cx))))
+                .into_any_element(),
+        );
+    }
+    if let Some(m) = k.remind.as_ref().filter(|m| !REMINDED.lock().unwrap_or_else(|e| e.into_inner()).contains(&m.id)) {
+        let rule = root.tr(&format!("rn.rule.{}", rule_of(&m.rule)));
+        let sub = muted(root.i18n.tv("rn.remindBody", &[("rule", &rule)]));
+        let seen = m.id.clone();
+        bars.push(
+            bar("rn-remind-bar", "shield", WARN, root.tr("rn.remindTitle"), sub)
+                .child(Button::new("rn-remind-ok", root.tr("rn.remindOk")).small().on_click(cx.listener(move |_, _, _, cx| {
+                    REMINDED.lock().unwrap_or_else(|e| e.into_inner()).push(seen.clone());
+                    cx.notify();
+                })))
+                .into_any_element(),
+        );
+    }
+    if let Some(a) = k.age.as_ref().filter(|a| a.deadline.is_some() || a.soon) {
+        let head = match a.deadline {
+            Some(t) => root.i18n.tv("rn.ageBy", &[("t", &crate::time::day_time(t))]),
+            None => root.tr("rn.ageSoon"),
+        };
+        bars.push(
+            bar("rn-age-bar", "user", WARN, head, muted(root.tr("rn.ageBody")))
+                .child(Button::new("rn-age-open", root.tr("rs.verify")).icon("external").small().on_click(cx.listener(move |r, _, _, _| r.send("openWebsite", json!({ "id": id, "page": "settings" })))))
+                .into_any_element(),
+        );
+    }
+    bars
+}
+
+/// Roblox's key for a broken rule ("Experiment.Reminders.ViolationScams") as the name of ours (rn.rule.*): Roblox
+/// names several the same, and one it may add later is "other".
+fn rule_of(key: &str) -> &'static str {
+    let v = key.rsplit("Violation").next().unwrap_or_default().trim_end_matches(".V2");
+    match v {
+        "SexualContent" => "sexual",
+        "IrlDangerousActivities" | "EncouragingDangerousBehavior" => "harm",
+        "AskingForPII" | "SharingYourOwnPii" => "pii",
+        "BullyingAndHarassment" | "MisleadingImpersonationMisrepresentation" | "ExtortionAndBlackmail" | "ThreatsOrAbuseOfRobloxEmployeesOrAffiliates" => "bullying",
+        "DiscriminationAndHate" => "hate",
+        "ViolentContentAndGore" => "violence",
+        "IllegalAndRegulatedGoodsAndActivities" | "ContestsAndSweepstakes" => "illegal",
+        "RomanticContent" => "romance",
+        "Profanity" => "profanity",
+        "PoliticalContent" => "politics",
+        "Scams" => "scams",
+        "Spam" => "spam",
+        "DirectingUsersOffPlatform" => "offPlatform",
+        "DisruptiveAudio" | "MisusingRobloxSystems" => "misuse",
+        "CheatingAndExploiting" => "cheating",
+        "Dmca" | "IpViolation" | "Trademark" => "ip",
+        "RobloxEconomy" => "economy",
+        "Advertising" => "ads",
+        "RealWorldTragedy" => "tragedy",
+        "OffPlatformSpeechAndBehavior" => "offPlatformSpeech",
+        "TerrorismExtremism" => "extremism",
+        "VirtualCasino" => "casino",
+        _ => "other",
+    }
+}
+
+/// "I Agree" to every agreement waiting, as Roblox's window sends it; read again after.
+fn accept_deals(r: &mut Root, cx: &mut Context<Root>) {
+    let Some((_, user, cookie)) = crate::pages::friends::signed(r) else { return };
+    let k = &mut r.games.corner;
+    if k.agreeing || k.deals.is_empty() {
+        return;
+    }
+    k.agreeing = true;
+    let ids: Vec<String> = k.deals.iter().map(|d| d.id.clone()).collect();
+    let rx = roblox::run(move || roblox::accept_agreements(&cookie, &ids));
+    reply(rx, cx, move |r, done, cx| {
+        if r.games.corner.of != user {
+            return;
+        }
+        r.games.corner.agreeing = false;
+        match done {
+            Ok(()) => {
+                r.games.corner.deals.clear();
+                r.games.corner.noticed = None;
+                r.toast = Some((r.tr("rn.agreed"), "ok".into()));
+            }
+            Err(why) => r.toast = Some((r.i18n.tv("rs.failed", &[("why", if why.is_empty() { "Roblox" } else { &why })]), "bad".into())),
+        }
+        cx.notify();
+    });
+}
+
 /// "I agree": Roblox lets the account back; read again after.
 fn agree(r: &mut Root, cx: &mut Context<Root>) {
     let Some((_, user, cookie)) = crate::pages::friends::signed(r) else { return };
@@ -2873,7 +3051,7 @@ pub fn games(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElemen
     let top = div().flex_none().flex().items_center().gap(px(8.)).child(crate::pages::tabs::strip(root, width, cx)).child(div().flex_1()).children(corner(root, cx));
     div().size_full().flex().flex_col().gap(px(8.)).child(top)
         .when(crate::pages::tabs::is_vng(root) && (root.games.view == View::Games || root.games.open.is_some()), |d| d.child(div().flex_none().px(px(12.)).py(px(8.)).rounded(px(R_M)).bg(ca(ONLINE, 0.08)).text_size(px(T_S)).text_color(c(TEXT_2)).child(root.tr("tabs.vngBrowse"))))
-        .children(held_bar(root, cx)).child(div().flex_1().min_h_0().child(content))
+        .children(held_bar(root, cx)).children(notice_bars(root, cx)).child(div().flex_1().min_h_0().child(content))
 }
 
 fn grid(root: &Root, all: &[Game], width: f32, cx: &mut Context<Root>) -> impl IntoElement {

@@ -76,6 +76,35 @@ pub async fn run(c: &mut Checks, _dir: &str) {
         c.check(&format!("VNG route of {url}"), got == want, &got);
     }
 
+    // Content maturity, reminders and age groups, read from answers shaped as Roblox's own website code reads them.
+    let m = crate::roblox::maturity_of(
+        &json!({ "contentAgeRestriction": { "currentValue": "NinePlus", "options": [
+            { "option": { "optionValue": "AllAges" }, "requirement": "SelfUpdateSetting" },
+            { "option": { "optionValue": "ThirteenPlus" }, "requirement": null },
+            { "option": { "optionValue": "SeventeenPlus" }, "requirement": "ContentAgeRestrictionVerification" },
+            { "option": { "optionValue": "EighteenPlus" }, "requirement": "None" } ] } }),
+        false,
+    );
+    let want = Some(crate::roblox::Maturity {
+        now: "NinePlus".into(),
+        options: vec![("AllAges".into(), None), ("ThirteenPlus".into(), None), ("SeventeenPlus".into(), Some("ContentAgeRestrictionVerification".into()))],
+        local: false,
+    });
+    c.check("content maturity: levels offered, an age check kept as what Restricted needs", m == want, format!("{m:?}"));
+    c.check("…none when Roblox has no such setting", crate::roblox::maturity_of(&json!({ "whoCanJoinMeInExperiences": {} }), false).is_none(), ());
+    let r = crate::roblox::reminder_of(&json!({ "shouldSurfaceReminder": true, "interventionId": "i1", "policyViolation": "Experiment.Reminders.ViolationScams", "reminderNumber": 1 }));
+    c.check("a reminder of the rules is read", r.as_ref().is_some_and(|r| r.id == "i1" && r.rule.ends_with("Scams")), format!("{r:?}"));
+    c.check("…none when Roblox says not to show one", crate::roblox::reminder_of(&json!({ "shouldSurfaceReminder": false })).is_none(), ());
+    c.check(
+        "…a text-filter lesson is no reminder",
+        crate::roblox::reminder_of(&json!({ "shouldSurfaceReminder": true, "nudgeType": "TEXT_FILTER_EDUCATION", "policyViolation": "x", "interventionId": "i2" })).is_none(),
+        (),
+    );
+    for (key, want) in [("Label.AgeGroup13To15", "13–15"), ("Label.AgeGroup18Plus", "18+"), ("Label.AgeGroupUnder9", "<9"), ("Label.AgeGroupUnknown", "")] {
+        let got = crate::roblox::age_words(key);
+        c.check(&format!("age group {key}"), got == want, &got);
+    }
+
     // Refused before any tab (or browser) is made: open_website checks the realm first.
     let refused = call(&app, "openWebsite", json!({ "id": vng_id.to_string() })).await;
     c.check(

@@ -4363,6 +4363,198 @@ pub fn visibility_body(online: Option<&str>, join: Option<&str>) -> Value {
     Value::Object(body)
 }
 
+// ───────────────────────── content maturity, age, PIN and Roblox's notices ─────────────────────────
+// All read as Roblox's own website reads them (its code, 2026-11-25: account-settings' ContentMaturitySlider and
+// AgeGroup, site-status' UserAgreementsChecker, discovery-common's reminderOfNorms; the PIN from auth's published
+// reference).
+
+/// Roblox's content maturity levels, as its Settings slider has them (Minimal, Mild, Moderate, Restricted), in its
+/// words for each (user-settings' contentAgeRestriction).
+pub const MATURITY: [&str; 4] = ["AllAges", "NinePlus", "ThirteenPlus", "SeventeenPlus"];
+
+/// The account's content maturity: the level now and the ones Roblox offers it, each with what it needs first
+/// (Roblox's requirement: "ContentAgeRestrictionVerification" an age check, "ParentalConsent" a parent; None free).
+/// `local` when Roblox lets the place's own age ratings decide instead (its page then shows only a note: Vietnam).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Maturity {
+    pub now: String,
+    pub options: Vec<(String, Option<String>)>,
+    pub local: bool,
+}
+
+/// None when Roblox has no such setting for the account.
+pub fn maturity(cookie: &str) -> Result<Option<Maturity>, String> {
+    #[cfg(feature = "shot")]
+    if std::env::var("BLOXKEEP_SHOT_RSET").is_ok() {
+        let o = |v: &str, r: Option<&str>| (v.to_string(), r.map(str::to_string));
+        return Ok(Some(Maturity { now: "ThirteenPlus".into(), options: vec![o("AllAges", None), o("NinePlus", None), o("ThirteenPlus", None), o("SeventeenPlus", Some("ContentAgeRestrictionVerification"))], local: false }));
+    }
+    let d = get(&format!("{USER_SETTINGS}/settings-and-options"), Some(cookie))?;
+    let local = get("https://apis.roblox.com/universal-app-configuration/v1/behaviors/account-settings-ui/content", Some(cookie))
+        .ok()
+        .and_then(|p| p.get("shouldShowContentMaturityLocalAgeRatingBanner").and_then(Value::as_bool))
+        .unwrap_or(false);
+    Ok(maturity_of(&d, local))
+}
+
+/// settings-and-options' contentAgeRestriction.
+pub fn maturity_of(d: &Value, local: bool) -> Option<Maturity> {
+    let v = d.get("contentAgeRestriction")?;
+    let now = v.get("currentValue").and_then(Value::as_str).unwrap_or("AllAges").to_string();
+    let options = v
+        .get("options")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(|o| {
+            let value = o.pointer("/option/optionValue").or(o.get("optionValue")).and_then(Value::as_str)?.to_string();
+            let need = o.get("requirement").and_then(Value::as_str).filter(|r| !matches!(*r, "" | "None" | "SelfUpdateSetting")).map(str::to_string);
+            MATURITY.contains(&value.as_str()).then_some((value, need))
+        })
+        .collect();
+    Some(Maturity { now, options, local })
+}
+
+pub fn set_maturity(cookie: &str, level: &str) -> Result<(), String> {
+    send_text("POST", USER_SETTINGS, &serde_json::json!({ "contentAgeRestriction": level }), Some(cookie)).map(|_| ())
+}
+
+/// The account's age as Roblox's Settings › Account info shows it: its age group (Roblox's words' key, as
+/// "Label.AgeGroup13To15"), whether an age check was done, and when Roblox wants one by ("Verify your age by…").
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Age {
+    pub group: String,
+    pub checked: bool,
+    pub deadline: Option<i64>,
+    pub soon: bool,
+}
+
+pub fn age(cookie: &str) -> Result<Age, String> {
+    #[cfg(feature = "shot")]
+    if std::env::var("BLOXKEEP_SHOT_RSET").is_ok() {
+        return Ok(Age { group: "Label.AgeGroup18Plus".into(), checked: true, deadline: None, soon: false });
+    }
+    let d = get("https://apis.roblox.com/user-settings-api/v1/account-insights/age-group", Some(cookie))?;
+    Ok(Age {
+        group: text(&d, "ageGroupTranslationKey"),
+        checked: d.get("isChecked").and_then(Value::as_bool).unwrap_or(false),
+        deadline: d.get("ageVerificationDeadline").and_then(Value::as_str).and_then(crate::time::iso_secs),
+        soon: d.get("isPendingWithUnknownDeadline").and_then(Value::as_bool).unwrap_or(false),
+    })
+}
+
+/// An age group's key in words: its ages ("Label.AgeGroup13To15" 13–15, "…18Plus" 18+, "…Under9" under 9); "" when
+/// the key says none.
+pub fn age_words(key: &str) -> String {
+    let tail = key.rsplit('.').next().unwrap_or(key).trim_start_matches("AgeGroup").trim_start_matches("Age");
+    let nums: Vec<&str> = tail.split(|c: char| !c.is_ascii_digit()).filter(|s| !s.is_empty()).collect();
+    let low = tail.to_ascii_lowercase();
+    match nums.as_slice() {
+        [a, b, ..] => format!("{a}–{b}"),
+        [a] if low.contains("under") => format!("<{a}"),
+        [a] => format!("{a}+"),
+        [] => String::new(),
+    }
+}
+
+/// The account PIN (Roblox's Settings › Security › Account PIN): on, and while on whether settings may be changed:
+/// `left` the seconds the unlock still lasts (None locked).
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Pin {
+    pub on: bool,
+    pub left: Option<i64>,
+}
+
+fn pin_of(d: &Value) -> Pin {
+    // (unlockedUntil: the seconds left, as Roblox's page counts them down; a date in seconds taken as one too.)
+    let left = d.get("unlockedUntil").and_then(Value::as_f64).map(|t| t as i64).map(|t| if t > 1_000_000_000 { t - crate::time::now_secs() } else { t }).filter(|t| *t > 0);
+    Pin { on: d.get("isEnabled").and_then(Value::as_bool).unwrap_or(false), left }
+}
+
+pub fn pin(cookie: &str) -> Result<Pin, String> {
+    #[cfg(feature = "shot")]
+    if let Ok(v) = std::env::var("BLOXKEEP_SHOT_PIN") {
+        return Ok(Pin { on: true, left: v.parse().ok().filter(|n: &i64| *n > 0) });
+    }
+    get("https://auth.roblox.com/v1/account/pin", Some(cookie)).map(|d| pin_of(&d))
+}
+
+/// Settings unlocked with the PIN (Roblox's "Account PIN Required" › Unlock).
+pub fn unlock_pin(cookie: &str, pin: &str) -> Result<Pin, String> {
+    let t = send_text("POST", "https://auth.roblox.com/v1/account/pin/unlock", &serde_json::json!({ "pin": pin }), Some(cookie))?;
+    Ok(serde_json::from_str::<Value>(&t).map(|d| pin_of(&d)).ok().filter(|p| p.left.is_some()).unwrap_or(Pin { on: true, left: Some(600) }))
+}
+
+/// Settings locked again before the unlock runs out (Roblox's padlock on its Settings page).
+pub fn lock_pin(cookie: &str) -> Result<(), String> {
+    send_text("POST", "https://auth.roblox.com/v1/account/pin/lock", &serde_json::json!({}), Some(cookie)).map(|_| ())
+}
+
+/// One of Roblox's agreements the account hasn't accepted yet (its "Updated Agreements" window): its kind
+/// ("TermsOfService", "PrivacyPolicy"…), where to read it, and Roblox's words over the list (None: its usual ones).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Agreement {
+    pub id: String,
+    pub kind: String,
+    pub url: String,
+    pub text: Option<String>,
+}
+
+/// The agreements waiting for the account's "I Agree" (none: nothing to accept).
+pub fn agreements(cookie: &str) -> Result<Vec<Agreement>, String> {
+    #[cfg(feature = "shot")]
+    if std::env::var("BLOXKEEP_SHOT_NOTICES").is_ok() {
+        let a = |id: &str, kind: &str| Agreement { id: id.into(), kind: kind.into(), url: "https://en.help.roblox.com/".into(), text: None };
+        return Ok(vec![a("t", "TermsOfService"), a("p", "PrivacyPolicy")]);
+    }
+    // (Other shots: none, and nothing asked of Roblox with a made-up sign-in.)
+    if cfg!(feature = "shot") {
+        return Ok(Vec::new());
+    }
+    let d = get("https://apis.roblox.com/user-agreements/v1/agreements-resolution/web", Some(cookie))?;
+    Ok(d.as_array()
+        .into_iter()
+        .flatten()
+        .filter(|a| !text(a, "id").is_empty())
+        .map(|a| Agreement { id: text(a, "id"), kind: text(a, "agreementType"), url: text(a, "displayUrl"), text: Some(text(a, "agreementBodyText")).filter(|t| !t.trim().is_empty()) })
+        .collect())
+}
+
+/// "I Agree" to them, as Roblox's window sends it.
+pub fn accept_agreements(cookie: &str, ids: &[String]) -> Result<(), String> {
+    let acceptances: Vec<Value> = ids.iter().map(|id| serde_json::json!({ "agreementId": id })).collect();
+    send_text("POST", "https://apis.roblox.com/user-agreements/v1/acceptances", &serde_json::json!({ "acceptances": acceptances }), Some(cookie)).map(|_| ())
+}
+
+/// Roblox's reminder after a rule was broken ("Remember our Community Guidelines" on its home page): which one, by
+/// Roblox's key for it ("Experiment.Reminders.ViolationProfanity"…); `id` tells one reminder from the next.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Reminder {
+    pub id: String,
+    pub rule: String,
+}
+
+/// None when Roblox has none to show.
+pub fn reminder(cookie: &str) -> Result<Option<Reminder>, String> {
+    #[cfg(feature = "shot")]
+    if std::env::var("BLOXKEEP_SHOT_NOTICES").is_ok() {
+        return Ok(Some(Reminder { id: "r".into(), rule: "Experiment.Reminders.ViolationProfanity".into() }));
+    }
+    if cfg!(feature = "shot") {
+        return Ok(None);
+    }
+    let d = get("https://usermoderation.roblox.com/v1/reminder", Some(cookie))?;
+    Ok(reminder_of(&d))
+}
+
+/// usermoderation's reminder answer (its text-filter lesson, a nudge of another kind, left out).
+pub fn reminder_of(d: &Value) -> Option<Reminder> {
+    let kind = text(d, "nudgeType");
+    let rule = text(d, "policyViolation");
+    (d.get("shouldSurfaceReminder").and_then(Value::as_bool) == Some(true) && matches!(kind.as_str(), "" | "REMINDER_OF_NORMS") && !rule.is_empty())
+        .then(|| Reminder { id: text(d, "interventionId"), rule })
+}
+
 // ───────────────────────── a game's badges ─────────────────────────
 
 /// A game's badge as Roblox's game page lists it: what it is, its picture, and its figures (badges v1's statistics:
