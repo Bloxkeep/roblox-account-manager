@@ -238,7 +238,7 @@ pub fn running(window: &Window) -> bool {
 }
 
 /// Keeps the window drawing 60 times a second while `running`; the task ends with the window. Only the theme's layer
-/// is drawn anew (`redraw`): the app over it is kept (shell.rs, Chrome) unless something in it changed.
+/// is drawn anew (`redraw`): the app over it is kept (shell/parts.rs) unless something in it changed.
 ///
 /// Its frames are on the process's shared clock (`on_frame_step`), the one the page's own motion waits for too (the
 /// playing bars on Home, 60 a second on theirs), so both are drawn in the same frames. On a clock of its own the two

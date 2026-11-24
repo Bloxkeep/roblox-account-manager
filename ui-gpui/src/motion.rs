@@ -1,7 +1,7 @@
 //! Small things that move inside the page (the playing bars, the live mark's ring), drawn in a layer of their own over
-//! the app instead of inside it. Inside it, each of their frames (30 a second) made the whole app over again: the
-//! app is kept as it was drawn (shell.rs, Chrome) only while nothing in it asks to be drawn again, and anything that
-//! moves in it asks every frame. Measured 2026-11-20 on Home with two accounts playing: 4.4 ms a frame for the bars
+//! the app instead of inside it. Inside it, each of their frames (30 a second) made the part of the app they are in
+//! over again: each part is kept as it was drawn (shell/parts.rs) only while nothing in it asks to be drawn again, and
+//! anything that moves in it asks every frame. Measured 2026-11-20 on Home with two accounts playing: 4.4 ms a frame for the bars
 //! alone (13 % of a core), 6.5 ms with an animated theme under them (where the theme alone costs 3.3).
 //!
 //! In the app each one is a place of its own size (`spot`), noted as it is drawn: where it is, what it is clipped to,
@@ -34,10 +34,13 @@ struct Place {
     paint: Paint,
     /// Moves on the shared clock (the layer asks for its frames); false: asks for its own (a playing clip, video.rs).
     clocked: bool,
+    /// The part of the app it was painted in (shell/parts.rs): kept while that part is, cleared when it is painted
+    /// anew. None: painted outside the parts (a dialog), anew at every frame, so it is drawn once and dropped.
+    owner: Option<EntityId>,
 }
 
 thread_local! {
-    /// The places in the main window as last drawn; made anew each time the app over the theme is (`app_made`).
+    /// The places in the main window as last drawn, each part's noted again each time that part is painted anew.
     static PLACES: RefCell<Vec<Place>> = const { RefCell::new(Vec::new()) };
     /// The main window (the one with the layer); a place in another window draws itself still.
     static MAIN: Cell<Option<WindowId>> = const { Cell::new(None) };
@@ -51,9 +54,14 @@ pub fn main_window(window: &Window) {
     MAIN.with(|m| m.set(Some(window.window_handle().window_id())));
 }
 
-/// The app over the theme is made again: its places are noted again as it is drawn.
-pub fn app_made() {
-    PLACES.with(|p| p.borrow_mut().clear());
+/// Part `owner` is painted anew: its places are noted again as it is.
+pub fn clear_of(owner: EntityId) {
+    PLACES.with(|p| p.borrow_mut().retain(|p| p.owner != Some(owner)));
+}
+
+/// Only the parts `shown` are in the app this frame: the places of any other part go with it.
+pub fn keep(shown: &[EntityId]) {
+    PLACES.with(|p| p.borrow_mut().retain(|p| p.owner.is_none_or(|o| shown.contains(&o))));
 }
 
 /// Whether `window` is the main one (the one with the layer).
@@ -88,7 +96,7 @@ fn placed(paint: Paint, clocked: bool) -> impl IntoElement {
                     paint(bounds, now(cx), window, cx);
                     return;
                 }
-                let place = Place { bounds, mask: window.content_mask(), opacity: window.element_opacity(), rounded: window.rounded_clips(), hitbox: hitbox.id, paint: paint.clone(), clocked };
+                let place = Place { bounds, mask: window.content_mask(), opacity: window.element_opacity(), rounded: window.rounded_clips(), hitbox: hitbox.id, paint: paint.clone(), clocked, owner: crate::shell::parts::owner(window) };
                 PLACES.with(|p| p.borrow_mut().push(place));
             },
         )
@@ -113,6 +121,8 @@ pub fn layer() -> impl IntoElement {
                     within_rounded(window, rounded, &mut |window| window.with_element_opacity(Some(*opacity), |window| paint(*bounds, t, window, cx)))
                 });
             }
+            // (Those painted outside the parts are painted again before the next frame's layer.)
+            PLACES.with(|p| p.borrow_mut().retain(|p| p.owner.is_some()));
             if moving && clocked && !ASKED.with(|a| a.replace(true)) {
                 let handle = window.window_handle();
                 on_frame_step(cx, STEP, move |cx| {

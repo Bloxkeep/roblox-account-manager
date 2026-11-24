@@ -60,6 +60,11 @@ pub(super) fn covers(id: &'static str) -> bool {
     COVER.with(|c| c.get()) == Some(id)
 }
 
+/// The pill its card stands over now, if any (`covers`).
+pub(super) fn covered() -> Option<&'static str> {
+    COVER.with(|c| c.get())
+}
+
 pub(super) fn note_at(id: &'static str) -> impl IntoElement {
     canvas(
         move |b, window, _| {

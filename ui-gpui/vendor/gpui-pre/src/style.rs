@@ -635,10 +635,17 @@ impl Style {
 
     /// Get the content mask for this element style, based on the given bounds.
     /// If the element does not hide its overflow, this will return `None`.
+    ///
+    /// Bloxkeep: the border it keeps out is the border as painted, each width snapped to whole device pixels as the
+    /// layout and the painted border snap them (`scale_factor`). Kept out at its authored width, a 1 px border at 150 %
+    /// put the mask's edge half a device pixel inside the painted one, exactly on a pixel's middle, and whether that
+    /// row of the block's insides showed turned on the last bit of a float (the same block laid out from another
+    /// origin showed a darker row along its top, 2026-11-25).
     pub fn overflow_mask(
         &self,
         bounds: Bounds<Pixels>,
         rem_size: Pixels,
+        scale_factor: f32,
     ) -> Option<ContentMask<Pixels>> {
         match self.overflow {
             Point {
@@ -653,10 +660,15 @@ impl Style {
                     .border_color
                     .is_some_and(|color| !color.is_transparent())
                 {
-                    min.x += self.border_widths.left.to_pixels(rem_size);
-                    max.x -= self.border_widths.right.to_pixels(rem_size);
-                    min.y += self.border_widths.top.to_pixels(rem_size);
-                    max.y -= self.border_widths.bottom.to_pixels(rem_size);
+                    let snapped = |w: Pixels| {
+                        Pixels(
+                            crate::util::round_stroke_to_device_pixel(w.0, scale_factor) / scale_factor,
+                        )
+                    };
+                    min.x += snapped(self.border_widths.left.to_pixels(rem_size));
+                    max.x -= snapped(self.border_widths.right.to_pixels(rem_size));
+                    min.y += snapped(self.border_widths.top.to_pixels(rem_size));
+                    max.y -= snapped(self.border_widths.bottom.to_pixels(rem_size));
                 }
 
                 let bounds = match (

@@ -12,6 +12,7 @@ use serde_json::{Value, json};
 use crate::ask::answer;
 
 mod capsule;
+pub mod parts;
 
 use crate::{
     i18n::I18n,
@@ -314,8 +315,12 @@ pub struct Root {
     toast_timed: Option<((String, String), u32)>,
     /// The last notice the app itself sent (written to error.log by the app): not written again by the page.
     toast_core: Option<String>,
-    /// The app over the theme, kept between frames (`Chrome`); made at the first frame.
-    chrome: Option<Entity<Chrome>>,
+    /// The app's parts over the theme, each a view kept between frames (shell/parts.rs); made at the first frame.
+    parts: Option<parts::Parts>,
+    /// What the frame worked out this frame, for the parts.
+    frame: parts::Frame,
+    /// The top bar's glass, made by the frame (which needs to know whether there is one) for the top bar to hold.
+    top_glass: Option<AnyElement>,
 }
 
 impl Root {
@@ -823,7 +828,9 @@ impl Root {
             toast_task: None,
             toast_timed: None,
             toast_core: None,
-            chrome: None,
+            parts: None,
+            frame: Default::default(),
+            top_glass: None,
         };
         // The window's heartbeat for core/log.rs's watch: this runs on the window's own thread, so a beat that stops
         // coming means the window stopped answering (written to error.log and the Console with how long).
@@ -3742,6 +3749,8 @@ fn nav_button(p: Page, page: Page, i18n: &I18n, cx: &mut Context<Root>) -> AnyEl
 /// The pills' height (32 since 2026-11-24: 28 read thin beside the reference's thick glass), and how dark the body
 /// over their glass is in the dark themes.
 const BAR_PILL_H: f32 = 32.;
+/// The status bar's height: its pills and the room over and under them (`status`).
+const STATUS_H: f32 = 8. + BAR_PILL_H + 10.;
 const BAR_BODY: f32 = 0.38;
 const BAR_PAD: f32 = 13.;
 const BAR_PILL_GAP: f32 = 11.;
@@ -4120,7 +4129,6 @@ impl Render for Root {
         }
         crate::theme::set_glass_blocks(crate::scene::carries_words(cx));
         crate::kit::set_screen_scale(window.scale_factor());
-        self.live.start();
         pages::lock::settle(self, cx);
         pages::games::settle_words(self, window, cx);
         pages::rsettings::settle(self, window, cx);
@@ -4303,15 +4311,6 @@ impl Render for Root {
                 pages::lock::submit(self, window, cx);
             }
         }
-        let chrome = match &self.chrome {
-            Some(c) => c.clone(),
-            None => {
-                let root = cx.weak_entity();
-                let c = cx.new(|_| Chrome { root });
-                self.chrome = Some(c.clone());
-                c
-            }
-        };
         div()
             .id("root")
             .track_focus(&self.focus)
@@ -4410,10 +4409,11 @@ impl Render for Root {
             .font(crate::theme::ui_font())
             .text_color(c(TEXT))
             .text_size(px(T_M))
-            // Everything of the app over the theme, drawn again only when something in it changed: an animated
-            // theme's layer under it moves 30 times a second, and the whole page was laid out and drawn anew for each
-            // of those frames (4.3 of the 6.1 ms each took on Home: about 13 % of a core for a page that didn't change).
-            .child(chrome.cached(StyleRefinement::default().size_full()))
+            // Everything of the app over the theme, in parts each drawn again only when something in it changed: an
+            // animated theme's layer under it moves 30 times a second, and the whole page was laid out and drawn anew
+            // for each of those frames (4.3 of the 6.1 ms each took on Home: about 13 % of a core for a page that
+            // didn't change). See shell/parts.rs.
+            .child(self.frame(window, cx))
             // (What moves inside it, drawn over it at every frame: motion.rs.)
             .child(crate::motion::layer())
             // (A theme coming in: the old look over everything, fading out.)
@@ -4425,20 +4425,37 @@ impl Render for Root {
 /// this window, so the page says the boxes, CSS-like pixels from its top-left, and the scale). Gathered anew each frame:
 /// the area the pictures may show in (the accounts' scrolling part), each picture's box, and what must not be covered
 /// (the toast); a box under a cover is left out. Sent only when it changed, and { hidden } once there is no area.
+/// Each is noted with the part of the app it lies in (shell/parts.rs): a part kept as it was keeps its notes, one laid
+/// out anew notes its own again, one gone takes its own with it. One noted outside the parts (a dialog, laid out at
+/// every frame) is read once and dropped.
 #[derive(Default, Clone)]
 pub struct Live {
     height: std::rc::Rc<std::cell::Cell<Option<f32>>>,
-    area: std::rc::Rc<std::cell::RefCell<Option<Bounds<Pixels>>>>,
-    boxes: std::rc::Rc<std::cell::RefCell<Vec<(String, Bounds<Pixels>)>>>,
-    covers: std::rc::Rc<std::cell::RefCell<Vec<Bounds<Pixels>>>>,
+    area: std::rc::Rc<std::cell::RefCell<Option<(Option<EntityId>, Bounds<Pixels>)>>>,
+    boxes: std::rc::Rc<std::cell::RefCell<Vec<(Option<EntityId>, String, Bounds<Pixels>)>>>,
+    covers: std::rc::Rc<std::cell::RefCell<Vec<(Option<EntityId>, Bounds<Pixels>)>>>,
     sent: std::rc::Rc<std::cell::RefCell<String>>,
 }
 
 impl Live {
-    fn start(&self) {
-        *self.area.borrow_mut() = None;
-        self.boxes.borrow_mut().clear();
-        self.covers.borrow_mut().clear();
+    /// Part `owner` is laid out anew: what it noted goes, to be noted again.
+    fn clear_of(&self, owner: EntityId) {
+        let mine = |o: &Option<EntityId>| *o == Some(owner);
+        if self.area.borrow().as_ref().is_some_and(|(o, _)| mine(o)) {
+            *self.area.borrow_mut() = None;
+        }
+        self.boxes.borrow_mut().retain(|(o, ..)| !mine(o));
+        self.covers.borrow_mut().retain(|(o, _)| !mine(o));
+    }
+
+    /// Only the parts `shown` are in the app this frame.
+    fn keep(&self, shown: &[EntityId]) {
+        let kept = |o: &Option<EntityId>| o.is_none_or(|o| shown.contains(&o));
+        if self.area.borrow().as_ref().is_some_and(|(o, _)| !kept(o)) {
+            *self.area.borrow_mut() = None;
+        }
+        self.boxes.borrow_mut().retain(|(o, ..)| kept(o));
+        self.covers.borrow_mut().retain(|(o, _)| kept(o));
     }
 
     pub fn area_height(&self) -> Option<f32> {
@@ -4451,7 +4468,7 @@ impl Live {
         let height = self.height.clone();
         canvas(
             move |b, window, _| {
-                *area.borrow_mut() = Some(b);
+                *area.borrow_mut() = Some((parts::owner(window), b));
                 let measured = Some(f32::from(b.size.height).floor());
                 if height.replace(measured) != measured {
                     window.refresh();
@@ -4466,13 +4483,13 @@ impl Live {
     /// Fills its parent: window id's picture goes there.
     pub fn picture(&self, id: String) -> impl IntoElement {
         let boxes = self.boxes.clone();
-        canvas(move |b, _, _| boxes.borrow_mut().push((id, b)), |_, _, _, _| {}).absolute().inset_0()
+        canvas(move |b, window, _| boxes.borrow_mut().push((parts::owner(window), id, b)), |_, _, _, _| {}).absolute().inset_0()
     }
 
     /// Fills its parent: no picture over it.
     pub fn cover(&self) -> impl IntoElement {
         let covers = self.covers.clone();
-        canvas(move |b, _, _| covers.borrow_mut().push(b), |_, _, _, _| {}).absolute().inset_0()
+        canvas(move |b, window, _| covers.borrow_mut().push((parts::owner(window), b)), |_, _, _, _| {}).absolute().inset_0()
     }
 
     /// Painted after everything was laid out: tells the app what changed.
@@ -4484,7 +4501,7 @@ impl Live {
                 let n = |p: Pixels| (f64::from(f32::from(p)) * 100.).round() / 100.;
                 // A dialog (quick search, a form, a question) is drawn over the page, but Windows draws the pictures
                 // above the whole window: none while one is open (owner 2026-11-15: a window's picture over Ctrl+K).
-                let area = if window.has_active_dialog(cx) { None } else { *me.area.borrow() };
+                let area = if window.has_active_dialog(cx) { None } else { me.area.borrow().map(|(_, a)| a) };
                 let msg = match area {
                     Some(a) => {
                         let covers = me.covers.borrow();
@@ -4492,13 +4509,19 @@ impl Live {
                             .boxes
                             .borrow()
                             .iter()
-                            .filter(|(_, b)| !covers.iter().any(|c| c.intersects(b)))
-                            .map(|(id, b)| json!({ "id": id, "x": n(b.origin.x), "y": n(b.origin.y), "w": n(b.size.width), "h": n(b.size.height) }))
+                            .filter(|(_, _, b)| !covers.iter().any(|(_, c)| c.intersects(b)))
+                            .map(|(_, id, b)| json!({ "id": id, "x": n(b.origin.x), "y": n(b.origin.y), "w": n(b.size.width), "h": n(b.size.height) }))
                             .collect();
                         json!({ "x": n(a.origin.x), "y": n(a.origin.y), "w": n(a.size.width), "h": n(a.size.height), "scale": window.scale_factor(), "pictures": pictures })
                     }
                     None => json!({ "hidden": true }),
                 };
+                // (Those noted outside the parts are noted again before the next frame's report.)
+                if me.area.borrow().as_ref().is_some_and(|(o, _)| o.is_none()) {
+                    *me.area.borrow_mut() = None;
+                }
+                me.boxes.borrow_mut().retain(|(o, ..)| o.is_some());
+                me.covers.borrow_mut().retain(|(o, _)| o.is_some());
                 let text = msg.to_string();
                 if *me.sent.borrow() != text {
                     *me.sent.borrow_mut() = text;
@@ -4560,27 +4583,19 @@ fn music_go(r: &mut Root, act: crate::media::Act, cx: &mut Context<Root>) {
     cx.notify();
 }
 
-/// What Root draws over the theme (all of the app but the scene and the fade), as a view of its own so it can be kept
-/// from frame to frame: `Root::chrome` builds it. Drawn again when Root (or anything else it read) is notified.
-pub struct Chrome {
-    root: WeakEntity<Root>,
-}
-
-impl Render for Chrome {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        self.root.update(cx, |r, cx| r.chrome(window, cx)).unwrap_or_else(|_| div().into_any_element())
-    }
-}
-
 impl Root {
-    fn chrome(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
-        crate::motion::app_made();
-        let toast = self.toast_layer(window, cx);
-        let pill_card = self.pill_layer(window, cx);
-        #[cfg(feature = "shot")]
-        let tray_shot = crate::tray::shot_layer(self, window, cx);
-        #[cfg(not(feature = "shot"))]
-        let tray_shot: Option<AnyElement> = None;
+    /// The frame the parts sit in (shell/parts.rs): their places and sizes, worked out at every frame and kept nothing
+    /// of. Each part is a view kept between frames, laid out by the style given here (a kept view's size comes from
+    /// its style, not from what it holds).
+    fn frame(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+        let p = match &self.parts {
+            Some(p) => p.clone(),
+            None => {
+                let p = parts::Parts::new(cx.weak_entity(), cx);
+                self.parts = Some(p.clone());
+                p
+            }
+        };
         let locked = pages::lock::up(self) && !self.lost;
         let narrow = window.viewport_size().width < px(NARROW);
         let page = self.page;
@@ -4593,17 +4608,89 @@ impl Root {
         self.narrow.set(main_w < 1000.);
         self.window_h.set(f32::from(window.viewport_size().height));
         // (The column that isn't beside Home can slide in over it: see `no_side`.)
-        let can_slide = narrow && page == Page::Home && !locked && !lost && !self.accounts().is_empty();
-        self.no_side.set(can_slide);
+        let slide = narrow && page == Page::Home && !locked && !lost && !self.accounts().is_empty();
+        self.no_side.set(slide);
         // (A hidden shot of the column slid in: BLOXKEEP_SHOT_SIDE=1.)
         #[cfg(feature = "shot")]
-        if can_slide && std::env::var("BLOXKEEP_SHOT_SIDE").as_deref() == Ok("1") {
+        if slide && std::env::var("BLOXKEEP_SHOT_SIDE").as_deref() == Ok("1") {
             self.side_open = true;
         }
-        if !can_slide {
+        if !slide {
             self.side_open = false;
         }
-        let slid = (can_slide && self.side_open).then(|| {
+        // (The top bar's glass, where the picture is too light along its top for the bar's words: scene::top_glass.)
+        self.top_glass = if locked || lost { None } else { crate::scene::top_glass(window, cx) };
+        let top_glass = self.top_glass.is_some();
+        self.frame = parts::Frame { locked, lost, with_side, slide, main_w, top_glass };
+        // (Locked: only the lock screen and the window's own buttons; nothing of the app to click.)
+        let bars = !locked && !lost;
+        let mut shown = vec![p.top.entity_id(), p.page.entity_id(), p.over.entity_id()];
+        if bars {
+            shown.extend([p.rail.entity_id(), p.status.entity_id()]);
+        }
+        if with_side {
+            shown.push(p.side.entity_id());
+        }
+        crate::motion::keep(&shown);
+        self.live.keep(&shown);
+        let style = StyleRefinement::default;
+        div()
+            .size_full()
+            .relative()
+            .flex()
+            .when(bars, |d| d.child(p.rail.cached(style().w(px(RAIL)).h_full().flex_none())))
+            .child(
+                div()
+                    .flex_1()
+                    .min_w_0()
+                    .h_full()
+                    .flex()
+                    .flex_col()
+                    .pl(px(GAP + 4.))
+                    .pr(px(GAP))
+                    // (No status bar under it when the line is lost: the panel keeps its gap from the window's foot.)
+                    .when(lost, |d| d.pb(px(GAP)))
+                    .child(p.top.cached(if top_glass { style().w_full().h(px(TOP)).flex_none().mb(px(GAP)) } else { style().w_full().h(px(TOP)).flex_none() }))
+                    .child(
+                        div()
+                            .flex_1()
+                            .min_h_0()
+                            .flex()
+                            .gap(px(GAP))
+                            .child(p.page.cached(style().flex_1().min_w_0().h_full()))
+                            .when(with_side, |d| d.child(p.side.cached(style().w(px(SIDE)).h_full().flex_none()))),
+                    )
+                    // (Glass: the gutter the panels keep between them, above it too.)
+                    .when(bars, |d| d.child(p.status.cached(style().w_full().h(px(STATUS_H)).flex_none()))),
+            )
+            .child(p.over.cached(style().absolute().inset_0()))
+            .child(crate::kit::mouse_watch())
+            .child(self.live.reporter(self.link.clone()))
+            .into_any_element()
+    }
+
+    /// The rail (parts::RailPart), with its frosted picture under it.
+    fn rail_part(&mut self, me: EntityId, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+        // A theme whose web page frosted its panels: the picture behind each, frosted, under its see-through fill (scene.rs).
+        // (Glass on the blocks only: nothing frosted behind the panels and the rail, each block is its own glass.)
+        let frost = if crate::theme::glass_blocks() { None } else { crate::scene::frost(0., window, cx) };
+        parts::begin(me, &self.live).children(frost).child(self.rail(window, cx)).child(parts::end()).into_any_element()
+    }
+
+    /// The top bar (parts::TopPart), with its glass when the frame made one.
+    fn top_part(&mut self, me: EntityId, _window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+        let f = self.frame;
+        let glass = self.top_glass.take();
+        parts::begin(me, &self.live).children(glass).child(app_in("app-in-top", self.intro, 60., -10., false, self.top(f.with_side, f.locked || f.lost, cx))).child(parts::end()).into_any_element()
+    }
+
+    /// The page (parts::PagePart): the lock screen, the line lost, or the page shown, with the dropped accounts' strip
+    /// over it (never beside the accounts' column) and the column slid in over it on a narrow window.
+    fn page_part(&mut self, me: EntityId, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+        let f = self.frame;
+        let main_w = f.main_w;
+        let page = self.page;
+        let slid = (f.slide && self.side_open).then(|| {
             div()
                 .id("side-slid")
                 .absolute()
@@ -4620,7 +4707,7 @@ impl Root {
                     cx.notify();
                 }))
         });
-        let body = if locked {
+        let body = if f.locked {
             div().size_full().child(pages::lock::lock(self, window, cx))
         } else if self.lost {
             panel().size_full().flex().flex_col().items_center().justify_center().gap(px(10.)).child(
@@ -4645,61 +4732,65 @@ impl Root {
                 panel().size_full().overflow_hidden().child(pages::not_yet(self, page))
             }
         };
-        let strip = if with_side || self.locked() || self.lost { None } else { self.drop_strip(cx) };
-        // A theme whose web page frosted its panels: the picture behind each, frosted, under its see-through fill (scene.rs).
-        // (Glass on the blocks only: nothing frosted behind the panels and the rail, each block is its own glass.)
-        let blocks = crate::theme::glass_blocks();
-        let frost_main = if locked || blocks { None } else { crate::scene::frost(R_PANEL, window, cx) };
-        // (The side panel holds the accounts: with glass on the blocks only it is one of the blocks.)
-        let frost_side = match (with_side, blocks) {
-            (true, false) => crate::scene::frost(R_PANEL, window, cx),
-            (true, true) => Some(crate::kit::glass_pane(R_PANEL)),
-            _ => None,
-        };
-        let frost_rail = if locked || lost || blocks { None } else { crate::scene::frost(0., window, cx) };
-        // (The top bar's glass, where the picture is too light along its top for the bar's words: scene::top_glass.)
-        let top_glass = if locked || lost { None } else { crate::scene::top_glass(window, cx) };
-        div()
-            .size_full()
-            .relative()
+        let strip = if f.with_side || self.locked() || self.lost { None } else { self.drop_strip(cx) };
+        let frost = if f.locked || crate::theme::glass_blocks() { None } else { crate::scene::frost(R_PANEL, window, cx) };
+        parts::begin(me, &self.live)
             .flex()
-            // (Locked: only the lock screen and the window's own buttons; nothing of the app to click.)
-            .when(!locked && !lost, |d| d.child(div().relative().h_full().flex_none().children(frost_rail).child(self.rail(window, cx))))
+            .flex_col()
+            .children(strip)
             .child(
                 div()
                     .flex_1()
-                    .min_w_0()
-                    .h_full()
-                    .flex()
-                    .flex_col()
-                    .pl(px(GAP + 4.))
-                    .pr(px(GAP))
-                    // (No status bar under it when the line is lost: the panel keeps its gap from the window's foot.)
-                    .when(lost, |d| d.pb(px(GAP)))
-                    .child(div().relative().flex_none().when(top_glass.is_some(), |d| d.mb(px(GAP))).children(top_glass).child(app_in("app-in-top", self.intro, 60., -10., false, self.top(with_side, locked || lost, cx))))
-                    .children(strip)
-                    .child(
-                        div()
-                            .flex_1()
-                            .min_h_0()
-                            .flex()
-                            .gap(px(GAP))
-                            // (Glass blocks know they are on the page, the picture behind them, by these two marks.)
-                            .child(crate::scene::on_page(true))
-                            // (Cut at its own edge: the Roblox tab's next row of game pictures showed as a flickering
-                            // line under the status bar while the page scrolled, the owner's OBS video, 2026-11-15.)
-                            .child(div().flex_1().min_w_0().h_full().relative().overflow_hidden().children(frost_main).child(app_in("app-in-page", self.intro, 140., 26., true, step_in(self.shown_key(), self.step_from, body))).children(slid))
-                            .when(with_side, |d| d.child(div().relative().h_full().flex_none().children(frost_side).child(self.side(cx))))
-                            .child(crate::scene::on_page(false)),
-                    )
-                    // (Glass: the gutter the panels keep between them, above it too.)
-                    .when(!locked && !lost, |d| d.child(app_in("app-in-status", self.intro, 260., 18., false, self.status(with_side, window, cx)))),
+                    .min_h_0()
+                    .relative()
+                    // (Cut at its own edge: the Roblox tab's next row of game pictures showed as a flickering line
+                    // under the status bar while the page scrolled.)
+                    .overflow_hidden()
+                    // (Glass blocks know they are on the page, the picture behind them, by these two marks.)
+                    .child(crate::scene::on_page(true))
+                    .children(frost)
+                    .child(app_in("app-in-page", self.intro, 140., 26., true, step_in(self.shown_key(), self.step_from, body)))
+                    .children(slid)
+                    .child(crate::scene::on_page(false)),
             )
-            .children(pill_card)
-            .children(tray_shot)
-            .children(toast)
-            .child(crate::kit::mouse_watch())
-            .child(self.live.reporter(self.link.clone()))
+            .child(parts::end())
             .into_any_element()
+    }
+
+    /// The accounts' column beside Home (parts::SidePart). With glass on the blocks only it is one of the blocks.
+    fn side_part(&mut self, me: EntityId, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+        let frost = if crate::theme::glass_blocks() { Some(crate::kit::glass_pane(R_PANEL)) } else { crate::scene::frost(R_PANEL, window, cx) };
+        parts::begin(me, &self.live)
+            .child(crate::scene::on_page(true))
+            .children(frost)
+            .child(self.side(cx))
+            .child(crate::scene::on_page(false))
+            .child(parts::end())
+            .into_any_element()
+    }
+
+    /// The status bar (parts::StatusPart).
+    fn status_part(&mut self, me: EntityId, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+        let with_side = self.frame.with_side;
+        parts::begin(me, &self.live).child(app_in("app-in-status", self.intro, 260., 18., false, self.status(with_side, window, cx))).child(parts::end()).into_any_element()
+    }
+
+    /// What floats over the rest (parts::OverPart): the status bar's open card, the notices.
+    fn over_part(&mut self, me: EntityId, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+        let toast = self.toast_layer(window, cx);
+        let covered = capsule::covered();
+        let pill_card = self.pill_layer(window, cx);
+        // The status bar leaves out the pill its card stands over: drawn before this part, it is told to draw again
+        // when that changes (one frame after, where the card is the pill's size and shape, so it doesn't show).
+        if capsule::covered() != covered
+            && let Some(status) = self.parts.as_ref().map(|p| p.status.entity_id())
+        {
+            window.on_next_frame(move |_, cx| cx.notify(status));
+        }
+        #[cfg(feature = "shot")]
+        let tray_shot = crate::tray::shot_layer(self, window, cx);
+        #[cfg(not(feature = "shot"))]
+        let tray_shot: Option<AnyElement> = None;
+        parts::begin(me, &self.live).children(pill_card).children(tray_shot).children(toast).child(parts::end()).into_any_element()
     }
 }
