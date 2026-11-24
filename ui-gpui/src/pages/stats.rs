@@ -1379,7 +1379,7 @@ fn clock(root: &Root, d: &Value, w: f32, cx: &mut Context<Root>) -> Div {
         );
     }
     let focus = active.as_deref().and_then(|id| accounts.iter().find(|a| s(a, "id") == id));
-    let windows = root.metrics.get("robloxCount").and_then(Value::as_i64).unwrap_or(0);
+    let windows = root.metrics(cx).get("robloxCount").and_then(Value::as_i64).unwrap_or(0);
     let middle_small = match focus {
         Some(a) => name_of(root, a),
         None if windows > 0 => root.i18n.tn("stats.runningNow", windows, &[]),

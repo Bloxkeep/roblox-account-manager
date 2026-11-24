@@ -185,7 +185,7 @@ impl Root {
         }
         COVER.with(|c| c.set(None));
         // (The song's pill gone with its song: its card closes.)
-        if self.pill == Some(Pill::Music) && self.music.is_none() {
+        if self.pill == Some(Pill::Music) && self.music.read(cx).0.is_none() {
             self.pill = None;
         }
         let want = self.pill;
@@ -284,7 +284,7 @@ impl Root {
                                 // only closed the open card, a second one was needed to open the other).
                                 let other = [Pill::Left, Pill::Music, Pill::Right].into_iter().find(|p| {
                                     Some(*p) != r.pill
-                                        && (*p != Pill::Music || r.music.is_some())
+                                        && (*p != Pill::Music || r.music.read(cx).0.is_some())
                                         && PILL_AT.with(|m| m.borrow().get(p.key()).is_some_and(|b| b.contains(&e.position)))
                                 });
                                 match other {
@@ -316,7 +316,7 @@ impl Root {
     /// Roblox's windows and the PC's figures: a ring for each figure, then each window with its game, how long it has
     /// been open, its RAM over the last minute and now; Statistics and Close all at its foot.
     fn left_card(&self, window: &mut Window, cx: &mut Context<Self>) -> (AnyElement, f32) {
-        let m = &self.metrics;
+        let m = self.metrics(cx);
         let windows = m.get("robloxCount").and_then(Value::as_i64).unwrap_or(0);
         let ram = m.get("usedPct").and_then(Value::as_f64).unwrap_or(0.);
         let cpu = m.get("pcCpuPct").and_then(Value::as_f64).unwrap_or(0.);
@@ -446,7 +446,7 @@ impl Root {
     // ── The song card ─────────────────────────────────────────────────────────────────────────────────────────────
     /// The song large: its cover, title and artist, where it is, and the keys; on its cover's own colour, dark.
     fn music_card(&self, cx: &mut Context<Self>) -> Option<(AnyElement, Hsla, Option<u32>)> {
-        let s = self.music.clone()?;
+        let s = self.music(cx)?;
         let cover = s.cover.as_deref().and_then(|p| images::pic(p, cx));
         let tone = s.cover.as_deref().and_then(|p| images::tone(p, cx));
         let ground = tone.map_or(hsla(0., 0., 0.13, 1.), |t| {

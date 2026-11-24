@@ -539,13 +539,10 @@ fn spotify_zones(cx: &mut Context<Root>) -> Div {
     for k in 0..40usize {
         let to = (k as f32 + 0.5) / 40.;
         zones = zones.child(div().id(("pf-sp-seek", k)).flex_1().h_full().cursor_pointer().on_mouse_down(MouseButton::Left, cx.listener(move |r, _, _, cx| {
-            let Some((_, length)) = r.music.as_ref().and_then(|m| m.at()) else { return };
+            let Some((_, length)) = r.music(cx).and_then(|m| m.at()) else { return };
             let ms = (length as f32 * to) as u64;
-            if let Some(m) = r.music.as_mut() {
-                m.sought(ms);
-            }
+            r.change_music(cx, |m| m.sought(ms));
             cx.background_executor().spawn(async move { crate::media::seek(ms) }).detach();
-            cx.notify();
         })));
     }
     zones
@@ -565,11 +562,8 @@ fn loudness(root: &Root, cx: &mut Context<Root>) -> Div {
 fn spotify_loudness(root: &Root, m: &crate::media::Playing, cx: &mut Context<Root>) -> Option<Div> {
     let v = (m.volume? * 100.).round() as i64;
     Some(loud_bar(root, ("pf-sp-vol", "pf-sp-volume"), v, "spotifyVolumeBack", |r, v, cx| {
-        if let Some(m) = r.music.as_mut() {
-            m.volume = Some(v as f32 / 100.);
-        }
+        r.change_music(cx, |m| m.volume = Some(v as f32 / 100.));
         cx.background_executor().spawn(async move { crate::media::set_volume(v as f32 / 100.) }).detach();
-        cx.notify();
     }, cx))
 }
 
@@ -653,7 +647,7 @@ pub(super) fn card(root: &Root, user: i64, w: f32, ground: u32, art: Option<Stri
     let words = |t: String| div().w_full().truncate().child(t).into_any_element();
     let Some(file) = path(Kind::Song, user) else {
         // None chosen and Spotify has a song: that song, with Spotify's own controls; a file can still be chosen.
-        if let (Some(m), Some([back, play, next])) = (&root.music, root.music_keys(["pf-sp-back", "pf-sp-play", "pf-sp-next"], cx)) {
+        if let (Some(m), Some([back, play, next])) = (&root.music(cx), root.music_keys(["pf-sp-back", "pf-sp-play", "pf-sp-next"], cx)) {
             // (The app's mark stands at the right of the name, where the card had room, not over the picture.)
             let pic = div().absolute().inset_0().children(spotify_cover(m, PIC, cx)).into_any_element();
             let (ground, edge) = song_tones(m.cover.as_deref(), ground, cx);
@@ -716,7 +710,7 @@ pub(super) fn row(root: &Root, user: i64, inner: f32, art: Option<String>, cx: &
         .text_size(px(T_XS)).font_weight(FontWeight::BOLD).text_color(c(FACE)).child(icon("music", 11., c(FACE))).child(song_line(root, user).to_uppercase());
     let shell = div().w_full().rounded(px(R_HERO)).bg(c(RAISED)).border_1().border_color(c(LINE)).p(px(18.)).pr(px(20.)).flex().items_center().gap(px(12.));
     let Some(file) = path(Kind::Song, user) else {
-        if let (Some(m), Some([back, play, next])) = (&root.music, root.music_keys(["pf-sp-back", "pf-sp-play", "pf-sp-next"], cx)) {
+        if let (Some(m), Some([back, play, next])) = (&root.music(cx), root.music_keys(["pf-sp-back", "pf-sp-play", "pf-sp-next"], cx)) {
             let (ground, edge) = song_tones(m.cover.as_deref(), RAISED, cx);
             let bar = m.at().map(|(at, length)| bar_between(at, Some(length), spotify_zones(cx)));
             let (under, beside) = if inner >= 760. { (None, bar) } else { (bar, None) };

@@ -830,15 +830,15 @@ thread_local! {
 /// Step 2 (after "several accounts"): how many at once, this PC as Easy setup measures it, and what Bloxkeep will
 /// change for that number (Easy setup's own plan, its suggested mode).
 fn setup_pc(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
-    let fit_now = crate::pages::easy_setup::facts(root, 1).fit.map(|f| f.0);
-    let most = crate::pages::easy_setup::most(root);
+    let fit_now = crate::pages::easy_setup::facts(root, 1, cx).fit.map(|f| f.0);
+    let most = crate::pages::easy_setup::most(root, cx);
     // (BLOXKEEP_SHOT_TARGET=n: a shot asks for n at once, as if the arrow was pressed that far.)
     #[cfg(feature = "shot")]
     if let Some(n) = std::env::var("BLOXKEEP_SHOT_TARGET").ok().and_then(|n| n.parse::<i64>().ok()) {
         TARGET.with(|t| if t.get() == 0 { t.set(n) });
     }
     let target = TARGET.with(|t| if t.get() > 0 { t.get() } else { fit_now.map_or(3, |n| n.clamp(2, 6)) }).clamp(1, most);
-    let f = crate::pages::easy_setup::facts(root, target);
+    let f = crate::pages::easy_setup::facts(root, target, cx);
     let total = if has_pc() { 3 } else { 2 };
     let step = |id: &'static str, ic: &'static str, by: i64, off: bool| {
         IconButton::new(id, ic).size(36.).disabled(off).on_click(cx.listener(move |_, _, _, cx| {

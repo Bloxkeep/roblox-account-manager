@@ -92,7 +92,7 @@ pub(super) fn roblox(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
     let updater = s(rv, "updater");
     let updating = flag(rv, "updating");
     let can_update = up_to_date == Some(false) && !updater.is_empty();
-    let n_open = root.metrics.get("robloxCount").and_then(Value::as_i64).unwrap_or(0);
+    let n_open = root.metrics(cx).get("robloxCount").and_then(Value::as_i64).unwrap_or(0);
     let rv_text = if updating && !updater.is_empty() {
         root.i18n.tv("rbx.updateStarted", &[("l", updater)])
     } else if installed.is_empty() {

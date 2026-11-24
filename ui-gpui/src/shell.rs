@@ -34,6 +34,17 @@ pub enum HomeTab {
     Community,
 }
 
+/// Roblox's and the PC's figures as the app sent them last ("metrics": every 1.5 s, every 5 s behind a game), in a
+/// model of their own, as GPUI apps keep what changes often apart from the view: the parts that show them read it
+/// (`Root::metrics`), and GPUI draws again those parts alone when new figures come (the status bar, its windows card,
+/// the Accounts page…), never the whole app as when they were Root's.
+pub struct Metrics(std::rc::Rc<Value>);
+
+/// What Spotify plays (media.rs), None when it is closed or plays nothing, in a model of its own as `Metrics` is: a new
+/// song, or a song paused or played, draws again only the parts that show it (the status bar's pill, its card, the
+/// profile's song card).
+pub struct Music(Option<crate::media::Playing>);
+
 pub struct Root {
     pub link: Option<Link>,
     pub i18n: I18n,
@@ -41,8 +52,8 @@ pub struct Root {
     pub tool_pages: crate::toolpage::Pages,
     /// The app's whole state (AppController.BuildState), as it sent it last.
     pub state: Value,
-    /// Roblox's and the PC's figures, every 1.5 s.
-    pub metrics: Value,
+    /// Roblox's and the PC's figures, every 1.5 s (`Metrics`, read with `Root::metrics`).
+    pub metrics: Entity<Metrics>,
     pub page: Page,
     /// The pages left by Back and by Forward, for the top bar's arrows.
     back: Vec<Page>,
@@ -50,8 +61,8 @@ pub struct Root {
     /// The accounts column's own search (names, groups, notes).
     pub acc_search: Entity<InputState>,
     pub progress: Option<String>,
-    /// What Spotify plays (media.rs), for the status bar; None when it is closed or plays nothing.
-    pub music: Option<crate::media::Playing>,
+    /// What Spotify plays (`Music`, read with `Root::music`).
+    pub music: Entity<Music>,
     /// The internet or Roblox can't be reached (failed twice running): the notice's words, in the title bar until it
     /// can again.
     pub offline: Option<&'static str>,
@@ -668,11 +679,11 @@ impl Root {
             i18n,
             tool_pages: Default::default(),
             state: Value::Null,
-            metrics: Value::Null,
+            metrics: cx.new(|_| Metrics(std::rc::Rc::new(Value::Null))),
             page: Page::Home,
             acc_search,
             progress: None,
-            music: crate::media::shot_stand_in(),
+            music: cx.new(|_| Music(crate::media::shot_stand_in())),
             offline: None,
             we_last: None,
             we_still: None,
@@ -1788,30 +1799,57 @@ impl Root {
         }
     }
 
+    /// The figures as the app sent them last (`Metrics`). Read while a part is drawn, that part is drawn again when
+    /// new figures come.
+    pub fn metrics(&self, cx: &App) -> std::rc::Rc<Value> {
+        self.metrics.read(cx).0.clone()
+    }
+
+    /// What Spotify plays (`Music`). Read while a part is drawn, that part is drawn again when it changes.
+    pub fn music(&self, cx: &App) -> Option<crate::media::Playing> {
+        self.music.read(cx).0.clone()
+    }
+
+    /// The song shown changed at once, ahead of Spotify's own answer (a key pressed, a place or a loudness picked).
+    pub fn change_music(&self, cx: &mut Context<Self>, f: impl FnOnce(&mut crate::media::Playing)) {
+        self.music.update(cx, |m, cx| {
+            if let Some(p) = m.0.as_mut() {
+                f(p);
+                cx.notify();
+            }
+        });
+    }
+
     /// What Spotify plays now, as read (every second, or after a key: media::now).
     fn take_music(&mut self, now: Option<crate::media::Playing>, cx: &mut Context<Self>) {
-        if self.music != now {
-            // While a song plays each reading says a later place in it (media::position counts on from
-            // when Spotify said it): that alone changes only where the song is, which shows on the
-            // profile's song card (and the status bar's song card, which asks for its own part each
-            // second, capsule.rs). Only the page is drawn again then, on the profile; the whole app was,
-            // each second a song played.
-            let moved_on = match (&self.music, &now) {
-                (Some(was), Some(is)) => {
-                    let mut was = was.clone();
-                    was.position = is.position;
-                    was == *is
-                }
-                _ => false,
-            };
-            self.music = now;
+        let was = &self.music.read(cx).0;
+        if *was == now {
+            return;
+        }
+        // While a song plays each reading says a later place in it (media::position counts on from when Spotify said
+        // it): that alone changes only where the song is, which is worked out from the clock as it is drawn. The
+        // profile's song card is drawn again each second for it (the status bar's song card asks for its own part
+        // each second, capsule.rs); nothing that shows the song is drawn again for the reading itself.
+        let moved_on = match (was, &now) {
+            (Some(was), Some(is)) => {
+                let mut was = was.clone();
+                was.position = is.position;
+                was == *is
+            }
+            _ => false,
+        };
+        self.music.update(cx, |m, cx| {
+            m.0 = now;
             if !moved_on {
                 cx.notify();
-            } else if self.page == Page::Games && self.games.view == pages::games::View::Profile
-                && let Some(page) = self.parts.as_ref().map(|p| p.page.entity_id())
-            {
-                App::notify(cx, page);
             }
+        });
+        if moved_on
+            && self.page == Page::Games
+            && self.games.view == pages::games::View::Profile
+            && let Some(page) = self.parts.as_ref().map(|p| p.page.entity_id())
+        {
+            App::notify(cx, page);
         }
     }
 
@@ -1821,10 +1859,10 @@ impl Root {
             "tray" => crate::tray::show(self, &data, cx),
             "toolPage" => crate::toolpage::on_event(&mut self.tool_pages, &self.i18n, &data, cx),
             "macroRecorded" | "macroSeen" | "onGameEdit" => pages::macro_form::on_event(self, name, &data, window, cx),
-            "metrics" => {
-                self.metrics = data;
+            "metrics" => self.metrics.update(cx, |m, cx| {
+                m.0 = std::rc::Rc::new(data);
                 cx.notify();
-            }
+            }),
             "feedCards" => {
                 self.games.cards = data.as_array().cloned();
                 cx.notify();
@@ -1997,7 +2035,7 @@ impl Root {
     }
 
     fn want_play_history(&mut self, link: &crate::link::Link, cx: &mut Context<Self>) {
-        let revision = self.metrics["playRevision"].as_u64().unwrap_or_default();
+        let revision = self.metrics(cx)["playRevision"].as_u64().unwrap_or_default();
         if self.played_pending || self.played_at.is_some_and(|(at, last_revision)| {
             last_revision == revision && at.elapsed() < Duration::from_secs(30)
         }) {
@@ -2781,7 +2819,7 @@ impl Root {
 
     /// Close every Roblox window (or end them, forced), after the question (app.js's closeAll).
     pub fn close_all(&mut self, force: bool, window: &mut Window, cx: &mut Context<Self>) {
-        let open = self.metrics.get("robloxCount").and_then(Value::as_i64).unwrap_or(0);
+        let open = self.metrics(cx).get("robloxCount").and_then(Value::as_i64).unwrap_or(0);
         let (title, text) = if force {
             (self.tr("common.confirm"), self.tr("t.killAllQ"))
         } else {
@@ -3227,7 +3265,7 @@ impl Root {
     /// `with_side`: the accounts column stands over the bar's right end (Home), and the right pill is made as wide as
     /// it (owner 2026-11-20: a pill 45 px short of the column over it looked like a slip).
     fn status(&self, with_side: bool, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let m = &self.metrics;
+        let m = self.metrics(cx);
         let windows = m.get("robloxCount").and_then(Value::as_i64).unwrap_or(0);
         let ram = m.get("usedPct").and_then(Value::as_f64).unwrap_or(0.).round() as i64;
         // The whole PC's CPU, as RAM beside it is the whole PC's (the owner, 2026-11-19: "không có CPU à" with no Roblox
@@ -3254,9 +3292,9 @@ impl Root {
         // (On but not ready: its name in orange says so, where a light was.)
         let multi_warn = to_updates || (multi && !armed);
         let privacy = crate::pages::game_privacy::chip(self);
-        let song = bar_song(self.music.as_ref());
+        let song = bar_song(self.music(cx).as_ref());
         let upd_words = self.tr("bar.update");
-        capsule::note_ram(&self.metrics);
+        capsule::note_ram(&m);
         // (The song's pill casts a faint shadow of its cover's colour, as Dynamic Island's does.)
         let music_shade = song.as_ref().and_then(|(s, _)| s.cover.as_deref()).and_then(|p| images::tone(p, cx)).map(|t| ca(t, 0.38));
 
@@ -3357,7 +3395,11 @@ impl Root {
         if song.as_ref().is_some_and(|(_, live)| !live) && !BAR_LEAVE_ASKED.with(|a| a.replace(true)) {
             cx.spawn(async move |this, cx| {
                 cx.background_executor().timer(BAR_LEAVE).await;
-                this.update(cx, |_, cx| cx.notify()).ok();
+                this.update(cx, |r, cx| match r.parts.as_ref() {
+                    Some(p) => App::notify(cx, p.status.entity_id()),
+                    None => cx.notify(),
+                })
+                .ok();
             })
             .detach();
         }
@@ -3666,7 +3708,7 @@ impl Root {
 
     /// Spotify's back, play/pause and next for a place that shows its song (the status bar, the profile's song).
     pub fn music_keys(&self, ids: [&'static str; 3], cx: &mut Context<Self>) -> Option<[IconButton; 3]> {
-        let playing = self.music.as_ref()?.playing;
+        let playing = self.music.read(cx).0.as_ref()?.playing;
         use crate::media::Act;
         Some([
             music_press(ids[0], "skipBack", self.tr("music.back"), Act::Back, cx),
@@ -4618,10 +4660,12 @@ fn music_go(r: &mut Root, act: crate::media::Act, cx: &mut Context<Root>) {
             cx.background_executor().timer(Duration::from_millis(wait)).await;
             let now = cx.background_executor().spawn(async { crate::media::now() }).await;
             let alive = this.update(cx, |r, cx| {
-                if r.music != now {
-                    r.music = now;
-                    cx.notify();
-                }
+                r.music.update(cx, |m, cx| {
+                    if m.0 != now {
+                        m.0 = now;
+                        cx.notify();
+                    }
+                });
             });
             if alive.is_err() {
                 break;
@@ -4629,10 +4673,9 @@ fn music_go(r: &mut Root, act: crate::media::Act, cx: &mut Context<Root>) {
         }
     })
     .detach();
-    if let (crate::media::Act::Toggle, Some(m)) = (act, r.music.as_mut()) {
-        m.playing = !m.playing;
+    if let crate::media::Act::Toggle = act {
+        r.change_music(cx, |p| p.playing = !p.playing);
     }
-    cx.notify();
 }
 
 impl Root {

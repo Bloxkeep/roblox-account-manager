@@ -176,7 +176,7 @@ fn row(root: &Root, a: &Value, cols: &Cols, cx: &mut Context<Root>) -> impl Into
     let robux = robux_of(a).map(|r| robux_el(root, &id, r));
     let group = s(a, "group").to_string();
     let compact_group = !cols.sectioned && cols.group == 0. && !group.is_empty();
-    let ram = local.then(|| ram_mb(root, a)).flatten().map(|m| mb_text(m));
+    let ram = local.then(|| ram_mb(root, a, cx)).flatten().map(|m| mb_text(m));
     let pid = local.then(|| pid_el(root, a, cx)).flatten();
     let pick = id.clone();
     let tick_id = id.clone();
@@ -324,7 +324,7 @@ pub fn detail(root: &Root, a: &Value, cx: &mut Context<Root>) -> Div {
     let game = game_name(a);
     let pic = game_icon(a).and_then(|u| crate::images::pic_sq(&u, 40., cx));
     let up = up_of(a);
-    let ram = local.then(|| ram_mb(root, a)).flatten().map(|m| mb_text(m));
+    let ram = local.then(|| ram_mb(root, a, cx)).flatten().map(|m| mb_text(m));
     let pid = local.then(|| pid_el(root, a, cx)).flatten();
     let opened = opened_of(root, a);
     let today = day_line(root, &id);

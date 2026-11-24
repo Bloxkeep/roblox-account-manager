@@ -62,7 +62,7 @@ pub type Pick = std::rc::Rc<dyn Fn(&mut Root, &'static str, &mut Window, &mut Co
 /// The pictures: `cols` to a row, each `tile` wide. `value` is the layout chosen (ringed); `w`×`h` the size of one's
 /// own, drawn as one window of that size in the corner of a 1920 × 1080 screen.
 pub fn picker(root: &Root, key: &'static str, value: &str, w: i64, h: i64, cols: usize, tile: f32, pick: Pick, cx: &mut Context<Root>) -> Div {
-    let count = root.metrics.get("robloxCount").and_then(Value::as_i64).unwrap_or(0).max(0) as usize;
+    let count = root.metrics(cx).get("robloxCount").and_then(Value::as_i64).unwrap_or(0).max(0) as usize;
     let screen_w = tile - 12. - 2.;
     let screen_h = (screen_w * 10. / 16.).round();
     let inner_w = screen_w - 8.;

@@ -991,13 +991,13 @@ fn others(root: &Root) -> Vec<Value> {
         .collect()
 }
 
-fn ram_mb(root: &Root, a: &Value) -> Option<f64> {
+fn ram_mb(root: &Root, a: &Value, cx: &App) -> Option<f64> {
     if let Some(mb) = window_of(root, a).and_then(|w| w.get("ramMb")).and_then(Value::as_f64).filter(|m| *m > 0.) {
         return Some(mb);
     }
     let id = s(a, "id");
     is_local(a)
-        .then(|| root.metrics.get("accounts").and_then(Value::as_array).and_then(|l| l.iter().find(|m| s(m, "id") == id)).and_then(|m| m.get("ramMb")?.as_f64()))
+        .then(|| root.metrics(cx).get("accounts").and_then(Value::as_array).and_then(|l| l.iter().find(|m| s(m, "id") == id)).and_then(|m| m.get("ramMb")?.as_f64()))
         .flatten()
 }
 /// RAM in MB or GB in the language shown ("1,7 GB", "1,7 ГБ"): lang.rs › mb.
@@ -1051,7 +1051,7 @@ struct Lane {
 }
 
 /// The open accounts by game: a game with one cut off first, then the most windows; the Roblox menu ("No game") last.
-fn lanes(root: &Root, shown: &[Value]) -> Vec<Lane> {
+fn lanes(root: &Root, shown: &[Value], cx: &App) -> Vec<Lane> {
     let no_game = root.tr("mon.noGame");
     let loading = root.tr("act.gameLoading");
     let mut out: Vec<Lane> = Vec::new();
@@ -1075,7 +1075,7 @@ fn lanes(root: &Root, shown: &[Value]) -> Vec<Lane> {
         let l = &mut out[i];
         l.items.push(a.clone());
         l.kicked += is_kicked(a) as usize;
-        l.ram += ram_mb(root, a).unwrap_or(0.);
+        l.ram += ram_mb(root, a, cx).unwrap_or(0.);
         if l.icon.is_none() && !menu {
             l.icon = game_icon(a);
         }
@@ -1423,7 +1423,7 @@ fn shot_place(cx: &mut Context<Root>) {
 /// list alike: the games flow on the page's grid, each taking as many columns as it has windows (all of them at most,
 /// wrapping inside its own block past that), its head over its own tiles. None while no window is open.
 fn windows(root: &Root, shown: &[Value], inner: f32, cx: &mut Context<Root>) -> Option<Div> {
-    let mut lanes = lanes(root, shown);
+    let mut lanes = lanes(root, shown, cx);
     if lanes.is_empty() {
         return None;
     }
@@ -1680,7 +1680,7 @@ fn tally(root: &Root, all: &[Value], typed: String) -> std::rc::Rc<Tally> {
 /// The RAM of these accounts' windows on this PC, each as `ram_mb` gives it, with the windows and the app's figures
 /// looked up once (`ram_mb` alone looks through them all for every account). The figures change without the state,
 /// so the sum isn't kept.
-fn ram_total<'a>(root: &Root, accounts: impl Iterator<Item = &'a Value>) -> f64 {
+fn ram_total<'a>(root: &Root, accounts: impl Iterator<Item = &'a Value>, cx: &App) -> f64 {
     let mut by_id: std::collections::HashMap<&str, &Value> = std::collections::HashMap::new();
     let mut by_pid: std::collections::HashMap<i64, &Value> = std::collections::HashMap::new();
     for w in &root.windows {
@@ -1689,8 +1689,9 @@ fn ram_total<'a>(root: &Root, accounts: impl Iterator<Item = &'a Value>) -> f64 
             by_pid.entry(p).or_insert(w);
         }
     }
+    let metrics = root.metrics(cx);
     let mut figures: std::collections::HashMap<&str, &Value> = std::collections::HashMap::new();
-    for m in root.metrics.get("accounts").and_then(Value::as_array).map(Vec::as_slice).unwrap_or_default() {
+    for m in metrics.get("accounts").and_then(Value::as_array).map(Vec::as_slice).unwrap_or_default() {
         figures.entry(s(m, "id")).or_insert(m);
     }
     accounts
@@ -1761,7 +1762,7 @@ fn header(root: &Root, all: &[Value], width: f32, rows: bool, cx: &mut Context<R
     }
     // The page at a glance, in muted words: who plays (or that Roblox isn't open), their windows' RAM, who dropped,
     // how many need a look.
-    let ram = ram_total(root, all.iter().chain(t.strays.iter()));
+    let ram = ram_total(root, all.iter().chain(t.strays.iter()), cx);
     let (dropped, look) = (t.dropped, t.look);
     // (A window open with nobody in a game, or one Bloxkeep didn't open: "Roblox not open" stood over a bar that
     // said "1 Roblox window", the owner's screenshot, 2026-11-13.)
@@ -1778,7 +1779,7 @@ fn header(root: &Root, all: &[Value], width: f32, rows: bool, cx: &mut Context<R
         summary.push((mb_text(ram), None));
     }
     // About how many windows this PC runs at once, measured from the person's own windows (core/capacity.rs).
-    if let Some(n) = root.metrics.pointer("/fit/max").and_then(Value::as_i64) {
+    if let Some(n) = root.metrics(cx).pointer("/fit/max").and_then(Value::as_i64) {
         summary.push((root.i18n.tv("cap.fits", &[("n", &n.to_string())]), None));
     }
     if dropped > 0 {
@@ -2461,7 +2462,7 @@ fn tile(root: &Root, a: &Value, w: f32, lines: usize, srv: Option<char>, compact
     // Its main button at the foot, as a not-open card has Play there: Close, or the way back in (Rejoin, Verify) when
     // dropped or held on Roblox's bot check; then Edit and its menu (review 2.2: a playing tile had no Edit).
     let main = action(root, a, "tile", cx);
-    let ram = ram_mb(root, a).map(|m| mb_text(m));
+    let ram = ram_mb(root, a, cx).map(|m| mb_text(m));
     let pid = (!compact).then(|| pid_el(root, a, cx)).flatten();
     // A pared-down tile keeps its PID too, in the room beside Close (farms tell windows apart by it).
     let pid_foot = compact.then(|| pid_el(root, a, cx)).flatten();
