@@ -541,8 +541,94 @@ fn back(root: &Root, cmd: &'static str, cx: &mut Context<Root>) -> Div {
     )
 }
 
+/// The first open asks the language before anything else: no one has picked one yet (Windows' own is shown) and the
+/// new vault's form is next.
+fn asks_language(root: &Root, mode: Mode) -> bool {
+    mode == Mode::Create && !adding(root) && root.state.get("languageChosen").and_then(Value::as_bool) == Some(false)
+}
+
+/// A row of the language step's list.
+const LANG_ROW: f32 = 40.;
+
+/// The first open's language step, in the card the password form has: the languages each by its own name, Windows'
+/// own first (picked already) and the rest A to Z under a line, a tick on the one shown; a row clicked shows the
+/// whole screen in it at once, Continue keeps it. (After elementary OS's installer, which asks the language first with
+/// the detected one on top, and WebNovel's language list: names in their own script, a tick on the chosen.)
+fn language_lines(root: &Root, cx: &mut Context<Root>) -> Vec<AnyElement> {
+    let system = root.state.get("systemLanguage").and_then(Value::as_str).unwrap_or("en").to_string();
+    let shown = root.i18n.lang.to_string();
+    let mut items = crate::lang::picker_items();
+    if let Some(i) = items.iter().position(|(code, _, _)| *code == system) {
+        let first = items.remove(i);
+        items.insert(0, first);
+    }
+    // As tall as the window leaves room for beside the rest of the card (Continue never a scroll away, 500 px high
+    // too), at most seven and a half rows: the half row says there are more below.
+    let room = (root.window_h.get() - 420.).clamp(LANG_ROW * 2.2, LANG_ROW * 7.5);
+    let mut list = div().id("lang-first-list").w_full().max_h(px(room)).overflow_y_scroll().py(px(4.)).flex().flex_col().rounded(px(R_M)).bg(c(INSET)).border_1().border_color(c(LINE));
+    for (i, (code, name, _)) in items.into_iter().enumerate() {
+        if i == 1 {
+            list = list.child(div().flex_none().mx(px(14.)).my(px(4.)).h(px(1.)).bg(c(LINE)));
+        }
+        let on = code == shown;
+        list = list.child(
+            focusable(div().id(SharedString::from(format!("lang-first-{code}"))))
+                .flex_none()
+                .h(px(LANG_ROW))
+                .mx(px(4.))
+                .px(px(12.))
+                .flex()
+                .items_center()
+                .justify_between()
+                .rounded(px(R_S))
+                .cursor_pointer()
+                .text_size(px(T_L))
+                .text_color(if on { c(TEXT) } else { c(TEXT_2) })
+                .when(on, |d| d.font_weight(FontWeight::SEMIBOLD).bg(ca(WHITE, 0.05)))
+                .hover(|d| d.bg(ca(WHITE, 0.07)).text_color(c(TEXT)))
+                .on_click(cx.listener(move |r, _, _, cx| {
+                    r.send("tryLanguage", json!({ "language": code }));
+                    cx.notify();
+                }))
+                .child(name)
+                .when(on, |d| d.child(icon("check", 16., c(FACE)))),
+        );
+    }
+    let place = format!("{} › {}", root.tr("nav.settings"), root.tr("set.appearance"));
+    vec![
+        div().mt(px(22.)).text_size(px(T_STAGE)).line_height(px(32.)).font_weight(FontWeight::BOLD).text_center().child(root.tr("lock.langTitle")).into_any_element(),
+        div().mt(px(8.)).mb(px(22.)).text_size(px(T_L)).line_height(px(21.)).text_color(c(TEXT_2)).text_center().child(root.i18n.tv("lock.langText", &[("where", &place)])).into_any_element(),
+        list.into_any_element(),
+        go_block(
+            focusable(div().id("lang-first-go"))
+                .mt(px(20.))
+                .h(px(46.))
+                .w_full()
+                .flex()
+                .items_center()
+                .justify_center()
+                .rounded(px(R_M))
+                .bg(c(FACE))
+                .text_color(c(INK))
+                .text_size(px(T_L))
+                .font_weight(FontWeight::SEMIBOLD)
+                .cursor_pointer()
+                .hover(|d| d.bg(c(FACE_HI)))
+                .active(|d| d.bg(c(FACE_DOWN)))
+                .on_click(cx.listener(move |r, _, _, cx| {
+                    r.send("setLanguage", json!({ "language": shown.clone() }));
+                    cx.notify();
+                }))
+                .child(root.tr("lock.langGo")),
+        )
+        .into_any_element(),
+    ]
+}
+
 pub fn lock(root: &Root, window: &mut Window, cx: &mut Context<Root>) -> AnyElement {
     let mode = mode(root);
+    // (The language step has the languages in its card: no switch in the corner over it.)
+    let asking = asks_language(root, mode);
     // The opening plays on the first password screen only (not over the vault picker, nor an update installing).
     let intro = if mode == Mode::Pick || root.lock.updating == Some(true) { None } else { opening_ms(root, window) };
     let layer = match intro {
@@ -551,8 +637,8 @@ pub fn lock(root: &Root, window: &mut Window, cx: &mut Context<Root>) -> AnyElem
             .size_full()
             .relative()
             .child(div().absolute().top_0().left_0().size_full().opacity(((ms - BOUNCE_MS - 100.) / 600.).clamp(0., 1.)).child(dots()))
-            .child(lang_switch(root, cx).opacity(((ms - BOUNCE_MS - 450.) / 500.).clamp(0., 1.))),
-        None => div().size_full().relative().child(dots()).child(lang_switch(root, cx)),
+            .when(!asking, |d| d.child(lang_switch(root, cx).opacity(((ms - BOUNCE_MS - 450.) / 500.).clamp(0., 1.)))),
+        None => div().size_full().relative().child(dots()).when(!asking, |d| d.child(lang_switch(root, cx))),
     };
     let v = vaults(root);
     let current = v.get("current").and_then(Value::as_str).unwrap_or_default();
@@ -568,6 +654,10 @@ pub fn lock(root: &Root, window: &mut Window, cx: &mut Context<Root>) -> AnyElem
         return layer.child(middle(update(root, window, cx))).child(signature(root, cx)).into_any_element();
     }
 
+    if asking {
+        let lines = language_lines(root, cx);
+        return finish(root, layer, lines, intro, window, cx);
+    }
     let create = mode == Mode::Create;
     let busy = root.lock.busy;
     let screen_lock = root.state.get("screenLock").is_some_and(Value::is_object);
@@ -789,6 +879,11 @@ pub fn lock(root: &Root, window: &mut Window, cx: &mut Context<Root>) -> AnyElem
         });
     }
 
+    finish(root, layer, lines, intro, window, cx)
+}
+
+/// The card with its lines on the screen: the opening while it plays, else the card as it stands (or coming in).
+fn finish(root: &Root, layer: Div, lines: Vec<AnyElement>, intro: Option<f32>, window: &mut Window, cx: &mut Context<Root>) -> AnyElement {
     if let Some(ms) = intro {
         return opening(layer, lines, signature(root, cx), ms, window);
     }

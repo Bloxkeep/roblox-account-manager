@@ -1410,7 +1410,10 @@
     "il.skipped1": "1 line left out: no cookie, a cookie listed twice, or one Roblox didn't accept.",
     "start.ram": "Roblox Account Manager",
     "home.pcsN1": "1 PC",
-    "macro.rec.new1": "Recording: 1 new step"
+    "macro.rec.new1": "Recording: 1 new step",
+    "lock.langTitle": "Choose your language",
+    "lock.langText": "You can change it later in {where}.",
+    "lock.langGo": "Continue"
   },
   "vi": {
     "gpv.key": "Riêng tư",
@@ -2821,6 +2824,9 @@
     "il.drop": "Bỏ dòng này",
     "il.skipped": "Bỏ qua {n} dòng: không có cookie, cookie bị trùng hoặc Roblox không nhận.",
     "il.skipped1": "Bỏ qua 1 dòng: không có cookie, cookie bị trùng hoặc Roblox không nhận.",
-    "start.ram": "Roblox Account Manager"
+    "start.ram": "Roblox Account Manager",
+    "lock.langTitle": "Chọn ngôn ngữ",
+    "lock.langText": "Có thể đổi lại sau trong {where}.",
+    "lock.langGo": "Tiếp tục"
   }
 }

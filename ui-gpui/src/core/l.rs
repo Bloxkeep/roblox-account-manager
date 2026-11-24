@@ -13,6 +13,14 @@ pub fn language() -> String {
 
 pub fn set(language: &str) {
     crate::core::prefs::set_language(crate::lang::known(language));
+    crate::core::prefs::mark_language_chosen();
+    crate::core::prefs::save();
+}
+
+/// The first open's language step, as a row is clicked: the language shown now, saved, but not yet picked (its
+/// Continue picks it, with `set`).
+pub fn try_language(language: &str) {
+    crate::core::prefs::set_language(crate::lang::known(language));
     crate::core::prefs::save();
 }
 

@@ -563,6 +563,13 @@ impl App {
         Value::Null
     }
 
+    /// The first open's language step: a row clicked shows that language at once; its Continue is `set_language`.
+    pub fn try_language(&self, language: &str) -> Value {
+        l::try_language(language);
+        self.push_state();
+        Value::Null
+    }
+
     /// Sync with Windows' two themes (Settings › Appearance): shown at once when Sync with Windows is the theme.
     pub fn set_system_themes(&self, light: &str, dark: &str) -> Value {
         {

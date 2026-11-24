@@ -140,6 +140,9 @@
   let lockUpdate = params.get('lockupdate');
   let lockUpdateGo = null;
   let language = params.get('lang') || 'en';
+  // firstrun: the first open's language step (no language picked yet); syslang: Windows' display language.
+  let languageChosen = !params.has('firstrun');
+  const systemLanguage = params.get('syslang') || language;
   let theme = params.get('theme') || 'dark';
   // Set up yet (?new=1: not). The vaults on this PC (?vaults=1: three, one with a picture; ?vaultpick=1: the picker
   // shows, as at a start that asks), the one offered, one being added.
@@ -507,7 +510,7 @@
     : ['robloxUpdated', 'updateReady'].includes(k) ? 'updates' : k.startsWith('schedule') ? 'schedule' : 'drops';
   let emit = () => {};
   const state = () => ({
-    multiAtStart, language, theme, themeApplied: themeApplied(), customTheme, savedThemes, closeToTray, startWithWindows, phone, feeds: feedsState(), wikis: wikiPrefs, hideNames, notifications, notifyOff, dailySignInCheck, lastSignInCheck, skipConfirm, miniOpen, backup, boot: boot(), vaultExists, vaults: vaultsState(), locked, screenLock,
+    multiAtStart, language, languageChosen, systemLanguage, theme, themeApplied: themeApplied(), customTheme, savedThemes, closeToTray, startWithWindows, phone, feeds: feedsState(), wikis: wikiPrefs, hideNames, notifications, notifyOff, dailySignInCheck, lastSignInCheck, skipConfirm, miniOpen, backup, boot: boot(), vaultExists, vaults: vaultsState(), locked, screenLock,
     // ?whatsnew=real: the newest release of the real notes (whatsnew.json), as after updating to it (the shot host only).
     whatsNew: params.get('whatsnew') === 'real' && typeof readRepo === 'function' ? { from: '1.1.1', releases: JSON.parse(readRepo('RobloxManager/whatsnew.json')).slice(0, 1) }
       : params.has('whatsnew') ? { from: '1.0.0', releases: [{ version: '1.0.1', date: '2026-10-19', en: ['Faster sign-in check: six accounts at a time.', 'Shows the version on the update button.'], vi: ['Kiểm tra đăng nhập nhanh hơn: 6 tài khoản một lúc.', 'Nút cập nhật ghi rõ phiên bản.'] }] } : null,
@@ -657,7 +660,8 @@
           setTimeout(push, 2250);
           return state();
         case 'lock': locked = true; screenLock = null; push(); return null;
-        case 'setLanguage': language = a.language; push(); return null;
+        case 'setLanguage': language = a.language; languageChosen = true; push(); return null;
+        case 'tryLanguage': language = a.language; push(); return null;
         case 'setTheme': theme = a.theme; push(); return null;
         case 'setCustomTheme':
           customTheme = { ...customTheme, background: a.background || customTheme.background, accent: a.accent || customTheme.accent, fade: a.fade ?? customTheme.fade, blur: a.blur ?? customTheme.blur };

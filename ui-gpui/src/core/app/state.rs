@@ -183,6 +183,8 @@ impl App {
         let Probes { start_with_windows: start_on, monitors, vault_exists } = probes();
         json!({
             "language": l::language(),
+            "languageChosen": prefs::language_chosen(),
+            "systemLanguage": prefs::system_language(),
             "theme": theme,
             "themeApplied": themes::current().id,
             "themeLight": prefs::lock().system_light.clone(),

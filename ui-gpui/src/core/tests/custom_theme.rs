@@ -298,6 +298,42 @@ pub async fn run(c: &mut Checks, dir: &str) {
         moved == "sunset" && theme() == "dark",
         format!("{moved}, then {}", theme()),
     );
+
+    // The first open's language step (pages/lock.rs): asked until someone picks one; a prefs.json from before it was
+    // asked has its language as a pick; with no language saved, Windows' display language, read by name.
+    let edited = |edit: &dyn Fn(&mut serde_json::Map<String, serde_json::Value>)| {
+        let mut v: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&file).unwrap_or_default()).unwrap_or_else(|_| json!({}));
+        if let Some(o) = v.as_object_mut() {
+            edit(o);
+        }
+        let _ = std::fs::write(&file, v.to_string());
+        prefs::load();
+    };
+    let before_step = std::fs::read_to_string(&file).unwrap_or_default();
+    let system = prefs::system_language();
+    c.check("Windows' display language is one of Bloxkeep's, or English", crate::lang::by_code(system).is_some(), system);
+    edited(&|o| {
+        o.remove("languageChosen");
+        o.insert("language".into(), "de".into());
+    });
+    c.check("a prefs.json from before the step, with a language: that language, picked", prefs::language() == "de" && prefs::language_chosen(), prefs::language());
+    edited(&|o| {
+        o.remove("language");
+        o.remove("languageChosen");
+    });
+    c.check("no language saved: Windows' own, not picked (the step asks)", prefs::language() == system && !prefs::language_chosen(), prefs::language());
+    crate::core::l::try_language("ja");
+    prefs::load();
+    c.check("a language tried in the step is shown and kept, still not picked", prefs::language() == "ja" && !prefs::language_chosen(), prefs::language());
+    crate::core::l::set("fr");
+    prefs::load();
+    c.check("…Continue picks it, for good", prefs::language() == "fr" && prefs::language_chosen(), prefs::language());
+    edited(&|o| {
+        o.insert("language".into(), "pt-BR".into());
+    });
+    c.check("a language saved with its region (pt-BR) is Bloxkeep's pt", prefs::language() == "pt", prefs::language());
+    let _ = std::fs::write(&file, before_step);
+    prefs::load();
     let _ = std::fs::write(&file, kept);
     prefs::load();
 }

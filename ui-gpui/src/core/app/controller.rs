@@ -808,6 +808,7 @@ impl App {
             }
             "seenWhatsNew" => done(self.seen_whats_new()),
             "setLanguage" => done(self.set_language(&str_of(a, "language"))),
+            "tryLanguage" => done(self.try_language(&str_of(a, "language"))),
             "setTheme" => done(self.set_theme(&str_of(a, "theme"))),
             "setSystemThemes" => done(self.set_system_themes(&str_of(a, "light"), &str_of(a, "dark"))),
             "setCustomTheme" => done(self.set_custom_theme(

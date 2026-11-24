@@ -33,6 +33,42 @@ pub fn set_language(language: &str) {
     *LANGUAGE.write().unwrap_or_else(|e| e.into_inner()) = language.to_string();
 }
 
+/// Whether the language was picked by someone (the first open's language step, the lock screen's switch, Settings),
+/// not only taken from Windows: until it is, the first open asks (pages/lock.rs).
+static LANGUAGE_CHOSEN: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+pub fn language_chosen() -> bool {
+    LANGUAGE_CHOSEN.load(Ordering::Relaxed)
+}
+
+pub fn mark_language_chosen() {
+    LANGUAGE_CHOSEN.store(true, Ordering::Relaxed);
+}
+
+/// Windows' display language as one of Bloxkeep's: the first of the user's display languages (Settings › Time &
+/// language, in order) that Bloxkeep has ("pt-BR" → "pt"), "en" when none: what the first open starts in, before
+/// anyone picks. Read as names, never through a language number (LCID): a number with no culture behind it (the C#
+/// app's crash on a Portuguese keyboard, 1046, 2026-11-06) can't break it, and the keyboard's language plays no part.
+pub fn system_language() -> &'static str {
+    #[cfg(windows)]
+    {
+        use windows_sys::Win32::Globalization::GetUserPreferredUILanguages;
+        const MUI_LANGUAGE_NAME: u32 = 0x8;
+        let (mut count, mut len) = (0u32, 0u32);
+        // SAFETY: asked for the length first, then given a buffer that long; Windows writes names ending in 0, then 0.
+        if unsafe { GetUserPreferredUILanguages(MUI_LANGUAGE_NAME, &mut count, std::ptr::null_mut(), &mut len) } != 0 && len > 0 && len < 4096 {
+            let mut names = vec![0u16; len as usize];
+            if unsafe { GetUserPreferredUILanguages(MUI_LANGUAGE_NAME, &mut count, names.as_mut_ptr(), &mut len) } != 0 {
+                let names = String::from_utf16_lossy(&names[..(len as usize).min(names.len())]);
+                if let Some(l) = names.split('\0').filter(|n| !n.is_empty()).find_map(crate::lang::by_code) {
+                    return l.code;
+                }
+            }
+        }
+    }
+    "en"
+}
+
 /// Settings › Appearance › Custom: page colour and accent (#rrggbb), how much colour lies over the picture (0 to
 /// 90 %), the picture's or video's file in the data folder (theme-background-*.png…), and its blur (0 to 30 px).
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -434,7 +470,7 @@ pub fn is_vault_id(id: Option<&str>) -> bool {
 
 const KNOWN: &[&str] = &[
     "remoteGone",
-    "language", "theme", "sunsetDefault", "themeLight", "themeDark", "closeToTray", "hideNames", "trayHintShown", "safeRendering", "checkUpdates", "betaUpdates", "lastVersion",
+    "language", "languageChosen", "theme", "sunsetDefault", "themeLight", "themeDark", "closeToTray", "hideNames", "trayHintShown", "safeRendering", "checkUpdates", "betaUpdates", "lastVersion",
     "notifications", "notifyOff", "backupFolder", "backupEnabled", "lastBackup", "backupPending", "dailySignInCheck", "lastSignInCheck", "miniOpen", "miniWindow", "panelWindows",
     "mainWindow", "mainMaximized", "robloxHistory", "robloxClosedAt", "robloxClosedCount", "robloxClosedNotified", "skipConfirm", "multiWorked",
     "multiRobloxAtStart", "discordPresence", "customTheme", "vaults", "lastVault", "askVault", "countOnline", "onlineId",
@@ -490,6 +526,8 @@ fn not_future(at: Stamp) -> Stamp {
 }
 
 pub fn load() {
+    // (No prefs.json yet, or one without a language: Windows' own, until someone picks.)
+    set_language(system_language());
     let raw = match read_prefs() {
         Ok(raw) => raw,
         Err(e) => {
@@ -529,6 +567,12 @@ pub fn load() {
     if let Some(l) = text(&root, "language").and_then(crate::lang::by_code) {
         set_language(l.code);
     }
+    // (A file from before the first open asked has its language and no mark: that language was someone's pick.)
+    let chosen = match root.get("languageChosen") {
+        Some(Value::Bool(b)) => *b,
+        _ => text(&root, "language").is_some(),
+    };
+    LANGUAGE_CHOSEN.store(chosen, Ordering::Relaxed);
     if let Some(theme) = text(&root, "theme") {
         s.theme = themes::normalize(Some(theme));
     }
@@ -1060,6 +1104,7 @@ fn snapshot(s: &State, language: &str) -> Map<String, Value> {
         values.insert(key.to_string(), value);
     };
     put("language", json!(language));
+    put("languageChosen", json!(language_chosen()));
     put("theme", json!(s.theme));
     put("sunsetDefault", json!(s.sunset_default));
     put("themeLight", json!(s.system_light));
