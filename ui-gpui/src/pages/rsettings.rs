@@ -19,8 +19,44 @@ use crate::{
     theme::*,
 };
 
+/// The page's parts, one shown at a time and picked on the left, as Bloxkeep's own Settings has its parts
+/// (settings.rs): everything on one long page was too much (the owner, 2026-11-25).
+#[derive(Clone, Copy, PartialEq, Eq, Default, Debug)]
+pub enum Part {
+    #[default]
+    Account,
+    Privacy,
+    Places,
+    Trades,
+    More,
+}
+
+impl Part {
+    const ALL: [Part; 5] = [Part::Account, Part::Privacy, Part::Places, Part::Trades, Part::More];
+    fn title(self) -> &'static str {
+        match self {
+            Part::Account => "rs.account",
+            Part::Privacy => "rs.privacy",
+            Part::Places => "rs.places",
+            Part::Trades => "rs.trades",
+            Part::More => "rs.moreHead",
+        }
+    }
+    fn icon(self) -> &'static str {
+        match self {
+            Part::Account => "user",
+            Part::Privacy => "shield",
+            Part::Places => "monitor",
+            Part::Trades => "repeat",
+            Part::More => "external",
+        }
+    }
+}
+
 #[derive(Default)]
 pub struct Data {
+    /// The part shown (kept when another account's settings are read).
+    pub part: Part,
     /// The Roblox user these are of, the settings (None while they are read), and whether they are being read.
     of: i64,
     got: Option<Result<AccountSettings, String>>,
@@ -67,7 +103,17 @@ pub fn want(r: &mut Root, link: &crate::link::Link, cx: &mut Context<Root>) {
     friends::want_sign(r, link, cx);
     let Some((_, user, _)) = friends::signed(r) else { return };
     if r.rset.of != user {
-        r.rset = Data { of: user, ..Default::default() };
+        r.rset = Data { of: user, part: r.rset.part, ..Default::default() };
+    }
+    // (BLOXKEEP_SHOT_RSET=privacy|places|trades|more: a hidden shot of that part, picked once.)
+    #[cfg(feature = "shot")]
+    {
+        static PICKED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+        if !PICKED.swap(true, std::sync::atomic::Ordering::Relaxed)
+            && let Some(p) = std::env::var("BLOXKEEP_SHOT_RSET").ok().and_then(|k| Part::ALL.into_iter().find(|p| p.title().ends_with(&k) || (k == "more" && *p == Part::More)))
+        {
+            r.rset.part = p;
+        }
     }
     if r.rset.got.is_none() && !r.rset.reading {
         load(r, cx);
@@ -479,13 +525,81 @@ pub fn page(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
         match &rs.got {
             None => empty_note(root.tr("rs.loading")).into_any_element(),
             Some(Err(why)) => empty_note(root.i18n.tv("rs.readFailed", &[("why", crate::net::why_words(&root.i18n, why).as_str())])).into_any_element(),
-            Some(Ok(s)) => filled(root, s, viewer, width, cx).into_any_element(),
+            Some(Ok(s)) => {
+                let compact = width < 760.;
+                let nav_w = if compact { 64. } else if width < 1100. { 198. } else { 230. };
+                div()
+                    .flex_1()
+                    .min_h_0()
+                    .w_full()
+                    .flex()
+                    .child(nav(root, compact, nav_w, cx))
+                    .child(div().flex_1().min_w_0().h_full().child(filled(root, s, viewer, cx)))
+                    .into_any_element()
+            }
         }
     };
     shell.child(header).child(body)
 }
 
-fn filled(root: &Root, s: &AccountSettings, viewer: Option<&serde_json::Value>, width: f32, cx: &mut Context<Root>) -> impl IntoElement {
+/// The parts' list, as Settings' own (settings.rs: the same rows, the same column and widths; icons only when narrow).
+fn nav(root: &Root, compact: bool, width: f32, cx: &mut Context<Root>) -> AnyElement {
+    let part = root.rset.part;
+    let mut list = div().w(px(width)).flex_none().flex().flex_col().gap(px(4.)).px(px(10.)).pt(px(4.)).pb(px(20.));
+    for (i, p) in Part::ALL.into_iter().enumerate() {
+        let on = p == part;
+        let tip: SharedString = root.tr(p.title()).into();
+        list = list.child(
+            menu_row(("rs-nav", i))
+                .relative()
+                .h(px(39.))
+                .w_full()
+                .px(px(if compact { 0. } else { 12. }))
+                .when(compact, |d| d.justify_center().tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into()))
+                .border_1()
+                .edge(if on { ca(FACE, 0.25) } else { ca(WHITE, 0.) }, if on { ca(FACE, 0.40) } else { ca(WHITE, 0.10) })
+                .tones(if on { ca(FACE, 0.11) } else { ca(WHITE, 0.) }, if on { ca(FACE, 0.17) } else { ca(WHITE, 0.05) })
+                .text_color(c(if on { TEXT } else { TEXT_2 }))
+                .text_size(px(T_L))
+                .font_weight(if on { FontWeight::SEMIBOLD } else { FontWeight::MEDIUM })
+                .child(icon(p.icon(), 17., if on { c(FACE) } else { c(MUTED) }))
+                .when(!compact, |d| d.child(div().flex_1().min_w_0().truncate().child(root.tr(p.title()))))
+                .when(!on, |d| {
+                    d.on_click(cx.listener(move |r, _, _, cx| {
+                        r.rset.part = p;
+                        crate::scrolled::handle("rs-body").set_offset(point(px(0.), px(0.)));
+                        cx.notify();
+                    }))
+                }),
+        );
+    }
+    if crate::theme::glass_blocks() {
+        div()
+            .h_full()
+            .flex_none()
+            .flex()
+            .flex_col()
+            .pl(px(PAGE_X))
+            .pb(px(16.))
+            .child(crate::kit::block_of(R_L, ca(GROUND, 0.34)).min_h_0().flex().flex_col().overflow_hidden().pt(px(12.)).child(div().id("rs-nav").min_h_0().overflow_y_scroll().child(list)))
+            .into_any_element()
+    } else {
+        div().id("rs-nav").h_full().flex_none().overflow_y_scroll().border_r_1().border_color(c(LINE)).bg(ca(GROUND, 0.34)).pl(px(PAGE_X - 10.)).pt(px(12.)).child(list).into_any_element()
+    }
+}
+
+/// A part's own head, as Settings' (its mark in a tile, its name).
+fn part_head(root: &Root, p: Part) -> Div {
+    div()
+        .flex()
+        .items_center()
+        .gap(px(14.))
+        .pb(px(6.))
+        .child(div().size(px(46.)).flex_none().rounded(px(R_M)).bg(ca(FACE, 0.12)).flex().items_center().justify_center().child(icon(p.icon(), 21., c(FACE))))
+        .child(div().min_w_0().text_size(px(T_FIG)).line_height(px(28.)).font_weight(FontWeight::BOLD).child(root.tr(p.title())))
+}
+
+fn filled(root: &Root, s: &AccountSettings, viewer: Option<&serde_json::Value>, cx: &mut Context<Root>) -> impl IntoElement {
     let rs = &root.rset;
     let dash = || div().text_color(c(MUTED)).child(root.tr("rs.unknown")).into_any_element();
     let words = |t: String| div().min_w_0().truncate().font_weight(FontWeight::MEDIUM).font_features(tnum()).child(t).into_any_element();
@@ -626,25 +740,17 @@ fn filled(root: &Root, s: &AccountSettings, viewer: Option<&serde_json::Value>, 
         .child(title(root.tr("rs.more"), Some(root.tr("rs.moreSub"))))
         .child(Button::new("rs-web", root.tr("rs.open")).icon("external").small().on_click(cx.listener(move |r, _, _, _| r.send("openWebsite", json!({ "id": id, "page": "settings" })))));
 
-    let account = section(root.tr("rs.account"), account);
-    let places = section(root.tr("rs.places"), places_card(root, cx));
-    let trades = section(root.tr("rs.trades"), trades);
-    let privacy = section(root.tr("rs.privacy"), privacy);
-    let about = section(root.tr("rs.about"), about);
-    let more = section(root.tr("rs.moreHead"), more);
-    let blocked = section(root.tr("blk.title"), blocked_card(root, cx));
-    // Wide: the account and its trades beside its About words, the whole width; narrow: one under another.
-    let two = width >= 1000.;
-    let inner = div().px(px(PAGE_X)).pb(px(32.)).w_full().flex().map(|d| {
-        if two {
-            d.items_start()
-                .gap(px(24.))
-                .child(div().flex_1().min_w_0().flex().flex_col().gap(px(SECTION_GAP)).child(account).child(places).child(trades))
-                .child(div().flex_1().min_w_0().flex().flex_col().gap(px(SECTION_GAP)).child(privacy).child(blocked).child(about).child(more))
-        } else {
-            d.flex_col().gap(px(SECTION_GAP)).child(account).child(places).child(privacy).child(blocked).child(about).child(trades).child(more)
-        }
-    });
+    // The part picked: its head, its card, and what goes with it (About me with the account, the blocked people with
+    // privacy).
+    let part = rs.part;
+    let mut inner = div().px(px(PAGE_X)).pt(px(12.)).pb(px(32.)).w_full().flex().flex_col().gap(px(SECTION_GAP)).child(part_head(root, part));
+    inner = match part {
+        Part::Account => inner.child(account).child(section(root.tr("rs.about"), about)),
+        Part::Privacy => inner.child(privacy).child(section(root.tr("blk.title"), blocked_card(root, cx))),
+        Part::Places => inner.child(places_card(root, cx)),
+        Part::Trades => inner.child(trades),
+        Part::More => inner.child(more),
+    };
     crate::scrolled::body("rs-body", inner)
 }
 
