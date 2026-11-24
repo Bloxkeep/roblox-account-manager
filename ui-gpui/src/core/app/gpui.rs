@@ -17,7 +17,7 @@ impl App {
     /// robloxSignIn { id }: that account's sign-in (Friends looks through one account); without it, the app's pick: the
     /// main account when it has a good sign-in, else any roblox.com account's (as the app's own calls use). Its ids go
     /// with it, so the window knows whose it holds. A Roblox VNG account's is lent only when asked for by its id (its
-    /// own tab), marked as VNG's (realm::mark_vng) so the Roblox tab sends its calls to VNG's hosts, never roblox.com.
+    /// own tab), marked as VNG's (roblox::vng::mark) so the Roblox tab sends its calls to VNG's hosts, never roblox.com.
     pub fn roblox_sign_in(&self, a: &Value) -> Value {
         let wanted = if has(a, "id", JsonKind::String) { a["id"].as_str().and_then(parse_guid) } else { None };
         // Behind the idle lock screen no sign-in goes out, as no other answer does.
@@ -32,7 +32,7 @@ impl App {
                 .cloned()
         });
         if let Some(a) = from.as_ref().filter(|a| a.realm == realm::VNG) {
-            realm::mark_vng(&a.cookie);
+            crate::roblox::vng::mark(&a.cookie);
         }
         json!({
             "realm": from.as_ref().map(|a| realm::normalize(Some(a.realm.as_str()))),

@@ -100,11 +100,53 @@ fn get(url: &str, cookie: Option<&str>) -> Result<Value, String> {
     out
 }
 
-/// Where a signed-in ask goes: a Roblox VNG account's sign-in works only on VNG's hosts (realm::route), so its
-/// calls go there; every other ask goes where it was written for.
+/// Where a signed-in ask goes: a Roblox VNG account's sign-in works only on VNG's hosts (vng::route), so its calls
+/// go there; every other ask goes where it was written for.
 fn routed<'a>(url: &'a str, cookie: Option<&str>) -> std::borrow::Cow<'a, str> {
-    use crate::core::roblox_api::realm;
-    realm::route(url, cookie.map_or(realm::GLOBAL, realm::of_sign_in))
+    if cookie.is_some_and(vng::owns) { vng::route(url) } else { url.into() }
+}
+
+/// Roblox VNG (Vietnam): the sign-ins of VNG accounts the app has lent (robloxSignIn marks them), by a hash of each,
+/// and where their calls go. VNG serves the same Roblox behind another name: the same user ids, and every path the
+/// Roblox tab calls answered there as on roblox.com (125 of 129 alike on 2026-11-25, the rest a rate limit and
+/// www.roblox.com unreachable from Vietnam).
+pub mod vng {
+    use std::borrow::Cow;
+    use std::collections::HashSet;
+    use std::sync::{LazyLock, Mutex};
+
+    static SIGN_INS: LazyLock<Mutex<HashSet<u64>>> = LazyLock::new(Default::default);
+
+    fn hash(cookie: &str) -> u64 {
+        use std::hash::{Hash, Hasher};
+        let mut h = std::collections::hash_map::DefaultHasher::new();
+        cookie.hash(&mut h);
+        h.finish()
+    }
+
+    /// `cookie` is a VNG account's sign-in.
+    pub fn mark(cookie: &str) {
+        if !cookie.is_empty() {
+            SIGN_INS.lock().unwrap_or_else(|e| e.into_inner()).insert(hash(cookie));
+        }
+    }
+
+    /// `cookie` was marked as a VNG account's.
+    pub fn owns(cookie: &str) -> bool {
+        !cookie.is_empty() && SIGN_INS.lock().unwrap_or_else(|e| e.into_inner()).contains(&hash(cookie))
+    }
+
+    /// A roblox.com address as VNG serves it: https://avatar.roblox.com/v1/... is
+    /// https://avatar.robloxapp.vnggames.com/v1/...; anything not on a roblox.com service stays as it is.
+    pub fn route(url: &str) -> Cow<'_, str> {
+        let Some(rest) = url.strip_prefix("https://") else { return url.into() };
+        let host_end = rest.find(['/', '?', '#']).unwrap_or(rest.len());
+        let (host, tail) = rest.split_at(host_end);
+        match host.strip_suffix(".roblox.com") {
+            Some(service) if !service.is_empty() && !service.contains('.') => format!("https://{service}.robloxapp.vnggames.com{tail}").into(),
+            _ => url.into(),
+        }
+    }
 }
 
 fn get_once(url: &str, cookie: Option<&str>) -> Result<Value, String> {

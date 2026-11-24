@@ -58,22 +58,22 @@ pub async fn run(c: &mut Checks, _dir: &str) {
     let lent = app.roblox_sign_in(&json!({ "id": vng_id.to_string() }));
     let vng_cookie = lent["cookie"].as_str().unwrap_or_default().to_string();
     c.check("native VNG tab receives its own sign-in", vng_cookie.starts_with("_TEST_V_") && lent["realm"] == json!("vng"), &lent["realm"]);
-    c.check("…marked as a VNG sign-in", realm::of_sign_in(&vng_cookie) == realm::VNG, ());
+    c.check("…marked as a VNG sign-in", crate::roblox::vng::owns(&vng_cookie), ());
     let global = app.roblox_sign_in(&json!({}));
     c.check("native global tabs still receive their own sign-in", global["userId"] == json!(2001) && global["realm"] == json!(""), &global["userId"]);
-    c.check("…never a VNG account's, nor marked as one", realm::of_sign_in(global["cookie"].as_str().unwrap_or_default()) == realm::GLOBAL, ());
+    c.check("…never a VNG account's, nor marked as one", !crate::roblox::vng::owns(global["cookie"].as_str().unwrap_or_default()), ());
     // Where a VNG sign-in's calls go: the same path on VNG's host; anything not on roblox.com stays where it was.
-    for (url, vng, want) in [
-        ("https://avatar.roblox.com/v1/avatar", true, "https://avatar.robloxapp.vnggames.com/v1/avatar"),
-        ("https://www.roblox.com/my/settings/json?x=1", true, "https://www.robloxapp.vnggames.com/my/settings/json?x=1"),
-        ("https://apis.roblox.com", true, "https://apis.robloxapp.vnggames.com"),
-        ("https://friends.roblox.com?x", true, "https://friends.robloxapp.vnggames.com?x"),
-        ("https://tr.rbxcdn.com/a.png", true, "https://tr.rbxcdn.com/a.png"),
-        ("https://roblox.com.example.invalid/x", true, "https://roblox.com.example.invalid/x"),
-        ("https://avatar.roblox.com/v1/avatar", false, "https://avatar.roblox.com/v1/avatar"),
+    for (url, want) in [
+        ("https://avatar.roblox.com/v1/avatar", "https://avatar.robloxapp.vnggames.com/v1/avatar"),
+        ("https://www.roblox.com/my/settings/json?x=1", "https://www.robloxapp.vnggames.com/my/settings/json?x=1"),
+        ("https://apis.roblox.com", "https://apis.robloxapp.vnggames.com"),
+        ("https://friends.roblox.com?x", "https://friends.robloxapp.vnggames.com?x"),
+        ("https://tr.rbxcdn.com/a.png", "https://tr.rbxcdn.com/a.png"),
+        ("https://roblox.com.example.invalid/x", "https://roblox.com.example.invalid/x"),
+        ("https://a.b.roblox.com/x", "https://a.b.roblox.com/x"),
     ] {
-        let got = realm::route(url, if vng { realm::VNG } else { realm::GLOBAL });
-        c.check(&format!("route {url} ({})", if vng { "VNG" } else { "global" }), got == want, &got);
+        let got = crate::roblox::vng::route(url);
+        c.check(&format!("VNG route of {url}"), got == want, &got);
     }
 
     // Refused before any tab (or browser) is made: open_website checks the realm first.
