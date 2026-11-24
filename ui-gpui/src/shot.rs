@@ -123,9 +123,11 @@ enum Act {
     Key(String),
     Type(String),
     Scroll(f32),
+    /// A mouse wheel turned that many notches (3 lines each, Windows' default; down is negative), as the wheel sends it.
+    Wheel(f32),
 }
 
-/// "500:glide:640,300,600; 1200:click:640,300; 1500:type:blox; 2200:key:enter; 2600:scroll:-400;
+/// "500:glide:640,300,600; 1200:click:640,300; 1500:type:blox; 2200:key:enter; 2600:scroll:-400; 2700:wheel:-1;
 /// 3000:drag:640,300,700,340,500" (window points).
 #[cfg(feature = "shot")]
 fn acts() -> Vec<(f32, Act)> {
@@ -149,6 +151,7 @@ fn acts() -> Vec<(f32, Act)> {
                     "key" => Act::Key(arg.trim().to_string()),
                     "type" => Act::Type(arg.to_string()),
                     "scroll" if !n.is_empty() => Act::Scroll(n[0]),
+                    "wheel" if !n.is_empty() => Act::Wheel(n[0]),
                     _ => return None,
                 },
             ))
@@ -245,6 +248,9 @@ async fn frames(h: AnyWindowHandle, out: &std::path::Path, n: usize, bench: bool
                 Act::Scroll(dy) => {
                     send(PlatformInput::Scroll(ScrollEvent { position: pos(mx, my), delta: ScrollDelta::Pixels(point(px(0.), px(*dy))), ..Default::default() }), cx);
                 }
+                Act::Wheel(notches) => {
+                    send(PlatformInput::Scroll(ScrollEvent { position: pos(mx, my), delta: ScrollDelta::Lines(point(0., notches * 3.)), ..Default::default() }), cx);
+                }
             }
             next += 1;
         }
@@ -282,6 +288,8 @@ async fn frames(h: AnyWindowHandle, out: &std::path::Path, n: usize, bench: bool
                 // would stand still in the clip where it runs on in the app.
                 // (BLOXKEEP_SHOT_CACHED=1: drawn as the app's frames are, the views kept where nothing they read
                 // changed; else every view is made anew.)
+                // What waits for the next frame (a wheel's glide) gets it here, as each frame of the app's does.
+                window.simulate_next_frame(cx);
                 if std::env::var("BLOXKEEP_SHOT_CACHED").is_ok() {
                     window.redraw();
                 } else {

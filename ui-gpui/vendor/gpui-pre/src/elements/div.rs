@@ -23,7 +23,7 @@ use crate::{
     KeyUpEvent, KeyboardButton, KeyboardClickEvent, LayoutId, LongPressEvent,
     ModifiersChangedEvent, MouseButton, MouseClickEvent, MouseDownEvent, MouseExitEvent,
     MouseMoveEvent, MousePressureEvent, MouseUpEvent, OngoingScroll, Overflow, ParentElement,
-    PinchEvent, Pixels, Point, Render, ScrollEvent, SharedString, Size, Style, StyleRefinement,
+    PinchEvent, Pixels, Point, Render, ScrollDelta, ScrollEvent, SharedString, Size, Style, StyleRefinement,
     Styled, Task, TooltipId, TouchPhase, Visibility, Window, WindowControlArea, point, px, size,
 };
 use collections::HashMap;
@@ -3427,6 +3427,7 @@ impl Interactivity {
             let current_view = window.current_view();
             window.on_mouse_event(move |event: &ScrollEvent, phase, window, cx| {
                 if phase == DispatchPhase::Bubble && hitbox.should_handle_scroll(window) {
+                    let scroll_offset_rc = scroll_offset.clone();
                     let mut scroll_offset = scroll_offset.borrow_mut();
                     let old_scroll_offset = *scroll_offset;
                     let mut delta = event.delta.pixel_delta(line_height);
@@ -3464,6 +3465,15 @@ impl Interactivity {
                         } else {
                             delta_x = Pixels::ZERO;
                         }
+                    }
+                    // A mouse wheel's notch (whole lines) glides there over a few frames, as a browser
+                    // scrolls; a touchpad's small exact steps already come smooth and go at once.
+                    if let ScrollDelta::Lines(lines) = event.delta
+                        && (lines.x.abs() >= 1. || lines.y.abs() >= 1.)
+                    {
+                        drop(scroll_offset);
+                        glide_scroll(&scroll_offset_rc, point(delta_x, delta_y), current_view, window);
+                        return;
                     }
                     scroll_offset.y += delta_y;
                     scroll_offset.x += delta_x;
@@ -5827,4 +5837,97 @@ mod tests {
         assert_eq!(bounds("cell-1").origin.x, px(100.));
         assert_eq!(bounds("cell-2").origin.x, px(300.));
     }
+}
+
+/// How fast a wheel's glide closes on where it is going: a time constant, so 95 % of the way takes three of these
+/// (about 140 ms, near what Edge's wheel takes).
+const GLIDE_TAU: f32 = 0.047;
+
+/// A scroller gliding after the wheel: how far it still has to go, where it was last put, and when.
+struct Glide {
+    left: Point<Pixels>,
+    wrote: Point<Pixels>,
+    at: std::time::Instant,
+    born: std::time::Instant,
+}
+
+thread_local! {
+    /// The scrollers gliding now, by their offset cell. One goes out of the map as it arrives.
+    static GLIDES: RefCell<HashMap<usize, Glide>> = RefCell::new(HashMap::default());
+}
+
+/// Sends a scroller `by` further, over the next frames instead of at once. Another notch on the way adds to what is
+/// left, so a fast spin runs on smoothly.
+fn glide_scroll(offset: &Rc<RefCell<Point<Pixels>>>, by: Point<Pixels>, view: EntityId, window: &mut Window) {
+    let key = Rc::as_ptr(offset) as usize;
+    let now = std::time::Instant::now();
+    let here = *offset.borrow();
+    let start = GLIDES.with(|g| {
+        let mut g = g.borrow_mut();
+        match g.get_mut(&key) {
+            Some(glide) => {
+                // Turned back: the way left the other way is dropped, as a browser does.
+                if glide.left.y.signum() * by.y.signum() < 0. {
+                    glide.left.y = Pixels::ZERO;
+                }
+                if glide.left.x.signum() * by.x.signum() < 0. {
+                    glide.left.x = Pixels::ZERO;
+                }
+                glide.left += by;
+                false
+            }
+            None => {
+                g.insert(key, Glide { left: by, wrote: here, at: now, born: now });
+                true
+            }
+        }
+    });
+    if start {
+        glide_step(offset.clone(), view, window);
+    }
+}
+
+fn glide_step(offset: Rc<RefCell<Point<Pixels>>>, view: EntityId, window: &mut Window) {
+    window.on_next_frame(move |window, cx| {
+        let key = Rc::as_ptr(&offset) as usize;
+        let now = std::time::Instant::now();
+        let here = *offset.borrow();
+        let go_on = GLIDES.with(|g| {
+            let mut g = g.borrow_mut();
+            let Some(glide) = g.get_mut(&key) else { return false };
+            // Put elsewhere since (its bar dragged, scrolled to a row) or held at an end: that way's glide is over.
+            if here.x != glide.wrote.x {
+                glide.left.x = Pixels::ZERO;
+            }
+            if here.y != glide.wrote.y {
+                glide.left.y = Pixels::ZERO;
+            }
+            let dt = now.duration_since(glide.at).as_secs_f32().clamp(0., 0.05);
+            glide.at = now;
+            let k = 1. - (-dt / GLIDE_TAU).exp();
+            let close = |v: Pixels| v.abs() < px(0.5);
+            // The last half pixel, or a glide that has run long: the rest at once.
+            let all = now.duration_since(glide.born).as_secs_f32() > 0.6;
+            let mut by = point(glide.left.x * k, glide.left.y * k);
+            if all || close(glide.left.x - by.x) {
+                by.x = glide.left.x;
+            }
+            if all || close(glide.left.y - by.y) {
+                by.y = glide.left.y;
+            }
+            glide.left -= by;
+            let to = here + by;
+            *offset.borrow_mut() = to;
+            glide.wrote = to;
+            let done = glide.left.x.is_zero() && glide.left.y.is_zero();
+            if done {
+                g.remove(&key);
+            }
+            !done
+        });
+        cx.notify(view);
+        if go_on {
+            glide_step(offset, view, window);
+        }
+    });
 }

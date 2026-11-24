@@ -3170,7 +3170,7 @@ impl Window {
     ///
     /// Tests have no platform frame loop, so this simulates the delivery of the
     /// next frame.
-    #[cfg(any(test, feature = "test-support"))]
+    /// (Bloxkeep: also its hidden-window shots, which draw their own frames and get none from Windows.)
     pub fn simulate_next_frame(&mut self, cx: &mut App) -> usize {
         let callbacks = self.next_frame_callbacks.take();
         let count = callbacks.len();
