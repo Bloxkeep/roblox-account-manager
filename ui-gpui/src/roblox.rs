@@ -4527,18 +4527,33 @@ pub fn accept_agreements(cookie: &str, ids: &[String]) -> Result<(), String> {
 }
 
 /// Roblox's reminder after a rule was broken ("Remember our Community Guidelines" on its home page): which one, by
-/// Roblox's key for it ("Experiment.Reminders.ViolationProfanity"…); `id` tells one reminder from the next.
+/// Roblox's key for it ("Experiment.Reminders.ViolationProfanity"…); `id` tells one reminder from the next. Or, with
+/// `lesson`, its chat-filter lesson after it changed or blocked many messages (its TextFilterEducationDialog).
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Reminder {
     pub id: String,
     pub rule: String,
+    pub lesson: Option<Lesson>,
+}
+
+/// The chat-filter lesson: `changed` when Roblox says it changed or blocked messages ("change_or_block"), else that
+/// chat is close to being lost; `tip` what to keep to ("respect", "spam", "pii", "romance": Roblox's kind_word,
+/// no_spam, no_personal_info, no_sexual).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Lesson {
+    pub changed: bool,
+    pub tip: &'static str,
 }
 
 /// None when Roblox has none to show.
 pub fn reminder(cookie: &str) -> Result<Option<Reminder>, String> {
     #[cfg(feature = "shot")]
     if std::env::var("BLOXKEEP_SHOT_NOTICES").is_ok() {
-        return Ok(Some(Reminder { id: "r".into(), rule: "Experiment.Reminders.ViolationProfanity".into() }));
+        return Ok(Some(if std::env::var("BLOXKEEP_SHOT_NOTICES").is_ok_and(|v| v == "lesson") {
+            Reminder { id: "l".into(), rule: String::new(), lesson: Some(Lesson { changed: false, tip: "pii" }) }
+        } else {
+            Reminder { id: "r".into(), rule: "Experiment.Reminders.ViolationProfanity".into(), lesson: None }
+        }));
     }
     if cfg!(feature = "shot") {
         return Ok(None);
@@ -4547,12 +4562,28 @@ pub fn reminder(cookie: &str) -> Result<Option<Reminder>, String> {
     Ok(reminder_of(&d))
 }
 
-/// usermoderation's reminder answer (its text-filter lesson, a nudge of another kind, left out).
+/// usermoderation's reminder answer: a reminder of the rules (with the rule broken), or the chat-filter lesson.
 pub fn reminder_of(d: &Value) -> Option<Reminder> {
-    let kind = text(d, "nudgeType");
-    let rule = text(d, "policyViolation");
-    (d.get("shouldSurfaceReminder").and_then(Value::as_bool) == Some(true) && matches!(kind.as_str(), "" | "REMINDER_OF_NORMS") && !rule.is_empty())
-        .then(|| Reminder { id: text(d, "interventionId"), rule })
+    if d.get("shouldSurfaceReminder").and_then(Value::as_bool) != Some(true) {
+        return None;
+    }
+    let id = text(d, "interventionId");
+    match text(d, "nudgeType").as_str() {
+        "TEXT_FILTER_EDUCATION" => {
+            let tip = match text(d, "contentVariant").as_str() {
+                "no_spam" => "spam",
+                "no_personal_info" => "pii",
+                "no_sexual" => "romance",
+                _ => "respect",
+            };
+            Some(Reminder { id, rule: String::new(), lesson: Some(Lesson { changed: text(d, "experimentVariant") == "change_or_block", tip }) })
+        }
+        "" | "REMINDER_OF_NORMS" => {
+            let rule = text(d, "policyViolation");
+            (!rule.is_empty()).then_some(Reminder { id, rule, lesson: None })
+        }
+        _ => None,
+    }
 }
 
 // ───────────────────────── a game's badges ─────────────────────────

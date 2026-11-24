@@ -2909,12 +2909,22 @@ fn notice_bars(root: &Root, cx: &mut Context<Root>) -> Vec<AnyElement> {
         );
     }
     if let Some(m) = k.remind.as_ref().filter(|m| !REMINDED.lock().unwrap_or_else(|e| e.into_inner()).contains(&m.id)) {
-        let rule = root.tr(&format!("rn.rule.{}", rule_of(&m.rule)));
-        let sub = muted(root.i18n.tv("rn.remindBody", &[("rule", &rule)]));
+        // The reminder of the rules, or the chat-filter lesson (Roblox's title and words for its kind, its OK).
+        let (mark, head, sub, ok) = match &m.lesson {
+            Some(l) => {
+                let tip = root.tr(&format!("rn.tip.{}", l.tip));
+                let (title, body) = if l.changed { ("rn.lessonChanged", "rn.lessonBodyChanged") } else { ("rn.lessonClose", "rn.lessonBodyClose") };
+                ("message", root.tr(title), root.i18n.tv(body, &[("tip", &tip)]), root.tr("rn.ok"))
+            }
+            None => {
+                let rule = root.tr(&format!("rn.rule.{}", rule_of(&m.rule)));
+                ("shield", root.tr("rn.remindTitle"), root.i18n.tv("rn.remindBody", &[("rule", &rule)]), root.tr("rn.remindOk"))
+            }
+        };
         let seen = m.id.clone();
         bars.push(
-            bar("rn-remind-bar", "shield", WARN, root.tr("rn.remindTitle"), sub)
-                .child(Button::new("rn-remind-ok", root.tr("rn.remindOk")).small().on_click(cx.listener(move |_, _, _, cx| {
+            bar("rn-remind-bar", mark, WARN, head, muted(sub))
+                .child(Button::new("rn-remind-ok", ok).small().on_click(cx.listener(move |_, _, _, cx| {
                     REMINDED.lock().unwrap_or_else(|e| e.into_inner()).push(seen.clone());
                     cx.notify();
                 })))

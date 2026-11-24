@@ -95,11 +95,11 @@ pub async fn run(c: &mut Checks, _dir: &str) {
     let r = crate::roblox::reminder_of(&json!({ "shouldSurfaceReminder": true, "interventionId": "i1", "policyViolation": "Experiment.Reminders.ViolationScams", "reminderNumber": 1 }));
     c.check("a reminder of the rules is read", r.as_ref().is_some_and(|r| r.id == "i1" && r.rule.ends_with("Scams")), format!("{r:?}"));
     c.check("…none when Roblox says not to show one", crate::roblox::reminder_of(&json!({ "shouldSurfaceReminder": false })).is_none(), ());
-    c.check(
-        "…a text-filter lesson is no reminder",
-        crate::roblox::reminder_of(&json!({ "shouldSurfaceReminder": true, "nudgeType": "TEXT_FILTER_EDUCATION", "policyViolation": "x", "interventionId": "i2" })).is_none(),
-        (),
-    );
+    let l = crate::roblox::reminder_of(&json!({ "shouldSurfaceReminder": true, "nudgeType": "TEXT_FILTER_EDUCATION", "experimentVariant": "change_or_block", "contentVariant": "no_spam", "interventionId": "i2" }));
+    c.check("the chat-filter lesson is read with its kind and tip", l.as_ref().and_then(|r| r.lesson.clone()) == Some(crate::roblox::Lesson { changed: true, tip: "spam" }), format!("{l:?}"));
+    let l = crate::roblox::reminder_of(&json!({ "shouldSurfaceReminder": true, "nudgeType": "TEXT_FILTER_EDUCATION", "experimentVariant": "warning", "interventionId": "i3" }));
+    c.check("…the warning one, its tip respect when Roblox names none", l.as_ref().and_then(|r| r.lesson.clone()) == Some(crate::roblox::Lesson { changed: false, tip: "respect" }), format!("{l:?}"));
+    c.check("…a nudge of a kind not known is left out", crate::roblox::reminder_of(&json!({ "shouldSurfaceReminder": true, "nudgeType": "NEW_KIND", "policyViolation": "x" })).is_none(), ());
     for (key, want) in [("Label.AgeGroup13To15", "13–15"), ("Label.AgeGroup18Plus", "18+"), ("Label.AgeGroupUnder9", "<9"), ("Label.AgeGroupUnknown", "")] {
         let got = crate::roblox::age_words(key);
         c.check(&format!("age group {key}"), got == want, &got);
