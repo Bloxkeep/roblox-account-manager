@@ -129,7 +129,7 @@ fn part(root: &Root, group: &str, members: &[&Value], cols: &Cols, cx: &mut Cont
         return col;
     }
     // (A long part draws only its lines near the view, under an id of its own.)
-    let long = members.len() >= crate::near::FROM;
+    let long = members.len() >= crate::near::ROWS_FROM;
     col.child(block(root, if long { crate::near::named("acc-rows:", group) } else { "acc-rows" }, members, cols, cx))
 }
 
@@ -137,10 +137,10 @@ fn part(root: &Root, group: &str, members: &[&Value], cols: &Cols, cx: &mut Cont
 fn block(root: &Root, id: &'static str, shown: &[&Value], cols: &Cols, cx: &mut Context<Root>) -> Div {
     // One surface, a line an account with a hairline between (a card a line read as a stack of buttons), each line
     // as tall, its columns as wide in every line.
-    // A long list: only the lines near the view are made (crate::near), each line and its hairline 57 px.
+    // A long list: only the lines in view are made (crate::near), each line and its hairline 57 px.
     let n = shown.len();
     let must = super::revealed_in(root, shown);
-    let near = crate::near::Near::new(n >= crate::near::FROM, id, n, ROW_H, 1., must);
+    let near = crate::near::Near::new_in(Some(&crate::scrolled::handle("acc-body")), n >= crate::near::ROWS_FROM, id, n, ROW_H, 1., must);
     let mut list = crate::kit::block_of(R_L + 2., c(RAISED)).w_full().p(px(4.)).flex().flex_col();
     list = list.children(near.mark());
     for part in near.parts {

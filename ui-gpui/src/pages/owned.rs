@@ -597,8 +597,16 @@ fn servers(root: &Root, inner: f32, cx: &mut Context<Root>) -> AnyElement {
                             r.games.tab = games::Tab::Servers;
                             cx.notify();
                         }));
-                    let lines = rows.into_iter().map(|x| {
-                        i += 1;
+                    // Its servers, a line each, all one height but the one opened: only the lines in view are made
+                    // (crate::near) while none is open.
+                    let base = i;
+                    i += count;
+                    let opened = rows.iter().any(|x| o.edit.as_ref().is_some_and(|e| e.id == int(x, "id") && e.account == s(x, "accountId")));
+                    let key = crate::near::sig((universe, count, rows.first().map(|x| int(x, "id"))));
+                    let from = if opened { usize::MAX } else { crate::near::ROWS_FROM };
+                    let lines = crate::near::measured_in(Some(&crate::scrolled::handle("owned-body")), from, crate::near::named("own-ps:", &universe.to_string()), count, key, 57., 0., |k| {
+                        let x = rows[k];
+                        let i = base + k + 1;
                         let (price, renews, expires) = (int(x, "price"), flag(x, "renews"), s(x, "expires"));
                         let left = days_to(expires);
                         let cost = if price > 0 {
@@ -642,12 +650,12 @@ fn servers(root: &Root, inner: f32, cx: &mut Context<Root>) -> AnyElement {
                             )
                             .child(div().flex().flex_col().flex_none().items_end().gap(px(2.)).child(cost).child(div().text_size(px(T_S)).text_color(c(tone)).child(when)))
                             .child(icon(if open.is_some() { "chevronUp" } else { "chevronDown" }, 14., c(MUTED)));
-                        div().w_full().flex().flex_col().child(line).children(open.map(|e| edit_panel(root, e, cx)))
+                        div().w_full().flex().flex_col().child(line).children(open.map(|e| edit_panel(root, e, cx))).into_any_element()
                     });
                     let col = columns.iter_mut().min_by_key(|(height, _)| *height).expect("one column");
                     col.0 += count + 1;
                     col.1.push(surface().w_full().p(px(4.)).flex().flex_col().child(top)
-                        .children(lines.collect::<Vec<_>>()).into_any_element());
+                        .child(lines).into_any_element());
             }
             div().flex().items_start().gap(px(GRID_GAP)).children(columns.into_iter().map(|(_, cards)| {
                 div().w(px(card_w)).flex_none().flex().flex_col().gap(px(GRID_GAP)).children(cards)

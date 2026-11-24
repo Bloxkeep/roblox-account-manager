@@ -3069,7 +3069,11 @@ fn grid(root: &Root, all: &[Game], width: f32, cx: &mut Context<Root>) -> impl I
     // (Without accents or case, as the web page's search: "hoang" finds "Hoàng".)
     let query = folded(root.game_search.read(cx).value().trim());
     // (Ranked as the switch's box is: initials, a letter wrong, words run together; best first.)
-    let shown: Vec<&Game> = ranked(all.iter(), &query, |g| g.name.as_str());
+    #[allow(unused_mut)]
+    let mut shown: Vec<&Game> = ranked(all.iter(), &query, |g| g.name.as_str());
+    // (BLOXKEEP_SHOT_MANY=N: a hidden shot's games made N, to time the page with many.)
+    #[cfg(feature = "shot")]
+    crate::near::shot_many(&mut shown);
     let card_w = home_fit(inner).1 + 2. * CPAD;
 
     let header = div()
@@ -3115,7 +3119,7 @@ fn grid(root: &Root, all: &[Game], width: f32, cx: &mut Context<Root>) -> impl I
                     .flex_col()
                     .gap(px(12.))
                     .child(div().text_size(px(T_H)).font_weight(FontWeight::SEMIBOLD).text_color(c(TEXT_2)).child(root.tr("games.withWiki")))
-                    .child(div().mx(px(-CPAD)).flex().flex_wrap().gap(px(CGAP)).children(shown.into_iter().map(|g| card(root, g, card_w, cx).into_any_element()).collect::<Vec<_>>())),
+                    .child(game_cards(root, "games-found", &shown, card_w, cx)),
             );
         }
         return div().size_full().flex().flex_col().child(header).child(crate::scrolled::body("games-body", body));
@@ -3127,10 +3131,10 @@ fn grid(root: &Root, all: &[Game], width: f32, cx: &mut Context<Root>) -> impl I
         body = body.children(radar_all(root)).children(friends_strip(root, inner, cx)).children(keep_playing(root, inner, cx));
         body = body.children(recommended(root, inner, cx)).child(charts(root, inner, cx));
         if !yours.is_empty() {
-            body = body.child(section(root.tr("games.mine"), yours.into_iter().map(|g| card(root, g, card_w, cx).into_any_element()).collect()));
+            body = body.child(section(root, root.tr("games.mine"), "games-mine", &yours, card_w, cx));
         }
         if !others.is_empty() {
-            body = body.child(section(root.tr("games.withWiki"), others.into_iter().map(|g| card(root, g, card_w, cx).into_any_element()).collect()));
+            body = body.child(section(root, root.tr("games.withWiki"), "games-wiki", &others, card_w, cx));
         }
         return div().size_full().flex().flex_col().child(header).child(crate::scrolled::body("games-body", body));
     }
@@ -3158,14 +3162,14 @@ fn grid(root: &Root, all: &[Game], width: f32, cx: &mut Context<Root>) -> impl I
         } else {
             vec![(None, shown)]
         };
-        for (title, games) in parts {
+        for (k, (title, games)) in parts.into_iter().enumerate() {
             body = body.child(
                 div()
                     .flex()
                     .flex_col()
                     .gap(px(12.))
                     .when_some(title, |d, t| d.child(div().text_size(px(T_H)).font_weight(FontWeight::SEMIBOLD).text_color(c(TEXT_2)).child(t)))
-                    .child(div().mx(px(-CPAD)).flex().flex_wrap().gap(px(CGAP)).children(games.into_iter().map(|g| card(root, g, card_w, cx).into_any_element()).collect::<Vec<_>>())),
+                    .child(game_cards(root, ["games-part-0", "games-part-1"][k.min(1)], &games, card_w, cx)),
             );
         }
     }
@@ -3583,9 +3587,17 @@ fn spotlight(root: &Root, all: &[crate::pages::home::Game], width: f32, cx: &mut
     div().flex().gap(px(GAP_S)).child(big).child(div().w(px(side_w)).min_w_0().flex().flex_wrap().content_start().gap(px(GAP_S)).children(side)).into_any_element()
 }
 
-fn section(title: String, cards: Vec<AnyElement>) -> impl IntoElement {
-    let n = cards.len();
-    div().flex().flex_col().gap(px(12.)).child(section_head(title, Some(n))).child(div().mx(px(-CPAD)).flex().flex_wrap().gap(px(CGAP)).children(cards))
+fn section(root: &Root, title: String, id: &'static str, games: &[&Game], card_w: f32, cx: &mut Context<Root>) -> impl IntoElement {
+    div().flex().flex_col().gap(px(12.)).child(section_head(title, Some(games.len()))).child(game_cards(root, id, games, card_w, cx))
+}
+
+/// The bot's games as cards in lines, only the lines in view made once there are many (crate::near).
+fn game_cards(root: &Root, id: &'static str, games: &[&Game], card_w: f32, cx: &mut Context<Root>) -> Div {
+    let key = crate::near::sig((games.len(), games.first().map(|g| g.id.as_str()), card_w.to_bits()));
+    // (A card: its picture, 16:9, and the name and line beside the 36 px icon under it.)
+    let guess = (card_w - 2. * CPAD) * 9. / 16. + 2. * CPAD + 12. + 40.;
+    let scroll = crate::scrolled::handle("games-body");
+    div().mx(px(-CPAD)).child(crate::near::tiles_in(Some(&scroll), id, games.len(), card_w, CGAP, key, false, guess, |i| card(root, games[i], card_w, cx).into_any_element()))
 }
 
 /// Roblox's charts: a pill a row (Trending, Up-and-coming…), and the row's games.
