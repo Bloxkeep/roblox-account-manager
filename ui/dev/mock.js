@@ -1666,7 +1666,7 @@
     };
   });
   let emit = () => {};
-  let shown = false;
+  let shown = false, ticking = null;
   const send = () => emit('monitor', { tiles });
   const attach = base.attach, call = base.call;
   // The heading and the sidebar count these windows.
@@ -1676,6 +1676,8 @@
       // Sent once the tab shows, as the app's first refresh does; later changes come from the acts.
       if (!a?.hidden && !shown) { shown = true; setTimeout(send, 60); }
       if (a?.hidden) shown = false;
+      // &monitorevery=MS: sent again every MS while the tab shows, changed or not, as the app's 1.5 s refresh does.
+      if (params.has('monitorevery') && !ticking) ticking = setInterval(() => shown && send(), Number(params.get('monitorevery')) || 1500);
       window.__monitorArea = a; // what the page reported last, for the checks
       return null;
     }

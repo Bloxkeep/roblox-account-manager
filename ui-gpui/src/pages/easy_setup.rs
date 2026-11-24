@@ -111,14 +111,14 @@ fn kept_mb(total: f64) -> f64 {
 }
 
 /// What one window takes: as measured here (capacity.rs), else FIRST_EACH_MB.
-fn each_mb(r: &Root) -> f64 {
-    r.metrics.pointer("/fit/eachMb").and_then(Value::as_f64).filter(|e| *e >= 50.).unwrap_or(FIRST_EACH_MB)
+fn each_mb(r: &Root, cx: &App) -> f64 {
+    r.metrics(cx).pointer("/fit/eachMb").and_then(Value::as_f64).filter(|e| *e >= 50.).unwrap_or(FIRST_EACH_MB)
 }
 
 /// About how many windows fit now: capacity.rs's number once a window was measured; before that (a first run) from
 /// the RAM free now at FIRST_EACH_MB each. None when the PC's memory isn't read yet.
-fn fit_now(r: &Root) -> Option<i64> {
-    let m = &r.metrics;
+fn fit_now(r: &Root, cx: &App) -> Option<i64> {
+    let m = r.metrics(cx);
     m.pointer("/fit/max").and_then(Value::as_i64).or_else(|| {
         let free = m.get("availableMb").and_then(Value::as_f64).filter(|f| *f > 0.)?;
         let total = m.get("systemMb").and_then(Value::as_f64).unwrap_or(free);
@@ -129,17 +129,17 @@ fn fit_now(r: &Root) -> Option<i64> {
 /// The most the "how many at once" pickers go to: as many windows as this PC's whole RAM could hold with everything
 /// else closed (60 at most). They went to 60 on any PC: 57 at once on a 32 GB laptop took no notice (the owner,
 /// 2026-11-19: "này nó thích để 1 tỷ cũng được à"). Past what fits now, the plan says so (`over`).
-pub fn most(r: &Root) -> i64 {
-    match r.metrics.get("systemMb").and_then(Value::as_f64).filter(|t| *t > 0.) {
-        Some(total) => (((total - kept_mb(total)) / each_mb(r)).floor() as i64).clamp(1, 60),
+pub fn most(r: &Root, cx: &App) -> i64 {
+    match r.metrics(cx).get("systemMb").and_then(Value::as_f64).filter(|t| *t > 0.) {
+        Some(total) => (((total - kept_mb(total)) / each_mb(r, cx)).floor() as i64).clamp(1, 60),
         None => 60,
     }
 }
 
-fn plan(r: &Root, target: i64) -> Plan {
+fn plan(r: &Root, target: i64, cx: &App) -> Plan {
     let st = st(r);
-    let m = &r.metrics;
-    let fit = fit_now(r);
+    let m = r.metrics(cx);
+    let fit = fit_now(r, cx);
     let each = m.pointer("/fit/eachMb").and_then(Value::as_f64).unwrap_or(0.);
     let total_gb = m.get("systemMb").and_then(Value::as_f64).unwrap_or(0.) / 1024.;
     let threads = r.state.pointer("/cores/logical").and_then(Value::as_i64).unwrap_or(0);
@@ -200,9 +200,9 @@ pub struct Facts {
     pub patch: Value,
 }
 
-pub fn facts(r: &Root, target: i64) -> Facts {
+pub fn facts(r: &Root, target: i64, cx: &App) -> Facts {
     let (cpu, gpus) = pc();
-    let m = &r.metrics;
+    let m = r.metrics(cx);
     let total = m.get("systemMb").and_then(Value::as_f64).unwrap_or(0.);
     let free = m.get("availableMb").and_then(Value::as_f64).unwrap_or(0.);
     let gb = |mb: f64| crate::lang::cur().mb((mb / 1024.).round() * 1024.);
@@ -213,7 +213,7 @@ pub fn facts(r: &Root, target: i64) -> Facts {
             r.tr(&format!("cap.by.{}", f.get("by").and_then(Value::as_str).unwrap_or("ram"))),
         )
     });
-    let p = plan(r, target);
+    let p = plan(r, target, cx);
     Facts {
         cpu: Some(cpu.clone()).filter(|c| !c.is_empty()),
         threads: r.state.pointer("/cores/logical").and_then(Value::as_i64).unwrap_or(0),
@@ -229,15 +229,15 @@ pub fn facts(r: &Root, target: i64) -> Facts {
 
 pub fn open(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
     // How many to plan for: the accounts there are, at least one.
-    let target = (r.accounts().len() as i64).clamp(1, most(r));
+    let target = (r.accounts().len() as i64).clamp(1, most(r, cx));
     r.easy = Data { open: true, target, ..Default::default() };
     r.help_open = true;
     let this = cx.weak_entity();
     window.open_dialog(cx, move |dialog, _, cx| {
         let Some(root) = this.upgrade() else { return dialog };
         let r = root.read(cx);
-        let m = &r.metrics;
-        let p = plan(r, r.easy.target);
+        let m = r.metrics(cx);
+        let p = plan(r, r.easy.target, cx);
 
         // This PC: three tiles.
         let (cpu, gpus) = pc();
@@ -300,8 +300,8 @@ pub fn open(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
         // How many accounts at once: the plan follows it.
         let step = |id: &'static str, ic: &'static str, by: i64, this: WeakEntity<Root>| {
             IconButton::new(id, ic).size(30.).on_click(move |_, w, cx| {
-                let _ = this.update(cx, |r, _| {
-                    r.easy.target = (r.easy.target + by).clamp(1, most(r));
+                let _ = this.update(cx, |r, cx| {
+                    r.easy.target = (r.easy.target + by).clamp(1, most(r, cx));
                     r.easy.picked = None;
                     r.easy.flags = None;
                 });
@@ -315,7 +315,7 @@ pub fn open(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
             .child(div().flex_1().min_w_0().text_size(px(T_M)).font_weight(FontWeight::SEMIBOLD).text_color(c(TEXT)).child(r.tr("es.want")))
             .child(step("es-less", "chevronLeft", -1, this.clone()).disabled(r.easy.target <= 1))
             .child(div().w(px(36.)).text_center().text_size(px(T_H)).font_weight(FontWeight::BOLD).font_features(tnum()).text_color(c(TEXT)).child(r.easy.target.to_string()))
-            .child(step("es-more", "chevronRight", 1, this.clone()).disabled(r.easy.target >= most(r)));
+            .child(step("es-more", "chevronRight", 1, this.clone()).disabled(r.easy.target >= most(r, cx)));
 
         // The modes, the suggested one marked.
         let mut modes = div().flex().flex_col().gap(px(6.));
@@ -436,7 +436,7 @@ pub fn open(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
             }))
             .child(Button::new("es-apply", r.tr("vis.apply")).icon("check").primary().disabled(!changed).on_click(move |_, w, cx| {
                 let _ = go.update(cx, |r, cx| {
-                    let p = plan(r, r.easy.target);
+                    let p = plan(r, r.easy.target, cx);
                     if p.patch.as_object().is_some_and(|o| !o.is_empty()) {
                         r.send("setSettings", p.patch);
                         r.toast = Some((r.tr("es.done"), "ok".into()));

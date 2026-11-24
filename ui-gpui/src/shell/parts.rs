@@ -36,6 +36,8 @@ macro_rules! part {
 
         impl Render for $name {
             fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+                #[cfg(feature = "shot")]
+                DRAWN.with(|d| d.borrow_mut().push(stringify!($name)));
                 let me = cx.entity_id();
                 self.root.update(cx, |r, cx| r.$draw(me, window, cx)).unwrap_or_else(|_| div().into_any_element())
             }
@@ -53,8 +55,17 @@ part!(OverPart, over_part, "What floats over the rest: the status bar's cards, t
 thread_local! {
     /// The part being laid out or painted anew (between its `begin` and `end` marks).
     static NOW: Cell<Option<EntityId>> = const { Cell::new(None) };
-    /// Every part's view, to tell a part from another view.
+    /// Every part's view, to tell a part from another view (OverPart last).
     static IDS: RefCell<Vec<EntityId>> = const { RefCell::new(Vec::new()) };
+    /// The parts made anew since `take_drawn` was last called (a shot's bench says them for each frame).
+    #[cfg(feature = "shot")]
+    static DRAWN: RefCell<Vec<&'static str>> = const { RefCell::new(Vec::new()) };
+}
+
+/// The parts made anew (not put down again as they were) since this was last called, by name.
+#[cfg(feature = "shot")]
+pub fn take_drawn() -> Vec<&'static str> {
+    DRAWN.with(|d| std::mem::take(&mut *d.borrow_mut()))
 }
 
 /// Root's parts, made at its first frame.
@@ -113,6 +124,14 @@ pub fn owner(window: &Window) -> Option<EntityId> {
         let view = window.current_view();
         IDS.with(|i| i.borrow().contains(&view)).then_some(view)
     })
+}
+
+/// Draws what floats over the rest again on the next frame (what stands over a pill follows where the pill was
+/// measured as it was drawn: a frame being drawn can't be refreshed).
+pub fn over_next_frame(window: &Window) {
+    if let Some(over) = IDS.with(|i| i.borrow().last().copied()) {
+        window.on_next_frame(move |_, cx| cx.notify(over));
+    }
 }
 
 /// A part's box, filling the part, opening with its mark: laid out anew, the part's live pictures' notes are cleared;

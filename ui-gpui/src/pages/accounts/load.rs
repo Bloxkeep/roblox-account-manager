@@ -26,8 +26,8 @@ struct Load {
 }
 
 impl Load {
-    fn of(root: &Root) -> Load {
-        let m = &root.metrics;
+    fn of(root: &Root, cx: &App) -> Load {
+        let m = root.metrics(cx);
         let f = |k: &str| m.get(k).and_then(Value::as_f64);
         let (ram_mb, system_mb) = (f("totalMb").unwrap_or(0.), f("systemMb").unwrap_or(0.));
         Load {
@@ -63,7 +63,7 @@ fn pct(v: Option<f64>) -> String {
 
 /// At the right of the monitor's head: the state word, CPU, RAM and GPU; pressed, the panel under it.
 pub fn strip(root: &Root, cx: &mut Context<Root>) -> Div {
-    let load = Load::of(root);
+    let load = Load::of(root, cx);
     let open = root.acc_drop == Some(KEY);
     let (word, tone) = load.state(root);
     let figure = |name: &'static str, v: Option<f64>| {
@@ -133,7 +133,7 @@ fn panel(root: &Root, load: &Load, cx: &mut Context<Root>) -> Stateful<Div> {
     };
     let pc = root.i18n.tv("mon.load.pc", &[("cpu", &pct(load.pc_cpu)), ("ram", &pct(Some(load.pc_ram)))]);
     // About how many windows this PC runs, and what runs out first (capacity.rs): Bloxkeep's own measure.
-    let fit = root.metrics.get("fit").filter(|f| f.is_object()).map(|f| {
+    let fit = root.metrics(cx).get("fit").filter(|f| f.is_object()).map(|f| {
         let max = f.get("max").and_then(Value::as_i64).unwrap_or(0).to_string();
         let by = f.get("by").and_then(Value::as_str).unwrap_or("ram");
         format!("{} · {}", root.i18n.tv("cap.fits", &[("n", &max)]), root.i18n.tv("mon.load.first", &[("by", &root.tr(&format!("cap.by.{by}")))]))

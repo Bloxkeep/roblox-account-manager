@@ -280,12 +280,12 @@ fn child_of(p: &Data, index: usize) -> usize {
 
 // ───────────────────────── the entries ─────────────────────────
 
-fn build(r: &Root, set_words: &[(Part, Vec<String>)]) -> Vec<Entry> {
+fn build(r: &Root, set_words: &[(Part, Vec<String>)], cx: &App) -> Vec<Entry> {
     use crate::pages::accounts::{is_local, label};
     let accounts = r.accounts();
     let st = r.state.get("settings").cloned().unwrap_or(Value::Null);
     let b = |p: &str| r.state.pointer(p).and_then(Value::as_bool).unwrap_or(false);
-    let robloxes = r.metrics.get("robloxCount").and_then(Value::as_i64).unwrap_or(0);
+    let robloxes = r.metrics(cx).get("robloxCount").and_then(Value::as_i64).unwrap_or(0);
     let live_macros = r.state.get("macroRuns").and_then(Value::as_array).is_some_and(|l| l.iter().any(|m| matches!(s(m, "status"), "waiting" | "running" | "paused")))
         || !r.state.get("macroRecording").is_none_or(Value::is_null);
     let a = |icon: &'static str, key: &str, keys: &[&str], run: Run| entry(Kind::Action, Lead::Icon(icon), r.tr(key), String::new(), keys, run);
@@ -584,7 +584,7 @@ pub fn open(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
     });
     let seq = r.palette.seq.wrapping_add(1);
     let set_words = crate::pages::settings::part_words(r, cx);
-    let entries = Rc::new(build(r, &set_words));
+    let entries = Rc::new(build(r, &set_words, cx));
     r.palette = Data { open: true, seq, _input: Some(input.clone()), _typed: Some(typed), entries, ..Default::default() };
     requery(&mut r.palette, "");
     // BLOXKEEP_SHOT_PAL="farm": a shot's palette with those words typed.

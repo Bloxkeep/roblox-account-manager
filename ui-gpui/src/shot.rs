@@ -179,6 +179,9 @@ async fn frames(h: AnyWindowHandle, out: &std::path::Path, n: usize, bench: bool
     let mut times: Vec<(Duration, Duration, Duration)> = Vec::new();
     let mut asked: Vec<bool> = Vec::new();
     let mut phases: Vec<[Duration; 4]> = Vec::new(); // each frame's render, layout and paint
+    // The app's parts each frame made anew rather than put down as they were (shell/parts.rs), from the first frame.
+    let mut drawn: Vec<Vec<&'static str>> = Vec::new();
+    let _ = crate::shell::parts::take_drawn();
     // BLOXKEEP_SHOT_PROF=<file>: the UI thread's stacks sampled over the bench (prof.rs).
     let prof = std::env::var_os("BLOXKEEP_SHOT_PROF").filter(|_| bench).map(|p| (std::path::PathBuf::from(p), crate::prof::start()));
     // The pictures are written by four kept threads, so taking the next one never waits for a PNG.
@@ -281,6 +284,7 @@ async fn frames(h: AnyWindowHandle, out: &std::path::Path, n: usize, bench: bool
                 let clear = window.draw(cx);
                 let t1 = std::time::Instant::now();
                 phases.push(Window::phases_for_bench());
+                drawn.push(crate::shell::parts::take_drawn());
                 window.present_for_bench();
                 let t2 = std::time::Instant::now();
                 clear.clear(cx);
@@ -309,7 +313,7 @@ async fn frames(h: AnyWindowHandle, out: &std::path::Path, n: usize, bench: bool
                 let _ = tx.send((PathBuf::from(format!("{}-{i:04}.png", stem.display())), pic));
             }
         }
-        log.push_str(&format!("{t:.0} {mx:.1} {my:.1} {}{}\n", down as u8, if bench { format!(" {} {:.2} {}", asked.last().copied().unwrap_or(false) as u8, times.last().map_or(0., |t| t.0.as_secs_f64() * 1000.), phases.last().map_or(String::new(), |p| format!("{:.2} {:.2} {:.2} {:.2}", p[0].as_secs_f64() * 1000., p[1].as_secs_f64() * 1000., p[2].as_secs_f64() * 1000., p[3].as_secs_f64() * 1000.))) } else { String::new() }));
+        log.push_str(&format!("{t:.0} {mx:.1} {my:.1} {}{}\n", down as u8, if bench { format!(" {} {:.2} {} {}", asked.last().copied().unwrap_or(false) as u8, times.last().map_or(0., |t| t.0.as_secs_f64() * 1000.), phases.last().map_or(String::new(), |p| format!("{:.2} {:.2} {:.2} {:.2}", p[0].as_secs_f64() * 1000., p[1].as_secs_f64() * 1000., p[2].as_secs_f64() * 1000., p[3].as_secs_f64() * 1000.)), drawn.last().filter(|d| !d.is_empty()).map_or("-".to_string(), |d| d.iter().map(|n| n.trim_end_matches("Part")).collect::<Vec<_>>().join(","))) } else { String::new() }));
         down = false;
     }
     drop(tx);
@@ -331,7 +335,17 @@ draw: {draw}
 present: {present}
 present, nothing redrawn: {again}
 asked for (the app's window would draw): {} of {}
-", times.len(), asked.iter().filter(|a| **a).count(), asked.len());
+parts made anew (frames): {}
+", times.len(), asked.iter().filter(|a| **a).count(), asked.len(), {
+            let mut n: Vec<(&str, usize)> = Vec::new();
+            for name in drawn.iter().flatten() {
+                match n.iter_mut().find(|(k, _)| k == name) {
+                    Some((_, c)) => *c += 1,
+                    None => n.push((name, 1)),
+                }
+            }
+            n.iter().map(|(k, c)| format!("{} {c}", k.trim_end_matches("Part"))).collect::<Vec<_>>().join(", ")
+        });
         eprint!("{report}");
         let _ = std::fs::write(stem.with_extension("bench.txt"), report);
         let _ = std::fs::write(stem.with_extension("bench-frames.txt"), log);

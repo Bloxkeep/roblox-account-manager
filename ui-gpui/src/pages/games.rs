@@ -204,8 +204,9 @@ pub fn views(root: &Root, cx: &mut Context<Root>) -> impl IntoElement {
                 *s = now;
                 moved
             });
+            // (A frame being drawn can't be refreshed: the part it is in is asked for the next one.)
             if moved {
-                window.refresh();
+                window.request_animation_frame();
             }
         })
         .id("rbx-view").flex().flex_none().items_center().gap(px(2.)).h(px(40.)).p(px(4.)).rounded_full().bg(c(ISLAND))
