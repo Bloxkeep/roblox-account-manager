@@ -51,6 +51,8 @@ pub(crate) struct State {
     new_version: Option<String>,
     progress: i32,
     offline: Option<bool>,
+    /// The last check failed on GitHub's hourly limit for this network (GithubSource::why).
+    limited: bool,
     not_found_logged: bool,
     checked_at: Option<Stamp>,
 }
@@ -96,6 +98,7 @@ impl AppUpdater {
                 new_version: None,
                 progress: 0,
                 offline: None,
+                limited: false,
                 not_found_logged: false,
                 checked_at: None,
             }),
@@ -139,6 +142,23 @@ impl AppUpdater {
     pub fn status(&self) -> String {
         guard(&self.state).status.clone()
     }
+    /// Where updating stands, for the online beat (the bot's UPDATES): current, getting, waiting, limit, offline, error,
+    /// or none for a copy that can't update itself. Off and failed (the app's own) are said by App::update_state.
+    pub fn beat_state(&self) -> &'static str {
+        if self.manager.is_none() {
+            return "none";
+        }
+        let s = guard(&self.state);
+        match s.status.as_str() {
+            "upToDate" => "current",
+            "ready" => "waiting",
+            "error" if s.limited => "limit",
+            "error" if s.offline == Some(true) => "offline",
+            "error" => "error",
+            _ => "getting",
+        }
+    }
+
     pub fn new_version(&self) -> Option<String> {
         guard(&self.state).new_version.clone()
     }
@@ -187,7 +207,11 @@ impl AppUpdater {
 
     fn run(&self, manager: &UpdateManager) {
         let failed_before = guard(&self.state).status == "error";
-        guard(&self.state).offline = None;
+        {
+            let mut s = guard(&self.state);
+            s.offline = None;
+            s.limited = false;
+        }
         self.set("checking");
         let result = (|| -> Result<(), velopack::Error> {
             let update = match manager.check_for_updates()? {
@@ -239,6 +263,7 @@ impl AppUpdater {
                 }
                 s.not_found_logged |= not_found;
                 let lower = text.to_lowercase();
+                s.limited = text.contains("hourly limit");
                 s.offline = Some(!lower.contains("status") && (lower.contains("dns") || lower.contains("connect") || lower.contains("timed out") || lower.contains("network") || lower.contains("io error")));
             }
             self.set("error");

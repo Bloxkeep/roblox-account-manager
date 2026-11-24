@@ -417,8 +417,8 @@ try {
   check('a beat from a Bloxkeep app: taken, the answer says to send the next in a minute', b.status === 200 && b.json?.next === 60, JSON.stringify(b));
   check("…one that isn't a beat is refused (an id that isn't 32 hex digits, a version that isn't one)",
     (await beat({ id: 'me', app: '1.0.8' })).status === 400 && (await beat({ id: B, app: 'x' })).status === 400 && (await beat({ id: B })).status === 400);
-  await beat({ id: B, app: '1.0.8-alpha.2', language: 'en' });
-  b = await beat({ id: A, app: '1.0.8', language: 'vi' }); // the same app again: still one
+  await beat({ id: B, app: '1.0.8-alpha.2', language: 'en', update: 'current' });
+  b = await beat({ id: A, app: '1.0.8', language: 'vi', update: 'waiting', held: 'inuse' }); // the same app again: still one
   check('…and with more online, beats further apart, so that they stay within the day\'s budget', b.json?.next === 120, JSON.stringify(b));
   const asDeveloper = command('online', { guild: null, locale: 'en-US' });
   const asSomeoneElse = { ...command('online', { locale: 'en-US', perms: '8' }), member: { permissions: '8', user: { id: 'u2' } } };
@@ -434,7 +434,7 @@ try {
   const chart = parts(card).find(c => c.type === 12)?.items?.[0]?.media.url ?? '';
   const drawn = JSON.parse(new URL(chart || 'https://x/?c={}').searchParams.get('c'));
   check('…with today\'s peak and people, the versions (no languages), and the last 7 days\' peaks and people as a chart, today the last bars',
-    /Peak today \*\*2\*\* at <t:\d+:t> · \*\*2\*\* people today/.test(said) && said.includes('Versions 1.0.8 (**1**) · 1.0.8-alpha.2 (**1**)') && !/Language|\bvi\b/.test(said)
+    /Peak today \*\*2\*\* at <t:\d+:t> · \*\*2\*\* people today/.test(said) && said.includes('Versions 1.0.8 (**1**: waits: in use 1) · 1.0.8-alpha.2 (**1**: says up to date 1)') && !/Language|\bvi\b/.test(said)
     && chart.startsWith('https://quickchart.io/chart?v=4&') && JSON.stringify(drawn.data?.datasets?.[0]?.data) === '[0,0,0,0,0,0,2]'
     // Days before people were counted: no bar (null), not 0.
     && JSON.stringify(drawn.data?.datasets?.[1]?.data) === '[null,null,null,null,null,null,2]' && drawn.data.labels.at(-1) === 'Today', `${said} ${chart.slice(0, 200)}`);

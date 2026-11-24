@@ -15,7 +15,7 @@ import { DurableObject } from 'cloudflare:workers';
 import { onceMore } from './calls.js';
 import { CODE_LENGTH, captcha } from './captcha.js';
 import { COMMANDS, api, inviteUrl, replyUrl, verify } from './discord.js';
-import { DAYS_SHOWN, GRACE, GRACE_SLACK_SECONDS, RADAR_MINUTES, beatEvery, communityOf, scramble, dashboardKey, dashboardPage, dayOf, onlineMessage, readBeat } from './online.js';
+import { DAYS_SHOWN, GRACE, GRACE_SLACK_SECONDS, RADAR_MINUTES, beatEvery, communityOf, scramble, dashboardKey, dashboardPage, dayOf, onlineMessage, readBeat, versionsOf } from './online.js';
 import { ALL_ACCOUNTS_COMMANDS, ALLOW_FOR, APP_COMMANDS, ANSWER_WAIT, CODE_FOR, CODE_GRACE, COMMANDS_PER_MINUTE, MAX_CODES, MAX_MESSAGE, MAX_PCS, MAX_UNLINKED, MESSAGES_PER_MINUTE, PC_TEXT, REASKED_GAP, SHOTS_PER_MINUTE, TOKEN_FOR, WRONG_CODES, WRONG_WINDOW, choices, handleOf, makeCode, pcId, readAnswer, readCode, readHello } from './remote.js';
 import { CARDS_KEPT, MAX_FEED_SOCKETS, RAW_KEPT, cardsOf, gameId, isNotice, makeFeedChannel, rawLine, rawOf } from './feeds.js';
 import { PRICES_EVERY, PRICES_RETRY, PRICE_SOURCES, readPrices } from './prices.js';
@@ -1082,7 +1082,7 @@ export class Gateway extends DurableObject {
     }
     const was = this.here.get(b.id);
     this.here.set(b.id, { until: now, app: b.app, lang: b.lang, counted: dayOf(now), games: b.games, alts: b.alts, name: b.name,
-      theme: b.theme, since: b.name ? (was?.name ? was.since : now) : null });
+      theme: b.theme, update: b.update, held: b.held, since: b.name ? (was?.name ? was.since : now) : null });
     for (const d of b.drops)
       this.drops.push({ id: b.id, game: d.game, why: d.why, at: now });
     const count = this.countHere(now), next = this.beatEvery(count), until = now + this.onlineFor(next);
@@ -1217,7 +1217,7 @@ export class Gateway extends DurableObject {
       goneAges: goneAges.get(day) ?? {}, goneApps: goneApps.get(day) ?? {} }));
     return {
       now: count, at: new Date(now).toISOString(), forMinutes: Math.round(this.onlineFor(this.beatEvery(count)) / 60_000),
-      today: shown.at(-1), days: shown, apps: tally('app'), languages: tally('lang'), community: (({ ranked, ...c }) => c)(this.community(now)),
+      today: shown.at(-1), days: shown, apps: versionsOf(this.here), languages: tally('lang'), community: (({ ranked, ...c }) => c)(this.community(now)),
     };
   }
 

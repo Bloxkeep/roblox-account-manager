@@ -120,8 +120,11 @@ pub async fn run(c: &mut Checks, dir: &str) {
     };
     let pc_ok = pc.as_ref().is_some_and(|pc| pc.len() == 32 && pc.chars().all(|ch| ch.is_ascii_hexdigit()) && *pc == pc.to_lowercase());
     c.check(
-        "…with this PC's id (32 hex digits, not Windows' own id), the version and the language, nothing else",
-        names.iter().filter(|n| *n != "theme").cloned().collect::<Vec<_>>().join(",") == "age,alts,app,board,drops,first,games,id,language"
+        "…with this PC's id (32 hex digits, not Windows' own id), the version and the language, where its updating stands, nothing else",
+        names.iter().filter(|n| *n != "theme").cloned().collect::<Vec<_>>().join(",") == "age,alts,app,board,drops,first,games,held,id,language,update"
+            // A check's copy can't update itself (no Velopack install): "none", nothing holding it.
+            && first["update"] == "none"
+            && first["held"].is_null()
             && theme_ok
             && pc_ok
             && first["games"].as_array().is_some_and(|a| a.is_empty())

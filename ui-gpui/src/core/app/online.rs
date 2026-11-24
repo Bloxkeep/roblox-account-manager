@@ -248,7 +248,10 @@ impl App {
             let s = prefs::lock();
             (s.board_name.clone(), s.theme.clone())
         };
+        let (update, held) = self.update_state();
         let body = json!({
+            "update": update,
+            "held": held,
             "id": id,
             "app": self.updates.updater.borrow().current_version(),
             "language": l::language(),
@@ -317,6 +320,32 @@ impl App {
 
     /// Sooner than the next beat: two minutes, then four, eight… up to the usual gap, so a bot that can't answer
     /// (no internet, or over its day's budget) isn't asked more often than usual.
+    /// Where this copy's updating stands, for the beat: an old version on the developers' board then says whether it
+    /// stays by choice (automatic updates off) or is stuck (GitHub's limit, an install that failed, never a quiet moment).
+    /// With a downloaded update waiting, what holds it (relaunch.rs note_update_held's reason).
+    pub fn update_state(&self) -> (&'static str, Option<&'static str>) {
+        if !prefs::lock().check_updates {
+            return ("off", None);
+        }
+        if Stamp::utc_now() < self.relaunch.auto_relaunch_paused_until.get() {
+            return ("failed", None);
+        }
+        let state = self.updates.updater.borrow().beat_state();
+        if state != "waiting" {
+            return (state, None);
+        }
+        // "just started" and "the PC just woke" pass by themselves: not said.
+        let held = self.relaunch.update_held_why.borrow().as_deref().and_then(|why| match why {
+            "Bloxkeep in use" => Some("inuse"),
+            "another Bloxkeep window open" => Some("window"),
+            "held for the installer" => Some("installer"),
+            "the vault couldn't be saved" | "something in the app under way" => Some("app"),
+            "just started" | "the PC just woke" => None,
+            _ => Some("roblox"),
+        });
+        (state, held)
+    }
+
     pub fn retry_online(&self) {
         let (retry, every) = (self.online.online_retry.get(), self.online.online_every.get());
         let wait = if retry < every { retry } else { every };

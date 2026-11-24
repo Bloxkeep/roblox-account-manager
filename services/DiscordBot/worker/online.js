@@ -61,10 +61,23 @@ export const THEME_MIN = 2, THEMES_SHOWN = 8;
 const ids = (list, max) => Array.isArray(list)
   ? [...new Set(list.filter(n => Number.isSafeInteger(n) && n > 0))].slice(0, max) : [];
 
+// Where the app's own updating stands (app 1.1.5 on), so an old version on the board says whether it stays by choice
+// or is stuck: up to date by its last check, checking or downloading, downloaded and waiting for a quiet moment (and
+// what holds it), automatic updates off, GitHub's hourly limit for its network used up, offline, another check or
+// download error, an install that failed (tried again a day later), or a copy that can't update itself.
+export const UPDATES = ['current', 'getting', 'waiting', 'off', 'limit', 'offline', 'error', 'failed', 'none'];
+/** What holds a downloaded update: Bloxkeep in use, Roblox opening or rejoining (a restart, a macro, a schedule due),
+ * something in the app under way, another Bloxkeep window open, the installer. */
+export const HELD = ['inuse', 'roblox', 'app', 'window', 'installer'];
+/** The words for each, in /online. */
+export const UPDATE_WORDS = { current: 'says up to date', getting: 'checking', waiting: 'waiting', off: 'updates off', limit: 'GitHub limit',
+  offline: 'offline', error: 'check failed', failed: 'install failed', none: "can't update", 'waiting-inuse': 'waits: in use',
+  'waiting-roblox': 'waits: Roblox busy', 'waiting-app': 'waits: app busy', 'waiting-window': 'waits: other window', 'waiting-installer': 'waits: installer' };
+
 /** A version as the app (or its uninstaller) says it: 1.0.23 or 1.0.23-alpha.4. */
 const versionOf = v => typeof v === 'string' && /^\d+\.\d+\.\d+(-[0-9A-Za-z.]+)?$/.test(v) && v.length <= 30 ? v : null;
 
-/** What the app sent, checked: { id, app, lang, first, age, games, alts, drops, name, theme } or { id, gone: true, removed,
+/** What the app sent, checked: { id, app, lang, first, age, games, alts, drops, name, theme, update, held } or { id, gone: true, removed,
  * why, age, app }; null for anything else. first: a new install's first beat; removed: its uninstaller saying so, with
  * how long the PC had Bloxkeep and the version removed (uninstallers from 1.0.23 on; null before). */
 export function readBeat(body) {
@@ -88,7 +101,32 @@ export function readBeat(body) {
       .slice(0, DROPS_MAX).map(d => ({ game: d.game, why: d.why })),
     name: BOARD_NAME.test(name) ? name : null,
     theme: typeof body.theme === 'string' && THEME_ID.test(body.theme) && body.theme !== 'custom' && body.theme !== 'system' ? body.theme : null,
+    update: UPDATES.includes(body.update) ? body.update : null,
+    held: body.update === 'waiting' && HELD.includes(body.held) ? body.held : null,
   };
+}
+
+const newer = (a, b) => String(a).localeCompare(String(b), 'en', { numeric: true }) > 0;
+
+/**
+ * Online now by version, most first, each with where its updating stands: [{ name, n, why: [{ state, n }] }]. The newest
+ * regular version online saying it's up to date is as it should be (not listed); checking says nothing yet (never
+ * listed). An older one "up to date" found no newer release. here: id → { app, update, held }.
+ */
+export function versionsOf(here) {
+  const by = new Map();
+  for (const h of here.values()) {
+    const v = by.get(h.app) ?? { name: h.app, n: 0, states: new Map() };
+    v.n++;
+    const state = h.update ? (h.held ? `${h.update}-${h.held}` : h.update) : null;
+    if (state)
+      v.states.set(state, (v.states.get(state) ?? 0) + 1);
+    by.set(h.app, v);
+  }
+  const top = [...by.keys()].filter(v => v && !String(v).includes('-')).reduce((a, v) => (a == null || newer(v, a) ? v : a), null);
+  return [...by.values()].sort((a, b) => b.n - a.n || String(a.name).localeCompare(String(b.name), 'en', { numeric: true }))
+    .map(v => ({ name: v.name, n: v.n, why: [...v.states].filter(([s]) => s !== 'getting' && !(s === 'current' && v.name === top))
+      .sort((a, b) => b[1] - a[1]).map(([state, n]) => ({ state, n })) }));
 }
 
 /**
@@ -195,7 +233,7 @@ export function onlineMessage(o, link, bot, full = true) {
   const line = { type: 14, divider: true, spacing: 1 };
   const peak = o.today.peak ? `Peak today **${o.today.peak}** at ${time(o.today.at)} · **${o.today.people ?? 0}** ${o.today.people === 1 ? 'person' : 'people'} today`
     : 'Nobody yet today';
-  const versions = o.apps.map(r => `${r.name} (**${r.n}**)`).join(' · ');
+  const versions = o.apps.map(r => `${r.name} (**${r.n}**${r.why?.length ? `: ${r.why.map(w => `${UPDATE_WORDS[w.state] ?? w.state} ${w.n}`).join(', ')}` : ''})`).join(' · ');
   // Who stays: today's new installs and who removed it (and why), the people by how long they've had it.
   const t = o.today, ages = t.ages ?? {};
   const why = Object.entries(t.why ?? {}).filter(([k]) => k !== 'none').map(([k, n]) => `${WHY_WORDS[k] ?? k} ${n}`).join(', ');
@@ -292,6 +330,7 @@ td { padding: 5px 0; border-top: 1px solid var(--grid); }
 td:last-child { text-align: right; font-weight: 600; }
 tr:first-child td { border-top: 0; }
 .empty { color: var(--muted); }
+.why { color: var(--text-2); font-size: 12px; margin-top: 2px; }
 details { margin-top: 12px; color: var(--text-2); font-size: 13px; }
 details table { margin-top: 8px; max-width: 320px; }
 footer { color: var(--muted); font-size: 12px; margin-top: 16px; }
@@ -333,6 +372,8 @@ const T = vi ? {
   byLang: 'Đang online, theo ngôn ngữ', nobody: 'Chưa có ai', at: t => 'lúc ' + t, none: 'Chưa có ai trong hôm nay', day: 'Ngày',
   foot: m => 'Tính các app Bloxkeep đã báo đang mở trong ' + m + ' phút qua. Tự cập nhật mỗi 30 giây.', error: 'Không tải được số liệu. Thử lại sau ít phút.',
   langs: { vi: 'Tiếng Việt', en: 'Tiếng Anh' }, updated: t => 'Cập nhật lúc ' + t,
+  upd: { current: 'báo đã mới nhất', waiting: 'đang chờ', off: 'tắt cập nhật', limit: 'GitHub chặn', offline: 'mất mạng', error: 'kiểm tra lỗi', failed: 'cài lỗi', none: 'không tự cập nhật được',
+    'waiting-inuse': 'chờ: đang dùng', 'waiting-roblox': 'chờ: Roblox bận', 'waiting-app': 'chờ: app bận', 'waiting-window': 'chờ: cửa sổ khác', 'waiting-installer': 'chờ: trình cài' },
 } : {
   now: 'Online now', peak: 'Peak today', people: 'People today', peopleSub: 'Different PCs that opened Bloxkeep', most: 'Most at once', peopleDay: 'People that day', days: 'Online, day by day', table: 'As a table', byApp: 'Online now, by version',
   installs: 'New installs today', installsSub: 'PCs that opened Bloxkeep for the first time', ages: "Today, they've had it", agesSub: 'a day / a week / longer', removed: 'Removed today',
@@ -340,6 +381,7 @@ const T = vi ? {
   byLang: 'Online now, by language', nobody: 'Nobody', at: t => 'at ' + t, none: 'Nobody today yet', day: 'Day',
   foot: m => "Counts the Bloxkeep apps that said they're open in the last " + m + ' minutes. Updates every 30 seconds.',
   error: "Couldn't load the numbers. Try again in a few minutes.", langs: { vi: 'Vietnamese', en: 'English' }, updated: t => 'Updated ' + t,
+  upd: ${JSON.stringify(UPDATE_WORDS)},
 };
 if (vi) document.documentElement.lang = 'vi';
 document.querySelectorAll('[data-t]').forEach(e => { e.textContent = T[e.dataset.t]; });
@@ -347,7 +389,9 @@ const $ = id => document.getElementById(id);
 const clock = ms => new Date(ms).toLocaleTimeString(vi ? 'vi-VN' : 'en-GB', { hour: '2-digit', minute: '2-digit' });
 const shortDay = d => new Date(d + 'T00:00:00Z').toLocaleDateString(vi ? 'vi-VN' : 'en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const rows = (list, name) => list.length ? list.map(r => '<tr><td>' + esc(name(r.name)) + '</td><td>' + r.n + '</td></tr>').join('') : '<tr><td class="empty">' + T.nobody + '</td></tr>';
+const rows = (list, name) => list.length ? list.map(r => '<tr><td>' + esc(name(r.name))
+  + (r.why && r.why.length ? '<div class="why">' + esc(r.why.map(w => (T.upd[w.state] || w.state) + ' ' + w.n).join(' · ')) + '</div>' : '')
+  + '</td><td>' + r.n + '</td></tr>').join('') : '<tr><td class="empty">' + T.nobody + '</td></tr>';
 function draw(o) {
   $('now').textContent = o.now;
   $('nowSub').textContent = T.updated(clock(Date.parse(o.at)));
