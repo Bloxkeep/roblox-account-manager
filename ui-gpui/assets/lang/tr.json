@@ -4189,7 +4189,12 @@
   "ram.hour": "1 saat",
   "ram.useBest": "Önerileni kullan",
   "ram.useBestTip": "%90 üstü, Mem Reduct'ın varsayılan alanlarıyla",
-  "ram.fromMemReduct": "Fikir Mem Reduct'tan"
+  "ram.fromMemReduct": "Fikir Mem Reduct'tan",
+  "set.onJoin": "Bir pencere oyuna girince",
+  "set.onJoinDesc": "Yeniden katılınca da. Önceki gibi: yeniden katılan pencere, hesabın son penceresi nasılsa öyle döner.",
+  "set.onJoin.keep": "Önceki gibi",
+  "set.onJoin.show": "Göster",
+  "set.onJoin.minimise": "Küçült"
  },
  "core": {
   "Wrong master password.": "Ana parola yanlış.",

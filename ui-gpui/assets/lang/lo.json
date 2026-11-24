@@ -4188,7 +4188,12 @@
   "ram.hour": "1 ຊົ່ວໂມງ",
   "ram.useBest": "ໃຊ້ຄ່າແນະນຳ",
   "ram.useBestTip": "ເກີນ 90%, ພື້ນທີ່ເລີ່ມຕົ້ນຂອງ Mem Reduct",
-  "ram.fromMemReduct": "ແນວຄິດຈາກ Mem Reduct"
+  "ram.fromMemReduct": "ແນວຄິດຈາກ Mem Reduct",
+  "set.onJoin": "ເມື່ອໜ້າຕ່າງເຂົ້າເກມ",
+  "set.onJoinDesc": "ລວມທັງຕອນ rejoin. ຄືເກົ່າ: ໜ້າຕ່າງທີ່ rejoin ກັບມາຄືໜ້າຕ່າງກ່ອນໜ້າຂອງບັນຊີ.",
+  "set.onJoin.keep": "ຄືເກົ່າ",
+  "set.onJoin.show": "ສະແດງ",
+  "set.onJoin.minimise": "ຫຍໍ້ລົງ"
  },
  "core": {
   "Wrong master password.": "ລະຫັດຜ່ານຫຼັກບໍ່ຖືກ.",

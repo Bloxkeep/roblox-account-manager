@@ -4188,7 +4188,12 @@
   "ram.hour": "1 ชั่วโมง",
   "ram.useBest": "ใช้ค่าที่แนะนำ",
   "ram.useBestTip": "เกิน 90% พร้อมพื้นที่ค่าเริ่มต้นของ Mem Reduct",
-  "ram.fromMemReduct": "ไอเดียจาก Mem Reduct"
+  "ram.fromMemReduct": "ไอเดียจาก Mem Reduct",
+  "set.onJoin": "เมื่อหน้าต่างเข้าเกม",
+  "set.onJoinDesc": "รวมถึงตอน rejoin ด้วย เหมือนเดิม: หน้าต่างที่ rejoin กลับมาแบบหน้าต่างก่อนหน้าของบัญชี",
+  "set.onJoin.keep": "เหมือนเดิม",
+  "set.onJoin.show": "แสดง",
+  "set.onJoin.minimise": "ย่อ"
  },
  "core": {
   "Wrong master password.": "รหัสผ่านหลักไม่ถูกต้อง",

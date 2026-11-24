@@ -4588,7 +4588,12 @@
   "ram.hour": "1 godz.",
   "ram.useBest": "Użyj zalecanych",
   "ram.useBestTip": "Powyżej 90%, z domyślnymi obszarami Mem Reduct",
-  "ram.fromMemReduct": "Pomysł z Mem Reduct"
+  "ram.fromMemReduct": "Pomysł z Mem Reduct",
+  "set.onJoin": "Gdy okno wchodzi do gry",
+  "set.onJoinDesc": "Także po ponownym dołączeniu. Jak wcześniej: okno wraca tak, jak było ostatnie okno konta.",
+  "set.onJoin.keep": "Jak wcześniej",
+  "set.onJoin.show": "Pokaż",
+  "set.onJoin.minimise": "Zminimalizuj"
  },
  "core": {
   "Wrong master password.": "Nieprawidłowe hasło główne.",

@@ -4427,7 +4427,12 @@
   "ram.hour": "1 hora",
   "ram.useBest": "Usar o recomendado",
   "ram.useBestTip": "Acima de 90%, com as áreas padrão do Mem Reduct",
-  "ram.fromMemReduct": "Ideia do Mem Reduct"
+  "ram.fromMemReduct": "Ideia do Mem Reduct",
+  "set.onJoin": "Quando uma janela entra num jogo",
+  "set.onJoinDesc": "Também ao reentrar. Como antes: a janela volta como estava a última da conta.",
+  "set.onJoin.keep": "Como antes",
+  "set.onJoin.show": "Mostrar",
+  "set.onJoin.minimise": "Minimizar"
  },
  "core": {
   "Wrong master password.": "Senha mestra incorreta.",

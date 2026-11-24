@@ -4189,7 +4189,12 @@
   "ram.hour": "1시간",
   "ram.useBest": "추천 설정 쓰기",
   "ram.useBestTip": "90% 초과, Mem Reduct 기본 영역",
-  "ram.fromMemReduct": "Mem Reduct에서 온 아이디어"
+  "ram.fromMemReduct": "Mem Reduct에서 온 아이디어",
+  "set.onJoin": "창이 게임에 들어가면",
+  "set.onJoinDesc": "재접속도 포함. 이전처럼: 재접속한 창은 그 계정의 이전 창 상태로 돌아옵니다.",
+  "set.onJoin.keep": "이전처럼",
+  "set.onJoin.show": "표시",
+  "set.onJoin.minimise": "최소화"
  },
  "core": {
   "Wrong master password.": "마스터 비밀번호가 틀렸어요.",

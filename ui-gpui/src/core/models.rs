@@ -147,6 +147,9 @@ pub struct AppSettings {
     pub multi_instance_tile: bool,
     /// Maximise each Roblox window Bloxkeep opens (still a window, not Roblox's shared fullscreen); not with `multi_instance_tile`.
     pub maximize_on_open: bool,
+    /// What a window does once in its game (a join, a rejoin): "" as it was (a rejoin's window as the account's last
+    /// one was), "show" stays up, "minimise" minimised once (Roblox draws less then).
+    pub on_join: String,
     /// A window whose player leaves its game (Leave in Roblox's menu) is closed, rather than staying open on Roblox's
     /// home screen: one Roblox per game played (the owner, 2026-11-20). Off unless turned on.
     pub close_after_leave: bool,
@@ -243,6 +246,7 @@ impl Default for AppSettings {
             multi_instance_windowed: true,
             multi_instance_tile: false,
             maximize_on_open: false,
+            on_join: String::new(),
             close_after_leave: false,
             rename_windows: true,
             window_pictures: None,
@@ -325,6 +329,8 @@ pub struct LaunchPreset {
     pub restart_hours: i32,
     /// Its windows are arranged (Settings' layout) once it has opened them; None follows Settings.
     pub arrange: Option<bool>,
+    /// What its windows do once in their game ("show", "minimise"); "" follows Settings' `on_join`.
+    pub on_join: String,
     /// Its own Discord webhook for its schedule messages, stop summary and window alerts; "" uses the one in
     /// Settings (see AppController.Discord.cs).
     pub discord_webhook: String,
@@ -353,6 +359,7 @@ impl Default for LaunchPreset {
             profile: String::new(),
             restart_hours: 0,
             arrange: None,
+            on_join: String::new(),
             discord_webhook: String::new(),
             extra: Extra::new(),
         }
@@ -382,6 +389,7 @@ impl std::fmt::Debug for LaunchPreset {
             .field("profile", &self.profile)
             .field("restart_hours", &self.restart_hours)
             .field("arrange", &self.arrange)
+            .field("on_join", &self.on_join)
             .field("discord_webhook", &crate::core::base::Redacted)
             .field("extra", &self.extra)
             .finish()

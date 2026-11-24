@@ -543,7 +543,7 @@ impl App {
             Ok(())
         });
         self.step("MinimiseAfkWindows(windows)", || {
-            self.minimise_afk_windows(&windows);
+            self.minimise_afk_windows(now, &windows);
             Ok(())
         });
         // Before Maximise: a rejoin going back isn't maximised.

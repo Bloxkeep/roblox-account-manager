@@ -54,6 +54,18 @@ pub const MAX_PRESET_NAME: usize = 60;
 pub const PRESET_SERVERS: [&str; 10] = ["any", "most", "fewest", "ping", "random", "eachFewest", "eachMost", "eachRandom", "job", "follow"];
 /// `LaunchPreset::profile` for the light AFK setup (RobloxGameSettings.LightAfk).
 pub const AFK_PROFILE: &str = "afk";
+
+/// What a window does once in its game (Settings' and a preset's `on_join`): one of these, or "" (as it was / follows
+/// Settings). Anything else is "".
+pub const ON_JOIN_RECENT: std::time::Duration = std::time::Duration::from_secs(60);
+
+pub fn on_join_value(v: &str) -> &'static str {
+    match v {
+        "show" => "show",
+        "minimise" => "minimise",
+        _ => "",
+    }
+}
 /// The choices the form offers for `LaunchPreset::restart_hours` (0 = never).
 pub const RESTART_CHOICES: [i32; 4] = [2, 4, 6, 12];
 /// Roblox gives its window its size as it finishes starting up: a window not in a game yet is left this long first.
@@ -154,6 +166,7 @@ impl App {
             "profile": p.profile,
             "restartHours": p.restart_hours,
             "arrange": p.arrange,
+            "onJoin": p.on_join,
             // The link stays in the app, like Settings' one: the page only gets its masked form.
             "discord": if !p.discord_webhook.is_empty() { Some(discord_webhook::mask(&p.discord_webhook)) } else { None },
             // Its windows open now (or being opened again by auto-rejoin), for the Presets tab's Close.
@@ -286,6 +299,7 @@ impl App {
         let anti_afk = opt_bool(a, "antiAfk");
         let auto_rejoin = opt_bool(a, "autoRejoin");
         let arrange = opt_bool(a, "arrange");
+        let on_join = on_join_value(&str_of(a, "onJoin")).to_string();
         let schedule_for_save = schedule.clone();
         // (preset id, its Discord link changed, its schedule changed today)
         let saved: Res<(Guid, bool, bool)> = self.vault_mut(|d| {
@@ -316,6 +330,7 @@ impl App {
             preset.profile = profile.clone();
             preset.restart_hours = restart_hours;
             preset.arrange = arrange;
+            preset.on_join = on_join.clone();
             let mut route_changed = false;
             if let Some(discord) = discord.as_ref() {
                 if *discord != preset.discord_webhook {
@@ -774,6 +789,21 @@ impl App {
         self.vault(|d| d.settings.presets.iter().find(|p| p.id == preset).cloned()).ok().flatten()
     }
 
+    /// What a window of this preset does once in its game: a light-AFK one is minimised, else the preset's choice, else
+    /// Settings' (see `on_join_value`).
+    pub fn on_join_for(preset: Option<&LaunchPreset>, settings: &AppSettings) -> &'static str {
+        match preset {
+            Some(p) if p.profile == AFK_PROFILE => "minimise",
+            Some(p) if !on_join_value(&p.on_join).is_empty() => on_join_value(&p.on_join),
+            _ => on_join_value(&settings.on_join),
+        }
+    }
+
+    pub fn on_join_of(&self, preset_id: Option<Guid>) -> &'static str {
+        let preset = self.preset_for(preset_id);
+        self.vault(|d| App::on_join_for(preset.as_ref(), &d.settings)).unwrap_or("")
+    }
+
     pub fn auto_rejoin_for(preset: Option<&LaunchPreset>, account: &Account) -> bool {
         preset.and_then(|p| p.auto_rejoin).unwrap_or(account.auto_rejoin)
     }
@@ -849,9 +879,11 @@ impl App {
         .unwrap_or(false)
     }
 
-    /// A light-AFK preset's window is minimised once in its game (Roblox draws less then). Only once, so a window brought
-    /// back up stays up; one in use at that moment is left alone.
-    pub fn minimise_afk_windows(&self, windows: &HashMap<i32, Vec<isize>>) {
+    /// A light-AFK preset's window, or one whose "On joining a game" is Minimise, is minimised once in its game (Roblox
+    /// draws less then). Only once, so a window brought back up stays up; one in use at that moment is left alone. A
+    /// window that reached its game a while ago isn't (the choice made just now doesn't put away windows already
+    /// playing), but a light-AFK one is, as before.
+    pub fn minimise_afk_windows(&self, now: Stamp, windows: &HashMap<i32, Vec<isize>>) {
         self.presets.afk_minimised.borrow_mut().retain(|pid| windows.contains_key(pid));
         if self.held_vault().is_none() || input_turn::busy() {
             return;
@@ -859,22 +891,27 @@ impl App {
         let mut foreground: Option<i32> = None;
         let runs: Vec<(i32, Option<Guid>)> = self.controller.running.borrow().values().map(|(pid, launch)| (*pid, launch.preset_id)).collect();
         for (pid, preset_id) in runs {
-            let in_game = self.controller.logs.borrow().state_of(pid).is_some_and(|s| s.status == "ingame");
+            let joined = self.controller.logs.borrow().state_of(pid).filter(|s| s.status == "ingame").map(|s| s.at);
             let list = windows.get(&pid);
             if crate::core::live_monitor::watching(pid)
                 || self.presets.afk_minimised.borrow().contains(&pid)
-                || !in_game
+                || joined.is_none()
                 || list.is_none_or(|l| l.is_empty())
-                || self.preset_for(preset_id).map(|p| p.profile) != Some(AFK_PROFILE.to_string())
+                || self.on_join_of(preset_id) != "minimise"
             {
                 continue;
             }
+            let afk = self.preset_for(preset_id).is_some_and(|p| p.profile == AFK_PROFILE);
+            let who = if afk { "Light AFK" } else { "On joining" };
             self.presets.afk_minimised.borrow_mut().insert(pid);
-            if *foreground.get_or_insert_with(roblox_processes::foreground_pid) == pid && anti_afk::person_active() {
-                log::note(&format!("Light AFK: window {pid} in its game left up, in use."));
+            if !afk && joined.is_some_and(|at| now.secs_since(at) > ON_JOIN_RECENT.as_secs_f64()) {
                 continue;
             }
-            log::note(&format!("Light AFK: window {pid} minimised, in its game."));
+            if *foreground.get_or_insert_with(roblox_processes::foreground_pid) == pid && anti_afk::person_active() {
+                log::note(&format!("{who}: window {pid} in its game left up, in use."));
+                continue;
+            }
+            log::note(&format!("{who}: window {pid} minimised, in its game."));
             roblox_processes::minimise(roblox_processes::main_window_of(list.expect("checked above")));
         }
     }
@@ -905,6 +942,9 @@ impl App {
                 if preset.profile == AFK_PROFILE || preset.arrange == Some(true) {
                     continue;
                 }
+            }
+            if self.on_join_of(preset_id) == "minimise" {
+                continue;
             }
             if self.going_back(pid) {
                 continue; // a rejoin going back to its account's place (rejoin_place.rs)

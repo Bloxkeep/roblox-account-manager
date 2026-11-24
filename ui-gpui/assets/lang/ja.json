@@ -4182,7 +4182,12 @@
   "ram.hour": "1 時間",
   "ram.useBest": "おすすめを使う",
   "ram.useBestTip": "90% 超、Mem Reduct の既定の領域",
-  "ram.fromMemReduct": "Mem Reduct のアイデア"
+  "ram.fromMemReduct": "Mem Reduct のアイデア",
+  "set.onJoin": "ウィンドウがゲームに入ったとき",
+  "set.onJoinDesc": "再参加も同じ。これまでどおり：再参加したウィンドウはそのアカウントの前のウィンドウと同じ状態に戻ります。",
+  "set.onJoin.keep": "これまでどおり",
+  "set.onJoin.show": "表示する",
+  "set.onJoin.minimise": "最小化する"
  },
  "core": {
   "Wrong master password.": "マスターパスワードが違います。",

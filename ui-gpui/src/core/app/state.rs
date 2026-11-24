@@ -522,6 +522,7 @@ impl App {
             "windowWidth": s.window_width,
             "windowHeight": s.window_height,
             "maximizeOnOpen": s.maximize_on_open,
+            "onJoin": s.on_join,
             "closeAfterLeave": s.close_after_leave,
             "launchVia": s.launch_via,
             "customLauncher": if s.custom_launcher.is_empty() { None } else { Some(win_kit::file_stem(&s.custom_launcher)) },

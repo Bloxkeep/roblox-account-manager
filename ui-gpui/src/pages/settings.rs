@@ -1187,6 +1187,26 @@ fn launch(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
             },
         ),
     ));
+    // What a window does once in its game, a join or a rejoin: some want every window in front of them, some all
+    // minimised to save RAM (the owner, 2026-11-25). As it was: a rejoin's window as the account's last one was.
+    let on_join = match s(st, "onJoin") {
+        "show" => "show",
+        "minimise" => "minimise",
+        _ => "keep",
+    }
+    .to_string();
+    windows.push(row_below(
+        root.tr("set.onJoin"),
+        Some(root.tr("set.onJoinDesc")),
+        chips(
+            root,
+            cx,
+            "s-onjoin",
+            ["keep", "show", "minimise"].iter().map(|k| (k.to_string(), root.tr(&format!("set.onJoin.{k}")), false)).collect(),
+            &on_join,
+            |r, v, cx| set(r, json!({ "onJoin": if v == "keep" { "" } else { v.as_str() } }), cx),
+        ),
+    ));
     let layout = Some(s(st, "windowLayout")).filter(|x| !x.is_empty()).unwrap_or("fill").to_string();
     let (w, h) = (st.get("windowWidth").and_then(Value::as_i64).unwrap_or(640), st.get("windowHeight").and_then(Value::as_i64).unwrap_or(480));
     // The layouts as small screen pictures (pages/snap.rs), as the web page's Settings had them.

@@ -71,8 +71,9 @@ impl App {
         if self.vault_ref().is_none() || self.windows_in_turn() {
             return;
         }
-        let runs: Vec<(Guid, i32, bool)> = self.controller.running.borrow().iter().map(|(id, (pid, l))| (*id, *pid, l.rejoin)).collect();
-        for (id, pid, rejoin) in runs {
+        let runs: Vec<(Guid, i32, bool, Option<Guid>)> =
+            self.controller.running.borrow().iter().map(|(id, (pid, l))| (*id, *pid, l.rejoin, l.preset_id)).collect();
+        for (id, pid, rejoin, preset_id) in runs {
             let Some(list) = windows.get(&pid).filter(|l| !l.is_empty()) else { continue };
             let main = roblox_processes::main_window_of(list);
             if main == 0 {
@@ -84,7 +85,8 @@ impl App {
             }
             // A rejoin's new window: first seen, it takes the place the account's last window had.
             if rejoin && !st.place_noted.borrow().contains(&pid) && !st.going_back.borrow().contains_key(&pid) {
-                if st.last_minimised.borrow().contains(&id) {
+                // ("On joining a game": Show keeps it up; Minimise minimises every window anyway.)
+                if st.last_minimised.borrow().contains(&id) && self.on_join_of(preset_id).is_empty() {
                     st.to_minimise.borrow_mut().insert(pid, now);
                 }
                 let last = st.last_place.borrow().get(&id).copied();

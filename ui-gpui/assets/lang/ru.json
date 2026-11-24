@@ -4643,7 +4643,12 @@
   "ram.hour": "1 час",
   "ram.useBest": "Взять рекомендуемое",
   "ram.useBestTip": "Выше 90%, с областями Mem Reduct по умолчанию",
-  "ram.fromMemReduct": "Идея из Mem Reduct"
+  "ram.fromMemReduct": "Идея из Mem Reduct",
+  "set.onJoin": "Когда окно входит в игру",
+  "set.onJoinDesc": "И после перезахода. Как раньше: окно возвращается таким, каким было прошлое окно аккаунта.",
+  "set.onJoin.keep": "Как раньше",
+  "set.onJoin.show": "Показать",
+  "set.onJoin.minimise": "Свернуть"
  },
  "core": {
   "Wrong master password.": "Неверный мастер-пароль.",

@@ -308,6 +308,9 @@ impl App {
             if let Some(close) = opt_bool(a, "closeAfterLeave") {
                 s.close_after_leave = close;
             }
+            if let Some(on_join) = a.get("onJoin").and_then(Value::as_str) {
+                s.on_join = super::presets::on_join_value(on_join).to_string();
+            }
             if let Some(maximize) = opt_bool(a, "maximizeOnOpen") {
                 s.maximize_on_open = maximize;
                 if maximize {

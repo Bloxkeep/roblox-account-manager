@@ -4314,7 +4314,12 @@
   "ram.hour": "1 Std.",
   "ram.useBest": "Empfehlung nutzen",
   "ram.useBestTip": "Über 90 %, mit den Standardbereichen von Mem Reduct",
-  "ram.fromMemReduct": "Idee von Mem Reduct"
+  "ram.fromMemReduct": "Idee von Mem Reduct",
+  "set.onJoin": "Wenn ein Fenster einem Spiel beitritt",
+  "set.onJoinDesc": "Auch nach einem Rejoin. Wie vorher: ein neu beigetretenes Fenster kommt so zurück, wie das letzte des Kontos war.",
+  "set.onJoin.keep": "Wie vorher",
+  "set.onJoin.show": "Anzeigen",
+  "set.onJoin.minimise": "Minimieren"
  },
  "core": {
   "Wrong master password.": "Falsches Master-Passwort.",

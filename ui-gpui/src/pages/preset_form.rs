@@ -61,6 +61,8 @@ pub struct Form {
     profile: String,
     restart: i64,
     arrange: Option<bool>,
+    /// "On joining a game": "" follows Settings, "show", "minimise".
+    on_join: String,
     dc_own: bool,
     sch_on: bool,
     once: bool,
@@ -321,6 +323,7 @@ pub fn open(r: &mut Root, p: Option<Value>, window: &mut Window, cx: &mut Contex
         profile: s(&base, "profile").to_string(),
         restart: base.get("restartHours").and_then(Value::as_i64).unwrap_or(0),
         arrange: tri_of(&base, "arrange"),
+        on_join: s(&base, "onJoin").to_string(),
         dc_own: saved_discord.is_some(),
         sch_on: sc.get("enabled").and_then(Value::as_bool).unwrap_or(false),
         once: !s(&sc, "date").is_empty(),
@@ -491,7 +494,7 @@ fn collect(r: &Root, f: &Form, cx: &App) -> Result<Value, String> {
     let mut args = json!({
         "id": f.id, "name": input_text(&f.name, cx), "placeInput": place, "server": server, "jobId": input_text(&f.job, cx), "followPlayer": input_text(&f.follow, cx),
         "ids": ids, "delaySeconds": f.delay, "antiAfk": f.afk, "autoRejoin": f.rejoin, "rejoinWith": with, "profile": f.profile,
-        "restartHours": f.restart, "arrange": f.arrange, "schedule": schedule,
+        "restartHours": f.restart, "arrange": f.arrange, "onJoin": f.on_join, "schedule": schedule,
     });
     if let Some(d) = discord {
         args["discordWebhook"] = d;
@@ -1114,6 +1117,23 @@ pub fn form(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
         ))
         .child(setting(root.tr("ps.opt.restart"), stacked, false, restart_box))
         .child(setting(root.tr("ps.opt.arrange"), stacked, false, tri(root, cx, "ps-arrange", f.arrange, follow_set(tile_on), |f, v| f.arrange = v)))
+        // (A light-AFK preset minimises its windows anyway.)
+        .when(f.profile != "afk", |d| {
+            let set_word = root.tr(&format!("set.onJoin.{}", match s(&root.state["settings"], "onJoin") { "show" => "show", "minimise" => "minimise", _ => "keep" }));
+            let follow = root.i18n.tv("ps.opt.followSet", &[("state", &set_word.to_lowercase())]);
+            d.child(setting(
+                root.tr("set.onJoin"),
+                stacked,
+                false,
+                chips(
+                    cx,
+                    "ps-onjoin",
+                    vec![("".into(), follow, false), ("show".into(), root.tr("set.onJoin.show"), false), ("minimise".into(), root.tr("set.onJoin.minimise"), false)],
+                    &f.on_join,
+                    |f, v| f.on_join = v.to_string(),
+                ),
+            ))
+        })
         .when(!opt_notes.is_empty(), |d| d.child(div().pt(px(4.)).flex().flex_col().gap(px(6.)).children(opt_notes.into_iter().map(small_note))));
 
     // Discord.

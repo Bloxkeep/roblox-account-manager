@@ -4314,7 +4314,12 @@
   "ram.hour": "1 jam",
   "ram.useBest": "Pakai rekomendasi",
   "ram.useBestTip": "Di atas 90%, dengan area bawaan Mem Reduct",
-  "ram.fromMemReduct": "Ide dari Mem Reduct"
+  "ram.fromMemReduct": "Ide dari Mem Reduct",
+  "set.onJoin": "Saat jendela masuk game",
+  "set.onJoinDesc": "Termasuk saat rejoin. Seperti sebelumnya: jendela rejoin kembali seperti jendela terakhir akun itu.",
+  "set.onJoin.keep": "Seperti sebelumnya",
+  "set.onJoin.show": "Tampilkan",
+  "set.onJoin.minimise": "Minimalkan"
  },
  "core": {
   "Wrong master password.": "Kata sandi utama salah.",

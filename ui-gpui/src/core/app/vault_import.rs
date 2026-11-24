@@ -218,6 +218,7 @@ pub fn merge_import(target: &mut VaultData, source: &VaultData, keys: &HashSet<i
             copy.server = if PRESET_SERVERS.contains(&p.server.as_str()) { p.server.clone() } else { "any".into() };
             copy.delay_seconds = p.delay_seconds.map(|delay| delay.clamp(0, 120));
             copy.profile = if p.profile == AFK_PROFILE { AFK_PROFILE.into() } else { String::new() };
+            copy.on_join = super::presets::on_join_value(&p.on_join).to_string();
             copy.restart_hours =
                 if (!p.place_input.is_empty() || copy.server == "follow") && RESTART_CHOICES.contains(&p.restart_hours) { p.restart_hours } else { 0 };
             // "Rejoin into" one of its accounts: that account as it is here.

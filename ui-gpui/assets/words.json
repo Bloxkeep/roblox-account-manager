@@ -1459,7 +1459,7 @@
     "gcol.t.teach": "Happy to teach",
     "ram.clean": "Clean RAM",
     "ram.cleanNow": "Clean now",
-    "ram.cleanDesc": "Like Mem Reduct: pushes unused RAM out of every program and empties Windows' caches, when you press it or by itself.",
+    "ram.cleanDesc": "Like Mem Reduct, it pushes unused RAM out of every program and empties Windows' caches. Press it, or let it clean by itself.",
     "ram.cleaned": "Cleaned {n} of RAM",
     "ram.cleanFailed": "Couldn't clean RAM",
     "ram.autoOff": "Off",
@@ -1494,7 +1494,12 @@
     "ram.hour": "1 hour",
     "ram.useBest": "Use recommended",
     "ram.useBestTip": "Above 90%, with Mem Reduct's default areas",
-    "ram.fromMemReduct": "Idea from Mem Reduct"
+    "ram.fromMemReduct": "Idea from Mem Reduct",
+    "set.onJoin": "When a window joins a game",
+    "set.onJoinDesc": "Rejoins too. With As before, a rejoined window comes back the way the account's last one was.",
+    "set.onJoin.keep": "As before",
+    "set.onJoin.show": "Show it",
+    "set.onJoin.minimise": "Minimize it"
   },
   "vi": {
     "gpv.key": "Riêng tư",
@@ -2954,7 +2959,7 @@
     "gcol.t.teach": "Sẵn lòng chỉ",
     "ram.clean": "Dọn RAM",
     "ram.cleanNow": "Dọn ngay",
-    "ram.cleanDesc": "Giống Mem Reduct: đẩy RAM không dùng của mọi chương trình ra và dọn bộ đệm của Windows, bấm tay hoặc tự dọn.",
+    "ram.cleanDesc": "Giống Mem Reduct, Bloxkeep đẩy RAM không dùng của mọi chương trình ra và dọn bộ đệm của Windows. Bạn bấm dọn, hoặc để nó tự dọn.",
     "ram.cleaned": "Đã dọn {n} RAM",
     "ram.cleanFailed": "Không dọn được RAM",
     "ram.autoOff": "Tắt",
@@ -2989,6 +2994,11 @@
     "ram.hour": "1 giờ",
     "ram.useBest": "Dùng mức khuyên dùng",
     "ram.useBestTip": "Trên 90%, các vùng mặc định của Mem Reduct",
-    "ram.fromMemReduct": "Ý tưởng từ Mem Reduct"
+    "ram.fromMemReduct": "Ý tưởng từ Mem Reduct",
+    "set.onJoin": "Khi vào game",
+    "set.onJoinDesc": "Áp dụng cả khi rejoin. Với Giữ như trước, cửa sổ rejoin sẽ giống cửa sổ trước đó của tài khoản.",
+    "set.onJoin.keep": "Giữ như trước",
+    "set.onJoin.show": "Hiện ra",
+    "set.onJoin.minimise": "Thu nhỏ"
   }
 }
