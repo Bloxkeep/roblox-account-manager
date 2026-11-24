@@ -138,15 +138,23 @@ impl App {
         if in_game && now.secs_since(since) < secs(GO_BACK_SETTLE) {
             return;
         }
-        st.in_game_since.borrow_mut().remove(&pid);
-        // Put away by then (minimised, hidden by a hidden rejoin): left as it is, its place kept for the next one.
-        let hidden = roblox_processes::is_hidden(main);
-        if hidden || roblox_processes::is_minimised(main) {
-            log::note(&format!("Rejoin place: window {pid} left as it is, {}.", if hidden { "hidden" } else { "minimised" }));
+        // Hidden by a hidden rejoin: left as it is, its place kept for the next one.
+        if roblox_processes::is_hidden(main) {
+            st.in_game_since.borrow_mut().remove(&pid);
+            log::note(&format!("Rejoin place: window {pid} left as it is, hidden."));
             st.going_back.borrow_mut().remove(&pid);
             st.place_noted.borrow_mut().insert(pid);
             return;
         }
+        // Minimised by then: it opens again at the place, not maximised as Roblox opened it (2026-11-24: one left as it
+        // was came back full screen), and is put there for good once opened. Its settle time is kept, so that is at once.
+        if roblox_processes::is_minimised(main) {
+            if roblox_processes::restore_to(main, back.place) {
+                log::note(&format!("Rejoin place: window {pid} minimised; it opens again at {}×{}, where the account's last window was.", back.place.width, back.place.height));
+            }
+            return;
+        }
+        st.in_game_since.borrow_mut().remove(&pid);
         // Maximised by Roblox (its last close): back to an ordinary window first.
         roblox_processes::unmaximise_quietly(main);
         roblox_processes::place_window(main, back.place);

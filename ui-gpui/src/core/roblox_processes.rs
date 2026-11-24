@@ -17,9 +17,9 @@ use windows_sys::Win32::{
     UI::{
         HiDpi::{GetDpiForWindow, GetSystemMetricsForDpi},
         WindowsAndMessaging::{
-            EnumWindows, GW_OWNER, GetForegroundWindow, GetWindow, GetWindowLongW, GetWindowRect, GetWindowTextLengthW, GetWindowTextW, GetWindowThreadProcessId,
-            IsHungAppWindow, IsIconic, IsWindow, IsWindowVisible, IsZoomed, PostMessageW, SMTO_ABORTIFHUNG, SendMessageTimeoutW, SetForegroundWindow, SetWindowPos,
-            ShowWindowAsync,
+            EnumWindows, GW_OWNER, GetForegroundWindow, GetWindow, GetWindowLongW, GetWindowPlacement, GetWindowRect, GetWindowTextLengthW, GetWindowTextW,
+            GetWindowThreadProcessId, IsHungAppWindow, IsIconic, IsWindow, IsWindowVisible, IsZoomed, PostMessageW, SMTO_ABORTIFHUNG, SendMessageTimeoutW,
+            SetForegroundWindow, SetWindowPlacement, SetWindowPos, ShowWindowAsync, WINDOWPLACEMENT,
         },
     },
 };
@@ -1233,6 +1233,40 @@ pub fn is_plain_window(h: isize) -> bool {
 /// As Arrange gives its tiles (without Roblox's least size).
 pub fn place_window(h: isize, r: Rect) {
     set_window_pos(h, 0, r.x, r.y, r.width, r.height, SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOSENDCHANGING | SWP_ASYNCWINDOWPOS);
+}
+
+/// A minimised window's place for when it is opened again: `r`, as an ordinary window (not maximised, as a window
+/// that was maximised when put away would come back). It stays minimised. False when that was its place already.
+pub fn restore_to(h: isize, r: Rect) -> bool {
+    const WPF_RESTORETOMAXIMIZED: u32 = 2;
+    const SW_SHOWMINNOACTIVE: u32 = 7;
+    const WS_EX_TOOLWINDOW: u32 = 0x80;
+    const GWL_EXSTYLE: i32 = -20;
+    if h == 0 || !is_iconic(h) {
+        return false;
+    }
+    // rcNormalPosition is in work-area coordinates (but a tool window's): moved by the work area's offset from its screen.
+    let screen = screen_from_rect(r);
+    // SAFETY: plain call.
+    let ex = unsafe { GetWindowLongW(hwnd(h), GWL_EXSTYLE) } as u32;
+    let (dx, dy) = if ex & WS_EX_TOOLWINDOW == 0 { (screen.working_area.x - screen.bounds.x, screen.working_area.y - screen.bounds.y) } else { (0, 0) };
+    let normal = RECT { left: r.x - dx, top: r.y - dy, right: r.x - dx + r.width, bottom: r.y - dy + r.height };
+    // SAFETY: the structure's length is set as Windows requires.
+    unsafe {
+        let mut wp: WINDOWPLACEMENT = std::mem::zeroed();
+        wp.length = std::mem::size_of::<WINDOWPLACEMENT>() as u32;
+        if GetWindowPlacement(hwnd(h), &mut wp) == 0 {
+            return false;
+        }
+        let n = wp.rcNormalPosition;
+        if wp.flags & WPF_RESTORETOMAXIMIZED == 0 && (n.left, n.top, n.right, n.bottom) == (normal.left, normal.top, normal.right, normal.bottom) {
+            return false;
+        }
+        wp.flags &= !WPF_RESTORETOMAXIMIZED;
+        wp.showCmd = SW_SHOWMINNOACTIVE;
+        wp.rcNormalPosition = normal;
+        SetWindowPlacement(hwnd(h), &wp) != 0
+    }
 }
 
 /// The size a window's edge was dragged to, when it kept a bigger one (Roblox's least size); None when it took it or
