@@ -1378,6 +1378,12 @@
     "il.check": "Check",
     "il.checking": "Checking…",
     "il.edit": "Edit the list",
+    "il.hint": "Paste cookies here",
+    "il.lines": "{n} lines",
+    "il.lines1": "1 line",
+    "il.clear": "Clear all",
+    "il.cookie": "Cookie",
+    "il.drop": "Remove",
     "il.skipped": "{n} lines left out: no cookie, a cookie listed twice, or one Roblox didn't accept.",
     "il.skipped1": "1 line left out: no cookie, a cookie listed twice, or one Roblox didn't accept.",
     "start.ram": "Roblox Account Manager"
@@ -2720,6 +2726,11 @@
     "il.check": "Kiểm tra",
     "il.checking": "Đang kiểm tra…",
     "il.edit": "Sửa danh sách",
+    "il.hint": "Dán cookie vào đây",
+    "il.lines": "{n} dòng",
+    "il.clear": "Xóa hết",
+    "il.cookie": "Cookie",
+    "il.drop": "Bỏ dòng này",
     "il.skipped": "Bỏ qua {n} dòng: không có cookie, cookie bị trùng hoặc Roblox không nhận.",
     "start.ram": "Roblox Account Manager"
   }

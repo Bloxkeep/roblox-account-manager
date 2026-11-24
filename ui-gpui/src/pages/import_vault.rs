@@ -41,8 +41,14 @@ pub struct Data {
     step: u8,
     /// The picked file needs a password (a Roblox Account Manager file saved without one doesn't).
     locked: bool,
-    /// The pasted list's box.
+    /// The pasted list's box. What is pasted (or typed and ended with Enter) leaves it for `lines`, so no cookie
+    /// stays on screen: a multi-line box can't hide its words as a password box does.
     list: Option<Entity<TextareaState>>,
+    /// The list's lines, shown hidden but for their last letters.
+    lines: Vec<String>,
+    /// How long the box's words were at its last change: a jump of many at once is a paste.
+    typed: usize,
+    lines_scroll: ScrollHandle,
     /// Lines of the list left out of the preview.
     skipped: i64,
     file: String,
@@ -164,7 +170,9 @@ pub fn next(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
     }
     match r.import.step {
         0 if r.import.kind == Kind::List => {
-            let text = r.import.list.as_ref().map(|e| e.read(cx).value().to_string()).unwrap_or_default();
+            // The lines taken so far, and what is still in the box.
+            let left = r.import.list.as_ref().map(|e| e.read(cx).value().to_string()).unwrap_or_default();
+            let text = r.import.lines.iter().map(String::as_str).chain([left.as_str()]).collect::<Vec<_>>().join("\n");
             if text.trim().is_empty() {
                 r.import.error = Some(r.tr("il.need"));
                 window.refresh();
@@ -231,6 +239,55 @@ pub fn set_list_text(r: &mut Root, text: String, window: &mut Window, cx: &mut C
     if let Some(b) = r.import.list.clone() {
         b.update(cx, |st, cx| st.set_value(text, window, cx));
     }
+    take_lines(r, window, cx);
+}
+
+/// Moves what was pasted (many letters at once) or typed and ended with Enter out of the box into the hidden lines;
+/// a line being typed stays until its Enter. A line already there isn't added twice.
+fn take_lines(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
+    let Some(b) = r.import.list.clone() else { return };
+    let text = b.read(cx).value().to_string();
+    let len = text.chars().count();
+    let pasted = len >= r.import.typed + 20;
+    let (done, rest) = if pasted {
+        (text.as_str(), "")
+    } else {
+        match text.rfind('\n') {
+            Some(i) => (&text[..i], &text[i + 1..]),
+            None => ("", text.as_str()),
+        }
+    };
+    r.import.typed = rest.chars().count();
+    if done.trim().is_empty() && !pasted && !text.contains('\n') {
+        return;
+    }
+    for line in done.lines().map(str::trim).filter(|l| !l.is_empty()) {
+        if !r.import.lines.iter().any(|x| x == line) {
+            r.import.lines.push(line.to_string());
+        }
+    }
+    let rest = rest.to_string();
+    b.update(cx, |st, cx| st.set_value(rest, window, cx));
+    r.import.error = None;
+    window.refresh();
+}
+
+/// A line as the list shows it: who (the name before the password, when the line has one) and the cookie's last
+/// letters after dots.
+fn line_face(line: &str) -> (Option<String>, String) {
+    let lower = line.to_ascii_lowercase();
+    let at = ["_|warning", ".roblosecurity="].iter().filter_map(|m| lower.find(m)).min();
+    let name = match at {
+        Some(i) => line[..i].trim_end_matches([':', ' ']).split_once(':').map(|(u, _)| u.trim().to_string()),
+        None => match line.splitn(3, ':').collect::<Vec<_>>()[..] {
+            [u, _, _] => Some(u.trim().to_string()),
+            _ => None,
+        },
+    }
+    .filter(|n| !n.is_empty());
+    let chars: Vec<char> = line.chars().collect();
+    let tail: String = chars[chars.len().saturating_sub(4)..].iter().collect();
+    (name, format!("••••••••{tail}"))
 }
 
 /// Opens the picked file (with its password, when it has one).
@@ -302,11 +359,25 @@ fn open_kind(r: &mut Root, kind: Kind, window: &mut Window, cx: &mut Context<Roo
     // (The list's box is kept from one opening to the next, emptied.)
     let list = match (kind, r.import.list.take()) {
         (Kind::List, Some(b)) => Some(b),
-        (Kind::List, None) => Some(cx.new(|cx| TextareaState::new(window, cx).rows(8))),
+        (Kind::List, None) => {
+            let b = cx.new(|cx| TextareaState::new(window, cx).rows(3));
+            // Each change: a paste, or a line ended, leaves the box at once.
+            cx.subscribe_in(&b, window, |r: &mut Root, _, ev: &gpui_kit::component::input::InputEvent, window, cx| {
+                if matches!(ev, gpui_kit::component::input::InputEvent::Change) && r.import.open && r.import.kind == Kind::List {
+                    take_lines(r, window, cx);
+                }
+            })
+            .detach();
+            Some(b)
+        }
         (_, kept) => kept,
     };
     if let (Kind::List, Some(b)) = (kind, &list) {
-        b.update(cx, |st, cx| st.set_value("", window, cx));
+        let hint = r.tr("il.hint");
+        b.update(cx, |st, cx| {
+            st.set_value("", window, cx);
+            st.set_placeholder(hint, window, cx);
+        });
         // The list's box takes the keys once the box is up (a box made just now isn't drawn yet).
         let b = b.clone();
         cx.defer_in(window, move |_, window, cx| {
@@ -399,6 +470,48 @@ fn open_kind(r: &mut Root, kind: Kind, window: &mut Window, cx: &mut Context<Roo
                 body = body.child(div().text_size(px(T_M)).line_height(px(20.)).text_color(c(TEXT_2)).child(crate::pages::lock::plain(r.tr(intro))));
                 if let (Kind::List, Some(list)) = (f.kind, &f.list) {
                     body = body.child(text_area(list).when(f.error.is_some(), |d| d.border_color(ca(BAD, 0.55))));
+                    // The lines taken, each hidden but for its last letters, with a way to drop it.
+                    if !f.lines.is_empty() {
+                        let all = this.clone();
+                        body = body.child(
+                            div()
+                                .flex()
+                                .items_center()
+                                .gap(px(14.))
+                                .child(div().flex_1().text_size(px(T_M)).text_color(c(MUTED)).child(r.i18n.tn("il.lines", f.lines.len() as i64, &[])))
+                                .child(focusable(div().id("il-clear")).text_size(px(T_M)).text_color(c(TEXT_2)).underline().cursor_pointer().hover(|st| st.text_color(c(TEXT))).child(r.tr("il.clear")).on_click(move |_, w, cx| {
+                                    let _ = all.update(cx, |r, _| r.import.lines.clear());
+                                    w.refresh();
+                                })),
+                        );
+                        let mut rows = div().flex().flex_col();
+                        for (i, line) in f.lines.iter().enumerate() {
+                            let (name, hidden) = line_face(line);
+                            let gone = this.clone();
+                            rows = rows.child(
+                                div()
+                                    .min_h(px(40.))
+                                    .px(px(4.))
+                                    .py(px(4.))
+                                    .when(i > 0, |d| d.border_t_1().border_color(ca(WHITE, 0.05)))
+                                    .flex()
+                                    .items_center()
+                                    .gap(px(10.))
+                                    .child(div().w(px(22.)).flex_none().text_size(px(T_S)).text_color(c(DIM)).child((i + 1).to_string()))
+                                    .child(div().min_w_0().flex_1().truncate().text_size(px(T_M)).font_weight(FontWeight::MEDIUM).child(name.unwrap_or_else(|| r.tr("il.cookie"))))
+                                    .child(div().flex_none().text_size(px(T_S)).text_color(c(MUTED)).child(hidden))
+                                    .child(IconButton::new(("il-drop", i), "x").size(26.).tip(r.tr("il.drop")).on_click(move |_, w, cx| {
+                                        let _ = gone.update(cx, |r, _| {
+                                            if i < r.import.lines.len() {
+                                                r.import.lines.remove(i);
+                                            }
+                                        });
+                                        w.refresh();
+                                    })),
+                            );
+                        }
+                        body = body.child(scroll_list("il-rows", &f.lines_scroll, 200., rows));
+                    }
                 }
                 body = body.child(fine("shield", if f.kind == Kind::List { "il.safe" } else { "iv.safe" }));
             }
