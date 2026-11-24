@@ -113,7 +113,7 @@ fn menu(root: &Root, cx: &mut Context<Root>) -> Stateful<Div> {
     // (A long list scrolls while Save and Edit stay at its foot.)
     let mut rows = div().id("bar-presets-list").max_h(px(320.)).overflow_y_scroll().flex().flex_col();
     if list.is_empty() {
-        rows = rows.child(menu_row("bp-none").h(px(36.)).opacity(0.38).cursor_default().child(icon("layers", 15., c(TEXT_2))).child(div().flex_1().child(root.tr("ps.none"))));
+        rows = rows.child(menu_row("bp-none").h(px(36.)).opacity(0.38).cursor_default().child(icon("layers", 15., c(TEXT_2))).child(div().flex_1().child(root.tr("pv.emptyTitle"))));
     }
     for (i, p) in list.iter().enumerate() {
         let n = accounts_of(root, p);
