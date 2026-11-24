@@ -912,7 +912,7 @@ fn public(root: &Root, width: f32, cx: &mut Context<Root>) -> Div {
                         )
                 .into_any_element()
             };
-        crate::near::tiles("srv-cards", rows.len(), card_w, GRID_GAP, key, true, 128., &mut card).into_any_element()
+        crate::near::tiles_in(Some(&root.games.page_scroll), "srv-cards", rows.len(), card_w, GRID_GAP, key, true, 128., &mut card).into_any_element()
     };
     // More of them: Roblox's next page (it may ask to wait first).
     let more = (!rows.is_empty() && sv.next.is_some()).then(|| {

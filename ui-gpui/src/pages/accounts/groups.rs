@@ -11,6 +11,20 @@ pub const BAR: &str = "bar-group";
 const NAME_MAX: usize = 24;
 
 /// The groups the accounts are in, in the order they are listed everywhere.
+/// [`names`] of the state's accounts, made again only with a new state (the button reads them on every frame the
+/// page is drawn, a scroll's too).
+fn names_kept(root: &Root, all: &[Value]) -> std::rc::Rc<Vec<String>> {
+    thread_local! {
+        static KEPT: std::cell::RefCell<Option<(u64, std::rc::Rc<Vec<String>>)>> = const { std::cell::RefCell::new(None) };
+    }
+    if let Some(n) = KEPT.with(|k| k.borrow().as_ref().filter(|(at, _)| *at == root.state_gen).map(|(_, n)| n.clone())) {
+        return n;
+    }
+    let n = std::rc::Rc::new(names(all));
+    KEPT.with(|k| *k.borrow_mut() = Some((root.state_gen, n.clone())));
+    n
+}
+
 pub fn names(all: &[Value]) -> Vec<String> {
     let mut names: Vec<String> = all.iter().map(|a| s(a, "group").to_string()).filter(|g| !g.is_empty()).collect();
     names.sort_by_cached_key(|g| (Natural(folded(g)), g.clone()));
@@ -72,7 +86,7 @@ fn flip(key: &'static str, cx: &mut Context<Root>) -> impl Fn(&ClickEvent, &mut 
 
 /// The toolbar's tool, always there: "Group" while there is none yet, else the one shown ("Group: All").
 pub fn button(root: &Root, all: &[Value], cx: &mut Context<Root>) -> Div {
-    let names = names(all);
+    let names = names_kept(root, all);
     let now = root.acc_group.clone().filter(|g| names.contains(g));
     let open = root.acc_drop == Some(TOOL);
     let words = match now {

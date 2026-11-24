@@ -922,7 +922,7 @@ pub fn friends(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElem
                     let n = of.len();
                     // Hundreds of friends: only the rows near the view are made (crate::near), each card one height.
                     let id = if g == 1 { "fr-online" } else { "fr-offline" };
-                    let grid = crate::near::grid(id, n, cols, FRIEND_H, GRID_GAP, None, |i| {
+                    let grid = crate::near::grid_in(Some(&crate::scrolled::handle("fr-body")), n >= crate::near::FROM, id, n, cols, FRIEND_H, GRID_GAP, None, |i| {
                         card(root, of[i], card_w, Kind::Friend(join_as.clone(), false), cx).h(px(FRIEND_H)).into_any_element()
                     });
                     blocks.push(block_with(text_head(root.tr(key), n, None).into_any_element(), grid));

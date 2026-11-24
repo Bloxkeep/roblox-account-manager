@@ -2071,7 +2071,7 @@ fn log_list(root: &Root, cx: &mut Context<Root>) -> Div {
         );
         list.into_any_element()
     };
-    let mut list = div().flex().flex_col().child(crate::near::measured("al-rows", entries.len(), key, 37., 0., |i| line(i, cx)));
+    let mut list = div().flex().flex_col().child(crate::near::measured_in(Some(&st.scroll), crate::near::FROM, "al-rows", entries.len(), key, 37., 0., |i| line(i, cx)));
     let total = int(log, "total");
     if total > entries.len() as i64 {
         list = list.child(

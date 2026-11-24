@@ -1508,7 +1508,7 @@ fn cards(root: &Root, mut body: Div, shown: &[Value], inner: f32, cx: &mut Conte
                 .flex_col()
                 .gap(px(12.))
                 .child(section_head(root.tr("acc.grp.open"), Some(n)))
-                .child(crate::near::grid("acc-open", n, per, card_h(lines), GRID_GAP, must, |i| card(root, open[i], col_w, lines, cx).into_any_element()).pb(px(RISE))),
+                .child(crate::near::grid_in(Some(&crate::scrolled::handle("acc-body")), n.div_ceil(per) >= crate::near::ROWS_FROM, "acc-open", n, per, card_h(lines), GRID_GAP, must, |i| card(root, open[i], col_w, lines, cx).into_any_element()).pb(px(RISE))),
         );
     }
     if !idle.is_empty() {
@@ -1523,7 +1523,7 @@ fn cards(root: &Root, mut body: Div, shown: &[Value], inner: f32, cx: &mut Conte
                 .child({
                     let lines = idle.iter().map(|a| card_lines(root, a)).max().unwrap_or(0);
                     let must = revealed_in(root, &idle);
-                    crate::near::grid("acc-idle", n, per, card_h(lines), GRID_GAP, must, |i| card(root, idle[i], col_w, lines, cx).into_any_element()).pb(px(RISE))
+                    crate::near::grid_in(Some(&crate::scrolled::handle("acc-body")), n.div_ceil(per) >= crate::near::ROWS_FROM, "acc-idle", n, per, card_h(lines), GRID_GAP, must, |i| card(root, idle[i], col_w, lines, cx).into_any_element()).pb(px(RISE))
                 }),
         );
     }
@@ -1618,6 +1618,94 @@ fn look_row(root: &Root, a: &Value, cx: &mut Context<Root>) -> impl IntoElement 
         .when(on, |d| d.child(div().absolute().inset_0().rounded(px(R_M)).border_2().border_color(c(FACE))))
 }
 
+/// What the header counts of the accounts: its chips (for the group picked and the search typed), its summary, and
+/// the ones Select all picks. Made again only when what it comes from changes (`shown_key`), not on every frame of a
+/// scroll: with 1,000 accounts the passes over them took 4 ms a frame.
+struct Tally {
+    playing: usize,
+    picked_group: Option<String>,
+    grouped: usize,
+    in_game: usize,
+    online: usize,
+    local: usize,
+    invalid: usize,
+    banned: usize,
+    strays: Vec<Value>,
+    dropped: usize,
+    look: usize,
+    open: usize,
+    pickable: Vec<String>,
+}
+
+thread_local! {
+    static TALLY: std::cell::RefCell<Option<(ShownKey, std::rc::Rc<Tally>)>> = const { std::cell::RefCell::new(None) };
+}
+
+fn tally(root: &Root, all: &[Value], typed: String) -> std::rc::Rc<Tally> {
+    let key = shown_key(root, typed, Some(root.acc_filter), root.acc_group.clone());
+    if let Some(t) = TALLY.with(|c| c.borrow().as_ref().filter(|(k, _)| *k == key).map(|(_, t)| t.clone())) {
+        return t;
+    }
+    let typed = key.query.as_str();
+    // The chips count the group picked and the search typed, as the list shows them ("All 500" over three rows read
+    // wrong); in a group, empty ones go.
+    let picked_group = root.acc_group.clone().filter(|g| all.iter().any(|a| s(a, "group") == g));
+    let grouped: Vec<&Value> = all.iter().filter(|a| picked_group.as_deref().is_none_or(|g| s(a, "group") == g) && found(a, typed)).collect();
+    let strays = others(root);
+    let open = all.iter().filter(|a| is_local(a)).count() + strays.len();
+    let names = groups::names(all);
+    let now = root.acc_group.clone().filter(|g| names.contains(g));
+    let seen: Vec<&Value> = all.iter().filter(|a| passes(a, root.acc_filter, typed)).filter(|a| now.as_deref().is_none_or(|g| s(a, "group") == g)).collect();
+    let farm: Vec<String> = seen.iter().filter(|a| !a.get("isMain").and_then(Value::as_bool).unwrap_or(false)).map(|a| id_of(a)).collect();
+    let pickable: Vec<String> = if farm.is_empty() { seen.iter().map(|a| id_of(a)).collect() } else { farm };
+    let t = std::rc::Rc::new(Tally {
+        playing: all.iter().filter(|a| in_game(a)).count(),
+        grouped: grouped.len(),
+        in_game: grouped.iter().filter(|a| in_game(a)).count(),
+        online: grouped.iter().filter(|a| is_online(a)).count(),
+        local: grouped.iter().filter(|a| is_local(a)).count(),
+        invalid: grouped.iter().filter(|a| signed_out(a)).count(),
+        banned: grouped.iter().filter(|a| banned(a)).count(),
+        picked_group,
+        dropped: all.iter().filter(|a| is_kicked(a)).count(),
+        look: all.iter().filter(|a| !is_local(a) && !launching(a) && (signed_out(a) || banned(a))).count(),
+        open,
+        strays,
+        pickable,
+    });
+    TALLY.with(|c| *c.borrow_mut() = Some((key, t.clone())));
+    t
+}
+
+/// The RAM of these accounts' windows on this PC, each as `ram_mb` gives it, with the windows and the app's figures
+/// looked up once (`ram_mb` alone looks through them all for every account). The figures change without the state,
+/// so the sum isn't kept.
+fn ram_total<'a>(root: &Root, accounts: impl Iterator<Item = &'a Value>) -> f64 {
+    let mut by_id: std::collections::HashMap<&str, &Value> = std::collections::HashMap::new();
+    let mut by_pid: std::collections::HashMap<i64, &Value> = std::collections::HashMap::new();
+    for w in &root.windows {
+        by_id.entry(s(w, "id")).or_insert(w);
+        if let Some(p) = w.get("pid").and_then(Value::as_i64) {
+            by_pid.entry(p).or_insert(w);
+        }
+    }
+    let mut figures: std::collections::HashMap<&str, &Value> = std::collections::HashMap::new();
+    for m in root.metrics.get("accounts").and_then(Value::as_array).map(Vec::as_slice).unwrap_or_default() {
+        figures.entry(s(m, "id")).or_insert(m);
+    }
+    accounts
+        .filter(|a| is_local(a))
+        .filter_map(|a| {
+            // (As window_of: another PC's window by its handle, an account's by its process.)
+            let w = if foreign(a) { by_id.get(s(a, "hwnd")) } else { a.pointer("/session/pid").and_then(Value::as_i64).filter(|p| *p > 0).and_then(|p| by_pid.get(&p)) };
+            if let Some(mb) = w.and_then(|w| w.get("ramMb")).and_then(Value::as_f64).filter(|m| *m > 0.) {
+                return Some(mb);
+            }
+            figures.get(s(a, "id")).and_then(|m| m.get("ramMb")?.as_f64())
+        })
+        .sum()
+}
+
 /// The title and count with a quiet summary under them (who plays, their RAM, what needs a look), the search and Add on
 /// that line; the filters under them, and at their right one row of quiet tools, all of one height.
 fn header(root: &Root, all: &[Value], width: f32, rows: bool, cx: &mut Context<Root>) -> impl IntoElement {
@@ -1656,42 +1744,28 @@ fn header(root: &Root, all: &[Value], width: f32, rows: bool, cx: &mut Context<R
             })),
     );
     let layout = view_switch(views);
-    let playing = all.iter().filter(|a| in_game(a)).count();
-    // The chips count the group picked and the search typed, as the list shows them ("All 500" over three rows read
-    // wrong); in a group, empty ones go.
-    let picked_group = root.acc_group.clone().filter(|g| all.iter().any(|a| s(a, "group") == g));
     let typed = root.acc_search.read(cx).value().to_string();
-    let grouped: Vec<&Value> = all.iter().filter(|a| picked_group.as_deref().is_none_or(|g| s(a, "group") == g) && found(a, &typed)).collect();
-    let g_online = grouped.iter().filter(|a| is_online(a)).count();
-    let mut chips = vec![(Filter::All, root.tr("chip.all"), grouped.len())];
-    for (f, key, n) in [
-        (Filter::Playing, "chip.ingame", grouped.iter().filter(|a| in_game(a)).count()),
-        (Filter::Online, "chip.online", g_online),
-        (Filter::Offline, "chip.offline", grouped.len() - g_online),
-    ] {
-        if picked_group.is_none() || n > 0 || root.acc_filter == f {
+    let t = tally(root, all, typed);
+    let playing = t.playing;
+    let mut chips = vec![(Filter::All, root.tr("chip.all"), t.grouped)];
+    for (f, key, n) in [(Filter::Playing, "chip.ingame", t.in_game), (Filter::Online, "chip.online", t.online), (Filter::Offline, "chip.offline", t.grouped - t.online)] {
+        if t.picked_group.is_none() || n > 0 || root.acc_filter == f {
             chips.push((f, root.tr(key), n));
         }
     }
     // (Shown only while there are some: open on this PC, needing a sign-in, and banned.)
-    for (f, key, n) in [
-        (Filter::Local, "chip.local", grouped.iter().filter(|a| is_local(a)).count()),
-        (Filter::Invalid, "chip.invalid", grouped.iter().filter(|a| signed_out(a)).count()),
-        (Filter::Banned, "chip.banned", grouped.iter().filter(|a| banned(a)).count()),
-    ] {
+    for (f, key, n) in [(Filter::Local, "chip.local", t.local), (Filter::Invalid, "chip.invalid", t.invalid), (Filter::Banned, "chip.banned", t.banned)] {
         if n > 0 || root.acc_filter == f {
             chips.push((f, root.tr(key), n));
         }
     }
     // The page at a glance, in muted words: who plays (or that Roblox isn't open), their windows' RAM, who dropped,
     // how many need a look.
-    let strays = others(root);
-    let ram: f64 = all.iter().chain(strays.iter()).filter(|a| is_local(a)).filter_map(|a| ram_mb(root, a)).sum();
-    let dropped = all.iter().filter(|a| is_kicked(a)).count();
-    let look = all.iter().filter(|a| !is_local(a) && !launching(a) && (signed_out(a) || banned(a))).count();
+    let ram = ram_total(root, all.iter().chain(t.strays.iter()));
+    let (dropped, look) = (t.dropped, t.look);
     // (A window open with nobody in a game, or one Bloxkeep didn't open: "Roblox not open" stood over a bar that
     // said "1 Roblox window", the owner's screenshot, 2026-11-13.)
-    let open = all.iter().filter(|a| is_local(a)).count() + strays.len();
+    let open = t.open;
     let first = if playing > 0 {
         root.i18n.tn("acc.sum.playing", playing as i64, &[])
     } else if open > 0 {
@@ -1714,8 +1788,6 @@ fn header(root: &Root, all: &[Value], width: f32, rows: bool, cx: &mut Context<R
         summary.push((root.i18n.tn("acc.sum.look", look as i64, &[]), None));
     }
     // The group shown, when the accounts have any (picked in the Group tool beside Sort: pages/accounts/groups.rs).
-    let names = groups::names(all);
-    let now = root.acc_group.clone().filter(|g| names.contains(g));
     // The order: kept by the app, so it is the same next time; under it, the order Play opens the picked accounts in.
     let how = root.state.pointer("/settings/sort").and_then(Value::as_str).unwrap_or("name").to_string();
     let mut items: Vec<DropItem> = ["name", "status", "recent", "order"]
@@ -1739,10 +1811,7 @@ fn header(root: &Root, all: &[Value], width: f32, rows: bool, cx: &mut Context<R
     let shown = root.tr(&format!("sort.{how}"));
     let sorts = drop_list(root, "acc-sort", "sort", Some(root.tr("sort.label")), shown, items, cx);
     // Select all: the ones shown; the main accounts (the ones played on) are left out, unless they are all there is.
-    let query = root.acc_search.read(cx).value().to_string();
-    let seen: Vec<&Value> = all.iter().filter(|a| passes(a, root.acc_filter, &query)).filter(|a| now.as_deref().is_none_or(|g| s(a, "group") == g)).collect();
-    let farm: Vec<String> = seen.iter().filter(|a| !a.get("isMain").and_then(Value::as_bool).unwrap_or(false)).map(|a| id_of(a)).collect();
-    let pickable: Vec<String> = if farm.is_empty() { seen.iter().map(|a| id_of(a)).collect() } else { farm };
+    let pickable = &t.pickable;
     let none = pickable.is_empty();
     // (Named at every width: short of room the tools take a line of their own under the filters, review 2.5.)
     // (With all of them picked it unpicks them, and says so.)

@@ -2683,7 +2683,7 @@ pub fn shop(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
         Some(Ok(l)) => {
             // (Only the lines near the view are made once there are many: each More adds a page of Roblox's.)
             let key = crate::near::sig((l.len(), l.first().map(|w| w.id)));
-            let tiles = crate::near::tiles("shop-wares", l.len(), tile_w, SGAP, key, false, tile_w + 80., |n| ware_tile(root, "shop-ware", n, &l[n], tile_w, cx));
+            let tiles = crate::near::tiles_in(Some(&crate::scrolled::handle("shop-body")), "shop-wares", l.len(), tile_w, SGAP, key, false, tile_w + 80., |n| ware_tile(root, "shop-ware", n, &l[n], tile_w, cx));
             crate::scrolled::body("shop-body", 
                     div().px(px(PAGE_X)).pt(px(4.)).pb(px(24.)).flex().flex_col().gap(px(18.)).child(div().mx(px(-6.)).child(tiles)).when(!pf.next.is_empty(), |d| {
                         d.child(div().flex().child(Button::new("shop-more", root.tr("av.more")).disabled(pf.reading).on_click(cx.listener(|r, _, _, cx| {
@@ -2814,7 +2814,7 @@ fn frees(root: &Root, tile_w: f32, cx: &mut Context<Root>) -> AnyElement {
                 )
                 .into_any_element()
         };
-    let tiles = crate::near::tiles("free-tiles", list.len(), tile_w, SGAP, key, false, tile_w + 90., tile);
+    let tiles = crate::near::tiles_in(Some(&crate::scrolled::handle("free-body")), "free-tiles", list.len(), tile_w, SGAP, key, false, tile_w + 90., tile);
     crate::scrolled::body("free-body", div().px(px(PAGE_X - 6.)).pt(px(4.)).pb(px(24.)).child(tiles))
         .into_any_element()
 }
