@@ -15,6 +15,9 @@ use crate::{kit::*, shell::Root, theme::*};
 /// The columns after the status: shown when any line has something for them, as wide as they need.
 struct Cols {
     robux: bool,
+    /// A window's frame-rate limit, a column of its own: before the status it pushed the dot and words of a line with
+    /// one off those of a line without (the main account has none), so the lines didn't stand in line (owner, 2026-11-24).
+    fps: bool,
     group: f32,
     rejoin: bool,
     pid: bool,
@@ -33,29 +36,30 @@ fn cols_of(shown: &[&Value], width: f32, sectioned: bool) -> Cols {
     let (name, button, gap) = ((width * 0.24).clamp(112., 230.), (width * 0.14).clamp(88., 132.), if width < 880. { 10. } else { 14. });
     // (About a letter's width each, the tag's sides, at most a short word's room: a longer one is cut with "…".)
     let group = if longest > 0 && !sectioned { (longest as f32 * 7.2 + 16.).min(130.) } else { 0. };
-    // The columns beside the name, the status and the button, least needed first: the PID, the rejoin mark, the
+    // The columns beside the name, the status and the button, least needed first: the FPS limit, the PID, the rejoin mark, the
     // memory, the group, the Robux. Each is given up, in that order, until the status has room for its words: a width
     // of its own decided each before, and at about 900 px they all stood while the status read "Pla…" (the shots of
     // every size, 2026-11-18).
     const STATUS: f32 = 220.;
     let mut on = [
+        shown.iter().any(|a| super::fps_limit(a).is_some()),
         shown.iter().any(|a| is_local(a) && super::pid_of(a).is_some()),
         shown.iter().any(|a| rejoin_on(a)),
         shown.iter().any(|a| is_local(a)),
         group > 0.,
         shown.iter().any(|a| robux_of(a).is_some()),
     ];
-    let takes = [84., 26., 78., group, 92.];
+    let takes = [FPS_W, 84., 26., 78., group, 92.];
     // (The line's sides, the tick, the face, the name, the button and ⋮, with the gaps between them.)
     let fixed = 20. + 30. + 46. + name + button + 40. + gap * 5.;
-    let left = |on: &[bool; 5]| width - fixed - on.iter().zip(takes).filter(|(o, _)| **o).map(|(_, w)| w + gap).sum::<f32>();
+    let left = |on: &[bool; 6]| width - fixed - on.iter().zip(takes).filter(|(o, _)| **o).map(|(_, w)| w + gap).sum::<f32>();
     for i in 0..on.len() {
         if left(&on) >= STATUS {
             break;
         }
         on[i] = false;
     }
-    Cols { pid: on[0], rejoin: on[1], ram: on[2], group: if on[3] { group } else { 0. }, robux: on[4], name, button, gap, sectioned }
+    Cols { fps: on[0], pid: on[1], rejoin: on[2], ram: on[3], group: if on[4] { group } else { 0. }, robux: on[5], name, button, gap, sectioned }
 }
 
 /// The accounts as a list. With groups among them, a part a group (the owner, 2026-11-18: "chia ngăn"): its head
@@ -158,6 +162,8 @@ fn block(root: &Root, id: &'static str, shown: &[&Value], cols: &Cols, cx: &mut 
 
 /// A line's height.
 const ROW_H: f32 = 56.;
+/// The frame-rate column's width ("144 FPS" fits).
+const FPS_W: f32 = 64.;
 
 fn row(root: &Root, a: &Value, cols: &Cols, cx: &mut Context<Root>) -> impl IntoElement {
     let id = id_of(a);
@@ -264,22 +270,22 @@ fn row(root: &Root, a: &Value, cols: &Cols, cx: &mut Context<Root>) -> impl Into
                 .items_center()
                 .gap(px(8.))
                 .text_size(px(T_M))
+                // (Every line's dot and words start at the same place: nothing stands before them but the red pill
+                // that takes their place; the tags come after the time.)
                 .when(pill, |d| d.child(badge(line.clone(), Tone::Bad)))
-                .when(old_build(a), |d| d.child(old_tag(root, a, cx)))
-                .when_some(local.then(|| super::fps_limit(a)).flatten(), |d, f| {
-                    let tip: SharedString = root.tr("card.fpsTip").into();
-                    d.child(div().id(SharedString::from(format!("row-fps-{id}"))).flex_none().child(tag(format!("{f} FPS"), TEXT_2)).tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into()))
-                })
                 // The state's dot and words (words in the state's colour only when it isn't fine), then the time.
                 .when(!pill, |d| {
                     d.child(div().size(px(7.)).flex_none().rounded_full().bg(c(if tone == MUTED { DIM } else { tone })))
                         .child(div().min_w_0().flex_shrink(1.).truncate().text_color(c(if tone == OK { TEXT_2 } else { tone })).child(line))
                 })
                 .when_some(up, |d, t| d.child(div().flex_none().text_color(c(MUTED)).font_features(tnum()).child(t)))
+                .when(old_build(a), |d| d.child(old_tag(root, a, cx)))
                 .when(a.get("isMain").and_then(Value::as_bool).unwrap_or(false), |d| d.child(tag(root.tr("card.main"), TEXT_2)))
                 .when(s(a, "realm") == "vng", |d| d.child(tag("VNG", ONLINE))),
         )
-        .when(cols.robux, |d| d.child(div().w(px(92.)).flex_none().flex().justify_end().children(robux)))
+        // (The Robux mark at the column's left in every line, the number after it: right-aligned, the mark moved
+        // with the number's length.)
+        .when(cols.robux, |d| d.child(div().w(px(92.)).flex_none().flex().children(robux)))
         .when(cols.group > 0., |d| {
             d.child(div().w(px(cols.group)).flex_none().flex().min_w_0().when(!group.is_empty(), |d| d.child(tag("", TEXT_2).flex_shrink(1.).min_w_0().max_w_full().child(div().min_w_0().truncate().child(group.clone())))))
         })
@@ -287,6 +293,13 @@ fn row(root: &Root, a: &Value, cols: &Cols, cx: &mut Context<Root>) -> impl Into
             let tip: SharedString = root.tr("card.rejoinTip").into();
             d.child(div().id(SharedString::from(format!("row-rj-{id}"))).w(px(16.)).flex_none().when(rejoin_on(a), |d| {
                 d.child(icon("repeat", 14., c(ONLINE))).tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into())
+            }))
+        })
+        .when(cols.fps, |d| {
+            let fps = local.then(|| super::fps_limit(a)).flatten();
+            let tip: SharedString = root.tr("card.fpsTip").into();
+            d.child(div().id(SharedString::from(format!("row-fps-{id}"))).w(px(FPS_W)).flex_none().flex().justify_end().when_some(fps, |d, f| {
+                d.child(tag(format!("{f} FPS"), TEXT_2)).tooltip(move |_, cx| cx.new(|_| Tip(tip.clone())).into())
             }))
         })
         .when(cols.pid, |d| d.child(div().w(px(84.)).flex_none().flex().justify_end().text_size(px(T_S)).children(pid)))
