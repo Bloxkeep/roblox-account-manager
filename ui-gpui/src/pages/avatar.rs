@@ -2045,7 +2045,7 @@ fn filled(root: &Root, a: &Avatar, width: f32, cx: &mut Context<Root>) -> AnyEle
         .gap(px(SECTION_GAP))
         .when_some(av.refused.clone(), |d, why| d.child(div().text_size(px(T_M)).text_color(c(WARN)).child(root.i18n.tv("av.refused", &[("why", &why)]))))
         .child(wearing)
-        .when(!a.emotes.is_empty(), |d| d.child(section(format!("Emote  {}/{}", a.emotes.len(), roblox::EMOTES), None, wheel, "av.nothing")))
+        .when(!a.emotes.is_empty(), |d| d.child(section(format!("{}  {}/{}", root.tr("av.shelf.emote"), a.emotes.len(), roblox::EMOTES), None, wheel, "av.nothing")))
         .when(a.looks.len() > 1, |d| d.child(history(root, a, tile_w, cx)))
         .child(outfits_section)
         .child(shelves(root, a, tile_w, cx));
