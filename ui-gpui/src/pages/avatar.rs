@@ -1627,8 +1627,15 @@ fn stage(root: &Root, a: &Avatar, side: f32, cx: &mut Context<Root>) -> Stateful
             start_spin(r, cx);
         }))
         .on_mouse_move(cx.listener(|r, e: &MouseMoveEvent, _, cx| {
-            // Where the mouse is over the box (-1 to 1 each way, right and up): it looks there.
-            if let Some(b) = STAGE_AT.get() {
+            // Where the mouse is over the box (-1 to 1 each way, right and up): it looks there. Only on the box: a
+            // mouse move is heard over the whole window, and outside it the avatar went on looking at the box's edge
+            // nearest the mouse (the owner, 2026-11-25: "ở ngoài vùng nó vẫn cứ cố nhìn theo").
+            if STAGE_AT.get().is_some_and(|b| !b.contains(&e.position)) {
+                if r.avatar.over {
+                    r.avatar.over = false;
+                    start_spin(r, cx);
+                }
+            } else if let Some(b) = STAGE_AT.get() {
                 let (w, h) = (f32::from(b.size.width).max(1.), f32::from(b.size.height).max(1.));
                 let x = (f32::from(e.position.x) - f32::from(b.origin.x)) / w * 2. - 1.;
                 let y = 1. - (f32::from(e.position.y) - f32::from(b.origin.y)) / h * 2.;

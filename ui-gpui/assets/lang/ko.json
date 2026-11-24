@@ -4194,7 +4194,9 @@
   "set.onJoinDesc": "재접속도 포함. 이전처럼: 재접속한 창은 그 계정의 이전 창 상태로 돌아옵니다.",
   "set.onJoin.keep": "이전처럼",
   "set.onJoin.show": "표시",
-  "set.onJoin.minimise": "최소화"
+  "set.onJoin.minimise": "최소화",
+  "pf.media.songAdd": "노래 추가",
+  "pf.media.songOf": "{all}곡 중 {at}번째"
  },
  "core": {
   "Wrong master password.": "마스터 비밀번호가 틀렸어요.",

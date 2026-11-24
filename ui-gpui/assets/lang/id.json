@@ -4319,7 +4319,9 @@
   "set.onJoinDesc": "Termasuk saat rejoin. Seperti sebelumnya: jendela rejoin kembali seperti jendela terakhir akun itu.",
   "set.onJoin.keep": "Seperti sebelumnya",
   "set.onJoin.show": "Tampilkan",
-  "set.onJoin.minimise": "Minimalkan"
+  "set.onJoin.minimise": "Minimalkan",
+  "pf.media.songAdd": "Tambah lagu",
+  "pf.media.songOf": "Lagu {at} dari {all}"
  },
  "core": {
   "Wrong master password.": "Kata sandi utama salah.",

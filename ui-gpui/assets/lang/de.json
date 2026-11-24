@@ -2678,9 +2678,9 @@
   "pf.media.song": "Profilsong",
   "pf.media.songChange": "Song ändern",
   "pf.media.songClear": "Song aus dem Profil entfernen",
-  "pf.media.songHint": "Füge einen Song von diesem PC hinzu",
+  "pf.media.songHint": "Songs von diesem PC hinzufügen",
   "pf.media.songMore": "Song-Optionen",
-  "pf.media.songPick": "Song wählen",
+  "pf.media.songPick": "Songs auswählen",
   "pf.media.songRemove": "Song entfernen",
   "pf.media.unmute": "Ton an",
   "pf.members": "{n} Mitglieder",
@@ -4319,7 +4319,9 @@
   "set.onJoinDesc": "Auch nach einem Rejoin. Wie vorher: ein neu beigetretenes Fenster kommt so zurück, wie das letzte des Kontos war.",
   "set.onJoin.keep": "Wie vorher",
   "set.onJoin.show": "Anzeigen",
-  "set.onJoin.minimise": "Minimieren"
+  "set.onJoin.minimise": "Minimieren",
+  "pf.media.songAdd": "Songs hinzufügen",
+  "pf.media.songOf": "Song {at} von {all}"
  },
  "core": {
   "Wrong master password.": "Falsches Master-Passwort.",

@@ -4187,7 +4187,9 @@
   "set.onJoinDesc": "再参加も同じ。これまでどおり：再参加したウィンドウはそのアカウントの前のウィンドウと同じ状態に戻ります。",
   "set.onJoin.keep": "これまでどおり",
   "set.onJoin.show": "表示する",
-  "set.onJoin.minimise": "最小化する"
+  "set.onJoin.minimise": "最小化する",
+  "pf.media.songAdd": "曲を追加",
+  "pf.media.songOf": "{all}曲中{at}曲目"
  },
  "core": {
   "Wrong master password.": "マスターパスワードが違います。",

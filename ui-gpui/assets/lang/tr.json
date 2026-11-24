@@ -2630,7 +2630,7 @@
   "pf.media.song": "Profil şarkısı",
   "pf.media.songChange": "Şarkıyı değiştir",
   "pf.media.songClear": "Şarkıyı profilden kaldır",
-  "pf.media.songHint": "Bu bilgisayardan bir şarkı ekle",
+  "pf.media.songHint": "Bu bilgisayardan şarkı ekle",
   "pf.media.songMore": "Şarkı seçenekleri",
   "pf.media.songPick": "Şarkı seç",
   "pf.media.songRemove": "Şarkıyı kaldır",
@@ -4194,7 +4194,9 @@
   "set.onJoinDesc": "Yeniden katılınca da. Önceki gibi: yeniden katılan pencere, hesabın son penceresi nasılsa öyle döner.",
   "set.onJoin.keep": "Önceki gibi",
   "set.onJoin.show": "Göster",
-  "set.onJoin.minimise": "Küçült"
+  "set.onJoin.minimise": "Küçült",
+  "pf.media.songAdd": "Şarkı ekle",
+  "pf.media.songOf": "Şarkı {at}/{all}"
  },
  "core": {
   "Wrong master password.": "Ana parola yanlış.",

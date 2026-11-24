@@ -528,6 +528,8 @@ use crate::{kit::*, shell::Root, theme::*};
 thread_local! {
     /// The panel is open (its figures are read again every second while it is).
     static PANEL: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+    /// The opening whose once-a-second loop runs.
+    static TICK: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
     /// The last clean from the panel: the bytes it freed, and how full RAM was before (a mark on the bar).
     static FREED: std::cell::Cell<Option<(u64, f32)>> = const { std::cell::Cell::new(None) };
     /// The areas are shown (folded to a count, as Mem Reduct keeps them on a page of their own).
@@ -590,15 +592,22 @@ fn percent(part: f32) -> String {
 
 /// Opens the panel (Settings' Clean RAM, the RAM pill).
 pub fn open(_r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
-    if PANEL.with(|p| p.replace(true)) {
+    // Open already: nothing. (The mark alone isn't trusted: a way of closing that missed it would keep it shut for good.)
+    if PANEL.with(std::cell::Cell::get) && window.has_active_dialog(cx) {
         return;
     }
+    PANEL.with(|p| p.set(true));
     FREED.with(|f| f.set(None));
-    // The figures again every second while it is open.
+    // The figures again every second while it is open; one loop at a time (each opening starts its own, the one before
+    // ends).
+    let mine = TICK.with(|t| {
+        t.set(t.get().wrapping_add(1));
+        t.get()
+    });
     cx.spawn(async move |this, cx| {
         loop {
             cx.background_executor().timer(std::time::Duration::from_secs(1)).await;
-            if !PANEL.with(std::cell::Cell::get) || this.update(cx, |_, cx| cx.notify()).is_err() {
+            if !PANEL.with(std::cell::Cell::get) || TICK.with(std::cell::Cell::get) != mine || this.update(cx, |_, cx| cx.notify()).is_err() {
                 break;
             }
         }
@@ -612,7 +621,11 @@ pub fn open(_r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
         let close = r.tr("common.close");
         let body = body(r, &this);
         let foot = foot(r, &this);
-        framed(dialog, title, close, |_, w, cx| w.close_dialog(cx))
+        // (Closed by its ×, the dialog's on_close isn't called: close_dialog skips it, so both say it is closed.)
+        framed(dialog, title, close, |_, w, cx| {
+            PANEL.with(|p| p.set(false));
+            w.close_dialog(cx);
+        })
             .w(px(500.))
             .centered()
             .entrance(DialogEntrance::FadeSlide)

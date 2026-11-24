@@ -2721,9 +2721,9 @@
   "pf.media.song": "Música do perfil",
   "pf.media.songChange": "Trocar música",
   "pf.media.songClear": "Remover a música do perfil",
-  "pf.media.songHint": "Adicione uma música deste PC",
+  "pf.media.songHint": "Adicione músicas deste PC",
   "pf.media.songMore": "Opções da música",
-  "pf.media.songPick": "Escolher música",
+  "pf.media.songPick": "Escolher músicas",
   "pf.media.songRemove": "Remover música",
   "pf.media.unmute": "Ativar som",
   "pf.members": "{n} membros",
@@ -4432,7 +4432,9 @@
   "set.onJoinDesc": "Também ao reentrar. Como antes: a janela volta como estava a última da conta.",
   "set.onJoin.keep": "Como antes",
   "set.onJoin.show": "Mostrar",
-  "set.onJoin.minimise": "Minimizar"
+  "set.onJoin.minimise": "Minimizar",
+  "pf.media.songAdd": "Adicionar músicas",
+  "pf.media.songOf": "Música {at} de {all}"
  },
  "core": {
   "Wrong master password.": "Senha mestra incorreta.",

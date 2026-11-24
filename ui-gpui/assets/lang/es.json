@@ -2677,9 +2677,9 @@
   "pf.media.song": "Canción del perfil",
   "pf.media.songChange": "Cambiar canción",
   "pf.media.songClear": "Quitar la canción del perfil",
-  "pf.media.songHint": "Agrega una canción de esta PC",
+  "pf.media.songHint": "Añade canciones de este PC",
   "pf.media.songMore": "Opciones de la canción",
-  "pf.media.songPick": "Elegir canción",
+  "pf.media.songPick": "Elegir canciones",
   "pf.media.songRemove": "Quitar canción",
   "pf.media.unmute": "Activar sonido",
   "pf.members": "{n} miembros",
@@ -4318,7 +4318,9 @@
   "set.onJoinDesc": "También al volver a entrar. Como antes: la ventana vuelve como estaba la última de la cuenta.",
   "set.onJoin.keep": "Como antes",
   "set.onJoin.show": "Mostrarla",
-  "set.onJoin.minimise": "Minimizarla"
+  "set.onJoin.minimise": "Minimizarla",
+  "pf.media.songAdd": "Añadir canciones",
+  "pf.media.songOf": "Canción {at} de {all}"
  },
  "core": {
   "Wrong master password.": "Contraseña maestra incorrecta.",

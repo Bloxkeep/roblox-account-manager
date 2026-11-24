@@ -2803,9 +2803,9 @@
   "pf.media.song": "Utwór profilu",
   "pf.media.songChange": "Zmień utwór",
   "pf.media.songClear": "Usuń utwór z profilu",
-  "pf.media.songHint": "Dodaj utwór z tego komputera",
+  "pf.media.songHint": "Dodaj utwory z tego komputera",
   "pf.media.songMore": "Opcje utworu",
-  "pf.media.songPick": "Wybierz utwór",
+  "pf.media.songPick": "Wybierz utwory",
   "pf.media.songRemove": "Usuń utwór",
   "pf.media.unmute": "Wyłącz wyciszenie",
   "pf.members": "Członkowie: {n}",
@@ -4593,7 +4593,9 @@
   "set.onJoinDesc": "Także po ponownym dołączeniu. Jak wcześniej: okno wraca tak, jak było ostatnie okno konta.",
   "set.onJoin.keep": "Jak wcześniej",
   "set.onJoin.show": "Pokaż",
-  "set.onJoin.minimise": "Zminimalizuj"
+  "set.onJoin.minimise": "Zminimalizuj",
+  "pf.media.songAdd": "Dodaj utwory",
+  "pf.media.songOf": "Utwór {at} z {all}"
  },
  "core": {
   "Wrong master password.": "Nieprawidłowe hasło główne.",

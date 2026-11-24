@@ -2629,7 +2629,7 @@
   "pf.media.song": "ເພງໂປຣໄຟລ໌",
   "pf.media.songChange": "ປ່ຽນເພງ",
   "pf.media.songClear": "ເອົາເພງອອກຈາກໂປຣໄຟລ໌",
-  "pf.media.songHint": "ເພີ່ມເພງຈາກຄອມນີ້",
+  "pf.media.songHint": "ເພີ່ມເພງຈາກ PC ນີ້",
   "pf.media.songMore": "ຕົວເລືອກເພງ",
   "pf.media.songPick": "ເລືອກເພງ",
   "pf.media.songRemove": "ເອົາເພງອອກ",
@@ -4193,7 +4193,9 @@
   "set.onJoinDesc": "ລວມທັງຕອນ rejoin. ຄືເກົ່າ: ໜ້າຕ່າງທີ່ rejoin ກັບມາຄືໜ້າຕ່າງກ່ອນໜ້າຂອງບັນຊີ.",
   "set.onJoin.keep": "ຄືເກົ່າ",
   "set.onJoin.show": "ສະແດງ",
-  "set.onJoin.minimise": "ຫຍໍ້ລົງ"
+  "set.onJoin.minimise": "ຫຍໍ້ລົງ",
+  "pf.media.songAdd": "ເພີ່ມເພງ",
+  "pf.media.songOf": "ເພງ {at}/{all}"
  },
  "core": {
   "Wrong master password.": "ລະຫັດຜ່ານຫຼັກບໍ່ຖືກ.",

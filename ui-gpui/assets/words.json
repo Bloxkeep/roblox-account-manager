@@ -706,8 +706,8 @@
     "pf.media.badBanner": "Choose a PNG, JPEG or WebP image.",
     "pf.media.coverReset": "Use game cover",
     "pf.media.song": "Profile song",
-    "pf.media.songHint": "Add a song on this PC",
-    "pf.media.songPick": "Choose song",
+    "pf.media.songHint": "Add songs from this PC",
+    "pf.media.songPick": "Choose songs",
     "pf.media.songChange": "Change song",
     "pf.media.songClear": "Remove song from profile",
     "pf.media.songRemove": "Remove song",
@@ -1499,7 +1499,9 @@
     "set.onJoinDesc": "Rejoins too. With As before, a rejoined window comes back the way the account's last one was.",
     "set.onJoin.keep": "As before",
     "set.onJoin.show": "Show it",
-    "set.onJoin.minimise": "Minimize it"
+    "set.onJoin.minimise": "Minimize it",
+    "pf.media.songAdd": "Add songs",
+    "pf.media.songOf": "Song {at} of {all}"
   },
   "vi": {
     "gpv.key": "Riêng tư",
@@ -2208,7 +2210,7 @@
     "pf.media.badBanner": "Chọn ảnh PNG, JPEG hoặc WebP.",
     "pf.media.coverReset": "Dùng ảnh bìa của game",
     "pf.media.song": "Nhạc hồ sơ",
-    "pf.media.songHint": "Thêm một bài hát trên máy này",
+    "pf.media.songHint": "Thêm bài hát trên máy này",
     "pf.media.songPick": "Chọn bài hát",
     "pf.media.songChange": "Đổi bài hát",
     "pf.media.songClear": "Gỡ bài hát khỏi hồ sơ",
@@ -2999,6 +3001,8 @@
     "set.onJoinDesc": "Áp dụng cả khi rejoin. Với Giữ như trước, cửa sổ rejoin sẽ giống cửa sổ trước đó của tài khoản.",
     "set.onJoin.keep": "Giữ như trước",
     "set.onJoin.show": "Hiện ra",
-    "set.onJoin.minimise": "Thu nhỏ"
+    "set.onJoin.minimise": "Thu nhỏ",
+    "pf.media.songAdd": "Thêm bài hát",
+    "pf.media.songOf": "Bài {at}/{all}"
   }
 }

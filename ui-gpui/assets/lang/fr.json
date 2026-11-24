@@ -2720,9 +2720,9 @@
   "pf.media.song": "Chanson du profil",
   "pf.media.songChange": "Changer de chanson",
   "pf.media.songClear": "Retirer la chanson du profil",
-  "pf.media.songHint": "Ajoutez une chanson de ce PC",
+  "pf.media.songHint": "Ajoute des titres de ce PC",
   "pf.media.songMore": "Options de la chanson",
-  "pf.media.songPick": "Choisir une chanson",
+  "pf.media.songPick": "Choisir des titres",
   "pf.media.songRemove": "Retirer la chanson",
   "pf.media.unmute": "Remettre le son",
   "pf.members": "{n} membres",
@@ -4433,7 +4433,9 @@
   "set.onJoinDesc": "Aussi après un rejoin. Comme avant : la fenêtre revient comme était la dernière du compte.",
   "set.onJoin.keep": "Comme avant",
   "set.onJoin.show": "L'afficher",
-  "set.onJoin.minimise": "La réduire"
+  "set.onJoin.minimise": "La réduire",
+  "pf.media.songAdd": "Ajouter des titres",
+  "pf.media.songOf": "Titre {at} sur {all}"
  },
  "core": {
   "Wrong master password.": "Mot de passe principal incorrect.",

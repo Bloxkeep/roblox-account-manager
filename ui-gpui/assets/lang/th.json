@@ -4193,7 +4193,9 @@
   "set.onJoinDesc": "รวมถึงตอน rejoin ด้วย เหมือนเดิม: หน้าต่างที่ rejoin กลับมาแบบหน้าต่างก่อนหน้าของบัญชี",
   "set.onJoin.keep": "เหมือนเดิม",
   "set.onJoin.show": "แสดง",
-  "set.onJoin.minimise": "ย่อ"
+  "set.onJoin.minimise": "ย่อ",
+  "pf.media.songAdd": "เพิ่มเพลง",
+  "pf.media.songOf": "เพลงที่ {at}/{all}"
  },
  "core": {
   "Wrong master password.": "รหัสผ่านหลักไม่ถูกต้อง",

@@ -2834,9 +2834,9 @@
   "pf.media.song": "Песня профиля",
   "pf.media.songChange": "Сменить песню",
   "pf.media.songClear": "Убрать песню из профиля",
-  "pf.media.songHint": "Добавь песню с этого ПК",
+  "pf.media.songHint": "Добавь песни с этого ПК",
   "pf.media.songMore": "Настройки песни",
-  "pf.media.songPick": "Выбрать песню",
+  "pf.media.songPick": "Выбрать песни",
   "pf.media.songRemove": "Убрать песню",
   "pf.media.unmute": "Включить звук",
   "pf.members": "{n} участников",
@@ -4648,7 +4648,9 @@
   "set.onJoinDesc": "И после перезахода. Как раньше: окно возвращается таким, каким было прошлое окно аккаунта.",
   "set.onJoin.keep": "Как раньше",
   "set.onJoin.show": "Показать",
-  "set.onJoin.minimise": "Свернуть"
+  "set.onJoin.minimise": "Свернуть",
+  "pf.media.songAdd": "Добавить песни",
+  "pf.media.songOf": "Песня {at} из {all}"
  },
  "core": {
   "Wrong master password.": "Неверный мастер-пароль.",

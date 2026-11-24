@@ -241,12 +241,6 @@ pub fn section(root: &Root, user: i64, inner: f32, cx: &mut Context<Root>) -> An
 fn starters(root: &Root, user: i64, inner: f32, cx: &mut Context<Root>) -> AnyElement {
     let cols = if inner >= 880. { 4. } else if inner >= 440. { 2. } else { 1. };
     let w = ((inner - GRID_GAP * (cols - 1.)) / cols).floor();
-    let glyph = |k: &str| match k {
-        "favorite" => "star",
-        "playing" => "gamepad",
-        "want" => "bookmark",
-        _ => "clock",
-    };
     div()
         .flex()
         .flex_col()
@@ -313,6 +307,16 @@ fn more_button(root: &Root, user: i64, missing: &[&str], cx: &mut Context<Root>)
         .child(popup(PopAt::BelowRight(36.), "gc-more-pop", open, menu))
 }
 
+/// A section's mark: the one its starter card has.
+fn glyph(kind: &str) -> &'static str {
+    match kind {
+        "favorite" => "star",
+        "playing" => "gamepad",
+        "want" => "bookmark",
+        _ => "clock",
+    }
+}
+
 /// One section: its head (name, how many it holds, Add game, ⋮) and its games.
 #[allow(clippy::too_many_arguments)]
 fn part(root: &Root, user: i64, kind: &str, games: &[Game], at: usize, of: usize, w: f32, cx: &mut Context<Root>) -> AnyElement {
@@ -324,7 +328,14 @@ fn part(root: &Root, user: i64, kind: &str, games: &[Game], at: usize, of: usize
         .flex()
         .items_center()
         .gap(px(8.))
-        .child(div().flex_1().min_w_0().flex().flex_col().gap(px(1.)).child(div().text_size(px(T_L)).font_weight(FontWeight::SEMIBOLD).truncate().child(kind_word(root, kind))).child(div().text_size(px(T_S)).text_color(c(MUTED)).truncate().child(cap_words)))
+        // (Its mark in the starter card's tile, the name at a group's size and how many it holds beside it, as the
+        // Home page's heads count theirs: "hơi xoàng" at 14 px, the owner, 2026-11-25.)
+        .child(div().size(px(40.)).flex_none().mr(px(4.)).rounded(px(R_M)).bg(c(RAISED_2)).flex().items_center().justify_center().child(icon(glyph(kind), 18., c(FACE))))
+        .child(div().flex_1().min_w_0().flex().flex_col().gap(px(2.))
+            .child(div().flex().items_baseline().gap(px(8.)).min_w_0()
+                .child(div().min_w_0().truncate().text_size(px(T_GROUP)).font_weight(FontWeight::SEMIBOLD).child(kind_word(root, kind)))
+                .when(n > 1, |d| d.child(div().flex_none().text_size(px(T_SEC)).text_color(c(MUTED)).font_features(tnum()).child(format!("{}/{n}", games.len())))))
+            .child(div().text_size(px(T_S)).text_color(c(MUTED)).truncate().child(cap_words)))
         .when(!full, |d| {
             let k = k.clone();
             d.child(Button::new(SharedString::from(format!("gc-add-{kind}")), root.tr("gcol.add")).icon("plus").small().on_click(cx.listener(move |r, _, window, cx| open_add(r, user, k.clone(), window, cx))))
@@ -419,11 +430,13 @@ fn part_menu(root: &Root, user: i64, kind: &str, at: usize, of: usize, cx: &mut 
         .child(popup(PopAt::BelowRight(34.), SharedString::from(format!("gc-menu-pop-{kind}")), open, menu))
 }
 
-/// The × over a game under the mouse: takes it out of its section.
+/// The × over a game under the mouse: takes it out of its section. Inside the picture's corner, not hanging off it:
+/// half outside, the mouse left the picture on its way to it and it faded away under it (the owner, 2026-11-25: "nút
+/// remove khó bấm vl").
 fn take_out(root: &Root, user: i64, kind: &str, i: usize, group: SharedString, cx: &mut Context<Root>) -> Div {
     let k = kind.to_string();
-    div().absolute().top(px(-6.)).right(px(-6.)).opacity(0.).group_hover(group, |s| s.opacity(1.)).child(
-        IconButton::new(SharedString::from(format!("gc-x-{kind}-{i}")), "x").size(22.).round().filled().tip(root.tr("gcol.remove")).on_click(cx.listener(move |r, _, _, cx| {
+    div().absolute().top(px(6.)).right(px(6.)).opacity(0.).group_hover(group, |s| s.opacity(1.)).child(
+        IconButton::new(SharedString::from(format!("gc-x-{kind}-{i}")), "x").size(28.).round().filled().tip(root.tr("gcol.remove")).on_click(cx.listener(move |r, _, _, cx| {
             let k = k.clone();
             change(user, |b| {
                 if let Some(p) = b.parts.iter_mut().find(|p| p.0 == k) {

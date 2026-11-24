@@ -20,6 +20,10 @@ impl Kind {
 }
 
 pub(super) fn path(kind: Kind, user: i64) -> Option<String> {
+    if matches!(kind, Kind::Song) {
+        let (list, at) = songs(user);
+        return list.into_iter().nth(at);
+    }
     #[cfg(feature = "shot")]
     if let Ok(path) = std::env::var(match kind { Kind::Banner => "BLOXKEEP_SHOT_BANNER", Kind::Song => "BLOXKEEP_SHOT_SONG", Kind::Face => "BLOXKEEP_SHOT_FACE" }) {
         return Some(path);
@@ -27,7 +31,105 @@ pub(super) fn path(kind: Kind, user: i64) -> Option<String> {
     crate::prefs::get(&kind.key(user)).and_then(|v| v.as_str().map(str::to_string))
 }
 
+/// The profile's songs, a playlist (the owner, 2026-11-25: "lỡ người ta có hẳn 1 playlist thì sao"), and which one is
+/// up. Kept as one path (one song, as before) or a list of them.
+pub(super) fn songs(user: i64) -> (Vec<String>, usize) {
+    #[cfg(feature = "shot")]
+    if let Ok(paths) = std::env::var("BLOXKEEP_SHOT_SONG") {
+        return (paths.split('|').map(str::to_string).collect(), 0);
+    }
+    let list: Vec<String> = match crate::prefs::get(&Kind::Song.key(user)) {
+        Some(serde_json::Value::String(s)) => vec![s],
+        Some(serde_json::Value::Array(v)) => v.iter().filter_map(|s| s.as_str().map(str::to_string)).collect(),
+        _ => Vec::new(),
+    };
+    let at = crate::prefs::get(&format!("profileSongAt:{user}")).and_then(|v| v.as_u64()).unwrap_or(0) as usize;
+    let at = at.min(list.len().saturating_sub(1));
+    (list, at)
+}
+
+fn set_songs(user: i64, list: &[String], at: usize) {
+    let value = match list {
+        [] => serde_json::Value::Null,
+        [one] => serde_json::json!(one),
+        _ => serde_json::json!(list),
+    };
+    crate::prefs::set(&Kind::Song.key(user), value);
+    crate::prefs::set(&format!("profileSongAt:{user}"), serde_json::json!(at.min(list.len().saturating_sub(1))));
+}
+
+/// Songs picked from the PC, one or many at once: they take the list's place, or join its end (`add`).
+fn choose_songs(r: &mut Root, user: i64, add: bool, cx: &mut Context<Root>) {
+    let picked = cx.prompt_for_paths(PathPromptOptions { files: true, directories: false, multiple: true, prompt: Some(r.tr("pf.media.songPick").into()) });
+    cx.spawn(async move |this, cx| {
+        let Some(files) = picked.await.ok().and_then(Result::ok).flatten() else { return };
+        let _ = this.update(cx, |r, cx| {
+            if !r.profile.showing_own(user) || r.locked() {
+                return;
+            }
+            let song = |f: &std::path::PathBuf| f.is_file() && matches!(f.extension().and_then(|e| e.to_str()).map(str::to_ascii_lowercase).as_deref(), Some("mp3" | "wav"));
+            let good: Vec<String> = files.iter().filter(|f| song(f)).filter_map(|f| f.to_str().map(str::to_string)).collect();
+            if good.len() < files.len() {
+                r.toast = Some((r.tr("pf.media.badSong"), "bad".into()));
+            }
+            if !good.is_empty() {
+                let (mut list, at) = songs(user);
+                if add {
+                    list.retain(|s| !good.contains(s));
+                    let at = at.min(list.len().saturating_sub(1));
+                    list.extend(good);
+                    set_songs(user, &list, at);
+                } else {
+                    r.profile.song = None;
+                    set_songs(user, &good, 0);
+                }
+            }
+            cx.notify();
+        });
+    }).detach();
+}
+
+/// The song before or after this one (`step` -1 or 1), playing at once when this one was.
+fn skip(r: &mut Root, user: i64, step: isize, cx: &mut Context<Root>) {
+    let (list, at) = songs(user);
+    if list.len() < 2 {
+        return;
+    }
+    let was_playing = r.profile.song.as_ref().is_some_and(|p| p.user == user && p.playing);
+    let next = (at as isize + step).rem_euclid(list.len() as isize) as usize;
+    r.profile.song = None;
+    set_songs(user, &list, next);
+    if was_playing {
+        toggle(r, user, &list[next], cx);
+    }
+    cx.notify();
+}
+
+/// Back and Next beside Play, with more than one song.
+fn skips(root: &Root, user: i64, size: f32, cx: &mut Context<Root>) -> (Option<IconButton>, Option<IconButton>) {
+    if songs(user).0.len() < 2 {
+        return (None, None);
+    }
+    (
+        Some(IconButton::new("pf-song-back", "skipBack").size(size).round().tip(root.tr("music.back")).on_click(cx.listener(move |r, _, _, cx| skip(r, user, -1, cx)))),
+        Some(IconButton::new("pf-song-next", "skipNext").size(size).round().tip(root.tr("music.next")).on_click(cx.listener(move |r, _, _, cx| skip(r, user, 1, cx)))),
+    )
+}
+
+/// The line under the song's name: "Profile song", or where it is in the list.
+fn song_line(root: &Root, user: i64) -> String {
+    let (list, at) = songs(user);
+    if list.len() > 1 {
+        root.i18n.tv("pf.media.songOf", &[("at", &(at + 1).to_string()), ("all", &list.len().to_string())])
+    } else {
+        root.tr("pf.media.song")
+    }
+}
+
 pub(super) fn choose(r: &mut Root, kind: Kind, user: i64, cx: &mut Context<Root>) {
+    if matches!(kind, Kind::Song) {
+        return choose_songs(r, user, false, cx);
+    }
     let prompt = r.tr(match kind { Kind::Banner => "pf.media.banner", Kind::Song => "pf.media.songPick", Kind::Face => "pf.media.face" });
     let picked = cx.prompt_for_paths(PathPromptOptions { files: true, directories: false, multiple: false, prompt: Some(prompt.into()) });
     cx.spawn(async move |this, cx| {
@@ -98,6 +200,18 @@ pub(super) fn keep_banner_at(r: &mut Root, user: i64) {
 
 pub(super) fn clear(kind: Kind, user: i64) {
     crate::prefs::set(&kind.key(user), serde_json::Value::Null);
+    if matches!(kind, Kind::Song) {
+        crate::prefs::set(&format!("profileSongAt:{user}"), serde_json::Value::Null);
+    }
+}
+
+/// The song on now taken out of the list; the next one takes its place.
+fn remove_song(user: i64) {
+    let (mut list, at) = songs(user);
+    if at < list.len() {
+        list.remove(at);
+    }
+    set_songs(user, &list, at);
 }
 
 pub(super) struct Player {
@@ -274,6 +388,7 @@ fn toggle(r: &mut Root, user: i64, file: &str, cx: &mut Context<Root>) {
     };
     cx.spawn(async move |this, cx| loop {
         cx.background_executor().timer(Duration::from_millis(250)).await;
+        let mut ended = false;
         let playing = this.update(cx, |r, cx| {
             if !r.profile.song.as_ref().is_some_and(|p| p.id == id && p.playing) {
                 return false;
@@ -287,10 +402,22 @@ fn toggle(r: &mut Root, user: i64, file: &str, cx: &mut Context<Root>) {
             p.playing = command("status BloxkeepProfileSong mode").is_some_and(|mode| mode.eq_ignore_ascii_case("playing"));
             if !p.playing {
                 p.position = p.length;
+                ended = true;
             }
             cx.notify();
             p.playing
         }).unwrap_or(false);
+        if ended {
+            // The list plays on to its last song.
+            let _ = this.update(cx, |r, cx| {
+                let (list, at) = songs(user);
+                if at + 1 < list.len() {
+                    r.profile.song = None;
+                    set_songs(user, &list, at + 1);
+                    toggle(r, user, &list[at + 1], cx);
+                }
+            });
+        }
         if !playing { break; }
     }).detach();
 }
@@ -355,6 +482,11 @@ fn more(root: &Root, user: i64, size: f32, grounded: bool, cx: &mut Context<Root
     let row = |id: &'static str| hot(id).h(px(32.)).px(px(10.)).rounded(px(R_S)).flex().items_center().gap(px(8.)).text_size(px(T_M)).text_color(c(TEXT_2)).cursor_pointer();
     let menu = div().id("pf-song-menu").occlude().w(px(200.)).p(px(4.)).rounded(px(R_M)).bg(c(RAISED)).border_1().border_color(c(LINE)).flex().flex_col()
         .on_mouse_down_out(cx.listener(|r, _, _, cx| { r.profile.song_menu = None; cx.notify(); }))
+        .child(row("pf-song-add").child(icon("plus", 14., c(MUTED))).child(root.tr("pf.media.songAdd")).on_click(cx.listener(move |r, _, _, cx| {
+            r.profile.song_menu = None;
+            choose_songs(r, user, true, cx);
+            cx.notify();
+        })))
         .child(row("pf-song-change").child(icon("refresh", 14., c(MUTED))).child(root.tr("pf.media.songChange")).on_click(cx.listener(move |r, _, _, cx| {
             r.profile.song_menu = None;
             choose(r, Kind::Song, user, cx);
@@ -363,7 +495,7 @@ fn more(root: &Root, user: i64, size: f32, grounded: bool, cx: &mut Context<Root
         .child(row("pf-song-remove").child(icon("trash", 14., c(MUTED))).child(root.tr("pf.media.songRemove")).on_click(cx.listener(move |r, _, _, cx| {
             r.profile.song_menu = None;
             r.profile.song = None;
-            clear(Kind::Song, user);
+            remove_song(user);
             cx.notify();
         })));
     div().relative().flex_none()
@@ -560,13 +692,16 @@ pub(super) fn card(root: &Root, user: i64, w: f32, ground: u32, art: Option<Stri
         zones = zones.child(div().id(("pf-song-seek", k)).flex_1().h_full().cursor_pointer()
             .on_mouse_down(MouseButton::Left, cx.listener(move |r, _, _, cx| seek(r, user, &f, to, cx))));
     }
+    let (back, next) = skips(root, user, 36., cx);
     shell.bg(ground).border_color(edge)
-        .child(head(pic, marquee("pf-song-title", title).into_any_element(), root.tr("pf.media.song"), Some(playing), None))
+        .child(head(pic, marquee("pf-song-title", title).into_any_element(), song_line(root, user), Some(playing), None))
         .child(div().pt(px(18.)).child(bar_under(at, length, zones)))
         .child(div().pt(px(10.)).flex().items_center().gap(px(10.))
+            .children(back)
             .child(IconButton::new("pf-song-play", if playing { "pause" } else { "play" }).size(40.).round()
                 .tip(root.tr(if playing { "pf.media.pause" } else { "pf.media.play" }))
                 .on_click(cx.listener(move |r, _, _, cx| toggle(r, user, &file, cx))))
+            .children(next)
             .child(loudness(root, cx))
             .child(div().flex_1())
             .child(more(root, user, 34., false, cx)))
@@ -578,7 +713,7 @@ pub(super) fn card(root: &Root, user: i64, w: f32, ground: u32, art: Option<Stri
 pub(super) fn row(root: &Root, user: i64, inner: f32, art: Option<String>, cx: &mut Context<Root>) -> Div {
     const PIC: f32 = 64.;
     let tag = div().flex_none().h(px(20.)).px(px(8.)).rounded_full().bg(ca(FACE, 0.14)).flex().items_center().gap(px(5.))
-        .text_size(px(T_XS)).font_weight(FontWeight::BOLD).text_color(c(FACE)).child(icon("music", 11., c(FACE))).child(root.tr("pf.media.song").to_uppercase());
+        .text_size(px(T_XS)).font_weight(FontWeight::BOLD).text_color(c(FACE)).child(icon("music", 11., c(FACE))).child(song_line(root, user).to_uppercase());
     let shell = div().w_full().rounded(px(R_HERO)).bg(c(RAISED)).border_1().border_color(c(LINE)).p(px(18.)).pr(px(20.)).flex().items_center().gap(px(12.));
     let Some(file) = path(Kind::Song, user) else {
         if let (Some(m), Some([back, play, next])) = (&root.music, root.music_keys(["pf-sp-back", "pf-sp-play", "pf-sp-next"], cx)) {
@@ -624,6 +759,7 @@ pub(super) fn row(root: &Root, user: i64, inner: f32, art: Option<String>, cx: &
             .on_mouse_down(MouseButton::Left, cx.listener(move |r, _, _, cx| seek(r, user, &f, to, cx))));
     }
     let progress = bar_between(at, length, zones);
+    let (back, next) = skips(root, user, 40., cx);
     let (under, beside) = if wide { (None, Some(progress)) } else { (Some(progress), None) };
     shell.bg(ground).border_color(edge)
         .child(div().relative().size(px(PIC)).flex_none().rounded(px(R_L)).overflow_hidden().bg(c(RAISED_2)).flex().items_center().justify_center()
@@ -636,6 +772,8 @@ pub(super) fn row(root: &Root, user: i64, inner: f32, art: Option<String>, cx: &
         .when_some(beside, |d, p| d.child(div().w(px(250.)).mr(px(6.)).flex_none().child(p)))
         .when(wide, |d| d.child(loudness(root, cx)))
         .child(more(root, user, 40., true, cx))
+        .children(back)
+        .children(next)
         .child(div().pl(px(2.)).child(IconButton::new("pf-song-play", if playing { "pause" } else { "play" }).size(52.).round().primary()
             .tip(root.tr(if playing { "pf.media.pause" } else { "pf.media.play" }))
             .on_click(cx.listener(move |r, _, _, cx| toggle(r, user, &file, cx)))))
