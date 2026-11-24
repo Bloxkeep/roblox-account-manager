@@ -32,7 +32,6 @@ pub mod tabs;
 pub mod visibility;
 pub mod game_privacy;
 pub mod easy_setup;
-pub mod vng;
 pub mod games;
 pub mod clips;
 pub mod home;

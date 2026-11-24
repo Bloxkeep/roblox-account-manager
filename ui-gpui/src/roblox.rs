@@ -1,7 +1,8 @@
 // Roblox's own services, called from here (the core moves to Rust bit by bit, the owner's call on 2026-11-09): the
 // charts (explore-api: the rows on roblox.com/charts and their games), the game search (search-api: the site's search
 // box) and the games' icons (thumbnails). The charts' games come only to a signed-in account: the app hands one
-// account's sign-in over its pipe (robloxSignIn), kept in memory only and sent to roblox.com alone.
+// account's sign-in over its pipe (robloxSignIn), kept in memory only and sent to roblox.com alone (a Roblox VNG
+// account's to VNG's hosts alone: routed).
 //
 // An account's friends (friends, presence, users, thumbnails) are asked with that account's own sign-in: Roblox
 // refuses the list to a request that isn't signed in (403, checked 2026-11-10), and names a friend's server only to an
@@ -99,7 +100,15 @@ fn get(url: &str, cookie: Option<&str>) -> Result<Value, String> {
     out
 }
 
+/// Where a signed-in ask goes: a Roblox VNG account's sign-in works only on VNG's hosts (realm::route), so its
+/// calls go there; every other ask goes where it was written for.
+fn routed<'a>(url: &'a str, cookie: Option<&str>) -> std::borrow::Cow<'a, str> {
+    use crate::core::roblox_api::realm;
+    realm::route(url, cookie.map_or(realm::GLOBAL, realm::of_sign_in))
+}
+
 fn get_once(url: &str, cookie: Option<&str>) -> Result<Value, String> {
+    let url = &*routed(url, cookie);
     let mut req = agent().get(url).set("Accept", "application/json");
     if let Some(c) = cookie.filter(|c| !c.is_empty()) {
         req = req.set("Cookie", &signed(c));
@@ -999,6 +1008,7 @@ fn send_text(method: &str, url: &str, body: &Value, cookie: Option<&str>) -> Res
 }
 
 fn send_text_once(method: &str, url: &str, body: &Value, cookie: Option<&str>) -> Result<String, String> {
+    let url = &*routed(url, cookie);
     let send = |token: Option<&str>| {
         let mut req = agent().request(method, url).set("Accept", "application/json").set("Content-Type", "application/json");
         if let Some(c) = cookie.filter(|c| !c.is_empty()) {
@@ -4309,19 +4319,6 @@ pub fn visibility_body(online: Option<&str>, join: Option<&str>) -> Value {
         body.insert("whoCanJoinMeInExperiences".into(), (if v == "AllUsers" { "All" } else { v }).into());
     }
     Value::Object(body)
-}
-
-impl Choice {
-    /// As the core hands it to the window ({ now, options }), and back.
-    pub fn json(&self) -> Value {
-        serde_json::json!({ "now": self.now, "options": self.options })
-    }
-
-    pub fn from_json(v: &Value) -> Option<Choice> {
-        let now = v.get("now")?.as_str()?.to_string();
-        let options = v.get("options")?.as_array()?.iter().filter_map(Value::as_str).map(str::to_string).collect();
-        Some(Choice { now, options })
-    }
 }
 
 // ───────────────────────── a game's badges ─────────────────────────

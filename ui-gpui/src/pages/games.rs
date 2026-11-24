@@ -136,7 +136,7 @@ pub fn views(root: &Root, cx: &mut Context<Root>) -> impl IntoElement {
     // Each count stands in one place only, as on roblox.com: the unread messages here, the notifications on the bell, the
     // games' unread news on the games; the rail's Roblox button adds them up (shell.rs). The messages used to be
     // counted on the bell and here at once, and the news only on the rail, found nowhere inside (owner, 2026-11-20).
-    let unread = if crate::pages::tabs::is_vng(root) { 0 } else { root.games.corner.unread.1.max(0) as usize };
+    let unread = root.games.corner.unread.1.max(0) as usize;
     let news = root.state.pointer("/feeds/unread").and_then(Value::as_i64).unwrap_or(0).max(0) as usize;
     let fresh = root.profile.watch.iter().any(|w| w.fresh);
     // (view, icon, words, a count beside it and its colour, a dot)
@@ -2853,9 +2853,6 @@ pub fn games(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElemen
             shell.child(page(root, &all, o, width, cx)).into_any_element()
         }
         None if crate::pages::tabs::picking(root) => shell.child(crate::pages::tabs::picker(root, cx)).into_any_element(),
-        None if crate::pages::tabs::is_vng(root) && super::vng::title(root.games.view).is_some() => {
-            super::vng::page(root, cx).into_any_element()
-        }
         None if root.games.view == View::Friends => crate::pages::friends::friends(root, width, cx).into_any_element(),
         None if root.games.view == View::Avatar => crate::pages::avatar::avatar(root, width, cx).into_any_element(),
         None if root.games.view == View::Profile => crate::pages::profile::profile(root, width, cx).into_any_element(),

@@ -441,8 +441,8 @@ pub fn want_list(r: &mut Root, cx: &mut Context<Root>) {
 
 /// The sign-in of the account looked through, asked of the app once (Friends and Avatar share it).
 pub fn want_sign(r: &mut Root, link: &crate::link::Link, cx: &mut Context<Root>) {
-    // A VNG-only vault still gets its account tab. VNG cookies must never be lent to the
-    // roblox.com-only readers below; game launches use the core's realm-aware path.
+    // A VNG-only vault still gets its account tab. A VNG account's sign-in is lent for its own tab only, and its calls
+    // go to VNG's hosts (roblox.rs, routed).
     if r.friends.account.is_none() && able_ref(r).is_empty()
         && let Some(id) = crate::pages::tabs::available(r).first().map(|a| s(a, "id").to_string())
         && !crate::pages::tabs::picking(r)
@@ -451,11 +451,6 @@ pub fn want_sign(r: &mut Root, link: &crate::link::Link, cx: &mut Context<Root>)
     }
     // (Several accounts and none picked for this tab: the choice is shown, tabs::picker; nobody's sign-in is asked.)
     if crate::pages::tabs::picking(r) {
-        return;
-    }
-    if crate::pages::tabs::is_vng(r) {
-        r.friends.asked_sign = true;
-        r.friends.sign = Some(None);
         return;
     }
     #[cfg(feature = "shot")]

@@ -1243,7 +1243,6 @@ impl Root {
                 // A sign-in lent before the lock is not kept behind it (the vault may not be the same one after).
                 self.games.forget_sign_in();
                 self.friends.forget_sign_in();
-                self.tabs.vng.clear();
                 self.clear_play_history();
                 for e in [&self.af_cookie, &self.af_password, &self.af_key, &self.pl_pass, &self.pl_code, &self.pw_cur, &self.pw_new, &self.pw_new2, &self.iv_pw] {
                     e.update(cx, |s, cx| s.set_value("", window, cx));
@@ -1825,7 +1824,6 @@ impl Root {
         if self.page == Page::Games && !self.state.is_null() && !self.locked() {
             pages::friends::want_sign(self, &link, cx);
             pages::tabs::pulse(self, cx);
-            pages::vng::want(self, &link, cx);
             pages::games::want_corner(self, cx);
         }
         // (The Game view shows the friends' faces too, as Roblox's home does.)
@@ -2869,7 +2867,7 @@ impl Root {
                     // Roblox carries the sum of the counts inside it (99+ at most): the games' unread news, and the
                     // account's notifications (the bell) and unread messages (the inbox); a dot when news is fresh.
                     let news = self.state.pointer("/feeds/unread").and_then(Value::as_i64).unwrap_or(0).max(0);
-                    let (notes, letters) = if crate::pages::tabs::is_vng(self) { (0, 0) } else { self.games.corner.unread };
+                    let (notes, letters) = self.games.corner.unread;
                     let unread = news + notes.max(0) + letters.max(0);
                     let fresh = self.state.pointer("/feeds/fresh").and_then(Value::as_i64).unwrap_or(0) > 0; // (a count, not a flag)
                     for (i, p) in Page::ALL.into_iter().filter(|p| *p != Page::Settings).enumerate() {

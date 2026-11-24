@@ -20,7 +20,6 @@ pub mod login;
 pub mod lookups;
 pub mod play;
 pub mod quick_login;
-pub(crate) mod vng_panel;
 
 pub use friends::*;
 pub use login::*;
@@ -101,6 +100,46 @@ pub mod realm {
 
     pub fn website(realm: &str) -> &'static str {
         if realm == VNG { "https://www.robloxapp.vnggames.com" } else { "https://www.roblox.com" }
+    }
+
+    /// The VNG sign-ins the app has lent to the interface (robloxSignIn), by a hash of each: the Roblox tab's calls
+    /// carry a sign-in, not an account, and a VNG one is good only on VNG's hosts. (VNG serves the same Roblox behind
+    /// another name: the same user ids, and every path the Roblox tab calls answered there as on roblox.com,
+    /// 125 of 129 alike on 2026-11-25, the rest a rate limit and www.roblox.com unreachable from Vietnam.)
+    static VNG_SIGN_INS: std::sync::LazyLock<std::sync::Mutex<std::collections::HashSet<u64>>> = std::sync::LazyLock::new(Default::default);
+
+    fn sign_in_hash(cookie: &str) -> u64 {
+        use std::hash::{Hash, Hasher};
+        let mut h = std::collections::hash_map::DefaultHasher::new();
+        cookie.hash(&mut h);
+        h.finish()
+    }
+
+    /// `cookie` is a VNG account's sign-in.
+    pub fn mark_vng(cookie: &str) {
+        if !cookie.is_empty() {
+            VNG_SIGN_INS.lock().unwrap_or_else(|e| e.into_inner()).insert(sign_in_hash(cookie));
+        }
+    }
+
+    /// Which Roblox a sign-in the app lent belongs to (GLOBAL for one it never marked).
+    pub fn of_sign_in(cookie: &str) -> &'static str {
+        if !cookie.is_empty() && VNG_SIGN_INS.lock().unwrap_or_else(|e| e.into_inner()).contains(&sign_in_hash(cookie)) { VNG } else { GLOBAL }
+    }
+
+    /// A roblox.com address as `realm` serves it: https://avatar.roblox.com/v1/... is
+    /// https://avatar.robloxapp.vnggames.com/v1/... for VNG; anything else stays as it is.
+    pub fn route<'a>(url: &'a str, realm: &str) -> std::borrow::Cow<'a, str> {
+        if realm != VNG {
+            return url.into();
+        }
+        let Some(rest) = url.strip_prefix("https://") else { return url.into() };
+        let host_end = rest.find(['/', '?', '#']).unwrap_or(rest.len());
+        let (host, tail) = rest.split_at(host_end);
+        match host.strip_suffix(".roblox.com") {
+            Some(service) if !service.is_empty() && !service.contains('.') => format!("https://{service}.robloxapp.vnggames.com{tail}").into(),
+            _ => url.into(),
+        }
     }
 }
 

@@ -778,8 +778,6 @@ impl App {
     async fn dispatch_command(self: &Rc<Self>, cmd: &str, a: &Value) -> Res<Value> {
         match cmd {
             "getState" => done(self.initial_state()),
-            "vngPanel" => self.vng_panel(id_of(a), str_of(a, "panel")).await,
-            "vngSet" => self.vng_set(id_of(a), str_of(a, "what"), str_of(a, "value")).await,
             "console" => {
                 let since = a.get("version").and_then(Value::as_u64).unwrap_or(u64::MAX);
                 Ok(match log::console_lines(since) {

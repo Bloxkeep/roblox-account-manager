@@ -849,14 +849,12 @@ fn solid(r: &mut Root, cx: &mut Context<Root>) {
     .detach();
 }
 
-/// Whether the 3D box is on screen: Games, on Avatar, no game page or account picker over it, not a VNG account's
-/// (whose Avatar is its own page), the app not locked.
+/// Whether the 3D box is on screen: Games, on Avatar, no game page or account picker over it, the app not locked.
 fn on_view(r: &Root) -> bool {
     r.page == crate::pages::Page::Games
         && r.games.view == crate::pages::games::View::Avatar
         && r.games.open.is_none()
         && !crate::pages::tabs::picking(r)
-        && !crate::pages::tabs::is_vng(r)
         && !r.locked()
 }
 

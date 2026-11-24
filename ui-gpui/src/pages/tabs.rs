@@ -45,7 +45,6 @@ pub struct Data {
     /// move it was (so its slide starts again for the next).
     slid: Option<(usize, f32, usize)>,
     account_query: Option<Entity<InputState>>,
-    pub vng: super::vng::Data,
     /// Each account Roblox was told is here (`pulse`), by its Roblox user: its session's id for this run and when it
     /// was last told.
     pulses: std::collections::HashMap<i64, (String, std::time::Instant)>,
@@ -99,7 +98,7 @@ fn drag_to(r: &mut Root, x: f32) {
 
 impl Default for Data {
     fn default() -> Self {
-        Data { list: vec![Tab::default()], at: 0, scroll: ScrollHandle::new(), menu: false, account_query: None, vng: Default::default(), pulses: Default::default(), dragging: None, slid: None }
+        Data { list: vec![Tab::default()], at: 0, scroll: ScrollHandle::new(), menu: false, account_query: None, pulses: Default::default(), dragging: None, slid: None }
     }
 }
 
@@ -322,7 +321,6 @@ fn move_tab(r: &mut Root, from: usize, to: usize) {
 
 pub fn switch(r: &mut Root, to: usize) {
     if to != r.tabs.at && to < r.tabs.list.len() {
-        r.tabs.vng.clear();
         put_away(r);
         r.tabs.at = to;
         r.tabs.scroll.scroll_to_item(to);
@@ -357,7 +355,6 @@ pub fn open(r: &mut Root, id: String) {
         return switch(r, i);
     }
     let view = if r.accounts().iter().any(|a| s(a, "id") == id && s(a, "realm") == "vng") { View::Games } else { r.games.view };
-    r.tabs.vng.clear();
     let reuse = shown.is_none() && r.tabs.list[r.tabs.at].account.is_none();
     put_away(r);
     let tab = Tab { account: Some(id.clone()), view, friends: friends::Data::of(id), ..Default::default() };
@@ -374,7 +371,6 @@ pub fn open(r: &mut Root, id: String) {
 /// Another vault opened, or accounts deleted: the tabs of accounts no longer there go (with what was read for them);
 /// the tab shown stays, on the app's pick again if its account went.
 pub fn forget_gone(r: &mut Root) {
-    r.tabs.vng.clear();
     let ids: std::collections::HashSet<String> = r.accounts().iter().map(|a| s(a, "id").to_string()).collect();
     let gone = |t: &Tab| t.account.as_ref().is_some_and(|id| !ids.contains(id));
     let at = r.tabs.at;
