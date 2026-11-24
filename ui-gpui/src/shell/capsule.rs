@@ -444,10 +444,14 @@ impl Root {
             hsla(h.h, h.s.min(0.45), 0.16, 1.)
         });
         let white = |a: f32| hsla(0., 0., 1., a);
-        // While it plays, where it is moves on: drawn again each second while the card is open.
+        // While it plays, where it is moves on: drawn again as the song's next second starts, while the card is open.
+        // (Once a second from whenever it was drawn, the count turned over anywhere in the second, so one second
+        // showed for longer and the next for less: the owner, 2026-11-24.) A little after the turn, so the count it
+        // reads is past it even with Windows' timers a tick late.
         if s.playing && !TICK_ASKED.with(|t| t.replace(true)) {
+            let wait = s.at().map_or(1000, |(at, _)| 1000 - at % 1000 + 20);
             cx.spawn(async move |this, cx| {
-                cx.background_executor().timer(Duration::from_secs(1)).await;
+                cx.background_executor().timer(Duration::from_millis(wait)).await;
                 TICK_ASKED.with(|t| t.set(false));
                 this.update(cx, |_, cx| cx.notify()).ok();
             })
