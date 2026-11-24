@@ -304,7 +304,7 @@ pub fn page(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
             cx.notify();
         })
     }
-    let mut row = crate::kit::slide("mods-kinds", div().flex().items_center().gap(px(4.)));
+    let mut row = div().flex().items_center().gap(px(4.));
     if m.words.is_empty() || m.mine {
         row = row.child(chip("mods-k-0", !m.mine && m.kind == 0).child(root.tr("mods.k.all")).on_click(pick_kind(0, cx)));
         for (id, name) in modstore::KINDS {

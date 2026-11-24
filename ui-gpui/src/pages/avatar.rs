@@ -2162,14 +2162,14 @@ fn history(root: &Root, a: &Avatar, tile_w: f32, cx: &mut Context<Root>) -> impl
 fn body(root: &Root, a: &Avatar, cx: &mut Context<Root>) -> impl IntoElement {
     let busy = root.avatar.busy.is_some();
     let label = |key: &str| div().text_size(px(T_S)).text_color(c(MUTED)).child(root.tr(key));
-    let rig = crate::kit::slide("av-rig", div().flex().items_center().gap(px(4.)).children([(false, "R6"), (true, "R15")].into_iter().map(|(r15, word)| {
+    let rig = div().flex().items_center().gap(px(4.)).children([(false, "R6"), (true, "R15")].into_iter().map(|(r15, word)| {
         let on = (a.rig == "R15") == r15;
         chip(SharedString::from(format!("av-rig-{word}")), on).h(px(TOOL_H)).px(px(14.)).cursor_pointer().child(word).on_click(cx.listener(move |r, _, _, cx| {
             if matches!(&r.avatar.got, Some(Ok(a)) if (a.rig == "R15") != r15) {
                 change(r, Change::Rig(r15), cx);
             }
         }))
-    })));
+    }));
     let mut col = div().flex().flex_col().gap(px(14.)).when(busy, |d| d.opacity(0.6)).child(div().flex().child(rig));
     if !a.palette.is_empty() {
         // The colour worn leads when it isn't one of Roblox's skin tones (a colour set elsewhere), so what is worn
@@ -2235,9 +2235,9 @@ fn shelves(root: &Root, a: &Avatar, tile_w: f32, cx: &mut Context<Root>) -> impl
     let av = &root.avatar;
     let busy = av.busy;
     // The shelves as the page's filters: no track, the one shown a yellow block.
-    let track = crate::kit::slide("av-shelf", div().flex().flex_wrap().items_center().gap(px(4.)).children(roblox::SHELVES.iter().enumerate().map(|(i, (key, _))| {
+    let track = div().flex().flex_wrap().items_center().gap(px(4.)).children(roblox::SHELVES.iter().enumerate().map(|(i, (key, _))| {
         chip(("av-shelf", i), av.shelf == i).h(px(TOOL_H)).px(px(12.)).cursor_pointer().child(root.tr(&format!("av.shelf.{key}"))).on_click(cx.listener(move |r, _, _, cx| pick_shelf(r, i, cx)))
-    })));
+    }));
     let said = |text: String| div().text_size(px(T_M)).text_color(c(MUTED)).child(text);
     let body: AnyElement = match &av.owned {
         None => waiting_tiles(10, tile_w, TGAP).into_any_element(),

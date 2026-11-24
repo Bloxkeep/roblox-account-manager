@@ -147,7 +147,7 @@ pub fn open_feedback(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) 
                 .when_some(hint, |d, h| d.child(div().font_weight(FontWeight::NORMAL).text_color(c(MUTED)).child(r.tr(h))))
         };
         // Two answers: a pair to pick from, not a list to open.
-        let mut kind = crate::kit::slide("fb-kind", div().flex().gap(px(2.)).p(px(3.)).rounded(px(R_M)).bg(c(INSET)));
+        let mut kind = div().flex().gap(px(2.)).p(px(3.)).rounded(px(R_M)).bg(c(INSET));
         for (key, idea) in [("fb.bug", false), ("fb.idea", true)] {
             let this = this.clone();
             kind = kind.child(

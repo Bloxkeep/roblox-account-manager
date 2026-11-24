@@ -188,7 +188,7 @@ pub fn open(r: &mut Root, id: Option<String>, window: &mut Window, cx: &mut Cont
                 groups.push(g.to_string());
             }
         }
-        let mut picks = crate::kit::slide("af-groups", div().flex().flex_wrap().gap(px(6.)));
+        let mut picks = div().flex().flex_wrap().gap(px(6.));
         for (n, g) in groups.iter().enumerate() {
             let on = g.eq_ignore_ascii_case(&typed);
             let (this, name) = (this.clone(), g.clone());

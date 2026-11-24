@@ -1964,7 +1964,7 @@ fn activity(root: &Root, cx: &mut Context<Root>) -> Div {
     }
 
     // The kinds, as the Accounts page's filters (the chosen one the yellow block).
-    let mut kinds = crate::kit::slide("al-kinds", div().flex().flex_wrap().items_center().gap(px(4.)).min_w_0().flex_1());
+    let mut kinds = div().flex().flex_wrap().items_center().gap(px(4.)).min_w_0().flex_1();
     let mut all: Vec<(String, String)> = vec![(String::new(), root.tr("alog.allKinds"))];
     all.extend(GROUPS.iter().map(|g| (g.to_string(), root.tr(&format!("alog.g.{g}")))));
     for (i, (g, label)) in all.into_iter().enumerate() {
@@ -2192,7 +2192,7 @@ fn console(root: &Root, width: f32, cx: &mut Context<Root>) -> Div {
 
     let (n_err, n_acc) = (all.iter().filter(|l| is_error(l)).count(), all.iter().filter(|l| is_account(l)).count());
     let kinds = [(0u8, root.tr("con.all"), all.len()), (1, root.tr("con.errors"), n_err), (2, root.tr("con.accounts"), n_acc)];
-    let mut row = crate::kit::slide("con-kinds", div().flex().items_center().gap(px(6.)));
+    let mut row = div().flex().items_center().gap(px(6.));
     for (k, label, n) in kinds {
         let on = st.con_kind == k;
         row = row.child(chip(("con-kind", k as usize), on).child(label).child(chip_count(n, on)).on_click(cx.listener(move |r, _, _, cx| {

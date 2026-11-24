@@ -145,7 +145,7 @@ pub fn view(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
             cx.notify();
         }))
     };
-    let head = crate::kit::slide("bd-order", section_head(root.tr("bd.title"), Some(list.len()))
+    let head = section_head(root.tr("bd.title"), Some(list.len()))
         .child(order_seg("bd-o-roblox", Order::Roblox, "bd.orderRoblox"))
         .child(order_seg("bd-o-easy", Order::Easy, "bd.orderEasy"))
         .child(order_seg("bd-o-rare", Order::Rare, "bd.orderRare"))
@@ -156,7 +156,7 @@ pub fn view(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
                     cx.notify();
                 })),
             )
-        }));
+        });
 
     // Each account's way through the game's badges: its face, name, "won N of M" and a line that fills.
     let progress: Option<AnyElement> = bd.won.as_ref().filter(|w| !w.is_empty()).map(|won| {

@@ -462,7 +462,7 @@ pub fn open(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
             Step::TwoStep => {
                 body = body.child(badge("shieldCheck", r.tr("pw.twoTitle"), r.i18n.tv("pw.twoLead", &[("name", &p.user)])));
                 if p.methods.len() > 1 {
-                    let mut tabs = crate::kit::slide("pw-method", div().flex().gap(px(2.)).p(px(3.)).rounded(px(R_M)).bg(c(INSET)));
+                    let mut tabs = div().flex().gap(px(2.)).p(px(3.)).rounded(px(R_M)).bg(c(INSET));
                     for m in p.methods.clone() {
                         let this = this.clone();
                         let on = p.method == m;
@@ -520,7 +520,7 @@ pub fn open(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
                     .child(div().flex().justify_center().child(back));
             }
             Step::Login => {
-                let mut realm = crate::kit::slide("pw-realm", div().flex().gap(px(2.)).p(px(3.)).rounded(px(R_M)).bg(c(INSET)));
+                let mut realm = div().flex().gap(px(2.)).p(px(3.)).rounded(px(R_M)).bg(c(INSET));
                 for (words, vng) in [("Roblox", false), ("Roblox VNG", true)] {
                     let this = this.clone();
                     realm = realm.child(segment(words, p.vng == vng).flex_1().h(px(28.)).justify_center().text_size(px(T_M)).cursor_pointer().child(words).on_click(move |_, w, cx| {

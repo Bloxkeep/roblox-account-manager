@@ -260,13 +260,13 @@ pub fn page(root: &Root, cx: &mut Context<Root>) -> impl IntoElement {
                             cx.notify();
                         }))))
                 .when(view == View::Inbox, |d| {
-                    d.child(crate::kit::slide("vng-inbox", div().flex().gap(px(4.)).children([(false, "in.messages"), (true, "in.notices")].map(|(notices, label)| {
+                    d.child(div().flex().gap(px(4.)).children([(false, "in.messages"), (true, "in.notices")].map(|(notices, label)| {
                         segment(label, state.notices == notices).h(px(30.)).px(px(10.)).cursor_pointer().child(root.tr(label))
                             .on_click(cx.listener(move |root, _, _, cx| {
                                 root.tabs.vng.notices = notices;
                                 cx.notify();
                             }))
-                    }))))
+                    })))
                 })
                 .child(content)))
 }

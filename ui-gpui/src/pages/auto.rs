@@ -209,7 +209,7 @@ pub fn auto(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
     };
 
     // Presets | Macros: the page's two lists, as the Accounts page's filters (the chosen one the yellow block).
-    let switch = crate::kit::slide("auto-tabs", div().flex().items_center().gap(px(4.)).children([(Tab::Presets, root.tr("ps.listTitle"), presets.len(), "layers"), (Tab::Macros, root.tr("macro.title"), macros.len(), "keyboard")].into_iter().map(
+    let switch = div().flex().items_center().gap(px(4.)).children([(Tab::Presets, root.tr("ps.listTitle"), presets.len(), "layers"), (Tab::Macros, root.tr("macro.title"), macros.len(), "keyboard")].into_iter().map(
         |(t, text, n, mark)| {
             let on = tab == t;
             chip(SharedString::from(format!("auto-tab-{text}")), on)
@@ -224,7 +224,7 @@ pub fn auto(root: &Root, width: f32, cx: &mut Context<Root>) -> AnyElement {
                     cx.notify();
                 }))
         },
-    )));
+    ));
     // Macros are still in Beta (MacrosView.tsx's title pill).
     let beta = (tab == Tab::Macros).then(|| {
         let tip: SharedString = format!("{} {}", root.tr("macro.betaTip"), root.tr("macro.honest")).into();

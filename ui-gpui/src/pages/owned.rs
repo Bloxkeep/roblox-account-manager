@@ -418,12 +418,12 @@ pub fn page(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
         )
         .child(refresh);
     // The shelves: the private servers (every account's), then the things of the account whose tab is shown.
-    let shelves = crate::kit::slide("inv-shelves", div().flex().flex_wrap().gap(px(6.)).children(std::iter::once("own.title").chain(shelves().into_iter().map(|s| s.0)).enumerate().map(|(i, key)| {
+    let shelves = div().flex().flex_wrap().gap(px(6.)).children(std::iter::once("own.title").chain(shelves().into_iter().map(|s| s.0)).enumerate().map(|(i, key)| {
         chip(("inv-shelf", i), o.shelf == i).child(root.tr(key)).on_click(cx.listener(move |r, _, _, cx| {
             r.owned.shelf = i;
             cx.notify();
         }))
-    })));
+    }));
     let body = if o.shelf == 0 { servers(root, inner, cx) } else { things(root, inner, cx) };
     let content = div().w_full().px(px(PAGE_X)).pb(px(28.)).flex().flex_col().gap(px(18.)).child(head).child(shelves).child(body);
     div().id("owned").relative().size_full().rounded(px(R_PANEL)).bg(c(PANEL)).overflow_hidden().flex().flex_col().child(top).child(crate::scrolled::body("owned-body", content))
@@ -509,7 +509,7 @@ fn servers(root: &Root, inner: f32, cx: &mut Context<Root>) -> AnyElement {
             cx.notify();
         }))
     };
-    let halves = (!all.is_empty()).then(|| crate::kit::slide("own-halves", div().flex().flex_none().p(px(3.)).gap(px(2.)).rounded(px(10.)).bg(c(INSET)).border_1().border_color(c(LINE)).child(half("own-on", "own.running", running.len(), false)).child(half("own-off", "own.ended", ended.len(), true))));
+    let halves = (!all.is_empty()).then(|| div().flex().flex_none().p(px(3.)).gap(px(2.)).rounded(px(10.)).bg(c(INSET)).border_1().border_color(c(LINE)).child(half("own-on", "own.running", running.len(), false)).child(half("own-off", "own.ended", ended.len(), true)));
     // What they come to: how many renew, what that costs a month, and the next one due.
     let renewing: Vec<&&Value> = running.iter().filter(|x| flag(x, "renews") && int(x, "price") > 0).collect();
     let monthly: i64 = renewing.iter().map(|x| int(x, "price")).sum();

@@ -714,7 +714,7 @@ fn public(root: &Root, width: f32, cx: &mut Context<Root>) -> Div {
     let waiting = sv.wait_until.map(|t| t.saturating_duration_since(Instant::now()).as_secs().max(1));
 
     // The sorts as the page's filters: no track, the one used a yellow block.
-    let mut sorts = crate::kit::slide("srv-sorts", div().flex().flex_wrap().items_center().gap(px(4.)));
+    let mut sorts = div().flex().flex_wrap().items_center().gap(px(4.));
     for key in ["most", "fewest", "ping", "fps", "new"] {
         sorts = sorts.child(
             chip(SharedString::from(format!("srv-sort-{key}")), sort == key)
@@ -758,7 +758,7 @@ fn public(root: &Root, width: f32, cx: &mut Context<Root>) -> Div {
     }
     lands.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(&b.0)));
     let countries = (lands.len() > 1 || sv.country.is_some()).then(|| {
-        let mut row = crate::kit::slide("srv-cc", div().flex().flex_wrap().items_center().gap(px(4.)).child(
+        let mut row = div().flex().flex_wrap().items_center().gap(px(4.)).child(
             chip("srv-cc-any", sv.country.is_none())
                 .h(px(TOOL_H))
                 .px(px(12.))
@@ -768,7 +768,7 @@ fn public(root: &Root, width: f32, cx: &mut Context<Root>) -> Div {
                     r.servers.country = None;
                     cx.notify();
                 })),
-        ));
+        );
         for (i, (cc, n)) in lands.iter().enumerate() {
             let on = sv.country.as_deref() == Some(cc.as_str());
             let to = cc.clone();

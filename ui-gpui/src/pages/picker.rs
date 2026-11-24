@@ -361,7 +361,7 @@ fn list(root: &Root, cx: &mut Context<Root>) -> Stateful<Div> {
     let key = if found.is_some() { "search" } else { TABS[tab] };
 
     // (One line always: "Popular" wrapped alone onto a second one. Longer words, as in Vietnamese, scroll sideways.)
-    let mut head = crate::kit::slide("picker-tabs", div().id("picker-tabs").flex().flex_nowrap().overflow_x_scroll().gap(px(2.)).p(px(3.)).rounded(px(R_M)).bg(c(INSET)));
+    let mut head = div().id("picker-tabs").flex().flex_nowrap().overflow_x_scroll().gap(px(2.)).p(px(3.)).rounded(px(R_M)).bg(c(INSET));
     for i in tabs {
         head = head.child(
             chip(SharedString::from(format!("picker-tab-{}", TABS[i])), i == tab)

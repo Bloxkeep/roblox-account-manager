@@ -459,7 +459,7 @@ fn chips_marked<T: Clone + PartialEq + 'static>(
 ) -> Div {
     let f = std::rc::Rc::new(f);
     if items.len() <= 3 && marks.is_empty() {
-        let mut track = crate::kit::slide(format!("set-{key}"), div().flex().flex_none().gap(px(2.)).p(px(3.)).rounded(px(R_M)).bg(c(INSET)).border_1().border_color(c(LINE)));
+        let mut track = div().flex().flex_none().gap(px(2.)).p(px(3.)).rounded(px(R_M)).bg(c(INSET)).border_1().border_color(c(LINE));
         for (i, (value, label, off)) in items.into_iter().enumerate() {
             let on = value == *current;
             let f = f.clone();
