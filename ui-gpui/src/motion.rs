@@ -69,6 +69,18 @@ pub fn is_main(window: &Window) -> bool {
     MAIN.with(|m| m.get()) == Some(window.window_handle().window_id())
 }
 
+/// The main window shown again with every part kept as drawn (`Window::redraw`): what changed is only in a texture it
+/// paints (the 3D avatar's, pages/avatar.rs) or in this layer.
+pub fn redraw_main(cx: &mut App) {
+    for handle in cx.windows() {
+        let _ = handle.update(cx, |_, window, _| {
+            if is_main(window) {
+                window.redraw();
+            }
+        });
+    }
+}
+
 /// A place `w` × `h` whose motion `paint` draws (see `Paint`).
 pub fn spot(w: f32, h: f32, paint: impl Fn(Bounds<Pixels>, Option<f32>, &mut Window, &mut App) + 'static) -> Div {
     div().w(px(w)).h(px(h)).flex_none().child(placed(Rc::new(paint), true))

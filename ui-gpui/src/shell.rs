@@ -894,8 +894,27 @@ impl Root {
                 let now = cx.background_executor().spawn(async { crate::media::now() }).await;
                 let alive = this.update(cx, |r, cx| {
                     if r.music != now {
+                        // While a song plays each reading says a later place in it (media::position counts on from
+                        // when Spotify said it): that alone changes only where the song is, which shows on the
+                        // profile's song card (and the status bar's song card, which asks for its own part each
+                        // second, capsule.rs). Only the page is drawn again then, on the profile; the whole app was,
+                        // each second a song played.
+                        let moved_on = match (&r.music, &now) {
+                            (Some(was), Some(is)) => {
+                                let mut was = was.clone();
+                                was.position = is.position;
+                                was == *is
+                            }
+                            _ => false,
+                        };
                         r.music = now;
-                        cx.notify();
+                        if !moved_on {
+                            cx.notify();
+                        } else if r.page == Page::Games && r.games.view == pages::games::View::Profile
+                            && let Some(page) = r.parts.as_ref().map(|p| p.page.entity_id())
+                        {
+                            App::notify(cx, page);
+                        }
                     }
                 });
                 if alive.is_err() {
@@ -1035,7 +1054,11 @@ impl Root {
                 }
             }
         }));
-        // The playing times count up each second while someone plays.
+        // The playing times count up each second while someone plays. They are worked out from the clock as they are
+        // drawn, so only the parts that show them are drawn again (shell/parts.rs), not the whole app: the page (Home's
+        // stage, the Accounts page's cards, the column slid in over a narrow Home), the accounts' column beside Home,
+        // and the windows card when it is open over them. The whole app was drawn again each second before: 3.5 ms of
+        // layout on Home at 1280×900, 2.5 ms for these parts.
         root.tasks.push(cx.spawn(async move |this, cx| {
             loop {
                 cx.background_executor().timer(Duration::from_secs(1)).await;
@@ -1044,7 +1067,14 @@ impl Root {
                     if (r.page == Page::Home && r.accounts().iter().any(|a| a.get("state").and_then(Value::as_str) == Some("running")))
                         || (matches!(r.page, Page::Home | Page::Accounts) && r.accounts().iter().any(pages::accounts::counting))
                     {
-                        cx.notify();
+                        let Some(p) = r.parts.clone() else { return cx.notify() };
+                        App::notify(cx, p.page.entity_id());
+                        if r.frame.with_side {
+                            App::notify(cx, p.side.entity_id());
+                        }
+                        if r.pill == Some(capsule::Pill::Left) {
+                            App::notify(cx, p.over.entity_id());
+                        }
                     }
                 });
                 if alive.is_err() {

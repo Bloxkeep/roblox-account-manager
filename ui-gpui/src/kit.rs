@@ -233,9 +233,13 @@ type Toggle = Box<dyn Fn(&bool, &mut Window, &mut App) + 'static>;
 
 /// One of Bloxkeep's icons (assets/icons), in a colour.
 pub fn icon(name: &str, size: f32, color: Hsla) -> Svg {
-    // (Bloxkeep's own drawing of it when it has one, both its layers in the one colour: see `icon2`.)
-    let file = if rich() && crate::duo_icons::DUO.contains(&name) { format!("icons/duo/{name}.full.svg") } else { format!("icons/{name}.svg") };
-    svg().path(SharedString::from(file)).size(px(size)).flex_none().text_color(color)
+    svg().path(icon_file(name)).size(px(size)).flex_none().text_color(color)
+}
+
+/// The file `icon` draws for `name`: Bloxkeep's own drawing of it when it has one, both its layers in the one colour
+/// (see `icon2`).
+fn icon_file(name: &str) -> SharedString {
+    SharedString::from(if rich() && crate::duo_icons::DUO.contains(&name) { format!("icons/duo/{name}.full.svg") } else { format!("icons/{name}.svg") })
 }
 
 /// Bloxkeep's rounded icon family: the silhouette in `base`, a functional detail in `accent`.
@@ -1714,6 +1718,10 @@ fn marquee_clock(id: &'static str, text: &str, running: bool) -> f32 {
 /// Words that may be longer than their box (a song's title): still when they fit; else they run leftward, round and
 /// round, slowly, as a music player's title does (still, cut at the box's edge, while the window is behind). The
 /// box takes the width it is given; the words' size, weight and colour come from around it.
+///
+/// Running, the words are laid out in the box as when still, unseen, and drawn by the motion layer (motion.rs) from a
+/// line shaped here with the style around them: each of their steps draws the window again, not the part of the app
+/// they are in (the status bar's, 0.8 ms of layout a frame at 60 frames a second while a song with a long title played).
 pub fn marquee(id: &'static str, text: String) -> Div {
     const GAP: f32 = 56.;
     const SPEED: f32 = 34.;
@@ -1743,24 +1751,45 @@ pub fn marquee(id: &'static str, text: String) -> Div {
     };
     let word = || div().flex_none().whitespace_nowrap().child(text.clone());
     let long = room > 0. && own > room + 1.;
-    let runs = long && looping();
     let span = own + GAP;
     // Where the words are comes from the marquee's own clock, which stands while the window is behind and goes on from
     // there: they stop where they are and go on from there, instead of jumping back to the start each time (the owner,
     // 2026-11-20: "ko focus, chữ chạy spotify nó cứ lag lag": the mouse over the window and off it again started them
     // over every few seconds).
     let said = text.clone();
-    let at = move || (marquee_clock(id, &said, runs) * SPEED) % span;
+    let at = move |running: bool| (marquee_clock(id, &said, running) * SPEED) % span;
     let row = div().flex().flex_none().gap(px(GAP)).child(word().relative().child(keep(true, text.clone()))).when(long, |d| d.child(word()));
-    let row = if runs {
-        // (The animation only asks for a frame 30 times a second; the place is the clock's.)
-        row.with_animation(id, Animation::new(std::time::Duration::from_secs(1)).repeat().with_max_fps(60.), move |d, _| d.ml(px(-at()))).into_any_element()
-    } else if long {
-        row.ml(px(-at())).into_any_element()
-    } else {
-        row.into_any_element()
-    };
-    div().relative().w_full().min_w_0().overflow_hidden().flex().child(row).child(keep(false, text))
+    let frame = || div().relative().w_full().min_w_0().overflow_hidden().flex();
+    if long && looping() {
+        // (The line as the words here would be drawn: the font, size, weight and colour around them, and their line's
+        // height; shaped as the box is laid out, drawn at each of the layer's frames. Its clock goes on only while the
+        // layer moves, so it stands while the window is behind, as above.)
+        let shaped: std::rc::Rc<std::cell::RefCell<Option<(ShapedLine, Pixels)>>> = Default::default();
+        let (into, words) = (shaped.clone(), text.clone());
+        let shape = canvas(
+            move |_, window, _| {
+                let style = window.text_style();
+                let rem = window.rem_size();
+                let line = window.text_system().shape_line(SharedString::from(words.clone()), style.font_size.to_pixels(rem), &[style.to_run(words.len())], None);
+                *into.borrow_mut() = Some((line, style.line_height_in_pixels(rem)));
+            },
+            |_, _, _, _| {},
+        )
+        .absolute()
+        .size_0();
+        let running = crate::motion::place(move |b, t, window, cx| {
+            let Some((line, height)) = &*shaped.borrow() else { return };
+            let x = at(t.is_some());
+            for from in [0., span] {
+                let _ = line.paint(point(b.origin.x + px(from - x), b.origin.y), *height, TextAlign::Left, None, window, cx);
+            }
+        })
+        .absolute()
+        .inset_0();
+        return frame().child(row.text_color(transparent_black())).child(shape).child(running).child(keep(false, text));
+    }
+    let row = if long { row.ml(px(-at(false))) } else { row };
+    frame().child(row).child(keep(false, text))
 }
 
 /// A song that plays, as music apps mark it in their lists (Spotify's, Apple Music's): four short bars rising and
@@ -1811,22 +1840,37 @@ pub fn state_mark(_id: &'static str, live: bool, size: f32, quiet: Hsla) -> AnyE
     div().relative().size(px(size)).flex_none().child(div().absolute().inset_0().rounded_full().bg(c(OK))).child(ring.absolute().inset_0()).into_any_element()
 }
 
-/// Something under way, as a turning mark (the web page's spin): for a button that is busy.
+/// Something under way, as a turning mark (the web page's spin): for a button that is busy. It turns in the motion
+/// layer (motion.rs), once each 0.8 s: its frames draw the window again, not the part of the app it is in.
 pub fn spinner(size: f32, color: Hsla) -> AnyElement {
-    let mark = icon("refresh", size, color);
     if !looping() {
-        return mark.into_any_element();
+        return icon("refresh", size, color).into_any_element();
     }
-    mark.with_animation("spin", Animation::new(std::time::Duration::from_millis(800)).repeat().with_max_fps(60.), |s, t| s.with_transformation(Transformation::rotate(radians(t * std::f32::consts::TAU))))
-        .into_any_element()
+    let file = icon_file("refresh");
+    crate::motion::spot(size, size, move |b, t, window, cx| {
+        // (Turned about its middle, as an icon's `with_transformation` turns it.)
+        let turn = radians(t.map_or(0., |t| (t / 0.8).fract()) * std::f32::consts::TAU);
+        let k = window.scale_factor();
+        let m = TransformationMatrix::unit().translate(b.center().scale(k)).rotate(turn).scale(gpui_kit::size(1., 1.)).translate(b.center().scale(-k));
+        let _ = window.paint_svg(b, file.clone(), None, m, color, cx);
+    })
+    .into_any_element()
 }
 
-/// A loop's breathing (waiting shapes): 0.35 to 1 and back, or still at its middle while the window is behind.
-fn breathing(key: &'static str, el: Div) -> AnyElement {
+/// `n` waiting shapes `w`×`h`, `gap` apart, breathing: 0.35 to 1 and back each 1.3 s, or still at 0.6 while the window
+/// is behind. Each breathes in the motion layer (motion.rs): its frames draw the window again, not the page.
+fn breathing(n: usize, w: f32, h: f32, gap: f32) -> AnyElement {
+    let ground = ca(WHITE, 0.045);
+    let shapes = div().flex().flex_wrap().gap(px(gap));
     if !looping() {
-        return el.opacity(0.6).into_any_element();
+        return shapes.children((0..n).map(|_| div().w(px(w)).h(px(h)).rounded(px(R_L)).bg(ground))).opacity(0.6).into_any_element();
     }
-    el.with_animation(key, Animation::new(std::time::Duration::from_millis(1300)).repeat().with_max_fps(60.).with_easing(pulsating_between(0.35, 1.)), |d, t| d.opacity(t))
+    let breath = std::rc::Rc::new(pulsating_between(0.35, 1.));
+    shapes
+        .children((0..n).map(|_| {
+            let breath = breath.clone();
+            crate::motion::spot(w, h, move |b, t, window, _| crate::motion::fill_round(window, b, R_L, ground.opacity(t.map_or(0.6, |t| breath((t / 1.3).fract())))))
+        }))
         .into_any_element()
 }
 
@@ -2045,12 +2089,12 @@ pub fn slide_in(key: impl Into<SharedString>, notice: impl IntoElement + Styled 
 
 /// Tiles still on their way: the shapes they will have, breathing.
 pub fn waiting_tiles(n: usize, w: f32, gap: f32) -> AnyElement {
-    breathing("waiting-tiles", div().flex().flex_wrap().gap(px(gap)).children((0..n).map(|_| div().w(px(w)).h(px(w + 58.)).rounded(px(R_L)).bg(ca(WHITE, 0.045)))))
+    breathing(n, w, w + 58., gap)
 }
 
 /// Rows still on their way (a list of people, of lines): the same, as bars.
 pub fn waiting_rows(n: usize, w: f32, h: f32, gap: f32) -> AnyElement {
-    breathing("waiting-rows", div().flex().flex_wrap().gap(px(gap)).children((0..n).map(|_| div().w(px(w)).h(px(h)).rounded(px(R_L)).bg(ca(WHITE, 0.045)))))
+    breathing(n, w, h, gap)
 }
 
 /// How well a game's name answers what was typed, as a player types it: None when it doesn't, lower is better.

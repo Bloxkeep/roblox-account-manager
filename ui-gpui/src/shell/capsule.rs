@@ -457,13 +457,19 @@ impl Root {
         // While it plays, where it is moves on: drawn again as the song's next second starts, while the card is open.
         // (Once a second from whenever it was drawn, the count turned over anywhere in the second, so one second
         // showed for longer and the next for less: the owner, 2026-11-24.) A little after the turn, so the count it
-        // reads is past it even with Windows' timers a tick late.
+        // reads is past it even with Windows' timers a tick late. Only the card's part is drawn again (shell/parts.rs):
+        // where the song is comes from the clock as it is drawn, nothing of Root's changed.
         if s.playing && !TICK_ASKED.with(|t| t.replace(true)) {
             let wait = s.at().map_or(1000, |(at, _)| 1000 - at % 1000 + 20);
             cx.spawn(async move |this, cx| {
                 cx.background_executor().timer(Duration::from_millis(wait)).await;
                 TICK_ASKED.with(|t| t.set(false));
-                this.update(cx, |_, cx| cx.notify()).ok();
+                this.update(cx, |r, cx| {
+                    if let Some(over) = r.parts.as_ref().map(|p| p.over.entity_id()) {
+                        App::notify(cx, over);
+                    }
+                })
+                .ok();
             })
             .detach();
         }

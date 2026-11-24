@@ -105,8 +105,18 @@ pub struct Data {
     turned: bool,
     /// A picture of it being saved.
     saving: bool,
+    /// The picture shown: on the graphics card (`card`), else a picture of GPUI's (`frame`; where the card can't hold
+    /// one, as Windows' software graphics).
     frame: Option<std::sync::Arc<RenderImage>>,
-    /// What `frame` shows (the view, its size, the model): a draw asked for the same is skipped.
+    /// The texture each new picture is written into (window_capture::SharedFrame), drawn where the 3D box is
+    /// (Window::paint_shared_texture); and the one the box was last painted with. A new picture into the texture the
+    /// box shows needs only the window shown again (motion::redraw_main), not the page made over: each picture (60
+    /// a second while it turns) made the page's part over again, 5 ms of layout a frame (see `draw`).
+    #[cfg(all(windows, any(feature = "core", feature = "shot")))]
+    card: Option<crate::window_capture::SharedFrame>,
+    card_failed: bool,
+    card_shown: std::rc::Rc<std::cell::Cell<Option<(isize, u32, u32)>>>,
+    /// What the picture shows (the view, its size, the model): a draw asked for the same is skipped.
     frame_of: Option<(crate::mesh::View, usize, usize)>,
     drawing: bool,
     stale: bool,
@@ -178,9 +188,8 @@ pub fn want(r: &mut Root, link: &crate::link::Link, cx: &mut Context<Root>) {
     // Another account: what was shown (and on its way) for the last one goes at once, even mid-load.
     if r.avatar.of != user {
         // (The old picture leaves GPUI's sprite atlas too, as a replaced one does in draw().)
-        if let Some(old) = std::mem::replace(&mut r.avatar, Data { of: user, ..Default::default() }).frame {
-            cx.drop_image(old, None);
-        }
+        let mut old = std::mem::replace(&mut r.avatar, Data { of: user, ..Default::default() });
+        drop_picture(&mut old, cx);
     }
     if r.avatar.got.is_none() && !r.avatar.loading {
         load(r, cx);
@@ -265,7 +274,7 @@ pub fn want(r: &mut Root, link: &crate::link::Link, cx: &mut Context<Root>) {
     // model is asked for again and replaced, and four seconds on the box must still take a new picture. What it finds
     // is printed ("[swap] ..."): the box froze here from 1.1.2-alpha.9 to alpha.12.
     #[cfg(feature = "shot")]
-    if std::env::var("BLOXKEEP_SHOT_SWAP").is_ok() && r.avatar.solid.is_some() && r.avatar.frame.is_some() && !r.avatar.drawing {
+    if std::env::var("BLOXKEEP_SHOT_SWAP").is_ok() && r.avatar.solid.is_some() && has_picture(&r.avatar) && !r.avatar.drawing {
         static ONCE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
         if !ONCE.swap(true, std::sync::atomic::Ordering::Relaxed) {
             r.avatar.yaw += 0.5;
@@ -278,15 +287,15 @@ pub fn want(r: &mut Root, link: &crate::link::Link, cx: &mut Context<Root>) {
             cx.spawn(async move |this, cx| {
                 cx.background_executor().timer(std::time::Duration::from_secs(4)).await;
                 let before = this.update(cx, |r, cx| {
-                    let before = r.avatar.frame.clone();
+                    let before = r.avatar.frame_of;
                     r.avatar.yaw += 0.7;
                     draw(r, cx);
                     before
                 });
                 cx.background_executor().timer(std::time::Duration::from_secs(2)).await;
                 let _ = this.update(cx, |r, _| {
-                    let new_picture = match (before.ok().flatten(), r.avatar.frame.as_ref()) {
-                        (Some(a), Some(b)) => !std::sync::Arc::ptr_eq(&a, b),
+                    let new_picture = match (before.ok().flatten(), r.avatar.frame_of) {
+                        (Some(a), Some(b)) => a != b,
                         _ => false,
                     };
                     eprintln!("[swap] drawing still set: {}; still swapping: {}; model there: {}; a new picture drawn after the swap: {new_picture}", r.avatar.drawing, r.avatar.swapping, r.avatar.solid.is_some());
@@ -300,8 +309,14 @@ pub fn want(r: &mut Root, link: &crate::link::Link, cx: &mut Context<Root>) {
         r.avatar.frame = None;
         r.avatar.frame_of = None;
     }
+    // (So is one whose texture went with the graphics card's device: GPUI made another.)
+    #[cfg(all(windows, any(feature = "core", feature = "shot")))]
+    if r.avatar.card.as_ref().is_some_and(|c| c.stale()) {
+        r.avatar.card = None;
+        r.avatar.frame_of = None;
+    }
     // Back on the tab: the picture it dropped is drawn again, and the turning goes on.
-    if r.avatar.solid.is_some() && r.avatar.frame.is_none() && !r.avatar.drawing {
+    if r.avatar.solid.is_some() && !has_picture(&r.avatar) && !r.avatar.drawing {
         draw(r, cx);
     }
     if lively(&r.avatar) && !r.avatar.spinning {
@@ -1126,8 +1141,76 @@ fn draw_worker(job: impl FnOnce() -> Vec<u8> + Send + 'static) -> futures::chann
     rx
 }
 
+/// Whether a picture of the model is there to show (on the card or as a picture).
+fn has_picture(av: &Data) -> bool {
+    #[cfg(all(windows, any(feature = "core", feature = "shot")))]
+    if av.card.is_some() && av.frame_of.is_some() {
+        return true;
+    }
+    av.frame.is_some()
+}
+
+/// The picture of the model goes (its texture, or its picture off the graphics card).
+fn drop_picture(av: &mut Data, cx: &mut App) {
+    #[cfg(all(windows, any(feature = "core", feature = "shot")))]
+    {
+        av.card = None;
+    }
+    av.card_shown.set(None);
+    if let Some(old) = av.frame.take() {
+        cx.drop_image(old, None);
+    }
+}
+
+/// A new picture of the model (`size`² pixels, BGRA) written into its texture on the card, made (again) when it is
+/// another size or the card's device changed: the texture's handle and size (None: GPUI held the texture past a tenth
+/// of a second, this picture is skipped), or None where no texture can be made (then a picture of GPUI's shows it).
+#[cfg(all(windows, any(feature = "core", feature = "shot")))]
+fn on_card(av: &mut Data, dots: &[u8], size: usize) -> Option<Option<(isize, u32, u32)>> {
+    if av.card_failed {
+        return None;
+    }
+    let s = size as u32;
+    if av.card.as_ref().is_none_or(|c| c.size() != (s, s) || c.stale()) {
+        match crate::window_capture::SharedFrame::new(s, s) {
+            Ok(c) => av.card = Some(c),
+            Err(why) => {
+                crate::net::note_failed("Avatar 3D on the GPU (drawn as pictures instead)", "", &why);
+                av.card_failed = true;
+                av.card = None;
+                return None;
+            }
+        }
+    }
+    let card = av.card.as_ref()?;
+    Some(card.put(dots).then(|| card.handle()))
+}
+
+#[cfg(not(all(windows, any(feature = "core", feature = "shot"))))]
+fn on_card(_: &mut Data, _: &[u8], _: usize) -> Option<Option<(isize, u32, u32)>> {
+    None
+}
+
+/// What the 3D box shows: its texture on the card, or a picture.
+enum Shown {
+    Card((isize, u32, u32)),
+    Picture(std::sync::Arc<RenderImage>),
+}
+
+fn shown(av: &Data) -> Option<Shown> {
+    #[cfg(all(windows, any(feature = "core", feature = "shot")))]
+    if let (Some(card), Some(_)) = (av.card.as_ref(), av.frame_of) {
+        return Some(Shown::Card(card.handle()));
+    }
+    av.frame.clone().map(Shown::Picture)
+}
+
 /// Draws the model as it is looked at now, off the window's thread. One picture at a time: a turn asked for while one
 /// is being drawn is drawn after it.
+///
+/// The new picture goes into the texture the 3D box is painted with, where the card can hold one: the page's part is
+/// kept as drawn and the window is only shown again. Through GPUI's pictures each new one (60 a second while it turns)
+/// made the page over again: 7.5 ms a frame with the avatar turning (5.1 of them its layout), measured on its tab.
 fn draw(r: &mut Root, cx: &mut Context<Root>) {
     let Some(model) = r.avatar.solid.clone() else { return };
     if r.avatar.drawing {
@@ -1145,18 +1228,18 @@ fn draw(r: &mut Root, cx: &mut Context<Root>) {
     // Only drawn when what it shows changes: the window drawn again (a live wallpaper behind, 30 times a second) shows
     // the picture it has, and a draw asked for the same view of the same model is not made again.
     let of = (view, size, std::sync::Arc::as_ptr(&model) as usize);
-    if r.avatar.frame.is_some() && r.avatar.frame_of == Some(of) {
+    if has_picture(&r.avatar) && r.avatar.frame_of == Some(of) {
         return;
     }
     r.avatar.drawing = true;
     let rx = draw_worker(move || model.draw(view, size));
     cx.spawn(async move |this, cx| {
         let dots = rx.await.ok();
-        let _ = this.update(cx, |r, cx| {
+        let quiet = this.update(cx, |r, cx| {
             // (Another account's avatar by now: its Data was put away with its tab, which let go of `drawing`, or is
             // a new one.)
             if r.avatar.of != user {
-                return;
+                return false;
             }
             r.avatar.drawing = false;
             // The model was replaced while this picture of the one before it was drawn (after a change: R6 to R15):
@@ -1166,22 +1249,45 @@ fn draw(r: &mut Root, cx: &mut Context<Root>) {
             if r.avatar.solid_ask != ask {
                 r.avatar.stale = false;
                 draw(r, cx);
-                return;
+                return false;
             }
-            if let Some(buffer) = dots.and_then(|dots| image::RgbaImage::from_raw(size as u32, size as u32, dots)) {
-                let new = crate::images::made("avatar 3D", RenderImage::new(vec![image::Frame::new(buffer)]));
-                // (The picture it replaces is taken off the graphics card: a drag draws many.)
-                if let Some(old) = r.avatar.frame.replace(new) {
-                    cx.drop_image(old, None);
+            // (Into the texture the box is painted with already: nothing on the page changes but the texture.)
+            let mut quiet = false;
+            if let Some(dots) = dots.filter(|d| d.len() == size * size * 4) {
+                match on_card(&mut r.avatar, &dots, size) {
+                    Some(put) => {
+                        if let Some(old) = r.avatar.frame.take() {
+                            cx.drop_image(old, None);
+                        }
+                        if put.is_some() {
+                            quiet = r.avatar.card_shown.get() == put;
+                            r.avatar.frame_of = Some(of);
+                        }
+                    }
+                    None => {
+                        if let Some(buffer) = image::RgbaImage::from_raw(size as u32, size as u32, dots) {
+                            let new = crate::images::made("avatar 3D", RenderImage::new(vec![image::Frame::new(buffer)]));
+                            // (The picture it replaces is taken off the graphics card: a drag draws many.)
+                            if let Some(old) = r.avatar.frame.replace(new) {
+                                cx.drop_image(old, None);
+                            }
+                            r.avatar.frame_of = Some(of);
+                        }
+                    }
                 }
-                r.avatar.frame_of = Some(of);
             }
             if r.avatar.stale {
                 r.avatar.stale = false;
                 draw(r, cx);
             }
-            cx.notify();
+            if !quiet {
+                cx.notify();
+            }
+            quiet
         });
+        if quiet.unwrap_or(false) {
+            let _ = cx.update(crate::motion::redraw_main);
+        }
     })
     .detach();
 }
@@ -1357,9 +1463,7 @@ fn reload_model(r: &mut Root, cx: &mut Context<Root>) {
     avatar.stale = false;
     avatar.spin_run += 1;
     avatar.spinning = false;
-    if let Some(old) = avatar.frame.take() {
-        cx.drop_image(old, None);
-    }
+    drop_picture(avatar, cx);
 }
 
 fn again(r: &mut Root, cx: &mut Context<Root>) {
@@ -1550,7 +1654,7 @@ fn stage(root: &Root, a: &Avatar, side: f32, cx: &mut Context<Root>) -> Stateful
         .justify_center()
         .when_some(background, |d, (image, key)| d.child(div().absolute().inset_0()
             .child(fade_in(img(image).size_full().object_fit(ObjectFit::Cover), &key))));
-    let Some(frame) = av.frame.clone() else {
+    let Some(frame) = shown(av) else {
         // Roblox's flat picture, and while its model is on its way, a word that it is.
         let coming = !av.no_solid && friends::signed(root).is_some_and(|(_, _, c)| !c.is_empty());
         return d.bg(c(INSET)).when_some(picture(&a.pic, cx), |d, p| d.child(fade_in(img(p.clone()).h_full().object_fit(ObjectFit::Contain), &p)))
@@ -1558,7 +1662,22 @@ fn stage(root: &Root, a: &Avatar, side: f32, cx: &mut Context<Root>) -> Stateful
     };
     let glass = |id: &'static str, icon: &'static str, tip: String| IconButton::new(id, icon).size(30.).glass().tip(tip);
     d.cursor(if av.drag.is_some() { CursorStyle::ClosedHand } else { CursorStyle::OpenHand })
-        .child(img(frame).size_full().object_fit(ObjectFit::Contain))
+        .child(match frame {
+            Shown::Picture(frame) => img(frame).size_full().object_fit(ObjectFit::Contain).into_any_element(),
+            // (Painted where the picture would be, as ObjectFit::Contain places it; noted, so a new picture into the
+            // same texture asks only for the window to be shown again.)
+            Shown::Card(card) => {
+                let painted = av.card_shown.clone();
+                canvas(|_, _, _| {}, move |b, _, window, _| {
+                    let (handle, w, h) = card;
+                    painted.set(Some(card));
+                    let at = ObjectFit::Contain.get_bounds(b, gpui_kit::size(DevicePixels(w as i32), DevicePixels(h as i32)));
+                    window.paint_shared_texture(at, handle, w, h);
+                })
+                .size_full()
+                .into_any_element()
+            }
+        })
         // (After a change the model before it stays up until Roblox's new one replaces it: said here.)
         .when(av.swapping, |d| d.child(stage_note(root.tr("av3.loading"), true)))
         // Clicked, it takes the keys: W A S D or the arrows walk the avatar (mesh::Model::step).
@@ -1795,7 +1914,7 @@ fn filled(root: &Root, a: &Avatar, width: f32, cx: &mut Context<Root>) -> AnyEle
     }
 
     // Shown big: the avatar fills the page, its room and controls beside it (under it, in a narrow window).
-    if av.big && av.frame.is_some() {
+    if av.big && has_picture(av) {
         let side_by = inner >= 760.;
         // As wide as the page lets it, and no taller than the window shows (the feet were under the fold at 1280x800,
         // 2026-11-15): the window's height less its bars, the tabs and this page's header.
@@ -1891,7 +2010,7 @@ fn filled(root: &Root, a: &Avatar, width: f32, cx: &mut Context<Root>) -> AnyEle
         .flex_col()
         .gap(px(12.))
         .child(div().w_full().flex().justify_center().child(stage(root, a, if wide { side - 28. } else { (side - 28.).min(420.) }, cx)))
-        .when(av.frame.is_some(), |d| d.child(div().flex().flex_wrap().items_center().gap(px(8.)).child(div().text_size(px(T_S)).text_color(c(MUTED)).child(root.tr("av3.rooms"))).child(rooms_row(root, cx))))
+        .when(has_picture(av), |d| d.child(div().flex().flex_wrap().items_center().gap(px(8.)).child(div().text_size(px(T_S)).text_color(c(MUTED)).child(root.tr("av3.rooms"))).child(rooms_row(root, cx))))
         .children(worth(root, a))
         .child(body(root, a, cx));
 
