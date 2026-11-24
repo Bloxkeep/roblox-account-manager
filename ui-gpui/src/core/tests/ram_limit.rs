@@ -9,7 +9,7 @@ use super::{call, cores::memory_priority, unlock, user_error, window::quiet_app 
 use crate::core::{
     app::memory::settling,
     base::Stamp,
-    roblox_log_watcher::ClientState,
+    roblox_log_watcher::{apply, ClientState, Tail},
     roblox_processes::{self, PlayerProcess},
     system_memory::MemoryStatus,
     vault::Vault,
@@ -37,6 +37,39 @@ pub async fn run(c: &mut Checks, _dir: &str) {
         ("no log read: limited", None, false),
     ] {
         c.check(what, settling(s.as_ref(), now) == want, s.map(|s| (s.status, now.secs_since(s.at))));
+    }
+    // The same read from Roblox's own lines (a real teleport's, the owner's 0.748 log of 2026-11-24, times moved), the
+    // limit back on every way out: in the new server, a teleport that never went on, a join that hangs.
+    let t0 = Stamp::utc_now().plus_secs(-3600.0);
+    let read = |lines: &[(f64, &str)], at: f64| {
+        let mut tail = Tail::new("stand-in.log".into(), 1);
+        for (when, text) in lines {
+            apply(&mut tail, &format!("{},1.0,a2e8,6 {text}", t0.plus_secs(*when).to_iso()));
+        }
+        settling(tail.state.as_ref(), t0.plus_secs(at))
+    };
+    const JOIN_1: &str = "[FLog::Output] ! Joining game 'ed12e24f-74b9-4627-8842-b91942d249b8' place 107778070777162 at 10.32.36.144";
+    const SERVER_1: &str = "[FLog::Network] serverId: 128.116.46.33|61851";
+    const TELEPORT: &str = "Info [FLog::UgcExperienceController] UgcExperienceController: doTeleport: url ";
+    const LEFT_OLD: &str = "[FLog::Network] Time to disconnect replication data: 0.405400";
+    const MOVED: &str = "[FLog::SessionTransitionFSM] Teleported.";
+    const JOIN_2: &str = "[FLog::Output] ! Joining game 'f8c11172-c670-4252-ac92-c2b1cc490248' place 107778070777162 at 10.204.0.5";
+    const SERVER_2: &str = "[FLog::Network] serverId: 128.116.127.33|55447";
+    let in_game = [(0.0, JOIN_1), (0.4, SERVER_1)];
+    let mut teleport = in_game.to_vec();
+    teleport.extend([(600.0, TELEPORT), (600.3, LEFT_OLD), (602.4, MOVED), (602.4, JOIN_2), (603.1, SERVER_2)]);
+    for (what, lines, at, want) in [
+        ("log: in a game 5 min: limited", &in_game[..], 300.0, false),
+        ("log: just joined: not limited", &in_game[..], 30.0, true),
+        ("log: a teleport begun: not limited", &teleport[..2 + 1], 600.1, true),
+        ("log: joining the next server: not limited", &teleport[..2 + 4], 602.5, true),
+        ("log: a minute on the new server: not limited", &teleport[..], 663.0, true),
+        ("log: 91 s on the new server: limited again", &teleport[..], 694.2, false),
+        ("log: a teleport that never went on, 4 min: not limited", &teleport[..2 + 1], 840.0, true),
+        ("log: …6 min: limited again", &teleport[..2 + 1], 960.0, false),
+        ("log: a join that hangs 6 min: limited again", &teleport[..2 + 4], 962.5, false),
+    ] {
+        c.check(what, read(lines, at) == want, at);
     }
 
     for what in [
