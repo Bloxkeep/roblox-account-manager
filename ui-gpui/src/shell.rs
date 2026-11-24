@@ -4100,6 +4100,30 @@ impl Render for Root {
                             .detach();
                             return;
                         }
+                        // BLOXKEEP_SHOT_IMPORT with =importlist (lines split by "|n|", then checked) or =importram (the
+                        // file picked; with a value, its password typed and opened): the new imports' later steps.
+                        if let (true, Ok(v)) = (which == "importlist" || which == "importram", std::env::var("BLOXKEEP_SHOT_IMPORT")) {
+                            let list = which == "importlist";
+                            if list { pages::import_vault::open_list(r, window, cx) } else { pages::import_vault::open_ram(r, window, cx) }
+                            cx.spawn_in(window, async move |this, cx| {
+                                cx.background_executor().timer(Duration::from_millis(600)).await;
+                                let _ = this.update_in(cx, |r, window, cx| {
+                                    if list {
+                                        pages::import_vault::set_list_text(r, v.replace("|n|", "\n"), window, cx);
+                                    }
+                                    pages::import_vault::next(r, window, cx);
+                                });
+                                cx.background_executor().timer(Duration::from_millis(1500)).await;
+                                if !list && !v.is_empty() && v != "pick" {
+                                    let _ = this.update_in(cx, |r, window, cx| {
+                                        r.iv_pw.update(cx, |s, cx| s.set_value(v.clone(), window, cx));
+                                        pages::import_vault::next(r, window, cx);
+                                    });
+                                }
+                            })
+                            .detach();
+                            return;
+                        }
                     }
                     match which.as_str() {
                         "add" => return pages::password::open(r, window, cx),
@@ -4107,6 +4131,8 @@ impl Render for Root {
                         "cookie" => return pages::account_form::open(r, None, window, cx),
                         "edit" => return pages::account_form::open(r, first, window, cx),
                         "import" => return pages::import_vault::open(r, window, cx),
+                        "importlist" => return pages::import_vault::open_list(r, window, cx),
+                        "importram" => return pages::import_vault::open_ram(r, window, cx),
                         "feedback" => return pages::extras::open_feedback(r, window, cx),
                         "whatsnew" => return pages::extras::ask_whats_new(r, cx),
                         "join" => return pages::join::open(r, first.into_iter().collect(), window, cx),

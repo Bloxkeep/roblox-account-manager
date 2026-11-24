@@ -862,7 +862,10 @@ impl App {
                 done(self.login_step(move || async move { app.login_captcha().await }, false).await)
             }
             "addViaCookie" => done(self.add_via_cookie(a).await),
-            "vaultImportPick" => done(self.vault_import_pick().await),
+            "vaultImportPick" => done(
+                self.vault_import_pick(if str_of(a, "from") == "ram" { super::vault_import::ImportFrom::Ram } else { super::vault_import::ImportFrom::Vault }).await,
+            ),
+            "listImportOpen" => done(self.list_import_open(&str_of(a, "text")).await),
             "vaultImportOpen" => done(self.vault_import_open(&str_of(a, "password")).await),
             "vaultImportApply" => done(self.vault_import_apply(a)),
             "vaultImportCancel" => done(self.drop_vault_import(false)),

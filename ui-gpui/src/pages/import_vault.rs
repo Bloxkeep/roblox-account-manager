@@ -4,11 +4,17 @@
 // "vaultImportApply": { added, updated, presets, presetsSkipped, ids }); this window sees only names and states, never
 // cookies or passwords. Closing without importing makes the app forget the file ("vaultImportCancel"). After three
 // wrong passwords the app makes each try wait, and the button counts down meanwhile.
+//
+// The same box brings accounts from Roblox Account Manager's AccountData.json ("vaultImportPick" { from: "ram" }: its
+// password asked only when the file has one) and from a pasted list of cookies ("listImportOpen" { text }: one a line,
+// or username:password:cookie; the app checks each with Roblox and answers as "vaultImportOpen" does, with how many
+// lines it left out).
 use std::collections::HashSet;
 use std::time::{Duration, Instant};
 
 use gpui_kit::component::WindowExt as _;
 use gpui_kit::component::dialog::DialogEntrance;
+use gpui_kit::component::input::TextareaState;
 use gpui_kit::{prelude::*, *};
 use serde_json::{Value, json};
 
@@ -16,11 +22,29 @@ use crate::{kit::*, shell::Root, theme::*};
 use crate::val::s;
 use crate::val::flag;
 
+/// Where the accounts come from.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Kind {
+    #[default]
+    Vault,
+    /// Roblox Account Manager's AccountData.json.
+    Ram,
+    /// A pasted list of cookies.
+    List,
+}
+
 #[derive(Default)]
 pub struct Data {
     open: bool,
-    /// 0 pick the file, 1 its password, 2 what to bring over.
+    kind: Kind,
+    /// 0 pick the file (or paste the list), 1 its password, 2 what to bring over.
     step: u8,
+    /// The picked file needs a password (a Roblox Account Manager file saved without one doesn't).
+    locked: bool,
+    /// The pasted list's box.
+    list: Option<Entity<TextareaState>>,
+    /// Lines of the list left out of the preview.
+    skipped: i64,
     file: String,
     preview: Option<Value>,
     ticked: HashSet<i64>,
@@ -107,7 +131,8 @@ fn call(r: &mut Root, cmd: &'static str, args: Value, window: &mut Window, cx: &
 
 /// Choose file…: the app's file dialog; a file picked goes on to its password.
 fn pick(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
-    call(r, "vaultImportPick", json!({}), window, cx, |r, v, window, cx| {
+    let from = if r.import.kind == Kind::Ram { "ram" } else { "vault" };
+    call(r, "vaultImportPick", json!({ "from": from }), window, cx, |r, v, window, cx| {
         // (The file dialog was cancelled: things stay as they were.)
         if !v.is_object() {
             return;
@@ -115,6 +140,12 @@ fn pick(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
         r.import.file = s(&v, "name").to_string();
         r.import.preview = None;
         r.import.shown = false;
+        r.import.locked = v.get("locked").and_then(Value::as_bool).unwrap_or(true);
+        // A Roblox Account Manager file without a password opens at once.
+        if !r.import.locked {
+            r.import.step = 0;
+            return open_file(r, String::new(), window, cx);
+        }
         r.import.step = 1;
         r.import.wait_until = v.get("wait").and_then(Value::as_u64).filter(|w| *w > 0).map(|w| Instant::now() + Duration::from_secs(w));
         for e in [r.iv_pw.clone(), r.iv_q.clone()] {
@@ -132,6 +163,15 @@ pub fn next(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
         return;
     }
     match r.import.step {
+        0 if r.import.kind == Kind::List => {
+            let text = r.import.list.as_ref().map(|e| e.read(cx).value().to_string()).unwrap_or_default();
+            if text.trim().is_empty() {
+                r.import.error = Some(r.tr("il.need"));
+                window.refresh();
+                return;
+            }
+            call(r, "listImportOpen", json!({ "text": text }), window, cx, opened);
+        }
         0 => pick(r, window, cx),
         1 => {
             if wait_left(r).is_some() {
@@ -139,25 +179,11 @@ pub fn next(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
             }
             let password = r.iv_pw.read(cx).value().to_string();
             if password.is_empty() {
-                r.import.error = Some(r.tr("iv.needPw"));
+                r.import.error = Some(r.tr(if r.import.kind == Kind::Ram { "ir.needPw" } else { "iv.needPw" }));
                 window.refresh();
                 return;
             }
-            call(r, "vaultImportOpen", json!({ "password": password }), window, cx, |r, v, window, cx| {
-                if s(&v, "status") != "ok" {
-                    // While each try waits the window says so itself, counting down, in place of the app's words.
-                    let wait = v.get("wait").and_then(Value::as_u64).filter(|w| *w > 0);
-                    r.import.wait_until = wait.map(|w| Instant::now() + Duration::from_secs(w));
-                    r.import.error = if wait.is_some() { None } else { Some(s(&v, "error").to_string()).filter(|e| !e.is_empty()) };
-                    return;
-                }
-                // What isn't here yet starts ticked.
-                r.import.ticked = v.get("accounts").and_then(Value::as_array).map(|l| l.iter().filter(|a| !flag(a, "exists")).map(key_of).collect()).unwrap_or_default();
-                r.import.preview = Some(v);
-                r.import.presets = false;
-                r.import.step = 2;
-                r.iv_pw.update(cx, |st, cx| st.set_value("", window, cx));
-            });
+            open_file(r, password, window, cx);
         }
         _ => {
             let Some(p) = r.import.preview.clone() else { return };
@@ -200,6 +226,54 @@ pub fn next(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
     }
 }
 
+/// The pasted list's words, as typed (the hidden window's shots).
+pub fn set_list_text(r: &mut Root, text: String, window: &mut Window, cx: &mut Context<Root>) {
+    if let Some(b) = r.import.list.clone() {
+        b.update(cx, |st, cx| st.set_value(text, window, cx));
+    }
+}
+
+/// Opens the picked file (with its password, when it has one).
+fn open_file(r: &mut Root, password: String, window: &mut Window, cx: &mut Context<Root>) {
+    call(r, "vaultImportOpen", json!({ "password": password }), window, cx, opened);
+}
+
+/// The app's answer to opening the file or checking the list: its accounts to tick, or why not.
+fn opened(r: &mut Root, v: Value, window: &mut Window, cx: &mut Context<Root>) {
+    // (Another file picked meanwhile: the app dropped this one.)
+    if !v.is_object() {
+        return;
+    }
+    if s(&v, "status") != "ok" {
+        // While each try waits the window says so itself, counting down, in place of the app's words.
+        let wait = v.get("wait").and_then(Value::as_u64).filter(|w| *w > 0);
+        r.import.wait_until = wait.map(|w| Instant::now() + Duration::from_secs(w));
+        r.import.error = if wait.is_some() { None } else { Some(s(&v, "error").to_string()).filter(|e| !e.is_empty()) };
+        if r.import.step == 0 && r.import.kind == Kind::Ram {
+            r.import.step = 1; // (a file that turned out to need its password after all)
+        }
+        return;
+    }
+    // What isn't here yet starts ticked.
+    r.import.ticked = v.get("accounts").and_then(Value::as_array).map(|l| l.iter().filter(|a| !flag(a, "exists")).map(key_of).collect()).unwrap_or_default();
+    r.import.skipped = v.get("skipped").and_then(Value::as_i64).unwrap_or(0);
+    if r.import.kind == Kind::List {
+        r.import.file = s(&v, "name").to_string();
+    }
+    r.import.preview = Some(v);
+    r.import.presets = false;
+    r.import.step = 2;
+    r.iv_pw.update(cx, |st, cx| st.set_value("", window, cx));
+}
+
+/// "Step n/total": a file without a password, and the pasted list, have two steps.
+fn step_words(r: &Root) -> String {
+    let f = &r.import;
+    let short = f.kind == Kind::List || (f.kind == Kind::Ram && !f.locked && f.step != 1);
+    let (n, total) = if short { (if f.step == 0 { 1 } else { 2 }, 2) } else { (f.step as usize + 1, 3) };
+    r.i18n.tv("iv.stepOf", &[("n", &n.to_string()), ("total", &total.to_string())])
+}
+
 fn close(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
     if r.import.open {
         r.import.open = false;
@@ -210,8 +284,37 @@ fn close(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
 }
 
 pub fn open(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
+    open_kind(r, Kind::Vault, window, cx);
+}
+
+/// Accounts from Roblox Account Manager's AccountData.json.
+pub fn open_ram(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
+    open_kind(r, Kind::Ram, window, cx);
+}
+
+/// Accounts from a pasted list of cookies.
+pub fn open_list(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
+    open_kind(r, Kind::List, window, cx);
+}
+
+fn open_kind(r: &mut Root, kind: Kind, window: &mut Window, cx: &mut Context<Root>) {
     let opened = r.import.opened.wrapping_add(1);
-    r.import = Data { open: true, opened, ..Default::default() };
+    // (The list's box is kept from one opening to the next, emptied.)
+    let list = match (kind, r.import.list.take()) {
+        (Kind::List, Some(b)) => Some(b),
+        (Kind::List, None) => Some(cx.new(|cx| TextareaState::new(window, cx).rows(8))),
+        (_, kept) => kept,
+    };
+    if let (Kind::List, Some(b)) = (kind, &list) {
+        b.update(cx, |st, cx| st.set_value("", window, cx));
+        // The list's box takes the keys once the box is up (a box made just now isn't drawn yet).
+        let b = b.clone();
+        cx.defer_in(window, move |_, window, cx| {
+            let h = b.read(cx).focus_handle(cx);
+            window.focus(&h, cx);
+        });
+    }
+    r.import = Data { open: true, opened, kind, list, ..Default::default() };
     r.help_open = true;
     // While a try waits, the button counts down.
     cx.spawn_in(window, async move |this, cx| {
@@ -245,7 +348,7 @@ pub fn open(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
         let fine = |icon_name: &'static str, key: &str| {
             div().flex().gap(px(8.)).text_size(px(T_S)).line_height(px(16.)).text_color(c(MUTED)).child(div().mt(px(1.)).flex_none().child(icon(icon_name, 13., c(MUTED)))).child(div().min_w_0().flex_1().child(r.tr(key)))
         };
-        let mut body = div().flex().flex_col().gap(px(12.)).child(div().text_size(px(T_S)).font_weight(FontWeight::SEMIBOLD).text_color(c(MUTED)).child(r.i18n.tv("iv.step", &[("n", &(f.step + 1).to_string())])));
+        let mut body = div().flex().flex_col().gap(px(12.)).child(div().text_size(px(T_S)).font_weight(FontWeight::SEMIBOLD).text_color(c(MUTED)).child(step_words(r)));
         // The file picked, and the way to another.
         if f.step > 0 {
             let other = this.clone();
@@ -254,22 +357,56 @@ pub fn open(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
                     .flex()
                     .items_center()
                     .gap(px(8.))
-                    .child(icon("folder", 15., c(TEXT_2)))
+                    .child(icon(if f.kind == Kind::List { "rows" } else { "folder" }, 15., c(TEXT_2)))
                     .child(div().min_w_0().flex_1().truncate().text_size(px(T_M)).font_weight(FontWeight::SEMIBOLD).child(short_name(&f.file)))
-                    .child(focusable(div().id("iv-other")).flex_none().text_size(px(T_M)).text_color(c(TEXT_2)).underline().cursor_pointer().hover(|st| st.text_color(c(TEXT))).child(r.tr("iv.otherFile")).on_click(move |_, w, cx| {
-                        let _ = other.update(cx, |r, cx| pick(r, w, cx));
-                    })),
+                    .child(
+                        focusable(div().id("iv-other"))
+                            .flex_none()
+                            .text_size(px(T_M))
+                            .text_color(c(TEXT_2))
+                            .underline()
+                            .cursor_pointer()
+                            .hover(|st| st.text_color(c(TEXT)))
+                            .child(r.tr(if f.kind == Kind::List { "il.edit" } else { "iv.otherFile" }))
+                            .on_click(move |_, w, cx| {
+                                let _ = other.update(cx, |r, cx| {
+                                    if r.import.kind == Kind::List {
+                                        // Back to the list as it was pasted; the checked one is let go.
+                                        r.send("vaultImportCancel", json!({}));
+                                        r.import.preview = None;
+                                        r.import.error = None;
+                                        r.import.step = 0;
+                                        if let Some(b) = r.import.list.clone() {
+                                            let h = b.read(cx).focus_handle(cx);
+                                            w.focus(&h, cx);
+                                        }
+                                    } else {
+                                        pick(r, w, cx);
+                                    }
+                                });
+                                w.refresh();
+                            }),
+                    ),
             );
         }
         match f.step {
             0 => {
-                body = body.child(div().text_size(px(T_M)).line_height(px(20.)).text_color(c(TEXT_2)).child(crate::pages::lock::plain(r.tr("iv.intro")))).child(fine("shield", "iv.safe"));
+                let intro = match f.kind {
+                    Kind::Vault => "iv.intro",
+                    Kind::Ram => "ir.intro",
+                    Kind::List => "il.intro",
+                };
+                body = body.child(div().text_size(px(T_M)).line_height(px(20.)).text_color(c(TEXT_2)).child(crate::pages::lock::plain(r.tr(intro))));
+                if let (Kind::List, Some(list)) = (f.kind, &f.list) {
+                    body = body.child(text_area(list).when(f.error.is_some(), |d| d.border_color(ca(BAD, 0.55))));
+                }
+                body = body.child(fine("shield", if f.kind == Kind::List { "il.safe" } else { "iv.safe" }));
             }
             1 => {
                 let eye = this.clone();
                 body = body
                     .child(
-                        div().flex().flex_col().gap(px(6.)).child(div().text_size(px(T_S)).font_weight(FontWeight::MEDIUM).text_color(c(TEXT_2)).child(r.tr("iv.pw"))).child(
+                        div().flex().flex_col().gap(px(6.)).child(div().text_size(px(T_S)).font_weight(FontWeight::MEDIUM).text_color(c(TEXT_2)).child(r.tr(if f.kind == Kind::Ram { "ir.pw" } else { "iv.pw" }))).child(
                             field(&r.iv_pw, Some("lock")).w_full().when(f.error.is_some(), |d| d.border_color(ca(BAD, 0.55))).child(
                                 IconButton::new("iv-eye", if f.shown { "eyeOff" } else { "eye" }).size(30.).tip(r.tr(if f.shown { "lock.hidePw" } else { "lock.showPw" })).on_click(move |_, w, cx| {
                                     let _ = eye.update(cx, |r, cx| {
@@ -424,6 +561,19 @@ pub fn open(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
                 if all.iter().any(|a| flag(a, "exists")) {
                     body = body.child(fine("info", "iv.existsNote"));
                 }
+                // The list's lines left out: said, so the count doesn't read as all of them.
+                if f.skipped > 0 {
+                    body = body.child(
+                        div()
+                            .flex()
+                            .gap(px(8.))
+                            .text_size(px(T_S))
+                            .line_height(px(16.))
+                            .text_color(c(WARN))
+                            .child(div().mt(px(1.)).flex_none().child(icon("alert", 13., c(WARN))))
+                            .child(div().min_w_0().flex_1().child(r.i18n.tn("il.skipped", f.skipped, &[]))),
+                    );
+                }
             }
         }
         let said = match waiting {
@@ -435,6 +585,7 @@ pub fn open(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
         }
         let ticked = accounts(r).iter().filter(|a| f.ticked.contains(&key_of(a))).count();
         let (label, off) = match f.step {
+            0 if f.kind == Kind::List => (r.tr(if f.busy { "il.checking" } else { "il.check" }), false),
             0 => (r.tr("iv.choose"), false),
             1 => match waiting {
                 Some(n) => (r.i18n.tv("iv.wait", &[("n", &n.to_string())]), true),
@@ -443,7 +594,12 @@ pub fn open(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
             _ => (r.tr("iv.importBtn"), ticked == 0 && !f.presets),
         };
         let (cancel, go, shut) = (this.clone(), this.clone(), this.clone());
-        framed(dialog, r.tr("iv.title"), r.tr("common.close"), move |_, w, cx| {
+        let title = match f.kind {
+            Kind::Vault => "iv.title",
+            Kind::Ram => "ir.title",
+            Kind::List => "il.title",
+        };
+        framed(dialog, r.tr(title), r.tr("common.close"), move |_, w, cx| {
             let _ = shut.update(cx, |r, cx| close(r, w, cx));
         })
         .w(px(DIALOG_W + 80.))

@@ -15,6 +15,7 @@ use super::App;
 use super::backup::same_path;
 use super::controller::{JsonKind, bool_of, error_text, has, str_of};
 use super::presets::{AFK_PROFILE, MAX_PRESET_NAME, MAX_PRESETS, PRESET_SERVERS, RESTART_CHOICES};
+use super::other_import::RamKind;
 use super::settings::open_file_dialog;
 use crate::core::base::{Fail, Guid, Res, Stamp, new_guid};
 use crate::core::models::{Account, LaunchPreset, VaultData};
@@ -36,10 +37,19 @@ pub struct VaultImportSession {
     pub data: VaultData,
 }
 
+/// What kind of file was picked: another vault, or Roblox Account Manager's (other_import.rs).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum ImportFrom {
+    #[default]
+    Vault,
+    Ram,
+}
+
 #[derive(Default)]
 pub struct VaultImportState {
     /// The file picked to import from; kept here, so the page never names a path to read.
     pub vault_import_path: RefCell<Option<String>>,
+    pub vault_import_from: Cell<ImportFrom>,
     pub vault_import: RefCell<Option<VaultImportSession>>,
     pub vault_import_opening: Cell<bool>,
     /// Wrong passwords per file (full path, any case) and when the next try is allowed (None: DateTime.MinValue); in memory only.
@@ -261,14 +271,17 @@ pub fn imported_preset_name(presets: &[LaunchPreset], name: &str) -> String {
 }
 
 impl App {
-    /// "Choose file…": returns the file's name, or null when cancelled (an earlier file and its preview stay).
-    pub async fn vault_import_pick(&self) -> Res<Value> {
+    /// "Choose file…": returns the file's name, or null when cancelled (an earlier file and its preview stay). `locked`:
+    /// it needs a password to open (a Roblox Account Manager file saved without one doesn't).
+    pub async fn vault_import_pick(&self, from: ImportFrom) -> Res<Value> {
         let vault = self.require_vault_ref()?;
-        let folder = prefs::lock().backup_folder.clone();
+        let folder = if from == ImportFrom::Vault { prefs::lock().backup_folder.clone() } else { None };
         let initial = folder.filter(|f| Path::new(f).is_dir()).unwrap_or_else(user_profile);
         let owner = self.controller.owner.get();
-        let title = l::t("Choose another Bloxkeep data file");
-        let filter = l::t("Bloxkeep data files") + " (*.rmv)|*.rmv";
+        let (title, filter) = match from {
+            ImportFrom::Vault => (l::t("Choose another Bloxkeep data file"), l::t("Bloxkeep data files") + " (*.rmv)|*.rmv"),
+            ImportFrom::Ram => (l::t("Choose Roblox Account Manager's AccountData.json"), "AccountData.json|AccountData*.json;*.json".to_string()),
+        };
         // On a worker thread, so the core keeps answering (the window's Quit, timers) while the dialog is open.
         let Some(chosen) = rt::blocking(move || ui::modal(|| open_file_dialog(owner, &title, &filter, &initial))).await else {
             return Ok(Value::Null);
@@ -277,10 +290,17 @@ impl App {
         if !self.is_vault(&vault) {
             return Err(Fail::user(l::t("Bloxkeep was locked.")));
         }
-        check_import_file(&path, &vault)?;
+        let locked = match from {
+            ImportFrom::Vault => {
+                check_import_file(&path, &vault)?;
+                true
+            }
+            ImportFrom::Ram => App::ram_file_kind(&path)? == RamKind::Password,
+        };
         self.drop_vault_import(false);
         *self.vault_import.vault_import_path.borrow_mut() = Some(path.clone());
-        Ok(json!({ "name": file_name(&path), "wait": self.import_wait_seconds(&path) }))
+        self.vault_import.vault_import_from.set(from);
+        Ok(json!({ "name": file_name(&path), "wait": self.import_wait_seconds(&path), "locked": locked }))
     }
 
     pub fn import_wait_seconds(&self, path: &str) -> i32 {
@@ -300,6 +320,14 @@ impl App {
         let Some(path) = picked else {
             return Err(Fail::user(l::t("Choose the file first.")));
         };
+        if self.vault_import.vault_import_from.get() == ImportFrom::Ram {
+            if self.vault_import.vault_import_opening.get() {
+                return Err(Fail::user(l::t("Still opening the file — please wait.")));
+            }
+            self.drop_vault_import(true);
+            let _opening = crate::core::base::Busy::set(&self.vault_import.vault_import_opening);
+            return self.ram_import_open(vault, path, password).await;
+        }
         if password.is_empty() {
             return Err(Fail::user(l::t("Enter the master password of that file.")));
         }
@@ -325,13 +353,7 @@ impl App {
             log::note(&format!("Import from a vault file: refused ({status:?})."));
         }
         match status {
-            OtherStatus::WrongPassword => {
-                let key = tries_key(&path);
-                let wrong = self.vault_import.vault_import_tries.borrow().get(&key).map(|t| t.0).unwrap_or(0) + 1;
-                let next = if wrong >= VAULT_IMPORT_FREE_TRIES { Some(Stamp::utc_now().plus_secs(VAULT_IMPORT_WAIT.as_secs_f64())) } else { None };
-                self.vault_import.vault_import_tries.borrow_mut().insert(key, (wrong, next));
-                return Ok(json!({ "status": "wrong", "wait": self.import_wait_seconds(&path), "error": l::t("Wrong master password for this file.") }));
-            }
+            OtherStatus::WrongPassword => return Ok(self.import_wrong_try(&path, l::t("Wrong master password for this file."))),
             OtherStatus::TooLarge => return Err(Fail::user(l::t("This file is too large to be a Bloxkeep data file."))),
             OtherStatus::NotAVault => return Err(Fail::user(l::t("This file is not a Bloxkeep data file (.rmv)."))),
             OtherStatus::Newer => return Err(Fail::user(l::t("This data file was made by a newer Bloxkeep. Update Bloxkeep to open it."))),
@@ -340,6 +362,21 @@ impl App {
         }
         self.vault_import.vault_import_tries.borrow_mut().remove(&tries_key(&path));
         let Some(data) = data else { return Err(Fail::other("NullReferenceException: an opened file without its data")) };
+        self.show_import(vault, data, file_name(&path), Some(path)).await
+    }
+
+    /// A wrong password counted for the file; after three, each further try waits. An answer, not an error.
+    pub(super) fn import_wrong_try(&self, path: &str, error: String) -> Value {
+        let key = tries_key(path);
+        let wrong = self.vault_import.vault_import_tries.borrow().get(&key).map(|t| t.0).unwrap_or(0) + 1;
+        let next = if wrong >= VAULT_IMPORT_FREE_TRIES { Some(Stamp::utc_now().plus_secs(VAULT_IMPORT_WAIT.as_secs_f64())) } else { None };
+        self.vault_import.vault_import_tries.borrow_mut().insert(key, (wrong, next));
+        json!({ "status": "wrong", "wait": self.import_wait_seconds(path), "error": error })
+    }
+
+    /// The opened accounts (a vault file's, Roblox Account Manager's, a pasted list's) kept under a new token for the
+    /// import, and listed for the preview. `path`: the picked file's, None for a pasted list.
+    pub(super) async fn show_import(self: &Rc<Self>, vault: Arc<Vault>, data: VaultData, name: String, path: Option<String>) -> Res<Value> {
         // Pictures for the list: a short wait at most (offline, initials show instead); the load goes on after it.
         let loaded = Rc::new(Cell::new(false));
         {
@@ -358,7 +395,7 @@ impl App {
             return Err(Fail::user(l::t("Bloxkeep was locked.")));
         }
         // Another file picked while this one opened: its accounts aren't shown (or imported) under that one.
-        if self.vault_import.vault_import_path.borrow().as_deref() != Some(path.as_str()) {
+        if path.is_some() && *self.vault_import.vault_import_path.borrow() != path {
             log::note("Import from a vault file: another file was picked while it opened; dropped.");
             return Ok(Value::Null);
         }
@@ -372,7 +409,7 @@ impl App {
             json!({
                 "status": "ok",
                 "token": token,
-                "name": file_name(&path),
+                "name": name,
                 "presets": data.settings.presets.len(),
                 // Only what the list shows; "key" is the account's place in the file, which the import sends back.
                 "accounts": data.accounts.iter().enumerate().map(|(i, a)| json!({

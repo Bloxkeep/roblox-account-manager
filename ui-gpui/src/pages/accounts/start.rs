@@ -132,6 +132,7 @@ pub fn empty(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElemen
                 "start-create" => r.add_browser_as(true, cx),
                 "start-cookie" => crate::pages::account_form::open(r, None, window, cx),
                 "start-vault" => crate::pages::import_vault::open(r, window, cx),
+                "start-ram" => crate::pages::import_vault::open_ram(r, window, cx),
                 _ => r.send("openWebsiteBlank", json!({})),
             }
             cx.notify();
@@ -146,6 +147,7 @@ pub fn empty(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElemen
         .child(other("start-create", root.tr("pw.create"), cx))
         .child(other("start-cookie", root.tr("start.cookie"), cx))
         .child(other("start-vault", root.tr("start.vault"), cx))
+        .child(other("start-ram", root.tr("start.ram"), cx))
         .child(other("start-web", root.tr("start.web"), cx));
     let main = go("start-phone", root.tr("start.phone"), true, cx);
     let pad = PAGE_X;

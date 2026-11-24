@@ -2012,8 +2012,10 @@ fn add_menu(root: &Root, cx: &mut Context<Root>) -> Div {
         Some(("qr", root.tr("m.addCode"), false, act(|r, window, cx| crate::pages::quick::open(r, false, window, cx)))),
         Some(("globe", root.tr("m.addBrowser"), false, act(|r, _, cx| r.add_browser(cx)))),
         Some(("cookie", root.tr("m.addCookie"), false, act(|r, window, cx| crate::pages::account_form::open(r, None, window, cx)))),
+        Some(("rows", root.tr("m.importList"), false, act(|r, window, cx| crate::pages::import_vault::open_list(r, window, cx)))),
         None,
         Some(("folder", root.tr("m.importVault"), false, act(|r, window, cx| crate::pages::import_vault::open(r, window, cx)))),
+        Some(("download", root.tr("m.importRam"), false, act(|r, window, cx| crate::pages::import_vault::open_ram(r, window, cx)))),
         None,
         Some(("external", root.tr("m.openWeb"), false, act(|r, _, _| r.send("openWebsiteBlank", json!({}))))),
     ];

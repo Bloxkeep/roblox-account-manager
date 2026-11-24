@@ -477,6 +477,8 @@
   ];
   const IV_PRESETS = [{ name: 'Farm Blox Fruits', users: ['pixelfarmer02', 'pixelfarmer03'], placeInput: '2753915549' }, { name: 'Event night', users: ['event_runner_2026'], placeInput: '' }];
   let ivWrong = 0, ivWaitUntil = 0, ivToken = null;
+  // Roblox Account Manager's file picked (vaultImportPick { from: 'ram' }); ?ivramlock: one with a password ("demo").
+  let ivFrom = 'vault';
   const ivHere = u => accounts.find(x => x.username.toLowerCase() === u.toLowerCase());
   let rbxClosedHidden = false;
   let robloxUpdating = false; // Settings › Roblox version › Update now pressed
@@ -1146,9 +1148,16 @@
           await wait(300);
           if (params.has('ivsame')) throw new Error(language === 'vi' ? 'Đây chính là dữ liệu Bloxkeep bạn đang dùng.' : "This is the vault you're using.");
           ivToken = null;
-          return { name: 'Bloxkeep-backup-3f2a91c0-20261012-221500.rmv', wait: Math.max(0, Math.ceil((ivWaitUntil - Date.now()) / 1000)) };
+          ivFrom = a.from === 'ram' ? 'ram' : 'vault';
+          if (ivFrom === 'ram') return { name: 'AccountData.json', wait: 0, locked: params.has('ivramlock') };
+          return { name: 'Bloxkeep-backup-3f2a91c0-20261012-221500.rmv', wait: Math.max(0, Math.ceil((ivWaitUntil - Date.now()) / 1000)), locked: true };
         case 'vaultImportOpen': {
           await wait(700); // key stretching
+          if (ivFrom === 'ram') {
+            if (params.has('ivramlock') && a.password !== 'demo') return { status: 'wrong', wait: 0, error: language === 'vi' ? 'Sai mật khẩu của file này.' : 'Wrong password for this file.' };
+            ivToken = `t${Date.now()}`;
+            return { status: 'ok', token: ivToken, name: 'AccountData.json', presets: 0, accounts: IV_FILE.map((x, key) => ({ key, ...x, cookieValid: null, exists: !!ivHere(x.username) })) };
+          }
           const left = Math.ceil((ivWaitUntil - Date.now()) / 1000);
           if (left > 0) return { status: 'wrong', wait: left, error: language === 'vi' ? `Sai quá nhiều lần. Chờ ${left} giây rồi thử lại.` : `Too many wrong tries. Wait ${left} seconds, then try again.` };
           if (a.password !== 'demo') {
@@ -1199,6 +1208,17 @@
           return { added: added.length, updated, presets, presetsSkipped: 0, ids: added };
         }
         case 'vaultImportCancel': ivToken = null; return null;
+        // A pasted list: each line with a cookie (here: any line of 20 characters or more) is one of the file's accounts.
+        case 'listImportOpen': {
+          await wait(900);
+          const lines = (a.text || '').split(/\r?\n/).map(x => x.trim()).filter(Boolean);
+          const taken = lines.filter(x => x.length >= 20).slice(0, IV_FILE.length);
+          if (!taken.length) throw new Error(language === 'vi' ? 'Roblox không nhận cookie nào trong danh sách.' : "Roblox didn't accept any of these cookies.");
+          ivFrom = 'list';
+          ivToken = `t${Date.now()}`;
+          return { status: 'ok', token: ivToken, name: language === 'vi' ? 'Danh sách đã dán' : 'Pasted list', presets: 0, skipped: lines.length - taken.length,
+            accounts: taken.map((_, key) => ({ key, ...IV_FILE[key], cookieValid: true, exists: !!ivHere(IV_FILE[key].username) })) };
+        }
         case 'arrangeWindows': return 2;
         case 'monitorArea': return null; // the live pictures are the app's own; the preview shows the empty area
         case 'setUseRobloxConfig':
