@@ -55,6 +55,8 @@ mod scrolled;
 mod shell;
 mod shot;
 mod clean_ram;
+#[cfg(feature = "shot")]
+mod prof;
 mod target;
 mod theme;
 mod theme_table;

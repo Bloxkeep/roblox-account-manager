@@ -1814,6 +1814,12 @@ fn default_bounds(display_id: Option<DisplayId>, cx: &mut App) -> WindowBounds {
     window_bounds_ctor(Bounds::new(final_origin, base_size))
 }
 
+thread_local! {
+    /// Bloxkeep's bench: the last frame's request_layout (render), prepaint (layout) and paint times.
+    static BENCH_PHASES: std::cell::Cell<[std::time::Duration; 4]> = const { std::cell::Cell::new([std::time::Duration::ZERO; 4]) };
+    static BENCH_TAFFY: std::cell::Cell<std::time::Duration> = const { std::cell::Cell::new(std::time::Duration::ZERO) };
+}
+
 impl Window {
     pub(crate) fn new(
         handle: AnyWindowHandle,
@@ -4093,6 +4099,11 @@ impl Window {
     /// Bloxkeep's frame measure: whether something since the last frame asked for a new one (a view notified, a
     /// refresh): what the app's window would draw on, where the bench draws every frame regardless.
     #[doc(hidden)]
+    pub fn phases_for_bench() -> [std::time::Duration; 4] {
+        BENCH_PHASES.get()
+    }
+
+    #[doc(hidden)]
     pub fn dirty_for_bench(&self) -> bool {
         self.invalidator.is_dirty()
     }
@@ -4201,12 +4212,11 @@ impl Window {
         // stretches to fill the viewport unless explicitly sized, window roots
         // fill the window when their size is `auto`.
         let scale_factor = self.scale_factor();
-        #[cfg(feature = "profiler")]
-        let request_layout_start = Instant::now();
+        let bench_t0 = std::time::Instant::now();
+        BENCH_TAFFY.set(std::time::Duration::ZERO);
         let mut root_element = self.root.as_ref().unwrap().clone().into_any_element();
         let root_layout_id = root_element.request_layout(self, cx);
-        #[cfg(feature = "profiler")]
-        let prepaint_start = Instant::now();
+        let bench_t1 = std::time::Instant::now();
         self.layout_engine
             .as_mut()
             .unwrap()
@@ -4244,8 +4254,7 @@ impl Window {
         self.mouse_hit_test = self.next_frame.hit_test(self.mouse_position);
 
         // Now actually paint the elements.
-        #[cfg(feature = "profiler")]
-        let paint_start = Instant::now();
+        let bench_t2 = std::time::Instant::now();
         self.invalidator.set_phase(DrawPhase::Paint);
         root_element.paint(self, cx);
 
@@ -4265,12 +4274,14 @@ impl Window {
         #[cfg(any(feature = "inspector", debug_assertions))]
         self.paint_inspector_hitbox(cx);
 
+        let bench_t3 = std::time::Instant::now();
+        BENCH_PHASES.set([bench_t1 - bench_t0, bench_t2 - bench_t1, bench_t3 - bench_t2, BENCH_TAFFY.get()]);
         #[cfg(feature = "profiler")]
         self.window_profiler
             .record_draw_phases(profiler::DrawPhases {
-                request_layout: prepaint_start.duration_since(request_layout_start),
-                prepaint: paint_start.duration_since(prepaint_start),
-                paint: Instant::now().duration_since(paint_start),
+                request_layout: bench_t1 - bench_t0,
+                prepaint: bench_t2 - bench_t1,
+                paint: bench_t3 - bench_t2,
             });
 
         // a11y may have been activated/deactivated halfway through the frame
@@ -5890,9 +5901,11 @@ impl Window {
     ) {
         self.invalidator.debug_assert_prepaint();
 
+        let bench_t = std::time::Instant::now();
         let mut layout_engine = self.layout_engine.take().unwrap();
         layout_engine.compute_layout(layout_id, available_space, self, cx);
         self.layout_engine = Some(layout_engine);
+        BENCH_TAFFY.set(BENCH_TAFFY.get() + bench_t.elapsed());
     }
 
     /// Obtain the bounds computed for the given LayoutId relative to the window. This method will usually be invoked by
