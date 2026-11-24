@@ -1808,7 +1808,8 @@ impl App {
         others.sort();
         let mut afk = if auto { self.afk_clients() } else { HashSet::new() };
         afk.extend(self.main_pids()); // the window played on stays where the person put it
-        // Clicked: the windows come over every other app (not after a launch: the person may be busy elsewhere).
+        // Clicked: the windows come over every other app, the last one taking the keyboard (after a launch they come over
+        // too, but the keyboard stays: the person may be typing elsewhere).
         let app_window = if !auto && owner_in_view { owner } else { 0 };
         // After a nudge, a picture or a macro's turn under way: each puts its window back as it found it.
         let turn = rt::blocking(|| input_turn::enter("arrange", None)).await?;

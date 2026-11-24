@@ -961,10 +961,19 @@ fn add_note(text: &str) {
 /// `app`: Bloxkeep's window, when Arrange windows was clicked in it: the windows come over every other app
 /// (`lift`). Zero leaves the order of the PC's windows as it is.
 /// `raise`: the hotkey: the windows come over every other app even with Bloxkeep away (in the tray, minimized).
+/// `skip_minimized` (after a launch): the windows come over every other app too, but the keyboard stays where it is.
 pub fn arrange_grid(pids: &[i32], area: Rect, layout: &str, skip_minimized: bool, app: isize, custom: Size, raise: bool) -> i32 {
     // A hidden window isn't tiled: it would be placed unseen, a gap among the others.
     let windows: Vec<isize> = pids.iter().map(|&pid| main_window(pid)).filter(|&h| h != 0 && !is_hidden(h) && !(skip_minimized && is_iconic(h))).collect();
-    arrange(&windows, area, layout, app, custom, raise)
+    let done = arrange(&windows, area, layout, app, custom, raise);
+    // Left in the PC's order, the tiles behind Bloxkeep or another app stayed hidden: 4 accounts opened showed 2 tiles
+    // ("2 in place; 45420 under Potassium; 45628 under Potassium", owner's error.log, 2026-11-24), and the hotkey was
+    // needed. Lifted without being clicked, so whatever the person types in keeps the keyboard.
+    if skip_minimized && app == 0 && !raise && done > 0 {
+        lift_quietly(&windows);
+        add_note("lifted over other apps, the keyboard left where it was; ");
+    }
+    done
 }
 
 /// Roblox keeps its window at least 800 × 600 in its own units (1224 × 957 px at 150 %) by answering the "changing"
@@ -1161,6 +1170,14 @@ pub fn seen_frame(h: isize) -> Option<Rect> {
 /// gets the keyboard (the hotkey lets Bloxkeep hand it). Only stacked under the app in front, the tiled windows stayed
 /// behind it: after the first press (minimized windows come up as they restore) nothing showed (owner, 2026-11-07).
 fn lift(windows: &[isize]) {
+    lift_quietly(windows);
+    if let Some(&last) = windows.last() {
+        set_foreground(last);
+    }
+}
+
+/// Over every other app, as `lift`, but none taken to the front for the keyboard.
+fn lift_quietly(windows: &[isize]) {
     const RESTACK: u32 = SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE;
     for &h in windows {
         if !is_window(h) || is_hung(h) {
@@ -1169,9 +1186,6 @@ fn lift(windows: &[isize]) {
         set_window_pos(h, HWND_TOPMOST, 0, 0, 0, 0, RESTACK);
         set_window_pos(h, HWND_NOTOPMOST, 0, 0, 0, 0, RESTACK);
         sleep_ms(20);
-    }
-    if let Some(&last) = windows.last() {
-        set_foreground(last);
     }
 }
 
