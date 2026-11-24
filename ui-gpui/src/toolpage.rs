@@ -299,7 +299,7 @@ impl Render for ToolPage {
             .track_focus(&self.focus)
             .key_context("ToolPage")
             .size_full()
-            .font_family(FONT)
+            .font(crate::theme::ui_font())
             .text_size(px(T_M))
             .text_color(c(TEXT))
             .on_key_down(cx.listener(|t, e: &KeyDownEvent, window, cx| t.key(e, window, cx)));
@@ -364,7 +364,7 @@ pub fn drag_row(d: Stateful<Div>, link: Link, from: Rc<Cell<Option<Point<Pixels>
 
 /// RAM in MB or GB (the pages' fmtMb).
 pub fn mb(mb: i64) -> String {
-    if mb >= 1024 { format!("{:.1} GB", mb as f64 / 1024.) } else { format!("{} MB", mb.max(0)) }
+    crate::lang::cur().mb(mb as f64)
 }
 
 /// A small round state light (the pages' .pn-dot).

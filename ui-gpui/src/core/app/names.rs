@@ -121,12 +121,12 @@ impl App {
     pub fn discord_text(&self, text: &str) -> String {
         let hide = self.vault(|d| d.discord.hide_names).unwrap_or(false);
         let mut text = text.to_string();
-        if let Some((english, args)) = l::made(&text) {
+        if let Some(made) = l::made(&text) {
             let language = self.discord_language();
             *self.names.name_style.borrow_mut() = Some((hide, language.clone()));
             // PORT: C# formatted the values again (a Shown name wrote itself under `_nameStyle`); l::made gives them as the
             // text they were, so a name in them is not remade here: hide_names_in below still hides it when Discord's switch is on.
-            text = l::format(&l::t_in(&english, &language), &args);
+            text = made.in_language(&language);
             *self.names.name_style.borrow_mut() = None;
         }
         if hide { self.hide_names_in(&text) } else { text }

@@ -235,15 +235,9 @@ pub(super) fn close_client(app: &App, pid: i32, force: bool) {
     }
 }
 
+/// In the app's language ("1.5 GB", "1,5 ГБ"): lang.rs › mb.
 fn format_mb(mb: i64) -> String {
-    if mb >= 1024 {
-        let gb = mb as f64 / 1024.0;
-        // "0.#"
-        let r = (gb * 10.0).round() / 10.0;
-        if r.fract() == 0.0 { format!("{} GB", r as i64) } else { format!("{r:.1} GB") }
-    } else {
-        format!("{mb} MB")
-    }
+    crate::lang::by_code(&l::language()).unwrap_or_else(crate::lang::cur).mb(mb as f64)
 }
 
 /// By the browser tracker id on its command line (roblox_processes::launch_tracker_of): one naming another is someone

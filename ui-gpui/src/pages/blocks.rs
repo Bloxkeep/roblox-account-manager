@@ -487,13 +487,7 @@ fn hidden(root: &Root, id: String, key: String, h: f32, cx: &mut Context<Root>) 
 }
 
 fn size_text(b: f64) -> String {
-    if b < 1024. {
-        format!("{b} B")
-    } else if b < 1_048_576. {
-        if b < 10_240. { format!("{:.1} KB", b / 1024.) } else { format!("{:.0} KB", b / 1024.) }
-    } else {
-        format!("{:.1} MB", b / 1_048_576.)
-    }
+    crate::lang::cur().size(b)
 }
 
 fn button(root: &Root, id: String, b: &Value, cx: &mut Context<Root>) -> AnyElement {

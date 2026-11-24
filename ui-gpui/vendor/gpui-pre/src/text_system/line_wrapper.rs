@@ -543,8 +543,11 @@ impl LineWrapper {
 
     /// The byte offsets in `text` at which a line break is allowed.
     pub(crate) fn break_indices(text: &str) -> impl Iterator<Item = usize> {
-        icu_segmenter::LineSegmenter::new_for_non_complex_scripts(Default::default())
-            .segment_str(text)
+        // Bloxkeep: Thai and Lao write words without spaces, so the plain segmenter found no place to
+        // break in them and lines broke mid-word. The dictionary one adds ICU's word lists for Thai,
+        // Lao, Khmer and Myanmar (baked in, nothing loaded at run time); every other script breaks as
+        // before (UAX 14).
+        icu_segmenter::LineSegmenter::new_dictionary(Default::default()).segment_str(text)
     }
 
     #[inline(always)]

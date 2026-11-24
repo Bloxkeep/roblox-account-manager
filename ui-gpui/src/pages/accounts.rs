@@ -999,10 +999,9 @@ fn ram_mb(root: &Root, a: &Value) -> Option<f64> {
         .then(|| root.metrics.get("accounts").and_then(Value::as_array).and_then(|l| l.iter().find(|m| s(m, "id") == id)).and_then(|m| m.get("ramMb")?.as_f64()))
         .flatten()
 }
-/// RAM in MB or GB, with the language's decimal mark ("1,7 GB").
+/// RAM in MB or GB in the language shown ("1,7 GB", "1,7 ГБ"): lang.rs › mb.
 pub(crate) fn mb_text(mb: f64) -> String {
-    let t = if mb >= 1024. { format!("{:.1} GB", mb / 1024.) } else { format!("{mb:.0} MB") };
-    crate::lang::cur().decimal(&t)
+    crate::lang::cur().mb(mb)
 }
 fn hidden(a: &Value) -> bool {
     a.pointer("/session/hidden").and_then(Value::as_bool).unwrap_or(false)

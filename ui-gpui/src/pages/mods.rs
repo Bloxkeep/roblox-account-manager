@@ -803,9 +803,9 @@ fn mine(root: &Root, _inner: f32, cx: &mut Context<Root>) -> impl IntoElement {
     div().flex().flex_col().gap(px(16.)).child(list).child(foot)
 }
 
-/// "1.2 MB", "340 KB".
+/// "1.2 MB", "340 KB" in the language shown (lang.rs › size).
 fn size_words(n: u64) -> String {
-    if n >= 1 << 20 { format!("{:.1} MB", n as f64 / 1048576.) } else { format!("{} KB", (n / 1024).max(1)) }
+    crate::lang::cur().size(n.max(1024) as f64)
 }
 
 /// A kind's name in words; GameBanana's own name for one Bloxkeep has no words for.

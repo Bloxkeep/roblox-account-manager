@@ -206,6 +206,11 @@ fn is_https_link(text: &str) -> bool {
 }
 
 impl App {
+    /// RAM in the Discord messages' language ("1.7 GB", "1,7 ГБ"): lang.rs › mb.
+    fn discord_mb(&self, mb: f64) -> String {
+        crate::lang::by_code(&self.discord_language()).unwrap_or_else(crate::lang::cur).mb(mb)
+    }
+
     pub fn discord_language(&self) -> String {
         match self.vault(|d| d.discord.language.clone()).ok().and_then(|l| crate::lang::by_code(&l)) {
             Some(l) => l.code.into(),
@@ -222,6 +227,18 @@ impl App {
     pub fn df(&self, english: &str, args: &[&dyn Display]) -> String {
         let args: Vec<String> = args.iter().map(|a| a.to_string()).collect();
         l::format(&self.dt(english), &args)
+    }
+
+    /// `df` about a count of `n`: the form it takes in Discord's language (l::counted_in). A sentence English has only
+    /// a plural for gives it twice.
+    pub fn dp(&self, n: impl TryInto<i64>, one: &str, many: &str, args: &[&dyn Display]) -> String {
+        let args: Vec<String> = args.iter().map(|a| a.to_string()).collect();
+        l::format(&self.dpt(n, one, many), &args)
+    }
+
+    /// A count's word alone in Discord's language ("Account" / "Accounts"), the form `n` takes there.
+    pub fn dpt(&self, n: impl TryInto<i64>, one: &str, many: &str) -> String {
+        l::counted_in(one, many, n.try_into().unwrap_or(i64::MAX), &self.discord_language())
     }
 
     /// The vault is open and the screen not locked (C#'s `Open`).
@@ -701,7 +718,7 @@ impl App {
                     Some(id) => webhook::game_link(&r.game.clone().unwrap_or_else(|| self.df("Place {0}", &[&id])), Some(id)),
                     None => self.dt("No game"),
                 };
-                let ram = if r.ram > 0 { format!(" · {} MB", r.ram / mb) } else { String::new() };
+                let ram = if r.ram > 0 { format!(" · {}", self.discord_mb((r.ram / mb) as f64)) } else { String::new() };
                 DiscordField::new(webhook::escape(Some(&r.name[..])), format!("{game}\n{} · {}\nPID `{}`{ram}", said(r), self.duration(r.seconds), r.pid), true)
             })
             .collect();
@@ -711,7 +728,7 @@ impl App {
         let in_game = rows.iter().filter(|r| r.status == "ingame").count();
         let cut_off = rows.iter().any(|r| r.status == "disconnected" || r.status == "signedout");
         let title = if in_game == rows.len() {
-            self.df(if rows.len() == 1 { "{0} account in game" } else { "{0} accounts in game" }, &[&rows.len()])
+            self.dp(rows.len(), "{0} account in game", "{0} accounts in game", &[&rows.len()])
         } else {
             self.df("{0} of {1} accounts in game", &[&in_game, &rows.len()])
         };
@@ -735,7 +752,7 @@ impl App {
         }
         let ram: i64 = rows.iter().map(|r| r.ram).sum();
         if ram > 0 {
-            let amount = if ram >= 1024 * mb { format!("{:.1} GB", ram as f64 / (1024.0 * mb as f64)) } else { format!("{} MB", ram / mb) };
+            let amount = self.discord_mb((ram / mb) as f64);
             lines.push(format!("-# {}", self.df("Roblox is using {0} of RAM", &[&amount])));
         }
         // No logo beside the accounts: their three columns get the whole width.
@@ -1110,13 +1127,7 @@ impl App {
     /// Messages dropped while offline, said in a small line at the end of the next one.
     pub fn with_dropped(&self, message: &DiscordMessage, dropped: i32) -> DiscordMessage {
         let mut m = message.clone();
-        let line = self.df(
-            if dropped == 1 {
-                "{0} older message couldn't be sent while offline and was dropped."
-            } else {
-                "{0} older messages couldn't be sent while offline and were dropped."
-            },
-            &[&dropped],
+        let line = self.dp(dropped, "{0} older message couldn't be sent while offline and was dropped.", "{0} older messages couldn't be sent while offline and were dropped.", &[&dropped],
         );
         m.text = format!("{}-# {line}", if message.text.is_empty() { String::new() } else { format!("{}\n", message.text) });
         m

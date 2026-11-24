@@ -219,9 +219,9 @@ impl App {
                     (peak, peak_at) = (open, when);
                 }
             }
-            let mut summary_line = vec![format!("**{}** {}", accounts.len(), self.dt(if accounts.len() == 1 { "account played" } else { "accounts played" }))];
+            let mut summary_line = vec![format!("**{}** {}", accounts.len(), self.dpt(accounts.len(), "account played", "accounts played"))];
             if presets_played > 0 {
-                summary_line.push(format!("**{presets_played}** {}", self.dt(if presets_played == 1 { "preset" } else { "presets" })));
+                summary_line.push(format!("**{presets_played}** {}", self.dpt(presets_played, "preset", "presets")));
             }
             lines.push(summary_line.join(" · "));
 
@@ -273,7 +273,7 @@ impl App {
             ));
             fields.push(DiscordField::new(
                 self.dt("Most at once"),
-                format!("**{peak}** {}\n<t:{}:t>", self.dt(if peak == 1 { "window" } else { "windows" }), unix(peak_at)),
+                format!("**{peak}** {}\n<t:{}:t>", self.dpt(peak, "window", "windows"), unix(peak_at)),
                 true,
             ));
             if show_games {
@@ -297,7 +297,7 @@ impl App {
             // Without a preset embed below, the accounts are listed here (the picture shows them too).
             if has("accounts") && (preset.is_some() || presets_played == 0) {
                 fields.push(DiscordField::new(
-                    self.df(if accounts.len() == 1 { "{0} account" } else { "{0} accounts" }, &[&accounts.len()]),
+                    self.dp(accounts.len(), "{0} account", "{0} accounts", &[&accounts.len()]),
                     self.account_block(&accounts.iter().map(|a| (name_of(a.id, a.label.as_deref()), a.seconds)).collect::<Vec<_>>()),
                     false,
                 ));
@@ -307,7 +307,7 @@ impl App {
         }
         // The period in each reader's own time, the accounts it covers, and why it comes late, in small text.
         let chosen = match &only {
-            Some(o) => format!(" · {}", self.df(if o.len() == 1 { "{0} chosen account" } else { "{0} chosen accounts" }, &[&o.len()])),
+            Some(o) => format!(" · {}", self.dp(o.len(), "{0} chosen account", "{0} chosen accounts", &[&o.len()])),
             None => String::new(),
         };
         lines.push(format!("-# <t:{}:f> → <t:{}:f>{chosen}", unix(from), unix(to)));
@@ -334,8 +334,8 @@ impl App {
                         .take(MAX_CARD_ACCOUNTS)
                         .map(|a| {
                             let name = name_of(a.id, a.label.as_deref());
-                            let detail = self.df(if a.stays == 1 { "{0} stay" } else { "{0} stays" }, &[&a.stays])
-                                + &if a.drops > 0 { format!(" · {}", self.df(if a.drops == 1 { "{0} drop" } else { "{0} drops" }, &[&a.drops])) } else { String::new() };
+                            let detail = self.dp(a.stays, "{0} stay", "{0} stays", &[&a.stays])
+                                + &if a.drops > 0 { format!(" · {}", self.dp(a.drops, "{0} drop", "{0} drops", &[&a.drops])) } else { String::new() };
                             let account = self.find_account(a.id);
                             SummaryCardAccount {
                                 time: self.duration(a.seconds as i64),
@@ -398,7 +398,7 @@ impl App {
             }
             if has("accounts") {
                 embed_fields.push(DiscordField::new(
-                    self.df(if group_accounts.len() == 1 { "{0} account" } else { "{0} accounts" }, &[&group_accounts.len()]),
+                    self.dp(group_accounts.len(), "{0} account", "{0} accounts", &[&group_accounts.len()]),
                     self.account_block(&group_accounts),
                     false,
                 ));

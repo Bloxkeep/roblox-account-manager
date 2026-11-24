@@ -205,7 +205,7 @@ pub fn facts(r: &Root, target: i64) -> Facts {
     let m = &r.metrics;
     let total = m.get("systemMb").and_then(Value::as_f64).unwrap_or(0.);
     let free = m.get("availableMb").and_then(Value::as_f64).unwrap_or(0.);
-    let gb = |mb: f64| format!("{:.0} GB", (mb / 1024.).round());
+    let gb = |mb: f64| crate::lang::cur().mb((mb / 1024.).round() * 1024.);
     let fit = m.get("fit").filter(|f| f.is_object()).map(|f| {
         (
             f.get("max").and_then(Value::as_i64).unwrap_or(0),
@@ -244,7 +244,7 @@ pub fn open(r: &mut Root, window: &mut Window, cx: &mut Context<Root>) {
         let threads = r.state.pointer("/cores/logical").and_then(Value::as_i64).unwrap_or(0);
         let total = m.get("systemMb").and_then(Value::as_f64).unwrap_or(0.);
         let free = m.get("availableMb").and_then(Value::as_f64).unwrap_or(0.);
-        let gb = |mb: f64| format!("{:.0} GB", (mb / 1024.).round());
+        let gb = |mb: f64| crate::lang::cur().mb((mb / 1024.).round() * 1024.);
         let tile = |ic: &'static str, head: String, main: String, sub: Option<String>| {
             div()
                 .flex_1()

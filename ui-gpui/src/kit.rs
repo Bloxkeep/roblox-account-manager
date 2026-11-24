@@ -293,7 +293,7 @@ impl Render for Tip {
             .bg(c(RAISED_2))
             .border_1()
             .border_color(c(LINE))
-            .font_family(FONT)
+            .font(ui_font())
             .text_size(px(T_S))
             .text_color(c(TEXT))
             .child(self.0.clone());

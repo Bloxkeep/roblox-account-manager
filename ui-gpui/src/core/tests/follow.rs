@@ -370,8 +370,8 @@ async fn body(
     let _ = follow_to(followed(PLACE), true).await;
     let s = told();
     app.controller.rejoin_queue.borrow_mut().clear();
-    let made = (
-        "{0} waits to join {1}: {1} is offline, or hides being online. Bloxkeep looks again every minute.".to_string(),
+    let made = crate::core::l::Made::new(
+        "{0} waits to join {1}: {1} is offline, or hides being online. Bloxkeep looks again every minute.",
         vec![account().label(), "Friend".to_string()],
     );
     let alert = app.alert_for("rejoinFail", id, Some(&made), s.as_deref().unwrap_or(""), Stamp::utc_now());

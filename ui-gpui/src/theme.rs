@@ -54,6 +54,24 @@ pub const SHADE: u32 = 0x000000;
 
 pub const FONT: &str = "Be Vietnam Pro";
 
+/// The app's font, and for Japanese, Korean, Thai and Lao the Windows font made for that language for the characters
+/// Be Vietnam Pro lacks: Windows' own fallback goes by the PC's region, so a Vietnamese or English PC drew Japanese
+/// kanji in a Chinese font's shapes. Set at each window's root (and on tooltips, drawn apart from it).
+pub fn ui_font() -> gpui_kit::Font {
+    let mut f = gpui_kit::font(FONT);
+    let list: &[&str] = match crate::lang::cur().code {
+        "ja" => &["Yu Gothic UI", "Meiryo UI", "Meiryo"],
+        "ko" => &["Malgun Gothic"],
+        "th" => &["Leelawadee UI"],
+        "lo" => &["Leelawadee UI", "Lao UI"],
+        _ => &[],
+    };
+    if !list.is_empty() {
+        f.fallbacks = Some(gpui_kit::FontFallbacks::from_fonts(list.iter().map(|s| s.to_string()).collect()));
+    }
+    f
+}
+
 /// The frame: the icon rail, the gap between panels, the accounts column, a panel's inner padding.
 pub const RAIL: f32 = 68.;
 /// The top bar's height (it is the window's title bar too).

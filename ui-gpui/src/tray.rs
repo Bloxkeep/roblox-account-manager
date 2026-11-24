@@ -769,7 +769,7 @@ impl Render for Tray {
             .flex()
             .items_start()
             .bg(ground)
-            .font_family(FONT)
+            .font(crate::theme::ui_font())
             .text_size(px(T_M))
             .text_color(c(TEXT))
             .on_key_down(cx.listener(|t, e: &KeyDownEvent, _, cx| {
@@ -800,7 +800,7 @@ fn switch_look(on: bool, warn: bool) -> Div {
 
 /// RAM in MB or GB (Tray.tsx's ram).
 fn ram(mb: i64) -> String {
-    if mb >= 1024 { format!("{:.1} GB", mb as f64 / 1024.) } else { format!("{} MB", mb.max(0)) }
+    crate::lang::cur().mb(mb as f64)
 }
 
 // ── Shots ──────────────────────────────────────────────────────────────────────────────────────────────────────────

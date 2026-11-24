@@ -99,9 +99,9 @@ fn count_of(args: &[String], i: usize) -> i64 {
 impl App {
     /// The alert for `type_` about `subject` (an account, or a schedule's preset), from
     /// the notification's sentence and values (`made`; None: `text` as it is).
-    pub fn alert_for(&self, type_: &str, subject: Guid, made: Option<&(String, Vec<String>)>, text: &str, now: Stamp) -> DiscordAlert {
-        let en: &str = made.map(|m| m.0.as_str()).unwrap_or("");
-        let args: &[String] = made.map(|m| m.1.as_slice()).unwrap_or(&[]);
+    pub fn alert_for(&self, type_: &str, subject: Guid, made: Option<&l::Made>, text: &str, now: Stamp) -> DiscordAlert {
+        let en: &str = made.map(|m| m.english.as_str()).unwrap_or("");
+        let args: &[String] = made.map(|m| m.args.as_slice()).unwrap_or(&[]);
         let arg = |i: usize| if i < args.len() { self.written(&format!("{{{i}}}"), args) } else { String::new() };
         let count = |i: usize| count_of(args, i);
         let why = made.and_then(|m| self.why(m));
@@ -172,7 +172,7 @@ impl App {
                     );
                 }
                 return plain(
-                    self.df("{0} accounts banned on Roblox", &[&count(0)]),
+                    self.dp(count(0), "{0} accounts banned on Roblox", "{0} accounts banned on Roblox", &[&count(0)]),
                     Some(self.dt("Bloxkeep won't open these accounts. Once a ban is over, Check sign-in clears it.")),
                     webhook::RED,
                     vec![DiscordField::new(self.dt("Accounts"), webhook::escape(Some(&arg(1)[..])), false)],
@@ -181,14 +181,10 @@ impl App {
             "signin" => {
                 let signed_out = count(0);
                 return plain(
-                    self.df(if signed_out == 1 { "{0} account needs signing in again" } else { "{0} accounts need signing in again" }, &[&signed_out]),
-                    Some(self.dt(if signed_out == 1 {
-                        "Roblox signed this account out. Sign in again in Bloxkeep to keep it playing."
-                    } else {
-                        "Roblox signed these accounts out. Sign them in again in Bloxkeep to keep them playing."
-                    })),
+                    self.dp(signed_out, "{0} account needs signing in again", "{0} accounts need signing in again", &[&signed_out]),
+                    Some(self.dpt(signed_out, "Roblox signed this account out. Sign in again in Bloxkeep to keep it playing.", "Roblox signed these accounts out. Sign them in again in Bloxkeep to keep them playing.")),
                     webhook::YELLOW,
-                    vec![DiscordField::new(self.dt(if signed_out == 1 { "Account" } else { "Accounts" }), webhook::escape(Some(&arg(1)[..])), false)],
+                    vec![DiscordField::new(self.dpt(signed_out, "Account", "Accounts"), webhook::escape(Some(&arg(1)[..])), false)],
                 );
             }
             "ram" => {
@@ -202,7 +198,7 @@ impl App {
             "restartHeavy" => return plain(self.dt("A heavy Roblox window restarted"), Some(webhook::escape(Some(&text[..]))), webhook::YELLOW, Vec::new()),
             "launch" if en.starts_with("Roblox closed") => {
                 return plain(
-                    self.df(if count(0) == 1 { "Roblox closed {0} window" } else { "Roblox closed {0} windows" }, &[&count(0)]),
+                    self.dp(count(0), "Roblox closed {0} window", "Roblox closed {0} windows", &[&count(0)]),
                     Some(self.dt("Roblox may have blocked running several windows at once. Multi-Roblox may need an update.")),
                     webhook::RED,
                     Vec::new(),
@@ -210,7 +206,7 @@ impl App {
             }
             "launch" if en.ends_with("didn't open.") => {
                 return plain(
-                    self.df(if count(0) == 1 { "{0} account didn't open" } else { "{0} accounts didn't open" }, &[&count(0)]),
+                    self.dp(count(0), "{0} account didn't open", "{0} accounts didn't open", &[&count(0)]),
                     Some(self.dt("Open Bloxkeep to see why.")),
                     webhook::RED,
                     Vec::new(),
@@ -231,13 +227,13 @@ impl App {
         let place = preset.as_ref().and_then(App::preset_place_id);
         let name = webhook::escape(Some(&arg(0)[..]));
         let reason = why.map(|w| webhook::escape(Some(w)));
-        let accounts = |n: i64| self.df(if n == 1 { "{0} account" } else { "{0} accounts" }, &[&n]);
+        let accounts = |n: i64| self.dp(n, "{0} account", "{0} accounts", &[&n]);
         let mut fields = Vec::new();
         let (title, text, color) = match type_ {
             "schedule" if en.contains("already open") => (self.df("Preset {0} started", &[&name]), Some(self.dt("Its accounts were already open.")), webhook::GREY),
             "schedule" => (self.df("Preset {0} started", &[&name]), None, webhook::GREEN),
             "scheduleFail" if en.contains("didn't open") => (
-                self.df(if count(1) == 1 { "Preset {0}: {1} account didn't open" } else { "Preset {0}: {1} accounts didn't open" }, &[&name, &count(1)]),
+                self.dp(count(1), "Preset {0}: {1} account didn't open", "Preset {0}: {1} accounts didn't open", &[&name, &count(1)]),
                 Some(webhook::escape(Some(&arg(2)[..]))),
                 webhook::RED,
             ),
@@ -250,7 +246,7 @@ impl App {
             ),
             _ => (
                 self.df("Preset {0} finished", &[&name]),
-                Some(self.df(if count(1) == 1 { "Closing its {0} account." } else { "Closing its {0} accounts." }, &[&count(1)])),
+                Some(self.dp(count(1), "Closing its {0} account.", "Closing its {0} accounts.", &[&count(1)])),
                 webhook::BLUE,
             ),
         };
@@ -405,10 +401,10 @@ impl App {
     }
 
     /// The event's sentence after its first ": " (why it happened), in Discord's language: "Bloxkeep was locked."
-    pub fn why(&self, made: &(String, Vec<String>)) -> Option<String> {
-        let sentence = l::t_in(&made.0, &self.discord_language());
+    pub fn why(&self, made: &l::Made) -> Option<String> {
+        let sentence = made.pattern_in(&self.discord_language());
         let at = sentence.find(": ")?;
-        let why = self.written(&sentence[at + 2..], &made.1).trim().to_string();
+        let why = self.written(&sentence[at + 2..], &made.args).trim().to_string();
         if why.is_empty() { None } else { Some(capital(&why)) }
     }
 

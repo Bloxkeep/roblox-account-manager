@@ -3283,7 +3283,7 @@ impl Root {
                 let each = crate::pages::accounts::mb_text(f.get("eachMb").and_then(Value::as_f64).unwrap_or(0.));
                 self.i18n.tv("cap.tip", &[("n", &f.get("max").and_then(Value::as_i64).unwrap_or(0).to_string()), ("each", &each), ("by", &by)]).into()
             });
-            let free = m.get("availableMb").and_then(Value::as_f64).map(|mb| if mb >= 1024. { format!("{:.1} GB", mb / 1024.) } else { format!("{mb:.0} MB") }).unwrap_or_default();
+            let free = m.get("availableMb").and_then(Value::as_f64).map(|mb| crate::lang::cur().mb(mb)).unwrap_or_default();
             let (show_cpu, show_ram) = (level < 2, level < 10);
             let cpu_el = show_cpu.then(|| figure("bar-cpu", "CPU", cpu, self.i18n.tv("bar.cpuTip", &[("pct", &cpu.to_string())]), window));
             let ram_el = show_ram.then(|| figure("bar-ram", "RAM", ram, self.i18n.tv("sys.used", &[("pct", &ram.to_string()), ("free", &free)]), window));
@@ -4294,7 +4294,7 @@ impl Render for Root {
             .bg(c(GROUND))
             // A picture theme: its scene under everything (scene.rs).
             .children(crate::scene::layer(window, cx))
-            .font_family(FONT)
+            .font(crate::theme::ui_font())
             .text_color(c(TEXT))
             .text_size(px(T_M))
             // Everything of the app over the theme, drawn again only when something in it changed: an animated

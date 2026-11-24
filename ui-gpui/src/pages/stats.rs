@@ -437,7 +437,13 @@ fn day_heading(root: &Root, day: i64, today: i64) -> String {
     let l = crate::lang::cur();
     let date = if y != ty { l.date_long(d, m, y) } else { l.day_month(d, m) };
     // (French writes no comma after the day's name: "lundi 9 novembre".)
-    if l.code == "fr" { format!("{name} {date}") } else { format!("{name}, {date}") }
+    if l.code == "fr" {
+        format!("{name} {date}")
+    } else if l.east_asian() {
+        format!("{date} {name}")
+    } else {
+        format!("{name}, {date}")
+    }
 }
 
 // ───────────────────────── colours ─────────────────────────

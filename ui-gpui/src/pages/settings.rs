@@ -1410,11 +1410,11 @@ fn perf(root: &Root, cx: &mut Context<Root>) -> Vec<Div> {
     let rams: Vec<(i64, String, bool)> = vec![
         (0, root.tr("set.ramLimitOff"), false),
         (-1, root.tr("set.ramLimitAuto"), false),
-        (512, "512 MB".into(), false),
-        (768, "768 MB".into(), false),
-        (1024, "1 GB".into(), false),
-        (1536, "1.5 GB".into(), false),
-        (2048, "2 GB".into(), false),
+        (512, crate::lang::cur().mb(512.), false),
+        (768, crate::lang::cur().mb(768.), false),
+        (1024, crate::lang::cur().mb(1024.), false),
+        (1536, crate::lang::cur().mb(1536.), false),
+        (2048, crate::lang::cur().mb(2048.), false),
     ];
     let heavy = st.get("restartAboveMb").and_then(Value::as_i64).unwrap_or(0);
     let mut heavies: Vec<(i64, String, bool)> = vec![(0, root.tr("set.heavyOff"), false)];

@@ -5,6 +5,8 @@ use std::collections::HashMap;
 use std::fmt::Display;
 use std::sync::LazyLock;
 
+use crate::lang::Plural;
+
 pub fn language() -> String {
     crate::core::prefs::language()
 }
@@ -14,8 +16,35 @@ pub fn set(language: &str) {
     crate::core::prefs::save();
 }
 
+/// A sentence in a language added after Vietnamese: one text, or one per form of a count when it carries one (lang.rs's
+/// Plural names: "{0} accounts" → {"one": "{0} аккаунт", "few": "{0} аккаунта", "many": "{0} аккаунтов"}).
+#[derive(serde::Deserialize, Clone)]
+#[serde(untagged)]
+enum Said {
+    Text(String),
+    Forms(HashMap<String, String>),
+}
+
+impl Said {
+    /// The words for a count's form (the one text for a sentence without forms; the language's widest form when it
+    /// lacks that one).
+    fn by(&self, form: Plural) -> &str {
+        match self {
+            Said::Text(t) => t,
+            Said::Forms(f) => f.get(form.name()).or_else(|| f.get("other")).or_else(|| f.get("many")).or_else(|| f.values().next()).map_or("", String::as_str),
+        }
+    }
+
+    fn says(&self, text: &str) -> bool {
+        match self {
+            Said::Text(t) => t == text,
+            Said::Forms(f) => f.values().any(|v| v == text),
+        }
+    }
+}
+
 /// The languages added after Vietnamese (lang.rs): English sentence -> theirs, from assets/lang/<code>.json's "core".
-static MORE: LazyLock<std::sync::RwLock<HashMap<&'static str, HashMap<String, String>>>> = LazyLock::new(Default::default);
+static MORE: LazyLock<std::sync::RwLock<HashMap<&'static str, HashMap<String, Said>>>> = LazyLock::new(Default::default);
 
 /// Reads every added language's sentences from the app's assets folder (once, at the start).
 pub fn load_more(assets: &std::path::Path) {
@@ -23,7 +52,7 @@ pub fn load_more(assets: &std::path::Path) {
     for l in crate::lang::ALL.iter().filter(|l| !matches!(l.code, "en" | "vi")) {
         let Ok(text) = std::fs::read_to_string(assets.join(format!("lang/{}.json", l.code))) else { continue };
         let Ok(v) = serde_json::from_str::<serde_json::Value>(&text) else { continue };
-        if let Some(core) = v.get("core").and_then(|c| serde_json::from_value::<HashMap<String, String>>(c.clone()).ok()) {
+        if let Some(core) = v.get("core").and_then(|c| serde_json::from_value::<HashMap<String, Said>>(c.clone()).ok()) {
             more.insert(l.code, core);
         }
     }
@@ -36,6 +65,11 @@ pub fn t(english: &str) -> String {
 
 /// In a given language rather than the app's (Discord messages can have their own).
 pub fn t_in(english: &str, language: &str) -> String {
+    said_in(english, language, Plural::Other)
+}
+
+/// A sentence in a language, in a count's form when it keeps forms.
+fn said_in(english: &str, language: &str, form: Plural) -> String {
     if language == "vi" {
         if let Some(vi) = VI.get(english) {
             return (*vi).to_string();
@@ -43,41 +77,90 @@ pub fn t_in(english: &str, language: &str) -> String {
     } else if language != "en"
         && let Some(own) = MORE.read().unwrap_or_else(|e| e.into_inner()).get(crate::lang::known(language)).and_then(|m| m.get(english))
     {
-        return own.clone();
+        return own.by(form).to_string();
     }
     english.to_string()
 }
 
+/// A sentence about a count of `n` in a language (lang.rs): the English one sentence's words for exactly one, else the
+/// form the count takes there of the English plural's (Russian 21 "one", 3 "few", 5 "many"; French 0 "one"). A
+/// sentence English has only a plural for gives it as both: exactly one then takes the plural's "one" form.
+pub fn counted_in(one: &str, many: &str, n: i64, language: &str) -> String {
+    if n == 1 {
+        return said_in(one, language, Plural::One);
+    }
+    let form = crate::lang::by_code(language).map_or(Plural::Other, |l| l.form(n));
+    said_in(many, language, form)
+}
+
 pub fn f(english: &str, args: &[&dyn Display]) -> String {
     let args: Vec<String> = args.iter().map(|a| a.to_string()).collect();
-    let text = format(&t(english), &args);
-    LAST_FORMAT.with(|last| *last.borrow_mut() = Some((english.to_string(), args)));
+    remember(Made { english: english.to_string(), count: None, args })
+}
+
+/// `f` about a count: the English singular or plural, and in another language the form the count takes there
+/// (`counted_in`). Every sentence with a count goes through here, so the activity log and Discord say it again in
+/// another language in the right form.
+pub fn p(count: i64, one: &str, many: &str, args: &[&dyn Display]) -> String {
+    let args: Vec<String> = args.iter().map(|a| a.to_string()).collect();
+    remember(Made { english: (if count == 1 { one } else { many }).to_string(), count: Some((one.to_string(), many.to_string(), count)), args })
+}
+
+/// Writes a sentence in the app's language and keeps what it was made from (`made`).
+fn remember(made: Made) -> String {
+    let text = made.in_language(&language());
+    LAST_FORMAT.with(|last| *last.borrow_mut() = Some(made));
     text
 }
 
-/// `f` with the English singular or plural by `count`; Vietnamese has one form, so both keys are translated alike.
-pub fn p(count: i64, one: &str, many: &str, args: &[&dyn Display]) -> String {
-    f(if count == 1 { one } else { many }, args)
+/// What `f` or `p` made a text from: the English sentence and the values as they were written, and for `p` both
+/// English sentences and the count.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Made {
+    /// The English sentence as said (the count's English form).
+    pub english: String,
+    /// `p`'s one and many sentences and its count.
+    pub count: Option<(String, String, i64)>,
+    pub args: Vec<String>,
+}
+
+impl Made {
+    /// The sentence, values not in yet, in a language (the count's form there).
+    pub fn pattern_in(&self, language: &str) -> String {
+        match &self.count {
+            Some((one, many, n)) if language != "en" => counted_in(one, many, *n, language),
+            _ => t_in(&self.english, language),
+        }
+    }
+
+    pub fn in_language(&self, language: &str) -> String {
+        format(&self.pattern_in(language), &self.args)
+    }
+
+    /// A sentence made by `f` (no count).
+    pub fn new(english: &str, args: Vec<String>) -> Made {
+        Made { english: english.to_string(), count: None, args }
+    }
 }
 
 thread_local! {
-    /// The last `f` on this thread, so `made` can say the same another way (the values as they were written).
-    static LAST_FORMAT: RefCell<Option<(String, Vec<String>)>> = const { RefCell::new(None) };
+    /// The last `f` or `p` on this thread, so `made` can say the same another way (the values as they were written).
+    static LAST_FORMAT: RefCell<Option<Made>> = const { RefCell::new(None) };
 }
 
-/// The English sentence and values the last `f` on this thread made `text` from, to remake it another way (a Discord
-/// message's language and name hiding); None for any other text.
-pub fn made(text: &str) -> Option<(String, Vec<String>)> {
-    LAST_FORMAT.with(|last| last.borrow().as_ref().filter(|(english, args)| format(&t(english), args) == text).cloned())
+/// What the last `f` or `p` on this thread made `text` from, to remake it another way (a Discord message's language
+/// and name hiding); None for any other text.
+pub fn made(text: &str) -> Option<Made> {
+    LAST_FORMAT.with(|last| last.borrow().as_ref().filter(|m| m.in_language(&language()) == text).cloned())
 }
 
 /// `text` in English and in every other language (lang.rs's order) when the last `f` made it or it is a sentence
 /// here; otherwise as it is in each. The activity log keeps notifications this way.
 pub fn each(text: &str) -> (String, Vec<(&'static str, String)>) {
     let others = || crate::lang::ALL.iter().map(|l| l.code).filter(|c| *c != "en");
-    if let Some((english, args)) = made(text) {
-        let all = others().map(|c| (c, format(&t_in(&english, c), &args))).collect();
-        return (format(&english, &args), all);
+    if let Some(made) = made(text) {
+        let all = others().map(|c| (c, made.in_language(c))).collect();
+        return (made.in_language("en"), all);
     }
     let english = match language().as_str() {
         "en" => text.to_string(),
@@ -86,7 +169,7 @@ pub fn each(text: &str) -> (String, Vec<(&'static str, String)>) {
             .read()
             .unwrap_or_else(|e| e.into_inner())
             .get(crate::lang::known(own))
-            .and_then(|m| m.iter().find(|(_, v)| *v == text).map(|(k, _)| k.clone()))
+            .and_then(|m| m.iter().find(|(_, v)| v.says(text)).map(|(k, _)| k.clone()))
             .unwrap_or_else(|| text.to_string()),
     };
     let all = others().map(|c| (c, t_in(&english, c))).collect();

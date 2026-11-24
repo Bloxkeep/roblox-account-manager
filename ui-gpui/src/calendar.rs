@@ -84,7 +84,7 @@ pub fn panel<V: 'static>(
     let lead = ((days_from_civil(y, m, 1) + 4).rem_euclid(7) as u32 + 7 - first) % 7;
     let count = days_in(shown);
 
-    let title = i18n.tv("tf.monthYear", &[("month", crate::time::month_name(m.into())), ("n", &m.to_string()), ("year", &y.to_string())]);
+    let title = i18n.tv("tf.monthYear", &[("month", crate::time::month_name(m.into())), ("n", &m.to_string()), ("year", &(i64::from(y) + crate::lang::cur().era).to_string())]);
     let step = |n: i32, icon_name: &'static str, tip: String, cx: &mut Context<V>| {
         let act = act.clone();
         IconButton::new(id(key, "step", (n + 1) as u64), icon_name).size(28.).tip(tip).on_click(cx.listener(move |v, _, w, cx| act(v, Act::Shift(n), w, cx)))

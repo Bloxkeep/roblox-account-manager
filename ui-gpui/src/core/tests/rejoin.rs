@@ -255,7 +255,7 @@ impl R {
     }
 
     fn alert_title(&self, kind: &str, en: &str, args: Vec<String>, said: &str) -> crate::core::app::discord_alerts::DiscordAlert {
-        self.app.alert_for(kind, self.id, Some(&(en.to_string(), args)), said, now())
+        self.app.alert_for(kind, self.id, Some(&crate::core::l::Made::new(en, args)), said, now())
     }
 
     fn card_banned(&self) -> Option<bool> {

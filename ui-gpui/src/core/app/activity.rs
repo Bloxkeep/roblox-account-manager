@@ -297,7 +297,7 @@ impl App {
             }
             arg.split(", ").map(one).collect::<Option<Vec<Account>>>()
         };
-        let Some((english, args)) = made.filter(|(_, args)| args.iter().any(|a| as_names(a).is_some())) else {
+        let Some(made) = made.filter(|m| m.args.iter().any(|a| as_names(a).is_some())) else {
             let (english, others) = l::each(text);
             return (english, others, None);
         };
@@ -312,7 +312,8 @@ impl App {
             };
             format!("{NAME_START}{i}{NAME_END}")
         };
-        let written: Vec<String> = args
+        let written: Vec<String> = made
+            .args
             .iter()
             .map(|arg| match as_names(arg) {
                 Some(list) => list.iter().map(&mut placeholder).collect::<Vec<String>>().join(", "),
@@ -320,7 +321,8 @@ impl App {
             })
             .collect();
         // PORT: the words that come with the names (" and 2 more") were written in the app's language by L.F already.
-        let in_language = |language: &str| l::format(&l::t_in(&english, language), &written);
+        // (A count's sentence in each language's own form for it: l::Made.)
+        let in_language = |language: &str| l::format(&made.pattern_in(language), &written);
         let others = crate::lang::ALL.iter().map(|l| l.code).filter(|c| *c != "en").map(|c| (c, in_language(c))).collect();
         (in_language("en"), others, Some(names))
     }
