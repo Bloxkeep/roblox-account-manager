@@ -1094,9 +1094,24 @@ fn friend_ids(cookie: &str, user: i64) -> Result<Vec<i64>, String> {
 /// The square faces of users, 100 a call.
 fn faces(users: &[i64]) -> HashMap<i64, String> {
     let (mut out, missing) = pics::known("faces", users);
+    // A face Roblox is still drawing ("Pending": every avatar change, a fitting saved too, has it draw them all again)
+    // is asked again, as thumbs_from does and Roblox's own pages do: the profile's ring showed the whole avatar in
+    // the face's place after a save (owner 2026-11-24).
     let got = each(missing.chunks(100).collect(), |chunk: &[i64]| {
         let ids: Vec<String> = chunk.iter().map(i64::to_string).collect();
-        get(&format!("https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds={}&size=150x150&format=Png&isCircular=false", ids.join(",")), None)
+        let url = format!("https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds={}&size=150x150&format=Png&isCircular=false", ids.join(","));
+        let mut kept: Vec<Value> = Vec::new();
+        for round in 0..4 {
+            let d = get(&url, None)?;
+            let all = d.get("data").and_then(Value::as_array).cloned().unwrap_or_default();
+            let pending = all.iter().any(|v| v.get("state").and_then(Value::as_str) == Some("Pending"));
+            kept.extend(all.into_iter().filter(|v| v.get("state").and_then(Value::as_str) != Some("Pending")));
+            if !pending || round == 3 {
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(1500));
+        }
+        Ok::<Value, String>(serde_json::json!({ "data": kept }))
     });
     let mut learnt = HashMap::new();
     for d in got.into_iter().flatten() {

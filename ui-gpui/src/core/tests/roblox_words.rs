@@ -44,7 +44,7 @@ pub async fn run(c: &mut Checks, dir: &str) {
 
     // The 3D avatar's picture drawn on every core is the one a single core draws, dot for dot, and sooner.
     if let Some(model) = crate::mesh::blocks() {
-        let view = crate::mesh::View { yaw: 0.7, pitch: 0.3, zoom: 0.8, room: 4, t: 1.3, at: [0.2, -0.1], heading: 0.4, stride: 1.1, pace: 0.6, up: 0., rise: 0., act: Default::default(), pack: [0; 4] };
+        let view = crate::mesh::View { yaw: 0.7, pitch: 0.3, zoom: 0.8, room: 4, t: 1.3, at: [0.2, -0.1], heading: 0.4, stride: 1.1, pace: 0.6, up: 0., rise: 0., air: 0., aloft: 0., act: Default::default(), pack: [0; 4] };
         let time = |cores: usize| {
             let started = std::time::Instant::now();
             let mut last = Vec::new();

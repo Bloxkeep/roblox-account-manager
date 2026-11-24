@@ -66,6 +66,9 @@ pub struct Data {
     jump: bool,
     up: f32,
     rise: f32,
+    /// Its jump's motions eased in and out, and how long it has been off the floor (mesh::View).
+    air: f32,
+    aloft: f32,
     /// What it does besides (mesh::Act, stepped by `behave`): where the mouse is over the box and whether it is on
     /// it; the worn thing whose tile the mouse is on (its id) and where the avatar looks for it; how long nothing has
     /// moved in the window (the mouse where it was, `still_at`) and the idle gestures done since; how fast what hangs
@@ -384,10 +387,15 @@ fn view_of(av: &Data) -> crate::mesh::View {
         pace: av.pace,
         up: av.up,
         rise: av.rise,
+        air: av.air,
+        aloft: av.aloft,
         act: av.act,
         pack: av.pack,
     }
 }
+
+/// Roblox's standard R6 animations: idle, walk, jump, fall.
+const R6_STANDARD: [i64; 4] = [180435571, 180426354, 125750702, 180436148];
 
 /// The animation pack worn, as Roblox's kinds of it (51 idle, 55 walk, or 53 run when no walk, 52 jump, 50 fall).
 fn pack_worn(av: &Data) -> [i64; 4] {
@@ -398,6 +406,12 @@ fn pack_worn(av: &Data) -> [i64; 4] {
         return std::array::from_fn(|i| n.get(i).copied().unwrap_or(0));
     }
     let Some(Ok(a)) = &av.got else { return [0; 4] };
+    // An R6 body moves as Roblox's standard R6 animations do whatever pack is worn: packs are made for R15 only
+    // (create.roblox.com/docs/avatar/animation-packs), and an R15 pack's motions on R6's four limbs walked it like a
+    // crawl seen from behind (owner 2026-11-24). Their ids are those of Roblox's R6 Animate script.
+    if a.rig != "R15" {
+        return R6_STANDARD;
+    }
     let of = |k: i64| a.items.iter().find(|i| i.kind_id() == k).map_or(0, |i| i.id);
     let walk = of(55);
     [of(51), if walk != 0 { walk } else { of(53) }, of(52), of(50)]
@@ -441,7 +455,7 @@ fn want_pack(r: &mut Root, cx: &mut Context<Root>) {
 
 /// Whether it is in the air, or about to be.
 fn airborne(av: &Data) -> bool {
-    av.jump || av.up > 0. || av.rise > 0.
+    av.jump || av.up > 0. || av.rise > 0. || av.air > 0.
 }
 
 /// Whether the avatar's model can move in its idle.
@@ -915,7 +929,7 @@ fn start_spin(r: &mut Root, cx: &mut Context<Root>) {
                             let mut v = view_of(&r.avatar);
                             model.step(&mut v, ahead, right, k & 16 != 0, std::mem::take(&mut r.avatar.jump), dt);
                             (r.avatar.at, r.avatar.heading, r.avatar.stride, r.avatar.pace) = (v.at, v.heading, v.stride, v.pace);
-                            (r.avatar.up, r.avatar.rise) = (v.up, v.rise);
+                            (r.avatar.up, r.avatar.rise, r.avatar.air, r.avatar.aloft) = (v.up, v.rise, v.air, v.aloft);
                             changed = true;
                         }
                     }
@@ -986,7 +1000,8 @@ fn reset_view(r: &mut Root, cx: &mut Context<Root>) {
     let (a0, h0) = (r.avatar.at, (r.avatar.heading + std::f32::consts::PI).rem_euclid(tau) - std::f32::consts::PI);
     r.avatar.keys = 0;
     r.avatar.pace = 0.;
-    (r.avatar.jump, r.avatar.up, r.avatar.rise) = (false, 0., 0.);
+    // A jump under way keeps going and lands as usual: only the view turns back.
+    r.avatar.jump = false;
     r.avatar.spin_run += 1;
     r.avatar.spinning = false;
     cx.spawn(async move |this, cx| {

@@ -110,6 +110,11 @@ pub struct View {
     /// A jump: how high off the floor it is and how fast it is going up (down when below 0), both in model units.
     pub up: f32,
     pub rise: f32,
+    /// How much its jump's motions are over the rest (0 on the floor, 1 in the air, eased between as Roblox's Animate
+    /// fades them: in over 0.1 s, out over 0.2 s as it lands), and how long since it left the floor (its jump plays
+    /// from its start, then its fall comes in).
+    pub air: f32,
+    pub aloft: f32,
     /// What it does besides (gestures, looking, sitting…).
     pub act: Act,
     /// The animation pack it wears (Roblox's assets, 0 for none, their motions kept by `keep_motion`): idle, walk,
@@ -333,6 +338,8 @@ const IDENTITY: M3 = [[1., 0., 0.], [0., 1., 0.], [0., 0., 1.]];
 pub fn motion_of(bytes: &[u8]) -> Option<Motion> {
     let doc = crate::rbxm::read(bytes).ok()?;
     let mut tracks: [Vec<(f32, [f32; 4], V3)>; 7] = Default::default();
+    // (R6's poses: a Torso with no UpperTorso anywhere.)
+    let r6 = !doc.all("Pose").into_iter().any(|q| doc.text(q, "Name").is_some_and(|n| n == b"UpperTorso"));
     for p in doc.all("Pose") {
         if doc.float(p, "Weight").is_some_and(|w| w <= 0.) {
             continue;
@@ -361,6 +368,20 @@ pub fn motion_of(bytes: &[u8]) -> Option<Motion> {
         }
         let (Some(time), Some((r, shift))) = (time, doc.frame(p, "CFrame")) else { continue };
         let m: M3 = [[r[0], r[1], r[2]], [r[3], r[4], r[5]], [r[6], r[7], r[8]]];
+        // An R6 joint turns in its own frame, not the body's: R6's Motor6Ds hang their parts turned (C0 and C1 alike:
+        // the shoulders and hips a quarter turn about up, right one way and left the other, the root and neck with
+        // their y and z swapped), so a pose T there is R·T·Rᵀ here. R15's joints are unturned. (Read as it was, R6's
+        // standard walk swung its arms over its head and folded its legs back.)
+        let joint: Option<M3> = match name {
+            b"Torso" | b"Head" if r6 => Some([[-1., 0., 0.], [0., 0., 1.], [0., 1., 0.]]),
+            b"Right Arm" | b"Right Leg" => Some([[0., 0., 1.], [0., 1., 0.], [-1., 0., 0.]]),
+            b"Left Arm" | b"Left Leg" => Some([[0., 0., -1.], [0., 1., 0.], [1., 0., 0.]]),
+            _ => None,
+        };
+        let (m, shift) = match joint {
+            Some(j) => (mm(&mm(&j, &m), &back(&j)), mv(&j, shift)),
+            None => (m, shift),
+        };
         tracks[track].push((time, quat(&m), shift));
     }
     for t in &mut tracks {
@@ -628,20 +649,37 @@ impl Rig {
             } else {
                 0.
             };
-            let air = v.up > 0. || v.rise > 0.;
-            if !air {
+            // On the floor its idle and walk; in the air its jump, played from its start for 0.31 s, then its fall
+            // faded in over 0.2 s (Roblox's jumpAnimDuration and fallTransitionTime); landing, the floor's come back
+            // over 0.2 s. Each weighed by how much it is in the air.
+            let air = v.air.clamp(0., 1.);
+            if air < 1. {
+                let floor = 1. - air;
                 if let Some(m) = motion(v.pack[0]) {
-                    let w = calm * (1. - gesture);
+                    let w = calm * (1. - gesture) * floor;
                     layers.push((m.at(t.rem_euclid(m.length)), w, w * (1. - aim)));
                 }
                 if let Some(m) = motion(v.pack[1]) {
                     // (One walk round is one round of the stride.)
                     let at = (v.stride / std::f32::consts::TAU).rem_euclid(1.) * m.length;
-                    layers.push((m.at(at), pace, pace));
+                    layers.push((m.at(at), pace * floor, pace * floor));
                 }
-            } else if let Some(m) = motion(v.pack[if v.rise > 0. { 2 } else { 3 }]) {
-                let at = if v.rise > 0. { 0.5 * m.length } else { t.rem_euclid(m.length) };
-                layers.push((m.at(at), 1., 1.));
+            }
+            if air > 0. {
+                const JUMP_FOR: f32 = 0.31;
+                const FALL_IN: f32 = 0.2;
+                let jump = motion(v.pack[2]).map(|m| m.at(v.aloft.min(m.length)));
+                let fall = motion(v.pack[3]).map(|m| m.at((v.aloft - JUMP_FOR).max(0.).rem_euclid(m.length)));
+                let k = ((v.aloft - JUMP_FOR) / FALL_IN).clamp(0., 1.);
+                let joints = match (jump, fall) {
+                    (Some(j), Some(f)) => Some(std::array::from_fn(|i| (mix(&j[i].0, &f[i].0, k), add(mul(j[i].1, 1. - k), mul(f[i].1, k))))),
+                    (Some(j), None) => Some(j),
+                    (None, Some(f)) => Some(f),
+                    (None, None) => None,
+                };
+                if let Some(joints) = joints {
+                    layers.push((joints, air, air));
+                }
             }
             if a.kind == EMOTE {
                 if let Some(m) = motion(a.emote) {
@@ -1145,7 +1183,15 @@ impl Model {
         let away = sub(eye, center);
         let far = dot(away, away).sqrt();
         let level = far > 0. && (away[1] / far).abs() < 0.95;
-        let eye = if eye == [0.; 3] || far < radius * 1.5 || !level { [center[0], center[1] + radius * 0.25, center[2] - radius * 3.6] } else { eye };
+        // Roblox's own camera stands off to one side (its pictures show the avatar a little turned); here it keeps
+        // that height and distance but stands straight in front, so the avatar faces you when first shown and again
+        // after a double click puts the view back (owner 2026-11-24: "chưa chính diện lắm").
+        let eye = if eye == [0.; 3] || far < radius * 1.5 || !level {
+            [center[0], center[1] + radius * 0.25, center[2] - radius * 3.6]
+        } else {
+            let flat = (away[0] * away[0] + away[2] * away[2]).sqrt();
+            [center[0], eye[1], center[2] + if away[2] > 0. { flat } else { -flat }]
+        };
         // The plate reaches a little past the widest the model is, seen from above.
         let reach = tris.iter().flat_map(|t| t.p).map(|p| ((p[0] - center[0]).powi(2) + (p[2] - center[2]).powi(2)).sqrt()).fold(0f32, f32::max);
         let plate = (reach * 1.15).clamp(radius * 0.45, radius * 0.95);
@@ -1204,6 +1250,7 @@ impl Model {
             let fall = self.radius * 9.;
             if jump && v.up <= 0. {
                 v.rise = self.radius * 3.3;
+                v.aloft = 0.;
             }
             if v.up > 0. || v.rise > 0. {
                 v.up += v.rise * dt - fall * dt * dt / 2.;
@@ -1211,6 +1258,14 @@ impl Model {
                 if v.up <= 0. {
                     (v.up, v.rise) = (0., 0.);
                 }
+            }
+            // (Roblox's humanoidAnimateR15: playAnimation("jump", 0.1) as it leaves the floor, "idle" or "walk" with
+            // 0.2 as it lands. It came down straight into its stand from its fall before, in one frame.)
+            if v.up > 0. || v.rise > 0. {
+                v.aloft += dt;
+                v.air = (v.air + dt / 0.1).min(1.);
+            } else {
+                v.air = (v.air - dt / 0.2).max(0.);
             }
         }
         let start = sub(self.eye, self.center);
@@ -1293,7 +1348,7 @@ impl Model {
             turn(w, -s0, c0)
         });
         // Each part's turn at this moment.
-        let moving = view.t > 0. || view.pace > 0. || view.up > 0. || view.rise > 0. || view.act != Act::default();
+        let moving = view.t > 0. || view.pace > 0. || view.up > 0. || view.rise > 0. || view.air > 0. || view.act != Act::default();
         let posed = self.rig.as_ref().filter(|_| moving).map(|r| r.pose(&view, look));
         let sink = posed.as_ref().map_or(0., |p| p.sink) + view.up.max(0.);
         // What hangs from it, swung out of place.
