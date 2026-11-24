@@ -2930,27 +2930,29 @@ impl Interactivity {
                     .cloned()
             });
             let current_view = window.current_view();
-            // Bloxkeep: an element with a hover style and no id has no element state to keep its hover in, and the
-            // mouse crossing it asked for no frame: its hover showed only when something else redrew the window (the
-            // status bar's figures, ~1.5 s later). Such an element is redrawn when the mouse's hover differs from the
-            // one it was painted with, as one with an id is.
-            let painted_hovered = (self.hover_style.is_some() && hover_state.is_none())
-                .then(|| !window.last_input_was_touch() && hitbox.is_hovered(window));
+            // Bloxkeep: one rule for every element with a hover style: its view is notified when the mouse's hover
+            // differs from the hover it was drawn with. That hover is kept in the element state, which only an element
+            // with an id has; one without an id keeps the hover it was painted with here (as paint_hover_group_handler
+            // does for group hover). Without that, an element with no id never asked for a frame: its hover showed
+            // only when something else redrew the window (Statistics › Activity's lines, the status bar's figures
+            // ~1.5 s later, 2026-11-24).
+            let drawn_hovered = self.hover_style.is_some().then(|| {
+                hover_state.clone().unwrap_or_else(|| {
+                    Rc::new(RefCell::new(ElementHoverState {
+                        element: hitbox.is_hovered(window),
+                        group: false,
+                    }))
+                })
+            });
 
             window.on_mouse_event(move |_: &MouseMoveEvent, phase, window, cx| {
-                let hovered = hitbox.is_hovered(window);
                 if phase != DispatchPhase::Capture {
                     return;
                 }
-                if let Some(hover_state) = &hover_state {
-                    let was_hovered = hover_state.borrow().element;
-                    if hovered != was_hovered {
-                        hover_state.borrow_mut().element = hovered;
-                        cx.notify(current_view);
-                    }
-                } else if let Some(painted) = painted_hovered
-                    && (!window.last_input_was_touch() && hovered) != painted
-                {
+                let Some(drawn) = &drawn_hovered else { return };
+                let hovered = hitbox.is_hovered(window);
+                if hovered != drawn.borrow().element {
+                    drawn.borrow_mut().element = hovered;
                     cx.notify(current_view);
                 }
             });

@@ -27,6 +27,8 @@ mod heap;
 mod mem_regions;
 mod mem_tally;
 mod history;
+#[cfg(all(test, feature = "shot"))]
+mod hover_test;
 mod i18n;
 mod lang;
 mod images;
