@@ -1528,7 +1528,6 @@ fn filled(root: &Root, p: &Profile, user: i64, width: f32, own: bool, cx: &mut C
             .when_some(banner_gif, |d, path| d.child(img(std::path::PathBuf::from(path)).size_full().object_fit(ObjectFit::Cover)))
             .when(!tiles.is_empty(), |d| d.child(div().absolute().inset_0().flex().justify_end().gap(px(2.)).children(tiles)))
             .when(deco_theme != "none", |d| d.child(deco::theme("pf-deco-banner", deco_theme, 0.)))
-            .when(deco_theme != "none" || deco_ring != "none" || deco_open, |d| d.child(deco::clock("pf-deco-clock")))
             .when(own, |d| d.child(div().absolute().right(px(12.)).top(px(12.)).flex().gap(px(6.))
                 .when(can_move && !moving, |d| d.child(IconButton::new("pf-move-banner", "grip").glass().tip(root.tr("pf.media.move"))
                     .on_click(cx.listener(move |r, _, _, cx| { r.profile.banner_move = true; cx.notify(); }))))

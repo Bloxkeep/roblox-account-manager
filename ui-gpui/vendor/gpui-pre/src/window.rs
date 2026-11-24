@@ -4486,7 +4486,7 @@ impl Window {
                     })
                 })
             } else {
-                self.reuse_paint(deferred_draw.paint_range.clone());
+                self.reuse_paint(deferred_draw.paint_range.clone(), cx);
             }
             let paint_end = self.paint_index();
             deferred_draw.paint_range = paint_start..paint_end;
@@ -4578,7 +4578,7 @@ impl Window {
         }
     }
 
-    pub(crate) fn reuse_paint(&mut self, range: Range<PaintIndex>) {
+    pub(crate) fn reuse_paint(&mut self, range: Range<PaintIndex>, cx: &mut App) {
         // Cached elements still exist in the frame even when their paint methods don't run.
         #[cfg(any(test, feature = "test-support"))]
         for (selector, bounds) in &self.rendered_frame.debug_bounds_records
@@ -4618,10 +4618,44 @@ impl Window {
 
         self.text_system
             .reuse_layouts(range.start.line_layout_index..range.end.line_layout_index);
-        self.next_frame.scene.replay(
-            range.start.scene_index..range.end.scene_index,
-            &self.rendered_frame.scene,
-        );
+        // (Bloxkeep) What live paints painted (paint_live) is painted anew where it was, the rest replayed round it.
+        let (mut at, end) = (range.start.scene_index, range.end.scene_index);
+        while let Some((start, live, after)) = self.rendered_frame.scene.next_live(at..end) {
+            self.next_frame.scene.replay(at..start, &self.rendered_frame.scene);
+            self.paint_live_again(live, cx);
+            at = after;
+        }
+        self.next_frame.scene.replay(at..end, &self.rendered_frame.scene);
+    }
+
+    /// (Bloxkeep) Paints what `paint` paints here, and again at every frame after where it lies in the order of what
+    /// is painted round it, while the view it is in is kept as drawn (its other paint replayed, `reuse_paint`): what
+    /// moves inside a kept view, under what lies over it there, for the price of its own paint. It is painted again in
+    /// the clip, rounded boxes and opacity it is painted in now; a frame comes only when asked for (`redraw` keeps the
+    /// views as drawn). It goes with the view's next paint, or when the view is no longer drawn.
+    ///
+    /// This method should only be called as part of the paint phase of element drawing.
+    pub fn paint_live(&mut self, paint: std::rc::Rc<dyn Fn(&mut Window, &mut App)>, cx: &mut App) {
+        self.invalidator.debug_assert_paint();
+        let live = std::rc::Rc::new(crate::scene::LivePaint {
+            paint,
+            content_mask: self.content_mask(),
+            opacity: self.element_opacity,
+            rounded: self.rounded_clip_stack.clone(),
+        });
+        self.paint_live_again(live, cx);
+    }
+
+    fn paint_live_again(&mut self, live: std::rc::Rc<crate::scene::LivePaint>, cx: &mut App) {
+        self.next_frame.scene.start_live(live.clone());
+        let masks = mem::replace(&mut self.content_mask_stack, vec![live.content_mask.clone()]);
+        let opacity = mem::replace(&mut self.element_opacity, live.opacity);
+        let rounded = mem::replace(&mut self.rounded_clip_stack, live.rounded.clone());
+        (live.paint)(self, cx);
+        self.content_mask_stack = masks;
+        self.element_opacity = opacity;
+        self.rounded_clip_stack = rounded;
+        self.next_frame.scene.end_live();
     }
 
     /// Push a text style onto the stack, and call a function with that style active.

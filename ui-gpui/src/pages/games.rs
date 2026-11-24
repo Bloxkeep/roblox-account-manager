@@ -405,15 +405,18 @@ fn live_part(root: &Root, cx: &mut Context<Root>) -> Option<AnyElement> {
         .child(mark)
         .child(words)
         .when(l.busy, |d| {
-            // (Going: three dots that breathe in turn.)
+            // (Going: three dots that breathe in turn, each 0.9 s, in the motion layer (motion.rs): their frames draw
+            // the window again, not the page. Still at 0.6 while the window is behind.)
             d.child(div().flex().gap(px(3.)).children((0..3).map(|k| {
-                let dot = div().size(px(4.)).rounded_full().bg(c(TEXT_2));
                 if !looping() {
-                    return dot.opacity(0.6).into_any_element();
+                    return div().size(px(4.)).rounded_full().bg(c(TEXT_2)).opacity(0.6).into_any_element();
                 }
-                dot.with_animation(("live-dot", k as usize), Animation::new(std::time::Duration::from_millis(900)).repeat().with_max_fps(60.), move |d, t| {
-                    let p = ((t + k as f32 / 3.) % 1.) * std::f32::consts::TAU;
-                    d.opacity(0.25 + 0.75 * (0.5 + 0.5 * p.sin()))
+                crate::motion::spot(4., 4., move |b, t, window, _| {
+                    let seen = t.map_or(0.6, |t| {
+                        let p = (((t / 0.9).fract() + k as f32 / 3.) % 1.) * std::f32::consts::TAU;
+                        0.25 + 0.75 * (0.5 + 0.5 * p.sin())
+                    });
+                    crate::motion::fill_round(window, b, 2., c(TEXT_2).opacity(seen));
                 })
                 .into_any_element()
             })))
