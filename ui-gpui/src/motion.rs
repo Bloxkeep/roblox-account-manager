@@ -36,9 +36,6 @@ struct Place {
     rounded: Vec<(Bounds<Pixels>, Corners<Pixels>)>,
     hitbox: HitboxId,
     paint: Paint,
-    /// Moves on the shared clock (the layer asks for its frames); false: moved on by what asks for frames for the
-    /// rest (the marquee's words, kit.rs).
-    clocked: bool,
     /// The part of the app it was painted in (shell/parts.rs): kept while that part is, cleared when it is painted
     /// anew. None: painted outside the parts (a dialog), anew at every frame, so it is drawn once and dropped.
     owner: Option<EntityId>,
@@ -88,12 +85,12 @@ pub fn redraw_main(cx: &mut App) {
 
 /// A place `w` × `h` whose motion `paint` draws (see `Paint`).
 pub fn spot(w: f32, h: f32, paint: impl Fn(Bounds<Pixels>, Option<f32>, &mut Window, &mut App) + 'static) -> Div {
-    div().w(px(w)).h(px(h)).flex_none().child(placed(Rc::new(paint), true))
+    div().w(px(w)).h(px(h)).flex_none().child(placed(Rc::new(paint)))
 }
 
-/// A place filling its box, drawn by the layer whenever the window is drawn but not moved on by its clock.
+/// A place filling its box, whose motion `paint` draws (see `Paint`).
 pub fn place(paint: impl Fn(Bounds<Pixels>, Option<f32>, &mut Window, &mut App) + 'static) -> Div {
-    div().size_full().child(placed(Rc::new(paint), false))
+    div().size_full().child(placed(Rc::new(paint)))
 }
 
 /// A box whose `paint` paints it where it lies, in the order of what is painted round it in its part (what lies over
@@ -134,7 +131,7 @@ fn ask_step(window: &Window, cx: &mut App) {
     });
 }
 
-fn placed(paint: Paint, clocked: bool) -> impl IntoElement {
+fn placed(paint: Paint) -> impl IntoElement {
     {
         canvas(
             |bounds, window, _| window.insert_hitbox(bounds, HitboxBehavior::Normal),
@@ -149,7 +146,7 @@ fn placed(paint: Paint, clocked: bool) -> impl IntoElement {
                     paint(bounds, now(cx), window, cx);
                     return;
                 }
-                let place = Place { bounds, mask: window.content_mask(), opacity: window.element_opacity(), rounded: window.rounded_clips(), hitbox: hitbox.id, paint: paint.clone(), clocked, owner: crate::shell::parts::owner(window) };
+                let place = Place { bounds, mask: window.content_mask(), opacity: window.element_opacity(), rounded: window.rounded_clips(), hitbox: hitbox.id, paint: paint.clone(), owner: crate::shell::parts::owner(window) };
                 PLACES.with(|p| p.borrow_mut().push(place));
             },
         )
@@ -165,7 +162,6 @@ pub fn layer() -> impl IntoElement {
             let t = now(cx);
             let moving = t.is_some();
             let places: Vec<_> = PLACES.with(|p| p.borrow().iter().map(|p| (p.bounds, p.mask.clone(), p.opacity, p.rounded.clone(), p.hitbox, p.paint.clone())).collect());
-            let clocked = PLACES.with(|p| p.borrow().iter().any(|p| p.clocked));
             for (bounds, mask, opacity, rounded, hitbox, paint) in &places {
                 if !window.hitbox_reached(*hitbox, bounds.center()) {
                     continue;
@@ -176,7 +172,9 @@ pub fn layer() -> impl IntoElement {
             }
             // (Those painted outside the parts are painted again before the next frame's layer.)
             PLACES.with(|p| p.borrow_mut().retain(|p| p.owner.is_some()));
-            if moving && clocked {
+            // (Every place moves on the clock, the marquee's words too: they moved only while another place asked
+            // for frames, so with nothing else moving (a paused song's bars stand low) they stood still.)
+            if moving && !places.is_empty() {
                 ask_step(window, cx);
             }
         },
