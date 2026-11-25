@@ -1243,6 +1243,8 @@ pub struct Window {
     pub(crate) content_mask_stack: Vec<ContentMask<Pixels>>,
     /// Bloxkeep: the rounded boxes with overflow hidden being painted, their masks and corners (`paint_image`).
     pub(crate) rounded_clip_stack: Vec<(Bounds<Pixels>, Corners<Pixels>)>,
+    /// Bloxkeep: the soft edges being painted under now (`with_mask_fade`), innermost last.
+    pub(crate) mask_fade_stack: Vec<MaskFade<Pixels>>,
     pub(crate) requested_autoscroll: Option<Bounds<Pixels>>,
     /// The [`TextInputConfiguration`] most recently forwarded to the platform
     /// window, so that only actual changes are forwarded (reconfiguring a live
@@ -2589,6 +2591,7 @@ impl Window {
             element_offset_stack: Vec::new(),
             content_mask_stack: Vec::new(),
             rounded_clip_stack: Vec::new(),
+            mask_fade_stack: Vec::new(),
             element_opacity: 1.0,
             requested_autoscroll: None,
             last_text_input_configuration: None,
@@ -2678,6 +2681,59 @@ pub struct DispatchEventResult {
 pub struct ContentMask<P: Clone + Debug + Default + PartialEq> {
     /// The bounds
     pub bounds: Bounds<P>,
+}
+
+/// Bloxkeep: a mask's soft top and bottom edges. What is painted under them goes from clear at `top` to whole
+/// `top_len` further down, and from whole to clear over the `bottom_len` above `bottom` (window coordinates; a length
+/// of 0: that edge is hard). Every kind of primitive is faded alike by the renderer, so text, pictures, grounds and
+/// video leave a scrolled box together, whatever lies behind it (a colour laid over the edge only works on a plain
+/// ground of that colour). Kept beside the content mask, not in it: other crates make a ContentMask by its fields.
+#[derive(Copy, Clone, Debug, Default, PartialEq)]
+#[repr(C)]
+pub struct MaskFade<P: Clone + Debug + Default + PartialEq> {
+    /// Where the top edge is clear.
+    pub top: P,
+    /// How far down from there it is whole.
+    pub top_len: P,
+    /// Where the bottom edge is clear.
+    pub bottom: P,
+    /// How far up from there it is whole.
+    pub bottom_len: P,
+}
+
+impl MaskFade<Pixels> {
+    /// Scale by the given factor.
+    pub fn scale(&self, factor: f32) -> MaskFade<ScaledPixels> {
+        MaskFade {
+            top: self.top.scale(factor),
+            top_len: self.top_len.scale(factor),
+            bottom: self.bottom.scale(factor),
+            bottom_len: self.bottom_len.scale(factor),
+        }
+    }
+
+    /// These edges inside those of `outer`: each edge is the one further in of the two that fade.
+    pub fn within(&self, outer: &Self) -> Self {
+        let mut fade = *self;
+        if outer.top_len > Pixels::ZERO && (fade.top_len <= Pixels::ZERO || outer.top > fade.top) {
+            (fade.top, fade.top_len) = (outer.top, outer.top_len);
+        }
+        if outer.bottom_len > Pixels::ZERO && (fade.bottom_len <= Pixels::ZERO || outer.bottom < fade.bottom) {
+            (fade.bottom, fade.bottom_len) = (outer.bottom, outer.bottom_len);
+        }
+        fade
+    }
+}
+
+/// Bloxkeep: the mask a primitive is painted under, as the renderer gets it: the content mask's bounds in device
+/// pixels, and its soft edges (`MaskFade`).
+#[derive(Copy, Clone, Debug, Default, PartialEq)]
+#[repr(C)]
+pub struct PaintMask {
+    /// The bounds
+    pub bounds: Bounds<ScaledPixels>,
+    /// The soft edges
+    pub fade: MaskFade<ScaledPixels>,
 }
 
 impl ContentMask<Pixels> {
@@ -3713,11 +3769,12 @@ impl Window {
 
         let mut paint_span = |start, end| {
             self.next_frame.scene.insert_primitive(Underline {
-                content_mask: ContentMask {
+                content_mask: PaintMask {
                     bounds: Bounds::from_corners(
                         point(start, bounds.top()),
                         point(end, bounds.bottom()),
                     ),
+                    fade: underline.content_mask.fade,
                 },
                 ..underline
             });
@@ -3788,7 +3845,7 @@ impl Window {
     }
 
     #[inline]
-    fn snapped_content_mask(&self) -> ContentMask<ScaledPixels> {
+    fn snapped_content_mask(&self) -> PaintMask {
         // Bloxkeep: an empty mask (an overflow-hidden element wholly outside a scroll area's mask) stays empty. Covered
         // out to whole device pixels it became a 1-pixel row at a fractional scale (150 %), and everything inside such
         // an element leaked that row outside the scroll area: a line of each picture under the palette and the
@@ -3796,12 +3853,14 @@ impl Window {
         let bounds = self.content_mask().bounds;
         if bounds.is_empty() {
             let at = self.cover_bounds(bounds).origin;
-            return ContentMask {
+            return PaintMask {
                 bounds: Bounds { origin: at, size: Size::default() },
+                fade: Default::default(),
             };
         }
-        ContentMask {
+        PaintMask {
             bounds: self.cover_bounds(bounds),
+            fade: self.mask_fade().scale(self.scale_factor()),
         }
     }
 
@@ -4648,6 +4707,7 @@ impl Window {
         let live = std::rc::Rc::new(crate::scene::LivePaint {
             paint,
             content_mask: self.content_mask(),
+            fade: self.mask_fade(),
             opacity: self.element_opacity,
             rounded: self.rounded_clip_stack.clone(),
         });
@@ -4659,7 +4719,9 @@ impl Window {
         let masks = mem::replace(&mut self.content_mask_stack, vec![live.content_mask.clone()]);
         let opacity = mem::replace(&mut self.element_opacity, live.opacity);
         let rounded = mem::replace(&mut self.rounded_clip_stack, live.rounded.clone());
+        let fades = mem::replace(&mut self.mask_fade_stack, vec![live.fade]);
         (live.paint)(self, cx);
+        self.mask_fade_stack = fades;
         self.content_mask_stack = masks;
         self.element_opacity = opacity;
         self.rounded_clip_stack = rounded;
@@ -4741,6 +4803,21 @@ impl Window {
         } else {
             f(self)
         }
+    }
+
+    /// Bloxkeep: what `f` paints is under the soft edges `fade` (inside those it is under already). None: as it is.
+    pub fn with_mask_fade<R>(&mut self, fade: Option<MaskFade<Pixels>>, f: impl FnOnce(&mut Self) -> R) -> R {
+        let Some(fade) = fade else { return f(self) };
+        let fade = fade.within(&self.mask_fade());
+        self.mask_fade_stack.push(fade);
+        let result = f(self);
+        self.mask_fade_stack.pop();
+        result
+    }
+
+    /// Bloxkeep: the soft edges being painted under now (`with_mask_fade`); none by default.
+    pub fn mask_fade(&self) -> MaskFade<Pixels> {
+        self.mask_fade_stack.last().copied().unwrap_or_default()
     }
 
     /// Bloxkeep: `with_content_mask` for a box rounded `radii`: the pictures painted inside are cut to its rounding
@@ -5358,8 +5435,9 @@ impl Window {
             let content_mask_bounds = quad.content_mask.bounds.intersect(&strip);
             if !content_mask_bounds.is_empty() {
                 self.next_frame.scene.insert_primitive(Quad {
-                    content_mask: ContentMask {
+                    content_mask: PaintMask {
                         bounds: content_mask_bounds,
+                        fade: quad.content_mask.fade,
                     },
                     ..quad
                 });
@@ -5377,6 +5455,7 @@ impl Window {
         let content_mask = self.content_mask();
         let opacity = self.element_opacity();
         path.content_mask = content_mask;
+        path.fade = self.mask_fade();
         let color: Background = color.into();
         path.color = color.opacity(opacity);
         self.next_frame

@@ -109,11 +109,12 @@ impl DebugFrameOverlay {
         let panel_left = viewport.width.0 - panel_width - cell * PANEL_MARGIN;
         let panel_top = cell * PANEL_MARGIN;
 
-        let content_mask = ContentMask {
+        let content_mask = crate::PaintMask {
             bounds: Bounds {
                 origin: point(ScaledPixels(0.), ScaledPixels(0.)),
                 size: viewport,
             },
+            fade: Default::default(),
         };
 
         scene.insert_primitive(solid_quad(
@@ -213,7 +214,7 @@ fn scaled_bounds(left: f32, top: f32, width: f32, height: f32) -> Bounds<ScaledP
 
 fn solid_quad(
     bounds: Bounds<ScaledPixels>,
-    content_mask: &ContentMask<ScaledPixels>,
+    content_mask: &crate::PaintMask,
     color: Hsla,
 ) -> Quad {
     Quad {

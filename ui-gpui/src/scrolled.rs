@@ -27,8 +27,15 @@ pub fn body(id: &'static str, body: impl IntoElement) -> Div {
     {
         h.set_offset(point(px(0.), px(-y)));
     }
-    with_bar(id, &h, div().id(id).size_full().overflow_y_scroll().track_scroll(&h).child(body))
+    with_bar(id, &h, div().id(id).size_full().overflow_y_scroll().scroll_fade(px(EDGE)).track_scroll(&h).child(body))
 }
+
+/// How far a scrolling body fades out at an edge it goes on past (`scroll_fade`): its top once scrolled down, under
+/// the bar floating over the page, and its foot while more lies below, over the status bar. Apple's soft scroll edge
+/// (Human Interface Guidelines, Scroll views). A body cut flush there read as a fault, a tab's ring halved under the
+/// Roblox tab's capsule and a row of game names sliced over the status bar; a colour laid over the foot only hid it
+/// on a plain panel, never on a theme's picture or glass.
+pub const EDGE: f32 = 28.;
 
 /// A scrolling element that already has its own handle, put in a box with the bar beside it.
 pub fn with_bar<H: gpui_kit::component::scroll::ScrollbarHandle + Clone>(id: &'static str, h: &H, scroller: impl IntoElement) -> Div {
@@ -37,19 +44,7 @@ pub fn with_bar<H: gpui_kit::component::scroll::ScrollbarHandle + Clone>(id: &'s
         .min_h_0()
         .size_full()
         .relative()
-        // The body runs to the panel's foot and fades out over its last 28 px: a row cut flush against the rounded
-        // edge looked like a scratch (the owner, Profile page, 2026-11-12), and stopping 14 px short left an open strip
-        // under a hard cut that looked cut off too (the Roblox tab, 2026-11-15). A list's own bottom padding is under the
-        // fade at its end, so nothing of it is hidden there.
+        // (The scroller fades at its own edges: `scroll_fade(px(EDGE))` on it.)
         .child(scroller)
-        .child(
-            div()
-                .absolute()
-                .left_0()
-                .right_0()
-                .bottom_0()
-                .h(px(28.))
-                .bg(linear_gradient(180., linear_color_stop(crate::theme::ca(crate::theme::PANEL, 0.), 0.), linear_color_stop(crate::theme::c(crate::theme::PANEL), 1.))),
-        )
         .child(crate::pages::auto::scroll_bar_named(SharedString::from(format!("{id}-bar")), h))
 }

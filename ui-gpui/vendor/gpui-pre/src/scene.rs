@@ -262,6 +262,7 @@ pub(crate) enum PaintOperation {
 pub(crate) struct LivePaint {
     pub(crate) paint: std::rc::Rc<dyn Fn(&mut crate::Window, &mut crate::App)>,
     pub(crate) content_mask: ContentMask<Pixels>,
+    pub(crate) fade: crate::MaskFade<Pixels>,
     pub(crate) opacity: f32,
     pub(crate) rounded: Vec<(Bounds<Pixels>, Corners<Pixels>)>,
 }
@@ -294,11 +295,11 @@ impl Primitive {
         }
     }
 
-    pub fn content_mask(&self) -> &ContentMask<ScaledPixels> {
+    pub fn content_mask(&self) -> &crate::PaintMask {
         match self {
             Primitive::Shadow(shadow) => &shadow.content_mask,
             Primitive::Quad(quad) => &quad.content_mask,
-            Primitive::Path(path) => &path.content_mask,
+            Primitive::Path(path) => &path.paint_mask,
             Primitive::Underline(underline) => &underline.content_mask,
             Primitive::MonochromeSprite(sprite) => &sprite.content_mask,
             Primitive::SubpixelSprite(sprite) => &sprite.content_mask,
@@ -585,7 +586,7 @@ pub struct Quad {
     pub order: DrawOrder,
     pub border_style: BorderStyle,
     pub bounds: Bounds<ScaledPixels>,
-    pub content_mask: ContentMask<ScaledPixels>,
+    pub content_mask: crate::PaintMask,
     pub background: Background,
     pub border_color: Hsla,
     pub corner_radii: Corners<ScaledPixels>,
@@ -605,7 +606,7 @@ pub struct Underline {
     pub order: DrawOrder,
     pub pad: u32, // align to 8 bytes
     pub bounds: Bounds<ScaledPixels>,
-    pub content_mask: ContentMask<ScaledPixels>,
+    pub content_mask: crate::PaintMask,
     pub color: Hsla,
     pub thickness: ScaledPixels,
     pub wavy: PaddedBool32,
@@ -625,7 +626,7 @@ pub struct Shadow {
     pub blur_radius: ScaledPixels,
     pub bounds: Bounds<ScaledPixels>,
     pub corner_radii: Corners<ScaledPixels>,
-    pub content_mask: ContentMask<ScaledPixels>,
+    pub content_mask: crate::PaintMask,
     pub color: Hsla,
     pub element_bounds: Bounds<ScaledPixels>,
     pub element_corner_radii: Corners<ScaledPixels>,
@@ -762,7 +763,7 @@ pub struct MonochromeSprite {
     pub pad: u32,
     pub tile: AtlasTile,
     pub bounds: Bounds<ScaledPixels>,
-    pub content_mask: ContentMask<ScaledPixels>,
+    pub content_mask: crate::PaintMask,
     pub color: Hsla,
     pub transformation: TransformationMatrix,
 }
@@ -781,7 +782,7 @@ pub struct SubpixelSprite {
     pub pad: u32, // align to 8 bytes
     pub tile: AtlasTile,
     pub bounds: Bounds<ScaledPixels>,
-    pub content_mask: ContentMask<ScaledPixels>,
+    pub content_mask: crate::PaintMask,
     pub color: Hsla,
     pub transformation: TransformationMatrix,
 }
@@ -802,7 +803,7 @@ pub struct PolychromeSprite {
     pub grayscale: PaddedBool32,
     pub opacity: f32,
     pub bounds: Bounds<ScaledPixels>,
-    pub content_mask: ContentMask<ScaledPixels>,
+    pub content_mask: crate::PaintMask,
     pub corner_radii: Corners<ScaledPixels>,
 }
 
@@ -817,7 +818,7 @@ impl From<PolychromeSprite> for Primitive {
 pub struct PaintSurface {
     pub order: DrawOrder,
     pub bounds: Bounds<ScaledPixels>,
-    pub content_mask: ContentMask<ScaledPixels>,
+    pub content_mask: crate::PaintMask,
     #[cfg(any(target_os = "macos", target_os = "ios"))]
     pub image_buffer: objc2_core_foundation::CFRetained<objc2_core_video::CVPixelBuffer>,
     /// (Bloxkeep, 2026-11-18) A Direct3D 11 texture another device in this process fills: its shared handle
@@ -850,6 +851,10 @@ pub struct Path<P: Clone + Debug + Default + PartialEq> {
     pub order: DrawOrder,
     pub bounds: Bounds<P>,
     pub content_mask: ContentMask<P>,
+    /// Bloxkeep: the mask it is painted under (set as it is scaled: its content mask and soft edges).
+    pub paint_mask: crate::PaintMask,
+    /// Bloxkeep: its soft edges (`MaskFade`).
+    pub fade: crate::MaskFade<P>,
     pub vertices: Vec<PathVertex<P>>,
     pub color: Background,
     start: Point<P>,
@@ -871,6 +876,8 @@ impl Path<Pixels> {
                 size: Default::default(),
             },
             content_mask: Default::default(),
+            paint_mask: Default::default(),
+            fade: Default::default(),
             color: Default::default(),
             contour_count: 0,
         }
@@ -883,6 +890,8 @@ impl Path<Pixels> {
             order: self.order,
             bounds: self.bounds.scale(factor),
             content_mask: self.content_mask.scale(factor),
+            paint_mask: crate::PaintMask { bounds: self.content_mask.scale(factor).bounds, fade: self.fade.scale(factor) },
+            fade: self.fade.scale(factor),
             vertices: self
                 .vertices
                 .iter()

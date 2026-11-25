@@ -1610,6 +1610,15 @@ pub trait StatefulInteractiveElement: InteractiveElement {
         self
     }
 
+    /// Bloxkeep: what scrolls up and down in this element fades out over `length` at an edge it goes on past (the
+    /// top once scrolled down, the bottom while more lies below), instead of being cut flush there: the scroll edge
+    /// of Apple's guidelines (Scroll views, Scroll edge effects, the soft style) for content that runs under bars
+    /// floating over it. The fade grows with the first pixels scrolled, so it never jumps in. See `MaskFade`.
+    fn scroll_fade(mut self, length: Pixels) -> Self {
+        self.interactivity().scroll_fade = Some(length);
+        self
+    }
+
     /// Track the scroll state of this element with the given handle.
     fn anchor_scroll(mut self, scroll_anchor: Option<ScrollAnchor>) -> Self {
         self.interactivity().scroll_anchor = scroll_anchor;
@@ -2208,6 +2217,9 @@ pub struct Interactivity {
     pub(crate) tracked_scroll_handle: Option<ScrollHandle>,
     pub(crate) scroll_anchor: Option<ScrollAnchor>,
     pub(crate) scroll_offset: Option<Rc<RefCell<Point<Pixels>>>>,
+    /// Bloxkeep: the length of its scroll edges' fade (`scroll_fade`), and how far it can scroll, as last clamped.
+    pub(crate) scroll_fade: Option<Pixels>,
+    pub(crate) scroll_max: std::cell::Cell<Point<Pixels>>,
     pub(crate) ongoing_scroll: Option<Rc<RefCell<OngoingScroll>>>,
     pub(crate) group: Option<SharedString>,
     /// The base style of the element, before any modifications are applied
@@ -2449,23 +2461,23 @@ impl Interactivity {
                 }
 
                 window.with_text_style(style.text_style().cloned(), |window| {
-                    window.with_content_mask(
-                        style.overflow_mask(bounds, window.rem_size(), window.scale_factor()),
-                        |window| {
-                            let hitbox = if self.should_insert_hitbox(&style, window, cx) {
-                                Some(window.insert_hitbox(bounds, self.hitbox_behavior))
-                            } else {
-                                None
-                            };
+                    // (Bloxkeep: clamped before the mask is made, which fades by how far it is scrolled. The same
+                    // mask as paint's: a cached view inside is painted again when the fade changes.)
+                    let scroll_offset = self.clamp_scroll_position(bounds, &style, window, cx);
+                    let mask = style.overflow_mask(bounds, window.rem_size(), window.scale_factor());
+                    let fade = self.scroll_edges(mask.as_ref());
+                    window.with_content_mask(mask, |window| {
+                        let hitbox = if self.should_insert_hitbox(&style, window, cx) {
+                            Some(window.insert_hitbox(bounds, self.hitbox_behavior))
+                        } else {
+                            None
+                        };
 
-                            let scroll_offset =
-                                self.clamp_scroll_position(bounds, &style, window, cx);
-                            let result = window.with_element_opacity(style.opacity, |window| {
-                                f(&style, scroll_offset, hitbox, window, cx)
-                            });
-                            (result, element_state)
-                        },
-                    )
+                        let result = window.with_mask_fade(fade, |window| {
+                            window.with_element_opacity(style.opacity, |window| f(&style, scroll_offset, hitbox, window, cx))
+                        });
+                        (result, element_state)
+                    })
                 })
             },
         )
@@ -2497,6 +2509,25 @@ impl Interactivity {
             || !self.drag_over_styles.is_empty()
             || self.tooltip_builder.is_some()
             || window.is_inspector_picking(cx)
+    }
+
+    /// Bloxkeep: the soft edges of what scrolls in the overflow mask `mask` (`scroll_fade`): the top by how far it is
+    /// scrolled down, the bottom by how much more lies below, each up to the length asked for. None: hard edges.
+    fn scroll_edges(&self, mask: Option<&crate::ContentMask<Pixels>>) -> Option<crate::MaskFade<Pixels>> {
+        let (Some(mask), Some(length), Some(offset)) = (mask, self.scroll_fade, self.scroll_offset.as_ref()) else {
+            return None;
+        };
+        let offset = offset.borrow().y;
+        let top = length.min(-offset);
+        let bottom = length.min(self.scroll_max.get().y + offset);
+        let mut fade = crate::MaskFade::default();
+        if top > px(0.5) {
+            (fade.top, fade.top_len) = (mask.bounds.top(), top);
+        }
+        if bottom > px(0.5) {
+            (fade.bottom, fade.bottom_len) = (mask.bounds.bottom(), bottom);
+        }
+        (fade != crate::MaskFade::default()).then_some(fade)
     }
 
     fn clamp_scroll_position(
@@ -2557,6 +2588,7 @@ impl Interactivity {
                 scroll_handle_state.max_offset = scroll_max;
                 scroll_handle_state.bounds = bounds;
             }
+            self.scroll_max.set(scroll_max);
 
             *scroll_offset
         } else {
@@ -2612,8 +2644,11 @@ impl Interactivity {
                 window.with_element_opacity(style.opacity, |window| {
                     style.paint(bounds, window, cx, |window: &mut Window, cx: &mut App| {
                         window.with_text_style(style.text_style().cloned(), |window| {
-                            window.with_rounded_content_mask(
-                                style.overflow_mask(bounds, window.rem_size(), window.scale_factor()),
+                            // (Bloxkeep: what scrolls in it fades at its scroll edges: `scroll_fade`.)
+                            let mask = style.overflow_mask(bounds, window.rem_size(), window.scale_factor());
+                            let fade = self.scroll_edges(mask.as_ref());
+                            window.with_mask_fade(fade, |window| window.with_rounded_content_mask(
+                                mask,
                                 style.corner_radii.to_pixels(window.rem_size()),
                                 |window| {
                                     window.with_tab_group(tab_group, |window| {
@@ -2697,7 +2732,7 @@ impl Interactivity {
                                         }
                                     })
                                 },
-                            );
+                            ));
                         });
                     });
                 });

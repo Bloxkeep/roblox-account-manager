@@ -691,6 +691,7 @@ impl DirectXRenderer {
                 st_position: v.st_position,
                 color: path.color,
                 bounds: path.clipped_bounds(),
+                fade: path.fade,
             }));
         }
 
@@ -1383,6 +1384,8 @@ struct PathRasterizationSprite {
     st_position: Point<f32>,
     color: Background,
     bounds: Bounds<ScaledPixels>,
+    /// (Bloxkeep) The path's mask's soft edges (MaskFade).
+    fade: gpui::MaskFade<ScaledPixels>,
 }
 
 #[derive(Clone, Copy)]

@@ -330,6 +330,8 @@ struct ViewElementState {
 struct ViewElementCacheKey {
     bounds: Bounds<Pixels>,
     content_mask: ContentMask<Pixels>,
+    /// (Bloxkeep) The soft edges it lies under: painted again when they change.
+    fade: crate::MaskFade<Pixels>,
     text_style: TextStyle,
     opacity: f32,
 }
@@ -542,6 +544,7 @@ fn prepaint_view(
             global_id.unwrap(),
             |element_state, window| {
                 let content_mask = window.content_mask();
+                let fade = window.mask_fade();
                 let text_style = window.text_style();
                 let opacity = window.element_opacity();
 
@@ -550,6 +553,7 @@ fn prepaint_view(
                 if let Some(mut element_state) = element_state
                     && element_state.cache_key.bounds == bounds
                     && element_state.cache_key.content_mask == content_mask
+                    && element_state.cache_key.fade == fade
                     && element_state.cache_key.text_style == text_style
                     && element_state.cache_key.opacity.to_bits() == opacity.to_bits()
                     && !window.dirty_views.contains(&entity_id)
@@ -587,6 +591,7 @@ fn prepaint_view(
                         cache_key: ViewElementCacheKey {
                             bounds,
                             content_mask,
+                            fade,
                             text_style,
                             opacity,
                         },

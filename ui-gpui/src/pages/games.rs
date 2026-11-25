@@ -4620,7 +4620,7 @@ fn page(root: &Root, all: &[Game], open: Open, width: f32, cx: &mut Context<Root
     {
         root.games.page_scroll.set_offset(point(px(0.), px(-y)));
     }
-    crate::scrolled::with_bar("game-page", &root.games.page_scroll, div().id("game-page").size_full().overflow_y_scroll().track_scroll(&root.games.page_scroll).child(
+    crate::scrolled::with_bar("game-page", &root.games.page_scroll, div().id("game-page").size_full().overflow_y_scroll().scroll_fade(px(crate::scrolled::EDGE)).track_scroll(&root.games.page_scroll).child(
         div()
             .flex()
             .flex_col()
