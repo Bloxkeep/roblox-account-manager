@@ -388,6 +388,23 @@ impl Pen<'_> {
             self.w.paint_path(path, col(hex, a));
         }
     }
+    /// Many four-cornered shapes as one (a ring of bars: one path, one draw).
+    pub(crate) fn quads(&mut self, quads: &[[(f32, f32); 4]], hex: u32, a: f32) {
+        if quads.is_empty() || a <= 0.01 {
+            return;
+        }
+        let mut p = PathBuilder::fill();
+        for q in quads {
+            p.move_to(self.at(q[0].0, q[0].1));
+            for &(x, y) in &q[1..] {
+                p.line_to(self.at(x, y));
+            }
+            p.close();
+        }
+        if let Ok(path) = p.build() {
+            self.w.paint_path(path, col(hex, a));
+        }
+    }
     /// A picture, centred on x, y, `s` across, turned by `rot` (the pictures that turn), seen at `a`, squashed to
     /// `sx`, `sy` of itself (a wing's beat, a leaf's turn).
     pub(crate) fn spr(&mut self, name: &'static str, x: f32, y: f32, s: f32, rot: f32, a: f32, sx: f32, sy: f32) {
@@ -1616,8 +1633,13 @@ pub fn clock(id: &'static str) -> AnyElement {
 // one made after them): round the picture, the bass's curve as filled rings, one over another, each colour a step
 // later and reaching further when the bass is strong, so the colours trail behind the white; the picture swells with
 // the bass and everything shakes with it; sparks fly out from the picture toward the eye, faster as the bass hits.
-// The colours come from the song's cover. All shapes, nothing kept but the last 7 curves and the sparks; `power` from
-// 0.45 (light) to 1 (strong).
+// The colours come from the song's cover. With them, from osu!'s main menu (ppy/osu, MIT): thin white bars all round
+// the picture, the song's bands read anew every 50 ms a few bars further on (so they run round) and sinking a little
+// each frame; light from the banner's sides at the beats; and in a loud part (a chorus, a drop: osu!'s kiai) all of it
+// stronger, the sides taking turns at each beat and the picture flashing white. And from the Monstercat videos (the
+// open Rainmeter one, marcopixel/Monstercat-Visualizer): a row of 63 bars standing on the banner's foot, each the
+// mean of its band and the two beside it. All shapes, nothing kept but the last 7 curves, 200 bar heights and the
+// sparks; `power` from 0.45 (light) to 1 (strong).
 
 use std::collections::VecDeque;
 
@@ -1648,6 +1670,39 @@ struct Pulse {
     banner_last: f32,
     shake: (f32, f32, f32, f32, f32, bool, bool),
     shake_last: f32,
+    osu: Vec<f32>,
+    osu_read: f32,
+    osu_at: usize,
+    osu_last: f32,
+}
+
+/// osu!'s ring: 200 bars a round, drawn 3 times round (osu! draws 5), a round 72 degrees on from the last.
+const OSU_BARS: usize = 200;
+const OSU_ROUNDS: usize = 3;
+
+/// How strongly a beat lights up now (osu!'s timing): up in 65 ms, then down over the time between beats, slow first.
+fn beat_light(b: &crate::beat::Beat) -> f32 {
+    if b.since < 0.065 {
+        b.since / 0.065
+    } else {
+        let u = ((b.since - 0.065) / b.gap.max(0.25)).min(1.);
+        1. - u * u
+    }
+}
+
+/// A band's height between the bands (`u` 0 to 1, low to high), made to start from nothing: the bands fill their
+/// range (a quiet band is still near 0.25), osu!'s and Monstercat's bars start at silence.
+fn band_at(b: &crate::beat::Beat, u: f32) -> f32 {
+    use crate::beat::BANDS;
+    let x = u.clamp(0., 1.) * (BANDS - 1) as f32;
+    let (k, f) = (x.floor() as usize, x.fract());
+    let v = b.bands[k] * (1. - f) + b.bands[(k + 1).min(BANDS - 1)] * f;
+    ((v - 0.25) / 0.75).max(0.)
+}
+
+/// How white the picture flashes now: in a loud part, at each beat, up to a fifth (osu!'s logo in kiai).
+pub fn picture_flash(b: crate::beat::Beat, power: f32) -> f32 {
+    0.2 * (0.4 + b.level).min(1.) * beat_light(&b) * b.drop * power
 }
 
 thread_local! {
@@ -1693,6 +1748,47 @@ pub fn pulse_ring(b: crate::beat::Beat, hex: u32, power: f32, r: f32) -> AnyElem
             }
             let tones = ring_tones(hex);
             p.glow(0., 0., r * (1.8 + 0.6 * b.punch * power), hex, (0.2 + 0.45 * b.punch * power).min(0.65));
+            // osu!'s bars: each holds the highest it was given, read every 50 ms (5 bars on each time), and sinks
+            // 0.24 % of itself (and a little more) each ms; in a loud part they are read at full height, else half.
+            if s.osu.len() != OSU_BARS {
+                s.osu = vec![0.; OSU_BARS];
+            }
+            let ms = (t - s.osu_last).clamp(0., 0.1) * 1000.;
+            s.osu_last = t;
+            if t - s.osu_read >= 0.05 || t < s.osu_read {
+                s.osu_read = t;
+                let mult = 0.5 + 0.5 * b.drop;
+                let at = s.osu_at;
+                for i in 0..OSU_BARS {
+                    let v = band_at(&b, ((i + at) % OSU_BARS) as f32 / OSU_BARS as f32) * mult;
+                    if v > s.osu[i] {
+                        s.osu[i] = v;
+                    }
+                }
+                s.osu_at = (at + 5) % OSU_BARS;
+            }
+            for a in s.osu.iter_mut() {
+                *a = (*a - ms * 0.0024 * (*a + 0.03)).max(0.);
+            }
+            let half = r * (2. * (1. - (TAU / OSU_BARS as f32).cos())).sqrt() / 2.;
+            let mut bars = Vec::with_capacity(OSU_BARS * OSU_ROUNDS);
+            for j in 0..OSU_ROUNDS {
+                for (i, &a) in s.osu.iter().enumerate() {
+                    let len = (r * 2.5 * a * power).min(r * 1.6);
+                    if len < 1. {
+                        continue;
+                    }
+                    let th = TAU * (i as f32 / OSU_BARS as f32 + j as f32 / 5.) - PI / 2.;
+                    let (c, sn) = (th.cos(), th.sin());
+                    let (nx, ny) = (-sn * half, c * half);
+                    let (r1, r2) = (r, r + len);
+                    bars.push([(c * r1 + nx, sn * r1 + ny), (c * r2 + nx, sn * r2 + ny), (c * r2 - nx, sn * r2 - ny), (c * r1 - nx, sn * r1 - ny)]);
+                }
+            }
+            // (White, stronger than osu!'s fifth: osu! adds its light and Bloxkeep lays it over; the ring at half, up to 0.9
+            // at a beat in a loud part.)
+            let ring_a = 0.5 + b.drop * ((0.9 * (0.4 + b.level).min(1.)) - 0.5).max(0.) * beat_light(&b);
+            p.quads(&bars, 0xffffff, 0.35 * ring_a * (0.5 + 0.5 * power));
             for layer in (0..REACH.len()).rev() {
                 let Some(curve) = s.curves.get(layer).or(s.curves.back()) else { continue };
                 let m = SMOOTH[layer];
@@ -1728,7 +1824,7 @@ pub fn pulse_ring(b: crate::beat::Beat, hex: u32, power: f32, r: f32) -> AnyElem
 
 /// The song over the banner: sparks flying out from the picture (at `from`, in the banner) toward the eye, and a flash of
 /// the cover's colour at each beat.
-pub fn pulse_banner(b: crate::beat::Beat, hex: u32, power: f32, from: (f32, f32)) -> AnyElement {
+pub fn pulse_banner(b: crate::beat::Beat, hex: u32, power: f32, from: (f32, f32), pic_r: f32) -> AnyElement {
     canvas(|_, _, _| {}, move |bounds: Bounds<Pixels>, _, window, cx| {
         let (w, h) = (f32::from(bounds.size.width), f32::from(bounds.size.height));
         let k = (h / 290.).clamp(0.55, 1.2);
@@ -1746,7 +1842,39 @@ pub fn pulse_banner(b: crate::beat::Beat, hex: u32, power: f32, from: (f32, f32)
                 }
                 s.sparks.truncate(n);
                 p.glow(from.0, from.1, w * 0.35, hex, 0.3 * b.punch * power);
-                p.rect(0., 0., w, h, hex, 0.1 * b.kick * power);
+                // osu!'s side lights: a fifth of the width, the edge at 0.6; as strong as the bass (from a tenth);
+                // both sides at the first beat of each four, or in a loud part one side each beat, in turn.
+                let loud = b.drop > 0.5;
+                let div = if loud { (1. - 0.25 * 0.95) / 0.8 } else { (1. - 0.25) / 0.55 };
+                let side = (0.1 + (b.bass - 0.25) / div).clamp(0.1, 1.) * beat_light(&b) * power;
+                let (left, right) = if loud { (b.beats % 2 == 0, b.beats % 2 == 1) } else { (b.beats % 4 == 0, b.beats % 4 == 0) };
+                let fw = w * 0.2;
+                if left {
+                    p.grad(0., 0., fw, h, 90., (hex, 0.6 * side), (hex, 0.));
+                }
+                if right {
+                    p.grad(w - fw, 0., fw, h, 90., (hex, 0.), (hex, 0.6 * side));
+                }
+                // Monstercat's row: 63 bars, 18 wide to a gap of 7, from past the picture to the banner's right, on
+                // its foot; each the mean of its band and the two beside it, 1 % at least; a soft shadow under.
+                let (x0, x1) = (from.0 + pic_r + 28. * k, w - 28. * k);
+                if x1 - x0 > 120. {
+                    const CAT: usize = 63;
+                    let unit = (x1 - x0) / (CAT as f32 * 25. - 7.);
+                    let raw: Vec<f32> = (0..CAT).map(|i| band_at(&b, i as f32 / (CAT - 1) as f32)).collect();
+                    let tall = h * 0.3 * power;
+                    let mut row = Vec::with_capacity(CAT);
+                    for i in 0..CAT {
+                        let (a, z) = (i.saturating_sub(1), (i + 1).min(CAT - 1));
+                        let v = 0.01 + (raw[a] + raw[i] + raw[z]) / 3.;
+                        let (x, bh) = (x0 + i as f32 * 25. * unit, (v * tall).max(2.));
+                        let bw = 18. * unit;
+                        row.push([(x, h - bh), (x + bw, h - bh), (x + bw, h), (x, h)]);
+                    }
+                    let shade: Vec<[(f32, f32); 4]> = row.iter().map(|q| q.map(|(x, y)| (x + 2., y + 2.))).collect();
+                    p.quads(&shade, 0x000000, 0.25);
+                    p.quads(&row, mix(hex, 0xffffff, 0.35), 0.9);
+                }
                 let light = mix(hex, 0xffffff, 0.6);
                 for sp in &mut s.sparks {
                     // Out from the middle and toward the eye (x and depth move together), at the bass's speed, with a

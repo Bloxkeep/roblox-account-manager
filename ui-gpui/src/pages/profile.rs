@@ -1338,6 +1338,7 @@ fn filled(root: &Root, p: &Profile, user: i64, width: f32, own: bool, cx: &mut C
     let (sx, sy) = beat_now.map_or((0., 0.), |(b, _, power)| deco::shake(b.punch, power));
     let shake = beat_now.map(|(b, _, power)| (5. + 16. * b.punch * power, sx, sy));
     let grow = beat_now.map_or(0., |(b, _, power)| avatar_size * 0.14 * b.punch * power);
+    let flash = beat_now.map_or(0., |(b, _, power)| deco::picture_flash(b, power));
     let shaken = move |el: AnyElement| match shake {
         Some((z, sx, sy)) => div().absolute().left(px(-z + sx)).right(px(-z - sx)).top(px(-z * 0.6 + sy)).bottom(px(-z * 0.6 - sy)).child(el).into_any_element(),
         None => el,
@@ -1503,7 +1504,7 @@ fn filled(root: &Root, p: &Profile, user: i64, width: f32, own: bool, cx: &mut C
             .when_some(banner_gif, |d, path| d.child(shaken(img(std::path::PathBuf::from(path)).size_full().object_fit(ObjectFit::Cover).into_any_element())))
             .when(!tiles.is_empty(), |d| d.child(div().absolute().inset_0().flex().justify_end().gap(px(2.)).children(tiles)))
             .when(deco_theme != "none", |d| d.child(deco::theme("pf-deco-banner", deco_theme, 0.)))
-            .when_some(beat_now, |d, (b, hex, power)| d.child(deco::pulse_banner(b, hex, power, (22. + avatar_size / 2. + sx, banner_h - avatar_size * 0.1 + sy))))
+            .when_some(beat_now, |d, (b, hex, power)| d.child(deco::pulse_banner(b, hex, power, (22. + avatar_size / 2. + sx, banner_h - avatar_size * 0.1 + sy), (avatar_size + grow) / 2.)))
             .when(deco_theme != "none" || deco_ring != "none" || deco_open || beat_now.is_some(), |d| d.child(deco::clock("pf-deco-clock")))
             .when(own, |d| d.child(div().absolute().right(px(12.)).top(px(12.)).flex().gap(px(6.))
                 .when(can_move && !moving, |d| d.child(IconButton::new("pf-move-banner", "grip").glass().tip(root.tr("pf.media.move"))
@@ -1549,7 +1550,8 @@ fn filled(root: &Root, p: &Profile, user: i64, width: f32, own: bool, cx: &mut C
                 .overflow_hidden()
                 // (GPUI cuts children to the box, not to its round corners: the picture is rounded itself.)
                 .when_some(own_face.clone(), |d, path| d.child(img(std::path::PathBuf::from(path)).size_full().rounded_full().object_fit(ObjectFit::Cover)))
-                .when_some(face.filter(|_| own_face.is_none()), |d, (src, key)| d.child(fade_in(img(src).size_full().rounded_full().object_fit(ObjectFit::Cover), &key))),
+                .when_some(face.filter(|_| own_face.is_none()), |d, (src, key)| d.child(fade_in(img(src).size_full().rounded_full().object_fit(ObjectFit::Cover), &key)))
+                .when(flash > 0.01, |d| d.child(div().absolute().inset_0().rounded_full().bg(hsla(0., 0., 1., flash)))),
         )
         .when(deco_ring != "none", |d| d.child(ring_box(deco_ring, banner_h, avatar_size, true, (sx, sy))))
         .children(bubble(root, user, own, banner_h, avatar_size, cx));

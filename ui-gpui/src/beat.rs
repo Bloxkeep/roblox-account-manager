@@ -35,11 +35,17 @@ pub struct Beat {
     pub level: f32,
     /// 1 at a beat (a kick of the bass), falling to 0 in about a third of a second.
     pub kick: f32,
-    /// The beats counted so far: a new one starts a burst.
+    /// The beats counted so far: a new one starts a burst (and even and odd ones take turns).
     pub beats: u32,
+    /// Seconds since the last beat, and the time between beats of late (half a second until it is known).
+    pub since: f32,
+    pub gap: f32,
+    /// How far the song is in a loud part (a chorus, a drop: what osu! calls kiai), 0 to 1: louder than its last
+    /// quarter of a minute, eased in and out.
+    pub drop: f32,
 }
 
-const QUIET: Beat = Beat { bands: [0.; BANDS], low: [0.; LOW], punch: 0., bass: 0., mid: 0., high: 0., level: 0., kick: 0., beats: 0 };
+const QUIET: Beat = Beat { bands: [0.; BANDS], low: [0.; LOW], punch: 0., bass: 0., mid: 0., high: 0., level: 0., kick: 0., beats: 0, since: 9., gap: 0.5, drop: 0. };
 
 impl Default for Beat {
     fn default() -> Self {
@@ -59,9 +65,10 @@ struct Shared {
     running: bool,
     out: Beat,
     beat_at: Option<Instant>,
+    gap: f32,
 }
 
-static SHARED: Mutex<Shared> = Mutex::new(Shared { want: None, running: false, out: QUIET, beat_at: None });
+static SHARED: Mutex<Shared> = Mutex::new(Shared { want: None, running: false, out: QUIET, beat_at: None, gap: 0.5 });
 
 /// The song's beat now, from `src`'s sound; asked each frame it is drawn (the reading starts on the first ask and stops
 /// a moment after the last).
@@ -80,7 +87,9 @@ pub fn listen(src: Source) -> Beat {
         }
     }
     let mut b = s.out;
-    b.kick = s.beat_at.map_or(0., |t| (-t.elapsed().as_secs_f32() / 0.16).exp());
+    b.since = s.beat_at.map_or(9., |t| t.elapsed().as_secs_f32());
+    b.kick = (-b.since / 0.16).exp();
+    b.gap = s.gap;
     b
 }
 
@@ -105,7 +114,9 @@ fn made_up() -> Beat {
         *v = ((0.3 + 0.65 * kick) * (1. - u * 0.55) * (0.78 + 0.22 * (t * 5. + i as f32 * 0.45).sin())).clamp(0., 1.);
     }
     let avg = |r: std::ops::Range<usize>| bands[r.clone()].iter().sum::<f32>() / r.len() as f32;
-    Beat { bass: avg(0..6), mid: avg(6..19), high: avg(19..BANDS), level: avg(0..BANDS), kick, beats: (t / period) as u32, bands, punch: punch(&low), low }
+    // (A loud part from the 8th second of each 16.)
+    let drop = if t.rem_euclid(16.) >= 8. { 1. } else { 0. };
+    Beat { bass: avg(0..6), mid: avg(6..19), high: avg(19..BANDS), level: avg(0..BANDS), kick, beats: (t / period) as u32, bands, punch: punch(&low), low, since, gap: period, drop }
 }
 
 /// How hard the bass's curve hits: its mean eased up (a soft bass still shows), 0 to 1.
@@ -131,6 +142,9 @@ struct Ear {
     big_im: Vec<f32>,
     low_peak: f32,
     low_smooth: [f32; LOW],
+    loud_now: f32,
+    loud_long: f32,
+    drop: f32,
 }
 
 const N: usize = 1024;
@@ -150,7 +164,7 @@ impl Ear {
             *e = (a, ((f1 / bin).ceil() as usize).max(a + 1).min(N / 2));
         }
         let big_win = (0..RING).map(|i| 0.5 - 0.5 * (std::f32::consts::TAU * i as f32 / (RING - 1) as f32).cos()).collect();
-        Ear { rate, win, re: vec![0.; N], im: vec![0.; N], edges, peak: 1e-4, smooth: [0.; BANDS], history: [0.; 43], hist_at: 0, last_beat: None, big_win, big_re: vec![0.; RING], big_im: vec![0.; RING], low_peak: 1e-4, low_smooth: [0.; LOW] }
+        Ear { rate, win, re: vec![0.; N], im: vec![0.; N], edges, peak: 1e-4, smooth: [0.; BANDS], history: [0.; 43], hist_at: 0, last_beat: None, big_win, big_re: vec![0.; RING], big_im: vec![0.; RING], low_peak: 1e-4, low_smooth: [0.; LOW], loud_now: -99., loud_long: -99., drop: 0. }
     }
 
     /// One look at the samples (`ring`, RING of them, the oldest at `at`): the bands from the last N, the bass's curve
@@ -167,6 +181,16 @@ impl Ear {
             raw[b] = (a..z).map(|i| mag(i, &self.re, &self.im)).fold(0., f32::max);
         }
         let top = raw.iter().copied().fold(0., f32::max);
+        // A loud part: the song's loudness (before it is made to fill the range below) over a second, against the
+        // last 15 s; 2.5 dB more is a chorus or a drop. Looks come about 90 times a second.
+        let loud = 20. * raw.iter().sum::<f32>().max(1e-9).log10();
+        if self.loud_long < -98. {
+            (self.loud_now, self.loud_long) = (loud, loud);
+        }
+        self.loud_now += (loud - self.loud_now) * 0.02;
+        self.loud_long += (loud - self.loud_long) * 0.0008;
+        let up = if self.loud_now > self.loud_long + 2.5 && top > 1e-3 { 1. } else { 0. };
+        self.drop += (up - self.drop) * if up > self.drop { 0.03 } else { 0.008 };
         // (Loud or quiet, the song fills the range: the loudest band of the last few seconds is the top.)
         self.peak = (self.peak * 0.997).max(top).max(1e-4);
         let mut out = Beat::default();
@@ -204,6 +228,7 @@ impl Ear {
             out.low[p] = (self.low_smooth[a] + self.low_smooth[p] + self.low_smooth[b]) / 3.;
         }
         out.punch = punch(&out.low);
+        out.drop = self.drop;
         let avg = |r: std::ops::Range<usize>| out.bands[r.clone()].iter().sum::<f32>() / r.len() as f32;
         out.bass = avg(0..6);
         out.mid = avg(6..19);
@@ -268,6 +293,7 @@ fn wanted() -> Option<Source> {
             s.running = false;
             s.out = Beat::default();
             s.beat_at = None;
+            s.gap = 0.5;
             None
         }
     }
@@ -278,6 +304,10 @@ fn give(b: Beat, beat: bool) {
     let beats = s.out.beats + u32::from(beat);
     s.out = Beat { beats, ..b };
     if beat {
+        // (The time between beats of late, from ones that come a quarter to one and a half seconds apart.)
+        if let Some(d) = s.beat_at.map(|t| t.elapsed().as_secs_f32()).filter(|d| (0.25..1.5).contains(d)) {
+            s.gap += (d - s.gap) * 0.2;
+        }
         s.beat_at = Some(Instant::now());
     }
 }
