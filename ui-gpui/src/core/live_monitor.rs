@@ -15,6 +15,13 @@ const PORT: u16 = 8790;
 const ROSTER_PORT: u16 = 8793;
 const MAX_IDLE: Duration = Duration::from_secs(15);
 static ENDING: AtomicBool = AtomicBool::new(false);
+/// The page's commands that ended after their answer was given ("working"): (its number, when, what it did), told to
+/// the page with the list of windows for a few minutes.
+static DONE: Mutex<Vec<(u32, std::time::Instant, serde_json::Value)>> = Mutex::new(Vec::new());
+static NEXT_COMMAND: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
+/// How long the page's command is waited for before it is answered "working" (its outcome comes with the list).
+const COMMAND_WAIT: Duration = Duration::from_millis(1500);
+const DONE_KEPT: Duration = Duration::from_secs(5 * 60);
 static ACTIVE: Mutex<Option<Target>> = Mutex::new(None);
 
 #[derive(Clone, Copy)]
@@ -119,6 +126,12 @@ fn serve_roster(mut stream: TcpStream, key: &str, live: &AtomicBool) -> io::Resu
     if !authenticated(&receive(&mut reader)?, key) || !listening(live) {
         return Ok(());
     }
+    // Then what is asked: "roster" (the windows' names, and what the page's commands need), or "do {json}", a
+    // command (remote_page.rs).
+    let ask = receive(&mut reader)?;
+    if let Some(order) = ask.strip_prefix("do ") {
+        return command(&mut stream, order, live);
+    }
 
     let players = players::get_players();
     let (tx, rx) = mpsc::sync_channel(1);
@@ -134,7 +147,12 @@ fn serve_roster(mut stream: TcpStream, key: &str, live: &AtomicBool) -> io::Resu
                     labels.insert(id.clone(), serde_json::Value::String(client.label));
                 }
             }
-            let _ = tx.send(serde_json::json!({ "state": "ready", "labels": labels }));
+            let mut roster = serde_json::json!({ "state": "ready", "labels": labels });
+            if let (Some(all), serde_json::Value::Object(extras)) = (roster.as_object_mut(), app.remote_page_extras(&ids)) {
+                all.extend(extras);
+                all.insert("done".into(), serde_json::Value::Array(done_lately()));
+            }
+            let _ = tx.send(roster);
         } else {
             let _ = tx.send(serde_json::json!({ "state": "locked" }));
         }
@@ -143,6 +161,55 @@ fn serve_roster(mut stream: TcpStream, key: &str, live: &AtomicBool) -> io::Resu
         send(&mut stream, &serde_json::to_vec(&roster)?)?;
     }
     Ok(())
+}
+
+/// The commands that ended lately, each as {id, ...what it did}.
+fn done_lately() -> Vec<serde_json::Value> {
+    let mut done = DONE.lock().unwrap_or_else(|e| e.into_inner());
+    done.retain(|(_, at, _)| at.elapsed() < DONE_KEPT);
+    done.iter()
+        .map(|(id, _, v)| {
+            let mut v = v.clone();
+            if let Some(o) = v.as_object_mut() {
+                o.insert("id".into(), (*id).into());
+            }
+            v
+        })
+        .collect()
+}
+
+/// A command of the page: run on the app's thread, answered with what it did, or "working" when it takes longer
+/// than COMMAND_WAIT (an opening preset, Clean RAM): what it did then comes with the list of windows.
+fn command(stream: &mut TcpStream, order: &str, live: &AtomicBool) -> io::Result<()> {
+    let id = NEXT_COMMAND.fetch_add(1, Ordering::Relaxed);
+    let answer = |stream: &mut TcpStream, mut v: serde_json::Value| {
+        if let Some(o) = v.as_object_mut() {
+            o.insert("id".into(), id.into());
+        }
+        send(stream, &serde_json::to_vec(&v)?)
+    };
+    let Ok(order) = serde_json::from_str::<serde_json::Value>(order) else {
+        return answer(stream, serde_json::json!({ "code": "bad" }));
+    };
+    if !allowed(live) {
+        return answer(stream, serde_json::json!({ "code": "locked" }));
+    }
+    let players = players::get_players();
+    let (tx, rx) = mpsc::sync_channel(1);
+    rt::post(move || App::with(|app| {
+        let app = app.clone();
+        rt::spawn(async move {
+            let did = app.remote_page_do(order, players).await;
+            // (Kept for the list too, whether or not the answer waited for it: one that ends just as the wait
+            // runs out isn't lost. The page shows each command's outcome once.)
+            DONE.lock().unwrap_or_else(|e| e.into_inner()).push((id, std::time::Instant::now(), did.clone()));
+            let _ = tx.try_send(did);
+        });
+    }));
+    match rx.recv_timeout(COMMAND_WAIT) {
+        Ok(did) => answer(stream, did),
+        Err(_) => answer(stream, serde_json::json!({ "code": "working" })),
+    }
 }
 
 fn authenticated(supplied: &str, key: &str) -> bool {

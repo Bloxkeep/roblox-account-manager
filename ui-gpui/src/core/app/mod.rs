@@ -63,6 +63,7 @@ pub mod rejoin;
 pub mod rejoin_place;
 pub mod relaunch;
 pub mod remote;
+pub mod remote_page;
 pub mod roblox_updates;
 pub mod roblox_words;
 pub mod robux;

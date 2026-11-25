@@ -131,6 +131,7 @@ function renderWindows() {
     button.addEventListener('click', () => setSource(item));
     return button;
   }));
+  renderPresets();
   syncSelection();
 }
 
@@ -202,6 +203,7 @@ function renderLanguage() {
   status(statusKey, statusLive);
   renderWindows();
   renderSharp();
+  renderCommandNote();
 }
 
 for (const button of languageButtons) {
@@ -366,6 +368,7 @@ function syncSelection() {
   pause.dataset.does = does;
   element('pause-label').textContent = t(does);
   fullscreenButton.disabled = !source;
+  syncCommands();
   for (const tile of windows.querySelectorAll('.tile')) {
     const item = data?.windows?.find((w) => w.id === tile.dataset.source);
     const pill = tile.querySelector('.pill');
@@ -487,6 +490,7 @@ async function loadWindows() {
     data = await response.json();
     videoView = Boolean(data.video);
     data.windows = data.windows.map((item, index) => ({ ...item, ordinal: index + 1 }));
+    takeDone(data.done);
     for (const [id, thumb] of thumbs) {
       if (data.windows.some((item) => item.id === id)) continue;
       if (thumb.url) URL.revokeObjectURL(thumb.url);
@@ -509,6 +513,152 @@ async function loadWindows() {
     if (data && !thumbTimer) nextThumb(300);
   }
 }
+
+// ── Commands for the PC: Rejoin, Switch server and Close for the chosen window, Clean RAM, and a preset to open ──
+const commandNote = element('command-note');
+const commandButtons = {
+  rejoin: element('cmd-rejoin'), switch: element('cmd-switch'), close: element('cmd-close'), ram: element('cmd-ram'),
+};
+const outcomeWords = {
+  rejoining: 'rejoining', cantRejoin: 'cantRejoin', switching: 'switching', closed: 'closed', noAccount: 'noAccount',
+  noPreset: 'noPreset', presetAsks: 'presetAsks', presetDone: 'presetDone', presetStopped: 'presetStopped',
+  ramCleaned: 'ramCleaned', ramNeedsAuto: 'ramNeedsAuto', ramFailed: 'ramFailed', locked: 'cmdLocked',
+};
+// Commands the app is still doing (it answered "working"): their outcome comes with a later list of windows.
+const pending = new Set();
+const pendingWaits = [2000, 4000, 8000, 15000, 30000, 60000];
+let pendingTimer;
+let pendingStep = 0;
+let sending = false;
+let closeSure;
+let closeSureTimer;
+let noteWords;
+
+function renderCommandNote() {
+  commandNote.hidden = !noteWords;
+  commandNote.textContent = noteWords ? t(...noteWords) : '';
+}
+
+function showOutcome(answer) {
+  const word = outcomeWords[answer?.code];
+  if (word) noteWords = [word, answer];
+  else if (answer?.code === 'failed' && typeof answer.text === 'string' && answer.text) noteWords = ['plain', answer.text];
+  else noteWords = ['cmdFailed'];
+  // A preset that opened only some: the first reason the app gave, after the count.
+  if (answer?.code === 'presetDone' && answer.opened < answer.total && typeof answer.errors?.[0] === 'string') {
+    noteWords = ['plain', `${t('presetDone', answer)} ${answer.errors[0]}`];
+  }
+  renderCommandNote();
+}
+
+function takeDone(done) {
+  for (const outcome of Array.isArray(done) ? done : []) {
+    if (pending.delete(outcome?.id)) showOutcome(outcome);
+  }
+}
+
+function watchPending() {
+  clearTimeout(pendingTimer);
+  if (!pending.size || pendingStep >= pendingWaits.length) {
+    pending.clear();
+    return;
+  }
+  pendingTimer = setTimeout(async () => {
+    pendingStep++;
+    if (!listing) await loadWindows();
+    watchPending();
+  }, pendingWaits[pendingStep]);
+}
+
+function forAccount() {
+  return Boolean(source && source.id !== 'demo' && data?.commands?.includes(source.id));
+}
+
+function syncCommands() {
+  const can = forAccount() && !sending;
+  commandButtons.rejoin.disabled = commandButtons.switch.disabled = commandButtons.close.disabled = !can;
+  commandButtons.ram.disabled = !data || sending;
+  const sure = can && closeSure === source?.id;
+  commandButtons.close.dataset.sure = String(sure);
+  element('close-label').textContent = t(sure ? 'closeSure' : 'close');
+  for (const button of element('presets').querySelectorAll('button')) button.disabled = sending;
+}
+
+function renderPresets() {
+  const presets = Array.isArray(data?.presets) ? data.presets : [];
+  element('presets-block').hidden = !presets.length;
+  element('presets').replaceChildren(...presets.map((preset) => {
+    const button = document.createElement('button');
+    const icon = document.createElement('span');
+    const name = document.createElement('span');
+    button.type = 'button';
+    button.className = 'preset';
+    button.disabled = sending;
+    icon.className = 'action-icon';
+    icon.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.2-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/></svg>';
+    name.className = 'preset-name';
+    name.textContent = preset.name;
+    button.append(icon, name);
+    button.addEventListener('click', () => send({ do: 'preset', preset: preset.id }));
+    return button;
+  }));
+}
+
+async function send(order) {
+  if (sending) return;
+  sending = true;
+  closeSure = undefined;
+  syncCommands();
+  noteWords = ['working'];
+  renderCommandNote();
+  try {
+    const response = await fetch('/api/command', {
+      method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify(order),
+    });
+    if (response.status === 401) {
+      disableSession();
+      return;
+    }
+    if (!response.ok) throw new Error();
+    const answer = await response.json();
+    if (answer?.code === 'working' && answer.id !== undefined) {
+      pending.add(answer.id);
+      pendingStep = 0;
+      watchPending();
+    } else {
+      showOutcome(answer);
+    }
+  } catch {
+    noteWords = ['cmdFailed'];
+    renderCommandNote();
+  } finally {
+    sending = false;
+    syncCommands();
+  }
+  // The list of windows follows what the command did (a window closed, more opened).
+  if (!pending.size) setTimeout(() => { if (!listing && key) loadWindows(); }, 2500);
+}
+
+for (const what of ['rejoin', 'switch']) {
+  commandButtons[what].addEventListener('click', () => {
+    if (forAccount()) send({ do: what, window: source.id });
+  });
+}
+commandButtons.close.addEventListener('click', () => {
+  if (!forAccount()) return;
+  clearTimeout(closeSureTimer);
+  if (closeSure === source.id) {
+    send({ do: 'close', window: source.id });
+    return;
+  }
+  closeSure = source.id;
+  syncCommands();
+  closeSureTimer = setTimeout(() => {
+    closeSure = undefined;
+    syncCommands();
+  }, 4000);
+});
+commandButtons.ram.addEventListener('click', () => send({ do: 'ram' }));
 
 sample.addEventListener('click', () => setSource({ id: 'demo' }));
 refresh.addEventListener('click', loadWindows);

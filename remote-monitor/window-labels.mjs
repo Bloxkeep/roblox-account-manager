@@ -2,15 +2,30 @@ import { createConnection } from 'node:net';
 
 /** Names come from the running, unlocked app. Untracked windows remain unnamed. */
 export function loadRoster(key, connect = createConnection) {
-  if (!key) return Promise.resolve({ state: 'unavailable' });
+  return ask(key, 'roster', 1400, connect).then((roster) => roster ?? { state: 'unavailable' });
+}
+
+/**
+ * A command for the app (Rejoin, Close, a preset…): what it did, or { code: 'working' } when it takes longer (its
+ * outcome then comes with the roster's `done`).
+ */
+export function sendCommand(key, order, connect = createConnection) {
+  const line = 'do ' + JSON.stringify(order);
+  if (Buffer.byteLength(line) > 150) return Promise.resolve({ code: 'bad' });
+  return ask(key, line, 4000, connect).then((answer) => answer ?? { code: 'unavailable' });
+}
+
+// One line asked of the app after the key; one JSON answer back, its length first (4 bytes).
+function ask(key, line, wait, connect) {
+  if (!key) return Promise.resolve(undefined);
   return new Promise((resolve) => {
-    const socket = connect({ host: '127.0.0.1', port: Number(process.env.BK_MONITOR_ROSTER_PORT) }, () => socket.write(key + '\n'));
+    const socket = connect({ host: '127.0.0.1', port: Number(process.env.BK_MONITOR_ROSTER_PORT) }, () => socket.write(key + '\n' + line + '\n'));
     let bytes = Buffer.alloc(0);
-    const finish = (roster) => {
+    const finish = (answer) => {
       socket.destroy();
-      resolve(roster ?? { state: 'unavailable' });
+      resolve(answer);
     };
-    socket.setTimeout(1400, finish);
+    socket.setTimeout(wait, () => finish());
     socket.on('error', () => finish());
     socket.on('close', () => finish());
     socket.on('data', (chunk) => {

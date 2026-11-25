@@ -252,6 +252,31 @@ impl App {
         true
     }
 
+    /// Opens an account's window again into the server it is in (Rejoin from the remote page): a public server by its
+    /// Job ID; a private server, a share link, a follow, or a window not in a game yet, into what it was opened into.
+    /// False when it has no window, or nothing to open it into.
+    pub fn rejoin_now(&self, id: Guid) -> bool {
+        let Some((_, run)) = running(self).into_iter().find(|(i, _)| *i == id) else { return false };
+        let log = self.controller.logs.borrow().state_of(run.0);
+        let public = run.1.target.as_ref().is_some_and(|t| !t.is_private() && t.share_code.is_none() && t.follow.is_none());
+        let here = log.as_ref().filter(|l| public && l.status == "ingame").and_then(|l| Some((l.place_id?, l.job_id.clone().filter(|j| !j.is_empty())?)));
+        let same = here.is_some();
+        let target = match here {
+            Some((place, job)) => GameTarget::new(place, Some(job), None, None),
+            None => match run.1.target.clone() {
+                Some(t) => t,
+                None => return false,
+            },
+        };
+        log::note(&format!("Rejoin from the remote page: window {} opens again ({}).", run.0, if same { "same server" } else { "where it was opened into" }));
+        self.server_hop.hopping.borrow_mut().insert(id, Stamp::utc_now());
+        self.rejoin.join_refused.borrow_mut().retain(|l| !Rc::ptr_eq(l, &run.1));
+        self.presets.restarts.borrow_mut().insert(id, (target, Stamp::utc_now()));
+        self.rejoin.closing_for_rejoin.borrow_mut().insert(run.0);
+        self.close_for_reopen(run.0, self.in_game_now(run.0));
+        true
+    }
+
     /// GameName(placeId) of the C# (renamed: discord_alerts.rs has its own game_name).
     fn hop_game_name(&self, place_id: i64) -> String {
         let name = self.controller.games.borrow().get(&place_id).and_then(|g| g.as_ref().map(|g| g.name.clone()));

@@ -147,6 +147,23 @@ svg { display: block; }
 #pause[data-does="resume"] .i-play { display: block; }
 #pause[data-does="stop"] .i-stop { display: block; }
 #pause[data-does="stop"]:not(:disabled) .action-icon { background: rgba(239, 77, 77, 0.18); color: #ff8a8a; }
+/* Commands for the PC: Close asks for a second tap, in the stop button's red. */
+#cmd-close[data-sure="true"] { border-color: #6a2327; color: #ff9b9b; }
+#cmd-close[data-sure="true"] .action-icon { background: rgba(239, 77, 77, 0.18); color: #ff8a8a; }
+.command-note { margin: 12px 2px 0; }
+.presets-head { margin-top: 22px; }
+.presets { display: grid; gap: 8px; }
+.preset {
+  display: flex; align-items: center; gap: 12px; width: 100%; min-height: 54px; padding: 8px 12px 8px 8px;
+  border-radius: 14px; border: 1px solid var(--line); background: var(--surface);
+  font-size: 0.88rem; font-weight: 600; color: var(--text); text-align: left;
+}
+.preset .action-icon { width: 36px; height: 36px; border-radius: 10px; flex: none; }
+.preset .action-icon svg { width: 16px; height: 16px; }
+.preset-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.preset:not(:disabled):hover { background: var(--raised); }
+.preset:not(:disabled):hover .action-icon { background: var(--line-strong); }
+.preset:disabled { opacity: 0.45; }
 
 /* ── the other windows ── */
 .windows-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
