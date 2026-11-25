@@ -321,7 +321,7 @@ impl Root {
         let ram = m.get("usedPct").and_then(Value::as_f64).unwrap_or(0.);
         let cpu = m.get("pcCpuPct").and_then(Value::as_f64).unwrap_or(0.);
         let gpu = m.get("gpuPct").and_then(Value::as_f64).filter(|_| windows > 0);
-        let open: Vec<Value> = self.accounts().iter().filter(|a| pages::accounts::is_local(a)).cloned().collect();
+        let open: Vec<Value> = self.accounts_in(cx).iter().filter(|a| pages::accounts::is_local(a)).cloned().collect();
         let since = open.iter().filter_map(|a| a.pointer("/session/since").and_then(Value::as_str).and_then(crate::time::iso_secs)).min();
         let ram_of = |id: &str| m.get("accounts").and_then(Value::as_array).and_then(|l| l.iter().find(|x| x.get("id").and_then(Value::as_str) == Some(id))).and_then(|x| x.get("ramMb")?.as_f64());
         let tones = TONES;
@@ -543,19 +543,20 @@ impl Root {
     /// Four tiles: Roblox's version, Multi-Roblox, the mini window and Bloxkeep's version; the two that turn on are
     /// yellow while on, as Control Center's tiles.
     fn right_card(&self, cx: &mut Context<Self>) -> AnyElement {
-        let on = |p: &str| self.state.pointer(p).and_then(Value::as_bool).unwrap_or(false);
+        let st = self.state_in(cx);
+        let on = |p: &str| st.pointer(p).and_then(Value::as_bool).unwrap_or(false);
         let multi = on("/multi/enabled");
         let armed = on("/multi/armed");
         let closed = multi && on("/robloxUpdates/closed");
-        let check = self.state.pointer("/robloxUpdates/watch/check").and_then(Value::as_str).unwrap_or_default();
+        let check = st.pointer("/robloxUpdates/watch/check").and_then(Value::as_str).unwrap_or_default();
         let watched = multi && armed && !closed && ["changed", "renamed", "gone"].contains(&check) && !on("/robloxUpdates/watch/worked");
         let to_updates = closed || watched;
         let multi_warn = to_updates || (multi && !armed);
         let mini_open = on("/miniOpen");
-        let version = self.state.pointer("/update/current").and_then(Value::as_str).unwrap_or_default().to_string();
-        let ready = self.state.pointer("/update/status").and_then(Value::as_str) == Some("ready") && !on("/update/quiet");
-        let no_roblox = self.state.get("robloxInstalled").and_then(Value::as_bool) == Some(false);
-        let rbx = (!no_roblox).then(|| self.roblox_version_words()).flatten();
+        let version = st.pointer("/update/current").and_then(Value::as_str).unwrap_or_default().to_string();
+        let ready = st.pointer("/update/status").and_then(Value::as_str) == Some("ready") && !on("/update/quiet");
+        let no_roblox = st.get("robloxInstalled").and_then(Value::as_bool) == Some(false);
+        let rbx = (!no_roblox).then(|| self.roblox_version_words(&st)).flatten();
         let tile_w = (RIGHT_W - 32. - 10.) / 2.;
         let tile = |id: &'static str, lit: bool| {
             div()

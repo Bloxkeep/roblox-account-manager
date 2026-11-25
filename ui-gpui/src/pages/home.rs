@@ -17,11 +17,12 @@ use crate::{
 };
 
 /// A game on Home: running here (with its accounts), or played lately.
+#[derive(Clone)]
 pub struct Game {
     pub place: i64,
     pub name: String,
     pub icon: Option<String>,
-    pub accounts: Vec<Value>,
+    pub accounts: Vec<std::rc::Rc<Value>>,
     pub hours: f64,
     /// When it was last played (ms since 1970; 0 not known).
     pub last: f64,
@@ -48,10 +49,27 @@ pub fn is_dropped(a: &Value) -> bool {
 
 /// Running games first (most accounts first), then those played lately that aren't running.
 pub fn games(root: &Root) -> Vec<Game> {
-    game_library(root, false)
+    game_library(root, false).as_ref().clone()
 }
 
-pub(crate) fn game_library(root: &Root, full: bool) -> Vec<Game> {
+/// Home's games (`full`: every one, the library's), kept until the accounts, the rest of the state or the play
+/// history change: a page drawn again (a song's bars, a hover) doesn't walk every account anew.
+pub(crate) fn game_library(root: &Root, full: bool) -> std::rc::Rc<Vec<Game>> {
+    type Kept = Option<(u64, u64, std::rc::Rc<Vec<Game>>)>;
+    thread_local! {
+        static KEPT: std::cell::RefCell<[Kept; 2]> = const { std::cell::RefCell::new([None, None]) };
+    }
+    let key = (root.state_gen, root.played_ver);
+    let at = usize::from(full);
+    if let Some(all) = KEPT.with(|k| k.borrow()[at].as_ref().filter(|(s, p, _)| (*s, *p) == key).map(|(_, _, all)| all.clone())) {
+        return all;
+    }
+    let all = std::rc::Rc::new(work_out(root, full));
+    KEPT.with(|k| k.borrow_mut()[at] = Some((key.0, key.1, all.clone())));
+    all
+}
+
+fn work_out(root: &Root, full: bool) -> Vec<Game> {
     let mut now: Vec<Game> = Vec::new();
     for a in root.accounts() {
         let st = a.get("state").and_then(Value::as_str).unwrap_or_default();
@@ -61,12 +79,12 @@ pub(crate) fn game_library(root: &Root, full: bool) -> Vec<Game> {
             continue;
         }
         match now.iter_mut().find(|g| g.place == place) {
-            Some(g) => g.accounts.push(a.clone()),
+            Some(g) => g.accounts.push(std::rc::Rc::new(a.clone())),
             None => now.push(Game {
                 place,
                 name: clean(a.pointer("/session/game/name").and_then(Value::as_str).unwrap_or_default()),
                 icon: a.pointer("/session/game/iconUrl").and_then(Value::as_str).map(str::to_string),
-                accounts: vec![a.clone()],
+                accounts: vec![std::rc::Rc::new(a.clone())],
                 hours: 0.,
                 last: 0.,
             }),
@@ -110,17 +128,14 @@ pub(crate) fn look<'a>(root: &'a Root, place: i64, part: &str) -> Option<&'a str
 
 /// The game on the stage: the one picked on the shelf, else the first (running, most accounts).
 pub fn hero_place(root: &Root) -> Option<i64> {
-    let all = games(root);
+    let all = game_library(root, false);
     root.picked.filter(|p| all.iter().any(|g| g.place == *p)).or_else(|| all.first().map(|g| g.place))
 }
 
 /// One surface, like the accounts column beside it: the stage's picture bleeds into it at the top and everything
 /// else sits on it in tone (no boxes in boxes).
 pub fn home(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement {
-    let mut all = games(root);
-    if cfg!(feature = "shot") && std::env::var("BLOXKEEP_SHOT_NOGAME").is_ok() {
-        all.clear();
-    }
+    let all = if cfg!(feature = "shot") && std::env::var("BLOXKEEP_SHOT_NOGAME").is_ok() { std::rc::Rc::new(Vec::new()) } else { game_library(root, false) };
     let focus = root.picked.and_then(|p| all.iter().position(|g| g.place == p)).unwrap_or(0);
     let inner = width - 2. * SIDE;
     // No accounts column beside the page (a narrow window): a button at the top right slides it in over the page
@@ -143,7 +158,7 @@ pub fn home(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement
         .overflow_y_scroll()
         // No accounts yet: the welcome (its own page, see `welcome`).
         // (Before it, once: what Bloxkeep is for, `setup`.)
-        .when(root.accounts().is_empty(), |d| d.child(if setup_waits() && root.state.get("accounts").is_some() { match setup_stage() { "pc" => setup_pc(root, width, cx), "theme" => setup_theme(root, width, cx), _ => setup(root, width, cx) } } else { welcome(root, width, cx).into_any_element() }))
+        .when(root.accounts().is_empty(), |d| d.child(if setup_waits() && !root.state.is_null() { match setup_stage() { "pc" => setup_pc(root, width, cx), "theme" => setup_theme(root, width, cx), _ => setup(root, width, cx) } } else { welcome(root, width, cx).into_any_element() }))
         .when(!root.accounts().is_empty(), |d| d.child(
             div()
                 .flex()
@@ -1082,6 +1097,22 @@ pub fn playing_now(root: &Root) -> usize {
     root.accounts().iter().filter(|a| a.get("state").and_then(Value::as_str) == Some("running")).count()
 }
 
+/// The stage's game's accounts that dropped from it, and when the first of them came in: kept with the game's list
+/// (until a state comes), not walked again each time the page is drawn.
+fn stage_facts(root: &Root, g: &Game) -> (Vec<std::rc::Rc<Value>>, Option<i64>) {
+    type Kept = Option<(u64, i64, Vec<std::rc::Rc<Value>>, Option<i64>)>;
+    thread_local! {
+        static KEPT: std::cell::RefCell<Kept> = const { std::cell::RefCell::new(None) };
+    }
+    if let Some(f) = KEPT.with(|k| k.borrow().as_ref().filter(|(at, place, ..)| (*at, *place) == (root.state_gen, g.place)).map(|(_, _, d, s)| (d.clone(), *s))) {
+        return f;
+    }
+    let dropped: Vec<std::rc::Rc<Value>> = g.accounts.iter().filter(|a| is_dropped(a)).cloned().collect();
+    let since = g.accounts.iter().filter_map(|a| a.pointer("/session/since").and_then(Value::as_str).and_then(crate::time::iso_secs)).min();
+    KEPT.with(|k| *k.borrow_mut() = Some((root.state_gen, g.place, dropped.clone(), since)));
+    (dropped, since)
+}
+
 /// The game on the stage, on its own picture: what it is doing, and what to do with it.
 fn stage(root: &Root, all: &[Game], focus: usize, width: f32, cx: &mut Context<Root>) -> impl IntoElement {
     // A row as tall as its contents: the words beside the cover, centred on it.
@@ -1120,8 +1151,7 @@ fn stage(root: &Root, all: &[Game], focus: usize, width: f32, cx: &mut Context<R
     // (Plain, not mixed with the game's colour: an orange game made it brown; the owner's rule of 2026-11-15.)
     let _ = tone;
     let badge = look(root, g.place, "icon").map(str::to_string).or_else(|| g.icon.clone()).and_then(|u| images::pic(&u, cx));
-    let dropped: Vec<Value> = g.accounts.iter().filter(|a| is_dropped(a)).cloned().collect();
-    let since = g.accounts.iter().filter_map(|a| a.pointer("/session/since").and_then(Value::as_str).and_then(crate::time::iso_secs)).min();
+    let (dropped, since) = stage_facts(root, g);
 
     // What it is doing: its state (a dot and a word), then the facts.
     let dot = state_mark("stage-state", running, 7., if compact { c(TEXT_2) } else { on_picture(0.78) });
@@ -1159,7 +1189,7 @@ fn stage(root: &Root, all: &[Game], focus: usize, width: f32, cx: &mut Context<R
     }
     if !dropped.is_empty() {
         let label = root.i18n.tv("ui.rejoinN", &[("n", &dropped.len().to_string())]);
-        acts = acts.child(Button::new("stage-rejoin", label).icon("refresh").tint().big().pill().on_click(cx.listener(move |r, _, _, cx| r.rejoin(&dropped, cx))));
+        acts = acts.child(Button::new("stage-rejoin", label).icon("refresh").tint().big().pill().on_click(cx.listener(move |r, _, _, cx| r.rejoin(&dropped.iter().map(|a| Value::clone(a)).collect::<Vec<_>>(), cx))));
     }
     // The game into the Play box on Accounts, to pick who plays it (Home.tsx's put-game): "Add accounts" while it runs.
     let place = g.place;
@@ -1746,6 +1776,19 @@ pub fn cover_tile(id: (&'static str, usize), cover: Option<String>, icon_url: Op
         )
 }
 
+/// The accounts' ids (a preset counts the ones still here), kept until a state comes.
+fn account_ids(root: &Root) -> std::rc::Rc<std::collections::HashSet<String>> {
+    thread_local! {
+        static KEPT: std::cell::RefCell<Option<(u64, std::rc::Rc<std::collections::HashSet<String>>)>> = const { std::cell::RefCell::new(None) };
+    }
+    if let Some(ids) = KEPT.with(|k| k.borrow().as_ref().filter(|(at, _)| *at == root.state_gen).map(|(_, ids)| ids.clone())) {
+        return ids;
+    }
+    let ids = std::rc::Rc::new(root.accounts().iter().filter_map(|a| a.get("id").and_then(Value::as_str)).map(str::to_string).collect::<std::collections::HashSet<String>>());
+    KEPT.with(|k| *k.borrow_mut() = Some((root.state_gen, ids.clone())));
+    ids
+}
+
 /// The presets, each with its game's icon, which game and how many accounts, and Run: as many as two rows of the
 /// page's grid hold.
 fn presets(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement {
@@ -1758,7 +1801,7 @@ fn presets(root: &Root, width: f32, cx: &mut Context<Root>) -> impl IntoElement 
     } else {
         card_w
     };
-    let alive: std::collections::HashSet<&str> = root.accounts().iter().filter_map(|a| a.get("id").and_then(Value::as_str)).collect();
+    let alive = account_ids(root);
     let mut cards = grid(GRID_GAP).pb(px(4.));
     for (i, p) in presets.iter().take(cols * 2).enumerate() {
         let s = |k: &str| p.get(k).and_then(Value::as_str).unwrap_or_default().to_string();

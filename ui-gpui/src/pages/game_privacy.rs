@@ -327,12 +327,14 @@ pub fn tick(r: &mut Root, cx: &mut Context<Root>) {
 }
 
 /// The status bar's mark while accounts are set for a game: who, back to normal when they leave it.
-pub fn chip(r: &Root) -> Option<AnyElement> {
+/// (Drawn in the status bar: the names come from the accounts read there, so that it is drawn again when they change.)
+pub fn chip(r: &Root, cx: &App) -> Option<AnyElement> {
     let list = active();
     if list.is_empty() {
         return None;
     }
-    let names: Vec<String> = list.iter().map(|e| crate::pages::accounts::label_by_id(r, s(e, "id")).unwrap_or_else(|| "?".into())).collect();
+    let accounts = r.accounts_in(cx);
+    let names: Vec<String> = list.iter().map(|e| accounts.iter().find(|a| s(a, "id") == s(e, "id")).map(crate::pages::accounts::label).unwrap_or_else(|| "?".into())).collect();
     let tip: SharedString = r.i18n.tv("gpv.chipTip", &[("names", &names.join(", "))]).into();
     Some(
         div()

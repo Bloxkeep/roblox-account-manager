@@ -28,7 +28,11 @@
   }
   // Made-up names and notes in the page's language, so the English screenshots have no Vietnamese in them.
   const tx = (en, vi) => params.get('lang') === 'vi' ? vi : en;
-  const minsAgo = m => new Date(Date.now() - m * 60000).toISOString();
+  // (?stateevery: the times the state gives are taken from the mock's start, so that a state sent again is the same
+  // where nothing changed, as the app's own timestamps are.)
+  const T0 = Date.now();
+  const clock = () => params.has('stateevery') ? T0 : Date.now();
+  const minsAgo = m => new Date(clock() - m * 60000).toISOString();
   // Like the app: the next minute a preset's schedule starts at (local time), or null.
   const nextRun = s => {
     if (!s?.enabled || !/^\d\d:\d\d$/.test(s.time)) return null;
@@ -546,7 +550,7 @@
     countOnline,
     boardName,
     // ?nocommunity: the bot's sums not here yet (offline, before the first beat).
-    community: params.has('nocommunity') ? null : { data: community(), at: Date.now() },
+    community: params.has('nocommunity') ? null : { data: community(), at: clock() },
     remote,
     installs: NO_ROBLOX ? { handler: null, bloxstrap: false, fishstrap: false, voidstrap: false, others: [], roblox: false, direct: false, store: false, vng: params.has('vng') }
       : { handler: 'Bloxstrap', bloxstrap: true, fishstrap: false, voidstrap: params.has('voidstrap'), others: params.has('others') ? ['Otherstrap'] : [], roblox: false, direct: true, store: params.has('store'), vng: params.has('vng') },
@@ -592,6 +596,18 @@
       // get ready (Tests/ui settled-ready). Not otherwise: the commands it brings would land in every scenario.
       if (params.has('settled')) setTimeout(() => !locked && emit('settled', null), 300);
       setInterval(() => !locked && emit('metrics', metrics()), 1500);
+      // ?stateevery=MS: the state goes out again every MS, as the app sends it when something in it changed:
+      // &statekind=acc (the default) one account's Roblox status flips between online and offline, =setting a
+      // setting only Settings shows flips, =same nothing changed (as after a command the app answers with its state).
+      if (params.has('stateevery')) {
+        const kind = params.get('statekind') || 'acc';
+        setInterval(() => {
+          if (locked) return;
+          if (kind === 'acc') { const a = accounts.find(x => x.id === id(5)); if (a) a.presence = { type: a.presence?.type === 'offline' ? 'online' : 'offline' }; }
+          if (kind === 'setting') settings.memoryWarnings = !settings.memoryWarnings;
+          emit('state', state());
+        }, Number(params.get('stateevery')) || 1000);
+      }
       // ?busy=1: an account being opened, its words in the top bar's pill (as a join says), for looking at that pill.
       if (params.has('busy')) setTimeout(() => emit('progress', { text: language === 'vi' ? 'Đang mở Farm 1…' : 'Opening Farm 1…' }), 200);
     },

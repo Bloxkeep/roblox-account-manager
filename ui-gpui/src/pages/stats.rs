@@ -207,10 +207,11 @@ pub fn state_changed(r: &mut Root, cx: &mut Context<Root>) {
         r.stats.home_due = true;
         cx.spawn(async move |this, cx| {
             cx.background_executor().timer(APART - since).await;
+            // (Asked again now: only Home's page shows them, nothing is drawn until they come.)
             let _ = this.update(cx, |r, cx| {
                 r.stats.home_due = false;
                 r.stats.home_at = None;
-                cx.notify();
+                r.want_home_data(cx);
             });
         })
         .detach();
@@ -239,13 +240,13 @@ pub fn want_home(r: &mut Root, cx: &mut Context<Root>) {
             if r.stats.home_seq == mine
                 && let Ok(Ok(v)) = got
                 && v.is_object()
+                && r.stats.home_log.as_ref() != Some(&v)
             {
+                // (Shown by Home's page alone: an answer the same as the last draws nothing, a new one the page.)
                 r.stats.home_log = Some(v);
-                cx.notify();
+                r.page_changed(cx);
             }
         });
-        cx.background_executor().timer(REFRESH + Duration::from_millis(50)).await;
-        let _ = this.update(cx, |_, cx| cx.notify());
     })
     .detach();
 }

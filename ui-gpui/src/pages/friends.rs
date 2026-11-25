@@ -551,7 +551,8 @@ fn load(r: &mut Root, cx: &mut Context<Root>) {
                 r.friends.requests = asks;
                 r.friends.loading = false;
                 r.friends.at = Some(Instant::now());
-                cx.notify();
+                // (Only pages show them, Friends, a game's and the inbox's: the page is drawn again, not the app.)
+                r.page_changed(cx);
             }
         });
     })

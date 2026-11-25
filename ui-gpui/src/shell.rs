@@ -53,13 +53,31 @@ pub struct Windows {
     changes: u64,
 }
 
+/// The accounts in the app's last state (its "accounts", names already hidden when Hide account names is on), in a
+/// model of their own: a state that changes an account (its Roblox status, its window, its Robux) draws again only
+/// the parts that read them (`Root::accounts_in`: the page, the accounts' column, the windows card), not the rail,
+/// the top bar or the status bar. A state with the same accounts notifies nothing.
+pub struct AccountList(std::rc::Rc<Vec<Value>>);
+
+/// The rest of the app's last state (settings, vaults, the update, Roblox's version, the feeds…), in a model of its
+/// own as `AccountList` is: a change there draws again the parts that read it (`Root::state_in`), not the accounts'
+/// column; the same rest notifies nothing.
+pub struct AppState(std::rc::Rc<Value>);
+
 pub struct Root {
     pub link: Option<Link>,
     pub i18n: I18n,
     /// The faces of the core's small windows (mini window, dialogs, macro panels, overlays): toolpage.rs.
     pub tool_pages: crate::toolpage::Pages,
-    /// The app's whole state (AppController.BuildState), as it sent it last.
-    pub state: Value,
+    /// The app's state (AppController.BuildState) as it sent it last, without its accounts (`account_list`): the same
+    /// value `app_state` holds. Read here where nothing is drawn (commands, events) and in the pages' helpers; a part
+    /// reads `state_in`, so that GPUI draws it again when it changes.
+    pub state: std::rc::Rc<Value>,
+    pub app_state: Entity<AppState>,
+    /// The state's accounts (`AccountList`), the same list `accounts` holds; `accounts()` reads it, a part
+    /// `accounts_in`.
+    account_list: std::rc::Rc<Vec<Value>>,
+    pub accounts: Entity<AccountList>,
     /// Roblox's and the PC's figures, every 1.5 s (`Metrics`, read with `Root::metrics`).
     pub metrics: Entity<Metrics>,
     pub page: Page,
@@ -97,6 +115,8 @@ pub struct Root {
     played_at: Option<(std::time::Instant, u64)>,
     played_pending: bool,
     played_gen: u64,
+    /// Counts the times `played` changed (Home's game list is worked out again only after it or a state).
+    pub played_ver: u64,
     /// Each game's pictures by place (gameLooks: icon, cover), and the places already asked for.
     pub looks: std::collections::HashMap<i64, Value>,
     asked_looks: std::collections::HashSet<i64>,
@@ -684,7 +704,10 @@ impl Root {
             link: None,
             i18n,
             tool_pages: Default::default(),
-            state: Value::Null,
+            state: std::rc::Rc::new(Value::Null),
+            app_state: cx.new(|_| AppState(std::rc::Rc::new(Value::Null))),
+            account_list: std::rc::Rc::new(Vec::new()),
+            accounts: cx.new(|_| AccountList(std::rc::Rc::new(Vec::new()))),
             metrics: cx.new(|_| Metrics(std::rc::Rc::new(Value::Null))),
             page: Page::Home,
             acc_search,
@@ -711,6 +734,7 @@ impl Root {
             played_at: None,
             played_pending: false,
             played_gen: 0,
+            played_ver: 0,
             looks: Default::default(),
             asked_looks: Default::default(),
             look_misses: Default::default(),
@@ -1332,7 +1356,16 @@ impl Root {
         }
     }
 
-    fn set_state(&mut self, state: Value, window: &mut Window, cx: &mut Context<Self>) {
+    /// The app's state come in. Only what changed is told: the accounts (`AccountList`) and the rest (`AppState`) each
+    /// notify the parts that read them when they differ from the last state; Root itself (every part drawn again) only
+    /// when what the frame or every part shows changed (the first state, the language, the lock, the accounts there
+    /// or not, the accounts picked, the vault's accounts, what's new shown).
+    fn set_state(&mut self, mut state: Value, window: &mut Window, cx: &mut Context<Self>) {
+        let first = self.state.is_null();
+        let lang_was = self.i18n.lang;
+        let had_accounts = !self.account_list.is_empty();
+        let wn_was = self.wn_shown;
+        let mut sign_moved = false;
         if let Some(lang) = state.get("language").and_then(Value::as_str) {
             if crate::lang::known(lang) != self.i18n.lang {
                 self.i18n.set_language(lang);
@@ -1382,20 +1415,10 @@ impl Root {
         // gets the keyboard afresh.
         let was = self.locked();
         let was_adding = pages::lock::adding(self);
-        self.state = state;
-        self.state_gen += 1;
-        // (Home's newest events follow the app's states, not only its half-minute clock.)
-        pages::stats::state_changed(self, cx);
-        // Try it's log follows every state the app sends, not only the ones a frame draws.
-        pages::macro_form::on_state(self);
-        // (The first question's auto-rejoin, put on the first accounts once they are here.)
-        pages::home::setup_follow(self, cx);
-        // The theme it says is in use (Settings › Appearance): its colours, and the picture behind the window.
-        crate::theme::follow(&self.state, cx);
         // Names hidden (Settings › Appearance): every account goes by its first letter everywhere, as the web page
         // showed them (app.js's maskNames); what it is really called is kept under "real", never drawn.
-        if self.state.get("hideNames").and_then(Value::as_bool) == Some(true) {
-            if let Some(list) = self.state.get_mut("accounts").and_then(Value::as_array_mut) {
+        if state.get("hideNames").and_then(Value::as_bool) == Some(true) {
+            if let Some(list) = state.get_mut("accounts").and_then(Value::as_array_mut) {
                 for a in list.iter_mut() {
                     let text = |k: &str| a.get(k).and_then(Value::as_str).unwrap_or_default().to_string();
                     let (label, user, shown, alias) = (text("label"), text("username"), text("displayName"), text("alias"));
@@ -1408,6 +1431,32 @@ impl Root {
                 }
             }
         }
+        // The accounts and the rest, each kept (and its model told) only when it changed: an account's status come in
+        // leaves the rest as it was, a setting the accounts.
+        let list = match state.as_object_mut().and_then(|o| o.remove("accounts")) {
+            Some(Value::Array(list)) => list,
+            _ => Vec::new(),
+        };
+        let accounts_changed = *self.account_list != list;
+        let rest_changed = *self.state != state;
+        if accounts_changed {
+            self.account_list = std::rc::Rc::new(list);
+        }
+        if rest_changed {
+            self.state = std::rc::Rc::new(state);
+        }
+        if accounts_changed || rest_changed {
+            self.state_gen += 1;
+        }
+        // (Home's newest events follow the app's states, not only its half-minute clock.)
+        pages::stats::state_changed(self, cx);
+        // Try it's log follows every state the app sends, not only the ones a frame draws.
+        pages::macro_form::on_state(self);
+        // (The first question's auto-rejoin, put on the first accounts once they are here.)
+        pages::home::setup_follow(self, cx);
+        // The theme it says is in use (Settings › Appearance): its colours, and the picture behind the window.
+        crate::theme::follow(&self.state, cx);
+        let picked = self.selected.len();
         self.prune_selected(cx);
         if self.help_open {
             window.refresh();
@@ -1511,7 +1560,7 @@ impl Root {
         // Another vault, or an account added or removed: a sign-in lent before may be someone else's.
         let sign_key = {
             let mut k = self.state.pointer("/vaults/open").and_then(Value::as_str).unwrap_or_default().to_string();
-            for a in self.state.get("accounts").and_then(Value::as_array).into_iter().flatten() {
+            for a in self.account_list.iter() {
                 k.push('|');
                 k.push_str(a.get("id").and_then(Value::as_str).unwrap_or_default());
             }
@@ -1524,6 +1573,7 @@ impl Root {
             let first = self.sign_key.is_empty();
             self.sign_key = sign_key;
             if !first {
+                sign_moved = true;
                 self.games.forget_sign_in();
                 self.friends.forget_sign_in();
                 // Another vault's games played.
@@ -1942,7 +1992,34 @@ impl Root {
                 pages::game_privacy::shot_open(self, place, cx);
             }
         }
-        cx.notify();
+        if accounts_changed {
+            let list = self.account_list.clone();
+            self.accounts.update(cx, |m, cx| {
+                m.0 = list;
+                cx.notify();
+            });
+        }
+        if rest_changed {
+            let state = self.state.clone();
+            self.app_state.update(cx, |m, cx| {
+                m.0 = state;
+                cx.notify();
+            });
+        }
+        // What every part, or the frame they sit in, shows from Root changed: all of them are drawn again (and what
+        // follows from Root's data is worked out, `settle`, as Root observes itself).
+        let whole = first
+            || self.i18n.lang != lang_was
+            || was != self.locked()
+            || had_accounts == self.account_list.is_empty()
+            || picked != self.selected.len()
+            || wn_was != self.wn_shown
+            || sign_moved;
+        if whole {
+            cx.notify();
+        } else {
+            self.settle(window, cx);
+        }
     }
 
     /// An Accounts key (Ctrl+A, Delete, F2, Enter, Escape): only on that page, with nothing typed into a box and no
@@ -2184,7 +2261,7 @@ impl Root {
     }
 
     /// Home's data the state doesn't carry: the games played lately, then the pictures of every game it shows.
-    fn want_home_data(&mut self, cx: &mut Context<Self>) {
+    pub fn want_home_data(&mut self, cx: &mut Context<Self>) {
         let Some(link) = self.link.clone() else { return };
         if self.page == Page::Auto && !self.state.is_null() && !self.locked() {
             pages::auto::want(self);
@@ -2262,7 +2339,7 @@ impl Root {
         let home_games = if self.page == Page::Games && self.games.home_library == Some(HomeTab::Games) {
             crate::pages::home::game_library(self, true)
         } else {
-            crate::pages::home::games(self)
+            crate::pages::home::game_library(self, false)
         };
         let mut places: Vec<i64> = home_games.iter().map(|g| g.place).collect();
         places.extend(self.accounts().iter().filter_map(|a| a.pointer("/session/game/placeId").and_then(Value::as_i64)));
@@ -2277,6 +2354,7 @@ impl Root {
         self.played_at = None;
         self.played_pending = false;
         self.played_gen = self.played_gen.wrapping_add(1);
+        self.played_ver = self.played_ver.wrapping_add(1);
     }
 
     fn want_play_history(&mut self, link: &crate::link::Link, cx: &mut Context<Self>) {
@@ -2302,6 +2380,7 @@ impl Root {
                     r.played = Some(crate::history::recently_played(&sessions, &known, now).into_iter()
                         .map(|game| json!({ "name": game.name, "place": game.place, "hours": game.hours, "last": game.last }))
                         .collect());
+                    r.played_ver = r.played_ver.wrapping_add(1);
                     pages::games::set_play_history(r, raw);
                 }
                 cx.notify();
@@ -3148,7 +3227,43 @@ impl Root {
     }
 
     pub fn accounts(&self) -> &[Value] {
-        self.state.get("accounts").and_then(Value::as_array).map(Vec::as_slice).unwrap_or_default()
+        &self.account_list
+    }
+
+    /// The accounts (`AccountList`). Read while a part is drawn, that part is drawn again when they change.
+    pub fn accounts_in(&self, cx: &App) -> std::rc::Rc<Vec<Value>> {
+        self.accounts.read(cx).0.clone()
+    }
+
+    /// The rest of the state (`AppState`). Read while a part is drawn, that part is drawn again when it changes.
+    pub fn state_in(&self, cx: &App) -> std::rc::Rc<Value> {
+        self.app_state.read(cx).0.clone()
+    }
+
+    /// The state kept here changed at once, ahead of the app (what it only remembers, sending no state again).
+    pub fn edit_state(&mut self, cx: &mut Context<Self>, f: impl FnOnce(&mut Value)) {
+        f(std::rc::Rc::make_mut(&mut self.state));
+        self.state_gen += 1;
+        let state = self.state.clone();
+        self.app_state.update(cx, |m, cx| {
+            m.0 = state;
+            cx.notify();
+        });
+    }
+
+    /// What Root holds and only the page shows changed: the page is drawn again, not the whole app.
+    pub fn page_changed(&self, cx: &mut Context<Self>) {
+        match self.parts.as_ref().map(|p| p.page.entity_id()) {
+            Some(page) => App::notify(cx, page),
+            None => cx.notify(),
+        }
+    }
+
+    /// The part being drawn shows the whole state, the accounts and the rest, from helpers that read `state` and
+    /// `accounts()` (the pages): it is drawn again when either changes.
+    fn reads_state(&self, cx: &App) {
+        self.accounts.read(cx);
+        self.app_state.read(cx);
     }
 
     /// The size typed for a Roblox window goes to the app, within what it takes (160–7680 by 120–4320; a box that
@@ -3219,6 +3334,7 @@ impl Root {
 
     fn rail(&self, _window: &Window, cx: &mut Context<Self>) -> impl IntoElement {
         let page = self.page;
+        let st = self.state_in(cx);
         div()
             .w(px(RAIL))
             .h_full()
@@ -3241,10 +3357,10 @@ impl Root {
                     let mut items = Vec::new();
                     // Roblox carries the sum of the counts inside it (99+ at most): the games' unread news, and the
                     // account's notifications (the bell) and unread messages (the inbox); a dot when news is fresh.
-                    let news = self.state.pointer("/feeds/unread").and_then(Value::as_i64).unwrap_or(0).max(0);
+                    let news = st.pointer("/feeds/unread").and_then(Value::as_i64).unwrap_or(0).max(0);
                     let (notes, letters) = self.games.corner.unread;
                     let unread = news + notes.max(0) + letters.max(0);
-                    let fresh = self.state.pointer("/feeds/fresh").and_then(Value::as_i64).unwrap_or(0) > 0; // (a count, not a flag)
+                    let fresh = st.pointer("/feeds/fresh").and_then(Value::as_i64).unwrap_or(0) > 0; // (a count, not a flag)
                     for (i, p) in Page::ALL.into_iter().filter(|p| *p != Page::Settings).enumerate() {
                         let mark = (p == Page::Games && (unread > 0 || fresh)).then(|| {
                             let base = div().absolute().top(px(3.)).right(px(3.)).rounded_full().bg(c(FACE));
@@ -3267,8 +3383,8 @@ impl Root {
             // picker and its Create a new vault. The open vault locks only when another is picked.
             // (The rail's foot rises into place a moment after the buttons above it came in: the page's intro-up.)
             .child(line_in("rail-foot", 3, div().flex().flex_col().items_center()
-                .when(self.state.pointer("/vaults/open").and_then(Value::as_str).is_some_and(|o| !o.is_empty()), |d| {
-                let v = self.state.get("vaults").cloned().unwrap_or(Value::Null);
+                .when(st.pointer("/vaults/open").and_then(Value::as_str).is_some_and(|o| !o.is_empty()), |d| {
+                let v = st.get("vaults").cloned().unwrap_or(Value::Null);
                 let (id, name) = (v.get("current").and_then(Value::as_str).unwrap_or_default().to_string(), v.get("name").and_then(Value::as_str).unwrap_or_default().to_string());
                 let tip: SharedString = self.i18n.tv("vault.switchTip", &[("name", &name)]).into();
                 d.child(
@@ -3379,26 +3495,15 @@ impl Root {
     }
 
     fn side(&self, cx: &mut Context<Self>) -> impl IntoElement {
-        let all = self.accounts();
+        let all = self.accounts_in(cx);
         // The Accounts page's search (no accents, "@name", user ID, real names while hidden).
         let query = self.acc_search.read(cx).value().to_string();
-        let accounts: Vec<&Value> = all.iter().filter(|a| pages::accounts::found(a, &query)).collect();
-        let playing: Vec<&Value> = accounts.iter().copied().filter(|a| a.get("state").and_then(Value::as_str) == Some("running")).collect();
-        let dropped: Vec<&Value> = playing
-            .iter()
-            .copied()
-            .filter(|a| pages::home::is_dropped(a))
-            .collect();
-        // Open but back on Roblox's menu (or signed out in it): a group of its own, not "Playing" (owner 2026-11-13).
-        let menu: Vec<&Value> = playing.iter().copied().filter(|a| pages::accounts::in_menu(a)).collect();
-        let fine: Vec<&Value> = playing.iter().copied().filter(|a| !dropped.iter().any(|d| std::ptr::eq(*d, *a)) && !pages::accounts::in_menu(a)).collect();
-        // Not open and in trouble (a sign-in to do again, a ban): with the dropped ones, on top, said in red.
-        let troubled = |a: &Value| side_trouble(a).is_some();
-        let idle_all: Vec<&Value> = accounts.iter().copied().filter(|a| a.get("state").and_then(Value::as_str) != Some("running")).collect();
-        let check: Vec<&Value> = dropped.iter().copied().chain(idle_all.iter().copied().filter(|a| troubled(a))).collect();
-        let idle: Vec<&Value> = idle_all.iter().copied().filter(|a| !troubled(a)).collect();
+        let groups = side_groups(&all, &query, self.state_gen);
+        let scroll = crate::scrolled::handle("side-list");
+        // (A row's height before one is measured: a name and its line under it.)
+        const ROW_GUESS: f32 = 51.;
         let mut list = div().flex().flex_col().px(px(8.)).pb(px(12.));
-        for (key, rows) in [("ui.grp.check", &check), ("ui.grp.playing", &fine), ("act.menuHere", &menu), ("ui.grp.idle", &idle)] {
+        for (key, rows) in [("ui.grp.check", &groups.check), ("ui.grp.playing", &groups.fine), ("act.menuHere", &groups.menu), ("ui.grp.idle", &groups.idle)] {
             if rows.is_empty() {
                 continue;
             }
@@ -3416,13 +3521,25 @@ impl Root {
                     .text_size(px(T_S))
                     .font_weight(FontWeight::SEMIBOLD)
                     .text_color(c(TEXT_2))
-                    .when(look, |d| d.child(icon("alert", 13., c(if rows.iter().any(|a| troubled(a)) { BAD } else { WARN }))))
+                    .when(look, |d| d.child(icon("alert", 13., c(if groups.troubled { BAD } else { WARN }))))
                     .child(self.tr(key))
                     .child(div().text_color(c(MUTED)).font_weight(FontWeight::MEDIUM).font_features(tnum()).child(rows.len().to_string())),
             );
-            for a in rows.iter() {
-                let dropped_here = look && dropped.iter().any(|d| std::ptr::eq(*d, *a));
-                list = list.child(account_row(a, dropped_here, self, cx));
+            let row = |i: usize, cx: &mut Context<Self>| {
+                let dropped_here = look && groups.dropped.binary_search(&i).is_ok();
+                account_row(&all[i], dropped_here, self, cx).into_any_element()
+            };
+            // A long group makes only the rows in view (crate::near): with 1,000 accounts the column made and laid
+            // out every row each time it was drawn, and painted them all at every frame of the window.
+            let n = rows.len();
+            if n >= crate::near::ROWS_FROM {
+                let id = crate::near::named("side-rows:", key);
+                let sig = crate::near::sig((n, rows.first().and_then(|i| all[*i].get("id")).and_then(Value::as_str)));
+                list = list.child(crate::near::measured_in(Some(&scroll), crate::near::ROWS_FROM, id, n, sig, ROW_GUESS, 0., |i| row(rows[i], cx)));
+            } else {
+                for &i in rows.iter() {
+                    list = list.child(row(i, cx));
+                }
             }
         }
         let panel = panel()
@@ -3439,7 +3556,7 @@ impl Root {
             )
             .when(!all.is_empty(), |d| d.child(div().px(px(12.)).child(field(&self.acc_search, Some("search")))))
             .child(
-                div().id("side-list").flex_1().overflow_y_scroll().child(if accounts.is_empty() {
+                div().id("side-list").flex_1().overflow_y_scroll().track_scroll(&scroll).child(if !groups.any {
                     div()
                         .p(px(18.))
                         .text_size(px(T_M))
@@ -3510,6 +3627,7 @@ impl Root {
     /// `with_side`: the accounts column stands over the bar's right end (Home), and the right pill is made as wide as
     /// it (owner 2026-11-20: a pill 45 px short of the column over it looked like a slip).
     fn status(&self, with_side: bool, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let st = self.state_in(cx);
         let m = self.metrics(cx);
         let windows = m.get("robloxCount").and_then(Value::as_i64).unwrap_or(0);
         let ram = m.get("usedPct").and_then(Value::as_f64).unwrap_or(0.).round() as i64;
@@ -3518,25 +3636,25 @@ impl Root {
         // whole-PC figure here), shown while a window is open.
         let cpu = m.get("pcCpuPct").and_then(Value::as_f64).unwrap_or(0.).round() as i64;
         let gpu = m.get("gpuPct").and_then(Value::as_f64).filter(|_| windows > 0).map(|g| g.round() as i64);
-        let multi = self.state.pointer("/multi/enabled").and_then(Value::as_bool).unwrap_or(false);
-        let version = self.state.pointer("/update/current").and_then(Value::as_str).unwrap_or_default().to_string();
+        let multi = st.pointer("/multi/enabled").and_then(Value::as_bool).unwrap_or(false);
+        let version = st.pointer("/update/current").and_then(Value::as_str).unwrap_or_default().to_string();
         let words = if windows == 0 { self.tr("bar.none") } else { self.i18n.tn("bar.windows", windows, &[]) };
         // An update is in and waits for a restart (not a quiet fix, which goes in by itself).
-        let ready = self.state.pointer("/update/status").and_then(Value::as_str) == Some("ready") && !self.state.pointer("/update/quiet").and_then(Value::as_bool).unwrap_or(false);
-        let no_roblox = self.state.get("robloxInstalled").and_then(Value::as_bool) == Some(false);
-        let rbx = (!no_roblox).then(|| self.roblox_version_words()).flatten();
-        let mini_open = self.state.get("miniOpen").and_then(Value::as_bool).unwrap_or(false);
+        let ready = st.pointer("/update/status").and_then(Value::as_str) == Some("ready") && !st.pointer("/update/quiet").and_then(Value::as_bool).unwrap_or(false);
+        let no_roblox = st.get("robloxInstalled").and_then(Value::as_bool) == Some(false);
+        let rbx = (!no_roblox).then(|| self.roblox_version_words(&st)).flatten();
+        let mini_open = st.get("miniOpen").and_then(Value::as_bool).unwrap_or(false);
         // Multi-Roblox's state, as Sidebar.tsx's MultiCard: Roblox closed windows, or the watch found the lock changed
         // in the next build: orange, and a click leads to Settings › Roblox updates instead of its box.
-        let on = |p: &str| self.state.pointer(p).and_then(Value::as_bool).unwrap_or(false);
+        let on = |p: &str| st.pointer(p).and_then(Value::as_bool).unwrap_or(false);
         let armed = on("/multi/armed");
         let closed = multi && on("/robloxUpdates/closed");
-        let check = self.state.pointer("/robloxUpdates/watch/check").and_then(Value::as_str).unwrap_or_default();
+        let check = st.pointer("/robloxUpdates/watch/check").and_then(Value::as_str).unwrap_or_default();
         let watched = multi && armed && !closed && ["changed", "renamed", "gone"].contains(&check) && !on("/robloxUpdates/watch/worked");
         let to_updates = closed || watched;
         // (On but not ready: its name in orange says so, where a light was.)
         let multi_warn = to_updates || (multi && !armed);
-        let privacy = crate::pages::game_privacy::chip(self);
+        let privacy = crate::pages::game_privacy::chip(self, cx);
         let song = bar_song(self.music(cx).as_ref());
         let upd_words = self.tr("bar.update");
         capsule::note_ram(&m);
@@ -3811,8 +3929,8 @@ impl Root {
                 // The one coloured thing in the bar: the app's update, waiting for a restart. Asked, not just sent:
                 // the app can refuse (Roblox being opened, a sign-in window up) and says why.
                 .when(ready, |d| {
-                    let v = self.state.pointer("/update/version").and_then(Value::as_str).unwrap_or_default().to_string();
-                    let tip: SharedString = self.i18n.tv(if self.state.pointer("/update/auto").and_then(Value::as_bool).unwrap_or(false) { "upd.restartTipAuto" } else { "upd.restartTip" }, &[("v", &v)]).into();
+                    let v = st.pointer("/update/version").and_then(Value::as_str).unwrap_or_default().to_string();
+                    let tip: SharedString = self.i18n.tv(if st.pointer("/update/auto").and_then(Value::as_bool).unwrap_or(false) { "upd.restartTipAuto" } else { "upd.restartTip" }, &[("v", &v)]).into();
                     d.child(pill_in("apply-update-in", pill_w, BAR_GROUP_GAP, no_pick(
                         hot("apply-update")
                             // (Its ground through `tones`: a hot block paints its own, over any `bg`.)
@@ -3933,8 +4051,8 @@ impl Root {
 
     /// Roblox's version for the status bar: its words ("0.742", or "0.742 → 0.743" when a newer one is out), whether
     /// it is out of date, and its tip (the full build). None while it isn't known.
-    fn roblox_version_words(&self) -> Option<(String, bool, String)> {
-        let rv = self.state.get("robloxVersion")?;
+    fn roblox_version_words(&self, st: &Value) -> Option<(String, bool, String)> {
+        let rv = st.get("robloxVersion")?;
         let installed = rv.get("installed").and_then(Value::as_str).filter(|v| !v.is_empty())?.to_string();
         let latest = rv.get("latest").and_then(Value::as_str).unwrap_or_default();
         let short = |v: &str| v.split('.').take(2).collect::<Vec<_>>().join(".");
@@ -4308,6 +4426,64 @@ fn window_button(id: &'static str, glyph: WinGlyph, f: impl Fn(&ClickEvent, &mut
 
 /// Why an account that isn't open needs a look, in two or three words: a sign-in to do again, a ban (as the Accounts
 /// page's panel of what needs a look). None when it is fine.
+/// The accounts column's groups, as places in the accounts' list.
+#[derive(Default)]
+struct SideGroups {
+    /// Any account the search finds.
+    any: bool,
+    /// Dropped from their game (in the list's order), then the ones not open and in trouble.
+    check: Vec<usize>,
+    dropped: Vec<usize>,
+    /// Any account in `check` not open and in trouble (a sign-in to do again, a ban).
+    troubled: bool,
+    fine: Vec<usize>,
+    menu: Vec<usize>,
+    idle: Vec<usize>,
+}
+
+/// The column's groups, kept until a state comes or the search changes: drawn again (a hover, a song's bars, a scroll)
+/// it doesn't walk every account anew.
+fn side_groups(all: &[Value], query: &str, state: u64) -> std::rc::Rc<SideGroups> {
+    thread_local! {
+        static KEPT: std::cell::RefCell<Option<(u64, String, std::rc::Rc<SideGroups>)>> = const { std::cell::RefCell::new(None) };
+    }
+    if let Some(g) = KEPT.with(|k| k.borrow().as_ref().filter(|(at, q, _)| *at == state && q == query).map(|(_, _, g)| g.clone())) {
+        return g;
+    }
+    let mut g = SideGroups::default();
+    let mut troubled = Vec::new();
+    for (i, a) in all.iter().enumerate() {
+        if !pages::accounts::found(a, query) {
+            continue;
+        }
+        g.any = true;
+        if a.get("state").and_then(Value::as_str) == Some("running") {
+            let dropped = pages::home::is_dropped(a);
+            // Open but back on Roblox's menu (or signed out in it): a group of its own, not "Playing".
+            let menu = pages::accounts::in_menu(a);
+            if dropped {
+                g.dropped.push(i);
+            }
+            if menu {
+                g.menu.push(i);
+            }
+            if !dropped && !menu {
+                g.fine.push(i);
+            }
+        } else if side_trouble(a).is_some() {
+            // Not open and in trouble: with the dropped ones, on top, said in red.
+            troubled.push(i);
+        } else {
+            g.idle.push(i);
+        }
+    }
+    g.troubled = !troubled.is_empty();
+    g.check = g.dropped.iter().copied().chain(troubled).collect();
+    let g = std::rc::Rc::new(g);
+    KEPT.with(|k| *k.borrow_mut() = Some((state, query.to_string(), g.clone())));
+    g
+}
+
 fn side_trouble(a: &Value) -> Option<&'static str> {
     if a.get("state").and_then(Value::as_str) == Some("running") {
         None
@@ -4858,6 +5034,7 @@ impl Root {
     /// The page (parts::PagePart): the lock screen, the line lost, or the page shown, with the dropped accounts' strip
     /// over it (never beside the accounts' column) and the column slid in over it on a narrow window.
     fn page_part(&mut self, me: EntityId, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+        self.reads_state(cx);
         let f = self.frame;
         let main_w = f.main_w;
         let page = self.page;

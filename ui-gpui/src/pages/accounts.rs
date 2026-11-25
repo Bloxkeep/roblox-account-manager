@@ -1799,9 +1799,11 @@ fn header(root: &Root, all: &[Value], width: f32, rows: bool, cx: &mut Context<R
                 // Shown at once: the app only remembers this one and sends no new state for it (set_settings' "quick"
                 // keys: the web page showed it itself), so the list kept its old order until some other change came
                 // (the owner, 2026-11-13: "bấm 1 hồi nó mới nhảy qua cái mình chọn").
-                if let Some(now) = r.state.pointer_mut("/settings/sort") {
-                    *now = json!(key);
-                }
+                r.edit_state(cx, |s| {
+                    if let Some(now) = s.pointer_mut("/settings/sort") {
+                        *now = json!(key);
+                    }
+                });
                 r.send("setSettings", json!({ "sort": key }));
                 cx.notify();
             });
